@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
-import { RenderResult, within } from "@testing-library/react";
+import { RenderResult, waitFor, within } from "@testing-library/react";
 import { Container } from "@wirestate/core";
 
 import { EXrayEngine } from "@/core/ipc/types/xrf-engine-target";
@@ -50,6 +50,8 @@ async function renderProblems({ isPresent, unreadable }: IRenderProblemsOptions)
     isDltx: false,
     engine: EXrayEngine.VANILLA,
   });
+  // The spawn is listed after the level opens; waited for, so the panel renders once with both.
+  await waitFor(() => expect(service.spawnReport.isListed).toBe(true));
 
   // What the textures came to and what the level could not draw are the renderer's answers, so the panel is given
   // them rather than reaching for what it can no longer see.

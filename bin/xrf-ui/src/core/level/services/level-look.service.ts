@@ -5,7 +5,6 @@ import { Nullable } from "@xrf/types";
 import { levelsCommands } from "@/core/ipc/commands/levels";
 import { LevelConsoleDefaults, SelectedLevelDescription, SessionSnapshot } from "@/core/ipc/types/xrf-app";
 import {
-  DEFAULT_LEVEL_LOOK_CHOICE,
   ELevelLookSource,
   ILevelLook,
   ILevelLookChoice,
@@ -33,7 +32,7 @@ export class LevelLookService {
   @RefObservable()
   public defaults: Nullable<LevelConsoleDefaults> = null;
 
-  private readonly log: Logger = new Logger("LevelLookService");
+  private readonly log: Logger = new Logger(__MODULE_NAME__);
   /** The level whose game's defaults are held or being read. */
   private sessionId: Nullable<string> = null;
 
@@ -88,11 +87,14 @@ export class LevelLookService {
   }
 
   /**
-   * @param source - A look of its own source; a custom one is chosen by editing.
+   * @param source - Where the look comes from; the values edited by hand only once some were, since editing is what
+   *   makes them.
    */
   @BoundAction()
-  public setSource(source: Exclude<ELevelLookSource, ELevelLookSource.CUSTOM>): void {
-    this.store({ ...this.choice, source });
+  public setSource(source: ELevelLookSource): void {
+    if (source !== ELevelLookSource.CUSTOM || this.choice.custom) {
+      this.store({ ...this.choice, source });
+    }
   }
 
   /**
@@ -103,12 +105,6 @@ export class LevelLookService {
   @BoundAction()
   public edit(look: ILevelLook): void {
     this.store({ custom: look, source: ELevelLookSource.CUSTOM });
-  }
-
-  /** Back to the game's own look. */
-  @BoundAction()
-  public reset(): void {
-    this.store(DEFAULT_LEVEL_LOOK_CHOICE);
   }
 
   private get exposure(): TRenderExposureSettings {

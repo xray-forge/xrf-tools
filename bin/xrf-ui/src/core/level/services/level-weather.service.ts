@@ -246,8 +246,11 @@ export class LevelWeatherService {
       }
     } catch (error: unknown) {
       this.fail(selected.sessionId, error);
-      // The keyframe set by hand is what lights a level whose weather does not play.
-      this.playManual(ERenderWeatherTransition.CUT);
+
+      // The keyframe set by hand is what lights a level whose weather does not play, unless another level opened since.
+      if (this.sessionId === selected.sessionId) {
+        this.playManual(ERenderWeatherTransition.CUT);
+      }
     }
   }
 
@@ -406,6 +409,7 @@ export class LevelWeatherService {
   @BoundAction()
   public setSunShafts(sunShafts: ILevelSunShaftsOptions): void {
     this.sunShafts = sunShafts;
+    this.persist();
   }
 
   /**

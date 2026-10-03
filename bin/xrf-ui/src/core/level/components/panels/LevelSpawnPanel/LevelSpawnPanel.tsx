@@ -101,13 +101,19 @@ export function LevelSpawnPanel({
   // Framed by the sphere its model spans, as the renderer holds it: asked when gone to, since it stands only once drawn.
   const onGoTo = useCallback(
     async (object: LevelSpawnObject) => {
+      const sessionId: Maybe<string> = loadService.level.value?.selected.sessionId;
       const sphere = await renderService.locateSpawnObject(object.index);
+
+      // Another level opened while the renderer answered: the object is not where the camera now is.
+      if (loadService.level.value?.selected.sessionId !== sessionId) {
+        return;
+      }
 
       renderService.goTo(
         toLevelFramedGoTo(viewportService.camera, toLevelSpawnSphere(object, sphere), viewService.camera.fieldOfView)
       );
     },
-    [renderService, viewportService, viewService]
+    [loadService, renderService, viewportService, viewService]
   );
 
   // The pick this panel made of the row it chose, which the tree already shows.

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 import { act, RenderResult, waitFor, within } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { Container, Injectable } from "@wirestate/core";
+import { runInAction } from "@wirestate/mobx";
 
 import { ELevelSpawnCategory, LevelSpawnObjectsDescription } from "@/core/ipc/types/xrf-app";
 import { EXrayEngine } from "@/core/ipc/types/xrf-engine-target";
@@ -268,9 +269,7 @@ describe("LevelSpawnPanel", () => {
 
     expect(view.getByText("The level's spawn places nothing the viewer draws.")).toBeInTheDocument();
 
-    act(() => {
-      service.spawnReport = EMPTY_LEVEL_SPAWN_REPORT;
-    });
+    act(() => runInAction(() => (service.spawnReport = EMPTY_LEVEL_SPAWN_REPORT)));
 
     expect(view.getByText("Reading the level's spawn.")).toBeInTheDocument();
   });

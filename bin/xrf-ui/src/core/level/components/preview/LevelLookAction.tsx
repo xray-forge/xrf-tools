@@ -177,11 +177,12 @@ export function LevelLookAction({
           : BUILT_IN_LABELS[source],
       value: source as string,
     })),
-    ...(picked === EDITED ? [{ label: "Edited by hand", value: EDITED }] : []),
+    // The values edited by hand stay offered once there are some, to go back to after trying another look.
+    ...(choice.custom ? [{ label: "Edited by hand", value: EDITED }] : []),
   ];
 
   function onPick(value: string): void {
-    const source = BUILT_IN_SOURCES.find((it) => it === value);
+    const source = value === EDITED ? ELevelLookSource.CUSTOM : BUILT_IN_SOURCES.find((it) => it === value);
 
     if (source) {
       lookService.setSource(source);
@@ -204,8 +205,8 @@ export function LevelLookAction({
         </Typography>
 
         <ChoiceListFormRow
-          data-testid={"level-look-preset"}
-          label={"Preset"}
+          data-testid={"level-look-source"}
+          label={"Source"}
           description={"Where the exposure, the light scales and the image corrections come from"}
           options={options}
           value={picked}

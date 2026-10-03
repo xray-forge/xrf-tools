@@ -176,7 +176,7 @@ export function LevelPreviewLayout({
           clouds={weatherService.description?.clouds ?? EMPTY_TEXTURES}
           collections={weatherService.description?.thunderboltCollections ?? EMPTY_COLLECTIONS}
           sun={loadService.level.value?.selected.value.sun ?? null}
-          drawnSun={renderService.applied?.sun ?? null}
+          drawnSun={renderService.drawnSun}
           suns={weatherService.description?.suns ?? EMPTY_SUNS}
           sunShafts={weatherService.sunShafts}
           lod={viewService.lod}
