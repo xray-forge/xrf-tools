@@ -99,6 +99,7 @@ describe("level weather key actions", () => {
       <LevelSunAction
         manual={{ ...DEFAULT_LEVEL_MANUAL_WEATHER, sunAltitude: 10, sunLongitude: -80 }}
         sun={{ color: [1, 1, 1], direction: { x: 0, y: -1, z: 1 } }}
+        drawnSun={null}
         onEdit={onEdit}
       />
     );
@@ -209,5 +210,17 @@ describe("level weather key actions", () => {
     await userEvent.click(getByRole("option", { name: /collection_default/ }));
 
     expect(onEdit).toHaveBeenCalledWith({ thunderboltCollection: "collection_default" });
+  });
+
+  // The sky draws the weather's sun or moon as the game does; the button says whether one shows now.
+  it("says whether the sky draws a sun or a moon, naming it", () => {
+    const props = { manual: DEFAULT_LEVEL_MANUAL_WEATHER, sun: null, onEdit: () => {} };
+    const { getByRole, rerender } = renderWithProviders(<LevelSunAction {...props} drawnSun={"moon_halo_full"} />);
+
+    expect(getByRole("button", { name: "Sun" })).toHaveAccessibleDescription(/moon_halo_full in the sky$/);
+
+    rerender(<LevelSunAction {...props} drawnSun={null} />);
+
+    expect(getByRole("button", { name: "Sun" })).toHaveAccessibleDescription(/none in the sky$/);
   });
 });

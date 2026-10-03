@@ -1788,6 +1788,11 @@ impl LevelView {
       grass: self.grass.get_applied(&options.grass),
       is_water: options.water.is_enabled,
       environment: None,
+      sun: self
+        .frame_sun_sprite
+        .as_ref()
+        .and_then(|_| self.flares.get_shown())
+        .map(str::to_owned),
     }
   }
 
