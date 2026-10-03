@@ -21,6 +21,9 @@ pub struct CameraUniform {
   pub switches: Vec4,
   /// One where the static surfaces draw as their triangles' edges.
   pub modes: Vec4,
+  /// World to clip without the jitter, this frame and the last, which a surface's motion is measured by.
+  pub motion_current: Mat4,
+  pub motion_previous: Mat4,
 }
 
 impl CameraUniform {
@@ -38,7 +41,16 @@ impl CameraUniform {
       planes: view.get_planes(),
       switches,
       modes: Vec4::ZERO,
+      motion_current: view_projection,
+      motion_previous: view_projection,
     }
+  }
+
+  /// The same camera measuring motion between two unjittered view projections, the last frame's and this one's.
+  pub fn with_motion(mut self, (current, previous): (Mat4, Mat4)) -> Self {
+    self.motion_current = current;
+    self.motion_previous = previous;
+    self
   }
 
   /// The same camera drawing every static surface as its triangles' edges, or as itself.

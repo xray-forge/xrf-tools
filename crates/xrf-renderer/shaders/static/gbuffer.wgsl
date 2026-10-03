@@ -37,6 +37,9 @@ struct GBufferVarying {
   @location(9) light: vec3<f32>,
   // Which corner of its triangle the vertex is, one-hot, which a wireframe finds the edges by.
   @location(10) barycentric: vec3<f32>,
+  // Where the point stands in the world, and how far it stood from there the frame before, which its motion is read by.
+  @location(11) world: vec3<f32>,
+  @location(12) moved: vec3<f32>,
 };
 
 struct GBufferOutput {
@@ -46,6 +49,8 @@ struct GBufferOutput {
   @location(1) normal: vec2<f32>,
   // Hemisphere, sun, material slice.
   @location(2) material: vec4<f32>,
+  // How far the point moved on the screen since the last frame, as `camera_motion` measures it.
+  @location(3) motion: vec2<f32>,
 };
 
 // A vertex placed in the world, swayed by as much of the wind as its rigidity takes: none for a sector's geometry.
@@ -53,7 +58,8 @@ fn place_vertex(pulled: PulledVertex, position: vec3<f32>, normal: vec4<f32>, ta
   rigidity: f32) -> GBufferVarying {
   let place: Place = pulled.place;
   let matrix: mat4x4<f32> = place_matrix(place);
-  let world: vec4<f32> = vec4<f32>(swayed((matrix * vec4<f32>(position, 1.0)).xyz, place.m3.y, rigidity), 1.0);
+  let placed: vec3<f32> = (matrix * vec4<f32>(position, 1.0)).xyz;
+  let world: vec4<f32> = vec4<f32>(swayed(placed, place.m3.y, rigidity), 1.0);
   let linear: mat3x3<f32> = mat3x3<f32>(place.m0.xyz, place.m1.xyz, place.m2.xyz);
   // The inverse transpose of a matrix without shear: each axis divided by its squared length.
   let scale: vec3<f32> = vec3<f32>(dot(place.m0.xyz, place.m0.xyz), dot(place.m1.xyz, place.m1.xyz),
@@ -71,6 +77,8 @@ fn place_vertex(pulled: PulledVertex, position: vec3<f32>, normal: vec4<f32>, ta
   out.sky = OPEN_SKY;
   out.light = vec3<f32>(0.0);
   out.barycentric = vec3<f32>(0.0);
+  out.world = world.xyz;
+  out.moved = swayed_before(placed, place.m3.y, rigidity) - world.xyz;
 
   return out;
 }
@@ -275,6 +283,7 @@ fn shade(in: GBufferVarying, base: vec4<f32>, at: Footprint) -> GBufferOutput {
   out.albedo = vec4<f32>(mix(surface.color, diffuse, is_textured), gloss);
   out.normal = octahedral_encode(normal);
   out.material = vec4<f32>(hemi, sun, surface.slice, 0.0);
+  out.motion = camera_motion(in.world, in.world + in.moved);
 
   return out;
 }

@@ -94,7 +94,7 @@ const AMBIENT_OCCLUSION_QUALITIES: Record<ERendererAmbientOcclusionQuality, ERen
   [ERendererAmbientOcclusionQuality.ULTRA]: ERenderAmbientOcclusionQuality.ULTRA,
 };
 
-/** The debug views as the native renderer names them; motion has no target to show yet, so it shows the frame. */
+/** The debug views as the native renderer names them. */
 const DEBUG_VIEWS: Record<ERendererDebugView, ERenderDebugView> = {
   [ERendererDebugView.FINAL]: ERenderDebugView.FINAL,
   [ERendererDebugView.ALBEDO]: ERenderDebugView.ALBEDO,
@@ -106,16 +106,16 @@ const DEBUG_VIEWS: Record<ERendererDebugView, ERenderDebugView> = {
   [ERendererDebugView.DEPTH]: ERenderDebugView.DEPTH,
   [ERendererDebugView.LIGHT]: ERenderDebugView.LIGHT,
   [ERendererDebugView.AMBIENT_OCCLUSION]: ERenderDebugView.AMBIENT_OCCLUSION,
-  [ERendererDebugView.MOTION]: ERenderDebugView.FINAL,
+  [ERendererDebugView.MOTION]: ERenderDebugView.MOTION,
 };
 
-/** The settings' antialiasing as the native renderer draws it: the modes it has not yet, as the nearest it has. */
+/** The settings' antialiasing as the native renderer names it. */
 const ANTIALIASING_MODES: Record<ERendererAntialiasing, ERenderAntialiasing> = {
   [ERendererAntialiasing.NONE]: ERenderAntialiasing.NONE,
   [ERendererAntialiasing.FXAA]: ERenderAntialiasing.FXAA,
   [ERendererAntialiasing.SMAA]: ERenderAntialiasing.SMAA,
   [ERendererAntialiasing.TAA]: ERenderAntialiasing.TAA,
-  [ERendererAntialiasing.FSR2]: ERenderAntialiasing.TAA,
+  [ERendererAntialiasing.FSR2]: ERenderAntialiasing.FSR2,
 };
 
 /** The settings' render scales as the native renderer names them. */

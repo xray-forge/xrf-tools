@@ -40,6 +40,8 @@ export enum ERenderAntialiasing {
   SMAA = "smaa",
   /** Temporal: every frame's samples jittered within the pixel and resolved with the frames before. */
   TAA = "taa",
+  /** FSR 2: temporal as TAA, with each surface's motion, disocclusion, reactivity and thin-feature locks. */
+  FSR2 = "fsr2",
 }
 
 /** Every `ERenderAntialiasing` as the spelling it crosses IPC as, for a value no member has narrowed. */
@@ -140,6 +142,8 @@ export enum ERenderDebugView {
   LIGHT = "light",
   /** The screen's occlusion, white where it is off. */
   AMBIENT_OCCLUSION = "ambientOcclusion",
+  /** How far each surface moved on the screen since the last frame: red across, green down, grey still. */
+  MOTION = "motion",
 }
 
 /** Every `ERenderDebugView` as the spelling it crosses IPC as, for a value no member has narrowed. */

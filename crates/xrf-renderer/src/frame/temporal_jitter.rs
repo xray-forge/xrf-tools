@@ -14,11 +14,16 @@ impl TemporalJitter {
   /// The next frame's offset, in drawn pixels about each pixel's centre, `y` down, cycling through
   /// `ffxFsr2GetJitterPhaseCount`'s places for a viewport `ratio` times the drawing's side: eight times its square.
   pub fn next(&mut self, ratio: f32) -> Vec2 {
-    let phases: u32 = ((BASE_PHASES * ratio * ratio) as u32).max(1);
+    let phases: u32 = Self::get_phases(ratio);
 
     self.phase = (self.phase + 1) % phases;
 
     Vec2::new(halton(self.phase + 1, 2) - 0.5, halton(self.phase + 1, 3) - 0.5)
+  }
+
+  /// How many places the samples cycle through for a viewport `ratio` times the drawing's side.
+  pub fn get_phases(ratio: f32) -> u32 {
+    ((BASE_PHASES * ratio * ratio) as u32).max(1)
   }
 }
 

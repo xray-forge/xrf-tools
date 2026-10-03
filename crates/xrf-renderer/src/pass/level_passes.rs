@@ -3,6 +3,7 @@ use crate::pass::combine_pass::CombinePass;
 use crate::pass::composited_pass::CompositedPass;
 use crate::pass::depth_pyramid_pass::DepthPyramidPass;
 use crate::pass::exposure_pass::ExposurePass;
+use crate::pass::fsr_pass::FsrPass;
 use crate::pass::fxaa_pass::FxaaPass;
 use crate::pass::grass_pass::GrassPass;
 use crate::pass::lights_pass::LightsPass;
@@ -43,6 +44,7 @@ pub struct LevelPasses<'a> {
   pub wet: &'a WetPass,
   pub thunder: &'a ThunderPass,
   pub temporal: &'a TemporalPass,
+  pub fsr: &'a FsrPass,
   pub fxaa: &'a FxaaPass,
   pub smaa: &'a SmaaPass,
   pub upscale: &'a UpscalePass,

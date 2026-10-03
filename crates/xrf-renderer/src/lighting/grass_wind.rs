@@ -28,11 +28,21 @@ pub struct GrassWind {
   phase: f32,
   /// `m_global_time_old`.
   time: Option<f32>,
+  /// The sway the last frame drew with.
+  last: Option<GrassWindUniform>,
 }
 
 impl GrassWind {
   /// The sway at a time, in seconds; still where the wind does not blow.
   pub fn advance(&mut self, time: f32, is_windy: bool) -> GrassWindUniform {
+    let wind: GrassWindUniform = self.turn(time, is_windy).following(self.last.as_ref());
+
+    self.last = Some(wind);
+
+    wind
+  }
+
+  fn turn(&mut self, time: f32, is_windy: bool) -> GrassWindUniform {
     let elapsed: f32 = time - self.time.unwrap_or(time);
     let step: f32 = if (0.0..=1.0).contains(&elapsed) {
       elapsed
@@ -60,6 +70,7 @@ impl GrassWind {
       wind_2: Vec4::new(self.second_turn.sin(), 0.0, self.second_turn.cos(), 0.0) * swing.amp2,
       wave_1: wave(FIRST_WAVE),
       wave_2: wave(SECOND_WAVE),
+      ..Default::default()
     }
   }
 }
