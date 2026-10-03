@@ -187,8 +187,8 @@ describe("LevelSpawnPanel", () => {
     expect(view.getByRole("treeitem", { name: "medkit", selected: true })).toBeInTheDocument();
   });
 
-  // The click opens the panel, which mounts before the spawn it lists reaches it; that arrival must not forget the
-  // object as a new level's would.
+  // A panel opened after the pick mounts before the spawn it lists reaches it; that arrival must not forget the object
+  // as a new level's would.
   it("chooses an object picked before the panel mounted, once the spawn reaches it", async () => {
     const { view } = await renderPanel((container: Container) =>
       container.get(LevelViewportService).notePicked({
@@ -203,7 +203,29 @@ describe("LevelSpawnPanel", () => {
     expect(view.getByRole("treeitem", { name: "crate_2", selected: true })).toBeInTheDocument();
   });
 
-  // Another opening numbers its objects afresh, so object 0 of the last level is not object 0 of this one.
+  // The tree follows the viewport's selection, so one cleared there or moved to a surface chooses nothing here.
+  it("lets the chosen object go once the viewport's selection does", async () => {
+    const { container, view } = await renderPanel();
+    const viewportService: LevelViewportService = container.get(LevelViewportService);
+
+    await view.findByRole("tree", { name: "Spawned objects" });
+    act(() =>
+      viewportService.notePicked({
+        kind: ELevelPick.SPAWN,
+        object: OBJECTS.objects[2],
+        point: { x: 0, y: 0, z: 0 },
+        visual: "dynamics\\medkit",
+      })
+    );
+
+    expect(await view.findByTestId("level-spawn-details")).toHaveTextContent("medkit");
+
+    act(() => viewportService.notePicked(null));
+
+    await waitFor(() => expect(view.queryByTestId("level-spawn-details")).not.toBeInTheDocument());
+    expect(view.queryByRole("treeitem", { selected: true })).not.toBeInTheDocument();
+  });
+
   // The viewport marks what is picked, so an object chosen in the tree is picked as a click on it is.
   it("picks an object chosen in the tree, which the viewport then marks", async () => {
     const { container, view } = await renderPanel();

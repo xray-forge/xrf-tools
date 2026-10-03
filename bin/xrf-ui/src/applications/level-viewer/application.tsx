@@ -8,6 +8,7 @@ import {
 } from "@/core/routing/application";
 import { createApplicationDescriptor } from "@/core/routing/application-descriptor";
 
+import { LEVEL_VIEWER_KEYBIND_COMMANDS } from "./commands";
 import { LEVEL_VIEWER_HELP } from "./help";
 
 export const LEVEL_VIEWER_APPLICATION: IApplicationDescriptor = createApplicationDescriptor(
@@ -17,6 +18,7 @@ export const LEVEL_VIEWER_APPLICATION: IApplicationDescriptor = createApplicatio
     help: LEVEL_VIEWER_HELP,
     icon: <TerrainIcon />,
     id: EApplicationId.LEVEL_VIEWER,
+    keybindCommands: LEVEL_VIEWER_KEYBIND_COMMANDS,
     label: "Level viewer",
     path: "/level-viewer",
     status: EApplicationStatus.READY,

@@ -110,7 +110,7 @@ export function LevelSpawnPanel({
     [renderService, viewportService, viewService]
   );
 
-  // The pick this panel made of the row it chose, which opens nothing in the tree again.
+  // The pick this panel made of the row it chose, which the tree already shows.
   const made = useRef<Nullable<TLevelPick>>(null);
 
   // An object chosen here is picked as a click on it is, so the viewport marks it and the readout names it.
@@ -194,15 +194,21 @@ export function LevelSpawnPanel({
   // Another level's objects are numbered afresh, so what was chosen names some other object now.
   useEffect(() => select(null), [description, select]);
 
-  // An object clicked in the viewport is chosen here, what stands above it opened and any filter hiding it cleared.
-  // The click opens the panel, so the spawn reaches it after the pick: chosen once it has, after the reset above.
+  // The tree shows what is picked: an object picked elsewhere chosen, what stands above it opened and any filter
+  // hiding it cleared; anything else picked, or nothing, chooses nothing here.
   useEffect(() => {
-    if (description && picked?.kind === ELevelPick.SPAWN && picked !== made.current) {
+    if (picked && picked === made.current) {
+      return;
+    }
+
+    if (description && picked?.kind === ELevelPick.SPAWN) {
       const { category, index, section } = picked.object;
 
       setFilter("");
       expandAll([toLevelSpawnCategoryId(category), toLevelSpawnSectionId(category, section)]);
       select(toLevelSpawnObjectId(index));
+    } else {
+      select(null);
     }
   }, [description, expandAll, picked, select]);
 

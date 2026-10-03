@@ -2,7 +2,9 @@ import { Injectable, OnDeactivation } from "@wirestate/core";
 import { BoundAction, RefObservable } from "@wirestate/mobx";
 import { Nullable } from "@xrf/types";
 
+import { KeybindCommand } from "@/core/commands";
 import { RenderLevelProblems, RenderLoadReport } from "@/core/ipc/types/xrf-renderer";
+import { CLEAR_LEVEL_SELECTION_KEYBIND_COMMAND } from "@/core/level/commands";
 import { ILevelCamera } from "@/core/level/lib/camera/level-camera";
 import { TLevelPick } from "@/core/level/lib/pick/level-pick";
 import { ILevelSurfaceGeometry } from "@/core/level/lib/surface/level-surface-geometry";
@@ -36,6 +38,10 @@ export class LevelViewportService {
   /** What the last click in the viewport picked, or null where it picked nothing of the level or none was made. */
   @RefObservable()
   public picked: Nullable<TLevelPick> = null;
+
+  /** Whether the scene has the keyboard, so keys meant for it act on what it shows rather than on a panel's. */
+  @RefObservable()
+  public isSceneFocused: boolean = false;
 
   /** What each shader table entry draws across the open level, keyed by shader id; empty until it is all resident. */
   @RefObservable()
@@ -105,6 +111,23 @@ export class LevelViewportService {
   @BoundAction()
   public notePicked(pick: Nullable<TLevelPick>): void {
     this.picked = pick;
+  }
+
+  /**
+   * @param isFocused - Whether the scene has the keyboard now.
+   */
+  @BoundAction()
+  public noteSceneFocused(isFocused: boolean): void {
+    this.isSceneFocused = isFocused;
+  }
+
+  /** Drops what is selected, as `Escape` over the scene does. */
+  @KeybindCommand(CLEAR_LEVEL_SELECTION_KEYBIND_COMMAND, {
+    isEnabled: (service: LevelViewportService) => service.isSceneFocused && service.picked !== null,
+  })
+  @BoundAction()
+  public clearPicked(): void {
+    this.picked = null;
   }
 
   /**

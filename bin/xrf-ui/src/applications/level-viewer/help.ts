@@ -11,6 +11,7 @@ export const LEVEL_VIEWER_HELP: IApplicationHelp = {
   ],
   nuances: [
     "Move with `W`/`A`/`S`/`D`, rise with `E`, descend with `Q`, and hold `Shift` to move faster. Drag with the left mouse button or hold the arrow keys to look around. Click the viewport again after using a panel to return keyboard focus to it.",
+    "Click a surface or a spawned object in the viewport to select it: it is outlined, an object also boxed, and the open `Surfaces` or `Spawn` panel shows it. Choosing an object in the `Spawn` panel selects it too. Press `Escape` with the viewport focused to clear the selection.",
     "Use `Camera` to set field of view, speed in metres per second, the `Shift` boost, and pointer sensitivity. `Go to` accepts a position in metres and heading and pitch in degrees. Its paste field also accepts named coordinates such as `x 0 y 10 z 0 h 90 p 0`.",
     "Click a toolbar toggle to switch its feature on or off; right-click it to open its settings. Group buttons such as `Shading` and `Overlays` open on a click. Some rendering features must first be enabled in the application's Settings.",
     "The `Shading` toolbar group chooses what the viewport shows: the final frame, `Clay` (every surface one grey), `Shader colours` (a consistent colour for each shader table entry across sectors), or one of the targets the frame is built from. It also switches wireframe, bumps, and wall marks. Detail textures, transparency, and blending follow each surface's shader.",
