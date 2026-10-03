@@ -15,6 +15,7 @@ pub mod seek_weather;
 pub mod send_input;
 pub mod set_camera;
 pub mod set_overlays;
+pub mod set_selection;
 pub mod set_view_options;
 pub mod set_viewport_layout;
 pub mod set_weather_control;

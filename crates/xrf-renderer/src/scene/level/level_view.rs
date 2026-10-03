@@ -28,6 +28,8 @@ use crate::contract::render_pass_cost::RenderPassCost;
 use crate::contract::render_pool_use::RenderPoolUse;
 use crate::contract::render_rect::RenderRect;
 use crate::contract::render_sector_skip::RenderSectorSkip;
+use crate::contract::render_selection::RenderSelection;
+use crate::contract::render_selection_target::RenderSelectionTarget;
 use crate::contract::render_shadow_settings::RenderShadowSettings;
 use crate::contract::render_spawn_category::RenderSpawnCategory;
 use crate::contract::render_static_report::RenderStaticReport;
@@ -93,6 +95,7 @@ use crate::scene::level::surface_tally::SurfaceTally;
 use crate::scene::level::weather_model_buffers::WeatherModelBuffers;
 use crate::scene::static_scene::static_batch::StaticBatch;
 use crate::scene::static_scene::static_scene::StaticScene;
+use crate::scene::static_scene::static_selection::StaticSelection;
 use crate::scene::static_scene::static_slot_info::StaticSlotInfo;
 use crate::scene::static_scene::static_sorted_place::StaticSortedPlace;
 use crate::scene::texture::texture_cache::TextureCache;
@@ -193,6 +196,12 @@ pub struct LevelView {
   sorted_count: u32,
   /// What it draws over its frame, and the overlay pass's bind group with the targets' epoch it binds.
   overlays: Option<LevelOverlays>,
+  /// The selection box the overlays were made with, so a box that moved or came into the scene makes them again.
+  overlays_box: Option<RenderOverlay>,
+  /// What the selection marks, for the target it was resolved for and the scene generation it was resolved in.
+  selection: Option<(RenderSelectionTarget, u64, Option<StaticSelection>)>,
+  /// The colour the selection is outlined in this frame, or none while nothing it names is drawn.
+  selection_color: Option<[f32; 3]>,
   overlay_group: Option<(u64, wgpu::BindGroup)>,
   /// Whether the static surfaces draw as their edges, which nothing composited or planted is drawn over.
   is_wireframe: bool,
@@ -325,6 +334,9 @@ impl LevelView {
       smoothing: None,
       is_wireframe: false,
       overlays: None,
+      overlays_box: None,
+      selection: None,
+      selection_color: None,
       overlay_group: None,
       sorted_list: None,
       sorted_group: None,
@@ -1604,6 +1616,7 @@ impl LevelView {
         is_upscaled,
         output,
         &self.frame_corrections,
+        self.selection_color,
       )),
     );
 
@@ -1770,10 +1783,56 @@ impl LevelView {
 
   /// What puts the level's finished scene into the window, once its targets are made.
   /// Takes what its viewport draws over its frame, uploading a set once.
-  pub fn set_overlays(&mut self, device: &wgpu::Device, overlays: &[RenderOverlay], version: u64) {
-    if self.overlays.as_ref().is_none_or(|it| it.version != version) {
-      self.overlays = Some(LevelOverlays::new(device, overlays, version));
+  /// Makes what it draws over its frame where the page's overlays or the selection's box changed: the page's, then a
+  /// selected spawned object's box.
+  pub fn set_overlays(
+    &mut self,
+    device: &wgpu::Device,
+    overlays: &[RenderOverlay],
+    version: u64,
+    selection: Option<&RenderSelection>,
+  ) {
+    let boxed: Option<RenderOverlay> = selection.and_then(|selection| match selection.target {
+      RenderSelectionTarget::Spawn { object } => self
+        .scene
+        .get_object_box(object)
+        .map(|(transform, corners)| to_box_lines(transform, corners, selection.color)),
+      RenderSelectionTarget::Surface { .. } => None,
+    });
+
+    if self.overlays.as_ref().is_none_or(|it| it.version != version) || self.overlays_box != boxed {
+      let all: Vec<RenderOverlay> = overlays.iter().cloned().chain(boxed.clone()).collect();
+
+      self.overlays = Some(LevelOverlays::new(device, &all, version));
+      self.overlays_box = boxed;
     }
+  }
+
+  /// What a selection marks in the scene now, resolved again only once the target or the scene changed; none where
+  /// nothing is selected or what it names is not in the scene yet.
+  pub fn resolve_selection(&mut self, selection: Option<&RenderSelection>) -> Option<&StaticSelection> {
+    self.selection_color = None;
+
+    let selection: &RenderSelection = selection?;
+    let generation: u64 = self.scene.get_generation();
+
+    if self
+      .selection
+      .as_ref()
+      .is_none_or(|(target, at, _)| *target != selection.target || *at != generation)
+    {
+      self.selection = Some((
+        selection.target,
+        generation,
+        self.scene.resolve_selection(&selection.target),
+      ));
+    }
+
+    let resolved: &StaticSelection = self.selection.as_ref()?.2.as_ref()?;
+
+    self.selection_color = Some(selection.color);
+
+    Some(resolved)
   }
 
   /// What it draws over its frame, with the bind group drawing it, once both are made.
@@ -1873,4 +1932,40 @@ fn to_hidden_groups(options: &RenderViewOptions) -> u32 {
 
     hidden | kept | released
   })
+}
+
+/// A box's twelve edges as lines, its corners where `transform` stands them, in one colour seen through what is in front.
+fn to_box_lines(transform: Mat4, [min, max]: [Vec3; 2], color: [f32; 3]) -> RenderOverlay {
+  let corner = |index: usize| -> Vec3 {
+    transform.transform_point3(Vec3::new(
+      if index & 1 == 0 { min.x } else { max.x },
+      if index & 2 == 0 { min.y } else { max.y },
+      if index & 4 == 0 { min.z } else { max.z },
+    ))
+  };
+  let edges: [(usize, usize); 12] = [
+    (0, 1),
+    (2, 3),
+    (4, 5),
+    (6, 7),
+    (0, 2),
+    (1, 3),
+    (4, 6),
+    (5, 7),
+    (0, 4),
+    (1, 5),
+    (2, 6),
+    (3, 7),
+  ];
+  let positions: Vec<f32> = edges
+    .iter()
+    .flat_map(|(from, to)| [corner(*from), corner(*to)])
+    .flat_map(|point| point.to_array())
+    .collect();
+
+  RenderOverlay::Lines {
+    colors: color.repeat(positions.len() / 3),
+    positions,
+    is_depth_tested: false,
+  }
 }

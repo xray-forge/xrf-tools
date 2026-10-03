@@ -7,6 +7,7 @@ use crate::contract::render_input_event::RenderInputEvent;
 use crate::contract::render_level_problems::RenderLevelProblems;
 use crate::contract::render_model_pose::RenderModelPose;
 use crate::contract::render_overlay::RenderOverlay;
+use crate::contract::render_selection::RenderSelection;
 use crate::contract::render_settings::RenderSettings;
 use crate::contract::render_surface_geometry::RenderSurfaceGeometry;
 use crate::contract::render_texture_report::RenderTextureReport;
@@ -59,6 +60,11 @@ pub enum RenderCommand {
   Overlays {
     id: RenderViewportId,
     overlays: Vec<RenderOverlay>,
+  },
+  /// Marks what of a viewport's level is selected, or nothing for `None`.
+  Selection {
+    id: RenderViewportId,
+    selection: Option<RenderSelection>,
   },
   /// Names what a viewport draws under one of its points.
   Pick {

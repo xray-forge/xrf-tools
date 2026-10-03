@@ -15,6 +15,7 @@ use crate::contract::render_model_pose::RenderModelPose;
 use crate::contract::render_overlay::RenderOverlay;
 use crate::contract::render_rect::RenderRect;
 use crate::contract::render_scale::RenderScale;
+use crate::contract::render_selection::RenderSelection;
 use crate::contract::render_static_report::RenderStaticReport;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::contract::render_viewport_event::RenderViewportEvent;
@@ -45,6 +46,8 @@ pub struct RenderViewport {
   /// What it draws over its frame, and how many sets it has been given, which its level's vertices follow.
   pub overlays: Vec<RenderOverlay>,
   pub overlays_version: u64,
+  /// What of its level is selected, marked as it draws.
+  pub selection: Option<RenderSelection>,
   /// How its skinned models stand.
   pub model_pose: RenderModelPose,
   /// The level it draws, as its source gives it.
@@ -84,6 +87,7 @@ impl RenderViewport {
       options: RenderViewOptions::default(),
       overlays: Vec::new(),
       overlays_version: 0,
+      selection: None,
       model_pose: RenderModelPose::default(),
       level: None,
       level_view: None,

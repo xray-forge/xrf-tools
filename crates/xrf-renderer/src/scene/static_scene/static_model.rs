@@ -1,4 +1,4 @@
-use glam::Vec4;
+use glam::{Vec3, Vec4};
 use xrf_material::XraySurfaceDescriptor;
 use xrf_visual::{SectorSurface, VisualClusters, VisualDrawRange, VisualGeometry, VisualPackage};
 
@@ -26,6 +26,8 @@ pub struct StaticModel {
   pub parts: Vec<StaticModelPart>,
   /// In its own space.
   pub sphere: Vec4,
+  /// Its box's least and greatest corners in its own space, as the visual declares it.
+  pub bounds: [Vec3; 2],
   /// How its vertices hang from its bones, for a visual still carrying its skin; `None` for one posed or rigid.
   pub skin: Option<StaticModelSkin>,
 }
@@ -46,6 +48,7 @@ impl StaticModel {
     color_id: u16,
     detail: f32,
   ) -> Self {
+    let declared_box = &package.description.declared_bounds.bounding_box;
     let sphere = &package.description.declared_bounds.bounding_sphere;
     let sphere: Vec4 = Vec4::new(sphere.center.x, sphere.center.y, sphere.center.z, sphere.radius);
     let is_skinned: bool = package
@@ -103,6 +106,10 @@ impl StaticModel {
       indices,
       parts,
       sphere,
+      bounds: [
+        Vec3::new(declared_box.min.x, declared_box.min.y, declared_box.min.z),
+        Vec3::new(declared_box.max.x, declared_box.max.y, declared_box.max.z),
+      ],
       skin: is_skinned.then_some(StaticModelSkin {
         links,
         bones: package.description.bones.len() as u32,

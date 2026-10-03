@@ -204,6 +204,17 @@ describe("LevelSpawnPanel", () => {
   });
 
   // Another opening numbers its objects afresh, so object 0 of the last level is not object 0 of this one.
+  // The viewport marks what is picked, so an object chosen in the tree is picked as a click on it is.
+  it("picks an object chosen in the tree, which the viewport then marks", async () => {
+    const { container, view } = await renderPanel();
+
+    await userEvent.click(await view.findByText("Props"));
+    await userEvent.keyboard("{ArrowRight}{ArrowDown}{ArrowRight}{ArrowDown}");
+
+    expect(await view.findByTestId("level-spawn-details")).toBeInTheDocument();
+    expect(container.get(LevelViewportService).picked).toMatchObject({ kind: ELevelPick.SPAWN });
+  });
+
   it("forgets the chosen object when the level opens again", async () => {
     const { container, view } = await renderPanel();
     const service: LevelLoadService = container.get(LevelLoadService);

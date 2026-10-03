@@ -126,6 +126,38 @@ fn corrected(color: vec3<f32>) -> vec3<f32> {
   return pow(max(image, vec3<f32>(0.0)), vec3<f32>(1.0 / present.corrections.y));
 }
 
+// Drawn texels around a selection its outline reaches, and how much of its colour tints what is selected.
+const SELECTION_REACH: i32 = 2;
+const SELECTION_TINT: f32 = 0.15;
+
+// Whether the G-buffer marked a drawn texel selected, held to the targets' edges.
+fn is_marked(texel: vec2<i32>) -> bool {
+  let last: vec2<i32> = vec2<i32>(camera.viewport.xy) - 1;
+
+  return textureLoad(material_target, clamp(texel, vec2<i32>(0), last), 0).a > 0.5;
+}
+
+// How much of the selection's colour a texel shows: its outline outside what is selected, a tint over it, or none.
+fn selection_share(texel: vec2<i32>) -> f32 {
+  if (present.selection.w == 0.0) {
+    return 0.0;
+  }
+
+  if (is_marked(texel)) {
+    return SELECTION_TINT;
+  }
+
+  for (var y: i32 = -SELECTION_REACH; y <= SELECTION_REACH; y += 1) {
+    for (var x: i32 = -SELECTION_REACH; x <= SELECTION_REACH; x += 1) {
+      if (is_marked(texel + vec2<i32>(x, y))) {
+        return 1.0;
+      }
+    }
+  }
+
+  return 0.0;
+}
+
 // The drawn texel under a point of the viewport, in its pixels.
 fn drawn_texel(pixel: vec2<f32>) -> vec2<i32> {
   return to_drawn_texel(pixel, camera.viewport.xy, present.size);
@@ -157,5 +189,7 @@ fn fs_present(in: FullscreenVarying) -> @location(0) vec4<f32> {
   let color: vec3<f32> = select(textureLoad(scene, drawn_texel(read), 0).rgb,
     textureLoad(upscaled, vec2<i32>(read), 0).rgb, present.is_upscaled != 0u);
 
-  return vec4<f32>(corrected(color) + output_dither(in.clip.xy), 1.0);
+  let shown: vec3<f32> = mix(corrected(color), present.selection.rgb, selection_share(texel));
+
+  return vec4<f32>(shown + output_dither(in.clip.xy), 1.0);
 }

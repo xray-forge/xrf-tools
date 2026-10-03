@@ -17,6 +17,7 @@ import {
   RenderLoadReport,
   RenderModelPose,
   RenderOverlay,
+  RenderSelection,
   RenderSurfaceGeometry,
   RenderTextureReport,
   RenderViewOptions,
@@ -134,6 +135,10 @@ export class NativeViewport {
    */
   public setOverlays(overlays: Array<RenderOverlay>): void {
     this.call((id: RenderViewportId) => renderCommands.setOverlays(id, overlays));
+  }
+
+  public setSelection(selection: Nullable<RenderSelection>): void {
+    this.call((id: RenderViewportId) => renderCommands.setSelection(id, selection));
   }
 
   public playWeather(play: RenderWeatherPlay, transition: ERenderWeatherTransition): void {

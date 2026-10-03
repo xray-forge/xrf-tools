@@ -1,6 +1,6 @@
 import { useInjection } from "@wirestate/react";
 import { Maybe, Nullable } from "@xrf/types";
-import { ReactElement, ReactNode, useCallback, useEffect, useMemo, useState } from "react";
+import { ReactElement, ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { LevelSpawnObject, LevelSpawnObjectDetails, LevelSpawnObjectsDescription } from "@/core/ipc/types/xrf-app";
 import { LevelSpawnDetails } from "@/core/level/components/panels/LevelSpawnPanel/LevelSpawnDetails";
@@ -10,7 +10,7 @@ import { toLevelFramedGoTo } from "@/core/level/lib/camera/level-camera-frame";
 import { ELevelPick, TLevelPick } from "@/core/level/lib/pick/level-pick";
 import { describeLevelSpawnRelease } from "@/core/level/lib/spawn/level-spawn-release";
 import { ILevelSpawnReport, isLevelSpawnReading } from "@/core/level/lib/spawn/level-spawn-report";
-import { toLevelSpawnSphere } from "@/core/level/lib/spawn/level-spawn-sphere";
+import { toLevelSpawnPosition, toLevelSpawnSphere } from "@/core/level/lib/spawn/level-spawn-sphere";
 import {
   listLevelSpawnGroupIds,
   TLevelSpawnTreeRow,
@@ -110,7 +110,28 @@ export function LevelSpawnPanel({
     [renderService, viewportService, viewService]
   );
 
-  const onSelect = useCallback((item: ITreeNode<TLevelSpawnTreeRow>) => select(item.id), [select]);
+  // The pick this panel made of the row it chose, which opens nothing in the tree again.
+  const made = useRef<Nullable<TLevelPick>>(null);
+
+  // An object chosen here is picked as a click on it is, so the viewport marks it and the readout names it.
+  const onSelect = useCallback(
+    (item: ITreeNode<TLevelSpawnTreeRow>) => {
+      select(item.id);
+
+      if (item.payload?.kind === "object" && description) {
+        const { object } = item.payload;
+
+        made.current = {
+          kind: ELevelPick.SPAWN,
+          object,
+          point: toLevelSpawnPosition(object.transform),
+          visual: description.visuals[object.visual] ?? "",
+        };
+        viewportService.notePicked(made.current);
+      }
+    },
+    [description, select, viewportService]
+  );
 
   const onActivate = useCallback(
     (item: ITreeNode<TLevelSpawnTreeRow>) => {
@@ -176,7 +197,7 @@ export function LevelSpawnPanel({
   // An object clicked in the viewport is chosen here, what stands above it opened and any filter hiding it cleared.
   // The click opens the panel, so the spawn reaches it after the pick: chosen once it has, after the reset above.
   useEffect(() => {
-    if (description && picked?.kind === ELevelPick.SPAWN) {
+    if (description && picked?.kind === ELevelPick.SPAWN && picked !== made.current) {
       const { category, index, section } = picked.object;
 
       setFilter("");

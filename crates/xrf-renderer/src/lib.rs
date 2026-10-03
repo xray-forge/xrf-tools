@@ -64,6 +64,8 @@ pub use crate::contract::render_pool_use::RenderPoolUse;
 pub use crate::contract::render_rect::RenderRect;
 pub use crate::contract::render_scale::RenderScale;
 pub use crate::contract::render_sector_skip::RenderSectorSkip;
+pub use crate::contract::render_selection::RenderSelection;
+pub use crate::contract::render_selection_target::RenderSelectionTarget;
 pub use crate::contract::render_settings::RenderSettings;
 pub use crate::contract::render_shadow_settings::RenderShadowSettings;
 pub use crate::contract::render_spawn_category::RenderSpawnCategory;

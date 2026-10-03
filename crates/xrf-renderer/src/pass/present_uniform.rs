@@ -21,6 +21,8 @@ pub struct PresentUniform {
   /// `img_corrections`' exposure, gamma and saturation, then its grading colour.
   pub corrections: [f32; 4],
   pub grading: [f32; 4],
+  /// The colour a selection is outlined in, `w` one while something is selected.
+  pub selection: [f32; 4],
 }
 
 impl PresentUniform {
@@ -30,6 +32,7 @@ impl PresentUniform {
     is_upscaled: bool,
     output: RenderRect,
     corrections: &RenderImageCorrections,
+    selection: Option<[f32; 3]>,
   ) -> Self {
     let [r, g, b] = corrections.grading;
 
@@ -42,6 +45,7 @@ impl PresentUniform {
       pad: 0,
       origin: [output.x as f32, output.y as f32],
       size: [output.width as f32, output.height as f32],
+      selection: selection.map_or([0.0; 4], |[r, g, b]| [r, g, b, 1.0]),
     }
   }
 }

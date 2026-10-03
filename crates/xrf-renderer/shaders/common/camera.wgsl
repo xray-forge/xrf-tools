@@ -26,9 +26,46 @@ struct Camera {
   plain: vec4<f32>,
   // The backdrop's second colour, and in `w` the side of a square in render pixels; zero for a plain backdrop.
   backdrop_squares: vec4<f32>,
+  // x: one while something is selected; y: the place its clusters are drawn in, or any at `0xffffffff`; z: how many runs
+  // of clusters follow.
+  selection: vec4<u32>,
+  // Runs of clusters in order, two a vector: each its first and the one past its last.
+  selection_runs: array<vec4<u32>, 32>,
 };
 
 @group(0) @binding(0) var<uniform> camera: Camera;
+
+// Whether a cluster drawn in a place is what the selection names.
+fn is_selected(entry: vec2<u32>) -> bool {
+  let selection: vec4<u32> = camera.selection;
+
+  if (selection.x == 0u || (selection.y != 0xffffffffu && entry.y != selection.y)) {
+    return false;
+  }
+
+  // The last run starting at or before the cluster, found by halves, holds it if any does.
+  var low: u32 = 0u;
+  var high: u32 = selection.z;
+
+  while (low < high) {
+    let middle: u32 = (low + high) / 2u;
+
+    if (selection_run(middle).x <= entry.x) {
+      low = middle + 1u;
+    } else {
+      high = middle;
+    }
+  }
+
+  return low > 0u && entry.x < selection_run(low - 1u).y;
+}
+
+// One of the selection's runs, by its index.
+fn selection_run(index: u32) -> vec2<u32> {
+  let row: vec4<u32> = camera.selection_runs[index / 2u];
+
+  return select(row.xy, row.zw, index % 2u == 1u);
+}
 
 // The albedo every surface shares as clay: a mid grey, light enough to read the shading on.
 const CLAY_ALBEDO: f32 = 0.5;

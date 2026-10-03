@@ -6,6 +6,7 @@ use xrf_material::XraySurfaceDescriptor;
 use xrf_visual::{SectorGeometry, SectorImpostors, SectorInstanceGroup, SectorPackage, SectorSurface, VisualClusters};
 
 use crate::contract::render_pool_use::RenderPoolUse;
+use crate::contract::render_selection_target::RenderSelectionTarget;
 use crate::contract::render_static_report::RenderStaticReport;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::pass::wind_uniform::WindUniform;
@@ -22,6 +23,7 @@ use crate::scene::static_scene::static_place::StaticPlace;
 use crate::scene::static_scene::static_region::StaticRegion;
 use crate::scene::static_scene::static_row::StaticRow;
 use crate::scene::static_scene::static_sector::StaticSector;
+use crate::scene::static_scene::static_selection::StaticSelection;
 use crate::scene::static_scene::static_slot::StaticSlot;
 use crate::scene::static_scene::static_slot_info::StaticSlotInfo;
 use crate::scene::static_scene::static_sorted_place::StaticSortedPlace;
@@ -112,6 +114,10 @@ pub struct StaticScene {
   object_transforms: HashMap<u32, Mat4>,
   /// Each spawned object's bounding sphere in renderer space, by its index, as its model stands in its place.
   object_spheres: HashMap<u32, Vec4>,
+  /// Each spawned object's place, by its index.
+  object_places: HashMap<u32, u32>,
+  /// Each spawned object's model's box in its own space, its least and greatest corners, by its index.
+  object_boxes: HashMap<u32, [Vec3; 2]>,
   /// The models' places with composited surfaces, which a view draws back to front itself.
   pub sorted_places: Vec<StaticSortedPlace>,
 }
@@ -213,6 +219,8 @@ impl StaticScene {
       skinned: HashMap::new(),
       object_transforms: HashMap::new(),
       object_spheres: HashMap::new(),
+      object_places: HashMap::new(),
+      object_boxes: HashMap::new(),
       sorted_places: Vec::new(),
     };
     let mut encoder: wgpu::CommandEncoder = device.create_command_encoder(&Default::default());
@@ -285,6 +293,60 @@ impl StaticScene {
   /// A spawned object's bounding sphere in renderer space, once its model is in the scene.
   pub fn get_object_sphere(&self, object: u32) -> Option<Vec4> {
     self.object_spheres.get(&object).copied()
+  }
+
+  /// A spawned object's box as it stands: its model's box in its own space, and where it stands it.
+  pub fn get_object_box(&self, object: u32) -> Option<(Mat4, [Vec3; 2])> {
+    Some((*self.object_transforms.get(&object)?, *self.object_boxes.get(&object)?))
+  }
+
+  /// What a selection marks, once what it names is in the scene: a spawned object's place; a mesh's place; or the
+  /// runs of clusters drawing a sector's baked geometry of one shader table entry.
+  pub fn resolve_selection(&self, target: &RenderSelectionTarget) -> Option<StaticSelection> {
+    match *target {
+      RenderSelectionTarget::Spawn { object } => Some(StaticSelection {
+        place: Some(*self.object_places.get(&object)?),
+        runs: vec![StaticSelection::ANY_CLUSTER],
+      }),
+      RenderSelectionTarget::Surface {
+        sector,
+        mesh: Some(mesh),
+        place: Some(place),
+        ..
+      } => {
+        let info: &StaticSlotInfo = self
+          .slot_infos
+          .iter()
+          .find(|info| info.sector == sector && info.mesh == Some(mesh))?;
+
+        Some(StaticSelection {
+          place: Some(info.first_place + place),
+          runs: vec![StaticSelection::ANY_CLUSTER],
+        })
+      }
+      RenderSelectionTarget::Surface { sector, shader_id, .. } => {
+        let mut runs: Vec<[u32; 2]> = Vec::new();
+
+        for (cluster, slot) in self.cluster_slots.iter().enumerate() {
+          let Some(info) = self.slot_infos.get(*slot as usize) else {
+            continue;
+          };
+
+          if info.sector != sector || u32::from(info.shader_id) != shader_id || info.mesh.is_some() {
+            continue;
+          }
+
+          let cluster: u32 = cluster as u32;
+
+          match runs.last_mut() {
+            Some(run) if run[1] == cluster => run[1] = cluster + 1,
+            _ => runs.push([cluster, cluster + 1]),
+          }
+        }
+
+        (!runs.is_empty()).then_some(StaticSelection { place: None, runs })
+      }
+    }
   }
 
   /// Where a spawned object stands, once its model is in the scene.
@@ -536,6 +598,8 @@ impl StaticScene {
 
       self.place_objects.insert(index, place.object);
       self.object_transforms.insert(place.object, matrix);
+      self.object_places.insert(place.object, index);
+      self.object_boxes.insert(place.object, model.bounds);
       self.object_spheres.insert(
         place.object,
         matrix
