@@ -14,7 +14,10 @@ export interface ILevelViewOptions extends ILevelSurfaceOptions {
   isFogged: boolean;
   /** Draws the sky cube, rather than the backdrop behind the level. */
   isSkyVisible: boolean;
-  /** Fades the distance into the sky's haze rather than into the sky itself, as the engine does. */
+  /**
+   * Fades the distance into the sky's haze, its own colour at the horizon, rather than as the engine does: towards the flat
+   * fog colour, then into the sky by the fog's square, which leaves a band where the fog is darker than the horizon.
+   */
   isSkyHazed: boolean;
   /** Draws the clouds over the sky. */
   isClouded: boolean;
@@ -69,7 +72,7 @@ export const DEFAULT_LEVEL_VIEW_OPTIONS: ILevelViewOptions = {
   isOcclusionCulled: true,
   isRainy: true,
   isShadowed: true,
-  isSkyHazed: false,
+  isSkyHazed: true,
   isSkyVisible: true,
   isSpawnedItems: true,
   isSpawnedLamps: true,
