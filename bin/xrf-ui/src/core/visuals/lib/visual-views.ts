@@ -1,6 +1,5 @@
 import { saturate } from "@xrf/math";
-import { IRendererClusters, RENDERER_FLOATS_PER_BONE } from "@xrf/renderer";
-import { Nullable, Optional } from "@xrf/types";
+import { Nullable } from "@xrf/types";
 
 import { Vector3d } from "@/core/ipc/types/xrf-math";
 import {
@@ -8,14 +7,9 @@ import {
   VisualBounds,
   VisualDescription,
   VisualDrawRange,
-  VisualSection,
   VisualSubmesh,
-  VisualTransform,
 } from "@/core/ipc/types/xrf-visual";
 import { IRendererSurfaceDraw, OPAQUE_RENDERER_SURFACE_DRAW } from "@/core/render/lib/surface/renderer-surface-draw";
-
-/** Where a transform's translation starts within its floats, the basis occupying the nine before it. */
-export const TRANSLATION_OFFSET: number = 9;
 
 /** Framing values a camera needs, derived from what the model actually spans. */
 export interface IVisualCameraFit {
@@ -30,45 +24,22 @@ export interface IVisualSubmeshLevel {
   triangleCount: number;
 }
 
-/** One submesh's attributes as views over the shared buffer, plus the ranges that draw it. */
+/** One submesh as the viewer reports it: its name, the ranges that draw it, and how its shader draws it. */
 export interface IVisualSubmeshViews {
   index: number;
   label: string;
-  positions: Float32Array;
-  normals: Float32Array;
-  /** The authored tangent basis, three floats per vertex each, mirrored with the normals. */
-  tangents: Float32Array;
-  binormals: Float32Array;
-  uvs: Float32Array;
-  indices: Uint16Array;
-  /** Four bone indices and four weights per vertex, or null for geometry that carries no links. */
-  skinIndices: Nullable<Uint16Array>;
-  skinWeights: Nullable<Float32Array>;
   /** Finest first, never empty. A submesh with one entry has no choice to offer. */
   levels: Array<IVisualSubmeshLevel>;
-  /** The packer's clusters of every level, for geometry drawn as it is stored; null for skinned geometry. */
-  clusters: Nullable<IRendererClusters>;
   /** The material state its shader compiles to: whether alpha is read, and how. */
   surface: IRendererSurfaceDraw;
 }
 
-/** Segment endpoints of a skeleton, which bones each segment joins, and every bone's bind transform. */
-export interface IVisualSkeletonViews {
-  positions: Nullable<Float32Array>;
-  pairs: Nullable<Uint16Array>;
-  binds: Nullable<Float32Array>;
-}
-
-/** Everything the scene needs to build meshes, and nothing it does not. */
+/** What the viewer's controls and readouts need of a model; the renderer reads its geometry itself. */
 export interface IVisualModelViews {
   submeshes: Array<IVisualSubmeshViews>;
   fit: IVisualCameraFit;
-  /** Bind pose joints as line-segment endpoints, or null when the model carries no bind data. */
-  skeleton: Nullable<Float32Array>;
-  /** Bone and parent index of each segment the skeleton draws, in the order `skeleton` lays them out. */
-  skeletonPairs: Nullable<Uint16Array>;
-  /** Every bone's bind transform, twelve floats each - basis then translation - or null with no bind data. */
-  skeletonBinds: Nullable<Float32Array>;
+  /** Whether any bone carries a bind pose and a parent, which is what draws a skeleton. */
+  hasSkeleton: boolean;
   vertexCount: number;
   /** Longest collapse chain any submesh carries, which is how many distinct steps the detail control can reach. */
   levelCount: number;
@@ -96,25 +67,6 @@ function toFiniteTriple(vector: Vector3d): Nullable<[number, number, number]> {
 }
 
 /**
- * Builds a typed array view over one packed section.
- *
- * @param buffer - Packed geometry buffer.
- * @param section - Byte range containing `f32` values.
- * @returns A view over the section without copying its bytes.
- */
-function toFloatView(buffer: ArrayBuffer, section: VisualSection): Float32Array {
-  return new Float32Array(buffer, section.byteOffset, section.byteLength / Float32Array.BYTES_PER_ELEMENT);
-}
-
-function toWordView(buffer: ArrayBuffer, section: VisualSection): Uint32Array {
-  return new Uint32Array(buffer, section.byteOffset, section.byteLength / Uint32Array.BYTES_PER_ELEMENT);
-}
-
-function toIndexView(buffer: ArrayBuffer, section: VisualSection): Uint16Array {
-  return new Uint16Array(buffer, section.byteOffset, section.byteLength / Uint16Array.BYTES_PER_ELEMENT);
-}
-
-/**
  * Framing for a model, preferring what its geometry spans over what its header claims.
  *
  * @param description - Packed visual description containing declared and computed bounds.
@@ -132,27 +84,17 @@ export function createVisualCameraFit(description: VisualDescription): IVisualCa
 }
 
 /**
- * Turn a description and its buffer into the views a scene uploads.
+ * Turn a description into what the viewer's controls and readouts read of it.
  *
- * @param description - What the backend said the buffer contains.
- * @param buffer - The packed attribute bytes.
+ * @param description - What the backend said the model contains.
  * @param surfaces - Material state per submesh index, as `createVisualSurfaces` joined it. A submesh with no entry
  *   is drawn opaque, which is how a model opened without a shader library is drawn.
- * @returns Per submesh views, draw ranges, material states and camera framing.
+ * @returns Per submesh draw ranges and material states, and camera framing.
  */
 export function createVisualViews(
   description: VisualDescription,
-  buffer: ArrayBuffer,
   surfaces: ReadonlyMap<number, IRendererSurfaceDraw> = new Map()
 ): IVisualModelViews {
-  if (buffer.byteLength !== description.bufferLength) {
-    throw new Error(
-      `Geometry buffer is ${buffer.byteLength} bytes but its description covers ${description.bufferLength}. ` +
-        "The description and the buffer came from different reads."
-    );
-  }
-
-  const skeleton: IVisualSkeletonViews = createVisualSkeleton(description.bones);
   const submeshes: Array<IVisualSubmeshViews> = [];
 
   let vertexCount: number = 0;
@@ -176,21 +118,7 @@ export function createVisualViews(
     submeshes.push({
       index: submesh.index,
       label: submesh.textureName ?? `submesh ${submesh.index}`,
-      positions: toFloatView(buffer, geometry.positions),
-      normals: toFloatView(buffer, geometry.normals),
-      tangents: toFloatView(buffer, geometry.tangents),
-      binormals: toFloatView(buffer, geometry.binormals),
-      uvs: toFloatView(buffer, geometry.uvs),
-      indices: toIndexView(buffer, geometry.indices),
-      skinIndices: geometry.skin ? toIndexView(buffer, geometry.skin.indices) : null,
-      skinWeights: geometry.skin ? toFloatView(buffer, geometry.skin.weights) : null,
       levels,
-      clusters: geometry.clusters
-        ? {
-            ranges: toWordView(buffer, geometry.clusters.ranges),
-            spheres: toFloatView(buffer, geometry.clusters.spheres),
-          }
-        : null,
       surface: surfaces.get(submesh.index) ?? OPAQUE_RENDERER_SURFACE_DRAW,
     });
   }
@@ -198,79 +126,13 @@ export function createVisualViews(
   return {
     submeshes,
     fit: createVisualCameraFit(description),
-    skeleton: skeleton.positions,
-    skeletonPairs: skeleton.pairs,
-    skeletonBinds: skeleton.binds,
+    hasSkeleton: description.bones.some(
+      (bone: VisualBone) =>
+        bone.bindTransform && bone.parentIndex !== null && description.bones[bone.parentIndex]?.bindTransform
+    ),
     vertexCount,
     levelCount,
   };
-}
-
-/**
- * Turn a bone hierarchy into the line segments that draw it.
- *
- * @param bones - Bones the backend reported, with composed bind transforms.
- * @returns Segment endpoints for `LineSegments`, the bone pairs they join, and every bone's bind transform.
- */
-export function createVisualSkeleton(bones: Array<VisualBone>): IVisualSkeletonViews {
-  const segments: Array<number> = [];
-  const pairs: Array<number> = [];
-  const binds: Float32Array = new Float32Array(bones.length * RENDERER_FLOATS_PER_BONE);
-
-  let placed: number = 0;
-
-  for (const [index, bone] of bones.entries()) {
-    const transform: Nullable<VisualTransform> = bone.bindTransform ?? null;
-    const parent: Optional<VisualBone> = bone.parentIndex === null ? undefined : bones[bone.parentIndex];
-
-    if (transform) {
-      binds.set(toTransformFloats(transform), index * RENDERER_FLOATS_PER_BONE);
-      placed += 1;
-    }
-
-    if (!transform || !parent?.bindTransform || bone.parentIndex === null) {
-      continue;
-    }
-
-    segments.push(
-      transform.c.x ?? 0,
-      transform.c.y ?? 0,
-      transform.c.z ?? 0,
-      parent.bindTransform.c.x ?? 0,
-      parent.bindTransform.c.y ?? 0,
-      parent.bindTransform.c.z ?? 0
-    );
-    pairs.push(index, bone.parentIndex);
-  }
-
-  return {
-    positions: segments.length ? new Float32Array(segments) : null,
-    pairs: segments.length ? new Uint16Array(pairs) : null,
-    binds: placed ? binds : null,
-  };
-}
-
-/**
- * One transform flattened the way the baked motion buffer stores it, so both are read by the same arithmetic.
- *
- * @param transform - Basis and translation as the backend sent them.
- * @returns Twelve floats: `i`, `j`, `k`, then `c`.
- */
-function toTransformFloats(transform: VisualTransform): Array<number> {
-  return [
-    transform.i.x ?? 0,
-    transform.i.y ?? 0,
-    transform.i.z ?? 0,
-    transform.j.x ?? 0,
-    transform.j.y ?? 0,
-    transform.j.z ?? 0,
-    transform.k.x ?? 0,
-    transform.k.y ?? 0,
-    transform.k.z ?? 0,
-    transform.c.x ?? 0,
-    transform.c.y ?? 0,
-    transform.c.z ?? 0,
-  ];
 }
 
 /**

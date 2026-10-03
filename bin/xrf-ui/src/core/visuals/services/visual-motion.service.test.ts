@@ -5,15 +5,9 @@ import { Nullable } from "@xrf/types";
 import { VisualMotionBake } from "@/core/ipc/types/xrf-visual";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { VisualMotionService } from "@/core/visuals/services/visual-motion.service";
-import { setMockBulkResponses } from "@/fixtures/mocks/bulk.mocks";
 import { mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
-import {
-  mockSelectedVisual,
-  mockVisualModelViews,
-  mockVisualMotionBake,
-  mockVisualMotionTransforms,
-} from "@/fixtures/mocks/visual.mocks";
+import { mockSelectedVisual, mockVisualModelViews, mockVisualMotionBake } from "@/fixtures/mocks/visual.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { AsyncState } from "@/lib/async-state";
 
@@ -30,19 +24,10 @@ function mockService() {
   return result;
 }
 
-/** How many floats a bake's whole buffer holds. */
-function mockFloatCount(bake: VisualMotionBake): number {
-  return bake.frameCount * bake.boneCount * bake.floatsPerBone;
-}
-
-function mockMotion(bake: VisualMotionBake = BAKE, transforms: ArrayBuffer = mockVisualMotionTransforms(bake)): void {
+function mockMotion(bake: VisualMotionBake = BAKE): void {
   setMockInvokeResponses({
     ["plugin:visuals|list_motions"]: [bake.name, "norm_idle_0"],
     ["plugin:visuals|open_motion"]: mockSessionResponse(bake),
-  });
-
-  setMockBulkResponses({
-    "visuals/read_motion": transforms,
   });
 }
 
@@ -66,7 +51,6 @@ describe("VisualMotionService", () => {
     expect(isObservableProp(service, "isLooping")).toBe(true);
     expect(isObservableProp(service, "fps")).toBe(true);
     expect(isComputedProp(service, "frameCount")).toBe(true);
-    expect(isComputedProp(service, "floatsPerBone")).toBe(true);
   });
 
   it("lists the open visual's motions once", async () => {
@@ -119,25 +103,9 @@ describe("VisualMotionService", () => {
 
     await service.open("norm_walk_fwd_1");
 
-    expect(service.posed.value?.bake.name).toBe("norm_walk_fwd_1");
-    expect(service.posed.value?.transforms).toHaveLength(mockFloatCount(BAKE));
+    expect(service.posed.value?.name).toBe("norm_walk_fwd_1");
     expect(service.frameCount).toBe(BAKE.frameCount);
-    expect(service.floatsPerBone).toBe(BAKE.floatsPerBone);
     expect(service.isPlaying).toBe(true);
-  });
-
-  it("refuses bytes that do not match the pose they came with", async () => {
-    // Two reads, so the buffer can describe a different motion than the bake does - and a stride read off the bake
-    // would then index into the wrong frames rather than failing.
-    mockMotion(BAKE, new Float32Array(mockFloatCount(BAKE) - BAKE.floatsPerBone).buffer as ArrayBuffer);
-
-    const { service } = mockService();
-
-    await service.open("norm_walk_fwd_1");
-
-    expect(service.posed.value).toBeNull();
-    expect(service.posed.error?.message).toContain("came from different reads");
-    expect(service.isPlaying).toBe(false);
   });
 
   it("advances a frame at the sample rate, wrapping while looping", async () => {
@@ -231,7 +199,6 @@ describe("VisualMotionService", () => {
     expect(service.motions.value ?? []).toEqual([]);
     expect(service.frame).toBe(0);
     expect(service.isPlaying).toBe(false);
-    expect(service.floatsPerBone).toBe(0);
   });
 });
 
@@ -287,23 +254,14 @@ describe("VisualMotionService playback state", () => {
       releaseSecond = () => resolve(second);
     });
 
-    let firstMotionId: unknown;
-
     setMockInvokeResponses({
       ["plugin:visuals|open_motion"]: mockSessionResponse((parameters?: Record<string, unknown>) => {
         if (parameters?.name === first.name) {
-          firstMotionId = parameters.motionId;
-
           return first;
         }
 
         return pendingSecond;
       }),
-    });
-
-    setMockBulkResponses({
-      "visuals/read_motion": (parameters?: Record<string, unknown>) =>
-        mockVisualMotionTransforms(parameters?.motionId === firstMotionId ? first : second),
     });
 
     const { service } = mockService();
@@ -318,13 +276,13 @@ describe("VisualMotionService playback state", () => {
     // Still the motion the viewport is showing, on the frame it was left on: a frame index means nothing without the
     // bake it counts into, so neither moves until both can.
     expect(service.posed.isLoading).toBe(true);
-    expect(service.posed.value?.bake.name).toBe(first.name);
+    expect(service.posed.value?.name).toBe(first.name);
     expect(service.frame).toBe(2);
 
     (releaseSecond as unknown as () => void)();
     await opening;
 
-    expect(service.posed.value?.bake.name).toBe(second.name);
+    expect(service.posed.value?.name).toBe(second.name);
     expect(service.frame).toBe(0);
   });
 

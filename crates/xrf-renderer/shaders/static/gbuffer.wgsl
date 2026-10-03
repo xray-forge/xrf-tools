@@ -164,13 +164,83 @@ fn model_position(pulled: PulledVertex) -> vec3<f32> {
   return vec3<f32>(bitcast<f32>(words[at + 5u]), bitcast<f32>(words[at + 6u]), bitcast<f32>(words[at + 7u]));
 }
 
-fn model_vertex(pulled: PulledVertex) -> GBufferVarying {
+// A model's vertex as its bones stand it, this frame's or the last's: each linked bone's matrix applied, weighted.
+struct SkinnedVertex {
+  position: vec3<f32>,
+  normal: vec4<f32>,
+  tangent: vec4<f32>,
+  binormal: vec4<f32>,
+};
+
+// One bone's row-major 3x4 applied to a point, or to a direction where `w` is zero.
+fn apply_bone(first: u32, point: vec4<f32>) -> vec3<f32> {
+  return vec3<f32>(dot(bones[first], point), dot(bones[first + 1u], point), dot(bones[first + 2u], point));
+}
+
+// A direction packed as a `D3DCOLOR` turned by the bones, packed again, its fourth byte kept.
+fn skin_direction(packed: vec4<f32>, ids: vec4<u32>, weights: vec4<f32>, base: u32) -> vec4<f32> {
+  let direction: vec4<f32> = vec4<f32>(unpack_direction(packed), 0.0);
+  var turned: vec3<f32> = vec3<f32>(0.0);
+
+  for (var link: u32 = 0u; link < 4u; link++) {
+    turned += apply_bone(base + ids[link] * 3u, direction) * weights[link];
+  }
+
+  let unit: vec3<f32> = normalize(turned + vec3<f32>(0.0, 0.0, 1e-6));
+
+  return vec4<f32>(unit.zyx * 0.5 + 0.5, packed.w);
+}
+
+// A model's vertex hung from its place's bones, `is_previous` reading the last frame's matrices; a rigid model, or a
+// vertex hanging from nothing, stands as stored.
+fn skin_vertex(pulled: PulledVertex, is_previous: bool) -> SkinnedVertex {
   let at: u32 = pulled.word;
-  let position: vec3<f32> = model_position(pulled);
-  let normal: vec4<f32> = unpack4x8unorm(words[at + 1u]);
-  var out: GBufferVarying = place_vertex(pulled, position, normal, unpack4x8unorm(words[at + 2u]),
-    unpack4x8unorm(words[at]), 0.0);
+  let stored: SkinnedVertex = SkinnedVertex(model_position(pulled), unpack4x8unorm(words[at + 1u]),
+    unpack4x8unorm(words[at + 2u]), unpack4x8unorm(words[at]));
+  let skin: vec4<u32> = pulled.place.skin;
+
+  if (skin.w == 0u) {
+    return stored;
+  }
+
+  let link: u32 = (skin.y + at / 8u - skin.z) * 2u;
+  let packed_ids: u32 = skins[link];
+  let ids: vec4<u32> = vec4<u32>(packed_ids & 255u, (packed_ids >> 8u) & 255u, (packed_ids >> 16u) & 255u,
+    packed_ids >> 24u);
+  let raw: vec4<f32> = unpack4x8unorm(skins[link + 1u]);
+  let total: f32 = raw.x + raw.y + raw.z + raw.w;
+
+  if (total <= 0.0) {
+    return stored;
+  }
+
+  let weights: vec4<f32> = raw / total;
+  // The last frame's matrices follow this frame's, as many again.
+  let base: u32 = skin.x + select(0u, skin.w * 3u, is_previous);
+  var position: vec3<f32> = vec3<f32>(0.0);
+
+  for (var index: u32 = 0u; index < 4u; index++) {
+    position += apply_bone(base + ids[index] * 3u, vec4<f32>(stored.position, 1.0)) * weights[index];
+  }
+
+  return SkinnedVertex(position, skin_direction(stored.normal, ids, weights, base),
+    skin_direction(stored.tangent, ids, weights, base), skin_direction(stored.binormal, ids, weights, base));
+}
+
+fn model_vertex(pulled: PulledVertex) -> GBufferVarying {
+  let skinned: SkinnedVertex = skin_vertex(pulled, false);
+  var out: GBufferVarying = place_vertex(pulled, skinned.position, skinned.normal, skinned.tangent,
+    skinned.binormal, 0.0);
   let place: Place = pulled.place;
+  let at: u32 = pulled.word;
+  let normal: vec4<f32> = skinned.normal;
+
+  if (place.skin.w != 0u) {
+    // Where the bones stood it the frame before, for its motion.
+    let previous: vec3<f32> = (place_matrix(place) * vec4<f32>(skin_vertex(pulled, true).position, 1.0)).xyz;
+
+    out.moved = previous - out.world;
+  }
 
   out.uv = vec2<f32>(bitcast<f32>(words[at + 3u]), bitcast<f32>(words[at + 4u]));
   out.lightmap_uv = vec2<f32>(0.0);
@@ -217,8 +287,20 @@ fn sample_slot(slot: u32, uv: vec2<f32>, dx: vec2<f32>, dy: vec2<f32>) -> vec4<f
   return textureSampleGrad(textures[slot], texture_sampler, uv, dx, dy);
 }
 
+// The uv checker an asset viewer draws in place of a surface's textures: eight texels a side, white and dark, each
+// repeat of the coordinate.
+fn checker_texel(uv: vec2<f32>) -> vec4<f32> {
+  let cell: vec2<f32> = floor(uv * camera.modes.y * 8.0);
+
+  return vec4<f32>(vec3<f32>(select(64.0 / 255.0, 1.0, abs((cell.x + cell.y) % 2.0) < 0.5)), 1.0);
+}
+
 fn base_texel(in: GBufferVarying, at: Footprint) -> vec4<f32> {
   let surface: Surface = surfaces[in.surface];
+
+  if (camera.modes.y > 0.0) {
+    return checker_texel(in.uv);
+  }
 
   if ((surface.flags & SURFACE_HAS_BASE) == 0u) {
     return vec4<f32>(1.0);
@@ -313,8 +395,8 @@ fn fs_cut_out(in: GBufferVarying) -> GBufferOutput {
   let base: vec4<f32> = base_texel(in, at);
   let is_off: bool = is_off_wire(in);
 
-  // A wireframe draws a cut-out surface's every edge, whatever its alpha.
-  if (is_off || (camera.modes.x < 0.5 && is_cut(in, base, at))) {
+  // A wireframe draws a cut-out surface's every edge, whatever its alpha; so does a view drawing every surface solid.
+  if (is_off || (camera.modes.x < 0.5 && camera.modes.z < 0.5 && is_cut(in, base, at))) {
     discard;
   }
 

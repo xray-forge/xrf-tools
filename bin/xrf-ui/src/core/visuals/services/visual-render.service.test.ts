@@ -1,220 +1,228 @@
-import { beforeAll, beforeEach, describe, expect, it } from "@jest/globals";
+import { beforeEach, describe, expect, it } from "@jest/globals";
 import { Container } from "@wirestate/core";
 import { makeAutoObservable, runInAction } from "@wirestate/mobx";
+
 import {
-  ERendererCameraCommand,
-  ERendererOverlay,
-  ERendererRequest,
-  TRendererCameraCommand,
-  TRendererRequest,
-} from "@xrf/renderer";
-import { createRendererWorkerStub, IRendererWorkerStub } from "@xrf/renderer/fixtures";
-
+  ERenderCameraCommand,
+  ERenderOverlay,
+  ERenderTextureState,
+  ERenderViewportEvent,
+  RenderViewportEvent,
+} from "@/core/ipc/types/xrf-renderer";
 import { BIND_POSE, IVisualRenderSource, VISUAL_RENDER_SOURCE } from "@/core/visuals/lib/render";
-import { IVisualTextureFile } from "@/core/visuals/lib/visual-texture";
+import { EVisualTextureState } from "@/core/visuals/lib/visual-texture";
+import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
+import { VisualRenderService } from "@/core/visuals/services/visual-render.service";
 import { VisualViewService } from "@/core/visuals/services/visual-view.service";
-import { mockVisualModelViews, mockVisualSubmeshViews } from "@/fixtures/mocks/visual.mocks";
+import { mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
+import {
+  getMockChannels,
+  MockChannel,
+  mockInvoke,
+  resetMockChannels,
+  resetMockInvoke,
+  setMockInvokeResponses,
+} from "@/fixtures/mocks/tauri.mocks";
+import { mockSelectedVisual, mockTextureDependency, mockVisualModelViews } from "@/fixtures/mocks/visual.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
-import { mockRendererThread } from "@/fixtures/utils/renderer";
+import { AsyncState } from "@/lib/async-state";
 
-let stub: IRendererWorkerStub;
-let VisualRenderService: typeof import("./visual-render.service").VisualRenderService;
+const VIEWPORT: number = 3;
 
-beforeAll(async () => {
-  mockRendererThread(() => stub.worker);
+/** What a render command was sent, in order. */
+function sent(command: string): Array<Record<string, unknown>> {
+  return mockInvoke.mock.calls
+    .filter(([name]) => name === `plugin:render|${command}`)
+    .map(([, args]) => args as Record<string, unknown>);
+}
 
-  ({ VisualRenderService } = await import("./visual-render.service"));
-});
+async function flush(): Promise<void> {
+  for (let index: number = 0; index < 10; index += 1) {
+    await Promise.resolve();
+  }
+}
 
-beforeEach(() => {
-  stub = createRendererWorkerStub();
-});
-
-function mockTextureFile(): IVisualTextureFile {
-  return { bytes: new ArrayBuffer(8), isDecoded: false, logicalPath: "textures\\wall" };
+function emit(event: RenderViewportEvent): void {
+  (getMockChannels()[0] as MockChannel<RenderViewportEvent>).onmessage(event);
 }
 
 function mockSource(overrides: Partial<IVisualRenderSource> = {}): IVisualRenderSource {
   return makeAutoObservable<IVisualRenderSource>(
-    { bumps: new Map(), model: null, textures: new Map(), ...overrides },
+    { hasBump: false, hiddenBoneIndices: new Set(), model: null, pose: BIND_POSE, sessionId: null, ...overrides },
     {},
     { deep: false }
   );
 }
 
-function mockSkinnedModel() {
-  return mockVisualModelViews({
-    skeletonBinds: new Float32Array(24),
-    skeletonPairs: new Uint16Array([1, 0]),
-    submeshes: [mockVisualSubmeshViews({ skinIndices: new Uint16Array(12), skinWeights: new Float32Array(12) })],
-  });
-}
-
-function mockAttached(source: IVisualRenderSource): {
-  service: InstanceType<typeof VisualRenderService>;
+async function mockAttached(source: IVisualRenderSource): Promise<{
+  container: Container;
+  service: VisualRenderService;
   viewService: VisualViewService;
-} {
+}> {
+  setMockInvokeResponses({ ["plugin:render|attach_viewport"]: VIEWPORT });
+
   const container: Container = mockContainer([
+    VisualLoadService,
     VisualViewService,
     VisualRenderService,
     { factory: () => source, token: VISUAL_RENDER_SOURCE },
   ]);
-  const service = container.get(VisualRenderService);
+  const service: VisualRenderService = container.get(VisualRenderService);
 
   service.attach(document.createElement("div"));
+  await flush();
 
-  return { service, viewService: container.get(VisualViewService) };
+  return { container, service, viewService: container.get(VisualViewService) };
 }
 
 describe("VisualRenderService", () => {
-  it("dresses a model published together with its textures, uploading each file once", async () => {
-    const file: IVisualTextureFile = mockTextureFile();
-    const model = mockVisualModelViews({
-      submeshes: [mockVisualSubmeshViews({ index: 0 }), mockVisualSubmeshViews({ index: 1 })],
+  beforeEach(() => {
+    resetMockInvoke();
+    resetMockChannels();
+  });
+
+  it("shows the open model's session at the toolbar's detail, and again as either changes", async () => {
+    const source: IVisualRenderSource = mockSource({ model: mockVisualModelViews(), sessionId: "first" });
+    const { service, viewService } = await mockAttached(source);
+
+    viewService.setDetail(0.5);
+    runInAction(() => (source.sessionId = "second"));
+    await flush();
+
+    expect(sent("show_model").map(({ detail, sessionId }) => [sessionId, detail])).toEqual([
+      ["first", 0],
+      ["first", 0.5],
+      ["second", 0.5],
+    ]);
+
+    service.dispose();
+  });
+
+  it("stands the model in the source's motion frame, its hidden bones collapsed", async () => {
+    const source: IVisualRenderSource = mockSource({ model: mockVisualModelViews(), sessionId: "first" });
+    const { service } = await mockAttached(source);
+
+    runInAction(() => {
+      source.pose = { frame: 4, motion: "walk" };
+      source.hiddenBoneIndices = new Set([2, 3]);
     });
-    const { service } = mockAttached(
-      mockSource({
-        model,
-        textures: new Map([
-          [0, file],
-          [1, file],
-        ]),
-      })
-    );
+    await flush();
 
-    await stub.flush();
-
-    expect(stub.take(ERendererRequest.PUT_GEOMETRY).map((it) => it.key)).toEqual(["submesh:0", "submesh:1"]);
-    expect(stub.take(ERendererRequest.PUT_TEXTURE).filter((it) => it.key === file.logicalPath)).toHaveLength(1);
-    expect(stub.take(ERendererRequest.PUT_SURFACE).at(-1)?.surface.textures.base).toBe(file.logicalPath);
-    expect(stub.take(ERendererRequest.CAMERA)).toHaveLength(1);
-    expect(stub.requests.at(-1)?.kind).toBe(ERendererRequest.ATTACH_VIEW);
+    expect(sent("pose_model").map(({ pose }) => pose)).toEqual([
+      { ...BIND_POSE, hiddenBones: [] },
+      { frame: 4, hiddenBones: [2, 3], motion: "walk" },
+    ]);
 
     service.dispose();
   });
 
-  it("sends a baked motion once, and only the frame after that", async () => {
-    const transforms: Float32Array = new Float32Array(48);
-    const source: IVisualRenderSource = mockSource({ model: mockSkinnedModel(), pose: BIND_POSE });
-    const { service } = mockAttached(source);
-
-    await stub.flush();
-
-    expect(stub.take(ERendererRequest.POSE).at(-1)?.pose).toEqual({ frame: 0, hiddenBones: [], motion: null });
-
-    runInAction(() => (source.pose = { floatsPerBone: 12, frame: 0, transforms }));
-    runInAction(() => (source.pose = { floatsPerBone: 12, frame: 1, transforms }));
-    await stub.flush();
-
-    expect(stub.take(ERendererRequest.PUT_MOTION)).toHaveLength(1);
-    expect(stub.take(ERendererRequest.POSE).at(-1)?.pose).toEqual({ frame: 1, hiddenBones: [], motion: "motion" });
-
-    service.dispose();
-  });
-
-  it("collapses the bones the source hides", async () => {
-    const source: IVisualRenderSource = mockSource({ hiddenBoneIndices: new Set([1]), model: mockSkinnedModel() });
-    const { service } = mockAttached(source);
-
-    await stub.flush();
-
-    expect(stub.take(ERendererRequest.POSE).at(-1)?.pose.hiddenBones).toEqual([1]);
-    expect(stub.take(ERendererRequest.PUT_OBJECT)[0].object.skeleton).toBe("skeleton");
-
-    service.dispose();
-  });
-
-  it("lets the last model's submeshes go when another replaces it", async () => {
+  it("draws the skeleton and the joint marker only while the skeleton is shown", async () => {
     const source: IVisualRenderSource = mockSource({
-      model: mockVisualModelViews({ submeshes: [mockVisualSubmeshViews()] }),
+      highlightedJoint: [0, 1, 0],
+      model: mockVisualModelViews({ hasSkeleton: true }),
+      sessionId: "first",
     });
-    const { service } = mockAttached(source);
+    const { service, viewService } = await mockAttached(source);
 
-    runInAction(() => (source.model = mockVisualModelViews()));
-    await stub.flush();
-
-    const released: Array<TRendererRequest> = stub.requests.filter(
-      (request) =>
-        request.kind === ERendererRequest.RELEASE_GEOMETRY || request.kind === ERendererRequest.RELEASE_OBJECT
-    );
-
-    expect(released).toHaveLength(2);
-
-    service.dispose();
-  });
-
-  it("draws the skeleton overlay and the joint marker only while the skeleton is shown", async () => {
-    const source: IVisualRenderSource = mockSource({ highlightedJoint: [0, 1, 0], model: mockSkinnedModel() });
-    const { service, viewService } = mockAttached(source);
-
-    function overlays(): Array<string> {
-      return stub.take(ERendererRequest.PUT_OVERLAY).map((it) => it.overlay.kind);
+    function kinds(): Array<string> {
+      return ((sent("set_overlays").at(-1)?.overlays ?? []) as Array<{ kind: string }>).map(({ kind }) => kind);
     }
 
-    await stub.flush();
-
-    expect(overlays()).toEqual([ERendererOverlay.LINES]);
+    expect(kinds()).not.toContain(ERenderOverlay.SKELETON);
 
     viewService.setOptions({ ...viewService.options, isSkeletonVisible: true });
-    await stub.flush();
+    await flush();
 
-    expect(overlays()).toContain(ERendererOverlay.SKELETON);
-    expect(overlays()).toContain(ERendererOverlay.POINTS);
+    expect(kinds()).toContain(ERenderOverlay.SKELETON);
+    expect(kinds()).toContain(ERenderOverlay.POINTS);
 
     service.dispose();
   });
 
   // Clicking through a tree keeps the view the person turned to: only the first model a view shows is framed.
   it("frames the first model a view shows, and keeps the camera for the ones after", async () => {
-    const source: IVisualRenderSource = mockSource({ model: mockVisualModelViews() });
-    const { service } = mockAttached(source);
+    const source: IVisualRenderSource = mockSource({ model: mockVisualModelViews(), sessionId: "first" });
+    const { service } = await mockAttached(source);
 
-    /** Framings so far: each a description and a reset, since the same start described again keeps the camera. */
     function framings(): Array<number> {
       return [
-        stub.take(ERendererRequest.CAMERA).length,
-        stub
-          .take(ERendererRequest.CAMERA_COMMAND)
-          .filter(({ command }: { command: TRendererCameraCommand }) => command.kind === ERendererCameraCommand.RESET)
-          .length,
+        sent("set_camera").length,
+        sent("command_camera").filter(
+          ({ command }) => (command as { kind: string }).kind === ERenderCameraCommand.RESET
+        ).length,
       ];
     }
 
+    expect(framings()).toEqual([1, 1]);
+
     runInAction(() => (source.model = mockVisualModelViews({ fit: { center: [0, 1, 0], radius: 4 } })));
-    await stub.flush();
+    await flush();
 
     expect(framings()).toEqual([1, 1]);
 
-    // A view mounted again frames what it opens with.
-    service.detach();
-    service.attach(document.createElement("div"));
-    await stub.flush();
+    service.resetCamera();
+    await flush();
 
     expect(framings()).toEqual([2, 2]);
-
-    service.resetCamera();
-    await stub.flush();
-
-    expect(framings()).toEqual([3, 3]);
 
     service.dispose();
   });
 
-  it("keeps the renderer when the view goes, and leaves no canvas behind", () => {
-    const { service } = mockAttached(mockSource());
-    const element: HTMLElement = document.createElement("div");
+  it("notes what became of the model's textures once the viewport holds it whole", async () => {
+    const source: IVisualRenderSource = mockSource({ model: mockVisualModelViews(), sessionId: "first" });
+    const { container, service } = await mockAttached(source);
+    const loadService: VisualLoadService = container.get(VisualLoadService);
 
-    service.attach(element);
+    loadService.visual = AsyncState.ready({
+      selected: mockSessionSnapshot(
+        mockSelectedVisual({ dependencies: { motions: [], textures: [mockTextureDependency({ submeshIndex: 0 })] } }),
+        "first"
+      ),
+      views: mockVisualModelViews(),
+    });
+    setMockInvokeResponses({
+      ["plugin:render|describe_textures"]: [
+        {
+          reference: mockTextureDependency().reference,
+          state: {
+            isExpanded: true,
+            height: 4,
+            kind: ERenderTextureState.LOADED,
+            layout: "DXT5",
+            levels: 1,
+            width: 4,
+          },
+        },
+      ],
+    });
 
-    expect(element.querySelectorAll("canvas")).toHaveLength(1);
+    emit({
+      kind: ERenderViewportEvent.LOAD,
+      report: { bytes: 0, isReady: true, sectors: 0, sectorsTotal: 0, textures: 1, texturesTotal: 1 },
+    });
+    await flush();
 
-    service.detach();
-
-    expect(element.querySelectorAll("canvas")).toHaveLength(0);
-    expect(stub.isTerminated()).toBe(false);
+    expect(sent("describe_textures")).toHaveLength(1);
+    expect(loadService.textureStatuses.get(0)?.state).toBe(EVisualTextureState.DECODED);
 
     service.dispose();
+  });
 
-    expect(stub.isTerminated()).toBe(true);
+  it("reads its readout off the viewport's frames", async () => {
+    const { service } = await mockAttached(mockSource());
+
+    emit({
+      kind: ERenderViewportEvent.FRAME,
+      report: { framesPerSecond: 60, passes: [{ gpuTime: 1, name: "g-buffer" }], staticDraws: { commands: 4 } },
+    } as unknown as RenderViewportEvent);
+
+    expect(service.frameCost.draws).toBe(4);
+    expect(service.frameCost.framesPerSecond).toBe(60);
+    expect(service.timings.passes).toEqual([{ gpuTime: 1, name: "g-buffer" }]);
+
+    service.dispose();
+    await flush();
+
+    expect(sent("detach_viewport")).toHaveLength(1);
   });
 });

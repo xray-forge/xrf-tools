@@ -4,8 +4,8 @@ import { Nullable } from "@xrf/types";
 import { SelectedVisualDescription } from "@/core/ipc/types/xrf-app";
 import { VisualBone } from "@/core/ipc/types/xrf-visual";
 import { IVisualBoneControls, IVisualInspection } from "@/core/visuals/components/panels/visual-inspection";
-import { IVisualBumpFiles, IVisualBumpStatus } from "@/core/visuals/lib/visual-bump";
-import { IVisualTextureFile, IVisualTextureStatus } from "@/core/visuals/lib/visual-texture";
+import { IVisualBumpStatus } from "@/core/visuals/lib/visual-bump";
+import { IVisualTextureStatus } from "@/core/visuals/lib/visual-texture";
 import { IVisualModelViews } from "@/core/visuals/lib/visual-views";
 import { IOpenVisual, VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { AsyncState } from "@/lib/async-state";
@@ -37,18 +37,18 @@ export abstract class VisualInspectionService implements IVisualInspection {
   }
 
   @Computed()
-  public get textures(): ReadonlyMap<number, IVisualTextureFile> {
-    return this.loadService.textures;
-  }
-
-  @Computed()
   public get textureStatuses(): ReadonlyMap<number, IVisualTextureStatus> {
     return this.loadService.textureStatuses;
   }
 
   @Computed()
-  public get bumps(): ReadonlyMap<number, IVisualBumpFiles> {
-    return this.loadService.bumps;
+  public get sessionId(): Nullable<string> {
+    return this.loadService.sessionId;
+  }
+
+  @Computed()
+  public get hasBump(): boolean {
+    return this.loadService.hasBump;
   }
 
   @Computed()

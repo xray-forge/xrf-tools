@@ -2,6 +2,7 @@ use glam::{Vec3, Vec4};
 use xrf_engine_target::XrayEngine;
 use xrf_math::EPS;
 
+use crate::contract::render_asset_lighting::RenderAssetLighting;
 use crate::contract::render_light_scales::RenderLightScales;
 use crate::lighting::light_specular::to_light_specular;
 use crate::lighting::render_clouds::RenderClouds;
@@ -74,6 +75,36 @@ impl RenderLighting {
   /// times `r2_sun_lumscale_hemi`.
   pub fn get_environment(&self, scales: &RenderLightScales) -> Vec3 {
     (self.hemisphere_color * 2.0 + EPS) * 2.0 * scales.hemi
+  }
+}
+
+impl RenderLighting {
+  /// An asset viewer's light: the default noon turned grey, so an asset shows its own colours, each part tinted and
+  /// scaled by the viewer's rig; no fog, no sky, no wind, no rain.
+  pub fn for_asset(rig: &RenderAssetLighting) -> Self {
+    let noon: Self = Self::default();
+    let grey = |color: Vec3| -> Vec3 { Vec3::splat(color.dot(Vec3::new(0.2126, 0.7152, 0.0722))) };
+    let tinted = |color: Vec3, tint: [f32; 3], intensity: f32| -> Vec3 { grey(color) * Vec3::from(tint) * intensity };
+    let elevation: f32 = rig.sun_elevation.to_radians();
+    let azimuth: f32 = rig.sun_azimuth.to_radians();
+    // Where the light stands, turned into the way its light travels.
+    let position: Vec3 = Vec3::new(
+      elevation.cos() * azimuth.sin(),
+      elevation.sin(),
+      elevation.cos() * azimuth.cos(),
+    );
+
+    Self {
+      sun_direction: -position,
+      sun_color: tinted(noon.sun_color, rig.sun_color, rig.sun_intensity),
+      hemisphere_color: tinted(noon.hemisphere_color, rig.ambient_color, rig.ambient_intensity),
+      ambient_color: tinted(noon.ambient_color, rig.ambient_color, rig.ambient_intensity),
+      sky_irradiance: grey(noon.sky_irradiance),
+      fog: None,
+      trees: None,
+      rain: None,
+      ..noon
+    }
   }
 }
 

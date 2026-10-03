@@ -482,7 +482,7 @@ export function mockVisualBoneFloats(translation: number): Array<number> {
 /**
  * Creates model views, the shape every scene-layer component is handed.
  *
- * Empty by default - no geometry, no skeleton - so a test naming one field says exactly what it is about.
+ * Empty by default - no submeshes, no skeleton - so a test naming one field says exactly what it is about.
  *
  * @param overrides - Views to replace.
  * @returns Model views a scene can be built from.
@@ -491,9 +491,7 @@ export function mockVisualModelViews(overrides: Partial<IVisualModelViews> = {})
   return {
     submeshes: [],
     fit: { center: [0, 0, 0], radius: 1 },
-    skeleton: null,
-    skeletonPairs: null,
-    skeletonBinds: null,
+    hasSkeleton: false,
     vertexCount: 0,
     levelCount: 1,
     ...overrides,
@@ -502,19 +500,10 @@ export function mockVisualModelViews(overrides: Partial<IVisualModelViews> = {})
 
 export function mockVisualSubmeshViews(overrides: Partial<IVisualSubmeshViews> = {}): IVisualSubmeshViews {
   return {
-    binormals: new Float32Array(9),
-    clusters: null,
     index: 0,
-    indices: new Uint16Array([0, 1, 2]),
     label: "submesh 0",
     levels: [{ count: 3, start: 0, triangleCount: 1 }],
-    normals: new Float32Array(9),
-    positions: new Float32Array(9),
-    skinIndices: null,
-    skinWeights: null,
     surface: OPAQUE_RENDERER_SURFACE_DRAW,
-    tangents: new Float32Array(9),
-    uvs: new Float32Array(6),
     ...overrides,
   };
 }

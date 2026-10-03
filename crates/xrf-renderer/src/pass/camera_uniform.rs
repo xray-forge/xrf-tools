@@ -1,4 +1,4 @@
-use glam::{Mat4, Vec4};
+use glam::{Mat4, Vec3, Vec4};
 
 use crate::camera::camera_view::CameraView;
 use crate::contract::render_rect::RenderRect;
@@ -19,11 +19,14 @@ pub struct CameraUniform {
   pub planes: [Vec4; 6],
   /// Textured, bumped, the baked hemisphere's strength, how far the water distorts what is behind it.
   pub switches: Vec4,
-  /// One where the static surfaces draw as their triangles' edges.
+  /// One where the static surfaces draw as their triangles' edges; times a uv checker repeats in place of every
+  /// surface's textures; one where surfaces draw solid.
   pub modes: Vec4,
   /// World to clip without the jitter, this frame and the last, which a surface's motion is measured by.
   pub motion_current: Mat4,
   pub motion_previous: Mat4,
+  /// What shows where nothing was drawn and neither the sky nor the fog is; `w` one where it is set.
+  pub backdrop: Vec4,
 }
 
 impl CameraUniform {
@@ -43,7 +46,17 @@ impl CameraUniform {
       modes: Vec4::ZERO,
       motion_current: view_projection,
       motion_previous: view_projection,
+      backdrop: Vec4::ZERO,
     }
+  }
+
+  /// The same camera drawing as an asset viewer asks: a uv checker repeated `checker` times in place of every texture
+  /// (zero for none), surfaces solid where their alpha is not shown, and its backdrop.
+  pub fn with_asset_view(mut self, checker: f32, is_alpha_visible: bool, backdrop: Option<[f32; 3]>) -> Self {
+    self.modes.y = checker;
+    self.modes.z = f32::from(u8::from(!is_alpha_visible));
+    self.backdrop = backdrop.map_or(Vec4::ZERO, |it| Vec4::from((Vec3::from(it), 1.0)));
+    self
   }
 
   /// The same camera measuring motion between two unjittered view projections, the last frame's and this one's.

@@ -34,7 +34,7 @@ pub struct SelectedVisual {
   pub dependencies: VisualDependencies,
   /// What posing needs from the file, or `None` when the visual carries no bind pose.
   pub skeleton: Option<SelectedSkeleton>,
-  /// The motion baked by the last `open_motion`, so reading its bytes serves that pose rather than composing again.
+  /// The motion baked by the last `open_motion`, so the renderer poses by that bake rather than composing it again.
   pub posed: Session<VisualMotionPose>,
   /// What the located texture files are, described at open so a reload reports them without reading anything again.
   pub textures: HashMap<String, AssetTextureDescriptor>,

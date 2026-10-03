@@ -268,6 +268,7 @@ impl RenderLevelSource for LevelRenderSource {
         })
         .collect(),
       visuals: described.visuals,
+      detail: 0.0,
     })
   }
 
@@ -317,6 +318,7 @@ impl RenderLevelSource for LevelRenderSource {
           name: (*name).to_owned(),
           package: VisualPoser::pose(&visual.package, visual.rest.as_deref()),
           surfaces: visual.surfaces.clone(),
+          skeleton: None,
         })
         .collect(),
       lighting: hemi

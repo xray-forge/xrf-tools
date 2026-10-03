@@ -36,7 +36,7 @@ export function VisualMotionList({
   // The async state's own value is what the memo depends on: a default of `[]` is a fresh array every render, which as a
   // dependency would regroup on each one.
   const listed: Nullable<Array<string>> = service.motions.value;
-  const posed: Nullable<string> = service.posed.value?.bake.name ?? null;
+  const posed: Nullable<string> = service.posed.value?.name ?? null;
 
   const matched: Array<string> = useMemo(() => {
     return filterByName(listed ?? [], filter, (name: string) => name);

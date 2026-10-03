@@ -9,6 +9,7 @@ import {
   RenderCameraCommand,
   RenderInputEvent,
   RenderLevelProblems,
+  RenderModelPose,
   RenderOverlay,
   RenderSettings,
   RenderSurfaceGeometry,
@@ -80,6 +81,9 @@ export const renderCommands = {
         }
       | null
     >("plugin:render|pick", { viewport, x, y }),
+  /** Stand one viewport's skinned models in a pose. */
+  poseModel: (viewport: RenderViewportId, pose: RenderModelPose) =>
+    __TAURI_INVOKE<void>("plugin:render|pose_model", { viewport, pose }),
   /** Play a weather in a viewport's level from now on: a cycle by name, a keyframe set by hand, or nothing. */
   playWeather: (viewport: RenderViewportId, play: RenderWeatherPlay, transition: ERenderWeatherTransition) =>
     __TAURI_INVOKE<void>("plugin:render|play_weather", { viewport, play, transition }),
@@ -113,4 +117,10 @@ export const renderCommands = {
   /** Draw the open level in a viewport, its sectors and textures read by the renderer; no session draws none. */
   showLevel: (viewport: RenderViewportId, sessionId: string | null) =>
     __TAURI_INVOKE<null>("plugin:render|show_level", { viewport, sessionId }),
+  /**
+   * Draw the open model in a viewport, `detail` down its collapse chain, its textures read by the renderer; no session
+   * draws none.
+   */
+  showModel: (viewport: RenderViewportId, sessionId: string | null, detail: number | null) =>
+    __TAURI_INVOKE<null>("plugin:render|show_model", { viewport, sessionId, detail }),
 };

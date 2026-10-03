@@ -7,7 +7,6 @@ import { SelectedVisualDescription } from "@/core/ipc/types/xrf-app";
 import { VisualMotionBake, VisualMotionDependency } from "@/core/ipc/types/xrf-visual";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { VisualMotionService } from "@/core/visuals/services/visual-motion.service";
-import { setMockBulkResponses } from "@/fixtures/mocks/bulk.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import {
@@ -16,7 +15,6 @@ import {
   MockVisualBuffer,
   mockVisualDescription,
   mockVisualMotionBake,
-  mockVisualMotionTransforms,
 } from "@/fixtures/mocks/visual.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
@@ -72,11 +70,6 @@ async function renderPanel(
       ...bake,
       name: String((parameters as { name: string }).name),
     })),
-  });
-
-  setMockBulkResponses({
-    "visuals/read_geometry": buffer.toArrayBuffer(),
-    "visuals/read_motion": mockVisualMotionTransforms(bake),
   });
 
   const container: Container = mockContainer([VisualLoadService, VisualMotionService, VisualsService]);
@@ -196,10 +189,6 @@ describe("VisualMotionsPanel listing", () => {
       ),
       // Never settles, which is the state a 2,500-name actor is in for as long as its omf files are being read.
       ["plugin:visuals|list_motions"]: () => new Promise<Array<string>>(() => {}),
-    });
-
-    setMockBulkResponses({
-      "visuals/read_geometry": buffer.toArrayBuffer(),
     });
 
     const container: Container = mockContainer([VisualLoadService, VisualMotionService, VisualsService]);

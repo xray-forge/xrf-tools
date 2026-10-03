@@ -11,6 +11,10 @@
 @group(1) @binding(5) var<storage, read> lists: array<vec2<u32>>;
 @group(1) @binding(6) var<storage, read> words: array<u32>;
 @group(1) @binding(7) var<uniform> wind: Wind;
+// Skinned models' links, two words a vertex: four bones' indices as bytes, then their weights as bytes.
+@group(1) @binding(8) var<storage, read> skins: array<u32>;
+// Skinned places' bone matrices, three rows a bone, from its bind to where it stands.
+@group(1) @binding(9) var<storage, read> bones: array<vec4<f32>>;
 
 // How the trees sway this frame, as `pass/wind_uniform.rs` writes it.
 struct Wind {

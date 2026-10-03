@@ -10,7 +10,7 @@ import { renderWithProviders } from "@/fixtures/utils/render";
 
 let VisualPreviewLayout: typeof import("./VisualPreviewLayout").VisualPreviewLayout;
 
-const source: IVisualRenderSource = { bumps: new Map(), model: mockVisualModelViews(), textures: new Map() };
+const source: IVisualRenderSource = { hasBump: false, model: mockVisualModelViews(), sessionId: null };
 
 const BINDINGS: Array<Binding> = [VisualViewService, { factory: () => source, token: VISUAL_RENDER_SOURCE }];
 

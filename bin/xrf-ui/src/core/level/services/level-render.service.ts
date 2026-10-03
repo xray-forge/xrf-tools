@@ -5,12 +5,6 @@ import {
   EMPTY_RENDERER_LIGHTS_REPORT,
   EMPTY_RENDERER_PASS_TIMINGS,
   EMPTY_RENDERER_STATIC_DRAW_REPORT,
-  ERendererAmbientOcclusionQuality,
-  ERendererAntialiasing,
-  ERendererDebugView,
-  ERendererLightShadowFilter,
-  ERendererRenderScale,
-  ERenderResolution,
   IRendererFlyCamera,
   IRendererLightsReport,
   IRendererPassTimings,
@@ -29,14 +23,9 @@ import {
   SessionSnapshot,
 } from "@/core/ipc/types/xrf-app";
 import {
-  ERenderAmbientOcclusionQuality,
-  ERenderAntialiasing,
   ERenderCamera,
   ERenderCameraCommand,
-  ERenderDebugView,
   ERenderLevelHit,
-  ERenderLightShadowFilter,
-  ERenderScale,
   ERenderTextureState,
   ERenderWeatherPlay,
   RenderCamera,
@@ -46,7 +35,6 @@ import {
   RenderLightsReport,
   RenderLoadReport,
   RenderOverlay,
-  RenderPassCost,
   RenderStaticReport,
   RenderSurfaceGeometry,
   RenderSurfaceSpan,
@@ -63,7 +51,6 @@ import { toLevelCameraReading } from "@/core/level/lib/camera/level-camera-readi
 import { ILevelPoint } from "@/core/level/lib/camera/level-point";
 import { ILevelViewpoint, toLevelStartViewpoint } from "@/core/level/lib/camera/level-viewpoint";
 import { ILevelBox, toLevelBox } from "@/core/level/lib/extent/level-extent";
-import { ILevelLook } from "@/core/level/lib/look";
 import { LEVEL_PICK_PANELS } from "@/core/level/lib/panels/level-pick-panels";
 import { ELevelPick, TLevelPick } from "@/core/level/lib/pick/level-pick";
 import { DEFAULT_LEVEL_RENDER_CONFIG, ILevelRenderConfig } from "@/core/level/lib/render/level-render-config";
@@ -82,101 +69,15 @@ import { LevelViewService } from "@/core/level/services/level-view.service";
 import { LevelViewportService } from "@/core/level/services/level-viewport.service";
 import { LevelWeatherService } from "@/core/level/services/level-weather.service";
 import { listenRenderClicks } from "@/core/render/lib/frame/render-clicks";
+import { toNativeFrameCost, toNativePassTimings } from "@/core/render/lib/native/native-frame-report";
 import { toNativeOverlay } from "@/core/render/lib/native/native-overlay";
 import { NativeRenderSurfaceService } from "@/core/render/lib/native/native-render-surface-service";
+import { toNativeRenderHeight, toNativeViewOptions } from "@/core/render/lib/native/native-view-options";
 import { NativeViewport } from "@/core/render/lib/native/native-viewport";
 import { toXraySpace } from "@/core/render/lib/scene/render-space";
 import { SettingsService } from "@/core/settings/services/settings";
 import { IPanelSetActiveCommand, PANEL_SET_ACTIVE_COMMAND } from "@/core/shell/panel/panel-messages";
 import { Logger } from "@/lib/logging";
-
-/** The settings' occlusion qualities as the native renderer names them. */
-const AMBIENT_OCCLUSION_QUALITIES: Record<ERendererAmbientOcclusionQuality, ERenderAmbientOcclusionQuality> = {
-  [ERendererAmbientOcclusionQuality.LOW]: ERenderAmbientOcclusionQuality.LOW,
-  [ERendererAmbientOcclusionQuality.MEDIUM]: ERenderAmbientOcclusionQuality.MEDIUM,
-  [ERendererAmbientOcclusionQuality.HIGH]: ERenderAmbientOcclusionQuality.HIGH,
-  [ERendererAmbientOcclusionQuality.ULTRA]: ERenderAmbientOcclusionQuality.ULTRA,
-};
-
-/** The debug views as the native renderer names them. */
-const DEBUG_VIEWS: Record<ERendererDebugView, ERenderDebugView> = {
-  [ERendererDebugView.FINAL]: ERenderDebugView.FINAL,
-  [ERendererDebugView.ALBEDO]: ERenderDebugView.ALBEDO,
-  [ERendererDebugView.GLOSS]: ERenderDebugView.GLOSS,
-  [ERendererDebugView.NORMAL]: ERenderDebugView.NORMAL,
-  [ERendererDebugView.HEMI]: ERenderDebugView.HEMI,
-  [ERendererDebugView.SUN]: ERenderDebugView.SUN,
-  [ERendererDebugView.MATERIAL]: ERenderDebugView.MATERIAL,
-  [ERendererDebugView.DEPTH]: ERenderDebugView.DEPTH,
-  [ERendererDebugView.LIGHT]: ERenderDebugView.LIGHT,
-  [ERendererDebugView.AMBIENT_OCCLUSION]: ERenderDebugView.AMBIENT_OCCLUSION,
-  [ERendererDebugView.MOTION]: ERenderDebugView.MOTION,
-};
-
-/** The settings' antialiasing as the native renderer names it. */
-const ANTIALIASING_MODES: Record<ERendererAntialiasing, ERenderAntialiasing> = {
-  [ERendererAntialiasing.NONE]: ERenderAntialiasing.NONE,
-  [ERendererAntialiasing.FXAA]: ERenderAntialiasing.FXAA,
-  [ERendererAntialiasing.SMAA]: ERenderAntialiasing.SMAA,
-  [ERendererAntialiasing.TAA]: ERenderAntialiasing.TAA,
-  [ERendererAntialiasing.FSR2]: ERenderAntialiasing.FSR2,
-};
-
-/** The settings' render scales as the native renderer names them. */
-const RENDER_SCALES: Record<ERendererRenderScale, ERenderScale> = {
-  [ERendererRenderScale.NATIVE]: ERenderScale.NATIVE,
-  [ERendererRenderScale.QUALITY]: ERenderScale.QUALITY,
-  [ERendererRenderScale.BALANCED]: ERenderScale.BALANCED,
-  [ERendererRenderScale.PERFORMANCE]: ERenderScale.PERFORMANCE,
-};
-
-/** The settings' light shadow filters as the native renderer names them. */
-const LIGHT_SHADOW_FILTERS: Record<ERendererLightShadowFilter, ERenderLightShadowFilter> = {
-  [ERendererLightShadowFilter.ENGINE]: ERenderLightShadowFilter.ENGINE,
-  [ERendererLightShadowFilter.SOFT]: ERenderLightShadowFilter.SOFT,
-};
-
-/**
- * @param report - What a native viewport's recent frames cost.
- * @returns The same, as the level's readouts count a frame: the static batches' indirect draws its draw calls.
- */
-export function toLevelFrameCost(report: RenderFrameReport): IRenderFrameCost {
-  const cpuTime: number = report.cpuTime ?? 0;
-
-  return {
-    ...EMPTY_RENDER_FRAME_COST,
-    draws: report.staticDraws.commands,
-    drawnHeight: report.height,
-    drawnWidth: report.width,
-    drawTime: cpuTime,
-    frameTime: report.frameTime ?? 0,
-    framesPerSecond: report.framesPerSecond ?? 0,
-    renderedHeight: report.renderHeight,
-    renderedWidth: report.renderWidth,
-    triangles: report.triangles,
-    worstDrawTime: cpuTime,
-    worstFrameTime: report.frameTimeMax ?? 0,
-  };
-}
-
-/**
- * @param report - What a native viewport's recent frames cost.
- * @returns What each of its passes cost on the GPU, as the readout lists them.
- */
-export function toLevelPassTimings(report: RenderFrameReport): IRendererPassTimings {
-  return {
-    isGpuTimed: report.isGpuTimed,
-    passes: report.passes.map((pass: RenderPassCost) => ({ gpuTime: pass.gpuTime ?? 0, name: pass.name })),
-  };
-}
-
-/**
- * @param resolution - How many pixels the viewer asked a viewport be drawn with.
- * @returns How many rows a native viewport draws its level with at most; null for as many as it covers.
- */
-export function toLevelRenderHeight(resolution: ERenderResolution): Nullable<number> {
-  return resolution === ERenderResolution.WINDOW ? null : Number(resolution);
-}
 
 /**
  * @param box - The level's extent, or null while none is open.
@@ -226,132 +127,6 @@ export function toLevelLightsReport(report: RenderLightsReport): IRendererLights
     inView: report.inView,
     shadowScale: 1,
     shadowed: report.shadowed,
-  };
-}
-
-/** What the toolbar switches of the view: the weather, the grass, the wall marks and the spawned objects' groups. */
-export type TLevelViewSwitches = Pick<
-  ILevelViewOptions,
-  | "isClouded"
-  | "isFogged"
-  | "isGrassy"
-  | "isRainy"
-  | "isSkyHazed"
-  | "isSkyVisible"
-  | "isSpawnedItems"
-  | "isSpawnedLamps"
-  | "isSpawnedProps"
-  | "isSpawnedWeapons"
-  | "isThundering"
-  | "isWallmarked"
-  | "isWaterVisible"
-  | "isWindy"
->;
-
-/**
- * @param settings - What the level's toolbar and the application's settings come to.
- * @param switches - What the toolbar switches of the view.
- * @param look - How the level is exposed, lit and corrected.
- * @param renderHeight - How many rows the level is drawn with at most; null for as many as the viewport covers.
- * @returns What a native viewport draws the level with.
- */
-export function toLevelViewOptions(
-  settings: IRendererSettings,
-  switches: TLevelViewSwitches,
-  look: ILevelLook,
-  renderHeight: Nullable<number> = null
-): RenderViewOptions {
-  const { ambientOcclusion, grass, lights, lod, shadows, water } = settings.features;
-  const { corrections, exposure, lightScales } = look;
-
-  return {
-    ambientOcclusion: {
-      isEnabled: ambientOcclusion.isEnabled,
-      quality: AMBIENT_OCCLUSION_QUALITIES[ambientOcclusion.quality],
-      radius: ambientOcclusion.radius,
-      strength: ambientOcclusion.strength,
-    },
-    exposure: {
-      adaptation: exposure.adaptation,
-      amount: exposure.amount,
-      isEnabled: exposure.isEnabled,
-      lowLuminance: exposure.lowLuminance,
-      middleGray: exposure.middleGray,
-    },
-    antialiasing: ANTIALIASING_MODES[settings.features.antialiasing],
-    corrections: {
-      exposure: corrections.exposure,
-      gamma: corrections.gamma,
-      grading: corrections.grading,
-      saturation: corrections.saturation,
-    },
-    lightScales: { ambient: lightScales.ambient, hemi: lightScales.hemi, sun: lightScales.sun },
-    upscaling: {
-      scale: RENDER_SCALES[settings.features.upscaling.scale],
-      sharpening: settings.features.upscaling.sharpening,
-    },
-    debugView: DEBUG_VIEWS[settings.debugView],
-    grass: {
-      density: grass.density,
-      height: grass.height,
-      isEnabled: grass.isEnabled && switches.isGrassy,
-      radius: grass.radius,
-    },
-    hemiStrength: settings.hemiStrength,
-    isBumped: settings.isBumped,
-    isClouded: switches.isClouded,
-    isFogged: switches.isFogged,
-    isLit: settings.isLit,
-    isOcclusionCulled: settings.features.isOcclusionCulled,
-    isRainy: switches.isRainy,
-    isSkyHazed: switches.isSkyHazed,
-    isSkyVisible: switches.isSkyVisible,
-    isSpawnedItems: switches.isSpawnedItems,
-    isSpawnedLamps: switches.isSpawnedLamps,
-    isSpawnedProps: switches.isSpawnedProps,
-    isSpawnedWeapons: switches.isSpawnedWeapons,
-    isTextured: settings.isTextured,
-    isThundering: switches.isThundering,
-    isWallmarked: switches.isWallmarked,
-    isWindy: switches.isWindy,
-    isWireframe: settings.isWireframe,
-    lod: {
-      geometryLod: lod.geometryLod,
-      isImpostors: lod.isImpostors,
-      ssaA: lod.ssaA,
-      ssaB: lod.ssaB,
-      ssaDiscard: lod.ssaDiscard,
-      ssaGlodEnd: lod.ssaGlodEnd,
-      ssaGlodStart: lod.ssaGlodStart,
-    },
-    lights: {
-      isEnabled: lights.isEnabled,
-      isLevelLights: lights.isLevelLights,
-      isShadowed: lights.isShadowed,
-      shadowFilter: LIGHT_SHADOW_FILTERS[lights.shadowFilter],
-    },
-    shadows: {
-      bias: shadows.bias,
-      blend: shadows.blend,
-      cascades: [...shadows.cascades],
-      filter: shadows.filter,
-      isEnabled: shadows.isEnabled,
-      isStaggered: shadows.isStaggered,
-      reach: shadows.reach,
-      resolution: shadows.resolution,
-    },
-    renderHeight,
-    tonemapScale: settings.tonemapScale,
-    water: {
-      distortion: water.distortion,
-      isDistorted: water.isDistorted,
-      isEnabled: water.isEnabled && switches.isWaterVisible,
-      isSoft: water.isSoft,
-      reflection: water.reflection,
-      ripple: water.ripple,
-      waveHeight: water.waveHeight,
-      waveSpeed: water.waveSpeed,
-    },
   };
 }
 
@@ -558,11 +333,11 @@ export class LevelRenderService extends NativeRenderSurfaceService {
       ),
       reaction(
         () =>
-          toLevelViewOptions(
+          toNativeViewOptions(
             this.toSettings(),
             this.viewService.options,
             this.lookService.look,
-            toLevelRenderHeight(this.settingsService.renderResolution)
+            toNativeRenderHeight(this.settingsService.renderResolution)
           ),
         (options: RenderViewOptions) => viewport.setViewOptions(options),
         { equals: comparer.structural, fireImmediately: true }
@@ -647,8 +422,8 @@ export class LevelRenderService extends NativeRenderSurfaceService {
   }
 
   protected onFrame(report: RenderFrameReport): void {
-    this.frame = toLevelFrameCost(report);
-    this.timings = toLevelPassTimings(report);
+    this.frame = toNativeFrameCost(report);
+    this.timings = toNativePassTimings(report);
     this.staticDraws = toLevelStaticDrawReport(report.staticDraws);
     this.sectorTime = report.sectorTime ?? 0;
     this.lights = toLevelLightsReport(report.lights);

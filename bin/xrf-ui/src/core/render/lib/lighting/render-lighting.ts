@@ -1,6 +1,7 @@
 import { toRadians } from "@xrf/math";
 import { IRendererLighting, TRendererColor } from "@xrf/renderer";
 
+import { RenderAssetLighting } from "@/core/ipc/types/xrf-renderer";
 import { toRawColor } from "@/core/render/lib/scene/render-color";
 
 /**
@@ -67,4 +68,19 @@ function toScaled(color: TRendererColor, tint: number, intensity: number): TRend
   const [red, green, blue] = toRawColor(tint);
 
   return [color[0] * red * intensity, color[1] * green * intensity, color[2] * blue * intensity];
+}
+
+/**
+ * @param lighting - An asset viewer's light, as its controls set it.
+ * @returns The same, as a native viewport lights an asset in place of a weather.
+ */
+export function toNativeAssetLighting(lighting: IRenderLighting): RenderAssetLighting {
+  return {
+    ambientColor: toRawColor(lighting.ambientColor),
+    ambientIntensity: lighting.ambientIntensity,
+    sunAzimuth: lighting.sunAzimuth,
+    sunColor: toRawColor(lighting.sunColor),
+    sunElevation: lighting.sunElevation,
+    sunIntensity: lighting.sunIntensity,
+  };
 }
