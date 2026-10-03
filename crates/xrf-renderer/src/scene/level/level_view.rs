@@ -14,13 +14,16 @@ use crate::contract::render_antialiasing::RenderAntialiasing;
 use crate::contract::render_debug_view::RenderDebugView;
 use crate::contract::render_image_corrections::RenderImageCorrections;
 use crate::contract::render_level_hit::RenderLevelHit;
+use crate::contract::render_lights_report::RenderLightsReport;
 use crate::contract::render_lights_settings::RenderLightsSettings;
 use crate::contract::render_load_report::RenderLoadReport;
 use crate::contract::render_overlay::RenderOverlay;
 use crate::contract::render_pass_cost::RenderPassCost;
+use crate::contract::render_pool_use::RenderPoolUse;
 use crate::contract::render_rect::RenderRect;
 use crate::contract::render_shadow_settings::RenderShadowSettings;
 use crate::contract::render_spawn_category::RenderSpawnCategory;
+use crate::contract::render_static_report::RenderStaticReport;
 use crate::contract::render_surface_geometry::RenderSurfaceGeometry;
 use crate::contract::render_texture_report::RenderTextureReport;
 use crate::contract::render_upscaling_settings::RenderUpscalingSettings;
@@ -95,18 +98,6 @@ const SECTORS_PER_FRAME: usize = 4;
 
 /// Spawned models put into the scene at most in one frame.
 const MODELS_PER_FRAME: usize = 16;
-
-/// The engine's progressive mesh thresholds, in screen area before the screen is applied: whole above the first,
-/// coarsest below the second.
-const GLOD_START: f32 = 256.0;
-const GLOD_END: f32 = 64.0;
-
-/// `r_ssaLOD_A` and `r_ssaLOD_B`: a clump's impostor draws below the first, its trees above the second.
-const SSA_LOD_A: f32 = 64.0;
-const SSA_LOD_B: f32 = 48.0;
-
-/// `r_ssaDISCARD`: an instanced place smaller on screen than this is not drawn.
-const SSA_DISCARD: f32 = 3.5;
 
 /// What a sky's bind group binds: the weather textures' generation, the references of its six slots, and how many
 /// environment cubes.
@@ -240,6 +231,8 @@ pub struct LevelView {
   pick_view: Option<ViewBinding>,
   surfaces: SurfaceTally,
   failed: u32,
+  /// Milliseconds the last sector taken in took to put into the scene.
+  sector_time: f32,
   reported: Option<RenderLoadReport>,
 }
 
@@ -349,6 +342,7 @@ impl LevelView {
       pick_view: None,
       surfaces: SurfaceTally::default(),
       failed: 0,
+      sector_time: 0.0,
       reported: None,
       source,
     }
@@ -429,6 +423,8 @@ impl LevelView {
     for (_, package) in self.loader.take(SECTORS_PER_FRAME) {
       match package {
         Ok((package, tally)) => {
+          let started: Instant = Instant::now();
+
           self.scene.add_sector(
             device,
             queue,
@@ -438,6 +434,7 @@ impl LevelView {
             self.source.get_surfaces(),
             &package,
           );
+          self.sector_time = started.elapsed().as_secs_f32() * 1000.0;
           self.surfaces.merge(tally);
         }
         Err(_) => self.failed += 1,
@@ -657,7 +654,7 @@ impl LevelView {
 
     // The engine's screen: the viewport's pixels, widened for a lens narrower than its 90 degrees.
     let screen: f32 =
-      (width * height) as f32 * (90.0 / field_of_view.max(1.0)).powi(2) * (EPS_S + options.geometry_lod);
+      (width * height) as f32 * (90.0 / field_of_view.max(1.0)).powi(2) * (EPS_S + options.lod.geometry_lod);
     let threshold = |area: f32| -> f32 { (area / 3.0).powi(2) / screen };
 
     self.params = StaticCullParams {
@@ -665,14 +662,14 @@ impl LevelView {
       row_count: self.scene.get_row_count(),
       batch_count: StaticBatch::COUNT as u32,
       impostor_count: self.scene.get_impostor_count(),
-      glod_start: threshold(GLOD_START),
-      glod_end: threshold(GLOD_END),
-      discard_below: SSA_DISCARD.powi(2) / screen,
+      glod_start: threshold(options.lod.ssa_glod_start),
+      glod_end: threshold(options.lod.ssa_glod_end),
+      discard_below: options.lod.ssa_discard.powi(2) / screen,
       candidate_capacity: self.scene.get_list_capacity(),
       is_occluding: options.is_occlusion_culled as u32,
-      lod_a: threshold(SSA_LOD_A),
-      lod_b: threshold(SSA_LOD_B),
-      is_impostors: options.is_impostors as u32,
+      lod_a: threshold(options.lod.ssa_a),
+      lod_b: threshold(options.lod.ssa_b),
+      is_impostors: options.lod.is_impostors as u32,
       hidden_groups: [
         RenderSpawnCategory::Props,
         RenderSpawnCategory::Items,
@@ -1040,12 +1037,16 @@ impl LevelView {
       passes.sun.draw(encoder, targets, view, &groups.sun);
       timer.mark(encoder, "sun");
 
+      self.lights.clear_overflow(encoder);
+
       if self.lights.get_count() > 0 {
         passes
           .lights
           .draw(encoder, targets, view, &groups.lights, textures.get_bind_group());
         timer.mark(encoder, "lights");
       }
+
+      self.lights.record_overflow(encoder);
 
       if self.ambient_occlusion.is_enabled {
         passes.ambient_occlusion.draw(
@@ -1597,6 +1598,7 @@ impl LevelView {
   pub fn request_stats(&self) {
     self.stats.request();
     self.timer.request();
+    self.lights.request_report();
   }
 
   /// Times each pass of its frames on the GPU, where the device can.
@@ -1609,11 +1611,32 @@ impl LevelView {
     (self.timer.is_timing(), self.timer.take())
   }
 
-  /// Clusters and triangles the latest counted frame drew.
-  pub fn take_stats(&mut self) -> (u32, u32) {
-    let [clusters, triangles, ..] = self.stats.take();
+  /// Milliseconds the last sector taken in took to put into the scene.
+  pub fn get_sector_time(&self) -> f32 {
+    self.sector_time
+  }
 
-    (clusters, triangles)
+  /// The static draws' pools and what the latest counted frame's cull kept and hid, and its lights.
+  pub fn take_stats(&mut self) -> (RenderStaticReport, RenderLightsReport) {
+    let [kept_clusters, kept_triangles, occluded_clusters, occluded_triangles] = self.stats.take();
+    let pools: RenderStaticReport = self.scene.get_pools();
+    let phases: u32 = if self.params.is_occluding != 0 { 2 } else { 1 };
+
+    (
+      RenderStaticReport {
+        surface_list: RenderPoolUse {
+          used: kept_clusters,
+          ..pools.surface_list
+        },
+        commands: StaticBatch::list_deferred().count() as u32 * phases + u32::from(self.params.is_impostors != 0),
+        kept_clusters,
+        kept_triangles,
+        occluded_clusters,
+        occluded_triangles,
+        ..pools
+      },
+      self.lights.take_report(),
+    )
   }
 
   /// What puts the level's finished scene into the window, once its targets are made.

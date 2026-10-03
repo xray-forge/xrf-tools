@@ -7,7 +7,9 @@ use xrf_math::EPS_L;
 use xrf_visual::{LightDescription, LightKind, LightsDescription};
 
 use crate::camera::camera_view::CameraView;
+use crate::contract::render_lights_report::RenderLightsReport;
 use crate::contract::render_lights_settings::RenderLightsSettings;
+use crate::frame::stats_readback::StatsReadback;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::host::render_level_source::RenderLevelSource;
 use crate::lighting::light_animation::to_animated_color;
@@ -32,6 +34,9 @@ pub const MAX_LIGHTS: usize = 1024;
 const LIGHT_CLUSTERS: u64 = 16 * 9 * 24;
 const LIGHT_CLUSTER_CAPACITY: u64 = 64;
 
+/// The bytes after the clusters' counts the binning counts its overflow in, as a readback copies them.
+const OVERFLOW_BYTES: u64 = 16;
+
 /// What a light's falloff reaches zero at, a share of its range: `L_R` (`r3_rendertarget_accum_point.cpp`).
 const FALLOFF_RANGE: f32 = 0.95;
 
@@ -48,6 +53,9 @@ pub struct LevelLights {
   pub items: wgpu::Buffer,
   pub uniform: wgpu::Buffer,
   count: u32,
+  /// What the last frame's lights came to, and the binning's count of the clusters it filled, read back.
+  report: RenderLightsReport,
+  overflow: StatsReadback,
   shadows: LevelLightShadows,
   started: Instant,
   /// What a zone's range strays by each frame.
@@ -88,7 +96,13 @@ impl LevelLights {
       projectors: Vec::new(),
       records: Vec::with_capacity(MAX_LIGHTS),
       record_buffer: storage("light records", (MAX_LIGHTS * size_of::<LightRecord>()) as u64),
-      counts: storage("light cluster counts", LIGHT_CLUSTERS * 4),
+      // The clusters' counts, then the binning's two words of overflow.
+      counts: device.create_buffer(&wgpu::BufferDescriptor {
+        label: Some("light cluster counts"),
+        size: LIGHT_CLUSTERS * 4 + OVERFLOW_BYTES,
+        usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::COPY_SRC,
+        mapped_at_creation: false,
+      }),
       items: storage("light cluster items", LIGHT_CLUSTERS * LIGHT_CLUSTER_CAPACITY * 4),
       uniform: device.create_buffer(&wgpu::BufferDescriptor {
         label: Some("lights"),
@@ -97,6 +111,8 @@ impl LevelLights {
         mapped_at_creation: false,
       }),
       count: 0,
+      report: RenderLightsReport::default(),
+      overflow: StatsReadback::new(device),
       shadows: LevelLightShadows::new(device, view_layout, args_size),
       started: Instant::now(),
       random: 0x9E37_79B9_7F4A_7C15,
@@ -156,6 +172,7 @@ impl LevelLights {
   ) {
     self.records.clear();
     self.shadows.begin();
+    self.report = RenderLightsReport::default();
 
     let is_shadowing: bool = settings.is_enabled && settings.is_shadowed;
 
@@ -196,6 +213,7 @@ impl LevelLights {
         .collect();
 
       in_view.sort_by(|a, b| a.distance.total_cmp(&b.distance));
+      self.report.excess = in_view.len().saturating_sub(MAX_LIGHTS) as u32;
       in_view.truncate(MAX_LIGHTS);
 
       if is_shadowing {
@@ -237,6 +255,8 @@ impl LevelLights {
         if let Some(set) = set {
           let atlas: f32 = LIGHT_SHADOW_ATLAS_SIZE as f32;
 
+          self.report.shadowed += 1;
+
           record.shadow = Vec4::new(set.near, set.far, set.faces.len() as f32, 0.0);
 
           for (face, state) in set.faces.iter().enumerate() {
@@ -254,6 +274,8 @@ impl LevelLights {
     }
 
     self.count = self.records.len() as u32;
+    self.report.in_view = self.count;
+    self.report.atlas = self.shadows.get_atlas_use();
 
     let (near, far): (f32, f32) = camera.get_depth_range();
 
@@ -284,6 +306,32 @@ impl LevelLights {
     frame: &ShadowFrame<'_>,
   ) {
     self.shadows.record(device, queue, encoder, passes, frame);
+  }
+
+  /// Clears the binning's overflow words before it counts this frame's.
+  pub fn clear_overflow(&self, encoder: &mut wgpu::CommandEncoder) {
+    encoder.clear_buffer(&self.counts, LIGHT_CLUSTERS * 4, Some(OVERFLOW_BYTES));
+  }
+
+  /// Copies the binning's overflow out with this frame's work, for a report a frame or more later.
+  pub fn record_overflow(&self, encoder: &mut wgpu::CommandEncoder) {
+    self.overflow.record(encoder, &self.counts, LIGHT_CLUSTERS * 4);
+  }
+
+  /// Asks for the overflow recorded with the frame just submitted.
+  pub fn request_report(&self) {
+    self.overflow.request();
+  }
+
+  /// What the last frame's lights came to, with the binning's overflow as last read back.
+  pub fn take_report(&mut self) -> RenderLightsReport {
+    let [full_clusters, dropped, ..] = self.overflow.take();
+
+    RenderLightsReport {
+      full_clusters,
+      dropped,
+      ..self.report
+    }
   }
 
   pub fn get_shadow_atlas(&self) -> &wgpu::TextureView {

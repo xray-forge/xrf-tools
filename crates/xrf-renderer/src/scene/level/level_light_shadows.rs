@@ -5,6 +5,7 @@ use xrf_math::EPS_S;
 use xrf_visual::{LightDescription, LightKind};
 
 use crate::camera::camera_view::CameraView;
+use crate::contract::render_pool_use::RenderPoolUse;
 use crate::contract::render_rect::RenderRect;
 use crate::lighting::light_basis::{LightBasis, to_light_intensity};
 use crate::lighting::light_shadow_size::{
@@ -97,6 +98,14 @@ impl LevelLightShadows {
       }),
       cull_group: None,
       draw_groups: None,
+    }
+  }
+
+  /// Texels of the atlas the lights' faces hold, of its whole.
+  pub fn get_atlas_use(&self) -> RenderPoolUse {
+    RenderPoolUse {
+      used: self.allocator.get_used().min(u64::from(u32::MAX)) as u32,
+      capacity: LIGHT_SHADOW_ATLAS_SIZE * LIGHT_SHADOW_ATLAS_SIZE,
     }
   }
 
