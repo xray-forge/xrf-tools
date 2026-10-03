@@ -2749,10 +2749,6 @@ export type WebviewCollectionPace = `${EWebviewCollectionPace}`;
 
 /** Which of the webview's optional browser capabilities the main window is built with, chosen in the settings. */
 export type WebviewOptions = {
-  /** Chromium's `AggressiveShaderCacheLimits`: the GPU process's pipeline cache doubled, 6 MB to 12 MB on desktop. */
-  isShaderCacheDoubled: boolean;
-  /** `--enable-webgpu-developer-features`: GPU timestamps unquantized, where WebView2 rounds them to 65.5 µs. */
-  isWebgpuDeveloper: boolean;
   /** How early the webview's JavaScript starts marking for a major collection, for every page and worker alike. */
   collectionPace?: WebviewCollectionPace;
   /** The compositor presents at the display's refresh; lifted, `--disable-gpu-vsync` presents frames as they come. */
