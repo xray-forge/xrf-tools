@@ -1,5 +1,6 @@
 pub mod commands;
 pub mod configs;
+pub mod console_defaults;
 pub mod details;
 pub mod drawn_attributes;
 pub mod hemi;

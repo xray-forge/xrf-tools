@@ -5,6 +5,8 @@ use crate::contract::render_antialiasing::RenderAntialiasing;
 use crate::contract::render_debug_view::RenderDebugView;
 use crate::contract::render_exposure_settings::RenderExposureSettings;
 use crate::contract::render_grass_settings::RenderGrassSettings;
+use crate::contract::render_image_corrections::RenderImageCorrections;
+use crate::contract::render_light_scales::RenderLightScales;
 use crate::contract::render_lights_settings::RenderLightsSettings;
 use crate::contract::render_shadow_settings::RenderShadowSettings;
 use crate::contract::render_spawn_category::RenderSpawnCategory;
@@ -65,6 +67,10 @@ pub struct RenderViewOptions {
   pub antialiasing: RenderAntialiasing,
   /// What the scene is drawn at, and how its upscaled frame is sharpened.
   pub upscaling: RenderUpscalingSettings,
+  /// How the game's console scales the sun, the hemisphere and the ambient.
+  pub light_scales: RenderLightScales,
+  /// What the finished frame is corrected by.
+  pub corrections: RenderImageCorrections,
 }
 
 impl Default for RenderViewOptions {
@@ -99,6 +105,8 @@ impl Default for RenderViewOptions {
       debug_view: RenderDebugView::Final,
       antialiasing: RenderAntialiasing::None,
       upscaling: RenderUpscalingSettings::default(),
+      light_scales: RenderLightScales::default(),
+      corrections: RenderImageCorrections::default(),
     }
   }
 }

@@ -24,6 +24,9 @@ struct Lighting {
   // x: the settings' tonemap scale; y: one where the scene is lit; z: one where the exposure adapts; w: one where the
   // ambient occlusion darkens the hemisphere.
   params: vec4<f32>,
+  // `L_ambient` and `L_hemi_color` as a forward pass binds them: the weather's own, neither doubled nor scaled.
+  forward_ambient: vec4<f32>,
+  forward_hemi: vec4<f32>,
 };
 
 // The exposure's state as `frame/exposure.wgsl` adapts it, read from its head.

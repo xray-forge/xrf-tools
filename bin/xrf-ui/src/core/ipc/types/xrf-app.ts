@@ -1711,6 +1711,31 @@ export enum EJobKind {
 /** Every `EJobKind` as the spelling it crosses IPC as, for a value no member has narrowed. */
 export type JobKind = `${EJobKind}`;
 
+/**
+ * What a game's shipped console defaults (Anomaly's `default_controls.ltx`) set of how its levels are lit, exposed and
+ * corrected; each `None` it leaves to the engine.
+ */
+export type LevelConsoleDefaults = {
+  /** Whether the game ships console defaults at all. */
+  isShipped: boolean;
+  /** `r2_tonemap`. */
+  isTonemapped: boolean | null;
+  /** `r2_tonemap_amount`, `r2_tonemap_middlegray`, `r2_tonemap_lowlum` and `r2_tonemap_adaptation`. */
+  tonemapAmount: number | null;
+  tonemapMiddleGray: number | null;
+  tonemapLowLuminance: number | null;
+  tonemapAdaptation: number | null;
+  /** `r2_sun_lumscale`, `r2_sun_lumscale_hemi` and `r2_sun_lumscale_amb`. */
+  sunScale: number | null;
+  hemiScale: number | null;
+  ambientScale: number | null;
+  /** `r__exposure`, `r__gamma`, `r__saturation` and `r__color_grading`. */
+  imageExposure: number | null;
+  imageGamma: number | null;
+  imageSaturation: number | null;
+  colorGrading: [number | null, number | null, number | null] | null;
+};
+
 /** A level's grass as packed, and what dresses each of its models. */
 export type LevelDetailsDescription = {
   details: DetailsDescription;

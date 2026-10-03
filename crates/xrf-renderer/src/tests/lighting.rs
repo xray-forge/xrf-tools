@@ -1,5 +1,6 @@
 use glam::Vec3;
 
+use crate::contract::render_light_scales::RenderLightScales;
 use crate::lighting::material_lut::{MATERIAL_LUT_DEPTH, MATERIAL_LUT_HEIGHT, MATERIAL_LUT_WIDTH, create_material_lut};
 use crate::lighting::render_lighting::RenderLighting;
 use crate::lighting::sun_direction::to_renderer_sun_direction;
@@ -77,9 +78,12 @@ fn default_lighting_is_noon_of_default_clear() {
   assert_near(lighting.get_sun_direction(), [0.808_504_3, -0.5, -0.310_356]);
   assert_near(lighting.sun_color, [0.905_882, 0.839_216, 0.694_118]);
   assert_near(lighting.sky_irradiance, [0.5, 0.511, 0.548]);
-  assert!((lighting.get_sun_specular() - 3.484_544_3).abs() < 1e-6);
-  assert_near(lighting.get_ambient(), [0.04, 0.04, 0.04]);
-  assert_near(lighting.get_environment(), [1.882_372, 1.474_528, 1.317_668]);
+  assert!((lighting.get_sun_specular(&RenderLightScales::default()) - 3.484_544_3).abs() < 1e-6);
+  assert_near(lighting.get_ambient(&RenderLightScales::default()), [0.04, 0.04, 0.04]);
+  assert_near(
+    lighting.get_environment(&RenderLightScales::default()),
+    [1.882_372, 1.474_528, 1.317_668],
+  );
 }
 
 #[test]
@@ -89,7 +93,24 @@ fn sun_specular_is_linear_past_one() {
     ..RenderLighting::default()
   };
 
-  assert_eq!(lighting.get_sun_specular(), 6.0);
+  assert_eq!(lighting.get_sun_specular(&RenderLightScales::default()), 6.0);
+}
+
+// Anomaly's `r2_sun_lumscale 2`: the sun twice as bright, its specular from the scaled colour (linear past one); the
+// hemisphere and ambient by their own.
+#[test]
+fn the_games_console_scales_the_sun_hemisphere_and_ambient() {
+  let lighting: RenderLighting = RenderLighting::default();
+  let scales: RenderLightScales = RenderLightScales {
+    sun: 2.0,
+    hemi: 0.5,
+    ambient: 3.0,
+  };
+
+  assert_near(lighting.get_sun_color(&scales), [1.811_764, 1.678_432, 1.388_236]);
+  assert!((lighting.get_sun_specular(&scales) - 6.504_576).abs() < 1e-4);
+  assert_near(lighting.get_environment(&scales), [0.941_186, 0.737_264, 0.658_834]);
+  assert_near(lighting.get_ambient(&scales), [0.12, 0.12, 0.12]);
 }
 
 #[test]
@@ -99,7 +120,7 @@ fn ambient_never_falls_below_its_floor() {
     ..RenderLighting::default()
   };
 
-  assert_eq!(lighting.get_ambient(), Vec3::splat(0.001));
+  assert_eq!(lighting.get_ambient(&RenderLightScales::default()), Vec3::splat(0.001));
 }
 
 #[test]

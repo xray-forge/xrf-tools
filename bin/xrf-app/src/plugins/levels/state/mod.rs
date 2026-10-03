@@ -24,6 +24,7 @@ pub(crate) use level_state::LevelState;
 pub(crate) use packed_details::PackedDetails;
 pub(crate) use packed_sector::PackedSector;
 pub(crate) use packed_sectors::PackedSectors;
+pub(crate) use selection::level_console_defaults::LevelConsoleDefaults;
 pub(crate) use selection::level_details_description::LevelDetailsDescription;
 pub(crate) use selection::level_lights_description::LevelLightsDescription;
 pub(crate) use selection::level_spawn_category::LevelSpawnCategory;

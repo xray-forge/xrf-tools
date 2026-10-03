@@ -17,6 +17,9 @@ struct Present {
   // The viewport's top left corner in the window and its size, in pixels; the scene is drawn at `camera.viewport.xy`.
   origin: vec2<f32>,
   size: vec2<f32>,
+  // `img_corrections`: x exposure, y gamma, z saturation; then the grading colour.
+  corrections: vec4<f32>,
+  grading: vec4<f32>,
 };
 
 @group(1) @binding(0) var scene: texture_2d<f32>;
@@ -110,6 +113,25 @@ fn shown_target(texel: vec2<i32>) -> vec3<f32> {
   }
 }
 
+// `img_corrections` (Anomaly's `combine_2`): the finished frame exposed, graded towards a colour in its mid tones,
+// saturated and raised to its gamma.
+fn corrected(color: vec3<f32>) -> vec3<f32> {
+  let luminance_vector: vec3<f32> = vec3<f32>(0.2125, 0.7154, 0.0721);
+  var image: vec3<f32> = color * present.corrections.x;
+  let luminance: f32 = dot(image, luminance_vector);
+
+  if (any(present.grading.rgb > vec3<f32>(0.0))) {
+    let graded: vec3<f32> = mix(mix(vec3<f32>(0.0), present.grading.rgb, saturate(luminance * 2.0)), vec3<f32>(1.0),
+      saturate(luminance - 0.5) * 2.0);
+
+    image = saturate(mix(image, graded, saturate(luminance * 0.15)));
+  }
+
+  image = mix(image, vec3<f32>(dot(image, luminance_vector)), 1.0 - present.corrections.z);
+
+  return pow(max(image, vec3<f32>(0.0)), vec3<f32>(1.0 / present.corrections.y));
+}
+
 // The drawn texel under a point of the viewport, in its pixels.
 fn drawn_texel(pixel: vec2<f32>) -> vec2<i32> {
   let drawn: vec2<f32> = camera.viewport.xy;
@@ -143,5 +165,5 @@ fn fs_present(in: FullscreenVarying) -> @location(0) vec4<f32> {
   let color: vec3<f32> = select(textureLoad(scene, drawn_texel(read), 0).rgb,
     textureLoad(upscaled, vec2<i32>(read), 0).rgb, present.is_upscaled != 0u);
 
-  return vec4<f32>(color + output_dither(in.clip.xy), 1.0);
+  return vec4<f32>(corrected(color) + output_dither(in.clip.xy), 1.0);
 }
