@@ -68,8 +68,8 @@ impl PlayedWeather {
     )
   }
 
-  /// Where its mix stands the sun: Monolith's table on its engine, astronomically where asked, else by the keyframes;
-  /// a keyframe set by hand always by its own angles.
+  /// Where its mix stands the sun: Monolith's table on its engine where the game has one, astronomically where asked,
+  /// else by the keyframes; a keyframe set by hand always by its own angles.
   pub fn get_sun(&self, control: &RenderWeatherControl) -> WeatherSunSource<'_> {
     match &self.level.sun_table {
       _ if self.is_manual => WeatherSunSource::Authored,

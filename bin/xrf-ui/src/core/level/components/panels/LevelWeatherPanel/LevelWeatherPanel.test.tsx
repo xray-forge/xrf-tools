@@ -133,15 +133,27 @@ describe("LevelWeatherPanel", () => {
     expect(getByTestId("level-weather-play-section").textContent).toContain("The configs are gone");
   });
 
-  it("stands the sun by the table on extended", async () => {
+  it("stands the sun by the table on extended where the game has one", async () => {
     const { getByTestId, queryByRole } = await renderPanel({
       ["plugin:levels|read_level_weather"]: mockSessionResponse(
-        mockLevelWeatherDescription({ engine: EXrayEngine.EXTENDED })
+        mockLevelWeatherDescription({ engine: EXrayEngine.EXTENDED, sunTable: [] })
       ),
     });
 
     expect(queryByRole("checkbox", { name: "Dynamic sun" })).not.toBeInTheDocument();
     expect(getByTestId("level-weather-clock-section").textContent).toContain("sun table");
+  });
+
+  // A game made for OpenXRay, opened on extended, has no table: its keyframes stand the sun, as on vanilla.
+  it("stands the sun by the keyframes on extended where the game has no table", async () => {
+    const { getByRole, getByTestId } = await renderPanel({
+      ["plugin:levels|read_level_weather"]: mockSessionResponse(
+        mockLevelWeatherDescription({ engine: EXrayEngine.EXTENDED, sunTable: null })
+      ),
+    });
+
+    expect(getByRole("checkbox", { name: "Dynamic sun" })).toBeInTheDocument();
+    expect(getByTestId("level-weather-clock-section").textContent).not.toContain("sun table");
   });
 
   it("plays an effect over the cycle, and says what is left of the one playing with a way to end it", async () => {

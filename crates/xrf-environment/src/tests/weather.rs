@@ -273,6 +273,20 @@ fn reads_an_extended_keyframe_by_monoliths_rules() {
   );
 }
 
+// A game made for OpenXRay, opened as Monolith's, has no sun table to stand its sun by; its keyframes' own angles do.
+#[test]
+fn reads_the_sun_angles_written_for_openxray_on_monolith() {
+  let fixture: EnvironmentFixture = vanilla_cycle(&(vanilla_keyframe("00:00:00") + &vanilla_keyframe("12:00:00")));
+  let openxray = fixture.read(XrayEngine::Vanilla);
+  let monolith = fixture.read(XrayEngine::Extended);
+  let noon = |catalog: &crate::EnvironmentCatalog| {
+    WeatherDescriptor::new(&catalog.find_cycle("test").unwrap().keyframes[1], catalog.engine).sun_direction
+  };
+
+  assert!(noon(&openxray).is_some());
+  assert_eq!(noon(&monolith), noon(&openxray));
+}
+
 #[test]
 fn requires_the_sun_table_on_monolith() {
   let fixture: EnvironmentFixture = EnvironmentFixture::new().with(
