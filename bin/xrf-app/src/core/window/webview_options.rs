@@ -10,10 +10,6 @@ const WRY_DEFAULT_ARGS: &str = "--disable-features=msWebOOUI,msPdfOOUI,msSmartSc
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct WebviewOptions {
-  /// Chromium's `AggressiveShaderCacheLimits`: the GPU process's pipeline cache doubled, 6 MB to 12 MB on desktop.
-  pub is_shader_cache_doubled: bool,
-  /// `--enable-webgpu-developer-features`: GPU timestamps unquantized, where WebView2 rounds them to 65.5 µs.
-  pub is_webgpu_developer: bool,
   /// How early the webview's JavaScript starts marking for a major collection, for every page and worker alike.
   #[serde(default)]
   pub collection_pace: WebviewCollectionPace,
@@ -31,12 +27,9 @@ fn is_on() -> bool {
 }
 
 impl Default for WebviewOptions {
-  /// A level's pipelines fit the doubled cache and not the default one, frames keep to the display's refresh, and the
-  /// major collections come often and small; the developer features are opt-in.
+  /// Frames keep to the display's refresh, and the major collections come often and small.
   fn default() -> Self {
     Self {
-      is_shader_cache_doubled: true,
-      is_webgpu_developer: false,
       collection_pace: WebviewCollectionPace::Frequent,
       is_vsync: true,
       is_frame_rate_limited: true,
@@ -48,14 +41,6 @@ impl WebviewOptions {
   /// The browser arguments these options build the webview with, wry's default first.
   pub fn to_browser_args(self) -> String {
     let mut args: Vec<String> = vec![WRY_DEFAULT_ARGS.to_owned()];
-
-    if self.is_shader_cache_doubled {
-      args.push("--enable-features=AggressiveShaderCacheLimits".to_owned());
-    }
-
-    if self.is_webgpu_developer {
-      args.push("--enable-webgpu-developer-features".to_owned());
-    }
 
     if !self.is_vsync {
       args.push("--disable-gpu-vsync".to_owned());
