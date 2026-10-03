@@ -3,8 +3,8 @@ import { Maybe } from "@xrf/types";
 import { ReactElement, useMemo } from "react";
 
 import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
+import { RenderLevelProblems } from "@/core/ipc/types/xrf-renderer";
 import { listLevelProblems } from "@/core/level/lib/problems";
-import { ILevelSectorReport } from "@/core/level/lib/sector/level-sector-report";
 import { ILevelSpawnReport } from "@/core/level/lib/spawn";
 import { ILevelTextureReport } from "@/core/level/lib/texture/level-texture-report";
 import { LevelLoadService, LevelViewportService } from "@/core/level/services";
@@ -24,19 +24,21 @@ export function LevelProblemsPanel({
   const viewportService: LevelViewportService = useInjection(LevelViewportService);
 
   const surfaces: Maybe<ReadonlyArray<XraySurfaceDescriptor>> = loadService.level.value?.selected.value.surfaces;
-  const sectors: ILevelSectorReport = loadService.sectorReport;
   const spawn: ILevelSpawnReport = loadService.spawnReport;
   const report: ILevelTextureReport = viewportService.textureReport;
+  const native: RenderLevelProblems = viewportService.problems;
 
   const problems: Array<IEditorProblem> = useMemo(
     () =>
       listLevelProblems({
-        skipped: sectors.skipped,
+        models: native.models,
+        sectors: native.sectors,
+        skipped: native.skipped,
         spawn,
         surfaces: surfaces ?? [],
         textures: report.problems,
       }),
-    [report, surfaces, sectors, spawn]
+    [report, surfaces, native, spawn]
   );
 
   if (!loadService.level.value) {

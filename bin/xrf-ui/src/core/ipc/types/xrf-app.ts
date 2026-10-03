@@ -30,9 +30,7 @@ import {
 } from "@/core/ipc/types/xrf-translation";
 import { XrayAsset, XrayAssetContainer, XrayPathCollision, XrayRoots, XraySourceKind } from "@/core/ipc/types/xrf-vfs";
 import {
-  DetailsDescription,
   LightAnimatorDescription,
-  LightsDescription,
   SectorOutline,
   VisualBounds,
   VisualDependencies,
@@ -1736,15 +1734,6 @@ export type LevelConsoleDefaults = {
   colorGrading: [number | null, number | null, number | null] | null;
 };
 
-/** A level's grass as packed, and what dresses each of its models. */
-export type LevelDetailsDescription = {
-  details: DetailsDescription;
-  /** How the renderer draws each model, in the library's order. */
-  surfaces: Array<XraySurfaceDescriptor>;
-  /** What each texture a model binds resolved to. */
-  textures: Array<LevelTextureReference>;
-};
-
 /** One compiled level the roots hold, as a picker lists it. */
 export type LevelEntry = {
   /** The name the installation knows the level by, which is its directory under `levels`. */
@@ -1753,13 +1742,6 @@ export type LevelEntry = {
   logicalPath: string;
   /** Whether `level.geom` sits beside the bundle; a level without it draws nothing. */
   hasGeometry: boolean;
-};
-
-/** A level's lights, and what each projector its spots name resolved to. */
-export type LevelLightsDescription = {
-  lights: LightsDescription;
-  /** By the lights' projector index. */
-  projectors: Array<LevelTextureReference>;
 };
 
 /** What opening a level was asked to read, and how the game's configs beside it are read. */
@@ -1810,39 +1792,6 @@ export enum ELevelSpawnCategory {
 /** Every `ELevelSpawnCategory` as the spelling it crosses IPC as, for a value no member has narrowed. */
 export type LevelSpawnCategory = `${ELevelSpawnCategory}`;
 
-/** One visual spawned objects are drawn as: what its pack says, the pose it stands in, and what dresses it. */
-export type LevelSpawnModelDescription = {
-  /** The visual as the objects name it, which its bytes are read by. */
-  name: string;
-  description: VisualDescription;
-  /**
-   * Twelve floats a bone, basis then translation, in model and renderer space: the pose it stands in, the `idle`
-   * cycle's first frame or the bind pose. `None` for a visual without bones.
-   */
-  rest: Array<number | null> | null;
-  /** How the renderer draws each submesh, in their order. */
-  surfaces: Array<XraySurfaceDescriptor>;
-  /** What each texture its surfaces bind resolved to: each base, and the bump pair and detail beside it. */
-  textures: Array<LevelTextureReference>;
-};
-
-/** A visual spawned objects name that could not be read, so none of them is drawn. */
-export type LevelSpawnModelFailure = {
-  name: string;
-  reason: string;
-};
-
-/**
- * The models of one batch of spawned visuals: each one read, why each other one could not be, and how the level
- * lights each object standing as one read.
- */
-export type LevelSpawnModelsDescription = {
-  models: Array<LevelSpawnModelDescription>;
-  failures: Array<LevelSpawnModelFailure>;
-  /** Empty where the level's collision form cannot be read, which lights every object as if under the open sky. */
-  hemi: Array<LevelSpawnObjectHemi>;
-};
-
 /** One spawned object the viewer draws: what it is, where it stands, and which visual it stands as. */
 export type LevelSpawnObject = {
   /** Its place among the level's spawned objects, which names it to the backend. */
@@ -1875,16 +1824,6 @@ export type LevelSpawnObjectDetails = {
   levelVertexId: number;
   /** Its `custom_data`, the logic and settings a script reads, empty where it has none. */
   customData: string;
-};
-
-/** How much sky and light reach one spawned object from each way, as the game estimates it for a dynamic object. */
-export type LevelSpawnObjectHemi = {
-  /** The object, by its place among the level's spawned objects. */
-  index: number;
-  /** The faces toward `+x +y +z`, then toward `-x -y -z`, in renderer space. */
-  cube: [number | null, number | null, number | null, number | null, number | null, number | null];
-  /** Its scalar sky share, `hemi_value`, which a forward-drawn model is lit by. */
-  sky: number | null;
 };
 
 /** The spawned objects the viewer draws, and the visuals they stand as, each named once. */

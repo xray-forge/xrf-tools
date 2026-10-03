@@ -1,5 +1,5 @@
 import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
-import { ILevelSectorSkip } from "@/core/level/lib/sector/level-sector-report";
+import { RenderLoadFailure, RenderSectorSkip } from "@/core/ipc/types/xrf-renderer";
 import { ILevelSpawnReport } from "@/core/level/lib/spawn/level-spawn-report";
 import { ILevelTextureProblem } from "@/core/level/lib/texture/level-texture-report";
 import { IEditorProblem } from "@/core/shell/editor/EditorProblemsPanel";
@@ -16,22 +16,26 @@ export interface ILevelProblemSources {
   /** The level's resolved shader table, in its own order. */
   surfaces: ReadonlyArray<XraySurfaceDescriptor>;
   /** What the resident packs could not read. */
-  skipped: ReadonlyArray<ILevelSectorSkip>;
-  /** What the spawn's read came to: the spawn itself and every visual that could not be read. */
+  skipped: ReadonlyArray<RenderSectorSkip>;
+  /** The sectors that could not be read at all, by their index. */
+  sectors: ReadonlyArray<RenderLoadFailure>;
+  /** What the spawn's listing came to. */
   spawn: ILevelSpawnReport;
+  /** The visuals spawned objects name that could not be read. */
+  models: ReadonlyArray<RenderLoadFailure>;
 }
 
 /**
  * Everything the viewer could not draw as the level asked, as rows.
  *
  * @param sources - What the problems are listed from.
- * @returns The rows, textures first, then surfaces, drawables and spawned visuals.
+ * @returns The rows, textures first, then surfaces, sectors and their drawables, and spawned visuals.
  */
 export function listLevelProblems(sources: ILevelProblemSources): Array<IEditorProblem> {
   return [
     ...listTextureProblems(sources.textures),
     ...listSurfaceProblems(sources.surfaces),
-    ...listDrawableProblems(sources.skipped),
-    ...listSpawnProblems(sources.spawn),
+    ...listDrawableProblems(sources.skipped, sources.sectors),
+    ...listSpawnProblems(sources.spawn, sources.models),
   ];
 }

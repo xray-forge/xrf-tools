@@ -5,11 +5,9 @@ import { ReactElement, ReactNode, useCallback, useEffect, useMemo, useState } fr
 import { LevelSpawnObject, LevelSpawnObjectDetails, LevelSpawnObjectsDescription } from "@/core/ipc/types/xrf-app";
 import { LevelSpawnDetails } from "@/core/level/components/panels/LevelSpawnPanel/LevelSpawnDetails";
 import { LevelSpawnVisibilityToggle } from "@/core/level/components/panels/LevelSpawnPanel/LevelSpawnVisibilityToggle";
-import { useLevelHeld } from "@/core/level/components/panels/LevelSpawnPanel/use-level-held";
 import { useLevelSpawnDetails } from "@/core/level/components/panels/LevelSpawnPanel/use-level-spawn-details";
 import { toLevelFramedGoTo } from "@/core/level/lib/camera/level-camera-frame";
 import { ELevelPick, TLevelPick } from "@/core/level/lib/pick/level-pick";
-import { ILevelSpawnDelivery } from "@/core/level/lib/render/level-render-protocol";
 import { ILevelSpawnReport, isLevelSpawnReading } from "@/core/level/lib/spawn/level-spawn-report";
 import { toLevelSpawnSphere } from "@/core/level/lib/spawn/level-spawn-sphere";
 import {
@@ -66,7 +64,6 @@ export function LevelSpawnPanel({
   const viewportService: LevelViewportService = useInjection(LevelViewportService);
   const renderService: LevelRenderService = useInjection(LevelRenderService);
 
-  const spawn: Nullable<ILevelSpawnDelivery> = useLevelHeld(loadService.spawn);
   const tree: IUseTreeState = useTreeState();
   const { expandAll, select } = tree;
   const [filter, setFilter] = useState<string>("");
@@ -74,7 +71,10 @@ export function LevelSpawnPanel({
   const options: ILevelViewOptions = viewService.options;
   const picked: Nullable<TLevelPick> = viewportService.picked;
 
-  const description: Nullable<LevelSpawnObjectsDescription> = spawn?.objects ?? null;
+  // A spawn placing nothing reads as one not listed yet would: the empty state says which.
+  const description: Nullable<LevelSpawnObjectsDescription> = loadService.spawn?.objects.length
+    ? loadService.spawn
+    : null;
   const items: Array<ITreeNode<TLevelSpawnTreeRow>> = useMemo(
     () => (description ? toLevelSpawnTree(description, filter) : []),
     [description, filter]
@@ -97,16 +97,16 @@ export function LevelSpawnPanel({
     selected?.index ?? null
   );
 
+  // Framed by the sphere its model spans, as the renderer holds it: asked when gone to, since it stands only once drawn.
   const onGoTo = useCallback(
-    (object: LevelSpawnObject) =>
+    async (object: LevelSpawnObject) => {
+      const sphere = await renderService.locateSpawnObject(object.index);
+
       renderService.goTo(
-        toLevelFramedGoTo(
-          viewportService.camera,
-          toLevelSpawnSphere(object, spawn?.models.get(object.visual) ?? null),
-          viewService.camera.fieldOfView
-        )
-      ),
-    [renderService, spawn, viewportService, viewService]
+        toLevelFramedGoTo(viewportService.camera, toLevelSpawnSphere(object, sphere), viewService.camera.fieldOfView)
+      );
+    },
+    [renderService, viewportService, viewService]
   );
 
   const onSelect = useCallback((item: ITreeNode<TLevelSpawnTreeRow>) => select(item.id), [select]);
@@ -114,7 +114,7 @@ export function LevelSpawnPanel({
   const onActivate = useCallback(
     (item: ITreeNode<TLevelSpawnTreeRow>) => {
       if (item.payload?.kind === "object") {
-        onGoTo(item.payload.object);
+        void onGoTo(item.payload.object);
       }
     },
     [onGoTo]
@@ -232,7 +232,7 @@ export function LevelSpawnPanel({
             object={selected}
             visual={description.visuals[selected.visual] ?? ""}
             details={details}
-            onGoTo={() => onGoTo(selected)}
+            onGoTo={() => void onGoTo(selected)}
           />
         </div>
       ) : null}

@@ -3,53 +3,6 @@
 import { Vector3d } from "@/core/ipc/types/xrf-math";
 import { XrayResolution } from "@/core/ipc/types/xrf-vfs";
 
-/** Everything about a level's packed grass except the bytes themselves. */
-export type DetailsDescription = {
-  /**
-   * The grid's size in slots, and the world slot its first cell stands for, negated: cell `(x, z)` is world slot
-   * `(x - offset_x, z - offset_z)`.
-   */
-  sizeX: number;
-  sizeZ: number;
-  offsetX: number;
-  offsetZ: number;
-  models: Array<DetailsModel>;
-  /** One `u32` a cell, `z * size_x + x`: the planted slot's record plus one, zero for a cell with nothing to plant. */
-  grid: VisualSection;
-  /**
-   * Six `u32` a planted slot: its stored sixteen bytes as four words, the first entry of its triangle bin, and the
-   * bin's length. Its world slot is its cell's, which the grid says.
-   */
-  slots: VisualSection;
-  slotCount: number;
-  /** One `u32` an entry: the triangle, by index into the triangles. */
-  bins: VisualSection;
-  /** Nine floats a triangle: its corners in renderer space, wound for it, passable ones left out. */
-  triangles: VisualSection;
-  bufferLength: number;
-};
-
-/** One detail model of a level's library, packed for the renderer to plant. */
-export type DetailsModel = {
-  /** The texture it is dressed with, as the library names it; its surface is described beside it. */
-  texture: string;
-  /** Whether the wind moves it: no `DO_NO_WAVING` flag. */
-  isWaving: boolean;
-  /** The scale range it is planted at, before the engine narrows it to half the least and nine tenths the most. */
-  minScale: number | null;
-  maxScale: number | null;
-  /** Its bounding box's height, which a waving vertex's share of the sway is measured against. */
-  height: number | null;
-  /** The radius of the sphere around its bounding box, which its distance cull is measured by. */
-  radius: number | null;
-  /** Three floats a vertex, in renderer space. */
-  positions: VisualSection;
-  /** Two floats a vertex. */
-  uvs: VisualSection;
-  /** Sixteen-bit indices, wound for renderer space. */
-  indices: VisualSection;
-};
-
 /** A colour animation of `lanims.xr` (`CLAItem`), which replaces the colour of every light it drives. */
 export type LightAnimatorDescription = {
   fps: number | null;
@@ -64,162 +17,6 @@ export type LightAnimatorKey = {
   color: [number | null, number | null, number | null];
 };
 
-/** One light of a level, in renderer space, as the engine would light with it. */
-export type LightDescription = {
-  kind: LightKind;
-  position: Vector3d;
-  /** Where a spot points: its bone's third axis. */
-  direction: Vector3d;
-  /** Its bone's first axis, which turns a spot's projector about its direction. */
-  right: Vector3d;
-  /** Raw, times the lamp's brightness, as the engine hands it to the shaders. */
-  color: [number | null, number | null, number | null];
-  range: number | null;
-  /** How far the range strays each frame, either way, at random: a zone's `idle_light_range_delta`. */
-  rangeJitter: number | null;
-  /** A spot's whole cone, in radians. */
-  cone: number | null;
-  /** Where a spot's projection starts: the lamp's virtual size. */
-  near: number | null;
-  /** A spot's projector, by its index among the description's projectors. */
-  projector: number | null;
-  /** The animation replacing its colour, by its index among the description's animators. */
-  animator: number | null;
-  /** What an animated colour, each channel in `[0, 255]`, is multiplied by. */
-  animatorScale: number | null;
-  /** Whether it casts shadows, which also has it fade and drop out with distance as the engine's shadowed lights do. */
-  isShadowed: boolean;
-  /** Whether it is one of the level file's own lights, which the engine draws only with `r2_allow_r1_lights`. */
-  isLevel: boolean;
-};
-
-/** The shape a light reaches out in. */
-export enum ELightKind {
-  /** Every way around it, to its range. */
-  POINT = "point",
-  /** Along its direction, within its cone, through its projector. */
-  SPOT = "spot",
-}
-
-/** Every `ELightKind` as the spelling it crosses IPC as, for a value no member has narrowed. */
-export type LightKind = `${ELightKind}`;
-
-/** A level's lights: its spawned lamps and its own, with the animations and projectors they name. */
-export type LightsDescription = {
-  lights: Array<LightDescription>;
-  animators: Array<LightAnimatorDescription>;
-  /** The projector textures the spots name, as the lamps reference them. */
-  projectors: Array<string>;
-};
-
-/** Everything about a packed sector except the bytes themselves. */
-export type SectorDescription = {
-  /** The sector packed, by its index in the sectors chunk. */
-  sector: number;
-  /** Everything the level bakes in place, packed onto one vertex array and drawn section by section. */
-  geometry: SectorGeometry;
-  sections: Array<SectorSection>;
-  /** Meshes the sector draws many times over, each packed once with the places it stands. */
-  instances: Array<SectorInstanceGroup>;
-  /** What its clumps of trees draw as from far enough away, absent for a sector with no `MT_LOD` visual. */
-  impostors: SectorImpostors | null;
-  /** Drawables that produced no geometry, which is none for every level measured. */
-  skipped: Array<SectorSkip>;
-  /** Extent the packed vertices span, absent when the sector packed none. */
-  bounds: VisualBounds | null;
-  bufferLength: number;
-};
-
-/**
- * Where one packed mesh's attributes sit inside a sector's buffer, and what to draw from them: positions as floats
- * in renderer space, and the rest in the 32-byte vertex xrLC wrote, byte for byte but for a direction's z.
- */
-export type SectorGeometry = {
-  vertexCount: number;
-  indexCount: number;
-  /** Three floats a vertex, in renderer space. */
-  positions: VisualSection;
-  /**
-   * Four bytes a vertex: the normal's z, y and x as `D3DCOLOR` stores them, z negated into renderer space, then the
-   * hemisphere term.
-   */
-  normals: VisualSection | null;
-  /** Four bytes a vertex the same way: the authored tangent, then the low byte of the base `u`. */
-  tangents: VisualSection | null;
-  /** Four bytes a vertex the same way: the authored binormal, then the low byte of the base `v`. */
-  binormals: VisualSection | null;
-  /** The base coordinate as xrLC quantised it, as many shorts a vertex as its components say. */
-  uvs: VisualSection | null;
-  /**
-   * Shorts a base coordinate takes a vertex: two (`SHORT2`, over 1024 with its low bytes), or four for a tree
-   * (`SHORT4`, over 2048, then its wind terms). Zero where there are no base coordinates.
-   */
-  uvComponents: number;
-  /** The lightmap coordinate: two shorts a vertex, over 32768. */
-  lightmapUvs: VisualSection | null;
-  /**
-   * Four bytes a vertex, the `D3DCOLOR` as stored: its baked light blue, green, red, then its sun occlusion. A vertex
-   * of a declaration carrying none takes no baked light and the whole sun.
-   */
-  colors: VisualSection | null;
-  /** Every index, as 32-bit elements: a sector reaches past what sixteen bits address. */
-  indices: VisualSection;
-  /** The clusters of every range it draws, which each range names a run of. */
-  clusters: VisualClusters;
-};
-
-/** A run of a sector's impostors dressed by one surface. */
-export type SectorImpostorGroup = {
-  surface: SectorSurface;
-  /** The first impostor of the run. */
-  start: number;
-  count: number;
-};
-
-/**
- * The impostors of a sector's `MT_LOD` visuals: what the engine draws in place of a clump of trees seen from far
- * enough away, each eight facets looking at it from eight sides, in renderer space.
- */
-export type SectorImpostors = {
-  /** Runs of impostors a surface each, in impostor order. */
-  groups: Array<SectorImpostorGroup>;
-  /** Four floats an impostor: its visual's sphere, centre then radius. */
-  spheres: VisualSection;
-  /** One float an impostor: `FLOD::lod_factor`, what its sphere's screen area is scaled by. */
-  factors: VisualSection;
-  /**
-   * Eight floats for each of an impostor's 32 corners, facet by facet: the position, the atlas `u` and `v`, then the
-   * hemisphere and sun terms as the bytes it stores them over 255, then nothing.
-   */
-  corners: VisualSection;
-  /** Four floats for each of an impostor's eight facets: its normal, then nothing. */
-  normals: VisualSection;
-};
-
-/** One mesh a sector draws many times, packed once with the places it stands. */
-export type SectorInstanceGroup = {
-  surface: SectorSurface;
-  /** The drawables this group stands in for, by their index in the visuals run. */
-  drawables: Array<number>;
-  /** The mesh itself, in its own space, its indices counting from its own first vertex. */
-  geometry: SectorGeometry;
-  instanceCount: number;
-  /** Sixteen floats for each instance, exactly as the engine stores a matrix. */
-  transforms: VisualSection;
-  /** Two floats for each instance: what scales and then offsets its vertices' hemisphere term. */
-  hemi: VisualSection;
-  /**
-   * One signed integer for each instance: the sector's impostor standing in for the clump it belongs to, or -1.
-   * Absent where no place of the group belongs to one.
-   */
-  impostors: VisualSection | null;
-  /**
-   * The bands a progressive tree's places pick among, over the whole of its windows' indices; absent for a mesh of
-   * one detail, whose indices are its one window.
-   */
-  progressive: SectorProgressive | null;
-};
-
 /** What one sector is and where it sits, before any of its geometry is read. */
 export type SectorOutline = {
   /** The sector, by its index in the sectors chunk. */
@@ -232,45 +29,12 @@ export type SectorOutline = {
   bounds: VisualBounds | null;
 };
 
-/** The bands a progressive mesh is drawn in: a few of the engine's slide windows, one of which each place draws. */
-export type SectorProgressive = {
-  /** Windows the engine's table has, which a place's detail picks among (`FTreeVisual_PM::Render`). */
-  windows: number;
-  /**
-   * A range of the mesh's indices per band, the whole detail first. Band `b` is window `floor(b * windows / bands)`,
-   * so a place drawing the band its window falls in is never coarser than the engine would draw it.
-   */
-  bands: Array<VisualDrawRange>;
-};
-
-/** One draw of a sector's own geometry: the indices to draw, and the surface they are drawn with. */
-export type SectorSection = {
-  surface: SectorSurface;
-  /** Drawables packed into this section, by their index in the visuals run. */
-  drawables: Array<number>;
-  draw: VisualDrawRange;
-  /** Extent its own vertices span, which it is culled by; absent when it reaches none. */
-  bounds: VisualBounds | null;
-};
-
 /** A drawable of a sector that produced no geometry, and why. */
 export type SectorSkip = {
   /** The visual left out, by its index in the visuals run. */
   drawable: number;
   cause: VisualSkipCause;
   reason: string;
-};
-
-/** How one part of a sector is dressed, as the level's shader table names it. */
-export type SectorSurface = {
-  /** Entry of the level's shader table this is dressed by. */
-  shaderId: number;
-  /** The engine shader that entry names, absent when the level carries no table. */
-  shaderName: string | null;
-  /** The base texture that entry names, absent for the same reason. */
-  textureName: string | null;
-  /** The one the deferred renderer binds as `s_hemi`, out of which it reads hemisphere and sun occlusion. */
-  hemi: string | null;
 };
 
 /** One bone of a visual's skeleton, as a name and the name of its parent. */

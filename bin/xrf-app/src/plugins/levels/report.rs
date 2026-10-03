@@ -11,8 +11,7 @@ use xrf_visual::{
 };
 
 use crate::plugins::levels::state::{
-  LevelEntry, LevelSource, LevelSpawnModelsDescription, LevelSpawnObjectsDescription, LevelStart,
-  LevelTextureReference, SelectedLevel,
+  LevelEntry, LevelSource, LevelSpawnObjectsDescription, LevelStart, LevelTextureReference, SelectedLevel,
 };
 
 /// How many names a log line about a set of them carries before it stops listing and starts counting.
@@ -165,14 +164,6 @@ pub fn report_start(source: &LevelSource, start: Option<&LevelStart>) {
       source.get_label()
     ),
   }
-}
-
-/// That one packed sector's bytes went to the read that asked for them.
-pub fn report_served_sector(sector: u32, bytes: &[u8]) {
-  log::debug!(
-    "Serving {} bytes of sector {sector}",
-    xrf_utils::format_bytes(bytes.len() as u64)
-  );
 }
 
 /// Says what one sector came to, and says it louder when it came to too much.
@@ -338,17 +329,6 @@ pub fn report_unreadable_lights(source: &LevelSource, error: &impl Display) {
   log::warn!(
     "Compiled lights of {} light no spawned object: {error}",
     source.get_label()
-  );
-}
-
-/// What one batch of a level's spawned models came to.
-pub fn report_spawn_models(source: &LevelSource, models: &LevelSpawnModelsDescription, started: Instant) {
-  log::debug!(
-    "Described a batch of the spawned models of {} in {}: {} models, {} unreadable",
-    source.get_label(),
-    xrf_utils::format_duration(started.elapsed()),
-    models.models.len(),
-    models.failures.len()
   );
 }
 

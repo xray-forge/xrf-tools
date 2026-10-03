@@ -14,13 +14,16 @@ use crate::contract::render_antialiasing::RenderAntialiasing;
 use crate::contract::render_debug_view::RenderDebugView;
 use crate::contract::render_image_corrections::RenderImageCorrections;
 use crate::contract::render_level_hit::RenderLevelHit;
+use crate::contract::render_level_problems::RenderLevelProblems;
 use crate::contract::render_lights_report::RenderLightsReport;
 use crate::contract::render_lights_settings::RenderLightsSettings;
+use crate::contract::render_load_failure::RenderLoadFailure;
 use crate::contract::render_load_report::RenderLoadReport;
 use crate::contract::render_overlay::RenderOverlay;
 use crate::contract::render_pass_cost::RenderPassCost;
 use crate::contract::render_pool_use::RenderPoolUse;
 use crate::contract::render_rect::RenderRect;
+use crate::contract::render_sector_skip::RenderSectorSkip;
 use crate::contract::render_shadow_settings::RenderShadowSettings;
 use crate::contract::render_spawn_category::RenderSpawnCategory;
 use crate::contract::render_static_report::RenderStaticReport;
@@ -231,6 +234,9 @@ pub struct LevelView {
   pick_view: Option<ViewBinding>,
   surfaces: SurfaceTally,
   failed: u32,
+  /// The sectors that could not be read, and the drawables the packer left out of those that were.
+  failed_sectors: Vec<RenderLoadFailure>,
+  skipped: Vec<RenderSectorSkip>,
   /// Milliseconds the last sector taken in took to put into the scene.
   sector_time: f32,
   reported: Option<RenderLoadReport>,
@@ -342,6 +348,8 @@ impl LevelView {
       pick_view: None,
       surfaces: SurfaceTally::default(),
       failed: 0,
+      failed_sectors: Vec::new(),
+      skipped: Vec::new(),
       sector_time: 0.0,
       reported: None,
       source,
@@ -420,9 +428,16 @@ impl LevelView {
       self.scene.texture_slots.extend(slots);
     }
 
-    for (_, package) in self.loader.take(SECTORS_PER_FRAME) {
+    for (sector, package) in self.loader.take(SECTORS_PER_FRAME) {
       match package {
         Ok((package, tally)) => {
+          self
+            .skipped
+            .extend(package.description.skipped.iter().map(|skip| RenderSectorSkip {
+              sector,
+              skip: skip.clone(),
+            }));
+
           let started: Instant = Instant::now();
 
           self.scene.add_sector(
@@ -437,7 +452,13 @@ impl LevelView {
           self.sector_time = started.elapsed().as_secs_f32() * 1000.0;
           self.surfaces.merge(tally);
         }
-        Err(_) => self.failed += 1,
+        Err(reason) => {
+          self.failed += 1;
+          self.failed_sectors.push(RenderLoadFailure {
+            name: sector.to_string(),
+            reason,
+          });
+        }
       }
     }
 
@@ -1609,6 +1630,20 @@ impl LevelView {
   /// Whether its passes are timed, and each one's mean GPU milliseconds since this was last asked.
   pub fn take_timings(&mut self) -> (bool, Vec<RenderPassCost>) {
     (self.timer.is_timing(), self.timer.take())
+  }
+
+  /// What the level could not draw the way it asked, so far.
+  pub fn describe_problems(&self) -> RenderLevelProblems {
+    RenderLevelProblems {
+      skipped: self.skipped.clone(),
+      sectors: self.failed_sectors.clone(),
+      models: self.spawn.list_failures(),
+    }
+  }
+
+  /// A spawned object's bounding sphere in renderer space, once its model is in the scene.
+  pub fn get_object_sphere(&self, object: u32) -> Option<Vec4> {
+    self.scene.get_object_sphere(object)
   }
 
   /// Milliseconds the last sector taken in took to put into the scene.

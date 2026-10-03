@@ -1,3 +1,4 @@
+use crate::contract::render_load_failure::RenderLoadFailure;
 use crate::host::render_spawn_lighting::RenderSpawnLighting;
 use crate::host::render_spawn_model::RenderSpawnModel;
 
@@ -7,4 +8,6 @@ pub struct RenderSpawnModels {
   pub models: Vec<RenderSpawnModel>,
   /// How the level lights each object standing as one of them; an object it was not estimated for has none.
   pub lighting: Vec<RenderSpawnLighting>,
+  /// The visuals of the batch that could not be read, which their objects are left out for.
+  pub failures: Vec<RenderLoadFailure>,
 }

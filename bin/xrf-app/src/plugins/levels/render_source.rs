@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::sync::{Arc, PoisonError, RwLock};
+use std::time::Instant;
 
 use xrf_chunk::XRayByteOrder;
 use xrf_environment::{WeatherDescriptor, WeatherModifier};
@@ -8,10 +9,10 @@ use xrf_level::{LevelSector, LevelSectorComposition};
 use xrf_ltx::Ltx;
 use xrf_material::XraySurfaceDescriptor;
 use xrf_renderer::{
-  RenderAssetSource, RenderLevelDetails, RenderLevelSource, RenderLevelSpawn, RenderLevelWeather, RenderRain,
-  RenderSpawnCategory, RenderSpawnLighting, RenderSpawnModel, RenderSpawnModels, RenderSpawnObject, RenderThunder,
-  RenderThunderSettings, RenderThunderbolt, RenderThunderboltGradient, RenderThunderboltModel, RenderWeatherModel,
-  RenderWetSurfaces,
+  RenderAssetSource, RenderLevelDetails, RenderLevelSource, RenderLevelSpawn, RenderLevelWeather, RenderLoadFailure,
+  RenderRain, RenderSpawnCategory, RenderSpawnLighting, RenderSpawnModel, RenderSpawnModels, RenderSpawnObject,
+  RenderThunder, RenderThunderSettings, RenderThunderbolt, RenderThunderboltGradient, RenderThunderboltModel,
+  RenderWeatherModel, RenderWetSurfaces,
 };
 use xrf_visual::{LightsDescription, SectorPackage, SectorPacker, VisualPoser, VisualTransform};
 
@@ -22,7 +23,7 @@ use crate::plugins::levels::details::{PackedLevelDetails, pack_details};
 use crate::plugins::levels::drawn_attributes::DRAWN_ATTRIBUTES;
 use crate::plugins::levels::hemi::{estimate_visuals_hemi, get_level_hemi};
 use crate::plugins::levels::lights::{PackedLevelLights, pack_lights};
-use crate::plugins::levels::report::report_missing_sections;
+use crate::plugins::levels::report::{report_missing_sections, report_packed_sector};
 use crate::plugins::levels::spawn::get_level_spawn;
 use crate::plugins::levels::spawn_objects::describe_spawn_objects;
 use crate::plugins::levels::spawn_visuals::SpawnVisualReader;
@@ -112,15 +113,17 @@ impl RenderLevelSource for LevelRenderSource {
       .ok_or_else(|| XrfError::new_not_found_error(format!("The level has no sector {sector}")))?
       .root;
     let composition: LevelSectorComposition = LevelSectorComposition::of(&self.level.visuals, root);
-
-    Ok(
-      SectorPacker::new(
-        &self.level.visuals,
-        self.level.level.shaders.as_ref(),
-        &self.level.geometry,
-      )
-      .pack::<XRayByteOrder>(sector, &composition, DRAWN_ATTRIBUTES),
+    let started: Instant = Instant::now();
+    let package: SectorPackage = SectorPacker::new(
+      &self.level.visuals,
+      self.level.level.shaders.as_ref(),
+      &self.level.geometry,
     )
+    .pack::<XRayByteOrder>(sector, &composition, DRAWN_ATTRIBUTES);
+
+    report_packed_sector(&package, started);
+
+    Ok(package)
   }
 
   fn get_surfaces(&self) -> &[XraySurfaceDescriptor] {
@@ -270,14 +273,25 @@ impl RenderLevelSource for LevelRenderSource {
 
   fn read_spawn_models(&self, names: &[String]) -> XrfResult<RenderSpawnModels> {
     let level: &SelectedLevel = &self.level;
-    let (read, hemi) = self
+    let (read, failures, hemi) = self
       .assets
       .with_probe(&level.roots, |probe| {
         let visuals: SpawnVisualReader = SpawnVisualReader::new(level, probe);
+        let mut failures: Vec<RenderLoadFailure> = Vec::new();
         // A visual that cannot be read is reported by the reader, and left out.
         let read: Vec<(&str, Arc<LevelSpawnVisual>)> = names
           .iter()
-          .filter_map(|name| visuals.get(name).ok().map(|visual| (name.as_str(), visual)))
+          .filter_map(|name| match visuals.get(name) {
+            Ok(visual) => Some((name.as_str(), visual)),
+            Err(error) => {
+              failures.push(RenderLoadFailure {
+                name: name.clone(),
+                reason: error.to_string(),
+              });
+
+              None
+            }
+          })
           .collect();
         let hemi = get_level_hemi(level, probe)
           .map(|estimator| estimate_visuals_hemi(level, probe, &estimator, &read))
@@ -285,7 +299,7 @@ impl RenderLevelSource for LevelRenderSource {
 
         level.spawn_lighting.note_described(names);
 
-        (read, hemi)
+        (read, failures, hemi)
       })
       .map_err(XrfError::new_asset_error)?;
     let mut textures = self.textures.write().unwrap_or_else(PoisonError::into_inner);
@@ -313,6 +327,7 @@ impl RenderLevelSource for LevelRenderSource {
           sky: object.sky,
         })
         .collect(),
+      failures,
     })
   }
 }

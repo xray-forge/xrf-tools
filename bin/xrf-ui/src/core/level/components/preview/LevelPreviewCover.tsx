@@ -2,12 +2,9 @@ import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
-import {
-  ILevelStreamProgress,
-  LevelLoadService,
-  LevelRenderService,
-  LevelViewportService,
-} from "@/core/level/services";
+import { RenderLoadReport } from "@/core/ipc/types/xrf-renderer";
+import { describeLevelLoad } from "@/core/level/lib/load/level-load-progress";
+import { LevelRenderService, LevelViewportService } from "@/core/level/services";
 import { RenderFailureNotice } from "@/core/render/components/overlay/RenderFailureNotice";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { cn } from "@/lib/dom/dom-name";
@@ -29,11 +26,10 @@ export function LevelPreviewCover({
   className,
   isLoading,
 }: ILevelPreviewCoverProps): ReactElement {
-  const loadService: LevelLoadService = useInjection(LevelLoadService);
   const renderService: LevelRenderService = useInjection(LevelRenderService);
   const viewportService: LevelViewportService = useInjection(LevelViewportService);
 
-  const streaming: ILevelStreamProgress = loadService.streaming;
+  const load: Nullable<RenderLoadReport> = viewportService.load;
   const failure: Nullable<string> = renderService.failure;
   const isCovering: boolean = failure !== null || isLoading || !viewportService.isRevealed;
 
@@ -41,8 +37,8 @@ export function LevelPreviewCover({
 
   if (isLoading) {
     label = "Opening level…";
-  } else if (loadService.isStreaming) {
-    label = `Reading sectors, ${streaming.loaded} of ${streaming.total}`;
+  } else if (load && !load.isReady) {
+    label = `${describeLevelLoad(load)}…`;
   }
 
   return (

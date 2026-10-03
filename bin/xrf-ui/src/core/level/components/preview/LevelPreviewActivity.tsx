@@ -2,52 +2,38 @@ import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
+import { RenderLoadReport } from "@/core/ipc/types/xrf-renderer";
 import { LevelPreviewStatus } from "@/core/level/components/preview/LevelPreviewStatus";
+import { describeLevelLoad } from "@/core/level/lib/load/level-load-progress";
 import { ILevelSpawnReport, isLevelSpawnReading } from "@/core/level/lib/spawn";
-import { ILevelStreamProgress, LevelLoadService, LevelViewportService } from "@/core/level/services";
-import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
+import { LevelLoadService, LevelViewportService } from "@/core/level/services";
 
 interface ILevelPreviewActivityProps {
   /** Whether a level is open, which is what the status bar says when nothing is being read. */
   isOpen: boolean;
-  /** Whether the level itself is being opened, which is a different wait from streaming its sectors. */
+  /** Whether the level itself is being opened, which is a different wait from reading what it holds. */
   isLoading: boolean;
 }
 
 /**
- * What the loader is doing: the streaming progress over the viewport, and the activity in the status bar, sectors
- * before spawned models. Its own observer, so a sector arriving redraws this and not the toolbar beside it.
+ * What the loader is doing, in the status bar: the renderer's read of the level, then the spawned objects' listing.
+ * Its own observer, so a sector arriving redraws this and not the toolbar beside it.
  */
 export function LevelPreviewActivity({ isOpen, isLoading }: ILevelPreviewActivityProps): ReactElement {
   const loadService: LevelLoadService = useInjection(LevelLoadService);
   const viewportService: LevelViewportService = useInjection(LevelViewportService);
-  const streaming: ILevelStreamProgress = loadService.streaming;
-  const isStreaming: boolean = loadService.isStreaming;
+  const load: Nullable<RenderLoadReport> = viewportService.load;
   const spawn: ILevelSpawnReport = loadService.spawnReport;
 
   let activity: Nullable<string> = isOpen ? null : "No level open";
 
   if (isLoading) {
     activity = "Opening level";
-  } else if (isStreaming) {
-    activity = `Streaming sector ${Math.min(streaming.loaded + 1, streaming.total)} of ${streaming.total}`;
+  } else if (load && !load.isReady) {
+    activity = describeLevelLoad(load);
   } else if (isLevelSpawnReading(spawn)) {
-    activity = `Reading spawned models, ${spawn.read} of ${spawn.visuals}`;
+    activity = "Listing spawned objects";
   }
 
-  return (
-    <>
-      {!isLoading && isStreaming && viewportService.isRevealed ? (
-        <div className={"pointer-events-none absolute inset-x-0 bottom-0 flex justify-center pb-6"}>
-          <DelayedProgress
-            data-testid={"level-stream-progress"}
-            isOnViewport={true}
-            label={`Streaming sectors, ${streaming.loaded} of ${streaming.total}`}
-          />
-        </div>
-      ) : null}
-
-      <LevelPreviewStatus activity={activity} />
-    </>
-  );
+  return <LevelPreviewStatus activity={activity} />;
 }

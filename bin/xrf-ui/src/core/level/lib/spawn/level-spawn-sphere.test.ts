@@ -1,25 +1,20 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { ILevelSpawnModel } from "@/core/level/lib/render/level-render-protocol";
 import { ILevelSpawnSphere, toLevelSpawnPosition, toLevelSpawnSphere } from "@/core/level/lib/spawn/level-spawn-sphere";
-import { mockLevelSpawnModel, mockLevelSpawnObject } from "@/fixtures/mocks/level.mocks";
+import { mockLevelSpawnObject } from "@/fixtures/mocks/level.mocks";
 import { mockVisualTransform } from "@/fixtures/mocks/visual.mocks";
 
 describe("toLevelSpawnSphere", () => {
-  it("stands its visual's declared sphere where the object stands", () => {
-    const model: ILevelSpawnModel = mockLevelSpawnModel("crate");
-
-    model.description.description.declaredBounds.boundingSphere = { center: { x: 0, y: 0.5, z: 0 }, radius: 0.75 };
-
+  it("takes the sphere the renderer holds for its model", () => {
     const sphere: ILevelSpawnSphere = toLevelSpawnSphere(
       mockLevelSpawnObject({ transform: mockVisualTransform({ x: 10, y: 1, z: -4 }) }),
-      model
+      [10, 1.5, -4, 0.75]
     );
 
     expect(sphere).toEqual({ center: { x: 10, y: 1.5, z: -4 }, radius: 0.75 });
   });
 
-  it("takes a metre about where it stands while its model is read", () => {
+  it("takes a metre about where it stands before its model is drawn", () => {
     expect(
       toLevelSpawnSphere(mockLevelSpawnObject({ transform: mockVisualTransform({ x: 1, y: 2, z: 3 }) }), null)
     ).toEqual({

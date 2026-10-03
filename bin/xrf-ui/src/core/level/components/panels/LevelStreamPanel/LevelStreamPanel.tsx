@@ -1,10 +1,8 @@
 import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
-import { LevelStreamBudgetSection } from "@/core/level/components/panels/LevelStreamPanel/LevelStreamBudgetSection";
 import { LevelStreamFrameSection } from "@/core/level/components/panels/LevelStreamPanel/LevelStreamFrameSection";
 import { LevelStreamLightsSection } from "@/core/level/components/panels/LevelStreamPanel/LevelStreamLightsSection";
-import { LevelStreamReadingSection } from "@/core/level/components/panels/LevelStreamPanel/LevelStreamReadingSection";
 import { LevelStreamResidentSection } from "@/core/level/components/panels/LevelStreamPanel/LevelStreamResidentSection";
 import { LevelStreamStaticDrawsSection } from "@/core/level/components/panels/LevelStreamPanel/LevelStreamStaticDrawsSection";
 import { LevelStreamTexturesSection } from "@/core/level/components/panels/LevelStreamPanel/LevelStreamTexturesSection";
@@ -40,14 +38,11 @@ export function LevelStreamPanel({
     <EditorPanel data-testid={dataTestId} id={id} className={className} title={"Streaming"}>
       <LevelStreamResidentSection stats={stats} />
 
-      <LevelStreamReadingSection stream={loadService.streamProfile} />
       <LevelStreamFrameSection stats={stats} />
       <LevelStreamStaticDrawsSection staticDraws={stats.staticDraws} />
       <LevelStreamLightsSection lights={stats.lights} />
 
       <LevelStreamTexturesSection textures={textures} />
-
-      <LevelStreamBudgetSection bytes={stats.bytes} residency={loadService.residency} />
     </EditorPanel>
   );
 }

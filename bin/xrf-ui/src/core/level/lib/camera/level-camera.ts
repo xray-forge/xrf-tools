@@ -1,6 +1,6 @@
 import { toDegrees } from "@xrf/math";
 
-import { ILevelPoint } from "@/core/level/lib/residency/level-residency";
+import { ILevelPoint } from "@/core/level/lib/camera/level-point";
 import { IXrayHeading } from "@/core/render/lib/scene/render-space";
 import { formatDegrees } from "@/lib/format/angle";
 

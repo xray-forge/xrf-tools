@@ -3,6 +3,7 @@ import { BoundAction, RefObservable } from "@wirestate/mobx";
 import { EMPTY_RENDERER_PASS_TIMINGS, IRendererPassTimings } from "@xrf/renderer";
 import { Nullable } from "@xrf/types";
 
+import { RenderLevelProblems, RenderLoadReport } from "@/core/ipc/types/xrf-renderer";
 import { ILevelCamera } from "@/core/level/lib/camera/level-camera";
 import { TLevelPick } from "@/core/level/lib/pick/level-pick";
 import { EMPTY_LEVEL_STATS, ILevelStats } from "@/core/level/lib/stats/level-stats";
@@ -13,6 +14,9 @@ import { EMPTY_LEVEL_TEXTURE_REPORT, ILevelTextureReport } from "@/core/level/li
  * What the viewport reports about itself while it draws.
  */
 const NO_LEVEL_SURFACES_GEOMETRY: ReadonlyMap<number, ILevelSurfaceGeometry> = new Map();
+
+/** Nothing the level could not draw, which is also what a level not yet resident reports. */
+export const NO_LEVEL_PROBLEMS: RenderLevelProblems = { models: [], sectors: [], skipped: [] };
 
 @Injectable()
 export class LevelViewportService {
@@ -46,6 +50,14 @@ export class LevelViewportService {
   @RefObservable()
   public surfaceGeometry: ReadonlyMap<number, ILevelSurfaceGeometry> = NO_LEVEL_SURFACES_GEOMETRY;
 
+  /** How far the renderer has read the open level and put it on the GPU, or null until it says. */
+  @RefObservable()
+  public load: Nullable<RenderLoadReport> = null;
+
+  /** What the open level could not draw the way it asked, as the renderer said once it was resident. */
+  @RefObservable()
+  public problems: RenderLevelProblems = NO_LEVEL_PROBLEMS;
+
   /** Shows the level, drawn whole. */
   @BoundAction()
   public reveal(): void {
@@ -58,6 +70,24 @@ export class LevelViewportService {
     this.isRevealed = false;
     this.surfaceGeometry = NO_LEVEL_SURFACES_GEOMETRY;
     this.textureReport = EMPTY_LEVEL_TEXTURE_REPORT;
+    this.load = null;
+    this.problems = NO_LEVEL_PROBLEMS;
+  }
+
+  /**
+   * @param report - How far the renderer has read the open level.
+   */
+  @BoundAction()
+  public noteLoad(report: Nullable<RenderLoadReport>): void {
+    this.load = report;
+  }
+
+  /**
+   * @param problems - What the open level could not draw the way it asked.
+   */
+  @BoundAction()
+  public noteProblems(problems: RenderLevelProblems): void {
+    this.problems = problems;
   }
 
   /**
@@ -113,6 +143,8 @@ export class LevelViewportService {
     this.textureReport = EMPTY_LEVEL_TEXTURE_REPORT;
     this.isRevealed = false;
     this.picked = null;
+    this.load = null;
+    this.problems = NO_LEVEL_PROBLEMS;
   }
 
   @OnDeactivation()
