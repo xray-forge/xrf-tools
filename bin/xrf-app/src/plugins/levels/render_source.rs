@@ -262,6 +262,9 @@ impl RenderLevelSource for LevelRenderSource {
       .map_err(XrfError::new_asset_error)?;
     let described = describe_spawn_objects(&spawn);
 
+    // Every visual named is one the renderer's batches describe, and the lighting is held until the last of them is.
+    level.spawn_lighting.expect(&described.visuals);
+
     Ok(RenderLevelSpawn {
       objects: described
         .objects
