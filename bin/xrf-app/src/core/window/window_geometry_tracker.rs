@@ -144,12 +144,9 @@ fn measure_rectangle<R: Runtime>(
 }
 
 fn read_window_state(state: tauri::Result<bool>, name: &str) -> bool {
-  match state {
-    Ok(state) => state,
-    Err(error) => {
-      log::error!("Failed to read whether the main window is {name}: {error}");
+  state.unwrap_or_else(|error| {
+    log::error!("Failed to read whether the main window is {name}: {error}");
 
-      false
-    }
-  }
+    false
+  })
 }
