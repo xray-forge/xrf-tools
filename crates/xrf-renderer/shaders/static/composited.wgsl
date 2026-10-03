@@ -2,6 +2,7 @@ enable dual_source_blending;
 
 #import "static/gbuffer"
 #import "common/hmodel"
+#import "common/sky_box"
 #import "common/sun_shadow"
 
 // Static surfaces composited over the lit frame, as the engine's forward passes draw them after the deferred ones:
@@ -90,7 +91,7 @@ fn model_composited(in: GBufferVarying, surface: Surface, base: vec4<f32>) -> Co
 
   let rotation: mat3x3<f32> = transpose(mat3x3<f32>(camera.view[0].xyz, camera.view[1].xyz, camera.view[2].xyz));
   let reflected: vec3<f32> = reflect(normalize(rotation * position), normalize(rotation * normalize(in.normal)));
-  let lookup: vec3<f32> = vec3<f32>(reflected.x, reflected.y, -reflected.z);
+  let lookup: vec3<f32> = cube_lookup(reflected);
   var reflection: vec3<f32> = mix(textureSampleLevel(sky_cube_0, sky_clamp, lookup, 0.0).rgb,
     textureSampleLevel(sky_cube_1, sky_clamp, lookup, 0.0).rgb, lighting.sky.w);
 

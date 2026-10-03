@@ -1,4 +1,5 @@
 #import "common/lighting"
+#import "common/sky_box"
 
 // The engine's `hmodel` and `combine_1`, for every pass that lights a surface as the deferred frame does. The irradiance
 // cubes and the material table come in as arguments, so each pass binds them where it likes.
@@ -12,7 +13,7 @@ fn material_lookup(table: texture_3d<f32>, table_sampler: sampler, x: f32, y: f3
 // stand-in until both cubes are up. The cubes take the engine's coordinate, whose `z` is the renderer's negated.
 fn hemisphere_environment(state: Lighting, cube_0: texture_cube<f32>, cube_1: texture_cube<f32>, cube_sampler: sampler,
   direction: vec3<f32>) -> vec3<f32> {
-  let lookup: vec3<f32> = vec3<f32>(direction.x, direction.y, -direction.z);
+  let lookup: vec3<f32> = cube_lookup(direction);
   let cubes: vec3<f32> = mix(
     textureSampleLevel(cube_0, cube_sampler, lookup, 0.0).rgb,
     textureSampleLevel(cube_1, cube_sampler, lookup, 0.0).rgb,
