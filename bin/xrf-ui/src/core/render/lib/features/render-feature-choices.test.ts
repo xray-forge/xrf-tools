@@ -1,8 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { FRAME_RATE_LIMITS } from "@/core/render/lib/contract/frame-rate-limit";
-import { RENDER_RESOLUTIONS } from "@/core/render/lib/contract/render-resolution";
-import { DEFAULT_RENDERER_GRASS_SETTINGS } from "@/core/render/lib/contract/renderer-grass-settings";
 import {
   formatLowLuminance,
   formatShadowBias,
@@ -14,11 +11,14 @@ import {
   RENDER_RESOLUTION_OPTIONS,
   toGrassDensityScale,
 } from "@/core/render/lib/features/render-feature-choices";
+import { DEFAULT_RENDER_GRASS_SETTINGS } from "@/core/render/lib/settings/render-feature-defaults";
+import { FRAME_RATE_LIMITS } from "@/core/render/lib/settings/render-frame-rate-limit";
+import { RENDER_RESOLUTIONS } from "@/core/render/lib/settings/render-resolution";
 
 describe("grass density scale", () => {
   // The engine's density is a spacing: 0.99 its sparsest and 0.6 its own; the settings stop at 0.2, three times it.
   it("offers the engine's density as how many times the game's the grass stands, higher denser", () => {
-    expect(toGrassDensityScale(DEFAULT_RENDERER_GRASS_SETTINGS.density)).toBe(1);
+    expect(toGrassDensityScale(DEFAULT_RENDER_GRASS_SETTINGS.density)).toBe(1);
     expect(toGrassDensityScale(0.3)).toBeCloseTo(2, 10);
     expect(RENDER_GRASS_LIMITS.density.max).toBeCloseTo(3, 10);
     expect(fromGrassDensityScale(RENDER_GRASS_LIMITS.density.max)).toBeCloseTo(0.2, 10);

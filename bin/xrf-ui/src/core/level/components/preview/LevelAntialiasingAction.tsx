@@ -2,21 +2,21 @@ import { default as DeblurIcon } from "@mui/icons-material/Deblur";
 import { Button } from "@mui/material";
 import { ReactElement } from "react";
 
+import { ERenderAntialiasing, RenderAntialiasing } from "@/core/ipc/types/xrf-renderer";
 import { describeLevelFeatureToggle, ILevelFeatureOptions, LEVEL_ANTIALIASING_MODES } from "@/core/level/lib/features";
 import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
-import { ERendererAntialiasing } from "@/core/render/lib/contract/renderer-antialiasing";
 import { describeRenderAntialiasing, IRenderChoiceOption } from "@/core/render/lib/features";
 import { EditorPopoverToggle } from "@/core/shell/editor/EditorPopoverToggle";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
-const MODE_OPTIONS: ReadonlyArray<IRenderChoiceOption<ERendererAntialiasing>> = LEVEL_ANTIALIASING_MODES.map(
-  (value: ERendererAntialiasing) => ({ label: describeRenderAntialiasing(value), value })
+const MODE_OPTIONS: ReadonlyArray<IRenderChoiceOption<RenderAntialiasing>> = LEVEL_ANTIALIASING_MODES.map(
+  (value: RenderAntialiasing) => ({ label: describeRenderAntialiasing(value), value })
 );
 
 interface ILevelAntialiasingActionProps extends BaseComponentProps {
   isOn: boolean;
   /** The mode the settings smooth with, which this view can only narrow to none. */
-  settingsMode: ERendererAntialiasing;
+  settingsMode: RenderAntialiasing;
   features: ILevelFeatureOptions;
   onToggle: () => void;
   onChange: (features: ILevelFeatureOptions) => void;
@@ -35,8 +35,8 @@ export function LevelAntialiasingAction({
   onToggle,
   onChange,
 }: ILevelAntialiasingActionProps): ReactElement {
-  const isAvailable: boolean = settingsMode !== ERendererAntialiasing.NONE;
-  const mode: ERendererAntialiasing = features.antialiasing ?? settingsMode;
+  const isAvailable: boolean = settingsMode !== ERenderAntialiasing.NONE;
+  const mode: RenderAntialiasing = features.antialiasing ?? settingsMode;
 
   return (
     <EditorPopoverToggle
@@ -61,7 +61,7 @@ export function LevelAntialiasingAction({
         label={"Mode"}
         options={MODE_OPTIONS}
         value={mode}
-        onChange={(antialiasing: ERendererAntialiasing) => onChange({ ...features, antialiasing })}
+        onChange={(antialiasing: RenderAntialiasing) => onChange({ ...features, antialiasing })}
       />
 
       <Button size={"small"} onClick={() => onChange({ ...features, antialiasing: null })}>

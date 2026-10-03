@@ -1,8 +1,8 @@
 import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
-import { IRendererExposureSettings } from "@/core/render/lib/contract/renderer-exposure-settings";
 import { formatExposure, formatLowLuminance, RENDER_EXPOSURE_LIMITS } from "@/core/render/lib/features";
+import { TRenderExposureSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { SettingsService } from "@/core/settings/services/settings";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { SliderFormRow } from "@/core/ui/form/SliderFormRow";
@@ -14,7 +14,7 @@ import { useRendererOverride } from "./use-renderer-override";
 export function SettingsRendererExposure(): ReactElement {
   const settingsService: SettingsService = useInjection(SettingsService);
 
-  const exposure: IRendererExposureSettings = settingsService.rendererFeatures.exposure;
+  const exposure: TRenderExposureSettings = settingsService.rendererFeatures.exposure;
 
   const onSet = useRendererOverride("exposure");
 

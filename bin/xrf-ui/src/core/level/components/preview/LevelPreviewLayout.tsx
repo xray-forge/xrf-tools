@@ -37,7 +37,7 @@ import {
   LevelViewService,
   LevelWeatherService,
 } from "@/core/level/services";
-import { IRendererFeatureSettings } from "@/core/render/lib/contract/renderer-feature-settings";
+import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { SettingsService } from "@/core/settings/services/settings";
 import { EditorFileHeader } from "@/core/shell/editor/EditorFileHeader";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
@@ -96,7 +96,7 @@ export function LevelPreviewLayout({
 
   const isOpen: boolean = Boolean(name);
   const heading: Nullable<string> = name ?? pending;
-  const settings: IRendererFeatureSettings = settingsService.rendererFeatures;
+  const settings: IRenderFeatureSettings = settingsService.rendererFeatures;
   const features: ILevelFeatureOptions = viewService.features;
 
   // Stable between changes of their own, so the toolbar redraws for a toggle and for nothing else.

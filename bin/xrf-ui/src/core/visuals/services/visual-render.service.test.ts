@@ -216,9 +216,9 @@ describe("VisualRenderService", () => {
       report: { framesPerSecond: 60, passes: [{ gpuTime: 1, name: "g-buffer" }], staticDraws: { commands: 4 } },
     } as unknown as RenderViewportEvent);
 
-    expect(service.frameCost.draws).toBe(4);
-    expect(service.frameCost.framesPerSecond).toBe(60);
-    expect(service.timings.passes).toEqual([{ gpuTime: 1, name: "g-buffer" }]);
+    expect(service.frame.staticDraws.commands).toBe(4);
+    expect(service.frame.framesPerSecond).toBe(60);
+    expect(service.frame.passes).toEqual([{ gpuTime: 1, name: "g-buffer" }]);
 
     service.dispose();
     await flush();

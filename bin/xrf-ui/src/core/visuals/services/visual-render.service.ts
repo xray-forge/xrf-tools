@@ -1,18 +1,14 @@
 import { inject, Injectable } from "@wirestate/core";
-import { BoundAction, comparer, reaction, RefObservable, runInAction } from "@wirestate/mobx";
+import { BoundAction, comparer, reaction } from "@wirestate/mobx";
 import { Nullable } from "@xrf/types";
 
 import {
   ERenderCameraCommand,
-  RenderFrameReport,
   RenderLoadReport,
   RenderModelPose,
   RenderTextureReport,
   RenderViewOptions,
 } from "@/core/ipc/types/xrf-renderer";
-import { EMPTY_RENDER_FRAME_COST, IRenderFrameCost } from "@/core/render/lib/contract/render-frame-cost";
-import { EMPTY_RENDERER_PASS_TIMINGS, IRendererPassTimings } from "@/core/render/lib/contract/renderer-pass-timings";
-import { toNativeFrameCost, toNativePassTimings } from "@/core/render/lib/native/native-frame-report";
 import { NativeRenderSurfaceService } from "@/core/render/lib/native/native-render-surface-service";
 import { toNativeRenderHeight } from "@/core/render/lib/native/native-view-options";
 import { NativeViewport } from "@/core/render/lib/native/native-viewport";
@@ -31,14 +27,6 @@ import { Logger } from "@/lib/logging";
 @Injectable()
 export class VisualRenderService extends NativeRenderSurfaceService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
-
-  /** What the viewport's recent frames cost, for the readout. */
-  @RefObservable()
-  public frameCost: IRenderFrameCost = EMPTY_RENDER_FRAME_COST;
-
-  /** What each of its passes cost on the GPU, for the readout. */
-  @RefObservable()
-  public timings: IRendererPassTimings = EMPTY_RENDERER_PASS_TIMINGS;
 
   private readonly config: IVisualPreviewSceneConfig = DEFAULT_VISUAL_PREVIEW_SCENE_CONFIG;
 
@@ -67,7 +55,7 @@ export class VisualRenderService extends NativeRenderSurfaceService {
 
   /** Frames the open model again. */
   public resetCamera(): void {
-    this.frame();
+    this.fitCamera();
   }
 
   protected start(viewport: NativeViewport): Array<() => void> {
@@ -84,7 +72,7 @@ export class VisualRenderService extends NativeRenderSurfaceService {
             this.viewService.options,
             this.viewService.lighting,
             this.config,
-            this.settingsService.sharedRenderSettings,
+            this.settingsService.rendererFeatures,
             toNativeRenderHeight(this.settingsService.renderResolution)
           ),
         (options: RenderViewOptions) => viewport.setViewOptions(options),
@@ -116,13 +104,6 @@ export class VisualRenderService extends NativeRenderSurfaceService {
     ];
   }
 
-  protected onFrame(report: RenderFrameReport): void {
-    runInAction(() => {
-      this.frameCost = toNativeFrameCost(report);
-      this.timings = toNativePassTimings(report);
-    });
-  }
-
   protected onLoad(report: RenderLoadReport): void {
     const sessionId: Nullable<string> = this.source.sessionId;
 
@@ -139,11 +120,6 @@ export class VisualRenderService extends NativeRenderSurfaceService {
   protected release(): void {
     this.hasFramed = false;
     this.hasDescribed = false;
-
-    runInAction(() => {
-      this.frameCost = EMPTY_RENDER_FRAME_COST;
-      this.timings = EMPTY_RENDERER_PASS_TIMINGS;
-    });
   }
 
   private showModel(sessionId: Nullable<string>, detail: number): void {
@@ -162,11 +138,11 @@ export class VisualRenderService extends NativeRenderSurfaceService {
     }
 
     this.hasFramed = true;
-    this.frame();
+    this.fitCamera();
   }
 
   /** Fits the camera to the open model: described, then reset, since the same start again keeps the camera turned. */
-  private frame(): void {
+  private fitCamera(): void {
     const model: Nullable<IVisualModelViews> = this.source.model;
 
     if (model && this.viewport) {

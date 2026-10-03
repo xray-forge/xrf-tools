@@ -14,7 +14,7 @@ import { InvokeMap, resetMockInvoke, setMockInvokeResponses } from "@/fixtures/m
 import {
   mockLevelWeatherCycle,
   mockLevelWeatherDescription,
-  mockRendererWeatherReport,
+  mockRenderWeatherReport,
 } from "@/fixtures/mocks/weather.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
@@ -153,7 +153,7 @@ describe("LevelWeatherPanel", () => {
     expect(weather.effect).toEqual({ name: "fx_blowout" });
 
     act(() =>
-      weather.noteReport(mockRendererWeatherReport({ effect: { name: "fx_blowout", remaining: 125 }, time: 43_300 }))
+      weather.noteReport(mockRenderWeatherReport({ effect: { name: "fx_blowout", remaining: 125 }, time: 43_300 }))
     );
 
     await waitFor(() =>
@@ -194,7 +194,7 @@ describe("LevelWeatherPanel", () => {
 
     expect(section()).toMatch(/Volumes\s*1.*Around the camera\s*0/);
 
-    act(() => weather.noteReport(mockRendererWeatherReport({ modifiers: 1, weight: 1 })));
+    act(() => weather.noteReport(mockRenderWeatherReport({ modifiers: 1, weight: 1 })));
 
     await waitFor(() => expect(section()).toMatch(/Around the camera\s*1/));
   });

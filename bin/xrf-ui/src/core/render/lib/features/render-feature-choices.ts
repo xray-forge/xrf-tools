@@ -1,13 +1,21 @@
-import { FRAME_RATE_LIMITS, TFrameRateLimit } from "@/core/render/lib/contract/frame-rate-limit";
-import { ERenderResolution, RENDER_RESOLUTIONS } from "@/core/render/lib/contract/render-resolution";
-import { ERendererAmbientOcclusionQuality } from "@/core/render/lib/contract/renderer-ambient-occlusion-quality";
-import { ERendererAntialiasing } from "@/core/render/lib/contract/renderer-antialiasing";
-import { RENDERER_FEATURE_SCHEMA } from "@/core/render/lib/contract/renderer-feature-schema";
-import { DEFAULT_RENDERER_GRASS_SETTINGS } from "@/core/render/lib/contract/renderer-grass-settings";
-import { ERendererLightShadowFilter } from "@/core/render/lib/contract/renderer-light-shadow-filter";
-import { IRendererNumberField } from "@/core/render/lib/contract/renderer-number-field";
-import { ERendererRenderScale } from "@/core/render/lib/contract/renderer-render-scale";
-import { RENDERER_SHADOW_CASCADE_WIDTHS } from "@/core/render/lib/contract/renderer-shadow-settings";
+import {
+  ERenderAmbientOcclusionQuality,
+  ERenderAntialiasing,
+  ERenderLightShadowFilter,
+  ERenderScale,
+  RenderAmbientOcclusionQuality,
+  RenderAntialiasing,
+  RenderLightShadowFilter,
+  RenderScale,
+} from "@/core/ipc/types/xrf-renderer";
+import {
+  DEFAULT_RENDER_GRASS_SETTINGS,
+  RENDER_SHADOW_CASCADE_WIDTHS,
+} from "@/core/render/lib/settings/render-feature-defaults";
+import { RENDER_FEATURE_SCHEMA } from "@/core/render/lib/settings/render-feature-schema";
+import { FRAME_RATE_LIMITS, TFrameRateLimit } from "@/core/render/lib/settings/render-frame-rate-limit";
+import { ERenderResolution, RENDER_RESOLUTIONS } from "@/core/render/lib/settings/render-resolution";
+import { IRenderNumberField } from "@/core/render/lib/settings/render-setting-field";
 import { formatNumber, formatPercent } from "@/lib/format/number";
 
 /** One value a choice offers, in display order: what Settings and the toolbar popovers both list. */
@@ -28,13 +36,13 @@ export interface IRenderLimits {
  * @param step - The step it is offered by.
  * @returns Its bounds as the renderer holds them, the step as offered.
  */
-function toRenderLimits(field: IRendererNumberField, step: number): IRenderLimits {
+function toRenderLimits(field: IRenderNumberField, step: number): IRenderLimits {
   return { max: field.max, min: field.min, step };
 }
 
 /** How many cascades are offered, as counts. */
 export const RENDER_SHADOW_CASCADE_OPTIONS: ReadonlyArray<IRenderChoiceOption<string>> =
-  RENDERER_SHADOW_CASCADE_WIDTHS.map((_, index: number) => ({ label: String(index + 1), value: String(index + 1) }));
+  RENDER_SHADOW_CASCADE_WIDTHS.map((_, index: number) => ({ label: String(index + 1), value: String(index + 1) }));
 
 /** The map resolutions offered, in texels across. */
 const RENDER_SHADOW_RESOLUTIONS: ReadonlyArray<number> = [1024, 2048, 4096];
@@ -44,10 +52,10 @@ export const RENDER_SHADOW_RESOLUTION_OPTIONS: ReadonlyArray<IRenderChoiceOption
 
 /** The bounds each shadow value is offered between. */
 export const RENDER_SHADOW_LIMITS = {
-  bias: toRenderLimits(RENDERER_FEATURE_SCHEMA.shadows.bias, 0.25),
-  blend: toRenderLimits(RENDERER_FEATURE_SCHEMA.shadows.blend, 0.01),
-  filter: toRenderLimits(RENDERER_FEATURE_SCHEMA.shadows.filter, 1),
-  reach: toRenderLimits(RENDERER_FEATURE_SCHEMA.shadows.reach, 50),
+  bias: toRenderLimits(RENDER_FEATURE_SCHEMA.shadows.bias, 0.25),
+  blend: toRenderLimits(RENDER_FEATURE_SCHEMA.shadows.blend, 0.01),
+  filter: toRenderLimits(RENDER_FEATURE_SCHEMA.shadows.filter, 1),
+  reach: toRenderLimits(RENDER_FEATURE_SCHEMA.shadows.reach, 50),
 } as const;
 
 /**
@@ -77,7 +85,7 @@ export function formatShadowReach(reach: number): string {
 }
 
 /** The engine's grass density, `r__detail_density`, which is a spacing: a smaller one plants more. */
-const GAME_GRASS_DENSITY: number = DEFAULT_RENDERER_GRASS_SETTINGS.density;
+const GAME_GRASS_DENSITY: number = DEFAULT_RENDER_GRASS_SETTINGS.density;
 
 /**
  * @param density - The engine's density, a spacing between tufts.
@@ -101,12 +109,12 @@ export function fromGrassDensityScale(scale: number): number {
  */
 export const RENDER_GRASS_LIMITS = {
   density: {
-    max: toGrassDensityScale(RENDERER_FEATURE_SCHEMA.grass.density.min),
-    min: toGrassDensityScale(RENDERER_FEATURE_SCHEMA.grass.density.max),
+    max: toGrassDensityScale(RENDER_FEATURE_SCHEMA.grass.density.min),
+    min: toGrassDensityScale(RENDER_FEATURE_SCHEMA.grass.density.max),
     step: 0.05,
   },
-  height: toRenderLimits(RENDERER_FEATURE_SCHEMA.grass.height, 0.1),
-  radius: toRenderLimits(RENDERER_FEATURE_SCHEMA.grass.radius, 1),
+  height: toRenderLimits(RENDER_FEATURE_SCHEMA.grass.height, 0.1),
+  radius: toRenderLimits(RENDER_FEATURE_SCHEMA.grass.radius, 1),
 } as const;
 
 /** @returns A grass density as the settings offer it: how many times the game's. */
@@ -125,10 +133,7 @@ export function formatGrassHeight(height: number): string {
 }
 
 /** How far the upscaled frame's sharpening goes. */
-export const RENDER_SHARPENING_LIMITS: IRenderLimits = toRenderLimits(
-  RENDERER_FEATURE_SCHEMA.upscaling.sharpening,
-  0.05
-);
+export const RENDER_SHARPENING_LIMITS: IRenderLimits = toRenderLimits(RENDER_FEATURE_SCHEMA.upscaling.sharpening, 0.05);
 
 /** @returns How much the upscaled frame is sharpened. */
 export function formatSharpening(sharpening: number): string {
@@ -137,8 +142,8 @@ export function formatSharpening(sharpening: number): string {
 
 /** The bounds each ambient occlusion value is offered between. */
 export const RENDER_AMBIENT_OCCLUSION_LIMITS = {
-  radius: toRenderLimits(RENDERER_FEATURE_SCHEMA.ambientOcclusion.radius, 0.25),
-  strength: toRenderLimits(RENDERER_FEATURE_SCHEMA.ambientOcclusion.strength, 0.1),
+  radius: toRenderLimits(RENDER_FEATURE_SCHEMA.ambientOcclusion.radius, 0.25),
+  strength: toRenderLimits(RENDER_FEATURE_SCHEMA.ambientOcclusion.strength, 0.1),
 } as const;
 
 /** @returns An occlusion radius, in metres. */
@@ -148,10 +153,10 @@ export function formatOcclusionRadius(radius: number): string {
 
 /** The bounds each exposure value is offered between: the console's own. */
 export const RENDER_EXPOSURE_LIMITS = {
-  adaptation: toRenderLimits(RENDERER_FEATURE_SCHEMA.exposure.adaptation, 0.01),
-  amount: toRenderLimits(RENDERER_FEATURE_SCHEMA.exposure.amount, 0.05),
-  lowLuminance: toRenderLimits(RENDERER_FEATURE_SCHEMA.exposure.lowLuminance, 0.0001),
-  middleGray: toRenderLimits(RENDERER_FEATURE_SCHEMA.exposure.middleGray, 0.05),
+  adaptation: toRenderLimits(RENDER_FEATURE_SCHEMA.exposure.adaptation, 0.01),
+  amount: toRenderLimits(RENDER_FEATURE_SCHEMA.exposure.amount, 0.05),
+  lowLuminance: toRenderLimits(RENDER_FEATURE_SCHEMA.exposure.lowLuminance, 0.0001),
+  middleGray: toRenderLimits(RENDER_FEATURE_SCHEMA.exposure.middleGray, 0.05),
 } as const;
 
 /** @returns An exposure value that reads in hundredths: its middle gray, amount or adaptation speed. */
@@ -166,11 +171,11 @@ export function formatLowLuminance(luminance: number): string {
 
 /** The bounds each water value is offered between. */
 export const RENDER_WATER_LIMITS = {
-  distortion: toRenderLimits(RENDERER_FEATURE_SCHEMA.water.distortion, 0.005),
-  reflection: toRenderLimits(RENDERER_FEATURE_SCHEMA.water.reflection, 0.05),
-  ripple: toRenderLimits(RENDERER_FEATURE_SCHEMA.water.ripple, 0.05),
-  waveHeight: toRenderLimits(RENDERER_FEATURE_SCHEMA.water.waveHeight, 0.001),
-  waveSpeed: toRenderLimits(RENDERER_FEATURE_SCHEMA.water.waveSpeed, 1),
+  distortion: toRenderLimits(RENDER_FEATURE_SCHEMA.water.distortion, 0.005),
+  reflection: toRenderLimits(RENDER_FEATURE_SCHEMA.water.reflection, 0.05),
+  ripple: toRenderLimits(RENDER_FEATURE_SCHEMA.water.ripple, 0.05),
+  waveHeight: toRenderLimits(RENDER_FEATURE_SCHEMA.water.waveHeight, 0.001),
+  waveSpeed: toRenderLimits(RENDER_FEATURE_SCHEMA.water.waveSpeed, 1),
 } as const;
 
 /** @returns A wave's height, in centimetres, which is the size the engine's are. */
@@ -198,93 +203,86 @@ export function formatOcclusionStrength(strength: number): string {
   return formatNumber(strength, 1);
 }
 
+const RENDER_SCALE_NAMES: Readonly<Record<RenderScale, string>> = {
+  [ERenderScale.NATIVE]: "Native",
+  [ERenderScale.QUALITY]: "Quality",
+  [ERenderScale.BALANCED]: "Balanced",
+  [ERenderScale.PERFORMANCE]: "Performance",
+};
+
 /**
  * @param scale - A render scale.
  * @returns Its name as the settings say it, with the share of each side it draws.
  */
-export function describeRenderScale(scale: ERendererRenderScale): string {
-  switch (scale) {
-    case ERendererRenderScale.NATIVE:
-      return "Native";
-    case ERendererRenderScale.QUALITY:
-      return "Quality";
-    case ERendererRenderScale.BALANCED:
-      return "Balanced";
-    case ERendererRenderScale.PERFORMANCE:
-      return "Performance";
-  }
+export function describeRenderScale(scale: RenderScale): string {
+  return RENDER_SCALE_NAMES[scale];
 }
 
 /** The render scales, in the order they are offered. */
-export const RENDER_SCALE_OPTIONS: ReadonlyArray<IRenderChoiceOption<ERendererRenderScale>> = Object.values(
-  ERendererRenderScale
-).map((value: ERendererRenderScale) => ({ label: describeRenderScale(value), value }));
+export const RENDER_SCALE_OPTIONS: ReadonlyArray<IRenderChoiceOption<RenderScale>> = Object.values(ERenderScale).map(
+  (value: RenderScale) => ({ label: describeRenderScale(value), value })
+);
+
+const RENDER_AMBIENT_OCCLUSION_QUALITY_NAMES: Readonly<Record<RenderAmbientOcclusionQuality, string>> = {
+  [ERenderAmbientOcclusionQuality.LOW]: "Low",
+  [ERenderAmbientOcclusionQuality.MEDIUM]: "Medium",
+  [ERenderAmbientOcclusionQuality.HIGH]: "High",
+  [ERenderAmbientOcclusionQuality.ULTRA]: "Ultra",
+};
 
 /**
  * @param quality - An ambient occlusion quality.
  * @returns Its name as the settings say it.
  */
-export function describeRenderAmbientOcclusionQuality(quality: ERendererAmbientOcclusionQuality): string {
-  switch (quality) {
-    case ERendererAmbientOcclusionQuality.LOW:
-      return "Low";
-    case ERendererAmbientOcclusionQuality.MEDIUM:
-      return "Medium";
-    case ERendererAmbientOcclusionQuality.HIGH:
-      return "High";
-    case ERendererAmbientOcclusionQuality.ULTRA:
-      return "Ultra";
-  }
+export function describeRenderAmbientOcclusionQuality(quality: RenderAmbientOcclusionQuality): string {
+  return RENDER_AMBIENT_OCCLUSION_QUALITY_NAMES[quality];
 }
 
 /** The ambient occlusion qualities, in the order they are offered. */
 export const RENDER_AMBIENT_OCCLUSION_QUALITY_OPTIONS: ReadonlyArray<
-  IRenderChoiceOption<ERendererAmbientOcclusionQuality>
-> = Object.values(ERendererAmbientOcclusionQuality).map((value: ERendererAmbientOcclusionQuality) => ({
+  IRenderChoiceOption<RenderAmbientOcclusionQuality>
+> = Object.values(ERenderAmbientOcclusionQuality).map((value: RenderAmbientOcclusionQuality) => ({
   label: describeRenderAmbientOcclusionQuality(value),
   value,
 }));
+
+const RENDER_ANTIALIASING_NAMES: Readonly<Record<RenderAntialiasing, string>> = {
+  [ERenderAntialiasing.NONE]: "None",
+  [ERenderAntialiasing.FXAA]: "FXAA",
+  [ERenderAntialiasing.SMAA]: "SMAA",
+  [ERenderAntialiasing.TAA]: "TAA",
+  [ERenderAntialiasing.FSR2]: "FSR 2",
+};
 
 /**
  * @param mode - An antialiasing mode.
  * @returns Its name as the settings say it.
  */
-export function describeRenderAntialiasing(mode: ERendererAntialiasing): string {
-  switch (mode) {
-    case ERendererAntialiasing.NONE:
-      return "None";
-    case ERendererAntialiasing.FXAA:
-      return "FXAA";
-    case ERendererAntialiasing.SMAA:
-      return "SMAA";
-    case ERendererAntialiasing.TAA:
-      return "TAA";
-    case ERendererAntialiasing.FSR2:
-      return "FSR 2";
-  }
+export function describeRenderAntialiasing(mode: RenderAntialiasing): string {
+  return RENDER_ANTIALIASING_NAMES[mode];
 }
 
 /** Every antialiasing mode, in the order they are offered. */
-export const RENDER_ANTIALIASING_OPTIONS: ReadonlyArray<IRenderChoiceOption<ERendererAntialiasing>> = Object.values(
-  ERendererAntialiasing
-).map((value: ERendererAntialiasing) => ({ label: describeRenderAntialiasing(value), value }));
+export const RENDER_ANTIALIASING_OPTIONS: ReadonlyArray<IRenderChoiceOption<RenderAntialiasing>> = Object.values(
+  ERenderAntialiasing
+).map((value: RenderAntialiasing) => ({ label: describeRenderAntialiasing(value), value }));
+
+const RENDER_LIGHT_SHADOW_FILTER_NAMES: Readonly<Record<RenderLightShadowFilter, string>> = {
+  [ERenderLightShadowFilter.ENGINE]: "Engine",
+  [ERenderLightShadowFilter.SOFT]: "Soft",
+};
 
 /**
  * @param filter - How a light's shadow is filtered.
  * @returns Its name as the settings say it.
  */
-export function describeRenderLightShadowFilter(filter: ERendererLightShadowFilter): string {
-  switch (filter) {
-    case ERendererLightShadowFilter.ENGINE:
-      return "Engine";
-    case ERendererLightShadowFilter.SOFT:
-      return "Soft";
-  }
+export function describeRenderLightShadowFilter(filter: RenderLightShadowFilter): string {
+  return RENDER_LIGHT_SHADOW_FILTER_NAMES[filter];
 }
 
 /** The filters a light's shadow is offered in, in the order they are offered. */
-export const RENDER_LIGHT_SHADOW_FILTER_OPTIONS: ReadonlyArray<IRenderChoiceOption<ERendererLightShadowFilter>> =
-  Object.values(ERendererLightShadowFilter).map((value: ERendererLightShadowFilter) => ({
+export const RENDER_LIGHT_SHADOW_FILTER_OPTIONS: ReadonlyArray<IRenderChoiceOption<RenderLightShadowFilter>> =
+  Object.values(ERenderLightShadowFilter).map((value: RenderLightShadowFilter) => ({
     label: describeRenderLightShadowFilter(value),
     value,
   }));

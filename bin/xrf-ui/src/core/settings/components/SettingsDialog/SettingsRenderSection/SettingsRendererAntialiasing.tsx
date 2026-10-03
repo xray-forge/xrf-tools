@@ -1,15 +1,14 @@
 import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
-import { ERendererAntialiasing } from "@/core/render/lib/contract/renderer-antialiasing";
-import { IRendererFeatureSettings } from "@/core/render/lib/contract/renderer-feature-settings";
-import { ERendererRenderScale } from "@/core/render/lib/contract/renderer-render-scale";
+import { ERenderScale, RenderAntialiasing, RenderScale } from "@/core/ipc/types/xrf-renderer";
 import {
   formatSharpening,
   RENDER_ANTIALIASING_OPTIONS,
   RENDER_SCALE_OPTIONS,
   RENDER_SHARPENING_LIMITS,
 } from "@/core/render/lib/features";
+import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { SettingsService } from "@/core/settings/services/settings";
 import { ChoiceFormRow } from "@/core/ui/form/ChoiceFormRow";
 import { SliderFormRow } from "@/core/ui/form/SliderFormRow";
@@ -19,7 +18,7 @@ import { DetailSection } from "@/core/ui/layout/DetailSection";
 export function SettingsRendererAntialiasing(): ReactElement {
   const settingsService: SettingsService = useInjection(SettingsService);
 
-  const features: IRendererFeatureSettings = settingsService.rendererFeatures;
+  const features: IRenderFeatureSettings = settingsService.rendererFeatures;
 
   return (
     <DetailSection title={"Antialiasing and upscaling"} description={"Edge smoothing and internal render scale."}>
@@ -32,7 +31,7 @@ export function SettingsRendererAntialiasing(): ReactElement {
           }
           options={RENDER_ANTIALIASING_OPTIONS}
           value={features.antialiasing}
-          onChange={(antialiasing: ERendererAntialiasing) => settingsService.setRendererOverrides({ antialiasing })}
+          onChange={(antialiasing: RenderAntialiasing) => settingsService.setRendererOverrides({ antialiasing })}
         />
 
         <ChoiceFormRow
@@ -43,7 +42,7 @@ export function SettingsRendererAntialiasing(): ReactElement {
           }
           options={RENDER_SCALE_OPTIONS}
           value={features.upscaling.scale}
-          onChange={(scale: ERendererRenderScale) => settingsService.setRendererOverrides({ upscaling: { scale } })}
+          onChange={(scale: RenderScale) => settingsService.setRendererOverrides({ upscaling: { scale } })}
         />
 
         <SliderFormRow
@@ -51,7 +50,7 @@ export function SettingsRendererAntialiasing(): ReactElement {
           description={"RCAS sharpening after upscaling. Inactive at native scale."}
           value={features.upscaling.sharpening}
           {...RENDER_SHARPENING_LIMITS}
-          isDisabled={features.upscaling.scale === ERendererRenderScale.NATIVE}
+          isDisabled={features.upscaling.scale === ERenderScale.NATIVE}
           format={formatSharpening}
           onChange={(sharpening: number) => settingsService.setRendererOverrides({ upscaling: { sharpening } })}
         />

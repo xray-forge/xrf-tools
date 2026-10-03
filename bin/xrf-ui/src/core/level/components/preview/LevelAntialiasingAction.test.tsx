@@ -1,9 +1,9 @@
 import { describe, expect, it, jest } from "@jest/globals";
 import { userEvent } from "@testing-library/user-event";
 
+import { ERenderAntialiasing } from "@/core/ipc/types/xrf-renderer";
 import { LevelAntialiasingAction } from "@/core/level/components/preview/LevelAntialiasingAction";
 import { ILevelFeatureOptions } from "@/core/level/lib/features/level-feature-options";
-import { ERendererAntialiasing } from "@/core/render/lib/contract/renderer-antialiasing";
 import { mockLevelFeatureOptions } from "@/fixtures/mocks/level.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
@@ -13,7 +13,7 @@ describe("LevelAntialiasingAction", () => {
     const { getByRole, findByRole } = renderWithProviders(
       <LevelAntialiasingAction
         isOn
-        settingsMode={ERendererAntialiasing.SMAA}
+        settingsMode={ERenderAntialiasing.SMAA}
         features={mockLevelFeatureOptions()}
         onToggle={() => {}}
         onChange={onChange}
@@ -26,7 +26,7 @@ describe("LevelAntialiasingAction", () => {
 
     expect(onChange).toHaveBeenLastCalledWith({
       ...mockLevelFeatureOptions(),
-      antialiasing: ERendererAntialiasing.FXAA,
+      antialiasing: ERenderAntialiasing.FXAA,
     });
 
     await userEvent.click(getByRole("button", { name: "Back to the settings" }));
@@ -38,7 +38,7 @@ describe("LevelAntialiasingAction", () => {
     const { getByRole } = renderWithProviders(
       <LevelAntialiasingAction
         isOn
-        settingsMode={ERendererAntialiasing.NONE}
+        settingsMode={ERenderAntialiasing.NONE}
         features={mockLevelFeatureOptions()}
         onToggle={() => {}}
         onChange={() => {}}

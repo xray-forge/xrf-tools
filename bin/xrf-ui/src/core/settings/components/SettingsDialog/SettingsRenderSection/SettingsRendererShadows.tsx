@@ -2,10 +2,6 @@ import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
 import {
-  IRendererShadowSettings,
-  RENDERER_SHADOW_CASCADE_WIDTHS,
-} from "@/core/render/lib/contract/renderer-shadow-settings";
-import {
   formatCascadeBlend,
   formatShadowBias,
   formatShadowFilter,
@@ -14,6 +10,8 @@ import {
   RENDER_SHADOW_LIMITS,
   RENDER_SHADOW_RESOLUTION_OPTIONS,
 } from "@/core/render/lib/features";
+import { RENDER_SHADOW_CASCADE_WIDTHS } from "@/core/render/lib/settings/render-feature-defaults";
+import { TRenderShadowSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { SettingsService } from "@/core/settings/services/settings";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { ChoiceFormRow } from "@/core/ui/form/ChoiceFormRow";
@@ -26,7 +24,7 @@ import { useRendererOverride } from "./use-renderer-override";
 export function SettingsRendererShadows(): ReactElement {
   const settingsService: SettingsService = useInjection(SettingsService);
 
-  const shadows: IRendererShadowSettings = settingsService.rendererFeatures.shadows;
+  const shadows: TRenderShadowSettings = settingsService.rendererFeatures.shadows;
 
   const onSet = useRendererOverride("shadows");
 
@@ -48,7 +46,7 @@ export function SettingsRendererShadows(): ReactElement {
           description={"Cascade count. Widths: 20, 40, 160 and 480 m."}
           options={RENDER_SHADOW_CASCADE_OPTIONS}
           value={String(shadows.cascades.length)}
-          onChange={(count: string) => onSet({ cascades: RENDERER_SHADOW_CASCADE_WIDTHS.slice(0, Number(count)) })}
+          onChange={(count: string) => onSet({ cascades: RENDER_SHADOW_CASCADE_WIDTHS.slice(0, Number(count)) })}
         />
 
         <ChoiceFormRow

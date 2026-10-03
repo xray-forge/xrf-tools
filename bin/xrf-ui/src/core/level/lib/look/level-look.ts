@@ -1,8 +1,6 @@
 import { LevelConsoleDefaults } from "@/core/ipc/types/xrf-app";
-import {
-  DEFAULT_RENDERER_EXPOSURE_SETTINGS,
-  IRendererExposureSettings,
-} from "@/core/render/lib/contract/renderer-exposure-settings";
+import { DEFAULT_RENDER_EXPOSURE_SETTINGS } from "@/core/render/lib/settings/render-feature-defaults";
+import { TRenderExposureSettings } from "@/core/render/lib/settings/render-feature-settings";
 
 /** How a game's console scales the weather's light: `r2_sun_lumscale`, `_hemi` and `_amb`. */
 export interface ILevelLightScales {
@@ -24,7 +22,7 @@ export interface ILevelImageCorrections {
  * How a level is exposed, lit and corrected: what the engine's console sets of it, rather than what the weather does.
  */
 export interface ILevelLook {
-  exposure: IRendererExposureSettings;
+  exposure: TRenderExposureSettings;
   lightScales: ILevelLightScales;
   corrections: ILevelImageCorrections;
 }
@@ -50,7 +48,7 @@ export const ANOMALY_LEVEL_LOOK: ILevelLook = {
 /** OpenXRay's own console defaults: its exposure, nothing scaled or corrected. */
 export const OPENXRAY_LEVEL_LOOK: ILevelLook = {
   corrections: NEUTRAL_LEVEL_IMAGE_CORRECTIONS,
-  exposure: DEFAULT_RENDERER_EXPOSURE_SETTINGS,
+  exposure: DEFAULT_RENDER_EXPOSURE_SETTINGS,
   lightScales: NEUTRAL_LEVEL_LIGHT_SCALES,
 };
 
@@ -58,7 +56,7 @@ export const OPENXRAY_LEVEL_LOOK: ILevelLook = {
  * @param exposure - The exposure the settings give every viewport.
  * @returns The look the settings alone make: their exposure, nothing scaled or corrected.
  */
-export function toSettingsLevelLook(exposure: IRendererExposureSettings): ILevelLook {
+export function toSettingsLevelLook(exposure: TRenderExposureSettings): ILevelLook {
   return { corrections: NEUTRAL_LEVEL_IMAGE_CORRECTIONS, exposure, lightScales: NEUTRAL_LEVEL_LIGHT_SCALES };
 }
 
@@ -67,7 +65,7 @@ export function toSettingsLevelLook(exposure: IRendererExposureSettings): ILevel
  * @param exposure - The settings' exposure, for whatever the game leaves to the engine.
  * @returns The look the game ships its levels with.
  */
-export function toGameLevelLook(defaults: LevelConsoleDefaults, exposure: IRendererExposureSettings): ILevelLook {
+export function toGameLevelLook(defaults: LevelConsoleDefaults, exposure: TRenderExposureSettings): ILevelLook {
   const [r, g, b] = defaults.colorGrading ?? NEUTRAL_LEVEL_IMAGE_CORRECTIONS.grading;
 
   return {

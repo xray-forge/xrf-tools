@@ -1,4 +1,4 @@
-use std::collections::{HashMap, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::num::NonZeroU32;
 use std::sync::Arc;
 use std::sync::mpsc::{Receiver, Sender, channel};
@@ -25,11 +25,13 @@ const MAX_SLOTS: u32 = 16_384;
 /// Environment cubes the scenes' surfaces may mix toward, the first slot standing for none.
 pub const ENVIRONMENT_SLOTS: u32 = 16;
 
-/// What a texture load came to, sent from a loader thread.
-type TextureLoad = (u32, Result<Option<DecodedTexture>, String>);
+/// What a texture load came to, sent from a loader thread: its slot, the slot's generation it was asked under, and the
+/// texture.
+type TextureLoad = (u32, u32, Result<Option<DecodedTexture>, String>);
 
-/// Every texture the renderer's scenes sample, once each by reference, in one bindless array: a material names its
-/// texture by slot, so draws are never split by texture.
+/// Every texture the renderer's scenes sample, once each by scope and reference, in one bindless array: a material
+/// names its texture by slot, so draws are never split by texture. A slot no scene samples any more is freed and given
+/// to the next texture asked for.
 pub struct TextureCache {
   layout: wgpu::BindGroupLayout,
   sampler: wgpu::Sampler,
@@ -47,10 +49,18 @@ pub struct TextureCache {
   checker: wgpu::TextureView,
   /// Each texture's slot by the scope its source resolves it in and its reference.
   by_reference: HashMap<(String, String), u32>,
+  /// Each slot's key in `by_reference`, `None` for the missing texture's and for a freed slot.
+  keys: Vec<Option<(String, String)>>,
+  /// Bumped each time a slot is freed, so a load asked for its last texture is not uploaded into its next.
+  generations: Vec<u32>,
+  /// Bytes each slot's upload holds on the GPU.
+  sizes: Vec<u64>,
+  /// Slots freed, taken again before the array grows.
+  free: Vec<u32>,
   sender: Sender<TextureLoad>,
   receiver: Receiver<TextureLoad>,
-  /// Loaded, waiting for a frame's upload budget.
-  uploads: VecDeque<(u32, DecodedTexture)>,
+  /// Loaded, waiting for a frame's upload budget, each beside the generation it was asked under.
+  uploads: VecDeque<(u32, u32, DecodedTexture)>,
   capacity: u32,
   is_dirty: bool,
   /// The cubes surfaces named as their environment, each slot past the first in turn; loaded as weather textures are.
@@ -119,6 +129,10 @@ impl TextureCache {
       neutral,
       checker,
       by_reference: HashMap::new(),
+      keys: vec![None],
+      generations: vec![0],
+      sizes: vec![0],
+      free: Vec::new(),
       sender,
       receiver,
       uploads: VecDeque::new(),
@@ -149,25 +163,43 @@ impl TextureCache {
       return slot;
     }
 
-    let slot: u32 = self.views.len() as u32;
+    let slot: u32 = match self.free.pop() {
+      Some(slot) => {
+        let index: usize = slot as usize;
 
-    if slot >= self.capacity {
-      // todo: Grow the bindless array, or evict, once a scene names more textures than the adapter binds at once.
-      log::warn!(
-        "Texture '{reference}' exceeds the {} the renderer binds at once",
-        self.capacity
-      );
+        self.views[index] = self.neutral[role as usize].clone();
+        self.states[index] = RenderTextureState::Loading;
+        self.references[index] = reference.to_owned();
+        self.roles[index] = role;
+        self.keys[index] = Some(key.clone());
 
-      return MISSING_SLOT;
-    }
+        slot
+      }
+      None if (self.views.len() as u32) < self.capacity => {
+        self.views.push(self.neutral[role as usize].clone());
+        self.states.push(RenderTextureState::Loading);
+        self.references.push(reference.to_owned());
+        self.roles.push(role);
+        self.keys.push(Some(key.clone()));
+        self.generations.push(0);
+        self.sizes.push(0);
 
-    self.views.push(self.neutral[role as usize].clone());
-    self.states.push(RenderTextureState::Loading);
-    self.references.push(reference.to_string());
-    self.roles.push(role);
+        self.views.len() as u32 - 1
+      }
+      None => {
+        log::warn!(
+          "Texture '{reference}' exceeds the {} the renderer binds at once",
+          self.capacity
+        );
+
+        return MISSING_SLOT;
+      }
+    };
+
     self.is_dirty = true;
     self.by_reference.insert(key, slot);
 
+    let generation: u32 = self.generations[slot as usize];
     let (sender, source, reference) = (self.sender.clone(), Arc::clone(source), reference.to_string());
 
     rayon::spawn(move || {
@@ -180,7 +212,7 @@ impl TextureCache {
         log::warn!("Texture '{reference}' cannot be drawn: {error}");
       }
 
-      let _ = sender.send((slot, load));
+      let _ = sender.send((slot, generation, load));
     });
 
     slot
@@ -233,11 +265,42 @@ impl TextureCache {
       .collect()
   }
 
+  /// Bytes every texture uploaded holds on the GPU.
+  pub fn get_bytes(&self) -> u64 {
+    self.sizes.iter().sum()
+  }
+
+  /// Frees every slot but the missing texture's and those some scene still samples, so the next textures asked for
+  /// take their places; a load still on its way to a freed slot is dropped when it lands.
+  pub fn retain(&mut self, sampled: &HashSet<u32>) {
+    for slot in 1..self.views.len() {
+      if self.keys[slot].is_none() || sampled.contains(&(slot as u32)) {
+        continue;
+      }
+
+      if let Some(key) = self.keys[slot].take() {
+        self.by_reference.remove(&key);
+      }
+
+      self.views[slot] = self.views[MISSING_SLOT as usize].clone();
+      self.states[slot] = RenderTextureState::Missing;
+      self.references[slot].clear();
+      self.sizes[slot] = 0;
+      self.generations[slot] = self.generations[slot].wrapping_add(1);
+      self.free.push(slot as u32);
+      self.is_dirty = true;
+    }
+  }
+
   /// Takes what the loaders finished and uploads it, within a frame's budget, then rebinds the array if a slot changed.
   pub fn update(&mut self, device: &wgpu::Device, queue: &wgpu::Queue) {
-    while let Ok((slot, load)) = self.receiver.try_recv() {
+    while let Ok((slot, generation, load)) = self.receiver.try_recv() {
+      if self.generations.get(slot as usize) != Some(&generation) {
+        continue;
+      }
+
       match load {
-        Ok(Some(texture)) => self.uploads.push_back((slot, texture)),
+        Ok(Some(texture)) => self.uploads.push_back((slot, generation, texture)),
         Ok(None) => self.stand_in(slot, RenderTextureState::Missing),
         Err(reason) => self.stand_in(slot, RenderTextureState::Failed { reason }),
       }
@@ -247,9 +310,14 @@ impl TextureCache {
 
     // The first upload of a frame always goes, so one texture larger than the budget is not held forever.
     while spent < UPLOAD_BYTES
-      && let Some((slot, texture)) = self.uploads.pop_front()
+      && let Some((slot, generation, texture)) = self.uploads.pop_front()
     {
+      if self.generations[slot as usize] != generation {
+        continue;
+      }
+
       spent += texture.get_size();
+      self.sizes[slot as usize] = texture.get_size();
       self.views[slot as usize] = Self::upload(device, queue, &texture);
       self.states[slot as usize] = RenderTextureState::Loaded {
         width: texture.width,

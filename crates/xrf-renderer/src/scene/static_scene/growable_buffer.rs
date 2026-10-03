@@ -35,6 +35,11 @@ impl GrowableBuffer {
     self.generation
   }
 
+  /// Bytes the buffer holds on the GPU, written or not.
+  pub fn get_capacity(&self) -> u64 {
+    self.buffer.size()
+  }
+
   /// Bytes written so far.
   pub fn get_length(&self) -> u64 {
     self.length

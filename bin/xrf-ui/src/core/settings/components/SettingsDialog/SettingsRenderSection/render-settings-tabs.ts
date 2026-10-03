@@ -1,7 +1,7 @@
 import { ComponentType } from "react";
 
-import { IRendererFeatureChoice, isRendererFeatureCustom } from "@/core/render/lib/contract/renderer-feature-choice";
-import { IRendererFeatureSettings } from "@/core/render/lib/contract/renderer-feature-settings";
+import { IRenderFeatureChoice, isRenderFeatureCustom } from "@/core/render/lib/settings/render-feature-choice";
+import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-feature-settings";
 
 import { SettingsRendererAmbientOcclusion } from "./SettingsRendererAmbientOcclusion";
 import { SettingsRendererAntialiasing } from "./SettingsRendererAntialiasing";
@@ -29,7 +29,7 @@ export interface IRenderSettingsTab {
   id: ERenderSettingsTab;
   label: string;
   /** The feature groups the tab sets, each owned by one tab alone; none where no preset sets what the tab does. */
-  features: ReadonlyArray<keyof IRendererFeatureSettings>;
+  features: ReadonlyArray<keyof IRenderFeatureSettings>;
   /** Its blocks, top to bottom. */
   sections: ReadonlyArray<ComponentType>;
 }
@@ -87,6 +87,6 @@ export function isPresetRenderSettingsTab(tab: IRenderSettingsTab): boolean {
  * @param choice - The renderer's preset and what was changed on top of it.
  * @returns Whether anything the tab sets differs from the preset, which its label marks.
  */
-export function isCustomRenderSettingsTab(tab: IRenderSettingsTab, choice: IRendererFeatureChoice): boolean {
-  return tab.features.some((group: keyof IRendererFeatureSettings) => isRendererFeatureCustom(choice, group));
+export function isCustomRenderSettingsTab(tab: IRenderSettingsTab, choice: IRenderFeatureChoice): boolean {
+  return tab.features.some((group: keyof IRenderFeatureSettings) => isRenderFeatureCustom(choice, group));
 }

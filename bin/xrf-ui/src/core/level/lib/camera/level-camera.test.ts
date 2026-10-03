@@ -1,12 +1,12 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { TRendererVector } from "@/core/render/lib/contract/renderer-vector";
+import { TRenderVector } from "@/core/render/lib/scene/render-space";
 
 import { ILevelCamera } from "./level-camera";
 import { toLevelCameraReading } from "./level-camera-reading";
 
-function placed(position: TRendererVector, target: TRendererVector): ILevelCamera {
-  return toLevelCameraReading({ position, target });
+function placed(position: TRenderVector, target: TRenderVector): ILevelCamera {
+  return toLevelCameraReading({ position: [...position], target: [...target] });
 }
 
 describe("toLevelCameraReading", () => {

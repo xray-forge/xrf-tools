@@ -1,5 +1,4 @@
-import { TRendererColor } from "@/core/render/lib/contract/renderer-color";
-import { toRawColor } from "@/core/render/lib/scene/render-color";
+import { toRawColor, TRawColor } from "@/core/render/lib/scene/render-color";
 import { toRenderGridStep } from "@/core/render/lib/scene/render-grid-step";
 
 /** Line segments as the renderer's line overlay takes them. */
@@ -31,7 +30,7 @@ export interface IRenderGridCenter {
 }
 
 /** Three's `AxesHelper` colours at each end, as the canvas shows them: x red, y green, z blue, fading as they go. */
-const AXES_COLORS: ReadonlyArray<[TRendererColor, TRendererColor]> = [
+const AXES_COLORS: ReadonlyArray<[TRawColor, TRawColor]> = [
   [
     [1, 0, 0],
     [1, 0.797, 0],
@@ -66,7 +65,7 @@ export function toRenderGridLines(extent: number, options: IRenderGridLinesOptio
 
   for (let line = 0; line <= cells; line += 1) {
     const at: number = -half + line * step;
-    const shade: TRendererColor = toRawColor(line * 2 === cells ? originColor : color);
+    const shade: TRawColor = toRawColor(line * 2 === cells ? originColor : color);
 
     positions.push(x - half, y, z + at, x + half, y, z + at, x + at, y, z - half, x + at, y, z + half);
     colors.push(...shade, ...shade, ...shade, ...shade);
@@ -100,7 +99,7 @@ export function toRenderBoxLines(min: IRenderGridCenter, max: IRenderGridCenter,
     }
   }
 
-  const shade: TRendererColor = toRawColor(color);
+  const shade: TRawColor = toRawColor(color);
 
   return {
     colors: new Float32Array(edges.flatMap(() => [...shade, ...shade])),

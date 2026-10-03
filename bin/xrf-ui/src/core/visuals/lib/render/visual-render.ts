@@ -10,15 +10,10 @@ import {
 } from "@/core/ipc/types/xrf-renderer";
 import { IRenderLighting, toNativeAssetLighting } from "@/core/render/lib/lighting/render-lighting";
 import { toNativeLines } from "@/core/render/lib/native/native-overlay";
-import {
-  NEUTRAL_NATIVE_LOOK,
-  NO_NATIVE_VIEW_SWITCHES,
-  toNativeViewOptions,
-} from "@/core/render/lib/native/native-view-options";
+import { toNativeAssetViewOptions } from "@/core/render/lib/native/native-view-options";
 import { toRawColor } from "@/core/render/lib/scene/render-color";
 import { toRenderAxesLines, toRenderGridLines } from "@/core/render/lib/scene/render-grid-lines";
-import { toAssetRendererSettings } from "@/core/render/lib/settings/asset-renderer-settings";
-import { IRenderSharedSettings } from "@/core/render/lib/settings/render-shared-settings";
+import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { IVisualPreviewSceneConfig } from "@/core/visuals/lib/scene/scene-config";
 import { IVisualPreviewViewOptions } from "@/core/visuals/lib/scene/visual-view-options";
 import { IVisualCameraFit } from "@/core/visuals/lib/visual-views";
@@ -48,7 +43,7 @@ export function toVisualCamera(fit: IVisualCameraFit, config: IVisualPreviewScen
  * @param options - The toolbar's toggles.
  * @param lighting - The toolbar's light.
  * @param config - The viewer's backdrop and checker.
- * @param shared - What the application sets for every viewport.
+ * @param features - What the application sets every viewport's features to.
  * @param renderHeight - How many rows the model is drawn with at most; null for as many as the viewport covers.
  * @returns What a native viewport draws the model with.
  */
@@ -56,24 +51,13 @@ export function toVisualViewOptions(
   options: IVisualPreviewViewOptions,
   lighting: IRenderLighting,
   config: IVisualPreviewSceneConfig,
-  shared: IRenderSharedSettings,
+  features: IRenderFeatureSettings,
   renderHeight: Nullable<number> = null
 ): RenderViewOptions {
-  const settings = toAssetRendererSettings(
-    {
-      backdrop: config.backgroundColor,
-      isBumped: options.isBumpVisible,
-      isLit: true,
-      isWireframe: options.isWireframe,
-    },
-    shared
-  );
-
   return {
-    ...toNativeViewOptions(
-      settings,
-      NO_NATIVE_VIEW_SWITCHES,
-      { ...NEUTRAL_NATIVE_LOOK, exposure: settings.features.exposure },
+    ...toNativeAssetViewOptions(
+      { isBumped: options.isBumpVisible, isLit: true, isWireframe: options.isWireframe },
+      features,
       renderHeight
     ),
     assetLighting: toNativeAssetLighting(lighting),

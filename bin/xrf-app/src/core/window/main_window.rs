@@ -6,10 +6,8 @@ use tauri::window::Color;
 use tauri::{App, Manager, Runtime};
 use xrf_build_info::build_info;
 
-use crate::core::preferences::{PreferenceKey, Preferences};
+use crate::core::preferences::Preferences;
 use crate::core::webview_extensions::DevExtensions;
-use crate::core::window::webview_options::WebviewOptions;
-use crate::core::window::webview_options_state::{TWebviewOptionsStore, WebviewOptionsState};
 use crate::core::window::window_build_kind::WindowBuildKind;
 use crate::core::window::window_geometry::WindowGeometry;
 use crate::core::window::window_geometry_restore::restore_window_geometry;
@@ -36,25 +34,13 @@ pub fn build_main_window<R: Runtime>(application: &App<R>) -> Result<(), Box<dyn
     }
   };
 
-  // Read before the webview exists: its browser is started once, with these, for the whole run.
-  let webview_options: WebviewOptions = preferences
-    .as_ref()
-    .and_then(|preferences| preferences.read(PreferenceKey::WebviewOptions))
-    .unwrap_or_default();
-
-  application.manage(WebviewOptionsState::new(
-    webview_options,
-    to_webview_options_store(preferences.clone()),
-  ));
-
   let window: WebviewWindow<R> = WebviewWindowBuilder::from_config(application.handle(), config)?
     .background_color(to_see_through(config.background_color))
-    .additional_browser_args(&webview_options.to_browser_args())
     .with_dev_extensions()
     .with_build_kind(build_info!().kind)?
     .build()?;
 
-  log::info!("Built main window with webview options {webview_options:?}");
+  log::info!("Built main window");
 
   // Recorded for the native viewports the window's pages attach, which name it by label.
   #[cfg(windows)]
@@ -85,17 +71,4 @@ fn to_see_through(color: Option<Color>) -> Color {
   let Color(red, green, blue, _) = color.unwrap_or(Color(0, 0, 0, 255));
 
   Color(red, green, blue, 0)
-}
-
-/// Where a choice of webview options is kept for the next start: the preferences, written out at once.
-fn to_webview_options_store<R: Runtime>(preferences: Option<Preferences<R>>) -> TWebviewOptionsStore {
-  match preferences {
-    Some(preferences) => Box::new(move |options: &WebviewOptions| {
-      preferences.write(PreferenceKey::WebviewOptions, options)?;
-      preferences.flush()
-    }),
-    None => Box::new(|_: &WebviewOptions| {
-      Err("The preferences could not be opened this run, so the choice cannot be kept.".to_string())
-    }),
-  }
 }

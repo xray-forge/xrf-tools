@@ -1,9 +1,9 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { ERendererAntialiasing } from "@/core/render/lib/contract/renderer-antialiasing";
-import { RENDERER_FEATURE_SCHEMA } from "@/core/render/lib/contract/renderer-feature-schema";
-import { IRendererFeatureSettings } from "@/core/render/lib/contract/renderer-feature-settings";
-import { ERendererPreset } from "@/core/render/lib/contract/renderer-preset";
+import { ERenderAntialiasing } from "@/core/ipc/types/xrf-renderer";
+import { RENDER_FEATURE_SCHEMA } from "@/core/render/lib/settings/render-feature-schema";
+import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-feature-settings";
+import { ERenderPreset } from "@/core/render/lib/settings/render-preset";
 
 import {
   ERenderSettingsTab,
@@ -20,11 +20,11 @@ function getTab(id: ERenderSettingsTab): IRenderSettingsTab {
 describe("render settings tabs", () => {
   // A feature added later has to be given a tab, or no tab would draw it nor mark it changed.
   it("gives every feature group exactly one tab", () => {
-    const owned: Array<keyof IRendererFeatureSettings> = RENDER_SETTINGS_TABS.flatMap(
+    const owned: Array<keyof IRenderFeatureSettings> = RENDER_SETTINGS_TABS.flatMap(
       (tab: IRenderSettingsTab) => tab.features
     );
 
-    expect([...owned].sort()).toEqual(Object.keys(RENDERER_FEATURE_SCHEMA).sort());
+    expect([...owned].sort()).toEqual(Object.keys(RENDER_FEATURE_SCHEMA).sort());
   });
 
   it("shows the preset over every tab but Display, which nothing of a preset's sets", () => {
@@ -37,8 +37,8 @@ describe("render settings tabs", () => {
 
   it("marks a tab changed where what it sets differs from the preset, and not for a value the preset has", () => {
     const choice = {
-      overrides: { antialiasing: ERendererAntialiasing.TAA, grass: { isEnabled: false } },
-      preset: ERendererPreset.BASE,
+      overrides: { antialiasing: ERenderAntialiasing.TAA, grass: { isEnabled: false } },
+      preset: ERenderPreset.BASE,
     };
 
     expect(isCustomRenderSettingsTab(getTab(ERenderSettingsTab.WORLD), choice)).toBe(true);

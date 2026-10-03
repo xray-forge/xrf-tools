@@ -1,5 +1,5 @@
-use std::collections::{BTreeMap, HashMap};
-use std::sync::mpsc::{Receiver, RecvTimeoutError};
+use std::collections::{BTreeMap, HashMap, HashSet};
+use std::sync::mpsc::{Receiver, RecvTimeoutError, TryRecvError};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
@@ -37,11 +37,18 @@ use crate::window::render_window::RenderWindow;
 /// been restored from minimised meanwhile.
 const IDLE_WAIT: Duration = Duration::from_millis(50);
 
+/// The longest a limited rate sleeps between looks at its commands while it waits for the next frame. The sleep is
+/// high resolution, where a channel's timeout rounds up to the system timer's tick of about 16 milliseconds.
+const PACING_POLL: Duration = Duration::from_millis(1);
+
 /// How long the thread keeps the GPU after its last viewport detaches, so a view shown again soon starts at once.
 const IDLE_STOP: Duration = Duration::from_secs(5);
 
 /// How long after a GPU failed to start it is tried again.
 const RETRY: Duration = Duration::from_secs(2);
+
+/// How often the textures no scene samples any more are freed.
+const TEXTURE_SWEEP: Duration = Duration::from_secs(2);
 
 /// How often a debug build looks for edited shader files.
 const SHADER_RELOAD: Duration = Duration::from_millis(500);
@@ -61,9 +68,13 @@ pub struct RenderThread {
   /// When the last viewport detached, while none is attached.
   idle_since: Option<Instant>,
   last_frame: Instant,
+  /// When the next frame is due under a limited rate: the last one's due time and an interval, so frames keep step.
+  frame_due: Option<Instant>,
   /// When each window last presented, which is what a frame's interval is measured from.
   last_present: HashMap<u64, Instant>,
   shaders_checked: Instant,
+  /// When the textures no scene samples were last freed.
+  textures_swept: Instant,
 }
 
 impl RenderThread {
@@ -81,8 +92,10 @@ impl RenderThread {
       viewports: BTreeMap::new(),
       idle_since: Some(now),
       last_frame: now,
+      frame_due: None,
       last_present: HashMap::new(),
       shaders_checked: now,
+      textures_swept: now,
     }
   }
 
@@ -91,8 +104,27 @@ impl RenderThread {
 
     loop {
       if self.is_drawing() {
-        while let Ok(command) = self.receiver.try_recv() {
-          self.handle(command);
+        // A limited rate waits out what is left of a frame's interval, hearing commands meanwhile.
+        loop {
+          match self.receiver.try_recv() {
+            Ok(command) => {
+              self.handle(command);
+
+              continue;
+            }
+            Err(TryRecvError::Empty) => {}
+            Err(TryRecvError::Disconnected) => return,
+          }
+
+          let left: Duration = self
+            .frame_due
+            .map_or(Duration::ZERO, |due| due.saturating_duration_since(Instant::now()));
+
+          if left.is_zero() {
+            break;
+          }
+
+          std::thread::sleep(left.min(PACING_POLL));
         }
       } else {
         match self.receiver.recv_timeout(IDLE_WAIT) {
@@ -374,6 +406,13 @@ impl RenderThread {
     let delta: f32 = now.duration_since(self.last_frame).as_secs_f32();
 
     self.last_frame = now;
+    // Kept in step from the last due time, so a frame woken a little late does not push every later one; one drawn
+    // later than its interval is followed by the next at once.
+    self.frame_due = self
+      .settings
+      .frame_rate
+      .get_interval()
+      .map(|interval| (self.frame_due.unwrap_or(now) + interval).max(now));
 
     for viewport in self.viewports.values_mut() {
       let height: f32 = viewport.get_css_height();
@@ -428,6 +467,19 @@ impl RenderThread {
     }
 
     if let Some(gpu) = &mut self.gpu {
+      if now.duration_since(self.textures_swept) >= TEXTURE_SWEEP {
+        self.textures_swept = now;
+
+        let sampled: HashSet<u32> = self
+          .viewports
+          .values()
+          .flat_map(|viewport| viewport.level_view.iter().chain(viewport.incoming_view.iter()))
+          .flat_map(LevelView::list_texture_slots)
+          .collect();
+
+        gpu.textures.retain(&sampled);
+      }
+
       gpu.textures.update(&gpu.context.device, &gpu.context.queue);
       gpu.weather_textures.update(&gpu.context.device, &gpu.context.queue);
     }
@@ -446,7 +498,7 @@ impl RenderThread {
     let (backend, adapter) = (gpu.context.backend.get_label(), gpu.context.adapter_name.as_str());
 
     for viewport in self.viewports.values_mut() {
-      viewport.report(now, backend, adapter);
+      viewport.report(now, backend, adapter, gpu.textures.get_bytes());
       viewport.publish_pose(now);
       viewport.publish_weather(now);
 
@@ -486,11 +538,11 @@ impl RenderThread {
       }
     }
 
-    let presentation = self.settings.presentation;
+    let is_vsync: bool = self.settings.frame_rate.is_vsync();
     let Some((frame, width, height)) = gpu
       .windows
       .get_mut(&window)
-      .and_then(|it| it.acquire(&gpu.context, presentation))
+      .and_then(|it| it.acquire(&gpu.context, is_vsync))
     else {
       return;
     };

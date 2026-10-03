@@ -8,7 +8,6 @@ import { LevelManualWeatherSlider } from "@/core/level/components/weather/LevelM
 import { describeLevelFeatureToggle } from "@/core/level/lib/features";
 import { ILevelManualWeather } from "@/core/level/lib/weather/level-manual-weather";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
-import { IRendererWaterSettings } from "@/core/render/lib/contract/renderer-water-settings";
 import {
   formatWaterDistortion,
   formatWaterMultiple,
@@ -16,6 +15,7 @@ import {
   formatWaveSpeed,
   RENDER_WATER_LIMITS,
 } from "@/core/render/lib/features";
+import { TRenderWaterSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { EditorPopoverToggle } from "@/core/shell/editor/EditorPopoverToggle";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { formatPercent } from "@/lib/format/number";
@@ -43,7 +43,7 @@ export function LevelWaterAction({
   onEdit,
 }: ILevelWaterActionProps): ReactElement {
   const { set, reset } = useLevelFeatureOverride("water", features, onChange);
-  const water: IRendererWaterSettings = state.value;
+  const water: TRenderWaterSettings = state.value;
 
   return (
     <EditorPopoverToggle

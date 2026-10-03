@@ -1,8 +1,7 @@
 import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
-import { ILevelStats } from "@/core/level/lib/stats/level-stats";
-import { LevelViewportService } from "@/core/level/services";
+import { LevelRenderService, LevelViewportService } from "@/core/level/services";
 import { RenderFrameReadout } from "@/core/render/components/overlay";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatBytes } from "@/lib/memory/format";
@@ -15,12 +14,14 @@ export function LevelPreviewMetrics({
   id,
   className,
 }: BaseComponentProps): ReactElement {
-  const viewport: LevelViewportService = useInjection(LevelViewportService);
-  const stats: ILevelStats = viewport.stats;
+  const renderService: LevelRenderService = useInjection(LevelRenderService);
+  const viewportService: LevelViewportService = useInjection(LevelViewportService);
+  const sectors: number = viewportService.load?.sectors ?? 0;
+  const bytes: number = viewportService.load?.bytes ?? 0;
 
   return (
-    <RenderFrameReadout data-testid={dataTestId} id={id} className={className} cost={stats} timings={viewport.timings}>
-      <div>{`${stats.sectors} sectors · ${formatBytes(stats.bytes)}`}</div>
+    <RenderFrameReadout data-testid={dataTestId} id={id} className={className} report={renderService.frame}>
+      <div>{`${sectors} sectors · ${formatBytes(bytes)}`}</div>
     </RenderFrameReadout>
   );
 }

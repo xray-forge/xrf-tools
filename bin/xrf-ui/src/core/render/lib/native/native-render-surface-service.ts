@@ -4,31 +4,18 @@ import { Nullable } from "@xrf/types";
 
 import { renderCommands } from "@/core/ipc/commands/render";
 import {
-  ERenderPresentation,
   RenderCameraPose,
   RenderFrameReport,
   RenderLoadReport,
   RenderSettings,
   RenderWeatherReport,
 } from "@/core/ipc/types/xrf-renderer";
+import { EMPTY_RENDER_FRAME_REPORT } from "@/core/render/lib/native/native-frame-report";
 import { NativeViewport } from "@/core/render/lib/native/native-viewport";
 import { NativeViewportTarget } from "@/core/render/lib/native/native-viewport-target";
-import { IRenderSharedSettings } from "@/core/render/lib/settings/render-shared-settings";
 import { IRenderSurfaceHost } from "@/core/render/lib/surface/render-surface-host";
 import { SettingsService } from "@/core/settings/services/settings";
 import { Logger } from "@/lib/logging";
-
-/**
- * @param shared - What the application sets for every viewport.
- * @returns What the native renderer draws every viewport with.
- */
-export function toNativeRenderSettings(shared: IRenderSharedSettings): RenderSettings {
-  // todo: Pace a native viewport to a rate below the display's, which only an unlimited rate skips today.
-  return {
-    isGpuTimed: shared.isGpuTimed,
-    presentation: shared.pacing.rateLimit === "unlimited" ? ERenderPresentation.UNCAPPED : ERenderPresentation.VSYNC,
-  };
-}
 
 /**
  * A service owning one native viewport: attached where a view hands it an element, told everything through reactions
@@ -40,6 +27,10 @@ export abstract class NativeRenderSurfaceService implements IRenderSurfaceHost {
   /** Why the viewport cannot be drawn, or null while it draws: kept until a view is attached again. */
   @RefObservable()
   public failure: Nullable<string> = null;
+
+  /** What the viewport's recent frames cost, for the readouts; empty while none is attached. */
+  @RefObservable()
+  public frame: RenderFrameReport = EMPTY_RENDER_FRAME_REPORT;
 
   protected viewport: Nullable<NativeViewport> = null;
 
@@ -63,7 +54,12 @@ export abstract class NativeRenderSurfaceService implements IRenderSurfaceHost {
     const viewport: NativeViewport = new NativeViewport({
       onCamera: (pose: RenderCameraPose): void => this.onCamera(pose),
       onFailed: (message: string): void => this.fail(message),
-      onFrame: (report: RenderFrameReport): void => this.onFrame(report),
+      onFrame: (report: RenderFrameReport): void => {
+        runInAction(() => {
+          this.frame = report;
+        });
+        this.onFrame(report);
+      },
       onLoad: (report: RenderLoadReport): void => this.onLoad(report),
       onWeather: (report: Nullable<RenderWeatherReport>): void => this.onWeather(report),
     });
@@ -73,7 +69,7 @@ export abstract class NativeRenderSurfaceService implements IRenderSurfaceHost {
     this.onAttached(container);
     this.reactions.push(
       reaction(
-        () => toNativeRenderSettings(this.settingsService.sharedRenderSettings),
+        () => this.settingsService.renderSettings,
         (settings: RenderSettings) => void renderCommands.configure(settings).catch(() => {}),
         { equals: comparer.structural, fireImmediately: true }
       ),
@@ -93,6 +89,10 @@ export abstract class NativeRenderSurfaceService implements IRenderSurfaceHost {
     this.viewport?.dispose();
     this.viewport = null;
     this.release();
+
+    runInAction(() => {
+      this.frame = EMPTY_RENDER_FRAME_REPORT;
+    });
   }
 
   @OnDeactivation()
@@ -109,9 +109,9 @@ export abstract class NativeRenderSurfaceService implements IRenderSurfaceHost {
   protected abstract start(viewport: NativeViewport): Array<() => void>;
 
   /**
-   * @param report - What the viewport's recent frames cost.
+   * @param _report - What the viewport's recent frames cost, as `frame` now holds it.
    */
-  protected abstract onFrame(report: RenderFrameReport): void;
+  protected onFrame(_report: RenderFrameReport): void {}
 
   /**
    * @param _pose - Where the viewport's camera stands now.

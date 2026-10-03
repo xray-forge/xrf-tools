@@ -3,7 +3,7 @@ import { userEvent } from "@testing-library/user-event";
 
 import { LevelShadowAction } from "@/core/level/components/preview/LevelShadowAction";
 import { ILevelFeatureOptions } from "@/core/level/lib/features/level-feature-options";
-import { DEFAULT_RENDERER_SHADOW_SETTINGS } from "@/core/render/lib/contract/renderer-shadow-settings";
+import { DEFAULT_RENDER_SHADOW_SETTINGS } from "@/core/render/lib/settings/render-feature-defaults";
 import { mockLevelFeatureOptions } from "@/fixtures/mocks/level.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
@@ -13,7 +13,7 @@ describe("LevelShadowAction", () => {
     const { getByRole, findByRole } = renderWithProviders(
       <LevelShadowAction
         isOn
-        state={{ isAvailable: true, value: DEFAULT_RENDERER_SHADOW_SETTINGS }}
+        state={{ isAvailable: true, value: DEFAULT_RENDER_SHADOW_SETTINGS }}
         features={mockLevelFeatureOptions()}
         onToggle={() => {}}
         onChange={onChange}
@@ -35,7 +35,7 @@ describe("LevelShadowAction", () => {
     const { getByRole } = renderWithProviders(
       <LevelShadowAction
         isOn
-        state={{ isAvailable: false, value: DEFAULT_RENDERER_SHADOW_SETTINGS }}
+        state={{ isAvailable: false, value: DEFAULT_RENDER_SHADOW_SETTINGS }}
         features={mockLevelFeatureOptions()}
         onToggle={() => {}}
         onChange={() => {}}

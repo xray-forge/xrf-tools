@@ -3,8 +3,8 @@ import { RenderResult, within } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { Container } from "@wirestate/core";
 
-import { ERenderResolution } from "@/core/render/lib/contract/render-resolution";
-import { ERendererPreset } from "@/core/render/lib/contract/renderer-preset";
+import { ERenderPreset } from "@/core/render/lib/settings/render-preset";
+import { ERenderResolution } from "@/core/render/lib/settings/render-resolution";
 import { SettingsService } from "@/core/settings/services/settings";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
@@ -46,7 +46,7 @@ describe("SettingsRenderSection", () => {
     await userEvent.click(view.getByRole("checkbox", { name: "GPU time per pass" }));
 
     expect(settings.isGpuTimed).toBe(true);
-    expect(settings.rendererChoice).toEqual({ overrides: {}, preset: ERendererPreset.BASE });
+    expect(settings.rendererChoice).toEqual({ overrides: {}, preset: ERenderPreset.BASE });
     expect(view.queryByRole("img", { name: "changed from the preset" })).not.toBeInTheDocument();
   });
 
@@ -66,7 +66,7 @@ describe("SettingsRenderSection", () => {
 
     await userEvent.click(view.getByRole("button", { name: "Back to Base" }));
 
-    expect(settings.rendererChoice).toEqual({ overrides: {}, preset: ERendererPreset.BASE });
+    expect(settings.rendererChoice).toEqual({ overrides: {}, preset: ERenderPreset.BASE });
     expect(view.getByRole("tab", { name: "Image" })).toBeInTheDocument();
   });
 

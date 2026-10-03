@@ -1,8 +1,8 @@
 import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
-import { RENDERER_FEATURE_SCHEMA } from "@/core/render/lib/contract/renderer-feature-schema";
-import { IRendererLodSettings } from "@/core/render/lib/contract/renderer-lod-settings";
+import { RENDER_FEATURE_SCHEMA } from "@/core/render/lib/settings/render-feature-schema";
+import { TRenderLodSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { SettingsService } from "@/core/settings/services/settings";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { SliderFormRow } from "@/core/ui/form/SliderFormRow";
@@ -11,7 +11,7 @@ import { formatNumber } from "@/lib/format/number";
 
 /** One threshold, and the console variable it is. */
 interface ILodThreshold {
-  key: Exclude<keyof IRendererLodSettings, "isImpostors">;
+  key: Exclude<keyof TRenderLodSettings, "isImpostors">;
   label: string;
   description: string;
   step: number;
@@ -68,7 +68,7 @@ const LOD_THRESHOLDS: ReadonlyArray<ILodThreshold> = [
 export function SettingsRendererLod(): ReactElement {
   const settingsService: SettingsService = useInjection(SettingsService);
 
-  const lod: IRendererLodSettings = settingsService.rendererFeatures.lod;
+  const lod: TRenderLodSettings = settingsService.rendererFeatures.lod;
 
   return (
     <DetailSection
@@ -89,8 +89,8 @@ export function SettingsRendererLod(): ReactElement {
             label={threshold.label}
             description={threshold.description}
             value={lod[threshold.key]}
-            min={RENDERER_FEATURE_SCHEMA.lod[threshold.key].min}
-            max={RENDERER_FEATURE_SCHEMA.lod[threshold.key].max}
+            min={RENDER_FEATURE_SCHEMA.lod[threshold.key].min}
+            max={RENDER_FEATURE_SCHEMA.lod[threshold.key].max}
             step={threshold.step}
             format={(value: number) => formatNumber(value, threshold.digits)}
             onChange={(value: number) => settingsService.setRendererOverrides({ lod: { [threshold.key]: value } })}

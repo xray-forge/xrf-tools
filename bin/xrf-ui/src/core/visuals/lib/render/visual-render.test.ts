@@ -1,19 +1,12 @@
 import { describe, expect, it } from "@jest/globals";
 
 import { ERenderCamera, ERenderOverlay, RenderCamera, RenderViewOptions } from "@/core/ipc/types/xrf-renderer";
-import {
-  DEFAULT_RENDERER_FEATURE_CHOICE,
-  resolveRendererFeatures,
-} from "@/core/render/lib/contract/renderer-feature-choice";
-import { IRendererFeatureSettings } from "@/core/render/lib/contract/renderer-feature-settings";
 import { toRawColor } from "@/core/render/lib/scene/render-color";
 import { toVisualCamera, toVisualOverlays, toVisualViewOptions } from "@/core/visuals/lib/render/visual-render";
 import { DEFAULT_VISUAL_PREVIEW_SCENE_CONFIG } from "@/core/visuals/lib/scene/scene-config";
 import { DEFAULT_VISUAL_LIGHTING } from "@/core/visuals/lib/scene/visual-lighting";
 import { DEFAULT_VISUAL_PREVIEW_VIEW_OPTIONS } from "@/core/visuals/lib/scene/visual-view-options";
-import { mockRenderSharedSettings } from "@/fixtures/mocks/render.mocks";
-
-const FEATURES: IRendererFeatureSettings = resolveRendererFeatures(DEFAULT_RENDERER_FEATURE_CHOICE);
+import { mockRenderFeatures } from "@/fixtures/mocks/render.mocks";
 
 describe("toVisualCamera", () => {
   it("frames the model's sphere from the viewer's direction, far enough to fit it", () => {
@@ -34,7 +27,7 @@ describe("toVisualViewOptions", () => {
       { ...DEFAULT_VISUAL_PREVIEW_VIEW_OPTIONS, isWireframe: true },
       DEFAULT_VISUAL_LIGHTING,
       DEFAULT_VISUAL_PREVIEW_SCENE_CONFIG,
-      mockRenderSharedSettings({ features: FEATURES })
+      mockRenderFeatures()
     );
 
     expect(options.backdrop).toEqual(toRawColor(DEFAULT_VISUAL_PREVIEW_SCENE_CONFIG.backgroundColor));
@@ -55,7 +48,7 @@ describe("toVisualViewOptions", () => {
       { ...DEFAULT_VISUAL_PREVIEW_VIEW_OPTIONS, isAlphaVisible: false, isCheckerVisible: true },
       DEFAULT_VISUAL_LIGHTING,
       DEFAULT_VISUAL_PREVIEW_SCENE_CONFIG,
-      mockRenderSharedSettings({ features: FEATURES })
+      mockRenderFeatures()
     );
 
     expect(options.checker).toBe(DEFAULT_VISUAL_PREVIEW_SCENE_CONFIG.checkerRepeat);

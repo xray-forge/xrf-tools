@@ -1,12 +1,12 @@
 import { ReactElement } from "react";
 
-import { IRendererLightsReport } from "@/core/render/lib/contract/renderer-lights-report";
+import { RenderLightsReport } from "@/core/ipc/types/xrf-renderer";
 import { EditorPanelProperty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatPercent } from "@/lib/format/number";
 
 interface ILevelStreamLightsSectionProps extends BaseComponentProps {
-  lights: IRendererLightsReport;
+  lights: RenderLightsReport;
 }
 
 /**
@@ -25,18 +25,15 @@ export function LevelStreamLightsSection({
       <EditorPanelProperty label={"Shadowed"} value={lights.shadowed} />
       <EditorPanelProperty
         label={"Past the most a frame holds"}
-        value={lights.excessLights ? `${lights.excessLights}, the farthest` : "none"}
+        value={lights.excess ? `${lights.excess}, the farthest` : "none"}
       />
       <EditorPanelProperty
         label={"Shadow atlas"}
-        value={
-          `${formatPercent(lights.atlas.used / Math.max(lights.atlas.capacity, 1))} held · ` +
-          `sizes at ${lights.shadowScale.toFixed(2)}×`
-        }
+        value={`${formatPercent(lights.atlas.used / Math.max(lights.atlas.capacity, 1))} held`}
       />
       <EditorPanelProperty
         label={"Full clusters"}
-        value={lights.fullClusters ? `${lights.fullClusters} · ${lights.droppedLights} left out` : "none"}
+        value={lights.fullClusters ? `${lights.fullClusters} · ${lights.dropped} left out` : "none"}
       />
     </EditorPanelSection>
   );

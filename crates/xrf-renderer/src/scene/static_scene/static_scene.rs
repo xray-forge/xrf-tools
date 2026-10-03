@@ -325,8 +325,8 @@ impl StaticScene {
     self.sectors.iter().map(|sector| sector.bytes).sum()
   }
 
-  /// A generation of every buffer a bind group holds, which changes whenever one of them was replaced.
-  pub fn get_generation(&self) -> u64 {
+  /// Every buffer that grows with what is put into the scene.
+  fn list_growable(&self) -> [&GrowableBuffer; 18] {
     [
       &self.words[0],
       &self.words[1],
@@ -347,9 +347,16 @@ impl StaticScene {
       &self.terms,
       &self.impostor_list,
     ]
-    .iter()
-    .map(|buffer| buffer.get_generation())
-    .sum()
+  }
+
+  /// A generation of every buffer a bind group holds, which changes whenever one of them was replaced.
+  pub fn get_generation(&self) -> u64 {
+    self.list_growable().iter().map(|buffer| buffer.get_generation()).sum()
+  }
+
+  /// Bytes the scene's growing buffers hold on the GPU, which is what grows with a level or a model.
+  pub fn get_buffer_bytes(&self) -> u64 {
+    self.list_growable().iter().map(|buffer| buffer.get_capacity()).sum()
   }
 
   /// Puts one packed sector into the scene: its baked sections as single draws, its tree groups as rows.

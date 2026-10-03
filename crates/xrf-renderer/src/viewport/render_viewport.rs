@@ -6,6 +6,7 @@ use crate::contract::render_camera_pose::RenderCameraPose;
 use crate::contract::render_frame_report::RenderFrameReport;
 use crate::contract::render_lights_report::RenderLightsReport;
 use crate::contract::render_load_report::RenderLoadReport;
+use crate::contract::render_memory_report::RenderMemoryReport;
 use crate::contract::render_model_pose::RenderModelPose;
 use crate::contract::render_overlay::RenderOverlay;
 use crate::contract::render_rect::RenderRect;
@@ -118,7 +119,8 @@ impl RenderViewport {
   }
 
   /// Reports the frames since the last report, once one is due.
-  pub fn report(&mut self, now: Instant, backend: &str, adapter: &str) {
+  /// `texture_bytes` is what every viewport's textures hold on the GPU together.
+  pub fn report(&mut self, now: Instant, backend: &str, adapter: &str, texture_bytes: u64) {
     let (static_draws, lights): (RenderStaticReport, RenderLightsReport) = self
       .level_view
       .as_mut()
@@ -144,6 +146,12 @@ impl RenderViewport {
       .and_then(LevelView::get_render_size)
       .unwrap_or((rect.width, rect.height));
 
+    let scene: u64 = [&self.level_view, &self.incoming_view]
+      .into_iter()
+      .flatten()
+      .map(LevelView::get_buffer_bytes)
+      .sum();
+
     self.send(RenderViewportEvent::Frame {
       report: RenderFrameReport {
         frames_per_second,
@@ -163,6 +171,10 @@ impl RenderViewport {
         static_draws,
         lights,
         sector_time: self.level_view.as_ref().map_or(0.0, LevelView::get_sector_time),
+        memory: RenderMemoryReport {
+          textures: texture_bytes,
+          scene,
+        },
       },
     });
   }

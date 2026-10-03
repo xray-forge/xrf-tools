@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 
+import { ERenderAntialiasing } from "@/core/ipc/types/xrf-renderer";
 import { DEFAULT_LEVEL_CAMERA_OPTIONS, ILevelCameraOptions } from "@/core/level/lib/camera/level-camera-options";
 import {
   DEFAULT_LEVEL_HEMI_STRENGTH,
@@ -7,7 +8,6 @@ import {
   ILevelViewOptions,
 } from "@/core/level/lib/view/level-view-options";
 import { LevelViewService } from "@/core/level/services/level-view.service";
-import { ERendererAntialiasing } from "@/core/render/lib/contract/renderer-antialiasing";
 import { mockLevelFeatureOptions } from "@/fixtures/mocks/level.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 
@@ -71,12 +71,12 @@ describe("LevelViewService", () => {
     const first = mockInjectedService(LevelViewService).service;
 
     first.setCamera({ ...DEFAULT_LEVEL_CAMERA_OPTIONS, speed: 30 });
-    first.setFeatures({ ...mockLevelFeatureOptions(), antialiasing: ERendererAntialiasing.TAA });
+    first.setFeatures({ ...mockLevelFeatureOptions(), antialiasing: ERenderAntialiasing.TAA });
 
     const { service } = mockInjectedService(LevelViewService);
 
     expect(service.camera.speed).toBe(30);
-    expect(service.features.antialiasing).toBe(ERendererAntialiasing.TAA);
+    expect(service.features.antialiasing).toBe(ERenderAntialiasing.TAA);
   });
 
   it("starts from the defaults where what was stored does not read", () => {

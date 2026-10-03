@@ -15,11 +15,8 @@ import {
   ERenderWeatherPlay,
   RenderCamera,
   RenderCameraPose,
-  RenderFrameReport,
   RenderLevelHit,
-  RenderLightsReport,
   RenderLoadReport,
-  RenderStaticReport,
   RenderSurfaceGeometry,
   RenderSurfaceSpan,
   RenderTextureReport,
@@ -39,8 +36,7 @@ import { LEVEL_PICK_PANELS } from "@/core/level/lib/panels/level-pick-panels";
 import { ELevelPick, TLevelPick } from "@/core/level/lib/pick/level-pick";
 import { DEFAULT_LEVEL_RENDER_CONFIG, ILevelRenderConfig } from "@/core/level/lib/render/level-render-config";
 import { toLevelFrameOverlays } from "@/core/level/lib/render/level-render-frame";
-import { toLevelCameraAt, toLevelRendererSettings } from "@/core/level/lib/render/level-render-view";
-import { measureLevelStats } from "@/core/level/lib/stats/level-stats";
+import { toLevelCameraAt, toLevelViewOptions } from "@/core/level/lib/render/level-render-view";
 import { ELevelSurfaceDressing, ILevelSurfaceDressing } from "@/core/level/lib/surface/level-surface-dressing";
 import { ILevelSurfaceGeometry, ILevelSurfaceSpan } from "@/core/level/lib/surface/level-surface-geometry";
 import { ILevelTextureProblem, ILevelTextureReport } from "@/core/level/lib/texture/level-texture-report";
@@ -51,59 +47,15 @@ import { LevelLookService } from "@/core/level/services/level-look.service";
 import { LevelViewService } from "@/core/level/services/level-view.service";
 import { LevelViewportService } from "@/core/level/services/level-viewport.service";
 import { LevelWeatherService } from "@/core/level/services/level-weather.service";
-import { EMPTY_RENDER_FRAME_COST, IRenderFrameCost } from "@/core/render/lib/contract/render-frame-cost";
-import { EMPTY_RENDERER_LIGHTS_REPORT, IRendererLightsReport } from "@/core/render/lib/contract/renderer-lights-report";
-import { EMPTY_RENDERER_PASS_TIMINGS, IRendererPassTimings } from "@/core/render/lib/contract/renderer-pass-timings";
-import { IRendererSettings } from "@/core/render/lib/contract/renderer-settings";
-import {
-  EMPTY_RENDERER_STATIC_DRAW_REPORT,
-  IRendererStaticDrawReport,
-} from "@/core/render/lib/contract/renderer-static-draw-report";
-import { IRendererViewPoint } from "@/core/render/lib/contract/renderer-view-point";
 import { listenRenderClicks } from "@/core/render/lib/frame/render-clicks";
-import { toNativeFrameCost, toNativePassTimings } from "@/core/render/lib/native/native-frame-report";
+import { IRenderViewPoint } from "@/core/render/lib/frame/render-view-point";
 import { NativeRenderSurfaceService } from "@/core/render/lib/native/native-render-surface-service";
-import { toNativeRenderHeight, toNativeViewOptions } from "@/core/render/lib/native/native-view-options";
+import { toNativeRenderHeight } from "@/core/render/lib/native/native-view-options";
 import { NativeViewport } from "@/core/render/lib/native/native-viewport";
 import { toXraySpace } from "@/core/render/lib/scene/render-space";
 import { SettingsService } from "@/core/settings/services/settings";
 import { IPanelSetActiveCommand, PANEL_SET_ACTIVE_COMMAND } from "@/core/shell/panel/panel-messages";
 import { Logger } from "@/lib/logging";
-
-/**
- * @param report - What a native viewport's static draws came to.
- * @returns The same, as the stream panel reads it: shadow lists are the lights' own and not counted.
- */
-export function toLevelStaticDrawReport(report: RenderStaticReport): IRendererStaticDrawReport {
-  return {
-    ...EMPTY_RENDERER_STATIC_DRAW_REPORT,
-    clusters: report.clusters,
-    commands: report.commands,
-    kept: { clusters: report.keptClusters, triangles: report.keptTriangles },
-    lists: { ...EMPTY_RENDERER_STATIC_DRAW_REPORT.lists, surfaces: report.surfaceList },
-    lods: report.lods,
-    occluded: { clusters: report.occludedClusters, triangles: report.occludedTriangles },
-    places: report.places,
-    rows: report.rows,
-    slots: report.slots,
-  };
-}
-
-/**
- * @param report - What a native viewport's local lights came to.
- * @returns The same, as the stream panel reads it: a light asked at a smaller square says so by its size alone.
- */
-export function toLevelLightsReport(report: RenderLightsReport): IRendererLightsReport {
-  return {
-    atlas: report.atlas,
-    droppedLights: report.dropped,
-    excessLights: report.excess,
-    fullClusters: report.fullClusters,
-    inView: report.inView,
-    shadowScale: 1,
-    shadowed: report.shadowed,
-  };
-}
 
 /**
  * @param hit - What a native viewport named under a point.
@@ -219,16 +171,6 @@ export class LevelRenderService extends NativeRenderSurfaceService {
    * with it, so changing one leaves the camera where it has flown rather than taking it back.
    */
   private viewpoint: Nullable<ILevelViewpoint> = null;
-  /** Where the camera stands, as the viewport last said. */
-  private pose: Nullable<RenderCameraPose> = null;
-  private frame: IRenderFrameCost = EMPTY_RENDER_FRAME_COST;
-  private timings: IRendererPassTimings = EMPTY_RENDERER_PASS_TIMINGS;
-  private staticDraws: IRendererStaticDrawReport = EMPTY_RENDERER_STATIC_DRAW_REPORT;
-  /** Milliseconds the last sector taken in took to put into the scene. */
-  private sectorTime: number = 0;
-  private lights: IRendererLightsReport = EMPTY_RENDERER_LIGHTS_REPORT;
-  /** What the viewport holds of the level, as it last said. */
-  private load: Nullable<RenderLoadReport> = null;
   /** Bumped by every level opened or closed, so a pick asked of one since replaced notes nothing. */
   private opening: number = 0;
   /** Stops hearing clicks on the viewport, while one is attached. */
@@ -262,7 +204,7 @@ export class LevelRenderService extends NativeRenderSurfaceService {
    * @param point - Where, in css pixels from the viewport's top left corner.
    * @returns Settles once the pick is noted: what it hit, or nothing.
    */
-  public async pick(point: IRendererViewPoint): Promise<void> {
+  public async pick(point: IRenderViewPoint): Promise<void> {
     const { viewport, opening } = this;
 
     if (!viewport || !this.level) {
@@ -308,12 +250,16 @@ export class LevelRenderService extends NativeRenderSurfaceService {
       ),
       reaction(
         () =>
-          toNativeViewOptions(
-            this.toSettings(),
-            this.viewService.options,
-            this.lookService.look,
-            toNativeRenderHeight(this.settingsService.renderResolution)
-          ),
+          toLevelViewOptions({
+            debugView: this.viewService.debugView,
+            features: this.settingsService.rendererFeatures,
+            hemiStrength: this.viewService.hemiStrength,
+            lod: this.viewService.lod,
+            look: this.lookService.look,
+            options: this.viewService.options,
+            renderHeight: toNativeRenderHeight(this.settingsService.renderResolution),
+            view: this.viewService.features,
+          }),
         (options: RenderViewOptions) => viewport.setViewOptions(options),
         { equals: comparer.structural, fireImmediately: true }
       ),
@@ -375,7 +321,7 @@ export class LevelRenderService extends NativeRenderSurfaceService {
   }
 
   protected onAttached(container: HTMLElement): void {
-    this.unlistenClicks = listenRenderClicks(container, (point: IRendererViewPoint) => void this.pick(point));
+    this.unlistenClicks = listenRenderClicks(container, (point: IRenderViewPoint) => void this.pick(point));
   }
 
   protected onDetached(): void {
@@ -387,27 +333,10 @@ export class LevelRenderService extends NativeRenderSurfaceService {
     this.opening += 1;
     this.level = null;
     this.viewpoint = null;
-    this.pose = null;
-    this.load = null;
-    this.frame = EMPTY_RENDER_FRAME_COST;
-    this.timings = EMPTY_RENDERER_PASS_TIMINGS;
-    this.staticDraws = EMPTY_RENDERER_STATIC_DRAW_REPORT;
-    this.sectorTime = 0;
-    this.lights = EMPTY_RENDERER_LIGHTS_REPORT;
-  }
-
-  protected onFrame(report: RenderFrameReport): void {
-    this.frame = toNativeFrameCost(report);
-    this.timings = toNativePassTimings(report);
-    this.staticDraws = toLevelStaticDrawReport(report.staticDraws);
-    this.sectorTime = report.sectorTime ?? 0;
-    this.lights = toLevelLightsReport(report.lights);
-    this.publish();
   }
 
   protected onCamera(pose: RenderCameraPose): void {
-    this.pose = pose;
-    this.publish();
+    this.viewportService.noteCamera(toLevelCameraReading(pose));
   }
 
   protected onWeather(report: Nullable<RenderWeatherReport>): void {
@@ -415,7 +344,6 @@ export class LevelRenderService extends NativeRenderSurfaceService {
   }
 
   protected onLoad(report: RenderLoadReport): void {
-    this.load = report;
     this.viewportService.noteLoad(report);
 
     // Revealed once everything it opens with is resident, so it is never seen half read.
@@ -450,51 +378,12 @@ export class LevelRenderService extends NativeRenderSurfaceService {
     }
   }
 
-  /** What the level's toolbar and the application's settings come to. */
-  private toSettings(): IRendererSettings {
-    return toLevelRendererSettings({
-      config: this.config,
-      debugView: this.viewService.debugView,
-      hemiStrength: this.viewService.hemiStrength,
-      lod: this.viewService.lod,
-      options: this.viewService.options,
-      shared: this.settingsService.sharedRenderSettings,
-      view: this.viewService.features,
-    });
-  }
-
-  /** What the frames cost and where the camera is, for the readouts. */
-  private publish(): void {
-    const pose: Nullable<RenderCameraPose> = this.pose ?? this.toViewpointPose();
-
-    if (!pose) {
-      return;
-    }
-
-    this.viewportService.report(
-      measureLevelStats(
-        { bytes: this.load?.bytes ?? 0, sectors: this.load?.sectors ?? 0 },
-        this.frame,
-        this.sectorTime,
-        this.staticDraws,
-        this.lights,
-        0
-      ),
-      toLevelCameraReading({
-        position: [pose.position[0] ?? 0, pose.position[1] ?? 0, pose.position[2] ?? 0],
-        target: [pose.target[0] ?? 0, pose.target[1] ?? 0, pose.target[2] ?? 0],
-      }),
-      this.timings
-    );
-  }
-
   @BoundAction()
   private openLevel(selected: Nullable<SessionSnapshot<SelectedLevelDescription>>): void {
     const level: Nullable<SelectedLevelDescription> = selected?.value ?? null;
 
     this.opening += 1;
     this.level = level;
-    this.load = null;
     this.stand(toLevelStartViewpoint(level?.bounds ?? null, level?.start ?? null));
     // Another level's surfaces and objects are numbered afresh.
     this.viewportService.notePicked(null);
@@ -527,16 +416,5 @@ export class LevelRenderService extends NativeRenderSurfaceService {
 
   private toCamera(viewpoint: ILevelViewpoint, options: ILevelCameraOptions): RenderCamera {
     return toLevelCameraAt(viewpoint, options, this.config);
-  }
-
-  private toViewpointPose(): Nullable<RenderCameraPose> {
-    const viewpoint: Nullable<ILevelViewpoint> = this.viewpoint;
-
-    return viewpoint
-      ? {
-          position: [viewpoint.position.x, viewpoint.position.y, viewpoint.position.z],
-          target: [viewpoint.target.x, viewpoint.target.y, viewpoint.target.z],
-        }
-      : null;
   }
 }

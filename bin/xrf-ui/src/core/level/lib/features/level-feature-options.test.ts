@@ -1,6 +1,11 @@
 import { describe, expect, it } from "@jest/globals";
 
 import {
+  ERenderAmbientOcclusionQuality,
+  ERenderAntialiasing,
+  ERenderLightShadowFilter,
+} from "@/core/ipc/types/xrf-renderer";
+import {
   describeLevelFeatureToggle,
   ILevelFeatureOptions,
   LEVEL_ANTIALIASING_MODES,
@@ -10,20 +15,17 @@ import {
   toLevelRendererAntialiasing,
   toLevelRendererFeature,
 } from "@/core/level/lib/features/level-feature-options";
-import { ERendererAmbientOcclusionQuality } from "@/core/render/lib/contract/renderer-ambient-occlusion-quality";
-import { ERendererAntialiasing } from "@/core/render/lib/contract/renderer-antialiasing";
-import { IRendererFeatureSettings } from "@/core/render/lib/contract/renderer-feature-settings";
-import { ERendererLightShadowFilter } from "@/core/render/lib/contract/renderer-light-shadow-filter";
-import { ERendererPreset, RENDERER_PRESETS } from "@/core/render/lib/contract/renderer-preset";
+import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-feature-settings";
+import { ERenderPreset, RENDER_PRESETS } from "@/core/render/lib/settings/render-preset";
 import { mockLevelFeatureOptions } from "@/fixtures/mocks/level.mocks";
 
-const SETTINGS: IRendererFeatureSettings = RENDERER_PRESETS[ERendererPreset.BASE];
+const SETTINGS: IRenderFeatureSettings = RENDER_PRESETS[ERenderPreset.BASE];
 
 const VIEW: ILevelFeatureOptions = {
   ...mockLevelFeatureOptions(),
-  ambientOcclusion: { quality: ERendererAmbientOcclusionQuality.LOW },
+  ambientOcclusion: { quality: ERenderAmbientOcclusionQuality.LOW },
   grass: { radius: 80 },
-  lights: { shadowFilter: ERendererLightShadowFilter.SOFT },
+  lights: { shadowFilter: ERenderLightShadowFilter.SOFT },
   shadows: { cascades: [20], filter: 0 },
 };
 
@@ -31,8 +33,8 @@ const KEYS: ReadonlyArray<TLevelFeatureKey> = ["ambientOcclusion", "grass", "lig
 
 describe("level feature options", () => {
   it("follows the settings by default", () => {
-    expect(toLevelRendererAntialiasing(ERendererAntialiasing.SMAA, mockLevelFeatureOptions(), true)).toBe(
-      ERendererAntialiasing.SMAA
+    expect(toLevelRendererAntialiasing(ERenderAntialiasing.SMAA, mockLevelFeatureOptions(), true)).toBe(
+      ERenderAntialiasing.SMAA
     );
 
     for (const key of KEYS) {
@@ -41,26 +43,26 @@ describe("level feature options", () => {
   });
 
   it("smooths with the view's own mode, which can be any but none", () => {
-    const view: ILevelFeatureOptions = { ...mockLevelFeatureOptions(), antialiasing: ERendererAntialiasing.FXAA };
+    const view: ILevelFeatureOptions = { ...mockLevelFeatureOptions(), antialiasing: ERenderAntialiasing.FXAA };
 
-    expect(toLevelRendererAntialiasing(ERendererAntialiasing.SMAA, view, true)).toBe(ERendererAntialiasing.FXAA);
-    expect(toLevelRendererAntialiasing(ERendererAntialiasing.SMAA, view, false)).toBe(ERendererAntialiasing.NONE);
-    expect(LEVEL_ANTIALIASING_MODES).not.toContain(ERendererAntialiasing.NONE);
-    expect(LEVEL_ANTIALIASING_MODES).toHaveLength(Object.values(ERendererAntialiasing).length - 1);
+    expect(toLevelRendererAntialiasing(ERenderAntialiasing.SMAA, view, true)).toBe(ERenderAntialiasing.FXAA);
+    expect(toLevelRendererAntialiasing(ERenderAntialiasing.SMAA, view, false)).toBe(ERenderAntialiasing.NONE);
+    expect(LEVEL_ANTIALIASING_MODES).not.toContain(ERenderAntialiasing.NONE);
+    expect(LEVEL_ANTIALIASING_MODES).toHaveLength(Object.values(ERenderAntialiasing).length - 1);
   });
 
   it("cannot smooth what the settings leave unsmoothed", () => {
-    const view: ILevelFeatureOptions = { ...mockLevelFeatureOptions(), antialiasing: ERendererAntialiasing.SMAA };
+    const view: ILevelFeatureOptions = { ...mockLevelFeatureOptions(), antialiasing: ERenderAntialiasing.SMAA };
 
-    expect(toLevelRendererAntialiasing(ERendererAntialiasing.NONE, view, true)).toBe(ERendererAntialiasing.NONE);
+    expect(toLevelRendererAntialiasing(ERenderAntialiasing.NONE, view, true)).toBe(ERenderAntialiasing.NONE);
   });
 
   it("draws every group with the view's own values over the settings'", () => {
     expect(toLevelRendererFeature("ambientOcclusion", SETTINGS, VIEW, true).quality).toBe(
-      ERendererAmbientOcclusionQuality.LOW
+      ERenderAmbientOcclusionQuality.LOW
     );
     expect(toLevelRendererFeature("grass", SETTINGS, VIEW, true)).toEqual({ ...SETTINGS.grass, radius: 80 });
-    expect(toLevelRendererFeature("lights", SETTINGS, VIEW, true).shadowFilter).toBe(ERendererLightShadowFilter.SOFT);
+    expect(toLevelRendererFeature("lights", SETTINGS, VIEW, true).shadowFilter).toBe(ERenderLightShadowFilter.SOFT);
     expect(toLevelRendererFeature("shadows", SETTINGS, VIEW, true)).toEqual({
       ...SETTINGS.shadows,
       cascades: [20],
@@ -70,7 +72,7 @@ describe("level feature options", () => {
 
   it("can turn every group off but not on", () => {
     for (const key of KEYS) {
-      const off: IRendererFeatureSettings = { ...SETTINGS, [key]: { ...SETTINGS[key], isEnabled: false } };
+      const off: IRenderFeatureSettings = { ...SETTINGS, [key]: { ...SETTINGS[key], isEnabled: false } };
 
       expect(toLevelRendererFeature(key, SETTINGS, VIEW, false).isEnabled).toBe(false);
       expect(toLevelRendererFeature(key, off, VIEW, true).isEnabled).toBe(false);
@@ -103,7 +105,7 @@ describe("level feature options", () => {
     expect(toLevelFeatureOptions(JSON.parse(JSON.stringify(VIEW)))).toEqual(VIEW);
     expect(
       toLevelFeatureOptions({
-        antialiasing: ERendererAntialiasing.NONE,
+        antialiasing: ERenderAntialiasing.NONE,
         grass: { isEnabled: false, radius: 5000 },
         lights: { shadowFilter: "anomaly" },
         lod: { ssaA: 20 },

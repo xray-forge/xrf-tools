@@ -194,6 +194,21 @@ export type RenderExposureSettings = {
   adaptation: number | null;
 };
 
+/** Every `kind` the `RenderFrameRate` union is told apart by, so a switch or a comparison names one. */
+export enum ERenderFrameRate {
+  /** At most this many a second, each presented at a refresh of the display, which a faster limit stops at. */
+  LIMITED = "limited",
+  /** As fast as a frame can be drawn, presented as soon as it is, for measuring. */
+  UNLIMITED = "unlimited",
+}
+
+/** How often a viewport's frames are drawn. */
+export type RenderFrameRate =
+  /** At most this many a second, each presented at a refresh of the display, which a faster limit stops at. */
+  | { kind: "limited"; framesPerSecond: number }
+  /** As fast as a frame can be drawn, presented as soon as it is, for measuring. */
+  | { kind: "unlimited" };
+
 /** What a viewport's recent frames cost, reported a few times a second while it draws. */
 export type RenderFrameReport = {
   /** Frames presented a second over the reported span. */
@@ -230,6 +245,8 @@ export type RenderFrameReport = {
   lights: RenderLightsReport;
   /** Milliseconds the last sector taken in took to put into the scene, on the render thread. */
   sectorTime: number | null;
+  /** What the renderer holds on the GPU. */
+  memory: RenderMemoryReport;
 };
 
 /**
@@ -432,6 +449,14 @@ export type RenderLodSettings = {
   ssaGlodEnd: number | null;
 };
 
+/** What the renderer holds on the GPU for what it draws. */
+export type RenderMemoryReport = {
+  /** Bytes of every texture uploaded, shared by every viewport. */
+  textures: number;
+  /** Bytes of this viewport's scene buffers: geometry, clusters, places and the rest that grow with what it shows. */
+  scene: number;
+};
+
 /** How a viewport's skinned models stand: a frame of a motion of theirs, or their bind pose, and the bones collapsed. */
 export type RenderModelPose = {
   /** The motion, by its name, or none for the bind pose. */
@@ -509,17 +534,6 @@ export type RenderPoolUse = {
   capacity: number;
 };
 
-/** How often frames are presented. */
-export enum ERenderPresentation {
-  /** One frame a refresh of the display. */
-  VSYNC = "vsync",
-  /** As fast as the frame can be drawn, for measuring. */
-  UNCAPPED = "uncapped",
-}
-
-/** Every `ERenderPresentation` as the spelling it crosses IPC as, for a value no member has narrowed. */
-export type RenderPresentation = `${ERenderPresentation}`;
-
 /** A rectangle of a window's client area, in device pixels from its top left corner. */
 export type RenderRect = {
   x: number;
@@ -553,7 +567,7 @@ export type RenderSectorSkip = {
 
 /** What every viewport of the renderer draws with. */
 export type RenderSettings = {
-  presentation: RenderPresentation;
+  frameRate: RenderFrameRate;
   /** Whether each pass of a frame is timed on the GPU, where the device writes timestamps between passes. */
   isGpuTimed: boolean;
 };

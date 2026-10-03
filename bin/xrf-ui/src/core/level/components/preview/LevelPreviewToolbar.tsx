@@ -3,6 +3,7 @@ import { ReactElement, ReactNode, useCallback } from "react";
 
 import { LevelSunDescription, LevelWeatherTexture } from "@/core/ipc/types/xrf-app";
 import { ThunderboltCollection } from "@/core/ipc/types/xrf-environment";
+import { ERenderDebugView } from "@/core/ipc/types/xrf-renderer";
 import { LevelAntialiasingAction } from "@/core/level/components/preview/LevelAntialiasingAction";
 import { LevelCullingAction } from "@/core/level/components/preview/LevelCullingAction";
 import { LevelFogAction } from "@/core/level/components/preview/LevelFogAction";
@@ -24,8 +25,7 @@ import { ILevelFeatureOptions, TLevelFeatureView } from "@/core/level/lib/featur
 import { ILevelLodOptions } from "@/core/level/lib/lod/level-lod-options";
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { ILevelManualWeather } from "@/core/level/lib/weather/level-manual-weather";
-import { ERendererDebugView } from "@/core/render/lib/contract/renderer-debug-view";
-import { IRendererFeatureSettings } from "@/core/render/lib/contract/renderer-feature-settings";
+import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { EditorToolbarSeparator } from "@/core/shell/editor/EditorToolbarSeparator";
 import { BaseComponentProps } from "@/lib/dom/element-types";
@@ -52,11 +52,11 @@ interface ILevelPreviewToolbarProps extends BaseComponentProps {
   /** Each feature group as the view draws it while on, and whether the settings let it be on. */
   featureView: TLevelFeatureView;
   /** What the renderer's settings draw every viewport with, which the toggles can only narrow. */
-  settings: IRendererFeatureSettings;
+  settings: IRenderFeatureSettings;
   /** Whether the settings time every viewport's passes. */
   isGpuTimed: boolean;
   /** Which picture the viewport shows. */
-  debugView: ERendererDebugView;
+  debugView: ERenderDebugView;
   /** Value pickers the surface contributes, drawn last, as every toolbar in this application orders them. */
   actions?: ReactNode;
   onChangeOptions: (options: ILevelViewOptions) => void;
@@ -67,7 +67,7 @@ interface ILevelPreviewToolbarProps extends BaseComponentProps {
   onChangeFeatures: (features: ILevelFeatureOptions) => void;
   /** Sets in the settings whether every viewport times its passes. */
   onChangeGpuTimed: (isGpuTimed: boolean) => void;
-  onChangeDebugView: (debugView: ERendererDebugView) => void;
+  onChangeDebugView: (debugView: ERenderDebugView) => void;
   onBack?: () => void;
 }
 

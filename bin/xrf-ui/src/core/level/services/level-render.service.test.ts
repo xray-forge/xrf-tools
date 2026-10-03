@@ -5,9 +5,9 @@ import { Container } from "@wirestate/core";
 import {
   ERenderCamera,
   ERenderCameraCommand,
+  ERenderFrameRate,
   ERenderLevelHit,
   ERenderOverlay,
-  ERenderPresentation,
   ERenderViewportEvent,
   ERenderWeatherPlay,
   ERenderWeatherTransition,
@@ -24,7 +24,7 @@ import { LevelRenderService, toLevelPick } from "@/core/level/services/level-ren
 import { LevelViewService } from "@/core/level/services/level-view.service";
 import { LevelViewportService } from "@/core/level/services/level-viewport.service";
 import { LevelWeatherService } from "@/core/level/services/level-weather.service";
-import { ERenderResolution } from "@/core/render/lib/contract/render-resolution";
+import { ERenderResolution } from "@/core/render/lib/settings/render-resolution";
 import { SettingsService } from "@/core/settings/services/settings";
 import { mockLevelSpawnObject, mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
@@ -36,7 +36,7 @@ import {
   resetMockInvoke,
   setMockInvokeResponses,
 } from "@/fixtures/mocks/tauri.mocks";
-import { mockLevelWeatherDescription, mockRendererWeatherReport } from "@/fixtures/mocks/weather.mocks";
+import { mockLevelWeatherDescription, mockRenderWeatherReport } from "@/fixtures/mocks/weather.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 
 const VIEWPORT: number = 7;
@@ -57,6 +57,7 @@ const REPORT: RenderFrameReport = {
     { gpuTime: 1.25, name: "g-buffer" },
     { gpuTime: 0.5, name: "sun" },
   ],
+  memory: { scene: 4_194_304, textures: 67_108_864 },
   lights: {
     atlas: { capacity: 16_777_216, used: 4_194_304 },
     dropped: 3,
@@ -147,7 +148,9 @@ describe("LevelRenderService", () => {
     await mockAttached();
 
     expect(sent("attach_viewport")).toEqual([{ events: getMockChannels()[0], window: "main" }]);
-    expect(sent("configure")).toEqual([{ settings: { isGpuTimed: false, presentation: ERenderPresentation.VSYNC } }]);
+    expect(sent("configure")).toEqual([
+      { settings: { frameRate: { framesPerSecond: 60, kind: ERenderFrameRate.LIMITED }, isGpuTimed: false } },
+    ]);
 
     const camera: RenderCamera = sent("set_camera").at(-1)?.camera as RenderCamera;
 
@@ -198,47 +201,19 @@ describe("LevelRenderService", () => {
     ]);
   });
 
-  it("reads frames, their pass timings and the camera into the readouts", async () => {
-    const { container } = await mockAttached();
+  it("reads frames and the camera into the readouts, and forgets the frame once detached", async () => {
+    const { container, service } = await mockAttached();
     const viewport: LevelViewportService = container.get(LevelViewportService);
 
     emit({ kind: ERenderViewportEvent.FRAME, report: REPORT });
-    expect(viewport.stats.framesPerSecond).toBe(160);
-    expect(viewport.stats.worstFrameTime).toBe(9);
-    expect(viewport.stats.drawnWidth).toBe(800);
-    expect(viewport.stats.renderedWidth).toBe(534);
-    expect(viewport.stats.draws).toBe(13);
-    expect(viewport.stats.sceneTime).toBe(1.5);
-    expect(viewport.stats.triangles).toBe(90_000);
-    expect(viewport.timings).toEqual({
-      isGpuTimed: true,
-      passes: [
-        { gpuTime: 1.25, name: "g-buffer" },
-        { gpuTime: 0.5, name: "sun" },
-      ],
-    });
-
-    expect(viewport.stats.staticDraws).toEqual(
-      expect.objectContaining({
-        clusters: { capacity: 4096, used: 3000 },
-        commands: 13,
-        kept: { clusters: 1200, triangles: 90_000 },
-        occluded: { clusters: 300, triangles: 20_000 },
-      })
-    );
-    expect(viewport.stats.lights).toEqual({
-      atlas: { capacity: 16_777_216, used: 4_194_304 },
-      droppedLights: 3,
-      excessLights: 0,
-      fullClusters: 2,
-      inView: 12,
-      shadowScale: 1,
-      shadowed: 4,
-    });
+    expect(service.frame).toBe(REPORT);
 
     emit({ kind: ERenderViewportEvent.CAMERA, pose: { position: [1, 2, 3], target: [1, 2, 2] } });
     // The readout states the engine's space, which mirrors renderer space along z.
     expect(viewport.camera?.position).toEqual({ x: 1, y: 2, z: -3 });
+
+    service.detach();
+    expect(service.frame.framesPerSecond).toBe(0);
   });
 
   it("goes to a place by standing the camera there anew", async () => {
@@ -354,7 +329,7 @@ describe("LevelRenderService", () => {
     expect(sent("seek_weather")).toEqual([{ time: 3_600, viewport: VIEWPORT }]);
     expect(sent("play_weather_effect")).toEqual([{ name: "fx_storm", viewport: VIEWPORT }]);
 
-    emit({ kind: ERenderViewportEvent.WEATHER, report: mockRendererWeatherReport({ time: 4_000 }) });
+    emit({ kind: ERenderViewportEvent.WEATHER, report: mockRenderWeatherReport({ time: 4_000 }) });
     expect(weather.time).toBe(4_000);
     expect(weather.report?.between).toEqual([0, 43_200]);
   });

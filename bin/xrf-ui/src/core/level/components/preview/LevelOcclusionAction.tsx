@@ -2,13 +2,12 @@ import { default as GradientIcon } from "@mui/icons-material/Gradient";
 import { Button } from "@mui/material";
 import { ReactElement } from "react";
 
+import { RenderAmbientOcclusionQuality } from "@/core/ipc/types/xrf-renderer";
 import { ILevelFeatureActionProps } from "@/core/level/components/preview/level-feature-action-props";
 import { useLevelFeatureOverride } from "@/core/level/components/preview/use-level-feature-override";
 import { DEFAULT_LEVEL_HEMI_STRENGTH, ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
-import { ERendererAmbientOcclusionQuality } from "@/core/render/lib/contract/renderer-ambient-occlusion-quality";
-import { IRendererAmbientOcclusionSettings } from "@/core/render/lib/contract/renderer-ambient-occlusion-settings";
 import {
   describeRenderAmbientOcclusionQuality,
   formatOcclusionRadius,
@@ -16,6 +15,7 @@ import {
   RENDER_AMBIENT_OCCLUSION_LIMITS,
   RENDER_AMBIENT_OCCLUSION_QUALITY_OPTIONS,
 } from "@/core/render/lib/features";
+import { TRenderAmbientOcclusionSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { EditorPopoverGroup, EditorPopoverGroupSection } from "@/core/shell/editor/EditorPopoverGroup";
 import { formatPercent } from "@/lib/format/number";
 
@@ -43,7 +43,7 @@ export function LevelOcclusionAction({
   onChangeHemiStrength,
 }: ILevelOcclusionActionProps): ReactElement {
   const { set, reset } = useLevelFeatureOverride("ambientOcclusion", features, onChange);
-  const occlusion: IRendererAmbientOcclusionSettings = state.value;
+  const occlusion: TRenderAmbientOcclusionSettings = state.value;
   const isScreen: boolean = options.isOccluded && state.isAvailable;
 
   return (
@@ -73,7 +73,7 @@ export function LevelOcclusionAction({
           label={"Quality"}
           options={RENDER_AMBIENT_OCCLUSION_QUALITY_OPTIONS}
           value={occlusion.quality}
-          onChange={(quality: ERendererAmbientOcclusionQuality) => set({ quality })}
+          onChange={(quality: RenderAmbientOcclusionQuality) => set({ quality })}
         />
 
         <RenderValueSlider

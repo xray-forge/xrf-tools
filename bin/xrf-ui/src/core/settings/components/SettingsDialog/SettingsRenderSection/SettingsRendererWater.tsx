@@ -1,7 +1,7 @@
 import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
-import { IRendererWaterSettings } from "@/core/render/lib/contract/renderer-water-settings";
+import { TRenderWaterSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { SettingsService } from "@/core/settings/services/settings";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { DetailSection } from "@/core/ui/layout/DetailSection";
@@ -12,7 +12,7 @@ import { useRendererOverride } from "./use-renderer-override";
 export function SettingsRendererWater(): ReactElement {
   const settingsService: SettingsService = useInjection(SettingsService);
 
-  const water: IRendererWaterSettings = settingsService.rendererFeatures.water;
+  const water: TRenderWaterSettings = settingsService.rendererFeatures.water;
 
   const onSet = useRendererOverride("water");
 

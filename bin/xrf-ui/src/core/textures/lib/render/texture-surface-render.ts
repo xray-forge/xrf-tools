@@ -3,15 +3,10 @@ import { Nullable } from "@xrf/types";
 import { TextureDescription } from "@/core/ipc/types/xrf-app";
 import { ERenderCamera, RenderCamera, RenderViewOptions } from "@/core/ipc/types/xrf-renderer";
 import { IRenderLighting, toNativeAssetLighting } from "@/core/render/lib/lighting/render-lighting";
-import {
-  NEUTRAL_NATIVE_LOOK,
-  NO_NATIVE_VIEW_SWITCHES,
-  toNativeViewOptions,
-} from "@/core/render/lib/native/native-view-options";
+import { toNativeAssetViewOptions } from "@/core/render/lib/native/native-view-options";
 import { TNativeTextureRequest } from "@/core/render/lib/native/native-viewport";
 import { toRawColor } from "@/core/render/lib/scene/render-color";
-import { toAssetRendererSettings } from "@/core/render/lib/settings/asset-renderer-settings";
-import { IRenderSharedSettings } from "@/core/render/lib/settings/render-shared-settings";
+import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { ITextureSurfaceOptions, toTextureAspect } from "@/core/textures/lib/texture-surface";
 import { VIEWPORT } from "@/core/theme/tokens";
 
@@ -60,7 +55,7 @@ export function toTextureSurfaceRequest(
 /**
  * @param options - How the texture is being looked at.
  * @param lighting - The light the body is shaded by.
- * @param shared - What the application sets for every viewport.
+ * @param features - What the application sets every viewport's features to.
  * @param pixelRatio - Device pixels a css pixel, which the backdrop's squares are measured in.
  * @param renderHeight - How many rows the body is drawn with at most; null for as many as the viewport covers.
  * @returns What a native viewport draws the body with: against the alpha checkerboard every picture is judged on.
@@ -68,20 +63,14 @@ export function toTextureSurfaceRequest(
 export function toTextureViewOptions(
   options: ITextureSurfaceOptions,
   lighting: IRenderLighting,
-  shared: IRenderSharedSettings,
+  features: IRenderFeatureSettings,
   pixelRatio: number,
   renderHeight: Nullable<number> = null
 ): RenderViewOptions {
-  const settings = toAssetRendererSettings(
-    { backdrop: null, isBumped: options.isBumped, isLit: options.isLit, isWireframe: false },
-    shared
-  );
-
   return {
-    ...toNativeViewOptions(
-      settings,
-      NO_NATIVE_VIEW_SWITCHES,
-      { ...NEUTRAL_NATIVE_LOOK, exposure: settings.features.exposure },
+    ...toNativeAssetViewOptions(
+      { isBumped: options.isBumped, isLit: options.isLit, isWireframe: false },
+      features,
       renderHeight
     ),
     assetLighting: toNativeAssetLighting(lighting),

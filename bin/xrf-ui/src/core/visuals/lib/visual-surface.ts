@@ -1,6 +1,6 @@
 import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import { VisualSubmesh } from "@/core/ipc/types/xrf-visual";
-import { getRendererSurfaceDraw, IRendererSurfaceDraw } from "@/core/render/lib/surface/renderer-surface-draw";
+import { getRenderSurfaceDraw, IRenderSurfaceDraw } from "@/core/render/lib/surface/render-surface-draw";
 
 /**
  * The material state of every submesh, by the index the submesh reports.
@@ -12,11 +12,11 @@ import { getRendererSurfaceDraw, IRendererSurfaceDraw } from "@/core/render/lib/
 export function createVisualSurfaces(
   submeshes: Array<VisualSubmesh>,
   surfaces: ReadonlyArray<XraySurfaceDescriptor> = []
-): Map<number, IRendererSurfaceDraw> {
+): Map<number, IRenderSurfaceDraw> {
   return new Map(
     submeshes.map((submesh: VisualSubmesh, position: number) => [
       submesh.index,
-      getRendererSurfaceDraw(surfaces, position),
+      getRenderSurfaceDraw(surfaces, position),
     ])
   );
 }
