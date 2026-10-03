@@ -1,5 +1,6 @@
 mod cameras;
 mod frame_statistics;
+mod fsr;
 mod grass;
 mod headless;
 mod light_geometry;

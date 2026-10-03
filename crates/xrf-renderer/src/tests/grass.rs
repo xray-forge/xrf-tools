@@ -53,3 +53,20 @@ fn sways_the_grass_on_its_two_winds_and_stills_it_without_wind() {
   assert!(blowing.wave_1.w > 0.0);
   assert_eq!(wind.advance(1.0, false).wind_1.length(), 0.0);
 }
+
+#[test]
+fn carries_the_last_frames_sway_for_the_tufts_motion() {
+  let mut wind: GrassWind = GrassWind::default();
+  let first = wind.advance(0.0, true);
+
+  // A first frame moved from nowhere.
+  assert_eq!(first.previous_wind_1, first.wind_1);
+  assert_eq!(first.previous_wave_2, first.wave_2);
+
+  let second = wind.advance(0.5, true);
+
+  assert_eq!(second.previous_wind_1, first.wind_1);
+  assert_eq!(second.previous_wind_2, first.wind_2);
+  assert_eq!(second.previous_wave_1, first.wave_1);
+  assert_ne!(second.wind_1, first.wind_1);
+}

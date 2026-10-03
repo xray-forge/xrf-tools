@@ -26,6 +26,8 @@ pub enum RenderDebugView {
   Light,
   /// The screen's occlusion, white where it is off.
   AmbientOcclusion,
+  /// How far each surface moved on the screen since the last frame: red across, green down, grey still.
+  Motion,
 }
 
 impl RenderDebugView {

@@ -3,7 +3,8 @@
 
 // The temporal resolve, after Karis's "High Quality Temporal Supersampling": this frame's jittered samples blended
 // with the history the camera's motion carries to each pixel, the history clipped to the colours around it, upscaling
-// as TAAU where the frame is drawn smaller than the history. Motion is the camera's, read from depth.
+// as TAAU where the frame is drawn smaller than the history. Motion is each surface's own, from the motion target, and
+// the camera's from depth where nothing was drawn.
 
 struct Temporal {
   // This frame's view projection without its jitter, and the last frame's.
@@ -22,6 +23,8 @@ struct Temporal {
 @group(1) @binding(2) var history: texture_2d<f32>;
 @group(1) @binding(3) var history_sampler: sampler;
 @group(1) @binding(4) var<uniform> temporal: Temporal;
+// How far each surface's point moved since the last frame, as the G-buffer wrote it.
+@group(1) @binding(5) var motion_target: texture_2d<f32>;
 
 // Share of a point's distance its history's may differ by and still be taken as the same surface.
 const DISTANCE_TOLERANCE: f32 = 0.1;
@@ -138,7 +141,10 @@ fn fs_temporal(in: FullscreenVarying) -> @location(0) vec4<f32> {
   let world: vec3<f32> = world_at(nearest, depth);
   let distance: f32 = -camera_view_position(nearest + 0.5, depth).z;
   let moving: vec3<f32> = world_at(closest, closest_depth);
-  let moved: vec2<f32> = to_uv(temporal.current, moving) - to_uv(temporal.previous, moving);
+  let surface_motion: vec2<f32> = textureLoad(motion_target, vec2<i32>(clamp(closest, vec2<f32>(0.0),
+    input_size - 1.0)), 0).xy;
+  let moved: vec2<f32> = select(to_uv(temporal.current, moving) - to_uv(temporal.previous, moving), surface_motion,
+    closest_depth > 0.0);
   let before: vec2<f32> = uv - moved;
 
   // The history stands for this surface where it showed something as far from the camera as this point was then.

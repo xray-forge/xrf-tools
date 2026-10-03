@@ -14,11 +14,13 @@ pub enum RenderAntialiasing {
   Smaa,
   /// Temporal: every frame's samples jittered within the pixel and resolved with the frames before.
   Taa,
+  /// FSR 2: temporal as TAA, with each surface's motion, disocclusion, reactivity and thin-feature locks.
+  Fsr2,
 }
 
 impl RenderAntialiasing {
   /// Whether it resolves jittered frames with their history, which jitters every scene pass.
   pub fn is_temporal(self) -> bool {
-    self == Self::Taa
+    matches!(self, Self::Taa | Self::Fsr2)
   }
 }

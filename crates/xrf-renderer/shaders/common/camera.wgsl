@@ -15,9 +15,21 @@ struct Camera {
   switches: vec4<f32>,
   // x: one where every static surface draws as its triangles' edges.
   modes: vec4<f32>,
+  // World to clip without the jitter, this frame and the last, which a surface's motion is measured by.
+  motion_current: mat4x4<f32>,
+  motion_previous: mat4x4<f32>,
 };
 
 @group(0) @binding(0) var<uniform> camera: Camera;
+
+// How far a surface's point moved on the screen since the last frame, from where it stood then to where it stands
+// now, each through its own frame's unjittered camera: in texture coordinates, now less then, `y` down.
+fn camera_motion(world: vec3<f32>, previous_world: vec3<f32>) -> vec2<f32> {
+  let current: vec4<f32> = camera.motion_current * vec4<f32>(world, 1.0);
+  let previous: vec4<f32> = camera.motion_previous * vec4<f32>(previous_world, 1.0);
+
+  return (current.xy / current.w - previous.xy / previous.w) * vec2<f32>(0.5, -0.5);
+}
 
 // The point of the view frustum under a viewport position at a depth, reversed: one is the near plane.
 fn camera_unproject(ndc: vec2<f32>, depth: f32) -> vec3<f32> {

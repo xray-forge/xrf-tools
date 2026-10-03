@@ -8,13 +8,17 @@ pub struct ViewTargets {
   pub normal: wgpu::TextureView,
   /// Hemisphere, sun, material slice.
   pub material: wgpu::TextureView,
+  /// How far each surface's point moved on the screen since the last frame: texture coordinates, now less then, `y`
+  /// down; zero where nothing was drawn.
+  pub motion: wgpu::TextureView,
   /// Reversed: one at the near plane, zero where nothing was drawn.
   pub depth: wgpu::TextureView,
   /// What the lights accumulate: diffuse in colour, specular in alpha.
   pub light: wgpu::TextureView,
   /// The scene combine finished, tonemapped, before it is put into the window.
   pub scene: wgpu::TextureView,
-  /// The scene's texture, which a temporal resolve copies the frame it resolved back into.
+  /// The scene's texture, which a temporal resolve copies the frame it resolved back into, and FSR 2 copies out of
+  /// before the blended surfaces draw.
   pub scene_texture: wgpu::Texture,
   /// The ambient occlusion at half the size, searched into the first and denoised through the second back into it:
   /// visibility, then distance along the view.
@@ -29,6 +33,7 @@ impl ViewTargets {
   pub const ALBEDO: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
   pub const NORMAL: wgpu::TextureFormat = wgpu::TextureFormat::Rg16Float;
   pub const MATERIAL: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
+  pub const MOTION: wgpu::TextureFormat = wgpu::TextureFormat::Rg16Float;
   pub const DEPTH: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
   pub const LIGHT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
   pub const SCENE: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
@@ -72,6 +77,7 @@ impl ViewTargets {
       format: Self::SCENE,
       usage: wgpu::TextureUsages::RENDER_ATTACHMENT
         | wgpu::TextureUsages::TEXTURE_BINDING
+        | wgpu::TextureUsages::COPY_SRC
         | wgpu::TextureUsages::COPY_DST,
       view_formats: &[],
     });
@@ -83,6 +89,7 @@ impl ViewTargets {
       albedo: create("albedo", Self::ALBEDO),
       normal: create("normal", Self::NORMAL),
       material: create("material", Self::MATERIAL),
+      motion: create("motion", Self::MOTION),
       depth: create("depth", Self::DEPTH),
       light: create("light", Self::LIGHT),
       scene: scene_texture.create_view(&Default::default()),

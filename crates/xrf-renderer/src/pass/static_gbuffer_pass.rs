@@ -185,6 +185,12 @@ impl StaticGBufferPass {
           resolve_target: None,
           ops: clear(wgpu::Color::TRANSPARENT),
         }),
+        Some(wgpu::RenderPassColorAttachment {
+          view: &targets.motion,
+          depth_slice: None,
+          resolve_target: None,
+          ops: clear(wgpu::Color::TRANSPARENT),
+        }),
       ],
       depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
         view: &targets.depth,
@@ -287,10 +293,11 @@ impl StaticGBufferPass {
       bind_group_layouts: &[Some(view_layout), Some(layout), Some(texture_layout)],
       ..Default::default()
     });
-    let targets: [Option<wgpu::ColorTargetState>; 3] = [
+    let targets: [Option<wgpu::ColorTargetState>; 4] = [
       Some(ViewTargets::ALBEDO.into()),
       Some(ViewTargets::NORMAL.into()),
       Some(ViewTargets::MATERIAL.into()),
+      Some(ViewTargets::MOTION.into()),
     ];
     let pick_targets: [Option<wgpu::ColorTargetState>; 1] = [Some(PickTarget::FORMAT.into())];
     let create = |fragment: &str, targets: &[Option<wgpu::ColorTargetState>]| -> XrfResult<wgpu::RenderPipeline> {
@@ -344,10 +351,11 @@ impl StaticGBufferPass {
       bind_group_layouts: &[Some(view_layout), Some(layout), Some(texture_layout)],
       ..Default::default()
     });
-    let targets: [Option<wgpu::ColorTargetState>; 3] = [
+    let targets: [Option<wgpu::ColorTargetState>; 4] = [
       Some(ViewTargets::ALBEDO.into()),
       Some(ViewTargets::NORMAL.into()),
       Some(ViewTargets::MATERIAL.into()),
+      Some(ViewTargets::MOTION.into()),
     ];
     let pick_targets: [Option<wgpu::ColorTargetState>; 1] = [Some(PickTarget::FORMAT.into())];
     let create = |is_pick: bool| -> XrfResult<Vec<wgpu::RenderPipeline>> {
