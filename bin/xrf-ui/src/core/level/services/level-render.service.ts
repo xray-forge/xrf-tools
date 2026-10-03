@@ -268,10 +268,10 @@ export class LevelRenderService extends NativeRenderSurfaceService {
       reaction(
         () => {
           const level: Maybe<SelectedLevelDescription> = this.loadService.level.value?.selected.value;
-          const { isAxesVisible, isGridVisible, isSunVisible } = this.viewService.options;
+          const { isAxesVisible, isGridVisible, isSunMarked } = this.viewService.options;
           const box: Nullable<ILevelBox> = level ? toLevelBox(level.bounds) : null;
 
-          return { box, isAxesVisible, isGridVisible, isSunVisible };
+          return { box, isAxesVisible, isGridVisible, isSunMarked };
         },
         ({ box, ...options }) => viewport.setOverlays(toLevelFrameOverlays(box, options, this.config)),
         { equals: comparer.structural, fireImmediately: true }

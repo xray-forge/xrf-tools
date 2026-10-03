@@ -49,7 +49,7 @@ export function LevelSkyAction({
   onToggle,
   onEdit,
 }: ILevelSkyActionProps): ReactElement {
-  const { isSkyVisible, isClouded } = options;
+  const { isSkyVisible, isClouded, isLensFlared } = options;
   const isCloudy: boolean = isClouded && manual.cloudsTexture !== "";
 
   return (
@@ -90,6 +90,13 @@ export function LevelSkyAction({
 
         <LevelManualWeatherSlider field={"cloudsRotation"} manual={manual} format={formatDegrees} onEdit={onEdit} />
       </EditorPopoverGroupSection>
+
+      <EditorPopoverGroupSection
+        label={"Lens flares"}
+        description={"The sun's flares over the frame; its sprite and glow stay with the sky"}
+        isOn={isLensFlared}
+        onToggle={() => onToggle("isLensFlared")}
+      />
 
       <LevelWeatherResetButton keys={SKY_KEYS} onEdit={onEdit} />
     </EditorPopoverGroup>

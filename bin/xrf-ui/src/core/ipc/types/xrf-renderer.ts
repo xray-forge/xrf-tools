@@ -851,6 +851,11 @@ export type RenderViewOptions = {
   isSkyHazed: boolean;
   /** Whether the weather's clouds cross the sky. */
   isClouded: boolean;
+  /**
+   * Whether the sun's lens flares are drawn over the frame, `disable_lens_flare 0`; its sprite and gradient are drawn
+   * either way.
+   */
+  isLensFlared: boolean;
   /** Whether the weather's rain falls and wets surfaces. */
   isRainy: boolean;
   /** Whether the weather's bolts strike. */
