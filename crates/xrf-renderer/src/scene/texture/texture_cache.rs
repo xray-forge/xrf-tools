@@ -45,7 +45,8 @@ pub struct TextureCache {
   neutral: Vec<wgpu::TextureView>,
   /// What stands in for a base texture that cannot be had.
   checker: wgpu::TextureView,
-  by_reference: HashMap<String, u32>,
+  /// Each texture's slot by the scope its source resolves it in and its reference.
+  by_reference: HashMap<(String, String), u32>,
   sender: Sender<TextureLoad>,
   receiver: Receiver<TextureLoad>,
   /// Loaded, waiting for a frame's upload budget.
@@ -135,14 +136,16 @@ impl TextureCache {
     &self.bind_group
   }
 
-  /// The slot a texture reference samples from, loading it on a loader thread the first time it is asked for; until
-  /// it loads, its role's neutral stands in.
+  /// The slot a texture reference samples from, loading it on a loader thread the first time its source's scope asks
+  /// for it; until it loads, its role's neutral stands in.
   pub fn request(&mut self, reference: &str, role: TextureRole, source: &Arc<dyn RenderAssetSource>) -> u32 {
     if reference.is_empty() {
       return MISSING_SLOT;
     }
 
-    if let Some(&slot) = self.by_reference.get(reference) {
+    let key: (String, String) = (source.get_texture_scope(), reference.to_owned());
+
+    if let Some(&slot) = self.by_reference.get(&key) {
       return slot;
     }
 
@@ -163,7 +166,7 @@ impl TextureCache {
     self.references.push(reference.to_string());
     self.roles.push(role);
     self.is_dirty = true;
-    self.by_reference.insert(reference.to_string(), slot);
+    self.by_reference.insert(key, slot);
 
     let (sender, source, reference) = (self.sender.clone(), Arc::clone(source), reference.to_string());
 

@@ -248,8 +248,14 @@ impl RenderThread {
       RenderCommand::Level { id, source } => {
         if let Some(viewport) = self.viewports.get_mut(&id) {
           viewport.weather.show(source.clone());
+          // A scene of models alone keeps drawing the one before until it can be drawn whole, so a model swapped for
+          // another, or for itself at another detail, never leaves the viewport empty; a level starts afresh.
+          if source.as_ref().is_none_or(|source| source.get_sector_count() > 0) {
+            viewport.level_view = None;
+          }
+
           viewport.level = source;
-          viewport.level_view = None;
+          viewport.incoming_view = None;
         }
       }
       RenderCommand::Weather { id, play, transition } => {
@@ -330,6 +336,7 @@ impl RenderThread {
       for viewport in self.viewports.values_mut() {
         viewport.binding = None;
         viewport.level_view = None;
+        viewport.incoming_view = None;
       }
     }
 
@@ -583,22 +590,43 @@ impl RenderThread {
         &CameraUniform::new(&drawn, drawn_rect, switches)
           .with_wireframe(options.is_wireframe)
           .with_motion(motion)
-          .with_asset_view(options.checker, options.is_alpha_visible, options.backdrop),
+          .with_asset_view(&options),
       );
 
       let Some(source) = &viewport.level else {
         continue;
       };
-      let level: &mut LevelView = viewport
-        .level_view
-        .get_or_insert_with(|| LevelView::new(device, queue, &gpu.view_layout, Arc::clone(source)));
-
       // An asset viewer lights by its rig rather than a weather, and plays none.
       let asset_lighting: Option<RenderLighting> = options.asset_lighting.as_ref().map(RenderLighting::for_asset);
       let (lighting, weather) = match &asset_lighting {
         Some(lighting) => (lighting, None),
         None => (viewport.weather.get_lighting(), viewport.weather.get_level()),
       };
+
+      if viewport.level_view.as_ref().is_some_and(|level| !level.is_showing(source)) {
+        let incoming: &mut LevelView = viewport
+          .incoming_view
+          .get_or_insert_with(|| LevelView::new(device, queue, &gpu.view_layout, Arc::clone(source)));
+
+        incoming.set_model_pose(&viewport.model_pose);
+        incoming.load(
+          device,
+          queue,
+          &mut encoder,
+          (&mut gpu.textures, &mut gpu.weather_textures),
+          &gpu.grass,
+          (lighting, weather),
+          &options,
+        );
+
+        if incoming.is_ready(&gpu.textures) {
+          viewport.level_view = viewport.incoming_view.take();
+        }
+      }
+
+      let level: &mut LevelView = viewport
+        .level_view
+        .get_or_insert_with(|| LevelView::new(device, queue, &gpu.view_layout, Arc::clone(source)));
 
       level.set_timed(self.settings.is_gpu_timed);
       level.set_overlays(device, &viewport.overlays, viewport.overlays_version);

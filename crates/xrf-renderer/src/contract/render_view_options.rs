@@ -43,6 +43,8 @@ pub struct RenderViewOptions {
   pub backdrop: Option<[f32; 3]>,
   /// Times a uv checker repeats over a surface's base coordinate, drawn in place of its textures; zero for none.
   pub checker: f32,
+  /// The colour a surface naming no base texture is drawn, each channel zero to one; none for white.
+  pub plain_color: Option<[f32; 3]>,
   /// Whether surfaces cut out and blend as their shaders ask, or draw solid.
   pub is_alpha_visible: bool,
   /// Whether the weather's fog hides the distance.
@@ -101,6 +103,7 @@ impl Default for RenderViewOptions {
       asset_lighting: None,
       backdrop: None,
       checker: 0.0,
+      plain_color: None,
       is_alpha_visible: true,
       is_fogged: true,
       is_sky_visible: true,
