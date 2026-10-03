@@ -10,11 +10,13 @@ import {
   ERendererDebugView,
   ERendererLightShadowFilter,
   ERendererRenderScale,
+  ERenderResolution,
   IRendererFlyCamera,
   IRendererPassTimings,
   IRendererSettings,
   IRendererViewPoint,
   IRenderFrameCost,
+  TRendererOverlay,
 } from "@xrf/renderer";
 import { Maybe, Nullable } from "@xrf/types";
 
@@ -40,6 +42,7 @@ import {
   RenderFrameReport,
   RenderLevelHit,
   RenderLoadReport,
+  RenderOverlay,
   RenderPassCost,
   RenderSurfaceGeometry,
   RenderSurfaceSpan,
@@ -54,10 +57,12 @@ import { ILevelGoTo, toLevelGoToViewpoint } from "@/core/level/lib/camera/level-
 import { ILevelCameraOptions } from "@/core/level/lib/camera/level-camera-options";
 import { toLevelCameraReading } from "@/core/level/lib/camera/level-camera-reading";
 import { ILevelViewpoint, toLevelStartViewpoint } from "@/core/level/lib/camera/level-viewpoint";
+import { ILevelBox, toLevelBox } from "@/core/level/lib/extent/level-extent";
 import { ILevelLook } from "@/core/level/lib/look";
 import { LEVEL_PICK_PANELS } from "@/core/level/lib/panels/level-pick-panels";
 import { ELevelPick, TLevelPick } from "@/core/level/lib/pick/level-pick";
 import { DEFAULT_LEVEL_RENDER_CONFIG, ILevelRenderConfig } from "@/core/level/lib/render/level-render-config";
+import { toLevelFrameOverlays } from "@/core/level/lib/render/level-render-frame";
 import { toLevelCameraAt, toLevelRendererSettings } from "@/core/level/lib/render/level-render-view";
 import { ILevelPoint } from "@/core/level/lib/residency/level-residency";
 import { measureLevelStats } from "@/core/level/lib/stats/level-stats";
@@ -73,6 +78,7 @@ import { LevelViewService } from "@/core/level/services/level-view.service";
 import { LevelViewportService } from "@/core/level/services/level-viewport.service";
 import { LevelWeatherService } from "@/core/level/services/level-weather.service";
 import { listenRenderClicks } from "@/core/render/lib/frame/render-clicks";
+import { toNativeOverlay } from "@/core/render/lib/native/native-overlay";
 import { NativeRenderSurfaceService } from "@/core/render/lib/native/native-render-surface-service";
 import { NativeViewport } from "@/core/render/lib/native/native-viewport";
 import { toXraySpace } from "@/core/render/lib/scene/render-space";
@@ -160,6 +166,30 @@ export function toLevelPassTimings(report: RenderFrameReport): IRendererPassTimi
   };
 }
 
+/**
+ * @param resolution - How many pixels the viewer asked a viewport be drawn with.
+ * @returns How many rows a native viewport draws its level with at most; null for as many as it covers.
+ */
+export function toLevelRenderHeight(resolution: ERenderResolution): Nullable<number> {
+  return resolution === ERenderResolution.WINDOW ? null : Number(resolution);
+}
+
+/**
+ * @param box - The level's extent, or null while none is open.
+ * @param options - Which helpers the toolbar shows.
+ * @param config - Their cells, colours and sizes.
+ * @returns The helpers a native viewport draws over the level.
+ */
+export function toLevelOverlays(
+  box: Nullable<ILevelBox>,
+  options: Pick<ILevelViewOptions, "isAxesVisible" | "isGridVisible" | "isSunVisible">,
+  config: ILevelRenderConfig
+): Array<RenderOverlay> {
+  return toLevelFrameOverlays(box, options, config)
+    .map((overlay: TRendererOverlay) => toNativeOverlay(overlay))
+    .filter((overlay: Nullable<RenderOverlay>): overlay is RenderOverlay => overlay !== null);
+}
+
 /** What the toolbar switches of the view: the weather, the grass, the wall marks and the spawned objects' groups. */
 export type TLevelViewSwitches = Pick<
   ILevelViewOptions,
@@ -183,12 +213,14 @@ export type TLevelViewSwitches = Pick<
  * @param settings - What the level's toolbar and the application's settings come to.
  * @param switches - What the toolbar switches of the view.
  * @param look - How the level is exposed, lit and corrected.
+ * @param renderHeight - How many rows the level is drawn with at most; null for as many as the viewport covers.
  * @returns What a native viewport draws the level with.
  */
 export function toLevelViewOptions(
   settings: IRendererSettings,
   switches: TLevelViewSwitches,
-  look: ILevelLook
+  look: ILevelLook,
+  renderHeight: Nullable<number> = null
 ): RenderViewOptions {
   const { ambientOcclusion, grass, lights, shadows, water } = settings.features;
   const { corrections, exposure, lightScales } = look;
@@ -245,6 +277,7 @@ export function toLevelViewOptions(
     isThundering: switches.isThundering,
     isWallmarked: switches.isWallmarked,
     isWindy: switches.isWindy,
+    isWireframe: settings.isWireframe,
     lights: {
       isEnabled: lights.isEnabled,
       isLevelLights: lights.isLevelLights,
@@ -261,6 +294,7 @@ export function toLevelViewOptions(
       reach: shadows.reach,
       resolution: shadows.resolution,
     },
+    renderHeight,
     tonemapScale: settings.tonemapScale,
     water: {
       distortion: water.distortion,
@@ -464,8 +498,26 @@ export class LevelRenderService extends NativeRenderSurfaceService {
         { fireImmediately: true }
       ),
       reaction(
-        () => toLevelViewOptions(this.toSettings(), this.viewService.options, this.lookService.look),
+        () =>
+          toLevelViewOptions(
+            this.toSettings(),
+            this.viewService.options,
+            this.lookService.look,
+            toLevelRenderHeight(this.settingsService.renderResolution)
+          ),
         (options: RenderViewOptions) => viewport.setViewOptions(options),
+        { equals: comparer.structural, fireImmediately: true }
+      ),
+      // Keyed by the extent and the switches alone: the overlays themselves are long arrays.
+      reaction(
+        () => {
+          const level: Maybe<SelectedLevelDescription> = this.loadService.level.value?.selected.value;
+          const { isAxesVisible, isGridVisible, isSunVisible } = this.viewService.options;
+          const box: Nullable<ILevelBox> = level ? toLevelBox(level.bounds) : null;
+
+          return { box, isAxesVisible, isGridVisible, isSunVisible };
+        },
+        ({ box, ...options }) => viewport.setOverlays(toLevelOverlays(box, options, this.config)),
         { equals: comparer.structural, fireImmediately: true }
       ),
       ...this.watchWeather(viewport),

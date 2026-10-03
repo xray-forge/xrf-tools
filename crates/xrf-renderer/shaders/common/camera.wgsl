@@ -13,6 +13,8 @@ struct Camera {
   planes: array<vec4<f32>, 6>,
   // x: textured, y: bumped, z: the baked hemisphere's strength, w: how far the water distorts what is behind it.
   switches: vec4<f32>,
+  // x: one where every static surface draws as its triangles' edges.
+  modes: vec4<f32>,
 };
 
 @group(0) @binding(0) var<uniform> camera: Camera;

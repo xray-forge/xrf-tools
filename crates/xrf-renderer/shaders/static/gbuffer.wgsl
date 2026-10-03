@@ -14,6 +14,9 @@ enable wgpu_binding_array;
 // What `def_gloss` writes for a surface without a bump: 2 of 255.
 const DEFAULT_GLOSS: f32 = 2.0 / 255.0;
 
+// The untextured grey a wireframe draws every edge with, lit as a surface is.
+const WIRE_COLOR: vec3<f32> = vec3<f32>(0.75);
+
 // The sky share of an object under open sky, `ps_r2_dhemi_sky_scale`, which one without an estimate is lit by.
 const OPEN_SKY: f32 = 0.08;
 
@@ -32,6 +35,8 @@ struct GBufferVarying {
   @location(8) @interpolate(flat) sky: f32,
   // A forward-drawn model's light, which its vertex shader lights it by as the engine's does.
   @location(9) light: vec3<f32>,
+  // Which corner of its triangle the vertex is, one-hot, which a wireframe finds the edges by.
+  @location(10) barycentric: vec3<f32>,
 };
 
 struct GBufferOutput {
@@ -65,6 +70,7 @@ fn place_vertex(pulled: PulledVertex, position: vec3<f32>, normal: vec4<f32>, ta
   out.entry = pulled.entry;
   out.sky = OPEN_SKY;
   out.light = vec3<f32>(0.0);
+  out.barycentric = vec3<f32>(0.0);
 
   return out;
 }
@@ -82,6 +88,7 @@ fn vs_baked(@builtin(vertex_index) vertex_index: u32, @builtin(instance_index) i
   // The base coordinate's fraction rides in the tangent's and binormal's fourth bytes.
   out.uv = (unpack_shorts(words[at + 3u]) + vec2<f32>(tangent.w, binormal.w)) / 1024.0;
   out.lightmap_uv = unpack_shorts(words[at + 4u]) / 32768.0;
+  out.barycentric = corner_barycentric(vertex_index);
 
   return out;
 }
@@ -99,6 +106,7 @@ fn vs_tree(@builtin(vertex_index) vertex_index: u32, @builtin(instance_index) in
 
   out.uv = unpack_shorts(words[at + 3u]) / 2048.0;
   out.lightmap_uv = vec2<f32>(0.0);
+  out.barycentric = corner_barycentric(vertex_index);
 
   return out;
 }
@@ -107,7 +115,38 @@ fn vs_tree(@builtin(vertex_index) vertex_index: u32, @builtin(instance_index) in
 // cube gives along its normal where the level's lighting was estimated for it.
 @vertex
 fn vs_model(@builtin(vertex_index) vertex_index: u32, @builtin(instance_index) instance_index: u32) -> GBufferVarying {
-  return model_vertex(pull(vertex_index, instance_index));
+  var out: GBufferVarying = model_vertex(pull(vertex_index, instance_index));
+
+  out.barycentric = corner_barycentric(vertex_index);
+
+  return out;
+}
+
+// Which corner of its triangle a pulled vertex is: a cluster's vertices run three a triangle.
+fn corner_barycentric(vertex_index: u32) -> vec3<f32> {
+  let corner: u32 = vertex_index % 3u;
+
+  return vec3<f32>(f32(corner == 0u), f32(corner == 1u), f32(corner == 2u));
+}
+
+// Whether a wireframe leaves a fragment out: all but those within a pixel of their triangle's edges. Its derivatives
+// are taken before any branch.
+fn is_off_wire(in: GBufferVarying) -> bool {
+  let width: vec3<f32> = max(fwidth(in.barycentric), vec3<f32>(1e-6));
+  let reach: vec3<f32> = in.barycentric / width;
+
+  return camera.modes.x > 0.5 && min(reach.x, min(reach.y, reach.z)) > 1.0;
+}
+
+// A surface as a wireframe draws it: its edges in one untextured grey, lit as it is.
+fn wired(shaded: GBufferOutput) -> GBufferOutput {
+  var out: GBufferOutput = shaded;
+
+  if (camera.modes.x > 0.5) {
+    out.albedo = vec4<f32>(WIRE_COLOR, DEFAULT_GLOSS);
+  }
+
+  return out;
 }
 
 // A spawned model's vertex as it stands in its object's place, unswayed.
@@ -244,7 +283,11 @@ fn shade(in: GBufferVarying, base: vec4<f32>, at: Footprint) -> GBufferOutput {
 fn fs_opaque(in: GBufferVarying) -> GBufferOutput {
   let at: Footprint = take_footprint(in);
 
-  return shade(in, base_texel(in, at), at);
+  if (is_off_wire(in)) {
+    discard;
+  }
+
+  return wired(shade(in, base_texel(in, at), at));
 }
 
 // Whether a cut-out texel is cut, as `common/cut_out` cuts one.
@@ -259,12 +302,14 @@ fn is_cut(in: GBufferVarying, base: vec4<f32>, at: Footprint) -> bool {
 fn fs_cut_out(in: GBufferVarying) -> GBufferOutput {
   let at: Footprint = take_footprint(in);
   let base: vec4<f32> = base_texel(in, at);
+  let is_off: bool = is_off_wire(in);
 
-  if (is_cut(in, base, at)) {
+  // A wireframe draws a cut-out surface's every edge, whatever its alpha.
+  if (is_off || (camera.modes.x < 0.5 && is_cut(in, base, at))) {
     discard;
   }
 
-  return shade(in, base, at);
+  return wired(shade(in, base, at));
 }
 
 // A pick's texel: what was drawn, by its cluster and place, and its depth's bits.

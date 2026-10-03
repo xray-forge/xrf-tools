@@ -1,11 +1,13 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { waitFor } from "@testing-library/react";
 import { Container } from "@wirestate/core";
+import { ERenderResolution } from "@xrf/renderer";
 
 import {
   ERenderCamera,
   ERenderCameraCommand,
   ERenderLevelHit,
+  ERenderOverlay,
   ERenderPresentation,
   ERenderViewportEvent,
   ERenderWeatherPlay,
@@ -23,6 +25,7 @@ import { LevelRenderService, toLevelPick } from "@/core/level/services/level-ren
 import { LevelViewService } from "@/core/level/services/level-view.service";
 import { LevelViewportService } from "@/core/level/services/level-viewport.service";
 import { LevelWeatherService } from "@/core/level/services/level-weather.service";
+import { SettingsService } from "@/core/settings/services/settings";
 import { mockLevelSpawnObject, mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import {
@@ -65,6 +68,11 @@ function sent(command: string): Array<Record<string, unknown>> {
   return mockInvoke.mock.calls
     .filter(([name]) => name === `plugin:render|${command}`)
     .map(([, args]) => args as Record<string, unknown>);
+}
+
+/** The kinds of the overlays last sent, in order. */
+function sentOverlayKinds(): Array<string> {
+  return ((sent("set_overlays").at(-1)?.overlays ?? []) as Array<{ kind: string }>).map(({ kind }) => kind);
 }
 
 async function flush(): Promise<void> {
@@ -230,6 +238,45 @@ describe("LevelRenderService", () => {
 
     expect(sent("set_view_options")).toEqual([
       { options: expect.objectContaining({ isTextured: false }), viewport: VIEWPORT },
+    ]);
+  });
+
+  it("draws as a wireframe and at the height the settings ask for", async () => {
+    const { container } = await mockAttached();
+    const view: LevelViewService = container.get(LevelViewService);
+
+    expect(sent("set_view_options").at(-1)).toEqual({
+      options: expect.objectContaining({ isWireframe: false, renderHeight: null }),
+      viewport: VIEWPORT,
+    });
+
+    view.setOptions({ ...view.options, isWireframe: true });
+    container.get(SettingsService).setRenderResolution(ERenderResolution.HEIGHT_720);
+    await flush();
+
+    expect(sent("set_view_options").at(-1)).toEqual({
+      options: expect.objectContaining({ isWireframe: true, renderHeight: 720 }),
+      viewport: VIEWPORT,
+    });
+  });
+
+  it("draws the grid, the extent, the axes and the sun over the level as the toolbar shows them", async () => {
+    const { container } = await mockAttached();
+    const view: LevelViewService = container.get(LevelViewService);
+
+    view.setOptions({ ...view.options, isAxesVisible: false, isGridVisible: false, isSunVisible: true });
+    await flush();
+
+    expect(sentOverlayKinds()).toEqual([ERenderOverlay.SUN]);
+
+    view.setOptions({ ...view.options, isAxesVisible: true, isGridVisible: true, isSunVisible: false });
+    await flush();
+
+    expect(sentOverlayKinds()).toEqual([
+      ERenderOverlay.LINES,
+      ERenderOverlay.LINES,
+      ERenderOverlay.LINES,
+      ERenderOverlay.LINES,
     ]);
   });
 
