@@ -50,6 +50,10 @@ impl VisualRenderSource {
 }
 
 impl RenderAssetSource for VisualRenderSource {
+  fn get_texture_scope(&self) -> String {
+    format!("{:?} {:?}", self.visual.roots, XrayTextureScope::shared())
+  }
+
   fn read_texture(&self, reference: &str) -> XrfResult<Option<Vec<u8>>> {
     let known: Option<Option<String>> = self
       .textures

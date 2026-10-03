@@ -303,7 +303,7 @@ fn base_texel(in: GBufferVarying, at: Footprint) -> vec4<f32> {
   }
 
   if ((surface.flags & SURFACE_HAS_BASE) == 0u) {
-    return vec4<f32>(1.0);
+    return select(vec4<f32>(1.0), vec4<f32>(camera.plain.rgb, 1.0), camera.plain.w > 0.5);
   }
 
   return sample_slot(surface.base, at.uv, at.dx, at.dy);

@@ -1766,6 +1766,19 @@ impl LevelView {
     self.present_group.as_ref().map(|(_, group)| group)
   }
 
+  /// Whether it draws this source.
+  pub fn is_showing(&self, source: &Arc<dyn RenderLevelSource>) -> bool {
+    Arc::ptr_eq(&self.source, source)
+  }
+
+  /// Whether everything it opens with is resident, so it draws as it will.
+  pub fn is_ready(&self, textures: &TextureCache) -> bool {
+    let slots = &self.scene.texture_slots;
+    let sectors: u32 = self.scene.sectors.len() as u32 + self.failed;
+
+    sectors == self.loader.get_total() && self.spawn.is_done() && textures.count_settled(slots) == slots.len() as u32
+  }
+
   /// How far the level has loaded, when that changed since it was last asked.
   pub fn take_report(&mut self, textures: &TextureCache) -> Option<RenderLoadReport> {
     let slots = &self.scene.texture_slots;

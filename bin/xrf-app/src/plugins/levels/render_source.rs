@@ -62,6 +62,10 @@ impl LevelRenderSource {
 }
 
 impl RenderAssetSource for LevelRenderSource {
+  fn get_texture_scope(&self) -> String {
+    format!("{:?} {:?}", self.level.roots, self.level.source.get_texture_scope())
+  }
+
   fn read_texture(&self, reference: &str) -> XrfResult<Option<Vec<u8>>> {
     let known: Option<Option<String>> = self
       .textures

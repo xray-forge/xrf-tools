@@ -2,6 +2,7 @@ use glam::{Mat4, Vec3, Vec4};
 
 use crate::camera::camera_view::CameraView;
 use crate::contract::render_rect::RenderRect;
+use crate::contract::render_view_options::RenderViewOptions;
 
 /// The camera as `shaders/common/camera.wgsl` declares it.
 #[repr(C)]
@@ -27,6 +28,8 @@ pub struct CameraUniform {
   pub motion_previous: Mat4,
   /// What shows where nothing was drawn and neither the sky nor the fog is; `w` one where it is set.
   pub backdrop: Vec4,
+  /// What a surface naming no base texture is drawn; `w` one where it is set, white where it is not.
+  pub plain: Vec4,
 }
 
 impl CameraUniform {
@@ -47,15 +50,19 @@ impl CameraUniform {
       motion_current: view_projection,
       motion_previous: view_projection,
       backdrop: Vec4::ZERO,
+      plain: Vec4::ZERO,
     }
   }
 
-  /// The same camera drawing as an asset viewer asks: a uv checker repeated `checker` times in place of every texture
-  /// (zero for none), surfaces solid where their alpha is not shown, and its backdrop.
-  pub fn with_asset_view(mut self, checker: f32, is_alpha_visible: bool, backdrop: Option<[f32; 3]>) -> Self {
-    self.modes.y = checker;
-    self.modes.z = f32::from(u8::from(!is_alpha_visible));
-    self.backdrop = backdrop.map_or(Vec4::ZERO, |it| Vec4::from((Vec3::from(it), 1.0)));
+  /// The same camera drawing as an asset viewer asks: a uv checker in place of every texture, surfaces solid where
+  /// their alpha is not shown, its backdrop and the colour of a surface with no texture.
+  pub fn with_asset_view(mut self, options: &RenderViewOptions) -> Self {
+    let to_set = |color: Option<[f32; 3]>| color.map_or(Vec4::ZERO, |it| Vec4::from((Vec3::from(it), 1.0)));
+
+    self.modes.y = options.checker;
+    self.modes.z = f32::from(u8::from(!options.is_alpha_visible));
+    self.backdrop = to_set(options.backdrop);
+    self.plain = to_set(options.plain_color);
     self
   }
 

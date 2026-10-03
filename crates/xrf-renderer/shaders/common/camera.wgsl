@@ -21,6 +21,8 @@ struct Camera {
   motion_previous: mat4x4<f32>,
   // What shows where nothing was drawn and neither the sky nor the fog is; `w` one where it is set.
   backdrop: vec4<f32>,
+  // What a surface naming no base texture is drawn; `w` one where it is set, white where it is not.
+  plain: vec4<f32>,
 };
 
 @group(0) @binding(0) var<uniform> camera: Camera;

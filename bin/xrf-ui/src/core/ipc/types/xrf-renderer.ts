@@ -683,6 +683,8 @@ export type RenderViewOptions = {
   backdrop: [number | null, number | null, number | null] | null;
   /** Times a uv checker repeats over a surface's base coordinate, drawn in place of its textures; zero for none. */
   checker: number | null;
+  /** The colour a surface naming no base texture is drawn, each channel zero to one; none for white. */
+  plainColor: [number | null, number | null, number | null] | null;
   /** Whether surfaces cut out and blend as their shaders ask, or draw solid. */
   isAlphaVisible: boolean;
   /** Whether the weather's fog hides the distance. */

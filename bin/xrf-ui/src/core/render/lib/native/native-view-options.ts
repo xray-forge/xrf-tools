@@ -144,6 +144,7 @@ export function toNativeViewOptions(
     assetLighting: null,
     backdrop: null,
     checker: 0,
+    plainColor: null,
     corrections: {
       exposure: corrections.exposure,
       gamma: corrections.gamma,

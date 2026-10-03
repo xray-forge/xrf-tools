@@ -42,8 +42,11 @@ pub struct RenderViewport {
   pub model_pose: RenderModelPose,
   /// The level it draws, as its source gives it.
   pub level: Option<Arc<dyn RenderLevelSource>>,
-  /// The level as this viewport draws it, made once a GPU is there.
+  /// The level as this viewport draws it, made once a GPU is there; a scene of models alone keeps the one it replaces
+  /// here while its successor loads.
   pub level_view: Option<LevelView>,
+  /// The successor of a scene of models alone, loading out of sight until it can be drawn whole.
+  pub incoming_view: Option<LevelView>,
   /// The level's weather, which lights it.
   pub weather: ViewportWeather,
   /// Captures asked for, answered by the next frame presented.
@@ -75,6 +78,7 @@ impl RenderViewport {
       model_pose: RenderModelPose::default(),
       level: None,
       level_view: None,
+      incoming_view: None,
       weather: ViewportWeather::new(now),
       captures: Vec::new(),
       picks: Vec::new(),

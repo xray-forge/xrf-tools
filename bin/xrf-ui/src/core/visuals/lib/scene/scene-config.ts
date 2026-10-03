@@ -25,7 +25,10 @@ export interface IVisualPreviewSceneConfig {
   cameraFar: number;
   /** How much room to leave around a fitted model, so it does not touch the viewport edges. */
   cameraFitMargin: number;
-  /** Direction the camera is placed in, scaled by the fitted distance. */
+  /**
+   * Direction the camera is placed in, scaled by the fitted distance: in front of a model, which faces the engine's `+z`
+   * and so renderer `-z`.
+   */
   cameraDirection: [number, number, number];
   /** Side length in pixels of the procedural uv checkerboard. */
   checkerSize: number;
@@ -46,7 +49,7 @@ export const DEFAULT_VISUAL_PREVIEW_SCENE_CONFIG: IVisualPreviewSceneConfig = {
   cameraNear: 0.001,
   cameraFar: 10000,
   cameraFitMargin: 1.6,
-  cameraDirection: [0.6, 0.5, 0.8],
+  cameraDirection: [0.6, 0.5, -0.8],
   checkerSize: 8,
   checkerRepeat: 6,
 };
