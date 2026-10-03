@@ -1,5 +1,7 @@
-import { IRendererFeatureChoice, IRendererFeatureSettings, isRendererFeatureCustom } from "@xrf/renderer";
 import { ComponentType } from "react";
+
+import { IRendererFeatureChoice, isRendererFeatureCustom } from "@/core/render/lib/contract/renderer-feature-choice";
+import { IRendererFeatureSettings } from "@/core/render/lib/contract/renderer-feature-settings";
 
 import { SettingsRendererAmbientOcclusion } from "./SettingsRendererAmbientOcclusion";
 import { SettingsRendererAntialiasing } from "./SettingsRendererAntialiasing";

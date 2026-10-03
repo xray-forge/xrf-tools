@@ -1,23 +1,30 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { isObservableProp } from "@wirestate/mobx";
-import { mockDdsFile } from "@xrf/dds/fixtures";
 
 import { TextureDescription } from "@/core/ipc/types/xrf-app";
 import { EMPTY_TEXTURE_SURFACE } from "@/core/textures/lib/texture-surface";
 import { TextureSurfaceService } from "@/core/textures/services/surface";
-import { setMockBulkResponses } from "@/fixtures/mocks/bulk.mocks";
+import { listMockBulkCalls, setMockBulkResponses } from "@/fixtures/mocks/bulk.mocks";
 import { resetMockInvoke } from "@/fixtures/mocks/tauri.mocks";
 import { MOCK_TEXTURE, mockTextureDescription } from "@/fixtures/mocks/texture.mocks";
 import { mockMaterialDescriptor } from "@/fixtures/mocks/visual.mocks";
 import { muteConsole } from "@/fixtures/utils/console";
 import { mockInjectedService } from "@/fixtures/utils/container";
 
-/** A four by four DXT1 file, which is the smallest thing `createDdsTexture` will actually upload. */
-function mockUploadableTexture(): ArrayBuffer {
-  return mockDdsFile({ fourCC: "DXT1", height: 4, mipmapCount: 1, width: 4 });
+/** Texels as `textures/read_texels` answers them: the size, then four bytes a texel. */
+function mockTexels(width: number = 2, height: number = 2): ArrayBuffer {
+  const buffer: ArrayBuffer = new ArrayBuffer(8 + width * height * 4);
+  const bytes: Uint8Array = new Uint8Array(buffer);
+  const header: DataView = new DataView(buffer);
+
+  header.setUint32(0, width, true);
+  header.setUint32(4, height, true);
+  bytes.fill(7, 8);
+
+  return buffer;
 }
 
-/** A texture whose descriptor declares a pair, so a load reads three files rather than one. */
+/** A texture whose descriptor declares a pair, so a load reads both halves. */
 function mockBumpedDescription(): TextureDescription {
   return mockTextureDescription(MOCK_TEXTURE, { material: mockMaterialDescriptor() });
 }
@@ -27,7 +34,7 @@ describe("TextureSurfaceService", () => {
 
   beforeEach(() => {
     resetMockInvoke();
-    setMockBulkResponses({ "assets/read_asset": mockUploadableTexture() });
+    setMockBulkResponses({ "textures/read_texels": mockTexels() });
   });
 
   afterEach(() => {
@@ -43,79 +50,49 @@ describe("TextureSurfaceService", () => {
     expect(isObservableProp(service, "reference")).toBe(true);
   });
 
-  it("reads the base and the pair the descriptor declares", async () => {
+  it("reads the pair the descriptor declares as texels, and never the base, which the renderer reads", async () => {
     const { service } = mockInjectedService(TextureSurfaceService);
 
     await service.load(mockBumpedDescription());
 
     const files = service.files.value ?? EMPTY_TEXTURE_SURFACE;
 
-    // Bytes and what the read learned about them; uploading is the drawing side's business.
-    expect(files.base?.bytes.byteLength).toBeGreaterThan(0);
-    expect(files.base).toMatchObject({ height: 4, isDecoded: false, width: 4 });
-    expect(files.bump?.bump.bytes.byteLength).toBeGreaterThan(0);
-    expect(files.bump?.companion.bytes.byteLength).toBeGreaterThan(0);
+    expect(files.bump?.bump).toMatchObject({ height: 2, width: 2 });
+    expect(files.bump?.companion.data).toHaveLength(16);
+    expect(listMockBulkCalls("textures/read_texels")).toHaveLength(2);
+    expect(listMockBulkCalls("assets/read_asset")).toHaveLength(0);
     expect(service.reference).toBe(MOCK_TEXTURE);
   });
 
-  it("reads no pair for a texture declaring none", async () => {
+  it("reads nothing for a texture declaring no pair", async () => {
     const { service } = mockInjectedService(TextureSurfaceService);
 
     await service.load(mockTextureDescription());
 
-    expect((service.files.value ?? EMPTY_TEXTURE_SURFACE).base?.bytes.byteLength).toBeGreaterThan(0);
-    expect((service.files.value ?? EMPTY_TEXTURE_SURFACE).bump).toBeNull();
+    expect(service.files.value?.bump).toBeNull();
+    expect(listMockBulkCalls("textures/read_texels")).toHaveLength(0);
   });
 
-  it("keeps the base and skips the companion when the bump read fails", async () => {
+  it("publishes no pair when a half cannot be read", async () => {
     const { service } = mockInjectedService(TextureSurfaceService);
-    const reads: Array<string> = [];
+    let calls: number = 0;
 
     setMockBulkResponses({
-      "assets/read_asset": (args?: Record<string, unknown>) => {
-        const path: string = String(args?.logicalPath);
+      "textures/read_texels": () => {
+        calls += 1;
 
-        reads.push(path);
-
-        if (path.endsWith("_bump.dds")) {
-          throw new Error("Unreadable bump");
+        if (calls === 2) {
+          throw new Error("companion is truncated");
         }
 
-        return mockUploadableTexture();
+        return mockTexels();
       },
     });
 
     await service.load(mockBumpedDescription());
 
-    expect(service.files.value?.base?.bytes.byteLength).toBeGreaterThan(0);
     expect(service.files.value?.bump).toBeNull();
-    expect(service.bumpTexels).toBeNull();
-    expect(service.reference).toBe(MOCK_TEXTURE);
-    expect(reads).toEqual([`textures\\${MOCK_TEXTURE}.dds`, "textures\\wpn\\wpn_ak74_bump.dds"]);
-
-    service.clear();
-  });
-
-  it("keeps the base and publishes no pair when the companion cannot be read", async () => {
-    const { service } = mockInjectedService(TextureSurfaceService);
-
-    setMockBulkResponses({
-      "assets/read_asset": (args?: Record<string, unknown>) => {
-        if (String(args?.logicalPath).endsWith("_bump#.dds")) {
-          throw new Error("Unreadable companion");
-        }
-
-        return mockUploadableTexture();
-      },
-    });
-
-    await service.load(mockBumpedDescription());
-
-    // Both halves or neither: the decode samples the pair every texel, and half of it shades nothing.
-    expect(service.files.value?.base?.bytes.byteLength).toBeGreaterThan(0);
-    expect(service.files.value?.bump).toBeNull();
-    expect(service.bumpTexels).toBeNull();
-    expect(service.reference).toBe(MOCK_TEXTURE);
+    expect(service.files.error).toBeNull();
   });
 
   it("forgets what it read when cleared", async () => {
@@ -123,17 +100,14 @@ describe("TextureSurfaceService", () => {
 
     await service.load(mockBumpedDescription());
 
-    expect(service.files.value?.base?.bytes.byteLength).toBeGreaterThan(0);
+    expect(service.files.value?.bump).not.toBeNull();
 
     service.clear();
 
-    expect(service.files.value ?? EMPTY_TEXTURE_SURFACE).toEqual({ aspect: 1, base: null, bump: null });
+    expect(service.files.value ?? EMPTY_TEXTURE_SURFACE).toEqual({ aspect: 1, bump: null });
     expect(service.reference).toBeNull();
-    expect(service.bumpTexels).toBeNull();
   });
 
-  // Nothing here reaches the gpu, so a read the next selection abandoned costs a buffer that is collected and
-  // nothing that has to be released. The whole disposal path this service used to carry went with the uploads.
   it("publishes nothing from a run the next selection abandoned", async () => {
     const { service } = mockInjectedService(TextureSurfaceService);
 
@@ -144,17 +118,17 @@ describe("TextureSurfaceService", () => {
       release = resolve;
     });
 
-    setMockBulkResponses({ "assets/read_asset": () => pending });
+    setMockBulkResponses({ "textures/read_texels": () => pending });
 
-    const abandoned = service.load(mockTextureDescription());
+    const abandoned = service.load(mockBumpedDescription());
 
     service.clear();
 
-    release(mockUploadableTexture());
+    release(mockTexels());
 
     await abandoned;
 
-    expect((service.files.value ?? EMPTY_TEXTURE_SURFACE).base).toBeNull();
+    expect((service.files.value ?? EMPTY_TEXTURE_SURFACE).bump).toBeNull();
     expect(service.reference).toBeNull();
   });
 });

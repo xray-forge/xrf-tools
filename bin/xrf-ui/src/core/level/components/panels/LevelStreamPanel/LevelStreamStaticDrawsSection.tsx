@@ -1,6 +1,7 @@
-import { IRendererPoolUse, IRendererStaticDrawReport } from "@xrf/renderer";
 import { ReactElement } from "react";
 
+import { IRendererPoolUse } from "@/core/render/lib/contract/renderer-pool-use";
+import { IRendererStaticDrawReport } from "@/core/render/lib/contract/renderer-static-draw-report";
 import { EditorPanelProperty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatCount } from "@/lib/format/number";

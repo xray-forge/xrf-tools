@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
-import { ERendererDraw } from "@xrf/renderer";
 
 import { XraySurfaceDeclaration, XraySurfaceDescriptor, XraySurfaceDraw } from "@/core/ipc/types/xrf-material";
+import { ERendererDraw } from "@/core/render/lib/contract/renderer-draw";
 import {
   getRendererSurfaceDraw,
   IRendererSurfaceDraw,

@@ -1,10 +1,10 @@
 import { describe, expect, it } from "@jest/globals";
-import { ERendererDebugView } from "@xrf/renderer";
 
 import { DEFAULT_LEVEL_LOD_OPTIONS } from "@/core/level/lib/lod/level-lod-options";
 import { DEFAULT_LEVEL_RENDER_CONFIG } from "@/core/level/lib/render/level-render-config";
 import { ILevelRendererSettingsInputs, toLevelRendererSettings } from "@/core/level/lib/render/level-render-view";
 import { DEFAULT_LEVEL_VIEW_OPTIONS } from "@/core/level/lib/view/level-view-options";
+import { ERendererDebugView } from "@/core/render/lib/contract/renderer-debug-view";
 import { mockLevelFeatureOptions } from "@/fixtures/mocks/level.mocks";
 import { mockRenderSharedSettings } from "@/fixtures/mocks/render.mocks";
 

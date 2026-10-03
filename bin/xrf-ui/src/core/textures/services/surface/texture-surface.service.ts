@@ -1,36 +1,29 @@
 import { Injectable, OnDeactivation } from "@wirestate/core";
 import { Observable, RefObservable, runInAction } from "@wirestate/mobx";
-import { IDdsFile, IDdsRead, IDdsTexels, readDdsFile, readDdsTexels, toDdsPicture } from "@xrf/dds";
+import { IDdsTexels } from "@xrf/dds";
 import { Nullable } from "@xrf/types";
 
 import { transformError } from "@/core/error/lib";
 import { fetchBulk } from "@/core/ipc/bulk";
-import { assetsBulkRoutes } from "@/core/ipc/commands/assets-bulk";
 import { texturesBulkRoutes } from "@/core/ipc/commands/textures-bulk";
 import { TextureDescription } from "@/core/ipc/types/xrf-app";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import {
   EMPTY_TEXTURE_SURFACE,
   ITextureBumpAssets,
-  ITextureBumpTexels,
-  ITextureSurfaceFile,
   ITextureSurfaceFiles,
   selectTextureBumpAssets,
   toTextureAspect,
 } from "@/core/textures/lib/texture-surface";
+import { readTextureTexels } from "@/core/textures/lib/texture-texels";
 import { AsyncState } from "@/lib/async-state";
 import { formatDuration } from "@/lib/format/duration";
 import { Logger, Timer } from "@/lib/logging";
 import { call, cancelFlow, LatestFlow, TFlow } from "@/lib/mobx";
 
-/** One half of the pair as it was read: the file always, and its texels when the layout stores them plainly. */
-interface ITextureBumpHalf {
-  file: ITextureSurfaceFile;
-  texels: Nullable<IDdsTexels>;
-}
-
 /**
- * The files the lit surface is drawn from.
+ * Reads what the panels show of the selected texture beside its body: the bump pair's texels, which the channels panel
+ * draws its planes from and reads a texel off. The body itself is drawn by the native renderer, which reads its files.
  */
 @Injectable()
 export class TextureSurfaceService {
@@ -39,17 +32,9 @@ export class TextureSurfaceService {
   @RefObservable()
   public files: AsyncState<ITextureSurfaceFiles> = AsyncState.idle(EMPTY_TEXTURE_SURFACE);
 
-  /**
-   * Which texture the files above belong to, once a read has been attempted for it.
-   */
+  /** Which texture the files were read for, so a view can tell an answer for the one on screen from a stale one. */
   @Observable()
   public reference: Nullable<string> = null;
-
-  /**
-   * The pair's texels on the cpu, when its layout stores them plainly.
-   */
-  @RefObservable()
-  public bumpTexels: Nullable<ITextureBumpTexels> = null;
 
   @OnDeactivation()
   public onDeactivation(): void {
@@ -57,9 +42,9 @@ export class TextureSurfaceService {
   }
 
   /**
-   * Reads what the surface draws for one texture.
+   * Reads the pair one texture's material binds.
    *
-   * @param description - The texture as the backend resolved it.
+   * @param description - The texture as the backend resolved it, whose roots address the reads.
    */
   @LatestFlow("files")
   public *load(description: TextureDescription): TFlow {
@@ -67,35 +52,25 @@ export class TextureSurfaceService {
 
     this.files = this.files.asLoading(EMPTY_TEXTURE_SURFACE);
     this.reference = null;
-    this.bumpTexels = null;
 
     try {
       const { roots } = description;
-      const bumpAssets: Nullable<ITextureBumpAssets> = selectTextureBumpAssets(description);
-
-      const base: Nullable<ITextureSurfaceFile> = description.texture
-        ? yield* call(this.readBase(roots, description.texture.logicalPath))
-        : null;
-
-      const bump: Nullable<ITextureBumpHalf> = bumpAssets
-        ? yield* call(this.readBumpHalf(roots, bumpAssets.bump.logicalPath))
-        : null;
-      const companion: Nullable<ITextureBumpHalf> =
-        bump && bumpAssets ? yield* call(this.readBumpHalf(roots, bumpAssets.companion.logicalPath)) : null;
+      const assets: Nullable<ITextureBumpAssets> = selectTextureBumpAssets(description);
+      const bump: Nullable<IDdsTexels> = assets ? yield* call(this.readTexels(roots, assets.bump.logicalPath)) : null;
+      const companion: Nullable<IDdsTexels> =
+        bump && assets ? yield* call(this.readTexels(roots, assets.companion.logicalPath)) : null;
 
       this.files = this.files.asReady({
         aspect: toTextureAspect(description),
-        base,
         // Both halves or neither: the decode samples the pair every texel, and half of it shades nothing.
-        bump: bump && companion ? { bump: bump.file, companion: companion.file } : null,
+        bump: bump && companion ? { bump, companion } : null,
       });
       this.reference = description.reference;
-      this.bumpTexels = bump?.texels && companion?.texels ? { bump: bump.texels, companion: companion.texels } : null;
 
       this.log.info(
         "Texture surface read:",
         description.reference,
-        { base: Boolean(base), bump: Boolean(bump), companion: Boolean(companion) },
+        { bump: Boolean(bump), companion: Boolean(companion) },
         "in",
         formatDuration(timer.elapsed())
       );
@@ -115,81 +90,25 @@ export class TextureSurfaceService {
     }
   }
 
-  /**
-   * Drops whatever was read, for a session that is ending or a texture that is no longer selected.
-   */
   public clear(): void {
     cancelFlow(this, "files");
 
     runInAction(() => {
       this.files = this.files.asIdle(EMPTY_TEXTURE_SURFACE);
       this.reference = null;
-      this.bumpTexels = null;
     });
   }
 
   /**
-   * Reads the base file, falling back to the backend's decode for a layout the renderer refuses.
+   * Reads one half of the pair as texels, decoded by the backend from whatever layout it is stored in.
    *
    * @param roots - Roots the description was resolved in, so the read reaches the same file.
    * @param logicalPath - Engine identity of the file.
-   * @returns The file, or nothing when it could not be read.
+   * @returns Its texels, or nothing for a read that failed.
    */
-  private readBase(roots: XrayRoots, logicalPath: string): Promise<Nullable<ITextureSurfaceFile>> {
-    return this.guard(logicalPath, async () => {
-      const bytes: ArrayBuffer = await fetchBulk(assetsBulkRoutes.readAsset(roots, logicalPath));
-      const read: IDdsRead = readDdsFile(bytes);
-      const picture: Nullable<IDdsFile> = toDdsPicture(read);
-
-      if (picture) {
-        return { bytes, height: picture.height, isDecoded: false, width: picture.width };
-      }
-
-      // A sky's six faces are shown as the backend lays them out, as any file this surface cannot draw flat.
-      this.log.info(`Texture '${logicalPath}' is decoded rather than read as it is:`, read.refusal ?? "a cubemap");
-
-      // Measured by whoever decodes the picture: the png says what it is, and nothing here has to parse it.
-      return {
-        bytes: await fetchBulk(texturesBulkRoutes.readTexture(roots, logicalPath)),
-        height: 0,
-        isDecoded: true,
-        width: 0,
-      };
-    });
-  }
-
-  /**
-   * Reads one half of the pair, and its texels where the layout stores them plainly.
-   *
-   * @param roots - Roots the description was resolved in, so the read reaches the same file.
-   * @param logicalPath - Engine identity of the file.
-   * @returns The half, or nothing for a layout no side would draw.
-   */
-  private readBumpHalf(roots: XrayRoots, logicalPath: string): Promise<Nullable<ITextureBumpHalf>> {
-    return this.guard(logicalPath, async () => {
-      const bytes: ArrayBuffer = await fetchBulk(assetsBulkRoutes.readAsset(roots, logicalPath));
-      const picture: Nullable<IDdsFile> = toDdsPicture(readDdsFile(bytes));
-
-      // No fallback for a pair: the decode reads its packed values, and a picture of them shades nothing.
-      return picture
-        ? {
-            file: { bytes, height: picture.height, isDecoded: false, width: picture.width },
-            texels: readDdsTexels(bytes),
-          }
-        : null;
-    });
-  }
-
-  /**
-   * Runs one read, reporting a failure as an absent answer rather than as a thrown one.
-   *
-   * @param logicalPath - Engine identity of the file, for the report.
-   * @param read - What to run.
-   * @returns What it answered, or null when it failed.
-   */
-  private async guard<T>(logicalPath: string, read: () => Promise<Nullable<T>>): Promise<Nullable<T>> {
+  private async readTexels(roots: XrayRoots, logicalPath: string): Promise<Nullable<IDdsTexels>> {
     try {
-      return await read();
+      return readTextureTexels(await fetchBulk(texturesBulkRoutes.readTexels(roots, logicalPath)));
     } catch (error: unknown) {
       this.log.error(`Failed to read '${logicalPath}':`, transformError(error));
 

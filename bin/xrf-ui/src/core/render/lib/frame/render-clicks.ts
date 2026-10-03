@@ -1,5 +1,6 @@
-import { IRendererViewPoint } from "@xrf/renderer";
 import { Nullable } from "@xrf/types";
+
+import { IRendererViewPoint } from "@/core/render/lib/contract/renderer-view-point";
 
 /** Css pixels a press may travel and still be a click, rather than the drag a camera looks around by. */
 export const RENDER_CLICK_SLOP: number = 4;

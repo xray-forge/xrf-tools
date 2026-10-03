@@ -1,23 +1,25 @@
-import { beforeAll, describe, expect, it, jest } from "@jest/globals";
+import { beforeAll, beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { fireEvent } from "@testing-library/react";
-import { createRendererWorkerStub } from "@xrf/renderer/fixtures";
 
+import { TextureRenderService } from "@/core/textures/services/render";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { TextureSurfaceService } from "@/core/textures/services/surface";
 import { TextureViewService } from "@/core/textures/services/view";
+import { mockInvoke, resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
-import { mockRendererThread } from "@/fixtures/utils/renderer";
 
-let TextureSurface: typeof import("./TextureSurface").TextureSurface;
-let TextureRenderService: typeof import("@/core/textures/services/render").TextureRenderService;
+import { TextureSurface } from "./TextureSurface";
+
 let dragLight: ReturnType<typeof jest.spyOn>;
 
-beforeAll(async () => {
-  mockRendererThread(() => createRendererWorkerStub().worker);
-
-  ({ TextureSurface } = await import("./TextureSurface"));
-  ({ TextureRenderService } = await import("@/core/textures/services/render"));
+beforeAll(() => {
   dragLight = jest.spyOn(TextureRenderService.prototype, "dragLight");
+});
+
+beforeEach(() => {
+  resetMockInvoke();
+  setMockInvokeResponses({ ["plugin:render|attach_viewport"]: 1 });
+  dragLight.mockClear();
 });
 
 function sendPointer(target: HTMLElement, type: string, options: MouseEventInit = {}): void {
@@ -71,14 +73,28 @@ describe("TextureSurface", () => {
     expect(dragLight).not.toHaveBeenCalled();
   });
 
-  it("keeps the light drag when the child canvas loses pointer capture", () => {
+  it("keeps the light drag when the viewport inside it loses pointer capture", () => {
     const surface: HTMLElement = startDrag();
-    const canvas: HTMLCanvasElement = surface.querySelector("canvas") as HTMLCanvasElement;
+    const viewport: HTMLElement = surface.firstElementChild as HTMLElement;
 
-    sendPointer(canvas, "lostpointercapture");
+    sendPointer(viewport, "lostpointercapture");
     sendPointer(surface, "pointermove", { clientX: 20, clientY: 20 });
 
     expect(dragLight).toHaveBeenCalledWith(10, 10);
     expect(surface.hasPointerCapture(1)).toBe(true);
+  });
+
+  // The viewport pans its camera on a shift drag, which would move the body out from under the light being placed.
+  it("keeps a shift drag from the viewport's camera", async () => {
+    const surface: HTMLElement = startDrag();
+
+    // A plain press over the same viewport does reach it, once the viewport has attached.
+    sendPointer(surface.firstElementChild as HTMLElement, "pointerdown", { clientX: 10, clientY: 10 });
+
+    for (let index: number = 0; index < 10; index += 1) {
+      await Promise.resolve();
+    }
+
+    expect(mockInvoke.mock.calls.filter(([name]) => name === "plugin:render|send_input")).toHaveLength(1);
   });
 });

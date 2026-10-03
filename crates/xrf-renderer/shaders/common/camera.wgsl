@@ -23,6 +23,8 @@ struct Camera {
   backdrop: vec4<f32>,
   // What a surface naming no base texture is drawn; `w` one where it is set, white where it is not.
   plain: vec4<f32>,
+  // The backdrop's second colour, and in `w` the side of a square in render pixels; zero for a plain backdrop.
+  backdrop_squares: vec4<f32>,
 };
 
 @group(0) @binding(0) var<uniform> camera: Camera;

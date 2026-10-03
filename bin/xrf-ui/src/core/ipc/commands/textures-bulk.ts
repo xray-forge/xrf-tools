@@ -10,6 +10,10 @@ export const texturesBulkRoutes = {
     args: { sessionId, format },
     route: "textures/read_candidate",
   }),
+  readTexels: (roots: XrayRoots, logicalPath: string): IBulkCall => ({
+    args: { roots, logicalPath },
+    route: "textures/read_texels",
+  }),
   readTexture: (roots: XrayRoots, logicalPath: string): IBulkCall => ({
     args: { roots, logicalPath },
     route: "textures/read_texture",

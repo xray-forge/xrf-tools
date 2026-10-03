@@ -1,5 +1,5 @@
-import { ERendererDebugView, IRendererSettings } from "@xrf/renderer";
-
+import { ERendererDebugView } from "@/core/render/lib/contract/renderer-debug-view";
+import { IRendererSettings } from "@/core/render/lib/contract/renderer-settings";
 import { IRenderSharedSettings } from "@/core/render/lib/settings/render-shared-settings";
 
 /**

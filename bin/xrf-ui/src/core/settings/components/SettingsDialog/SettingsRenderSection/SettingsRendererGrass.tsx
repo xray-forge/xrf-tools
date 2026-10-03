@@ -1,7 +1,7 @@
 import { useInjection } from "@wirestate/react";
-import { IRendererGrassSettings } from "@xrf/renderer";
 import { ReactElement } from "react";
 
+import { IRendererGrassSettings } from "@/core/render/lib/contract/renderer-grass-settings";
 import {
   formatGrassDensity,
   formatGrassHeight,

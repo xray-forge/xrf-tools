@@ -590,7 +590,7 @@ impl RenderThread {
         &CameraUniform::new(&drawn, drawn_rect, switches)
           .with_wireframe(options.is_wireframe)
           .with_motion(motion)
-          .with_asset_view(&options),
+          .with_asset_view(&options, drawn_rect.height as f32 / rect.height.max(1) as f32),
       );
 
       let Some(source) = &viewport.level else {
@@ -603,7 +603,11 @@ impl RenderThread {
         None => (viewport.weather.get_lighting(), viewport.weather.get_level()),
       };
 
-      if viewport.level_view.as_ref().is_some_and(|level| !level.is_showing(source)) {
+      if viewport
+        .level_view
+        .as_ref()
+        .is_some_and(|level| !level.is_showing(source))
+      {
         let incoming: &mut LevelView = viewport
           .incoming_view
           .get_or_insert_with(|| LevelView::new(device, queue, &gpu.view_layout, Arc::clone(source)));

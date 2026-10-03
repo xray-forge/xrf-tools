@@ -1,9 +1,9 @@
 import { default as GridOnIcon } from "@mui/icons-material/GridOn";
-import { ERendererDebugView } from "@xrf/renderer";
 import { ReactElement } from "react";
 
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { RenderPassTimingFormRow } from "@/core/render/components/controls/RenderPassTimingFormRow";
+import { ERendererDebugView } from "@/core/render/lib/contract/renderer-debug-view";
 import { EditorPopoverGroup, EditorPopoverGroupSection } from "@/core/shell/editor/EditorPopoverGroup";
 import { ChoiceListFormRow, IChoiceFormRowOption } from "@/core/ui/form";
 import { BaseComponentProps } from "@/lib/dom/element-types";

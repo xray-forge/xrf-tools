@@ -1,12 +1,4 @@
 import { describe, expect, it } from "@jest/globals";
-import {
-  ERendererAmbientOcclusionQuality,
-  ERendererAntialiasing,
-  ERendererLightShadowFilter,
-  ERendererPreset,
-  IRendererFeatureSettings,
-  RENDERER_PRESETS,
-} from "@xrf/renderer";
 
 import {
   describeLevelFeatureToggle,
@@ -18,6 +10,11 @@ import {
   toLevelRendererAntialiasing,
   toLevelRendererFeature,
 } from "@/core/level/lib/features/level-feature-options";
+import { ERendererAmbientOcclusionQuality } from "@/core/render/lib/contract/renderer-ambient-occlusion-quality";
+import { ERendererAntialiasing } from "@/core/render/lib/contract/renderer-antialiasing";
+import { IRendererFeatureSettings } from "@/core/render/lib/contract/renderer-feature-settings";
+import { ERendererLightShadowFilter } from "@/core/render/lib/contract/renderer-light-shadow-filter";
+import { ERendererPreset, RENDERER_PRESETS } from "@/core/render/lib/contract/renderer-preset";
 import { mockLevelFeatureOptions } from "@/fixtures/mocks/level.mocks";
 
 const SETTINGS: IRendererFeatureSettings = RENDERER_PRESETS[ERendererPreset.BASE];

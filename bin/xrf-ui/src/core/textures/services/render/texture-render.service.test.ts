@@ -1,233 +1,177 @@
-import { beforeAll, beforeEach, describe, expect, it } from "@jest/globals";
+import { beforeEach, describe, expect, it } from "@jest/globals";
 import { Container } from "@wirestate/core";
 import { runInAction } from "@wirestate/mobx";
-import {
-  EMPTY_RENDER_FRAME_COST,
-  ERendererBumpPlane,
-  ERendererCaptureSource,
-  ERendererDraw,
-  ERendererRequest,
-  ERendererResponse,
-  ERendererTextureEncoding,
-  IRendererReport,
-} from "@xrf/renderer";
-import { createRendererWorkerStub, IRendererWorkerStub } from "@xrf/renderer/fixtures";
 
-import { DEFAULT_TEXTURE_LIGHTING } from "@/core/textures/lib/texture-lighting";
+import { ETextureSurfaceAlpha, ETextureSurfaceShape } from "@/core/ipc/types/xrf-app";
 import {
-  EMPTY_TEXTURE_SURFACE,
-  ETextureSurfaceAlpha,
-  ITextureSurfaceFile,
-  ITextureSurfaceFiles,
-} from "@/core/textures/lib/texture-surface";
-import { TextureSurfaceService } from "@/core/textures/services/surface";
+  ERenderCameraCommand,
+  ERenderTextureState,
+  ERenderViewportEvent,
+  RenderViewportEvent,
+} from "@/core/ipc/types/xrf-renderer";
+import { DEFAULT_TEXTURE_LIGHTING } from "@/core/textures/lib/texture-lighting";
+import { TextureRenderService } from "@/core/textures/services/render";
+import { TextureSelectionService } from "@/core/textures/services/selection";
 import { TextureViewService } from "@/core/textures/services/view";
+import {
+  getMockChannels,
+  MockChannel,
+  mockInvoke,
+  resetMockChannels,
+  resetMockInvoke,
+  setMockInvokeResponses,
+} from "@/fixtures/mocks/tauri.mocks";
+import { MOCK_TEXTURE, mockTextureDescription } from "@/fixtures/mocks/texture.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
-import { mockRendererThread } from "@/fixtures/utils/renderer";
 import { AsyncState } from "@/lib/async-state";
 
-let stub: IRendererWorkerStub;
-let TextureRenderService: typeof import("./texture-render.service").TextureRenderService;
-
-beforeAll(async () => {
-  mockRendererThread(() => stub.worker);
-
-  ({ TextureRenderService } = await import("./texture-render.service"));
-});
-
-beforeEach(() => {
-  stub = createRendererWorkerStub();
-});
-
-function mockService(): {
-  container: Container;
-  service: InstanceType<typeof TextureRenderService>;
-  viewService: TextureViewService;
-} {
-  const container: Container = mockContainer([TextureViewService, TextureSurfaceService, TextureRenderService]);
-
-  return {
-    container,
-    service: container.get(TextureRenderService),
-    viewService: container.get(TextureViewService),
-  };
+/** What a render command was sent, in order. */
+function sent(command: string): Array<Record<string, unknown>> {
+  return mockInvoke.mock.calls
+    .filter(([name]) => name === `plugin:render|${command}`)
+    .map(([, args]) => args as Record<string, unknown>);
 }
 
-function mockFile(): ITextureSurfaceFile {
-  return { bytes: new ArrayBuffer(16), height: 4, isDecoded: false, width: 4 };
+async function flush(): Promise<void> {
+  for (let index: number = 0; index < 10; index += 1) {
+    await Promise.resolve();
+  }
 }
 
-function setFiles(container: Container, files: ITextureSurfaceFiles): void {
+function emit(event: RenderViewportEvent): void {
+  (getMockChannels()[0] as MockChannel<RenderViewportEvent>).onmessage(event);
+}
+
+async function mockAttached(): Promise<{ container: Container; service: TextureRenderService }> {
+  setMockInvokeResponses({ ["plugin:render|attach_viewport"]: 5 });
+
+  const container: Container = mockContainer([TextureSelectionService, TextureViewService, TextureRenderService]);
+
   runInAction(() => {
-    container.get(TextureSurfaceService).files = AsyncState.ready(files);
+    container.get(TextureSelectionService).selected = AsyncState.ready(mockTextureDescription());
   });
+
+  const service: TextureRenderService = container.get(TextureRenderService);
+
+  service.attach(document.createElement("div"));
+  await flush();
+
+  return { container, service };
 }
 
 describe("TextureRenderService", () => {
-  it("starts nothing until a view attaches or a panel asks", () => {
-    mockService();
-
-    expect(stub.requests).toHaveLength(0);
+  beforeEach(() => {
+    resetMockInvoke();
+    resetMockChannels();
   });
 
-  // A renderer started after a texture was chosen would otherwise show an empty body until something changed.
-  it("tells a new renderer what is already open, then shows it on the attached canvas", async () => {
-    const { service } = mockService();
+  it("starts nothing until a view attaches", () => {
+    mockContainer([TextureSelectionService, TextureViewService, TextureRenderService]).get(TextureRenderService);
 
-    service.attach(document.createElement("div"));
-    await stub.flush();
+    expect(sent("attach_viewport")).toHaveLength(0);
+  });
 
-    expect(stub.requests[0].kind).toBe(ERendererRequest.START);
-    expect(stub.take(ERendererRequest.PUT_GEOMETRY)).toHaveLength(1);
-    expect(stub.take(ERendererRequest.PUT_SURFACE).map((it) => it.key)).toEqual(["edge", "face"]);
-    expect(stub.take(ERendererRequest.PUT_OBJECT)).toHaveLength(1);
-    expect(stub.take(ERendererRequest.LIGHTING)).toHaveLength(1);
-    expect(stub.requests.at(-1)?.kind).toBe(ERendererRequest.ATTACH_VIEW);
+  it("shows the selected texture on the body its view asks for, and again as either changes", async () => {
+    const { container, service } = await mockAttached();
+    const viewService: TextureViewService = container.get(TextureViewService);
+
+    viewService.setOptions({
+      ...viewService.options,
+      alpha: ETextureSurfaceAlpha.CUT_OUT,
+      shape: ETextureSurfaceShape.SPHERE,
+    });
+    await flush();
+
+    const requests = sent("show_texture").map(({ request }) => request as Record<string, unknown>);
+
+    expect(requests).toHaveLength(2);
+    expect(requests[0]).toMatchObject({ shape: ETextureSurfaceShape.PLANE, source: { reference: MOCK_TEXTURE } });
+    expect(requests[1]).toMatchObject({ alpha: ETextureSurfaceAlpha.CUT_OUT, shape: ETextureSurfaceShape.SPHERE });
+
+    runInAction(() => {
+      container.get(TextureSelectionService).selected = AsyncState.idle();
+    });
+    await flush();
+
+    expect(sent("show_texture").at(-1)?.request).toBeNull();
 
     service.dispose();
   });
 
-  it("hands the renderer a copy of each file, so the surface keeps its own bytes", async () => {
-    const { service, container } = mockService();
-    const base: ITextureSurfaceFile = mockFile();
+  it("draws the body against the alpha checkerboard, under the view's light", async () => {
+    const { service } = await mockAttached();
+    const options = sent("set_view_options").at(-1)?.options as Record<string, unknown>;
 
-    service.attach(document.createElement("div"));
-    setFiles(container, { ...EMPTY_TEXTURE_SURFACE, base });
-    await stub.flush();
-
-    const [put] = stub.take(ERendererRequest.PUT_TEXTURE);
-
-    expect(put.key).toBe("base");
-    expect(put.source.encoding).toBe(ERendererTextureEncoding.DDS);
-
-    if (!("bytes" in put.source)) {
-      throw new Error("A surface's file is handed over as bytes");
-    }
-
-    expect(put.source.bytes).not.toBe(base.bytes);
-    expect(put.source.bytes.byteLength).toBe(16);
-    expect(stub.take(ERendererRequest.PUT_SURFACE).at(-1)?.surface.textures.base).toBe("base");
+    expect(options.backdropSquares).not.toBeNull();
+    expect(options.assetLighting).toMatchObject({ sunAzimuth: DEFAULT_TEXTURE_LIGHTING.sunAzimuth });
+    expect(sent("set_camera")).toHaveLength(1);
 
     service.dispose();
-  });
-
-  it("draws the alpha reading as the engine's draw", async () => {
-    const { service, container, viewService } = mockService();
-
-    service.attach(document.createElement("div"));
-    setFiles(container, { ...EMPTY_TEXTURE_SURFACE, base: mockFile() });
-    viewService.setOptions({ ...viewService.options, alpha: ETextureSurfaceAlpha.BLENDED });
-    await stub.flush();
-
-    expect(stub.take(ERendererRequest.PUT_SURFACE).at(-1)?.surface.draw).toBe(ERendererDraw.BLENDED);
-
-    service.dispose();
-  });
-
-  it("keeps the renderer and its uploads when the view goes, and lets it go on deactivation", async () => {
-    const { service } = mockService();
-
-    service.attach(document.createElement("div"));
-    service.detach();
-    await stub.flush();
-
-    expect(stub.requests.at(-1)?.kind).toBe(ERendererRequest.DETACH_VIEW);
-    expect(stub.isTerminated()).toBe(false);
-
-    service.dispose();
-
-    expect(stub.take(ERendererRequest.DISPOSE)).toHaveLength(1);
-    expect(stub.isTerminated()).toBe(true);
   });
 
   // What the drag swung to is the view's to keep: the toolbar shows the number the body is lit by.
   it("keeps what a drag over the body swung the light to", async () => {
-    const { service, viewService } = mockService();
+    const { container, service } = await mockAttached();
 
-    service.attach(document.createElement("div"));
-    // A pixel of a viewport jsdom lays out at no width: half a turn, rather than a whole number of them.
     service.dragLight(1, 0);
-    await stub.flush();
 
-    expect(viewService.lighting.sunAzimuth).not.toBe(DEFAULT_TEXTURE_LIGHTING.sunAzimuth);
-    expect(stub.take(ERendererRequest.LIGHTING)).toHaveLength(2);
+    expect(container.get(TextureViewService).lighting.sunAzimuth).not.toBe(DEFAULT_TEXTURE_LIGHTING.sunAzimuth);
 
     service.dispose();
   });
 
-  it("says what its frames cost, and nothing once no view is drawing", () => {
-    const { service } = mockService();
+  it("says why the texture cannot be laid on the body, once the renderer has read it", async () => {
+    const { service } = await mockAttached();
 
-    service.attach(document.createElement("div"));
-    stub.respond({
-      kind: ERendererResponse.REPORT,
-      report: { frame: { ...EMPTY_RENDER_FRAME_COST, framesPerSecond: 144 } } as IRendererReport,
+    setMockInvokeResponses({
+      ["plugin:render|describe_textures"]: [
+        { reference: MOCK_TEXTURE, state: { kind: ERenderTextureState.FAILED, reason: "Unknown pixel format" } },
+      ],
     });
+    emit({
+      kind: ERenderViewportEvent.LOAD,
+      report: { bytes: 0, isReady: true, sectors: 0, sectorsTotal: 0, textures: 1, texturesTotal: 1 },
+    });
+    await flush();
+
+    expect(service.baseFailure).toBe("Unknown pixel format");
+
+    service.dispose();
+  });
+
+  it("says what its frames cost, and nothing once no view is drawing", async () => {
+    const { service } = await mockAttached();
+
+    emit({
+      kind: ERenderViewportEvent.FRAME,
+      report: { framesPerSecond: 144, passes: [], staticDraws: { commands: 2 } },
+    } as unknown as RenderViewportEvent);
 
     expect(service.frameCost.framesPerSecond).toBe(144);
 
     service.detach();
 
-    expect(service.frameCost).toBe(EMPTY_RENDER_FRAME_COST);
+    expect(service.frameCost.framesPerSecond).toBe(0);
 
     service.dispose();
   });
 
-  it("draws a bump plane without a view, and nothing without a pair", async () => {
-    const { service, container } = mockService();
+  it("answers the viewport controls before anything is attached, and sends them once it is", async () => {
+    const container: Container = mockContainer([TextureSelectionService, TextureViewService, TextureRenderService]);
+    const unattached: TextureRenderService = container.get(TextureRenderService);
 
-    await expect(service.captureBumpPlane(ERendererBumpPlane.NORMAL, 8, 8)).resolves.toBeNull();
-    expect(stub.requests).toHaveLength(0);
+    expect(() => unattached.dolly(2)).not.toThrow();
+    expect(() => unattached.reset()).not.toThrow();
 
-    setFiles(container, { ...EMPTY_TEXTURE_SURFACE, bump: { bump: mockFile(), companion: mockFile() } });
+    const { service } = await mockAttached();
 
-    const captured: Promise<unknown> = service.captureBumpPlane(ERendererBumpPlane.NORMAL, 8, 4);
+    service.reset();
+    await flush();
 
-    await stub.flush();
-
-    const [request] = stub.take(ERendererRequest.CAPTURE);
-
-    expect(stub.take(ERendererRequest.ATTACH_VIEW)).toHaveLength(0);
-    expect(request.source).toEqual({
-      bump: "bump",
-      companion: "bump#",
-      height: 4,
-      kind: ERendererCaptureSource.BUMP_PLANE,
-      plane: ERendererBumpPlane.NORMAL,
-      width: 8,
-    });
-
-    stub.respond({ id: request.id, image: null, kind: ERendererResponse.CAPTURED });
-
-    await expect(captured).resolves.toBeNull();
+    expect(sent("command_camera").map(({ command }) => (command as { kind: string }).kind)).toEqual([
+      ERenderCameraCommand.RESET,
+    ]);
 
     service.dispose();
-  });
-
-  it("leaves no canvas behind when it is detached", () => {
-    const { service } = mockService();
-    const element: HTMLElement = document.createElement("div");
-
-    service.attach(element);
-    service.attach(element);
-
-    expect(element.querySelectorAll("canvas")).toHaveLength(1);
-
-    service.detach();
-
-    expect(element.querySelectorAll("canvas")).toHaveLength(0);
-
-    service.dispose();
-  });
-
-  it("answers the viewport controls before anything is attached", () => {
-    const { service } = mockService();
-
-    expect(() => {
-      service.dolly(2);
-      service.reset();
-      service.dragLight(1, 1);
-      service.detach();
-    }).not.toThrow();
   });
 });

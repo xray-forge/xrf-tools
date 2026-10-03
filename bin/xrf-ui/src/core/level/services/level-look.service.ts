@@ -1,6 +1,5 @@
 import { inject, Injectable } from "@wirestate/core";
 import { BoundAction, Computed, RefObservable, runInAction } from "@wirestate/mobx";
-import { IRendererExposureSettings } from "@xrf/renderer";
 import { Nullable } from "@xrf/types";
 
 import { levelsCommands } from "@/core/ipc/commands/levels";
@@ -15,6 +14,7 @@ import {
   toGameLevelLook,
   toLevelLookChoice,
 } from "@/core/level/lib/look";
+import { IRendererExposureSettings } from "@/core/render/lib/contract/renderer-exposure-settings";
 import { SettingsService } from "@/core/settings/services/settings";
 import { LEVEL_LOOK_STORAGE_KEY } from "@/core/storage";
 import { parseLocalStorageValueSafe, setLocalStorageValueSafe } from "@/lib/local-storage";

@@ -1,5 +1,4 @@
 import { describe, expect, it } from "@jest/globals";
-import { DEFAULT_RENDERER_EXPOSURE_SETTINGS } from "@xrf/renderer";
 
 import { LevelConsoleDefaults } from "@/core/ipc/types/xrf-app";
 import {
@@ -13,6 +12,7 @@ import {
   toLevelLookChoice,
   toSettingsLevelLook,
 } from "@/core/level/lib/look";
+import { DEFAULT_RENDERER_EXPOSURE_SETTINGS } from "@/core/render/lib/contract/renderer-exposure-settings";
 
 /** What Anomaly's `default_controls.ltx` sets. */
 const ANOMALY: LevelConsoleDefaults = {

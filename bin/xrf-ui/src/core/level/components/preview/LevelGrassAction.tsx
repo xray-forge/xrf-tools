@@ -1,12 +1,12 @@
 import { default as GrassIcon } from "@mui/icons-material/Grass";
 import { Button } from "@mui/material";
-import { IRendererGrassSettings } from "@xrf/renderer";
 import { ReactElement } from "react";
 
 import { ILevelFeatureActionProps } from "@/core/level/components/preview/level-feature-action-props";
 import { useLevelFeatureOverride } from "@/core/level/components/preview/use-level-feature-override";
 import { describeLevelFeatureToggle } from "@/core/level/lib/features";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
+import { IRendererGrassSettings } from "@/core/render/lib/contract/renderer-grass-settings";
 import {
   formatGrassDensity,
   formatGrassHeight,

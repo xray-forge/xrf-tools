@@ -1,7 +1,7 @@
 import { useInjection } from "@wirestate/react";
-import { IRendererWaterSettings } from "@xrf/renderer";
 import { ReactElement } from "react";
 
+import { IRendererWaterSettings } from "@/core/render/lib/contract/renderer-water-settings";
 import { SettingsService } from "@/core/settings/services/settings";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { DetailSection } from "@/core/ui/layout/DetailSection";

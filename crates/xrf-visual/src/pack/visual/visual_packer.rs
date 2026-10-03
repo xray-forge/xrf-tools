@@ -2,6 +2,8 @@ use xrf_math::Vector3d;
 use xrf_ogf::{OgfFile, OgfGeometry, OgfModelType, OgfSlideWindow, OgfVertex};
 
 use crate::data::visual::bounds::visual_bounds::VisualBounds;
+use crate::data::visual::bounds::visual_box::VisualBox;
+use crate::data::visual::bounds::visual_sphere::VisualSphere;
 use crate::data::visual::geometry::visual_clusters::VisualClusters;
 use crate::data::visual::geometry::visual_draw_range::VisualDrawRange;
 use crate::data::visual::geometry::visual_geometry::VisualGeometry;
@@ -10,9 +12,11 @@ use crate::data::visual::geometry::visual_submesh::VisualSubmesh;
 use crate::data::visual::geometry::visual_submesh_content::VisualSubmeshContent;
 use crate::data::visual::visual_description::VisualDescription;
 use crate::pack::visual::flat_skin::FlatSkin;
+use crate::pack::visual::visual_mesh::VisualMesh;
 use crate::pack::visual::visual_package::VisualPackage;
 use crate::pack::visual::visual_skeleton::VisualSkeleton;
 use crate::pack::visual::visual_skip::VisualSkip;
+use crate::pack::visual::visual_tangent_basis::to_tangent_basis;
 use crate::pack::visual_buffer_builder::VisualBufferBuilder;
 use crate::pack::visual_cluster_table::VisualClusterTable;
 use crate::pack::visual_conversion::{convert_declared_bounds, convert_uvs, convert_vector, reverse_triangle_winding};
@@ -78,6 +82,121 @@ impl VisualPacker {
       description,
       buffer: builder.into_buffer(),
     }
+  }
+
+  /// The model type a built mesh is packed as: `MT_NORMAL`, drawn whole as it is stored.
+  const BUILT_MODEL_TYPE: u8 = 0;
+
+  /// Packs meshes built rather than read, a submesh each, in the order given, as an OGF visual packs.
+  pub fn pack_meshes(meshes: &[VisualMesh]) -> VisualPackage {
+    let mut builder: VisualBufferBuilder = VisualBufferBuilder::new();
+    let submeshes: Vec<VisualSubmesh> = meshes
+      .iter()
+      .enumerate()
+      .map(|(index, mesh)| VisualSubmesh {
+        index: index as u32,
+        model_type: Self::BUILT_MODEL_TYPE,
+        model_type_label: OgfModelType::label(Self::BUILT_MODEL_TYPE),
+        texture_name: mesh.texture_name.clone(),
+        shader_name: mesh.shader_name.clone(),
+        content: match Self::pack_mesh(&mut builder, mesh) {
+          Ok(geometry) => VisualSubmeshContent::Packed { geometry },
+          Err(skip) => VisualSubmeshContent::Skipped {
+            cause: skip.cause,
+            reason: skip.reason,
+          },
+        },
+      })
+      .collect();
+    let computed_bounds: Option<VisualBounds> = submeshes
+      .iter()
+      .filter_map(|submesh| submesh.geometry())
+      .map(|geometry| geometry.bounds.clone())
+      .reduce(VisualBounds::merge);
+    let origin = || Vector3d { x: 0.0, y: 0.0, z: 0.0 };
+
+    VisualPackage {
+      description: VisualDescription {
+        version: 4,
+        model_type: Self::BUILT_MODEL_TYPE,
+        model_type_label: OgfModelType::label(Self::BUILT_MODEL_TYPE),
+        shader_id: 0,
+        source_file: None,
+        declared_bounds: computed_bounds.clone().unwrap_or_else(|| VisualBounds {
+          bounding_box: VisualBox {
+            min: origin(),
+            max: origin(),
+          },
+          bounding_sphere: VisualSphere {
+            center: origin(),
+            radius: 0.0,
+          },
+        }),
+        computed_bounds,
+        submeshes,
+        bones: Vec::new(),
+        motion_refs: Vec::new(),
+        embedded_motions: Vec::new(),
+        buffer_length: builder.length(),
+      },
+      buffer: builder.into_buffer(),
+    }
+  }
+
+  /// One built mesh's attributes, its tangent basis derived from its uvs, and its clusters.
+  fn pack_mesh(builder: &mut VisualBufferBuilder, mesh: &VisualMesh) -> Result<VisualGeometry, VisualSkip> {
+    let count: usize = mesh.positions.len();
+
+    if count == 0 || mesh.indices.is_empty() || !mesh.indices.len().is_multiple_of(3) {
+      return Err(VisualSkip::malformed("A built mesh has no whole triangles"));
+    }
+
+    if mesh.normals.len() != count || mesh.uvs.len() != count || mesh.indices.iter().any(|it| usize::from(*it) >= count)
+    {
+      return Err(VisualSkip::malformed(
+        "A built mesh's attributes disagree on its vertices",
+      ));
+    }
+
+    let positions: Vec<Vector3d> = mesh
+      .positions
+      .iter()
+      .map(|[x, y, z]| Vector3d { x: *x, y: *y, z: *z })
+      .collect();
+    let bounds: VisualBounds = VisualBounds::from_indexed_positions(&positions, &mesh.indices)
+      .ok_or_else(|| VisualSkip::malformed("A built mesh reaches no vertex"))?;
+    let (tangents, binormals) = to_tangent_basis(mesh);
+    let level: VisualDrawRange = VisualDrawRange {
+      start: 0,
+      count: mesh.indices.len() as u32,
+    };
+    let cut: Vec<u32> = mesh.indices.iter().map(|index| u32::from(*index)).collect();
+    let mut table: VisualClusterTable = VisualClusterTable::default();
+
+    table.push_run(
+      &cut,
+      &mesh.positions,
+      level.start,
+      level.count,
+      VisualClusters::NO_DRAWABLE,
+    );
+
+    let clusters: VisualClusters = table.write_into(builder);
+
+    Ok(VisualGeometry {
+      vertex_count: count as u32,
+      index_count: mesh.indices.len() as u32,
+      positions: builder.push_f32_section(mesh.positions.as_flattened()),
+      normals: builder.push_f32_section(mesh.normals.as_flattened()),
+      tangents: builder.push_f32_section(tangents.as_flattened()),
+      binormals: builder.push_f32_section(binormals.as_flattened()),
+      uvs: builder.push_f32_section(mesh.uvs.as_flattened()),
+      indices: builder.push_u16_section(&mesh.indices),
+      skin: None,
+      detail_levels: vec![level],
+      clusters: Some(clusters),
+      bounds,
+    })
   }
 
   /// Drawable pieces of a visual, in the order the file stores them.

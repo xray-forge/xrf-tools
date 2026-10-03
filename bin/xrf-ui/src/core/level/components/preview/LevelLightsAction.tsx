@@ -1,12 +1,13 @@
 import { default as LightIcon } from "@mui/icons-material/Light";
 import { Button } from "@mui/material";
-import { ERendererLightShadowFilter, IRendererLightsSettings } from "@xrf/renderer";
 import { ReactElement } from "react";
 
 import { ILevelFeatureActionProps } from "@/core/level/components/preview/level-feature-action-props";
 import { useLevelFeatureOverride } from "@/core/level/components/preview/use-level-feature-override";
 import { describeLevelFeatureToggle } from "@/core/level/lib/features";
 import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
+import { ERendererLightShadowFilter } from "@/core/render/lib/contract/renderer-light-shadow-filter";
+import { IRendererLightsSettings } from "@/core/render/lib/contract/renderer-lights-settings";
 import { RENDER_LIGHT_SHADOW_FILTER_OPTIONS } from "@/core/render/lib/features";
 import { EditorPopoverToggle } from "@/core/shell/editor/EditorPopoverToggle";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";

@@ -1,15 +1,14 @@
-import {
-  ERendererAntialiasing,
-  IRendererAmbientOcclusionSettings,
-  IRendererFeatureOverrides,
-  IRendererFeatureSettings,
-  IRendererGrassSettings,
-  IRendererLightsSettings,
-  IRendererShadowSettings,
-  IRendererWaterSettings,
-  toRendererFeatureChoice,
-} from "@xrf/renderer";
 import { Nullable } from "@xrf/types";
+
+import { IRendererAmbientOcclusionSettings } from "@/core/render/lib/contract/renderer-ambient-occlusion-settings";
+import { ERendererAntialiasing } from "@/core/render/lib/contract/renderer-antialiasing";
+import { toRendererFeatureChoice } from "@/core/render/lib/contract/renderer-feature-choice";
+import { IRendererFeatureOverrides } from "@/core/render/lib/contract/renderer-feature-overrides";
+import { IRendererFeatureSettings } from "@/core/render/lib/contract/renderer-feature-settings";
+import { IRendererGrassSettings } from "@/core/render/lib/contract/renderer-grass-settings";
+import { IRendererLightsSettings } from "@/core/render/lib/contract/renderer-lights-settings";
+import { IRendererShadowSettings } from "@/core/render/lib/contract/renderer-shadow-settings";
+import { IRendererWaterSettings } from "@/core/render/lib/contract/renderer-water-settings";
 
 /** The shadow settings a level view may set for itself. */
 export type TLevelShadowOptions = Pick<

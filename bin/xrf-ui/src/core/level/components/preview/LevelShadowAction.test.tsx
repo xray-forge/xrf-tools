@@ -1,9 +1,9 @@
 import { describe, expect, it, jest } from "@jest/globals";
 import { userEvent } from "@testing-library/user-event";
-import { DEFAULT_RENDERER_SHADOW_SETTINGS } from "@xrf/renderer";
 
 import { LevelShadowAction } from "@/core/level/components/preview/LevelShadowAction";
 import { ILevelFeatureOptions } from "@/core/level/lib/features/level-feature-options";
+import { DEFAULT_RENDERER_SHADOW_SETTINGS } from "@/core/render/lib/contract/renderer-shadow-settings";
 import { mockLevelFeatureOptions } from "@/fixtures/mocks/level.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
 

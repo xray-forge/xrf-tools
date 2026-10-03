@@ -6,4 +6,5 @@ mod packer;
 mod poser;
 pub(crate) mod reader;
 mod rest_pose;
+mod shape;
 mod transform;

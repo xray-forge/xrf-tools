@@ -1,6 +1,5 @@
 import { Injectable, OnDeactivation } from "@wirestate/core";
 import { BoundAction, RefObservable } from "@wirestate/mobx";
-import { ERendererDebugView } from "@xrf/renderer";
 
 import { ILevelCameraOptions, toLevelCameraOptions } from "@/core/level/lib/camera/level-camera-options";
 import { ILevelFeatureOptions, toLevelFeatureOptions } from "@/core/level/lib/features/level-feature-options";
@@ -10,6 +9,7 @@ import {
   DEFAULT_LEVEL_VIEW_OPTIONS,
   ILevelViewOptions,
 } from "@/core/level/lib/view/level-view-options";
+import { ERendererDebugView } from "@/core/render/lib/contract/renderer-debug-view";
 import { LEVEL_CAMERA_STORAGE_KEY, LEVEL_FEATURES_STORAGE_KEY } from "@/core/storage";
 import { parseLocalStorageValueSafe, setLocalStorageValueSafe } from "@/lib/local-storage";
 

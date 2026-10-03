@@ -44,7 +44,6 @@
     "@wirestate/react-mobx": "1.0.0",
     "@xrf/dds": "workspace:*",
     "@xrf/math": "workspace:*",
-    "@xrf/renderer": "workspace:*",
     "@xrf/types": "workspace:*",
     "@xyflow/react": "^12.11.6",
     "clsx": "2.1.1",

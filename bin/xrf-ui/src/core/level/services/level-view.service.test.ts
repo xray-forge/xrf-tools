@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
-import { ERendererAntialiasing } from "@xrf/renderer";
 
 import { DEFAULT_LEVEL_CAMERA_OPTIONS, ILevelCameraOptions } from "@/core/level/lib/camera/level-camera-options";
 import {
@@ -8,6 +7,7 @@ import {
   ILevelViewOptions,
 } from "@/core/level/lib/view/level-view-options";
 import { LevelViewService } from "@/core/level/services/level-view.service";
+import { ERendererAntialiasing } from "@/core/render/lib/contract/renderer-antialiasing";
 import { mockLevelFeatureOptions } from "@/fixtures/mocks/level.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 

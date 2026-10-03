@@ -1,7 +1,7 @@
-import { ERendererPass, RENDERER_DEFAULT_MATERIAL, toRendererPass } from "@xrf/renderer";
 import { Maybe, Nullable } from "@xrf/types";
 
 import { EXraySurfaceDraw, XraySurfaceDescriptor, XraySurfaceSampler } from "@/core/ipc/types/xrf-material";
+import { ERendererPass, toRendererPass } from "@/core/render/lib/contract/renderer-pass";
 import {
   IRendererSurfaceDraw,
   isWallmarkSurface,
@@ -62,6 +62,9 @@ export interface ILevelSurfaceRender extends IRendererSurfaceDraw {
 }
 
 /** The function whose pass is the surface itself, and the one drawing its distortion. */
+/** The texture descriptor's default lighting model: Blinn, at full weight (`SH_Texture.cpp`). */
+const DEFAULT_MATERIAL: number = 1;
+
 const BASE_ELEMENT: string = "normal";
 const DISTORTION_ELEMENT: string = "l_special";
 
@@ -100,7 +103,7 @@ export function toLevelSurfaceRender(descriptor: Nullable<XraySurfaceDescriptor>
           }
         : null,
     isWallmark: isWallmarkSurface(descriptor),
-    material: descriptor?.material ?? RENDERER_DEFAULT_MATERIAL,
+    material: descriptor?.material ?? DEFAULT_MATERIAL,
     waterTextures: descriptor?.draw.kind === EXraySurfaceDraw.WATER ? toWaterTextures(descriptor.samplers) : null,
   };
 }
@@ -134,7 +137,7 @@ export function getLevelSurfaceRender(
  * @returns The pass, in words.
  */
 export function describeLevelSurfacePass(render: ILevelSurfaceRender): string {
-  switch (toRendererPass(render)) {
+  switch (toRendererPass(render.draw, render.isWallmark)) {
     case ERendererPass.DEFERRED:
       return "the G-buffer, lit by the sun and the hemisphere";
 

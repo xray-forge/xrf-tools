@@ -20,3 +20,4 @@ pub mod set_viewport_layout;
 pub mod set_weather_control;
 pub mod show_level;
 pub mod show_model;
+pub mod show_texture;

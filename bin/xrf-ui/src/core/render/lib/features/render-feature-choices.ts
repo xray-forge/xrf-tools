@@ -1,18 +1,13 @@
-import {
-  DEFAULT_RENDERER_GRASS_SETTINGS,
-  ERendererAmbientOcclusionQuality,
-  ERendererAntialiasing,
-  ERendererLightShadowFilter,
-  ERendererRenderScale,
-  ERenderResolution,
-  FRAME_RATE_LIMITS,
-  IRendererNumberField,
-  RENDER_RESOLUTIONS,
-  RENDERER_FEATURE_SCHEMA,
-  RENDERER_SHADOW_CASCADE_WIDTHS,
-  TFrameRateLimit,
-} from "@xrf/renderer";
-
+import { FRAME_RATE_LIMITS, TFrameRateLimit } from "@/core/render/lib/contract/frame-rate-limit";
+import { ERenderResolution, RENDER_RESOLUTIONS } from "@/core/render/lib/contract/render-resolution";
+import { ERendererAmbientOcclusionQuality } from "@/core/render/lib/contract/renderer-ambient-occlusion-quality";
+import { ERendererAntialiasing } from "@/core/render/lib/contract/renderer-antialiasing";
+import { RENDERER_FEATURE_SCHEMA } from "@/core/render/lib/contract/renderer-feature-schema";
+import { DEFAULT_RENDERER_GRASS_SETTINGS } from "@/core/render/lib/contract/renderer-grass-settings";
+import { ERendererLightShadowFilter } from "@/core/render/lib/contract/renderer-light-shadow-filter";
+import { IRendererNumberField } from "@/core/render/lib/contract/renderer-number-field";
+import { ERendererRenderScale } from "@/core/render/lib/contract/renderer-render-scale";
+import { RENDERER_SHADOW_CASCADE_WIDTHS } from "@/core/render/lib/contract/renderer-shadow-settings";
 import { formatNumber, formatPercent } from "@/lib/format/number";
 
 /** One value a choice offers, in display order: what Settings and the toolbar popovers both list. */

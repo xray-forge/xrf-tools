@@ -1,4 +1,3 @@
-import { IRendererExposureSettings } from "@xrf/renderer";
 import { Nullable } from "@xrf/types";
 
 import {
@@ -11,6 +10,7 @@ import {
   OPENXRAY_LEVEL_LOOK,
   toSettingsLevelLook,
 } from "@/core/level/lib/look/level-look";
+import { IRendererExposureSettings } from "@/core/render/lib/contract/renderer-exposure-settings";
 
 /** Where a level's look comes from. */
 export enum ELevelLookSource {

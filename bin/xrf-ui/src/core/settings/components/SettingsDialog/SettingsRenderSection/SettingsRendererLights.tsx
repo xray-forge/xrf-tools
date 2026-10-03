@@ -1,7 +1,8 @@
 import { useInjection } from "@wirestate/react";
-import { ERendererLightShadowFilter, IRendererLightsSettings } from "@xrf/renderer";
 import { ReactElement } from "react";
 
+import { ERendererLightShadowFilter } from "@/core/render/lib/contract/renderer-light-shadow-filter";
+import { IRendererLightsSettings } from "@/core/render/lib/contract/renderer-lights-settings";
 import { RENDER_LIGHT_SHADOW_FILTER_OPTIONS } from "@/core/render/lib/features";
 import { SettingsService } from "@/core/settings/services/settings";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";

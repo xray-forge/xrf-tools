@@ -64,6 +64,17 @@ export type RenderAssetLighting = {
   ambientColor: [number | null, number | null, number | null];
 };
 
+/**
+ * A checkerboard where nothing was drawn, as the one behind a picture with alpha: the backdrop and a second colour in
+ * squares.
+ */
+export type RenderBackdropSquares = {
+  /** The second colour, each channel zero to one. */
+  color: [number | null, number | null, number | null];
+  /** Side of one square, in device pixels of the viewport. */
+  size: number | null;
+};
+
 /** Every `kind` the `RenderCamera` union is told apart by, so a switch or a comparison names one. */
 export enum ERenderCamera {
   /** Flies free, turned by a drag and moved by the keys, as a level is walked. */
@@ -681,6 +692,8 @@ export type RenderViewOptions = {
    * level viewer's own.
    */
   backdrop: [number | null, number | null, number | null] | null;
+  /** The backdrop laid out as a checkerboard with a second colour, as behind a picture with alpha; none for a plain one. */
+  backdropSquares: RenderBackdropSquares | null;
   /** Times a uv checker repeats over a surface's base coordinate, drawn in place of its textures; zero for none. */
   checker: number | null;
   /** The colour a surface naming no base texture is drawn, each channel zero to one; none for white. */

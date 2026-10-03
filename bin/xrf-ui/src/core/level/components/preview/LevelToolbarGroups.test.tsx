@@ -1,6 +1,5 @@
 import { describe, expect, it, jest } from "@jest/globals";
 import { userEvent } from "@testing-library/user-event";
-import { DEFAULT_RENDERER_AMBIENT_OCCLUSION_SETTINGS, ERendererDebugView } from "@xrf/renderer";
 
 import { LevelCullingAction } from "@/core/level/components/preview/LevelCullingAction";
 import { LevelOcclusionAction } from "@/core/level/components/preview/LevelOcclusionAction";
@@ -10,6 +9,8 @@ import { LevelSurfacesAction } from "@/core/level/components/preview/LevelSurfac
 import { ILevelFeatureOptions } from "@/core/level/lib/features";
 import { DEFAULT_LEVEL_LOD_OPTIONS } from "@/core/level/lib/lod/level-lod-options";
 import { DEFAULT_LEVEL_VIEW_OPTIONS, ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
+import { DEFAULT_RENDERER_AMBIENT_OCCLUSION_SETTINGS } from "@/core/render/lib/contract/renderer-ambient-occlusion-settings";
+import { ERendererDebugView } from "@/core/render/lib/contract/renderer-debug-view";
 import { mockLevelFeatureOptions } from "@/fixtures/mocks/level.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
 

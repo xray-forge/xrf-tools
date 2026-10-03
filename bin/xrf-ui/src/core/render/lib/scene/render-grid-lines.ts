@@ -1,5 +1,4 @@
-import { TRendererColor } from "@xrf/renderer";
-
+import { TRendererColor } from "@/core/render/lib/contract/renderer-color";
 import { toRawColor } from "@/core/render/lib/scene/render-color";
 import { toRenderGridStep } from "@/core/render/lib/scene/render-grid-step";
 

@@ -1,4 +1,4 @@
-import { IRendererSettings } from "@xrf/renderer";
+import { IRendererSettings } from "@/core/render/lib/contract/renderer-settings";
 
 /**
  * What the application sets for every viewport alike: how frames are paced, whether their passes are timed, and what

@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { waitFor } from "@testing-library/react";
 import { Container } from "@wirestate/core";
-import { ERenderResolution } from "@xrf/renderer";
 
 import {
   ERenderCamera,
@@ -25,6 +24,7 @@ import { LevelRenderService, toLevelPick } from "@/core/level/services/level-ren
 import { LevelViewService } from "@/core/level/services/level-view.service";
 import { LevelViewportService } from "@/core/level/services/level-viewport.service";
 import { LevelWeatherService } from "@/core/level/services/level-weather.service";
+import { ERenderResolution } from "@/core/render/lib/contract/render-resolution";
 import { SettingsService } from "@/core/settings/services/settings";
 import { mockLevelSpawnObject, mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";

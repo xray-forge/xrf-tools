@@ -1,11 +1,5 @@
 import { inject, Injectable } from "@wirestate/core";
 import { BoundAction, comparer, reaction, RefObservable, runInAction } from "@wirestate/mobx";
-import {
-  EMPTY_RENDER_FRAME_COST,
-  EMPTY_RENDERER_PASS_TIMINGS,
-  IRendererPassTimings,
-  IRenderFrameCost,
-} from "@xrf/renderer";
 import { Nullable } from "@xrf/types";
 
 import {
@@ -16,6 +10,8 @@ import {
   RenderTextureReport,
   RenderViewOptions,
 } from "@/core/ipc/types/xrf-renderer";
+import { EMPTY_RENDER_FRAME_COST, IRenderFrameCost } from "@/core/render/lib/contract/render-frame-cost";
+import { EMPTY_RENDERER_PASS_TIMINGS, IRendererPassTimings } from "@/core/render/lib/contract/renderer-pass-timings";
 import { toNativeFrameCost, toNativePassTimings } from "@/core/render/lib/native/native-frame-report";
 import { NativeRenderSurfaceService } from "@/core/render/lib/native/native-render-surface-service";
 import { toNativeRenderHeight } from "@/core/render/lib/native/native-view-options";

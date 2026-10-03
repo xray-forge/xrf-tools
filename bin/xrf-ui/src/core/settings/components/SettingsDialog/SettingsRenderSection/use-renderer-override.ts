@@ -1,7 +1,8 @@
 import { useInjection } from "@wirestate/react";
-import { IRendererFeatureOverrides, IRendererFeatureSettings } from "@xrf/renderer";
 import { useCallback } from "react";
 
+import { IRendererFeatureOverrides } from "@/core/render/lib/contract/renderer-feature-overrides";
+import { IRendererFeatureSettings } from "@/core/render/lib/contract/renderer-feature-settings";
 import { SettingsService } from "@/core/settings/services/settings";
 
 /**

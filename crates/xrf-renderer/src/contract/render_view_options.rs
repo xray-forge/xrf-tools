@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use crate::contract::render_ambient_occlusion_settings::RenderAmbientOcclusionSettings;
 use crate::contract::render_antialiasing::RenderAntialiasing;
 use crate::contract::render_asset_lighting::RenderAssetLighting;
+use crate::contract::render_backdrop_squares::RenderBackdropSquares;
 use crate::contract::render_debug_view::RenderDebugView;
 use crate::contract::render_exposure_settings::RenderExposureSettings;
 use crate::contract::render_grass_settings::RenderGrassSettings;
@@ -41,6 +42,8 @@ pub struct RenderViewOptions {
   /// What shows where nothing was drawn and neither the sky nor the fog is, each channel zero to one; none for the
   /// level viewer's own.
   pub backdrop: Option<[f32; 3]>,
+  /// The backdrop laid out as a checkerboard with a second colour, as behind a picture with alpha; none for a plain one.
+  pub backdrop_squares: Option<RenderBackdropSquares>,
   /// Times a uv checker repeats over a surface's base coordinate, drawn in place of its textures; zero for none.
   pub checker: f32,
   /// The colour a surface naming no base texture is drawn, each channel zero to one; none for white.
@@ -102,6 +105,7 @@ impl Default for RenderViewOptions {
       tonemap_scale: 1.0,
       asset_lighting: None,
       backdrop: None,
+      backdrop_squares: None,
       checker: 0.0,
       plain_color: None,
       is_alpha_visible: true,

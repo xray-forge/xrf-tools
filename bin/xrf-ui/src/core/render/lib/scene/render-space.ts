@@ -1,5 +1,6 @@
 import { toDirection, toHeadingPitch, wrap } from "@xrf/math";
-import { toEngineVector, toRendererVector } from "@xrf/renderer";
+
+import { toEngineVector, toRendererVector } from "@/core/render/lib/contract/renderer-space";
 /**
  * A point in one of the two spaces an X-Ray asset is ever in.
  */

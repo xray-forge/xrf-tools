@@ -30,6 +30,8 @@ pub struct CameraUniform {
   pub backdrop: Vec4,
   /// What a surface naming no base texture is drawn; `w` one where it is set, white where it is not.
   pub plain: Vec4,
+  /// The backdrop's second colour, and in `w` the side of a square in render pixels; zero for a plain backdrop.
+  pub backdrop_squares: Vec4,
 }
 
 impl CameraUniform {
@@ -51,18 +53,23 @@ impl CameraUniform {
       motion_previous: view_projection,
       backdrop: Vec4::ZERO,
       plain: Vec4::ZERO,
+      backdrop_squares: Vec4::ZERO,
     }
   }
 
   /// The same camera drawing as an asset viewer asks: a uv checker in place of every texture, surfaces solid where
-  /// their alpha is not shown, its backdrop and the colour of a surface with no texture.
-  pub fn with_asset_view(mut self, options: &RenderViewOptions) -> Self {
+  /// their alpha is not shown, its backdrop and the colour of a surface with no texture. `scale` is render pixels a
+  /// viewport pixel, which a backdrop square's side is measured in.
+  pub fn with_asset_view(mut self, options: &RenderViewOptions, scale: f32) -> Self {
     let to_set = |color: Option<[f32; 3]>| color.map_or(Vec4::ZERO, |it| Vec4::from((Vec3::from(it), 1.0)));
 
     self.modes.y = options.checker;
     self.modes.z = f32::from(u8::from(!options.is_alpha_visible));
     self.backdrop = to_set(options.backdrop);
     self.plain = to_set(options.plain_color);
+    self.backdrop_squares = options
+      .backdrop_squares
+      .map_or(Vec4::ZERO, |it| Vec3::from(it.color).extend((it.size * scale).max(1.0)));
     self
   }
 
