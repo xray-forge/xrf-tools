@@ -28,5 +28,7 @@ export function RenderSurface({
     return () => host.detach();
   }, [host]);
 
-  return <div data-testid={dataTestId} id={id} className={cn(className, "h-full w-full")} ref={containerRef} />;
+  return (
+    <div data-testid={dataTestId} id={id} className={cn(className, "h-full w-full select-none")} ref={containerRef} />
+  );
 }
