@@ -4,6 +4,7 @@ use xrf_error::XrfResult;
 
 use crate::context::gpu_context::GpuContext;
 use crate::pass::ambient_occlusion_pass::AmbientOcclusionPass;
+use crate::pass::backdrop_pass::BackdropPass;
 use crate::pass::combine_pass::CombinePass;
 use crate::pass::composited_pass::CompositedPass;
 use crate::pass::depth_pyramid_pass::DepthPyramidPass;
@@ -69,6 +70,8 @@ pub struct GpuState {
   pub combine: CombinePass,
   pub exposure: ExposurePass,
   pub present: PresentPass,
+  /// The page's backdrop under every window's viewports.
+  pub backdrop: BackdropPass,
   pub overlay: OverlayPass,
   pub table: MaterialTable,
   /// The grid pass for each target format drawn into.
@@ -135,6 +138,7 @@ impl GpuState {
       sky,
       exposure: ExposurePass::new(device, shaders)?,
       present: PresentPass::new(device, shaders, &view_layout),
+      backdrop: BackdropPass::new(device, shaders),
       overlay: OverlayPass::new(device, shaders, &view_layout),
       table: MaterialTable::new(device, &context.queue),
       windows: HashMap::new(),
@@ -225,6 +229,7 @@ impl GpuState {
     self.upscale.refresh(device, shaders);
     self.exposure.refresh(device, shaders);
     self.present.refresh(shaders);
+    self.backdrop.refresh(shaders);
     self.overlay.refresh(shaders);
   }
 }

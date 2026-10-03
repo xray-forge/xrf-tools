@@ -1,5 +1,7 @@
 pub(crate) mod ambient_occlusion_pass;
 pub(crate) mod ambient_occlusion_uniform;
+pub(crate) mod backdrop_pass;
+pub(crate) mod backdrop_uniform;
 pub(crate) mod camera_uniform;
 pub(crate) mod combine_pass;
 pub(crate) mod composited_pass;
