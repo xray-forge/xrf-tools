@@ -48,6 +48,78 @@ export enum ERenderAntialiasing {
 /** Every `ERenderAntialiasing` as the spelling it crosses IPC as, for a value no member has narrowed. */
 export type RenderAntialiasing = `${ERenderAntialiasing}`;
 
+/** What the weather lights a scene with now, its keyframes blended, as the passes bind it. */
+export type RenderAppliedEnvironment = {
+  /** The direction sunlight travels, in renderer space. */
+  sunDirection: [number | null, number | null, number | null];
+  /** The sun's colour, times its light scale. */
+  sunColor: [number | null, number | null, number | null];
+  /** The ambient as combine binds it: doubled, floored, times its light scale. */
+  ambient: [number | null, number | null, number | null];
+  /** The hemisphere as combine binds it. */
+  hemisphere: [number | null, number | null, number | null];
+  /** Distance fog, or none. */
+  fog: RenderAppliedFog | null;
+  /** `rain_density`, zero for a dry sky. */
+  rainDensity: number | null;
+  /** `trees_amplitude`, zero for trees standing still. */
+  treeSway: number | null;
+  /** `water_intensity`. */
+  waterIntensity: number | null;
+};
+
+/** Distance fog as drawn. */
+export type RenderAppliedFog = {
+  color: [number | null, number | null, number | null];
+  /** Metres to where it is total, or the far plane where that is nearer. */
+  distance: number | null;
+  /** How near the camera it starts, a share of its distance. */
+  density: number | null;
+};
+
+/** The grass as planted. */
+export type RenderAppliedGrass = {
+  /** Metres around the camera it is planted to, in whole slots. */
+  radius: number | null;
+  /** How far apart a slot's candidates stand, held to the engine's bounds. */
+  density: number | null;
+  height: number | null;
+  /** Tufts the lists hold at most. */
+  tufts: number;
+  /** Tufts the radius and density would plant: more than `tufts` where a GPU buffer cannot hold them all. */
+  wanted: number;
+};
+
+/** What a viewport's frames are drawn with, as the renderer resolved what it was asked: sent as it changes. */
+export type RenderAppliedReport = {
+  /** What smooths the finished frame: none where a target other than the frame is shown. */
+  antialiasing: RenderAntialiasing;
+  /** How much smaller the scene is drawn than the viewport, native for anything but a level. */
+  renderScale: RenderScale;
+  /** The sun's shadow, or none where no cascade is drawn. */
+  shadows: RenderAppliedShadows | null;
+  /** The screen's ambient occlusion, or none where it is off or the scene is unlit. */
+  ambientOcclusion: RenderAmbientOcclusionQuality | null;
+  /** The local lights, or none where they are off. */
+  lights: RenderLightsSettings | null;
+  /** The grass planted, or none where none is. */
+  grass: RenderAppliedGrass | null;
+  /** Whether the level's water is drawn. */
+  isWater: boolean;
+  /** What the weather lights the scene with now, or none for an asset viewer's rig. */
+  environment: RenderAppliedEnvironment | null;
+};
+
+/** The sun's shadow as drawn. */
+export type RenderAppliedShadows = {
+  /** Each cascade's width in metres, nearest first, as many as are drawn. */
+  cascades: Array<number | null>;
+  /** Texels each cascade's map is across, held to what the device allows. */
+  resolution: number;
+  /** Texels the filter reaches each way. */
+  filter: number;
+};
+
 /**
  * How an asset viewer lights what it shows, in place of a level's weather: one light from a direction and a uniform
  * ambient, each a colour scaled by an intensity.
@@ -619,6 +691,19 @@ export type RenderStaticReport = {
   occludedTriangles: number;
 };
 
+/** What colour a surface's albedo is drawn with. */
+export enum ERenderSurfaceColor {
+  /** Its own textures. */
+  TEXTURED = "textured",
+  /** One grey for every surface, so the shapes and the light read alone. */
+  CLAY = "clay",
+  /** A tint of its shader table entry, which tells neighbouring surfaces apart. */
+  SHADER = "shader",
+}
+
+/** Every `ERenderSurfaceColor` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type RenderSurfaceColor = `${ERenderSurfaceColor}`;
+
 /** How much geometry one shader table entry of a viewport's level draws, across the sectors resident. */
 export type RenderSurfaceGeometry = {
   shaderId: number;
@@ -687,8 +772,8 @@ export type RenderViewOptions = {
   isLit: boolean;
   /** Whether every static surface draws as its triangles' edges. */
   isWireframe: boolean;
-  /** Whether surfaces wear their textures, else their flat colours. */
-  isTextured: boolean;
+  /** What colour surfaces' albedo is drawn with: their textures, clay, or their shader's tint. */
+  surfaceColor: RenderSurfaceColor;
   /** Whether bump textures bend the normal. */
   isBumped: boolean;
   /** How far the baked hemisphere darkens the ambient: zero for not at all. */
@@ -735,6 +820,8 @@ export type RenderViewOptions = {
   isSpawnedItems: boolean;
   isSpawnedWeapons: boolean;
   isSpawnedLamps: boolean;
+  /** Whether the spawned objects a new game releases are drawn too, each with its group. */
+  isSpawnedReleased: boolean;
   exposure: RenderExposureSettings;
   shadows: RenderShadowSettings;
   ambientOcclusion: RenderAmbientOcclusionSettings;
@@ -764,6 +851,8 @@ export enum ERenderViewportEvent {
   FRAME = "frame",
   /** Where the camera stands, sent while it moves and once more after it stops. */
   CAMERA = "camera",
+  /** What its frames are drawn with, as the renderer resolved what it was asked, sent as it changes. */
+  APPLIED = "applied",
   /** How far its scene has loaded, sent as it changes. */
   LOAD = "load",
   /** Where its weather stands, sent as it changes, a few times a second at most; none while nothing plays. */
@@ -778,6 +867,8 @@ export type RenderViewportEvent =
   | { kind: "frame"; report: RenderFrameReport }
   /** Where the camera stands, sent while it moves and once more after it stops. */
   | { kind: "camera"; pose: RenderCameraPose }
+  /** What its frames are drawn with, as the renderer resolved what it was asked, sent as it changes. */
+  | { kind: "applied"; report: RenderAppliedReport }
   /** How far its scene has loaded, sent as it changes. */
   | { kind: "load"; report: RenderLoadReport }
   /** Where its weather stands, sent as it changes, a few times a second at most; none while nothing plays. */

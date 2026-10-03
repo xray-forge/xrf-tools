@@ -56,6 +56,7 @@ export function mockLevelSpawnObject(overrides: Partial<LevelSpawnObject> = {}):
     clsid: EClsId.O_PHYS_S,
     index: 0,
     name: "crate",
+    release: null,
     section: "physic_object",
     storyId: null,
     transform: mockVisualTransform({ x: 0, y: 0, z: 0 }),

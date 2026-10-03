@@ -4,6 +4,7 @@ import { Nullable } from "@xrf/types";
 
 import { renderCommands } from "@/core/ipc/commands/render";
 import {
+  RenderAppliedReport,
   RenderCameraPose,
   RenderFrameReport,
   RenderLoadReport,
@@ -32,6 +33,10 @@ export abstract class NativeRenderSurfaceService implements IRenderSurfaceHost {
   @RefObservable()
   public frame: RenderFrameReport = EMPTY_RENDER_FRAME_REPORT;
 
+  /** What the renderer draws the viewport's frames with, as it resolved what it was asked; null until it says. */
+  @RefObservable()
+  public applied: Nullable<RenderAppliedReport> = null;
+
   protected viewport: Nullable<NativeViewport> = null;
 
   private target: Nullable<NativeViewportTarget> = null;
@@ -52,6 +57,11 @@ export abstract class NativeRenderSurfaceService implements IRenderSurfaceHost {
     });
 
     const viewport: NativeViewport = new NativeViewport({
+      onApplied: (report: RenderAppliedReport): void => {
+        runInAction(() => {
+          this.applied = report;
+        });
+      },
       onCamera: (pose: RenderCameraPose): void => this.onCamera(pose),
       onFailed: (message: string): void => this.fail(message),
       onFrame: (report: RenderFrameReport): void => {
@@ -92,6 +102,7 @@ export abstract class NativeRenderSurfaceService implements IRenderSurfaceHost {
 
     runInAction(() => {
       this.frame = EMPTY_RENDER_FRAME_REPORT;
+      this.applied = null;
     });
   }
 

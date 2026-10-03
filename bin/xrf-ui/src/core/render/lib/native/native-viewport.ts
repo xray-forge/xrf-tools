@@ -6,6 +6,7 @@ import { renderCommands } from "@/core/ipc/commands/render";
 import {
   ERenderViewportEvent,
   ERenderWeatherTransition,
+  RenderAppliedReport,
   RenderCamera,
   RenderCameraCommand,
   RenderCameraPose,
@@ -36,6 +37,8 @@ export type TNativeTextureRequest = Parameters<typeof renderCommands.showTexture
 export interface INativeViewportListener {
   /** What its recent frames cost. */
   onFrame(report: RenderFrameReport): void;
+  /** What its frames are drawn with, as the renderer resolved what it was asked, as that changes. */
+  onApplied(report: RenderAppliedReport): void;
   /** Where its camera stands, while it moves and once after. */
   onCamera(pose: RenderCameraPose): void;
   /** How far its scene has loaded, as that changes. */
@@ -66,6 +69,9 @@ export class NativeViewport {
       switch (event.kind) {
         case ERenderViewportEvent.FRAME:
           return listener.onFrame(event.report);
+
+        case ERenderViewportEvent.APPLIED:
+          return listener.onApplied(event.report);
 
         case ERenderViewportEvent.CAMERA:
           return listener.onCamera(event.pose);

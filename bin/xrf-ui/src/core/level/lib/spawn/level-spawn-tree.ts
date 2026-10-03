@@ -4,8 +4,8 @@ import { ITreeNode } from "@/core/ui/tree/tree-node";
 
 /** What one row of the spawn tree stands for: a category, a section within it, or one object. */
 export type TLevelSpawnTreeRow =
-  | { kind: "category"; entry: ILevelSpawnCategoryEntry; count: number }
-  | { kind: "section"; section: string; count: number }
+  | { kind: "category"; entry: ILevelSpawnCategoryEntry; count: number; released: number }
+  | { kind: "section"; section: string; count: number; released: number }
   | { kind: "object"; object: LevelSpawnObject };
 
 /** Orders names as a reader does: `box_2` before `box_10`. */
@@ -69,7 +69,7 @@ export function toLevelSpawnTree(
         children: toSectionNodes(entry.category, objects),
         id: toLevelSpawnCategoryId(entry.category),
         label: entry.label,
-        payload: { count: objects.length, entry, kind: "category" },
+        payload: { count: objects.length, entry, kind: "category", released: countReleased(objects) },
       },
     ];
   });
@@ -113,6 +113,11 @@ function toSectionNodes(
         })),
       id: toLevelSpawnSectionId(category, section),
       label: section,
-      payload: { count: members.length, kind: "section" as const, section },
+      payload: { count: members.length, kind: "section" as const, released: countReleased(members), section },
     }));
+}
+
+/** How many of some objects a new game releases. */
+function countReleased(objects: ReadonlyArray<LevelSpawnObject>): number {
+  return objects.filter((object: LevelSpawnObject) => object.release !== null).length;
 }

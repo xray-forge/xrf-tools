@@ -8,6 +8,7 @@ import { LevelSpawnVisibilityToggle } from "@/core/level/components/panels/Level
 import { useLevelSpawnDetails } from "@/core/level/components/panels/LevelSpawnPanel/use-level-spawn-details";
 import { toLevelFramedGoTo } from "@/core/level/lib/camera/level-camera-frame";
 import { ELevelPick, TLevelPick } from "@/core/level/lib/pick/level-pick";
+import { describeLevelSpawnRelease } from "@/core/level/lib/spawn/level-spawn-release";
 import { ILevelSpawnReport, isLevelSpawnReading } from "@/core/level/lib/spawn/level-spawn-report";
 import { toLevelSpawnSphere } from "@/core/level/lib/spawn/level-spawn-sphere";
 import {
@@ -123,10 +124,28 @@ export function LevelSpawnPanel({
   const renderLabel = useCallback((item: ITreeNode<TLevelSpawnTreeRow>): ReactNode => {
     const row: Maybe<TLevelSpawnTreeRow> = item.payload;
 
-    return row && row.kind !== "object" ? (
-      <TreeRowLabel label={item.label} caption={String(row.count)} captionTitle={`${row.count} spawned`} />
-    ) : (
-      item.label
+    if (!row) {
+      return item.label;
+    }
+
+    if (row.kind === "object") {
+      return row.object.release ? (
+        <span className={"opacity-55"} title={describeLevelSpawnRelease(row.object.release)}>
+          {item.label}
+        </span>
+      ) : (
+        item.label
+      );
+    }
+
+    return (
+      <TreeRowLabel
+        label={item.label}
+        caption={row.released ? `${row.count} · ${row.released} released` : String(row.count)}
+        captionTitle={
+          row.released ? `${row.count} spawned, ${row.released} of them released by a new game` : `${row.count} spawned`
+        }
+      />
     );
   }, []);
 

@@ -1,16 +1,22 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { ERenderAntialiasing, ERenderDebugView, RenderViewOptions } from "@/core/ipc/types/xrf-renderer";
+import {
+  ERenderAntialiasing,
+  ERenderDebugView,
+  ERenderSurfaceColor,
+  RenderViewOptions,
+} from "@/core/ipc/types/xrf-renderer";
 import { DEFAULT_LEVEL_LOD_OPTIONS } from "@/core/level/lib/lod/level-lod-options";
 import { OPENXRAY_LEVEL_LOOK } from "@/core/level/lib/look/level-look";
 import { ILevelViewOptionsInputs, toLevelViewOptions } from "@/core/level/lib/render/level-render-view";
+import { ELevelShading } from "@/core/level/lib/view/level-shading";
 import { DEFAULT_LEVEL_VIEW_OPTIONS } from "@/core/level/lib/view/level-view-options";
 import { mockLevelFeatureOptions } from "@/fixtures/mocks/level.mocks";
 import { mockRenderFeatures } from "@/fixtures/mocks/render.mocks";
 
 function toInputs(overrides: Partial<ILevelViewOptionsInputs> = {}): ILevelViewOptionsInputs {
   return {
-    debugView: ERenderDebugView.FINAL,
+    shading: ELevelShading.FINAL,
     features: mockRenderFeatures(),
     hemiStrength: 0.8,
     lod: DEFAULT_LEVEL_LOD_OPTIONS,
@@ -55,5 +61,13 @@ describe("toLevelViewOptions", () => {
 
     expect(options.renderHeight).toBe(1080);
     expect(options.exposure).toEqual(OPENXRAY_LEVEL_LOOK.exposure);
+  });
+
+  it("shows the shading chosen as a surface colour and a picture", () => {
+    const shader: RenderViewOptions = toLevelViewOptions(toInputs({ shading: ELevelShading.SHADER }));
+    const normal: RenderViewOptions = toLevelViewOptions(toInputs({ shading: ELevelShading.NORMAL }));
+
+    expect([shader.surfaceColor, shader.debugView]).toEqual([ERenderSurfaceColor.SHADER, ERenderDebugView.FINAL]);
+    expect([normal.surfaceColor, normal.debugView]).toEqual([ERenderSurfaceColor.TEXTURED, ERenderDebugView.NORMAL]);
   });
 });

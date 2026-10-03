@@ -9,7 +9,6 @@ import { RenderLoadReport } from "@/core/ipc/types/xrf-renderer";
 import { LevelPreviewLayout } from "@/core/level/components/preview/LevelPreviewLayout";
 import { ILevelCamera } from "@/core/level/lib/camera/level-camera";
 import { ILevelPoint } from "@/core/level/lib/camera/level-point";
-import { EMPTY_LEVEL_SPAWN_REPORT } from "@/core/level/lib/spawn";
 import {
   LevelLoadService,
   LevelLookService,
@@ -361,27 +360,7 @@ describe("LevelPreviewLayout", () => {
       act(() => viewport.noteLoad(toLoad(loaded)));
     }
 
-    expect(await view.findByText("Reading sectors, 20 of 24")).toBeInTheDocument();
+    expect(await view.findByText("Reading sectors, 20 of 24…")).toBeInTheDocument();
     expect(renders).toBe(before);
-  });
-
-  // The renderer's read comes first: it is what is drawn, and the objects are only listed beside it.
-  it("says the spawned objects are being listed once the renderer has read the level", async () => {
-    const { loader, view, viewport } = renderReporting(() => undefined);
-
-    await view.findByTestId("stub-viewport");
-
-    act(() => {
-      runInAction(() => {
-        loader.spawnReport = EMPTY_LEVEL_SPAWN_REPORT;
-      });
-      viewport.noteLoad(toLoad(3));
-    });
-
-    expect(await view.findByText("Reading sectors, 3 of 24")).toBeInTheDocument();
-
-    act(() => viewport.noteLoad({ ...toLoad(24, 40), isReady: true }));
-
-    expect(await view.findByText("Listing spawned objects")).toBeInTheDocument();
   });
 });

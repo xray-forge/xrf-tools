@@ -1,6 +1,6 @@
 import { Nullable } from "@xrf/types";
 
-import { ERenderCamera, ERenderDebugView, RenderCamera, RenderViewOptions } from "@/core/ipc/types/xrf-renderer";
+import { ERenderCamera, RenderCamera, RenderViewOptions } from "@/core/ipc/types/xrf-renderer";
 import { ILevelCameraOptions } from "@/core/level/lib/camera/level-camera-options";
 import { ILevelViewpoint } from "@/core/level/lib/camera/level-viewpoint";
 import {
@@ -10,6 +10,7 @@ import {
 } from "@/core/level/lib/features/level-feature-options";
 import { ILevelLodOptions, toLevelRendererLod } from "@/core/level/lib/lod/level-lod-options";
 import { ILevelRenderConfig } from "@/core/level/lib/render/level-render-config";
+import { ELevelShading, getLevelShading, ILevelShadingChoice } from "@/core/level/lib/view/level-shading";
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { TNativeLook, toNativeViewOptions } from "@/core/render/lib/native/native-view-options";
 import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-feature-settings";
@@ -54,8 +55,8 @@ export interface ILevelViewOptionsInputs {
   features: IRenderFeatureSettings;
   /** How the level is exposed, lit and corrected. */
   look: TNativeLook;
-  /** Which picture the viewport shows. */
-  debugView: ERenderDebugView;
+  /** What the viewport shows of its surfaces. */
+  shading: ELevelShading;
   /** How many rows the level is drawn with at most; null for as many as the viewport covers. */
   renderHeight: Nullable<number>;
 }
@@ -65,7 +66,8 @@ export interface ILevelViewOptionsInputs {
  * @returns What the native viewport draws the level with.
  */
 export function toLevelViewOptions(inputs: ILevelViewOptionsInputs): RenderViewOptions {
-  const { options, hemiStrength, lod, view, features, look, debugView, renderHeight } = inputs;
+  const { options, hemiStrength, lod, view, features, look, shading, renderHeight } = inputs;
+  const { debugView, surfaceColor }: ILevelShadingChoice = getLevelShading(shading);
 
   return toNativeViewOptions(
     {
@@ -73,8 +75,8 @@ export function toLevelViewOptions(inputs: ILevelViewOptionsInputs): RenderViewO
       hemiStrength: options.isBaked ? hemiStrength : 0,
       isBumped: options.isBumped,
       isLit: true,
-      isTextured: options.isTextured,
       isWireframe: options.isWireframe,
+      surfaceColor,
       tonemapScale: 1,
     },
     {

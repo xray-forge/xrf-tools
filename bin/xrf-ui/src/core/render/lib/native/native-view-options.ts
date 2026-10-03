@@ -1,6 +1,6 @@
 import { Nullable } from "@xrf/types";
 
-import { ERenderDebugView, RenderViewOptions } from "@/core/ipc/types/xrf-renderer";
+import { ERenderDebugView, ERenderSurfaceColor, RenderViewOptions } from "@/core/ipc/types/xrf-renderer";
 import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { ERenderResolution } from "@/core/render/lib/settings/render-resolution";
 import { TSettled } from "@/core/render/lib/settings/render-settled";
@@ -9,7 +9,7 @@ import { TSettled } from "@/core/render/lib/settings/render-settled";
 export type TNativeViewShading = TSettled<
   Pick<
     RenderViewOptions,
-    "debugView" | "hemiStrength" | "isBumped" | "isLit" | "isTextured" | "isWireframe" | "tonemapScale"
+    "debugView" | "hemiStrength" | "isBumped" | "isLit" | "isWireframe" | "surfaceColor" | "tonemapScale"
   >
 >;
 
@@ -24,6 +24,7 @@ export interface INativeViewSwitches extends Pick<
   | "isSpawnedItems"
   | "isSpawnedLamps"
   | "isSpawnedProps"
+  | "isSpawnedReleased"
   | "isSpawnedWeapons"
   | "isThundering"
   | "isWallmarked"
@@ -49,6 +50,7 @@ export const NO_NATIVE_VIEW_SWITCHES: INativeViewSwitches = {
   isSpawnedItems: true,
   isSpawnedLamps: true,
   isSpawnedProps: true,
+  isSpawnedReleased: false,
   isSpawnedWeapons: true,
   isThundering: false,
   isWallmarked: true,
@@ -109,6 +111,7 @@ export function toNativeViewOptions(
     isSpawnedItems: switches.isSpawnedItems,
     isSpawnedLamps: switches.isSpawnedLamps,
     isSpawnedProps: switches.isSpawnedProps,
+    isSpawnedReleased: switches.isSpawnedReleased,
     isSpawnedWeapons: switches.isSpawnedWeapons,
     isThundering: switches.isThundering,
     isWallmarked: switches.isWallmarked,
@@ -139,7 +142,13 @@ export function toNativeAssetViewOptions(
   renderHeight: Nullable<number> = null
 ): RenderViewOptions {
   return toNativeViewOptions(
-    { ...shading, debugView: ERenderDebugView.FINAL, hemiStrength: 1, isTextured: true, tonemapScale: 1 },
+    {
+      ...shading,
+      debugView: ERenderDebugView.FINAL,
+      hemiStrength: 1,
+      surfaceColor: ERenderSurfaceColor.TEXTURED,
+      tonemapScale: 1,
+    },
     features,
     NO_NATIVE_VIEW_SWITCHES,
     { ...NEUTRAL_NATIVE_LOOK, exposure: { ...features.exposure, isEnabled: false } },

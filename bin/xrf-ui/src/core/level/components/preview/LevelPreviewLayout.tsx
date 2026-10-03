@@ -12,13 +12,12 @@ import { LevelWeatherTexture } from "@/core/ipc/types/xrf-app";
 import { ThunderboltCollection } from "@/core/ipc/types/xrf-environment";
 import { LevelHeaderPanel } from "@/core/level/components/panels/LevelHeaderPanel";
 import { LevelProblemsPanel } from "@/core/level/components/panels/LevelProblemsPanel";
+import { LevelRendererPanel } from "@/core/level/components/panels/LevelRendererPanel";
 import { LevelSpawnPanel } from "@/core/level/components/panels/LevelSpawnPanel";
-import { LevelStreamPanel } from "@/core/level/components/panels/LevelStreamPanel";
 import { LevelSurfacesPanel } from "@/core/level/components/panels/LevelSurfacesPanel";
 import { LevelWeatherPanel } from "@/core/level/components/panels/LevelWeatherPanel";
 import { LevelCameraAction } from "@/core/level/components/preview/LevelCameraAction";
 import { LevelGoToAction } from "@/core/level/components/preview/LevelGoToAction";
-import { LevelPreviewActivity } from "@/core/level/components/preview/LevelPreviewActivity";
 import { LevelPreviewCoordinates } from "@/core/level/components/preview/LevelPreviewCoordinates";
 import { LevelPreviewCover } from "@/core/level/components/preview/LevelPreviewCover";
 import { LevelPreviewEmpty } from "@/core/level/components/preview/LevelPreviewEmpty";
@@ -141,9 +140,9 @@ export function LevelPreviewLayout({
       },
       {
         icon: <SpeedIcon />,
-        id: ELevelPanelId.STREAMING,
-        label: "Streaming",
-        render: () => <LevelStreamPanel />,
+        id: ELevelPanelId.RENDERER,
+        label: "Renderer",
+        render: () => <LevelRendererPanel />,
       },
       {
         icon: <LayersIcon />,
@@ -179,7 +178,7 @@ export function LevelPreviewLayout({
           featureView={featureView}
           settings={settings}
           isGpuTimed={settingsService.isGpuTimed}
-          debugView={viewService.debugView}
+          shading={viewService.shading}
           actions={actions}
           onChangeOptions={viewService.setOptions}
           onChangeHemiStrength={viewService.setHemiStrength}
@@ -187,7 +186,7 @@ export function LevelPreviewLayout({
           onChangeLod={viewService.setLod}
           onChangeFeatures={viewService.setFeatures}
           onChangeGpuTimed={settingsService.setGpuTimed}
-          onChangeDebugView={viewService.setDebugView}
+          onChangeShading={viewService.setShading}
           onBack={onBack}
         />
       }
@@ -222,8 +221,6 @@ export function LevelPreviewLayout({
           {!isOpen && !isLoading ? <LevelPreviewEmpty error={error} onRetry={onRetry} /> : null}
 
           {isOpen || isLoading ? <LevelPreviewCover isLoading={isLoading} /> : null}
-
-          <LevelPreviewActivity isOpen={isOpen} isLoading={isLoading} />
         </div>
       </div>
     </EditorLayout>

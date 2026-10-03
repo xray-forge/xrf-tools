@@ -1,14 +1,14 @@
 import { describe, expect, it, jest } from "@jest/globals";
 import { userEvent } from "@testing-library/user-event";
 
-import { ERenderDebugView } from "@/core/ipc/types/xrf-renderer";
 import { LevelCullingAction } from "@/core/level/components/preview/LevelCullingAction";
 import { LevelOcclusionAction } from "@/core/level/components/preview/LevelOcclusionAction";
 import { LevelOverlaysAction } from "@/core/level/components/preview/LevelOverlaysAction";
+import { LevelShadingAction } from "@/core/level/components/preview/LevelShadingAction";
 import { LevelSpawnAction } from "@/core/level/components/preview/LevelSpawnAction";
-import { LevelSurfacesAction } from "@/core/level/components/preview/LevelSurfacesAction";
 import { ILevelFeatureOptions } from "@/core/level/lib/features";
 import { DEFAULT_LEVEL_LOD_OPTIONS } from "@/core/level/lib/lod/level-lod-options";
+import { ELevelShading } from "@/core/level/lib/view/level-shading";
 import { DEFAULT_LEVEL_VIEW_OPTIONS, ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { DEFAULT_RENDER_AMBIENT_OCCLUSION_SETTINGS } from "@/core/render/lib/settings/render-feature-defaults";
 import { mockLevelFeatureOptions } from "@/fixtures/mocks/level.mocks";
@@ -17,23 +17,47 @@ import { renderWithProviders } from "@/fixtures/utils/render";
 type TToggle = (option: keyof ILevelViewOptions) => void;
 
 describe("level toolbar groups", () => {
-  it("opens the surfaces on a click, and turns each over by its own checkbox", async () => {
+  it("opens the shading on a click, and turns each surface switch over by its own checkbox", async () => {
     const onToggle = jest.fn<TToggle>();
     const { getByRole, findByRole } = renderWithProviders(
-      <LevelSurfacesAction options={DEFAULT_LEVEL_VIEW_OPTIONS} onToggle={onToggle} />
+      <LevelShadingAction
+        options={DEFAULT_LEVEL_VIEW_OPTIONS}
+        shading={ELevelShading.FINAL}
+        onToggle={onToggle}
+        onChangeShading={() => {}}
+      />
     );
 
-    expect(getByRole("button", { name: "Surfaces" })).toHaveAccessibleDescription(
-      "Solid, textured, bumped, with wall marks"
-    );
+    expect(getByRole("button", { name: "Shading" })).toHaveAccessibleDescription("Final frame");
 
-    await userEvent.click(getByRole("button", { name: "Surfaces" }));
-    await findByRole("dialog", { name: "Surfaces" });
+    await userEvent.click(getByRole("button", { name: "Shading" }));
+    await findByRole("dialog", { name: "Shading" });
     await userEvent.click(getByRole("checkbox", { name: "Wireframe" }));
     await userEvent.click(getByRole("checkbox", { name: "Bumps" }));
     await userEvent.click(getByRole("checkbox", { name: "Wall marks" }));
 
     expect(onToggle.mock.calls).toEqual([["isWireframe"], ["isBumped"], ["isWallmarked"]]);
+  });
+
+  // Clay and the shader colours replace the textures checkbox: what the surfaces show is one choice with the targets.
+  it("shows the frame as clay, by shader, or as one of its targets", async () => {
+    const onChangeShading = jest.fn<(shading: ELevelShading) => void>();
+    const { getByRole, findByRole } = renderWithProviders(
+      <LevelShadingAction
+        options={DEFAULT_LEVEL_VIEW_OPTIONS}
+        shading={ELevelShading.CLAY}
+        onToggle={() => {}}
+        onChangeShading={onChangeShading}
+      />
+    );
+
+    expect(getByRole("button", { name: "Shading" })).toHaveAccessibleDescription("Clay");
+
+    await userEvent.click(getByRole("button", { name: "Shading" }));
+    await findByRole("dialog", { name: "Shading" });
+    await userEvent.click(getByRole("option", { name: "Depth" }));
+
+    expect(onChangeShading).toHaveBeenCalledWith(ELevelShading.DEPTH);
   });
 
   it("names the spawned categories shown, and turns each over by its own checkbox", async () => {
@@ -110,10 +134,8 @@ describe("level toolbar groups", () => {
       <LevelOverlaysAction
         options={{ ...DEFAULT_LEVEL_VIEW_OPTIONS, isAxesVisible: true }}
         isGpuTimed={false}
-        debugView={ERenderDebugView.FINAL}
         onToggle={() => {}}
         onChangeGpuTimed={onChangeGpuTimed}
-        onChangeDebugView={() => {}}
       />
     );
 
@@ -123,25 +145,5 @@ describe("level toolbar groups", () => {
     await findByRole("dialog", { name: "Overlays" });
 
     expect(getByRole("checkbox", { name: "Grid" })).not.toBeChecked();
-  });
-
-  it("shows one of the frame's targets instead of the frame", async () => {
-    const onChangeDebugView = jest.fn<(debugView: ERenderDebugView) => void>();
-    const { getByRole, findByRole } = renderWithProviders(
-      <LevelOverlaysAction
-        options={DEFAULT_LEVEL_VIEW_OPTIONS}
-        isGpuTimed={false}
-        debugView={ERenderDebugView.FINAL}
-        onToggle={() => {}}
-        onChangeGpuTimed={() => {}}
-        onChangeDebugView={onChangeDebugView}
-      />
-    );
-
-    await userEvent.click(getByRole("button", { name: "Overlays" }));
-    await findByRole("dialog", { name: "Overlays" });
-    await userEvent.click(getByRole("option", { name: "Depth" }));
-
-    expect(onChangeDebugView).toHaveBeenCalledWith(ERenderDebugView.DEPTH);
   });
 });
