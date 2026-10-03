@@ -4,6 +4,7 @@ import { Channel } from "@tauri-apps/api/core";
 
 import { invoke as __TAURI_INVOKE } from "@/core/ipc/invoke";
 import {
+  ERenderWeatherTransition,
   RenderCamera,
   RenderCameraCommand,
   RenderInputEvent,
@@ -14,6 +15,8 @@ import {
   RenderViewportEvent,
   RenderViewportId,
   RenderViewportLayout,
+  RenderWeatherControl,
+  RenderWeatherPlay,
 } from "@/core/ipc/types/xrf-renderer";
 
 /** Commands */
@@ -52,9 +55,18 @@ export const renderCommands = {
       /** Where the ray met it, in renderer space. */
       point: [number | null, number | null, number | null];
     } | null>("plugin:render|pick", { viewport, x, y }),
+  /** Play a weather in a viewport's level from now on: a cycle by name, a keyframe set by hand, or nothing. */
+  playWeather: (viewport: RenderViewportId, play: RenderWeatherPlay, transition: ERenderWeatherTransition) =>
+    __TAURI_INVOKE<void>("plugin:render|play_weather", { viewport, play, transition }),
+  /** Play a weather effect over a viewport's cycle from its clock's time, or end the one playing for none. */
+  playWeatherEffect: (viewport: RenderViewportId, name: string | null) =>
+    __TAURI_INVOKE<void>("plugin:render|play_weather_effect", { viewport, name }),
   /** Write a viewport's next presented frame to a PNG file, as the renderer drew it rather than as the screen shows it. */
   saveCapture: (viewport: RenderViewportId, path: string) =>
     __TAURI_INVOKE<null>("plugin:render|save_capture", { viewport, path }),
+  /** Play a viewport's weather on from a time of day, in seconds since midnight, ending the effect playing. */
+  seekWeather: (viewport: RenderViewportId, time: number | null) =>
+    __TAURI_INVOKE<void>("plugin:render|seek_weather", { viewport, time }),
   /** Hand a viewport one gesture the page heard over it. */
   sendInput: (viewport: RenderViewportId, event: RenderInputEvent) =>
     __TAURI_INVOKE<void>("plugin:render|send_input", { viewport, event }),
@@ -67,6 +79,9 @@ export const renderCommands = {
   /** Place a viewport where its element now is, and say what the page shows around it. */
   setViewportLayout: (viewport: RenderViewportId, layout: RenderViewportLayout) =>
     __TAURI_INVOKE<void>("plugin:render|set_viewport_layout", { viewport, layout }),
+  /** Set how a viewport's weather clock runs. */
+  setWeatherControl: (viewport: RenderViewportId, control: RenderWeatherControl) =>
+    __TAURI_INVOKE<void>("plugin:render|set_weather_control", { viewport, control }),
   /** Draw the open level in a viewport, its sectors and textures read by the renderer; no session draws none. */
   showLevel: (viewport: RenderViewportId, sessionId: string | null) =>
     __TAURI_INVOKE<null>("plugin:render|show_level", { viewport, sessionId }),

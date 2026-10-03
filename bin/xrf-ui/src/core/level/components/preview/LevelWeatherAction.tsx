@@ -30,7 +30,7 @@ export function LevelWeatherAction({
   const weatherService: LevelWeatherService = useInjection(LevelWeatherService);
 
   const { description, cycle, source, time, control, report, isManual, seed } = weatherService;
-  const isPlayable: boolean = weatherService.playable !== null;
+  const isPlayable: boolean = weatherService.cycle !== null;
   const isPlaying: boolean = !control.isPaused;
   const cycles = useMemo(() => (description ? listLevelWeatherCycles(description) : []), [description]);
 

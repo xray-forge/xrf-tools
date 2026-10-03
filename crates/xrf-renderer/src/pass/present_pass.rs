@@ -8,7 +8,8 @@ use crate::pass::layout_entries::texture_entry;
 use crate::pass::view_binding::ViewBinding;
 use crate::shader::shader_library::ShaderLibrary;
 
-/// Puts a viewport's finished scene into its rectangle of the window, dithered to the window's eight bits.
+/// Puts a viewport's finished scene into its rectangle of the window, moved where the water distorts it and dithered to
+/// the window's eight bits.
 pub struct PresentPass {
   layout: wgpu::BindGroupLayout,
   view_layout: wgpu::BindGroupLayout,
@@ -19,14 +20,16 @@ pub struct PresentPass {
 
 impl PresentPass {
   pub fn new(device: &wgpu::Device, shaders: &ShaderLibrary, view_layout: &wgpu::BindGroupLayout) -> Self {
+    let fragment: wgpu::ShaderStages = wgpu::ShaderStages::FRAGMENT;
+    let unfiltered: wgpu::TextureSampleType = wgpu::TextureSampleType::Float { filterable: false };
+    let flat: wgpu::TextureViewDimension = wgpu::TextureViewDimension::D2;
     let layout: wgpu::BindGroupLayout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
       label: Some("present"),
-      entries: &[texture_entry(
-        0,
-        wgpu::ShaderStages::FRAGMENT,
-        wgpu::TextureSampleType::Float { filterable: false },
-        wgpu::TextureViewDimension::D2,
-      )],
+      entries: &[
+        texture_entry(0, fragment, unfiltered, flat),
+        texture_entry(1, fragment, unfiltered, flat),
+        texture_entry(2, fragment, wgpu::TextureSampleType::Depth, flat),
+      ],
     });
 
     Self {
@@ -71,7 +74,11 @@ impl PresentPass {
     device.create_bind_group(&wgpu::BindGroupDescriptor {
       label: Some("present"),
       layout: &self.layout,
-      entries: &[texture_binding(0, &targets.scene)],
+      entries: &[
+        texture_binding(0, &targets.scene),
+        texture_binding(1, &targets.distortion),
+        texture_binding(2, &targets.depth),
+      ],
     })
   }
 

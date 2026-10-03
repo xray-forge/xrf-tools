@@ -5,6 +5,7 @@ import { assertExhaustive, Nullable } from "@xrf/types";
 import { renderCommands } from "@/core/ipc/commands/render";
 import {
   ERenderViewportEvent,
+  ERenderWeatherTransition,
   RenderCamera,
   RenderCameraCommand,
   RenderCameraPose,
@@ -18,6 +19,9 @@ import {
   RenderViewportEvent,
   RenderViewportId,
   RenderViewportLayout,
+  RenderWeatherControl,
+  RenderWeatherPlay,
+  RenderWeatherReport,
 } from "@/core/ipc/types/xrf-renderer";
 
 /**
@@ -30,6 +34,8 @@ export interface INativeViewportListener {
   onCamera(pose: RenderCameraPose): void;
   /** How far its scene has loaded, as that changes. */
   onLoad(report: RenderLoadReport): void;
+  /** Where its weather stands, as that changes; null while none plays. */
+  onWeather(report: Nullable<RenderWeatherReport>): void;
   /** Why it cannot be drawn. */
   onFailed(message: string): void;
 }
@@ -60,6 +66,9 @@ export class NativeViewport {
 
         case ERenderViewportEvent.LOAD:
           return listener.onLoad(event.report);
+
+        case ERenderViewportEvent.WEATHER:
+          return listener.onWeather(event.report);
 
         case ERenderViewportEvent.FAILURE:
           return listener.onFailed(event.message);
@@ -106,6 +115,28 @@ export class NativeViewport {
 
   public setViewOptions(options: RenderViewOptions): void {
     this.call((id: RenderViewportId) => renderCommands.setViewOptions(id, options));
+  }
+
+  public playWeather(play: RenderWeatherPlay, transition: ERenderWeatherTransition): void {
+    this.call((id: RenderViewportId) => renderCommands.playWeather(id, play, transition));
+  }
+
+  public setWeatherControl(control: RenderWeatherControl): void {
+    this.call((id: RenderViewportId) => renderCommands.setWeatherControl(id, control));
+  }
+
+  /**
+   * @param time - Seconds since midnight to play the weather on from.
+   */
+  public seekWeather(time: number): void {
+    this.call((id: RenderViewportId) => renderCommands.seekWeather(id, time));
+  }
+
+  /**
+   * @param name - The effect to play over the cycle from the clock's time, or null to end the one playing.
+   */
+  public playWeatherEffect(name: Nullable<string>): void {
+    this.call((id: RenderViewportId) => renderCommands.playWeatherEffect(id, name));
   }
 
   /**

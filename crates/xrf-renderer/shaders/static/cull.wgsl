@@ -185,6 +185,11 @@ fn is_hidden_early(sphere: vec4<f32>) -> bool {
 
 // Appends a cluster the frustum keeps, or sets it aside for the late phase where last frame's depth hid it.
 fn keep(batch: u32, cluster: u32, place: u32, sphere: vec4<f32>) {
+  // Water casts no shadow.
+  if (IS_SHADOW && batch % CLASS_COUNT == WATER_CLASS) {
+    return;
+  }
+
   if (!IS_SHADOW && is_hidden_early(sphere)) {
     set_aside(cluster, place);
   } else {

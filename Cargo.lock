@@ -7592,6 +7592,8 @@ dependencies = [
  "specta",
  "wgpu",
  "xrf-dds",
+ "xrf-engine-target",
+ "xrf-environment",
  "xrf-error",
  "xrf-material",
  "xrf-math",

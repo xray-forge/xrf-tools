@@ -144,8 +144,10 @@ impl OrbitCameraController {
     }
   }
 
-  pub fn get_view(&self, aspect: f32) -> CameraView {
+  /// The view through the lens, its far plane no farther than a limit.
+  pub fn get_view(&self, aspect: f32, far_limit: f32) -> CameraView {
     let (field_of_view, near, far) = self.description.get_lens();
+    let far: f32 = far.min(far_limit).max(near * 2.0);
 
     CameraView::new(
       self.position,

@@ -13,6 +13,8 @@ pub struct WeatherModifiersSum {
   pub flags: u16,
   /// Every reaching modifier's weight together, `mpower`.
   pub power: f32,
+  /// How many modifiers reach the point.
+  pub count: u32,
 }
 
 impl WeatherModifiersSum {
@@ -60,6 +62,7 @@ impl WeatherModifiersSum {
 
       sum.flags |= modifier.flags;
       sum.power += power;
+      sum.count += 1;
     }
 
     sum

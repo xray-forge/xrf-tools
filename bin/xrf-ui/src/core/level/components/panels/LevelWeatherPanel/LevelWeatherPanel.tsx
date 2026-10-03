@@ -49,7 +49,7 @@ export function LevelWeatherPanel({
     <EditorPanel data-testid={dataTestId} id={id} className={className} title={"Weather"}>
       <LevelWeatherPlaySection
         source={weatherService.source}
-        isPlayable={weatherService.playable !== null}
+        isPlayable={weatherService.cycle !== null}
         isManual={isManual}
         seed={weatherService.seed}
         failure={weatherService.failure}

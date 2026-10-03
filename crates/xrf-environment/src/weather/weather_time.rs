@@ -39,6 +39,11 @@ impl WeatherTime {
     self.0
   }
 
+  /// The time of day seconds fall at, any number of days either way, in seconds since midnight.
+  pub fn of_day(seconds: f32) -> f32 {
+    seconds.rem_euclid(Self::DAY as f32)
+  }
+
   /// The integers `sscanf` converts from `%d:%d:%d`, stopping where the next does not follow a colon.
   fn scan_fields(name: &str) -> Vec<i64> {
     let mut fields: Vec<i64> = Vec::with_capacity(3);

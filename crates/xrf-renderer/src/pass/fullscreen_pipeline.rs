@@ -3,15 +3,18 @@ use xrf_error::XrfResult;
 use crate::pass::shader_pipelines::{create_checked, create_module};
 use crate::shader::shader_library::ShaderLibrary;
 
-/// A pass drawing one triangle over its whole target, its vertices from `common/fullscreen`, into one format.
+/// A pass drawing one triangle over its whole target, its vertices from `common/fullscreen`, into one target: a format,
+/// or a format with a blend.
 pub fn create_fullscreen_pipeline(
   device: &wgpu::Device,
   shaders: &ShaderLibrary,
   module: &str,
   fragment: &str,
   layouts: &[Option<&wgpu::BindGroupLayout>],
-  format: wgpu::TextureFormat,
+  target: impl Into<wgpu::ColorTargetState>,
 ) -> XrfResult<wgpu::RenderPipeline> {
+  let target: wgpu::ColorTargetState = target.into();
+
   let shader: wgpu::ShaderModule = create_module(device, shaders, module)?;
   let pipeline_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
     label: Some(module),
@@ -33,7 +36,7 @@ pub fn create_fullscreen_pipeline(
         module: &shader,
         entry_point: Some(fragment),
         compilation_options: Default::default(),
-        targets: &[Some(format.into())],
+        targets: &[Some(target.clone())],
       }),
       primitive: Default::default(),
       depth_stencil: None,

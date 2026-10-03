@@ -45,7 +45,7 @@ fn draws_sky_over_ground_offscreen() {
   binding.write(
     &context.queue,
     &CameraUniform::new(
-      &camera.get_view(1.0),
+      &camera.get_view(1.0, f32::INFINITY),
       RenderRect {
         x: 0,
         y: 0,

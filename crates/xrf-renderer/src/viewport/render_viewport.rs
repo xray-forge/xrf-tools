@@ -17,6 +17,7 @@ use crate::host::render_level_source::RenderLevelSource;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::level_view::LevelView;
 use crate::viewport::pending_pick::PendingPick;
+use crate::weather::viewport_weather::ViewportWeather;
 
 /// How often a moving camera's pose is published.
 const POSE_INTERVAL: Duration = Duration::from_millis(100);
@@ -34,6 +35,8 @@ pub struct RenderViewport {
   pub level: Option<Arc<dyn RenderLevelSource>>,
   /// The level as this viewport draws it, made once a GPU is there.
   pub level_view: Option<LevelView>,
+  /// The level's weather, which lights it.
+  pub weather: ViewportWeather,
   /// Captures asked for, answered by the next frame presented.
   pub captures: Vec<CaptureReply>,
   /// Picks asked for, answered one a frame.
@@ -60,6 +63,7 @@ impl RenderViewport {
       options: RenderViewOptions::default(),
       level: None,
       level_view: None,
+      weather: ViewportWeather::new(now),
       captures: Vec::new(),
       picks: Vec::new(),
       binding: None,
@@ -141,6 +145,13 @@ impl RenderViewport {
       self.sent_pose = Some(pose);
       self.pose_due = now + POSE_INTERVAL;
       self.send(RenderViewportEvent::Camera { pose });
+    }
+  }
+
+  /// Publishes where the weather stands when it changed, a few times a second at most.
+  pub fn publish_weather(&mut self, now: Instant) {
+    if let Some(report) = self.weather.take_report(now) {
+      self.send(RenderViewportEvent::Weather { report });
     }
   }
 

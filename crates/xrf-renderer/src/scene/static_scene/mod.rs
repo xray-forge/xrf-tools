@@ -14,3 +14,4 @@ pub(crate) mod static_slot_info;
 pub(crate) mod static_surface;
 pub(crate) mod static_surface_build;
 pub(crate) mod static_vertex_words;
+pub(crate) mod static_water_surface;

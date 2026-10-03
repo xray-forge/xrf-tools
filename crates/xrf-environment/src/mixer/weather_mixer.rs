@@ -2,17 +2,16 @@ use xrf_engine_target::XrayEngine;
 use xrf_math::EPS;
 
 use crate::mixer::weather_mix::WeatherMix;
+use crate::mixer::weather_mix_keyframe::WeatherMixKeyframe;
 use crate::mixer::weather_mix_point::WeatherMixPoint;
 use crate::mixer::weather_modifier::WeatherModifier;
 use crate::mixer::weather_modifiers_sum::WeatherModifiersSum;
 use crate::mixer::weather_sun_source::WeatherSunSource;
 use crate::weather::{WeatherDescriptor, WeatherTime};
 
-/// Mixes a cycle's keyframes at a time of day as `CEnvironment::lerp` does, with the modifiers reaching the view.
+/// Mixes keyframes at a time of day as `CEnvironment::lerp` does, with the modifiers reaching the view.
 #[derive(Clone, Copy, Debug)]
 pub struct WeatherMixer<'a> {
-  /// Sorted by time, as a cycle holds them.
-  pub keyframes: &'a [WeatherDescriptor],
   pub engine: XrayEngine,
   pub sun: WeatherSunSource<'a>,
   /// The level's `level.env_mod` volumes.
@@ -20,15 +19,31 @@ pub struct WeatherMixer<'a> {
 }
 
 impl WeatherMixer<'_> {
-  /// The keyframes mixed at a time of day, seen from a point; none for a cycle without any.
-  pub fn mix(&self, point: WeatherMixPoint) -> Option<WeatherMix> {
+  /// A cycle's keyframes, sorted by time, mixed at a time of day around it, seen from a point; none for a cycle without
+  /// any.
+  pub fn mix(&self, keyframes: &[WeatherDescriptor], point: WeatherMixPoint) -> Option<WeatherMix> {
+    let time: f32 = WeatherTime::of_day(point.time);
+    let [from, to] = Self::select(keyframes, time)?;
+
+    Some(self.mix_pair(
+      [
+        WeatherMixKeyframe::of(&keyframes[from]),
+        WeatherMixKeyframe::of(&keyframes[to]),
+      ],
+      point,
+    ))
+  }
+
+  /// Two keyframes mixed at a time of day between them, seen from a point: the pair the engine blends, which keeps it
+  /// from frame to frame rather than selecting around the time each.
+  pub fn mix_pair(&self, [a, b]: [WeatherMixKeyframe<'_>; 2], point: WeatherMixPoint) -> WeatherMix {
     let WeatherMixPoint { time, view } = point;
-    let time: f32 = time.rem_euclid(WeatherTime::DAY as f32);
+    let time: f32 = WeatherTime::of_day(time);
     let modified: WeatherModifiersSum = WeatherModifiersSum::at(self.modifiers, view);
     let scale: f32 = modified.get_scale();
-    let [from, to] = self.select(time)?;
-    let (a, b) = (&self.keyframes[from], &self.keyframes[to]);
-    let f: f32 = Self::weigh(time, [a.time as f32, b.time as f32]);
+    let between: [f32; 2] = [a.time, b.time];
+    let (a, b) = (a.descriptor, b.descriptor);
+    let f: f32 = Self::weigh(time, between);
     let scalar = |a: f32, b: f32| (1.0 - f) * a + f * b;
     let vector = |a: &[f32], b: &[f32]| -> Vec<f32> { a.iter().zip(b).map(|(a, b)| scalar(*a, *b)).collect() };
     // A value some modifier reaches is the mix plus what they add, of which the environment keeps its share.
@@ -76,7 +91,7 @@ impl WeatherMixer<'_> {
     };
     let (sun_color, sun_direction) = self.mix_sun([a, b], time, f);
 
-    Some(WeatherMix {
+    WeatherMix {
       ambient_color: modify_vector(
         WeatherModifier::AMBIENT_COLOR,
         vector(&a.ambient_color, &b.ambient_color),
@@ -95,7 +110,7 @@ impl WeatherMixer<'_> {
       fog_far: 0.99 * fog_distance,
       fog_near: (1.0 - fog_density) * 0.85 * fog_distance,
       hemi_color,
-      keyframes: [from, to],
+      between,
       sky_color: modify_vector(
         WeatherModifier::SKY_COLOR,
         vector(&a.sky_color, &b.sky_color),
@@ -124,7 +139,8 @@ impl WeatherMixer<'_> {
       wind_direction: scalar(a.wind_direction, b.wind_direction),
       wind_velocity: scalar(a.wind_velocity, b.wind_velocity),
       weight: f,
-    })
+      modifiers: modified.count,
+    }
   }
 
   /// The sun a mix stands, its colour and the direction its light travels: the keyframes' own directions blended,
@@ -156,9 +172,14 @@ impl WeatherMixer<'_> {
 
   /// `SelectEnvs` on a forced start: the first keyframe at or after the time and the one before it, the last and the
   /// first around midnight.
-  pub fn select(&self, time: f32) -> Option<[usize; 2]> {
-    let last: usize = self.keyframes.len().checked_sub(1)?;
-    let next: usize = self.keyframes.partition_point(|keyframe| (keyframe.time as f32) < time);
+  pub fn select(keyframes: &[WeatherDescriptor], time: f32) -> Option<[usize; 2]> {
+    Self::select_by(keyframes, |keyframe| keyframe.time as f32, time)
+  }
+
+  /// [`Self::select`] over anything standing at a time of day, sorted by it.
+  pub fn select_by<T>(keyframes: &[T], time_of: impl Fn(&T) -> f32, time: f32) -> Option<[usize; 2]> {
+    let last: usize = keyframes.len().checked_sub(1)?;
+    let next: usize = keyframes.partition_point(|keyframe| time_of(keyframe) < time);
 
     Some(match next {
       _ if next > last => [last, 0],
@@ -189,7 +210,7 @@ impl WeatherMixer<'_> {
   }
 
   /// `TimeDiff`: seconds from one time of day to the next, around midnight where it comes first.
-  fn get_elapsed(from: f32, to: f32) -> f32 {
+  pub fn get_elapsed(from: f32, to: f32) -> f32 {
     if from > to {
       WeatherTime::DAY as f32 - from + to
     } else {

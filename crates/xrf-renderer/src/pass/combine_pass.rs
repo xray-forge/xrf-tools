@@ -11,6 +11,7 @@ use crate::shader::shader_library::ShaderLibrary;
 pub struct CombinePass {
   layout: wgpu::BindGroupLayout,
   view_layout: wgpu::BindGroupLayout,
+  sky_layout: wgpu::BindGroupLayout,
   pipeline: wgpu::RenderPipeline,
   generation: u64,
 }
@@ -19,7 +20,12 @@ impl CombinePass {
   /// # Errors
   ///
   /// Returns an error when the shader does not compose or compile.
-  pub fn new(device: &wgpu::Device, shaders: &ShaderLibrary, view_layout: &wgpu::BindGroupLayout) -> XrfResult<Self> {
+  pub fn new(
+    device: &wgpu::Device,
+    shaders: &ShaderLibrary,
+    view_layout: &wgpu::BindGroupLayout,
+    sky_layout: &wgpu::BindGroupLayout,
+  ) -> XrfResult<Self> {
     let fragment: wgpu::ShaderStages = wgpu::ShaderStages::FRAGMENT;
     let unfiltered: wgpu::TextureSampleType = wgpu::TextureSampleType::Float { filterable: false };
     let flat: wgpu::TextureViewDimension = wgpu::TextureViewDimension::D2;
@@ -37,12 +43,14 @@ impl CombinePass {
         uniform_entry(7, fragment),
         storage_entry(8, fragment, false),
         texture_entry(9, fragment, unfiltered, flat),
+        texture_entry(10, fragment, wgpu::TextureSampleType::Float { filterable: true }, flat),
       ],
     });
 
     Ok(Self {
-      pipeline: Self::create_pipeline(device, shaders, view_layout, &layout)?,
+      pipeline: Self::create_pipeline(device, shaders, view_layout, &layout, sky_layout)?,
       view_layout: view_layout.clone(),
+      sky_layout: sky_layout.clone(),
       generation: shaders.get_generation(),
       layout,
     })
@@ -52,7 +60,7 @@ impl CombinePass {
     if shaders.get_generation() != self.generation {
       self.generation = shaders.get_generation();
 
-      match Self::create_pipeline(device, shaders, &self.view_layout, &self.layout) {
+      match Self::create_pipeline(device, shaders, &self.view_layout, &self.layout, &self.sky_layout) {
         Ok(pipeline) => self.pipeline = pipeline,
         Err(error) => log::error!("Combine rejected, combining with the last one: {error}"),
       }
@@ -89,6 +97,7 @@ impl CombinePass {
           resource: exposure.as_entire_binding(),
         },
         texture_binding(9, &targets.occlusion[0]),
+        texture_binding(10, &targets.haze),
       ],
     })
   }
@@ -99,12 +108,14 @@ impl CombinePass {
     targets: &ViewTargets,
     view: &ViewBinding,
     bind_group: &wgpu::BindGroup,
+    sky_group: &wgpu::BindGroup,
   ) {
     let mut pass: wgpu::RenderPass<'_> = begin_cleared_pass(encoder, "combine", &targets.scene);
 
     pass.set_pipeline(&self.pipeline);
     pass.set_bind_group(0, &view.bind_group, &[]);
     pass.set_bind_group(1, bind_group, &[]);
+    pass.set_bind_group(2, sky_group, &[]);
     pass.draw(0..3, 0..1);
   }
 
@@ -113,13 +124,14 @@ impl CombinePass {
     shaders: &ShaderLibrary,
     view_layout: &wgpu::BindGroupLayout,
     layout: &wgpu::BindGroupLayout,
+    sky_layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<wgpu::RenderPipeline> {
     create_fullscreen_pipeline(
       device,
       shaders,
       "frame/combine",
       "fs_combine",
-      &[Some(view_layout), Some(layout)],
+      &[Some(view_layout), Some(layout), Some(sky_layout)],
       ViewTargets::SCENE,
     )
   }

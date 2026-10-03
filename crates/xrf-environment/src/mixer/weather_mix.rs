@@ -1,5 +1,7 @@
 use serde::Serialize;
 
+use crate::weather::WeatherDescriptor;
+
 /// A cycle mixed at one time of day, `CEnvDescriptorMixer` after `lerp`: what the frame is lit and fogged by.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize)]
@@ -9,10 +11,12 @@ pub struct WeatherMix {
   pub time: f32,
   /// Where it was seen from, in engine space, as asked.
   pub view: [f32; 3],
-  /// The keyframes either side, by index.
-  pub keyframes: [usize; 2],
+  /// The times of day of the keyframes either side.
+  pub between: [f32; 2],
   /// How far from the first to the second.
   pub weight: f32,
+  /// How many of the level's modifiers reach the view.
+  pub modifiers: u32,
   pub sky_color: [f32; 3],
   /// Radians.
   pub sky_rotation: f32,
@@ -46,4 +50,39 @@ pub struct WeatherMix {
   pub thunderbolt_period: f32,
   /// Seconds.
   pub thunderbolt_duration: f32,
+}
+
+impl WeatherMix {
+  /// The mix as one keyframe, which a keyframe set by hand starts from: the heavier keyframe's textures and whatever
+  /// else is not mixed, the sun where it stands.
+  pub fn to_descriptor(&self, heavier: &WeatherDescriptor) -> WeatherDescriptor {
+    WeatherDescriptor {
+      ambient_color: self.ambient_color,
+      clouds_color: self.clouds_color,
+      clouds_rotation: self.clouds_rotation,
+      far_plane: self.far_plane,
+      fog_color: self.fog_color,
+      fog_density: self.fog_density,
+      fog_distance: self.fog_distance,
+      hemi_color: self.hemi_color,
+      rain_color: self.rain_color,
+      rain_density: self.rain_density,
+      sky_color: self.sky_color,
+      sky_rotation: self.sky_rotation,
+      sun_color: self.sun_color,
+      sun_direction: Some(self.sun_direction),
+      thunderbolt_collection: self.thunderbolt_collection.clone(),
+      thunderbolt_duration: self.thunderbolt_duration,
+      thunderbolt_period: self.thunderbolt_period,
+      time: self.time.round() as u32 % crate::weather::WeatherTime::DAY,
+      tree_amplitude: self.tree_amplitude,
+      tree_rotation: self.tree_rotation,
+      tree_speed: self.tree_speed,
+      tree_wave: self.tree_wave,
+      water_intensity: self.water_intensity,
+      wind_direction: self.wind_direction,
+      wind_velocity: self.wind_velocity,
+      ..heavier.clone()
+    }
+  }
 }

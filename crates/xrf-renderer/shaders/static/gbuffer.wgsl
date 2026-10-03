@@ -2,18 +2,10 @@ enable wgpu_binding_array;
 
 #import "common/camera"
 #import "common/octahedral"
-#import "static/records"
+#import "static/pulling"
 
-// Static draws into the G-buffer: every visible cluster of a batch is one instance of `CLUSTER_VERTICES` vertices,
-// pulled from its layout's arena through the shared index arena.
+// Static draws into the G-buffer, pulled as `static/pulling` reads them.
 
-@group(1) @binding(0) var<storage, read> clusters: array<Cluster>;
-@group(1) @binding(1) var<storage, read> slots: array<Slot>;
-@group(1) @binding(2) var<storage, read> places: array<Place>;
-@group(1) @binding(3) var<storage, read> surfaces: array<Surface>;
-@group(1) @binding(4) var<storage, read> indices: array<u32>;
-@group(1) @binding(5) var<storage, read> lists: array<vec2<u32>>;
-@group(1) @binding(6) var<storage, read> words: array<u32>;
 
 @group(2) @binding(0) var textures: binding_array<texture_2d<f32>>;
 @group(2) @binding(1) var texture_sampler: sampler;
@@ -43,38 +35,12 @@ struct GBufferOutput {
   @location(2) material: vec4<f32>,
 };
 
-// Two shorts from a word, the low half first, sign extended.
-fn unpack_shorts(word: u32) -> vec2<f32> {
-  return vec2<f32>(f32(bitcast<i32>(word << 16u) >> 16u), f32(bitcast<i32>(word) >> 16u));
-}
-
-// A direction packed as a `D3DCOLOR`: blue, green, red bytes as z, y, x.
-fn unpack_direction(packed: vec4<f32>) -> vec3<f32> {
-  return packed.zyx * 2.0 - 1.0;
-}
-
-struct PulledVertex {
-  word: u32,
-  place: Place,
-  surface: u32,
-  entry: vec2<u32>,
-};
-
-fn pull(vertex_index: u32, instance_index: u32) -> PulledVertex {
-  let entry: vec2<u32> = lists[instance_index];
-  let cluster: Cluster = clusters[entry.x];
-  // A cluster short of 128 triangles collapses its tail onto its last corner.
-  let corner: u32 = min(vertex_index, cluster.triangles * 3u - 1u);
-  let vertex: u32 = cluster.vertex_start + indices[cluster.first_index + corner];
-
-  return PulledVertex(vertex * 8u, places[entry.y], slots[cluster.slot].surface, entry);
-}
-
-fn place_vertex(pulled: PulledVertex, position: vec3<f32>, normal: vec4<f32>, tangent: vec4<f32>, binormal: vec4<f32>)
-  -> GBufferVarying {
+// A vertex placed in the world, swayed by as much of the wind as its rigidity takes: none for a sector's geometry.
+fn place_vertex(pulled: PulledVertex, position: vec3<f32>, normal: vec4<f32>, tangent: vec4<f32>, binormal: vec4<f32>,
+  rigidity: f32) -> GBufferVarying {
   let place: Place = pulled.place;
   let matrix: mat4x4<f32> = place_matrix(place);
-  let world: vec4<f32> = matrix * vec4<f32>(position, 1.0);
+  let world: vec4<f32> = vec4<f32>(swayed((matrix * vec4<f32>(position, 1.0)).xyz, place.m3.y, rigidity), 1.0);
   let linear: mat3x3<f32> = mat3x3<f32>(place.m0.xyz, place.m1.xyz, place.m2.xyz);
   // The inverse transpose of a matrix without shear: each axis divided by its squared length.
   let scale: vec3<f32> = vec3<f32>(dot(place.m0.xyz, place.m0.xyz), dot(place.m1.xyz, place.m1.xyz),
@@ -101,7 +67,7 @@ fn vs_baked(@builtin(vertex_index) vertex_index: u32, @builtin(instance_index) i
   let tangent: vec4<f32> = unpack4x8unorm(words[at + 2u]);
   let position: vec3<f32> = vec3<f32>(bitcast<f32>(words[at + 5u]), bitcast<f32>(words[at + 6u]),
     bitcast<f32>(words[at + 7u]));
-  var out: GBufferVarying = place_vertex(pulled, position, unpack4x8unorm(words[at + 1u]), tangent, binormal);
+  var out: GBufferVarying = place_vertex(pulled, position, unpack4x8unorm(words[at + 1u]), tangent, binormal, 0.0);
 
   // The base coordinate's fraction rides in the tangent's and binormal's fourth bytes.
   out.uv = (unpack_shorts(words[at + 3u]) + vec2<f32>(tangent.w, binormal.w)) / 1024.0;
@@ -116,10 +82,11 @@ fn vs_tree(@builtin(vertex_index) vertex_index: u32, @builtin(instance_index) in
   let at: u32 = pulled.word;
   let position: vec3<f32> = vec3<f32>(bitcast<f32>(words[at + 5u]), bitcast<f32>(words[at + 6u]),
     bitcast<f32>(words[at + 7u]));
+  // The coordinate's second pair carries the rigidity, scaled as `consts.x` scales it.
+  let rigidity: f32 = unpack_shorts(words[at + 4u]).x / 2048.0;
   var out: GBufferVarying = place_vertex(pulled, position, unpack4x8unorm(words[at + 1u]),
-    unpack4x8unorm(words[at + 2u]), unpack4x8unorm(words[at]));
+    unpack4x8unorm(words[at + 2u]), unpack4x8unorm(words[at]), rigidity);
 
-  // todo: Sway a tree in the wind, by the rigidity its coordinate's second pair carries, once weather drives wind.
   out.uv = unpack_shorts(words[at + 3u]) / 2048.0;
   out.lightmap_uv = vec2<f32>(0.0);
 

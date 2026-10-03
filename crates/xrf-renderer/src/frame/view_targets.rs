@@ -17,6 +17,10 @@ pub struct ViewTargets {
   /// The ambient occlusion at half the size, searched into the first and denoised through the second back into it:
   /// visibility, then distance along the view.
   pub occlusion: [wgpu::TextureView; 2],
+  /// The sky as drawn, blurred into a map of bearing across and height up, which the distance fades into.
+  pub haze: wgpu::TextureView,
+  /// How far the water moves what is seen through it, around a half, which the present reads the scene by.
+  pub distortion: wgpu::TextureView,
 }
 
 impl ViewTargets {
@@ -27,6 +31,10 @@ impl ViewTargets {
   pub const LIGHT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
   pub const SCENE: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
   pub const OCCLUSION: wgpu::TextureFormat = wgpu::TextureFormat::Rg32Float;
+  pub const HAZE: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
+  pub const DISTORTION: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
+  /// Texels the haze map holds across, one a bearing, and down, one a height, as `shaders/frame/sky_haze.wgsl` says.
+  pub const HAZE_SIZE: (u32, u32) = (64, 32);
 
   pub fn new(device: &wgpu::Device, width: u32, height: u32) -> Self {
     let create_sized = |label: &str, format: wgpu::TextureFormat, (width, height): (u32, u32)| -> wgpu::TextureView {
@@ -64,6 +72,8 @@ impl ViewTargets {
         create_sized("ambient occlusion", Self::OCCLUSION, half),
         create_sized("ambient occlusion denoised", Self::OCCLUSION, half),
       ],
+      haze: create_sized("sky haze", Self::HAZE, Self::HAZE_SIZE),
+      distortion: create("distortion", Self::DISTORTION),
     }
   }
 

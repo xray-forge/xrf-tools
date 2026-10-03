@@ -12,12 +12,19 @@ use crate::pass::level_passes::LevelPasses;
 use crate::pass::lights_pass::LightsPass;
 use crate::pass::material_table::MaterialTable;
 use crate::pass::present_pass::PresentPass;
+use crate::pass::rain_pass::RainPass;
+use crate::pass::sky_bindings::SkyBindings;
+use crate::pass::sky_haze_pass::SkyHazePass;
 use crate::pass::static_cull_pass::StaticCullPass;
 use crate::pass::static_gbuffer_pass::StaticGBufferPass;
 use crate::pass::static_shadow_pass::StaticShadowPass;
 use crate::pass::sun_pass::SunPass;
+use crate::pass::thunder_pass::ThunderPass;
 use crate::pass::view_binding::ViewBinding;
+use crate::pass::water_pass::WaterPass;
+use crate::pass::wet_pass::WetPass;
 use crate::scene::texture::texture_cache::TextureCache;
+use crate::scene::texture::weather_texture_cache::WeatherTextureCache;
 use crate::shader::shader_library::ShaderLibrary;
 use crate::window::render_window::RenderWindow;
 
@@ -29,6 +36,14 @@ pub struct GpuState {
   pub windows: HashMap<u64, RenderWindow>,
   /// Every texture any viewport's scene samples, uploaded once however many draw it.
   pub textures: TextureCache,
+  /// The weather's skies and clouds, by reference, kept while any viewport asks for them.
+  pub weather_textures: WeatherTextureCache,
+  pub sky: SkyBindings,
+  pub sky_haze: SkyHazePass,
+  pub water: WaterPass,
+  pub rain: RainPass,
+  pub wet: WetPass,
+  pub thunder: ThunderPass,
   pub static_cull: StaticCullPass,
   pub static_gbuffer: StaticGBufferPass,
   pub static_shadow: StaticShadowPass,
@@ -52,6 +67,7 @@ impl GpuState {
     let device: &wgpu::Device = &context.device;
     let view_layout: wgpu::BindGroupLayout = ViewBinding::create_layout(device);
     let textures: TextureCache = TextureCache::new(device, &context.queue);
+    let sky: SkyBindings = SkyBindings::new(device);
     let static_gbuffer: StaticGBufferPass =
       StaticGBufferPass::new(device, shaders, &view_layout, textures.get_layout())?;
     let static_shadow: StaticShadowPass = StaticShadowPass::new(
@@ -62,7 +78,19 @@ impl GpuState {
       textures.get_layout(),
     )?;
 
+    let water: WaterPass = WaterPass::new(
+      device,
+      shaders,
+      &view_layout,
+      static_gbuffer.get_layout(),
+      textures.get_layout(),
+    )?;
+
     Ok(Self {
+      water,
+      rain: RainPass::new(device, shaders, &view_layout)?,
+      wet: WetPass::new(device, shaders, &view_layout)?,
+      thunder: ThunderPass::new(device, shaders, &view_layout)?,
       static_cull: StaticCullPass::new(device, shaders, &view_layout)?,
       static_gbuffer,
       static_shadow,
@@ -70,7 +98,10 @@ impl GpuState {
       sun: SunPass::new(device, shaders, &view_layout)?,
       ambient_occlusion: AmbientOcclusionPass::new(device, shaders, &view_layout)?,
       lights: LightsPass::new(device, shaders, &view_layout, textures.get_layout())?,
-      combine: CombinePass::new(device, shaders, &view_layout)?,
+      combine: CombinePass::new(device, shaders, &view_layout, sky.get_layout())?,
+      sky_haze: SkyHazePass::new(device, shaders, sky.get_layout())?,
+      weather_textures: WeatherTextureCache::new(device, &context.queue),
+      sky,
       exposure: ExposurePass::new(device, shaders)?,
       present: PresentPass::new(device, shaders, &view_layout),
       table: MaterialTable::new(device, &context.queue),
@@ -112,6 +143,12 @@ impl GpuState {
       ambient_occlusion: &self.ambient_occlusion,
       lights: &self.lights,
       combine: &self.combine,
+      sky_haze: &self.sky_haze,
+      sky: &self.sky,
+      water: &self.water,
+      rain: &self.rain,
+      wet: &self.wet,
+      thunder: &self.thunder,
       exposure: &self.exposure,
       present: &self.present,
       table: &self.table,
@@ -134,6 +171,11 @@ impl GpuState {
     self.ambient_occlusion.refresh(device, shaders);
     self.lights.refresh(device, shaders);
     self.combine.refresh(device, shaders);
+    self.sky_haze.refresh(device, shaders);
+    self.water.refresh(device, shaders);
+    self.rain.refresh(device, shaders);
+    self.wet.refresh(device, shaders);
+    self.thunder.refresh(device, shaders);
     self.exposure.refresh(device, shaders);
     self.present.refresh(shaders);
   }

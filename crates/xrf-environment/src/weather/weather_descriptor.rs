@@ -1,4 +1,4 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use xrf_engine_target::XrayEngine;
 
 use crate::key::EnvironmentValue;
@@ -9,7 +9,7 @@ use crate::weather::weather_keyframe::WeatherKeyframe;
 /// One keyframe as the engine holds it once loaded, `CEnvDescriptor` after `load`: angles in radians, the clouds'
 /// colour scaled by its multiplier, the sun's direction built, every key the section leaves out at its default.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct WeatherDescriptor {
   /// Seconds since midnight, `exec_time`.

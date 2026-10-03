@@ -15,10 +15,14 @@ use crate::contract::render_texture_report::RenderTextureReport;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::contract::render_viewport_id::RenderViewportId;
 use crate::frame::frame_capture::capture_frame;
+use crate::host::render_asset_source::RenderAssetSource;
 use crate::host::render_window_host::RenderWindowHost;
+use crate::lighting::render_lighting::RenderLighting;
 use crate::pass::camera_uniform::CameraUniform;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::level_view::LevelView;
+use crate::scene::texture::weather_texture_cache::WeatherTextureCache;
+use crate::scene::texture::weather_texture_kind::WeatherTextureKind;
 use crate::shader::shader_library::ShaderLibrary;
 use crate::thread::gpu_state::GpuState;
 use crate::thread::render_command::RenderCommand;
@@ -210,8 +214,29 @@ impl RenderThread {
       }
       RenderCommand::Level { id, source } => {
         if let Some(viewport) = self.viewports.get_mut(&id) {
+          viewport.weather.show(source.clone());
           viewport.level = source;
           viewport.level_view = None;
+        }
+      }
+      RenderCommand::Weather { id, play, transition } => {
+        if let Some(viewport) = self.viewports.get_mut(&id) {
+          viewport.weather.play(play, transition);
+        }
+      }
+      RenderCommand::WeatherControl { id, control } => {
+        if let Some(viewport) = self.viewports.get_mut(&id) {
+          viewport.weather.set_control(control);
+        }
+      }
+      RenderCommand::WeatherSeek { id, time } => {
+        if let Some(viewport) = self.viewports.get_mut(&id) {
+          viewport.weather.seek(time);
+        }
+      }
+      RenderCommand::WeatherEffect { id, name } => {
+        if let Some(viewport) = self.viewports.get_mut(&id) {
+          viewport.weather.play_effect(name.as_deref());
         }
       }
     }
@@ -314,6 +339,42 @@ impl RenderThread {
       let height: f32 = viewport.get_css_height();
 
       viewport.camera.update(delta, height);
+
+      // The weather is weighed where the camera stands, in engine space; a fade waits for the skies it fades into.
+      let position: Vec3 = viewport.camera.get_pose().position.into();
+      let source: Option<Arc<dyn RenderAssetSource>> =
+        viewport.level.clone().map(|level| level as Arc<dyn RenderAssetSource>);
+      let is_clouded: bool = viewport.options.is_clouded;
+      let is_thundering: bool = viewport.options.is_thundering && viewport.options.is_lit;
+      let mut weather_textures: Option<&mut WeatherTextureCache> =
+        self.gpu.as_mut().map(|gpu| &mut gpu.weather_textures);
+
+      viewport.weather.advance(
+        now,
+        [position.x, position.y, -position.z],
+        is_thundering,
+        |lighting: &RenderLighting| match (weather_textures.as_deref_mut(), &source) {
+          (Some(cache), Some(source)) => cache.request_sky(&lighting.sky, is_clouded, source),
+          _ => true,
+        },
+      );
+
+      // The keyframe the clock walks to next has its skies fetched before it is reached.
+      if let (Some(cache), Some(source), Some(next)) =
+        (weather_textures, &source, viewport.weather.get_player().get_next())
+      {
+        let keyframe = &next.descriptor;
+
+        for (reference, kind) in [
+          (keyframe.sky_texture.as_str(), WeatherTextureKind::Cube),
+          (keyframe.sky_texture_env.as_str(), WeatherTextureKind::Cube),
+          (keyframe.clouds_texture.as_str(), WeatherTextureKind::Flat),
+        ] {
+          if !reference.is_empty() && !keyframe.sky_texture.is_empty() {
+            cache.request(reference, kind, source);
+          }
+        }
+      }
     }
 
     if cfg!(debug_assertions) && now.duration_since(self.shaders_checked) >= SHADER_RELOAD {
@@ -328,6 +389,7 @@ impl RenderThread {
 
     if let Some(gpu) = &mut self.gpu {
       gpu.textures.update(&gpu.context.device, &gpu.context.queue);
+      gpu.weather_textures.update(&gpu.context.device, &gpu.context.queue);
     }
 
     let windows: Vec<u64> = self.hosts.keys().copied().collect();
@@ -346,6 +408,7 @@ impl RenderThread {
     for viewport in self.viewports.values_mut() {
       viewport.report(now, backend, adapter);
       viewport.publish_pose(now);
+      viewport.publish_weather(now);
 
       if let Some(report) = viewport
         .level_view
@@ -429,14 +492,30 @@ impl RenderThread {
       let binding: &ViewBinding = viewport
         .binding
         .get_or_insert_with(|| ViewBinding::new(device, &gpu.view_layout));
-      let view: CameraView = viewport.camera.get_view(rect.width as f32 / rect.height as f32);
+      // A lit and fogged level ends where its fog is total, or at the weather's far plane, as the engine's does.
+      let far_limit: f32 = viewport
+        .weather
+        .get_lighting()
+        .fog
+        .filter(|_| viewport.options.is_lit && viewport.options.is_fogged)
+        .map_or(f32::INFINITY, |fog| fog.get_total_distance());
+      let view: CameraView = viewport
+        .camera
+        .get_view(rect.width as f32 / rect.height as f32, far_limit);
 
       let options: RenderViewOptions = viewport.options.clone();
+      // How far the water moves what is seen through it, none where it does not distort.
+      let water = options.water;
+      let distortion: f32 = if water.is_enabled && water.is_distorted && options.is_lit {
+        water.distortion
+      } else {
+        0.0
+      };
       let switches: Vec4 = Vec4::new(
         options.is_textured as u32 as f32,
         options.is_bumped as u32 as f32,
         options.hemi_strength,
-        0.0,
+        distortion,
       );
 
       binding.write(queue, &CameraUniform::new(&view, *rect, switches));
@@ -448,7 +527,15 @@ impl RenderThread {
         .level_view
         .get_or_insert_with(|| LevelView::new(device, queue, &gpu.view_layout, Arc::clone(source)));
 
-      level.load(device, queue, &mut encoder, &mut gpu.textures);
+      level.load(
+        device,
+        queue,
+        &mut encoder,
+        &mut gpu.textures,
+        &mut gpu.weather_textures,
+        (viewport.weather.get_lighting(), viewport.weather.get_level()),
+        &options,
+      );
       level.prepare(
         device,
         queue,
@@ -458,6 +545,8 @@ impl RenderThread {
         (rect.width, rect.height),
         viewport.camera.get_field_of_view(),
         &options,
+        (viewport.weather.get_lighting(), viewport.weather.get_level()),
+        &gpu.weather_textures,
       );
       level.record(
         device,

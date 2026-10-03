@@ -14,6 +14,8 @@ pub struct ShadowFrame<'a> {
   pub settings: &'a RenderShadowSettings,
   /// Where the sun's light travels.
   pub sun_direction: Vec3,
+  /// Whether the trees sway, so a still cascade is drawn again on its stagger all the same.
+  pub is_swaying: bool,
   pub cull_params: &'a wgpu::Buffer,
   pub params: &'a StaticCullParams,
   /// The camera's depth pyramid and occlusion view, which a shadow's cull binds unread.

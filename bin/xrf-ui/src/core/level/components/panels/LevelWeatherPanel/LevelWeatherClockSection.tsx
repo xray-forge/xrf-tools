@@ -1,9 +1,9 @@
 import { Typography } from "@mui/material";
-import { IRendererWeatherReport } from "@xrf/renderer";
 import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
 import { EXrayEngine, XrayEngine } from "@/core/ipc/types/xrf-engine-target";
+import { RenderWeatherReport } from "@/core/ipc/types/xrf-renderer";
 import { LevelWeatherClock } from "@/core/level/components/weather/LevelWeatherClock";
 import { ILevelWeatherControl, LEVEL_WEATHER_FACTOR_LIMITS } from "@/core/level/lib/weather/level-weather-control";
 import { formatLevelWeatherTime } from "@/core/level/lib/weather/level-weather-time";
@@ -19,7 +19,7 @@ interface ILevelWeatherClockSectionProps extends BaseComponentProps {
   /** Every keyframe's time, which the slider marks. */
   keyframes: ReadonlyArray<number>;
   /** Where the renderer's weather stood when it last reported, or null before it has. */
-  report: Nullable<IRendererWeatherReport>;
+  report: Nullable<RenderWeatherReport>;
   control: ILevelWeatherControl;
   /** The engine the weather is read for, which says how its sun stands. */
   engine: XrayEngine;
@@ -63,7 +63,7 @@ export function LevelWeatherClockSection({
       {report ? (
         <EditorPanelProperty
           label={"Between"}
-          value={`${formatLevelWeatherTime(report.between[0])}-${formatLevelWeatherTime(report.between[1])}, ${formatPercent(report.weight)}`}
+          value={`${formatLevelWeatherTime(report.between[0] ?? 0)}-${formatLevelWeatherTime(report.between[1] ?? 0)}, ${formatPercent(report.weight ?? 0)}`}
         />
       ) : null}
 

@@ -21,6 +21,8 @@ pub fn pack_vertex_words(layout: StaticLayout, geometry: &SectorGeometry, buffer
   let uv_words: usize = (geometry.uv_components as usize / 2).max(1);
   let uvs: Option<&[u8]> = words(&geometry.uvs);
   let lightmap_uvs: Option<&[u8]> = words(&geometry.lightmap_uvs);
+  // A vertex lit geometry has no lightmap coordinate, so its baked light rides in that word instead.
+  let colors: Option<&[u8]> = words(&geometry.colors);
   let positions: &[u8] = get_section_bytes(buffer, &geometry.positions);
   let mut packed: Vec<u32> = Vec::with_capacity(count * StaticLayout::STRIDE as usize);
 
@@ -32,7 +34,11 @@ pub fn pack_vertex_words(layout: StaticLayout, geometry: &SectorGeometry, buffer
     match layout {
       StaticLayout::Baked => {
         packed.push(read_word(uvs, vertex, uv_words, 0).unwrap_or(0));
-        packed.push(read_word(lightmap_uvs, vertex, 1, 0).unwrap_or(0));
+        packed.push(
+          read_word(lightmap_uvs, vertex, 1, 0)
+            .or_else(|| read_word(colors, vertex, 1, 0))
+            .unwrap_or(0),
+        );
       }
       StaticLayout::Tree => {
         packed.push(read_word(uvs, vertex, uv_words, 0).unwrap_or(0));

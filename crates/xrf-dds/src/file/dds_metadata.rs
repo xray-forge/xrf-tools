@@ -1,4 +1,4 @@
-use ddsfile::{D3DFormat, Dds, DxgiFormat};
+use ddsfile::{Caps2, D3DFormat, Dds, DxgiFormat};
 
 /// Format identity reported by a DDS header.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -30,6 +30,10 @@ pub struct DdsMetadata {
   pub has_data_format: bool,
   pub dx10_format: Option<DxgiFormat>,
   pub format: DdsFormat,
+  /// Whether it holds a cube's six faces, each its own mip chain in turn, `+x -x +y -y +z -z`.
+  pub is_cubemap: bool,
+  /// Whether it holds a volume's slices, each level's slices one after another.
+  pub is_volume: bool,
 }
 
 impl DdsMetadata {
@@ -78,6 +82,8 @@ impl DdsMetadata {
       has_data_format: data_format.is_some(),
       dx10_format: dds.header10.as_ref().map(|header| header.dxgi_format),
       format,
+      is_cubemap: dds.header.caps2.contains(Caps2::CUBEMAP),
+      is_volume: dds.header.caps2.contains(Caps2::VOLUME),
     }
   }
 }

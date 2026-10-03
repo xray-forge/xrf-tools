@@ -1,9 +1,8 @@
-import { IRendererWeatherReport } from "@xrf/renderer";
-
 import { LevelWeatherCycle, LevelWeatherDescription } from "@/core/ipc/types/xrf-app";
 import { EXrayEngine } from "@/core/ipc/types/xrf-engine-target";
 import { EWeatherCycleKind, WeatherDescriptor } from "@/core/ipc/types/xrf-environment";
-import { DEFAULT_LEVEL_MANUAL_WEATHER, toLevelManualKeyframe } from "@/core/level/lib/weather/level-manual-weather";
+import { RenderWeatherReport } from "@/core/ipc/types/xrf-renderer";
+import { DEFAULT_LEVEL_MANUAL_WEATHER, toLevelManualDescriptor } from "@/core/level/lib/weather/level-manual-weather";
 
 /**
  * Creates a keyframe fixture, a clear noon unless told otherwise.
@@ -123,12 +122,12 @@ export function mockLevelWeatherDescription(overrides: Partial<LevelWeatherDescr
  * @param overrides - Field values to override.
  * @returns Where the renderer's weather stands.
  */
-export function mockRendererWeatherReport(overrides: Partial<IRendererWeatherReport> = {}): IRendererWeatherReport {
+export function mockRendererWeatherReport(overrides: Partial<RenderWeatherReport> = {}): RenderWeatherReport {
   const time: number = overrides.time ?? 43_200;
 
   return {
     between: [0, 43_200],
-    current: toLevelManualKeyframe(DEFAULT_LEVEL_MANUAL_WEATHER, time),
+    current: toLevelManualDescriptor(DEFAULT_LEVEL_MANUAL_WEATHER, time),
     effect: null,
     modifiers: 0,
     time,

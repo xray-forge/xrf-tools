@@ -1,8 +1,10 @@
 use std::sync::Arc;
 
 use xrf_chunk::XRayByteOrder;
+use xrf_engine_target::XrayEngine;
 use xrf_environment::{
-  EnvironmentCatalog, EnvironmentReadOptions, EnvironmentReader, LevelWeather, SunTable, WeatherCycle, WeatherKey,
+  EnvironmentCatalog, EnvironmentReadOptions, EnvironmentReader, LevelWeather, SunTable, WeatherCycle,
+  WeatherDescriptor, WeatherKey,
 };
 use xrf_level::{EnvModifier, LevelEnvModFile};
 use xrf_ltx::LtxProject;
@@ -124,9 +126,19 @@ impl LevelEnvironment {
     offered
   }
 
+  /// A cycle's keyframes as the engine loads them, sorted by time, a keyframe whose name the engine refuses left out.
+  pub fn list_keyframes(cycle: &WeatherCycle, engine: XrayEngine) -> Vec<WeatherDescriptor> {
+    cycle
+      .keyframes
+      .iter()
+      .filter(|keyframe| keyframe.time.is_some())
+      .map(|keyframe| WeatherDescriptor::new(keyframe, engine))
+      .collect()
+  }
+
   /// The level's `level.env_mod`, none where it has none; one that will not read is said and left out, since the
   /// weather plays without it.
-  fn read_modifiers(current: &SelectedLevel, probe: &XrayProbe) -> Vec<EnvModifier> {
+  pub fn read_modifiers(current: &SelectedLevel, probe: &XrayProbe) -> Vec<EnvModifier> {
     let read = read_optional_file(&current.source, probe, Self::ENV_MOD_FILE).and_then(|bytes| {
       bytes
         .map(|bytes| LevelEnvModFile::read_from_bytes::<XRayByteOrder>(bytes).map_err(|error| error.to_string()))

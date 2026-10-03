@@ -1,18 +1,15 @@
 import { afterEach, describe, expect, it } from "@jest/globals";
 import { autorun } from "@wirestate/mobx";
-import { ERendererEngine, ERendererTextureEncoding, ERendererWeatherTransition, IRendererWeather } from "@xrf/renderer";
-import { Nullable, Optional } from "@xrf/types";
+import { Nullable } from "@xrf/types";
 
-import { LevelTextureReference, SelectedLevelDescription, SessionSnapshot } from "@/core/ipc/types/xrf-app";
-import { EXrayEngine } from "@/core/ipc/types/xrf-engine-target";
-import { WeatherCycleId } from "@/core/ipc/types/xrf-environment";
+import { SelectedLevelDescription, SessionSnapshot } from "@/core/ipc/types/xrf-app";
+import { WeatherCycleId, WeatherDescriptor } from "@/core/ipc/types/xrf-environment";
+import { ERenderWeatherPlay, ERenderWeatherTransition, RenderWeatherPlay } from "@/core/ipc/types/xrf-renderer";
 import {
   DEFAULT_LEVEL_MANUAL_WEATHER,
   ILevelManualWeather,
-  listLevelManualWeatherTextures,
   toLevelManualWeather,
 } from "@/core/level/lib/weather/level-manual-weather";
-import { LEVEL_WEATHER_NOON } from "@/core/level/lib/weather/level-weather-control";
 import {
   readLevelWeatherMemory,
   toLevelWeatherMemoryKey,
@@ -35,27 +32,13 @@ const SELECTED: SessionSnapshot<SelectedLevelDescription> = {
   value: mockSelectedLevelDescription(),
 };
 
-/** Every reference set by hand resolves beside the game's own textures. */
-const RESOLVE = {
-  ["plugin:levels|resolve_level_textures"]: mockSessionResponse(({ references }: { references: Array<string> }) =>
-    toResolved(references)
-  ),
-};
-
-function toResolved(references: Array<string>): Array<LevelTextureReference> {
-  return references.map((reference: string) => ({ logicalPath: `textures/${reference}.dds`, reference }));
-}
-
-/** Lets the builds of the keyframe set by hand, which ask the backend, settle. */
-async function settle(): Promise<void> {
-  // A few turns of the event loop: each drains every promise the build chained on the one before.
-  for (let index: number = 0; index < 3; index += 1) {
-    await new Promise((resolve) => setTimeout(resolve, 0));
-  }
-}
-
 function createService(): LevelWeatherService {
   return mockContainer([LevelWeatherService]).get(LevelWeatherService);
+}
+
+/** The keyframe set by hand a play hands over, or null for a play of anything else. */
+function toKeyframe(play: Nullable<RenderWeatherPlay>): Nullable<WeatherDescriptor> {
+  return play?.kind === ERenderWeatherPlay.KEYFRAME ? play.keyframe : null;
 }
 
 afterEach(() => {
@@ -64,45 +47,24 @@ afterEach(() => {
 });
 
 describe("LevelWeatherService", () => {
-  it("plays the first cycle the level offers, with where each resolved sky is fetched from", async () => {
+  it("plays the first cycle the level offers, by name", async () => {
     setMockInvokeResponses({
-      ["plugin:levels|read_level_weather"]: mockSessionResponse(
-        mockLevelWeatherDescription({
-          engine: EXrayEngine.EXTENDED,
-          sunTable: [{ altitude: 15, longitude: null }],
-        })
-      ),
+      ["plugin:levels|read_level_weather"]: mockSessionResponse(mockLevelWeatherDescription()),
     });
 
     const service: LevelWeatherService = createService();
 
     await service.open(SELECTED);
 
-    const weather: Nullable<IRendererWeather> = service.weather;
-
     expect(service.cycle?.name).toBe("default_clear");
-    expect(weather?.engine).toBe(ERendererEngine.EXTENDED);
-    expect(weather?.keyframes.map((keyframe) => keyframe.time)).toEqual([0, LEVEL_WEATHER_NOON]);
-    expect(weather?.sunTable).toEqual([{ altitude: 15, longitude: 0 }]);
-    // The noon irradiance cube resolved to nothing, so it is left out.
-    expect(Object.keys(weather?.textures ?? {}).sort()).toEqual(
-      [
-        "fx\\fx_rain",
-        "sky\\sky_night",
-        "sky\\sky_night#small",
-        "sky\\sky_noon",
-        "water\\water_SBumpVolume",
-        "water\\water_flowing_nmap",
-      ].sort()
-    );
-    expect(weather?.textures["sky\\sky_noon"]?.encoding).toBe(ERendererTextureEncoding.FETCH);
+    expect(service.weather).toEqual({ kind: ERenderWeatherPlay.CYCLE, name: "default_clear" });
+    expect(service.transition).toBe(ERenderWeatherTransition.CUT);
     expect(service.failure).toBeNull();
   });
 
   it("plays the keyframe set by hand, without failing, where the level offers no cycle", async () => {
     setMockInvokeResponses({
       ["plugin:levels|read_level_weather"]: mockSessionResponse(mockLevelWeatherDescription({ offered: [] })),
-      ...RESOLVE,
     });
 
     const service: LevelWeatherService = createService();
@@ -110,10 +72,8 @@ describe("LevelWeatherService", () => {
     await service.open(SELECTED);
 
     expect(service.isManual).toBe(true);
-    expect(service.weather?.keyframes).toHaveLength(1);
-    expect(service.weather?.keyframes[0]?.skyTexture).toBe(DEFAULT_LEVEL_MANUAL_WEATHER.skyTexture);
-    expect(service.weather?.sunTable).toBeNull();
-    expect(service.transition).toBe(ERendererWeatherTransition.CUT);
+    expect(toKeyframe(service.weather)?.skyTexture).toBe(DEFAULT_LEVEL_MANUAL_WEATHER.skyTexture);
+    expect(service.transition).toBe(ERenderWeatherTransition.CUT);
     expect(service.failure).toBeNull();
   });
 
@@ -131,7 +91,6 @@ describe("LevelWeatherService", () => {
       ["plugin:levels|read_level_cycle"]: mockSessionResponse(({ cycle }: { cycle: WeatherCycleId }) =>
         mockLevelWeatherCycle({ name: cycle.name })
       ),
-      ...RESOLVE,
     });
 
     const service: LevelWeatherService = createService();
@@ -139,22 +98,21 @@ describe("LevelWeatherService", () => {
     await service.open(SELECTED);
 
     expect(service.cycle?.name).toBe("w_clear");
+    expect(service.weather).toEqual({ kind: ERenderWeatherPlay.CYCLE, name: "w_clear" });
     expect(service.isManual).toBe(false);
     expect(service.failure).toBeNull();
   });
 
-  it("plays the keyframe set by hand for the engine target where the level's weather does not read", async () => {
+  it("plays the keyframe set by hand where the level's weather does not read", async () => {
     setMockInvokeResponses({
       ["plugin:levels|read_level_weather"]: () => Promise.reject(new Error("No weather")),
-      ...RESOLVE,
     });
 
     const service: LevelWeatherService = createService();
 
     await service.open(SELECTED);
 
-    expect(service.weather?.keyframes).toHaveLength(1);
-    expect(service.weather?.effects).toEqual({});
+    expect(toKeyframe(service.weather)).not.toBeNull();
     expect(service.failure).toBe("No weather");
   });
 
@@ -185,36 +143,33 @@ describe("LevelWeatherService", () => {
   it("fades into the keyframe set by hand, seeded from what is shown, and back into the cycle kept", async () => {
     setMockInvokeResponses({
       ["plugin:levels|read_level_weather"]: mockSessionResponse(mockLevelWeatherDescription()),
-      ...RESOLVE,
     });
 
     const service: LevelWeatherService = createService();
 
     await service.open(SELECTED);
 
-    const cycle: Nullable<IRendererWeather> = service.weather;
+    const cycle: Nullable<RenderWeatherPlay> = service.weather;
 
-    expect(service.transition).toBe(ERendererWeatherTransition.CUT);
+    expect(service.transition).toBe(ERenderWeatherTransition.CUT);
 
     service.noteReport(mockRendererWeatherReport({ time: 50_000 }));
     service.setSource(ELevelWeatherSource.MANUAL);
-    await settle();
 
     expect(service.manual).toEqual(toLevelManualWeather(mockRendererWeatherReport({ time: 50_000 }).current));
     expect(service.seed).toEqual({ cycle: "default_clear", time: 50_000 });
-    expect(service.weather?.keyframes).toHaveLength(1);
-    expect(service.transition).toBe(ERendererWeatherTransition.FADE);
+    expect(toKeyframe(service.weather)).not.toBeNull();
+    expect(service.transition).toBe(ERenderWeatherTransition.FADE);
 
     service.setSource(ELevelWeatherSource.WEATHER);
 
-    expect(service.weather).toBe(cycle);
-    expect(service.transition).toBe(ERendererWeatherTransition.FADE);
+    expect(service.weather).toEqual(cycle);
+    expect(service.transition).toBe(ERenderWeatherTransition.FADE);
   });
 
   it("takes manual control at the first edit while the weather plays, seeded so only the edit is seen", async () => {
     setMockInvokeResponses({
       ["plugin:levels|read_level_weather"]: mockSessionResponse(mockLevelWeatherDescription()),
-      ...RESOLVE,
     });
 
     const service: LevelWeatherService = createService();
@@ -226,87 +181,25 @@ describe("LevelWeatherService", () => {
       })
     );
     service.editManual({ rainDensity: 0.5 });
-    await settle();
 
     expect(service.source).toBe(ELevelWeatherSource.MANUAL);
     expect(service.manual?.skyTexture).toBe("sky\\sky_night");
     expect(service.manual?.rainDensity).toBe(0.5);
-    expect(service.weather?.keyframes[0]?.rainDensity).toBe(0.5);
-    expect(service.weather?.textures["sky\\sky_night"]).toBeDefined();
+    expect(toKeyframe(service.weather)?.rainDensity).toBe(0.5);
+    expect(toKeyframe(service.weather)?.skyTextureEnv).toBe("sky\\sky_night#small");
 
     service.editManual({ skyTexture: "sky\\sky_noon" });
-    await settle();
 
-    expect(service.weather?.keyframes[0]?.skyTexture).toBe("sky\\sky_noon");
-    expect(service.transition).toBe(ERendererWeatherTransition.EASE);
+    expect(toKeyframe(service.weather)?.skyTexture).toBe("sky\\sky_noon");
+    expect(service.transition).toBe(ERenderWeatherTransition.EASE);
     expect(readLevelWeatherMemory(toLevelWeatherMemoryKey(SELECTED.value))?.manual?.skyTexture).toBe("sky\\sky_noon");
   });
 
-  it("asks where a texture set by hand resolves once", async () => {
-    const asked: Array<Array<string>> = [];
-
-    setMockInvokeResponses({
-      ["plugin:levels|read_level_weather"]: mockSessionResponse(mockLevelWeatherDescription()),
-      ["plugin:levels|resolve_level_textures"]: mockSessionResponse(({ references }: { references: Array<string> }) => {
-        asked.push(references);
-
-        return toResolved(references);
-      }),
-    });
-
-    const service: LevelWeatherService = createService();
-
-    await service.open(SELECTED);
-    service.editManual({ rainDensity: 0.5 });
-    await settle();
-    service.editManual({ rainDensity: 0.6 });
-    await settle();
-
-    expect(asked).toEqual([listLevelManualWeatherTextures(DEFAULT_LEVEL_MANUAL_WEATHER)]);
-  });
-
-  it("keeps where a texture set by hand resolves to the level it was asked for", async () => {
-    const gate: { release: Optional<() => void> } = { release: undefined };
-    const held: Promise<void> = new Promise((resolve) => {
-      gate.release = resolve;
-    });
-
-    setMockInvokeResponses({
-      ["plugin:levels|read_level_weather"]: mockSessionResponse(mockLevelWeatherDescription()),
-      ["plugin:levels|resolve_level_textures"]: mockSessionResponse(
-        async ({ sessionId, references }: { sessionId: string; references: Array<string> }) => {
-          // The first level's answer comes only once another level is open.
-          if (sessionId === SELECTED.sessionId) {
-            await held;
-          }
-
-          return references.map((reference: string) => ({ logicalPath: `${sessionId}/${reference}.dds`, reference }));
-        }
-      ),
-    });
-
-    const service: LevelWeatherService = createService();
-
-    await service.open(SELECTED);
-    service.editManual({ rainDensity: 0.5 });
-    await settle();
-    await service.open({ ...SELECTED, sessionId: "other" });
-    gate.release?.();
-    await settle();
-    service.editManual({ rainDensity: 0.6 });
-    await settle();
-
-    const fetched: string = JSON.stringify(service.manualPlayable?.textures);
-
-    expect(fetched).toContain("other/sky");
-    expect(fetched).not.toContain(`${SELECTED.sessionId}/`);
-  });
-
-  // The renderer reports four times a second, paused or not, and the level's toolbar is drawn from the keyframe shown.
+  // The renderer reports a few times a second while its clock runs, and the level's toolbar is drawn from the keyframe
+  // shown.
   it("shows the same keyframe for a report the same as the last, and reads no report lit by hand", async () => {
     setMockInvokeResponses({
       ["plugin:levels|read_level_weather"]: mockSessionResponse(mockLevelWeatherDescription()),
-      ...RESOLVE,
     });
 
     const service: LevelWeatherService = createService();
@@ -322,7 +215,6 @@ describe("LevelWeatherService", () => {
     expect(shown).toHaveLength(2);
 
     service.setSource(ELevelWeatherSource.MANUAL);
-    await settle();
 
     const seen: number = shown.length;
 
@@ -366,6 +258,8 @@ describe("LevelWeatherService", () => {
     service.seekTo(7_200);
 
     expect(service.cycle?.name).toBe("default_rain");
+    expect(service.weather).toEqual({ kind: ERenderWeatherPlay.CYCLE, name: "default_rain" });
+    expect(service.transition).toBe(ERenderWeatherTransition.FADE);
     expect(service.control).toEqual({ factor: 1000, isDynamicSun: false, isPaused: false });
     expect(readLevelWeatherMemory(toLevelWeatherMemoryKey(SELECTED.value))).toEqual({
       control: { factor: 1000, isDynamicSun: false, isPaused: false },
@@ -402,7 +296,6 @@ describe("LevelWeatherService", () => {
     setMockInvokeResponses({
       ["plugin:levels|read_level_weather"]: mockSessionResponse(mockLevelWeatherDescription()),
       ["plugin:levels|read_level_cycle"]: () => Promise.reject(new Error("There is no weather 'gone'")),
-      ...RESOLVE,
     });
 
     const service: LevelWeatherService = createService();
@@ -413,8 +306,8 @@ describe("LevelWeatherService", () => {
     expect(service.failure).toBeNull();
     expect(service.source).toBe(ELevelWeatherSource.MANUAL);
     // The remembered keyframe set by hand lights it, cut in.
-    expect(service.weather?.keyframes[0]?.rainDensity).toBe(0.3);
-    expect(service.transition).toBe(ERendererWeatherTransition.CUT);
+    expect(toKeyframe(service.weather)?.rainDensity).toBe(0.3);
+    expect(service.transition).toBe(ERenderWeatherTransition.CUT);
     expect(service.time).toBe(600);
   });
 });

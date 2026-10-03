@@ -132,7 +132,7 @@ impl LevelShadows {
       let is_due: bool = cascade.drawn.is_none() || !frame.settings.is_staggered || is_cascade_due(index, self.frames);
 
       // A map holds depth in the world, sampled with the matrix it was drawn with, so a still one is still exact.
-      if !is_due || cascade.drawn == Some(state) {
+      if !is_due || (cascade.drawn == Some(state) && !frame.is_swaying) {
         continue;
       }
 

@@ -2,7 +2,7 @@ use xrf_error::XrfResult;
 
 use crate::frame::pick_target::PickTarget;
 use crate::frame::view_targets::ViewTargets;
-use crate::pass::layout_entries::storage_entry;
+use crate::pass::layout_entries::{storage_entry, uniform_entry};
 use crate::pass::shader_pipelines::{create_checked, create_module};
 use crate::pass::static_draw_groups::StaticDrawGroups;
 use crate::pass::view_binding::ViewBinding;
@@ -40,6 +40,7 @@ impl StaticGBufferPass {
       label: Some("static draw"),
       entries: &(0..7)
         .map(|binding| storage_entry(binding, stages, false))
+        .chain([uniform_entry(7, stages)])
         .collect::<Vec<_>>(),
     });
 
@@ -118,7 +119,7 @@ impl StaticGBufferPass {
     lists: &wgpu::Buffer,
   ) -> [wgpu::BindGroup; 2] {
     StaticLayout::ALL.map(|layout| {
-      let buffers: [&wgpu::Buffer; 7] = [
+      let buffers: [&wgpu::Buffer; 8] = [
         scene.clusters.get_buffer(),
         scene.slots.get_buffer(),
         scene.places.get_buffer(),
@@ -126,6 +127,7 @@ impl StaticGBufferPass {
         scene.indices.get_buffer(),
         lists,
         scene.words[layout.get_index()].get_buffer(),
+        &scene.wind,
       ];
 
       device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -201,8 +203,8 @@ impl StaticGBufferPass {
     pass.set_bind_group(0, &view.bind_group, &[]);
     pass.set_bind_group(2, textures, &[]);
 
-    for batch in StaticBatch::list() {
-      pass.set_pipeline(&self.pipelines[batch.get_index() as usize]);
+    for (batch, pipeline) in StaticBatch::list_deferred().zip(&self.pipelines) {
+      pass.set_pipeline(pipeline);
       pass.set_bind_group(1, &bind_groups.layouts[batch.layout.get_index()], &[]);
       pass.draw_indirect(args, batch.get_index() as u64 * 16);
     }
@@ -251,8 +253,8 @@ impl StaticGBufferPass {
       pass.set_bind_group(0, &view.bind_group, &[]);
       pass.set_bind_group(2, textures, &[]);
 
-      for batch in StaticBatch::list() {
-        pass.set_pipeline(&self.pick_pipelines[batch.get_index() as usize]);
+      for (batch, pipeline) in StaticBatch::list_deferred().zip(&self.pick_pipelines) {
+        pass.set_pipeline(pipeline);
         pass.set_bind_group(1, &bind_groups.layouts[batch.layout.get_index()], &[]);
 
         for args in args {
@@ -348,16 +350,16 @@ impl StaticGBufferPass {
     ];
     let pick_targets: [Option<wgpu::ColorTargetState>; 1] = [Some(PickTarget::FORMAT.into())];
     let create = |is_pick: bool| -> XrfResult<Vec<wgpu::RenderPipeline>> {
-      StaticBatch::list()
+      StaticBatch::list_deferred()
         .map(|batch| {
           let vertex: &str = match batch.layout {
             StaticLayout::Baked => "vs_baked",
             StaticLayout::Tree => "vs_tree",
           };
           let fragment: &str = match (batch.class, is_pick) {
-            (StaticClass::Opaque, false) => "fs_opaque",
+            (StaticClass::Opaque | StaticClass::Water, false) => "fs_opaque",
             (StaticClass::CutOut, false) => "fs_cut_out",
-            (StaticClass::Opaque, true) => "fs_pick_opaque",
+            (StaticClass::Opaque | StaticClass::Water, true) => "fs_pick_opaque",
             (StaticClass::CutOut, true) => "fs_pick_cut_out",
           };
 

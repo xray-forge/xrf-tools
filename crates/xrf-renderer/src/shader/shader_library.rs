@@ -24,6 +24,12 @@ const EMBEDDED: &[(&str, &str)] = &[
     include_str!("../../shaders/common/octahedral.wgsl"),
   ),
   (
+    "common/rain_cover",
+    include_str!("../../shaders/common/rain_cover.wgsl"),
+  ),
+  ("common/sky", include_str!("../../shaders/common/sky.wgsl")),
+  ("common/sky_box", include_str!("../../shaders/common/sky_box.wgsl")),
+  (
     "frame/ambient_occlusion",
     include_str!("../../shaders/frame/ambient_occlusion.wgsl"),
   ),
@@ -40,12 +46,19 @@ const EMBEDDED: &[(&str, &str)] = &[
   ("frame/lights", include_str!("../../shaders/frame/lights.wgsl")),
   ("frame/present", include_str!("../../shaders/frame/present.wgsl")),
   ("frame/pyramid", include_str!("../../shaders/frame/pyramid.wgsl")),
+  ("frame/rain", include_str!("../../shaders/frame/rain.wgsl")),
+  ("frame/sky_haze", include_str!("../../shaders/frame/sky_haze.wgsl")),
   ("frame/sun", include_str!("../../shaders/frame/sun.wgsl")),
+  ("frame/thunder", include_str!("../../shaders/frame/thunder.wgsl")),
+  ("frame/wet_apply", include_str!("../../shaders/frame/wet_apply.wgsl")),
+  ("frame/wet_patch", include_str!("../../shaders/frame/wet_patch.wgsl")),
   ("grid/grid", include_str!("../../shaders/grid/grid.wgsl")),
   ("static/cull", include_str!("../../shaders/static/cull.wgsl")),
   ("static/gbuffer", include_str!("../../shaders/static/gbuffer.wgsl")),
   ("static/impostor", include_str!("../../shaders/static/impostor.wgsl")),
+  ("static/pulling", include_str!("../../shaders/static/pulling.wgsl")),
   ("static/records", include_str!("../../shaders/static/records.wgsl")),
+  ("static/water", include_str!("../../shaders/static/water.wgsl")),
 ];
 
 /// The renderer's WGSL modules: embedded in a release build, read from the crate's `shaders/` directory in a debug
