@@ -7,34 +7,16 @@ import {
   XraySurfaceDescriptor,
   XraySurfaceDraw,
 } from "@/core/ipc/types/xrf-material";
-import { ALPHA_REFERENCE_SCALE } from "@/core/materials/lib/material-surface";
-import { IRenderAnomalyWater } from "@/core/render/lib/surface/render-anomaly-water";
 import { ERenderDraw } from "@/core/render/lib/surface/render-draw";
-import { IRenderSurfaceWater } from "@/core/render/lib/surface/render-surface-water";
 
 /**
  * How a surface reaches the renderer's frame, from what the backend resolved for its shader.
  */
 export interface IRenderSurfaceDraw {
   draw: ERenderDraw;
-  /** The authored reference in `[0, 1]`, where the blender states one. */
-  alphaReference?: number;
   /** Whether the scene's light reaches it, which only a scripted blended pass answers no to. */
   isLit: boolean;
-  /** How a surface drawn as water is drawn. */
-  water?: IRenderSurfaceWater;
 }
-
-/**
- * Anomaly's water programs (`shaders/r2/water_*.ps` in its gamedata), by the switches each defines before including
- * its `water.ps`. Any other water program is OpenXRay's.
- */
-const ANOMALY_WATER_PROGRAMS: Readonly<Record<string, IRenderAnomalyWater>> = {
-  water_regular: { isFoamed: false, isReflecting: true, isSpecular: true, isTransparent: false },
-  water_ryaska: { isFoamed: false, isReflecting: true, isSpecular: true, isTransparent: true },
-  water_studen: { isFoamed: true, isReflecting: true, isSpecular: true, isTransparent: false },
-  water_underground: { isFoamed: false, isReflecting: false, isSpecular: false, isTransparent: false },
-};
 
 /** A surface whose shader nobody resolved: drawn opaque and lit, as the plain base shader is. */
 export const OPAQUE_RENDER_SURFACE_DRAW: IRenderSurfaceDraw = { draw: ERenderDraw.OPAQUE, isLit: true };
@@ -51,27 +33,10 @@ export function toRenderSurfaceDraw(descriptor: Nullable<XraySurfaceDescriptor>)
     return { ...OPAQUE_RENDER_SURFACE_DRAW, isLit };
   }
 
-  const alphaReference: Maybe<number> = "reference" in draw ? draw.reference / ALPHA_REFERENCE_SCALE : undefined;
   const rendererDraw: ERenderDraw = toRenderDraw(draw);
 
-  switch (rendererDraw) {
-    case ERenderDraw.CUT_OUT:
-    case ERenderDraw.BLENDED:
-    case ERenderDraw.ADDED:
-    case ERenderDraw.ALPHA_ADDED:
-      return { alphaReference, draw: rendererDraw, isLit };
-
-    // Lit by the water's own programs, whatever its blend says.
-    case ERenderDraw.WATER:
-      return {
-        draw: rendererDraw,
-        isLit: true,
-        water: toRendererSurfaceWater(descriptor, draw.kind === EXraySurfaceDraw.WATER && draw.isSoft),
-      };
-
-    default:
-      return { draw: rendererDraw, isLit };
-  }
+  // Water is lit by its own programs, whatever its blend says.
+  return { draw: rendererDraw, isLit: rendererDraw === ERenderDraw.WATER || isLit };
 }
 
 /**
@@ -101,19 +66,6 @@ export function toRenderDraw(draw: XraySurfaceDraw): ERenderDraw {
     default:
       return ERenderDraw.OPAQUE;
   }
-}
-
-/**
- * @param descriptor - What the backend resolved for a water surface.
- * @param isSoft - Whether its program blends over the depth behind it.
- * @returns How the renderer draws it: by Anomaly's model for one of Anomaly's programs, OpenXRay's for any other.
- */
-function toRendererSurfaceWater(descriptor: Nullable<XraySurfaceDescriptor>, isSoft: boolean): IRenderSurfaceWater {
-  const declaration: Maybe<XraySurfaceDeclaration> = descriptor?.declaration;
-  const program: Maybe<string> =
-    declaration?.kind === EXraySurfaceDeclaration.SCRIPTED ? declaration.program : undefined;
-
-  return { anomaly: (program && ANOMALY_WATER_PROGRAMS[program]) || null, isSoft };
 }
 
 /**

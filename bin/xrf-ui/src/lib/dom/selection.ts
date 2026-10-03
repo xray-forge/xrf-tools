@@ -12,15 +12,3 @@ export function clearWindowTextSelection(): void {
     selection.removeAllRanges();
   }
 }
-
-/**
- * Clears the window's text selection whenever a pointer presses an element.
- *
- * @param element - Element whose presses clear the selection, usually a scene's canvas.
- * @returns Unbinds the listener.
- */
-export function bindSelectionReset(element: HTMLElement): () => void {
-  element.addEventListener("pointerdown", clearWindowTextSelection);
-
-  return () => element.removeEventListener("pointerdown", clearWindowTextSelection);
-}

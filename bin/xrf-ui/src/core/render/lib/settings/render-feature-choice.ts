@@ -55,14 +55,6 @@ export function resolveRenderFeatures(choice: IRenderFeatureChoice): IRenderFeat
 }
 
 /**
- * @param stored - Feature settings as they arrived, from whoever sent them.
- * @returns The features as the renderer takes them: every value held to the schema, `Base`'s for any it lacks.
- */
-export function toRendererFeatureSettings(stored: unknown): IRenderFeatureSettings {
-  return resolve(SCHEMA, RENDER_PRESETS[ERenderPreset.BASE], parse(SCHEMA, stored)) as IRenderFeatureSettings;
-}
-
-/**
  * @param choice - A preset and what was changed on top of it.
  * @returns Whether the features differ from the preset's, which a settings view shows as custom.
  */

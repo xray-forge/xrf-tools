@@ -13,21 +13,18 @@ import {
   VisualTextureDependency,
   VisualTransform,
 } from "@/core/ipc/types/xrf-visual";
-import { OPAQUE_RENDER_SURFACE_DRAW } from "@/core/render/lib/surface/render-surface-draw";
 import { MOTION_DEFAULT_SPEED, MOTION_SAMPLE_FPS } from "@/core/visuals/lib/visual-motion";
-import { IVisualModelViews, IVisualSubmeshViews } from "@/core/visuals/lib/visual-views";
+import { IVisualModelViews } from "@/core/visuals/lib/visual-views";
 
 const ALIGNMENT: number = 4;
 
 /**
- * Packs sections the way the rust builder does, so a test reasons about a real buffer.
+ * Lays sections out the way the rust builder does, so a test reasons about real offsets.
  *
  * Every section is padded to a four byte boundary because that is the invariant typed array views rely
  * on; a fixture that skipped it would let a broken view constructor pass.
  */
 export class MockVisualBuffer {
-  private readonly chunks: Array<Uint8Array> = [];
-
   private length: number = 0;
 
   public pushFloats(values: Array<number>): VisualSection {
@@ -42,32 +39,6 @@ export class MockVisualBuffer {
     return this.push(bytes);
   }
 
-  /** Signed shorts, which is how a packed sector carries its coordinates. */
-  public pushShorts(values: Array<number>): VisualSection {
-    return this.push(new Uint8Array(new Int16Array(values).buffer));
-  }
-
-  /** Thirty-two bit indices, which is what a packed sector carries rather than a model's sixteen. */
-  public pushIndices32(values: Array<number>): VisualSection {
-    return this.push(new Uint8Array(new Uint32Array(values).buffer));
-  }
-
-  public toArrayBuffer(): ArrayBuffer {
-    // Allocated as an `ArrayBuffer` and written through a view, rather than taking `.buffer` off a typed
-    // array, because that property is `ArrayBufferLike` and could be shared memory.
-    const buffer: ArrayBuffer = new ArrayBuffer(this.length);
-    const bytes: Uint8Array = new Uint8Array(buffer);
-
-    let offset: number = 0;
-
-    for (const chunk of this.chunks) {
-      bytes.set(chunk, offset);
-      offset += chunk.byteLength;
-    }
-
-    return buffer;
-  }
-
   public get byteLength(): number {
     return this.length;
   }
@@ -75,14 +46,10 @@ export class MockVisualBuffer {
   private push(bytes: Uint8Array): VisualSection {
     const padding: number = this.length % ALIGNMENT === 0 ? 0 : ALIGNMENT - (this.length % ALIGNMENT);
 
-    if (padding > 0) {
-      this.chunks.push(new Uint8Array(padding));
-      this.length += padding;
-    }
+    this.length += padding;
 
     const section: VisualSection = { byteOffset: this.length, byteLength: bytes.byteLength };
 
-    this.chunks.push(bytes);
     this.length += bytes.byteLength;
 
     return section;
@@ -296,26 +263,6 @@ export function mockAlphaSurfaceDescriptor(overrides: Partial<XraySurfaceDescrip
 }
 
 /**
- * Creates a surface descriptor fixture that is composited, the way a mark laid on a wall is.
- *
- * @param overrides - Field values to override.
- * @returns A surface descriptor fixture whose draw blends.
- */
-export function mockBlendedSurfaceDescriptor(overrides: Partial<XraySurfaceDescriptor> = {}): XraySurfaceDescriptor {
-  return mockSurfaceDescriptor({
-    declaration: {
-      kind: "described",
-      class: "S_SET",
-      isAlphaUsed: true,
-      alphaReference: 32,
-      isStrictSorting: false,
-    },
-    draw: { kind: "blended", reference: 32 },
-    ...overrides,
-  });
-}
-
-/**
  * Creates a material descriptor fixture: a bumped declaration whose pair resolved.
  *
  * @param overrides - Field values to override.
@@ -453,16 +400,6 @@ export function mockVisualModelViews(overrides: Partial<IVisualModelViews> = {})
     hasSkeleton: false,
     vertexCount: 0,
     levelCount: 1,
-    ...overrides,
-  };
-}
-
-export function mockVisualSubmeshViews(overrides: Partial<IVisualSubmeshViews> = {}): IVisualSubmeshViews {
-  return {
-    index: 0,
-    label: "submesh 0",
-    levels: [{ count: 3, start: 0, triangleCount: 1 }],
-    surface: OPAQUE_RENDER_SURFACE_DRAW,
     ...overrides,
   };
 }

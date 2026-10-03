@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, jest } from "@jest/globals";
 
-import { bindSelectionReset, clearWindowTextSelection } from "@/lib/dom/selection";
+import { clearWindowTextSelection } from "@/lib/dom/selection";
 
 /**
  * Selects the text of an element, the way a drag across a panel does.
@@ -49,35 +49,5 @@ describe("clearWindowTextSelection", () => {
     document.removeEventListener("selectionchange", onChange);
 
     expect(onChange).not.toHaveBeenCalled();
-  });
-});
-
-describe("bindSelectionReset", () => {
-  it("clears the selection when a pointer presses the element", () => {
-    const canvas: HTMLElement = document.createElement("canvas");
-
-    document.body.appendChild(canvas);
-
-    const unbind: () => void = bindSelectionReset(canvas);
-
-    select("a row a person dragged across");
-    canvas.dispatchEvent(new Event("pointerdown"));
-
-    expect(window.getSelection()?.toString()).toBe("");
-
-    unbind();
-  });
-
-  it("stops clearing once unbound", () => {
-    const canvas: HTMLElement = document.createElement("canvas");
-
-    document.body.appendChild(canvas);
-    bindSelectionReset(canvas)();
-
-    const selected: HTMLElement = select("a row a person dragged across");
-
-    canvas.dispatchEvent(new Event("pointerdown"));
-
-    expect(window.getSelection()?.toString()).toBe(selected.textContent);
   });
 });

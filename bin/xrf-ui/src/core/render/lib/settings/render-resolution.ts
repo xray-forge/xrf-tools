@@ -31,19 +31,3 @@ export const DEFAULT_RENDER_RESOLUTION: ERenderResolution = ERenderResolution.WI
 export function toRenderResolution(stored: unknown): ERenderResolution {
   return RENDER_RESOLUTIONS.find((resolution: ERenderResolution) => resolution === stored) ?? DEFAULT_RENDER_RESOLUTION;
 }
-
-/**
- * How many device pixels a viewport draws for each css pixel it occupies.
- *
- * @param resolution - What the viewer asked for.
- * @param height - The element's height in css pixels, or zero before it has been measured.
- * @param devicePixelRatio - What the display says one css pixel is worth.
- * @returns The ratio to draw at, never zero.
- */
-export function toRenderPixelRatio(resolution: ERenderResolution, height: number, devicePixelRatio: number): number {
-  if (resolution === ERenderResolution.WINDOW || height <= 0) {
-    return devicePixelRatio;
-  }
-
-  return Number(resolution) / height;
-}

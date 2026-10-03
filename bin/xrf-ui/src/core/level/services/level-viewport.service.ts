@@ -10,14 +10,15 @@ import { TLevelPick } from "@/core/level/lib/pick/level-pick";
 import { ILevelSurfaceGeometry } from "@/core/level/lib/surface/level-surface-geometry";
 import { EMPTY_LEVEL_TEXTURE_REPORT, ILevelTextureReport } from "@/core/level/lib/texture/level-texture-report";
 
-/**
- * What the viewport reports about itself while it draws.
- */
+/** No surface measured, which is what a level not yet resident reports. */
 const NO_LEVEL_SURFACES_GEOMETRY: ReadonlyMap<number, ILevelSurfaceGeometry> = new Map();
 
 /** Nothing the level could not draw, which is also what a level not yet resident reports. */
 export const NO_LEVEL_PROBLEMS: RenderLevelProblems = { models: [], sectors: [], skipped: [] };
 
+/**
+ * What the viewport reports about itself while it draws.
+ */
 @Injectable()
 export class LevelViewportService {
   /** Where the camera is and where it faces, or null until the viewport has drawn a frame. */

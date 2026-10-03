@@ -16,7 +16,7 @@ export function SettingsRendererDisplay(): ReactElement {
       <ChoiceFormRow
         label={"Frame rate limit"}
         description={
-          "Maximum frames per second a viewport draws, presented at the display's refresh. Unlimited draws as fast as the GPU can, for measuring."
+          "Maximum frames per second a viewport draws. No cap draws as fast as VSync allows, and with VSync off as fast as the GPU can, for measuring."
         }
         options={RENDER_FRAME_RATE_OPTIONS}
         value={settingsService.frameRateLimit}
