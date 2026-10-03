@@ -10,6 +10,9 @@ pub struct StaticPlace {
   /// A spawned object's hemisphere cube, its six faces (`+x +y +z -x -y -z`) as bytes in `x` and `y`; `w` one where it
   /// has one.
   pub cube: [u32; 4],
+  /// A skinned model's: its bone matrices' first row, its links' first vertex, its own first vertex in the model arena,
+  /// and how many bones it has, zero where it is rigid. The last frame's matrices follow this frame's.
+  pub skin: [u32; 4],
 }
 
 impl Default for StaticPlace {
@@ -18,6 +21,7 @@ impl Default for StaticPlace {
       columns: [Vec4::X, Vec4::Y, Vec4::Z, Vec4::W],
       info: Vec4::new(1.0, 0.0, -1.0, 1.0),
       cube: [0; 4],
+      skin: [0; 4],
     }
   }
 }

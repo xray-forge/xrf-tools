@@ -5,6 +5,7 @@ use crate::contract::render_camera::RenderCamera;
 use crate::contract::render_camera_command::RenderCameraCommand;
 use crate::contract::render_input_event::RenderInputEvent;
 use crate::contract::render_level_problems::RenderLevelProblems;
+use crate::contract::render_model_pose::RenderModelPose;
 use crate::contract::render_overlay::RenderOverlay;
 use crate::contract::render_settings::RenderSettings;
 use crate::contract::render_surface_geometry::RenderSurfaceGeometry;
@@ -52,7 +53,7 @@ pub enum RenderCommand {
   },
   Options {
     id: RenderViewportId,
-    options: RenderViewOptions,
+    options: Box<RenderViewOptions>,
   },
   /// Replaces what a viewport draws over its frame.
   Overlays {
@@ -73,6 +74,11 @@ pub enum RenderCommand {
   DescribeTextures {
     id: RenderViewportId,
     reply: Sender<Vec<RenderTextureReport>>,
+  },
+  /// Stands a viewport's skinned models in a pose.
+  PoseModel {
+    id: RenderViewportId,
+    pose: RenderModelPose,
   },
   /// Says what a viewport's level could not draw; empty where it draws no level.
   DescribeProblems {

@@ -63,11 +63,7 @@ export class VisualsService extends VisualInspectionService {
    */
   @Computed()
   public get pose(): IVisualPose {
-    return {
-      floatsPerBone: this.motionService.floatsPerBone,
-      frame: this.motionService.frame,
-      transforms: this.motionService.posed.value?.transforms ?? null,
-    };
+    return { frame: this.motionService.frame, motion: this.motionService.posed.value?.name ?? null };
   }
 
   /**

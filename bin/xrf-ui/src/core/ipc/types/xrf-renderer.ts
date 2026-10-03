@@ -48,6 +48,22 @@ export enum ERenderAntialiasing {
 /** Every `ERenderAntialiasing` as the spelling it crosses IPC as, for a value no member has narrowed. */
 export type RenderAntialiasing = `${ERenderAntialiasing}`;
 
+/**
+ * How an asset viewer lights what it shows, in place of a level's weather: one light from a direction and a uniform
+ * ambient, each a colour scaled by an intensity.
+ */
+export type RenderAssetLighting = {
+  /** Degrees above the horizon the light sits at, ninety directly overhead. */
+  sunElevation: number | null;
+  /** Degrees around the vertical, zero looking along renderer `+z`. */
+  sunAzimuth: number | null;
+  sunIntensity: number | null;
+  /** The light's colour, each channel zero to one. */
+  sunColor: [number | null, number | null, number | null];
+  ambientIntensity: number | null;
+  ambientColor: [number | null, number | null, number | null];
+};
+
 /** Every `kind` the `RenderCamera` union is told apart by, so a switch or a comparison names one. */
 export enum ERenderCamera {
   /** Flies free, turned by a drag and moved by the keys, as a level is walked. */
@@ -405,6 +421,16 @@ export type RenderLodSettings = {
   ssaGlodEnd: number | null;
 };
 
+/** How a viewport's skinned models stand: a frame of a motion of theirs, or their bind pose, and the bones collapsed. */
+export type RenderModelPose = {
+  /** The motion, by its name, or none for the bind pose. */
+  motion: string | null;
+  /** Which of its frames; one outside it shows the bind pose. */
+  frame: number;
+  /** Bones collapsed to nothing, by index, each one's descendants among them. */
+  hiddenBones: Array<number>;
+};
+
 /** Every `kind` the `RenderOverlay` union is told apart by, so a switch or a comparison names one. */
 export enum ERenderOverlay {
   /**
@@ -414,6 +440,13 @@ export enum ERenderOverlay {
   LINES = "lines",
   /** A disc in the sky where the light comes from, `size` device pixels across, following the camera and the lighting. */
   SUN = "sun",
+  /**
+   * Points in renderer space, three floats each, drawn as discs of one colour `size` device pixels across wherever
+   * they stand.
+   */
+  POINTS = "points",
+  /** Every skinned model's bones as segments, child to parent, following its pose. */
+  SKELETON = "skeleton",
 }
 
 /** A helper drawn over a viewport's frame, unlit, as the raw colours it names. */
@@ -430,7 +463,26 @@ export type RenderOverlay =
       isDepthTested: boolean;
     }
   /** A disc in the sky where the light comes from, `size` device pixels across, following the camera and the lighting. */
-  | { kind: "sun"; color: [number | null, number | null, number | null]; size: number | null };
+  | { kind: "sun"; color: [number | null, number | null, number | null]; size: number | null }
+  /**
+   * Points in renderer space, three floats each, drawn as discs of one colour `size` device pixels across wherever
+   * they stand.
+   */
+  | {
+      kind: "points";
+      positions: Array<number | null>;
+      color: [number | null, number | null, number | null];
+      size: number | null;
+      /** Whether what the scene draws in front hides them. */
+      isDepthTested: boolean;
+    }
+  /** Every skinned model's bones as segments, child to parent, following its pose. */
+  | {
+      kind: "skeleton";
+      color: [number | null, number | null, number | null];
+      /** Whether what the scene draws in front hides them. */
+      isDepthTested: boolean;
+    };
 
 /** What one pass of a viewport's frames cost on the GPU. */
 export type RenderPassCost = {
@@ -622,6 +674,17 @@ export type RenderViewOptions = {
   lod: RenderLodSettings;
   /** What the tonemap multiplies by before the exposure's own scale. */
   tonemapScale: number | null;
+  /** An asset viewer's light, in place of the weather's; none for a level. */
+  assetLighting: RenderAssetLighting | null;
+  /**
+   * What shows where nothing was drawn and neither the sky nor the fog is, each channel zero to one; none for the
+   * level viewer's own.
+   */
+  backdrop: [number | null, number | null, number | null] | null;
+  /** Times a uv checker repeats over a surface's base coordinate, drawn in place of its textures; zero for none. */
+  checker: number | null;
+  /** Whether surfaces cut out and blend as their shaders ask, or draw solid. */
+  isAlphaVisible: boolean;
   /** Whether the weather's fog hides the distance. */
   isFogged: boolean;
   /** Whether the weather's sky is drawn behind the level, rather than a plain backdrop. */

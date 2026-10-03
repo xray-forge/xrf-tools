@@ -16,7 +16,7 @@ pub struct OverlayPass {
   layout: wgpu::BindGroupLayout,
   view_layout: wgpu::BindGroupLayout,
   /// The lines' and the sun's, one pair a window format, built on first use.
-  pipelines: HashMap<wgpu::TextureFormat, [wgpu::RenderPipeline; 2]>,
+  pipelines: HashMap<wgpu::TextureFormat, [wgpu::RenderPipeline; 3]>,
   generation: u64,
 }
 
@@ -72,6 +72,7 @@ impl OverlayPass {
     });
     let line_attributes: [wgpu::VertexAttribute; 2] = wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x4];
     let sun_attributes: [wgpu::VertexAttribute; 1] = wgpu::vertex_attr_array![0 => Float32x4];
+    let point_attributes: [wgpu::VertexAttribute; 2] = wgpu::vertex_attr_array![0 => Float32x4, 1 => Float32x4];
     let create = |entries: (&str, &str), topology: wgpu::PrimitiveTopology, buffer: wgpu::VertexBufferLayout<'_>| {
       create_checked(device, "overlay", || {
         device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -119,7 +120,17 @@ impl OverlayPass {
       },
     )?;
 
-    self.pipelines.insert(format, [lines, sun]);
+    let points: wgpu::RenderPipeline = create(
+      ("vs_point", "fs_point"),
+      wgpu::PrimitiveTopology::TriangleList,
+      wgpu::VertexBufferLayout {
+        array_stride: 32,
+        step_mode: wgpu::VertexStepMode::Instance,
+        attributes: &point_attributes,
+      },
+    )?;
+
+    self.pipelines.insert(format, [lines, sun, points]);
 
     Ok(())
   }
@@ -151,17 +162,23 @@ impl OverlayPass {
     (view, bind_group): (&ViewBinding, &wgpu::BindGroup),
     overlays: &LevelOverlays,
   ) {
-    let Some([lines, sun]) = self.pipelines.get(&format) else {
+    let Some([lines, sun, points]) = self.pipelines.get(&format) else {
       return;
     };
 
     pass.set_bind_group(0, &view.bind_group, &[]);
     pass.set_bind_group(1, bind_group, &[]);
 
-    if let Some((buffer, count)) = &overlays.lines {
+    for (buffer, count) in [&overlays.lines, &overlays.skeleton_lines].into_iter().flatten() {
       pass.set_pipeline(lines);
       pass.set_vertex_buffer(0, buffer.slice(..));
       pass.draw(0..*count, 0..1);
+    }
+
+    if let Some((buffer, count)) = &overlays.points {
+      pass.set_pipeline(points);
+      pass.set_vertex_buffer(0, buffer.slice(..));
+      pass.draw(0..6, 0..*count);
     }
 
     if let Some(buffer) = &overlays.sun {

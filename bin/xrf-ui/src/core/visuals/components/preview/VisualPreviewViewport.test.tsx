@@ -1,104 +1,88 @@
-import { beforeAll, beforeEach, describe, expect, it } from "@jest/globals";
+import { beforeEach, describe, expect, it } from "@jest/globals";
 import { act, RenderResult } from "@testing-library/react";
 import { Binding } from "@wirestate/core";
-import { makeAutoObservable, runInAction } from "@wirestate/mobx";
-import { ERendererRequest, ERendererResponse } from "@xrf/renderer";
-import { createRendererWorkerStub, IRendererWorkerStub } from "@xrf/renderer/fixtures";
+import { makeAutoObservable } from "@wirestate/mobx";
 
-import { IVisualRenderSource, VISUAL_RENDER_SOURCE } from "@/core/visuals/lib/render";
-import { mockVisualModelViews, mockVisualSubmeshViews } from "@/fixtures/mocks/visual.mocks";
+import { ERenderViewportEvent, RenderViewportEvent } from "@/core/ipc/types/xrf-renderer";
+import { BIND_POSE, IVisualRenderSource, VISUAL_RENDER_SOURCE } from "@/core/visuals/lib/render";
+import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
+import { VisualRenderService } from "@/core/visuals/services/visual-render.service";
+import { VisualViewService } from "@/core/visuals/services/visual-view.service";
+import {
+  getMockChannels,
+  MockChannel,
+  mockInvoke,
+  resetMockChannels,
+  resetMockInvoke,
+  setMockInvokeResponses,
+} from "@/fixtures/mocks/tauri.mocks";
+import { mockVisualModelViews } from "@/fixtures/mocks/visual.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
-import { mockRendererThread } from "@/fixtures/utils/renderer";
 
-let stubs: Array<IRendererWorkerStub>;
-let VisualPreviewViewport: typeof import("./VisualPreviewViewport").VisualPreviewViewport;
+import { VisualPreviewViewport } from "./VisualPreviewViewport";
+
 let bindings: Array<Binding>;
-let source: IVisualRenderSource;
 
-beforeAll(async () => {
-  mockRendererThread((): Worker => {
-    const stub: IRendererWorkerStub = createRendererWorkerStub();
+function sent(command: string): Array<Record<string, unknown>> {
+  return mockInvoke.mock.calls
+    .filter(([name]) => name === `plugin:render|${command}`)
+    .map(([, args]) => args as Record<string, unknown>);
+}
 
-    stubs.push(stub);
+async function flush(): Promise<void> {
+  for (let index: number = 0; index < 10; index += 1) {
+    await Promise.resolve();
+  }
+}
 
-    return stub.worker;
-  });
+beforeEach(() => {
+  resetMockInvoke();
+  resetMockChannels();
+  setMockInvokeResponses({ ["plugin:render|attach_viewport"]: 1 });
 
-  const { VisualRenderService } = await import("@/core/visuals/services/visual-render.service");
-  const { VisualViewService } = await import("@/core/visuals/services/visual-view.service");
-
-  ({ VisualPreviewViewport } = await import("./VisualPreviewViewport"));
-
-  source = makeAutoObservable<IVisualRenderSource>(
-    { bumps: new Map(), model: null, textures: new Map() },
+  const source: IVisualRenderSource = makeAutoObservable<IVisualRenderSource>(
+    { hasBump: false, model: mockVisualModelViews(), pose: BIND_POSE, sessionId: "open" },
     {},
     { deep: false }
   );
 
-  bindings = [VisualViewService, VisualRenderService, { factory: () => source, token: VISUAL_RENDER_SOURCE }];
-});
-
-beforeEach(() => {
-  stubs = [];
+  bindings = [
+    VisualLoadService,
+    VisualViewService,
+    VisualRenderService,
+    { factory: () => source, token: VISUAL_RENDER_SOURCE },
+  ];
 });
 
 describe("VisualPreviewViewport", () => {
-  it("starts one renderer, tells it what is already open, and shows it on its canvas", async () => {
-    runInAction(() => (source.model = mockVisualModelViews({ submeshes: [mockVisualSubmeshViews()] })));
-
+  it("attaches one native viewport, shows the open model in it, and lets it go when unmounted", async () => {
     const { unmount } = renderWithProviders(<VisualPreviewViewport />, { bindings });
 
-    await stubs[0].flush();
+    await act(flush);
 
-    expect(stubs).toHaveLength(1);
-    expect(stubs[0].take(ERendererRequest.PUT_GEOMETRY)).toHaveLength(1);
-    expect(stubs[0].take(ERendererRequest.ATTACH_VIEW)).toHaveLength(1);
+    expect(sent("attach_viewport")).toHaveLength(1);
+    expect(sent("show_model").map(({ sessionId }) => sessionId)).toEqual(["open"]);
 
     unmount();
-    await stubs[0].flush();
+    await flush();
 
-    expect(stubs[0].take(ERendererRequest.DETACH_VIEW)).toHaveLength(1);
-  });
-
-  // Clicking through a tree keeps the renderer and its camera controller: only the model is replaced.
-  it("replaces the model in the renderer it already has", async () => {
-    runInAction(() => (source.model = mockVisualModelViews({ submeshes: [mockVisualSubmeshViews()] })));
-
-    renderWithProviders(<VisualPreviewViewport />, { bindings });
-
-    act(() => runInAction(() => (source.model = mockVisualModelViews({ submeshes: [mockVisualSubmeshViews()] }))));
-    await stubs[0].flush();
-
-    expect(stubs).toHaveLength(1);
-    expect(stubs[0].take(ERendererRequest.RELEASE_GEOMETRY)).toHaveLength(1);
-    expect(stubs[0].take(ERendererRequest.PUT_GEOMETRY)).toHaveLength(2);
+    expect(sent("detach_viewport")).toHaveLength(1);
   });
 
   it("covers the viewport and says why when the renderer fails", async () => {
-    runInAction(() => (source.model = mockVisualModelViews({ submeshes: [mockVisualSubmeshViews()] })));
-
     const view: RenderResult = renderWithProviders(<VisualPreviewViewport />, { bindings });
 
-    await stubs[0].flush();
-    act(() => stubs[0].respond({ kind: ERendererResponse.FAILED, reason: "No WebGPU adapter" }));
+    await act(flush);
+    act(() =>
+      (getMockChannels()[0] as MockChannel<RenderViewportEvent>).onmessage({
+        kind: ERenderViewportEvent.FAILURE,
+        message: "No GPU adapter",
+      })
+    );
 
-    expect(view.getByTestId("render-failure-cover")).toHaveTextContent("No WebGPU adapter");
+    expect(view.getByTestId("render-failure-cover")).toHaveTextContent("No GPU adapter");
     expect(view.queryByTestId("render-frame-readout")).not.toBeInTheDocument();
 
     view.unmount();
-  });
-
-  it("attaches a fresh canvas after a strict mode remount rather than leaking the first", async () => {
-    runInAction(() => (source.model = mockVisualModelViews()));
-
-    const { container, unmount } = renderWithProviders(<VisualPreviewViewport />, { bindings, isStrict: true });
-
-    await stubs[0].flush();
-
-    expect(stubs).toHaveLength(1);
-    expect(stubs[0].take(ERendererRequest.ATTACH_VIEW)).toHaveLength(2);
-    expect(container.querySelectorAll("canvas")).toHaveLength(1);
-
-    unmount();
   });
 });

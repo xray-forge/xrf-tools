@@ -45,10 +45,10 @@ describe("ipc metrics", () => {
   });
 
   it("records a measured response as weighed and an unmeasured one as neither", () => {
-    IPC_METRICS.measure("plugin:visuals|read_geometry").recordAnswer(2048, null);
-    IPC_METRICS.measure("plugin:visuals|read_geometry").recordAnswer(null, null);
+    IPC_METRICS.measure("plugin:assets|read_asset").recordAnswer(2048, null);
+    IPC_METRICS.measure("plugin:assets|read_asset").recordAnswer(null, null);
 
-    const entry: IIpcCommandMetrics = getEntryOf("visuals|read_geometry");
+    const entry: IIpcCommandMetrics = getEntryOf("assets|read_asset");
 
     expect(entry.calls).toBe(2);
     expect(entry.received).toBe(2048);

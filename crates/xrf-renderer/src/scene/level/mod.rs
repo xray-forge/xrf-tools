@@ -13,6 +13,8 @@ pub(crate) mod level_view;
 pub(crate) mod light_shadow_entry;
 pub(crate) mod light_shadow_face;
 pub(crate) mod light_shadow_set;
+pub(crate) mod model_motions;
+pub(crate) mod posed_skeleton;
 pub(crate) mod rain_cover;
 pub(crate) mod shadow_cascade_view;
 pub(crate) mod shadow_frame;

@@ -115,6 +115,7 @@ macro_rules! for_each_tauri_command_domain {
         locate_spawn_object => crate::plugins::render::commands::locate_spawn_object::render_locate_spawn_object,
         measure_surfaces => crate::plugins::render::commands::measure_surfaces::render_measure_surfaces,
         pick => crate::plugins::render::commands::pick::render_pick,
+        pose_model => crate::plugins::render::commands::pose_model::render_pose_model,
         play_weather => crate::plugins::render::commands::play_weather::render_play_weather,
         play_weather_effect => crate::plugins::render::commands::play_weather_effect::render_play_weather_effect,
         save_capture => crate::plugins::render::commands::save_capture::render_save_capture,
@@ -126,6 +127,7 @@ macro_rules! for_each_tauri_command_domain {
         set_viewport_layout => crate::plugins::render::commands::set_viewport_layout::render_set_viewport_layout,
         set_weather_control => crate::plugins::render::commands::set_weather_control::render_set_weather_control,
         show_level => crate::plugins::render::commands::show_level::render_show_level,
+        show_model => crate::plugins::render::commands::show_model::render_show_model,
       }
       spawn => "spawn" {
         save_unpacked_directory => crate::plugins::spawn::commands::save_unpacked_directory::spawn_save_unpacked_directory,
@@ -187,11 +189,6 @@ macro_rules! for_each_tauri_command_domain {
         open_browse => crate::plugins::visuals::commands::open_browse::visuals_open_browse,
         open_model => crate::plugins::visuals::commands::open_model::visuals_open_model,
         open_motion => crate::plugins::visuals::commands::open_motion::visuals_open_motion,
-      }
-      @bulk {
-        read_geometry(sessionId: "SessionId") => crate::plugins::visuals::routes::read_geometry::visuals_read_geometry,
-        read_motion(sessionId: "SessionId", motionId: "SessionId") => crate::plugins::visuals::routes::read_motion::visuals_read_motion,
-        read_texture(roots: "XrayRoots", logicalPath: "string") => crate::plugins::visuals::routes::read_texture::visuals_read_texture,
       }
       translations => "translations" {
         build_project => crate::plugins::translations::commands::build_project::translations_build_project,

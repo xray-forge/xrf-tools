@@ -1,8 +1,7 @@
 import { Nullable } from "@xrf/types";
 
 import { getLocatedAsset } from "@/core/assets/lib/resolution";
-import { EXrayResolution, XrayAsset, XrayResolution } from "@/core/ipc/types/xrf-vfs";
-import { VisualTextureDependency } from "@/core/ipc/types/xrf-visual";
+import { EXrayResolution, XrayResolution } from "@/core/ipc/types/xrf-vfs";
 
 /**
  * Why a submesh ended up without a texture on screen, or that it has one.
@@ -10,15 +9,14 @@ import { VisualTextureDependency } from "@/core/ipc/types/xrf-visual";
 export enum EVisualTextureState {
   /** The submesh declares no texture, which is normal for a skeleton's own record. */
   ABSENT = "absent",
-  /** Bytes are still on the way. */
+  /** The renderer has not read it yet. */
   LOADING = "loading",
-  /** Uploaded and applied, in the layout the file stores. */
+  /** Drawn, uploaded in the layout the file stores. */
   APPLIED = "applied",
   /**
-   * Applied, but expanded by the backend first because the renderer cannot upload this layout.
+   * Drawn, but expanded to eight bits a channel first because the GPU cannot sample this layout as stored.
    *
-   * Distinct from `APPLIED` because the upload is not the file: it arrives as one png, so it carries no mip chain
-   * whatever the file's header says, and costs the memory of raw pixels rather than of blocks.
+   * Distinct from `APPLIED` because the upload is not the file: it costs the memory of raw pixels rather than of blocks.
    */
   DECODED = "decoded",
   /** Located, but stored in a format neither the renderer nor the backend can read. */
@@ -40,38 +38,7 @@ export interface IVisualTextureStatus {
 }
 
 /**
- * One texture file a model is drawn with, as it was read.
- */
-export interface IVisualTextureFile {
-  /** Engine path, so a file read once is uploaded once however many submeshes name it. */
-  logicalPath: string;
-  bytes: ArrayBuffer;
-  /** Whether those bytes are the backend's picture of a layout three.js refused, rather than the file. */
-  isDecoded: boolean;
-}
-
-/** A submesh texture whose bytes can be fetched, and the located file to fetch them from. */
-export interface ILoadableTexture {
-  submeshIndex: number;
-  logicalPath: string;
-}
-
-/**
- * Submeshes worth fetching bytes for, paired with the logical path to fetch.
- *
- * The path comes from the outcome rather than from the reference, so the read lands on the file resolution named — a
- * substituted dummy included — instead of resolving a second time and possibly differently.
- */
-export function toLoadableTextures(textures: Array<VisualTextureDependency>): Array<ILoadableTexture> {
-  return textures.flatMap((texture) => {
-    const asset: Nullable<XrayAsset> = getLocatedAsset(texture.resolution);
-
-    return asset ? [{ submeshIndex: texture.submeshIndex, logicalPath: asset.logicalPath }] : [];
-  });
-}
-
-/**
- * The state a submesh starts in, before any bytes are asked for.
+ * The state a submesh starts in, before the renderer reads anything.
  *
  * A rejected reference is a failure rather than an absence: the name in the mesh header is unusable, which is worth
  * saying rather than showing the submesh as having nothing to load.

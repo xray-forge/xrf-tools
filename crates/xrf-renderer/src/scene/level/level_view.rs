@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -19,6 +20,7 @@ use crate::contract::render_lights_report::RenderLightsReport;
 use crate::contract::render_lights_settings::RenderLightsSettings;
 use crate::contract::render_load_failure::RenderLoadFailure;
 use crate::contract::render_load_report::RenderLoadReport;
+use crate::contract::render_model_pose::RenderModelPose;
 use crate::contract::render_overlay::RenderOverlay;
 use crate::contract::render_pass_cost::RenderPassCost;
 use crate::contract::render_pool_use::RenderPoolUse;
@@ -47,6 +49,7 @@ use crate::frame::view_targets::ViewTargets;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::host::render_level_source::RenderLevelSource;
 use crate::host::render_level_weather::RenderLevelWeather;
+use crate::host::render_motion::RenderMotion;
 use crate::host::render_rain::RenderRain;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::pass::ambient_occlusion_uniform::AmbientOcclusionUniform;
@@ -78,6 +81,8 @@ use crate::scene::level::level_loader::LevelLoader;
 use crate::scene::level::level_overlays::LevelOverlays;
 use crate::scene::level::level_shadows::LevelShadows;
 use crate::scene::level::level_smoothing::LevelSmoothing;
+use crate::scene::level::model_motions::ModelMotions;
+use crate::scene::level::posed_skeleton::PosedSkeleton;
 use crate::scene::level::rain_cover::RainCover;
 use crate::scene::level::shadow_frame::ShadowFrame;
 use crate::scene::level::shadow_sway::ShadowSway;
@@ -234,6 +239,10 @@ pub struct LevelView {
   pick_view: Option<ViewBinding>,
   surfaces: SurfaceTally,
   failed: u32,
+  /// Each skinned object's skeleton, by its index, the motions they are posed by, and the pose asked for.
+  skeletons: HashMap<u32, PosedSkeleton>,
+  motions: ModelMotions,
+  model_pose: RenderModelPose,
   /// The sectors that could not be read, and the drawables the packer left out of those that were.
   failed_sectors: Vec<RenderLoadFailure>,
   skipped: Vec<RenderSectorSkip>,
@@ -348,6 +357,9 @@ impl LevelView {
       pick_view: None,
       surfaces: SurfaceTally::default(),
       failed: 0,
+      skeletons: HashMap::new(),
+      motions: ModelMotions::default(),
+      model_pose: RenderModelPose::default(),
       failed_sectors: Vec::new(),
       skipped: Vec::new(),
       sector_time: 0.0,
@@ -462,10 +474,16 @@ impl LevelView {
       }
     }
 
-    for (model, places) in self.spawn.take(MODELS_PER_FRAME) {
+    for (model, places, skeleton) in self.spawn.take(MODELS_PER_FRAME) {
       self
         .scene
         .add_model(device, queue, encoder, textures, &assets, &model, &places);
+
+      if let Some(skeleton) = skeleton.filter(|_| model.skin.is_some()) {
+        for place in &places {
+          self.skeletons.insert(place.object, PosedSkeleton::new(&skeleton));
+        }
+      }
     }
   }
 
@@ -510,6 +528,15 @@ impl LevelView {
     }
 
     self.scene.reset_draws(device, queue, encoder);
+    self.pose_skeletons(queue);
+
+    if self.overlays.as_ref().is_some_and(|it| it.skeleton.is_some()) {
+      let segments: Vec<(Vec3, Vec3)> = self.list_skeleton_segments();
+
+      if let Some(overlays) = &mut self.overlays {
+        overlays.set_skeleton(device, &segments);
+      }
+    }
 
     let generation: u64 = self.scene.get_generation();
     let cull_key: (u64, u64) = (generation, self.targets_epoch);
@@ -1630,6 +1657,49 @@ impl LevelView {
   /// Whether its passes are timed, and each one's mean GPU milliseconds since this was last asked.
   pub fn take_timings(&mut self) -> (bool, Vec<RenderPassCost>) {
     (self.timer.is_timing(), self.timer.take())
+  }
+
+  /// Stands every skinned object as asked from the next frame on.
+  pub fn set_model_pose(&mut self, pose: &RenderModelPose) {
+    if self.model_pose != *pose {
+      self.model_pose = pose.clone();
+    }
+  }
+
+  /// Writes every skinned object's bone matrices for this frame, and the last frame's beside them; a motion still on
+  /// its way poses the bind pose meanwhile.
+  fn pose_skeletons(&mut self, queue: &wgpu::Queue) {
+    if self.skeletons.is_empty() {
+      return;
+    }
+
+    let pose: &RenderModelPose = &self.model_pose;
+    let motion: Option<&RenderMotion> = match &pose.motion {
+      Some(name) => self.motions.get(&self.source, name),
+      None => None,
+    };
+
+    for (object, skeleton) in &mut self.skeletons {
+      let (current, previous) = skeleton.pose(motion, pose.frame, &pose.hidden_bones);
+
+      self.scene.write_pose(queue, *object, &current, &previous);
+    }
+  }
+
+  /// Every skinned object's bones as segments in renderer space, child then parent, where this frame poses them.
+  pub fn list_skeleton_segments(&self) -> Vec<(Vec3, Vec3)> {
+    self
+      .skeletons
+      .iter()
+      .flat_map(|(object, skeleton)| {
+        let place: Mat4 = self.scene.get_object_transform(*object).unwrap_or(Mat4::IDENTITY);
+
+        skeleton
+          .list_segments()
+          .into_iter()
+          .map(move |(child, parent)| (place.transform_point3(child), place.transform_point3(parent)))
+      })
+      .collect()
   }
 
   /// What the level could not draw the way it asked, so far.

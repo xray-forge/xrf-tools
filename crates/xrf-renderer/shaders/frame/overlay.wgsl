@@ -45,6 +45,55 @@ fn fs_line(in: LineVarying) -> @location(0) vec4<f32> {
   return vec4<f32>(in.color, 1.0);
 }
 
+struct PointVarying {
+  @builtin(position) clip: vec4<f32>,
+  // Where in the disc's square, from minus one to one.
+  @location(0) corner: vec2<f32>,
+  @location(1) @interpolate(flat) color: vec3<f32>,
+  // The point's own depth, which a tested disc is hidden by as a whole.
+  @location(2) @interpolate(flat) depth: f32,
+  @location(3) @interpolate(flat) is_depth_tested: u32,
+};
+
+// A point's disc, two triangles of its square, `point.w` pixels across where it stands.
+@vertex
+fn vs_point(@builtin(vertex_index) index: u32, @location(0) point: vec4<f32>, @location(1) color: vec4<f32>)
+  -> PointVarying {
+  var corners: array<vec2<f32>, 6> = array<vec2<f32>, 6>(
+    vec2<f32>(-1.0, -1.0), vec2<f32>(1.0, -1.0), vec2<f32>(1.0, 1.0),
+    vec2<f32>(-1.0, -1.0), vec2<f32>(1.0, 1.0), vec2<f32>(-1.0, 1.0),
+  );
+  let center: vec4<f32> = camera.view_projection * vec4<f32>(point.xyz, 1.0);
+  let corner: vec2<f32> = corners[index];
+  var out: PointVarying;
+
+  out.clip = vec4<f32>(center.xy + corner * point.w / present.size * center.w, center.z, center.w);
+  out.corner = corner;
+  out.color = color.rgb;
+  out.depth = center.z / center.w;
+  out.is_depth_tested = u32(color.a > 0.5);
+
+  return out;
+}
+
+@fragment
+fn fs_point(in: PointVarying) -> @location(0) vec4<f32> {
+  if (length(in.corner) > 1.0) {
+    discard;
+  }
+
+  if (in.is_depth_tested != 0u) {
+    let texel: vec2<i32> = to_drawn_texel(floor(in.clip.xy - present.origin), camera.viewport.xy, present.size);
+
+    // Depth is reversed: the scene stands in front where it holds the larger value.
+    if (textureLoad(depth_target, texel, 0) > in.depth) {
+      discard;
+    }
+  }
+
+  return vec4<f32>(in.color, 1.0);
+}
+
 struct SunVarying {
   @builtin(position) clip: vec4<f32>,
   // Where in the disc's square, from minus one to one.

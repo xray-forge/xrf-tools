@@ -37,11 +37,7 @@ export class SequencerService extends VisualInspectionService {
    */
   @Computed()
   public get pose(): IVisualPose {
-    return {
-      floatsPerBone: this.sequenceService.floatsPerBone,
-      frame: this.sequenceService.frame,
-      transforms: this.sequenceService.transforms,
-    };
+    return { frame: this.sequenceService.frame, motion: this.sequenceService.motion };
   }
 
   /**

@@ -174,7 +174,12 @@ impl RenderThread {
       RenderCommand::Settings { settings } => self.settings = settings,
       RenderCommand::Options { id, options } => {
         if let Some(viewport) = self.viewports.get_mut(&id) {
-          viewport.options = options;
+          viewport.options = *options;
+        }
+      }
+      RenderCommand::PoseModel { id, pose } => {
+        if let Some(viewport) = self.viewports.get_mut(&id) {
+          viewport.model_pose = pose;
         }
       }
       RenderCommand::Overlays { id, overlays } => {
@@ -577,7 +582,8 @@ impl RenderThread {
         queue,
         &CameraUniform::new(&drawn, drawn_rect, switches)
           .with_wireframe(options.is_wireframe)
-          .with_motion(motion),
+          .with_motion(motion)
+          .with_asset_view(options.checker, options.is_alpha_visible, options.backdrop),
       );
 
       let Some(source) = &viewport.level else {
@@ -587,15 +593,23 @@ impl RenderThread {
         .level_view
         .get_or_insert_with(|| LevelView::new(device, queue, &gpu.view_layout, Arc::clone(source)));
 
+      // An asset viewer lights by its rig rather than a weather, and plays none.
+      let asset_lighting: Option<RenderLighting> = options.asset_lighting.as_ref().map(RenderLighting::for_asset);
+      let (lighting, weather) = match &asset_lighting {
+        Some(lighting) => (lighting, None),
+        None => (viewport.weather.get_lighting(), viewport.weather.get_level()),
+      };
+
       level.set_timed(self.settings.is_gpu_timed);
       level.set_overlays(device, &viewport.overlays, viewport.overlays_version);
+      level.set_model_pose(&viewport.model_pose);
       level.load(
         device,
         queue,
         &mut encoder,
         (&mut gpu.textures, &mut gpu.weather_textures),
         &gpu.grass,
-        (viewport.weather.get_lighting(), viewport.weather.get_level()),
+        (lighting, weather),
         &options,
       );
       level.prepare(
@@ -607,7 +621,7 @@ impl RenderThread {
         ((drawn_rect.width, drawn_rect.height), *rect),
         viewport.camera.get_field_of_view(),
         &options,
-        (viewport.weather.get_lighting(), viewport.weather.get_level()),
+        (lighting, weather),
         &gpu.weather_textures,
       );
       level.record(

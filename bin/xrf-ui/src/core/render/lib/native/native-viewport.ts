@@ -14,6 +14,7 @@ import {
   RenderLevelHit,
   RenderLevelProblems,
   RenderLoadReport,
+  RenderModelPose,
   RenderOverlay,
   RenderSurfaceGeometry,
   RenderTextureReport,
@@ -189,11 +190,6 @@ export class NativeViewport {
   }
 
   /**
-   * Says what became of every texture the viewport's level samples.
-   *
-   * @returns Each texture's reference and state, or none for a viewport not attached or a description that failed.
-   */
-  /**
    * @returns What the viewport's level could not draw the way it asked; nothing for a viewport not attached or a
    *   description that failed.
    */
@@ -232,6 +228,11 @@ export class NativeViewport {
     }
   }
 
+  /**
+   * Says what became of every texture the viewport's level samples.
+   *
+   * @returns Each texture's reference and state, or none for a viewport not attached or a description that failed.
+   */
   public async describeTextures(): Promise<Array<RenderTextureReport>> {
     const id: Nullable<RenderViewportId> = await this.attached;
 
@@ -253,6 +254,23 @@ export class NativeViewport {
    */
   public showLevel(sessionId: Nullable<string>): void {
     this.call((id: RenderViewportId) => renderCommands.showLevel(id, sessionId).then(() => undefined));
+  }
+
+  /**
+   * Draws an open model alone, at the origin, or none.
+   *
+   * @param sessionId - The model's open session, as the backend holds it, or null for no model.
+   * @param detail - How far down each submesh's collapse chain to draw: zero its finest level, one its coarsest.
+   */
+  public showModel(sessionId: Nullable<string>, detail: number): void {
+    this.call((id: RenderViewportId) => renderCommands.showModel(id, sessionId, detail).then(() => undefined));
+  }
+
+  /**
+   * @param pose - How the viewport's skinned models stand from now on.
+   */
+  public poseModel(pose: RenderModelPose): void {
+    this.call((id: RenderViewportId) => renderCommands.poseModel(id, pose));
   }
 
   /** Stops drawing; the renderer lets its GPU go a few seconds after the last viewport. */

@@ -1,6 +1,7 @@
 pub(crate) mod render_ambient_occlusion_quality;
 pub(crate) mod render_ambient_occlusion_settings;
 pub(crate) mod render_antialiasing;
+pub(crate) mod render_asset_lighting;
 pub(crate) mod render_camera;
 pub(crate) mod render_camera_command;
 pub(crate) mod render_camera_pose;
@@ -22,6 +23,7 @@ pub(crate) mod render_lights_settings;
 pub(crate) mod render_load_failure;
 pub(crate) mod render_load_report;
 pub(crate) mod render_lod_settings;
+pub(crate) mod render_model_pose;
 pub(crate) mod render_overlay;
 pub(crate) mod render_pass_cost;
 pub(crate) mod render_pool_use;
