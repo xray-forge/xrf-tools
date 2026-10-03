@@ -107,6 +107,7 @@ fn fade_sky(from: &RenderSky, to: &RenderSky, t: f32) -> RenderSky {
       color: from.clouds.color.lerp(to.clouds.color, t),
       rotation: from.clouds.rotation + (to.clouds.rotation - from.clouds.rotation) * t,
     },
+    sun: to.sun.clone(),
   }
 }
 

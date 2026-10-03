@@ -26,11 +26,21 @@
 // What shows where nothing was drawn and neither the sky nor the fog is: the level viewer's backdrop, #202428.
 const BACKDROP: vec3<f32> = vec3<f32>(32.0, 36.0, 40.0) / 255.0;
 
-// The world direction through a pixel of the viewport.
-fn pixel_direction(pixel: vec2<f32>) -> vec3<f32> {
-  let toward: vec3<f32> = camera_view_position(pixel, 0.5);
+// The view space direction through a pixel of the viewport.
+fn pixel_toward(pixel: vec2<f32>) -> vec3<f32> {
+  return normalize(camera_view_position(pixel, 0.5));
+}
 
+// The same direction in the world.
+fn world_direction(toward: vec3<f32>) -> vec3<f32> {
   return normalize((transpose(camera.view) * vec4<f32>(toward, 0.0)).xyz);
+}
+
+// The sky as the frame draws it behind a pixel: the sky, the sun's sprite on it, and the clouds over both.
+fn sky_drawn(direction: vec3<f32>, toward: vec3<f32>, scale: f32) -> vec3<f32> {
+  let below: vec3<f32> = sky_color(lighting, direction, scale) + sky_sun_sprite(lighting, toward);
+
+  return sky_with_clouds(lighting, direction, below, scale);
 }
 
 // The sky's haze along a world direction: the sky as drawn there, clouds and all, blurred past any shape; below the
@@ -43,8 +53,8 @@ fn sky_haze(direction: vec3<f32>) -> vec3<f32> {
 
 // What the distance fades into: the sky as drawn behind it; with the haze, its haze where the cubes stand above the
 // fold, so no cloud's shape lies over a far hill, and the rim as drawn under it, so the fade meets the sky exactly there.
-fn sky_behind(direction: vec3<f32>, scale: f32, is_hazed: bool) -> vec3<f32> {
-  let shown: vec3<f32> = sky_shown(lighting, direction, scale);
+fn sky_behind(direction: vec3<f32>, toward: vec3<f32>, scale: f32, is_hazed: bool) -> vec3<f32> {
+  let shown: vec3<f32> = sky_drawn(direction, toward, scale);
 
   if (!is_hazed) {
     return shown;
@@ -85,7 +95,8 @@ fn fs_combine(in: FullscreenVarying) -> @location(0) vec4<f32> {
   let is_fogged: bool = is_lit && lighting.fog_color.w > 0.5;
   // A level's frame draws its sky behind everything, so an empty pixel is the sky there instead.
   let is_sky_drawn: bool = is_lit && lighting.fog.w > 0.5;
-  let direction: vec3<f32> = pixel_direction(in.clip.xy);
+  let toward: vec3<f32> = pixel_toward(in.clip.xy);
+  let direction: vec3<f32> = world_direction(toward);
   let position: vec3<f32> = camera_view_position(in.clip.xy, max(depth, 1e-7));
   let fog: f32 = select(0.0, fog_amount(lighting, position), is_fogged);
   // The far plane ends where fog is total: past it is what anything there would have come to, the sky or the fog.
@@ -94,7 +105,7 @@ fn fs_combine(in: FullscreenVarying) -> @location(0) vec4<f32> {
 
   if (is_empty) {
     if (is_sky_drawn) {
-      return vec4<f32>(sky_shown(lighting, direction, scale), 1.0);
+      return vec4<f32>(sky_drawn(direction, toward, scale), 1.0);
     }
 
     if (is_fogged) {
@@ -125,5 +136,5 @@ fn fs_combine(in: FullscreenVarying) -> @location(0) vec4<f32> {
     return vec4<f32>(finished, 1.0);
   }
 
-  return vec4<f32>(mix(finished, sky_behind(direction, scale, is_hazed), fog * fog), 1.0);
+  return vec4<f32>(mix(finished, sky_behind(direction, toward, scale, is_hazed), fog * fog), 1.0);
 }

@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use xrf_engine_target::XrayEngine;
 use xrf_environment::{SunPosition, WeatherDescriptor, WeatherModifier};
 
+use crate::host::render_lens_flare::RenderLensFlare;
 use crate::host::render_rain::RenderRain;
 use crate::host::render_thunder::RenderThunder;
 use crate::host::render_wet_surfaces::RenderWetSurfaces;
@@ -24,4 +25,6 @@ pub struct RenderLevelWeather {
   pub wet: Option<RenderWetSurfaces>,
   /// What its weather strikes with.
   pub thunder: Option<RenderThunder>,
+  /// Every lens flare a keyframe may name by `sun`, by its section's name.
+  pub suns: HashMap<String, RenderLensFlare>,
 }

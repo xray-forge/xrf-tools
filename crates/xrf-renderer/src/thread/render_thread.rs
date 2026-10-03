@@ -733,6 +733,7 @@ impl RenderThread {
         &options,
         (lighting, weather),
         &gpu.weather_textures,
+        viewport.weather.get_player().get_clock_rate(),
       );
       level.record(
         device,

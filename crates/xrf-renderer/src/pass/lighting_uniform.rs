@@ -33,6 +33,9 @@ pub struct LightingUniform {
   /// `L_ambient` and `L_hemi_color` as a forward pass binds them: the weather's own, neither doubled nor scaled.
   pub forward_ambient: Vec4,
   pub forward_hemi: Vec4,
+  /// The sun's sprite colour times how far it has faded in, then half its side as a share of the distance it stands
+  /// at; zero where none is drawn.
+  pub sun_sprite: Vec4,
 }
 
 impl LightingUniform {
@@ -84,6 +87,7 @@ impl LightingUniform {
       ),
       forward_ambient: lighting.ambient_color.extend(0.0),
       forward_hemi: lighting.hemisphere_color.extend(0.0),
+      sun_sprite: frame.sun_sprite,
     }
   }
 }

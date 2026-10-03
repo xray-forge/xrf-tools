@@ -42,6 +42,7 @@ pub fn to_weather_lighting(
         color: Vec4::from(mix.clouds_color),
         rotation: mix.clouds_rotation,
       },
+      sun: if mix.weight < 0.5 { a.sun.clone() } else { b.sun.clone() },
     },
     trees: Some(RenderTreeWind {
       amplitude: mix.tree_amplitude,

@@ -6,6 +6,7 @@ mod frame_statistics;
 mod fsr;
 mod grass;
 mod headless;
+mod lens_flares;
 mod light_geometry;
 mod lighting;
 mod overlays;

@@ -3,16 +3,16 @@ use std::sync::{Arc, PoisonError, RwLock};
 use std::time::Instant;
 
 use xrf_chunk::XRayByteOrder;
-use xrf_environment::{WeatherDescriptor, WeatherModifier};
+use xrf_environment::{EnvironmentCatalog, WeatherDescriptor, WeatherModifier};
 use xrf_error::{XrfError, XrfResult};
 use xrf_level::{LevelSector, LevelSectorComposition};
 use xrf_ltx::Ltx;
 use xrf_material::XraySurfaceDescriptor;
 use xrf_renderer::{
-  RenderAssetSource, RenderLevelDetails, RenderLevelSource, RenderLevelSpawn, RenderLevelWeather, RenderLoadFailure,
-  RenderRain, RenderSpawnCategory, RenderSpawnLighting, RenderSpawnModel, RenderSpawnModels, RenderSpawnObject,
-  RenderThunder, RenderThunderSettings, RenderThunderbolt, RenderThunderboltGradient, RenderThunderboltModel,
-  RenderWeatherModel, RenderWetSurfaces,
+  RenderAssetSource, RenderLensFlare, RenderLevelDetails, RenderLevelSource, RenderLevelSpawn, RenderLevelWeather,
+  RenderLoadFailure, RenderRain, RenderSpawnCategory, RenderSpawnLighting, RenderSpawnModel, RenderSpawnModels,
+  RenderSpawnObject, RenderThunder, RenderThunderSettings, RenderThunderbolt, RenderThunderboltGradient,
+  RenderThunderboltModel, RenderWeatherModel, RenderWetSurfaces,
 };
 use xrf_visual::{LightsDescription, SectorPackage, SectorPacker, VisualPoser, VisualTransform};
 
@@ -22,6 +22,7 @@ use crate::plugins::levels::configs::get_level_sections;
 use crate::plugins::levels::details::{PackedLevelDetails, pack_details};
 use crate::plugins::levels::drawn_attributes::DRAWN_ATTRIBUTES;
 use crate::plugins::levels::hemi::{estimate_visuals_hemi, get_level_hemi};
+use crate::plugins::levels::lens_flares::to_render_lens_flare;
 use crate::plugins::levels::lights::{PackedLevelLights, pack_lights};
 use crate::plugins::levels::report::{report_missing_sections, report_packed_sector};
 use crate::plugins::levels::spawn::get_level_spawn;
@@ -216,6 +217,7 @@ impl RenderLevelSource for LevelRenderSource {
         flow: wet.flow.reference,
       }),
       thunder: Some(to_thunder(thunder)),
+      suns: to_suns(&environment.catalog),
     })
   }
 
@@ -366,6 +368,15 @@ fn to_weather_model(model: LevelWeatherModel) -> RenderWeatherModel {
     uvs: model.uvs,
     indices: model.indices,
   }
+}
+
+/// Every lens flare of the game as the renderer draws it, by section, each read as its engine reads it.
+fn to_suns(catalog: &EnvironmentCatalog) -> HashMap<String, RenderLensFlare> {
+  catalog
+    .suns
+    .iter()
+    .map(|sun| (sun.name.clone(), to_render_lens_flare(sun, catalog.engine)))
+    .collect()
 }
 
 /// What the level's weather strikes with as the renderer takes it, every texture by reference.

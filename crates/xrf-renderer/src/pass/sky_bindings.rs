@@ -49,6 +49,7 @@ impl SkyBindings {
           },
           count: NonZeroU32::new(ENVIRONMENT_SLOTS),
         },
+        texture_entry(9, fragment, filtered, flat),
       ],
     });
 
@@ -82,13 +83,13 @@ impl SkyBindings {
     &self.clamp
   }
 
-  /// Binds a sky's textures and the environment cubes as the cache holds them now, each slot its kind's placeholder
-  /// until its file is up; the first environment slot, and every one past `environments`, stands for none.
+  /// Binds a sky's textures, the sun's sprite and the environment cubes as the cache holds them now, each slot its kind's
+  /// placeholder until its file is up; the first environment slot, and every one past `environments`, stands for none.
   pub fn create_bind_group(
     &self,
     device: &wgpu::Device,
     cache: &WeatherTextureCache,
-    sky: &RenderSky,
+    (sky, sun): (&RenderSky, Option<&str>),
     environments: &[String],
   ) -> wgpu::BindGroup {
     let view = |reference: &Option<String>, kind: WeatherTextureKind| cache.get_view(reference.as_deref(), kind);
@@ -125,6 +126,7 @@ impl SkyBindings {
           binding: 8,
           resource: wgpu::BindingResource::TextureViewArray(&environment_views),
         },
+        texture_binding(9, cache.get_view(sun, WeatherTextureKind::Flat)),
       ],
     })
   }

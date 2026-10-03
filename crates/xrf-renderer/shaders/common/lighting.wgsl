@@ -27,6 +27,9 @@ struct Lighting {
   // `L_ambient` and `L_hemi_color` as a forward pass binds them: the weather's own, neither doubled nor scaled.
   forward_ambient: vec4<f32>,
   forward_hemi: vec4<f32>,
+  // rgb: the sun's sprite colour times how far it has faded in; w: half its side as a share of the distance it stands
+  // at, zero where none is drawn.
+  sun_sprite: vec4<f32>,
 };
 
 // The exposure's state as `frame/exposure.wgsl` adapts it, read from its head.

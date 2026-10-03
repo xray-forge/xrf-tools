@@ -59,6 +59,9 @@ pub struct RenderViewOptions {
   pub is_sky_hazed: bool,
   /// Whether the weather's clouds cross the sky.
   pub is_clouded: bool,
+  /// Whether the sun's lens flares are drawn over the frame, `disable_lens_flare 0`; its sprite and gradient are drawn
+  /// either way.
+  pub is_lens_flared: bool,
   /// Whether the weather's rain falls and wets surfaces.
   pub is_rainy: bool,
   /// Whether the weather's bolts strike.
@@ -116,6 +119,7 @@ impl Default for RenderViewOptions {
       is_sky_visible: true,
       is_sky_hazed: false,
       is_clouded: true,
+      is_lens_flared: true,
       is_rainy: true,
       is_thundering: true,
       is_windy: true,
