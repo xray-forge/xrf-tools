@@ -1,7 +1,6 @@
 mod console_defaults;
 mod level_start;
 mod new_game;
-mod packed_sectors;
 mod spawn_lighting;
 mod spawn_objects;
 mod surfaces;

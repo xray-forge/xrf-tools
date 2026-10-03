@@ -8,6 +8,7 @@ use glam::{Mat4, Vec2, Vec3, Vec4};
 use crate::camera::camera_view::CameraView;
 use crate::context::gpu_context::GpuContext;
 use crate::context::render_backend::RenderBackend;
+use crate::contract::render_level_problems::RenderLevelProblems;
 use crate::contract::render_rect::RenderRect;
 use crate::contract::render_scale::RenderScale;
 use crate::contract::render_settings::RenderSettings;
@@ -213,6 +214,26 @@ impl RenderThread {
           .unwrap_or_default();
 
         let _ = reply.send(described);
+      }
+      RenderCommand::DescribeProblems { id, reply } => {
+        let described: RenderLevelProblems = self
+          .viewports
+          .get(&id)
+          .and_then(|viewport| viewport.level_view.as_ref())
+          .map(LevelView::describe_problems)
+          .unwrap_or_default();
+
+        let _ = reply.send(described);
+      }
+      RenderCommand::LocateSpawnObject { id, object, reply } => {
+        let sphere: Option<[f32; 4]> = self
+          .viewports
+          .get(&id)
+          .and_then(|viewport| viewport.level_view.as_ref())
+          .and_then(|level| level.get_object_sphere(object))
+          .map(|sphere| sphere.to_array());
+
+        let _ = reply.send(sphere);
       }
       RenderCommand::Capture { id, reply } => {
         if let Some(viewport) = self.viewports.get_mut(&id) {

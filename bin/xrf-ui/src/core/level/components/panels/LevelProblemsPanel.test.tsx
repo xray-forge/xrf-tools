@@ -2,21 +2,18 @@ import { describe, expect, it } from "@jest/globals";
 import { RenderResult, within } from "@testing-library/react";
 import { Container } from "@wirestate/core";
 
-import { LevelSpawnModelFailure } from "@/core/ipc/types/xrf-app";
 import { EXrayEngine } from "@/core/ipc/types/xrf-engine-target";
+import { RenderLoadFailure } from "@/core/ipc/types/xrf-renderer";
 import { EMPTY_LEVEL_TEXTURE_REPORT } from "@/core/level/lib/texture/level-texture-report";
 import { LevelLoadService, LevelViewportService } from "@/core/level/services";
-import { setMockBulkResponses } from "@/fixtures/mocks/bulk.mocks";
 import {
   mockLevelSpawnObject,
   mockLevelTextureReference,
-  mockSectorDescription,
   mockSectorOutline,
   mockSelectedLevelDescription,
 } from "@/fixtures/mocks/level.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
-import { MockVisualBuffer } from "@/fixtures/mocks/visual.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
@@ -25,13 +22,11 @@ import { LevelProblemsPanel } from "./LevelProblemsPanel";
 interface IRenderProblemsOptions {
   /** Whether the roots hold the level's one texture. */
   isPresent: boolean;
-  /** A spawned visual the backend could not read, if any. */
-  unreadable?: LevelSpawnModelFailure;
+  /** A spawned visual the renderer could not read, if any. */
+  unreadable?: RenderLoadFailure;
 }
 
 async function renderProblems({ isPresent, unreadable }: IRenderProblemsOptions): Promise<RenderResult> {
-  const buffer: MockVisualBuffer = new MockVisualBuffer();
-  const description = mockSectorDescription(buffer);
   const level = mockSelectedLevelDescription({
     sectors: [mockSectorOutline({ sector: 0 })],
     textures: [mockLevelTextureReference("stone", isPresent)],
@@ -39,30 +34,15 @@ async function renderProblems({ isPresent, unreadable }: IRenderProblemsOptions)
 
   setMockInvokeResponses({
     ["plugin:levels|open_level"]: mockSessionResponse(level),
-    ["plugin:levels|open_sector"]: mockSessionResponse(description),
-    // A spawn placing nothing drawn, which a clean level may well have.
-    ["plugin:levels|open_spawn_objects"]: mockSessionResponse({ objects: [], visuals: [] }),
-    ...(unreadable
-      ? {
-          ["plugin:levels|describe_spawn_models"]: mockSessionResponse({
-            failures: [unreadable],
-            hemi: [],
-            models: [],
-          }),
-          ["plugin:levels|open_spawn_objects"]: mockSessionResponse({
-            objects: [mockLevelSpawnObject()],
-            visuals: [unreadable.name],
-          }),
-        }
-      : {}),
-  });
-
-  setMockBulkResponses({
-    "levels/read_sector": buffer.toArrayBuffer(),
+    // A spawn placing one object, or nothing drawn, which a clean level may well have.
+    ["plugin:levels|open_spawn_objects"]: mockSessionResponse(
+      unreadable ? { objects: [mockLevelSpawnObject()], visuals: [unreadable.name] } : { objects: [], visuals: [] }
+    ),
   });
 
   const container: Container = mockContainer([LevelLoadService, LevelViewportService]);
   const service: LevelLoadService = container.get(LevelLoadService);
+  const viewport: LevelViewportService = container.get(LevelViewportService);
 
   await service.load({
     source: { kind: "asset", logicalPath: "levels\\zaton" },
@@ -70,12 +50,10 @@ async function renderProblems({ isPresent, unreadable }: IRenderProblemsOptions)
     isDltx: false,
     engine: EXrayEngine.VANILLA,
   });
-  await service.stream({ x: 0, y: 0, z: 0 });
-  await service.whenHeldRead();
 
-  // What the textures came to is the answer of whichever side uploaded them, so the panel is given it rather
-  // than reaching for a set it can no longer see.
-  container.get(LevelViewportService).noteTextures(
+  // What the textures came to and what the level could not draw are the renderer's answers, so the panel is given
+  // them rather than reaching for what it can no longer see.
+  viewport.noteTextures(
     isPresent
       ? EMPTY_LEVEL_TEXTURE_REPORT
       : {
@@ -84,6 +62,7 @@ async function renderProblems({ isPresent, unreadable }: IRenderProblemsOptions)
           uploaded: 0,
         }
   );
+  viewport.noteProblems({ models: unreadable ? [unreadable] : [], sectors: [], skipped: [] });
 
   return renderWithProviders(<LevelProblemsPanel />, { container });
 }

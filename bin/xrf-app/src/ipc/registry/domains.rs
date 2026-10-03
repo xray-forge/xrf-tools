@@ -96,31 +96,23 @@ macro_rules! for_each_tauri_command_domain {
       levels => "levels" {
         close_level => crate::plugins::levels::commands::close_level::levels_close_level,
         describe_console_defaults => crate::plugins::levels::commands::describe_console_defaults::levels_describe_console_defaults,
-        describe_spawn_models => crate::plugins::levels::commands::describe_spawn_models::levels_describe_spawn_models,
         describe_spawn_object => crate::plugins::levels::commands::describe_spawn_object::levels_describe_spawn_object,
         get_level => crate::plugins::levels::commands::get_level::levels_get_level,
         list_levels => crate::plugins::levels::commands::list_levels::levels_list_levels,
-        open_details => crate::plugins::levels::commands::open_details::levels_open_details,
         open_level => crate::plugins::levels::commands::open_level::levels_open_level,
-        open_lights => crate::plugins::levels::commands::open_lights::levels_open_lights,
-        open_sector => crate::plugins::levels::commands::open_sector::levels_open_sector,
         open_spawn_objects => crate::plugins::levels::commands::open_spawn_objects::levels_open_spawn_objects,
         read_level_cycle => crate::plugins::levels::commands::read_level_cycle::levels_read_level_cycle,
         read_level_weather => crate::plugins::levels::commands::read_level_weather::levels_read_level_weather,
-        resolve_level_textures => crate::plugins::levels::commands::resolve_level_textures::levels_resolve_level_textures,
-      }
-      @bulk {
-        read_details(sessionId: "SessionId", detailsId: "SessionId") => crate::plugins::levels::routes::read_details::levels_read_details,
-        read_sector(sessionId: "SessionId", sectorId: "SessionId") => crate::plugins::levels::routes::read_sector::levels_read_sector,
-        read_spawn_model(sessionId: "SessionId", name: "string") => crate::plugins::levels::routes::read_spawn_model::levels_read_spawn_model,
       }
       // Native viewports drawn by the renderer into the calling window, under its webview.
       render => "render" {
         attach_viewport => crate::plugins::render::commands::attach_viewport::render_attach_viewport,
         command_camera => crate::plugins::render::commands::command_camera::render_command_camera,
         configure => crate::plugins::render::commands::configure::render_configure,
+        describe_problems => crate::plugins::render::commands::describe_problems::render_describe_problems,
         describe_textures => crate::plugins::render::commands::describe_textures::render_describe_textures,
         detach_viewport => crate::plugins::render::commands::detach_viewport::render_detach_viewport,
+        locate_spawn_object => crate::plugins::render::commands::locate_spawn_object::render_locate_spawn_object,
         measure_surfaces => crate::plugins::render::commands::measure_surfaces::render_measure_surfaces,
         pick => crate::plugins::render::commands::pick::render_pick,
         play_weather => crate::plugins::render::commands::play_weather::render_play_weather,

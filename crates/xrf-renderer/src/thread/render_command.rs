@@ -4,6 +4,7 @@ use std::sync::mpsc::Sender;
 use crate::contract::render_camera::RenderCamera;
 use crate::contract::render_camera_command::RenderCameraCommand;
 use crate::contract::render_input_event::RenderInputEvent;
+use crate::contract::render_level_problems::RenderLevelProblems;
 use crate::contract::render_overlay::RenderOverlay;
 use crate::contract::render_settings::RenderSettings;
 use crate::contract::render_surface_geometry::RenderSurfaceGeometry;
@@ -72,6 +73,17 @@ pub enum RenderCommand {
   DescribeTextures {
     id: RenderViewportId,
     reply: Sender<Vec<RenderTextureReport>>,
+  },
+  /// Says what a viewport's level could not draw; empty where it draws no level.
+  DescribeProblems {
+    id: RenderViewportId,
+    reply: Sender<RenderLevelProblems>,
+  },
+  /// Finds a spawned object's bounding sphere in a viewport's level, none until its model is in the scene.
+  LocateSpawnObject {
+    id: RenderViewportId,
+    object: u32,
+    reply: Sender<Option<[f32; 4]>>,
   },
   /// Reads a viewport's next presented frame back.
   Capture {

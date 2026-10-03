@@ -1,19 +1,27 @@
 import { describe, expect, it } from "@jest/globals";
 
 import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
+import { RenderSectorSkip } from "@/core/ipc/types/xrf-renderer";
+import { SectorSkip } from "@/core/ipc/types/xrf-visual";
 import { ELevelProblemRule, ILevelProblemSources, listLevelProblems } from "@/core/level/lib/problems";
-import { ILevelSectorSkip } from "@/core/level/lib/sector/level-sector-report";
-import { ISectorViews } from "@/core/level/lib/sector/level-sector-views";
 import { EMPTY_LEVEL_SPAWN_REPORT } from "@/core/level/lib/spawn/level-spawn-report";
 import { IEditorProblem } from "@/core/shell/editor/EditorProblemsPanel";
 import { mockSurfaceDescriptor } from "@/fixtures/mocks/visual.mocks";
 
-function sectorOf(sector: number, skipped: ISectorViews["skipped"]): ReadonlyArray<ILevelSectorSkip> {
-  return skipped.map((skip) => ({ sector, skip }));
+function sectorOf(sector: number, skipped: ReadonlyArray<SectorSkip>): ReadonlyArray<RenderSectorSkip> {
+  return skipped.map((skip: SectorSkip) => ({ sector, skip }));
 }
 
 function mockSources(overrides: Partial<ILevelProblemSources> = {}): ILevelProblemSources {
-  return { skipped: [], spawn: EMPTY_LEVEL_SPAWN_REPORT, surfaces: [], textures: [], ...overrides };
+  return {
+    models: [],
+    sectors: [],
+    skipped: [],
+    spawn: EMPTY_LEVEL_SPAWN_REPORT,
+    surfaces: [],
+    textures: [],
+    ...overrides,
+  };
 }
 
 describe("listLevelProblems", () => {
@@ -67,7 +75,7 @@ describe("listLevelProblems", () => {
   // Geometry the packer could not read is simply absent from the picture, which is the hardest kind of wrong to
   // notice: nothing is drawn oddly, something is not drawn at all.
   it("names what a resident sector could not pack, and why it counts as missing", () => {
-    const sectors: ReadonlyArray<ILevelSectorSkip> = sectorOf(4, [
+    const sectors: ReadonlyArray<RenderSectorSkip> = sectorOf(4, [
       { cause: "unsupported", drawable: 91, reason: "progressive geometry" },
     ]);
     const problems: Array<IEditorProblem> = listLevelProblems(mockSources({ skipped: sectors }));
@@ -77,11 +85,21 @@ describe("listLevelProblems", () => {
     expect(problems[0].rule).toBe(ELevelProblemRule.DRAWABLE);
   });
 
-  it("names a spawned visual that could not be read, whose objects are absent", () => {
+  it("names a sector that could not be read at all, before the drawables of those that were", () => {
     const problems: Array<IEditorProblem> = listLevelProblems(
       mockSources({
-        spawn: { ...EMPTY_LEVEL_SPAWN_REPORT, failures: [{ name: "physics\\box", reason: "Failed to read visual" }] },
+        sectors: [{ name: "7", reason: "truncated chunk" }],
+        skipped: sectorOf(4, [{ cause: "malformed", drawable: 2, reason: "bad range" }]),
       })
+    );
+
+    expect(problems.map((it) => it.subject)).toEqual(["sector 7", "sector 4, visual 2"]);
+    expect(problems[0].message).toBe("Nothing of it is drawn: truncated chunk");
+  });
+
+  it("names a spawned visual that could not be read, whose objects are absent", () => {
+    const problems: Array<IEditorProblem> = listLevelProblems(
+      mockSources({ models: [{ name: "physics\\box", reason: "Failed to read visual" }] })
     );
 
     expect(problems).toEqual([
@@ -97,11 +115,8 @@ describe("listLevelProblems", () => {
   it("names the spawn itself where it could not be read, before any visual", () => {
     const problems: Array<IEditorProblem> = listLevelProblems(
       mockSources({
-        spawn: {
-          ...EMPTY_LEVEL_SPAWN_REPORT,
-          failure: "Failed to read 'spawns\\all.spawn': truncated chunk",
-          failures: [{ name: "box", reason: "missing" }],
-        },
+        models: [{ name: "box", reason: "missing" }],
+        spawn: { ...EMPTY_LEVEL_SPAWN_REPORT, failure: "Failed to read 'spawns\\all.spawn': truncated chunk" },
       })
     );
 
@@ -109,18 +124,12 @@ describe("listLevelProblems", () => {
     expect(problems[0].message).toBe("No spawned object is drawn: Failed to read 'spawns\\all.spawn': truncated chunk");
   });
 
-  it("says how much of the spawn is not drawn where its read stopped part way", () => {
-    const problems: Array<IEditorProblem> = listLevelProblems(
-      mockSources({ spawn: { ...EMPTY_LEVEL_SPAWN_REPORT, failure: "lost", objects: 90, read: 24, visuals: 30 } })
-    );
-
-    expect(problems.map((it) => it.message)).toEqual(["The objects of 6 of 30 visuals are not drawn: lost"]);
-  });
-
   it("orders the four sources, so one reading is always in the same place", () => {
     const problems: Array<IEditorProblem> = listLevelProblems({
+      models: [{ name: "box", reason: "missing" }],
+      sectors: [],
       skipped: sectorOf(0, [{ cause: "malformed", drawable: 1, reason: "bad range" }]),
-      spawn: { ...EMPTY_LEVEL_SPAWN_REPORT, failures: [{ name: "box", reason: "missing" }] },
+      spawn: EMPTY_LEVEL_SPAWN_REPORT,
       surfaces: [mockSurfaceDescriptor({ declaration: { kind: "undefined" } })],
       textures: [{ reason: "missing", reference: "stone" }],
     });

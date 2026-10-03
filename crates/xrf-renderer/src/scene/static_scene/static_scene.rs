@@ -103,6 +103,8 @@ pub struct StaticScene {
   contents: usize,
   /// The spawned object standing at each of the models' places, which a pick of one names.
   place_objects: HashMap<u32, u32>,
+  /// Each spawned object's bounding sphere in renderer space, by its index, as its model stands in its place.
+  object_spheres: HashMap<u32, Vec4>,
   /// The models' places with composited surfaces, which a view draws back to front itself.
   pub sorted_places: Vec<StaticSortedPlace>,
 }
@@ -199,6 +201,7 @@ impl StaticScene {
       sway_reach: 0.0,
       contents: 0,
       place_objects: HashMap::new(),
+      object_spheres: HashMap::new(),
       sorted_places: Vec::new(),
     };
     let mut encoder: wgpu::CommandEncoder = device.create_command_encoder(&Default::default());
@@ -266,6 +269,11 @@ impl StaticScene {
   /// The spawned object a picked place is, where it is one.
   pub fn resolve_spawn_pick(&self, place: u32) -> Option<u32> {
     self.place_objects.get(&place).copied()
+  }
+
+  /// A spawned object's bounding sphere in renderer space, once its model is in the scene.
+  pub fn get_object_sphere(&self, object: u32) -> Option<Vec4> {
+    self.object_spheres.get(&object).copied()
   }
 
   /// Bytes of every pack put into the scene.
@@ -455,6 +463,12 @@ impl StaticScene {
       let index: u32 = self.place_count;
 
       self.place_objects.insert(index, place.object);
+      self.object_spheres.insert(
+        place.object,
+        matrix
+          .transform_point3(model.sphere.truncate())
+          .extend(model.sphere.w * scale),
+      );
 
       if !sorted.is_empty() {
         self.sorted_places.push(StaticSortedPlace {

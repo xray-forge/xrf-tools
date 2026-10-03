@@ -9,6 +9,7 @@ use crate::contract::render_camera_command::RenderCameraCommand;
 use crate::contract::render_capture::RenderCapture;
 use crate::contract::render_input_event::RenderInputEvent;
 use crate::contract::render_level_hit::RenderLevelHit;
+use crate::contract::render_level_problems::RenderLevelProblems;
 use crate::contract::render_overlay::RenderOverlay;
 use crate::contract::render_settings::RenderSettings;
 use crate::contract::render_surface_geometry::RenderSurfaceGeometry;
@@ -98,6 +99,25 @@ impl Renderer {
     let (reply, answer) = channel();
 
     self.send(RenderCommand::DescribeTextures { id, reply });
+
+    answer
+  }
+
+  /// What a viewport's level could not draw the way it asked, answered at once.
+  pub fn describe_problems(&self, id: RenderViewportId) -> Receiver<RenderLevelProblems> {
+    let (reply, answer) = channel();
+
+    self.send(RenderCommand::DescribeProblems { id, reply });
+
+    answer
+  }
+
+  /// A spawned object's bounding sphere in renderer space, centre then radius, answered at once; none until its model
+  /// is in the scene.
+  pub fn locate_spawn_object(&self, id: RenderViewportId, object: u32) -> Receiver<Option<[f32; 4]>> {
+    let (reply, answer) = channel();
+
+    self.send(RenderCommand::LocateSpawnObject { id, object, reply });
 
     answer
   }

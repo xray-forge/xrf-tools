@@ -1,6 +1,7 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
 import { WeatherDescriptor } from "@/core/ipc/types/xrf-environment";
+import { SectorSkip } from "@/core/ipc/types/xrf-visual";
 
 /** How hard the ambient occlusion searches: XeGTAO's presets. */
 export enum ERenderAmbientOcclusionQuality {
@@ -305,6 +306,16 @@ export type RenderLevelHit =
     };
 
 /**
+ * What a viewport's level could not draw the way the level asked: drawables left out of the sectors resident, sectors
+ * that could not be read, and spawned models that could not be.
+ */
+export type RenderLevelProblems = {
+  skipped: Array<RenderSectorSkip>;
+  sectors: Array<RenderLoadFailure>;
+  models: Array<RenderLoadFailure>;
+};
+
+/**
  * How a game's console scales the weather's light (`r2_sun_lumscale`, `r2_sun_lumscale_hemi`,
  * `r2_sun_lumscale_amb`): the sun's colour, and the hemisphere and the ambient the deferred frame is combined with.
  */
@@ -348,6 +359,15 @@ export type RenderLightsSettings = {
   /** Whether a light the engine shadows casts its shadows. */
   isShadowed: boolean;
   shadowFilter: RenderLightShadowFilter;
+};
+
+/**
+ * Something of a level that could not be read, by what names it, and why: a sector by its index, a spawned model by
+ * its visual's name.
+ */
+export type RenderLoadFailure = {
+  name: string;
+  reason: string;
 };
 
 /** How far a viewport's scene has been read and put on the GPU. */
@@ -461,6 +481,12 @@ export enum ERenderScale {
 
 /** Every `ERenderScale` as the spelling it crosses IPC as, for a value no member has narrowed. */
 export type RenderScale = `${ERenderScale}`;
+
+/** A drawable of a level's sector the packer left out, and why. */
+export type RenderSectorSkip = {
+  sector: number;
+  skip: SectorSkip;
+};
 
 /** What every viewport of the renderer draws with. */
 export type RenderSettings = {
