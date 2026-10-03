@@ -4,6 +4,7 @@ use xrf_math::EPS;
 
 use crate::contract::render_asset_lighting::RenderAssetLighting;
 use crate::contract::render_light_scales::RenderLightScales;
+use crate::contract::render_sun_shafts::RenderSunShafts;
 use crate::lighting::light_specular::to_light_specular;
 use crate::lighting::render_clouds::RenderClouds;
 use crate::lighting::render_fog::RenderFog;
@@ -64,6 +65,13 @@ impl RenderLighting {
   /// `Ldynamic_color.w`: what the sun contributes to specular, `u_diffuse2s` of its scaled colour (`r2_types.h`).
   pub fn get_sun_specular(&self, scales: &RenderLightScales) -> f32 {
     to_light_specular(self.get_sun_color(scales))
+  }
+
+  /// The density the sun's shafts are drawn with: the keyframes', lifted by `r2_sunshafts_min` after the mix.
+  pub fn get_sun_shafts(&self, shafts: &RenderSunShafts) -> f32 {
+    let minimum: f32 = shafts.minimum.clamp(0.0, 0.5);
+
+    self.sun_shafts * (1.0 - minimum) + minimum
   }
 
   /// `L_ambient` as combine binds it: doubled, floored, times `r2_sun_lumscale_amb`.

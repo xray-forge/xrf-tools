@@ -1,6 +1,11 @@
 import { Nullable } from "@xrf/types";
 
-import { ERenderDebugView, ERenderSurfaceColor, RenderViewOptions } from "@/core/ipc/types/xrf-renderer";
+import {
+  ERenderDebugView,
+  ERenderSunShaftsQuality,
+  ERenderSurfaceColor,
+  RenderViewOptions,
+} from "@/core/ipc/types/xrf-renderer";
 import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { ERenderResolution } from "@/core/render/lib/settings/render-resolution";
 import { TSettled } from "@/core/render/lib/settings/render-settled";
@@ -13,7 +18,10 @@ export type TNativeViewShading = TSettled<
   >
 >;
 
-/** What a view switches of a scene: the weather, the grass, the water, the wall marks and the spawned objects' groups. */
+/**
+ * What a view switches of a scene: the weather, the grass, the water, the wall marks and the spawned objects' groups;
+ * and how its sunshafts step.
+ */
 export interface INativeViewSwitches extends Pick<
   RenderViewOptions,
   | "isClouded"
@@ -31,6 +39,7 @@ export interface INativeViewSwitches extends Pick<
   | "isThundering"
   | "isWallmarked"
   | "isWindy"
+  | "sunShafts"
 > {
   /** Whether the grass the features plant is drawn in this view. */
   isGrassy: boolean;
@@ -60,6 +69,7 @@ export const NO_NATIVE_VIEW_SWITCHES: INativeViewSwitches = {
   isWallmarked: true,
   isWaterVisible: false,
   isWindy: false,
+  sunShafts: { minimum: 0, quality: ERenderSunShaftsQuality.HIGH },
 };
 
 /** Nothing scaled and nothing corrected, as an asset viewer shows what it draws. */
@@ -128,6 +138,7 @@ export function toNativeViewOptions(
     plainColor: null,
     renderHeight,
     shadows: { ...shadows, cascades: [...shadows.cascades] },
+    sunShafts: { ...switches.sunShafts },
     upscaling: features.upscaling,
     water: { ...water, isEnabled: water.isEnabled && switches.isWaterVisible },
   };

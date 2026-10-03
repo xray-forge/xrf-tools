@@ -13,6 +13,7 @@ use crate::contract::render_lights_settings::RenderLightsSettings;
 use crate::contract::render_lod_settings::RenderLodSettings;
 use crate::contract::render_shadow_settings::RenderShadowSettings;
 use crate::contract::render_spawn_category::RenderSpawnCategory;
+use crate::contract::render_sun_shafts::RenderSunShafts;
 use crate::contract::render_surface_color::RenderSurfaceColor;
 use crate::contract::render_upscaling_settings::RenderUpscalingSettings;
 use crate::contract::render_water_settings::RenderWaterSettings;
@@ -65,6 +66,8 @@ pub struct RenderViewOptions {
   /// Whether the sun's light shafts are drawn through its shadow, `r2_sun_shafts` (`r2_sunshafts_mode volumetric` on
   /// Monolith) at its highest quality.
   pub is_sun_shafted: bool,
+  /// How finely they step, and Monolith's floor under their density.
+  pub sun_shafts: RenderSunShafts,
   /// Whether the weather's rain falls and wets surfaces.
   pub is_rainy: bool,
   /// Whether the weather's bolts strike.
@@ -124,6 +127,7 @@ impl Default for RenderViewOptions {
       is_clouded: true,
       is_lens_flared: true,
       is_sun_shafted: true,
+      sun_shafts: RenderSunShafts::default(),
       is_rainy: true,
       is_thundering: true,
       is_windy: true,

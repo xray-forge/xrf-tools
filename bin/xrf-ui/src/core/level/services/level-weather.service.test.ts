@@ -4,12 +4,18 @@ import { Nullable } from "@xrf/types";
 
 import { SelectedLevelDescription, SessionSnapshot } from "@/core/ipc/types/xrf-app";
 import { EWeatherCycleKind, WeatherCycleId, WeatherDescriptor } from "@/core/ipc/types/xrf-environment";
-import { ERenderWeatherPlay, ERenderWeatherTransition, RenderWeatherPlay } from "@/core/ipc/types/xrf-renderer";
+import {
+  ERenderSunShaftsQuality,
+  ERenderWeatherPlay,
+  ERenderWeatherTransition,
+  RenderWeatherPlay,
+} from "@/core/ipc/types/xrf-renderer";
 import {
   DEFAULT_LEVEL_MANUAL_WEATHER,
   ILevelManualWeather,
   toLevelManualWeather,
 } from "@/core/level/lib/weather/level-manual-weather";
+import { DEFAULT_LEVEL_SUN_SHAFTS_OPTIONS } from "@/core/level/lib/weather/level-sun-shafts-options";
 import {
   readLevelWeatherMemory,
   toLevelWeatherMemoryKey,
@@ -124,6 +130,7 @@ describe("LevelWeatherService", () => {
       manual: null,
       seed: null,
       source: ELevelWeatherSource.WEATHER,
+      sunShafts: DEFAULT_LEVEL_SUN_SHAFTS_OPTIONS,
       time: 600,
     });
     setMockInvokeResponses({
@@ -307,6 +314,7 @@ describe("LevelWeatherService", () => {
       manual: null,
       seed: null,
       source: ELevelWeatherSource.WEATHER,
+      sunShafts: DEFAULT_LEVEL_SUN_SHAFTS_OPTIONS,
       time: 7_200,
     });
 
@@ -324,6 +332,34 @@ describe("LevelWeatherService", () => {
     expect(service.control.factor).toBe(1000);
   });
 
+  // A floor set for one level is that level's: the next opens with its own, or with none.
+  it("remembers the sun shafts with the level's weather, and opens another level without them", async () => {
+    const other: SessionSnapshot<SelectedLevelDescription> = {
+      sessionId: "other",
+      value: mockSelectedLevelDescription({ source: { kind: "directory", path: "C:/levels/jupiter" } }),
+    };
+
+    setMockInvokeResponses({
+      ["plugin:levels|read_level_weather"]: mockSessionResponse(mockLevelWeatherDescription()),
+      ["plugin:levels|read_level_cycle"]: mockSessionResponse(({ cycle }: { cycle: WeatherCycleId }) =>
+        mockLevelWeatherCycle({ name: cycle.name })
+      ),
+    });
+
+    const service: LevelWeatherService = createService();
+    const shafts = { minimum: 0.3, quality: ERenderSunShaftsQuality.LOW };
+
+    await service.open(SELECTED);
+    service.setSunShafts(shafts);
+    await service.open(other);
+
+    expect(service.sunShafts).toEqual(DEFAULT_LEVEL_SUN_SHAFTS_OPTIONS);
+
+    await service.open(SELECTED);
+
+    expect(service.sunShafts).toEqual(shafts);
+  });
+
   it("plays the level's own cycle where the remembered one no longer reads", async () => {
     writeLevelWeatherMemory(toLevelWeatherMemoryKey(SELECTED.value), {
       control: { factor: 12, isDynamicSun: false, isPaused: true },
@@ -331,6 +367,7 @@ describe("LevelWeatherService", () => {
       manual: { ...DEFAULT_LEVEL_MANUAL_WEATHER, rainDensity: 0.3 },
       seed: null,
       source: ELevelWeatherSource.MANUAL,
+      sunShafts: DEFAULT_LEVEL_SUN_SHAFTS_OPTIONS,
       time: 600,
     });
     setMockInvokeResponses({

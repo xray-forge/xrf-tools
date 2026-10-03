@@ -3,6 +3,7 @@ import { describe, expect, it } from "@jest/globals";
 import {
   ERenderAntialiasing,
   ERenderDebugView,
+  ERenderSunShaftsQuality,
   ERenderSurfaceColor,
   RenderViewOptions,
 } from "@/core/ipc/types/xrf-renderer";
@@ -11,6 +12,7 @@ import { OPENXRAY_LEVEL_LOOK } from "@/core/level/lib/look/level-look";
 import { ILevelViewOptionsInputs, toLevelViewOptions } from "@/core/level/lib/render/level-render-view";
 import { ELevelShading } from "@/core/level/lib/view/level-shading";
 import { DEFAULT_LEVEL_VIEW_OPTIONS } from "@/core/level/lib/view/level-view-options";
+import { DEFAULT_LEVEL_SUN_SHAFTS_OPTIONS } from "@/core/level/lib/weather/level-sun-shafts-options";
 import { mockLevelFeatureOptions } from "@/fixtures/mocks/level.mocks";
 import { mockRenderFeatures } from "@/fixtures/mocks/render.mocks";
 
@@ -23,12 +25,19 @@ function toInputs(overrides: Partial<ILevelViewOptionsInputs> = {}): ILevelViewO
     look: OPENXRAY_LEVEL_LOOK,
     options: DEFAULT_LEVEL_VIEW_OPTIONS,
     renderHeight: null,
+    sunShafts: DEFAULT_LEVEL_SUN_SHAFTS_OPTIONS,
     view: mockLevelFeatureOptions(),
     ...overrides,
   };
 }
 
 describe("toLevelViewOptions", () => {
+  it("steps the sunshafts as the sun's popover sets them", () => {
+    const sunShafts = { minimum: 0.25, quality: ERenderSunShaftsQuality.LOW };
+
+    expect(toLevelViewOptions(toInputs({ sunShafts })).sunShafts).toEqual(sunShafts);
+  });
+
   it("composites the wall marks while the toolbar shows them", () => {
     expect(toLevelViewOptions(toInputs()).isWallmarked).toBe(true);
     expect(

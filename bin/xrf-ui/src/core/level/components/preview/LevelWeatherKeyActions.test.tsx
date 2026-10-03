@@ -1,12 +1,17 @@
 import { describe, expect, it, jest } from "@jest/globals";
 import { userEvent } from "@testing-library/user-event";
 
+import { ERenderSunShaftsQuality } from "@/core/ipc/types/xrf-renderer";
 import { LevelFogAction } from "@/core/level/components/preview/LevelFogAction";
 import { LevelRainAction } from "@/core/level/components/preview/LevelRainAction";
 import { LevelSkyAction } from "@/core/level/components/preview/LevelSkyAction";
 import { LevelSunAction } from "@/core/level/components/preview/LevelSunAction";
 import { DEFAULT_LEVEL_VIEW_OPTIONS } from "@/core/level/lib/view/level-view-options";
 import { DEFAULT_LEVEL_MANUAL_WEATHER, ILevelManualWeather } from "@/core/level/lib/weather/level-manual-weather";
+import {
+  DEFAULT_LEVEL_SUN_SHAFTS_OPTIONS,
+  ILevelSunShaftsOptions,
+} from "@/core/level/lib/weather/level-sun-shafts-options";
 import { mockLevelTextureReference } from "@/fixtures/mocks/level.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
@@ -102,7 +107,9 @@ describe("level weather key actions", () => {
         drawnSun={null}
         suns={[]}
         options={DEFAULT_LEVEL_VIEW_OPTIONS}
+        sunShafts={DEFAULT_LEVEL_SUN_SHAFTS_OPTIONS}
         onToggle={() => {}}
+        onChangeSunShafts={() => {}}
         onEdit={onEdit}
       />
     );
@@ -224,7 +231,9 @@ describe("level weather key actions", () => {
       sun: null,
       suns: [],
       options: DEFAULT_LEVEL_VIEW_OPTIONS,
+      sunShafts: DEFAULT_LEVEL_SUN_SHAFTS_OPTIONS,
       onToggle: () => {},
+      onChangeSunShafts: () => {},
       onEdit: () => {},
     };
     const { getByRole, rerender } = renderWithProviders(<LevelSunAction {...props} drawnSun={"moon_halo_full"} />);
@@ -247,7 +256,9 @@ describe("level weather key actions", () => {
         drawnSun={"gradient1"}
         suns={["gradient1", "moon_halo_full"]}
         options={DEFAULT_LEVEL_VIEW_OPTIONS}
+        sunShafts={DEFAULT_LEVEL_SUN_SHAFTS_OPTIONS}
         onToggle={onToggle}
+        onChangeSunShafts={() => {}}
         onEdit={onEdit}
       />
     );
@@ -263,5 +274,29 @@ describe("level weather key actions", () => {
     await userEvent.click(await findByRole("option", { name: "moon_halo_full" }));
 
     expect(onEdit).toHaveBeenCalledWith({ sun: "moon_halo_full" });
+  });
+
+  it("sets the level's sun shafts' quality and the floor under their density", async () => {
+    const onChangeSunShafts = jest.fn<(sunShafts: ILevelSunShaftsOptions) => void>();
+    const { getByRole, findByRole } = renderWithProviders(
+      <LevelSunAction
+        manual={DEFAULT_LEVEL_MANUAL_WEATHER}
+        sun={null}
+        drawnSun={null}
+        suns={[]}
+        options={DEFAULT_LEVEL_VIEW_OPTIONS}
+        sunShafts={DEFAULT_LEVEL_SUN_SHAFTS_OPTIONS}
+        onToggle={() => {}}
+        onChangeSunShafts={onChangeSunShafts}
+        onEdit={() => {}}
+      />
+    );
+
+    await userEvent.click(getByRole("button", { name: "Sun" }));
+    await findByRole("dialog", { name: "Sun" });
+    await userEvent.click(getByRole("button", { name: "Low" }));
+
+    expect(onChangeSunShafts).toHaveBeenCalledWith({ minimum: 0, quality: ERenderSunShaftsQuality.LOW });
+    expect(getByRole("slider", { name: "Minimum" })).toHaveAttribute("aria-valuemax", "0.5");
   });
 });

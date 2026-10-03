@@ -70,6 +70,8 @@ pub use crate::contract::render_settings::RenderSettings;
 pub use crate::contract::render_shadow_settings::RenderShadowSettings;
 pub use crate::contract::render_spawn_category::RenderSpawnCategory;
 pub use crate::contract::render_static_report::RenderStaticReport;
+pub use crate::contract::render_sun_shafts::RenderSunShafts;
+pub use crate::contract::render_sun_shafts_quality::RenderSunShaftsQuality;
 pub use crate::contract::render_surface_color::RenderSurfaceColor;
 pub use crate::contract::render_surface_geometry::RenderSurfaceGeometry;
 pub use crate::contract::render_surface_span::RenderSurfaceSpan;

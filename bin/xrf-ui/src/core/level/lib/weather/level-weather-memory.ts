@@ -3,6 +3,7 @@ import { Maybe, Nullable } from "@xrf/types";
 
 import { SelectedLevelDescription } from "@/core/ipc/types/xrf-app";
 import { ILevelManualWeather, readLevelManualWeather } from "@/core/level/lib/weather/level-manual-weather";
+import { ILevelSunShaftsOptions, toLevelSunShaftsOptions } from "@/core/level/lib/weather/level-sun-shafts-options";
 import {
   DEFAULT_LEVEL_WEATHER_CONTROL,
   ILevelWeatherControl,
@@ -21,7 +22,7 @@ const REMEMBERED_LEVELS: number = 32;
 const REMEMBERED_LENGTH: number = 64 * 1024;
 
 /** The shape a memory is written in: one of any other is let go rather than read, and nothing is migrated. */
-export const LEVEL_WEATHER_MEMORY_VERSION: number = 2;
+export const LEVEL_WEATHER_MEMORY_VERSION: number = 3;
 
 /**
  * How a level's weather was last played, which it plays again when it opens.
@@ -37,6 +38,8 @@ export interface ILevelWeatherMemory {
   manual: Nullable<ILevelManualWeather>;
   /** What it was seeded from, or null for one seeded from nothing the level played. */
   seed: Nullable<ILevelWeatherSeed>;
+  /** How its sun shafts step, and the floor under their density. */
+  sunShafts: ILevelSunShaftsOptions;
 }
 
 /**
@@ -118,6 +121,7 @@ export function toLevelWeatherMemory(stored: unknown): Nullable<ILevelWeatherMem
     manual,
     seed,
     source: source as ELevelWeatherSource,
+    sunShafts: toLevelSunShaftsOptions(stored.sunShafts),
     time: clamp(time, 0, WEATHER_DAY_LENGTH - 1),
   };
 }

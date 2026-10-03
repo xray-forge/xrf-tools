@@ -4,6 +4,7 @@ import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useMemo } from "react";
 
 import { LevelSunDescription } from "@/core/ipc/types/xrf-app";
+import { RenderSunShaftsQuality } from "@/core/ipc/types/xrf-renderer";
 import { ILevelManualWeatherActionProps } from "@/core/level/components/weather/level-manual-weather-action-props";
 import { LevelManualWeatherSlider } from "@/core/level/components/weather/LevelManualWeatherSlider";
 import { LevelManualWeatherVectorField } from "@/core/level/components/weather/LevelManualWeatherVectorField";
@@ -11,6 +12,13 @@ import { LevelWeatherResetButton } from "@/core/level/components/weather/LevelWe
 import { LevelWeatherSunSelect } from "@/core/level/components/weather/LevelWeatherSunSelect";
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { ILevelManualWeather, toLevelManualSun } from "@/core/level/lib/weather/level-manual-weather";
+import {
+  ILevelSunShaftsOptions,
+  LEVEL_SUN_SHAFTS_MINIMUM_LIMITS,
+  LEVEL_SUN_SHAFTS_QUALITY_OPTIONS,
+} from "@/core/level/lib/weather/level-sun-shafts-options";
+import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
+import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 import { EditorPopoverAction } from "@/core/shell/editor/EditorPopoverAction";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { formatDegrees } from "@/lib/format/angle";
@@ -36,6 +44,9 @@ interface ILevelSunActionProps extends Omit<ILevelManualWeatherActionProps, "isO
   /** The view's switches, of which the lens flares and the sunshafts are turned over here. */
   options: Pick<ILevelViewOptions, "isLensFlared" | "isSunShafted">;
   onToggle: (option: "isLensFlared" | "isSunShafted") => void;
+  /** How the level's sun shafts step, and the floor under their density. */
+  sunShafts: ILevelSunShaftsOptions;
+  onChangeSunShafts: (sunShafts: ILevelSunShaftsOptions) => void;
 }
 
 /**
@@ -51,7 +62,9 @@ export function LevelSunAction({
   drawnSun,
   suns,
   options,
+  sunShafts,
   onToggle,
+  onChangeSunShafts,
   onEdit,
 }: ILevelSunActionProps): ReactElement {
   const compiled = useMemo(() => toLevelManualSun(sun?.direction ?? null), [sun]);
@@ -128,6 +141,21 @@ export function LevelSunAction({
           manual={manual}
           format={(value: number) => value.toFixed(2)}
           onEdit={onEdit}
+        />
+
+        <RenderValueChoice
+          label={"Quality"}
+          options={LEVEL_SUN_SHAFTS_QUALITY_OPTIONS}
+          value={sunShafts.quality}
+          onChange={(quality: RenderSunShaftsQuality) => onChangeSunShafts({ ...sunShafts, quality })}
+        />
+
+        <RenderValueSlider
+          label={"Minimum"}
+          value={sunShafts.minimum}
+          {...LEVEL_SUN_SHAFTS_MINIMUM_LIMITS}
+          format={(value: number) => value.toFixed(2)}
+          onChange={(minimum: number) => onChangeSunShafts({ ...sunShafts, minimum })}
         />
 
         <LevelWeatherResetButton keys={SUN_KEYS} onEdit={onEdit} />
