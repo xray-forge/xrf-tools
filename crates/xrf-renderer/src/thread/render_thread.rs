@@ -176,6 +176,12 @@ impl RenderThread {
           viewport.options = options;
         }
       }
+      RenderCommand::Overlays { id, overlays } => {
+        if let Some(viewport) = self.viewports.get_mut(&id) {
+          viewport.overlays = overlays;
+          viewport.overlays_version += 1;
+        }
+      }
       RenderCommand::Pick { id, pick } => match self.viewports.get_mut(&id) {
         Some(viewport) if viewport.level.is_some() => viewport.picks.push(pick),
         // Nothing is drawn there to pick.
@@ -525,19 +531,26 @@ impl RenderThread {
       } else {
         RenderScale::Native
       };
+      // The settings' resolution first, as a share of the viewport, then the render scale's share of that.
+      let resolution: f32 = options
+        .render_height
+        .filter(|_| viewport.level.is_some())
+        .map_or(1.0, |height| (height as f32 / rect.height.max(1) as f32).min(1.0));
       let drawn_rect: RenderRect = RenderRect {
-        width: render_scale.get_drawn(rect.width),
-        height: render_scale.get_drawn(rect.height),
+        width: render_scale.get_drawn(((rect.width as f32 * resolution).round() as u32).max(1)),
+        height: render_scale.get_drawn(((rect.height as f32 * resolution).round() as u32).max(1)),
         ..*rect
       };
       // A temporal resolve's jitter moves every scene pass's samples, never the view its history is measured by.
-      let jitter: Vec2 = viewport
-        .level_view
-        .as_mut()
-        .map_or(Vec2::ZERO, |level| level.next_jitter(&options));
+      let jitter: Vec2 = viewport.level_view.as_mut().map_or(Vec2::ZERO, |level| {
+        level.next_jitter(&options, rect.width as f32 / drawn_rect.width.max(1) as f32)
+      });
       let drawn: CameraView = view.jittered(jitter, Vec2::new(drawn_rect.width as f32, drawn_rect.height as f32));
 
-      binding.write(queue, &CameraUniform::new(&drawn, drawn_rect, switches));
+      binding.write(
+        queue,
+        &CameraUniform::new(&drawn, drawn_rect, switches).with_wireframe(options.is_wireframe),
+      );
 
       let Some(source) = &viewport.level else {
         continue;
@@ -547,6 +560,7 @@ impl RenderThread {
         .get_or_insert_with(|| LevelView::new(device, queue, &gpu.view_layout, Arc::clone(source)));
 
       level.set_timed(self.settings.is_gpu_timed);
+      level.set_overlays(device, &viewport.overlays, viewport.overlays_version);
       level.load(
         device,
         queue,
@@ -611,6 +625,10 @@ impl RenderThread {
       log::error!("Level viewport cannot be presented: {error}");
     }
 
+    if is_lit && let Err(error) = gpu.overlay.prepare(&gpu.context.device, &self.shaders, format) {
+      log::error!("Level overlays cannot be drawn: {error}");
+    }
+
     let Some(grid) = gpu.get_grid(format) else {
       return;
     };
@@ -652,6 +670,10 @@ impl RenderThread {
         match viewport.level_view.as_ref().and_then(|level| level.get_present_group()) {
           Some(present) => gpu.present.draw(&mut pass, format, binding, present),
           None => grid.draw(&mut pass, binding),
+        }
+
+        if let Some((group, overlays)) = viewport.level_view.as_ref().and_then(|level| level.get_overlays()) {
+          gpu.overlay.draw(&mut pass, format, (binding, group), overlays);
         }
       }
     }

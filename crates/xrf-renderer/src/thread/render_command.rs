@@ -4,6 +4,7 @@ use std::sync::mpsc::Sender;
 use crate::contract::render_camera::RenderCamera;
 use crate::contract::render_camera_command::RenderCameraCommand;
 use crate::contract::render_input_event::RenderInputEvent;
+use crate::contract::render_overlay::RenderOverlay;
 use crate::contract::render_settings::RenderSettings;
 use crate::contract::render_surface_geometry::RenderSurfaceGeometry;
 use crate::contract::render_texture_report::RenderTextureReport;
@@ -51,6 +52,11 @@ pub enum RenderCommand {
   Options {
     id: RenderViewportId,
     options: RenderViewOptions,
+  },
+  /// Replaces what a viewport draws over its frame.
+  Overlays {
+    id: RenderViewportId,
+    overlays: Vec<RenderOverlay>,
   },
   /// Names what a viewport draws under one of its points.
   Pick {

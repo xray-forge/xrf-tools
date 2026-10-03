@@ -9,6 +9,7 @@ use crate::contract::render_camera_command::RenderCameraCommand;
 use crate::contract::render_capture::RenderCapture;
 use crate::contract::render_input_event::RenderInputEvent;
 use crate::contract::render_level_hit::RenderLevelHit;
+use crate::contract::render_overlay::RenderOverlay;
 use crate::contract::render_settings::RenderSettings;
 use crate::contract::render_surface_geometry::RenderSurfaceGeometry;
 use crate::contract::render_texture_report::RenderTextureReport;
@@ -112,6 +113,11 @@ impl Renderer {
 
   pub fn set_view_options(&self, id: RenderViewportId, options: RenderViewOptions) {
     self.send(RenderCommand::Options { id, options });
+  }
+
+  /// Replaces what a viewport draws over its frame.
+  pub fn set_overlays(&self, id: RenderViewportId, overlays: Vec<RenderOverlay>) {
+    self.send(RenderCommand::Overlays { id, overlays });
   }
 
   /// Draws a level in a viewport, read from its source on the renderer's loader threads; `None` draws none.

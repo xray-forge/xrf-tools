@@ -19,6 +19,8 @@ pub struct CameraUniform {
   pub planes: [Vec4; 6],
   /// Textured, bumped, the baked hemisphere's strength, how far the water distorts what is behind it.
   pub switches: Vec4,
+  /// One where the static surfaces draw as their triangles' edges.
+  pub modes: Vec4,
 }
 
 impl CameraUniform {
@@ -35,6 +37,13 @@ impl CameraUniform {
       viewport: Vec4::new(rect.width as f32, rect.height as f32, rect.x as f32, rect.y as f32),
       planes: view.get_planes(),
       switches,
+      modes: Vec4::ZERO,
     }
+  }
+
+  /// The same camera drawing every static surface as its triangles' edges, or as itself.
+  pub fn with_wireframe(mut self, is_wireframe: bool) -> Self {
+    self.modes.x = f32::from(u8::from(is_wireframe));
+    self
   }
 }

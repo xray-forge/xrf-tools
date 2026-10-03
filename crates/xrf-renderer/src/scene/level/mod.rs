@@ -6,6 +6,7 @@ pub(crate) mod level_grass;
 pub(crate) mod level_light_shadows;
 pub(crate) mod level_lights;
 pub(crate) mod level_loader;
+pub(crate) mod level_overlays;
 pub(crate) mod level_shadows;
 pub(crate) mod level_smoothing;
 pub(crate) mod level_view;

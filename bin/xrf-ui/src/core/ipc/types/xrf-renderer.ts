@@ -341,6 +341,33 @@ export type RenderLoadReport = {
   isReady: boolean;
 };
 
+/** Every `kind` the `RenderOverlay` union is told apart by, so a switch or a comparison names one. */
+export enum ERenderOverlay {
+  /**
+   * Line segments in renderer space: three floats a vertex, two vertices a segment, and three floats of colour a
+   * vertex.
+   */
+  LINES = "lines",
+  /** A disc in the sky where the light comes from, `size` device pixels across, following the camera and the lighting. */
+  SUN = "sun",
+}
+
+/** A helper drawn over a viewport's frame, unlit, as the raw colours it names. */
+export type RenderOverlay =
+  /**
+   * Line segments in renderer space: three floats a vertex, two vertices a segment, and three floats of colour a
+   * vertex.
+   */
+  | {
+      kind: "lines";
+      positions: Array<number | null>;
+      colors: Array<number | null>;
+      /** Whether what the scene draws in front hides them. */
+      isDepthTested: boolean;
+    }
+  /** A disc in the sky where the light comes from, `size` device pixels across, following the camera and the lighting. */
+  | { kind: "sun"; color: [number | null, number | null, number | null]; size: number | null };
+
 /** What one pass of a viewport's frames cost on the GPU. */
 export type RenderPassCost = {
   /** The pass, as the frame names it. */
@@ -481,6 +508,8 @@ export type RenderUpscalingSettings = {
 export type RenderViewOptions = {
   /** Whether the scene is lit, else shown as its raw albedo. */
   isLit: boolean;
+  /** Whether every static surface draws as its triangles' edges. */
+  isWireframe: boolean;
   /** Whether surfaces wear their textures, else their flat colours. */
   isTextured: boolean;
   /** Whether bump textures bend the normal. */
@@ -528,6 +557,11 @@ export type RenderViewOptions = {
   antialiasing: RenderAntialiasing;
   /** What the scene is drawn at, and how its upscaled frame is sharpened. */
   upscaling: RenderUpscalingSettings;
+  /**
+   * Device pixels the scene is drawn tall before its render scale, or `None` for the viewport's own; one taller than
+   * the viewport draws at the viewport's.
+   */
+  renderHeight: number | null;
   /** How the game's console scales the sun, the hemisphere and the ambient. */
   lightScales: RenderLightScales;
   /** What the finished frame is corrected by. */

@@ -18,6 +18,7 @@ pub(crate) mod render_light_scales;
 pub(crate) mod render_light_shadow_filter;
 pub(crate) mod render_lights_settings;
 pub(crate) mod render_load_report;
+pub(crate) mod render_overlay;
 pub(crate) mod render_pass_cost;
 pub(crate) mod render_presentation;
 pub(crate) mod render_rect;
