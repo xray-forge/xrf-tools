@@ -133,6 +133,7 @@ impl<'probe, 'vfs> XraySurfaceResolver<'probe, 'vfs> {
       material: base.map_or(XrayMaterialDescriptor::DEFAULT_MATERIAL, |descriptor| {
         descriptor.material
       }),
+      environment: rule.environment(blender),
     }
   }
 

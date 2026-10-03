@@ -9,5 +9,4 @@ pub struct ViewLightGroups {
   pub composited: wgpu::BindGroup,
   pub haze: wgpu::BindGroup,
   pub exposure: wgpu::BindGroup,
-  pub present: wgpu::BindGroup,
 }

@@ -78,6 +78,7 @@ impl XraySurfaceScript {
       samplers,
       bump: None,
       material: XrayMaterialDescriptor::DEFAULT_MATERIAL,
+      environment: None,
     })
   }
 

@@ -9,5 +9,6 @@ mod shaders;
 mod shadow_tile_allocator;
 mod sun_cascade;
 mod surface_tally;
+mod temporal;
 mod texture_role;
 mod weather;

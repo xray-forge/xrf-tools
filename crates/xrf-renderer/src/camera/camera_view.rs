@@ -38,6 +38,21 @@ impl CameraView {
     }
   }
 
+  /// The same view with its samples moved within their pixels, by `offset` drawn pixels, `y` down, across a drawing
+  /// `size` pixels big: through the clip offset a projection carries times `w` in its third column.
+  pub fn jittered(&self, offset: Vec2, size: Vec2) -> Self {
+    let mut projection: Mat4 = self.projection;
+
+    projection.z_axis.x += 2.0 * offset.x / size.x.max(1.0);
+    projection.z_axis.y -= 2.0 * offset.y / size.y.max(1.0);
+
+    Self {
+      position: self.position,
+      view: self.view,
+      projection,
+    }
+  }
+
   pub fn get_view_projection(&self) -> Mat4 {
     self.projection * self.view
   }

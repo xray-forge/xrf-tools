@@ -30,6 +30,8 @@ struct GBufferVarying {
   @location(7) @interpolate(flat) entry: vec2<u32>,
   // A spawned object's sky share, `hemi_value`, which a forward-drawn model is lit by.
   @location(8) @interpolate(flat) sky: f32,
+  // A forward-drawn model's light, which its vertex shader lights it by as the engine's does.
+  @location(9) light: vec3<f32>,
 };
 
 struct GBufferOutput {
@@ -62,6 +64,7 @@ fn place_vertex(pulled: PulledVertex, position: vec3<f32>, normal: vec4<f32>, ta
   out.surface = pulled.surface;
   out.entry = pulled.entry;
   out.sky = OPEN_SKY;
+  out.light = vec3<f32>(0.0);
 
   return out;
 }
@@ -104,10 +107,19 @@ fn vs_tree(@builtin(vertex_index) vertex_index: u32, @builtin(instance_index) in
 // cube gives along its normal where the level's lighting was estimated for it.
 @vertex
 fn vs_model(@builtin(vertex_index) vertex_index: u32, @builtin(instance_index) instance_index: u32) -> GBufferVarying {
-  let pulled: PulledVertex = pull(vertex_index, instance_index);
+  return model_vertex(pull(vertex_index, instance_index));
+}
+
+// A spawned model's vertex as it stands in its object's place, unswayed.
+fn model_position(pulled: PulledVertex) -> vec3<f32> {
   let at: u32 = pulled.word;
-  let position: vec3<f32> = vec3<f32>(bitcast<f32>(words[at + 5u]), bitcast<f32>(words[at + 6u]),
-    bitcast<f32>(words[at + 7u]));
+
+  return vec3<f32>(bitcast<f32>(words[at + 5u]), bitcast<f32>(words[at + 6u]), bitcast<f32>(words[at + 7u]));
+}
+
+fn model_vertex(pulled: PulledVertex) -> GBufferVarying {
+  let at: u32 = pulled.word;
+  let position: vec3<f32> = model_position(pulled);
   let normal: vec4<f32> = unpack4x8unorm(words[at + 1u]);
   var out: GBufferVarying = place_vertex(pulled, position, normal, unpack4x8unorm(words[at + 2u]),
     unpack4x8unorm(words[at]), 0.0);

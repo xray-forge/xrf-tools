@@ -52,7 +52,8 @@ struct Surface {
   detail_bump: u32,
   detail_bump_companion: u32,
   hemi: u32,
-  pad: u32,
+  // An environment-mapped model's cube, by environment slot; none at zero.
+  environment: u32,
 };
 
 struct Region {

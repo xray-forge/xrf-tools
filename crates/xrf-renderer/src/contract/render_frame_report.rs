@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use crate::contract::render_pass_cost::RenderPassCost;
+
 /// What a viewport's recent frames cost, reported a few times a second while it draws.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
@@ -17,6 +19,10 @@ pub struct RenderFrameReport {
   pub width: u32,
   /// Drawn height, in device pixels.
   pub height: u32,
+  /// The scene's width as rendered, smaller than the drawn one where it is upscaled.
+  pub render_width: u32,
+  /// And its height.
+  pub render_height: u32,
   /// Clusters the last counted frame drew.
   pub clusters: u32,
   /// Triangles they hold, an instanced one counted for every place it stood.
@@ -25,4 +31,8 @@ pub struct RenderFrameReport {
   pub backend: String,
   /// The GPU drawn on.
   pub adapter: String,
+  /// Whether its passes were timed on the GPU over the span.
+  pub is_gpu_timed: bool,
+  /// What each pass cost on the GPU, in frame order; none while untimed.
+  pub passes: Vec<RenderPassCost>,
 }

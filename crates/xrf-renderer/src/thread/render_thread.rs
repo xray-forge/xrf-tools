@@ -9,6 +9,7 @@ use crate::camera::camera_view::CameraView;
 use crate::context::gpu_context::GpuContext;
 use crate::context::render_backend::RenderBackend;
 use crate::contract::render_rect::RenderRect;
+use crate::contract::render_scale::RenderScale;
 use crate::contract::render_settings::RenderSettings;
 use crate::contract::render_surface_geometry::RenderSurfaceGeometry;
 use crate::contract::render_texture_report::RenderTextureReport;
@@ -518,7 +519,25 @@ impl RenderThread {
         distortion,
       );
 
-      binding.write(queue, &CameraUniform::new(&view, *rect, switches));
+      // A level is drawn at a share of the viewport and upscaled to it; nothing else is drawn but at its size.
+      let render_scale: RenderScale = if viewport.level.is_some() {
+        options.upscaling.scale
+      } else {
+        RenderScale::Native
+      };
+      let drawn_rect: RenderRect = RenderRect {
+        width: render_scale.get_drawn(rect.width),
+        height: render_scale.get_drawn(rect.height),
+        ..*rect
+      };
+      // A temporal resolve's jitter moves every scene pass's samples, never the view its history is measured by.
+      let jitter: Vec2 = viewport
+        .level_view
+        .as_mut()
+        .map_or(Vec2::ZERO, |level| level.next_jitter(&options));
+      let drawn: CameraView = view.jittered(jitter, Vec2::new(drawn_rect.width as f32, drawn_rect.height as f32));
+
+      binding.write(queue, &CameraUniform::new(&drawn, drawn_rect, switches));
 
       let Some(source) = &viewport.level else {
         continue;
@@ -527,6 +546,7 @@ impl RenderThread {
         .level_view
         .get_or_insert_with(|| LevelView::new(device, queue, &gpu.view_layout, Arc::clone(source)));
 
+      level.set_timed(self.settings.is_gpu_timed);
       level.load(
         device,
         queue,
@@ -542,7 +562,7 @@ impl RenderThread {
         &mut encoder,
         gpu.get_level_passes(),
         &view,
-        (rect.width, rect.height),
+        ((drawn_rect.width, drawn_rect.height), *rect),
         viewport.camera.get_field_of_view(),
         &options,
         (viewport.weather.get_lighting(), viewport.weather.get_level()),

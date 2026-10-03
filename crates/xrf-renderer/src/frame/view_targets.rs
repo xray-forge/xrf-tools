@@ -14,6 +14,8 @@ pub struct ViewTargets {
   pub light: wgpu::TextureView,
   /// The scene combine finished, tonemapped, before it is put into the window.
   pub scene: wgpu::TextureView,
+  /// The scene's texture, which a temporal resolve copies the frame it resolved back into.
+  pub scene_texture: wgpu::Texture,
   /// The ambient occlusion at half the size, searched into the first and denoised through the second back into it:
   /// visibility, then distance along the view.
   pub occlusion: [wgpu::TextureView; 2],
@@ -57,6 +59,22 @@ impl ViewTargets {
     };
     let create =
       |label: &str, format: wgpu::TextureFormat| -> wgpu::TextureView { create_sized(label, format, (width, height)) };
+    let scene_texture: wgpu::Texture = device.create_texture(&wgpu::TextureDescriptor {
+      label: Some("scene"),
+      size: wgpu::Extent3d {
+        width,
+        height,
+        depth_or_array_layers: 1,
+      },
+      mip_level_count: 1,
+      sample_count: 1,
+      dimension: wgpu::TextureDimension::D2,
+      format: Self::SCENE,
+      usage: wgpu::TextureUsages::RENDER_ATTACHMENT
+        | wgpu::TextureUsages::TEXTURE_BINDING
+        | wgpu::TextureUsages::COPY_DST,
+      view_formats: &[],
+    });
     let half: (u32, u32) = (width.div_ceil(2), height.div_ceil(2));
 
     Self {
@@ -67,7 +85,8 @@ impl ViewTargets {
       material: create("material", Self::MATERIAL),
       depth: create("depth", Self::DEPTH),
       light: create("light", Self::LIGHT),
-      scene: create("scene", Self::SCENE),
+      scene: scene_texture.create_view(&Default::default()),
+      scene_texture,
       occlusion: [
         create_sized("ambient occlusion", Self::OCCLUSION, half),
         create_sized("ambient occlusion denoised", Self::OCCLUSION, half),
