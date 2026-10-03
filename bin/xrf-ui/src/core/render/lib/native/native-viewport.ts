@@ -12,6 +12,7 @@ import {
   RenderFrameReport,
   RenderInputEvent,
   RenderLevelHit,
+  RenderLevelProblems,
   RenderLoadReport,
   RenderOverlay,
   RenderSurfaceGeometry,
@@ -192,6 +193,45 @@ export class NativeViewport {
    *
    * @returns Each texture's reference and state, or none for a viewport not attached or a description that failed.
    */
+  /**
+   * @returns What the viewport's level could not draw the way it asked; nothing for a viewport not attached or a
+   *   description that failed.
+   */
+  public async describeProblems(): Promise<RenderLevelProblems> {
+    const id: Nullable<RenderViewportId> = await this.attached;
+    const none: RenderLevelProblems = { models: [], sectors: [], skipped: [] };
+
+    if (id === null || this.isDisposed) {
+      return none;
+    }
+
+    try {
+      return await renderCommands.describeProblems(id);
+    } catch {
+      return none;
+    }
+  }
+
+  /**
+   * @param object - A spawned object, by its index among the level's.
+   * @returns Its bounding sphere in renderer space, centre then radius; null until its model is drawn.
+   */
+  public async locateSpawnObject(object: number): Promise<Nullable<[number, number, number, number]>> {
+    const id: Nullable<RenderViewportId> = await this.attached;
+
+    if (id === null || this.isDisposed) {
+      return null;
+    }
+
+    try {
+      const sphere = await renderCommands.locateSpawnObject(id, object);
+
+      return sphere ? [sphere[0] ?? 0, sphere[1] ?? 0, sphere[2] ?? 0, sphere[3] ?? 0] : null;
+    } catch {
+      return null;
+    }
+  }
+
   public async describeTextures(): Promise<Array<RenderTextureReport>> {
     const id: Nullable<RenderViewportId> = await this.attached;
 

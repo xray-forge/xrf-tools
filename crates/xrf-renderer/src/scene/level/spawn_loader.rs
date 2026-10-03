@@ -1,10 +1,11 @@
 use std::collections::HashMap;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::mpsc::{Receiver, Sender, channel};
+use std::sync::{Arc, Mutex, PoisonError};
 
 use glam::Mat4;
 
+use crate::contract::render_load_failure::RenderLoadFailure;
 use crate::host::render_level_source::RenderLevelSource;
 use crate::host::render_level_spawn::RenderLevelSpawn;
 use crate::host::render_spawn_models::RenderSpawnModels;
@@ -30,6 +31,8 @@ pub struct SpawnLoader {
   sent: Arc<AtomicU32>,
   taken: u32,
   is_cancelled: Arc<AtomicBool>,
+  /// The visuals that could not be read.
+  failures: Arc<Mutex<Vec<RenderLoadFailure>>>,
 }
 
 impl SpawnLoader {
@@ -38,10 +41,12 @@ impl SpawnLoader {
     let pending: Arc<AtomicU32> = Arc::new(AtomicU32::new(1));
     let sent: Arc<AtomicU32> = Arc::new(AtomicU32::new(0));
     let is_cancelled: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
+    let failures: Arc<Mutex<Vec<RenderLoadFailure>>> = Arc::new(Mutex::new(Vec::new()));
     let counters: Counters = Counters {
       pending: Arc::clone(&pending),
       sent: Arc::clone(&sent),
       is_cancelled: Arc::clone(&is_cancelled),
+      failures: Arc::clone(&failures),
     };
     let spawn_pending: Arc<AtomicU32> = Arc::clone(&pending);
 
@@ -60,7 +65,13 @@ impl SpawnLoader {
       sent,
       taken: 0,
       is_cancelled,
+      failures,
     }
+  }
+
+  /// The visuals that could not be read so far.
+  pub fn list_failures(&self) -> Vec<RenderLoadFailure> {
+    self.failures.lock().unwrap_or_else(PoisonError::into_inner).clone()
   }
 
   /// Whether every batch has been read and every model it packed taken.
@@ -90,6 +101,17 @@ struct Counters {
   pending: Arc<AtomicU32>,
   sent: Arc<AtomicU32>,
   is_cancelled: Arc<AtomicBool>,
+  failures: Arc<Mutex<Vec<RenderLoadFailure>>>,
+}
+
+impl Counters {
+  fn fail(&self, failures: impl IntoIterator<Item = RenderLoadFailure>) {
+    self
+      .failures
+      .lock()
+      .unwrap_or_else(PoisonError::into_inner)
+      .extend(failures);
+  }
 }
 
 fn read_batches(
@@ -106,8 +128,17 @@ fn read_batches(
     rayon::spawn(move || {
       if !counters.is_cancelled.load(Ordering::Acquire) {
         match source.read_spawn_models(&names) {
-          Ok(models) => send_models(&spawn, first, models, &sender, &counters.sent),
-          Err(error) => log::warn!("Spawned models cannot be drawn: {error}"),
+          Ok(mut models) => {
+            counters.fail(std::mem::take(&mut models.failures));
+            send_models(&spawn, first, models, &sender, &counters.sent);
+          }
+          Err(error) => {
+            log::warn!("Spawned models cannot be drawn: {error}");
+            counters.fail(names.iter().map(|name| RenderLoadFailure {
+              name: name.clone(),
+              reason: error.to_string(),
+            }));
+          }
         }
       }
 

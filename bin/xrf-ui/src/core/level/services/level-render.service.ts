@@ -60,6 +60,7 @@ import {
 import { ILevelGoTo, toLevelGoToViewpoint } from "@/core/level/lib/camera/level-camera-goto";
 import { ILevelCameraOptions } from "@/core/level/lib/camera/level-camera-options";
 import { toLevelCameraReading } from "@/core/level/lib/camera/level-camera-reading";
+import { ILevelPoint } from "@/core/level/lib/camera/level-point";
 import { ILevelViewpoint, toLevelStartViewpoint } from "@/core/level/lib/camera/level-viewpoint";
 import { ILevelBox, toLevelBox } from "@/core/level/lib/extent/level-extent";
 import { ILevelLook } from "@/core/level/lib/look";
@@ -68,7 +69,6 @@ import { ELevelPick, TLevelPick } from "@/core/level/lib/pick/level-pick";
 import { DEFAULT_LEVEL_RENDER_CONFIG, ILevelRenderConfig } from "@/core/level/lib/render/level-render-config";
 import { toLevelFrameOverlays } from "@/core/level/lib/render/level-render-frame";
 import { toLevelCameraAt, toLevelRendererSettings } from "@/core/level/lib/render/level-render-view";
-import { ILevelPoint } from "@/core/level/lib/residency/level-residency";
 import { measureLevelStats } from "@/core/level/lib/stats/level-stats";
 import { ELevelSurfaceDressing, ILevelSurfaceDressing } from "@/core/level/lib/surface/level-surface-dressing";
 import { ILevelSurfaceGeometry, ILevelSurfaceSpan } from "@/core/level/lib/surface/level-surface-geometry";
@@ -526,7 +526,7 @@ export class LevelRenderService extends NativeRenderSurfaceService {
       return;
     }
 
-    const picked: Nullable<TLevelPick> = hit ? toLevelPick(hit, this.loadService.spawn.held?.objects ?? null) : null;
+    const picked: Nullable<TLevelPick> = hit ? toLevelPick(hit, this.loadService.spawn) : null;
 
     this.viewportService.notePicked(picked);
 
@@ -536,6 +536,15 @@ export class LevelRenderService extends NativeRenderSurfaceService {
         optional: true,
       });
     }
+  }
+
+  /**
+   * @param object - A spawned object, by its index among the level's.
+   * @returns Its bounding sphere in renderer space, centre then radius; null until its model is drawn or with no
+   *   viewport attached.
+   */
+  public async locateSpawnObject(object: number): Promise<Nullable<[number, number, number, number]>> {
+    return this.viewport ? this.viewport.locateSpawnObject(object) : null;
   }
 
   protected start(viewport: NativeViewport): Array<() => void> {
@@ -657,6 +666,7 @@ export class LevelRenderService extends NativeRenderSurfaceService {
 
   protected onLoad(report: RenderLoadReport): void {
     this.load = report;
+    this.viewportService.noteLoad(report);
 
     // Revealed once everything it opens with is resident, so it is never seen half read.
     if (report.isReady && this.level) {
@@ -665,7 +675,10 @@ export class LevelRenderService extends NativeRenderSurfaceService {
     }
   }
 
-  /** Asks what each shader table entry draws and what each texture came to, once the level is resident whole. */
+  /**
+   * Asks what each shader table entry draws, what each texture came to and what the level could not draw, once it is
+   * resident whole.
+   */
   private async describeResident(): Promise<void> {
     const { viewport, opening } = this;
 
@@ -673,12 +686,17 @@ export class LevelRenderService extends NativeRenderSurfaceService {
       return;
     }
 
-    const [measured, textures] = await Promise.all([viewport.measureSurfaces(), viewport.describeTextures()]);
+    const [measured, textures, problems] = await Promise.all([
+      viewport.measureSurfaces(),
+      viewport.describeTextures(),
+      viewport.describeProblems(),
+    ]);
 
     // Asked of a viewport or a level since replaced, it describes something else.
     if (viewport === this.viewport && opening === this.opening) {
       this.viewportService.noteSurfaceGeometry(toLevelSurfaceGeometry(measured));
       this.viewportService.noteTextures(toLevelTextureReport(textures));
+      this.viewportService.noteProblems(problems);
     }
   }
 

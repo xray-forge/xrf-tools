@@ -16,8 +16,7 @@ import {
   LevelViewService,
   LevelWeatherService,
 } from "@/core/level/services";
-import { setMockBulkResponses } from "@/fixtures/mocks/bulk.mocks";
-import { mockLevelSpawnModel, mockLevelSpawnObject, mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
+import { mockLevelSpawnObject, mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockVisualTransform } from "@/fixtures/mocks/visual.mocks";
@@ -53,6 +52,18 @@ class TestLevelRenderService extends LevelRenderService {
   public override goTo(goTo: ILevelGoTo): void {
     sent.push(goTo);
   }
+
+  // The sphere the renderer holds for the crate's model, a metre and a half up from where it stands.
+  public override async locateSpawnObject(): Promise<[number, number, number, number]> {
+    return [5, 1.5, 8, 0.75];
+  }
+}
+
+/** Lets the spawn's listing, started by the open, land. */
+async function settle(): Promise<void> {
+  for (let index: number = 0; index < 10; index += 1) {
+    await Promise.resolve();
+  }
 }
 
 async function renderPanel(
@@ -62,11 +73,6 @@ async function renderPanel(
   const level = mockSelectedLevelDescription({ sectors: [] });
 
   setMockInvokeResponses({
-    ["plugin:levels|describe_spawn_models"]: mockSessionResponse((args?: Record<string, unknown>) => ({
-      failures: [],
-      hemi: [],
-      models: (args?.names as Array<string>).map((name: string) => mockLevelSpawnModel(name).description),
-    })),
     ["plugin:levels|describe_spawn_object"]: mockSessionResponse({
       customData: "[logic]\nactive = ph_idle",
       gameVertexId: 12,
@@ -75,9 +81,6 @@ async function renderPanel(
     }),
     ["plugin:levels|open_level"]: mockSessionResponse(level),
     ["plugin:levels|open_spawn_objects"]: mockSessionResponse(objects),
-  });
-  setMockBulkResponses({
-    "levels/read_spawn_model": (args: Record<string, unknown>) => mockLevelSpawnModel(String(args.name)).buffer,
   });
 
   const container: Container = mockContainer([
@@ -96,7 +99,7 @@ async function renderPanel(
     isDltx: false,
     engine: EXrayEngine.VANILLA,
   });
-  await service.whenHeldRead();
+  await settle();
   arrange?.(container);
 
   return { container, view: renderWithProviders(<LevelSpawnPanel />, { container }) };
@@ -158,6 +161,7 @@ describe("LevelSpawnPanel", () => {
     expect(details).toHaveTextContent("3456");
 
     await userEvent.keyboard("{Enter}");
+    await waitFor(() => expect(sent).toHaveLength(1));
 
     // Framed along the view the camera has before it reports: level with it, back along `-z` from it.
     expect(sent).toHaveLength(1);
@@ -217,7 +221,7 @@ describe("LevelSpawnPanel", () => {
         isDltx: false,
         engine: EXrayEngine.VANILLA,
       });
-      await service.whenHeldRead();
+      await settle();
     });
 
     await waitFor(() => expect(view.queryByTestId("level-spawn-details")).not.toBeInTheDocument());

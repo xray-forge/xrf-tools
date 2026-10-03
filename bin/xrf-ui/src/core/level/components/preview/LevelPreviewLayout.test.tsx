@@ -3,14 +3,15 @@ import { act, fireEvent, RenderResult, waitFor, within } from "@testing-library/
 import { userEvent } from "@testing-library/user-event";
 import { Container } from "@wirestate/core";
 import { runInAction } from "@wirestate/mobx";
+import { Nullable } from "@xrf/types";
 
+import { RenderLoadReport } from "@/core/ipc/types/xrf-renderer";
 import { LevelPreviewLayout } from "@/core/level/components/preview/LevelPreviewLayout";
 import { ILevelCamera } from "@/core/level/lib/camera/level-camera";
-import { ILevelPoint } from "@/core/level/lib/residency/level-residency";
+import { ILevelPoint } from "@/core/level/lib/camera/level-point";
+import { EMPTY_LEVEL_SPAWN_REPORT } from "@/core/level/lib/spawn";
 import { EMPTY_LEVEL_STATS } from "@/core/level/lib/stats/level-stats";
 import {
-  IDLE_LEVEL_STREAM,
-  ILevelStreamProgress,
   LevelLoadService,
   LevelLookService,
   LevelRenderService,
@@ -68,7 +69,7 @@ function renderReporting(onRender: () => void = () => undefined): {
 
 function renderLayout(
   overrides: Partial<Parameters<typeof LevelPreviewLayout>[0]> = {},
-  streaming: ILevelStreamProgress = IDLE_LEVEL_STREAM
+  load: Nullable<RenderLoadReport> = null
 ): RenderResult {
   const container: Container = mockContainer([
     LevelLoadService,
@@ -79,7 +80,7 @@ function renderLayout(
     LevelLookService,
   ]);
 
-  setStreaming(container.get(LevelLoadService), streaming);
+  container.get(LevelViewportService).noteLoad(load);
 
   return renderWithProviders(
     <LevelPreviewLayout
@@ -91,10 +92,9 @@ function renderLayout(
   );
 }
 
-function setStreaming(loader: LevelLoadService, streaming: ILevelStreamProgress): void {
-  runInAction(() => {
-    loader.streaming = streaming;
-  });
+/** How far the renderer has read a level of 24 sectors and 40 textures: sectors first, then the textures. */
+function toLoad(sectors: number, textures: number = 0): RenderLoadReport {
+  return { bytes: 0, isReady: false, sectors, sectorsTotal: 24, textures, texturesTotal: 40 };
 }
 
 /** Opens the overlays, the readouts among them, and answers the popover. */
@@ -122,7 +122,6 @@ describe("LevelPreviewLayout", () => {
     const view: RenderResult = renderLayout({ isLoading: true, name: null });
 
     expect(view.getByRole("status")).toHaveTextContent("Opening level");
-    expect(view.queryByTestId("level-stream-progress")).not.toBeInTheDocument();
   });
 
   // Coming in with the open, the header would shrink the viewport and have the renderer size its targets again.
@@ -137,11 +136,16 @@ describe("LevelPreviewLayout", () => {
   // A level assembling in view is worse than a wait: until it has been drawn with everything it opens with, a cover
   // says what it is waiting for.
   it("covers a level being read until it has been drawn whole", () => {
-    const view: RenderResult = renderLayout({}, { loaded: 3, total: 24 });
+    const view: RenderResult = renderLayout({}, toLoad(3));
 
     expect(view.getByTestId("level-preview-cover")).toHaveClass("opacity-100");
     expect(view.getByTestId("level-preview-cover")).toHaveTextContent("Reading sectors, 3 of 24");
-    expect(view.queryByTestId("level-stream-progress")).not.toBeInTheDocument();
+  });
+
+  it("says it uploads the textures once every sector is read", () => {
+    const view: RenderResult = renderLayout({}, toLoad(24, 10));
+
+    expect(view.getByTestId("level-preview-cover")).toHaveTextContent("Uploading textures, 10 of 40");
   });
 
   // A renderer that failed never draws the level, so the cover stays, and says why rather than waiting on.
@@ -168,36 +172,6 @@ describe("LevelPreviewLayout", () => {
     expect(view.getByTestId("level-preview-cover")).toHaveClass("opacity-100");
     expect(view.getByRole("alert")).toHaveTextContent("The renderer stoppedNo WebGPU adapter");
     expect(view.queryByRole("progressbar")).not.toBeInTheDocument();
-  });
-
-  // Once shown, streaming does not take it away: what has arrived is drawn and flyable, so the progress sits over it.
-  it("reports streaming without taking the viewport away once the level is shown", () => {
-    const container: Container = mockContainer([
-      LevelLoadService,
-      LevelRenderService,
-      LevelViewService,
-      LevelViewportService,
-      LevelWeatherService,
-      LevelLookService,
-    ]);
-
-    setStreaming(container.get(LevelLoadService), { loaded: 3, total: 24 });
-    container.get(LevelViewportService).reveal();
-
-    const view: RenderResult = renderWithProviders(
-      <LevelPreviewLayout name={"levels\\zaton"} renderViewport={() => <div data-testid={"stub-viewport"} />} />,
-      { container, route: "/level-viewer" }
-    );
-
-    expect(view.getByTestId("stub-viewport")).toBeInTheDocument();
-    expect(view.getByTestId("level-preview-cover")).toHaveClass("opacity-0");
-    expect(view.getByTestId("level-stream-progress")).toHaveTextContent("Streaming sectors, 3 of 24");
-  });
-
-  it("shows no progress once nothing is in flight", () => {
-    const view: RenderResult = renderLayout();
-
-    expect(view.queryByTestId("level-stream-progress")).not.toBeInTheDocument();
   });
 
   it("says nothing is open when nothing is", () => {
@@ -355,10 +329,10 @@ describe("LevelPreviewLayout", () => {
     expect(within(await openOverlays(view)).getByRole("checkbox", { name: "GPU time per pass" })).not.toBeChecked();
   });
 
-  // A sector lands many times a second while a level streams in, and only the progress and the status bar say so.
+  // A sector lands many times a second while a level is read, and only the cover and the status bar say so.
   it("redraws nothing that draws the level as sectors arrive", async () => {
     let renders: number = 0;
-    const { loader, view } = renderReporting(() => {
+    const { view, viewport } = renderReporting(() => {
       renders += 1;
     });
 
@@ -366,31 +340,31 @@ describe("LevelPreviewLayout", () => {
 
     const before: number = renders;
 
-    for (let loaded = 0; loaded < 20; loaded += 1) {
-      act(() => setStreaming(loader, { loaded, total: 24 }));
+    for (let loaded = 0; loaded <= 20; loaded += 1) {
+      act(() => viewport.noteLoad(toLoad(loaded)));
     }
 
-    expect(await view.findByText("Streaming sector 20 of 24")).toBeInTheDocument();
+    expect(await view.findByText("Reading sectors, 20 of 24")).toBeInTheDocument();
     expect(renders).toBe(before);
   });
 
-  // Sectors come first: they are what is flown through, and the models stand in them.
-  it("says how far the spawned models are read once no sector is streaming", async () => {
-    const { loader, view } = renderReporting(() => undefined);
+  // The renderer's read comes first: it is what is drawn, and the objects are only listed beside it.
+  it("says the spawned objects are being listed once the renderer has read the level", async () => {
+    const { loader, view, viewport } = renderReporting(() => undefined);
 
     await view.findByTestId("stub-viewport");
 
     act(() => {
       runInAction(() => {
-        loader.spawnReport = { failure: null, failures: [], isListed: true, objects: 900, read: 24, visuals: 300 };
+        loader.spawnReport = EMPTY_LEVEL_SPAWN_REPORT;
       });
-      setStreaming(loader, { loaded: 3, total: 24 });
+      viewport.noteLoad(toLoad(3));
     });
 
-    expect(await view.findByText("Streaming sector 4 of 24")).toBeInTheDocument();
+    expect(await view.findByText("Reading sectors, 3 of 24")).toBeInTheDocument();
 
-    act(() => setStreaming(loader, IDLE_LEVEL_STREAM));
+    act(() => viewport.noteLoad({ ...toLoad(24, 40), isReady: true }));
 
-    expect(await view.findByText("Reading spawned models, 24 of 300")).toBeInTheDocument();
+    expect(await view.findByText("Listing spawned objects")).toBeInTheDocument();
   });
 });

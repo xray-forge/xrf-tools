@@ -8,6 +8,7 @@ import {
   RenderCamera,
   RenderCameraCommand,
   RenderInputEvent,
+  RenderLevelProblems,
   RenderOverlay,
   RenderSettings,
   RenderSurfaceGeometry,
@@ -33,11 +34,23 @@ export const renderCommands = {
     __TAURI_INVOKE<void>("plugin:render|command_camera", { viewport, command }),
   /** Apply settings every native viewport draws with. */
   configure: (settings: RenderSettings) => __TAURI_INVOKE<void>("plugin:render|configure", { settings }),
+  /** Say what a viewport's level could not draw: drawables the packer left out, sectors and spawned models unread. */
+  describeProblems: (viewport: RenderViewportId) =>
+    __TAURI_INVOKE<RenderLevelProblems>("plugin:render|describe_problems", { viewport }),
   /** Say what became of every texture a viewport's level samples. */
   describeTextures: (viewport: RenderViewportId) =>
     __TAURI_INVOKE<Array<RenderTextureReport>>("plugin:render|describe_textures", { viewport }),
   /** Stop drawing a viewport; the GPU goes a few seconds after the last one. */
   detachViewport: (viewport: RenderViewportId) => __TAURI_INVOKE<void>("plugin:render|detach_viewport", { viewport }),
+  /**
+   * Find a spawned object's bounding sphere in a viewport's level, centre then radius in renderer space; none until
+   * its model is drawn.
+   */
+  locateSpawnObject: (viewport: RenderViewportId, object: number) =>
+    __TAURI_INVOKE<[number | null, number | null, number | null, number | null] | null>(
+      "plugin:render|locate_spawn_object",
+      { viewport, object }
+    ),
   /** Count what each shader table entry of a viewport's level draws across the sectors resident. */
   measureSurfaces: (viewport: RenderViewportId) =>
     __TAURI_INVOKE<Array<RenderSurfaceGeometry>>("plugin:render|measure_surfaces", { viewport }),

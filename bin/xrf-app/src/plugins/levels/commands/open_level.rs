@@ -21,7 +21,7 @@ use crate::plugins::levels::spawn::read_source_spawn;
 use crate::plugins::levels::start::{list_level_start_eyes, resolve_level_start};
 use crate::plugins::levels::state::{
   COLLISION_FILE, LevelSource, LevelSpawn, LevelSpawnLighting, LevelSpawnVisuals, LevelStart, LevelState,
-  LevelTextureReference, PackedDetails, PackedSectors, SelectedLevel, SelectedLevelDescription,
+  LevelTextureReference, SelectedLevel, SelectedLevelDescription,
 };
 use crate::plugins::levels::surfaces::resolve_surfaces;
 use crate::plugins::levels::textures::resolve_level_textures;
@@ -74,7 +74,6 @@ pub async fn levels_open_level(
   let selected: Arc<SessionSnapshot<SelectedLevel>> = state.selected.commit_open(
     session_id,
     SelectedLevel {
-      details: PackedDetails::new(),
       dialect: select_ltx_dialect(is_dltx),
       engine,
       environment: OnceLock::new(),
@@ -85,7 +84,6 @@ pub async fn levels_open_level(
       geometry: opened.read.geometry,
       level: opened.read.level,
       outlines: opened.outlines,
-      packed: PackedSectors::new(),
       roots,
       source,
       start: opened.start,

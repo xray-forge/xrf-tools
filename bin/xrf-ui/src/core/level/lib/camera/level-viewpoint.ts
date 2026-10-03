@@ -3,7 +3,7 @@ import { Maybe, Nullable } from "@xrf/types";
 import { LevelStart } from "@/core/ipc/types/xrf-app";
 import { Vector3d } from "@/core/ipc/types/xrf-math";
 import { VisualBounds } from "@/core/ipc/types/xrf-visual";
-import { ILevelPoint } from "@/core/level/lib/residency/level-residency";
+import { ILevelPoint } from "@/core/level/lib/camera/level-point";
 
 /** Where the camera stands and what it looks at, both in renderer space. */
 export interface ILevelViewpoint {

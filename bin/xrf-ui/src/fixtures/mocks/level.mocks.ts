@@ -3,156 +3,17 @@ import { Nullable } from "@xrf/types";
 import { createRoots } from "@/core/assets/lib";
 import {
   ELevelSpawnCategory,
-  LevelDetailsDescription,
   LevelEntry,
   LevelSpawnObject,
   LevelTextureReference,
   SelectedLevelDescription,
 } from "@/core/ipc/types/xrf-app";
 import { EClsId } from "@/core/ipc/types/xrf-spawn";
-import {
-  DetailsDescription,
-  DetailsModel,
-  SectorDescription,
-  SectorGeometry,
-  SectorInstanceGroup,
-  SectorOutline,
-  SectorSection,
-  SectorSurface,
-  VisualSection,
-  VisualSubmesh,
-} from "@/core/ipc/types/xrf-visual";
+import { SectorOutline } from "@/core/ipc/types/xrf-visual";
 import { ILevelFeatureOptions } from "@/core/level/lib/features/level-feature-options";
-import { ILevelSpawnModel } from "@/core/level/lib/render/level-render-protocol";
 import { ELevelSurfaceDressing } from "@/core/level/lib/surface/level-surface-dressing";
 import { ILevelTextureReport } from "@/core/level/lib/texture/level-texture-report";
-import {
-  mockPackedSubmesh,
-  mockSurfaceDescriptor,
-  mockVisualBounds,
-  MockVisualBuffer,
-  mockVisualDescription,
-  mockVisualTransform,
-} from "@/fixtures/mocks/visual.mocks";
-
-/**
- * One packed mesh: positions and thirty-two bit indices written into the buffer.
- *
- * @param buffer - Buffer the attributes are written into, so the offsets a test reads are real ones.
- * @returns Where they landed.
- */
-export function mockSectorGeometry(buffer: MockVisualBuffer): SectorGeometry {
-  const positions = buffer.pushFloats([0, 0, 0, 1, 0, 0, 0, 1, 0]);
-  const indices = buffer.pushIndices32([0, 1, 2]);
-  const ranges = buffer.pushIndices32([0, 1, 0, 0]);
-  const spheres = buffer.pushFloats([0, 0, 0, 1]);
-
-  return {
-    binormals: null,
-    clusters: { ranges, spheres },
-    indexCount: 3,
-    indices,
-    lightmapUvs: null,
-    colors: null,
-    normals: null,
-    positions,
-    tangents: null,
-    uvComponents: 0,
-    uvs: null,
-    vertexCount: 3,
-  };
-}
-
-/**
- * How one part of a sector is dressed.
- *
- * @param overrides - Fields to replace on the surface.
- * @returns A surface fixture naming one shader table entry.
- */
-export function mockSectorSurface(overrides: Partial<SectorSurface> = {}): SectorSurface {
-  return {
-    hemi: null,
-    shaderId: 1,
-    shaderName: "default",
-    textureName: "stone",
-    ...overrides,
-  };
-}
-
-/**
- * One draw of a sector's own geometry.
- *
- * @param overrides - Fields to replace on the section.
- * @returns A section fixture drawing one triangle.
- */
-export function mockSectorSection(overrides: Partial<SectorSection> = {}): SectorSection {
-  return {
-    bounds: null,
-    draw: { start: 0, count: 3 },
-    drawables: [1],
-    surface: mockSectorSurface(),
-    ...overrides,
-  };
-}
-
-/**
- * A sector packed the way the rust packer packs one.
- *
- * @param buffer - Buffer the sections are written into, so the offsets a test reads are real ones.
- * @param overrides - Fields to replace on the description.
- * @returns A description covering exactly what was written.
- */
-export function mockSectorDescription(
-  buffer: MockVisualBuffer,
-  overrides: Partial<SectorDescription> = {}
-): SectorDescription {
-  const geometry: SectorGeometry = mockSectorGeometry(buffer);
-
-  return {
-    bounds: mockVisualBounds(),
-    geometry,
-    impostors: null,
-    instances: [],
-    sections: [mockSectorSection()],
-    sector: 0,
-    skipped: [],
-    ...overrides,
-    // Last, so a caller that wrote more into the buffer still gets a length covering all of it.
-    bufferLength: overrides.bufferLength ?? buffer.byteLength,
-  };
-}
-
-/**
- * One mesh a sector stands in several places, packed once beside the transforms that place it.
- *
- * @param buffer - Buffer the mesh and its transforms are written into.
- * @param places - Where each copy stands along x.
- * @param overrides - Fields to replace on the group.
- * @returns A group covering exactly what was written.
- */
-export function mockSectorInstanceGroup(
-  buffer: MockVisualBuffer,
-  places: Array<number>,
-  overrides: Partial<SectorInstanceGroup> = {}
-): SectorInstanceGroup {
-  const geometry: SectorGeometry = mockSectorGeometry(buffer);
-  const transforms = buffer.pushFloats(
-    places.flatMap((at: number) => [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, at, 0, 0, 1])
-  );
-  const hemi = buffer.pushFloats(places.flatMap(() => [1, 0]));
-
-  return {
-    drawables: places.map((_, index: number) => index + 1),
-    geometry,
-    hemi,
-    impostors: null,
-    instanceCount: places.length,
-    progressive: null,
-    surface: mockSectorSurface(),
-    transforms,
-    ...overrides,
-  };
-}
+import { mockVisualBounds, mockVisualTransform } from "@/fixtures/mocks/visual.mocks";
 
 /**
  * What one sector is before any of its geometry is read.
@@ -167,55 +28,6 @@ export function mockSectorOutline(overrides: Partial<SectorOutline> = {}): Secto
     root: 0,
     sector: 0,
     ...overrides,
-  };
-}
-
-/**
- * A level's grass packed the way the rust packer packs it: one model, and a two cell grid whose first cell plants over
- * one triangle.
- *
- * @param buffer - Buffer the sections are written into, so the offsets a test reads are real ones.
- * @param overrides - Fields to replace on the packed grass.
- * @returns A description covering exactly what was written.
- */
-export function mockLevelDetailsDescription(
-  buffer: MockVisualBuffer,
-  overrides: Partial<DetailsDescription> = {}
-): LevelDetailsDescription {
-  const model: DetailsModel = {
-    height: 2,
-    indices: buffer.pushIndices([0, 2, 1]),
-    isWaving: true,
-    maxScale: 1.5,
-    minScale: 0.5,
-    positions: buffer.pushFloats([0, 0, 0, 1, 0, 0, 0, 2, 0]),
-    radius: 1.2,
-    texture: "detail\\grass",
-    uvs: buffer.pushFloats([0, 1, 1, 1, 0.5, 0]),
-  };
-  const grid: VisualSection = buffer.pushIndices32([1, 0]);
-  const slots: VisualSection = buffer.pushIndices32([1, 2, 3, 4, 0, 1]);
-  const bins: VisualSection = buffer.pushIndices32([0]);
-  const triangles: VisualSection = buffer.pushFloats([0, 1, 0, 2, 1, 0, 0, 1, 2]);
-
-  return {
-    details: {
-      bins,
-      grid,
-      models: [model],
-      offsetX: 3,
-      offsetZ: -2,
-      sizeX: 2,
-      sizeZ: 1,
-      slotCount: 1,
-      slots,
-      triangles,
-      ...overrides,
-      // Last, so a caller that wrote more into the buffer still gets a length covering all of it.
-      bufferLength: overrides.bufferLength ?? buffer.byteLength,
-    },
-    surfaces: [mockSurfaceDescriptor({ shader: "details\\blend", textures: ["detail\\grass"] })],
-    textures: [mockLevelTextureReference("detail\\grass")],
   };
 }
 
@@ -249,31 +61,6 @@ export function mockLevelSpawnObject(overrides: Partial<LevelSpawnObject> = {}):
     transform: mockVisualTransform({ x: 0, y: 0, z: 0 }),
     visual: 0,
     ...overrides,
-  };
-}
-
-/**
- * One visual spawned objects stand as, its submeshes dressed with a texture named as the visual.
- *
- * @param name - The visual's name.
- * @param count - How many submeshes it has.
- * @returns A model fixture with its pack.
- */
-export function mockLevelSpawnModel(name: string, count: number = 1): ILevelSpawnModel {
-  const buffer: MockVisualBuffer = new MockVisualBuffer();
-  const submeshes: Array<VisualSubmesh> = Array.from({ length: count }, (_: unknown, index: number) =>
-    mockPackedSubmesh(buffer, { index, textureName: name })
-  );
-
-  return {
-    buffer: buffer.toArrayBuffer(),
-    description: {
-      description: mockVisualDescription({ bufferLength: buffer.byteLength, submeshes }),
-      name,
-      rest: null,
-      surfaces: submeshes.map(() => mockSurfaceDescriptor()),
-      textures: [],
-    },
   };
 }
 

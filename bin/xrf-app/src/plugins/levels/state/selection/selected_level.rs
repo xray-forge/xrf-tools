@@ -13,8 +13,6 @@ use crate::plugins::levels::state::level_source::LevelSource;
 use crate::plugins::levels::state::level_spawn::LevelSpawn;
 use crate::plugins::levels::state::level_spawn_lighting::LevelSpawnLighting;
 use crate::plugins::levels::state::level_spawn_visuals::LevelSpawnVisuals;
-use crate::plugins::levels::state::packed_details::PackedDetails;
-use crate::plugins::levels::state::packed_sectors::PackedSectors;
 use crate::plugins::levels::state::selection::level_start::LevelStart;
 use crate::plugins::levels::state::selection::level_sun_description::LevelSunDescription;
 use crate::plugins::levels::state::selection::level_texture_reference::LevelTextureReference;
@@ -43,11 +41,6 @@ pub struct SelectedLevel {
   /// Render geometry with its payloads still on the heap where they were read, serving whichever range a sector
   /// names. Shared rather than locked: a range is read without moving the source, so sectors pack side by side.
   pub geometry: LevelGeomSource<InMemoryChunkDataSource>,
-  /// The sectors packed by an `open_sector` and not yet served, so reading their bytes serves the pack the read
-  /// was described rather than packing again. One entry per read, because reads overlap.
-  pub packed: PackedSectors,
-  /// The grass packed by an `open_details` and not yet served.
-  pub details: PackedDetails,
   /// What the game spawns on the level, read the first time anything asks and kept, a failure with it.
   pub spawn: OnceLock<Result<Arc<LevelSpawn>, String>>,
   /// Each visual a spawned object stands as, read the first time anything asks and kept, or why it cannot be.

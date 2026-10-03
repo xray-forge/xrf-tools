@@ -1,7 +1,7 @@
 import { Nullable } from "@xrf/types";
 
 import { LevelSpawnObject } from "@/core/ipc/types/xrf-app";
-import { ILevelPoint } from "@/core/level/lib/residency/level-residency";
+import { ILevelPoint } from "@/core/level/lib/camera/level-point";
 
 /** What a click in the viewport picked. */
 export enum ELevelPick {
