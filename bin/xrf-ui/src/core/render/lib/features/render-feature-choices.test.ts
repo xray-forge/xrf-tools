@@ -39,7 +39,7 @@ describe("render choice formatters", () => {
 describe("render choice options", () => {
   it("offers every frame rate limit and resolution this build takes, in its order", () => {
     expect(RENDER_FRAME_RATE_OPTIONS.map((it) => it.value)).toEqual(FRAME_RATE_LIMITS);
-    expect(RENDER_FRAME_RATE_OPTIONS.at(-1)?.label).toBe("Unlimited");
+    expect(RENDER_FRAME_RATE_OPTIONS[0]?.label).toBe("No cap");
     expect(RENDER_RESOLUTION_OPTIONS.map((it) => it.value)).toEqual(RENDER_RESOLUTIONS);
     expect(RENDER_RESOLUTION_OPTIONS.map((it) => it.label)).toEqual(["Window", "720p", "1080p", "1440p", "4K"]);
   });

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 
 import { EXrayEngine } from "@/core/ipc/types/xrf-engine-target";
-import { ERenderAntialiasing, ERenderFrameRate, ERenderScale } from "@/core/ipc/types/xrf-renderer";
+import { ERenderAntialiasing, ERenderScale } from "@/core/ipc/types/xrf-renderer";
 import { DEFAULT_RENDER_FEATURE_CHOICE } from "@/core/render/lib/settings/render-feature-choice";
 import { ERenderPreset, RENDER_PRESETS } from "@/core/render/lib/settings/render-preset";
 import { SettingsService } from "@/core/settings/services/settings/settings.service";
@@ -67,7 +67,7 @@ describe("SettingsService", () => {
   it("caps viewports at sixty until something says otherwise", () => {
     const { service } = mockInjectedService(SettingsService);
 
-    expect(service.frameRateLimit).toBe("60");
+    expect(service.frameRateLimit).toBe("none");
   });
 
   it("gives back the frame rate limit it was told to keep", () => {
@@ -91,17 +91,26 @@ describe("SettingsService", () => {
     expect(mockInjectedService(SettingsService).service.engine).toBe(EXrayEngine.EXTENDED);
   });
 
-  it("draws every viewport at most sixty frames a second until told otherwise, and keeps what it was told", () => {
+  // No cap under vsync is the display's own refresh rate, whatever it is, with nothing to detect.
+  it("draws every viewport at the display's refresh until told otherwise, and keeps what it was told", () => {
     const { service } = mockInjectedService(SettingsService);
 
-    expect(service.renderSettings.frameRate).toEqual({ framesPerSecond: 60, kind: ERenderFrameRate.LIMITED });
+    expect(service.renderSettings.frameRate).toEqual({ isVsync: true, limit: null });
 
-    service.setFrameRateLimit("unlimited");
+    service.setFrameRateLimit("120");
+    service.setVsync(false);
 
-    expect(window.localStorage.getItem("xrf.preference.frame-rate-limit")).toBe("unlimited");
+    expect(window.localStorage.getItem("xrf.preference.vsync")).toBe("false");
     expect(mockInjectedService(SettingsService).service.renderSettings.frameRate).toEqual({
-      kind: ERenderFrameRate.UNLIMITED,
+      isVsync: false,
+      limit: 120,
     });
+  });
+
+  it("reads a frame rate limit it does not offer as no cap", () => {
+    window.localStorage.setItem("xrf.preference.frame-rate-limit", "unlimited");
+
+    expect(mockInjectedService(SettingsService).service.frameRateLimit).toBe("none");
   });
 
   // Timing is asked for, never a preset's: turning it on leaves the settings as the preset draws them.

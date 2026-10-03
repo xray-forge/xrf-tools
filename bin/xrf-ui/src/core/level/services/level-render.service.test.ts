@@ -6,7 +6,6 @@ import {
   ERenderCamera,
   ERenderCameraCommand,
   ERenderDebugView,
-  ERenderFrameRate,
   ERenderLevelHit,
   ERenderOverlay,
   ERenderSurfaceColor,
@@ -151,9 +150,7 @@ describe("LevelRenderService", () => {
     await mockAttached();
 
     expect(sent("attach_viewport")).toEqual([{ events: getMockChannels()[0], window: "main" }]);
-    expect(sent("configure")).toEqual([
-      { settings: { frameRate: { framesPerSecond: 60, kind: ERenderFrameRate.LIMITED }, isGpuTimed: false } },
-    ]);
+    expect(sent("configure")).toEqual([{ settings: { frameRate: { isVsync: true, limit: null }, isGpuTimed: false } }]);
 
     const camera: RenderCamera = sent("set_camera").at(-1)?.camera as RenderCamera;
 

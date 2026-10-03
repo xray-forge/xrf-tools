@@ -4,6 +4,7 @@ import { ReactElement } from "react";
 import { RenderPassTimingFormRow } from "@/core/render/components/controls/RenderPassTimingFormRow";
 import { RENDER_FRAME_RATE_OPTIONS, RENDER_RESOLUTION_OPTIONS } from "@/core/render/lib/features";
 import { SettingsService } from "@/core/settings/services/settings";
+import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { ChoiceFormRow } from "@/core/ui/form/ChoiceFormRow";
 
 /** How often and how large every viewport draws, and whether its passes are timed: nothing a preset sets. */
@@ -20,6 +21,15 @@ export function SettingsRendererDisplay(): ReactElement {
         options={RENDER_FRAME_RATE_OPTIONS}
         value={settingsService.frameRateLimit}
         onChange={settingsService.setFrameRateLimit}
+      />
+
+      <CheckboxFormRow
+        label={"VSync"}
+        description={
+          "Presents each frame at the display's refresh. Off, frames show as soon as they are drawn, which can tear."
+        }
+        isChecked={settingsService.isVsync}
+        onChange={settingsService.setVsync}
       />
 
       <ChoiceFormRow
