@@ -49,6 +49,7 @@
     "clsx": "2.1.1",
     "date-fns": "^4.4.0",
     "react": "^19.3.0",
+    "react-colorful": "^5.8.1",
     "react-dom": "^19.3.0",
     "react-router-dom": "^7.18.3",
     "tailwind-merge": "3.7.0"
