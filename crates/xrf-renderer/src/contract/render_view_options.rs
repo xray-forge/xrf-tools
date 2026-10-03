@@ -13,6 +13,7 @@ use crate::contract::render_lights_settings::RenderLightsSettings;
 use crate::contract::render_lod_settings::RenderLodSettings;
 use crate::contract::render_shadow_settings::RenderShadowSettings;
 use crate::contract::render_spawn_category::RenderSpawnCategory;
+use crate::contract::render_surface_color::RenderSurfaceColor;
 use crate::contract::render_upscaling_settings::RenderUpscalingSettings;
 use crate::contract::render_water_settings::RenderWaterSettings;
 
@@ -25,8 +26,8 @@ pub struct RenderViewOptions {
   pub is_lit: bool,
   /// Whether every static surface draws as its triangles' edges.
   pub is_wireframe: bool,
-  /// Whether surfaces wear their textures, else their flat colours.
-  pub is_textured: bool,
+  /// What colour surfaces' albedo is drawn with: their textures, clay, or their shader's tint.
+  pub surface_color: RenderSurfaceColor,
   /// Whether bump textures bend the normal.
   pub is_bumped: bool,
   /// How far the baked hemisphere darkens the ambient: zero for not at all.
@@ -71,6 +72,8 @@ pub struct RenderViewOptions {
   pub is_spawned_items: bool,
   pub is_spawned_weapons: bool,
   pub is_spawned_lamps: bool,
+  /// Whether the spawned objects a new game releases are drawn too, each with its group.
+  pub is_spawned_released: bool,
   pub exposure: RenderExposureSettings,
   pub shadows: RenderShadowSettings,
   pub ambient_occlusion: RenderAmbientOcclusionSettings,
@@ -97,7 +100,7 @@ impl Default for RenderViewOptions {
     Self {
       is_lit: true,
       is_wireframe: false,
-      is_textured: true,
+      surface_color: RenderSurfaceColor::Textured,
       is_bumped: true,
       hemi_strength: 1.0,
       is_occlusion_culled: true,
@@ -121,6 +124,7 @@ impl Default for RenderViewOptions {
       is_spawned_items: true,
       is_spawned_weapons: true,
       is_spawned_lamps: true,
+      is_spawned_released: false,
       exposure: RenderExposureSettings::default(),
       shadows: RenderShadowSettings::default(),
       ambient_occlusion: RenderAmbientOcclusionSettings::default(),

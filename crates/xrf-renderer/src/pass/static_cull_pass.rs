@@ -1,5 +1,6 @@
 use xrf_error::XrfResult;
 
+use crate::pass::compute_grid::ComputeGrid;
 use crate::pass::layout_entries::{storage_entry, texture_entry, uniform_entry};
 use crate::pass::shader_pipelines::{create_checked, create_module};
 use crate::pass::static_cull_params::StaticCullParams;
@@ -33,6 +34,7 @@ pub struct StaticCullPass {
   pipelines: [wgpu::ComputePipeline; 6],
   /// The singles, the rows and the clamp again, for a sun cascade's view, then for a light face's.
   shadow_pipelines: [[wgpu::ComputePipeline; 3]; 2],
+  grid: ComputeGrid,
   generation: u64,
 }
 
@@ -71,6 +73,7 @@ impl StaticCullPass {
     Ok(Self {
       pipelines,
       shadow_pipelines,
+      grid: ComputeGrid::new(device),
       view_layout: view_layout.clone(),
       generation: shaders.get_generation(),
       layout,
@@ -162,7 +165,7 @@ impl StaticCullPass {
     ] {
       if count > 0 {
         pass.set_pipeline(pipeline);
-        pass.dispatch_workgroups(count.div_ceil(WORKGROUP), 1, 1);
+        self.grid.dispatch(&mut pass, count.div_ceil(WORKGROUP));
       }
     }
   }
@@ -192,7 +195,7 @@ impl StaticCullPass {
     ] {
       if count > 0 {
         pass.set_pipeline(pipeline);
-        pass.dispatch_workgroups(count.div_ceil(WORKGROUP), 1, 1);
+        self.grid.dispatch(&mut pass, count.div_ceil(WORKGROUP));
       }
     }
   }

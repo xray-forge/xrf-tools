@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::f32::consts::FRAC_PI_2;
 
 use xrf_math::Vector3d;
@@ -33,6 +34,7 @@ fn new_spawn(arrivals: Vec<SpawnLevelArrival>) -> LevelSpawn {
   LevelSpawn {
     arrivals,
     objects: Vec::new(),
+    releases: HashMap::new(),
   }
 }
 

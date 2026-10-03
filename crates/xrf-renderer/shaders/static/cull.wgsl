@@ -1,3 +1,4 @@
+#import "common/compute_grid"
 #import "common/camera"
 #import "static/records"
 
@@ -206,8 +207,8 @@ fn placed_sphere(sphere: vec4<f32>, place: Place) -> vec4<f32> {
 }
 
 @compute @workgroup_size(64)
-fn cull_singles(@builtin(global_invocation_id) id: vec3<u32>) {
-  let index: u32 = id.x;
+fn cull_singles(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workgroups) groups: vec3<u32>) {
+  let index: u32 = compute_index(id, groups, 64u);
 
   if (index >= params.cluster_count) {
     return;
@@ -232,8 +233,8 @@ fn cull_singles(@builtin(global_invocation_id) id: vec3<u32>) {
 // its impostor does, both between, neither below `r_ssaDISCARD`. For the impostor it picks the two facets facing the
 // camera best, how far to blend between them, and how far it has faded in, as `render_lods` writes them.
 @compute @workgroup_size(64)
-fn cull_impostors(@builtin(global_invocation_id) id: vec3<u32>) {
-  let index: u32 = id.x;
+fn cull_impostors(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workgroups) groups: vec3<u32>) {
+  let index: u32 = compute_index(id, groups, 64u);
 
   if (index >= params.impostor_count) {
     return;
@@ -306,8 +307,8 @@ fn is_band_drawn(band_word: u32, area: f32) -> bool {
 }
 
 @compute @workgroup_size(64)
-fn cull_rows(@builtin(global_invocation_id) id: vec3<u32>) {
-  let index: u32 = id.x;
+fn cull_rows(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workgroups) groups: vec3<u32>) {
+  let index: u32 = compute_index(id, groups, 64u);
 
   if (index >= params.row_count) {
     return;

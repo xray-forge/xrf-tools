@@ -167,8 +167,9 @@ impl PassTimer {
       .collect()
   }
 
-  /// Adds every frame read back to the sums, freeing its slot.
-  fn collect(&mut self) {
+  /// Adds every frame read back to the sums, freeing its slot; called each frame, so the slots keep turning over between
+  /// reports.
+  pub fn collect(&mut self) {
     let to_milliseconds: f64 = f64::from(self.period) / 1_000_000.0;
 
     for slot in &mut self.slots {

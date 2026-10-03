@@ -14,7 +14,8 @@ struct Camera {
   // x: textured, y: bumped, z: the baked hemisphere's strength, w: how far the water distorts what is behind it.
   switches: vec4<f32>,
   // x: one where every static surface draws as its triangles' edges; y: times a uv checker repeats in place of every
-  // surface's textures, zero for none; z: one where surfaces draw solid, their alpha ignored.
+  // surface's textures, zero for none; z: one where surfaces draw solid, their alpha ignored; w: one where an
+  // untextured surface is clay rather than its shader's tint.
   modes: vec4<f32>,
   // World to clip without the jitter, this frame and the last, which a surface's motion is measured by.
   motion_current: mat4x4<f32>,
@@ -28,6 +29,14 @@ struct Camera {
 };
 
 @group(0) @binding(0) var<uniform> camera: Camera;
+
+// The albedo every surface shares as clay: a mid grey, light enough to read the shading on.
+const CLAY_ALBEDO: f32 = 0.5;
+
+// What an untextured surface is drawn: clay, or the tint it is given.
+fn untextured_color(tint: vec3<f32>) -> vec3<f32> {
+  return select(tint, vec3<f32>(CLAY_ALBEDO), camera.modes.w > 0.5);
+}
 
 // How far a surface's point moved on the screen since the last frame, from where it stood then to where it stands
 // now, each through its own frame's unjittered camera: in texture coordinates, now less then, `y` down.

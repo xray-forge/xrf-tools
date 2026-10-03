@@ -24,6 +24,7 @@ pub(crate) use selection::level_spawn_object::LevelSpawnObject;
 pub(crate) use selection::level_spawn_object_details::LevelSpawnObjectDetails;
 pub(crate) use selection::level_spawn_object_hemi::LevelSpawnObjectHemi;
 pub(crate) use selection::level_spawn_objects_description::LevelSpawnObjectsDescription;
+pub(crate) use selection::level_spawn_release::LevelSpawnRelease;
 pub(crate) use selection::level_start::LevelStart;
 pub(crate) use selection::level_start_origin::LevelStartOrigin;
 pub(crate) use selection::level_texture_reference::LevelTextureReference;

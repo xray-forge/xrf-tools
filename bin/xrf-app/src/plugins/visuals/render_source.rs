@@ -125,6 +125,7 @@ impl RenderLevelSource for VisualRenderSource {
       objects: vec![RenderSpawnObject {
         index: MODEL_OBJECT,
         category: RenderSpawnCategory::Props,
+        is_released: false,
         visual: 0,
         transform: IDENTITY,
       }],

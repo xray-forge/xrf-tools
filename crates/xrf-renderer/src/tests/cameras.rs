@@ -29,10 +29,15 @@ fn key(kind: RenderInputKind, code: &str) -> RenderInputEvent {
   }
 }
 
+/// A gesture of the main pointer, its main button held through a press and the moves after it.
 fn pointer(kind: RenderInputKind, x: f32, y: f32) -> RenderInputEvent {
   RenderInputEvent {
     kind,
     is_primary: true,
+    buttons: u32::from(matches!(
+      kind,
+      RenderInputKind::PointerDown | RenderInputKind::PointerMove
+    )),
     x,
     y,
     ..Default::default()
@@ -100,6 +105,21 @@ fn fly_turns_by_a_drag() {
 
   camera.input(&pointer(RenderInputKind::PointerUp, 0.0, 0.0));
   assert!(!camera.is_moving());
+}
+
+// A release lost on its way, to a capture the page dropped, would otherwise leave a plain hover turning the camera.
+#[test]
+fn fly_ends_a_drag_on_a_move_with_no_button_held() {
+  let mut camera: FlyCameraController = FlyCameraController::new(fly([0.0, 0.0, 0.0], [0.0, 0.0, -1.0]));
+  let mut hover: RenderInputEvent = pointer(RenderInputKind::PointerMove, 300.0, 100.0);
+
+  hover.buttons = 0;
+  camera.input(&pointer(RenderInputKind::PointerDown, 100.0, 100.0));
+  camera.input(&hover);
+  camera.input(&pointer(RenderInputKind::PointerMove, 400.0, 100.0));
+  camera.update(0.016);
+
+  assert_near(camera.get_pose().target, [0.0, 0.0, -1.0]);
 }
 
 #[test]

@@ -362,7 +362,7 @@ fn shade(in: GBufferVarying, base: vec4<f32>, at: Footprint) -> GBufferOutput {
 
   var out: GBufferOutput;
 
-  out.albedo = vec4<f32>(mix(surface.color, diffuse, is_textured), gloss);
+  out.albedo = vec4<f32>(mix(untextured_color(surface.color), diffuse, is_textured), gloss);
   out.normal = octahedral_encode(normal);
   out.material = vec4<f32>(hemi, sun, surface.slice, 0.0);
   out.motion = camera_motion(in.world, in.world + in.moved);

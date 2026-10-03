@@ -2,6 +2,7 @@ use glam::{Mat4, Vec3, Vec4};
 
 use crate::camera::camera_view::CameraView;
 use crate::contract::render_rect::RenderRect;
+use crate::contract::render_surface_color::RenderSurfaceColor;
 use crate::contract::render_view_options::RenderViewOptions;
 
 /// The camera as `shaders/common/camera.wgsl` declares it.
@@ -77,6 +78,12 @@ impl CameraUniform {
   pub fn with_motion(mut self, (current, previous): (Mat4, Mat4)) -> Self {
     self.motion_current = current;
     self.motion_previous = previous;
+    self
+  }
+
+  /// The same camera drawing an untextured surface as clay, or as its shader's tint.
+  pub fn with_surface_color(mut self, color: RenderSurfaceColor) -> Self {
+    self.modes.w = f32::from(u8::from(color == RenderSurfaceColor::Clay));
     self
   }
 

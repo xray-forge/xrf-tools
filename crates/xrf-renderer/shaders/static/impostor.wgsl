@@ -113,7 +113,7 @@ fn fs_impostor(in: ImpostorVarying) -> GBufferOutput {
   let baked: vec3<f32> = normalize(companion.xyz * 2.0 - 1.0);
   var out: GBufferOutput;
 
-  out.albedo = vec4<f32>(mix(surface.color, color.rgb, camera.switches.x), DEFAULT_GLOSS);
+  out.albedo = vec4<f32>(mix(untextured_color(surface.color), color.rgb, camera.switches.x), DEFAULT_GLOSS);
   out.normal = octahedral_encode(vec3<f32>(baked.xy, -baked.z));
   // No baked sun term, as a tree writes none.
   out.material = vec4<f32>(companion.a * in.hemi, 1.0, IMPOSTOR_SLICE, 0.0);

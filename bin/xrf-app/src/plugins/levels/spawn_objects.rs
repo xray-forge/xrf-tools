@@ -30,6 +30,7 @@ pub fn describe_spawn_objects(spawn: &LevelSpawn) -> LevelSpawnObjectsDescriptio
       clsid: object.clsid.clone(),
       index: index as u32,
       name: object.name.clone(),
+      release: spawn.get_release(index),
       section: object.section.clone(),
       story_id: object.inherited.get_abstract().and_then(|it| it.get_story_id()),
       transform: VisualTransform::of_spawn(&object.position, &object.direction),

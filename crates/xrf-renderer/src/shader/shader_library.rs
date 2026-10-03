@@ -11,6 +11,10 @@ use crate::shader::shader_composer::compose_shader;
 const EMBEDDED: &[(&str, &str)] = &[
   ("common/camera", include_str!("../../shaders/common/camera.wgsl")),
   (
+    "common/compute_grid",
+    include_str!("../../shaders/common/compute_grid.wgsl"),
+  ),
+  (
     "common/fullscreen",
     include_str!("../../shaders/common/fullscreen.wgsl"),
   ),

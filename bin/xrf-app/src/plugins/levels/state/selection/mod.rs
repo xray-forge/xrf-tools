@@ -5,6 +5,7 @@ pub(crate) mod level_spawn_object;
 pub(crate) mod level_spawn_object_details;
 pub(crate) mod level_spawn_object_hemi;
 pub(crate) mod level_spawn_objects_description;
+pub(crate) mod level_spawn_release;
 pub(crate) mod level_start;
 pub(crate) mod level_start_origin;
 pub(crate) mod level_sun_description;

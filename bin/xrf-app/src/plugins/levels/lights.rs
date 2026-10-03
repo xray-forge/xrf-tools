@@ -43,7 +43,7 @@ pub fn pack_lights(current: &SelectedLevel, probe: &XrayProbe, sections: Option<
     Ok(spawn) => {
       let visuals: SpawnVisualReader = SpawnVisualReader::new(current, probe);
 
-      packer.add_objects(&spawn.objects, &mut |name| {
+      packer.add_objects(spawn.list_kept(), &mut |name| {
         visuals.get(name).ok().and_then(|it| it.rest.clone())
       });
     }

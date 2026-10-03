@@ -74,9 +74,9 @@ impl<'a> LightsPacker<'a> {
   /// * `objects` - The objects spawned on the level.
   /// * `pose_visual` - The rest pose of a visual by the name an object gives it, `None` for one that cannot be read;
   ///   asked once per lamp, so a caller reading from disk keeps what it read.
-  pub fn add_objects(
+  pub fn add_objects<'o>(
     &mut self,
-    objects: &[AlifeObject],
+    objects: impl IntoIterator<Item = &'o AlifeObject>,
     pose_visual: &mut dyn FnMut(&str) -> Option<Arc<VisualRestPose>>,
   ) {
     for object in objects {

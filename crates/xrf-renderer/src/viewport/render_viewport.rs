@@ -2,14 +2,19 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use crate::camera::camera_controller::CameraController;
+use crate::contract::render_applied_environment::RenderAppliedEnvironment;
+use crate::contract::render_applied_fog::RenderAppliedFog;
+use crate::contract::render_applied_report::RenderAppliedReport;
 use crate::contract::render_camera_pose::RenderCameraPose;
 use crate::contract::render_frame_report::RenderFrameReport;
+use crate::contract::render_light_scales::RenderLightScales;
 use crate::contract::render_lights_report::RenderLightsReport;
 use crate::contract::render_load_report::RenderLoadReport;
 use crate::contract::render_memory_report::RenderMemoryReport;
 use crate::contract::render_model_pose::RenderModelPose;
 use crate::contract::render_overlay::RenderOverlay;
 use crate::contract::render_rect::RenderRect;
+use crate::contract::render_scale::RenderScale;
 use crate::contract::render_static_report::RenderStaticReport;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::contract::render_viewport_event::RenderViewportEvent;
@@ -19,6 +24,7 @@ use crate::frame::frame_capture::CaptureReply;
 use crate::frame::frame_statistics::{FrameStatistics, FrameSummary};
 use crate::host::render_event_sink::RenderEventSink;
 use crate::host::render_level_source::RenderLevelSource;
+use crate::lighting::render_lighting::RenderLighting;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::level_view::LevelView;
 use crate::viewport::pending_pick::PendingPick;
@@ -59,6 +65,8 @@ pub struct RenderViewport {
   sink: Box<dyn RenderEventSink>,
   statistics: FrameStatistics,
   sent_pose: Option<RenderCameraPose>,
+  /// What it was last told its frames are drawn with.
+  sent_applied: Option<RenderAppliedReport>,
   pose_due: Instant,
   /// Whether its page stopped listening, after which it is detached.
   is_gone: bool,
@@ -87,6 +95,7 @@ impl RenderViewport {
       sink,
       statistics: FrameStatistics::new(now),
       sent_pose: None,
+      sent_applied: None,
       pose_due: now,
       is_gone: false,
       is_failed: false,
@@ -121,6 +130,14 @@ impl RenderViewport {
   /// Reports the frames since the last report, once one is due.
   /// `texture_bytes` is what every viewport's textures hold on the GPU together.
   pub fn report(&mut self, now: Instant, backend: &str, adapter: &str, texture_bytes: u64) {
+    let Some(summary) = self.statistics.take(now) else {
+      // Read back every frame, so the report averages its whole span rather than the frame it falls on.
+      if let Some(level) = self.level_view.as_mut() {
+        level.collect_timings();
+      }
+
+      return;
+    };
     let (static_draws, lights): (RenderStaticReport, RenderLightsReport) = self
       .level_view
       .as_mut()
@@ -129,10 +146,6 @@ impl RenderViewport {
       .level_view
       .as_mut()
       .map_or((false, Vec::new()), |level| level.take_timings());
-
-    let Some(summary) = self.statistics.take(now) else {
-      return;
-    };
     let FrameSummary {
       frames_per_second,
       frame_time,
@@ -177,6 +190,31 @@ impl RenderViewport {
         },
       },
     });
+    self.publish_applied();
+  }
+
+  /// Tells the page what its frames are drawn with, where that changed since it was last told.
+  fn publish_applied(&mut self) {
+    let Some(level) = self.level_view.as_ref() else {
+      return;
+    };
+    let mut applied: RenderAppliedReport = level.describe_applied(&self.options);
+
+    if self.level.is_none() {
+      applied.render_scale = RenderScale::Native;
+    }
+
+    if self.options.asset_lighting.is_none() {
+      applied.environment = Some(to_applied_environment(
+        self.weather.get_lighting(),
+        &self.options.light_scales,
+      ));
+    }
+
+    if self.sent_applied.as_ref() != Some(&applied) {
+      self.sent_applied = Some(applied.clone());
+      self.send(RenderViewportEvent::Applied { report: applied });
+    }
   }
 
   /// Publishes the camera's pose when it changed, at most every [`POSE_INTERVAL`]; the last change of a motion is
@@ -224,5 +262,23 @@ impl RenderViewport {
     if !self.sink.send(event) {
       self.is_gone = true;
     }
+  }
+}
+
+/// What `lighting` lights a scene with, as the passes bind it.
+fn to_applied_environment(lighting: &RenderLighting, scales: &RenderLightScales) -> RenderAppliedEnvironment {
+  RenderAppliedEnvironment {
+    sun_direction: lighting.get_sun_direction().to_array(),
+    sun_color: lighting.get_sun_color(scales).to_array(),
+    ambient: lighting.get_ambient(scales).to_array(),
+    hemisphere: lighting.get_environment(scales).to_array(),
+    fog: lighting.fog.as_ref().map(|fog| RenderAppliedFog {
+      color: fog.color.to_array(),
+      distance: fog.get_total_distance(),
+      density: fog.density,
+    }),
+    rain_density: lighting.rain.as_ref().map_or(0.0, |rain| rain.density),
+    tree_sway: lighting.trees.as_ref().map_or(0.0, |trees| trees.amplitude),
+    water_intensity: lighting.water_intensity,
   }
 }

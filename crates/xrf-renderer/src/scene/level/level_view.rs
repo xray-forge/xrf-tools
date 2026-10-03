@@ -12,6 +12,8 @@ use xrf_math::EPS_S;
 use crate::camera::camera_view::CameraView;
 use crate::contract::render_ambient_occlusion_settings::RenderAmbientOcclusionSettings;
 use crate::contract::render_antialiasing::RenderAntialiasing;
+use crate::contract::render_applied_report::RenderAppliedReport;
+use crate::contract::render_applied_shadows::RenderAppliedShadows;
 use crate::contract::render_debug_view::RenderDebugView;
 use crate::contract::render_image_corrections::RenderImageCorrections;
 use crate::contract::render_level_hit::RenderLevelHit;
@@ -718,15 +720,7 @@ impl LevelView {
       lod_a: threshold(options.lod.ssa_a),
       lod_b: threshold(options.lod.ssa_b),
       is_impostors: options.lod.is_impostors as u32,
-      hidden_groups: [
-        RenderSpawnCategory::Props,
-        RenderSpawnCategory::Items,
-        RenderSpawnCategory::Weapons,
-        RenderSpawnCategory::Lamps,
-      ]
-      .into_iter()
-      .filter(|category| !options.is_spawned(*category))
-      .fold(0, |hidden, category| hidden | (1 << (category.get_group() - 1))),
+      hidden_groups: to_hidden_groups(options),
       pad: [0; 3],
       lod_origin: view.position.extend(1.0),
     };
@@ -1659,6 +1653,11 @@ impl LevelView {
     (self.timer.is_timing(), self.timer.take())
   }
 
+  /// Adds the passes timed since the last frame to the span the next report averages.
+  pub fn collect_timings(&mut self) {
+    self.timer.collect();
+  }
+
   /// Stands every skinned object as asked from the next frame on.
   pub fn set_model_pose(&mut self, pose: &RenderModelPose) {
     if self.model_pose != *pose {
@@ -1722,6 +1721,31 @@ impl LevelView {
   }
 
   /// The static draws' pools and what the latest counted frame's cull kept and hid, and its lights.
+  /// What its frames are drawn with, as resolved from what `options` asked; the weather's light is the viewport's to add.
+  pub fn describe_applied(&self, options: &RenderViewOptions) -> RenderAppliedReport {
+    let antialiasing: RenderAntialiasing = if self.is_temporal {
+      options.antialiasing
+    } else {
+      self.smoothing.as_ref().map_or(RenderAntialiasing::None, |it| it.mode)
+    };
+    let cascades: usize = self.shadow_settings.get_cascade_count();
+
+    RenderAppliedReport {
+      antialiasing,
+      render_scale: self.upscaling.scale,
+      shadows: (cascades > 0).then(|| RenderAppliedShadows {
+        cascades: self.shadow_settings.cascades[..cascades].to_vec(),
+        resolution: self.shadows.get_maps().resolution,
+        filter: self.shadow_settings.filter,
+      }),
+      ambient_occlusion: self.frame_occlusion.then_some(self.ambient_occlusion.quality),
+      lights: self.lights_settings.is_enabled.then_some(self.lights_settings),
+      grass: self.grass.get_applied(&options.grass),
+      is_water: options.water.is_enabled,
+      environment: None,
+    }
+  }
+
   pub fn take_stats(&mut self) -> (RenderStaticReport, RenderLightsReport) {
     let [kept_clusters, kept_triangles, occluded_clusters, occluded_triangles] = self.stats.take();
     let pools: RenderStaticReport = self.scene.get_pools();
@@ -1826,4 +1850,27 @@ fn to_sway(scene: &StaticScene, (amplitude, time): (f32, f32)) -> ShadowSway<'_>
     time,
     places: scene.list_swaying(),
   }
+}
+
+/// The visibility groups a view hides: each category it does not draw, and the released objects of every one while it
+/// draws no released objects.
+fn to_hidden_groups(options: &RenderViewOptions) -> u32 {
+  [
+    RenderSpawnCategory::Props,
+    RenderSpawnCategory::Items,
+    RenderSpawnCategory::Weapons,
+    RenderSpawnCategory::Lamps,
+  ]
+  .into_iter()
+  .fold(0, |hidden, category| {
+    let is_shown: bool = options.is_spawned(category);
+    let kept: u32 = if is_shown { 0 } else { 1 << (category.get_group() - 1) };
+    let released: u32 = if is_shown && options.is_spawned_released {
+      0
+    } else {
+      1 << (category.get_released_group() - 1)
+    };
+
+    hidden | kept | released
+  })
 }

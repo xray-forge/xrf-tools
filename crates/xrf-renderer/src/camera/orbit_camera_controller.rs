@@ -94,6 +94,8 @@ impl OrbitCameraController {
 
         self.dragged = Some((event.pointer_id, event.x, event.y, drag));
       }
+      // A move with no button held ends a drag whose release never arrived, rather than turning on a plain hover.
+      RenderInputKind::PointerMove if event.buttons == 0 => self.dragged = None,
       RenderInputKind::PointerMove => {
         if let Some((id, x, y, drag)) = self.dragged
           && id == event.pointer_id

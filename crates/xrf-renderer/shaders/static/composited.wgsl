@@ -75,7 +75,7 @@ fn model_composited(in: GBufferVarying, surface: Surface, base: vec4<f32>) -> Co
     discard;
   }
 
-  let texel: vec3<f32> = mix(surface.color, base.rgb, camera.switches.x);
+  let texel: vec3<f32> = mix(untextured_color(surface.color), base.rgb, camera.switches.x);
 
   if ((surface.flags & SURFACE_IS_ENVIRONMENT_MAPPED) == 0u) {
     return composite(surface.flags, texel, base.a, saturate(in.light * texel * 2.0), 0.0);
@@ -150,7 +150,7 @@ fn fs_composited(in: GBufferVarying) -> CompositedOutput {
   }
 
   let shaded: GBufferOutput = shade(in, base, at);
-  let texel: vec3<f32> = mix(surface.color, base.rgb, camera.switches.x);
+  let texel: vec3<f32> = mix(untextured_color(surface.color), base.rgb, camera.switches.x);
   let laid: vec3<f32> = select(shaded.albedo.rgb, lit_color(shaded, position, fog), is_lit);
 
   return composite(surface.flags, texel, base.a, laid, fog);
@@ -167,7 +167,7 @@ fn fs_wallmark(in: GBufferVarying) -> CompositedOutput {
     base = textureSampleLevel(textures[surface.base], texture_sampler, saturate(in.uv * surface.tiling), 0.0);
   }
 
-  let texel: vec3<f32> = mix(surface.color, base.rgb, camera.switches.x);
+  let texel: vec3<f32> = mix(untextured_color(surface.color), base.rgb, camera.switches.x);
 
   return composite(surface.flags, texel, base.a, texel, 0.0);
 }
