@@ -34,6 +34,7 @@ describe("toVisualViewOptions", () => {
     );
 
     expect(options.backdrop).toEqual(toRawColor(DEFAULT_VISUAL_PREVIEW_SCENE_CONFIG.backgroundColor));
+    expect(options.plainColor).toEqual(toRawColor(DEFAULT_VISUAL_PREVIEW_SCENE_CONFIG.meshColor));
     expect(options.assetLighting?.sunElevation).toBe(DEFAULT_VISUAL_LIGHTING.sunElevation);
     expect(options.isWireframe).toBe(true);
     expect(options.isSkyVisible).toBe(false);

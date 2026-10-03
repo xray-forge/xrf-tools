@@ -80,6 +80,8 @@ export function toVisualViewOptions(
     backdrop: toRawColor(config.backgroundColor),
     checker: options.isCheckerVisible ? config.checkerRepeat : 0,
     isAlphaVisible: options.isAlphaVisible,
+    // Untextured, a surface is the viewer's plain mesh colour rather than white.
+    plainColor: toRawColor(config.meshColor),
   };
 }
 
