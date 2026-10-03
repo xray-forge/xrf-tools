@@ -89,24 +89,6 @@ export function SettingsWebviewOptionsSection(): ReactElement {
       {status ? (
         <div className={"mt-2 flex flex-col gap-6"}>
           <CheckboxFormRow
-            label={"Doubled shader cache"}
-            description={
-              "Keeps 12 MB of compiled GPU pipelines between starts instead of 6 MB, so a level opens without compiling its shaders again."
-            }
-            isChecked={status.chosen.isShaderCacheDoubled}
-            onChange={(isChecked: boolean) => onChange({ isShaderCacheDoubled: isChecked })}
-          />
-
-          <CheckboxFormRow
-            label={"WebGPU developer features"}
-            description={
-              "Precise GPU timings for the renderer's passes, which the webview otherwise rounds to 65.5 µs."
-            }
-            isChecked={status.chosen.isWebgpuDeveloper}
-            onChange={(isChecked: boolean) => onChange({ isWebgpuDeveloper: isChecked })}
-          />
-
-          <CheckboxFormRow
             label={"Vsync"}
             description={
               "Presents frames at the display's refresh. Off, frames are presented as soon as they are drawn, for measuring what a frame costs, and may tear."

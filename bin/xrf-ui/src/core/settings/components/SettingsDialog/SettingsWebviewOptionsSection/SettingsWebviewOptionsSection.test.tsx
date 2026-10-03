@@ -12,9 +12,7 @@ import { isRestartPending } from "./SettingsWebviewOptionsSection.utils";
 const STARTED: WebviewOptions = {
   collectionPace: EWebviewCollectionPace.DEFAULT,
   isFrameRateLimited: true,
-  isShaderCacheDoubled: true,
   isVsync: true,
-  isWebgpuDeveloper: false,
 };
 
 function mockBackend(): { chosen: WebviewOptions } {
@@ -38,25 +36,25 @@ describe("SettingsWebviewOptionsSection", () => {
 
     const { findByRole, getByRole } = renderWithProviders(<SettingsWebviewOptionsSection />);
 
-    expect(await findByRole("checkbox", { name: "Doubled shader cache" })).toBeChecked();
-    expect(getByRole("checkbox", { name: "WebGPU developer features" })).not.toBeChecked();
+    expect(await findByRole("checkbox", { name: "Vsync" })).toBeChecked();
+    expect(getByRole("checkbox", { name: "Frame rate limit" })).toBeChecked();
   });
 
   it("keeps a choice through the backend, the rest of the choice with it, and says it waits for a restart", async () => {
     const backend: { chosen: WebviewOptions } = mockBackend();
     const { findByRole, findByText, queryByText } = renderWithProviders(<SettingsWebviewOptionsSection />);
 
-    const developer: HTMLElement = await findByRole("checkbox", { name: "WebGPU developer features" });
+    const vsync: HTMLElement = await findByRole("checkbox", { name: "Vsync" });
 
     expect(queryByText("Restart to apply")).not.toBeInTheDocument();
 
-    await userEvent.click(developer);
+    await userEvent.click(vsync);
 
-    await waitFor(() => expect(backend.chosen).toEqual({ ...STARTED, isWebgpuDeveloper: true }));
+    await waitFor(() => expect(backend.chosen).toEqual({ ...STARTED, isVsync: false }));
     expect(mockInvoke).toHaveBeenCalledWith("plugin:system|set_webview_options", {
-      options: { ...STARTED, isWebgpuDeveloper: true },
+      options: { ...STARTED, isVsync: false },
     });
-    expect(developer).toBeChecked();
+    expect(vsync).not.toBeChecked();
     expect(await findByText("Restart to apply")).toBeInTheDocument();
   });
 
@@ -105,7 +103,7 @@ describe("SettingsWebviewOptionsSection", () => {
     isFailing = false;
     await userEvent.click(getByRole("button", { name: "Retry" }));
 
-    expect(await findByRole("checkbox", { name: "Doubled shader cache" })).toBeChecked();
+    expect(await findByRole("checkbox", { name: "Vsync" })).toBeChecked();
   });
 
   // Two choices made quickly are kept in turn, but their answers may land in either order.
@@ -135,6 +133,6 @@ describe("SettingsWebviewOptionsSection", () => {
 
   it("waits for a restart only where a choice differs from what the webview started with", () => {
     expect(isRestartPending({ running: STARTED, chosen: STARTED })).toBe(false);
-    expect(isRestartPending({ running: STARTED, chosen: { ...STARTED, isShaderCacheDoubled: false } })).toBe(true);
+    expect(isRestartPending({ running: STARTED, chosen: { ...STARTED, isVsync: false } })).toBe(true);
   });
 });
