@@ -4,15 +4,9 @@ import { getLocatedAsset } from "@/core/assets/lib/resolution";
 import { XrayMaterialDescriptor } from "@/core/ipc/types/xrf-material";
 import { XrayAsset } from "@/core/ipc/types/xrf-vfs";
 import { VisualTextureDependency } from "@/core/ipc/types/xrf-visual";
-import { EVisualTextureState, IVisualTextureFile } from "@/core/visuals/lib/visual-texture";
+import { EVisualTextureState } from "@/core/visuals/lib/visual-texture";
 
-/** The two files of a bump pair, which are only ever read, uploaded and drawn together. */
-export interface IVisualBumpFiles {
-  bump: IVisualTextureFile;
-  companion: IVisualTextureFile;
-}
-
-/** A submesh whose material binds a bump pair, and the two located files to fetch for it. */
+/** A submesh whose material binds a bump pair, and the two located files the renderer reads for it. */
 export interface ILoadableBump {
   submeshIndex: number;
   bump: string;
@@ -20,7 +14,7 @@ export interface ILoadableBump {
 }
 
 /**
- * What became of one submesh's bump inputs on the frontend, each half on its own.
+ * What became of one submesh's bump inputs, each half on its own.
  *
  * Separate rather than one state because a companion that fails to decode does not cost the bump, and the panel says
  * which half is the problem.
@@ -38,11 +32,11 @@ export interface IVisualBumpStatus {
  *
  * Joined by the declared reference, which is how the backend keyed the materials. Only a pair with both halves located
  * is loadable: the engine binds both or, when a name has no dummy, draws its placeholder, and the placeholder pair is
- * what the panel reports rather than something worth uploading.
+ * what the panel reports rather than something drawn.
  *
  * @param textures - The model's texture references, resolved or not.
  * @param materials - What the renderer builds for each reference.
- * @returns Every submesh with a complete pair to fetch.
+ * @returns Every submesh with a complete pair.
  */
 export function toLoadableBumps(
   textures: Array<VisualTextureDependency>,

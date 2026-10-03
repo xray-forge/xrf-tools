@@ -40,7 +40,11 @@ impl StaticGBufferPass {
       label: Some("static draw"),
       entries: &(0..7)
         .map(|binding| storage_entry(binding, stages, false))
-        .chain([uniform_entry(7, stages)])
+        .chain([
+          uniform_entry(7, stages),
+          storage_entry(8, stages, false),
+          storage_entry(9, stages, false),
+        ])
         .collect::<Vec<_>>(),
     });
 
@@ -120,7 +124,7 @@ impl StaticGBufferPass {
     lists: &wgpu::Buffer,
   ) -> [wgpu::BindGroup; StaticLayout::COUNT] {
     StaticLayout::ALL.map(|layout| {
-      let buffers: [&wgpu::Buffer; 8] = [
+      let buffers: [&wgpu::Buffer; 10] = [
         scene.clusters.get_buffer(),
         scene.slots.get_buffer(),
         scene.places.get_buffer(),
@@ -129,6 +133,8 @@ impl StaticGBufferPass {
         lists,
         scene.words[layout.get_index()].get_buffer(),
         &scene.wind,
+        scene.skins.get_buffer(),
+        scene.bones.get_buffer(),
       ];
 
       device.create_bind_group(&wgpu::BindGroupDescriptor {

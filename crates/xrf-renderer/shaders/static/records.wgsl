@@ -28,6 +28,9 @@ struct Place {
   // A spawned object's hemisphere cube: its six faces, `+x +y +z -x -y -z`, as bytes in `x` and `y`; `w` one where it
   // has one.
   cube: vec4<u32>,
+  // A skinned model's: its bone matrices' first row, its links' first vertex, its own first vertex in the model arena,
+  // and how many bones it has, zero where it is rigid. The last frame's matrices follow this frame's.
+  skin: vec4<u32>,
 };
 
 struct Row {

@@ -1,16 +1,14 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { VisualDescription, VisualSubmesh } from "@/core/ipc/types/xrf-visual";
+import { VisualDescription } from "@/core/ipc/types/xrf-visual";
 import { OPAQUE_RENDERER_SURFACE_DRAW } from "@/core/render/lib/surface/renderer-surface-draw";
 import { createVisualSurfaces } from "@/core/visuals/lib/visual-surface";
 import {
   countVisualTriangles,
   createVisualCameraFit,
-  createVisualSkeleton,
   createVisualViews,
   getVisualSubmeshLevel,
   IVisualModelViews,
-  IVisualSkeletonViews,
 } from "@/core/visuals/lib/visual-views";
 import {
   mockAlphaSurfaceDescriptor,
@@ -24,21 +22,6 @@ import {
 } from "@/fixtures/mocks/visual.mocks";
 
 describe("visual views", () => {
-  it("builds typed array views over the packed sections", () => {
-    const buffer: MockVisualBuffer = new MockVisualBuffer();
-    const description: VisualDescription = mockVisualDescription({
-      submeshes: [mockPackedSubmesh(buffer)],
-      bufferLength: buffer.byteLength,
-    });
-
-    const views: IVisualModelViews = createVisualViews(description, buffer.toArrayBuffer());
-
-    expect(views.submeshes).toHaveLength(1);
-    expect(Array.from(views.submeshes[0].positions)).toEqual([0, 0, 0, 1, 0, 0, 0, 1, 0]);
-    expect(Array.from(views.submeshes[0].uvs)).toEqual([0, 0, 1, 0, 0, 1]);
-    expect(Array.from(views.submeshes[0].indices)).toEqual([0, 1, 2]);
-  });
-
   it("carries the material state each submesh's shader compiles to", () => {
     // With the geometry rather than after it, so a cut-out is never drawn solid on the way in.
     const buffer: MockVisualBuffer = new MockVisualBuffer();
@@ -52,25 +35,12 @@ describe("visual views", () => {
 
     const views: IVisualModelViews = createVisualViews(
       description,
-      buffer.toArrayBuffer(),
       createVisualSurfaces(description.submeshes, [mockAlphaSurfaceDescriptor()])
     );
 
     expect(views.submeshes[0].surface.alphaReference).toBeCloseTo(200 / 255);
     // A submesh the table has no answer for is opaque, which is what a model opened without a library gets.
     expect(views.submeshes[1].surface).toEqual(OPAQUE_RENDERER_SURFACE_DRAW);
-  });
-
-  it("rejects a buffer whose length disagrees with its description", () => {
-    // The pair is fetched in two calls, so a mismatch means they came from different reads. Building
-    // views anyway would render whatever the offsets happened to land on.
-    const buffer: MockVisualBuffer = new MockVisualBuffer();
-    const description: VisualDescription = mockVisualDescription({
-      submeshes: [mockPackedSubmesh(buffer)],
-      bufferLength: buffer.byteLength + 4,
-    });
-
-    expect(() => createVisualViews(description, buffer.toArrayBuffer())).toThrow(/came from different reads/);
   });
 
   it("keeps every detail level separate from the whole index buffer", () => {
@@ -93,7 +63,7 @@ describe("visual views", () => {
       bufferLength: buffer.byteLength,
     });
 
-    const views: IVisualModelViews = createVisualViews(description, buffer.toArrayBuffer());
+    const views: IVisualModelViews = createVisualViews(description);
 
     expect(views.levelCount).toBe(2);
     expect(views.submeshes[0].levels).toEqual([
@@ -126,7 +96,7 @@ describe("visual views", () => {
       bufferLength: buffer.byteLength,
     });
 
-    const views: IVisualModelViews = createVisualViews(description, buffer.toArrayBuffer());
+    const views: IVisualModelViews = createVisualViews(description);
 
     // Halfway down a three-entry chain is its middle entry, and a one-entry chain has nowhere to go.
     expect(getVisualSubmeshLevel(views.submeshes[0], 0.5)).toEqual({ start: 3, count: 6, triangleCount: 2 });
@@ -153,7 +123,7 @@ describe("visual views", () => {
       bufferLength: buffer.byteLength,
     });
 
-    const views: IVisualModelViews = createVisualViews(description, buffer.toArrayBuffer());
+    const views: IVisualModelViews = createVisualViews(description);
 
     expect(getVisualSubmeshLevel(views.submeshes[0], -1).start).toBe(6);
     expect(getVisualSubmeshLevel(views.submeshes[0], 42).start).toBe(0);
@@ -167,7 +137,7 @@ describe("visual views", () => {
       bufferLength: buffer.byteLength,
     });
 
-    const views: IVisualModelViews = createVisualViews(description, buffer.toArrayBuffer());
+    const views: IVisualModelViews = createVisualViews(description);
 
     expect(views.submeshes.map((it) => it.index)).toEqual([0]);
     expect(views.vertexCount).toBe(3);
@@ -183,80 +153,64 @@ describe("visual views", () => {
       bufferLength: buffer.byteLength,
     });
 
-    const views: IVisualModelViews = createVisualViews(description, buffer.toArrayBuffer());
+    const views: IVisualModelViews = createVisualViews(description);
 
     expect(views.submeshes.map((it) => it.label)).toEqual(["wpn\\wpn_ak74", "submesh 1"]);
   });
 
-  it("packs several submeshes into one buffer without overlapping", () => {
+  it("counts the vertices of every submesh it keeps", () => {
     const buffer: MockVisualBuffer = new MockVisualBuffer();
     const description: VisualDescription = mockVisualDescription({
       submeshes: [mockPackedSubmesh(buffer, { index: 0 }), mockPackedSubmesh(buffer, { index: 1 })],
       bufferLength: buffer.byteLength,
     });
 
-    const views: IVisualModelViews = createVisualViews(description, buffer.toArrayBuffer());
+    const views: IVisualModelViews = createVisualViews(description);
 
     expect(views.submeshes).toHaveLength(2);
-    expect(views.submeshes[1].positions.byteOffset).toBeGreaterThan(views.submeshes[0].indices.byteOffset);
     expect(views.vertexCount).toBe(6);
   });
 });
 
 describe("visual skeleton", () => {
-  it("draws a segment from each placed bone to its placed parent", () => {
-    const skeleton: IVisualSkeletonViews = createVisualSkeleton([
-      mockVisualBone({ name: "root", bindTransform: mockVisualTransform({ x: 0, y: 0, z: 0 }) }),
-      mockVisualBone({
-        name: "spine",
-        parent: "root",
-        parentIndex: 0,
-        bindTransform: mockVisualTransform({ x: 0, y: 1, z: 0 }),
-      }),
-      mockVisualBone({
-        name: "head",
-        parent: "spine",
-        parentIndex: 1,
-        bindTransform: mockVisualTransform({ x: 0, y: 2, z: 0 }),
-      }),
-    ]);
+  it("has a skeleton where a placed bone hangs from a placed parent", () => {
+    const description: VisualDescription = mockVisualDescription({
+      bones: [
+        mockVisualBone({ name: "root", bindTransform: mockVisualTransform({ x: 0, y: 0, z: 0 }) }),
+        mockVisualBone({
+          name: "spine",
+          parent: "root",
+          parentIndex: 0,
+          bindTransform: mockVisualTransform({ x: 0, y: 1, z: 0 }),
+        }),
+      ],
+    });
 
-    // Two segments for three bones: the root has no parent to reach, so it contributes none.
-    expect(Array.from(skeleton.positions ?? [])).toEqual([0, 1, 0, 0, 0, 0, 0, 2, 0, 0, 1, 0]);
-    // Which two joints each segment joins, so a posed frame can rewrite the same buffer.
-    expect(Array.from(skeleton.pairs ?? [])).toEqual([1, 0, 2, 1]);
+    expect(createVisualViews(description).hasSkeleton).toBe(true);
   });
 
-  it("has nothing to draw when the model carries no bind positions", () => {
+  it("has none when the model carries no bind positions", () => {
     // A visual with no IK chunk still lists its hierarchy, so the bones are present and only the positions are not.
-    const skeleton: IVisualSkeletonViews = createVisualSkeleton([
-      mockVisualBone({ name: "root" }),
-      mockVisualBone({ name: "spine", parent: "root", parentIndex: 0 }),
-    ]);
+    const description: VisualDescription = mockVisualDescription({
+      bones: [mockVisualBone({ name: "root" }), mockVisualBone({ name: "spine", parent: "root", parentIndex: 0 })],
+    });
 
-    expect(skeleton.positions).toBeNull();
-    expect(skeleton.pairs).toBeNull();
+    expect(createVisualViews(description).hasSkeleton).toBe(false);
   });
 
-  it("skips a bone whose parent was never placed", () => {
-    // The backend leaves a bone unplaced when its chain does not reach a root, and a segment to nowhere would draw a
-    // line through the origin.
-    const skeleton: IVisualSkeletonViews = createVisualSkeleton([
-      mockVisualBone({
-        name: "orphan",
-        parent: "missing",
-        parentIndex: null,
-        bindTransform: mockVisualTransform({ x: 5, y: 5, z: 5 }),
-      }),
-      mockVisualBone({
-        name: "child",
-        parent: "orphan",
-        parentIndex: 0,
-        bindTransform: mockVisualTransform({ x: 6, y: 5, z: 5 }),
-      }),
-    ]);
+  it("has none where no placed bone reaches a placed parent", () => {
+    const description: VisualDescription = mockVisualDescription({
+      bones: [
+        mockVisualBone({
+          name: "orphan",
+          parent: "missing",
+          parentIndex: null,
+          bindTransform: mockVisualTransform({ x: 5, y: 5, z: 5 }),
+        }),
+      ],
+    });
 
-    expect(Array.from(skeleton.positions ?? [])).toEqual([6, 5, 5, 5, 5, 5]);
+    expect(createVisualViews(description).hasSkeleton).toBe(false);
   });
 });
 
@@ -305,62 +259,5 @@ describe("visual camera fit", () => {
     );
 
     expect(fit.radius).toBe(1);
-  });
-});
-
-describe("visual skin", () => {
-  it("views a submesh's skinning links as four wide attributes", () => {
-    const buffer: MockVisualBuffer = new MockVisualBuffer();
-    const submesh: VisualSubmesh = mockPackedSubmesh(buffer, {}, {});
-    const skin = {
-      indices: buffer.pushIndices([1, 0, 0, 0, 2, 1, 0, 0, 0, 0, 0, 0]),
-      weights: buffer.pushFloats([1, 0, 0, 0, 0.75, 0.25, 0, 0, 1, 0, 0, 0]),
-    };
-
-    if (submesh.content.kind === "packed") {
-      submesh.content.geometry.skin = skin;
-    }
-
-    const views: IVisualModelViews = createVisualViews(
-      mockVisualDescription({ submeshes: [submesh], bufferLength: buffer.byteLength }),
-      buffer.toArrayBuffer()
-    );
-
-    expect(Array.from(views.submeshes[0].skinIndices ?? [])).toEqual([1, 0, 0, 0, 2, 1, 0, 0, 0, 0, 0, 0]);
-    expect(Array.from(views.submeshes[0].skinWeights ?? [])).toEqual([1, 0, 0, 0, 0.75, 0.25, 0, 0, 1, 0, 0, 0]);
-  });
-
-  it("leaves the skin views absent for geometry that carries none", () => {
-    const buffer: MockVisualBuffer = new MockVisualBuffer();
-    const views: IVisualModelViews = createVisualViews(
-      mockVisualDescription({ submeshes: [mockPackedSubmesh(buffer)], bufferLength: buffer.byteLength }),
-      buffer.toArrayBuffer()
-    );
-
-    expect(views.submeshes[0].skinIndices).toBeNull();
-    expect(views.submeshes[0].skinWeights).toBeNull();
-  });
-
-  it("returns every bone's bind transform, including a root that draws no segment", () => {
-    // Skinning needs all of them: a root bone is bound to by vertices even though it joins nothing.
-    const skeleton: IVisualSkeletonViews = createVisualSkeleton([
-      mockVisualBone({ name: "root", bindTransform: mockVisualTransform({ x: 1, y: 2, z: 3 }) }),
-      mockVisualBone({
-        name: "spine",
-        parent: "root",
-        parentIndex: 0,
-        bindTransform: mockVisualTransform({ x: 4, y: 5, z: 6 }),
-      }),
-    ]);
-
-    expect(Array.from(skeleton.binds ?? [])).toEqual([
-      1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 2, 3, 1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 5, 6,
-    ]);
-  });
-
-  it("has no bind transforms when the model carries no bind data", () => {
-    const skeleton: IVisualSkeletonViews = createVisualSkeleton([mockVisualBone({ name: "root" })]);
-
-    expect(skeleton.binds).toBeNull();
   });
 });

@@ -4,15 +4,9 @@ import { userEvent } from "@testing-library/user-event";
 
 import { VisualSequenceService } from "@/applications/visuals-sequencer/services/sequence";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
-import { setMockBulkResponses } from "@/fixtures/mocks/bulk.mocks";
 import { mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
-import {
-  mockSelectedVisual,
-  mockVisualModelViews,
-  mockVisualMotionBake,
-  mockVisualMotionTransforms,
-} from "@/fixtures/mocks/visual.mocks";
+import { mockSelectedVisual, mockVisualModelViews, mockVisualMotionBake } from "@/fixtures/mocks/visual.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 import { AsyncState } from "@/lib/async-state";
@@ -30,9 +24,6 @@ async function renderTrack(names: ReadonlyArray<string> = ["first", "second"]) {
 
   setMockInvokeResponses({
     ["plugin:visuals|open_motion"]: mockSessionResponse(bake),
-  });
-  setMockBulkResponses({
-    "visuals/read_motion": mockVisualMotionTransforms(bake),
   });
 
   for (const name of names) {

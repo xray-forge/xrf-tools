@@ -54,7 +54,7 @@ fn vs_model_lit(@builtin(vertex_index) vertex_index: u32, @builtin(instance_inde
   -> GBufferVarying {
   let pulled: PulledVertex = pull(vertex_index, instance_index);
   var out: GBufferVarying = model_vertex(pulled);
-  let world: vec3<f32> = (place_matrix(pulled.place) * vec4<f32>(model_position(pulled), 1.0)).xyz;
+  let world: vec3<f32> = out.world;
   let rotation: mat3x3<f32> = transpose(mat3x3<f32>(camera.view[0].xyz, camera.view[1].xyz, camera.view[2].xyz));
   let normal_world: vec3<f32> = normalize(rotation * out.normal);
   let facing: f32 = dot(out.normal, lighting.to_sun.xyz);
@@ -130,7 +130,9 @@ fn composite(flags: u32, texel: vec3<f32>, alpha: f32, laid: vec3<f32>, fog: f32
 @fragment
 fn fs_composited(in: GBufferVarying) -> CompositedOutput {
   let at: Footprint = take_footprint(in);
-  let base: vec4<f32> = base_texel(in, at);
+  let sampled: vec4<f32> = base_texel(in, at);
+  // A view drawing every surface solid takes its alpha as whole.
+  let base: vec4<f32> = vec4<f32>(sampled.rgb, select(sampled.a, 1.0, camera.modes.z > 0.5));
   let surface: Surface = surfaces[in.surface];
   let is_lit: bool = lighting.params.y > 0.5;
   let is_blended: bool = (surface.flags & (SURFACE_IS_ADDED | SURFACE_IS_MULTIPLIED)) == 0u;

@@ -5,7 +5,6 @@ import { Container } from "@wirestate/core";
 import { SelectedVisualDescription } from "@/core/ipc/types/xrf-app";
 import { VISUAL_INSPECTION } from "@/core/visuals/components/panels/visual-inspection";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
-import { setMockBulkResponses } from "@/fixtures/mocks/bulk.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { MockVisualInspectionService } from "@/fixtures/mocks/visual-inspection.mocks";
@@ -35,11 +34,6 @@ async function renderPanel(overrides: Partial<SelectedVisualDescription>): Promi
 
   setMockInvokeResponses({
     ["plugin:visuals|open_model"]: mockSessionResponse(selected),
-  });
-
-  setMockBulkResponses({
-    "visuals/read_geometry": buffer.toArrayBuffer(),
-    "visuals/read_texture": new ArrayBuffer(0),
   });
 
   const container: Container = mockContainer([

@@ -1,10 +1,8 @@
 import { BoundAction, Computed, makeObservable, Observable } from "@wirestate/mobx";
 import { Nullable } from "@xrf/types";
 
-import { transformError, XrfApplicationError } from "@/core/error/lib";
-import { fetchBulk } from "@/core/ipc/bulk";
+import { transformError } from "@/core/error/lib";
 import { visualsCommands } from "@/core/ipc/commands/visuals";
-import { visualsBulkRoutes } from "@/core/ipc/commands/visuals-bulk";
 import { requireSessionId } from "@/core/ipc/session";
 import { SessionSnapshot } from "@/core/ipc/types/xrf-app";
 import { VisualMotionBake } from "@/core/ipc/types/xrf-visual";
@@ -21,15 +19,13 @@ export enum ESequenceMotionState {
   UNAVAILABLE = "unavailable",
 }
 
-/** One motion's baked frames, or the reason they could not be loaded. */
+/** One motion's bake, or the reason it could not be had. */
 export interface ISequenceMotion {
   state: ESequenceMotionState;
   /** Why the motion cannot play, when it cannot. */
   reason: Nullable<string>;
   /** What the backend reported about the completed bake. */
   bake: Nullable<VisualMotionBake>;
-  /** Bone transforms for every frame, once read. */
-  transforms: Nullable<Float32Array>;
 }
 
 /**
@@ -76,7 +72,7 @@ export class SequenceMotionCache {
 
     const generation: number = this.generation;
 
-    this.setMotion(motion, { bake: null, reason: null, state: ESequenceMotionState.BAKING, transforms: null });
+    this.setMotion(motion, { bake: null, reason: null, state: ESequenceMotionState.BAKING });
 
     this.baking = this.baking.then(() => this.read(motion, generation));
 
@@ -117,23 +113,9 @@ export class SequenceMotionCache {
       );
 
       const bake: VisualMotionBake = snapshot.value;
-      const bytes: ArrayBuffer = await fetchBulk(visualsBulkRoutes.readMotion(sessionId, snapshot.sessionId));
-      const expected: number = bake.frameCount * bake.boneCount * bake.floatsPerBone * Float32Array.BYTES_PER_ELEMENT;
-
-      if (bytes.byteLength !== expected) {
-        throw new XrfApplicationError(
-          `Motion '${motion}' returned ${bytes.byteLength} bytes for ${bake.frameCount} frames of ` +
-            `${bake.boneCount} bones, which needs ${expected}. The pose and its bytes came from different reads.`
-        );
-      }
 
       if (generation === this.generation) {
-        this.setMotion(motion, {
-          bake,
-          reason: null,
-          state: ESequenceMotionState.READY,
-          transforms: new Float32Array(bytes),
-        });
+        this.setMotion(motion, { bake, reason: null, state: ESequenceMotionState.READY });
 
         this.log.info(
           "Sequencer motion baked:",
@@ -155,7 +137,6 @@ export class SequenceMotionCache {
           bake: null,
           reason: transformed.message,
           state: ESequenceMotionState.UNAVAILABLE,
-          transforms: null,
         });
       }
     }

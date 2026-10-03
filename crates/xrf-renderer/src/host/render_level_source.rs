@@ -1,5 +1,5 @@
 use xrf_environment::WeatherDescriptor;
-use xrf_error::XrfResult;
+use xrf_error::{XrfError, XrfResult};
 use xrf_material::XraySurfaceDescriptor;
 use xrf_visual::{LightsDescription, SectorPackage};
 
@@ -7,6 +7,7 @@ use crate::host::render_asset_source::RenderAssetSource;
 use crate::host::render_level_details::RenderLevelDetails;
 use crate::host::render_level_spawn::RenderLevelSpawn;
 use crate::host::render_level_weather::RenderLevelWeather;
+use crate::host::render_motion::RenderMotion;
 use crate::host::render_spawn_models::RenderSpawnModels;
 
 /// An open level as the renderer draws it: the application packs its sectors on demand, on the renderer's loader
@@ -71,4 +72,14 @@ pub trait RenderLevelSource: RenderAssetSource {
   ///
   /// Returns an error when the library or the collision form cannot be read.
   fn read_details(&self) -> XrfResult<Option<RenderLevelDetails>>;
+
+  /// One motion of the skinned model [`RenderLevelSource::read_spawn_models`] gave a skeleton, baked, called from a
+  /// loader thread; a level's spawned models are posed already and have none.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error for a motion the model does not have, or files that cannot be read.
+  fn read_motion(&self, name: &str) -> XrfResult<RenderMotion> {
+    Err(XrfError::new_not_found_error(format!("No motion '{name}' to play")))
+  }
 }

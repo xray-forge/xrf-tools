@@ -1,22 +1,18 @@
 import { InjectionToken } from "@wirestate/core";
 import { Nullable } from "@xrf/types";
 
-import { IVisualBumpFiles } from "@/core/visuals/lib/visual-bump";
-import { IVisualTextureFile } from "@/core/visuals/lib/visual-texture";
 import { IVisualModelViews } from "@/core/visuals/lib/visual-views";
 
-/** How a model stands this frame: baked bone transforms, and which frame of them to show. */
+/** How a model stands: a frame of one of its motions, which the renderer bakes and poses it by itself. */
 export interface IVisualPose {
-  /** Baked transforms of whatever is playing, or null for the bind pose. */
-  transforms: Nullable<Float32Array>;
-  /** Which frame of those transforms the model is posed by. */
+  /** The motion playing, by its name, or null for the bind pose. */
+  motion: Nullable<string>;
+  /** Which of its frames the model is posed by. */
   frame: number;
-  /** How many floats one bone occupies in them. */
-  floatsPerBone: number;
 }
 
 /** A model standing as it was authored, which is what a surface that plays nothing shows. */
-export const BIND_POSE: IVisualPose = { floatsPerBone: 0, frame: 0, transforms: null };
+export const BIND_POSE: IVisualPose = { frame: 0, motion: null };
 
 /** Nothing collapsed, for a surface that offers no way to collapse anything. */
 export const NO_HIDDEN_BONES: ReadonlySet<number> = new Set();
@@ -25,12 +21,12 @@ export const NO_HIDDEN_BONES: ReadonlySet<number> = new Set();
  * The model a viewport draws, whichever application put it there.
  */
 export interface IVisualRenderSource {
+  /** The open model's session, which the renderer reads it through, or null when nothing is open. */
+  sessionId: Nullable<string>;
   /** What is open, or null when nothing is. */
   model: Nullable<IVisualModelViews>;
-  /** Texture files by submesh index, uploaded and applied by whichever side draws. */
-  textures: ReadonlyMap<number, IVisualTextureFile>;
-  /** Bump pair files by submesh index, shaded as they arrive. */
-  bumps: ReadonlyMap<number, IVisualBumpFiles>;
+  /** Whether any submesh binds a bump pair, which is what makes the bump toggle mean something. */
+  hasBump: boolean;
   /** How the model stands, absent on a surface that plays nothing. */
   pose?: IVisualPose;
   /** Joint to mark, already resolved to a position, absent on a surface that marks none. */

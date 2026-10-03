@@ -13,11 +13,14 @@ struct Camera {
   planes: array<vec4<f32>, 6>,
   // x: textured, y: bumped, z: the baked hemisphere's strength, w: how far the water distorts what is behind it.
   switches: vec4<f32>,
-  // x: one where every static surface draws as its triangles' edges.
+  // x: one where every static surface draws as its triangles' edges; y: times a uv checker repeats in place of every
+  // surface's textures, zero for none; z: one where surfaces draw solid, their alpha ignored.
   modes: vec4<f32>,
   // World to clip without the jitter, this frame and the last, which a surface's motion is measured by.
   motion_current: mat4x4<f32>,
   motion_previous: mat4x4<f32>,
+  // What shows where nothing was drawn and neither the sky nor the fog is; `w` one where it is set.
+  backdrop: vec4<f32>,
 };
 
 @group(0) @binding(0) var<uniform> camera: Camera;

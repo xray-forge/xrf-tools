@@ -52,6 +52,9 @@ pub struct StaticScene {
   /// Clusters the early phase set aside, for the late phase to test again.
   pub candidates: GrowableBuffer,
   pub impostors: GrowableBuffer,
+  /// Skinned models' links, two words a vertex, and their places' bone matrices, three rows a bone.
+  pub skins: GrowableBuffer,
+  pub bones: GrowableBuffer,
   /// Two a corner of each impostor: its position and hemisphere term, then its atlas coordinate and sun term.
   pub corners: GrowableBuffer,
   /// What each impostor's level of detail draws this frame, as the cull decided it.
@@ -103,6 +106,10 @@ pub struct StaticScene {
   contents: usize,
   /// The spawned object standing at each of the models' places, which a pick of one names.
   place_objects: HashMap<u32, u32>,
+  /// Each skinned object's bone matrices: their first row in `bones`, and how many bones.
+  skinned: HashMap<u32, (u32, u32)>,
+  /// Where each spawned object stands, by its index.
+  object_transforms: HashMap<u32, Mat4>,
   /// Each spawned object's bounding sphere in renderer space, by its index, as its model stands in its place.
   object_spheres: HashMap<u32, Vec4>,
   /// The models' places with composited surfaces, which a view draws back to front itself.
@@ -140,6 +147,8 @@ impl StaticScene {
       lists: GrowableBuffer::new(device, "static lists", storage),
       candidates: GrowableBuffer::new(device, "static candidates", storage),
       impostors: GrowableBuffer::new(device, "static impostors", storage),
+      skins: GrowableBuffer::new(device, "static model skins", storage),
+      bones: GrowableBuffer::new(device, "static bones", storage),
       corners: GrowableBuffer::new(device, "static impostor corners", storage),
       terms: GrowableBuffer::new(device, "static impostor terms", storage),
       impostor_list: GrowableBuffer::new(device, "static impostor list", storage),
@@ -201,6 +210,8 @@ impl StaticScene {
       sway_reach: 0.0,
       contents: 0,
       place_objects: HashMap::new(),
+      skinned: HashMap::new(),
+      object_transforms: HashMap::new(),
       object_spheres: HashMap::new(),
       sorted_places: Vec::new(),
     };
@@ -276,6 +287,39 @@ impl StaticScene {
     self.object_spheres.get(&object).copied()
   }
 
+  /// Where a spawned object stands, once its model is in the scene.
+  pub fn get_object_transform(&self, object: u32) -> Option<Mat4> {
+    self.object_transforms.get(&object).copied()
+  }
+
+  /// How many bones a skinned object's model has, once it is in the scene; none for one rigid or not in it.
+  pub fn get_bone_count(&self, object: u32) -> Option<u32> {
+    self.skinned.get(&object).map(|(_, bones)| *bones)
+  }
+
+  /// Stands a skinned object in a pose: each bone's matrix as three rows, from its bind to where it stands, this frame
+  /// and the last, as many as its model has bones each.
+  pub fn write_pose(&self, queue: &wgpu::Queue, object: u32, current: &[[Vec4; 3]], previous: &[[Vec4; 3]]) {
+    if let Some((base, bones)) = self.skinned.get(&object) {
+      let count: usize = *bones as usize;
+      let mut rows: Vec<[Vec4; 3]> = vec![[Vec4::X, Vec4::Y, Vec4::Z]; count * 2];
+
+      for (to, from) in rows[..count].iter_mut().zip(current) {
+        *to = *from;
+      }
+
+      for (to, from) in rows[count..].iter_mut().zip(previous) {
+        *to = *from;
+      }
+
+      queue.write_buffer(
+        self.bones.get_buffer(),
+        u64::from(*base) * 16,
+        bytemuck::cast_slice(&rows),
+      );
+    }
+  }
+
   /// Bytes of every pack put into the scene.
   pub fn get_bytes(&self) -> u64 {
     self.sectors.iter().map(|sector| sector.bytes).sum()
@@ -297,6 +341,8 @@ impl StaticScene {
       &self.lists,
       &self.candidates,
       &self.impostors,
+      &self.skins,
+      &self.bones,
       &self.corners,
       &self.terms,
       &self.impostor_list,
@@ -454,6 +500,15 @@ impl StaticScene {
       }
     }
 
+    // The links once a model, by vertex; each place reserves its own bone matrices, standing in the bind pose.
+    let skin_base: Option<(u32, u32)> = model.skin.as_ref().map(|skin| {
+      let start: u64 = self
+        .skins
+        .append(device, queue, encoder, bytemuck::cast_slice(&skin.links));
+
+      ((start / 8) as u32, skin.bones)
+    });
+
     for place in places {
       let matrix: Mat4 = place.transform;
       let scale: f32 = [matrix.x_axis, matrix.y_axis, matrix.z_axis]
@@ -461,8 +516,19 @@ impl StaticScene {
         .map(|axis| axis.truncate().length())
         .fold(0.0, f32::max);
       let index: u32 = self.place_count;
+      let skin: [u32; 4] = skin_base.map_or([0; 4], |(links, bones)| {
+        let bones: u32 = bones.max(1);
+        // This frame's matrices and the last's, both the bind pose until a pose is written.
+        let bind: Vec<[Vec4; 3]> = vec![[Vec4::X, Vec4::Y, Vec4::Z]; bones as usize * 2];
+        let rows: u32 = (self.bones.append(device, queue, encoder, bytemuck::cast_slice(&bind)) / 16) as u32;
+
+        self.skinned.insert(place.object, (rows, bones));
+
+        [rows, links, base.vertex_start, bones]
+      });
 
       self.place_objects.insert(index, place.object);
+      self.object_transforms.insert(place.object, matrix);
       self.object_spheres.insert(
         place.object,
         matrix
@@ -485,6 +551,7 @@ impl StaticScene {
         columns: [matrix.x_axis, matrix.y_axis, matrix.z_axis, matrix.w_axis],
         info: Vec4::new(1.0, 0.0, -1.0, scale),
         cube: place.lighting.map_or([0; 4], pack_cube),
+        skin,
       });
       self.place_count += 1;
 
@@ -791,6 +858,7 @@ impl StaticScene {
           scale,
         ),
         cube: [0; 4],
+        skin: [0; 4],
       });
       self.place_count += 1;
 

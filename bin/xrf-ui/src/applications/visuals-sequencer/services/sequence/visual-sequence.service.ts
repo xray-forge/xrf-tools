@@ -3,7 +3,11 @@ import { BoundAction, Computed, Observable } from "@wirestate/mobx";
 import { clamp } from "@xrf/math";
 import { Nullable, Optional } from "@xrf/types";
 
-import { ISequenceMotion, SequenceMotionCache } from "@/applications/visuals-sequencer/lib/sequence-motion-cache";
+import {
+  ESequenceMotionState,
+  ISequenceMotion,
+  SequenceMotionCache,
+} from "@/applications/visuals-sequencer/lib/sequence-motion-cache";
 import { clampMotionFps, MOTION_SAMPLE_FPS } from "@/core/visuals/lib/visual-motion";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
 
@@ -87,11 +91,11 @@ export class VisualSequenceService {
   }
 
   /**
-   * @returns The bone transforms posing the model right now, or null while the playing clip has none.
+   * @returns The motion posing the model right now, by its name, or null while the playing clip has none.
    */
   @Computed()
-  public get transforms(): Nullable<Float32Array> {
-    return this.playing?.transforms ?? null;
+  public get motion(): Nullable<string> {
+    return this.playing?.state === ESequenceMotionState.READY ? (this.playing?.bake?.name ?? null) : null;
   }
 
   /**
@@ -100,14 +104,6 @@ export class VisualSequenceService {
   @Computed()
   public get frameCount(): number {
     return this.playing?.bake?.frameCount ?? 0;
-  }
-
-  /**
-   * @returns Floats one bone occupies in the playing buffer, which the scene needs to index into it.
-   */
-  @Computed()
-  public get floatsPerBone(): number {
-    return this.playing?.bake?.floatsPerBone ?? 0;
   }
 
   /**
@@ -307,7 +303,7 @@ export class VisualSequenceService {
   public isPlayable(clip: Nullable<ISequenceClip>): boolean {
     const motion: Optional<ISequenceMotion> = clip ? this.motions.get(clip.motion) : undefined;
 
-    return Boolean(motion?.transforms && (motion.bake?.frameCount ?? 0) > 0);
+    return motion?.state === ESequenceMotionState.READY && (motion?.bake?.frameCount ?? 0) > 0;
   }
 
   /**

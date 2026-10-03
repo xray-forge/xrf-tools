@@ -1,24 +1,17 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
-import { waitFor } from "@testing-library/react";
 import { isComputedProp, isObservableProp } from "@wirestate/mobx";
-import { mockDdsFile } from "@xrf/dds/fixtures";
 import { Nullable } from "@xrf/types";
 
 import { VisualsService } from "@/applications/visuals-explorer/services/visuals/index";
-import { createRoots } from "@/core/assets/lib";
 import { EVisualSource, SelectedVisualDescription, VisualSource } from "@/core/ipc/types/xrf-app";
-import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { describeVisualSource } from "@/core/visuals/lib/visual-source";
-import { EVisualTextureState } from "@/core/visuals/lib/visual-texture";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { VisualMotionService } from "@/core/visuals/services/visual-motion.service";
-import { setMockBulkResponses } from "@/fixtures/mocks/bulk.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import {
   mockPackedSubmesh,
   mockSelectedVisual,
-  mockTextureDependency,
   mockVisualBone,
   MockVisualBuffer,
   mockVisualDescription,
@@ -26,10 +19,9 @@ import {
 } from "@/fixtures/mocks/visual.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 
-/** A selected visual whose description matches the buffer returned beside it. */
+/** A selected visual with one packed submesh. */
 function mockOpenableVisual(path: string = "C:\\gamedata\\wpn_ak74.ogf"): {
   selected: SelectedVisualDescription;
-  buffer: ArrayBuffer;
 } {
   const buffer: MockVisualBuffer = new MockVisualBuffer();
   const submesh = mockPackedSubmesh(buffer);
@@ -39,7 +31,6 @@ function mockOpenableVisual(path: string = "C:\\gamedata\\wpn_ak74.ogf"): {
       source: { kind: EVisualSource.FILE, path },
       description: mockVisualDescription({ submeshes: [submesh], bufferLength: buffer.byteLength }),
     }),
-    buffer: buffer.toArrayBuffer(),
   };
 }
 
@@ -65,7 +56,7 @@ describe("VisualsService observability", () => {
 
 describe("VisualsService bone highlight", () => {
   /** A loadable visual whose skeleton has one placed bone and one that never got a bind position. */
-  function mockSkeletalVisual(): { selected: SelectedVisualDescription; buffer: ArrayBuffer } {
+  function mockSkeletalVisual(): { selected: SelectedVisualDescription } {
     const buffer: MockVisualBuffer = new MockVisualBuffer();
     const submesh = mockPackedSubmesh(buffer);
 
@@ -80,19 +71,14 @@ describe("VisualsService bone highlight", () => {
           ],
         }),
       }),
-      buffer: buffer.toArrayBuffer(),
     };
   }
 
   async function openSkeletal(service: VisualsService): Promise<void> {
-    const { selected, buffer } = mockSkeletalVisual();
+    const { selected } = mockSkeletalVisual();
 
     setMockInvokeResponses({
       ["plugin:visuals|open_model"]: mockSessionResponse(selected),
-    });
-
-    setMockBulkResponses({
-      "visuals/read_geometry": buffer,
     });
 
     await service.openFile("C:\\gamedata\\wpn_ak74.ogf");
@@ -124,14 +110,10 @@ describe("VisualsService bone highlight", () => {
     await openSkeletal(service);
     service.highlightBone("wpn_body");
 
-    const { selected, buffer } = mockOpenableVisual("C:\\gamedata\\other.ogf");
+    const { selected } = mockOpenableVisual("C:\\gamedata\\other.ogf");
 
     setMockInvokeResponses({
       ["plugin:visuals|open_model"]: mockSessionResponse(selected),
-    });
-
-    setMockBulkResponses({
-      "visuals/read_geometry": buffer,
     });
 
     await service.openFile("C:\\gamedata\\other.ogf");
@@ -143,7 +125,7 @@ describe("VisualsService bone highlight", () => {
 
 describe("VisualsService bone visibility", () => {
   /** A weapon skeleton wearing every addon at once, which is how a weapon file always stores them. */
-  function mockWeaponVisual(): { selected: SelectedVisualDescription; buffer: ArrayBuffer } {
+  function mockWeaponVisual(): { selected: SelectedVisualDescription } {
     const buffer: MockVisualBuffer = new MockVisualBuffer();
     const submesh = mockPackedSubmesh(buffer);
 
@@ -160,19 +142,14 @@ describe("VisualsService bone visibility", () => {
           ],
         }),
       }),
-      buffer: buffer.toArrayBuffer(),
     };
   }
 
   async function openWeapon(service: VisualsService): Promise<void> {
-    const { selected, buffer } = mockWeaponVisual();
+    const { selected } = mockWeaponVisual();
 
     setMockInvokeResponses({
       ["plugin:visuals|open_model"]: mockSessionResponse(selected),
-    });
-
-    setMockBulkResponses({
-      "visuals/read_geometry": buffer,
     });
 
     await service.openFile("C:\\gamedata\\wpn_ak74.ogf");
@@ -223,14 +200,10 @@ describe("VisualsService bone visibility", () => {
     await openWeapon(service);
     service.toggleBoneVisibility("wpn_scope");
 
-    const { selected, buffer } = mockOpenableVisual("C:\\gamedata\\other.ogf");
+    const { selected } = mockOpenableVisual("C:\\gamedata\\other.ogf");
 
     setMockInvokeResponses({
       ["plugin:visuals|open_model"]: mockSessionResponse(selected),
-    });
-
-    setMockBulkResponses({
-      "visuals/read_geometry": buffer,
     });
 
     await service.openFile("C:\\gamedata\\other.ogf");
@@ -245,16 +218,12 @@ describe("VisualsService opening", () => {
     resetMockInvoke();
   });
 
-  it("builds views from the description and the buffer it describes", async () => {
-    const { selected, buffer } = mockOpenableVisual();
+  it("builds views from the description", async () => {
+    const { selected } = mockOpenableVisual();
     const { service } = mockInjectedService(VisualsService, [VisualLoadService, VisualMotionService]);
 
     setMockInvokeResponses({
       ["plugin:visuals|open_model"]: mockSessionResponse(selected),
-    });
-
-    setMockBulkResponses({
-      "visuals/read_geometry": buffer,
     });
 
     await service.openFile("C:\\gamedata\\wpn_ak74.ogf");
@@ -282,15 +251,11 @@ describe("VisualsService opening", () => {
 
   it("restores whatever the backend still has selected", async () => {
     // A reload re-provisions the service, and the backend keeps the selection for exactly this reason.
-    const { selected, buffer } = mockOpenableVisual("C:\\gamedata\\stalker.ogf");
+    const { selected } = mockOpenableVisual("C:\\gamedata\\stalker.ogf");
     const { service } = mockInjectedService(VisualsService, [VisualLoadService, VisualMotionService]);
 
     setMockInvokeResponses({
       ["plugin:visuals|get_model"]: mockSessionResponse(selected),
-    });
-
-    setMockBulkResponses({
-      "visuals/read_geometry": buffer,
     });
 
     await service.onProvision();
@@ -310,96 +275,46 @@ describe("VisualsService opening", () => {
     expect(service.visual.value).toBeNull();
   });
 
-  it("discards geometry for a visual the user has moved past", async () => {
-    // Both calls are addressed by source, so a late response is identifiable. Pairing it with the current
-    // description would upload one model's bytes under another's byte ranges.
+  it("discards a visual the user has moved past", async () => {
+    // The first open answers last: published, it would put one model on screen under the label of the next.
     const first = mockOpenableVisual("C:\\gamedata\\first.ogf");
     const second = mockOpenableVisual("C:\\gamedata\\second.ogf");
     const { service } = mockInjectedService(VisualsService, [VisualLoadService, VisualMotionService]);
 
-    let releaseFirstGeometry: Nullable<() => void> = null;
+    let releaseFirst: Nullable<() => void> = null;
 
-    const pendingFirst: Promise<ArrayBuffer> = new Promise((resolve) => {
-      releaseFirstGeometry = () => resolve(first.buffer);
+    const pendingFirst: Promise<void> = new Promise((resolve) => {
+      releaseFirst = resolve;
     });
-
-    const firstSessions = new Set<unknown>();
-
-    function isFirst(parameters?: Record<string, unknown>): boolean {
-      const source: VisualSource = (parameters as { source: VisualSource }).source;
-
-      const firstMatch = describeVisualSource(source) === describeVisualSource(first.selected.source);
-
-      if (firstMatch) firstSessions.add(parameters?.sessionId);
-
-      return firstMatch;
-    }
 
     setMockInvokeResponses({
-      ["plugin:visuals|open_model"]: mockSessionResponse((parameters?: Record<string, unknown>) =>
-        isFirst(parameters) ? first.selected : second.selected
-      ),
-    });
+      ["plugin:visuals|open_model"]: mockSessionResponse(async (parameters?: Record<string, unknown>) => {
+        const source: VisualSource = (parameters as { source: VisualSource }).source;
 
-    setMockBulkResponses({
-      "visuals/read_geometry": (parameters?: Record<string, unknown>) =>
-        firstSessions.has(parameters?.sessionId) ? pendingFirst : second.buffer,
+        if (describeVisualSource(source) !== describeVisualSource(first.selected.source)) {
+          return second.selected;
+        }
+
+        await pendingFirst;
+
+        return first.selected;
+      }),
     });
 
     const opening: Promise<void> = service.openFile("C:\\gamedata\\first.ogf");
 
     await service.openFile("C:\\gamedata\\second.ogf");
 
-    (releaseFirstGeometry as unknown as () => void)();
+    (releaseFirst as unknown as () => void)();
     await opening;
 
     expect(service.sourceLabel).toBe("C:\\gamedata\\second.ogf");
   });
 
-  it("reads a texture by the path the open resolved, in the roots it named", async () => {
-    // Reading by resolved path rather than by reference is what keeps the bytes and the reported outcome describing the
-    // same file - including a substituted dummy, which by reference would resolve to nothing.
-    const { selected, buffer } = mockOpenableVisual();
-    const { service } = mockInjectedService(VisualsService, [VisualLoadService, VisualMotionService]);
-
-    let readParameters: Nullable<Record<string, unknown>> = null;
-
-    setMockInvokeResponses({
-      // The backend echoes the roots it opened with, which is what later reads are addressed by.
-      ["plugin:visuals|open_model"]: mockSessionResponse((parameters?: Record<string, unknown>) => ({
-        ...selected,
-        roots: (parameters as { roots: XrayRoots }).roots,
-        dependencies: { motions: [], textures: [mockTextureDependency({ submeshIndex: 0 })] },
-      })),
-    });
-
-    setMockBulkResponses({
-      "visuals/read_geometry": buffer,
-      "assets/read_asset": (parameters?: Record<string, unknown>) => {
-        readParameters = parameters ?? null;
-
-        return mockDdsFile({ fourCC: "DXT1", height: 4, mipmapCount: 1, width: 4 });
-      },
-    });
-
-    await service.openFile("C:\\gamedata\\wpn_ak74.ogf", "C:\\Games\\stalker");
-
-    // Textures are loaded beside the open rather than inside it, so a model shows its geometry without waiting on them.
-    await waitFor(() => expect(service.textures.size).toBe(1));
-
-    expect(readParameters).toEqual({
-      logicalPath: "textures\\wpn\\wpn_ak74.dds",
-      // Centred on the model, so the texture resolved through the model's own tree and is read back through it - with
-      // the root the open was given behind it, and no ambient set anywhere.
-      roots: createRoots(["C:\\Games\\stalker"], "C:\\gamedata\\wpn_ak74.ogf"),
-    });
-    expect(service.textureStatuses.get(0)?.state).toBe(EVisualTextureState.APPLIED);
-  });
-
   it("opens the same source again when the failed attempt is retried", async () => {
     // The retry repeats the request, not the outcome: the row it was opened from is a navigation gesture, and a
     // single-model session has no row at all.
-    const { selected, buffer } = mockOpenableVisual("C:\\gamedata\\meshes\\stalker.ogf");
+    const { selected } = mockOpenableVisual("C:\\gamedata\\meshes\\stalker.ogf");
     const { service } = mockInjectedService(VisualsService, [VisualLoadService, VisualMotionService]);
 
     const opened: Array<Record<string, unknown>> = [];
@@ -414,10 +329,6 @@ describe("VisualsService opening", () => {
 
         return selected;
       }),
-    });
-
-    setMockBulkResponses({
-      "visuals/read_geometry": buffer,
     });
 
     await service.openAsset("meshes\\stalker.ogf", ["C:\\gamedata"]);
@@ -454,16 +365,12 @@ describe("VisualsService opening", () => {
   });
 
   it("clears the model when closed", async () => {
-    const { selected, buffer } = mockOpenableVisual();
+    const { selected } = mockOpenableVisual();
     const { service } = mockInjectedService(VisualsService, [VisualLoadService, VisualMotionService]);
 
     setMockInvokeResponses({
       ["plugin:visuals|open_model"]: mockSessionResponse(selected),
       ["plugin:visuals|close_model"]: null,
-    });
-
-    setMockBulkResponses({
-      "visuals/read_geometry": buffer,
     });
 
     await service.openFile("C:\\gamedata\\wpn_ak74.ogf");

@@ -4,6 +4,8 @@ pub(crate) mod render_level_details;
 pub(crate) mod render_level_source;
 pub(crate) mod render_level_spawn;
 pub(crate) mod render_level_weather;
+pub(crate) mod render_model_skeleton;
+pub(crate) mod render_motion;
 pub(crate) mod render_rain;
 pub(crate) mod render_spawn_lighting;
 pub(crate) mod render_spawn_model;

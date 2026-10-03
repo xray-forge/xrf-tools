@@ -8,6 +8,7 @@ use glam::Mat4;
 use crate::contract::render_load_failure::RenderLoadFailure;
 use crate::host::render_level_source::RenderLevelSource;
 use crate::host::render_level_spawn::RenderLevelSpawn;
+use crate::host::render_model_skeleton::RenderModelSkeleton;
 use crate::host::render_spawn_models::RenderSpawnModels;
 use crate::host::render_spawn_object::RenderSpawnObject;
 use crate::scene::static_scene::static_model::StaticModel;
@@ -17,8 +18,9 @@ use crate::scene::static_scene::static_model_place::StaticModelPlace;
 /// enough that objects appear while the rest are read.
 const VISUALS_PER_BATCH: usize = 16;
 
-/// One model packed for the scene, with every object standing as it.
-pub type SpawnLoad = (StaticModel, Vec<StaticModelPlace>);
+/// One model packed for the scene, with every object standing as it, and the skeleton it is posed by where the
+/// renderer poses it.
+pub type SpawnLoad = (StaticModel, Vec<StaticModelPlace>, Option<RenderModelSkeleton>);
 
 /// Reads a level's spawn on the loader threads: the objects once, then their visuals in batches side by side, each
 /// model packed and handed to the render thread with the objects standing as it. Dropped, it lets go of the batches not
@@ -182,11 +184,17 @@ fn send_models(
         group: object.category.get_group(),
       })
       .collect();
-    let packed: StaticModel = StaticModel::pack(&model.name, &model.package, &model.surfaces, visual as u16);
+    let packed: StaticModel = StaticModel::pack_at(
+      &model.name,
+      &model.package,
+      &model.surfaces,
+      visual as u16,
+      spawn.detail,
+    );
 
     // Counted before it is sent, so the loader never sees it taken before it was sent.
     sent.fetch_add(1, Ordering::AcqRel);
 
-    let _ = sender.send((packed, places));
+    let _ = sender.send((packed, places, model.skeleton));
   }
 }

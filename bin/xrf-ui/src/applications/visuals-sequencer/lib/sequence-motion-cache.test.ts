@@ -2,15 +2,11 @@ import { afterEach, describe, expect, it, jest } from "@jest/globals";
 import { reaction } from "@wirestate/mobx";
 
 import { visualsCommands } from "@/core/ipc/commands/visuals";
+import { SessionSnapshot } from "@/core/ipc/types/xrf-app";
+import { VisualMotionBake } from "@/core/ipc/types/xrf-visual";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
-import { BulkRead, setMockBulkResponses } from "@/fixtures/mocks/bulk.mocks";
 import { mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
-import {
-  mockSelectedVisual,
-  mockVisualModelViews,
-  mockVisualMotionBake,
-  mockVisualMotionTransforms,
-} from "@/fixtures/mocks/visual.mocks";
+import { mockSelectedVisual, mockVisualModelViews, mockVisualMotionBake } from "@/fixtures/mocks/visual.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { AsyncState } from "@/lib/async-state";
 import { noop } from "@/lib/callbacks/noop";
@@ -20,20 +16,16 @@ import { ESequenceMotionState, SequenceMotionCache } from "./sequence-motion-cac
 function mockCache() {
   const { service: loadService } = mockInjectedService(VisualLoadService);
   const bake = mockVisualMotionBake({ name: "first" });
-  const bytes = mockVisualMotionTransforms(bake, () => 7);
   const open = jest.spyOn(visualsCommands, "openMotion").mockImplementation(async (_sessionId, motionId, name) => {
     return mockSessionSnapshot({ ...bake, name }, motionId);
   });
-  const read = jest.fn<BulkRead>().mockResolvedValue(bytes);
-
-  setMockBulkResponses({ "visuals/read_motion": read });
 
   loadService.visual = AsyncState.ready({
     selected: mockSessionSnapshot(mockSelectedVisual(), "model-session"),
     views: mockVisualModelViews(),
   });
 
-  return { cache: new SequenceMotionCache(loadService), loadService, open, read, bake, bytes };
+  return { cache: new SequenceMotionCache(loadService), loadService, open, bake };
 }
 
 describe("SequenceMotionCache", () => {
@@ -42,7 +34,7 @@ describe("SequenceMotionCache", () => {
   });
 
   it("shares pending and completed bakes and publishes their state to observers", async () => {
-    const { cache, open, read, bake, bytes } = mockCache();
+    const { cache, open, bake } = mockCache();
     const states: Array<ESequenceMotionState> = [];
     const stop = reaction(
       () => cache.motions.get("first")?.state,
@@ -63,35 +55,29 @@ describe("SequenceMotionCache", () => {
       await cache.bake("first");
 
       expect(open).toHaveBeenCalledTimes(1);
-      expect(read).toHaveBeenCalledTimes(1);
-      expect(read).toHaveBeenCalledWith({ motionId: open.mock.calls[0][1], sessionId: "model-session" });
-      expect(cache.motions.get("first")).toEqual({
-        bake,
-        reason: null,
-        state: ESequenceMotionState.READY,
-        transforms: new Float32Array(bytes),
-      });
+      expect(open.mock.calls[0][0]).toBe("model-session");
+      expect(cache.motions.get("first")).toEqual({ bake, reason: null, state: ESequenceMotionState.READY });
       expect(states).toEqual([ESequenceMotionState.BAKING, ESequenceMotionState.READY]);
     } finally {
       stop();
     }
   });
 
-  it("waits for one motion's bytes before opening the next motion", async () => {
-    const { cache, open, read, bytes } = mockCache();
-    let finishRead: (bytes: ArrayBuffer) => void = noop;
-    let onReading: () => void = noop;
-    const reading = new Promise<ArrayBuffer>((resolve) => {
-      finishRead = resolve;
+  it("waits for one motion's bake before opening the next motion", async () => {
+    const { cache, open, bake } = mockCache();
+    let finishOpen: (snapshot: SessionSnapshot<VisualMotionBake>) => void = noop;
+    let onOpening: () => void = noop;
+    const opening = new Promise<SessionSnapshot<VisualMotionBake>>((resolve) => {
+      finishOpen = resolve;
     });
     const started = new Promise<void>((resolve) => {
-      onReading = resolve;
+      onOpening = resolve;
     });
 
-    read.mockImplementationOnce(() => {
-      onReading();
+    open.mockImplementationOnce(() => {
+      onOpening();
 
-      return reading;
+      return opening;
     });
 
     const first = cache.bake("first");
@@ -102,21 +88,17 @@ describe("SequenceMotionCache", () => {
     expect(open).toHaveBeenCalledTimes(1);
     expect(cache.motions.get("second")?.state).toBe(ESequenceMotionState.BAKING);
 
-    finishRead(bytes);
+    finishOpen(mockSessionSnapshot(bake, "first-motion"));
 
     await Promise.all([first, second]);
 
     expect(open.mock.calls.map((call) => call[2])).toEqual(["first", "second"]);
-    expect(read.mock.calls).toEqual([
-      [{ motionId: open.mock.calls[0][1], sessionId: "model-session" }],
-      [{ motionId: open.mock.calls[1][1], sessionId: "model-session" }],
-    ]);
     expect(cache.motions.get("first")?.state).toBe(ESequenceMotionState.READY);
     expect(cache.motions.get("second")?.state).toBe(ESequenceMotionState.READY);
   });
 
   it("retains a failed bake while allowing the next motion to load", async () => {
-    const { cache, open, read } = mockCache();
+    const { cache, open } = mockCache();
 
     open.mockRejectedValueOnce(new Error("Missing motion bank"));
 
@@ -127,30 +109,13 @@ describe("SequenceMotionCache", () => {
       bake: null,
       reason: "Missing motion bank",
       state: ESequenceMotionState.UNAVAILABLE,
-      transforms: null,
     });
     expect(cache.motions.get("second")?.state).toBe(ESequenceMotionState.READY);
     expect(open).toHaveBeenCalledTimes(2);
-    expect(read).toHaveBeenCalledTimes(1);
-  });
-
-  it("rejects bytes that do not match the bake's frame layout", async () => {
-    const { cache, read } = mockCache();
-
-    read.mockResolvedValueOnce(new ArrayBuffer(4));
-
-    await cache.bake("first");
-
-    expect(cache.motions.get("first")).toEqual({
-      bake: null,
-      reason: expect.stringContaining("Motion 'first' returned 4 bytes"),
-      state: ESequenceMotionState.UNAVAILABLE,
-      transforms: null,
-    });
   });
 
   it("reports an unavailable motion when no model is selected", async () => {
-    const { cache, loadService, open, read } = mockCache();
+    const { cache, loadService, open } = mockCache();
 
     loadService.clear();
 
@@ -159,11 +124,10 @@ describe("SequenceMotionCache", () => {
     expect(cache.motions.get("first")?.state).toBe(ESequenceMotionState.UNAVAILABLE);
     expect(cache.motions.get("first")?.reason).toEqual(expect.any(String));
     expect(open).not.toHaveBeenCalled();
-    expect(read).not.toHaveBeenCalled();
   });
 
   it("skips queued motions invalidated before they start", async () => {
-    const { cache, open, read } = mockCache();
+    const { cache, open } = mockCache();
     const first = cache.bake("first");
     const second = cache.bake("second");
 
@@ -172,25 +136,24 @@ describe("SequenceMotionCache", () => {
     await Promise.all([first, second]);
 
     expect(open).not.toHaveBeenCalled();
-    expect(read).not.toHaveBeenCalled();
     expect(cache.motions.size).toBe(0);
   });
 
   it("discards a late failure without replacing a new request for the same motion", async () => {
-    const { cache, read } = mockCache();
-    let failRead: (error: Error) => void = noop;
-    let onReading: () => void = noop;
-    const reading = new Promise<ArrayBuffer>((_resolve, reject) => {
-      failRead = reject;
+    const { cache, open } = mockCache();
+    let failOpen: (error: Error) => void = noop;
+    let onOpening: () => void = noop;
+    const opening = new Promise<SessionSnapshot<VisualMotionBake>>((_resolve, reject) => {
+      failOpen = reject;
     });
     const started = new Promise<void>((resolve) => {
-      onReading = resolve;
+      onOpening = resolve;
     });
 
-    read.mockImplementationOnce(() => {
-      onReading();
+    open.mockImplementationOnce(() => {
+      onOpening();
 
-      return reading;
+      return opening;
     });
 
     const previous = cache.bake("first");
@@ -201,7 +164,7 @@ describe("SequenceMotionCache", () => {
 
     const current = cache.bake("first");
 
-    failRead(new Error("Previous model closed"));
+    failOpen(new Error("Previous model closed"));
 
     await previous;
 
@@ -211,6 +174,6 @@ describe("SequenceMotionCache", () => {
     await current;
 
     expect(cache.motions.get("first")?.state).toBe(ESequenceMotionState.READY);
-    expect(read).toHaveBeenCalledTimes(2);
+    expect(open).toHaveBeenCalledTimes(2);
   });
 });

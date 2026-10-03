@@ -26,8 +26,8 @@ export function VisualMotionTransport({
   const service: VisualMotionService = useInjection(VisualMotionService);
 
   const frames: number = service.frameCount;
-  const duration: Nullable<number> = service.posed.value?.bake.duration ?? null;
-  const speed: Nullable<number> = service.posed.value?.bake.speed ?? null;
+  const duration: Nullable<number> = service.posed.value?.duration ?? null;
+  const speed: Nullable<number> = service.posed.value?.speed ?? null;
 
   const onTogglePlay = useCallback(() => (service.isPlaying ? service.pause() : service.play()), [service]);
 

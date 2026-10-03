@@ -15,4 +15,19 @@ pub enum RenderOverlay {
   },
   /// A disc in the sky where the light comes from, `size` device pixels across, following the camera and the lighting.
   Sun { color: [f32; 3], size: f32 },
+  /// Points in renderer space, three floats each, drawn as discs of one colour `size` device pixels across wherever
+  /// they stand.
+  Points {
+    positions: Vec<f32>,
+    color: [f32; 3],
+    size: f32,
+    /// Whether what the scene draws in front hides them.
+    is_depth_tested: bool,
+  },
+  /// Every skinned model's bones as segments, child to parent, following its pose.
+  Skeleton {
+    color: [f32; 3],
+    /// Whether what the scene draws in front hides them.
+    is_depth_tested: bool,
+  },
 }

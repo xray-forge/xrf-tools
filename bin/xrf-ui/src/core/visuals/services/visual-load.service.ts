@@ -1,20 +1,20 @@
 import { Injectable, OnDeactivation } from "@wirestate/core";
-import { BoundAction, Computed, Observable, RefObservable, runInAction } from "@wirestate/mobx";
+import { BoundAction, Computed, Observable, runInAction } from "@wirestate/mobx";
 import { Nullable } from "@xrf/types";
 
 import { transformError } from "@/core/error/lib";
-import { fetchBulk } from "@/core/ipc/bulk";
 import { visualsCommands } from "@/core/ipc/commands/visuals";
-import { visualsBulkRoutes } from "@/core/ipc/commands/visuals-bulk";
 import { Session } from "@/core/ipc/session";
 import { SelectedVisualDescription, SessionSnapshot, VisualSource } from "@/core/ipc/types/xrf-app";
+import { RenderTextureReport } from "@/core/ipc/types/xrf-renderer";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { IRendererSurfaceDraw } from "@/core/render/lib/surface/renderer-surface-draw";
-import { IVisualBumpFiles, IVisualBumpStatus } from "@/core/visuals/lib/visual-bump";
+import { IVisualRenderSource } from "@/core/visuals/lib/render/visual-render-source";
+import { IVisualBumpStatus, toLoadableBumps } from "@/core/visuals/lib/visual-bump";
 import { describeVisualSource } from "@/core/visuals/lib/visual-source";
 import { createVisualSurfaces } from "@/core/visuals/lib/visual-surface";
-import { IVisualTextureFile, IVisualTextureStatus } from "@/core/visuals/lib/visual-texture";
-import { VisualTextureSet } from "@/core/visuals/lib/visual-texture-set";
+import { IVisualTextureStatus } from "@/core/visuals/lib/visual-texture";
+import { toVisualBumpStatuses, toVisualTextureStatuses } from "@/core/visuals/lib/visual-texture-report";
 import { createVisualViews, IVisualModelViews } from "@/core/visuals/lib/visual-views";
 import { AsyncState } from "@/lib/async-state";
 import { formatDuration } from "@/lib/format/duration";
@@ -28,13 +28,11 @@ export interface IOpenVisual {
 }
 
 /**
- * Loads a native geometry snapshot and its resolved textures, publishing them together.
- *
- * Geometry uses the opening's identity; texture reads use the roots and paths resolved by that opening.
- * A delayed response can therefore be discarded without pairing geometry with another model's description.
+ * Opens a visual's session and publishes what the viewer reads of it; the renderer reads its geometry and textures
+ * through the session itself, and says what became of each texture once it has.
  */
 @Injectable()
-export class VisualLoadService {
+export class VisualLoadService implements IVisualRenderSource {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
   private readonly session: Session = new Session(visualsCommands.closeModel);
@@ -51,25 +49,31 @@ export class VisualLoadService {
     return this.visual.value?.views ?? null;
   }
 
-  /**
-   * Texture files by submesh index, for whichever side draws to upload.
-   */
-  @RefObservable()
-  public textures: ReadonlyMap<number, IVisualTextureFile> = new Map();
-
   /** What became of each submesh's texture, so a panel can report it rather than leaving a submesh unexplained. */
   @Observable()
   public textureStatuses: ReadonlyMap<number, IVisualTextureStatus> = new Map();
 
-  /**
-   * Bump pairs by submesh index, for whichever side draws to shade with.
-   */
-  @RefObservable()
-  public bumps: ReadonlyMap<number, IVisualBumpFiles> = new Map();
-
   /** What became of each submesh's bump inputs, each half on its own. */
   @Observable()
   public bumpStatuses: ReadonlyMap<number, IVisualBumpStatus> = new Map();
+
+  /**
+   * @returns The open visual's session, which the renderer reads it through, or null while nothing is open.
+   */
+  @Computed()
+  public get sessionId(): Nullable<string> {
+    return this.visual.value?.selected.sessionId ?? null;
+  }
+
+  /**
+   * @returns Whether any submesh binds a bump pair with both halves located; a dummy pair counts, since it is shaded.
+   */
+  @Computed()
+  public get hasBump(): boolean {
+    const selected: Nullable<SelectedVisualDescription> = this.visual.value?.selected.value ?? null;
+
+    return Boolean(selected && toLoadableBumps(selected.dependencies.textures, selected.materials).length);
+  }
 
   /**
    * @returns The path or entry the loaded visual was read from, or null when nothing is loaded.
@@ -117,7 +121,7 @@ export class VisualLoadService {
 
       this.log.info("Visual described in:", formatDuration(timer.lap()));
 
-      yield* this.view(selected);
+      this.view(selected);
 
       this.log.info("Visual loaded:", describeVisualSource(source), "in", formatDuration(timer.elapsed()));
     } catch (error: unknown) {
@@ -147,7 +151,7 @@ export class VisualLoadService {
 
     if (snapshot) {
       this.log.info("Restoring visual:", describeVisualSource(snapshot.value.source));
-      yield* this.view(snapshot);
+      this.view(snapshot);
 
       this.log.info(
         "Visual restored:",
@@ -185,57 +189,45 @@ export class VisualLoadService {
     this.clearView();
   }
 
+  /**
+   * Notes what the renderer made of each texture the open visual samples.
+   *
+   * @param sessionId - The session the renderer drew, so a report on a visual since replaced changes nothing.
+   * @param reports - What it said of every texture.
+   */
+  @BoundAction()
+  public noteTextures(sessionId: string, reports: Array<RenderTextureReport>): void {
+    const selected: Nullable<SessionSnapshot<SelectedVisualDescription>> = this.visual.value?.selected ?? null;
+
+    if (selected?.sessionId === sessionId) {
+      this.textureStatuses = toVisualTextureStatuses(selected.value, reports);
+      this.bumpStatuses = toVisualBumpStatuses(selected.value, reports);
+    }
+  }
+
   private clearView(): void {
     runInAction(() => {
       this.visual = this.visual.asIdle();
-      this.releaseTextures();
       this.textureStatuses = new Map();
       this.bumpStatuses = new Map();
     });
   }
 
   /**
-   * Fetch and view the geometry of a described visual, then its textures.
+   * Publish what the viewer reads of a described visual, every located texture loading until the renderer says.
    *
    * @param snapshot - Native visual description and its session identity.
    */
-  private *view(snapshot: SessionSnapshot<SelectedVisualDescription>): TFlow {
+  private view(snapshot: SessionSnapshot<SelectedVisualDescription>): void {
     const selected: SelectedVisualDescription = snapshot.value;
-    const timer: Timer = new Timer();
-
-    // Geometry belongs to this parse, even if the same path has since been opened with different roots.
-    const buffer: ArrayBuffer = yield* call(fetchBulk(visualsBulkRoutes.readGeometry(snapshot.sessionId)));
-
-    this.log.info("Visual geometry read in:", formatDuration(timer.lap()));
-
-    // Joined once, and carried by the meshes that draw the surfaces.
+    // Joined once, for the toolbar and the panels to read how each submesh is drawn.
     const surfaces: Map<number, IRendererSurfaceDraw> = createVisualSurfaces(
       selected.description.submeshes,
       selected.surfaces
     );
-    const views: IVisualModelViews = createVisualViews(selected.description, buffer, surfaces);
 
-    this.log.info("Visual views built in:", formatDuration(timer.lap()));
-
-    const loaded: VisualTextureSet = yield* VisualTextureSet.load(selected);
-
-    // Geometry, textures and their statuses land together, so the scene builds a mesh and dresses it in the same
-    // commit. Published separately, a model showed untextured for as long as its textures took to arrive - brief,
-    // and exactly long enough to read as grey plastic.
-    this.releaseTextures();
-
-    this.visual = this.visual.asReady({ selected: snapshot, views });
-    this.textures = loaded.textures;
-    this.textureStatuses = loaded.statuses;
-    this.bumps = loaded.bumps;
-    this.bumpStatuses = loaded.bumpStatuses;
-  }
-
-  /**
-   * Drops what the current view was drawn from.
-   */
-  private releaseTextures(): void {
-    this.textures = new Map();
-    this.bumps = new Map();
+    this.visual = this.visual.asReady({ selected: snapshot, views: createVisualViews(selected.description, surfaces) });
+    this.textureStatuses = toVisualTextureStatuses(selected, []);
+    this.bumpStatuses = toVisualBumpStatuses(selected, []);
   }
 }

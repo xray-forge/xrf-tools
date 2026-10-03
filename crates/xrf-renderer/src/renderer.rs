@@ -10,6 +10,7 @@ use crate::contract::render_capture::RenderCapture;
 use crate::contract::render_input_event::RenderInputEvent;
 use crate::contract::render_level_hit::RenderLevelHit;
 use crate::contract::render_level_problems::RenderLevelProblems;
+use crate::contract::render_model_pose::RenderModelPose;
 use crate::contract::render_overlay::RenderOverlay;
 use crate::contract::render_settings::RenderSettings;
 use crate::contract::render_surface_geometry::RenderSurfaceGeometry;
@@ -132,10 +133,18 @@ impl Renderer {
   }
 
   pub fn set_view_options(&self, id: RenderViewportId, options: RenderViewOptions) {
-    self.send(RenderCommand::Options { id, options });
+    self.send(RenderCommand::Options {
+      id,
+      options: Box::new(options),
+    });
   }
 
   /// Replaces what a viewport draws over its frame.
+  /// Stands a viewport's skinned models in a pose, from its next frame on.
+  pub fn pose_model(&self, id: RenderViewportId, pose: RenderModelPose) {
+    self.send(RenderCommand::PoseModel { id, pose });
+  }
+
   pub fn set_overlays(&self, id: RenderViewportId, overlays: Vec<RenderOverlay>) {
     self.send(RenderCommand::Overlays { id, overlays });
   }

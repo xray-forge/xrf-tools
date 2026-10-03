@@ -66,9 +66,9 @@ export function VisualPreviewLayout({
   const model: Nullable<IVisualModelViews> = source.model;
   const triangleCount: number = model ? countVisualTriangles(model, viewService.detail) : 0;
   const hasDetailLevels: boolean = (model?.levelCount ?? 1) > 1;
-  const hasSkeleton: boolean = Boolean(model?.skeleton);
-  // A dummy pair counts: it is uploaded and shaded, and comparing it flat is how a modder sees that it adds nothing.
-  const hasBump: boolean = Boolean(model && source.bumps.size > 0);
+  const hasSkeleton: boolean = Boolean(model?.hasSkeleton);
+  // A dummy pair counts: it is shaded, and comparing it flat is how a modder sees that it adds nothing.
+  const hasBump: boolean = Boolean(model && source.hasBump);
   const hasAlpha: boolean = Boolean(model?.submeshes.some((submesh) => isAlphaRendererSurfaceDraw(submesh.surface)));
 
   useEditorPanels(() => {

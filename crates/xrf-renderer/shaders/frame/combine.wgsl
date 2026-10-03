@@ -74,7 +74,7 @@ fn fs_combine(in: FullscreenVarying) -> @location(0) vec4<f32> {
       return vec4<f32>(tonemap(lighting.fog_color.rgb, scale), 1.0);
     }
 
-    return vec4<f32>(BACKDROP, 1.0);
+    return vec4<f32>(select(BACKDROP, camera.backdrop.rgb, camera.backdrop.w > 0.5), 1.0);
   }
 
   let albedo: vec4<f32> = textureLoad(albedo_target, texel, 0);

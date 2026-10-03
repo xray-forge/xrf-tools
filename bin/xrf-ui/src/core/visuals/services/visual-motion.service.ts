@@ -4,9 +4,7 @@ import { clamp } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 
 import { transformError } from "@/core/error/lib";
-import { fetchBulk } from "@/core/ipc/bulk";
 import { visualsCommands } from "@/core/ipc/commands/visuals";
-import { visualsBulkRoutes } from "@/core/ipc/commands/visuals-bulk";
 import { requireSessionId } from "@/core/ipc/session";
 import { SessionSnapshot } from "@/core/ipc/types/xrf-app";
 import { VisualMotionBake } from "@/core/ipc/types/xrf-visual";
@@ -17,18 +15,11 @@ import { formatDuration } from "@/lib/format/duration";
 import { Logger, Timer } from "@/lib/logging";
 import { call, cancelFlows, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 
-/** A posed motion: what the backend said it is, and every frame's bone transforms. */
-export interface IPosedMotion {
-  bake: VisualMotionBake;
-  transforms: Float32Array;
-}
-
 /**
  * Playing one of the open visual's motions.
  *
- * The whole motion is fetched once and played locally, because at thirty frames a second a round trip per frame is not
- * playback. What crosses is one transform per bone per frame, which poses the mesh through its skinning and the
- * skeleton overlay through those transforms' translations: one buffer, both surfaces.
+ * The motion is baked once to learn how long it is, and the clock runs here; the renderer bakes and poses the model by
+ * itself, told only the motion's name and the frame.
  */
 @Injectable()
 export class VisualMotionService {
@@ -46,7 +37,7 @@ export class VisualMotionService {
   public motions: AsyncState<Array<string>> = AsyncState.idle([]);
 
   @Observable()
-  public posed: AsyncState<IPosedMotion> = AsyncState.idle();
+  public posed: AsyncState<VisualMotionBake> = AsyncState.idle();
 
   @Observable()
   public frame: number = 0;
@@ -72,17 +63,7 @@ export class VisualMotionService {
    */
   @Computed()
   public get frameCount(): number {
-    return this.posed.value?.bake.frameCount ?? 0;
-  }
-
-  /**
-   * @returns Floats one bone occupies in the posed buffer, which the scene needs to index into it.
-   *
-   * Read off the bake rather than assumed, so the buffer's layout is stated by whoever produced it.
-   */
-  @Computed()
-  public get floatsPerBone(): number {
-    return this.posed.value?.bake.floatsPerBone ?? 0;
+    return this.posed.value?.frameCount ?? 0;
   }
 
   public constructor(private readonly loadService: VisualLoadService = inject(VisualLoadService)) {}
@@ -156,19 +137,9 @@ export class VisualMotionService {
       );
 
       const bake: VisualMotionBake = snapshot.value;
-      const bytes: ArrayBuffer = yield* call(fetchBulk(visualsBulkRoutes.readMotion(sessionId, snapshot.sessionId)));
-
-      const expected: number = bake.frameCount * bake.boneCount * bake.floatsPerBone * Float32Array.BYTES_PER_ELEMENT;
-
-      if (bytes.byteLength !== expected) {
-        throw new Error(
-          `Motion '${name}' returned ${bytes.byteLength} bytes for ${bake.frameCount} frames of ` +
-            `${bake.boneCount} bones, which needs ${expected}. The pose and its bytes came from different reads.`
-        );
-      }
 
       this.frame = 0;
-      this.posed = this.posed.asReady({ bake, transforms: new Float32Array(bytes) });
+      this.posed = this.posed.asReady(bake);
 
       this.log.info(
         "Motion loaded:",
