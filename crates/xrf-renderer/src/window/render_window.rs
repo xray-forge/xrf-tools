@@ -18,6 +18,8 @@ pub struct RenderWindow {
   usages: wgpu::TextureUsages,
   /// What the swapchain was last configured as: its size and whether it waits for vsync.
   configured: Option<(u32, u32, bool)>,
+  /// Whether the surface was lost, which only a new one recovers from.
+  is_lost: bool,
 }
 
 impl RenderWindow {
@@ -49,18 +51,20 @@ impl RenderWindow {
       present_modes: capabilities.present_modes,
       usages: capabilities.usages,
       configured: None,
+      is_lost: false,
       host,
       surface,
       format,
     })
   }
 
-  pub fn get_host(&self) -> &Arc<dyn RenderWindowHost> {
-    &self.host
-  }
-
   pub fn get_format(&self) -> wgpu::TextureFormat {
     self.format
+  }
+
+  /// Whether the surface was lost: the window is then drawn into through a new one.
+  pub fn is_lost(&self) -> bool {
+    self.is_lost
   }
 
   /// The next frame to draw, configured for the window's size now, or `None` while the window shows nothing.
@@ -76,11 +80,28 @@ impl RenderWindow {
     }
 
     match self.surface.get_current_texture() {
-      wgpu::CurrentSurfaceTexture::Success(frame) | wgpu::CurrentSurfaceTexture::Suboptimal(frame) => {
+      wgpu::CurrentSurfaceTexture::Success(frame) => Some((frame, width, height)),
+      // Drawn, then configured again for what the surface has become.
+      wgpu::CurrentSurfaceTexture::Suboptimal(frame) => {
+        self.configured = None;
+
         Some((frame, width, height))
       }
-      other => {
-        log::warn!("Window frame skipped: {other:?}");
+      // Nothing to draw into this time; the swapchain itself is fine.
+      wgpu::CurrentSurfaceTexture::Timeout | wgpu::CurrentSurfaceTexture::Occluded => None,
+      wgpu::CurrentSurfaceTexture::Outdated => {
+        self.configured = None;
+
+        None
+      }
+      wgpu::CurrentSurfaceTexture::Lost => {
+        log::warn!("Window surface lost, recreating it");
+        self.is_lost = true;
+
+        None
+      }
+      wgpu::CurrentSurfaceTexture::Validation => {
+        log::warn!("Window frame skipped on a validation error");
         self.configured = None;
 
         None

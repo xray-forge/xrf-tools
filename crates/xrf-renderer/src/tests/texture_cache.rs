@@ -102,3 +102,22 @@ fn a_load_landing_after_its_slot_was_freed_is_not_drawn_in_the_slots_next_textur
 
   assert_eq!(cache.describe(&[fast]).remove(0).state, RenderTextureState::Missing);
 }
+
+#[test]
+fn an_environment_no_scene_samples_is_freed_and_its_slot_taken_by_the_next_cube() {
+  let Some(context) = create_context() else {
+    return;
+  };
+  let mut cache: TextureCache = TextureCache::new(&context.device, &context.queue);
+  let kept: u32 = cache.request_environment("kept");
+  let dropped: u32 = cache.request_environment("dropped");
+  let generation: u64 = cache.get_environments_generation();
+
+  cache.retain_environments(&HashSet::from([kept]));
+
+  assert_eq!(cache.get_environment(dropped), None);
+  assert_ne!(cache.get_environments_generation(), generation);
+  assert_eq!(cache.request_environment("kept"), kept);
+  assert_eq!(cache.request_environment("next"), dropped);
+  assert_eq!(cache.get_environment(dropped), Some("next"));
+}

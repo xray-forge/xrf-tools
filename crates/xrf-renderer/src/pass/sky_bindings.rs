@@ -98,6 +98,7 @@ impl SkyBindings {
         let reference: Option<&str> = slot
           .checked_sub(1)
           .and_then(|index| environments.get(index))
+          .filter(|reference| !reference.is_empty())
           .map(String::as_str);
 
         cache.get_view(reference, WeatherTextureKind::Cube)

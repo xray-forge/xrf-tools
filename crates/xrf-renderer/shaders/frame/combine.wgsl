@@ -47,8 +47,16 @@ fn sky_drawn(direction: vec3<f32>, toward: vec3<f32>, scale: f32) -> vec3<f32> {
 // horizon, the horizon's own, since nothing stands behind the ground.
 fn sky_haze(direction: vec3<f32>) -> vec3<f32> {
   let lifted: vec3<f32> = normalize(vec3<f32>(direction.x, max(direction.y, 0.0), direction.z));
+  let coordinates: vec2<f32> = sky_haze_coordinates(lifted);
+  // Around the compass the map wraps; up it does not, so the zenith's row never blends with the nadir's.
+  let rows: f32 = f32(textureDimensions(haze_map).y);
 
-  return textureSampleLevel(haze_map, sky_repeat, sky_haze_coordinates(lifted), 0.0).rgb;
+  return textureSampleLevel(
+    haze_map,
+    sky_repeat,
+    vec2<f32>(coordinates.x, clamp(coordinates.y, 0.5 / rows, 1.0 - 0.5 / rows)),
+    0.0,
+  ).rgb;
 }
 
 // What the distance fades into: the sky as drawn behind it; with the haze, its haze where the cubes stand above the

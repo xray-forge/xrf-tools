@@ -478,14 +478,17 @@ impl RenderThread {
       if now.duration_since(self.textures_swept) >= TEXTURE_SWEEP {
         self.textures_swept = now;
 
-        let sampled: HashSet<u32> = self
-          .viewports
-          .values()
-          .flat_map(|viewport| viewport.level_view.iter().chain(viewport.incoming_view.iter()))
-          .flat_map(LevelView::list_texture_slots)
-          .collect();
+        let views = || {
+          self
+            .viewports
+            .values()
+            .flat_map(|viewport| viewport.level_view.iter().chain(viewport.incoming_view.iter()))
+        };
+        let sampled: HashSet<u32> = views().flat_map(LevelView::list_texture_slots).collect();
+        let environments: HashSet<u32> = views().flat_map(LevelView::list_environment_slots).collect();
 
         gpu.textures.retain(&sampled);
+        gpu.textures.retain_environments(&environments);
       }
 
       gpu.textures.update(&gpu.context.device, &gpu.context.queue);
@@ -547,11 +550,15 @@ impl RenderThread {
     }
 
     let is_vsync: bool = self.settings.frame_rate.is_vsync;
-    let Some((frame, width, height)) = gpu
-      .windows
-      .get_mut(&window)
-      .and_then(|it| it.acquire(&gpu.context, is_vsync))
-    else {
+    let Some(drawn_window) = gpu.windows.get_mut(&window) else {
+      return;
+    };
+    let Some((frame, width, height)) = drawn_window.acquire(&gpu.context, is_vsync) else {
+      // A lost surface is let go, so the next frame draws into a new one.
+      if drawn_window.is_lost() {
+        gpu.windows.remove(&window);
+      }
+
       return;
     };
     let started: Instant = Instant::now();
@@ -563,11 +570,19 @@ impl RenderThread {
       return;
     }
 
-    let drawn: Vec<(RenderViewportId, RenderRect)> = self
+    // Each viewport's whole rectangle, which its camera and targets are sized by, and the part of it the window shows,
+    // which its picture is cropped to.
+    let drawn: Vec<(RenderViewportId, RenderRect, RenderRect)> = self
       .viewports
       .values()
       .filter(|viewport| viewport.window == window)
-      .filter_map(|viewport| viewport.get_drawn_rect(width, height).map(|rect| (viewport.id, rect)))
+      .filter_map(|viewport| {
+        Some((
+          viewport.id,
+          viewport.layout?.rect,
+          viewport.get_drawn_rect(width, height)?,
+        ))
+      })
       .collect();
     // The page's backdrop around the viewports, and where a layout change has not reached the renderer yet.
     let backdrop: BackdropUniform = self
@@ -588,7 +603,7 @@ impl RenderThread {
     let mut is_lit: bool = false;
     let mut picked: Vec<(RenderViewportId, PendingPick, Mat4, Vec2)> = Vec::new();
 
-    for (id, rect) in &drawn {
+    for (id, rect, _) in &drawn {
       let Some(viewport) = self.viewports.get_mut(id) else {
         continue;
       };
@@ -819,7 +834,7 @@ impl RenderThread {
         gpu.backdrop.draw(&mut pass, format);
       }
 
-      for (id, rect) in &drawn {
+      for (id, rect, shown) in &drawn {
         let Some(viewport) = self.viewports.get(id) else {
           continue;
         };
@@ -827,6 +842,7 @@ impl RenderThread {
           continue;
         };
 
+        // The whole viewport, past the window's edges where it reaches them, cropped to what the window shows.
         pass.set_viewport(
           rect.x as f32,
           rect.y as f32,
@@ -835,7 +851,7 @@ impl RenderThread {
           0.0,
           1.0,
         );
-        pass.set_scissor_rect(rect.x as u32, rect.y as u32, rect.width, rect.height);
+        pass.set_scissor_rect(shown.x as u32, shown.y as u32, shown.width, shown.height);
 
         match viewport.level_view.as_ref().and_then(|level| level.get_present_group()) {
           Some(present) => gpu.present.draw(&mut pass, format, binding, present),
@@ -859,7 +875,7 @@ impl RenderThread {
       let _ = pick.reply.send(level.resolve_pick(&gpu.context.device, unproject));
     }
 
-    for (id, _) in &drawn {
+    for (id, _, _) in &drawn {
       if let Some(level) = self.viewports.get(id).and_then(|it| it.level_view.as_ref()) {
         level.request_stats();
       }
@@ -868,14 +884,14 @@ impl RenderThread {
     let cpu: Duration = started.elapsed();
 
     // Read back before presenting, after which the frame is no longer the renderer's to copy.
-    for (id, rect) in &drawn {
+    for (id, _, shown) in &drawn {
       if let Some(viewport) = self.viewports.get_mut(id) {
         for reply in viewport.captures.drain(..) {
           let _ = reply.send(capture_frame(
             &gpu.context.device,
             &gpu.context.queue,
             &frame.texture,
-            *rect,
+            *shown,
           ));
         }
       }
@@ -889,7 +905,7 @@ impl RenderThread {
       .insert(window, presented)
       .map_or(Duration::ZERO, |last| presented.duration_since(last));
 
-    for (id, _) in &drawn {
+    for (id, _, _) in &drawn {
       if let Some(viewport) = self.viewports.get_mut(id) {
         viewport.record_frame(interval, cpu);
       }

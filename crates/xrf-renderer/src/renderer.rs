@@ -140,12 +140,12 @@ impl Renderer {
     });
   }
 
-  /// Replaces what a viewport draws over its frame.
   /// Stands a viewport's skinned models in a pose, from its next frame on.
   pub fn pose_model(&self, id: RenderViewportId, pose: RenderModelPose) {
     self.send(RenderCommand::PoseModel { id, pose });
   }
 
+  /// Replaces what a viewport draws over its frame.
   pub fn set_overlays(&self, id: RenderViewportId, overlays: Vec<RenderOverlay>) {
     self.send(RenderCommand::Overlays { id, overlays });
   }
@@ -204,7 +204,10 @@ impl Renderer {
     link.sender = None;
 
     if is_attach {
-      let sender: Sender<RenderCommand> = self.spawn(&mut link);
+      // A thread that cannot start leaves the viewport undrawn; the next attach tries again.
+      let Some(sender) = self.spawn(&mut link) else {
+        return;
+      };
 
       if sender.send(command).is_err() {
         log::error!("The render thread stopped before its first viewport arrived");
@@ -212,19 +215,23 @@ impl Renderer {
     }
   }
 
-  fn spawn(&self, link: &mut RenderLink) -> Sender<RenderCommand> {
+  fn spawn(&self, link: &mut RenderLink) -> Option<Sender<RenderCommand>> {
     let (sender, receiver) = channel();
     let shared: Arc<Mutex<RenderLink>> = Arc::clone(&self.link);
     let settings: RenderSettings = link.settings;
 
-    std::thread::Builder::new()
+    if let Err(error) = std::thread::Builder::new()
       .name("xrf-render".into())
       .spawn(move || RenderThread::new(receiver, shared, settings).run())
-      .expect("The render thread could not be started");
+    {
+      log::error!("The render thread could not be started: {error}");
+
+      return None;
+    }
 
     link.sender = Some(sender.clone());
 
-    sender
+    Some(sender)
   }
 
   fn lock(&self) -> MutexGuard<'_, RenderLink> {
