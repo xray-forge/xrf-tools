@@ -20,7 +20,7 @@ impl OgfBonesChunk {
 
 impl ChunkReadWrite for OgfBonesChunk {
   fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
-    log::info!("Reading bones chunk: {} bytes", reader.read_bytes_remain());
+    log::debug!("Reading bones chunk: {} bytes", reader.read_bytes_remain());
 
     let count: u32 = reader.read_u32::<T>()?;
     let mut bones: Vec<OgfBone> = reader.new_bounded_vec(count.into(), OgfBone::MIN_SERIALIZED_SIZE, "ogf bones")?;
