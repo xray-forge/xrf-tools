@@ -79,6 +79,7 @@ impl LevelEnvironment {
       rain: LevelRain::read(&source),
       wet: LevelWetSurfaces::read(&source),
       skies: self.list_textures(&source, WeatherKey::SkyTexture),
+      suns: catalog.suns.iter().map(|sun| sun.name.clone()).collect(),
       offered: offered
         .iter()
         .map(|cycle| LevelWeatherCycle::of(cycle, &source))

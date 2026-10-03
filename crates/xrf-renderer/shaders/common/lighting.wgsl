@@ -30,6 +30,8 @@ struct Lighting {
   // rgb: the sun's sprite colour times how far it has faded in; w: half its side as a share of the distance it stands
   // at, zero where none is drawn.
   sun_sprite: vec4<f32>,
+  // x: the sun shafts' density; y: the steps along a ray; nothing where they are not drawn.
+  shafts: vec4<f32>,
 };
 
 // The exposure's state as `frame/exposure.wgsl` adapts it, read from its head.

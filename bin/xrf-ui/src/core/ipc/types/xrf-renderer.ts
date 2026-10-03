@@ -861,6 +861,11 @@ export type RenderViewOptions = {
    * either way.
    */
   isLensFlared: boolean;
+  /**
+   * Whether the sun's light shafts are drawn through its shadow, `r2_sun_shafts` (`r2_sunshafts_mode volumetric` on
+   * Monolith) at its highest quality.
+   */
+  isSunShafted: boolean;
   /** Whether the weather's rain falls and wets surfaces. */
   isRainy: boolean;
   /** Whether the weather's bolts strike. */

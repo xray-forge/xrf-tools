@@ -47,6 +47,8 @@ interface ILevelPreviewToolbarProps extends BaseComponentProps {
   sun: Nullable<LevelSunDescription>;
   /** The sun or moon the sky draws now, by its `suns.ltx` section, which lights the sun's button; null for neither. */
   drawnSun: Nullable<string>;
+  /** Every lens flare of the game, which the sun's popover offers. */
+  suns: ReadonlyArray<string>;
   /** How far trees are drawn in full, which the impostors toggle carries. */
   lod: ILevelLodOptions;
   /** What the view sets over the settings' features for itself. */
@@ -90,6 +92,7 @@ export function LevelPreviewToolbar({
   collections,
   sun,
   drawnSun,
+  suns,
   lod,
   features,
   featureView,
@@ -150,7 +153,15 @@ export function LevelPreviewToolbar({
 
           <EditorToolbarSeparator />
 
-          <LevelSunAction manual={manual} sun={sun} drawnSun={drawnSun} onEdit={onEditManual} />
+          <LevelSunAction
+            manual={manual}
+            sun={sun}
+            drawnSun={drawnSun}
+            suns={suns}
+            options={options}
+            onToggle={onToggle}
+            onEdit={onEditManual}
+          />
 
           <LevelLightsAction
             isOn={options.isLamplit}

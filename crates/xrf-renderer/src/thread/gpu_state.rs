@@ -27,6 +27,7 @@ use crate::pass::static_cull_pass::StaticCullPass;
 use crate::pass::static_gbuffer_pass::StaticGBufferPass;
 use crate::pass::static_shadow_pass::StaticShadowPass;
 use crate::pass::sun_pass::SunPass;
+use crate::pass::sun_shafts_pass::SunShaftsPass;
 use crate::pass::temporal_pass::TemporalPass;
 use crate::pass::thunder_pass::ThunderPass;
 use crate::pass::upscale_pass::UpscalePass;
@@ -57,6 +58,7 @@ pub struct GpuState {
   pub wet: WetPass,
   pub thunder: ThunderPass,
   pub flares: FlarePass,
+  pub sun_shafts: SunShaftsPass,
   pub temporal: TemporalPass,
   pub fsr: FsrPass,
   pub fxaa: FxaaPass,
@@ -123,6 +125,7 @@ impl GpuState {
       wet: WetPass::new(device, shaders, &view_layout)?,
       thunder: ThunderPass::new(device, shaders, &view_layout)?,
       flares: FlarePass::new(device, shaders, &view_layout)?,
+      sun_shafts: SunShaftsPass::new(device, shaders, &view_layout)?,
       temporal: TemporalPass::new(device, shaders, &view_layout)?,
       fsr: FsrPass::new(device, shaders)?,
       fxaa: FxaaPass::new(device, shaders)?,
@@ -191,6 +194,7 @@ impl GpuState {
       wet: &self.wet,
       thunder: &self.thunder,
       flares: &self.flares,
+      sun_shafts: &self.sun_shafts,
       temporal: &self.temporal,
       fsr: &self.fsr,
       fxaa: &self.fxaa,
@@ -227,6 +231,7 @@ impl GpuState {
     self.wet.refresh(device, shaders);
     self.thunder.refresh(device, shaders);
     self.flares.refresh(device, shaders);
+    self.sun_shafts.refresh(device, shaders);
     self.temporal.refresh(device, shaders);
     self.fsr.refresh(device, shaders);
     self.fxaa.refresh(device, shaders);

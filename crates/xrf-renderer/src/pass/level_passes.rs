@@ -19,6 +19,7 @@ use crate::pass::static_cull_pass::StaticCullPass;
 use crate::pass::static_gbuffer_pass::StaticGBufferPass;
 use crate::pass::static_shadow_pass::StaticShadowPass;
 use crate::pass::sun_pass::SunPass;
+use crate::pass::sun_shafts_pass::SunShaftsPass;
 use crate::pass::temporal_pass::TemporalPass;
 use crate::pass::thunder_pass::ThunderPass;
 use crate::pass::upscale_pass::UpscalePass;
@@ -45,6 +46,7 @@ pub struct LevelPasses<'a> {
   pub wet: &'a WetPass,
   pub thunder: &'a ThunderPass,
   pub flares: &'a FlarePass,
+  pub sun_shafts: &'a SunShaftsPass,
   pub temporal: &'a TemporalPass,
   pub fsr: &'a FsrPass,
   pub fxaa: &'a FxaaPass,

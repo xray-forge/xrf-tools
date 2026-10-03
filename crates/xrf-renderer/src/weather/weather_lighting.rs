@@ -51,6 +51,7 @@ pub fn to_weather_lighting(
       wave: Vec3::from(mix.tree_wave),
     }),
     water_intensity: mix.water_intensity,
+    sun_shafts: mix.sun_shafts_intensity,
     // Under `EPS_L` it does not rain at all.
     rain: (mix.rain_density >= EPS_L).then(|| RenderRainfall {
       color: Vec3::from(mix.rain_color),

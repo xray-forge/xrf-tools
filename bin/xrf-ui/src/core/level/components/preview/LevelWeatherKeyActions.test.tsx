@@ -100,6 +100,9 @@ describe("level weather key actions", () => {
         manual={{ ...DEFAULT_LEVEL_MANUAL_WEATHER, sunAltitude: 10, sunLongitude: -80 }}
         sun={{ color: [1, 1, 1], direction: { x: 0, y: -1, z: 1 } }}
         drawnSun={null}
+        suns={[]}
+        options={DEFAULT_LEVEL_VIEW_OPTIONS}
+        onToggle={() => {}}
         onEdit={onEdit}
       />
     );
@@ -125,6 +128,8 @@ describe("level weather key actions", () => {
       sunAltitude: DEFAULT_LEVEL_MANUAL_WEATHER.sunAltitude,
       sunColor: DEFAULT_LEVEL_MANUAL_WEATHER.sunColor,
       sunLongitude: DEFAULT_LEVEL_MANUAL_WEATHER.sunLongitude,
+      sun: DEFAULT_LEVEL_MANUAL_WEATHER.sun,
+      sunShaftsIntensity: DEFAULT_LEVEL_MANUAL_WEATHER.sunShaftsIntensity,
     });
   });
 
@@ -214,7 +219,14 @@ describe("level weather key actions", () => {
 
   // The sky draws the weather's sun or moon as the game does; the button says whether one shows now.
   it("says whether the sky draws a sun or a moon, naming it", () => {
-    const props = { manual: DEFAULT_LEVEL_MANUAL_WEATHER, sun: null, onEdit: () => {} };
+    const props = {
+      manual: DEFAULT_LEVEL_MANUAL_WEATHER,
+      sun: null,
+      suns: [],
+      options: DEFAULT_LEVEL_VIEW_OPTIONS,
+      onToggle: () => {},
+      onEdit: () => {},
+    };
     const { getByRole, rerender } = renderWithProviders(<LevelSunAction {...props} drawnSun={"moon_halo_full"} />);
 
     expect(getByRole("button", { name: "Sun" })).toHaveAccessibleDescription(/moon_halo_full in the sky$/);
@@ -222,5 +234,34 @@ describe("level weather key actions", () => {
     rerender(<LevelSunAction {...props} drawnSun={null} />);
 
     expect(getByRole("button", { name: "Sun" })).toHaveAccessibleDescription(/none in the sky$/);
+  });
+
+  // The lens flare and the shafts are the sun's: their switches and the keys a keyframe draws them by sit together.
+  it("switches the lens flares and the sunshafts, and edits the sun and the shafts' density", async () => {
+    const onEdit = jest.fn<TEdit>();
+    const onToggle = jest.fn<(option: "isLensFlared" | "isSunShafted") => void>();
+    const { getByRole, findByRole } = renderWithProviders(
+      <LevelSunAction
+        manual={DEFAULT_LEVEL_MANUAL_WEATHER}
+        sun={null}
+        drawnSun={"gradient1"}
+        suns={["gradient1", "moon_halo_full"]}
+        options={DEFAULT_LEVEL_VIEW_OPTIONS}
+        onToggle={onToggle}
+        onEdit={onEdit}
+      />
+    );
+
+    await userEvent.click(getByRole("button", { name: "Sun" }));
+    await findByRole("dialog", { name: "Sun" });
+    await userEvent.click(getByRole("checkbox", { name: "Lens flares" }));
+    await userEvent.click(getByRole("checkbox", { name: "Sunshafts" }));
+
+    expect(onToggle.mock.calls).toEqual([["isLensFlared"], ["isSunShafted"]]);
+
+    await userEvent.click(getByRole("combobox", { name: "sun" }));
+    await userEvent.click(await findByRole("option", { name: "moon_halo_full" }));
+
+    expect(onEdit).toHaveBeenCalledWith({ sun: "moon_halo_full" });
   });
 });

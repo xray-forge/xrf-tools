@@ -187,6 +187,25 @@ fn mixes_fog_as_the_engine_does() {
   assert!(mix.sun_direction[1] < 0.0);
 }
 
+// `m_fSunShaftsIntensity` is lerped as every scalar is.
+#[test]
+fn mixes_the_sun_shafts_as_the_engine_does() {
+  let (mut keyframes, _) = read_cycle(&vanilla_fixture(), XrayEngine::Vanilla);
+
+  keyframes[1].sun_shafts_intensity = 0.1;
+  keyframes[2].sun_shafts_intensity = 0.3;
+
+  let mix: WeatherMix = WeatherMixer {
+    engine: XrayEngine::Vanilla,
+    sun: WeatherSunSource::Authored,
+    modifiers: &[],
+  }
+  .mix(&keyframes, at(32_400.0))
+  .unwrap();
+
+  assert!((mix.sun_shafts_intensity - 0.2).abs() < 1e-6);
+}
+
 // `CEnvDescriptorMixer::lerp`: the collection is the nearer keyframe's, the timings blended.
 #[test]
 fn mixes_thunderbolts_as_the_engine_does() {

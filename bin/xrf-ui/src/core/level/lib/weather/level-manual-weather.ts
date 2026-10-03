@@ -33,6 +33,10 @@ export interface ILevelManualWeather {
   sunAltitude: number;
   /** Degrees; `setHP` tilts the pitch by it. */
   sunLongitude: number;
+  /** The lens flare drawn, a `suns.ltx` section: the sun's sprite, its flares and gradient; empty for none. */
+  sun: string;
+  /** How dense the light shafts through the sun's shadow are. */
+  sunShaftsIntensity: number;
   ambientColor: TRenderVector;
   waterIntensity: number;
   rainDensity: number;
@@ -71,6 +75,8 @@ export const DEFAULT_LEVEL_MANUAL_WEATHER: ILevelManualWeather = {
   sunAltitude: -68.999985,
   sunColor: [0.905882, 0.839216, 0.694118],
   sunLongitude: -30,
+  sun: "gradient1",
+  sunShaftsIntensity: 0,
   treesAmplitude: 0.005,
   treesRotation: 10,
   treesSpeed: 1,
@@ -87,10 +93,8 @@ export const DEFAULT_LEVEL_MANUAL_WEATHER: ILevelManualWeather = {
 const MANUAL_DESCRIPTOR_REST: Pick<
   WeatherDescriptor,
   | "ambient"
-  | "sun"
   | "isSunFixed"
   | "sunAzimuth"
-  | "sunShaftsIntensity"
   | "hemiVibrance"
   | "hemiContrast"
   | "wetSurfaceFactor"
@@ -107,9 +111,7 @@ const MANUAL_DESCRIPTOR_REST: Pick<
   hemiContrast: 1,
   hemiVibrance: 1,
   isSunFixed: false,
-  sun: null,
   sunAzimuth: 0,
-  sunShaftsIntensity: 0,
   volumetricDistanceFactor: 1,
   volumetricIntensityFactor: 1,
   wetSurfaceFactor: 0,
@@ -150,6 +152,8 @@ export function toLevelManualDescriptor(manual: ILevelManualWeather, time: numbe
     thunderboltDuration: manual.thunderboltCollection ? manual.thunderboltDuration : 0,
     thunderboltPeriod: manual.thunderboltCollection ? manual.thunderboltPeriod : 0,
     waterIntensity: manual.waterIntensity,
+    sun: manual.sun || null,
+    sunShaftsIntensity: manual.sunShaftsIntensity,
     windDirection: toRadians(manual.windDirection),
     windVelocity: manual.windVelocity,
   };
@@ -198,6 +202,8 @@ export function toLevelManualWeather(current: WeatherDescriptor): ILevelManualWe
     thunderboltDuration: current.thunderboltDuration ?? 0,
     thunderboltPeriod: current.thunderboltPeriod ?? 0,
     waterIntensity: current.waterIntensity ?? 0,
+    sun: current.sun ?? "",
+    sunShaftsIntensity: current.sunShaftsIntensity ?? 0,
     windDirection: toDegrees(current.windDirection ?? 0),
     windVelocity: current.windVelocity ?? 0,
   };

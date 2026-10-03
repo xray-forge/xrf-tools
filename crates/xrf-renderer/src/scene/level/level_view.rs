@@ -237,6 +237,8 @@ pub struct LevelView {
   thunder_draw: Option<([XraySurfaceDraw; 3], u32)>,
   /// The sun's sprite, lens flares and gradient.
   flares: LevelFlares,
+  /// Whether this frame adds the sun's light shafts, drawn through its shadow's cascades.
+  is_shafted: bool,
   /// The sun's sprite as this frame's sky draws it: its texture, and its colour and radius.
   frame_sun_sprite: Option<(String, Vec4)>,
   /// When the level was first shown, which the clouds drift from.
@@ -364,6 +366,7 @@ impl LevelView {
       thunder_groups: None,
       thunder_draw: None,
       flares: LevelFlares::new(device),
+      is_shafted: false,
       frame_sun_sprite: None,
       started: Instant::now(),
       shadows: LevelShadows::new(device),
@@ -619,6 +622,12 @@ impl LevelView {
         haze: passes
           .sky_haze
           .create_bind_group(device, &self.lighting, &self.exposure.state),
+        sun_shafts: passes.sun_shafts.create_bind_group(
+          device,
+          targets,
+          &self.shadows,
+          (&self.lighting, &self.exposure.state),
+        ),
         exposure: passes.exposure.create_bind_group(device, targets, &self.exposure),
       };
 
@@ -737,6 +746,8 @@ impl LevelView {
     };
 
     self.is_hazing = options.is_lit && options.is_sky_visible && options.is_sky_hazed;
+    self.is_shafted =
+      options.is_lit && options.is_sun_shafted && lighting.sun_shafts > 0.0 && options.shadows.get_cascade_count() > 0;
     self.is_wallmarked = options.is_wallmarked;
 
     if !options.is_occlusion_culled {
@@ -1191,6 +1202,11 @@ impl LevelView {
           (self.sorted_group.as_ref().map(|(_, group)| group), self.sorted_count),
         );
         timer.mark(encoder, "composited");
+      }
+
+      if self.is_shafted {
+        passes.sun_shafts.draw(encoder, targets, view, &groups.sun_shafts);
+        timer.mark(encoder, "sun shafts");
       }
 
       if let (Some(counts), Some((_, rain_group))) = (self.rain_draw, &self.rain_group) {
