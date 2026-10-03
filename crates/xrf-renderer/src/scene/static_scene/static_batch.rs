@@ -32,4 +32,14 @@ impl StaticBatch {
   pub fn list_water() -> impl Iterator<Item = StaticBatch> {
     Self::list().filter(|batch| batch.class == StaticClass::Water)
   }
+
+  /// The batches the composited pass draws over the lit frame.
+  pub fn list_composited() -> impl Iterator<Item = StaticBatch> {
+    Self::list().filter(|batch| batch.class == StaticClass::Composited)
+  }
+
+  /// The batches the composited pass lays into the G-buffer's albedo.
+  pub fn list_wallmarks() -> impl Iterator<Item = StaticBatch> {
+    Self::list().filter(|batch| batch.class == StaticClass::Wallmark)
+  }
 }

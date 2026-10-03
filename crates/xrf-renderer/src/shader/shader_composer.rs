@@ -3,7 +3,8 @@ use std::collections::BTreeSet;
 use xrf_error::{XrfError, XrfResult};
 
 /// Inlines `#import "module"` lines, each module once, and keeps or drops `#if NAME` / `#else` / `#endif` blocks by
-/// whether `NAME` is among `defines`. Directives sit alone on their line; everything else passes through unchanged.
+/// whether `NAME` is among `defines`. Directives sit alone on their line; WGSL's `enable` lines are gathered to the top,
+/// each once, since they must come before any declaration; everything else passes through unchanged.
 ///
 /// # Errors
 ///
@@ -15,10 +16,21 @@ pub fn compose_shader<'a>(
 ) -> XrfResult<String> {
   let mut output: String = String::new();
   let mut imported: BTreeSet<String> = BTreeSet::new();
+  let mut enables: BTreeSet<String> = BTreeSet::new();
 
-  append_module(entry, defines, read, &mut imported, &mut output)?;
+  append_module(entry, defines, read, &mut imported, &mut enables, &mut output)?;
 
-  Ok(output)
+  Ok(
+    enables
+      .into_iter()
+      .map(|line| {
+        line
+          + "
+"
+      })
+      .collect::<String>()
+      + &output,
+  )
 }
 
 fn append_module<'a>(
@@ -26,6 +38,7 @@ fn append_module<'a>(
   defines: &[&str],
   read: &dyn Fn(&str) -> XrfResult<&'a str>,
   imported: &mut BTreeSet<String>,
+  enables: &mut BTreeSet<String>,
   output: &mut String,
 ) -> XrfResult {
   if !imported.insert(name.to_string()) {
@@ -57,13 +70,15 @@ fn append_module<'a>(
       if is_active {
         let module: &str = rest.trim().trim_matches('"');
 
-        append_module(module, defines, read, imported, output)?;
+        append_module(module, defines, read, imported, enables, output)?;
       }
     } else if directive.starts_with('#') {
       return Err(XrfError::new_invalid_error(format!(
         "Unknown directive '{directive}' at {}",
         at()
       )));
+    } else if is_active && directive.starts_with("enable ") {
+      enables.insert(directive.to_string());
     } else if is_active {
       output.push_str(line);
       output.push('\n');

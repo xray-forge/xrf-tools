@@ -13,20 +13,34 @@ use crate::scene::texture::texture_role::TextureRole;
 /// The texture descriptor's default lighting model: Blinn, at full weight.
 const DEFAULT_MATERIAL: f32 = 1.0;
 
+/// The environment-mapped model class's tag.
+const ENVIRONMENT_MAPPED_CLASS: &str = "MODELEbB";
+
 /// Turns of the golden angle between consecutive shader ids, which spreads their colours rather than grouping them.
 const HUE_STEP: f32 = 137.508;
 
-/// A shader table entry as the static draws wear it, asking for its textures; `None` for one no static draw draws:
-/// composited, invisible or a wall mark, drawn by passes of their own.
+/// A shader table entry as the static draws wear it, asking for its textures; `None` for an invisible one, which no
+/// static draw draws. A composited wall mark is laid into the G-buffer's albedo rather than over the lit frame.
 pub fn build_static_surface(
   surface: &SectorSurface,
   descriptor: Option<&XraySurfaceDescriptor>,
   textures: &mut TextureCache,
   source: &Arc<dyn RenderAssetSource>,
 ) -> Option<(StaticSurface, StaticClass)> {
-  let (class, reference): (StaticClass, u8) = match descriptor.map(|it| it.draw) {
-    None | Some(XraySurfaceDraw::Opaque) => (StaticClass::Opaque, XraySurfaceDraw::DEFERRED_ALPHA_REFERENCE),
-    Some(XraySurfaceDraw::AlphaTested { reference }) => (StaticClass::CutOut, reference),
+  let (class, reference, blend): (StaticClass, u8, u32) = match descriptor.map(|it| it.draw) {
+    None | Some(XraySurfaceDraw::Opaque) => (StaticClass::Opaque, XraySurfaceDraw::DEFERRED_ALPHA_REFERENCE, 0),
+    Some(XraySurfaceDraw::AlphaTested { reference }) => (StaticClass::CutOut, reference, 0),
+    Some(XraySurfaceDraw::Blended { reference }) => (StaticClass::Composited, reference, 0),
+    Some(XraySurfaceDraw::Added { reference, is_weighted }) => (
+      StaticClass::Composited,
+      reference,
+      StaticSurface::IS_ADDED | if is_weighted { StaticSurface::IS_WEIGHTED } else { 0 },
+    ),
+    Some(XraySurfaceDraw::Multiplied { is_doubled }) => (
+      StaticClass::Composited,
+      0,
+      StaticSurface::IS_MULTIPLIED | if is_doubled { StaticSurface::IS_DOUBLED } else { 0 },
+    ),
     Some(XraySurfaceDraw::Water { is_soft }) => {
       let descriptor: &XraySurfaceDescriptor = descriptor?;
       let color: [f32; 3] = to_surface_color(surface.shader_id);
@@ -39,9 +53,11 @@ pub fn build_static_surface(
     Some(_) => return None,
   };
 
-  if descriptor.is_some_and(is_wallmark) {
-    return None;
-  }
+  let class: StaticClass = if class == StaticClass::Composited && descriptor.is_some_and(is_wallmark) {
+    StaticClass::Wallmark
+  } else {
+    class
+  };
 
   let mut request = |reference: Option<&str>, role: TextureRole| -> Option<u32> {
     reference
@@ -91,8 +107,15 @@ pub fn build_static_surface(
     flags &= !StaticSurface::HAS_DETAIL_BUMP;
   }
 
-  if class == StaticClass::CutOut {
+  // A composited surface tests its own reference where it has one.
+  if class == StaticClass::CutOut || (class == StaticClass::Composited && reference > 0) {
     flags |= StaticSurface::IS_CUT_OUT;
+  }
+
+  flags |= blend;
+
+  if descriptor.is_some_and(is_environment_mapped) {
+    flags |= StaticSurface::IS_ENVIRONMENT_MAPPED;
   }
 
   let mut texture_slots: [u32; 8] = [0; 8];
@@ -158,6 +181,11 @@ fn is_wallmark(descriptor: &XraySurfaceDescriptor) -> bool {
     descriptor.declaration,
     XraySurfaceDeclaration::Scripted { is_wallmark: true, .. }
   )
+}
+
+/// `B_MODEL_EbB`'s, which blends toward an environment map where its base is thin.
+fn is_environment_mapped(descriptor: &XraySurfaceDescriptor) -> bool {
+  matches!(&descriptor.declaration, XraySurfaceDeclaration::Described { class, .. } if class == ENVIRONMENT_MAPPED_CLASS)
 }
 
 /// A stable colour per shader table entry, from a hue its id decides, so a surface reads the same in every sector.

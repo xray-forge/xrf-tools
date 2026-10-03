@@ -2,6 +2,7 @@ use xrf_level::{LevelCformTracer, LevelLight};
 use xrf_math::Vector3d;
 
 use crate::data::lights::hemi_cube::HemiCube;
+use crate::data::lights::hemi_estimate::HemiEstimate;
 
 /// `lt_hemisamples`: the directions a dynamic object's sky is sampled along.
 const SKY_SAMPLES: usize = 26;
@@ -82,11 +83,12 @@ impl HemiEstimator {
     self.lights.len()
   }
 
-  /// The cube of an object whose visual's sphere, where it stands, is centred at `centre`, in engine space.
-  pub fn estimate(&self, centre: &Vector3d<f32>, radius: f32) -> HemiCube {
+  /// How an object whose visual's sphere, where it stands, is centred at `centre`, in engine space, is lit.
+  pub fn estimate(&self, centre: &Vector3d<f32>, radius: f32) -> HemiEstimate {
     let position: [f32; 3] = [centre.x, centre.y + SAMPLE_LIFT * radius, centre.z];
     let origin: Vector3d<f32> = Vector3d::new(position[0], position[1], position[2]);
     let mut cube: HemiCube = HemiCube::default();
+    let mut open: u32 = 0;
 
     for direction in &self.sky {
       if !self.tracer.is_blocked(
@@ -95,22 +97,29 @@ impl HemiEstimator {
         SKY_RANGE,
       ) {
         cube.accumulate(direction, SKY_SCALE);
+        open += 1;
       }
     }
 
-    let lit: HemiCube = self.light(&position, radius);
+    let (lit, light): (HemiCube, f32) = self.light(&position, radius);
 
     for face in 0..HemiCube::FACES {
       cube.faces[face] += lit.faces[face] * (1.0 - LIGHT_FLOW) + LIGHT_FLOW * lit.faces[HemiCube::opposite(face)];
       cube.faces[face] = cube.faces[face].max(MIN_FACE);
     }
 
-    cube
+    HemiEstimate {
+      cube,
+      // `calc_sky_hemi_value`, then `hemi_light` added and the least held to.
+      sky: (open as f32 / SKY_SAMPLES as f32 * SKY_SCALE + light).max(MIN_FACE),
+    }
   }
 
-  /// What the lights that reach a point add, each toward the face it comes from (`CROS_impl::update`, R2).
-  fn light(&self, position: &[f32; 3], radius: f32) -> HemiCube {
+  /// What the lights that reach a point add, each toward the face it comes from (`CROS_impl::update`, R2), and all of
+  /// them together, `hemi_light`.
+  fn light(&self, position: &[f32; 3], radius: f32) -> (HemiCube, f32) {
     let mut cube: HemiCube = HemiCube::default();
+    let mut total: f32 = 0.0;
 
     for light in &self.lights {
       let source: [f32; 3] = [light.position.x, light.position.y, light.position.z];
@@ -150,9 +159,10 @@ impl HemiEstimator {
       let brightness: f32 = (light.diffuse.x + light.diffuse.y + light.diffuse.z) / 3.0 * SEEN_LIGHT_SHARE;
 
       cube.accumulate(&[-along.x, -along.y, -along.z], brightness * attenuation * LIGHT_SCALE);
+      total += brightness * attenuation * LIGHT_SCALE;
     }
 
-    cube
+    (cube, total)
   }
 }
 

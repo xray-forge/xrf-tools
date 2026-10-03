@@ -1,6 +1,7 @@
 enable wgpu_binding_array;
 
 #import "common/camera"
+#import "common/cut_out"
 #import "common/octahedral"
 #import "static/pulling"
 
@@ -13,6 +14,9 @@ enable wgpu_binding_array;
 // What `def_gloss` writes for a surface without a bump: 2 of 255.
 const DEFAULT_GLOSS: f32 = 2.0 / 255.0;
 
+// The sky share of an object under open sky, `ps_r2_dhemi_sky_scale`, which one without an estimate is lit by.
+const OPEN_SKY: f32 = 0.08;
+
 struct GBufferVarying {
   @builtin(position) clip: vec4<f32>,
   @location(0) normal: vec3<f32>,
@@ -24,6 +28,8 @@ struct GBufferVarying {
   @location(6) @interpolate(flat) surface: u32,
   // The cluster and place drawn, which a pick reads back.
   @location(7) @interpolate(flat) entry: vec2<u32>,
+  // A spawned object's sky share, `hemi_value`, which a forward-drawn model is lit by.
+  @location(8) @interpolate(flat) sky: f32,
 };
 
 struct GBufferOutput {
@@ -55,6 +61,7 @@ fn place_vertex(pulled: PulledVertex, position: vec3<f32>, normal: vec4<f32>, ta
   out.hemi = normal.w * place.info.x + place.info.y;
   out.surface = pulled.surface;
   out.entry = pulled.entry;
+  out.sky = OPEN_SKY;
 
   return out;
 }
@@ -91,6 +98,43 @@ fn vs_tree(@builtin(vertex_index) vertex_index: u32, @builtin(instance_index) in
   out.lightmap_uv = vec2<f32>(0.0);
 
   return out;
+}
+
+// A spawned model's vertex: no sway, the base coordinate as two floats, no lightmap, and the hemisphere its place's
+// cube gives along its normal where the level's lighting was estimated for it.
+@vertex
+fn vs_model(@builtin(vertex_index) vertex_index: u32, @builtin(instance_index) instance_index: u32) -> GBufferVarying {
+  let pulled: PulledVertex = pull(vertex_index, instance_index);
+  let at: u32 = pulled.word;
+  let position: vec3<f32> = vec3<f32>(bitcast<f32>(words[at + 5u]), bitcast<f32>(words[at + 6u]),
+    bitcast<f32>(words[at + 7u]));
+  let normal: vec4<f32> = unpack4x8unorm(words[at + 1u]);
+  var out: GBufferVarying = place_vertex(pulled, position, normal, unpack4x8unorm(words[at + 2u]),
+    unpack4x8unorm(words[at]), 0.0);
+  let place: Place = pulled.place;
+
+  out.uv = vec2<f32>(bitcast<f32>(words[at + 3u]), bitcast<f32>(words[at + 4u]));
+  out.lightmap_uv = vec2<f32>(0.0);
+
+  if (place.cube.w != 0u) {
+    let linear: mat3x3<f32> = mat3x3<f32>(place.m0.xyz, place.m1.xyz, place.m2.xyz);
+
+    out.hemi = cube_hemi(place.cube, normalize(linear * unpack_direction(normal)));
+    out.sky = bitcast<f32>(place.cube.z);
+  }
+
+  return out;
+}
+
+// The hemisphere a cube gives along a world normal, each axis's face on the side it points to weighed by how far it
+// points along it.
+fn cube_hemi(cube: vec4<u32>, normal: vec3<f32>) -> f32 {
+  let first: vec4<f32> = unpack4x8unorm(cube.x);
+  let second: vec4<f32> = unpack4x8unorm(cube.y);
+  let positive: vec3<f32> = first.xyz;
+  let negative: vec3<f32> = vec3<f32>(first.w, second.x, second.y);
+
+  return saturate(dot(select(positive, negative, normal < vec3<f32>(0.0)), abs(normal)));
 }
 
 // The base coordinate's and the lightmap coordinate's derivatives, taken where control flow is uniform: a surface's
@@ -191,16 +235,12 @@ fn fs_opaque(in: GBufferVarying) -> GBufferOutput {
   return shade(in, base_texel(in, at), at);
 }
 
-// Whether a cut-out texel survives: its alpha raised where minification thins it out, cut along a ramp one texel wide
-// so the edge does not shimmer.
+// Whether a cut-out texel is cut, as `common/cut_out` cuts one.
 fn is_cut(in: GBufferVarying, base: vec4<f32>, at: Footprint) -> bool {
   let surface: Surface = surfaces[in.surface];
-  let size: vec2<f32> = vec2<f32>(textureDimensions(textures[surface.base]));
-  let extent: f32 = max(dot(at.dx * size, at.dx * size), dot(at.dy * size, at.dy * size));
-  let alpha: f32 = base.a * (1.0 + 0.25 * max(0.0, 0.5 * log2(max(extent, 1e-8))));
-  let width: f32 = max(abs(dpdx(alpha)) + abs(dpdy(alpha)), 1.0 / 255.0);
 
-  return saturate((alpha - surface.alpha_reference) / width + 0.5) <= 0.5;
+  return is_alpha_cut(base.a, vec2<f32>(textureDimensions(textures[surface.base])), at.dx, at.dy,
+    surface.alpha_reference);
 }
 
 @fragment

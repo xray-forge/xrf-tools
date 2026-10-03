@@ -1,22 +1,19 @@
-use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Instant;
 
 use tauri::State;
 use xrf_vfs::XrayProbe;
-use xrf_visual::{HemiEstimator, VisualSphere};
 
 use crate::core::assets::AssetMountState;
 use crate::core::execution::ExecutionState;
 use crate::core::session::{SessionId, SessionSnapshot};
 use crate::core::types::TauriResult;
-use crate::plugins::levels::hemi::{estimate_spawn_hemi, get_level_hemi};
+use crate::plugins::levels::hemi::{estimate_visuals_hemi, get_level_hemi};
 use crate::plugins::levels::report::report_spawn_models;
-use crate::plugins::levels::spawn::get_level_spawn;
 use crate::plugins::levels::spawn_visuals::SpawnVisualReader;
 use crate::plugins::levels::state::{
-  LevelSpawn, LevelSpawnModelDescription, LevelSpawnModelFailure, LevelSpawnModelsDescription, LevelSpawnObjectHemi,
-  LevelSpawnVisual, LevelState, SelectedLevel,
+  LevelSpawnModelDescription, LevelSpawnModelFailure, LevelSpawnModelsDescription, LevelSpawnVisual, LevelState,
+  SelectedLevel,
 };
 
 /// Describe the models of a batch of the visuals open_spawn_objects named, reading and packing each once, and how the
@@ -48,7 +45,7 @@ fn describe_models(current: &SelectedLevel, probe: &XrayProbe, names: &[String])
     rayon::join(|| read_models(current, probe, names), || get_level_hemi(current, probe));
 
   if let Ok(estimator) = estimator {
-    described.hemi = describe_hemi(current, probe, &estimator, &read);
+    described.hemi = estimate_visuals_hemi(current, probe, &estimator, &read);
   }
 
   // Told which visuals are described, the lighting is let go after the last.
@@ -87,25 +84,6 @@ fn read_models<'names>(
   }
 
   (described, read)
-}
-
-/// How the level lights each object standing as one of the visuals read, none where its spawn cannot be read.
-fn describe_hemi(
-  current: &SelectedLevel,
-  probe: &XrayProbe,
-  estimator: &HemiEstimator,
-  read: &[(&str, Arc<LevelSpawnVisual>)],
-) -> Vec<LevelSpawnObjectHemi> {
-  let Ok(spawn) = get_level_spawn(current, probe) else {
-    return Vec::new();
-  };
-  let spawn: &LevelSpawn = &spawn;
-  let spheres: HashMap<&str, &VisualSphere> = read
-    .iter()
-    .map(|(name, visual)| (*name, &visual.package.description.declared_bounds.bounding_sphere))
-    .collect();
-
-  estimate_spawn_hemi(estimator, spawn, &spheres)
 }
 
 fn describe(name: &str, visual: &LevelSpawnVisual) -> LevelSpawnModelDescription {

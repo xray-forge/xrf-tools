@@ -18,9 +18,11 @@ use crate::scene::level::light_shadow_entry::LightShadowEntry;
 use crate::scene::level::light_shadow_face::LightShadowFace;
 use crate::scene::level::light_shadow_set::LightShadowSet;
 use crate::scene::level::shadow_frame::ShadowFrame;
+use crate::scene::level::shadow_sway::ShadowSway;
 use crate::scene::level::shadow_tile::ShadowTile;
 use crate::scene::level::shadow_tile_allocator::ShadowTileAllocator;
 use crate::scene::static_scene::growable_buffer::GrowableBuffer;
+use crate::scene::static_scene::static_layout::StaticLayout;
 
 /// Texels the light shadow atlas is across.
 pub const LIGHT_SHADOW_ATLAS_SIZE: u32 = 4096;
@@ -36,7 +38,8 @@ const SHRINK: f32 = 0.66;
 const DEFAULT_NEAR: f32 = 0.1;
 
 /// The local lights' shadows: a square of an atlas a face, sized as the engine sizes its maps, drawn once and kept
-/// while the scene it casts from stays, a few faces a frame, the nearest lights first. A light lights only once its
+/// while the scene it casts from stays, a few faces a frame, the nearest lights first; a face over swaying trees is
+/// drawn again once a sway interval, where the lean shows at its texels. A light lights only once its
 /// faces are drawn; one asked at another size keeps its old faces until its new ones are. Room is made from the lights
 /// out of view longest, and where there is still none, a light is asked at smaller squares.
 pub struct LevelLightShadows {
@@ -44,15 +47,16 @@ pub struct LevelLightShadows {
   allocator: ShadowTileAllocator,
   entries: HashMap<usize, LightShadowEntry>,
   frame: u64,
-  /// The faces wanting a draw this frame, as their light, set and face, with their light's distance.
-  candidates: Vec<(f32, usize, bool, usize)>,
+  /// The faces wanting a draw this frame, as their light, set and face, behind what orders them: stale ones first,
+  /// nearest lights first, then the ones over what sways, drawn longest ago first.
+  candidates: Vec<((bool, f32), usize, bool, usize)>,
   /// The faces drawn this frame, a camera each from the pool.
   queue: Vec<(usize, bool, usize)>,
   views: Vec<ViewBinding>,
   lists: GrowableBuffer,
   args: wgpu::Buffer,
   cull_group: Option<((u64, u64, u64), wgpu::BindGroup)>,
-  draw_groups: Option<((u64, u64), [wgpu::BindGroup; 2])>,
+  draw_groups: Option<((u64, u64), [wgpu::BindGroup; StaticLayout::COUNT])>,
 }
 
 impl LevelLightShadows {
@@ -118,7 +122,8 @@ impl LevelLightShadows {
     eye: Vec3,
     forward: Vec3,
     color: Vec3,
-    sectors: usize,
+    contents: usize,
+    sway: &ShadowSway<'_>,
   ) {
     let is_spot: bool = matches!(light.kind, LightKind::Spot);
     let spatial: Vec4 = basis.get_spatial_sphere(light);
@@ -157,15 +162,31 @@ impl LevelLightShadows {
       }
     }
 
-    let Some(entry) = self.entries.get(&index) else {
+    let Some(entry) = self.entries.get_mut(&index) else {
       return;
     };
+
+    let near: f32 = entry
+      .next
+      .as_ref()
+      .or(entry.shown.as_ref())
+      .map_or(DEFAULT_NEAR, |set| set.near);
+
+    if entry.swaying.is_none_or(|(at, _)| at != contents) {
+      entry.swaying = Some((contents, measure_swaying(basis.position, spatial, near, sway.places)));
+    }
+
+    let swaying: f32 = entry.swaying.map_or(0.0, |(_, swaying)| swaying);
+    // How wide a face's texels are, for each metre from the light, times the square's side.
+    let spread: f32 = 2.0 * ((cone + LIGHT_SHADOW_WIDENING) * 0.5).tan();
 
     for (is_next, set) in [(false, &entry.shown), (true, &entry.next)] {
       if let Some(set) = set {
         for (face, state) in set.faces.iter().enumerate() {
-          if state.drawn != Some(sectors) {
-            self.candidates.push((distance, index, is_next, face));
+          if state.drawn != Some(contents) {
+            self.candidates.push(((false, distance), index, is_next, face));
+          } else if sway.is_redrawn(swaying, spread / state.tile.size as f32, state.drawn_at) {
+            self.candidates.push(((true, state.drawn_at), index, is_next, face));
           }
         }
       }
@@ -175,7 +196,9 @@ impl LevelLightShadows {
   /// Queues the faces drawn this frame, the nearest lights' first, and takes a light's new faces in place of its old
   /// ones once all are drawn.
   pub fn finish(&mut self) {
-    self.candidates.sort_by(|a, b| a.0.total_cmp(&b.0));
+    self
+      .candidates
+      .sort_by(|a, b| a.0.0.cmp(&b.0.0).then(a.0.1.total_cmp(&b.0.1)));
     self.queue = self
       .candidates
       .iter()
@@ -199,7 +222,7 @@ impl LevelLightShadows {
     frame: &ShadowFrame<'_>,
   ) {
     let scene = frame.scene;
-    let sectors: usize = scene.sectors.len();
+    let contents: usize = scene.get_contents();
 
     if self.queue.is_empty() {
       return;
@@ -283,7 +306,8 @@ impl LevelLightShadows {
         frame.textures.get_bind_group(),
         &self.args,
       );
-      state.drawn = Some(sectors);
+      state.drawn = Some(contents);
+      state.drawn_at = frame.sway.time;
     }
 
     // A light's new faces, all drawn, take the place of its old.
@@ -316,6 +340,7 @@ impl LevelLightShadows {
             tile,
             view: to_face_view(light, basis, face, near, far),
             drawn: None,
+            drawn_at: 0.0,
           })
           .collect();
 
@@ -372,6 +397,16 @@ impl LevelLightShadows {
 
     true
   }
+}
+
+/// The most any swaying place a light's sphere reaches leans for each metre it stands from the light, by its reach
+/// over its nearest distance: what a face's texel, which widens with the distance, is weighed against.
+fn measure_swaying(position: Vec3, sphere: Vec4, near: f32, places: &[(Vec4, f32)]) -> f32 {
+  places
+    .iter()
+    .filter(|(place, _)| sphere.truncate().distance(place.truncate()) < sphere.w + place.w)
+    .map(|(place, reach)| reach / (position.distance(place.truncate()) - place.w).max(near))
+    .fold(0.0, f32::max)
 }
 
 fn release_set(allocator: &mut ShadowTileAllocator, set: LightShadowSet) {

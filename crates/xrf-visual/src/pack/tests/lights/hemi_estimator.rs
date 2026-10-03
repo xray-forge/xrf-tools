@@ -60,7 +60,9 @@ fn point_light(position: Vector3d<f32>) -> LevelLight {
 // and nothing lights the face toward the ground but the least a face holds.
 #[test]
 fn lights_an_object_under_open_sky_from_above() -> XrfResult {
-  let cube: HemiCube = HemiEstimator::new(open()?, &[]).estimate(&Vector3d::new(0.0, 1.0, 0.0), 0.5);
+  let cube: HemiCube = HemiEstimator::new(open()?, &[])
+    .estimate(&Vector3d::new(0.0, 1.0, 0.0), 0.5)
+    .cube;
 
   assert!((cube.faces[UP] - 0.8094).abs() < 1e-3, "{:?}", cube.faces);
   assert!((cube.faces[DOWN] - 1.0 / 255.0).abs() < 1e-6);
@@ -68,9 +70,27 @@ fn lights_an_object_under_open_sky_from_above() -> XrfResult {
   Ok(())
 }
 
+// `hemi_value`: the share of the 26 samples open, times 0.08. Under the roof only the ten level samples pass.
+#[test]
+fn shares_the_open_sky_as_the_engine_counts_it() -> XrfResult {
+  let open: f32 = HemiEstimator::new(open()?, &[])
+    .estimate(&Vector3d::new(0.0, 1.0, 0.0), 0.5)
+    .sky;
+  let roofed: f32 = HemiEstimator::new(roof()?, &[])
+    .estimate(&Vector3d::new(0.0, 1.0, 0.0), 0.5)
+    .sky;
+
+  assert!((open - 0.08).abs() < 1e-6, "{open}");
+  assert!((roofed - 10.0 / 26.0 * 0.08).abs() < 1e-6, "{roofed}");
+
+  Ok(())
+}
+
 #[test]
 fn darkens_an_object_under_a_roof_from_above_and_keeps_its_sides_open() -> XrfResult {
-  let cube: HemiCube = HemiEstimator::new(roof()?, &[]).estimate(&Vector3d::new(0.0, 1.0, 0.0), 0.5);
+  let cube: HemiCube = HemiEstimator::new(roof()?, &[])
+    .estimate(&Vector3d::new(0.0, 1.0, 0.0), 0.5)
+    .cube;
 
   // The roof reaches past fifty metres along every rising sample; only the level ones reach out under it.
   assert!((cube.faces[UP] - 1.0 / 255.0).abs() < 1e-6, "{:?}", cube.faces);
@@ -83,8 +103,12 @@ fn darkens_an_object_under_a_roof_from_above_and_keeps_its_sides_open() -> XrfRe
 #[test]
 fn adds_a_compiled_light_that_reaches_the_object_toward_the_face_it_comes_from() -> XrfResult {
   let lights: Vec<LevelLight> = vec![point_light(Vector3d::new(1.5, 1.15, 0.0))];
-  let cube: HemiCube = HemiEstimator::new(roof()?, &lights).estimate(&Vector3d::new(0.0, 1.0, 0.0), 0.5);
-  let unlit: HemiCube = HemiEstimator::new(roof()?, &[]).estimate(&Vector3d::new(0.0, 1.0, 0.0), 0.5);
+  let cube: HemiCube = HemiEstimator::new(roof()?, &lights)
+    .estimate(&Vector3d::new(0.0, 1.0, 0.0), 0.5)
+    .cube;
+  let unlit: HemiCube = HemiEstimator::new(roof()?, &[])
+    .estimate(&Vector3d::new(0.0, 1.0, 0.0), 0.5)
+    .cube;
 
   // Its colour's mean, halved as a seen light settles, times its attenuation of one and the light scale.
   assert!(
@@ -105,14 +129,20 @@ fn adds_a_compiled_light_that_reaches_the_object_toward_the_face_it_comes_from()
 fn ignores_a_light_the_form_hides_and_one_out_of_its_reach() -> XrfResult {
   let hidden: Vec<LevelLight> = vec![point_light(Vector3d::new(0.0, 5.0, 0.0))];
   let far: Vec<LevelLight> = vec![point_light(Vector3d::new(20.0, 1.15, 0.0))];
-  let unlit: HemiCube = HemiEstimator::new(roof()?, &[]).estimate(&Vector3d::new(0.0, 1.0, 0.0), 0.5);
+  let unlit: HemiCube = HemiEstimator::new(roof()?, &[])
+    .estimate(&Vector3d::new(0.0, 1.0, 0.0), 0.5)
+    .cube;
 
   assert_eq!(
-    HemiEstimator::new(roof()?, &hidden).estimate(&Vector3d::new(0.0, 1.0, 0.0), 0.5),
+    HemiEstimator::new(roof()?, &hidden)
+      .estimate(&Vector3d::new(0.0, 1.0, 0.0), 0.5)
+      .cube,
     unlit
   );
   assert_eq!(
-    HemiEstimator::new(roof()?, &far).estimate(&Vector3d::new(0.0, 1.0, 0.0), 0.5),
+    HemiEstimator::new(roof()?, &far)
+      .estimate(&Vector3d::new(0.0, 1.0, 0.0), 0.5)
+      .cube,
     unlit
   );
 
@@ -126,10 +156,14 @@ fn adds_nothing_of_a_light_without_attenuation() -> XrfResult {
     attenuation_constant: 0.0,
     ..point_light(Vector3d::new(1.5, 1.15, 0.0))
   }];
-  let unlit: HemiCube = HemiEstimator::new(roof()?, &[]).estimate(&Vector3d::new(0.0, 1.0, 0.0), 0.5);
+  let unlit: HemiCube = HemiEstimator::new(roof()?, &[])
+    .estimate(&Vector3d::new(0.0, 1.0, 0.0), 0.5)
+    .cube;
 
   assert_eq!(
-    HemiEstimator::new(roof()?, &unattenuated).estimate(&Vector3d::new(0.0, 1.0, 0.0), 0.5),
+    HemiEstimator::new(roof()?, &unattenuated)
+      .estimate(&Vector3d::new(0.0, 1.0, 0.0), 0.5)
+      .cube,
     unlit
   );
 

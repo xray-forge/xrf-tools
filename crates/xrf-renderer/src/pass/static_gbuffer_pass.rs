@@ -95,7 +95,8 @@ impl StaticGBufferPass {
 
   /// The scene's buffers as each layout's draws and the impostors' read them.
   pub fn create_bind_groups(&self, device: &wgpu::Device, scene: &StaticScene) -> StaticDrawGroups {
-    let layouts: [wgpu::BindGroup; 2] = self.create_layout_groups(device, scene, scene.lists.get_buffer());
+    let layouts: [wgpu::BindGroup; StaticLayout::COUNT] =
+      self.create_layout_groups(device, scene, scene.lists.get_buffer());
     let impostors: wgpu::BindGroup = device.create_bind_group(&wgpu::BindGroupDescriptor {
       label: Some("static impostors"),
       layout: &self.impostor_layout,
@@ -117,7 +118,7 @@ impl StaticGBufferPass {
     device: &wgpu::Device,
     scene: &StaticScene,
     lists: &wgpu::Buffer,
-  ) -> [wgpu::BindGroup; 2] {
+  ) -> [wgpu::BindGroup; StaticLayout::COUNT] {
     StaticLayout::ALL.map(|layout| {
       let buffers: [&wgpu::Buffer; 8] = [
         scene.clusters.get_buffer(),
@@ -352,15 +353,12 @@ impl StaticGBufferPass {
     let create = |is_pick: bool| -> XrfResult<Vec<wgpu::RenderPipeline>> {
       StaticBatch::list_deferred()
         .map(|batch| {
-          let vertex: &str = match batch.layout {
-            StaticLayout::Baked => "vs_baked",
-            StaticLayout::Tree => "vs_tree",
-          };
+          let vertex: &str = batch.layout.get_vertex_entry();
           let fragment: &str = match (batch.class, is_pick) {
-            (StaticClass::Opaque | StaticClass::Water, false) => "fs_opaque",
             (StaticClass::CutOut, false) => "fs_cut_out",
-            (StaticClass::Opaque | StaticClass::Water, true) => "fs_pick_opaque",
             (StaticClass::CutOut, true) => "fs_pick_cut_out",
+            (_, false) => "fs_opaque",
+            (_, true) => "fs_pick_opaque",
           };
 
           create_checked(device, "static g-buffer", || {

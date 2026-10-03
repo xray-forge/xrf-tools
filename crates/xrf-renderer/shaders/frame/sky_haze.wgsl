@@ -5,10 +5,6 @@
 // The sky as the frame draws it, both skies and the clouds over them, blurred into the haze map the distance fades
 // into: each texel's direction, the bearing across and the height up, averaged over a flat ellipse about it.
 
-struct Exposure {
-  adapted: f32,
-};
-
 @group(1) @binding(0) var<uniform> lighting: Lighting;
 @group(1) @binding(1) var<storage, read> exposure: Exposure;
 
@@ -35,7 +31,7 @@ fn sample_sky(direction: vec3<f32>, scale: f32) -> vec3<f32> {
 @fragment
 fn fs_sky_haze(in: FullscreenVarying) -> @location(0) vec4<f32> {
   let uv: vec2<f32> = in.clip.xy / HAZE_SIZE;
-  let scale: f32 = lighting.params.x * select(1.0, exposure.adapted, lighting.params.z > 0.5);
+  let scale: f32 = frame_scale(lighting, exposure);
   let bearing: f32 = (uv.x - 0.5) * SKY_PI * 2.0;
   // As `sky_haze_coordinates` reads it back: a target sampled where it was drawn, the height from the nadir up.
   let height: f32 = (uv.y - 0.5) * SKY_PI;
