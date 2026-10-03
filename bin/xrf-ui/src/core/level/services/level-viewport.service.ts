@@ -1,6 +1,5 @@
 import { Injectable, OnDeactivation } from "@wirestate/core";
 import { BoundAction, RefObservable } from "@wirestate/mobx";
-import { EMPTY_RENDERER_PASS_TIMINGS, IRendererPassTimings } from "@xrf/renderer";
 import { Nullable } from "@xrf/types";
 
 import { RenderLevelProblems, RenderLoadReport } from "@/core/ipc/types/xrf-renderer";
@@ -9,6 +8,7 @@ import { TLevelPick } from "@/core/level/lib/pick/level-pick";
 import { EMPTY_LEVEL_STATS, ILevelStats } from "@/core/level/lib/stats/level-stats";
 import { ILevelSurfaceGeometry } from "@/core/level/lib/surface/level-surface-geometry";
 import { EMPTY_LEVEL_TEXTURE_REPORT, ILevelTextureReport } from "@/core/level/lib/texture/level-texture-report";
+import { EMPTY_RENDERER_PASS_TIMINGS, IRendererPassTimings } from "@/core/render/lib/contract/renderer-pass-timings";
 
 /**
  * What the viewport reports about itself while it draws.

@@ -1,10 +1,10 @@
 import { default as DeblurIcon } from "@mui/icons-material/Deblur";
 import { Button } from "@mui/material";
-import { ERendererAntialiasing } from "@xrf/renderer";
 import { ReactElement } from "react";
 
 import { describeLevelFeatureToggle, ILevelFeatureOptions, LEVEL_ANTIALIASING_MODES } from "@/core/level/lib/features";
 import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
+import { ERendererAntialiasing } from "@/core/render/lib/contract/renderer-antialiasing";
 import { describeRenderAntialiasing, IRenderChoiceOption } from "@/core/render/lib/features";
 import { EditorPopoverToggle } from "@/core/shell/editor/EditorPopoverToggle";
 import { BaseComponentProps } from "@/lib/dom/element-types";

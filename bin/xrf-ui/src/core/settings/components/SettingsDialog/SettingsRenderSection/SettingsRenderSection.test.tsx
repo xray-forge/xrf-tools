@@ -2,8 +2,9 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 import { RenderResult, within } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { Container } from "@wirestate/core";
-import { ERendererPreset, ERenderResolution } from "@xrf/renderer";
 
+import { ERenderResolution } from "@/core/render/lib/contract/render-resolution";
+import { ERendererPreset } from "@/core/render/lib/contract/renderer-preset";
 import { SettingsService } from "@/core/settings/services/settings";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";

@@ -1,10 +1,9 @@
 import { describe, expect, it } from "@jest/globals";
-import {
-  ERendererAntialiasing,
-  ERendererPreset,
-  IRendererFeatureSettings,
-  RENDERER_FEATURE_SCHEMA,
-} from "@xrf/renderer";
+
+import { ERendererAntialiasing } from "@/core/render/lib/contract/renderer-antialiasing";
+import { RENDERER_FEATURE_SCHEMA } from "@/core/render/lib/contract/renderer-feature-schema";
+import { IRendererFeatureSettings } from "@/core/render/lib/contract/renderer-feature-settings";
+import { ERendererPreset } from "@/core/render/lib/contract/renderer-preset";
 
 import {
   ERenderSettingsTab,

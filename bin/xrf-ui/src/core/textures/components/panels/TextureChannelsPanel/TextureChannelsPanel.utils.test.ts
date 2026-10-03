@@ -1,8 +1,8 @@
 import { describe, expect, it } from "@jest/globals";
-import { ERendererBumpPlane } from "@xrf/renderer";
 
 import { TextureDescription } from "@/core/ipc/types/xrf-app";
 import { XrayMaterialDescriptor } from "@/core/ipc/types/xrf-material";
+import { ETextureBumpPlane } from "@/core/textures/lib/texture-bump-plane";
 import { EMPTY_TEXTURE_SURFACE, ITextureSurfaceFiles } from "@/core/textures/lib/texture-surface";
 import { mockTextureDescription } from "@/fixtures/mocks/texture.mocks";
 import { mockMaterialDescriptor } from "@/fixtures/mocks/visual.mocks";
@@ -38,20 +38,20 @@ function mockHalfLocated(): TextureDescription {
 
 /** A read that produced both halves. */
 function mockUploaded(): ITextureSurfaceFiles {
-  const half = { bytes: new ArrayBuffer(0), height: 64, isDecoded: false, width: 128 };
+  const half = { data: new Uint8Array(128 * 64 * 4), height: 64, width: 128 };
 
-  return { aspect: 1, base: null, bump: { bump: half, companion: half } };
+  return { aspect: 1, bump: { bump: half, companion: half } };
 }
 
 describe("TEXTURE_CHANNEL_TILES", () => {
   it("shows the two files before the three values read out of them", () => {
     // Reading a reconstruction before its inputs invites believing a decode that was fed the wrong plane.
     expect(TEXTURE_CHANNEL_TILES.map((it) => it.plane)).toEqual([
-      ERendererBumpPlane.BUMP,
-      ERendererBumpPlane.COMPANION,
-      ERendererBumpPlane.NORMAL,
-      ERendererBumpPlane.GLOSS,
-      ERendererBumpPlane.HEIGHT,
+      ETextureBumpPlane.BUMP,
+      ETextureBumpPlane.COMPANION,
+      ETextureBumpPlane.NORMAL,
+      ETextureBumpPlane.GLOSS,
+      ETextureBumpPlane.HEIGHT,
     ]);
   });
 });
@@ -99,10 +99,9 @@ describe("describeTextureChannelsGap", () => {
     expect(gap).not.toContain("wpn\\wpn_ak74_bump ");
   });
 
-  it("says a located pair the renderer refuses is never expanded to a png", () => {
+  it("says a located pair that could not be read was found", () => {
     const gap: string = describeTextureChannelsGap(mockBumped(), EMPTY_TEXTURE_SURFACE, false) ?? "";
 
-    expect(gap).toMatch(/cannot upload/);
-    expect(gap).toMatch(/never expanded to a png/);
+    expect(gap).toMatch(/Both halves were found, but they could not be read/);
   });
 });

@@ -1,7 +1,7 @@
 import { useInjection } from "@wirestate/react";
-import { IRendererExposureSettings } from "@xrf/renderer";
 import { ReactElement } from "react";
 
+import { IRendererExposureSettings } from "@/core/render/lib/contract/renderer-exposure-settings";
 import { formatExposure, formatLowLuminance, RENDER_EXPOSURE_LIMITS } from "@/core/render/lib/features";
 import { SettingsService } from "@/core/settings/services/settings";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";

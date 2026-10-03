@@ -5,7 +5,6 @@ import { default as SpeedIcon } from "@mui/icons-material/Speed";
 import { default as WarningIcon } from "@mui/icons-material/WarningAmber";
 import { default as WbCloudyIcon } from "@mui/icons-material/WbCloudy";
 import { useInjection } from "@wirestate/react";
-import { IRendererFeatureSettings } from "@xrf/renderer";
 import { Nullable } from "@xrf/types";
 import { ReactElement, ReactNode, useCallback, useMemo } from "react";
 
@@ -38,6 +37,7 @@ import {
   LevelViewService,
   LevelWeatherService,
 } from "@/core/level/services";
+import { IRendererFeatureSettings } from "@/core/render/lib/contract/renderer-feature-settings";
 import { SettingsService } from "@/core/settings/services/settings";
 import { EditorFileHeader } from "@/core/shell/editor/EditorFileHeader";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";

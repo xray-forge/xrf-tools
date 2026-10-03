@@ -1,5 +1,4 @@
 import { clamp } from "@xrf/math";
-import { WEATHER_DAY_LENGTH } from "@xrf/renderer";
 import { Maybe, Nullable } from "@xrf/types";
 
 import { SelectedLevelDescription } from "@/core/ipc/types/xrf-app";
@@ -11,6 +10,7 @@ import {
 } from "@/core/level/lib/weather/level-weather-control";
 import { ILevelWeatherSeed } from "@/core/level/lib/weather/level-weather-seed";
 import { ELevelWeatherSource } from "@/core/level/lib/weather/level-weather-source";
+import { WEATHER_DAY_LENGTH } from "@/core/render/lib/contract/weather-day";
 import { LEVEL_WEATHER_STORAGE_KEY } from "@/core/storage";
 import { parseLocalStorageValueSafe, setLocalStorageValueSafe } from "@/lib/local-storage";
 

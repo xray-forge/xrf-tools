@@ -1,7 +1,10 @@
 import { useInjection } from "@wirestate/react";
-import { IRendererShadowSettings, RENDERER_SHADOW_CASCADE_WIDTHS } from "@xrf/renderer";
 import { ReactElement } from "react";
 
+import {
+  IRendererShadowSettings,
+  RENDERER_SHADOW_CASCADE_WIDTHS,
+} from "@/core/render/lib/contract/renderer-shadow-settings";
 import {
   formatCascadeBlend,
   formatShadowBias,

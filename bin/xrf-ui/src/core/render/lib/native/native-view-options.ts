@@ -1,12 +1,3 @@
-import {
-  ERendererAmbientOcclusionQuality,
-  ERendererAntialiasing,
-  ERendererDebugView,
-  ERendererLightShadowFilter,
-  ERendererRenderScale,
-  ERenderResolution,
-  IRendererSettings,
-} from "@xrf/renderer";
 import { Nullable } from "@xrf/types";
 
 import {
@@ -17,6 +8,13 @@ import {
   ERenderScale,
   RenderViewOptions,
 } from "@/core/ipc/types/xrf-renderer";
+import { ERenderResolution } from "@/core/render/lib/contract/render-resolution";
+import { ERendererAmbientOcclusionQuality } from "@/core/render/lib/contract/renderer-ambient-occlusion-quality";
+import { ERendererAntialiasing } from "@/core/render/lib/contract/renderer-antialiasing";
+import { ERendererDebugView } from "@/core/render/lib/contract/renderer-debug-view";
+import { ERendererLightShadowFilter } from "@/core/render/lib/contract/renderer-light-shadow-filter";
+import { ERendererRenderScale } from "@/core/render/lib/contract/renderer-render-scale";
+import { IRendererSettings } from "@/core/render/lib/contract/renderer-settings";
 
 /** The settings' occlusion qualities as the native renderer names them. */
 const AMBIENT_OCCLUSION_QUALITIES: Record<ERendererAmbientOcclusionQuality, ERenderAmbientOcclusionQuality> = {
@@ -143,6 +141,7 @@ export function toNativeViewOptions(
     antialiasing: ANTIALIASING_MODES[settings.features.antialiasing],
     assetLighting: null,
     backdrop: null,
+    backdropSquares: null,
     checker: 0,
     plainColor: null,
     corrections: {

@@ -1,9 +1,9 @@
 import { describe, expect, it, jest } from "@jest/globals";
 import { userEvent } from "@testing-library/user-event";
-import { ERendererAntialiasing } from "@xrf/renderer";
 
 import { LevelAntialiasingAction } from "@/core/level/components/preview/LevelAntialiasingAction";
 import { ILevelFeatureOptions } from "@/core/level/lib/features/level-feature-options";
+import { ERendererAntialiasing } from "@/core/render/lib/contract/renderer-antialiasing";
 import { mockLevelFeatureOptions } from "@/fixtures/mocks/level.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
 

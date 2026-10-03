@@ -23,6 +23,10 @@
 //! - [`save`] - writing a node's two files, or refusing to.
 //! - [`encoding`] - the candidate formats a texture could be written in, and the encodes a comparison keeps.
 //!
+//! Drawing, which the lit body does through the native renderer:
+//!
+//! - [`surface`] - a texture laid on a plane, a sphere or a cube, read by the renderer from the files it located.
+//!
 //! And the plumbing every plugin has: [`request`] for the wire shapes commands take, [`routes`] for the pictures it
 //! serves over the transport, [`lease`] for what a job holds
 //! while it runs, [`state`] for what the plugin holds between calls, and [`plugin`] for assembly.
@@ -43,6 +47,7 @@ pub mod save;
 pub mod source;
 pub mod state;
 pub mod summary;
+pub mod surface;
 pub mod vocabulary;
 
 #[cfg(test)]

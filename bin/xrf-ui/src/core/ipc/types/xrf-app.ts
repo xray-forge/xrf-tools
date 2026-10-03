@@ -2478,6 +2478,45 @@ export type TextureSource =
   /** A texture of the roots, loose or archived, named by its engine reference such as `ston\ston_beton05`. */
   | { kind: "asset"; reference: string };
 
+/** Which of the engine's three readings of a texture's alpha the body is drawn with. */
+export enum ETextureSurfaceAlpha {
+  /** Not read at all, which is what the plain deferred base shader does. */
+  IGNORED = "ignored",
+  /** Clipped against `def_aref`, which is what every `_aref` shader does. */
+  CUT_OUT = "cut-out",
+  /** Composited over what is behind it, which the deferred pass never does. */
+  BLENDED = "blended",
+}
+
+/** Every `ETextureSurfaceAlpha` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type TextureSurfaceAlpha = `${ETextureSurfaceAlpha}`;
+
+/** A texture laid on a body, and how it is laid there. */
+export type TextureSurfaceRequest = {
+  source: TextureSource;
+  /** The roots the texture is resolved in, as its description was. */
+  roots: XrayRoots;
+  shape: TextureSurfaceShape;
+  /** How many times the texture repeats across the body, which is how a tiling seam becomes visible. */
+  tiling: number | null;
+  alpha: TextureSurfaceAlpha;
+  /** Width over height of the texture, which the plane is stretched to. */
+  aspect: number | null;
+};
+
+/** The body a texture is laid on to be looked at. */
+export enum ETextureSurfaceShape {
+  /** Flat and face on, where the decode is read most directly and tiling is judged. */
+  PLANE = "plane",
+  /** Curved, so the normal sweeps every grazing angle a wrong tangent sign shows up at. */
+  SPHERE = "sphere",
+  /** Edged, where a seam and the wrap of a tiling texture meet. */
+  CUBE = "cube",
+}
+
+/** Every `ETextureSurfaceShape` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type TextureSurfaceShape = `${ETextureSurfaceShape}`;
+
 /** Every named value the descriptor form's numeric fields can take. */
 export type TextureVocabulary = {
   /** The gate `LoadTHM` reads before anything else. */

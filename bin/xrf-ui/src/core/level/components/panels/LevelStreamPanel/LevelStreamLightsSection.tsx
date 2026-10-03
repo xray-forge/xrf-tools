@@ -1,6 +1,6 @@
-import { IRendererLightsReport } from "@xrf/renderer";
 import { ReactElement } from "react";
 
+import { IRendererLightsReport } from "@/core/render/lib/contract/renderer-lights-report";
 import { EditorPanelProperty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatPercent } from "@/lib/format/number";

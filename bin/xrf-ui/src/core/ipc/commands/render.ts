@@ -3,6 +3,7 @@
 import { Channel } from "@tauri-apps/api/core";
 
 import { invoke as __TAURI_INVOKE } from "@/core/ipc/invoke";
+import { ETextureSurfaceAlpha, ETextureSurfaceShape, TextureSource } from "@/core/ipc/types/xrf-app";
 import {
   ERenderWeatherTransition,
   RenderCamera,
@@ -21,6 +22,7 @@ import {
   RenderWeatherControl,
   RenderWeatherPlay,
 } from "@/core/ipc/types/xrf-renderer";
+import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 
 /** Commands */
 export const renderCommands = {
@@ -123,4 +125,19 @@ export const renderCommands = {
    */
   showModel: (viewport: RenderViewportId, sessionId: string | null, detail: number | null) =>
     __TAURI_INVOKE<null>("plugin:render|show_model", { viewport, sessionId, detail }),
+  /** Draw a texture laid on a body in a viewport, its files read by the renderer; no request draws none. */
+  showTexture: (
+    viewport: RenderViewportId,
+    request: {
+      source: TextureSource;
+      /** The roots the texture is resolved in, as its description was. */
+      roots: XrayRoots;
+      shape: ETextureSurfaceShape;
+      /** How many times the texture repeats across the body, which is how a tiling seam becomes visible. */
+      tiling: number | null;
+      alpha: ETextureSurfaceAlpha;
+      /** Width over height of the texture, which the plane is stretched to. */
+      aspect: number | null;
+    } | null
+  ) => __TAURI_INVOKE<null>("plugin:render|show_texture", { viewport, request }),
 };

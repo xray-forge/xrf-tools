@@ -1,6 +1,5 @@
-import { IRendererCameraPose } from "@xrf/renderer";
-
 import { ILevelCamera } from "@/core/level/lib/camera/level-camera";
+import { IRendererCameraPose } from "@/core/render/lib/contract/renderer-camera-pose";
 import { toXrayHeading, toXraySpace } from "@/core/render/lib/scene/render-space";
 
 /**

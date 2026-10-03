@@ -1,105 +1,60 @@
 import { describe, expect, it } from "@jest/globals";
-import {
-  ERendererDraw,
-  ERendererTextureEncoding,
-  IRendererGeometry,
-  IRendererObject,
-  TRendererTextureSource,
-} from "@xrf/renderer";
 
+import { ETextureSurfaceAlpha, ETextureSurfaceShape } from "@/core/ipc/types/xrf-app";
+import { RenderViewOptions } from "@/core/ipc/types/xrf-renderer";
 import {
-  createTextureSurfaceGeometry,
-  TEXTURE_SURFACE_KEYS,
-  toTextureRendererSettings,
-  toTextureSurface,
-  toTextureSurfaceObject,
-  toTextureSurfaceSource,
-} from "@/core/textures/lib/render/texture-surface-render";
-import { DEFAULT_TEXTURE_PREVIEW_OPTIONS } from "@/core/textures/lib/texture-preview";
-import {
-  EMPTY_TEXTURE_SURFACE,
-  ETextureSurfaceAlpha,
-  ETextureSurfaceShape,
-  ITextureSurfaceFile,
-} from "@/core/textures/lib/texture-surface";
+  DEFAULT_RENDERER_FEATURE_CHOICE,
+  resolveRendererFeatures,
+} from "@/core/render/lib/contract/renderer-feature-choice";
+import { toTextureSurfaceRequest, toTextureViewOptions } from "@/core/textures/lib/render/texture-surface-render";
+import { DEFAULT_TEXTURE_LIGHTING } from "@/core/textures/lib/texture-lighting";
+import { ITextureSurfaceOptions } from "@/core/textures/lib/texture-surface";
+import { VIEWPORT } from "@/core/theme/tokens";
 import { mockRenderSharedSettings } from "@/fixtures/mocks/render.mocks";
+import { MOCK_TEXTURE, mockTextureDescription } from "@/fixtures/mocks/texture.mocks";
 
-const FILE: ITextureSurfaceFile = { bytes: new ArrayBuffer(8), height: 2, isDecoded: false, width: 2 };
+const OPTIONS: ITextureSurfaceOptions = {
+  alpha: ETextureSurfaceAlpha.BLENDED,
+  isBumped: false,
+  isLit: false,
+  shape: ETextureSurfaceShape.CUBE,
+  tiling: 3,
+};
 
-describe("toTextureSurfaceObject", () => {
-  // Every group a body draws needs a surface, or the renderer hides it: a cube given one surface showed one face.
-  it.each(Object.values(ETextureSurfaceShape))("names a surface for every face the %s draws", (shape) => {
-    const geometry: IRendererGeometry = createTextureSurfaceGeometry(shape);
-    const object: IRendererObject = toTextureSurfaceObject(shape, 1);
+describe("toTextureSurfaceRequest", () => {
+  it("asks for the texture as its description named it, on the body and with the alpha the view asks", () => {
+    const description = mockTextureDescription(MOCK_TEXTURE, {
+      base: { shape: { format: "DXT1", height: 512, mipmapLevels: 1, width: 1024 }, size: 1 },
+    });
 
-    expect(object.surfaces).toHaveLength(geometry.groups.length);
+    expect(toTextureSurfaceRequest(description, OPTIONS)).toEqual({
+      alpha: ETextureSurfaceAlpha.BLENDED,
+      aspect: 2,
+      roots: description.roots,
+      shape: ETextureSurfaceShape.CUBE,
+      source: description.source,
+      tiling: 3,
+    });
   });
 
-  it("textures every face of the cube and only the front of the slab", () => {
-    const { edge, face } = TEXTURE_SURFACE_KEYS;
-
-    expect(toTextureSurfaceObject(ETextureSurfaceShape.CUBE, 1).surfaces).toEqual(Array(6).fill(face));
-    expect(toTextureSurfaceObject(ETextureSurfaceShape.PLANE, 1).surfaces).toEqual([
-      edge,
-      edge,
-      edge,
-      edge,
-      face,
-      edge,
-    ]);
-  });
-
-  it("stretches only the slab to the texture's proportions", () => {
-    expect(toTextureSurfaceObject(ETextureSurfaceShape.PLANE, 2).matrix?.slice(0, 6)).toEqual([1, 0, 0, 0, 0, 0.5]);
-    expect(toTextureSurfaceObject(ETextureSurfaceShape.CUBE, 2).matrix).toBeUndefined();
-  });
-});
-
-describe("toTextureSurface", () => {
-  it("draws each alpha reading as the engine's draw", () => {
-    function draw(alpha: ETextureSurfaceAlpha): ERendererDraw {
-      return toTextureSurface(EMPTY_TEXTURE_SURFACE, { ...DEFAULT_TEXTURE_PREVIEW_OPTIONS, alpha }).draw;
-    }
-
-    expect(draw(ETextureSurfaceAlpha.IGNORED)).toBe(ERendererDraw.OPAQUE);
-    expect(draw(ETextureSurfaceAlpha.CUT_OUT)).toBe(ERendererDraw.CUT_OUT);
-    expect(draw(ETextureSurfaceAlpha.BLENDED)).toBe(ERendererDraw.BLENDED);
-  });
-
-  it("names the pair only when both halves were read", () => {
-    const textures = toTextureSurface(
-      { ...EMPTY_TEXTURE_SURFACE, base: FILE, bump: { bump: FILE, companion: FILE } },
-      DEFAULT_TEXTURE_PREVIEW_OPTIONS
-    ).textures;
-
-    expect(textures).toEqual({ base: "base", bump: "bump", bumpCompanion: "bump#" });
-    expect(toTextureSurface(EMPTY_TEXTURE_SURFACE, DEFAULT_TEXTURE_PREVIEW_OPTIONS).textures.bump).toBeUndefined();
+  it("asks for nothing while no texture is open", () => {
+    expect(toTextureSurfaceRequest(null, OPTIONS)).toBeNull();
   });
 });
 
-describe("toTextureSurfaceSource", () => {
-  it("copies the bytes, so the transfer leaves the surface's own", () => {
-    const source: TRendererTextureSource = toTextureSurfaceSource(FILE);
-
-    if (!("bytes" in source)) {
-      throw new Error("A surface's file is handed over as bytes");
-    }
-
-    expect(source.bytes).not.toBe(FILE.bytes);
-    expect(source.encoding).toBe(ERendererTextureEncoding.DDS);
-    expect(toTextureSurfaceSource({ ...FILE, isDecoded: true }).encoding).toBe(ERendererTextureEncoding.IMAGE);
-  });
-});
-
-describe("toTextureRendererSettings", () => {
-  it("carries the lit and bump switches, over a transparent backdrop", () => {
-    const settings = toTextureRendererSettings(
-      { ...DEFAULT_TEXTURE_PREVIEW_OPTIONS, isBumped: false, isLit: false },
-      mockRenderSharedSettings()
+describe("toTextureViewOptions", () => {
+  it("carries the lit and bump switches, against the alpha checkerboard at the device's pixel size", () => {
+    const options: RenderViewOptions = toTextureViewOptions(
+      OPTIONS,
+      DEFAULT_TEXTURE_LIGHTING,
+      mockRenderSharedSettings({ features: resolveRendererFeatures(DEFAULT_RENDERER_FEATURE_CHOICE) }),
+      2
     );
 
-    expect(settings.backdrop).toBeNull();
-    expect(settings.isLit).toBe(false);
-    expect(settings.isBumped).toBe(false);
+    expect(options.isLit).toBe(false);
+    expect(options.isBumped).toBe(false);
+    expect(options.backdropSquares?.size).toBe(VIEWPORT.checkerboardSquare * 2);
+    expect(options.isSkyVisible).toBe(false);
+    expect(options.exposure.isEnabled).toBe(false);
   });
 });

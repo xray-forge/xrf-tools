@@ -1,5 +1,4 @@
-import { IRendererLodSettings } from "@xrf/renderer";
-
+import { IRendererLodSettings } from "@/core/render/lib/contract/renderer-lod-settings";
 import { formatNumber } from "@/lib/format/number";
 
 /**

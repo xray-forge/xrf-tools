@@ -1,6 +1,8 @@
 import { describe, expect, it } from "@jest/globals";
-import { DEFAULT_RENDERER_GRASS_SETTINGS, FRAME_RATE_LIMITS, RENDER_RESOLUTIONS } from "@xrf/renderer";
 
+import { FRAME_RATE_LIMITS } from "@/core/render/lib/contract/frame-rate-limit";
+import { RENDER_RESOLUTIONS } from "@/core/render/lib/contract/render-resolution";
+import { DEFAULT_RENDERER_GRASS_SETTINGS } from "@/core/render/lib/contract/renderer-grass-settings";
 import {
   formatLowLuminance,
   formatShadowBias,

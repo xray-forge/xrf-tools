@@ -1,6 +1,6 @@
 import { describe, expect, it, jest } from "@jest/globals";
-import { IRendererViewPoint } from "@xrf/renderer";
 
+import { IRendererViewPoint } from "@/core/render/lib/contract/renderer-view-point";
 import { listenRenderClicks, RENDER_CLICK_SLOP } from "@/core/render/lib/frame/render-clicks";
 
 function createElement(): HTMLElement {

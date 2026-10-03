@@ -1,11 +1,11 @@
 import { describe, expect, it } from "@jest/globals";
+
+import { EMPTY_RENDER_FRAME_COST, IRenderFrameCost } from "@/core/render/lib/contract/render-frame-cost";
+import { EMPTY_RENDERER_LIGHTS_REPORT } from "@/core/render/lib/contract/renderer-lights-report";
 import {
-  EMPTY_RENDER_FRAME_COST,
-  EMPTY_RENDERER_LIGHTS_REPORT,
   EMPTY_RENDERER_STATIC_DRAW_REPORT,
   IRendererStaticDrawReport,
-  IRenderFrameCost,
-} from "@xrf/renderer";
+} from "@/core/render/lib/contract/renderer-static-draw-report";
 
 import { EMPTY_LEVEL_STATS, ILevelHeld, ILevelStats, measureLevelStats } from "./level-stats";
 

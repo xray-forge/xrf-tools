@@ -1,5 +1,3 @@
-import { RENDERER_FLOATS_PER_BONE } from "@xrf/renderer";
-
 import { createRoots } from "@/core/assets/lib";
 import { AssetTextureDescriptor, SelectedVisualDescription } from "@/core/ipc/types/xrf-app";
 import { XrayMaterialDescriptor, XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
@@ -428,7 +426,8 @@ export function mockVisualMotionBake(overrides: Partial<VisualMotionBake> = {}):
     frameCount: 3,
     boneCount: 2,
     animatedBoneCount: 2,
-    floatsPerBone: RENDERER_FLOATS_PER_BONE,
+    // The basis's three columns, then the translation.
+    floatsPerBone: 12,
     duration: 0,
     speed: MOTION_DEFAULT_SPEED,
     ...overrides,
@@ -437,46 +436,6 @@ export function mockVisualMotionBake(overrides: Partial<VisualMotionBake> = {}):
   const speed: number = bake.speed && bake.speed > 0 ? bake.speed : MOTION_DEFAULT_SPEED;
 
   return { ...bake, duration: overrides.duration ?? bake.frameCount / (MOTION_SAMPLE_FPS * speed) };
-}
-
-/**
- * Creates the bone transforms one bake describes.
- *
- * Built from the bake rather than from counts of its own, because every consumer refuses bytes whose length disagrees
- * with the frame, bone and float counts it was told: a test producing the two separately could pin that guard against
- * a buffer it made up.
- *
- * @param bake - Bake the buffer has to match.
- * @param fill - Value written into every float of one frame, by default the frame's own index so a pose is
- *   identifiable.
- * @returns Frame major transforms of the length the bake reports.
- */
-export function mockVisualMotionTransforms(
-  bake: VisualMotionBake,
-  fill: (frame: number) => number = (frame: number) => frame
-): ArrayBuffer {
-  const stride: number = bake.boneCount * bake.floatsPerBone;
-  const transforms: Float32Array = new Float32Array(bake.frameCount * stride);
-
-  for (let frame: number = 0; frame < bake.frameCount; frame += 1) {
-    transforms.fill(fill(frame), frame * stride, (frame + 1) * stride);
-  }
-
-  return transforms.buffer as ArrayBuffer;
-}
-
-/**
- * One bone's transform, flattened the way both the bind buffer and a baked motion store it.
- *
- * An identity basis and a translation, because a test reading a posed bone is nearly always asking where it ended up
- * rather than which way it faces. `visual-views.test.ts` writes this layout out literally on purpose - it is the test
- * that proves it - so this builder is for the tests that consume the layout rather than assert it.
- *
- * @param translation - Where this bone sits, in all three axes.
- * @returns Twelve floats: `i`, `j`, `k`, then `c`.
- */
-export function mockVisualBoneFloats(translation: number): Array<number> {
-  return [1, 0, 0, 0, 1, 0, 0, 0, 1, translation, translation, translation];
 }
 
 /**

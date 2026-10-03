@@ -1,13 +1,10 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
-import {
-  DEFAULT_RENDERER_FEATURE_CHOICE,
-  ERendererAntialiasing,
-  ERendererPreset,
-  ERendererRenderScale,
-  RENDERER_PRESETS,
-} from "@xrf/renderer";
 
 import { EXrayEngine } from "@/core/ipc/types/xrf-engine-target";
+import { ERendererAntialiasing } from "@/core/render/lib/contract/renderer-antialiasing";
+import { DEFAULT_RENDERER_FEATURE_CHOICE } from "@/core/render/lib/contract/renderer-feature-choice";
+import { ERendererPreset, RENDERER_PRESETS } from "@/core/render/lib/contract/renderer-preset";
+import { ERendererRenderScale } from "@/core/render/lib/contract/renderer-render-scale";
 import { SettingsService } from "@/core/settings/services/settings/settings.service";
 import { mockInjectedService } from "@/fixtures/utils/container";
 

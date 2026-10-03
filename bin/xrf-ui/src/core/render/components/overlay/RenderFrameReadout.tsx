@@ -1,7 +1,9 @@
-import { IRendererPassCost, IRendererPassTimings, IRenderFrameCost } from "@xrf/renderer";
 import { Fragment, ReactElement, ReactNode } from "react";
 
 import { RenderViewportOverlay, TRenderOverlayCorner } from "@/core/render/components/overlay/RenderViewportOverlay";
+import { IRenderFrameCost } from "@/core/render/lib/contract/render-frame-cost";
+import { IRendererPassCost } from "@/core/render/lib/contract/renderer-pass-cost";
+import { IRendererPassTimings } from "@/core/render/lib/contract/renderer-pass-timings";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatMilliseconds } from "@/lib/format/duration";
 import { formatCount } from "@/lib/format/number";

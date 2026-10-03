@@ -2,6 +2,7 @@ pub(crate) mod render_ambient_occlusion_quality;
 pub(crate) mod render_ambient_occlusion_settings;
 pub(crate) mod render_antialiasing;
 pub(crate) mod render_asset_lighting;
+pub(crate) mod render_backdrop_squares;
 pub(crate) mod render_camera;
 pub(crate) mod render_camera_command;
 pub(crate) mod render_camera_pose;

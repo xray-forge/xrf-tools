@@ -1,6 +1,8 @@
-import { DEFAULT_RENDERER_EXPOSURE_SETTINGS, IRendererExposureSettings } from "@xrf/renderer";
-
 import { LevelConsoleDefaults } from "@/core/ipc/types/xrf-app";
+import {
+  DEFAULT_RENDERER_EXPOSURE_SETTINGS,
+  IRendererExposureSettings,
+} from "@/core/render/lib/contract/renderer-exposure-settings";
 
 /** How a game's console scales the weather's light: `r2_sun_lumscale`, `_hemi` and `_amb`. */
 export interface ILevelLightScales {

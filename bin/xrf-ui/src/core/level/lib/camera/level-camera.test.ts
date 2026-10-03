@@ -1,5 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
-import { TRendererVector } from "@xrf/renderer";
+
+import { TRendererVector } from "@/core/render/lib/contract/renderer-vector";
 
 import { ILevelCamera } from "./level-camera";
 import { toLevelCameraReading } from "./level-camera-reading";

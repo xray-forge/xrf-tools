@@ -1,13 +1,13 @@
-import { ERendererBumpPlane } from "@xrf/renderer";
 import { Nullable } from "@xrf/types";
 
 import { getLocatedAsset } from "@/core/assets/lib";
 import { TextureDescription } from "@/core/ipc/types/xrf-app";
+import { ETextureBumpPlane } from "@/core/textures/lib/texture-bump-plane";
 import { ITextureSurfaceFiles } from "@/core/textures/lib/texture-surface";
 
 /** One tile of the panel: a plane, what it is called, and what a person is meant to read in it. */
 export interface ITextureChannelTile {
-  plane: ERendererBumpPlane;
+  plane: ETextureBumpPlane;
   label: string;
   caption: string;
 }
@@ -20,27 +20,27 @@ export interface ITextureChannelTile {
  */
 export const TEXTURE_CHANNEL_TILES: ReadonlyArray<ITextureChannelTile> = [
   {
-    plane: ERendererBumpPlane.BUMP,
+    plane: ETextureBumpPlane.BUMP,
     label: "Bump",
     caption: "normal.gloss as stored",
   },
   {
-    plane: ERendererBumpPlane.COMPANION,
+    plane: ETextureBumpPlane.COMPANION,
     label: "Bump#",
     caption: "error.height as stored",
   },
   {
-    plane: ERendererBumpPlane.NORMAL,
+    plane: ETextureBumpPlane.NORMAL,
     label: "Normal",
     caption: "reconstructed, in the unit range",
   },
   {
-    plane: ERendererBumpPlane.GLOSS,
+    plane: ETextureBumpPlane.GLOSS,
     label: "Gloss",
     caption: "reconstructed from the bump's red",
   },
   {
-    plane: ERendererBumpPlane.HEIGHT,
+    plane: ETextureBumpPlane.HEIGHT,
     label: "Height",
     caption: "stored in alpha; the deferred loader reads the z error instead",
   },
@@ -66,7 +66,7 @@ export function toTextureChannelAspect(files: Nullable<ITextureSurfaceFiles>): s
  *
  * @param description - The texture as the backend resolved it, or none open.
  * @param files - What the surface read for it.
- * @param isUploading - Whether that upload is still in progress.
+ * @param isUploading - Whether that read is still in progress.
  * @returns What to say instead of the tiles, or null when the tiles can be drawn.
  */
 export function describeTextureChannelsGap(
@@ -108,8 +108,5 @@ export function describeTextureChannelsGap(
     );
   }
 
-  return (
-    "Both halves were found, but this pair is a layout the renderer cannot upload. It is never expanded to a png: a " +
-    "plane of packed numbers re-encoded as colour would report values it does not hold."
-  );
+  return "Both halves were found, but they could not be read. The Files panel says what each of them is.";
 }
