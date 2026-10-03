@@ -5,7 +5,7 @@ use crate::shader::shader_library::ShaderLibrary;
 /// A shader module composed from the library and compiled, refused when the device rejects it rather than left to
 /// fail the first draw.
 pub fn create_module(device: &wgpu::Device, shaders: &ShaderLibrary, name: &str) -> XrfResult<wgpu::ShaderModule> {
-  let source: String = shaders.compose(name, &[])?;
+  let source: String = shaders.compose(name)?;
   let scope: wgpu::ErrorScopeGuard = device.push_error_scope(wgpu::ErrorFilter::Validation);
   let module: wgpu::ShaderModule = device.create_shader_module(wgpu::ShaderModuleDescriptor {
     label: Some(name),

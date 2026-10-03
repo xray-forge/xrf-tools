@@ -18,7 +18,7 @@ const AXIS_Z: vec3<f32> = vec3<f32>(0.25, 0.40, 0.80);
 
 // One triangle covering the viewport.
 @vertex
-fn vs_main(@builtin(vertex_index) index: u32) -> GridVarying {
+fn vs_grid(@builtin(vertex_index) index: u32) -> GridVarying {
   let uv: vec2<f32> = vec2<f32>(f32((index << 1u) & 2u), f32(index & 2u));
   let ndc: vec2<f32> = uv * 2.0 - 1.0;
   var out: GridVarying;
@@ -39,7 +39,7 @@ fn grid_lines(point: vec2<f32>, spacing: f32) -> f32 {
 }
 
 @fragment
-fn fs_main(in: GridVarying) -> @location(0) vec4<f32> {
+fn fs_grid(in: GridVarying) -> @location(0) vec4<f32> {
   let near: vec3<f32> = camera_unproject(in.ndc, 1.0);
   let far: vec3<f32> = camera_unproject(in.ndc, 0.5);
   let direction: vec3<f32> = normalize(far - near);

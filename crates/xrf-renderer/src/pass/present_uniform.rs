@@ -4,7 +4,7 @@ use crate::contract::render_debug_view::RenderDebugView;
 use crate::contract::render_image_corrections::RenderImageCorrections;
 use crate::contract::render_rect::RenderRect;
 
-/// What the present pass shows, as `frame/present.wgsl`'s `Present` reads it.
+/// What the present pass shows, as `common/present.wgsl`'s `Present` declares it.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, Pod, Zeroable)]
 pub struct PresentUniform {

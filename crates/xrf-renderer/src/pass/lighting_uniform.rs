@@ -18,7 +18,7 @@ pub struct LightingUniform {
   pub sky_irradiance: Vec4,
   /// The fog's colour, then one where it fogs.
   pub fog_color: Vec4,
-  /// `fog_params.x` and `.w`, then one where the sky's haze takes the fog, then one where the sky is drawn.
+  /// `fog_params.x` and `.w`, then one where far geometry fades into the sky's haze above the fold, then one where the sky is drawn.
   pub fog: Vec4,
   /// `sky_color`, then the blend between the keyframes' skies.
   pub sky: Vec4,
@@ -28,7 +28,7 @@ pub struct LightingUniform {
   pub clouds: Vec4,
   /// One for Anomaly's shading, then the rain's density.
   pub engine: Vec4,
-  /// The settings' tonemap scale, and ones where the scene is lit, the exposure adapts and the occlusion darkens.
+  /// Nothing, then ones where the scene is lit, the exposure adapts and the occlusion darkens.
   pub params: Vec4,
   /// `L_ambient` and `L_hemi_color` as a forward pass binds them: the weather's own, neither doubled nor scaled.
   pub forward_ambient: Vec4,
@@ -36,7 +36,7 @@ pub struct LightingUniform {
   /// The sun's sprite colour times how far it has faded in, then half its side as a share of the distance it stands
   /// at; zero where none is drawn.
   pub sun_sprite: Vec4,
-  /// The sun shafts' density, then the steps along a ray `accum_volumetric_sun` takes at its highest quality; nothing
+  /// The sun shafts' density, then the steps along a ray `accum_volumetric_sun` takes at the chosen quality; nothing
   /// where they are not drawn.
   pub shafts: Vec4,
 }
@@ -83,7 +83,7 @@ impl LightingUniform {
         0.0,
       ),
       params: Vec4::new(
-        options.tonemap_scale,
+        0.0,
         flag(options.is_lit),
         flag(frame.is_adapting),
         flag(options.ambient_occlusion.is_enabled),

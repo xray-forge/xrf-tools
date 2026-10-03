@@ -37,8 +37,6 @@ pub struct RenderViewOptions {
   pub is_occlusion_culled: bool,
   /// How much of the static geometry draws at a distance.
   pub lod: RenderLodSettings,
-  /// What the tonemap multiplies by before the exposure's own scale.
-  pub tonemap_scale: f32,
   /// An asset viewer's light, in place of the weather's; none for a level.
   pub asset_lighting: Option<RenderAssetLighting>,
   /// What shows where nothing was drawn and neither the sky nor the fog is, each channel zero to one; none for the
@@ -114,7 +112,6 @@ impl Default for RenderViewOptions {
       hemi_strength: 1.0,
       is_occlusion_culled: true,
       lod: RenderLodSettings::default(),
-      tonemap_scale: 1.0,
       asset_lighting: None,
       backdrop: None,
       backdrop_squares: None,

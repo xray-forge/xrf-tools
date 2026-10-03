@@ -42,7 +42,7 @@ export function RenderFrameReadout({
   return (
     <RenderViewportOverlay data-testid={dataTestId} id={id} className={className} corner={corner}>
       <div>{`${(report.framesPerSecond ?? 0).toFixed(0)} fps · ${formatMilliseconds(report.frameTime ?? 0)}`}</div>
-      <div>{`${formatCount(report.staticDraws.commands)} draws · ${formatCount(report.triangles)} tris`}</div>
+      <div>{`${formatCount(report.staticDraws.commands)} draws · ${formatCount(report.staticDraws.keptTriangles)} tris`}</div>
       <div>{toSizeLine(report)}</div>
 
       {children}

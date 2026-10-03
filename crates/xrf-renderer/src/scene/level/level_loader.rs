@@ -62,11 +62,6 @@ impl LevelLoader {
     self.total
   }
 
-  /// Whether every sector has arrived, packed or failed.
-  pub fn is_done(&self) -> bool {
-    self.received == self.total
-  }
-
   /// The sectors finished since the last call, at most `limit` of them.
   pub fn take(&mut self, limit: usize) -> Vec<SectorLoad> {
     let taken: Vec<SectorLoad> = self.receiver.try_iter().take(limit).collect();

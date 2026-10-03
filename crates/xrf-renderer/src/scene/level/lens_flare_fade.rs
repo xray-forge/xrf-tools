@@ -2,8 +2,6 @@ use std::time::Instant;
 
 use xrf_math::EPS_S;
 
-use crate::host::render_lens_flare::RenderLensFlare;
-
 /// Where the fade between two lens flares stands, `CLensFlare::LFState`.
 #[derive(Clone, Copy, Debug, PartialEq)]
 enum FadeStep {
@@ -37,14 +35,9 @@ impl LensFlareFade {
   }
 
   /// Steps the fade towards the lens flare named now, by the game seconds since the last step: real ones times
-  /// `rate`; at a rate of zero, a paused clock, every fade completes at once.
-  pub fn advance(
-    &mut self,
-    named: Option<&str>,
-    find: impl Fn(&str) -> Option<RenderLensFlare>,
-    now: Instant,
-    rate: f32,
-  ) {
+  /// `rate`; at a rate of zero, a paused clock, every fade completes at once. `times` gives a lens flare's rise and down
+  /// times.
+  pub fn advance(&mut self, named: Option<&str>, times: impl Fn(&str) -> Option<(f32, f32)>, now: Instant, rate: f32) {
     let delta: f32 = self
       .last
       .map_or(0.0, |last| now.saturating_duration_since(last).as_secs_f32());
@@ -52,13 +45,13 @@ impl LensFlareFade {
     let speed = |seconds: f32| 1.0 / (seconds.max(0.0) + EPS_S);
     let rise = |name: Option<&String>| {
       name
-        .and_then(|it| find(it))
-        .map_or(1.0 / EPS_S, |it| speed(it.rise_time))
+        .and_then(|it| times(it))
+        .map_or(1.0 / EPS_S, |(rise, _)| speed(rise))
     };
     let down = |name: Option<&String>| {
       name
-        .and_then(|it| find(it))
-        .map_or(1.0 / EPS_S, |it| speed(it.down_time))
+        .and_then(|it| times(it))
+        .map_or(1.0 / EPS_S, |(_, down)| speed(down))
     };
 
     self.last = Some(now);

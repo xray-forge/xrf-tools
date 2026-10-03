@@ -29,7 +29,7 @@ impl FlareUniform {
     Self {
       to_sun: to_sun.extend(delta),
       sun: toward_sun.extend(faded),
-      color: color.extend(flare.flares.len().min(FLARE_SLOTS) as f32),
+      color: color.extend(0.0),
       gradient: flare
         .gradient
         .as_ref()

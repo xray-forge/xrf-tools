@@ -6,7 +6,7 @@ struct Flares {
   to_sun: vec4<f32>,
   // xyz: towards the sun in renderer space; w: how far the lens flare has faded in, `m_StateBlend`.
   sun: vec4<f32>,
-  // rgb: the sun's colour as a vertex colour holds it; w: how many flares follow.
+  // rgb: the sun's colour as a vertex colour holds it.
   color: vec4<f32>,
   // x: the gradient's radius; y: its opacity; z: one where it is drawn.
   gradient: vec4<f32>,

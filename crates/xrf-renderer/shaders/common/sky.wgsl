@@ -59,11 +59,6 @@ fn sky_blended_cubes(state: Lighting, lookup: vec3<f32>) -> vec3<f32> {
   );
 }
 
-// The two skies along a world direction, as a surface reflecting them reads the cube: straight, with no box between.
-fn sky_cubes(state: Lighting, direction: vec3<f32>) -> vec3<f32> {
-  return sky_blended_cubes(state, sky_box_direction(direction, state.sky_params.x));
-}
-
 // The cubes around a box direction under the fold, averaged around the compass so the rim's texels do not show.
 fn sky_rim(state: Lighting, box: vec3<f32>) -> vec3<f32> {
   var sum: vec3<f32> = vec3<f32>(0.0);

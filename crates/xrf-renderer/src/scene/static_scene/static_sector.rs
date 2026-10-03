@@ -1,10 +1,6 @@
-use std::ops::Range;
-
-/// One sector as the scene holds it: the slots it put, which a pick names it by, and what it weighed.
+/// One sector as the scene holds it: what its pack weighed.
 #[derive(Clone, Debug)]
 pub struct StaticSector {
-  pub sector: u32,
-  pub slots: Range<u32>,
-  /// Bytes of its pack, which is what a residency budget spends.
+  /// Bytes of its pack.
   pub bytes: u64,
 }

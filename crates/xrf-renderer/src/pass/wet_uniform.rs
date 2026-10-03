@@ -1,6 +1,6 @@
 use glam::Vec4;
 
-/// What `shaders/frame/wet_patch.wgsl` reads as its `Wet`: how hard it rains, the clock, the engine and the cover.
+/// What `shaders/common/wet.wgsl` declares as `Wet`: how hard it rains, the clock, the engine and the cover.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct WetUniform {

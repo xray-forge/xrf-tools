@@ -11,7 +11,8 @@ struct Lighting {
   sky_irradiance: vec4<f32>,
   // rgb: the fog's colour; w: one where it fogs.
   fog_color: vec4<f32>,
-  // x, y: `fog_params.x` and `.w`; z: one where the sky's haze takes the fog; w: one where the sky is drawn.
+  // x, y: `fog_params.x` and `.w`; z: one where far geometry fades into the sky's haze above the fold; w: one where the
+  // sky is drawn.
   fog: vec4<f32>,
   // rgb: `sky_color`; w: how far from the first keyframe's sky to the second's.
   sky: vec4<f32>,
@@ -21,8 +22,8 @@ struct Lighting {
   clouds: vec4<f32>,
   // x: one for Anomaly's shading; y: the rain's density.
   engine: vec4<f32>,
-  // x: the settings' tonemap scale; y: one where the scene is lit; z: one where the exposure adapts; w: one where the
-  // ambient occlusion darkens the hemisphere.
+  // y: one where the scene is lit; z: one where the exposure adapts; w: one where the ambient occlusion darkens the
+  // hemisphere.
   params: vec4<f32>,
   // `L_ambient` and `L_hemi_color` as a forward pass binds them: the weather's own, neither doubled nor scaled.
   forward_ambient: vec4<f32>,
@@ -40,9 +41,9 @@ struct Exposure {
   adapted: f32,
 };
 
-// The scale this frame's tonemap multiplies by: the settings', times the adapted exposure where it adapts.
+// The scale this frame's tonemap multiplies by: the adapted exposure where it adapts, one otherwise.
 fn frame_scale(state: Lighting, exposure: Exposure) -> f32 {
-  return state.params.x * select(1.0, exposure.adapted, state.params.z > 0.5);
+  return select(1.0, exposure.adapted, state.params.z > 0.5);
 }
 
 // `fWhiteIntensity` of `tonemap`, squared.

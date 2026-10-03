@@ -80,7 +80,6 @@ export function toLevelViewOptions(inputs: ILevelViewOptionsInputs): RenderViewO
       isLit: true,
       isWireframe: options.isWireframe,
       surfaceColor,
-      tonemapScale: 1,
     },
     {
       ...features,

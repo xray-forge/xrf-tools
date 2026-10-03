@@ -1,6 +1,6 @@
 use glam::{Mat4, Vec4};
 
-/// The sun's cascades as `shaders/frame/sun.wgsl` samples them: each map's matrix as it was drawn, its texel, and how
+/// The sun's cascades as `shaders/common/sun_shadow.wgsl` declares them: each map's matrix as it was drawn, its texel, and how
 /// the lookup filters, offsets and blends.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, bytemuck::Pod, bytemuck::Zeroable)]

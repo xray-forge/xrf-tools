@@ -257,7 +257,6 @@ pub struct LevelView {
   pick_target: Option<PickTarget>,
   pick_view: Option<ViewBinding>,
   surfaces: SurfaceTally,
-  failed: u32,
   /// Each skinned object's skeleton, by its index, the motions they are posed by, and the pose asked for.
   skeletons: HashMap<u32, PosedSkeleton>,
   motions: ModelMotions,
@@ -381,7 +380,6 @@ impl LevelView {
       pick_target: None,
       pick_view: None,
       surfaces: SurfaceTally::default(),
-      failed: 0,
       skeletons: HashMap::new(),
       motions: ModelMotions::default(),
       model_pose: RenderModelPose::default(),
@@ -497,7 +495,6 @@ impl LevelView {
           self.surfaces.merge(tally);
         }
         Err(reason) => {
-          self.failed += 1;
           self.failed_sectors.push(RenderLoadFailure {
             name: sector.to_string(),
             reason,
@@ -1049,6 +1046,7 @@ impl LevelView {
       return;
     };
     let texture_group: &wgpu::BindGroup = textures.get_bind_group();
+    // The draw arguments a forward pass replays: the early phase's, and the late phase's where occlusion culls.
     let list_args: Vec<&wgpu::Buffer> = if self.params.is_occluding != 0 {
       vec![&self.scene.args, &self.scene.late]
     } else {
@@ -1383,15 +1381,6 @@ impl LevelView {
       is_impostor: false,
       point,
     }))
-  }
-
-  /// The draw arguments a forward pass replays: the early phase's, and the late phase's where occlusion culls.
-  fn list_args(&self) -> Vec<&wgpu::Buffer> {
-    if self.params.is_occluding != 0 {
-      vec![&self.scene.args, &self.scene.late]
-    } else {
-      vec![&self.scene.args]
-    }
   }
 
   /// Where the next frame's samples sit within their pixels, in drawn pixels, `y` down: jittered while it resolves
@@ -1790,7 +1779,6 @@ impl LevelView {
     self.sector_time
   }
 
-  /// The static draws' pools and what the latest counted frame's cull kept and hid, and its lights.
   /// What its frames are drawn with, as resolved from what `options` asked; the weather's light is the viewport's to add.
   pub fn describe_applied(&self, options: &RenderViewOptions) -> RenderAppliedReport {
     let antialiasing: RenderAntialiasing = if self.is_temporal {
@@ -1821,6 +1809,7 @@ impl LevelView {
     }
   }
 
+  /// The static draws' pools and what the latest counted frame's cull kept and hid, and its lights.
   pub fn take_stats(&mut self) -> (RenderStaticReport, RenderLightsReport) {
     let [kept_clusters, kept_triangles, occluded_clusters, occluded_triangles] = self.stats.take();
     let pools: RenderStaticReport = self.scene.get_pools();
@@ -1843,8 +1832,6 @@ impl LevelView {
     )
   }
 
-  /// What puts the level's finished scene into the window, once its targets are made.
-  /// Takes what its viewport draws over its frame, uploading a set once.
   /// Makes what it draws over its frame where the page's overlays or the selection's box changed: the page's, then a
   /// selected spawned object's box.
   pub fn set_overlays(
@@ -1907,6 +1894,7 @@ impl LevelView {
     self.targets.as_ref().map(|it| (it.width, it.height))
   }
 
+  /// What puts the level's finished scene into the window, once its targets are made.
   pub fn get_present_group(&self) -> Option<&wgpu::BindGroup> {
     self.present_group.as_ref().map(|(_, group)| group)
   }
@@ -1938,25 +1926,12 @@ impl LevelView {
 
   /// Whether everything it opens with is resident, so it draws as it will.
   pub fn is_ready(&self, textures: &TextureCache) -> bool {
-    let slots = &self.scene.texture_slots;
-    let sectors: u32 = self.scene.sectors.len() as u32 + self.failed;
-
-    sectors == self.loader.get_total() && self.spawn.is_done() && textures.count_settled(slots) == slots.len() as u32
+    self.describe_load(textures).is_ready
   }
 
   /// How far the level has loaded, when that changed since it was last asked.
   pub fn take_report(&mut self, textures: &TextureCache) -> Option<RenderLoadReport> {
-    let slots = &self.scene.texture_slots;
-    let (settled, total): (u32, u32) = (textures.count_settled(slots), slots.len() as u32);
-    let sectors: u32 = self.scene.sectors.len() as u32 + self.failed;
-    let report: RenderLoadReport = RenderLoadReport {
-      sectors: self.scene.sectors.len() as u32,
-      sectors_total: self.loader.get_total(),
-      bytes: self.scene.get_bytes(),
-      textures: settled,
-      textures_total: total,
-      is_ready: sectors == self.loader.get_total() && self.spawn.is_done() && settled == total,
-    };
+    let report: RenderLoadReport = self.describe_load(textures);
 
     if self.reported == Some(report) {
       return None;
@@ -1965,6 +1940,22 @@ impl LevelView {
     self.reported = Some(report);
 
     Some(report)
+  }
+
+  /// How far the level has loaded: its sectors taken in or failed, its spawn, and its textures settled.
+  fn describe_load(&self, textures: &TextureCache) -> RenderLoadReport {
+    let slots = &self.scene.texture_slots;
+    let (settled, total): (u32, u32) = (textures.count_settled(slots), slots.len() as u32);
+    let arrived: u32 = (self.scene.sectors.len() + self.failed_sectors.len()) as u32;
+
+    RenderLoadReport {
+      sectors: self.scene.sectors.len() as u32,
+      sectors_total: self.loader.get_total(),
+      bytes: self.scene.get_bytes(),
+      textures: settled,
+      textures_total: total,
+      is_ready: arrived == self.loader.get_total() && self.spawn.is_done() && settled == total,
+    }
   }
 }
 

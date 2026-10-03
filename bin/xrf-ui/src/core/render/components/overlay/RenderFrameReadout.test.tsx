@@ -12,8 +12,7 @@ const REPORT: RenderFrameReport = {
   height: 1930,
   renderHeight: 1930,
   renderWidth: 3217,
-  staticDraws: { ...EMPTY_RENDER_STATIC_REPORT, commands: 886 },
-  triangles: 6445460,
+  staticDraws: { ...EMPTY_RENDER_STATIC_REPORT, commands: 886, keptTriangles: 6445460 },
   width: 3217,
 };
 

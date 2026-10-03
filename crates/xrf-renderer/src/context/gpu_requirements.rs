@@ -11,10 +11,8 @@ pub const REQUIRED_FEATURES: wgpu::Features = wgpu::Features::TEXTURE_COMPRESSIO
   .union(wgpu::Features::DUAL_SOURCE_BLENDING);
 
 /// What the renderer uses where present: GPU timings of each pass.
-pub const OPTIONAL_FEATURES: wgpu::Features = wgpu::Features::TIMESTAMP_QUERY
-  .union(wgpu::Features::TIMESTAMP_QUERY_INSIDE_ENCODERS)
-  .union(wgpu::Features::TIMESTAMP_QUERY_INSIDE_PASSES)
-  .union(wgpu::Features::PIPELINE_STATISTICS_QUERY);
+pub const OPTIONAL_FEATURES: wgpu::Features =
+  wgpu::Features::TIMESTAMP_QUERY.union(wgpu::Features::TIMESTAMP_QUERY_INSIDE_ENCODERS);
 
 /// The required features an adapter lacks, empty when it has every one.
 pub fn get_missing_features(features: wgpu::Features) -> wgpu::Features {

@@ -446,7 +446,6 @@ impl StaticScene {
     package: &SectorPackage,
   ) {
     let mut writer: SceneWriter = SceneWriter::default();
-    let first_slot: u32 = self.slot_count;
     let description = &package.description;
     let buffer: &[u8] = &package.buffer;
 
@@ -509,8 +508,6 @@ impl StaticScene {
 
     self.flush(device, queue, encoder, writer);
     self.sectors.push(StaticSector {
-      sector: description.sector,
-      slots: first_slot..self.slot_count,
       bytes: buffer.len() as u64,
     });
     self.contents += 1;
@@ -743,7 +740,6 @@ impl StaticScene {
     indices: &[u32],
   ) -> GeometryBase {
     let base: GeometryBase = GeometryBase {
-      layout,
       vertex_start: self.vertex_counts[layout.get_index()],
       index_start: self.index_count,
     };
@@ -1077,7 +1073,6 @@ impl StaticScene {
 
 /// Where one geometry's vertices and indices start in the arenas.
 struct GeometryBase {
-  layout: StaticLayout,
   vertex_start: u32,
   index_start: u32,
 }

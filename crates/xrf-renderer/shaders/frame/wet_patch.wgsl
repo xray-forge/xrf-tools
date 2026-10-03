@@ -2,22 +2,11 @@
 #import "common/octahedral"
 #import "common/rain_cover"
 #import "common/fullscreen"
+#import "common/wet"
 
 // `rain_patch_normal` (`r3_rendertarget_draw_rain.cpp`): where the rain reaches a surface near the camera, splashes on
 // what faces up and water running down what stands, as a normal bent in view space, and how wet it is in alpha, weighed
 // by the albedo's brightness. Computed in the engine's axes, so the ripples run as the game's do.
-
-struct Wet {
-  // `RainDensity.x`.
-  density: f32,
-  // `timers.x`: seconds the rain has fallen.
-  time: f32,
-  // One on Anomaly's engine.
-  is_extended: f32,
-  pad: f32,
-  // The cover's centre in `x` and `z`, its half width, and the height it is seen from.
-  window: vec4<f32>,
-};
 
 @group(1) @binding(0) var depth_target: texture_depth_2d;
 @group(1) @binding(1) var albedo_target: texture_2d<f32>;

@@ -10,7 +10,7 @@ fn every_module_composes_and_validates() {
 
   for name in modules {
     let source: String = library
-      .compose(name, &[])
+      .compose(name)
       .unwrap_or_else(|error| panic!("'{name}': {error}"));
     let module: naga::Module = naga::front::wgsl::parse_str(&source)
       .unwrap_or_else(|error| panic!("'{name}' does not parse:\n{}", error.emit_to_string(&source)));
