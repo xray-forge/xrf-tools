@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 
+use crate::contract::render_lights_report::RenderLightsReport;
 use crate::contract::render_pass_cost::RenderPassCost;
+use crate::contract::render_static_report::RenderStaticReport;
 
 /// What a viewport's recent frames cost, reported a few times a second while it draws.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -35,4 +37,10 @@ pub struct RenderFrameReport {
   pub is_gpu_timed: bool,
   /// What each pass cost on the GPU, in frame order; none while untimed.
   pub passes: Vec<RenderPassCost>,
+  /// The level's static draws' pools and cull, empty without a level.
+  pub static_draws: RenderStaticReport,
+  /// The level's local lights, empty without a level.
+  pub lights: RenderLightsReport,
+  /// Milliseconds the last sector taken in took to put into the scene, on the render thread.
+  pub sector_time: f32,
 }

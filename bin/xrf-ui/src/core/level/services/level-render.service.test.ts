@@ -57,8 +57,30 @@ const REPORT: RenderFrameReport = {
     { gpuTime: 1.25, name: "g-buffer" },
     { gpuTime: 0.5, name: "sun" },
   ],
+  lights: {
+    atlas: { capacity: 16_777_216, used: 4_194_304 },
+    dropped: 3,
+    excess: 0,
+    fullClusters: 2,
+    inView: 12,
+    shadowed: 4,
+  },
   renderHeight: 400,
   renderWidth: 534,
+  sectorTime: 1.5,
+  staticDraws: {
+    clusters: { capacity: 4096, used: 3000 },
+    commands: 13,
+    keptClusters: 1200,
+    keptTriangles: 90_000,
+    lods: { capacity: 64, used: 40 },
+    occludedClusters: 300,
+    occludedTriangles: 20_000,
+    places: { capacity: 2048, used: 1500 },
+    rows: { capacity: 512, used: 200 },
+    slots: { capacity: 1024, used: 900 },
+    surfaceList: { capacity: 8192, used: 1200 },
+  },
   triangles: 90_000,
   width: 800,
 };
@@ -185,7 +207,8 @@ describe("LevelRenderService", () => {
     expect(viewport.stats.worstFrameTime).toBe(9);
     expect(viewport.stats.drawnWidth).toBe(800);
     expect(viewport.stats.renderedWidth).toBe(534);
-    expect(viewport.stats.draws).toBe(1200);
+    expect(viewport.stats.draws).toBe(13);
+    expect(viewport.stats.sceneTime).toBe(1.5);
     expect(viewport.stats.triangles).toBe(90_000);
     expect(viewport.timings).toEqual({
       isGpuTimed: true,
@@ -193,6 +216,24 @@ describe("LevelRenderService", () => {
         { gpuTime: 1.25, name: "g-buffer" },
         { gpuTime: 0.5, name: "sun" },
       ],
+    });
+
+    expect(viewport.stats.staticDraws).toEqual(
+      expect.objectContaining({
+        clusters: { capacity: 4096, used: 3000 },
+        commands: 13,
+        kept: { clusters: 1200, triangles: 90_000 },
+        occluded: { clusters: 300, triangles: 20_000 },
+      })
+    );
+    expect(viewport.stats.lights).toEqual({
+      atlas: { capacity: 16_777_216, used: 4_194_304 },
+      droppedLights: 3,
+      excessLights: 0,
+      fullClusters: 2,
+      inView: 12,
+      shadowScale: 1,
+      shadowed: 4,
     });
 
     emit({ kind: ERenderViewportEvent.CAMERA, pose: { position: [1, 2, 3], target: [1, 2, 2] } });
@@ -228,7 +269,12 @@ describe("LevelRenderService", () => {
     const view: LevelViewService = container.get(LevelViewService);
 
     expect(sent("set_view_options").at(-1)).toEqual({
-      options: expect.objectContaining({ isBumped: true, isTextured: true }),
+      options: expect.objectContaining({
+        isBumped: true,
+        isTextured: true,
+        // The settings' level of detail, the engine's own thresholds by default.
+        lod: expect.objectContaining({ isImpostors: true, ssaA: 64, ssaB: 48, ssaDiscard: 3.5 }),
+      }),
       viewport: VIEWPORT,
     });
 

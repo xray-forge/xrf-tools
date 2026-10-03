@@ -5,6 +5,8 @@ use glam::{Mat4, Vec3, Vec4};
 use xrf_material::XraySurfaceDescriptor;
 use xrf_visual::{SectorGeometry, SectorImpostors, SectorInstanceGroup, SectorPackage, SectorSurface, VisualClusters};
 
+use crate::contract::render_pool_use::RenderPoolUse;
+use crate::contract::render_static_report::RenderStaticReport;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::pass::wind_uniform::WindUniform;
 use crate::scene::section_bytes::read_pods;
@@ -217,6 +219,22 @@ impl StaticScene {
     queue.submit([encoder.finish()]);
 
     scene
+  }
+
+  /// How full the scene's pools are: what a report of its static draws starts from.
+  pub fn get_pools(&self) -> RenderStaticReport {
+    RenderStaticReport {
+      slots: self.slots.get_use(size_of::<StaticSlot>()),
+      places: self.places.get_use(size_of::<StaticPlace>()),
+      rows: self.rows.get_use(size_of::<StaticRow>()),
+      lods: self.impostors.get_use(size_of::<StaticImpostor>()),
+      clusters: self.clusters.get_use(size_of::<StaticCluster>()),
+      surface_list: RenderPoolUse {
+        used: 0,
+        capacity: self.list_capacity,
+      },
+      ..Default::default()
+    }
   }
 
   pub fn get_cluster_count(&self) -> u32 {

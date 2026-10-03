@@ -4,9 +4,11 @@ use std::time::{Duration, Instant};
 use crate::camera::camera_controller::CameraController;
 use crate::contract::render_camera_pose::RenderCameraPose;
 use crate::contract::render_frame_report::RenderFrameReport;
+use crate::contract::render_lights_report::RenderLightsReport;
 use crate::contract::render_load_report::RenderLoadReport;
 use crate::contract::render_overlay::RenderOverlay;
 use crate::contract::render_rect::RenderRect;
+use crate::contract::render_static_report::RenderStaticReport;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::contract::render_viewport_event::RenderViewportEvent;
 use crate::contract::render_viewport_id::RenderViewportId;
@@ -109,7 +111,10 @@ impl RenderViewport {
 
   /// Reports the frames since the last report, once one is due.
   pub fn report(&mut self, now: Instant, backend: &str, adapter: &str) {
-    let (clusters, triangles): (u32, u32) = self.level_view.as_mut().map_or((0, 0), |level| level.take_stats());
+    let (static_draws, lights): (RenderStaticReport, RenderLightsReport) = self
+      .level_view
+      .as_mut()
+      .map_or_else(Default::default, |level| level.take_stats());
     let (is_gpu_timed, passes) = self
       .level_view
       .as_mut()
@@ -137,8 +142,8 @@ impl RenderViewport {
         frame_time,
         frame_time_max,
         cpu_time,
-        clusters,
-        triangles,
+        clusters: static_draws.kept_clusters,
+        triangles: static_draws.kept_triangles,
         width: rect.width,
         height: rect.height,
         render_width,
@@ -147,6 +152,9 @@ impl RenderViewport {
         adapter: adapter.to_string(),
         is_gpu_timed,
         passes,
+        static_draws,
+        lights,
+        sector_time: self.level_view.as_ref().map_or(0.0, LevelView::get_sector_time),
       },
     });
   }

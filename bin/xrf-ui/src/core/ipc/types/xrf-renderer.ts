@@ -196,6 +196,12 @@ export type RenderFrameReport = {
   isGpuTimed: boolean;
   /** What each pass cost on the GPU, in frame order; none while untimed. */
   passes: Array<RenderPassCost>;
+  /** The level's static draws' pools and cull, empty without a level. */
+  staticDraws: RenderStaticReport;
+  /** The level's local lights, empty without a level. */
+  lights: RenderLightsReport;
+  /** Milliseconds the last sector taken in took to put into the scene, on the render thread. */
+  sectorTime: number | null;
 };
 
 /**
@@ -319,6 +325,21 @@ export enum ERenderLightShadowFilter {
 /** Every `ERenderLightShadowFilter` as the spelling it crosses IPC as, for a value no member has narrowed. */
 export type RenderLightShadowFilter = `${ERenderLightShadowFilter}`;
 
+/** What a level's local lights came to on the last frame counted. */
+export type RenderLightsReport = {
+  /** Lights standing in view and lit. */
+  inView: number;
+  /** Of them, lights lit with their shadows. */
+  shadowed: number;
+  /** Lights in view past the most a frame holds, the farthest. */
+  excess: number;
+  /** Texels of the shadow atlas held, of its whole. */
+  atlas: RenderPoolUse;
+  /** Clusters of the view more lights reached than one holds, and the lights they left out. */
+  fullClusters: number;
+  dropped: number;
+};
+
 /** The level's local lights: binned into clusters of the view, and accumulated after the sun in one pass. */
 export type RenderLightsSettings = {
   isEnabled: boolean;
@@ -343,6 +364,25 @@ export type RenderLoadReport = {
   texturesTotal: number;
   /** Whether everything is resident, so the scene draws as it will. */
   isReady: boolean;
+};
+
+/**
+ * What decides how much of a level's static geometry draws at a distance: the engine's screen area thresholds, each in
+ * pixels of a 90 degree lens before `r__geometry_lod` scales them.
+ */
+export type RenderLodSettings = {
+  /** Whether distant trees are drawn as their impostors. */
+  isImpostors: boolean;
+  /** `r__geometry_lod`: every screen area threshold scales with it. */
+  geometryLod: number | null;
+  /** `r_ssaLOD_A` and `r_ssaLOD_B`: a clump's impostor draws below the first, its trees above the second. */
+  ssaA: number | null;
+  ssaB: number | null;
+  /** `r_ssaDISCARD`: an instanced place smaller on screen than this is not drawn. */
+  ssaDiscard: number | null;
+  /** `r_ssaGLOD_start` and `r_ssaGLOD_end`: a progressive mesh is whole above the first, coarsest below the second. */
+  ssaGlodStart: number | null;
+  ssaGlodEnd: number | null;
 };
 
 /** Every `kind` the `RenderOverlay` union is told apart by, so a switch or a comparison names one. */
@@ -378,6 +418,12 @@ export type RenderPassCost = {
   name: string;
   /** Mean GPU milliseconds over the report's span. */
   gpuTime: number | null;
+};
+
+/** How much of a pool of records a frame used: entries held, and entries it has room for before it grows. */
+export type RenderPoolUse = {
+  used: number;
+  capacity: number;
 };
 
 /** How often frames are presented. */
@@ -444,6 +490,30 @@ export type RenderShadowSettings = {
   blend: number | null;
   /** Whether cascade `n` is drawn at most every `2^n` frames, the far ones sharing frames the near one does not. */
   isStaggered: boolean;
+};
+
+/** How full a level's static draws' pools are, and what the camera's cull kept and occlusion hid. */
+export type RenderStaticReport = {
+  /** Slots, a draw each. */
+  slots: RenderPoolUse;
+  /** Places static draws stand in. */
+  places: RenderPoolUse;
+  /** Rows the instance cull tests, a spawned model's place each. */
+  rows: RenderPoolUse;
+  /** Impostors of clumps of trees. */
+  lods: RenderPoolUse;
+  /** Clusters static draws are made of. */
+  clusters: RenderPoolUse;
+  /** Entries the camera's visible list held, of the room it has. */
+  surfaceList: RenderPoolUse;
+  /** Indirect draws the camera's static batches issue a frame. */
+  commands: number;
+  /** Clusters the camera kept, and their triangles. */
+  keptClusters: number;
+  keptTriangles: number;
+  /** Clusters the frustum kept and the depth hid, and their triangles. */
+  occludedClusters: number;
+  occludedTriangles: number;
 };
 
 /** How much geometry one shader table entry of a viewport's level draws, across the sectors resident. */
@@ -522,10 +592,8 @@ export type RenderViewOptions = {
   hemiStrength: number | null;
   /** Whether what the last frame's depth hides is left undrawn. */
   isOcclusionCulled: boolean;
-  /** Whether distant trees are drawn as their impostors. */
-  isImpostors: boolean;
-  /** `r__geometry_lod`: every screen area threshold scales with it. */
-  geometryLod: number | null;
+  /** How much of the static geometry draws at a distance. */
+  lod: RenderLodSettings;
   /** What the tonemap multiplies by before the exposure's own scale. */
   tonemapScale: number | null;
   /** Whether the weather's fog hides the distance. */
