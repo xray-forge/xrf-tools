@@ -208,6 +208,21 @@ export type RenderGrassSettings = {
   height: number | null;
 };
 
+/**
+ * Anomaly's `img_corrections`, which `combine_2` applies to the finished frame: `r__exposure`, `r__gamma`,
+ * `r__saturation` and `r__color_grading`.
+ */
+export type RenderImageCorrections = {
+  /** What the frame is multiplied by. */
+  exposure: number | null;
+  /** The power the frame is raised to, inverted. */
+  gamma: number | null;
+  /** How far from grey towards the frame's own colour: one leaves it. */
+  saturation: number | null;
+  /** The colour the mid tones are graded towards; black grades nothing. */
+  grading: [number | null, number | null, number | null];
+};
+
 /** One gesture over a viewport, as much of the browser's event as crosses. */
 export type RenderInputEvent = {
   kind: RenderInputKind;
@@ -278,6 +293,16 @@ export type RenderLevelHit =
       object: number;
       point: [number | null, number | null, number | null];
     };
+
+/**
+ * How a game's console scales the weather's light (`r2_sun_lumscale`, `r2_sun_lumscale_hemi`,
+ * `r2_sun_lumscale_amb`): the sun's colour, and the hemisphere and the ambient the deferred frame is combined with.
+ */
+export type RenderLightScales = {
+  sun: number | null;
+  hemi: number | null;
+  ambient: number | null;
+};
 
 /** How a shadowed local light's map is compared. */
 export enum ERenderLightShadowFilter {
@@ -503,6 +528,10 @@ export type RenderViewOptions = {
   antialiasing: RenderAntialiasing;
   /** What the scene is drawn at, and how its upscaled frame is sharpened. */
   upscaling: RenderUpscalingSettings;
+  /** How the game's console scales the sun, the hemisphere and the ambient. */
+  lightScales: RenderLightScales;
+  /** What the finished frame is corrected by. */
+  corrections: RenderImageCorrections;
 };
 
 /** Every `kind` the `RenderViewportEvent` union is told apart by, so a switch or a comparison names one. */
