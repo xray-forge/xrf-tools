@@ -1,4 +1,4 @@
-import { toWeatherTimeOfDay } from "@xrf/renderer";
+import { toWeatherTimeOfDay } from "@/core/render/lib/contract/weather-day";
 
 /**
  * @param seconds - Seconds since midnight.

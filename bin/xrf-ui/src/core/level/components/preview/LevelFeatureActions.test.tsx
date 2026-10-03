@@ -1,11 +1,12 @@
 import { describe, expect, it, jest } from "@jest/globals";
 import { userEvent } from "@testing-library/user-event";
-import { DEFAULT_RENDERER_GRASS_SETTINGS, DEFAULT_RENDERER_LIGHTS_SETTINGS } from "@xrf/renderer";
 import { ReactElement } from "react";
 
 import { LevelGrassAction } from "@/core/level/components/preview/LevelGrassAction";
 import { LevelLightsAction } from "@/core/level/components/preview/LevelLightsAction";
 import { ILevelFeatureOptions, TLevelFeatureKey } from "@/core/level/lib/features";
+import { DEFAULT_RENDERER_GRASS_SETTINGS } from "@/core/render/lib/contract/renderer-grass-settings";
+import { DEFAULT_RENDERER_LIGHTS_SETTINGS } from "@/core/render/lib/contract/renderer-lights-settings";
 import { mockLevelFeatureOptions } from "@/fixtures/mocks/level.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
 

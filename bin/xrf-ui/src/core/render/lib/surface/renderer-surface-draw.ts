@@ -1,4 +1,3 @@
-import { ERendererDraw, IRendererAnomalyWater, IRendererSurfaceWater } from "@xrf/renderer";
 import { assertExhaustive, Maybe, Nullable } from "@xrf/types";
 
 import {
@@ -9,6 +8,9 @@ import {
   XraySurfaceDraw,
 } from "@/core/ipc/types/xrf-material";
 import { ALPHA_REFERENCE_SCALE } from "@/core/materials/lib/material-surface";
+import { IRendererAnomalyWater } from "@/core/render/lib/contract/renderer-anomaly-water";
+import { ERendererDraw } from "@/core/render/lib/contract/renderer-draw";
+import { IRendererSurfaceWater } from "@/core/render/lib/contract/renderer-surface-water";
 
 /**
  * How a surface reaches the renderer's frame, from what the backend resolved for its shader.

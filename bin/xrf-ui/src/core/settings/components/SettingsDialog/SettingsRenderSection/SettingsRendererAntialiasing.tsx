@@ -1,7 +1,9 @@
 import { useInjection } from "@wirestate/react";
-import { ERendererAntialiasing, ERendererRenderScale, IRendererFeatureSettings } from "@xrf/renderer";
 import { ReactElement } from "react";
 
+import { ERendererAntialiasing } from "@/core/render/lib/contract/renderer-antialiasing";
+import { IRendererFeatureSettings } from "@/core/render/lib/contract/renderer-feature-settings";
+import { ERendererRenderScale } from "@/core/render/lib/contract/renderer-render-scale";
 import {
   formatSharpening,
   RENDER_ANTIALIASING_OPTIONS,

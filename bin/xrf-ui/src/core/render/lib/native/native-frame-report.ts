@@ -1,6 +1,6 @@
-import { EMPTY_RENDER_FRAME_COST, IRendererPassTimings, IRenderFrameCost } from "@xrf/renderer";
-
 import { RenderFrameReport, RenderPassCost } from "@/core/ipc/types/xrf-renderer";
+import { EMPTY_RENDER_FRAME_COST, IRenderFrameCost } from "@/core/render/lib/contract/render-frame-cost";
+import { IRendererPassTimings } from "@/core/render/lib/contract/renderer-pass-timings";
 
 /**
  * @param report - What a native viewport's recent frames cost.

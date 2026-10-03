@@ -1,7 +1,8 @@
 import { useInjection } from "@wirestate/react";
-import { ERendererAmbientOcclusionQuality, IRendererAmbientOcclusionSettings } from "@xrf/renderer";
 import { ReactElement } from "react";
 
+import { ERendererAmbientOcclusionQuality } from "@/core/render/lib/contract/renderer-ambient-occlusion-quality";
+import { IRendererAmbientOcclusionSettings } from "@/core/render/lib/contract/renderer-ambient-occlusion-settings";
 import {
   formatOcclusionRadius,
   formatOcclusionStrength,

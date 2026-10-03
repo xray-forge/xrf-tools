@@ -1,4 +1,3 @@
-import { ERendererDebugView, IRendererFeatureSettings } from "@xrf/renderer";
 import { Nullable } from "@xrf/types";
 import { ReactElement, ReactNode, useCallback } from "react";
 
@@ -25,6 +24,8 @@ import { ILevelFeatureOptions, TLevelFeatureView } from "@/core/level/lib/featur
 import { ILevelLodOptions } from "@/core/level/lib/lod/level-lod-options";
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { ILevelManualWeather } from "@/core/level/lib/weather/level-manual-weather";
+import { ERendererDebugView } from "@/core/render/lib/contract/renderer-debug-view";
+import { IRendererFeatureSettings } from "@/core/render/lib/contract/renderer-feature-settings";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { EditorToolbarSeparator } from "@/core/shell/editor/EditorToolbarSeparator";
 import { BaseComponentProps } from "@/lib/dom/element-types";

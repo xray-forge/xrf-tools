@@ -1,21 +1,19 @@
 import { Injectable, OnDeprovision, OnProvision, ProvisionId } from "@wirestate/core";
 import { BoundAction, Computed, Observable, RefObservable } from "@wirestate/mobx";
-import {
-  ERendererPreset,
-  ERenderResolution,
-  IRendererFeatureChoice,
-  IRendererFeatureOverrides,
-  IRendererFeatureSettings,
-  mergeRendererFeatureOverrides,
-  resolveRendererFeatures,
-  TFrameRateLimit,
-  toFrameRateLimit,
-  toRendererFeatureChoice,
-  toRenderResolution,
-} from "@xrf/renderer";
 import { Nullable } from "@xrf/types";
 
 import { EXrayEngine } from "@/core/ipc/types/xrf-engine-target";
+import { TFrameRateLimit, toFrameRateLimit } from "@/core/render/lib/contract/frame-rate-limit";
+import { ERenderResolution, toRenderResolution } from "@/core/render/lib/contract/render-resolution";
+import {
+  IRendererFeatureChoice,
+  mergeRendererFeatureOverrides,
+  resolveRendererFeatures,
+  toRendererFeatureChoice,
+} from "@/core/render/lib/contract/renderer-feature-choice";
+import { IRendererFeatureOverrides } from "@/core/render/lib/contract/renderer-feature-overrides";
+import { IRendererFeatureSettings } from "@/core/render/lib/contract/renderer-feature-settings";
+import { ERendererPreset } from "@/core/render/lib/contract/renderer-preset";
 import { IRenderSharedSettings } from "@/core/render/lib/settings/render-shared-settings";
 import { TCatalogView, toCatalogView } from "@/core/settings/lib/catalog-view";
 import { toXrayEngine } from "@/core/settings/lib/xray-engine";

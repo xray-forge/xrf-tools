@@ -1,6 +1,5 @@
 import { default as GradientIcon } from "@mui/icons-material/Gradient";
 import { Button } from "@mui/material";
-import { ERendererAmbientOcclusionQuality, IRendererAmbientOcclusionSettings } from "@xrf/renderer";
 import { ReactElement } from "react";
 
 import { ILevelFeatureActionProps } from "@/core/level/components/preview/level-feature-action-props";
@@ -8,6 +7,8 @@ import { useLevelFeatureOverride } from "@/core/level/components/preview/use-lev
 import { DEFAULT_LEVEL_HEMI_STRENGTH, ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
+import { ERendererAmbientOcclusionQuality } from "@/core/render/lib/contract/renderer-ambient-occlusion-quality";
+import { IRendererAmbientOcclusionSettings } from "@/core/render/lib/contract/renderer-ambient-occlusion-settings";
 import {
   describeRenderAmbientOcclusionQuality,
   formatOcclusionRadius,

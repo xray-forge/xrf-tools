@@ -1,79 +1,64 @@
 import { inject, Injectable } from "@wirestate/core";
-import { BoundAction, reaction } from "@wirestate/mobx";
-import {
-  ERendererBumpPlane,
-  ERendererCameraCommand,
-  ERendererCaptureSource,
-  IRendererSettings,
-  RendererClient,
-} from "@xrf/renderer";
+import { comparer, reaction, RefObservable, runInAction } from "@wirestate/mobx";
 import { Nullable } from "@xrf/types";
 
-import { IRenderLighting } from "@/core/render/lib/lighting/render-lighting";
-import { RenderAssetService } from "@/core/render/lib/surface/render-asset-service";
+import {
+  ERenderCameraCommand,
+  ERenderTextureState,
+  RenderFrameReport,
+  RenderLoadReport,
+  RenderTextureReport,
+  RenderViewOptions,
+} from "@/core/ipc/types/xrf-renderer";
+import { EMPTY_RENDER_FRAME_COST, IRenderFrameCost } from "@/core/render/lib/contract/render-frame-cost";
+import { EMPTY_RENDERER_PASS_TIMINGS, IRendererPassTimings } from "@/core/render/lib/contract/renderer-pass-timings";
+import { toNativeFrameCost, toNativePassTimings } from "@/core/render/lib/native/native-frame-report";
+import { NativeRenderSurfaceService } from "@/core/render/lib/native/native-render-surface-service";
+import { toNativeRenderHeight } from "@/core/render/lib/native/native-view-options";
+import { NativeViewport, TNativeTextureRequest } from "@/core/render/lib/native/native-viewport";
 import { SettingsService } from "@/core/settings/services/settings";
 import {
-  createTextureSurfaceGeometry,
-  TEXTURE_EDGE_SURFACE,
   TEXTURE_SURFACE_CAMERA,
-  TEXTURE_SURFACE_KEYS,
-  toTextureRendererSettings,
-  toTextureSurface,
-  toTextureSurfaceObject,
-  toTextureSurfaceSource,
+  toTextureSurfaceRequest,
+  toTextureViewOptions,
 } from "@/core/textures/lib/render/texture-surface-render";
 import { dragTextureLighting } from "@/core/textures/lib/texture-lighting";
-import {
-  ETextureSurfaceShape,
-  ITextureSurfaceFiles,
-  ITextureSurfaceOptions,
-} from "@/core/textures/lib/texture-surface";
-import { TextureSurfaceService } from "@/core/textures/services/surface";
+import { TextureSelectionService } from "@/core/textures/services/selection";
 import { TextureViewService } from "@/core/textures/services/view";
 import { Logger } from "@/lib/logging";
 
 /**
- * Owns the renderer the open texture is drawn by: the lit body while its view is on screen, and the planes of its
- * bump pair whenever a panel asks, with or without that view.
+ * Owns the native viewport the selected texture is drawn in, on the body its view asks for.
  */
 @Injectable()
-export class TextureRenderService extends RenderAssetService {
+export class TextureRenderService extends NativeRenderSurfaceService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
-  /** The body the geometry was last put for, so an option change that keeps it does not rebuild it. */
-  private shape: Nullable<ETextureSurfaceShape> = null;
-  /** Set while a new renderer is told everything at once, so the face is put once rather than once per reaction. */
-  private isStarting: boolean = false;
+  /** What the viewport's recent frames cost, for the readout. */
+  @RefObservable()
+  public frameCost: IRenderFrameCost = EMPTY_RENDER_FRAME_COST;
+
+  /** What each of its passes cost on the GPU, for the readout. */
+  @RefObservable()
+  public timings: IRendererPassTimings = EMPTY_RENDERER_PASS_TIMINGS;
+
+  /**
+   * Why the texture shown cannot be laid on the body, once the renderer has read it; null while it is drawn or read.
+   */
+  @RefObservable()
+  public baseFailure: Nullable<string> = null;
+
+  /** The element the viewport fills, whose size a light drag is measured against. */
+  private container: Nullable<HTMLElement> = null;
+  /** Whether the shown texture's files were described since it was shown. */
+  private hasDescribed: boolean = false;
 
   public constructor(
+    private readonly selectionService: TextureSelectionService = inject(TextureSelectionService),
     private readonly viewService: TextureViewService = inject(TextureViewService),
-    private readonly surfaceService: TextureSurfaceService = inject(TextureSurfaceService),
     settingsService: SettingsService = inject(SettingsService)
   ) {
     super(settingsService);
-  }
-
-  /**
-   * Draws one plane of the open texture's bump pair.
-   *
-   * @param plane - The plane wanted.
-   * @param width - Width in device pixels.
-   * @param height - Height in device pixels.
-   * @returns The picture, or null while there is no pair to draw; rejects once the renderer has failed.
-   */
-  public captureBumpPlane(plane: ERendererBumpPlane, width: number, height: number): Promise<Nullable<ImageBitmap>> {
-    if (!this.surfaceService.files.value?.bump) {
-      return Promise.resolve(null);
-    }
-
-    return this.ensureClient().capture({
-      bump: TEXTURE_SURFACE_KEYS.bump,
-      companion: TEXTURE_SURFACE_KEYS.companion,
-      height,
-      kind: ERendererCaptureSource.BUMP_PLANE,
-      plane,
-      width,
-    });
   }
 
   /**
@@ -84,7 +69,13 @@ export class TextureRenderService extends RenderAssetService {
    */
   public dragLight(deltaX: number, deltaY: number): void {
     this.viewService.setLighting(
-      dragTextureLighting(this.viewService.lighting, deltaX, deltaY, this.target?.width ?? 1, this.target?.height ?? 1)
+      dragTextureLighting(
+        this.viewService.lighting,
+        deltaX,
+        deltaY,
+        this.container?.clientWidth ?? 1,
+        this.container?.clientHeight ?? 1
+      )
     );
   }
 
@@ -94,100 +85,89 @@ export class TextureRenderService extends RenderAssetService {
    * @param step - What to multiply the distance by.
    */
   public dolly(step: number): void {
-    this.client?.commandCamera({ kind: ERendererCameraCommand.DOLLY, step });
+    this.viewport?.commandCamera({ kind: ERenderCameraCommand.DOLLY, step });
   }
 
   /** Back to the distance and the angle the body is first seen from. */
   public reset(): void {
-    this.client?.commandCamera({ kind: ERendererCameraCommand.RESET });
+    this.viewport?.commandCamera({ kind: ERenderCameraCommand.RESET });
   }
 
-  protected toSettings(): IRendererSettings {
-    return toTextureRendererSettings(this.viewService.options, this.settingsService.sharedRenderSettings);
+  protected start(viewport: NativeViewport): Array<() => void> {
+    viewport.setCamera(TEXTURE_SURFACE_CAMERA);
+
+    return [
+      reaction(
+        (): TNativeTextureRequest =>
+          toTextureSurfaceRequest(this.selectionService.selected.value ?? null, this.viewService.options),
+        (request: TNativeTextureRequest) => this.showTexture(request),
+        { equals: comparer.structural, fireImmediately: true }
+      ),
+      reaction(
+        (): RenderViewOptions =>
+          toTextureViewOptions(
+            this.viewService.options,
+            this.viewService.lighting,
+            this.settingsService.sharedRenderSettings,
+            window.devicePixelRatio,
+            toNativeRenderHeight(this.settingsService.renderResolution)
+          ),
+        (options: RenderViewOptions) => viewport.setViewOptions(options),
+        { equals: comparer.structural, fireImmediately: true }
+      ),
+    ];
   }
 
-  protected start(client: RendererClient): Array<() => void> {
-    client.setCamera(TEXTURE_SURFACE_CAMERA);
-    client.putSurface(TEXTURE_SURFACE_KEYS.edge, TEXTURE_EDGE_SURFACE);
+  protected onAttached(container: HTMLElement): void {
+    this.container = container;
+  }
 
-    this.isStarting = true;
+  protected onFrame(report: RenderFrameReport): void {
+    runInAction(() => {
+      this.frameCost = toNativeFrameCost(report);
+      this.timings = toNativePassTimings(report);
+    });
+  }
 
-    try {
-      return [
-        reaction(() => this.surfaceService.files.value, this.applyFiles, { fireImmediately: true }),
-        reaction(() => this.viewService.options, this.applyOptions, { fireImmediately: true }),
-        reaction(
-          () => this.viewService.lighting,
-          (lighting: IRenderLighting) => this.sendAssetLighting(lighting),
-          {
-            fireImmediately: true,
-          }
-        ),
-      ];
-    } finally {
-      this.isStarting = false;
-      this.applySurface();
+  protected onLoad(report: RenderLoadReport): void {
+    const reference: Nullable<string> = this.selectionService.selected.value?.reference ?? null;
+
+    // Asked once everything it opens with is resident, so a texture still on its way is never reported unreadable.
+    if (report.isReady && reference && !this.hasDescribed && this.viewport) {
+      this.hasDescribed = true;
+      void this.viewport.describeTextures().then((reports: Array<RenderTextureReport>) => {
+        const base: Nullable<RenderTextureReport> = reports.find((it) => it.reference === reference) ?? null;
+
+        runInAction(() => {
+          this.baseFailure =
+            base?.state.kind === ERenderTextureState.FAILED
+              ? base.state.reason
+              : base?.state.kind === ERenderTextureState.MISSING
+                ? "The texture resolves to no file"
+                : null;
+        });
+      });
     }
   }
 
   protected release(): void {
-    this.shape = null;
+    this.container = null;
+    this.hasDescribed = false;
+
+    runInAction(() => {
+      this.frameCost = EMPTY_RENDER_FRAME_COST;
+      this.timings = EMPTY_RENDERER_PASS_TIMINGS;
+      this.baseFailure = null;
+    });
   }
 
-  @BoundAction()
-  private applyFiles(files: Nullable<ITextureSurfaceFiles>): void {
-    const client: Nullable<RendererClient> = this.client;
+  private showTexture(request: TNativeTextureRequest): void {
+    this.hasDescribed = false;
 
-    if (!client) {
-      return;
-    }
+    runInAction(() => {
+      this.baseFailure = null;
+    });
 
-    const { base, bump } = TEXTURE_SURFACE_KEYS;
-
-    if (files?.base) {
-      client.putTexture(base, toTextureSurfaceSource(files.base));
-    } else {
-      client.releaseTexture(base);
-    }
-
-    if (files?.bump) {
-      client.putTexture(bump, toTextureSurfaceSource(files.bump.bump));
-      client.putTexture(TEXTURE_SURFACE_KEYS.companion, toTextureSurfaceSource(files.bump.companion));
-    } else {
-      client.releaseTexture(bump);
-      client.releaseTexture(TEXTURE_SURFACE_KEYS.companion);
-    }
-
-    this.applySurface();
-  }
-
-  @BoundAction()
-  private applyOptions(options: ITextureSurfaceOptions): void {
-    const client: Nullable<RendererClient> = this.client;
-
-    if (!client) {
-      return;
-    }
-
-    if (options.shape !== this.shape) {
-      this.shape = options.shape;
-      client.putGeometry(TEXTURE_SURFACE_KEYS.body, createTextureSurfaceGeometry(options.shape));
-    }
-
-    this.applySurface();
-    this.sendSettings();
-  }
-
-  /** Puts the face and the body for what is open and how it is looked at. */
-  private applySurface(): void {
-    const files: Nullable<ITextureSurfaceFiles> = this.surfaceService.files.value;
-    const options: ITextureSurfaceOptions = this.viewService.options;
-
-    if (!this.client || !files || this.isStarting) {
-      return;
-    }
-
-    this.client.putSurface(TEXTURE_SURFACE_KEYS.face, toTextureSurface(files, options));
-    this.client.putObject(TEXTURE_SURFACE_KEYS.body, toTextureSurfaceObject(options.shape, files.aspect));
+    this.viewport?.showTexture(request);
   }
 }

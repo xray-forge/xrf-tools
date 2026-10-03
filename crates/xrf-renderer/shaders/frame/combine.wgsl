@@ -50,6 +50,20 @@ fn shaded_color(albedo: vec4<f32>, light: vec4<f32>, normal: vec3<f32>, position
     normalize(rotation * normal), normalize(rotation * normalize(position)), slice, occlusion, visible);
 }
 
+// What shows at a pixel where nothing was drawn: the backdrop, or its checkerboard with a second colour.
+fn backdrop_at(pixel: vec2<f32>) -> vec3<f32> {
+  let backdrop: vec3<f32> = select(BACKDROP, camera.backdrop.rgb, camera.backdrop.w > 0.5);
+  let squares: vec4<f32> = camera.backdrop_squares;
+
+  if (squares.w <= 0.0) {
+    return backdrop;
+  }
+
+  let cell: vec2<i32> = vec2<i32>(floor(pixel / squares.w));
+
+  return select(backdrop, squares.rgb, ((cell.x + cell.y) & 1) == 1);
+}
+
 @fragment
 fn fs_combine(in: FullscreenVarying) -> @location(0) vec4<f32> {
   let texel: vec2<i32> = vec2<i32>(in.clip.xy);
@@ -74,7 +88,7 @@ fn fs_combine(in: FullscreenVarying) -> @location(0) vec4<f32> {
       return vec4<f32>(tonemap(lighting.fog_color.rgb, scale), 1.0);
     }
 
-    return vec4<f32>(select(BACKDROP, camera.backdrop.rgb, camera.backdrop.w > 0.5), 1.0);
+    return vec4<f32>(backdrop_at(in.clip.xy), 1.0);
   }
 
   let albedo: vec4<f32> = textureLoad(albedo_target, texel, 0);

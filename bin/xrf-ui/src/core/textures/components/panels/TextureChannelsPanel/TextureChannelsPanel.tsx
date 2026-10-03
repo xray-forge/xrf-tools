@@ -1,7 +1,5 @@
-import { Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
-import { ERendererBumpPlane } from "@xrf/renderer";
-import { Nullable } from "@xrf/types";
+import { Nullable, Optional } from "@xrf/types";
 import { PointerEvent, ReactElement, RefCallback, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { TextureDescription } from "@/core/ipc/types/xrf-app";
@@ -11,11 +9,10 @@ import {
   EditorPanelProperty,
   EditorPanelSection,
 } from "@/core/shell/editor/EditorPanel";
+import { ETextureBumpPlane, toTextureBumpPlane } from "@/core/textures/lib/texture-bump-plane";
 import { ITextureBumpTexels, ITextureSurfaceFiles } from "@/core/textures/lib/texture-surface";
-import { TextureRenderService } from "@/core/textures/services/render";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { TextureSurfaceService } from "@/core/textures/services/surface";
-import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { ABSENT_VALUE } from "@/lib/format/number";
 
@@ -33,6 +30,28 @@ import {
 } from "./TextureChannelsPanel.utils";
 
 /**
+ * @param texels - Both halves of the pair on the cpu.
+ * @param plane - The plane wanted.
+ * @returns The plane drawn into a canvas a texel a pixel, for a tile to scale; empty where no 2d context is had.
+ */
+function toPlaneCanvas(texels: ITextureBumpTexels, plane: ETextureBumpPlane): HTMLCanvasElement {
+  const canvas: HTMLCanvasElement = document.createElement("canvas");
+  const context: Nullable<CanvasRenderingContext2D> = canvas.getContext("2d");
+
+  canvas.width = texels.bump.width;
+  canvas.height = texels.bump.height;
+
+  if (context) {
+    const image: ImageData = context.createImageData(canvas.width, canvas.height);
+
+    image.data.set(toTextureBumpPlane(texels, plane));
+    context.putImageData(image, 0, 0);
+  }
+
+  return canvas;
+}
+
+/**
  * The two planes of the selected texture's bump pair, and the three values the engine reconstructs from them.
  */
 export function TextureChannelsPanel({
@@ -42,69 +61,52 @@ export function TextureChannelsPanel({
 }: BaseComponentProps): ReactElement {
   const selectionService: TextureSelectionService = useInjection(TextureSelectionService);
   const surfaceService: TextureSurfaceService = useInjection(TextureSurfaceService);
-  const renderService: TextureRenderService = useInjection(TextureRenderService);
 
-  const tilesRef = useRef<Map<ERendererBumpPlane, HTMLCanvasElement>>(new Map());
-  // By plane, and only ever counted up: a tile mounted again must not take an answer asked for by the one before it.
-  const requestsRef = useRef<Map<ERendererBumpPlane, number>>(new Map());
+  const tilesRef = useRef<Map<ETextureBumpPlane, HTMLCanvasElement>>(new Map());
 
   const [position, setPosition] = useState<Nullable<ITextureTexelPosition>>(null);
 
   const description: Nullable<TextureDescription> = selectionService.selected.value;
   const files: Nullable<ITextureSurfaceFiles> = surfaceService.files.value;
-  const texels: Nullable<ITextureBumpTexels> = surfaceService.bumpTexels;
+  const texels: Nullable<ITextureBumpTexels> = files?.bump ?? null;
   const isReading: boolean = surfaceService.files.isLoading;
-  const failure: Nullable<string> = renderService.failure;
   const gap: Nullable<string> = describeTextureChannelsGap(description, files, isReading);
   const readout: Nullable<ITextureTexelReadout> = texels && position ? describeTextureTexel(texels, position) : null;
   // Laid out from the pair's own proportions, so a plane is never shown stretched into a square.
   const aspect: string = toTextureChannelAspect(files);
 
-  // Drawn by the texture's renderer at each tile's own size, on its thread, and copied in when it answers. Nothing
-  // animates: a tile is drawn when the pair changes and when the tile resizes.
+  // Each plane built once a pair, a texel a pixel at the pair's own size; a tile draws it scaled to its own.
+  const planes: ReadonlyMap<ETextureBumpPlane, HTMLCanvasElement> = useMemo(
+    () =>
+      texels
+        ? new Map(TEXTURE_CHANNEL_TILES.map((tile) => [tile.plane, toPlaneCanvas(texels, tile.plane)]))
+        : new Map(),
+    [texels]
+  );
+
   const draw = useCallback(() => {
     const ratio: number = window.devicePixelRatio;
 
     for (const [plane, tile] of tilesRef.current) {
+      const source: Optional<HTMLCanvasElement> = planes.get(plane);
+      const context: Nullable<CanvasRenderingContext2D> = tile.getContext("2d");
       const width: number = Math.round(tile.clientWidth * ratio);
       const height: number = Math.round(tile.clientHeight * ratio);
-      const request: number = (requestsRef.current.get(plane) ?? 0) + 1;
 
-      if (!width || !height) {
+      if (!context || !width || !height) {
         continue;
       }
 
-      requestsRef.current.set(plane, request);
+      tile.width = width;
+      tile.height = height;
 
-      renderService.captureBumpPlane(plane, width, height).then(
-        (image: Nullable<ImageBitmap>) => {
-          if (requestsRef.current.get(plane) !== request || tilesRef.current.get(plane) !== tile || !image) {
-            image?.close();
-
-            return;
-          }
-
-          tile.width = image.width;
-          tile.height = image.height;
-          tile.getContext("2d")?.drawImage(image, 0, 0);
-          image.close();
-        },
-        // A renderer that failed draws no tile; the panel says why instead.
-        () => undefined
-      );
-    }
-  }, [renderService]);
-
-  // Cleared rather than left showing the last planes a stopped renderer drew, and drawn again by the one after it.
-  useEffect(() => {
-    if (failure === null) {
-      draw();
-    } else {
-      for (const tile of tilesRef.current.values()) {
-        tile.getContext("2d")?.clearRect(0, 0, tile.width, tile.height);
+      if (source) {
+        context.drawImage(source, 0, 0, width, height);
       }
     }
-  }, [draw, files, failure]);
+  }, [planes]);
+
+  useEffect(() => draw(), [draw]);
 
   // A panel is resized by hand and by the window, and a tile that is not redrawn afterwards keeps the last size it was
   // copied at, stretched.
@@ -119,7 +121,7 @@ export function TextureChannelsPanel({
   }, [draw, gap]);
 
   // One callback per plane for the panel's life: a new one each render would detach and attach every tile each time.
-  const registers: ReadonlyMap<ERendererBumpPlane, RefCallback<HTMLCanvasElement>> = useMemo(
+  const registers: ReadonlyMap<ETextureBumpPlane, RefCallback<HTMLCanvasElement>> = useMemo(
     () =>
       new Map(
         TEXTURE_CHANNEL_TILES.map((tile: ITextureChannelTile) => [
@@ -187,7 +189,7 @@ export function TextureChannelsPanel({
           {TEXTURE_CHANNEL_TILES.map((tile: ITextureChannelTile) => (
             <EditorPanelSection key={tile.plane} title={tile.label} caption={tile.caption}>
               <div
-                className={cn("relative w-full", failure ? null : "checkerboard")}
+                className={"relative w-full checkerboard"}
                 style={{ aspectRatio: aspect }}
                 onPointerMove={onHover}
                 onPointerLeave={() => setPosition(null)}
@@ -199,24 +201,9 @@ export function TextureChannelsPanel({
                   className={"block size-full"}
                   role={"img"}
                 />
-
-                {failure ? (
-                  <Typography
-                    className={"pointer-events-none absolute inset-0 grid place-items-center text-text-disabled"}
-                    variant={"caption"}
-                  >
-                    Not drawn
-                  </Typography>
-                ) : null}
               </div>
             </EditorPanelSection>
           ))}
-
-          {failure ? (
-            <EditorPanelSection data-testid={"texture-channels-failure"} title={"Planes"}>
-              <EditorPanelProperty label={"Not drawn: the renderer stopped"} value={failure} />
-            </EditorPanelSection>
-          ) : null}
         </>
       )}
     </EditorPanel>

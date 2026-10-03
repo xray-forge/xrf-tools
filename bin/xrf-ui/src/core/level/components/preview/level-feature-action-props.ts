@@ -1,10 +1,9 @@
-import { IRendererFeatureSettings } from "@xrf/renderer";
-
 import {
   ILevelFeatureOptions,
   ILevelFeatureState,
   TLevelFeatureKey,
 } from "@/core/level/lib/features/level-feature-options";
+import { IRendererFeatureSettings } from "@/core/render/lib/contract/renderer-feature-settings";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /** What every feature group's toolbar popover takes. */

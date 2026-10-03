@@ -1,9 +1,10 @@
 import { Button, ToggleButton, ToggleButtonGroup } from "@mui/material";
 import { useInjection } from "@wirestate/react";
-import { ERendererPreset, isRendererFeatureChoiceCustom } from "@xrf/renderer";
 import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
+import { isRendererFeatureChoiceCustom } from "@/core/render/lib/contract/renderer-feature-choice";
+import { ERendererPreset } from "@/core/render/lib/contract/renderer-preset";
 import { SettingsService } from "@/core/settings/services/settings";
 import { DetailSection } from "@/core/ui/layout/DetailSection";
 

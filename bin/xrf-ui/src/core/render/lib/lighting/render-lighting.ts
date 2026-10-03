@@ -1,6 +1,3 @@
-import { toRadians } from "@xrf/math";
-import { IRendererLighting, TRendererColor } from "@xrf/renderer";
-
 import { RenderAssetLighting } from "@/core/ipc/types/xrf-renderer";
 import { toRawColor } from "@/core/render/lib/scene/render-color";
 
@@ -20,21 +17,6 @@ export interface IRenderLighting {
   ambientColor: number;
 }
 
-/**
- * Where the light comes from, in the renderer's own axes.
- *
- * @param lighting - The lighting to read.
- * @param distance - How far out to put it, which only has to clear what it lights.
- * @returns The position, ready to assign.
- */
-export function toRenderSunPosition(lighting: IRenderLighting, distance: number): [number, number, number] {
-  const elevation: number = toRadians(lighting.sunElevation);
-  const azimuth: number = toRadians(lighting.sunAzimuth);
-  const horizontal: number = Math.cos(elevation) * distance;
-
-  return [horizontal * Math.sin(azimuth), Math.sin(elevation) * distance, horizontal * Math.cos(azimuth)];
-}
-
 /** The bounds each value is offered between, so every surface adjusting lighting offers the same range. */
 export const RENDER_LIGHTING_LIMITS = {
   ambientIntensity: { max: 4, min: 0, step: 0.05 },
@@ -42,33 +24,6 @@ export const RENDER_LIGHTING_LIMITS = {
   sunElevation: { max: 90, min: -15, step: 1 },
   sunIntensity: { max: 6, min: 0, step: 0.05 },
 } as const;
-
-/**
- * The renderer's lighting value for a preview's light: a base lighting, pointed and scaled by the preview's controls.
- *
- * @param lighting - The preview's light, as its controls set it.
- * @param noon - What it points and scales: the engine's noon for a level, its neutral twin for an asset viewer.
- * @returns What the renderer lights with.
- */
-export function toRendererLighting(lighting: IRenderLighting, noon: IRendererLighting): IRendererLighting {
-  const [x, y, z] = toRenderSunPosition(lighting, 1);
-
-  return {
-    ...noon,
-    ambientColor: toScaled(noon.ambientColor, lighting.ambientColor, lighting.ambientIntensity),
-    hemisphereColor: toScaled(noon.hemisphereColor, lighting.ambientColor, lighting.ambientIntensity),
-    // Where the sun is, turned into the way its light travels.
-    sunColor: toScaled(noon.sunColor, lighting.sunColor, lighting.sunIntensity),
-    sunDirection: [-x, -y, -z],
-  };
-}
-
-/** A noon colour, tinted by a control's hex colour and scaled by its intensity. */
-function toScaled(color: TRendererColor, tint: number, intensity: number): TRendererColor {
-  const [red, green, blue] = toRawColor(tint);
-
-  return [color[0] * red * intensity, color[1] * green * intensity, color[2] * blue * intensity];
-}
 
 /**
  * @param lighting - An asset viewer's light, as its controls set it.

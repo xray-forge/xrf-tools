@@ -1,6 +1,5 @@
 import { default as WaterIcon } from "@mui/icons-material/Water";
 import { Button } from "@mui/material";
-import { IRendererWaterSettings } from "@xrf/renderer";
 import { ReactElement } from "react";
 
 import { ILevelFeatureActionProps } from "@/core/level/components/preview/level-feature-action-props";
@@ -9,6 +8,7 @@ import { LevelManualWeatherSlider } from "@/core/level/components/weather/LevelM
 import { describeLevelFeatureToggle } from "@/core/level/lib/features";
 import { ILevelManualWeather } from "@/core/level/lib/weather/level-manual-weather";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
+import { IRendererWaterSettings } from "@/core/render/lib/contract/renderer-water-settings";
 import {
   formatWaterDistortion,
   formatWaterMultiple,

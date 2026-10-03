@@ -1,10 +1,7 @@
 import { Nullable } from "@xrf/types";
 
-import {
-  ETextureSurfaceAlpha,
-  ETextureSurfaceShape,
-  ITextureSurfaceOptions,
-} from "@/core/textures/lib/texture-surface";
+import { ETextureSurfaceAlpha, ETextureSurfaceShape } from "@/core/ipc/types/xrf-app";
+import { ITextureSurfaceOptions } from "@/core/textures/lib/texture-surface";
 import { AsyncState } from "@/lib/async-state";
 
 /** The two ways one texture file can be looked at here. */

@@ -1,7 +1,11 @@
 import { describe, expect, it } from "@jest/globals";
-import { DEFAULT_RENDERER_FEATURE_CHOICE, IRendererFeatureSettings, resolveRendererFeatures } from "@xrf/renderer";
 
 import { ERenderCamera, ERenderOverlay, RenderCamera, RenderViewOptions } from "@/core/ipc/types/xrf-renderer";
+import {
+  DEFAULT_RENDERER_FEATURE_CHOICE,
+  resolveRendererFeatures,
+} from "@/core/render/lib/contract/renderer-feature-choice";
+import { IRendererFeatureSettings } from "@/core/render/lib/contract/renderer-feature-settings";
 import { toRawColor } from "@/core/render/lib/scene/render-color";
 import { toVisualCamera, toVisualOverlays, toVisualViewOptions } from "@/core/visuals/lib/render/visual-render";
 import { DEFAULT_VISUAL_PREVIEW_SCENE_CONFIG } from "@/core/visuals/lib/scene/scene-config";

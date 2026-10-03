@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
-import { DEFAULT_RENDERER_EXPOSURE_SETTINGS } from "@xrf/renderer";
 
 import { ELevelLookSource } from "@/core/level/lib/look";
 import { LevelLookService } from "@/core/level/services/level-look.service";
+import { DEFAULT_RENDERER_EXPOSURE_SETTINGS } from "@/core/render/lib/contract/renderer-exposure-settings";
 import { LEVEL_LOOK_STORAGE_KEY } from "@/core/storage";
 import { mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";

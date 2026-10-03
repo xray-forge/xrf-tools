@@ -2,11 +2,9 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, jest } from "@je
 import { act, RenderResult } from "@testing-library/react";
 import { Container } from "@wirestate/core";
 import { runInAction } from "@wirestate/mobx";
-import { ERendererBumpPlane } from "@xrf/renderer";
-import { createRendererWorkerStub } from "@xrf/renderer/fixtures";
-import { Nullable } from "@xrf/types";
 
-import { ITextureBumpTexels, ITextureSurfaceFiles } from "@/core/textures/lib/texture-surface";
+import { ETextureBumpPlane } from "@/core/textures/lib/texture-bump-plane";
+import { ITextureSurfaceFiles } from "@/core/textures/lib/texture-surface";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { TextureSurfaceService } from "@/core/textures/services/surface";
 import { TextureViewService } from "@/core/textures/services/view";
@@ -14,42 +12,24 @@ import { mockTextureDescription } from "@/fixtures/mocks/texture.mocks";
 import { mockMaterialDescriptor } from "@/fixtures/mocks/visual.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
-import { mockRendererThread } from "@/fixtures/utils/renderer";
 import { AsyncState } from "@/lib/async-state";
 
-import { TEXTURE_CHANNEL_TILES } from "./TextureChannelsPanel.utils";
-
-/** One capture the panel asked for, answered when the test says. */
-interface IHeldCapture {
-  plane: ERendererBumpPlane;
-  resolve: (image: Nullable<ImageBitmap>) => void;
-}
+import { TextureChannelsPanel } from "./TextureChannelsPanel";
 
 /** The side every tile is laid out at, since jsdom lays nothing out. */
 const TILE_SIZE: number = 10;
 
-let TextureChannelsPanel: typeof import("./TextureChannelsPanel").TextureChannelsPanel;
-let TextureRenderService: typeof import("@/core/textures/services/render").TextureRenderService;
-let captures: Array<IHeldCapture> = [];
+/** What a 2d context was asked to draw, since jsdom draws nothing. */
+let draws: Array<{ canvas: HTMLCanvasElement; source: HTMLCanvasElement }> = [];
 
-/** A picture as the renderer answers one: its size is what the tile takes. */
-function mockImage(width: number): ImageBitmap {
-  return { close: jest.fn(), height: TILE_SIZE, width } as unknown as ImageBitmap;
-}
+function mockFiles(width: number = 4): ITextureSurfaceFiles {
+  const half = { data: new Uint8Array(width * 2 * 4), height: 2, width };
 
-function mockFiles(): ITextureSurfaceFiles {
-  const half = { bytes: new ArrayBuffer(0), height: 64, isDecoded: false, width: 64 };
-
-  return { aspect: 1, base: null, bump: { bump: half, companion: half } };
+  return { aspect: 1, bump: { bump: half, companion: half } };
 }
 
 function renderPanel(): { container: Container; view: RenderResult } {
-  const container: Container = mockContainer([
-    TextureSelectionService,
-    TextureSurfaceService,
-    TextureViewService,
-    TextureRenderService,
-  ]);
+  const container: Container = mockContainer([TextureSelectionService, TextureSurfaceService, TextureViewService]);
 
   runInAction(() => {
     container.get(TextureSelectionService).selected = AsyncState.ready(
@@ -61,28 +41,23 @@ function renderPanel(): { container: Container; view: RenderResult } {
   return { container, view: renderWithProviders(<TextureChannelsPanel />, { container }) };
 }
 
-function getTile(view: RenderResult, plane: ERendererBumpPlane): HTMLCanvasElement {
+/** A 2d context that keeps what it was asked to draw into `canvas`. */
+function mockContext(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
+  return {
+    createImageData: (width: number, height: number) => ({ data: new Uint8ClampedArray(width * height * 4) }),
+    drawImage: (source: HTMLCanvasElement) => draws.push({ canvas, source }),
+    putImageData: () => undefined,
+  } as unknown as CanvasRenderingContext2D;
+}
+
+function getTile(view: RenderResult, plane: ETextureBumpPlane): HTMLCanvasElement {
   return view.getByTestId(`texture-channel-${plane}`) as HTMLCanvasElement;
 }
 
-async function answer(plane: ERendererBumpPlane, image: ImageBitmap, which: number = -1): Promise<void> {
-  const capture: IHeldCapture = captures.filter((it: IHeldCapture) => it.plane === plane).at(which) as IHeldCapture;
-
-  await act(async () => capture.resolve(image));
-}
-
-beforeAll(async () => {
-  mockRendererThread(() => createRendererWorkerStub().worker);
-
-  ({ TextureChannelsPanel } = await import("./TextureChannelsPanel"));
-  ({ TextureRenderService } = await import("@/core/textures/services/render"));
-
-  jest
-    .spyOn(TextureRenderService.prototype, "captureBumpPlane")
-    .mockImplementation(
-      (plane: ERendererBumpPlane) =>
-        new Promise((resolve: (image: Nullable<ImageBitmap>) => void) => captures.push({ plane, resolve }))
-    );
+beforeAll(() => {
+  jest.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation(function (this: HTMLCanvasElement) {
+    return mockContext(this);
+  } as never);
 
   for (const side of ["clientWidth", "clientHeight"]) {
     Object.defineProperty(HTMLCanvasElement.prototype, side, { configurable: true, get: () => TILE_SIZE });
@@ -90,129 +65,52 @@ beforeAll(async () => {
 });
 
 afterAll(() => {
+  jest.restoreAllMocks();
+
   for (const side of ["clientWidth", "clientHeight"]) {
     delete (HTMLCanvasElement.prototype as unknown as Record<string, unknown>)[side];
   }
 });
 
 beforeEach(() => {
-  captures = [];
+  draws = [];
 });
 
 describe("TextureChannelsPanel", () => {
-  it("asks for every plane at its tile's size, and draws each one it is answered", async () => {
+  it("draws every plane at its tile's size, from the pair at its own", () => {
     const { view } = renderPanel();
 
-    expect(captures.map((it) => it.plane)).toEqual([
-      ERendererBumpPlane.BUMP,
-      ERendererBumpPlane.COMPANION,
-      ERendererBumpPlane.NORMAL,
-      ERendererBumpPlane.GLOSS,
-      ERendererBumpPlane.HEIGHT,
-    ]);
+    for (const plane of Object.values(ETextureBumpPlane)) {
+      const tile: HTMLCanvasElement = getTile(view, plane);
+      const drawn = draws.filter((it) => it.canvas === tile);
 
-    await answer(ERendererBumpPlane.NORMAL, mockImage(7));
+      expect(tile.width).toBe(TILE_SIZE * window.devicePixelRatio);
+      expect(drawn).toHaveLength(1);
+      expect([drawn[0].source.width, drawn[0].source.height]).toEqual([4, 2]);
+    }
 
-    expect(getTile(view, ERendererBumpPlane.NORMAL).width).toBe(7);
     expect(view.getByRole("img", { name: "Normal" })).toBeInTheDocument();
   });
 
-  // A ref callback made anew each render let go of every tile and its capture on each re-render, so hovering a tile
-  // left every plane blank.
-  it("draws an answer that arrives after the panel drew again", async () => {
+  it("draws every plane again for the next pair", () => {
     const { container, view } = renderPanel();
+
+    draws = [];
 
     act(() =>
       runInAction(() => {
-        container.get(TextureSurfaceService).bumpTexels = {} as ITextureBumpTexels;
+        container.get(TextureSurfaceService).files = AsyncState.ready(mockFiles(8));
       })
     );
 
-    await answer(ERendererBumpPlane.GLOSS, mockImage(6));
+    const drawn = draws.filter((it) => it.canvas === getTile(view, ETextureBumpPlane.GLOSS));
 
-    expect(getTile(view, ERendererBumpPlane.GLOSS).width).toBe(6);
+    expect(drawn.at(-1)?.source.width).toBe(8);
   });
 
-  it("never paints an older answer over a newer one", async () => {
-    const { container, view } = renderPanel();
-    const stale: ImageBitmap = mockImage(7);
-
-    act(() =>
-      runInAction(() => {
-        container.get(TextureSurfaceService).files = AsyncState.ready(mockFiles());
-      })
-    );
-
-    await answer(ERendererBumpPlane.BUMP, mockImage(9));
-    await answer(ERendererBumpPlane.BUMP, stale, 0);
-
-    expect(getTile(view, ERendererBumpPlane.BUMP).width).toBe(9);
-    expect(stale.close).toHaveBeenCalled();
-  });
-
-  it("says why there are no planes once the renderer has stopped", () => {
-    const { container, view } = renderPanel();
-
-    act(() =>
-      runInAction(() => {
-        container.get(TextureRenderService).failure = "Device lost";
-      })
-    );
-
-    expect(view.getByTestId("texture-channels-failure")).toHaveTextContent("Device lost");
-  });
-
-  // The readout is read from the cpu texels, so a machine without a gpu the renderer can use still reads every texel.
-  it("keeps the readout and every tile to hover once the renderer has stopped", () => {
-    const { container, view } = renderPanel();
-
-    act(() =>
-      runInAction(() => {
-        container.get(TextureSurfaceService).bumpTexels = {} as ITextureBumpTexels;
-        container.get(TextureRenderService).failure = "Device lost";
-      })
-    );
+  it("reads a texel under the pointer from the pair", () => {
+    const { view } = renderPanel();
 
     expect(view.getByTestId("texture-channels-readout")).toHaveTextContent("At");
-
-    for (const plane of Object.values(ERendererBumpPlane)) {
-      expect(getTile(view, plane)).toBeInTheDocument();
-    }
-  });
-
-  it("says why below every tile, so a failure never moves a tile under the pointer", () => {
-    const { container, view } = renderPanel();
-
-    act(() =>
-      runInAction(() => {
-        container.get(TextureRenderService).failure = "Device lost";
-      })
-    );
-
-    const failure: HTMLElement = view.getByTestId("texture-channels-failure");
-
-    for (const plane of Object.values(ERendererBumpPlane)) {
-      expect(getTile(view, plane).compareDocumentPosition(failure) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    }
-  });
-
-  it("draws every plane again once a renderer starts after the one that stopped", () => {
-    const { container } = renderPanel();
-
-    act(() =>
-      runInAction(() => {
-        container.get(TextureRenderService).failure = "Device lost";
-      })
-    );
-
-    captures = [];
-
-    act(() =>
-      runInAction(() => {
-        container.get(TextureRenderService).failure = null;
-      })
-    );
-
-    expect(captures).toHaveLength(TEXTURE_CHANNEL_TILES.length);
   });
 });

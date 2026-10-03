@@ -26,6 +26,7 @@ pub use crate::contract::render_ambient_occlusion_quality::RenderAmbientOcclusio
 pub use crate::contract::render_ambient_occlusion_settings::RenderAmbientOcclusionSettings;
 pub use crate::contract::render_antialiasing::RenderAntialiasing;
 pub use crate::contract::render_asset_lighting::RenderAssetLighting;
+pub use crate::contract::render_backdrop_squares::RenderBackdropSquares;
 pub use crate::contract::render_camera::RenderCamera;
 pub use crate::contract::render_camera_command::RenderCameraCommand;
 pub use crate::contract::render_camera_pose::RenderCameraPose;

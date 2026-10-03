@@ -73,10 +73,11 @@ fn invoke_fixture(command: &str, body: InvokeBody) -> Result<InvokeResponseBody,
 #[test]
 fn every_bulk_route_is_served_at_its_plugin_and_name() {
   let routes: TransportRoutes<AppHandle> = transport_routes();
-  let paths: [&str; 4] = [
+  let paths: [&str; 5] = [
     "assets/read_asset",
     "archives/read_texture",
     "textures/read_candidate",
+    "textures/read_texels",
     "textures/read_texture",
   ];
 

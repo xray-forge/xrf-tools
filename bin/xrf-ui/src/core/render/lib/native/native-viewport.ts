@@ -27,6 +27,9 @@ import {
   RenderWeatherReport,
 } from "@/core/ipc/types/xrf-renderer";
 
+/** A texture laid on a body, as the renderer is asked to draw one, or null for none. */
+export type TNativeTextureRequest = Parameters<typeof renderCommands.showTexture>[1];
+
 /**
  * What a native viewport tells its page.
  */
@@ -264,6 +267,15 @@ export class NativeViewport {
    */
   public showModel(sessionId: Nullable<string>, detail: number): void {
     this.call((id: RenderViewportId) => renderCommands.showModel(id, sessionId, detail).then(() => undefined));
+  }
+
+  /**
+   * Draws a texture laid on a body, or none.
+   *
+   * @param request - The texture, the body and how it is laid on it, or null for none.
+   */
+  public showTexture(request: TNativeTextureRequest): void {
+    this.call((id: RenderViewportId) => renderCommands.showTexture(id, request).then(() => undefined));
   }
 
   /**

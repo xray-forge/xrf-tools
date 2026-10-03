@@ -128,6 +128,7 @@ macro_rules! for_each_tauri_command_domain {
         set_weather_control => crate::plugins::render::commands::set_weather_control::render_set_weather_control,
         show_level => crate::plugins::render::commands::show_level::render_show_level,
         show_model => crate::plugins::render::commands::show_model::render_show_model,
+        show_texture => crate::plugins::render::commands::show_texture::render_show_texture,
       }
       spawn => "spawn" {
         save_unpacked_directory => crate::plugins::spawn::commands::save_unpacked_directory::spawn_save_unpacked_directory,
@@ -178,6 +179,7 @@ macro_rules! for_each_tauri_command_domain {
       // The png fallback for a layout the webview's DDS loader refuses; stored bytes are the `assets/read_asset` route.
       @bulk {
         read_candidate(sessionId: "SessionId", format: "TextureEncodingFormat") => crate::plugins::textures::routes::read_candidate::textures_read_candidate,
+        read_texels(roots: "XrayRoots", logicalPath: "string") => crate::plugins::textures::routes::read_texels::textures_read_texels,
         read_texture(roots: "XrayRoots", logicalPath: "string") => crate::plugins::textures::routes::read_texture::textures_read_texture,
       }
       visuals => "visuals" {

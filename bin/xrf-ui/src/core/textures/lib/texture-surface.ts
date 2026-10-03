@@ -2,50 +2,24 @@ import { IDdsTexels } from "@xrf/dds";
 import { Nullable } from "@xrf/types";
 
 import { getLocatedAsset } from "@/core/assets/lib/resolution";
-import { AssetTextureShape, TextureDescription } from "@/core/ipc/types/xrf-app";
+import {
+  AssetTextureShape,
+  ETextureSurfaceAlpha,
+  ETextureSurfaceShape,
+  TextureDescription,
+} from "@/core/ipc/types/xrf-app";
 import { XrayAsset } from "@/core/ipc/types/xrf-vfs";
 
 /**
- * One file the surface is drawn from, as it was read.
- */
-export interface ITextureSurfaceFile {
-  /** The file itself: a dds as it sits on disk, or the png the backend decoded a refused layout into. */
-  bytes: ArrayBuffer;
-  /** Whether those bytes are that decode rather than the file. */
-  isDecoded: boolean;
-  /** What the file measures, which only the side that read it can say for a layout nothing uploaded. */
-  width: number;
-  height: number;
-}
-
-/**
- * What one texture is drawn from, as data.
+ * What the panels read of one texture beside the body the renderer draws it on.
  */
 export interface ITextureSurfaceFiles {
-  /** The base file, or null for a descriptor with no texture beside it. */
-  base: Nullable<ITextureSurfaceFile>;
-  /** The pair the engine binds, or null for a material that binds none. */
-  bump: Nullable<ITextureSurfaceBump>;
+  /** The pair's texels, or null for a material that binds none or a pair that could not be read. */
+  bump: Nullable<ITextureBumpTexels>;
   /**
    * Width over height of the base file, so a flat body is drawn in the proportions the texture was authored in.
    */
   aspect: number;
-}
-
-/** The two files of a bump pair, which are only ever read and drawn together. */
-export interface ITextureSurfaceBump {
-  bump: ITextureSurfaceFile;
-  companion: ITextureSurfaceFile;
-}
-
-/** The bodies a texture can be laid on, each answering a different question about it. */
-export enum ETextureSurfaceShape {
-  /** Flat and face on, where the decode is read most directly and tiling is judged. */
-  PLANE = "plane",
-  /** Curved, so the normal sweeps every grazing angle a wrong tangent sign shows up at. */
-  SPHERE = "sphere",
-  /** Edged, where a seam and the wrap of a tiling texture meet. */
-  CUBE = "cube",
 }
 
 /** What each body is called, where a person chooses one. */
@@ -63,18 +37,6 @@ const SHAPE_LABELS: Record<ETextureSurfaceShape, string> = {
  */
 export function describeTextureSurfaceShape(shape: ETextureSurfaceShape): string {
   return SHAPE_LABELS[shape];
-}
-
-/**
- * How a texture's alpha channel is read, in the three answers the engine has for one.
- */
-export enum ETextureSurfaceAlpha {
-  /** Not read at all, which is what the plain deferred base shader does. */
-  IGNORED = "ignored",
-  /** Clipped against `def_aref`, which is what every `_aref` shader does. */
-  CUT_OUT = "cut-out",
-  /** Composited over what is behind it, which the deferred pass never does. */
-  BLENDED = "blended",
 }
 
 /** What each answer is called, where a person chooses one. */
@@ -129,7 +91,7 @@ export interface ITextureBumpAssets {
 }
 
 /** Nothing read, which is what a surface draws before a texture is chosen and after one is dropped. */
-export const EMPTY_TEXTURE_SURFACE: ITextureSurfaceFiles = { aspect: 1, base: null, bump: null };
+export const EMPTY_TEXTURE_SURFACE: ITextureSurfaceFiles = { aspect: 1, bump: null };
 
 /**
  * The proportions of the base file, or a square when nothing measured it.

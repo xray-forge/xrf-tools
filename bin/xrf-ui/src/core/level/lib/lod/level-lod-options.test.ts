@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
-import { DEFAULT_RENDERER_LOD_SETTINGS } from "@xrf/renderer";
 
 import { DEFAULT_LEVEL_LOD_OPTIONS, toLevelRendererLod } from "@/core/level/lib/lod/level-lod-options";
+import { DEFAULT_RENDERER_LOD_SETTINGS } from "@/core/render/lib/contract/renderer-lod-settings";
 
 describe("level LOD options", () => {
   it("draws at the game's own distance by default", () => {

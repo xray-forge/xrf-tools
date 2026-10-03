@@ -3,14 +3,10 @@ import { ToggleButton, ToggleButtonGroup, Typography } from "@mui/material";
 import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
+import { ETextureSurfaceAlpha, ETextureSurfaceShape } from "@/core/ipc/types/xrf-app";
 import { EditorPopoverAction } from "@/core/shell/editor/EditorPopoverAction";
 import { ETexturePreviewMode, ITexturePreviewOptions, TEXTURE_TILING_STEPS } from "@/core/textures/lib/texture-preview";
-import {
-  describeTextureSurfaceAlpha,
-  describeTextureSurfaceShape,
-  ETextureSurfaceAlpha,
-  ETextureSurfaceShape,
-} from "@/core/textures/lib/texture-surface";
+import { describeTextureSurfaceAlpha, describeTextureSurfaceShape } from "@/core/textures/lib/texture-surface";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { SURFACE_ONLY } from "./TextureWorkspaceToolbar.utils";

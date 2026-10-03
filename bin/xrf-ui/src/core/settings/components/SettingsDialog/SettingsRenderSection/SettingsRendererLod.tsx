@@ -1,7 +1,8 @@
 import { useInjection } from "@wirestate/react";
-import { IRendererLodSettings, RENDERER_FEATURE_SCHEMA } from "@xrf/renderer";
 import { ReactElement } from "react";
 
+import { RENDERER_FEATURE_SCHEMA } from "@/core/render/lib/contract/renderer-feature-schema";
+import { IRendererLodSettings } from "@/core/render/lib/contract/renderer-lod-settings";
 import { SettingsService } from "@/core/settings/services/settings";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { SliderFormRow } from "@/core/ui/form/SliderFormRow";

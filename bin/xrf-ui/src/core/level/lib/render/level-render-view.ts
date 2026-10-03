@@ -1,5 +1,4 @@
-import { ERendererCameraController, ERendererDebugView, IRendererFlyCamera, IRendererSettings } from "@xrf/renderer";
-
+import { ERenderCamera, RenderCamera } from "@/core/ipc/types/xrf-renderer";
 import { ILevelCameraOptions } from "@/core/level/lib/camera/level-camera-options";
 import { ILevelViewpoint } from "@/core/level/lib/camera/level-viewpoint";
 import {
@@ -10,6 +9,8 @@ import {
 import { ILevelLodOptions, toLevelRendererLod } from "@/core/level/lib/lod/level-lod-options";
 import { ILevelRenderConfig } from "@/core/level/lib/render/level-render-config";
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
+import { ERendererDebugView } from "@/core/render/lib/contract/renderer-debug-view";
+import { IRendererSettings } from "@/core/render/lib/contract/renderer-settings";
 import { IRenderSharedSettings } from "@/core/render/lib/settings/render-shared-settings";
 
 /**
@@ -22,14 +23,14 @@ export function toLevelCameraAt(
   viewpoint: ILevelViewpoint,
   options: ILevelCameraOptions,
   config: ILevelRenderConfig
-): IRendererFlyCamera {
+): RenderCamera {
   const { position, target }: ILevelViewpoint = viewpoint;
 
   return {
     boost: options.boost,
     far: config.cameraFar,
     fieldOfView: options.fieldOfView,
-    kind: ERendererCameraController.FLY,
+    kind: ERenderCamera.FLY,
     near: config.cameraNear,
     position: [position.x, position.y, position.z],
     sensitivity: options.sensitivity,

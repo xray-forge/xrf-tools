@@ -1,16 +1,12 @@
-import { ERendererOverlay, TRendererOverlay } from "@xrf/renderer";
 import { Nullable } from "@xrf/types";
 
+import { ERenderOverlay, RenderOverlay } from "@/core/ipc/types/xrf-renderer";
 import { ILevelBox, toBoxFloor, toBoxReach, toOriginReach } from "@/core/level/lib/extent/level-extent";
 import { ILevelRenderConfig } from "@/core/level/lib/render/level-render-config";
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
+import { toNativeLines } from "@/core/render/lib/native/native-overlay";
 import { toRawColor } from "@/core/render/lib/scene/render-color";
-import {
-  IRenderLines,
-  toRenderAxesLines,
-  toRenderBoxLines,
-  toRenderGridLines,
-} from "@/core/render/lib/scene/render-grid-lines";
+import { toRenderAxesLines, toRenderBoxLines, toRenderGridLines } from "@/core/render/lib/scene/render-grid-lines";
 import { toRenderGridStep } from "@/core/render/lib/scene/render-grid-step";
 
 /** Cells of the grid the axis marker spans, so which way is which is legible without dwarfing the level. */
@@ -28,8 +24,8 @@ export function toLevelFrameOverlays(
   box: Nullable<ILevelBox>,
   options: Pick<ILevelViewOptions, "isAxesVisible" | "isGridVisible" | "isSunVisible">,
   config: ILevelRenderConfig
-): Array<TRendererOverlay> {
-  const overlays: Array<TRendererOverlay> = [];
+): Array<RenderOverlay> {
+  const overlays: Array<RenderOverlay> = [];
 
   if (box && options.isGridVisible) {
     overlays.push(toLevelGridOverlay(box, config));
@@ -58,8 +54,8 @@ export function toLevelFrameOverlays(
  * @param config - The grid's cells and colours.
  * @returns The overlay.
  */
-export function toLevelGridOverlay(box: ILevelBox, config: ILevelRenderConfig): TRendererOverlay {
-  return toLines(
+export function toLevelGridOverlay(box: ILevelBox, config: ILevelRenderConfig): RenderOverlay {
+  return toNativeLines(
     toRenderGridLines(toOriginReach(box), {
       cells: config.gridCells,
       color: config.gridColor,
@@ -77,8 +73,8 @@ export function toLevelGridOverlay(box: ILevelBox, config: ILevelRenderConfig): 
  * @param config - The grid's cells and the extent's colour.
  * @returns The overlay.
  */
-export function toLevelExtentGridOverlay(box: ILevelBox, config: ILevelRenderConfig): TRendererOverlay {
-  return toLines(
+export function toLevelExtentGridOverlay(box: ILevelBox, config: ILevelRenderConfig): RenderOverlay {
+  return toNativeLines(
     toRenderGridLines(toBoxReach(box), {
       cells: config.gridCells,
       center: toBoxFloor(box),
@@ -98,8 +94,8 @@ export function toLevelExtentGridOverlay(box: ILevelBox, config: ILevelRenderCon
  * @param config - The extent's colour.
  * @returns The overlay.
  */
-export function toLevelExtentBoxOverlay(box: ILevelBox, config: ILevelRenderConfig): TRendererOverlay {
-  return toLines(toRenderBoxLines(box.min, box.max, config.boundsColor), true);
+export function toLevelExtentBoxOverlay(box: ILevelBox, config: ILevelRenderConfig): RenderOverlay {
+  return toNativeLines(toRenderBoxLines(box.min, box.max, config.boundsColor), true);
 }
 
 /**
@@ -110,10 +106,10 @@ export function toLevelExtentBoxOverlay(box: ILevelBox, config: ILevelRenderConf
  * @param config - The grid's cells.
  * @returns The overlay.
  */
-export function toLevelAxesOverlay(box: ILevelBox, config: ILevelRenderConfig): TRendererOverlay {
+export function toLevelAxesOverlay(box: ILevelBox, config: ILevelRenderConfig): RenderOverlay {
   const step: number = toRenderGridStep(toOriginReach(box) * 2, config.gridCells);
 
-  return toLines(toRenderAxesLines(step * AXES_CELLS), false);
+  return toNativeLines(toRenderAxesLines(step * AXES_CELLS), false);
 }
 
 /**
@@ -122,10 +118,6 @@ export function toLevelAxesOverlay(box: ILevelBox, config: ILevelRenderConfig): 
  * @param config - Its colour and size.
  * @returns The overlay.
  */
-export function toLevelSunOverlay(config: ILevelRenderConfig): TRendererOverlay {
-  return { color: toRawColor(config.sunColor), kind: ERendererOverlay.SUN, size: config.sunSize };
-}
-
-function toLines({ positions, colors }: IRenderLines, isDepthTested: boolean): TRendererOverlay {
-  return { colors, isDepthTested, kind: ERendererOverlay.LINES, positions };
+export function toLevelSunOverlay(config: ILevelRenderConfig): RenderOverlay {
+  return { color: toRawColor(config.sunColor), kind: ERenderOverlay.SUN, size: config.sunSize };
 }

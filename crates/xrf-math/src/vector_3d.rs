@@ -1,3 +1,4 @@
+use std::ops::{Add, AddAssign, Div, Mul, Neg, Sub};
 use std::str::FromStr;
 
 use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
@@ -17,8 +18,97 @@ pub struct Vector3d<T = f32> {
 }
 
 impl Vector3d<f32> {
-  pub fn new(x: f32, y: f32, z: f32) -> Self {
+  pub const ZERO: Self = Self::new(0.0, 0.0, 0.0);
+  pub const X: Self = Self::new(1.0, 0.0, 0.0);
+  pub const Y: Self = Self::new(0.0, 1.0, 0.0);
+
+  pub const fn new(x: f32, y: f32, z: f32) -> Self {
     Self { x, y, z }
+  }
+
+  pub fn dot(&self, other: &Self) -> f32 {
+    self.x * other.x + self.y * other.y + self.z * other.z
+  }
+
+  pub fn cross(&self, other: &Self) -> Self {
+    Self::new(
+      self.y * other.z - self.z * other.y,
+      self.z * other.x - self.x * other.z,
+      self.x * other.y - self.y * other.x,
+    )
+  }
+
+  pub fn length_squared(&self) -> f32 {
+    self.dot(self)
+  }
+
+  pub fn length(&self) -> f32 {
+    self.length_squared().sqrt()
+  }
+
+  /// The same direction at unit length, or zero for a vector with none.
+  pub fn normalize_or_zero(&self) -> Self {
+    let length: f32 = self.length();
+
+    if length > 0.0 { self / length } else { Self::ZERO }
+  }
+
+  pub fn to_array(&self) -> [f32; 3] {
+    [self.x, self.y, self.z]
+  }
+}
+
+impl From<[f32; 3]> for Vector3d<f32> {
+  fn from([x, y, z]: [f32; 3]) -> Self {
+    Self::new(x, y, z)
+  }
+}
+
+impl Add for &Vector3d<f32> {
+  type Output = Vector3d<f32>;
+
+  fn add(self, other: Self) -> Vector3d<f32> {
+    Vector3d::new(self.x + other.x, self.y + other.y, self.z + other.z)
+  }
+}
+
+impl AddAssign<&Vector3d<f32>> for Vector3d<f32> {
+  fn add_assign(&mut self, other: &Self) {
+    self.x += other.x;
+    self.y += other.y;
+    self.z += other.z;
+  }
+}
+
+impl Sub for &Vector3d<f32> {
+  type Output = Vector3d<f32>;
+
+  fn sub(self, other: Self) -> Vector3d<f32> {
+    Vector3d::new(self.x - other.x, self.y - other.y, self.z - other.z)
+  }
+}
+
+impl Mul<f32> for &Vector3d<f32> {
+  type Output = Vector3d<f32>;
+
+  fn mul(self, scale: f32) -> Vector3d<f32> {
+    Vector3d::new(self.x * scale, self.y * scale, self.z * scale)
+  }
+}
+
+impl Div<f32> for &Vector3d<f32> {
+  type Output = Vector3d<f32>;
+
+  fn div(self, divisor: f32) -> Vector3d<f32> {
+    Vector3d::new(self.x / divisor, self.y / divisor, self.z / divisor)
+  }
+}
+
+impl Neg for &Vector3d<f32> {
+  type Output = Vector3d<f32>;
+
+  fn neg(self) -> Vector3d<f32> {
+    Vector3d::new(-self.x, -self.y, -self.z)
   }
 }
 
@@ -137,6 +227,33 @@ mod tests {
     assert_eq!(Vector3d::read::<XRayByteOrder, _>(&mut reader)?, original);
 
     Ok(())
+  }
+
+  #[test]
+  fn test_arithmetic() {
+    let a: Vector3d = Vector3d::new(1.0, 2.0, 3.0);
+    let b: Vector3d = Vector3d::new(-2.0, 0.5, 4.0);
+
+    assert_eq!(&a + &b, Vector3d::new(-1.0, 2.5, 7.0));
+    assert_eq!(&a - &b, Vector3d::new(3.0, 1.5, -1.0));
+    assert_eq!(&a * 2.0, Vector3d::new(2.0, 4.0, 6.0));
+    assert_eq!(&a / 2.0, Vector3d::new(0.5, 1.0, 1.5));
+    assert_eq!(-&a, Vector3d::new(-1.0, -2.0, -3.0));
+    assert_eq!(a.dot(&b), 11.0);
+    assert_eq!(Vector3d::X.cross(&Vector3d::Y), Vector3d::new(0.0, 0.0, 1.0));
+    assert_eq!(Vector3d::new(0.0, 3.0, 4.0).length(), 5.0);
+    assert_eq!(
+      Vector3d::new(0.0, 3.0, 4.0).normalize_or_zero(),
+      Vector3d::new(0.0, 0.6, 0.8)
+    );
+    assert_eq!(Vector3d::ZERO.normalize_or_zero(), Vector3d::ZERO);
+
+    let mut sum: Vector3d = Vector3d::ZERO;
+
+    sum += &a;
+    sum += &b;
+
+    assert_eq!(sum, &a + &b);
   }
 
   #[test]

@@ -1,19 +1,5 @@
 import { CommandBus, inject, Injectable } from "@wirestate/core";
 import { BoundAction, comparer, reaction } from "@wirestate/mobx";
-import {
-  EMPTY_RENDER_FRAME_COST,
-  EMPTY_RENDERER_LIGHTS_REPORT,
-  EMPTY_RENDERER_PASS_TIMINGS,
-  EMPTY_RENDERER_STATIC_DRAW_REPORT,
-  IRendererFlyCamera,
-  IRendererLightsReport,
-  IRendererPassTimings,
-  IRendererSettings,
-  IRendererStaticDrawReport,
-  IRendererViewPoint,
-  IRenderFrameCost,
-  TRendererOverlay,
-} from "@xrf/renderer";
 import { Maybe, Nullable } from "@xrf/types";
 
 import {
@@ -23,7 +9,6 @@ import {
   SessionSnapshot,
 } from "@/core/ipc/types/xrf-app";
 import {
-  ERenderCamera,
   ERenderCameraCommand,
   ERenderLevelHit,
   ERenderTextureState,
@@ -34,7 +19,6 @@ import {
   RenderLevelHit,
   RenderLightsReport,
   RenderLoadReport,
-  RenderOverlay,
   RenderStaticReport,
   RenderSurfaceGeometry,
   RenderSurfaceSpan,
@@ -60,7 +44,6 @@ import { measureLevelStats } from "@/core/level/lib/stats/level-stats";
 import { ELevelSurfaceDressing, ILevelSurfaceDressing } from "@/core/level/lib/surface/level-surface-dressing";
 import { ILevelSurfaceGeometry, ILevelSurfaceSpan } from "@/core/level/lib/surface/level-surface-geometry";
 import { ILevelTextureProblem, ILevelTextureReport } from "@/core/level/lib/texture/level-texture-report";
-import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { ILevelWeatherEffectRequest } from "@/core/level/lib/weather/level-weather-effect-request";
 import { ILevelWeatherSeek } from "@/core/level/lib/weather/level-weather-seek";
 import { LevelLoadService } from "@/core/level/services/level-load.service";
@@ -68,9 +51,17 @@ import { LevelLookService } from "@/core/level/services/level-look.service";
 import { LevelViewService } from "@/core/level/services/level-view.service";
 import { LevelViewportService } from "@/core/level/services/level-viewport.service";
 import { LevelWeatherService } from "@/core/level/services/level-weather.service";
+import { EMPTY_RENDER_FRAME_COST, IRenderFrameCost } from "@/core/render/lib/contract/render-frame-cost";
+import { EMPTY_RENDERER_LIGHTS_REPORT, IRendererLightsReport } from "@/core/render/lib/contract/renderer-lights-report";
+import { EMPTY_RENDERER_PASS_TIMINGS, IRendererPassTimings } from "@/core/render/lib/contract/renderer-pass-timings";
+import { IRendererSettings } from "@/core/render/lib/contract/renderer-settings";
+import {
+  EMPTY_RENDERER_STATIC_DRAW_REPORT,
+  IRendererStaticDrawReport,
+} from "@/core/render/lib/contract/renderer-static-draw-report";
+import { IRendererViewPoint } from "@/core/render/lib/contract/renderer-view-point";
 import { listenRenderClicks } from "@/core/render/lib/frame/render-clicks";
 import { toNativeFrameCost, toNativePassTimings } from "@/core/render/lib/native/native-frame-report";
-import { toNativeOverlay } from "@/core/render/lib/native/native-overlay";
 import { NativeRenderSurfaceService } from "@/core/render/lib/native/native-render-surface-service";
 import { toNativeRenderHeight, toNativeViewOptions } from "@/core/render/lib/native/native-view-options";
 import { NativeViewport } from "@/core/render/lib/native/native-viewport";
@@ -78,22 +69,6 @@ import { toXraySpace } from "@/core/render/lib/scene/render-space";
 import { SettingsService } from "@/core/settings/services/settings";
 import { IPanelSetActiveCommand, PANEL_SET_ACTIVE_COMMAND } from "@/core/shell/panel/panel-messages";
 import { Logger } from "@/lib/logging";
-
-/**
- * @param box - The level's extent, or null while none is open.
- * @param options - Which helpers the toolbar shows.
- * @param config - Their cells, colours and sizes.
- * @returns The helpers a native viewport draws over the level.
- */
-export function toLevelOverlays(
-  box: Nullable<ILevelBox>,
-  options: Pick<ILevelViewOptions, "isAxesVisible" | "isGridVisible" | "isSunVisible">,
-  config: ILevelRenderConfig
-): Array<RenderOverlay> {
-  return toLevelFrameOverlays(box, options, config)
-    .map((overlay: TRendererOverlay) => toNativeOverlay(overlay))
-    .filter((overlay: Nullable<RenderOverlay>): overlay is RenderOverlay => overlay !== null);
-}
 
 /**
  * @param report - What a native viewport's static draws came to.
@@ -351,7 +326,7 @@ export class LevelRenderService extends NativeRenderSurfaceService {
 
           return { box, isAxesVisible, isGridVisible, isSunVisible };
         },
-        ({ box, ...options }) => viewport.setOverlays(toLevelOverlays(box, options, this.config)),
+        ({ box, ...options }) => viewport.setOverlays(toLevelFrameOverlays(box, options, this.config)),
         { equals: comparer.structural, fireImmediately: true }
       ),
       ...this.watchWeather(viewport),
@@ -551,9 +526,7 @@ export class LevelRenderService extends NativeRenderSurfaceService {
   }
 
   private toCamera(viewpoint: ILevelViewpoint, options: ILevelCameraOptions): RenderCamera {
-    const camera: IRendererFlyCamera = toLevelCameraAt(viewpoint, options, this.config);
-
-    return { ...camera, kind: ERenderCamera.FLY, position: [...camera.position], target: [...camera.target] };
+    return toLevelCameraAt(viewpoint, options, this.config);
   }
 
   private toViewpointPose(): Nullable<RenderCameraPose> {
