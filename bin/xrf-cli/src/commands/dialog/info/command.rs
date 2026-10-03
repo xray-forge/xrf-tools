@@ -1,11 +1,12 @@
-use std::path::PathBuf;
-
-use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
+use clap::{Arg, ArgAction, ArgMatches, Command};
 use xrf_error::XrfError;
 use xrf_output::OutputOptions;
 use xrf_report::Status;
-use xrf_vfs::{XrayMountMode, XrayRoot, XrayRoots};
+use xrf_vfs::{XrayMountMode, XrayRoots};
 
+use crate::commands::dialog::dialog_roots::{
+  DialogRootsArguments, requested_dialog_prefix, requested_dialog_roots, requested_dialog_source,
+};
 use crate::commands::dialog::info::dialog_sweep::{
   DialogSweep, DialogSweepCensus, DialogSweepResult, list_distribution, sum_findings,
 };
@@ -24,32 +25,7 @@ impl GenericCommand for InfoCommand {
   fn init(&self) -> Command {
     Command::new(self.operation())
       .about("Command to read dialog xml and report what it holds")
-      .arg(
-        Arg::new("path")
-          .help("Root holding dialog xml. Repeat to layer roots, highest priority first")
-          .short('p')
-          .long("path")
-          .required(true)
-          // Both spellings layer: repeat the flag, or list several values after one of them.
-          .action(ArgAction::Append)
-          .num_args(1..)
-          .value_parser(value_parser!(PathBuf)),
-      )
-      .arg(
-        Arg::new("source")
-          .help(
-            "How to read the path: auto treats it as an installation only when it declares one, directory ignores any declaration, volumes mounts every archive volume beneath it, installation requires one, containing-installation searches parent directories for one",
-          )
-          .long("source")
-          .default_value("containing-installation")
-          .value_parser(["auto", "directory", "volumes", "installation", "containing-installation"]),
-      )
-      .arg(
-        Arg::new("prefix")
-          .help("Limit to one logical subtree, such as configs\\gameplay")
-          .long("prefix")
-          .value_parser(value_parser!(String)),
-      )
+      .with_dialog_roots()
       .arg(
         Arg::new("strict")
           .help("Answer with a check failure when anything was unreadable or off schema")
@@ -64,31 +40,17 @@ impl GenericCommand for InfoCommand {
   /// tally, and a tally that also fails the build cannot be run casually. `--strict` is the mode that
   /// judges, and it is the one a CI step uses.
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
-    let paths: Vec<&PathBuf> = matches
-      .get_many::<PathBuf>("path")
-      .expect("Expected at least one path to be provided")
-      .collect();
     let is_strict: bool = matches.get_flag("strict");
 
     let output: OutputOptions = context.get_output().clone();
-
-    let source: XrayMountMode = XrayMountMode::try_from(
-      matches
-        .get_one::<String>("source")
-        .expect("Expected source mode to default")
-        .as_str(),
-    )?;
-    let prefix: Option<&String> = matches.get_one::<_>("prefix");
-
-    // One vocabulary for naming roots, so repeating `--path` layers a tree in front of an
-    // installation exactly as the desktop app does it.
-    let roots: XrayRoots = XrayRoots::new(paths.iter().map(|path| XrayRoot::new(path.to_path_buf(), source)));
+    let source: XrayMountMode = requested_dialog_source(matches)?;
+    let roots: XrayRoots = requested_dialog_roots(matches)?;
 
     xrf_output::info!(output, "Reading dialogs in {} ({:?})", roots.describe(), source);
 
     // A roots that cannot be mounted is an execution failure, which the mount itself answers with, so
     // no separate existence check is needed here.
-    let result: DialogSweepResult = DialogSweep::new(&roots, prefix.map(String::as_str)).run()?;
+    let result: DialogSweepResult = DialogSweep::new(&roots, requested_dialog_prefix(matches)).run()?;
 
     Self::print_census(&output, &result);
     Self::print_findings(&output, &result);

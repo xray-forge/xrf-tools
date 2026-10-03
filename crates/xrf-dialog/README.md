@@ -62,6 +62,34 @@ Choose source mode for the XRF source layout and gamedata mode for game string t
 and translation prefixes override its defaults. Mode detection is advisory; the layout passed to `open` selects the
 interpretation.
 
+## Find who offers a dialog
+
+`DialogPartners` reads the character descriptions, profiles and info portions beside the dialogs, and answers what
+reaches the actor when it talks to an NPC of a profile, the way `CActor::UpdateAvailableDialogs` gathers it.
+
+```rust,no_run
+use xrf_dialog::{DialogPartners, DialogProject, DialogProjectLayout};
+use xrf_vfs::{XrayMountMode, XrayRoots};
+
+fn main() -> xrf_error::XrfResult {
+  let roots = XrayRoots::one("gamedata".into(), XrayMountMode::Directory);
+  let project = DialogProject::open(&roots, &DialogProjectLayout::default())?;
+  let partners = DialogPartners::from_vfs(project.get_vfs(), project.get_dialogs_prefix())?;
+  let profile = partners.find_profile("zat_b33_stalker_snag").expect("a profile");
+
+  for (dialog, offers) in partners.list_offers(profile) {
+    println!("{dialog}: {offers:?}");
+  }
+
+  Ok(())
+}
+```
+
+A profile resolves to its pinned specific character, or to every character it may pick by class; the engine narrows
+the candidates further at spawn, so the offers are the superset. Files are chosen by name (`character_desc*`,
+`npc_profile*`, `info_*`) and read with their `#include` lines expanded, and a file another one includes is read only
+through it. A file that cannot be read, and a second declaration of an id, become findings.
+
 ## Source ranges and issues
 
 Project discovery selects dialog XML by filename convention, so it does not treat every gameplay XML file as a dialog.

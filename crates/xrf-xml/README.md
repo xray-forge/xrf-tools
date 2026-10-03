@@ -74,8 +74,37 @@ tags; `content_range()` includes everything between them, including comments and
 has an empty content range, while a self-closing element has none. Replacing content removes everything in that range.
 Apply multiple edits from highest offset to lowest, then validate the result before encoding and publishing it.
 
-The source reader tries strict parsing first. On failure it retries a same-length copy that neutralizes comment banners
-and bare ampersands. `source()` and `into_source()` always return the original decoded text.
+The source reader tries strict parsing first. On failure it retries a same-length copy that neutralizes comment banners,
+bare ampersands and an XML declaration that does not open the document, which shipped mods write below a banner.
+`source()` and `into_source()` always return the original decoded text.
+
+## Expand includes
+
+The engine splices `#include "<name>"` lines into a document before parsing it, and shipped character descriptions take
+most of their content that way. `expand_xml_includes` does the same over bytes, with a reader for each name: the engine
+opens names under `$game_config$`, so a game-tree reader maps `gameplay\x.xml` to `configs\gameplay\x.xml`. Included
+files lose their byte order mark and declaration, and the including document's declaration decodes the result.
+`list_xml_includes` names a document's includes without reading them, which tells a file that only exists to be
+included from one that stands alone.
+
+```rust
+use xrf_xml::expand_xml_includes;
+
+fn main() -> xrf_error::XrfResult {
+  let expanded: Vec<u8> = expand_xml_includes(b"<root>\n#include \"part.xml\"\n</root>", &mut |name| {
+    assert_eq!(name, "part.xml");
+
+    Ok(b"<part/>\n".to_vec())
+  })?;
+
+  assert_eq!(expanded, b"<root>\n<part/>\n</root>");
+
+  Ok(())
+}
+```
+
+A malformed directive, a missing include or nesting past 128 levels is an error, as each is fatal to the engine's
+loaders.
 
 ## Generate XML
 

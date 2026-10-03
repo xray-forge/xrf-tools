@@ -14,6 +14,9 @@ pub struct Dialog {
 }
 
 impl Dialog {
+  /// The phrase a dialog opens with, said by whoever opens it.
+  pub const ENTRY_PHRASE_ID: &'static str = "0";
+
   pub fn new(
     id: String,
     priority: Option<i32>,
@@ -70,6 +73,11 @@ impl Dialog {
   /// reaches too.
   pub fn find_phrase(&self, id: &str) -> Option<&DialogPhrase> {
     self.phrases.iter().find(|phrase| phrase.get_id() == id)
+  }
+
+  /// The phrase the dialog opens with, whose line the topic list shows for the dialog.
+  pub fn get_entry_phrase(&self) -> Option<&DialogPhrase> {
+    self.find_phrase(Self::ENTRY_PHRASE_ID)
   }
 
   /// Whether the dialog declares phrases at all.
