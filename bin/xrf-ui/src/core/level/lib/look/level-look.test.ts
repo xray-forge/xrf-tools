@@ -77,8 +77,6 @@ describe("level look", () => {
     const choice = toLevelLookChoice(
       {
         custom: { lightScales: { sun: "bright" } },
-        preset: "dusk",
-        presets: [{ look: { corrections: { gamma: 1.2 } }, name: " dusk " }, { name: "" }, 4],
         source: ELevelLookSource.CUSTOM,
       },
       DEFAULT_RENDER_EXPOSURE_SETTINGS
@@ -86,8 +84,6 @@ describe("level look", () => {
 
     expect(choice.source).toBe(ELevelLookSource.CUSTOM);
     expect(choice.custom?.lightScales.sun).toBe(1);
-    expect(choice.presets.map((it) => it.name)).toEqual(["dusk"]);
-    expect(choice.presets[0]?.look.corrections.gamma).toBe(1.2);
-    expect(choice.presets[0]?.look.exposure).toEqual(DEFAULT_RENDER_EXPOSURE_SETTINGS);
+    expect(choice.custom?.exposure).toEqual(DEFAULT_RENDER_EXPOSURE_SETTINGS);
   });
 });

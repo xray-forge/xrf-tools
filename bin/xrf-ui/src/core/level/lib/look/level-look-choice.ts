@@ -22,34 +22,22 @@ export enum ELevelLookSource {
   ANOMALY = "anomaly",
   /** OpenXRay's own defaults, whatever game is open. */
   OPENXRAY = "openxray",
-  /** Values of its own, from a preset or edited by hand. */
+  /** Values of its own, edited by hand. */
   CUSTOM = "custom",
 }
 
-/** A look saved under a name. */
-export interface ILevelLookPreset {
-  name: string;
-  look: ILevelLook;
-}
-
 /**
- * What the level viewer's look is chosen as, kept over runs: where it comes from, its own values while custom, and the
- * presets saved.
+ * What the level viewer's look is chosen as, kept over runs: where it comes from, and its own values while custom.
  */
 export interface ILevelLookChoice {
   source: ELevelLookSource;
   /** The values a custom look draws with. */
   custom: Nullable<ILevelLook>;
-  /** The preset the custom look was taken from while it is unedited, or null. */
-  preset: Nullable<string>;
-  presets: ReadonlyArray<ILevelLookPreset>;
 }
 
-/** The game's own look, and no presets. */
+/** The game's own look. */
 export const DEFAULT_LEVEL_LOOK_CHOICE: ILevelLookChoice = {
   custom: null,
-  preset: null,
-  presets: [],
   source: ELevelLookSource.GAME,
 };
 
@@ -99,19 +87,9 @@ export function toLevelLookChoice(stored: unknown, exposure: TRenderExposureSett
     ? (stored.source as ELevelLookSource)
     : ELevelLookSource.GAME;
   const custom: Nullable<ILevelLook> = isRecord(stored.custom) ? toLevelLook(stored.custom, exposure) : null;
-  const presets: Array<ILevelLookPreset> = Array.isArray(stored.presets)
-    ? stored.presets
-        .filter((it: unknown) => isRecord(it) && typeof it.name === "string" && it.name.trim() && isRecord(it.look))
-        .map((it: Record<string, unknown>) => ({
-          look: toLevelLook(it.look as Record<string, unknown>, exposure),
-          name: (it.name as string).trim(),
-        }))
-    : [];
 
   return {
     custom,
-    preset: typeof stored.preset === "string" ? stored.preset : null,
-    presets,
     source: source === ELevelLookSource.CUSTOM && !custom ? ELevelLookSource.GAME : source,
   };
 }

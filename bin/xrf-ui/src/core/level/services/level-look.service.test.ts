@@ -50,28 +50,14 @@ describe("LevelLookService", () => {
     expect(service.look.exposure).toEqual(DEFAULT_RENDER_EXPOSURE_SETTINGS);
   });
 
-  it("saves the look as a preset, picks it again after an edit, and keeps the presets over runs", () => {
+  it("keeps a look edited by hand over runs", () => {
     const { service } = mockInjectedService(LevelLookService);
 
     service.edit({ ...service.look, lightScales: { ...service.look.lightScales, sun: 3 } });
-    service.savePreset("  bright  ");
-    service.edit({ ...service.look, lightScales: { ...service.look.lightScales, sun: 1 } });
 
-    expect(service.choice.preset).toBeNull();
-
-    service.pickPreset("bright");
-
-    expect(service.choice.preset).toBe("bright");
-    expect(service.look.lightScales.sun).toBe(3);
-    expect(JSON.parse(window.localStorage.getItem(LEVEL_LOOK_STORAGE_KEY) ?? "{}").presets).toHaveLength(1);
-
-    const { service: again } = mockInjectedService(LevelLookService);
-
-    expect(again.choice.presets.map((it) => it.name)).toEqual(["bright"]);
-
-    again.deletePreset("bright");
-
-    expect(again.choice.presets).toEqual([]);
-    expect(again.look.lightScales.sun).toBe(3);
+    expect(JSON.parse(window.localStorage.getItem(LEVEL_LOOK_STORAGE_KEY) ?? "{}").source).toBe(
+      ELevelLookSource.CUSTOM
+    );
+    expect(mockInjectedService(LevelLookService).service.look.lightScales.sun).toBe(3);
   });
 });

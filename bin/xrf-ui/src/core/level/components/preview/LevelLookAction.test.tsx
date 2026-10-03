@@ -19,24 +19,15 @@ afterEach(() => {
 });
 
 describe("LevelLookAction", () => {
-  it("draws with the settings' look, then saves the look as a preset it lists and can delete", async () => {
-    const { getByRole, findByRole, look } = renderAction();
+  it("draws with the settings' look, and saves no presets of its own", async () => {
+    const { getByRole, findByRole, queryByRole, look } = renderAction();
 
     await userEvent.click(getByRole("button", { name: "Look" }));
     await findByRole("dialog", { name: "Look" });
     await userEvent.click(getByRole("option", { name: "Settings" }));
 
     expect(look.choice.source).toBe(ELevelLookSource.SETTINGS);
-
-    await userEvent.type(getByRole("textbox", { name: "Preset name" }), "dusk");
-    await userEvent.click(getByRole("button", { name: "Save" }));
-
-    expect(look.choice.preset).toBe("dusk");
-    expect(getByRole("option", { name: "dusk" })).toHaveAttribute("aria-selected", "true");
-
-    await userEvent.click(getByRole("button", { name: 'Delete "dusk"' }));
-
-    expect(look.choice.presets).toEqual([]);
+    expect(queryByRole("textbox", { name: "Preset name" })).not.toBeInTheDocument();
   });
 
   it("offers Anomaly's and OpenXRay's own looks whatever game is open", async () => {
