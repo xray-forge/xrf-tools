@@ -1,3 +1,5 @@
+pub(crate) mod grass_swing;
+pub(crate) mod grass_wind;
 pub(crate) mod light_animation;
 pub(crate) mod light_basis;
 pub(crate) mod light_shadow_size;

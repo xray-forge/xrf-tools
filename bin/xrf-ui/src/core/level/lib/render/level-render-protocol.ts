@@ -74,6 +74,8 @@ export type TLevelHeldListener<T> = (value: Nullable<T>) => void;
  * spawned objects stand as.
  */
 export interface ILevelHeldSource<T> {
+  /** What is held now, or null for nothing yet. */
+  readonly held: Nullable<T>;
   /**
    * @param listener - Told what is held now, then whenever it changes.
    * @returns Stops the telling.

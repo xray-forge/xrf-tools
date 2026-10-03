@@ -7,8 +7,9 @@ pub struct StaticPlace {
   pub columns: [Vec4; 4],
   /// The hemisphere's scale and bias, the impostor it stands for or `-1`, and the matrix's largest axis scale.
   pub info: Vec4,
-  /// A dynamic object's hemisphere cube, packed; `w` above a half marks it present.
-  pub cube: Vec4,
+  /// A spawned object's hemisphere cube, its six faces (`+x +y +z -x -y -z`) as bytes in `x` and `y`; `w` one where it
+  /// has one.
+  pub cube: [u32; 4],
 }
 
 impl Default for StaticPlace {
@@ -16,7 +17,7 @@ impl Default for StaticPlace {
     Self {
       columns: [Vec4::X, Vec4::Y, Vec4::Z, Vec4::W],
       info: Vec4::new(1.0, 0.0, -1.0, 1.0),
-      cube: Vec4::ZERO,
+      cube: [0; 4],
     }
   }
 }

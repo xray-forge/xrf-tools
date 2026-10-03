@@ -1,3 +1,8 @@
+pub(crate) mod grass_build;
+pub(crate) mod grass_build_size;
+pub(crate) mod grass_dither;
+pub(crate) mod grass_level;
+pub(crate) mod level_grass;
 pub(crate) mod level_light_shadows;
 pub(crate) mod level_lights;
 pub(crate) mod level_loader;
@@ -9,7 +14,9 @@ pub(crate) mod light_shadow_set;
 pub(crate) mod rain_cover;
 pub(crate) mod shadow_cascade_view;
 pub(crate) mod shadow_frame;
+pub(crate) mod shadow_sway;
 pub(crate) mod shadow_tile;
 pub(crate) mod shadow_tile_allocator;
+pub(crate) mod spawn_loader;
 pub(crate) mod surface_tally;
 pub(crate) mod weather_model_buffers;

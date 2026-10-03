@@ -32,6 +32,21 @@ fn inlines_each_import_once() {
 }
 
 #[test]
+fn gathers_enables_to_the_top_once() {
+  let source: String = compose(
+    &[
+      ("a", "enable x;\n#import \"b\"\nfn a() {}"),
+      ("b", "enable x;\nenable y;\nfn b() {}"),
+    ],
+    "a",
+    &[],
+  )
+  .unwrap();
+
+  assert_eq!(source, "enable x;\nenable y;\nfn b() {}\nfn a() {}\n");
+}
+
+#[test]
 fn keeps_the_branch_its_define_names() {
   let modules: &[(&str, &str)] = &[("a", "#if FAST\nfast\n#else\nslow\n#endif\nboth")];
 

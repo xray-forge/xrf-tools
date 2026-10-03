@@ -8,3 +8,8 @@ pub struct StaticSlotInfo {
   /// The mesh's first place, which a picked place counts its instance from.
   pub first_place: u32,
 }
+
+impl StaticSlotInfo {
+  /// What a slot of a spawned model names for its sector: none.
+  pub const NO_SECTOR: u32 = u32::MAX;
+}

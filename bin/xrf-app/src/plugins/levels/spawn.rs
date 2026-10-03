@@ -1,14 +1,16 @@
 //! What the game spawns on a level, out of the one spawn it keeps for every level.
 
+use std::collections::HashSet;
 use std::sync::Arc;
 use std::time::Instant;
 
 use xrf_chunk::{ChunkReader, InMemoryChunkDataSource, XRayByteOrder};
-use xrf_spawn::{SpawnFile, SpawnLevelObjects};
+use xrf_spawn::{AlifeObject, SpawnFile, SpawnLevelObjects};
 use xrf_vfs::{XrayLogicalPath, XrayProbe};
 
 use crate::core::assets::read_located_asset;
-use crate::plugins::levels::report::report_spawn;
+use crate::plugins::levels::new_game::read_new_game_releases;
+use crate::plugins::levels::report::{report_new_game_releases, report_spawn};
 use crate::plugins::levels::state::{LevelSource, LevelSpawn, SelectedLevel};
 
 /// Where the game keeps its spawn (`$game_spawn$`).
@@ -43,8 +45,8 @@ pub fn read_source_spawn(source: &LevelSource, probe: &XrayProbe) -> Result<Arc<
   read_level_spawn(probe, &level).map(Arc::new)
 }
 
-/// The objects standing on a level, by the level each game vertex belongs to, reading nothing of the spawn but its
-/// objects and the head of its graph.
+/// The objects standing on a level when a new game starts, by the level each game vertex belongs to, reading nothing of
+/// the spawn but its objects and the head of its graph.
 fn read_level_spawn(probe: &XrayProbe, level: &str) -> Result<LevelSpawn, String> {
   let started: Instant = Instant::now();
   let path: XrayLogicalPath = XrayLogicalPath::new(SPAWNS_DIRECTORY)
@@ -60,8 +62,15 @@ fn read_level_spawn(probe: &XrayProbe, level: &str) -> Result<LevelSpawn, String
 
   report_spawn(level, path.as_str(), &read, started);
 
+  let released: HashSet<String> = read_new_game_releases(probe);
+  let mut objects: Vec<AlifeObject> = read.objects;
+  let count: usize = objects.len();
+
+  objects.retain(|object| !released.contains(&object.name));
+  report_new_game_releases(level, count - objects.len());
+
   Ok(LevelSpawn {
     arrivals: read.arrivals,
-    objects: read.objects,
+    objects,
   })
 }

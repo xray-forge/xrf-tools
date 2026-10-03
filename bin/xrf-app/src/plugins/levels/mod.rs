@@ -4,6 +4,7 @@ pub mod details;
 pub mod drawn_attributes;
 pub mod hemi;
 pub mod lights;
+pub mod new_game;
 pub mod plugin;
 pub mod read;
 pub mod render_source;

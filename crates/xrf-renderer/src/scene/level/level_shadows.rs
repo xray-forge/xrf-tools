@@ -9,6 +9,7 @@ use crate::pass::level_passes::LevelPasses;
 use crate::pass::shadow_uniform::ShadowUniform;
 use crate::scene::level::shadow_cascade_view::ShadowCascadeView;
 use crate::scene::level::shadow_frame::ShadowFrame;
+use crate::scene::static_scene::static_layout::StaticLayout;
 
 /// A level's sun shadow: its cascades fitted along the camera's view every frame, each culled and drawn into its map
 /// only when its box moved or the scene grew, and then at most as often as its stagger allows.
@@ -128,11 +129,18 @@ impl LevelShadows {
         frame.settings.reach,
       );
 
-      let state: (u64, usize) = (cascade.cascade.version, scene.sectors.len());
+      let state: (u64, usize) = (cascade.cascade.version, scene.get_contents());
       let is_due: bool = cascade.drawn.is_none() || !frame.settings.is_staggered || is_cascade_due(index, self.frames);
 
       // A map holds depth in the world, sampled with the matrix it was drawn with, so a still one is still exact.
-      if !is_due || (cascade.drawn == Some(state) && !frame.is_swaying) {
+      let is_changed: bool = cascade.drawn != Some(state);
+
+      if !is_due
+        || !(is_changed
+          || frame
+            .sway
+            .is_redrawn(frame.sway.reach, cascade.cascade.texel, cascade.drawn_at))
+      {
         continue;
       }
 
@@ -174,7 +182,7 @@ impl LevelShadows {
       let draw_key: (u64, u64) = (scene.get_generation(), cascade.lists.get_generation());
 
       if cascade.draw_groups.as_ref().is_none_or(|(key, _)| *key != draw_key) {
-        let groups: [wgpu::BindGroup; 2] =
+        let groups: [wgpu::BindGroup; StaticLayout::COUNT] =
           passes
             .gbuffer
             .create_layout_groups(device, scene, cascade.lists.get_buffer());
@@ -198,6 +206,7 @@ impl LevelShadows {
         &cascade.args,
       );
       cascade.drawn = Some(state);
+      cascade.drawn_at = frame.sway.time;
       self.values.matrices[index] = cascade.cascade.view.get_view_projection();
       self.values.texels[index] = cascade.cascade.texel;
     }

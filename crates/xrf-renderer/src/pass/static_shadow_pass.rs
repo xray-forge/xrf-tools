@@ -65,7 +65,7 @@ impl StaticShadowPass {
     encoder: &mut wgpu::CommandEncoder,
     target: &wgpu::TextureView,
     view: &ViewBinding,
-    bind_groups: &[wgpu::BindGroup; 2],
+    bind_groups: &[wgpu::BindGroup; StaticLayout::COUNT],
     textures: &wgpu::BindGroup,
     args: &wgpu::Buffer,
   ) {
@@ -101,7 +101,7 @@ impl StaticShadowPass {
     target: &wgpu::TextureView,
     tile: ShadowTile,
     view: &ViewBinding,
-    bind_groups: &[wgpu::BindGroup; 2],
+    bind_groups: &[wgpu::BindGroup; StaticLayout::COUNT],
     textures: &wgpu::BindGroup,
     args: &wgpu::Buffer,
   ) {
@@ -156,10 +156,7 @@ impl StaticShadowPass {
 
     let pipelines: Vec<wgpu::RenderPipeline> = StaticBatch::list_deferred()
       .map(|batch| {
-        let vertex: &str = match batch.layout {
-          StaticLayout::Baked => "vs_baked",
-          StaticLayout::Tree => "vs_tree",
-        };
+        let vertex: &str = batch.layout.get_vertex_entry();
         // An opaque caster writes depth alone; a cut-out one is cut first.
         let fragment: Option<wgpu::FragmentState<'_>> =
           (batch.class == StaticClass::CutOut).then(|| wgpu::FragmentState {

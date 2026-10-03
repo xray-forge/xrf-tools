@@ -37,6 +37,16 @@ impl StaticSurface {
   pub const HAS_WATER_NORMAL: u32 = 1 << 12;
   pub const HAS_FOAM: u32 = 1 << 13;
   pub const HAS_DISTORTION: u32 = 1 << 14;
+  /// A composited surface's blend: over what is behind it by its alpha where none is set, added to it (by its alpha
+  /// where weighted), or multiplied into it (twice over where doubled).
+  pub const IS_ADDED: u32 = 1 << 15;
+  pub const IS_WEIGHTED: u32 = 1 << 16;
+  pub const IS_MULTIPLIED: u32 = 1 << 17;
+  pub const IS_DOUBLED: u32 = 1 << 18;
+  /// A spawned model's: a blended one is drawn forward as `model_def_lq` lights it.
+  pub const IS_MODEL: u32 = 1 << 19;
+  /// An environment-mapped class's, whose blended model is drawn as `model_env_lq` instead.
+  pub const IS_ENVIRONMENT_MAPPED: u32 = 1 << 20;
 
   pub const BASE: usize = 0;
   pub const DETAIL: usize = 1;

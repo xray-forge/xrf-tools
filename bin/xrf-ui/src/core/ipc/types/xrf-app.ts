@@ -1858,6 +1858,8 @@ export type LevelSpawnObjectHemi = {
   index: number;
   /** The faces toward `+x +y +z`, then toward `-x -y -z`, in renderer space. */
   cube: [number | null, number | null, number | null, number | null, number | null, number | null];
+  /** Its scalar sky share, `hemi_value`, which a forward-drawn model is lit by. */
+  sky: number | null;
 };
 
 /** The spawned objects the viewer draws, and the visuals they stand as, each named once. */

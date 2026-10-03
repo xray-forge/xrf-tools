@@ -14,6 +14,7 @@ use crate::contract::render_level_hit::RenderLevelHit;
 use crate::contract::render_lights_settings::RenderLightsSettings;
 use crate::contract::render_load_report::RenderLoadReport;
 use crate::contract::render_shadow_settings::RenderShadowSettings;
+use crate::contract::render_spawn_category::RenderSpawnCategory;
 use crate::contract::render_surface_geometry::RenderSurfaceGeometry;
 use crate::contract::render_texture_report::RenderTextureReport;
 use crate::contract::render_view_options::RenderViewOptions;
@@ -30,6 +31,7 @@ use crate::host::render_rain::RenderRain;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::pass::ambient_occlusion_uniform::AmbientOcclusionUniform;
 use crate::pass::camera_uniform::CameraUniform;
+use crate::pass::grass_pass::GrassPass;
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::lighting_frame::LightingFrame;
 use crate::pass::lighting_uniform::LightingUniform;
@@ -45,15 +47,19 @@ use crate::pass::view_light_groups::ViewLightGroups;
 use crate::pass::water_uniform::WaterUniform;
 use crate::pass::wet_uniform::WetUniform;
 use crate::pass::wind_uniform::WindUniform;
+use crate::scene::level::level_grass::LevelGrass;
 use crate::scene::level::level_lights::LevelLights;
 use crate::scene::level::level_loader::LevelLoader;
 use crate::scene::level::level_shadows::LevelShadows;
 use crate::scene::level::rain_cover::RainCover;
 use crate::scene::level::shadow_frame::ShadowFrame;
+use crate::scene::level::shadow_sway::ShadowSway;
+use crate::scene::level::spawn_loader::SpawnLoader;
 use crate::scene::level::surface_tally::SurfaceTally;
 use crate::scene::level::weather_model_buffers::WeatherModelBuffers;
 use crate::scene::static_scene::static_batch::StaticBatch;
 use crate::scene::static_scene::static_scene::StaticScene;
+use crate::scene::static_scene::static_slot_info::StaticSlotInfo;
 use crate::scene::texture::texture_cache::TextureCache;
 use crate::scene::texture::weather_texture_cache::WeatherTextureCache;
 use crate::scene::texture::weather_texture_kind::WeatherTextureKind;
@@ -64,6 +70,9 @@ const PICKED_IMPOSTOR: u32 = 2;
 
 /// Sectors put on the GPU at most each frame, so a level's open spreads over frames rather than stalling one.
 const SECTORS_PER_FRAME: usize = 4;
+
+/// Spawned models put into the scene at most in one frame.
+const MODELS_PER_FRAME: usize = 16;
 
 /// The engine's progressive mesh thresholds, in screen area before the screen is applied: whole above the first,
 /// coarsest below the second.
@@ -84,6 +93,8 @@ type SkyGroupKey = (u64, [Option<String>; 6]);
 pub struct LevelView {
   source: Arc<dyn RenderLevelSource>,
   loader: LevelLoader,
+  spawn: SpawnLoader,
+  grass: LevelGrass,
   scene: StaticScene,
   targets: Option<ViewTargets>,
   /// The depth pyramid over the targets, and its reduction's bind group a level.
@@ -100,8 +111,8 @@ pub struct LevelView {
   /// This frame's camera and shadow settings, which the shadow is fitted and drawn by, and where its sunlight travels.
   frame_camera: CameraView,
   frame_sun: Vec3,
-  /// Whether this frame's trees sway, which keeps the sun's cascades drawing.
-  is_swaying: bool,
+  /// The wind's amplitude this frame and the time the trees sway by: what has still shadows drawn again.
+  frame_sway: (f32, f32),
   shadow_settings: RenderShadowSettings,
   /// The cull's and the draws' bind groups, with the scene generation (and the cull, the targets epoch) they bind.
   cull_group: Option<((u64, u64), wgpu::BindGroup)>,
@@ -112,6 +123,8 @@ pub struct LevelView {
   sky_group: Option<(SkyGroupKey, wgpu::BindGroup)>,
   /// Whether this frame blurs the sky into the haze map the distance fades into.
   is_hazing: bool,
+  /// Whether this frame lays the wall marks into the albedo.
+  is_wallmarked: bool,
   /// Bumped whenever the sky's bind group is made again, which the water's follows.
   sky_version: u64,
   water: wgpu::Buffer,
@@ -174,6 +187,8 @@ impl LevelView {
 
     Self {
       loader: LevelLoader::start(Arc::clone(&source)),
+      spawn: SpawnLoader::start(Arc::clone(&source)),
+      grass: LevelGrass::new(device, &source),
       lights: LevelLights::new(device, view_layout, scene.args.size(), &source),
       rain_cover: RainCover::new(device, view_layout, scene.args.size()),
       scene,
@@ -191,13 +206,14 @@ impl LevelView {
         projection: Mat4::IDENTITY,
       },
       frame_sun: RenderLighting::default().get_sun_direction(),
-      is_swaying: false,
+      frame_sway: (0.0, 0.0),
       shadow_settings: RenderShadowSettings::default(),
       cull_group: None,
       draw_groups: None,
       light_groups: None,
       sky_group: None,
       is_hazing: false,
+      is_wallmarked: true,
       sky_version: 0,
       water: uniform("water", size_of::<WaterUniform>()),
       water_group: None,
@@ -230,16 +246,16 @@ impl LevelView {
     }
   }
 
-  /// Puts the sectors the loader finished since the last frame into the scene, a few a frame, and asks for the
-  /// textures the lighting's sky draws with.
+  /// Puts the sectors and spawned models the loaders finished since the last frame into the scene, a few a frame, and
+  /// asks for the textures the lighting's sky draws with.
   #[allow(clippy::too_many_arguments)]
   pub fn load(
     &mut self,
     device: &wgpu::Device,
     queue: &wgpu::Queue,
     encoder: &mut wgpu::CommandEncoder,
-    textures: &mut TextureCache,
-    weather_textures: &mut WeatherTextureCache,
+    (textures, weather_textures): (&mut TextureCache, &mut WeatherTextureCache),
+    grass_pass: &GrassPass,
     (lighting, weather): (&RenderLighting, Option<&Arc<RenderLevelWeather>>),
     options: &RenderViewOptions,
   ) {
@@ -290,6 +306,10 @@ impl LevelView {
 
     self.lights.poll(textures, &assets);
 
+    if let Some(slots) = self.grass.poll(device, grass_pass, textures, &assets) {
+      self.scene.texture_slots.extend(slots);
+    }
+
     for (_, package) in self.loader.take(SECTORS_PER_FRAME) {
       match package {
         Ok((package, tally)) => {
@@ -306,6 +326,12 @@ impl LevelView {
         }
         Err(_) => self.failed += 1,
       }
+    }
+
+    for (model, places) in self.spawn.take(MODELS_PER_FRAME) {
+      self
+        .scene
+        .add_model(device, queue, encoder, textures, &assets, &model, &places);
     }
   }
 
@@ -398,6 +424,12 @@ impl LevelView {
         combine: passes
           .combine
           .create_bind_group(device, targets, passes.table, &self.lighting, &self.exposure.state),
+        composited: passes.composited.create_bind_group(
+          device,
+          passes.table,
+          (&self.lighting, &self.exposure.state),
+          &self.shadows,
+        ),
         haze: passes
           .sky_haze
           .create_bind_group(device, &self.lighting, &self.exposure.state),
@@ -449,12 +481,10 @@ impl LevelView {
       self.water_group = Some((water_key, group));
     }
 
-    let wind: WindUniform = WindUniform::new(
-      lighting.trees.as_ref().filter(|_| options.is_windy),
-      self.started.elapsed().as_secs_f32(),
-    );
+    let sway_time: f32 = self.started.elapsed().as_secs_f32();
+    let wind: WindUniform = WindUniform::new(lighting.trees.as_ref().filter(|_| options.is_windy), sway_time);
 
-    self.is_swaying = wind.is_swaying();
+    self.frame_sway = (wind.get_amplitude(), sway_time);
     self.prepare_rain(device, queue, passes, (lighting, weather), options, weather_textures);
     self.prepare_thunder(device, queue, passes, (lighting, weather), options, weather_textures);
     queue.write_buffer(&self.scene.wind, 0, bytemuck::bytes_of(&wind));
@@ -493,6 +523,7 @@ impl LevelView {
     };
 
     self.is_hazing = options.is_lit && options.is_sky_visible && options.is_sky_hazed;
+    self.is_wallmarked = options.is_wallmarked;
 
     if !options.is_occlusion_culled {
       self.history = None;
@@ -516,16 +547,35 @@ impl LevelView {
       lod_a: threshold(SSA_LOD_A),
       lod_b: threshold(SSA_LOD_B),
       is_impostors: options.is_impostors as u32,
-      pad: [0; 4],
+      hidden_groups: [
+        RenderSpawnCategory::Props,
+        RenderSpawnCategory::Items,
+        RenderSpawnCategory::Weapons,
+        RenderSpawnCategory::Lamps,
+      ]
+      .into_iter()
+      .filter(|category| !options.is_spawned(*category))
+      .fold(0, |hidden, category| hidden | (1 << (category.get_group() - 1))),
+      pad: [0; 3],
       lod_origin: view.position.extend(1.0),
     };
     self.frame_view = (view.view, view.projection);
+    self.grass.prepare(
+      device,
+      queue,
+      passes.grass,
+      &options.grass,
+      view,
+      self.params.discard_below,
+      (self.started.elapsed().as_secs_f32(), options.is_windy),
+    );
     self.lights.prepare(
       queue,
       view,
       &options.lights,
       (self.params.glod_start, self.params.glod_end),
-      self.scene.sectors.len(),
+      self.scene.get_contents(),
+      &to_sway(&self.scene, self.frame_sway),
     );
     self.frame_camera = *view;
     self.frame_sun = lighting.get_sun_direction();
@@ -764,6 +814,7 @@ impl LevelView {
     };
     let texture_group: &wgpu::BindGroup = textures.get_bind_group();
 
+    self.grass.plant(encoder, passes.grass);
     passes.cull.dispatch_early(encoder, view, cull_group, &self.params);
     passes.gbuffer.draw(
       encoder,
@@ -791,6 +842,13 @@ impl LevelView {
     }
 
     self.stats.record(encoder, &self.scene.args, StaticScene::STATS_OFFSET);
+    self.grass.draw(encoder, passes.grass, (targets, view), texture_group);
+
+    if self.is_wallmarked {
+      passes
+        .composited
+        .draw_wallmarks(encoder, targets, view, draw_groups, texture_group, &self.list_args());
+    }
 
     if let Some((pyramid, _)) = &self.pyramid {
       let frame: ShadowFrame<'_> = ShadowFrame {
@@ -798,7 +856,7 @@ impl LevelView {
         camera: &self.frame_camera,
         settings: &self.shadow_settings,
         sun_direction: self.frame_sun,
-        is_swaying: self.is_swaying,
+        sway: to_sway(&self.scene, self.frame_sway),
         cull_params: &self.cull_params,
         params: &self.params,
         pyramid: &pyramid.view,
@@ -853,15 +911,27 @@ impl LevelView {
       if self.water_settings.is_enabled
         && let Some((_, water_group)) = &self.water_group
       {
-        let args: Vec<&wgpu::Buffer> = if self.params.is_occluding != 0 {
-          vec![&self.scene.args, &self.scene.late]
-        } else {
-          vec![&self.scene.args]
-        };
+        passes.water.draw(
+          encoder,
+          targets,
+          view,
+          draw_groups,
+          texture_group,
+          water_group,
+          &self.list_args(),
+        );
+      }
 
-        passes
-          .water
-          .draw(encoder, targets, view, draw_groups, texture_group, water_group, &args);
+      if let Some((_, sky_group)) = &self.sky_group {
+        passes.composited.draw(
+          encoder,
+          targets,
+          view,
+          draw_groups,
+          texture_group,
+          (&groups.composited, sky_group),
+          &self.list_args(),
+        );
       }
 
       if let (Some(counts), Some((_, rain_group))) = (self.rain_draw, &self.rain_group) {
@@ -928,7 +998,7 @@ impl LevelView {
           self
             .scene
             .resolve_impostor_pick(cluster)
-            .map(|(sector, shader_id)| RenderLevelHit {
+            .map(|(sector, shader_id)| RenderLevelHit::Surface {
               sector,
               shader_id: shader_id as u32,
               mesh: None,
@@ -941,19 +1011,36 @@ impl LevelView {
       _ => return Ok(None),
     }
 
-    Ok(
-      self
-        .scene
-        .resolve_pick(cluster, place)
-        .map(|(info, instance)| RenderLevelHit {
-          sector: info.sector,
-          shader_id: info.shader_id as u32,
-          mesh: info.mesh,
-          place: instance,
-          is_impostor: false,
-          point,
-        }),
-    )
+    let Some((info, instance)) = self.scene.resolve_pick(cluster, place) else {
+      return Ok(None);
+    };
+
+    if info.sector == StaticSlotInfo::NO_SECTOR {
+      return Ok(
+        self
+          .scene
+          .resolve_spawn_pick(place)
+          .map(|object| RenderLevelHit::Spawn { object, point }),
+      );
+    }
+
+    Ok(Some(RenderLevelHit::Surface {
+      sector: info.sector,
+      shader_id: info.shader_id as u32,
+      mesh: info.mesh,
+      place: instance,
+      is_impostor: false,
+      point,
+    }))
+  }
+
+  /// The draw arguments a forward pass replays: the early phase's, and the late phase's where occlusion culls.
+  fn list_args(&self) -> Vec<&wgpu::Buffer> {
+    if self.params.is_occluding != 0 {
+      vec![&self.scene.args, &self.scene.late]
+    } else {
+      vec![&self.scene.args]
+    }
   }
 
   /// Asks for the counts recorded with the frame just submitted.
@@ -984,7 +1071,7 @@ impl LevelView {
       bytes: self.scene.get_bytes(),
       textures: settled,
       textures_total: total,
-      is_ready: sectors == self.loader.get_total() && settled == total,
+      is_ready: sectors == self.loader.get_total() && self.spawn.is_done() && settled == total,
     };
 
     if self.reported == Some(report) {
@@ -994,5 +1081,15 @@ impl LevelView {
     self.reported = Some(report);
 
     Some(report)
+  }
+}
+
+/// The sway the shadows see this frame: the wind, the trees' reach, and where they stand.
+fn to_sway(scene: &StaticScene, (amplitude, time): (f32, f32)) -> ShadowSway<'_> {
+  ShadowSway {
+    amplitude,
+    reach: scene.get_sway_reach(),
+    time,
+    places: scene.list_swaying(),
   }
 }

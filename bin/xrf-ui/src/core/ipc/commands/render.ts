@@ -42,19 +42,30 @@ export const renderCommands = {
     __TAURI_INVOKE<Array<RenderSurfaceGeometry>>("plugin:render|measure_surfaces", { viewport }),
   /** Name what a viewport's level draws under a point, css pixels from its corner, or nothing. */
   pick: (viewport: RenderViewportId, x: number | null, y: number | null) =>
-    __TAURI_INVOKE<{
-      sector: number;
-      /** The shader table entry drawing it. */
-      shaderId: number;
-      /** The sector's instanced mesh it is one place of, or none for its baked geometry. */
-      mesh: number | null;
-      /** Which place of the mesh it is, or none for the baked geometry. */
-      place: number | null;
-      /** Whether it is a clump of trees drawn as its impostor. */
-      isImpostor: boolean;
-      /** Where the ray met it, in renderer space. */
-      point: [number | null, number | null, number | null];
-    } | null>("plugin:render|pick", { viewport, x, y }),
+    __TAURI_INVOKE<
+      /** A surface the level compiled. */
+      | {
+          kind: "surface";
+          sector: number;
+          /** The shader table entry drawing it. */
+          shaderId: number;
+          /** The sector's instanced mesh it is one place of, or none for its baked geometry. */
+          mesh: number | null;
+          /** Which place of the mesh it is, or none for the baked geometry. */
+          place: number | null;
+          /** Whether it is a clump of trees drawn as its impostor. */
+          isImpostor: boolean;
+          point: [number | null, number | null, number | null];
+        }
+      /** An object the level's spawn places. */
+      | {
+          kind: "spawn";
+          /** Its index among the level's spawned objects. */
+          object: number;
+          point: [number | null, number | null, number | null];
+        }
+      | null
+    >("plugin:render|pick", { viewport, x, y }),
   /** Play a weather in a viewport's level from now on: a cycle by name, a keyframe set by hand, or nothing. */
   playWeather: (viewport: RenderViewportId, play: RenderWeatherPlay, transition: ERenderWeatherTransition) =>
     __TAURI_INVOKE<void>("plugin:render|play_weather", { viewport, play, transition }),

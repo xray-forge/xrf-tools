@@ -5,8 +5,10 @@ use xrf_error::XrfResult;
 use crate::context::gpu_context::GpuContext;
 use crate::pass::ambient_occlusion_pass::AmbientOcclusionPass;
 use crate::pass::combine_pass::CombinePass;
+use crate::pass::composited_pass::CompositedPass;
 use crate::pass::depth_pyramid_pass::DepthPyramidPass;
 use crate::pass::exposure_pass::ExposurePass;
+use crate::pass::grass_pass::GrassPass;
 use crate::pass::grid_pass::GridPass;
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::lights_pass::LightsPass;
@@ -41,6 +43,8 @@ pub struct GpuState {
   pub sky: SkyBindings,
   pub sky_haze: SkyHazePass,
   pub water: WaterPass,
+  pub composited: CompositedPass,
+  pub grass: GrassPass,
   pub rain: RainPass,
   pub wet: WetPass,
   pub thunder: ThunderPass,
@@ -85,9 +89,19 @@ impl GpuState {
       static_gbuffer.get_layout(),
       textures.get_layout(),
     )?;
+    let composited: CompositedPass = CompositedPass::new(
+      device,
+      shaders,
+      &view_layout,
+      static_gbuffer.get_layout(),
+      textures.get_layout(),
+      sky.get_layout(),
+    )?;
 
     Ok(Self {
       water,
+      composited,
+      grass: GrassPass::new(device, shaders, &view_layout, textures.get_layout())?,
       rain: RainPass::new(device, shaders, &view_layout)?,
       wet: WetPass::new(device, shaders, &view_layout)?,
       thunder: ThunderPass::new(device, shaders, &view_layout)?,
@@ -146,6 +160,8 @@ impl GpuState {
       sky_haze: &self.sky_haze,
       sky: &self.sky,
       water: &self.water,
+      composited: &self.composited,
+      grass: &self.grass,
       rain: &self.rain,
       wet: &self.wet,
       thunder: &self.thunder,
@@ -173,6 +189,8 @@ impl GpuState {
     self.combine.refresh(device, shaders);
     self.sky_haze.refresh(device, shaders);
     self.water.refresh(device, shaders);
+    self.composited.refresh(device, shaders);
+    self.grass.refresh(device, shaders);
     self.rain.refresh(device, shaders);
     self.wet.refresh(device, shaders);
     self.thunder.refresh(device, shaders);
