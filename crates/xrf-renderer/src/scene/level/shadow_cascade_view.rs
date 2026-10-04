@@ -18,6 +18,8 @@ pub struct ShadowCascadeView {
   pub drawn: Option<(u64, usize)>,
   /// The sway's time its map was last drawn at.
   pub drawn_at: f32,
+  /// The fit its map was last drawn at, which a fit strayed too far from draws again whatever its stagger.
+  pub drawn_fit: SunCascade,
 }
 
 impl ShadowCascadeView {
@@ -36,6 +38,7 @@ impl ShadowCascadeView {
       draw_groups: None,
       drawn: None,
       drawn_at: 0.0,
+      drawn_fit: SunCascade::default(),
     }
   }
 }
