@@ -22,6 +22,7 @@ use crate::scene::level::grass_build::GrassBuild;
 use crate::scene::level::grass_build_size::GrassBuildSize;
 use crate::scene::level::grass_level::GrassLevel;
 use crate::scene::texture::texture_cache::TextureCache;
+use crate::thread::render_workers::RenderWorkers;
 
 /// Metres a detail slot spans, `dm_slot_size`.
 const SLOT_METERS: f32 = 2.0;
@@ -45,11 +46,11 @@ pub struct LevelGrass {
 }
 
 impl LevelGrass {
-  pub fn new(device: &wgpu::Device, source: &Arc<dyn RenderLevelSource>) -> Self {
+  pub fn new(device: &wgpu::Device, source: &Arc<dyn RenderLevelSource>, workers: &RenderWorkers) -> Self {
     let (sender, receiver) = channel();
     let source: Arc<dyn RenderLevelSource> = Arc::clone(source);
 
-    rayon::spawn(move || {
+    workers.spawn(move || {
       let read: XrfResult<Option<RenderLevelDetails>> = source.read_details();
 
       if let Err(error) = &read {

@@ -1,10 +1,9 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
-use xrf_renderer::{RenderLevelSource, RenderViewportId, Renderer};
+use xrf_renderer::{RenderLevelSource, RenderViewportId, RenderWorkers, Renderer};
 
 /// The application's one renderer, which starts a GPU only once a viewport is attached.
-#[derive(Default)]
 pub struct RenderState {
   pub renderer: Renderer,
   /// The latest show asked of each viewport, so one that took longer to prepare never replaces one asked after it.
@@ -12,6 +11,14 @@ pub struct RenderState {
 }
 
 impl RenderState {
+  /// A renderer whose loaders read and decode on `workers`.
+  pub fn new(workers: RenderWorkers) -> Self {
+    Self {
+      renderer: Renderer::new(workers),
+      shows: Mutex::default(),
+    }
+  }
+
   /// A ticket for what a viewport is asked to show next, which every earlier ticket of it gives way to.
   pub fn ask_show(&self, viewport: RenderViewportId) -> u64 {
     let mut shows: MutexGuard<'_, HashMap<RenderViewportId, u64>> = self.lock_shows();

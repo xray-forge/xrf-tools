@@ -28,21 +28,27 @@ use crate::host::render_window_host::RenderWindowHost;
 use crate::thread::render_command::RenderCommand;
 use crate::thread::render_link::RenderLink;
 use crate::thread::render_thread::RenderThread;
+use crate::thread::render_workers::RenderWorkers;
 use crate::viewport::pending_pick::PendingPick;
 
 /// The renderer as an application holds it: cheap to make, and touching no GPU until a viewport is attached.
 ///
 /// Every call is a message to the render thread, started by the first attach and stopped a few seconds after the
 /// last detach, so a tool that never draws never starts a GPU.
-#[derive(Default)]
 pub struct Renderer {
   link: Arc<Mutex<RenderLink>>,
   next_id: AtomicU32,
+  /// The pool every thread it starts reads and decodes on.
+  workers: RenderWorkers,
 }
 
 impl Renderer {
-  pub fn new() -> Self {
-    Self::default()
+  pub fn new(workers: RenderWorkers) -> Self {
+    Self {
+      link: Arc::default(),
+      next_id: AtomicU32::new(0),
+      workers,
+    }
   }
 
   /// Starts drawing a viewport into a window, answering the number every later call names it by.
@@ -219,10 +225,11 @@ impl Renderer {
     let (sender, receiver) = channel();
     let shared: Arc<Mutex<RenderLink>> = Arc::clone(&self.link);
     let settings: RenderSettings = link.settings;
+    let workers: RenderWorkers = self.workers.clone();
 
     if let Err(error) = std::thread::Builder::new()
       .name("xrf-render".into())
-      .spawn(move || RenderThread::new(receiver, shared, settings).run())
+      .spawn(move || RenderThread::new(receiver, shared, settings, workers).run())
     {
       log::error!("The render thread could not be started: {error}");
 

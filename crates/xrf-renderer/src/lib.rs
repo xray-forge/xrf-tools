@@ -112,4 +112,5 @@ pub use crate::host::render_weather_model::RenderWeatherModel;
 pub use crate::host::render_wet_surfaces::RenderWetSurfaces;
 pub use crate::host::render_window_host::RenderWindowHost;
 pub use crate::renderer::Renderer;
+pub use crate::thread::render_workers::RenderWorkers;
 pub use raw_window_handle;

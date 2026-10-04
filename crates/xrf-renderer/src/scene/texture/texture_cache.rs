@@ -8,6 +8,7 @@ use crate::contract::render_texture_state::RenderTextureState;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::scene::texture::decoded_texture::DecodedTexture;
 use crate::scene::texture::texture_role::TextureRole;
+use crate::thread::render_workers::RenderWorkers;
 
 /// The slot a surface binds where it names no texture of a kind: mid grey, never sampled by a surface without one.
 pub const MISSING_SLOT: u32 = 0;
@@ -68,10 +69,11 @@ pub struct TextureCache {
   environments: Vec<String>,
   /// Counts every change of `environments`, so a view knows to bind them again.
   environments_generation: u64,
+  workers: RenderWorkers,
 }
 
 impl TextureCache {
-  pub fn new(device: &wgpu::Device, queue: &wgpu::Queue) -> Self {
+  pub fn new(device: &wgpu::Device, queue: &wgpu::Queue, workers: &RenderWorkers) -> Self {
     // The environment cubes a composited draw binds beside the array share the stage's budget.
     let capacity: u32 = device
       .limits()
@@ -143,6 +145,7 @@ impl TextureCache {
       is_dirty: false,
       environments: Vec::new(),
       environments_generation: 0,
+      workers: workers.clone(),
     }
   }
 
@@ -206,7 +209,7 @@ impl TextureCache {
     let generation: u32 = self.generations[slot as usize];
     let (sender, source, reference) = (self.sender.clone(), Arc::clone(source), reference.to_string());
 
-    rayon::spawn(move || {
+    self.workers.spawn(move || {
       let load: Result<Option<DecodedTexture>, String> = source
         .read_texture(&reference)
         .and_then(|bytes| bytes.map(|bytes| DecodedTexture::from_dds(&bytes)).transpose())

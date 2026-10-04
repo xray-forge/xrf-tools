@@ -18,7 +18,24 @@ use crate::plugins::registry::domain_plugins;
 pub fn run() {
   log::info!("Starting application");
 
+  // One pool for the process, managed before any plugin's setup, since the renderer's loaders run on it too.
+  let execution: ExecutionState = match ExecutionState::new(ExecutionRequest::Auto) {
+    Ok(execution) => execution,
+    Err(error) => {
+      log::error!("Cannot start the application's worker pool: {error}");
+
+      return;
+    }
+  };
+
+  log::info!(
+    "Execution: {} worker(s) ({})",
+    execution.get_plan().get_workers(),
+    execution.get_plan().get_origin().as_str()
+  );
+
   let builder: Builder<Wry> = Builder::default()
+    .manage(execution)
     .plugin(tauri_plugin_fs::init())
     .plugin(tauri_plugin_dialog::init())
     .plugin(tauri_plugin_shell::init())
@@ -48,17 +65,6 @@ fn manage_shared_state(application: &mut App) -> Result<(), Box<dyn Error>> {
   application.manage(WindowHandles::default());
 
   application.manage(Arc::new(JobRegistry::new()).start_reporting());
-
-  // One pool for the process.
-  let execution: ExecutionState = ExecutionState::new(ExecutionRequest::Auto)?;
-
-  log::info!(
-    "Execution: {} worker(s) ({})",
-    execution.get_plan().get_workers(),
-    execution.get_plan().get_origin().as_str()
-  );
-
-  application.manage(execution);
 
   Ok(())
 }

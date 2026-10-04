@@ -26,6 +26,7 @@ use crate::scene::level::shadow_frame::ShadowFrame;
 use crate::scene::level::shadow_sway::ShadowSway;
 use crate::scene::texture::texture_cache::{MISSING_SLOT, TextureCache};
 use crate::scene::texture::texture_role::TextureRole;
+use crate::thread::render_workers::RenderWorkers;
 
 /// Lights standing in view at most in one frame: the nearest are kept.
 pub const MAX_LIGHTS: usize = 1024;
@@ -68,6 +69,7 @@ impl LevelLights {
     view_layout: &wgpu::BindGroupLayout,
     args_size: u64,
     source: &Arc<dyn RenderLevelSource>,
+    workers: &RenderWorkers,
   ) -> Self {
     let (sender, receiver) = channel();
     let source: Arc<dyn RenderLevelSource> = Arc::clone(source);
@@ -80,7 +82,7 @@ impl LevelLights {
       })
     };
 
-    rayon::spawn(move || {
+    workers.spawn(move || {
       let lights: Result<LightsDescription, String> = source.read_lights().map_err(|error| error.to_string());
 
       if let Err(error) = &lights {

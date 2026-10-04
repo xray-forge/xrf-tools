@@ -9,6 +9,7 @@ use crate::contract::render_weather_transition::RenderWeatherTransition;
 use crate::host::render_level_source::RenderLevelSource;
 use crate::host::render_level_weather::RenderLevelWeather;
 use crate::lighting::render_lighting::RenderLighting;
+use crate::thread::render_workers::RenderWorkers;
 use crate::weather::played_weather::PlayedWeather;
 use crate::weather::weather_load::WeatherLoad;
 use crate::weather::weather_player::WeatherPlayer;
@@ -34,10 +35,11 @@ pub struct ViewportWeather {
   lighting: RenderLighting,
   sent_report: Option<Option<RenderWeatherReport>>,
   report_due: Instant,
+  workers: RenderWorkers,
 }
 
 impl ViewportWeather {
-  pub fn new(now: Instant) -> Self {
+  pub fn new(now: Instant, workers: &RenderWorkers) -> Self {
     let (sender, receiver) = channel();
 
     Self {
@@ -52,6 +54,7 @@ impl ViewportWeather {
       lighting: RenderLighting::default(),
       sent_report: None,
       report_due: now,
+      workers: workers.clone(),
     }
   }
 
@@ -82,7 +85,7 @@ impl ViewportWeather {
     };
     let (sender, source, level) = (self.sender.clone(), Arc::clone(source), self.level_generation);
 
-    rayon::spawn(move || {
+    self.workers.spawn(move || {
       let read = source.read_weather().map(Arc::new);
 
       if let Err(error) = &read {
@@ -194,7 +197,7 @@ impl ViewportWeather {
         let (sender, source, name, transition) = (self.sender.clone(), Arc::clone(source), name.clone(), *transition);
         let (level, request) = (self.level_generation, self.request_generation);
 
-        rayon::spawn(move || {
+        self.workers.spawn(move || {
           let read = source.read_weather_cycle(&name);
 
           let _ = sender.send(WeatherLoad::Cycle {

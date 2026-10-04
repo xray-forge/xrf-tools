@@ -37,6 +37,7 @@ use crate::pass::wet_pass::WetPass;
 use crate::scene::texture::texture_cache::TextureCache;
 use crate::scene::texture::weather_texture_cache::WeatherTextureCache;
 use crate::shader::shader_library::ShaderLibrary;
+use crate::thread::render_workers::RenderWorkers;
 use crate::window::render_window::RenderWindow;
 
 /// Everything made on the GPU, which goes as a whole when the GPU stops or is lost.
@@ -86,10 +87,10 @@ impl GpuState {
   /// # Errors
   ///
   /// Returns an error when a pass's shaders do not compose or compile.
-  pub fn new(context: GpuContext, shaders: &ShaderLibrary) -> XrfResult<Self> {
+  pub fn new(context: GpuContext, shaders: &ShaderLibrary, workers: &RenderWorkers) -> XrfResult<Self> {
     let device: &wgpu::Device = &context.device;
     let view_layout: wgpu::BindGroupLayout = ViewBinding::create_layout(device);
-    let textures: TextureCache = TextureCache::new(device, &context.queue);
+    let textures: TextureCache = TextureCache::new(device, &context.queue, workers);
     let sky: SkyBindings = SkyBindings::new(device);
     let static_gbuffer: StaticGBufferPass =
       StaticGBufferPass::new(device, shaders, &view_layout, textures.get_layout())?;
@@ -140,7 +141,7 @@ impl GpuState {
       lights: LightsPass::new(device, shaders, &view_layout, textures.get_layout())?,
       combine: CombinePass::new(device, shaders, &view_layout, sky.get_layout())?,
       sky_haze: SkyHazePass::new(device, shaders, sky.get_layout())?,
-      weather_textures: WeatherTextureCache::new(device, &context.queue),
+      weather_textures: WeatherTextureCache::new(device, &context.queue, workers),
       sky,
       exposure: ExposurePass::new(device, shaders)?,
       present: PresentPass::new(device, shaders, &view_layout),

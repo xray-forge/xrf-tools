@@ -1,6 +1,8 @@
 use tauri::plugin::{Builder, TauriPlugin};
 use tauri::{Manager, Runtime};
+use xrf_renderer::RenderWorkers;
 
+use crate::core::execution::ExecutionState;
 use crate::plugins::render::state::RenderState;
 
 pub struct RenderPlugin {}
@@ -13,7 +15,10 @@ impl RenderPlugin {
 
     Builder::new(Self::NAME)
       .setup(|application, _| {
-        application.manage(RenderState::default());
+        // The renderer's loaders run on the application's one pool, beside every other job.
+        let workers: RenderWorkers = RenderWorkers::new(application.state::<ExecutionState>().get_pool());
+
+        application.manage(RenderState::new(workers));
 
         Ok(())
       })
