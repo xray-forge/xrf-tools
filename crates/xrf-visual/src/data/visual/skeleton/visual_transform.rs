@@ -23,6 +23,20 @@ impl VisualTransform {
     BindTransform::from_angle(angle, position).to_renderer_space()
   }
 
+  /// The same transform mirrored through `z`, which takes it between renderer and engine space either way.
+  pub fn mirrored(&self) -> Self {
+    BindTransform::from_renderer_space(self).mirrored().to_visual()
+  }
+
+  /// Its basis and translation as a matrix's sixteen floats, column by column.
+  pub fn to_matrix(&self) -> [f32; 16] {
+    let Self { i, j, k, c } = self;
+
+    [
+      i.x, i.y, i.z, 0.0, j.x, j.y, j.z, 0.0, k.x, k.y, k.z, 0.0, c.x, c.y, c.z, 1.0,
+    ]
+  }
+
   /// A transform out of its twelve floats, basis then translation, as a baked motion's frame holds one.
   pub fn from_floats(floats: &[f32; Self::FLOATS]) -> Self {
     Self {

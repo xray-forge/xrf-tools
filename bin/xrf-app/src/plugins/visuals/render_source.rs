@@ -5,8 +5,9 @@ use xrf_environment::WeatherDescriptor;
 use xrf_error::{XrfError, XrfResult};
 use xrf_material::{XraySurfaceDescriptor, XrayTextureScope};
 use xrf_renderer::{
-  RenderAssetSource, RenderLevelDetails, RenderLevelSource, RenderLevelSpawn, RenderLevelWeather, RenderModelSkeleton,
-  RenderMotion, RenderSpawnCategory, RenderSpawnLighting, RenderSpawnModel, RenderSpawnModels, RenderSpawnObject,
+  RenderAssetSource, RenderLevelDetails, RenderLevelParticles, RenderLevelSource, RenderLevelSpawn, RenderLevelWeather,
+  RenderModelSkeleton, RenderMotion, RenderSpawnCategory, RenderSpawnLighting, RenderSpawnModel, RenderSpawnModels,
+  RenderSpawnObject,
 };
 use xrf_visual::{
   FLOATS_PER_BONE, LightsDescription, SectorPackage, VisualDescription, VisualMotionPose, VisualPackage, VisualPoser,
@@ -166,6 +167,10 @@ impl RenderLevelSource for VisualRenderSource {
   }
 
   fn read_details(&self) -> XrfResult<Option<RenderLevelDetails>> {
+    Ok(None)
+  }
+
+  fn read_particles(&self) -> XrfResult<Option<RenderLevelParticles>> {
     Ok(None)
   }
 

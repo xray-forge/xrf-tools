@@ -17,6 +17,7 @@ tauri-build = { version = "2.6.3", features = [
 bytes = { workspace = true }
 env_logger = { workspace = true }
 getrandom = { workspace = true }
+glam = { workspace = true }
 http-body-util = { workspace = true }
 hyper = { workspace = true }
 hyper-util = { workspace = true }

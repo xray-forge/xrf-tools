@@ -16,14 +16,16 @@ export type TNativeViewShading = TSettled<
 >;
 
 /**
- * What a view switches of a scene: the weather, the grass, the water, the wall marks and the spawned objects' groups;
- * and how its sunshafts step.
+ * What a view switches of a scene: the weather, the grass, the water, the wall marks, the particles, the campfires and
+ * the spawned objects' groups; and how its sunshafts step.
  */
 export interface INativeViewSwitches extends Pick<
   RenderViewOptions,
   | "isClouded"
   | "isFogged"
   | "isLensFlared"
+  | "isCampfireLit"
+  | "isParticled"
   | "isRainy"
   | "isSkyHazed"
   | "isSkyVisible"
@@ -49,10 +51,12 @@ export type TNativeLook = TSettled<Pick<RenderViewOptions, "corrections" | "expo
 
 /** Nothing switched on: what an asset viewer's scene of one model has none of. */
 export const NO_NATIVE_VIEW_SWITCHES: INativeViewSwitches = {
+  isCampfireLit: true,
   isClouded: false,
   isFogged: false,
   isGrassy: false,
   isLensFlared: false,
+  isParticled: false,
   isRainy: false,
   isSkyHazed: false,
   isSkyVisible: false,
@@ -113,10 +117,12 @@ export function toNativeViewOptions(
     exposure: look.exposure,
     grass: { ...grass, isEnabled: grass.isEnabled && switches.isGrassy },
     isAlphaVisible: true,
+    isCampfireLit: switches.isCampfireLit,
     isClouded: switches.isClouded,
     isFogged: switches.isFogged,
     isLensFlared: switches.isLensFlared,
     isOcclusionCulled: features.isOcclusionCulled,
+    isParticled: switches.isParticled,
     isRainy: switches.isRainy,
     isSkyHazed: switches.isSkyHazed,
     isSkyVisible: switches.isSkyVisible,

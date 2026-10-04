@@ -74,6 +74,10 @@ pub struct RenderViewOptions {
   pub is_windy: bool,
   /// Whether the level's wall marks are laid over its surfaces.
   pub is_wallmarked: bool,
+  /// Whether the level's particle systems play and draw.
+  pub is_particled: bool,
+  /// Whether its campfires burn, as `CZoneCampfire` starts, rather than smoulder out.
+  pub is_campfire_lit: bool,
   /// Which groups of the level's spawned objects are drawn.
   pub is_spawned_props: bool,
   pub is_spawned_items: bool,
@@ -129,6 +133,8 @@ impl Default for RenderViewOptions {
       is_thundering: true,
       is_windy: true,
       is_wallmarked: true,
+      is_particled: true,
+      is_campfire_lit: true,
       is_spawned_props: true,
       is_spawned_items: true,
       is_spawned_weapons: true,

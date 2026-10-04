@@ -25,6 +25,7 @@ xrf-environment = { workspace = true }
 xrf-error = { workspace = true }
 xrf-material = { workspace = true }
 xrf-math = { workspace = true }
+xrf-particles = { workspace = true }
 xrf-visual = { workspace = true }
 
 [dev-dependencies]

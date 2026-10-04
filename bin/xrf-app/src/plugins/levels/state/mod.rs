@@ -45,6 +45,9 @@ pub const DETAILS_FILE: &str = "level.details";
 /// The collision form, which the grass is planted onto and which says whether a start is under the open sky.
 pub const COLLISION_FILE: &str = "level.cform";
 
+/// The particle systems the level plants and where, `CLevel::Load_GameSpecific_After`.
+pub const PS_STATIC_FILE: &str = "level.ps_static";
+
 /// The compiled lights, whose point lights light the level's dynamic objects (`CLight_DB::LoadHemi`).
 pub const LIGHTS_FILE: &str = "build.lights";
 

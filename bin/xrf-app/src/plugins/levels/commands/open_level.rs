@@ -74,6 +74,7 @@ pub async fn levels_open_level(
   let selected: Arc<SessionSnapshot<SelectedLevel>> = state.selected.commit_open(
     session_id,
     SelectedLevel {
+      collision: OnceLock::new(),
       dialect: select_ltx_dialect(is_dltx),
       engine,
       environment: OnceLock::new(),

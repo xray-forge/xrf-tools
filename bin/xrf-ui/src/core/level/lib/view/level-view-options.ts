@@ -47,6 +47,10 @@ export interface ILevelViewOptions extends ILevelSurfaceOptions {
   isLamplit: boolean;
   /** Draws the water, while the settings draw it. */
   isWaterVisible: boolean;
+  /** Plays and draws the particle systems the level plants and its zones play. */
+  isParticled: boolean;
+  /** Burns the campfires, as the engine starts them, rather than leaving them to smoulder out. */
+  isCampfireLit: boolean;
   /** Draws the spawned physics objects, breakables, boxes and vehicles. */
   isSpawnedProps: boolean;
   /** Draws the spawned items but weapons. */
@@ -66,6 +70,7 @@ export const DEFAULT_LEVEL_VIEW_OPTIONS: ILevelViewOptions = {
   ...DEFAULT_LEVEL_SURFACE_OPTIONS,
   isAntialiased: true,
   isAxesVisible: false,
+  isCampfireLit: true,
   isClouded: true,
   isFogged: true,
   isGrassy: true,
@@ -75,6 +80,7 @@ export const DEFAULT_LEVEL_VIEW_OPTIONS: ILevelViewOptions = {
   isLensFlared: true,
   isOccluded: true,
   isOcclusionCulled: true,
+  isParticled: true,
   isRainy: true,
   isShadowed: true,
   isSkyHazed: true,

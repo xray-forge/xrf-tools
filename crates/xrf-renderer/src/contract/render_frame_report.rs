@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::contract::render_lights_report::RenderLightsReport;
 use crate::contract::render_memory_report::RenderMemoryReport;
+use crate::contract::render_particles_report::RenderParticlesReport;
 use crate::contract::render_pass_cost::RenderPassCost;
 use crate::contract::render_static_report::RenderStaticReport;
 
@@ -38,6 +39,8 @@ pub struct RenderFrameReport {
   pub static_draws: RenderStaticReport,
   /// The level's local lights, empty without a level.
   pub lights: RenderLightsReport,
+  /// The level's particle systems, empty without a level.
+  pub particles: RenderParticlesReport,
   /// Milliseconds the last sector taken in took to put into the scene, on the render thread.
   pub sector_time: f32,
   /// What the renderer holds on the GPU.
