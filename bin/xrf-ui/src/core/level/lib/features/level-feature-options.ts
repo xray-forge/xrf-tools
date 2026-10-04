@@ -53,7 +53,19 @@ const LEVEL_FEATURE_KEYS: {
   grass: ["density", "height", "radius"],
   lights: ["isLevelLights", "isShadowed", "shadowFilter"],
   shadows: ["bias", "blend", "cascades", "filter", "resolution"],
-  water: ["distortion", "isDistorted", "isSoft", "reflection", "ripple", "waveHeight", "waveSpeed"],
+  water: [
+    "distortion",
+    "isDistorted",
+    "isSoft",
+    "mode",
+    "reflection",
+    "refraction",
+    "ripple",
+    "softBorder",
+    "turbidity",
+    "waveHeight",
+    "waveSpeed",
+  ],
 };
 
 /**

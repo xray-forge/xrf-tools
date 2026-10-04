@@ -13,6 +13,11 @@ pub struct WaterUniform {
   pub soft: f32,
   /// One while the water writes the distortion it causes.
   pub distorted: f32,
+  /// The enhanced water's refraction, turbidity and soft border.
+  pub refraction: f32,
+  pub turbidity: f32,
+  pub soft_border: f32,
+  pub pad: f32,
 }
 
 impl WaterUniform {
@@ -26,6 +31,10 @@ impl WaterUniform {
       intensity,
       soft: settings.is_soft as u32 as f32,
       distorted: settings.is_distorted as u32 as f32,
+      refraction: settings.refraction,
+      turbidity: settings.turbidity,
+      soft_border: settings.soft_border,
+      pad: 0.0,
     }
   }
 }

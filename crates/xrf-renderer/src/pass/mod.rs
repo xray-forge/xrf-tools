@@ -64,6 +64,7 @@ pub(crate) mod upscale_pass;
 pub(crate) mod upscale_uniform;
 pub(crate) mod view_binding;
 pub(crate) mod view_light_groups;
+pub(crate) mod water_batch_pipelines;
 pub(crate) mod water_groups;
 pub(crate) mod water_pass;
 pub(crate) mod water_uniform;

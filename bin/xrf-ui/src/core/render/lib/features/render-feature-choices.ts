@@ -173,7 +173,10 @@ export function formatLowLuminance(luminance: number): string {
 export const RENDER_WATER_LIMITS = {
   distortion: toRenderLimits(RENDER_FEATURE_SCHEMA.water.distortion, 0.005),
   reflection: toRenderLimits(RENDER_FEATURE_SCHEMA.water.reflection, 0.05),
+  refraction: toRenderLimits(RENDER_FEATURE_SCHEMA.water.refraction, 0.05),
   ripple: toRenderLimits(RENDER_FEATURE_SCHEMA.water.ripple, 0.05),
+  softBorder: toRenderLimits(RENDER_FEATURE_SCHEMA.water.softBorder, 0.05),
+  turbidity: toRenderLimits(RENDER_FEATURE_SCHEMA.water.turbidity, 0.1),
   waveHeight: toRenderLimits(RENDER_FEATURE_SCHEMA.water.waveHeight, 0.001),
   waveSpeed: toRenderLimits(RENDER_FEATURE_SCHEMA.water.waveSpeed, 1),
 } as const;
@@ -191,6 +194,16 @@ export function formatWaveSpeed(speed: number): string {
 /** @returns A multiple of the engine's own value. */
 export function formatWaterMultiple(multiple: number): string {
   return `${formatNumber(multiple, 2)}×`;
+}
+
+/** @returns One of the enhanced water's strengths, as Screen Space Shaders sets them. */
+export function formatWaterStrength(strength: number): string {
+  return formatNumber(strength, 2);
+}
+
+/** @returns The depth the enhanced water's edge fades over. */
+export function formatWaterBorder(depth: number): string {
+  return `${formatNumber(depth, 2)} m`;
 }
 
 /** @returns How far the distortion moves what is behind the water and distorting particles, a share of the screen. */

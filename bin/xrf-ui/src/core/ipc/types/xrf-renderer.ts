@@ -1014,6 +1014,17 @@ export type RenderViewportLayout = {
   backdrop: RenderPageBackdrop;
 };
 
+/** Which water a viewport draws. */
+export enum ERenderWaterMode {
+  /** The engine's own: `water.ps` and `waterd.ps`, reflecting the sky over the base. */
+  ENGINE = "engine",
+  /** Screen Space Shaders' water (Ascii1457): what lies under it refracted, clouded with depth, and bordered softly. */
+  ENHANCED = "enhanced",
+}
+
+/** Every `ERenderWaterMode` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type RenderWaterMode = `${ERenderWaterMode}`;
+
 /**
  * The water (`water.vs`, `water.ps`, `waterd.ps`): rippled and reflecting the sky, blended over the depth behind it
  * and distorting it. The engine's own look by default: its constants are `shared/waterconfig.h`'s and `def_distort`.
@@ -1021,6 +1032,8 @@ export type RenderViewportLayout = {
 export type RenderWaterSettings = {
   /** Off, what lies under the water shows. */
   isEnabled: boolean;
+  /** The engine's water, or Screen Space Shaders' water, which the strengths below the distortion's shape. */
+  mode: RenderWaterMode;
   /** `r2_soft_water`: soft water fades by the depth behind it, darkens with it and lays foam in the shallows. */
   isSoft: boolean;
   /** Whether water writes the distortion it causes, moving what is seen through it. */
@@ -1038,6 +1051,12 @@ export type RenderWaterSettings = {
    * the distorting particles write as well.
    */
   distortion: number | null;
+  /** The enhanced water's refraction: how far its waves move what lies under it, `ssfx_water_setup1.x`. */
+  refraction: number | null;
+  /** How deep the enhanced water clears before it clouds into its colour, `ssfx_water_setup1.y`. */
+  turbidity: number | null;
+  /** Metres of depth over which the enhanced water's edge fades into what lies under it, `ssfx_water_setup1.z`. */
+  softBorder: number | null;
 };
 
 /** How a viewport's weather clock runs. */

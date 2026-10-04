@@ -1,11 +1,13 @@
 use xrf_error::XrfResult;
 
+use crate::contract::render_water_mode::RenderWaterMode;
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::fullscreen_pipeline::{buffer_binding, texture_binding};
 use crate::pass::layout_entries::{texture_entry, uniform_entry};
 use crate::pass::shader_pipelines::{create_checked, create_module};
 use crate::pass::static_draw_groups::StaticDrawGroups;
 use crate::pass::view_binding::ViewBinding;
+use crate::pass::water_batch_pipelines::WaterBatchPipelines;
 use crate::pass::water_groups::WaterGroups;
 use crate::scene::static_scene::static_batch::StaticBatch;
 use crate::shader::shader_library::ShaderLibrary;
@@ -13,13 +15,15 @@ use crate::shader::shader_library::ShaderLibrary;
 /// Draws a viewport's visible water over its lit scene, tested against the G-buffer's depth without writing it, and the
 /// distortion each surface causes into the distortion target while the water distorts. Only the water nearest along
 /// each pixel draws: a depth pass writes it first, as the engine's water, drawn in its index order, lets a fold of its
-/// surface draw over a nearer one.
+/// surface draw over a nearer one. The enhanced water reads the scene as it stood before the water, which it refracts.
 pub struct WaterPass {
   layout: wgpu::BindGroupLayout,
   depth_layout: wgpu::BindGroupLayout,
   layouts: [wgpu::BindGroupLayout; 3],
-  /// One a water batch, in `StaticBatch::list_water` order, each a depth pipeline and a surface pipeline.
-  pipelines: Vec<(wgpu::RenderPipeline, wgpu::RenderPipeline)>,
+  /// One a water batch, in `StaticBatch::list_water` order.
+  pipelines: Vec<WaterBatchPipelines>,
+  /// What the engine's water binds for the scene it does not read.
+  no_scene: wgpu::TextureView,
   generation: u64,
 }
 
@@ -60,6 +64,7 @@ impl WaterPass {
           count: None,
         },
         depth(6),
+        texture_entry(7, fragment, filtered, wgpu::TextureViewDimension::D2),
       ],
     });
     let depth_layout: wgpu::BindGroupLayout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -68,8 +73,26 @@ impl WaterPass {
     });
     let layouts: [wgpu::BindGroupLayout; 3] = [view_layout.clone(), scene_layout.clone(), texture_layout.clone()];
 
+    let no_scene: wgpu::TextureView = device
+      .create_texture(&wgpu::TextureDescriptor {
+        label: Some("water no scene"),
+        size: wgpu::Extent3d {
+          width: 1,
+          height: 1,
+          depth_or_array_layers: 1,
+        },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: ViewTargets::SCENE,
+        usage: wgpu::TextureUsages::TEXTURE_BINDING,
+        view_formats: &[],
+      })
+      .create_view(&Default::default());
+
     Ok(Self {
       pipelines: Self::create_pipelines(device, shaders, &layouts, (&layout, &depth_layout))?,
+      no_scene,
       layouts,
       generation: shaders.get_generation(),
       layout,
@@ -88,8 +111,9 @@ impl WaterPass {
     }
   }
 
-  /// Binds what the water reads of its frame: the lighting, its own uniform, the G-buffer's depth, both skies and the
-  /// nearest water's depth for its surface, and its uniform alone for its depth.
+  /// Binds what the water reads of its frame: the lighting, its own uniform, the G-buffer's depth, both skies, the
+  /// nearest water's depth and, for the enhanced water, the scene before it for its surface; its uniform alone for its
+  /// depth.
   #[allow(clippy::too_many_arguments)]
   pub fn create_bind_groups(
     &self,
@@ -99,6 +123,7 @@ impl WaterPass {
     water: &wgpu::Buffer,
     skies: [&wgpu::TextureView; 2],
     sampler: &wgpu::Sampler,
+    scene: Option<&wgpu::TextureView>,
   ) -> WaterGroups {
     WaterGroups {
       surface: device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -115,6 +140,7 @@ impl WaterPass {
             resource: wgpu::BindingResource::Sampler(sampler),
           },
           texture_binding(6, &targets.water_depth),
+          texture_binding(7, scene.unwrap_or(&self.no_scene)),
         ],
       }),
       depth: device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -125,7 +151,7 @@ impl WaterPass {
     }
   }
 
-  /// Draws the water each argument buffer lists: the nearest surface's depth, then that surface.
+  /// Draws the water each argument buffer lists: the nearest surface's depth, then that surface as the mode draws it.
   #[allow(clippy::too_many_arguments)]
   pub fn draw(
     &self,
@@ -134,7 +160,7 @@ impl WaterPass {
     view: &ViewBinding,
     bind_groups: &StaticDrawGroups,
     textures: &wgpu::BindGroup,
-    groups: &WaterGroups,
+    (groups, mode): (&WaterGroups, RenderWaterMode),
     args: &[&wgpu::Buffer],
   ) {
     {
@@ -153,7 +179,9 @@ impl WaterPass {
         ..Default::default()
       });
 
-      self.record(&mut pass, (view, bind_groups, textures, &groups.depth), args, true);
+      self.record(&mut pass, (view, bind_groups, textures, &groups.depth), args, |it| {
+        &it.depth
+      });
     }
 
     let mut pass: wgpu::RenderPass<'_> = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -187,7 +215,15 @@ impl WaterPass {
       ..Default::default()
     });
 
-    self.record(&mut pass, (view, bind_groups, textures, &groups.surface), args, false);
+    self.record(
+      &mut pass,
+      (view, bind_groups, textures, &groups.surface),
+      args,
+      |it| match mode {
+        RenderWaterMode::Engine => &it.engine,
+        RenderWaterMode::Enhanced => &it.enhanced,
+      },
+    );
   }
 
   fn record(
@@ -195,14 +231,14 @@ impl WaterPass {
     pass: &mut wgpu::RenderPass<'_>,
     (view, bind_groups, textures, water_group): (&ViewBinding, &StaticDrawGroups, &wgpu::BindGroup, &wgpu::BindGroup),
     args: &[&wgpu::Buffer],
-    is_depth: bool,
+    pick: impl Fn(&WaterBatchPipelines) -> &wgpu::RenderPipeline,
   ) {
     pass.set_bind_group(0, &view.bind_group, &[]);
     pass.set_bind_group(2, textures, &[]);
     pass.set_bind_group(3, water_group, &[]);
 
-    for (batch, (depth, surface)) in StaticBatch::list_water().zip(&self.pipelines) {
-      pass.set_pipeline(if is_depth { depth } else { surface });
+    for (batch, pipelines) in StaticBatch::list_water().zip(&self.pipelines) {
+      pass.set_pipeline(pick(pipelines));
       pass.set_bind_group(1, &bind_groups.layouts[batch.layout.get_index()], &[]);
 
       for args in args {
@@ -216,7 +252,7 @@ impl WaterPass {
     shaders: &ShaderLibrary,
     [view_layout, scene_layout, texture_layout]: &[wgpu::BindGroupLayout; 3],
     (layout, depth_layout): (&wgpu::BindGroupLayout, &wgpu::BindGroupLayout),
-  ) -> XrfResult<Vec<(wgpu::RenderPipeline, wgpu::RenderPipeline)>> {
+  ) -> XrfResult<Vec<WaterBatchPipelines>> {
     let module: wgpu::ShaderModule = create_module(device, shaders, "static/water")?;
     let create_layout = |label: &str, water: &wgpu::BindGroupLayout| {
       device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -269,26 +305,32 @@ impl WaterPass {
             cache: None,
           })
         })?;
-        let surface: wgpu::RenderPipeline = create_checked(device, "water", || {
-          device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("water"),
-            layout: Some(&pipeline_layout),
-            vertex: vertex.clone(),
-            fragment: Some(wgpu::FragmentState {
-              module: &module,
-              entry_point: Some("fs_water"),
-              compilation_options: Default::default(),
-              targets: &targets,
-            }),
-            primitive,
-            depth_stencil: Some(depth_state(false)),
-            multisample: Default::default(),
-            multiview_mask: None,
-            cache: None,
+        let surface = |entry: &str| {
+          create_checked(device, "water", || {
+            device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+              label: Some("water"),
+              layout: Some(&pipeline_layout),
+              vertex: vertex.clone(),
+              fragment: Some(wgpu::FragmentState {
+                module: &module,
+                entry_point: Some(entry),
+                compilation_options: Default::default(),
+                targets: &targets,
+              }),
+              primitive,
+              depth_stencil: Some(depth_state(false)),
+              multisample: Default::default(),
+              multiview_mask: None,
+              cache: None,
+            })
           })
-        })?;
+        };
 
-        Ok((depth, surface))
+        Ok(WaterBatchPipelines {
+          depth,
+          engine: surface("fs_water")?,
+          enhanced: surface("fs_water_enhanced")?,
+        })
       })
       .collect()
   }

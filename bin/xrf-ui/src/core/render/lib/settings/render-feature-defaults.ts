@@ -1,4 +1,9 @@
-import { ERenderAmbientOcclusionQuality, ERenderLightShadowFilter, ERenderScale } from "@/core/ipc/types/xrf-renderer";
+import {
+  ERenderAmbientOcclusionQuality,
+  ERenderLightShadowFilter,
+  ERenderScale,
+  ERenderWaterMode,
+} from "@/core/ipc/types/xrf-renderer";
 import {
   TRenderAmbientOcclusionSettings,
   TRenderExposureSettings,
@@ -78,14 +83,21 @@ export const DEFAULT_RENDER_UPSCALING_SETTINGS: TRenderUpscalingSettings = {
   sharpening: 0.5,
 };
 
-/** The engine's own water: `shared/waterconfig.h`'s constants and `def_distort`. */
+/**
+ * The engine's own water: `shared/waterconfig.h`'s constants and `def_distort`, and the enhanced water's strengths at
+ * Screen Space Shaders' own defaults (`ssfx_water_setup1`).
+ */
 export const DEFAULT_RENDER_WATER_SETTINGS: TRenderWaterSettings = {
   distortion: 0.05,
   isDistorted: true,
   isEnabled: true,
   isSoft: true,
+  mode: ERenderWaterMode.ENGINE,
   reflection: 1,
+  refraction: 0.6,
   ripple: 1,
+  softBorder: 0.3,
+  turbidity: 3,
   waveHeight: 1 / 60,
   waveSpeed: 25,
 };

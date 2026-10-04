@@ -2,23 +2,33 @@ import { default as WaterIcon } from "@mui/icons-material/Water";
 import { Button } from "@mui/material";
 import { ReactElement } from "react";
 
+import { ERenderWaterMode, RenderWaterMode } from "@/core/ipc/types/xrf-renderer";
 import { ILevelFeatureActionProps } from "@/core/level/components/preview/level-feature-action-props";
 import { useLevelFeatureOverride } from "@/core/level/components/preview/use-level-feature-override";
 import { LevelManualWeatherSlider } from "@/core/level/components/weather/LevelManualWeatherSlider";
 import { describeLevelFeatureToggle } from "@/core/level/lib/features";
 import { ILevelManualWeather } from "@/core/level/lib/weather/level-manual-weather";
+import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 import {
+  formatWaterBorder,
   formatWaterDistortion,
   formatWaterMultiple,
+  formatWaterStrength,
   formatWaveHeight,
   formatWaveSpeed,
+  IRenderChoiceOption,
   RENDER_WATER_LIMITS,
 } from "@/core/render/lib/features";
 import { TRenderWaterSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { EditorPopoverToggle } from "@/core/shell/editor/EditorPopoverToggle";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { formatPercent } from "@/lib/format/number";
+
+const MODE_OPTIONS: ReadonlyArray<IRenderChoiceOption<RenderWaterMode>> = [
+  { label: "Engine", value: ERenderWaterMode.ENGINE },
+  { label: "Enhanced", value: ERenderWaterMode.ENHANCED },
+];
 
 interface ILevelWaterActionProps extends ILevelFeatureActionProps<"water"> {
   /** The keyframe on screen, whose `water_intensity` scales what the water reflects. */
@@ -28,7 +38,7 @@ interface ILevelWaterActionProps extends ILevelFeatureActionProps<"water"> {
 
 /**
  * Whether this view draws the water, how strongly the weather has it reflect, and how it moves, reflects and
- * distorts: the engine's own by default.
+ * distorts: the engine's own, or Screen Space Shaders' refracting what lies under it.
  */
 export function LevelWaterAction({
   "data-testid": dataTestId = "level-water-action",
@@ -56,7 +66,10 @@ export function LevelWaterAction({
         isOn,
         label: "Water",
         off: "Water off, what lies under it showing",
-        on: `Water reflecting the sky${water.isSoft ? ", soft" : ""}${water.isDistorted ? ", distorting" : ""}`,
+        on:
+          water.mode === ERenderWaterMode.ENHANCED
+            ? `Enhanced water refracting what lies under it${water.isDistorted ? ", distorting" : ""}`
+            : `Water reflecting the sky${water.isSoft ? ", soft" : ""}${water.isDistorted ? ", distorting" : ""}`,
       })}
       icon={<WaterIcon />}
       isOn={isOn && state.isAvailable}
@@ -65,6 +78,41 @@ export function LevelWaterAction({
       onToggle={onToggle}
     >
       <LevelManualWeatherSlider field={"waterIntensity"} manual={manual} format={formatPercent} onEdit={onEdit} />
+
+      <RenderValueChoice
+        label={"Mode"}
+        options={MODE_OPTIONS}
+        value={water.mode}
+        onChange={(mode: RenderWaterMode) => set({ mode })}
+      />
+
+      {water.mode === ERenderWaterMode.ENHANCED ? (
+        <>
+          <RenderValueSlider
+            label={"Refraction"}
+            value={water.refraction}
+            {...RENDER_WATER_LIMITS.refraction}
+            format={formatWaterStrength}
+            onChange={(refraction: number) => set({ refraction })}
+          />
+
+          <RenderValueSlider
+            label={"Turbidity"}
+            value={water.turbidity}
+            {...RENDER_WATER_LIMITS.turbidity}
+            format={formatWaterStrength}
+            onChange={(turbidity: number) => set({ turbidity })}
+          />
+
+          <RenderValueSlider
+            label={"Soft border"}
+            value={water.softBorder}
+            {...RENDER_WATER_LIMITS.softBorder}
+            format={formatWaterBorder}
+            onChange={(softBorder: number) => set({ softBorder })}
+          />
+        </>
+      ) : null}
 
       <CheckboxFormRow
         label={"Soft"}

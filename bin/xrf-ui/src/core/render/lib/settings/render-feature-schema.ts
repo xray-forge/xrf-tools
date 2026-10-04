@@ -3,6 +3,7 @@ import {
   ERenderAntialiasing,
   ERenderLightShadowFilter,
   ERenderScale,
+  ERenderWaterMode,
 } from "@/core/ipc/types/xrf-renderer";
 import { RENDER_MAX_SHADOW_CASCADES } from "@/core/render/lib/settings/render-feature-defaults";
 import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-feature-settings";
@@ -88,8 +89,12 @@ export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings>
     isDistorted: FLAG,
     isEnabled: FLAG,
     isSoft: FLAG,
+    mode: toChoice(ERenderWaterMode),
     reflection: toNumber(0, 4),
+    refraction: toNumber(0, 2),
     ripple: toNumber(0, 4),
+    softBorder: toNumber(0, 1),
+    turbidity: toNumber(0, 10),
     waveHeight: toNumber(0, 0.2),
     waveSpeed: toNumber(0, 100),
   },

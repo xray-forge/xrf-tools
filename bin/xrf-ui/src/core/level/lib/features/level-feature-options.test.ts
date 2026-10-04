@@ -4,6 +4,7 @@ import {
   ERenderAmbientOcclusionQuality,
   ERenderAntialiasing,
   ERenderLightShadowFilter,
+  ERenderWaterMode,
 } from "@/core/ipc/types/xrf-renderer";
 import {
   describeLevelFeatureToggle,
@@ -112,5 +113,12 @@ describe("level feature options", () => {
       })
     ).toEqual({ ...mockLevelFeatureOptions(), grass: { radius: 300 } });
     expect(toLevelFeatureOptions(null)).toEqual(mockLevelFeatureOptions());
+  });
+
+  it("keeps the water's mode and its enhanced strengths, held to their bounds, and drops a mode it does not know", () => {
+    expect(
+      toLevelFeatureOptions({ water: { mode: ERenderWaterMode.ENHANCED, softBorder: 0.5, turbidity: 40 } }).water
+    ).toEqual({ mode: ERenderWaterMode.ENHANCED, softBorder: 0.5, turbidity: 10 });
+    expect(toLevelFeatureOptions({ water: { mode: "ocean", refraction: 1.2 } }).water).toEqual({ refraction: 1.2 });
   });
 });

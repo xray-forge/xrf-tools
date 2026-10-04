@@ -26,6 +26,11 @@ struct Water {
   soft: f32,
   // One while the water writes the distortion it causes.
   distorted: f32,
+  // The enhanced water's refraction, turbidity and soft border.
+  refraction: f32,
+  turbidity: f32,
+  soft_border: f32,
+  pad: f32,
 };
 
 @group(2) @binding(0) var textures: binding_array<texture_2d<f32>>;
@@ -40,6 +45,8 @@ struct Water {
 @group(3) @binding(5) var sky_clamp: sampler;
 // The nearest water along each pixel, which its depth pass wrote: only that surface draws.
 @group(3) @binding(6) var nearest_water: texture_depth_2d;
+// The scene as it stood before the water, which the enhanced water refracts; a texel alone while the engine's draws.
+@group(3) @binding(7) var water_scene: texture_2d<f32>;
 
 // `watermove`: the wave's direction through the level, in renderer space, where the engine's `z` is negated.
 const WAVE_DIRECTION: vec3<f32> = vec3<f32>(0.11, 0.13, -0.07);
@@ -53,6 +60,16 @@ const LAYER_AMPLITUDES: vec2<f32> = vec2<f32>(0.15, 0.55);
 
 // What the depth behind the water reads where nothing was drawn: farther than any water is deep.
 const FAR_BEHIND: f32 = 1e6;
+
+// The enhanced water's `Wave_Int` at its calmest: how much of its waves' normal moves what lies under it, a share of
+// the screen, across and down; its refraction strength scales both.
+const ENHANCED_WAVES: vec2<f32> = vec2<f32>(0.03, 0.1);
+
+// `G_SSR_WATER_FOG_MAXDEPTH`: the water's fog at which it is its colour alone.
+const ENHANCED_FOG_DEPTH: f32 = 2.0;
+
+// `G_SSR_WATER_REFLECTION` at its default: how much of the reflection the fresnel shows.
+const ENHANCED_REFLECTION: f32 = 0.8;
 
 struct WaterVarying {
   // Invariant, so the depth pass and the surface pass place each surface alike.
@@ -131,12 +148,51 @@ fn sky_cubes(direction: vec3<f32>) -> vec3<f32> {
   );
 }
 
+// Screen Space Shaders' `SSFX_calc_sky`: the sky turned as its box is, raised to fill a reflection's perspective, both
+// keyframes' cubes tinted by the sky's colour, as the module reads it with Anomaly's own executable.
+fn enhanced_sky(direction: vec3<f32>) -> vec3<f32> {
+  var turned: vec3<f32> = sky_box_direction(direction, lighting.sky_params.x);
+
+  turned.y = (turned.y - max(cos(turned.x) * 0.65, cos(turned.z) * 0.65)) * 2.1 + 0.35;
+
+  let cubes: vec3<f32> = mix(
+    textureSampleLevel(sky_cube_0, sky_clamp, turned, 0.0).rgb,
+    textureSampleLevel(sky_cube_1, sky_clamp, turned, 0.0).rgb,
+    lighting.sky.w,
+  );
+
+  return saturate(lighting.sky.rgb) * cubes;
+}
+
 fn sample_slot(slot: u32, uv: vec2<f32>) -> vec4<f32> {
   return textureSample(textures[slot], texture_sampler, uv);
 }
 
-@fragment
-fn fs_water(in: WaterVarying) -> WaterOutput {
+// What both waters take of a fragment: its surface's textures, its normals, the eye, the fog, the sky it reflects, the
+// light its vertices carry and the depth behind it.
+struct WaterFragment {
+  flags: u32,
+  base: vec4<f32>,
+  bent: vec3<f32>,
+  foam: vec4<f32>,
+  offset_texel: vec2<f32>,
+  normal: vec3<f32>,
+  surface_normal: vec3<f32>,
+  to_point: vec3<f32>,
+  // In view space.
+  position: vec3<f32>,
+  fog: f32,
+  reflected: vec3<f32>,
+  remapped: vec3<f32>,
+  light: vec3<f32>,
+  // The G-buffer's depth under the fragment, and how far past the surface it lies along the view.
+  stored: f32,
+  depth: f32,
+};
+
+// Samples a fragment's surface and works out what both waters read of it, discarding where the fog is total and where a
+// nearer fold of the surface covers it.
+fn read_water(in: WaterVarying) -> WaterFragment {
   let surface: Surface = surfaces[in.surface];
   let flags: u32 = surface.flags;
   let first: vec2<f32> = scrolled(in.uv, in.world, LAYER_TILES.x, LAYER_AMPLITUDES.x);
@@ -148,31 +204,66 @@ fn fs_water(in: WaterVarying) -> WaterOutput {
   let distorted: vec2<f32> = (sample_slot(surface.bump_companion, first).xy +
     sample_slot(surface.bump_companion, second).xy) * 0.5;
   let is_textured: f32 = camera.switches.x;
-  let base: vec4<f32> = vec4<f32>(mix(untextured_color(surface.color), sampled.rgb, is_textured), sampled.a);
-  let bent: vec3<f32> = select(vec3<f32>(0.0, 0.0, 1.0), normals, (flags & SURFACE_HAS_WATER_NORMAL) != 0u);
-  let foam: vec4<f32> = select(vec4<f32>(0.0), foam_texel, (flags & SURFACE_HAS_FOAM) != 0u);
-  let offset_texel: vec2<f32> = select(vec2<f32>(0.5), distorted, (flags & SURFACE_HAS_DISTORTION) != 0u);
-  let normal: vec3<f32> = normalize(in.normal);
-  let surface_normal: vec3<f32> = normalize(in.tangent * bent.x + in.binormal * bent.y + normal * bent.z);
-  let to_point: vec3<f32> = normalize(in.world - camera.position.xyz);
-  let position: vec3<f32> = (camera.view * vec4<f32>(in.world, 1.0)).xyz;
-  let fog: f32 = select(0.0, fog_amount(lighting, position), lighting.params.y > 0.5);
+  var out: WaterFragment;
+
+  out.flags = flags;
+  out.base = vec4<f32>(mix(untextured_color(surface.color), sampled.rgb, is_textured), sampled.a);
+  out.bent = select(vec3<f32>(0.0, 0.0, 1.0), normals, (flags & SURFACE_HAS_WATER_NORMAL) != 0u);
+  out.foam = select(vec4<f32>(0.0), foam_texel, (flags & SURFACE_HAS_FOAM) != 0u);
+  out.offset_texel = select(vec2<f32>(0.5), distorted, (flags & SURFACE_HAS_DISTORTION) != 0u);
+  out.normal = normalize(in.normal);
+  out.surface_normal = normalize(in.tangent * out.bent.x + in.binormal * out.bent.y + out.normal * out.bent.z);
+  out.to_point = normalize(in.world - camera.position.xyz);
+  out.position = (camera.view * vec4<f32>(in.world, 1.0)).xyz;
+  out.fog = select(0.0, fog_amount(lighting, out.position), lighting.params.y > 0.5);
 
   // The far plane ends where fog is total, so nothing past it is drawn but the sky; a fold of the surface behind a
   // nearer one is not drawn either, whatever order the two are drawn in.
-  if (fog >= 1.0 || in.clip.z < textureLoad(nearest_water, vec2<i32>(in.clip.xy), 0)) {
+  if (out.fog >= 1.0 || in.clip.z < textureLoad(nearest_water, vec2<i32>(in.clip.xy), 0)) {
     discard;
   }
 
   // The true remapping, then the fast one below the top: the cube's lower half is never shown.
-  let reflected: vec3<f32> = reflect(to_point, surface_normal);
-  let scaled: vec3<f32> = reflected / max(abs(reflected.x), max(abs(reflected.y), abs(reflected.z)));
-  let remapped: vec3<f32> = vec3<f32>(scaled.x, select(scaled.y, scaled.y * 2.0 - 1.0, scaled.y < 0.999), scaled.z);
+  out.reflected = reflect(out.to_point, out.surface_normal);
+
+  let scaled: vec3<f32> = out.reflected / max(abs(out.reflected.x), max(abs(out.reflected.y), abs(out.reflected.z)));
+
+  out.remapped = vec3<f32>(scaled.x, select(scaled.y, scaled.y * 2.0 - 1.0, scaled.y < 0.999), scaled.z);
+
   // `c0`: the vertex's baked light, the hemisphere by its occlusion, the sun by its sun occlusion, and the ambient, as
   // `L_hemi_color`, `L_sun_color` and `L_ambient` bind them raw.
-  let normal_view: vec3<f32> = (camera.view * vec4<f32>(normal, 0.0)).xyz;
-  let light: vec3<f32> = in.baked.rgb + lighting.environment.rgb * 0.25 * (0.5 + normal.y * 0.5) * in.hemi +
+  let normal_view: vec3<f32> = (camera.view * vec4<f32>(out.normal, 0.0)).xyz;
+
+  out.light = in.baked.rgb + lighting.environment.rgb * 0.25 * (0.5 + out.normal.y * 0.5) * in.hemi +
     lighting.sun.rgb * dot(normal_view, lighting.to_sun.xyz) * in.baked.a + lighting.ambient.rgb * 0.5;
+  out.stored = textureLoad(depth_target, vec2<i32>(in.clip.xy), 0);
+
+  let behind: f32 = select(-camera_view_position(in.clip.xy, out.stored).z, FAR_BEHIND, out.stored <= 0.0);
+
+  out.depth = behind + out.position.z;
+
+  return out;
+}
+
+// `waterd.ps`: the distortion map at the normal layers' coordinates, gone where the base is opaque, faded by the depth
+// behind soft water, then halved around nothing; blended in at nothing while the water does not distort.
+fn write_distortion(fragment: WaterFragment) -> vec4<f32> {
+  let is_soft: bool = (fragment.flags & SURFACE_IS_SOFT_WATER) != 0u;
+  let opaque: vec2<f32> = mix(fragment.offset_texel, vec2<f32>(0.5), fragment.base.a);
+  let shoal: vec2<f32> = mix(vec2<f32>(0.5), opaque, saturate(fragment.depth * 5.0));
+  let offset: vec2<f32> = select(opaque, mix(opaque, shoal, water.soft), is_soft);
+
+  return vec4<f32>(offset * 0.5 + 0.25, select(0.08, 0.0, is_soft), 0.5 * water.distorted);
+}
+
+@fragment
+fn fs_water(in: WaterVarying) -> WaterOutput {
+  let fragment: WaterFragment = read_water(in);
+  let flags: u32 = fragment.flags;
+  let base: vec4<f32> = fragment.base;
+  let reflected: vec3<f32> = fragment.reflected;
+  let to_point: vec3<f32> = fragment.to_point;
+  let light: vec3<f32> = fragment.light;
   var lit: vec3<f32>;
   var plain_alpha: f32;
 
@@ -189,7 +280,7 @@ fn fs_water(in: WaterVarying) -> WaterOutput {
       let rotation: mat3x3<f32> = transpose(mat3x3<f32>(camera.view[0].xyz, camera.view[1].xyz, camera.view[2].xyz));
       let sun: vec3<f32> = -(rotation * lighting.to_sun.xyz);
 
-      color += lighting.sun.rgb * pow(abs(dot(normalize(to_point + sun), surface_normal)), 256.0) * 4.0;
+      color += lighting.sun.rgb * pow(abs(dot(normalize(to_point + sun), fragment.surface_normal)), 256.0) * 4.0;
     }
 
     lit = color * light * 2.0;
@@ -197,8 +288,8 @@ fn fs_water(in: WaterVarying) -> WaterOutput {
   } else {
     // OpenXRay's `water.ps`: the sky squared and doubled, a share of it by the fresnel, mixed with the base by its
     // alpha.
-    let power: f32 = pow(saturate(dot(remapped, to_point)), 9.0);
-    let sky: vec3<f32> = sky_cubes(remapped);
+    let power: f32 = pow(saturate(dot(fragment.remapped, to_point)), 9.0);
+    let sky: vec3<f32> = sky_cubes(fragment.remapped);
     let amount: f32 = (0.15 + power * 0.25) * water.reflection;
 
     lit = mix(sky * sky * 2.0 * amount, base.rgb, base.a) * light * 2.0;
@@ -206,33 +297,69 @@ fn fs_water(in: WaterVarying) -> WaterOutput {
   }
 
   // `NEED_SOFT_WATER` and `USE_SOFT_WATER`: the depth behind the surface, which fades, darkens and foams it.
-  let stored: f32 = textureLoad(depth_target, vec2<i32>(in.clip.xy), 0);
-  let behind: f32 = select(-camera_view_position(in.clip.xy, stored).z, FAR_BEHIND, stored <= 0.0);
-  let depth: f32 = behind + position.z;
+  let depth: f32 = fragment.depth;
   let deepened: vec3<f32> = mix(vec3<f32>(water.intensity * 0.1), lit, plain_alpha);
   let faded: f32 = max(1.0 - exp(depth * -4.0), min(plain_alpha, saturate(depth)));
-  let shallow: f32 = saturate(-depth * dot(normal, to_point));
+  let shallow: f32 = saturate(-depth * dot(fragment.normal, to_point));
   let is_foamed: bool = (flags & SURFACE_IS_ANOMALY_WATER) == 0u || (flags & SURFACE_IS_FOAMED) != 0u;
-  let foamed: f32 = smoothstep(0.025, 0.05, shallow) * (1.0 - smoothstep(0.075, 0.1, shallow)) * foam.a * is_textured *
-    f32(is_foamed);
-  let soft_color: vec3<f32> = mix(mix(deepened, foam.rgb * water.intensity, foamed), lit, 1.0 - water.soft);
-  let soft_alpha: f32 = mix(mix(faded, foam.a, foamed), plain_alpha, 1.0 - water.soft);
+  let foamed: f32 = smoothstep(0.025, 0.05, shallow) * (1.0 - smoothstep(0.075, 0.1, shallow)) * fragment.foam.a *
+    camera.switches.x * f32(is_foamed);
+  let soft_color: vec3<f32> = mix(mix(deepened, fragment.foam.rgb * water.intensity, foamed), lit, 1.0 - water.soft);
+  let soft_alpha: f32 = mix(mix(faded, fragment.foam.a, foamed), plain_alpha, 1.0 - water.soft);
   let is_soft: bool = (flags & SURFACE_IS_SOFT_WATER) != 0u;
   let color: vec3<f32> = select(lit, soft_color, is_soft);
-  let seen: f32 = 1.0 - fog;
+  let seen: f32 = 1.0 - fragment.fog;
   // Plain `water` is written whole, `blend(false)`; soft water is faded by the fog twice over, as its alpha is.
   let alpha: f32 = select(1.0, soft_alpha * seen * seen, is_soft);
-  let finished: vec3<f32> = mix(color, lighting.fog_color.rgb, fog);
-  let shown: vec3<f32> = select(base.rgb, finished, lighting.params.y > 0.5);
-  // `waterd.ps`: the distortion map at the normal layers' coordinates, gone where the base is opaque, faded by the
-  // depth behind soft water, then halved around nothing; blended in at nothing while the water does not distort.
-  let opaque: vec2<f32> = mix(offset_texel, vec2<f32>(0.5), base.a);
-  let shoal: vec2<f32> = mix(vec2<f32>(0.5), opaque, saturate(depth * 5.0));
-  let offset: vec2<f32> = select(opaque, mix(opaque, shoal, water.soft), is_soft);
+  let finished: vec3<f32> = mix(color, lighting.fog_color.rgb, fragment.fog);
   var out: WaterOutput;
 
-  out.color = vec4<f32>(shown, alpha);
-  out.distortion = vec4<f32>(offset * 0.5 + 0.25, select(0.08, 0.0, is_soft), 0.5 * water.distorted);
+  out.color = vec4<f32>(select(base.rgb, finished, lighting.params.y > 0.5), alpha);
+  out.distortion = write_distortion(fragment);
+
+  return out;
+}
+
+// Screen Space Shaders' `ssfx_water.ps`: what lies under the water, read where its waves move it unless
+// something nearer than the water stands there, clouded into the water's colour by the water's depth, the sky over it by
+// the fresnel cubed, fogged, and faded into what lies under it along its shallow edge.
+@fragment
+fn fs_water_enhanced(in: WaterVarying) -> WaterOutput {
+  let fragment: WaterFragment = read_water(in);
+  let size: vec2<f32> = camera.viewport.xy;
+  let pixel: vec2<f32> = floor(in.clip.xy);
+  // `Waves_Normal`: the waves' normal across the surface, scaled to a share of the screen.
+  let waves: vec2<f32> = normalize(vec3<f32>(fragment.bent.xy * ENHANCED_WAVES * water.refraction, fragment.bent.z)).xy;
+  let moved: vec2<f32> = clamp(pixel + waves * size, vec2<f32>(0.0), size - 1.0);
+  let moved_stored: f32 = textureLoad(depth_target, vec2<i32>(moved), 0);
+  let moved_behind: f32 = select(-camera_view_position(moved, moved_stored).z, FAR_BEHIND, moved_stored <= 0.0);
+  // `Refraction_Discard`: a read nearer than the water would copy what stands over it into it, and the sky, which the
+  // module's position target holds at nothing, is refused as well.
+  let refracted: vec2<f32> = select(pixel, moved, moved_stored > 0.0 && moved_behind > -fragment.position.z);
+  let screen: vec3<f32> = textureLoad(water_scene, vec2<i32>(refracted), 0).rgb;
+  // How deep the water stands over its bottom, straight down, as the module measures its fog and its border.
+  let ndc: vec2<f32> = vec2<f32>(in.clip.x / size.x * 2.0 - 1.0, 1.0 - in.clip.y / size.y * 2.0);
+  let bottom: f32 = select(camera_unproject(ndc, fragment.stored).y, in.world.y - FAR_BEHIND, fragment.stored <= 0.0);
+  let water_depth: f32 = in.world.y - bottom;
+  let water_fog: f32 = exp(min(water_depth, 16.0)) - 1.0;
+  // `smoothstep(G_SSR_WATER_FOG_MAXDEPTH, -turbidity, fog)`: clear in the shallows, its colour where deep.
+  let clear: f32 = saturate((water_fog - ENHANCED_FOG_DEPTH) / (-water.turbidity - ENHANCED_FOG_DEPTH));
+  let colour: vec3<f32> = fragment.base.rgb * fragment.light;
+  let turbid: vec3<f32> = mix(colour, screen, clear * clear * (3.0 - 2.0 * clear));
+  let fresnel: f32 = pow(saturate(dot(fragment.reflected, fragment.to_point)), 3.0);
+  let reflection: vec3<f32> = enhanced_sky(fragment.reflected) * water.reflection;
+  let seen: f32 = 1.0 - fragment.fog;
+  let lit: vec3<f32> = mix(turbid, reflection, saturate(fresnel * ENHANCED_REFLECTION));
+  let fogged: vec3<f32> = mix(lighting.fog_color.rgb, lit, seen);
+  let border: f32 = smoothstep(0.0, max(water.soft_border, 1e-4), water_depth + fresnel);
+  let shown: vec3<f32> = mix(screen, fogged, border * seen * seen);
+  var out: WaterOutput;
+
+  out.color = vec4<f32>(
+    select(fragment.base.rgb, shown, lighting.params.y > 0.5),
+    saturate(saturate(water_depth - 0.1) * 10.0),
+  );
+  out.distortion = write_distortion(fragment);
 
   return out;
 }
