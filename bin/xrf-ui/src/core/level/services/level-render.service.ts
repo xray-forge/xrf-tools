@@ -1,4 +1,4 @@
-import { CommandBus, inject, Injectable } from "@wirestate/core";
+import { inject, Injectable } from "@wirestate/core";
 import { BoundAction, comparer, Computed, reaction } from "@wirestate/mobx";
 import { Maybe, Nullable } from "@xrf/types";
 
@@ -32,7 +32,6 @@ import { toLevelCameraReading } from "@/core/level/lib/camera/level-camera-readi
 import { ILevelPoint } from "@/core/level/lib/camera/level-point";
 import { ILevelViewpoint, toLevelStartViewpoint } from "@/core/level/lib/camera/level-viewpoint";
 import { ILevelBox, toLevelBox } from "@/core/level/lib/extent/level-extent";
-import { LEVEL_PICK_PANELS } from "@/core/level/lib/panels/level-pick-panels";
 import { ELevelPick, TLevelPick } from "@/core/level/lib/pick/level-pick";
 import { toLevelPickSelection } from "@/core/level/lib/pick/level-pick-selection";
 import { DEFAULT_LEVEL_RENDER_CONFIG, ILevelRenderConfig } from "@/core/level/lib/render/level-render-config";
@@ -55,7 +54,6 @@ import { toNativeRenderHeight } from "@/core/render/lib/native/native-view-optio
 import { NativeViewport } from "@/core/render/lib/native/native-viewport";
 import { toXraySpace } from "@/core/render/lib/scene/render-space";
 import { SettingsService } from "@/core/settings/services/settings";
-import { IPanelSetActiveCommand, PANEL_SET_ACTIVE_COMMAND } from "@/core/shell/panel/panel-messages";
 import { Logger } from "@/lib/logging";
 
 /**
@@ -174,8 +172,8 @@ export class LevelRenderService extends NativeRenderSurfaceService {
   private viewpoint: Nullable<ILevelViewpoint> = null;
   /** Bumped by every level opened or closed, so a pick asked of one since replaced notes nothing. */
   private opening: number = 0;
-  /** Stops hearing clicks on the viewport, while one is attached. */
-  private unlistenClicks: Nullable<() => void> = null;
+  /** Stops hearing clicks on the viewport and its focus, while one is attached. */
+  private unlisten: Nullable<() => void> = null;
 
   public constructor(
     private readonly loadService: LevelLoadService = inject(LevelLoadService),
@@ -183,7 +181,6 @@ export class LevelRenderService extends NativeRenderSurfaceService {
     private readonly viewportService: LevelViewportService = inject(LevelViewportService),
     private readonly weatherService: LevelWeatherService = inject(LevelWeatherService),
     private readonly lookService: LevelLookService = inject(LevelLookService),
-    private readonly commandBus: CommandBus = inject(CommandBus),
     settingsService: SettingsService = inject(SettingsService)
   ) {
     super(settingsService);
@@ -215,7 +212,7 @@ export class LevelRenderService extends NativeRenderSurfaceService {
   }
 
   /**
-   * Says what of the open level is drawn under a point of the viewport, and opens the panel it is chosen in.
+   * Says what of the open level is drawn under a point of the viewport, which is then what is selected.
    *
    * @param point - Where, in css pixels from the viewport's top left corner.
    * @returns Settles once the pick is noted: what it hit, or nothing.
@@ -237,13 +234,6 @@ export class LevelRenderService extends NativeRenderSurfaceService {
     const picked: Nullable<TLevelPick> = hit ? toLevelPick(hit, this.loadService.spawn) : null;
 
     this.viewportService.notePicked(picked);
-
-    // Opened here rather than as a view reacts: the panel mounts synchronously, which it cannot do mid-render.
-    if (picked) {
-      this.commandBus.execute<void, IPanelSetActiveCommand>(PANEL_SET_ACTIVE_COMMAND, LEVEL_PICK_PANELS[picked.kind], {
-        optional: true,
-      });
-    }
   }
 
   /**
@@ -332,12 +322,27 @@ export class LevelRenderService extends NativeRenderSurfaceService {
   }
 
   protected onAttached(container: HTMLElement): void {
-    this.unlistenClicks = listenRenderClicks(container, (point: IRenderViewPoint) => void this.pick(point));
+    const unlistenClicks: () => void = listenRenderClicks(
+      container,
+      (point: IRenderViewPoint) => void this.pick(point)
+    );
+    const onFocus = (): void => this.viewportService.noteSceneFocused(true);
+    const onBlur = (): void => this.viewportService.noteSceneFocused(false);
+
+    container.addEventListener("focus", onFocus);
+    container.addEventListener("blur", onBlur);
+
+    this.unlisten = () => {
+      unlistenClicks();
+      container.removeEventListener("focus", onFocus);
+      container.removeEventListener("blur", onBlur);
+      this.viewportService.noteSceneFocused(false);
+    };
   }
 
   protected onDetached(): void {
-    this.unlistenClicks?.();
-    this.unlistenClicks = null;
+    this.unlisten?.();
+    this.unlisten = null;
   }
 
   protected release(): void {

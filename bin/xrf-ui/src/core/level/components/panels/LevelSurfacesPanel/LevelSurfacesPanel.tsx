@@ -97,6 +97,8 @@ export function LevelSurfacesPanel({
       setFilter("");
       expandAll([toLevelSurfaceShaderId(summary.shader)]);
       select(toLevelSurfaceEntryId(summary.shaderId));
+    } else {
+      select(null);
     }
   }, [byId, expandAll, picked, select]);
 

@@ -243,5 +243,10 @@ describe("LevelSurfacesPanel", () => {
       "3 · effects\\wallmarkmult · decal\\decal_rza_a"
     );
     expect(filter).toHaveValue("");
+
+    // The tree follows the viewport's selection, so one cleared there chooses nothing here.
+    act(() => (viewport as unknown as LevelViewportService).notePicked(null));
+
+    await waitFor(() => expect(view.queryByTestId("level-surface-row")).not.toBeInTheDocument());
   });
 });

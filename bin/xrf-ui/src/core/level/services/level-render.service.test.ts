@@ -106,7 +106,9 @@ async function flush(): Promise<void> {
   }
 }
 
-async function mockAttached(): Promise<{ container: Container; service: LevelRenderService }> {
+async function mockAttached(
+  element: HTMLElement = document.createElement("div")
+): Promise<{ container: Container; service: LevelRenderService }> {
   setMockInvokeResponses({
     ["plugin:levels|get_level"]: mockSessionResponse(
       mockSelectedLevelDescription({ start: { direction: { x: 0, y: 0, z: -1 }, position: { x: 10, y: 2, z: -5 } } })
@@ -128,7 +130,7 @@ async function mockAttached(): Promise<{ container: Container; service: LevelRen
 
   const service: LevelRenderService = container.get(LevelRenderService);
 
-  service.attach(document.createElement("div"));
+  service.attach(element);
   await flush();
 
   return { container, service };
@@ -362,6 +364,23 @@ describe("LevelRenderService", () => {
       sector: 4,
       shaderId: 11,
     });
+  });
+
+  // The scene's keys act on it only while it has the keyboard, which leaving it or detaching takes away.
+  it("notes whether the scene has the keyboard", async () => {
+    const element: HTMLElement = document.createElement("div");
+    const { container, service } = await mockAttached(element);
+    const viewportService: LevelViewportService = container.get(LevelViewportService);
+
+    element.dispatchEvent(new FocusEvent("focus"));
+    expect(viewportService.isSceneFocused).toBe(true);
+
+    element.dispatchEvent(new FocusEvent("blur"));
+    expect(viewportService.isSceneFocused).toBe(false);
+
+    element.dispatchEvent(new FocusEvent("focus"));
+    service.detach();
+    expect(viewportService.isSceneFocused).toBe(false);
   });
 
   it("names a picked spawned object as the held spawn has it, and nothing for one not held", () => {
