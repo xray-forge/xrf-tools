@@ -89,6 +89,8 @@ pub use crate::contract::render_weather_effect_report::RenderWeatherEffectReport
 pub use crate::contract::render_weather_play::RenderWeatherPlay;
 pub use crate::contract::render_weather_report::RenderWeatherReport;
 pub use crate::contract::render_weather_transition::RenderWeatherTransition;
+pub use crate::host::render_ambient::RenderAmbient;
+pub use crate::host::render_ambient_effect::RenderAmbientEffect;
 pub use crate::host::render_asset_source::RenderAssetSource;
 pub use crate::host::render_event_sink::RenderEventSink;
 pub use crate::host::render_flare::RenderFlare;
@@ -115,6 +117,7 @@ pub use crate::host::render_thunderbolt_gradient::RenderThunderboltGradient;
 pub use crate::host::render_thunderbolt_model::RenderThunderboltModel;
 pub use crate::host::render_weather_model::RenderWeatherModel;
 pub use crate::host::render_wet_surfaces::RenderWetSurfaces;
+pub use crate::host::render_wind_blast::RenderWindBlast;
 pub use crate::host::render_window_host::RenderWindowHost;
 pub use crate::renderer::Renderer;
 pub use crate::thread::render_workers::RenderWorkers;
