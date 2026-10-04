@@ -29,4 +29,7 @@ pub struct RenderAppliedReport {
   pub is_water: bool,
   /// What the weather lights the scene with now, or none for an asset viewer's rig.
   pub environment: Option<RenderAppliedEnvironment>,
+  /// The lens flare whose sprite the sky draws, its `suns.ltx` section: the sun or the moon; none where the sky shows
+  /// neither.
+  pub sun: Option<String>,
 }

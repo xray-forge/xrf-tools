@@ -24,6 +24,8 @@ const SUN_KEYS: ReadonlyArray<keyof ILevelManualWeather> = [
 interface ILevelSunActionProps extends Omit<ILevelManualWeatherActionProps, "isOn" | "onToggle"> {
   /** The sun the open level was compiled against, or null where it names none. */
   sun: Nullable<LevelSunDescription>;
+  /** The sun or moon the sky draws now, by its `suns.ltx` section, or null where it shows neither. */
+  drawnSun: Nullable<string>;
 }
 
 /**
@@ -36,6 +38,7 @@ export function LevelSunAction({
   className,
   manual,
   sun,
+  drawnSun,
   onEdit,
 }: ILevelSunActionProps): ReactElement {
   const compiled = useMemo(() => toLevelManualSun(sun?.direction ?? null), [sun]);
@@ -56,8 +59,9 @@ export function LevelSunAction({
       id={id}
       className={className}
       label={"Sun"}
-      description={`Sun ${reading}`}
+      description={drawnSun ? `Sun ${reading}, ${drawnSun} in the sky` : `Sun ${reading}, none in the sky`}
       icon={<WbSunnyIcon />}
+      isActive={drawnSun !== null}
     >
       <div className={"flex w-60 flex-col gap-2 px-4 py-2"}>
         <Typography className={"text-text-secondary"} variant={"overline"}>

@@ -158,6 +158,11 @@ impl LevelFlares {
     sprite
   }
 
+  /// The lens flare drawn now, faded in or out, if any.
+  pub fn get_shown(&self) -> Option<&str> {
+    self.fade.get_shown().0
+  }
+
   /// Measures how much of the sun shows and draws the flares and the gradient, where this frame draws them.
   pub fn record(
     &self,
