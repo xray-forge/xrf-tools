@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{Ltx, Section, read_ltx_field};
+use xrf_math::Vector3d;
 use xrf_utils::{assert_length, to_format_size};
 
 use crate::types::{Matrix3d, Sphere3d};
@@ -90,6 +91,57 @@ impl ChunkReadWriteList for Shape {
 }
 
 impl Shape {
+  /// `CCF_Shape::ComputeBounds`: the sphere an object's shapes are measured by, in its own space; its one sphere as it
+  /// is, else the sphere about the box holding every shape, none for no shapes.
+  pub fn get_bounding_sphere(shapes: &[Self]) -> Option<Sphere3d> {
+    if let [Self::Sphere(sphere)] = shapes {
+      return Some(sphere.clone());
+    }
+
+    let mut low: [f32; 3] = [f32::MAX; 3];
+    let mut high: [f32; 3] = [f32::MIN; 3];
+    let mut hold = |point: [f32; 3]| {
+      for axis in 0..3 {
+        low[axis] = low[axis].min(point[axis]);
+        high[axis] = high[axis].max(point[axis]);
+      }
+    };
+
+    for shape in shapes {
+      match shape {
+        Self::Sphere((center, radius)) => {
+          hold([center.x - radius, center.y - radius, center.z - radius]);
+          hold([center.x + radius, center.y + radius, center.z + radius]);
+        }
+        // The unit cube's corners where the box's matrix stands them, `transform_tiny`.
+        Self::Box((i, j, k, c)) => {
+          for corner in 0..8 {
+            let [x, y, z] = [corner & 1, corner >> 1 & 1, corner >> 2 & 1].map(|bit| bit as f32 - 0.5);
+
+            hold([
+              c.x + i.x * x + j.x * y + k.x * z,
+              c.y + i.y * x + j.y * y + k.y * z,
+              c.z + i.z * x + j.z * y + k.z * z,
+            ]);
+          }
+        }
+      }
+    }
+
+    if shapes.is_empty() {
+      return None;
+    }
+
+    // `Fbox::getsphere`: its centre, and the distance to its far corner.
+    let center: [f32; 3] = [0, 1, 2].map(|axis| (low[axis] + high[axis]) / 2.0);
+    let radius: f32 = (0..3)
+      .map(|axis| (high[axis] - center[axis]).powi(2))
+      .sum::<f32>()
+      .sqrt();
+
+    Some((Vector3d::new(center[0], center[1], center[2]), radius))
+  }
+
   /// Import shape objects from ltx config file.
   pub fn import_list(section: &Section) -> XrfResult<Vec<Self>> {
     let mut shapes: Vec<Self> = Vec::new();
@@ -175,6 +227,39 @@ mod tests {
   };
 
   use crate::data::generic::shape::Shape;
+
+  #[test]
+  fn measures_one_sphere_as_it_is_and_anything_else_by_the_box_about_it() {
+    let one: Vec<Shape> = vec![Shape::Sphere((Vector3d::new(1.0, 2.0, 3.0), 4.0))];
+
+    assert_eq!(
+      Shape::get_bounding_sphere(&one),
+      Some((Vector3d::new(1.0, 2.0, 3.0), 4.0))
+    );
+    assert_eq!(Shape::get_bounding_sphere(&[]), None);
+
+    // A box two wide, four tall and six deep at the origin: the sphere through its corners.
+    let block: Vec<Shape> = vec![Shape::Box((
+      Vector3d::new(2.0, 0.0, 0.0),
+      Vector3d::new(0.0, 4.0, 0.0),
+      Vector3d::new(0.0, 0.0, 6.0),
+      Vector3d::new(0.0, 0.0, 0.0),
+    ))];
+    let (center, radius) = Shape::get_bounding_sphere(&block).unwrap();
+
+    assert_eq!(center, Vector3d::new(0.0, 0.0, 0.0));
+    assert!((radius - 14.0_f32.sqrt()).abs() < 1e-5);
+
+    // Two spheres: the box about both, not either sphere.
+    let pair: Vec<Shape> = vec![
+      Shape::Sphere((Vector3d::new(-2.0, 0.0, 0.0), 1.0)),
+      Shape::Sphere((Vector3d::new(2.0, 0.0, 0.0), 1.0)),
+    ];
+    let (center, radius) = Shape::get_bounding_sphere(&pair).unwrap();
+
+    assert_eq!(center, Vector3d::new(0.0, 0.0, 0.0));
+    assert!((radius - 11.0_f32.sqrt()).abs() < 1e-5);
+  }
 
   #[test]
   fn rejects_a_shape_list_past_its_count_field() {

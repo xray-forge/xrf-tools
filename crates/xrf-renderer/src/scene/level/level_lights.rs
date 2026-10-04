@@ -24,6 +24,7 @@ use crate::scene::level::light_shadow_set::LightShadowSet;
 use crate::scene::level::lights_frame::LightsFrame;
 use crate::scene::level::loader_answer::take_answer;
 use crate::scene::level::shadow_frame::ShadowFrame;
+use crate::scene::level::zone_fast_mode::ZONE_FAST_DISTANCE;
 use crate::scene::texture::texture_cache::{MISSING_SLOT, TextureCache};
 use crate::scene::texture::texture_role::TextureRole;
 use crate::thread::render_workers::RenderWorkers;
@@ -201,6 +202,15 @@ impl LevelLights {
             return None;
           }
 
+          // A torrid zone's idle light: out while the camera stands far from its zone (`o_switch_2_slow`).
+          if let Some(sphere) = &light.zone_sphere {
+            let at: [f32; 3] = [light.position.x, light.position.y, light.position.z];
+
+            if sphere.get_distance(at, eye.to_array()) > ZONE_FAST_DISTANCE {
+              return None;
+            }
+          }
+
           let basis: LightBasis = LightBasis::of(light);
           let bound: Vec4 = basis.get_bound(light);
           let is_visible: bool = planes
@@ -311,8 +321,6 @@ impl LevelLights {
 
   /// Stands each light a motion carries `height` over where the motion has its zone this frame (`UpdateIdleLight`);
   /// one whose motion is still read stays where its zone spawned.
-  // todo: Put a torrid zone's idle light out past `FASTMODE_DISTANCE` on Monolith, as `o_switch_2_slow` does for a zone
-  //  whose `light_in_slow_mode` is false, which `CTorridZone`'s is.
   fn move_lights(&mut self, motions: &mut LevelObjectMotions) {
     let Some(description) = &mut self.description else {
       return;
