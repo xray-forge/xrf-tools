@@ -31,13 +31,18 @@ pub struct WaterUniform {
   /// The enhanced water's sun highlight and caustics.
   pub specular: f32,
   pub caustics: f32,
+  /// The enhanced water's wave height and rain ripples, and how hard it rains.
+  pub parallax_height: f32,
+  pub ripples: f32,
+  pub rain: f32,
+  pub pad: f32,
 }
 
 impl WaterUniform {
   /// `reflection` says whether the enhanced water's reflection draws this frame, and whether its history holds a frame.
   pub fn new(
     settings: &RenderWaterSettings,
-    (intensity, wind): (f32, RenderWind),
+    (intensity, wind, rain): (f32, RenderWind, f32),
     time: f32,
     (reflected, history): (bool, bool),
   ) -> Self {
@@ -62,6 +67,10 @@ impl WaterUniform {
       wind_velocity: wind.velocity,
       specular: settings.specular,
       caustics: settings.caustics,
+      parallax_height: settings.parallax_height,
+      ripples: settings.ripples,
+      rain,
+      pad: 0.0,
     }
   }
 }

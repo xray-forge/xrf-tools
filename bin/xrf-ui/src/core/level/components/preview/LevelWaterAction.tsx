@@ -151,6 +151,22 @@ export function LevelWaterAction({
             format={formatWaterStrength}
             onChange={(caustics: number) => set({ caustics })}
           />
+
+          <RenderValueSlider
+            label={"Parallax height"}
+            value={water.parallaxHeight}
+            {...RENDER_WATER_LIMITS.parallaxHeight}
+            format={formatWaveHeight}
+            onChange={(parallaxHeight: number) => set({ parallaxHeight })}
+          />
+
+          <RenderValueSlider
+            label={"Rain ripples"}
+            value={water.ripples}
+            {...RENDER_WATER_LIMITS.ripples}
+            format={formatWaterStrength}
+            onChange={(ripples: number) => set({ ripples })}
+          />
         </>
       ) : null}
 

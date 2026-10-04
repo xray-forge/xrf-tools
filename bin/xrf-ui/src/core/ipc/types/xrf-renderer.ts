@@ -1067,6 +1067,10 @@ export type RenderWaterSettings = {
   specular: number | null;
   /** How bright the light the enhanced water gathers onto its bottom is, `ssfx_water_setup2.z`. */
   caustics: number | null;
+  /** How high the enhanced water's waves stand in its parallax, `ssfx_water_setup1.w`; none draws it flat. */
+  parallaxHeight: number | null;
+  /** How strongly rain ripples the enhanced water, `ssfx_water_setup2.w`; none skips them. */
+  ripples: number | null;
 };
 
 /** How a viewport's weather clock runs. */

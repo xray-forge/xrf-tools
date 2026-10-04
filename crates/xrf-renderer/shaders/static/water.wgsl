@@ -43,6 +43,11 @@ struct Water {
   // Its sun highlight and caustics.
   specular: f32,
   caustics: f32,
+  // Its waves' height in its parallax and its rain ripples, and how hard it rains.
+  parallax_height: f32,
+  ripples: f32,
+  rain: f32,
+  pad: f32,
 };
 
 @group(2) @binding(0) var textures: binding_array<texture_2d<f32>>;
@@ -72,6 +77,9 @@ struct Water {
 @group(3) @binding(14) var wind_map: texture_2d<f32>;
 @group(3) @binding(15) var caustics_map: texture_2d<f32>;
 @group(3) @binding(16) var light_target: texture_2d<f32>;
+// The enhanced water's waves' height, which its parallax marches into, and the rain's ripples on it.
+@group(3) @binding(17) var height_map: texture_2d<f32>;
+@group(3) @binding(18) var ripple_map: texture_2d<f32>;
 
 // `watermove`: the wave's direction through the level, in renderer space, where the engine's `z` is negated.
 const WAVE_DIRECTION: vec3<f32> = vec3<f32>(0.11, 0.13, -0.07);
@@ -93,6 +101,17 @@ const WAVES_WINDY: vec2<f32> = vec2<f32>(0.1, 0.2);
 
 // `G_SSR_WATER_SPECULAR_NORMAL`: how much of its waves' height the sun's highlight sees.
 const SPECULAR_NORMAL: f32 = 0.2;
+
+// The parallax at the module's default quality (`q_parallax[2]`): its most steps, looking along the surface, and the
+// distance over which it falls to a single step (`G_SSR_PARALLAX_DISTANCE`), from three fifths of it.
+const PARALLAX_STEPS: f32 = 16.0;
+const PARALLAX_DISTANCE: f32 = 25.0;
+
+// `ssfx_rain_ripples`: how fast each of its three layers ripples, where the second and third are moved to, and how far
+// the ripples reach.
+const RIPPLE_SPEEDS: vec3<f32> = vec3<f32>(1.05, 1.31, 1.58);
+const RIPPLE_OFFSETS: vec4<f32> = vec4<f32>(0.5, 0.25, 0.31, 0.5);
+const RIPPLE_REACH: f32 = 15.0;
 
 // `G_SSR_WATER_FOG_MAXDEPTH`: the water's fog at which it is its colour alone.
 const ENHANCED_FOG_DEPTH: f32 = 2.0;
@@ -365,33 +384,129 @@ fn fs_water(in: WaterVarying) -> WaterOutput {
   return out;
 }
 
-// The enhanced water's waves (`ssfx_water.ps`): its normal map scrolled twice over the base's coordinates, the wind's
-// layer leaning the first, at a pace and a strength the weather's wind sets; how far they move what lies under the
-// water across the screen, and the surface's normal in the world.
+// The enhanced water's waves (`ssfx_water.ps`): its normal map scrolled twice over coordinates its parallax moves
+// into its waves' height, the wind's layer leaning the first and the rain's ripples over both, at a pace and a strength
+// the weather's wind sets; how far they move what lies under the water across the screen, the surface's normal in the
+// world, and the height its parallax met.
 struct EnhancedWaves {
   screen: vec2<f32>,
   normal: vec3<f32>,
+  height: f32,
 };
 
-// Sampled before the fragment can be discarded, where every derivative is taken alike.
-fn enhanced_waves(in: WaterVarying) -> EnhancedWaves {
+// The waves' height at coordinates, as the module's `ssfx_water_waves.ps` lays it into a target its parallax reads:
+// two scrolls of the height map, the higher. Sampled here instead, which keeps the target and its pass out.
+fn wave_height(coordinates: vec2<f32>, wind: f32, time: f32) -> f32 {
+  let pace: f32 = clamp(0.67 * wind, 0.3, 0.67);
+  let at: vec2<f32> = coordinates * 0.35;
+  let first: f32 = textureSampleLevel(height_map, texture_sampler, at + time * vec2<f32>(0.065, 0.445) * pace, 0.0).r;
+  let second: f32 = textureSampleLevel(height_map, texture_sampler, at - time * vec2<f32>(0.105, 0.241) * pace, 0.0).b;
+
+  return max(first, second);
+}
+
+// `Water_DoParallax`: steps along the eye's way across the surface until the waves' height rises over it, then the
+// coordinates between the last two steps where it met them, and the height there.
+fn march_parallax(start: vec2<f32>, step: vec2<f32>, share: f32, wind: f32) -> vec3<f32> {
+  var at: vec2<f32> = start;
+  var depth: f32 = 0.0;
+  var height: f32 = 0.0;
+  var last_height: f32 = 0.0;
+  var sampled: f32 = 0.0;
+
+  for (var taken: i32 = 0; taken <= i32(PARALLAX_STEPS); taken++) {
+    last_height = height;
+    at -= step;
+    depth += share;
+    sampled = wave_height(at, wind, water.time);
+    height = 1.0 - sampled;
+
+    if (height <= depth) {
+      break;
+    }
+  }
+
+  let left: f32 = height - depth;
+  let ratio: f32 = left / (left - saturate(last_height - depth + share));
+
+  return vec3<f32>(mix(at, at + step, ratio), sampled);
+}
+
+// `ssfx_process_ripples`: one layer of rain ripples, each texel a ring that spreads and fades on its own clock.
+fn ripple_layer(ripple: vec4<f32>, speed: f32) -> vec2<f32> {
+  let clock: f32 = fract(ripple.w + water.time * speed);
+  let spread: f32 = clamp((clock - 1.0 + ripple.x) * RIPPLE_REACH, 0.0, 4.0);
+  let factor: f32 = saturate(0.7 - clock) * ripple.x * sin(spread * 3.141592) * (1.0 - smoothstep(0.0, 4.0, spread));
+
+  return (ripple.yz * 2.0 - 1.0) * factor * water.ripples;
+}
+
+// `ssfx_rain_ripples`: three layers of ripples over the surface, fading out over fifteen metres of the bottom's distance.
+fn rain_ripples(coordinates: vec2<f32>, dx: vec2<f32>, dy: vec2<f32>, rain: f32, distance: f32) -> vec2<f32> {
+  let first: vec4<f32> = textureSampleGrad(ripple_map, texture_sampler, coordinates, dx, dy);
+  let second: vec4<f32> = textureSampleGrad(ripple_map, texture_sampler, coordinates * 0.61 + RIPPLE_OFFSETS.xy, dx * 0.61,
+    dy * 0.61);
+  let third: vec4<f32> = textureSampleGrad(ripple_map, texture_sampler, coordinates * 0.87 + RIPPLE_OFFSETS.zw, dx * 0.87,
+    dy * 0.87);
+  let ripples: vec2<f32> = ripple_layer(first, RIPPLE_SPEEDS.x * rain) + ripple_layer(second, RIPPLE_SPEEDS.y * rain) +
+    ripple_layer(third, RIPPLE_SPEEDS.z * rain);
+
+  return clamp(ripples * max(RIPPLE_REACH - distance, 0.0) * 0.0666, vec2<f32>(-1.0), vec2<f32>(1.0));
+}
+
+// Its maps are read with the base coordinates' own gradients, which the parallax's march, ending where the height
+// says, must not decide.
+fn enhanced_waves(in: WaterVarying, bottom_distance: f32) -> EnhancedWaves {
   let wind: f32 = saturate(water.wind_velocity * 0.001);
   let turned: f32 = water.wind_direction + 1.57079;
   let blowing: vec2<f32> = vec2<f32>(cos(turned), sin(turned));
   let pace: f32 = clamp(0.97 * wind, 0.45, 0.97);
   let time: f32 = water.time;
-  let coordinates: vec2<f32> = in.uv + time * vec2<f32>(0.065, 0.445) * pace;
-  var first: vec3<f32> = textureSample(wave_map, texture_sampler, coordinates + time * vec2<f32>(0.23, 0.1) * pace).rgb;
-  let second: vec3<f32> = textureSample(wave_map, texture_sampler, coordinates - time * vec2<f32>(0.21, 0.28) * pace).rgb;
-  let gust: vec2<f32> = textureSample(wind_map, texture_sampler, coordinates * 0.1 + blowing * wind * time * 0.1).rg;
+  let dx: vec2<f32> = dpdx(in.uv);
+  let dy: vec2<f32> = dpdy(in.uv);
+  var coordinates: vec2<f32> = in.uv + time * vec2<f32>(0.065, 0.445) * pace;
+  var height: f32 = 0.0;
+
+  // The parallax, while the waves stand: steps by how closely the eye looks along the surface, one alone past its
+  // distance.
+  if (water.parallax_height > 0.0) {
+    let to_eye: vec3<f32> = normalize(camera.position.xyz - in.world);
+    let eye: vec3<f32> = normalize(vec3<f32>(
+      dot(to_eye, normalize(in.tangent)),
+      dot(to_eye, normalize(in.binormal)),
+      dot(to_eye, normalize(in.normal)),
+    ));
+    let distance: f32 = -(camera.view * vec4<f32>(in.world, 1.0)).z;
+    let is_near: bool = distance < PARALLAX_DISTANCE;
+    let share: f32 = select(1.0, 1.0 / mix(PARALLAX_STEPS, 1.0, abs(eye.z)), is_near);
+    let lift: f32 = clamp(water.parallax_height * wind, 0.015, water.parallax_height);
+    let marched: vec3<f32> = march_parallax(in.uv, share * eye.xy / eye.z * lift, share, wind);
+
+    coordinates = marched.xy;
+    height = marched.z;
+  }
+
+  var first: vec3<f32> = textureSampleGrad(wave_map, texture_sampler, coordinates + time * vec2<f32>(0.23, 0.1) * pace, dx,
+    dy).rgb;
+  let second: vec3<f32> = textureSampleGrad(wave_map, texture_sampler, coordinates - time * vec2<f32>(0.21, 0.28) * pace, dx,
+    dy).rgb;
+  let gust: vec2<f32> = textureSampleGrad(wind_map, texture_sampler, coordinates * 0.1 + blowing * wind * time * 0.1,
+    dx * 0.1, dy * 0.1).rg;
 
   first = vec3<f32>(mix(first.xy, gust, 0.1 * wind), first.z);
+
+  var ripples: vec2<f32> = vec2<f32>(0.0);
+
+  // The rain's ripples, while it rains and they are wanted, at `clamp(rain_params.x * 1.6, 0.65, 1)`.
+  if (water.rain > 0.0 && water.ripples > 0.0) {
+    ripples = rain_ripples(coordinates * 0.6, dx * 0.6, dy * 0.6, clamp(water.rain * 1.6, 0.65, 1.0), bottom_distance);
+  }
 
   var screen: vec3<f32> = first * 2.0 - 1.0;
 
   screen = vec3<f32>(screen.xy + vec2<f32>(0.095, 0.088), screen.z);
 
-  var average: vec3<f32> = (first + second) - 1.0 + 0.1;
+  var average: vec3<f32> = (first + second) - 1.0 + 0.1 + vec3<f32>(ripples, 0.0);
 
   average = vec3<f32>(average.xy * 0.5, average.z);
 
@@ -400,8 +515,9 @@ fn enhanced_waves(in: WaterVarying) -> EnhancedWaves {
   // `clamp(Wave_Int * wind, ...)`: the strongest wind's strength by the wind, never under the calm's.
   let strength: vec2<f32> = clamp(WAVES_WINDY * wind, WAVES_CALM, WAVES_WINDY);
 
-  out.screen = normalize(vec3<f32>(screen.xy * strength * water.refraction, screen.z)).xy;
+  out.screen = normalize(vec3<f32>(screen.xy * strength * water.refraction, screen.z)).xy + ripples;
   out.normal = normalize(in.tangent * average.x + in.binormal * average.y + normalize(in.normal) * average.z);
+  out.height = height;
 
   return out;
 }
@@ -427,9 +543,9 @@ fn enhanced_caustics(bottom: vec3<f32>) -> vec3<f32> {
 fn fs_water_enhanced(in: WaterVarying) -> WaterOutput {
   let size: vec2<f32> = camera.viewport.xy;
   let pixel: vec2<f32> = floor(in.clip.xy);
-  let waves: EnhancedWaves = enhanced_waves(in);
   // The bottom under the fragment, in the world; far below where only the sky is.
   let stored: f32 = textureLoad(depth_target, vec2<i32>(pixel), 0);
+  let waves: EnhancedWaves = enhanced_waves(in, select(scene_distance((pixel + 0.5) / size), FAR_BEHIND, stored <= 0.0));
   let ndc: vec2<f32> = vec2<f32>(in.clip.x / size.x * 2.0 - 1.0, 1.0 - in.clip.y / size.y * 2.0);
   let bottom: vec3<f32> = select(camera_unproject(ndc, stored), in.world - vec3<f32>(0.0, FAR_BEHIND, 0.0), stored <= 0.0);
   let gathered: vec3<f32> = enhanced_caustics(bottom);
@@ -443,7 +559,8 @@ fn fs_water_enhanced(in: WaterVarying) -> WaterOutput {
   let screen: vec3<f32> = textureLoad(water_scene, vec2<i32>(refracted), 0).rgb;
   // How deep the water stands over its bottom, straight down, as the module measures its fog and its border.
   let water_depth: f32 = in.world.y - bottom.y;
-  let water_fog: f32 = exp(min(water_depth, 16.0)) - 1.0;
+  // The waves' height its parallax met raises the fog a little.
+  let water_fog: f32 = exp(min(water_depth + waves.height * 0.1, 16.0)) - 1.0;
   // `smoothstep(G_SSR_WATER_FOG_MAXDEPTH, -turbidity, fog)`: clear in the shallows, its colour where deep.
   let clear: f32 = saturate((water_fog - ENHANCED_FOG_DEPTH) / (-water.turbidity - ENHANCED_FOG_DEPTH));
   let colour: vec3<f32> = fragment.base.rgb * fragment.light;

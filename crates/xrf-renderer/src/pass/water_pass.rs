@@ -20,12 +20,15 @@ use crate::scene::texture::decoded_texture::DecodedTexture;
 use crate::shader::shader_library::ShaderLibrary;
 
 /// The enhanced water's maps, as the renderer's bundle keeps them: Screen Space Shaders' `fx\blue_noise`,
-/// `water\water_perlin`, `fx\water_normal`, `fx\water_wind` and `fx\water_caustics`.
+/// `water\water_perlin`, `fx\water_normal`, `fx\water_wind`, `fx\water_caustics`, `fx\water_height` and
+/// `fx\water_sbumpvolume`.
 const BLUE_NOISE: &str = "water/blue_noise.dds";
 const PERLIN: &str = "water/perlin.dds";
 const NORMAL: &str = "water/normal.dds";
 const WIND: &str = "water/wind.dds";
 const CAUSTICS: &str = "water/caustics.dds";
+const HEIGHT: &str = "water/height.dds";
+const RIPPLES: &str = "water/ripples.dds";
 
 /// What each blur pass reads its source by: its direction, and the share of the source's size its target is.
 const BLUR_ACROSS: [f32; 4] = [1.0, 0.0, 2.0, 0.0];
@@ -52,6 +55,8 @@ pub struct WaterPass {
   normal: wgpu::TextureView,
   wind: wgpu::TextureView,
   caustics: wgpu::TextureView,
+  height: wgpu::TextureView,
+  ripples: wgpu::TextureView,
   /// What a binding a pass does not read is given: a texel of nothing.
   nothing: wgpu::TextureView,
   generation: u64,
@@ -106,6 +111,8 @@ impl WaterPass {
         texture_entry(14, fragment, filtered, flat),
         texture_entry(15, fragment, filtered, flat),
         texture_entry(16, fragment, filtered, flat),
+        texture_entry(17, fragment, filtered, flat),
+        texture_entry(18, fragment, filtered, flat),
       ],
     );
     let reflection_layout: wgpu::BindGroupLayout = create_layout(
@@ -186,6 +193,8 @@ impl WaterPass {
       normal: load(NORMAL).unwrap_or_else(|| nothing.clone()),
       wind: load(WIND).unwrap_or_else(|| nothing.clone()),
       caustics: load(CAUSTICS).unwrap_or_else(|| nothing.clone()),
+      height: load(HEIGHT).unwrap_or_else(|| nothing.clone()),
+      ripples: load(RIPPLES).unwrap_or_else(|| nothing.clone()),
       nothing,
       layouts,
       generation: shaders.get_generation(),
@@ -255,6 +264,8 @@ impl WaterPass {
           texture_binding(14, &self.wind),
           texture_binding(15, &self.caustics),
           texture_binding(16, &targets.light),
+          texture_binding(17, &self.height),
+          texture_binding(18, &self.ripples),
         ],
       )
     };

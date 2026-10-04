@@ -756,6 +756,7 @@ impl LevelView {
         ),
         intensity: lighting.water_intensity,
         wind: lighting.wind,
+        rain: lighting.rain.map_or(0.0, |rain| rain.density),
         time: self.started.elapsed().as_secs_f32(),
       },
     );
