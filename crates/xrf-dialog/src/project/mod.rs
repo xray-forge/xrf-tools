@@ -4,4 +4,5 @@ pub(crate) mod descriptor;
 pub(crate) mod dialog_project;
 pub(crate) mod layout;
 pub(crate) mod mode;
+pub(crate) mod reference_descriptor;
 pub(crate) mod text_index;

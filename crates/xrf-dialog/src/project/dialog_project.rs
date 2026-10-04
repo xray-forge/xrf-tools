@@ -8,12 +8,14 @@ use xrf_utils::to_portable_path_string;
 use xrf_vfs::{XrayAsset, XrayLogicalPath, XrayLookupScope, XrayRoots, XrayScopedVfs, XrayVfs};
 
 use crate::dialog::Dialog;
+use crate::element::DialogElement;
 use crate::file::DialogFile;
 use crate::project::descriptor::{
   DialogDescriptor, DialogFileDescriptor, DialogFinding, DialogProjectDescriptor, DialogSummaryDescriptor,
 };
 use crate::project::layout::DialogProjectLayout;
 use crate::project::mode::DialogProjectMode;
+use crate::project::reference_descriptor::DialogReferenceDescriptor;
 use crate::project::text_index::{DialogTextIndex, DialogTextLanguage};
 
 /// Filename prefix that marks a logical path as dialog data.
@@ -271,6 +273,43 @@ impl DialogProject {
     // Keyed by the path the project holds, not the one the caller typed: lookup is case-insensitive,
     // and echoing the caller's spelling back would hand out a key that does not match the index.
     Some(DialogDescriptor::new(file.get_logical_path(), dialog, text))
+  }
+
+  /// Every dialog and phrase element a predicate accepts, in file, dialog and document order.
+  pub fn list_references(&self, accepts: impl Fn(&DialogElement) -> bool) -> Vec<DialogReferenceDescriptor> {
+    let mut references: Vec<DialogReferenceDescriptor> = Vec::new();
+
+    for file in &self.files {
+      for dialog in file.get_file().get_dialogs() {
+        let describe = |phrase_id: Option<&str>, element: &DialogElement, is_ignored: bool| DialogReferenceDescriptor {
+          logical_path: file.get_logical_path().to_owned(),
+          dialog_id: dialog.get_id().to_owned(),
+          phrase_id: phrase_id.map(str::to_owned),
+          element: element.into(),
+          is_ignored,
+        };
+
+        for element in dialog.get_elements().iter().filter(|element| accepts(element)) {
+          references.push(describe(None, element, false));
+        }
+
+        let is_entry_read: bool = dialog.is_entry_phrase_revisited();
+
+        for phrase in dialog.get_phrases() {
+          let is_entry: bool = dialog
+            .get_entry_phrase()
+            .is_some_and(|entry| std::ptr::eq(entry, phrase));
+
+          for element in phrase.get_elements().iter().filter(|element| accepts(element)) {
+            let is_ignored: bool = is_entry && !is_entry_read && element.get_kind().is_condition();
+
+            references.push(describe(Some(phrase.get_id()), element, is_ignored));
+          }
+        }
+      }
+    }
+
+    references
   }
 
   /// Total dialogs across every file the project read.

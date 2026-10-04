@@ -9,6 +9,7 @@ use crate::project::descriptor::{DialogDescriptor, DialogProjectDescriptor};
 use crate::project::dialog_project::DialogProject;
 use crate::project::layout::{DialogProjectLayout, detect_mode};
 use crate::project::mode::DialogProjectMode;
+use crate::project::reference_descriptor::DialogReferenceDescriptor;
 
 const DIALOG: &str = r#"<game_dialogs><dialog id="d" priority="-5"><phrase_list><phrase id="0"><text>key</text></phrase></phrase_list></dialog></game_dialogs>"#;
 
@@ -365,6 +366,67 @@ fn keeps_nested_files_under_their_logical_path() -> XrfResult {
     descriptor
       .files
       .contains_key(r"configs\gameplay\extra\dialogs_extra.xml")
+  );
+
+  fs::remove_dir_all(root)?;
+
+  Ok(())
+}
+
+#[test]
+fn lists_every_element_a_search_accepts_and_marks_the_entry_conditions_the_engine_skips() -> XrfResult {
+  let root: PathBuf = create_gamedata("references")?;
+
+  fs::write(
+    root.join("configs").join("gameplay").join("dialogs_drinks.xml"),
+    r#"<game_dialogs>
+      <dialog id="drink">
+        <has_info>met</has_info>
+        <phrase_list>
+          <phrase id="0"><text>drink_0</text><has_info>met</has_info><give_info>met</give_info><next>1</next></phrase>
+          <phrase id="1"><text>drink_1</text><dont_has_info>met</dont_has_info></phrase>
+        </phrase_list>
+      </dialog>
+      <dialog id="loop">
+        <phrase_list>
+          <phrase id="0"><text>loop_0</text><has_info>met</has_info><next>1</next></phrase>
+          <phrase id="1"><text>loop_1</text><next>0</next></phrase>
+        </phrase_list>
+      </dialog>
+    </game_dialogs>"#,
+  )?;
+
+  let project: DialogProject = open(&root, DialogProjectMode::Gamedata)?;
+  let references: Vec<DialogReferenceDescriptor> =
+    project.list_references(|element| element.get_kind().is_info_portion() && element.get_value() == "met");
+  let found: Vec<(&str, Option<&str>, &str, bool)> = references
+    .iter()
+    .map(|reference| {
+      (
+        reference.dialog_id.as_str(),
+        reference.phrase_id.as_deref(),
+        reference.element.name.as_str(),
+        reference.is_ignored,
+      )
+    })
+    .collect();
+
+  assert_eq!(
+    found,
+    vec![
+      ("drink", None, "has_info", false),
+      // Read only by the dialog's own conditions, never by the phrase: nothing leads back to it.
+      ("drink", Some("0"), "has_info", true),
+      // Saying the entry phrase still gives what it gives.
+      ("drink", Some("0"), "give_info", false),
+      ("drink", Some("1"), "dont_has_info", false),
+      ("loop", Some("0"), "has_info", false),
+    ]
+  );
+  assert!(
+    references
+      .iter()
+      .all(|reference| reference.logical_path == r"configs\gameplay\dialogs_drinks.xml")
   );
 
   fs::remove_dir_all(root)?;
