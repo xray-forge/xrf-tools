@@ -184,6 +184,7 @@ describe("LevelWeatherPanel", () => {
           ambient: {
             effect: { name: "effect_6", particles: "nature\\fog_stormy_01", remaining: 4 },
             isIndoors: false,
+            played: 1,
             wait: 20,
           },
         })

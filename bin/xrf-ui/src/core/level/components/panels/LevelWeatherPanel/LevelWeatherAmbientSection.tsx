@@ -7,7 +7,7 @@ import { EditorPanelProperty, EditorPanelSection } from "@/core/shell/editor/Edi
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface ILevelWeatherAmbientSectionProps extends BaseComponentProps {
-  /** Where the ambient effects near the camera stand, null until the level's particles are read. */
+  /** Where the ambient effects near the camera stand, null while no weather plays or the particles are unread. */
   ambient: Nullable<RenderAmbientReport>;
   /** Whether the view plays them at all. */
   isPlayed: boolean;
@@ -51,7 +51,9 @@ export function LevelWeatherAmbientSection({
     return (
       <EditorPanelSection data-testid={dataTestId} id={id} className={className} title={"Ambient effects"}>
         <Typography className={"block text-text-secondary"} variant={"caption"}>
-          {isPlayed ? "Waiting for the level's particles." : "Switched off in the Particles menu."}
+          {isPlayed
+            ? "None until the weather plays and the level's particles are read."
+            : "Switched off in the Particles menu."}
         </Typography>
       </EditorPanelSection>
     );

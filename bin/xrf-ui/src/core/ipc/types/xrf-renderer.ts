@@ -49,6 +49,8 @@ export type RenderAmbientReport = {
   isIndoors: boolean;
   /** Real seconds until the next may start, none once it may. */
   wait: number | null;
+  /** How many have started since the level opened. */
+  played: number;
 };
 
 /** How a viewport's finished frame has its edges smoothed. */

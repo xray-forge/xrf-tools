@@ -1,5 +1,5 @@
 use std::sync::Arc;
-use std::sync::mpsc::{Receiver, channel};
+use std::sync::mpsc::{Receiver, TryRecvError, channel};
 
 use glam::Vec3;
 use xrf_math::Vector3d;
@@ -47,14 +47,19 @@ impl CameraHemi {
   /// Takes a finished estimate, asks for the next one once due, and smooths the hemi on to `now`. `eye` is where the
   /// camera stands, in engine space.
   pub fn advance(&mut self, eye: Vec3, now: u64) {
-    if let Some(value) = self.pending.as_ref().and_then(|pending| pending.try_recv().ok()) {
-      // The first estimate is taken as it is, as the first update takes it.
-      if self.value.is_none() {
-        self.smooth = value;
-      }
+    match self.pending.as_ref().map(Receiver::try_recv) {
+      Some(Ok(value)) => {
+        // The first estimate is taken as it is, as the first update takes it.
+        if self.value.is_none() {
+          self.smooth = value;
+        }
 
-      self.value = Some(value);
-      self.pending = None;
+        self.value = Some(value);
+        self.pending = None;
+      }
+      // A worker that never answered is asked again.
+      Some(Err(TryRecvError::Disconnected)) => self.pending = None,
+      Some(Err(TryRecvError::Empty)) | None => {}
     }
 
     if self.pending.is_none()
@@ -80,8 +85,10 @@ impl CameraHemi {
     self.smoothed_at = Some(now);
   }
 
-  /// Whether the camera stands indoors, which a level without an estimator never does.
+  /// Whether the camera stands indoors, which a level without an estimator never does. The engine estimates the
+  /// actor's hemi in its first frame; until the first estimate is back the camera counts as indoors, so nothing starts
+  /// where it is not yet known.
   pub fn is_indoors(&self) -> bool {
-    self.smooth < INDOOR_HEMI
+    self.estimator.is_some() && (self.value.is_none() || self.smooth < INDOOR_HEMI)
   }
 }
