@@ -1,5 +1,5 @@
 import { CommandBus, inject, Injectable } from "@wirestate/core";
-import { BoundAction, comparer, reaction } from "@wirestate/mobx";
+import { BoundAction, comparer, Computed, reaction } from "@wirestate/mobx";
 import { Maybe, Nullable } from "@xrf/types";
 
 import {
@@ -188,6 +188,21 @@ export class LevelRenderService extends NativeRenderSurfaceService {
     super(settingsService);
   }
 
+  /** What the level is asked to be drawn with: the toolbar, the look and the settings together. */
+  @Computed()
+  public get viewOptions(): RenderViewOptions {
+    return toLevelViewOptions({
+      features: this.settingsService.rendererFeatures,
+      hemiStrength: this.viewService.hemiStrength,
+      lod: this.viewService.lod,
+      look: this.lookService.look,
+      options: this.viewService.options,
+      renderHeight: toNativeRenderHeight(this.settingsService.renderResolution),
+      shading: this.viewService.shading,
+      view: this.viewService.features,
+    });
+  }
+
   /**
    * Stands the camera at a place, facing the way asked.
    *
@@ -249,17 +264,7 @@ export class LevelRenderService extends NativeRenderSurfaceService {
         { fireImmediately: true }
       ),
       reaction(
-        () =>
-          toLevelViewOptions({
-            debugView: this.viewService.debugView,
-            features: this.settingsService.rendererFeatures,
-            hemiStrength: this.viewService.hemiStrength,
-            lod: this.viewService.lod,
-            look: this.lookService.look,
-            options: this.viewService.options,
-            renderHeight: toNativeRenderHeight(this.settingsService.renderResolution),
-            view: this.viewService.features,
-          }),
+        () => this.viewOptions,
         (options: RenderViewOptions) => viewport.setViewOptions(options),
         { equals: comparer.structural, fireImmediately: true }
       ),

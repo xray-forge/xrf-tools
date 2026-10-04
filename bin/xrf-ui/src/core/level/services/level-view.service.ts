@@ -1,10 +1,10 @@
 import { Injectable, OnDeactivation } from "@wirestate/core";
 import { BoundAction, RefObservable } from "@wirestate/mobx";
 
-import { ERenderDebugView } from "@/core/ipc/types/xrf-renderer";
 import { ILevelCameraOptions, toLevelCameraOptions } from "@/core/level/lib/camera/level-camera-options";
 import { ILevelFeatureOptions, toLevelFeatureOptions } from "@/core/level/lib/features/level-feature-options";
 import { DEFAULT_LEVEL_LOD_OPTIONS, ILevelLodOptions } from "@/core/level/lib/lod/level-lod-options";
+import { ELevelShading } from "@/core/level/lib/view/level-shading";
 import {
   DEFAULT_LEVEL_HEMI_STRENGTH,
   DEFAULT_LEVEL_VIEW_OPTIONS,
@@ -41,9 +41,9 @@ export class LevelViewService {
   @RefObservable()
   public features: ILevelFeatureOptions = toLevelFeatureOptions(parseLocalStorageValueSafe(LEVEL_FEATURES_STORAGE_KEY));
 
-  /** Which picture the viewport shows: the frame, or one of the targets it was built from. */
+  /** What the viewport shows of its surfaces: the frame as dressed, as clay or by shader, or one of its targets. */
   @RefObservable()
-  public debugView: ERenderDebugView = ERenderDebugView.FINAL;
+  public shading: ELevelShading = ELevelShading.FINAL;
 
   @BoundAction()
   public setOptions(options: ILevelViewOptions): void {
@@ -62,8 +62,8 @@ export class LevelViewService {
   }
 
   @BoundAction()
-  public setDebugView(debugView: ERenderDebugView): void {
-    this.debugView = debugView;
+  public setShading(shading: ELevelShading): void {
+    this.shading = shading;
   }
 
   @BoundAction()
@@ -87,6 +87,6 @@ export class LevelViewService {
     this.options = DEFAULT_LEVEL_VIEW_OPTIONS;
     this.hemiStrength = DEFAULT_LEVEL_HEMI_STRENGTH;
     this.lod = DEFAULT_LEVEL_LOD_OPTIONS;
-    this.debugView = ERenderDebugView.FINAL;
+    this.shading = ELevelShading.FINAL;
   }
 }

@@ -48,6 +48,8 @@ export interface ILevelViewOptions extends ILevelSurfaceOptions {
   isSpawnedWeapons: boolean;
   /** Draws the spawned hanging lamps' models, whatever lights them. */
   isSpawnedLamps: boolean;
+  /** Draws the spawned objects a new game releases too, each with its group. */
+  isSpawnedReleased: boolean;
 }
 
 /** The baked hemisphere occlusion applied whole, as the engine applies it. */
@@ -72,6 +74,7 @@ export const DEFAULT_LEVEL_VIEW_OPTIONS: ILevelViewOptions = {
   isSpawnedItems: true,
   isSpawnedLamps: true,
   isSpawnedProps: true,
+  isSpawnedReleased: false,
   isSpawnedWeapons: true,
   isWindy: true,
   isStatsVisible: true,

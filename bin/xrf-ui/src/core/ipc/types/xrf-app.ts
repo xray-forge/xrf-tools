@@ -1802,6 +1802,8 @@ export type LevelSpawnObject = {
   /** Absent for an object without one (`INVALID_STORY_ID`). */
   storyId: number | null;
   category: LevelSpawnCategory;
+  /** Why a new game releases it, absent for an object it keeps; a released one is drawn only when asked. */
+  release: LevelSpawnRelease | null;
   /** The visual, by its index among the description's visuals. */
   visual: number;
   /** The object's `XFORM`, in renderer space. */
@@ -1831,6 +1833,23 @@ export type LevelSpawnObjectsDescription = {
   visuals: Array<string>;
   objects: Array<LevelSpawnObject>;
 };
+
+/**
+ * Why a new game releases a spawned object before the actor first stands on its level, as Anomaly's
+ * `game_setup.script` does: the config and section naming it.
+ */
+export enum ELevelSpawnRelease {
+  /** `configs/plugins/new_game_setup.ltx`, `[remove_objects]`: removed outright. */
+  REMOVE_OBJECTS = "removeObjects",
+  /**
+   * `configs/items/settings/dynamic_item_spawn.ltx`, `[replace_items]`: replaced by an item the script places, which
+   * the viewer does not place.
+   */
+  REPLACE_ITEMS = "replaceItems",
+}
+
+/** Every `ELevelSpawnRelease` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type LevelSpawnRelease = `${ELevelSpawnRelease}`;
 
 /** Where a level opens, in renderer space: an actor's eye where the game puts one on the level. */
 export type LevelStart = {

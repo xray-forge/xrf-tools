@@ -5,7 +5,7 @@ import { EditorPanelProperty, EditorPanelSection } from "@/core/shell/editor/Edi
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatCount } from "@/lib/format/number";
 
-interface ILevelStreamStaticDrawsSectionProps extends BaseComponentProps {
+interface ILevelRendererStaticDrawsSectionProps extends BaseComponentProps {
   staticDraws: RenderStaticReport;
 }
 
@@ -17,12 +17,12 @@ function formatPoolUse({ used, capacity }: RenderPoolUse): string {
 /**
  * How full the static draws' pools are, and what the camera's cull kept and occlusion removed.
  */
-export function LevelStreamStaticDrawsSection({
-  "data-testid": dataTestId = "level-stream-static-draws-section",
+export function LevelRendererStaticDrawsSection({
+  "data-testid": dataTestId = "level-renderer-static-draws-section",
   id,
   className,
   staticDraws,
-}: ILevelStreamStaticDrawsSectionProps): ReactElement {
+}: ILevelRendererStaticDrawsSectionProps): ReactElement {
   return (
     <EditorPanelSection data-testid={dataTestId} id={id} className={className} title={"Static draws"}>
       <EditorPanelProperty label={"Slots"} value={formatPoolUse(staticDraws.slots)} />

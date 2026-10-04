@@ -4,6 +4,7 @@ import { ReactElement } from "react";
 
 import { LevelSpawnObject, LevelSpawnObjectDetails } from "@/core/ipc/types/xrf-app";
 import { formatLevelPoint } from "@/core/level/lib/camera/level-camera";
+import { describeLevelSpawnRelease } from "@/core/level/lib/spawn/level-spawn-release";
 import { toLevelSpawnPosition } from "@/core/level/lib/spawn/level-spawn-sphere";
 import { EditorPanelProperty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { AsyncState } from "@/lib/async-state";
@@ -44,6 +45,10 @@ export function LevelSpawnDetails({
       <EditorPanelProperty label={"Visual"} value={visual} isMonospace />
       <EditorPanelProperty label={"Position"} value={formatLevelPoint(toLevelSpawnPosition(object.transform))} />
       <EditorPanelProperty label={"Story id"} value={object.storyId ?? "None"} />
+      <EditorPanelProperty
+        label={"New game"}
+        value={object.release ? describeLevelSpawnRelease(object.release) : "Kept"}
+      />
 
       {read ? (
         <>

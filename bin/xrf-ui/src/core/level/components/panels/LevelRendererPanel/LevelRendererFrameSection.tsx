@@ -6,19 +6,19 @@ import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatMilliseconds } from "@/lib/format/duration";
 import { formatCount } from "@/lib/format/number";
 
-interface ILevelStreamFrameSectionProps extends BaseComponentProps {
+interface ILevelRendererFrameSectionProps extends BaseComponentProps {
   frame: RenderFrameReport;
 }
 
 /**
  * What a frame costs: its time and its worst, the render thread's own share, what it drew, and on what.
  */
-export function LevelStreamFrameSection({
-  "data-testid": dataTestId = "level-stream-frame-section",
+export function LevelRendererFrameSection({
+  "data-testid": dataTestId = "level-renderer-frame-section",
   id,
   className,
   frame,
-}: ILevelStreamFrameSectionProps): ReactElement {
+}: ILevelRendererFrameSectionProps): ReactElement {
   return (
     <EditorPanelSection data-testid={dataTestId} id={id} className={className} title={"Frame"}>
       <EditorPanelProperty label={"Frame time"} value={formatMilliseconds(frame.frameTime ?? 0)} />

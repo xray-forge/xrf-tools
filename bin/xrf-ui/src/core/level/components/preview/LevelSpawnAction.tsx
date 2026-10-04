@@ -31,7 +31,11 @@ export function LevelSpawnAction({
       id={id}
       className={className}
       label={"Spawn"}
-      description={shown.length ? `Spawned ${shown.join(", ")}` : "Nothing spawned drawn"}
+      description={
+        shown.length
+          ? `Spawned ${shown.join(", ")}${options.isSpawnedReleased ? ", released too" : ""}`
+          : "Nothing spawned drawn"
+      }
       icon={<Inventory2Icon />}
       isActive={shown.length > 0}
     >
@@ -43,6 +47,13 @@ export function LevelSpawnAction({
           onToggle={() => onToggle(entry.option)}
         />
       ))}
+
+      <EditorPopoverGroupSection
+        label={"Released"}
+        description={"What a new game releases before the actor arrives, drawn with its group"}
+        isOn={options.isSpawnedReleased}
+        onToggle={() => onToggle("isSpawnedReleased")}
+      />
     </EditorPopoverGroup>
   );
 }

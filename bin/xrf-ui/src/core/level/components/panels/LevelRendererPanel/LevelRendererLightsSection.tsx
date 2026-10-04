@@ -5,7 +5,7 @@ import { EditorPanelProperty, EditorPanelSection } from "@/core/shell/editor/Edi
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatPercent } from "@/lib/format/number";
 
-interface ILevelStreamLightsSectionProps extends BaseComponentProps {
+interface ILevelRendererLightsSectionProps extends BaseComponentProps {
   lights: RenderLightsReport;
 }
 
@@ -13,12 +13,12 @@ interface ILevelStreamLightsSectionProps extends BaseComponentProps {
  * What the local lights came to: how many stood in view, how many with their shadows, the atlas they are drawn in, and
  * what the frame could not hold.
  */
-export function LevelStreamLightsSection({
-  "data-testid": dataTestId = "level-stream-lights-section",
+export function LevelRendererLightsSection({
+  "data-testid": dataTestId = "level-renderer-lights-section",
   id,
   className,
   lights,
-}: ILevelStreamLightsSectionProps): ReactElement {
+}: ILevelRendererLightsSectionProps): ReactElement {
   return (
     <EditorPanelSection data-testid={dataTestId} id={id} className={className} title={"Lights"}>
       <EditorPanelProperty label={"In view"} value={lights.inView} />

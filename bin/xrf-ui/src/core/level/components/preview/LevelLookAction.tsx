@@ -1,4 +1,4 @@
-import { default as TonalityIcon } from "@mui/icons-material/Tonality";
+import { default as ExposureIcon } from "@mui/icons-material/Exposure";
 import { Button, TextField, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ChangeEvent, ReactElement, useState } from "react";
@@ -213,10 +213,10 @@ export function LevelLookAction({
       className={className}
       label={"Look"}
       description={`Exposure, light and image as ${options.find((it) => it.value === picked)?.label ?? "set"}`}
-      icon={<TonalityIcon />}
+      icon={<ExposureIcon />}
       isActive={picked !== ELevelLookSource.GAME}
     >
-      <div className={"flex max-h-[80vh] w-72 flex-col gap-3 overflow-y-auto px-4 py-2"}>
+      <div className={"flex w-72 flex-col gap-3 px-4 py-2"}>
         <Typography className={"text-text-secondary"} variant={"overline"}>
           Look
         </Typography>
@@ -261,13 +261,14 @@ export function LevelLookAction({
 
         <div className={"flex items-center gap-2"}>
           <TextField
+            className={"min-w-0 grow"}
             size={"small"}
             placeholder={"Preset name"}
             value={name}
             slotProps={{ htmlInput: { "aria-label": "Preset name" } }}
             onChange={(event: ChangeEvent<HTMLInputElement>) => setName(event.target.value)}
           />
-          <Button size={"small"} disabled={!name.trim()} onClick={onSave}>
+          <Button className={"min-w-0 shrink-0"} size={"small"} disabled={!name.trim()} onClick={onSave}>
             Save
           </Button>
         </div>
