@@ -3,6 +3,7 @@ import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useMemo } from "react";
 
 import { LevelWeatherCycle, LevelWeatherDescription } from "@/core/ipc/types/xrf-app";
+import { EXrayEngine } from "@/core/ipc/types/xrf-engine-target";
 import { LevelWeatherClockSection } from "@/core/level/components/panels/LevelWeatherPanel/LevelWeatherClockSection";
 import { LevelWeatherFindingsSection } from "@/core/level/components/panels/LevelWeatherPanel/LevelWeatherFindingsSection";
 import { LevelWeatherModifiersSection } from "@/core/level/components/panels/LevelWeatherPanel/LevelWeatherModifiersSection";
@@ -71,7 +72,7 @@ export function LevelWeatherPanel({
             keyframes={keyframes}
             report={isWeather ? weatherService.report : null}
             control={weatherService.control}
-            engine={description.engine}
+            isSunTabled={description.engine === EXrayEngine.EXTENDED && description.sunTable !== null}
             isManual={isManual}
             onSeek={weatherService.seekTo}
             onPlaying={weatherService.setPlaying}

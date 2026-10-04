@@ -182,11 +182,18 @@ impl WeatherDescriptor {
   }
 
   /// `sun_dir.setHP(deg2rad(altitude), deg2rad(longitude))`, from `sun_dir` as longitude then altitude or from the two
-  /// keys; the engine's names are swapped, so the altitude is the heading. None on Monolith, which reads neither.
+  /// keys; the engine's names are swapped, so the altitude is the heading. Monolith reads neither and stands its sun by
+  /// its table; for a game it reads without one, the keys are read as OpenXRay reads them where written, none else.
   fn read_sun_direction(section: &EnvironmentSection<WeatherKey>, engine: XrayEngine) -> Option<[f32; 3]> {
-    if engine != XrayEngine::Vanilla {
+    let is_written: bool = [WeatherKey::SunDir, WeatherKey::SunAltitude, WeatherKey::SunLongitude]
+      .into_iter()
+      .any(|key| section.has(key));
+
+    if engine != XrayEngine::Vanilla && !is_written {
       return None;
     }
+
+    let engine: XrayEngine = XrayEngine::Vanilla;
 
     let (longitude, altitude): (f32, f32) = if section.has(WeatherKey::SunDir) {
       let [longitude, altitude] = section.get_vector::<2>(WeatherKey::SunDir, engine);

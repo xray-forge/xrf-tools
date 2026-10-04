@@ -2,7 +2,6 @@ import { Typography } from "@mui/material";
 import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
-import { EXrayEngine, XrayEngine } from "@/core/ipc/types/xrf-engine-target";
 import { RenderWeatherReport } from "@/core/ipc/types/xrf-renderer";
 import { LevelWeatherClock } from "@/core/level/components/weather/LevelWeatherClock";
 import { ILevelWeatherControl, LEVEL_WEATHER_FACTOR_LIMITS } from "@/core/level/lib/weather/level-weather-control";
@@ -21,8 +20,8 @@ interface ILevelWeatherClockSectionProps extends BaseComponentProps {
   /** Where the renderer's weather stood when it last reported, or null before it has. */
   report: Nullable<RenderWeatherReport>;
   control: ILevelWeatherControl;
-  /** The engine the weather is read for, which says how its sun stands. */
-  engine: XrayEngine;
+  /** Whether Monolith's sun table stands the sun, as it does on its engine for a game that has one. */
+  isSunTabled: boolean;
   /** Whether the keyframe set by hand lights the level, standing the sun by its own angles. */
   isManual: boolean;
   onSeek: (time: number) => void;
@@ -43,7 +42,7 @@ export function LevelWeatherClockSection({
   keyframes,
   report,
   control,
-  engine,
+  isSunTabled,
   isManual,
   onSeek,
   onPlaying,
@@ -78,7 +77,7 @@ export function LevelWeatherClockSection({
         onChange={(value: number) => onFactor(10 ** value)}
       />
 
-      {engine === EXrayEngine.VANILLA ? (
+      {!isSunTabled ? (
         <CheckboxFormRow
           label={"Dynamic sun"}
           description={
