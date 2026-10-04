@@ -7,7 +7,8 @@ pub struct ParticleSurfaceRecord {
   pub flags: u32,
   /// The alpha a texel must exceed to be drawn, a fraction.
   pub alpha_reference: f32,
-  pub pad: u32,
+  /// The texture its `l_special` pass distorts with, by its bindless slot.
+  pub distortion: u32,
 }
 
 impl ParticleSurfaceRecord {

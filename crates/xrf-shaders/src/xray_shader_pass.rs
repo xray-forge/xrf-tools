@@ -20,6 +20,9 @@ impl XRayShaderPass {
   /// The function whose pass the renderer compiles as a surface's base element (`_lua_Create`).
   pub const BASE_FUNCTION: &'static str = "normal";
 
+  /// The function whose pass the renderer compiles into its distortion target (`L_special`, `mapDistort`).
+  pub const DISTORTION_FUNCTION: &'static str = "l_special";
+
   /// Reads one pass off a literal `shader:begin` and whatever is chained onto it.
   pub fn of(call: &XRayLuaMethodCall, vertex_shader: String, pixel_shader: String) -> Self {
     Self {

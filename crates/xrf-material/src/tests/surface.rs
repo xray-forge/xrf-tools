@@ -6,7 +6,10 @@ use xrf_vfs::{XrayMountId, XrayProbe, XrayVfs};
 
 use crate::fixtures::FixtureTree;
 use crate::tests::material_probe::probe_over;
-use crate::{XraySurfaceDeclaration, XraySurfaceDescriptor, XraySurfaceDraw, XraySurfaceResolver, XrayTextureScope};
+use crate::{
+  XraySurfaceDeclaration, XraySurfaceDescriptor, XraySurfaceDraw, XraySurfaceResolver, XraySurfaceSampler,
+  XrayTextureScope,
+};
 
 const CUT_OUT: XraySurfaceDraw = XraySurfaceDraw::AlphaTested {
   reference: XraySurfaceDraw::DEFERRED_ALPHA_REFERENCE,
@@ -654,6 +657,14 @@ end
       ("normal", "s_base", "pfx\\pfx_flame"),
       ("l_special", "s_distort", "pfx\\pfx_distortion"),
     ]
+  );
+  assert_eq!(
+    descriptor.find_sampler(XraySurfaceSampler::DISTORTION_ELEMENT, "s_distort"),
+    Some("pfx\\pfx_distortion")
+  );
+  assert_eq!(
+    descriptor.find_sampler(XraySurfaceSampler::BASE_ELEMENT, "s_distort"),
+    None
   );
 }
 

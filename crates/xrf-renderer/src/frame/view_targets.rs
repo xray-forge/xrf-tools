@@ -25,7 +25,8 @@ pub struct ViewTargets {
   pub occlusion: [wgpu::TextureView; 2],
   /// The sky as drawn, blurred into a map of bearing across and height up, which the distance fades into.
   pub haze: wgpu::TextureView,
-  /// How far the water moves what is seen through it, around a half, which the present reads the scene by.
+  /// How far the water and the distorting particles move what is seen through them, around a half, which the present
+  /// reads the scene by; cleared at the frame's start.
   pub distortion: wgpu::TextureView,
 }
 
@@ -40,6 +41,8 @@ impl ViewTargets {
   pub const OCCLUSION: wgpu::TextureFormat = wgpu::TextureFormat::Rg32Float;
   pub const HAZE: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
   pub const DISTORTION: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
+  /// What the distortion target holds where nothing distorts it, `(127, 127, 0, 127)` as the engine clears it.
+  pub const NEUTRAL_DISTORTION: f64 = 127.0 / 255.0;
   /// Texels the haze map holds across, one a bearing, and down, one a height, as `shaders/frame/sky_haze.wgsl` says.
   pub const HAZE_SIZE: (u32, u32) = (64, 32);
 
@@ -105,5 +108,27 @@ impl ViewTargets {
 
   pub fn is_sized(&self, width: u32, height: u32) -> bool {
     self.width == width && self.height == height
+  }
+
+  /// Clears the distortion target to nothing distorting, before anything of the frame writes it.
+  pub fn clear_distortion(&self, encoder: &mut wgpu::CommandEncoder) {
+    encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+      label: Some("distortion clear"),
+      color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+        view: &self.distortion,
+        depth_slice: None,
+        resolve_target: None,
+        ops: wgpu::Operations {
+          load: wgpu::LoadOp::Clear(wgpu::Color {
+            r: Self::NEUTRAL_DISTORTION,
+            g: Self::NEUTRAL_DISTORTION,
+            b: 0.0,
+            a: Self::NEUTRAL_DISTORTION,
+          }),
+          store: wgpu::StoreOp::Store,
+        },
+      })],
+      ..Default::default()
+    });
   }
 }

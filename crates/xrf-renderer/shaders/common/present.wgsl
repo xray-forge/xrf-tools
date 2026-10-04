@@ -7,7 +7,8 @@ struct Present {
   is_occluded: u32,
   // Whether the frame shown is the upscaled one, at the viewport's size, rather than the scene as drawn.
   is_upscaled: u32,
-  pad: u32,
+  // How far the distortion target moves the scene, a share of the screen; zero where nothing wrote it this frame.
+  distortion: f32,
   // The viewport's top left corner in the window and its size, in pixels; the scene is drawn at `camera.viewport.xy`.
   origin: vec2<f32>,
   size: vec2<f32>,

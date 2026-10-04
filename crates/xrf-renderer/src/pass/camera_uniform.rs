@@ -20,7 +20,7 @@ pub struct CameraUniform {
   pub viewport: Vec4,
   /// The frustum's planes in renderer space, pointing inward.
   pub planes: [Vec4; 6],
-  /// Textured, bumped, the baked hemisphere's strength, how far the water distorts what is behind it.
+  /// Textured, bumped, the baked hemisphere's strength; `w` unused.
   pub switches: Vec4,
   /// One where the static surfaces draw as their triangles' edges; times a uv checker repeats in place of every
   /// surface's textures; one where surfaces draw solid.

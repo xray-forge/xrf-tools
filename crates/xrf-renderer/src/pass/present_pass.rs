@@ -8,7 +8,7 @@ use crate::pass::layout_entries::{texture_entry, uniform_entry};
 use crate::pass::view_binding::ViewBinding;
 use crate::shader::shader_library::ShaderLibrary;
 
-/// Puts a viewport's finished scene into its rectangle of the window, moved where the water distorts it and dithered to
+/// Puts a viewport's finished scene into its rectangle of the window, moved where the water and the particles distort it and dithered to
 /// the window's eight bits; or, for a debug view, one of the targets the scene was built from.
 pub struct PresentPass {
   layout: wgpu::BindGroupLayout,

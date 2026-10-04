@@ -10,7 +10,7 @@ pub struct RenderWaterSettings {
   pub is_enabled: bool,
   /// `r2_soft_water`: soft water fades by the depth behind it, darkens with it and lays foam in the shallows.
   pub is_soft: bool,
-  /// Whether water moves what is seen through it, as the engine's distortion target does.
+  /// Whether water writes the distortion it causes, moving what is seen through it.
   pub is_distorted: bool,
   /// How high the waves lift the surface, in metres: `W_POSITION_SHIFT_HEIGHT`.
   pub wave_height: f32,
@@ -20,7 +20,8 @@ pub struct RenderWaterSettings {
   pub ripple: f32,
   /// What the sky's reflection is multiplied by, one as the engine mixes it.
   pub reflection: f32,
-  /// How far the distortion moves what is behind it, a share of the screen: `def_distort`.
+  /// How far the distortion target moves what is behind it, a share of the screen: `def_distort`, which moves what
+  /// the distorting particles write as well.
   pub distortion: f32,
 }
 

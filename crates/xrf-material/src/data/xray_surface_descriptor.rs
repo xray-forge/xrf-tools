@@ -61,6 +61,16 @@ impl XraySurfaceDescriptor {
     }
   }
 
+  /// The texture its script binds to a sampler of an element, none where it binds none there.
+  pub fn find_sampler(&self, element: &str, name: &str) -> Option<&str> {
+    self
+      .samplers
+      .iter()
+      .find(|it| it.element == element && it.name == name)
+      .map(|it| it.texture.as_str())
+      .filter(|it| !it.is_empty())
+  }
+
   /// The same surface, saying which table entry it answered for.
   pub fn resolved_from(mut self, shader: &str, textures: &[String]) -> Self {
     self.shader = Some(shader.to_owned());
