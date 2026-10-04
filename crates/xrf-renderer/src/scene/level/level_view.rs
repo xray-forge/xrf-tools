@@ -78,6 +78,7 @@ use crate::pass::thunder_uniform::ThunderUniform;
 use crate::pass::upscale_uniform::UpscaleUniform;
 use crate::pass::view_binding::ViewBinding;
 use crate::pass::view_light_groups::ViewLightGroups;
+use crate::pass::water_groups::WaterGroups;
 use crate::pass::water_uniform::WaterUniform;
 use crate::pass::wet_uniform::WetUniform;
 use crate::pass::wind_uniform::WindUniform;
@@ -221,8 +222,8 @@ pub struct LevelView {
   /// What this frame's present shows, and whether its occlusion was searched.
   frame_debug_view: RenderDebugView,
   frame_occlusion: bool,
-  /// The water's bind group, with the sky's version and the targets' epoch it binds.
-  water_group: Option<((u64, u64), wgpu::BindGroup)>,
+  /// The water's bind groups, with the sky's version and the targets' epoch they bind.
+  water_groups: Option<((u64, u64), WaterGroups)>,
   water_settings: RenderWaterSettings,
   rain_cover: RainCover,
   rain: wgpu::Buffer,
@@ -371,7 +372,7 @@ impl LevelView {
       frame_corrections: RenderImageCorrections::default(),
       frame_debug_view: RenderDebugView::Final,
       frame_occlusion: false,
-      water_group: None,
+      water_groups: None,
       water_settings: RenderWaterSettings::default(),
       rain: uniform("rain", size_of::<RainUniform>()),
       splash: None,
@@ -744,14 +745,14 @@ impl LevelView {
 
     let water_key: (u64, u64) = (self.sky_version, self.targets_epoch);
 
-    if self.water_group.as_ref().is_none_or(|(key, _)| *key != water_key)
+    if self.water_groups.as_ref().is_none_or(|(key, _)| *key != water_key)
       && let Some(targets) = &self.targets
     {
       let skies = [
         weather_textures.get_view(sky.textures[0].as_deref(), WeatherTextureKind::Cube),
         weather_textures.get_view(sky.textures[1].as_deref(), WeatherTextureKind::Cube),
       ];
-      let group: wgpu::BindGroup = passes.water.create_bind_group(
+      let groups: WaterGroups = passes.water.create_bind_groups(
         device,
         targets,
         &self.lighting,
@@ -760,7 +761,7 @@ impl LevelView {
         passes.sky.get_clamp(),
       );
 
-      self.water_group = Some((water_key, group));
+      self.water_groups = Some((water_key, groups));
     }
 
     let sway_time: f32 = self.started.elapsed().as_secs_f32();
@@ -1296,7 +1297,7 @@ impl LevelView {
 
       if self.water_settings.is_enabled
         && !self.is_wireframe
-        && let Some((_, water_group)) = &self.water_group
+        && let Some((_, water_groups)) = &self.water_groups
       {
         passes.water.draw(
           encoder,
@@ -1304,7 +1305,7 @@ impl LevelView {
           view,
           draw_groups,
           texture_group,
-          water_group,
+          water_groups,
           &list_args,
         );
         timer.mark(encoder, "water");
