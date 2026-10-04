@@ -8,23 +8,29 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_level::{LevelSector, LevelSectorComposition};
 use xrf_ltx::Ltx;
 use xrf_material::XraySurfaceDescriptor;
+use xrf_particles::{ParticleCollider, ParticleEngineRules};
 use xrf_renderer::{
-  RenderAssetSource, RenderLensFlare, RenderLevelDetails, RenderLevelSource, RenderLevelSpawn, RenderLevelWeather,
-  RenderLoadFailure, RenderRain, RenderSpawnCategory, RenderSpawnLighting, RenderSpawnModel, RenderSpawnModels,
-  RenderSpawnObject, RenderThunder, RenderThunderSettings, RenderThunderbolt, RenderThunderboltGradient,
-  RenderThunderboltModel, RenderWeatherModel, RenderWetSurfaces,
+  RenderAssetSource, RenderLensFlare, RenderLevelDetails, RenderLevelParticles, RenderLevelSource, RenderLevelSpawn,
+  RenderLevelWeather, RenderLoadFailure, RenderRain, RenderSpawnCategory, RenderSpawnLighting, RenderSpawnModel,
+  RenderSpawnModels, RenderSpawnObject, RenderThunder, RenderThunderSettings, RenderThunderbolt,
+  RenderThunderboltGradient, RenderThunderboltModel, RenderWeatherModel, RenderWetSurfaces,
 };
-use xrf_visual::{LightsDescription, SectorPackage, SectorPacker, VisualPoser, VisualTransform};
+use xrf_visual::{LightsDescription, SectorPackage, SectorPacker, VisualPoser};
 
 use crate::core::assets::{AssetMountState, read_located_asset};
 use crate::core::session::SessionSnapshot;
+use crate::plugins::levels::collision::get_level_collision;
 use crate::plugins::levels::configs::get_level_sections;
 use crate::plugins::levels::details::{PackedLevelDetails, pack_details};
 use crate::plugins::levels::drawn_attributes::DRAWN_ATTRIBUTES;
 use crate::plugins::levels::hemi::{estimate_visuals_hemi, get_level_hemi};
 use crate::plugins::levels::lens_flares::to_render_lens_flare;
 use crate::plugins::levels::lights::{PackedLevelLights, pack_lights};
-use crate::plugins::levels::report::{report_missing_sections, report_packed_sector};
+use crate::plugins::levels::particle_collider::LevelParticleCollider;
+use crate::plugins::levels::particles::{PackedLevelParticles, pack_particles};
+use crate::plugins::levels::report::{
+  report_missing_particle_collision, report_missing_sections, report_packed_sector,
+};
 use crate::plugins::levels::spawn::get_level_spawn;
 use crate::plugins::levels::spawn_objects::describe_spawn_objects;
 use crate::plugins::levels::spawn_visuals::SpawnVisualReader;
@@ -59,6 +65,24 @@ impl LevelRenderSource {
       assets,
       textures: RwLock::new(textures),
     }
+  }
+}
+
+impl LevelRenderSource {
+  /// The sections the level's spawned objects name, none where its spawn or the configs cannot be read. Read between
+  /// two probes, as the configs mount a tree of their own.
+  fn read_sections(&self) -> XrfResult<Option<Arc<Ltx>>> {
+    let level: &SelectedLevel = &self.level;
+
+    Ok(
+      self
+        .assets
+        .with_probe(&level.roots, |probe| get_level_spawn(level, probe))
+        .map_err(XrfError::new_asset_error)?
+        .and_then(|spawn| get_level_sections(level, &spawn))
+        .inspect_err(report_missing_sections)
+        .ok(),
+    )
   }
 }
 
@@ -137,14 +161,7 @@ impl RenderLevelSource for LevelRenderSource {
 
   fn read_lights(&self) -> XrfResult<LightsDescription> {
     let level: &SelectedLevel = &self.level;
-    // The sections are read between two probes, as the configs mount a tree of their own.
-    let sections: Option<Arc<Ltx>> = self
-      .assets
-      .with_probe(&level.roots, |probe| get_level_spawn(level, probe))
-      .map_err(XrfError::new_asset_error)?
-      .and_then(|spawn| get_level_sections(level, &spawn))
-      .inspect_err(report_missing_sections)
-      .ok();
+    let sections: Option<Arc<Ltx>> = self.read_sections()?;
     let packed: PackedLevelLights = self
       .assets
       .with_probe(&level.roots, |probe| pack_lights(level, probe, sections.as_deref()))
@@ -274,12 +291,43 @@ impl RenderLevelSource for LevelRenderSource {
           category: to_render_category(object.category),
           is_released: object.release.is_some(),
           visual: object.visual,
-          transform: to_matrix(&object.transform),
+          transform: object.transform.to_matrix(),
         })
         .collect(),
       visuals: described.visuals,
       detail: 0.0,
     })
+  }
+
+  fn read_particles(&self) -> XrfResult<Option<RenderLevelParticles>> {
+    let level: &SelectedLevel = &self.level;
+    let sections: Option<Arc<Ltx>> = self.read_sections()?;
+    let (packed, collision) = self
+      .assets
+      .with_probe(&level.roots, |probe| {
+        (
+          pack_particles(level, probe, sections.as_deref()),
+          get_level_collision(level, probe),
+        )
+      })
+      .map_err(XrfError::new_asset_error)?;
+    let packed: PackedLevelParticles = packed.map_err(XrfError::new_asset_error)?;
+    let mut textures = self.textures.write().unwrap_or_else(PoisonError::into_inner);
+
+    for texture in packed.textures {
+      textures.insert(texture.reference, texture.logical_path);
+    }
+
+    Ok(Some(RenderLevelParticles {
+      library: Arc::new(packed.library),
+      rules: ParticleEngineRules::new(level.engine, ParticleEngineRules::DEFAULT_UPDATE_COEFFICIENT),
+      placements: packed.placements,
+      surfaces: packed.surfaces,
+      collider: collision
+        .inspect_err(|error| report_missing_particle_collision(&level.source, error))
+        .ok()
+        .map(|tracer| Arc::new(LevelParticleCollider::new(tracer)) as Arc<dyn ParticleCollider + Send>),
+    }))
   }
 
   fn read_spawn_models(&self, names: &[String]) -> XrfResult<RenderSpawnModels> {
@@ -352,15 +400,6 @@ fn to_render_category(category: LevelSpawnCategory) -> RenderSpawnCategory {
     LevelSpawnCategory::Weapons => RenderSpawnCategory::Weapons,
     LevelSpawnCategory::Lamps => RenderSpawnCategory::Lamps,
   }
-}
-
-/// A transform's basis and place as a matrix's sixteen floats, column by column.
-fn to_matrix(transform: &VisualTransform) -> [f32; 16] {
-  let VisualTransform { i, j, k, c } = transform;
-
-  [
-    i.x, i.y, i.z, 0.0, j.x, j.y, j.z, 0.0, k.x, k.y, k.z, 0.0, c.x, c.y, c.z, 1.0,
-  ]
 }
 
 /// A model the weather draws as the renderer takes it, its texture by reference.

@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use xrf_level::{LevelCformTracer, LevelLight};
 use xrf_math::Vector3d;
 
@@ -62,7 +64,7 @@ const SEEN_LIGHT_SHARE: f32 = 0.5;
 /// sampled direction, and the level's compiled lights (`build.lights`, `CLight_DB::LoadHemi`) that reach it unoccluded,
 /// each added to the faces it comes from.
 pub struct HemiEstimator {
-  tracer: LevelCformTracer,
+  tracer: Arc<LevelCformTracer>,
   lights: Vec<LevelLight>,
   /// The sampled directions, unit length, normalised once rather than for every object.
   sky: [[f32; 3]; SKY_SAMPLES],
@@ -70,7 +72,7 @@ pub struct HemiEstimator {
 
 impl HemiEstimator {
   /// An estimator over the collision form, lit by the level's compiled lights, of which only the point ones count.
-  pub fn new(tracer: LevelCformTracer, lights: &[LevelLight]) -> Self {
+  pub fn new(tracer: Arc<LevelCformTracer>, lights: &[LevelLight]) -> Self {
     Self {
       lights: lights.iter().filter(|light| light.is_point()).cloned().collect(),
       sky: SKY_DIRECTIONS.map(|direction| normalize(&direction)),

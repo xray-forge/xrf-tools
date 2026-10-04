@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use xrf_error::XrfResult;
 use xrf_level::{LevelCformFace, LevelCformGeometry, LevelCformTracer, LevelLight};
 use xrf_math::Vector3d;
@@ -60,7 +62,7 @@ fn point_light(position: Vector3d<f32>) -> LevelLight {
 // and nothing lights the face toward the ground but the least a face holds.
 #[test]
 fn lights_an_object_under_open_sky_from_above() -> XrfResult {
-  let cube: HemiCube = HemiEstimator::new(open()?, &[])
+  let cube: HemiCube = HemiEstimator::new(Arc::new(open()?), &[])
     .estimate(&Vector3d::new(0.0, 1.0, 0.0), 0.5)
     .cube;
 
@@ -73,10 +75,10 @@ fn lights_an_object_under_open_sky_from_above() -> XrfResult {
 // `hemi_value`: the share of the 26 samples open, times 0.08. Under the roof only the ten level samples pass.
 #[test]
 fn shares_the_open_sky_as_the_engine_counts_it() -> XrfResult {
-  let open: f32 = HemiEstimator::new(open()?, &[])
+  let open: f32 = HemiEstimator::new(Arc::new(open()?), &[])
     .estimate(&Vector3d::new(0.0, 1.0, 0.0), 0.5)
     .sky;
-  let roofed: f32 = HemiEstimator::new(roof()?, &[])
+  let roofed: f32 = HemiEstimator::new(Arc::new(roof()?), &[])
     .estimate(&Vector3d::new(0.0, 1.0, 0.0), 0.5)
     .sky;
 
@@ -88,7 +90,7 @@ fn shares_the_open_sky_as_the_engine_counts_it() -> XrfResult {
 
 #[test]
 fn darkens_an_object_under_a_roof_from_above_and_keeps_its_sides_open() -> XrfResult {
-  let cube: HemiCube = HemiEstimator::new(roof()?, &[])
+  let cube: HemiCube = HemiEstimator::new(Arc::new(roof()?), &[])
     .estimate(&Vector3d::new(0.0, 1.0, 0.0), 0.5)
     .cube;
 
@@ -103,10 +105,10 @@ fn darkens_an_object_under_a_roof_from_above_and_keeps_its_sides_open() -> XrfRe
 #[test]
 fn adds_a_compiled_light_that_reaches_the_object_toward_the_face_it_comes_from() -> XrfResult {
   let lights: Vec<LevelLight> = vec![point_light(Vector3d::new(1.5, 1.15, 0.0))];
-  let cube: HemiCube = HemiEstimator::new(roof()?, &lights)
+  let cube: HemiCube = HemiEstimator::new(Arc::new(roof()?), &lights)
     .estimate(&Vector3d::new(0.0, 1.0, 0.0), 0.5)
     .cube;
-  let unlit: HemiCube = HemiEstimator::new(roof()?, &[])
+  let unlit: HemiCube = HemiEstimator::new(Arc::new(roof()?), &[])
     .estimate(&Vector3d::new(0.0, 1.0, 0.0), 0.5)
     .cube;
 
@@ -129,18 +131,18 @@ fn adds_a_compiled_light_that_reaches_the_object_toward_the_face_it_comes_from()
 fn ignores_a_light_the_form_hides_and_one_out_of_its_reach() -> XrfResult {
   let hidden: Vec<LevelLight> = vec![point_light(Vector3d::new(0.0, 5.0, 0.0))];
   let far: Vec<LevelLight> = vec![point_light(Vector3d::new(20.0, 1.15, 0.0))];
-  let unlit: HemiCube = HemiEstimator::new(roof()?, &[])
+  let unlit: HemiCube = HemiEstimator::new(Arc::new(roof()?), &[])
     .estimate(&Vector3d::new(0.0, 1.0, 0.0), 0.5)
     .cube;
 
   assert_eq!(
-    HemiEstimator::new(roof()?, &hidden)
+    HemiEstimator::new(Arc::new(roof()?), &hidden)
       .estimate(&Vector3d::new(0.0, 1.0, 0.0), 0.5)
       .cube,
     unlit
   );
   assert_eq!(
-    HemiEstimator::new(roof()?, &far)
+    HemiEstimator::new(Arc::new(roof()?), &far)
       .estimate(&Vector3d::new(0.0, 1.0, 0.0), 0.5)
       .cube,
     unlit
@@ -156,12 +158,12 @@ fn adds_nothing_of_a_light_without_attenuation() -> XrfResult {
     attenuation_constant: 0.0,
     ..point_light(Vector3d::new(1.5, 1.15, 0.0))
   }];
-  let unlit: HemiCube = HemiEstimator::new(roof()?, &[])
+  let unlit: HemiCube = HemiEstimator::new(Arc::new(roof()?), &[])
     .estimate(&Vector3d::new(0.0, 1.0, 0.0), 0.5)
     .cube;
 
   assert_eq!(
-    HemiEstimator::new(roof()?, &unattenuated)
+    HemiEstimator::new(Arc::new(roof()?), &unattenuated)
       .estimate(&Vector3d::new(0.0, 1.0, 0.0), 0.5)
       .cube,
     unlit

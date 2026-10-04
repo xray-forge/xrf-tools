@@ -1,3 +1,4 @@
+pub mod collision;
 pub mod commands;
 pub mod configs;
 pub mod console_defaults;
@@ -7,6 +8,8 @@ pub mod hemi;
 pub mod lens_flares;
 pub mod lights;
 pub mod new_game;
+pub mod particle_collider;
+pub mod particles;
 pub mod plugin;
 pub mod read;
 pub mod render_source;

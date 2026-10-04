@@ -312,6 +312,8 @@ export type RenderFrameReport = {
   staticDraws: RenderStaticReport;
   /** The level's local lights, empty without a level. */
   lights: RenderLightsReport;
+  /** The level's particle systems, empty without a level. */
+  particles: RenderParticlesReport;
   /** Milliseconds the last sector taken in took to put into the scene, on the render thread. */
   sectorTime: number | null;
   /** What the renderer holds on the GPU. */
@@ -606,6 +608,20 @@ export type RenderPageWash = {
   to: [number | null, number | null, number | null, number | null];
 };
 
+/** What a level's particle systems came to over the span reported. */
+export type RenderParticlesReport = {
+  /** Effects playing, each of a group's counted. */
+  effects: number;
+  /** Particles alive in them. */
+  particles: number;
+  /** Effects that took an update on the last frame counted, drawn or scheduled. */
+  simulated: number;
+  /** Effects drawn on the last frame counted. */
+  drawn: number;
+  /** Mean milliseconds a frame spent stepping them, on the render thread's workers. */
+  simulationTime: number | null;
+};
+
 /** What one pass of a viewport's frames cost on the GPU. */
 export type RenderPassCost = {
   /** The pass, as the frame names it. */
@@ -890,6 +906,10 @@ export type RenderViewOptions = {
   isWindy: boolean;
   /** Whether the level's wall marks are laid over its surfaces. */
   isWallmarked: boolean;
+  /** Whether the level's particle systems play and draw. */
+  isParticled: boolean;
+  /** Whether its campfires burn, as `CZoneCampfire` starts, rather than smoulder out. */
+  isCampfireLit: boolean;
   /** Which groups of the level's spawned objects are drawn. */
   isSpawnedProps: boolean;
   isSpawnedItems: boolean;

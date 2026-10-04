@@ -11,7 +11,10 @@ fn estimator(built: &Cell<u32>) -> Result<Arc<HemiEstimator>, String> {
 
   let geometry: LevelCformGeometry = LevelCformGeometry::new(Vec::new(), Vec::new()).map_err(|it| it.to_string())?;
 
-  Ok(Arc::new(HemiEstimator::new(LevelCformTracer::new(&geometry), &[])))
+  Ok(Arc::new(HemiEstimator::new(
+    Arc::new(LevelCformTracer::new(&geometry)),
+    &[],
+  )))
 }
 
 fn names(names: &[&str]) -> Vec<String> {

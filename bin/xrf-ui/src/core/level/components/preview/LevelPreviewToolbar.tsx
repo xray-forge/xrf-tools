@@ -11,6 +11,7 @@ import { LevelLightsAction } from "@/core/level/components/preview/LevelLightsAc
 import { LevelLookAction } from "@/core/level/components/preview/LevelLookAction";
 import { LevelOcclusionAction } from "@/core/level/components/preview/LevelOcclusionAction";
 import { LevelOverlaysAction } from "@/core/level/components/preview/LevelOverlaysAction";
+import { LevelParticlesAction } from "@/core/level/components/preview/LevelParticlesAction";
 import { LevelRainAction } from "@/core/level/components/preview/LevelRainAction";
 import { LevelShadingAction } from "@/core/level/components/preview/LevelShadingAction";
 import { LevelShadowAction } from "@/core/level/components/preview/LevelShadowAction";
@@ -237,6 +238,8 @@ export function LevelPreviewToolbar({
           <EditorToolbarSeparator />
 
           <LevelSpawnAction options={options} onToggle={onToggle} />
+
+          <LevelParticlesAction options={options} onToggle={onToggle} />
 
           <LevelGrassAction
             isOn={options.isGrassy}

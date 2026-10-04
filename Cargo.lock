@@ -7006,6 +7006,7 @@ dependencies = [
  "bytes",
  "env_logger",
  "getrandom 0.4.3",
+ "glam",
  "http-body-util",
  "hyper",
  "hyper-util",
@@ -7601,6 +7602,7 @@ dependencies = [
  "xrf-error",
  "xrf-material",
  "xrf-math",
+ "xrf-particles",
  "xrf-visual",
 ]
 

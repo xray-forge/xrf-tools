@@ -5,6 +5,7 @@ import { RenderFrameReport } from "@/core/ipc/types/xrf-renderer";
 import { LevelRendererAppliedSection } from "@/core/level/components/panels/LevelRendererPanel/LevelRendererAppliedSection";
 import { LevelRendererFrameSection } from "@/core/level/components/panels/LevelRendererPanel/LevelRendererFrameSection";
 import { LevelRendererLightsSection } from "@/core/level/components/panels/LevelRendererPanel/LevelRendererLightsSection";
+import { LevelRendererParticlesSection } from "@/core/level/components/panels/LevelRendererPanel/LevelRendererParticlesSection";
 import { LevelRendererResidentSection } from "@/core/level/components/panels/LevelRendererPanel/LevelRendererResidentSection";
 import { LevelRendererStaticDrawsSection } from "@/core/level/components/panels/LevelRendererPanel/LevelRendererStaticDrawsSection";
 import { LevelRendererTexturesSection } from "@/core/level/components/panels/LevelRendererPanel/LevelRendererTexturesSection";
@@ -44,6 +45,7 @@ export function LevelRendererPanel({
       <LevelRendererFrameSection frame={frame} />
       <LevelRendererStaticDrawsSection staticDraws={frame.staticDraws} />
       <LevelRendererLightsSection lights={frame.lights} />
+      <LevelRendererParticlesSection particles={frame.particles} />
 
       <LevelRendererTexturesSection textures={textures} />
     </EditorPanel>

@@ -5,6 +5,7 @@ use xrf_visual::{LightsDescription, SectorPackage};
 
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::host::render_level_details::RenderLevelDetails;
+use crate::host::render_level_particles::RenderLevelParticles;
 use crate::host::render_level_spawn::RenderLevelSpawn;
 use crate::host::render_level_weather::RenderLevelWeather;
 use crate::host::render_motion::RenderMotion;
@@ -72,6 +73,14 @@ pub trait RenderLevelSource: RenderAssetSource {
   ///
   /// Returns an error when the library or the collision form cannot be read.
   fn read_details(&self) -> XrfResult<Option<RenderLevelDetails>>;
+
+  /// The level's particle systems, planted and played by its zones, called once from a loader thread; none for a
+  /// source with no level.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the game's particle library cannot be read.
+  fn read_particles(&self) -> XrfResult<Option<RenderLevelParticles>>;
 
   /// One motion of the skinned model [`RenderLevelSource::read_spawn_models`] gave a skeleton, baked, called from a
   /// loader thread; a level's spawned models are posed already and have none.

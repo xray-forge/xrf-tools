@@ -5,8 +5,8 @@ use xrf_environment::WeatherDescriptor;
 use xrf_error::{XrfError, XrfResult};
 use xrf_material::{XrayMaterialDescriptor, XraySurfaceDeclaration, XraySurfaceDescriptor};
 use xrf_renderer::{
-  RenderAssetSource, RenderLevelDetails, RenderLevelSource, RenderLevelSpawn, RenderLevelWeather, RenderSpawnCategory,
-  RenderSpawnLighting, RenderSpawnModel, RenderSpawnModels, RenderSpawnObject,
+  RenderAssetSource, RenderLevelDetails, RenderLevelParticles, RenderLevelSource, RenderLevelSpawn, RenderLevelWeather,
+  RenderSpawnCategory, RenderSpawnLighting, RenderSpawnModel, RenderSpawnModels, RenderSpawnObject,
 };
 use xrf_vfs::{XrayAsset, XrayRoots};
 use xrf_visual::{LightsDescription, SectorPackage, VisualMesh, VisualPacker, VisualShape};
@@ -240,6 +240,10 @@ impl RenderLevelSource for TextureRenderSource {
   }
 
   fn read_details(&self) -> XrfResult<Option<RenderLevelDetails>> {
+    Ok(None)
+  }
+
+  fn read_particles(&self) -> XrfResult<Option<RenderLevelParticles>> {
     Ok(None)
   }
 }

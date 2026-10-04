@@ -5,6 +5,7 @@ use std::time::{Duration, Instant};
 
 use xrf_level::{LevelSectorComposition, LevelShaderEntry};
 use xrf_material::{XraySurfaceDeclaration, XraySurfaceDescriptor, XraySurfaceDraw};
+use xrf_particles::ParticleLibrary;
 use xrf_spawn::SpawnLevelObjects;
 use xrf_visual::{
   DetailsDescription, LightsDescription, SectorDescription, SectorInstanceGroup, SectorOutline, SectorPackage,
@@ -306,10 +307,18 @@ pub fn report_spawn_objects(source: &LevelSource, objects: &LevelSpawnObjectsDes
 }
 
 /// What the estimate of how a level lights its spawned objects was built from, and how long its form took to read.
-pub fn report_hemi(source: &LevelSource, triangles: usize, lights: usize, read: Duration, started: Instant) {
+pub fn report_hemi(source: &LevelSource, lights: usize, started: Instant) {
   log::info!(
-    "Built the spawned objects' lighting of {} in {} ({} reading the form): {triangles} collision triangles, {lights} \
-     compiled point lights",
+    "Built the spawned objects' lighting of {} in {}: {lights} compiled point lights",
+    source.get_label(),
+    xrf_utils::format_duration(started.elapsed())
+  );
+}
+
+/// That the collision form was read and its rays' hierarchy built.
+pub fn report_collision(source: &LevelSource, triangles: usize, read: Duration, started: Instant) {
+  log::info!(
+    "Built the collision form of {} in {} ({} reading it): {triangles} triangles",
     source.get_label(),
     xrf_utils::format_duration(started.elapsed()),
     xrf_utils::format_duration(read)
@@ -370,4 +379,40 @@ fn name_a_few(names: &[&str]) -> String {
     0 => listed,
     rest => format!("{listed} and {rest} more"),
   }
+}
+
+/// That the level's particle systems were placed and the effects they reach described.
+pub fn report_particles(
+  source: &LevelSource,
+  library: &ParticleLibrary,
+  placements: usize,
+  effects: usize,
+  started: Instant,
+) {
+  log::info!(
+    "Placed the particle systems of {} in {}: {placements} placed, {effects} effects described of {} effects and {}      groups",
+    source.get_label(),
+    xrf_utils::format_duration(started.elapsed()),
+    library.get_effect_count(),
+    library.get_group_count()
+  );
+}
+
+/// That placements name effects or groups the particle library lacks, which play nothing.
+pub fn report_unknown_particles(names: &[&str]) {
+  log::warn!(
+    "{} particle systems are not in the library and play nothing: {}",
+    names.len(),
+    name_a_few(names)
+  );
+}
+
+/// That the level's zones play no particles, their spawn being unreadable.
+pub fn report_missing_zone_particles(source: &LevelSource, error: &impl Display) {
+  log::warn!("Zones of {} play no particles: {error}", source.get_label());
+}
+
+/// That the collision form could not be read, so no particle effect collides with anything.
+pub fn report_missing_particle_collision(source: &LevelSource, error: &impl Display) {
+  log::warn!("Particles of {} collide with nothing: {error}", source.get_label());
 }

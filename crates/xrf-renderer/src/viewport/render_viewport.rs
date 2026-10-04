@@ -13,6 +13,7 @@ use crate::contract::render_load_report::RenderLoadReport;
 use crate::contract::render_memory_report::RenderMemoryReport;
 use crate::contract::render_model_pose::RenderModelPose;
 use crate::contract::render_overlay::RenderOverlay;
+use crate::contract::render_particles_report::RenderParticlesReport;
 use crate::contract::render_rect::RenderRect;
 use crate::contract::render_selection::RenderSelection;
 use crate::contract::render_static_report::RenderStaticReport;
@@ -191,6 +192,8 @@ impl RenderViewport {
         passes,
         static_draws,
         lights,
+        // todo: Report the level's particle systems once the renderer plays them.
+        particles: RenderParticlesReport::default(),
         sector_time: self.level_view.as_ref().map_or(0.0, LevelView::get_sector_time),
         memory: RenderMemoryReport {
           textures: texture_bytes,

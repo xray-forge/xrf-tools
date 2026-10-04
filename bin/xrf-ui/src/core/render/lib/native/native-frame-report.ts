@@ -1,4 +1,9 @@
-import { RenderFrameReport, RenderLightsReport, RenderStaticReport } from "@/core/ipc/types/xrf-renderer";
+import {
+  RenderFrameReport,
+  RenderLightsReport,
+  RenderParticlesReport,
+  RenderStaticReport,
+} from "@/core/ipc/types/xrf-renderer";
 
 /** Nothing used of a pool that holds nothing. */
 const EMPTY_POOL = { capacity: 0, used: 0 } as const;
@@ -28,6 +33,15 @@ export const EMPTY_RENDER_LIGHTS_REPORT: RenderLightsReport = {
   shadowed: 0,
 };
 
+/** A frame with no level's particle systems. */
+export const EMPTY_RENDER_PARTICLES_REPORT: RenderParticlesReport = {
+  drawn: 0,
+  effects: 0,
+  particles: 0,
+  simulated: 0,
+  simulationTime: 0,
+};
+
 /** What a viewport reads before its first frame is reported, and after it is let go. */
 export const EMPTY_RENDER_FRAME_REPORT: RenderFrameReport = {
   adapter: "",
@@ -40,6 +54,7 @@ export const EMPTY_RENDER_FRAME_REPORT: RenderFrameReport = {
   isGpuTimed: false,
   lights: EMPTY_RENDER_LIGHTS_REPORT,
   memory: { scene: 0, textures: 0 },
+  particles: EMPTY_RENDER_PARTICLES_REPORT,
   passes: [],
   renderHeight: 0,
   renderWidth: 0,

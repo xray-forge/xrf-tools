@@ -2,21 +2,22 @@
 
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 use rayon::prelude::*;
 use xrf_chunk::XRayByteOrder;
-use xrf_level::{LevelCformFile, LevelCformGeometry, LevelCformTracer, LevelLight, LevelLightsChunk, LevelLightsFile};
+use xrf_level::{LevelCformTracer, LevelLight, LevelLightsChunk, LevelLightsFile};
 use xrf_math::Vector3d;
 use xrf_vfs::XrayProbe;
 use xrf_visual::{HemiEstimator, VisualSphere, VisualTransform};
 
-use crate::plugins::levels::read::{read_file, read_optional_file};
+use crate::plugins::levels::collision::get_level_collision;
+use crate::plugins::levels::read::read_optional_file;
 use crate::plugins::levels::report::{report_hemi, report_missing_hemi, report_unreadable_lights};
 use crate::plugins::levels::spawn::get_level_spawn;
 use crate::plugins::levels::spawn_objects::get_drawn_visual;
 use crate::plugins::levels::state::{
-  COLLISION_FILE, LIGHTS_FILE, LevelSource, LevelSpawn, LevelSpawnObjectHemi, LevelSpawnVisual, SelectedLevel,
+  LIGHTS_FILE, LevelSource, LevelSpawn, LevelSpawnObjectHemi, LevelSpawnVisual, SelectedLevel,
 };
 
 /// The open level's estimator, built the first time a batch asks and held until every visual is described.
@@ -27,7 +28,7 @@ use crate::plugins::levels::state::{
 pub fn get_level_hemi(current: &SelectedLevel, probe: &XrayProbe) -> Result<Arc<HemiEstimator>, String> {
   current
     .spawn_lighting
-    .get_or_build(|| read_hemi(&current.source, probe).inspect_err(|error| report_missing_hemi(&current.source, error)))
+    .get_or_build(|| read_hemi(current, probe).inspect_err(|error| report_missing_hemi(&current.source, error)))
 }
 
 /// The cube of every spawned object the viewer draws standing as one of `spheres`' visuals, where it stands, in
@@ -76,23 +77,12 @@ pub fn estimate_visuals_hemi(
   estimate_spawn_hemi(estimator, &spawn, &spheres)
 }
 
-fn read_hemi(source: &LevelSource, probe: &XrayProbe) -> Result<Arc<HemiEstimator>, String> {
+fn read_hemi(current: &SelectedLevel, probe: &XrayProbe) -> Result<Arc<HemiEstimator>, String> {
   let started: Instant = Instant::now();
-  let geometry: LevelCformGeometry =
-    LevelCformFile::read_geometry_from_bytes::<XRayByteOrder>(read_file(source, probe, COLLISION_FILE)?).map_err(
-      |error| {
-        format!(
-          "Failed to read '{COLLISION_FILE}' of level '{}': {error}",
-          source.get_label()
-        )
-      },
-    )?;
-  let read: Duration = started.elapsed();
-  let tracer: LevelCformTracer = LevelCformTracer::new(&geometry);
-  let triangles: usize = tracer.get_triangle_count();
-  let estimator: HemiEstimator = HemiEstimator::new(tracer, &read_hemi_lights(source, probe));
+  let tracer: Arc<LevelCformTracer> = get_level_collision(current, probe)?;
+  let estimator: HemiEstimator = HemiEstimator::new(tracer, &read_hemi_lights(&current.source, probe));
 
-  report_hemi(source, triangles, estimator.get_light_count(), read, started);
+  report_hemi(&current.source, estimator.get_light_count(), started);
 
   Ok(Arc::new(estimator))
 }

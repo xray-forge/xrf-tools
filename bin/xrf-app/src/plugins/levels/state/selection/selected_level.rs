@@ -2,7 +2,7 @@ use std::sync::{Arc, OnceLock};
 
 use xrf_chunk::InMemoryChunkDataSource;
 use xrf_engine_target::XrayEngine;
-use xrf_level::{LevelFile, LevelGeomSource, LevelSector, LevelVisualsChunk};
+use xrf_level::{LevelCformTracer, LevelFile, LevelGeomSource, LevelSector, LevelVisualsChunk};
 use xrf_ltx::{Ltx, LtxDialect};
 use xrf_material::XraySurfaceDescriptor;
 use xrf_vfs::XrayRoots;
@@ -52,6 +52,8 @@ pub struct SelectedLevel {
   pub sections: OnceLock<Result<Arc<Ltx>, String>>,
   /// The game's environment configs and the level's cycles, which its weather is played from; kept likewise.
   pub environment: OnceLock<Result<Arc<LevelEnvironment>, String>>,
+  /// The collision form as rays test it, which lights spawned objects and collides particles; kept likewise.
+  pub collision: OnceLock<Result<Arc<LevelCformTracer>, String>>,
 }
 
 impl SelectedLevel {

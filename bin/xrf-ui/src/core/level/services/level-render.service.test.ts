@@ -67,6 +67,7 @@ const REPORT: RenderFrameReport = {
     inView: 12,
     shadowed: 4,
   },
+  particles: { drawn: 9, effects: 14, particles: 210, simulated: 11, simulationTime: 0.3 },
   renderHeight: 400,
   renderWidth: 534,
   sectorTime: 1.5,
