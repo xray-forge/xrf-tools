@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use xrf_environment::WeatherDescriptor;
 
+use crate::contract::render_ambient_report::RenderAmbientReport;
 use crate::contract::render_weather_effect_report::RenderWeatherEffectReport;
 
 /// Where a viewport's weather stands.
@@ -20,4 +21,6 @@ pub struct RenderWeatherReport {
   pub modifiers: u32,
   /// What is mixed now as one keyframe, without the modifiers: what a keyframe set by hand starts from.
   pub current: Box<WeatherDescriptor>,
+  /// The ambient effects near the camera, none until the level's particles are read.
+  pub ambient: Option<RenderAmbientReport>,
 }

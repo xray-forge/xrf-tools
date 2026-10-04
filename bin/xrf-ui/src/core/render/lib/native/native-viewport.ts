@@ -163,6 +163,11 @@ export class NativeViewport {
     this.call((id: RenderViewportId) => renderCommands.playWeatherEffect(id, name));
   }
 
+  /** Plays a weather ambient effect near the camera at once, ending the one playing; none plays indoors. */
+  public playAmbientEffect(): void {
+    this.call((id: RenderViewportId) => renderCommands.playAmbientEffect(id));
+  }
+
   /**
    * Names what the viewport's level draws under a point.
    *

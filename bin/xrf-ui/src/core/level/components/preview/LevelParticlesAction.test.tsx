@@ -8,7 +8,7 @@ import { renderWithProviders } from "@/fixtures/utils/render";
 type TToggle = (option: keyof ILevelViewOptions) => void;
 
 describe("LevelParticlesAction", () => {
-  it("says what plays and turns the particles and the campfires over by their own checkboxes", async () => {
+  it("says what plays and turns the particles, the campfires and the ambient effects over by their own checkboxes", async () => {
     const onToggle = jest.fn<TToggle>();
     const { getByRole, findByRole } = renderWithProviders(
       <LevelParticlesAction options={DEFAULT_LEVEL_VIEW_OPTIONS} onToggle={onToggle} />
@@ -20,8 +20,9 @@ describe("LevelParticlesAction", () => {
     await findByRole("dialog", { name: "Particles" });
     await userEvent.click(getByRole("checkbox", { name: "Particles" }));
     await userEvent.click(getByRole("checkbox", { name: "Campfires lit" }));
+    await userEvent.click(getByRole("checkbox", { name: "Ambient effects" }));
 
-    expect(onToggle.mock.calls).toEqual([["isParticled"], ["isCampfireLit"]]);
+    expect(onToggle.mock.calls).toEqual([["isParticled"], ["isCampfireLit"], ["isAmbientPlayed"]]);
   });
 
   it("says when the particles are off", () => {

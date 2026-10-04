@@ -2,6 +2,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use crate::camera::camera_controller::CameraController;
+use crate::contract::render_ambient_report::RenderAmbientReport;
 use crate::contract::render_applied_environment::RenderAppliedEnvironment;
 use crate::contract::render_applied_fog::RenderAppliedFog;
 use crate::contract::render_applied_report::RenderAppliedReport;
@@ -263,9 +264,11 @@ impl RenderViewport {
     }
   }
 
-  /// Publishes where the weather stands when it changed, a few times a second at most.
+  /// Publishes where the weather and its ambient effects stand when they changed, a few times a second at most.
   pub fn publish_weather(&mut self, now: Instant) {
-    if let Some(report) = self.weather.take_report(now) {
+    let ambient: Option<RenderAmbientReport> = self.level_view.as_ref().and_then(LevelView::get_ambient_report);
+
+    if let Some(report) = self.weather.take_report(now, ambient) {
       self.send(RenderViewportEvent::Weather { report });
     }
   }

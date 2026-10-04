@@ -111,6 +111,10 @@ export class LevelWeatherService {
   @RefObservable()
   public effect: Nullable<ILevelWeatherEffectRequest> = null;
 
+  /** How many times an ambient effect was asked to play at once since the level opened. */
+  @RefObservable()
+  public ambientPlays: number = 0;
+
   /** Where the renderer's weather stood when it last reported, or null before it has. */
   @RefObservable()
   public report: Nullable<RenderWeatherReport> = null;
@@ -353,6 +357,12 @@ export class LevelWeatherService {
     this.effect = { name };
   }
 
+  /** Plays a weather ambient effect near the camera at once, ending the one playing; none plays indoors. */
+  @BoundAction()
+  public playAmbientEffect(): void {
+    this.ambientPlays += 1;
+  }
+
   /**
    * @param time - Seconds since midnight to play on from.
    */
@@ -399,6 +409,7 @@ export class LevelWeatherService {
     this.reading = null;
     this.seek = null;
     this.effect = null;
+    this.ambientPlays = 0;
     this.report = null;
     this.source = ELevelWeatherSource.WEATHER;
     this.control = DEFAULT_LEVEL_WEATHER_CONTROL;

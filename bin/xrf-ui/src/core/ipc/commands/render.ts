@@ -158,6 +158,9 @@ export const renderCommands = {
   /** Stand one viewport's skinned models in a pose. */
   poseModel: (viewport: RenderViewportId, pose: RenderModelPose) =>
     __TAURI_INVOKE<void>("plugin:render|pose_model", { viewport, pose }),
+  /** Play a weather ambient effect near a viewport's camera at once, ending the one playing; none plays indoors. */
+  playAmbientEffect: (viewport: RenderViewportId) =>
+    __TAURI_INVOKE<void>("plugin:render|play_ambient_effect", { viewport }),
   /** Play a weather in a viewport's level from now on: a cycle by name, a keyframe set by hand, or nothing. */
   playWeather: (viewport: RenderViewportId, play: RenderWeatherPlay, transition: ERenderWeatherTransition) =>
     __TAURI_INVOKE<void>("plugin:render|play_weather", { viewport, play, transition }),

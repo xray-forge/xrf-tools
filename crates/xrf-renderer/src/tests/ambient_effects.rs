@@ -10,6 +10,7 @@ use xrf_particles::{
   ParticlesEffectsChunk, ParticlesFile, ParticlesGroupsChunk, ParticlesHeaderChunk,
 };
 
+use crate::contract::render_ambient_report::RenderAmbientReport;
 use crate::host::render_ambient::RenderAmbient;
 use crate::host::render_ambient_effect::RenderAmbientEffect;
 use crate::host::render_level_weather::RenderLevelWeather;
@@ -258,4 +259,53 @@ fn an_ambient_without_effects_plays_none() {
     &context,
   );
   assert!(effects.get_playing().is_none());
+}
+
+#[test]
+fn playing_one_now_ends_the_one_playing_and_starts_without_waiting() {
+  let library: ParticleLibrary = library(&["nature\\fog", "nature\\leaves"]);
+  let rules: ParticleEngineRules =
+    ParticleEngineRules::new(XrayEngine::Vanilla, ParticleEngineRules::DEFAULT_UPDATE_COEFFICIENT);
+  let context: ParticleUpdateContext = ParticleUpdateContext {
+    library: &library,
+    rules: &rules,
+    collider: None,
+  };
+  let (weather, ambients) = (weather(&["fog", "leaves"]), day());
+  let frame: AmbientFrame = AmbientFrame {
+    ambients: &ambients,
+    level: &weather,
+  };
+  let mut effects: LevelAmbientEffects = LevelAmbientEffects::default();
+
+  update(&mut effects, frame, false, 1, &context);
+
+  let first: RenderAmbientReport = effects.report(500, false);
+
+  assert!(
+    first
+      .effect
+      .as_ref()
+      .is_some_and(|it| (it.remaining - 0.501).abs() < 1e-3)
+  );
+  assert!(first.wait >= 9.5);
+
+  effects.play_now();
+  update(&mut effects, frame, false, 600, &context);
+
+  let second: RenderAmbientReport = effects.report(600, false);
+
+  assert!(
+    second
+      .effect
+      .as_ref()
+      .is_some_and(|it| (it.remaining - 1.0).abs() < 1e-3)
+  );
+  assert!(second.wait >= 10.0);
+
+  // Indoors it is ended and none starts.
+  effects.play_now();
+  update(&mut effects, frame, true, 700, &context);
+  assert!(effects.get_playing().is_none());
+  assert!(effects.report(700, true).is_indoors);
 }

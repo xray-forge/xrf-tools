@@ -7,7 +7,7 @@ import { EXrayEngine } from "@/core/ipc/types/xrf-engine-target";
 import { EEnvironmentRule, WeatherCycleId } from "@/core/ipc/types/xrf-environment";
 import { ERenderWeatherPlay } from "@/core/ipc/types/xrf-renderer";
 import { ELevelWeatherSource } from "@/core/level/lib/weather/level-weather-source";
-import { LevelLoadService, LevelWeatherService } from "@/core/level/services";
+import { LevelLoadService, LevelViewService, LevelWeatherService } from "@/core/level/services";
 import { mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { InvokeMap, resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
@@ -49,7 +49,7 @@ async function renderPanel(responses: InvokeMap = {}): Promise<RenderResult & { 
     ...responses,
   });
 
-  const container: Container = mockContainer([LevelLoadService, LevelWeatherService]);
+  const container: Container = mockContainer([LevelLoadService, LevelViewService, LevelWeatherService]);
   const load: LevelLoadService = container.get(LevelLoadService);
   const weather: LevelWeatherService = container.get(LevelWeatherService);
 
@@ -175,6 +175,28 @@ describe("LevelWeatherPanel", () => {
     expect(weather.effect).toEqual({ name: null });
   });
 
+  it("says what ambient effect plays near the camera and asks for one at once", async () => {
+    const { getByRole, getByTestId, weather } = await renderPanel();
+
+    act(() =>
+      weather.noteReport(
+        mockRenderWeatherReport({
+          ambient: {
+            effect: { name: "effect_6", particles: "nature\\fog_stormy_01", remaining: 4 },
+            isIndoors: false,
+            wait: 20,
+          },
+        })
+      )
+    );
+
+    await waitFor(() => expect(getByTestId("level-weather-ambient-section").textContent).toContain("effect_6"));
+
+    await userEvent.click(getByRole("button", { name: "Play one now" }));
+
+    expect(weather.ambientPlays).toBe(1);
+  });
+
   it("says how many of the level's own overrides there are, and how many reach the camera", async () => {
     const { getByTestId, weather } = await renderPanel({
       ["plugin:levels|read_level_weather"]: mockSessionResponse(
@@ -210,7 +232,7 @@ describe("LevelWeatherPanel", () => {
 
   it("stands empty until a level is open", () => {
     const { getByTestId } = renderWithProviders(<LevelWeatherPanel />, {
-      container: mockContainer([LevelLoadService, LevelWeatherService]),
+      container: mockContainer([LevelLoadService, LevelViewService, LevelWeatherService]),
     });
 
     expect(getByTestId("level-weather-panel").textContent).toContain("No level open");

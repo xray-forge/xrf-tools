@@ -2,6 +2,7 @@ use std::sync::Arc;
 use std::sync::mpsc::{Receiver, Sender, channel};
 use std::time::{Duration, Instant};
 
+use crate::contract::render_ambient_report::RenderAmbientReport;
 use crate::contract::render_weather_control::RenderWeatherControl;
 use crate::contract::render_weather_play::RenderWeatherPlay;
 use crate::contract::render_weather_report::RenderWeatherReport;
@@ -135,13 +136,21 @@ impl ViewportWeather {
     }
   }
 
-  /// The weather's report when it changed, at most every [`REPORT_INTERVAL`]; none inside while nothing plays.
-  pub fn take_report(&mut self, now: Instant) -> Option<Option<RenderWeatherReport>> {
+  /// The weather's report, with the ambient effects' near the camera, when it changed, at most every
+  /// [`REPORT_INTERVAL`]; none inside while nothing plays.
+  pub fn take_report(
+    &mut self,
+    now: Instant,
+    ambient: Option<RenderAmbientReport>,
+  ) -> Option<Option<RenderWeatherReport>> {
     if now < self.report_due {
       return None;
     }
 
-    let report: Option<RenderWeatherReport> = self.player.report();
+    let report: Option<RenderWeatherReport> = self
+      .player
+      .report()
+      .map(|report| RenderWeatherReport { ambient, ..report });
 
     if self.sent_report.as_ref() == Some(&report) {
       return None;

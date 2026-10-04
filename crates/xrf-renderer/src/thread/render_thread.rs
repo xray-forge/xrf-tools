@@ -351,6 +351,15 @@ impl RenderThread {
           viewport.weather.play_effect(name.as_deref());
         }
       }
+      RenderCommand::AmbientEffect { id } => {
+        if let Some(level) = self
+          .viewports
+          .get_mut(&id)
+          .and_then(|viewport| viewport.level_view.as_mut())
+        {
+          level.play_ambient_now();
+        }
+      }
     }
   }
 

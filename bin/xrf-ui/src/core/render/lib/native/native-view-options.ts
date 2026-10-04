@@ -21,6 +21,7 @@ export type TNativeViewShading = TSettled<
  */
 export interface INativeViewSwitches extends Pick<
   RenderViewOptions,
+  | "isAmbientPlayed"
   | "isClouded"
   | "isFogged"
   | "isLensFlared"
@@ -51,6 +52,7 @@ export type TNativeLook = TSettled<Pick<RenderViewOptions, "corrections" | "expo
 
 /** Nothing switched on: what an asset viewer's scene of one model has none of. */
 export const NO_NATIVE_VIEW_SWITCHES: INativeViewSwitches = {
+  isAmbientPlayed: false,
   isCampfireLit: true,
   isClouded: false,
   isFogged: false,
@@ -117,6 +119,7 @@ export function toNativeViewOptions(
     exposure: look.exposure,
     grass: { ...grass, isEnabled: grass.isEnabled && switches.isGrassy },
     isAlphaVisible: true,
+    isAmbientPlayed: switches.isAmbientPlayed,
     isCampfireLit: switches.isCampfireLit,
     isClouded: switches.isClouded,
     isFogged: switches.isFogged,
