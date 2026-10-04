@@ -19,9 +19,37 @@ impl ParticleEffectFlags {
   pub const CULLING: u32 = 1 << 22;
   pub const CULL_CCW: u32 = 1 << 23;
 
+  /// Every flag with its name, in bit order.
+  pub const NAMES: [(u32, &'static str); 15] = [
+    (Self::SPRITE, "Sprite"),
+    (Self::FRAMED, "Framed"),
+    (Self::ANIMATED, "Animated"),
+    (Self::RANDOM_FRAME, "RandomFrame"),
+    (Self::RANDOM_PLAYBACK, "RandomPlayback"),
+    (Self::TIME_LIMIT, "TimeLimit"),
+    (Self::ALIGN_TO_PATH, "AlignToPath"),
+    (Self::COLLISION, "Collision"),
+    (Self::COLLISION_DELETE, "CollisionDel"),
+    (Self::VELOCITY_SCALE, "VelocityScale"),
+    (Self::COLLISION_DYNAMIC, "CollisionDyn"),
+    (Self::WORLD_ALIGN, "WorldAlign"),
+    (Self::FACE_ALIGN, "FaceAlign"),
+    (Self::CULLING, "Culling"),
+    (Self::CULL_CCW, "CullCCW"),
+  ];
+
   /// `Flags32::is`: every bit of the mask is set.
   pub fn is(&self, mask: u32) -> bool {
     self.0 & mask == mask
+  }
+
+  /// The names of the bits set, in bit order, as the engine's `dfXXX` constants name them.
+  pub fn list_names(&self) -> Vec<&'static str> {
+    Self::NAMES
+      .iter()
+      .filter(|(bit, _)| self.is(*bit))
+      .map(|(_, name)| *name)
+      .collect()
   }
 }
 
@@ -35,5 +63,14 @@ mod tests {
 
     assert!(flags.is(ParticleEffectFlags::FRAMED));
     assert!(!flags.is(ParticleEffectFlags::FRAMED | ParticleEffectFlags::ANIMATED));
+  }
+
+  #[test]
+  fn names_the_bits_set_in_bit_order() {
+    let flags: ParticleEffectFlags = ParticleEffectFlags(
+      ParticleEffectFlags::CULL_CCW | ParticleEffectFlags::SPRITE | ParticleEffectFlags::ALIGN_TO_PATH,
+    );
+
+    assert_eq!(flags.list_names(), ["Sprite", "AlignToPath", "CullCCW"]);
   }
 }

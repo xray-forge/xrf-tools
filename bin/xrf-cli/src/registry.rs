@@ -114,7 +114,10 @@ pub fn setup_command_groups() -> Vec<CommandGroup> {
       label: "Particle",
       about: "Particle library tools",
       commands: vec![
+        particle::find::FindCommand::new_box(),
         particle::info::InfoCommand::new_box(),
+        particle::inspect::InspectCommand::new_box(),
+        particle::list::ListCommand::new_box(),
         particle::pack::PackCommand::new_box(),
         particle::repack::RepackCommand::new_box(),
         particle::re_unpack::ReUnpackCommand::new_box(),

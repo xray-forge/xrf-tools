@@ -15,6 +15,7 @@ pub use crate::data::particle_effect_flags::ParticleEffectFlags;
 pub use crate::data::particle_effect_frame::ParticleEffectFrame;
 pub use crate::data::particle_effect_sprite::ParticleEffectSprite;
 pub use crate::data::particle_group::ParticleGroup;
+pub use crate::data::particle_group_child::ParticleGroupChild;
 pub use crate::data::particle_group_effect::ParticleGroupEffect;
 pub use crate::data::particle_group_effect_flags::ParticleGroupEffectFlags;
 pub use crate::particles_file::*;
