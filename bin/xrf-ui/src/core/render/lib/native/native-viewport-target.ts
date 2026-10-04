@@ -2,6 +2,7 @@ import { Nullable } from "@xrf/types";
 
 import { ERenderInputKind, RenderColor, RenderInputEvent, RenderViewportLayout } from "@/core/ipc/types/xrf-renderer";
 import { NativeViewport } from "@/core/render/lib/native/native-viewport";
+import { clearWindowTextSelection } from "@/lib/dom/selection";
 
 /** What the pointer shows while it drags a scene. */
 const DRAG_CURSOR: string = "grabbing";
@@ -188,6 +189,11 @@ export class NativeViewportTarget {
       }
     },
     keyup: (event: Event): void => this.send(ERenderInputKind.KEY_UP, event),
+    // A capture dropped while a button is held ends the drag here, as a release that never arrives would not.
+    lostpointercapture: (event: Event): void => {
+      this.endDrag();
+      this.send(ERenderInputKind.POINTER_CANCEL, event);
+    },
     pointercancel: (event: Event): void => {
       this.endDrag();
       this.send(ERenderInputKind.POINTER_CANCEL, event);
@@ -195,6 +201,9 @@ export class NativeViewportTarget {
     pointerdown: (event: Event): void => {
       const pointer: PointerEvent = event as PointerEvent;
 
+      // No text is selected or dragged from a press on the scene, which would take the drag that follows from it.
+      event.preventDefault();
+      clearWindowTextSelection();
       this.element.focus({ preventScroll: true });
       this.element.setPointerCapture?.(pointer.pointerId);
 

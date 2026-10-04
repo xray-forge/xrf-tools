@@ -305,6 +305,13 @@ export function createApplicationTheme(): Theme {
           }),
         },
       },
+      // The thumb's hit area held inside the 16px panels and popovers pad their content by: MUI's own, 42px across, reached
+      // past it at either end of a rail and scrolled its container sideways.
+      MuiSlider: {
+        styleOverrides: {
+          thumb: { "&::after": { height: 24, width: 24 } },
+        },
+      },
       // In light both hold `#ffffff`, so the border and the shadow are the whole of what says "above".
       MuiPopover: {
         styleOverrides: {

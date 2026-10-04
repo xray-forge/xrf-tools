@@ -1,6 +1,6 @@
 import { describe, expect, it, jest } from "@jest/globals";
 
-import { listenRenderClicks, RENDER_CLICK_SLOP } from "@/core/render/lib/frame/render-clicks";
+import { listenRenderClicks, RENDER_CLICK_SLOP, RENDER_DOUBLE_CLICK_TIME } from "@/core/render/lib/frame/render-clicks";
 import { IRenderViewPoint } from "@/core/render/lib/frame/render-view-point";
 
 function createElement(): HTMLElement {
@@ -11,10 +11,21 @@ function createElement(): HTMLElement {
   return element;
 }
 
-function press(element: HTMLElement, type: string, x: number, y: number, init: MouseEventInit = {}): void {
+function press(
+  element: HTMLElement,
+  type: string,
+  x: number,
+  y: number,
+  init: MouseEventInit = {},
+  timeStamp: number = 0
+): void {
   const event: MouseEvent = new MouseEvent(type, { button: 0, clientX: x, clientY: y, ...init });
 
-  Object.defineProperties(event, { isPrimary: { value: true }, pointerId: { value: 1 } });
+  Object.defineProperties(event, {
+    isPrimary: { value: true },
+    pointerId: { value: 1 },
+    timeStamp: { value: timeStamp },
+  });
   element.dispatchEvent(event);
 }
 
@@ -48,5 +59,24 @@ describe("listenRenderClicks", () => {
     press(element, "pointerup", 140, 90);
 
     expect(onClick).not.toHaveBeenCalled();
+  });
+
+  // Each pick opens a panel; a double click picking twice moved the viewport under a drag started right after it.
+  it("hears a double click as one click, and a click after it as another", () => {
+    const element: HTMLElement = createElement();
+    const onClick = jest.fn<(point: IRenderViewPoint) => void>();
+
+    listenRenderClicks(element, onClick);
+    press(element, "pointerdown", 140, 90, {}, 0);
+    press(element, "pointerup", 140, 90, {}, 50);
+    press(element, "pointerdown", 140, 90, {}, 150);
+    press(element, "pointerup", 140, 90, {}, 200);
+
+    expect(onClick).toHaveBeenCalledTimes(1);
+
+    press(element, "pointerdown", 140, 90, {}, 200 + RENDER_DOUBLE_CLICK_TIME);
+    press(element, "pointerup", 140, 90, {}, 250 + RENDER_DOUBLE_CLICK_TIME);
+
+    expect(onClick).toHaveBeenCalledTimes(2);
   });
 });
