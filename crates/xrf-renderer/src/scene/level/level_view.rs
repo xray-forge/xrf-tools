@@ -15,6 +15,7 @@ use crate::contract::render_ambient_report::RenderAmbientReport;
 use crate::contract::render_antialiasing::RenderAntialiasing;
 use crate::contract::render_applied_report::RenderAppliedReport;
 use crate::contract::render_applied_shadows::RenderAppliedShadows;
+use crate::contract::render_bloom_settings::RenderBloomSettings;
 use crate::contract::render_debug_view::RenderDebugView;
 use crate::contract::render_image_corrections::RenderImageCorrections;
 use crate::contract::render_level_hit::RenderLevelHit;
@@ -60,6 +61,8 @@ use crate::host::render_motion::RenderMotion;
 use crate::host::render_rain::RenderRain;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::pass::ambient_occlusion_uniform::AmbientOcclusionUniform;
+use crate::pass::bloom_pass::BloomGroups;
+use crate::pass::bloom_uniform::BloomUniform;
 use crate::pass::camera_uniform::CameraUniform;
 use crate::pass::fsr_groups::FsrGroups;
 use crate::pass::fsr_uniform::FsrUniform;
@@ -248,6 +251,11 @@ pub struct LevelView {
   flares: LevelFlares,
   /// Whether this frame adds the sun's light shafts, drawn through its shadow's cascades.
   is_shafted: bool,
+  /// What the bloom's build and its two blurs read, and what they draw with, at the targets' epoch.
+  bloom_uniforms: [wgpu::Buffer; 3],
+  bloom_groups: Option<(u64, BloomGroups)>,
+  /// Whether this frame blooms.
+  is_bloomed: bool,
   /// The sun's sprite as this frame's sky draws it: its texture, and its colour and radius.
   frame_sun_sprite: Option<(String, Vec4)>,
   /// When the level began opening, which the clouds drift from and its load is timed from.
@@ -385,6 +393,10 @@ impl LevelView {
       thunder_draw: None,
       flares: LevelFlares::new(device),
       is_shafted: false,
+      bloom_uniforms: ["bloom build", "bloom across", "bloom down"]
+        .map(|label| uniform(label, size_of::<BloomUniform>())),
+      bloom_groups: None,
+      is_bloomed: false,
       frame_sun_sprite: None,
       started,
       shadows: LevelShadows::new(device),
@@ -828,6 +840,7 @@ impl LevelView {
       && lighting.get_sun_shafts(&options.sun_shafts) > 0.0
       && options.shadows.get_cascade_count() > 0;
     self.is_wallmarked = options.is_wallmarked;
+    self.prepare_bloom(device, queue, passes, options, lighting.engine);
 
     if !options.is_occlusion_culled {
       self.history = None;
@@ -966,9 +979,53 @@ impl LevelView {
         if is_distorting { water.distortion } else { 0.0 },
         self.output,
         &self.frame_corrections,
-        self.selection_color,
+        (self.selection_color, self.is_bloomed),
       )),
     );
+  }
+
+  /// Writes this frame's bloom while the view blooms (`phase_bloom`): the build's threshold over the frame's size, and
+  /// the blur across and down, down by the frame's height over its width, one-sided on Monolith as Anomaly's
+  /// `bloom_filter.ps` reads it; and what the draws bind.
+  fn prepare_bloom(
+    &mut self,
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    passes: LevelPasses<'_>,
+    options: &RenderViewOptions,
+    engine: XrayEngine,
+  ) {
+    let bloom: &RenderBloomSettings = &options.bloom;
+
+    self.is_bloomed = bloom.is_enabled && options.is_lit && !options.is_wireframe && self.targets.is_some();
+
+    let Some(targets) = self.targets.as_ref().filter(|_| self.is_bloomed) else {
+      return;
+    };
+
+    let size: (u32, u32) = (targets.width, targets.height);
+    let aspect: f32 = size.1 as f32 / size.0 as f32;
+    let is_one_sided: bool = engine == XrayEngine::Extended;
+    let uniforms: [BloomUniform; 3] = [
+      BloomUniform::build(size, bloom.threshold),
+      BloomUniform::filter(true, (bloom.radius, bloom.strength), aspect, is_one_sided),
+      BloomUniform::filter(false, (bloom.radius, bloom.strength), aspect, is_one_sided),
+    ];
+
+    for (buffer, uniform) in self.bloom_uniforms.iter().zip(uniforms) {
+      queue.write_buffer(buffer, 0, bytemuck::bytes_of(&uniform));
+    }
+
+    if self
+      .bloom_groups
+      .as_ref()
+      .is_none_or(|(epoch, _)| *epoch != self.targets_epoch)
+    {
+      self.bloom_groups = Some((
+        self.targets_epoch,
+        passes.bloom.create_bind_groups(device, targets, &self.bloom_uniforms),
+      ));
+    }
   }
 
   /// Writes this frame's rain, while the weather rains and the view shows it: the splash's model built for the
@@ -1355,6 +1412,13 @@ impl LevelView {
 
       self.flares.record(encoder, passes.flares, targets, view);
       timer.mark(encoder, "flares");
+
+      if self.is_bloomed
+        && let Some((_, groups)) = &self.bloom_groups
+      {
+        passes.bloom.draw(encoder, targets, groups);
+        timer.mark(encoder, "bloom");
+      }
 
       if let Some(smoothing) = &self.smoothing {
         let target: &SmoothingTarget = &smoothing.target;

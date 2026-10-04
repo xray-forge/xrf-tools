@@ -22,13 +22,19 @@ fn jitter(pixel: vec2<f32>) -> f32 {
   return fract(52.9829189 * fract(dot(pixel, vec2<f32>(0.06711056, 0.00583715))));
 }
 
+// The light added to the scene, tonemapped, and to its high part, as `combine_volumetric.ps` adds to both.
+struct ShaftsOutput {
+  @location(0) low: vec4<f32>,
+  @location(1) high: vec4<f32>,
+};
+
 @fragment
-fn fs_sun_shafts(in: FullscreenVarying) -> @location(0) vec4<f32> {
+fn fs_sun_shafts(in: FullscreenVarying) -> ShaftsOutput {
   let density: f32 = lighting.shafts.x;
   let steps: f32 = lighting.shafts.y;
 
   if (density <= 0.0 || steps < 1.0) {
-    return vec4<f32>(0.0);
+    return ShaftsOutput(vec4<f32>(0.0), vec4<f32>(0.0));
   }
 
   let depth: f32 = textureLoad(depth_target, vec2<i32>(in.clip.xy), 0);
@@ -59,5 +65,7 @@ fn fs_sun_shafts(in: FullscreenVarying) -> @location(0) vec4<f32> {
   let facing: f32 = 0.8 * (0.5 * -lighting.to_sun.z + 0.5) + 0.2;
   let light: vec3<f32> = shown * facing * lighting.sun.rgb;
 
-  return vec4<f32>(tonemap(light, frame_scale(lighting, exposure)), 0.0);
+  let scale: f32 = frame_scale(lighting, exposure);
+
+  return ShaftsOutput(vec4<f32>(tonemap(light, scale), 0.0), vec4<f32>(tonemap_high(light, scale), 0.0));
 }

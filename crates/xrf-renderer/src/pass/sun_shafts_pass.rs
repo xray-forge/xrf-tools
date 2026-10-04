@@ -1,7 +1,7 @@
 use xrf_error::XrfResult;
 
 use crate::frame::view_targets::ViewTargets;
-use crate::pass::fullscreen_pipeline::{buffer_binding, create_fullscreen_pipeline, texture_binding};
+use crate::pass::fullscreen_pipeline::{buffer_binding, create_fullscreen_pipeline_into, texture_binding};
 use crate::pass::layout_entries::{storage_entry, texture_entry, uniform_entry};
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::level_shadows::LevelShadows;
@@ -90,17 +90,20 @@ impl SunShaftsPass {
     view: &ViewBinding,
     group: &wgpu::BindGroup,
   ) {
-    let mut pass: wgpu::RenderPass<'_> = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-      label: Some("sun shafts"),
-      color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-        view: &targets.scene,
+    let added = |view| {
+      Some(wgpu::RenderPassColorAttachment {
+        view,
         depth_slice: None,
         resolve_target: None,
         ops: wgpu::Operations {
           load: wgpu::LoadOp::Load,
           store: wgpu::StoreOp::Store,
         },
-      })],
+      })
+    };
+    let mut pass: wgpu::RenderPass<'_> = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+      label: Some("sun shafts"),
+      color_attachments: &[added(&targets.scene), added(&targets.high)],
       ..Default::default()
     });
 
@@ -122,20 +125,24 @@ impl SunShaftsPass {
       operation: wgpu::BlendOperation::Add,
     };
 
-    create_fullscreen_pipeline(
-      device,
-      shaders,
-      "frame/sun_shafts",
-      "fs_sun_shafts",
-      &[Some(view_layout), Some(layout)],
-      wgpu::ColorTargetState {
-        format: ViewTargets::SCENE,
+    let target = |format: wgpu::TextureFormat| {
+      Some(wgpu::ColorTargetState {
+        format,
         blend: Some(wgpu::BlendState {
           color: added,
           alpha: added,
         }),
         write_mask: wgpu::ColorWrites::COLOR,
-      },
+      })
+    };
+
+    create_fullscreen_pipeline_into(
+      device,
+      shaders,
+      "frame/sun_shafts",
+      "fs_sun_shafts",
+      &[Some(view_layout), Some(layout)],
+      &[target(ViewTargets::SCENE), target(ViewTargets::HIGH)],
     )
   }
 }

@@ -4,6 +4,7 @@ use crate::contract::render_ambient_occlusion_settings::RenderAmbientOcclusionSe
 use crate::contract::render_antialiasing::RenderAntialiasing;
 use crate::contract::render_asset_lighting::RenderAssetLighting;
 use crate::contract::render_backdrop_squares::RenderBackdropSquares;
+use crate::contract::render_bloom_settings::RenderBloomSettings;
 use crate::contract::render_debug_view::RenderDebugView;
 use crate::contract::render_exposure_settings::RenderExposureSettings;
 use crate::contract::render_grass_settings::RenderGrassSettings;
@@ -88,6 +89,7 @@ pub struct RenderViewOptions {
   /// Whether the spawned objects a new game releases are drawn too, each with its group.
   pub is_spawned_released: bool,
   pub exposure: RenderExposureSettings,
+  pub bloom: RenderBloomSettings,
   pub shadows: RenderShadowSettings,
   pub ambient_occlusion: RenderAmbientOcclusionSettings,
   pub lights: RenderLightsSettings,
@@ -144,6 +146,7 @@ impl Default for RenderViewOptions {
       is_spawned_lamps: true,
       is_spawned_released: false,
       exposure: RenderExposureSettings::default(),
+      bloom: RenderBloomSettings::default(),
       shadows: RenderShadowSettings::default(),
       ambient_occlusion: RenderAmbientOcclusionSettings::default(),
       lights: RenderLightsSettings::default(),

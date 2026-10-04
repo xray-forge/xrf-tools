@@ -1,5 +1,6 @@
 #import "common/camera"
 #import "common/fullscreen"
+#import "common/lighting"
 #import "common/occlusion"
 #import "common/octahedral"
 #import "common/present"
@@ -20,6 +21,9 @@
 // The frame upscaled to the viewport's size, or the scene again where it is drawn at that size.
 @group(1) @binding(9) var upscaled: texture_2d<f32>;
 @group(1) @binding(10) var motion_target: texture_2d<f32>;
+// The bloom, finished in its 256-square target, and how it is read between its texels.
+@group(1) @binding(11) var bloom_target: texture_2d<f32>;
+@group(1) @binding(12) var bloom_sampler: sampler;
 
 const VIEW_ALBEDO: u32 = 1u;
 const VIEW_GLOSS: u32 = 2u;
@@ -186,8 +190,20 @@ fn fs_present(in: FullscreenVarying) -> @location(0) vec4<f32> {
     }
   }
 
-  let color: vec3<f32> = select(textureLoad(scene, drawn_texel(read), 0).rgb,
+  var color: vec3<f32> = select(textureLoad(scene, drawn_texel(read), 0).rgb,
     textureLoad(upscaled, vec2<i32>(read), 0).rgb, present.is_upscaled != 0u);
+
+  // `combine_2`: the bloom read where the scene is; where the distortion blurs, the scene first goes towards it by the
+  // distortion's `z`, `lerp(img, bloom * def_hdr, distort.z)`; then the bloom added, `combine_bloom`.
+  if (present.is_bloomed != 0u) {
+    let bloom: vec4<f32> = textureSampleLevel(bloom_target, bloom_sampler, (read + 0.5) / present.size, 0.0);
+
+    if (strength > 0.0) {
+      color = mix(color, bloom.rgb * DEF_HDR, textureLoad(distortion, texel, 0).z);
+    }
+
+    color += bloom.rgb * bloom.a;
+  }
 
   let shown: vec3<f32> = mix(corrected(color), present.selection.rgb, selection_share(texel));
 

@@ -7,7 +7,8 @@
 #import "common/occlusion"
 
 // `hmodel` and `combine_1` over the light the frame accumulated, then the fog and tonemap of `combine_2`, faded into the
-// weather's sky, into the viewport's scene. Unlit, a surface is its raw albedo.
+// weather's sky, into the viewport's scene; and `combine_1`'s and the sky's high part beside it, which the bloom is
+// built from. Unlit, a surface is its raw albedo.
 
 @group(1) @binding(0) var albedo_target: texture_2d<f32>;
 @group(1) @binding(1) var normal_target: texture_2d<f32>;
@@ -94,8 +95,19 @@ fn backdrop_at(pixel: vec2<f32>) -> vec3<f32> {
   return select(backdrop, squares.rgb, ((cell.x + cell.y) & 1) == 1);
 }
 
+// The scene, tonemapped, and its high part (`tonemap`'s `low` and `high`).
+struct CombineOutput {
+  @location(0) low: vec4<f32>,
+  @location(1) high: vec4<f32>,
+};
+
+// What a pixel comes to, tonemapped and past the tonemap.
+fn combined(low: vec3<f32>, high: vec3<f32>) -> CombineOutput {
+  return CombineOutput(vec4<f32>(low, 1.0), vec4<f32>(high, 1.0));
+}
+
 @fragment
-fn fs_combine(in: FullscreenVarying) -> @location(0) vec4<f32> {
+fn fs_combine(in: FullscreenVarying) -> CombineOutput {
   let texel: vec2<i32> = vec2<i32>(in.clip.xy);
   let depth: f32 = textureLoad(depth_target, texel, 0);
   let is_lit: bool = lighting.params.y > 0.5;
@@ -112,21 +124,24 @@ fn fs_combine(in: FullscreenVarying) -> @location(0) vec4<f32> {
   let is_hazed: bool = is_sky_drawn && lighting.fog.z > 0.5;
 
   if (is_empty) {
+    // `sky2.ps`: the sky's high part is the sky as drawn, within `def_hdr`.
     if (is_sky_drawn) {
-      return vec4<f32>(sky_drawn(direction, toward, scale), 1.0);
+      let sky: vec3<f32> = sky_drawn(direction, toward, scale);
+
+      return combined(sky, sky / DEF_HDR);
     }
 
     if (is_fogged) {
-      return vec4<f32>(tonemap(lighting.fog_color.rgb, scale), 1.0);
+      return combined(tonemap(lighting.fog_color.rgb, scale), tonemap_high(lighting.fog_color.rgb, scale));
     }
 
-    return vec4<f32>(backdrop_at(in.clip.xy), 1.0);
+    return combined(backdrop_at(in.clip.xy), vec3<f32>(0.0));
   }
 
   let albedo: vec4<f32> = textureLoad(albedo_target, texel, 0);
 
   if (!is_lit) {
-    return vec4<f32>(albedo.rgb, 1.0);
+    return combined(albedo.rgb, vec3<f32>(0.0));
   }
 
   let material: vec4<f32> = textureLoad(material_target, texel, 0);
@@ -137,12 +152,17 @@ fn fs_combine(in: FullscreenVarying) -> @location(0) vec4<f32> {
     lighting.params.w > 0.5);
   let occlusion: f32 = mix(1.0, material.x, camera.switches.z);
   let shaded: vec3<f32> = shaded_color(albedo, light, normal, position, material.z, occlusion, visible);
-  // The engine fogs towards `fog_color` before the tonemap, then fades into the sky itself by the fog squared.
-  let finished: vec3<f32> = tonemap(mix(shaded, lighting.fog_color.rgb, fog), scale);
+  // The engine fogs towards `fog_color` before the tonemap, then fades into the sky itself by the fog squared, both
+  // parts alike (`skyblend` in either's alpha).
+  let fogged: vec3<f32> = mix(shaded, lighting.fog_color.rgb, fog);
+  let finished: vec3<f32> = tonemap(fogged, scale);
+  let high: vec3<f32> = tonemap_high(fogged, scale);
 
   if (!is_sky_drawn) {
-    return vec4<f32>(finished, 1.0);
+    return combined(finished, high);
   }
 
-  return vec4<f32>(mix(finished, sky_behind(direction, toward, scale, is_hazed), fog * fog), 1.0);
+  let sky: vec3<f32> = sky_behind(direction, toward, scale, is_hazed);
+
+  return combined(mix(finished, sky, fog * fog), mix(high, sky / DEF_HDR, fog * fog));
 }

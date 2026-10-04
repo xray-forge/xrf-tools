@@ -112,6 +112,35 @@ const FIELD_GROUPS: ReadonlyArray<{ title: string; fields: ReadonlyArray<ILookFi
   {
     fields: [
       {
+        label: "Threshold",
+        max: 1,
+        min: 0,
+        read: (look) => look.bloom.threshold,
+        step: 0.01,
+        write: (look, threshold) => ({ ...look, bloom: { ...look.bloom, threshold } }),
+      },
+      {
+        label: "Radius",
+        max: 7,
+        min: 1,
+        read: (look) => look.bloom.radius,
+        step: 0.1,
+        write: (look, radius) => ({ ...look, bloom: { ...look.bloom, radius } }),
+      },
+      {
+        label: "Strength",
+        max: 2,
+        min: 0.05,
+        read: (look) => look.bloom.strength,
+        step: 0.05,
+        write: (look, strength) => ({ ...look, bloom: { ...look.bloom, strength } }),
+      },
+    ],
+    title: "Bloom",
+  },
+  {
+    fields: [
+      {
         label: "Exposure",
         max: 4,
         min: 0.5,
@@ -157,8 +186,8 @@ const FIELD_GROUPS: ReadonlyArray<{ title: string; fields: ReadonlyArray<ILookFi
 ];
 
 /**
- * How the level is exposed, lit and corrected: the game's console defaults, the settings', a built-in engine's, or values
- * edited by hand.
+ * How the level is exposed, lit, bloomed and corrected: the game's console defaults, the settings', a built-in engine's,
+ * or values edited by hand.
  */
 export function LevelLookAction({
   "data-testid": dataTestId = "level-look-action",
@@ -167,13 +196,13 @@ export function LevelLookAction({
 }: BaseComponentProps): ReactElement {
   const lookService: LevelLookService = useInjection(LevelLookService);
 
-  const { choice, look, game } = lookService;
+  const { choice, look, defaults } = lookService;
   const picked: string = choice.source === ELevelLookSource.CUSTOM ? EDITED : choice.source;
   const options: Array<IChoiceFormRowOption<string>> = [
     ...BUILT_IN_SOURCES.map((source) => ({
       label:
-        source === ELevelLookSource.GAME && !game
-          ? `${BUILT_IN_LABELS[source]} (none shipped, the settings')`
+        source === ELevelLookSource.GAME && !defaults?.isShipped
+          ? `${BUILT_IN_LABELS[source]} (none shipped, the engine's)`
           : BUILT_IN_LABELS[source],
       value: source as string,
     })),
@@ -207,7 +236,7 @@ export function LevelLookAction({
         <ChoiceListFormRow
           data-testid={"level-look-source"}
           label={"Source"}
-          description={"Where the exposure, the light scales and the image corrections come from"}
+          description={"Where the exposure, the light scales, the bloom and the image corrections come from"}
           options={options}
           value={picked}
           filterFrom={options.length + 1}
@@ -219,6 +248,13 @@ export function LevelLookAction({
           description={"`r2_tonemap`: off, the frame is tonemapped at a fixed scale"}
           isChecked={look.exposure.isEnabled}
           onChange={(isEnabled: boolean) => lookService.edit({ ...look, exposure: { ...look.exposure, isEnabled } })}
+        />
+
+        <CheckboxFormRow
+          label={"Bloom"}
+          description={"`phase_bloom`: the bright part of the frame blurred over it, as the console sets it"}
+          isChecked={look.bloom.isEnabled}
+          onChange={(isEnabled: boolean) => lookService.edit({ ...look, bloom: { ...look.bloom, isEnabled } })}
         />
 
         {FIELD_GROUPS.map((group) => (

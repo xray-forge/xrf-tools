@@ -40,10 +40,13 @@ export class LevelLookService {
     this.choice = toLevelLookChoice(parseLocalStorageValueSafe(LEVEL_LOOK_STORAGE_KEY), this.exposure);
   }
 
-  /** The look the open level's game ships, or null where it ships no console defaults or none is open. */
+  /**
+   * The look the open level's game ships, its engine's own where the game leaves a command to it; null before its
+   * defaults are read or with none open.
+   */
   @Computed()
   public get game(): Nullable<ILevelLook> {
-    return this.defaults?.isShipped ? toGameLevelLook(this.defaults, this.exposure) : null;
+    return this.defaults ? toGameLevelLook(this.defaults, this.exposure, this.settingsService.engine) : null;
   }
 
   /** The look the level is drawn with. */

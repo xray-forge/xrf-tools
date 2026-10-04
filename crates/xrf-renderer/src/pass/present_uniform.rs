@@ -24,6 +24,9 @@ pub struct PresentUniform {
   pub grading: [f32; 4],
   /// The colour a selection is outlined in, `w` one while something is selected.
   pub selection: [f32; 4],
+  /// One where the frame blooms, which the present adds where it reads the scene.
+  pub is_bloomed: u32,
+  pub pad: [u32; 3],
 }
 
 impl PresentUniform {
@@ -34,7 +37,7 @@ impl PresentUniform {
     distortion: f32,
     output: RenderRect,
     corrections: &RenderImageCorrections,
-    selection: Option<[f32; 3]>,
+    (selection, is_bloomed): (Option<[f32; 3]>, bool),
   ) -> Self {
     let [r, g, b] = corrections.grading;
 
@@ -48,6 +51,8 @@ impl PresentUniform {
       origin: [output.x as f32, output.y as f32],
       size: [output.width as f32, output.height as f32],
       selection: selection.map_or([0.0; 4], |[r, g, b]| [r, g, b, 1.0]),
+      is_bloomed: u32::from(is_bloomed),
+      pad: [0; 3],
     }
   }
 }
