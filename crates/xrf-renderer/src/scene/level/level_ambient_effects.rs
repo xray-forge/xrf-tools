@@ -7,6 +7,8 @@ use xrf_particles::{ParticleObject, ParticleUpdateContext};
 use crate::host::render_ambient::RenderAmbient;
 use crate::host::render_ambient_effect::RenderAmbientEffect;
 use crate::scene::level::ambient_frame::AmbientFrame;
+use crate::scene::level::ambient_gust::AmbientGust;
+use crate::scene::level::ambient_wind::AmbientWind;
 use crate::weather::weather_random::WeatherRandom;
 
 /// What the schedule's numbers are drawn from on every level open, so a driven capture plays the same effects.
@@ -18,7 +20,7 @@ const FIRST_EFFECT_SEED: i32 = 1 << 24;
 /// The weather's ambient effects, as `CGamePersistent::WeathersUpdate` plays them near the camera: one at a time,
 /// outdoors, an ambient's effect picked at random once the wait drawn at the last one's start has passed, standing where
 /// the camera stood plus its offset, stopped once its life time is up or the camera goes indoors, and gone once its
-/// particles have died.
+/// particles have died; and the wind each effect brings.
 pub struct LevelAmbientEffects {
   random: WeatherRandom,
   /// `ambient_effect_next_time` and `ambient_effect_stop_time`, in milliseconds.
@@ -27,6 +29,7 @@ pub struct LevelAmbientEffects {
   /// `ambient_particles`.
   playing: Option<ParticleObject>,
   played: i32,
+  wind: AmbientWind,
 }
 
 impl Default for LevelAmbientEffects {
@@ -37,13 +40,15 @@ impl Default for LevelAmbientEffects {
       stop_time: 0,
       playing: None,
       played: 0,
+      wind: AmbientWind::default(),
     }
   }
 }
 
 impl LevelAmbientEffects {
-  /// Starts an effect when one is due, stops it once its time is up or indoors, and lets it go once it has died.
-  /// `eye` is where the camera stands, in engine space; `now` is the particles' clock, in milliseconds.
+  /// Blows the wind on, starts an effect when one is due, stops it once its time is up or indoors, and lets it go once
+  /// it has died, in the order the engine takes them each frame. `eye` is where the camera stands, in engine space;
+  /// `now` is the particles' clock, in milliseconds.
   pub fn update(
     &mut self,
     frame: Option<AmbientFrame<'_>>,
@@ -51,6 +56,10 @@ impl LevelAmbientEffects {
     now: u64,
     context: &ParticleUpdateContext,
   ) {
+    let time: f32 = now as f32 / 1000.0;
+
+    self.wind.blow(time);
+
     if !is_indoors
       && self.playing.is_none()
       && now > self.next_time
@@ -59,17 +68,29 @@ impl LevelAmbientEffects {
       self.start(frame, eye, now, context);
     }
 
-    if (is_indoors || now >= self.stop_time)
-      && let Some(playing) = &mut self.playing
-      && !playing.is_stopping()
-    {
+    self.wind.rise(time);
+
+    if is_indoors || now >= self.stop_time {
       // `Stop()`, deferred: it emits no more, and what it emitted lives on.
-      playing.stop(true);
+      if let Some(playing) = &mut self.playing
+        && !playing.is_stopping()
+      {
+        playing.stop(true);
+      }
+
+      self.wind.calm();
     }
+
+    self.wind.fall(time);
 
     if self.playing.as_ref().is_some_and(|playing| !playing.is_playing()) {
       self.playing = None;
     }
+  }
+
+  /// The wind as it blows this frame.
+  pub fn get_gust(&self) -> AmbientGust {
+    self.wind.get_gust()
   }
 
   /// The effect playing, if any.
@@ -110,6 +131,7 @@ impl LevelAmbientEffects {
     };
 
     self.stop_time = now + effect.life_time.as_millis() as u64;
+    self.wind.start(effect, now as f32 / 1000.0);
 
     let offset: Vec3 = self.draw_offset(effect, context.rules.get_engine());
 

@@ -117,7 +117,8 @@ impl LevelGrass {
   }
 
   /// Fits the planting to the settings and the camera, building the ring and lists again where the settings outgrow
-  /// them; `discard_below` is `r_ssaDISCARD` as the static cull compares it, and `time` the seconds the wind blows by.
+  /// them; `discard_below` is `r_ssaDISCARD` as the static cull compares it, `time` the seconds the wind blows by,
+  /// and `strength` the wind's, `wind_strength_factor`.
   #[allow(clippy::too_many_arguments)]
   pub fn prepare(
     &mut self,
@@ -127,9 +128,9 @@ impl LevelGrass {
     settings: &RenderGrassSettings,
     camera: &CameraView,
     discard_below: f32,
-    (time, is_windy): (f32, bool),
+    (time, is_windy, strength): (f32, bool, f32),
   ) {
-    let wind: GrassWindUniform = self.wind.advance(time, is_windy);
+    let wind: GrassWindUniform = self.wind.advance(time, is_windy, strength);
 
     self.is_drawn = false;
 
