@@ -67,6 +67,7 @@ pub(crate) mod view_light_groups;
 pub(crate) mod water_batch_pipelines;
 pub(crate) mod water_groups;
 pub(crate) mod water_pass;
+pub(crate) mod water_sources;
 pub(crate) mod water_uniform;
 pub(crate) mod wet_pass;
 pub(crate) mod wet_uniform;

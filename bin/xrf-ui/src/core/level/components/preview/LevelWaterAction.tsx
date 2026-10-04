@@ -111,6 +111,30 @@ export function LevelWaterAction({
             format={formatWaterBorder}
             onChange={(softBorder: number) => set({ softBorder })}
           />
+
+          <RenderValueSlider
+            label={"Reflectivity"}
+            value={water.reflectivity}
+            {...RENDER_WATER_LIMITS.reflectivity}
+            format={formatWaterStrength}
+            onChange={(reflectivity: number) => set({ reflectivity })}
+          />
+
+          <RenderValueSlider
+            label={"Reflection blur"}
+            value={water.reflectionBlur}
+            {...RENDER_WATER_LIMITS.reflectionBlur}
+            format={formatWaterStrength}
+            onChange={(reflectionBlur: number) => set({ reflectionBlur })}
+          />
+
+          <RenderValueSlider
+            label={"Blur noise"}
+            value={water.blurNoise}
+            {...RENDER_WATER_LIMITS.blurNoise}
+            format={formatWaterStrength}
+            onChange={(blurNoise: number) => set({ blurNoise })}
+          />
         </>
       ) : null}
 

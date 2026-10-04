@@ -85,15 +85,18 @@ export const DEFAULT_RENDER_UPSCALING_SETTINGS: TRenderUpscalingSettings = {
 
 /**
  * The engine's own water: `shared/waterconfig.h`'s constants and `def_distort`, and the enhanced water's strengths at
- * Screen Space Shaders' own defaults (`ssfx_water_setup1`).
+ * Screen Space Shaders' own defaults (`ssfx_water`, `ssfx_water_setup1` and `ssfx_water_setup2`).
  */
 export const DEFAULT_RENDER_WATER_SETTINGS: TRenderWaterSettings = {
+  blurNoise: 1,
   distortion: 0.05,
   isDistorted: true,
   isEnabled: true,
   isSoft: true,
   mode: ERenderWaterMode.ENGINE,
   reflection: 1,
+  reflectionBlur: 0.8,
+  reflectivity: 0.8,
   refraction: 0.6,
   ripple: 1,
   softBorder: 0.3,

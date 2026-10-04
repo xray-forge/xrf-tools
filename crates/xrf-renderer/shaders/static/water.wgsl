@@ -26,11 +26,17 @@ struct Water {
   soft: f32,
   // One while the water writes the distortion it causes.
   distorted: f32,
-  // The enhanced water's refraction, turbidity and soft border.
+  // The enhanced water's refraction, turbidity, soft border and reflectivity.
   refraction: f32,
   turbidity: f32,
   soft_border: f32,
-  pad: f32,
+  reflectivity: f32,
+  // Its reflection's blur and the noise mixing the clear reflection in.
+  reflection_blur: f32,
+  blur_noise: f32,
+  // One where its reflection drew this frame, and one where the history it accumulates over holds a frame.
+  reflected: f32,
+  history: f32,
 };
 
 @group(2) @binding(0) var textures: binding_array<texture_2d<f32>>;
@@ -47,6 +53,13 @@ struct Water {
 @group(3) @binding(6) var nearest_water: texture_depth_2d;
 // The scene as it stood before the water, which the enhanced water refracts; a texel alone while the engine's draws.
 @group(3) @binding(7) var water_scene: texture_2d<f32>;
+// The enhanced water's surface: its reflection blurred at half the size and clear, and the noise mixing the two.
+@group(3) @binding(8) var reflection_blurred: texture_2d<f32>;
+@group(3) @binding(9) var reflection_clear: texture_2d<f32>;
+@group(3) @binding(10) var perlin_map: texture_2d<f32>;
+// The enhanced water's reflection: the history it accumulates over and the noise jittering its march.
+@group(3) @binding(11) var reflection_history: texture_2d<f32>;
+@group(3) @binding(12) var blue_noise: texture_2d<f32>;
 
 // `watermove`: the wave's direction through the level, in renderer space, where the engine's `z` is negated.
 const WAVE_DIRECTION: vec3<f32> = vec3<f32>(0.11, 0.13, -0.07);
@@ -68,8 +81,24 @@ const ENHANCED_WAVES: vec2<f32> = vec2<f32>(0.03, 0.1);
 // `G_SSR_WATER_FOG_MAXDEPTH`: the water's fog at which it is its colour alone.
 const ENHANCED_FOG_DEPTH: f32 = 2.0;
 
-// `G_SSR_WATER_REFLECTION` at its default: how much of the reflection the fresnel shows.
-const ENHANCED_REFLECTION: f32 = 0.8;
+// `G_SSR_WATER_REFLECTION_VIBRANCE`: how much of its colour the reflection keeps, and the luminance it greys towards.
+const ENHANCED_VIBRANCE: f32 = 0.6;
+const LUMINANCE: vec3<f32> = vec3<f32>(0.3, 0.38, 0.22);
+
+// The reflection's march at the module's default quality (`q_steps[1]`): its steps, its refinements of a hit, how thick
+// a surface it takes for one, and how far it reaches.
+const MARCH_STEPS: i32 = 16;
+const MARCH_REFINES: i32 = 2;
+const MARCH_THICKNESS: f32 = 3.0;
+const MARCH_REACH: f32 = 150.0;
+
+// The flat surface's fresnel, cubed and by the reflectivity, below which the surface would show too little of a hit to
+// march for it: looking that steeply down, the waves' normals cannot raise it into sight.
+const MARCH_LEAST_SHOWN: f32 = 0.002;
+
+// How much of the reflection the last frames keep, and how much less of it where the ray met the sky.
+const REFLECTION_HISTORY: f32 = 0.97;
+const REFLECTION_SKY_HISTORY: f32 = 0.2;
 
 struct WaterVarying {
   // Invariant, so the depth pass and the surface pass place each surface alike.
@@ -347,9 +376,9 @@ fn fs_water_enhanced(in: WaterVarying) -> WaterOutput {
   let colour: vec3<f32> = fragment.base.rgb * fragment.light;
   let turbid: vec3<f32> = mix(colour, screen, clear * clear * (3.0 - 2.0 * clear));
   let fresnel: f32 = pow(saturate(dot(fragment.reflected, fragment.to_point)), 3.0);
-  let reflection: vec3<f32> = enhanced_sky(fragment.reflected) * water.reflection;
+  let reflection: vec3<f32> = enhanced_reflection(fragment, in.world, (pixel + 0.5) / size, waves);
   let seen: f32 = 1.0 - fragment.fog;
-  let lit: vec3<f32> = mix(turbid, reflection, saturate(fresnel * ENHANCED_REFLECTION));
+  let lit: vec3<f32> = mix(turbid, reflection, saturate(fresnel * water.reflectivity));
   let fogged: vec3<f32> = mix(lighting.fog_color.rgb, lit, seen);
   let border: f32 = smoothstep(0.0, max(water.soft_border, 1e-4), water_depth + fresnel);
   let shown: vec3<f32> = mix(screen, fogged, border * seen * seen);
@@ -363,3 +392,203 @@ fn fs_water_enhanced(in: WaterVarying) -> WaterOutput {
 
   return out;
 }
+
+// What the enhanced water reflects: its reflection drawn this frame, blurred and clear mixed by a perlin noise over the
+// level and greyed a little, read where its waves move it; the sky alone while it draws none.
+fn enhanced_reflection(fragment: WaterFragment, world: vec3<f32>, uv: vec2<f32>, waves: vec2<f32>) -> vec3<f32> {
+  if (water.reflected < 0.5) {
+    return enhanced_sky(fragment.reflected) * water.reflection;
+  }
+
+  // The module reads its blurred reflection from the corner of a target the screen's size, where its waves move it
+  // twice as far.
+  let blurred: vec3<f32> = textureSampleLevel(reflection_blurred, sky_clamp, saturate(uv + waves * 2.0), 0.0).rgb;
+  let clear: vec3<f32> = textureSampleLevel(reflection_clear, sky_clamp, saturate(uv + waves), 0.0).rgb;
+  let level: vec2<f32> = vec2<f32>(world.x, -world.z) + fragment.surface_normal.xy * 100.0;
+  let noise: f32 = textureSampleLevel(perlin_map, texture_sampler, level * 0.02, 0.0).r;
+  let mixed: vec3<f32> = mix(blurred, clear, saturate(noise * water.blur_noise));
+
+  return mix(vec3<f32>(dot(mixed, LUMINANCE)), mixed, ENHANCED_VIBRANCE);
+}
+
+// Two values in nothing to one, from a point: the jitter the reflection reads its history with.
+fn hash22(point: vec2<f32>) -> vec2<f32> {
+  var p: vec3<f32> = fract(vec3<f32>(point.xyx) * vec3<f32>(0.1031, 0.103, 0.0973));
+
+  p += dot(p, p.yzx + 33.33);
+
+  return fract((p.xx + p.yz) * p.zy);
+}
+
+// A view space point's place on the screen, in texture coordinates.
+fn view_to_uv(point: vec3<f32>) -> vec2<f32> {
+  let clip: vec4<f32> = camera.projection * vec4<f32>(point, 1.0);
+
+  return clip.xy / clip.w * vec2<f32>(0.5, -0.5) + 0.5;
+}
+
+// How far along the view the G-buffer's surface lies at a place on the screen; nothing where only the sky is. The
+// perspective's depth terms alone give it, as its `w` is the distance: `depth * d = P[3][2] - P[2][2] * d`.
+fn scene_distance(uv: vec2<f32>) -> f32 {
+  let size: vec2<f32> = camera.viewport.xy;
+  let pixel: vec2<f32> = clamp(floor(uv * size), vec2<f32>(0.0), size - 1.0);
+  let stored: f32 = textureLoad(depth_target, vec2<i32>(pixel), 0);
+
+  return select(camera.projection[3][2] / (stored + camera.projection[2][2]), 0.0, stored <= 0.0);
+}
+
+// The reflection's ray as it marches the screen: where it starts and steps, how long it runs on the screen, and how far
+// along the view its ends lie.
+struct ReflectionRay {
+  start: vec2<f32>,
+  step: vec2<f32>,
+  length: f32,
+  near: f32,
+  far: f32,
+};
+
+// `SSFX_ray_intersect`: how far the ray, at a place on the screen, lies past the surface there, and that surface's
+// distance.
+fn ray_behind(ray: ReflectionRay, at: vec2<f32>) -> vec2<f32> {
+  let share: f32 = length(at - ray.start) / max(ray.length, 1e-6);
+  let along: f32 = ray.near * ray.far / mix(ray.far, ray.near, share);
+  let scene: f32 = scene_distance(at);
+
+  return vec2<f32>(along - scene, scene);
+}
+
+// `SSFX_ssr_water_ray`: the ray from a point of the water along its reflection, marched over the screen and refined
+// where it passes behind a surface; where it hit, then that surface's distance, or nothing where it left the screen.
+// A surface nearer than 1.3 m, which the module takes for the actor's weapon, is passed through.
+fn march_reflection(start: vec3<f32>, direction: vec3<f32>, noise: f32, uv: vec2<f32>) -> vec3<f32> {
+  // A ray turning towards the eye stops short of the near plane rather than wrap behind it.
+  let reach: f32 = select(MARCH_REACH, min(MARCH_REACH, (-0.1 - start.z) / direction.z), direction.z > 0.0);
+  let end: vec3<f32> = start + direction * max(reach, 0.0);
+  let screen_start: vec2<f32> = view_to_uv(start);
+  let screen_end: vec2<f32> = view_to_uv(end);
+  var ray: ReflectionRay;
+
+  ray.start = screen_start;
+  ray.step = (screen_end - screen_start) / f32(MARCH_STEPS);
+  ray.length = length(screen_end - screen_start);
+  ray.near = -start.z;
+  ray.far = -end.z;
+
+  // Squeezed across near the screen's sides, unless the eye looks down.
+  let edges: vec2<f32> = 1.0 - smoothstep(vec2<f32>(0.9), vec2<f32>(1.0), vec2<f32>(uv.x, 1.0 - uv.x));
+  let looking_down: f32 = saturate(-camera.view[1].z * 3.0);
+
+  ray.step.x *= saturate(edges.x * edges.y + looking_down);
+
+  var at: vec2<f32> = ray.start + ray.step * noise;
+  let start_distance: f32 = scene_distance(ray.start);
+  var behind: vec3<f32> = vec3<f32>(0.0);
+
+  for (var step: i32 = 1; step <= MARCH_STEPS; step++) {
+    if (any(at < vec2<f32>(0.0)) || any(at > vec2<f32>(1.0))) {
+      return vec3<f32>(0.0);
+    }
+
+    var check: vec2<f32> = ray_behind(ray, at);
+    let is_far: bool = check.y > 1.3;
+
+    check.x *= f32(is_far);
+
+    if (check.x > 0.0) {
+      if (check.x <= MARCH_THICKNESS || start_distance + 40.0 < check.y) {
+        return vec3<f32>(at, check.y);
+      }
+
+      let kept: vec2<f32> = at;
+      let kept_step: vec2<f32> = ray.step;
+      var last_sign: f32 = -1.0;
+
+      for (var refine: i32 = 0; refine < MARCH_REFINES; refine++) {
+        if (sign(check.x) != last_sign) {
+          ray.step *= -0.5;
+          last_sign = sign(check.x);
+        }
+
+        at += ray.step;
+        check = ray_behind(ray, at);
+
+        if (abs(check.x) <= MARCH_THICKNESS) {
+          return vec3<f32>(at, check.y);
+        }
+      }
+
+      at = kept;
+      ray.step = kept_step;
+    } else {
+      behind = vec3<f32>(at, check.y) * f32(start_distance - 2.0 < check.y && is_far);
+    }
+
+    let is_passed: bool = !is_far && check.y > 0.01 && f32(step) > f32(MARCH_STEPS) * 0.4;
+
+    at += ray.step * select(1.0, 3.5, is_passed);
+  }
+
+  return behind;
+}
+
+// Screen Space Shaders' `ssfx_water_ssr.ps`: the scene the water's flat surface reflects, marched over the screen as it
+// stood before the water, faded towards the top of the screen and into the fog, the sky where the ray met nothing; then
+// kept over the frames before, read where this one's point stood in the last.
+@fragment
+fn fs_water_reflection(in: WaterVarying) -> @location(0) vec4<f32> {
+  let position: vec3<f32> = (camera.view * vec4<f32>(in.world, 1.0)).xyz;
+  let fog: f32 = select(0.0, fog_amount(lighting, position), lighting.params.y > 0.5);
+
+  if (fog >= 1.0 || in.clip.z < textureLoad(nearest_water, vec2<i32>(in.clip.xy), 0)) {
+    discard;
+  }
+
+  let size: vec2<f32> = camera.viewport.xy;
+  let uv: vec2<f32> = (floor(in.clip.xy) + 0.5) / size;
+  let normal: vec3<f32> = normalize(in.normal);
+  let eye: vec3<f32> = normalize(position);
+  let normal_view: vec3<f32> = normalize((camera.view * vec4<f32>(normal, 0.0)).xyz);
+  let reflected: vec3<f32> = reflect(eye, normal_view);
+  let to_point: vec3<f32> = normalize(in.world - camera.position.xyz);
+  let flat_reflected: vec3<f32> = reflect(to_point, normal);
+  // Rays towards the eye are not traced: looking down they only mess the reflection. Nor are those the surface would
+  // show too little of.
+  let shown: f32 = pow(saturate(dot(flat_reflected, to_point)), 3.0) * water.reflectivity;
+  let is_away: bool = dot(-eye, reflected) <= -0.3 && shown >= MARCH_LEAST_SHOWN;
+  let noise_uv: vec2<f32> = (uv * 1.33 + water.time * 0.02) * vec2<f32>(size.x / size.y, 1.0);
+  let noise: f32 = textureSampleLevel(blue_noise, texture_sampler, noise_uv, 0.0).x * 1.5;
+  // A branch rather than a select, which would march every ray to throw most away.
+  var hit: vec3<f32> = vec3<f32>(0.0);
+
+  if (is_away) {
+    hit = march_reflection(position, reflected, noise, uv);
+  }
+  let sky: vec3<f32> = enhanced_sky(flat_reflected) * water.reflection;
+  var reflection: vec3<f32> = sky;
+
+  if (all(hit.xy != vec2<f32>(0.0))) {
+    let scene: vec3<f32> = textureLoad(water_scene, vec2<i32>(clamp(floor(hit.xy * size), vec2<f32>(0.0), size - 1.0)), 0)
+      .rgb;
+    let fogged: f32 = saturate((length(vec3<f32>(position.xy, hit.z)) * lighting.fog.y + lighting.fog.x) * 1.4);
+
+    reflection = mix(sky, scene, saturate(hit.y * 5.0 * f32(is_away) * (1.0 - fogged)));
+  }
+
+  // The point the frames before are read at: along this pixel's view as far as what the ray met, or far off at the sky.
+  let hit_distance: f32 = select(hit.z, 1e5, hit.z <= 0.0);
+  let along: vec3<f32> = eye * (hit_distance / max(-eye.z, 1e-4));
+  let rotation: mat3x3<f32> = transpose(mat3x3<f32>(camera.view[0].xyz, camera.view[1].xyz, camera.view[2].xyz));
+  let world_hit: vec4<f32> = vec4<f32>(camera.position.xyz + rotation * along, 1.0);
+  let now: vec4<f32> = camera.motion_current * world_hit;
+  let before: vec4<f32> = camera.motion_previous * world_hit;
+  let moved: vec2<f32> = (now.xy / now.w - before.xy / before.w) * vec2<f32>(0.5, -0.5);
+  let previous: vec2<f32> = uv - moved;
+  let is_off: bool = any(previous < vec2<f32>(0.0)) || any(previous > vec2<f32>(1.0));
+  let kept: f32 = saturate(REFLECTION_HISTORY - select(0.0, REFLECTION_SKY_HISTORY, hit.z <= 0.0) - f32(is_off)) *
+    water.history;
+  let jitter: vec2<f32> = (hash22(uv * 100.0 + water.time * 100.0) * 2.0 - 1.0) / size * 0.25;
+  let history: vec3<f32> = textureSampleLevel(reflection_history, sky_clamp, previous + jitter, 0.0).rgb;
+
+  return vec4<f32>(mix(reflection, history, kept), 1.0);
+}
+

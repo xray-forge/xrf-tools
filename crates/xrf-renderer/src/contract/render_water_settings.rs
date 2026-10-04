@@ -33,6 +33,12 @@ pub struct RenderWaterSettings {
   pub turbidity: f32,
   /// Metres of depth over which the enhanced water's edge fades into what lies under it, `ssfx_water_setup1.z`.
   pub soft_border: f32,
+  /// How much of its reflection the enhanced water shows by the fresnel, `ssfx_water_setup2.x`; none draws no reflection.
+  pub reflectivity: f32,
+  /// How far the enhanced water's reflection is blurred, `ssfx_water.y`.
+  pub reflection_blur: f32,
+  /// How much noise mixes the clear reflection into the blurred one, `ssfx_water.z`.
+  pub blur_noise: f32,
 }
 
 impl Default for RenderWaterSettings {
@@ -51,6 +57,9 @@ impl Default for RenderWaterSettings {
       refraction: 0.6,
       turbidity: 3.0,
       soft_border: 0.3,
+      reflectivity: 0.8,
+      reflection_blur: 0.8,
+      blur_noise: 1.0,
     }
   }
 }
