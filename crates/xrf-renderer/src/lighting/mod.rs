@@ -13,6 +13,7 @@ pub(crate) mod render_sky;
 pub(crate) mod render_thunderbolt_glow;
 pub(crate) mod render_thunderbolt_strike;
 pub(crate) mod render_tree_wind;
+pub(crate) mod render_wind;
 pub(crate) mod sun_cascade;
 pub(crate) mod sun_cascade_basis;
 pub(crate) mod sun_cascade_placement;

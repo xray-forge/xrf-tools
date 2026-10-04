@@ -86,6 +86,7 @@ export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings>
   },
   water: {
     blurNoise: toNumber(0, 1),
+    caustics: toNumber(0, 1),
     distortion: toNumber(0, 0.2),
     isDistorted: FLAG,
     isEnabled: FLAG,
@@ -97,6 +98,7 @@ export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings>
     refraction: toNumber(0, 2),
     ripple: toNumber(0, 4),
     softBorder: toNumber(0, 1),
+    specular: toNumber(0, 10),
     turbidity: toNumber(0, 10),
     waveHeight: toNumber(0, 0.2),
     waveSpeed: toNumber(0, 100),

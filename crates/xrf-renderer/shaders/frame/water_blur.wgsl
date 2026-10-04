@@ -21,6 +21,10 @@ struct Water {
   blur_noise: f32,
   reflected: f32,
   history: f32,
+  wind_direction: f32,
+  wind_velocity: f32,
+  specular: f32,
+  caustics: f32,
 };
 
 // xy: the way it blurs; z: how many times the target's size the source's is.

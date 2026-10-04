@@ -55,6 +55,7 @@ const LEVEL_FEATURE_KEYS: {
   shadows: ["bias", "blend", "cascades", "filter", "resolution"],
   water: [
     "blurNoise",
+    "caustics",
     "distortion",
     "isDistorted",
     "isSoft",
@@ -65,6 +66,7 @@ const LEVEL_FEATURE_KEYS: {
     "refraction",
     "ripple",
     "softBorder",
+    "specular",
     "turbidity",
     "waveHeight",
     "waveSpeed",

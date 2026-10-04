@@ -9,6 +9,7 @@ use crate::lighting::render_lighting::RenderLighting;
 use crate::lighting::render_rainfall::RenderRainfall;
 use crate::lighting::render_sky::RenderSky;
 use crate::lighting::render_tree_wind::RenderTreeWind;
+use crate::lighting::render_wind::RenderWind;
 
 /// A weather's mix as the scene is lit by it, in renderer space: the skies and clouds of both keyframes by their
 /// references, the sky's irradiance stood in for until its cubes are up.
@@ -56,9 +57,11 @@ pub fn to_weather_lighting(
     rain: (mix.rain_density >= EPS_L).then(|| RenderRainfall {
       color: Vec3::from(mix.rain_color),
       density: mix.rain_density,
-      wind_direction: mix.wind_direction,
-      wind_velocity: mix.wind_velocity,
     }),
+    wind: RenderWind {
+      direction: mix.wind_direction,
+      velocity: mix.wind_velocity,
+    },
     engine,
     thunderbolt: None,
   }

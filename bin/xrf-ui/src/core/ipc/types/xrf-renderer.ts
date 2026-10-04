@@ -1063,6 +1063,10 @@ export type RenderWaterSettings = {
   reflectionBlur: number | null;
   /** How much noise mixes the clear reflection into the blurred one, `ssfx_water.z`. */
   blurNoise: number | null;
+  /** How bright the sun's highlight on the enhanced water is, `ssfx_water_setup2.y`. */
+  specular: number | null;
+  /** How bright the light the enhanced water gathers onto its bottom is, `ssfx_water_setup2.z`. */
+  caustics: number | null;
 };
 
 /** How a viewport's weather clock runs. */

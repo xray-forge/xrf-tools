@@ -172,6 +172,7 @@ export function formatLowLuminance(luminance: number): string {
 /** The bounds each water value is offered between. */
 export const RENDER_WATER_LIMITS = {
   blurNoise: toRenderLimits(RENDER_FEATURE_SCHEMA.water.blurNoise, 0.05),
+  caustics: toRenderLimits(RENDER_FEATURE_SCHEMA.water.caustics, 0.05),
   distortion: toRenderLimits(RENDER_FEATURE_SCHEMA.water.distortion, 0.005),
   reflection: toRenderLimits(RENDER_FEATURE_SCHEMA.water.reflection, 0.05),
   reflectionBlur: toRenderLimits(RENDER_FEATURE_SCHEMA.water.reflectionBlur, 0.05),
@@ -179,6 +180,7 @@ export const RENDER_WATER_LIMITS = {
   refraction: toRenderLimits(RENDER_FEATURE_SCHEMA.water.refraction, 0.05),
   ripple: toRenderLimits(RENDER_FEATURE_SCHEMA.water.ripple, 0.05),
   softBorder: toRenderLimits(RENDER_FEATURE_SCHEMA.water.softBorder, 0.05),
+  specular: toRenderLimits(RENDER_FEATURE_SCHEMA.water.specular, 0.1),
   turbidity: toRenderLimits(RENDER_FEATURE_SCHEMA.water.turbidity, 0.1),
   waveHeight: toRenderLimits(RENDER_FEATURE_SCHEMA.water.waveHeight, 0.001),
   waveSpeed: toRenderLimits(RENDER_FEATURE_SCHEMA.water.waveSpeed, 1),

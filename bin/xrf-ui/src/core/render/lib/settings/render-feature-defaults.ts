@@ -89,6 +89,7 @@ export const DEFAULT_RENDER_UPSCALING_SETTINGS: TRenderUpscalingSettings = {
  */
 export const DEFAULT_RENDER_WATER_SETTINGS: TRenderWaterSettings = {
   blurNoise: 1,
+  caustics: 0.3,
   distortion: 0.05,
   isDistorted: true,
   isEnabled: true,
@@ -100,6 +101,7 @@ export const DEFAULT_RENDER_WATER_SETTINGS: TRenderWaterSettings = {
   refraction: 0.6,
   ripple: 1,
   softBorder: 0.3,
+  specular: 6,
   turbidity: 3,
   waveHeight: 1 / 60,
   waveSpeed: 25,
