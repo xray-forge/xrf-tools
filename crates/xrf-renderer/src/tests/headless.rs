@@ -7,6 +7,7 @@ use crate::pass::camera_uniform::CameraUniform;
 use crate::pass::grid_pass::GridPass;
 use crate::pass::view_binding::ViewBinding;
 use crate::shader::shader_library::ShaderLibrary;
+use crate::tests::test_workers::create_workers;
 use crate::thread::gpu_state::GpuState;
 
 const SIZE: u32 = 64;
@@ -154,7 +155,7 @@ fn builds_every_pass() {
   };
   let shaders: ShaderLibrary = ShaderLibrary::default();
 
-  if let Err(error) = GpuState::new(context, &shaders) {
+  if let Err(error) = GpuState::new(context, &shaders, &create_workers()) {
     panic!("A pass cannot be built: {error}");
   }
 }

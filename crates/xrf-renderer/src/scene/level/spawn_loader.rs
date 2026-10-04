@@ -13,6 +13,7 @@ use crate::host::render_spawn_models::RenderSpawnModels;
 use crate::host::render_spawn_object::RenderSpawnObject;
 use crate::scene::static_scene::static_model::StaticModel;
 use crate::scene::static_scene::static_model_place::StaticModelPlace;
+use crate::thread::render_workers::RenderWorkers;
 
 /// Visuals a loader thread reads in one batch: enough that the level's lighting is estimated for many at once, few
 /// enough that objects appear while the rest are read.
@@ -38,7 +39,7 @@ pub struct SpawnLoader {
 }
 
 impl SpawnLoader {
-  pub fn start(source: Arc<dyn RenderLevelSource>) -> Self {
+  pub fn start(source: Arc<dyn RenderLevelSource>, workers: &RenderWorkers) -> Self {
     let (sender, receiver) = channel();
     let pending: Arc<AtomicU32> = Arc::new(AtomicU32::new(1));
     let sent: Arc<AtomicU32> = Arc::new(AtomicU32::new(0));
@@ -52,9 +53,11 @@ impl SpawnLoader {
     };
     let spawn_pending: Arc<AtomicU32> = Arc::clone(&pending);
 
-    rayon::spawn(move || {
+    let batch_workers: RenderWorkers = workers.clone();
+
+    workers.spawn(move || {
       match source.read_spawn() {
-        Ok(spawn) => read_batches(&source, Arc::new(spawn), &sender, &counters),
+        Ok(spawn) => read_batches(&source, Arc::new(spawn), &sender, &counters, &batch_workers),
         Err(error) => log::warn!("The level's spawned objects cannot be drawn: {error}"),
       }
 
@@ -121,13 +124,14 @@ fn read_batches(
   spawn: Arc<RenderLevelSpawn>,
   sender: &Sender<SpawnLoad>,
   counters: &Counters,
+  workers: &RenderWorkers,
 ) {
   for (batch, names) in spawn.visuals.chunks(VISUALS_PER_BATCH).enumerate() {
     let (source, spawn, sender, counters) = (Arc::clone(source), Arc::clone(&spawn), sender.clone(), counters.clone());
     let (names, first) = (names.to_vec(), batch * VISUALS_PER_BATCH);
 
     counters.pending.fetch_add(1, Ordering::AcqRel);
-    rayon::spawn(move || {
+    workers.spawn(move || {
       if !counters.is_cancelled.load(Ordering::Acquire) {
         match source.read_spawn_models(&names) {
           Ok(mut models) => {

@@ -102,6 +102,7 @@ use crate::scene::static_scene::static_sorted_place::StaticSortedPlace;
 use crate::scene::texture::texture_cache::TextureCache;
 use crate::scene::texture::weather_texture_cache::WeatherTextureCache;
 use crate::scene::texture::weather_texture_kind::WeatherTextureKind;
+use crate::thread::render_workers::RenderWorkers;
 
 /// What a pick's texel says it met: a cluster, by its index and place, or an impostor, by its index.
 const PICKED_CLUSTER: u32 = 1;
@@ -275,6 +276,7 @@ impl LevelView {
     queue: &wgpu::Queue,
     view_layout: &wgpu::BindGroupLayout,
     source: Arc<dyn RenderLevelSource>,
+    workers: &RenderWorkers,
   ) -> Self {
     let uniform = |label: &str, size: usize| -> wgpu::Buffer {
       device.create_buffer(&wgpu::BufferDescriptor {
@@ -288,10 +290,10 @@ impl LevelView {
     let scene: StaticScene = StaticScene::new(device, queue);
 
     Self {
-      loader: LevelLoader::start(Arc::clone(&source)),
-      spawn: SpawnLoader::start(Arc::clone(&source)),
-      grass: LevelGrass::new(device, &source),
-      lights: LevelLights::new(device, view_layout, scene.args.size(), &source),
+      loader: LevelLoader::start(Arc::clone(&source), workers),
+      spawn: SpawnLoader::start(Arc::clone(&source), workers),
+      grass: LevelGrass::new(device, &source, workers),
+      lights: LevelLights::new(device, view_layout, scene.args.size(), &source, workers),
       rain_cover: RainCover::new(device, view_layout, scene.args.size()),
       scene,
       targets: None,
@@ -381,7 +383,7 @@ impl LevelView {
       pick_view: None,
       surfaces: SurfaceTally::default(),
       skeletons: HashMap::new(),
-      motions: ModelMotions::default(),
+      motions: ModelMotions::new(workers),
       model_pose: RenderModelPose::default(),
       failed_sectors: Vec::new(),
       skipped: Vec::new(),

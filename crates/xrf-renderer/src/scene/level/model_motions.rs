@@ -4,6 +4,7 @@ use std::sync::mpsc::{Receiver, TryRecvError, channel};
 
 use crate::host::render_level_source::RenderLevelSource;
 use crate::host::render_motion::RenderMotion;
+use crate::thread::render_workers::RenderWorkers;
 
 /// One motion asked for: on its way from a loader thread, baked, or not to be had.
 enum MotionState {
@@ -14,20 +15,28 @@ enum MotionState {
 
 /// The motions a viewport's skinned models are posed by, each baked once on a loader thread the first time a pose
 /// names it, and kept while the viewport shows the same scene.
-#[derive(Default)]
 pub struct ModelMotions {
   motions: HashMap<String, MotionState>,
+  workers: RenderWorkers,
 }
 
 impl ModelMotions {
+  pub fn new(workers: &RenderWorkers) -> Self {
+    Self {
+      motions: HashMap::new(),
+      workers: workers.clone(),
+    }
+  }
+
   /// The motion by its name once it is baked, asking for it the first time; none while it is read or where it cannot
   /// be, which the caller poses the bind pose for.
   pub fn get(&mut self, source: &Arc<dyn RenderLevelSource>, name: &str) -> Option<&RenderMotion> {
+    let workers: &RenderWorkers = &self.workers;
     let state: &mut MotionState = self.motions.entry(name.to_owned()).or_insert_with(|| {
       let (sender, receiver) = channel();
       let (source, name) = (Arc::clone(source), name.to_owned());
 
-      rayon::spawn(move || {
+      workers.spawn(move || {
         let motion: Option<RenderMotion> = match source.read_motion(&name) {
           Ok(motion) => Some(motion),
           Err(error) => {

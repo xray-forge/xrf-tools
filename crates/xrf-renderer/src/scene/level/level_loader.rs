@@ -6,6 +6,7 @@ use xrf_visual::SectorPackage;
 
 use crate::host::render_level_source::RenderLevelSource;
 use crate::scene::level::surface_tally::SurfaceTally;
+use crate::thread::render_workers::RenderWorkers;
 
 /// One sector's pack as a loader thread finished it, with what its surfaces draw, or why it could not be packed.
 pub type SectorLoad = (u32, Result<(SectorPackage, SurfaceTally), String>);
@@ -20,7 +21,7 @@ pub struct LevelLoader {
 }
 
 impl LevelLoader {
-  pub fn start(source: Arc<dyn RenderLevelSource>) -> Self {
+  pub fn start(source: Arc<dyn RenderLevelSource>, workers: &RenderWorkers) -> Self {
     let (sender, receiver) = channel();
     let total: u32 = source.get_sector_count();
     let is_cancelled: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
@@ -28,7 +29,7 @@ impl LevelLoader {
     for sector in 0..total {
       let (sender, source, is_cancelled) = (sender.clone(), Arc::clone(&source), Arc::clone(&is_cancelled));
 
-      rayon::spawn(move || {
+      workers.spawn(move || {
         if is_cancelled.load(Ordering::Acquire) {
           return;
         }

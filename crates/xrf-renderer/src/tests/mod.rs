@@ -18,6 +18,7 @@ mod sun_cascade;
 mod sun_shafts;
 mod surface_tally;
 mod temporal;
+mod test_workers;
 mod texture_cache;
 mod texture_role;
 mod weather;

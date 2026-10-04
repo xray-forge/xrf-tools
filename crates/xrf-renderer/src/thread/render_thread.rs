@@ -32,6 +32,7 @@ use crate::shader::shader_library::ShaderLibrary;
 use crate::thread::gpu_state::GpuState;
 use crate::thread::render_command::RenderCommand;
 use crate::thread::render_link::RenderLink;
+use crate::thread::render_workers::RenderWorkers;
 use crate::viewport::pending_pick::PendingPick;
 use crate::viewport::render_viewport::RenderViewport;
 use crate::window::render_window::RenderWindow;
@@ -61,6 +62,7 @@ pub struct RenderThread {
   receiver: Receiver<RenderCommand>,
   link: Arc<Mutex<RenderLink>>,
   settings: RenderSettings,
+  workers: RenderWorkers,
   shaders: ShaderLibrary,
   gpu: Option<GpuState>,
   /// Why the GPU last failed to start, and when.
@@ -81,13 +83,19 @@ pub struct RenderThread {
 }
 
 impl RenderThread {
-  pub fn new(receiver: Receiver<RenderCommand>, link: Arc<Mutex<RenderLink>>, settings: RenderSettings) -> Self {
+  pub fn new(
+    receiver: Receiver<RenderCommand>,
+    link: Arc<Mutex<RenderLink>>,
+    settings: RenderSettings,
+    workers: RenderWorkers,
+  ) -> Self {
     let now: Instant = Instant::now();
 
     Self {
       receiver,
       link,
       settings,
+      workers,
       shaders: ShaderLibrary::default(),
       gpu: None,
       failure: None,
@@ -179,7 +187,7 @@ impl RenderThread {
         self.hosts.entry(window).or_insert(host);
         self
           .viewports
-          .insert(id, RenderViewport::new(id, window, sink, Instant::now()));
+          .insert(id, RenderViewport::new(id, window, sink, Instant::now(), &self.workers));
         self.idle_since = None;
       }
       RenderCommand::Detach { id } => {
@@ -385,7 +393,7 @@ impl RenderThread {
     }
 
     match GpuContext::create(RenderBackend::from_environment())
-      .and_then(|context| GpuState::new(context, &self.shaders))
+      .and_then(|context| GpuState::new(context, &self.shaders, &self.workers))
     {
       Ok(gpu) => {
         self.gpu = Some(gpu);
@@ -698,7 +706,7 @@ impl RenderThread {
       {
         let incoming: &mut LevelView = viewport
           .incoming_view
-          .get_or_insert_with(|| LevelView::new(device, queue, &gpu.view_layout, Arc::clone(source)));
+          .get_or_insert_with(|| LevelView::new(device, queue, &gpu.view_layout, Arc::clone(source), &self.workers));
 
         incoming.set_model_pose(&viewport.model_pose);
         incoming.load(
@@ -718,7 +726,7 @@ impl RenderThread {
 
       let level: &mut LevelView = viewport
         .level_view
-        .get_or_insert_with(|| LevelView::new(device, queue, &gpu.view_layout, Arc::clone(source)));
+        .get_or_insert_with(|| LevelView::new(device, queue, &gpu.view_layout, Arc::clone(source), &self.workers));
 
       level.set_timed(self.settings.is_gpu_timed);
       level.set_overlays(

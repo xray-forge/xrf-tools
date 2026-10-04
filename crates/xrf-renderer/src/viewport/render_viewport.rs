@@ -27,6 +27,7 @@ use crate::host::render_level_source::RenderLevelSource;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::level_view::LevelView;
+use crate::thread::render_workers::RenderWorkers;
 use crate::viewport::pending_pick::PendingPick;
 use crate::weather::viewport_weather::ViewportWeather;
 
@@ -77,7 +78,13 @@ pub struct RenderViewport {
 }
 
 impl RenderViewport {
-  pub fn new(id: RenderViewportId, window: u64, sink: Box<dyn RenderEventSink>, now: Instant) -> Self {
+  pub fn new(
+    id: RenderViewportId,
+    window: u64,
+    sink: Box<dyn RenderEventSink>,
+    now: Instant,
+    workers: &RenderWorkers,
+  ) -> Self {
     Self {
       id,
       window,
@@ -91,7 +98,7 @@ impl RenderViewport {
       level: None,
       level_view: None,
       incoming_view: None,
-      weather: ViewportWeather::new(now),
+      weather: ViewportWeather::new(now, workers),
       captures: Vec::new(),
       picks: Vec::new(),
       binding: None,

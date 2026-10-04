@@ -6,6 +6,7 @@ use crate::host::render_asset_source::RenderAssetSource;
 use crate::lighting::render_sky::RenderSky;
 use crate::scene::texture::decoded_texture::{CUBE_FACES, DecodedTexture};
 use crate::scene::texture::weather_texture_kind::WeatherTextureKind;
+use crate::thread::render_workers::RenderWorkers;
 
 /// Frames a texture no viewport asks for is kept, so the skies of a weather faded away a moment ago come back at once.
 const KEPT_FRAMES: u64 = 600;
@@ -41,10 +42,11 @@ pub struct WeatherTextureCache {
   /// Bumped whenever a view changes, which the bind groups sampling them follow.
   generation: u64,
   frame: u64,
+  workers: RenderWorkers,
 }
 
 impl WeatherTextureCache {
-  pub fn new(device: &wgpu::Device, queue: &wgpu::Queue) -> Self {
+  pub fn new(device: &wgpu::Device, queue: &wgpu::Queue, workers: &RenderWorkers) -> Self {
     let (sender, receiver) = channel();
 
     Self {
@@ -68,6 +70,7 @@ impl WeatherTextureCache {
       ),
       generation: 0,
       frame: 0,
+      workers: workers.clone(),
     }
   }
 
@@ -95,7 +98,7 @@ impl WeatherTextureCache {
 
     let (sender, source, reference) = (self.sender.clone(), Arc::clone(source), reference.to_owned());
 
-    rayon::spawn(move || {
+    self.workers.spawn(move || {
       let load: Result<Option<DecodedTexture>, String> = source
         .read_texture(&reference)
         .and_then(|bytes| bytes.map(|bytes| DecodedTexture::from_dds(&bytes)).transpose())

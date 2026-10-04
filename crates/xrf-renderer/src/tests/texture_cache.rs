@@ -11,6 +11,7 @@ use crate::contract::render_texture_state::RenderTextureState;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::scene::texture::texture_cache::TextureCache;
 use crate::scene::texture::texture_role::TextureRole;
+use crate::tests::test_workers::{TEST_WORKER_NAME, create_workers};
 
 /// A source holding nothing, whose `slow` texture answers only once the test lets it, and then with a failure.
 struct GatedSource {
@@ -69,7 +70,7 @@ fn a_slot_no_scene_samples_is_freed_and_taken_by_the_next_texture() {
     return;
   };
   let (source, _open) = create_source();
-  let mut cache: TextureCache = TextureCache::new(&context.device, &context.queue);
+  let mut cache: TextureCache = TextureCache::new(&context.device, &context.queue, &create_workers());
   let kept: u32 = cache.request("kept", TextureRole::Base, &source);
   let dropped: u32 = cache.request("dropped", TextureRole::Base, &source);
 
@@ -86,7 +87,7 @@ fn a_load_landing_after_its_slot_was_freed_is_not_drawn_in_the_slots_next_textur
     return;
   };
   let (source, open) = create_source();
-  let mut cache: TextureCache = TextureCache::new(&context.device, &context.queue);
+  let mut cache: TextureCache = TextureCache::new(&context.device, &context.queue, &create_workers());
   let slow: u32 = cache.request("slow", TextureRole::Base, &source);
 
   cache.retain(&HashSet::new());
@@ -108,7 +109,7 @@ fn an_environment_no_scene_samples_is_freed_and_its_slot_taken_by_the_next_cube(
   let Some(context) = create_context() else {
     return;
   };
-  let mut cache: TextureCache = TextureCache::new(&context.device, &context.queue);
+  let mut cache: TextureCache = TextureCache::new(&context.device, &context.queue, &create_workers());
   let kept: u32 = cache.request_environment("kept");
   let dropped: u32 = cache.request_environment("dropped");
   let generation: u64 = cache.get_environments_generation();
@@ -120,4 +121,39 @@ fn an_environment_no_scene_samples_is_freed_and_its_slot_taken_by_the_next_cube(
   assert_eq!(cache.request_environment("kept"), kept);
   assert_eq!(cache.request_environment("next"), dropped);
   assert_eq!(cache.get_environment(dropped), Some("next"));
+}
+
+/// A source that says which thread read it.
+struct ThreadTellingSource {
+  told: Mutex<Sender<String>>,
+}
+
+impl RenderAssetSource for ThreadTellingSource {
+  fn get_texture_scope(&self) -> String {
+    String::from("test")
+  }
+
+  fn read_texture(&self, _: &str) -> XrfResult<Option<Vec<u8>>> {
+    let name: String = std::thread::current().name().unwrap_or_default().to_owned();
+    let _ = self.told.lock().unwrap().send(name);
+
+    Ok(None)
+  }
+}
+
+// The application hands the renderer its pool; a read on rayon's global pool would add a pool the size of the machine.
+#[test]
+fn reads_a_texture_on_the_pool_it_was_handed() {
+  let Some(context) = create_context() else {
+    return;
+  };
+  let (told, heard) = channel();
+  let source: Arc<dyn RenderAssetSource> = Arc::new(ThreadTellingSource { told: Mutex::new(told) });
+  let mut cache: TextureCache = TextureCache::new(&context.device, &context.queue, &create_workers());
+
+  cache.request("any", TextureRole::Base, &source);
+
+  let thread: String = heard.recv_timeout(Duration::from_secs(5)).expect("The texture is read");
+
+  assert!(thread.starts_with(TEST_WORKER_NAME), "read on '{thread}'");
 }

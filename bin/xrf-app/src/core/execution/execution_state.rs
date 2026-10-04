@@ -55,8 +55,8 @@ impl ExecutionState {
       .map_err(|error| format!("{what} did not finish: {error}"))
   }
 
-  /// A handle on the pool, for the callers that install into it themselves.
-  pub(super) fn get_pool(&self) -> Arc<ThreadPool> {
+  /// A handle on the pool, for the callers that install into it or spawn on it themselves.
+  pub(crate) fn get_pool(&self) -> Arc<ThreadPool> {
     Arc::clone(&self.pool)
   }
 }
