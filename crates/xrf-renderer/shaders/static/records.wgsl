@@ -57,6 +57,13 @@ struct Surface {
   hemi: u32,
   // An environment-mapped model's cube, by environment slot; none at zero.
   environment: u32,
+  // A terrain's details the mask's red, green, blue and alpha weigh, their bumps, and the mask.
+  terrain_details: vec4<u32>,
+  terrain_bumps: vec4<u32>,
+  terrain_mask: u32,
+  pad0: u32,
+  pad1: u32,
+  pad2: u32,
 };
 
 struct Region {
@@ -131,6 +138,8 @@ const SURFACE_IS_MODEL: u32 = 524288u;
 const SURFACE_IS_ENVIRONMENT_MAPPED: u32 = 1048576u;
 // An object the level stores as a tree, which the wind leaves standing.
 const SURFACE_IS_STILL: u32 = 2097152u;
+// A terrain's, which lays four details and their bumps over its base by its mask, lit by its base's alpha.
+const SURFACE_IS_TERRAIN: u32 = 4194304u;
 
 // Vertices one cluster's draw spans: 128 triangles, those past its own collapsed.
 const CLUSTER_VERTICES: u32 = 384u;

@@ -311,6 +311,35 @@ fn base_texel(in: GBufferVarying, at: Footprint) -> vec4<f32> {
   return sample_slot(surface.base, at.uv, at.dx, at.dy);
 }
 
+// What a terrain lays over its base (`deffer_impl_flat` with `USE_4_DETAIL` and `USE_4_BUMP`): its four details,
+// their bumps in tangent space at twice the contrast, and their gloss, each weighed by its mask's channel over the
+// mask's sum.
+struct TerrainTexel {
+  detail: vec3<f32>,
+  bump: vec3<f32>,
+  gloss: f32,
+};
+
+fn terrain_texel(surface: Surface, at: Footprint, uv: vec2<f32>, dx: vec2<f32>, dy: vec2<f32>) -> TerrainTexel {
+  let mask: vec4<f32> = sample_slot(surface.terrain_mask, at.uv, at.dx, at.dy);
+  let weights: vec4<f32> = mask / max(dot(mask, vec4<f32>(1.0)), 1e-4);
+  var out: TerrainTexel = TerrainTexel(vec3<f32>(0.0), vec3<f32>(0.0), 0.0);
+
+  for (var layer: u32 = 0u; layer < 4u; layer++) {
+    let weight: f32 = weights[layer];
+    // `.wzyx`: the normal in the last three channels, the gloss in the first.
+    let bump: vec4<f32> = sample_slot(surface.terrain_bumps[layer], uv, dx, dy).wzyx;
+
+    out.detail += sample_slot(surface.terrain_details[layer], uv, dx, dy).rgb * weight;
+    out.bump += (bump.xyz - 0.5) * weight;
+    out.gloss += bump.w * weight;
+  }
+
+  out.bump.z *= 0.5;
+
+  return out;
+}
+
 fn shade(in: GBufferVarying, base: vec4<f32>, at: Footprint) -> GBufferOutput {
   let surface: Surface = surfaces[in.surface];
   let scale: f32 = surface.detail_scale;
@@ -324,12 +353,22 @@ fn shade(in: GBufferVarying, base: vec4<f32>, at: Footprint) -> GBufferOutput {
   var gloss: f32 = DEFAULT_GLOSS;
   var detail: vec4<f32> = vec4<f32>(0.5);
 
-  if ((surface.flags & SURFACE_HAS_DETAIL) != 0u) {
+  let is_terrain: bool = (surface.flags & SURFACE_IS_TERRAIN) != 0u;
+
+  if (is_terrain) {
+    let terrain: TerrainTexel = terrain_texel(surface, at, detail_uv, detail_dx, detail_dy);
+    let weight: f32 = is_bumped * is_textured;
+
+    diffuse *= terrain.detail * 2.0;
+    normal = normalize(mix(normal, normalize(in.tangent * terrain.bump.x + in.binormal * terrain.bump.y +
+      in.normal * terrain.bump.z), weight));
+    gloss = mix(DEFAULT_GLOSS, terrain.gloss, weight);
+  } else if ((surface.flags & SURFACE_HAS_DETAIL) != 0u) {
     detail = sample_slot(surface.detail, detail_uv, detail_dx, detail_dy);
     diffuse *= detail.rgb * 2.0;
   }
 
-  if ((surface.flags & SURFACE_HAS_BUMP) != 0u) {
+  if (!is_terrain && (surface.flags & SURFACE_HAS_BUMP) != 0u) {
     let bump: vec4<f32> = sample_slot(surface.bump, at.uv, at.dx, at.dy);
     var tangent_normal: vec3<f32> = bump.wzy + sample_slot(surface.bump_companion, at.uv, at.dx, at.dy).xyz - 1.0;
     var bumped_gloss: f32 = bump.x * bump.x;
@@ -352,7 +391,8 @@ fn shade(in: GBufferVarying, base: vec4<f32>, at: Footprint) -> GBufferOutput {
     gloss = mix(DEFAULT_GLOSS, bumped_gloss, weight);
   }
 
-  var hemi: f32 = in.hemi;
+  // A terrain is lit by its base's alpha, `deffer_impl_flat`'s `Ne.w = D.w`.
+  var hemi: f32 = select(in.hemi, base.a, is_terrain);
   var sun: f32 = 1.0;
 
   if ((surface.flags & SURFACE_HAS_HEMI) != 0u) {

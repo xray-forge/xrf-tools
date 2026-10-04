@@ -85,6 +85,7 @@ impl XraySurfaceScript {
       }),
       // A script binds its own samplers by name, so nothing here is the detail texture the library's classes bind.
       detail: None,
+      terrain: None,
       samplers,
       bump: None,
       material: XrayMaterialDescriptor::DEFAULT_MATERIAL,

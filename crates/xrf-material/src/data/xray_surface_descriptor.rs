@@ -7,6 +7,7 @@ use crate::data::xray_surface_declaration::XraySurfaceDeclaration;
 use crate::data::xray_surface_detail::XraySurfaceDetail;
 use crate::data::xray_surface_draw::XraySurfaceDraw;
 use crate::data::xray_surface_sampler::XraySurfaceSampler;
+use crate::data::xray_surface_terrain::XraySurfaceTerrain;
 
 /// How the renderer draws one surface, resolved from the shader name it declares and the textures it dresses with.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -26,6 +27,8 @@ pub struct XraySurfaceDescriptor {
   /// The detail texture modulating its diffuse, `None` for a class the engine never details or a base texture whose
   /// descriptor associates none.
   pub detail: Option<XraySurfaceDetail>,
+  /// The four details and mask a terrain class lays over its base instead, `None` for any other class.
+  pub terrain: Option<XraySurfaceTerrain>,
   /// The texture files a scripted surface binds by sampler, in every element the renderer compiles for it; none for a
   /// surface the blender library describes, whose class binds by slot.
   pub samplers: Vec<XraySurfaceSampler>,
@@ -54,6 +57,7 @@ impl XraySurfaceDescriptor {
       declaration,
       draw: XraySurfaceDraw::Opaque,
       detail: None,
+      terrain: None,
       samplers: Vec::new(),
       bump: None,
       material: XrayMaterialDescriptor::DEFAULT_MATERIAL,

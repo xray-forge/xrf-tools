@@ -225,6 +225,7 @@ export function mockSurfaceDescriptor(overrides: Partial<XraySurfaceDescriptor> 
     isObjectLod: false,
     isTextureClamped: false,
     material: 1,
+    terrain: null,
     shader: "models\\model",
     textures: ["models\\model"],
     library: {

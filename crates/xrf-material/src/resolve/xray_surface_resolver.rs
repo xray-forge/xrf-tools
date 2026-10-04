@@ -18,6 +18,7 @@ use crate::resolve::xray_surface_bump_rule::XraySurfaceBumpRule;
 use crate::resolve::xray_surface_detail_rule::XraySurfaceDetailRule;
 use crate::resolve::xray_surface_rule::XraySurfaceRule;
 use crate::resolve::xray_surface_script::XraySurfaceScript;
+use crate::resolve::xray_surface_terrain_rule::XraySurfaceTerrainRule;
 use crate::resolve::xray_texture_scope::XrayTextureScope;
 
 /// Answers how a surface is drawn from the shader name it declares and the textures it dresses with.
@@ -128,6 +129,7 @@ impl<'probe, 'vfs> XraySurfaceResolver<'probe, 'vfs> {
       detail: base
         .as_ref()
         .and_then(|descriptor| self.describe_detail(blender, descriptor, bump.is_some())),
+      terrain: XraySurfaceTerrainRule::describe(blender, blender.base_texture(textures)),
       samplers: Vec::new(),
       bump,
       material: base.map_or(XrayMaterialDescriptor::DEFAULT_MATERIAL, |descriptor| {

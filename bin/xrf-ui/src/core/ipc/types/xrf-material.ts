@@ -250,6 +250,8 @@ export type XraySurfaceDescriptor = {
    * descriptor associates none.
    */
   detail: XraySurfaceDetail | null;
+  /** The four details and mask a terrain class lays over its base instead, `None` for any other class. */
+  terrain: XraySurfaceTerrain | null;
   /**
    * The texture files a scripted surface binds by sampler, in every element the renderer compiles for it; none for a
    * surface the blender library describes, whose class binds by slot.
@@ -352,4 +354,23 @@ export type XraySurfaceSampler = {
   name: string;
   /** Texture reference, engine-style, without extension. */
   texture: string;
+};
+
+/**
+ * What `B_BmmD` lays over a terrain's base under the deferred renderers (`Blender_BmmD_deferred.cpp`): four details
+ * and their bumps, weighed by the four channels of a mask beside the base.
+ */
+export type XraySurfaceTerrain = {
+  /** The mask, the base's reference with `_mask` after it. */
+  mask: string;
+  /** The details its red, green, blue and alpha weigh, `R2-R` to `R2-A`. */
+  layers: [XraySurfaceTerrainLayer, XraySurfaceTerrainLayer, XraySurfaceTerrainLayer, XraySurfaceTerrainLayer];
+};
+
+/** One of the four details a terrain lays over its base where its mask's channel says, with the bump it is lit by. */
+export type XraySurfaceTerrainLayer = {
+  /** Detail texture reference, engine-style, without extension. */
+  reference: string;
+  /** Its bump, the reference with `_bump` after it. */
+  bump: string;
 };
