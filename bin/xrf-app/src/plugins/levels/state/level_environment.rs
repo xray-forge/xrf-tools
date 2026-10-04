@@ -13,13 +13,10 @@ use xrf_vfs::XrayProbe;
 use crate::plugins::environment::catalog::{open_configs, read_catalog};
 use crate::plugins::environment::description::environment_cycle_entry::EnvironmentCycleEntry;
 use crate::plugins::levels::read::read_optional_file;
-use crate::plugins::levels::state::selection::level_rain::LevelRain;
-use crate::plugins::levels::state::selection::level_thunderbolts::LevelThunderbolts;
 use crate::plugins::levels::state::selection::level_weather_cycle::LevelWeatherCycle;
 use crate::plugins::levels::state::selection::level_weather_description::LevelWeatherDescription;
 use crate::plugins::levels::state::selection::level_weather_source::LevelWeatherSource;
 use crate::plugins::levels::state::selection::level_weather_texture::LevelWeatherTexture;
-use crate::plugins::levels::state::selection::level_wet_surfaces::LevelWetSurfaces;
 use crate::plugins::levels::state::selection::selected_level::SelectedLevel;
 
 /// The game's environment configs as the open level's engine reads them, and which of its cycles the level plays.
@@ -71,21 +68,19 @@ impl LevelEnvironment {
       effects: catalog
         .effects
         .iter()
-        .map(|effect| LevelWeatherCycle::of(effect, &source))
+        .map(|effect| LevelWeatherCycle::of(effect, catalog))
         .collect(),
       engine: catalog.engine,
       modifiers: Self::read_modifiers(current, probe),
       clouds: self.list_textures(&source, WeatherKey::CloudsTexture),
-      rain: LevelRain::read(&source),
-      wet: LevelWetSurfaces::read(&source),
       skies: self.list_textures(&source, WeatherKey::SkyTexture),
       suns: catalog.suns.iter().map(|sun| sun.name.clone()).collect(),
       offered: offered
         .iter()
-        .map(|cycle| LevelWeatherCycle::of(cycle, &source))
+        .map(|cycle| LevelWeatherCycle::of(cycle, catalog))
         .collect(),
       sun_table: catalog.sun_table.as_ref().map(SunTable::list_positions),
-      thunderbolts: LevelThunderbolts::read(&source),
+      thunderbolt_collections: catalog.thunderbolt_collections.clone(),
       weather: self.weather.clone(),
     }
   }

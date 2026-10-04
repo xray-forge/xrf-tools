@@ -1,12 +1,9 @@
-use serde::Serialize;
 use xrf_level::{DetailModel, DetailVertex};
 
 use crate::plugins::levels::state::selection::level_texture_reference::LevelTextureReference;
 
 /// A detail model the weather draws, rain's splash or a thunderbolt: its mesh and the texture it draws with.
-#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Debug, PartialEq)]
 pub struct LevelWeatherModel {
   pub texture: LevelTextureReference,
   /// Three floats a vertex, in engine space.

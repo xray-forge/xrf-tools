@@ -58,7 +58,7 @@ export function mockWeatherDescriptor(overrides: Partial<WeatherDescriptor> = {}
 }
 
 /**
- * Creates a cycle fixture: a midnight and a noon, both skies resolved.
+ * Creates a cycle fixture: a midnight and a noon.
  *
  * @param overrides - Field values to override.
  * @returns A cycle as the engine loads it.
@@ -73,12 +73,6 @@ export function mockLevelWeatherCycle(overrides: Partial<LevelWeatherCycle> = {}
     ],
     kind: EWeatherCycleKind.CYCLE,
     name: "default_clear",
-    textures: [
-      { logicalPath: "textures\\sky\\sky_night.dds", reference: "sky\\sky_night" },
-      { logicalPath: "textures\\sky\\sky_night#small.dds", reference: "sky\\sky_night#small" },
-      { logicalPath: "textures\\sky\\sky_noon.dds", reference: "sky\\sky_noon" },
-      { logicalPath: null, reference: "sky\\sky_noon#small" },
-    ],
     ...overrides,
   };
 }
@@ -97,21 +91,13 @@ export function mockLevelWeatherDescription(overrides: Partial<LevelWeatherDescr
     modifiers: [],
     offered: [mockLevelWeatherCycle()],
     suns: ["gradient1", "moon_halo_full"],
-    rain: {
-      drop: null,
-      streak: { logicalPath: "textures\\fx\\fx_rain.dds", reference: "fx\\fx_rain" },
-    },
     skies: [
       { texture: { logicalPath: "textures\\sky\\sky_night.dds", reference: "sky\\sky_night" }, uses: 1 },
       { texture: { logicalPath: "textures\\sky\\sky_noon.dds", reference: "sky\\sky_noon" }, uses: 1 },
     ],
     clouds: [{ texture: { logicalPath: "textures\\sky\\sky_oblaka.dds", reference: "sky\\sky_oblaka" }, uses: 2 }],
     sunTable: null,
-    thunderbolts: { animators: [], bolts: [], collections: [], models: [], settings: null },
-    wet: {
-      flow: { logicalPath: "textures\\water\\water_flowing_nmap.dds", reference: "water\\water_flowing_nmap" },
-      splash: { logicalPath: "textures\\water\\water_sbumpvolume.dds", reference: "water\\water_SBumpVolume" },
-    },
+    thunderboltCollections: [],
     weather: { key: "default", level: "zaton", options: [{ cycle: "default_clear", graph: null, state: null }] },
     ...overrides,
   };

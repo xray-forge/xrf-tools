@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use serde::Serialize;
 use xrf_chunk::XRayByteOrder;
 use xrf_environment::{Thunderbolt, ThunderboltCollection, ThunderboltKey};
 use xrf_light_anim::LightAnimFile;
@@ -18,9 +17,7 @@ use crate::plugins::levels::state::selection::level_weather_source::LevelWeather
 
 /// What the game's weather strikes with: every collection, the bolts they name as the engine loads them, the models and
 /// colour animations those share, and where bolts strike.
-#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Debug, PartialEq)]
 pub struct LevelThunderbolts {
   /// Every collection of the game, which a keyframe set by hand may strike with as well as the level's own.
   pub collections: Vec<ThunderboltCollection>,

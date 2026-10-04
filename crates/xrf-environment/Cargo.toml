@@ -20,7 +20,6 @@ xrf-math = { workspace = true }
 xrf-vfs = { workspace = true }
 
 [dev-dependencies]
-serde_json = { workspace = true }
 xrf-dltx = { workspace = true }
 xrf-test-utils = { workspace = true }
 

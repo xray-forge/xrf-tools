@@ -3,20 +3,6 @@
 import { Vector3d } from "@/core/ipc/types/xrf-math";
 import { XrayResolution } from "@/core/ipc/types/xrf-vfs";
 
-/** A colour animation of `lanims.xr` (`CLAItem`), which replaces the colour of every light it drives. */
-export type LightAnimatorDescription = {
-  fps: number | null;
-  frameCount: number;
-  /** By frame, the first at frame zero. */
-  keys: Array<LightAnimatorKey>;
-};
-
-/** One key of a colour animation: the frame it stands at and its colour, each channel in `[0, 255]`. */
-export type LightAnimatorKey = {
-  frame: number;
-  color: [number | null, number | null, number | null];
-};
-
 /** What one sector is and where it sits, before any of its geometry is read. */
 export type SectorOutline = {
   /** The sector, by its index in the sectors chunk. */
