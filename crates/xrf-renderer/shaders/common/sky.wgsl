@@ -78,17 +78,27 @@ fn sky_rim(state: Lighting, box: vec3<f32>) -> vec3<f32> {
   return sum / f32(RIM_TAPS);
 }
 
+// How much of the sky along a box direction is the cubes above the fold rather than the rim averaged under it.
+fn sky_box_above_fold(box: vec3<f32>) -> f32 {
+  return smoothstep(BOX_HORIZON, HAZE_TOP, box.y / max(abs(box.x), abs(box.z)));
+}
+
+// The same along a world direction.
+fn sky_above_fold(state: Lighting, direction: vec3<f32>) -> f32 {
+  return sky_box_above_fold(sky_box_direction(direction, state.sky_params.x));
+}
+
 // The sky as `RenderSky` draws it along a world direction: the cubes through the half box, times `sky_color`, on the
 // exposure's scale, written past the tonemap as vanilla's `sky2.ps` writes it, or through it as Anomaly's does.
 fn sky_color(state: Lighting, direction: vec3<f32>, scale: f32) -> vec3<f32> {
   let box: vec3<f32> = sky_box_direction(direction, state.sky_params.x);
-  let height: f32 = box.y / max(abs(box.x), abs(box.z));
+  let above: f32 = sky_box_above_fold(box);
   var color: vec3<f32> = sky_blended_cubes(state, sky_box_lookup(box));
 
   // Below the fold every pixel of a column reads one texel of the bottom rim, which draws its block noise as streaks
   // the height of the band; averaged around the compass there, it keeps the haze and loses the texels.
-  if (height < HAZE_TOP) {
-    color = mix(sky_rim(state, box), color, smoothstep(BOX_HORIZON, HAZE_TOP, height));
+  if (above < 1.0) {
+    color = mix(sky_rim(state, box), color, above);
   }
 
   let lit: vec3<f32> = color * state.sky.rgb;

@@ -25,8 +25,6 @@
 
 // What shows where nothing was drawn and neither the sky nor the fog is: the level viewer's backdrop, #202428.
 const BACKDROP: vec3<f32> = vec3<f32>(32.0, 36.0, 40.0) / 255.0;
-// How high over the horizon, as a height over the side, the sky as drawn takes over from its haze under it.
-const HAZE_BAND: f32 = 0.04;
 
 // The world direction through a pixel of the viewport.
 fn pixel_direction(pixel: vec2<f32>) -> vec3<f32> {
@@ -43,17 +41,16 @@ fn sky_haze(direction: vec3<f32>) -> vec3<f32> {
   return textureSampleLevel(haze_map, sky_repeat, sky_haze_coordinates(lifted), 0.0).rgb;
 }
 
-// What stands behind the far plane: the sky as drawn; with the haze, its haze under the horizon in place of the
-// darker rim, so the level's distance and whatever is past it meet in one colour.
+// What the distance fades into: the sky as drawn behind it; with the haze, its haze where the cubes stand above the
+// fold, so no cloud's shape lies over a far hill, and the rim as drawn under it, so the fade meets the sky exactly there.
 fn sky_behind(direction: vec3<f32>, scale: f32, is_hazed: bool) -> vec3<f32> {
   let shown: vec3<f32> = sky_shown(lighting, direction, scale);
-  let height: f32 = direction.y / max(length(direction.xz), 1e-6);
 
-  if (!is_hazed || height >= HAZE_BAND) {
+  if (!is_hazed) {
     return shown;
   }
 
-  return mix(sky_haze(direction), shown, smoothstep(0.0, HAZE_BAND, height));
+  return mix(shown, sky_haze(direction), sky_above_fold(lighting, direction));
 }
 
 // `hmodel` over the G-buffer's view space normal and point.
@@ -97,7 +94,7 @@ fn fs_combine(in: FullscreenVarying) -> @location(0) vec4<f32> {
 
   if (is_empty) {
     if (is_sky_drawn) {
-      return vec4<f32>(sky_behind(direction, scale, is_hazed), 1.0);
+      return vec4<f32>(sky_shown(lighting, direction, scale), 1.0);
     }
 
     if (is_fogged) {
