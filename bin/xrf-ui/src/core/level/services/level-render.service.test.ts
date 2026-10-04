@@ -290,12 +290,12 @@ describe("LevelRenderService", () => {
     const { container } = await mockAttached();
     const view: LevelViewService = container.get(LevelViewService);
 
-    view.setOptions({ ...view.options, isAxesVisible: false, isGridVisible: false, isSunVisible: true });
+    view.setOptions({ ...view.options, isAxesVisible: false, isGridVisible: false, isSunMarked: true });
     await flush();
 
     expect(sentOverlayKinds()).toEqual([ERenderOverlay.SUN]);
 
-    view.setOptions({ ...view.options, isAxesVisible: true, isGridVisible: true, isSunVisible: false });
+    view.setOptions({ ...view.options, isAxesVisible: true, isGridVisible: true, isSunMarked: false });
     await flush();
 
     expect(sentOverlayKinds()).toEqual([

@@ -9,7 +9,7 @@ import { LevelManualWeatherSlider } from "@/core/level/components/weather/LevelM
 import { LevelManualWeatherVectorField } from "@/core/level/components/weather/LevelManualWeatherVectorField";
 import { LevelWeatherResetButton } from "@/core/level/components/weather/LevelWeatherResetButton";
 import { ILevelManualWeather, toLevelManualSun } from "@/core/level/lib/weather/level-manual-weather";
-import { EditorPopoverToggle } from "@/core/shell/editor/EditorPopoverToggle";
+import { EditorPopoverAction } from "@/core/shell/editor/EditorPopoverAction";
 import { formatDegrees } from "@/lib/format/angle";
 
 /** The keys the popover sets. */
@@ -21,22 +21,21 @@ const SUN_KEYS: ReadonlyArray<keyof ILevelManualWeather> = [
   "hemisphereColor",
 ];
 
-interface ILevelSunActionProps extends ILevelManualWeatherActionProps {
+interface ILevelSunActionProps extends Omit<ILevelManualWeatherActionProps, "isOn" | "onToggle"> {
   /** The sun the open level was compiled against, or null where it names none. */
   sun: Nullable<LevelSunDescription>;
 }
 
 /**
- * The sun, the ambient and the hemisphere, by the keys a weather writes them with; whether the sun is drawn in the sky.
+ * The sun, the ambient and the hemisphere, by the keys a weather writes them with. The weather's sun is drawn with the
+ * sky, and its direction marked among the overlays.
  */
 export function LevelSunAction({
   "data-testid": dataTestId = "level-sun-action",
   id,
   className,
-  isOn,
   manual,
   sun,
-  onToggle,
   onEdit,
 }: ILevelSunActionProps): ReactElement {
   const compiled = useMemo(() => toLevelManualSun(sun?.direction ?? null), [sun]);
@@ -52,36 +51,39 @@ export function LevelSunAction({
   const reading: string = `${formatDegrees(-manual.sunLongitude)} up at a bearing of ${formatDegrees(manual.sunAltitude)}`;
 
   return (
-    <EditorPopoverToggle
+    <EditorPopoverAction
       data-testid={dataTestId}
       id={id}
       className={className}
       label={"Sun"}
       description={`Sun ${reading}`}
       icon={<WbSunnyIcon />}
-      isOn={isOn}
-      toggleLabel={"Show the sun in the sky"}
-      onToggle={onToggle}
     >
-      <LevelManualWeatherVectorField field={"sunColor"} isColor manual={manual} onEdit={onEdit} />
+      <div className={"flex w-60 flex-col gap-2 px-4 py-2"}>
+        <Typography className={"text-text-secondary"} variant={"overline"}>
+          Sun
+        </Typography>
 
-      <LevelManualWeatherSlider field={"sunAltitude"} manual={manual} format={formatDegrees} onEdit={onEdit} />
+        <LevelManualWeatherVectorField field={"sunColor"} isColor manual={manual} onEdit={onEdit} />
 
-      <LevelManualWeatherSlider field={"sunLongitude"} manual={manual} format={formatDegrees} onEdit={onEdit} />
+        <LevelManualWeatherSlider field={"sunAltitude"} manual={manual} format={formatDegrees} onEdit={onEdit} />
 
-      <Typography className={"block text-text-secondary"} variant={"caption"}>
-        {`setHP stands it ${reading}.`}
-      </Typography>
+        <LevelManualWeatherSlider field={"sunLongitude"} manual={manual} format={formatDegrees} onEdit={onEdit} />
 
-      <LevelManualWeatherVectorField field={"ambientColor"} isColor manual={manual} onEdit={onEdit} />
+        <Typography className={"block text-text-secondary"} variant={"caption"}>
+          {`setHP stands it ${reading}.`}
+        </Typography>
 
-      <LevelManualWeatherVectorField field={"hemisphereColor"} isColor manual={manual} onEdit={onEdit} />
+        <LevelManualWeatherVectorField field={"ambientColor"} isColor manual={manual} onEdit={onEdit} />
 
-      <Button size={"small"} disabled={!compiled} onClick={onUseCompiled}>
-        {compiled ? "Use the level's compiled sun" : "This level names no sun"}
-      </Button>
+        <LevelManualWeatherVectorField field={"hemisphereColor"} isColor manual={manual} onEdit={onEdit} />
 
-      <LevelWeatherResetButton keys={SUN_KEYS} onEdit={onEdit} />
-    </EditorPopoverToggle>
+        <Button size={"small"} disabled={!compiled} onClick={onUseCompiled}>
+          {compiled ? "Use the level's compiled sun" : "This level names no sun"}
+        </Button>
+
+        <LevelWeatherResetButton keys={SUN_KEYS} onEdit={onEdit} />
+      </div>
+    </EditorPopoverAction>
   );
 }

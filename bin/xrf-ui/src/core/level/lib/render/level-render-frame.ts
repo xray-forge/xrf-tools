@@ -22,7 +22,7 @@ const AXES_CELLS: number = 2;
  */
 export function toLevelFrameOverlays(
   box: Nullable<ILevelBox>,
-  options: Pick<ILevelViewOptions, "isAxesVisible" | "isGridVisible" | "isSunVisible">,
+  options: Pick<ILevelViewOptions, "isAxesVisible" | "isGridVisible" | "isSunMarked">,
   config: ILevelRenderConfig
 ): Array<RenderOverlay> {
   const overlays: Array<RenderOverlay> = [];
@@ -39,7 +39,7 @@ export function toLevelFrameOverlays(
     overlays.push(toLevelAxesOverlay(box, config));
   }
 
-  if (options.isSunVisible) {
+  if (options.isSunMarked) {
     overlays.push(toLevelSunOverlay(config));
   }
 

@@ -147,13 +147,7 @@ export function LevelPreviewToolbar({
 
           <EditorToolbarSeparator />
 
-          <LevelSunAction
-            isOn={options.isSunVisible}
-            manual={manual}
-            sun={sun}
-            onToggle={() => onToggle("isSunVisible")}
-            onEdit={onEditManual}
-          />
+          <LevelSunAction manual={manual} sun={sun} onEdit={onEditManual} />
 
           <LevelLightsAction
             isOn={options.isLamplit}

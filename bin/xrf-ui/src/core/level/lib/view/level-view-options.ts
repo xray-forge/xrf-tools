@@ -6,8 +6,8 @@ export interface ILevelViewOptions extends ILevelSurfaceOptions {
   isGridVisible: boolean;
   /** Draws the axis marker at the level's own origin, which is the only thing that says which way `+x` and `+z` go. */
   isAxesVisible: boolean;
-  /** Draws the sun in the sky, which is the only thing that says where the light is coming from. */
-  isSunVisible: boolean;
+  /** Marks where the level's directional light comes from with a dot in the sky; the weather's own sun is the sky's. */
+  isSunMarked: boolean;
   /** Draws the two readouts over the viewport: what the frame cost, and where the camera stands. */
   isStatsVisible: boolean;
   /** Draws the fog, which closes the level in at its distance. */
@@ -21,6 +21,8 @@ export interface ILevelViewOptions extends ILevelSurfaceOptions {
   isSkyHazed: boolean;
   /** Draws the clouds over the sky. */
   isClouded: boolean;
+  /** Draws the sun's lens flares over the frame, as the game's `disable_lens_flare 0` does. */
+  isLensFlared: boolean;
   /** Rains where the weather rains. */
   isRainy: boolean;
   /** Strikes bolts where the weather strikes them. */
@@ -68,6 +70,7 @@ export const DEFAULT_LEVEL_VIEW_OPTIONS: ILevelViewOptions = {
   isGridVisible: false,
   isImpostors: true,
   isLamplit: true,
+  isLensFlared: true,
   isOccluded: true,
   isOcclusionCulled: true,
   isRainy: true,
@@ -81,7 +84,7 @@ export const DEFAULT_LEVEL_VIEW_OPTIONS: ILevelViewOptions = {
   isSpawnedWeapons: true,
   isWindy: true,
   isStatsVisible: true,
-  isSunVisible: true,
+  isSunMarked: false,
   isThundering: true,
   isWaterVisible: true,
 };

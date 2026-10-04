@@ -18,6 +18,7 @@ export interface INativeViewSwitches extends Pick<
   RenderViewOptions,
   | "isClouded"
   | "isFogged"
+  | "isLensFlared"
   | "isRainy"
   | "isSkyHazed"
   | "isSkyVisible"
@@ -44,6 +45,7 @@ export const NO_NATIVE_VIEW_SWITCHES: INativeViewSwitches = {
   isClouded: false,
   isFogged: false,
   isGrassy: false,
+  isLensFlared: false,
   isRainy: false,
   isSkyHazed: false,
   isSkyVisible: false,
@@ -104,6 +106,7 @@ export function toNativeViewOptions(
     isAlphaVisible: true,
     isClouded: switches.isClouded,
     isFogged: switches.isFogged,
+    isLensFlared: switches.isLensFlared,
     isOcclusionCulled: features.isOcclusionCulled,
     isRainy: switches.isRainy,
     isSkyHazed: switches.isSkyHazed,

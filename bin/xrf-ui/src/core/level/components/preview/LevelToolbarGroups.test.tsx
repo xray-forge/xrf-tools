@@ -5,11 +5,13 @@ import { LevelCullingAction } from "@/core/level/components/preview/LevelCulling
 import { LevelOcclusionAction } from "@/core/level/components/preview/LevelOcclusionAction";
 import { LevelOverlaysAction } from "@/core/level/components/preview/LevelOverlaysAction";
 import { LevelShadingAction } from "@/core/level/components/preview/LevelShadingAction";
+import { LevelSkyAction } from "@/core/level/components/preview/LevelSkyAction";
 import { LevelSpawnAction } from "@/core/level/components/preview/LevelSpawnAction";
 import { ILevelFeatureOptions } from "@/core/level/lib/features";
 import { DEFAULT_LEVEL_LOD_OPTIONS } from "@/core/level/lib/lod/level-lod-options";
 import { ELevelShading } from "@/core/level/lib/view/level-shading";
 import { DEFAULT_LEVEL_VIEW_OPTIONS, ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
+import { DEFAULT_LEVEL_MANUAL_WEATHER } from "@/core/level/lib/weather/level-manual-weather";
 import { DEFAULT_RENDER_AMBIENT_OCCLUSION_SETTINGS } from "@/core/render/lib/settings/render-feature-defaults";
 import { mockLevelFeatureOptions } from "@/fixtures/mocks/level.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
@@ -145,5 +147,50 @@ describe("level toolbar groups", () => {
     await findByRole("dialog", { name: "Overlays" });
 
     expect(getByRole("checkbox", { name: "Grid" })).not.toBeChecked();
+  });
+
+  // The marker says where the level's sunlight comes from, which the weather's own sun in the sky already shows by day.
+  it("marks the sun among the overlays, off unless asked for", async () => {
+    const onToggle = jest.fn<TToggle>();
+    const { getByRole, findByRole } = renderWithProviders(
+      <LevelOverlaysAction
+        options={DEFAULT_LEVEL_VIEW_OPTIONS}
+        isGpuTimed={false}
+        onToggle={onToggle}
+        onChangeGpuTimed={() => {}}
+      />
+    );
+
+    await userEvent.click(getByRole("button", { name: "Overlays" }));
+    await findByRole("dialog", { name: "Overlays" });
+
+    expect(getByRole("checkbox", { name: "Sun" })).not.toBeChecked();
+
+    await userEvent.click(getByRole("checkbox", { name: "Sun" }));
+
+    expect(onToggle).toHaveBeenCalledWith("isSunMarked");
+  });
+
+  it("turns the sun's lens flares over beside the sky and the clouds", async () => {
+    const onToggle = jest.fn<TToggle>();
+    const { getByRole, findByRole } = renderWithProviders(
+      <LevelSkyAction
+        options={DEFAULT_LEVEL_VIEW_OPTIONS}
+        manual={DEFAULT_LEVEL_MANUAL_WEATHER}
+        skies={[]}
+        clouds={[]}
+        onToggle={onToggle}
+        onEdit={() => {}}
+      />
+    );
+
+    await userEvent.click(getByRole("button", { name: "Sky" }));
+    await findByRole("dialog", { name: "Sky" });
+
+    expect(getByRole("checkbox", { name: "Lens flares" })).toBeChecked();
+
+    await userEvent.click(getByRole("checkbox", { name: "Lens flares" }));
+
+    expect(onToggle).toHaveBeenCalledWith("isLensFlared");
   });
 });

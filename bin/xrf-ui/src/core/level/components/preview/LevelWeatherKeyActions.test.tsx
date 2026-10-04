@@ -97,15 +97,14 @@ describe("level weather key actions", () => {
     const onEdit = jest.fn<TEdit>();
     const { getByRole, findByRole } = renderWithProviders(
       <LevelSunAction
-        isOn
         manual={{ ...DEFAULT_LEVEL_MANUAL_WEATHER, sunAltitude: 10, sunLongitude: -80 }}
         sun={{ color: [1, 1, 1], direction: { x: 0, y: -1, z: 1 } }}
-        onToggle={() => {}}
         onEdit={onEdit}
       />
     );
 
-    await open(getByRole, "Sun");
+    // No toggle sits on it, so a click opens its settings.
+    await userEvent.click(getByRole("button", { name: "Sun" }));
     await findByRole("dialog", { name: "Sun" });
 
     expect(getByRole("dialog", { name: "Sun" }).textContent).toContain("80° up at a bearing of 10°");

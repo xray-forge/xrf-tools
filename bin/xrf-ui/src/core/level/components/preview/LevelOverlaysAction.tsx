@@ -16,7 +16,7 @@ interface ILevelOverlaysActionProps extends BaseComponentProps {
 }
 
 /**
- * What is laid over the level: the grid with its extent, the axes at the origin, and the readouts.
+ * What is laid over the level: the grid with its extent, the axes at the origin, the sun's direction, and the readouts.
  */
 export function LevelOverlaysAction({
   "data-testid": dataTestId = "level-overlays-action",
@@ -27,10 +27,11 @@ export function LevelOverlaysAction({
   onToggle,
   onChangeGpuTimed,
 }: ILevelOverlaysActionProps): ReactElement {
-  const { isGridVisible, isAxesVisible, isStatsVisible } = options;
+  const { isGridVisible, isAxesVisible, isSunMarked, isStatsVisible } = options;
   const shown: Array<string> = [
     isGridVisible ? "grid" : null,
     isAxesVisible ? "axes" : null,
+    isSunMarked ? "sun" : null,
     isStatsVisible ? "readouts" : null,
   ].filter((it): it is string => it !== null);
 
@@ -56,6 +57,13 @@ export function LevelOverlaysAction({
         description={"At the level's origin, saying which way +x and +z go"}
         isOn={isAxesVisible}
         onToggle={() => onToggle("isAxesVisible")}
+      />
+
+      <EditorPopoverGroupSection
+        label={"Sun"}
+        description={"A dot in the sky where the level's directional light comes from"}
+        isOn={isSunMarked}
+        onToggle={() => onToggle("isSunMarked")}
       />
 
       <EditorPopoverGroupSection
