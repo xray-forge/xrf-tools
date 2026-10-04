@@ -3,7 +3,6 @@ import { ReactElement, ReactNode, useCallback } from "react";
 
 import { LevelSunDescription, LevelWeatherTexture } from "@/core/ipc/types/xrf-app";
 import { ThunderboltCollection } from "@/core/ipc/types/xrf-environment";
-import { ERenderDebugView } from "@/core/ipc/types/xrf-renderer";
 import { LevelAntialiasingAction } from "@/core/level/components/preview/LevelAntialiasingAction";
 import { LevelCullingAction } from "@/core/level/components/preview/LevelCullingAction";
 import { LevelFogAction } from "@/core/level/components/preview/LevelFogAction";
@@ -13,16 +12,17 @@ import { LevelLookAction } from "@/core/level/components/preview/LevelLookAction
 import { LevelOcclusionAction } from "@/core/level/components/preview/LevelOcclusionAction";
 import { LevelOverlaysAction } from "@/core/level/components/preview/LevelOverlaysAction";
 import { LevelRainAction } from "@/core/level/components/preview/LevelRainAction";
+import { LevelShadingAction } from "@/core/level/components/preview/LevelShadingAction";
 import { LevelShadowAction } from "@/core/level/components/preview/LevelShadowAction";
 import { LevelSkyAction } from "@/core/level/components/preview/LevelSkyAction";
 import { LevelSpawnAction } from "@/core/level/components/preview/LevelSpawnAction";
 import { LevelSunAction } from "@/core/level/components/preview/LevelSunAction";
-import { LevelSurfacesAction } from "@/core/level/components/preview/LevelSurfacesAction";
 import { LevelWaterAction } from "@/core/level/components/preview/LevelWaterAction";
 import { LevelWeatherAction } from "@/core/level/components/preview/LevelWeatherAction";
 import { LevelWindAction } from "@/core/level/components/preview/LevelWindAction";
 import { ILevelFeatureOptions, TLevelFeatureView } from "@/core/level/lib/features";
 import { ILevelLodOptions } from "@/core/level/lib/lod/level-lod-options";
+import { ELevelShading } from "@/core/level/lib/view/level-shading";
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { ILevelManualWeather } from "@/core/level/lib/weather/level-manual-weather";
 import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-feature-settings";
@@ -55,8 +55,8 @@ interface ILevelPreviewToolbarProps extends BaseComponentProps {
   settings: IRenderFeatureSettings;
   /** Whether the settings time every viewport's passes. */
   isGpuTimed: boolean;
-  /** Which picture the viewport shows. */
-  debugView: ERenderDebugView;
+  /** What the viewport shows of its surfaces. */
+  shading: ELevelShading;
   /** Value pickers the surface contributes, drawn last, as every toolbar in this application orders them. */
   actions?: ReactNode;
   onChangeOptions: (options: ILevelViewOptions) => void;
@@ -67,7 +67,7 @@ interface ILevelPreviewToolbarProps extends BaseComponentProps {
   onChangeFeatures: (features: ILevelFeatureOptions) => void;
   /** Sets in the settings whether every viewport times its passes. */
   onChangeGpuTimed: (isGpuTimed: boolean) => void;
-  onChangeDebugView: (debugView: ERenderDebugView) => void;
+  onChangeShading: (shading: ELevelShading) => void;
   onBack?: () => void;
 }
 
@@ -92,7 +92,7 @@ export function LevelPreviewToolbar({
   featureView,
   settings,
   isGpuTimed,
-  debugView,
+  shading,
   actions,
   onChangeOptions,
   onChangeHemiStrength,
@@ -100,7 +100,7 @@ export function LevelPreviewToolbar({
   onChangeLod,
   onChangeFeatures,
   onChangeGpuTimed,
-  onChangeDebugView,
+  onChangeShading,
   onBack,
 }: ILevelPreviewToolbarProps): ReactElement {
   const onToggle = useCallback(
@@ -119,16 +119,23 @@ export function LevelPreviewToolbar({
       onBack={onBack}
       actions={
         <>
-          <LevelSurfacesAction options={options} onToggle={onToggle} />
-
-          <LevelCullingAction
+          <LevelShadingAction
             options={options}
-            isOcclusionAvailable={settings.isOcclusionCulled}
-            isImpostorsAvailable={settings.lod.isImpostors}
-            lod={lod}
+            shading={shading}
             onToggle={onToggle}
-            onChangeLod={onChangeLod}
+            onChangeShading={onChangeShading}
           />
+
+          <LevelOverlaysAction
+            options={options}
+            isGpuTimed={isGpuTimed}
+            onToggle={onToggle}
+            onChangeGpuTimed={onChangeGpuTimed}
+          />
+
+          <EditorToolbarSeparator />
+
+          <LevelLookAction />
 
           <LevelAntialiasingAction
             isOn={options.isAntialiased}
@@ -139,10 +146,6 @@ export function LevelPreviewToolbar({
           />
 
           <EditorToolbarSeparator />
-
-          <LevelWeatherAction />
-
-          <LevelLookAction />
 
           <LevelSunAction
             isOn={options.isSunVisible}
@@ -178,6 +181,10 @@ export function LevelPreviewToolbar({
             onChangeHemiStrength={onChangeHemiStrength}
           />
 
+          <EditorToolbarSeparator />
+
+          <LevelWeatherAction />
+
           <LevelSkyAction
             options={options}
             manual={manual}
@@ -204,6 +211,25 @@ export function LevelPreviewToolbar({
             onEdit={onEditManual}
           />
 
+          <LevelWindAction
+            isOn={options.isWindy}
+            manual={manual}
+            onToggle={() => onToggle("isWindy")}
+            onEdit={onEditManual}
+          />
+
+          <EditorToolbarSeparator />
+
+          <LevelSpawnAction options={options} onToggle={onToggle} />
+
+          <LevelGrassAction
+            isOn={options.isGrassy}
+            state={featureView.grass}
+            features={features}
+            onToggle={() => onToggle("isGrassy")}
+            onChange={onChangeFeatures}
+          />
+
           <LevelWaterAction
             isOn={options.isWaterVisible}
             state={featureView.water}
@@ -214,32 +240,13 @@ export function LevelPreviewToolbar({
             onEdit={onEditManual}
           />
 
-          <LevelGrassAction
-            isOn={options.isGrassy}
-            state={featureView.grass}
-            features={features}
-            onToggle={() => onToggle("isGrassy")}
-            onChange={onChangeFeatures}
-          />
-
-          <LevelWindAction
-            isOn={options.isWindy}
-            manual={manual}
-            onToggle={() => onToggle("isWindy")}
-            onEdit={onEditManual}
-          />
-
-          <LevelSpawnAction options={options} onToggle={onToggle} />
-
-          <EditorToolbarSeparator />
-
-          <LevelOverlaysAction
+          <LevelCullingAction
             options={options}
-            isGpuTimed={isGpuTimed}
+            isOcclusionAvailable={settings.isOcclusionCulled}
+            isImpostorsAvailable={settings.lod.isImpostors}
+            lod={lod}
             onToggle={onToggle}
-            onChangeGpuTimed={onChangeGpuTimed}
-            debugView={debugView}
-            onChangeDebugView={onChangeDebugView}
+            onChangeLod={onChangeLod}
           />
 
           {actions ? (

@@ -7,7 +7,7 @@ import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatCount } from "@/lib/format/number";
 import { formatBytes } from "@/lib/memory/format";
 
-interface ILevelStreamResidentSectionProps extends BaseComponentProps {
+interface ILevelRendererResidentSectionProps extends BaseComponentProps {
   /** How far the renderer has read the level, or null until it says. */
   load: Nullable<RenderLoadReport>;
   /** What it holds on the GPU. */
@@ -17,13 +17,13 @@ interface ILevelStreamResidentSectionProps extends BaseComponentProps {
 /**
  * What the level holds now: its sectors and textures, the geometry read for them, and what the GPU holds.
  */
-export function LevelStreamResidentSection({
-  "data-testid": dataTestId = "level-stream-resident-section",
+export function LevelRendererResidentSection({
+  "data-testid": dataTestId = "level-renderer-resident-section",
   id,
   className,
   load,
   memory,
-}: ILevelStreamResidentSectionProps): ReactElement {
+}: ILevelRendererResidentSectionProps): ReactElement {
   return (
     <EditorPanelSection data-testid={dataTestId} id={id} className={className} title={"Resident"} isFirst>
       <EditorPanelProperty

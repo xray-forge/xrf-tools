@@ -5,9 +5,11 @@ import { Container } from "@wirestate/core";
 import {
   ERenderCamera,
   ERenderCameraCommand,
+  ERenderDebugView,
   ERenderFrameRate,
   ERenderLevelHit,
   ERenderOverlay,
+  ERenderSurfaceColor,
   ERenderViewportEvent,
   ERenderWeatherPlay,
   ERenderWeatherTransition,
@@ -18,6 +20,7 @@ import {
   RenderViewportEvent,
 } from "@/core/ipc/types/xrf-renderer";
 import { ELevelPick } from "@/core/level/lib/pick/level-pick";
+import { ELevelShading } from "@/core/level/lib/view/level-shading";
 import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { LevelLookService } from "@/core/level/services/level-look.service";
 import { LevelRenderService, toLevelPick } from "@/core/level/services/level-render.service";
@@ -246,7 +249,7 @@ describe("LevelRenderService", () => {
     expect(sent("set_view_options").at(-1)).toEqual({
       options: expect.objectContaining({
         isBumped: true,
-        isTextured: true,
+        surfaceColor: ERenderSurfaceColor.TEXTURED,
         // The settings' level of detail, the engine's own thresholds by default.
         lod: expect.objectContaining({ isImpostors: true, ssaA: 64, ssaB: 48, ssaDiscard: 3.5 }),
       }),
@@ -254,11 +257,14 @@ describe("LevelRenderService", () => {
     });
 
     mockInvoke.mockClear();
-    view.setOptions({ ...view.options, isTextured: false });
+    view.setShading(ELevelShading.CLAY);
     await flush();
 
     expect(sent("set_view_options")).toEqual([
-      { options: expect.objectContaining({ isTextured: false }), viewport: VIEWPORT },
+      {
+        options: expect.objectContaining({ debugView: ERenderDebugView.FINAL, surfaceColor: ERenderSurfaceColor.CLAY }),
+        viewport: VIEWPORT,
+      },
     ]);
   });
 

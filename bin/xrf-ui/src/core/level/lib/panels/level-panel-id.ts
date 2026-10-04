@@ -3,7 +3,7 @@ export enum ELevelPanelId {
   WEATHER = "weather",
   SPAWN = "spawn",
   LEVEL = "level",
-  STREAMING = "streaming",
+  RENDERER = "renderer",
   SURFACES = "surfaces",
   PROBLEMS = "problems",
 }
