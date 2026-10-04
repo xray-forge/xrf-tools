@@ -77,7 +77,13 @@ export function LevelWeatherClockSection({
         onChange={(value: number) => onFactor(10 ** value)}
       />
 
-      {!isSunTabled ? (
+      {isSunTabled ? (
+        <Typography className={"block text-text-secondary"} variant={"caption"}>
+          {isManual
+            ? "The keyframe set by hand stands the sun by its own angles."
+            : "The sun stands by the game's sun table, hour by hour."}
+        </Typography>
+      ) : (
         <CheckboxFormRow
           label={"Dynamic sun"}
           description={
@@ -91,12 +97,6 @@ export function LevelWeatherClockSection({
           isDisabled={isManual}
           onChange={onDynamicSun}
         />
-      ) : (
-        <Typography className={"block text-text-secondary"} variant={"caption"}>
-          {isManual
-            ? "The keyframe set by hand stands the sun by its own angles."
-            : "The sun stands by the game's sun table, hour by hour."}
-        </Typography>
       )}
     </EditorPanelSection>
   );
