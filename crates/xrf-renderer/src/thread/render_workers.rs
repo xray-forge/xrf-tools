@@ -18,4 +18,9 @@ impl RenderWorkers {
   pub fn spawn(&self, work: impl FnOnce() + Send + 'static) {
     self.pool.spawn(work);
   }
+
+  /// Runs `work` on the pool and waits for it, so the parallel iterators it starts share the pool's width.
+  pub fn install<R: Send>(&self, work: impl FnOnce() -> R + Send) -> R {
+    self.pool.install(work)
+  }
 }

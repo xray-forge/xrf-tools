@@ -24,6 +24,7 @@ use crate::contract::render_load_failure::RenderLoadFailure;
 use crate::contract::render_load_report::RenderLoadReport;
 use crate::contract::render_model_pose::RenderModelPose;
 use crate::contract::render_overlay::RenderOverlay;
+use crate::contract::render_particles_report::RenderParticlesReport;
 use crate::contract::render_pass_cost::RenderPassCost;
 use crate::contract::render_pool_use::RenderPoolUse;
 use crate::contract::render_rect::RenderRect;
@@ -84,6 +85,7 @@ use crate::scene::level::level_grass::LevelGrass;
 use crate::scene::level::level_lights::LevelLights;
 use crate::scene::level::level_loader::LevelLoader;
 use crate::scene::level::level_overlays::LevelOverlays;
+use crate::scene::level::level_particles::LevelParticles;
 use crate::scene::level::level_shadows::LevelShadows;
 use crate::scene::level::level_smoothing::LevelSmoothing;
 use crate::scene::level::model_motions::ModelMotions;
@@ -248,6 +250,7 @@ pub struct LevelView {
   shadows: LevelShadows,
   lights: LevelLights,
   lights_settings: RenderLightsSettings,
+  particles: LevelParticles,
   occlusion_uniform: wgpu::Buffer,
   ambient_occlusion: RenderAmbientOcclusionSettings,
   exposure: ViewExposure,
@@ -294,6 +297,7 @@ impl LevelView {
       spawn: SpawnLoader::start(Arc::clone(&source), workers),
       grass: LevelGrass::new(device, &source, workers),
       lights: LevelLights::new(device, view_layout, scene.args.size(), &source, workers),
+      particles: LevelParticles::new(device, &source, workers),
       rain_cover: RainCover::new(device, view_layout, scene.args.size()),
       scene,
       targets: None,
@@ -467,6 +471,7 @@ impl LevelView {
     }
 
     self.lights.poll(textures, &assets);
+    self.particles.poll(device, textures, &assets);
 
     if let Some(slots) = self.grass.poll(device, grass_pass, textures, &assets) {
       self.scene.texture_slots.extend(slots);
@@ -849,6 +854,18 @@ impl LevelView {
       0,
       bytemuck::bytes_of(&LightingUniform::new(lighting, view.view, options, &frame)),
     );
+
+    if let Some(targets) = &self.targets {
+      self.particles.prepare(
+        device,
+        queue,
+        passes.particles,
+        view,
+        options,
+        &self.lighting,
+        (targets, self.targets_epoch),
+      );
+    }
   }
 
   /// Writes this frame's rain, while the weather rains and the view shows it: the splash's model built for the
@@ -1211,6 +1228,14 @@ impl LevelView {
           (self.sorted_group.as_ref().map(|(_, group)| group), self.sorted_count),
         );
         timer.mark(encoder, "composited");
+      }
+
+      if !self.is_wireframe
+        && self
+          .particles
+          .record(encoder, passes.particles, targets, view, texture_group)
+      {
+        timer.mark(encoder, "particles");
       }
 
       if self.is_shafted {
@@ -1776,6 +1801,11 @@ impl LevelView {
     self.scene.get_object_sphere(object)
   }
 
+  /// What the level's particle systems came to since the last report.
+  pub fn take_particles_report(&mut self) -> RenderParticlesReport {
+    self.particles.take_report()
+  }
+
   /// Milliseconds the last sector taken in took to put into the scene.
   pub fn get_sector_time(&self) -> f32 {
     self.sector_time
@@ -1914,6 +1944,7 @@ impl LevelView {
       .iter()
       .copied()
       .chain(self.lights.get_projectors().iter().copied())
+      .chain(self.particles.get_texture_slots().iter().copied())
   }
 
   /// Bytes its scene's growing buffers hold on the GPU.

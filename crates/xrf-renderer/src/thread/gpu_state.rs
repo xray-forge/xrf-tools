@@ -18,6 +18,7 @@ use crate::pass::level_passes::LevelPasses;
 use crate::pass::lights_pass::LightsPass;
 use crate::pass::material_table::MaterialTable;
 use crate::pass::overlay_pass::OverlayPass;
+use crate::pass::particle_pass::ParticlePass;
 use crate::pass::present_pass::PresentPass;
 use crate::pass::rain_pass::RainPass;
 use crate::pass::sky_bindings::SkyBindings;
@@ -56,6 +57,7 @@ pub struct GpuState {
   pub composited: CompositedPass,
   pub grass: GrassPass,
   pub rain: RainPass,
+  pub particles: ParticlePass,
   pub wet: WetPass,
   pub thunder: ThunderPass,
   pub flares: FlarePass,
@@ -123,6 +125,7 @@ impl GpuState {
       composited,
       grass: GrassPass::new(device, shaders, &view_layout, textures.get_layout())?,
       rain: RainPass::new(device, shaders, &view_layout)?,
+      particles: ParticlePass::new(device, shaders, &view_layout, textures.get_layout())?,
       wet: WetPass::new(device, shaders, &view_layout)?,
       thunder: ThunderPass::new(device, shaders, &view_layout)?,
       flares: FlarePass::new(device, shaders, &view_layout)?,
@@ -192,6 +195,7 @@ impl GpuState {
       composited: &self.composited,
       grass: &self.grass,
       rain: &self.rain,
+      particles: &self.particles,
       wet: &self.wet,
       thunder: &self.thunder,
       flares: &self.flares,
@@ -229,6 +233,7 @@ impl GpuState {
     self.composited.refresh(device, shaders);
     self.grass.refresh(device, shaders);
     self.rain.refresh(device, shaders);
+    self.particles.refresh(device, shaders);
     self.wet.refresh(device, shaders);
     self.thunder.refresh(device, shaders);
     self.flares.refresh(device, shaders);

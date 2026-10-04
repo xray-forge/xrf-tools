@@ -10,6 +10,7 @@ use crate::pass::grass_pass::GrassPass;
 use crate::pass::lights_pass::LightsPass;
 use crate::pass::material_table::MaterialTable;
 use crate::pass::overlay_pass::OverlayPass;
+use crate::pass::particle_pass::ParticlePass;
 use crate::pass::present_pass::PresentPass;
 use crate::pass::rain_pass::RainPass;
 use crate::pass::sky_bindings::SkyBindings;
@@ -41,6 +42,7 @@ pub struct LevelPasses<'a> {
   pub sky: &'a SkyBindings,
   pub water: &'a WaterPass,
   pub composited: &'a CompositedPass,
+  pub particles: &'a ParticlePass,
   pub grass: &'a GrassPass,
   pub rain: &'a RainPass,
   pub wet: &'a WetPass,

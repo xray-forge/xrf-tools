@@ -153,6 +153,10 @@ impl RenderViewport {
       .level_view
       .as_mut()
       .map_or_else(Default::default, |level| level.take_stats());
+    let particles: RenderParticlesReport = self
+      .level_view
+      .as_mut()
+      .map_or_else(Default::default, LevelView::take_particles_report);
     let (is_gpu_timed, passes) = self
       .level_view
       .as_mut()
@@ -192,8 +196,7 @@ impl RenderViewport {
         passes,
         static_draws,
         lights,
-        // todo: Report the level's particle systems once the renderer plays them.
-        particles: RenderParticlesReport::default(),
+        particles,
         sector_time: self.level_view.as_ref().map_or(0.0, LevelView::get_sector_time),
         memory: RenderMemoryReport {
           textures: texture_bytes,
