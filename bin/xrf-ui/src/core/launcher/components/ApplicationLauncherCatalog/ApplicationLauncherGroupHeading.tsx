@@ -8,7 +8,6 @@ import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IApplicationLauncherGroupHeadingProps extends BaseComponentProps {
   group: IApplicationGroup;
-  count: number;
 }
 
 /**
@@ -19,7 +18,6 @@ export function ApplicationLauncherGroupHeading({
   id,
   className,
   group,
-  count,
 }: IApplicationLauncherGroupHeadingProps): ReactElement {
   return (
     <div data-testid={dataTestId} id={id} className={cn("flex min-w-0 items-center gap-1.5", className)}>
@@ -29,14 +27,6 @@ export function ApplicationLauncherGroupHeading({
 
       <Typography component={"h2"} variant={"subtitle2"} className={"font-semibold text-text-primary"}>
         {group.label}
-      </Typography>
-
-      <Typography
-        className={"rounded-full border border-divider px-1.5 text-badge leading-[1.7] text-text-secondary"}
-        component={"span"}
-        variant={"caption"}
-      >
-        {count}
       </Typography>
     </div>
   );
