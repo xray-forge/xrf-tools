@@ -1,6 +1,7 @@
 use xrf_math::Vector3d;
 
 use crate::cform::level_cform_geometry::LevelCformGeometry;
+use crate::cform::level_cform_hit::LevelCformHit;
 use crate::cform::level_cform_tracer_node::LevelCformTracerNode;
 
 /// Triangles a leaf holds at most.
@@ -15,8 +16,10 @@ const STACK_DEPTH: usize = 64;
 /// What `CDB::TestRayTri` takes a ray parallel to a triangle's plane to be.
 const PARALLEL_EPSILON: f32 = 1e-12;
 
-/// The collision form as rays are tested against it, `CObjectSpace::RayTest` over `rqtStatic`: its triangles in a
-/// bounding volume hierarchy, each tested from both sides, a ray blocked by the first it meets.
+/// `EPS`: the least determinant `CDB`'s culled ray test takes a front face to have.
+const FRONT_EPSILON: f32 = xrf_math::EPS;
+
+/// The collision form's triangles in a bounding volume hierarchy, for the engine's static ray tests and picks.
 pub struct LevelCformTracer {
   vertices: Vec<[f32; 3]>,
   /// Each triangle's corners, in the order the leaves hold them.
@@ -82,13 +85,79 @@ impl LevelCformTracer {
     }
   }
 
-  /// Whether anything of the form lies along a ray within `range` of its origin.
+  /// Whether anything of the form lies along a ray within `range` of its origin, from either side.
   pub fn is_blocked(&self, origin: &Vector3d<f32>, direction: &Vector3d<f32>, range: f32) -> bool {
     let origin: [f32; 3] = [origin.x, origin.y, origin.z];
     let direction: [f32; 3] = [direction.x, direction.y, direction.z];
+    let mut is_blocked: bool = false;
+
+    self.walk(&origin, &direction, range, |triangle, _| {
+      is_blocked = self.is_hit(triangle, &origin, &direction, range);
+      is_blocked
+    });
+
+    is_blocked
+  }
+
+  /// `CObjectSpace::RayPick` over `rqtStatic` (`OPT_ONLYNEAREST | OPT_CULL`): the nearest front face a ray meets.
+  pub fn get_nearest_hit(
+    &self,
+    origin: &Vector3d<f32>,
+    direction: &Vector3d<f32>,
+    range: f32,
+  ) -> Option<LevelCformHit> {
+    let origin: [f32; 3] = [origin.x, origin.y, origin.z];
+    let direction: [f32; 3] = [direction.x, direction.y, direction.z];
+    let mut nearest: Option<(f32, [u32; 3])> = None;
+
+    self.walk(&origin, &direction, range, |triangle, reach| {
+      if let Some(distance) = self.get_front_distance(triangle, &origin, &direction)
+        && distance > 0.0
+        && distance <= *reach
+        && nearest.is_none_or(|(best, _)| distance < best)
+      {
+        nearest = Some((distance, *triangle));
+        *reach = distance;
+      }
+
+      false
+    });
+
+    nearest.map(|(distance, triangle)| {
+      let [a, b, c] = triangle.map(|index| self.vertices[index as usize]);
+      let normal: [f32; 3] = cross(&sub(&b, &a), &sub(&c, &b));
+      let length_sqr: f32 = dot(&normal, &normal);
+      // `normalize_safe`: unchanged when too short to scale.
+      let scale: f32 = if length_sqr > f32::MIN_POSITIVE {
+        (1.0 / length_sqr).sqrt()
+      } else {
+        1.0
+      };
+
+      LevelCformHit {
+        distance,
+        normal: Vector3d::new(normal[0] * scale, normal[1] * scale, normal[2] * scale),
+      }
+    })
+  }
+
+  /// How many triangles it holds.
+  pub fn get_triangle_count(&self) -> usize {
+    self.triangles.len()
+  }
+
+  /// Visits each triangle in a leaf the ray reaches within a reach the visitor may shorten, until it returns true.
+  fn walk(
+    &self,
+    origin: &[f32; 3],
+    direction: &[f32; 3],
+    range: f32,
+    mut visit: impl FnMut(&[u32; 3], &mut f32) -> bool,
+  ) {
     let inverse: [f32; 3] = direction.map(|it| 1.0 / it);
     let mut stack: [usize; STACK_DEPTH] = [0; STACK_DEPTH];
     let mut depth: usize = usize::from(!self.nodes.is_empty());
+    let mut reach: f32 = range;
 
     while depth > 0 {
       depth -= 1;
@@ -96,18 +165,17 @@ impl LevelCformTracer {
       let index: usize = stack[depth];
       let node: &LevelCformTracerNode = &self.nodes[index];
 
-      if !node.is_reached(&origin, &inverse, range) {
+      if !node.is_reached(origin, &inverse, reach) {
         continue;
       }
 
       if node.count > 0 {
         let first: usize = node.start as usize;
 
-        if self.triangles[first..first + node.count as usize]
-          .iter()
-          .any(|triangle| self.is_hit(triangle, &origin, &direction, range))
-        {
-          return true;
+        for triangle in &self.triangles[first..first + node.count as usize] {
+          if visit(triangle, &mut reach) {
+            return;
+          }
         }
       } else {
         stack[depth] = node.start as usize;
@@ -115,13 +183,6 @@ impl LevelCformTracer {
         depth += 2;
       }
     }
-
-    false
-  }
-
-  /// How many triangles it holds.
-  pub fn get_triangle_count(&self) -> usize {
-    self.triangles.len()
   }
 
   /// `CDB::TestRayTri` without culling: whether a ray crosses a triangle from either side within `range`.
@@ -154,6 +215,35 @@ impl LevelCformTracer {
     let distance: f32 = dot(&second, &up) * inverse;
 
     distance > 0.0 && distance < range
+  }
+
+  /// `RayCollider::_tri` with culling: how far along a ray it meets a triangle's front side, if it does.
+  fn get_front_distance(&self, triangle: &[u32; 3], origin: &[f32; 3], direction: &[f32; 3]) -> Option<f32> {
+    let [a, b, c] = triangle.map(|index| self.vertices[index as usize]);
+    let first: [f32; 3] = sub(&b, &a);
+    let second: [f32; 3] = sub(&c, &a);
+    let across: [f32; 3] = cross(direction, &second);
+    let determinant: f32 = dot(&first, &across);
+
+    if determinant < FRONT_EPSILON {
+      return None;
+    }
+
+    let offset: [f32; 3] = sub(origin, &a);
+    let u: f32 = dot(&offset, &across);
+
+    if u < 0.0 || u > determinant {
+      return None;
+    }
+
+    let up: [f32; 3] = cross(&offset, &first);
+    let v: f32 = dot(direction, &up);
+
+    if v < 0.0 || u + v > determinant {
+      return None;
+    }
+
+    Some(dot(&second, &up) * (1.0 / determinant))
   }
 
   /// Every node's box, from the last up: a leaf's around its triangles, an inner node's around its children's, which

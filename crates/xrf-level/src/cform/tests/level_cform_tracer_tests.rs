@@ -3,6 +3,7 @@ use xrf_math::Vector3d;
 
 use crate::cform::level_cform_face::LevelCformFace;
 use crate::cform::level_cform_geometry::LevelCformGeometry;
+use crate::cform::level_cform_hit::LevelCformHit;
 use crate::cform::level_cform_tracer::LevelCformTracer;
 
 fn face(vertices: [u32; 3]) -> LevelCformFace {
@@ -204,6 +205,58 @@ fn answers_as_testing_every_triangle_would_over_a_large_form() -> XrfResult {
       "from {origin:?} along {direction:?} to {range}"
     );
   }
+
+  Ok(())
+}
+
+#[test]
+fn picks_the_nearest_front_face_and_its_normal() -> XrfResult {
+  let tracer: LevelCformTracer = LevelCformTracer::new(&floor(0.0)?);
+  let hit: LevelCformHit = tracer
+    .get_nearest_hit(&Vector3d::new(1.0, 2.0, 1.0), &down(), 5.0)
+    .expect("a hit on the floor");
+
+  assert_eq!(hit.distance, 2.0);
+  assert_eq!(hit.normal, up());
+
+  Ok(())
+}
+
+#[test]
+fn picks_no_back_face_and_nothing_past_the_range() -> XrfResult {
+  let tracer: LevelCformTracer = LevelCformTracer::new(&floor(0.0)?);
+
+  // `OPT_CULL`: the floor's underside faces away from a ray coming up through it.
+  assert_eq!(tracer.get_nearest_hit(&Vector3d::new(1.0, -2.0, 1.0), &up(), 5.0), None);
+  assert_eq!(
+    tracer.get_nearest_hit(&Vector3d::new(1.0, 2.0, 1.0), &down(), 1.5),
+    None
+  );
+  assert_eq!(
+    tracer.get_nearest_hit(&Vector3d::new(8.0, 2.0, 1.0), &down(), 5.0),
+    None
+  );
+
+  Ok(())
+}
+
+#[test]
+fn picks_the_nearer_of_two_floors() -> XrfResult {
+  let lower: LevelCformGeometry = floor(0.0)?;
+  let upper: LevelCformGeometry = floor(1.0)?;
+  let vertices: Vec<Vector3d> = lower
+    .get_vertices()
+    .iter()
+    .chain(upper.get_vertices())
+    .cloned()
+    .collect();
+  let faces: Vec<LevelCformFace> = vec![face([0, 2, 1]), face([0, 3, 2]), face([4, 6, 5]), face([4, 7, 6])];
+  let tracer: LevelCformTracer = LevelCformTracer::new(&LevelCformGeometry::new(vertices, faces)?);
+  let hit: LevelCformHit = tracer
+    .get_nearest_hit(&Vector3d::new(1.0, 3.0, 1.0), &down(), 10.0)
+    .expect("a hit on the upper floor");
+
+  assert_eq!(hit.distance, 2.0);
 
   Ok(())
 }

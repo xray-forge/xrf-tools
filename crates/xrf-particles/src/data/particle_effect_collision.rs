@@ -17,6 +17,17 @@ impl ParticleEffectCollision {
   pub const META_TYPE: &'static str = "particle_effect_collision";
 }
 
+impl Default for ParticleEffectCollision {
+  /// `CPEDef`'s own: no friction, no resilience, no cutoff.
+  fn default() -> Self {
+    Self {
+      collide_one_minus_friction: 1.0,
+      collide_resilience: 0.0,
+      collide_sqr_cutoff: 0.0,
+    }
+  }
+}
+
 impl ChunkReadWrite for ParticleEffectCollision {
   /// Read particle effect collision data from chunk reader.
   fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {

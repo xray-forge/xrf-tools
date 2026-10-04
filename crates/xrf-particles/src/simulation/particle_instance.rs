@@ -2,9 +2,8 @@ use glam::{Mat4, Vec3};
 
 use crate::simulation::particle_bounds::ParticleBounds;
 use crate::simulation::particle_effect_instance::ParticleEffectInstance;
-use crate::simulation::particle_engine_rules::ParticleEngineRules;
 use crate::simulation::particle_group_instance::ParticleGroupInstance;
-use crate::simulation::particle_library::ParticleLibrary;
+use crate::simulation::particle_update_context::ParticleUpdateContext;
 
 /// `IParticleCustom`: a playing effect or group, whichever a name resolved to.
 pub enum ParticleInstance {
@@ -35,10 +34,10 @@ impl ParticleInstance {
   }
 
   /// `OnFrame`.
-  pub fn update(&mut self, frame_milliseconds: u32, library: &ParticleLibrary, rules: &ParticleEngineRules) {
+  pub fn update(&mut self, frame_milliseconds: u32, context: &ParticleUpdateContext) {
     match self {
-      Self::Effect(effect) => effect.update(frame_milliseconds, rules),
-      Self::Group(group) => group.update(frame_milliseconds, library, rules),
+      Self::Effect(effect) => effect.update(frame_milliseconds, context),
+      Self::Group(group) => group.update(frame_milliseconds, context),
     }
   }
 

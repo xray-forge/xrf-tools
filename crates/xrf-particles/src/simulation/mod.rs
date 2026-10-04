@@ -2,6 +2,8 @@ pub(crate) mod actions;
 pub(crate) mod engine_vector;
 pub(crate) mod particle;
 pub(crate) mod particle_bounds;
+pub(crate) mod particle_collider;
+pub(crate) mod particle_contact;
 pub(crate) mod particle_effect_instance;
 pub(crate) mod particle_engine_rules;
 pub(crate) mod particle_event;
@@ -14,6 +16,7 @@ pub(crate) mod particle_object;
 pub(crate) mod particle_pool;
 pub(crate) mod particle_random;
 pub(crate) mod particle_running_action;
+pub(crate) mod particle_update_context;
 pub(crate) mod particle_volume;
 
 #[cfg(test)]

@@ -14,7 +14,9 @@ use crate::data::particle_effect_sprite::ParticleEffectSprite;
 use crate::data::particle_group::ParticleGroup;
 use crate::data::particle_group_effect::ParticleGroupEffect;
 use crate::particles_file::ParticlesFile;
+use crate::simulation::particle_engine_rules::ParticleEngineRules;
 use crate::simulation::particle_library::ParticleLibrary;
+use crate::simulation::particle_update_context::ParticleUpdateContext;
 
 /// A point domain at a position.
 pub fn point(x: f32, y: f32, z: f32) -> ParticleDomain {
@@ -29,13 +31,18 @@ pub fn point(x: f32, y: f32, z: f32) -> ParticleDomain {
   }
 }
 
-/// A source at the origin emitting at a rate, still, unit sized and white.
+/// A source at the origin emitting at a rate, rising at a metre a second, unit sized and white.
 pub fn source(rate: f32) -> ParticleAction {
+  source_at(rate, [0.0, 0.0, 0.0], [0.0, 1.0, 0.0])
+}
+
+/// A source emitting at a rate from a point, at a velocity, unit sized and white.
+pub fn source_at(rate: f32, position: [f32; 3], velocity: [f32; 3]) -> ParticleAction {
   ParticleAction::Source(Box::new(ParticleActionSource {
     action_flags: 0,
     action_type: ParticleActionType::Source,
-    position: point(0.0, 0.0, 0.0),
-    velocity: point(0.0, 1.0, 0.0),
+    position: point(position[0], position[1], position[2]),
+    velocity: point(velocity[0], velocity[1], velocity[2]),
     rot: point(0.0, 0.0, 0.0),
     size: point(1.0, 1.0, 1.0),
     color: point(1.0, 1.0, 1.0),
@@ -117,4 +124,13 @@ pub fn library(effects: Vec<ParticleEffect>, groups: Vec<ParticleGroup>) -> Part
     effects: ParticlesEffectsChunk { effects },
     groups: ParticlesGroupsChunk { groups },
   })
+}
+
+/// An update reading a library and the engine's rules, colliding with nothing.
+pub fn context<'a>(library: &'a ParticleLibrary, rules: &'a ParticleEngineRules) -> ParticleUpdateContext<'a> {
+  ParticleUpdateContext {
+    library,
+    rules,
+    collider: None,
+  }
 }
