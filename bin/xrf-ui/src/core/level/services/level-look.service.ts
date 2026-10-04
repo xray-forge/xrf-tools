@@ -9,7 +9,6 @@ import {
   ELevelLookSource,
   ILevelLook,
   ILevelLookChoice,
-  ILevelLookPreset,
   resolveLevelLook,
   toGameLevelLook,
   toLevelLookChoice,
@@ -21,12 +20,12 @@ import { parseLocalStorageValueSafe, setLocalStorageValueSafe } from "@/lib/loca
 import { Logger } from "@/lib/logging";
 
 /**
- * How a level is exposed, lit and corrected: the game's console defaults, the settings', or a look of the viewer's
- * own, picked from the presets it saved or edited by hand. The choice and the presets are kept over runs.
+ * How a level is exposed, lit and corrected: the game's console defaults, the settings', a built-in engine's, or a
+ * look of the viewer's own, edited by hand. The choice is kept over runs.
  */
 @Injectable()
 export class LevelLookService {
-  /** Where the look comes from, the custom one's values, and the presets saved. */
+  /** Where the look comes from, and the custom one's values. */
   @RefObservable()
   public choice: ILevelLookChoice;
 
@@ -89,25 +88,11 @@ export class LevelLookService {
   }
 
   /**
-   * @param source - A look of its own source; a custom one is chosen by editing or by picking a preset.
+   * @param source - A look of its own source; a custom one is chosen by editing.
    */
   @BoundAction()
   public setSource(source: Exclude<ELevelLookSource, ELevelLookSource.CUSTOM>): void {
-    this.store({ ...this.choice, preset: null, source });
-  }
-
-  /**
-   * Draws with a saved preset's values, as a custom look taken from it.
-   *
-   * @param name - The preset's name.
-   */
-  @BoundAction()
-  public pickPreset(name: string): void {
-    const preset: ILevelLookPreset | undefined = this.choice.presets.find((it: ILevelLookPreset) => it.name === name);
-
-    if (preset) {
-      this.store({ ...this.choice, custom: preset.look, preset: name, source: ELevelLookSource.CUSTOM });
-    }
+    this.store({ ...this.choice, source });
   }
 
   /**
@@ -117,48 +102,13 @@ export class LevelLookService {
    */
   @BoundAction()
   public edit(look: ILevelLook): void {
-    this.store({ ...this.choice, custom: look, preset: null, source: ELevelLookSource.CUSTOM });
+    this.store({ custom: look, source: ELevelLookSource.CUSTOM });
   }
 
-  /**
-   * Saves the look drawn now under a name, replacing a preset of that name.
-   *
-   * @param name - The name, trimmed; an empty one saves nothing.
-   */
-  @BoundAction()
-  public savePreset(name: string): void {
-    const trimmed: string = name.trim();
-
-    if (!trimmed) {
-      return;
-    }
-
-    const presets: Array<ILevelLookPreset> = [
-      ...this.choice.presets.filter((it: ILevelLookPreset) => it.name !== trimmed),
-      { look: this.look, name: trimmed },
-    ].sort((a: ILevelLookPreset, b: ILevelLookPreset) => a.name.localeCompare(b.name));
-
-    this.store({ ...this.choice, custom: this.look, preset: trimmed, presets, source: ELevelLookSource.CUSTOM });
-  }
-
-  /**
-   * Forgets a preset; the look it was drawing with stays, as edited by hand.
-   *
-   * @param name - The preset's name.
-   */
-  @BoundAction()
-  public deletePreset(name: string): void {
-    this.store({
-      ...this.choice,
-      preset: this.choice.preset === name ? null : this.choice.preset,
-      presets: this.choice.presets.filter((it: ILevelLookPreset) => it.name !== name),
-    });
-  }
-
-  /** Back to the game's own look, the presets kept. */
+  /** Back to the game's own look. */
   @BoundAction()
   public reset(): void {
-    this.store({ ...DEFAULT_LEVEL_LOOK_CHOICE, presets: this.choice.presets });
+    this.store(DEFAULT_LEVEL_LOOK_CHOICE);
   }
 
   private get exposure(): TRenderExposureSettings {
