@@ -147,11 +147,11 @@ describe("TextureRenderService", () => {
       report: { framesPerSecond: 144, passes: [], staticDraws: { commands: 2 } },
     } as unknown as RenderViewportEvent);
 
-    expect(service.frameCost.framesPerSecond).toBe(144);
+    expect(service.frame.framesPerSecond).toBe(144);
 
     service.detach();
 
-    expect(service.frameCost.framesPerSecond).toBe(0);
+    expect(service.frame.framesPerSecond).toBe(0);
 
     service.dispose();
   });

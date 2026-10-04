@@ -3,7 +3,7 @@ import { Nullable } from "@xrf/types";
 import { ERenderInputKind, RenderColor, RenderInputEvent, RenderViewportLayout } from "@/core/ipc/types/xrf-renderer";
 import { NativeViewport } from "@/core/render/lib/native/native-viewport";
 
-/** What the pointer shows while it drags a scene, as the WebGPU viewports show it. */
+/** What the pointer shows while it drags a scene. */
 const DRAG_CURSOR: string = "grabbing";
 
 /** An element's background, put back as it was when the hole closes. */

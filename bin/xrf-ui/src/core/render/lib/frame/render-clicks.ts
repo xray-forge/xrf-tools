@@ -1,6 +1,6 @@
 import { Nullable } from "@xrf/types";
 
-import { IRendererViewPoint } from "@/core/render/lib/contract/renderer-view-point";
+import { IRenderViewPoint } from "@/core/render/lib/frame/render-view-point";
 
 /** Css pixels a press may travel and still be a click, rather than the drag a camera looks around by. */
 export const RENDER_CLICK_SLOP: number = 4;
@@ -20,7 +20,7 @@ interface IRenderPress {
  * @param onClick - Told where, in css pixels from the element's top left corner.
  * @returns What stops hearing.
  */
-export function listenRenderClicks(element: HTMLElement, onClick: (point: IRendererViewPoint) => void): () => void {
+export function listenRenderClicks(element: HTMLElement, onClick: (point: IRenderViewPoint) => void): () => void {
   let press: Nullable<IRenderPress> = null;
 
   function onDown(event: PointerEvent): void {

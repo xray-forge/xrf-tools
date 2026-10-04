@@ -1,6 +1,30 @@
-import { toDirection, toHeadingPitch, wrap } from "@xrf/math";
+import { toDirection, toHeadingPitch, TVector3, wrap } from "@xrf/math";
 
-import { toEngineVector, toRendererVector } from "@/core/render/lib/contract/renderer-space";
+/** A direction or a point in renderer space. */
+export type TRenderVector = readonly [number, number, number];
+
+/**
+ * A direction or a point the engine states, in renderer space: its `z` negated, leaving zero as zero.
+ *
+ * @param vector - The vector in engine space.
+ * @returns The same vector in renderer space.
+ */
+export function toRendererVector(vector: TVector3): TRenderVector {
+  const [x, y, z] = vector;
+
+  // So a readout at the origin says `0.0` rather than `-0.0`.
+  return [x, y, z === 0 ? 0 : -z];
+}
+
+/**
+ * The inverse of {@link toRendererVector}, which is the same flip.
+ *
+ * @param vector - The vector in renderer space.
+ * @returns The same vector as the engine states it.
+ */
+export function toEngineVector(vector: TRenderVector): TVector3 {
+  return toRendererVector(vector);
+}
 /**
  * A point in one of the two spaces an X-Ray asset is ever in.
  */

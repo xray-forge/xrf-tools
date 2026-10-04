@@ -5,10 +5,8 @@ import { Nullable } from "@xrf/types";
 import { RenderLevelProblems, RenderLoadReport } from "@/core/ipc/types/xrf-renderer";
 import { ILevelCamera } from "@/core/level/lib/camera/level-camera";
 import { TLevelPick } from "@/core/level/lib/pick/level-pick";
-import { EMPTY_LEVEL_STATS, ILevelStats } from "@/core/level/lib/stats/level-stats";
 import { ILevelSurfaceGeometry } from "@/core/level/lib/surface/level-surface-geometry";
 import { EMPTY_LEVEL_TEXTURE_REPORT, ILevelTextureReport } from "@/core/level/lib/texture/level-texture-report";
-import { EMPTY_RENDERER_PASS_TIMINGS, IRendererPassTimings } from "@/core/render/lib/contract/renderer-pass-timings";
 
 /**
  * What the viewport reports about itself while it draws.
@@ -20,13 +18,6 @@ export const NO_LEVEL_PROBLEMS: RenderLevelProblems = { models: [], sectors: [],
 
 @Injectable()
 export class LevelViewportService {
-  @RefObservable()
-  public stats: ILevelStats = EMPTY_LEVEL_STATS;
-
-  /** What each pass of the last frames cost on the GPU. */
-  @RefObservable()
-  public timings: IRendererPassTimings = EMPTY_RENDERER_PASS_TIMINGS;
-
   /** Where the camera is and where it faces, or null until the viewport has drawn a frame. */
   @RefObservable()
   public camera: Nullable<ILevelCamera> = null;
@@ -117,28 +108,16 @@ export class LevelViewportService {
   }
 
   /**
-   * Takes one report from the viewport.
-   *
-   * @param stats - What the viewport is holding, against what its last frame cost.
-   * @param camera - Where the camera is, in the level's own coordinates.
-   * @param timings - What each pass cost on the GPU.
+   * @param camera - Where the camera is now, in the level's own coordinates.
    */
   @BoundAction()
-  public report(
-    stats: ILevelStats,
-    camera: ILevelCamera,
-    timings: IRendererPassTimings = EMPTY_RENDERER_PASS_TIMINGS
-  ): void {
-    this.stats = stats;
+  public noteCamera(camera: ILevelCamera): void {
     this.camera = camera;
-    this.timings = timings;
   }
 
   /** Forgets the open level's telemetry, so a closed viewer reports nothing rather than its last frame. */
   @BoundAction()
   public clear(): void {
-    this.stats = EMPTY_LEVEL_STATS;
-    this.timings = EMPTY_RENDERER_PASS_TIMINGS;
     this.camera = null;
     this.textureReport = EMPTY_LEVEL_TEXTURE_REPORT;
     this.isRevealed = false;

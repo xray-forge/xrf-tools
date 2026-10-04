@@ -1766,6 +1766,21 @@ impl LevelView {
     self.present_group.as_ref().map(|(_, group)| group)
   }
 
+  /// Every texture slot it samples, so the slots no scene samples can be freed.
+  pub fn list_texture_slots(&self) -> impl Iterator<Item = u32> + '_ {
+    self
+      .scene
+      .texture_slots
+      .iter()
+      .copied()
+      .chain(self.lights.get_projectors().iter().copied())
+  }
+
+  /// Bytes its scene's growing buffers hold on the GPU.
+  pub fn get_buffer_bytes(&self) -> u64 {
+    self.scene.get_buffer_bytes()
+  }
+
   /// Whether it draws this source.
   pub fn is_showing(&self, source: &Arc<dyn RenderLevelSource>) -> bool {
     Arc::ptr_eq(&self.source, source)

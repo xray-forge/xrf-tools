@@ -1,6 +1,7 @@
 import { Injectable, OnDeactivation } from "@wirestate/core";
 import { BoundAction, RefObservable } from "@wirestate/mobx";
 
+import { ERenderDebugView } from "@/core/ipc/types/xrf-renderer";
 import { ILevelCameraOptions, toLevelCameraOptions } from "@/core/level/lib/camera/level-camera-options";
 import { ILevelFeatureOptions, toLevelFeatureOptions } from "@/core/level/lib/features/level-feature-options";
 import { DEFAULT_LEVEL_LOD_OPTIONS, ILevelLodOptions } from "@/core/level/lib/lod/level-lod-options";
@@ -9,7 +10,6 @@ import {
   DEFAULT_LEVEL_VIEW_OPTIONS,
   ILevelViewOptions,
 } from "@/core/level/lib/view/level-view-options";
-import { ERendererDebugView } from "@/core/render/lib/contract/renderer-debug-view";
 import { LEVEL_CAMERA_STORAGE_KEY, LEVEL_FEATURES_STORAGE_KEY } from "@/core/storage";
 import { parseLocalStorageValueSafe, setLocalStorageValueSafe } from "@/lib/local-storage";
 
@@ -43,7 +43,7 @@ export class LevelViewService {
 
   /** Which picture the viewport shows: the frame, or one of the targets it was built from. */
   @RefObservable()
-  public debugView: ERendererDebugView = ERendererDebugView.FINAL;
+  public debugView: ERenderDebugView = ERenderDebugView.FINAL;
 
   @BoundAction()
   public setOptions(options: ILevelViewOptions): void {
@@ -62,7 +62,7 @@ export class LevelViewService {
   }
 
   @BoundAction()
-  public setDebugView(debugView: ERendererDebugView): void {
+  public setDebugView(debugView: ERenderDebugView): void {
     this.debugView = debugView;
   }
 
@@ -87,6 +87,6 @@ export class LevelViewService {
     this.options = DEFAULT_LEVEL_VIEW_OPTIONS;
     this.hemiStrength = DEFAULT_LEVEL_HEMI_STRENGTH;
     this.lod = DEFAULT_LEVEL_LOD_OPTIONS;
-    this.debugView = ERendererDebugView.FINAL;
+    this.debugView = ERenderDebugView.FINAL;
   }
 }

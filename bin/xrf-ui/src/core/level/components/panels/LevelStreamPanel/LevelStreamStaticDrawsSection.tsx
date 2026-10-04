@@ -1,23 +1,21 @@
 import { ReactElement } from "react";
 
-import { IRendererPoolUse } from "@/core/render/lib/contract/renderer-pool-use";
-import { IRendererStaticDrawReport } from "@/core/render/lib/contract/renderer-static-draw-report";
+import { RenderPoolUse, RenderStaticReport } from "@/core/ipc/types/xrf-renderer";
 import { EditorPanelProperty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatCount } from "@/lib/format/number";
 
 interface ILevelStreamStaticDrawsSectionProps extends BaseComponentProps {
-  staticDraws: IRendererStaticDrawReport;
+  staticDraws: RenderStaticReport;
 }
 
 /** How full one static draw pool is: what it holds against what it has room for. */
-function formatPoolUse({ used, capacity }: IRendererPoolUse): string {
+function formatPoolUse({ used, capacity }: RenderPoolUse): string {
   return `${formatCount(used)} of ${formatCount(capacity)}`;
 }
 
 /**
- * How full the static draws' pools are, what the culls kept and occlusion removed, and how often one fell back to
- * drawing plainly.
+ * How full the static draws' pools are, and what the camera's cull kept and occlusion removed.
  */
 export function LevelStreamStaticDrawsSection({
   "data-testid": dataTestId = "level-stream-static-draws-section",
@@ -25,26 +23,26 @@ export function LevelStreamStaticDrawsSection({
   className,
   staticDraws,
 }: ILevelStreamStaticDrawsSectionProps): ReactElement {
-  const { kept, lists, occluded } = staticDraws;
-
   return (
     <EditorPanelSection data-testid={dataTestId} id={id} className={className} title={"Static draws"}>
       <EditorPanelProperty label={"Slots"} value={formatPoolUse(staticDraws.slots)} />
       <EditorPanelProperty label={"Clusters"} value={formatPoolUse(staticDraws.clusters)} />
       <EditorPanelProperty label={"Places"} value={formatPoolUse(staticDraws.places)} />
       <EditorPanelProperty label={"Instance rows"} value={formatPoolUse(staticDraws.rows)} />
-      <EditorPanelProperty label={"Surface lists"} value={formatPoolUse(lists.surfaces)} />
-      <EditorPanelProperty label={"Shadow lists"} value={formatPoolUse(lists.shadows)} />
+      <EditorPanelProperty label={"Impostors"} value={formatPoolUse(staticDraws.lods)} />
+      <EditorPanelProperty label={"Surface list"} value={formatPoolUse(staticDraws.surfaceList)} />
       <EditorPanelProperty label={"Batch draws"} value={formatCount(staticDraws.commands)} />
       <EditorPanelProperty
         label={"Kept"}
-        value={`${formatCount(kept.clusters)} clusters · ${formatCount(kept.triangles)} triangles`}
+        value={`${formatCount(staticDraws.keptClusters)} clusters · ${formatCount(staticDraws.keptTriangles)} triangles`}
       />
       <EditorPanelProperty
         label={"Occluded"}
-        value={`${formatCount(occluded.clusters)} clusters · ${formatCount(occluded.triangles)} triangles`}
+        value={
+          `${formatCount(staticDraws.occludedClusters)} clusters · ` +
+          `${formatCount(staticDraws.occludedTriangles)} triangles`
+        }
       />
-      <EditorPanelProperty label={"Drawn plainly at the limit"} value={staticDraws.fallbacks} />
     </EditorPanelSection>
   );
 }

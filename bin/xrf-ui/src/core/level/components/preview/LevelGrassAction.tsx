@@ -6,7 +6,6 @@ import { ILevelFeatureActionProps } from "@/core/level/components/preview/level-
 import { useLevelFeatureOverride } from "@/core/level/components/preview/use-level-feature-override";
 import { describeLevelFeatureToggle } from "@/core/level/lib/features";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
-import { IRendererGrassSettings } from "@/core/render/lib/contract/renderer-grass-settings";
 import {
   formatGrassDensity,
   formatGrassHeight,
@@ -15,6 +14,7 @@ import {
   RENDER_GRASS_LIMITS,
   toGrassDensityScale,
 } from "@/core/render/lib/features";
+import { TRenderGrassSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { EditorPopoverToggle } from "@/core/shell/editor/EditorPopoverToggle";
 
 /**
@@ -31,7 +31,7 @@ export function LevelGrassAction({
   onChange,
 }: ILevelFeatureActionProps<"grass">): ReactElement {
   const { set, reset } = useLevelFeatureOverride("grass", features, onChange);
-  const grass: IRendererGrassSettings = state.value;
+  const grass: TRenderGrassSettings = state.value;
 
   return (
     <EditorPopoverToggle

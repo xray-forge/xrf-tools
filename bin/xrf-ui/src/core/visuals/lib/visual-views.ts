@@ -9,7 +9,7 @@ import {
   VisualDrawRange,
   VisualSubmesh,
 } from "@/core/ipc/types/xrf-visual";
-import { IRendererSurfaceDraw, OPAQUE_RENDERER_SURFACE_DRAW } from "@/core/render/lib/surface/renderer-surface-draw";
+import { IRenderSurfaceDraw, OPAQUE_RENDER_SURFACE_DRAW } from "@/core/render/lib/surface/render-surface-draw";
 
 /** Framing values a camera needs, derived from what the model actually spans. */
 export interface IVisualCameraFit {
@@ -31,7 +31,7 @@ export interface IVisualSubmeshViews {
   /** Finest first, never empty. A submesh with one entry has no choice to offer. */
   levels: Array<IVisualSubmeshLevel>;
   /** The material state its shader compiles to: whether alpha is read, and how. */
-  surface: IRendererSurfaceDraw;
+  surface: IRenderSurfaceDraw;
 }
 
 /** What the viewer's controls and readouts need of a model; the renderer reads its geometry itself. */
@@ -93,7 +93,7 @@ export function createVisualCameraFit(description: VisualDescription): IVisualCa
  */
 export function createVisualViews(
   description: VisualDescription,
-  surfaces: ReadonlyMap<number, IRendererSurfaceDraw> = new Map()
+  surfaces: ReadonlyMap<number, IRenderSurfaceDraw> = new Map()
 ): IVisualModelViews {
   const submeshes: Array<IVisualSubmeshViews> = [];
 
@@ -119,7 +119,7 @@ export function createVisualViews(
       index: submesh.index,
       label: submesh.textureName ?? `submesh ${submesh.index}`,
       levels,
-      surface: surfaces.get(submesh.index) ?? OPAQUE_RENDERER_SURFACE_DRAW,
+      surface: surfaces.get(submesh.index) ?? OPAQUE_RENDER_SURFACE_DRAW,
     });
   }
 

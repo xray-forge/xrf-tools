@@ -1,7 +1,6 @@
 import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
-import { IRendererGrassSettings } from "@/core/render/lib/contract/renderer-grass-settings";
 import {
   formatGrassDensity,
   formatGrassHeight,
@@ -10,6 +9,7 @@ import {
   RENDER_GRASS_LIMITS,
   toGrassDensityScale,
 } from "@/core/render/lib/features";
+import { TRenderGrassSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { SettingsService } from "@/core/settings/services/settings";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { SliderFormRow } from "@/core/ui/form/SliderFormRow";
@@ -21,7 +21,7 @@ import { useRendererOverride } from "./use-renderer-override";
 export function SettingsRendererGrass(): ReactElement {
   const settingsService: SettingsService = useInjection(SettingsService);
 
-  const grass: IRendererGrassSettings = settingsService.rendererFeatures.grass;
+  const grass: TRenderGrassSettings = settingsService.rendererFeatures.grass;
 
   const onSet = useRendererOverride("grass");
 

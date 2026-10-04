@@ -11,7 +11,6 @@ import { SettingsIpcSection } from "./SettingsIpcSection";
 import { SettingsJobsSection } from "./SettingsJobsSection";
 import { SettingsRenderSection } from "./SettingsRenderSection";
 import { SettingsStorageSection } from "./SettingsStorageSection";
-import { SettingsWebviewOptionsSection } from "./SettingsWebviewOptionsSection";
 
 /** The sections settings are grouped into, in the order the rail lists them. */
 enum EDetailSection {
@@ -19,7 +18,6 @@ enum EDetailSection {
   RENDER = "render",
   STORAGE = "storage",
   IPC = "ipc",
-  WEBVIEW = "webview",
   JOBS = "jobs",
   ABOUT = "about",
 }
@@ -29,7 +27,6 @@ const SECTION_LABELS: Record<EDetailSection, string> = {
   [EDetailSection.RENDER]: "Rendering",
   [EDetailSection.STORAGE]: "Storage",
   [EDetailSection.IPC]: "IPC",
-  [EDetailSection.WEBVIEW]: "Webview",
   [EDetailSection.JOBS]: "Jobs",
   [EDetailSection.ABOUT]: "About",
 };
@@ -39,7 +36,6 @@ const SECTIONS: ReadonlyArray<EDetailSection> = [
   EDetailSection.RENDER,
   EDetailSection.STORAGE,
   EDetailSection.IPC,
-  EDetailSection.WEBVIEW,
   EDetailSection.JOBS,
   EDetailSection.ABOUT,
 ];
@@ -80,8 +76,6 @@ export function SettingsDialog({ isOpen, onClose }: ISettingsDialogProps): React
                 return <SettingsStorageSection />;
               case EDetailSection.IPC:
                 return <SettingsIpcSection />;
-              case EDetailSection.WEBVIEW:
-                return <SettingsWebviewOptionsSection />;
               case EDetailSection.JOBS:
                 return <SettingsJobsSection />;
               case EDetailSection.ABOUT:

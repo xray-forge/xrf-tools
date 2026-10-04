@@ -1,32 +1,31 @@
 import { Nullable } from "@xrf/types";
 
-import { IRendererAmbientOcclusionSettings } from "@/core/render/lib/contract/renderer-ambient-occlusion-settings";
-import { ERendererAntialiasing } from "@/core/render/lib/contract/renderer-antialiasing";
-import { toRendererFeatureChoice } from "@/core/render/lib/contract/renderer-feature-choice";
-import { IRendererFeatureOverrides } from "@/core/render/lib/contract/renderer-feature-overrides";
-import { IRendererFeatureSettings } from "@/core/render/lib/contract/renderer-feature-settings";
-import { IRendererGrassSettings } from "@/core/render/lib/contract/renderer-grass-settings";
-import { IRendererLightsSettings } from "@/core/render/lib/contract/renderer-lights-settings";
-import { IRendererShadowSettings } from "@/core/render/lib/contract/renderer-shadow-settings";
-import { IRendererWaterSettings } from "@/core/render/lib/contract/renderer-water-settings";
+import { ERenderAntialiasing, RenderAntialiasing } from "@/core/ipc/types/xrf-renderer";
+import { toRenderFeatureChoice } from "@/core/render/lib/settings/render-feature-choice";
+import { IRenderFeatureOverrides } from "@/core/render/lib/settings/render-feature-overrides";
+import {
+  IRenderFeatureSettings,
+  TRenderAmbientOcclusionSettings,
+  TRenderGrassSettings,
+  TRenderLightsSettings,
+  TRenderShadowSettings,
+  TRenderWaterSettings,
+} from "@/core/render/lib/settings/render-feature-settings";
 
 /** The shadow settings a level view may set for itself. */
-export type TLevelShadowOptions = Pick<
-  IRendererShadowSettings,
-  "bias" | "blend" | "cascades" | "filter" | "resolution"
->;
+export type TLevelShadowOptions = Pick<TRenderShadowSettings, "bias" | "blend" | "cascades" | "filter" | "resolution">;
 
 /** The ambient occlusion settings a level view may set for itself. */
-export type TLevelAmbientOcclusionOptions = Pick<IRendererAmbientOcclusionSettings, "quality" | "radius" | "strength">;
+export type TLevelAmbientOcclusionOptions = Pick<TRenderAmbientOcclusionSettings, "quality" | "radius" | "strength">;
 
 /** The grass settings a level view may set for itself. */
-export type TLevelGrassOptions = Pick<IRendererGrassSettings, "density" | "height" | "radius">;
+export type TLevelGrassOptions = Pick<TRenderGrassSettings, "density" | "height" | "radius">;
 
 /** The water settings a level view may set for itself: all but whether it is drawn, which the toolbar toggles. */
-export type TLevelWaterOptions = Omit<IRendererWaterSettings, "isEnabled">;
+export type TLevelWaterOptions = Omit<TRenderWaterSettings, "isEnabled">;
 
 /** The lights settings a level view may set for itself. */
-export type TLevelLightsOptions = Pick<IRendererLightsSettings, "isLevelLights" | "isShadowed" | "shadowFilter">;
+export type TLevelLightsOptions = Pick<TRenderLightsSettings, "isLevelLights" | "isShadowed" | "shadowFilter">;
 
 /**
  * What a level view sets over the renderer's settings for itself: whatever it leaves unset follows them.
@@ -36,15 +35,15 @@ export interface ILevelFeatureOptions {
   grass: Partial<TLevelGrassOptions>;
   lights: Partial<TLevelLightsOptions>;
   /** The mode edges are smoothed with while the settings smooth them at all, or null for the settings' own. */
-  antialiasing: Nullable<ERendererAntialiasing>;
+  antialiasing: Nullable<RenderAntialiasing>;
   shadows: Partial<TLevelShadowOptions>;
   water: Partial<TLevelWaterOptions>;
 }
 
 /** The modes a view picks from, which smooth something: turning it off is the toggle's. */
-export const LEVEL_ANTIALIASING_MODES: ReadonlyArray<ERendererAntialiasing> = Object.values(
-  ERendererAntialiasing
-).filter((mode: ERendererAntialiasing) => mode !== ERendererAntialiasing.NONE);
+export const LEVEL_ANTIALIASING_MODES: ReadonlyArray<RenderAntialiasing> = Object.values(ERenderAntialiasing).filter(
+  (mode: RenderAntialiasing) => mode !== ERenderAntialiasing.NONE
+);
 
 /** Each group's settings a view may set, which is all a stored view keeps. */
 const LEVEL_FEATURE_KEYS: {
@@ -62,7 +61,7 @@ const LEVEL_FEATURE_KEYS: {
  * @returns What the view sets, held to the renderer's own bounds, with everything a view does not set dropped.
  */
 export function toLevelFeatureOptions(stored: unknown): ILevelFeatureOptions {
-  const overrides: IRendererFeatureOverrides = toRendererFeatureChoice({ overrides: stored }).overrides;
+  const overrides: IRenderFeatureOverrides = toRenderFeatureChoice({ overrides: stored }).overrides;
 
   function pick<K extends TLevelFeatureKey>(key: K): ILevelFeatureOptions[K] {
     const group: Record<string, unknown> = (overrides[key] ?? {}) as Record<string, unknown>;
@@ -72,7 +71,7 @@ export function toLevelFeatureOptions(stored: unknown): ILevelFeatureOptions {
     ) as ILevelFeatureOptions[K];
   }
 
-  const antialiasing: ERendererAntialiasing | undefined = overrides.antialiasing;
+  const antialiasing: RenderAntialiasing | undefined = overrides.antialiasing;
 
   return {
     ambientOcclusion: pick("ambientOcclusion"),
@@ -94,7 +93,7 @@ export interface ILevelFeatureState<T> {
 }
 
 /** Every feature group a view sets, resolved as its toolbar shows them. */
-export type TLevelFeatureView = { readonly [K in TLevelFeatureKey]: ILevelFeatureState<IRendererFeatureSettings[K]> };
+export type TLevelFeatureView = { readonly [K in TLevelFeatureKey]: ILevelFeatureState<IRenderFeatureSettings[K]> };
 
 /**
  * @param key - A feature group.
@@ -105,11 +104,11 @@ export type TLevelFeatureView = { readonly [K in TLevelFeatureKey]: ILevelFeatur
  */
 export function toLevelRendererFeature<K extends TLevelFeatureKey>(
   key: K,
-  settings: IRendererFeatureSettings,
+  settings: IRenderFeatureSettings,
   view: ILevelFeatureOptions,
   isOn: boolean
-): IRendererFeatureSettings[K] {
-  return { ...settings[key], ...view[key], isEnabled: settings[key].isEnabled && isOn } as IRendererFeatureSettings[K];
+): IRenderFeatureSettings[K] {
+  return { ...settings[key], ...view[key], isEnabled: settings[key].isEnabled && isOn } as IRenderFeatureSettings[K];
 }
 
 /**
@@ -117,8 +116,8 @@ export function toLevelRendererFeature<K extends TLevelFeatureKey>(
  * @param view - What the view sets over them.
  * @returns Each group as the toolbar shows it: its values as they draw while on, and whether the settings allow it.
  */
-export function toLevelFeatureView(settings: IRendererFeatureSettings, view: ILevelFeatureOptions): TLevelFeatureView {
-  function toState<K extends TLevelFeatureKey>(key: K): ILevelFeatureState<IRendererFeatureSettings[K]> {
+export function toLevelFeatureView(settings: IRenderFeatureSettings, view: ILevelFeatureOptions): TLevelFeatureView {
+  function toState<K extends TLevelFeatureKey>(key: K): ILevelFeatureState<IRenderFeatureSettings[K]> {
     return { isAvailable: settings[key].isEnabled, value: toLevelRendererFeature(key, settings, view, true) };
   }
 
@@ -167,12 +166,12 @@ export function describeLevelFeatureToggle(description: {
  * @returns The mode the view is drawn with.
  */
 export function toLevelRendererAntialiasing(
-  features: ERendererAntialiasing,
+  features: RenderAntialiasing,
   view: ILevelFeatureOptions,
   isAntialiased: boolean
-): ERendererAntialiasing {
-  if (!isAntialiased || features === ERendererAntialiasing.NONE) {
-    return ERendererAntialiasing.NONE;
+): RenderAntialiasing {
+  if (!isAntialiased || features === ERenderAntialiasing.NONE) {
+    return ERenderAntialiasing.NONE;
   }
 
   return view.antialiasing ?? features;

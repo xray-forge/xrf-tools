@@ -14,7 +14,7 @@ import {
   toGameLevelLook,
   toLevelLookChoice,
 } from "@/core/level/lib/look";
-import { IRendererExposureSettings } from "@/core/render/lib/contract/renderer-exposure-settings";
+import { TRenderExposureSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { SettingsService } from "@/core/settings/services/settings";
 import { LEVEL_LOOK_STORAGE_KEY } from "@/core/storage";
 import { parseLocalStorageValueSafe, setLocalStorageValueSafe } from "@/lib/local-storage";
@@ -161,7 +161,7 @@ export class LevelLookService {
     this.store({ ...DEFAULT_LEVEL_LOOK_CHOICE, presets: this.choice.presets });
   }
 
-  private get exposure(): IRendererExposureSettings {
+  private get exposure(): TRenderExposureSettings {
     return this.settingsService.rendererFeatures.exposure;
   }
 

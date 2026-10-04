@@ -3,7 +3,6 @@ use std::sync::Arc;
 use xrf_error::{XrfError, XrfResult};
 
 use crate::context::gpu_context::GpuContext;
-use crate::contract::render_presentation::RenderPresentation;
 use crate::host::render_window_host::RenderWindowHost;
 
 /// Frames the swapchain may queue ahead of the display: one fewer misses every other refresh under the window's
@@ -17,8 +16,8 @@ pub struct RenderWindow {
   format: wgpu::TextureFormat,
   present_modes: Vec<wgpu::PresentMode>,
   usages: wgpu::TextureUsages,
-  /// What the swapchain was last configured as: its size and presentation.
-  configured: Option<(u32, u32, RenderPresentation)>,
+  /// What the swapchain was last configured as: its size and whether it waits for vsync.
+  configured: Option<(u32, u32, bool)>,
 }
 
 impl RenderWindow {
@@ -65,19 +64,15 @@ impl RenderWindow {
   }
 
   /// The next frame to draw, configured for the window's size now, or `None` while the window shows nothing.
-  pub fn acquire(
-    &mut self,
-    context: &GpuContext,
-    presentation: RenderPresentation,
-  ) -> Option<(wgpu::SurfaceTexture, u32, u32)> {
+  pub fn acquire(&mut self, context: &GpuContext, is_vsync: bool) -> Option<(wgpu::SurfaceTexture, u32, u32)> {
     let (width, height) = self.host.get_client_size();
 
     if width == 0 || height == 0 || self.host.is_minimized() {
       return None;
     }
 
-    if self.configured != Some((width, height, presentation)) {
-      self.configure(context, width, height, presentation);
+    if self.configured != Some((width, height, is_vsync)) {
+      self.configure(context, width, height, is_vsync);
     }
 
     match self.surface.get_current_texture() {
@@ -93,13 +88,14 @@ impl RenderWindow {
     }
   }
 
-  fn configure(&mut self, context: &GpuContext, width: u32, height: u32, presentation: RenderPresentation) {
-    let present_mode: wgpu::PresentMode = match presentation {
-      RenderPresentation::Vsync => wgpu::PresentMode::Fifo,
-      RenderPresentation::Uncapped => [wgpu::PresentMode::Immediate, wgpu::PresentMode::Mailbox]
+  fn configure(&mut self, context: &GpuContext, width: u32, height: u32, is_vsync: bool) {
+    let present_mode: wgpu::PresentMode = if is_vsync {
+      wgpu::PresentMode::Fifo
+    } else {
+      [wgpu::PresentMode::Immediate, wgpu::PresentMode::Mailbox]
         .into_iter()
         .find(|it| self.present_modes.contains(it))
-        .unwrap_or(wgpu::PresentMode::Fifo),
+        .unwrap_or(wgpu::PresentMode::Fifo)
     };
 
     self.surface.configure(
@@ -117,6 +113,6 @@ impl RenderWindow {
         color_space: wgpu::SurfaceColorSpace::Auto,
       },
     );
-    self.configured = Some((width, height, presentation));
+    self.configured = Some((width, height, is_vsync));
   }
 }

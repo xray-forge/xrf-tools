@@ -1,12 +1,12 @@
 import { Maybe, Nullable } from "@xrf/types";
 
 import { EXraySurfaceDraw, XraySurfaceDescriptor, XraySurfaceSampler } from "@/core/ipc/types/xrf-material";
-import { ERendererPass, toRendererPass } from "@/core/render/lib/contract/renderer-pass";
+import { ERenderPass, toRenderPass } from "@/core/render/lib/surface/render-pass";
 import {
-  IRendererSurfaceDraw,
+  IRenderSurfaceDraw,
   isWallmarkSurface,
-  toRendererSurfaceDraw,
-} from "@/core/render/lib/surface/renderer-surface-draw";
+  toRenderSurfaceDraw,
+} from "@/core/render/lib/surface/render-surface-draw";
 
 /**
  * The detail texture a surface modulates its base with, as the shader table's answer named it.
@@ -48,7 +48,7 @@ export interface ILevelSurfaceWaterTextures {
 /**
  * What one shader table entry compiles to, for the renderer: its draw, whether it is a wall mark, and its detail.
  */
-export interface ILevelSurfaceRender extends IRendererSurfaceDraw {
+export interface ILevelSurfaceRender extends IRenderSurfaceDraw {
   /** Whether a scripted pass says it is a wall mark, which the renderer composites into the albedo before light. */
   isWallmark: boolean;
   /** The detail bound beside the base, or null for a surface the engine details with none. */
@@ -91,7 +91,7 @@ export function toLevelSurfaceRender(descriptor: Nullable<XraySurfaceDescriptor>
   const bump: Maybe<XraySurfaceDescriptor["bump"]> = descriptor?.bump;
 
   return {
-    ...toRendererSurfaceDraw(descriptor),
+    ...toRenderSurfaceDraw(descriptor),
     bump: bump ? { bump: bump.bump.reference, companion: bump.companion.reference } : null,
     // Dropped where it carries no tiling: the engine binds no scaler there either, and none can be invented for it.
     detail:
@@ -137,17 +137,17 @@ export function getLevelSurfaceRender(
  * @returns The pass, in words.
  */
 export function describeLevelSurfacePass(render: ILevelSurfaceRender): string {
-  switch (toRendererPass(render.draw, render.isWallmark)) {
-    case ERendererPass.DEFERRED:
+  switch (toRenderPass(render.draw, render.isWallmark)) {
+    case ERenderPass.DEFERRED:
       return "the G-buffer, lit by the sun and the hemisphere";
 
-    case ERendererPass.WALLMARK:
+    case ERenderPass.WALLMARK:
       return "the albedo, before any light reaches it";
 
-    case ERendererPass.FORWARD:
+    case ERenderPass.FORWARD:
       return render.isLit ? "over the lit frame, lit itself" : "over the lit frame, unlit";
 
-    case ERendererPass.WATER:
+    case ERenderPass.WATER:
       return "over the lit frame as water, reflecting the sky and distorting what is behind it";
   }
 }

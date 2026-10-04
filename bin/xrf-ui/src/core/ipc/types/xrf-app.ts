@@ -2734,35 +2734,6 @@ export type VisualSource =
   /** An asset of the roots, loose or archived, named by its engine identity. */
   | { kind: "asset"; logicalPath: string };
 
-/** How early V8 starts marking for its next major collection: earlier makes more collections, each freeing less at once. */
-export enum EWebviewCollectionPace {
-  /** V8's own pace, under the name a choice made before `Frequent` became the default was kept by. */
-  DEFAULT = "default",
-  /** Marking starts at half V8's own point. */
-  EARLIER = "earlier",
-  /** Marking starts at a quarter of it, by default: collections come often and small, and their pauses do not show. */
-  FREQUENT = "frequent",
-}
-
-/** Every `EWebviewCollectionPace` as the spelling it crosses IPC as, for a value no member has narrowed. */
-export type WebviewCollectionPace = `${EWebviewCollectionPace}`;
-
-/** Which of the webview's optional browser capabilities the main window is built with, chosen in the settings. */
-export type WebviewOptions = {
-  /** How early the webview's JavaScript starts marking for a major collection, for every page and worker alike. */
-  collectionPace?: WebviewCollectionPace;
-  /** The compositor presents at the display's refresh; lifted, `--disable-gpu-vsync` presents frames as they come. */
-  isVsync?: boolean;
-  /** The page's animation frames keep to the display's refresh; lifted, `--disable-frame-rate-limit` runs them past it. */
-  isFrameRateLimited?: boolean;
-};
-
-/** The webview options this run started with, and the ones the next start applies. */
-export type WebviewOptionsStatus = {
-  running: WebviewOptions;
-  chosen: WebviewOptions;
-};
-
 /** What a webview process does, as WebView2 names it (`COREWEBVIEW2_PROCESS_KIND`). */
 export enum EWebviewProcessKind {
   /** The browser process, which owns the others. */

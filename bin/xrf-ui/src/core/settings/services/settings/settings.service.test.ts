@@ -1,10 +1,9 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 
 import { EXrayEngine } from "@/core/ipc/types/xrf-engine-target";
-import { ERendererAntialiasing } from "@/core/render/lib/contract/renderer-antialiasing";
-import { DEFAULT_RENDERER_FEATURE_CHOICE } from "@/core/render/lib/contract/renderer-feature-choice";
-import { ERendererPreset, RENDERER_PRESETS } from "@/core/render/lib/contract/renderer-preset";
-import { ERendererRenderScale } from "@/core/render/lib/contract/renderer-render-scale";
+import { ERenderAntialiasing, ERenderFrameRate, ERenderScale } from "@/core/ipc/types/xrf-renderer";
+import { DEFAULT_RENDER_FEATURE_CHOICE } from "@/core/render/lib/settings/render-feature-choice";
+import { ERenderPreset, RENDER_PRESETS } from "@/core/render/lib/settings/render-preset";
 import { SettingsService } from "@/core/settings/services/settings/settings.service";
 import { mockInjectedService } from "@/fixtures/utils/container";
 
@@ -92,49 +91,51 @@ describe("SettingsService", () => {
     expect(mockInjectedService(SettingsService).service.engine).toBe(EXrayEngine.EXTENDED);
   });
 
-  it("paces frames with low latency until told otherwise, and keeps what it was told", () => {
+  it("draws every viewport at most sixty frames a second until told otherwise, and keeps what it was told", () => {
     const { service } = mockInjectedService(SettingsService);
 
-    expect(service.sharedRenderSettings.pacing).toEqual({ isLowLatency: true, rateLimit: "60" });
+    expect(service.renderSettings.frameRate).toEqual({ framesPerSecond: 60, kind: ERenderFrameRate.LIMITED });
 
-    service.setLowLatency(false);
+    service.setFrameRateLimit("unlimited");
 
-    expect(window.localStorage.getItem("xrf.preference.low-latency")).toBe("false");
-    expect(mockInjectedService(SettingsService).service.sharedRenderSettings.pacing.isLowLatency).toBe(false);
+    expect(window.localStorage.getItem("xrf.preference.frame-rate-limit")).toBe("unlimited");
+    expect(mockInjectedService(SettingsService).service.renderSettings.frameRate).toEqual({
+      kind: ERenderFrameRate.UNLIMITED,
+    });
   });
 
   // Timing is asked for, never a preset's: turning it on leaves the settings as the preset draws them.
   it("times no passes until told to, and keeps it apart from the preset", () => {
     const { service } = mockInjectedService(SettingsService);
 
-    expect(service.sharedRenderSettings.isGpuTimed).toBe(false);
+    expect(service.renderSettings.isGpuTimed).toBe(false);
 
     service.setGpuTimed(true);
 
-    expect(service.rendererChoice).toEqual(DEFAULT_RENDERER_FEATURE_CHOICE);
+    expect(service.rendererChoice).toEqual(DEFAULT_RENDER_FEATURE_CHOICE);
     expect(window.localStorage.getItem("xrf.preference.gpu-timed")).toBe("true");
-    expect(mockInjectedService(SettingsService).service.sharedRenderSettings.isGpuTimed).toBe(true);
+    expect(mockInjectedService(SettingsService).service.renderSettings.isGpuTimed).toBe(true);
   });
 
   it("draws with Base until another preset is chosen, and keeps what was changed on top of it", () => {
     const { service } = mockInjectedService(SettingsService);
 
-    expect(service.rendererFeatures).toEqual(RENDERER_PRESETS[ERendererPreset.BASE]);
+    expect(service.rendererFeatures).toEqual(RENDER_PRESETS[ERenderPreset.BASE]);
 
-    service.setRendererOverrides({ antialiasing: ERendererAntialiasing.FXAA });
+    service.setRendererOverrides({ antialiasing: ERenderAntialiasing.FXAA });
     service.setRendererOverrides({ lod: { ssaA: 80 } });
     service.setRendererOverrides({ lod: { ssaB: 40 } });
 
     const reloaded = mockInjectedService(SettingsService).service;
 
-    expect(reloaded.rendererFeatures.antialiasing).toBe(ERendererAntialiasing.FXAA);
+    expect(reloaded.rendererFeatures.antialiasing).toBe(ERenderAntialiasing.FXAA);
     expect([reloaded.rendererFeatures.lod.ssaA, reloaded.rendererFeatures.lod.ssaB]).toEqual([80, 40]);
 
     // A preset chosen again is the preset whole: whatever was changed on the last one goes.
-    reloaded.setRendererPreset(ERendererPreset.EDITING);
+    reloaded.setRendererPreset(ERenderPreset.EDITING);
 
-    expect(reloaded.rendererFeatures).toEqual(RENDERER_PRESETS[ERendererPreset.EDITING]);
-    expect(mockInjectedService(SettingsService).service.rendererChoice.preset).toBe(ERendererPreset.EDITING);
+    expect(reloaded.rendererFeatures).toEqual(RENDER_PRESETS[ERenderPreset.EDITING]);
+    expect(mockInjectedService(SettingsService).service.rendererChoice.preset).toBe(ERenderPreset.EDITING);
   });
 
   // Two writes to one group keep both, whichever group: a group forgotten used to be replaced whole.
@@ -145,19 +146,19 @@ describe("SettingsService", () => {
     service.setRendererOverrides({
       grass: { height: 1.5 },
       shadows: { filter: 2 },
-      upscaling: { scale: ERendererRenderScale.QUALITY },
+      upscaling: { scale: ERenderScale.QUALITY },
     });
 
     expect(service.rendererChoice.overrides).toEqual({
       grass: { height: 1.5, radius: 80 },
       shadows: { bias: 2, filter: 2 },
-      upscaling: { scale: ERendererRenderScale.QUALITY, sharpening: 0.2 },
+      upscaling: { scale: ERenderScale.QUALITY, sharpening: 0.2 },
     });
   });
 
   it("falls back to Base for a stored choice that does not parse", () => {
     window.localStorage.setItem("xrf.preference.renderer-features", "{not json");
 
-    expect(mockInjectedService(SettingsService).service.rendererChoice.preset).toBe(ERendererPreset.BASE);
+    expect(mockInjectedService(SettingsService).service.rendererChoice.preset).toBe(ERenderPreset.BASE);
   });
 });

@@ -8,7 +8,7 @@ import { Session } from "@/core/ipc/session";
 import { SelectedVisualDescription, SessionSnapshot, VisualSource } from "@/core/ipc/types/xrf-app";
 import { RenderTextureReport } from "@/core/ipc/types/xrf-renderer";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
-import { IRendererSurfaceDraw } from "@/core/render/lib/surface/renderer-surface-draw";
+import { IRenderSurfaceDraw } from "@/core/render/lib/surface/render-surface-draw";
 import { IVisualRenderSource } from "@/core/visuals/lib/render/visual-render-source";
 import { IVisualBumpStatus, toLoadableBumps } from "@/core/visuals/lib/visual-bump";
 import { describeVisualSource } from "@/core/visuals/lib/visual-source";
@@ -221,7 +221,7 @@ export class VisualLoadService implements IVisualRenderSource {
   private view(snapshot: SessionSnapshot<SelectedVisualDescription>): void {
     const selected: SelectedVisualDescription = snapshot.value;
     // Joined once, for the toolbar and the panels to read how each submesh is drawn.
-    const surfaces: Map<number, IRendererSurfaceDraw> = createVisualSurfaces(
+    const surfaces: Map<number, IRenderSurfaceDraw> = createVisualSurfaces(
       selected.description.submeshes,
       selected.surfaces
     );

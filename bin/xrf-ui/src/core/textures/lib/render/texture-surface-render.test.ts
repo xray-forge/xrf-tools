@@ -2,15 +2,11 @@ import { describe, expect, it } from "@jest/globals";
 
 import { ETextureSurfaceAlpha, ETextureSurfaceShape } from "@/core/ipc/types/xrf-app";
 import { RenderViewOptions } from "@/core/ipc/types/xrf-renderer";
-import {
-  DEFAULT_RENDERER_FEATURE_CHOICE,
-  resolveRendererFeatures,
-} from "@/core/render/lib/contract/renderer-feature-choice";
 import { toTextureSurfaceRequest, toTextureViewOptions } from "@/core/textures/lib/render/texture-surface-render";
 import { DEFAULT_TEXTURE_LIGHTING } from "@/core/textures/lib/texture-lighting";
 import { ITextureSurfaceOptions } from "@/core/textures/lib/texture-surface";
 import { VIEWPORT } from "@/core/theme/tokens";
-import { mockRenderSharedSettings } from "@/fixtures/mocks/render.mocks";
+import { mockRenderFeatures } from "@/fixtures/mocks/render.mocks";
 import { MOCK_TEXTURE, mockTextureDescription } from "@/fixtures/mocks/texture.mocks";
 
 const OPTIONS: ITextureSurfaceOptions = {
@@ -44,12 +40,7 @@ describe("toTextureSurfaceRequest", () => {
 
 describe("toTextureViewOptions", () => {
   it("carries the lit and bump switches, against the alpha checkerboard at the device's pixel size", () => {
-    const options: RenderViewOptions = toTextureViewOptions(
-      OPTIONS,
-      DEFAULT_TEXTURE_LIGHTING,
-      mockRenderSharedSettings({ features: resolveRendererFeatures(DEFAULT_RENDERER_FEATURE_CHOICE) }),
-      2
-    );
+    const options: RenderViewOptions = toTextureViewOptions(OPTIONS, DEFAULT_TEXTURE_LIGHTING, mockRenderFeatures(), 2);
 
     expect(options.isLit).toBe(false);
     expect(options.isBumped).toBe(false);

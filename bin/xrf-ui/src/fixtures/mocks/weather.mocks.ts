@@ -122,7 +122,7 @@ export function mockLevelWeatherDescription(overrides: Partial<LevelWeatherDescr
  * @param overrides - Field values to override.
  * @returns Where the renderer's weather stands.
  */
-export function mockRendererWeatherReport(overrides: Partial<RenderWeatherReport> = {}): RenderWeatherReport {
+export function mockRenderWeatherReport(overrides: Partial<RenderWeatherReport> = {}): RenderWeatherReport {
   const time: number = overrides.time ?? 43_200;
 
   return {

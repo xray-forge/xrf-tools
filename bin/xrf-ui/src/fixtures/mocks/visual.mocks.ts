@@ -13,7 +13,7 @@ import {
   VisualTextureDependency,
   VisualTransform,
 } from "@/core/ipc/types/xrf-visual";
-import { OPAQUE_RENDERER_SURFACE_DRAW } from "@/core/render/lib/surface/renderer-surface-draw";
+import { OPAQUE_RENDER_SURFACE_DRAW } from "@/core/render/lib/surface/render-surface-draw";
 import { MOTION_DEFAULT_SPEED, MOTION_SAMPLE_FPS } from "@/core/visuals/lib/visual-motion";
 import { IVisualModelViews, IVisualSubmeshViews } from "@/core/visuals/lib/visual-views";
 
@@ -462,7 +462,7 @@ export function mockVisualSubmeshViews(overrides: Partial<IVisualSubmeshViews> =
     index: 0,
     label: "submesh 0",
     levels: [{ count: 3, start: 0, triangleCount: 1 }],
-    surface: OPAQUE_RENDERER_SURFACE_DRAW,
+    surface: OPAQUE_RENDER_SURFACE_DRAW,
     ...overrides,
   };
 }

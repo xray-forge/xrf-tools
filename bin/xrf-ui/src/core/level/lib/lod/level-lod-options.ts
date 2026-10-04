@@ -1,4 +1,4 @@
-import { IRendererLodSettings } from "@/core/render/lib/contract/renderer-lod-settings";
+import { TRenderLodSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { formatNumber } from "@/lib/format/number";
 
 /**
@@ -34,10 +34,10 @@ export function formatLevelLodDistance(distance: number): string {
  * @returns The renderer's LOD settings: the features', with the detail scale the distance comes to.
  */
 export function toLevelRendererLod(
-  features: IRendererLodSettings,
+  features: TRenderLodSettings,
   lod: ILevelLodOptions,
   isImpostors: boolean
-): IRendererLodSettings {
+): TRenderLodSettings {
   return {
     ...features,
     // A clump's screen area falls with the square of its distance, and every threshold with the detail scale.
