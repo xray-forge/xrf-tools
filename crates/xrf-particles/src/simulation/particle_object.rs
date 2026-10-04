@@ -71,10 +71,13 @@ impl ParticleObject {
     self.is_stopping = true;
   }
 
-  /// The scheduler's update when due, then the drawn update when in view (`shedule_Update`, `renderable_Render`).
-  pub fn advance(&mut self, now: u64, view: Vec3, is_in_view: bool, context: &ParticleUpdateContext) {
+  /// The scheduler's update when due, then the drawn update when in view (`shedule_Update`, `renderable_Render`);
+  /// whether either took any time.
+  pub fn advance(&mut self, now: u64, view: Vec3, is_in_view: bool, context: &ParticleUpdateContext) -> bool {
+    let mut is_updated: bool = false;
+
     if now >= self.next_scheduled {
-      self.perform(now, context);
+      is_updated |= self.perform(now, context);
 
       let (center, _) = self.instance.get_bounds().get_sphere();
 
@@ -82,8 +85,10 @@ impl ParticleObject {
     }
 
     if is_in_view {
-      self.perform(now, context);
+      is_updated |= self.perform(now, context);
     }
+
+    is_updated
   }
 
   /// `CSheduler`'s interval for an object at a distance from the view, in milliseconds.
@@ -96,13 +101,16 @@ impl ParticleObject {
   }
 
   /// `PerformAllTheWork`: an update by the milliseconds since the last one, if any passed.
-  fn perform(&mut self, now: u64, context: &ParticleUpdateContext) {
+  fn perform(&mut self, now: u64, context: &ParticleUpdateContext) -> bool {
     let elapsed: u64 = now.saturating_sub(self.last_time);
+    let is_elapsed: bool = elapsed > 0;
 
-    if elapsed > 0 {
+    if is_elapsed {
       self.instance.update(elapsed.min(u32::MAX as u64) as u32, context);
       self.last_time = now;
     }
+
+    is_elapsed
   }
 }
 

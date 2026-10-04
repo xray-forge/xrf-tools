@@ -390,7 +390,7 @@ pub fn report_particles(
   started: Instant,
 ) {
   log::info!(
-    "Placed the particle systems of {} in {}: {placements} placed, {effects} effects described of {} effects and {}      groups",
+    "Placed the particle systems of {} in {}: {placements} placed, {effects} effects described of {} effects and {} groups",
     source.get_label(),
     xrf_utils::format_duration(started.elapsed()),
     library.get_effect_count(),

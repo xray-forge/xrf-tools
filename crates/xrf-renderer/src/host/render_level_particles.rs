@@ -16,5 +16,5 @@ pub struct RenderLevelParticles {
   /// [`crate::RenderAssetSource::read_texture`] by the names its descriptor gives.
   pub surfaces: HashMap<String, XraySurfaceDescriptor>,
   /// The level's collision form, none where it cannot be read, which leaves every effect colliding with nothing.
-  pub collider: Option<Arc<dyn ParticleCollider + Send>>,
+  pub collider: Option<Arc<dyn ParticleCollider>>,
 }

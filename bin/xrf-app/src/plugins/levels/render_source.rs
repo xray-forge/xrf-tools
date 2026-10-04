@@ -326,7 +326,7 @@ impl RenderLevelSource for LevelRenderSource {
       collider: collision
         .inspect_err(|error| report_missing_particle_collision(&level.source, error))
         .ok()
-        .map(|tracer| Arc::new(LevelParticleCollider::new(tracer)) as Arc<dyn ParticleCollider + Send>),
+        .map(|tracer| Arc::new(LevelParticleCollider::new(tracer)) as Arc<dyn ParticleCollider>),
     }))
   }
 

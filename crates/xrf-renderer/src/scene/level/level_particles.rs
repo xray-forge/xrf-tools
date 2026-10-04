@@ -1,0 +1,460 @@
+use std::collections::HashMap;
+use std::sync::Arc;
+use std::sync::mpsc::{Receiver, channel};
+use std::time::Instant;
+
+use glam::{Mat4, Vec3, Vec4};
+use rayon::prelude::*;
+use xrf_engine_target::XrayEngine;
+use xrf_material::XraySurfaceDraw;
+use xrf_particles::{
+  ParticleBounds, ParticleCollider, ParticleEffectInstance, ParticleEngineRules, ParticleLibrary, ParticleObject,
+  ParticleUpdateContext,
+};
+
+use crate::camera::camera_view::CameraView;
+use crate::contract::render_particles_report::RenderParticlesReport;
+use crate::contract::render_view_options::RenderViewOptions;
+use crate::frame::view_targets::ViewTargets;
+use crate::host::render_asset_source::RenderAssetSource;
+use crate::host::render_level_particles::RenderLevelParticles;
+use crate::host::render_level_source::RenderLevelSource;
+use crate::host::render_particle_source::RenderParticleSource;
+use crate::pass::particle_batch::ParticleBatch;
+use crate::pass::particle_blend::ParticleBlend;
+use crate::pass::particle_pass::ParticlePass;
+use crate::pass::particle_surface_record::ParticleSurfaceRecord;
+use crate::pass::particle_vertex::ParticleVertex;
+use crate::pass::view_binding::ViewBinding;
+use crate::scene::level::particle_sprite::ParticleSprite;
+use crate::scene::texture::texture_cache::TextureCache;
+use crate::scene::texture::texture_role::TextureRole;
+use crate::thread::render_workers::RenderWorkers;
+
+/// `FASTMODE_DISTANCE`: metres from Monolith's camera past which a zone stops its idle particles.
+const ZONE_FAST_DISTANCE: f32 = 100.0;
+
+/// Quads the vertex buffer holds at first; it doubles past them.
+const INITIAL_QUADS: u64 = 4096;
+
+/// A level's particle systems: read once on a loader thread, then each frame stepped on the workers as the engine
+/// schedules them, and the effects in view filled into quads far to near for the particle pass.
+pub struct LevelParticles {
+  pending: Option<Receiver<Result<Option<RenderLevelParticles>, String>>>,
+  systems: Option<LevelSystems>,
+  workers: RenderWorkers,
+  started: Instant,
+  vertices: Vec<ParticleVertex>,
+  batches: Vec<ParticleBatch>,
+  vertex_buffer: wgpu::Buffer,
+  surface_buffer: wgpu::Buffer,
+  /// Bumped whenever either buffer is replaced, which the bind group follows.
+  buffers_generation: u64,
+  /// Whether the surfaces' records still have to be written.
+  is_surfaces_dirty: bool,
+  /// The bind group, with the targets' epoch and the buffers' generation it binds.
+  group: Option<((u64, u64), wgpu::BindGroup)>,
+  report: ParticlesTally,
+}
+
+/// What the loader read, placed and stepping.
+struct LevelSystems {
+  library: Arc<ParticleLibrary>,
+  rules: ParticleEngineRules,
+  collider: Option<Arc<dyn ParticleCollider>>,
+  systems: Vec<PlacedSystem>,
+  surfaces: Vec<ParticleSurface>,
+  /// Each effect definition's surface, by the definition's address.
+  surface_of: HashMap<usize, u32>,
+  texture_slots: Vec<u32>,
+}
+
+/// One placement and what plays at it, none while Monolith's camera stands too far from its zone.
+struct PlacedSystem {
+  source: RenderParticleSource,
+  transform: Mat4,
+  seed: i32,
+  object: Option<ParticleObject>,
+}
+
+/// How an effect's sprite draws: its equation, none for one drawing no colour, and its record.
+struct ParticleSurface {
+  blend: Option<ParticleBlend>,
+  record: ParticleSurfaceRecord,
+}
+
+/// What the frames since the last report came to.
+#[derive(Default)]
+struct ParticlesTally {
+  last: RenderParticlesReport,
+  simulation_time: f32,
+  frames: u32,
+}
+
+impl LevelParticles {
+  pub fn new(device: &wgpu::Device, source: &Arc<dyn RenderLevelSource>, workers: &RenderWorkers) -> Self {
+    let (sender, receiver) = channel();
+    let source: Arc<dyn RenderLevelSource> = Arc::clone(source);
+
+    workers.spawn(move || {
+      let particles = source.read_particles().map_err(|error| error.to_string());
+
+      if let Err(error) = &particles {
+        log::error!("The level's particles cannot be drawn: {error}");
+      }
+
+      let _ = sender.send(particles);
+    });
+
+    Self {
+      pending: Some(receiver),
+      systems: None,
+      workers: workers.clone(),
+      started: Instant::now(),
+      vertices: Vec::new(),
+      batches: Vec::new(),
+      vertex_buffer: Self::create_storage(
+        device,
+        "particle vertices",
+        INITIAL_QUADS * u64::from(ParticleVertex::CORNERS) * size_of::<ParticleVertex>() as u64,
+      ),
+      surface_buffer: Self::create_storage(device, "particle surfaces", size_of::<ParticleSurfaceRecord>() as u64),
+      buffers_generation: 0,
+      is_surfaces_dirty: false,
+      group: None,
+      report: ParticlesTally::default(),
+    }
+  }
+
+  /// Takes the systems once their loader read them: asks for every sprite's texture and places each system.
+  pub fn poll(&mut self, device: &wgpu::Device, textures: &mut TextureCache, source: &Arc<dyn RenderAssetSource>) {
+    let Some(receiver) = &self.pending else {
+      return;
+    };
+    let Ok(read) = receiver.try_recv() else {
+      return;
+    };
+
+    self.pending = None;
+
+    let Ok(Some(read)) = read else {
+      return;
+    };
+    let mut surfaces: Vec<ParticleSurface> = Vec::with_capacity(read.surfaces.len());
+    let mut surface_of: HashMap<usize, u32> = HashMap::with_capacity(read.surfaces.len());
+    let mut texture_slots: Vec<u32> = Vec::new();
+
+    for (name, descriptor) in &read.surfaces {
+      let Some(effect) = read.library.get_effect(name) else {
+        continue;
+      };
+      let texture: u32 = descriptor
+        .textures
+        .first()
+        .map_or(0, |reference| textures.request(reference, TextureRole::Base, source));
+      let blend: Option<ParticleBlend> = ParticleBlend::of(descriptor.draw);
+
+      texture_slots.push(texture);
+      surface_of.insert(Arc::as_ptr(effect) as usize, surfaces.len() as u32);
+      surfaces.push(ParticleSurface {
+        record: ParticleSurfaceRecord {
+          texture,
+          flags: if descriptor.is_texture_clamped {
+            ParticleSurfaceRecord::IS_CLAMPED
+          } else {
+            0
+          },
+          // Every forward particle pass tests against zero; `SET` against its own reference.
+          alpha_reference: match descriptor.draw {
+            XraySurfaceDraw::AlphaTested { reference } => f32::from(reference) / 255.0,
+            _ => 0.0,
+          },
+          pad: 0,
+        },
+        blend,
+      });
+    }
+
+    let systems: Vec<PlacedSystem> = read
+      .placements
+      .iter()
+      .enumerate()
+      .map(|(index, placement)| PlacedSystem {
+        source: placement.source.clone(),
+        transform: Mat4::from_cols_array(&placement.transform),
+        seed: index as i32 + 1,
+        object: None,
+      })
+      .collect();
+
+    log::info!(
+      "Native viewport particles {} placed systems, {} effect surfaces",
+      systems.len(),
+      surfaces.len()
+    );
+
+    self.surface_buffer = Self::create_storage(
+      device,
+      "particle surfaces",
+      (surfaces.len().max(1) * size_of::<ParticleSurfaceRecord>()) as u64,
+    );
+    self.buffers_generation += 1;
+    self.is_surfaces_dirty = true;
+    self.systems = Some(LevelSystems {
+      library: read.library,
+      rules: read.rules,
+      collider: read.collider,
+      systems,
+      surfaces,
+      surface_of,
+      texture_slots,
+    });
+  }
+
+  /// Steps every system as the engine schedules it, and fills the effects in view into quads, far to near.
+  #[allow(clippy::too_many_arguments)]
+  pub fn prepare(
+    &mut self,
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    pass: &ParticlePass,
+    view: &CameraView,
+    options: &RenderViewOptions,
+    lighting: &wgpu::Buffer,
+    (targets, targets_epoch): (&ViewTargets, u64),
+  ) {
+    self.vertices.clear();
+    self.batches.clear();
+
+    let Some(level) = self.systems.as_mut() else {
+      return;
+    };
+
+    if !options.is_particled || !options.is_lit {
+      self.report.last = RenderParticlesReport::default();
+
+      return;
+    }
+
+    let now: u64 = self.started.elapsed().as_millis() as u64;
+    let eye: Vec3 = ParticleSprite::mirror(view.position);
+    let planes: [Vec4; 6] = view.get_planes();
+    let started: Instant = Instant::now();
+
+    Self::place(level, eye, now);
+
+    let context: ParticleUpdateContext = ParticleUpdateContext {
+      library: &level.library,
+      rules: &level.rules,
+      collider: level.collider.as_deref(),
+    };
+    let systems: &mut Vec<PlacedSystem> = &mut level.systems;
+    let simulated: u32 = self.workers.install(|| {
+      systems
+        .par_iter_mut()
+        .filter_map(|system| system.object.as_mut())
+        .map(|object| {
+          let is_in_view: bool = Self::is_in_view(&planes, object.get_instance().get_bounds());
+
+          u32::from(object.advance(now, eye, is_in_view, &context))
+        })
+        .sum()
+    });
+    let simulation_time: f32 = started.elapsed().as_secs_f32() * 1000.0;
+    let mut drawn: Vec<(f32, &ParticleEffectInstance, u32, ParticleBlend)> = Vec::new();
+    let mut report: RenderParticlesReport = RenderParticlesReport {
+      simulated,
+      ..RenderParticlesReport::default()
+    };
+
+    for object in level.systems.iter().filter_map(|system| system.object.as_ref()) {
+      for effect in object.get_instance().get_effects() {
+        let count: usize = effect.get_pool().len();
+
+        report.effects += u32::from(effect.is_playing());
+        report.particles += count as u32;
+
+        let Some(&surface) = level
+          .surface_of
+          .get(&(std::ptr::from_ref(effect.get_definition()) as usize))
+        else {
+          continue;
+        };
+
+        let Some(blend) = level.surfaces[surface as usize].blend else {
+          continue;
+        };
+
+        if count > 0 && Self::is_in_view(&planes, effect.get_bounds()) {
+          let (center, _) = effect.get_bounds().get_sphere();
+
+          drawn.push((center.distance_squared(eye), effect, surface, blend));
+        }
+      }
+    }
+
+    // Far to near, as `mapSorted` draws what blends; every effect is sorted, as nothing else orders them.
+    drawn.sort_by(|a, b| b.0.total_cmp(&a.0));
+    report.drawn = drawn.len() as u32;
+
+    let sprite: ParticleSprite = ParticleSprite::new(view.view);
+
+    for (_, effect, surface, blend) in drawn {
+      let first: u32 = self.vertices.len() as u32 / ParticleVertex::CORNERS;
+
+      sprite.push(effect, surface, &mut self.vertices);
+
+      let count: u32 = self.vertices.len() as u32 / ParticleVertex::CORNERS - first;
+
+      match self.batches.last_mut() {
+        Some(last) if last.blend == blend && last.first + last.count == first => last.count += count,
+        _ => self.batches.push(ParticleBatch { blend, first, count }),
+      }
+    }
+
+    self.report.last = report;
+    self.report.simulation_time += simulation_time;
+    self.report.frames += 1;
+
+    self.upload(device, queue);
+
+    let key: (u64, u64) = (targets_epoch, self.buffers_generation);
+
+    if self.group.as_ref().is_none_or(|(bound, _)| *bound != key) {
+      self.group = Some((
+        key,
+        pass.create_bind_group(device, &self.vertex_buffer, &self.surface_buffer, lighting, targets),
+      ));
+    }
+  }
+
+  /// Draws the quads filled this frame.
+  pub fn record(
+    &self,
+    encoder: &mut wgpu::CommandEncoder,
+    pass: &ParticlePass,
+    targets: &ViewTargets,
+    view: &ViewBinding,
+    texture_group: &wgpu::BindGroup,
+  ) -> bool {
+    let Some((_, group)) = &self.group else {
+      return false;
+    };
+
+    if self.batches.is_empty() {
+      return false;
+    }
+
+    pass.draw(encoder, targets, view, group, texture_group, &self.batches);
+
+    true
+  }
+
+  /// The texture slots the sprites sample.
+  pub fn get_texture_slots(&self) -> &[u32] {
+    self
+      .systems
+      .as_ref()
+      .map_or(&[], |systems| systems.texture_slots.as_slice())
+  }
+
+  /// What the last frame came to, with the simulation's mean cost since the last report.
+  pub fn take_report(&mut self) -> RenderParticlesReport {
+    let report: RenderParticlesReport = RenderParticlesReport {
+      simulation_time: self.report.simulation_time / self.report.frames.max(1) as f32,
+      ..self.report.last
+    };
+
+    self.report.simulation_time = 0.0;
+    self.report.frames = 0;
+
+    report
+  }
+
+  /// Plays each system not yet playing, and on Monolith stops a zone's while the camera stands past
+  /// `FASTMODE_DISTANCE` (`o_switch_2_slow`), playing it afresh once it comes back (`o_switch_2_fast`).
+  fn place(level: &mut LevelSystems, eye: Vec3, now: u64) {
+    let context: ParticleUpdateContext = ParticleUpdateContext {
+      library: &level.library,
+      rules: &level.rules,
+      collider: level.collider.as_deref(),
+    };
+    let is_slowed: bool = level.rules.get_engine() == XrayEngine::Extended;
+
+    for system in &mut level.systems {
+      // todo: Measure from the zone's shape's sphere, less its radius, as Monolith does; the zone's position stands in.
+      let is_far: bool = is_slowed
+        && !matches!(system.source, RenderParticleSource::Static { .. })
+        && eye.distance(system.transform.w_axis.truncate()) > ZONE_FAST_DISTANCE;
+
+      if is_far {
+        system.object = None;
+
+        continue;
+      }
+
+      if system.object.is_some() {
+        continue;
+      }
+
+      // todo: Switch campfires between their idle, disabled and enabling effects as `CZoneCampfire` does.
+      let name: &str = match &system.source {
+        RenderParticleSource::Static { name } => name,
+        RenderParticleSource::Zone { idle } | RenderParticleSource::Campfire { idle, .. } => idle,
+      };
+      let Some(instance) = level.library.create(name, system.seed) else {
+        continue;
+      };
+      let mut object: ParticleObject = ParticleObject::new(instance);
+
+      object.update_parent(&system.transform, Vec3::ZERO);
+      object.play(now, &context);
+      system.object = Some(object);
+    }
+  }
+
+  /// Whether bounds in engine space stand within the frustum's planes in renderer space.
+  fn is_in_view(planes: &[Vec4; 6], bounds: ParticleBounds) -> bool {
+    let (center, radius) = bounds.get_sphere();
+    let center: Vec3 = ParticleSprite::mirror(center);
+
+    planes
+      .iter()
+      .all(|plane| plane.truncate().dot(center) + plane.w >= -radius)
+  }
+
+  /// Writes the frame's quads, growing the buffer past them, and the surfaces once after they are read.
+  fn upload(&mut self, device: &wgpu::Device, queue: &wgpu::Queue) {
+    let size: u64 = (self.vertices.len() * size_of::<ParticleVertex>()) as u64;
+
+    if size > self.vertex_buffer.size() {
+      self.vertex_buffer = Self::create_storage(device, "particle vertices", size.next_power_of_two());
+      self.buffers_generation += 1;
+    }
+
+    if !self.vertices.is_empty() {
+      queue.write_buffer(&self.vertex_buffer, 0, bytemuck::cast_slice(&self.vertices));
+    }
+
+    if self.is_surfaces_dirty
+      && let Some(level) = &self.systems
+    {
+      let records: Vec<ParticleSurfaceRecord> = level.surfaces.iter().map(|surface| surface.record).collect();
+
+      if !records.is_empty() {
+        queue.write_buffer(&self.surface_buffer, 0, bytemuck::cast_slice(&records));
+      }
+
+      self.is_surfaces_dirty = false;
+    }
+  }
+
+  fn create_storage(device: &wgpu::Device, label: &str, size: u64) -> wgpu::Buffer {
+    device.create_buffer(&wgpu::BufferDescriptor {
+      label: Some(label),
+      size,
+      usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+      mapped_at_creation: false,
+    })
+  }
+}
