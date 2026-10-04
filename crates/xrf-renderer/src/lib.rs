@@ -50,6 +50,7 @@ pub use crate::contract::render_light_scales::RenderLightScales;
 pub use crate::contract::render_light_shadow_filter::RenderLightShadowFilter;
 pub use crate::contract::render_lights_report::RenderLightsReport;
 pub use crate::contract::render_lights_settings::RenderLightsSettings;
+pub use crate::contract::render_load_durations::RenderLoadDurations;
 pub use crate::contract::render_load_failure::RenderLoadFailure;
 pub use crate::contract::render_load_report::RenderLoadReport;
 pub use crate::contract::render_lod_settings::RenderLodSettings;

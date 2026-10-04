@@ -14,6 +14,7 @@ import { EVisualTextureState } from "@/core/visuals/lib/visual-texture";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { VisualRenderService } from "@/core/visuals/services/visual-render.service";
 import { VisualViewService } from "@/core/visuals/services/visual-view.service";
+import { mockRenderLoadReport } from "@/fixtures/mocks/render.mocks";
 import { mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import {
   getMockChannels,
@@ -198,7 +199,14 @@ describe("VisualRenderService", () => {
 
     emit({
       kind: ERenderViewportEvent.LOAD,
-      report: { bytes: 0, isReady: true, sectors: 0, sectorsTotal: 0, textures: 1, texturesTotal: 1 },
+      report: mockRenderLoadReport({
+        bytes: 0,
+        isReady: true,
+        sectors: 0,
+        sectorsTotal: 0,
+        textures: 1,
+        texturesTotal: 1,
+      }),
     });
     await flush();
 

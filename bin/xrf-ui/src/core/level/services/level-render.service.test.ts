@@ -29,6 +29,7 @@ import { LevelWeatherService } from "@/core/level/services/level-weather.service
 import { ERenderResolution } from "@/core/render/lib/settings/render-resolution";
 import { SettingsService } from "@/core/settings/services/settings";
 import { mockLevelSpawnObject, mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
+import { mockRenderLoadReport } from "@/fixtures/mocks/render.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import {
   getMockChannels,
@@ -172,7 +173,14 @@ describe("LevelRenderService", () => {
 
     emit({
       kind: ERenderViewportEvent.LOAD,
-      report: { bytes: 10, isReady: false, sectors: 1, sectorsTotal: 2, textures: 0, texturesTotal: 3 },
+      report: mockRenderLoadReport({
+        bytes: 10,
+        isReady: false,
+        sectors: 1,
+        sectorsTotal: 2,
+        textures: 0,
+        texturesTotal: 3,
+      }),
     });
     expect(viewport.isRevealed).toBe(false);
 
@@ -188,7 +196,14 @@ describe("LevelRenderService", () => {
     });
     emit({
       kind: ERenderViewportEvent.LOAD,
-      report: { bytes: 20, isReady: true, sectors: 2, sectorsTotal: 2, textures: 3, texturesTotal: 3 },
+      report: mockRenderLoadReport({
+        bytes: 20,
+        isReady: true,
+        sectors: 2,
+        sectorsTotal: 2,
+        textures: 3,
+        texturesTotal: 3,
+      }),
     });
     expect(viewport.isRevealed).toBe(true);
 

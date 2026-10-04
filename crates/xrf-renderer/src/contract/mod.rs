@@ -27,6 +27,7 @@ pub(crate) mod render_light_scales;
 pub(crate) mod render_light_shadow_filter;
 pub(crate) mod render_lights_report;
 pub(crate) mod render_lights_settings;
+pub(crate) mod render_load_durations;
 pub(crate) mod render_load_failure;
 pub(crate) mod render_load_report;
 pub(crate) mod render_lod_settings;

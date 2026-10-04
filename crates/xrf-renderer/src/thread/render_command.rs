@@ -3,6 +3,7 @@ use std::sync::mpsc::Sender;
 
 use crate::contract::render_camera::RenderCamera;
 use crate::contract::render_camera_command::RenderCameraCommand;
+use crate::contract::render_frame_report::RenderFrameReport;
 use crate::contract::render_input_event::RenderInputEvent;
 use crate::contract::render_level_problems::RenderLevelProblems;
 use crate::contract::render_load_report::RenderLoadReport;
@@ -87,10 +88,15 @@ pub enum RenderCommand {
     id: RenderViewportId,
     pose: RenderModelPose,
   },
-  /// Says how far a viewport's level has loaded; none where it draws no level.
+  /// Says how far the level a viewport was last asked to show has loaded; none before its view is made.
   DescribeLoad {
     id: RenderViewportId,
     reply: Sender<Option<RenderLoadReport>>,
+  },
+  /// Says what a viewport's frames cost when it last reported them; none before its first report.
+  DescribeFrame {
+    id: RenderViewportId,
+    reply: Sender<Option<RenderFrameReport>>,
   },
   /// Says what a viewport's level could not draw; empty where it draws no level.
   DescribeProblems {

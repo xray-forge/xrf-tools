@@ -7,6 +7,7 @@ use xrf_error::XrfResult;
 use crate::contract::render_camera::RenderCamera;
 use crate::contract::render_camera_command::RenderCameraCommand;
 use crate::contract::render_capture::RenderCapture;
+use crate::contract::render_frame_report::RenderFrameReport;
 use crate::contract::render_input_event::RenderInputEvent;
 use crate::contract::render_level_hit::RenderLevelHit;
 use crate::contract::render_level_problems::RenderLevelProblems;
@@ -112,12 +113,23 @@ impl Renderer {
     answer
   }
 
-  /// How far a viewport's level has loaded, answered at once: what its `Load` events report, for a caller polling rather
-  /// than listening. None where it draws no level.
+  /// How far the level a viewport was last asked to show has loaded, answered at once, for a caller polling rather than
+  /// listening: its `Load` events report the level drawn, which is still the one before while another loads. None
+  /// before that level's view is made, or where it shows no level.
   pub fn describe_load(&self, id: RenderViewportId) -> Receiver<Option<RenderLoadReport>> {
     let (reply, answer) = channel();
 
     self.send(RenderCommand::DescribeLoad { id, reply });
+
+    answer
+  }
+
+  /// What a viewport's frames cost when it last reported them, answered at once: what its `Frame` events report, for a
+  /// caller polling rather than listening. None before its first report.
+  pub fn describe_frame(&self, id: RenderViewportId) -> Receiver<Option<RenderFrameReport>> {
+    let (reply, answer) = channel();
+
+    self.send(RenderCommand::DescribeFrame { id, reply });
 
     answer
   }

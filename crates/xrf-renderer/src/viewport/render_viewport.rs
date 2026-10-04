@@ -68,6 +68,8 @@ pub struct RenderViewport {
   pub binding: Option<ViewBinding>,
   sink: Box<dyn RenderEventSink>,
   statistics: FrameStatistics,
+  /// What it was last told its frames cost, answered to a caller polling rather than listening.
+  sent_frame: Option<RenderFrameReport>,
   sent_pose: Option<RenderCameraPose>,
   /// What it was last told its frames are drawn with.
   sent_applied: Option<RenderAppliedReport>,
@@ -105,6 +107,7 @@ impl RenderViewport {
       binding: None,
       sink,
       statistics: FrameStatistics::new(now),
+      sent_frame: None,
       sent_pose: None,
       sent_applied: None,
       pose_due: now,
@@ -128,6 +131,22 @@ impl RenderViewport {
     self
       .layout
       .map_or(1.0, |layout| layout.rect.height as f32 / layout.scale.max(0.1))
+  }
+
+  /// The view of the level it was last asked to show: the one coming in while it loads, else the one drawn; none before
+  /// that level's view is made, or where it shows no level.
+  pub fn get_asked_view(&self) -> Option<&LevelView> {
+    let source: &Arc<dyn RenderLevelSource> = self.level.as_ref()?;
+
+    [&self.incoming_view, &self.level_view]
+      .into_iter()
+      .flatten()
+      .find(|view| view.is_showing(source))
+  }
+
+  /// What its frames cost when it last reported them, none before its first report.
+  pub fn get_frame_report(&self) -> Option<&RenderFrameReport> {
+    self.sent_frame.as_ref()
   }
 
   pub fn is_gone(&self) -> bool {
@@ -180,30 +199,31 @@ impl RenderViewport {
       .map(LevelView::get_buffer_bytes)
       .sum();
 
-    self.send(RenderViewportEvent::Frame {
-      report: RenderFrameReport {
-        frames_per_second,
-        frame_time,
-        frame_time_max,
-        cpu_time,
-        width: rect.width,
-        height: rect.height,
-        render_width,
-        render_height,
-        backend: backend.to_string(),
-        adapter: adapter.to_string(),
-        is_gpu_timed,
-        passes,
-        static_draws,
-        lights,
-        particles,
-        sector_time: self.level_view.as_ref().map_or(0.0, LevelView::get_sector_time),
-        memory: RenderMemoryReport {
-          textures: texture_bytes,
-          scene,
-        },
+    let report: RenderFrameReport = RenderFrameReport {
+      frames_per_second,
+      frame_time,
+      frame_time_max,
+      cpu_time,
+      width: rect.width,
+      height: rect.height,
+      render_width,
+      render_height,
+      backend: backend.to_string(),
+      adapter: adapter.to_string(),
+      is_gpu_timed,
+      passes,
+      static_draws,
+      lights,
+      particles,
+      sector_time: self.level_view.as_ref().map_or(0.0, LevelView::get_sector_time),
+      memory: RenderMemoryReport {
+        textures: texture_bytes,
+        scene,
       },
-    });
+    };
+
+    self.sent_frame = Some(report.clone());
+    self.send(RenderViewportEvent::Frame { report });
     self.publish_applied();
   }
 

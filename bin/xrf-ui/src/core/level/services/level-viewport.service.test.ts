@@ -6,6 +6,7 @@ import { CLEAR_LEVEL_SELECTION_KEYBIND_COMMAND } from "@/core/level/commands";
 import { ILevelCamera } from "@/core/level/lib/camera/level-camera";
 import { ELevelPick } from "@/core/level/lib/pick/level-pick";
 import { LevelViewportService } from "@/core/level/services/level-viewport.service";
+import { mockRenderLoadReport } from "@/fixtures/mocks/render.mocks";
 import { mockContainer, mockInjectedService } from "@/fixtures/utils/container";
 
 function camera(overrides: Partial<ILevelCamera> = {}): ILevelCamera {
@@ -63,7 +64,9 @@ describe("LevelViewportService", () => {
     const { service } = mockInjectedService(LevelViewportService);
 
     service.noteCamera(camera());
-    service.noteLoad({ bytes: 1, isReady: true, sectors: 1, sectorsTotal: 1, textures: 0, texturesTotal: 0 });
+    service.noteLoad(
+      mockRenderLoadReport({ bytes: 1, isReady: true, sectors: 1, sectorsTotal: 1, textures: 0, texturesTotal: 0 })
+    );
     service.clear();
 
     expect(service.camera).toBeNull();
