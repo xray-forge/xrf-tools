@@ -35,4 +35,7 @@ pub struct LevelWeatherDescription {
   pub skies: Vec<LevelWeatherTexture>,
   /// Every clouds texture they name.
   pub clouds: Vec<LevelWeatherTexture>,
+  /// Every lens flare of the game a keyframe can name by `sun`: `suns.ltx`'s sections, and on OpenXRay any `system.ltx`
+  /// one a keyframe names in their place.
+  pub suns: Vec<String>,
 }

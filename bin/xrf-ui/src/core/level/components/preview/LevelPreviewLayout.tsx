@@ -50,6 +50,9 @@ const EMPTY_TEXTURES: ReadonlyArray<LevelWeatherTexture> = [];
 /** What the thunder's popover offers before it is read. */
 const EMPTY_COLLECTIONS: ReadonlyArray<ThunderboltCollection> = [];
 
+/** Lens flares while the weather is not read yet. */
+const EMPTY_SUNS: ReadonlyArray<string> = [];
+
 interface ILevelPreviewLayoutProps extends BaseComponentProps {
   /** What the open level is called, which heads the viewport. Its presence is what offers go-to, stats and picks. */
   name?: Nullable<string>;
@@ -174,6 +177,7 @@ export function LevelPreviewLayout({
           collections={weatherService.description?.thunderbolts.collections ?? EMPTY_COLLECTIONS}
           sun={loadService.level.value?.selected.value.sun ?? null}
           drawnSun={renderService.applied?.sun ?? null}
+          suns={weatherService.description?.suns ?? EMPTY_SUNS}
           lod={viewService.lod}
           features={features}
           featureView={featureView}

@@ -8,5 +8,6 @@ pub struct ViewLightGroups {
   pub combine: wgpu::BindGroup,
   pub composited: wgpu::BindGroup,
   pub haze: wgpu::BindGroup,
+  pub sun_shafts: wgpu::BindGroup,
   pub exposure: wgpu::BindGroup,
 }

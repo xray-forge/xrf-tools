@@ -96,6 +96,7 @@ export function mockLevelWeatherDescription(overrides: Partial<LevelWeatherDescr
     engine: EXrayEngine.VANILLA,
     modifiers: [],
     offered: [mockLevelWeatherCycle()],
+    suns: ["gradient1", "moon_halo_full"],
     rain: {
       drop: null,
       streak: { logicalPath: "textures\\fx\\fx_rain.dds", reference: "fx\\fx_rain" },

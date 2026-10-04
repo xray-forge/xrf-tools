@@ -8,8 +8,11 @@ import { ILevelManualWeatherActionProps } from "@/core/level/components/weather/
 import { LevelManualWeatherSlider } from "@/core/level/components/weather/LevelManualWeatherSlider";
 import { LevelManualWeatherVectorField } from "@/core/level/components/weather/LevelManualWeatherVectorField";
 import { LevelWeatherResetButton } from "@/core/level/components/weather/LevelWeatherResetButton";
+import { LevelWeatherSunSelect } from "@/core/level/components/weather/LevelWeatherSunSelect";
+import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { ILevelManualWeather, toLevelManualSun } from "@/core/level/lib/weather/level-manual-weather";
 import { EditorPopoverAction } from "@/core/shell/editor/EditorPopoverAction";
+import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { formatDegrees } from "@/lib/format/angle";
 
 /** The keys the popover sets. */
@@ -19,6 +22,8 @@ const SUN_KEYS: ReadonlyArray<keyof ILevelManualWeather> = [
   "sunLongitude",
   "ambientColor",
   "hemisphereColor",
+  "sun",
+  "sunShaftsIntensity",
 ];
 
 interface ILevelSunActionProps extends Omit<ILevelManualWeatherActionProps, "isOn" | "onToggle"> {
@@ -26,11 +31,16 @@ interface ILevelSunActionProps extends Omit<ILevelManualWeatherActionProps, "isO
   sun: Nullable<LevelSunDescription>;
   /** The sun or moon the sky draws now, by its `suns.ltx` section, or null where it shows neither. */
   drawnSun: Nullable<string>;
+  /** Every lens flare of the game a keyframe can name by `sun`. */
+  suns: ReadonlyArray<string>;
+  /** The view's switches, of which the lens flares and the sunshafts are turned over here. */
+  options: Pick<ILevelViewOptions, "isLensFlared" | "isSunShafted">;
+  onToggle: (option: "isLensFlared" | "isSunShafted") => void;
 }
 
 /**
- * The sun, the ambient and the hemisphere, by the keys a weather writes them with. The weather's sun is drawn with the
- * sky, and its direction marked among the overlays.
+ * The sun, the ambient and the hemisphere, by the keys a weather writes them with; the lens flare the sun is drawn
+ * with and the light shafts through its shadow, each with its switch. Its direction is marked among the overlays.
  */
 export function LevelSunAction({
   "data-testid": dataTestId = "level-sun-action",
@@ -39,6 +49,9 @@ export function LevelSunAction({
   manual,
   sun,
   drawnSun,
+  suns,
+  options,
+  onToggle,
   onEdit,
 }: ILevelSunActionProps): ReactElement {
   const compiled = useMemo(() => toLevelManualSun(sun?.direction ?? null), [sun]);
@@ -85,6 +98,37 @@ export function LevelSunAction({
         <Button size={"small"} disabled={!compiled} onClick={onUseCompiled}>
           {compiled ? "Use the level's compiled sun" : "This level names no sun"}
         </Button>
+
+        <Typography className={"text-text-secondary"} variant={"overline"}>
+          Lens flare
+        </Typography>
+
+        <CheckboxFormRow
+          label={"Lens flares"}
+          description={"The flares over the frame; the sun's sprite and glow are drawn either way"}
+          isChecked={options.isLensFlared}
+          onChange={() => onToggle("isLensFlared")}
+        />
+
+        <LevelWeatherSunSelect value={manual.sun} suns={suns} onChange={(sun: string) => onEdit({ sun })} />
+
+        <Typography className={"text-text-secondary"} variant={"overline"}>
+          Sunshafts
+        </Typography>
+
+        <CheckboxFormRow
+          label={"Sunshafts"}
+          description={"The sun's light through the air, cut by its shadow"}
+          isChecked={options.isSunShafted}
+          onChange={() => onToggle("isSunShafted")}
+        />
+
+        <LevelManualWeatherSlider
+          field={"sunShaftsIntensity"}
+          manual={manual}
+          format={(value: number) => value.toFixed(2)}
+          onEdit={onEdit}
+        />
 
         <LevelWeatherResetButton keys={SUN_KEYS} onEdit={onEdit} />
       </div>

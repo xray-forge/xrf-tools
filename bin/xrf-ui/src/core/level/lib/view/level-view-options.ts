@@ -23,6 +23,8 @@ export interface ILevelViewOptions extends ILevelSurfaceOptions {
   isClouded: boolean;
   /** Draws the sun's lens flares over the frame, as the game's `disable_lens_flare 0` does. */
   isLensFlared: boolean;
+  /** Draws the sun's light shafts through its shadow, as the game's `r2_sun_shafts` does at its highest quality. */
+  isSunShafted: boolean;
   /** Rains where the weather rains. */
   isRainy: boolean;
   /** Strikes bolts where the weather strikes them. */
@@ -85,6 +87,7 @@ export const DEFAULT_LEVEL_VIEW_OPTIONS: ILevelViewOptions = {
   isWindy: true,
   isStatsVisible: true,
   isSunMarked: false,
+  isSunShafted: true,
   isThundering: true,
   isWaterVisible: true,
 };

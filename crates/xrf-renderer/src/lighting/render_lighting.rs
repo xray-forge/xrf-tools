@@ -40,6 +40,8 @@ pub struct RenderLighting {
   pub trees: Option<RenderTreeWind>,
   /// `water_intensity`: how bright the depth of soft water and its foam are, one by a clear day.
   pub water_intensity: f32,
+  /// `sun_shafts_intensity`: how dense the light shafts through the sun's shadow are, none at zero.
+  pub sun_shafts: f32,
   /// How hard it rains, or none for a dry sky.
   pub rain: Option<RenderRainfall>,
   /// Whose shaders the scene is drawn by: its sky, and its surfaces' reflections.
@@ -137,6 +139,7 @@ impl Default for RenderLighting {
       },
       trees: Some(RenderTreeWind::default()),
       water_intensity: 1.0,
+      sun_shafts: 0.0,
       rain: None,
       engine: XrayEngine::Vanilla,
       thunderbolt: None,

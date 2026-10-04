@@ -59,6 +59,24 @@ fn cascade_lit(maps: texture_depth_2d_array, shadows: Shadows, view: u32, clip: 
   return lit;
 }
 
+// Whether the sun reaches a point by one tap of the first cascade whose map holds it, as `accum_volumetric_sun`'s low
+// filter takes it; past every cascade it does.
+fn sun_shadow_tap(maps: texture_depth_2d_array, shadows: Shadows, position: vec3<f32>) -> f32 {
+  for (var view: u32 = 0u; view < min(shadows.count, 4u); view++) {
+    let clip: vec4<f32> = shadows.matrices[view] * vec4<f32>(position, 1.0);
+    let uv: vec2<f32> = vec2<f32>(clip.x * 0.5 + 0.5, clip.y * -0.5 + 0.5);
+
+    if (all(uv > vec2<f32>(0.0)) && all(uv < vec2<f32>(1.0)) && clip.z > 0.0 && clip.z < 1.0) {
+      let texel: vec2<i32> = vec2<i32>(uv * shadows.resolution);
+
+      // Depth is reversed: a texel nearer the sun holds the larger value.
+      return select(0.0, 1.0, clip.z >= textureLoad(maps, texel, view, 0));
+    }
+  }
+
+  return 1.0;
+}
+
 // How much of the sun reaches a point: the first cascade whose map holds it, blended into the next within `blend` of
 // its edge so the switch to a coarser map is never a line; past every cascade the sun reaches it whole. The point is
 // moved along its normal first so a lit surface never shadows itself, up to twice as far where the light grazes it.

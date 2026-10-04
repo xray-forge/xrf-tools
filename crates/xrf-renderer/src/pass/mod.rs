@@ -50,6 +50,7 @@ pub(crate) mod static_gbuffer_pass;
 pub(crate) mod static_occlusion_uniform;
 pub(crate) mod static_shadow_pass;
 pub(crate) mod sun_pass;
+pub(crate) mod sun_shafts_pass;
 pub(crate) mod temporal_pass;
 pub(crate) mod temporal_uniform;
 pub(crate) mod thunder_pass;

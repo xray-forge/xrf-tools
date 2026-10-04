@@ -1971,6 +1971,11 @@ export type LevelWeatherDescription = {
   skies: Array<LevelWeatherTexture>;
   /** Every clouds texture they name. */
   clouds: Array<LevelWeatherTexture>;
+  /**
+   * Every lens flare of the game a keyframe can name by `sun`: `suns.ltx`'s sections, and on OpenXRay any `system.ltx`
+   * one a keyframe names in their place.
+   */
+  suns: Array<string>;
 };
 
 /** A detail model the weather draws, rain's splash or a thunderbolt: its mesh and the texture it draws with. */

@@ -27,6 +27,7 @@ export interface INativeViewSwitches extends Pick<
   | "isSpawnedProps"
   | "isSpawnedReleased"
   | "isSpawnedWeapons"
+  | "isSunShafted"
   | "isThundering"
   | "isWallmarked"
   | "isWindy"
@@ -54,6 +55,7 @@ export const NO_NATIVE_VIEW_SWITCHES: INativeViewSwitches = {
   isSpawnedProps: true,
   isSpawnedReleased: false,
   isSpawnedWeapons: true,
+  isSunShafted: false,
   isThundering: false,
   isWallmarked: true,
   isWaterVisible: false,
@@ -116,6 +118,7 @@ export function toNativeViewOptions(
     isSpawnedProps: switches.isSpawnedProps,
     isSpawnedReleased: switches.isSpawnedReleased,
     isSpawnedWeapons: switches.isSpawnedWeapons,
+    isSunShafted: switches.isSunShafted,
     isThundering: switches.isThundering,
     isWallmarked: switches.isWallmarked,
     isWindy: switches.isWindy,

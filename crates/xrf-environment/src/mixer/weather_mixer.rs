@@ -126,6 +126,7 @@ impl WeatherMixer<'_> {
       tree_speed: scalar(a.tree_speed, b.tree_speed),
       tree_wave: to_array(&vector(&a.tree_wave, &b.tree_wave)),
       water_intensity: scalar(a.water_intensity, b.water_intensity),
+      sun_shafts_intensity: scalar(a.sun_shafts_intensity, b.sun_shafts_intensity),
       thunderbolt_collection: if f < 0.5 {
         &a.thunderbolt_collection
       } else {

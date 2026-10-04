@@ -35,6 +35,8 @@ pub struct WeatherMix {
   /// Normalised, the way sunlight travels, in engine space.
   pub sun_direction: [f32; 3],
   pub water_intensity: f32,
+  /// `sun_shafts_intensity`: how dense the light shafts through the sun's shadow are.
+  pub sun_shafts_intensity: f32,
   pub rain_density: f32,
   pub rain_color: [f32; 3],
   pub wind_velocity: f32,
@@ -80,6 +82,7 @@ impl WeatherMix {
       tree_speed: self.tree_speed,
       tree_wave: self.tree_wave,
       water_intensity: self.water_intensity,
+      sun_shafts_intensity: self.sun_shafts_intensity,
       wind_direction: self.wind_direction,
       wind_velocity: self.wind_velocity,
       ..heavier.clone()

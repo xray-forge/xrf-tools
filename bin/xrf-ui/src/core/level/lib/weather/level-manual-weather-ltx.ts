@@ -46,6 +46,8 @@ export function toLevelManualWeatherLtx(input: ILevelManualWeatherLtxInput): str
     [LEVEL_MANUAL_WEATHER_KEYS.windDirection, toNumber(manual.windDirection)],
     [LEVEL_MANUAL_WEATHER_KEYS.hemisphereColor, toList(manual.hemisphereColor)],
     [LEVEL_MANUAL_WEATHER_KEYS.sunColor, toList(manual.sunColor)],
+    [LEVEL_MANUAL_WEATHER_KEYS.sun, manual.sun],
+    [LEVEL_MANUAL_WEATHER_KEYS.sunShaftsIntensity, toNumber(manual.sunShaftsIntensity)],
     [LEVEL_MANUAL_WEATHER_KEYS.ambientColor, toList(manual.ambientColor)],
     [LEVEL_MANUAL_WEATHER_KEYS.waterIntensity, toNumber(manual.waterIntensity)],
     [LEVEL_MANUAL_WEATHER_KEYS.thunderboltCollection, manual.thunderboltCollection],

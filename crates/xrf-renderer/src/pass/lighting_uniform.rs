@@ -36,6 +36,9 @@ pub struct LightingUniform {
   /// The sun's sprite colour times how far it has faded in, then half its side as a share of the distance it stands
   /// at; zero where none is drawn.
   pub sun_sprite: Vec4,
+  /// The sun shafts' density, then the steps along a ray `accum_volumetric_sun` takes at its highest quality; nothing
+  /// where they are not drawn.
+  pub shafts: Vec4,
 }
 
 impl LightingUniform {
@@ -88,6 +91,19 @@ impl LightingUniform {
       forward_ambient: lighting.ambient_color.extend(0.0),
       forward_hemi: lighting.hemisphere_color.extend(0.0),
       sun_sprite: frame.sun_sprite,
+      shafts: if options.is_sun_shafted && options.is_lit {
+        Vec4::new(lighting.sun_shafts, to_shaft_steps(lighting.engine), 0.0, 0.0)
+      } else {
+        Vec4::ZERO
+      },
     }
+  }
+}
+
+/// Steps along a ray at the highest quality: OpenXRay's `accum_volumetric_sun` takes 40, Monolith's 30.
+fn to_shaft_steps(engine: XrayEngine) -> f32 {
+  match engine {
+    XrayEngine::Vanilla => 40.0,
+    XrayEngine::Extended => 30.0,
   }
 }

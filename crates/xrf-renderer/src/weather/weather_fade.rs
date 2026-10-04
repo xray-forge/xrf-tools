@@ -45,6 +45,7 @@ pub fn to_faded_lighting(from: &RenderLighting, to: &RenderLighting, progress: f
       (_, trees) => trees,
     },
     water_intensity: lerp(from.water_intensity, to.water_intensity),
+    sun_shafts: lerp(from.sun_shafts, to.sun_shafts),
     rain: fade_rain(from.rain, to.rain, t),
     engine: to.engine,
     thunderbolt: to.thunderbolt.clone(),
