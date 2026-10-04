@@ -267,6 +267,7 @@ impl RenderLevelSource for LevelRenderSource {
         .map(|object| RenderSpawnObject {
           index: object.index,
           category: to_render_category(object.category),
+          is_released: object.release.is_some(),
           visual: object.visual,
           transform: to_matrix(&object.transform),
         })

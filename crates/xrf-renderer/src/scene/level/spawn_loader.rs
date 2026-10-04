@@ -181,7 +181,11 @@ fn send_models(
         object: object.index,
         transform: Mat4::from_cols_array(&object.transform),
         lighting: lighting.get(&object.index).copied(),
-        group: object.category.get_group(),
+        group: if object.is_released {
+          object.category.get_released_group()
+        } else {
+          object.category.get_group()
+        },
       })
       .collect();
     let packed: StaticModel = StaticModel::pack_at(

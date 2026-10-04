@@ -3,6 +3,7 @@ pub(crate) mod ambient_occlusion_uniform;
 pub(crate) mod camera_uniform;
 pub(crate) mod combine_pass;
 pub(crate) mod composited_pass;
+pub(crate) mod compute_grid;
 pub(crate) mod depth_pyramid_pass;
 pub(crate) mod exposure_pass;
 pub(crate) mod exposure_uniform;

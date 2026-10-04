@@ -3,6 +3,7 @@ use xrf_spawn::ClsId;
 use xrf_visual::VisualTransform;
 
 use crate::plugins::levels::state::selection::level_spawn_category::LevelSpawnCategory;
+use crate::plugins::levels::state::selection::level_spawn_release::LevelSpawnRelease;
 
 /// One spawned object the viewer draws: what it is, where it stands, and which visual it stands as.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -17,6 +18,8 @@ pub struct LevelSpawnObject {
   /// Absent for an object without one (`INVALID_STORY_ID`).
   pub story_id: Option<u32>,
   pub category: LevelSpawnCategory,
+  /// Why a new game releases it, absent for an object it keeps; a released one is drawn only when asked.
+  pub release: Option<LevelSpawnRelease>,
   /// The visual, by its index among the description's visuals.
   pub visual: u32,
   /// The object's `XFORM`, in renderer space.

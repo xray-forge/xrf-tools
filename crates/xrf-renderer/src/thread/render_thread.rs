@@ -12,6 +12,7 @@ use crate::contract::render_level_problems::RenderLevelProblems;
 use crate::contract::render_rect::RenderRect;
 use crate::contract::render_scale::RenderScale;
 use crate::contract::render_settings::RenderSettings;
+use crate::contract::render_surface_color::RenderSurfaceColor;
 use crate::contract::render_surface_geometry::RenderSurfaceGeometry;
 use crate::contract::render_texture_report::RenderTextureReport;
 use crate::contract::render_view_options::RenderViewOptions;
@@ -604,7 +605,7 @@ impl RenderThread {
         0.0
       };
       let switches: Vec4 = Vec4::new(
-        options.is_textured as u32 as f32,
+        f32::from(u8::from(options.surface_color == RenderSurfaceColor::Textured)),
         options.is_bumped as u32 as f32,
         options.hemi_strength,
         distortion,
@@ -641,6 +642,7 @@ impl RenderThread {
         queue,
         &CameraUniform::new(&drawn, drawn_rect, switches)
           .with_wireframe(options.is_wireframe)
+          .with_surface_color(options.surface_color)
           .with_motion(motion)
           .with_asset_view(&options, drawn_rect.height as f32 / rect.height.max(1) as f32),
       );

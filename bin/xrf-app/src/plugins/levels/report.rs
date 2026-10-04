@@ -229,7 +229,7 @@ pub fn report_spawn(level: &str, file: &str, read: &SpawnLevelObjects, started: 
 /// How many of a level's spawned objects are left out as a new game releases them.
 pub fn report_new_game_releases(level: &str, released: usize) {
   if released > 0 {
-    log::info!("Left out {released} spawned objects of {level} that a new game releases");
+    log::info!("Marked {released} spawned objects of {level} that a new game releases");
   }
 }
 

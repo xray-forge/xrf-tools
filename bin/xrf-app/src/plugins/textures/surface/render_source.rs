@@ -208,6 +208,7 @@ impl RenderLevelSource for TextureRenderSource {
       objects: vec![RenderSpawnObject {
         index: BODY_OBJECT,
         category: RenderSpawnCategory::Props,
+        is_released: false,
         visual: 0,
         transform: self.get_transform(),
       }],

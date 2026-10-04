@@ -24,4 +24,9 @@ impl RenderSpawnCategory {
       RenderSpawnCategory::Lamps => 4,
     }
   }
+
+  /// The visibility group its objects a new game releases are culled by, apart from the ones it keeps.
+  pub const fn get_released_group(self) -> u32 {
+    self.get_group() + 4
+  }
 }

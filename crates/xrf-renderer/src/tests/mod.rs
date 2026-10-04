@@ -1,4 +1,5 @@
 mod cameras;
+mod compute_grid;
 mod frame_statistics;
 mod fsr;
 mod grass;

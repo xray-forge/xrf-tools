@@ -91,6 +91,8 @@ impl FlyCameraController {
       RenderInputKind::PointerDown if event.is_primary && event.button == 0 => {
         self.dragged = Some((event.pointer_id, event.x, event.y));
       }
+      // A move with no button held ends a drag whose release never arrived, rather than turning on a plain hover.
+      RenderInputKind::PointerMove if event.buttons == 0 => self.dragged = None,
       RenderInputKind::PointerMove => {
         if let Some((id, x, y)) = self.dragged
           && id == event.pointer_id
