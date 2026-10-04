@@ -16,4 +16,7 @@ pub struct RenderSky {
   /// `sky_rotation`, in radians about the vertical.
   pub rotation: f32,
   pub clouds: RenderClouds,
+  /// The lens flare the nearer keyframe names by `sun`, as `CEnvDescriptorMixer::lerp` takes it; none for one naming
+  /// none.
+  pub sun: Option<String>,
 }

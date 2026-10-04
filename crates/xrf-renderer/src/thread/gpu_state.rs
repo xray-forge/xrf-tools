@@ -9,6 +9,7 @@ use crate::pass::combine_pass::CombinePass;
 use crate::pass::composited_pass::CompositedPass;
 use crate::pass::depth_pyramid_pass::DepthPyramidPass;
 use crate::pass::exposure_pass::ExposurePass;
+use crate::pass::flare_pass::FlarePass;
 use crate::pass::fsr_pass::FsrPass;
 use crate::pass::fxaa_pass::FxaaPass;
 use crate::pass::grass_pass::GrassPass;
@@ -55,6 +56,7 @@ pub struct GpuState {
   pub rain: RainPass,
   pub wet: WetPass,
   pub thunder: ThunderPass,
+  pub flares: FlarePass,
   pub temporal: TemporalPass,
   pub fsr: FsrPass,
   pub fxaa: FxaaPass,
@@ -120,6 +122,7 @@ impl GpuState {
       rain: RainPass::new(device, shaders, &view_layout)?,
       wet: WetPass::new(device, shaders, &view_layout)?,
       thunder: ThunderPass::new(device, shaders, &view_layout)?,
+      flares: FlarePass::new(device, shaders, &view_layout)?,
       temporal: TemporalPass::new(device, shaders, &view_layout)?,
       fsr: FsrPass::new(device, shaders)?,
       fxaa: FxaaPass::new(device, shaders)?,
@@ -187,6 +190,7 @@ impl GpuState {
       rain: &self.rain,
       wet: &self.wet,
       thunder: &self.thunder,
+      flares: &self.flares,
       temporal: &self.temporal,
       fsr: &self.fsr,
       fxaa: &self.fxaa,
@@ -222,6 +226,7 @@ impl GpuState {
     self.rain.refresh(device, shaders);
     self.wet.refresh(device, shaders);
     self.thunder.refresh(device, shaders);
+    self.flares.refresh(device, shaders);
     self.temporal.refresh(device, shaders);
     self.fsr.refresh(device, shaders);
     self.fxaa.refresh(device, shaders);

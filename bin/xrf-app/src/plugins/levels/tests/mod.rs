@@ -1,4 +1,5 @@
 mod console_defaults;
+mod lens_flares;
 mod level_start;
 mod new_game;
 mod spawn_lighting;

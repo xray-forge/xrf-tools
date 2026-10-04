@@ -9,6 +9,8 @@ pub(crate) mod compute_grid;
 pub(crate) mod depth_pyramid_pass;
 pub(crate) mod exposure_pass;
 pub(crate) mod exposure_uniform;
+pub(crate) mod flare_pass;
+pub(crate) mod flare_uniform;
 pub(crate) mod fsr_groups;
 pub(crate) mod fsr_pass;
 pub(crate) mod fsr_uniform;

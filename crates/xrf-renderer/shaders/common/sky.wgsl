@@ -13,6 +13,8 @@
 // Linear and clamped, as a script binds a sky; linear, repeating and trilinear, as the clouds tile.
 @group(2) @binding(6) var sky_clamp: sampler;
 @group(2) @binding(7) var sky_repeat: sampler;
+// The sun's sprite the lens flare draws in the sky (`sun_texture`).
+@group(2) @binding(9) var sky_sun: texture_2d<f32>;
 
 const SKY_PI: f32 = 3.14159265;
 
@@ -130,6 +132,29 @@ fn sky_with_clouds(state: Lighting, direction: vec3<f32>, below: vec3<f32>, scal
   let cover: f32 = saturate(color.a * pow(max(dome.y, 0.0), CLOUD_FADE));
 
   return mix(below, color.rgb * scale, cover);
+}
+
+// The sun's sprite along a view space direction, as `dxLensFlareRender` adds it to the sky before the clouds: a quad
+// facing the view about where the sun stands on a plane ahead of the camera, its first texel to the right and up,
+// times the sun's colour and alpha, `srcalpha, one`.
+fn sky_sun_sprite(state: Lighting, toward: vec3<f32>) -> vec3<f32> {
+  let sprite: vec4<f32> = state.sun_sprite;
+  let sun_ahead: f32 = -state.to_sun.z;
+  let ahead: f32 = -toward.z;
+
+  if (sprite.w <= 0.0 || sun_ahead <= 0.01 || ahead <= 0.0) {
+    return vec3<f32>(0.0);
+  }
+
+  let offset: vec2<f32> = (toward.xy / ahead - state.to_sun.xy / sun_ahead) / sprite.w;
+
+  if (any(abs(offset) >= vec2<f32>(1.0))) {
+    return vec3<f32>(0.0);
+  }
+
+  let texel: vec4<f32> = textureSampleLevel(sky_sun, sky_clamp, (1.0 - offset) * 0.5, 0.0);
+
+  return texel.rgb * texel.a * sprite.rgb;
 }
 
 // The sky with its clouds along a world direction, as the frame shows it.

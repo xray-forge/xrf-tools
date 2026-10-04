@@ -79,6 +79,7 @@ use crate::pass::view_light_groups::ViewLightGroups;
 use crate::pass::water_uniform::WaterUniform;
 use crate::pass::wet_uniform::WetUniform;
 use crate::pass::wind_uniform::WindUniform;
+use crate::scene::level::level_flares::LevelFlares;
 use crate::scene::level::level_grass::LevelGrass;
 use crate::scene::level::level_lights::LevelLights;
 use crate::scene::level::level_loader::LevelLoader;
@@ -114,7 +115,7 @@ const MODELS_PER_FRAME: usize = 16;
 
 /// What a sky's bind group binds: the weather textures' generation, the references of its six slots, and how many
 /// environment cubes.
-type SkyGroupKey = (u64, [Option<String>; 6], usize);
+type SkyGroupKey = (u64, [Option<String>; 7], usize);
 
 /// A level drawn in one viewport: read by its loader, held on the GPU, drawn into the viewport's G-buffer and lit.
 pub struct LevelView {
@@ -234,6 +235,10 @@ pub struct LevelView {
   thunder_groups: Option<((u64, usize, String), [wgpu::BindGroup; 3])>,
   /// This frame's strike: how its model and glows composite and the model's indices, none while none strikes.
   thunder_draw: Option<([XraySurfaceDraw; 3], u32)>,
+  /// The sun's sprite, lens flares and gradient.
+  flares: LevelFlares,
+  /// The sun's sprite as this frame's sky draws it: its texture, and its colour and radius.
+  frame_sun_sprite: Option<(String, Vec4)>,
   /// When the level was first shown, which the clouds drift from.
   started: Instant,
   shadows: LevelShadows,
@@ -358,6 +363,8 @@ impl LevelView {
       no_model: WeatherModelBuffers::new(device, None),
       thunder_groups: None,
       thunder_draw: None,
+      flares: LevelFlares::new(device),
+      frame_sun_sprite: None,
       started: Instant::now(),
       shadows: LevelShadows::new(device),
       lights_settings: RenderLightsSettings::default(),
@@ -432,6 +439,7 @@ impl LevelView {
     }
 
     if options.is_lit && options.is_sky_visible {
+      self.flares.request((lighting, weather), weather_textures, &assets);
       weather_textures.request_sky(&lighting.sky, options.is_clouded, &assets);
     } else {
       // The irradiance cubes light the hemisphere whether or not the sky is drawn.
@@ -525,6 +533,7 @@ impl LevelView {
     options: &RenderViewOptions,
     (lighting, weather): (&RenderLighting, Option<&Arc<RenderLevelWeather>>),
     weather_textures: &WeatherTextureCache,
+    weather_rate: f32,
   ) {
     if !self.targets.as_ref().is_some_and(|it| it.is_sized(width, height)) {
       let targets: ViewTargets = ViewTargets::new(device, width, height);
@@ -618,6 +627,17 @@ impl LevelView {
 
     self.exposure.prepare(queue, &options.exposure, Instant::now());
 
+    self.frame_sun_sprite = self.flares.prepare(
+      device,
+      queue,
+      passes.flares,
+      (lighting, weather),
+      options,
+      weather_textures,
+      (view, weather_rate),
+      (self.targets.as_ref(), self.targets_epoch, &self.shadows),
+    );
+
     let sky = &lighting.sky;
     let sky_key: SkyGroupKey = (
       weather_textures.get_generation(),
@@ -628,6 +648,7 @@ impl LevelView {
         sky.environments[1].clone(),
         sky.clouds.textures[0].clone(),
         sky.clouds.textures[1].clone(),
+        self.frame_sun_sprite.as_ref().map(|(texture, _)| texture.clone()),
       ],
       self.environments.len(),
     );
@@ -635,9 +656,12 @@ impl LevelView {
     if self.sky_group.as_ref().is_none_or(|(key, _)| *key != sky_key) {
       self.sky_group = Some((
         sky_key,
-        passes
-          .sky
-          .create_bind_group(device, weather_textures, sky, &self.environments),
+        passes.sky.create_bind_group(
+          device,
+          weather_textures,
+          (sky, self.frame_sun_sprite.as_ref().map(|(texture, _)| texture.as_str())),
+          &self.environments,
+        ),
       ));
       self.sky_version += 1;
     }
@@ -705,6 +729,11 @@ impl LevelView {
         .iter()
         .all(|reference| reference.as_deref().is_some_and(|it| weather_textures.is_up(it))),
       clouds_time: self.started.elapsed().as_secs_f32(),
+      sun_sprite: self
+        .frame_sun_sprite
+        .as_ref()
+        .filter(|(texture, _)| weather_textures.is_up(texture))
+        .map_or(Vec4::ZERO, |(_, sprite)| *sprite),
     };
 
     self.is_hazing = options.is_lit && options.is_sky_visible && options.is_sky_hazed;
@@ -1173,6 +1202,9 @@ impl LevelView {
         passes.thunder.draw(encoder, targets, view, thunder_groups, draws);
         timer.mark(encoder, "thunder");
       }
+
+      self.flares.record(encoder, passes.flares, targets, view);
+      timer.mark(encoder, "flares");
 
       if let Some(smoothing) = &self.smoothing {
         let target: &SmoothingTarget = &smoothing.target;

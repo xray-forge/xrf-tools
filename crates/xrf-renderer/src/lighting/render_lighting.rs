@@ -133,6 +133,7 @@ impl Default for RenderLighting {
           color: Vec4::ZERO,
           rotation: 0.0,
         },
+        sun: None,
       },
       trees: Some(RenderTreeWind::default()),
       water_intensity: 1.0,

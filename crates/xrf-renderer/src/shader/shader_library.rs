@@ -35,6 +35,7 @@ const EMBEDDED: &[(&str, &str)] = &[
     "common/rain_cover",
     include_str!("../../shaders/common/rain_cover.wgsl"),
   ),
+  ("common/flares", include_str!("../../shaders/common/flares.wgsl")),
   ("common/sky", include_str!("../../shaders/common/sky.wgsl")),
   (
     "common/sun_shadow",
@@ -97,6 +98,11 @@ const EMBEDDED: &[(&str, &str)] = &[
   ("frame/smaa", include_str!("../../shaders/frame/smaa.wgsl")),
   ("frame/sun", include_str!("../../shaders/frame/sun.wgsl")),
   ("frame/temporal", include_str!("../../shaders/frame/temporal.wgsl")),
+  ("frame/flare", include_str!("../../shaders/frame/flare.wgsl")),
+  (
+    "frame/flare_visibility",
+    include_str!("../../shaders/frame/flare_visibility.wgsl"),
+  ),
   ("frame/thunder", include_str!("../../shaders/frame/thunder.wgsl")),
   ("frame/upscale", include_str!("../../shaders/frame/upscale.wgsl")),
   ("frame/wet_apply", include_str!("../../shaders/frame/wet_apply.wgsl")),

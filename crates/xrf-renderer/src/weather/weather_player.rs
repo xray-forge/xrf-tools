@@ -121,6 +121,15 @@ impl WeatherPlayer {
     self.is_changed = true;
   }
 
+  /// Game seconds the clock runs a real second: its factor, or zero while it is paused.
+  pub fn get_clock_rate(&self) -> f32 {
+    if self.control.is_paused {
+      0.0
+    } else {
+      self.control.factor
+    }
+  }
+
   /// A forced start from a time of day, which ends the effect playing.
   pub fn seek(&mut self, time: f32) {
     self.time = WeatherTime::of_day(time);
