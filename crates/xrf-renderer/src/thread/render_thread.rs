@@ -21,6 +21,7 @@ use crate::contract::render_view_options::RenderViewOptions;
 use crate::contract::render_viewport_id::RenderViewportId;
 use crate::frame::frame_capture::capture_frame;
 use crate::host::render_asset_source::RenderAssetSource;
+use crate::host::render_bundle::RenderBundle;
 use crate::host::render_window_host::RenderWindowHost;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::pass::backdrop_uniform::BackdropUniform;
@@ -65,6 +66,8 @@ pub struct RenderThread {
   link: Arc<Mutex<RenderLink>>,
   settings: RenderSettings,
   workers: RenderWorkers,
+  /// The files the renderer ships with, which the GPU's passes read when it starts.
+  bundle: Arc<dyn RenderBundle>,
   shaders: ShaderLibrary,
   gpu: Option<GpuState>,
   /// Why the GPU last failed to start, and when.
@@ -90,6 +93,7 @@ impl RenderThread {
     link: Arc<Mutex<RenderLink>>,
     settings: RenderSettings,
     workers: RenderWorkers,
+    bundle: Arc<dyn RenderBundle>,
   ) -> Self {
     let now: Instant = Instant::now();
 
@@ -98,6 +102,7 @@ impl RenderThread {
       link,
       settings,
       workers,
+      bundle,
       shaders: ShaderLibrary::default(),
       gpu: None,
       failure: None,
@@ -413,7 +418,7 @@ impl RenderThread {
     }
 
     match GpuContext::create(RenderBackend::from_environment())
-      .and_then(|context| GpuState::new(context, &self.shaders, &self.workers))
+      .and_then(|context| GpuState::new(context, &self.shaders, &self.workers, self.bundle.as_ref()))
     {
       Ok(gpu) => {
         self.gpu = Some(gpu);

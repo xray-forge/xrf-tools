@@ -1,7 +1,7 @@
 //! The native renderer: one GPU and one render thread drawing viewports into the application's windows.
 //!
 //! It takes what it draws in memory and never opens a file, and knows nothing of the application hosting it beyond
-//! [`RenderWindowHost`] and [`RenderEventSink`].
+//! [`RenderWindowHost`], [`RenderEventSink`] and the [`RenderBundle`] of files it ships with.
 
 pub(crate) mod camera;
 pub(crate) mod context;
@@ -93,6 +93,7 @@ pub use crate::contract::render_weather_transition::RenderWeatherTransition;
 pub use crate::host::render_ambient::RenderAmbient;
 pub use crate::host::render_ambient_effect::RenderAmbientEffect;
 pub use crate::host::render_asset_source::RenderAssetSource;
+pub use crate::host::render_bundle::{RENDER_BUNDLE_SOURCE, RenderBundle};
 pub use crate::host::render_event_sink::RenderEventSink;
 pub use crate::host::render_flare::RenderFlare;
 pub use crate::host::render_lens_flare::RenderLensFlare;

@@ -1,6 +1,7 @@
 pub(crate) mod render_ambient;
 pub(crate) mod render_ambient_effect;
 pub(crate) mod render_asset_source;
+pub(crate) mod render_bundle;
 pub(crate) mod render_event_sink;
 pub(crate) mod render_flare;
 pub(crate) mod render_lens_flare;

@@ -1,8 +1,11 @@
+use std::sync::Arc;
+
 use tauri::plugin::{Builder, TauriPlugin};
 use tauri::{Manager, Runtime};
 use xrf_renderer::RenderWorkers;
 
 use crate::core::execution::ExecutionState;
+use crate::plugins::render::packaged_bundle::PackagedBundle;
 use crate::plugins::render::state::RenderState;
 
 pub struct RenderPlugin {}
@@ -17,8 +20,9 @@ impl RenderPlugin {
       .setup(|application, _| {
         // The renderer's loaders run on the application's one pool, beside every other job.
         let workers: RenderWorkers = RenderWorkers::new(application.state::<ExecutionState>().get_pool());
+        let bundle: PackagedBundle = PackagedBundle::locate(application.path().resource_dir().ok().as_deref());
 
-        application.manage(RenderState::new(workers));
+        application.manage(RenderState::new(workers, Arc::new(bundle)));
 
         Ok(())
       })

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
-use xrf_renderer::{RenderLevelSource, RenderViewportId, RenderWorkers, Renderer};
+use xrf_renderer::{RenderBundle, RenderLevelSource, RenderViewportId, RenderWorkers, Renderer};
 
 /// The application's one renderer, which starts a GPU only once a viewport is attached.
 pub struct RenderState {
@@ -11,10 +11,10 @@ pub struct RenderState {
 }
 
 impl RenderState {
-  /// A renderer whose loaders read and decode on `workers`.
-  pub fn new(workers: RenderWorkers) -> Self {
+  /// A renderer whose loaders read and decode on `workers`, reading the files it ships with from `bundle`.
+  pub fn new(workers: RenderWorkers, bundle: Arc<dyn RenderBundle>) -> Self {
     Self {
-      renderer: Renderer::new(workers),
+      renderer: Renderer::new(workers, bundle),
       shows: Mutex::default(),
     }
   }

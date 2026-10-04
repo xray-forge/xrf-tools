@@ -1381,9 +1381,9 @@ impl LevelView {
       if let Some(smoothing) = &self.smoothing {
         let target: &SmoothingTarget = &smoothing.target;
 
-        match &smoothing.smaa {
-          Some(smaa) => passes.smaa.draw(encoder, smaa, &smoothing.groups, &target.view),
-          None => passes.fxaa.draw(encoder, &smoothing.groups[0], &target.view),
+        match (&smoothing.smaa, passes.smaa) {
+          (Some(smaa), Some(pass)) => pass.draw(encoder, smaa, &smoothing.groups, &target.view),
+          _ => passes.fxaa.draw(encoder, &smoothing.groups[0], &target.view),
         }
 
         encoder.copy_texture_to_texture(
@@ -1712,6 +1712,11 @@ impl LevelView {
 
   /// Makes the smoothing pass's targets while one smooths the frame as drawn, dropping them otherwise.
   fn prepare_smoothing(&mut self, device: &wgpu::Device, passes: LevelPasses<'_>, mode: RenderAntialiasing) {
+    // SMAA whose lookup textures could not be read smooths as FXAA does, which needs none.
+    let mode: RenderAntialiasing = match (mode, passes.smaa) {
+      (RenderAntialiasing::Smaa, None) => RenderAntialiasing::Fxaa,
+      _ => mode,
+    };
     let is_smoothed: bool = matches!(mode, RenderAntialiasing::Fxaa | RenderAntialiasing::Smaa);
     let Some(targets) = self
       .targets
@@ -1729,13 +1734,14 @@ impl LevelView {
       .is_none_or(|it| it.epoch != self.targets_epoch || it.mode != mode)
     {
       let target: SmoothingTarget = SmoothingTarget::new(device, targets.width, targets.height, ViewTargets::SCENE);
-      let (smaa, groups): (Option<SmaaTargets>, Vec<wgpu::BindGroup>) = if mode == RenderAntialiasing::Smaa {
-        let smaa: SmaaTargets = SmaaTargets::new(device, targets.width, targets.height);
-        let groups: [wgpu::BindGroup; 3] = passes.smaa.create_bind_groups(device, targets, &smaa);
+      let (smaa, groups): (Option<SmaaTargets>, Vec<wgpu::BindGroup>) = match (mode, passes.smaa) {
+        (RenderAntialiasing::Smaa, Some(pass)) => {
+          let smaa: SmaaTargets = SmaaTargets::new(device, targets.width, targets.height);
+          let groups: [wgpu::BindGroup; 3] = pass.create_bind_groups(device, targets, &smaa);
 
-        (Some(smaa), groups.into())
-      } else {
-        (None, vec![passes.fxaa.create_bind_group(device, targets)])
+          (Some(smaa), groups.into())
+        }
+        _ => (None, vec![passes.fxaa.create_bind_group(device, targets)]),
       };
 
       self.smoothing = Some(LevelSmoothing {

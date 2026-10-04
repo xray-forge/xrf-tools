@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use xrf_error::XrfResult;
 
 use crate::context::gpu_context::GpuContext;
+use crate::host::render_bundle::RenderBundle;
 use crate::pass::ambient_occlusion_pass::AmbientOcclusionPass;
 use crate::pass::backdrop_pass::BackdropPass;
 use crate::pass::combine_pass::CombinePass;
@@ -65,7 +66,8 @@ pub struct GpuState {
   pub temporal: TemporalPass,
   pub fsr: FsrPass,
   pub fxaa: FxaaPass,
-  pub smaa: SmaaPass,
+  /// None where its lookup textures could not be read.
+  pub smaa: Option<SmaaPass>,
   pub upscale: UpscalePass,
   pub static_cull: StaticCullPass,
   pub static_gbuffer: StaticGBufferPass,
@@ -89,7 +91,12 @@ impl GpuState {
   /// # Errors
   ///
   /// Returns an error when a pass's shaders do not compose or compile.
-  pub fn new(context: GpuContext, shaders: &ShaderLibrary, workers: &RenderWorkers) -> XrfResult<Self> {
+  pub fn new(
+    context: GpuContext,
+    shaders: &ShaderLibrary,
+    workers: &RenderWorkers,
+    bundle: &dyn RenderBundle,
+  ) -> XrfResult<Self> {
     let device: &wgpu::Device = &context.device;
     let view_layout: wgpu::BindGroupLayout = ViewBinding::create_layout(device);
     let textures: TextureCache = TextureCache::new(device, &context.queue, workers);
@@ -133,7 +140,9 @@ impl GpuState {
       temporal: TemporalPass::new(device, shaders, &view_layout)?,
       fsr: FsrPass::new(device, shaders)?,
       fxaa: FxaaPass::new(device, shaders)?,
-      smaa: SmaaPass::new(device, &context.queue, shaders)?,
+      smaa: SmaaPass::new(device, &context.queue, shaders, bundle)
+        .inspect_err(|error| log::error!("SMAA cannot be built, smoothing as FXAA does instead: {error}"))
+        .ok(),
       upscale: UpscalePass::new(device, shaders)?,
       static_cull: StaticCullPass::new(device, shaders, &view_layout)?,
       static_gbuffer,
@@ -203,7 +212,7 @@ impl GpuState {
       temporal: &self.temporal,
       fsr: &self.fsr,
       fxaa: &self.fxaa,
-      smaa: &self.smaa,
+      smaa: self.smaa.as_ref(),
       upscale: &self.upscale,
       exposure: &self.exposure,
       present: &self.present,
@@ -241,7 +250,9 @@ impl GpuState {
     self.temporal.refresh(device, shaders);
     self.fsr.refresh(device, shaders);
     self.fxaa.refresh(device, shaders);
-    self.smaa.refresh(device, shaders);
+    if let Some(smaa) = &mut self.smaa {
+      smaa.refresh(device, shaders);
+    }
     self.upscale.refresh(device, shaders);
     self.exposure.refresh(device, shaders);
     self.present.refresh(shaders);

@@ -19,6 +19,7 @@ mod sun_cascade;
 mod sun_shafts;
 mod surface_tally;
 mod temporal;
+pub(crate) mod test_bundle;
 pub(crate) mod test_workers;
 mod texture_cache;
 mod texture_role;

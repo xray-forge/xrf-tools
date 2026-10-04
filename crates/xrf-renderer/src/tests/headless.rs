@@ -7,6 +7,7 @@ use crate::pass::camera_uniform::CameraUniform;
 use crate::pass::grid_pass::GridPass;
 use crate::pass::view_binding::ViewBinding;
 use crate::shader::shader_library::ShaderLibrary;
+use crate::tests::test_bundle::TestBundle;
 use crate::tests::test_workers::create_workers;
 use crate::thread::gpu_state::GpuState;
 
@@ -155,7 +156,34 @@ fn builds_every_pass() {
   };
   let shaders: ShaderLibrary = ShaderLibrary::default();
 
-  if let Err(error) = GpuState::new(context, &shaders, &create_workers()) {
-    panic!("A pass cannot be built: {error}");
+  match GpuState::new(context, &shaders, &create_workers(), &TestBundle::checkout()) {
+    Ok(gpu) => assert!(
+      gpu.smaa.is_some(),
+      "SMAA reads its lookup textures from the checkout's bundle"
+    ),
+    Err(error) => panic!("A pass cannot be built: {error}"),
+  }
+}
+
+/// A bundle missing SMAA's lookup textures leaves SMAA out, and the frame smooths as FXAA does, rather than failing the
+/// GPU.
+#[test]
+fn builds_without_what_the_bundle_lacks() {
+  let Ok(context) =
+    GpuContext::create_headless(RenderBackend::D3d12).or_else(|_| GpuContext::create_headless(RenderBackend::Vulkan))
+  else {
+    eprintln!("Skipped: no GPU to draw with");
+
+    return;
+  };
+
+  match GpuState::new(
+    context,
+    &ShaderLibrary::default(),
+    &create_workers(),
+    &TestBundle::empty(),
+  ) {
+    Ok(gpu) => assert!(gpu.smaa.is_none()),
+    Err(error) => panic!("A missing bundled file failed the GPU: {error}"),
   }
 }
