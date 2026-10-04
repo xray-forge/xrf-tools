@@ -8,6 +8,8 @@ pub enum RenderParticleSource {
   /// A campfire (`CZoneCampfire`): its idle effect while lit, `disabled_particles` while out, and
   /// `enabling_particles` once as it is lit.
   Campfire {
+    /// Its spawned object's id, which its idle light names too.
+    id: u16,
     idle: String,
     disabled: String,
     enabling: String,

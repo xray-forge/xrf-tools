@@ -374,6 +374,7 @@ fn sections() -> Ltx {
   Ltx::read_from_str(
     r"
 [campfire]
+class = Z_CFIRE
 idle_light = on
 idle_light_range = 8
 idle_light_anim = koster_00
@@ -429,6 +430,7 @@ fn lights_a_zone_its_section_lights_over_it_by_its_animation_alone() {
   for section in ["campfire", "zone_quiet", "zone_unanimated"] {
     let mut zone: AlifeObject = object(section, lamp(FLAG_R2, 0));
 
+    zone.id = 7;
     zone.section = String::from(section);
     packer.add_zone(&zone);
   }
@@ -447,6 +449,8 @@ fn lights_a_zone_its_section_lights_over_it_by_its_animation_alone() {
   assert_eq!(fire.animator_scale, 1.0 / 255.0);
   // `idle_light_shadow` is on unless the section says otherwise.
   assert!(fire.is_shadowed);
+  // A `Z_CFIRE` section's light switches with its campfire.
+  assert_eq!(fire.campfire, Some(7));
 }
 
 // The engine refuses a zone whose animation `LALib` lacks, and a level read without `lanims.xr` lacks every one.
