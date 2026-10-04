@@ -115,7 +115,7 @@ const MODELS_PER_FRAME: usize = 16;
 
 /// What a sky's bind group binds: the weather textures' generation, the references of its six slots, and how many
 /// environment cubes.
-type SkyGroupKey = (u64, [Option<String>; 7], usize);
+type SkyGroupKey = (u64, [Option<String>; 7], u64);
 
 /// A level drawn in one viewport: read by its loader, held on the GPU, drawn into the viewport's G-buffer and lit.
 pub struct LevelView {
@@ -147,8 +147,9 @@ pub struct LevelView {
   draw_groups: Option<(u64, StaticDrawGroups)>,
   /// The lighting passes' bind groups, made again with the targets, and the shadow maps' epoch they bind.
   light_groups: Option<(u64, ViewLightGroups)>,
-  /// The cubes the scene's environment-mapped models mix toward, by environment slot from the second.
-  environments: Vec<String>,
+  /// The cubes the scene's environment-mapped models mix toward, by environment slot from the second, as of the cache's
+  /// generation of them.
+  environments: (u64, Vec<String>),
   /// The sky's textures as bound, with the cache's generation and the references they bind.
   sky_group: Option<(SkyGroupKey, wgpu::BindGroup)>,
   /// Whether this frame blurs the sky into the haze map the distance fades into.
@@ -313,7 +314,7 @@ impl LevelView {
       cull_group: None,
       draw_groups: None,
       light_groups: None,
-      environments: Vec::new(),
+      environments: (0, Vec::new()),
       sky_group: None,
       is_hazing: false,
       is_wallmarked: true,
@@ -451,12 +452,18 @@ impl LevelView {
       }
     }
 
-    if self.environments.len() != textures.list_environments().len() {
-      self.environments = textures.list_environments().to_vec();
+    if self.environments.0 != textures.get_environments_generation() {
+      self.environments = (
+        textures.get_environments_generation(),
+        textures.list_environments().to_vec(),
+      );
     }
 
-    for reference in &self.environments {
-      weather_textures.request(reference, WeatherTextureKind::Cube, &assets);
+    // Only the cubes this scene samples are kept loaded; another scene's are bound as placeholders here.
+    for slot in &self.scene.environment_slots {
+      if let Some(reference) = textures.get_environment(*slot) {
+        weather_textures.request(reference, WeatherTextureKind::Cube, &assets);
+      }
     }
 
     self.lights.poll(textures, &assets);
@@ -659,7 +666,7 @@ impl LevelView {
         sky.clouds.textures[1].clone(),
         self.frame_sun_sprite.as_ref().map(|(texture, _)| texture.clone()),
       ],
-      self.environments.len(),
+      self.environments.0,
     );
 
     if self.sky_group.as_ref().is_none_or(|(key, _)| *key != sky_key) {
@@ -669,7 +676,7 @@ impl LevelView {
           device,
           weather_textures,
           (sky, self.frame_sun_sprite.as_ref().map(|(texture, _)| texture.as_str())),
-          &self.environments,
+          &self.environments.1,
         ),
       ));
       self.sky_version += 1;
@@ -1902,6 +1909,11 @@ impl LevelView {
 
   pub fn get_present_group(&self) -> Option<&wgpu::BindGroup> {
     self.present_group.as_ref().map(|(_, group)| group)
+  }
+
+  /// Every environment slot it samples, so the cubes no scene samples can be freed.
+  pub fn list_environment_slots(&self) -> impl Iterator<Item = u32> + '_ {
+    self.scene.environment_slots.iter().copied()
   }
 
   /// Every texture slot it samples, so the slots no scene samples can be freed.

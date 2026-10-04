@@ -196,11 +196,14 @@ impl ShaderLibrary {
         continue;
       }
 
+      // A file an editor holds mid-save is read again next time, its stamp not yet taken.
+      let Ok(source) = std::fs::read_to_string(&path) else {
+        continue;
+      };
+
       self.stamps.insert(name, stamp);
 
-      if let Ok(source) = std::fs::read_to_string(&path)
-        && self.modules.get(name) != Some(&source)
-      {
+      if self.modules.get(name) != Some(&source) {
         log::info!("Shader module '{name}' changed on disk");
         self.modules.insert(name, source);
         is_changed = true;

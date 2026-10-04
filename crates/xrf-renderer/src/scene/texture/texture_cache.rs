@@ -63,8 +63,11 @@ pub struct TextureCache {
   uploads: VecDeque<(u32, u32, DecodedTexture)>,
   capacity: u32,
   is_dirty: bool,
-  /// The cubes surfaces named as their environment, each slot past the first in turn; loaded as weather textures are.
+  /// The cubes surfaces named as their environment, each slot past the first in turn, empty where freed; loaded as
+  /// weather textures are.
   environments: Vec<String>,
+  /// Counts every change of `environments`, so a view knows to bind them again.
+  environments_generation: u64,
 }
 
 impl TextureCache {
@@ -139,6 +142,7 @@ impl TextureCache {
       capacity,
       is_dirty: false,
       environments: Vec::new(),
+      environments_generation: 0,
     }
   }
 
@@ -228,20 +232,49 @@ impl TextureCache {
       return index as u32 + 1;
     }
 
-    if self.environments.len() as u32 + 1 >= ENVIRONMENT_SLOTS {
-      log::warn!("Environment '{reference}' exceeds the {ENVIRONMENT_SLOTS} the renderer binds at once");
+    let index: usize = match self.environments.iter().position(String::is_empty) {
+      Some(index) => index,
+      None if self.environments.len() as u32 + 1 < ENVIRONMENT_SLOTS => {
+        self.environments.push(String::new());
+        self.environments.len() - 1
+      }
+      None => {
+        log::warn!("Environment '{reference}' exceeds the {ENVIRONMENT_SLOTS} the renderer binds at once");
 
-      return 0;
-    }
+        return 0;
+      }
+    };
 
-    self.environments.push(reference.to_owned());
+    self.environments[index] = reference.to_owned();
+    self.environments_generation += 1;
 
-    self.environments.len() as u32
+    index as u32 + 1
   }
 
-  /// The cubes asked for as environments, by slot from the second.
+  /// The cubes asked for as environments, by slot from the second; a freed slot is empty.
   pub fn list_environments(&self) -> &[String] {
     &self.environments
+  }
+
+  /// The cube an environment slot is sampled from, or `None` for the first slot or a freed one.
+  pub fn get_environment(&self, slot: u32) -> Option<&str> {
+    let reference: &String = self.environments.get((slot as usize).checked_sub(1)?)?;
+
+    (!reference.is_empty()).then_some(reference.as_str())
+  }
+
+  pub fn get_environments_generation(&self) -> u64 {
+    self.environments_generation
+  }
+
+  /// Frees every environment slot no scene samples, so the next cubes asked for take their places.
+  pub fn retain_environments(&mut self, sampled: &HashSet<u32>) {
+    for (index, reference) in self.environments.iter_mut().enumerate() {
+      if !reference.is_empty() && !sampled.contains(&(index as u32 + 1)) {
+        reference.clear();
+        self.environments_generation += 1;
+      }
+    }
   }
 
   /// Of some slots, how many are uploaded or given up on.

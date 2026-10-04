@@ -93,6 +93,8 @@ pub struct StaticScene {
   surface_rows: HashMap<StaticSurfaceKey, Option<(u32, StaticClass)>>,
   /// Every texture slot the scene's surfaces sample, in the order they were first asked for.
   pub texture_slots: BTreeSet<u32>,
+  /// Every environment slot its environment-mapped surfaces sample.
+  pub environment_slots: BTreeSet<u32>,
   surface_count: u32,
   /// Entries of the visible list each batch may need: its clusters, each counted once per place drawing it.
   capacities: [u32; StaticBatch::COUNT],
@@ -207,6 +209,7 @@ impl StaticScene {
       impostor_rows: HashMap::new(),
       surface_rows: HashMap::new(),
       texture_slots: BTreeSet::new(),
+      environment_slots: BTreeSet::new(),
       surface_count: 0,
       capacities: [0; StaticBatch::COUNT],
       sectors: Vec::new(),
@@ -355,8 +358,17 @@ impl StaticScene {
   }
 
   /// How many bones a skinned object's model has, once it is in the scene; none for one rigid or not in it.
-  pub fn get_bone_count(&self, object: u32) -> Option<u32> {
-    self.skinned.get(&object).map(|(_, bones)| *bones)
+  /// Notes the slots a surface samples: its textures, and apart from them its environment cube's.
+  fn note_slots(&mut self, surface: &StaticSurface) {
+    for (index, slot) in surface.textures.iter().enumerate() {
+      if index == StaticSurface::ENVIRONMENT {
+        if *slot != 0 {
+          self.environment_slots.insert(*slot);
+        }
+      } else if *slot != MISSING_SLOT {
+        self.texture_slots.insert(*slot);
+      }
+    }
   }
 
   /// Stands a skinned object in a pose: each bone's matrix as three rows, from its bind to where it stands, this frame
@@ -762,9 +774,7 @@ impl StaticScene {
         row.flags |= StaticSurface::IS_MODEL;
       }
 
-      self
-        .texture_slots
-        .extend(row.textures.iter().filter(|slot| **slot != MISSING_SLOT));
+      self.note_slots(&row);
       writer.surfaces.push(row);
       self.surface_count += 1;
 
@@ -974,9 +984,7 @@ impl StaticScene {
         None => {
           let surface: StaticSurface = build_impostor_surface(&group.surface, textures, source);
 
-          self
-            .texture_slots
-            .extend(surface.textures.iter().filter(|slot| **slot != MISSING_SLOT));
+          self.note_slots(&surface);
           writer.surfaces.push(surface);
           self.surface_count += 1;
           self
