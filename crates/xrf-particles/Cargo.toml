@@ -13,10 +13,12 @@ byteorder = { workspace = true }
 enum-map = "3.1.0"
 log = { workspace = true }
 derive_more = { workspace = true, features = ["display", "from_str"] }
+glam = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 uuid = { workspace = true, features = ["v4", "serde"] }
 xrf-chunk = { workspace = true }
+xrf-engine-target = { workspace = true }
 xrf-error = { workspace = true }
 xrf-ltx = { workspace = true }
 xrf-math = { workspace = true }

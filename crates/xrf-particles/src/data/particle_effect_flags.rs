@@ -1,0 +1,39 @@
+/// `CPEDef` flags (`ParticleEffectDef.h`), read as the engine reads them: `is` asks for every bit of a mask.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct ParticleEffectFlags(pub u32);
+
+impl ParticleEffectFlags {
+  pub const SPRITE: u32 = 1 << 0;
+  pub const FRAMED: u32 = 1 << 10;
+  pub const ANIMATED: u32 = 1 << 11;
+  pub const RANDOM_FRAME: u32 = 1 << 12;
+  pub const RANDOM_PLAYBACK: u32 = 1 << 13;
+  pub const TIME_LIMIT: u32 = 1 << 14;
+  pub const ALIGN_TO_PATH: u32 = 1 << 15;
+  pub const COLLISION: u32 = 1 << 16;
+  pub const COLLISION_DELETE: u32 = 1 << 17;
+  pub const VELOCITY_SCALE: u32 = 1 << 18;
+  pub const COLLISION_DYNAMIC: u32 = 1 << 19;
+  pub const WORLD_ALIGN: u32 = 1 << 20;
+  pub const FACE_ALIGN: u32 = 1 << 21;
+  pub const CULLING: u32 = 1 << 22;
+  pub const CULL_CCW: u32 = 1 << 23;
+
+  /// `Flags32::is`: every bit of the mask is set.
+  pub fn is(&self, mask: u32) -> bool {
+    self.0 & mask == mask
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::ParticleEffectFlags;
+
+  #[test]
+  fn asks_for_every_bit_of_a_mask() {
+    let flags: ParticleEffectFlags = ParticleEffectFlags(ParticleEffectFlags::FRAMED);
+
+    assert!(flags.is(ParticleEffectFlags::FRAMED));
+    assert!(!flags.is(ParticleEffectFlags::FRAMED | ParticleEffectFlags::ANIMATED));
+  }
+}
