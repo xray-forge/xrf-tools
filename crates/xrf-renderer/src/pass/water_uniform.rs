@@ -11,7 +11,8 @@ pub struct WaterUniform {
   pub reflection: f32,
   pub intensity: f32,
   pub soft: f32,
-  pub pad: f32,
+  /// One while the water writes the distortion it causes.
+  pub distorted: f32,
 }
 
 impl WaterUniform {
@@ -24,7 +25,7 @@ impl WaterUniform {
       reflection: settings.reflection,
       intensity,
       soft: settings.is_soft as u32 as f32,
-      pad: 0.0,
+      distorted: settings.is_distorted as u32 as f32,
     }
   }
 }

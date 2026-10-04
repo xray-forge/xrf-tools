@@ -208,7 +208,9 @@ end
     )?;
 
     let normal: &XRayShaderPass = script.pass_of(XRayShaderPass::BASE_FUNCTION).expect("a base pass");
-    let special: &XRayShaderPass = script.pass_of("l_special").expect("a distortion pass");
+    let special: &XRayShaderPass = script
+      .pass_of(XRayShaderPass::DISTORTION_FUNCTION)
+      .expect("a distortion pass");
     let texture = |pass: &XRayShaderPass, name: &str| pass.sampler(name).map(|sampler| sampler.texture().clone());
 
     assert_eq!(normal.samplers().len(), 4);
@@ -292,7 +294,7 @@ end
     )?;
 
     assert!(script.pass_of(XRayShaderPass::BASE_FUNCTION).is_none());
-    assert!(script.pass_of("l_special").is_some());
+    assert!(script.pass_of(XRayShaderPass::DISTORTION_FUNCTION).is_some());
 
     Ok(())
   }

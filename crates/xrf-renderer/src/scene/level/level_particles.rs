@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::ops::Range;
 use std::sync::Arc;
 use std::sync::mpsc::{Receiver, channel};
 use std::time::Instant;
@@ -6,7 +7,7 @@ use std::time::Instant;
 use glam::{Mat4, Vec3, Vec4};
 use rayon::prelude::*;
 use xrf_engine_target::XrayEngine;
-use xrf_material::XraySurfaceDraw;
+use xrf_material::{XraySurfaceDraw, XraySurfaceSampler};
 use xrf_particles::{
   ParticleBounds, ParticleCollider, ParticleEffectInstance, ParticleEngineRules, ParticleLibrary, ParticleObject,
   ParticleUpdateContext,
@@ -37,8 +38,12 @@ const ZONE_FAST_DISTANCE: f32 = 100.0;
 /// Quads the vertex buffer holds at first; it doubles past them.
 const INITIAL_QUADS: u64 = 4096;
 
+/// The sampler a distorting effect's `l_special` pass binds its distortion map to.
+const DISTORTION_SAMPLER: &str = "s_distort";
+
 /// A level's particle systems: read once on a loader thread, then each frame stepped on the workers as the engine
-/// schedules them, and the effects in view filled into quads far to near for the particle pass.
+/// schedules them, and the effects in view filled into quads far to near for the particle pass, which draws their
+/// colour and then their distortion.
 pub struct LevelParticles {
   pending: Option<Receiver<Result<Option<RenderLevelParticles>, String>>>,
   systems: Option<LevelSystems>,
@@ -46,6 +51,8 @@ pub struct LevelParticles {
   started: Instant,
   vertices: Vec<ParticleVertex>,
   batches: Vec<ParticleBatch>,
+  /// The distorting effects' quads, far to near.
+  distortion_runs: Vec<Range<u32>>,
   vertex_buffer: wgpu::Buffer,
   surface_buffer: wgpu::Buffer,
   /// Bumped whenever either buffer is replaced, which the bind group follows.
@@ -77,9 +84,10 @@ struct PlacedSystem {
   object: Option<ParticleObject>,
 }
 
-/// How an effect's sprite draws: its equation, none for one drawing no colour, and its record.
+/// How an effect's sprite draws: its equation, none for one drawing no colour, whether it distorts, and its record.
 struct ParticleSurface {
   blend: Option<ParticleBlend>,
+  is_distorting: bool,
   record: ParticleSurfaceRecord,
 }
 
@@ -113,6 +121,7 @@ impl LevelParticles {
       started: Instant::now(),
       vertices: Vec::new(),
       batches: Vec::new(),
+      distortion_runs: Vec::new(),
       vertex_buffer: Self::create_storage(
         device,
         "particle vertices",
@@ -126,7 +135,7 @@ impl LevelParticles {
     }
   }
 
-  /// Takes the systems once their loader read them: asks for every sprite's texture and places each system.
+  /// Takes the systems once their loader read them: asks for every sprite's textures and places each system.
   pub fn poll(&mut self, device: &wgpu::Device, textures: &mut TextureCache, source: &Arc<dyn RenderAssetSource>) {
     let Some(receiver) = &self.pending else {
       return;
@@ -148,17 +157,28 @@ impl LevelParticles {
       let Some(effect) = read.library.get_effect(name) else {
         continue;
       };
-      let texture: u32 = descriptor
+      let blend: Option<ParticleBlend> = ParticleBlend::of(descriptor.draw);
+      let texture: Option<&str> = descriptor
         .textures
         .first()
-        .map_or(0, |reference| textures.request(reference, TextureRole::Base, source));
-      let blend: Option<ParticleBlend> = ParticleBlend::of(descriptor.draw);
+        .map(String::as_str)
+        .filter(|_| blend.is_some());
+      let distortion: Option<&str> =
+        descriptor.find_sampler(XraySurfaceSampler::DISTORTION_ELEMENT, DISTORTION_SAMPLER);
+      let mut request = |reference: Option<&str>, role: TextureRole| {
+        reference.map_or(0, |reference| {
+          let slot: u32 = textures.request(reference, role, source);
 
-      texture_slots.push(texture);
+          texture_slots.push(slot);
+
+          slot
+        })
+      };
+
       surface_of.insert(Arc::as_ptr(effect) as usize, surfaces.len() as u32);
       surfaces.push(ParticleSurface {
         record: ParticleSurfaceRecord {
-          texture,
+          texture: request(texture, TextureRole::Base),
           flags: if descriptor.is_texture_clamped {
             ParticleSurfaceRecord::IS_CLAMPED
           } else {
@@ -169,8 +189,10 @@ impl LevelParticles {
             XraySurfaceDraw::AlphaTested { reference } => f32::from(reference) / 255.0,
             _ => 0.0,
           },
-          pad: 0,
+          // As the water's own distortion map, neutral at mid grey while it loads.
+          distortion: request(distortion, TextureRole::Detail),
         },
+        is_distorting: distortion.is_some(),
         blend,
       });
     }
@@ -225,6 +247,7 @@ impl LevelParticles {
   ) {
     self.vertices.clear();
     self.batches.clear();
+    self.distortion_runs.clear();
 
     let Some(level) = self.systems.as_mut() else {
       return;
@@ -261,7 +284,7 @@ impl LevelParticles {
         .sum()
     });
     let simulation_time: f32 = started.elapsed().as_secs_f32() * 1000.0;
-    let mut drawn: Vec<(f32, &ParticleEffectInstance, u32, ParticleBlend)> = Vec::new();
+    let mut drawn: Vec<(f32, &ParticleEffectInstance, u32, &ParticleSurface)> = Vec::new();
     let mut report: RenderParticlesReport = RenderParticlesReport {
       simulated,
       ..RenderParticlesReport::default()
@@ -281,34 +304,47 @@ impl LevelParticles {
           continue;
         };
 
-        let Some(blend) = level.surfaces[surface as usize].blend else {
-          continue;
-        };
+        let drawing: &ParticleSurface = &level.surfaces[surface as usize];
+        let is_drawing: bool = drawing.blend.is_some() || drawing.is_distorting;
 
-        if count > 0 && Self::is_in_view(&planes, effect.get_bounds()) {
+        if is_drawing && count > 0 && Self::is_in_view(&planes, effect.get_bounds()) {
           let (center, _) = effect.get_bounds().get_sphere();
 
-          drawn.push((center.distance_squared(eye), effect, surface, blend));
+          drawn.push((center.distance_squared(eye), effect, surface, drawing));
         }
       }
     }
 
-    // Far to near, as `mapSorted` draws what blends; every effect is sorted, as nothing else orders them.
+    // Far to near, as `mapSorted` draws what blends and `mapDistort` what distorts; every effect is sorted, as nothing
+    // else orders them.
     drawn.sort_by(|a, b| b.0.total_cmp(&a.0));
     report.drawn = drawn.len() as u32;
 
     let sprite: ParticleSprite = ParticleSprite::new(view.view);
 
-    for (_, effect, surface, blend) in drawn {
+    for (_, effect, surface, drawing) in drawn {
       let first: u32 = self.vertices.len() as u32 / ParticleVertex::CORNERS;
 
       sprite.push(effect, surface, &mut self.vertices);
 
-      let count: u32 = self.vertices.len() as u32 / ParticleVertex::CORNERS - first;
+      let end: u32 = self.vertices.len() as u32 / ParticleVertex::CORNERS;
 
-      match self.batches.last_mut() {
-        Some(last) if last.blend == blend && last.first + last.count == first => last.count += count,
-        _ => self.batches.push(ParticleBatch { blend, first, count }),
+      if let Some(blend) = drawing.blend {
+        match self.batches.last_mut() {
+          Some(last) if last.blend == blend && last.first + last.count == first => last.count = end - last.first,
+          _ => self.batches.push(ParticleBatch {
+            blend,
+            first,
+            count: end - first,
+          }),
+        }
+      }
+
+      if drawing.is_distorting {
+        match self.distortion_runs.last_mut() {
+          Some(last) if last.end == first => last.end = end,
+          _ => self.distortion_runs.push(first..end),
+        }
       }
     }
 
@@ -328,7 +364,8 @@ impl LevelParticles {
     }
   }
 
-  /// Draws the quads filled this frame.
+  /// Draws the quads filled this frame over the scene, then the distorting ones into the distortion target; whether
+  /// anything drew.
   pub fn record(
     &self,
     encoder: &mut wgpu::CommandEncoder,
@@ -341,13 +378,20 @@ impl LevelParticles {
       return false;
     };
 
-    if self.batches.is_empty() {
-      return false;
+    if !self.batches.is_empty() {
+      pass.draw(encoder, targets, (view, group, texture_group), &self.batches);
     }
 
-    pass.draw(encoder, targets, view, group, texture_group, &self.batches);
+    if self.is_distorting() {
+      pass.draw_distortion(encoder, targets, (view, group, texture_group), &self.distortion_runs);
+    }
 
-    true
+    !self.batches.is_empty() || self.is_distorting()
+  }
+
+  /// Whether this frame's particles draw into the distortion target.
+  pub fn is_distorting(&self) -> bool {
+    !self.distortion_runs.is_empty()
   }
 
   /// The texture slots the sprites sample.

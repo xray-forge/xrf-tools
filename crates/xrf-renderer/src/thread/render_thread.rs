@@ -633,18 +633,11 @@ impl RenderThread {
         .get_view(rect.width as f32 / rect.height as f32, far_limit);
 
       let options: RenderViewOptions = viewport.options.clone();
-      // How far the water moves what is seen through it, none where it does not distort.
-      let water = options.water;
-      let distortion: f32 = if water.is_enabled && water.is_distorted && options.is_lit {
-        water.distortion
-      } else {
-        0.0
-      };
       let switches: Vec4 = Vec4::new(
         f32::from(u8::from(options.surface_color == RenderSurfaceColor::Textured)),
         options.is_bumped as u32 as f32,
         options.hemi_strength,
-        distortion,
+        0.0,
       );
 
       // A level is drawn at a share of the viewport and upscaled to it; nothing else is drawn but at its size.

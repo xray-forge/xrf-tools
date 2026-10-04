@@ -9,11 +9,8 @@ use crate::pass::view_binding::ViewBinding;
 use crate::scene::static_scene::static_batch::StaticBatch;
 use crate::shader::shader_library::ShaderLibrary;
 
-/// What the distortion target holds where nothing distorts it, `(127, 127, 0, 127)` as the engine clears it.
-const NEUTRAL_DISTORTION: f64 = 127.0 / 255.0;
-
 /// Draws a viewport's visible water over its lit scene, tested against the G-buffer's depth without writing it, and the
-/// distortion each surface causes into the distortion target, cleared to nothing first.
+/// distortion each surface causes into the distortion target while the water distorts.
 pub struct WaterPass {
   layout: wgpu::BindGroupLayout,
   layouts: [wgpu::BindGroupLayout; 3],
@@ -106,7 +103,7 @@ impl WaterPass {
     })
   }
 
-  /// Clears the distortion target, then draws the water each argument buffer lists.
+  /// Draws the water each argument buffer lists.
   #[allow(clippy::too_many_arguments)]
   pub fn draw(
     &self,
@@ -135,12 +132,7 @@ impl WaterPass {
           depth_slice: None,
           resolve_target: None,
           ops: wgpu::Operations {
-            load: wgpu::LoadOp::Clear(wgpu::Color {
-              r: NEUTRAL_DISTORTION,
-              g: NEUTRAL_DISTORTION,
-              b: 0.0,
-              a: NEUTRAL_DISTORTION,
-            }),
+            load: wgpu::LoadOp::Load,
             store: wgpu::StoreOp::Store,
           },
         }),

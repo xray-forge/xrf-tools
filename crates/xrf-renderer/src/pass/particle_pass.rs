@@ -1,3 +1,5 @@
+use std::ops::Range;
+
 use xrf_error::XrfResult;
 
 use crate::frame::view_targets::ViewTargets;
@@ -11,15 +13,23 @@ use crate::shader::shader_library::ShaderLibrary;
 
 /// Draws a level's particle sprites over its finished scene after the composited surfaces, as `render_forward` draws
 /// them after combine: each run of quads with its effect's equation, tested against the scene's depth without writing
-/// it and reading it to fade where they meet it.
+/// it and reading it to fade where they meet it; then the distorting effects' quads into the distortion target, as
+/// `mapDistort` draws their `l_special` passes.
 pub struct ParticlePass {
   layout: wgpu::BindGroupLayout,
   view_layout: wgpu::BindGroupLayout,
   texture_layout: wgpu::BindGroupLayout,
   clamped_sampler: wgpu::Sampler,
-  /// One a blend, in [`ParticleBlend::ALL`]'s order.
-  pipelines: Vec<wgpu::RenderPipeline>,
+  pipelines: ParticlePipelines,
   generation: u64,
+}
+
+/// The pass's pipelines, made again together whenever the shaders change.
+struct ParticlePipelines {
+  /// One a blend, in [`ParticleBlend::ALL`]'s order.
+  colour: Vec<wgpu::RenderPipeline>,
+  /// `particle_distort`'s, blended over the distortion target by its alpha.
+  distortion: wgpu::RenderPipeline,
 }
 
 impl ParticlePass {
@@ -111,21 +121,52 @@ impl ParticlePass {
     })
   }
 
-  /// Draws each run of quads in order, with its equation's pipeline.
-  #[allow(clippy::too_many_arguments)]
+  /// Draws each run of quads in order over the scene, with its equation's pipeline.
   pub fn draw(
     &self,
     encoder: &mut wgpu::CommandEncoder,
     targets: &ViewTargets,
-    view: &ViewBinding,
-    bind_group: &wgpu::BindGroup,
-    texture_group: &wgpu::BindGroup,
+    groups: (&ViewBinding, &wgpu::BindGroup, &wgpu::BindGroup),
     batches: &[ParticleBatch],
   ) {
-    let mut pass: wgpu::RenderPass<'_> = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-      label: Some("particles"),
+    let mut pass: wgpu::RenderPass<'_> = Self::begin(encoder, "particles", &targets.scene, targets, groups);
+
+    for batch in batches {
+      pass.set_pipeline(&self.pipelines.colour[batch.blend.get_index()]);
+      pass.draw(Self::to_vertices(batch.first..batch.first + batch.count), 0..1);
+    }
+  }
+
+  /// Draws each run of quads, back to front, into the distortion target.
+  pub fn draw_distortion(
+    &self,
+    encoder: &mut wgpu::CommandEncoder,
+    targets: &ViewTargets,
+    groups: (&ViewBinding, &wgpu::BindGroup, &wgpu::BindGroup),
+    runs: &[Range<u32>],
+  ) {
+    let mut pass: wgpu::RenderPass<'_> =
+      Self::begin(encoder, "particle distortion", &targets.distortion, targets, groups);
+
+    pass.set_pipeline(&self.pipelines.distortion);
+
+    for run in runs {
+      pass.draw(Self::to_vertices(run.clone()), 0..1);
+    }
+  }
+
+  /// A pass drawing into one target, tested against the scene's depth, which stays read only so it is sampled too.
+  fn begin<'a>(
+    encoder: &'a mut wgpu::CommandEncoder,
+    label: &str,
+    target: &wgpu::TextureView,
+    targets: &ViewTargets,
+    (view, bind_group, texture_group): (&ViewBinding, &wgpu::BindGroup, &wgpu::BindGroup),
+  ) -> wgpu::RenderPass<'a> {
+    let mut pass: wgpu::RenderPass<'a> = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+      label: Some(label),
       color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-        view: &targets.scene,
+        view: target,
         depth_slice: None,
         resolve_target: None,
         ops: wgpu::Operations {
@@ -145,10 +186,12 @@ impl ParticlePass {
     pass.set_bind_group(1, bind_group, &[]);
     pass.set_bind_group(2, texture_group, &[]);
 
-    for batch in batches {
-      pass.set_pipeline(&self.pipelines[batch.blend.get_index()]);
-      pass.draw(batch.first * 6..(batch.first + batch.count) * 6, 0..1);
-    }
+    pass
+  }
+
+  /// The vertices drawing a run of quads, six a quad as `QuadIB` indexes them.
+  fn to_vertices(quads: Range<u32>) -> Range<u32> {
+    quads.start * 6..quads.end * 6
   }
 
   fn create_pipelines(
@@ -157,54 +200,64 @@ impl ParticlePass {
     view_layout: &wgpu::BindGroupLayout,
     layout: &wgpu::BindGroupLayout,
     texture_layout: &wgpu::BindGroupLayout,
-  ) -> XrfResult<Vec<wgpu::RenderPipeline>> {
+  ) -> XrfResult<ParticlePipelines> {
     let module: wgpu::ShaderModule = create_module(device, shaders, "frame/particles")?;
     let pipeline_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
       label: Some("particles"),
       bind_group_layouts: &[Some(view_layout), Some(layout), Some(texture_layout)],
       ..Default::default()
     });
+    let create = |label: &str, entry_point: &str, format: wgpu::TextureFormat, blend: wgpu::BlendState| {
+      let targets: [Option<wgpu::ColorTargetState>; 1] = [Some(wgpu::ColorTargetState {
+        format,
+        blend: Some(blend),
+        write_mask: wgpu::ColorWrites::ALL,
+      })];
 
-    ParticleBlend::ALL
-      .iter()
-      .map(|blend| {
-        let targets: [Option<wgpu::ColorTargetState>; 1] = [Some(wgpu::ColorTargetState {
-          format: ViewTargets::SCENE,
-          blend: Some(blend.get_blend_state()),
-          write_mask: wgpu::ColorWrites::ALL,
-        })];
-
-        create_checked(device, "particles", || {
-          device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("particles"),
-            layout: Some(&pipeline_layout),
-            vertex: wgpu::VertexState {
-              module: &module,
-              entry_point: Some("vs_particle"),
-              compilation_options: Default::default(),
-              buffers: &[],
-            },
-            fragment: Some(wgpu::FragmentState {
-              module: &module,
-              entry_point: Some("fs_particle"),
-              compilation_options: Default::default(),
-              targets: &targets,
-            }),
-            // todo: Cull `dfCulling` effects' quads by `dfCullCCW` as `CParticleEffect::Render` does; both sides draw.
-            primitive: Default::default(),
-            depth_stencil: Some(wgpu::DepthStencilState {
-              format: ViewTargets::DEPTH,
-              depth_write_enabled: Some(false),
-              depth_compare: Some(wgpu::CompareFunction::Greater),
-              stencil: Default::default(),
-              bias: Default::default(),
-            }),
-            multisample: Default::default(),
-            multiview_mask: None,
-            cache: None,
-          })
+      create_checked(device, label, || {
+        device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+          label: Some(label),
+          layout: Some(&pipeline_layout),
+          vertex: wgpu::VertexState {
+            module: &module,
+            entry_point: Some("vs_particle"),
+            compilation_options: Default::default(),
+            buffers: &[],
+          },
+          fragment: Some(wgpu::FragmentState {
+            module: &module,
+            entry_point: Some(entry_point),
+            compilation_options: Default::default(),
+            targets: &targets,
+          }),
+          // todo: Cull `dfCulling` effects' quads by `dfCullCCW` as `CParticleEffect::Render` does; both sides draw.
+          primitive: Default::default(),
+          depth_stencil: Some(wgpu::DepthStencilState {
+            format: ViewTargets::DEPTH,
+            depth_write_enabled: Some(false),
+            depth_compare: Some(wgpu::CompareFunction::Greater),
+            stencil: Default::default(),
+            bias: Default::default(),
+          }),
+          multisample: Default::default(),
+          multiview_mask: None,
+          cache: None,
         })
       })
-      .collect()
+    };
+
+    Ok(ParticlePipelines {
+      colour: ParticleBlend::ALL
+        .iter()
+        .map(|blend| create("particles", "fs_particle", ViewTargets::SCENE, blend.get_blend_state()))
+        .collect::<XrfResult<_>>()?,
+      // `blend(true, blend.srcalpha, blend.invsrcalpha)`, as the water blends what it writes there.
+      distortion: create(
+        "particle distortion",
+        "fs_distort",
+        ViewTargets::DISTORTION,
+        wgpu::BlendState::ALPHA_BLENDING,
+      )?,
+    })
   }
 }

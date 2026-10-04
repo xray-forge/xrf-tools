@@ -11,7 +11,7 @@ struct Camera {
   viewport: vec4<f32>,
   // The frustum's six planes in renderer space, pointing inward.
   planes: array<vec4<f32>, 6>,
-  // x: textured, y: bumped, z: the baked hemisphere's strength, w: how far the water distorts what is behind it.
+  // x: textured, y: bumped, z: the baked hemisphere's strength; w unused.
   switches: vec4<f32>,
   // x: one where every static surface draws as its triangles' edges; y: times a uv checker repeats in place of every
   // surface's textures, zero for none; z: one where surfaces draw solid, their alpha ignored; w: one where an

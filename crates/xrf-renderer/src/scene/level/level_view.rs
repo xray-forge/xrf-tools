@@ -866,6 +866,33 @@ impl LevelView {
         (targets, self.targets_epoch),
       );
     }
+
+    self.write_present(queue, options);
+  }
+
+  /// Writes what the present pass reads, once the frame knows what draws into the distortion target: `def_distort`
+  /// while the water or a particle does, nothing otherwise.
+  fn write_present(&self, queue: &wgpu::Queue, options: &RenderViewOptions) {
+    let Some(targets) = &self.targets else {
+      return;
+    };
+    let water: &RenderWaterSettings = &options.water;
+    let is_water_distorting: bool = water.is_enabled && water.is_distorted && options.is_lit;
+    let is_distorting: bool = !options.is_wireframe && (is_water_distorting || self.particles.is_distorting());
+
+    queue.write_buffer(
+      &self.present,
+      0,
+      bytemuck::bytes_of(&PresentUniform::new(
+        self.frame_debug_view,
+        self.frame_occlusion,
+        !targets.is_sized(self.output.width, self.output.height),
+        if is_distorting { water.distortion } else { 0.0 },
+        self.output,
+        &self.frame_corrections,
+        self.selection_color,
+      )),
+    );
   }
 
   /// Writes this frame's rain, while the weather rains and the view shows it: the splash's model built for the
@@ -1065,6 +1092,9 @@ impl LevelView {
       return;
     };
     let texture_group: &wgpu::BindGroup = textures.get_bind_group();
+
+    targets.clear_distortion(encoder);
+
     // The draw arguments a forward pass replays: the early phase's, and the late phase's where occlusion culls.
     let list_args: Vec<&wgpu::Buffer> = if self.params.is_occluding != 0 {
       vec![&self.scene.args, &self.scene.late]
@@ -1627,7 +1657,7 @@ impl LevelView {
   }
 
   /// Makes the frame at the viewport's size while the scene is drawn smaller, dropping it otherwise; writes what the
-  /// upscale and present passes read, and binds the frame the present pass shows.
+  /// upscale pass reads, and binds the frame the present pass shows.
   fn prepare_upscale(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, passes: LevelPasses<'_>) {
     let Some(targets) = &self.targets else {
       return;
@@ -1680,19 +1710,6 @@ impl LevelView {
         pad: 0.0,
       }),
     );
-    queue.write_buffer(
-      &self.present,
-      0,
-      bytemuck::bytes_of(&PresentUniform::new(
-        self.frame_debug_view,
-        self.frame_occlusion,
-        is_upscaled,
-        output,
-        &self.frame_corrections,
-        self.selection_color,
-      )),
-    );
-
     if self
       .overlay_group
       .as_ref()

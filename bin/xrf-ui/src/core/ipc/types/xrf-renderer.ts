@@ -996,7 +996,7 @@ export type RenderWaterSettings = {
   isEnabled: boolean;
   /** `r2_soft_water`: soft water fades by the depth behind it, darkens with it and lays foam in the shallows. */
   isSoft: boolean;
-  /** Whether water moves what is seen through it, as the engine's distortion target does. */
+  /** Whether water writes the distortion it causes, moving what is seen through it. */
   isDistorted: boolean;
   /** How high the waves lift the surface, in metres: `W_POSITION_SHIFT_HEIGHT`. */
   waveHeight: number | null;
@@ -1006,7 +1006,10 @@ export type RenderWaterSettings = {
   ripple: number | null;
   /** What the sky's reflection is multiplied by, one as the engine mixes it. */
   reflection: number | null;
-  /** How far the distortion moves what is behind it, a share of the screen: `def_distort`. */
+  /**
+   * How far the distortion target moves what is behind it, a share of the screen: `def_distort`, which moves what
+   * the distorting particles write as well.
+   */
   distortion: number | null;
 };
 

@@ -32,9 +32,6 @@ impl XraySurfaceScript {
   /// What the undecoration replaces it with, so `effects\lightplanes` is looked up as `effects_lightplanes`.
   const NAMESPACE_DELIMITER: char = '_';
 
-  /// The function whose pass the renderer compiles into its distortion target (`L_special`, `mapDistort`).
-  pub const DISTORTION_FUNCTION: &'static str = "l_special";
-
   /// The engine's water program (`shaders/r2/water.vs`), and what every variant of it is named behind: vanilla's
   /// `water_soft`, Anomaly's `water_regular`, `water_studen`, `water_ryaska` and `water_underground`.
   const WATER_PROGRAM: &'static str = "water";
@@ -59,7 +56,7 @@ impl XraySurfaceScript {
       .ok()?;
     let script: XRayShaderScript = XRayShaderScript::parse(&logical_path, &source).ok()?;
     let base: Option<&XRayShaderPass> = script.pass_of(XRayShaderPass::BASE_FUNCTION);
-    let distortion: Option<&XRayShaderPass> = script.pass_of(Self::DISTORTION_FUNCTION);
+    let distortion: Option<&XRayShaderPass> = script.pass_of(XRayShaderPass::DISTORTION_FUNCTION);
     // `_lua_HasShader`: a script is the shader when it declares either; one with only a distortion pass draws nothing
     // into the scene itself.
     let pass: &XRayShaderPass = base.or(distortion)?;

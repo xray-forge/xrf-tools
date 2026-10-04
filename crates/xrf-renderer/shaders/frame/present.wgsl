@@ -4,11 +4,11 @@
 #import "common/octahedral"
 #import "common/present"
 
-// The viewport's finished scene put into its rectangle of the window, moved where the water distorts it; or, for a
-// debug view, one of the targets the scene was built from.
+// The viewport's finished scene put into its rectangle of the window, moved where the water and the particles distort
+// it; or, for a debug view, one of the targets the scene was built from.
 
 @group(1) @binding(0) var scene: texture_2d<f32>;
-// How far the water moves what is seen through it, around what the target is cleared to.
+// How far the water and the particles move what is seen through them, around what the target is cleared to.
 @group(1) @binding(1) var distortion: texture_2d<f32>;
 @group(1) @binding(2) var depth_target: texture_depth_2d;
 @group(1) @binding(3) var albedo_target: texture_2d<f32>;
@@ -170,7 +170,7 @@ fn fs_present(in: FullscreenVarying) -> @location(0) vec4<f32> {
   }
 
   var read: vec2<f32> = pixel;
-  let strength: f32 = camera.switches.w;
+  let strength: f32 = present.distortion;
 
   // `combine_2`'s `USE_DISTORT`: the scene read where the distortion target moves each pixel, `(distort.xy - .5) *
   // def_distort`. A move that would read something standing nearer than what the pixel shows reads the pixel itself:

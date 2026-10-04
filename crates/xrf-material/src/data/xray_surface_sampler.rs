@@ -1,4 +1,5 @@
 use serde::Serialize;
+use xrf_shaders::XRayShaderPass;
 
 /// A texture file a surface's script binds to one of its samplers.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -11,4 +12,12 @@ pub struct XraySurfaceSampler {
   pub name: String,
   /// Texture reference, engine-style, without extension.
   pub texture: String,
+}
+
+impl XraySurfaceSampler {
+  /// The element binding what the surface itself draws with.
+  pub const BASE_ELEMENT: &'static str = XRayShaderPass::BASE_FUNCTION;
+
+  /// The element binding what it draws into the distortion target.
+  pub const DISTORTION_ELEMENT: &'static str = XRayShaderPass::DISTORTION_FUNCTION;
 }

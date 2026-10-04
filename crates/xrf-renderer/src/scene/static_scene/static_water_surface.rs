@@ -1,16 +1,12 @@
 use std::sync::Arc;
 
-use xrf_material::{XraySurfaceDeclaration, XraySurfaceDescriptor};
+use xrf_material::{XraySurfaceDeclaration, XraySurfaceDescriptor, XraySurfaceSampler};
 use xrf_visual::SectorSurface;
 
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::scene::static_scene::static_surface::StaticSurface;
 use crate::scene::texture::texture_cache::TextureCache;
 use crate::scene::texture::texture_role::TextureRole;
-
-/// The script functions whose passes bind water's textures: the surface itself, and its distortion.
-const BASE_ELEMENT: &str = "normal";
-const DISTORTION_ELEMENT: &str = "l_special";
 
 /// Anomaly's water programs (`shaders/r2/water_*.ps` in its gamedata), by the switches each defines before including
 /// its `water.ps`: reflecting, specular, transparent, foamed. Any other water program is OpenXRay's.
@@ -31,34 +27,27 @@ pub fn build_water_surface(
   source: &Arc<dyn RenderAssetSource>,
   color: [f32; 3],
 ) -> StaticSurface {
-  let sampler = |element: &str, name: &str| -> Option<&str> {
-    descriptor
-      .samplers
-      .iter()
-      .find(|it| it.element == element && it.name == name)
-      .map(|it| it.texture.as_str())
-      .filter(|it| !it.is_empty())
-  };
-  let base: Option<&str> = sampler(BASE_ELEMENT, "s_base").or(surface.texture_name.as_deref());
+  let base_sampler = |name: &str| descriptor.find_sampler(XraySurfaceSampler::BASE_ELEMENT, name);
+  let base: Option<&str> = base_sampler("s_base").or(surface.texture_name.as_deref());
   let mut texture_slots: [u32; 8] = [0; 8];
   let mut flags: u32 = if is_soft { StaticSurface::IS_SOFT_WATER } else { 0 };
 
   for (reference, slot, role, flag) in [
     (base, StaticSurface::BASE, TextureRole::Base, StaticSurface::HAS_BASE),
     (
-      sampler(BASE_ELEMENT, "s_nmap"),
+      base_sampler("s_nmap"),
       StaticSurface::WATER_NORMAL,
       TextureRole::Detail,
       StaticSurface::HAS_WATER_NORMAL,
     ),
     (
-      sampler(BASE_ELEMENT, "s_leaves"),
+      base_sampler("s_leaves"),
       StaticSurface::FOAM,
       TextureRole::Detail,
       StaticSurface::HAS_FOAM,
     ),
     (
-      sampler(DISTORTION_ELEMENT, "s_distort"),
+      descriptor.find_sampler(XraySurfaceSampler::DISTORTION_ELEMENT, "s_distort"),
       StaticSurface::DISTORTION,
       TextureRole::Detail,
       StaticSurface::HAS_DISTORTION,

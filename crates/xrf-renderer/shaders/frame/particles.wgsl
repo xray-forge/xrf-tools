@@ -6,6 +6,7 @@ enable wgpu_binding_array;
 // The particle sprites `CParticleEffect::Render` draws forward over the finished scene: each quad's corners as the
 // engine fills them, coloured by the particle and textured by its effect, faded where they meet the scene behind them
 // (`USE_SOFT_PARTICLES`) and, on Anomaly, into the fog. Unlit: `particle.ps` is the vertex colour times the texture.
+// A distorting effect's quads draw again into the distortion target, as `particle_distort.ps` writes them.
 
 struct ParticleVertex {
   position: vec3<f32>,
@@ -19,7 +20,7 @@ struct ParticleSurface {
   texture: u32,
   flags: u32,
   alpha_reference: f32,
-  pad: u32,
+  distortion: u32,
 };
 
 @group(1) @binding(0) var<storage, read> vertices: array<ParticleVertex>;
@@ -76,21 +77,35 @@ fn contrast(input: f32, power: f32) -> f32 {
   return select(raised, 1.0 - raised, is_above_half);
 }
 
+// A texture of the surface's at the varying's coordinate, clamped or wrapped as the surface says.
+fn sample_surface(surface: ParticleSurface, texture: u32, uv: vec2<f32>) -> vec4<f32> {
+  // Taken before the branch: the texture's index and its sampler vary across the frame.
+  let dx: vec2<f32> = dpdx(uv);
+  let dy: vec2<f32> = dpdy(uv);
+
+  if ((surface.flags & SURFACE_IS_CLAMPED) != 0u) {
+    return textureSampleGrad(textures[texture], clamped_sampler, uv, dx, dy);
+  }
+
+  return textureSampleGrad(textures[texture], texture_sampler, uv, dx, dy);
+}
+
+// Anomaly's `particle.ps` and `particle_distort.ps` fade their alpha by what of the fog is left, squared; OpenXRay
+// fogs no particle.
+fn fogged(alpha: f32, view_position: vec3<f32>) -> f32 {
+  if (lighting.engine.x > 0.5) {
+    let left: f32 = 1.0 - fog_amount(lighting, view_position);
+
+    return alpha * left * left;
+  }
+
+  return alpha;
+}
+
 @fragment
 fn fs_particle(in: ParticleVarying) -> @location(0) vec4<f32> {
   let surface: ParticleSurface = surfaces[in.surface];
-  // Taken before the branch: the texture's index and its sampler vary across the frame.
-  let dx: vec2<f32> = dpdx(in.uv);
-  let dy: vec2<f32> = dpdy(in.uv);
-  var texel: vec4<f32>;
-
-  if ((surface.flags & SURFACE_IS_CLAMPED) != 0u) {
-    texel = textureSampleGrad(textures[surface.texture], clamped_sampler, in.uv, dx, dy);
-  } else {
-    texel = textureSampleGrad(textures[surface.texture], texture_sampler, in.uv, dx, dy);
-  }
-
-  var result: vec4<f32> = in.color * texel;
+  var result: vec4<f32> = in.color * sample_surface(surface, surface.texture, in.uv);
 
   // `USE_SOFT_PARTICLES`: faded by how far the scene behind stands past it.
   let stored: f32 = textureLoad(depth_target, vec2<i32>(in.clip.xy), 0);
@@ -109,12 +124,18 @@ fn fs_particle(in: ParticleVarying) -> @location(0) vec4<f32> {
     discard;
   }
 
-  // Anomaly's `particle.ps` fades its alpha by what of the fog is left, squared; OpenXRay fogs no particle.
-  if (lighting.engine.x > 0.5) {
-    let left: f32 = 1.0 - fog_amount(lighting, in.view_position);
-
-    result.a = result.a * left * left;
-  }
+  result.a = fogged(result.a, in.view_position);
 
   return result;
+}
+
+// `particle_distort.ps`: the distortion map's colour, blended in by its alpha times the particle's mean colour; neither
+// soft nor tested.
+@fragment
+fn fs_distort(in: ParticleVarying) -> @location(0) vec4<f32> {
+  let surface: ParticleSurface = surfaces[in.surface];
+  let distort: vec4<f32> = sample_surface(surface, surface.distortion, in.uv);
+  let factor: f32 = distort.a * dot(in.color.rgb, vec3<f32>(0.33));
+
+  return vec4<f32>(distort.rgb, fogged(factor, in.view_position));
 }

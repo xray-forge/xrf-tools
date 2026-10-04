@@ -193,7 +193,7 @@ export function formatWaterMultiple(multiple: number): string {
   return `${formatNumber(multiple, 2)}×`;
 }
 
-/** @returns How far the distortion moves what is behind the water, a share of the screen. */
+/** @returns How far the distortion moves what is behind the water and distorting particles, a share of the screen. */
 export function formatWaterDistortion(distortion: number): string {
   return `${formatNumber(distortion * 100, 1)}%`;
 }

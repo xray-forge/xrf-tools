@@ -24,7 +24,8 @@ struct Water {
   intensity: f32,
   // One while soft water reads the depth behind it, `r2_soft_water`.
   soft: f32,
-  pad: f32,
+  // One while the water writes the distortion it causes.
+  distorted: f32,
 };
 
 @group(2) @binding(0) var textures: binding_array<texture_2d<f32>>;
@@ -220,14 +221,14 @@ fn fs_water(in: WaterVarying) -> WaterOutput {
   let finished: vec3<f32> = mix(color, lighting.fog_color.rgb, fog);
   let shown: vec3<f32> = select(base.rgb, finished, lighting.params.y > 0.5);
   // `waterd.ps`: the distortion map at the normal layers' coordinates, gone where the base is opaque, faded by the
-  // depth behind soft water, then halved around nothing.
+  // depth behind soft water, then halved around nothing; blended in at nothing while the water does not distort.
   let opaque: vec2<f32> = mix(offset_texel, vec2<f32>(0.5), base.a);
   let shoal: vec2<f32> = mix(vec2<f32>(0.5), opaque, saturate(depth * 5.0));
   let offset: vec2<f32> = select(opaque, mix(opaque, shoal, water.soft), is_soft);
   var out: WaterOutput;
 
   out.color = vec4<f32>(shown, alpha);
-  out.distortion = vec4<f32>(offset * 0.5 + 0.25, select(0.08, 0.0, is_soft), 0.5);
+  out.distortion = vec4<f32>(offset * 0.5 + 0.25, select(0.08, 0.0, is_soft), 0.5 * water.distorted);
 
   return out;
 }
