@@ -1,5 +1,6 @@
 use crate::contract::render_water_settings::RenderWaterSettings;
 use crate::lighting::render_wind::RenderWind;
+use crate::scene::level::water_flow::WaterFlow;
 
 /// What `shaders/static/water.wgsl` reads as its `Water`: the clock, the settings, and the weather's `water_intensity`.
 #[repr(C)]
@@ -25,8 +26,7 @@ pub struct WaterUniform {
   /// One where the reflection drew this frame, and one where the history it accumulates over holds a frame.
   pub reflected: f32,
   pub history: f32,
-  /// The weather's wind, which drives the enhanced water's waves: its direction in radians and its velocity.
-  pub wind_direction: f32,
+  /// The weather's wind velocity, which strengthens the enhanced water's waves.
   pub wind_velocity: f32,
   /// The enhanced water's sun highlight and caustics.
   pub specular: f32,
@@ -35,21 +35,23 @@ pub struct WaterUniform {
   pub parallax_height: f32,
   pub ripples: f32,
   pub rain: f32,
-  /// Seconds the enhanced water's maps have scrolled at its flow, and how much of the pace it keeps in still air.
+  /// How far the enhanced water's maps have scrolled: seconds at its flow, then at its normals', its heights' and its
+  /// wind layer's paces.
   pub flowed: f32,
-  pub calm_flow: f32,
+  pub waves: f32,
+  pub heights: f32,
+  pub gusts: [f32; 2],
   /// How far the enhanced water breaks its maps' repeat.
   pub variation: f32,
-  pub pad: [f32; 2],
 }
 
 impl WaterUniform {
-  /// `time` is the clock and the seconds the enhanced water has flowed; `reflection` says whether its reflection draws
+  /// `time` is the clock and how far the enhanced water has flowed; `reflection` says whether its reflection draws
   /// this frame, and whether its history holds a frame.
   pub fn new(
     settings: &RenderWaterSettings,
     (intensity, wind, rain): (f32, RenderWind, f32),
-    (time, flowed): (f32, f32),
+    (time, flow): (f32, WaterFlow),
     (reflected, history): (bool, bool),
   ) -> Self {
     Self {
@@ -69,17 +71,17 @@ impl WaterUniform {
       blur_noise: settings.blur_noise,
       reflected: reflected as u32 as f32,
       history: history as u32 as f32,
-      wind_direction: wind.direction,
       wind_velocity: wind.velocity,
       specular: settings.specular,
       caustics: settings.caustics,
       parallax_height: settings.parallax_height,
       ripples: settings.ripples,
       rain,
-      flowed,
-      calm_flow: settings.calm_flow,
+      flowed: flow.seconds,
+      waves: flow.waves,
+      heights: flow.heights,
+      gusts: flow.gusts,
       variation: settings.variation,
-      pad: [0.0; 2],
     }
   }
 }

@@ -21,7 +21,6 @@ struct Water {
   blur_noise: f32,
   reflected: f32,
   history: f32,
-  wind_direction: f32,
   wind_velocity: f32,
   specular: f32,
   caustics: f32,
@@ -29,10 +28,11 @@ struct Water {
   ripples: f32,
   rain: f32,
   flowed: f32,
-  calm_flow: f32,
+  waves: f32,
+  heights: f32,
+  gusts_x: f32,
+  gusts_y: f32,
   variation: f32,
-  pad0: f32,
-  pad1: f32,
 };
 
 // xy: the way it blurs; z: how many times the target's size the source's is.

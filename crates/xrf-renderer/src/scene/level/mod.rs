@@ -39,5 +39,6 @@ pub(crate) mod shadow_tile;
 pub(crate) mod shadow_tile_allocator;
 pub(crate) mod spawn_loader;
 pub(crate) mod surface_tally;
+pub(crate) mod water_flow;
 pub(crate) mod weather_model_buffers;
 pub(crate) mod zone_fast_mode;
