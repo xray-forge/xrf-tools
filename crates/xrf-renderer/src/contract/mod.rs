@@ -33,6 +33,8 @@ pub(crate) mod render_lod_settings;
 pub(crate) mod render_memory_report;
 pub(crate) mod render_model_pose;
 pub(crate) mod render_overlay;
+pub(crate) mod render_page_backdrop;
+pub(crate) mod render_page_wash;
 pub(crate) mod render_pass_cost;
 pub(crate) mod render_pool_use;
 pub(crate) mod render_rect;

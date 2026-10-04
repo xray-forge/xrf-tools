@@ -8,15 +8,3 @@ pub struct RenderColor {
   pub g: u8,
   pub b: u8,
 }
-
-impl RenderColor {
-  /// The clear of a non-sRGB target, which stores the channels as given and so shows them as the page does.
-  pub fn to_clear(self) -> wgpu::Color {
-    wgpu::Color {
-      r: self.r as f64 / 255.0,
-      g: self.g as f64 / 255.0,
-      b: self.b as f64 / 255.0,
-      a: 1.0,
-    }
-  }
-}

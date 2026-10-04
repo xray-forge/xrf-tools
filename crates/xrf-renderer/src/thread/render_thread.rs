@@ -21,6 +21,7 @@ use crate::frame::frame_capture::capture_frame;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::host::render_window_host::RenderWindowHost;
 use crate::lighting::render_lighting::RenderLighting;
+use crate::pass::backdrop_uniform::BackdropUniform;
 use crate::pass::camera_uniform::CameraUniform;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::level_view::LevelView;
@@ -562,14 +563,20 @@ impl RenderThread {
       .filter(|viewport| viewport.window == window)
       .filter_map(|viewport| viewport.get_drawn_rect(width, height).map(|rect| (viewport.id, rect)))
       .collect();
-    // The page's background around the viewports, where a layout change has not reached the renderer yet.
-    let clear: wgpu::Color = self
+    // The page's backdrop around the viewports, and where a layout change has not reached the renderer yet.
+    let backdrop: BackdropUniform = self
       .viewports
       .values()
       .find(|viewport| viewport.window == window)
       .and_then(|viewport| viewport.layout)
-      .map(|layout| layout.clear.to_clear())
-      .unwrap_or(wgpu::Color::BLACK);
+      .map(|layout| BackdropUniform::new(&layout.backdrop))
+      .unwrap_or_default();
+    let clear: wgpu::Color = wgpu::Color {
+      r: f64::from(backdrop.color[0]),
+      g: f64::from(backdrop.color[1]),
+      b: f64::from(backdrop.color[2]),
+      a: 1.0,
+    };
 
     let mut encoder: wgpu::CommandEncoder = gpu.context.device.create_command_encoder(&Default::default());
     let mut is_lit: bool = false;
@@ -749,6 +756,19 @@ impl RenderThread {
       }
     }
 
+    let is_washed: bool = backdrop.is_washed()
+      && gpu
+        .backdrop
+        .prepare(
+          &gpu.context.device,
+          &gpu.context.queue,
+          &self.shaders,
+          format,
+          &backdrop,
+        )
+        .inspect_err(|error| log::error!("The page's wash cannot be drawn: {error}"))
+        .is_ok();
+
     if is_lit && let Err(error) = gpu.present.prepare(&gpu.context.device, &self.shaders, format) {
       log::error!("Level viewport cannot be presented: {error}");
     }
@@ -776,6 +796,10 @@ impl RenderThread {
         })],
         ..Default::default()
       });
+
+      if is_washed {
+        gpu.backdrop.draw(&mut pass, format);
+      }
 
       for (id, rect) in &drawn {
         let Some(viewport) = self.viewports.get(id) else {

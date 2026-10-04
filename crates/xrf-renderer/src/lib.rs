@@ -57,6 +57,8 @@ pub use crate::contract::render_lod_settings::RenderLodSettings;
 pub use crate::contract::render_memory_report::RenderMemoryReport;
 pub use crate::contract::render_model_pose::RenderModelPose;
 pub use crate::contract::render_overlay::RenderOverlay;
+pub use crate::contract::render_page_backdrop::RenderPageBackdrop;
+pub use crate::contract::render_page_wash::RenderPageWash;
 pub use crate::contract::render_pass_cost::RenderPassCost;
 pub use crate::contract::render_pool_use::RenderPoolUse;
 pub use crate::contract::render_rect::RenderRect;

@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::contract::render_color::RenderColor;
+use crate::contract::render_page_backdrop::RenderPageBackdrop;
 use crate::contract::render_rect::RenderRect;
 
 /// Where a viewport sits in its window and what the page shows around it.
@@ -12,7 +12,7 @@ pub struct RenderViewportLayout {
   pub rect: RenderRect,
   /// Device pixels per CSS pixel, the unit input coordinates are given in.
   pub scale: f32,
-  /// The page's background around the viewport, cleared where the page is transparent but the viewport has not
+  /// What the page shows where it is transparent, painted under the viewports: around them, and where one has not
   /// followed a layout change yet.
-  pub clear: RenderColor,
+  pub backdrop: RenderPageBackdrop,
 }

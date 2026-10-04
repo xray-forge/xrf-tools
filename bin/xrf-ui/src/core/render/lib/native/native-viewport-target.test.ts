@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals
 
 import { ERenderInputKind, RenderInputEvent, RenderViewportLayout } from "@/core/ipc/types/xrf-renderer";
 import { NativeViewport } from "@/core/render/lib/native/native-viewport";
-import { NativeViewportTarget, toOpaqueColor } from "@/core/render/lib/native/native-viewport-target";
+import { NativeViewportTarget } from "@/core/render/lib/native/native-viewport-target";
 
 interface IViewportSpy {
   layouts: Array<RenderViewportLayout>;
@@ -65,8 +65,8 @@ describe("NativeViewportTarget", () => {
 
     expect(inner.style.background).toBe("transparent");
     expect(outer.style.background).toBe("transparent");
-    // The page showed the nearest painted colour around the viewport.
-    expect(layouts[0].clear).toEqual({ b: 60, g: 50, r: 40 });
+    // The page showed the nearest painted colour around the viewport, which paints no wash.
+    expect(layouts[0].backdrop).toEqual({ color: { b: 60, g: 50, r: 40 }, wash: null });
 
     target.dispose();
 
@@ -129,14 +129,5 @@ describe("NativeViewportTarget", () => {
     ]);
 
     target.dispose();
-  });
-});
-
-describe("toOpaqueColor", () => {
-  it("reads a painted colour and refuses a transparent one", () => {
-    expect(toOpaqueColor("rgb(1, 2, 3)")).toEqual({ b: 3, g: 2, r: 1 });
-    expect(toOpaqueColor("rgba(1, 2, 3, 0.5)")).toEqual({ b: 3, g: 2, r: 1 });
-    expect(toOpaqueColor("rgba(0, 0, 0, 0)")).toBeNull();
-    expect(toOpaqueColor("transparent")).toBeNull();
   });
 });

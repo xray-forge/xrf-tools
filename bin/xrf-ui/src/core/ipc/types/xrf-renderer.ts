@@ -588,6 +588,23 @@ export type RenderOverlay =
       isDepthTested: boolean;
     };
 
+/** What the page shows where it is transparent around its viewports: its colour, and the wash laid over it. */
+export type RenderPageBackdrop = {
+  color: RenderColor;
+  wash: RenderPageWash | null;
+};
+
+/** A linear gradient over a box of the page, as CSS `linear-gradient(angle, from, to)` paints it over a colour. */
+export type RenderPageWash = {
+  /** The box it is painted over, in device pixels of the window's client area. */
+  rect: RenderRect;
+  /** Degrees clockwise from pointing up, as CSS states a gradient's angle. */
+  angle: number | null;
+  /** Its first and last colours, sRGB channels and alpha from 0 to 1. */
+  from: [number | null, number | null, number | null, number | null];
+  to: [number | null, number | null, number | null, number | null];
+};
+
 /** What one pass of a viewport's frames cost on the GPU. */
 export type RenderPassCost = {
   /** The pass, as the frame names it. */
@@ -882,10 +899,10 @@ export type RenderViewportLayout = {
   /** Device pixels per CSS pixel, the unit input coordinates are given in. */
   scale: number | null;
   /**
-   * The page's background around the viewport, cleared where the page is transparent but the viewport has not
+   * What the page shows where it is transparent, painted under the viewports: around them, and where one has not
    * followed a layout change yet.
    */
-  clear: RenderColor;
+  backdrop: RenderPageBackdrop;
 };
 
 /**

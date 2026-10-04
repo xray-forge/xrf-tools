@@ -1,29 +1,22 @@
 import { Nullable } from "@xrf/types";
 
-import { ERenderInputKind, RenderColor, RenderInputEvent, RenderViewportLayout } from "@/core/ipc/types/xrf-renderer";
+import { ERenderInputKind, RenderInputEvent, RenderViewportLayout } from "@/core/ipc/types/xrf-renderer";
 import { NativeViewport } from "@/core/render/lib/native/native-viewport";
+import { NativeViewportHole } from "@/core/render/lib/native/native-viewport-hole";
 import { clearWindowTextSelection } from "@/lib/dom/selection";
 
 /** What the pointer shows while it drags a scene. */
 const DRAG_CURSOR: string = "grabbing";
 
-/** An element's background, put back as it was when the hole closes. */
-interface IClearedBackground {
-  element: HTMLElement;
-  background: string;
-}
-
 /**
  * The page's side of a native viewport: an element the renderer draws under.
  *
- * It opens a hole down to the window by taking the backgrounds off the element and every ancestor, reports where the
- * element is whenever that changes, and forwards what the pointer and keys do over it. Pointer moves are merged into
+ * It opens a hole down to the window through the page (`NativeViewportHole`), reports where the element is and what the
+ * page shows around it whenever that changes, and forwards what the pointer and keys do over it. Pointer moves are merged into
  * one an animation frame, since a camera reads only how far the pointer went.
  */
 export class NativeViewportTarget {
-  private readonly cleared: Array<IClearedBackground> = [];
-  /** The page's colour around the hole, which the renderer clears to where layout has not caught up. */
-  private readonly clear: RenderColor;
+  private readonly hole: NativeViewportHole;
   private readonly hadTabIndex: boolean;
   private frame: number = 0;
   /** The layout last sent, as compared. */
@@ -46,7 +39,7 @@ export class NativeViewportTarget {
     }
 
     element.style.outline = "none";
-    this.clear = this.openHole();
+    this.hole = new NativeViewportHole(element);
     this.rect = element.getBoundingClientRect();
 
     for (const [type, listener] of Object.entries(this.listeners)) {
@@ -63,9 +56,7 @@ export class NativeViewportTarget {
       this.element.removeEventListener(type, listener as EventListener);
     }
 
-    for (const { element, background } of this.cleared.splice(0).reverse()) {
-      element.style.background = background;
-    }
+    this.hole.dispose();
 
     this.endDrag();
     this.element.style.outline = "";
@@ -73,28 +64,6 @@ export class NativeViewportTarget {
     if (!this.hadTabIndex) {
       this.element.removeAttribute("tabindex");
     }
-  }
-
-  /**
-   * Takes the background off the element and each ancestor that paints one, down to the document.
-   *
-   * @returns The colour the nearest of them painted, which is what the page showed around the viewport.
-   */
-  private openHole(): RenderColor {
-    let clear: Nullable<RenderColor> = null;
-
-    for (let element: Nullable<HTMLElement> = this.element; element; element = element.parentElement) {
-      const style: CSSStyleDeclaration = getComputedStyle(element);
-      const color: Nullable<RenderColor> = toOpaqueColor(style.backgroundColor);
-
-      if (color || style.backgroundImage !== "none") {
-        clear ??= color;
-        this.cleared.push({ background: element.style.background, element });
-        element.style.background = "transparent";
-      }
-    }
-
-    return clear ?? { b: 0, g: 0, r: 0 };
   }
 
   /** Reports the layout when it moved, and sends the merged pointer move, once an animation frame. */
@@ -107,7 +76,7 @@ export class NativeViewportTarget {
     const left: number = Math.round(this.rect.left * scale);
     const top: number = Math.round(this.rect.top * scale);
     const layout: RenderViewportLayout = {
-      clear: this.clear,
+      backdrop: this.hole.getBackdrop(scale),
       rect: {
         height: Math.max(0, Math.round(this.rect.bottom * scale) - top),
         width: Math.max(0, Math.round(this.rect.right * scale) - left),
@@ -225,23 +194,4 @@ export class NativeViewportTarget {
       this.send(ERenderInputKind.WHEEL, event);
     },
   };
-}
-
-/**
- * @param css - A computed colour, `rgb(...)` or `rgba(...)`.
- * @returns The colour, or null for one that paints nothing.
- */
-export function toOpaqueColor(css: string): Nullable<RenderColor> {
-  const channels: Nullable<RegExpMatchArray> = css.match(/rgba?\(([^)]+)\)/);
-
-  if (!channels) {
-    return null;
-  }
-
-  const [r = 0, g = 0, b = 0, a = 1] = channels[1]
-    .split(/[\s,/]+/)
-    .filter(Boolean)
-    .map((part: string) => Number.parseFloat(part));
-
-  return a > 0 ? { b: Math.round(b), g: Math.round(g), r: Math.round(r) } : null;
 }

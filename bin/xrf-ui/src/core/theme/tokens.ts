@@ -35,7 +35,8 @@ export const REVEAL = {
 
 /** Diagonal accent wash over the frame and the reading plane. */
 export const WASH = {
-  angle: "135deg",
+  /** Degrees clockwise from pointing up, as CSS states a gradient's angle. */
+  angle: 135,
   /** Cool end, at the gradient's origin. */
   secondary: { light: 0.05, dark: 0.05 },
   /** Warm end. */
