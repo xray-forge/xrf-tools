@@ -16,7 +16,7 @@ impl OgfChildrenChunk {
 
 impl ChunkReadWrite for OgfChildrenChunk {
   fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
-    log::info!("Reading children chunk: {} bytes", reader.read_bytes_remain());
+    log::debug!("Reading children chunk: {} bytes", reader.read_bytes_remain());
 
     let mut children: Vec<OgfFile> = Vec::new();
 
