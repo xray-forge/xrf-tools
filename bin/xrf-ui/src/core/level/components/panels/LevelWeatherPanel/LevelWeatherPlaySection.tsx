@@ -24,6 +24,8 @@ interface ILevelWeatherPlaySectionProps extends BaseComponentProps {
   seed: Nullable<ILevelWeatherSeed>;
   /** Why the last cycle asked for does not play, or null. */
   failure: Nullable<string>;
+  /** The level's `weathers` where it leads to no cycle of its game, which its scripts read their own way; or null. */
+  unfollowed: Nullable<string>;
   cycles: ReadonlyArray<ILevelWeatherCycleChoice>;
   /** The cycle chosen, or null for none. */
   cycle: Nullable<string>;
@@ -49,6 +51,7 @@ export function LevelWeatherPlaySection({
   isManual,
   seed,
   failure,
+  unfollowed,
   cycles,
   cycle,
   reading,
@@ -66,6 +69,12 @@ export function LevelWeatherPlaySection({
         {failure ? (
           <Typography className={"block wrap-anywhere text-warning"} variant={"caption"}>
             {failure}
+          </Typography>
+        ) : null}
+
+        {unfollowed ? (
+          <Typography className={"block wrap-anywhere text-text-secondary"} variant={"caption"}>
+            {`The level's weathers = ${unfollowed} names no cycle here; its game's scripts choose its weather. The game's first cycle plays, and any below can.`}
           </Typography>
         ) : null}
 

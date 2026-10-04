@@ -5,6 +5,7 @@ import { Maybe, Nullable } from "@xrf/types";
 import { transformError } from "@/core/error/lib";
 import { levelsCommands } from "@/core/ipc/commands/levels";
 import {
+  EnvironmentCycleEntry,
   LevelWeatherCycle,
   LevelWeatherDescription,
   SelectedLevelDescription,
@@ -187,8 +188,16 @@ export class LevelWeatherService {
   }
 
   /**
-   * Reads the level's weather and plays the cycle it was last played with, or the first it offers; or the keyframe set
-   * by hand, where that is what it was lit by, or where its weather does not play.
+   * The level's `weathers` where it leads to no cycle its game has, as a key its game's scripts read their own way does:
+   * the viewer then plays the game's first cycle. Null while the level offers one, or before its weather is read.
+   */
+  public get unfollowed(): Nullable<string> {
+    return this.description && this.description.offered.length === 0 ? this.description.weather.key : null;
+  }
+
+  /**
+   * Reads the level's weather and plays the cycle it was last played with, or the first it offers, or the game's first
+   * where it offers none; or the keyframe set by hand, where that is what it was lit by, or where no cycle plays.
    *
    * @param selected - The level open.
    * @param remembered - The cycle it was last played with, empty for none.
@@ -212,7 +221,10 @@ export class LevelWeatherService {
         this.playManual(ERenderWeatherTransition.CUT);
       }
 
-      const first: Maybe<LevelWeatherCycle> = description.offered[0];
+      // A level whose `weathers` its game's scripts read their own way offers nothing; the game's own cycles stand in.
+      const first: Maybe<string> =
+        description.offered[0]?.name ??
+        description.cycles.find((it: EnvironmentCycleEntry) => it.kind === EWeatherCycleKind.CYCLE)?.name;
 
       // A remembered cycle the game no longer has gives way to the level's own.
       if (remembered && (await this.playRemembered(selected, remembered))) {
@@ -220,7 +232,7 @@ export class LevelWeatherService {
       }
 
       if (first) {
-        await this.play(selected, first.name);
+        await this.play(selected, first);
       } else if (this.source !== ELevelWeatherSource.MANUAL) {
         this.playManual(ERenderWeatherTransition.CUT);
       }
@@ -448,9 +460,20 @@ export class LevelWeatherService {
       this.reading = name;
     });
 
-    const cycle: LevelWeatherCycle =
-      this.description?.offered.find((it: LevelWeatherCycle) => it.name === name) ??
-      (await levelsCommands.readLevelCycle(selected.sessionId, { kind: EWeatherCycleKind.CYCLE, name })).value;
+    let cycle: LevelWeatherCycle;
+
+    try {
+      cycle =
+        this.description?.offered.find((it: LevelWeatherCycle) => it.name === name) ??
+        (await levelsCommands.readLevelCycle(selected.sessionId, { kind: EWeatherCycleKind.CYCLE, name })).value;
+    } catch (error: unknown) {
+      // A cycle that does not read is no longer being read.
+      runInAction(() => {
+        this.reading = this.reading === name ? null : this.reading;
+      });
+
+      throw error;
+    }
 
     if (this.sessionId !== selected.sessionId || this.reading !== name) {
       return;

@@ -3,7 +3,7 @@ import { autorun } from "@wirestate/mobx";
 import { Nullable } from "@xrf/types";
 
 import { SelectedLevelDescription, SessionSnapshot } from "@/core/ipc/types/xrf-app";
-import { WeatherCycleId, WeatherDescriptor } from "@/core/ipc/types/xrf-environment";
+import { EWeatherCycleKind, WeatherCycleId, WeatherDescriptor } from "@/core/ipc/types/xrf-environment";
 import { ERenderWeatherPlay, ERenderWeatherTransition, RenderWeatherPlay } from "@/core/ipc/types/xrf-renderer";
 import {
   DEFAULT_LEVEL_MANUAL_WEATHER,
@@ -62,7 +62,7 @@ describe("LevelWeatherService", () => {
     expect(service.failure).toBeNull();
   });
 
-  it("plays the keyframe set by hand, without failing, where the level offers no cycle", async () => {
+  it("plays the keyframe set by hand, without failing, where neither the level nor its game offers a cycle", async () => {
     setMockInvokeResponses({
       ["plugin:levels|read_level_weather"]: mockSessionResponse(mockLevelWeatherDescription({ offered: [] })),
     });
@@ -75,6 +75,46 @@ describe("LevelWeatherService", () => {
     expect(toKeyframe(service.weather)?.skyTexture).toBe(DEFAULT_LEVEL_MANUAL_WEATHER.skyTexture);
     expect(service.transition).toBe(ERenderWeatherTransition.CUT);
     expect(service.failure).toBeNull();
+  });
+
+  // XRF's levels write `weathers = dynamic`, which its weather manager turns into a graph by the level's periods; any
+  // fork's script-chosen weather looks the same, and the game's own cycles stand in for it.
+  it("plays the game's first cycle where the level's weathers leads to none, saying so", async () => {
+    setMockInvokeResponses({
+      ["plugin:levels|read_level_weather"]: mockSessionResponse(
+        mockLevelWeatherDescription({
+          cycles: [
+            {
+              file: "environment\\weather_effects\\fx_blowout.ltx",
+              findings: 0,
+              keyframes: 4,
+              kind: EWeatherCycleKind.EFFECT,
+              name: "fx_blowout",
+            },
+            {
+              file: "environment\\weathers\\w_clear.ltx",
+              findings: 0,
+              keyframes: 24,
+              kind: EWeatherCycleKind.CYCLE,
+              name: "w_clear",
+            },
+          ],
+          offered: [],
+          weather: { key: "dynamic", level: "zaton", options: [{ cycle: "dynamic", graph: null, state: null }] },
+        })
+      ),
+      ["plugin:levels|read_level_cycle"]: mockSessionResponse(({ cycle }: { cycle: WeatherCycleId }) =>
+        mockLevelWeatherCycle({ name: cycle.name })
+      ),
+    });
+
+    const service: LevelWeatherService = createService();
+
+    await service.open(SELECTED);
+
+    expect(service.cycle?.name).toBe("w_clear");
+    expect(service.isManual).toBe(false);
+    expect(service.unfollowed).toBe("dynamic");
   });
 
   it("plays the remembered cycle where the level offers no cycle", async () => {
@@ -304,6 +344,8 @@ describe("LevelWeatherService", () => {
 
     expect(service.cycle?.name).toBe("default_clear");
     expect(service.failure).toBeNull();
+    // The remembered cycle that did not read is no longer said to be reading.
+    expect(service.reading).toBeNull();
     expect(service.source).toBe(ELevelWeatherSource.MANUAL);
     // The remembered keyframe set by hand lights it, cut in.
     expect(toKeyframe(service.weather)?.rainDensity).toBe(0.3);

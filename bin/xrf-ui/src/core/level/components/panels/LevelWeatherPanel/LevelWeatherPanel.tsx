@@ -53,6 +53,7 @@ export function LevelWeatherPanel({
         isManual={isManual}
         seed={weatherService.seed}
         failure={weatherService.failure}
+        unfollowed={weatherService.unfollowed}
         cycles={cycles}
         cycle={cycle?.name ?? null}
         reading={weatherService.reading}
