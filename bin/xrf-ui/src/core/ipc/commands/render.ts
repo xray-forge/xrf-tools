@@ -12,6 +12,7 @@ import {
   RenderLevelProblems,
   RenderModelPose,
   RenderOverlay,
+  RenderSelectionTarget,
   RenderSettings,
   RenderSurfaceGeometry,
   RenderTextureReport,
@@ -107,6 +108,15 @@ export const renderCommands = {
   /** Set the helpers drawn over one viewport's frame. */
   setOverlays: (viewport: RenderViewportId, overlays: Array<RenderOverlay>) =>
     __TAURI_INVOKE<void>("plugin:render|set_overlays", { viewport, overlays }),
+  /** Mark what of one viewport's level is selected, or nothing. */
+  setSelection: (
+    viewport: RenderViewportId,
+    selection: {
+      target: RenderSelectionTarget;
+      /** sRGB from 0 to 1. */
+      color: [number | null, number | null, number | null];
+    } | null
+  ) => __TAURI_INVOKE<void>("plugin:render|set_selection", { viewport, selection }),
   /** Set what one viewport draws its scene with. */
   setViewOptions: (viewport: RenderViewportId, options: RenderViewOptions) =>
     __TAURI_INVOKE<void>("plugin:render|set_view_options", { viewport, options }),

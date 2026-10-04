@@ -25,6 +25,7 @@ use crate::pass::backdrop_uniform::BackdropUniform;
 use crate::pass::camera_uniform::CameraUniform;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::level_view::LevelView;
+use crate::scene::static_scene::static_selection::StaticSelection;
 use crate::scene::texture::weather_texture_cache::WeatherTextureCache;
 use crate::scene::texture::weather_texture_kind::WeatherTextureKind;
 use crate::shader::shader_library::ShaderLibrary;
@@ -220,6 +221,11 @@ impl RenderThread {
         if let Some(viewport) = self.viewports.get_mut(&id) {
           viewport.overlays = overlays;
           viewport.overlays_version += 1;
+        }
+      }
+      RenderCommand::Selection { id, selection } => {
+        if let Some(viewport) = self.viewports.get_mut(&id) {
+          viewport.selection = selection;
         }
       }
       RenderCommand::Pick { id, pick } => match self.viewports.get_mut(&id) {
@@ -645,9 +651,15 @@ impl RenderThread {
         .as_mut()
         .map_or((unjittered, unjittered), |level| level.next_motion(unjittered));
 
+      let selection: Option<StaticSelection> = viewport
+        .level_view
+        .as_mut()
+        .and_then(|level| level.resolve_selection(viewport.selection.as_ref()).cloned());
+
       binding.write(
         queue,
         &CameraUniform::new(&drawn, drawn_rect, switches)
+          .with_selection(selection.as_ref())
           .with_wireframe(options.is_wireframe)
           .with_surface_color(options.surface_color)
           .with_motion(motion)
@@ -694,7 +706,12 @@ impl RenderThread {
         .get_or_insert_with(|| LevelView::new(device, queue, &gpu.view_layout, Arc::clone(source)));
 
       level.set_timed(self.settings.is_gpu_timed);
-      level.set_overlays(device, &viewport.overlays, viewport.overlays_version);
+      level.set_overlays(
+        device,
+        &viewport.overlays,
+        viewport.overlays_version,
+        viewport.selection.as_ref(),
+      );
       level.set_model_pose(&viewport.model_pose);
       level.load(
         device,

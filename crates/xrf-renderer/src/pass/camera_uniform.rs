@@ -4,6 +4,7 @@ use crate::camera::camera_view::CameraView;
 use crate::contract::render_rect::RenderRect;
 use crate::contract::render_surface_color::RenderSurfaceColor;
 use crate::contract::render_view_options::RenderViewOptions;
+use crate::scene::static_scene::static_selection::StaticSelection;
 
 /// The camera as `shaders/common/camera.wgsl` declares it.
 #[repr(C)]
@@ -33,7 +34,14 @@ pub struct CameraUniform {
   pub plain: Vec4,
   /// The backdrop's second colour, and in `w` the side of a square in render pixels; zero for a plain backdrop.
   pub backdrop_squares: Vec4,
+  /// One while something is selected; the place its clusters are drawn in, or `u32::MAX` for any; how many runs follow.
+  pub selection: [u32; 4],
+  /// The selection's runs of clusters, two a row: each its first and the one past its last.
+  pub selection_runs: [[u32; 4]; SELECTION_ROWS],
 }
+
+/// Rows of the camera's selection runs, two runs each.
+const SELECTION_ROWS: usize = 32;
 
 impl CameraUniform {
   pub fn new(view: &CameraView, rect: RenderRect, switches: Vec4) -> Self {
@@ -55,6 +63,8 @@ impl CameraUniform {
       backdrop: Vec4::ZERO,
       plain: Vec4::ZERO,
       backdrop_squares: Vec4::ZERO,
+      selection: [0; 4],
+      selection_runs: [[0; 4]; SELECTION_ROWS],
     }
   }
 
@@ -81,6 +91,24 @@ impl CameraUniform {
     self
   }
 
+  /// The same camera marking what a selection names where the G-buffer draws it; past the runs it holds, the runs
+  /// nearest each other are joined, which marks the fewest clusters it does not name.
+  pub fn with_selection(mut self, selection: Option<&StaticSelection>) -> Self {
+    let Some(selection) = selection.filter(|it| !it.runs.is_empty()) else {
+      return self;
+    };
+    let runs: Vec<[u32; 2]> = join_nearest(&selection.runs, SELECTION_ROWS * 2);
+
+    self.selection = [1, selection.place.unwrap_or(u32::MAX), runs.len() as u32, 0];
+
+    for (index, run) in runs.iter().enumerate() {
+      self.selection_runs[index / 2][(index % 2) * 2] = run[0];
+      self.selection_runs[index / 2][(index % 2) * 2 + 1] = run[1];
+    }
+
+    self
+  }
+
   /// The same camera drawing an untextured surface as clay, or as its shader's tint.
   pub fn with_surface_color(mut self, color: RenderSurfaceColor) -> Self {
     self.modes.w = f32::from(u8::from(color == RenderSurfaceColor::Clay));
@@ -92,4 +120,20 @@ impl CameraUniform {
     self.modes.x = f32::from(u8::from(is_wireframe));
     self
   }
+}
+
+/// Runs in order joined across their narrowest gaps until at most `most` remain.
+fn join_nearest(runs: &[[u32; 2]], most: usize) -> Vec<[u32; 2]> {
+  let mut joined: Vec<[u32; 2]> = runs.to_vec();
+
+  while joined.len() > most {
+    let narrowest: usize = (1..joined.len())
+      .min_by_key(|index| joined[*index][0].saturating_sub(joined[index - 1][1]))
+      .unwrap_or(1);
+
+    joined[narrowest - 1][1] = joined[narrowest][1];
+    joined.remove(narrowest);
+  }
+
+  joined
 }

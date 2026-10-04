@@ -123,6 +123,7 @@ macro_rules! for_each_tauri_command_domain {
         send_input => crate::plugins::render::commands::send_input::render_send_input,
         set_camera => crate::plugins::render::commands::set_camera::render_set_camera,
         set_overlays => crate::plugins::render::commands::set_overlays::render_set_overlays,
+        set_selection => crate::plugins::render::commands::set_selection::render_set_selection,
         set_view_options => crate::plugins::render::commands::set_view_options::render_set_view_options,
         set_viewport_layout => crate::plugins::render::commands::set_viewport_layout::render_set_viewport_layout,
         set_weather_control => crate::plugins::render::commands::set_weather_control::render_set_weather_control,

@@ -13,6 +13,7 @@ pub(crate) mod static_region;
 pub(crate) mod static_row;
 pub(crate) mod static_scene;
 pub(crate) mod static_sector;
+pub(crate) mod static_selection;
 pub(crate) mod static_slot;
 pub(crate) mod static_slot_info;
 pub(crate) mod static_sorted_place;

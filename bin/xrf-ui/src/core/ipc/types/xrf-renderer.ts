@@ -650,6 +650,37 @@ export type RenderSectorSkip = {
   skip: SectorSkip;
 };
 
+/**
+ * What of a viewport's level is selected, and the colour it is marked in: outlined where it is drawn, and a spawned
+ * object boxed too.
+ */
+export type RenderSelection = {
+  target: RenderSelectionTarget;
+  /** sRGB from 0 to 1. */
+  color: [number | null, number | null, number | null];
+};
+
+/** Every `kind` the `RenderSelectionTarget` union is told apart by, so a switch or a comparison names one. */
+export enum ERenderSelectionTarget {
+  /** An object the level's spawn places, by its index among them. */
+  SPAWN = "spawn",
+  /**
+   * A surface the level compiled: one place of a sector's instanced mesh, or the sector's baked geometry of one shader
+   * table entry.
+   */
+  SURFACE = "surface",
+}
+
+/** One thing of a level a selection names, as a pick names it. */
+export type RenderSelectionTarget =
+  /** An object the level's spawn places, by its index among them. */
+  | { kind: "spawn"; object: number }
+  /**
+   * A surface the level compiled: one place of a sector's instanced mesh, or the sector's baked geometry of one shader
+   * table entry.
+   */
+  | { kind: "surface"; sector: number; shaderId: number; mesh: number | null; place: number | null };
+
 /** What every viewport of the renderer draws with. */
 export type RenderSettings = {
   frameRate: RenderFrameRate;

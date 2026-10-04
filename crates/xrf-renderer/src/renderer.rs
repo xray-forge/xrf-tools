@@ -12,6 +12,7 @@ use crate::contract::render_level_hit::RenderLevelHit;
 use crate::contract::render_level_problems::RenderLevelProblems;
 use crate::contract::render_model_pose::RenderModelPose;
 use crate::contract::render_overlay::RenderOverlay;
+use crate::contract::render_selection::RenderSelection;
 use crate::contract::render_settings::RenderSettings;
 use crate::contract::render_surface_geometry::RenderSurfaceGeometry;
 use crate::contract::render_texture_report::RenderTextureReport;
@@ -147,6 +148,11 @@ impl Renderer {
 
   pub fn set_overlays(&self, id: RenderViewportId, overlays: Vec<RenderOverlay>) {
     self.send(RenderCommand::Overlays { id, overlays });
+  }
+
+  /// Marks what of a viewport's level is selected, or nothing for `None`.
+  pub fn set_selection(&self, id: RenderViewportId, selection: Option<RenderSelection>) {
+    self.send(RenderCommand::Selection { id, selection });
   }
 
   /// Draws a level in a viewport, read from its source on the renderer's loader threads; `None` draws none.

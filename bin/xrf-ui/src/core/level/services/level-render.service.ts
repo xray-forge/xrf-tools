@@ -34,6 +34,7 @@ import { ILevelViewpoint, toLevelStartViewpoint } from "@/core/level/lib/camera/
 import { ILevelBox, toLevelBox } from "@/core/level/lib/extent/level-extent";
 import { LEVEL_PICK_PANELS } from "@/core/level/lib/panels/level-pick-panels";
 import { ELevelPick, TLevelPick } from "@/core/level/lib/pick/level-pick";
+import { toLevelPickSelection } from "@/core/level/lib/pick/level-pick-selection";
 import { DEFAULT_LEVEL_RENDER_CONFIG, ILevelRenderConfig } from "@/core/level/lib/render/level-render-config";
 import { toLevelFrameOverlays } from "@/core/level/lib/render/level-render-frame";
 import { toLevelCameraAt, toLevelViewOptions } from "@/core/level/lib/render/level-render-view";
@@ -267,6 +268,11 @@ export class LevelRenderService extends NativeRenderSurfaceService {
         () => this.viewOptions,
         (options: RenderViewOptions) => viewport.setViewOptions(options),
         { equals: comparer.structural, fireImmediately: true }
+      ),
+      reaction(
+        () => this.viewportService.picked,
+        (picked: Nullable<TLevelPick>) => viewport.setSelection(toLevelPickSelection(picked)),
+        { fireImmediately: true }
       ),
       // Keyed by the extent and the switches alone: the overlays themselves are long arrays.
       reaction(
