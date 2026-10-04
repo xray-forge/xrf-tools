@@ -41,7 +41,9 @@ pub fn render_show_model(
     None => None,
   };
 
-  state.renderer.show_level(viewport, source);
+  let ticket: u64 = state.ask_show(viewport);
+
+  state.show(viewport, ticket, source);
 
   Ok(())
 }

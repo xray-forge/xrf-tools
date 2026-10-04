@@ -22,6 +22,8 @@ pub async fn render_show_texture(
   viewport: RenderViewportId,
   request: Option<TextureSurfaceRequest>,
 ) -> TauriResult {
+  // Taken before the description's hop, so a texture asked for later is never replaced by this one.
+  let ticket: u64 = state.ask_show(viewport);
   let source: Option<Arc<dyn RenderLevelSource>> = match request {
     Some(request) => {
       log::info!(
@@ -48,7 +50,7 @@ pub async fn render_show_texture(
     None => None,
   };
 
-  state.renderer.show_level(viewport, source);
+  state.show(viewport, ticket, source);
 
   Ok(())
 }

@@ -9,6 +9,7 @@ use xrf_renderer::{RenderCapture, RenderViewportId};
 
 use crate::core::execution::ExecutionState;
 use crate::core::types::TauriResult;
+use crate::plugins::render::render_answer::await_answer;
 use crate::plugins::render::state::RenderState;
 
 /// How long a capture waits for the next frame: a viewport minimised or hidden draws none.
@@ -25,12 +26,16 @@ pub async fn render_save_capture(
 ) -> TauriResult {
   let answer: Receiver<XrfResult<RenderCapture>> = state.renderer.capture_viewport(viewport);
 
+  let capture: RenderCapture = await_answer(
+    answer,
+    CAPTURE_TIMEOUT,
+    format!("Viewport {} drew no frame to capture", viewport.0),
+  )
+  .await?
+  .map_err(|error| error.to_string())?;
+
   execution
-    .run_blocking("Capturing a viewport", move || -> TauriResult {
-      let capture: RenderCapture = answer
-        .recv_timeout(CAPTURE_TIMEOUT)
-        .map_err(|_| format!("Viewport {} drew no frame to capture", viewport.0))?
-        .map_err(|error| error.to_string())?;
+    .run_blocking("Saving a viewport's capture", move || -> TauriResult {
       let image: RgbaImage = RgbaImage::from_raw(capture.width, capture.height, capture.pixels)
         .ok_or_else(|| "The capture's pixels do not fill its size".to_string())?;
 

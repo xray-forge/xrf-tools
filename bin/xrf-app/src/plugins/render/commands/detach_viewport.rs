@@ -10,4 +10,5 @@ pub fn render_detach_viewport(state: State<'_, RenderState>, viewport: RenderVie
   log::info!("Detached native viewport {}", viewport.0);
 
   state.renderer.detach_viewport(viewport);
+  state.forget(viewport);
 }
