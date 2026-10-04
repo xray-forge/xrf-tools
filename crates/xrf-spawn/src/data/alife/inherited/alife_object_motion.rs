@@ -11,6 +11,13 @@ pub struct AlifeObjectMotion {
   pub motion_name: String,
 }
 
+impl AlifeObjectMotion {
+  /// The motion it names, `CSE_Motion::get_motion`; none where it names none.
+  pub fn get_name(&self) -> Option<&str> {
+    Some(self.motion_name.trim()).filter(|name| !name.is_empty())
+  }
+}
+
 impl ChunkReadWrite for AlifeObjectMotion {
   /// Read motion object data from the chunk.
   fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
@@ -53,6 +60,19 @@ impl LtxImportExport for AlifeObjectMotion {
 
 #[cfg(test)]
 mod tests {
+  #[test]
+  fn test_get_name_names_none_for_an_empty_motion() {
+    let motion = |name: &str| super::AlifeObjectMotion {
+      motion_name: name.to_owned(),
+    };
+
+    assert_eq!(
+      motion(" camera_effects\\fireball.anm ").get_name(),
+      Some("camera_effects\\fireball.anm")
+    );
+    assert_eq!(motion("  ").get_name(), None);
+  }
+
   use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
   use xrf_error::XrfResult;
   use xrf_test_utils::FileSlice;

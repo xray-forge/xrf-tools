@@ -10,6 +10,7 @@ pub use crate::data::lights::light_animator_description::LightAnimatorDescriptio
 pub use crate::data::lights::light_animator_key::LightAnimatorKey;
 pub use crate::data::lights::light_description::LightDescription;
 pub use crate::data::lights::light_kind::LightKind;
+pub use crate::data::lights::light_motion::LightMotion;
 pub use crate::data::lights::lights_description::LightsDescription;
 pub use crate::data::sector::impostor::sector_impostor_group::SectorImpostorGroup;
 pub use crate::data::sector::impostor::sector_impostors::SectorImpostors;

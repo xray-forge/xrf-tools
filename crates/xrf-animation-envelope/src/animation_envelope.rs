@@ -5,6 +5,7 @@ use xrf_error::XrfResult;
 use xrf_utils::to_format_size;
 
 use crate::AnimationKey;
+use crate::envelope_evaluation;
 
 /// One animated channel, `CEnvelope` (`xrCore/Animation/Envelope.hpp`): how it behaves outside its keys, and the
 /// keys themselves.
@@ -29,6 +30,11 @@ impl AnimationEnvelope {
     let last: &AnimationKey = self.keys.last()?;
 
     Some(last.time - first.time)
+  }
+
+  /// The channel's value at a time in seconds, `CEnvelope::Evaluate`.
+  pub fn evaluate(&self, time: f32) -> f32 {
+    envelope_evaluation::evaluate(self, time)
   }
 
   /// Reads an envelope the narrow way, `CEnvelope::Load_2`.

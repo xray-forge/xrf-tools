@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use xrf_animation_envelope::AnimationEnvelope;
 use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter, find_required_chunk_by_id};
 use xrf_error::{XrfError, XrfResult};
+use xrf_math::Vector3d;
 use xrf_utils::format_path;
 
 use crate::{ANM_CHANNELS, ANM_DEFAULT_FPS};
@@ -180,7 +181,43 @@ impl AnmFile {
 
   /// Seconds the animation runs for, `CObjectAnimator::GetLength` (`xrEngine/ObjectAnimator.cpp`).
   pub fn get_duration_seconds(&self) -> f32 {
-    self.get_frame_count() as f32 / if self.fps > 0.0 { self.fps } else { ANM_DEFAULT_FPS }
+    self.get_frame_count() as f32 / self.get_fps()
+  }
+
+  /// Frames a second its keys are timed against, the default where it declares none usable.
+  pub fn get_fps(&self) -> f32 {
+    if self.fps > 0.0 { self.fps } else { ANM_DEFAULT_FPS }
+  }
+
+  /// The time a looping object animator plays it at `elapsed` seconds after it started: `SAnimParams::Set` starts at
+  /// the first frame's time, and `Update` wraps whole lengths back once past the last frame's.
+  pub fn get_looped_time(&self, elapsed: f32) -> f32 {
+    let fps: f32 = self.get_fps();
+    let (start, end): (f32, f32) = (self.frame_start as f32 / fps, self.frame_end as f32 / fps);
+    let time: f32 = start + elapsed;
+    let length: f32 = end - start;
+
+    // A motion of one frame has no length to wrap by, and holds it.
+    if length <= 0.0 {
+      return start;
+    }
+
+    if time <= end {
+      return time;
+    }
+
+    time - ((time - start) / length).floor() * length
+  }
+
+  /// Where it has an object at a time, `COMotion::_Evaluate`: the position, and the rotation as the object animator
+  /// hands it to `setXYZi`, the pitch in `x`, the heading in `y` and the bank in `z`.
+  pub fn evaluate(&self, time: f32) -> (Vector3d, Vector3d) {
+    let channel = |index: usize| self.channels.get(index).map_or(0.0, |it| it.evaluate(time));
+
+    (
+      Vector3d::new(channel(0), channel(1), channel(2)),
+      Vector3d::new(channel(4), channel(3), channel(5)),
+    )
   }
 
   /// Keys across every channel.

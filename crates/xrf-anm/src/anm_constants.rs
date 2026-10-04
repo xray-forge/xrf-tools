@@ -1,10 +1,11 @@
-/// Channels a motion animates, in the order the file stores them.
+/// Channels a motion animates, in the order the file stores them: `ctPositionX` to `ctRotationB`
+/// (`xrCore/Animation/Motion.hpp`), the heading before the pitch.
 pub const ANM_CHANNELS: [&str; 6] = [
   "position x",
   "position y",
   "position z",
-  "rotation pitch",
   "rotation heading",
+  "rotation pitch",
   "rotation bank",
 ];
 

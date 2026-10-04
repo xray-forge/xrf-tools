@@ -58,7 +58,7 @@ fn main() -> xrf_error::XrfResult {
 ```
 
 The writer accepts versions 4 and 5 and preserves the chosen version. Version 3 is read-only. Writing requires exactly
-six channels in `ANM_CHANNELS` order: position x/y/z, then rotation pitch/heading/bank. Empty channels are allowed.
+six channels in `ANM_CHANNELS` order: position x/y/z, then rotation heading/pitch/bank. Empty channels are allowed.
 
 ## Timing and limits
 
@@ -66,8 +66,11 @@ The frame range includes both endpoints: frames 0 through 29 span 30 frames. A r
 `get_duration_seconds` divides the frame count by `fps`, using `ANM_DEFAULT_FPS` (30) when `fps > 0` is false. Envelope
 key times are seconds; their first-to-last-key span is separate from the motion's frame-based duration.
 
-The crate parses and serializes motion data; it does not play animations or evaluate channel values at a time. Envelopes
-and their encoding constraints belong to [xrf-animation-envelope](../xrf-animation-envelope/README.md).
+`evaluate(time)` is `COMotion::_Evaluate`: the position from channels 0 to 2 and the rotation as an object animator
+hands it to `setXYZi`, the pitch (channel 4) in `x`, the heading (channel 3) in `y` and the bank in `z`.
+`get_looped_time(elapsed)` is the time a looping `CObjectAnimator` plays at: from the first frame's time, wrapped back
+by whole lengths past the last frame's. Envelopes and their encoding constraints belong to
+[xrf-animation-envelope](../xrf-animation-envelope/README.md).
 
 ## Errors and checks
 

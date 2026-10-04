@@ -3,6 +3,7 @@
 pub(crate) mod animation_envelope;
 pub(crate) mod animation_interpolation;
 pub(crate) mod animation_key;
+pub(crate) mod envelope_evaluation;
 
 pub use crate::animation_envelope::AnimationEnvelope;
 pub use crate::animation_interpolation::AnimationInterpolation;

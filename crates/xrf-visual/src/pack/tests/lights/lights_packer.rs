@@ -8,11 +8,12 @@ use xrf_math::Vector3d;
 use xrf_ogf::OgfFile;
 use xrf_spawn::{
   AlifeObject, AlifeObjectAbstract, AlifeObjectDynamicVisual, AlifeObjectHangingLamp, AlifeObjectInherited,
-  AlifeObjectSkeleton, ClsId,
+  AlifeObjectMotion, AlifeObjectSkeleton, ClsId,
 };
 
 use crate::data::lights::light_description::LightDescription;
 use crate::data::lights::light_kind::LightKind;
+use crate::data::lights::light_motion::LightMotion;
 use crate::data::lights::lights_description::LightsDescription;
 use crate::data::visual::skeleton::visual_rest_pose::VisualRestPose;
 use crate::pack::lights::lights_packer::LightsPacker;
@@ -432,7 +433,7 @@ fn lights_a_zone_its_section_lights_over_it_by_its_animation_alone() {
 
     zone.id = 7;
     zone.section = String::from(section);
-    packer.add_zone(&zone);
+    packer.add_zone(&zone, None);
   }
 
   let description: LightsDescription = packer.pack();
@@ -451,6 +452,32 @@ fn lights_a_zone_its_section_lights_over_it_by_its_animation_alone() {
   assert!(fire.is_shadowed);
   // A `Z_CFIRE` section's light switches with its campfire.
   assert_eq!(fire.campfire, Some(7));
+  assert_eq!(fire.motion, None);
+}
+
+// A torrid zone's light rides its motion, standing the section's height over where the motion has the zone.
+#[test]
+fn carries_a_torrid_zones_light_along_its_motion() {
+  let ltx: Ltx = sections();
+  let animations: LightAnimFile = animations();
+  let mut packer: LightsPacker = LightsPacker::new(Some(&animations)).with_sections(&ltx);
+  let mut zone: AlifeObject = object("campfire", lamp(FLAG_R2, 0));
+  let motion: AlifeObjectMotion = AlifeObjectMotion {
+    motion_name: String::from("camera_effects\\fireball.anm"),
+  };
+
+  zone.section = String::from("campfire");
+  packer.add_zone(&zone, Some(&motion));
+
+  let description: LightsDescription = packer.pack();
+
+  assert_eq!(
+    description.lights[0].motion,
+    Some(LightMotion {
+      name: String::from("camera_effects\\fireball.anm"),
+      height: 0.7,
+    })
+  );
 }
 
 // The engine refuses a zone whose animation `LALib` lacks, and a level read without `lanims.xr` lacks every one.
@@ -461,7 +488,7 @@ fn lights_no_zone_without_a_library_to_find_its_animation_in() {
   let mut zone: AlifeObject = object("campfire", lamp(FLAG_R2, 0));
 
   zone.section = String::from("campfire");
-  packer.add_zone(&zone);
+  packer.add_zone(&zone, None);
 
   let description: LightsDescription = packer.pack();
 

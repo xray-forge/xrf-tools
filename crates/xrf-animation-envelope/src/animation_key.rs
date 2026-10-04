@@ -26,6 +26,18 @@ impl AnimationKey {
   /// Bytes a wide key occupies, including the seven unquantized interpolation parameters.
   pub(crate) const WIDE_SERIALIZED_SIZE: u64 = 4 + 4 + 4 + 7 * 4;
 
+  /// Its tension, continuity and bias, zero for a stepped key, which carries none.
+  pub fn get_tcb(&self) -> [f32; 3] {
+    self
+      .interpolation
+      .map_or([0.0; 3], |it| [it.tension, it.continuity, it.bias])
+  }
+
+  /// Its four tangent parameters, zero for a stepped key, which carries none.
+  pub fn get_parameters(&self) -> [f32; 4] {
+    self.interpolation.map_or([0.0; 4], |it| it.parameters)
+  }
+
   /// Whether this key steps to its value rather than interpolating towards it.
   pub const fn is_stepped(&self) -> bool {
     self.shape == Self::SHAPE_STEPPED

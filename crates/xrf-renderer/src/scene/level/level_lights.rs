@@ -3,7 +3,7 @@ use std::sync::mpsc::{Receiver, channel};
 use std::time::Instant;
 
 use glam::{Mat4, Vec3, Vec4};
-use xrf_math::EPS_L;
+use xrf_math::{EPS_L, Vector3d};
 use xrf_visual::{LightDescription, LightKind, LightsDescription};
 
 use crate::contract::render_lights_report::RenderLightsReport;
@@ -19,6 +19,7 @@ use crate::pass::light_buffers::LightBuffers;
 use crate::pass::light_record::{LIGHT_NO_CONE, LIGHT_NO_PROJECTOR, LightRecord};
 use crate::pass::lights_uniform::LightsUniform;
 use crate::scene::level::level_light_shadows::{LIGHT_SHADOW_ATLAS_SIZE, LevelLightShadows};
+use crate::scene::level::level_object_motions::LevelObjectMotions;
 use crate::scene::level::light_shadow_set::LightShadowSet;
 use crate::scene::level::lights_frame::LightsFrame;
 use crate::scene::level::loader_answer::take_answer;
@@ -170,8 +171,10 @@ impl LevelLights {
       contents,
       sway,
       campfires,
+      motions,
     } = frame;
 
+    self.move_lights(motions);
     self.records.clear();
     self.shadows.begin();
     self.report = RenderLightsReport::default();
@@ -303,6 +306,29 @@ impl LevelLights {
 
     if !self.records.is_empty() {
       queue.write_buffer(&self.record_buffer, 0, bytemuck::cast_slice(&self.records));
+    }
+  }
+
+  /// Stands each light a motion carries `height` over where the motion has its zone this frame (`UpdateIdleLight`);
+  /// one whose motion is still read stays where its zone spawned.
+  // todo: Put a torrid zone's idle light out past `FASTMODE_DISTANCE` on Monolith, as `o_switch_2_slow` does for a zone
+  //  whose `light_in_slow_mode` is false, which `CTorridZone`'s is.
+  fn move_lights(&mut self, motions: &mut LevelObjectMotions) {
+    let Some(description) = &mut self.description else {
+      return;
+    };
+
+    for light in &mut description.lights {
+      let Some(motion) = &light.motion else {
+        continue;
+      };
+      let Some((transform, _)) = motions.get_pose(&motion.name) else {
+        continue;
+      };
+      let at: Vec3 = transform.w_axis.truncate();
+
+      // Lights stand in renderer space, which mirrors the engine's z.
+      light.position = Vector3d::new(at.x, at.y + motion.height, -at.z);
     }
   }
 

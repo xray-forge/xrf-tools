@@ -2,6 +2,7 @@ use serde::Serialize;
 use xrf_math::Vector3d;
 
 use crate::data::lights::light_kind::LightKind;
+use crate::data::lights::light_motion::LightMotion;
 
 /// One light of a level, in renderer space, as the engine would light with it.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -36,4 +37,6 @@ pub struct LightDescription {
   /// The spawned campfire (`CZoneCampfire`) whose switching fades it, by the object's id: its idle light. None for any
   /// other light.
   pub campfire: Option<u16>,
+  /// The motion carrying its zone, which moves it each frame: a torrid zone's idle light. None for a light that stands.
+  pub motion: Option<LightMotion>,
 }

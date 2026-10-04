@@ -9,7 +9,7 @@ use xrf_ltx::{Ltx, Section};
 use xrf_material::{XraySurfaceDescriptor, XraySurfaceResolver, XrayTextureScope};
 use xrf_particles::{ParticleEffect, ParticleLibrary, ParticlesFile};
 use xrf_renderer::{RenderParticlePlacement, RenderParticleSource};
-use xrf_spawn::{AlifeObject, AlifeObjectInherited};
+use xrf_spawn::{AlifeObject, AlifeObjectInherited, AlifeObjectMotion};
 use xrf_vfs::XrayProbe;
 use xrf_visual::{LightsPacker, VisualTransform};
 
@@ -52,6 +52,9 @@ pub fn pack_particles(
   let started: Instant = Instant::now();
   let library: ParticleLibrary = read_library(probe)?;
   let mut placements: Vec<RenderParticlePlacement> = read_planted(&current.source, probe)?;
+
+  // todo: Play the systems of space restrictors whose logic starts in `sr_particle` (`name` at `path`'s points, after
+  //  each point's delay, `looped` or once), as the b53 steam field's do; condition switches would stay unread.
 
   // Without the configs no zone names its particles; their reader has said why.
   match (get_level_spawn(current, probe), sections) {
@@ -131,20 +134,18 @@ fn place_planted(placement: &PsStaticPlacement) -> RenderParticlePlacement {
       name: placement.effect.clone(),
     },
     transform,
+    motion: None,
   }
 }
 
-/// `CCustomZone::PlayIdleParticles`: a zone whose section names idle particles plays them at its `XFORM`, and a
-/// campfire switches between them and its own.
+/// `CCustomZone::PlayIdleParticles`: a zone whose section names idle particles plays them at its `XFORM`, a torrid
+/// zone moving it along its motion, and a campfire switches between them and its own.
 fn place_zone(object: &AlifeObject, sections: &Ltx) -> Option<RenderParticlePlacement> {
-  if !matches!(
-    object.inherited,
-    AlifeObjectInherited::CseAlifeAnomalousZone(_)
-      | AlifeObjectInherited::CseAlifeZoneVisual(_)
-      | AlifeObjectInherited::CseAlifeTorridZone(_)
-  ) {
-    return None;
-  }
+  let motion: Option<&AlifeObjectMotion> = match &object.inherited {
+    AlifeObjectInherited::CseAlifeAnomalousZone(_) | AlifeObjectInherited::CseAlifeZoneVisual(_) => None,
+    AlifeObjectInherited::CseAlifeTorridZone(zone) => Some(&zone.motion),
+    _ => return None,
+  };
 
   let section: &Section = sections.section(&object.section)?;
   let read = |key: &str| {
@@ -174,6 +175,7 @@ fn place_zone(object: &AlifeObject, sections: &Ltx) -> Option<RenderParticlePlac
     transform: VisualTransform::of_spawn(&object.position, &object.direction)
       .mirrored()
       .to_matrix(),
+    motion: motion.and_then(AlifeObjectMotion::get_name).map(str::to_owned),
   })
 }
 

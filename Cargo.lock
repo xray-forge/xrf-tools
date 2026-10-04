@@ -6995,6 +6995,7 @@ dependencies = [
  "xrf-animation-envelope",
  "xrf-chunk",
  "xrf-error",
+ "xrf-math",
  "xrf-test-utils",
  "xrf-utils",
 ]
@@ -7596,6 +7597,8 @@ dependencies = [
  "serde_json",
  "specta",
  "wgpu",
+ "xrf-animation-envelope",
+ "xrf-anm",
  "xrf-dds",
  "xrf-engine-target",
  "xrf-environment",
