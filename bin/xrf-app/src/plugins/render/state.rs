@@ -1,13 +1,19 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
-use xrf_renderer::{RenderBundle, RenderLevelSource, RenderViewportId, RenderWorkers, Renderer};
+use xrf_renderer::{
+  RenderBundle, RenderEventSink, RenderLevelSource, RenderViewportId, RenderWindowHost, RenderWorkers, Renderer,
+};
+
+use crate::plugins::render::viewport_windows::ViewportWindows;
 
 /// The application's one renderer, which starts a GPU only once a viewport is attached.
 pub struct RenderState {
   pub renderer: Renderer,
   /// The latest show asked of each viewport, so one that took longer to prepare never replaces one asked after it.
   shows: Mutex<HashMap<RenderViewportId, u64>>,
+  /// The window each viewport draws into, so a page that goes takes its viewports with it.
+  windows: Mutex<ViewportWindows>,
 }
 
 impl RenderState {
@@ -16,6 +22,49 @@ impl RenderState {
     Self {
       renderer: Renderer::new(workers, bundle),
       shows: Mutex::default(),
+      windows: Mutex::default(),
+    }
+  }
+
+  /// Starts drawing a viewport into a window, named by its label, telling its page through `sink`.
+  pub fn attach_viewport(
+    &self,
+    window: &str,
+    host: Arc<dyn RenderWindowHost>,
+    sink: Box<dyn RenderEventSink>,
+  ) -> RenderViewportId {
+    let viewport: RenderViewportId = self.renderer.attach_viewport(host, sink);
+
+    self.lock_windows().insert(viewport, window);
+
+    log::info!("Attached native viewport {} to window '{window}'", viewport.0);
+
+    viewport
+  }
+
+  /// Stops drawing a viewport its page let go.
+  pub fn detach_viewport(&self, viewport: RenderViewportId) {
+    let window: Option<String> = self.lock_windows().remove(viewport);
+
+    match window {
+      Some(window) => log::info!("Detached native viewport {} from window '{window}'", viewport.0),
+      None => log::info!("Detached native viewport {}, which no window held", viewport.0),
+    }
+
+    self.release(viewport);
+  }
+
+  /// Stops drawing every viewport in a window whose page is loading again, which can no longer let them go itself.
+  pub fn detach_window(&self, window: &str) {
+    let viewports: Vec<RenderViewportId> = self.lock_windows().take_window(window);
+
+    for viewport in viewports {
+      log::info!(
+        "Detached native viewport {} from window '{window}', whose page is loading again",
+        viewport.0
+      );
+
+      self.release(viewport);
     }
   }
 
@@ -39,12 +88,16 @@ impl RenderState {
     }
   }
 
-  /// Forgets a detached viewport's tickets.
-  pub fn forget(&self, viewport: RenderViewportId) {
+  fn release(&self, viewport: RenderViewportId) {
+    self.renderer.detach_viewport(viewport);
     self.lock_shows().remove(&viewport);
   }
 
   fn lock_shows(&self) -> MutexGuard<'_, HashMap<RenderViewportId, u64>> {
     self.shows.lock().unwrap_or_else(PoisonError::into_inner)
+  }
+
+  fn lock_windows(&self) -> MutexGuard<'_, ViewportWindows> {
+    self.windows.lock().unwrap_or_else(PoisonError::into_inner)
   }
 }
