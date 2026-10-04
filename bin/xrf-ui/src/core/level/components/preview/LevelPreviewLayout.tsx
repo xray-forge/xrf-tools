@@ -178,6 +178,7 @@ export function LevelPreviewLayout({
           sun={loadService.level.value?.selected.value.sun ?? null}
           drawnSun={renderService.applied?.sun ?? null}
           suns={weatherService.description?.suns ?? EMPTY_SUNS}
+          sunShafts={weatherService.sunShafts}
           lod={viewService.lod}
           features={features}
           featureView={featureView}
@@ -187,6 +188,7 @@ export function LevelPreviewLayout({
           actions={actions}
           onChangeOptions={viewService.setOptions}
           onChangeHemiStrength={viewService.setHemiStrength}
+          onChangeSunShafts={weatherService.setSunShafts}
           onEditManual={weatherService.editManual}
           onChangeLod={viewService.setLod}
           onChangeFeatures={viewService.setFeatures}

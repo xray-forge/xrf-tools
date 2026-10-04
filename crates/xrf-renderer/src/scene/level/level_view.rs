@@ -746,8 +746,10 @@ impl LevelView {
     };
 
     self.is_hazing = options.is_lit && options.is_sky_visible && options.is_sky_hazed;
-    self.is_shafted =
-      options.is_lit && options.is_sun_shafted && lighting.sun_shafts > 0.0 && options.shadows.get_cascade_count() > 0;
+    self.is_shafted = options.is_lit
+      && options.is_sun_shafted
+      && lighting.get_sun_shafts(&options.sun_shafts) > 0.0
+      && options.shadows.get_cascade_count() > 0;
     self.is_wallmarked = options.is_wallmarked;
 
     if !options.is_occlusion_culled {

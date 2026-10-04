@@ -197,6 +197,7 @@ export class LevelRenderService extends NativeRenderSurfaceService {
       options: this.viewService.options,
       renderHeight: toNativeRenderHeight(this.settingsService.renderResolution),
       shading: this.viewService.shading,
+      sunShafts: this.weatherService.sunShafts,
       view: this.viewService.features,
     });
   }

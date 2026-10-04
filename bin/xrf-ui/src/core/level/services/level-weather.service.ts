@@ -26,6 +26,10 @@ import {
   toLevelManualWeather,
 } from "@/core/level/lib/weather/level-manual-weather";
 import {
+  DEFAULT_LEVEL_SUN_SHAFTS_OPTIONS,
+  ILevelSunShaftsOptions,
+} from "@/core/level/lib/weather/level-sun-shafts-options";
+import {
   DEFAULT_LEVEL_WEATHER_CONTROL,
   ILevelWeatherControl,
   LEVEL_WEATHER_NOON,
@@ -90,6 +94,10 @@ export class LevelWeatherService {
 
   @RefObservable()
   public control: ILevelWeatherControl = DEFAULT_LEVEL_WEATHER_CONTROL;
+
+  /** How the level's sun shafts step, and the floor under their density: remembered with its weather. */
+  @RefObservable()
+  public sunShafts: ILevelSunShaftsOptions = DEFAULT_LEVEL_SUN_SHAFTS_OPTIONS;
 
   /** The last time the weather was sent to, or null for none since the level opened. */
   @RefObservable()
@@ -391,7 +399,13 @@ export class LevelWeatherService {
     this.report = null;
     this.source = ELevelWeatherSource.WEATHER;
     this.control = DEFAULT_LEVEL_WEATHER_CONTROL;
+    this.sunShafts = DEFAULT_LEVEL_SUN_SHAFTS_OPTIONS;
     this.time = LEVEL_WEATHER_NOON;
+  }
+
+  @BoundAction()
+  public setSunShafts(sunShafts: ILevelSunShaftsOptions): void {
+    this.sunShafts = sunShafts;
   }
 
   /**
@@ -404,6 +418,7 @@ export class LevelWeatherService {
     this.time = memory.time;
     this.manual = memory.manual;
     this.seed = memory.seed;
+    this.sunShafts = memory.sunShafts;
     this.remembered = memory.cycle;
   }
 
@@ -525,6 +540,7 @@ export class LevelWeatherService {
         manual: this.manual,
         seed: this.seed,
         source: this.source,
+        sunShafts: this.sunShafts,
         time: this.time,
       });
     }

@@ -25,6 +25,7 @@ import { ILevelLodOptions } from "@/core/level/lib/lod/level-lod-options";
 import { ELevelShading } from "@/core/level/lib/view/level-shading";
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { ILevelManualWeather } from "@/core/level/lib/weather/level-manual-weather";
+import { ILevelSunShaftsOptions } from "@/core/level/lib/weather/level-sun-shafts-options";
 import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { EditorToolbarSeparator } from "@/core/shell/editor/EditorToolbarSeparator";
@@ -49,6 +50,8 @@ interface ILevelPreviewToolbarProps extends BaseComponentProps {
   drawnSun: Nullable<string>;
   /** Every lens flare of the game, which the sun's popover offers. */
   suns: ReadonlyArray<string>;
+  /** How the level's sun shafts step, and the floor under their density, which the sun's popover sets. */
+  sunShafts: ILevelSunShaftsOptions;
   /** How far trees are drawn in full, which the impostors toggle carries. */
   lod: ILevelLodOptions;
   /** What the view sets over the settings' features for itself. */
@@ -65,6 +68,7 @@ interface ILevelPreviewToolbarProps extends BaseComponentProps {
   actions?: ReactNode;
   onChangeOptions: (options: ILevelViewOptions) => void;
   onChangeHemiStrength: (hemiStrength: number) => void;
+  onChangeSunShafts: (sunShafts: ILevelSunShaftsOptions) => void;
   /** Sets keys of the keyframe set by hand, which lights the level from then on. */
   onEditManual: (patch: Partial<ILevelManualWeather>) => void;
   onChangeLod: (lod: ILevelLodOptions) => void;
@@ -93,6 +97,7 @@ export function LevelPreviewToolbar({
   sun,
   drawnSun,
   suns,
+  sunShafts,
   lod,
   features,
   featureView,
@@ -102,6 +107,7 @@ export function LevelPreviewToolbar({
   actions,
   onChangeOptions,
   onChangeHemiStrength,
+  onChangeSunShafts,
   onEditManual,
   onChangeLod,
   onChangeFeatures,
@@ -159,7 +165,9 @@ export function LevelPreviewToolbar({
             drawnSun={drawnSun}
             suns={suns}
             options={options}
+            sunShafts={sunShafts}
             onToggle={onToggle}
+            onChangeSunShafts={onChangeSunShafts}
             onEdit={onEditManual}
           />
 

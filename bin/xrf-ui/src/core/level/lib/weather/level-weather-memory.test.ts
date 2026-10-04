@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from "@jest/globals";
 
+import { ERenderSunShaftsQuality } from "@/core/ipc/types/xrf-renderer";
 import { DEFAULT_LEVEL_MANUAL_WEATHER } from "@/core/level/lib/weather/level-manual-weather";
 import {
   ILevelWeatherMemory,
@@ -18,6 +19,7 @@ const MEMORY: ILevelWeatherMemory = {
   manual: null,
   seed: null,
   source: ELevelWeatherSource.WEATHER,
+  sunShafts: { minimum: 0.2, quality: ERenderSunShaftsQuality.MEDIUM },
   time: 3_600,
 };
 
@@ -77,10 +79,10 @@ describe("level weather memory", () => {
   });
 
   it("drops a memory of another version or with a keyframe that does not read, rather than migrating it", () => {
-    const stored = { ...MEMORY, version: 2 };
+    const stored = { ...MEMORY, version: 3 };
 
     expect(toLevelWeatherMemory(stored)).toEqual(MEMORY);
-    expect(toLevelWeatherMemory({ ...stored, version: 1 })).toBeNull();
+    expect(toLevelWeatherMemory({ ...stored, version: 2 })).toBeNull();
     expect(toLevelWeatherMemory({ ...MEMORY })).toBeNull();
     expect(
       toLevelWeatherMemory({ ...stored, manual: { ...DEFAULT_LEVEL_MANUAL_WEATHER, sunColor: [1, 1] } })
@@ -92,12 +94,16 @@ describe("level weather memory", () => {
     window.localStorage.setItem(LEVEL_WEATHER_STORAGE_KEY, "not json");
 
     expect(readLevelWeatherMemory("zaton")).toBeNull();
-    expect(toLevelWeatherMemory({ ...MEMORY, source: "sky", version: 2 })).toBeNull();
-    expect(toLevelWeatherMemory({ ...MEMORY, time: "noon", version: 2 })).toBeNull();
-    expect(toLevelWeatherMemory({ ...MEMORY, control: { factor: 5_000 }, time: 100_000, version: 2 })).toEqual({
+    expect(toLevelWeatherMemory({ ...MEMORY, source: "sky", version: 3 })).toBeNull();
+    expect(toLevelWeatherMemory({ ...MEMORY, time: "noon", version: 3 })).toBeNull();
+    expect(toLevelWeatherMemory({ ...MEMORY, control: { factor: 5_000 }, time: 100_000, version: 3 })).toEqual({
       ...MEMORY,
       control: { factor: 1000, isDynamicSun: false, isPaused: true },
       time: 86_399,
+    });
+    expect(toLevelWeatherMemory({ ...MEMORY, sunShafts: { minimum: 2, quality: "ultra" }, version: 3 })).toEqual({
+      ...MEMORY,
+      sunShafts: { minimum: 0.5, quality: ERenderSunShaftsQuality.HIGH },
     });
   });
 

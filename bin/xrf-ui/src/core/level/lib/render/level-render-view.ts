@@ -12,6 +12,7 @@ import { ILevelLodOptions, toLevelRendererLod } from "@/core/level/lib/lod/level
 import { ILevelRenderConfig } from "@/core/level/lib/render/level-render-config";
 import { ELevelShading, getLevelShading, ILevelShadingChoice } from "@/core/level/lib/view/level-shading";
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
+import { ILevelSunShaftsOptions } from "@/core/level/lib/weather/level-sun-shafts-options";
 import { TNativeLook, toNativeViewOptions } from "@/core/render/lib/native/native-view-options";
 import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-feature-settings";
 
@@ -47,6 +48,8 @@ export interface ILevelViewOptionsInputs {
   options: ILevelViewOptions;
   /** How much the baked hemisphere darkens the ambient, which the baked light toggle gates. */
   hemiStrength: number;
+  /** How finely the sunshafts step, and Monolith's floor under their density, which their toggle gates. */
+  sunShafts: ILevelSunShaftsOptions;
   /** How far trees are drawn in full, which the impostors toggle gates. */
   lod: ILevelLodOptions;
   /** What the view sets over the settings' features for itself, which their toggles gate. */
@@ -66,7 +69,7 @@ export interface ILevelViewOptionsInputs {
  * @returns What the native viewport draws the level with.
  */
 export function toLevelViewOptions(inputs: ILevelViewOptionsInputs): RenderViewOptions {
-  const { options, hemiStrength, lod, view, features, look, shading, renderHeight } = inputs;
+  const { options, hemiStrength, sunShafts, lod, view, features, look, shading, renderHeight } = inputs;
   const { debugView, surfaceColor }: ILevelShadingChoice = getLevelShading(shading);
 
   return toNativeViewOptions(
@@ -90,7 +93,7 @@ export function toLevelViewOptions(inputs: ILevelViewOptionsInputs): RenderViewO
       shadows: toLevelRendererFeature("shadows", features, view, options.isShadowed),
       water: toLevelRendererFeature("water", features, view, options.isWaterVisible),
     },
-    options,
+    { ...options, sunShafts },
     look,
     renderHeight
   );
