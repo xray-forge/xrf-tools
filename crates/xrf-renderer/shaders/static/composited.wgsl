@@ -62,7 +62,7 @@ fn vs_model_lit(@builtin(vertex_index) vertex_index: u32, @builtin(instance_inde
   let sun: f32 = sun_shadow(shadow_maps, shadows, world, normal_world, facing);
 
   out.light = out.sky * max(0.0, normal_world.y) * lighting.forward_hemi.rgb + lighting.forward_ambient.rgb
-    + sun * lighting.sun.rgb * saturate(facing);
+    + sun * lighting.forward_sun.rgb * saturate(facing);
 
   return out;
 }

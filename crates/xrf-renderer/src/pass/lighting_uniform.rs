@@ -30,9 +30,11 @@ pub struct LightingUniform {
   pub engine: Vec4,
   /// Nothing, then ones where the scene is lit, the exposure adapts and the occlusion darkens.
   pub params: Vec4,
-  /// `L_ambient` and `L_hemi_color` as a forward pass binds them: the weather's own, neither doubled nor scaled.
+  /// `L_ambient`, `L_hemi_color` and `L_sun_color` as a forward pass binds them: the weather's own, neither doubled
+  /// nor scaled by the console.
   pub forward_ambient: Vec4,
   pub forward_hemi: Vec4,
+  pub forward_sun: Vec4,
   /// The sun's sprite colour times how far it has faded in, then half its side as a share of the distance it stands
   /// at; zero where none is drawn.
   pub sun_sprite: Vec4,
@@ -90,6 +92,7 @@ impl LightingUniform {
       ),
       forward_ambient: lighting.ambient_color.extend(0.0),
       forward_hemi: lighting.hemisphere_color.extend(0.0),
+      forward_sun: lighting.sun_color.extend(0.0),
       sun_sprite: frame.sun_sprite,
       shafts: if options.is_sun_shafted && options.is_lit {
         Vec4::new(

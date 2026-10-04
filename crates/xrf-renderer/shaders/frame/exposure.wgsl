@@ -1,7 +1,7 @@
 #import "common/lighting"
 
-// `phase_luminance`: the frame combine finished measured in 64 by 64 cells, then the scale every later tonemap
-// multiplies by adapted towards the middle gray, read by the next frame as the engine's `s_tonemap` is.
+// `phase_luminance`: the frame's high part measured in 64 by 64 cells, then the scale every later tonemap multiplies
+// by adapted towards the middle gray, read by the next frame as the engine's `s_tonemap` is.
 
 struct ExposureState {
   adapted: f32,
@@ -19,7 +19,8 @@ struct ExposureParams {
   blend: f32,
 };
 
-@group(0) @binding(0) var scene: texture_2d<f32>;
+// The high part (`rt_Generic_1`), the scaled colour over `def_hdr` that the bloom is built from.
+@group(0) @binding(0) var high: texture_2d<f32>;
 @group(0) @binding(1) var<storage, read_write> state: ExposureState;
 @group(0) @binding(2) var<uniform> params: ExposureParams;
 
@@ -32,8 +33,8 @@ const REDUCE: u32 = 256u;
 
 var<workgroup> partial: array<f32, 256>;
 
-// `bloom_luminance_1`: each cell's luminance, the scaled colour's times two, as the bloom target it reads is twice
-// the average it was built from.
+// `bloom_luminance_1`: each cell's luminance as the bloom build it reads holds it, which `phase_luminance` measures
+// before the blur: twice the high part, held to one by its eight bits, back over `def_hdr`.
 @compute @workgroup_size(64)
 fn measure(@builtin(global_invocation_id) id: vec3<u32>) {
   let index: u32 = id.x;
@@ -42,7 +43,7 @@ fn measure(@builtin(global_invocation_id) id: vec3<u32>) {
     return;
   }
 
-  let size: vec2<f32> = vec2<f32>(textureDimensions(scene));
+  let size: vec2<f32> = vec2<f32>(textureDimensions(high));
   let cell: vec2<f32> = vec2<f32>(f32(index % CELLS), f32(index / CELLS));
   var total: f32 = 0.0;
 
@@ -51,7 +52,7 @@ fn measure(@builtin(global_invocation_id) id: vec3<u32>) {
       / f32(CELL_SAMPLES);
     let at: vec2<i32> = vec2<i32>((cell + offset) / f32(CELLS) * size);
 
-    total += dot(untonemap(saturate(textureLoad(scene, at, 0).rgb)), LUMINANCE) * 2.0;
+    total += dot(min(textureLoad(high, at, 0).rgb * 2.0, vec3<f32>(1.0)), LUMINANCE) * DEF_HDR;
   }
 
   state.cells[index] = total / f32(CELL_SAMPLES * CELL_SAMPLES);

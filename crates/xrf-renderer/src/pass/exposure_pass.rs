@@ -66,7 +66,7 @@ impl ExposurePass {
       label: Some("exposure"),
       layout: &self.layout,
       entries: &[
-        texture_binding(0, &targets.scene),
+        texture_binding(0, &targets.high),
         wgpu::BindGroupEntry {
           binding: 1,
           resource: exposure.state.as_entire_binding(),
