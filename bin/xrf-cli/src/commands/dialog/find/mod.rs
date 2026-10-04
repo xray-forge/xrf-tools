@@ -1,0 +1,7 @@
+pub(crate) mod command;
+pub(crate) mod report;
+
+pub(crate) use command::FindCommand;
+
+#[cfg(test)]
+mod tests;

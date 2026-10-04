@@ -80,6 +80,14 @@ impl Dialog {
     self.find_phrase(Self::ENTRY_PHRASE_ID)
   }
 
+  /// Whether a phrase leads back to the entry phrase, the only way the engine ever reads its own conditions.
+  pub fn is_entry_phrase_revisited(&self) -> bool {
+    self
+      .phrases
+      .iter()
+      .any(|phrase| phrase.list_next().contains(&Self::ENTRY_PHRASE_ID))
+  }
+
   /// Whether the dialog declares phrases at all.
   ///
   /// A dialog with none is not malformed: `dm_traveler_dialog` carries only a precondition and an

@@ -31,6 +31,7 @@ pub use crate::project::descriptor::{
 pub use crate::project::dialog_project::{DialogProject, DialogProjectFile};
 pub use crate::project::layout::{DialogProjectLayout, detect_mode, detect_mode_in};
 pub use crate::project::mode::DialogProjectMode;
+pub use crate::project::reference_descriptor::DialogReferenceDescriptor;
 pub use crate::project::text_index::{DialogTextIndex, DialogTextLanguage};
 
 #[cfg(test)]

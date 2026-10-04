@@ -30,6 +30,32 @@ fn reads_dialogs_in_document_order() -> XrfResult {
 }
 
 #[test]
+fn tells_whether_a_phrase_leads_back_to_the_entry_phrase() -> XrfResult {
+  let file: DialogFile = parse(
+    r#"<game_dialogs>
+      <dialog id="once"><phrase_list>
+        <phrase id="0"><next>1</next></phrase><phrase id="1"/>
+      </phrase_list></dialog>
+      <dialog id="loop"><phrase_list>
+        <phrase id="0"><next>1</next></phrase><phrase id="1"><next>0</next></phrase>
+      </phrase_list></dialog>
+    </game_dialogs>"#,
+  )?;
+
+  let revisited = |id: &str| {
+    file
+      .find_dialog(id)
+      .expect("the dialog should be read")
+      .is_entry_phrase_revisited()
+  };
+
+  assert!(!revisited("once"));
+  assert!(revisited("loop"));
+
+  Ok(())
+}
+
+#[test]
 fn reads_a_dialog_that_declares_no_phrases() -> XrfResult {
   // `dm_traveler_dialog` is shaped like this: it builds its phrases from script at runtime.
   let file: DialogFile = parse(

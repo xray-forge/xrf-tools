@@ -53,6 +53,59 @@ fn separates_the_dialog_and_phrase_element_sets() {
 }
 
 #[test]
+fn groups_the_kinds_a_reference_search_reads() {
+  let conditions: Vec<DialogElementKind> = vec![
+    DialogElementKind::Precondition,
+    DialogElementKind::HasInfo,
+    DialogElementKind::DontHasInfo,
+  ];
+
+  for kind in [
+    DialogElementKind::Text,
+    DialogElementKind::ScriptText,
+    DialogElementKind::Action,
+    DialogElementKind::Precondition,
+    DialogElementKind::Next,
+    DialogElementKind::GiveInfo,
+    DialogElementKind::DisableInfo,
+    DialogElementKind::HasInfo,
+    DialogElementKind::DontHasInfo,
+    DialogElementKind::IsFinal,
+    DialogElementKind::InitFunc,
+    DialogElementKind::Container,
+    DialogElementKind::Unknown,
+  ] {
+    assert_eq!(
+      kind.is_condition(),
+      conditions.contains(&kind),
+      "condition for {kind:?}"
+    );
+    assert_eq!(
+      kind.is_info_portion(),
+      matches!(
+        kind,
+        DialogElementKind::GiveInfo
+          | DialogElementKind::DisableInfo
+          | DialogElementKind::HasInfo
+          | DialogElementKind::DontHasInfo
+      ),
+      "info portion for {kind:?}"
+    );
+    assert_eq!(
+      kind.is_script_call(),
+      matches!(
+        kind,
+        DialogElementKind::Precondition
+          | DialogElementKind::Action
+          | DialogElementKind::InitFunc
+          | DialogElementKind::ScriptText
+      ),
+      "script call for {kind:?}"
+    );
+  }
+}
+
+#[test]
 fn keeps_the_name_it_was_written_with() {
   // Classification is a view; a rewrite has to reproduce the original name, including an unknown one.
   let unknown: DialogElement = element("go_back", "1");

@@ -67,6 +67,27 @@ impl DialogElementKind {
     )
   }
 
+  /// Whether the engine reads this kind to decide whether a dialog or phrase is offered.
+  pub fn is_condition(&self) -> bool {
+    matches!(self, Self::Precondition | Self::HasInfo | Self::DontHasInfo)
+  }
+
+  /// Whether this kind names an info portion.
+  pub fn is_info_portion(&self) -> bool {
+    matches!(
+      self,
+      Self::GiveInfo | Self::DisableInfo | Self::HasInfo | Self::DontHasInfo
+    )
+  }
+
+  /// Whether this kind names a script function.
+  pub fn is_script_call(&self) -> bool {
+    matches!(
+      self,
+      Self::Precondition | Self::Action | Self::InitFunc | Self::ScriptText
+    )
+  }
+
   /// Whether a `phrase` may hold this kind.
   pub fn is_valid_for_phrase(&self) -> bool {
     matches!(
