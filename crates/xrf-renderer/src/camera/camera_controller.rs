@@ -59,13 +59,6 @@ impl CameraController {
     }
   }
 
-  pub fn is_moving(&self) -> bool {
-    match self {
-      CameraController::Fly(controller) => controller.is_moving(),
-      CameraController::Orbit(controller) => controller.is_moving(),
-    }
-  }
-
   /// The lens's vertical field of view, in degrees.
   pub fn get_field_of_view(&self) -> f32 {
     let description: RenderCamera = match self {

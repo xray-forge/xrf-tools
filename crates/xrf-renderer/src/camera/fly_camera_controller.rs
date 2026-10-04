@@ -163,7 +163,7 @@ impl FlyCameraController {
       + rotation * Vec3::Y * (rise * distance);
   }
 
-  /// Whether a key or a drag is moving the camera, which keeps a viewport drawing.
+  /// Whether a key or a drag is moving the camera.
   pub fn is_moving(&self) -> bool {
     !self.held.is_empty() || self.dragged.is_some()
   }

@@ -15,8 +15,6 @@ pub struct GpuContext {
   pub backend: RenderBackend,
   /// The adapter's name, as reports state it.
   pub adapter_name: String,
-  /// Whether timestamp queries are available for pass timings.
-  pub is_timed: bool,
   lost: Arc<AtomicBool>,
 }
 
@@ -102,7 +100,6 @@ impl GpuContext {
     );
 
     Ok(Self {
-      is_timed: adapter.features().contains(wgpu::Features::TIMESTAMP_QUERY),
       adapter_name: info.name,
       instance,
       adapter,

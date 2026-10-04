@@ -12,7 +12,7 @@ use crate::contract::render_input_kind::RenderInputKind;
 /// Keeps the camera off the poles, where turning around the target would flip it over.
 const POLE_MARGIN: f32 = 1e-4;
 
-/// What one wheel notch of a hundred units changes the distance by, as three's `OrbitControls` dollies.
+/// What one wheel notch of a hundred units changes the distance by: a twentieth of it.
 const ZOOM_BASE: f32 = 0.95;
 
 /// How a drag moves an orbiting camera.
@@ -131,10 +131,6 @@ impl OrbitCameraController {
 
   pub fn update(&mut self, _delta: f32) {}
 
-  pub fn is_moving(&self) -> bool {
-    self.dragged.is_some()
-  }
-
   pub fn get_description(&self) -> RenderCamera {
     self.description
   }
@@ -168,7 +164,7 @@ impl OrbitCameraController {
     self.target = Vec3::from_array(target);
   }
 
-  /// Turns around the target: a drag across the whole viewport height is a full turn, as three's controls turn.
+  /// Turns around the target: a drag across the whole viewport height is a full turn.
   fn rotate(&mut self, dx: f32, dy: f32) {
     let offset: Vec3 = self.position - self.target;
     let radius: f32 = offset.length();

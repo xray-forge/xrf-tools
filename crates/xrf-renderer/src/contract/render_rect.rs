@@ -12,11 +12,6 @@ pub struct RenderRect {
 }
 
 impl RenderRect {
-  /// Whether the rectangle covers any pixel at all.
-  pub fn is_empty(&self) -> bool {
-    self.width == 0 || self.height == 0
-  }
-
   /// The part of the rectangle inside a surface of the given size, or `None` where nothing of it is.
   pub fn clip(&self, width: u32, height: u32) -> Option<RenderRect> {
     let left: i64 = (self.x as i64).max(0);

@@ -26,10 +26,6 @@ pub struct RenderFrameReport {
   pub render_width: u32,
   /// And its height.
   pub render_height: u32,
-  /// Clusters the last counted frame drew.
-  pub clusters: u32,
-  /// Triangles they hold, an instanced one counted for every place it stood.
-  pub triangles: u32,
   /// The graphics API drawn with.
   pub backend: String,
   /// The GPU drawn on.

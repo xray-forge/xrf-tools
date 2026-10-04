@@ -1,5 +1,5 @@
-/// How a static geometry's vertices are laid out in their arena, as words in the order the renderer's TypeScript
-/// predecessor sorted them: binormal, normal, tangent, base coordinate, lightmap coordinate, position.
+/// How a static geometry's vertices are laid out in their arena, as words in this order: binormal, normal, tangent, base
+/// coordinate, lightmap coordinate, position.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum StaticLayout {
   /// A sector's baked geometry: the base coordinate as two shorts, and a lightmap coordinate.

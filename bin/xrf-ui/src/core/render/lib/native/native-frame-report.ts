@@ -32,7 +32,6 @@ export const EMPTY_RENDER_LIGHTS_REPORT: RenderLightsReport = {
 export const EMPTY_RENDER_FRAME_REPORT: RenderFrameReport = {
   adapter: "",
   backend: "",
-  clusters: 0,
   cpuTime: 0,
   frameTime: 0,
   frameTimeMax: 0,
@@ -46,6 +45,5 @@ export const EMPTY_RENDER_FRAME_REPORT: RenderFrameReport = {
   renderWidth: 0,
   sectorTime: 0,
   staticDraws: EMPTY_RENDER_STATIC_REPORT,
-  triangles: 0,
   width: 0,
 };

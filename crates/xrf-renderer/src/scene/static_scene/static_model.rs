@@ -20,7 +20,6 @@ const SKINNED_REACH: f32 = 2.0;
 /// which every object standing as it is culled and discarded by, and its skin where it moves with bones.
 #[derive(Clone, Debug)]
 pub struct StaticModel {
-  pub name: String,
   pub words: Vec<u32>,
   pub indices: Vec<u32>,
   pub parts: Vec<StaticModelPart>,
@@ -33,21 +32,10 @@ pub struct StaticModel {
 }
 
 impl StaticModel {
-  /// A visual packed at its finest level, each submesh dressed by its descriptor; `color_id` picks the flat colour
-  /// drawn without textures. A submesh that did not pack is left out.
-  pub fn pack(name: &str, package: &VisualPackage, descriptors: &[XraySurfaceDescriptor], color_id: u16) -> Self {
-    Self::pack_at(name, package, descriptors, color_id, 0.0)
-  }
-
-  /// The same, each submesh at `detail` down its collapse chain: zero is its finest level, one its coarsest. A
-  /// submesh still carrying its skin keeps it, and is cut into clusters its whole model's sphere culls.
-  pub fn pack_at(
-    name: &str,
-    package: &VisualPackage,
-    descriptors: &[XraySurfaceDescriptor],
-    color_id: u16,
-    detail: f32,
-  ) -> Self {
+  /// A visual packed with each submesh at `detail` down its collapse chain, zero its finest level and one its coarsest,
+  /// dressed by its descriptor; `color_id` picks the flat colour drawn without textures. A submesh that did not pack is
+  /// left out; one still carrying its skin keeps it, and is cut into clusters its whole model's sphere culls.
+  pub fn pack_at(package: &VisualPackage, descriptors: &[XraySurfaceDescriptor], color_id: u16, detail: f32) -> Self {
     let declared_box = &package.description.declared_bounds.bounding_box;
     let sphere = &package.description.declared_bounds.bounding_sphere;
     let sphere: Vec4 = Vec4::new(sphere.center.x, sphere.center.y, sphere.center.z, sphere.radius);
@@ -101,7 +89,6 @@ impl StaticModel {
     }
 
     Self {
-      name: name.to_owned(),
       words,
       indices,
       parts,

@@ -36,7 +36,7 @@ struct FsrPipelines {
 }
 
 /// FSR 2.2's upscaler (FidelityFX, AMD, MIT) over a viewport's frame, which is in the display's range: an exposure of
-/// one and no tonemap of its own, motion drawn at the render size. The TypeScript renderer's port, stage for stage.
+/// one and no tonemap of its own, motion drawn at the render size; FSR 2's stages, each a pass.
 pub struct FsrPass {
   layouts: FsrLayouts,
   pipelines: FsrPipelines,

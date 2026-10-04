@@ -188,13 +188,7 @@ fn send_models(
         },
       })
       .collect();
-    let packed: StaticModel = StaticModel::pack_at(
-      &model.name,
-      &model.package,
-      &model.surfaces,
-      visual as u16,
-      spawn.detail,
-    );
+    let packed: StaticModel = StaticModel::pack_at(&model.package, &model.surfaces, visual as u16, spawn.detail);
 
     // Counted before it is sent, so the loader never sees it taken before it was sent.
     sent.fetch_add(1, Ordering::AcqRel);

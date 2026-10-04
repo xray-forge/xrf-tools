@@ -40,11 +40,6 @@ impl GrowableBuffer {
     self.buffer.size()
   }
 
-  /// Bytes written so far.
-  pub fn get_length(&self) -> u64 {
-    self.length
-  }
-
   /// Records of `stride` bytes written so far, and how many the buffer holds before it grows.
   pub fn get_use(&self, stride: usize) -> RenderPoolUse {
     let stride: u64 = stride.max(1) as u64;

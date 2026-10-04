@@ -42,6 +42,7 @@ const EMBEDDED: &[(&str, &str)] = &[
     include_str!("../../shaders/common/sun_shadow.wgsl"),
   ),
   ("common/sky_box", include_str!("../../shaders/common/sky_box.wgsl")),
+  ("common/wet", include_str!("../../shaders/common/wet.wgsl")),
   (
     "frame/ambient_occlusion",
     include_str!("../../shaders/frame/ambient_occlusion.wgsl"),
@@ -164,13 +165,13 @@ impl ShaderLibrary {
     self.generation
   }
 
-  /// A module with its imports inlined and its `#if` blocks resolved against `defines`.
+  /// A module with its imports inlined.
   ///
   /// # Errors
   ///
-  /// Returns an error for an unknown module or import, or an unbalanced `#if`.
-  pub fn compose(&self, entry: &str, defines: &[&str]) -> XrfResult<String> {
-    compose_shader(entry, defines, &|name: &str| {
+  /// Returns an error for an unknown module or import.
+  pub fn compose(&self, entry: &str) -> XrfResult<String> {
+    compose_shader(entry, &|name: &str| {
       self
         .modules
         .get(name)

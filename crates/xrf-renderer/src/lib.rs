@@ -21,7 +21,6 @@ pub(crate) mod window;
 #[cfg(test)]
 mod tests;
 
-pub use crate::context::render_backend::RenderBackend;
 pub use crate::contract::render_ambient_occlusion_quality::RenderAmbientOcclusionQuality;
 pub use crate::contract::render_ambient_occlusion_settings::RenderAmbientOcclusionSettings;
 pub use crate::contract::render_antialiasing::RenderAntialiasing;

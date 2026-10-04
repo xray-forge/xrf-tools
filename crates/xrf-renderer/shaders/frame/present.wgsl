@@ -61,9 +61,6 @@ fn view_distance(texel: vec2<i32>) -> f32 {
   return select(-camera_view_position(vec2<f32>(texel) + 0.5, stored).z, 1e6, stored <= 0.0);
 }
 
-// `combine_2`'s `USE_DISTORT`: the scene read where the distortion target moves each pixel, `(distort.xy - .5) *
-// def_distort`. A move that would read something standing nearer than what the pixel shows reads the pixel itself: a
-// departure from the engine, whose water copies a railing standing in it into the water beside it.
 // One target of the frame at a texel, as a colour.
 fn shown_target(texel: vec2<i32>) -> vec3<f32> {
   let stored: f32 = textureLoad(depth_target, texel, 0);
@@ -175,6 +172,9 @@ fn fs_present(in: FullscreenVarying) -> @location(0) vec4<f32> {
   var read: vec2<f32> = pixel;
   let strength: f32 = camera.switches.w;
 
+  // `combine_2`'s `USE_DISTORT`: the scene read where the distortion target moves each pixel, `(distort.xy - .5) *
+  // def_distort`. A move that would read something standing nearer than what the pixel shows reads the pixel itself:
+  // a departure from the engine, whose water copies a railing standing in it into the water beside it.
   if (strength > 0.0) {
     let offset: vec2<f32> = (textureLoad(distortion, texel, 0).xy - NEUTRAL_DISTORTION) * strength;
     let moved: vec2<f32> = clamp(pixel + offset * present.size, vec2<f32>(0.0), present.size - 1.0);

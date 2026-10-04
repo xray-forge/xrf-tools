@@ -128,7 +128,6 @@ impl LevelLights {
     }
   }
 
-  /// Lights written out this frame.
   /// The texture slots the projectors sample.
   pub fn get_projectors(&self) -> &[u32] {
     &self.projectors

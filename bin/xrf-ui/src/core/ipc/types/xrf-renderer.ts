@@ -300,10 +300,6 @@ export type RenderFrameReport = {
   renderWidth: number;
   /** And its height. */
   renderHeight: number;
-  /** Clusters the last counted frame drew. */
-  clusters: number;
-  /** Triangles they hold, an instanced one counted for every place it stood. */
-  triangles: number;
   /** The graphics API drawn with. */
   backend: string;
   /** The GPU drawn on. */
@@ -851,8 +847,6 @@ export type RenderViewOptions = {
   isOcclusionCulled: boolean;
   /** How much of the static geometry draws at a distance. */
   lod: RenderLodSettings;
-  /** What the tonemap multiplies by before the exposure's own scale. */
-  tonemapScale: number | null;
   /** An asset viewer's light, in place of the weather's; none for a level. */
   assetLighting: RenderAssetLighting | null;
   /**

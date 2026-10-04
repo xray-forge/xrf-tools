@@ -29,10 +29,11 @@ fn new_flare(rise_time: f32, down_time: f32, flares: usize) -> RenderLensFlare {
   }
 }
 
-fn find(name: &str) -> Option<RenderLensFlare> {
+/// The rise and down times of the two lens flares the fades play.
+fn find(name: &str) -> Option<(f32, f32)> {
   match name {
-    "day" => Some(new_flare(10.0, 10.0, 2)),
-    "moon" => Some(new_flare(20.0, 20.0, 0)),
+    "day" => Some((10.0, 10.0)),
+    "moon" => Some((20.0, 20.0)),
     _ => None,
   }
 }
@@ -100,7 +101,6 @@ fn writes_the_flares_and_gradient_a_lens_flare_draws() {
     0.016,
   );
 
-  assert_eq!(uniform.color.w, FLARE_SLOTS as f32);
   assert_eq!(uniform.flares[3].x, 3.0);
   assert_eq!(uniform.sun.w, 0.25);
   assert_eq!(uniform.to_sun.w, 0.016);

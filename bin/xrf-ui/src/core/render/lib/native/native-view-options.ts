@@ -12,10 +12,7 @@ import { TSettled } from "@/core/render/lib/settings/render-settled";
 
 /** What a view decides of how its scene is shaded, beside the features every viewport shares. */
 export type TNativeViewShading = TSettled<
-  Pick<
-    RenderViewOptions,
-    "debugView" | "hemiStrength" | "isBumped" | "isLit" | "isWireframe" | "surfaceColor" | "tonemapScale"
-  >
+  Pick<RenderViewOptions, "debugView" | "hemiStrength" | "isBumped" | "isLit" | "isWireframe" | "surfaceColor">
 >;
 
 /**
@@ -164,7 +161,6 @@ export function toNativeAssetViewOptions(
       debugView: ERenderDebugView.FINAL,
       hemiStrength: 1,
       surfaceColor: ERenderSurfaceColor.TEXTURED,
-      tonemapScale: 1,
     },
     features,
     NO_NATIVE_VIEW_SWITCHES,

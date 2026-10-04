@@ -6,7 +6,7 @@ pub const LIGHT_NO_CONE: f32 = -2.0;
 /// What a spot without a projector writes as its slot.
 pub const LIGHT_NO_PROJECTOR: f32 = -1.0;
 
-/// One local light standing in view this frame, in view space, as `shaders/frame/lights.wgsl` declares it.
+/// One local light standing in view this frame, in view space, as `shaders/common/light_clusters.wgsl` declares it.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct LightRecord {

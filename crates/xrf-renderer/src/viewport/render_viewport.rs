@@ -14,7 +14,6 @@ use crate::contract::render_memory_report::RenderMemoryReport;
 use crate::contract::render_model_pose::RenderModelPose;
 use crate::contract::render_overlay::RenderOverlay;
 use crate::contract::render_rect::RenderRect;
-use crate::contract::render_scale::RenderScale;
 use crate::contract::render_selection::RenderSelection;
 use crate::contract::render_static_report::RenderStaticReport;
 use crate::contract::render_view_options::RenderViewOptions;
@@ -175,8 +174,6 @@ impl RenderViewport {
         frame_time,
         frame_time_max,
         cpu_time,
-        clusters: static_draws.kept_clusters,
-        triangles: static_draws.kept_triangles,
         width: rect.width,
         height: rect.height,
         render_width,
@@ -203,10 +200,6 @@ impl RenderViewport {
       return;
     };
     let mut applied: RenderAppliedReport = level.describe_applied(&self.options);
-
-    if self.level.is_none() {
-      applied.render_scale = RenderScale::Native;
-    }
 
     if self.options.asset_lighting.is_none() {
       applied.environment = Some(to_applied_environment(

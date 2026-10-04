@@ -48,7 +48,6 @@ const SPAN: RenderSurfaceSpan = { uMax: 2, uMin: 0, vMax: 1, vMin: -1 };
 const REPORT: RenderFrameReport = {
   adapter: "Test GPU",
   backend: "D3D12",
-  clusters: 1200,
   cpuTime: 0.8,
   frameTime: 6.25,
   frameTimeMax: 9,
@@ -84,7 +83,6 @@ const REPORT: RenderFrameReport = {
     slots: { capacity: 1024, used: 900 },
     surfaceList: { capacity: 8192, used: 1200 },
   },
-  triangles: 90_000,
   width: 800,
 };
 

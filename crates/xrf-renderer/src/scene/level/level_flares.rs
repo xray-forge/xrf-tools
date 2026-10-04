@@ -108,10 +108,14 @@ impl LevelFlares {
     let delta: f32 = self
       .last
       .map_or(0.0, |last| now.saturating_duration_since(last).as_secs_f32());
-    let find = |name: &str| weather.and_then(|it| it.suns.get(name)).cloned();
+    let times = |name: &str| {
+      weather
+        .and_then(|it| it.suns.get(name))
+        .map(|it| (it.rise_time, it.down_time))
+    };
 
     self.last = Some(now);
-    self.fade.advance(lighting.sky.sun.as_deref(), find, now, rate);
+    self.fade.advance(lighting.sky.sun.as_deref(), times, now, rate);
     self.is_drawn = false;
 
     let (Some(name), faded) = self.fade.get_shown() else {

@@ -1,16 +1,9 @@
 #import "common/octahedral"
 #import "common/fullscreen"
+#import "common/wet"
 
 // `rain_apply_normal` and `rain_apply_gloss`: the normal the patch bent written back, and the albedo darkened and the
 // gloss raised by how wet it is, wherever anything was drawn.
-
-struct Wet {
-  density: f32,
-  time: f32,
-  is_extended: f32,
-  pad: f32,
-  window: vec4<f32>,
-};
 
 @group(1) @binding(0) var depth_target: texture_depth_2d;
 // The patched normal in colour, the wetness in alpha: the light target, borrowed before any light is drawn.
