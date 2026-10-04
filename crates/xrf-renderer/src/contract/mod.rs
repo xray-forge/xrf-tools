@@ -18,6 +18,7 @@ pub(crate) mod render_capture;
 pub(crate) mod render_color;
 pub(crate) mod render_debug_view;
 pub(crate) mod render_exposure_settings;
+pub(crate) mod render_frame_phases;
 pub(crate) mod render_frame_rate;
 pub(crate) mod render_frame_report;
 pub(crate) mod render_grass_settings;

@@ -1,5 +1,6 @@
 pub(crate) mod depth_pyramid;
 pub(crate) mod frame_capture;
+pub(crate) mod frame_phases;
 pub(crate) mod frame_statistics;
 pub(crate) mod fsr_targets;
 pub(crate) mod pass_timer;

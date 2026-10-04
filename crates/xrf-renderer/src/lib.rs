@@ -41,6 +41,7 @@ pub use crate::contract::render_capture::RenderCapture;
 pub use crate::contract::render_color::RenderColor;
 pub use crate::contract::render_debug_view::RenderDebugView;
 pub use crate::contract::render_exposure_settings::RenderExposureSettings;
+pub use crate::contract::render_frame_phases::RenderFramePhases;
 pub use crate::contract::render_frame_rate::RenderFrameRate;
 pub use crate::contract::render_frame_report::RenderFrameReport;
 pub use crate::contract::render_grass_settings::RenderGrassSettings;

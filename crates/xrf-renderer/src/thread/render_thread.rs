@@ -20,6 +20,7 @@ use crate::contract::render_texture_report::RenderTextureReport;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::contract::render_viewport_id::RenderViewportId;
 use crate::frame::frame_capture::capture_frame;
+use crate::frame::frame_phases::FramePhases;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::host::render_bundle::RenderBundle;
 use crate::host::render_window_host::RenderWindowHost;
@@ -538,9 +539,10 @@ impl RenderThread {
     }
 
     let windows: Vec<u64> = self.hosts.keys().copied().collect();
+    let update: Duration = now.elapsed();
 
     for window in windows {
-      self.draw_window(window);
+      self.draw_window(window, update);
     }
 
     let Some(gpu) = &self.gpu else {
@@ -565,8 +567,9 @@ impl RenderThread {
     }
   }
 
-  /// Draws every viewport of one window into its swapchain and presents it.
-  fn draw_window(&mut self, window: u64) {
+  /// Draws every viewport of one window into its swapchain and presents it; `update` is what the frame spent before
+  /// any window, which its phases report.
+  fn draw_window(&mut self, window: u64, update: Duration) {
     let Some(gpu) = &mut self.gpu else {
       return;
     };
@@ -595,6 +598,7 @@ impl RenderThread {
     let Some(drawn_window) = gpu.windows.get_mut(&window) else {
       return;
     };
+    let acquiring: Instant = Instant::now();
     let Some((frame, width, height)) = drawn_window.acquire(&gpu.context, is_vsync) else {
       // A lost surface is let go, so the next frame draws into a new one.
       if drawn_window.is_lost() {
@@ -602,6 +606,11 @@ impl RenderThread {
       }
 
       return;
+    };
+    let mut phases: FramePhases = FramePhases {
+      update,
+      acquire: acquiring.elapsed(),
+      ..FramePhases::default()
     };
     let started: Instant = Instant::now();
     let format: wgpu::TextureFormat = gpu.windows[&window].get_format();
@@ -726,6 +735,8 @@ impl RenderThread {
         None => (viewport.weather.get_lighting(), viewport.weather.get_level()),
       };
 
+      let loading: Instant = Instant::now();
+
       if viewport
         .level_view
         .as_ref()
@@ -772,6 +783,10 @@ impl RenderThread {
         (lighting, weather),
         &options,
       );
+      phases.load += loading.elapsed();
+
+      let preparing: Instant = Instant::now();
+
       level.prepare(
         device,
         queue,
@@ -785,6 +800,10 @@ impl RenderThread {
         &gpu.weather_textures,
         viewport.weather.get_player().get_clock_rate(),
       );
+      phases.prepare += preparing.elapsed();
+
+      let recording: Instant = Instant::now();
+
       level.record(
         device,
         queue,
@@ -794,6 +813,7 @@ impl RenderThread {
         binding,
         &gpu.textures,
       );
+      phases.record += recording.elapsed();
       is_lit = true;
 
       // One pick a frame, drawn from this frame's culled clusters.
@@ -824,6 +844,7 @@ impl RenderThread {
       }
     }
 
+    let composing: Instant = Instant::now();
     let is_washed: bool = backdrop.is_washed()
       && gpu
         .backdrop
@@ -899,7 +920,15 @@ impl RenderThread {
       }
     }
 
-    gpu.context.queue.submit([encoder.finish()]);
+    phases.compose = composing.elapsed();
+
+    let encoding: Instant = Instant::now();
+    let commands: wgpu::CommandBuffer = encoder.finish();
+    let submitting: Instant = Instant::now();
+
+    phases.encode = submitting.duration_since(encoding);
+    gpu.context.queue.submit([commands]);
+    phases.submit = submitting.elapsed();
 
     for (id, pick, inverse, ndc) in picked {
       let Some(level) = self.viewports.get(&id).and_then(|it| it.level_view.as_ref()) else {
@@ -932,9 +961,13 @@ impl RenderThread {
       }
     }
 
+    let presenting: Instant = Instant::now();
+
     gpu.context.queue.present(frame);
 
     let presented: Instant = Instant::now();
+
+    phases.present = presented.duration_since(presenting);
     let interval: Duration = self
       .last_present
       .insert(window, presented)
@@ -942,7 +975,7 @@ impl RenderThread {
 
     for (id, _, _) in &drawn {
       if let Some(viewport) = self.viewports.get_mut(id) {
-        viewport.record_frame(interval, cpu);
+        viewport.record_frame(interval, cpu, &phases);
       }
     }
   }

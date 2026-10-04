@@ -26,6 +26,7 @@ import { LevelRenderService, toLevelPick } from "@/core/level/services/level-ren
 import { LevelViewService } from "@/core/level/services/level-view.service";
 import { LevelViewportService } from "@/core/level/services/level-viewport.service";
 import { LevelWeatherService } from "@/core/level/services/level-weather.service";
+import { EMPTY_RENDER_FRAME_PHASES } from "@/core/render/lib/native/native-frame-report";
 import { ERenderResolution } from "@/core/render/lib/settings/render-resolution";
 import { SettingsService } from "@/core/settings/services/settings";
 import { mockLevelSpawnObject, mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
@@ -55,6 +56,7 @@ const REPORT: RenderFrameReport = {
   framesPerSecond: 160,
   height: 600,
   isGpuTimed: true,
+  phases: EMPTY_RENDER_FRAME_PHASES,
   passes: [
     { gpuTime: 1.25, name: "g-buffer" },
     { gpuTime: 0.5, name: "sun" },
