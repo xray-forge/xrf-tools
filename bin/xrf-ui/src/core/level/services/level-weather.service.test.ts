@@ -351,6 +351,10 @@ describe("LevelWeatherService", () => {
 
     await service.open(SELECTED);
     service.setSunShafts(shafts);
+
+    // Remembered as it is set, so a window closed straight after keeps it.
+    expect(readLevelWeatherMemory(toLevelWeatherMemoryKey(SELECTED.value))?.sunShafts).toEqual(shafts);
+
     await service.open(other);
 
     expect(service.sunShafts).toEqual(DEFAULT_LEVEL_SUN_SHAFTS_OPTIONS);

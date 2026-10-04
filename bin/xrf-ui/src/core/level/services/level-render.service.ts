@@ -186,6 +186,15 @@ export class LevelRenderService extends NativeRenderSurfaceService {
     super(settingsService);
   }
 
+  /**
+   * The sun or moon the sky draws now, by its `suns.ltx` section, or null for neither: apart from the rest of what the
+   * renderer applied, which changes with every report while the weather plays.
+   */
+  @Computed()
+  public get drawnSun(): Nullable<string> {
+    return this.applied?.sun ?? null;
+  }
+
   /** What the level is asked to be drawn with: the toolbar, the look and the settings together. */
   @Computed()
   public get viewOptions(): RenderViewOptions {
@@ -313,11 +322,19 @@ export class LevelRenderService extends NativeRenderSurfaceService {
       ),
       reaction(
         () => weatherService.seek,
-        (seek: Nullable<ILevelWeatherSeek>) => seek && viewport.seekWeather(seek.time)
+        (seek: Nullable<ILevelWeatherSeek>) => {
+          if (seek) {
+            viewport.seekWeather(seek.time);
+          }
+        }
       ),
       reaction(
         () => weatherService.effect,
-        (effect: Nullable<ILevelWeatherEffectRequest>) => effect && viewport.playWeatherEffect(effect.name)
+        (effect: Nullable<ILevelWeatherEffectRequest>) => {
+          if (effect) {
+            viewport.playWeatherEffect(effect.name);
+          }
+        }
       ),
     ];
   }

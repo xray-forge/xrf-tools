@@ -95,7 +95,7 @@ export class NativeViewport {
       (id: RenderViewportId) => {
         // Released before the renderer answered: what it attached goes at once.
         if (this.isDisposed) {
-          void renderCommands.detachViewport(id);
+          void renderCommands.detachViewport(id).catch(ignoreDropped);
 
           return null;
         }
@@ -305,7 +305,7 @@ export class NativeViewport {
     this.isDisposed = true;
     void this.attached.then((id: Nullable<RenderViewportId>) => {
       if (id !== null) {
-        return renderCommands.detachViewport(id);
+        return renderCommands.detachViewport(id).catch(ignoreDropped);
       }
     });
   }
@@ -313,10 +313,11 @@ export class NativeViewport {
   private call(send: (id: RenderViewportId) => Promise<void>): void {
     void this.attached.then((id: Nullable<RenderViewportId>) => {
       if (id !== null && !this.isDisposed) {
-        return send(id).catch(() => {
-          // A command to a viewport the renderer dropped changes nothing: its failure is reported on its own.
-        });
+        return send(id).catch(ignoreDropped);
       }
     });
   }
 }
+
+/** A command to a viewport the renderer dropped changes nothing: its failure is reported on its own. */
+function ignoreDropped(): void {}

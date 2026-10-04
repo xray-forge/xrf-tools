@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from "@jest/globals";
+import { act } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { Container } from "@wirestate/core";
 
@@ -45,5 +46,20 @@ describe("LevelLookAction", () => {
 
     expect(look.look.lightScales.sun).toBe(1);
     expect(look.look.exposure.middleGray).toBe(1);
+  });
+
+  // Trying another look does not throw away the values edited by hand.
+  it("keeps the values edited by hand to go back to after another look is picked", async () => {
+    const { getByRole, findByRole, look } = renderAction();
+
+    act(() => look.edit({ ...look.look, lightScales: { ...look.look.lightScales, sun: 3 } }));
+
+    await userEvent.click(getByRole("button", { name: "Look" }));
+    await findByRole("dialog", { name: "Look" });
+    await userEvent.click(getByRole("option", { name: "Settings" }));
+    await userEvent.click(getByRole("option", { name: "Edited by hand" }));
+
+    expect(look.choice.source).toBe(ELevelLookSource.CUSTOM);
+    expect(look.look.lightScales.sun).toBe(3);
   });
 });
