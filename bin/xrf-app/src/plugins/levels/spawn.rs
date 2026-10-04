@@ -1,6 +1,6 @@
 //! What the game spawns on a level, out of the one spawn it keeps for every level.
 
-use std::collections::HashSet;
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -11,7 +11,7 @@ use xrf_vfs::{XrayLogicalPath, XrayProbe};
 use crate::core::assets::read_located_asset;
 use crate::plugins::levels::new_game::read_new_game_releases;
 use crate::plugins::levels::report::{report_new_game_releases, report_spawn};
-use crate::plugins::levels::state::{LevelSource, LevelSpawn, SelectedLevel};
+use crate::plugins::levels::state::{LevelSource, LevelSpawn, LevelSpawnRelease, SelectedLevel};
 
 /// Where the game keeps its spawn (`$game_spawn$`).
 const SPAWNS_DIRECTORY: &str = "spawns";
@@ -62,15 +62,19 @@ fn read_level_spawn(probe: &XrayProbe, level: &str) -> Result<LevelSpawn, String
 
   report_spawn(level, path.as_str(), &read, started);
 
-  let released: HashSet<String> = read_new_game_releases(probe);
-  let mut objects: Vec<AlifeObject> = read.objects;
-  let count: usize = objects.len();
+  let released: HashMap<String, LevelSpawnRelease> = read_new_game_releases(probe);
+  let objects: Vec<AlifeObject> = read.objects;
+  let releases: HashMap<usize, LevelSpawnRelease> = objects
+    .iter()
+    .enumerate()
+    .filter_map(|(index, object)| released.get(&object.name).map(|release| (index, *release)))
+    .collect();
 
-  objects.retain(|object| !released.contains(&object.name));
-  report_new_game_releases(level, count - objects.len());
+  report_new_game_releases(level, releases.len());
 
   Ok(LevelSpawn {
     arrivals: read.arrivals,
     objects,
+    releases,
   })
 }

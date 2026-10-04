@@ -143,7 +143,7 @@ fn fs_water(in: WaterVarying) -> WaterOutput {
   let distorted: vec2<f32> = (sample_slot(surface.bump_companion, first).xy +
     sample_slot(surface.bump_companion, second).xy) * 0.5;
   let is_textured: f32 = camera.switches.x;
-  let base: vec4<f32> = vec4<f32>(mix(surface.color, sampled.rgb, is_textured), sampled.a);
+  let base: vec4<f32> = vec4<f32>(mix(untextured_color(surface.color), sampled.rgb, is_textured), sampled.a);
   let bent: vec3<f32> = select(vec3<f32>(0.0, 0.0, 1.0), normals, (flags & SURFACE_HAS_WATER_NORMAL) != 0u);
   let foam: vec4<f32> = select(vec4<f32>(0.0), foam_texel, (flags & SURFACE_HAS_FOAM) != 0u);
   let offset_texel: vec2<f32> = select(vec2<f32>(0.5), distorted, (flags & SURFACE_HAS_DISTORTION) != 0u);

@@ -6,6 +6,8 @@ pub struct RenderSpawnObject {
   /// Its index among the level's spawned objects, which a pick names it by.
   pub index: u32,
   pub category: RenderSpawnCategory,
+  /// Whether a new game releases it, which a view draws only when asked to.
+  pub is_released: bool,
   /// Its visual, by its index among [`crate::RenderLevelSpawn::visuals`].
   pub visual: u32,
   /// Its `XFORM` in renderer space, sixteen floats column by column.

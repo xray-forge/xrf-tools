@@ -5,6 +5,7 @@ use glam::{IVec2, IVec4, Vec3};
 use xrf_error::XrfResult;
 
 use crate::camera::camera_view::CameraView;
+use crate::contract::render_applied_grass::RenderAppliedGrass;
 use crate::contract::render_grass_settings::RenderGrassSettings;
 use crate::frame::view_targets::ViewTargets;
 use crate::host::render_asset_source::RenderAssetSource;
@@ -189,6 +190,22 @@ impl LevelGrass {
     queue.write_buffer(&self.uniform, 0, bytemuck::bytes_of(&self.values));
     queue.write_buffer(&self.wind_buffer, 0, bytemuck::bytes_of(&wind));
     self.is_drawn = true;
+  }
+
+  /// The grass as planted, or none where none is.
+  pub fn get_applied(&self, settings: &RenderGrassSettings) -> Option<RenderAppliedGrass> {
+    let build = self.build.as_ref().filter(|_| self.is_drawn)?;
+    let line: u32 = self.values.reach as u32 * 2 + 1;
+    let cells: u32 = line * line;
+    let candidates: u32 = ((self.values.steps + 1) * (self.values.steps + 1)) as u32;
+
+    Some(RenderAppliedGrass {
+      radius: self.values.reach as f32 * SLOT_METERS,
+      density: settings.density.clamp(0.1, 0.99),
+      height: settings.height,
+      tufts: build.size.capacity.min(cells.saturating_mul(build.size.per_cell)),
+      wanted: cells.saturating_mul(candidates),
+    })
   }
 
   /// Plants the frame's grass, where it is drawn.

@@ -1,6 +1,7 @@
 use xrf_error::XrfResult;
 
 use crate::frame::view_targets::ViewTargets;
+use crate::pass::compute_grid::ComputeGrid;
 use crate::pass::fullscreen_pipeline::buffer_binding;
 use crate::pass::grass_dispatch::GrassDispatch;
 use crate::pass::grass_draws::GrassDraws;
@@ -37,6 +38,7 @@ pub struct GrassPass {
   texture_layout: wgpu::BindGroupLayout,
   planting: Vec<wgpu::ComputePipeline>,
   draw: wgpu::RenderPipeline,
+  grid: ComputeGrid,
   generation: u64,
 }
 
@@ -86,6 +88,7 @@ impl GrassPass {
     Ok(Self {
       planting: Self::create_planting(device, shaders, [layouts[0], layouts[1]])?,
       draw: Self::create_draw(device, shaders, [layouts[3], layouts[2], layouts[4]])?,
+      grid: ComputeGrid::new(device),
       generation: shaders.get_generation(),
       view_layout: view_layout.clone(),
       texture_layout: texture_layout.clone(),
@@ -174,7 +177,7 @@ impl GrassPass {
 
     for (pipeline, size) in self.planting.iter().zip(sizes) {
       pass.set_pipeline(pipeline);
-      pass.dispatch_workgroups(size, 1, 1);
+      self.grid.dispatch(&mut pass, size);
     }
   }
 

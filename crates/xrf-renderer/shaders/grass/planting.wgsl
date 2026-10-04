@@ -1,3 +1,4 @@
+#import "common/compute_grid"
 #import "grass/records"
 
 // The passes planting the grass, as `CDetailManager` does. A ring of slots around the camera is its cache: a slot
@@ -122,16 +123,18 @@ fn is_outside(center: vec3<f32>, radius: f32) -> bool {
 }
 
 @compute @workgroup_size(64)
-fn clear_schedule(@builtin(global_invocation_id) id: vec3<u32>) {
-  if (id.x < params.bands) {
-    atomicStore(&band_counts[id.x], 0u);
+fn clear_schedule(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workgroups) groups: vec3<u32>) {
+  let index: u32 = compute_index(id, groups, 64u);
+
+  if (index < params.bands) {
+    atomicStore(&band_counts[index], 0u);
   }
 }
 
 // `cache_Update`'s task list: every stale cell of the ring, counted into the band it stands in.
 @compute @workgroup_size(64)
-fn rank(@builtin(global_invocation_id) id: vec3<u32>) {
-  let cell: u32 = id.x;
+fn rank(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workgroups) groups: vec3<u32>) {
+  let cell: u32 = compute_index(id, groups, 64u);
 
   if (cell >= ring_cells()) {
     return;
@@ -234,8 +237,8 @@ fn triangle_corner(triangle: u32, corner: u32) -> vec3<f32> {
 // with the same generators seeded the same way and drawn in the same order, the same dither, the same ray cast down onto
 // the slot's own triangles, so a slot plants what the engine plants in it.
 @compute @workgroup_size(64)
-fn decompress(@builtin(global_invocation_id) id: vec3<u32>) {
-  let cell: u32 = id.x;
+fn decompress(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workgroups) groups: vec3<u32>) {
+  let cell: u32 = compute_index(id, groups, 64u);
 
   if (cell >= ring_cells()) {
     return;
@@ -390,9 +393,11 @@ fn decompress(@builtin(global_invocation_id) id: vec3<u32>) {
 }
 
 @compute @workgroup_size(64)
-fn clear_counts(@builtin(global_invocation_id) id: vec3<u32>) {
-  if (id.x <= params.model_count) {
-    atomicStore(&counts[id.x], 0u);
+fn clear_counts(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workgroups) groups: vec3<u32>) {
+  let index: u32 = compute_index(id, groups, 64u);
+
+  if (index <= params.model_count) {
+    atomicStore(&counts[index], 0u);
   }
 }
 
@@ -400,8 +405,8 @@ fn clear_counts(@builtin(global_invocation_id) id: vec3<u32>) {
 // `dm_fade` passes over, and each of its tufts is shrunk by the slot's distance, dropped where too small to see, stilled
 // where too small to see sway, culled by the view, and appended.
 @compute @workgroup_size(64)
-fn cull(@builtin(global_invocation_id) id: vec3<u32>) {
-  let cell: u32 = id.x;
+fn cull(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workgroups) groups: vec3<u32>) {
+  let cell: u32 = compute_index(id, groups, 64u);
 
   if (cell >= ring_cells()) {
     return;
@@ -490,8 +495,8 @@ fn arrange() {
 
 // Sorts the items into each model's range, a thread an item.
 @compute @workgroup_size(64)
-fn scatter(@builtin(global_invocation_id) id: vec3<u32>) {
-  let item: u32 = id.x;
+fn scatter(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workgroups) groups: vec3<u32>) {
+  let item: u32 = compute_index(id, groups, 64u);
 
   if (item >= min(atomicLoad(&counts[params.model_count]), params.capacity)) {
     return;

@@ -37,8 +37,7 @@ fn list_candidates(spawn: &LevelSpawn) -> impl Iterator<Item = (Vector3d, f32, L
     .iter()
     .map(|arrival| (to_eye(&arrival.position), arrival.angles.y, LevelStartOrigin::Arrival));
   let actors = spawn
-    .objects
-    .iter()
+    .list_kept()
     .filter(|object| matches!(object.inherited, AlifeObjectInherited::SeActor(_)))
     .map(|actor| (to_eye(&actor.position), actor.direction.y, LevelStartOrigin::Actor));
 

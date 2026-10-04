@@ -134,7 +134,7 @@ fn fs_grass(in: GrassVarying) -> GrassOutput {
   var out: GrassOutput;
 
   // White without textures, as grass states no flat colour.
-  out.albedo = vec4<f32>(mix(vec3<f32>(1.0), base.rgb, camera.switches.x), DEFAULT_GLOSS);
+  out.albedo = vec4<f32>(mix(untextured_color(vec3<f32>(1.0)), base.rgb, camera.switches.x), DEFAULT_GLOSS);
   out.normal = octahedral_encode(normalize(in.normal));
   out.material = vec4<f32>(in.hemi, in.sun, MATERIAL_SLICE, 0.0);
   out.motion = camera_motion(in.world, in.world + in.moved);

@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use xrf_math::Vector3d;
 use xrf_spawn::{
   AlifeGraphPoint, AlifeObject, AlifeObjectAbstract, AlifeObjectDynamicVisual, AlifeObjectHangingLamp,
@@ -5,7 +7,9 @@ use xrf_spawn::{
 };
 
 use crate::plugins::levels::spawn_objects::describe_spawn_objects;
-use crate::plugins::levels::state::{LevelSpawn, LevelSpawnCategory, LevelSpawnObject, LevelSpawnObjectsDescription};
+use crate::plugins::levels::state::{
+  LevelSpawn, LevelSpawnCategory, LevelSpawnObject, LevelSpawnObjectsDescription, LevelSpawnRelease,
+};
 
 fn new_abstract(story_id: u32) -> AlifeObjectAbstract {
   AlifeObjectAbstract {
@@ -122,6 +126,7 @@ fn describe(objects: Vec<AlifeObject>) -> LevelSpawnObjectsDescription {
   describe_spawn_objects(&LevelSpawn {
     arrivals: Vec::new(),
     objects,
+    releases: HashMap::new(),
   })
 }
 
@@ -179,4 +184,35 @@ fn passes_over_what_the_game_draws_nothing_of() {
 
   assert!(described.objects.is_empty());
   assert!(described.visuals.is_empty());
+}
+
+// A new game's releases stay in the description, so a panel can say what the level loses and a view can draw them.
+#[test]
+fn marks_what_a_new_game_releases_and_why() {
+  let described: LevelSpawnObjectsDescription = describe_spawn_objects(&LevelSpawn {
+    arrivals: Vec::new(),
+    objects: vec![
+      new_object("kept", "medkit", ClsId::SFood, new_item("dynamics\\medkit")),
+      new_object("removed", "medkit", ClsId::SFood, new_item("dynamics\\medkit")),
+      new_object("replaced", "medkit", ClsId::SFood, new_item("dynamics\\medkit")),
+    ],
+    releases: HashMap::from([
+      (1, LevelSpawnRelease::RemoveObjects),
+      (2, LevelSpawnRelease::ReplaceItems),
+    ]),
+  });
+  let releases: Vec<(u32, Option<LevelSpawnRelease>)> = described
+    .objects
+    .iter()
+    .map(|it: &LevelSpawnObject| (it.index, it.release))
+    .collect();
+
+  assert_eq!(
+    releases,
+    vec![
+      (0, None),
+      (1, Some(LevelSpawnRelease::RemoveObjects)),
+      (2, Some(LevelSpawnRelease::ReplaceItems)),
+    ]
+  );
 }
