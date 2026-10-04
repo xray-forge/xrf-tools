@@ -719,3 +719,20 @@ fn a_particle_blender_draws_by_its_blending_token_and_tests_against_zero() {
   assert!(describe(&tree, "particles\\add").is_texture_clamped);
   assert!(!describe(&tree, "particles\\alpha_add").is_texture_clamped);
 }
+
+// `def_objects_lod`, which compiles `tree_s`: a wreck or vehicle the level stores as a tree, opaque and never swayed.
+#[test]
+fn a_tree_blender_says_whether_it_is_an_object_stored_as_a_tree() {
+  let tree: FixtureTree = library(
+    "surface_object_lod",
+    &[
+      ShaderBlenderFixture::tree("flora\\trunk_wave"),
+      ShaderBlenderFixture::object_lod("def_shaders\\def_objects_lod"),
+    ],
+  );
+  let object: XraySurfaceDescriptor = describe(&tree, "def_shaders\\def_objects_lod");
+
+  assert!(object.is_object_lod);
+  assert_eq!(object.draw, XraySurfaceDraw::Opaque);
+  assert!(!describe(&tree, "flora\\trunk_wave").is_object_lod);
+}

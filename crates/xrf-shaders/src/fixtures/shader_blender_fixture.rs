@@ -86,6 +86,19 @@ impl ShaderBlenderFixture {
     }
   }
 
+  /// `B_TREE` with `Object LOD` on, as `def_shaders\def_objects_lod` ships: an object stored as a tree.
+  pub fn object_lod(name: &str) -> Self {
+    Self {
+      blender: Self::describe(
+        ShaderBlenderClass::TREE,
+        name,
+        1,
+        vec![Self::boolean("Alpha-blend", false), Self::boolean("Object LOD", true)],
+      ),
+      alpha_property: Some("Alpha-blend"),
+    }
+  }
+
   /// `B_DETAIL`, which cuts out whatever its switch says.
   pub fn detail(name: &str) -> Self {
     Self {

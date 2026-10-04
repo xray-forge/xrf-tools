@@ -268,6 +268,8 @@ export type XraySurfaceDescriptor = {
   isTextureClamped: boolean;
   /** Whether it also draws into the distortion target, by a script's `l_special` pass. */
   isDistorting: boolean;
+  /** `B_TREE`'s `Object LOD`: an object the level stores as a tree, drawn by `tree_s`, which the wind leaves standing. */
+  isObjectLod: boolean;
 };
 
 /** The detail texture a surface modulates its diffuse with, and how densely it is laid over it. */

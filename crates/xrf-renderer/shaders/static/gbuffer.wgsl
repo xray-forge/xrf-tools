@@ -107,8 +107,10 @@ fn vs_tree(@builtin(vertex_index) vertex_index: u32, @builtin(instance_index) in
   let at: u32 = pulled.word;
   let position: vec3<f32> = vec3<f32>(bitcast<f32>(words[at + 5u]), bitcast<f32>(words[at + 6u]),
     bitcast<f32>(words[at + 7u]));
-  // The coordinate's second pair carries the rigidity, scaled as `consts.x` scales it.
-  let rigidity: f32 = unpack_shorts(words[at + 4u]).x / 2048.0;
+  // The coordinate's second pair carries the rigidity, scaled as `consts.x` scales it; an object stored as a tree
+  // stands still, as `tree_s` draws it.
+  let is_still: bool = (surfaces[pulled.surface].flags & SURFACE_IS_STILL) != 0u;
+  let rigidity: f32 = select(unpack_shorts(words[at + 4u]).x / 2048.0, 0.0, is_still);
   var out: GBufferVarying = place_vertex(pulled, position, unpack4x8unorm(words[at + 1u]),
     unpack4x8unorm(words[at + 2u]), unpack4x8unorm(words[at]), rigidity);
 

@@ -222,6 +222,7 @@ export function mockSurfaceDescriptor(overrides: Partial<XraySurfaceDescriptor> 
     bump: null,
     environment: null,
     isDistorting: false,
+    isObjectLod: false,
     isTextureClamped: false,
     material: 1,
     shader: "models\\model",

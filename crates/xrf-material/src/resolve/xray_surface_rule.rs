@@ -43,6 +43,8 @@ impl XraySurfaceRule {
   /// The environment mapped classes' cube, by its marker and name (`blenders/Blender_Model_EbB.cpp`).
   const ENVIRONMENT_MARKER: &'static str = "Environment map";
   const ENVIRONMENT_NAME: &'static str = "Name";
+  /// The tree class's switch for an object stored as a tree, `oNotAnTree` (`blenders/Blender_tree.cpp`).
+  const OBJECT_LOD: &'static str = "Object LOD";
   /// The particle class's edge addressing switch (`blenders/Blender_Particle.cpp`).
   const TEXTURE_CLAMP: &'static str = "Texture clamp";
   /// The authored reference, for the classes that write one (`blenders/Blender_Model.cpp`).
@@ -144,6 +146,12 @@ impl XraySurfaceRule {
   /// `Texture clamp`: whether the class samples its base clamped to the edge, which only the particle class writes.
   pub(crate) fn is_texture_clamped(self, blender: &ShaderBlender) -> bool {
     self == Self::Particle && blender.boolean(Self::TEXTURE_CLAMP).unwrap_or(false)
+  }
+
+  /// Whether a tree class surface is an object stored as a tree, compiled with `tree_s` rather than `tree`
+  /// (`blenders/Blender_tree_deferred.cpp`).
+  pub(crate) fn is_object_lod(self, blender: &ShaderBlender) -> bool {
+    self == Self::Tree && blender.boolean(Self::OBJECT_LOD).unwrap_or(false)
   }
 
   /// The cube an environment-mapped class binds as `s_env`, or `None` for another class or one naming no texture.

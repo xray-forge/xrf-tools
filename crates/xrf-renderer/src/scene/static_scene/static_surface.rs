@@ -47,6 +47,8 @@ impl StaticSurface {
   pub const IS_MODEL: u32 = 1 << 19;
   /// An environment-mapped class's, whose blended model is drawn as `model_env_lq` instead.
   pub const IS_ENVIRONMENT_MAPPED: u32 = 1 << 20;
+  /// An object the level stores as a tree, which `tree_s` draws without the wind.
+  pub const IS_STILL: u32 = 1 << 21;
 
   pub const BASE: usize = 0;
   pub const DETAIL: usize = 1;

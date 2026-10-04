@@ -82,6 +82,24 @@ const LOD_IMPOSTOR: u32 = 2u;
 // A row no impostor decides.
 const NO_LOD: u32 = 0xffffffffu;
 
+// A row's band word, as `StaticRow::pack_band` and `pack_group` lay it: its progressive band and the bands its mesh has
+// in four bits each, the slide windows they share in sixteen, and the visibility group showing it in the top byte.
+fn row_band(word: u32) -> u32 {
+  return word & 15u;
+}
+
+fn row_bands(word: u32) -> u32 {
+  return (word >> 4u) & 15u;
+}
+
+fn row_windows(word: u32) -> u32 {
+  return (word >> 8u) & 0xffffu;
+}
+
+fn row_group(word: u32) -> u32 {
+  return word >> 24u;
+}
+
 // The shading classes a layout's batches run through, as `StaticClass` orders them: the two the G-buffer draws and
 // shadows cast first, then water, composited surfaces and wall marks.
 const CLASS_COUNT: u32 = 5u;
@@ -111,6 +129,8 @@ const SURFACE_IS_MULTIPLIED: u32 = 131072u;
 const SURFACE_IS_DOUBLED: u32 = 262144u;
 const SURFACE_IS_MODEL: u32 = 524288u;
 const SURFACE_IS_ENVIRONMENT_MAPPED: u32 = 1048576u;
+// An object the level stores as a tree, which the wind leaves standing.
+const SURFACE_IS_STILL: u32 = 2097152u;
 
 // Vertices one cluster's draw spans: 128 triangles, those past its own collapsed.
 const CLUSTER_VERTICES: u32 = 384u;

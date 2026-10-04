@@ -297,9 +297,9 @@ fn cull_impostors(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_wor
 
 // Whether a progressive mesh's band is the one its distance picks: windows are spread over bands evenly.
 fn is_band_drawn(band_word: u32, area: f32) -> bool {
-  let band: u32 = band_word & 255u;
-  let bands: u32 = (band_word >> 8u) & 255u;
-  let windows: u32 = (band_word >> 16u) & 255u;
+  let band: u32 = row_band(band_word);
+  let bands: u32 = row_bands(band_word);
+  let windows: u32 = row_windows(band_word);
   let detail: f32 = sqrt(clamp((area - params.glod_end) / (params.glod_start - params.glod_end), 0.0, 1.0));
   let window: u32 = u32(floor((1.0 - detail) * f32(max(windows, 1u) - 1u) + 0.5));
 
@@ -315,7 +315,7 @@ fn cull_rows(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workgrou
   }
 
   let row: Row = rows[index];
-  let group: u32 = row.band >> 24u;
+  let group: u32 = row_group(row.band);
 
   // A row of a visibility group the view hides.
   if (group != 0u && (params.hidden_groups & (1u << (group - 1u))) != 0u) {
@@ -332,7 +332,7 @@ fn cull_rows(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workgrou
   let is_drawn: bool = select(
     // A place too small to see is dropped, as `r_ssaDISCARD` drops it.
     area > params.discard_below && is_band_drawn(row.band, area),
-    (row.band & 255u) == 0u,
+    row_band(row.band) == 0u,
     IS_FINEST
   );
 
