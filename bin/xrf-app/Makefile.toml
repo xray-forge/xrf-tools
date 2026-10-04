@@ -26,8 +26,8 @@ command = "cargo"
 args = ["tauri", "dev"]
 
 [tasks.dev-optimized]
-extend = "dev"
-env = { CARGO_PROFILE_DEV_OPT_LEVEL = "1" }
+command = "cargo"
+args = ["tauri", "dev", "--", "--profile", "dev-optimized"]
 
 [tasks.serve-backend]
 command = "cargo"
