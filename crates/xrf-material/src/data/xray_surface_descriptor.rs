@@ -36,6 +36,10 @@ pub struct XraySurfaceDescriptor {
   /// The cube an environment-mapped class mixes its base toward where its alpha is thin, `oT2_Name`; `None` for a
   /// class binding none.
   pub environment: Option<String>,
+  /// Whether its base is sampled clamped to the edge rather than wrapped, `Texture clamp`.
+  pub is_texture_clamped: bool,
+  /// Whether it also draws into the distortion target, by a script's `l_special` pass.
+  pub is_distorting: bool,
 }
 
 impl XraySurfaceDescriptor {
@@ -52,6 +56,8 @@ impl XraySurfaceDescriptor {
       bump: None,
       material: XrayMaterialDescriptor::DEFAULT_MATERIAL,
       environment: None,
+      is_texture_clamped: false,
+      is_distorting: false,
     }
   }
 

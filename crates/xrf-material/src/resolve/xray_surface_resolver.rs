@@ -76,7 +76,7 @@ impl<'probe, 'vfs> XraySurfaceResolver<'probe, 'vfs> {
     // Before the library, because that is the order the engine asks in: a shader with a renderer script **is** that
     // script, and what `shaders.xr` calls its class never reaches the screen. Reading the class alone drew X-Ray's
     // additive glows and its wall marks as opaque black.
-    if let Some(scripted) = XraySurfaceScript::describe(self.probe, shader_name) {
+    if let Some(scripted) = XraySurfaceScript::describe(self.probe, shader_name, textures) {
       return scripted;
     }
 
@@ -134,6 +134,8 @@ impl<'probe, 'vfs> XraySurfaceResolver<'probe, 'vfs> {
         descriptor.material
       }),
       environment: rule.environment(blender),
+      is_texture_clamped: rule.is_texture_clamped(blender),
+      is_distorting: false,
     }
   }
 

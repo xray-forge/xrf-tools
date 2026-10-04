@@ -112,17 +112,24 @@ impl Visitor for LuaMethodCallCollector {
   fn visit_function_body(&mut self, body: &FunctionBody) {
     self.scope.push();
 
-    // `function object:method()` is `function object.method(self)`.
-    if let Some(at) = self.method.take() {
-      self.scope.bind(String::from("self"), at, XRayLuaBinding::Parameter);
-    }
+    // `function object:method()` is `function object.method(self)`, so its declared parameters come after `self`.
+    let first: usize = match self.method.take() {
+      Some(at) => {
+        self
+          .scope
+          .bind(String::from("self"), at, XRayLuaBinding::Parameter { index: 0 });
 
-    for parameter in body.parameters() {
+        1
+      }
+      None => 0,
+    };
+
+    for (index, parameter) in body.parameters().iter().enumerate() {
       if let Parameter::Name(name) = parameter {
         self.scope.bind(
           name.token().to_string(),
           Self::position(name),
-          XRayLuaBinding::Parameter,
+          XRayLuaBinding::Parameter { index: first + index },
         );
       }
     }

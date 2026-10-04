@@ -2672,7 +2672,7 @@ export enum EWebviewProcessKind {
   BROWSER = "browser",
   /** Runs the page and its workers: the script heaps and every array buffer. */
   RENDERER = "renderer",
-  /** Runs the GPU driver on the page's behalf: WebGPU buffers and textures, and their staging. */
+  /** Runs the GPU driver on the page's behalf: its compositing and canvases. */
   GPU = "gpu",
   /** A service process, such as the network or audio service. */
   UTILITY = "utility",

@@ -214,7 +214,10 @@ end
     assert_eq!(normal.samplers().len(), 4);
     assert_eq!(
       texture(normal, "s_base"),
-      Some(XRayShaderSamplerTexture::Parameter("t_base".to_owned()))
+      Some(XRayShaderSamplerTexture::Parameter {
+        name: "t_base".to_owned(),
+        index: 1,
+      })
     );
     assert_eq!(
       texture(normal, "s_nmap"),
@@ -259,7 +262,10 @@ end
 
     assert_eq!(
       texture("s_base"),
-      Some(XRayShaderSamplerTexture::Parameter("t_base".to_owned()))
+      Some(XRayShaderSamplerTexture::Parameter {
+        name: "t_base".to_owned(),
+        index: 1,
+      })
     );
     assert_eq!(
       texture("s_nmap"),

@@ -1,6 +1,7 @@
 use xrf_shaders::{ShaderBlender, ShaderBlenderClass};
 
 use crate::data::xray_surface_draw::XraySurfaceDraw;
+use crate::resolve::xray_particle_blending::XrayParticleBlending;
 use crate::resolve::xray_screen_set_blending::XrayScreenSetBlending;
 use crate::resolve::xray_surface_alpha::XraySurfaceAlpha;
 
@@ -22,6 +23,9 @@ pub(crate) enum XraySurfaceRule {
   /// `B_DETAIL`: always the `_aref` shader variant, whatever the switch says
   /// (`blenders/Blender_detail_still_deferred.cpp`).
   Detail,
+  /// `B_PARTICLE`: a blend equation chosen outright by a token, each forward pass testing against zero
+  /// (`blenders/Blender_Particle_deferred.cpp`).
+  Particle,
   /// `B_SCREEN_SET`: a blend equation chosen outright by a token rather than derived from a switch
   /// (`blenders/Blender_Screen_SET.cpp`). A level reaches it through its decals, its glows and its LOD imposters.
   ScreenSet,
@@ -39,6 +43,8 @@ impl XraySurfaceRule {
   /// The environment mapped classes' cube, by its marker and name (`blenders/Blender_Model_EbB.cpp`).
   const ENVIRONMENT_MARKER: &'static str = "Environment map";
   const ENVIRONMENT_NAME: &'static str = "Name";
+  /// The particle class's edge addressing switch (`blenders/Blender_Particle.cpp`).
+  const TEXTURE_CLAMP: &'static str = "Texture clamp";
   /// The authored reference, for the classes that write one (`blenders/Blender_Model.cpp`).
   const REFERENCE: &'static str = "Alpha ref";
 
@@ -58,6 +64,7 @@ impl XraySurfaceRule {
       ShaderBlenderClass::TREE => Some(Self::Tree),
       ShaderBlenderClass::DETAIL => Some(Self::Detail),
       ShaderBlenderClass::SCREEN_SET => Some(Self::ScreenSet),
+      ShaderBlenderClass::PARTICLE => Some(Self::Particle),
       ShaderBlenderClass::DEFAULT
       | ShaderBlenderClass::VERT
       | ShaderBlenderClass::LM_BMM_D
@@ -75,6 +82,13 @@ impl XraySurfaceRule {
   pub(crate) fn draw(self, blender: &ShaderBlender, alpha: XraySurfaceAlpha) -> XraySurfaceDraw {
     // The one class that names its equation outright. An index no build of it defines leaves the surface drawn as
     // written, which is what the engine's own `switch` does with one.
+    if self == Self::Particle {
+      return blender
+        .token(XrayParticleBlending::PROPERTY)
+        .and_then(XrayParticleBlending::of)
+        .map_or(XraySurfaceDraw::Opaque, XrayParticleBlending::draw);
+    }
+
     if self == Self::ScreenSet {
       return blender
         .token(XrayScreenSetBlending::PROPERTY)
@@ -121,8 +135,15 @@ impl XraySurfaceRule {
       // The one rule that reports a switch and ignores it: the `_aref` variant is compiled either way.
       Self::Detail => cut_out,
       // Every rule whose switch is off, the classes that read no alpha at all, and the token rule `draw` answered.
-      Self::Model | Self::EnvironmentMapped | Self::Tree | Self::ScreenSet | Self::Opaque => XraySurfaceDraw::Opaque,
+      Self::Model | Self::EnvironmentMapped | Self::Tree | Self::Particle | Self::ScreenSet | Self::Opaque => {
+        XraySurfaceDraw::Opaque
+      }
     }
+  }
+
+  /// `Texture clamp`: whether the class samples its base clamped to the edge, which only the particle class writes.
+  pub(crate) fn is_texture_clamped(self, blender: &ShaderBlender) -> bool {
+    self == Self::Particle && blender.boolean(Self::TEXTURE_CLAMP).unwrap_or(false)
   }
 
   /// The cube an environment-mapped class binds as `s_env`, or `None` for another class or one naming no texture.
@@ -140,14 +161,14 @@ impl XraySurfaceRule {
       Self::Model => Some(Self::MODEL_SWITCH),
       Self::EnvironmentMapped => Some(Self::ENVIRONMENT_SWITCH),
       Self::LevelAref | Self::Tree | Self::Detail => Some(Self::LEVEL_SWITCH),
-      Self::ScreenSet | Self::Opaque => None,
+      Self::Particle | Self::ScreenSet | Self::Opaque => None,
     }
   }
 
   /// The class's alpha reference, or `None` for a rule whose classes write none.
   fn reference(self) -> Option<&'static str> {
     match self {
-      Self::Model | Self::LevelAref | Self::ScreenSet => Some(Self::REFERENCE),
+      Self::Model | Self::LevelAref | Self::Particle | Self::ScreenSet => Some(Self::REFERENCE),
       Self::EnvironmentMapped | Self::Tree | Self::Detail | Self::Opaque => None,
     }
   }

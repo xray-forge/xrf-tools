@@ -264,6 +264,10 @@ export type XraySurfaceDescriptor = {
    * class binding none.
    */
   environment: string | null;
+  /** Whether its base is sampled clamped to the edge rather than wrapped, `Texture clamp`. */
+  isTextureClamped: boolean;
+  /** Whether it also draws into the distortion target, by a script's `l_special` pass. */
+  isDistorting: boolean;
 };
 
 /** The detail texture a surface modulates its diffuse with, and how densely it is laid over it. */
