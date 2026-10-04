@@ -24,6 +24,8 @@ export const MEDIA_VOLUME_STORAGE_KEY: string = buildStorageKey(EStorageNamespac
 export const FRAME_RATE_LIMIT_STORAGE_KEY: string = buildStorageKey(EStorageNamespace.PREFERENCE, "frame-rate-limit");
 /** Which engine game configs are read as, where the engines read them differently. */
 export const ENGINE_STORAGE_KEY: string = buildStorageKey(EStorageNamespace.PREFERENCE, "engine");
+/** Whether every viewport's frames wait for the display's refresh. */
+export const VSYNC_STORAGE_KEY: string = buildStorageKey(EStorageNamespace.PREFERENCE, "vsync");
 /** Whether every viewport times its passes on the GPU. */
 export const GPU_TIMED_STORAGE_KEY: string = buildStorageKey(EStorageNamespace.PREFERENCE, "gpu-timed");
 

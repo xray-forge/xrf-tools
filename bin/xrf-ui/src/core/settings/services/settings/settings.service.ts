@@ -29,6 +29,7 @@ import {
   GPU_TIMED_STORAGE_KEY,
   RENDER_RESOLUTION_STORAGE_KEY,
   RENDERER_FEATURES_STORAGE_KEY,
+  VSYNC_STORAGE_KEY,
 } from "@/core/storage";
 import { isDevelopmentBuild } from "@/lib/env";
 import {
@@ -68,6 +69,10 @@ export class SettingsService {
   @Observable()
   public isGpuTimed: boolean = getLocalStorageValue(GPU_TIMED_STORAGE_KEY) === String(true);
 
+  /** Whether every viewport's frames wait for the display's refresh: on unless turned off. */
+  @Observable()
+  public isVsync: boolean = getLocalStorageValue(VSYNC_STORAGE_KEY) !== String(false);
+
   @Observable()
   public renderResolution: ERenderResolution = toRenderResolution(getLocalStorageValue(RENDER_RESOLUTION_STORAGE_KEY));
 
@@ -87,7 +92,7 @@ export class SettingsService {
   /** What the renderer draws every viewport with: how often, and whether its passes are timed. */
   @Computed()
   public get renderSettings(): RenderSettings {
-    return { frameRate: toRenderFrameRate(this.frameRateLimit), isGpuTimed: this.isGpuTimed };
+    return { frameRate: toRenderFrameRate(this.frameRateLimit, this.isVsync), isGpuTimed: this.isGpuTimed };
   }
 
   /**
@@ -138,6 +143,14 @@ export class SettingsService {
 
     this.frameRateLimit = limit;
     setLocalStorageValue(FRAME_RATE_LIMIT_STORAGE_KEY, limit);
+  }
+
+  @BoundAction()
+  public setVsync(isVsync: boolean): void {
+    this.log.info("Set vsync:", isVsync);
+
+    this.isVsync = isVsync;
+    setLocalStorageValue(VSYNC_STORAGE_KEY, String(isVsync));
   }
 
   @BoundAction()

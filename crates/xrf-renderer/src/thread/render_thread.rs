@@ -539,7 +539,7 @@ impl RenderThread {
       }
     }
 
-    let is_vsync: bool = self.settings.frame_rate.is_vsync();
+    let is_vsync: bool = self.settings.frame_rate.is_vsync;
     let Some((frame, width, height)) = gpu
       .windows
       .get_mut(&window)

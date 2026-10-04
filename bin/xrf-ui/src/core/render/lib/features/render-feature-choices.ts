@@ -289,7 +289,7 @@ export const RENDER_LIGHT_SHADOW_FILTER_OPTIONS: ReadonlyArray<IRenderChoiceOpti
 
 /** The frame rate limits, in the order they are offered. */
 export const RENDER_FRAME_RATE_OPTIONS: ReadonlyArray<IRenderChoiceOption<TFrameRateLimit>> = FRAME_RATE_LIMITS.map(
-  (value: TFrameRateLimit) => ({ label: value === "unlimited" ? "Unlimited" : `${value} fps`, value })
+  (value: TFrameRateLimit) => ({ label: value === "none" ? "No cap" : `${value} fps`, value })
 );
 
 /**

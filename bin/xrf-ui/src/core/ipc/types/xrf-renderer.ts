@@ -266,20 +266,16 @@ export type RenderExposureSettings = {
   adaptation: number | null;
 };
 
-/** Every `kind` the `RenderFrameRate` union is told apart by, so a switch or a comparison names one. */
-export enum ERenderFrameRate {
-  /** At most this many a second, each presented at a refresh of the display, which a faster limit stops at. */
-  LIMITED = "limited",
-  /** As fast as a frame can be drawn, presented as soon as it is, for measuring. */
-  UNLIMITED = "unlimited",
-}
-
-/** How often a viewport's frames are drawn. */
-export type RenderFrameRate =
-  /** At most this many a second, each presented at a refresh of the display, which a faster limit stops at. */
-  | { kind: "limited"; framesPerSecond: number }
-  /** As fast as a frame can be drawn, presented as soon as it is, for measuring. */
-  | { kind: "unlimited" };
+/** How often a viewport's frames are drawn and how they are presented. */
+export type RenderFrameRate = {
+  /**
+   * Frames a second drawn at most, or none for no cap: presented at the display's refresh while `is_vsync`, and as
+   * fast as a frame is drawn otherwise.
+   */
+  limit: number | null;
+  /** Whether a frame waits for a refresh of the display to be presented, which a faster limit stops at. */
+  isVsync: boolean;
+};
 
 /** What a viewport's recent frames cost, reported a few times a second while it draws. */
 export type RenderFrameReport = {
