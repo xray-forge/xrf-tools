@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 
-/// How far a viewport's scene has been read and put on the GPU.
+/// How far a viewport's level has been read and put on the GPU, sent as `RenderViewportEvent::Load` and answered to a
+/// caller polling `describe_load`.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -13,8 +14,9 @@ pub struct RenderLoadReport {
   pub bytes: u64,
   /// Textures uploaded or given up on.
   pub textures: u32,
-  /// Textures the scene names.
+  /// Textures the level samples: its scene's, its lights' projectors and its particles'.
   pub textures_total: u32,
-  /// Whether everything is resident, so the scene draws as it will.
+  /// Whether everything is resident, so the level draws as it will: every sector, the spawn, grass, lights and
+  /// particles read, and every texture settled.
   pub is_ready: bool,
 }

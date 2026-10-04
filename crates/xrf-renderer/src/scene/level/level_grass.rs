@@ -21,6 +21,7 @@ use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::grass_build::GrassBuild;
 use crate::scene::level::grass_build_size::GrassBuildSize;
 use crate::scene::level::grass_level::GrassLevel;
+use crate::scene::level::loader_answer::take_answer;
 use crate::scene::texture::texture_cache::TextureCache;
 use crate::thread::render_workers::RenderWorkers;
 
@@ -86,6 +87,11 @@ impl LevelGrass {
     }
   }
 
+  /// Whether its loader has answered, whatever it answered.
+  pub fn is_loaded(&self) -> bool {
+    self.pending.is_none()
+  }
+
   /// Takes the level's grass once it is read, asking for its textures; answers their slots the first time.
   pub fn poll(
     &mut self,
@@ -94,10 +100,7 @@ impl LevelGrass {
     textures: &mut TextureCache,
     source: &Arc<dyn RenderAssetSource>,
   ) -> Option<Vec<u32>> {
-    let read: XrfResult<Option<RenderLevelDetails>> = self.pending.as_ref()?.try_recv().ok()?;
-
-    self.pending = None;
-
+    let read: XrfResult<Option<RenderLevelDetails>> = take_answer(&mut self.pending, "grass")?;
     let details: RenderLevelDetails = read.ok().flatten()?;
     let level: GrassLevel = GrassLevel::new(device, pass, &self.uniform, &details, (textures, source));
     let slots: Vec<u32> = level.texture_slots.clone();

@@ -19,6 +19,7 @@ pub(crate) mod light_shadow_entry;
 pub(crate) mod light_shadow_face;
 pub(crate) mod light_shadow_set;
 pub(crate) mod lights_frame;
+pub(crate) mod loader_answer;
 pub(crate) mod model_motions;
 pub(crate) mod particle_sprite;
 pub(crate) mod placed_effect;

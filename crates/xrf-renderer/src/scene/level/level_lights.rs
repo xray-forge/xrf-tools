@@ -21,6 +21,7 @@ use crate::pass::lights_uniform::LightsUniform;
 use crate::scene::level::level_light_shadows::{LIGHT_SHADOW_ATLAS_SIZE, LevelLightShadows};
 use crate::scene::level::light_shadow_set::LightShadowSet;
 use crate::scene::level::lights_frame::LightsFrame;
+use crate::scene::level::loader_answer::take_answer;
 use crate::scene::level::shadow_frame::ShadowFrame;
 use crate::scene::texture::texture_cache::{MISSING_SLOT, TextureCache};
 use crate::scene::texture::texture_role::TextureRole;
@@ -133,20 +134,20 @@ impl LevelLights {
     &self.projectors
   }
 
+  /// Whether its loader has answered, whatever it answered.
+  pub fn is_loaded(&self) -> bool {
+    self.pending.is_none()
+  }
+
   pub fn get_count(&self) -> u32 {
     self.count
   }
 
   /// Takes the lights once their loader read them, asking for every projector they name.
   pub fn poll(&mut self, textures: &mut TextureCache, source: &Arc<dyn RenderAssetSource>) {
-    let Some(receiver) = &self.pending else {
+    let Some(lights) = take_answer(&mut self.pending, "lights") else {
       return;
     };
-    let Ok(lights) = receiver.try_recv() else {
-      return;
-    };
-
-    self.pending = None;
 
     if let Ok(lights) = lights {
       self.projectors = lights
