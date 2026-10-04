@@ -1,6 +1,9 @@
 use std::sync::Arc;
 
-use xrf_shaders::{XRayShaderBlendFactor, XRayShaderPass, XRayShaderPassState, XRayShaderSampler, XRayShaderScript};
+use xrf_shaders::{
+  XRayShaderBlendFactor, XRayShaderPass, XRayShaderPassState, XRayShaderSampler, XRayShaderSamplerTexture,
+  XRayShaderScript,
+};
 use xrf_vfs::{XrayAsset, XrayProbe};
 
 use crate::data::xray_material_descriptor::XrayMaterialDescriptor;
@@ -18,6 +21,10 @@ impl XraySurfaceScript {
 
   /// Extension every renderer script carries, which is what `LS_Load` filters the directory by.
   pub const SHADER_SCRIPT_EXTENSION: &'static str = ".s";
+
+  /// The positions of `t_base` and `t_second` in a script function's parameters, after the compiler.
+  const FIRST_TEXTURE_PARAMETER: usize = 1;
+  const SECOND_TEXTURE_PARAMETER: usize = 2;
 
   /// The delimiter a shader name separates its directory with, which the undecoration replaces.
   const NAME_DELIMITER: char = '\\';
@@ -44,19 +51,23 @@ impl XraySurfaceScript {
   }
 
   /// How a surface naming this shader is drawn, for a shader the roots answer with a script.
-  pub fn describe(probe: &XrayProbe, shader_name: &str) -> Option<XraySurfaceDescriptor> {
+  pub fn describe(probe: &XrayProbe, shader_name: &str, textures: &[String]) -> Option<XraySurfaceDescriptor> {
     let logical_path: String = Self::to_logical_path(shader_name);
     let asset: XrayAsset = probe.find(&logical_path).ok()?.get_asset().cloned()?;
     let source: Arc<String> = probe
       .read_asset_parsed(&asset, |bytes| Ok(String::from_utf8_lossy(&bytes).into_owned()))
       .ok()?;
     let script: XRayShaderScript = XRayShaderScript::parse(&logical_path, &source).ok()?;
-    let pass: &XRayShaderPass = script.pass_of(XRayShaderPass::BASE_FUNCTION)?;
+    let base: Option<&XRayShaderPass> = script.pass_of(XRayShaderPass::BASE_FUNCTION);
+    let distortion: Option<&XRayShaderPass> = script.pass_of(Self::DISTORTION_FUNCTION);
+    // `_lua_HasShader`: a script is the shader when it declares either; one with only a distortion pass draws nothing
+    // into the scene itself.
+    let pass: &XRayShaderPass = base.or(distortion)?;
     let state: &XRayShaderPassState = pass.state();
-    let samplers: Vec<XraySurfaceSampler> = [XRayShaderPass::BASE_FUNCTION, Self::DISTORTION_FUNCTION]
+    let samplers: Vec<XraySurfaceSampler> = base
       .into_iter()
-      .filter_map(|function| script.pass_of(function))
-      .flat_map(Self::to_samplers)
+      .chain(distortion)
+      .flat_map(|pass| Self::to_samplers(pass, textures))
       .collect();
 
     Some(XraySurfaceDescriptor {
@@ -64,7 +75,7 @@ impl XraySurfaceScript {
       textures: Vec::new(),
       library: Some(asset),
       declaration: XraySurfaceDeclaration::Scripted {
-        function: XRayShaderPass::BASE_FUNCTION.to_owned(),
+        function: pass.function().unwrap_or_default().to_owned(),
         program: pass.vertex_shader().to_owned(),
         is_alpha_tested: state.is_alpha_tested,
         is_blended: state.is_blended,
@@ -72,31 +83,51 @@ impl XraySurfaceScript {
         is_wallmark: state.is_wallmark,
         script: logical_path,
       },
-      draw: Self::to_water_draw(pass).unwrap_or_else(|| Self::to_draw(state)),
+      draw: base.map_or(XraySurfaceDraw::Invisible, |base| {
+        Self::to_water_draw(base).unwrap_or_else(|| Self::to_draw(base.state()))
+      }),
       // A script binds its own samplers by name, so nothing here is the detail texture the library's classes bind.
       detail: None,
       samplers,
       bump: None,
       material: XrayMaterialDescriptor::DEFAULT_MATERIAL,
       environment: None,
+      is_texture_clamped: false,
+      is_distorting: distortion.is_some(),
     })
   }
 
-  /// The texture files one pass binds, each by its sampler.
-  fn to_samplers(pass: &XRayShaderPass) -> Vec<XraySurfaceSampler> {
+  /// The texture files one pass binds, each by its sampler, a parameter read from the surface's textures by position.
+  fn to_samplers(pass: &XRayShaderPass, textures: &[String]) -> Vec<XraySurfaceSampler> {
     let element: &str = pass.function().unwrap_or_default();
 
     pass
       .samplers()
       .iter()
       .filter_map(|sampler: &XRayShaderSampler| {
+        let texture: &str = match sampler.texture() {
+          XRayShaderSamplerTexture::Parameter { index, .. } => Self::to_parameter_texture(*index, textures)?,
+          texture => texture.file()?,
+        };
+
         Some(XraySurfaceSampler {
           element: element.to_owned(),
           name: sampler.name().to_owned(),
-          texture: sampler.texture().file()?.to_owned(),
+          texture: texture.to_owned(),
         })
       })
       .collect()
+  }
+
+  /// `_lua_Compile`'s first two texture arguments, by position; the detail texture after them is not resolved.
+  fn to_parameter_texture(index: usize, textures: &[String]) -> Option<&str> {
+    match index {
+      Self::FIRST_TEXTURE_PARAMETER | Self::SECOND_TEXTURE_PARAMETER => textures
+        .get(index - Self::FIRST_TEXTURE_PARAMETER)
+        .map(String::as_str)
+        .filter(|texture| !texture.is_empty()),
+      _ => None,
+    }
   }
 
   /// Water, for a pass drawn by a water program, which no blend state tells apart from a plain surface. Soft where

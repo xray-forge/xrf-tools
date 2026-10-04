@@ -126,6 +126,33 @@ impl ShaderBlenderFixture {
     }
   }
 
+  /// `B_PARTICLE`, as `CBlender_Particle::Save` writes it: its `Blending` token, `Texture clamp` and an `Alpha ref`.
+  pub fn particle(name: &str, blending: u32) -> Self {
+    Self {
+      blender: Self::describe(
+        ShaderBlenderClass::PARTICLE,
+        name,
+        0,
+        vec![
+          Self::token(
+            "Blending",
+            blending,
+            &["SET", "BLEND", "ADD", "MUL", "MUL_2X", "ALPHA-ADD"],
+          ),
+          Self::boolean("Texture clamp", true),
+          Self::integer("Alpha ref", 32, 0, 255),
+        ],
+      ),
+      alpha_property: None,
+    }
+  }
+
+  /// Turns the particle class's edge clamping off.
+  pub fn with_texture_wrapped(mut self) -> Self {
+    self.set("Texture clamp", ShaderBlenderPropertyValue::Bool(false));
+    self
+  }
+
   /// A blender of any class carrying only the properties every class writes.
   pub fn of(class: ShaderBlenderClass, name: &str) -> Self {
     Self {
@@ -270,11 +297,15 @@ impl ShaderBlenderFixture {
   }
 
   fn tessellation() -> ShaderBlenderProperty {
+    Self::token("Tessellation", 0, &["NO_TESS", "TESS_PN", "TESS_HM", "TESS_PN+HM"])
+  }
+
+  fn token(name: &str, selected: u32, labels: &[&str]) -> ShaderBlenderProperty {
     ShaderBlenderProperty {
-      name: String::from("Tessellation"),
+      name: String::from(name),
       value: ShaderBlenderPropertyValue::Token {
-        selected: 0,
-        items: ["NO_TESS", "TESS_PN", "TESS_HM", "TESS_PN+HM"]
+        selected,
+        items: labels
           .iter()
           .enumerate()
           .map(|(index, label)| ShaderBlenderToken {

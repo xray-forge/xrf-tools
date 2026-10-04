@@ -21,6 +21,16 @@ fn describe(tree: &FixtureTree, shader: &str) -> XraySurfaceDescriptor {
   XraySurfaceResolver::open(&probe, XrayTextureScope::shared()).describe(shader, &[])
 }
 
+/// Opens `tree` and describes one shader name in it, dressed with textures.
+fn describe_dressed(tree: &FixtureTree, shader: &str, textures: &[&str]) -> XraySurfaceDescriptor {
+  let mut vfs: XrayVfs = XrayVfs::new();
+  let id: XrayMountId = vfs.mount_directory("", tree.root()).expect("tree mounts");
+  let probe: XrayProbe<'_> = probe_over(&vfs, id);
+  let textures: Vec<String> = textures.iter().map(|it| String::from(*it)).collect();
+
+  XraySurfaceResolver::open(&probe, XrayTextureScope::shared()).describe(shader, &textures)
+}
+
 /// A tree whose library defines exactly `blenders`.
 fn library(case: &str, blenders: &[ShaderBlenderFixture]) -> FixtureTree {
   FixtureTree::new(case).with_shader_library(blenders)
@@ -253,22 +263,22 @@ fn a_class_with_no_alpha_knobs_is_described_as_having_none() {
 
 #[test]
 fn a_class_whose_pass_is_not_modelled_says_so_rather_than_guessing() {
-  // A particle class on a mesh surface: the engine compiles a pass this crate derives nothing from.
+  // A screen space class on a mesh surface: the engine compiles a pass this crate derives nothing from.
   let descriptor: XraySurfaceDescriptor = describe(
     &library(
       "surface_unmodelled",
       &[ShaderBlenderFixture::of(
-        ShaderBlenderClass::PARTICLE,
-        "particles\\smoke",
+        ShaderBlenderClass::SCREEN_GRAY,
+        "effects\\gray",
       )],
     ),
-    "particles\\smoke",
+    "effects\\gray",
   );
 
   assert_eq!(
     descriptor.declaration,
     XraySurfaceDeclaration::Unmodelled {
-      class: String::from("PARTICLE")
+      class: String::from("S_GRAY")
     }
   );
   assert_eq!(descriptor.draw, XraySurfaceDraw::Opaque);
@@ -577,24 +587,124 @@ end
   assert_eq!(describe(&tree, "details\\blend").draw, XraySurfaceDraw::Opaque);
 }
 
-// A script with no `normal` declares no base element, and `_lua_Create` compiles one only from that function.
+// `_lua_HasShader` takes a script declaring only `l_special` as the shader: it distorts and draws nothing of its own.
 #[test]
-fn a_script_without_a_base_pass_leaves_the_class_to_answer() {
+fn a_script_with_only_a_distortion_pass_is_the_shader_and_draws_nothing() {
   let tree: FixtureTree = library(
-    "surface_script_no_base",
-    &[ShaderBlenderFixture::of(ShaderBlenderClass::VERT, "details\\lod")],
+    "surface_script_distortion_only",
+    &[ShaderBlenderFixture::particle("particles\\xdistort", 1)],
   )
   .with_shader_script(
-    "details\\lod",
+    "particles\\xdistort",
     r#"
 function l_special (shader, t_base, t_second, t_detail)
-  shader:begin ("lod","lod") : blend (false, blend.one, blend.zero) : zb (true, true)
+  shader:begin ("particle","particle_distort") : blend (true, blend.srcalpha, blend.invsrcalpha) : zb (true, false)
+  shader:sampler ("s_distort") :texture (t_base)
 end
 "#,
   );
+  let descriptor: XraySurfaceDescriptor = describe_dressed(&tree, "particles\\xdistort", &["pfx\\pfx_dist_flame"]);
 
   assert!(matches!(
-    describe(&tree, "details\\lod").declaration,
-    XraySurfaceDeclaration::Described { .. }
+    descriptor.declaration,
+    XraySurfaceDeclaration::Scripted { ref function, .. } if function == "l_special"
   ));
+  assert_eq!(descriptor.draw, XraySurfaceDraw::Invisible);
+  assert!(descriptor.is_distorting);
+  assert_eq!(descriptor.samplers[0].texture, "pfx\\pfx_dist_flame");
+}
+
+// `_lua_Compile` hands a function its first two textures after the compiler, whatever the script names them.
+#[test]
+fn a_script_parameter_binds_the_surfaces_texture_at_its_position() {
+  let tree: FixtureTree = library("surface_script_parameters", &[]).with_shader_script(
+    "particles\\xadd",
+    r#"
+function normal (shader, first, second, detail)
+  shader:begin ("particle","particle") : blend (true, blend.one, blend.one) : zb (true, false)
+  shader:sampler ("s_base") :texture (first)
+end
+
+function l_special (shader, first, second, detail)
+  shader:begin ("particle","particle_distort") : blend (true, blend.srcalpha, blend.invsrcalpha) : zb (true, false)
+  shader:sampler ("s_distort") :texture (second)
+  shader:sampler ("s_detail") :texture (detail)
+end
+"#,
+  );
+  let descriptor: XraySurfaceDescriptor =
+    describe_dressed(&tree, "particles\\xadd", &["pfx\\pfx_flame", "pfx\\pfx_distortion"]);
+  let samplers: Vec<(&str, &str, &str)> = descriptor
+    .samplers
+    .iter()
+    .map(|it| (it.element.as_str(), it.name.as_str(), it.texture.as_str()))
+    .collect();
+
+  assert_eq!(
+    descriptor.draw,
+    XraySurfaceDraw::Added {
+      is_weighted: false,
+      reference: 0
+    }
+  );
+  assert!(descriptor.is_distorting);
+  assert_eq!(
+    samplers,
+    vec![
+      ("normal", "s_base", "pfx\\pfx_flame"),
+      ("l_special", "s_distort", "pfx\\pfx_distortion"),
+    ]
+  );
+}
+
+#[test]
+fn a_particle_blender_draws_by_its_blending_token_and_tests_against_zero() {
+  let tree: FixtureTree = library(
+    "surface_particle",
+    &[
+      ShaderBlenderFixture::particle("particles\\set", 0),
+      ShaderBlenderFixture::particle("particles\\blend", 1).with_strict_sorting(true),
+      ShaderBlenderFixture::particle("particles\\add", 2),
+      ShaderBlenderFixture::particle("particles\\dark", 3),
+      ShaderBlenderFixture::particle("particles\\dark_2x", 4),
+      ShaderBlenderFixture::particle("particles\\alpha_add", 5).with_texture_wrapped(),
+    ],
+  );
+
+  assert_eq!(describe(&tree, "particles\\set").draw, CUT_OUT);
+  assert_eq!(
+    describe(&tree, "particles\\blend").draw,
+    XraySurfaceDraw::Blended { reference: 0 }
+  );
+  assert_eq!(
+    describe(&tree, "particles\\add").draw,
+    XraySurfaceDraw::Added {
+      is_weighted: false,
+      reference: 0
+    }
+  );
+  assert_eq!(
+    describe(&tree, "particles\\dark").draw,
+    XraySurfaceDraw::Multiplied { is_doubled: false }
+  );
+  assert_eq!(
+    describe(&tree, "particles\\dark_2x").draw,
+    XraySurfaceDraw::Multiplied { is_doubled: true }
+  );
+  assert_eq!(
+    describe(&tree, "particles\\alpha_add").draw,
+    XraySurfaceDraw::Added {
+      is_weighted: true,
+      reference: 0
+    }
+  );
+  assert!(matches!(
+    describe(&tree, "particles\\blend").declaration,
+    XraySurfaceDeclaration::Described {
+      is_strict_sorting: true,
+      ..
+    }
+  ));
+  assert!(describe(&tree, "particles\\add").is_texture_clamped);
+  assert!(!describe(&tree, "particles\\alpha_add").is_texture_clamped);
 }

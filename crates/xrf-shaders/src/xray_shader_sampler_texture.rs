@@ -4,8 +4,9 @@ pub enum XRayShaderSamplerTexture {
   /// A texture named outright, or through a local bound to its name where the sampler is written:
   /// `water\water_normal`, or an engine target such as `$user$sky0`.
   Named(String),
-  /// A value the renderer hands the function, such as `t_base`, the surface's own texture.
-  Parameter(String),
+  /// A value the renderer hands the function, such as `t_base`, the surface's own texture, by its name and position:
+  /// `_lua_Compile` calls each function with the compiler, the first two textures and the detail texture.
+  Parameter { name: String, index: usize },
   /// A name no local or parameter binds where the sampler is written, such as `t_rt`: whatever the renderer's state
   /// holds under it.
   Global(String),

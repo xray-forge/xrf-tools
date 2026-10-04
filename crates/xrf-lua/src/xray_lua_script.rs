@@ -225,7 +225,7 @@ end
     assert_eq!(
       bindings,
       vec![
-        Some(XRayLuaBinding::Parameter),
+        Some(XRayLuaBinding::Parameter { index: 1 }),
         Some(XRayLuaBinding::String("inner".to_owned())),
         Some(XRayLuaBinding::String("inner".to_owned())),
         Some(XRayLuaBinding::Other),
@@ -340,8 +340,35 @@ shader:sampler("s_after_label"):texture(continue)
     assert_eq!(
       bindings(&script),
       vec![
-        Some(XRayLuaBinding::Parameter),
+        Some(XRayLuaBinding::Parameter { index: 0 }),
         Some(XRayLuaBinding::String("outer".to_owned())),
+      ]
+    );
+
+    Ok(())
+  }
+
+  // A parameter is the argument at its position; a method's declared parameters come after its implicit `self`.
+  #[test]
+  fn binds_each_parameter_to_its_argument_position() -> XrfResult {
+    let script: XRayLuaScript = XRayLuaScript::parse(
+      Path::new("script.s"),
+      r#"
+function normal(shader, t_base, t_second)
+  shader:sampler("s_second"):texture(t_second)
+end
+
+function blender:special(shader, t_base)
+  shader:sampler("s_base"):texture(t_base)
+end
+"#,
+    )?;
+
+    assert_eq!(
+      bindings(&script),
+      vec![
+        Some(XRayLuaBinding::Parameter { index: 2 }),
+        Some(XRayLuaBinding::Parameter { index: 2 }),
       ]
     );
 

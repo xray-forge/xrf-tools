@@ -26,9 +26,12 @@ impl XRayShaderSampler {
         ..
       }) => XRayShaderSamplerTexture::Named(value.clone()),
       Some(XRayLuaValue::Local {
-        binding: XRayLuaBinding::Parameter,
+        binding: XRayLuaBinding::Parameter { index },
         name,
-      }) => XRayShaderSamplerTexture::Parameter(name.clone()),
+      }) => XRayShaderSamplerTexture::Parameter {
+        name: name.clone(),
+        index: *index,
+      },
       Some(XRayLuaValue::Name(name)) => XRayShaderSamplerTexture::Global(name.clone()),
       _ => XRayShaderSamplerTexture::Unresolved,
     };
