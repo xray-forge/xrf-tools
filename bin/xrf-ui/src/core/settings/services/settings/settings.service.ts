@@ -76,10 +76,7 @@ export class SettingsService {
   @Observable()
   public renderResolution: ERenderResolution = toRenderResolution(getLocalStorageValue(RENDER_RESOLUTION_STORAGE_KEY));
 
-  /**
-   * The renderer's preset and what was changed on top of it, the same for every viewport. Held by reference, so what
-   * it resolves to crosses to the renderer's thread as plain data.
-   */
+  /** The renderer's preset and what was changed on top of it, the same for every viewport. */
   @RefObservable()
   public rendererChoice: IRenderFeatureChoice = SettingsService.readRendererChoice();
 

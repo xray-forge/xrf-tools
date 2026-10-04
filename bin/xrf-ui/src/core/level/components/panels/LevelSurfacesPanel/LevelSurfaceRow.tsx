@@ -8,7 +8,7 @@ import {
   describeLevelSurfaceSpan,
   ILevelSurfaceGeometry,
 } from "@/core/level/lib/surface/level-surface-geometry";
-import { describeLevelSurfacePass, toLevelSurfaceRender } from "@/core/level/lib/surface/level-surface-render";
+import { describeLevelSurfacePass } from "@/core/level/lib/surface/level-surface-pass";
 import { describeLevelSurface, ILevelSurfaceSummary } from "@/core/level/lib/surface/level-surface-summary";
 import {
   describeSurfaceDeclaration,
@@ -59,7 +59,7 @@ export function LevelSurfaceRow({
 
       {draw ? <EditorPanelProperty label={"Which is"} value={draw} /> : null}
 
-      <EditorPanelProperty label={"Drawn in"} value={describeLevelSurfacePass(toLevelSurfaceRender(descriptor))} />
+      <EditorPanelProperty label={"Drawn in"} value={describeLevelSurfacePass(descriptor)} />
 
       {dressing.length ? (
         <EditorPanelProperty

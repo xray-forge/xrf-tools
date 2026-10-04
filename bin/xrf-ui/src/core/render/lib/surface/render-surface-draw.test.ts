@@ -36,38 +36,15 @@ describe("toRenderSurfaceDraw", () => {
     expect(toRenderSurfaceDraw(null)).toEqual(OPAQUE_RENDER_SURFACE_DRAW);
   });
 
-  it("maps each draw the backend resolved onto the renderer's, with the reference out of 255", () => {
+  it("maps each draw the backend resolved onto the renderer's", () => {
     expect(drawOf({ kind: "opaque" })).toEqual({ draw: ERenderDraw.OPAQUE, isLit: true });
-    expect(drawOf({ kind: "alphaTested", reference: 51 })).toEqual({
-      alphaReference: 0.2,
-      draw: ERenderDraw.CUT_OUT,
-      isLit: true,
-    });
+    expect(drawOf({ kind: "alphaTested", reference: 51 })).toEqual({ draw: ERenderDraw.CUT_OUT, isLit: true });
     expect(drawOf({ kind: "blended", reference: 0 }).draw).toBe(ERenderDraw.BLENDED);
     expect(drawOf({ isWeighted: false, kind: "added", reference: 0 }).draw).toBe(ERenderDraw.ADDED);
     expect(drawOf({ isWeighted: true, kind: "added", reference: 0 }).draw).toBe(ERenderDraw.ALPHA_ADDED);
     expect(drawOf({ isDoubled: false, kind: "multiplied" }).draw).toBe(ERenderDraw.MULTIPLIED);
     expect(drawOf({ isDoubled: true, kind: "multiplied" }).draw).toBe(ERenderDraw.MULTIPLIED_2X);
     expect(drawOf({ kind: "invisible" }).draw).toBe(ERenderDraw.INVISIBLE);
-  });
-
-  // Anomaly's water programs define their switches before including `water.ps`; any other program is OpenXRay's.
-  it("draws water by Anomaly's model for one of its programs, and OpenXRay's for any other", () => {
-    function water(program: string): IRenderSurfaceDraw {
-      return toRenderSurfaceDraw(
-        mockSurfaceDescriptor({ declaration: mockScripted(program), draw: { isSoft: true, kind: "water" } })
-      );
-    }
-
-    expect(water("water_studen")).toEqual({
-      draw: ERenderDraw.WATER,
-      isLit: true,
-      water: {
-        anomaly: { isFoamed: true, isReflecting: true, isSpecular: true, isTransparent: false },
-        isSoft: true,
-      },
-    });
-    expect(water("water_soft").water?.anomaly).toBeNull();
   });
 
   it("leaves a scripted blended pass unlit, and lights water whatever its blend says", () => {

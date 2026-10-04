@@ -2,8 +2,6 @@
  * Everything about how a level is framed, as one value.
  */
 export interface ILevelRenderConfig {
-  /** What the canvas shows where nothing is drawn and no fog is. */
-  backgroundColor: number;
   /** Where the camera starts seeing, `VIEWPORT_NEAR` (`xrEngine/device.h`). */
   cameraNear: number;
   cameraFar: number;
@@ -24,7 +22,6 @@ export interface ILevelRenderConfig {
 }
 
 export const DEFAULT_LEVEL_RENDER_CONFIG: ILevelRenderConfig = {
-  backgroundColor: 0x202428,
   boundsColor: 0xffb300,
   cameraFar: 5000,
   cameraNear: 0.2,

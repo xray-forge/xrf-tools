@@ -8,7 +8,7 @@ import { EEnvironmentRule, WeatherCycleId } from "@/core/ipc/types/xrf-environme
 import { ERenderWeatherPlay } from "@/core/ipc/types/xrf-renderer";
 import { ELevelWeatherSource } from "@/core/level/lib/weather/level-weather-source";
 import { LevelLoadService, LevelWeatherService } from "@/core/level/services";
-import { mockLevelTextureReference, mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
+import { mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { InvokeMap, resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import {
@@ -45,9 +45,6 @@ async function renderPanel(responses: InvokeMap = {}): Promise<RenderResult & { 
           }),
         ],
       })
-    ),
-    ["plugin:levels|resolve_level_textures"]: mockSessionResponse(({ references }: { references: Array<string> }) =>
-      references.map((reference: string) => mockLevelTextureReference(reference))
     ),
     ...responses,
   });

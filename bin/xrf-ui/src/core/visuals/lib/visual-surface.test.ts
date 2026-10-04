@@ -2,6 +2,7 @@ import { describe, expect, it } from "@jest/globals";
 
 import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import { VisualSubmesh } from "@/core/ipc/types/xrf-visual";
+import { ERenderDraw } from "@/core/render/lib/surface/render-draw";
 import { IRenderSurfaceDraw, OPAQUE_RENDER_SURFACE_DRAW } from "@/core/render/lib/surface/render-surface-draw";
 import { createVisualSurfaces } from "@/core/visuals/lib/visual-surface";
 import {
@@ -25,7 +26,7 @@ describe("createVisualSurfaces", () => {
     const states: Map<number, IRenderSurfaceDraw> = createVisualSurfaces(submeshes, surfaces);
 
     expect(states.get(0)).toEqual(OPAQUE_RENDER_SURFACE_DRAW);
-    expect(states.get(1)!.alphaReference).toBeCloseTo(200 / 255);
+    expect(states.get(1)!.draw).toBe(ERenderDraw.CUT_OUT);
     // A submesh naming no shader, and one whose name the map has no answer for, are both drawn opaque rather than
     // left without a state.
     expect(states.get(2)).toEqual(OPAQUE_RENDER_SURFACE_DRAW);
