@@ -80,6 +80,7 @@ use crate::pass::view_light_groups::ViewLightGroups;
 use crate::pass::water_uniform::WaterUniform;
 use crate::pass::wet_uniform::WetUniform;
 use crate::pass::wind_uniform::WindUniform;
+use crate::scene::level::level_campfires::LevelCampfires;
 use crate::scene::level::level_flares::LevelFlares;
 use crate::scene::level::level_grass::LevelGrass;
 use crate::scene::level::level_lights::LevelLights;
@@ -88,6 +89,7 @@ use crate::scene::level::level_overlays::LevelOverlays;
 use crate::scene::level::level_particles::LevelParticles;
 use crate::scene::level::level_shadows::LevelShadows;
 use crate::scene::level::level_smoothing::LevelSmoothing;
+use crate::scene::level::lights_frame::LightsFrame;
 use crate::scene::level::model_motions::ModelMotions;
 use crate::scene::level::posed_skeleton::PosedSkeleton;
 use crate::scene::level::rain_cover::RainCover;
@@ -249,6 +251,7 @@ pub struct LevelView {
   started: Instant,
   shadows: LevelShadows,
   lights: LevelLights,
+  campfires: LevelCampfires,
   lights_settings: RenderLightsSettings,
   particles: LevelParticles,
   occlusion_uniform: wgpu::Buffer,
@@ -297,6 +300,7 @@ impl LevelView {
       spawn: SpawnLoader::start(Arc::clone(&source), workers),
       grass: LevelGrass::new(device, &source, workers),
       lights: LevelLights::new(device, view_layout, scene.args.size(), &source, workers),
+      campfires: LevelCampfires::new(),
       particles: LevelParticles::new(device, &source, workers),
       rain_cover: RainCover::new(device, view_layout, scene.args.size()),
       scene,
@@ -799,13 +803,18 @@ impl LevelView {
       self.params.discard_below,
       (self.started.elapsed().as_secs_f32(), options.is_windy),
     );
+    // The campfires switch whatever of them is drawn, so their lights and particles follow them alike.
+    self.campfires.prepare(options.is_campfire_lit);
     self.lights.prepare(
       queue,
-      view,
-      &options.lights,
-      (self.params.glod_start, self.params.glod_end),
-      self.scene.get_contents(),
-      &to_sway(&self.scene, self.frame_sway),
+      LightsFrame {
+        camera: view,
+        settings: &options.lights,
+        lod: (self.params.glod_start, self.params.glod_end),
+        contents: self.scene.get_contents(),
+        sway: &to_sway(&self.scene, self.frame_sway),
+        campfires: &mut self.campfires,
+      },
     );
     self.frame_camera = *view;
     self.frame_sun = lighting.get_sun_direction();
@@ -855,13 +864,13 @@ impl LevelView {
       bytemuck::bytes_of(&LightingUniform::new(lighting, view.view, options, &frame)),
     );
 
+    self.particles.step(view, options, &mut self.campfires);
+
     if let Some(targets) = &self.targets {
-      self.particles.prepare(
+      self.particles.upload(
         device,
         queue,
         passes.particles,
-        view,
-        options,
         &self.lighting,
         (targets, self.targets_epoch),
       );

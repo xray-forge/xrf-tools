@@ -11,7 +11,7 @@ use xrf_particles::{ParticleEffect, ParticleLibrary, ParticlesFile};
 use xrf_renderer::{RenderParticlePlacement, RenderParticleSource};
 use xrf_spawn::{AlifeObject, AlifeObjectInherited};
 use xrf_vfs::XrayProbe;
-use xrf_visual::VisualTransform;
+use xrf_visual::{LightsPacker, VisualTransform};
 
 use crate::core::assets::read_located_asset;
 use crate::plugins::levels::read::read_optional_file;
@@ -28,9 +28,6 @@ const SINGLE_PLAYER: u16 = 1;
 
 /// The height `CLevel::Load_GameSpecific_After` lifts every planted system by.
 const PLANTED_LIFT: f32 = 0.01;
-
-/// `CLSID_Z_CAMPFIRE`'s class name, which a campfire's section names.
-const CAMPFIRE_CLASS: &str = "Z_CFIRE";
 
 /// A level's particle systems as the renderer takes them.
 pub struct PackedLevelParticles {
@@ -159,11 +156,12 @@ fn place_zone(object: &AlifeObject, sections: &Ltx) -> Option<RenderParticlePlac
   };
   let idle: String = read("idle_particles")?;
   let source: RenderParticleSource = match (
-    read("class").as_deref() == Some(CAMPFIRE_CLASS),
+    read("class").as_deref() == Some(LightsPacker::CAMPFIRE_CLASS),
     read("disabled_particles"),
     read("enabling_particles"),
   ) {
     (true, Some(disabled), Some(enabling)) => RenderParticleSource::Campfire {
+      id: object.id,
       idle,
       disabled,
       enabling,
@@ -190,6 +188,7 @@ fn list_reached_effects(library: &ParticleLibrary, placements: &[RenderParticleP
       idle,
       disabled,
       enabling,
+      ..
     } => vec![idle.as_str(), disabled.as_str(), enabling.as_str()],
   });
 

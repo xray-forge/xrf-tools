@@ -24,6 +24,7 @@ fn point() -> LightDescription {
     animator_scale: 0.0,
     is_shadowed: false,
     is_level: false,
+    campfire: None,
   }
 }
 

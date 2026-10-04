@@ -27,7 +27,10 @@ use crate::pass::particle_pass::ParticlePass;
 use crate::pass::particle_surface_record::ParticleSurfaceRecord;
 use crate::pass::particle_vertex::ParticleVertex;
 use crate::pass::view_binding::ViewBinding;
+use crate::scene::level::campfire::Campfire;
+use crate::scene::level::level_campfires::LevelCampfires;
 use crate::scene::level::particle_sprite::ParticleSprite;
+use crate::scene::level::placed_effect::PlacedEffect;
 use crate::scene::texture::texture_cache::TextureCache;
 use crate::scene::texture::texture_role::TextureRole;
 use crate::thread::render_workers::RenderWorkers;
@@ -76,13 +79,18 @@ struct LevelSystems {
   texture_slots: Vec<u32>,
 }
 
-/// One placement and what plays at it, none while Monolith's camera stands too far from its zone.
+/// One placement, what plays at it, and for a campfire whether it was lit when last placed.
 struct PlacedSystem {
   source: RenderParticleSource,
   transform: Mat4,
   seed: i32,
-  object: Option<ParticleObject>,
+  campfire_lit: Option<bool>,
+  objects: PlacedObjects,
 }
+
+/// What plays at a placed system, an object a [`PlacedEffect`].
+#[derive(Default)]
+struct PlacedObjects([Option<ParticleObject>; PlacedEffect::COUNT]);
 
 /// How an effect's sprite draws: its equation, none for one drawing no colour, whether it distorts, and its record.
 struct ParticleSurface {
@@ -205,7 +213,8 @@ impl LevelParticles {
         source: placement.source.clone(),
         transform: Mat4::from_cols_array(&placement.transform),
         seed: index as i32 + 1,
-        object: None,
+        campfire_lit: None,
+        objects: PlacedObjects::default(),
       })
       .collect();
 
@@ -234,17 +243,7 @@ impl LevelParticles {
   }
 
   /// Steps every system as the engine schedules it, and fills the effects in view into quads, far to near.
-  #[allow(clippy::too_many_arguments)]
-  pub fn prepare(
-    &mut self,
-    device: &wgpu::Device,
-    queue: &wgpu::Queue,
-    pass: &ParticlePass,
-    view: &CameraView,
-    options: &RenderViewOptions,
-    lighting: &wgpu::Buffer,
-    (targets, targets_epoch): (&ViewTargets, u64),
-  ) {
+  pub fn step(&mut self, view: &CameraView, options: &RenderViewOptions, campfires: &mut LevelCampfires) {
     self.vertices.clear();
     self.batches.clear();
     self.distortion_runs.clear();
@@ -264,7 +263,7 @@ impl LevelParticles {
     let planes: [Vec4; 6] = view.get_planes();
     let started: Instant = Instant::now();
 
-    Self::place(level, eye, now);
+    Self::place(level, eye, now, campfires);
 
     let context: ParticleUpdateContext = ParticleUpdateContext {
       library: &level.library,
@@ -275,7 +274,7 @@ impl LevelParticles {
     let simulated: u32 = self.workers.install(|| {
       systems
         .par_iter_mut()
-        .filter_map(|system| system.object.as_mut())
+        .flat_map_iter(|system| system.objects.iter_mut())
         .map(|object| {
           let is_in_view: bool = Self::is_in_view(&planes, object.get_instance().get_bounds());
 
@@ -290,7 +289,7 @@ impl LevelParticles {
       ..RenderParticlesReport::default()
     };
 
-    for object in level.systems.iter().filter_map(|system| system.object.as_ref()) {
+    for object in level.systems.iter().flat_map(|system| system.objects.iter()) {
       for effect in object.get_instance().get_effects() {
         let count: usize = effect.get_pool().len();
 
@@ -351,8 +350,19 @@ impl LevelParticles {
     self.report.last = report;
     self.report.simulation_time += simulation_time;
     self.report.frames += 1;
+  }
 
-    self.upload(device, queue);
+  /// Writes the quads the last step filled, and the surfaces once they are read, and binds what the pass draws them
+  /// with.
+  pub fn upload(
+    &mut self,
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    pass: &ParticlePass,
+    lighting: &wgpu::Buffer,
+    (targets, targets_epoch): (&ViewTargets, u64),
+  ) {
+    self.write_buffers(device, queue);
 
     let key: (u64, u64) = (targets_epoch, self.buffers_generation);
 
@@ -415,9 +425,10 @@ impl LevelParticles {
     report
   }
 
-  /// Plays each system not yet playing, and on Monolith stops a zone's while the camera stands past
-  /// `FASTMODE_DISTANCE` (`o_switch_2_slow`), playing it afresh once it comes back (`o_switch_2_fast`).
-  fn place(level: &mut LevelSystems, eye: Vec3, now: u64) {
+  /// Plays what each system's source plays: a planted system always; a zone's idle effect while it is enabled, stopped
+  /// on Monolith while the camera stands past `FASTMODE_DISTANCE` (`o_switch_2_slow`) and played afresh once it comes
+  /// back (`o_switch_2_fast`); a campfire's as `CZoneCampfire` switches them, following its campfire's state.
+  fn place(level: &mut LevelSystems, eye: Vec3, now: u64, campfires: &mut LevelCampfires) {
     let context: ParticleUpdateContext = ParticleUpdateContext {
       library: &level.library,
       rules: &level.rules,
@@ -426,34 +437,57 @@ impl LevelParticles {
     let is_slowed: bool = level.rules.get_engine() == XrayEngine::Extended;
 
     for system in &mut level.systems {
+      let placement: (&Mat4, i32) = (&system.transform, system.seed);
+      let objects: &mut PlacedObjects = &mut system.objects;
       // todo: Measure from the zone's shape's sphere, less its radius, as Monolith does; the zone's position stands in.
-      let is_far: bool = is_slowed
-        && !matches!(system.source, RenderParticleSource::Static { .. })
-        && eye.distance(system.transform.w_axis.truncate()) > ZONE_FAST_DISTANCE;
+      let is_far: bool = is_slowed && eye.distance(system.transform.w_axis.truncate()) > ZONE_FAST_DISTANCE;
 
-      if is_far {
-        system.object = None;
+      match &system.source {
+        RenderParticleSource::Static { name } => objects.play(PlacedEffect::Idle, name, placement, &context, now),
+        RenderParticleSource::Zone { .. } if is_far => objects.stop(PlacedEffect::Idle),
+        RenderParticleSource::Zone { idle } => objects.play(PlacedEffect::Idle, idle, placement, &context, now),
+        RenderParticleSource::Campfire {
+          id,
+          idle,
+          disabled,
+          enabling,
+        } => {
+          let campfire: Campfire = *campfires.get(*id);
+          let at: u64 = campfires.get_now();
 
-        continue;
+          match system.campfire_lit {
+            // One placed out from the first plays its disabled effect once.
+            None if !campfire.is_lit() => objects.play(PlacedEffect::Disabled, disabled, placement, &context, now),
+            // A turn plays its effects (`GoEnabledState`, `GoDisabledState`); one that ended while nothing was placed,
+            // the particles hidden, leaves only what the state it settled in keeps.
+            Some(was_lit) if was_lit != campfire.is_lit() => {
+              if campfire.is_lit() {
+                objects.stop(PlacedEffect::Disabled);
+
+                if campfire.is_turning() {
+                  objects.play(PlacedEffect::Enabling, enabling, placement, &context, now);
+                }
+              } else if campfire.is_turning() {
+                objects.play(PlacedEffect::Disabled, disabled, placement, &context, now);
+              }
+            }
+            _ => {}
+          }
+
+          system.campfire_lit = Some(campfire.is_lit());
+
+          // The zone's idle effect through the campfire's gates: played while lit and near, taking over from the
+          // enabling one; stopped while out, or while far on Monolith.
+          if campfire.is_lit() && !is_far {
+            if campfire.can_play_idle(at) {
+              objects.play(PlacedEffect::Idle, idle, placement, &context, now);
+              objects.stop(PlacedEffect::Enabling);
+            }
+          } else if campfire.can_stop_idle(at) {
+            objects.stop(PlacedEffect::Idle);
+          }
+        }
       }
-
-      if system.object.is_some() {
-        continue;
-      }
-
-      // todo: Switch campfires between their idle, disabled and enabling effects as `CZoneCampfire` does.
-      let name: &str = match &system.source {
-        RenderParticleSource::Static { name } => name,
-        RenderParticleSource::Zone { idle } | RenderParticleSource::Campfire { idle, .. } => idle,
-      };
-      let Some(instance) = level.library.create(name, system.seed) else {
-        continue;
-      };
-      let mut object: ParticleObject = ParticleObject::new(instance);
-
-      object.update_parent(&system.transform, Vec3::ZERO);
-      object.play(now, &context);
-      system.object = Some(object);
     }
   }
 
@@ -468,7 +502,7 @@ impl LevelParticles {
   }
 
   /// Writes the frame's quads, growing the buffer past them, and the surfaces once after they are read.
-  fn upload(&mut self, device: &wgpu::Device, queue: &wgpu::Queue) {
+  fn write_buffers(&mut self, device: &wgpu::Device, queue: &wgpu::Queue) {
     let size: u64 = (self.vertices.len() * size_of::<ParticleVertex>()) as u64;
 
     if size > self.vertex_buffer.size() {
@@ -500,5 +534,46 @@ impl LevelParticles {
       usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
       mapped_at_creation: false,
     })
+  }
+}
+
+impl PlacedObjects {
+  /// Plays an effect at the placement unless it already plays, as a zone makes its idle object only once.
+  fn play(
+    &mut self,
+    effect: PlacedEffect,
+    name: &str,
+    (transform, seed): (&Mat4, i32),
+    context: &ParticleUpdateContext,
+    now: u64,
+  ) {
+    let slot: &mut Option<ParticleObject> = &mut self.0[effect.get_index()];
+
+    if slot.is_some() {
+      return;
+    }
+
+    // Each effect a sequence of its own, so a campfire's effects do not repeat one another.
+    let Some(instance) = context.library.create(name, seed ^ ((effect.get_index() as i32) << 16)) else {
+      return;
+    };
+    let mut object: ParticleObject = ParticleObject::new(instance);
+
+    object.update_parent(transform, Vec3::ZERO);
+    object.play(now, context);
+    *slot = Some(object);
+  }
+
+  /// Stops an effect at once, its particles gone with it: `Stop(FALSE)`, then `Destroy`.
+  fn stop(&mut self, effect: PlacedEffect) {
+    self.0[effect.get_index()] = None;
+  }
+
+  fn iter(&self) -> impl Iterator<Item = &ParticleObject> {
+    self.0.iter().flatten()
+  }
+
+  fn iter_mut(&mut self) -> impl Iterator<Item = &mut ParticleObject> {
+    self.0.iter_mut().flatten()
   }
 }

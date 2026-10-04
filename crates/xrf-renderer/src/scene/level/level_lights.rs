@@ -6,9 +6,7 @@ use glam::{Mat4, Vec3, Vec4};
 use xrf_math::EPS_L;
 use xrf_visual::{LightDescription, LightKind, LightsDescription};
 
-use crate::camera::camera_view::CameraView;
 use crate::contract::render_lights_report::RenderLightsReport;
-use crate::contract::render_lights_settings::RenderLightsSettings;
 use crate::frame::stats_readback::StatsReadback;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::host::render_level_source::RenderLevelSource;
@@ -22,8 +20,8 @@ use crate::pass::light_record::{LIGHT_NO_CONE, LIGHT_NO_PROJECTOR, LightRecord};
 use crate::pass::lights_uniform::LightsUniform;
 use crate::scene::level::level_light_shadows::{LIGHT_SHADOW_ATLAS_SIZE, LevelLightShadows};
 use crate::scene::level::light_shadow_set::LightShadowSet;
+use crate::scene::level::lights_frame::LightsFrame;
 use crate::scene::level::shadow_frame::ShadowFrame;
-use crate::scene::level::shadow_sway::ShadowSway;
 use crate::scene::texture::texture_cache::{MISSING_SLOT, TextureCache};
 use crate::scene::texture::texture_role::TextureRole;
 use crate::thread::render_workers::RenderWorkers;
@@ -163,19 +161,16 @@ impl LevelLights {
 
   /// Writes out the lights standing in view this frame, nearest first, animated and faded as the engine would, in the
   /// camera's view space; a shadowed one only once its faces are drawn, with their squares of the atlas.
-  ///
-  /// `lod` is the progressive meshes' `start` and `end` screen areas, which a shadowed light fades between; `contents`
-  /// counts what the scene holds, which a face drawn with less is drawn again for; `sway` has a face over swaying trees
-  /// drawn again.
-  pub fn prepare(
-    &mut self,
-    queue: &wgpu::Queue,
-    camera: &CameraView,
-    settings: &RenderLightsSettings,
-    lod: (f32, f32),
-    contents: usize,
-    sway: &ShadowSway<'_>,
-  ) {
+  pub fn prepare(&mut self, queue: &wgpu::Queue, frame: LightsFrame<'_>) {
+    let LightsFrame {
+      camera,
+      settings,
+      lod,
+      contents,
+      sway,
+      campfires,
+    } = frame;
+
     self.records.clear();
     self.shadows.begin();
     self.report = RenderLightsReport::default();
@@ -195,6 +190,13 @@ impl LevelLights {
         .enumerate()
         .filter(|(_, light)| settings.is_level_lights || !light.is_level)
         .filter_map(|(index, light)| {
+          // A campfire's idle light: out while it is, faded over a turn (`UpdateWorkload`).
+          let share: f32 = light.campfire.map_or(1.0, |id| campfires.get_light_share(id));
+
+          if share <= 0.0 {
+            return None;
+          }
+
           let basis: LightBasis = LightBasis::of(light);
           let bound: Vec4 = basis.get_bound(light);
           let is_visible: bool = planes
@@ -214,6 +216,7 @@ impl LevelLights {
             basis,
             bound,
             fades,
+            share,
           })
         })
         .collect();
@@ -253,8 +256,8 @@ impl LevelLights {
         } else {
           None
         };
-        let color: Vec3 = to_color(description, light, seconds) * it.fades.whole;
-        let range: f32 = to_frame_range(light, &mut self.random) * FALLOFF_RANGE;
+        let color: Vec3 = to_color(description, light, seconds) * it.fades.whole * it.share;
+        let range: f32 = to_frame_range(light, &mut self.random) * it.share * FALLOFF_RANGE;
         let mut record: LightRecord =
           to_record(&self.projectors, light, &it.basis, it.bound, color, range, camera.view);
 
@@ -353,6 +356,8 @@ struct InView {
   basis: LightBasis,
   bound: Vec4,
   fades: Fades,
+  /// How much of it its campfire lets show, all of it for any other light.
+  share: f32,
 }
 
 /// How far a light has faded: whole, as a shadowed spot fades, and each face, as a shadowed point's omni parts each

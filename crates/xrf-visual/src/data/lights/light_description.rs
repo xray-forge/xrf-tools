@@ -33,4 +33,7 @@ pub struct LightDescription {
   pub is_shadowed: bool,
   /// Whether it is one of the level file's own lights, which the engine draws only with `r2_allow_r1_lights`.
   pub is_level: bool,
+  /// The spawned campfire (`CZoneCampfire`) whose switching fades it, by the object's id: its idle light. None for any
+  /// other light.
+  pub campfire: Option<u16>,
 }

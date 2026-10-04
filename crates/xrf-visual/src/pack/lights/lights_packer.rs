@@ -44,6 +44,9 @@ impl<'a> LightsPacker<'a> {
   /// `idle_light_range_delta`'s default (xray-16's `CCustomZone::Load`), and the only value xray-monolith knows.
   const ZONE_RANGE_JITTER: f32 = 0.25;
 
+  /// `CLSID_Z_CAMPFIRE`'s class name, which a campfire's section names: its idle light switches with it.
+  pub const CAMPFIRE_CLASS: &'static str = "Z_CFIRE";
+
   /// The widest cone a spot takes here, so its projection stays finite; the engines pass any cone through.
   const MAX_CONE: f32 = 120.0 * std::f32::consts::PI / 180.0;
 
@@ -109,6 +112,7 @@ impl<'a> LightsPacker<'a> {
         animator_scale: 0.0,
         is_shadowed: true,
         is_level: true,
+        campfire: None,
       });
     }
   }
@@ -174,6 +178,7 @@ impl<'a> LightsPacker<'a> {
         .and_then(|it| it.get_bool("shadow"))
         .unwrap_or_else(|| lamp.casts_shadow()),
       is_level: false,
+      campfire: None,
     });
 
     if lamp.has_point_ambient() {
@@ -192,6 +197,7 @@ impl<'a> LightsPacker<'a> {
         animator_scale: lamp.main_brightness / 255.0 * lamp.ambient_power,
         is_shadowed: section.and_then(|it| it.get_bool("ambient_shadow")).unwrap_or(false),
         is_level: false,
+        campfire: None,
       });
     }
   }
@@ -240,6 +246,7 @@ impl<'a> LightsPacker<'a> {
       animator_scale: 1.0 / 255.0,
       is_shadowed,
       is_level: false,
+      campfire: (section.get("class").map(str::trim) == Some(Self::CAMPFIRE_CLASS)).then_some(object.id),
     });
   }
 
