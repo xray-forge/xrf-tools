@@ -1,9 +1,12 @@
+pub(crate) mod ambient_frame;
+pub(crate) mod camera_hemi;
 pub(crate) mod campfire;
 pub(crate) mod grass_build;
 pub(crate) mod grass_build_size;
 pub(crate) mod grass_dither;
 pub(crate) mod grass_level;
 pub(crate) mod lens_flare_fade;
+pub(crate) mod level_ambient_effects;
 pub(crate) mod level_campfires;
 pub(crate) mod level_flares;
 pub(crate) mod level_grass;

@@ -3,6 +3,7 @@ use xrf_engine_target::XrayEngine;
 use xrf_environment::{WeatherDescriptor, WeatherMix, WeatherPlayedKeyframe};
 use xrf_math::EPS_L;
 
+use crate::lighting::render_ambients::RenderAmbients;
 use crate::lighting::render_clouds::RenderClouds;
 use crate::lighting::render_fog::RenderFog;
 use crate::lighting::render_lighting::RenderLighting;
@@ -64,6 +65,10 @@ pub fn to_weather_lighting(
     },
     engine,
     thunderbolt: None,
+    ambients: RenderAmbients {
+      names: [a.ambient.clone(), b.ambient.clone()],
+      weight: mix.weight,
+    },
   }
 }
 

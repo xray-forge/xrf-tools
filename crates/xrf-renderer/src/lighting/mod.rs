@@ -5,6 +5,7 @@ pub(crate) mod light_basis;
 pub(crate) mod light_shadow_size;
 pub(crate) mod light_specular;
 pub(crate) mod material_lut;
+pub(crate) mod render_ambients;
 pub(crate) mod render_clouds;
 pub(crate) mod render_fog;
 pub(crate) mod render_lighting;

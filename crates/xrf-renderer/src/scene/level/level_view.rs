@@ -80,6 +80,7 @@ use crate::pass::view_binding::ViewBinding;
 use crate::pass::view_light_groups::ViewLightGroups;
 use crate::pass::wet_uniform::WetUniform;
 use crate::pass::wind_uniform::WindUniform;
+use crate::scene::level::ambient_frame::AmbientFrame;
 use crate::scene::level::level_campfires::LevelCampfires;
 use crate::scene::level::level_flares::LevelFlares;
 use crate::scene::level::level_grass::LevelGrass;
@@ -907,9 +908,15 @@ impl LevelView {
       bytemuck::bytes_of(&LightingUniform::new(lighting, view.view, options, &frame)),
     );
 
-    self
-      .particles
-      .step(view, options, &mut self.campfires, &mut self.object_motions);
+    self.particles.step(
+      view,
+      options,
+      (&mut self.campfires, &mut self.object_motions),
+      weather.map(|level| AmbientFrame {
+        ambients: &lighting.ambients,
+        level,
+      }),
+    );
 
     if let Some(targets) = &self.targets {
       self.particles.upload(

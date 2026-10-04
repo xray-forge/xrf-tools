@@ -27,7 +27,10 @@ use crate::pass::particle_pass::ParticlePass;
 use crate::pass::particle_surface_record::ParticleSurfaceRecord;
 use crate::pass::particle_vertex::ParticleVertex;
 use crate::pass::view_binding::ViewBinding;
+use crate::scene::level::ambient_frame::AmbientFrame;
+use crate::scene::level::camera_hemi::CameraHemi;
 use crate::scene::level::campfire::Campfire;
+use crate::scene::level::level_ambient_effects::LevelAmbientEffects;
 use crate::scene::level::level_campfires::LevelCampfires;
 use crate::scene::level::level_object_motions::LevelObjectMotions;
 use crate::scene::level::loader_answer::take_answer;
@@ -46,9 +49,9 @@ const INITIAL_QUADS: u64 = 4096;
 /// The sampler a distorting effect's `l_special` pass binds its distortion map to.
 const DISTORTION_SAMPLER: &str = "s_distort";
 
-/// A level's particle systems: read once on a loader thread, then each frame stepped on the workers as the engine
-/// schedules them, and the effects in view filled into quads far to near for the particle pass, which draws their
-/// colour and then their distortion.
+/// A level's particle systems and the weather's ambient effects: read once on a loader thread, then each frame stepped
+/// on the workers as the engine schedules them, and the effects in view filled into quads far to near for the particle
+/// pass, which draws their colour and then their distortion.
 pub struct LevelParticles {
   pending: Option<Receiver<Result<Option<RenderLevelParticles>, String>>>,
   systems: Option<LevelSystems>,
@@ -75,6 +78,8 @@ struct LevelSystems {
   rules: ParticleEngineRules,
   collider: Option<Arc<dyn ParticleCollider>>,
   systems: Vec<PlacedSystem>,
+  ambient: LevelAmbientEffects,
+  hemi: CameraHemi,
   surfaces: Vec<ParticleSurface>,
   /// Each effect definition's surface, by the definition's address.
   surface_of: HashMap<usize, u32>,
@@ -235,19 +240,22 @@ impl LevelParticles {
       rules: read.rules,
       collider: read.collider,
       systems,
+      ambient: LevelAmbientEffects::default(),
+      hemi: CameraHemi::new(read.hemi, &self.workers),
       surfaces,
       surface_of,
       texture_slots,
     });
   }
 
-  /// Steps every system as the engine schedules it, and fills the effects in view into quads, far to near.
+  /// Plays the weather's ambient effects by the frame's weather, steps every system as the engine schedules it, and
+  /// fills the effects in view into quads, far to near.
   pub fn step(
     &mut self,
     view: &CameraView,
     options: &RenderViewOptions,
-    campfires: &mut LevelCampfires,
-    motions: &mut LevelObjectMotions,
+    (campfires, motions): (&mut LevelCampfires, &mut LevelObjectMotions),
+    ambient: Option<AmbientFrame<'_>>,
   ) {
     self.vertices.clear();
     self.batches.clear();
@@ -270,14 +278,20 @@ impl LevelParticles {
 
     Self::move_systems(level, motions);
     Self::place(level, eye, now, campfires);
+    level.hemi.advance(eye, now);
 
     let context: ParticleUpdateContext = ParticleUpdateContext {
       library: &level.library,
       rules: &level.rules,
       collider: level.collider.as_deref(),
     };
+
+    level
+      .ambient
+      .update(ambient, (eye, level.hemi.is_indoors()), now, &context);
+
     let systems: &mut Vec<PlacedSystem> = &mut level.systems;
-    let simulated: u32 = self.workers.install(|| {
+    let mut simulated: u32 = self.workers.install(|| {
       systems
         .par_iter_mut()
         .flat_map_iter(|system| system.objects.iter_mut())
@@ -288,6 +302,12 @@ impl LevelParticles {
         })
         .sum()
     });
+
+    if let Some(object) = level.ambient.get_playing_mut() {
+      let is_in_view: bool = Self::is_in_view(&planes, object.get_instance().get_bounds());
+
+      simulated += u32::from(object.advance(now, eye, is_in_view, &context));
+    }
     let simulation_time: f32 = started.elapsed().as_secs_f32() * 1000.0;
     let mut drawn: Vec<(f32, &ParticleEffectInstance, u32, &ParticleSurface)> = Vec::new();
     let mut report: RenderParticlesReport = RenderParticlesReport {
@@ -295,7 +315,12 @@ impl LevelParticles {
       ..RenderParticlesReport::default()
     };
 
-    for object in level.systems.iter().flat_map(|system| system.objects.iter()) {
+    for object in level
+      .systems
+      .iter()
+      .flat_map(|system| system.objects.iter())
+      .chain(level.ambient.get_playing())
+    {
       for effect in object.get_instance().get_effects() {
         let count: usize = effect.get_pool().len();
 

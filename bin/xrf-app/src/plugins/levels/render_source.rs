@@ -307,12 +307,13 @@ impl RenderLevelSource for LevelRenderSource {
   fn read_particles(&self) -> XrfResult<Option<RenderLevelParticles>> {
     let level: &SelectedLevel = &self.level;
     let sections: Option<Arc<Ltx>> = self.read_sections()?;
-    let (packed, collision) = self
+    let (packed, collision, hemi) = self
       .assets
       .with_probe(&level.roots, |probe| {
         (
           pack_particles(level, probe, sections.as_deref()),
           get_level_collision(level, probe),
+          get_level_hemi(level, probe),
         )
       })
       .map_err(XrfError::new_asset_error)?;
@@ -332,6 +333,8 @@ impl RenderLevelSource for LevelRenderSource {
         .inspect_err(|error| report_missing_particle_collision(&level.source, error))
         .ok()
         .map(|tracer| Arc::new(LevelParticleCollider::new(tracer)) as Arc<dyn ParticleCollider>),
+      // Its failure is reported where the estimator is built.
+      hemi: hemi.ok(),
     }))
   }
 
