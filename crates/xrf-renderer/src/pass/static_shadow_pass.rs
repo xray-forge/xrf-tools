@@ -87,11 +87,11 @@ impl StaticShadowPass {
     });
 
     pass.set_bind_group(0, &view.bind_group, &[]);
-    pass.set_bind_group(2, textures, &[]);
+    pass.set_bind_group(1, textures, &[]);
 
     for (batch, pipeline) in StaticBatch::list_deferred().zip(&self.pipelines) {
       pass.set_pipeline(pipeline);
-      pass.set_bind_group(1, &bind_groups[batch.layout.get_index()], &[]);
+      pass.set_bind_group(2, &bind_groups[batch.layout.get_index()], &[]);
       pass.draw_indirect(args, batch.get_index() as u64 * 16);
     }
   }
@@ -134,11 +134,11 @@ impl StaticShadowPass {
     pass.set_pipeline(&self.clear);
     pass.draw(0..3, 0..1);
     pass.set_bind_group(0, &view.bind_group, &[]);
-    pass.set_bind_group(2, textures, &[]);
+    pass.set_bind_group(1, textures, &[]);
 
     for (batch, pipeline) in StaticBatch::list_deferred().zip(&self.pipelines) {
       pass.set_pipeline(pipeline);
-      pass.set_bind_group(1, &bind_groups[batch.layout.get_index()], &[]);
+      pass.set_bind_group(2, &bind_groups[batch.layout.get_index()], &[]);
       pass.draw_indirect(args, batch.get_index() as u64 * 16);
     }
   }
@@ -153,7 +153,7 @@ impl StaticShadowPass {
     let module: wgpu::ShaderModule = create_module(device, shaders, "static/gbuffer")?;
     let pipeline_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
       label: Some("static shadow"),
-      bind_group_layouts: &[Some(view_layout), Some(layout), Some(texture_layout)],
+      bind_group_layouts: &[Some(view_layout), Some(texture_layout), Some(layout)],
       ..Default::default()
     });
 

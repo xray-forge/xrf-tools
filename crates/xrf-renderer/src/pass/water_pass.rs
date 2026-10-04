@@ -458,12 +458,12 @@ impl WaterPass {
     pick: impl Fn(&WaterBatchPipelines) -> &wgpu::RenderPipeline,
   ) {
     pass.set_bind_group(0, &view.bind_group, &[]);
-    pass.set_bind_group(2, textures, &[]);
+    pass.set_bind_group(1, textures, &[]);
     pass.set_bind_group(3, water_group, &[]);
 
     for (batch, pipelines) in StaticBatch::list_water().zip(&self.pipelines) {
       pass.set_pipeline(pick(pipelines));
-      pass.set_bind_group(1, &bind_groups.layouts[batch.layout.get_index()], &[]);
+      pass.set_bind_group(2, &bind_groups.layouts[batch.layout.get_index()], &[]);
 
       for args in args {
         pass.draw_indirect(args, batch.get_index() as u64 * 16);
@@ -496,7 +496,7 @@ impl WaterPass {
     let create_layout = |label: &str, water: &wgpu::BindGroupLayout| {
       device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some(label),
-        bind_group_layouts: &[Some(view_layout), Some(scene_layout), Some(texture_layout), Some(water)],
+        bind_group_layouts: &[Some(view_layout), Some(texture_layout), Some(scene_layout), Some(water)],
         ..Default::default()
       })
     };

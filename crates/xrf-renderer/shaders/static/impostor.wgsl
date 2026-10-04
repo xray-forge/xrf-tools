@@ -9,15 +9,15 @@ enable wgpu_binding_array;
 // atlas is sampled at both facets' coordinates and blended the same way, its alpha faded by the cull and cut at 96; the
 // `_nm` companion gives the view normal and the hemisphere term, times the corners'.
 
-@group(1) @binding(0) var<storage, read> impostors: array<Impostor>;
+@group(2) @binding(0) var<storage, read> impostors: array<Impostor>;
 // Two a corner: its position and hemisphere term, then its atlas coordinate and sun term.
-@group(1) @binding(1) var<storage, read> corners: array<vec4<f32>>;
-@group(1) @binding(2) var<storage, read> terms: array<vec4<u32>>;
-@group(1) @binding(3) var<storage, read> impostor_list: array<u32>;
-@group(1) @binding(4) var<storage, read> surfaces: array<Surface>;
+@group(2) @binding(1) var<storage, read> corners: array<vec4<f32>>;
+@group(2) @binding(2) var<storage, read> terms: array<vec4<u32>>;
+@group(2) @binding(3) var<storage, read> impostor_list: array<u32>;
+@group(2) @binding(4) var<storage, read> surfaces: array<Surface>;
 
-@group(2) @binding(0) var textures: binding_array<texture_2d<f32>>;
-@group(2) @binding(1) var texture_sampler: sampler;
+@group(1) @binding(0) var textures: binding_array<texture_2d<f32>>;
+@group(1) @binding(1) var texture_sampler: sampler;
 
 // `clip(D.w - 96.h/255.h)`: what a faded impostor's alpha is cut at.
 const ALPHA_REFERENCE: f32 = 96.0 / 255.0;
