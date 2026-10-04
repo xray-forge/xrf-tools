@@ -1,14 +1,5 @@
 {
-  "extends": "@xrf/toolchain/tsconfig.base.json",
-  "compilerOptions": {
-    "tsBuildInfoFile": "./target/tsconfig.tsbuildinfo",
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "experimentalDecorators": true,
-    "jsx": "react-jsx",
-    "paths": {
-      "@/*": ["./src/*"]
-    }
-  },
-  "include": ["src", "cli"],
-  "exclude": ["cli/build"]
+  // Solution root: editors find a file's project only through `tsconfig.json`, and `tsc -b` checks each reference.
+  "files": [],
+  "references": [{ "path": "./tsconfig.app.json" }, { "path": "./tsconfig.node.json" }]
 }

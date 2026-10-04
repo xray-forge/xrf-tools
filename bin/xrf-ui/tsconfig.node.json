@@ -1,17 +1,9 @@
 {
+  "extends": "@xrf/toolchain/tsconfig.base.json",
   "compilerOptions": {
-    "incremental": true,
     "tsBuildInfoFile": "./target/tsconfig.node.tsbuildinfo",
-    // Checked separately from the app: Vite consumes shared theme sources directly, without declaration output.
-    "noEmit": true,
-    "skipLibCheck": true,
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "resolveJsonModule": true,
-    "allowSyntheticDefaultImports": true,
-    "paths": {
-      "@/*": ["./src/*"]
-    }
+    // Node loads these natively, so imports name their files and the app's `@/` alias does not exist here.
+    "allowImportingTsExtensions": true
   },
   "include": ["vite.config.ts", "cli/build/**/*.ts", "package.json"]
 }
