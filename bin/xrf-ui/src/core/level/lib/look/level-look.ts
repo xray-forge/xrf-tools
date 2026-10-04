@@ -69,6 +69,17 @@ export const ANOMALY_LEVEL_LOOK: ILevelLook = {
   lightScales: { ambient: 1, hemi: 1, sun: 2 },
 };
 
+/**
+ * What XRF's render presets ship in `rspec_shared.ltx`: the hemisphere at 0.6 and the ambient at 0.1, a tonemap brought
+ * to 1.1 floored at 0.4, and OpenXRay's bloom, which they leave alone.
+ */
+export const XRF_LEVEL_LOOK: ILevelLook = {
+  bloom: OPENXRAY_LEVEL_BLOOM,
+  corrections: NEUTRAL_LEVEL_IMAGE_CORRECTIONS,
+  exposure: { adaptation: 0.2, amount: 1, isEnabled: true, lowLuminance: 0.4, middleGray: 1.1 },
+  lightScales: { ambient: 0.1, hemi: 0.6, sun: 1 },
+};
+
 /** OpenXRay's own console defaults: its exposure and bloom, nothing scaled or corrected. */
 export const OPENXRAY_LEVEL_LOOK: ILevelLook = {
   bloom: OPENXRAY_LEVEL_BLOOM,

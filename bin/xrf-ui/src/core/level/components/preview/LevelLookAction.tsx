@@ -18,6 +18,7 @@ const EDITED: string = "edited";
 /** The looks offered whatever was saved, by their sources. */
 const BUILT_IN_SOURCES: ReadonlyArray<Exclude<ELevelLookSource, ELevelLookSource.CUSTOM>> = [
   ELevelLookSource.GAME,
+  ELevelLookSource.XRF,
   ELevelLookSource.ANOMALY,
   ELevelLookSource.OPENXRAY,
   ELevelLookSource.SETTINGS,
@@ -26,6 +27,7 @@ const BUILT_IN_SOURCES: ReadonlyArray<Exclude<ELevelLookSource, ELevelLookSource
 /** Each built-in look's name in the list. */
 const BUILT_IN_LABELS: Readonly<Record<Exclude<ELevelLookSource, ELevelLookSource.CUSTOM>, string>> = {
   [ELevelLookSource.GAME]: "Game defaults",
+  [ELevelLookSource.XRF]: "XRF",
   [ELevelLookSource.ANOMALY]: "Anomaly",
   [ELevelLookSource.OPENXRAY]: "OpenXRay",
   [ELevelLookSource.SETTINGS]: "Settings",

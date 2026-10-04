@@ -31,11 +31,17 @@ describe("LevelLookAction", () => {
     expect(queryByRole("textbox", { name: "Preset name" })).not.toBeInTheDocument();
   });
 
-  it("offers Anomaly's and OpenXRay's own looks whatever game is open", async () => {
+  it("offers XRF's, Anomaly's and OpenXRay's own looks whatever game is open", async () => {
     const { getByRole, findByRole, look } = renderAction();
 
     await userEvent.click(getByRole("button", { name: "Look" }));
     await findByRole("dialog", { name: "Look" });
+    await userEvent.click(getByRole("option", { name: "XRF" }));
+
+    expect(look.choice.source).toBe(ELevelLookSource.XRF);
+    expect(look.look.lightScales).toEqual({ ambient: 0.1, hemi: 0.6, sun: 1 });
+    expect(look.look.exposure.middleGray).toBe(1.1);
+
     await userEvent.click(getByRole("option", { name: "Anomaly" }));
 
     expect(look.choice.source).toBe(ELevelLookSource.ANOMALY);
