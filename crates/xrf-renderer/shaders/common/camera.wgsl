@@ -35,6 +35,19 @@ struct Camera {
 
 @group(0) @binding(0) var<uniform> camera: Camera;
 
+// The marks the G-buffer's material target holds in its alpha, a bit each: what is selected, which the present outlines,
+// and what is self-lit, whose light the sun pass fills.
+const MARK_SELECTED: u32 = 128u;
+const MARK_EMISSIVE: u32 = 64u;
+
+fn encode_marks(is_selected: bool, is_emissive: bool) -> f32 {
+  return f32(select(0u, MARK_SELECTED, is_selected) | select(0u, MARK_EMISSIVE, is_emissive)) / 255.0;
+}
+
+fn has_mark(marks: f32, mark: u32) -> bool {
+  return (u32(round(marks * 255.0)) & mark) != 0u;
+}
+
 // Whether a cluster drawn in a place is what the selection names.
 fn is_selected(entry: vec2<u32>) -> bool {
   let selection: vec4<u32> = camera.selection;

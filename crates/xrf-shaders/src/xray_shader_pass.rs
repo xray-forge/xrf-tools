@@ -20,8 +20,14 @@ impl XRayShaderPass {
   /// The function whose pass the renderer compiles as a surface's base element (`_lua_Create`).
   pub const BASE_FUNCTION: &'static str = "normal";
 
-  /// The function whose pass the renderer compiles into its distortion target (`L_special`, `mapDistort`).
-  pub const DISTORTION_FUNCTION: &'static str = "l_special";
+  /// The function whose pass the renderer compiles as a surface's special element (`L_special`): drawn into the
+  /// distortion target where it says `distort(true)` (`mapDistort`), and into the light a self-lit surface gathers where
+  /// its base pass says `emissive(true)` (`mapEmissive`).
+  pub const SPECIAL_FUNCTION: &'static str = "l_special";
+
+  /// The function the deferred renderers compile a script's shadow element from (`_lua_Compile`'s `E[2]`): a script
+  /// without one casts no shadow.
+  pub const SHADOW_FUNCTION: &'static str = "l_point";
 
   /// Reads one pass off a literal `shader:begin` and whatever is chained onto it.
   pub fn of(call: &XRayLuaMethodCall, vertex_shader: String, pixel_shader: String) -> Self {

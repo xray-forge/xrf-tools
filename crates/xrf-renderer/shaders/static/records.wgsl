@@ -140,6 +140,10 @@ const SURFACE_IS_ENVIRONMENT_MAPPED: u32 = 1048576u;
 const SURFACE_IS_STILL: u32 = 2097152u;
 // A terrain's, which lays four details and their bumps over its base by its mask, lit by its base's alpha.
 const SURFACE_IS_TERRAIN: u32 = 4194304u;
+// A self-lit surface's, whose light the sun pass fills.
+const SURFACE_IS_EMISSIVE: u32 = 8388608u;
+// A surface casting no shadow, whose script declares no shadow element.
+const SURFACE_IS_SHADOWLESS: u32 = 16777216u;
 
 // Vertices one cluster's draw spans: 128 triangles, those past its own collapsed.
 const CLUSTER_VERTICES: u32 = 384u;

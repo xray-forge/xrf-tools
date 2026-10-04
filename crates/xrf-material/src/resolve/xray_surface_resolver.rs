@@ -138,6 +138,8 @@ impl<'probe, 'vfs> XraySurfaceResolver<'probe, 'vfs> {
       environment: rule.environment(blender),
       is_texture_clamped: rule.is_texture_clamped(blender),
       is_distorting: false,
+      is_emissive: false,
+      is_shadowless: false,
       is_object_lod: rule.is_object_lod(blender),
     }
   }

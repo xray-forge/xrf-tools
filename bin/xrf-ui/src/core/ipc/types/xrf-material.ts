@@ -268,8 +268,18 @@ export type XraySurfaceDescriptor = {
   environment: string | null;
   /** Whether its base is sampled clamped to the edge rather than wrapped, `Texture clamp`. */
   isTextureClamped: boolean;
-  /** Whether it also draws into the distortion target, by a script's `l_special` pass. */
+  /** Whether it also draws into the distortion target, by a script's `l_special` pass marked `distort(true)`. */
   isDistorting: boolean;
+  /**
+   * Whether it is self-lit, a script's base pass marked `emissive(true)` with an `l_special` pass to fill the light it
+   * gathers (`accum_emissive`).
+   */
+  isEmissive: boolean;
+  /**
+   * Whether it casts no shadow: a script declaring no `l_point`, which the deferred renderers compile its shadow element
+   * from, leaving it out of every shadow map.
+   */
+  isShadowless: boolean;
   /** `B_TREE`'s `Object LOD`: an object the level stores as a tree, drawn by `tree_s`, which the wind leaves standing. */
   isObjectLod: boolean;
 };

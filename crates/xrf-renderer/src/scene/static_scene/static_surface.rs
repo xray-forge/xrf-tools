@@ -55,6 +55,10 @@ impl StaticSurface {
   pub const IS_STILL: u32 = 1 << 21;
   /// A terrain's, which lays four details and their bumps over its base by its mask, and is lit by its base's alpha.
   pub const IS_TERRAIN: u32 = 1 << 22;
+  /// A self-lit surface's, whose light the sun pass fills as `accum_emissive` does.
+  pub const IS_EMISSIVE: u32 = 1 << 23;
+  /// A surface casting no shadow, whose script declares no shadow element.
+  pub const IS_SHADOWLESS: u32 = 1 << 24;
 
   pub const BASE: usize = 0;
   pub const DETAIL: usize = 1;

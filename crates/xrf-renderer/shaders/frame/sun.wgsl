@@ -17,6 +17,9 @@
 @group(1) @binding(6) var shadow_maps: texture_depth_2d_array;
 @group(1) @binding(7) var<uniform> shadows: Shadows;
 
+// What `accum_emissive.ps` writes into a self-lit surface's light.
+const EMISSIVE_LIGHT: f32 = 16.0;
+
 @fragment
 fn fs_sun(in: FullscreenVarying) -> @location(0) vec4<f32> {
   let texel: vec2<i32> = vec2<i32>(in.clip.xy);
@@ -28,7 +31,14 @@ fn fs_sun(in: FullscreenVarying) -> @location(0) vec4<f32> {
 
   let position: vec3<f32> = camera_view_position(in.clip.xy, depth);
   let normal: vec3<f32> = octahedral_decode(textureLoad(normal_target, texel, 0).xy);
-  let slice: f32 = textureLoad(material_target, texel, 0).z;
+  let material: vec4<f32> = textureLoad(material_target, texel, 0);
+
+  // `accum_emissive`: a self-lit surface's light is filled with sixteen, which the local lights then add to.
+  if (has_mark(material.a, MARK_EMISSIVE)) {
+    return vec4<f32>(EMISSIVE_LIGHT);
+  }
+
+  let slice: f32 = material.z;
   // `plight_infinity`: L towards the light, V towards the eye, H halfway.
   let to_light: vec3<f32> = lighting.to_sun.xyz;
   let half_way: vec3<f32> = normalize(to_light - normalize(position));

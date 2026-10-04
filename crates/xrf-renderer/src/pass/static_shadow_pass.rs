@@ -9,6 +9,9 @@ use crate::scene::static_scene::static_class::StaticClass;
 use crate::scene::static_scene::static_layout::StaticLayout;
 use crate::shader::shader_library::ShaderLibrary;
 
+/// The override constants every shadow draw is built with: it leaves out the surfaces casting none.
+const SHADOW_DRAW: &[(&str, f64)] = &[("IS_SHADOW_DRAW", 1.0)];
+
 /// Draws the static scene's casters into one layer of a shadow's map, depth alone: one indirect draw a batch, a
 /// view's visible clusters as instances. Both faces cast, so a surface seen edge on from the sun leaks no light.
 pub struct StaticShadowPass {
@@ -173,7 +176,10 @@ impl StaticShadowPass {
             vertex: wgpu::VertexState {
               module: &module,
               entry_point: Some(vertex),
-              compilation_options: Default::default(),
+              compilation_options: wgpu::PipelineCompilationOptions {
+                constants: SHADOW_DRAW,
+                ..Default::default()
+              },
               buffers: &[],
             },
             fragment: fragment.clone(),
