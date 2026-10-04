@@ -47,6 +47,14 @@ pub struct RenderWaterSettings {
   pub parallax_height: f32,
   /// How strongly rain ripples the enhanced water, `ssfx_water_setup2.w`; none skips them.
   pub ripples: f32,
+  /// What every scroll of the enhanced water is multiplied by, one as the module scrolls it; none stills it.
+  pub flow: f32,
+  /// How much of the pace the module keeps in still air the enhanced water keeps, one as the module does; none stills
+  /// it while no wind blows.
+  pub calm_flow: f32,
+  /// How far the enhanced water breaks its maps' repeat: its second layer tiled apart from the first, a broad layer
+  /// faded in with distance, and its colour's read bent and mixed with a second; none draws the module's own.
+  pub variation: f32,
 }
 
 impl Default for RenderWaterSettings {
@@ -69,9 +77,12 @@ impl Default for RenderWaterSettings {
       reflection_blur: 0.8,
       blur_noise: 1.0,
       specular: 6.0,
-      caustics: 0.3,
+      caustics: 0.05,
       parallax_height: 0.05,
       ripples: 0.5,
+      flow: 1.0,
+      calm_flow: 0.2,
+      variation: 0.75,
     }
   }
 }

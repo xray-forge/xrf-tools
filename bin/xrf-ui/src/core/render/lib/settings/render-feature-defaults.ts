@@ -85,12 +85,15 @@ export const DEFAULT_RENDER_UPSCALING_SETTINGS: TRenderUpscalingSettings = {
 
 /**
  * The engine's own water: `shared/waterconfig.h`'s constants and `def_distort`, and the enhanced water's strengths at
- * Screen Space Shaders' own defaults (`ssfx_water`, `ssfx_water_setup1` and `ssfx_water_setup2`).
+ * Screen Space Shaders' own defaults (`ssfx_water`, `ssfx_water_setup1` and `ssfx_water_setup2`) and flow, but for
+ * caustics a sixth as bright, calm water flowing a fifth as fast, and its maps' repeat broken.
  */
 export const DEFAULT_RENDER_WATER_SETTINGS: TRenderWaterSettings = {
   blurNoise: 1,
-  caustics: 0.3,
+  caustics: 0.05,
+  calmFlow: 0.2,
   distortion: 0.05,
+  flow: 1,
   isDistorted: true,
   isEnabled: true,
   isSoft: true,
@@ -105,6 +108,7 @@ export const DEFAULT_RENDER_WATER_SETTINGS: TRenderWaterSettings = {
   softBorder: 0.3,
   specular: 6,
   turbidity: 3,
+  variation: 0.75,
   waveHeight: 1 / 60,
   waveSpeed: 25,
 };
