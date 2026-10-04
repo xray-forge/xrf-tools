@@ -115,9 +115,10 @@ fn scrolled(base: vec2<f32>, world: vec3<f32>, tile: f32, amplitude: f32) -> vec
   return base * tile + vec2<f32>(sin(angle), cos(angle)) * amplitude * water.ripple;
 }
 
-// Both keyframes' skies along a world direction, as a surface reflecting them reads the cube.
+// Both keyframes' skies along a world direction, as water reflecting them reads the cubes: unturned by the sky's
+// rotation, which turns only the sky box.
 fn sky_cubes(direction: vec3<f32>) -> vec3<f32> {
-  let lookup: vec3<f32> = sky_box_direction(direction, lighting.sky_params.x);
+  let lookup: vec3<f32> = cube_lookup(direction);
 
   return mix(
     textureSampleLevel(sky_cube_0, sky_clamp, lookup, 0.0).rgb,
