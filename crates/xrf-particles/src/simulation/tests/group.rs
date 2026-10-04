@@ -7,7 +7,7 @@ use crate::data::particle_group_effect_flags::ParticleGroupEffectFlags;
 use crate::simulation::particle_engine_rules::ParticleEngineRules;
 use crate::simulation::particle_group_instance::ParticleGroupInstance;
 use crate::simulation::particle_library::ParticleLibrary;
-use crate::simulation::tests::fixtures::{effect, group, group_effect, kill_old, library, moving, source};
+use crate::simulation::tests::fixtures::{context, effect, group, group_effect, kill_old, library, moving, source};
 
 fn playing(library: &ParticleLibrary, name: &str) -> ParticleGroupInstance {
   let mut instance: ParticleGroupInstance =
@@ -38,15 +38,15 @@ fn plays_an_effect_as_the_clock_passes_its_start_and_stops_it_at_its_end() {
   );
   let mut instance: ParticleGroupInstance = playing(&library, "vent");
 
-  instance.update(33, &library, &rules);
+  instance.update(33, &context(&library, &rules));
   assert_eq!(instance.get_effects().next().map(|it| it.is_playing()), Some(false));
 
-  instance.update(33, &library, &rules);
+  instance.update(33, &context(&library, &rules));
   assert_eq!(instance.get_effects().next().map(|it| it.is_playing()), Some(true));
 
   // Past 0.1 s the effect stops at once, having no deferred stop, and so does the group timed to it.
-  instance.update(33, &library, &rules);
-  instance.update(33, &library, &rules);
+  instance.update(33, &context(&library, &rules));
+  instance.update(33, &context(&library, &rules));
   assert_eq!(instance.get_effects().next().map(|it| it.is_playing()), Some(false));
   assert_eq!(instance.get_time_limit(), 0.1);
   assert!(!instance.is_playing());
@@ -61,7 +61,7 @@ fn never_plays_a_disabled_effect() {
   );
   let mut instance: ParticleGroupInstance = playing(&library, "vent");
 
-  instance.update(33, &library, &rules);
+  instance.update(33, &context(&library, &rules));
 
   assert_eq!(instance.get_effects().next().map(|it| it.is_playing()), Some(false));
 }
@@ -91,7 +91,7 @@ fn follows_each_particle_with_a_child_and_frees_it_when_the_particle_dies() {
   let mut instance: ParticleGroupInstance = playing(&library, "fire");
 
   // Two sparks born and moved up 0.033 m, each followed by a trail placed there, which emits there.
-  instance.update(33, &library, &rules);
+  instance.update(33, &context(&library, &rules));
 
   let effects: Vec<_> = instance.get_effects().collect();
 
@@ -100,8 +100,8 @@ fn follows_each_particle_with_a_child_and_frees_it_when_the_particle_dies() {
   assert_eq!(effects[1].get_pool().get_particles()[0].position.y, 0.033 + 0.033);
 
   // The sparks stop, then die past 0.05 s; each trail stops with its spark and plays its particle out.
-  instance.update(33, &library, &rules);
-  instance.update(33, &library, &rules);
+  instance.update(33, &context(&library, &rules));
+  instance.update(33, &context(&library, &rules));
 
   let effects: Vec<_> = instance.get_effects().collect();
 
@@ -110,7 +110,7 @@ fn follows_each_particle_with_a_child_and_frees_it_when_the_particle_dies() {
   assert!(effects[1].is_playing());
 
   // The trails' particles age out past 0.1 s, and the finished trails are dropped.
-  instance.update(33, &library, &rules);
+  instance.update(33, &context(&library, &rules));
 
   assert_eq!(instance.get_effects().count(), 1);
 }
@@ -133,7 +133,7 @@ fn starts_a_free_child_on_every_birth() {
   );
   let mut instance: ParticleGroupInstance = playing(&library, "fire");
 
-  instance.update(33, &library, &rules);
+  instance.update(33, &context(&library, &rules));
 
   assert_eq!(
     instance

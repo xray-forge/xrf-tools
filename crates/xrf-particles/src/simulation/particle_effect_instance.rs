@@ -1,15 +1,19 @@
 use std::sync::Arc;
 
 use glam::{Mat4, Vec3};
+use xrf_math::EPS;
 
 use crate::data::particle_effect::ParticleEffect;
+use crate::data::particle_effect_collision::ParticleEffectCollision;
 use crate::data::particle_effect_flags::ParticleEffectFlags;
 use crate::simulation::actions::particle_action_step::ParticleActionStep;
+use crate::simulation::particle::Particle;
 use crate::simulation::particle_bounds::ParticleBounds;
-use crate::simulation::particle_engine_rules::ParticleEngineRules;
+use crate::simulation::particle_collider::ParticleCollider;
 use crate::simulation::particle_event::ParticleEvent;
 use crate::simulation::particle_pool::ParticlePool;
 use crate::simulation::particle_running_action::ParticleRunningAction;
+use crate::simulation::particle_update_context::ParticleUpdateContext;
 
 /// `PS::CParticleEffect`: one playing copy of an effect definition, stepping its actions at the engine's fixed rate.
 pub struct ParticleEffectInstance {
@@ -38,6 +42,9 @@ impl ParticleEffectInstance {
 
   /// The engine's step-count clamp: at most three steps (99 ms) per update, so a long pause does not run away.
   const MAX_STEPS: u32 = 3;
+
+  /// Picks a colliding particle takes in one step at most.
+  const MAX_PICKS: u32 = 2;
 
   /// `Compile`: a stopped copy of the definition, its random sequence started from a seed.
   pub fn new(definition: Arc<ParticleEffect>, seed: i32) -> Self {
@@ -149,15 +156,15 @@ impl ParticleEffectInstance {
   }
 
   /// `OnFrame`: accumulates the milliseconds passed and takes whole steps of the engine's length, at most three.
-  pub fn update(&mut self, frame_milliseconds: u32, rules: &ParticleEngineRules) {
+  pub fn update(&mut self, frame_milliseconds: u32, context: &ParticleUpdateContext) {
     if !self.is_playing {
       self.bounds = ParticleBounds::around_point(self.initial_position);
 
       return;
     }
 
-    let step_milliseconds: u32 = rules.get_step_milliseconds();
-    let step_seconds: f32 = rules.get_step_seconds();
+    let step_milliseconds: u32 = context.rules.get_step_milliseconds();
+    let step_seconds: f32 = context.rules.get_step_seconds();
     let mut steps: u32 = 0;
 
     self.memory_milliseconds += frame_milliseconds;
@@ -181,7 +188,7 @@ impl ParticleEffectInstance {
         }
       }
 
-      let mut step: ParticleActionStep = ParticleActionStep::new(step_seconds, rules);
+      let mut step: ParticleActionStep = ParticleActionStep::new(step_seconds, context.rules);
 
       for action in &mut self.actions {
         action.execute(&mut self.pool, &mut step);
@@ -194,7 +201,11 @@ impl ParticleEffectInstance {
         self.animate(step_seconds);
       }
 
-      // todo: Collide particles with the level's collision mesh when the effect sets `dfCollision`.
+      if self.flags.is(ParticleEffectFlags::COLLISION)
+        && let Some(collider) = context.collider
+      {
+        self.collide(step_seconds, collider);
+      }
 
       if !self.pool.is_empty() {
         self.bounds = self.measure_bounds();
@@ -226,6 +237,59 @@ impl ParticleEffectInstance {
       }
 
       m.frame = (frame * 255.0).floor() as u16;
+    }
+  }
+
+  /// `ExecuteCollision`: picks along each particle's last move, removing it on contact or reflecting it with friction
+  /// and resilience and picking again, twice at most.
+  fn collide(&mut self, dt: f32, collider: &dyn ParticleCollider) {
+    let collision: ParticleEffectCollision = self.definition.collision.clone().unwrap_or_default();
+    let is_deleting: bool = self.flags.is(ParticleEffectFlags::COLLISION_DELETE);
+    let is_dynamic: bool = self.flags.is(ParticleEffectFlags::COLLISION_DYNAMIC);
+
+    // Backwards, so the particle moved into a removed one's place has been tested already.
+    for index in (0..self.pool.len()).rev() {
+      let mut picks: u32 = 0;
+
+      loop {
+        let m: Particle = self.pool.get_particles()[index];
+        let travel: Vec3 = m.position - m.previous_position;
+        let distance: f32 = travel.length();
+
+        if distance < EPS {
+          self.pool.get_particles_mut()[index].position = m.previous_position;
+
+          break;
+        }
+
+        let Some(contact) = collider.pick(m.previous_position, travel / distance, distance, is_dynamic) else {
+          break;
+        };
+
+        picks += 1;
+
+        if is_deleting {
+          self.pool.remove(index);
+
+          break;
+        }
+
+        let normal_velocity: Vec3 = contact.normal * m.velocity.dot(contact.normal);
+        let tangent: Vec3 = m.velocity - normal_velocity;
+        let velocity: Vec3 = if tangent.length_squared() <= collision.collide_sqr_cutoff {
+          tangent - normal_velocity * collision.collide_resilience
+        } else {
+          tangent * collision.collide_one_minus_friction - normal_velocity * collision.collide_resilience
+        };
+        let particle: &mut Particle = &mut self.pool.get_particles_mut()[index];
+
+        particle.velocity = velocity;
+        particle.position = m.previous_position + velocity * dt;
+
+        if picks >= Self::MAX_PICKS {
+          break;
+        }
+      }
     }
   }
 

@@ -6,10 +6,10 @@ use crate::data::particle_group::ParticleGroup;
 use crate::data::particle_group_effect_flags::ParticleGroupEffectFlags;
 use crate::simulation::particle_bounds::ParticleBounds;
 use crate::simulation::particle_effect_instance::ParticleEffectInstance;
-use crate::simulation::particle_engine_rules::ParticleEngineRules;
 use crate::simulation::particle_group_item::ParticleGroupItem;
 use crate::simulation::particle_library::ParticleLibrary;
 use crate::simulation::particle_random::ParticleRandom;
+use crate::simulation::particle_update_context::ParticleUpdateContext;
 
 /// `PS::CParticleGroup`: a group's effects, each played from its `time0` to its `time1` on the group's clock.
 pub struct ParticleGroupInstance {
@@ -111,7 +111,7 @@ impl ParticleGroupInstance {
   }
 
   /// `OnFrame`: plays and stops effects whose times this frame crosses, then steps every item.
-  pub fn update(&mut self, frame_milliseconds: u32, library: &ParticleLibrary, rules: &ParticleEngineRules) {
+  pub fn update(&mut self, frame_milliseconds: u32, context: &ParticleUpdateContext) {
     if !self.is_playing {
       self.bounds = ParticleBounds::around_point(self.initial_position);
 
@@ -147,7 +147,7 @@ impl ParticleGroupInstance {
     let mut is_any_playing: bool = false;
 
     for (effect, item) in self.definition.effects.iter().zip(self.items.iter_mut()) {
-      is_any_playing |= item.update(frame_milliseconds, effect, library, rules, &mut bounds);
+      is_any_playing |= item.update(frame_milliseconds, effect, context, &mut bounds);
     }
 
     if self.is_stopping && !is_any_playing {

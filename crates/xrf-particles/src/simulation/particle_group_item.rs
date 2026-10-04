@@ -5,10 +5,10 @@ use crate::data::particle_group_effect_flags::ParticleGroupEffectFlags;
 use crate::simulation::particle::Particle;
 use crate::simulation::particle_bounds::ParticleBounds;
 use crate::simulation::particle_effect_instance::ParticleEffectInstance;
-use crate::simulation::particle_engine_rules::ParticleEngineRules;
 use crate::simulation::particle_event::ParticleEvent;
 use crate::simulation::particle_library::ParticleLibrary;
 use crate::simulation::particle_random::ParticleRandom;
+use crate::simulation::particle_update_context::ParticleUpdateContext;
 
 /// `CParticleGroup::SItem`: a group's effect, the children following its particles, and its free children.
 pub(crate) struct ParticleGroupItem {
@@ -76,21 +76,20 @@ impl ParticleGroupItem {
     &mut self,
     frame_milliseconds: u32,
     definition: &ParticleGroupEffect,
-    library: &ParticleLibrary,
-    rules: &ParticleEngineRules,
+    context: &ParticleUpdateContext,
     bounds: &mut Option<ParticleBounds>,
   ) -> bool {
     let flags: ParticleGroupEffectFlags = ParticleGroupEffectFlags(definition.flags);
     let mut is_playing: bool = false;
-    let step_seconds: f32 = rules.get_step_seconds();
+    let step_seconds: f32 = context.rules.get_step_seconds();
 
     if let Some(effect) = &mut self.effect {
-      effect.update(frame_milliseconds, rules);
+      effect.update(frame_milliseconds, context);
 
       let events: Vec<ParticleEvent> = effect.take_events();
 
       for event in events {
-        self.replay(event, definition, library, step_seconds);
+        self.replay(event, definition, context.library, step_seconds);
       }
     }
 
@@ -113,7 +112,7 @@ impl ParticleGroupItem {
     }
 
     for child in self.related.iter_mut().flatten() {
-      child.update(frame_milliseconds, rules);
+      child.update(frame_milliseconds, context);
 
       if child.is_playing() {
         is_playing = true;
@@ -124,7 +123,7 @@ impl ParticleGroupItem {
     }
 
     self.free.retain_mut(|child| {
-      child.update(frame_milliseconds, rules);
+      child.update(frame_milliseconds, context);
 
       if child.is_playing() {
         is_playing = true;

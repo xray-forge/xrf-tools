@@ -1,8 +1,7 @@
 use glam::{Mat4, Vec3};
 
-use crate::simulation::particle_engine_rules::ParticleEngineRules;
 use crate::simulation::particle_instance::ParticleInstance;
-use crate::simulation::particle_library::ParticleLibrary;
+use crate::simulation::particle_update_context::ParticleUpdateContext;
 
 /// `CParticlesObject`: a placed effect or group, updated while drawn and by the distance-paced scheduler.
 pub struct ParticleObject {
@@ -60,10 +59,10 @@ impl ParticleObject {
   }
 
   /// `Play`: plays at once and takes a first update as if 33 ms had passed.
-  pub fn play(&mut self, now: u64, library: &ParticleLibrary, rules: &ParticleEngineRules) {
+  pub fn play(&mut self, now: u64, context: &ParticleUpdateContext) {
     self.instance.play();
     self.last_time = now.saturating_sub(Self::PLAY_BACKDATE);
-    self.perform(now, library, rules);
+    self.perform(now, context);
     self.is_stopping = false;
   }
 
@@ -73,16 +72,9 @@ impl ParticleObject {
   }
 
   /// The scheduler's update when due, then the drawn update when in view (`shedule_Update`, `renderable_Render`).
-  pub fn advance(
-    &mut self,
-    now: u64,
-    view: Vec3,
-    is_in_view: bool,
-    library: &ParticleLibrary,
-    rules: &ParticleEngineRules,
-  ) {
+  pub fn advance(&mut self, now: u64, view: Vec3, is_in_view: bool, context: &ParticleUpdateContext) {
     if now >= self.next_scheduled {
-      self.perform(now, library, rules);
+      self.perform(now, context);
 
       let (center, _) = self.instance.get_bounds().get_sphere();
 
@@ -90,7 +82,7 @@ impl ParticleObject {
     }
 
     if is_in_view {
-      self.perform(now, library, rules);
+      self.perform(now, context);
     }
   }
 
@@ -104,13 +96,11 @@ impl ParticleObject {
   }
 
   /// `PerformAllTheWork`: an update by the milliseconds since the last one, if any passed.
-  fn perform(&mut self, now: u64, library: &ParticleLibrary, rules: &ParticleEngineRules) {
+  fn perform(&mut self, now: u64, context: &ParticleUpdateContext) {
     let elapsed: u64 = now.saturating_sub(self.last_time);
 
     if elapsed > 0 {
-      self
-        .instance
-        .update(elapsed.min(u32::MAX as u64) as u32, library, rules);
+      self.instance.update(elapsed.min(u32::MAX as u64) as u32, context);
       self.last_time = now;
     }
   }

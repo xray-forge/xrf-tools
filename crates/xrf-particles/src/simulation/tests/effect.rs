@@ -7,7 +7,8 @@ use crate::data::particle_effect_flags::ParticleEffectFlags;
 use crate::data::particle_effect_frame::ParticleEffectFrame;
 use crate::simulation::particle_effect_instance::ParticleEffectInstance;
 use crate::simulation::particle_engine_rules::ParticleEngineRules;
-use crate::simulation::tests::fixtures::{effect, kill_old, moving, source};
+use crate::simulation::particle_library::ParticleLibrary;
+use crate::simulation::tests::fixtures::{context, effect, kill_old, moving, source};
 
 fn playing(definition: ParticleEffect) -> ParticleEffectInstance {
   let mut instance: ParticleEffectInstance = ParticleEffectInstance::new(Arc::new(definition), 1);
@@ -19,16 +20,17 @@ fn playing(definition: ParticleEffect) -> ParticleEffectInstance {
 #[test]
 fn takes_whole_steps_and_no_more_than_three_at_once() {
   let rules: ParticleEngineRules = ParticleEngineRules::default();
+  let library: ParticleLibrary = ParticleLibrary::default();
   let mut instance: ParticleEffectInstance = playing(effect("one", 1, vec![source(1_000.0), moving()]));
 
   // 200 ms is six steps, clamped to three; the 2 ms left over carry.
-  instance.update(200, &rules);
+  instance.update(200, &context(&library, &rules));
   assert_eq!(instance.get_pool().get_particles()[0].age, 0.033 + 0.033 + 0.033);
 
-  instance.update(30, &rules);
+  instance.update(30, &context(&library, &rules));
   assert_eq!(instance.get_pool().get_particles()[0].age, 0.033 + 0.033 + 0.033);
 
-  instance.update(1, &rules);
+  instance.update(1, &context(&library, &rules));
   assert_eq!(
     instance.get_pool().get_particles()[0].age,
     0.033 + 0.033 + 0.033 + 0.033
@@ -38,6 +40,7 @@ fn takes_whole_steps_and_no_more_than_three_at_once() {
 #[test]
 fn stops_itself_past_its_time_limit_and_plays_its_particles_out() {
   let rules: ParticleEngineRules = ParticleEngineRules::default();
+  let library: ParticleLibrary = ParticleLibrary::default();
   let mut definition: ParticleEffect = effect("timed", 10, vec![source(1_000.0), moving(), kill_old(0.1)]);
 
   definition.flags |= ParticleEffectFlags::TIME_LIMIT;
@@ -46,13 +49,13 @@ fn stops_itself_past_its_time_limit_and_plays_its_particles_out() {
   let mut instance: ParticleEffectInstance = playing(definition);
 
   // Two steps run (0.017 left, then below zero on the second), which stops the sources.
-  instance.update(66, &rules);
+  instance.update(66, &context(&library, &rules));
   assert!(instance.is_playing());
   assert_eq!(instance.get_pool().len(), 10);
 
   // The particles age out at 0.1 s; once none is left the effect stops.
   for _ in 0..5 {
-    instance.update(33, &rules);
+    instance.update(33, &context(&library, &rules));
   }
 
   assert!(instance.get_pool().is_empty());
@@ -62,9 +65,10 @@ fn stops_itself_past_its_time_limit_and_plays_its_particles_out() {
 #[test]
 fn drops_every_particle_on_a_stop_without_delay() {
   let rules: ParticleEngineRules = ParticleEngineRules::default();
+  let library: ParticleLibrary = ParticleLibrary::default();
   let mut instance: ParticleEffectInstance = playing(effect("cut", 4, vec![source(1_000.0)]));
 
-  instance.update(33, &rules);
+  instance.update(33, &context(&library, &rules));
   instance.stop(false);
 
   assert!(instance.get_pool().is_empty());
@@ -74,6 +78,7 @@ fn drops_every_particle_on_a_stop_without_delay() {
 #[test]
 fn advances_frames_only_when_framed_and_animated() {
   let rules: ParticleEngineRules = ParticleEngineRules::default();
+  let library: ParticleLibrary = ParticleLibrary::default();
   let mut definition: ParticleEffect = effect("frames", 1, vec![source(1_000.0)]);
 
   definition.flags |= ParticleEffectFlags::FRAMED | ParticleEffectFlags::ANIMATED;
@@ -87,7 +92,7 @@ fn advances_frames_only_when_framed_and_animated() {
 
   let mut instance: ParticleEffectInstance = playing(definition);
 
-  instance.update(33, &rules);
+  instance.update(33, &context(&library, &rules));
 
   // 10 frames a second for 0.033 s, stored times 255 and floored.
   assert_eq!(
@@ -99,10 +104,11 @@ fn advances_frames_only_when_framed_and_animated() {
 #[test]
 fn places_its_actions_and_bounds_its_particles_grown_by_their_size() {
   let rules: ParticleEngineRules = ParticleEngineRules::default();
+  let library: ParticleLibrary = ParticleLibrary::default();
   let mut instance: ParticleEffectInstance = playing(effect("placed", 1, vec![source(1_000.0)]));
 
   instance.update_parent(&Mat4::from_translation(Vec3::new(10.0, 0.0, 0.0)), Vec3::ZERO);
-  instance.update(33, &rules);
+  instance.update(33, &context(&library, &rules));
 
   assert_eq!(
     instance.get_pool().get_particles()[0].position,
