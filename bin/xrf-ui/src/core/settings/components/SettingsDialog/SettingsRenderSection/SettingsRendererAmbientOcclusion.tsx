@@ -1,14 +1,14 @@
 import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
-import { ERendererAmbientOcclusionQuality } from "@/core/render/lib/contract/renderer-ambient-occlusion-quality";
-import { IRendererAmbientOcclusionSettings } from "@/core/render/lib/contract/renderer-ambient-occlusion-settings";
+import { RenderAmbientOcclusionQuality } from "@/core/ipc/types/xrf-renderer";
 import {
   formatOcclusionRadius,
   formatOcclusionStrength,
   RENDER_AMBIENT_OCCLUSION_LIMITS,
   RENDER_AMBIENT_OCCLUSION_QUALITY_OPTIONS,
 } from "@/core/render/lib/features";
+import { TRenderAmbientOcclusionSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { SettingsService } from "@/core/settings/services/settings";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { ChoiceFormRow } from "@/core/ui/form/ChoiceFormRow";
@@ -21,7 +21,7 @@ import { useRendererOverride } from "./use-renderer-override";
 export function SettingsRendererAmbientOcclusion(): ReactElement {
   const settingsService: SettingsService = useInjection(SettingsService);
 
-  const occlusion: IRendererAmbientOcclusionSettings = settingsService.rendererFeatures.ambientOcclusion;
+  const occlusion: TRenderAmbientOcclusionSettings = settingsService.rendererFeatures.ambientOcclusion;
 
   const onSet = useRendererOverride("ambientOcclusion");
 
@@ -40,7 +40,7 @@ export function SettingsRendererAmbientOcclusion(): ReactElement {
           description={"Samples per pixel. Higher is smoother and more expensive."}
           options={RENDER_AMBIENT_OCCLUSION_QUALITY_OPTIONS}
           value={occlusion.quality}
-          onChange={(quality: ERendererAmbientOcclusionQuality) => onSet({ quality })}
+          onChange={(quality: RenderAmbientOcclusionQuality) => onSet({ quality })}
         />
 
         <SliderFormRow

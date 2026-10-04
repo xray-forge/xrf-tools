@@ -1,9 +1,9 @@
 import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
-import { ERendererLightShadowFilter } from "@/core/render/lib/contract/renderer-light-shadow-filter";
-import { IRendererLightsSettings } from "@/core/render/lib/contract/renderer-lights-settings";
+import { RenderLightShadowFilter } from "@/core/ipc/types/xrf-renderer";
 import { RENDER_LIGHT_SHADOW_FILTER_OPTIONS } from "@/core/render/lib/features";
+import { TRenderLightsSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { SettingsService } from "@/core/settings/services/settings";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { ChoiceFormRow } from "@/core/ui/form/ChoiceFormRow";
@@ -15,7 +15,7 @@ import { useRendererOverride } from "./use-renderer-override";
 export function SettingsRendererLights(): ReactElement {
   const settingsService: SettingsService = useInjection(SettingsService);
 
-  const lights: IRendererLightsSettings = settingsService.rendererFeatures.lights;
+  const lights: TRenderLightsSettings = settingsService.rendererFeatures.lights;
 
   const onSet = useRendererOverride("lights");
 
@@ -43,7 +43,7 @@ export function SettingsRendererLights(): ReactElement {
           }
           options={RENDER_LIGHT_SHADOW_FILTER_OPTIONS}
           value={lights.shadowFilter}
-          onChange={(shadowFilter: ERendererLightShadowFilter) => onSet({ shadowFilter })}
+          onChange={(shadowFilter: RenderLightShadowFilter) => onSet({ shadowFilter })}
         />
 
         <CheckboxFormRow

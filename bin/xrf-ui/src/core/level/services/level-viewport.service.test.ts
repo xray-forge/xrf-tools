@@ -1,13 +1,8 @@
 import { describe, expect, it } from "@jest/globals";
 
 import { ILevelCamera } from "@/core/level/lib/camera/level-camera";
-import { EMPTY_LEVEL_STATS, ILevelStats } from "@/core/level/lib/stats/level-stats";
 import { LevelViewportService } from "@/core/level/services/level-viewport.service";
 import { mockInjectedService } from "@/fixtures/utils/container";
-
-function stats(overrides: Partial<ILevelStats> = {}): ILevelStats {
-  return { ...EMPTY_LEVEL_STATS, ...overrides };
-}
 
 function camera(overrides: Partial<ILevelCamera> = {}): ILevelCamera {
   return { heading: 0, pitch: 0, position: { x: 0, y: 0, z: 0 }, ...overrides };
@@ -18,37 +13,27 @@ describe("LevelViewportService", () => {
     const { service } = mockInjectedService(LevelViewportService);
 
     expect(service.camera).toBeNull();
-    expect(service.stats).toEqual(EMPTY_LEVEL_STATS);
+    expect(service.load).toBeNull();
   });
 
-  it("takes what the viewport measured", () => {
+  it("takes where the viewport's camera stands", () => {
     const { service } = mockInjectedService(LevelViewportService);
 
-    service.report(stats({ draws: 493 }), camera({ heading: 1.5 }));
+    service.noteCamera(camera({ heading: 1.5 }));
 
-    expect(service.stats.draws).toBe(493);
     expect(service.camera?.heading).toBe(1.5);
   });
 
   // A closed viewer showing the last frame of the level before it is worse than showing nothing: it reads as a level
   // that is still open.
-  it("forgets a closed level rather than keeping its last frame", () => {
+  it("forgets a closed level rather than keeping its last camera and load", () => {
     const { service } = mockInjectedService(LevelViewportService);
 
-    service.report(stats({ draws: 493 }), camera());
+    service.noteCamera(camera());
+    service.noteLoad({ bytes: 1, isReady: true, sectors: 1, sectorsTotal: 1, textures: 0, texturesTotal: 0 });
     service.clear();
 
     expect(service.camera).toBeNull();
-    expect(service.stats).toEqual(EMPTY_LEVEL_STATS);
-  });
-
-  // `report` is handed to a scene that keeps it for its lifetime, so it has to work without its receiver.
-  it("reports through a bound method, since the viewport keeps the function and not the service", () => {
-    const { service } = mockInjectedService(LevelViewportService);
-    const report: LevelViewportService["report"] = service.report;
-
-    report(stats({ sectors: 3 }), camera());
-
-    expect(service.stats.sectors).toBe(3);
+    expect(service.load).toBeNull();
   });
 });

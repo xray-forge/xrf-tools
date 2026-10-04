@@ -3,7 +3,7 @@ import { Nullable } from "@xrf/types";
 
 import { WeatherDescriptor } from "@/core/ipc/types/xrf-environment";
 import { Vector3d } from "@/core/ipc/types/xrf-math";
-import { TRendererVector } from "@/core/render/lib/contract/renderer-vector";
+import { TRenderVector } from "@/core/render/lib/scene/render-space";
 
 /** What names a sky's irradiance cube after the sky's own reference. */
 const ENVIRONMENT_SUFFIX: string = "#small";
@@ -14,7 +14,7 @@ const ENVIRONMENT_SUFFIX: string = "#small";
  */
 export interface ILevelManualWeather {
   skyTexture: string;
-  skyColor: TRendererVector;
+  skyColor: TRenderVector;
   /** Degrees. */
   skyRotation: number;
   /** Empty for none. */
@@ -24,26 +24,26 @@ export interface ILevelManualWeather {
   /** Degrees. */
   cloudsRotation: number;
   farPlane: number;
-  fogColor: TRendererVector;
+  fogColor: TRenderVector;
   fogDistance: number;
   fogDensity: number;
   hemisphereColor: readonly [number, number, number, number];
-  sunColor: TRendererVector;
+  sunColor: TRenderVector;
   /** Degrees; `setHP` turns the heading by it. */
   sunAltitude: number;
   /** Degrees; `setHP` tilts the pitch by it. */
   sunLongitude: number;
-  ambientColor: TRendererVector;
+  ambientColor: TRenderVector;
   waterIntensity: number;
   rainDensity: number;
-  rainColor: TRendererVector;
+  rainColor: TRenderVector;
   windVelocity: number;
   /** Degrees. */
   windDirection: number;
   treesAmplitude: number;
   treesSpeed: number;
   treesRotation: number;
-  treesWave: TRendererVector;
+  treesWave: TRenderVector;
   /** The `thunderbolt_collections.ltx` section struck with, empty for none. */
   thunderboltCollection: string;
   /** Seconds between strikes. */
@@ -255,13 +255,13 @@ export function toLevelManualSun(
 }
 
 /** `getHP` of the sun's direction, in degrees: `sun_altitude` is its heading and `sun_longitude` its pitch. */
-function toSunAngles(direction: TRendererVector): Pick<ILevelManualWeather, "sunAltitude" | "sunLongitude"> {
+function toSunAngles(direction: TRenderVector): Pick<ILevelManualWeather, "sunAltitude" | "sunLongitude"> {
   const { heading, pitch } = toHeadingPitch(direction);
 
   return { sunAltitude: toDegrees(heading), sunLongitude: toDegrees(pitch) };
 }
 
-function toTriple(value: readonly [Nullable<number>, Nullable<number>, Nullable<number>]): TRendererVector {
+function toTriple(value: readonly [Nullable<number>, Nullable<number>, Nullable<number>]): TRenderVector {
   return [value[0] ?? 0, value[1] ?? 0, value[2] ?? 0];
 }
 

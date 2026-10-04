@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 
 import { VisualDescription } from "@/core/ipc/types/xrf-visual";
-import { OPAQUE_RENDERER_SURFACE_DRAW } from "@/core/render/lib/surface/renderer-surface-draw";
+import { OPAQUE_RENDER_SURFACE_DRAW } from "@/core/render/lib/surface/render-surface-draw";
 import { createVisualSurfaces } from "@/core/visuals/lib/visual-surface";
 import {
   countVisualTriangles,
@@ -40,7 +40,7 @@ describe("visual views", () => {
 
     expect(views.submeshes[0].surface.alphaReference).toBeCloseTo(200 / 255);
     // A submesh the table has no answer for is opaque, which is what a model opened without a library gets.
-    expect(views.submeshes[1].surface).toEqual(OPAQUE_RENDERER_SURFACE_DRAW);
+    expect(views.submeshes[1].surface).toEqual(OPAQUE_RENDER_SURFACE_DRAW);
   });
 
   it("keeps every detail level separate from the whole index buffer", () => {

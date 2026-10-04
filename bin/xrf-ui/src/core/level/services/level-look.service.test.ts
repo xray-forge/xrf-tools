@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 
 import { ELevelLookSource } from "@/core/level/lib/look";
 import { LevelLookService } from "@/core/level/services/level-look.service";
-import { DEFAULT_RENDERER_EXPOSURE_SETTINGS } from "@/core/render/lib/contract/renderer-exposure-settings";
+import { DEFAULT_RENDER_EXPOSURE_SETTINGS } from "@/core/render/lib/settings/render-feature-defaults";
 import { LEVEL_LOOK_STORAGE_KEY } from "@/core/storage";
 import { mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
@@ -36,7 +36,7 @@ describe("LevelLookService", () => {
 
     const { service } = mockInjectedService(LevelLookService);
 
-    expect(service.look.exposure).toEqual(DEFAULT_RENDERER_EXPOSURE_SETTINGS);
+    expect(service.look.exposure).toEqual(DEFAULT_RENDER_EXPOSURE_SETTINGS);
 
     await service.open({ sessionId: "level", value: mockSelectedLevelDescription() });
 
@@ -47,7 +47,7 @@ describe("LevelLookService", () => {
     service.setSource(ELevelLookSource.SETTINGS);
 
     expect(service.look.lightScales.sun).toBe(1);
-    expect(service.look.exposure).toEqual(DEFAULT_RENDERER_EXPOSURE_SETTINGS);
+    expect(service.look.exposure).toEqual(DEFAULT_RENDER_EXPOSURE_SETTINGS);
   });
 
   it("saves the look as a preset, picks it again after an edit, and keeps the presets over runs", () => {

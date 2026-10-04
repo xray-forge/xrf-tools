@@ -4,7 +4,7 @@ import { IconButton, Slider, Tooltip, Typography } from "@mui/material";
 import { ReactElement, useMemo } from "react";
 
 import { formatLevelWeatherTime } from "@/core/level/lib/weather/level-weather-time";
-import { WEATHER_DAY_LENGTH } from "@/core/render/lib/contract/weather-day";
+import { WEATHER_DAY_LENGTH } from "@/core/level/lib/weather/weather-day";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { IThrottledDraft, useThrottledDraft } from "@/lib/react/use-throttled-draft";
 

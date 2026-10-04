@@ -10,7 +10,7 @@ import {
   OPENXRAY_LEVEL_LOOK,
   toSettingsLevelLook,
 } from "@/core/level/lib/look/level-look";
-import { IRendererExposureSettings } from "@/core/render/lib/contract/renderer-exposure-settings";
+import { TRenderExposureSettings } from "@/core/render/lib/settings/render-feature-settings";
 
 /** Where a level's look comes from. */
 export enum ELevelLookSource {
@@ -62,7 +62,7 @@ export const DEFAULT_LEVEL_LOOK_CHOICE: ILevelLookChoice = {
 export function resolveLevelLook(
   choice: ILevelLookChoice,
   game: Nullable<ILevelLook>,
-  exposure: IRendererExposureSettings
+  exposure: TRenderExposureSettings
 ): ILevelLook {
   switch (choice.source) {
     case ELevelLookSource.CUSTOM:
@@ -90,7 +90,7 @@ export function resolveLevelLook(
  * @param exposure - The settings' exposure, for a stored look missing some of its own.
  * @returns The choice.
  */
-export function toLevelLookChoice(stored: unknown, exposure: IRendererExposureSettings): ILevelLookChoice {
+export function toLevelLookChoice(stored: unknown, exposure: TRenderExposureSettings): ILevelLookChoice {
   if (!isRecord(stored)) {
     return DEFAULT_LEVEL_LOOK_CHOICE;
   }
@@ -116,7 +116,7 @@ export function toLevelLookChoice(stored: unknown, exposure: IRendererExposureSe
   };
 }
 
-function toLevelLook(stored: Record<string, unknown>, exposure: IRendererExposureSettings): ILevelLook {
+function toLevelLook(stored: Record<string, unknown>, exposure: TRenderExposureSettings): ILevelLook {
   const storedExposure: Record<string, unknown> = isRecord(stored.exposure) ? stored.exposure : {};
   const scales: Record<string, unknown> = isRecord(stored.lightScales) ? stored.lightScales : {};
   const corrections: Record<string, unknown> = isRecord(stored.corrections) ? stored.corrections : {};

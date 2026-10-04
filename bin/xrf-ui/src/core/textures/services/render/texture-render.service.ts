@@ -5,14 +5,10 @@ import { Nullable } from "@xrf/types";
 import {
   ERenderCameraCommand,
   ERenderTextureState,
-  RenderFrameReport,
   RenderLoadReport,
   RenderTextureReport,
   RenderViewOptions,
 } from "@/core/ipc/types/xrf-renderer";
-import { EMPTY_RENDER_FRAME_COST, IRenderFrameCost } from "@/core/render/lib/contract/render-frame-cost";
-import { EMPTY_RENDERER_PASS_TIMINGS, IRendererPassTimings } from "@/core/render/lib/contract/renderer-pass-timings";
-import { toNativeFrameCost, toNativePassTimings } from "@/core/render/lib/native/native-frame-report";
 import { NativeRenderSurfaceService } from "@/core/render/lib/native/native-render-surface-service";
 import { toNativeRenderHeight } from "@/core/render/lib/native/native-view-options";
 import { NativeViewport, TNativeTextureRequest } from "@/core/render/lib/native/native-viewport";
@@ -33,14 +29,6 @@ import { Logger } from "@/lib/logging";
 @Injectable()
 export class TextureRenderService extends NativeRenderSurfaceService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
-
-  /** What the viewport's recent frames cost, for the readout. */
-  @RefObservable()
-  public frameCost: IRenderFrameCost = EMPTY_RENDER_FRAME_COST;
-
-  /** What each of its passes cost on the GPU, for the readout. */
-  @RefObservable()
-  public timings: IRendererPassTimings = EMPTY_RENDERER_PASS_TIMINGS;
 
   /**
    * Why the texture shown cannot be laid on the body, once the renderer has read it; null while it is drawn or read.
@@ -108,7 +96,7 @@ export class TextureRenderService extends NativeRenderSurfaceService {
           toTextureViewOptions(
             this.viewService.options,
             this.viewService.lighting,
-            this.settingsService.sharedRenderSettings,
+            this.settingsService.rendererFeatures,
             window.devicePixelRatio,
             toNativeRenderHeight(this.settingsService.renderResolution)
           ),
@@ -120,13 +108,6 @@ export class TextureRenderService extends NativeRenderSurfaceService {
 
   protected onAttached(container: HTMLElement): void {
     this.container = container;
-  }
-
-  protected onFrame(report: RenderFrameReport): void {
-    runInAction(() => {
-      this.frameCost = toNativeFrameCost(report);
-      this.timings = toNativePassTimings(report);
-    });
   }
 
   protected onLoad(report: RenderLoadReport): void {
@@ -155,8 +136,6 @@ export class TextureRenderService extends NativeRenderSurfaceService {
     this.hasDescribed = false;
 
     runInAction(() => {
-      this.frameCost = EMPTY_RENDER_FRAME_COST;
-      this.timings = EMPTY_RENDERER_PASS_TIMINGS;
       this.baseFailure = null;
     });
   }

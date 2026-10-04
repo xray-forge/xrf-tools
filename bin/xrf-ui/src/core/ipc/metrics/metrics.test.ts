@@ -111,19 +111,6 @@ describe("ipc metrics", () => {
     expect(getEntryOf("assets|read_asset").calls).toBe(2);
   });
 
-  // The renderer worker's own fetches, timed where they were made and never in flight on this side.
-  it("counts a call made elsewhere from what it reported, without raising the peak in flight", () => {
-    IPC_METRICS.record("renderer|fetch_texture", 12, 4096, false);
-    IPC_METRICS.record("renderer|fetch_texture", 3, 0, true);
-
-    const entry: IIpcCommandMetrics = getEntryOf("renderer|fetch_texture");
-    const snapshot: IIpcMetricsSnapshot = IPC_METRICS.read();
-
-    expect(entry).toMatchObject({ calls: 1, duration: 12, failureDuration: 3, failures: 1, received: 4096 });
-    expect(snapshot.inFlight).toBe(0);
-    expect(snapshot.peakInFlight).toBe(0);
-  });
-
   it("forgets everything on reset and restarts its clock", () => {
     IPC_METRICS.measure("plugin:assets|read_asset").recordAnswer(10, null);
 

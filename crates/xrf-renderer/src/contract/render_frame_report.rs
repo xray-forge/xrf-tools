@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::contract::render_lights_report::RenderLightsReport;
+use crate::contract::render_memory_report::RenderMemoryReport;
 use crate::contract::render_pass_cost::RenderPassCost;
 use crate::contract::render_static_report::RenderStaticReport;
 
@@ -43,4 +44,6 @@ pub struct RenderFrameReport {
   pub lights: RenderLightsReport,
   /// Milliseconds the last sector taken in took to put into the scene, on the render thread.
   pub sector_time: f32,
+  /// What the renderer holds on the GPU.
+  pub memory: RenderMemoryReport,
 }

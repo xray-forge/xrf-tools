@@ -65,26 +65,6 @@ export class IpcMetricsRecorder implements IIpcCallSink {
   }
 
   /**
-   * Counts a call made and timed elsewhere, such as a fetch the renderer worker made and reported back: it was never
-   * in flight here.
-   *
-   * @param command - Name it is counted under.
-   * @param duration - How long it took, in milliseconds.
-   * @param received - Response bytes.
-   * @param isFailed - Whether it failed, which counts it apart from the answers.
-   */
-  public record(command: string, duration: number, received: number, isFailed: boolean): void {
-    // Settled as it enters, so the peak never counts it: the settling below takes it back out.
-    this.inFlight += 1;
-
-    if (isFailed) {
-      this.recordFailure(command, duration);
-    } else {
-      this.recordAnswer(command, duration, received, null);
-    }
-  }
-
-  /**
    * Reads what has been counted.
    *
    * Entries are copied, so a render cannot see a counter move underneath it.

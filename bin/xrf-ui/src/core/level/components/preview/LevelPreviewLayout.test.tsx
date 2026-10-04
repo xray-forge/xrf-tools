@@ -10,7 +10,6 @@ import { LevelPreviewLayout } from "@/core/level/components/preview/LevelPreview
 import { ILevelCamera } from "@/core/level/lib/camera/level-camera";
 import { ILevelPoint } from "@/core/level/lib/camera/level-point";
 import { EMPTY_LEVEL_SPAWN_REPORT } from "@/core/level/lib/spawn";
-import { EMPTY_LEVEL_STATS } from "@/core/level/lib/stats/level-stats";
 import {
   LevelLoadService,
   LevelLookService,
@@ -19,6 +18,7 @@ import {
   LevelViewService,
   LevelWeatherService,
 } from "@/core/level/services";
+import { EMPTY_RENDER_FRAME_REPORT } from "@/core/render/lib/native/native-frame-report";
 import { SettingsRendererDisplay } from "@/core/settings/components/SettingsDialog/SettingsRenderSection/SettingsRendererDisplay";
 import { SettingsService } from "@/core/settings/services/settings";
 import { ApplicationStatusBar } from "@/core/shell/footer/ApplicationStatusBar";
@@ -37,6 +37,7 @@ function camera(position: Partial<ILevelPoint> = {}): ILevelCamera {
 
 function renderReporting(onRender: () => void = () => undefined): {
   loader: LevelLoadService;
+  renderer: LevelRenderService;
   view: RenderResult;
   viewport: LevelViewportService;
 } {
@@ -64,7 +65,12 @@ function renderReporting(onRender: () => void = () => undefined): {
     { container, route: "/level-viewer" }
   );
 
-  return { loader: container.get(LevelLoadService), view, viewport: container.get(LevelViewportService) };
+  return {
+    loader: container.get(LevelLoadService),
+    renderer: container.get(LevelRenderService),
+    view,
+    viewport: container.get(LevelViewportService),
+  };
 }
 
 function renderLayout(
@@ -161,7 +167,7 @@ describe("LevelPreviewLayout", () => {
 
     container.get(LevelViewportService).reveal();
     runInAction(() => {
-      container.get(LevelRenderService).failure = "No WebGPU adapter";
+      container.get(LevelRenderService).failure = "No GPU adapter";
     });
 
     const view: RenderResult = renderWithProviders(
@@ -170,7 +176,7 @@ describe("LevelPreviewLayout", () => {
     );
 
     expect(view.getByTestId("level-preview-cover")).toHaveClass("opacity-100");
-    expect(view.getByRole("alert")).toHaveTextContent("The renderer stoppedNo WebGPU adapter");
+    expect(view.getByRole("alert")).toHaveTextContent("The renderer stoppedNo GPU adapter");
     expect(view.queryByRole("progressbar")).not.toBeInTheDocument();
   });
 
@@ -214,7 +220,7 @@ describe("LevelPreviewLayout", () => {
   it("says where the camera is and which way it faces", async () => {
     const { view, viewport } = renderReporting();
 
-    act(() => viewport.report(EMPTY_LEVEL_STATS, camera()));
+    act(() => viewport.noteCamera(camera()));
 
     expect(await view.findByText("x -243.8 y 12.5 z 87.3")).toBeInTheDocument();
     expect(view.getByText("h 90.0° p 0.0°")).toBeInTheDocument();
@@ -225,7 +231,7 @@ describe("LevelPreviewLayout", () => {
   it("takes both readouts off the viewport together", async () => {
     const { view, viewport } = renderReporting();
 
-    act(() => viewport.report(EMPTY_LEVEL_STATS, camera()));
+    act(() => viewport.noteCamera(camera()));
 
     expect(view.getByTestId("level-preview-metrics")).toBeInTheDocument();
     expect(view.getByTestId("level-preview-coordinates")).toBeInTheDocument();
@@ -249,7 +255,7 @@ describe("LevelPreviewLayout", () => {
     const before: number = renders;
 
     for (let tick = 0; tick < 20; tick += 1) {
-      act(() => viewport.report(EMPTY_LEVEL_STATS, camera({ x: tick })));
+      act(() => viewport.noteCamera(camera({ x: tick })));
     }
 
     expect(await view.findByText("x 19.0 y 12.5 z 87.3")).toBeInTheDocument();
@@ -279,15 +285,26 @@ describe("LevelPreviewLayout", () => {
 
   // With the settings timing the passes, the readout lists them as the renderer reports them.
   it("lists each pass's GPU time in the readout while the renderer reports them timed", () => {
-    const { view, viewport } = renderReporting();
+    const { renderer, view, viewport } = renderReporting();
 
-    act(() =>
-      viewport.report(EMPTY_LEVEL_STATS, camera(), { isGpuTimed: true, passes: [{ gpuTime: 0.5, name: "gbuffer" }] })
-    );
+    act(() => {
+      viewport.noteCamera(camera());
+      runInAction(() => {
+        renderer.frame = {
+          ...EMPTY_RENDER_FRAME_REPORT,
+          isGpuTimed: true,
+          passes: [{ gpuTime: 0.5, name: "gbuffer" }],
+        };
+      });
+    });
 
     expect(view.getByTestId("render-frame-passes")).toHaveTextContent("GPU0.50 msgbuffer0.50");
 
-    act(() => viewport.report(EMPTY_LEVEL_STATS, camera(), { isGpuTimed: false, passes: [] }));
+    act(() => {
+      runInAction(() => {
+        renderer.frame = EMPTY_RENDER_FRAME_REPORT;
+      });
+    });
 
     expect(view.queryByTestId("render-frame-passes")).not.toBeInTheDocument();
   });

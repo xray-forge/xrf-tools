@@ -1,4 +1,6 @@
-import { ERenderCamera, RenderCamera } from "@/core/ipc/types/xrf-renderer";
+import { Nullable } from "@xrf/types";
+
+import { ERenderCamera, ERenderDebugView, RenderCamera, RenderViewOptions } from "@/core/ipc/types/xrf-renderer";
 import { ILevelCameraOptions } from "@/core/level/lib/camera/level-camera-options";
 import { ILevelViewpoint } from "@/core/level/lib/camera/level-viewpoint";
 import {
@@ -9,9 +11,8 @@ import {
 import { ILevelLodOptions, toLevelRendererLod } from "@/core/level/lib/lod/level-lod-options";
 import { ILevelRenderConfig } from "@/core/level/lib/render/level-render-config";
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
-import { ERendererDebugView } from "@/core/render/lib/contract/renderer-debug-view";
-import { IRendererSettings } from "@/core/render/lib/contract/renderer-settings";
-import { IRenderSharedSettings } from "@/core/render/lib/settings/render-shared-settings";
+import { TNativeLook, toNativeViewOptions } from "@/core/render/lib/native/native-view-options";
+import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-feature-settings";
 
 /**
  * @param viewpoint - Where the camera stands and what it looks at.
@@ -39,9 +40,9 @@ export function toLevelCameraAt(
   };
 }
 
-/** What a level view's renderer settings are made of. */
-export interface ILevelRendererSettingsInputs {
-  /** The toolbar's toggles. */
+/** What a level view's options are made of. */
+export interface ILevelViewOptionsInputs {
+  /** The toolbar's toggles, which switch the scene's weather, sky, grass, water and spawned groups too. */
   options: ILevelViewOptions;
   /** How much the baked hemisphere darkens the ambient, which the baked light toggle gates. */
   hemiStrength: number;
@@ -49,27 +50,34 @@ export interface ILevelRendererSettingsInputs {
   lod: ILevelLodOptions;
   /** What the view sets over the settings' features for itself, which their toggles gate. */
   view: ILevelFeatureOptions;
-  /** What the application sets for every viewport, whose features the level's toolbar narrows. */
-  shared: IRenderSharedSettings;
-  /** The backdrop. */
-  config: ILevelRenderConfig;
+  /** What the application sets every viewport's features to, which the level's toolbar narrows. */
+  features: IRenderFeatureSettings;
+  /** How the level is exposed, lit and corrected. */
+  look: TNativeLook;
   /** Which picture the viewport shows. */
-  debugView: ERendererDebugView;
+  debugView: ERenderDebugView;
+  /** How many rows the level is drawn with at most; null for as many as the viewport covers. */
+  renderHeight: Nullable<number>;
 }
 
 /**
- * @param inputs - What the settings are made of.
- * @returns The renderer's settings.
+ * @param inputs - What the options are made of.
+ * @returns What the native viewport draws the level with.
  */
-export function toLevelRendererSettings(inputs: ILevelRendererSettingsInputs): IRendererSettings {
-  const { options, hemiStrength, lod, view, shared, config, debugView } = inputs;
-  const { features } = shared;
+export function toLevelViewOptions(inputs: ILevelViewOptionsInputs): RenderViewOptions {
+  const { options, hemiStrength, lod, view, features, look, debugView, renderHeight } = inputs;
 
-  return {
-    // Fogged, the renderer draws the sky as total fog itself; this shows only where there is none.
-    backdrop: config.backgroundColor,
-    debugView,
-    features: {
+  return toNativeViewOptions(
+    {
+      debugView,
+      hemiStrength: options.isBaked ? hemiStrength : 0,
+      isBumped: options.isBumped,
+      isLit: true,
+      isTextured: options.isTextured,
+      isWireframe: options.isWireframe,
+      tonemapScale: 1,
+    },
+    {
       ...features,
       ambientOcclusion: toLevelRendererFeature("ambientOcclusion", features, view, options.isOccluded),
       antialiasing: toLevelRendererAntialiasing(features.antialiasing, view, options.isAntialiased),
@@ -80,16 +88,8 @@ export function toLevelRendererSettings(inputs: ILevelRendererSettingsInputs): I
       shadows: toLevelRendererFeature("shadows", features, view, options.isShadowed),
       water: toLevelRendererFeature("water", features, view, options.isWaterVisible),
     },
-    hemiStrength: options.isBaked ? hemiStrength : 0,
-    isBumped: options.isBumped,
-    isGpuTimed: shared.isGpuTimed,
-    isLit: true,
-    isSkyDrawn: options.isSkyVisible,
-    isSkyHazed: options.isSkyHazed,
-    isTextured: options.isTextured,
-    isWallmarkDrawn: options.isWallmarked,
-    isWireframe: options.isWireframe,
-    pacing: shared.pacing,
-    tonemapScale: 1,
-  };
+    options,
+    look,
+    renderHeight
+  );
 }

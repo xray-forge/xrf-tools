@@ -3,14 +3,14 @@ import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
-import { isRendererFeatureChoiceCustom } from "@/core/render/lib/contract/renderer-feature-choice";
-import { ERendererPreset } from "@/core/render/lib/contract/renderer-preset";
+import { isRenderFeatureChoiceCustom } from "@/core/render/lib/settings/render-feature-choice";
+import { ERenderPreset } from "@/core/render/lib/settings/render-preset";
 import { SettingsService } from "@/core/settings/services/settings";
 import { DetailSection } from "@/core/ui/layout/DetailSection";
 
-const PRESET_LABELS: Record<ERendererPreset, string> = {
-  [ERendererPreset.BASE]: "Base",
-  [ERendererPreset.EDITING]: "Editing",
+const PRESET_LABELS: Record<ERenderPreset, string> = {
+  [ERenderPreset.BASE]: "Base",
+  [ERenderPreset.EDITING]: "Editing",
 };
 
 /** Which preset the renderer's features follow, whether anything is changed on top of it, and the way back. */
@@ -18,7 +18,7 @@ export function SettingsRendererPreset(): ReactElement {
   const settingsService: SettingsService = useInjection(SettingsService);
 
   const { preset } = settingsService.rendererChoice;
-  const isCustom: boolean = isRendererFeatureChoiceCustom(settingsService.rendererChoice);
+  const isCustom: boolean = isRenderFeatureChoiceCustom(settingsService.rendererChoice);
 
   return (
     <DetailSection
@@ -41,13 +41,13 @@ export function SettingsRendererPreset(): ReactElement {
         color={"primary"}
         size={"small"}
         value={preset}
-        onChange={(_, next: Nullable<ERendererPreset>) => {
+        onChange={(_, next: Nullable<ERenderPreset>) => {
           if (next !== null) {
             settingsService.setRendererPreset(next);
           }
         }}
       >
-        {Object.values(ERendererPreset).map((value: ERendererPreset) => (
+        {Object.values(ERenderPreset).map((value: ERenderPreset) => (
           <ToggleButton key={value} value={value}>
             {PRESET_LABELS[value]}
           </ToggleButton>

@@ -1,32 +1,28 @@
 import { Fragment, ReactElement, ReactNode } from "react";
 
+import { RenderFrameReport, RenderPassCost } from "@/core/ipc/types/xrf-renderer";
 import { RenderViewportOverlay, TRenderOverlayCorner } from "@/core/render/components/overlay/RenderViewportOverlay";
-import { IRenderFrameCost } from "@/core/render/lib/contract/render-frame-cost";
-import { IRendererPassCost } from "@/core/render/lib/contract/renderer-pass-cost";
-import { IRendererPassTimings } from "@/core/render/lib/contract/renderer-pass-timings";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatMilliseconds } from "@/lib/format/duration";
 import { formatCount } from "@/lib/format/number";
 
 /** The buffer's size, and the scene's as drawn where it is upscaled from less. */
-function toSizeLine(cost: IRenderFrameCost): string {
-  const drawn: string = `${cost.drawnWidth} × ${cost.drawnHeight}`;
+function toSizeLine(report: RenderFrameReport): string {
+  const drawn: string = `${report.width} × ${report.height}`;
   const isUpscaled: boolean =
-    cost.renderedWidth > 0 && (cost.renderedWidth !== cost.drawnWidth || cost.renderedHeight !== cost.drawnHeight);
+    report.renderWidth > 0 && (report.renderWidth !== report.width || report.renderHeight !== report.height);
 
-  return isUpscaled ? `${drawn} from ${cost.renderedWidth} × ${cost.renderedHeight}` : drawn;
+  return isUpscaled ? `${drawn} from ${report.renderWidth} × ${report.renderHeight}` : drawn;
 }
 
 /** What every pass cost together. */
-function toGpuTotal(passes: ReadonlyArray<IRendererPassCost>): number {
-  return passes.reduce((total: number, pass: IRendererPassCost) => total + pass.gpuTime, 0);
+function toGpuTotal(passes: ReadonlyArray<RenderPassCost>): number {
+  return passes.reduce((total: number, pass: RenderPassCost) => total + (pass.gpuTime ?? 0), 0);
 }
 
 export interface IRenderFrameReadoutProps extends BaseComponentProps {
-  /** What the last reported frame cost. */
-  cost: IRenderFrameCost;
-  /** What each pass of it cost on the GPU, listed under the rest while the renderer times them. */
-  timings?: IRendererPassTimings;
+  /** What the last reported frame cost, with each pass's GPU time listed under the rest while the renderer times them. */
+  report: RenderFrameReport;
   corner?: TRenderOverlayCorner;
   /** Anything the scene can say that a viewport cannot, drawn under the rest. */
   children?: ReactNode;
@@ -39,28 +35,27 @@ export function RenderFrameReadout({
   "data-testid": dataTestId = "render-frame-readout",
   id,
   className,
-  cost,
-  timings,
+  report,
   corner = "top-left",
   children,
 }: IRenderFrameReadoutProps): ReactElement {
   return (
     <RenderViewportOverlay data-testid={dataTestId} id={id} className={className} corner={corner}>
-      <div>{`${cost.framesPerSecond.toFixed(0)} fps · ${formatMilliseconds(cost.frameTime)}`}</div>
-      <div>{`${formatCount(cost.draws)} draws · ${formatCount(cost.triangles)} tris`}</div>
-      <div>{toSizeLine(cost)}</div>
+      <div>{`${(report.framesPerSecond ?? 0).toFixed(0)} fps · ${formatMilliseconds(report.frameTime ?? 0)}`}</div>
+      <div>{`${formatCount(report.staticDraws.commands)} draws · ${formatCount(report.triangles)} tris`}</div>
+      <div>{toSizeLine(report)}</div>
 
       {children}
 
-      {timings?.isGpuTimed && timings.passes.length ? (
+      {report.isGpuTimed && report.passes.length ? (
         <div data-testid={"render-frame-passes"} className={"mt-1 grid grid-cols-[auto_auto] gap-x-3"}>
           <div>GPU</div>
-          <div className={"text-right tabular-nums"}>{`${toGpuTotal(timings.passes).toFixed(2)} ms`}</div>
+          <div className={"text-right tabular-nums"}>{`${toGpuTotal(report.passes).toFixed(2)} ms`}</div>
 
-          {timings.passes.map((pass: IRendererPassCost) => (
+          {report.passes.map((pass: RenderPassCost) => (
             <Fragment key={pass.name}>
               <div className={"opacity-70"}>{pass.name}</div>
-              <div className={"text-right tabular-nums opacity-70"}>{pass.gpuTime.toFixed(2)}</div>
+              <div className={"text-right tabular-nums opacity-70"}>{(pass.gpuTime ?? 0).toFixed(2)}</div>
             </Fragment>
           ))}
         </div>

@@ -3,7 +3,7 @@ import { ReactElement, useCallback } from "react";
 
 import { RenderFailureCover, RenderFrameReadout } from "@/core/render/components/overlay";
 import { RenderSurface } from "@/core/render/components/RenderSurface";
-import { DOLLY_STEP } from "@/core/render/lib/contract/renderer-camera-command";
+import { DOLLY_STEP } from "@/core/render/lib/frame/render-dolly";
 import { ViewportControls } from "@/core/ui/media/ViewportControls";
 import { IVisualRenderSource, VISUAL_RENDER_SOURCE } from "@/core/visuals/lib/render";
 import { VisualRenderService } from "@/core/visuals/services/visual-render.service";
@@ -29,7 +29,7 @@ export function VisualPreviewViewport(): ReactElement {
 
       {source.model && !renderService.failure ? (
         <>
-          <RenderFrameReadout cost={renderService.frameCost} timings={renderService.timings} />
+          <RenderFrameReadout report={renderService.frame} />
 
           <ViewportControls onZoomIn={onZoomIn} onZoomOut={onZoomOut} onReset={onReset} />
         </>

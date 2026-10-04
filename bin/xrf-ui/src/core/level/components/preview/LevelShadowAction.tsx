@@ -8,10 +8,6 @@ import { describeLevelFeatureToggle } from "@/core/level/lib/features";
 import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 import {
-  IRendererShadowSettings,
-  RENDERER_SHADOW_CASCADE_WIDTHS,
-} from "@/core/render/lib/contract/renderer-shadow-settings";
-import {
   formatCascadeBlend,
   formatShadowBias,
   formatShadowFilter,
@@ -19,6 +15,8 @@ import {
   RENDER_SHADOW_LIMITS,
   RENDER_SHADOW_RESOLUTION_OPTIONS,
 } from "@/core/render/lib/features";
+import { RENDER_SHADOW_CASCADE_WIDTHS } from "@/core/render/lib/settings/render-feature-defaults";
+import { TRenderShadowSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { EditorPopoverToggle } from "@/core/shell/editor/EditorPopoverToggle";
 
 /**
@@ -35,7 +33,7 @@ export function LevelShadowAction({
   onChange,
 }: ILevelFeatureActionProps<"shadows">): ReactElement {
   const { set, reset } = useLevelFeatureOverride("shadows", features, onChange);
-  const shadows: IRendererShadowSettings = state.value;
+  const shadows: TRenderShadowSettings = state.value;
   const widest: number = shadows.cascades.at(-1) ?? 0;
 
   return (
@@ -62,7 +60,7 @@ export function LevelShadowAction({
         label={"Cascades"}
         options={RENDER_SHADOW_CASCADE_OPTIONS}
         value={String(shadows.cascades.length)}
-        onChange={(count: string) => set({ cascades: RENDERER_SHADOW_CASCADE_WIDTHS.slice(0, Number(count)) })}
+        onChange={(count: string) => set({ cascades: RENDER_SHADOW_CASCADE_WIDTHS.slice(0, Number(count)) })}
       />
 
       <RenderValueChoice

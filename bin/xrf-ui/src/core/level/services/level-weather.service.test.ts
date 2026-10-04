@@ -23,7 +23,7 @@ import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.
 import {
   mockLevelWeatherCycle,
   mockLevelWeatherDescription,
-  mockRendererWeatherReport,
+  mockRenderWeatherReport,
 } from "@/fixtures/mocks/weather.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 
@@ -153,10 +153,10 @@ describe("LevelWeatherService", () => {
 
     expect(service.transition).toBe(ERenderWeatherTransition.CUT);
 
-    service.noteReport(mockRendererWeatherReport({ time: 50_000 }));
+    service.noteReport(mockRenderWeatherReport({ time: 50_000 }));
     service.setSource(ELevelWeatherSource.MANUAL);
 
-    expect(service.manual).toEqual(toLevelManualWeather(mockRendererWeatherReport({ time: 50_000 }).current));
+    expect(service.manual).toEqual(toLevelManualWeather(mockRenderWeatherReport({ time: 50_000 }).current));
     expect(service.seed).toEqual({ cycle: "default_clear", time: 50_000 });
     expect(toKeyframe(service.weather)).not.toBeNull();
     expect(service.transition).toBe(ERenderWeatherTransition.FADE);
@@ -176,8 +176,8 @@ describe("LevelWeatherService", () => {
 
     await service.open(SELECTED);
     service.noteReport(
-      mockRendererWeatherReport({
-        current: { ...mockRendererWeatherReport().current, skyTexture: "sky\\sky_night" },
+      mockRenderWeatherReport({
+        current: { ...mockRenderWeatherReport().current, skyTexture: "sky\\sky_night" },
       })
     );
     service.editManual({ rainDensity: 0.5 });
@@ -209,8 +209,8 @@ describe("LevelWeatherService", () => {
     const shown: Array<ILevelManualWeather> = [];
     const stop: () => void = autorun(() => void shown.push(service.shown));
 
-    service.noteReport(mockRendererWeatherReport());
-    service.noteReport(mockRendererWeatherReport());
+    service.noteReport(mockRenderWeatherReport());
+    service.noteReport(mockRenderWeatherReport());
 
     expect(shown).toHaveLength(2);
 
@@ -218,7 +218,7 @@ describe("LevelWeatherService", () => {
 
     const seen: number = shown.length;
 
-    service.noteReport(mockRendererWeatherReport({ time: 50_000 }));
+    service.noteReport(mockRenderWeatherReport({ time: 50_000 }));
     stop();
 
     expect(shown).toHaveLength(seen);
@@ -227,7 +227,7 @@ describe("LevelWeatherService", () => {
   it("hears the clock from the renderer, and seeks anew every time", () => {
     const service: LevelWeatherService = createService();
 
-    service.noteReport(mockRendererWeatherReport({ time: 50_000 }));
+    service.noteReport(mockRenderWeatherReport({ time: 50_000 }));
 
     expect(service.time).toBe(50_000);
 
@@ -271,7 +271,7 @@ describe("LevelWeatherService", () => {
     });
 
     // The clock heard back is remembered as the level closes.
-    service.noteReport(mockRendererWeatherReport({ time: 9_000, weight: 0.25 }));
+    service.noteReport(mockRenderWeatherReport({ time: 9_000, weight: 0.25 }));
     await service.open(null);
 
     expect(readLevelWeatherMemory(toLevelWeatherMemoryKey(SELECTED.value))?.time).toBe(9_000);

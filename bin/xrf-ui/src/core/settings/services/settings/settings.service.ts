@@ -3,18 +3,22 @@ import { BoundAction, Computed, Observable, RefObservable } from "@wirestate/mob
 import { Nullable } from "@xrf/types";
 
 import { EXrayEngine } from "@/core/ipc/types/xrf-engine-target";
-import { TFrameRateLimit, toFrameRateLimit } from "@/core/render/lib/contract/frame-rate-limit";
-import { ERenderResolution, toRenderResolution } from "@/core/render/lib/contract/render-resolution";
+import { RenderSettings } from "@/core/ipc/types/xrf-renderer";
 import {
-  IRendererFeatureChoice,
-  mergeRendererFeatureOverrides,
-  resolveRendererFeatures,
-  toRendererFeatureChoice,
-} from "@/core/render/lib/contract/renderer-feature-choice";
-import { IRendererFeatureOverrides } from "@/core/render/lib/contract/renderer-feature-overrides";
-import { IRendererFeatureSettings } from "@/core/render/lib/contract/renderer-feature-settings";
-import { ERendererPreset } from "@/core/render/lib/contract/renderer-preset";
-import { IRenderSharedSettings } from "@/core/render/lib/settings/render-shared-settings";
+  IRenderFeatureChoice,
+  mergeRenderFeatureOverrides,
+  resolveRenderFeatures,
+  toRenderFeatureChoice,
+} from "@/core/render/lib/settings/render-feature-choice";
+import { IRenderFeatureOverrides } from "@/core/render/lib/settings/render-feature-overrides";
+import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-feature-settings";
+import {
+  TFrameRateLimit,
+  toFrameRateLimit,
+  toRenderFrameRate,
+} from "@/core/render/lib/settings/render-frame-rate-limit";
+import { ERenderPreset } from "@/core/render/lib/settings/render-preset";
+import { ERenderResolution, toRenderResolution } from "@/core/render/lib/settings/render-resolution";
 import { TCatalogView, toCatalogView } from "@/core/settings/lib/catalog-view";
 import { toXrayEngine } from "@/core/settings/lib/xray-engine";
 import {
@@ -23,7 +27,6 @@ import {
   ENGINE_STORAGE_KEY,
   FRAME_RATE_LIMIT_STORAGE_KEY,
   GPU_TIMED_STORAGE_KEY,
-  LOW_LATENCY_STORAGE_KEY,
   RENDER_RESOLUTION_STORAGE_KEY,
   RENDERER_FEATURES_STORAGE_KEY,
 } from "@/core/storage";
@@ -61,10 +64,6 @@ export class SettingsService {
   @Observable()
   public frameRateLimit: TFrameRateLimit = toFrameRateLimit(getLocalStorageValue(FRAME_RATE_LIMIT_STORAGE_KEY));
 
-  /** Whether frames wait for the GPU to be at most a frame behind, answering input sooner for fewer frames. */
-  @Observable()
-  public isLowLatency: boolean = getLocalStorageValue(LOW_LATENCY_STORAGE_KEY) !== String(false);
-
   /** Whether every viewport times its passes on the GPU: never a preset's, as it costs a frame 1-4% of its rate. */
   @Observable()
   public isGpuTimed: boolean = getLocalStorageValue(GPU_TIMED_STORAGE_KEY) === String(true);
@@ -77,29 +76,25 @@ export class SettingsService {
    * it resolves to crosses to the renderer's thread as plain data.
    */
   @RefObservable()
-  public rendererChoice: IRendererFeatureChoice = SettingsService.readRendererChoice();
+  public rendererChoice: IRenderFeatureChoice = SettingsService.readRendererChoice();
 
   /** Every renderer feature as the choice sets it. */
   @Computed()
-  public get rendererFeatures(): IRendererFeatureSettings {
-    return resolveRendererFeatures(this.rendererChoice);
+  public get rendererFeatures(): IRenderFeatureSettings {
+    return resolveRenderFeatures(this.rendererChoice);
   }
 
-  /** What every viewport draws with alike: its pacing, its timing and its features. */
+  /** What the renderer draws every viewport with: how often, and whether its passes are timed. */
   @Computed()
-  public get sharedRenderSettings(): IRenderSharedSettings {
-    return {
-      features: this.rendererFeatures,
-      isGpuTimed: this.isGpuTimed,
-      pacing: { isLowLatency: this.isLowLatency, rateLimit: this.frameRateLimit },
-    };
+  public get renderSettings(): RenderSettings {
+    return { frameRate: toRenderFrameRate(this.frameRateLimit), isGpuTimed: this.isGpuTimed };
   }
 
   /**
    * @returns The stored choice, or the default where none was stored or it does not parse.
    */
-  private static readRendererChoice(): IRendererFeatureChoice {
-    return toRendererFeatureChoice(parseLocalStorageValueSafe(RENDERER_FEATURES_STORAGE_KEY));
+  private static readRendererChoice(): IRenderFeatureChoice {
+    return toRenderFeatureChoice(parseLocalStorageValueSafe(RENDERER_FEATURES_STORAGE_KEY));
   }
 
   /**
@@ -146,14 +141,6 @@ export class SettingsService {
   }
 
   @BoundAction()
-  public setLowLatency(isLowLatency: boolean): void {
-    this.log.info("Set low latency:", isLowLatency);
-
-    this.isLowLatency = isLowLatency;
-    setLocalStorageValue(LOW_LATENCY_STORAGE_KEY, String(isLowLatency));
-  }
-
-  @BoundAction()
   public setGpuTimed(isGpuTimed: boolean): void {
     this.log.info("Set GPU timing:", isGpuTimed);
 
@@ -173,7 +160,7 @@ export class SettingsService {
    * @param preset - The preset every feature follows from now on, whatever was changed on top of the last one.
    */
   @BoundAction()
-  public setRendererPreset(preset: ERendererPreset): void {
+  public setRendererPreset(preset: ERenderPreset): void {
     this.log.info("Set renderer preset:", preset);
 
     this.storeRendererChoice({ overrides: {}, preset });
@@ -183,9 +170,9 @@ export class SettingsService {
    * @param overrides - What changes on top of the preset, merged over what already did.
    */
   @BoundAction()
-  public setRendererOverrides(overrides: IRendererFeatureOverrides): void {
+  public setRendererOverrides(overrides: IRenderFeatureOverrides): void {
     this.storeRendererChoice({
-      overrides: mergeRendererFeatureOverrides(this.rendererChoice.overrides, overrides),
+      overrides: mergeRenderFeatureOverrides(this.rendererChoice.overrides, overrides),
       preset: this.rendererChoice.preset,
     });
   }
@@ -198,8 +185,8 @@ export class SettingsService {
     setLocalStorageValue(CATALOG_VIEW_STORAGE_KEY, view);
   }
 
-  private storeRendererChoice(choice: IRendererFeatureChoice): void {
-    this.rendererChoice = toRendererFeatureChoice(choice);
+  private storeRendererChoice(choice: IRenderFeatureChoice): void {
+    this.rendererChoice = toRenderFeatureChoice(choice);
     setLocalStorageValueSafe(RENDERER_FEATURES_STORAGE_KEY, JSON.stringify(this.rendererChoice));
   }
 }

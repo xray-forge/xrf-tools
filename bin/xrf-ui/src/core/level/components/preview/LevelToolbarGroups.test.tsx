@@ -1,6 +1,7 @@
 import { describe, expect, it, jest } from "@jest/globals";
 import { userEvent } from "@testing-library/user-event";
 
+import { ERenderDebugView } from "@/core/ipc/types/xrf-renderer";
 import { LevelCullingAction } from "@/core/level/components/preview/LevelCullingAction";
 import { LevelOcclusionAction } from "@/core/level/components/preview/LevelOcclusionAction";
 import { LevelOverlaysAction } from "@/core/level/components/preview/LevelOverlaysAction";
@@ -9,8 +10,7 @@ import { LevelSurfacesAction } from "@/core/level/components/preview/LevelSurfac
 import { ILevelFeatureOptions } from "@/core/level/lib/features";
 import { DEFAULT_LEVEL_LOD_OPTIONS } from "@/core/level/lib/lod/level-lod-options";
 import { DEFAULT_LEVEL_VIEW_OPTIONS, ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
-import { DEFAULT_RENDERER_AMBIENT_OCCLUSION_SETTINGS } from "@/core/render/lib/contract/renderer-ambient-occlusion-settings";
-import { ERendererDebugView } from "@/core/render/lib/contract/renderer-debug-view";
+import { DEFAULT_RENDER_AMBIENT_OCCLUSION_SETTINGS } from "@/core/render/lib/settings/render-feature-defaults";
 import { mockLevelFeatureOptions } from "@/fixtures/mocks/level.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
@@ -86,7 +86,7 @@ describe("level toolbar groups", () => {
     const { getByRole, findByRole } = renderWithProviders(
       <LevelOcclusionAction
         options={DEFAULT_LEVEL_VIEW_OPTIONS}
-        state={{ isAvailable: true, value: DEFAULT_RENDERER_AMBIENT_OCCLUSION_SETTINGS }}
+        state={{ isAvailable: true, value: DEFAULT_RENDER_AMBIENT_OCCLUSION_SETTINGS }}
         features={{ ...mockLevelFeatureOptions(), ambientOcclusion: { radius: 2 } }}
         hemiStrength={0.5}
         onToggle={() => {}}
@@ -110,7 +110,7 @@ describe("level toolbar groups", () => {
       <LevelOverlaysAction
         options={{ ...DEFAULT_LEVEL_VIEW_OPTIONS, isAxesVisible: true }}
         isGpuTimed={false}
-        debugView={ERendererDebugView.FINAL}
+        debugView={ERenderDebugView.FINAL}
         onToggle={() => {}}
         onChangeGpuTimed={onChangeGpuTimed}
         onChangeDebugView={() => {}}
@@ -126,12 +126,12 @@ describe("level toolbar groups", () => {
   });
 
   it("shows one of the frame's targets instead of the frame", async () => {
-    const onChangeDebugView = jest.fn<(debugView: ERendererDebugView) => void>();
+    const onChangeDebugView = jest.fn<(debugView: ERenderDebugView) => void>();
     const { getByRole, findByRole } = renderWithProviders(
       <LevelOverlaysAction
         options={DEFAULT_LEVEL_VIEW_OPTIONS}
         isGpuTimed={false}
-        debugView={ERendererDebugView.FINAL}
+        debugView={ERenderDebugView.FINAL}
         onToggle={() => {}}
         onChangeGpuTimed={() => {}}
         onChangeDebugView={onChangeDebugView}
@@ -142,6 +142,6 @@ describe("level toolbar groups", () => {
     await findByRole("dialog", { name: "Overlays" });
     await userEvent.click(getByRole("option", { name: "Depth" }));
 
-    expect(onChangeDebugView).toHaveBeenCalledWith(ERendererDebugView.DEPTH);
+    expect(onChangeDebugView).toHaveBeenCalledWith(ERenderDebugView.DEPTH);
   });
 });

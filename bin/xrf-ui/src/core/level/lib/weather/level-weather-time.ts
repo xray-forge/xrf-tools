@@ -1,4 +1,4 @@
-import { toWeatherTimeOfDay } from "@/core/render/lib/contract/weather-day";
+import { toWeatherTimeOfDay } from "@/core/level/lib/weather/weather-day";
 
 /**
  * @param seconds - Seconds since midnight.

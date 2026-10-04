@@ -5,8 +5,10 @@ import { ReactElement } from "react";
 import { LevelGrassAction } from "@/core/level/components/preview/LevelGrassAction";
 import { LevelLightsAction } from "@/core/level/components/preview/LevelLightsAction";
 import { ILevelFeatureOptions, TLevelFeatureKey } from "@/core/level/lib/features";
-import { DEFAULT_RENDERER_GRASS_SETTINGS } from "@/core/render/lib/contract/renderer-grass-settings";
-import { DEFAULT_RENDERER_LIGHTS_SETTINGS } from "@/core/render/lib/contract/renderer-lights-settings";
+import {
+  DEFAULT_RENDER_GRASS_SETTINGS,
+  DEFAULT_RENDER_LIGHTS_SETTINGS,
+} from "@/core/render/lib/settings/render-feature-defaults";
 import { mockLevelFeatureOptions } from "@/fixtures/mocks/level.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
@@ -25,7 +27,7 @@ const CASES: ReadonlyArray<IFeatureActionCase> = [
     render: (isAvailable, onChange) => (
       <LevelGrassAction
         isOn
-        state={{ isAvailable, value: DEFAULT_RENDERER_GRASS_SETTINGS }}
+        state={{ isAvailable, value: DEFAULT_RENDER_GRASS_SETTINGS }}
         features={{ ...mockLevelFeatureOptions(), grass: { radius: 80 } }}
         onToggle={() => {}}
         onChange={onChange}
@@ -39,7 +41,7 @@ const CASES: ReadonlyArray<IFeatureActionCase> = [
     render: (isAvailable, onChange) => (
       <LevelLightsAction
         isOn
-        state={{ isAvailable, value: DEFAULT_RENDERER_LIGHTS_SETTINGS }}
+        state={{ isAvailable, value: DEFAULT_RENDER_LIGHTS_SETTINGS }}
         features={{ ...mockLevelFeatureOptions(), lights: { isShadowed: false } }}
         onToggle={() => {}}
         onChange={onChange}
