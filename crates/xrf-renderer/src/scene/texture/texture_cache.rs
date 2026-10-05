@@ -2,6 +2,7 @@ use std::borrow::Borrow;
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::num::NonZeroU32;
 use std::sync::Arc;
+use std::sync::Mutex;
 use std::sync::mpsc::{Receiver, Sender, channel};
 
 use crate::contract::render_texture_report::RenderTextureReport;
@@ -60,7 +61,8 @@ pub struct TextureCache {
   /// Slots freed, taken again before the array grows.
   free: Vec<u32>,
   sender: Sender<TextureLoad>,
-  receiver: Receiver<TextureLoad>,
+  /// Behind a lock only so the cache is shared by the passes a frame records; read with `&mut self`, never locked.
+  receiver: Mutex<Receiver<TextureLoad>>,
   /// Loaded, waiting for a frame's upload budget, each beside the generation it was asked under.
   uploads: VecDeque<(u32, u32, DecodedTexture)>,
   capacity: u32,
@@ -140,7 +142,7 @@ impl TextureCache {
       sizes: vec![0],
       free: Vec::new(),
       sender,
-      receiver,
+      receiver: Mutex::new(receiver),
       uploads: VecDeque::new(),
       capacity,
       is_dirty: false,
@@ -337,7 +339,7 @@ impl TextureCache {
 
   /// Takes what the loaders finished and uploads it, within a frame's budget, then rebinds the array if a slot changed.
   pub fn update(&mut self, device: &wgpu::Device, queue: &wgpu::Queue) {
-    while let Ok((slot, generation, load)) = self.receiver.try_recv() {
+    while let Ok((slot, generation, load)) = self.receiver.get_mut().expect("texture loads lock").try_recv() {
       if self.generations.get(slot as usize) != Some(&generation) {
         continue;
       }

@@ -1,11 +1,12 @@
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use glam::{Mat4, Vec2, Vec3, Vec4};
 use xrf_engine_target::XrayEngine;
 use xrf_error::XrfResult;
 use xrf_material::XraySurfaceDraw;
+use xrf_renderer_core::{ExecutedGraph, FrameGraph, GraphBindings, GraphCompileOptions, GraphRuntime};
 
 use xrf_math::EPS_S;
 
@@ -28,7 +29,6 @@ use crate::contract::render_load_report::RenderLoadReport;
 use crate::contract::render_model_pose::RenderModelPose;
 use crate::contract::render_overlay::RenderOverlay;
 use crate::contract::render_particles_report::RenderParticlesReport;
-use crate::contract::render_pass_cost::RenderPassCost;
 use crate::contract::render_pool_use::RenderPoolUse;
 use crate::contract::render_rect::RenderRect;
 use crate::contract::render_sector_skip::RenderSectorSkip;
@@ -44,7 +44,6 @@ use crate::contract::render_view_options::RenderViewOptions;
 use crate::contract::render_water_settings::RenderWaterSettings;
 use crate::frame::depth_pyramid::DepthPyramid;
 use crate::frame::fsr_targets::FsrTargets;
-use crate::frame::pass_timer::PassTimer;
 use crate::frame::pick_target::PickTarget;
 use crate::frame::smaa_targets::SmaaTargets;
 use crate::frame::smoothing_target::SmoothingTarget;
@@ -273,7 +272,6 @@ pub struct LevelView {
   params: StaticCullParams,
   stats: StatsReadback,
   /// What each pass of its frames cost on the GPU, while timed.
-  timer: PassTimer,
   pick_target: Option<PickTarget>,
   pick_view: Option<ViewBinding>,
   surfaces: SurfaceTally,
@@ -406,7 +404,6 @@ impl LevelView {
       exposure: ViewExposure::new(device, queue),
       params: StaticCullParams::default(),
       stats: StatsReadback::new(device),
-      timer: PassTimer::new(device, queue),
       pick_target: None,
       pick_view: None,
       surfaces: SurfaceTally::default(),
@@ -1207,285 +1204,481 @@ impl LevelView {
     ));
   }
 
-  /// Culls the scene and draws it into the G-buffer: what last frame's depth does not hide, then, culling occlusion,
-  /// what this frame's first draw does not hide of the rest, leaving this frame's depth reduced for the next.
+  /// Records the frame as a frame graph of bridge passes, each the pass it was before the graph, and executes it with
+  /// the viewport's runtime: culls the scene and draws it into the G-buffer (what last frame's depth does not hide,
+  /// then, culling occlusion, what this frame's first draw does not hide of the rest, leaving this frame's depth reduced
+  /// for the next), shadows and lights it, draws the water and what blends over it, and resolves the frame. Which
+  /// passes run is decided here; each bridge reaches the view through one lock, as they record one after another.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the graph cannot compile or execute, which a frame of bridges should never meet.
   #[allow(clippy::too_many_arguments)]
   pub fn record(
     &mut self,
+    runtime: &mut GraphRuntime,
     device: &wgpu::Device,
     queue: &wgpu::Queue,
-    encoder: &mut wgpu::CommandEncoder,
     passes: LevelPasses<'_>,
     view_layout: &wgpu::BindGroupLayout,
     view: &ViewBinding,
     textures: &TextureCache,
-  ) {
-    let (Some(targets), Some((pyramid, pyramid_groups)), Some((_, cull_group)), Some((_, draw_groups))) =
-      (&self.targets, &self.pyramid, &self.cull_group, &self.draw_groups)
-    else {
-      return;
-    };
-    let texture_group: &wgpu::BindGroup = textures.get_bind_group();
+  ) -> XrfResult<Option<ExecutedGraph>> {
+    if self.targets.is_none() || self.pyramid.is_none() || self.cull_group.is_none() || self.draw_groups.is_none() {
+      return Ok(None);
+    }
 
-    targets.clear_distortion(encoder);
+    let is_occluding: bool = self.params.is_occluding != 0;
 
-    // The draw arguments a forward pass replays: the early phase's, and the late phase's where occlusion culls.
-    let list_args: Vec<&wgpu::Buffer> = if self.params.is_occluding != 0 {
-      vec![&self.scene.args, &self.scene.late]
-    } else {
-      vec![&self.scene.args]
-    };
-    let timer: &mut PassTimer = &mut self.timer;
-
-    timer.begin(encoder);
-    self.grass.plant(encoder, passes.grass);
-    timer.mark(encoder, "grass planting");
-    passes.cull.dispatch_early(encoder, view, cull_group, &self.params);
-    timer.mark(encoder, "cull");
-    passes.gbuffer.draw(
-      encoder,
-      targets,
-      view,
-      draw_groups,
-      texture_group,
-      &self.scene.args,
-      true,
-    );
-    timer.mark(encoder, "g-buffer");
-
-    if self.params.is_occluding != 0 {
-      passes.pyramid.dispatch(encoder, pyramid, pyramid_groups);
-      passes.cull.dispatch_late(encoder, view, cull_group, &self.scene);
-      passes.gbuffer.draw(
-        encoder,
-        targets,
-        view,
-        draw_groups,
-        texture_group,
-        &self.scene.late,
-        false,
-      );
+    if is_occluding {
       self.history = Some(self.frame_view);
-      timer.mark(encoder, "occlusion");
     }
 
-    self.stats.record(encoder, &self.scene.args, StaticScene::STATS_OFFSET);
-    if !self.is_wireframe {
-      self.grass.draw(encoder, passes.grass, (targets, view), texture_group);
-      timer.mark(encoder, "grass");
-    }
+    let is_drawn: bool = !self.is_wireframe;
+    let is_wallmarked: bool = self.is_wallmarked && is_drawn;
+    let is_raining: bool = self.rain_draw.is_some();
+    let is_wet: bool = is_raining && self.wet_groups.is_some();
+    let is_lit: bool = self.light_groups.is_some();
+    let has_lights: bool = self.lights.get_count() > 0;
+    let is_occlusion_ambient: bool = self.ambient_occlusion.is_enabled;
+    let has_sky: bool = self.sky_group.is_some();
+    let is_hazing: bool = has_sky && self.is_hazing;
+    let is_composited: bool = is_drawn && has_sky;
+    let has_particles: bool = is_drawn && self.particles.is_drawing();
+    let is_shafted: bool = self.is_shafted;
+    let is_rain_drawn: bool = is_raining && self.rain_group.is_some();
+    let is_thundering: bool = self.thunder_draw.is_some() && self.thunder_groups.is_some();
+    let is_bloomed: bool = self.is_bloomed && self.bloom_groups.is_some();
+    let is_smoothed: bool = self.smoothing.is_some();
+    let resolve: Option<&'static str> = if self.fsr.is_some() {
+      Some("fsr2")
+    } else if self.temporal.is_some() {
+      Some("temporal")
+    } else if self.upscale.is_some() {
+      Some("upscale")
+    } else {
+      None
+    };
+    let is_sharpened: bool = self.upscale.is_some() && self.upscaling.is_sharpened();
+    let is_adapting: bool = self.exposure.is_adapting();
+    let texture_group: &wgpu::BindGroup = textures.get_bind_group();
+    let cell: Mutex<&mut LevelView> = Mutex::new(self);
+    let mut graph: FrameGraph<'_> = FrameGraph::new();
 
-    if self.is_wallmarked && !self.is_wireframe {
-      passes
-        .composited
-        .draw_wallmarks(encoder, targets, view, draw_groups, texture_group, &list_args);
-      timer.mark(encoder, "wall marks");
-    }
+    // A bridge pass recording as the frame did before the graph, the view reached through the cell.
+    macro_rules! bridge {
+      ($name:literal, |$level:ident, $encoder:ident, $marker:ident| $body:block) => {
+        graph.add_encoder_pass($name).bridge().record(|context| {
+          let mut guard = cell.lock().expect("level view lock");
+          let $level: &mut LevelView = &mut guard;
+          let ($encoder, $marker) = context.split();
+          let _ = &$marker;
 
-    if let Some((pyramid, _)) = &self.pyramid {
-      let frame: ShadowFrame<'_> = ShadowFrame {
-        scene: &self.scene,
-        camera: &self.frame_camera,
-        settings: &self.shadow_settings,
-        sun_direction: self.frame_sun,
-        sway: to_sway(&self.scene, self.frame_sway),
-        cull_params: &self.cull_params,
-        params: &self.params,
-        pyramid: &pyramid.view,
-        occlusion: &self.occlusion,
-        targets_epoch: self.targets_epoch,
-        textures,
+          $body
+        });
       };
-
-      self.shadows.record(device, queue, encoder, passes, view_layout, &frame);
-      timer.mark(encoder, "sun shadows");
-
-      if self.rain_draw.is_some() {
-        self.rain_cover.record(device, queue, encoder, passes, &frame);
-        timer.mark(encoder, "rain cover");
-      }
-
-      self.lights.record_shadows(device, queue, encoder, passes, &frame);
-      timer.mark(encoder, "light shadows");
     }
 
-    // The rain wets the G-buffer before any light is drawn over it.
-    if self.rain_draw.is_some()
-      && let Some((_, wet_groups)) = &self.wet_groups
-    {
-      passes.wet.draw(encoder, targets, view, wet_groups);
-      timer.mark(encoder, "wet");
-    }
-
-    if let Some((_, groups)) = &self.light_groups {
-      passes.sun.draw(encoder, targets, view, &groups.sun);
-      timer.mark(encoder, "sun");
-
-      self.lights.clear_overflow(encoder);
-
-      if self.lights.get_count() > 0 {
-        passes
-          .lights
-          .draw(encoder, targets, view, &groups.lights, textures.get_bind_group());
-        timer.mark(encoder, "lights");
+    bridge!("grass planting", |level, encoder, marker| {
+      if let Some(targets) = &level.targets {
+        targets.clear_distortion(encoder);
       }
 
-      self.lights.record_overflow(encoder);
-
-      if self.ambient_occlusion.is_enabled {
-        passes.ambient_occlusion.draw(
-          encoder,
-          targets,
-          view,
-          &groups.occlusion,
-          self.ambient_occlusion.quality,
-        );
-        timer.mark(encoder, "ambient occlusion");
+      level.grass.plant(encoder, passes.grass);
+    });
+    bridge!("cull", |level, encoder, marker| {
+      if let Some((_, cull_group)) = &level.cull_group {
+        passes.cull.dispatch_early(encoder, view, cull_group, &level.params);
       }
-
-      if let Some((_, sky_group)) = &self.sky_group {
-        if self.is_hazing {
-          passes.sky_haze.draw(encoder, targets, &groups.haze, sky_group);
-          timer.mark(encoder, "haze");
-        }
-
-        passes.combine.draw(encoder, targets, view, &groups.combine, sky_group);
-        timer.mark(encoder, "combine");
-      }
-
-      // FSR 2's reactive mask is what the water and the blended surfaces change of the frame drawn so far.
-      if let Some((fsr, _)) = &self.fsr {
-        encoder.copy_texture_to_texture(
-          targets.scene_texture.as_image_copy(),
-          fsr.opaque_texture.as_image_copy(),
-          fsr.opaque_texture.size(),
-        );
-      }
-
-      self.water.record(
-        encoder,
-        passes.water,
-        targets,
-        (view, draw_groups, texture_group),
-        &list_args,
-        timer,
-      );
-
-      if !self.is_wireframe
-        && let Some((_, sky_group)) = &self.sky_group
-      {
-        passes.composited.draw(
+    });
+    bridge!("g-buffer", |level, encoder, marker| {
+      if let (Some(targets), Some((_, draw_groups))) = (&level.targets, &level.draw_groups) {
+        passes.gbuffer.draw(
           encoder,
           targets,
           view,
           draw_groups,
           texture_group,
-          (&groups.composited, sky_group),
-          &list_args,
-          (self.sorted_group.as_ref().map(|(_, group)| group), self.sorted_count),
+          &level.scene.args,
+          true,
         );
-        timer.mark(encoder, "composited");
+      }
+    });
+
+    if is_occluding {
+      bridge!("occlusion", |level, encoder, marker| {
+        if let (Some(targets), Some((pyramid, pyramid_groups)), Some((_, cull_group)), Some((_, draw_groups))) =
+          (&level.targets, &level.pyramid, &level.cull_group, &level.draw_groups)
+        {
+          passes.pyramid.dispatch(encoder, pyramid, pyramid_groups);
+          passes.cull.dispatch_late(encoder, view, cull_group, &level.scene);
+          passes.gbuffer.draw(
+            encoder,
+            targets,
+            view,
+            draw_groups,
+            texture_group,
+            &level.scene.late,
+            false,
+          );
+        }
+      });
+    }
+
+    bridge!("stats", |level, encoder, marker| {
+      level
+        .stats
+        .record(encoder, &level.scene.args, StaticScene::STATS_OFFSET);
+    });
+
+    if is_drawn {
+      bridge!("grass", |level, encoder, marker| {
+        if let Some(targets) = &level.targets {
+          level.grass.draw(encoder, passes.grass, (targets, view), texture_group);
+        }
+      });
+    }
+
+    if is_wallmarked {
+      bridge!("wall marks", |level, encoder, marker| {
+        if let (Some(targets), Some((_, draw_groups))) = (&level.targets, &level.draw_groups) {
+          passes.composited.draw_wallmarks(
+            encoder,
+            targets,
+            view,
+            draw_groups,
+            texture_group,
+            &Self::list_draw_args(&level.scene, &level.params),
+          );
+        }
+      });
+    }
+
+    bridge!("shadows", |level, encoder, marker| {
+      let LevelView {
+        scene,
+        frame_camera,
+        shadow_settings,
+        frame_sun,
+        frame_sway,
+        cull_params,
+        params,
+        pyramid,
+        occlusion,
+        targets_epoch,
+        shadows,
+        rain_cover,
+        lights,
+        ..
+      } = &mut *level;
+      let Some((pyramid, _)) = pyramid.as_ref() else {
+        return;
+      };
+      let frame: ShadowFrame<'_> = ShadowFrame {
+        scene,
+        camera: frame_camera,
+        settings: shadow_settings,
+        sun_direction: *frame_sun,
+        sway: to_sway(scene, *frame_sway),
+        cull_params,
+        params,
+        pyramid: &pyramid.view,
+        occlusion,
+        targets_epoch: *targets_epoch,
+        textures,
+      };
+
+      shadows.record(device, queue, encoder, passes, view_layout, &frame);
+      marker.mark(encoder, "sun shadows");
+
+      if is_raining {
+        rain_cover.record(device, queue, encoder, passes, &frame);
+        marker.mark(encoder, "rain cover");
       }
 
-      if !self.is_wireframe
-        && self
-          .particles
-          .record(encoder, passes.particles, targets, view, texture_group)
-      {
-        timer.mark(encoder, "particles");
-      }
+      lights.record_shadows(device, queue, encoder, passes, &frame);
+      marker.mark(encoder, "light shadows");
+    });
 
-      if self.is_shafted {
-        passes.sun_shafts.draw(encoder, targets, view, &groups.sun_shafts);
-        timer.mark(encoder, "sun shafts");
-      }
+    // The rain wets the G-buffer before any light is drawn over it.
+    if is_wet {
+      bridge!("wet", |level, encoder, marker| {
+        if let (Some(targets), Some((_, wet_groups))) = (&level.targets, &level.wet_groups) {
+          passes.wet.draw(encoder, targets, view, wet_groups);
+        }
+      });
+    }
 
-      if let (Some(counts), Some((_, rain_group))) = (self.rain_draw, &self.rain_group) {
-        passes.rain.draw(encoder, targets, view, rain_group, counts);
-        timer.mark(encoder, "rain");
-      }
-
-      if let (Some(draws), Some((_, thunder_groups))) = (self.thunder_draw, &self.thunder_groups) {
-        passes.thunder.draw(encoder, targets, view, thunder_groups, draws);
-        timer.mark(encoder, "thunder");
-      }
-
-      self.flares.record(encoder, passes.flares, targets, view);
-      timer.mark(encoder, "flares");
-
-      if self.is_bloomed
-        && let Some((_, groups)) = &self.bloom_groups
-      {
-        passes.bloom.draw(encoder, targets, groups);
-        timer.mark(encoder, "bloom");
-      }
-
-      if let Some(smoothing) = &self.smoothing {
-        let target: &SmoothingTarget = &smoothing.target;
-
-        match (&smoothing.smaa, passes.smaa) {
-          (Some(smaa), Some(pass)) => pass.draw(encoder, smaa, &smoothing.groups, &target.view),
-          _ => passes.fxaa.draw(encoder, &smoothing.groups[0], &target.view),
+    if is_lit {
+      bridge!("sun", |level, encoder, marker| {
+        if let (Some(targets), Some((_, groups))) = (&level.targets, &level.light_groups) {
+          passes.sun.draw(encoder, targets, view, &groups.sun);
         }
 
-        encoder.copy_texture_to_texture(
-          target.texture.as_image_copy(),
-          targets.scene_texture.as_image_copy(),
-          target.texture.size(),
+        level.lights.clear_overflow(encoder);
+
+        if !has_lights {
+          level.lights.record_overflow(encoder);
+        }
+      });
+
+      if has_lights {
+        bridge!("lights", |level, encoder, marker| {
+          if let (Some(targets), Some((_, groups))) = (&level.targets, &level.light_groups) {
+            passes
+              .lights
+              .draw(encoder, targets, view, &groups.lights, texture_group);
+          }
+
+          level.lights.record_overflow(encoder);
+        });
+      }
+
+      if is_occlusion_ambient {
+        bridge!("ambient occlusion", |level, encoder, marker| {
+          if let (Some(targets), Some((_, groups))) = (&level.targets, &level.light_groups) {
+            passes.ambient_occlusion.draw(
+              encoder,
+              targets,
+              view,
+              &groups.occlusion,
+              level.ambient_occlusion.quality,
+            );
+          }
+        });
+      }
+
+      if is_hazing {
+        bridge!("haze", |level, encoder, marker| {
+          if let (Some(targets), Some((_, groups)), Some((_, sky_group))) =
+            (&level.targets, &level.light_groups, &level.sky_group)
+          {
+            passes.sky_haze.draw(encoder, targets, &groups.haze, sky_group);
+          }
+        });
+      }
+
+      if has_sky {
+        bridge!("combine", |level, encoder, marker| {
+          if let (Some(targets), Some((_, groups)), Some((_, sky_group))) =
+            (&level.targets, &level.light_groups, &level.sky_group)
+          {
+            passes.combine.draw(encoder, targets, view, &groups.combine, sky_group);
+          }
+        });
+      }
+
+      bridge!("water", |level, encoder, marker| {
+        let args: Vec<&wgpu::Buffer> = Self::list_draw_args(&level.scene, &level.params);
+        let (Some(targets), Some((_, draw_groups))) = (&level.targets, &level.draw_groups) else {
+          return;
+        };
+
+        // FSR 2's reactive mask is what the water and the blended surfaces change of the frame drawn so far.
+        if let Some((fsr, _)) = &level.fsr {
+          encoder.copy_texture_to_texture(
+            targets.scene_texture.as_image_copy(),
+            fsr.opaque_texture.as_image_copy(),
+            fsr.opaque_texture.size(),
+          );
+        }
+
+        level.water.record(
+          encoder,
+          passes.water,
+          targets,
+          (view, draw_groups, texture_group),
+          &args,
+          marker,
         );
-        timer.mark(encoder, "smoothing");
+      });
+
+      if is_composited {
+        bridge!("composited", |level, encoder, marker| {
+          let args: Vec<&wgpu::Buffer> = Self::list_draw_args(&level.scene, &level.params);
+
+          if let (Some(targets), Some((_, draw_groups)), Some((_, groups)), Some((_, sky_group))) = (
+            &level.targets,
+            &level.draw_groups,
+            &level.light_groups,
+            &level.sky_group,
+          ) {
+            passes.composited.draw(
+              encoder,
+              targets,
+              view,
+              draw_groups,
+              texture_group,
+              (&groups.composited, sky_group),
+              &args,
+              (level.sorted_group.as_ref().map(|(_, group)| group), level.sorted_count),
+            );
+          }
+        });
+      }
+
+      if has_particles {
+        bridge!("particles", |level, encoder, marker| {
+          if let Some(targets) = &level.targets {
+            level
+              .particles
+              .record(encoder, passes.particles, targets, view, texture_group);
+          }
+        });
+      }
+
+      if is_shafted {
+        bridge!("sun shafts", |level, encoder, marker| {
+          if let (Some(targets), Some((_, groups))) = (&level.targets, &level.light_groups) {
+            passes.sun_shafts.draw(encoder, targets, view, &groups.sun_shafts);
+          }
+        });
+      }
+
+      if is_rain_drawn {
+        bridge!("rain", |level, encoder, marker| {
+          if let (Some(targets), Some(counts), Some((_, rain_group))) =
+            (&level.targets, level.rain_draw, &level.rain_group)
+          {
+            passes.rain.draw(encoder, targets, view, rain_group, counts);
+          }
+        });
+      }
+
+      if is_thundering {
+        bridge!("thunder", |level, encoder, marker| {
+          if let (Some(targets), Some(draws), Some((_, thunder_groups))) =
+            (&level.targets, level.thunder_draw, &level.thunder_groups)
+          {
+            passes.thunder.draw(encoder, targets, view, thunder_groups, draws);
+          }
+        });
+      }
+
+      bridge!("flares", |level, encoder, marker| {
+        if let Some(targets) = &level.targets {
+          level.flares.record(encoder, passes.flares, targets, view);
+        }
+      });
+
+      if is_bloomed {
+        bridge!("bloom", |level, encoder, marker| {
+          if let (Some(targets), Some((_, groups))) = (&level.targets, &level.bloom_groups) {
+            passes.bloom.draw(encoder, targets, groups);
+          }
+        });
+      }
+
+      if is_smoothed {
+        bridge!("smoothing", |level, encoder, marker| {
+          let (Some(targets), Some(smoothing)) = (&level.targets, &level.smoothing) else {
+            return;
+          };
+          let target: &SmoothingTarget = &smoothing.target;
+
+          match (&smoothing.smaa, passes.smaa) {
+            (Some(smaa), Some(pass)) => pass.draw(encoder, smaa, &smoothing.groups, &target.view),
+            _ => passes.fxaa.draw(encoder, &smoothing.groups[0], &target.view),
+          }
+
+          encoder.copy_texture_to_texture(
+            target.texture.as_image_copy(),
+            targets.scene_texture.as_image_copy(),
+            target.texture.size(),
+          );
+        });
       }
 
       // The resolved frame goes where the present pass reads it: the upscaled frame, or the scene drawn at its size.
-      if let Some((fsr, groups)) = &mut self.fsr {
-        let resolved: &wgpu::Texture = self
-          .upscale
-          .as_ref()
-          .map_or(&targets.scene_texture, |(upscale, _)| &upscale.textures[0]);
-        let history: &wgpu::Texture = &fsr.history_textures[fsr.index];
+      match resolve {
+        Some("fsr2") => {
+          bridge!("fsr2", |level, encoder, marker| {
+            let LevelView {
+              targets, fsr, upscale, ..
+            } = &mut *level;
+            let (Some(targets), Some((fsr, groups))) = (targets.as_ref(), fsr.as_mut()) else {
+              return;
+            };
+            let resolved: &wgpu::Texture = upscale
+              .as_ref()
+              .map_or(&targets.scene_texture, |(upscale, _)| &upscale.textures[0]);
+            let history: &wgpu::Texture = &fsr.history_textures[fsr.index];
 
-        passes
-          .fsr
-          .draw(encoder, fsr, groups, &mut |encoder, name| timer.mark(encoder, name));
-        encoder.copy_texture_to_texture(history.as_image_copy(), resolved.as_image_copy(), history.size());
-        fsr.swap();
-        timer.mark(encoder, "fsr2 output");
-      } else if let Some((history, groups)) = &mut self.temporal {
-        let index: usize = history.index;
-        let resolved: &wgpu::Texture = self
-          .upscale
-          .as_ref()
-          .map_or(&targets.scene_texture, |(upscale, _)| &upscale.textures[0]);
+            passes
+              .fsr
+              .draw(encoder, fsr, groups, &mut |encoder, name| marker.mark(encoder, name));
+            encoder.copy_texture_to_texture(history.as_image_copy(), resolved.as_image_copy(), history.size());
+            fsr.swap();
+            marker.mark(encoder, "fsr2 output");
+          });
+        }
+        Some("temporal") => {
+          bridge!("temporal", |level, encoder, marker| {
+            let LevelView {
+              targets,
+              temporal,
+              upscale,
+              ..
+            } = &mut *level;
+            let (Some(targets), Some((history, groups))) = (targets.as_ref(), temporal.as_mut()) else {
+              return;
+            };
+            let index: usize = history.index;
+            let resolved: &wgpu::Texture = upscale
+              .as_ref()
+              .map_or(&targets.scene_texture, |(upscale, _)| &upscale.textures[0]);
 
-        passes
-          .temporal
-          .draw(encoder, view, &groups[index], &history.views[index]);
-        encoder.copy_texture_to_texture(
-          history.textures[index].as_image_copy(),
-          resolved.as_image_copy(),
-          history.textures[index].size(),
-        );
-        history.swap();
-        timer.mark(encoder, "temporal");
-      } else if let Some((upscale, groups)) = &self.upscale {
-        passes.upscale.draw_easu(encoder, upscale, &groups[0]);
-        timer.mark(encoder, "upscale");
+            passes
+              .temporal
+              .draw(encoder, view, &groups[index], &history.views[index]);
+            encoder.copy_texture_to_texture(
+              history.textures[index].as_image_copy(),
+              resolved.as_image_copy(),
+              history.textures[index].size(),
+            );
+            history.swap();
+          });
+        }
+        Some(_) => {
+          bridge!("upscale", |level, encoder, marker| {
+            if let Some((upscale, groups)) = &level.upscale {
+              passes.upscale.draw_easu(encoder, upscale, &groups[0]);
+            }
+          });
+        }
+        None => {}
       }
 
-      if let Some((upscale, groups)) = &self.upscale
-        && self.upscaling.is_sharpened()
-      {
-        passes.upscale.draw_rcas(encoder, upscale, &groups[1]);
-        timer.mark(encoder, "sharpen");
+      if is_sharpened {
+        bridge!("sharpen", |level, encoder, marker| {
+          if let Some((upscale, groups)) = &level.upscale {
+            passes.upscale.draw_rcas(encoder, upscale, &groups[1]);
+          }
+        });
       }
 
-      if self.exposure.is_adapting() {
-        passes.exposure.dispatch(encoder, &groups.exposure);
-        timer.mark(encoder, "exposure");
+      if is_adapting {
+        bridge!("exposure", |level, encoder, marker| {
+          if let Some((_, groups)) = &level.light_groups {
+            passes.exposure.dispatch(encoder, &groups.exposure);
+          }
+        });
       }
     }
 
-    timer.finish(encoder);
+    graph
+      .compile(&GraphCompileOptions::default())?
+      .execute(device, runtime, &GraphBindings::new())
+      .map(Some)
+  }
+
+  /// The draw arguments a forward pass replays: the early phase's, and the late phase's where occlusion culls.
+  fn list_draw_args<'s>(scene: &'s StaticScene, params: &StaticCullParams) -> Vec<&'s wgpu::Buffer> {
+    if params.is_occluding != 0 {
+      vec![&scene.args, &scene.late]
+    } else {
+      vec![&scene.args]
+    }
   }
 
   /// Draws the frame's visible clusters into a pick's texel, through the frame's camera narrowed to it.
@@ -1879,26 +2072,10 @@ impl LevelView {
     }
   }
 
-  /// Asks for the counts and pass timestamps recorded with the frame just submitted.
+  /// Asks for the counts recorded with the frame just submitted.
   pub fn request_stats(&self) {
     self.stats.request();
-    self.timer.request();
     self.lights.request_report();
-  }
-
-  /// Times each pass of its frames on the GPU, where the device can.
-  pub fn set_timed(&mut self, is_timed: bool) {
-    self.timer.set_enabled(is_timed);
-  }
-
-  /// Whether its passes are timed, and each one's mean GPU milliseconds since this was last asked.
-  pub fn take_timings(&mut self) -> (bool, Vec<RenderPassCost>) {
-    (self.timer.is_timing(), self.timer.take())
-  }
-
-  /// Adds the passes timed since the last frame to the span the next report averages.
-  pub fn collect_timings(&mut self) {
-    self.timer.collect();
   }
 
   /// Stands every skinned object as asked from the next frame on.
