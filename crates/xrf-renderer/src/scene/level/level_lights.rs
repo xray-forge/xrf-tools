@@ -3,8 +3,8 @@ use std::time::Instant;
 
 use glam::{Mat4, Vec3, Vec4};
 use xrf_math::{EPS_L, Vector3d};
-use xrf_renderer_core::{FrameGraph, GraphBindings};
-use xrf_visual::{LightDescription, LightKind, LightsDescription};
+use xrf_renderer_core::{FrameGraph, GraphBindings, ProxyHandle, ProxyStore};
+use xrf_visual::{LightAnimatorDescription, LightDescription, LightKind, LightsDescription};
 
 use crate::contract::render_lights_report::RenderLightsReport;
 use crate::frame::stats_readback::StatsReadback;
@@ -49,7 +49,12 @@ const FALLOFF_RANGE: f32 = 0.95;
 /// space, animated as the engine animates them, for the lights pass to bin and accumulate.
 pub struct LevelLights {
   pending: Option<LoaderReceiver<Result<LightsDescription, String>>>,
-  description: Option<LightsDescription>,
+  /// The level's lights, each reached by the handle it was added under.
+  lights: ProxyStore<LightDescription>,
+  /// Those a motion carries, which move each frame.
+  moving: Vec<ProxyHandle<LightDescription>>,
+  /// The animations replacing lights' colours, by the index a light names.
+  animators: Vec<LightAnimatorDescription>,
   /// Each projector's texture slot, by its index among the description's projectors.
   projectors: Vec<u32>,
   records: Vec<LightRecord>,
@@ -98,7 +103,9 @@ impl LevelLights {
 
     Self {
       pending: Some(receiver),
-      description: None,
+      lights: ProxyStore::new(),
+      moving: Vec::new(),
+      animators: Vec::new(),
       projectors: Vec::new(),
       records: Vec::with_capacity(MAX_LIGHTS),
       record_buffer: storage("light records", (MAX_LIGHTS * size_of::<LightRecord>()) as u64),
@@ -161,7 +168,16 @@ impl LevelLights {
         .map(|reference| textures.request(reference, TextureRole::Projector, source))
         .collect();
       log::info!("Native viewport lights {} local lights", lights.lights.len());
-      self.description = Some(lights);
+      self.animators = lights.animators;
+
+      for light in lights.lights {
+        let is_moving: bool = light.motion.is_some();
+        let handle: ProxyHandle<LightDescription> = self.lights.add(light);
+
+        if is_moving {
+          self.moving.push(handle);
+        }
+      }
     }
   }
 
@@ -185,19 +201,16 @@ impl LevelLights {
 
     let is_shadowing: bool = settings.is_enabled && settings.is_shadowed;
 
-    if settings.is_enabled
-      && let Some(description) = &self.description
-    {
+    if settings.is_enabled {
+      let lights: &ProxyStore<LightDescription> = &self.lights;
       let planes: [Vec4; 6] = camera.get_planes();
       let seconds: f32 = self.started.elapsed().as_secs_f32();
       let eye: Vec3 = camera.position;
       let forward: Vec3 = -camera.view.inverse().z_axis.truncate();
-      let mut in_view: Vec<InView> = description
-        .lights
+      let mut in_view: Vec<InView> = lights
         .iter()
-        .enumerate()
         .filter(|(_, light)| settings.is_level_lights || !light.is_level)
-        .filter_map(|(index, light)| {
+        .filter_map(|(handle, light)| {
           // A campfire's idle light: out while it is, faded over a turn (`UpdateWorkload`).
           let share: f32 = light.campfire.map_or(1.0, |id| campfires.get_light_share(id));
 
@@ -229,7 +242,7 @@ impl LevelLights {
           // `light::get_LOD`: a shadowed light is drawn at all only past `EPS_L`.
           (fades.shown > EPS_L).then(|| InView {
             distance: (eye.distance(bound.truncate()) - bound.w).max(0.0),
-            index,
+            handle,
             basis,
             bound,
             fades,
@@ -244,11 +257,13 @@ impl LevelLights {
 
       if is_shadowing {
         // Only the nearest the records could hold ask for faces.
-        for it in in_view.iter().filter(|it| description.lights[it.index].is_shadowed) {
-          let light: &LightDescription = &description.lights[it.index];
+        for it in in_view.iter() {
+          let Some(light) = lights.get(it.handle).filter(|light| light.is_shadowed) else {
+            continue;
+          };
 
           self.shadows.ask(
-            it.index,
+            it.handle,
             light,
             &it.basis,
             eye,
@@ -263,17 +278,19 @@ impl LevelLights {
       }
 
       for it in in_view {
-        let light: &LightDescription = &description.lights[it.index];
+        let Some(light) = lights.get(it.handle) else {
+          continue;
+        };
         let set: Option<&LightShadowSet> = if is_shadowing && light.is_shadowed {
           // The engine never lights a shadowed light without its map: it waits for its faces.
-          match self.shadows.get_set(it.index) {
+          match self.shadows.get_set(it.handle) {
             Some(set) => Some(set),
             None => continue,
           }
         } else {
           None
         };
-        let color: Vec3 = to_color(description, light, seconds) * it.fades.whole * it.share;
+        let color: Vec3 = to_color(&self.animators, light, seconds) * it.fades.whole * it.share;
         let range: f32 = to_frame_range(light, &mut self.random) * it.share * FALLOFF_RANGE;
         let mut record: LightRecord =
           to_record(&self.projectors, light, &it.basis, it.bound, color, range, camera.view);
@@ -325,12 +342,8 @@ impl LevelLights {
   /// Stands each light a motion carries `height` over where the motion has its zone this frame (`UpdateIdleLight`);
   /// one whose motion is still read stays where its zone spawned.
   fn move_lights(&mut self, motions: &mut LevelObjectMotions) {
-    let Some(description) = &mut self.description else {
-      return;
-    };
-
-    for light in &mut description.lights {
-      let Some(motion) = &light.motion else {
+    for handle in &self.moving {
+      let Some(motion) = self.lights.get(*handle).and_then(|light| light.motion.clone()) else {
         continue;
       };
       let Some((transform, _)) = motions.get_pose(&motion.name) else {
@@ -339,7 +352,9 @@ impl LevelLights {
       let at: Vec3 = transform.w_axis.truncate();
 
       // Lights stand in renderer space, which mirrors the engine's z.
-      light.position = Vector3d::new(at.x, at.y + motion.height, -at.z);
+      if let Some(light) = self.lights.get_mut(*handle) {
+        light.position = Vector3d::new(at.x, at.y + motion.height, -at.z);
+      }
     }
   }
 
@@ -401,7 +416,7 @@ impl LevelLights {
 struct InView {
   /// Metres from the eye to its bound's edge, which the nearest are kept by.
   distance: f32,
-  index: usize,
+  handle: ProxyHandle<LightDescription>,
   basis: LightBasis,
   bound: Vec4,
   fades: Fades,
@@ -494,11 +509,8 @@ fn to_record(
 }
 
 /// Its colour this frame: animated where it names an animation.
-fn to_color(description: &LightsDescription, light: &LightDescription, seconds: f32) -> Vec3 {
-  match light
-    .animator
-    .and_then(|animator| description.animators.get(animator as usize))
-  {
+fn to_color(animators: &[LightAnimatorDescription], light: &LightDescription, seconds: f32) -> Vec3 {
+  match light.animator.and_then(|animator| animators.get(animator as usize)) {
     Some(animator) => to_animated_color(animator, seconds) * light.animator_scale,
     None => Vec3::from(light.color),
   }
