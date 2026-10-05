@@ -3,7 +3,7 @@ import { Maybe } from "@xrf/types";
 import { ReactElement, useMemo } from "react";
 
 import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
-import { RenderLevelProblems } from "@/core/ipc/types/xrf-renderer";
+import { WorldLevelProblems } from "@/core/ipc/types/xrf-world";
 import { listLevelProblems } from "@/core/level/lib/problems";
 import { ILevelSpawnReport } from "@/core/level/lib/spawn";
 import { ILevelTextureReport } from "@/core/level/lib/texture/level-texture-report";
@@ -26,7 +26,7 @@ export function LevelProblemsPanel({
   const surfaces: Maybe<ReadonlyArray<XraySurfaceDescriptor>> = loadService.level.value?.selected.value.surfaces;
   const spawn: ILevelSpawnReport = loadService.spawnReport;
   const report: ILevelTextureReport = viewportService.textureReport;
-  const native: RenderLevelProblems = viewportService.problems;
+  const native: WorldLevelProblems = viewportService.problems;
 
   const problems: Array<IEditorProblem> = useMemo(
     () =>

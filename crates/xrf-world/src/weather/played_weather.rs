@@ -2,7 +2,9 @@ use std::sync::Arc;
 
 use xrf_engine_target::XrayEngine;
 use xrf_environment::{WeatherDescriptor, WeatherPlayedKeyframe, WeatherSunSource};
-use xrf_renderer::{RenderLevelWeather, RenderWeatherControl};
+use xrf_renderer::RenderLevelWeather;
+
+use crate::contract::world_weather_control::WorldWeatherControl;
 
 /// A weather a viewport plays: its keyframes, sorted by time, over what every weather of its level plays with.
 pub struct PlayedWeather {
@@ -68,7 +70,7 @@ impl PlayedWeather {
 
   /// Where its mix stands the sun: Monolith's table on its engine where the game has one, astronomically where asked,
   /// else by the keyframes; a keyframe set by hand always by its own angles.
-  pub fn get_sun(&self, control: &RenderWeatherControl) -> WeatherSunSource<'_> {
+  pub fn get_sun(&self, control: &WorldWeatherControl) -> WeatherSunSource<'_> {
     match &self.level.sun_table {
       _ if self.is_manual => WeatherSunSource::Authored,
       Some(positions) if self.level.engine == XrayEngine::Extended => WeatherSunSource::Table(positions),

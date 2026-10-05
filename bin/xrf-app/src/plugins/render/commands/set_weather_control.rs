@@ -1,5 +1,6 @@
 use tauri::State;
-use xrf_renderer::{RenderViewportId, RenderWeatherControl};
+use xrf_renderer::RenderViewportId;
+use xrf_world::WorldWeatherControl;
 
 use crate::plugins::render::state::RenderState;
 
@@ -9,7 +10,7 @@ use crate::plugins::render::state::RenderState;
 pub fn render_set_weather_control(
   state: State<'_, RenderState>,
   viewport: RenderViewportId,
-  control: RenderWeatherControl,
+  control: WorldWeatherControl,
 ) {
   state.lock_world().set_weather_control(viewport, control);
 }

@@ -130,6 +130,7 @@ macro_rules! for_each_tauri_command_domain {
         set_view_options => crate::plugins::render::commands::set_view_options::render_set_view_options,
         set_viewport_layout => crate::plugins::render::commands::set_viewport_layout::render_set_viewport_layout,
         set_weather_control => crate::plugins::render::commands::set_weather_control::render_set_weather_control,
+        set_world_toggles => crate::plugins::render::commands::set_world_toggles::render_set_world_toggles,
         show_level => crate::plugins::render::commands::show_level::render_show_level,
         show_model => crate::plugins::render::commands::show_model::render_show_model,
         show_texture => crate::plugins::render::commands::show_texture::render_show_texture,

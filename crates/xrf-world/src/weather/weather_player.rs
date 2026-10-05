@@ -4,10 +4,12 @@ use xrf_environment::{
   WeatherEffectStart, WeatherEffectTimeline, WeatherMix, WeatherMixPoint, WeatherMixer, WeatherPair,
   WeatherPlayedKeyframe, WeatherTime,
 };
-use xrf_renderer::{
-  RenderLighting, RenderWeatherControl, RenderWeatherEffectReport, RenderWeatherReport, RenderWeatherTransition,
-};
+use xrf_renderer::RenderLighting;
 
+use crate::contract::world_weather_control::WorldWeatherControl;
+use crate::contract::world_weather_effect_report::WorldWeatherEffectReport;
+use crate::contract::world_weather_report::WorldWeatherReport;
+use crate::contract::world_weather_transition::WorldWeatherTransition;
 use crate::weather::played_weather::PlayedWeather;
 use crate::weather::playing_effect::PlayingEffect;
 use crate::weather::weather_fader::WeatherFader;
@@ -28,7 +30,7 @@ const VIEW_STEP: f32 = 0.5;
 /// effect over it, the mix seen from the view, and a fade from what was shown when another weather is handed over.
 pub struct WeatherPlayer {
   weather: Option<PlayedWeather>,
-  control: RenderWeatherControl,
+  control: WorldWeatherControl,
   /// Seconds since midnight.
   time: f32,
   effect: Option<PlayingEffect>,
@@ -56,7 +58,7 @@ impl Default for WeatherPlayer {
   fn default() -> Self {
     Self {
       weather: None,
-      control: RenderWeatherControl::default(),
+      control: WorldWeatherControl::default(),
       time: NOON,
       effect: None,
       view: [0.0; 3],
@@ -93,7 +95,7 @@ impl WeatherPlayer {
   }
 
   /// Plays a weather from now on, or nothing; it takes over from what was shown as the transition says.
-  pub fn take(&mut self, weather: Option<PlayedWeather>, transition: RenderWeatherTransition) {
+  pub fn take(&mut self, weather: Option<PlayedWeather>, transition: WorldWeatherTransition) {
     let duration: Duration = transition.get_duration();
 
     match &self.shown {
@@ -114,7 +116,7 @@ impl WeatherPlayer {
     }
   }
 
-  pub fn set_control(&mut self, control: RenderWeatherControl) {
+  pub fn set_control(&mut self, control: WorldWeatherControl) {
     self.control = control;
     self.is_changed = true;
   }
@@ -194,7 +196,7 @@ impl WeatherPlayer {
     self.advanced_at = Some(now);
 
     let weather: &PlayedWeather = self.weather.as_ref()?;
-    let control: RenderWeatherControl = self.control;
+    let control: WorldWeatherControl = self.control;
     let has_modifiers: bool = !weather.level.modifiers.is_empty();
 
     if !control.is_paused && control.factor > 0.0 && !step.is_zero() {
@@ -259,7 +261,7 @@ impl WeatherPlayer {
   }
 
   /// Where the weather stands, or none while nothing plays.
-  pub fn report(&self) -> Option<RenderWeatherReport> {
+  pub fn report(&self) -> Option<WorldWeatherReport> {
     let (mix, pair, weather) = (self.mix.as_ref()?, self.pair.get()?, self.weather.as_ref()?);
     let current: WeatherMix = WeatherMixer {
       engine: weather.get_engine(),
@@ -269,11 +271,11 @@ impl WeatherPlayer {
     .mix_pair([pair[0].as_mixed(), pair[1].as_mixed()], self.get_point());
     let heavier: &WeatherPlayedKeyframe = &pair[usize::from(current.weight >= 0.5)];
 
-    Some(RenderWeatherReport {
+    Some(WorldWeatherReport {
       time: self.time,
       between: mix.between,
       weight: mix.weight,
-      effect: self.effect.as_ref().map(|effect| RenderWeatherEffectReport {
+      effect: self.effect.as_ref().map(|effect| WorldWeatherEffectReport {
         name: effect.timeline.name.clone(),
         remaining: effect.remaining,
       }),
@@ -328,7 +330,7 @@ impl WeatherPlayer {
     {
       self
         .fader
-        .start(shown.clone(), RenderWeatherTransition::Fade.get_duration());
+        .start(shown.clone(), WorldWeatherTransition::Fade.get_duration());
       self.fader.ask(now);
     }
 

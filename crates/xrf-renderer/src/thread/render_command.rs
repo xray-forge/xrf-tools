@@ -1,21 +1,23 @@
 use std::sync::Arc;
 use std::sync::mpsc::Sender;
 
+use xrf_error::XrfResult;
+
+use crate::contract::render_capture::RenderCapture;
 use crate::contract::render_frame_report::RenderFrameReport;
 use crate::contract::render_load_report::RenderLoadReport;
 use crate::contract::render_overlay::RenderOverlay;
+use crate::contract::render_pick::RenderPick;
 use crate::contract::render_selection::RenderSelection;
 use crate::contract::render_settings::RenderSettings;
 use crate::contract::render_texture_report::RenderTextureReport;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::contract::render_viewport_id::RenderViewportId;
 use crate::contract::render_viewport_layout::RenderViewportLayout;
-use crate::frame::frame_capture::CaptureReply;
 use crate::host::render_event_sink::RenderEventSink;
 use crate::host::render_window_host::RenderWindowHost;
-use crate::viewport::pending_pick::PendingPick;
 
-/// What the render thread is told; it is the only one touching the GPU.
+/// What the render thread is told, through a [`crate::RenderQueue`]; it is the only one touching the GPU.
 pub enum RenderCommand {
   Attach {
     id: RenderViewportId,
@@ -46,10 +48,13 @@ pub enum RenderCommand {
     id: RenderViewportId,
     selection: Option<RenderSelection>,
   },
-  /// Names what a viewport draws under one of its points.
+  /// Names what a viewport draws under one of its points, CSS pixels from its corner, answered after its next frame;
+  /// the answer never comes for a viewport the renderer does not draw.
   Pick {
     id: RenderViewportId,
-    pick: PendingPick,
+    x: f32,
+    y: f32,
+    reply: Sender<XrfResult<RenderPick>>,
   },
   /// Says what became of every texture a viewport's level samples; empty where it draws no level.
   DescribeTextures {
@@ -72,9 +77,9 @@ pub enum RenderCommand {
     object: u32,
     reply: Sender<Option<[f32; 4]>>,
   },
-  /// Reads a viewport's next presented frame back.
+  /// Reads a viewport's next presented frame back; the answer never comes for a viewport the renderer does not draw.
   Capture {
     id: RenderViewportId,
-    reply: CaptureReply,
+    reply: Sender<XrfResult<RenderCapture>>,
   },
 }

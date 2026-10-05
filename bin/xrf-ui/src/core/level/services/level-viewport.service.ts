@@ -3,7 +3,8 @@ import { BoundAction, RefObservable } from "@wirestate/mobx";
 import { Nullable } from "@xrf/types";
 
 import { KeybindCommand } from "@/core/commands";
-import { RenderLevelProblems, RenderLoadReport } from "@/core/ipc/types/xrf-renderer";
+import { RenderLoadReport } from "@/core/ipc/types/xrf-renderer";
+import { WorldLevelProblems } from "@/core/ipc/types/xrf-world";
 import { CLEAR_LEVEL_SELECTION_KEYBIND_COMMAND } from "@/core/level/commands";
 import { ILevelCamera } from "@/core/level/lib/camera/level-camera";
 import { TLevelPick } from "@/core/level/lib/pick/level-pick";
@@ -14,7 +15,7 @@ import { EMPTY_LEVEL_TEXTURE_REPORT, ILevelTextureReport } from "@/core/level/li
 const NO_LEVEL_SURFACES_GEOMETRY: ReadonlyMap<number, ILevelSurfaceGeometry> = new Map();
 
 /** Nothing the level could not draw, which is also what a level not yet resident reports. */
-export const NO_LEVEL_PROBLEMS: RenderLevelProblems = { models: [], sectors: [], skipped: [] };
+export const NO_LEVEL_PROBLEMS: WorldLevelProblems = { models: [], sectors: [], skipped: [] };
 
 /**
  * What the viewport reports about itself while it draws.
@@ -54,7 +55,7 @@ export class LevelViewportService {
 
   /** What the open level could not draw the way it asked, as the renderer said once it was resident. */
   @RefObservable()
-  public problems: RenderLevelProblems = NO_LEVEL_PROBLEMS;
+  public problems: WorldLevelProblems = NO_LEVEL_PROBLEMS;
 
   /** Shows the level, drawn whole. */
   @BoundAction()
@@ -84,7 +85,7 @@ export class LevelViewportService {
    * @param problems - What the open level could not draw the way it asked.
    */
   @BoundAction()
-  public noteProblems(problems: RenderLevelProblems): void {
+  public noteProblems(problems: WorldLevelProblems): void {
     this.problems = problems;
   }
 

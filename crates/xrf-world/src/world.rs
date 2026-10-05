@@ -3,13 +3,22 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use xrf_renderer::{
-  RenderCamera, RenderCameraCommand, RenderEventSink, RenderInputEvent, RenderLevelProblems, RenderLevelSource,
-  RenderModelPose, RenderSurfaceGeometry, RenderViewportId, RenderWeatherControl, RenderWeatherPlay,
-  RenderWeatherTransition, RenderWorkers, RenderWorld, RenderWorldFrame, RenderWorldInput,
+  RenderLevelSource, RenderViewportId, RenderWorkers, RenderWorld, RenderWorldFrame, RenderWorldInput,
 };
 
+use crate::contract::world_camera::WorldCamera;
+use crate::contract::world_camera_command::WorldCameraCommand;
+use crate::contract::world_input_event::WorldInputEvent;
+use crate::contract::world_level_problems::WorldLevelProblems;
+use crate::contract::world_model_pose::WorldModelPose;
+use crate::contract::world_surface_geometry::WorldSurfaceGeometry;
+use crate::contract::world_toggles::WorldToggles;
+use crate::contract::world_weather_control::WorldWeatherControl;
+use crate::contract::world_weather_play::WorldWeatherPlay;
+use crate::contract::world_weather_transition::WorldWeatherTransition;
 use crate::level::world_level::WorldLevel;
 use crate::weather::viewport_weather::ViewportWeather;
+use crate::world_event_sink::WorldEventSink;
 use crate::world_viewport::WorldViewport;
 
 /// What moves and plays in the levels the viewports show, a viewport's own: its camera, the level it shows streaming
@@ -30,7 +39,7 @@ impl World {
   }
 
   /// Starts a viewport's world, publishing its camera and weather on `sink`.
-  pub fn attach(&mut self, viewport: RenderViewportId, sink: Box<dyn RenderEventSink>) {
+  pub fn attach(&mut self, viewport: RenderViewportId, sink: Box<dyn WorldEventSink>) {
     self.get_viewport(viewport).set_sink(sink);
   }
 
@@ -38,15 +47,20 @@ impl World {
     self.viewports.remove(&viewport);
   }
 
-  pub fn set_camera(&mut self, viewport: RenderViewportId, camera: RenderCamera) {
+  /// Sets what of a viewport's world plays from its next frame on.
+  pub fn set_toggles(&mut self, viewport: RenderViewportId, toggles: WorldToggles) {
+    self.get_viewport(viewport).toggles = toggles;
+  }
+
+  pub fn set_camera(&mut self, viewport: RenderViewportId, camera: WorldCamera) {
     self.get_viewport(viewport).camera.describe(camera);
   }
 
-  pub fn command_camera(&mut self, viewport: RenderViewportId, command: RenderCameraCommand) {
+  pub fn command_camera(&mut self, viewport: RenderViewportId, command: WorldCameraCommand) {
     self.get_viewport(viewport).camera.command(command);
   }
 
-  pub fn send_input(&mut self, viewport: RenderViewportId, event: &RenderInputEvent) {
+  pub fn send_input(&mut self, viewport: RenderViewportId, event: &WorldInputEvent) {
     self.get_viewport(viewport).camera.input(event);
   }
 
@@ -66,7 +80,7 @@ impl World {
   }
 
   /// Stands a viewport's skinned objects as asked from the next frame on.
-  pub fn pose_model(&mut self, viewport: RenderViewportId, pose: &RenderModelPose) {
+  pub fn pose_model(&mut self, viewport: RenderViewportId, pose: &WorldModelPose) {
     let world: &mut WorldViewport = self.get_viewport(viewport);
 
     world.pose = pose.clone();
@@ -77,7 +91,7 @@ impl World {
   }
 
   /// How much each shader table entry draws across the sectors a viewport's level streamed in.
-  pub fn measure_surfaces(&self, viewport: RenderViewportId) -> Vec<RenderSurfaceGeometry> {
+  pub fn measure_surfaces(&self, viewport: RenderViewportId) -> Vec<WorldSurfaceGeometry> {
     self
       .get_level(viewport)
       .map(WorldLevel::measure_surfaces)
@@ -85,7 +99,7 @@ impl World {
   }
 
   /// What a viewport's level could not draw the way it asked, so far.
-  pub fn describe_problems(&self, viewport: RenderViewportId) -> RenderLevelProblems {
+  pub fn describe_problems(&self, viewport: RenderViewportId) -> WorldLevelProblems {
     self
       .get_level(viewport)
       .map(WorldLevel::describe_problems)
@@ -95,13 +109,13 @@ impl World {
   pub fn play_weather(
     &mut self,
     viewport: RenderViewportId,
-    play: RenderWeatherPlay,
-    transition: RenderWeatherTransition,
+    play: WorldWeatherPlay,
+    transition: WorldWeatherTransition,
   ) {
     self.get_viewport(viewport).weather.play(play, transition);
   }
 
-  pub fn set_weather_control(&mut self, viewport: RenderViewportId, control: RenderWeatherControl) {
+  pub fn set_weather_control(&mut self, viewport: RenderViewportId, control: WorldWeatherControl) {
     self.get_viewport(viewport).weather.set_control(control);
   }
 

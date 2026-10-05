@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Copy, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct RenderWeatherControl {
+pub struct WorldWeatherControl {
   /// Game seconds a real second, the engine's time factor.
   pub factor: f32,
   pub is_paused: bool,
@@ -12,7 +12,7 @@ pub struct RenderWeatherControl {
   pub is_dynamic_sun: bool,
 }
 
-impl Default for RenderWeatherControl {
+impl Default for WorldWeatherControl {
   /// Paused, at the engine's own time factor, with the sun the keyframes stand.
   fn default() -> Self {
     Self {

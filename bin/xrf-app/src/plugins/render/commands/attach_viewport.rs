@@ -1,10 +1,11 @@
 use tauri::State;
 use tauri::ipc::Channel;
-use xrf_renderer::{RenderViewportEvent, RenderViewportId};
+use xrf_renderer::RenderViewportId;
 
 use crate::core::types::TauriResult;
 use crate::core::window::WindowHandles;
 use crate::plugins::render::state::RenderState;
+use crate::plugins::render::viewport_event::ViewportEvent;
 
 /// Start drawing a native viewport into a window, named by its label, telling the page what it costs and where its
 /// camera is through `events`.
@@ -14,7 +15,7 @@ pub fn render_attach_viewport(
   state: State<'_, RenderState>,
   handles: State<'_, WindowHandles>,
   window: String,
-  events: Channel<RenderViewportEvent>,
+  events: Channel<ViewportEvent>,
 ) -> TauriResult<RenderViewportId> {
   attach(&state, &handles, &window, events)
 }
@@ -24,7 +25,7 @@ fn attach(
   state: &RenderState,
   handles: &WindowHandles,
   window: &str,
-  events: Channel<RenderViewportEvent>,
+  events: Channel<ViewportEvent>,
 ) -> TauriResult<RenderViewportId> {
   use std::sync::Arc;
 
@@ -50,7 +51,7 @@ fn attach(
   _state: &RenderState,
   _handles: &WindowHandles,
   _window: &str,
-  _events: Channel<RenderViewportEvent>,
+  _events: Channel<ViewportEvent>,
 ) -> TauriResult<RenderViewportId> {
   // todo: Host native viewports outside Windows, where the webview's window composes differently.
   Err("Native viewports are drawn on Windows only".to_string())

@@ -2,14 +2,9 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 import { Container } from "@wirestate/core";
 import { runInAction } from "@wirestate/mobx";
 
-import { ETextureSurfaceAlpha, ETextureSurfaceShape } from "@/core/ipc/types/xrf-app";
-import {
-  ERenderCameraCommand,
-  ERenderTextureState,
-  ERenderViewportEvent,
-  RenderViewOptions,
-  RenderViewportEvent,
-} from "@/core/ipc/types/xrf-renderer";
+import { ETextureSurfaceAlpha, ETextureSurfaceShape, ViewportEvent } from "@/core/ipc/types/xrf-app";
+import { ERenderTextureState, ERenderViewportEvent, RenderViewOptions } from "@/core/ipc/types/xrf-renderer";
+import { EWorldCameraCommand } from "@/core/ipc/types/xrf-world";
 import { DEFAULT_TEXTURE_LIGHTING } from "@/core/textures/lib/texture-lighting";
 import { TextureRenderService } from "@/core/textures/services/render";
 import { TextureSelectionService } from "@/core/textures/services/selection";
@@ -40,8 +35,8 @@ async function flush(): Promise<void> {
   }
 }
 
-function emit(event: RenderViewportEvent): void {
-  (getMockChannels()[0] as MockChannel<RenderViewportEvent>).onmessage(event);
+function emit(event: ViewportEvent): void {
+  (getMockChannels()[0] as MockChannel<ViewportEvent>).onmessage(event);
 }
 
 async function mockAttached(): Promise<{ container: Container; service: TextureRenderService }> {
@@ -154,7 +149,7 @@ describe("TextureRenderService", () => {
     emit({
       kind: ERenderViewportEvent.FRAME,
       report: { framesPerSecond: 144, passes: [], staticDraws: { commands: 2 } },
-    } as unknown as RenderViewportEvent);
+    } as unknown as ViewportEvent);
 
     expect(service.frame.framesPerSecond).toBe(144);
 
@@ -178,7 +173,7 @@ describe("TextureRenderService", () => {
     await flush();
 
     expect(sent("command_camera").map(({ command }) => (command as { kind: string }).kind)).toEqual([
-      ERenderCameraCommand.RESET,
+      EWorldCameraCommand.RESET,
     ]);
 
     service.dispose();

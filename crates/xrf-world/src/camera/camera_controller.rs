@@ -1,7 +1,11 @@
-use xrf_renderer::{CameraFrame, RenderCamera, RenderCameraCommand, RenderCameraPose, RenderInputEvent};
+use xrf_renderer::CameraFrame;
 
 use crate::camera::fly_camera_controller::FlyCameraController;
 use crate::camera::orbit_camera_controller::OrbitCameraController;
+use crate::contract::world_camera::WorldCamera;
+use crate::contract::world_camera_command::WorldCameraCommand;
+use crate::contract::world_camera_pose::WorldCameraPose;
+use crate::contract::world_input_event::WorldInputEvent;
 
 /// Drives a viewport's camera from what its consumer described and what the person does over it.
 #[derive(Clone, Debug)]
@@ -18,27 +22,27 @@ impl Default for CameraController {
 
 impl CameraController {
   /// Takes a description, switching controllers when it asks for the other kind.
-  pub fn describe(&mut self, description: RenderCamera) {
+  pub fn describe(&mut self, description: WorldCamera) {
     match (self, description) {
-      (CameraController::Fly(controller), RenderCamera::Fly { .. }) => {
+      (CameraController::Fly(controller), WorldCamera::Fly { .. }) => {
         controller.describe(description);
       }
-      (CameraController::Orbit(controller), RenderCamera::Orbit { .. }) => {
+      (CameraController::Orbit(controller), WorldCamera::Orbit { .. }) => {
         controller.describe(description);
       }
-      (this, RenderCamera::Fly { .. }) => *this = CameraController::Fly(FlyCameraController::new(description)),
-      (this, RenderCamera::Orbit { .. }) => *this = CameraController::Orbit(OrbitCameraController::new(description)),
+      (this, WorldCamera::Fly { .. }) => *this = CameraController::Fly(FlyCameraController::new(description)),
+      (this, WorldCamera::Orbit { .. }) => *this = CameraController::Orbit(OrbitCameraController::new(description)),
     }
   }
 
-  pub fn command(&mut self, command: RenderCameraCommand) {
+  pub fn command(&mut self, command: WorldCameraCommand) {
     match self {
       CameraController::Fly(controller) => controller.command(command),
       CameraController::Orbit(controller) => controller.command(command),
     }
   }
 
-  pub fn input(&mut self, event: &RenderInputEvent) {
+  pub fn input(&mut self, event: &WorldInputEvent) {
     match self {
       CameraController::Fly(controller) => controller.input(event),
       CameraController::Orbit(controller) => controller.input(event),
@@ -58,7 +62,7 @@ impl CameraController {
 
   /// The lens's vertical field of view, in degrees.
   pub fn get_field_of_view(&self) -> f32 {
-    let description: RenderCamera = match self {
+    let description: WorldCamera = match self {
       CameraController::Fly(controller) => controller.get_description(),
       CameraController::Orbit(controller) => controller.get_description(),
     };
@@ -66,7 +70,7 @@ impl CameraController {
     description.get_lens().0
   }
 
-  pub fn get_pose(&self) -> RenderCameraPose {
+  pub fn get_pose(&self) -> WorldCameraPose {
     match self {
       CameraController::Fly(controller) => controller.get_pose(),
       CameraController::Orbit(controller) => controller.get_pose(),

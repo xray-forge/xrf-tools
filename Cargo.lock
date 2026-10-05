@@ -7873,6 +7873,8 @@ dependencies = [
  "glam",
  "log",
  "rayon",
+ "serde",
+ "specta",
  "xrf-animation-envelope",
  "xrf-anm",
  "xrf-engine-target",

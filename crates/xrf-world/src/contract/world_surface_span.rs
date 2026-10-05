@@ -4,14 +4,14 @@ use serde::{Deserialize, Serialize};
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Copy, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct RenderSurfaceSpan {
+pub struct WorldSurfaceSpan {
   pub u_min: f32,
   pub u_max: f32,
   pub v_min: f32,
   pub v_max: f32,
 }
 
-impl RenderSurfaceSpan {
+impl WorldSurfaceSpan {
   pub fn at(u: f32, v: f32) -> Self {
     Self {
       u_min: u,

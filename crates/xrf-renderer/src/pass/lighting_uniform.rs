@@ -85,10 +85,7 @@ impl LightingUniform {
       },
       engine: Vec4::new(
         flag(lighting.engine == XrayEngine::Extended),
-        lighting
-          .rain
-          .filter(|_| options.world.is_rainy)
-          .map_or(0.0, |rain| rain.density),
+        lighting.rain.map_or(0.0, |rain| rain.density),
         0.0,
         0.0,
       ),

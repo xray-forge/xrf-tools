@@ -1,13 +1,8 @@
 import { addVectors, normalise, scaleVector, toRadians } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 
-import {
-  ERenderCamera,
-  ERenderOverlay,
-  RenderCamera,
-  RenderOverlay,
-  RenderViewOptions,
-} from "@/core/ipc/types/xrf-renderer";
+import { ERenderOverlay, RenderOverlay, RenderViewOptions } from "@/core/ipc/types/xrf-renderer";
+import { EWorldCamera, WorldCamera } from "@/core/ipc/types/xrf-world";
 import { IRenderLighting, toNativeAssetLighting } from "@/core/render/lib/lighting/render-lighting";
 import { toNativeLines } from "@/core/render/lib/native/native-overlay";
 import { toNativeAssetViewOptions } from "@/core/render/lib/native/native-view-options";
@@ -25,14 +20,14 @@ import { IVisualCameraFit } from "@/core/visuals/lib/visual-views";
  * @param config - The viewer's field of view, margin and direction.
  * @returns The orbit camera.
  */
-export function toVisualCamera(fit: IVisualCameraFit, config: IVisualPreviewSceneConfig): RenderCamera {
+export function toVisualCamera(fit: IVisualCameraFit, config: IVisualPreviewSceneConfig): WorldCamera {
   const { cameraFieldOfView, cameraFitMargin, cameraDirection } = config;
   const distance: number = (fit.radius / Math.sin(toRadians(cameraFieldOfView / 2))) * cameraFitMargin;
 
   return {
     far: distance * 100,
     fieldOfView: cameraFieldOfView,
-    kind: ERenderCamera.ORBIT,
+    kind: EWorldCamera.ORBIT,
     near: Math.max(distance / 1000, 0.0001),
     position: addVectors(fit.center, scaleVector(normalise(cameraDirection), distance)),
     target: [...fit.center],

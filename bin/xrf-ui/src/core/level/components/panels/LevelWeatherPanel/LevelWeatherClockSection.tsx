@@ -2,7 +2,7 @@ import { Typography } from "@mui/material";
 import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
-import { RenderWeatherReport } from "@/core/ipc/types/xrf-renderer";
+import { WorldWeatherReport } from "@/core/ipc/types/xrf-world";
 import { LevelWeatherClock } from "@/core/level/components/weather/LevelWeatherClock";
 import { ILevelWeatherControl, LEVEL_WEATHER_FACTOR_LIMITS } from "@/core/level/lib/weather/level-weather-control";
 import { formatLevelWeatherTime } from "@/core/level/lib/weather/level-weather-time";
@@ -18,7 +18,7 @@ interface ILevelWeatherClockSectionProps extends BaseComponentProps {
   /** Every keyframe's time, which the slider marks. */
   keyframes: ReadonlyArray<number>;
   /** Where the renderer's weather stood when it last reported, or null before it has. */
-  report: Nullable<RenderWeatherReport>;
+  report: Nullable<WorldWeatherReport>;
   control: ILevelWeatherControl;
   /** Whether Monolith's sun table stands the sun, as it does on its engine for a game that has one. */
   isSunTabled: boolean;

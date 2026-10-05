@@ -2,13 +2,9 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 import { Container } from "@wirestate/core";
 import { makeAutoObservable, runInAction } from "@wirestate/mobx";
 
-import {
-  ERenderCameraCommand,
-  ERenderOverlay,
-  ERenderTextureState,
-  ERenderViewportEvent,
-  RenderViewportEvent,
-} from "@/core/ipc/types/xrf-renderer";
+import { ViewportEvent } from "@/core/ipc/types/xrf-app";
+import { ERenderOverlay, ERenderTextureState, ERenderViewportEvent } from "@/core/ipc/types/xrf-renderer";
+import { EWorldCameraCommand } from "@/core/ipc/types/xrf-world";
 import { BIND_POSE, IVisualRenderSource, VISUAL_RENDER_SOURCE } from "@/core/visuals/lib/render";
 import { EVisualTextureState } from "@/core/visuals/lib/visual-texture";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
@@ -43,8 +39,8 @@ async function flush(): Promise<void> {
   }
 }
 
-function emit(event: RenderViewportEvent): void {
-  (getMockChannels()[0] as MockChannel<RenderViewportEvent>).onmessage(event);
+function emit(event: ViewportEvent): void {
+  (getMockChannels()[0] as MockChannel<ViewportEvent>).onmessage(event);
 }
 
 function mockSource(overrides: Partial<IVisualRenderSource> = {}): IVisualRenderSource {
@@ -148,9 +144,8 @@ describe("VisualRenderService", () => {
     function framings(): Array<number> {
       return [
         sent("set_camera").length,
-        sent("command_camera").filter(
-          ({ command }) => (command as { kind: string }).kind === ERenderCameraCommand.RESET
-        ).length,
+        sent("command_camera").filter(({ command }) => (command as { kind: string }).kind === EWorldCameraCommand.RESET)
+          .length,
       ];
     }
 
@@ -222,7 +217,7 @@ describe("VisualRenderService", () => {
     emit({
       kind: ERenderViewportEvent.FRAME,
       report: { framesPerSecond: 60, passes: [{ gpuTime: 1, name: "g-buffer" }], staticDraws: { commands: 4 } },
-    } as unknown as RenderViewportEvent);
+    } as unknown as ViewportEvent);
 
     expect(service.frame.staticDraws.commands).toBe(4);
     expect(service.frame.framesPerSecond).toBe(60);

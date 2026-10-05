@@ -3,7 +3,8 @@ import { act, RenderResult } from "@testing-library/react";
 import { Binding } from "@wirestate/core";
 import { makeAutoObservable } from "@wirestate/mobx";
 
-import { ERenderViewportEvent, RenderViewportEvent } from "@/core/ipc/types/xrf-renderer";
+import { ViewportEvent } from "@/core/ipc/types/xrf-app";
+import { ERenderViewportEvent } from "@/core/ipc/types/xrf-renderer";
 import { BIND_POSE, IVisualRenderSource, VISUAL_RENDER_SOURCE } from "@/core/visuals/lib/render";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { VisualRenderService } from "@/core/visuals/services/visual-render.service";
@@ -74,7 +75,7 @@ describe("VisualPreviewViewport", () => {
 
     await act(flush);
     act(() =>
-      (getMockChannels()[0] as MockChannel<RenderViewportEvent>).onmessage({
+      (getMockChannels()[0] as MockChannel<ViewportEvent>).onmessage({
         kind: ERenderViewportEvent.FAILURE,
         message: "No GPU adapter",
       })

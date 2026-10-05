@@ -6,12 +6,14 @@ use glam::{Mat4, Vec3};
 use xrf_engine_target::XrayEngine;
 use xrf_particles::ParticleLibrary;
 use xrf_renderer::{
-  AmbientGust, LoaderReceiver, ParticleEmitterProxy, PlacedEffect, RenderAmbientReport, RenderLevelParticles,
-  RenderLevelSource, RenderParticleDefinitions, RenderParticleSource, RenderSceneUpdate, RenderViewOptions,
-  RenderWorkers, ZONE_FAST_DISTANCE, take_answer,
+  AmbientGust, LoaderReceiver, ParticleEmitterProxy, PlacedEffect, RenderLevelParticles, RenderLevelSource,
+  RenderParticleDefinitions, RenderParticleSource, RenderSceneUpdate, RenderViewOptions, RenderWorkers,
+  ZONE_FAST_DISTANCE, take_answer,
 };
 use xrf_renderer_core::{ProxyAllocator, ProxyHandle};
 
+use crate::contract::world_ambient_report::WorldAmbientReport;
+use crate::contract::world_toggles::WorldToggles;
 use crate::level::ambient_frame::AmbientFrame;
 use crate::level::camera_hemi::CameraHemi;
 use crate::level::campfire::Campfire;
@@ -86,7 +88,7 @@ impl LevelEffects {
   }
 
   /// Where the ambient effects stand, none until the particles are read.
-  pub fn report_ambient(&self) -> Option<RenderAmbientReport> {
+  pub fn report_ambient(&self) -> Option<WorldAmbientReport> {
     self
       .systems
       .as_ref()
@@ -105,7 +107,7 @@ impl LevelEffects {
   pub fn advance(
     &mut self,
     updates: &mut Vec<RenderSceneUpdate>,
-    (options, ambient): (&RenderViewOptions, Option<AmbientFrame<'_>>),
+    (options, toggles, ambient): (&RenderViewOptions, &WorldToggles, Option<AmbientFrame<'_>>),
     eye: Vec3,
     lights: (&[u16], &[String]),
   ) -> EffectsFrame {
@@ -125,14 +127,14 @@ impl LevelEffects {
           finished: &std::mem::take(&mut self.finished),
         },
         ambient,
-        (eye, systems.hemi.is_indoors() || !options.world.is_ambient_played),
+        (eye, systems.hemi.is_indoors() || !toggles.is_ambient_played),
         now,
       );
     }
 
     // The campfires switch and the moving zones move whether or not their particles are drawn, so their lights follow
     // them alike.
-    self.campfires.prepare(options.world.is_campfire_lit);
+    self.campfires.prepare(toggles.is_campfire_lit);
     self.motions.prepare();
 
     let placed: &[PlacedEmitter] = self.systems.as_ref().map_or(&[], |systems| &systems.placed);

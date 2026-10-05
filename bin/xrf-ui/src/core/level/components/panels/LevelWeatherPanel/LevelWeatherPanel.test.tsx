@@ -5,7 +5,7 @@ import { Container } from "@wirestate/core";
 
 import { EXrayEngine } from "@/core/ipc/types/xrf-engine-target";
 import { EEnvironmentRule, WeatherCycleId } from "@/core/ipc/types/xrf-environment";
-import { ERenderWeatherPlay } from "@/core/ipc/types/xrf-renderer";
+import { EWorldWeatherPlay } from "@/core/ipc/types/xrf-world";
 import { ELevelWeatherSource } from "@/core/level/lib/weather/level-weather-source";
 import { LevelLoadService, LevelViewService, LevelWeatherService } from "@/core/level/services";
 import { mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
@@ -14,7 +14,7 @@ import { InvokeMap, resetMockInvoke, setMockInvokeResponses } from "@/fixtures/m
 import {
   mockLevelWeatherCycle,
   mockLevelWeatherDescription,
-  mockRenderWeatherReport,
+  mockWorldWeatherReport,
 } from "@/fixtures/mocks/weather.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
@@ -91,7 +91,7 @@ describe("LevelWeatherPanel", () => {
     await userEvent.click(getByRole("button", { name: "Manual" }));
 
     expect(weather.source).toBe(ELevelWeatherSource.MANUAL);
-    await waitFor(() => expect(weather.weather?.kind).toBe(ERenderWeatherPlay.KEYFRAME));
+    await waitFor(() => expect(weather.weather?.kind).toBe(EWorldWeatherPlay.KEYFRAME));
     expect(getByTestId("level-weather-play-section").textContent).toContain("Seeded from");
     expect(getByRole("checkbox", { name: "Dynamic sun" })).toBeDisabled();
 
@@ -162,7 +162,7 @@ describe("LevelWeatherPanel", () => {
     expect(weather.effect).toEqual({ name: "fx_blowout" });
 
     act(() =>
-      weather.noteReport(mockRenderWeatherReport({ effect: { name: "fx_blowout", remaining: 125 }, time: 43_300 }))
+      weather.noteReport(mockWorldWeatherReport({ effect: { name: "fx_blowout", remaining: 125 }, time: 43_300 }))
     );
 
     await waitFor(() =>
@@ -180,7 +180,7 @@ describe("LevelWeatherPanel", () => {
 
     act(() =>
       weather.noteReport(
-        mockRenderWeatherReport({
+        mockWorldWeatherReport({
           ambient: {
             effect: { name: "effect_6", particles: "nature\\fog_stormy_01", remaining: 4 },
             isIndoors: false,
@@ -226,7 +226,7 @@ describe("LevelWeatherPanel", () => {
 
     expect(section()).toMatch(/Volumes\s*1.*Around the camera\s*0/);
 
-    act(() => weather.noteReport(mockRenderWeatherReport({ modifiers: 1, weight: 1 })));
+    act(() => weather.noteReport(mockWorldWeatherReport({ modifiers: 1, weight: 1 })));
 
     await waitFor(() => expect(section()).toMatch(/Around the camera\s*1/));
   });

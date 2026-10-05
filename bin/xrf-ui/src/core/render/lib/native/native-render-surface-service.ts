@@ -5,12 +5,11 @@ import { Nullable } from "@xrf/types";
 import { renderCommands } from "@/core/ipc/commands/render";
 import {
   RenderAppliedReport,
-  RenderCameraPose,
   RenderFrameReport,
   RenderLoadReport,
   RenderSettings,
-  RenderWeatherReport,
 } from "@/core/ipc/types/xrf-renderer";
+import { WorldCameraPose, WorldWeatherReport } from "@/core/ipc/types/xrf-world";
 import { EMPTY_RENDER_FRAME_REPORT } from "@/core/render/lib/native/native-frame-report";
 import { NativeViewport } from "@/core/render/lib/native/native-viewport";
 import { NativeViewportTarget } from "@/core/render/lib/native/native-viewport-target";
@@ -62,7 +61,7 @@ export abstract class NativeRenderSurfaceService implements IRenderSurfaceHost {
           this.applied = report;
         });
       },
-      onCamera: (pose: RenderCameraPose): void => this.onCamera(pose),
+      onCamera: (pose: WorldCameraPose): void => this.onCamera(pose),
       onFailed: (message: string): void => this.fail(message),
       onFrame: (report: RenderFrameReport): void => {
         runInAction(() => {
@@ -71,7 +70,7 @@ export abstract class NativeRenderSurfaceService implements IRenderSurfaceHost {
         this.onFrame(report);
       },
       onLoad: (report: RenderLoadReport): void => this.onLoad(report),
-      onWeather: (report: Nullable<RenderWeatherReport>): void => this.onWeather(report),
+      onWeather: (report: Nullable<WorldWeatherReport>): void => this.onWeather(report),
     });
 
     this.viewport = viewport;
@@ -127,7 +126,7 @@ export abstract class NativeRenderSurfaceService implements IRenderSurfaceHost {
   /**
    * @param _pose - Where the viewport's camera stands now.
    */
-  protected onCamera(_pose: RenderCameraPose): void {}
+  protected onCamera(_pose: WorldCameraPose): void {}
 
   /**
    * @param _report - How far the viewport's scene has loaded.
@@ -137,7 +136,7 @@ export abstract class NativeRenderSurfaceService implements IRenderSurfaceHost {
   /**
    * @param _report - Where the viewport's weather stands, or null while none plays.
    */
-  protected onWeather(_report: Nullable<RenderWeatherReport>): void {}
+  protected onWeather(_report: Nullable<WorldWeatherReport>): void {}
 
   /**
    * Called once a viewport draws under an element.

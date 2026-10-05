@@ -2,22 +2,25 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 import { waitFor } from "@testing-library/react";
 import { Container } from "@wirestate/core";
 
+import { ViewportEvent } from "@/core/ipc/types/xrf-app";
 import {
-  ERenderCamera,
-  ERenderCameraCommand,
   ERenderDebugView,
   ERenderLevelHit,
   ERenderOverlay,
   ERenderSurfaceColor,
   ERenderViewportEvent,
-  ERenderWeatherPlay,
-  ERenderWeatherTransition,
-  RenderCamera,
   RenderFrameReport,
   RenderLevelHit,
-  RenderSurfaceSpan,
-  RenderViewportEvent,
 } from "@/core/ipc/types/xrf-renderer";
+import {
+  EWorldCamera,
+  EWorldCameraCommand,
+  EWorldViewportEvent,
+  EWorldWeatherPlay,
+  EWorldWeatherTransition,
+  WorldCamera,
+  WorldSurfaceSpan,
+} from "@/core/ipc/types/xrf-world";
 import { ELevelPick } from "@/core/level/lib/pick/level-pick";
 import { ELevelShading } from "@/core/level/lib/view/level-shading";
 import { LevelLoadService } from "@/core/level/services/level-load.service";
@@ -40,12 +43,12 @@ import {
   resetMockInvoke,
   setMockInvokeResponses,
 } from "@/fixtures/mocks/tauri.mocks";
-import { mockLevelWeatherDescription, mockRenderWeatherReport } from "@/fixtures/mocks/weather.mocks";
+import { mockLevelWeatherDescription, mockWorldWeatherReport } from "@/fixtures/mocks/weather.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 
 const VIEWPORT: number = 7;
 
-const SPAN: RenderSurfaceSpan = { uMax: 2, uMin: 0, vMax: 1, vMin: -1 };
+const SPAN: WorldSurfaceSpan = { uMax: 2, uMin: 0, vMax: 1, vMin: -1 };
 
 const REPORT: RenderFrameReport = {
   adapter: "Test GPU",
@@ -138,8 +141,8 @@ async function mockAttached(
   return { container, service };
 }
 
-function emit(event: RenderViewportEvent): void {
-  (getMockChannels()[0] as MockChannel<RenderViewportEvent>).onmessage(event);
+function emit(event: ViewportEvent): void {
+  (getMockChannels()[0] as MockChannel<ViewportEvent>).onmessage(event);
 }
 
 describe("LevelRenderService", () => {
@@ -156,12 +159,12 @@ describe("LevelRenderService", () => {
     expect(sent("attach_viewport")).toEqual([{ events: getMockChannels()[0], window: "main" }]);
     expect(sent("configure")).toEqual([{ settings: { frameRate: { isVsync: true, limit: null }, isGpuTimed: false } }]);
 
-    const camera: RenderCamera = sent("set_camera").at(-1)?.camera as RenderCamera;
+    const camera: WorldCamera = sent("set_camera").at(-1)?.camera as WorldCamera;
 
     expect(sent("set_camera").at(-1)?.viewport).toBe(VIEWPORT);
-    expect(camera.kind).toBe(ERenderCamera.FLY);
+    expect(camera.kind).toBe(EWorldCamera.FLY);
     expect(sent("command_camera").at(-1)).toEqual({
-      command: { kind: ERenderCameraCommand.RESET },
+      command: { kind: EWorldCameraCommand.RESET },
       viewport: VIEWPORT,
     });
   });
@@ -226,7 +229,7 @@ describe("LevelRenderService", () => {
     emit({ kind: ERenderViewportEvent.FRAME, report: REPORT });
     expect(service.frame).toBe(REPORT);
 
-    emit({ kind: ERenderViewportEvent.CAMERA, pose: { position: [1, 2, 3], target: [1, 2, 2] } });
+    emit({ kind: EWorldViewportEvent.CAMERA, pose: { position: [1, 2, 3], target: [1, 2, 2] } });
     // The readout states the engine's space, which mirrors renderer space along z.
     expect(viewport.camera?.position).toEqual({ x: 1, y: 2, z: -3 });
 
@@ -242,7 +245,7 @@ describe("LevelRenderService", () => {
     await flush();
 
     expect(sent("set_camera")).toHaveLength(1);
-    expect(sent("command_camera")).toEqual([{ command: { kind: ERenderCameraCommand.RESET }, viewport: VIEWPORT }]);
+    expect(sent("command_camera")).toEqual([{ command: { kind: EWorldCameraCommand.RESET }, viewport: VIEWPORT }]);
   });
 
   it("keeps where the camera flew when the toolbar changes its speed", async () => {
@@ -284,6 +287,26 @@ describe("LevelRenderService", () => {
         viewport: VIEWPORT,
       },
     ]);
+  });
+
+  it("lets the world play what the toolbar switches, apart from what is drawn", async () => {
+    const { container } = await mockAttached();
+    const view: LevelViewService = container.get(LevelViewService);
+
+    expect(sent("set_world_toggles").at(-1)).toEqual({
+      toggles: expect.objectContaining({ isRainy: true, isSpawnedLamps: true }),
+      viewport: VIEWPORT,
+    });
+    expect(sent("set_view_options").at(-1)).not.toHaveProperty("options.world");
+
+    mockInvoke.mockClear();
+    view.setOptions({ ...view.options, isRainy: false, isSpawnedLamps: false });
+    await flush();
+
+    expect(sent("set_world_toggles")).toEqual([
+      { toggles: expect.objectContaining({ isRainy: false, isSpawnedLamps: false }), viewport: VIEWPORT },
+    ]);
+    expect(sent("set_view_options")).toEqual([]);
   });
 
   it("draws as a wireframe and at the height the settings ask for", async () => {
@@ -337,8 +360,8 @@ describe("LevelRenderService", () => {
 
     await waitFor(() =>
       expect(sent("play_weather").at(-1)).toEqual({
-        play: { kind: ERenderWeatherPlay.CYCLE, name: "default_clear" },
-        transition: ERenderWeatherTransition.CUT,
+        play: { kind: EWorldWeatherPlay.CYCLE, name: "default_clear" },
+        transition: EWorldWeatherTransition.CUT,
         viewport: VIEWPORT,
       })
     );
@@ -362,7 +385,7 @@ describe("LevelRenderService", () => {
     expect(sent("play_weather_effect")).toEqual([{ name: "fx_storm", viewport: VIEWPORT }]);
     expect(sent("play_ambient_effect")).toEqual([{ viewport: VIEWPORT }, { viewport: VIEWPORT }]);
 
-    emit({ kind: ERenderViewportEvent.WEATHER, report: mockRenderWeatherReport({ time: 4_000 }) });
+    emit({ kind: EWorldViewportEvent.WEATHER, report: mockWorldWeatherReport({ time: 4_000 }) });
     expect(weather.time).toBe(4_000);
     expect(weather.report?.between).toEqual([0, 43_200]);
   });

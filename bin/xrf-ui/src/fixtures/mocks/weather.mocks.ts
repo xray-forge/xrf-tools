@@ -1,7 +1,7 @@
 import { LevelWeatherCycle, LevelWeatherDescription } from "@/core/ipc/types/xrf-app";
 import { EXrayEngine } from "@/core/ipc/types/xrf-engine-target";
 import { EWeatherCycleKind, WeatherDescriptor } from "@/core/ipc/types/xrf-environment";
-import { RenderWeatherReport } from "@/core/ipc/types/xrf-renderer";
+import { WorldWeatherReport } from "@/core/ipc/types/xrf-world";
 import { DEFAULT_LEVEL_MANUAL_WEATHER, toLevelManualDescriptor } from "@/core/level/lib/weather/level-manual-weather";
 
 /**
@@ -109,7 +109,7 @@ export function mockLevelWeatherDescription(overrides: Partial<LevelWeatherDescr
  * @param overrides - Field values to override.
  * @returns Where the renderer's weather stands.
  */
-export function mockRenderWeatherReport(overrides: Partial<RenderWeatherReport> = {}): RenderWeatherReport {
+export function mockWorldWeatherReport(overrides: Partial<WorldWeatherReport> = {}): WorldWeatherReport {
   const time: number = overrides.time ?? 43_200;
 
   return {

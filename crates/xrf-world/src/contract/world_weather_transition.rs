@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub enum RenderWeatherTransition {
+pub enum WorldWeatherTransition {
   /// At once, as the first weather a level shows does.
   #[default]
   Cut,
@@ -16,7 +16,7 @@ pub enum RenderWeatherTransition {
   Fade,
 }
 
-impl RenderWeatherTransition {
+impl WorldWeatherTransition {
   /// Real time it takes.
   pub fn get_duration(self) -> Duration {
     match self {

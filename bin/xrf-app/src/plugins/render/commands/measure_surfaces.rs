@@ -1,5 +1,6 @@
 use tauri::State;
-use xrf_renderer::{RenderSurfaceGeometry, RenderViewportId};
+use xrf_renderer::RenderViewportId;
+use xrf_world::WorldSurfaceGeometry;
 
 use crate::core::types::TauriResult;
 use crate::plugins::render::state::RenderState;
@@ -10,6 +11,6 @@ use crate::plugins::render::state::RenderState;
 pub async fn render_measure_surfaces(
   state: State<'_, RenderState>,
   viewport: RenderViewportId,
-) -> TauriResult<Vec<RenderSurfaceGeometry>> {
+) -> TauriResult<Vec<WorldSurfaceGeometry>> {
   Ok(state.lock_world().measure_surfaces(viewport))
 }

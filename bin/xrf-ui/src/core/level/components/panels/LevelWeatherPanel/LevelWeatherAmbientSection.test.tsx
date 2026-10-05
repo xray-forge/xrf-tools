@@ -1,12 +1,12 @@
 import { describe, expect, it, jest } from "@jest/globals";
 import { userEvent } from "@testing-library/user-event";
 
-import { RenderAmbientReport } from "@/core/ipc/types/xrf-renderer";
+import { WorldAmbientReport } from "@/core/ipc/types/xrf-world";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 import { LevelWeatherAmbientSection } from "./LevelWeatherAmbientSection";
 
-const PLAYING: RenderAmbientReport = {
+const PLAYING: WorldAmbientReport = {
   effect: { name: "effect_3", particles: "nature\\fog_tornado_00", remaining: 6.2 },
   isIndoors: false,
   played: 3,

@@ -1,6 +1,7 @@
 import { Nullable } from "@xrf/types";
 
-import { ERenderCamera, RenderCamera, RenderViewOptions } from "@/core/ipc/types/xrf-renderer";
+import { RenderViewOptions } from "@/core/ipc/types/xrf-renderer";
+import { EWorldCamera, WorldCamera } from "@/core/ipc/types/xrf-world";
 import { ILevelCameraOptions } from "@/core/level/lib/camera/level-camera-options";
 import { ILevelViewpoint } from "@/core/level/lib/camera/level-viewpoint";
 import {
@@ -26,14 +27,14 @@ export function toLevelCameraAt(
   viewpoint: ILevelViewpoint,
   options: ILevelCameraOptions,
   config: ILevelRenderConfig
-): RenderCamera {
+): WorldCamera {
   const { position, target }: ILevelViewpoint = viewpoint;
 
   return {
     boost: options.boost,
     far: config.cameraFar,
     fieldOfView: options.fieldOfView,
-    kind: ERenderCamera.FLY,
+    kind: EWorldCamera.FLY,
     near: config.cameraNear,
     position: [position.x, position.y, position.z],
     sensitivity: options.sensitivity,

@@ -2,11 +2,14 @@ use std::collections::HashSet;
 use std::f32::consts::{FRAC_PI_2, FRAC_PI_4};
 
 use glam::{EulerRot, Mat4, Quat, Vec3};
-use xrf_renderer::{
-  CameraFrame, RenderCamera, RenderCameraCommand, RenderCameraPose, RenderInputEvent, RenderInputKind,
-};
+use xrf_renderer::CameraFrame;
 
 use crate::camera::fly_key::FlyKey;
+use crate::contract::world_camera::WorldCamera;
+use crate::contract::world_camera_command::WorldCameraCommand;
+use crate::contract::world_camera_pose::WorldCameraPose;
+use crate::contract::world_input_event::WorldInputEvent;
+use crate::contract::world_input_kind::WorldInputKind;
 
 /// Just short of straight up, so looking at the sky never flips the horizon over.
 const MAX_PITCH: f32 = FRAC_PI_2 - 0.001;
@@ -21,7 +24,7 @@ const MAX_DELTA: f32 = 0.25;
 /// up as it is pitched. It holds yaw and pitch itself, since a rotation read back cannot tell `+π` from `-π`.
 #[derive(Clone, Debug)]
 pub struct FlyCameraController {
-  description: RenderCamera,
+  description: WorldCamera,
   position: Vec3,
   yaw: f32,
   pitch: f32,
@@ -34,7 +37,7 @@ pub struct FlyCameraController {
 
 impl Default for FlyCameraController {
   fn default() -> Self {
-    Self::new(RenderCamera::Fly {
+    Self::new(WorldCamera::Fly {
       position: [0.0, 2.0, 0.0],
       target: [0.0, 2.0, -1.0],
       field_of_view: 67.5,
@@ -48,7 +51,7 @@ impl Default for FlyCameraController {
 }
 
 impl FlyCameraController {
-  pub fn new(description: RenderCamera) -> Self {
+  pub fn new(description: WorldCamera) -> Self {
     let mut controller: Self = Self {
       description,
       position: Vec3::ZERO,
@@ -64,7 +67,7 @@ impl FlyCameraController {
   }
 
   /// Takes a new description, answering whether the camera jumped to its start rather than keeping where it stands.
-  pub fn describe(&mut self, description: RenderCamera) -> bool {
+  pub fn describe(&mut self, description: WorldCamera) -> bool {
     let is_moved: bool = description.get_start() != self.description.get_start();
 
     self.description = description;
@@ -76,21 +79,21 @@ impl FlyCameraController {
     is_moved
   }
 
-  pub fn command(&mut self, command: RenderCameraCommand) {
-    if command == RenderCameraCommand::Reset {
+  pub fn command(&mut self, command: WorldCameraCommand) {
+    if command == WorldCameraCommand::Reset {
       self.reset();
     }
   }
 
-  pub fn input(&mut self, event: &RenderInputEvent) {
+  pub fn input(&mut self, event: &WorldInputEvent) {
     match event.kind {
       // The main button of the first pointer down alone: a second finger or another button would fight it.
-      RenderInputKind::PointerDown if event.is_primary && event.button == 0 => {
+      WorldInputKind::PointerDown if event.is_primary && event.button == 0 => {
         self.dragged = Some((event.pointer_id, event.x, event.y));
       }
       // A move with no button held ends a drag whose release never arrived, rather than turning on a plain hover.
-      RenderInputKind::PointerMove if event.buttons == 0 => self.dragged = None,
-      RenderInputKind::PointerMove => {
+      WorldInputKind::PointerMove if event.buttons == 0 => self.dragged = None,
+      WorldInputKind::PointerMove => {
         if let Some((id, x, y)) = self.dragged
           && id == event.pointer_id
         {
@@ -99,23 +102,23 @@ impl FlyCameraController {
           self.dragged = Some((id, event.x, event.y));
         }
       }
-      RenderInputKind::PointerUp | RenderInputKind::PointerCancel => {
+      WorldInputKind::PointerUp | WorldInputKind::PointerCancel => {
         if self.dragged.is_some_and(|(id, _, _)| id == event.pointer_id) {
           self.dragged = None;
         }
       }
-      RenderInputKind::KeyDown => {
+      WorldInputKind::KeyDown => {
         if let Some(key) = FlyKey::from_code(&event.code) {
           self.held.insert(key);
         }
       }
-      RenderInputKind::KeyUp => {
+      WorldInputKind::KeyUp => {
         if let Some(key) = FlyKey::from_code(&event.code) {
           self.held.remove(&key);
         }
       }
       // A viewport that loses focus holds no key, which would otherwise fly the camera away unattended.
-      RenderInputKind::Blur => {
+      WorldInputKind::Blur => {
         self.held.clear();
         self.dragged = None;
       }
@@ -125,7 +128,7 @@ impl FlyCameraController {
 
   /// Advances the camera by a frame's seconds.
   pub fn update(&mut self, delta: f32) {
-    let RenderCamera::Fly {
+    let WorldCamera::Fly {
       speed,
       boost,
       sensitivity,
@@ -165,14 +168,14 @@ impl FlyCameraController {
     !self.held.is_empty() || self.dragged.is_some()
   }
 
-  pub fn get_description(&self) -> RenderCamera {
+  pub fn get_description(&self) -> WorldCamera {
     self.description
   }
 
-  pub fn get_pose(&self) -> RenderCameraPose {
+  pub fn get_pose(&self) -> WorldCameraPose {
     let target: Vec3 = self.position + self.get_rotation() * Vec3::NEG_Z;
 
-    RenderCameraPose {
+    WorldCameraPose {
       position: self.position.to_array(),
       target: target.to_array(),
     }

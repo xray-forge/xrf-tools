@@ -1,9 +1,13 @@
 use std::f32::consts::{PI, TAU};
 
 use glam::Vec3;
-use xrf_renderer::{
-  CameraFrame, RenderCamera, RenderCameraCommand, RenderCameraPose, RenderInputEvent, RenderInputKind,
-};
+use xrf_renderer::CameraFrame;
+
+use crate::contract::world_camera::WorldCamera;
+use crate::contract::world_camera_command::WorldCameraCommand;
+use crate::contract::world_camera_pose::WorldCameraPose;
+use crate::contract::world_input_event::WorldInputEvent;
+use crate::contract::world_input_kind::WorldInputKind;
 
 /// Keeps the camera off the poles, where turning around the target would flip it over.
 const POLE_MARGIN: f32 = 1e-4;
@@ -21,7 +25,7 @@ enum OrbitDrag {
 /// A camera orbiting a target: the main button turns it around the target, the others pan, and the wheel dollies.
 #[derive(Clone, Debug)]
 pub struct OrbitCameraController {
-  description: RenderCamera,
+  description: WorldCamera,
   position: Vec3,
   target: Vec3,
   /// The viewport's height in CSS pixels, which a drag is measured against.
@@ -31,7 +35,7 @@ pub struct OrbitCameraController {
 
 impl Default for OrbitCameraController {
   fn default() -> Self {
-    Self::new(RenderCamera::Orbit {
+    Self::new(WorldCamera::Orbit {
       position: [0.0, 0.0, 3.0],
       target: [0.0, 0.0, 0.0],
       field_of_view: 45.0,
@@ -42,7 +46,7 @@ impl Default for OrbitCameraController {
 }
 
 impl OrbitCameraController {
-  pub fn new(description: RenderCamera) -> Self {
+  pub fn new(description: WorldCamera) -> Self {
     let (position, target) = description.get_start();
 
     Self {
@@ -55,7 +59,7 @@ impl OrbitCameraController {
   }
 
   /// Takes a new description, answering whether the camera jumped to its start rather than keeping where it stands.
-  pub fn describe(&mut self, description: RenderCamera) -> bool {
+  pub fn describe(&mut self, description: WorldCamera) -> bool {
     let is_moved: bool = description.get_start() != self.description.get_start();
 
     self.description = description;
@@ -67,10 +71,10 @@ impl OrbitCameraController {
     is_moved
   }
 
-  pub fn command(&mut self, command: RenderCameraCommand) {
+  pub fn command(&mut self, command: WorldCameraCommand) {
     match command {
-      RenderCameraCommand::Reset => self.reset(),
-      RenderCameraCommand::Dolly { step } => self.dolly(step),
+      WorldCameraCommand::Reset => self.reset(),
+      WorldCameraCommand::Dolly { step } => self.dolly(step),
     }
   }
 
@@ -79,9 +83,9 @@ impl OrbitCameraController {
     self.height = height.max(1.0);
   }
 
-  pub fn input(&mut self, event: &RenderInputEvent) {
+  pub fn input(&mut self, event: &WorldInputEvent) {
     match event.kind {
-      RenderInputKind::PointerDown if event.is_primary => {
+      WorldInputKind::PointerDown if event.is_primary => {
         let drag: OrbitDrag = if event.button == 0 && !event.shift_key && !event.ctrl_key {
           OrbitDrag::Rotate
         } else {
@@ -91,8 +95,8 @@ impl OrbitCameraController {
         self.dragged = Some((event.pointer_id, event.x, event.y, drag));
       }
       // A move with no button held ends a drag whose release never arrived, rather than turning on a plain hover.
-      RenderInputKind::PointerMove if event.buttons == 0 => self.dragged = None,
-      RenderInputKind::PointerMove => {
+      WorldInputKind::PointerMove if event.buttons == 0 => self.dragged = None,
+      WorldInputKind::PointerMove => {
         if let Some((id, x, y, drag)) = self.dragged
           && id == event.pointer_id
         {
@@ -104,12 +108,12 @@ impl OrbitCameraController {
           self.dragged = Some((id, event.x, event.y, drag));
         }
       }
-      RenderInputKind::PointerUp | RenderInputKind::PointerCancel => {
+      WorldInputKind::PointerUp | WorldInputKind::PointerCancel => {
         if self.dragged.is_some_and(|(id, ..)| id == event.pointer_id) {
           self.dragged = None;
         }
       }
-      RenderInputKind::Wheel => {
+      WorldInputKind::Wheel => {
         // A line or a page of wheel is worth what a browser scrolls for it, so every mouse dollies alike.
         let pixels: f32 = match event.delta_mode {
           1 => event.delta_y * 16.0,
@@ -120,19 +124,19 @@ impl OrbitCameraController {
 
         self.dolly(if pixels > 0.0 { 1.0 / scale } else { scale });
       }
-      RenderInputKind::Blur => self.dragged = None,
+      WorldInputKind::Blur => self.dragged = None,
       _ => {}
     }
   }
 
   pub fn update(&mut self, _delta: f32) {}
 
-  pub fn get_description(&self) -> RenderCamera {
+  pub fn get_description(&self) -> WorldCamera {
     self.description
   }
 
-  pub fn get_pose(&self) -> RenderCameraPose {
-    RenderCameraPose {
+  pub fn get_pose(&self) -> WorldCameraPose {
+    WorldCameraPose {
       position: self.position.to_array(),
       target: self.target.to_array(),
     }

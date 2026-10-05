@@ -1,20 +1,21 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
 
-import { ERenderInputKind, RenderInputEvent, RenderViewportLayout } from "@/core/ipc/types/xrf-renderer";
+import { RenderViewportLayout } from "@/core/ipc/types/xrf-renderer";
+import { EWorldInputKind, WorldInputEvent } from "@/core/ipc/types/xrf-world";
 import { NativeViewport } from "@/core/render/lib/native/native-viewport";
 import { NativeViewportTarget } from "@/core/render/lib/native/native-viewport-target";
 
 interface IViewportSpy {
   layouts: Array<RenderViewportLayout>;
-  inputs: Array<RenderInputEvent>;
+  inputs: Array<WorldInputEvent>;
   viewport: NativeViewport;
 }
 
 function mockViewport(): IViewportSpy {
   const layouts: Array<RenderViewportLayout> = [];
-  const inputs: Array<RenderInputEvent> = [];
+  const inputs: Array<WorldInputEvent> = [];
   const viewport = {
-    sendInput: (event: RenderInputEvent) => inputs.push(event),
+    sendInput: (event: WorldInputEvent) => inputs.push(event),
     setLayout: (layout: RenderViewportLayout) => layouts.push(layout),
   } as unknown as NativeViewport;
 
@@ -97,15 +98,15 @@ describe("NativeViewportTarget", () => {
     element.dispatchEvent(pointer("pointermove", { clientX: 25, clientY: 30 }));
     element.dispatchEvent(pointer("pointermove", { clientX: 40, clientY: 35 }));
 
-    expect(inputs.map((it) => it.kind)).toEqual([ERenderInputKind.POINTER_DOWN]);
+    expect(inputs.map((it) => it.kind)).toEqual([EWorldInputKind.POINTER_DOWN]);
     expect(element.style.cursor).toBe("grabbing");
 
     element.dispatchEvent(pointer("pointerup", { button: 0, clientX: 40, clientY: 35 }));
 
     expect(inputs.map((it) => it.kind)).toEqual([
-      ERenderInputKind.POINTER_DOWN,
-      ERenderInputKind.POINTER_MOVE,
-      ERenderInputKind.POINTER_UP,
+      EWorldInputKind.POINTER_DOWN,
+      EWorldInputKind.POINTER_MOVE,
+      EWorldInputKind.POINTER_UP,
     ]);
     // In css pixels from the element's own corner.
     expect([inputs[1].x, inputs[1].y]).toEqual([30, 15]);
@@ -124,8 +125,8 @@ describe("NativeViewportTarget", () => {
     element.dispatchEvent(new KeyboardEvent("keyup", { code: "KeyW" }));
 
     expect(inputs.map((it) => [it.kind, it.code])).toEqual([
-      [ERenderInputKind.KEY_DOWN, "KeyW"],
-      [ERenderInputKind.KEY_UP, "KeyW"],
+      [EWorldInputKind.KEY_DOWN, "KeyW"],
+      [EWorldInputKind.KEY_UP, "KeyW"],
     ]);
 
     target.dispose();

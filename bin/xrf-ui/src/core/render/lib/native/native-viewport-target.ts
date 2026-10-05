@@ -1,6 +1,7 @@
 import { Nullable } from "@xrf/types";
 
-import { ERenderInputKind, RenderInputEvent, RenderViewportLayout } from "@/core/ipc/types/xrf-renderer";
+import { RenderViewportLayout } from "@/core/ipc/types/xrf-renderer";
+import { EWorldInputKind, WorldInputEvent } from "@/core/ipc/types/xrf-world";
 import { NativeViewport } from "@/core/render/lib/native/native-viewport";
 import { NativeViewportHole } from "@/core/render/lib/native/native-viewport-hole";
 import { clearWindowTextSelection } from "@/lib/dom/selection";
@@ -23,7 +24,7 @@ export class NativeViewportTarget {
   private sent: string = "";
   private rect: DOMRect;
   /** The latest pointer move not yet sent. */
-  private moved: Nullable<RenderInputEvent> = null;
+  private moved: Nullable<WorldInputEvent> = null;
   /** The cursor the element had before a drag took it, while one drags. */
   private resting: Nullable<string> = null;
 
@@ -100,13 +101,13 @@ export class NativeViewportTarget {
     }
   }
 
-  private send(kind: ERenderInputKind, event: Event): void {
+  private send(kind: EWorldInputKind, event: Event): void {
     // Whatever moved before this gesture goes first, so a release never arrives ahead of the move before it.
     this.flushMove();
     this.viewport.sendInput(this.toInput(kind, event));
   }
 
-  private toInput(kind: ERenderInputKind, event: Event): RenderInputEvent {
+  private toInput(kind: EWorldInputKind, event: Event): WorldInputEvent {
     const pointer: Partial<PointerEvent> = event as PointerEvent;
     const wheel: Partial<WheelEvent> = event as WheelEvent;
     const key: Partial<KeyboardEvent> = event as KeyboardEvent;
@@ -145,27 +146,27 @@ export class NativeViewportTarget {
   private readonly listeners: Readonly<Record<string, (event: Event) => void>> = {
     blur: (event: Event): void => {
       this.endDrag();
-      this.send(ERenderInputKind.BLUR, event);
+      this.send(EWorldInputKind.BLUR, event);
     },
     contextmenu: (event: Event): void => {
       event.preventDefault();
-      this.send(ERenderInputKind.CONTEXT_MENU, event);
+      this.send(EWorldInputKind.CONTEXT_MENU, event);
     },
     keydown: (event: Event): void => {
       // A held key repeats; the renderer already holds it.
       if (!(event as KeyboardEvent).repeat) {
-        this.send(ERenderInputKind.KEY_DOWN, event);
+        this.send(EWorldInputKind.KEY_DOWN, event);
       }
     },
-    keyup: (event: Event): void => this.send(ERenderInputKind.KEY_UP, event),
+    keyup: (event: Event): void => this.send(EWorldInputKind.KEY_UP, event),
     // A capture dropped while a button is held ends the drag here, as a release that never arrives would not.
     lostpointercapture: (event: Event): void => {
       this.endDrag();
-      this.send(ERenderInputKind.POINTER_CANCEL, event);
+      this.send(EWorldInputKind.POINTER_CANCEL, event);
     },
     pointercancel: (event: Event): void => {
       this.endDrag();
-      this.send(ERenderInputKind.POINTER_CANCEL, event);
+      this.send(EWorldInputKind.POINTER_CANCEL, event);
     },
     pointerdown: (event: Event): void => {
       const pointer: PointerEvent = event as PointerEvent;
@@ -180,18 +181,18 @@ export class NativeViewportTarget {
         this.startDrag();
       }
 
-      this.send(ERenderInputKind.POINTER_DOWN, event);
+      this.send(EWorldInputKind.POINTER_DOWN, event);
     },
     pointermove: (event: Event): void => {
-      this.moved = this.toInput(ERenderInputKind.POINTER_MOVE, event);
+      this.moved = this.toInput(EWorldInputKind.POINTER_MOVE, event);
     },
     pointerup: (event: Event): void => {
       this.endDrag();
-      this.send(ERenderInputKind.POINTER_UP, event);
+      this.send(EWorldInputKind.POINTER_UP, event);
     },
     wheel: (event: Event): void => {
       event.preventDefault();
-      this.send(ERenderInputKind.WHEEL, event);
+      this.send(EWorldInputKind.WHEEL, event);
     },
   };
 }

@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Copy, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(tag = "kind", rename_all = "camelCase", rename_all_fields = "camelCase")]
-pub enum RenderCamera {
+pub enum WorldCamera {
   /// Flies free, turned by a drag and moved by the keys, as a level is walked.
   Fly {
     /// Where the camera starts, and returns to on reset.
@@ -37,24 +37,24 @@ pub enum RenderCamera {
   },
 }
 
-impl RenderCamera {
+impl WorldCamera {
   /// Where the camera starts and what it looks at.
   pub fn get_start(&self) -> ([f32; 3], [f32; 3]) {
     match *self {
-      RenderCamera::Fly { position, target, .. } | RenderCamera::Orbit { position, target, .. } => (position, target),
+      WorldCamera::Fly { position, target, .. } | WorldCamera::Orbit { position, target, .. } => (position, target),
     }
   }
 
   /// Vertical field of view in degrees, near and far.
   pub fn get_lens(&self) -> (f32, f32, f32) {
     match *self {
-      RenderCamera::Fly {
+      WorldCamera::Fly {
         field_of_view,
         near,
         far,
         ..
       }
-      | RenderCamera::Orbit {
+      | WorldCamera::Orbit {
         field_of_view,
         near,
         far,

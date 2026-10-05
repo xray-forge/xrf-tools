@@ -1,13 +1,12 @@
 use serde::{Deserialize, Serialize};
-
-use crate::contract::render_spawn_category::RenderSpawnCategory;
+use xrf_renderer::RenderSpawnCategory;
 
 /// What of the level's world plays, rather than what is drawn of it: the weather's rain, bolts and wind, the campfires,
 /// the ambient effects, and which groups of the spawned objects stream in.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct RenderWorldToggles {
+pub struct WorldToggles {
   /// Whether the weather's rain falls and wets surfaces.
   pub is_rainy: bool,
   /// Whether the weather's bolts strike.
@@ -27,7 +26,7 @@ pub struct RenderWorldToggles {
   pub is_spawned_released: bool,
 }
 
-impl Default for RenderWorldToggles {
+impl Default for WorldToggles {
   fn default() -> Self {
     Self {
       is_rainy: true,
@@ -44,7 +43,7 @@ impl Default for RenderWorldToggles {
   }
 }
 
-impl RenderWorldToggles {
+impl WorldToggles {
   /// Whether a group of spawned objects is drawn.
   pub fn is_spawned(&self, category: RenderSpawnCategory) -> bool {
     match category {

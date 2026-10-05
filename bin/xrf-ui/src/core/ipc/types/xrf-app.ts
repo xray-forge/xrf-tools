@@ -18,6 +18,7 @@ import { LtxAnchoredFinding, LtxFileStructure, LtxFileText, LtxInventory } from 
 import { XrayMaterialDescriptor, XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import { Vector3d } from "@/core/ipc/types/xrf-math";
 import { ArchivePackConfig, ArchivePatchConfig } from "@/core/ipc/types/xrf-pack";
+import { RenderViewportEvent } from "@/core/ipc/types/xrf-renderer";
 import { ClsId, SpawnHeaderChunk } from "@/core/ipc/types/xrf-spawn";
 import { EquipmentSlotOccupant, ImageShape } from "@/core/ipc/types/xrf-texture";
 import {
@@ -36,6 +37,7 @@ import {
   VisualDescription,
   VisualTransform,
 } from "@/core/ipc/types/xrf-visual";
+import { WorldViewportEvent } from "@/core/ipc/types/xrf-world";
 
 /** Every `kind` the `ArchiveAnimationBehavior` union is told apart by, so a switch or a comparison names one. */
 export enum EArchiveAnimationBehavior {
@@ -2654,6 +2656,9 @@ export type TransportEndpoint = {
   /** Sent as `Authorization: Bearer <token>`; new every launch. */
   token: string;
 };
+
+/** What a native viewport tells its page, from the renderer drawing it or the world it shows; each tells its own kinds. */
+export type ViewportEvent = RenderViewportEvent | WorldViewportEvent;
 
 /** Every `kind` the `VisualSource` union is told apart by, so a switch or a comparison names one. */
 export enum EVisualSource {

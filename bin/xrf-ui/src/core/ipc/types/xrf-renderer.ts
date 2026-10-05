@@ -1,18 +1,5 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
-import { WeatherDescriptor } from "@/core/ipc/types/xrf-environment";
-import { SectorSkip } from "@/core/ipc/types/xrf-visual";
-
-/** The weather's ambient effect playing near a viewport's camera. */
-export type RenderAmbientEffectReport = {
-  /** Its `effects.ltx` section. */
-  name: string;
-  /** The `particles.xr` effect or group it plays. */
-  particles: string;
-  /** Real seconds of its life left; none while what it emitted dies out. */
-  remaining: number | null;
-};
-
 /** How hard the ambient occlusion searches: XeGTAO's presets. */
 export enum ERenderAmbientOcclusionQuality {
   /** One direction, two steps each way. */
@@ -39,18 +26,6 @@ export type RenderAmbientOcclusionSettings = {
   /** How dark the occlusion goes: one XeGTAO's own curve, zero none, two its square. */
   strength: number | null;
   quality: RenderAmbientOcclusionQuality;
-};
-
-/** Where the weather's ambient effects near a viewport's camera stand. */
-export type RenderAmbientReport = {
-  /** The effect playing, or none. */
-  effect: RenderAmbientEffectReport | null;
-  /** Whether the camera stands indoors, where none starts. */
-  isIndoors: boolean;
-  /** Real seconds until the next may start, none once it may. */
-  wait: number | null;
-  /** How many have started since the level opened. */
-  played: number;
 };
 
 /** How a viewport's finished frame has its edges smoothed. */
@@ -203,72 +178,6 @@ export type RenderBloomSettings = {
   radius: number | null;
   /** `r2_ls_bloom_kernel_scale`: how strong the blur is. */
   strength: number | null;
-};
-
-/** Every `kind` the `RenderCamera` union is told apart by, so a switch or a comparison names one. */
-export enum ERenderCamera {
-  /** Flies free, turned by a drag and moved by the keys, as a level is walked. */
-  FLY = "fly",
-  /** Orbits a target, as a model or texture preview does. */
-  ORBIT = "orbit",
-}
-
-/**
- * A camera a viewport is driven by, as its consumer describes it.
- *
- * Described again from the same start, a camera keeps where it has been moved and takes only the rest.
- */
-export type RenderCamera =
-  /** Flies free, turned by a drag and moved by the keys, as a level is walked. */
-  | {
-      kind: "fly";
-      /** Where the camera starts, and returns to on reset. */
-      position: [number | null, number | null, number | null];
-      /** What it looks at from there. */
-      target: [number | null, number | null, number | null];
-      /** Vertical field of view, in degrees. */
-      fieldOfView: number | null;
-      near: number | null;
-      far: number | null;
-      /** Metres a second at a walk. */
-      speed: number | null;
-      /** Times the speed while the boost key is held. */
-      boost: number | null;
-      /** Radians of turn per CSS pixel dragged. */
-      sensitivity: number | null;
-    }
-  /** Orbits a target, as a model or texture preview does. */
-  | {
-      kind: "orbit";
-      /** Where the camera starts, and returns to on reset. */
-      position: [number | null, number | null, number | null];
-      /** What the camera looks at and turns around. */
-      target: [number | null, number | null, number | null];
-      /** Vertical field of view, in degrees. */
-      fieldOfView: number | null;
-      near: number | null;
-      far: number | null;
-    };
-
-/** Every `kind` the `RenderCameraCommand` union is told apart by, so a switch or a comparison names one. */
-export enum ERenderCameraCommand {
-  /** Back to where the camera started. */
-  RESET = "reset",
-  /** Towards the target or away from it, by a multiplier on the distance: above one moves away. */
-  DOLLY = "dolly",
-}
-
-/** What a consumer can ask of the camera it described. */
-export type RenderCameraCommand =
-  /** Back to where the camera started. */
-  | { kind: "reset" }
-  /** Towards the target or away from it, by a multiplier on the distance: above one moves away. */
-  | { kind: "dolly"; step: number | null };
-
-/** Where a camera is and the point it looks at. */
-export type RenderCameraPose = {
-  position: [number | null, number | null, number | null];
-  target: [number | null, number | null, number | null];
 };
 
 /** An opaque colour as CSS states it, eight bits a channel in sRGB. */
@@ -426,45 +335,6 @@ export type RenderImageCorrections = {
   grading: [number | null, number | null, number | null];
 };
 
-/** One gesture over a viewport, as much of the browser's event as crosses. */
-export type RenderInputEvent = {
-  kind: RenderInputKind;
-  pointerId: number;
-  isPrimary: boolean;
-  button: number;
-  buttons: number;
-  /** CSS pixels from the viewport element's left edge. */
-  x: number | null;
-  /** CSS pixels from the viewport element's top edge. */
-  y: number | null;
-  deltaX: number | null;
-  deltaY: number | null;
-  deltaMode: number;
-  altKey: boolean;
-  ctrlKey: boolean;
-  metaKey: boolean;
-  shiftKey: boolean;
-  /** `KeyboardEvent.code` for a key, empty for anything else: the key's place, so `W` is `W` on azerty too. */
-  code: string;
-};
-
-/** The gestures a viewport is told about, named as the browser names them. */
-export enum ERenderInputKind {
-  CONTEXT_MENU = "contextmenu",
-  POINTER_CANCEL = "pointercancel",
-  POINTER_DOWN = "pointerdown",
-  POINTER_MOVE = "pointermove",
-  POINTER_UP = "pointerup",
-  WHEEL = "wheel",
-  KEY_DOWN = "keydown",
-  KEY_UP = "keyup",
-  /** The viewport lost focus, so no key it heard go down is still held. */
-  BLUR = "blur",
-}
-
-/** Every `ERenderInputKind` as the spelling it crosses IPC as, for a value no member has narrowed. */
-export type RenderInputKind = `${ERenderInputKind}`;
-
 /** Every `kind` the `RenderLevelHit` union is told apart by, so a switch or a comparison names one. */
 export enum ERenderLevelHit {
   /** A surface the level compiled. */
@@ -496,16 +366,6 @@ export type RenderLevelHit =
       object: number;
       point: [number | null, number | null, number | null];
     };
-
-/**
- * What a viewport's level could not draw the way the level asked: drawables left out of the sectors resident, sectors
- * that could not be read, and spawned models that could not be.
- */
-export type RenderLevelProblems = {
-  skipped: Array<RenderSectorSkip>;
-  sectors: Array<RenderLoadFailure>;
-  models: Array<RenderLoadFailure>;
-};
 
 /**
  * How a game's console scales the weather's light (`r2_sun_lumscale`, `r2_sun_lumscale_hemi`,
@@ -632,16 +492,6 @@ export type RenderMemoryReport = {
   scene: number;
 };
 
-/** How a viewport's skinned models stand: a frame of a motion of theirs, or their bind pose, and the bones collapsed. */
-export type RenderModelPose = {
-  /** The motion, by its name, or none for the bind pose. */
-  motion: string | null;
-  /** Which of its frames; one outside it shows the bind pose. */
-  frame: number;
-  /** Bones collapsed to nothing, by index, each one's descendants among them. */
-  hiddenBones: Array<number>;
-};
-
 /** Every `kind` the `RenderOverlay` union is told apart by, so a switch or a comparison names one. */
 export enum ERenderOverlay {
   /**
@@ -764,12 +614,6 @@ export enum ERenderScale {
 
 /** Every `ERenderScale` as the spelling it crosses IPC as, for a value no member has narrowed. */
 export type RenderScale = `${ERenderScale}`;
-
-/** A drawable of a level's sector the packer left out, and why. */
-export type RenderSectorSkip = {
-  sector: number;
-  skip: SectorSkip;
-};
 
 /**
  * What of a viewport's level is selected, and the colour it is marked in: outlined where it is drawn, and a spawned
@@ -920,27 +764,6 @@ export enum ERenderSurfaceColor {
 /** Every `ERenderSurfaceColor` as the spelling it crosses IPC as, for a value no member has narrowed. */
 export type RenderSurfaceColor = `${ERenderSurfaceColor}`;
 
-/** How much geometry one shader table entry of a viewport's level draws, across the sectors resident. */
-export type RenderSurfaceGeometry = {
-  shaderId: number;
-  /** Drawables of the level's visuals naming the entry. */
-  drawables: number;
-  /** Triangles drawn at whole detail, a mesh's once for each place it stands in. */
-  triangles: number;
-  /** What its base coordinate covers over every draw together. */
-  span: RenderSurfaceSpan | null;
-  /** The narrowest range any single draw covers. */
-  narrowest: RenderSurfaceSpan | null;
-};
-
-/** The range a base texture coordinate covers over some of a level's geometry. */
-export type RenderSurfaceSpan = {
-  uMin: number | null;
-  uMax: number | null;
-  vMin: number | null;
-  vMax: number | null;
-};
-
 /** What became of one texture reference a viewport's scene samples. */
 export type RenderTextureReport = {
   reference: string;
@@ -1026,15 +849,14 @@ export type RenderViewMode = {
 
 /**
  * What one viewport draws its scene with, split by who owns each part: what it shows, how it shades it, each
- * feature's settings, what its frame is drawn at, what of the world plays, and an asset viewer's staging.
+ * feature's settings, what its frame is drawn at, and an asset viewer's staging. What of the world plays is the
+ * world's own.
  */
 export type RenderViewOptions = {
   show: RenderShowFlags;
   mode: RenderViewMode;
   features: RenderViewFeatures;
   output: RenderViewOutput;
-  /** What of the level plays; the world's to own once it is a layer of its own. */
-  world: RenderWorldToggles;
   asset: RenderAssetPreview;
 };
 
@@ -1053,30 +875,22 @@ export type RenderViewOutput = {
 export enum ERenderViewportEvent {
   /** What the recent frames cost. */
   FRAME = "frame",
-  /** Where the camera stands, sent while it moves and once more after it stops. */
-  CAMERA = "camera",
   /** What its frames are drawn with, as the renderer resolved what it was asked, sent as it changes. */
   APPLIED = "applied",
   /** How far its scene has loaded, sent as it changes. */
   LOAD = "load",
-  /** Where its weather stands, sent as it changes, a few times a second at most; none while nothing plays. */
-  WEATHER = "weather",
   /** The renderer cannot draw this viewport, and why. */
   FAILURE = "failure",
 }
 
-/** What a viewport tells its page. */
+/** What the renderer tells a viewport's page. */
 export type RenderViewportEvent =
   /** What the recent frames cost. */
   | { kind: "frame"; report: RenderFrameReport }
-  /** Where the camera stands, sent while it moves and once more after it stops. */
-  | { kind: "camera"; pose: RenderCameraPose }
   /** What its frames are drawn with, as the renderer resolved what it was asked, sent as it changes. */
   | { kind: "applied"; report: RenderAppliedReport }
   /** How far its scene has loaded, sent as it changes. */
   | { kind: "load"; report: RenderLoadReport }
-  /** Where its weather stands, sent as it changes, a few times a second at most; none while nothing plays. */
-  | { kind: "weather"; report: RenderWeatherReport | null }
   /** The renderer cannot draw this viewport, and why. */
   | { kind: "failure"; message: string };
 
@@ -1165,94 +979,4 @@ export type RenderWaterSettings = {
    * faded in with distance, and its colour's read bent and mixed with a second; none draws the module's own.
    */
   variation: number | null;
-};
-
-/** How a viewport's weather clock runs. */
-export type RenderWeatherControl = {
-  /** Game seconds a real second, the engine's time factor. */
-  factor: number | null;
-  isPaused: boolean;
-  /** Whether a vanilla cycle stands the sun astronomically rather than by its keyframes. */
-  isDynamicSun: boolean;
-};
-
-/** The weather effect a viewport plays over its cycle. */
-export type RenderWeatherEffectReport = {
-  name: string;
-  /** Game seconds until the cycle takes over again. */
-  remaining: number | null;
-};
-
-/** Every `kind` the `RenderWeatherPlay` union is told apart by, so a switch or a comparison names one. */
-export enum ERenderWeatherPlay {
-  /** Nothing: the level is lit by noon of `default_clear`, standing still. */
-  NONE = "none",
-  /** A cycle of the level's game, by name, read through the level's source. */
-  CYCLE = "cycle",
-  /** One keyframe set by hand, played as a cycle of one: its sun stands by its own angles on either engine. */
-  KEYFRAME = "keyframe",
-}
-
-/** What a level viewport's weather plays. */
-export type RenderWeatherPlay =
-  /** Nothing: the level is lit by noon of `default_clear`, standing still. */
-  | { kind: "none" }
-  /** A cycle of the level's game, by name, read through the level's source. */
-  | { kind: "cycle"; name: string }
-  /** One keyframe set by hand, played as a cycle of one: its sun stands by its own angles on either engine. */
-  | { kind: "keyframe"; keyframe: WeatherDescriptor };
-
-/** Where a viewport's weather stands. */
-export type RenderWeatherReport = {
-  /** Seconds since midnight. */
-  time: number | null;
-  /** The times of the two keyframes blended between, the effect's own while one plays. */
-  between: [number | null, number | null];
-  /** How far from the first to the second. */
-  weight: number | null;
-  /** The effect playing, or none. */
-  effect: RenderWeatherEffectReport | null;
-  /** How many of the level's modifiers reach the camera. */
-  modifiers: number;
-  /** What is mixed now as one keyframe, without the modifiers: what a keyframe set by hand starts from. */
-  current: WeatherDescriptor;
-  /** The ambient effects near the camera, none until the level's particles are read. */
-  ambient: RenderAmbientReport | null;
-};
-
-/** How a weather handed to a viewport takes over from what it shows. */
-export enum ERenderWeatherTransition {
-  /** At once, as the first weather a level shows does. */
-  CUT = "cut",
-  /** Briefly, as an edit of a keyframe set by hand does. */
-  EASE = "ease",
-  /** Slowly, as another cycle chosen does. */
-  FADE = "fade",
-}
-
-/** Every `ERenderWeatherTransition` as the spelling it crosses IPC as, for a value no member has narrowed. */
-export type RenderWeatherTransition = `${ERenderWeatherTransition}`;
-
-/**
- * What of the level's world plays, rather than what is drawn of it: the weather's rain, bolts and wind, the campfires,
- * the ambient effects, and which groups of the spawned objects stream in.
- */
-export type RenderWorldToggles = {
-  /** Whether the weather's rain falls and wets surfaces. */
-  isRainy: boolean;
-  /** Whether the weather's bolts strike. */
-  isThundering: boolean;
-  /** Whether the weather's wind sways trees and grass. */
-  isWindy: boolean;
-  /** Whether its campfires burn, as `CZoneCampfire` starts, rather than smoulder out. */
-  isCampfireLit: boolean;
-  /** Whether the weather's ambient effects play near the camera and bring their wind. */
-  isAmbientPlayed: boolean;
-  /** Which groups of the level's spawned objects are drawn. */
-  isSpawnedProps: boolean;
-  isSpawnedItems: boolean;
-  isSpawnedWeapons: boolean;
-  isSpawnedLamps: boolean;
-  /** Whether the spawned objects a new game releases are drawn too, each with its group. */
-  isSpawnedReleased: boolean;
 };
