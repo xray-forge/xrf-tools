@@ -7,6 +7,7 @@ pub(crate) mod gpu_readback;
 pub(crate) mod pick_target;
 pub(crate) mod smaa_targets;
 pub(crate) mod smoothing_target;
+pub(crate) mod static_scene_handles;
 pub(crate) mod stats_readback;
 pub(crate) mod sun_shadow_maps;
 pub(crate) mod temporal_history;

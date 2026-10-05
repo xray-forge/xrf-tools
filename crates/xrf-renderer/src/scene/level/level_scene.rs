@@ -1,43 +1,32 @@
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 use glam::{Mat4, Vec3, Vec4};
 
 use crate::contract::render_ambient_report::RenderAmbientReport;
-use crate::contract::render_level_problems::RenderLevelProblems;
-use crate::contract::render_load_durations::RenderLoadDurations;
-use crate::contract::render_load_failure::RenderLoadFailure;
-use crate::contract::render_load_report::RenderLoadReport;
 use crate::contract::render_model_pose::RenderModelPose;
 use crate::contract::render_particles_report::RenderParticlesReport;
-use crate::contract::render_sector_skip::RenderSectorSkip;
-use crate::contract::render_surface_geometry::RenderSurfaceGeometry;
 use crate::contract::render_texture_report::RenderTextureReport;
 use crate::host::render_level_source::RenderLevelSource;
 use crate::host::render_motion::RenderMotion;
 use crate::scene::level::level_campfires::LevelCampfires;
 use crate::scene::level::level_grass::LevelGrass;
 use crate::scene::level::level_lights::LevelLights;
-use crate::scene::level::level_loader::LevelLoader;
 use crate::scene::level::level_object_motions::LevelObjectMotions;
 use crate::scene::level::level_particles::LevelParticles;
 use crate::scene::level::model_motions::ModelMotions;
 use crate::scene::level::posed_skeleton::PosedSkeleton;
-use crate::scene::level::spawn_loader::SpawnLoader;
-use crate::scene::level::surface_tally::SurfaceTally;
 use crate::scene::level::weather_model_buffers::WeatherModelBuffers;
 use crate::scene::static_scene::static_scene::StaticScene;
 use crate::scene::texture::texture_cache::TextureCache;
 use crate::thread::render_workers::RenderWorkers;
 
 /// A level as the renderer holds it, whatever views draw it: its static geometry, grass, lights and the effects and
-/// motions living in it, the models its weather draws, and, until a streaming layer takes them, its loaders and what
-/// its load reports.
+/// motions living in it, and the models its weather draws. Its streaming fills it; it knows nothing of files, failures
+/// or readiness.
 pub struct LevelScene {
   pub source: Arc<dyn RenderLevelSource>,
-  pub loader: LevelLoader,
-  pub spawn: SpawnLoader,
   pub grass: LevelGrass,
   pub statics: StaticScene,
   /// The cubes the scene's environment-mapped models mix toward, by environment slot from the second, as of the cache's
@@ -48,26 +37,17 @@ pub struct LevelScene {
   /// Every bolt model of the level's weather, with the weather they were built for, and an empty one the glows bind.
   pub thunder_models: Option<(usize, Vec<WeatherModelBuffers>)>,
   pub no_model: WeatherModelBuffers,
-  /// When the level began opening, which the clouds drift from and its load is timed from.
+  /// When the level began opening, which the clouds drift and the trees sway from.
   pub started: Instant,
   pub lights: LevelLights,
   pub campfires: LevelCampfires,
   /// The object motions its moving zones follow, which their particles and lights both read.
   pub object_motions: LevelObjectMotions,
   pub particles: LevelParticles,
-  pub surfaces: SurfaceTally,
   /// Each skinned object's skeleton, by its index, the motions they are posed by, and the pose asked for.
   pub skeletons: HashMap<u32, PosedSkeleton>,
   pub motions: ModelMotions,
   pub model_pose: RenderModelPose,
-  /// The sectors that could not be read, and the drawables the packer left out of those that were.
-  pub failed_sectors: Vec<RenderLoadFailure>,
-  pub skipped: Vec<RenderSectorSkip>,
-  /// Milliseconds the last sector taken in took to put into the scene.
-  pub sector_time: f32,
-  /// How long the level had been opening when each part of it finished.
-  pub load_durations: RenderLoadDurations,
-  pub reported: Option<RenderLoadReport>,
 }
 
 impl LevelScene {
@@ -83,10 +63,8 @@ impl LevelScene {
     let statics: StaticScene = StaticScene::new(device, queue);
 
     Self {
-      loader: LevelLoader::start(Arc::clone(&source), workers),
-      spawn: SpawnLoader::start(Arc::clone(&source), workers),
       grass: LevelGrass::new(device, &source, workers),
-      lights: LevelLights::new(device, view_layout, statics.args.size(), &source, workers),
+      lights: LevelLights::new(device, view_layout, statics.args.size()),
       campfires: LevelCampfires::new(),
       object_motions: LevelObjectMotions::new(&source, workers),
       particles: LevelParticles::new(device, &source, workers),
@@ -96,62 +74,11 @@ impl LevelScene {
       thunder_models: None,
       no_model: WeatherModelBuffers::new(device, None),
       started,
-      surfaces: SurfaceTally::default(),
       skeletons: HashMap::new(),
       motions: ModelMotions::new(workers),
       model_pose: RenderModelPose::default(),
-      failed_sectors: Vec::new(),
-      skipped: Vec::new(),
-      sector_time: 0.0,
-      load_durations: RenderLoadDurations::default(),
-      reported: None,
       source,
     }
-  }
-
-  /// Notes how long the level had been opening when each part of it finished, the first frame it is seen finished.
-  pub fn note_load_durations(&mut self, textures: &TextureCache) {
-    // Every part has finished by the time the whole has.
-    if self.load_durations.ready.is_some() {
-      return;
-    }
-
-    let elapsed: Duration = self.started.elapsed();
-    let finished: [bool; 6] = [
-      self.are_sectors_done(),
-      self.spawn.is_done(),
-      self.grass.is_loaded(),
-      self.lights.is_loaded(),
-      self.particles.is_loaded(),
-      self.describe_load(textures).is_ready,
-    ];
-    let RenderLoadDurations {
-      sectors,
-      spawn,
-      grass,
-      lights,
-      particles,
-      ready,
-    } = &mut self.load_durations;
-
-    for (duration, is_finished) in [sectors, spawn, grass, lights, particles, ready]
-      .into_iter()
-      .zip(finished)
-    {
-      if is_finished {
-        duration.get_or_insert(elapsed);
-      }
-    }
-  }
-
-  /// Whether every sector has been taken in or failed.
-  pub fn are_sectors_done(&self) -> bool {
-    (self.statics.sectors.len() + self.failed_sectors.len()) as u32 == self.loader.get_total()
-  }
-
-  /// How much each shader table entry draws across the sectors resident.
-  pub fn measure_surfaces(&self) -> Vec<RenderSurfaceGeometry> {
-    self.surfaces.list()
   }
 
   /// What became of every texture the level's surfaces sample.
@@ -166,9 +93,9 @@ impl LevelScene {
     }
   }
 
-  /// Writes every skinned object's bone matrices for this frame, and the last frame's beside them; a motion still on
-  /// its way poses the bind pose meanwhile.
-  pub fn pose_skeletons(&mut self, queue: &wgpu::Queue) {
+  /// Writes every standing skinned object's bone matrices for this frame, and the last frame's beside them; a motion
+  /// still on its way poses the bind pose meanwhile.
+  pub fn pose_skeletons(&mut self) {
     if self.skeletons.is_empty() {
       return;
     }
@@ -180,9 +107,13 @@ impl LevelScene {
     };
 
     for (object, skeleton) in &mut self.skeletons {
+      if !self.statics.has_object(*object) {
+        continue;
+      }
+
       let (current, previous) = skeleton.pose(motion, pose.frame, &pose.hidden_bones);
 
-      self.statics.write_pose(queue, *object, &current, &previous);
+      self.statics.write_pose(*object, &current, &previous);
     }
   }
 
@@ -200,15 +131,6 @@ impl LevelScene {
           .map(move |(child, parent)| (place.transform_point3(child), place.transform_point3(parent)))
       })
       .collect()
-  }
-
-  /// What the level could not draw the way it asked, so far.
-  pub fn describe_problems(&self) -> RenderLevelProblems {
-    RenderLevelProblems {
-      skipped: self.skipped.clone(),
-      sectors: self.failed_sectors.clone(),
-      models: self.spawn.list_failures(),
-    }
   }
 
   /// A spawned object's bounding sphere in renderer space, once its model is in the scene.
@@ -229,11 +151,6 @@ impl LevelScene {
   /// What the level's particle systems came to since the last report.
   pub fn take_particles_report(&mut self) -> RenderParticlesReport {
     self.particles.take_report()
-  }
-
-  /// Milliseconds the last sector taken in took to put into the scene.
-  pub fn get_sector_time(&self) -> f32 {
-    self.sector_time
   }
 
   /// Every environment slot it samples, so the cubes no scene samples can be freed.
@@ -260,42 +177,5 @@ impl LevelScene {
   /// Whether it draws this source.
   pub fn is_showing(&self, source: &Arc<dyn RenderLevelSource>) -> bool {
     Arc::ptr_eq(&self.source, source)
-  }
-
-  /// Whether everything it opens with is resident, so it draws as it will.
-  pub fn is_ready(&self, textures: &TextureCache) -> bool {
-    self.describe_load(textures).is_ready
-  }
-
-  /// How far the level has loaded, when that changed since it was last asked.
-  pub fn take_report(&mut self, textures: &TextureCache) -> Option<RenderLoadReport> {
-    let report: RenderLoadReport = self.describe_load(textures);
-
-    if self.reported == Some(report) {
-      return None;
-    }
-
-    self.reported = Some(report);
-
-    Some(report)
-  }
-
-  /// How far the level has loaded: its sectors taken in or failed, its spawn, its grass, lights and particles read, and
-  /// every texture it samples settled; and how long each took.
-  pub fn describe_load(&self, textures: &TextureCache) -> RenderLoadReport {
-    let settled: u32 = textures.count_settled(self.list_texture_slots());
-    let total: u32 = self.list_texture_slots().count() as u32;
-    let is_read: bool =
-      self.spawn.is_done() && self.grass.is_loaded() && self.lights.is_loaded() && self.particles.is_loaded();
-
-    RenderLoadReport {
-      sectors: self.statics.sectors.len() as u32,
-      sectors_total: self.loader.get_total(),
-      bytes: self.statics.get_bytes(),
-      textures: settled,
-      textures_total: total,
-      is_ready: self.are_sectors_done() && is_read && settled == total,
-      durations: self.load_durations,
-    }
   }
 }

@@ -12,6 +12,8 @@ use crate::contract::render_upscaling_settings::RenderUpscalingSettings;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::pass::lighting_uniform::LightingUniform;
 use crate::pass::static_cull_params::StaticCullParams;
+use crate::pass::static_occlusion_uniform::StaticOcclusionUniform;
+use crate::pass::wind_uniform::WindUniform;
 
 /// One frame of a view as its preparation leaves it: the camera and sun it is drawn by, what its options and weather
 /// decided it draws, and what its passes read of that. Prepared before the frame graph is declared, and read by it.
@@ -31,6 +33,10 @@ pub struct ViewInfo {
   pub is_fsr: bool,
   /// The cull's parameters for this frame's view and options.
   pub cull: StaticCullParams,
+  /// The view the depth pyramid was reduced through, which the early cull tests against.
+  pub occlusion: StaticOcclusionUniform,
+  /// How the trees sway this frame, which every static draw reads.
+  pub wind: WindUniform,
   /// The viewport's rectangle in its window, which the frame is upscaled to where it is drawn smaller.
   pub output: RenderRect,
   pub upscaling: RenderUpscalingSettings,
@@ -83,6 +89,8 @@ impl Default for ViewInfo {
       is_temporal: false,
       is_fsr: false,
       cull: StaticCullParams::default(),
+      occlusion: bytemuck::Zeroable::zeroed(),
+      wind: WindUniform::default(),
       output: RenderRect::default(),
       upscaling: RenderUpscalingSettings::default(),
       shadow_settings: RenderShadowSettings::default(),

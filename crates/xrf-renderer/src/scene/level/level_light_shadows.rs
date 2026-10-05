@@ -4,12 +4,14 @@ use glam::{Vec3, Vec4};
 use xrf_math::EPS_S;
 use xrf_renderer_core::{
   FrameGraph, GraphBindings, GraphBuffer, GraphBufferAccess, GraphDepthAttachment, GraphTexture, ProxyHandle,
+  StorageArray, StorageArrayMut,
 };
 use xrf_visual::{LightDescription, LightKind};
 
 use crate::camera::camera_view::CameraView;
 use crate::contract::render_pool_use::RenderPoolUse;
 use crate::contract::render_rect::RenderRect;
+use crate::frame::static_scene_handles::StaticSceneHandles;
 use crate::lighting::light_basis::{LightBasis, to_light_intensity};
 use crate::lighting::light_shadow_size::{
   LIGHT_SHADOW_MIN_SIZE, LIGHT_SHADOW_POINT_CONE, LIGHT_SHADOW_POINT_FACES, LIGHT_SHADOW_WIDENING,
@@ -17,7 +19,10 @@ use crate::lighting::light_shadow_size::{
 };
 use crate::pass::camera_uniform::CameraUniform;
 use crate::pass::level_passes::LevelPasses;
+use crate::pass::static_cull_parameters::StaticCullParameters;
 use crate::pass::static_cull_params::StaticCullParams;
+use crate::pass::static_draw_parameters::StaticDrawParameters;
+use crate::pass::static_draws::StaticDraws;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::light_shadow_entry::LightShadowEntry;
 use crate::scene::level::light_shadow_face::LightShadowFace;
@@ -28,7 +33,6 @@ use crate::scene::level::shadow_tile::ShadowTile;
 use crate::scene::level::shadow_tile_allocator::ShadowTileAllocator;
 use crate::scene::static_scene::growable_buffer::GrowableBuffer;
 use crate::scene::static_scene::static_layout::StaticLayout;
-use crate::scene::static_scene::static_scene::StaticScene;
 
 /// Texels the light shadow atlas is across.
 pub const LIGHT_SHADOW_ATLAS_SIZE: u32 = 4096;
@@ -46,9 +50,6 @@ const DEFAULT_NEAR: f32 = 0.1;
 /// A face wanting a draw: what orders it (stale, then how near or how long ago drawn), its light, whether of the light's
 /// next set, and which face.
 type FaceCandidate = ((bool, f32), ProxyHandle<LightDescription>, bool, usize);
-
-/// Each slot's bind groups, with what they were made from.
-type SlotGroups<K, G> = Option<(K, Vec<G>)>;
 
 /// The local lights' shadows: a square of an atlas a face, sized as the engine sizes its maps, drawn once and kept
 /// while the scene it casts from stays, a few faces a frame, the nearest lights first; a face over swaying trees is
@@ -80,10 +81,6 @@ pub struct LevelLightShadows {
   args_stride: u64,
   /// What a slot's range of a buffer starts at a multiple of.
   alignment: u64,
-  /// Each slot's cull and draw bind groups, with the scene generation, the lists' generation and region, and the
-  /// targets' epoch they bind.
-  cull_groups: SlotGroups<(u64, u64, u64, u64), wgpu::BindGroup>,
-  draw_groups: SlotGroups<(u64, u64, u64), [wgpu::BindGroup; StaticLayout::COUNT]>,
 }
 
 impl LevelLightShadows {
@@ -129,8 +126,6 @@ impl LevelLightShadows {
       args_size,
       args_stride,
       alignment,
-      cull_groups: None,
-      draw_groups: None,
     }
   }
 
@@ -270,7 +265,6 @@ impl LevelLightShadows {
     device: &wgpu::Device,
     queue: &wgpu::Queue,
     encoder: &mut wgpu::CommandEncoder,
-    passes: LevelPasses<'_>,
     frame: &ShadowFrame<'_>,
   ) {
     let scene = frame.scene;
@@ -284,44 +278,6 @@ impl LevelLightShadows {
 
     self.region = ((scene.get_list_capacity().max(1) as u64) * 8).next_multiple_of(self.alignment);
     self.lists.reserve(device, encoder, self.region * FACE_BUDGET as u64);
-
-    let cull_key: (u64, u64, u64, u64) = (
-      scene.get_generation(),
-      self.lists.get_generation(),
-      self.region,
-      frame.targets_epoch,
-    );
-
-    if self.cull_groups.as_ref().is_none_or(|(key, _)| *key != cull_key) {
-      let groups: Vec<wgpu::BindGroup> = (0..FACE_BUDGET)
-        .map(|slot| {
-          passes.cull.create_bind_group(
-            device,
-            scene,
-            frame.cull_params,
-            frame.pyramid,
-            frame.occlusion,
-            (self.get_list_range(slot), self.get_args_range(slot)),
-          )
-        })
-        .collect();
-
-      self.cull_groups = Some((cull_key, groups));
-    }
-
-    let draw_key: (u64, u64, u64) = (scene.get_generation(), self.lists.get_generation(), self.region);
-
-    if self.draw_groups.as_ref().is_none_or(|(key, _)| *key != draw_key) {
-      let groups: Vec<[wgpu::BindGroup; StaticLayout::COUNT]> = (0..FACE_BUDGET)
-        .map(|slot| {
-          passes
-            .gbuffer
-            .create_layout_groups(device, scene, self.get_list_range(slot))
-        })
-        .collect();
-
-      self.draw_groups = Some((draw_key, groups));
-    }
 
     for (slot, (index, is_next, face)) in self.queue.iter().enumerate() {
       let Some(state) = self
@@ -374,23 +330,42 @@ impl LevelLightShadows {
   /// every face culled into its slot in one compute pass, then every face drawn into its square in one render pass.
   pub fn add_passes<'a>(
     &'a self,
-    graph: &mut FrameGraph<'a>,
-    bindings: &mut GraphBindings<'a>,
+    (graph, bindings): (&mut FrameGraph<'a>, &mut GraphBindings<'a>),
     passes: LevelPasses<'a>,
-    (scene, params, textures): (&'a StaticScene, &'a StaticCullParams, &'a wgpu::BindGroup),
+    scene: &StaticSceneHandles,
+    (params, textures): (&'a StaticCullParams, &'a wgpu::BindGroup),
   ) {
-    let (Some((_, cull_groups)), Some((_, draw_groups))) = (&self.cull_groups, &self.draw_groups) else {
-      return;
-    };
-
     if self.due.is_empty() {
       return;
     }
 
-    let template: GraphBuffer = bindings.import_buffer(graph, "static draw arguments", &scene.args_template);
+    let template: GraphBuffer = scene.args_template;
     let args: GraphBuffer = bindings.import_buffer(graph, "light shadow draw arguments", &self.args);
     let lists: GraphBuffer = bindings.import_buffer(graph, "light shadow lists", self.lists.get_buffer());
     let atlas: GraphTexture = bindings.import_view(graph, "light shadow atlas", &self.atlas);
+    // Each slot's cull into its range of the lists and the arguments, and its draws of that range.
+    let slots: Vec<(
+      usize,
+      ShadowTile,
+      StaticCullParameters,
+      [StaticDrawParameters; StaticLayout::COUNT],
+    )> = self
+      .due
+      .iter()
+      .map(|(slot, tile)| {
+        let (list_offset, args_offset): (u64, u64) = (*slot as u64 * self.region, *slot as u64 * self.args_stride);
+
+        (
+          *slot,
+          *tile,
+          scene.get_cull_parameters(
+            StorageArrayMut::new_range(lists, list_offset, self.region),
+            StorageArrayMut::new_range(args, args_offset, self.args_size),
+          ),
+          scene.get_layout_draws(StorageArray::new_range(lists, list_offset, self.region)),
+        )
+      })
+      .collect();
 
     graph
       .add_encoder_pass("light shadow arguments")
@@ -409,56 +384,44 @@ impl LevelLightShadows {
           );
         }
       });
-    graph
-      .add_compute_pass("light shadow cull")
-      .buffer(args, GraphBufferAccess::StorageReadWrite)
-      .buffer(lists, GraphBufferAccess::StorageWrite)
-      .record(move |context| {
-        for (slot, _) in &self.due {
-          passes.cull.record_shadow(
-            context.get_pass(),
-            &self.views[*slot],
-            &cull_groups[*slot],
-            params,
-            true,
-          );
+    slots
+      .iter()
+      .fold(
+        graph.add_compute_pass("light shadow cull"),
+        |builder, (_, _, cull, _)| builder.parameters(cull),
+      )
+      .record({
+        let culls: Vec<(usize, StaticCullParameters)> = slots.iter().map(|(slot, _, cull, _)| (*slot, *cull)).collect();
+
+        move |context| {
+          for (slot, cull) in &culls {
+            passes
+              .cull
+              .record_shadow(context, &self.views[*slot], cull, params, true);
+          }
         }
       });
-    graph
-      .add_raster_pass("light shadows")
-      .depth(GraphDepthAttachment::new(atlas, wgpu::LoadOp::Load))
-      .buffer(args, GraphBufferAccess::Indirect)
-      .buffer(lists, GraphBufferAccess::StorageRead)
+    slots
+      .iter()
+      .fold(
+        graph
+          .add_raster_pass("light shadows")
+          .depth(GraphDepthAttachment::new(atlas, wgpu::LoadOp::Load))
+          .buffer(args, GraphBufferAccess::Indirect),
+        |builder, (.., layouts)| StaticDraws::declare_layouts(builder, layouts),
+      )
       .record(move |context| {
         let args: &wgpu::Buffer = context.get_buffer(args);
 
-        for (slot, tile) in &self.due {
+        for (slot, tile, _, layouts) in &slots {
           passes.shadow.record_tile(
-            context.get_pass(),
+            context,
             *tile,
-            (&self.views[*slot], &draw_groups[*slot], textures),
+            (&self.views[*slot], layouts, textures),
             (args, *slot as u64 * self.args_stride),
           );
         }
       });
-  }
-
-  /// A slot's range of the lists.
-  fn get_list_range(&self, slot: usize) -> wgpu::BufferBinding<'_> {
-    wgpu::BufferBinding {
-      buffer: self.lists.get_buffer(),
-      offset: slot as u64 * self.region,
-      size: wgpu::BufferSize::new(self.region),
-    }
-  }
-
-  /// A slot's range of the draw arguments.
-  fn get_args_range(&self, slot: usize) -> wgpu::BufferBinding<'_> {
-    wgpu::BufferBinding {
-      buffer: &self.args,
-      offset: slot as u64 * self.args_stride,
-      size: wgpu::BufferSize::new(self.args_size),
-    }
   }
 
   /// A light's faces at a size, room made from the lights out of view longest, and at smaller squares where there is

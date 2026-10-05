@@ -1,6 +1,9 @@
+use xrf_renderer_core::ShaderStruct;
+
 /// One drawn part: a run of clusters, the surface it wears and the batch it is drawn in.
 #[repr(C)]
-#[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
+#[shader(name = "Slot")]
 pub struct StaticSlot {
   pub first_cluster: u32,
   pub cluster_count: u32,
@@ -10,6 +13,7 @@ pub struct StaticSlot {
   pub kind: u32,
   pub batch: u32,
   pub surface: u32,
+  /// Keeps a slot 32 bytes in WGSL too, which pads it no further.
   pub pad: [u32; 2],
 }
 

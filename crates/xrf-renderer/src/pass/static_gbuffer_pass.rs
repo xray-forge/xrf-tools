@@ -1,14 +1,15 @@
 use xrf_error::XrfResult;
+use xrf_renderer_core::{PassParameters, RasterContext};
 
 use crate::frame::pick_target::PickTarget;
 use crate::frame::view_targets::ViewTargets;
-use crate::pass::layout_entries::{storage_entry, uniform_entry};
 use crate::pass::shader_pipelines::{create_checked, create_module};
-use crate::pass::static_draw_groups::StaticDrawGroups;
+use crate::pass::static_draw_parameters::StaticDrawParameters;
+use crate::pass::static_draws::StaticDraws;
+use crate::pass::static_impostor_parameters::StaticImpostorParameters;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::static_scene::static_batch::StaticBatch;
 use crate::scene::static_scene::static_class::StaticClass;
-use crate::scene::static_scene::static_layout::StaticLayout;
 use crate::scene::static_scene::static_scene::StaticScene;
 use crate::shader::shader_library::ShaderLibrary;
 
@@ -35,25 +36,8 @@ impl StaticGBufferPass {
     view_layout: &wgpu::BindGroupLayout,
     texture_layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<Self> {
-    let stages: wgpu::ShaderStages = wgpu::ShaderStages::VERTEX_FRAGMENT;
-    let layout: wgpu::BindGroupLayout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-      label: Some("static draw"),
-      entries: &(0..7)
-        .map(|binding| storage_entry(binding, stages, false))
-        .chain([
-          uniform_entry(7, stages),
-          storage_entry(8, stages, false),
-          storage_entry(9, stages, false),
-        ])
-        .collect::<Vec<_>>(),
-    });
-
-    let impostor_layout: wgpu::BindGroupLayout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-      label: Some("static impostors"),
-      entries: &(0..5)
-        .map(|binding| storage_entry(binding, stages, false))
-        .collect::<Vec<_>>(),
-    });
+    let layout: wgpu::BindGroupLayout = StaticDrawParameters::create_layout(device);
+    let impostor_layout: wgpu::BindGroupLayout = StaticImpostorParameters::create_layout(device);
     let (pipelines, pick_pipelines) = Self::create_pipelines(device, shaders, view_layout, &layout, texture_layout)?;
     let impostor_pipelines =
       Self::create_impostor_pipelines(device, shaders, view_layout, &impostor_layout, texture_layout)?;
@@ -97,140 +81,59 @@ impl StaticGBufferPass {
     }
   }
 
-  /// The scene's buffers as each layout's draws and the impostors' read them.
-  pub fn create_bind_groups(&self, device: &wgpu::Device, scene: &StaticScene) -> StaticDrawGroups {
-    let layouts: [wgpu::BindGroup; StaticLayout::COUNT] =
-      self.create_layout_groups(device, scene, scene.lists.get_buffer().as_entire_buffer_binding());
-    let impostors: wgpu::BindGroup = device.create_bind_group(&wgpu::BindGroupDescriptor {
-      label: Some("static impostors"),
-      layout: &self.impostor_layout,
-      entries: &to_entries(&[
-        scene.impostors.get_buffer(),
-        scene.corners.get_buffer(),
-        scene.terms.get_buffer(),
-        scene.impostor_list.get_buffer(),
-        scene.surfaces.get_buffer(),
-      ]),
-    });
-
-    StaticDrawGroups { layouts, impostors }
-  }
-
-  /// The scene's buffers as each layout's draws read them, by `StaticLayout::get_index`, drawing a view's own list.
-  pub fn create_layout_groups(
-    &self,
-    device: &wgpu::Device,
-    scene: &StaticScene,
-    lists: wgpu::BufferBinding<'_>,
-  ) -> [wgpu::BindGroup; StaticLayout::COUNT] {
-    StaticLayout::ALL.map(|layout| {
-      let resources: [wgpu::BindingResource<'_>; 10] = [
-        scene.clusters.get_buffer().as_entire_binding(),
-        scene.slots.get_buffer().as_entire_binding(),
-        scene.places.get_buffer().as_entire_binding(),
-        scene.surfaces.get_buffer().as_entire_binding(),
-        scene.indices.get_buffer().as_entire_binding(),
-        wgpu::BindingResource::Buffer(lists.clone()),
-        scene.words[layout.get_index()].get_buffer().as_entire_binding(),
-        scene.wind.as_entire_binding(),
-        scene.skins.get_buffer().as_entire_binding(),
-        scene.bones.get_buffer().as_entire_binding(),
-      ];
-
-      device.create_bind_group(&wgpu::BindGroupDescriptor {
-        label: Some("static draw"),
-        layout: &self.layout,
-        entries: &resources
-          .into_iter()
-          .enumerate()
-          .map(|(binding, resource)| wgpu::BindGroupEntry {
-            binding: binding as u32,
-            resource,
-          })
-          .collect::<Vec<_>>(),
-      })
-    })
-  }
-
-  /// What every layout's draw binds its clusters by, which a shadow's draws share.
-  pub fn get_layout(&self) -> &wgpu::BindGroupLayout {
-    &self.layout
-  }
-
   /// Draws the visible clusters an argument buffer lists into the G-buffer the pass draws into, and with the frame's
   /// first draw the impostors too: no occlusion sets one aside.
   pub fn record(
     &self,
-    pass: &mut wgpu::RenderPass<'_>,
-    (view, bind_groups, textures): (&ViewBinding, &StaticDrawGroups, &wgpu::BindGroup),
+    context: &mut RasterContext<'_>,
+    (view, draws, textures): (&ViewBinding, &StaticDraws, &wgpu::BindGroup),
     args: &wgpu::Buffer,
     is_first: bool,
   ) {
-    pass.set_bind_group(0, &view.bind_group, &[]);
-    pass.set_bind_group(1, textures, &[]);
+    context.get_pass().set_bind_group(0, &view.bind_group, &[]);
+    context.get_pass().set_bind_group(1, textures, &[]);
 
     for (batch, pipeline) in StaticBatch::list_deferred().zip(&self.pipelines) {
-      pass.set_pipeline(pipeline);
-      pass.set_bind_group(2, &bind_groups.layouts[batch.layout.get_index()], &[]);
-      pass.draw_indirect(args, batch.get_index() as u64 * 16);
+      context.bind(&draws.layouts[batch.layout.get_index()]);
+      context.get_pass().set_pipeline(pipeline);
+      context.get_pass().draw_indirect(args, batch.get_index() as u64 * 16);
     }
 
     if is_first {
-      pass.set_pipeline(&self.impostor_pipelines[0]);
-      pass.set_bind_group(2, &bind_groups.impostors, &[]);
-      pass.draw_indirect(args, StaticScene::IMPOSTOR_ARGS_OFFSET);
+      context.bind(&draws.impostors);
+      context.get_pass().set_pipeline(&self.impostor_pipelines[0]);
+      context
+        .get_pass()
+        .draw_indirect(args, StaticScene::IMPOSTOR_ARGS_OFFSET);
     }
   }
 
-  /// Draws the frame's visible clusters again into a pick's one texel, through a camera narrowed to it; the caller
-  /// copies the texel out.
+  /// Draws the frame's visible clusters again into a pick's one texel, through a camera narrowed to it, in the render
+  /// pass the graph opened on the pick's target.
   pub fn pick(
     &self,
-    encoder: &mut wgpu::CommandEncoder,
-    target: &PickTarget,
-    view: &ViewBinding,
-    bind_groups: &StaticDrawGroups,
-    textures: &wgpu::BindGroup,
+    context: &mut RasterContext<'_>,
+    (view, draws, textures): (&ViewBinding, &StaticDraws, &wgpu::BindGroup),
     args: &[&wgpu::Buffer],
   ) {
-    let mut pass: wgpu::RenderPass<'_> = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-      label: Some("static pick"),
-      color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-        view: &target.color,
-        depth_slice: None,
-        resolve_target: None,
-        ops: wgpu::Operations {
-          load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-          store: wgpu::StoreOp::Store,
-        },
-      })],
-      depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-        view: &target.depth,
-        depth_ops: Some(wgpu::Operations {
-          load: wgpu::LoadOp::Clear(0.0),
-          store: wgpu::StoreOp::Discard,
-        }),
-        stencil_ops: None,
-      }),
-      ..Default::default()
-    });
-
-    pass.set_bind_group(0, &view.bind_group, &[]);
-    pass.set_bind_group(1, textures, &[]);
+    context.get_pass().set_bind_group(0, &view.bind_group, &[]);
+    context.get_pass().set_bind_group(1, textures, &[]);
 
     for (batch, pipeline) in StaticBatch::list_deferred().zip(&self.pick_pipelines) {
-      pass.set_pipeline(pipeline);
-      pass.set_bind_group(2, &bind_groups.layouts[batch.layout.get_index()], &[]);
+      context.bind(&draws.layouts[batch.layout.get_index()]);
+      context.get_pass().set_pipeline(pipeline);
 
       for args in args {
-        pass.draw_indirect(args, batch.get_index() as u64 * 16);
+        context.get_pass().draw_indirect(args, batch.get_index() as u64 * 16);
       }
     }
 
     if let Some(args) = args.first() {
-      pass.set_pipeline(&self.impostor_pipelines[1]);
-      pass.set_bind_group(2, &bind_groups.impostors, &[]);
-      pass.draw_indirect(args, StaticScene::IMPOSTOR_ARGS_OFFSET);
+      context.bind(&draws.impostors);
+      context.get_pass().set_pipeline(&self.impostor_pipelines[1]);
+      context
+        .get_pass()
+        .draw_indirect(args, StaticScene::IMPOSTOR_ARGS_OFFSET);
     }
   }
 
@@ -364,16 +267,4 @@ impl StaticGBufferPass {
 
     Ok((create(false)?, create(true)?))
   }
-}
-
-/// Buffers bound in order, from binding zero.
-fn to_entries<'a>(buffers: &[&'a wgpu::Buffer]) -> Vec<wgpu::BindGroupEntry<'a>> {
-  buffers
-    .iter()
-    .enumerate()
-    .map(|(binding, buffer)| wgpu::BindGroupEntry {
-      binding: binding as u32,
-      resource: buffer.as_entire_binding(),
-    })
-    .collect()
 }

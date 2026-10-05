@@ -95,8 +95,8 @@ fn model_composited(in: GBufferVarying, surface: Surface, base: vec4<f32>) -> Co
   var reflection: vec3<f32> = mix(textureSampleLevel(sky_cube_0, sky_clamp, lookup, 0.0).rgb,
     textureSampleLevel(sky_cube_1, sky_clamp, lookup, 0.0).rgb, lighting.sky.w);
 
-  if (surface.environment != 0u) {
-    reflection = textureSampleLevel(environments[surface.environment], sky_clamp, lookup, 0.0).rgb;
+  if (surface.textures[SLOT_ENVIRONMENT] != 0u) {
+    reflection = textureSampleLevel(environments[surface.textures[SLOT_ENVIRONMENT]], sky_clamp, lookup, 0.0).rgb;
   }
 
   let color: vec3<f32> = in.light * mix(reflection, texel, base.a) * 2.0;
@@ -165,7 +165,7 @@ fn fs_wallmark(in: GBufferVarying) -> CompositedOutput {
   var base: vec4<f32> = vec4<f32>(1.0);
 
   if ((surface.flags & SURFACE_HAS_BASE) != 0u) {
-    base = textureSampleLevel(textures[surface.base], texture_sampler, saturate(in.uv * surface.tiling), 0.0);
+    base = textureSampleLevel(textures[surface.textures[SLOT_BASE]], texture_sampler, saturate(in.uv * surface.tiling), 0.0);
   }
 
   let texel: vec3<f32> = mix(untextured_color(surface.color), base.rgb, camera.switches.x);

@@ -1,9 +1,11 @@
 use glam::Vec4;
+use xrf_renderer_core::ShaderStruct;
 
 /// One impostor as the cull and its draw read it: a clump of trees seen from eight sides, as `static/records.wgsl`
 /// declares it. Its corners are held apart, `CORNERS` of them an impostor in impostor order.
 #[repr(C)]
-#[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
+#[shader(name = "Impostor")]
 pub struct StaticImpostor {
   /// Its clump's sphere in renderer space.
   pub sphere: Vec4,
@@ -13,7 +15,7 @@ pub struct StaticImpostor {
   pub factor: f32,
   /// Its surface row.
   pub surface: u32,
-  pub pad: [u32; 2],
+  pub _pad: [u32; 2],
 }
 
 impl StaticImpostor {

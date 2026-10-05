@@ -54,4 +54,20 @@ impl RenderWorldToggles {
       RenderSpawnCategory::Lamps => self.is_spawned_lamps,
     }
   }
+
+  /// The spawn groups left out of the scene, a bit a group from the lowest: each category not drawn, and the released
+  /// objects of every one while no released objects are drawn.
+  pub fn get_hidden_spawn_groups(&self) -> u32 {
+    RenderSpawnCategory::ALL.into_iter().fold(0, |hidden, category| {
+      let is_shown: bool = self.is_spawned(category);
+      let kept: u32 = if is_shown { 0 } else { 1 << (category.get_group() - 1) };
+      let released: u32 = if is_shown && self.is_spawned_released {
+        0
+      } else {
+        1 << (category.get_released_group() - 1)
+      };
+
+      hidden | kept | released
+    })
+  }
 }

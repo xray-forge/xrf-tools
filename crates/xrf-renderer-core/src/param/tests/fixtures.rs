@@ -1,6 +1,8 @@
 use glam::Vec4;
 
-use crate::{GraphTexture, PassParameters, ShaderStruct, StorageArray, StorageArrayMut, UniformBinding};
+use crate::{
+  GraphTexture, PassParameters, ShaderAtomicU32, ShaderStruct, StorageArray, StorageArrayMut, UniformBinding,
+};
 
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
@@ -18,6 +20,16 @@ pub struct Scale {
   pub input: StorageArray<u32>,
   #[storage]
   pub output: StorageArrayMut<u32>,
+}
+
+/// Counters shaders add to atomically, and a range of a list.
+#[derive(PassParameters)]
+#[parameters(group = 0)]
+pub struct Count {
+  #[storage]
+  pub counters: StorageArrayMut<ShaderAtomicU32>,
+  #[storage]
+  pub list: StorageArray<u32>,
 }
 
 /// Every texture and sampler kind a blur needs.

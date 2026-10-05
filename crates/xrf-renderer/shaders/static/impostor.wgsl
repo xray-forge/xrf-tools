@@ -3,18 +3,12 @@ enable wgpu_binding_array;
 #import "common/camera"
 #import "common/octahedral"
 #import "static/records"
+#import "generated/static/impostor"
 
 // `details\lod` (`lod.vs`, `lod.ps`, `render_lods`): an impostor drawn as a quad of the two facets facing the camera
 // best, each corner blended between them by the cull's factor and pulled half the sphere's radius towards the eye. The
 // atlas is sampled at both facets' coordinates and blended the same way, its alpha faded by the cull and cut at 96; the
 // `_nm` companion gives the view normal and the hemisphere term, times the corners'.
-
-@group(2) @binding(0) var<storage, read> impostors: array<Impostor>;
-// Two a corner: its position and hemisphere term, then its atlas coordinate and sun term.
-@group(2) @binding(1) var<storage, read> corners: array<vec4<f32>>;
-@group(2) @binding(2) var<storage, read> terms: array<vec4<u32>>;
-@group(2) @binding(3) var<storage, read> impostor_list: array<u32>;
-@group(2) @binding(4) var<storage, read> surfaces: array<Surface>;
 
 @group(1) @binding(0) var textures: binding_array<texture_2d<f32>>;
 @group(1) @binding(1) var texture_sampler: sampler;
@@ -102,8 +96,8 @@ fn is_cut(color: vec4<f32>, in: ImpostorVarying) -> bool {
 @fragment
 fn fs_impostor(in: ImpostorVarying) -> GBufferOutput {
   let surface: Surface = surfaces[in.surface];
-  let color: vec4<f32> = sample_blended(surface.base, in);
-  let companion: vec4<f32> = sample_blended(surface.hemi, in);
+  let color: vec4<f32> = sample_blended(surface.textures[SLOT_BASE], in);
+  let companion: vec4<f32> = sample_blended(surface.textures[SLOT_HEMI], in);
 
   if (is_cut(color, in)) {
     discard;
@@ -125,7 +119,7 @@ fn fs_impostor(in: ImpostorVarying) -> GBufferOutput {
 // A pick's texel: an impostor, by its index, and its depth's bits.
 @fragment
 fn fs_pick_impostor(in: ImpostorVarying) -> @location(0) vec4<u32> {
-  if (is_cut(sample_blended(surfaces[in.surface].base, in), in)) {
+  if (is_cut(sample_blended(surfaces[in.surface].textures[SLOT_BASE], in), in)) {
     discard;
   }
 

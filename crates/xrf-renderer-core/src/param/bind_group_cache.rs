@@ -72,7 +72,9 @@ impl BindGroupCache {
         .iter()
         .map(|binding| match binding {
           PassBinding::Buffer(buffer) => BindingKey::Buffer((*buffer).clone(), None),
-          PassBinding::BufferRange { buffer, size } => BindingKey::Buffer((*buffer).clone(), Some(*size)),
+          PassBinding::BufferRange { buffer, offset, size } => {
+            BindingKey::Buffer((*buffer).clone(), Some((*offset, *size)))
+          }
           PassBinding::TextureView(view) => BindingKey::TextureView((*view).clone()),
           PassBinding::Sampler(sampler) => BindingKey::Sampler((*sampler).clone()),
         })
@@ -88,9 +90,9 @@ impl BindGroupCache {
           binding: *index,
           resource: match binding {
             PassBinding::Buffer(buffer) => buffer.as_entire_binding(),
-            PassBinding::BufferRange { buffer, size } => wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+            PassBinding::BufferRange { buffer, offset, size } => wgpu::BindingResource::Buffer(wgpu::BufferBinding {
               buffer,
-              offset: 0,
+              offset: *offset,
               size: wgpu::BufferSize::new(*size),
             }),
             PassBinding::TextureView(view) => wgpu::BindingResource::TextureView(view),

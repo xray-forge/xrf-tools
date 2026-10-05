@@ -1,84 +1,20 @@
-// The static scene's records, as `scene/static_scene` writes them.
+#import "generated/structs"
 
-struct Cluster {
-  first_index: u32,
-  triangles: u32,
-  vertex_start: u32,
-  slot: u32,
-};
+// What the static scene's records mean beyond their layout, which `generated/structs` declares from Rust.
 
-struct Slot {
-  first_cluster: u32,
-  cluster_count: u32,
-  place: u32,
-  kind: u32,
-  batch: u32,
-  surface: u32,
-  pad0: u32,
-  pad1: u32,
-};
-
-struct Place {
-  m0: vec4<f32>,
-  m1: vec4<f32>,
-  m2: vec4<f32>,
-  m3: vec4<f32>,
-  // The hemisphere's scale and bias, the impostor or -1, the largest axis scale.
-  info: vec4<f32>,
-  // A spawned object's hemisphere cube: its six faces, `+x +y +z -x -y -z`, as bytes in `x` and `y`; `w` one where it
-  // has one.
-  cube: vec4<u32>,
-  // A skinned model's: its bone matrices' first row, its links' first vertex, its own first vertex in the model arena,
-  // and how many bones it has, zero where it is rigid. The last frame's matrices follow this frame's.
-  skin: vec4<u32>,
-};
-
-struct Row {
-  sphere: vec4<f32>,
-  place: u32,
-  slot: u32,
-  lod: u32,
-  band: u32,
-};
-
-struct Surface {
-  tiling: f32,
-  detail_scale: f32,
-  alpha_reference: f32,
-  slice: f32,
-  color: vec3<f32>,
-  flags: u32,
-  base: u32,
-  detail: u32,
-  bump: u32,
-  bump_companion: u32,
-  detail_bump: u32,
-  detail_bump_companion: u32,
-  hemi: u32,
-  // An environment-mapped model's cube, by environment slot; none at zero.
-  environment: u32,
-  // A terrain's details the mask's red, green, blue and alpha weigh, their bumps, and the mask.
-  terrain_details: vec4<u32>,
-  terrain_bumps: vec4<u32>,
-  terrain_mask: u32,
-  pad0: u32,
-  pad1: u32,
-  pad2: u32,
-};
-
-struct Region {
-  base: u32,
-  capacity: u32,
-};
-
-struct Impostor {
-  sphere: vec4<f32>,
-  normals: array<vec4<f32>, 8>,
-  factor: f32,
-  surface: u32,
-  pad0: u32,
-  pad1: u32,
-};
+// A surface's texture slots, by their place in its `textures`, as `StaticSurface` orders them; water's take the detail's,
+// the bump's and its companion's places.
+const SLOT_BASE: u32 = 0u;
+const SLOT_DETAIL: u32 = 1u;
+const SLOT_BUMP: u32 = 2u;
+const SLOT_BUMP_COMPANION: u32 = 3u;
+const SLOT_DETAIL_BUMP: u32 = 4u;
+const SLOT_DETAIL_BUMP_COMPANION: u32 = 5u;
+const SLOT_HEMI: u32 = 6u;
+const SLOT_ENVIRONMENT: u32 = 7u;
+const SLOT_WATER_NORMAL: u32 = 1u;
+const SLOT_FOAM: u32 = 2u;
+const SLOT_DISTORTION: u32 = 3u;
 
 const IMPOSTOR_FACETS: u32 = 8u;
 
@@ -89,8 +25,8 @@ const LOD_IMPOSTOR: u32 = 2u;
 // A row no impostor decides.
 const NO_LOD: u32 = 0xffffffffu;
 
-// A row's band word, as `StaticRow::pack_band` and `pack_group` lay it: its progressive band and the bands its mesh has
-// in four bits each, the slide windows they share in sixteen, and the visibility group showing it in the top byte.
+// A row's band word, as `StaticRow::pack_band` lays it: its progressive band and the bands its mesh has in four bits
+// each, and the slide windows they share in sixteen.
 fn row_band(word: u32) -> u32 {
   return word & 15u;
 }
@@ -101,10 +37,6 @@ fn row_bands(word: u32) -> u32 {
 
 fn row_windows(word: u32) -> u32 {
   return (word >> 8u) & 0xffffu;
-}
-
-fn row_group(word: u32) -> u32 {
-  return word >> 24u;
 }
 
 // The shading classes a layout's batches run through, as `StaticClass` orders them: the two the G-buffer draws and
@@ -147,7 +79,3 @@ const SURFACE_IS_SHADOWLESS: u32 = 16777216u;
 
 // Vertices one cluster's draw spans: 128 triangles, those past its own collapsed.
 const CLUSTER_VERTICES: u32 = 384u;
-
-fn place_matrix(place: Place) -> mat4x4<f32> {
-  return mat4x4<f32>(place.m0, place.m1, place.m2, place.m3);
-}

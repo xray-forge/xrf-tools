@@ -1,6 +1,9 @@
+use xrf_renderer_core::ShaderStruct;
+
 /// A batch's run of the visible list: where it starts and how many entries it may hold.
 #[repr(C)]
-#[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
+#[shader(name = "Region")]
 pub struct StaticRegion {
   pub base: u32,
   pub capacity: u32,

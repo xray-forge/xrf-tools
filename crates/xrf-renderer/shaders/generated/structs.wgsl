@@ -54,3 +54,96 @@ struct Water {
 struct WaterBlur {
   direction: vec4<f32>,
 }
+
+struct Cluster {
+  first_index: u32,
+  triangles: u32,
+  vertex_start: u32,
+  slot: u32,
+}
+
+struct Slot {
+  first_cluster: u32,
+  cluster_count: u32,
+  place: u32,
+  kind: u32,
+  batch: u32,
+  surface: u32,
+  pad: array<u32, 2>,
+}
+
+struct Place {
+  transform: mat4x4<f32>,
+  info: vec4<f32>,
+  cube: vec4<u32>,
+  skin: vec4<u32>,
+}
+
+struct Row {
+  sphere: vec4<f32>,
+  place: u32,
+  slot: u32,
+  lod: u32,
+  band: u32,
+}
+
+struct Region {
+  base: u32,
+  capacity: u32,
+}
+
+struct CullParams {
+  cluster_count: u32,
+  row_count: u32,
+  batch_count: u32,
+  impostor_count: u32,
+  glod_start: f32,
+  glod_end: f32,
+  discard_below: f32,
+  candidate_capacity: u32,
+  is_occluding: u32,
+  lod_a: f32,
+  lod_b: f32,
+  is_impostors: u32,
+  pad: vec4<u32>,
+  lod_origin: vec4<f32>,
+}
+
+struct Occlusion {
+  view: mat4x4<f32>,
+  projection: mat4x4<f32>,
+  size: vec2<f32>,
+  levels: u32,
+  has_history: u32,
+}
+
+struct Impostor {
+  sphere: vec4<f32>,
+  normals: array<vec4<f32>, 8>,
+  factor: f32,
+  surface: u32,
+}
+
+struct TerrainSlots {
+  details: vec4<u32>,
+  bumps: vec4<u32>,
+  mask: u32,
+}
+
+struct Surface {
+  tiling: f32,
+  detail_scale: f32,
+  alpha_reference: f32,
+  slice: f32,
+  color: vec3<f32>,
+  flags: u32,
+  textures: array<u32, 8>,
+  terrain: TerrainSlots,
+}
+
+struct Wind {
+  wind: vec4<f32>,
+  wave: vec4<f32>,
+  previous_wind: vec4<f32>,
+  previous_wave: vec4<f32>,
+}

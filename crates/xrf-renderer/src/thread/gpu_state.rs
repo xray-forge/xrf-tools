@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use xrf_error::XrfResult;
+use xrf_renderer_core::PassParameters;
 
 use crate::context::gpu_context::GpuContext;
 use crate::host::render_bundle::RenderBundle;
@@ -27,6 +28,7 @@ use crate::pass::sky_bindings::SkyBindings;
 use crate::pass::sky_haze_pass::SkyHazePass;
 use crate::pass::smaa_pass::SmaaPass;
 use crate::pass::static_cull_pass::StaticCullPass;
+use crate::pass::static_draw_parameters::StaticDrawParameters;
 use crate::pass::static_gbuffer_pass::StaticGBufferPass;
 use crate::pass::static_shadow_pass::StaticShadowPass;
 use crate::pass::sun_pass::SunPass;
@@ -105,26 +107,23 @@ impl GpuState {
     let sky: SkyBindings = SkyBindings::new(device);
     let static_gbuffer: StaticGBufferPass =
       StaticGBufferPass::new(device, shaders, &view_layout, textures.get_layout())?;
-    let static_shadow: StaticShadowPass = StaticShadowPass::new(
-      device,
-      shaders,
-      &view_layout,
-      static_gbuffer.get_layout(),
-      textures.get_layout(),
-    )?;
+    // What every static draw binds its clusters by, made from the same parameters the draws bind.
+    let scene_layout: wgpu::BindGroupLayout = StaticDrawParameters::create_layout(device);
+    let static_shadow: StaticShadowPass =
+      StaticShadowPass::new(device, shaders, &view_layout, &scene_layout, textures.get_layout())?;
 
     let water: WaterPass = WaterPass::new(
       device,
       &context.queue,
       shaders,
-      [&view_layout, static_gbuffer.get_layout(), textures.get_layout()],
+      [&view_layout, &scene_layout, textures.get_layout()],
       bundle,
     )?;
     let composited: CompositedPass = CompositedPass::new(
       device,
       shaders,
       &view_layout,
-      static_gbuffer.get_layout(),
+      &scene_layout,
       textures.get_layout(),
       sky.get_layout(),
     )?;

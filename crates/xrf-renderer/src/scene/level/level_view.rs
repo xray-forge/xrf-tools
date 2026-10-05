@@ -1,13 +1,13 @@
 use std::sync::Arc;
 use std::time::Instant;
 
-use glam::{Mat4, Vec2, Vec3, Vec4};
+use glam::{Mat4, UVec4, Vec2, Vec3, Vec4};
 use xrf_engine_target::XrayEngine;
 use xrf_error::XrfResult;
 use xrf_material::XraySurfaceDraw;
 use xrf_renderer_core::{
   ExecutedGraph, FrameGraph, GraphBindings, GraphBuffer, GraphBufferAccess, GraphColorAttachment, GraphCompileOptions,
-  GraphDepthAttachment, GraphRuntime, GraphTexture, GraphTextureAccess, RasterPassBuilder,
+  GraphDepthAttachment, GraphRuntime, GraphTexture, GraphTextureAccess, RasterPassBuilder, StorageArray,
 };
 
 use xrf_math::EPS_S;
@@ -21,14 +21,12 @@ use crate::contract::render_bloom_settings::RenderBloomSettings;
 use crate::contract::render_debug_view::RenderDebugView;
 use crate::contract::render_level_hit::RenderLevelHit;
 use crate::contract::render_lights_report::RenderLightsReport;
-use crate::contract::render_load_failure::RenderLoadFailure;
+use crate::contract::render_load_report::RenderLoadReport;
 use crate::contract::render_overlay::RenderOverlay;
 use crate::contract::render_pool_use::RenderPoolUse;
 use crate::contract::render_rect::RenderRect;
-use crate::contract::render_sector_skip::RenderSectorSkip;
 use crate::contract::render_selection::RenderSelection;
 use crate::contract::render_selection_target::RenderSelectionTarget;
-use crate::contract::render_spawn_category::RenderSpawnCategory;
 use crate::contract::render_static_report::RenderStaticReport;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::contract::render_water_settings::RenderWaterSettings;
@@ -37,6 +35,7 @@ use crate::frame::fsr_targets::FsrTargets;
 use crate::frame::pick_target::PickTarget;
 use crate::frame::smaa_targets::SmaaTargets;
 use crate::frame::smoothing_target::SmoothingTarget;
+use crate::frame::static_scene_handles::StaticSceneHandles;
 use crate::frame::temporal_history::TemporalHistory;
 use crate::frame::temporal_jitter::TemporalJitter;
 use crate::frame::upscale_targets::UpscaleTargets;
@@ -61,8 +60,10 @@ use crate::pass::lighting_uniform::LightingUniform;
 use crate::pass::present_uniform::PresentUniform;
 use crate::pass::rain_bindings::RainBindings;
 use crate::pass::rain_uniform::RainUniform;
+use crate::pass::static_cull_parameters::StaticCullParameters;
 use crate::pass::static_cull_params::StaticCullParams;
-use crate::pass::static_draw_groups::StaticDrawGroups;
+use crate::pass::static_draw_parameters::StaticDrawParameters;
+use crate::pass::static_draws::StaticDraws;
 use crate::pass::static_gbuffer_pass::StaticGBufferPass;
 use crate::pass::static_occlusion_uniform::StaticOcclusionUniform;
 use crate::pass::temporal_uniform::TemporalUniform;
@@ -79,9 +80,9 @@ use crate::scene::level::level_lights::LevelLights;
 use crate::scene::level::level_overlays::LevelOverlays;
 use crate::scene::level::level_scene::LevelScene;
 use crate::scene::level::level_smoothing::LevelSmoothing;
+use crate::scene::level::level_streaming::LevelStreaming;
 use crate::scene::level::level_water::WaterFrame;
 use crate::scene::level::lights_frame::LightsFrame;
-use crate::scene::level::posed_skeleton::PosedSkeleton;
 use crate::scene::level::scene_renderer::{SceneRenderer, SkyGroupKey};
 use crate::scene::level::shadow_frame::ShadowFrame;
 use crate::scene::level::shadow_sway::ShadowSway;
@@ -89,6 +90,7 @@ use crate::scene::level::view_info::ViewInfo;
 use crate::scene::level::view_state::ViewState;
 use crate::scene::level::weather_model_buffers::WeatherModelBuffers;
 use crate::scene::static_scene::static_batch::StaticBatch;
+use crate::scene::static_scene::static_layout::StaticLayout;
 use crate::scene::static_scene::static_scene::StaticScene;
 use crate::scene::static_scene::static_selection::StaticSelection;
 use crate::scene::static_scene::static_slot_info::StaticSlotInfo;
@@ -102,15 +104,10 @@ use crate::thread::render_workers::RenderWorkers;
 const PICKED_CLUSTER: u32 = 1;
 const PICKED_IMPOSTOR: u32 = 2;
 
-/// Sectors put on the GPU at most each frame, so a level's open spreads over frames rather than stalling one.
-const SECTORS_PER_FRAME: usize = 4;
-
-/// Spawned models put into the scene at most in one frame.
-const MODELS_PER_FRAME: usize = 16;
-
 /// A level as one viewport draws it, held as the four things a frame is made from: the level (`LevelScene`), what the
-/// view keeps between frames (`ViewState`), this frame as prepared (`ViewInfo`), and what draws it (`SceneRenderer`).
-/// It orchestrates them: loads the level, prepares the frame, and records it as a frame graph.
+/// view keeps between frames (`ViewState`), this frame as prepared (`ViewInfo`), and what draws it (`SceneRenderer`);
+/// and what streams the level in (`LevelStreaming`). It orchestrates them: streams the level, prepares the frame, and
+/// records it as a frame graph.
 pub struct LevelView {
   /// This frame as prepared, which its passes read.
   info: ViewInfo,
@@ -118,6 +115,8 @@ pub struct LevelView {
   state: ViewState,
   /// The level it draws.
   scene: LevelScene,
+  /// What streams the level into the scene, and what its load reports.
+  streaming: LevelStreaming,
   /// What draws it, and what that keeps between frames: the passes' buffers and bind groups, and the effects
   /// drawn from the view.
   renderer: SceneRenderer,
@@ -131,6 +130,26 @@ impl LevelView {
 
   pub fn get_scene_mut(&mut self) -> &mut LevelScene {
     &mut self.scene
+  }
+
+  /// What streams the level in, and what its load reports.
+  pub fn get_streaming(&self) -> &LevelStreaming {
+    &self.streaming
+  }
+
+  /// How far the level has loaded, when that changed since it was last asked.
+  pub fn take_load_report(&mut self, textures: &TextureCache) -> Option<RenderLoadReport> {
+    self.streaming.take_report(&self.scene, textures)
+  }
+
+  /// Whether everything the level opens with is resident, so it draws as it will.
+  pub fn is_ready(&self, textures: &TextureCache) -> bool {
+    self.streaming.is_ready(&self.scene, textures)
+  }
+
+  /// How far the level has loaded.
+  pub fn describe_load(&self, textures: &TextureCache) -> RenderLoadReport {
+    self.streaming.describe_load(&self.scene, textures)
   }
 
   /// What it keeps from one frame to the next.
@@ -149,6 +168,7 @@ impl LevelView {
     source: Arc<dyn RenderLevelSource>,
     workers: &RenderWorkers,
   ) -> Self {
+    let streaming: LevelStreaming = LevelStreaming::start(Arc::clone(&source), workers);
     let scene: LevelScene = LevelScene::new(device, queue, view_layout, source, workers);
     let args_size: u64 = scene.statics.args.size();
 
@@ -156,12 +176,13 @@ impl LevelView {
       info: ViewInfo::default(),
       state: ViewState::new(device, queue),
       scene,
+      streaming,
       renderer: SceneRenderer::new(device, view_layout, args_size),
     }
   }
 
-  /// Puts the sectors and spawned models the loaders finished since the last frame into the scene, a few a frame, and
-  /// asks for the textures the lighting's sky draws with.
+  /// Streams this frame's changes into the scene, takes the grass and particles their loaders finished, and asks for
+  /// the textures the lighting's sky draws with.
   #[allow(clippy::too_many_arguments)]
   pub fn load(
     &mut self,
@@ -236,61 +257,20 @@ impl LevelView {
       }
     }
 
-    self.scene.lights.poll(textures, &assets);
     self.scene.particles.poll(device, textures, &assets);
 
     if let Some(slots) = self.scene.grass.poll(device, grass_pass, textures, &assets) {
       self.scene.statics.texture_slots.extend(slots);
     }
 
-    for (sector, package) in self.scene.loader.take(SECTORS_PER_FRAME) {
-      match package {
-        Ok((package, tally)) => {
-          self
-            .scene
-            .skipped
-            .extend(package.description.skipped.iter().map(|skip| RenderSectorSkip {
-              sector,
-              skip: skip.clone(),
-            }));
-
-          let started: Instant = Instant::now();
-
-          self.scene.statics.add_sector(
-            device,
-            queue,
-            encoder,
-            textures,
-            &assets,
-            self.scene.source.get_surfaces(),
-            &package,
-          );
-          self.scene.sector_time = started.elapsed().as_secs_f32() * 1000.0;
-          self.scene.surfaces.merge(tally);
-        }
-        Err(reason) => {
-          self.scene.failed_sectors.push(RenderLoadFailure {
-            name: sector.to_string(),
-            reason,
-          });
-        }
-      }
-    }
-
-    for (model, places, skeleton) in self.scene.spawn.take(MODELS_PER_FRAME) {
-      self
-        .scene
-        .statics
-        .add_model(device, queue, encoder, textures, &assets, &model, &places);
-
-      if let Some(skeleton) = skeleton.filter(|_| model.skin.is_some()) {
-        for place in &places {
-          self.scene.skeletons.insert(place.object, PosedSkeleton::new(&skeleton));
-        }
-      }
-    }
-
-    self.scene.note_load_durations(textures);
+    self.streaming.stream(
+      device,
+      queue,
+      encoder,
+      &mut self.scene,
+      (textures, &assets),
+      options.world.get_hidden_spawn_groups(),
+    );
   }
 
   /// Sizes the targets to the viewport and writes what this frame's cull and lighting read.
@@ -325,8 +305,8 @@ impl LevelView {
       self.renderer.light_groups = None;
     }
 
-    self.scene.statics.reset_draws(device, queue, encoder);
-    self.scene.pose_skeletons(queue);
+    self.scene.pose_skeletons();
+    self.scene.statics.prepare_draws(device, queue, encoder);
 
     if self.state.overlays.as_ref().is_some_and(|it| it.skeleton.is_some()) {
       let segments: Vec<(Vec3, Vec3)> = self.scene.list_skeleton_segments();
@@ -334,39 +314,6 @@ impl LevelView {
       if let Some(overlays) = &mut self.state.overlays {
         overlays.set_skeleton(device, &segments);
       }
-    }
-
-    let generation: u64 = self.scene.statics.get_generation();
-    let cull_key: (u64, u64) = (generation, self.state.targets_epoch);
-
-    if self.renderer.cull_group.as_ref().is_none_or(|(it, _)| *it != cull_key)
-      && let Some((pyramid, _)) = &self.state.pyramid
-    {
-      let group: wgpu::BindGroup = passes.cull.create_bind_group(
-        device,
-        &self.scene.statics,
-        &self.renderer.cull_params,
-        &pyramid.view,
-        &self.renderer.occlusion,
-        (
-          self.scene.statics.lists.get_buffer().as_entire_buffer_binding(),
-          self.scene.statics.args.as_entire_buffer_binding(),
-        ),
-      );
-
-      self.renderer.cull_group = Some((cull_key, group));
-    }
-
-    if self
-      .renderer
-      .draw_groups
-      .as_ref()
-      .is_none_or(|(it, _)| *it != generation)
-    {
-      self.renderer.draw_groups = Some((
-        generation,
-        passes.gbuffer.create_bind_groups(device, &self.scene.statics),
-      ));
     }
 
     self
@@ -525,7 +472,7 @@ impl LevelView {
       weather_textures,
     );
     self.prepare_thunder(device, queue, passes, (lighting, weather), options, weather_textures);
-    queue.write_buffer(&self.scene.statics.wind, 0, bytemuck::bytes_of(&wind));
+    self.info.wind = wind;
 
     // A keyframe whose textures are not all up is blended out, so a sky still going up shows the other one.
     let side = |index: usize| {
@@ -588,8 +535,7 @@ impl LevelView {
       lod_a: threshold(options.features.lod.ssa_a),
       lod_b: threshold(options.features.lod.ssa_b),
       is_impostors: options.features.lod.is_impostors as u32,
-      hidden_groups: to_hidden_groups(options),
-      pad: [0; 3],
+      pad: UVec4::ZERO,
       lod_origin: view.position.extend(1.0),
     };
     self.info.matrices = (view.view, view.projection);
@@ -646,23 +592,18 @@ impl LevelView {
         (width.div_ceil(2), height.div_ceil(2)),
       )),
     );
-    queue.write_buffer(&self.renderer.cull_params, 0, bytemuck::bytes_of(&self.info.cull));
-    self.prepare_sorted(device, queue, passes, view, self.scene.statics.get_generation());
+    self.prepare_sorted(device, queue, view);
 
     if let Some((pyramid, _)) = &self.state.pyramid {
       let (history_view, history_projection): (Mat4, Mat4) = self.state.history.unwrap_or(self.info.matrices);
 
-      queue.write_buffer(
-        &self.renderer.occlusion,
-        0,
-        bytemuck::bytes_of(&StaticOcclusionUniform {
-          view: history_view,
-          projection: history_projection,
-          size: Vec2::new(pyramid.width as f32, pyramid.height as f32),
-          levels: pyramid.levels,
-          has_history: self.state.history.is_some() as u32,
-        }),
-      );
+      self.info.occlusion = StaticOcclusionUniform {
+        view: history_view,
+        projection: history_projection,
+        size: Vec2::new(pyramid.width as f32, pyramid.height as f32),
+        levels: pyramid.levels,
+        has_history: self.state.history.is_some() as u32,
+      };
     }
     self.info.lighting = LightingUniform::new(lighting, view.view, options, &frame);
     queue.write_buffer(&self.renderer.lighting, 0, bytemuck::bytes_of(&self.info.lighting));
@@ -683,7 +624,7 @@ impl LevelView {
     }
 
     self.write_present(queue, options);
-    self.prepare_shadows(device, queue, encoder, passes, (view_layout, textures));
+    self.prepare_shadows(device, queue, encoder, (view_layout, textures));
   }
 
   /// Readies this frame's shadows, sun, rain cover and lights, which the frame's passes then draw; `encoder` takes
@@ -693,25 +634,14 @@ impl LevelView {
     device: &wgpu::Device,
     queue: &wgpu::Queue,
     encoder: &mut wgpu::CommandEncoder,
-    passes: LevelPasses<'_>,
     (view_layout, textures): (&wgpu::BindGroupLayout, &TextureCache),
   ) {
     let LevelView {
-      scene,
-      info,
-      state,
-      renderer,
+      scene, info, renderer, ..
     } = self;
     let SceneRenderer {
-      cull_params,
-      occlusion,
-      shadows,
-      rain_cover,
-      ..
+      shadows, rain_cover, ..
     } = renderer;
-    let Some((pyramid, _)) = state.pyramid.as_ref() else {
-      return;
-    };
     let LevelScene { statics, lights, .. } = scene;
     let frame: ShadowFrame<'_> = ShadowFrame {
       scene: statics,
@@ -719,44 +649,32 @@ impl LevelView {
       settings: &info.shadow_settings,
       sun_direction: info.sun_direction,
       sway: to_sway(statics, info.sway),
-      cull_params,
       params: &info.cull,
-      pyramid: &pyramid.view,
-      occlusion,
-      targets_epoch: state.targets_epoch,
       textures,
     };
 
-    shadows.prepare_cascades(device, queue, encoder, passes, view_layout, &frame);
+    shadows.prepare_cascades(device, queue, encoder, view_layout, &frame);
 
     if info.rain_draw.is_some() {
-      rain_cover.prepare(device, queue, encoder, passes, &frame);
+      rain_cover.prepare(device, queue, encoder, &frame);
     }
 
-    lights.prepare_shadows(device, queue, encoder, passes, &frame);
+    lights.prepare_shadows(device, queue, encoder, &frame);
   }
 
   /// Declares the scene's culls and G-buffer draws: what last frame's depth does not hide, culled and drawn; then, while
   /// it culls occlusion, this frame's depth reduced and what the first draw does not hide of the rest culled and drawn.
   fn add_gbuffer_passes<'a>(
     &'a self,
-    (graph, bindings): (&mut FrameGraph<'a>, &mut GraphBindings<'a>),
+    graph: &mut FrameGraph<'a>,
     passes: LevelPasses<'a>,
-    (view, textures, draw_groups, cull_group): (
-      &'a ViewBinding,
-      &'a wgpu::BindGroup,
-      &'a StaticDrawGroups,
-      &'a wgpu::BindGroup,
-    ),
+    (view, textures, scene): (&'a ViewBinding, &'a wgpu::BindGroup, &StaticSceneHandles),
     (targets, pyramid, pyramid_groups): (ViewTargetHandles, &'a DepthPyramid, &'a [wgpu::BindGroup]),
     is_occluding: bool,
   ) {
-    let scene: &'a StaticScene = &self.scene.statics;
     let params: &'a StaticCullParams = &self.info.cull;
-    let args: GraphBuffer = bindings.import_buffer(graph, "static draw arguments", &scene.args);
-    let late: GraphBuffer = bindings.import_buffer(graph, "static late arguments", &scene.late);
-    let lists: GraphBuffer = bindings.import_buffer(graph, "static lists", scene.lists.get_buffer());
-    let candidates: GraphBuffer = bindings.import_buffer(graph, "static candidates", scene.candidates.get_buffer());
+    let cull: StaticCullParameters = scene.get_camera_cull();
+    let draws: StaticDraws = scene.get_camera_draws();
     let gbuffer: [GraphTexture; 4] = targets.get_gbuffer();
     let depth: GraphTexture = targets.depth;
     let add_draw = |graph: &mut FrameGraph<'a>, name: &'static str, draw_args: GraphBuffer, is_first: bool| {
@@ -770,39 +688,35 @@ impl LevelView {
       } else {
         wgpu::LoadOp::Load
       };
-
-      gbuffer
+      let builder = gbuffer
         .iter()
         .fold(graph.add_raster_pass(name), |builder, texture| {
           builder.color(GraphColorAttachment::new(*texture, color_load))
         })
         .depth(GraphDepthAttachment::new(depth, depth_load))
-        .buffer(draw_args, GraphBufferAccess::Indirect)
-        .buffer(lists, GraphBufferAccess::StorageRead)
-        .record(move |context| {
-          let draw_args: &wgpu::Buffer = context.get_buffer(draw_args);
+        .buffer(draw_args, GraphBufferAccess::Indirect);
 
-          passes
-            .gbuffer
-            .record(context.get_pass(), (view, draw_groups, textures), draw_args, is_first);
-        });
+      draws.declare(builder, is_first).record(move |context| {
+        let draw_args: &wgpu::Buffer = context.get_buffer(draw_args);
+
+        passes
+          .gbuffer
+          .record(context, (view, &draws, textures), draw_args, is_first);
+      });
     };
 
     graph
       .add_compute_pass("cull")
-      .buffer(args, GraphBufferAccess::StorageReadWrite)
-      .buffer(late, GraphBufferAccess::StorageReadWrite)
-      .buffer(lists, GraphBufferAccess::StorageWrite)
-      .buffer(candidates, GraphBufferAccess::StorageWrite)
-      .record(move |context| passes.cull.record_early(context.get_pass(), view, cull_group, params));
-    add_draw(graph, "g-buffer", args, true);
+      .parameters(&cull)
+      .record(move |context| passes.cull.record_early(context, view, &cull, params));
+    add_draw(graph, "g-buffer", scene.args, true);
 
     if !is_occluding {
       return;
     }
 
-    let reduced: GraphTexture = bindings.import_view(graph, "depth pyramid", &pyramid.view);
-    let late_dispatch: GraphBuffer = bindings.import_buffer(graph, "static late dispatch", &scene.late_dispatch);
+    let (late, late_dispatch, reduced): (GraphBuffer, GraphBuffer, GraphTexture) =
+      (scene.late, scene.late_dispatch, scene.pyramid);
 
     graph
       .add_compute_pass("depth pyramid")
@@ -813,15 +727,20 @@ impl LevelView {
       .add_encoder_pass("late cull dispatch")
       .buffer(late, GraphBufferAccess::CopySource)
       .buffer(late_dispatch, GraphBufferAccess::CopyDestination)
-      .record(move |context| passes.cull.record_late_dispatch(context.get_encoder(), scene));
+      .record(move |context| {
+        let (late, dispatch) = (context.get_buffer(late), context.get_buffer(late_dispatch));
+
+        passes.cull.record_late_dispatch(context.get_encoder(), late, dispatch);
+      });
     graph
       .add_compute_pass("late cull")
       .buffer(late_dispatch, GraphBufferAccess::Indirect)
-      .buffer(candidates, GraphBufferAccess::StorageRead)
-      .buffer(late, GraphBufferAccess::StorageReadWrite)
-      .buffer(lists, GraphBufferAccess::StorageReadWrite)
-      .texture(reduced, GraphTextureAccess::Sampled)
-      .record(move |context| passes.cull.record_late(context.get_pass(), view, cull_group, scene));
+      .parameters(&cull)
+      .record(move |context| {
+        let dispatch: &wgpu::Buffer = context.get_buffer(late_dispatch);
+
+        passes.cull.record_late(context, view, &cull, dispatch);
+      });
     add_draw(graph, "late g-buffer", late, false);
   }
 
@@ -1247,6 +1166,9 @@ impl LevelView {
   /// blends over it, and resolves the frame. Which passes run is decided here; each reads the view, which recording
   /// leaves as it is.
   ///
+  /// A pick, its camera narrowed to the texel picked, is drawn last from the frame's culled clusters while a readback is
+  /// free for it; the answer names the readback it is copied into.
+  ///
   /// # Errors
   ///
   /// Returns an error when the graph cannot compile or execute.
@@ -1257,14 +1179,14 @@ impl LevelView {
     passes: LevelPasses<'_>,
     view: &ViewBinding,
     textures: &TextureCache,
-  ) -> XrfResult<Option<ExecutedGraph>> {
-    if self.state.targets.is_none()
-      || self.state.pyramid.is_none()
-      || self.renderer.cull_group.is_none()
-      || self.renderer.draw_groups.is_none()
-    {
+    pick: Option<(&CameraUniform, &wgpu::BindGroupLayout)>,
+  ) -> XrfResult<Option<(ExecutedGraph, Option<usize>)>> {
+    if self.state.targets.is_none() || self.state.pyramid.is_none() {
       return Ok(None);
     }
+
+    let pick_slot: Option<usize> =
+      pick.and_then(|(camera, view_layout)| self.ready_pick(device, queue, camera, view_layout));
 
     let is_occluding: bool = self.info.cull.is_occluding != 0;
 
@@ -1301,12 +1223,20 @@ impl LevelView {
     let is_adapting: bool = self.state.exposure.is_adapting();
     let texture_group: &wgpu::BindGroup = textures.get_bind_group();
     let level_view: &LevelView = self;
-    let (Some(targets), Some((_, draw_groups))) = (&level_view.state.targets, &level_view.renderer.draw_groups) else {
+    let (Some(targets), Some((pyramid, pyramid_groups))) = (&level_view.state.targets, &level_view.state.pyramid)
+    else {
       return Ok(None);
     };
     let mut graph: FrameGraph<'_> = FrameGraph::new();
     let mut bindings: GraphBindings<'_> = GraphBindings::new();
     let handles: ViewTargetHandles = ViewTargetHandles::import(&mut graph, &mut bindings, targets);
+    let statics: StaticSceneHandles = StaticSceneHandles::import(
+      (&mut graph, &mut bindings, runtime),
+      &level_view.scene.statics,
+      &pyramid.view,
+      (&level_view.info.cull, &level_view.info.occlusion, &level_view.info.wind),
+    );
+    let layouts: [StaticDrawParameters; StaticLayout::COUNT] = statics.get_camera_draws().layouts;
 
     // The frame is encoded in four groups, on as many threads where it is not timed: the scene, its shadows, its
     // lighting and water, and what blends over it and resolves it.
@@ -1325,20 +1255,15 @@ impl LevelView {
       .grass
       .add_planting(&mut graph, &mut bindings, passes.grass);
 
-    if let (Some((_, cull_group)), Some((pyramid, pyramid_groups))) =
-      (&level_view.renderer.cull_group, &level_view.state.pyramid)
-    {
-      level_view.add_gbuffer_passes(
-        (&mut graph, &mut bindings),
-        passes,
-        (view, texture_group, draw_groups, cull_group),
-        (handles, pyramid, pyramid_groups),
-        is_occluding,
-      );
-    }
+    level_view.add_gbuffer_passes(
+      &mut graph,
+      passes,
+      (view, texture_group, &statics),
+      (handles, pyramid, pyramid_groups),
+      is_occluding,
+    );
 
-    let stats_args: GraphBuffer =
-      bindings.import_buffer(&mut graph, "static draw arguments", &level_view.scene.statics.args);
+    let stats_args: GraphBuffer = statics.args;
 
     // The cull's counts, read back for a report a frame or more later: an effect the graph cannot see.
     graph
@@ -1362,50 +1287,50 @@ impl LevelView {
     }
 
     if is_wallmarked {
-      let args: Vec<GraphBuffer> = Self::list_draw_args(&level_view.scene.statics, &level_view.info.cull)
-        .into_iter()
-        .map(|args| bindings.import_buffer(&mut graph, "static draw arguments", args))
-        .collect();
+      let args: Vec<GraphBuffer> = Self::list_draw_args(&statics, &level_view.info.cull);
 
-      args
-        .iter()
-        .fold(graph.add_raster_pass("wall marks"), |builder, args| {
-          builder.buffer(*args, GraphBufferAccess::Indirect)
-        })
-        .color(GraphColorAttachment::new(handles.albedo, wgpu::LoadOp::Load))
-        .depth(GraphDepthAttachment::new_read_only(handles.depth))
-        .record(move |context| {
-          let args: Vec<&wgpu::Buffer> = args.iter().map(|args| context.get_buffer(*args)).collect();
+      StaticDraws::declare_layouts(
+        args
+          .iter()
+          .fold(graph.add_raster_pass("wall marks"), |builder, args| {
+            builder.buffer(*args, GraphBufferAccess::Indirect)
+          })
+          .color(GraphColorAttachment::new(handles.albedo, wgpu::LoadOp::Load))
+          .depth(GraphDepthAttachment::new_read_only(handles.depth)),
+        &layouts,
+      )
+      .record(move |context| {
+        let args: Vec<&wgpu::Buffer> = args.iter().map(|args| context.get_buffer(*args)).collect();
 
-          passes
-            .composited
-            .record_wallmarks(context.get_pass(), (view, draw_groups, texture_group), &args);
-        });
+        passes
+          .composited
+          .record_wallmarks(context, (view, &layouts, texture_group), &args);
+      });
     }
 
     graph.begin_group("shadows");
 
     level_view.renderer.shadows.add_passes(
-      &mut graph,
-      &mut bindings,
+      (&mut graph, &mut bindings),
       passes,
+      &statics,
       (&level_view.info.cull, texture_group),
     );
 
     if is_raining {
       level_view.renderer.rain_cover.add_passes(
-        &mut graph,
-        &mut bindings,
+        (&mut graph, &mut bindings),
         passes,
+        &statics,
         (&level_view.info.cull, texture_group),
       );
     }
 
     level_view.scene.lights.add_shadow_passes(
-      &mut graph,
-      &mut bindings,
+      (&mut graph, &mut bindings),
       passes,
-      (&level_view.scene.statics, &level_view.info.cull, texture_group),
+      &statics,
+      (&level_view.info.cull, texture_group),
     );
 
     graph.begin_group("lighting");
@@ -1520,8 +1445,8 @@ impl LevelView {
           targets: handles,
           view,
           textures: texture_group,
-          draw_groups,
-          args: Self::list_draw_args(&level_view.scene.statics, &level_view.info.cull),
+          layouts,
+          args: Self::list_draw_args(&statics, &level_view.info.cull),
           lighting: runtime.push_uniform(&level_view.info.lighting),
           skies: [&skies[0], &skies[1]],
           sky_sampler: passes.sky.get_clamp(),
@@ -1534,32 +1459,39 @@ impl LevelView {
       graph.begin_group("post");
 
       if let (true, Some((_, sky_group))) = (is_composited, &level_view.renderer.sky_group) {
-        let args: Vec<GraphBuffer> = Self::list_draw_args(&level_view.scene.statics, &level_view.info.cull)
-          .into_iter()
-          .map(|args| bindings.import_buffer(&mut graph, "static draw arguments", args))
-          .collect();
-        let sorted: (Option<&wgpu::BindGroup>, u32) = (
-          level_view.renderer.sorted_group.as_ref().map(|(_, group)| group),
-          level_view.info.sorted_count,
-        );
+        let args: Vec<GraphBuffer> = Self::list_draw_args(&statics, &level_view.info.cull);
+        // The models' composited clusters, back to front, which the view lists itself.
+        let sorted: Option<StaticDrawParameters> = level_view
+          .state
+          .sorted_list
+          .as_ref()
+          .filter(|_| level_view.info.sorted_count > 0)
+          .map(|list| {
+            let list: GraphBuffer = bindings.import_buffer(&mut graph, "sorted composited", list);
 
-        args
-          .iter()
-          .fold(
-            Self::add_over_scene(&mut graph, handles, "composited"),
-            |builder, args| builder.buffer(*args, GraphBufferAccess::Indirect),
-          )
-          .record(move |context| {
-            let args: Vec<&wgpu::Buffer> = args.iter().map(|args| context.get_buffer(*args)).collect();
-
-            passes.composited.record(
-              context.get_pass(),
-              (view, draw_groups, texture_group),
-              (&groups.composited, sky_group),
-              &args,
-              sorted,
-            );
+            statics.get_layout_draws(StorageArray::new(list))[StaticLayout::Model.get_index()]
           });
+        let sorted_count: u32 = level_view.info.sorted_count;
+        let builder = args.iter().fold(
+          StaticDraws::declare_layouts(Self::add_over_scene(&mut graph, handles, "composited"), &layouts),
+          |builder, args| builder.buffer(*args, GraphBufferAccess::Indirect),
+        );
+        let builder = match &sorted {
+          Some(sorted) => builder.parameters(sorted),
+          None => builder,
+        };
+
+        builder.record(move |context| {
+          let args: Vec<&wgpu::Buffer> = args.iter().map(|args| context.get_buffer(*args)).collect();
+
+          passes.composited.record(
+            context,
+            (view, &layouts, texture_group),
+            (&groups.composited, sky_group),
+            &args,
+            (sorted.as_ref(), sorted_count),
+          );
+        });
       }
 
       if has_particles {
@@ -1739,6 +1671,17 @@ impl LevelView {
       }
     }
 
+    if let (Some(slot), Some(target), Some(pick_view)) =
+      (pick_slot, &level_view.state.pick_target, &level_view.state.pick_view)
+    {
+      level_view.add_pick_passes(
+        (&mut graph, &mut bindings),
+        passes.gbuffer,
+        (pick_view, texture_group, &statics),
+        (target, slot),
+      );
+    }
+
     let executed: ExecutedGraph =
       graph
         .compile(&GraphCompileOptions::default())?
@@ -1746,55 +1689,79 @@ impl LevelView {
 
     self.finish_frame(is_lit, resolve);
 
-    Ok(Some(executed))
+    Ok(Some((executed, pick_slot)))
   }
 
   /// The draw arguments a forward pass replays: the early phase's, and the late phase's where occlusion culls.
-  fn list_draw_args<'s>(scene: &'s StaticScene, params: &StaticCullParams) -> Vec<&'s wgpu::Buffer> {
+  fn list_draw_args(scene: &StaticSceneHandles, params: &StaticCullParams) -> Vec<GraphBuffer> {
     if params.is_occluding != 0 {
-      vec![&scene.args, &scene.late]
+      vec![scene.args, scene.late]
     } else {
-      vec![&scene.args]
+      vec![scene.args]
     }
   }
 
-  /// Draws the frame's visible clusters into a pick's texel, through the frame's camera narrowed to it.
-  #[allow(clippy::too_many_arguments)]
-  pub fn record_pick(
+  /// Readies a pick's camera and target, and answers the readback it will be copied into; none while every readback is
+  /// on its way.
+  fn ready_pick(
     &mut self,
     device: &wgpu::Device,
     queue: &wgpu::Queue,
-    encoder: &mut wgpu::CommandEncoder,
-    draw: &StaticGBufferPass,
-    view_layout: &wgpu::BindGroupLayout,
-    textures: &TextureCache,
     camera: &CameraUniform,
+    view_layout: &wgpu::BindGroupLayout,
   ) -> Option<usize> {
-    let Some((_, draw_groups)) = &self.renderer.draw_groups else {
-      return None;
-    };
-    let target: &PickTarget = self.state.pick_target.get_or_insert_with(|| PickTarget::new(device));
+    let slot: usize = self
+      .state
+      .pick_target
+      .get_or_insert_with(|| PickTarget::new(device))
+      .find_free_readback()?;
 
-    if !target.has_free_readback() {
-      return None;
-    }
-
-    let view: &ViewBinding = self
+    self
       .state
       .pick_view
-      .get_or_insert_with(|| ViewBinding::new(device, view_layout));
+      .get_or_insert_with(|| ViewBinding::new(device, view_layout))
+      .write(queue, camera);
 
-    view.write(queue, camera);
-    draw.pick(
-      encoder,
-      target,
-      view,
-      draw_groups,
-      textures.get_bind_group(),
-      &[&self.scene.statics.args, &self.scene.statics.late],
-    );
+    Some(slot)
+  }
 
-    target.copy_out(encoder)
+  /// Declares a pick: the frame's visible clusters drawn again into its texel, through its narrowed camera, after every
+  /// cull of the frame, and the texel copied out into its readback.
+  fn add_pick_passes<'a>(
+    &'a self,
+    (graph, bindings): (&mut FrameGraph<'a>, &mut GraphBindings<'a>),
+    gbuffer: &'a StaticGBufferPass,
+    (view, textures, scene): (&'a ViewBinding, &'a wgpu::BindGroup, &StaticSceneHandles),
+    (target, slot): (&'a PickTarget, usize),
+  ) {
+    let color: GraphTexture = bindings.import_view(graph, "pick", &target.color);
+    let depth: GraphTexture = bindings.import_view(graph, "pick depth", &target.depth);
+    let draws: StaticDraws = scene.get_camera_draws();
+    let args: [GraphBuffer; 2] = [scene.args, scene.late];
+
+    draws
+      .declare(
+        graph
+          .add_raster_pass("static pick")
+          .color(GraphColorAttachment::new(
+            color,
+            wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+          ))
+          .depth(GraphDepthAttachment::new(depth, wgpu::LoadOp::Clear(0.0)))
+          .buffer(args[0], GraphBufferAccess::Indirect)
+          .buffer(args[1], GraphBufferAccess::Indirect),
+        true,
+      )
+      .record(move |context| {
+        let args: [&wgpu::Buffer; 2] = args.map(|args| context.get_buffer(args));
+
+        gbuffer.pick(context, (view, &draws, textures), &args);
+      });
+    graph
+      .add_encoder_pass("pick copy")
+      .texture(color, GraphTextureAccess::CopySource)
+      .keep()
+      .record(move |context| target.copy_out(context.get_encoder(), slot));
   }
 
   /// Asks for a pick's texel back, its frame just submitted.
@@ -1978,22 +1945,12 @@ impl LevelView {
 
   /// Lists the models' composited clusters in view, their places back to front by distance and each place's clusters in
   /// their parts' order, as the engine draws its sorted blended objects; binds the list for the composited pass.
-  fn prepare_sorted(
-    &mut self,
-    device: &wgpu::Device,
-    queue: &wgpu::Queue,
-    passes: LevelPasses<'_>,
-    view: &CameraView,
-    generation: u64,
-  ) {
+  fn prepare_sorted(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, view: &CameraView) {
     let planes: [Vec4; 6] = view.get_planes();
-    let hidden: u32 = self.info.cull.hidden_groups;
-    let mut places: Vec<(f32, &StaticSortedPlace)> = self
+    let mut places: Vec<(f32, StaticSortedPlace<'_>)> = self
       .scene
       .statics
-      .sorted_places
-      .iter()
-      .filter(|place| place.group == 0 || hidden & (1 << (place.group - 1)) == 0)
+      .list_sorted_places()
       .filter(|place| place.is_in_view(&planes))
       .map(|place| (place.get_distance(view.position), place))
       .collect();
@@ -2029,7 +1986,6 @@ impl LevelView {
         usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
         mapped_at_creation: false,
       }));
-      self.state.sorted_epoch += 1;
     }
 
     let Some(buffer) = &self.state.sorted_list else {
@@ -2037,17 +1993,6 @@ impl LevelView {
     };
 
     queue.write_buffer(buffer, 0, bytes);
-
-    let key: (u64, u64) = (generation, self.state.sorted_epoch);
-
-    if self.renderer.sorted_group.as_ref().is_none_or(|(it, _)| *it != key) {
-      let [_, _, model] =
-        passes
-          .gbuffer
-          .create_layout_groups(device, &self.scene.statics, buffer.as_entire_buffer_binding());
-
-      self.renderer.sorted_group = Some((key, model));
-    }
   }
 
   /// Makes the smoothing pass's targets while one smooths the frame as drawn, dropping them otherwise.
@@ -2286,17 +2231,17 @@ impl LevelView {
     self.info.selection_color = None;
 
     let selection: &RenderSelection = selection?;
-    let generation: u64 = self.scene.statics.get_generation();
+    let contents: usize = self.scene.statics.get_contents();
 
     if self
       .state
       .selection
       .as_ref()
-      .is_none_or(|(target, at, _)| *target != selection.target || *at != generation)
+      .is_none_or(|(target, at, _)| *target != selection.target || *at != contents)
     {
       self.state.selection = Some((
         selection.target,
-        generation,
+        contents,
         self.scene.statics.resolve_selection(&selection.target),
       ));
     }
@@ -2327,29 +2272,6 @@ fn to_sway(scene: &StaticScene, (amplitude, time): (f32, f32)) -> ShadowSway<'_>
     time,
     places: scene.list_swaying(),
   }
-}
-
-/// The visibility groups a view hides: each category it does not draw, and the released objects of every one while it
-/// draws no released objects.
-fn to_hidden_groups(options: &RenderViewOptions) -> u32 {
-  [
-    RenderSpawnCategory::Props,
-    RenderSpawnCategory::Items,
-    RenderSpawnCategory::Weapons,
-    RenderSpawnCategory::Lamps,
-  ]
-  .into_iter()
-  .fold(0, |hidden, category| {
-    let is_shown: bool = options.world.is_spawned(category);
-    let kept: u32 = if is_shown { 0 } else { 1 << (category.get_group() - 1) };
-    let released: u32 = if is_shown && options.world.is_spawned_released {
-      0
-    } else {
-      1 << (category.get_released_group() - 1)
-    };
-
-    hidden | kept | released
-  })
 }
 
 /// A box's twelve edges as lines, its corners where `transform` stands them, in one colour seen through what is in front.

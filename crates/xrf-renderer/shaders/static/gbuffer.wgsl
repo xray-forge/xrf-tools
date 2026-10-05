@@ -60,13 +60,13 @@ struct GBufferOutput {
 fn place_vertex(pulled: PulledVertex, position: vec3<f32>, normal: vec4<f32>, tangent: vec4<f32>, binormal: vec4<f32>,
   rigidity: f32) -> GBufferVarying {
   let place: Place = pulled.place;
-  let matrix: mat4x4<f32> = place_matrix(place);
+  let matrix: mat4x4<f32> = place.transform;
   let placed: vec3<f32> = (matrix * vec4<f32>(position, 1.0)).xyz;
-  let world: vec4<f32> = vec4<f32>(swayed(placed, place.m3.y, rigidity), 1.0);
-  let linear: mat3x3<f32> = mat3x3<f32>(place.m0.xyz, place.m1.xyz, place.m2.xyz);
+  let world: vec4<f32> = vec4<f32>(swayed(placed, place.transform[3].y, rigidity), 1.0);
+  let linear: mat3x3<f32> = mat3x3<f32>(place.transform[0].xyz, place.transform[1].xyz, place.transform[2].xyz);
   // The inverse transpose of a matrix without shear: each axis divided by its squared length.
-  let scale: vec3<f32> = vec3<f32>(dot(place.m0.xyz, place.m0.xyz), dot(place.m1.xyz, place.m1.xyz),
-    dot(place.m2.xyz, place.m2.xyz));
+  let scale: vec3<f32> = vec3<f32>(dot(place.transform[0].xyz, place.transform[0].xyz), dot(place.transform[1].xyz, place.transform[1].xyz),
+    dot(place.transform[2].xyz, place.transform[2].xyz));
   let view: mat3x3<f32> = mat3x3<f32>(camera.view[0].xyz, camera.view[1].xyz, camera.view[2].xyz);
   var out: GBufferVarying;
 
@@ -81,7 +81,7 @@ fn place_vertex(pulled: PulledVertex, position: vec3<f32>, normal: vec4<f32>, ta
   out.light = vec3<f32>(0.0);
   out.barycentric = vec3<f32>(0.0);
   out.world = world.xyz;
-  out.moved = swayed_before(placed, place.m3.y, rigidity) - world.xyz;
+  out.moved = swayed_before(placed, place.transform[3].y, rigidity) - world.xyz;
 
   // A script declaring no shadow element leaves the surface out of every shadow map (`_lua_Compile`'s `E[2]`).
   if (IS_SHADOW_DRAW && (surfaces[pulled.surface].flags & SURFACE_IS_SHADOWLESS) != 0u) {
@@ -247,7 +247,7 @@ fn model_vertex(pulled: PulledVertex) -> GBufferVarying {
 
   if (place.skin.w != 0u) {
     // Where the bones stood it the frame before, for its motion.
-    let previous: vec3<f32> = (place_matrix(place) * vec4<f32>(skin_vertex(pulled, true).position, 1.0)).xyz;
+    let previous: vec3<f32> = (place.transform * vec4<f32>(skin_vertex(pulled, true).position, 1.0)).xyz;
 
     out.moved = previous - out.world;
   }
@@ -256,7 +256,7 @@ fn model_vertex(pulled: PulledVertex) -> GBufferVarying {
   out.lightmap_uv = vec2<f32>(0.0);
 
   if (place.cube.w != 0u) {
-    let linear: mat3x3<f32> = mat3x3<f32>(place.m0.xyz, place.m1.xyz, place.m2.xyz);
+    let linear: mat3x3<f32> = mat3x3<f32>(place.transform[0].xyz, place.transform[1].xyz, place.transform[2].xyz);
 
     out.hemi = cube_hemi(place.cube, normalize(linear * unpack_direction(normal)));
     out.sky = bitcast<f32>(place.cube.z);
@@ -316,7 +316,7 @@ fn base_texel(in: GBufferVarying, at: Footprint) -> vec4<f32> {
     return select(vec4<f32>(1.0), vec4<f32>(camera.plain.rgb, 1.0), camera.plain.w > 0.5);
   }
 
-  return sample_slot(surface.base, at.uv, at.dx, at.dy);
+  return sample_slot(surface.textures[SLOT_BASE], at.uv, at.dx, at.dy);
 }
 
 // What a terrain lays over its base (`deffer_impl_flat` with `USE_4_DETAIL` and `USE_4_BUMP`): its four details,
@@ -329,16 +329,16 @@ struct TerrainTexel {
 };
 
 fn terrain_texel(surface: Surface, at: Footprint, uv: vec2<f32>, dx: vec2<f32>, dy: vec2<f32>) -> TerrainTexel {
-  let mask: vec4<f32> = sample_slot(surface.terrain_mask, at.uv, at.dx, at.dy);
+  let mask: vec4<f32> = sample_slot(surface.terrain.mask, at.uv, at.dx, at.dy);
   let weights: vec4<f32> = mask / max(dot(mask, vec4<f32>(1.0)), 1e-4);
   var out: TerrainTexel = TerrainTexel(vec3<f32>(0.0), vec3<f32>(0.0), 0.0);
 
   for (var layer: u32 = 0u; layer < 4u; layer++) {
     let weight: f32 = weights[layer];
     // `.wzyx`: the normal in the last three channels, the gloss in the first.
-    let bump: vec4<f32> = sample_slot(surface.terrain_bumps[layer], uv, dx, dy).wzyx;
+    let bump: vec4<f32> = sample_slot(surface.terrain.bumps[layer], uv, dx, dy).wzyx;
 
-    out.detail += sample_slot(surface.terrain_details[layer], uv, dx, dy).rgb * weight;
+    out.detail += sample_slot(surface.terrain.details[layer], uv, dx, dy).rgb * weight;
     out.bump += (bump.xyz - 0.5) * weight;
     out.gloss += bump.w * weight;
   }
@@ -372,18 +372,18 @@ fn shade(in: GBufferVarying, base: vec4<f32>, at: Footprint) -> GBufferOutput {
       in.normal * terrain.bump.z), weight));
     gloss = mix(DEFAULT_GLOSS, terrain.gloss, weight);
   } else if ((surface.flags & SURFACE_HAS_DETAIL) != 0u) {
-    detail = sample_slot(surface.detail, detail_uv, detail_dx, detail_dy);
+    detail = sample_slot(surface.textures[SLOT_DETAIL], detail_uv, detail_dx, detail_dy);
     diffuse *= detail.rgb * 2.0;
   }
 
   if (!is_terrain && (surface.flags & SURFACE_HAS_BUMP) != 0u) {
-    let bump: vec4<f32> = sample_slot(surface.bump, at.uv, at.dx, at.dy);
-    var tangent_normal: vec3<f32> = bump.wzy + sample_slot(surface.bump_companion, at.uv, at.dx, at.dy).xyz - 1.0;
+    let bump: vec4<f32> = sample_slot(surface.textures[SLOT_BUMP], at.uv, at.dx, at.dy);
+    var tangent_normal: vec3<f32> = bump.wzy + sample_slot(surface.textures[SLOT_BUMP_COMPANION], at.uv, at.dx, at.dy).xyz - 1.0;
     var bumped_gloss: f32 = bump.x * bump.x;
 
     if ((surface.flags & SURFACE_HAS_DETAIL_BUMP) != 0u) {
-      let detail_bump: vec4<f32> = sample_slot(surface.detail_bump, detail_uv, detail_dx, detail_dy);
-      let companion: vec4<f32> = sample_slot(surface.detail_bump_companion, detail_uv, detail_dx, detail_dy);
+      let detail_bump: vec4<f32> = sample_slot(surface.textures[SLOT_DETAIL_BUMP], detail_uv, detail_dx, detail_dy);
+      let companion: vec4<f32> = sample_slot(surface.textures[SLOT_DETAIL_BUMP_COMPANION], detail_uv, detail_dx, detail_dy);
 
       tangent_normal += detail_bump.wzy + companion.xyz - 1.0;
       bumped_gloss *= detail_bump.x * 2.0;
@@ -404,7 +404,7 @@ fn shade(in: GBufferVarying, base: vec4<f32>, at: Footprint) -> GBufferOutput {
   var sun: f32 = 1.0;
 
   if ((surface.flags & SURFACE_HAS_HEMI) != 0u) {
-    let lightmap: vec4<f32> = sample_slot(surface.hemi, at.lightmap, at.lightmap_dx, at.lightmap_dy);
+    let lightmap: vec4<f32> = sample_slot(surface.textures[SLOT_HEMI], at.lightmap, at.lightmap_dx, at.lightmap_dy);
 
     hemi = lightmap.a;
     sun = lightmap.g;
@@ -437,7 +437,7 @@ fn fs_opaque(in: GBufferVarying) -> GBufferOutput {
 fn is_cut(in: GBufferVarying, base: vec4<f32>, at: Footprint) -> bool {
   let surface: Surface = surfaces[in.surface];
 
-  return is_alpha_cut(base.a, vec2<f32>(textureDimensions(textures[surface.base])), at.dx, at.dy,
+  return is_alpha_cut(base.a, vec2<f32>(textureDimensions(textures[surface.textures[SLOT_BASE]])), at.dx, at.dy,
     surface.alpha_reference);
 }
 

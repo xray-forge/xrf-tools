@@ -117,6 +117,18 @@ const EMBEDDED: &[(&str, &str)] = &[
     include_str!("../../shaders/generated/frame/water_blur.wgsl"),
   ),
   (
+    "generated/static/cull",
+    include_str!("../../shaders/generated/static/cull.wgsl"),
+  ),
+  (
+    "generated/static/draw",
+    include_str!("../../shaders/generated/static/draw.wgsl"),
+  ),
+  (
+    "generated/static/impostor",
+    include_str!("../../shaders/generated/static/impostor.wgsl"),
+  ),
+  (
     "generated/static/water",
     include_str!("../../shaders/generated/static/water.wgsl"),
   ),

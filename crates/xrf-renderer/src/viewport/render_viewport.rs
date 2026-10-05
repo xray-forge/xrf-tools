@@ -291,7 +291,7 @@ impl RenderViewport {
       sector_time: self
         .level_view
         .as_ref()
-        .map_or(0.0, |level| level.get_scene().get_sector_time()),
+        .map_or(0.0, |level| level.get_streaming().get_sector_time()),
       memory: RenderMemoryReport {
         textures: texture_bytes,
         scene,

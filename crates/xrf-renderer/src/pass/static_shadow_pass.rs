@@ -1,7 +1,9 @@
 use xrf_error::XrfResult;
+use xrf_renderer_core::RasterContext;
 
 use crate::frame::sun_shadow_maps::SunShadowMaps;
 use crate::pass::shader_pipelines::{create_checked, create_module};
+use crate::pass::static_draw_parameters::StaticDrawParameters;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::shadow_tile::ShadowTile;
 use crate::scene::static_scene::static_batch::StaticBatch;
@@ -65,29 +67,32 @@ impl StaticShadowPass {
   /// Draws the casters a shadow's own list holds into the map the pass draws into, cleared to the far plane.
   pub fn record(
     &self,
-    pass: &mut wgpu::RenderPass<'_>,
-    (view, bind_groups, textures): (&ViewBinding, &[wgpu::BindGroup; StaticLayout::COUNT], &wgpu::BindGroup),
+    context: &mut RasterContext<'_>,
+    draw: (
+      &ViewBinding,
+      &[StaticDrawParameters; StaticLayout::COUNT],
+      &wgpu::BindGroup,
+    ),
     args: &wgpu::Buffer,
   ) {
-    pass.set_bind_group(0, &view.bind_group, &[]);
-    pass.set_bind_group(1, textures, &[]);
-
-    for (batch, pipeline) in StaticBatch::list_deferred().zip(&self.pipelines) {
-      pass.set_pipeline(pipeline);
-      pass.set_bind_group(2, &bind_groups[batch.layout.get_index()], &[]);
-      pass.draw_indirect(args, batch.get_index() as u64 * 16);
-    }
+    self.record_casters(context, draw, (args, 0));
   }
 
   /// Clears one tile of the atlas the pass draws into and draws the casters a light face's list holds into it, the
   /// rest of the atlas kept: its arguments start at `args_offset`.
   pub fn record_tile(
     &self,
-    pass: &mut wgpu::RenderPass<'_>,
+    context: &mut RasterContext<'_>,
     tile: ShadowTile,
-    (view, bind_groups, textures): (&ViewBinding, &[wgpu::BindGroup; StaticLayout::COUNT], &wgpu::BindGroup),
-    (args, args_offset): (&wgpu::Buffer, u64),
+    draw: (
+      &ViewBinding,
+      &[StaticDrawParameters; StaticLayout::COUNT],
+      &wgpu::BindGroup,
+    ),
+    args: (&wgpu::Buffer, u64),
   ) {
+    let pass: &mut wgpu::RenderPass<'static> = context.get_pass();
+
     pass.set_viewport(
       tile.x as f32,
       tile.y as f32,
@@ -99,13 +104,29 @@ impl StaticShadowPass {
     pass.set_scissor_rect(tile.x, tile.y, tile.size, tile.size);
     pass.set_pipeline(&self.clear);
     pass.draw(0..3, 0..1);
-    pass.set_bind_group(0, &view.bind_group, &[]);
-    pass.set_bind_group(1, textures, &[]);
+    self.record_casters(context, draw, args);
+  }
+
+  /// Draws the casters a list holds, each batch's arguments from `args_offset`.
+  fn record_casters(
+    &self,
+    context: &mut RasterContext<'_>,
+    (view, layouts, textures): (
+      &ViewBinding,
+      &[StaticDrawParameters; StaticLayout::COUNT],
+      &wgpu::BindGroup,
+    ),
+    (args, args_offset): (&wgpu::Buffer, u64),
+  ) {
+    context.get_pass().set_bind_group(0, &view.bind_group, &[]);
+    context.get_pass().set_bind_group(1, textures, &[]);
 
     for (batch, pipeline) in StaticBatch::list_deferred().zip(&self.pipelines) {
-      pass.set_pipeline(pipeline);
-      pass.set_bind_group(2, &bind_groups[batch.layout.get_index()], &[]);
-      pass.draw_indirect(args, args_offset + batch.get_index() as u64 * 16);
+      context.bind(&layouts[batch.layout.get_index()]);
+      context.get_pass().set_pipeline(pipeline);
+      context
+        .get_pass()
+        .draw_indirect(args, args_offset + batch.get_index() as u64 * 16);
     }
   }
 

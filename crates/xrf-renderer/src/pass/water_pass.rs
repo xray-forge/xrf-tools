@@ -1,7 +1,8 @@
 use xrf_error::XrfResult;
 use xrf_renderer_core::{
   FrameGraph, GraphBindings, GraphBuffer, GraphBufferAccess, GraphColorAttachment, GraphDepthAttachment, GraphRuntime,
-  GraphTexture, GraphTextureAccess, GraphTextureDescriptor, PassParameters, RasterPassBuilder, UniformBinding,
+  GraphTexture, GraphTextureAccess, GraphTextureDescriptor, PassParameters, RasterContext, RasterPassBuilder,
+  UniformBinding,
 };
 
 use crate::contract::render_water_mode::RenderWaterMode;
@@ -10,7 +11,8 @@ use crate::frame::water_reflection::WaterReflection;
 use crate::host::render_bundle::RenderBundle;
 use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline;
 use crate::pass::shader_pipelines::{create_checked, create_module};
-use crate::pass::static_draw_groups::StaticDrawGroups;
+use crate::pass::static_draw_parameters::StaticDrawParameters;
+use crate::pass::static_draws::StaticDraws;
 use crate::pass::view_binding::ViewBinding;
 use crate::pass::water_batch_pipelines::WaterBatchPipelines;
 use crate::pass::water_blur_parameters::WaterBlurParameters;
@@ -21,6 +23,7 @@ use crate::pass::water_reflection_parameters::WaterReflectionParameters;
 use crate::pass::water_surface_parameters::WaterSurfaceParameters;
 use crate::pass::water_uniform::WaterUniform;
 use crate::scene::static_scene::static_batch::StaticBatch;
+use crate::scene::static_scene::static_layout::StaticLayout;
 use crate::scene::texture::decoded_texture::DecodedTexture;
 use crate::shader::shader_library::ShaderLibrary;
 
@@ -36,7 +39,11 @@ const HEIGHT: &str = "water/height.dds";
 const RIPPLES: &str = "water/ripples.dds";
 
 /// What every water batch binds below its pass's own group: the view, the bindless textures, and the static draws.
-type WaterGroups<'a> = (&'a ViewBinding, &'a wgpu::BindGroup, &'a StaticDrawGroups);
+type WaterGroups<'a> = (
+  &'a ViewBinding,
+  &'a wgpu::BindGroup,
+  [StaticDrawParameters; StaticLayout::COUNT],
+);
 
 /// Draws a viewport's visible water over its lit scene, tested against the G-buffer's depth without writing it, and the
 /// distortion each surface causes into the distortion target while the water distorts. Only the water nearest along
@@ -172,12 +179,8 @@ impl WaterPass {
           import("water blue noise", &self.blue_noise),
         )
       });
-    let args: Vec<GraphBuffer> = draw
-      .args
-      .iter()
-      .map(|args| bindings.import_buffer(graph, "static draw arguments", args))
-      .collect();
-    let groups: WaterGroups<'a> = (draw.view, draw.textures, draw.draw_groups);
+    let args: Vec<GraphBuffer> = draw.args.clone();
+    let groups: WaterGroups<'a> = (draw.view, draw.textures, draw.layouts);
 
     let scene: GraphTexture = if water.is_refracting() {
       let copy: GraphTexture = graph.create_texture(GraphTextureDescriptor::new_2d(
@@ -360,34 +363,35 @@ impl WaterPass {
 
     args
       .iter()
-      .fold(builder.parameters(&parameters), |builder, args| {
-        builder.buffer(*args, GraphBufferAccess::Indirect)
-      })
+      .fold(
+        StaticDraws::declare_layouts(builder.parameters(&parameters), &groups.2),
+        |builder, args| builder.buffer(*args, GraphBufferAccess::Indirect),
+      )
       .record(move |context| {
         let args: Vec<&wgpu::Buffer> = args.iter().map(|args| context.get_buffer(*args)).collect();
 
         context.bind(&parameters);
-        self.draw_batches(context.get_pass(), groups, &args, pick);
+        self.draw_batches(context, groups, &args, pick);
       });
   }
 
   /// Draws every water batch each argument buffer lists with the pipeline `pick` chooses, the pass's own group bound.
   fn draw_batches(
     &self,
-    pass: &mut wgpu::RenderPass<'_>,
-    (view, textures, draw_groups): WaterGroups<'_>,
+    context: &mut RasterContext<'_>,
+    (view, textures, layouts): WaterGroups<'_>,
     args: &[&wgpu::Buffer],
     pick: impl Fn(&WaterBatchPipelines) -> &wgpu::RenderPipeline,
   ) {
-    pass.set_bind_group(0, &view.bind_group, &[]);
-    pass.set_bind_group(1, textures, &[]);
+    context.get_pass().set_bind_group(0, &view.bind_group, &[]);
+    context.get_pass().set_bind_group(1, textures, &[]);
 
     for (batch, pipelines) in StaticBatch::list_water().zip(&self.pipelines) {
-      pass.set_pipeline(pick(pipelines));
-      pass.set_bind_group(2, &draw_groups.layouts[batch.layout.get_index()], &[]);
+      context.bind(&layouts[batch.layout.get_index()]);
+      context.get_pass().set_pipeline(pick(pipelines));
 
       for args in args {
-        pass.draw_indirect(args, batch.get_index() as u64 * 16);
+        context.get_pass().draw_indirect(args, batch.get_index() as u64 * 16);
       }
     }
   }

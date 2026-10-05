@@ -1,8 +1,9 @@
 use xrf_error::XrfResult;
+use xrf_renderer_core::{ComputeContext, PassParameters};
 
 use crate::pass::compute_grid::ComputeGrid;
-use crate::pass::layout_entries::{storage_entry, texture_entry, uniform_entry};
 use crate::pass::shader_pipelines::{create_checked, create_module};
+use crate::pass::static_cull_parameters::StaticCullParameters;
 use crate::pass::static_cull_params::StaticCullParams;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::static_scene::static_batch::StaticBatch;
@@ -40,34 +41,7 @@ pub struct StaticCullPass {
 
 impl StaticCullPass {
   pub fn new(device: &wgpu::Device, shaders: &ShaderLibrary, view_layout: &wgpu::BindGroupLayout) -> XrfResult<Self> {
-    let compute: wgpu::ShaderStages = wgpu::ShaderStages::COMPUTE;
-    let layout: wgpu::BindGroupLayout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-      label: Some("static cull"),
-      entries: &[
-        storage_entry(0, compute, false),
-        storage_entry(1, compute, false),
-        storage_entry(2, compute, false),
-        storage_entry(3, compute, false),
-        storage_entry(4, compute, false),
-        storage_entry(5, compute, false),
-        storage_entry(6, compute, true),
-        storage_entry(7, compute, true),
-        uniform_entry(8, compute),
-        storage_entry(9, compute, true),
-        storage_entry(10, compute, true),
-        texture_entry(
-          11,
-          compute,
-          wgpu::TextureSampleType::Float { filterable: false },
-          wgpu::TextureViewDimension::D2,
-        ),
-        uniform_entry(12, compute),
-        storage_entry(13, compute, false),
-        storage_entry(14, compute, true),
-        storage_entry(15, compute, true),
-      ],
-    });
-
+    let layout: wgpu::BindGroupLayout = StaticCullParameters::create_layout(device);
     let (pipelines, shadow_pipelines) = Self::create_pipelines(device, shaders, view_layout, &layout)?;
 
     Ok(Self {
@@ -94,71 +68,20 @@ impl StaticCullPass {
     }
   }
 
-  pub fn create_bind_group(
-    &self,
-    device: &wgpu::Device,
-    scene: &StaticScene,
-    params: &wgpu::Buffer,
-    pyramid: &wgpu::TextureView,
-    occlusion: &wgpu::Buffer,
-    (lists, args): (wgpu::BufferBinding<'_>, wgpu::BufferBinding<'_>),
-  ) -> wgpu::BindGroup {
-    let buffers: [(u32, &wgpu::Buffer); 13] = [
-      (0, scene.clusters.get_buffer()),
-      (1, scene.spheres.get_buffer()),
-      (2, scene.slots.get_buffer()),
-      (3, scene.places.get_buffer()),
-      (4, scene.rows.get_buffer()),
-      (5, &scene.regions),
-      (8, params),
-      (9, scene.candidates.get_buffer()),
-      (10, &scene.late),
-      (12, occlusion),
-      (13, scene.impostors.get_buffer()),
-      (14, scene.terms.get_buffer()),
-      (15, scene.impostor_list.get_buffer()),
-    ];
-    let mut entries: Vec<wgpu::BindGroupEntry<'_>> = buffers
-      .iter()
-      .map(|(binding, buffer)| wgpu::BindGroupEntry {
-        binding: *binding,
-        resource: buffer.as_entire_binding(),
-      })
-      .collect();
-
-    entries.extend([
-      wgpu::BindGroupEntry {
-        binding: 6,
-        resource: wgpu::BindingResource::Buffer(lists),
-      },
-      wgpu::BindGroupEntry {
-        binding: 7,
-        resource: wgpu::BindingResource::Buffer(args),
-      },
-      wgpu::BindGroupEntry {
-        binding: 11,
-        resource: wgpu::BindingResource::TextureView(pyramid),
-      },
-    ]);
-
-    device.create_bind_group(&wgpu::BindGroupDescriptor {
-      label: Some("static cull"),
-      layout: &self.layout,
-      entries: &entries,
-    })
-  }
-
   /// Decides each impostor's level of detail, culls every cluster and row by it, then clamps each batch's count to its
   /// run and sizes the late phase.
   pub fn record_early(
     &self,
-    pass: &mut wgpu::ComputePass<'_>,
+    context: &mut ComputeContext<'_>,
     view: &ViewBinding,
-    bind_group: &wgpu::BindGroup,
+    parameters: &StaticCullParameters,
     params: &StaticCullParams,
   ) {
+    context.bind(parameters);
+
+    let pass: &mut wgpu::ComputePass<'static> = context.get_pass();
+
     pass.set_bind_group(0, &view.bind_group, &[]);
-    pass.set_bind_group(1, bind_group, &[]);
 
     for (pipeline, count) in [
       (&self.pipelines[0], params.impostor_count),
@@ -177,16 +100,19 @@ impl StaticCullPass {
   /// into a compute pass several shadows' culls may share.
   pub fn record_shadow(
     &self,
-    pass: &mut wgpu::ComputePass<'_>,
+    context: &mut ComputeContext<'_>,
     view: &ViewBinding,
-    bind_group: &wgpu::BindGroup,
+    parameters: &StaticCullParameters,
     params: &StaticCullParams,
     is_light_face: bool,
   ) {
     let pipelines: &[wgpu::ComputePipeline; 3] = &self.shadow_pipelines[is_light_face as usize];
 
+    context.bind(parameters);
+
+    let pass: &mut wgpu::ComputePass<'static> = context.get_pass();
+
     pass.set_bind_group(0, &view.bind_group, &[]);
-    pass.set_bind_group(1, bind_group, &[]);
 
     for (pipeline, count) in [
       (&pipelines[0], params.cluster_count),
@@ -202,28 +128,25 @@ impl StaticCullPass {
 
   /// Copies how many workgroups the late phase takes, as many as the early phase set aside, where its dispatch reads
   /// them.
-  pub fn record_late_dispatch(&self, encoder: &mut wgpu::CommandEncoder, scene: &StaticScene) {
-    encoder.copy_buffer_to_buffer(
-      &scene.late,
-      StaticScene::LATE_DISPATCH_OFFSET,
-      &scene.late_dispatch,
-      0,
-      12,
-    );
+  pub fn record_late_dispatch(&self, encoder: &mut wgpu::CommandEncoder, late: &wgpu::Buffer, dispatch: &wgpu::Buffer) {
+    encoder.copy_buffer_to_buffer(late, StaticScene::LATE_DISPATCH_OFFSET, dispatch, 0, 12);
   }
 
   /// Tests what the early phase set aside again, then clamps the late counts.
   pub fn record_late(
     &self,
-    pass: &mut wgpu::ComputePass<'_>,
+    context: &mut ComputeContext<'_>,
     view: &ViewBinding,
-    bind_group: &wgpu::BindGroup,
-    scene: &StaticScene,
+    parameters: &StaticCullParameters,
+    dispatch: &wgpu::Buffer,
   ) {
+    context.bind(parameters);
+
+    let pass: &mut wgpu::ComputePass<'static> = context.get_pass();
+
     pass.set_bind_group(0, &view.bind_group, &[]);
-    pass.set_bind_group(1, bind_group, &[]);
     pass.set_pipeline(&self.pipelines[4]);
-    pass.dispatch_workgroups_indirect(&scene.late_dispatch, 0);
+    pass.dispatch_workgroups_indirect(dispatch, 0);
     pass.set_pipeline(&self.pipelines[5]);
     pass.dispatch_workgroups((StaticBatch::COUNT as u32).div_ceil(WORKGROUP), 1, 1);
   }

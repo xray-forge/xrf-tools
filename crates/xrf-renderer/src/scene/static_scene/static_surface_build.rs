@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use glam::{UVec4, Vec3};
 use xrf_material::{XraySurfaceDeclaration, XraySurfaceDescriptor, XraySurfaceDraw};
 use xrf_visual::SectorSurface;
 
@@ -44,7 +45,7 @@ pub fn build_static_surface(
     ),
     Some(XraySurfaceDraw::Water { is_soft }) => {
       let descriptor: &XraySurfaceDescriptor = descriptor?;
-      let color: [f32; 3] = to_surface_color(surface.shader_id);
+      let color: Vec3 = to_surface_color(surface.shader_id);
 
       return Some((
         build_water_surface(surface, descriptor, is_soft, textures, source, color),
@@ -142,16 +143,20 @@ pub fn build_static_surface(
       flags |= StaticSurface::IS_TERRAIN;
 
       StaticTerrainSlots {
-        details: terrain
-          .layers
-          .each_ref()
-          .map(|layer| textures.request(&layer.reference, TextureRole::Detail, source)),
-        bumps: terrain
-          .layers
-          .each_ref()
-          .map(|layer| textures.request(&layer.bump, TextureRole::Bump, source)),
+        details: UVec4::from_array(
+          terrain
+            .layers
+            .each_ref()
+            .map(|layer| textures.request(&layer.reference, TextureRole::Detail, source)),
+        ),
+        bumps: UVec4::from_array(
+          terrain
+            .layers
+            .each_ref()
+            .map(|layer| textures.request(&layer.bump, TextureRole::Bump, source)),
+        ),
         mask: textures.request(&terrain.mask, TextureRole::TerrainMask, source),
-        pad: [0; 3],
+        _pad: [0; 3],
       }
     }
     _ => StaticTerrainSlots::default(),
@@ -236,7 +241,7 @@ fn is_environment_mapped(descriptor: &XraySurfaceDescriptor) -> bool {
 }
 
 /// A stable colour per shader table entry, from a hue its id decides, so a surface reads the same in every sector.
-fn to_surface_color(shader_id: u16) -> [f32; 3] {
+fn to_surface_color(shader_id: u16) -> Vec3 {
   let hue: f32 = (shader_id as f32 * HUE_STEP) % 360.0;
   let (saturation, lightness): (f32, f32) = (0.45, 0.6);
   let reach: f32 = saturation * lightness.min(1.0 - lightness);
@@ -246,5 +251,5 @@ fn to_surface_color(shader_id: u16) -> [f32; 3] {
     lightness - reach * (turn - 3.0).min(9.0 - turn).clamp(-1.0, 1.0)
   };
 
-  [channel(0.0), channel(8.0), channel(4.0)]
+  Vec3::new(channel(0.0), channel(8.0), channel(4.0))
 }

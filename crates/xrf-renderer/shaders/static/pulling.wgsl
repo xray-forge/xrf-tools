@@ -1,31 +1,8 @@
 #import "static/records"
+#import "generated/static/draw"
 
 // A batch's visible clusters as its static draws pull them: every cluster one instance of `CLUSTER_VERTICES` vertices,
 // read from its layout's arena through the shared index arena.
-
-@group(2) @binding(0) var<storage, read> clusters: array<Cluster>;
-@group(2) @binding(1) var<storage, read> slots: array<Slot>;
-@group(2) @binding(2) var<storage, read> places: array<Place>;
-@group(2) @binding(3) var<storage, read> surfaces: array<Surface>;
-@group(2) @binding(4) var<storage, read> indices: array<u32>;
-@group(2) @binding(5) var<storage, read> lists: array<vec2<u32>>;
-@group(2) @binding(6) var<storage, read> words: array<u32>;
-@group(2) @binding(7) var<uniform> wind: Wind;
-// Skinned models' links, two words a vertex: four bones' indices as bytes, then their weights as bytes.
-@group(2) @binding(8) var<storage, read> skins: array<u32>;
-// Skinned places' bone matrices, three rows a bone, from its bind to where it stands.
-@group(2) @binding(9) var<storage, read> bones: array<vec4<f32>>;
-
-// How the trees sway this frame, as `pass/wind_uniform.rs` writes it.
-struct Wind {
-  // The engine's `wind`: which way the trees lean, and how far, across the ground.
-  wind: vec4<f32>,
-  // The engine's `wave`: its direction through the level, and its phase in `w`, both over a turn.
-  wave: vec4<f32>,
-  // The same, the frame before, which a swaying vertex's motion is measured from.
-  previous_wind: vec4<f32>,
-  previous_wave: vec4<f32>,
-};
 
 // `calc_cyclic`: a wave from minus one to one over each whole turn, a parabola rather than a sine.
 fn cyclic(phase: f32) -> f32 {

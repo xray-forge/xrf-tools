@@ -19,6 +19,7 @@ mod shader_composer;
 mod shaders;
 mod shadow_tile_allocator;
 mod static_row;
+mod static_scene;
 mod sun_cascade;
 mod sun_shafts;
 mod surface_tally;

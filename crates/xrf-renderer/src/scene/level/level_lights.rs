@@ -7,9 +7,9 @@ use xrf_renderer_core::{FrameGraph, GraphBindings, ProxyHandle, ProxyStore};
 use xrf_visual::{LightAnimatorDescription, LightDescription, LightKind, LightsDescription};
 
 use crate::contract::render_lights_report::RenderLightsReport;
+use crate::frame::static_scene_handles::StaticSceneHandles;
 use crate::frame::stats_readback::StatsReadback;
 use crate::host::render_asset_source::RenderAssetSource;
-use crate::host::render_level_source::RenderLevelSource;
 use crate::lighting::light_animation::to_animated_color;
 use crate::lighting::light_basis::{LightBasis, to_light_lod};
 use crate::lighting::light_shadow_size::{LIGHT_SHADOW_POINT_FACES, to_light_shadow_scale};
@@ -23,14 +23,10 @@ use crate::scene::level::level_light_shadows::{LIGHT_SHADOW_ATLAS_SIZE, LevelLig
 use crate::scene::level::level_object_motions::LevelObjectMotions;
 use crate::scene::level::light_shadow_set::LightShadowSet;
 use crate::scene::level::lights_frame::LightsFrame;
-use crate::scene::level::loader_answer::take_answer;
 use crate::scene::level::shadow_frame::ShadowFrame;
 use crate::scene::level::zone_fast_mode::ZONE_FAST_DISTANCE;
-use crate::scene::static_scene::static_scene::StaticScene;
 use crate::scene::texture::texture_cache::{MISSING_SLOT, TextureCache};
 use crate::scene::texture::texture_role::TextureRole;
-use crate::thread::loader_receiver::LoaderReceiver;
-use crate::thread::render_workers::RenderWorkers;
 
 /// Lights standing in view at most in one frame: the nearest are kept.
 pub const MAX_LIGHTS: usize = 1024;
@@ -48,7 +44,6 @@ const FALLOFF_RANGE: f32 = 0.95;
 /// A level's local lights: read once on a loader thread, then each frame the nearest in view written out in view
 /// space, animated as the engine animates them, for the lights pass to bin and accumulate.
 pub struct LevelLights {
-  pending: Option<LoaderReceiver<Result<LightsDescription, String>>>,
   /// The level's lights, each reached by the handle it was added under.
   lights: ProxyStore<LightDescription>,
   /// Those a motion carries, which move each frame.
@@ -73,15 +68,7 @@ pub struct LevelLights {
 }
 
 impl LevelLights {
-  pub fn new(
-    device: &wgpu::Device,
-    view_layout: &wgpu::BindGroupLayout,
-    args_size: u64,
-    source: &Arc<dyn RenderLevelSource>,
-    workers: &RenderWorkers,
-  ) -> Self {
-    let (sender, receiver) = LoaderReceiver::channel();
-    let source: Arc<dyn RenderLevelSource> = Arc::clone(source);
+  pub fn new(device: &wgpu::Device, view_layout: &wgpu::BindGroupLayout, args_size: u64) -> Self {
     let storage = |label: &str, size: u64| -> wgpu::Buffer {
       device.create_buffer(&wgpu::BufferDescriptor {
         label: Some(label),
@@ -91,18 +78,7 @@ impl LevelLights {
       })
     };
 
-    workers.spawn(move || {
-      let lights: Result<LightsDescription, String> = source.read_lights().map_err(|error| error.to_string());
-
-      if let Err(error) = &lights {
-        log::error!("The level's lights cannot be drawn: {error}");
-      }
-
-      let _ = sender.send(lights);
-    });
-
     Self {
-      pending: Some(receiver),
       lights: ProxyStore::new(),
       moving: Vec::new(),
       animators: Vec::new(),
@@ -146,37 +122,31 @@ impl LevelLights {
     &self.projectors
   }
 
-  /// Whether its loader has answered, whatever it answered.
-  pub fn is_loaded(&self) -> bool {
-    self.pending.is_none()
-  }
-
   pub fn get_count(&self) -> u32 {
     self.count
   }
 
-  /// Takes the lights once their loader read them, asking for every projector they name.
-  pub fn poll(&mut self, textures: &mut TextureCache, source: &Arc<dyn RenderAssetSource>) {
-    let Some(lights) = take_answer(&mut self.pending, "lights") else {
-      return;
-    };
+  /// Adds a level's lights, asking for every projector they name.
+  pub fn add_lights(
+    &mut self,
+    lights: LightsDescription,
+    textures: &mut TextureCache,
+    source: &Arc<dyn RenderAssetSource>,
+  ) {
+    self.projectors = lights
+      .projectors
+      .iter()
+      .map(|reference| textures.request(reference, TextureRole::Projector, source))
+      .collect();
+    log::info!("Native viewport lights {} local lights", lights.lights.len());
+    self.animators = lights.animators;
 
-    if let Ok(lights) = lights {
-      self.projectors = lights
-        .projectors
-        .iter()
-        .map(|reference| textures.request(reference, TextureRole::Projector, source))
-        .collect();
-      log::info!("Native viewport lights {} local lights", lights.lights.len());
-      self.animators = lights.animators;
+    for light in lights.lights {
+      let is_moving: bool = light.motion.is_some();
+      let handle: ProxyHandle<LightDescription> = self.lights.add(light);
 
-      for light in lights.lights {
-        let is_moving: bool = light.motion.is_some();
-        let handle: ProxyHandle<LightDescription> = self.lights.add(light);
-
-        if is_moving {
-          self.moving.push(handle);
-        }
+      if is_moving {
+        self.moving.push(handle);
       }
     }
   }
@@ -364,21 +334,20 @@ impl LevelLights {
     device: &wgpu::Device,
     queue: &wgpu::Queue,
     encoder: &mut wgpu::CommandEncoder,
-    passes: LevelPasses<'_>,
     frame: &ShadowFrame<'_>,
   ) {
-    self.shadows.prepare(device, queue, encoder, passes, frame);
+    self.shadows.prepare(device, queue, encoder, frame);
   }
 
   /// Declares the culls and draws of the shadow faces this frame's `prepare_shadows` readied.
   pub fn add_shadow_passes<'a>(
     &'a self,
-    graph: &mut FrameGraph<'a>,
-    bindings: &mut GraphBindings<'a>,
+    graph: (&mut FrameGraph<'a>, &mut GraphBindings<'a>),
     passes: LevelPasses<'a>,
-    frame: (&'a StaticScene, &'a StaticCullParams, &'a wgpu::BindGroup),
+    scene: &StaticSceneHandles,
+    frame: (&'a StaticCullParams, &'a wgpu::BindGroup),
   ) {
-    self.shadows.add_passes(graph, bindings, passes, frame);
+    self.shadows.add_passes(graph, passes, scene, frame);
   }
 
   /// Clears the binning's overflow words before it counts this frame's.
