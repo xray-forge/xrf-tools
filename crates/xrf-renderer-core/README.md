@@ -66,6 +66,9 @@ assert_eq!(compiled.get_render_pass_count(), 1);
   usage, is refused when the graph executes.
 - **Merging.** A raster pass joins the render pass before it when it is in the same encode group, targets the same
   attachments, loads every one of them, and samples none.
+- **Encode groups.** `begin_group` starts a group of its own encoder. Executing records and finishes the groups in
+  parallel on rayon's pool, unless the timer is timing, whose stamps go into one query set in order; the command
+  buffers come back in the order declared. `ExecutedGraph::encode` is the encoding the executing thread waited on.
 - **Scope.** A pass records through its context and reaches only the resources it declared; debug builds assert it.
 - **Bridges.** An encoder pass marked `bridge` is one recorded as before the graph, opening its own render and compute
   passes. Its accesses are declared by hand, it is never culled, and the report names it so what is left to convert

@@ -825,12 +825,7 @@ impl RenderThread {
           log::error!("The level's frame cannot be recorded: {error}");
           None
         });
-      let encoded: Duration = finished
-        + executed
-          .iter()
-          .flat_map(|executed| &executed.groups)
-          .map(|group| group.finish)
-          .sum::<Duration>();
+      let encoded: Duration = finished + executed.iter().map(|executed| executed.encode).sum::<Duration>();
 
       commands.extend(executed.into_iter().flat_map(|executed| executed.commands));
       phases.record += recording.elapsed().saturating_sub(encoded);
