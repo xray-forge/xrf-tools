@@ -34,14 +34,11 @@ fn attach(
   let handle = handles
     .get(window)
     .ok_or_else(|| format!("Window '{window}' cannot host a native viewport"))?;
-  let id: RenderViewportId = state.renderer.attach_viewport(
+  Ok(state.attach_viewport(
+    window,
     Arc::new(Win32WindowHost::new(handle)),
     Box::new(ChannelEventSink::new(events)),
-  );
-
-  log::info!("Attached native viewport {} to window '{window}'", id.0);
-
-  Ok(id)
+  ))
 }
 
 #[cfg(not(windows))]

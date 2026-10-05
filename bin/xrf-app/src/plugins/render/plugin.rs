@@ -1,7 +1,8 @@
 use std::sync::Arc;
 
 use tauri::plugin::{Builder, TauriPlugin};
-use tauri::{Manager, Runtime};
+use tauri::webview::{PageLoadEvent, PageLoadPayload};
+use tauri::{Manager, Runtime, Webview};
 use xrf_renderer::RenderWorkers;
 
 use crate::core::execution::ExecutionState;
@@ -26,11 +27,23 @@ impl RenderPlugin {
 
         Ok(())
       })
+      .on_page_load(Self::on_page_load)
       .invoke_handler(crate::core::logging::warn_on_unhandled_command(
         Self::NAME,
         crate::ipc::registry::render::handler(),
       ))
       .build()
+  }
+
+  /// Detaches a window's viewports as a page starts loading over it, since their channels never learn it went.
+  fn on_page_load<R: Runtime>(webview: &Webview<R>, payload: &PageLoadPayload<'_>) {
+    if payload.event() != PageLoadEvent::Started {
+      return;
+    }
+
+    if let Some(state) = webview.try_state::<RenderState>() {
+      state.detach_window(webview.window().label());
+    }
   }
 
   #[cfg(feature = "typescript-bindings")]

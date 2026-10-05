@@ -7,8 +7,5 @@ use crate::plugins::render::state::RenderState;
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "detach_viewport"))]
 #[tauri::command(rename = "detach_viewport")]
 pub fn render_detach_viewport(state: State<'_, RenderState>, viewport: RenderViewportId) {
-  log::info!("Detached native viewport {}", viewport.0);
-
-  state.renderer.detach_viewport(viewport);
-  state.forget(viewport);
+  state.detach_viewport(viewport);
 }
