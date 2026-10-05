@@ -24,6 +24,7 @@ use crate::contract::render_viewport_layout::RenderViewportLayout;
 use crate::contract::render_weather_control::RenderWeatherControl;
 use crate::contract::render_weather_play::RenderWeatherPlay;
 use crate::contract::render_weather_transition::RenderWeatherTransition;
+use crate::host::render_bundle::RenderBundle;
 use crate::host::render_event_sink::RenderEventSink;
 use crate::host::render_level_source::RenderLevelSource;
 use crate::host::render_window_host::RenderWindowHost;
@@ -42,14 +43,17 @@ pub struct Renderer {
   next_id: AtomicU32,
   /// The pool every thread it starts reads and decodes on.
   workers: RenderWorkers,
+  /// The files it ships with, which the application reads for it.
+  bundle: Arc<dyn RenderBundle>,
 }
 
 impl Renderer {
-  pub fn new(workers: RenderWorkers) -> Self {
+  pub fn new(workers: RenderWorkers, bundle: Arc<dyn RenderBundle>) -> Self {
     Self {
       link: Arc::default(),
       next_id: AtomicU32::new(0),
       workers,
+      bundle,
     }
   }
 
@@ -249,10 +253,11 @@ impl Renderer {
     let shared: Arc<Mutex<RenderLink>> = Arc::clone(&self.link);
     let settings: RenderSettings = link.settings;
     let workers: RenderWorkers = self.workers.clone();
+    let bundle: Arc<dyn RenderBundle> = Arc::clone(&self.bundle);
 
     if let Err(error) = std::thread::Builder::new()
       .name("xrf-render".into())
-      .spawn(move || RenderThread::new(receiver, shared, settings, workers).run())
+      .spawn(move || RenderThread::new(receiver, shared, settings, workers, bundle).run())
     {
       log::error!("The render thread could not be started: {error}");
 

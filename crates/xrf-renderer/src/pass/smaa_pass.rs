@@ -2,13 +2,15 @@ use xrf_error::{XrfError, XrfResult};
 
 use crate::frame::smaa_targets::SmaaTargets;
 use crate::frame::view_targets::ViewTargets;
+use crate::host::render_bundle::RenderBundle;
 use crate::pass::fullscreen_pipeline::{begin_cleared_pass, create_fullscreen_pipeline, texture_binding};
 use crate::pass::layout_entries::texture_entry;
 use crate::shader::shader_library::ShaderLibrary;
 
-/// `AreaTex` and `SearchTex` of SMAA v2.8 (MIT, Jorge Jimenez et al.), as three.js's `SMAANode` carries them.
-const AREA_TEXTURE: &[u8] = include_bytes!("../../assets/smaa/area.png");
-const SEARCH_TEXTURE: &[u8] = include_bytes!("../../assets/smaa/search.png");
+/// `AreaTex` and `SearchTex` of SMAA v2.8 (MIT, Jorge Jimenez et al.), as three.js's `SMAANode` carries them, by their
+/// paths in the renderer's bundle.
+const AREA_TEXTURE: &str = "smaa/area.png";
+const SEARCH_TEXTURE: &str = "smaa/search.png";
 
 /// SMAA 1x over a viewport's scene as drawn: its edges, their blending weights, then the scene blended across them into
 /// a target the scene is copied back from.
@@ -28,8 +30,13 @@ pub struct SmaaPass {
 impl SmaaPass {
   /// # Errors
   ///
-  /// Returns an error when the shader does not compose or compile, or a lookup texture does not decode.
-  pub fn new(device: &wgpu::Device, queue: &wgpu::Queue, shaders: &ShaderLibrary) -> XrfResult<Self> {
+  /// Returns an error when the shader does not compose or compile, or a lookup texture cannot be read or decoded.
+  pub fn new(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    shaders: &ShaderLibrary,
+    bundle: &dyn RenderBundle,
+  ) -> XrfResult<Self> {
     let fragment: wgpu::ShaderStages = wgpu::ShaderStages::FRAGMENT;
     let filtered: wgpu::TextureSampleType = wgpu::TextureSampleType::Float { filterable: true };
     let flat: wgpu::TextureViewDimension = wgpu::TextureViewDimension::D2;
@@ -51,12 +58,14 @@ impl SmaaPass {
         sampler(6),
       ],
     });
-    let area: image::RgbImage = image::load_from_memory_with_format(AREA_TEXTURE, image::ImageFormat::Png)
-      .map_err(|error| XrfError::new_unexpected_error(format!("SMAA's area texture does not decode: {error}")))?
-      .to_rgb8();
-    let search: image::GrayImage = image::load_from_memory_with_format(SEARCH_TEXTURE, image::ImageFormat::Png)
-      .map_err(|error| XrfError::new_unexpected_error(format!("SMAA's search texture does not decode: {error}")))?
-      .to_luma8();
+    let area: image::RgbImage =
+      image::load_from_memory_with_format(&bundle.read_bundled(AREA_TEXTURE)?, image::ImageFormat::Png)
+        .map_err(|error| XrfError::new_unexpected_error(format!("SMAA's area texture does not decode: {error}")))?
+        .to_rgb8();
+    let search: image::GrayImage =
+      image::load_from_memory_with_format(&bundle.read_bundled(SEARCH_TEXTURE)?, image::ImageFormat::Png)
+        .map_err(|error| XrfError::new_unexpected_error(format!("SMAA's search texture does not decode: {error}")))?
+        .to_luma8();
     let area_texels: Vec<u8> = area.pixels().flat_map(|it| [it.0[0], it.0[1]]).collect();
 
     Ok(Self {

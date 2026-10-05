@@ -52,7 +52,8 @@ pub struct LevelPasses<'a> {
   pub temporal: &'a TemporalPass,
   pub fsr: &'a FsrPass,
   pub fxaa: &'a FxaaPass,
-  pub smaa: &'a SmaaPass,
+  /// None where its lookup textures could not be read, and the frame smooths as FXAA does.
+  pub smaa: Option<&'a SmaaPass>,
   pub upscale: &'a UpscalePass,
   pub exposure: &'a ExposurePass,
   pub present: &'a PresentPass,
