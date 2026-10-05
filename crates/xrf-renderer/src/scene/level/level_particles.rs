@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::ops::Range;
 use std::sync::Arc;
-use std::sync::mpsc::{Receiver, channel};
 use std::time::Instant;
 
 use glam::{Mat4, Vec3, Vec4};
@@ -42,6 +41,7 @@ use crate::scene::level::placed_effect::PlacedEffect;
 use crate::scene::level::zone_fast_mode::ZONE_FAST_DISTANCE;
 use crate::scene::texture::texture_cache::TextureCache;
 use crate::scene::texture::texture_role::TextureRole;
+use crate::thread::loader_receiver::LoaderReceiver;
 use crate::thread::render_workers::RenderWorkers;
 
 /// Quads the vertex buffer holds at first; it doubles past them.
@@ -54,7 +54,7 @@ const DISTORTION_SAMPLER: &str = "s_distort";
 /// on the workers as the engine schedules them, and the effects in view filled into quads far to near for the particle
 /// pass, which draws their colour and then their distortion.
 pub struct LevelParticles {
-  pending: Option<Receiver<Result<Option<RenderLevelParticles>, String>>>,
+  pending: Option<LoaderReceiver<Result<Option<RenderLevelParticles>, String>>>,
   systems: Option<LevelSystems>,
   workers: RenderWorkers,
   started: Instant,
@@ -121,7 +121,7 @@ struct ParticlesTally {
 
 impl LevelParticles {
   pub fn new(device: &wgpu::Device, source: &Arc<dyn RenderLevelSource>, workers: &RenderWorkers) -> Self {
-    let (sender, receiver) = channel();
+    let (sender, receiver) = LoaderReceiver::channel();
     let source: Arc<dyn RenderLevelSource> = Arc::clone(source);
 
     workers.spawn(move || {

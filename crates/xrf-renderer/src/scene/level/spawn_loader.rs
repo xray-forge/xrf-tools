@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
-use std::sync::mpsc::{Receiver, Sender, channel};
+use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex, PoisonError};
 
 use glam::Mat4;
@@ -13,6 +13,7 @@ use crate::host::render_spawn_models::RenderSpawnModels;
 use crate::host::render_spawn_object::RenderSpawnObject;
 use crate::scene::static_scene::static_model::StaticModel;
 use crate::scene::static_scene::static_model_place::StaticModelPlace;
+use crate::thread::loader_receiver::LoaderReceiver;
 use crate::thread::render_workers::RenderWorkers;
 
 /// Visuals a loader thread reads in one batch: enough that the level's lighting is estimated for many at once, few
@@ -27,7 +28,7 @@ pub type SpawnLoad = (StaticModel, Vec<StaticModelPlace>, Option<RenderModelSkel
 /// model packed and handed to the render thread with the objects standing as it. Dropped, it lets go of the batches not
 /// started yet.
 pub struct SpawnLoader {
-  receiver: Receiver<SpawnLoad>,
+  receiver: LoaderReceiver<SpawnLoad>,
   /// Batches not finished yet, and whether the objects are still being read.
   pending: Arc<AtomicU32>,
   /// Models sent, and taken.
@@ -40,7 +41,7 @@ pub struct SpawnLoader {
 
 impl SpawnLoader {
   pub fn start(source: Arc<dyn RenderLevelSource>, workers: &RenderWorkers) -> Self {
-    let (sender, receiver) = channel();
+    let (sender, receiver) = LoaderReceiver::channel();
     let pending: Arc<AtomicU32> = Arc::new(AtomicU32::new(1));
     let sent: Arc<AtomicU32> = Arc::new(AtomicU32::new(0));
     let is_cancelled: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));

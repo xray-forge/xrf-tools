@@ -1,4 +1,4 @@
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use glam::{Mat4, Vec2, Vec3, Vec4};
@@ -1161,15 +1161,14 @@ impl LevelView {
     let is_sharpened: bool = self.state.upscale.is_some() && self.info.upscaling.is_sharpened();
     let is_adapting: bool = self.state.exposure.is_adapting();
     let texture_group: &wgpu::BindGroup = textures.get_bind_group();
-    let cell: Mutex<&mut LevelView> = Mutex::new(self);
+    let level_view: &LevelView = self;
     let mut graph: FrameGraph<'_> = FrameGraph::new();
 
-    // A bridge pass recording as the frame did before the graph, the view reached through the cell.
+    // A bridge pass recording as the frame did before the graph, reading the view and nothing more.
     macro_rules! bridge {
       ($name:literal, |$level:ident, $encoder:ident, $marker:ident| $body:block) => {
-        graph.add_encoder_pass($name).bridge().record(|context| {
-          let guard = cell.lock().expect("level view lock");
-          let $level: &LevelView = &guard;
+        graph.add_encoder_pass($name).bridge().record(move |context| {
+          let $level: &LevelView = level_view;
           let ($encoder, $marker) = context.split();
           let _ = &$marker;
 
@@ -1575,10 +1574,7 @@ impl LevelView {
         .compile(&GraphCompileOptions::default())?
         .execute(device, runtime, &GraphBindings::new())?;
 
-    cell
-      .into_inner()
-      .expect("level view lock")
-      .finish_frame(is_lit, resolve);
+    self.finish_frame(is_lit, resolve);
 
     Ok(Some(executed))
   }

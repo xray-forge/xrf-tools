@@ -2,14 +2,14 @@ use std::borrow::Borrow;
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::num::NonZeroU32;
 use std::sync::Arc;
-use std::sync::Mutex;
-use std::sync::mpsc::{Receiver, Sender, channel};
+use std::sync::mpsc::Sender;
 
 use crate::contract::render_texture_report::RenderTextureReport;
 use crate::contract::render_texture_state::RenderTextureState;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::scene::texture::decoded_texture::DecodedTexture;
 use crate::scene::texture::texture_role::TextureRole;
+use crate::thread::loader_receiver::LoaderReceiver;
 use crate::thread::render_workers::RenderWorkers;
 
 /// The slot a surface binds where it names no texture of a kind: mid grey, never sampled by a surface without one.
@@ -62,7 +62,7 @@ pub struct TextureCache {
   free: Vec<u32>,
   sender: Sender<TextureLoad>,
   /// Behind a lock only so the cache is shared by the passes a frame records; read with `&mut self`, never locked.
-  receiver: Mutex<Receiver<TextureLoad>>,
+  receiver: LoaderReceiver<TextureLoad>,
   /// Loaded, waiting for a frame's upload budget, each beside the generation it was asked under.
   uploads: VecDeque<(u32, u32, DecodedTexture)>,
   capacity: u32,
@@ -122,7 +122,7 @@ impl TextureCache {
       .map(|role| Self::create_solid(device, queue, role.get_neutral()))
       .collect();
     let checker: wgpu::TextureView = Self::create_checker(device, queue);
-    let (sender, receiver) = channel();
+    let (sender, receiver) = LoaderReceiver::channel();
     let views: Vec<wgpu::TextureView> = vec![missing];
     let bind_group: wgpu::BindGroup = Self::create_bind_group(device, &layout, &sampler, &views);
 
@@ -142,7 +142,7 @@ impl TextureCache {
       sizes: vec![0],
       free: Vec::new(),
       sender,
-      receiver: Mutex::new(receiver),
+      receiver,
       uploads: VecDeque::new(),
       capacity,
       is_dirty: false,
@@ -339,7 +339,7 @@ impl TextureCache {
 
   /// Takes what the loaders finished and uploads it, within a frame's budget, then rebinds the array if a slot changed.
   pub fn update(&mut self, device: &wgpu::Device, queue: &wgpu::Queue) {
-    while let Ok((slot, generation, load)) = self.receiver.get_mut().expect("texture loads lock").try_recv() {
+    while let Ok((slot, generation, load)) = self.receiver.try_recv() {
       if self.generations.get(slot as usize) != Some(&generation) {
         continue;
       }

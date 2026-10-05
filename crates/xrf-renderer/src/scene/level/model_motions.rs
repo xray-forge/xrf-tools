@@ -1,14 +1,15 @@
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::sync::mpsc::{Receiver, TryRecvError, channel};
+use std::sync::mpsc::TryRecvError;
 
 use crate::host::render_level_source::RenderLevelSource;
 use crate::host::render_motion::RenderMotion;
+use crate::thread::loader_receiver::LoaderReceiver;
 use crate::thread::render_workers::RenderWorkers;
 
 /// One motion asked for: on its way from a loader thread, baked, or not to be had.
 enum MotionState {
-  Reading(Receiver<Option<RenderMotion>>),
+  Reading(LoaderReceiver<Option<RenderMotion>>),
   Baked(RenderMotion),
   Missing,
 }
@@ -33,7 +34,7 @@ impl ModelMotions {
   pub fn get(&mut self, source: &Arc<dyn RenderLevelSource>, name: &str) -> Option<&RenderMotion> {
     let workers: &RenderWorkers = &self.workers;
     let state: &mut MotionState = self.motions.entry(name.to_owned()).or_insert_with(|| {
-      let (sender, receiver) = channel();
+      let (sender, receiver) = LoaderReceiver::channel();
       let (source, name) = (Arc::clone(source), name.to_owned());
 
       workers.spawn(move || {
