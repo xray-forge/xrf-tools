@@ -165,6 +165,12 @@ opt-level = 1
 [profile.dev-optimized.package."*"]
 opt-level = 3
 
+# Release code with line tables, in its own target folder, so a profiler names the code that ships.
+[profile.profiling]
+inherits = "release"
+debug = "line-tables-only"
+strip = false
+
 [workspace.lints.rust]
 dead_code = "allow"
 

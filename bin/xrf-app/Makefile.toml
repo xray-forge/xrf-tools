@@ -29,6 +29,10 @@ args = ["tauri", "dev"]
 command = "cargo"
 args = ["tauri", "dev", "--", "--profile", "dev-optimized"]
 
+[tasks.dev-profiling]
+command = "cargo"
+args = ["tauri", "dev", "--", "--profile", "profiling"]
+
 [tasks.serve-backend]
 command = "cargo"
 args = ["run", "--no-default-features"]

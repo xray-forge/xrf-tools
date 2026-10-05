@@ -139,6 +139,14 @@ dependencies = [
   { name = "dev-optimized", path = "bin/xrf-app" },
 ]
 
+[tasks.dev-app-profiling]
+description = "Run UI application in watch mode with the profiling profile: release code with line tables."
+category = "Development"
+workspace = false
+dependencies = [
+  { name = "dev-profiling", path = "bin/xrf-app" },
+]
+
 [tasks.serve-backend]
 description = "Run UI application backend in watch mode."
 category = "Development"
