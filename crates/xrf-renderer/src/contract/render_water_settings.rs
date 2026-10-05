@@ -39,6 +39,10 @@ pub struct RenderWaterSettings {
   pub reflection_blur: f32,
   /// How much noise mixes the clear reflection into the blurred one, `ssfx_water.z`.
   pub blur_noise: f32,
+  /// How bright the sun's highlight on the enhanced water is, `ssfx_water_setup2.y`.
+  pub specular: f32,
+  /// How bright the light the enhanced water gathers onto its bottom is, `ssfx_water_setup2.z`.
+  pub caustics: f32,
 }
 
 impl Default for RenderWaterSettings {
@@ -60,6 +64,8 @@ impl Default for RenderWaterSettings {
       reflectivity: 0.8,
       reflection_blur: 0.8,
       blur_noise: 1.0,
+      specular: 6.0,
+      caustics: 0.3,
     }
   }
 }

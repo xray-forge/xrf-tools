@@ -6,6 +6,7 @@ use crate::lighting::render_lighting::RenderLighting;
 use crate::lighting::render_rainfall::RenderRainfall;
 use crate::lighting::render_sky::RenderSky;
 use crate::lighting::render_tree_wind::RenderTreeWind;
+use crate::lighting::render_wind::RenderWind;
 
 /// What a fade shows at one step: every value blended from what was shown to what the weather shows now, and the skies
 /// walked from one pair to the other in thirds, so the sky's two slots never show a cube they did not show a moment
@@ -47,6 +48,10 @@ pub fn to_faded_lighting(from: &RenderLighting, to: &RenderLighting, progress: f
     water_intensity: lerp(from.water_intensity, to.water_intensity),
     sun_shafts: lerp(from.sun_shafts, to.sun_shafts),
     rain: fade_rain(from.rain, to.rain, t),
+    wind: RenderWind {
+      direction: lerp(from.wind.direction, to.wind.direction),
+      velocity: lerp(from.wind.velocity, to.wind.velocity),
+    },
     engine: to.engine,
     thunderbolt: to.thunderbolt.clone(),
   }
@@ -63,8 +68,6 @@ fn fade_rain(from: Option<RenderRainfall>, to: Option<RenderRainfall>, t: f32) -
   (density >= EPS_L).then(|| RenderRainfall {
     color: from.color.lerp(to.color, t),
     density,
-    wind_direction: lerp(from.wind_direction, to.wind_direction),
-    wind_velocity: lerp(from.wind_velocity, to.wind_velocity),
   })
 }
 

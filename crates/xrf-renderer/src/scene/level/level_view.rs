@@ -755,6 +755,7 @@ impl LevelView {
           self.sky_version,
         ),
         intensity: lighting.water_intensity,
+        wind: lighting.wind,
         time: self.started.elapsed().as_secs_f32(),
       },
     );
@@ -981,6 +982,7 @@ impl LevelView {
     };
     let uniform: RainUniform = RainUniform::new(
       &rainfall,
+      lighting.wind,
       self.rain_cover.get_window(),
       self.started.elapsed().as_secs_f32(),
       splash.index_count,

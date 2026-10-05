@@ -37,6 +37,12 @@ struct Water {
   // One where its reflection drew this frame, and one where the history it accumulates over holds a frame.
   reflected: f32,
   history: f32,
+  // The weather's wind, which drives its waves: its direction in radians and its velocity.
+  wind_direction: f32,
+  wind_velocity: f32,
+  // Its sun highlight and caustics.
+  specular: f32,
+  caustics: f32,
 };
 
 @group(2) @binding(0) var textures: binding_array<texture_2d<f32>>;
@@ -60,6 +66,12 @@ struct Water {
 // The enhanced water's reflection: the history it accumulates over and the noise jittering its march.
 @group(3) @binding(11) var reflection_history: texture_2d<f32>;
 @group(3) @binding(12) var blue_noise: texture_2d<f32>;
+// The enhanced water's own maps: its waves' normals, the wind's layer over them, and the light it gathers on its
+// bottom; then what the lights laid on the scene, which says where the sun reaches the bottom.
+@group(3) @binding(13) var wave_map: texture_2d<f32>;
+@group(3) @binding(14) var wind_map: texture_2d<f32>;
+@group(3) @binding(15) var caustics_map: texture_2d<f32>;
+@group(3) @binding(16) var light_target: texture_2d<f32>;
 
 // `watermove`: the wave's direction through the level, in renderer space, where the engine's `z` is negated.
 const WAVE_DIRECTION: vec3<f32> = vec3<f32>(0.11, 0.13, -0.07);
@@ -74,9 +86,13 @@ const LAYER_AMPLITUDES: vec2<f32> = vec2<f32>(0.15, 0.55);
 // What the depth behind the water reads where nothing was drawn: farther than any water is deep.
 const FAR_BEHIND: f32 = 1e6;
 
-// The enhanced water's `Wave_Int` at its calmest: how much of its waves' normal moves what lies under it, a share of
-// the screen, across and down; its refraction strength scales both.
-const ENHANCED_WAVES: vec2<f32> = vec2<f32>(0.03, 0.1);
+// The enhanced water's `Wave_Int`, across and down, at its calmest and in the strongest wind: how much of its waves'
+// normal moves what lies under it, a share of the screen; its refraction strength scales both.
+const WAVES_CALM: vec2<f32> = vec2<f32>(0.03, 0.1);
+const WAVES_WINDY: vec2<f32> = vec2<f32>(0.1, 0.2);
+
+// `G_SSR_WATER_SPECULAR_NORMAL`: how much of its waves' height the sun's highlight sees.
+const SPECULAR_NORMAL: f32 = 0.2;
 
 // `G_SSR_WATER_FOG_MAXDEPTH`: the water's fog at which it is its colour alone.
 const ENHANCED_FOG_DEPTH: f32 = 2.0;
@@ -349,17 +365,76 @@ fn fs_water(in: WaterVarying) -> WaterOutput {
   return out;
 }
 
-// Screen Space Shaders' `ssfx_water.ps`: what lies under the water, read where its waves move it unless
-// something nearer than the water stands there, clouded into the water's colour by the water's depth, the sky over it by
-// the fresnel cubed, fogged, and faded into what lies under it along its shallow edge.
+// The enhanced water's waves (`ssfx_water.ps`): its normal map scrolled twice over the base's coordinates, the wind's
+// layer leaning the first, at a pace and a strength the weather's wind sets; how far they move what lies under the
+// water across the screen, and the surface's normal in the world.
+struct EnhancedWaves {
+  screen: vec2<f32>,
+  normal: vec3<f32>,
+};
+
+// Sampled before the fragment can be discarded, where every derivative is taken alike.
+fn enhanced_waves(in: WaterVarying) -> EnhancedWaves {
+  let wind: f32 = saturate(water.wind_velocity * 0.001);
+  let turned: f32 = water.wind_direction + 1.57079;
+  let blowing: vec2<f32> = vec2<f32>(cos(turned), sin(turned));
+  let pace: f32 = clamp(0.97 * wind, 0.45, 0.97);
+  let time: f32 = water.time;
+  let coordinates: vec2<f32> = in.uv + time * vec2<f32>(0.065, 0.445) * pace;
+  var first: vec3<f32> = textureSample(wave_map, texture_sampler, coordinates + time * vec2<f32>(0.23, 0.1) * pace).rgb;
+  let second: vec3<f32> = textureSample(wave_map, texture_sampler, coordinates - time * vec2<f32>(0.21, 0.28) * pace).rgb;
+  let gust: vec2<f32> = textureSample(wind_map, texture_sampler, coordinates * 0.1 + blowing * wind * time * 0.1).rg;
+
+  first = vec3<f32>(mix(first.xy, gust, 0.1 * wind), first.z);
+
+  var screen: vec3<f32> = first * 2.0 - 1.0;
+
+  screen = vec3<f32>(screen.xy + vec2<f32>(0.095, 0.088), screen.z);
+
+  var average: vec3<f32> = (first + second) - 1.0 + 0.1;
+
+  average = vec3<f32>(average.xy * 0.5, average.z);
+
+  var out: EnhancedWaves;
+
+  // `clamp(Wave_Int * wind, ...)`: the strongest wind's strength by the wind, never under the calm's.
+  let strength: vec2<f32> = clamp(WAVES_WINDY * wind, WAVES_CALM, WAVES_WINDY);
+
+  out.screen = normalize(vec3<f32>(screen.xy * strength * water.refraction, screen.z)).xy;
+  out.normal = normalize(in.tangent * average.x + in.binormal * average.y + normalize(in.normal) * average.z);
+
+  return out;
+}
+
+// The light the enhanced water gathers onto its bottom (`ssfx_water.ps`): two scrolls of its caustics map over the
+// bottom's place in the level, the least of the two, sampled before the fragment can be discarded.
+fn enhanced_caustics(bottom: vec3<f32>) -> vec3<f32> {
+  let place: vec2<f32> = vec2<f32>(bottom.x, -bottom.z);
+  let time: f32 = water.time;
+  let first: vec3<f32> = saturate(textureSample(caustics_map, texture_sampler, place * 0.19 + vec2<f32>(time * 0.1, 0.0)).rgb -
+    0.1);
+  let second: vec3<f32> = saturate(textureSample(caustics_map, texture_sampler, place * 0.11 + vec2<f32>(-time * 0.07, 0.2))
+    .rgb - 0.1);
+
+  return min(first, second);
+}
+
+// Screen Space Shaders' `ssfx_water.ps`: what lies under the water, read where its waves move it unless something
+// nearer than the water stands there, clouded into the water's colour by the water's depth, its reflection over it by
+// the fresnel cubed, the light it gathers on its bottom and the sun's highlight where the sun reaches it, fogged, and
+// faded into what lies under it along its shallow edge.
 @fragment
 fn fs_water_enhanced(in: WaterVarying) -> WaterOutput {
-  let fragment: WaterFragment = read_water(in);
   let size: vec2<f32> = camera.viewport.xy;
   let pixel: vec2<f32> = floor(in.clip.xy);
-  // `Waves_Normal`: the waves' normal across the surface, scaled to a share of the screen.
-  let waves: vec2<f32> = normalize(vec3<f32>(fragment.bent.xy * ENHANCED_WAVES * water.refraction, fragment.bent.z)).xy;
-  let moved: vec2<f32> = clamp(pixel + waves * size, vec2<f32>(0.0), size - 1.0);
+  let waves: EnhancedWaves = enhanced_waves(in);
+  // The bottom under the fragment, in the world; far below where only the sky is.
+  let stored: f32 = textureLoad(depth_target, vec2<i32>(pixel), 0);
+  let ndc: vec2<f32> = vec2<f32>(in.clip.x / size.x * 2.0 - 1.0, 1.0 - in.clip.y / size.y * 2.0);
+  let bottom: vec3<f32> = select(camera_unproject(ndc, stored), in.world - vec3<f32>(0.0, FAR_BEHIND, 0.0), stored <= 0.0);
+  let gathered: vec3<f32> = enhanced_caustics(bottom);
+  let fragment: WaterFragment = read_water(in);
+  let moved: vec2<f32> = clamp(pixel + waves.screen * size, vec2<f32>(0.0), size - 1.0);
   let moved_stored: f32 = textureLoad(depth_target, vec2<i32>(moved), 0);
   let moved_behind: f32 = select(-camera_view_position(moved, moved_stored).z, FAR_BEHIND, moved_stored <= 0.0);
   // `Refraction_Discard`: a read nearer than the water would copy what stands over it into it, and the sky, which the
@@ -367,18 +442,30 @@ fn fs_water_enhanced(in: WaterVarying) -> WaterOutput {
   let refracted: vec2<f32> = select(pixel, moved, moved_stored > 0.0 && moved_behind > -fragment.position.z);
   let screen: vec3<f32> = textureLoad(water_scene, vec2<i32>(refracted), 0).rgb;
   // How deep the water stands over its bottom, straight down, as the module measures its fog and its border.
-  let ndc: vec2<f32> = vec2<f32>(in.clip.x / size.x * 2.0 - 1.0, 1.0 - in.clip.y / size.y * 2.0);
-  let bottom: f32 = select(camera_unproject(ndc, fragment.stored).y, in.world.y - FAR_BEHIND, fragment.stored <= 0.0);
-  let water_depth: f32 = in.world.y - bottom;
+  let water_depth: f32 = in.world.y - bottom.y;
   let water_fog: f32 = exp(min(water_depth, 16.0)) - 1.0;
   // `smoothstep(G_SSR_WATER_FOG_MAXDEPTH, -turbidity, fog)`: clear in the shallows, its colour where deep.
   let clear: f32 = saturate((water_fog - ENHANCED_FOG_DEPTH) / (-water.turbidity - ENHANCED_FOG_DEPTH));
   let colour: vec3<f32> = fragment.base.rgb * fragment.light;
   let turbid: vec3<f32> = mix(colour, screen, clear * clear * (3.0 - 2.0 * clear));
-  let fresnel: f32 = pow(saturate(dot(fragment.reflected, fragment.to_point)), 3.0);
-  let reflection: vec3<f32> = enhanced_reflection(fragment, in.world, (pixel + 0.5) / size, waves);
+  let reflected: vec3<f32> = reflect(fragment.to_point, waves.normal);
+  let fresnel: f32 = pow(saturate(dot(reflected, fragment.to_point)), 3.0);
+  let reflection: vec3<f32> = enhanced_reflection(waves, reflected, in.world, (pixel + 0.5) / size);
+  // Where the lights reached the bottom the sun shines on it, as the module reads its accumulator.
+  let sunlit: f32 = saturate(textureLoad(light_target, vec2<i32>(refracted), 0).r * 2000.0);
+  let sun: f32 = dot(lighting.sun.rgb, vec3<f32>(0.5));
+  // `smoothstep(G_SSR_WATER_FOG_MAXDEPTH + .5, 0, fog)`: the gathered light fades as the water clouds.
+  let gathering: f32 = 1.0 - smoothstep(0.0, ENHANCED_FOG_DEPTH + 0.5, water_fog);
+  let caustics: vec3<f32> = gathered * sunlit * smoothstep(0.3, 1.0, sun) * water.caustics * gathering *
+    saturate(water_fog * 3.0);
+  // `L_sun_dir_w`: the way the sunlight travels, in the world.
+  let rotation: mat3x3<f32> = transpose(mat3x3<f32>(camera.view[0].xyz, camera.view[1].xyz, camera.view[2].xyz));
+  let sunlight: vec3<f32> = -(rotation * lighting.to_sun.xyz);
+  let flattened: vec3<f32> = normalize(vec3<f32>(waves.normal.x, waves.normal.y * SPECULAR_NORMAL, waves.normal.z));
+  let highlight: vec3<f32> = lighting.sun.rgb * pow(abs(dot(normalize(fragment.to_point + sunlight), flattened)), 512.0) *
+    saturate(sun) * water.specular * sunlit;
   let seen: f32 = 1.0 - fragment.fog;
-  let lit: vec3<f32> = mix(turbid, reflection, saturate(fresnel * water.reflectivity));
+  let lit: vec3<f32> = mix(turbid, reflection, saturate(fresnel * water.reflectivity)) + caustics + highlight;
   let fogged: vec3<f32> = mix(lighting.fog_color.rgb, lit, seen);
   let border: f32 = smoothstep(0.0, max(water.soft_border, 1e-4), water_depth + fresnel);
   let shown: vec3<f32> = mix(screen, fogged, border * seen * seen);
@@ -395,16 +482,16 @@ fn fs_water_enhanced(in: WaterVarying) -> WaterOutput {
 
 // What the enhanced water reflects: its reflection drawn this frame, blurred and clear mixed by a perlin noise over the
 // level and greyed a little, read where its waves move it; the sky alone while it draws none.
-fn enhanced_reflection(fragment: WaterFragment, world: vec3<f32>, uv: vec2<f32>, waves: vec2<f32>) -> vec3<f32> {
+fn enhanced_reflection(waves: EnhancedWaves, reflected: vec3<f32>, world: vec3<f32>, uv: vec2<f32>) -> vec3<f32> {
   if (water.reflected < 0.5) {
-    return enhanced_sky(fragment.reflected) * water.reflection;
+    return enhanced_sky(reflected) * water.reflection;
   }
 
   // The module reads its blurred reflection from the corner of a target the screen's size, where its waves move it
   // twice as far.
-  let blurred: vec3<f32> = textureSampleLevel(reflection_blurred, sky_clamp, saturate(uv + waves * 2.0), 0.0).rgb;
-  let clear: vec3<f32> = textureSampleLevel(reflection_clear, sky_clamp, saturate(uv + waves), 0.0).rgb;
-  let level: vec2<f32> = vec2<f32>(world.x, -world.z) + fragment.surface_normal.xy * 100.0;
+  let blurred: vec3<f32> = textureSampleLevel(reflection_blurred, sky_clamp, saturate(uv + waves.screen * 2.0), 0.0).rgb;
+  let clear: vec3<f32> = textureSampleLevel(reflection_clear, sky_clamp, saturate(uv + waves.screen), 0.0).rgb;
+  let level: vec2<f32> = vec2<f32>(world.x, -world.z) + waves.normal.xy * 100.0;
   let noise: f32 = textureSampleLevel(perlin_map, texture_sampler, level * 0.02, 0.0).r;
   let mixed: vec3<f32> = mix(blurred, clear, saturate(noise * water.blur_noise));
 

@@ -5,6 +5,7 @@ use crate::frame::pass_timer::PassTimer;
 use crate::frame::view_targets::ViewTargets;
 use crate::frame::water_reflection::WaterReflection;
 use crate::frame::water_scene::WaterScene;
+use crate::lighting::render_wind::RenderWind;
 use crate::pass::static_draw_groups::StaticDrawGroups;
 use crate::pass::view_binding::ViewBinding;
 use crate::pass::water_groups::WaterGroups;
@@ -13,12 +14,13 @@ use crate::pass::water_sources::WaterSources;
 use crate::pass::water_uniform::WaterUniform;
 
 /// What a level view's water reads of its frame beside its own state: the targets and their epoch, the lighting, both
-/// skies with the sampler and version they were bound at, the weather's `water_intensity` and the clock.
+/// skies with the sampler and version they were bound at, the weather's `water_intensity` and wind, and the clock.
 pub struct WaterFrame<'a> {
   pub targets: Option<(&'a ViewTargets, u64)>,
   pub lighting: &'a wgpu::Buffer,
   pub skies: ([&'a wgpu::TextureView; 2], &'a wgpu::Sampler, u64),
   pub intensity: f32,
+  pub wind: RenderWind,
   pub time: f32,
 }
 
@@ -120,7 +122,7 @@ impl LevelWater {
       0,
       bytemuck::bytes_of(&WaterUniform::new(
         &settings,
-        frame.intensity,
+        (frame.intensity, frame.wind),
         frame.time,
         self
           .reflection

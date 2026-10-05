@@ -18,6 +18,7 @@ use crate::lighting::render_fog::RenderFog;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::lighting::render_rainfall::RenderRainfall;
 use crate::lighting::render_tree_wind::RenderTreeWind;
+use crate::lighting::render_wind::RenderWind;
 use crate::pass::rain_uniform::{RAIN_STREAKS, RainUniform};
 use crate::pass::wind_uniform::WindUniform;
 use crate::scene::level::shadow_sway::{SHADOW_SWAY_INTERVAL, ShadowSway};
@@ -256,13 +257,15 @@ fn fogs_by_the_engine_ramp_and_ends_the_view_where_it_is_total() {
 
 #[test]
 fn rains_as_many_streaks_as_the_engine_and_leans_them_with_the_wind() {
-  let rain = |density: f32, wind_velocity: f32| {
+  let rain = |density: f32, velocity: f32| {
     RainUniform::new(
       &RenderRainfall {
         color: Vec3::ONE,
         density,
-        wind_direction: 0.0,
-        wind_velocity,
+      },
+      RenderWind {
+        direction: 0.0,
+        velocity,
       },
       Vec4::ZERO,
       0.0,

@@ -3,6 +3,7 @@ use std::f32::consts::FRAC_PI_2;
 use glam::{Vec3, Vec4};
 
 use crate::lighting::render_rainfall::RenderRainfall;
+use crate::lighting::render_wind::RenderWind;
 
 /// `max_desired_items`: streaks at the heaviest rain; half as many at the lightest.
 pub const RAIN_STREAKS: u32 = 2500;
@@ -36,11 +37,11 @@ pub struct RainUniform {
 }
 
 impl RainUniform {
-  pub fn new(rain: &RenderRainfall, window: Vec4, time: f32, splash_indices: u32) -> Self {
+  pub fn new(rain: &RenderRainfall, wind: RenderWind, window: Vec4, time: f32, splash_indices: u32) -> Self {
     let density: f32 = rain.density.clamp(0.0, 1.0);
-    let lean: f32 = (rain.wind_velocity * GUST / MAX_LEAN_WIND).clamp(0.0, 1.0);
+    let lean: f32 = (wind.velocity * GUST / MAX_LEAN_WIND).clamp(0.0, 1.0);
     let pitch: f32 = MAX_LEAN * lean - FRAC_PI_2;
-    let heading: f32 = rain.wind_direction;
+    let heading: f32 = wind.direction;
     // `axis.setHP(wind_direction, pitch)`, engine `z` negated into renderer space.
     let axis: Vec3 = Vec3::new(
       -pitch.cos() * heading.sin(),

@@ -12,6 +12,7 @@ use crate::lighting::render_rainfall::RenderRainfall;
 use crate::lighting::render_sky::RenderSky;
 use crate::lighting::render_thunderbolt_strike::RenderThunderboltStrike;
 use crate::lighting::render_tree_wind::RenderTreeWind;
+use crate::lighting::render_wind::RenderWind;
 use crate::lighting::sun_direction::to_renderer_sun_direction;
 
 /// The floor `phase_combine` keeps ambient above.
@@ -45,6 +46,8 @@ pub struct RenderLighting {
   pub sun_shafts: f32,
   /// How hard it rains, or none for a dry sky.
   pub rain: Option<RenderRainfall>,
+  /// The weather's wind, which leans the rain and drives the enhanced water's waves.
+  pub wind: RenderWind,
   /// Whose shaders the scene is drawn by: its sky, and its surfaces' reflections.
   pub engine: XrayEngine,
   /// The bolt striking this frame, or none.
@@ -113,6 +116,7 @@ impl RenderLighting {
       fog: None,
       trees: None,
       rain: None,
+      wind: RenderWind::default(),
       ..noon
     }
   }
@@ -149,6 +153,7 @@ impl Default for RenderLighting {
       water_intensity: 1.0,
       sun_shafts: 0.0,
       rain: None,
+      wind: RenderWind::default(),
       engine: XrayEngine::Vanilla,
       thunderbolt: None,
     }

@@ -1,4 +1,5 @@
 use crate::contract::render_water_settings::RenderWaterSettings;
+use crate::lighting::render_wind::RenderWind;
 
 /// What `shaders/static/water.wgsl` reads as its `Water`: the clock, the settings, and the weather's `water_intensity`.
 #[repr(C)]
@@ -24,11 +25,22 @@ pub struct WaterUniform {
   /// One where the reflection drew this frame, and one where the history it accumulates over holds a frame.
   pub reflected: f32,
   pub history: f32,
+  /// The weather's wind, which drives the enhanced water's waves: its direction in radians and its velocity.
+  pub wind_direction: f32,
+  pub wind_velocity: f32,
+  /// The enhanced water's sun highlight and caustics.
+  pub specular: f32,
+  pub caustics: f32,
 }
 
 impl WaterUniform {
   /// `reflection` says whether the enhanced water's reflection draws this frame, and whether its history holds a frame.
-  pub fn new(settings: &RenderWaterSettings, intensity: f32, time: f32, (reflected, history): (bool, bool)) -> Self {
+  pub fn new(
+    settings: &RenderWaterSettings,
+    (intensity, wind): (f32, RenderWind),
+    time: f32,
+    (reflected, history): (bool, bool),
+  ) -> Self {
     Self {
       time,
       wave_height: settings.wave_height,
@@ -46,6 +58,10 @@ impl WaterUniform {
       blur_noise: settings.blur_noise,
       reflected: reflected as u32 as f32,
       history: history as u32 as f32,
+      wind_direction: wind.direction,
+      wind_velocity: wind.velocity,
+      specular: settings.specular,
+      caustics: settings.caustics,
     }
   }
 }

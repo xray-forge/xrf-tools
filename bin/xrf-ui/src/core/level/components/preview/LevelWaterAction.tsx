@@ -135,6 +135,22 @@ export function LevelWaterAction({
             format={formatWaterStrength}
             onChange={(blurNoise: number) => set({ blurNoise })}
           />
+
+          <RenderValueSlider
+            label={"Specular"}
+            value={water.specular}
+            {...RENDER_WATER_LIMITS.specular}
+            format={formatWaterStrength}
+            onChange={(specular: number) => set({ specular })}
+          />
+
+          <RenderValueSlider
+            label={"Caustics"}
+            value={water.caustics}
+            {...RENDER_WATER_LIMITS.caustics}
+            format={formatWaterStrength}
+            onChange={(caustics: number) => set({ caustics })}
+          />
         </>
       ) : null}
 

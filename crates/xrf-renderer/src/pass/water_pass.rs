@@ -19,10 +19,13 @@ use crate::scene::static_scene::static_batch::StaticBatch;
 use crate::scene::texture::decoded_texture::DecodedTexture;
 use crate::shader::shader_library::ShaderLibrary;
 
-/// The enhanced water's noise maps, as the renderer's bundle keeps them: Screen Space Shaders' `fx\blue_noise` and
-/// `water\water_perlin`.
+/// The enhanced water's maps, as the renderer's bundle keeps them: Screen Space Shaders' `fx\blue_noise`,
+/// `water\water_perlin`, `fx\water_normal`, `fx\water_wind` and `fx\water_caustics`.
 const BLUE_NOISE: &str = "water/blue_noise.dds";
 const PERLIN: &str = "water/perlin.dds";
+const NORMAL: &str = "water/normal.dds";
+const WIND: &str = "water/wind.dds";
+const CAUSTICS: &str = "water/caustics.dds";
 
 /// What each blur pass reads its source by: its direction, and the share of the source's size its target is.
 const BLUR_ACROSS: [f32; 4] = [1.0, 0.0, 2.0, 0.0];
@@ -46,6 +49,9 @@ pub struct WaterPass {
   blur_directions: [wgpu::Buffer; 2],
   blue_noise: wgpu::TextureView,
   perlin: wgpu::TextureView,
+  normal: wgpu::TextureView,
+  wind: wgpu::TextureView,
+  caustics: wgpu::TextureView,
   /// What a binding a pass does not read is given: a texel of nothing.
   nothing: wgpu::TextureView,
   generation: u64,
@@ -96,6 +102,10 @@ impl WaterPass {
         texture_entry(8, fragment, filtered, flat),
         texture_entry(9, fragment, filtered, flat),
         texture_entry(10, fragment, filtered, flat),
+        texture_entry(13, fragment, filtered, flat),
+        texture_entry(14, fragment, filtered, flat),
+        texture_entry(15, fragment, filtered, flat),
+        texture_entry(16, fragment, filtered, flat),
       ],
     );
     let reflection_layout: wgpu::BindGroupLayout = create_layout(
@@ -141,12 +151,12 @@ impl WaterPass {
         view_formats: &[],
       })
       .create_view(&Default::default());
-    // A noise map the bundle cannot give is nothing: the reflection's march unjittered, its blur unmixed.
+    // A map the bundle cannot give is nothing: the reflection's march unjittered, its blur unmixed, the waves flat.
     let load = |path: &str| -> Option<wgpu::TextureView> {
       bundle
         .read_bundled(path)
         .and_then(|bytes| DecodedTexture::from_dds(&bytes))
-        .inspect_err(|error| log::error!("The enhanced water reads no noise map '{path}': {error}"))
+        .inspect_err(|error| log::error!("The enhanced water reads no map '{path}': {error}"))
         .ok()
         .map(|texture| texture.upload(device, queue))
     };
@@ -173,6 +183,9 @@ impl WaterPass {
       ],
       blue_noise: load(BLUE_NOISE).unwrap_or_else(|| nothing.clone()),
       perlin: load(PERLIN).unwrap_or_else(|| nothing.clone()),
+      normal: load(NORMAL).unwrap_or_else(|| nothing.clone()),
+      wind: load(WIND).unwrap_or_else(|| nothing.clone()),
+      caustics: load(CAUSTICS).unwrap_or_else(|| nothing.clone()),
       nothing,
       layouts,
       generation: shaders.get_generation(),
@@ -238,6 +251,10 @@ impl WaterPass {
           texture_binding(8, blurred),
           texture_binding(9, clear),
           texture_binding(10, &self.perlin),
+          texture_binding(13, &self.normal),
+          texture_binding(14, &self.wind),
+          texture_binding(15, &self.caustics),
+          texture_binding(16, &targets.light),
         ],
       )
     };
