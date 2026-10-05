@@ -7,14 +7,16 @@ use xrf_ltx::Ltx;
 use xrf_math::Vector3d;
 use xrf_ogf::OgfFile;
 use xrf_spawn::{
-  AlifeObject, AlifeObjectAbstract, AlifeObjectDynamicVisual, AlifeObjectHangingLamp, AlifeObjectInherited,
-  AlifeObjectMotion, AlifeObjectSkeleton, ClsId,
+  AlifeObject, AlifeObjectAbstract, AlifeObjectCustomZone, AlifeObjectDynamicVisual, AlifeObjectHangingLamp,
+  AlifeObjectInherited, AlifeObjectMotion, AlifeObjectSkeleton, AlifeObjectSpaceRestrictor, AlifeObjectTorridZone,
+  ClsId, LastSpawnTime, Shape,
 };
 
 use crate::data::lights::light_description::LightDescription;
 use crate::data::lights::light_kind::LightKind;
 use crate::data::lights::light_motion::LightMotion;
 use crate::data::lights::lights_description::LightsDescription;
+use crate::data::lights::zone_sphere::ZoneSphere;
 use crate::data::visual::skeleton::visual_rest_pose::VisualRestPose;
 use crate::pack::lights::lights_packer::LightsPacker;
 use crate::pack::tests::fixtures::{MODEL_TYPE_SKELETON_ANIM, bind, bones, vector, visual};
@@ -455,29 +457,84 @@ fn lights_a_zone_its_section_lights_over_it_by_its_animation_alone() {
   assert_eq!(fire.motion, None);
 }
 
-// A torrid zone's light rides its motion, standing the section's height over where the motion has the zone.
+/// A torrid zone with one shape, spawned with custom data.
+fn torrid(shape: Shape, custom_data: &str) -> AlifeObjectTorridZone {
+  AlifeObjectTorridZone {
+    base: AlifeObjectCustomZone {
+      base: AlifeObjectSpaceRestrictor {
+        base: AlifeObjectAbstract {
+          game_vertex_id: 0,
+          distance: 0.0,
+          direct_control: 0,
+          level_vertex_id: 0,
+          flags: 0,
+          custom_data: String::from(custom_data),
+          story_id: u32::MAX,
+          spawn_story_id: u32::MAX,
+        },
+        shape: vec![shape],
+        restrictor_type: 0,
+      },
+      max_power: 1.0,
+      owner_id: u32::MAX,
+      enabled_time: 0,
+      disabled_time: 0,
+      start_time_shift: 0,
+    },
+    motion: AlifeObjectMotion {
+      motion_name: String::from("camera_effects\\fireball.anm"),
+    },
+    last_spawn_time: LastSpawnTime::Absent,
+  }
+}
+
+// A torrid zone's light rides its motion, standing the section's height over where the motion has the zone, and
+// carries its zone's sphere, offset from the light in renderer space, to go out by.
 #[test]
 fn carries_a_torrid_zones_light_along_its_motion() {
   let ltx: Ltx = sections();
   let animations: LightAnimFile = animations();
   let mut packer: LightsPacker = LightsPacker::new(Some(&animations)).with_sections(&ltx);
   let mut zone: AlifeObject = object("campfire", lamp(FLAG_R2, 0));
-  let motion: AlifeObjectMotion = AlifeObjectMotion {
-    motion_name: String::from("camera_effects\\fireball.anm"),
-  };
+  // A sphere a metre along the zone's own +z, which its quarter turn stands along the engine's -x.
+  let torrid: AlifeObjectTorridZone = torrid(Shape::Sphere((vector(0.0, 0.0, 1.0), 3.0)), "");
 
   zone.section = String::from("campfire");
-  packer.add_zone(&zone, Some(&motion));
+  packer.add_zone(&zone, Some(&torrid));
 
   let description: LightsDescription = packer.pack();
+  let light: &LightDescription = &description.lights[0];
 
   assert_eq!(
-    description.lights[0].motion,
+    light.motion,
     Some(LightMotion {
       name: String::from("camera_effects\\fireball.anm"),
       height: 0.7,
     })
   );
+
+  let sphere: &ZoneSphere = light.zone_sphere.as_ref().unwrap();
+
+  assert_close(&sphere.offset, vector(-1.0, -0.7, 0.0));
+  assert_eq!(sphere.radius, 3.0);
+}
+
+// A zone its custom data keeps always fast never puts its light out.
+#[test]
+fn keeps_an_always_fast_torrid_zones_light_on() {
+  let ltx: Ltx = sections();
+  let animations: LightAnimFile = animations();
+  let mut packer: LightsPacker = LightsPacker::new(Some(&animations)).with_sections(&ltx);
+  let mut zone: AlifeObject = object("campfire", lamp(FLAG_R2, 0));
+  let torrid: AlifeObjectTorridZone = torrid(
+    Shape::Sphere((vector(0.0, 0.0, 0.0), 3.0)),
+    "[fast_mode]\nalways_fast = true\n",
+  );
+
+  zone.section = String::from("campfire");
+  packer.add_zone(&zone, Some(&torrid));
+
+  assert_eq!(packer.pack().lights[0].zone_sphere, None);
 }
 
 // The engine refuses a zone whose animation `LALib` lacks, and a level read without `lanims.xr` lacks every one.
@@ -560,4 +617,29 @@ fn knows_a_signal_rocket_by_its_binder_where_the_configs_are_read() {
 
   // The rebound lamp, which stands at 20.
   assert_close(&lit.position, vector(20.0, 3.0, -5.0));
+}
+
+// How far a point stands outside a zone's sphere, `distance_to(P) - s.R`, the sphere offset from what it rides.
+#[test]
+fn measures_how_far_a_point_stands_outside_a_zone_sphere() {
+  let sphere: ZoneSphere = ZoneSphere {
+    offset: vector(0.0, 1.0, 0.0),
+    radius: 2.0,
+  };
+
+  assert!((sphere.get_distance([10.0, 0.0, 0.0], [10.0, 1.0, 5.0]) - 3.0).abs() < 1e-6);
+  // Inside it, the distance is below nothing.
+  assert!(sphere.get_distance([10.0, 0.0, 0.0], [10.0, 1.0, 1.0]) < 0.0);
+  // Into renderer space from a light standing half a metre over the zone: lowered by it and mirrored through z.
+  assert_eq!(
+    ZoneSphere {
+      offset: vector(1.0, 1.0, 2.0),
+      radius: 2.0
+    }
+    .to_renderer_space(0.5),
+    ZoneSphere {
+      offset: vector(1.0, 0.5, -2.0),
+      radius: 2.0
+    }
+  );
 }

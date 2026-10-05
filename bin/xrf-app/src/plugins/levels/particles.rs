@@ -9,9 +9,9 @@ use xrf_ltx::{Ltx, Section};
 use xrf_material::{XraySurfaceDescriptor, XraySurfaceResolver, XrayTextureScope};
 use xrf_particles::{ParticleEffect, ParticleLibrary, ParticlesFile};
 use xrf_renderer::{RenderParticlePlacement, RenderParticleSource};
-use xrf_spawn::{AlifeObject, AlifeObjectInherited, AlifeObjectMotion};
+use xrf_spawn::{AlifeObject, AlifeObjectInherited, AlifeObjectMotion, AlifeObjectSpaceRestrictor};
 use xrf_vfs::XrayProbe;
-use xrf_visual::{LightsPacker, VisualTransform};
+use xrf_visual::{LightsPacker, VisualTransform, ZoneSphere};
 
 use crate::core::assets::read_located_asset;
 use crate::plugins::levels::ambients::list_ambient_particles;
@@ -143,15 +143,17 @@ fn place_planted(placement: &PsStaticPlacement) -> RenderParticlePlacement {
     },
     transform,
     motion: None,
+    zone_sphere: None,
   }
 }
 
 /// `CCustomZone::PlayIdleParticles`: a zone whose section names idle particles plays them at its `XFORM`, a torrid
 /// zone moving it along its motion, and a campfire switches between them and its own.
 fn place_zone(object: &AlifeObject, sections: &Ltx) -> Option<RenderParticlePlacement> {
-  let motion: Option<&AlifeObjectMotion> = match &object.inherited {
-    AlifeObjectInherited::CseAlifeAnomalousZone(_) | AlifeObjectInherited::CseAlifeZoneVisual(_) => None,
-    AlifeObjectInherited::CseAlifeTorridZone(zone) => Some(&zone.motion),
+  let (motion, restrictor): (Option<&AlifeObjectMotion>, &AlifeObjectSpaceRestrictor) = match &object.inherited {
+    AlifeObjectInherited::CseAlifeAnomalousZone(zone) => (None, &zone.base.base.base),
+    AlifeObjectInherited::CseAlifeZoneVisual(zone) => (None, &zone.base.base.base),
+    AlifeObjectInherited::CseAlifeTorridZone(zone) => (Some(&zone.motion), &zone.base.base),
     _ => return None,
   };
 
@@ -184,6 +186,11 @@ fn place_zone(object: &AlifeObject, sections: &Ltx) -> Option<RenderParticlePlac
       .mirrored()
       .to_matrix(),
     motion: motion.and_then(AlifeObjectMotion::get_name).map(str::to_owned),
+    zone_sphere: ZoneSphere::of_zone(
+      &restrictor.shape,
+      (&object.position, &object.direction),
+      &restrictor.base.custom_data,
+    ),
   })
 }
 

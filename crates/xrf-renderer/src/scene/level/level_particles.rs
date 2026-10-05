@@ -12,6 +12,7 @@ use xrf_particles::{
   ParticleBounds, ParticleCollider, ParticleEffectInstance, ParticleEngineRules, ParticleLibrary, ParticleObject,
   ParticleUpdateContext,
 };
+use xrf_visual::ZoneSphere;
 
 use crate::camera::camera_view::CameraView;
 use crate::contract::render_ambient_report::RenderAmbientReport;
@@ -38,12 +39,10 @@ use crate::scene::level::level_object_motions::LevelObjectMotions;
 use crate::scene::level::loader_answer::take_answer;
 use crate::scene::level::particle_sprite::ParticleSprite;
 use crate::scene::level::placed_effect::PlacedEffect;
+use crate::scene::level::zone_fast_mode::ZONE_FAST_DISTANCE;
 use crate::scene::texture::texture_cache::TextureCache;
 use crate::scene::texture::texture_role::TextureRole;
 use crate::thread::render_workers::RenderWorkers;
-
-/// `FASTMODE_DISTANCE`: metres from Monolith's camera past which a zone stops its idle particles.
-const ZONE_FAST_DISTANCE: f32 = 100.0;
 
 /// Quads the vertex buffer holds at first; it doubles past them.
 const INITIAL_QUADS: u64 = 4096;
@@ -94,6 +93,8 @@ struct PlacedSystem {
   transform: Mat4,
   /// The object motion carrying its zone, which moves the transform each frame.
   motion: Option<String>,
+  /// Its zone's sphere, offset from the transform's place, which Monolith measures how far the camera stands by.
+  zone_sphere: Option<ZoneSphere>,
   seed: i32,
   campfire_lit: Option<bool>,
   objects: PlacedObjects,
@@ -218,6 +219,7 @@ impl LevelParticles {
         source: placement.source.clone(),
         transform: Mat4::from_cols_array(&placement.transform),
         motion: placement.motion.clone(),
+        zone_sphere: placement.zone_sphere.clone(),
         seed: index as i32 + 1,
         campfire_lit: None,
         objects: PlacedObjects::default(),
@@ -537,13 +539,16 @@ impl LevelParticles {
       rules: &level.rules,
       collider: level.collider.as_deref(),
     };
+    // Only Monolith stops a slowed zone's idle particles.
     let is_slowed: bool = level.rules.get_engine() == XrayEngine::Extended;
 
     for system in &mut level.systems {
       let placement: (&Mat4, i32) = (&system.transform, system.seed);
       let objects: &mut PlacedObjects = &mut system.objects;
-      // todo: Measure from the zone's shape's sphere, less its radius, as Monolith does; the zone's position stands in.
-      let is_far: bool = is_slowed && eye.distance(system.transform.w_axis.truncate()) > ZONE_FAST_DISTANCE;
+      let is_far: bool = is_slowed
+        && system.zone_sphere.as_ref().is_some_and(|sphere| {
+          sphere.get_distance(system.transform.w_axis.truncate().to_array(), eye.to_array()) > ZONE_FAST_DISTANCE
+        });
 
       match &system.source {
         RenderParticleSource::Static { name } => objects.play(PlacedEffect::Idle, name, placement, &context, now),

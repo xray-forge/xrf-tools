@@ -67,6 +67,7 @@ pub use crate::data::alife::spawn_level_arrival::SpawnLevelArrival;
 pub use crate::data::alife::spawn_level_objects::SpawnLevelObjects;
 pub use crate::data::alife::spawn_skipped_object::SpawnSkippedObject;
 pub use crate::data::artefact_spawn::artefact_spawn_point::ArtefactSpawnPoint;
+pub use crate::data::generic::last_spawn_time::LastSpawnTime;
 pub use crate::data::generic::shape::Shape;
 pub use crate::data::generic::time::Time;
 pub use crate::data::generic::u32_bytes::U32Bytes;

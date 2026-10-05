@@ -5,13 +5,14 @@ use xrf_light_anim::LightAnimFile;
 use xrf_ltx::{Ltx, Section};
 use xrf_math::Vector3d;
 
-use xrf_spawn::{AlifeObject, AlifeObjectHangingLamp, AlifeObjectInherited, AlifeObjectMotion};
+use xrf_spawn::{AlifeObject, AlifeObjectHangingLamp, AlifeObjectInherited, AlifeObjectTorridZone};
 
 use crate::data::lights::light_animator_description::LightAnimatorDescription;
 use crate::data::lights::light_description::LightDescription;
 use crate::data::lights::light_kind::LightKind;
 use crate::data::lights::light_motion::LightMotion;
 use crate::data::lights::lights_description::LightsDescription;
+use crate::data::lights::zone_sphere::ZoneSphere;
 use crate::data::visual::skeleton::bind_transform::BindTransform;
 use crate::data::visual::skeleton::visual_rest_pose::VisualRestPose;
 use crate::data::visual::skeleton::visual_transform::VisualTransform;
@@ -89,7 +90,7 @@ impl<'a> LightsPacker<'a> {
         AlifeObjectInherited::CseAlifeAnomalousZone(_) | AlifeObjectInherited::CseAlifeZoneVisual(_) => {
           self.add_zone(object, None);
         }
-        AlifeObjectInherited::CseAlifeTorridZone(zone) => self.add_zone(object, Some(&zone.motion)),
+        AlifeObjectInherited::CseAlifeTorridZone(zone) => self.add_zone(object, Some(zone)),
         _ => {}
       }
     }
@@ -116,6 +117,7 @@ impl<'a> LightsPacker<'a> {
         is_level: true,
         campfire: None,
         motion: None,
+        zone_sphere: None,
       });
     }
   }
@@ -183,6 +185,7 @@ impl<'a> LightsPacker<'a> {
       is_level: false,
       campfire: None,
       motion: None,
+      zone_sphere: None,
     });
 
     if lamp.has_point_ambient() {
@@ -203,14 +206,16 @@ impl<'a> LightsPacker<'a> {
         is_level: false,
         campfire: None,
         motion: None,
+        zone_sphere: None,
       });
     }
   }
 
   /// `CCustomZone::Load` and `StartIdleLight`: a zone whose section lights it a point light `idle_light_height` over
-  /// it, its colour its animation's alone, its range straying each frame, carried along the motion of a torrid zone.
-  /// One whose animation the library lacks, which the engine would refuse, lights nothing.
-  pub(crate) fn add_zone(&mut self, object: &AlifeObject, motion: Option<&AlifeObjectMotion>) {
+  /// it, its colour its animation's alone, its range straying each frame, carried along the motion of a torrid zone,
+  /// whose light also goes out far from the camera. One whose animation the library lacks, which the engine would
+  /// refuse, lights nothing.
+  pub(crate) fn add_zone(&mut self, object: &AlifeObject, torrid: Option<&AlifeObjectTorridZone>) {
     let Some(section) = self.find_section(&object.section) else {
       return;
     };
@@ -252,7 +257,15 @@ impl<'a> LightsPacker<'a> {
       is_shadowed,
       is_level: false,
       campfire: (section.get("class").map(str::trim) == Some(Self::CAMPFIRE_CLASS)).then_some(object.id),
-      motion: motion.and_then(AlifeObjectMotion::get_name).map(|name| LightMotion {
+      zone_sphere: torrid.and_then(|zone| {
+        ZoneSphere::of_zone(
+          &zone.base.base.shape,
+          (&object.position, &object.direction),
+          &zone.base.base.base.custom_data,
+        )
+        .map(|sphere| sphere.to_renderer_space(height))
+      }),
+      motion: torrid.and_then(|zone| zone.motion.get_name()).map(|name| LightMotion {
         name: name.to_owned(),
         height,
       }),
