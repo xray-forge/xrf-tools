@@ -132,7 +132,7 @@ dependencies = [
 ]
 
 [tasks.dev-app-optimized]
-description = "Run UI application in watch mode with Rust optimization level 1."
+description = "Run UI application in watch mode with the dev-optimized profile: workspace level 1, dependencies level 3."
 category = "Development"
 workspace = false
 dependencies = [

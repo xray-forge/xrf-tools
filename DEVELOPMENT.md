@@ -16,20 +16,21 @@ coordinate the CLI, desktop backend, and UI where necessary.
 `dev-app` starts the Tauri backend and the Vite UI in watch mode. Use `serve-backend` or `serve-ui` when working on one
 layer independently or need to attach debugger.
 
-Local development and tests use Rust optimization level 0 for faster builds. Use `cargo make dev-app-optimized` to
-run Tauri with optimization level 1 when working with expensive asset operations. This command trades longer builds
-for faster backend execution and sets the optimization override only for its process and children.
+Local development and tests use Rust optimization level 0 for faster builds. Use `cargo make dev-app-optimized` for
+renderer and viewer work or expensive asset operations: it runs Tauri with the `dev-optimized` profile (workspace crates
+at level 1, dependencies at level 3) in its own `target/dev-optimized` folder, so it never rebuilds what `dev-app`
+built. The IDE run configuration `tauri: dev-optimized` does the same.
 
 ## Task reference
 
 ### Development
 
-| Task                | What it does                                             |
-| ------------------- | -------------------------------------------------------- |
-| `dev-app`           | Runs the desktop backend and UI in watch mode.           |
-| `dev-app-optimized` | Runs the same watch mode with Rust optimization level 1. |
-| `serve-backend`     | Runs the desktop backend without the UI dev server.      |
-| `serve-ui`          | Runs the Vite UI dev server without the backend.         |
+| Task                | What it does                                               |
+| ------------------- | ---------------------------------------------------------- |
+| `dev-app`           | Runs the desktop backend and UI in watch mode.             |
+| `dev-app-optimized` | Runs the same watch mode with the `dev-optimized` profile. |
+| `serve-backend`     | Runs the desktop backend without the UI dev server.        |
+| `serve-ui`          | Runs the Vite UI dev server without the backend.           |
 
 ### Build
 

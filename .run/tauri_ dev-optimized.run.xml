@@ -1,10 +1,9 @@
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="tauri: dev-optimised" type="CargoCommandRunConfiguration" factoryName="Cargo Command" folderName="application">
-    <option name="command" value="tauri dev" />
+  <configuration default="false" name="tauri: dev-optimized" type="CargoCommandRunConfiguration" factoryName="Cargo Command" folderName="application">
+    <option name="command" value="tauri dev -- --profile dev-optimized" />
     <option name="workingDirectory" value="file://$PROJECT_DIR$/bin/xrf-app" />
     <envs>
       <env name="RUST_LOG" value="info" />
-      <env name="CARGO_PROFILE_DEV_OPT_LEVEL" value="1" />
     </envs>
     <option name="emulateTerminal" value="true" />
     <option name="channel" value="DEFAULT" />

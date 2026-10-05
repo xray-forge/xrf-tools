@@ -152,9 +152,18 @@ lto = true
 opt-level = "s"
 strip = true
 
-# Keep development builds fast; the optimized app task overrides this for Tauri.
+# Keep development builds fast.
 [profile.dev]
 opt-level = 0
+
+# Development with optimisation, in its own target folder: the workspace at level 1, near release on byte loops while
+# it still builds fast, and dependencies at 3, built once, where image encoding, shader compilation and decoding run.
+[profile.dev-optimized]
+inherits = "dev"
+opt-level = 1
+
+[profile.dev-optimized.package."*"]
+opt-level = 3
 
 [workspace.lints.rust]
 dead_code = "allow"
