@@ -34,7 +34,7 @@ export function ApplicationLauncherRowList({
               disableSticky={true}
               className={cn("bg-transparent px-2 pb-1 leading-[unset]", sectionIndex === 0 ? "pt-0" : "pt-4")}
             >
-              <ApplicationLauncherGroupHeading group={section.group} count={section.entries.length} />
+              <ApplicationLauncherGroupHeading group={section.group} />
             </ListSubheader>
           ) : null}
 

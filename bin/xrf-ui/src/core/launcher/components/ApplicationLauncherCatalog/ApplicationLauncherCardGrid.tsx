@@ -27,9 +27,7 @@ export function ApplicationLauncherCardGrid({
     <div data-testid={dataTestId} id={id} className={cn("flex flex-col gap-10", className)}>
       {sections.map((section: ICatalogSection) => (
         <div key={section.group?.id ?? "ranked"} className={"flex flex-col gap-3"}>
-          {section.group ? (
-            <ApplicationLauncherGroupHeading group={section.group} count={section.entries.length} />
-          ) : null}
+          {section.group ? <ApplicationLauncherGroupHeading group={section.group} /> : null}
 
           <div className={"grid grid-cols-[repeat(auto-fill,minmax(16rem,1fr))] gap-4"}>
             {section.entries.map(({ application, group }: ICatalogEntry) => (
