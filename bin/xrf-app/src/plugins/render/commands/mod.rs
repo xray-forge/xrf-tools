@@ -1,6 +1,7 @@
 pub mod attach_viewport;
 pub mod command_camera;
 pub mod configure;
+pub mod describe_frame;
 pub mod describe_load;
 pub mod describe_problems;
 pub mod describe_textures;

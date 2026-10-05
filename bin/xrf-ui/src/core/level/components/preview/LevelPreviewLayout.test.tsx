@@ -21,6 +21,7 @@ import { EMPTY_RENDER_FRAME_REPORT } from "@/core/render/lib/native/native-frame
 import { SettingsRendererDisplay } from "@/core/settings/components/SettingsDialog/SettingsRenderSection/SettingsRendererDisplay";
 import { SettingsService } from "@/core/settings/services/settings";
 import { ApplicationStatusBar } from "@/core/shell/footer/ApplicationStatusBar";
+import { mockRenderLoadReport } from "@/fixtures/mocks/render.mocks";
 import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
@@ -99,7 +100,7 @@ function renderLayout(
 
 /** How far the renderer has read a level of 24 sectors and 40 textures: sectors first, then the textures. */
 function toLoad(sectors: number, textures: number = 0): RenderLoadReport {
-  return { bytes: 0, isReady: false, sectors, sectorsTotal: 24, textures, texturesTotal: 40 };
+  return mockRenderLoadReport({ sectors, sectorsTotal: 24, textures, texturesTotal: 40 });
 }
 
 /** Opens the overlays, the readouts among them, and answers the popover. */

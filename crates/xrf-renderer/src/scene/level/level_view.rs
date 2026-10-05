@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use glam::{Mat4, Vec2, Vec3, Vec4};
 use xrf_engine_target::XrayEngine;
@@ -20,6 +20,7 @@ use crate::contract::render_level_hit::RenderLevelHit;
 use crate::contract::render_level_problems::RenderLevelProblems;
 use crate::contract::render_lights_report::RenderLightsReport;
 use crate::contract::render_lights_settings::RenderLightsSettings;
+use crate::contract::render_load_durations::RenderLoadDurations;
 use crate::contract::render_load_failure::RenderLoadFailure;
 use crate::contract::render_load_report::RenderLoadReport;
 use crate::contract::render_model_pose::RenderModelPose;
@@ -247,7 +248,7 @@ pub struct LevelView {
   is_shafted: bool,
   /// The sun's sprite as this frame's sky draws it: its texture, and its colour and radius.
   frame_sun_sprite: Option<(String, Vec4)>,
-  /// When the level was first shown, which the clouds drift from.
+  /// When the level began opening, which the clouds drift from and its load is timed from.
   started: Instant,
   shadows: LevelShadows,
   lights: LevelLights,
@@ -273,6 +274,8 @@ pub struct LevelView {
   skipped: Vec<RenderSectorSkip>,
   /// Milliseconds the last sector taken in took to put into the scene.
   sector_time: f32,
+  /// How long the level had been opening when each part of it finished.
+  load_durations: RenderLoadDurations,
   reported: Option<RenderLoadReport>,
 }
 
@@ -284,6 +287,8 @@ impl LevelView {
     source: Arc<dyn RenderLevelSource>,
     workers: &RenderWorkers,
   ) -> Self {
+    // Taken before anything is made, so the load is timed from the moment the level began opening.
+    let started: Instant = Instant::now();
     let uniform = |label: &str, size: usize| -> wgpu::Buffer {
       device.create_buffer(&wgpu::BufferDescriptor {
         label: Some(label),
@@ -378,7 +383,7 @@ impl LevelView {
       flares: LevelFlares::new(device),
       is_shafted: false,
       frame_sun_sprite: None,
-      started: Instant::now(),
+      started,
       shadows: LevelShadows::new(device),
       lights_settings: RenderLightsSettings::default(),
       occlusion_uniform: uniform("ambient occlusion", size_of::<AmbientOcclusionUniform>()),
@@ -396,6 +401,7 @@ impl LevelView {
       failed_sectors: Vec::new(),
       skipped: Vec::new(),
       sector_time: 0.0,
+      load_durations: RenderLoadDurations::default(),
       reported: None,
       source,
     }
@@ -525,6 +531,48 @@ impl LevelView {
         }
       }
     }
+
+    self.note_load_durations(textures);
+  }
+
+  /// Notes how long the level had been opening when each part of it finished, the first frame it is seen finished.
+  fn note_load_durations(&mut self, textures: &TextureCache) {
+    // Every part has finished by the time the whole has.
+    if self.load_durations.ready.is_some() {
+      return;
+    }
+
+    let elapsed: Duration = self.started.elapsed();
+    let finished: [bool; 6] = [
+      self.are_sectors_done(),
+      self.spawn.is_done(),
+      self.grass.is_loaded(),
+      self.lights.is_loaded(),
+      self.particles.is_loaded(),
+      self.describe_load(textures).is_ready,
+    ];
+    let RenderLoadDurations {
+      sectors,
+      spawn,
+      grass,
+      lights,
+      particles,
+      ready,
+    } = &mut self.load_durations;
+
+    for (duration, is_finished) in [sectors, spawn, grass, lights, particles, ready]
+      .into_iter()
+      .zip(finished)
+    {
+      if is_finished {
+        duration.get_or_insert(elapsed);
+      }
+    }
+  }
+
+  /// Whether every sector has been taken in or failed.
+  fn are_sectors_done(&self) -> bool {
+    (self.scene.sectors.len() + self.failed_sectors.len()) as u32 == self.loader.get_total()
   }
 
   /// How much each shader table entry draws across the sectors resident.
@@ -2002,11 +2050,10 @@ impl LevelView {
   }
 
   /// How far the level has loaded: its sectors taken in or failed, its spawn, its grass, lights and particles read, and
-  /// every texture it samples settled.
+  /// every texture it samples settled; and how long each took.
   pub fn describe_load(&self, textures: &TextureCache) -> RenderLoadReport {
     let settled: u32 = textures.count_settled(self.list_texture_slots());
     let total: u32 = self.list_texture_slots().count() as u32;
-    let arrived: u32 = (self.scene.sectors.len() + self.failed_sectors.len()) as u32;
     let is_read: bool =
       self.spawn.is_done() && self.grass.is_loaded() && self.lights.is_loaded() && self.particles.is_loaded();
 
@@ -2016,7 +2063,8 @@ impl LevelView {
       bytes: self.scene.get_bytes(),
       textures: settled,
       textures_total: total,
-      is_ready: arrived == self.loader.get_total() && is_read && settled == total,
+      is_ready: self.are_sectors_done() && is_read && settled == total,
+      durations: self.load_durations,
     }
   }
 }

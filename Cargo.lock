@@ -7603,6 +7603,7 @@ dependencies = [
  "xrf-material",
  "xrf-math",
  "xrf-particles",
+ "xrf-utils",
  "xrf-visual",
 ]
 

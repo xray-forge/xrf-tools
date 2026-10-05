@@ -477,6 +477,25 @@ export type RenderLightsSettings = {
 };
 
 /**
+ * How long a viewport's level had been opening when each part of it finished, each noted the first frame it is seen
+ * finished; none for a part not finished yet.
+ */
+export type RenderLoadDurations = {
+  /** Every sector taken in or failed. */
+  sectors: number | null;
+  /** Every spawned object's model in the scene. */
+  spawn: number | null;
+  /** The grass read. */
+  grass: number | null;
+  /** The local lights read. */
+  lights: number | null;
+  /** The particle systems read. */
+  particles: number | null;
+  /** Everything resident, every texture settled last: the whole load. */
+  ready: number | null;
+};
+
+/**
  * Something of a level that could not be read, by what names it, and why: a sector by its index, a spawned model by
  * its visual's name.
  */
@@ -486,8 +505,8 @@ export type RenderLoadFailure = {
 };
 
 /**
- * How far a viewport's level has been read and put on the GPU, sent as `RenderViewportEvent::Load` and answered to a
- * caller polling `describe_load`.
+ * How far a viewport's level has been read and put on the GPU, sent as `RenderViewportEvent::Load` for the level drawn
+ * and answered to a caller polling `describe_load` for the level last asked for.
  */
 export type RenderLoadReport = {
   /** Sectors resident on the GPU. */
@@ -505,6 +524,8 @@ export type RenderLoadReport = {
    * particles read, and every texture settled.
    */
   isReady: boolean;
+  /** How long each part took to finish, timed from when the level began opening. */
+  durations: RenderLoadDurations;
 };
 
 /**

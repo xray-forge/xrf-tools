@@ -2,21 +2,10 @@ import { describe, expect, it } from "@jest/globals";
 
 import { RenderLoadReport } from "@/core/ipc/types/xrf-renderer";
 import { describeLevelLoad } from "@/core/level/lib/load/level-load-progress";
+import { mockRenderLoadReport } from "@/fixtures/mocks/render.mocks";
 
-/**
- * @param load - The fields that differ from a level whose sectors and textures are all in.
- * @returns A report short of ready.
- */
 function mockLoad(load: Partial<RenderLoadReport>): RenderLoadReport {
-  return {
-    sectors: 118,
-    sectorsTotal: 118,
-    bytes: 0,
-    textures: 1062,
-    texturesTotal: 1062,
-    isReady: false,
-    ...load,
-  };
+  return mockRenderLoadReport({ sectors: 118, sectorsTotal: 118, textures: 1062, texturesTotal: 1062, ...load });
 }
 
 describe("describeLevelLoad", () => {

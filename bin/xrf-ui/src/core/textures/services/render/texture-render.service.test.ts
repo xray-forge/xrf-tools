@@ -13,6 +13,7 @@ import { DEFAULT_TEXTURE_LIGHTING } from "@/core/textures/lib/texture-lighting";
 import { TextureRenderService } from "@/core/textures/services/render";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { TextureViewService } from "@/core/textures/services/view";
+import { mockRenderLoadReport } from "@/fixtures/mocks/render.mocks";
 import {
   getMockChannels,
   MockChannel,
@@ -130,7 +131,14 @@ describe("TextureRenderService", () => {
     });
     emit({
       kind: ERenderViewportEvent.LOAD,
-      report: { bytes: 0, isReady: true, sectors: 0, sectorsTotal: 0, textures: 1, texturesTotal: 1 },
+      report: mockRenderLoadReport({
+        bytes: 0,
+        isReady: true,
+        sectors: 0,
+        sectorsTotal: 0,
+        textures: 1,
+        texturesTotal: 1,
+      }),
     });
     await flush();
 

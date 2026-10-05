@@ -10,10 +10,16 @@ import {
   RenderCameraCommand,
   RenderInputEvent,
   RenderLevelProblems,
+  RenderLightsReport,
+  RenderLoadDurations,
+  RenderMemoryReport,
   RenderModelPose,
   RenderOverlay,
+  RenderParticlesReport,
+  RenderPassCost,
   RenderSelectionTarget,
   RenderSettings,
+  RenderStaticReport,
   RenderSurfaceGeometry,
   RenderTextureReport,
   RenderViewOptions,
@@ -39,8 +45,49 @@ export const renderCommands = {
   /** Apply settings every native viewport draws with. */
   configure: (settings: RenderSettings) => __TAURI_INVOKE<void>("plugin:render|configure", { settings }),
   /**
-   * Say how far a viewport's level has loaded, as its `Load` events do, for a caller polling rather than listening; none
-   * where it draws no level.
+   * Say what a viewport's frames cost when it last reported them, as its `Frame` events do, for a caller polling rather
+   * than listening; none before its first report.
+   */
+  describeFrame: (viewport: RenderViewportId) =>
+    __TAURI_INVOKE<{
+      /** Frames presented a second over the reported span. */
+      framesPerSecond: number | null;
+      /** Mean milliseconds between presented frames. */
+      frameTime: number | null;
+      /** Longest milliseconds between two presented frames. */
+      frameTimeMax: number | null;
+      /** Mean milliseconds of the render thread's own work a frame: recording and submitting, not waiting. */
+      cpuTime: number | null;
+      /** Drawn width, in device pixels. */
+      width: number;
+      /** Drawn height, in device pixels. */
+      height: number;
+      /** The scene's width as rendered, smaller than the drawn one where it is upscaled. */
+      renderWidth: number;
+      /** And its height. */
+      renderHeight: number;
+      /** The graphics API drawn with. */
+      backend: string;
+      /** The GPU drawn on. */
+      adapter: string;
+      /** Whether its passes were timed on the GPU over the span. */
+      isGpuTimed: boolean;
+      /** What each pass cost on the GPU, in frame order; none while untimed. */
+      passes: Array<RenderPassCost>;
+      /** The level's static draws' pools and cull, empty without a level. */
+      staticDraws: RenderStaticReport;
+      /** The level's local lights, empty without a level. */
+      lights: RenderLightsReport;
+      /** The level's particle systems, empty without a level. */
+      particles: RenderParticlesReport;
+      /** Milliseconds the last sector taken in took to put into the scene, on the render thread. */
+      sectorTime: number | null;
+      /** What the renderer holds on the GPU. */
+      memory: RenderMemoryReport;
+    } | null>("plugin:render|describe_frame", { viewport }),
+  /**
+   * Say how far the level a viewport was last asked to show has loaded, for a caller polling rather than listening; none
+   * before its view is made.
    */
   describeLoad: (viewport: RenderViewportId) =>
     __TAURI_INVOKE<{
@@ -59,6 +106,8 @@ export const renderCommands = {
        * particles read, and every texture settled.
        */
       isReady: boolean;
+      /** How long each part took to finish, timed from when the level began opening. */
+      durations: RenderLoadDurations;
     } | null>("plugin:render|describe_load", { viewport }),
   /** Say what a viewport's level could not draw: drawables the packer left out, sectors and spawned models unread. */
   describeProblems: (viewport: RenderViewportId) =>

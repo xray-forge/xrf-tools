@@ -8,6 +8,7 @@ use glam::{Mat4, Vec2, Vec3, Vec4};
 use crate::camera::camera_view::CameraView;
 use crate::context::gpu_context::GpuContext;
 use crate::context::render_backend::RenderBackend;
+use crate::contract::render_frame_report::RenderFrameReport;
 use crate::contract::render_level_problems::RenderLevelProblems;
 use crate::contract::render_load_report::RenderLoadReport;
 use crate::contract::render_rect::RenderRect;
@@ -273,13 +274,17 @@ impl RenderThread {
         let described: Option<RenderLoadReport> = self
           .gpu
           .as_ref()
-          .zip(
-            self
-              .viewports
-              .get(&id)
-              .and_then(|viewport| viewport.level_view.as_ref()),
-          )
+          .zip(self.viewports.get(&id).and_then(RenderViewport::get_asked_view))
           .map(|(gpu, level)| level.describe_load(&gpu.textures));
+
+        let _ = reply.send(described);
+      }
+      RenderCommand::DescribeFrame { id, reply } => {
+        let described: Option<RenderFrameReport> = self
+          .viewports
+          .get(&id)
+          .and_then(RenderViewport::get_frame_report)
+          .cloned();
 
         let _ = reply.send(described);
       }
