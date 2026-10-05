@@ -33,6 +33,7 @@ pub(crate) mod particle_sprite;
 pub(crate) mod placed_effect;
 pub(crate) mod posed_skeleton;
 pub(crate) mod rain_cover;
+pub(crate) mod scene_renderer;
 pub(crate) mod shadow_cascade_view;
 pub(crate) mod shadow_frame;
 pub(crate) mod shadow_sway;

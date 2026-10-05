@@ -150,7 +150,7 @@ impl RenderViewport {
     [&self.incoming_view, &self.level_view]
       .into_iter()
       .flatten()
-      .find(|view| view.is_showing(source))
+      .find(|view| view.get_scene().is_showing(source))
   }
 
   /// What its frames cost when it last reported them, none before its first report.
@@ -179,7 +179,7 @@ impl RenderViewport {
     let particles: RenderParticlesReport = self
       .level_view
       .as_mut()
-      .map_or_else(Default::default, LevelView::take_particles_report);
+      .map_or_else(Default::default, |level| level.get_scene_mut().take_particles_report());
     let (is_gpu_timed, passes): (bool, Vec<RenderPassCost>) =
       self.runtime.as_mut().map_or((false, Vec::new()), |runtime| {
         (
@@ -206,13 +206,13 @@ impl RenderViewport {
     let (render_width, render_height): (u32, u32) = self
       .level_view
       .as_ref()
-      .and_then(LevelView::get_render_size)
+      .and_then(|level| level.get_state().get_render_size())
       .unwrap_or((rect.width, rect.height));
 
     let scene: u64 = [&self.level_view, &self.incoming_view]
       .into_iter()
       .flatten()
-      .map(LevelView::get_buffer_bytes)
+      .map(|level| level.get_scene().get_buffer_bytes())
       .sum();
 
     let report: RenderFrameReport = RenderFrameReport {
@@ -232,7 +232,10 @@ impl RenderViewport {
       static_draws,
       lights,
       particles,
-      sector_time: self.level_view.as_ref().map_or(0.0, LevelView::get_sector_time),
+      sector_time: self
+        .level_view
+        .as_ref()
+        .map_or(0.0, |level| level.get_scene().get_sector_time()),
       memory: RenderMemoryReport {
         textures: texture_bytes,
         scene,
@@ -282,7 +285,10 @@ impl RenderViewport {
 
   /// Publishes where the weather and its ambient effects stand when they changed, a few times a second at most.
   pub fn publish_weather(&mut self, now: Instant) {
-    let ambient: Option<RenderAmbientReport> = self.level_view.as_ref().and_then(LevelView::get_ambient_report);
+    let ambient: Option<RenderAmbientReport> = self
+      .level_view
+      .as_ref()
+      .and_then(|level| level.get_scene().get_ambient_report());
 
     if let Some(report) = self.weather.take_report(now, ambient) {
       self.send(RenderViewportEvent::Weather { report });

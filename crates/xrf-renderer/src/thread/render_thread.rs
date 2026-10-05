@@ -258,7 +258,7 @@ impl RenderThread {
           .viewports
           .get(&id)
           .and_then(|viewport| viewport.level_view.as_ref())
-          .map(|level| level.measure_surfaces())
+          .map(|level| level.get_scene().measure_surfaces())
           .unwrap_or_default();
 
         let _ = reply.send(measured);
@@ -273,7 +273,7 @@ impl RenderThread {
               .get(&id)
               .and_then(|viewport| viewport.level_view.as_ref()),
           )
-          .map(|(gpu, level)| level.describe_textures(&gpu.textures))
+          .map(|(gpu, level)| level.get_scene().describe_textures(&gpu.textures))
           .unwrap_or_default();
 
         let _ = reply.send(described);
@@ -283,7 +283,7 @@ impl RenderThread {
           .gpu
           .as_ref()
           .zip(self.viewports.get(&id).and_then(RenderViewport::get_asked_view))
-          .map(|(gpu, level)| level.describe_load(&gpu.textures));
+          .map(|(gpu, level)| level.get_scene().describe_load(&gpu.textures));
 
         let _ = reply.send(described);
       }
@@ -301,7 +301,7 @@ impl RenderThread {
           .viewports
           .get(&id)
           .and_then(|viewport| viewport.level_view.as_ref())
-          .map(LevelView::describe_problems)
+          .map(|level| level.get_scene().describe_problems())
           .unwrap_or_default();
 
         let _ = reply.send(described);
@@ -311,7 +311,7 @@ impl RenderThread {
           .viewports
           .get(&id)
           .and_then(|viewport| viewport.level_view.as_ref())
-          .and_then(|level| level.get_object_sphere(object))
+          .and_then(|level| level.get_scene().get_object_sphere(object))
           .map(|sphere| sphere.to_array());
 
         let _ = reply.send(sphere);
@@ -360,7 +360,7 @@ impl RenderThread {
           .get_mut(&id)
           .and_then(|viewport| viewport.level_view.as_mut())
         {
-          level.play_ambient_now();
+          level.get_scene_mut().play_ambient_now();
         }
       }
     }
@@ -529,8 +529,12 @@ impl RenderThread {
             .values()
             .flat_map(|viewport| viewport.level_view.iter().chain(viewport.incoming_view.iter()))
         };
-        let sampled: HashSet<u32> = views().flat_map(LevelView::list_texture_slots).collect();
-        let environments: HashSet<u32> = views().flat_map(LevelView::list_environment_slots).collect();
+        let sampled: HashSet<u32> = views()
+          .flat_map(|level| level.get_scene().list_texture_slots())
+          .collect();
+        let environments: HashSet<u32> = views()
+          .flat_map(|level| level.get_scene().list_environment_slots())
+          .collect();
 
         gpu.textures.retain(&sampled);
         gpu.textures.retain_environments(&environments);
@@ -562,7 +566,7 @@ impl RenderThread {
       if let Some(report) = viewport
         .level_view
         .as_mut()
-        .and_then(|level| level.take_report(&gpu.textures))
+        .and_then(|level| level.get_scene_mut().take_report(&gpu.textures))
       {
         viewport.report_load(report);
       }
@@ -709,10 +713,9 @@ impl RenderThread {
       });
       let drawn: CameraView = view.jittered(jitter, Vec2::new(drawn_rect.width as f32, drawn_rect.height as f32));
       let unjittered: Mat4 = view.get_view_projection();
-      let motion: (Mat4, Mat4) = viewport
-        .level_view
-        .as_mut()
-        .map_or((unjittered, unjittered), |level| level.next_motion(unjittered));
+      let motion: (Mat4, Mat4) = viewport.level_view.as_mut().map_or((unjittered, unjittered), |level| {
+        level.get_state_mut().next_motion(unjittered)
+      });
 
       let selection: Option<StaticSelection> = viewport
         .level_view
@@ -744,13 +747,13 @@ impl RenderThread {
       if viewport
         .level_view
         .as_ref()
-        .is_some_and(|level| !level.is_showing(source))
+        .is_some_and(|level| !level.get_scene().is_showing(source))
       {
         let incoming: &mut LevelView = viewport
           .incoming_view
           .get_or_insert_with(|| LevelView::new(device, queue, &gpu.view_layout, Arc::clone(source), &self.workers));
 
-        incoming.set_model_pose(&viewport.model_pose);
+        incoming.get_scene_mut().set_model_pose(&viewport.model_pose);
         incoming.load(
           device,
           queue,
@@ -761,7 +764,7 @@ impl RenderThread {
           &options,
         );
 
-        if incoming.is_ready(&gpu.textures) {
+        if incoming.get_scene().is_ready(&gpu.textures) {
           viewport.level_view = viewport.incoming_view.take();
         }
       }
@@ -779,7 +782,7 @@ impl RenderThread {
         viewport.overlays_version,
         viewport.selection.as_ref(),
       );
-      level.set_model_pose(&viewport.model_pose);
+      level.get_scene_mut().set_model_pose(&viewport.model_pose);
       level.load(
         device,
         queue,

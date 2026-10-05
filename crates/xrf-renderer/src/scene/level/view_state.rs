@@ -92,4 +92,15 @@ impl ViewState {
       pick_view: None,
     }
   }
+
+  /// This frame's unjittered view projection and the last one's, which the surfaces' motion is measured between; the
+  /// same twice for a first frame.
+  pub fn next_motion(&mut self, current: Mat4) -> (Mat4, Mat4) {
+    (current, self.motion_previous.replace(current).unwrap_or(current))
+  }
+
+  /// The size its scene is rendered at, once its targets are made.
+  pub fn get_render_size(&self) -> Option<(u32, u32)> {
+    self.targets.as_ref().map(|it| (it.width, it.height))
+  }
 }
