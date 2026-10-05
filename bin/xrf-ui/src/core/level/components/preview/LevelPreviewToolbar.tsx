@@ -3,6 +3,7 @@ import { ReactElement, ReactNode, useCallback } from "react";
 
 import { LevelSunDescription, LevelWeatherTexture } from "@/core/ipc/types/xrf-app";
 import { ThunderboltCollection } from "@/core/ipc/types/xrf-environment";
+import { RenderGraphSettings } from "@/core/ipc/types/xrf-renderer";
 import { LevelAntialiasingAction } from "@/core/level/components/preview/LevelAntialiasingAction";
 import { LevelCullingAction } from "@/core/level/components/preview/LevelCullingAction";
 import { LevelFogAction } from "@/core/level/components/preview/LevelFogAction";
@@ -63,6 +64,8 @@ interface ILevelPreviewToolbarProps extends BaseComponentProps {
   settings: IRenderFeatureSettings;
   /** Whether the settings time every viewport's passes. */
   isGpuTimed: boolean;
+  /** Which of the frame graph's mechanisms the frames compile with. */
+  graph: RenderGraphSettings;
   /** What the viewport shows of its surfaces. */
   shading: ELevelShading;
   /** Value pickers the surface contributes, drawn last, as every toolbar in this application orders them. */
@@ -76,6 +79,7 @@ interface ILevelPreviewToolbarProps extends BaseComponentProps {
   onChangeFeatures: (features: ILevelFeatureOptions) => void;
   /** Sets in the settings whether every viewport times its passes. */
   onChangeGpuTimed: (isGpuTimed: boolean) => void;
+  onChangeGraph: (graph: RenderGraphSettings) => void;
   onChangeShading: (shading: ELevelShading) => void;
   onBack?: () => void;
 }
@@ -104,6 +108,7 @@ export function LevelPreviewToolbar({
   featureView,
   settings,
   isGpuTimed,
+  graph,
   shading,
   actions,
   onChangeOptions,
@@ -113,6 +118,7 @@ export function LevelPreviewToolbar({
   onChangeLod,
   onChangeFeatures,
   onChangeGpuTimed,
+  onChangeGraph,
   onChangeShading,
   onBack,
 }: ILevelPreviewToolbarProps): ReactElement {
@@ -144,6 +150,8 @@ export function LevelPreviewToolbar({
             isGpuTimed={isGpuTimed}
             onToggle={onToggle}
             onChangeGpuTimed={onChangeGpuTimed}
+            graph={graph}
+            onChangeGraph={onChangeGraph}
           />
 
           <EditorToolbarSeparator />

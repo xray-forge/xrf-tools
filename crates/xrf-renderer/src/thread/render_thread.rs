@@ -6,7 +6,7 @@ use std::time::{Duration, Instant};
 use glam::{Mat4, Vec2, Vec4};
 use xrf_error::{XrfError, XrfResult};
 use xrf_renderer_core::{
-  ExecutedGraph, FrameGraph, GraphBindings, GraphColorAttachment, GraphCompileOptions, GraphRuntime, GraphTexture,
+  ExecutedGraph, FrameGraph, GraphBindings, GraphColorAttachment, GraphReport, GraphRuntime, GraphTexture,
   GraphTextureAccess,
 };
 
@@ -25,6 +25,7 @@ use crate::contract::render_view_options::RenderViewOptions;
 use crate::contract::render_viewport_id::RenderViewportId;
 use crate::frame::frame_capture::{CaptureReply, FrameCapture};
 use crate::frame::frame_phases::FramePhases;
+use crate::frame::frame_statistics::REPORT_INTERVAL;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::host::render_bundle::RenderBundle;
 use crate::host::render_scene_feedback::RenderSceneFeedback;
@@ -92,6 +93,8 @@ pub struct RenderThread {
   gpu: Option<GpuState>,
   /// What the frames' graphs keep between frames, their passes' GPU timer among them; made with the GPU.
   runtime: Option<GraphRuntime>,
+  /// What the last described frame's graph came to, and when it was described: as often as the viewports report.
+  graph_report: Option<(Instant, GraphReport)>,
   /// Why the GPU last failed to start, and when.
   failure: Option<(String, Instant)>,
   /// The windows viewports are drawn into, by their key.
@@ -132,6 +135,7 @@ impl RenderThread {
       shaders: ShaderLibrary::default(),
       gpu: None,
       runtime: None,
+      graph_report: None,
       failure: None,
       hosts: HashMap::new(),
       viewports: BTreeMap::new(),
@@ -575,7 +579,10 @@ impl RenderThread {
         now,
         (backend, adapter),
         (gpu.textures.get_bytes(), &mut self.scenes),
-        self.runtime.as_mut().map(|runtime| &mut runtime.timer),
+        (
+          self.runtime.as_mut().map(|runtime| &mut runtime.timer),
+          self.graph_report.as_ref().map(|(_, report)| report),
+        ),
       );
 
       if let Some(scene) = viewport.shown.as_ref().and_then(|(id, _)| self.scenes.get(id)) {
@@ -932,9 +939,18 @@ impl RenderThread {
         }
       }
 
-      graph
-        .compile(&GraphCompileOptions::default())
-        .and_then(|compiled| compiled.execute((device, queue), runtime, &bindings))
+      let graph_report: &mut Option<(Instant, GraphReport)> = &mut self.graph_report;
+
+      graph.compile(&self.settings.graph.to_options()).and_then(|compiled| {
+        if graph_report
+          .as_ref()
+          .is_none_or(|(described, _)| started.duration_since(*described) >= REPORT_INTERVAL)
+        {
+          *graph_report = Some((started, compiled.describe()));
+        }
+
+        compiled.execute((device, queue), runtime, &bindings)
+      })
     };
     let executed: ExecutedGraph = match executed {
       Ok(executed) => executed,

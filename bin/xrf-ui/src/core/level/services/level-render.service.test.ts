@@ -30,6 +30,7 @@ import { LevelViewService } from "@/core/level/services/level-view.service";
 import { LevelViewportService } from "@/core/level/services/level-viewport.service";
 import { LevelWeatherService } from "@/core/level/services/level-weather.service";
 import { EMPTY_RENDER_FRAME_PHASES } from "@/core/render/lib/native/native-frame-report";
+import { DEFAULT_RENDER_GRAPH_SETTINGS } from "@/core/render/lib/settings/render-graph-settings";
 import { ERenderResolution } from "@/core/render/lib/settings/render-resolution";
 import { SettingsService } from "@/core/settings/services/settings";
 import { mockLevelSpawnObject, mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
@@ -56,6 +57,7 @@ const REPORT: RenderFrameReport = {
   cpuTime: 0.8,
   frameTime: 6.25,
   frameTimeMax: 9,
+  graph: null,
   framesPerSecond: 160,
   height: 600,
   isGpuTimed: true,
@@ -157,7 +159,15 @@ describe("LevelRenderService", () => {
     await mockAttached();
 
     expect(sent("attach_viewport")).toEqual([{ events: getMockChannels()[0], window: "main" }]);
-    expect(sent("configure")).toEqual([{ settings: { frameRate: { isVsync: true, limit: null }, isGpuTimed: false } }]);
+    expect(sent("configure")).toEqual([
+      {
+        settings: {
+          frameRate: { isVsync: true, limit: null },
+          graph: DEFAULT_RENDER_GRAPH_SETTINGS,
+          isGpuTimed: false,
+        },
+      },
+    ]);
 
     const camera: WorldCamera = sent("set_camera").at(-1)?.camera as WorldCamera;
 

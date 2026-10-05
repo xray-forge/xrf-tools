@@ -2,12 +2,13 @@ use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
 use glam::Vec3;
-use xrf_renderer_core::{FrameGraph, GraphPassTime, GraphTimer};
+use xrf_renderer_core::{FrameGraph, GraphPassTime, GraphReport, GraphTimer};
 
 use crate::contract::render_applied_environment::RenderAppliedEnvironment;
 use crate::contract::render_applied_fog::RenderAppliedFog;
 use crate::contract::render_applied_report::RenderAppliedReport;
 use crate::contract::render_frame_report::RenderFrameReport;
+use crate::contract::render_graph_report::RenderGraphReport;
 use crate::contract::render_level_hit::RenderLevelHit;
 use crate::contract::render_light_scales::RenderLightScales;
 use crate::contract::render_lights_report::RenderLightsReport;
@@ -183,14 +184,14 @@ impl RenderViewport {
   }
 
   /// Reports the frames since the last report, once one is due: `texture_bytes` is what every viewport's textures hold
-  /// on the GPU together, `scenes` every scene, its own among them, and `timer` what the frames' passes cost, its own
-  /// and its window's taken from it.
+  /// on the GPU together, `scenes` every scene, its own among them, `timer` what the frames' passes cost, its own and
+  /// its window's taken from it, and `graph` what the frame graph made of the latest described frame.
   pub fn report(
     &mut self,
     now: Instant,
     (backend, adapter): (&str, &str),
     (texture_bytes, scenes): (u64, &mut HashMap<RenderSceneId, LevelScene>),
-    timer: Option<&mut GraphTimer>,
+    (timer, graph): (Option<&mut GraphTimer>, Option<&GraphReport>),
   ) {
     let Some(summary) = self.statistics.take(now) else {
       return;
@@ -275,6 +276,7 @@ impl RenderViewport {
       lights,
       particles,
       sector_time,
+      graph: graph.map(|graph| Box::new(RenderGraphReport::of(graph, self.id.0, FrameGraph::FRAME_OWNER))),
       memory: RenderMemoryReport {
         textures: texture_bytes,
         scene,

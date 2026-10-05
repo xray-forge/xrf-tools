@@ -6,6 +6,7 @@ import { invoke as __TAURI_INVOKE } from "@/core/ipc/invoke";
 import { ETextureSurfaceAlpha, ETextureSurfaceShape, TextureSource, ViewportEvent } from "@/core/ipc/types/xrf-app";
 import {
   RenderFramePhases,
+  RenderGraphReport,
   RenderLightsReport,
   RenderLoadDurations,
   RenderMemoryReport,
@@ -89,6 +90,8 @@ export const renderCommands = {
       sectorTime: number | null;
       /** What the renderer holds on the GPU. */
       memory: RenderMemoryReport;
+      /** What the frame graph made of its latest frame, none before its first. */
+      graph: RenderGraphReport | null;
     } | null>("plugin:render|describe_frame", { viewport }),
   /**
    * Say how far the level a viewport was last asked to show has loaded, for a caller polling rather than listening; none
