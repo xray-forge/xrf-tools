@@ -1,10 +1,14 @@
 use glam::{Vec3, Vec4};
+use xrf_renderer_core::{
+  FrameGraph, GraphBindings, GraphBuffer, GraphBufferAccess, GraphDepthAttachment, GraphTexture,
+};
 
 use crate::camera::camera_view::CameraView;
 use crate::contract::render_rect::RenderRect;
 use crate::frame::sun_shadow_maps::SunShadowMaps;
 use crate::pass::camera_uniform::CameraUniform;
 use crate::pass::level_passes::LevelPasses;
+use crate::pass::static_cull_params::StaticCullParams;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::shadow_frame::ShadowFrame;
 use crate::scene::static_scene::growable_buffer::GrowableBuffer;
@@ -143,7 +147,10 @@ impl RainCover {
         frame.cull_params,
         frame.pyramid,
         frame.occlusion,
-        (self.lists.get_buffer(), &self.args),
+        (
+          self.lists.get_buffer().as_entire_buffer_binding(),
+          self.args.as_entire_buffer_binding(),
+        ),
       );
 
       self.cull_group = Some((cull_key, group));
@@ -155,7 +162,7 @@ impl RainCover {
       let groups: [wgpu::BindGroup; StaticLayout::COUNT] =
         passes
           .gbuffer
-          .create_layout_groups(device, scene, self.lists.get_buffer());
+          .create_layout_groups(device, scene, self.lists.get_buffer().as_entire_buffer_binding());
 
       self.draw_groups = Some((draw_key, groups));
     }
@@ -168,23 +175,42 @@ impl RainCover {
     self.drawn = Some(state);
   }
 
-  /// Culls and draws it, where this frame's `prepare` found it due.
-  pub fn record(&self, encoder: &mut wgpu::CommandEncoder, passes: LevelPasses<'_>, frame: &ShadowFrame<'_>) {
+  /// Declares its cull and its draw, where this frame's `prepare` found it due.
+  pub fn add_passes<'a>(
+    &'a self,
+    graph: &mut FrameGraph<'a>,
+    bindings: &mut GraphBindings<'a>,
+    passes: LevelPasses<'a>,
+    (params, textures): (&'a StaticCullParams, &'a wgpu::BindGroup),
+  ) {
     let (true, Some((_, cull_group)), Some((_, draw_groups))) = (self.is_due, &self.cull_group, &self.draw_groups)
     else {
       return;
     };
+    let args: GraphBuffer = bindings.import_buffer(graph, "rain cover draw arguments", &self.args);
+    let lists: GraphBuffer = bindings.import_buffer(graph, "rain cover lists", self.lists.get_buffer());
+    let depth: GraphTexture = bindings.import_view(graph, "rain cover", &self.depth);
 
-    passes
-      .cull
-      .dispatch_shadow(encoder, &self.view, cull_group, frame.params, false);
-    passes.shadow.draw(
-      encoder,
-      &self.depth,
-      &self.view,
-      draw_groups,
-      frame.textures.get_bind_group(),
-      &self.args,
-    );
+    graph
+      .add_compute_pass("rain cover cull")
+      .buffer(args, GraphBufferAccess::StorageReadWrite)
+      .buffer(lists, GraphBufferAccess::StorageWrite)
+      .record(move |context| {
+        passes
+          .cull
+          .record_shadow(context.get_pass(), &self.view, cull_group, params, false);
+      });
+    graph
+      .add_raster_pass("rain cover")
+      .depth(GraphDepthAttachment::new(depth, wgpu::LoadOp::Clear(0.0)))
+      .buffer(args, GraphBufferAccess::Indirect)
+      .buffer(lists, GraphBufferAccess::StorageRead)
+      .record(move |context| {
+        let args: &wgpu::Buffer = context.get_buffer(args);
+
+        passes
+          .shadow
+          .record(context.get_pass(), (&self.view, draw_groups, textures), args);
+      });
   }
 }

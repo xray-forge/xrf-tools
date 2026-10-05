@@ -3,6 +3,7 @@ use std::time::Instant;
 
 use glam::{Mat4, Vec3, Vec4};
 use xrf_math::{EPS_L, Vector3d};
+use xrf_renderer_core::{FrameGraph, GraphBindings};
 use xrf_visual::{LightDescription, LightKind, LightsDescription};
 
 use crate::contract::render_lights_report::RenderLightsReport;
@@ -17,6 +18,7 @@ use crate::pass::level_passes::LevelPasses;
 use crate::pass::light_buffers::LightBuffers;
 use crate::pass::light_record::{LIGHT_NO_CONE, LIGHT_NO_PROJECTOR, LightRecord};
 use crate::pass::lights_uniform::LightsUniform;
+use crate::pass::static_cull_params::StaticCullParams;
 use crate::scene::level::level_light_shadows::{LIGHT_SHADOW_ATLAS_SIZE, LevelLightShadows};
 use crate::scene::level::level_object_motions::LevelObjectMotions;
 use crate::scene::level::light_shadow_set::LightShadowSet;
@@ -24,6 +26,7 @@ use crate::scene::level::lights_frame::LightsFrame;
 use crate::scene::level::loader_answer::take_answer;
 use crate::scene::level::shadow_frame::ShadowFrame;
 use crate::scene::level::zone_fast_mode::ZONE_FAST_DISTANCE;
+use crate::scene::static_scene::static_scene::StaticScene;
 use crate::scene::texture::texture_cache::{MISSING_SLOT, TextureCache};
 use crate::scene::texture::texture_role::TextureRole;
 use crate::thread::loader_receiver::LoaderReceiver;
@@ -352,9 +355,15 @@ impl LevelLights {
     self.shadows.prepare(device, queue, encoder, passes, frame);
   }
 
-  /// Culls and draws the shadow faces this frame's `prepare_shadows` readied.
-  pub fn record_shadows(&self, encoder: &mut wgpu::CommandEncoder, passes: LevelPasses<'_>, frame: &ShadowFrame<'_>) {
-    self.shadows.record(encoder, passes, frame);
+  /// Declares the culls and draws of the shadow faces this frame's `prepare_shadows` readied.
+  pub fn add_shadow_passes<'a>(
+    &'a self,
+    graph: &mut FrameGraph<'a>,
+    bindings: &mut GraphBindings<'a>,
+    passes: LevelPasses<'a>,
+    frame: (&'a StaticScene, &'a StaticCullParams, &'a wgpu::BindGroup),
+  ) {
+    self.shadows.add_passes(graph, bindings, passes, frame);
   }
 
   /// Clears the binning's overflow words before it counts this frame's.

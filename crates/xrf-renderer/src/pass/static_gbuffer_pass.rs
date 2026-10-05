@@ -100,7 +100,7 @@ impl StaticGBufferPass {
   /// The scene's buffers as each layout's draws and the impostors' read them.
   pub fn create_bind_groups(&self, device: &wgpu::Device, scene: &StaticScene) -> StaticDrawGroups {
     let layouts: [wgpu::BindGroup; StaticLayout::COUNT] =
-      self.create_layout_groups(device, scene, scene.lists.get_buffer());
+      self.create_layout_groups(device, scene, scene.lists.get_buffer().as_entire_buffer_binding());
     let impostors: wgpu::BindGroup = device.create_bind_group(&wgpu::BindGroupDescriptor {
       label: Some("static impostors"),
       layout: &self.impostor_layout,
@@ -121,26 +121,33 @@ impl StaticGBufferPass {
     &self,
     device: &wgpu::Device,
     scene: &StaticScene,
-    lists: &wgpu::Buffer,
+    lists: wgpu::BufferBinding<'_>,
   ) -> [wgpu::BindGroup; StaticLayout::COUNT] {
     StaticLayout::ALL.map(|layout| {
-      let buffers: [&wgpu::Buffer; 10] = [
-        scene.clusters.get_buffer(),
-        scene.slots.get_buffer(),
-        scene.places.get_buffer(),
-        scene.surfaces.get_buffer(),
-        scene.indices.get_buffer(),
-        lists,
-        scene.words[layout.get_index()].get_buffer(),
-        &scene.wind,
-        scene.skins.get_buffer(),
-        scene.bones.get_buffer(),
+      let resources: [wgpu::BindingResource<'_>; 10] = [
+        scene.clusters.get_buffer().as_entire_binding(),
+        scene.slots.get_buffer().as_entire_binding(),
+        scene.places.get_buffer().as_entire_binding(),
+        scene.surfaces.get_buffer().as_entire_binding(),
+        scene.indices.get_buffer().as_entire_binding(),
+        wgpu::BindingResource::Buffer(lists.clone()),
+        scene.words[layout.get_index()].get_buffer().as_entire_binding(),
+        scene.wind.as_entire_binding(),
+        scene.skins.get_buffer().as_entire_binding(),
+        scene.bones.get_buffer().as_entire_binding(),
       ];
 
       device.create_bind_group(&wgpu::BindGroupDescriptor {
         label: Some("static draw"),
         layout: &self.layout,
-        entries: &to_entries(&buffers),
+        entries: &resources
+          .into_iter()
+          .enumerate()
+          .map(|(binding, resource)| wgpu::BindGroupEntry {
+            binding: binding as u32,
+            resource,
+          })
+          .collect::<Vec<_>>(),
       })
     })
   }

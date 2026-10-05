@@ -101,17 +101,15 @@ impl StaticCullPass {
     params: &wgpu::Buffer,
     pyramid: &wgpu::TextureView,
     occlusion: &wgpu::Buffer,
-    (lists, args): (&wgpu::Buffer, &wgpu::Buffer),
+    (lists, args): (wgpu::BufferBinding<'_>, wgpu::BufferBinding<'_>),
   ) -> wgpu::BindGroup {
-    let buffers: [(u32, &wgpu::Buffer); 15] = [
+    let buffers: [(u32, &wgpu::Buffer); 13] = [
       (0, scene.clusters.get_buffer()),
       (1, scene.spheres.get_buffer()),
       (2, scene.slots.get_buffer()),
       (3, scene.places.get_buffer()),
       (4, scene.rows.get_buffer()),
       (5, &scene.regions),
-      (6, lists),
-      (7, args),
       (8, params),
       (9, scene.candidates.get_buffer()),
       (10, &scene.late),
@@ -128,10 +126,20 @@ impl StaticCullPass {
       })
       .collect();
 
-    entries.push(wgpu::BindGroupEntry {
-      binding: 11,
-      resource: wgpu::BindingResource::TextureView(pyramid),
-    });
+    entries.extend([
+      wgpu::BindGroupEntry {
+        binding: 6,
+        resource: wgpu::BindingResource::Buffer(lists),
+      },
+      wgpu::BindGroupEntry {
+        binding: 7,
+        resource: wgpu::BindingResource::Buffer(args),
+      },
+      wgpu::BindGroupEntry {
+        binding: 11,
+        resource: wgpu::BindingResource::TextureView(pyramid),
+      },
+    ]);
 
     device.create_bind_group(&wgpu::BindGroupDescriptor {
       label: Some("static cull"),
@@ -170,20 +178,17 @@ impl StaticCullPass {
     }
   }
 
-  /// Culls every cluster and row into a shadow's view, its own lists bound, then clamps each batch's count to its run.
-  pub fn dispatch_shadow(
+  /// Culls every cluster and row into a shadow's view, its own lists bound, then clamps each batch's count to its run,
+  /// into a compute pass several shadows' culls may share.
+  pub fn record_shadow(
     &self,
-    encoder: &mut wgpu::CommandEncoder,
-    view: &crate::pass::view_binding::ViewBinding,
+    pass: &mut wgpu::ComputePass<'_>,
+    view: &ViewBinding,
     bind_group: &wgpu::BindGroup,
     params: &StaticCullParams,
     is_light_face: bool,
   ) {
     let pipelines: &[wgpu::ComputePipeline; 3] = &self.shadow_pipelines[is_light_face as usize];
-    let mut pass: wgpu::ComputePass<'_> = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-      label: Some("static shadow cull"),
-      timestamp_writes: None,
-    });
 
     pass.set_bind_group(0, &view.bind_group, &[]);
     pass.set_bind_group(1, bind_group, &[]);
@@ -195,7 +200,7 @@ impl StaticCullPass {
     ] {
       if count > 0 {
         pass.set_pipeline(pipeline);
-        self.grid.dispatch(&mut pass, count.div_ceil(WORKGROUP));
+        self.grid.dispatch(pass, count.div_ceil(WORKGROUP));
       }
     }
   }
