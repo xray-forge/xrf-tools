@@ -7611,6 +7611,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "xrf-renderer-core"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "pollster",
+ "serde",
+ "serde_json",
+ "wgpu",
+ "xrf-error",
+]
+
+[[package]]
 name = "xrf-report"
 version = "0.1.0"
 dependencies = [

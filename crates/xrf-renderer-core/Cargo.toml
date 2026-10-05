@@ -1,0 +1,19 @@
+[package]
+name = "xrf-renderer-core"
+version = "0.1.0"
+publish = false
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+log = { workspace = true }
+serde = { workspace = true }
+wgpu = { workspace = true }
+xrf-error = { workspace = true }
+
+[dev-dependencies]
+pollster = { workspace = true }
+serde_json = { workspace = true }
+
+[lints]
+workspace = true
