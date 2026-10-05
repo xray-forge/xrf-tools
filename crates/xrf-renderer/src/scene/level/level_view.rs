@@ -11,18 +11,15 @@ use xrf_renderer_core::{ExecutedGraph, FrameGraph, GraphBindings, GraphCompileOp
 use xrf_math::EPS_S;
 
 use crate::camera::camera_view::CameraView;
-use crate::contract::render_ambient_occlusion_settings::RenderAmbientOcclusionSettings;
 use crate::contract::render_ambient_report::RenderAmbientReport;
 use crate::contract::render_antialiasing::RenderAntialiasing;
 use crate::contract::render_applied_report::RenderAppliedReport;
 use crate::contract::render_applied_shadows::RenderAppliedShadows;
 use crate::contract::render_bloom_settings::RenderBloomSettings;
 use crate::contract::render_debug_view::RenderDebugView;
-use crate::contract::render_image_corrections::RenderImageCorrections;
 use crate::contract::render_level_hit::RenderLevelHit;
 use crate::contract::render_level_problems::RenderLevelProblems;
 use crate::contract::render_lights_report::RenderLightsReport;
-use crate::contract::render_lights_settings::RenderLightsSettings;
 use crate::contract::render_load_durations::RenderLoadDurations;
 use crate::contract::render_load_failure::RenderLoadFailure;
 use crate::contract::render_load_report::RenderLoadReport;
@@ -34,12 +31,10 @@ use crate::contract::render_rect::RenderRect;
 use crate::contract::render_sector_skip::RenderSectorSkip;
 use crate::contract::render_selection::RenderSelection;
 use crate::contract::render_selection_target::RenderSelectionTarget;
-use crate::contract::render_shadow_settings::RenderShadowSettings;
 use crate::contract::render_spawn_category::RenderSpawnCategory;
 use crate::contract::render_static_report::RenderStaticReport;
 use crate::contract::render_surface_geometry::RenderSurfaceGeometry;
 use crate::contract::render_texture_report::RenderTextureReport;
-use crate::contract::render_upscaling_settings::RenderUpscalingSettings;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::contract::render_water_settings::RenderWaterSettings;
 use crate::frame::depth_pyramid::DepthPyramid;
@@ -104,6 +99,7 @@ use crate::scene::level::shadow_frame::ShadowFrame;
 use crate::scene::level::shadow_sway::ShadowSway;
 use crate::scene::level::spawn_loader::SpawnLoader;
 use crate::scene::level::surface_tally::SurfaceTally;
+use crate::scene::level::view_info::ViewInfo;
 use crate::scene::level::weather_model_buffers::WeatherModelBuffers;
 use crate::scene::static_scene::static_batch::StaticBatch;
 use crate::scene::static_scene::static_scene::StaticScene;
@@ -131,6 +127,8 @@ type SkyGroupKey = (u64, [Option<String>; 7], u64);
 
 /// A level drawn in one viewport: read by its loader, held on the GPU, drawn into the viewport's G-buffer and lit.
 pub struct LevelView {
+  /// This frame as prepared, which its passes read.
+  info: ViewInfo,
   source: Arc<dyn RenderLevelSource>,
   loader: LevelLoader,
   spawn: SpawnLoader,
@@ -146,14 +144,6 @@ pub struct LevelView {
   lighting: wgpu::Buffer,
   /// The view and projection the pyramid holds a frame's depth through, once one was reduced.
   history: Option<(Mat4, Mat4)>,
-  /// This frame's view and projection, which become the history once its pyramid is reduced.
-  frame_view: (Mat4, Mat4),
-  /// This frame's camera and shadow settings, which the shadow is fitted and drawn by, and where its sunlight travels.
-  frame_camera: CameraView,
-  frame_sun: Vec3,
-  /// The wind's amplitude this frame and the time the trees sway by: what has still shadows drawn again.
-  frame_sway: (f32, f32),
-  shadow_settings: RenderShadowSettings,
   /// The cull's and the draws' bind groups, with the scene generation (and the cull, the targets epoch) they bind.
   cull_group: Option<((u64, u64), wgpu::BindGroup)>,
   draw_groups: Option<(u64, StaticDrawGroups)>,
@@ -164,10 +154,6 @@ pub struct LevelView {
   environments: (u64, Vec<String>),
   /// The sky's textures as bound, with the cache's generation and the references they bind.
   sky_group: Option<(SkyGroupKey, wgpu::BindGroup)>,
-  /// Whether this frame blurs the sky into the haze map the distance fades into.
-  is_hazing: bool,
-  /// Whether this frame lays the wall marks into the albedo.
-  is_wallmarked: bool,
   /// Bumped whenever the sky's bind group is made again, which the water's follows.
   sky_version: u64,
   /// The water, its uniform, and what its enhanced kind reads and draws first.
@@ -176,16 +162,11 @@ pub struct LevelView {
   present: wgpu::Buffer,
   /// Where this frame's samples sit within their pixels, and whether a temporal resolve gathers them.
   jitter: TemporalJitter,
-  frame_jitter: Vec2,
-  is_temporal: bool,
   /// The temporal resolve's histories and its bind group writing each, while it resolves.
   temporal: Option<(TemporalHistory, [wgpu::BindGroup; 2])>,
   temporal_uniform: wgpu::Buffer,
   /// The last resolved frame's view projection without its jitter, and its view.
   temporal_previous: Option<(Mat4, Mat4)>,
-  /// Whether FSR 2 resolves the frames rather than TAA, and how many places this frame's jitter cycles through.
-  is_fsr: bool,
-  frame_phases: u32,
   /// FSR 2's targets and bind groups, while it resolves.
   fsr: Option<(FsrTargets, FsrGroups)>,
   fsr_uniform: wgpu::Buffer,
@@ -193,9 +174,6 @@ pub struct LevelView {
   motion_previous: Option<Mat4>,
   /// The trees' sway the last frame drew with.
   last_wind: Option<WindUniform>,
-  /// The viewport's rectangle in its window, which the frame is upscaled to where it is drawn smaller.
-  output: RenderRect,
-  upscaling: RenderUpscalingSettings,
   /// The frame at the viewport's size while it is drawn smaller, with its epoch, and the upscale passes' bind groups:
   /// EASU reading the scene, RCAS reading the upscaled frame.
   upscale: Option<(UpscaleTargets, [wgpu::BindGroup; 2])>,
@@ -208,33 +186,21 @@ pub struct LevelView {
   sorted_list: Option<wgpu::Buffer>,
   sorted_group: Option<((u64, u64), wgpu::BindGroup)>,
   sorted_epoch: u64,
-  sorted_count: u32,
   /// What it draws over its frame, and the overlay pass's bind group with the targets' epoch it binds.
   overlays: Option<LevelOverlays>,
   /// The selection box the overlays were made with, so a box that moved or came into the scene makes them again.
   overlays_box: Option<RenderOverlay>,
   /// What the selection marks, for the target it was resolved for and the scene generation it was resolved in.
   selection: Option<(RenderSelectionTarget, u64, Option<StaticSelection>)>,
-  /// The colour the selection is outlined in this frame, or none while nothing it names is drawn.
-  selection_color: Option<[f32; 3]>,
   overlay_group: Option<(u64, wgpu::BindGroup)>,
-  /// Whether the static surfaces draw as their edges, which nothing composited or planted is drawn over.
-  is_wireframe: bool,
   /// The smoothing pass while one smooths the scene as drawn.
   smoothing: Option<LevelSmoothing>,
-  /// What corrects this frame's finished image.
-  frame_corrections: RenderImageCorrections,
-  /// What this frame's present shows, and whether its occlusion was searched.
-  frame_debug_view: RenderDebugView,
-  frame_occlusion: bool,
   rain_cover: RainCover,
   rain: wgpu::Buffer,
   /// The splash's model, with the level's weather it was built for.
   splash: Option<(usize, WeatherModelBuffers)>,
   /// The rain's bind group, with the weather textures' generation and the splash's weather it binds.
   rain_group: Option<((u64, usize), wgpu::BindGroup)>,
-  /// This frame's rain: the streaks drawn and the splash's indices, none while it does not rain.
-  rain_draw: Option<(u32, u32)>,
   wet: wgpu::Buffer,
   /// The wet surfaces' bind groups, with the targets' epoch and the weather textures' generation they bind.
   wet_groups: Option<((u64, u64), [wgpu::BindGroup; 2])>,
@@ -244,19 +210,11 @@ pub struct LevelView {
   no_model: WeatherModelBuffers,
   /// A strike's bind groups, with the weather textures' generation, the weather and the bolt they bind.
   thunder_groups: Option<((u64, usize, String), [wgpu::BindGroup; 3])>,
-  /// This frame's strike: how its model and glows composite and the model's indices, none while none strikes.
-  thunder_draw: Option<([XraySurfaceDraw; 3], u32)>,
   /// The sun's sprite, lens flares and gradient.
   flares: LevelFlares,
-  /// Whether this frame adds the sun's light shafts, drawn through its shadow's cascades.
-  is_shafted: bool,
   /// What the bloom's build and its two blurs read, and what they draw with, at the targets' epoch.
   bloom_uniforms: [wgpu::Buffer; 3],
   bloom_groups: Option<(u64, BloomGroups)>,
-  /// Whether this frame blooms.
-  is_bloomed: bool,
-  /// The sun's sprite as this frame's sky draws it: its texture, and its colour and radius.
-  frame_sun_sprite: Option<(String, Vec4)>,
   /// When the level began opening, which the clouds drift from and its load is timed from.
   started: Instant,
   shadows: LevelShadows,
@@ -264,14 +222,11 @@ pub struct LevelView {
   campfires: LevelCampfires,
   /// The object motions its moving zones follow, which their particles and lights both read.
   object_motions: LevelObjectMotions,
-  lights_settings: RenderLightsSettings,
   particles: LevelParticles,
   occlusion_uniform: wgpu::Buffer,
-  ambient_occlusion: RenderAmbientOcclusionSettings,
   exposure: ViewExposure,
-  params: StaticCullParams,
   stats: StatsReadback,
-  /// What each pass of its frames cost on the GPU, while timed.
+  /// The texel a pick is drawn into, and the camera narrowed to it.
   pick_target: Option<PickTarget>,
   pick_view: Option<ViewBinding>,
   surfaces: SurfaceTally,
@@ -311,6 +266,7 @@ impl LevelView {
     let scene: StaticScene = StaticScene::new(device, queue);
 
     Self {
+      info: ViewInfo::default(),
       loader: LevelLoader::start(Arc::clone(&source), workers),
       spawn: SpawnLoader::start(Arc::clone(&source), workers),
       grass: LevelGrass::new(device, &source, workers),
@@ -327,82 +283,51 @@ impl LevelView {
       occlusion: uniform("static occlusion", size_of::<StaticOcclusionUniform>()),
       lighting: uniform("lighting", size_of::<LightingUniform>()),
       history: None,
-      frame_view: (Mat4::IDENTITY, Mat4::IDENTITY),
-      frame_camera: CameraView {
-        position: Vec3::ZERO,
-        view: Mat4::IDENTITY,
-        projection: Mat4::IDENTITY,
-      },
-      frame_sun: RenderLighting::default().get_sun_direction(),
-      frame_sway: (0.0, 0.0),
-      shadow_settings: RenderShadowSettings::default(),
       cull_group: None,
       draw_groups: None,
       light_groups: None,
       environments: (0, Vec::new()),
       sky_group: None,
-      is_hazing: false,
-      is_wallmarked: true,
       sky_version: 0,
       water: LevelWater::new(device),
       present: uniform("present", size_of::<PresentUniform>()),
       jitter: TemporalJitter::default(),
-      frame_jitter: Vec2::ZERO,
-      is_temporal: false,
       temporal: None,
       temporal_uniform: uniform("temporal", size_of::<TemporalUniform>()),
       temporal_previous: None,
-      is_fsr: false,
-      frame_phases: 1,
       fsr: None,
       fsr_uniform: uniform("fsr2", size_of::<FsrUniform>()),
       motion_previous: None,
       last_wind: None,
-      output: RenderRect::default(),
-      upscaling: RenderUpscalingSettings::default(),
       upscale: None,
       upscale_epoch: 0,
       upscale_uniform: uniform("upscale", size_of::<UpscaleUniform>()),
       present_group: None,
       smoothing: None,
-      is_wireframe: false,
       overlays: None,
       overlays_box: None,
       selection: None,
-      selection_color: None,
       overlay_group: None,
       sorted_list: None,
       sorted_group: None,
       sorted_epoch: 0,
-      sorted_count: 0,
-      frame_corrections: RenderImageCorrections::default(),
-      frame_debug_view: RenderDebugView::Final,
-      frame_occlusion: false,
       rain: uniform("rain", size_of::<RainUniform>()),
       splash: None,
       rain_group: None,
-      rain_draw: None,
       wet: uniform("wet", size_of::<WetUniform>()),
       wet_groups: None,
       thunder: uniform("thunder", size_of::<ThunderUniform>()),
       thunder_models: None,
       no_model: WeatherModelBuffers::new(device, None),
       thunder_groups: None,
-      thunder_draw: None,
       flares: LevelFlares::new(device),
-      is_shafted: false,
       bloom_uniforms: ["bloom build", "bloom across", "bloom down"]
         .map(|label| uniform(label, size_of::<BloomUniform>())),
       bloom_groups: None,
-      is_bloomed: false,
-      frame_sun_sprite: None,
       started,
       shadows: LevelShadows::new(device),
-      lights_settings: RenderLightsSettings::default(),
       occlusion_uniform: uniform("ambient occlusion", size_of::<AmbientOcclusionUniform>()),
-      ambient_occlusion: RenderAmbientOcclusionSettings::default(),
       exposure: ViewExposure::new(device, queue),
-      params: StaticCullParams::default(),
       stats: StatsReadback::new(device),
       pick_target: None,
       pick_view: None,
@@ -711,7 +636,7 @@ impl LevelView {
 
     self.exposure.prepare(queue, &options.exposure, Instant::now());
 
-    self.frame_sun_sprite = self.flares.prepare(
+    self.info.sun_sprite = self.flares.prepare(
       device,
       queue,
       passes.flares,
@@ -732,7 +657,7 @@ impl LevelView {
         sky.environments[1].clone(),
         sky.clouds.textures[0].clone(),
         sky.clouds.textures[1].clone(),
-        self.frame_sun_sprite.as_ref().map(|(texture, _)| texture.clone()),
+        self.info.sun_sprite.as_ref().map(|(texture, _)| texture.clone()),
       ],
       self.environments.0,
     );
@@ -743,7 +668,7 @@ impl LevelView {
         passes.sky.create_bind_group(
           device,
           weather_textures,
-          (sky, self.frame_sun_sprite.as_ref().map(|(texture, _)| texture.as_str())),
+          (sky, self.info.sun_sprite.as_ref().map(|(texture, _)| texture.as_str())),
           &self.environments.1,
         ),
       ));
@@ -791,7 +716,7 @@ impl LevelView {
 
     self.last_wind = Some(wind);
 
-    self.frame_sway = (wind.get_amplitude(), sway_time);
+    self.info.sway = (wind.get_amplitude(), sway_time);
     self.prepare_rain(
       device,
       queue,
@@ -825,18 +750,19 @@ impl LevelView {
         .all(|reference| reference.as_deref().is_some_and(|it| weather_textures.is_up(it))),
       clouds_time: self.started.elapsed().as_secs_f32(),
       sun_sprite: self
-        .frame_sun_sprite
+        .info
+        .sun_sprite
         .as_ref()
         .filter(|(texture, _)| weather_textures.is_up(texture))
         .map_or(Vec4::ZERO, |(_, sprite)| *sprite),
     };
 
-    self.is_hazing = options.is_lit && options.is_sky_visible && options.is_sky_hazed;
-    self.is_shafted = options.is_lit
+    self.info.is_hazing = options.is_lit && options.is_sky_visible && options.is_sky_hazed;
+    self.info.is_shafted = options.is_lit
       && options.is_sun_shafted
       && lighting.get_sun_shafts(&options.sun_shafts) > 0.0
       && options.shadows.get_cascade_count() > 0;
-    self.is_wallmarked = options.is_wallmarked;
+    self.info.is_wallmarked = options.is_wallmarked;
     self.prepare_bloom(device, queue, passes, options, lighting.engine);
 
     if !options.is_occlusion_culled {
@@ -848,7 +774,7 @@ impl LevelView {
       (width * height) as f32 * (90.0 / field_of_view.max(1.0)).powi(2) * (EPS_S + options.lod.geometry_lod);
     let threshold = |area: f32| -> f32 { (area / 3.0).powi(2) / screen };
 
-    self.params = StaticCullParams {
+    self.info.cull = StaticCullParams {
       cluster_count: self.scene.get_cluster_count(),
       row_count: self.scene.get_row_count(),
       batch_count: StaticBatch::COUNT as u32,
@@ -865,14 +791,14 @@ impl LevelView {
       pad: [0; 3],
       lod_origin: view.position.extend(1.0),
     };
-    self.frame_view = (view.view, view.projection);
+    self.info.matrices = (view.view, view.projection);
     self.grass.prepare(
       device,
       queue,
       passes.grass,
       &options.grass,
       view,
-      self.params.discard_below,
+      self.info.cull.discard_below,
       (self.started.elapsed().as_secs_f32(), options.is_windy, gust.strength),
     );
     // The campfires switch and the moving zones move whatever of them is drawn, so their lights and particles follow
@@ -884,27 +810,27 @@ impl LevelView {
       LightsFrame {
         camera: view,
         settings: &options.lights,
-        lod: (self.params.glod_start, self.params.glod_end),
+        lod: (self.info.cull.glod_start, self.info.cull.glod_end),
         contents: self.scene.get_contents(),
-        sway: &to_sway(&self.scene, self.frame_sway),
+        sway: &to_sway(&self.scene, self.info.sway),
         campfires: &mut self.campfires,
         motions: &mut self.object_motions,
       },
     );
-    self.frame_camera = *view;
-    self.frame_sun = lighting.get_sun_direction();
-    self.shadow_settings = options.shadows.clone();
-    self.ambient_occlusion = options.ambient_occlusion;
-    self.output = output;
-    self.upscaling = options.upscaling;
-    self.frame_debug_view = options.debug_view;
-    self.is_wireframe = options.is_wireframe;
-    self.frame_corrections = options.corrections;
-    self.frame_occlusion = options.is_lit && options.ambient_occlusion.is_enabled;
+    self.info.camera = *view;
+    self.info.sun_direction = lighting.get_sun_direction();
+    self.info.shadow_settings = options.shadows.clone();
+    self.info.ambient_occlusion = options.ambient_occlusion;
+    self.info.output = output;
+    self.info.upscaling = options.upscaling;
+    self.info.debug_view = options.debug_view;
+    self.info.is_wireframe = options.is_wireframe;
+    self.info.corrections = options.corrections;
+    self.info.is_occlusion_drawn = options.is_lit && options.ambient_occlusion.is_enabled;
     self.prepare_temporal(device, queue, passes, view);
     self.prepare_smoothing(device, passes, options.antialiasing);
     self.prepare_upscale(device, queue, passes);
-    self.lights_settings = options.lights;
+    self.info.lights_settings = options.lights;
 
     queue.write_buffer(
       &self.occlusion_uniform,
@@ -915,11 +841,11 @@ impl LevelView {
         (width.div_ceil(2), height.div_ceil(2)),
       )),
     );
-    queue.write_buffer(&self.cull_params, 0, bytemuck::bytes_of(&self.params));
+    queue.write_buffer(&self.cull_params, 0, bytemuck::bytes_of(&self.info.cull));
     self.prepare_sorted(device, queue, passes, view, self.scene.get_generation());
 
     if let Some((pyramid, _)) = &self.pyramid {
-      let (history_view, history_projection): (Mat4, Mat4) = self.history.unwrap_or(self.frame_view);
+      let (history_view, history_projection): (Mat4, Mat4) = self.history.unwrap_or(self.info.matrices);
 
       queue.write_buffer(
         &self.occlusion,
@@ -970,13 +896,13 @@ impl LevelView {
       &self.present,
       0,
       bytemuck::bytes_of(&PresentUniform::new(
-        self.frame_debug_view,
-        self.frame_occlusion,
-        !targets.is_sized(self.output.width, self.output.height),
+        self.info.debug_view,
+        self.info.is_occlusion_drawn,
+        !targets.is_sized(self.info.output.width, self.info.output.height),
         if is_distorting { water.distortion } else { 0.0 },
-        self.output,
-        &self.frame_corrections,
-        (self.selection_color, self.is_bloomed),
+        self.info.output,
+        &self.info.corrections,
+        (self.info.selection_color, self.info.is_bloomed),
       )),
     );
   }
@@ -994,9 +920,9 @@ impl LevelView {
   ) {
     let bloom: &RenderBloomSettings = &options.bloom;
 
-    self.is_bloomed = bloom.is_enabled && options.is_lit && !options.is_wireframe && self.targets.is_some();
+    self.info.is_bloomed = bloom.is_enabled && options.is_lit && !options.is_wireframe && self.targets.is_some();
 
-    let Some(targets) = self.targets.as_ref().filter(|_| self.is_bloomed) else {
+    let Some(targets) = self.targets.as_ref().filter(|_| self.info.is_bloomed) else {
       return;
     };
 
@@ -1036,7 +962,7 @@ impl LevelView {
     (options, gust): (&RenderViewOptions, AmbientGust),
     weather_textures: &WeatherTextureCache,
   ) {
-    self.rain_draw = None;
+    self.info.rain_draw = None;
 
     let Some((key, rain)) = weather.and_then(|weather| {
       weather
@@ -1085,7 +1011,7 @@ impl LevelView {
       self.rain_group = Some((group_key, group));
     }
 
-    self.rain_draw = Some((uniform.count, splash.index_count));
+    self.info.rain_draw = Some((uniform.count, splash.index_count));
 
     let Some(wet) = weather.and_then(|weather| weather.wet.as_ref()) else {
       return;
@@ -1134,7 +1060,7 @@ impl LevelView {
     options: &RenderViewOptions,
     weather_textures: &WeatherTextureCache,
   ) {
-    self.thunder_draw = None;
+    self.info.thunder_draw = None;
 
     let (Some(weather), Some(strike)) = (weather, &lighting.thunderbolt) else {
       return;
@@ -1194,7 +1120,7 @@ impl LevelView {
       self.thunder_groups = Some((group_key, groups));
     }
 
-    self.thunder_draw = Some((
+    self.info.thunder_draw = Some((
       [
         model.map_or(XraySurfaceDraw::Opaque, |(_, model)| model.draw),
         bolt.top.draw,
@@ -1228,27 +1154,27 @@ impl LevelView {
       return Ok(None);
     }
 
-    let is_occluding: bool = self.params.is_occluding != 0;
+    let is_occluding: bool = self.info.cull.is_occluding != 0;
 
     if is_occluding {
-      self.history = Some(self.frame_view);
+      self.history = Some(self.info.matrices);
     }
 
-    let is_drawn: bool = !self.is_wireframe;
-    let is_wallmarked: bool = self.is_wallmarked && is_drawn;
-    let is_raining: bool = self.rain_draw.is_some();
+    let is_drawn: bool = !self.info.is_wireframe;
+    let is_wallmarked: bool = self.info.is_wallmarked && is_drawn;
+    let is_raining: bool = self.info.rain_draw.is_some();
     let is_wet: bool = is_raining && self.wet_groups.is_some();
     let is_lit: bool = self.light_groups.is_some();
     let has_lights: bool = self.lights.get_count() > 0;
-    let is_occlusion_ambient: bool = self.ambient_occlusion.is_enabled;
+    let is_occlusion_ambient: bool = self.info.ambient_occlusion.is_enabled;
     let has_sky: bool = self.sky_group.is_some();
-    let is_hazing: bool = has_sky && self.is_hazing;
+    let is_hazing: bool = has_sky && self.info.is_hazing;
     let is_composited: bool = is_drawn && has_sky;
     let has_particles: bool = is_drawn && self.particles.is_drawing();
-    let is_shafted: bool = self.is_shafted;
+    let is_shafted: bool = self.info.is_shafted;
     let is_rain_drawn: bool = is_raining && self.rain_group.is_some();
-    let is_thundering: bool = self.thunder_draw.is_some() && self.thunder_groups.is_some();
-    let is_bloomed: bool = self.is_bloomed && self.bloom_groups.is_some();
+    let is_thundering: bool = self.info.thunder_draw.is_some() && self.thunder_groups.is_some();
+    let is_bloomed: bool = self.info.is_bloomed && self.bloom_groups.is_some();
     let is_smoothed: bool = self.smoothing.is_some();
     let resolve: Option<&'static str> = if self.fsr.is_some() {
       Some("fsr2")
@@ -1259,7 +1185,7 @@ impl LevelView {
     } else {
       None
     };
-    let is_sharpened: bool = self.upscale.is_some() && self.upscaling.is_sharpened();
+    let is_sharpened: bool = self.upscale.is_some() && self.info.upscaling.is_sharpened();
     let is_adapting: bool = self.exposure.is_adapting();
     let texture_group: &wgpu::BindGroup = textures.get_bind_group();
     let cell: Mutex<&mut LevelView> = Mutex::new(self);
@@ -1288,7 +1214,7 @@ impl LevelView {
     });
     bridge!("cull", |level, encoder, marker| {
       if let Some((_, cull_group)) = &level.cull_group {
-        passes.cull.dispatch_early(encoder, view, cull_group, &level.params);
+        passes.cull.dispatch_early(encoder, view, cull_group, &level.info.cull);
       }
     });
     bridge!("g-buffer", |level, encoder, marker| {
@@ -1348,7 +1274,7 @@ impl LevelView {
             view,
             draw_groups,
             texture_group,
-            &Self::list_draw_args(&level.scene, &level.params),
+            &Self::list_draw_args(&level.scene, &level.info.cull),
           );
         }
       });
@@ -1357,12 +1283,8 @@ impl LevelView {
     bridge!("shadows", |level, encoder, marker| {
       let LevelView {
         scene,
-        frame_camera,
-        shadow_settings,
-        frame_sun,
-        frame_sway,
+        info,
         cull_params,
-        params,
         pyramid,
         occlusion,
         targets_epoch,
@@ -1376,12 +1298,12 @@ impl LevelView {
       };
       let frame: ShadowFrame<'_> = ShadowFrame {
         scene,
-        camera: frame_camera,
-        settings: shadow_settings,
-        sun_direction: *frame_sun,
-        sway: to_sway(scene, *frame_sway),
+        camera: &info.camera,
+        settings: &info.shadow_settings,
+        sun_direction: info.sun_direction,
+        sway: to_sway(scene, info.sway),
         cull_params,
-        params,
+        params: &info.cull,
         pyramid: &pyramid.view,
         occlusion,
         targets_epoch: *targets_epoch,
@@ -1442,7 +1364,7 @@ impl LevelView {
               targets,
               view,
               &groups.occlusion,
-              level.ambient_occlusion.quality,
+              level.info.ambient_occlusion.quality,
             );
           }
         });
@@ -1469,7 +1391,7 @@ impl LevelView {
       }
 
       bridge!("water", |level, encoder, marker| {
-        let args: Vec<&wgpu::Buffer> = Self::list_draw_args(&level.scene, &level.params);
+        let args: Vec<&wgpu::Buffer> = Self::list_draw_args(&level.scene, &level.info.cull);
         let (Some(targets), Some((_, draw_groups))) = (&level.targets, &level.draw_groups) else {
           return;
         };
@@ -1495,7 +1417,7 @@ impl LevelView {
 
       if is_composited {
         bridge!("composited", |level, encoder, marker| {
-          let args: Vec<&wgpu::Buffer> = Self::list_draw_args(&level.scene, &level.params);
+          let args: Vec<&wgpu::Buffer> = Self::list_draw_args(&level.scene, &level.info.cull);
 
           if let (Some(targets), Some((_, draw_groups)), Some((_, groups)), Some((_, sky_group))) = (
             &level.targets,
@@ -1511,7 +1433,10 @@ impl LevelView {
               texture_group,
               (&groups.composited, sky_group),
               &args,
-              (level.sorted_group.as_ref().map(|(_, group)| group), level.sorted_count),
+              (
+                level.sorted_group.as_ref().map(|(_, group)| group),
+                level.info.sorted_count,
+              ),
             );
           }
         });
@@ -1538,7 +1463,7 @@ impl LevelView {
       if is_rain_drawn {
         bridge!("rain", |level, encoder, marker| {
           if let (Some(targets), Some(counts), Some((_, rain_group))) =
-            (&level.targets, level.rain_draw, &level.rain_group)
+            (&level.targets, level.info.rain_draw, &level.rain_group)
           {
             passes.rain.draw(encoder, targets, view, rain_group, counts);
           }
@@ -1548,7 +1473,7 @@ impl LevelView {
       if is_thundering {
         bridge!("thunder", |level, encoder, marker| {
           if let (Some(targets), Some(draws), Some((_, thunder_groups))) =
-            (&level.targets, level.thunder_draw, &level.thunder_groups)
+            (&level.targets, level.info.thunder_draw, &level.thunder_groups)
           {
             passes.thunder.draw(encoder, targets, view, thunder_groups, draws);
           }
@@ -1770,16 +1695,16 @@ impl LevelView {
   /// Where the next frame's samples sit within their pixels, in drawn pixels, `y` down: jittered while it resolves
   /// frames temporally and shows the finished frame, still otherwise.
   pub fn next_jitter(&mut self, options: &RenderViewOptions, ratio: f32) -> Vec2 {
-    self.is_temporal = options.antialiasing.is_temporal() && options.debug_view == RenderDebugView::Final;
-    self.is_fsr = self.is_temporal && options.antialiasing == RenderAntialiasing::Fsr2;
-    self.frame_phases = TemporalJitter::get_phases(ratio);
-    self.frame_jitter = if self.is_temporal {
+    self.info.is_temporal = options.antialiasing.is_temporal() && options.debug_view == RenderDebugView::Final;
+    self.info.is_fsr = self.info.is_temporal && options.antialiasing == RenderAntialiasing::Fsr2;
+    self.info.jitter_phases = TemporalJitter::get_phases(ratio);
+    self.info.jitter = if self.info.is_temporal {
       self.jitter.next(ratio)
     } else {
       Vec2::ZERO
     };
 
-    self.frame_jitter
+    self.info.jitter
   }
 
   /// This frame's unjittered view projection and the last one's, which the surfaces' motion is measured between; the
@@ -1797,7 +1722,11 @@ impl LevelView {
     passes: LevelPasses<'_>,
     view: &CameraView,
   ) {
-    let Some(targets) = self.targets.as_ref().filter(|_| self.is_temporal && !self.is_fsr) else {
+    let Some(targets) = self
+      .targets
+      .as_ref()
+      .filter(|_| self.info.is_temporal && !self.info.is_fsr)
+    else {
       self.temporal = None;
       self.temporal_previous = None;
       self.prepare_fsr(device, queue, passes, view);
@@ -1806,7 +1735,7 @@ impl LevelView {
     };
 
     self.fsr = None;
-    let (width, height): (u32, u32) = (self.output.width.max(1), self.output.height.max(1));
+    let (width, height): (u32, u32) = (self.info.output.width.max(1), self.info.output.height.max(1));
 
     if self
       .temporal
@@ -1835,7 +1764,7 @@ impl LevelView {
         current,
         previous,
         previous_view,
-        self.frame_jitter,
+        self.info.jitter,
         history.is_valid && self.temporal_previous.is_some(),
       )),
     );
@@ -1844,13 +1773,13 @@ impl LevelView {
 
   /// Makes FSR 2's targets while it resolves, dropping them otherwise, and writes its constants.
   fn prepare_fsr(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, passes: LevelPasses<'_>, view: &CameraView) {
-    let Some(targets) = self.targets.as_ref().filter(|_| self.is_fsr) else {
+    let Some(targets) = self.targets.as_ref().filter(|_| self.info.is_fsr) else {
       self.fsr = None;
 
       return;
     };
     let render: (u32, u32) = (targets.width, targets.height);
-    let display: (u32, u32) = (self.output.width.max(1), self.output.height.max(1));
+    let display: (u32, u32) = (self.info.output.width.max(1), self.info.output.height.max(1));
 
     if self.fsr.as_ref().is_some_and(|(fsr, _)| !fsr.is_sized(render, display)) {
       self.fsr = None;
@@ -1868,9 +1797,9 @@ impl LevelView {
       0,
       bytemuck::bytes_of(&FsrUniform::new(
         (render, display),
-        self.frame_jitter,
+        self.info.jitter,
         view,
-        (FsrTargets::get_luma_mip_size(render), self.frame_phases),
+        (FsrTargets::get_luma_mip_size(render), self.info.jitter_phases),
         fsr.frame_index,
       )),
     );
@@ -1887,7 +1816,7 @@ impl LevelView {
     generation: u64,
   ) {
     let planes: [Vec4; 6] = view.get_planes();
-    let hidden: u32 = self.params.hidden_groups;
+    let hidden: u32 = self.info.cull.hidden_groups;
     let mut places: Vec<(f32, &StaticSortedPlace)> = self
       .scene
       .sorted_places
@@ -1910,7 +1839,7 @@ impl LevelView {
       .collect();
     let bytes: &[u8] = bytemuck::cast_slice(&entries);
 
-    self.sorted_count = entries.len() as u32;
+    self.info.sorted_count = entries.len() as u32;
 
     if bytes.is_empty() {
       return;
@@ -1956,7 +1885,7 @@ impl LevelView {
     let Some(targets) = self
       .targets
       .as_ref()
-      .filter(|_| is_smoothed && self.frame_debug_view == RenderDebugView::Final)
+      .filter(|_| is_smoothed && self.info.debug_view == RenderDebugView::Final)
     else {
       self.smoothing = None;
 
@@ -1995,7 +1924,7 @@ impl LevelView {
     let Some(targets) = &self.targets else {
       return;
     };
-    let output: RenderRect = self.output;
+    let output: RenderRect = self.info.output;
     let is_upscaled: bool = !targets.is_sized(output.width, output.height);
 
     if !is_upscaled {
@@ -2039,7 +1968,7 @@ impl LevelView {
       0,
       bytemuck::bytes_of(&UpscaleUniform {
         output_size: [output.width as f32, output.height as f32],
-        sharpness: self.upscaling.get_sharpness(),
+        sharpness: self.info.upscaling.get_sharpness(),
         pad: 0.0,
       }),
     );
@@ -2055,7 +1984,7 @@ impl LevelView {
       self.overlay_group = Some((self.targets_epoch, group));
     }
 
-    let shown: usize = usize::from(self.upscaling.is_sharpened());
+    let shown: usize = usize::from(self.info.upscaling.is_sharpened());
     let key: (u64, u64, usize) = (
       self.targets_epoch,
       if is_upscaled { self.upscale_epoch } else { 0 },
@@ -2157,28 +2086,36 @@ impl LevelView {
 
   /// What its frames are drawn with, as resolved from what `options` asked; the weather's light is the viewport's to add.
   pub fn describe_applied(&self, options: &RenderViewOptions) -> RenderAppliedReport {
-    let antialiasing: RenderAntialiasing = if self.is_temporal {
+    let antialiasing: RenderAntialiasing = if self.info.is_temporal {
       options.antialiasing
     } else {
       self.smoothing.as_ref().map_or(RenderAntialiasing::None, |it| it.mode)
     };
-    let cascades: usize = self.shadow_settings.get_cascade_count();
+    let cascades: usize = self.info.shadow_settings.get_cascade_count();
 
     RenderAppliedReport {
       antialiasing,
-      render_scale: self.upscaling.scale,
+      render_scale: self.info.upscaling.scale,
       shadows: (cascades > 0).then(|| RenderAppliedShadows {
-        cascades: self.shadow_settings.cascades[..cascades].to_vec(),
+        cascades: self.info.shadow_settings.cascades[..cascades].to_vec(),
         resolution: self.shadows.get_maps().resolution,
-        filter: self.shadow_settings.filter,
+        filter: self.info.shadow_settings.filter,
       }),
-      ambient_occlusion: self.frame_occlusion.then_some(self.ambient_occlusion.quality),
-      lights: self.lights_settings.is_enabled.then_some(self.lights_settings),
+      ambient_occlusion: self
+        .info
+        .is_occlusion_drawn
+        .then_some(self.info.ambient_occlusion.quality),
+      lights: self
+        .info
+        .lights_settings
+        .is_enabled
+        .then_some(self.info.lights_settings),
       grass: self.grass.get_applied(&options.grass),
       is_water: options.water.is_enabled,
       environment: None,
       sun: self
-        .frame_sun_sprite
+        .info
+        .sun_sprite
         .as_ref()
         .and_then(|_| self.flares.get_shown())
         .map(str::to_owned),
@@ -2189,7 +2126,7 @@ impl LevelView {
   pub fn take_stats(&mut self) -> (RenderStaticReport, RenderLightsReport) {
     let [kept_clusters, kept_triangles, occluded_clusters, occluded_triangles] = self.stats.take();
     let pools: RenderStaticReport = self.scene.get_pools();
-    let phases: u32 = if self.params.is_occluding != 0 { 2 } else { 1 };
+    let phases: u32 = if self.info.cull.is_occluding != 0 { 2 } else { 1 };
 
     (
       RenderStaticReport {
@@ -2197,7 +2134,7 @@ impl LevelView {
           used: kept_clusters,
           ..pools.surface_list
         },
-        commands: StaticBatch::list_deferred().count() as u32 * phases + u32::from(self.params.is_impostors != 0),
+        commands: StaticBatch::list_deferred().count() as u32 * phases + u32::from(self.info.cull.is_impostors != 0),
         kept_clusters,
         kept_triangles,
         occluded_clusters,
@@ -2236,7 +2173,7 @@ impl LevelView {
   /// What a selection marks in the scene now, resolved again only once the target or the scene changed; none where
   /// nothing is selected or what it names is not in the scene yet.
   pub fn resolve_selection(&mut self, selection: Option<&RenderSelection>) -> Option<&StaticSelection> {
-    self.selection_color = None;
+    self.info.selection_color = None;
 
     let selection: &RenderSelection = selection?;
     let generation: u64 = self.scene.get_generation();
@@ -2255,7 +2192,7 @@ impl LevelView {
 
     let resolved: &StaticSelection = self.selection.as_ref()?.2.as_ref()?;
 
-    self.selection_color = Some(selection.color);
+    self.info.selection_color = Some(selection.color);
 
     Some(resolved)
   }
