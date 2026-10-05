@@ -54,6 +54,7 @@ pub fn to_faded_lighting(from: &RenderLighting, to: &RenderLighting, progress: f
     },
     engine: to.engine,
     thunderbolt: to.thunderbolt.clone(),
+    ambients: to.ambients.clone(),
   }
 }
 

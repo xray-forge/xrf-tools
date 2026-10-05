@@ -1,3 +1,4 @@
+mod ambient_effects;
 mod backdrop;
 mod cameras;
 mod compute_grid;
