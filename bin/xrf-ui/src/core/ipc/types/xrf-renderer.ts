@@ -485,7 +485,10 @@ export type RenderLoadFailure = {
   reason: string;
 };
 
-/** How far a viewport's scene has been read and put on the GPU. */
+/**
+ * How far a viewport's level has been read and put on the GPU, sent as `RenderViewportEvent::Load` and answered to a
+ * caller polling `describe_load`.
+ */
 export type RenderLoadReport = {
   /** Sectors resident on the GPU. */
   sectors: number;
@@ -495,9 +498,12 @@ export type RenderLoadReport = {
   bytes: number;
   /** Textures uploaded or given up on. */
   textures: number;
-  /** Textures the scene names. */
+  /** Textures the level samples: its scene's, its lights' projectors and its particles'. */
   texturesTotal: number;
-  /** Whether everything is resident, so the scene draws as it will. */
+  /**
+   * Whether everything is resident, so the level draws as it will: every sector, the spawn, grass, lights and
+   * particles read, and every texture settled.
+   */
   isReady: boolean;
 };
 

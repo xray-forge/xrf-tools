@@ -1,3 +1,4 @@
+use std::borrow::Borrow;
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::num::NonZeroU32;
 use std::sync::Arc;
@@ -281,10 +282,15 @@ impl TextureCache {
   }
 
   /// Of some slots, how many are uploaded or given up on.
-  pub fn count_settled<'a>(&self, slots: impl IntoIterator<Item = &'a u32>) -> u32 {
+  pub fn count_settled(&self, slots: impl IntoIterator<Item = impl Borrow<u32>>) -> u32 {
     slots
       .into_iter()
-      .filter(|slot| !matches!(self.states.get(**slot as usize), Some(RenderTextureState::Loading)))
+      .filter(|slot| {
+        !matches!(
+          self.states.get(*slot.borrow() as usize),
+          Some(RenderTextureState::Loading)
+        )
+      })
       .count() as u32
   }
 

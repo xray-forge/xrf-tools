@@ -5,6 +5,7 @@ use crate::contract::render_camera::RenderCamera;
 use crate::contract::render_camera_command::RenderCameraCommand;
 use crate::contract::render_input_event::RenderInputEvent;
 use crate::contract::render_level_problems::RenderLevelProblems;
+use crate::contract::render_load_report::RenderLoadReport;
 use crate::contract::render_model_pose::RenderModelPose;
 use crate::contract::render_overlay::RenderOverlay;
 use crate::contract::render_selection::RenderSelection;
@@ -85,6 +86,11 @@ pub enum RenderCommand {
   PoseModel {
     id: RenderViewportId,
     pose: RenderModelPose,
+  },
+  /// Says how far a viewport's level has loaded; none where it draws no level.
+  DescribeLoad {
+    id: RenderViewportId,
+    reply: Sender<Option<RenderLoadReport>>,
   },
   /// Says what a viewport's level could not draw; empty where it draws no level.
   DescribeProblems {

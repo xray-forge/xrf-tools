@@ -38,6 +38,28 @@ export const renderCommands = {
     __TAURI_INVOKE<void>("plugin:render|command_camera", { viewport, command }),
   /** Apply settings every native viewport draws with. */
   configure: (settings: RenderSettings) => __TAURI_INVOKE<void>("plugin:render|configure", { settings }),
+  /**
+   * Say how far a viewport's level has loaded, as its `Load` events do, for a caller polling rather than listening; none
+   * where it draws no level.
+   */
+  describeLoad: (viewport: RenderViewportId) =>
+    __TAURI_INVOKE<{
+      /** Sectors resident on the GPU. */
+      sectors: number;
+      /** Sectors the level has. */
+      sectorsTotal: number;
+      /** Bytes of the sectors resident, packed. */
+      bytes: number;
+      /** Textures uploaded or given up on. */
+      textures: number;
+      /** Textures the level samples: its scene's, its lights' projectors and its particles'. */
+      texturesTotal: number;
+      /**
+       * Whether everything is resident, so the level draws as it will: every sector, the spawn, grass, lights and
+       * particles read, and every texture settled.
+       */
+      isReady: boolean;
+    } | null>("plugin:render|describe_load", { viewport }),
   /** Say what a viewport's level could not draw: drawables the packer left out, sectors and spawned models unread. */
   describeProblems: (viewport: RenderViewportId) =>
     __TAURI_INVOKE<RenderLevelProblems>("plugin:render|describe_problems", { viewport }),

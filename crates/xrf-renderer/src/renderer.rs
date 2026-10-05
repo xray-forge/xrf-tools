@@ -10,6 +10,7 @@ use crate::contract::render_capture::RenderCapture;
 use crate::contract::render_input_event::RenderInputEvent;
 use crate::contract::render_level_hit::RenderLevelHit;
 use crate::contract::render_level_problems::RenderLevelProblems;
+use crate::contract::render_load_report::RenderLoadReport;
 use crate::contract::render_model_pose::RenderModelPose;
 use crate::contract::render_overlay::RenderOverlay;
 use crate::contract::render_selection::RenderSelection;
@@ -107,6 +108,16 @@ impl Renderer {
     let (reply, answer) = channel();
 
     self.send(RenderCommand::DescribeTextures { id, reply });
+
+    answer
+  }
+
+  /// How far a viewport's level has loaded, answered at once: what its `Load` events report, for a caller polling rather
+  /// than listening. None where it draws no level.
+  pub fn describe_load(&self, id: RenderViewportId) -> Receiver<Option<RenderLoadReport>> {
+    let (reply, answer) = channel();
+
+    self.send(RenderCommand::DescribeLoad { id, reply });
 
     answer
   }

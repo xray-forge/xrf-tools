@@ -2001,11 +2001,14 @@ impl LevelView {
     Some(report)
   }
 
-  /// How far the level has loaded: its sectors taken in or failed, its spawn, and its textures settled.
-  fn describe_load(&self, textures: &TextureCache) -> RenderLoadReport {
-    let slots = &self.scene.texture_slots;
-    let (settled, total): (u32, u32) = (textures.count_settled(slots), slots.len() as u32);
+  /// How far the level has loaded: its sectors taken in or failed, its spawn, its grass, lights and particles read, and
+  /// every texture it samples settled.
+  pub fn describe_load(&self, textures: &TextureCache) -> RenderLoadReport {
+    let settled: u32 = textures.count_settled(self.list_texture_slots());
+    let total: u32 = self.list_texture_slots().count() as u32;
     let arrived: u32 = (self.scene.sectors.len() + self.failed_sectors.len()) as u32;
+    let is_read: bool =
+      self.spawn.is_done() && self.grass.is_loaded() && self.lights.is_loaded() && self.particles.is_loaded();
 
     RenderLoadReport {
       sectors: self.scene.sectors.len() as u32,
@@ -2013,7 +2016,7 @@ impl LevelView {
       bytes: self.scene.get_bytes(),
       textures: settled,
       textures_total: total,
-      is_ready: arrived == self.loader.get_total() && self.spawn.is_done() && settled == total,
+      is_ready: arrived == self.loader.get_total() && is_read && settled == total,
     }
   }
 }

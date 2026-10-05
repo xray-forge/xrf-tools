@@ -29,6 +29,7 @@ use crate::pass::particle_vertex::ParticleVertex;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::campfire::Campfire;
 use crate::scene::level::level_campfires::LevelCampfires;
+use crate::scene::level::loader_answer::take_answer;
 use crate::scene::level::particle_sprite::ParticleSprite;
 use crate::scene::level::placed_effect::PlacedEffect;
 use crate::scene::texture::texture_cache::TextureCache;
@@ -145,15 +146,9 @@ impl LevelParticles {
 
   /// Takes the systems once their loader read them: asks for every sprite's textures and places each system.
   pub fn poll(&mut self, device: &wgpu::Device, textures: &mut TextureCache, source: &Arc<dyn RenderAssetSource>) {
-    let Some(receiver) = &self.pending else {
+    let Some(read) = take_answer(&mut self.pending, "particles") else {
       return;
     };
-    let Ok(read) = receiver.try_recv() else {
-      return;
-    };
-
-    self.pending = None;
-
     let Ok(Some(read)) = read else {
       return;
     };
@@ -402,6 +397,11 @@ impl LevelParticles {
   /// Whether this frame's particles draw into the distortion target.
   pub fn is_distorting(&self) -> bool {
     !self.distortion_runs.is_empty()
+  }
+
+  /// Whether its loader has answered, whatever it answered.
+  pub fn is_loaded(&self) -> bool {
+    self.pending.is_none()
   }
 
   /// The texture slots the sprites sample.
