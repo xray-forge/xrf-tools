@@ -340,8 +340,8 @@ impl LevelLights {
     }
   }
 
-  /// Draws the shadow faces queued this frame, before the lights read them.
-  pub fn record_shadows(
+  /// Readies the shadow faces queued this frame, which `record_shadows` draws before the lights read them.
+  pub fn prepare_shadows(
     &mut self,
     device: &wgpu::Device,
     queue: &wgpu::Queue,
@@ -349,7 +349,12 @@ impl LevelLights {
     passes: LevelPasses<'_>,
     frame: &ShadowFrame<'_>,
   ) {
-    self.shadows.record(device, queue, encoder, passes, frame);
+    self.shadows.prepare(device, queue, encoder, passes, frame);
+  }
+
+  /// Culls and draws the shadow faces this frame's `prepare_shadows` readied.
+  pub fn record_shadows(&self, encoder: &mut wgpu::CommandEncoder, passes: LevelPasses<'_>, frame: &ShadowFrame<'_>) {
+    self.shadows.record(encoder, passes, frame);
   }
 
   /// Clears the binning's overflow words before it counts this frame's.

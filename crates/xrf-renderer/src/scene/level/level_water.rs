@@ -140,11 +140,10 @@ impl LevelWater {
     );
   }
 
-  /// Draws the water over the scene drawn so far, its stages timed, copying that scene first for the enhanced water,
-  /// and makes the reflection just drawn the one the next frame keeps.
+  /// Draws the water over the scene drawn so far, its stages timed, copying that scene first for the enhanced water.
   #[allow(clippy::too_many_arguments)]
   pub fn record(
-    &mut self,
+    &self,
     encoder: &mut wgpu::CommandEncoder,
     pass: &WaterPass,
     targets: &ViewTargets,
@@ -172,10 +171,17 @@ impl LevelWater {
       &mut |encoder, name| timer.mark(encoder, name),
     );
 
-    if let Some(reflection) = &mut self.reflection {
+    timer.mark(encoder, "water");
+  }
+
+  /// Makes the reflection a frame drew the one the next frame keeps, where the frame drew the water.
+  pub fn finish_frame(&mut self) {
+    if let Some(reflection) = self
+      .reflection
+      .as_mut()
+      .filter(|_| self.groups.is_some() && self.is_drawn)
+    {
       reflection.swap();
     }
-
-    timer.mark(encoder, "water");
   }
 }

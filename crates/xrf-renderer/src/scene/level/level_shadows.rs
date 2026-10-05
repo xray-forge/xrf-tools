@@ -21,6 +21,8 @@ pub struct LevelShadows {
   cascades: Vec<ShadowCascadeView>,
   /// Frames the shadow has been in, which a cascade's stagger is counted by.
   frames: u64,
+  /// The cascades this frame draws, as `prepare_cascades` decided.
+  due: Vec<usize>,
   /// Bumped whenever the maps are made again, which the sun's bind group follows.
   epoch: u64,
 }
@@ -38,6 +40,7 @@ impl LevelShadows {
       values: ShadowUniform::default(),
       cascades: Vec::new(),
       frames: 0,
+      due: Vec::new(),
       epoch: 0,
     }
   }
@@ -66,8 +69,9 @@ impl LevelShadows {
     }
   }
 
-  /// Fits the cascades, culls and draws those due, and writes what the sun samples them by.
-  pub fn record(
+  /// Fits the cascades, decides which are due and readies what culls and draws them, and writes what the sun samples
+  /// them by; `encoder` takes the copies a list growing makes.
+  pub fn prepare_cascades(
     &mut self,
     device: &wgpu::Device,
     queue: &wgpu::Queue,
@@ -80,10 +84,11 @@ impl LevelShadows {
     let count: usize = settings.get_cascade_count();
 
     self.values.count = count as u32;
+    self.due.clear();
 
     if count > 0 {
       self.frames += 1;
-      self.draw_cascades(device, queue, encoder, passes, view_layout, frame, count);
+      self.ready_cascades(device, queue, encoder, passes, view_layout, frame, count);
     }
 
     let look: Vec3 = -frame.camera.view.inverse().z_axis.truncate();
@@ -96,8 +101,30 @@ impl LevelShadows {
     queue.write_buffer(&self.uniform, 0, bytemuck::bytes_of(&self.values));
   }
 
+  /// Culls and draws the cascades due this frame.
+  pub fn record(&self, encoder: &mut wgpu::CommandEncoder, passes: LevelPasses<'_>, frame: &ShadowFrame<'_>) {
+    for &index in &self.due {
+      let cascade: &ShadowCascadeView = &self.cascades[index];
+      let (Some((_, cull_group)), Some((_, draw_groups))) = (&cascade.cull_group, &cascade.draw_groups) else {
+        continue;
+      };
+
+      passes
+        .cull
+        .dispatch_shadow(encoder, &cascade.view, cull_group, frame.params, false);
+      passes.shadow.draw(
+        encoder,
+        &self.maps.layers[index],
+        &cascade.view,
+        draw_groups,
+        frame.textures.get_bind_group(),
+        &cascade.args,
+      );
+    }
+  }
+
   #[allow(clippy::too_many_arguments)]
-  fn draw_cascades(
+  fn ready_cascades(
     &mut self,
     device: &wgpu::Device,
     queue: &wgpu::Queue,
@@ -194,21 +221,11 @@ impl LevelShadows {
         cascade.draw_groups = Some((draw_key, groups));
       }
 
-      let (Some((_, cull_group)), Some((_, draw_groups))) = (&cascade.cull_group, &cascade.draw_groups) else {
+      if cascade.cull_group.is_none() || cascade.draw_groups.is_none() {
         continue;
-      };
+      }
 
-      passes
-        .cull
-        .dispatch_shadow(encoder, &cascade.view, cull_group, frame.params, false);
-      passes.shadow.draw(
-        encoder,
-        &self.maps.layers[index],
-        &cascade.view,
-        draw_groups,
-        frame.textures.get_bind_group(),
-        &cascade.args,
-      );
+      self.due.push(index);
       cascade.drawn = Some(state);
       cascade.drawn_at = frame.sway.time;
       cascade.drawn_fit = cascade.cascade;
