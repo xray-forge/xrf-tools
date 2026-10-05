@@ -97,12 +97,9 @@ impl LevelLights {
       contents,
       sway,
       campfire_shares,
-      motions,
     } = frame;
 
-    self.move_lights(motions);
     into.records.clear();
-    self.shadows.begin();
     into.report = RenderLightsReport::default();
 
     let is_shadowing: bool = settings.is_enabled && settings.is_shadowed;
@@ -181,8 +178,6 @@ impl LevelLights {
             sway,
           );
         }
-
-        self.shadows.finish();
       }
 
       for it in in_view {
@@ -228,6 +223,11 @@ impl LevelLights {
     into.write(queue, camera, settings.shadow_filter);
   }
 
+  /// Starts a scene's frame: stands each light its motion carries.
+  pub fn begin_frame(&mut self, motions: &HashMap<String, (Mat4, Vec3)>) {
+    self.move_lights(motions);
+  }
+
   /// Stands each light a motion carries `height` over where the motion has its zone this frame (`UpdateIdleLight`);
   /// one whose motion is still read stays where its zone spawned.
   fn move_lights(&mut self, motions: &HashMap<String, (Mat4, Vec3)>) {
@@ -247,15 +247,19 @@ impl LevelLights {
     }
   }
 
-  /// Readies the shadow faces queued this frame, which `record_shadows` draws before the lights read them.
-  pub fn prepare_shadows(
+  /// Ends what every view of the scene asked of the shadows this frame: picks the faces to draw from all they asked,
+  /// and readies them, which `add_shadow_passes` then draws before the lights read them; then opens the next frame's
+  /// asking.
+  pub fn finish_shadows(
     &mut self,
     device: &wgpu::Device,
     queue: &wgpu::Queue,
     encoder: &mut wgpu::CommandEncoder,
     frame: &ShadowFrame<'_>,
   ) {
+    self.shadows.finish();
     self.shadows.prepare(device, queue, encoder, frame);
+    self.shadows.begin();
   }
 
   /// Declares the culls and draws of the shadow faces this frame's `prepare_shadows` readied.

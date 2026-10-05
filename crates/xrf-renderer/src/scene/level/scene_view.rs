@@ -8,7 +8,7 @@ use xrf_material::XraySurfaceDraw;
 use xrf_math::EPS_S;
 use xrf_renderer_core::{
   FrameGraph, GraphBindings, GraphBuffer, GraphBufferAccess, GraphColorAttachment, GraphDepthAttachment, GraphRuntime,
-  GraphTexture, GraphTextureAccess, ProxyHandle, RasterPassBuilder, StorageArray,
+  GraphTexture, GraphTextureAccess, RasterPassBuilder, StorageArray,
 };
 
 use crate::camera::camera_view::CameraView;
@@ -20,7 +20,6 @@ use crate::contract::render_bloom_settings::RenderBloomSettings;
 use crate::contract::render_debug_view::RenderDebugView;
 use crate::contract::render_level_hit::RenderLevelHit;
 use crate::contract::render_lights_report::RenderLightsReport;
-use crate::contract::render_load_report::RenderLoadReport;
 use crate::contract::render_overlay::RenderOverlay;
 use crate::contract::render_particles_report::RenderParticlesReport;
 use crate::contract::render_pool_use::RenderPoolUse;
@@ -42,10 +41,8 @@ use crate::frame::upscale_targets::UpscaleTargets;
 use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::frame::view_targets::ViewTargets;
 use crate::host::render_asset_source::RenderAssetSource;
-use crate::host::render_level_source::RenderLevelSource;
 use crate::host::render_level_weather::RenderLevelWeather;
 use crate::host::render_rain::RenderRain;
-use crate::host::render_sector_failure::RenderSectorFailure;
 use crate::lighting::ambient_gust::AmbientGust;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::pass::ambient_occlusion_pass::AmbientOcclusionPass;
@@ -55,7 +52,6 @@ use crate::pass::bloom_uniform::BloomUniform;
 use crate::pass::camera_uniform::CameraUniform;
 use crate::pass::fsr_groups::FsrGroups;
 use crate::pass::fsr_uniform::FsrUniform;
-use crate::pass::grass_pass::GrassPass;
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::lighting_frame::LightingFrame;
 use crate::pass::lighting_uniform::LightingUniform;
@@ -78,16 +74,12 @@ use crate::pass::wet_uniform::WetUniform;
 use crate::pass::wind_uniform::WindUniform;
 use crate::scene::level::grass_level::GrassLevel;
 use crate::scene::level::level_frame::LevelFrame;
-use crate::scene::level::level_load::LevelLoad;
 use crate::scene::level::level_overlays::LevelOverlays;
 use crate::scene::level::level_scene::LevelScene;
 use crate::scene::level::level_smoothing::LevelSmoothing;
 use crate::scene::level::level_water::WaterFrame;
-use crate::scene::level::level_world_input::LevelWorldInput;
 use crate::scene::level::lights_frame::LightsFrame;
 use crate::scene::level::lights_view::LightsView;
-use crate::scene::level::particle_emitter_proxy::ParticleEmitterProxy;
-use crate::scene::level::placed_effect::PlacedEffect;
 use crate::scene::level::scene_renderer::{SceneRenderer, SkyGroupKey};
 use crate::scene::level::shadow_frame::ShadowFrame;
 use crate::scene::level::shadow_sway::ShadowSway;
@@ -103,63 +95,28 @@ use crate::scene::static_scene::static_sorted_place::StaticSortedPlace;
 use crate::scene::texture::texture_cache::TextureCache;
 use crate::scene::texture::weather_texture_cache::WeatherTextureCache;
 use crate::scene::texture::weather_texture_kind::WeatherTextureKind;
-use crate::thread::render_workers::RenderWorkers;
 
 /// What a pick's texel says it met: a cluster, by its index and place, or an impostor, by its index.
 const PICKED_CLUSTER: u32 = 1;
 const PICKED_IMPOSTOR: u32 = 2;
 
-/// A level as one viewport draws it, held as the four things a frame is made from: the level (`LevelScene`), what the
-/// view keeps between frames (`ViewState`), this frame as prepared (`ViewInfo`), and what draws it (`SceneRenderer`);
-/// and what its load reports (`LevelLoad`). It orchestrates them: applies what the world posted, prepares the frame,
-/// and records it as a frame graph.
-pub struct LevelView {
+/// A scene as one viewport draws it: this frame as prepared (`ViewInfo`), what the view keeps between frames
+/// (`ViewState`), and what draws it (`SceneRenderer`). The scene (`LevelScene`) is shared by every view of it and passed
+/// in; this prepares the view's frame from it and records it into the frame's graph.
+pub struct SceneView {
   /// This frame as prepared, which its passes read.
   info: ViewInfo,
   /// What the view keeps from one frame to the next.
   state: ViewState,
-  /// The level it draws.
-  scene: LevelScene,
-  /// What its load reports, from how far the world streamed it.
-  load: LevelLoad,
-  /// What draws it, and what that keeps between frames: the passes' buffers and bind groups, and the effects
-  /// drawn from the view.
+  /// What draws it, and what that keeps between frames: the passes' buffers and bind groups, and the effects drawn from
+  /// the view.
   renderer: SceneRenderer,
 }
 
-impl LevelView {
-  /// The level it draws.
-  pub fn get_scene(&self) -> &LevelScene {
-    &self.scene
-  }
-
-  pub fn get_scene_mut(&mut self) -> &mut LevelScene {
-    &mut self.scene
-  }
-
-  /// How far the level has loaded, when that changed since it was last asked.
-  pub fn take_load_report(&mut self, textures: &TextureCache) -> Option<RenderLoadReport> {
-    self.load.take_report(&self.scene, textures)
-  }
-
-  /// Whether everything the level opens with is resident, so it draws as it will.
-  pub fn is_ready(&self, textures: &TextureCache) -> bool {
-    self.load.is_ready(&self.scene, textures)
-  }
-
-  /// How far the level has loaded.
-  pub fn describe_load(&self, textures: &TextureCache) -> RenderLoadReport {
-    self.load.describe(&self.scene, textures)
-  }
-
-  /// The effects whose particles stopped playing this frame, for the world.
-  pub fn take_finished_effects(&mut self) -> Vec<(ProxyHandle<ParticleEmitterProxy>, PlacedEffect)> {
-    self.scene.particles.take_finished()
-  }
-
-  /// What its level's particles came to since the last report, as this view draws them.
-  pub fn take_particles_report(&mut self) -> RenderParticlesReport {
-    self.scene.particles.take_report(self.state.particles.drawn)
+impl SceneView {
+  /// What the scene's particles came to since the last report, as this view draws them.
+  pub fn take_particles_report(&self, scene: &mut LevelScene) -> RenderParticlesReport {
+    scene.particles.take_report(self.state.particles.drawn)
   }
 
   /// What it keeps from one frame to the next.
@@ -171,41 +128,29 @@ impl LevelView {
     &mut self.state
   }
 
+  /// A view of `scene`, nothing of it drawn yet.
   pub fn new(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
     view_layout: &wgpu::BindGroupLayout,
-    source: Arc<dyn RenderLevelSource>,
-    workers: &RenderWorkers,
+    scene: &LevelScene,
   ) -> Self {
-    let scene: LevelScene = LevelScene::new(device, queue, view_layout, source, workers);
-    let args_size: u64 = scene.statics.args.size();
-
     Self {
       info: ViewInfo::default(),
       state: ViewState::new(device, queue),
-      load: LevelLoad::new(scene.started),
-      scene,
-      renderer: SceneRenderer::new(device, view_layout, args_size),
+      renderer: SceneRenderer::new(device, view_layout, scene.statics.args.size()),
     }
   }
 
-  /// Applies what the world posted this frame where it is the world's level, takes the grass and particles their
-  /// loaders finished, and asks for the textures the lighting's sky draws with; answers the sectors it could not take
-  /// in.
-  #[allow(clippy::too_many_arguments)]
-  pub fn load(
+  /// Asks for the textures its weather draws with: the rain's, the bolts', the flares' and the sky's.
+  pub fn request_textures(
     &mut self,
-    device: &wgpu::Device,
-    queue: &wgpu::Queue,
-    encoder: &mut wgpu::CommandEncoder,
-    (textures, weather_textures): (&mut TextureCache, &mut WeatherTextureCache),
-    grass_pass: &GrassPass,
+    scene: &LevelScene,
+    weather_textures: &mut WeatherTextureCache,
     (lighting, weather): (&RenderLighting, Option<&Arc<RenderLevelWeather>>),
     options: &RenderViewOptions,
-    world: Option<LevelWorldInput<'_>>,
-  ) -> Vec<RenderSectorFailure> {
-    let assets: Arc<dyn RenderAssetSource> = Arc::clone(&self.scene.source) as Arc<dyn RenderAssetSource>;
+  ) {
+    let assets: Arc<dyn RenderAssetSource> = Arc::clone(&scene.source) as Arc<dyn RenderAssetSource>;
 
     if let Some(rain) = weather.and_then(|weather| weather.rain.as_ref())
       && lighting.rain.is_some()
@@ -251,54 +196,13 @@ impl LevelView {
         weather_textures.request(reference, WeatherTextureKind::Cube, &assets);
       }
     }
-
-    if self.scene.environments.0 != textures.get_environments_generation() {
-      self.scene.environments = (
-        textures.get_environments_generation(),
-        textures.list_environments().to_vec(),
-      );
-    }
-
-    // Only the cubes this scene samples are kept loaded; another scene's are bound as placeholders here.
-    for slot in &self.scene.statics.environment_slots {
-      if let Some(reference) = textures.get_environment(*slot) {
-        weather_textures.request(reference, WeatherTextureKind::Cube, &assets);
-      }
-    }
-
-    if let Some(slots) = self.scene.grass.poll(device, grass_pass, textures, &assets) {
-      self.scene.statics.texture_slots.extend(slots);
-    }
-
-    let Some(LevelWorldInput {
-      updates,
-      streaming,
-      skeleton_segments,
-      gust,
-      campfire_shares,
-      motions,
-    }) = world
-    else {
-      return Vec::new();
-    };
-    let failures: Vec<RenderSectorFailure> =
-      self
-        .scene
-        .apply((device, queue, encoder), (&mut *textures, &assets), updates);
-
-    self.load.advance(streaming, &self.scene, textures);
-    self.info.skeleton_segments = skeleton_segments.to_vec();
-    self.info.gust = gust;
-    self.info.campfire_shares.clone_from(campfire_shares);
-    self.info.motions.clone_from(motions);
-
-    failures
   }
 
   /// Sizes the targets to the viewport and writes what this frame's cull and lighting read.
   #[allow(clippy::too_many_arguments)]
   pub fn prepare(
     &mut self,
+    scene: &mut LevelScene,
     device: &wgpu::Device,
     queue: &wgpu::Queue,
     encoder: &mut wgpu::CommandEncoder,
@@ -327,10 +231,8 @@ impl LevelView {
       self.renderer.light_groups = None;
     }
 
-    self.scene.statics.prepare_draws(device, queue, encoder);
-
     if let Some(overlays) = self.state.overlays.as_mut().filter(|it| it.skeleton.is_some()) {
-      overlays.set_skeleton(device, &self.info.skeleton_segments);
+      overlays.set_skeleton(device, &scene.skeleton_segments);
     }
 
     self
@@ -360,7 +262,7 @@ impl LevelView {
           targets,
           passes.table,
           &self.state.lights.get_buffers(),
-          self.scene.lights.get_shadow_atlas(),
+          scene.lights.get_shadow_atlas(),
         ),
         occlusion: passes
           .ambient_occlusion
@@ -425,7 +327,7 @@ impl LevelView {
         sky.clouds.textures[1].clone(),
         self.info.sun_sprite.as_ref().map(|(texture, _)| texture.clone()),
       ],
-      self.scene.environments.0,
+      scene.environments.0,
     );
 
     if self.renderer.sky_group.as_ref().is_none_or(|(key, _)| *key != sky_key) {
@@ -435,13 +337,13 @@ impl LevelView {
           device,
           weather_textures,
           (sky, self.info.sun_sprite.as_ref().map(|(texture, _)| texture.as_str())),
-          &self.scene.environments.1,
+          &scene.environments.1,
         ),
       ));
     }
 
     // The ambient effects blow the wind the grass, the rain and the campfires read this frame.
-    let gust: AmbientGust = self.info.gust;
+    let gust: AmbientGust = scene.gust;
 
     self.info.sky_cubes = Some([0, 1].map(|index| {
       weather_textures
@@ -460,11 +362,11 @@ impl LevelView {
         intensity: lighting.water_intensity,
         wind: lighting.wind,
         rain: lighting.rain.map_or(0.0, |rain| rain.density),
-        time: self.scene.started.elapsed().as_secs_f32(),
+        time: scene.started.elapsed().as_secs_f32(),
       },
     );
 
-    let sway_time: f32 = self.scene.started.elapsed().as_secs_f32();
+    let sway_time: f32 = scene.started.elapsed().as_secs_f32();
     let wind: WindUniform =
       WindUniform::new(lighting.trees.as_ref(), sway_time).following(self.state.last_wind.as_ref());
 
@@ -476,7 +378,7 @@ impl LevelView {
       queue,
       passes,
       (lighting, weather),
-      (options, gust),
+      (options, gust, scene.started.elapsed().as_secs_f32()),
       weather_textures,
     );
     self.prepare_thunder(device, queue, passes, (lighting, weather), options, weather_textures);
@@ -504,7 +406,7 @@ impl LevelView {
         .environments
         .iter()
         .all(|reference| reference.as_deref().is_some_and(|it| weather_textures.is_up(it))),
-      clouds_time: self.scene.started.elapsed().as_secs_f32(),
+      clouds_time: scene.started.elapsed().as_secs_f32(),
       sun_sprite: self
         .info
         .sun_sprite
@@ -531,14 +433,14 @@ impl LevelView {
     let threshold = |area: f32| -> f32 { (area / 3.0).powi(2) / screen };
 
     self.info.cull = StaticCullParams {
-      cluster_count: self.scene.statics.get_cluster_count(),
-      row_count: self.scene.statics.get_row_count(),
+      cluster_count: scene.statics.get_cluster_count(),
+      row_count: scene.statics.get_row_count(),
       batch_count: StaticBatch::COUNT as u32,
-      impostor_count: self.scene.statics.get_impostor_count(),
+      impostor_count: scene.statics.get_impostor_count(),
       glod_start: threshold(options.features.lod.ssa_glod_start),
       glod_end: threshold(options.features.lod.ssa_glod_end),
       discard_below: options.features.lod.ssa_discard.powi(2) / screen,
-      candidate_capacity: self.scene.statics.get_list_capacity(),
+      candidate_capacity: scene.statics.get_list_capacity(),
       is_occluding: options.features.is_occlusion_culled as u32,
       lod_a: threshold(options.features.lod.ssa_a),
       lod_b: threshold(options.features.lod.ssa_b),
@@ -549,27 +451,26 @@ impl LevelView {
     self.info.matrices = (view.view, view.projection);
     self.state.grass.prepare(
       (device, queue),
-      (passes.grass, self.scene.grass.get_level()),
+      (passes.grass, scene.grass.get_level()),
       &options.features.grass,
       view,
       self.info.cull.discard_below,
       (
-        self.scene.started.elapsed().as_secs_f32(),
+        scene.started.elapsed().as_secs_f32(),
         lighting.trees.is_some(),
         gust.strength,
       ),
     );
-    self.scene.lights.prepare(
+    scene.lights.prepare(
       queue,
       &mut self.state.lights,
       LightsFrame {
         camera: view,
         settings: &options.features.lights,
         lod: (self.info.cull.glod_start, self.info.cull.glod_end),
-        contents: self.scene.statics.get_contents(),
-        sway: &to_sway(&self.scene.statics, self.info.sway),
-        campfire_shares: &self.info.campfire_shares,
-        motions: &self.info.motions,
+        contents: scene.statics.get_contents(),
+        sway: &to_sway(&scene.statics, self.info.sway),
+        campfire_shares: &scene.campfire_shares,
       },
     );
     self.info.camera = *view;
@@ -596,7 +497,7 @@ impl LevelView {
         (width.div_ceil(2), height.div_ceil(2)),
       )),
     );
-    self.prepare_sorted(device, queue, view);
+    self.prepare_sorted(scene, device, queue, view);
 
     if let Some((pyramid, _)) = &self.state.pyramid {
       let (history_view, history_projection): (Mat4, Mat4) = self.state.history.unwrap_or(self.info.matrices);
@@ -612,38 +513,36 @@ impl LevelView {
     self.info.lighting = LightingUniform::new(lighting, view.view, options, &frame);
     queue.write_buffer(&self.renderer.lighting, 0, bytemuck::bytes_of(&self.info.lighting));
 
-    self.scene.particles.simulate(view, options);
-    self.scene.particles.fill(view, options, &mut self.state.particles);
+    scene.particles.fill(view, options, &mut self.state.particles);
 
     if let Some(targets) = &self.state.targets {
       self.state.particles.upload(
         (device, queue),
         passes.particles,
-        (&self.renderer.lighting, self.scene.particles.get_surfaces()),
+        (&self.renderer.lighting, scene.particles.get_surfaces()),
         (targets, self.state.targets_epoch),
       );
     }
 
     self.write_present(queue, options);
-    self.prepare_shadows(device, queue, encoder, (view_layout, textures));
+    self.prepare_shadows(scene, device, queue, encoder, (view_layout, textures));
   }
 
   /// Readies this frame's shadows, sun, rain cover and lights, which the frame's passes then draw; `encoder` takes
   /// the copies a list growing makes.
   fn prepare_shadows(
     &mut self,
+    scene: &LevelScene,
     device: &wgpu::Device,
     queue: &wgpu::Queue,
     encoder: &mut wgpu::CommandEncoder,
     (view_layout, textures): (&wgpu::BindGroupLayout, &TextureCache),
   ) {
-    let LevelView {
-      scene, info, renderer, ..
-    } = self;
+    let SceneView { info, renderer, .. } = self;
     let SceneRenderer {
       shadows, rain_cover, ..
     } = renderer;
-    let LevelScene { statics, lights, .. } = scene;
+    let statics: &StaticScene = &scene.statics;
     let frame: ShadowFrame<'_> = ShadowFrame {
       scene: statics,
       camera: &info.camera,
@@ -659,8 +558,29 @@ impl LevelView {
     if info.rain_draw.is_some() {
       rain_cover.prepare(device, queue, encoder, &frame);
     }
+  }
 
-    lights.prepare_shadows(device, queue, encoder, &frame);
+  /// Readies the scene's light shadow faces every view of it asked for this frame, from this view's culling, once all
+  /// were prepared; `encoder` takes the copies a list growing makes.
+  pub fn prepare_scene_shadows(
+    &self,
+    scene: &mut LevelScene,
+    (device, queue): (&wgpu::Device, &wgpu::Queue),
+    encoder: &mut wgpu::CommandEncoder,
+    textures: &TextureCache,
+  ) {
+    let LevelScene { statics, lights, .. } = scene;
+    let frame: ShadowFrame<'_> = ShadowFrame {
+      scene: statics,
+      camera: &self.info.camera,
+      settings: &self.info.shadow_settings,
+      sun_direction: self.info.sun_direction,
+      sway: to_sway(statics, self.info.sway),
+      params: &self.info.cull,
+      textures,
+    };
+
+    lights.finish_shadows(device, queue, encoder, &frame);
   }
 
   /// Declares the scene's culls and G-buffer draws: what last frame's depth does not hide, culled and drawn; then, while
@@ -964,7 +884,7 @@ impl LevelView {
     queue: &wgpu::Queue,
     passes: LevelPasses<'_>,
     (lighting, weather): (&RenderLighting, Option<&Arc<RenderLevelWeather>>),
-    (options, gust): (&RenderViewOptions, AmbientGust),
+    (options, gust, time): (&RenderViewOptions, AmbientGust, f32),
     weather_textures: &WeatherTextureCache,
   ) {
     self.info.rain_draw = None;
@@ -981,18 +901,18 @@ impl LevelView {
       return;
     };
 
-    if self.scene.splash.as_ref().is_none_or(|(built, _)| *built != key) {
-      self.scene.splash = Some((key, WeatherModelBuffers::new(device, rain.drop.as_ref())));
+    if self.renderer.splash.as_ref().is_none_or(|(built, _)| *built != key) {
+      self.renderer.splash = Some((key, WeatherModelBuffers::new(device, rain.drop.as_ref())));
     }
 
-    let Some((_, splash)) = &self.scene.splash else {
+    let Some((_, splash)) = &self.renderer.splash else {
       return;
     };
     let uniform: RainUniform = RainUniform::new(
       &rainfall,
       (lighting.wind, gust.strength),
       self.renderer.rain_cover.get_window(),
-      self.scene.started.elapsed().as_secs_f32(),
+      time,
       splash.index_count,
     );
     let group_key: (u64, usize) = (weather_textures.get_generation(), key);
@@ -1089,7 +1009,7 @@ impl LevelView {
     let key: usize = Arc::as_ptr(weather) as usize;
 
     if self
-      .scene
+      .renderer
       .thunder_models
       .as_ref()
       .is_none_or(|(built, _)| *built != key)
@@ -1100,10 +1020,10 @@ impl LevelView {
         .map(|model| WeatherModelBuffers::new(device, Some(&model.mesh)))
         .collect();
 
-      self.scene.thunder_models = Some((key, models));
+      self.renderer.thunder_models = Some((key, models));
     }
 
-    let Some((_, models)) = &self.scene.thunder_models else {
+    let Some((_, models)) = &self.renderer.thunder_models else {
       return;
     };
     let model = bolt
@@ -1124,7 +1044,7 @@ impl LevelView {
       .is_none_or(|(built, _)| *built != group_key)
     {
       let flat = |reference: &str| weather_textures.get_view(Some(reference), WeatherTextureKind::Flat);
-      let buffers: &WeatherModelBuffers = model.map_or(&self.scene.no_model, |(buffers, _)| buffers);
+      let buffers: &WeatherModelBuffers = model.map_or(&self.renderer.no_model, |(buffers, _)| buffers);
       let model_texture: &str = model.map_or("", |(_, model)| model.mesh.texture.as_str());
       let groups: [wgpu::BindGroup; 3] = [
         passes
@@ -1134,13 +1054,13 @@ impl LevelView {
           device,
           &self.renderer.thunder,
           flat(&bolt.top.texture),
-          &self.scene.no_model,
+          &self.renderer.no_model,
         ),
         passes.thunder.create_bind_group(
           device,
           &self.renderer.thunder,
           flat(&bolt.center.texture),
-          &self.scene.no_model,
+          &self.renderer.no_model,
         ),
       ];
 
@@ -1177,6 +1097,7 @@ impl LevelView {
 
     Some(LevelFrame {
       pick_slot,
+      is_scene_first: false,
       is_lit: self.renderer.light_groups.is_some(),
       resolve: if self.state.fsr.is_some() {
         Some("fsr2")
@@ -1197,6 +1118,7 @@ impl LevelView {
   /// recording leaves as it is. The present pass reads what it leaves.
   pub fn record<'a>(
     &'a self,
+    scene: &'a LevelScene,
     (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
     passes: LevelPasses<'a>,
     view: &'a ViewBinding,
@@ -1225,17 +1147,17 @@ impl LevelView {
     let is_sharpened: bool = self.state.upscale.is_some() && self.info.upscaling.is_sharpened();
     let is_adapting: bool = self.state.exposure.is_adapting();
     let texture_group: &wgpu::BindGroup = textures.get_bind_group();
-    let level_view: &'a LevelView = self;
-    let (Some(targets), Some((pyramid, pyramid_groups))) = (&level_view.state.targets, &level_view.state.pyramid)
+    let scene_view: &'a SceneView = self;
+    let (Some(targets), Some((pyramid, pyramid_groups))) = (&scene_view.state.targets, &scene_view.state.pyramid)
     else {
       return;
     };
     let handles: ViewTargetHandles = ViewTargetHandles::import(&mut *graph, &mut *bindings, targets);
     let statics: StaticSceneHandles = StaticSceneHandles::import(
       (&mut *graph, &mut *bindings, runtime),
-      &level_view.scene.statics,
+      &scene.statics,
       &pyramid.view,
-      (&level_view.info.cull, &level_view.info.occlusion, &level_view.info.wind),
+      (&scene_view.info.cull, &scene_view.info.occlusion, &scene_view.info.wind),
     );
     let layouts: [StaticDrawParameters; StaticLayout::COUNT] = statics.get_camera_draws().layouts;
 
@@ -1251,14 +1173,14 @@ impl LevelView {
       ))
       .record(|_| {});
 
-    let grass_level: Option<&GrassLevel> = level_view.scene.grass.get_level();
+    let grass_level: Option<&GrassLevel> = scene.grass.get_level();
     let grass_args: Option<GraphBuffer> =
-      level_view
+      scene_view
         .state
         .grass
         .add_planting(&mut *graph, &mut *bindings, (passes.grass, grass_level));
 
-    level_view.add_gbuffer_passes(
+    scene_view.add_gbuffer_passes(
       &mut *graph,
       passes,
       (view, texture_group, &statics),
@@ -1276,14 +1198,14 @@ impl LevelView {
       .record(move |context| {
         let args: &wgpu::Buffer = context.get_buffer(stats_args);
 
-        level_view
+        scene_view
           .state
           .stats
           .record(context.get_encoder(), args, StaticScene::STATS_OFFSET);
       });
 
     if let (true, Some(grass_args)) = (is_drawn, grass_args) {
-      level_view.state.grass.add_draw(
+      scene_view.state.grass.add_draw(
         &mut *graph,
         (passes.grass, grass_level),
         (handles, grass_args),
@@ -1292,7 +1214,7 @@ impl LevelView {
     }
 
     if is_wallmarked {
-      let args: Vec<GraphBuffer> = Self::list_draw_args(&statics, &level_view.info.cull);
+      let args: Vec<GraphBuffer> = Self::list_draw_args(&statics, &scene_view.info.cull);
 
       StaticDraws::declare_layouts(
         args
@@ -1315,33 +1237,35 @@ impl LevelView {
 
     graph.begin_group("shadows");
 
-    level_view.renderer.shadows.add_passes(
+    scene_view.renderer.shadows.add_passes(
       (&mut *graph, &mut *bindings),
       passes,
       &statics,
-      (&level_view.info.cull, texture_group),
+      (&scene_view.info.cull, texture_group),
     );
 
     if is_raining {
-      level_view.renderer.rain_cover.add_passes(
+      scene_view.renderer.rain_cover.add_passes(
         (&mut *graph, &mut *bindings),
         passes,
         &statics,
-        (&level_view.info.cull, texture_group),
+        (&scene_view.info.cull, texture_group),
       );
     }
 
-    level_view.scene.lights.add_shadow_passes(
-      (&mut *graph, &mut *bindings),
-      passes,
-      &statics,
-      (&level_view.info.cull, texture_group),
-    );
+    if frame.is_scene_first {
+      scene.lights.add_shadow_passes(
+        (&mut *graph, &mut *bindings),
+        passes,
+        &statics,
+        (&scene_view.info.cull, texture_group),
+      );
+    }
 
     graph.begin_group("lighting");
 
     // The rain wets the G-buffer before any light is drawn over it.
-    if let (true, Some((_, [patch, apply]))) = (is_wet, &level_view.renderer.wet_groups) {
+    if let (true, Some((_, [patch, apply]))) = (is_wet, &scene_view.renderer.wet_groups) {
       // The patches go into the light, which the wet look over the normals and the albedo then reads.
       for (stage, (name, target, group, reads)) in [
         (
@@ -1376,8 +1300,8 @@ impl LevelView {
       }
     }
 
-    if let (true, Some((_, groups))) = (is_lit, &level_view.renderer.light_groups) {
-      level_view.add_lighting_passes(
+    if let (true, Some((_, groups))) = (is_lit, &scene_view.renderer.light_groups) {
+      scene_view.add_lighting_passes(
         (&mut *graph, &mut *bindings),
         passes,
         (view, texture_group, groups),
@@ -1385,7 +1309,7 @@ impl LevelView {
         (has_lights, is_occlusion_ambient),
       );
 
-      if let (true, Some((_, sky_group))) = (is_hazing, &level_view.renderer.sky_group) {
+      if let (true, Some((_, sky_group))) = (is_hazing, &scene_view.renderer.sky_group) {
         graph
           .add_raster_pass("haze")
           .color(GraphColorAttachment::new(
@@ -1395,7 +1319,7 @@ impl LevelView {
           .record(move |context| passes.sky_haze.record(context.get_pass(), &groups.haze, sky_group));
       }
 
-      if let (true, Some((_, sky_group))) = (has_sky, &level_view.renderer.sky_group) {
+      if let (true, Some((_, sky_group))) = (has_sky, &scene_view.renderer.sky_group) {
         [
           handles.albedo,
           handles.normal,
@@ -1427,7 +1351,7 @@ impl LevelView {
       let scene: GraphTexture = handles.scene;
 
       // FSR 2's reactive mask is what the water and the blended surfaces change of the frame drawn so far.
-      if let Some((fsr, _)) = &level_view.state.fsr {
+      if let Some((fsr, _)) = &scene_view.state.fsr {
         let opaque: GraphTexture = bindings.import_view(&mut *graph, "fsr2 opaque", &fsr.opaque);
 
         graph
@@ -1445,17 +1369,17 @@ impl LevelView {
           });
       }
 
-      if let (true, Some(skies)) = (level_view.state.water.is_drawn(), &level_view.info.sky_cubes) {
+      if let (true, Some(skies)) = (scene_view.state.water.is_drawn(), &scene_view.info.sky_cubes) {
         let draw: WaterDraw<'_> = WaterDraw {
           targets: handles,
           view,
           textures: texture_group,
           layouts,
-          args: Self::list_draw_args(&statics, &level_view.info.cull),
-          lighting: runtime.push_uniform(&level_view.info.lighting),
+          args: Self::list_draw_args(&statics, &scene_view.info.cull),
+          lighting: runtime.push_uniform(&scene_view.info.lighting),
           skies: [&skies[0], &skies[1]],
           sky_sampler: passes.sky.get_clamp(),
-          water: &level_view.state.water,
+          water: &scene_view.state.water,
         };
 
         passes.water.add_passes(&mut *graph, &mut *bindings, runtime, draw);
@@ -1463,20 +1387,20 @@ impl LevelView {
 
       graph.begin_group("post");
 
-      if let (true, Some((_, sky_group))) = (is_composited, &level_view.renderer.sky_group) {
-        let args: Vec<GraphBuffer> = Self::list_draw_args(&statics, &level_view.info.cull);
+      if let (true, Some((_, sky_group))) = (is_composited, &scene_view.renderer.sky_group) {
+        let args: Vec<GraphBuffer> = Self::list_draw_args(&statics, &scene_view.info.cull);
         // The models' composited clusters, back to front, which the view lists itself.
-        let sorted: Option<StaticDrawParameters> = level_view
+        let sorted: Option<StaticDrawParameters> = scene_view
           .state
           .sorted_list
           .as_ref()
-          .filter(|_| level_view.info.sorted_count > 0)
+          .filter(|_| scene_view.info.sorted_count > 0)
           .map(|list| {
             let list: GraphBuffer = bindings.import_buffer(&mut *graph, "sorted composited", list);
 
             statics.get_layout_draws(StorageArray::new(list))[StaticLayout::Model.get_index()]
           });
-        let sorted_count: u32 = level_view.info.sorted_count;
+        let sorted_count: u32 = scene_view.info.sorted_count;
         let builder = args.iter().fold(
           StaticDraws::declare_layouts(Self::add_over_scene(&mut *graph, handles, "composited"), &layouts),
           |builder, args| builder.buffer(*args, GraphBufferAccess::Indirect),
@@ -1500,7 +1424,7 @@ impl LevelView {
       }
 
       if has_particles {
-        level_view
+        scene_view
           .state
           .particles
           .add_passes(&mut *graph, passes.particles, handles, (view, texture_group));
@@ -1517,8 +1441,8 @@ impl LevelView {
 
       if let (true, Some(counts), Some((_, rain_group))) = (
         is_rain_drawn,
-        level_view.info.rain_draw,
-        &level_view.renderer.rain_group,
+        scene_view.info.rain_draw,
+        &scene_view.renderer.rain_group,
       ) {
         Self::add_over_scene(&mut *graph, handles, "rain")
           .record(move |context| passes.rain.record(context.get_pass(), view, rain_group, counts));
@@ -1526,19 +1450,19 @@ impl LevelView {
 
       if let (true, Some(draws), Some((_, thunder_groups))) = (
         is_thundering,
-        level_view.info.thunder_draw,
-        &level_view.renderer.thunder_groups,
+        scene_view.info.thunder_draw,
+        &scene_view.renderer.thunder_groups,
       ) {
         Self::add_over_scene(&mut *graph, handles, "thunder")
           .record(move |context| passes.thunder.record(context.get_pass(), view, thunder_groups, draws));
       }
 
-      level_view
+      scene_view
         .renderer
         .flares
         .add_passes(&mut *graph, passes.flares, handles, view);
 
-      if let (true, Some((_, bloom_groups))) = (is_bloomed, &level_view.renderer.bloom_groups) {
+      if let (true, Some((_, bloom_groups))) = (is_bloomed, &scene_view.renderer.bloom_groups) {
         // Built from the high target into the first, blurred across into the second, then down into the first.
         for (stage, (read, written)) in [
           (handles.high, handles.bloom[0]),
@@ -1559,7 +1483,7 @@ impl LevelView {
         }
       }
 
-      if let Some(smoothing) = level_view.state.smoothing.as_ref().filter(|_| is_smoothed) {
+      if let Some(smoothing) = scene_view.state.smoothing.as_ref().filter(|_| is_smoothed) {
         let target: GraphTexture = bindings.import_view(&mut *graph, "smoothed", &smoothing.target.view);
 
         match (&smoothing.smaa, passes.smaa) {
@@ -1603,7 +1527,7 @@ impl LevelView {
       }
 
       // The resolved frame goes where the present pass reads it: the upscaled frame, or the scene drawn at its size.
-      let upscaled: Option<[GraphTexture; 2]> = level_view.state.upscale.as_ref().map(|(upscale, _)| {
+      let upscaled: Option<[GraphTexture; 2]> = scene_view.state.upscale.as_ref().map(|(upscale, _)| {
         [
           bindings.import_view(&mut *graph, "upscaled", &upscale.views[0]),
           bindings.import_view(&mut *graph, "sharpened", &upscale.views[1]),
@@ -1613,9 +1537,9 @@ impl LevelView {
 
       match (
         resolve,
-        &level_view.state.fsr,
-        &level_view.state.temporal,
-        &level_view.state.upscale,
+        &scene_view.state.fsr,
+        &scene_view.state.temporal,
+        &scene_view.state.upscale,
       ) {
         (Some("fsr2"), Some((fsr, groups)), _, _) => {
           let history: GraphTexture = bindings.import_view(&mut *graph, "fsr2 history", &fsr.history[fsr.index]);
@@ -1653,7 +1577,7 @@ impl LevelView {
       }
 
       if let (true, Some((_, groups)), Some([upscaled, sharpened])) =
-        (is_sharpened, &level_view.state.upscale, upscaled)
+        (is_sharpened, &scene_view.state.upscale, upscaled)
       {
         graph
           .add_raster_pass("sharpen")
@@ -1666,7 +1590,7 @@ impl LevelView {
       }
 
       if is_adapting {
-        let state: GraphBuffer = bindings.import_buffer(&mut *graph, "exposure", &level_view.state.exposure.state);
+        let state: GraphBuffer = bindings.import_buffer(&mut *graph, "exposure", &scene_view.state.exposure.state);
 
         graph
           .add_compute_pass("exposure")
@@ -1677,9 +1601,9 @@ impl LevelView {
     }
 
     if let (Some(slot), Some(target), Some(pick_view)) =
-      (pick_slot, &level_view.state.pick_target, &level_view.state.pick_view)
+      (pick_slot, &scene_view.state.pick_target, &scene_view.state.pick_view)
     {
-      level_view.add_pick_passes(
+      scene_view.add_pick_passes(
         (&mut *graph, &mut *bindings),
         passes.gbuffer,
         (pick_view, texture_group, &statics),
@@ -1778,6 +1702,7 @@ impl LevelView {
   /// Names what a pick's texel met.
   pub fn resolve_pick(
     &self,
+    scene: &LevelScene,
     [kind, cluster, place, depth]: [u32; 4],
     unproject: impl Fn(f32) -> Vec3,
   ) -> Option<RenderLevelHit> {
@@ -1786,8 +1711,7 @@ impl LevelView {
     match kind {
       PICKED_CLUSTER => {}
       PICKED_IMPOSTOR => {
-        return self
-          .scene
+        return scene
           .statics
           .resolve_impostor_pick(cluster)
           .map(|(sector, shader_id)| RenderLevelHit::Surface {
@@ -1802,11 +1726,10 @@ impl LevelView {
       _ => return None,
     }
 
-    let (info, instance) = self.scene.statics.resolve_pick(cluster, place)?;
+    let (info, instance) = scene.statics.resolve_pick(cluster, place)?;
 
     if info.sector == StaticSlotInfo::NO_SECTOR {
-      return self
-        .scene
+      return scene
         .statics
         .resolve_spawn_pick(place)
         .map(|object| RenderLevelHit::Spawn { object, point });
@@ -1941,10 +1864,9 @@ impl LevelView {
 
   /// Lists the models' composited clusters in view, their places back to front by distance and each place's clusters in
   /// their parts' order, as the engine draws its sorted blended objects; binds the list for the composited pass.
-  fn prepare_sorted(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, view: &CameraView) {
+  fn prepare_sorted(&mut self, scene: &LevelScene, device: &wgpu::Device, queue: &wgpu::Queue, view: &CameraView) {
     let planes: [Vec4; 6] = view.get_planes();
-    let mut places: Vec<(f32, StaticSortedPlace<'_>)> = self
-      .scene
+    let mut places: Vec<(f32, StaticSortedPlace<'_>)> = scene
       .statics
       .list_sorted_places()
       .filter(|place| place.is_in_view(&planes))
@@ -2173,9 +2095,9 @@ impl LevelView {
   }
 
   /// The static draws' pools and what the latest counted frame's cull kept and hid, and its lights.
-  pub fn take_stats(&mut self) -> (RenderStaticReport, RenderLightsReport) {
+  pub fn take_stats(&mut self, scene: &LevelScene) -> (RenderStaticReport, RenderLightsReport) {
     let [kept_clusters, kept_triangles, occluded_clusters, occluded_triangles] = self.state.stats.take();
-    let pools: RenderStaticReport = self.scene.statics.get_pools();
+    let pools: RenderStaticReport = scene.statics.get_pools();
     let phases: u32 = if self.info.cull.is_occluding != 0 { 2 } else { 1 };
 
     (
@@ -2199,14 +2121,14 @@ impl LevelView {
   /// selected spawned object's box.
   pub fn set_overlays(
     &mut self,
+    scene: &LevelScene,
     device: &wgpu::Device,
     overlays: &[RenderOverlay],
     version: u64,
     selection: Option<&RenderSelection>,
   ) {
     let boxed: Option<RenderOverlay> = selection.and_then(|selection| match selection.target {
-      RenderSelectionTarget::Spawn { object } => self
-        .scene
+      RenderSelectionTarget::Spawn { object } => scene
         .statics
         .get_object_box(object)
         .map(|(transform, corners)| to_box_lines(transform, corners, selection.color)),
@@ -2223,11 +2145,15 @@ impl LevelView {
 
   /// What a selection marks in the scene now, resolved again only once the target or the scene changed; none where
   /// nothing is selected or what it names is not in the scene yet.
-  pub fn resolve_selection(&mut self, selection: Option<&RenderSelection>) -> Option<&StaticSelection> {
+  pub fn resolve_selection(
+    &mut self,
+    scene: &LevelScene,
+    selection: Option<&RenderSelection>,
+  ) -> Option<&StaticSelection> {
     self.info.selection_color = None;
 
     let selection: &RenderSelection = selection?;
-    let contents: usize = self.scene.statics.get_contents();
+    let contents: usize = scene.statics.get_contents();
 
     if self
       .state
@@ -2238,7 +2164,7 @@ impl LevelView {
       self.state.selection = Some((
         selection.target,
         contents,
-        self.scene.statics.resolve_selection(&selection.target),
+        scene.statics.resolve_selection(&selection.target),
       ));
     }
 

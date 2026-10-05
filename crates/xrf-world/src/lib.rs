@@ -8,6 +8,7 @@ pub(crate) mod level;
 pub(crate) mod weather;
 pub(crate) mod world;
 pub(crate) mod world_event_sink;
+pub(crate) mod world_scene;
 pub(crate) mod world_viewport;
 
 #[cfg(test)]

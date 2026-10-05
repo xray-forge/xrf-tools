@@ -13,6 +13,7 @@ use crate::pass::wet_uniform::WetUniform;
 use crate::scene::level::level_flares::LevelFlares;
 use crate::scene::level::level_shadows::LevelShadows;
 use crate::scene::level::rain_cover::RainCover;
+use crate::scene::level::weather_model_buffers::WeatherModelBuffers;
 
 /// What a sky's bind group binds: the weather textures' generation, the references of its seven slots (the two skies,
 /// the two environments, the two cloud layers and the sun's sprite), and how many environment cubes.
@@ -48,6 +49,11 @@ pub struct SceneRenderer {
   pub thunder_groups: Option<((u64, usize, String), [wgpu::BindGroup; 3])>,
   /// The sun's sprite, lens flares and gradient.
   pub flares: LevelFlares,
+  /// The splash's model, with the level's weather it was built for.
+  pub splash: Option<(usize, WeatherModelBuffers)>,
+  /// Every bolt model of the level's weather, with the weather they were built for, and an empty one the glows bind.
+  pub thunder_models: Option<(usize, Vec<WeatherModelBuffers>)>,
+  pub no_model: WeatherModelBuffers,
   /// What the bloom's build and its two blurs read, and what they draw with, at the targets' epoch.
   pub bloom_uniforms: [wgpu::Buffer; 3],
   pub bloom_groups: Option<(u64, BloomGroups)>,
@@ -84,6 +90,9 @@ impl SceneRenderer {
       thunder: uniform("thunder", size_of::<ThunderUniform>()),
       thunder_groups: None,
       flares: LevelFlares::new(device),
+      splash: None,
+      thunder_models: None,
+      no_model: WeatherModelBuffers::new(device, None),
       bloom_uniforms: ["bloom build", "bloom across", "bloom down"]
         .map(|label| uniform(label, size_of::<BloomUniform>())),
       bloom_groups: None,

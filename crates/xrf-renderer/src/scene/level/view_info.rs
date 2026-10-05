@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use glam::{Mat4, Vec2, Vec3, Vec4};
 use xrf_material::XraySurfaceDraw;
 
@@ -11,7 +9,6 @@ use crate::contract::render_lights_settings::RenderLightsSettings;
 use crate::contract::render_rect::RenderRect;
 use crate::contract::render_shadow_settings::RenderShadowSettings;
 use crate::contract::render_upscaling_settings::RenderUpscalingSettings;
-use crate::lighting::ambient_gust::AmbientGust;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::pass::lighting_uniform::LightingUniform;
 use crate::pass::static_cull_params::StaticCullParams;
@@ -72,13 +69,6 @@ pub struct ViewInfo {
   pub thunder_draw: Option<([XraySurfaceDraw; 3], u32)>,
   /// Composited clusters sorted back to front.
   pub sorted_count: u32,
-  /// Every skinned object's bones as segments, which the skeleton overlay draws.
-  pub skeleton_segments: Vec<(Vec3, Vec3)>,
-  /// The wind the ambient effects blow, the campfires' idle lights' shares, and where the object motions have their
-  /// objects, as the world gave them.
-  pub gust: AmbientGust,
-  pub campfire_shares: HashMap<u16, f32>,
-  pub motions: HashMap<String, (Mat4, Vec3)>,
   /// The colour the selection is outlined in, or none while nothing it names is drawn.
   pub selection_color: Option<[f32; 3]>,
 }
@@ -120,10 +110,6 @@ impl Default for ViewInfo {
       rain_draw: None,
       thunder_draw: None,
       sorted_count: 0,
-      skeleton_segments: Vec::new(),
-      gust: AmbientGust::default(),
-      campfire_shares: HashMap::new(),
-      motions: HashMap::new(),
       selection_color: None,
     }
   }

@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use glam::{Vec3, Vec4};
 use xrf_math::EPS_S;
@@ -173,14 +173,19 @@ impl LevelLightShadows {
     let cone: f32 = if is_spot { light.cone } else { LIGHT_SHADOW_POINT_CONE };
     let wanted: f32 = to_light_shadow_size(light.range, distance, to_light_intensity(color), duel, cone);
     let entry: &mut LightShadowEntry = self.entries.entry(handle).or_default();
-
-    entry.seen = self.frame;
-
+    let is_asked: bool = entry.seen == self.frame;
     let current: Option<u32> = entry.next.as_ref().or(entry.shown.as_ref()).map(|set| set.size);
     let asked: u32 = match current {
       Some(size) if wanted <= size as f32 * GROW && wanted >= size as f32 * SHRINK => size,
       _ => to_light_shadow_tile_size(wanted),
     };
+
+    // Another view of the scene asked for it this frame already: the size the nearer one wants stands.
+    if is_asked && current.is_some_and(|size| asked <= size) {
+      return;
+    }
+
+    entry.seen = self.frame;
 
     // Back at the size it shows while another was being drawn: the shown faces stand, and the other goes.
     if entry.shown.as_ref().is_some_and(|set| set.size == asked) {
@@ -238,17 +243,20 @@ impl LevelLightShadows {
     }
   }
 
-  /// Queues the faces drawn this frame, the nearest lights' first, and takes a light's new faces in place of its old
-  /// ones once all are drawn.
+  /// Queues the faces drawn this frame, the nearest lights' first, each once however many views asked for it, and takes
+  /// a light's new faces in place of its old ones once all are drawn.
   pub fn finish(&mut self) {
     self
       .candidates
       .sort_by(|a, b| a.0.0.cmp(&b.0.0).then(a.0.1.total_cmp(&b.0.1)));
+    let mut queued: HashSet<(ProxyHandle<LightDescription>, bool, usize)> = HashSet::new();
+
     self.queue = self
       .candidates
       .iter()
-      .take(FACE_BUDGET)
       .map(|(_, index, is_next, face)| (*index, *is_next, *face))
+      .filter(|face| queued.insert(*face))
+      .take(FACE_BUDGET)
       .collect();
   }
 

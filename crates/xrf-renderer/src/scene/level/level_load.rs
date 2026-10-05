@@ -3,7 +3,6 @@ use std::time::{Duration, Instant};
 use crate::contract::render_load_durations::RenderLoadDurations;
 use crate::contract::render_load_report::RenderLoadReport;
 use crate::host::render_streaming_progress::RenderStreamingProgress;
-use crate::scene::level::level_scene::LevelScene;
 use crate::scene::texture::texture_cache::TextureCache;
 
 /// What a level's load reports: how far its world streamed it, and what the renderer holds of it, its grass and
@@ -26,8 +25,9 @@ impl LevelLoad {
     }
   }
 
-  /// Takes how far the world has streamed the level this frame, and notes the parts finished since the last.
-  pub fn advance(&mut self, progress: RenderStreamingProgress, scene: &LevelScene, textures: &TextureCache) {
+  /// Takes how far the world has streamed the level this frame, and notes the parts finished since the last; `scene` is
+  /// whether its grass was read and every texture slot it samples.
+  pub fn advance(&mut self, progress: RenderStreamingProgress, scene: (bool, &[u32]), textures: &TextureCache) {
     self.progress = progress;
 
     // Every part has finished by the time the whole has.
@@ -39,7 +39,7 @@ impl LevelLoad {
     let finished: [bool; 6] = [
       progress.is_sectors_done,
       progress.is_spawn_done,
-      scene.grass.is_loaded(),
+      scene.0,
       progress.is_lights_done,
       progress.is_particles_done,
       self.describe(scene, textures).is_ready,
@@ -65,12 +65,12 @@ impl LevelLoad {
 
   /// How far the level has loaded: its sectors taken in or failed, its spawn, its grass, lights and particles read, and
   /// every texture it samples settled; and how long each took.
-  pub fn describe(&self, scene: &LevelScene, textures: &TextureCache) -> RenderLoadReport {
+  pub fn describe(&self, (is_grass_read, slots): (bool, &[u32]), textures: &TextureCache) -> RenderLoadReport {
     let progress: &RenderStreamingProgress = &self.progress;
-    let settled: u32 = textures.count_settled(scene.list_texture_slots());
-    let total: u32 = scene.list_texture_slots().count() as u32;
+    let settled: u32 = textures.count_settled(slots.iter().copied());
+    let total: u32 = slots.len() as u32;
     let is_read: bool =
-      progress.is_spawn_done && progress.is_lights_done && progress.is_particles_done && scene.grass.is_loaded();
+      progress.is_spawn_done && progress.is_lights_done && progress.is_particles_done && is_grass_read;
 
     RenderLoadReport {
       sectors: progress.sectors,
@@ -83,13 +83,8 @@ impl LevelLoad {
     }
   }
 
-  /// Whether everything the level opens with is resident, so it draws as it will.
-  pub fn is_ready(&self, scene: &LevelScene, textures: &TextureCache) -> bool {
-    self.describe(scene, textures).is_ready
-  }
-
   /// How far the level has loaded, when that changed since it was last asked.
-  pub fn take_report(&mut self, scene: &LevelScene, textures: &TextureCache) -> Option<RenderLoadReport> {
+  pub fn take_report(&mut self, scene: (bool, &[u32]), textures: &TextureCache) -> Option<RenderLoadReport> {
     let report: RenderLoadReport = self.describe(scene, textures);
 
     if self.reported == Some(report) {

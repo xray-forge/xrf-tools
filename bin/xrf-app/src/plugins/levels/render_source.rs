@@ -138,6 +138,11 @@ impl RenderLevelSource for LevelRenderSource {
     self.level.get_sectors().len() as u32
   }
 
+  /// The level as it was opened: every source of one opening shares a scene, a level opened again streams afresh.
+  fn get_scene_key(&self) -> Option<String> {
+    Some(format!("{:p}", Arc::as_ptr(&self.level)))
+  }
+
   fn pack_sector(&self, sector: u32) -> XrfResult<SectorPackage> {
     let sectors: &[LevelSector] = self.level.get_sectors();
     let root: u32 = sectors

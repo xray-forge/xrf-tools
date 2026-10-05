@@ -27,17 +27,19 @@ use crate::frame::frame_capture::{CaptureReply, FrameCapture};
 use crate::frame::frame_phases::FramePhases;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::host::render_bundle::RenderBundle;
-use crate::host::render_sector_failure::RenderSectorFailure;
+use crate::host::render_scene_feedback::RenderSceneFeedback;
+use crate::host::render_scene_frame::RenderSceneFrame;
+use crate::host::render_scene_id::RenderSceneId;
+use crate::host::render_view_input::RenderViewInput;
 use crate::host::render_window_host::RenderWindowHost;
 use crate::host::render_world::RenderWorld;
-use crate::host::render_world_input::RenderWorldInput;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::pass::backdrop_uniform::BackdropUniform;
 use crate::pass::camera_uniform::CameraUniform;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::level_frame::LevelFrame;
-use crate::scene::level::level_view::LevelView;
-use crate::scene::level::level_world_input::LevelWorldInput;
+use crate::scene::level::level_scene::LevelScene;
+use crate::scene::level::scene_view::SceneView;
 use crate::scene::static_scene::static_selection::StaticSelection;
 use crate::scene::texture::sky_texture_requests::SkyTextureRequests;
 use crate::shader::shader_library::ShaderLibrary;
@@ -95,6 +97,9 @@ pub struct RenderThread {
   /// The windows viewports are drawn into, by their key.
   hosts: HashMap<u64, Arc<dyn RenderWindowHost>>,
   viewports: BTreeMap<RenderViewportId, RenderViewport>,
+  /// The scenes the world streams, each drawn by every viewport showing it; one the world let go is kept while a
+  /// viewport still shows it.
+  scenes: HashMap<RenderSceneId, LevelScene>,
   /// When the last viewport detached, while none is attached.
   idle_since: Option<Instant>,
   last_frame: Instant,
@@ -130,6 +135,7 @@ impl RenderThread {
       failure: None,
       hosts: HashMap::new(),
       viewports: BTreeMap::new(),
+      scenes: HashMap::new(),
       idle_since: Some(now),
       last_frame: now,
       frame_due: None,
@@ -249,7 +255,7 @@ impl RenderThread {
         let pick: PendingPick = PendingPick { x, y, reply };
 
         match self.viewports.get_mut(&id) {
-          Some(viewport) if viewport.level.is_some() => viewport.picks.push(pick),
+          Some(viewport) if viewport.shown.is_some() => viewport.picks.push(pick),
           // Nothing is drawn there to pick.
           Some(viewport) => {
             let _ = pick.reply.send(Ok(RenderPick {
@@ -266,13 +272,8 @@ impl RenderThread {
         let described: Vec<RenderTextureReport> = self
           .gpu
           .as_ref()
-          .zip(
-            self
-              .viewports
-              .get(&id)
-              .and_then(|viewport| viewport.level_view.as_ref()),
-          )
-          .map(|(gpu, level)| level.get_scene().describe_textures(&gpu.textures))
+          .zip(self.get_shown_scene(id))
+          .map(|(gpu, scene)| scene.describe_textures(&gpu.textures))
           .unwrap_or_default();
 
         let _ = reply.send(described);
@@ -281,8 +282,8 @@ impl RenderThread {
         let described: Option<RenderLoadReport> = self
           .gpu
           .as_ref()
-          .zip(self.viewports.get(&id).and_then(RenderViewport::get_asked_view))
-          .map(|(gpu, level)| level.describe_load(&gpu.textures));
+          .zip(self.get_asked_scene(id).and_then(|scene| self.scenes.get(&scene)))
+          .map(|(gpu, scene)| scene.describe_load(&gpu.textures));
 
         let _ = reply.send(described);
       }
@@ -297,10 +298,8 @@ impl RenderThread {
       }
       RenderCommand::LocateSpawnObject { id, object, reply } => {
         let sphere: Option<[f32; 4]> = self
-          .viewports
-          .get(&id)
-          .and_then(|viewport| viewport.level_view.as_ref())
-          .and_then(|level| level.get_scene().get_object_sphere(object))
+          .get_shown_scene(id)
+          .and_then(|scene| scene.get_object_sphere(object))
           .map(|sphere| sphere.to_array());
 
         let _ = reply.send(sphere);
@@ -359,6 +358,21 @@ impl RenderThread {
     true
   }
 
+  /// The scene a viewport asks to show now, as its world says it, ahead of the frame that catches up with it: so a poll
+  /// after a switch never reads the scene before as the one asked for.
+  fn get_asked_scene(&self, viewport: RenderViewportId) -> Option<RenderSceneId> {
+    self
+      .world
+      .lock()
+      .unwrap_or_else(PoisonError::into_inner)
+      .get_asked_scene(viewport)
+  }
+
+  /// The scene a viewport shows, none where it shows none.
+  fn get_shown_scene(&self, viewport: RenderViewportId) -> Option<&LevelScene> {
+    self.scenes.get(&self.viewports.get(&viewport)?.shown.as_ref()?.0)
+  }
+
   /// Starts the GPU when there is none, or again after it was lost.
   fn ensure_gpu(&mut self) {
     if self.gpu.as_ref().is_some_and(|gpu| gpu.context.is_lost()) {
@@ -367,10 +381,12 @@ impl RenderThread {
       // Its pool, bind groups and timer belong to the device that was lost.
       self.runtime = None;
 
+      // Its scenes went with it; the world's next posts go to scenes made again.
+      self.scenes.clear();
+
       for viewport in self.viewports.values_mut() {
         viewport.binding = None;
-        viewport.level_view = None;
-        viewport.incoming_view = None;
+        viewport.shown = None;
       }
     }
 
@@ -417,30 +433,39 @@ impl RenderThread {
       .get_interval()
       .map(|interval| (self.frame_due.unwrap_or(now) + interval).max(now));
 
-    // The world runs inline before each viewport's frame: it moves the camera, plays the weather, and answers both.
+    // The world runs inline before the frame: it moves each viewport's camera and weather, then streams each scene and
+    // plays what lives in it, and answers all of it.
     let mut world: MutexGuard<'_, dyn RenderWorld> = self.world.lock().unwrap_or_else(PoisonError::into_inner);
 
     for viewport in self.viewports.values_mut() {
       let mut skies: SkyTextureRequests<'_> = SkyTextureRequests {
         cache: self.gpu.as_mut().map(|gpu| &mut gpu.weather_textures),
-        source: viewport.level.clone().map(|level| level as Arc<dyn RenderAssetSource>),
+        source: viewport
+          .world
+          .scene
+          .and_then(|scene| self.scenes.get(&scene))
+          .map(|scene| Arc::clone(&scene.source) as Arc<dyn RenderAssetSource>),
         is_clouded: viewport.options.show.is_clouded,
       };
 
-      viewport.world = world.advance(
+      viewport.world = world.advance_view(
         viewport.id,
-        RenderWorldInput {
+        RenderViewInput {
           now,
           delta,
           height: viewport.get_css_height(),
           options: &viewport.options,
           skies: &mut skies,
-          failures: std::mem::take(&mut viewport.failures),
-          finished_effects: std::mem::take(&mut viewport.finished_effects),
         },
       );
-      viewport.follow_level();
     }
+
+    let feedback: HashMap<RenderSceneId, RenderSceneFeedback> = self
+      .scenes
+      .iter_mut()
+      .map(|(id, scene)| (*id, scene.take_feedback()))
+      .collect();
+    let scene_frames: HashMap<RenderSceneId, RenderSceneFrame> = world.advance_scenes(feedback);
 
     drop(world);
 
@@ -454,32 +479,88 @@ impl RenderThread {
       }
     }
 
-    if let Some(gpu) = &mut self.gpu {
-      if now.duration_since(self.textures_swept) >= TEXTURE_SWEEP {
-        self.textures_swept = now;
+    // The scenes take in what the world posted, whether or not any window can be drawn this frame, so no post is lost.
+    let Some(gpu) = &mut self.gpu else {
+      return;
+    };
+    let mut encoder: wgpu::CommandEncoder = gpu.context.device.create_command_encoder(&Default::default());
 
-        let views = || {
-          self
-            .viewports
-            .values()
-            .flat_map(|viewport| viewport.level_view.iter().chain(viewport.incoming_view.iter()))
-        };
-        let sampled: HashSet<u32> = views()
-          .flat_map(|level| level.get_scene().list_texture_slots())
-          .collect();
-        let environments: HashSet<u32> = views()
-          .flat_map(|level| level.get_scene().list_environment_slots())
-          .collect();
+    let mut scene_frames: HashMap<RenderSceneId, RenderSceneFrame> = scene_frames;
+    let live: HashSet<RenderSceneId> = scene_frames.keys().copied().collect();
 
-        gpu.textures.retain(&sampled);
-        gpu.textures.retain_environments(&environments);
-      }
+    for (id, frame) in scene_frames.drain() {
+      let scene: &mut LevelScene = self.scenes.entry(id).or_insert_with(|| {
+        LevelScene::new(
+          &gpu.context.device,
+          &gpu.context.queue,
+          &gpu.view_layout,
+          Arc::clone(&frame.source),
+          &self.workers,
+        )
+      });
 
-      gpu.textures.update(&gpu.context.device, &gpu.context.queue);
-      gpu.weather_textures.update(&gpu.context.device, &gpu.context.queue);
+      scene.advance(
+        (&gpu.context.device, &gpu.context.queue, &mut encoder),
+        (&mut gpu.textures, &mut gpu.weather_textures),
+        &gpu.grass,
+        frame,
+      );
     }
 
-    self.draw_windows(now.elapsed());
+    // Each viewport shows the scene it asks for: a level at once; a scene of models alone once it can be drawn whole,
+    // the one before drawn until then, so a model swapped never leaves the viewport empty.
+    for viewport in self.viewports.values_mut() {
+      let asked: Option<RenderSceneId> = viewport.world.scene;
+      let shown: Option<RenderSceneId> = viewport.shown.as_ref().map(|(id, _)| *id);
+
+      if asked == shown {
+        continue;
+      }
+
+      let Some(asked) = asked else {
+        viewport.shown = None;
+
+        continue;
+      };
+      let Some(scene) = self.scenes.get(&asked) else {
+        continue;
+      };
+
+      if shown.is_none() || scene.source.get_sector_count() > 0 || scene.is_ready(&gpu.textures) {
+        viewport.shown = Some((
+          asked,
+          SceneView::new(&gpu.context.device, &gpu.context.queue, &gpu.view_layout, scene),
+        ));
+      }
+    }
+
+    // A scene the world let go goes once no viewport shows it.
+    let shown: HashSet<RenderSceneId> = self
+      .viewports
+      .values()
+      .filter_map(|viewport| viewport.shown.as_ref().map(|(id, _)| *id))
+      .collect();
+
+    self.scenes.retain(|id, _| live.contains(id) || shown.contains(id));
+
+    if now.duration_since(self.textures_swept) >= TEXTURE_SWEEP {
+      self.textures_swept = now;
+
+      let sampled: HashSet<u32> = self.scenes.values().flat_map(LevelScene::list_texture_slots).collect();
+      let environments: HashSet<u32> = self
+        .scenes
+        .values()
+        .flat_map(LevelScene::list_environment_slots)
+        .collect();
+
+      gpu.textures.retain(&sampled);
+      gpu.textures.retain_environments(&environments);
+    }
+
+    gpu.textures.update(&gpu.context.device, &gpu.context.queue);
+    gpu.weather_textures.update(&gpu.context.device, &gpu.context.queue);
+
+    self.draw_windows(now.elapsed(), encoder);
 
     let Some(gpu) = &self.gpu else {
       return;
@@ -489,20 +570,16 @@ impl RenderThread {
     let (backend, adapter) = (gpu.context.backend.get_label(), gpu.context.adapter_name.as_str());
 
     for viewport in self.viewports.values_mut() {
-      viewport.answer_readbacks();
+      viewport.answer_readbacks(&self.scenes);
       viewport.report(
         now,
         (backend, adapter),
-        gpu.textures.get_bytes(),
+        (gpu.textures.get_bytes(), &mut self.scenes),
         self.runtime.as_mut().map(|runtime| &mut runtime.timer),
       );
 
-      if let Some(report) = viewport
-        .level_view
-        .as_mut()
-        .and_then(|level| level.take_load_report(&gpu.textures))
-      {
-        viewport.report_load(report);
+      if let Some(scene) = viewport.shown.as_ref().and_then(|(id, _)| self.scenes.get(id)) {
+        viewport.report_load(scene.describe_load(&gpu.textures));
       }
     }
   }
@@ -511,7 +588,7 @@ impl RenderThread {
   /// skipping a window that cannot give one (minimised, occluded, outdated, lost) rather than waiting for it; readies
   /// each of their viewports' frames; declares the viewports' frames, then each window's composition and captures;
   /// submits once; and presents every window. `update` is what the frame spent before any window.
-  fn draw_windows(&mut self, update: Duration) {
+  fn draw_windows(&mut self, update: Duration, mut encoder: wgpu::CommandEncoder) {
     let Some(gpu) = &mut self.gpu else {
       return;
     };
@@ -610,7 +687,10 @@ impl RenderThread {
       });
     }
 
+    // With nothing to draw into, what the scenes took in still goes up.
     if acquired.is_empty() {
+      gpu.context.queue.submit([encoder.finish()]);
+
       return;
     }
 
@@ -619,23 +699,70 @@ impl RenderThread {
       update,
       ..FramePhases::default()
     };
-    // What the viewports' loading and preparing encode, which runs before the frame's graph.
-    let mut encoder: wgpu::CommandEncoder = gpu.context.device.create_command_encoder(&Default::default());
-    // Each viewport's readied frame, with the pick it draws and what unprojects that pick's depth.
+    // Each viewport's readied frame, with the pick it draws and what unprojects that pick's depth; its scene's driving
+    // viewport first, which simulates the scene and declares its work, or the first drawn where that one is not.
     let mut frames: Vec<ViewFrame> = Vec::new();
+    let mut drawn: Vec<(RenderViewportId, RenderRect, Option<RenderSceneId>)> = acquired
+      .iter()
+      .flat_map(|window| window.drawn.iter())
+      .map(|(id, rect, _)| {
+        let scene: Option<RenderSceneId> = self
+          .viewports
+          .get(id)
+          .and_then(|viewport| viewport.shown.as_ref().map(|(scene, _)| *scene));
 
-    for (id, rect, _) in acquired.iter().flat_map(|window| &window.drawn) {
+        (*id, *rect, scene)
+      })
+      .collect();
+
+    drawn.sort_by_key(|(id, _, scene)| {
+      !scene
+        .and_then(|scene| self.scenes.get(&scene))
+        .is_some_and(|scene| scene.driver == Some(*id))
+    });
+
+    let mut firsts: Vec<(RenderSceneId, RenderViewportId)> = Vec::new();
+
+    for (id, rect, scene_id) in &drawn {
+      let scene_id: Option<RenderSceneId> = *scene_id;
       let Some(viewport) = self.viewports.get_mut(id) else {
         continue;
       };
+      let is_first: bool = scene_id.is_some_and(|scene| firsts.iter().all(|(seen, _)| *seen != scene));
+      let scene: Option<&mut LevelScene> = scene_id.and_then(|scene| self.scenes.get_mut(&scene));
 
-      frames.extend(Self::ready_view(
-        (gpu, &self.workers),
-        viewport,
+      if let Some(mut frame) = Self::ready_view(
+        gpu,
+        (viewport, scene),
         rect,
         &mut encoder,
         (&mut phases.load, &mut phases.prepare),
-      ));
+        is_first,
+      ) {
+        if let (true, Some(scene)) = (is_first, scene_id) {
+          frame.1.is_scene_first = true;
+          firsts.push((scene, *id));
+        }
+
+        frames.push(frame);
+      }
+    }
+
+    // Each scene's light faces, as every view of it asked for them, readied from its first view's culling.
+    for (scene_id, id) in &firsts {
+      let (Some(scene), Some((_, view))) = (
+        self.scenes.get_mut(scene_id),
+        self.viewports.get(id).and_then(|viewport| viewport.shown.as_ref()),
+      ) else {
+        continue;
+      };
+
+      view.prepare_scene_shadows(
+        scene,
+        (&gpu.context.device, &gpu.context.queue),
+        &mut encoder,
+        &gpu.textures,
+      );
     }
 
     let composing: Instant = Instant::now();
@@ -695,12 +822,16 @@ impl RenderThread {
         let Some(viewport) = self.viewports.get(id) else {
           continue;
         };
-        let (Some(level), Some(binding)) = (&viewport.level_view, &viewport.binding) else {
+        let (Some((scene_id, view)), Some(binding)) = (&viewport.shown, &viewport.binding) else {
+          continue;
+        };
+        let Some(scene) = self.scenes.get(scene_id) else {
           continue;
         };
 
         graph.begin_owner(id.0);
-        level.record(
+        view.record(
+          scene,
           (&mut graph, &mut bindings, &mut *runtime),
           gpu.get_level_passes(),
           binding,
@@ -722,12 +853,12 @@ impl RenderThread {
           .iter()
           .filter_map(|(id, rect, shown)| {
             let viewport: &RenderViewport = self.viewports.get(id)?;
-            let level: Option<&LevelView> = viewport.level_view.as_ref();
+            let level: Option<&SceneView> = viewport.shown.as_ref().map(|(_, view)| view);
 
             Some(ComposedView {
               binding: viewport.binding.as_ref()?,
-              present: level.and_then(LevelView::get_present_group),
-              overlays: level.and_then(LevelView::get_overlays),
+              present: level.and_then(SceneView::get_present_group),
+              overlays: level.and_then(SceneView::get_overlays),
               rect: *rect,
               shown: *shown,
             })
@@ -844,7 +975,7 @@ impl RenderThread {
       let Some(viewport) = self.viewports.get_mut(&id) else {
         continue;
       };
-      let Some(level) = viewport.level_view.as_mut() else {
+      let Some((_, level)) = viewport.shown.as_mut() else {
         continue;
       };
 
@@ -898,16 +1029,19 @@ impl RenderThread {
     }
   }
 
-  /// Readies one viewport's frame: writes its camera, loads and prepares its level (and the level coming in after it),
-  /// and readies its graph's frame with a pick when one waits; none where it draws no level. `rect` is its whole
-  /// rectangle; what loading and preparing take is added to `load` and `prepare`.
+  /// Readies one viewport's frame of the scene it shows: writes its camera, asks for the textures its weather draws
+  /// with, steps the scene's particles where it simulates for the scene (`is_simulating`), prepares its frame, and
+  /// readies its graph's frame with a pick when one waits; none where it shows no scene. `rect` is its whole rectangle;
+  /// what loading and preparing take is added to `load` and `prepare`.
   fn ready_view(
-    (gpu, workers): (&mut GpuState, &RenderWorkers),
-    viewport: &mut RenderViewport,
+    gpu: &mut GpuState,
+    (viewport, scene): (&mut RenderViewport, Option<&mut LevelScene>),
     rect: &RenderRect,
     encoder: &mut wgpu::CommandEncoder,
     (load, prepare): (&mut Duration, &mut Duration),
+    is_simulating: bool,
   ) -> Option<ViewFrame> {
+    let id: RenderViewportId = viewport.id;
     let device: &wgpu::Device = &gpu.context.device;
     let queue: &wgpu::Queue = &gpu.context.queue;
     let scale: f32 = viewport.get_scale();
@@ -933,9 +1067,10 @@ impl RenderThread {
       options.features.hemi_strength,
       0.0,
     );
+    let is_scened: bool = scene.is_some();
 
     // A level is drawn at a share of the viewport and upscaled to it; nothing else is drawn but at its size.
-    let render_scale: RenderScale = if viewport.level.is_some() {
+    let render_scale: RenderScale = if is_scened {
       options.output.upscaling.scale
     } else {
       RenderScale::Native
@@ -944,143 +1079,94 @@ impl RenderThread {
     let resolution: f32 = options
       .output
       .render_height
-      .filter(|_| viewport.level.is_some())
+      .filter(|_| is_scened)
       .map_or(1.0, |height| (height as f32 / rect.height.max(1) as f32).min(1.0));
     let drawn_rect: RenderRect = RenderRect {
       width: render_scale.get_drawn(((rect.width as f32 * resolution).round() as u32).max(1)),
       height: render_scale.get_drawn(((rect.height as f32 * resolution).round() as u32).max(1)),
       ..*rect
     };
+    let RenderViewport {
+      shown,
+      world,
+      selection,
+      overlays,
+      overlays_version,
+      picks,
+      ..
+    } = viewport;
+    let shown: Option<&mut SceneView> = shown.as_mut().map(|(_, view)| view);
+    let (Some(scene), Some(view_state)) = (scene, shown) else {
+      // Nothing to draw but its grid: its camera alone.
+      let unjittered: Mat4 = view.get_view_projection();
+
+      binding.write(
+        queue,
+        &CameraUniform::new(&view, drawn_rect, switches)
+          .with_wireframe(options.mode.is_wireframe)
+          .with_surface_color(options.mode.surface_color)
+          .with_motion((unjittered, unjittered))
+          .with_asset_view(&options, drawn_rect.height as f32 / rect.height.max(1) as f32),
+      );
+
+      return None;
+    };
     // A temporal resolve's jitter moves every scene pass's samples, never the view its history is measured by.
-    let jitter: Vec2 = viewport.level_view.as_mut().map_or(Vec2::ZERO, |level| {
-      level.next_jitter(&options, rect.width as f32 / drawn_rect.width.max(1) as f32)
-    });
+    let jitter: Vec2 = view_state.next_jitter(&options, rect.width as f32 / drawn_rect.width.max(1) as f32);
     let drawn: CameraView = view.jittered(jitter, Vec2::new(drawn_rect.width as f32, drawn_rect.height as f32));
     let unjittered: Mat4 = view.get_view_projection();
-    let motion: (Mat4, Mat4) = viewport.level_view.as_mut().map_or((unjittered, unjittered), |level| {
-      level.get_state_mut().next_motion(unjittered)
-    });
-
-    let selection: Option<StaticSelection> = viewport
-      .level_view
-      .as_mut()
-      .and_then(|level| level.resolve_selection(viewport.selection.as_ref()).cloned());
+    let motion: (Mat4, Mat4) = view_state.get_state_mut().next_motion(unjittered);
+    let selected: Option<StaticSelection> = view_state.resolve_selection(scene, selection.as_ref()).cloned();
 
     binding.write(
       queue,
       &CameraUniform::new(&drawn, drawn_rect, switches)
-        .with_selection(selection.as_ref())
+        .with_selection(selected.as_ref())
         .with_wireframe(options.mode.is_wireframe)
         .with_surface_color(options.mode.surface_color)
         .with_motion(motion)
         .with_asset_view(&options, drawn_rect.height as f32 / rect.height.max(1) as f32),
     );
 
-    let Some(source) = &viewport.level else {
-      return None;
-    };
     // An asset viewer lights by its rig rather than a weather, and plays none.
     let asset_lighting: Option<RenderLighting> = options.asset.lighting.as_ref().map(RenderLighting::for_asset);
     let (lighting, weather) = match &asset_lighting {
       Some(lighting) => (lighting, None),
-      None => (&viewport.world.lighting, viewport.world.weather.as_ref()),
+      None => (&world.lighting, world.weather.as_ref()),
     };
-
     let loading: Instant = Instant::now();
 
-    let is_incoming: bool = viewport
-      .level_view
-      .as_ref()
-      .is_some_and(|level| !level.get_scene().is_showing(source));
-
-    if is_incoming {
-      let incoming: &mut LevelView = viewport
-        .incoming_view
-        .get_or_insert_with(|| LevelView::new(device, queue, &gpu.view_layout, Arc::clone(source), workers));
-
-      let failures: Vec<RenderSectorFailure> = incoming.load(
-        device,
-        queue,
-        encoder,
-        (&mut gpu.textures, &mut gpu.weather_textures),
-        &gpu.grass,
-        (lighting, weather),
-        &options,
-        Some(LevelWorldInput {
-          updates: std::mem::take(&mut viewport.world.updates),
-          streaming: viewport.world.streaming,
-          skeleton_segments: &viewport.world.skeleton_segments,
-          gust: viewport.world.gust,
-          campfire_shares: &viewport.world.campfire_shares,
-          motions: &viewport.world.motions,
-        }),
-      );
-
-      viewport.failures.extend(failures);
-
-      if incoming.is_ready(&gpu.textures) {
-        viewport.level_view = viewport.incoming_view.take();
-      }
-    }
-
-    let level: &mut LevelView = viewport
-      .level_view
-      .get_or_insert_with(|| LevelView::new(device, queue, &gpu.view_layout, Arc::clone(source), workers));
-
-    level.set_overlays(
-      device,
-      &viewport.overlays,
-      viewport.overlays_version,
-      viewport.selection.as_ref(),
-    );
-    let world: Option<LevelWorldInput<'_>> = (!is_incoming).then(|| LevelWorldInput {
-      updates: std::mem::take(&mut viewport.world.updates),
-      streaming: viewport.world.streaming,
-      skeleton_segments: &viewport.world.skeleton_segments,
-      gust: viewport.world.gust,
-      campfire_shares: &viewport.world.campfire_shares,
-      motions: &viewport.world.motions,
-    });
-    let failures: Vec<RenderSectorFailure> = level.load(
-      device,
-      queue,
-      encoder,
-      (&mut gpu.textures, &mut gpu.weather_textures),
-      &gpu.grass,
-      (lighting, weather),
-      &options,
-      world,
-    );
-
-    viewport.failures.extend(failures);
+    view_state.set_overlays(scene, device, overlays, *overlays_version, selection.as_ref());
+    view_state.request_textures(scene, &mut gpu.weather_textures, (lighting, weather), &options);
     *load += loading.elapsed();
 
     let preparing: Instant = Instant::now();
 
-    level.prepare(
+    // The scene's effects step once a frame, by the camera standing for the actor.
+    if is_simulating {
+      scene.particles.simulate(&view, &options);
+    }
+
+    view_state.prepare(
+      scene,
       device,
       queue,
       encoder,
       gpu.get_level_passes(),
       &view,
       ((drawn_rect.width, drawn_rect.height), *rect),
-      viewport.world.camera.field_of_view,
+      world.camera.field_of_view,
       &options,
       (lighting, weather),
       &gpu.weather_textures,
-      viewport.world.clock_rate,
+      world.clock_rate,
       (&gpu.view_layout, &gpu.textures),
     );
     *prepare += preparing.elapsed();
 
-    // An incoming scene steps none of its effects, so only the shown one's finish.
-    if !is_incoming {
-      viewport.finished_effects.extend(level.take_finished_effects());
-    }
-
     // One pick a frame, drawn from this frame's culled clusters while a readback is free for it.
-    let pick: Option<(PendingPick, Vec2, CameraUniform)> = (!viewport.picks.is_empty()).then(|| {
-      let pick: PendingPick = viewport.picks.remove(0);
+    let pick: Option<(PendingPick, Vec2, CameraUniform)> = (!picks.is_empty()).then(|| {
+      let pick: PendingPick = picks.remove(0);
       let ndc: Vec2 = Vec2::new(
         (pick.x * scale + 0.5) / rect.width as f32 * 2.0 - 1.0,
         1.0 - (pick.y * scale + 0.5) / rect.height as f32 * 2.0,
@@ -1095,24 +1181,22 @@ impl RenderThread {
 
       (pick, ndc, CameraUniform::new(&narrowed, pixel, switches))
     });
-    let readied: Option<LevelFrame> = level.begin_frame(
+    let readied: Option<LevelFrame> = view_state.begin_frame(
       (device, queue),
       pick.as_ref().map(|(_, _, camera)| (camera, &gpu.view_layout)),
     );
 
     match (readied, pick) {
-      (Some(frame), Some((pick, ndc, _))) if frame.pick_slot.is_some() => Some((
-        viewport.id,
-        frame,
-        Some((pick, (view.get_view_projection().inverse(), ndc))),
-      )),
+      (Some(frame), Some((pick, ndc, _))) if frame.pick_slot.is_some() => {
+        Some((id, frame, Some((pick, (view.get_view_projection().inverse(), ndc)))))
+      }
       (readied, pick) => {
         // A pick no readback is free for waits for the next frame.
         if let Some((pick, ..)) = pick {
-          viewport.picks.insert(0, pick);
+          picks.insert(0, pick);
         }
 
-        readied.map(|frame| (viewport.id, frame, None))
+        readied.map(|frame| (id, frame, None))
       }
     }
   }
