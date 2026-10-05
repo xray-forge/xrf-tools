@@ -135,6 +135,7 @@ impl LevelAmbientEffects {
       }),
       is_indoors,
       wait: self.next_time.saturating_sub(now) as f32 / 1000.0,
+      played: self.played as u32,
     }
   }
 

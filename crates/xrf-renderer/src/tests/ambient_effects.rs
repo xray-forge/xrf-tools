@@ -302,6 +302,7 @@ fn playing_one_now_ends_the_one_playing_and_starts_without_waiting() {
       .is_some_and(|it| (it.remaining - 1.0).abs() < 1e-3)
   );
   assert!(second.wait >= 10.0);
+  assert_eq!(second.played, first.played + 1);
 
   // Indoors it is ended and none starts.
   effects.play_now();

@@ -13,4 +13,6 @@ pub struct RenderAmbientReport {
   pub is_indoors: bool,
   /// Real seconds until the next may start, none once it may.
   pub wait: f32,
+  /// How many have started since the level opened.
+  pub played: u32,
 }

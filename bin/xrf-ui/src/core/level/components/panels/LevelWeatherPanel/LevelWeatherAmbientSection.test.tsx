@@ -9,6 +9,7 @@ import { LevelWeatherAmbientSection } from "./LevelWeatherAmbientSection";
 const PLAYING: RenderAmbientReport = {
   effect: { name: "effect_3", particles: "nature\\fog_tornado_00", remaining: 6.2 },
   isIndoors: false,
+  played: 3,
   wait: 21.5,
 };
 
@@ -45,7 +46,7 @@ describe("LevelWeatherAmbientSection", () => {
   it("plays none indoors", () => {
     const { getByText, getByRole } = renderWithProviders(
       <LevelWeatherAmbientSection
-        ambient={{ effect: null, isIndoors: true, wait: 0 }}
+        ambient={{ effect: null, isIndoors: true, played: 0, wait: 0 }}
         isPlayed={true}
         onPlay={() => {}}
       />
@@ -65,6 +66,6 @@ describe("LevelWeatherAmbientSection", () => {
 
     rerender(<LevelWeatherAmbientSection ambient={null} isPlayed={true} onPlay={() => {}} />);
 
-    expect(getByText("Waiting for the level's particles.")).toBeInTheDocument();
+    expect(getByText("None until the weather plays and the level's particles are read.")).toBeInTheDocument();
   });
 });
