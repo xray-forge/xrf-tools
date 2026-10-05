@@ -1,12 +1,12 @@
-use std::path::PathBuf;
-
-use clap::{Arg, ArgMatches, Command, value_parser};
+use clap::{ArgMatches, Command};
 use xrf_output::OutputOptions;
 use xrf_particles::ParticlesFile;
-use xrf_spawn::XRayByteOrder;
 use xrf_utils::format_path;
 
 use super::report::ParticleInfoReport;
+use crate::commands::particle::particles_file_open::{
+  ParticlesFileArguments, open_particles_file, requested_particles_path,
+};
 use crate::core::command_context::CommandContext;
 use crate::core::generic_command::{CommandResult, GenericCommand};
 
@@ -22,27 +22,20 @@ impl GenericCommand for InfoCommand {
   fn init(&self) -> Command {
     Command::new(self.operation())
       .about("Command to print information about provided particle file")
-      .arg(
-        Arg::new("path")
-          .help("Path to particle file")
-          .short('p')
-          .long("path")
-          .required(true)
-          .value_parser(value_parser!(PathBuf)),
-      )
+      .with_particles_file()
   }
 
   /// Print information about particle file.
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
-    let path: &PathBuf = matches
-      .get_one::<_>("path")
-      .expect("Expected valid path to be provided");
-
     let output: OutputOptions = context.get_output().clone();
 
-    xrf_output::info!(output, "Read particle file {}", format_path(path));
+    xrf_output::info!(
+      output,
+      "Read particle file {}",
+      format_path(requested_particles_path(matches))
+    );
 
-    let particles_file: Box<ParticlesFile> = Box::new(ParticlesFile::read_from_path::<XRayByteOrder, _>(path)?);
+    let particles_file: Box<ParticlesFile> = Box::new(open_particles_file(matches)?);
 
     xrf_output::info!(output, "Particles file information:");
 

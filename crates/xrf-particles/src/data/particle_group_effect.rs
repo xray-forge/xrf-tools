@@ -5,6 +5,8 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{Ltx, META_TYPE_FIELD, Section, read_ltx_field};
 use xrf_utils::{assert_equal, assert_length, to_format_size};
 
+use crate::data::particle_group_child::ParticleGroupChild;
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ParticleGroupEffect {
@@ -27,6 +29,18 @@ impl ParticleGroupEffect {
 
   pub fn get_effect_section(section_name: &str, index: usize) -> String {
     format!("{section_name}.effect.{index}")
+  }
+
+  /// The effects it spawns as children, each with when it spawns it, where it names one.
+  pub fn list_children(&self) -> impl Iterator<Item = (ParticleGroupChild, &str)> {
+    [
+      (ParticleGroupChild::Play, &self.on_play_child_name),
+      (ParticleGroupChild::Birth, &self.on_birth_child_name),
+      (ParticleGroupChild::Death, &self.on_dead_child_name),
+    ]
+    .into_iter()
+    .filter(|(_, name)| !name.is_empty())
+    .map(|(child, name)| (child, name.as_str()))
   }
 }
 
@@ -194,6 +208,7 @@ mod tests {
     open_generated_test_resource_as_slice, overwrite_file, overwrite_generated_test_resource_as_file,
   };
 
+  use crate::data::particle_group_child::ParticleGroupChild;
   use crate::data::particle_group_effect::ParticleGroupEffect;
 
   #[test]
@@ -416,5 +431,26 @@ mod tests {
     );
 
     Ok(())
+  }
+
+  #[test]
+  fn lists_the_children_it_names_with_when_each_spawns() {
+    let effect: ParticleGroupEffect = ParticleGroupEffect {
+      name: String::from("fx\\drop"),
+      on_play_child_name: String::new(),
+      on_birth_child_name: String::from("fx\\smoke"),
+      on_dead_child_name: String::from("fx\\sparks"),
+      time_0: 0.0,
+      time_1: 0.0,
+      flags: 0,
+    };
+
+    assert_eq!(
+      effect.list_children().collect::<Vec<_>>(),
+      [
+        (ParticleGroupChild::Birth, "fx\\smoke"),
+        (ParticleGroupChild::Death, "fx\\sparks")
+      ]
+    );
   }
 }
