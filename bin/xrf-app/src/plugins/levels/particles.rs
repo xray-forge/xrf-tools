@@ -14,10 +14,13 @@ use xrf_vfs::XrayProbe;
 use xrf_visual::{LightsPacker, VisualTransform};
 
 use crate::core::assets::read_located_asset;
+use crate::plugins::levels::ambients::list_ambient_particles;
 use crate::plugins::levels::read::read_optional_file;
 use crate::plugins::levels::report::{report_missing_zone_particles, report_particles, report_unknown_particles};
 use crate::plugins::levels::spawn::get_level_spawn;
-use crate::plugins::levels::state::{LevelSource, LevelTextureReference, PS_STATIC_FILE, SelectedLevel};
+use crate::plugins::levels::state::{
+  LevelEnvironment, LevelSource, LevelTextureReference, PS_STATIC_FILE, SelectedLevel,
+};
 use crate::plugins::levels::textures::resolve_reference;
 
 /// The game's particle library, at the root of its data (`$game_data$`).
@@ -63,12 +66,17 @@ pub fn pack_particles(
     (Ok(_), None) => {}
   }
 
+  // An ambient effect plays near the camera whatever stands in the level, so its particles are described with the rest;
+  // a level whose configs cannot be read has said why with its weather.
+  let ambient_particles: Vec<String> = LevelEnvironment::of(current)
+    .map(|environment| list_ambient_particles(&environment.catalog))
+    .unwrap_or_default();
   let scope: XrayTextureScope = current.source.get_texture_scope();
   let resolver: XraySurfaceResolver = XraySurfaceResolver::open(probe, scope.clone());
   let mut surfaces: HashMap<String, XraySurfaceDescriptor> = HashMap::new();
   let mut references: BTreeSet<String> = BTreeSet::new();
 
-  for name in list_reached_effects(&library, &placements) {
+  for name in list_reached_effects(&library, &placements, &ambient_particles) {
     let Some(effect) = library.get_effect(&name) else {
       continue;
     };
@@ -179,20 +187,27 @@ fn place_zone(object: &AlifeObject, sections: &Ltx) -> Option<RenderParticlePlac
   })
 }
 
-/// Every effect a placement can play: the effects it names, each effect of the groups it names, and the children those
-/// effects start.
-fn list_reached_effects(library: &ParticleLibrary, placements: &[RenderParticlePlacement]) -> BTreeSet<String> {
+/// Every effect a placement or an ambient can play: the effects they name, each effect of the groups they name, and the
+/// children those effects start.
+fn list_reached_effects(
+  library: &ParticleLibrary,
+  placements: &[RenderParticlePlacement],
+  ambient_particles: &[String],
+) -> BTreeSet<String> {
   let mut reached: BTreeSet<String> = BTreeSet::new();
-  let names = placements.iter().flat_map(|placement| match &placement.source {
-    RenderParticleSource::Static { name } => vec![name.as_str()],
-    RenderParticleSource::Zone { idle } => vec![idle.as_str()],
-    RenderParticleSource::Campfire {
-      idle,
-      disabled,
-      enabling,
-      ..
-    } => vec![idle.as_str(), disabled.as_str(), enabling.as_str()],
-  });
+  let names = placements
+    .iter()
+    .flat_map(|placement| match &placement.source {
+      RenderParticleSource::Static { name } => vec![name.as_str()],
+      RenderParticleSource::Zone { idle } => vec![idle.as_str()],
+      RenderParticleSource::Campfire {
+        idle,
+        disabled,
+        enabling,
+        ..
+      } => vec![idle.as_str(), disabled.as_str(), enabling.as_str()],
+    })
+    .chain(ambient_particles.iter().map(String::as_str));
 
   let mut unknown: BTreeSet<&str> = BTreeSet::new();
 

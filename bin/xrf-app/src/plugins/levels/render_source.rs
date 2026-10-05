@@ -20,6 +20,7 @@ use xrf_visual::{LightsDescription, SectorPackage, SectorPacker, VisualPoser};
 
 use crate::core::assets::{AssetMountState, read_located_asset};
 use crate::core::session::SessionSnapshot;
+use crate::plugins::levels::ambients::{to_render_ambient_effects, to_render_ambients};
 use crate::plugins::levels::collision::get_level_collision;
 use crate::plugins::levels::configs::get_level_sections;
 use crate::plugins::levels::details::{PackedLevelDetails, pack_details};
@@ -237,6 +238,8 @@ impl RenderLevelSource for LevelRenderSource {
       }),
       thunder: Some(to_thunder(thunder)),
       suns: to_suns(&environment.catalog),
+      ambients: to_render_ambients(&environment.catalog, &level.source.get_name().unwrap_or_default()),
+      ambient_effects: to_render_ambient_effects(&environment.catalog),
     })
   }
 

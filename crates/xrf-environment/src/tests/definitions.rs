@@ -1,7 +1,7 @@
 use xrf_engine_target::XrayEngine;
 
 use super::fixtures::{EnvironmentFixture, messages, vanilla_keyframe};
-use crate::EnvironmentRule;
+use crate::{AmbientKey, EnvironmentRule};
 
 fn clean_day() -> EnvironmentFixture {
   EnvironmentFixture::new().with(
@@ -235,4 +235,24 @@ fn reads_a_file_ambients_ltx_includes_as_shared_rather_than_a_levels() {
 
   assert!(catalog.find_ambient("underground").is_some());
   assert!(catalog.level_ambients.is_empty());
+}
+
+// `load_level_specific_ambients` reads a level's section over a shared one of its name, and adds none of its own.
+#[test]
+fn finds_a_levels_own_ambient_over_the_shared_one() {
+  let fixture: EnvironmentFixture = clean_day().with(
+    "environment\\ambients\\zaton.ltx",
+    "[day]\nsound_channels = wind\nmin_effect_period = 5\nmax_effect_period = 6\n\n[night]\nsound_channels = wind\n\
+     min_effect_period = 1\nmax_effect_period = 2\n",
+  );
+  let catalog = fixture.read(XrayEngine::Vanilla);
+  let period = |level: &str| {
+    catalog
+      .find_level_ambient(level, "day")
+      .map(|ambient| AmbientKey::get_effect_period(ambient, XrayEngine::Vanilla))
+  };
+
+  assert_eq!(period("zaton"), Some([5.0, 6.0]));
+  assert_eq!(period("jupiter"), Some([30.0, 60.0]));
+  assert!(catalog.find_level_ambient("zaton", "night").is_none());
 }

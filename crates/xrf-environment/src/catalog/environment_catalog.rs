@@ -81,6 +81,19 @@ impl EnvironmentCatalog {
     self.level_ambients.iter().find(|ambients| ambients.level == level)
   }
 
+  /// The ambient a keyframe names, as it plays on a level: `load_level_specific_ambients` reads the level's own section
+  /// of the name over a shared one, and only over one, since the shared ambients are the ones the engine loaded.
+  pub fn find_level_ambient(&self, level: &str, name: &str) -> Option<&Ambient> {
+    let shared: &Ambient = self.find_ambient(name)?;
+
+    Some(
+      self
+        .find_level_ambients(level)
+        .and_then(|ambients| ambients.ambients.iter().find(|ambient| ambient.name == name))
+        .unwrap_or(shared),
+    )
+  }
+
   pub fn find_sound_channel(&self, name: &str) -> Option<&SoundChannel> {
     self.sound_channels.iter().find(|channel| channel.name == name)
   }

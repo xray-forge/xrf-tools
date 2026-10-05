@@ -54,6 +54,29 @@ impl AmbientKey {
     ambient
   }
 
+  /// Seconds between effects, least then most, `m_effect_period`: OpenXRay's `effect_period` where written, either of
+  /// the two keys still reading over it, and the two keys alone otherwise.
+  pub fn get_effect_period(ambient: &Ambient, engine: XrayEngine) -> [f32; 2] {
+    let mut period: [f32; 2] = if engine == XrayEngine::Vanilla && ambient.has(Self::EffectPeriod) {
+      ambient.get_vector::<2>(Self::EffectPeriod, engine)
+    } else {
+      [
+        ambient.get_number(Self::MinEffectPeriod, engine),
+        ambient.get_number(Self::MaxEffectPeriod, engine),
+      ]
+    };
+
+    if engine == XrayEngine::Vanilla && ambient.has(Self::EffectPeriod) {
+      for (slot, key) in [(0, Self::MinEffectPeriod), (1, Self::MaxEffectPeriod)] {
+        if ambient.has(key) {
+          period[slot] = ambient.get_number(key, engine);
+        }
+      }
+    }
+
+    period
+  }
+
   /// The `sound_channels.ltx` sections the ambient plays, under whichever spelling its engine reads.
   pub fn list_channels(ambient: &Ambient) -> &[String] {
     if ambient.has(Self::SoundChannels) {

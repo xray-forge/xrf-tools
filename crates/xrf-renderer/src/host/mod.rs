@@ -1,3 +1,5 @@
+pub(crate) mod render_ambient;
+pub(crate) mod render_ambient_effect;
 pub(crate) mod render_asset_source;
 pub(crate) mod render_event_sink;
 pub(crate) mod render_flare;
@@ -24,4 +26,5 @@ pub(crate) mod render_thunderbolt_gradient;
 pub(crate) mod render_thunderbolt_model;
 pub(crate) mod render_weather_model;
 pub(crate) mod render_wet_surfaces;
+pub(crate) mod render_wind_blast;
 pub(crate) mod render_window_host;
