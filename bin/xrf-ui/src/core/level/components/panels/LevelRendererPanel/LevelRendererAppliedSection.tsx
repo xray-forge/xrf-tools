@@ -60,12 +60,15 @@ export function LevelRendererAppliedSection({
           label={"Antialiasing"}
           value={toChanged(
             describeRenderAntialiasing(applied.antialiasing),
-            describeRenderAntialiasing(requested.antialiasing)
+            describeRenderAntialiasing(requested.features.antialiasing)
           )}
         />
         <EditorPanelProperty
           label={"Render scale"}
-          value={toChanged(describeRenderScale(applied.renderScale), describeRenderScale(requested.upscaling.scale))}
+          value={toChanged(
+            describeRenderScale(applied.renderScale),
+            describeRenderScale(requested.output.upscaling.scale)
+          )}
         />
       </EditorPanelSection>
 
@@ -94,7 +97,7 @@ export function LevelRendererAppliedSection({
           value={
             shadows
               ? `${shadows.cascades.map((width) => formatNumber(width ?? 0, 0)).join(" / ")} m · ` +
-                `${toChanged(String(shadows.resolution), String(requested.shadows.resolution))} texels · ` +
+                `${toChanged(String(shadows.resolution), String(requested.features.shadows.resolution))} texels · ` +
                 formatShadowFilter(shadows.filter).toLowerCase()
               : "Off"
           }

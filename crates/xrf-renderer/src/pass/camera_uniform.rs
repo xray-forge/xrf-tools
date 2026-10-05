@@ -74,11 +74,12 @@ impl CameraUniform {
   pub fn with_asset_view(mut self, options: &RenderViewOptions, scale: f32) -> Self {
     let to_set = |color: Option<[f32; 3]>| color.map_or(Vec4::ZERO, |it| Vec4::from((Vec3::from(it), 1.0)));
 
-    self.modes.y = options.checker;
-    self.modes.z = f32::from(u8::from(!options.is_alpha_visible));
-    self.backdrop = to_set(options.backdrop);
-    self.plain = to_set(options.plain_color);
+    self.modes.y = options.asset.checker;
+    self.modes.z = f32::from(u8::from(!options.show.is_alpha_visible));
+    self.backdrop = to_set(options.asset.backdrop);
+    self.plain = to_set(options.asset.plain_color);
     self.backdrop_squares = options
+      .asset
       .backdrop_squares
       .map_or(Vec4::ZERO, |it| Vec3::from(it.color).extend((it.size * scale).max(1.0)));
     self

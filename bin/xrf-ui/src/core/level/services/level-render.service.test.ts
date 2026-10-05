@@ -263,10 +263,11 @@ describe("LevelRenderService", () => {
 
     expect(sent("set_view_options").at(-1)).toEqual({
       options: expect.objectContaining({
-        isBumped: true,
-        surfaceColor: ERenderSurfaceColor.TEXTURED,
         // The settings' level of detail, the engine's own thresholds by default.
-        lod: expect.objectContaining({ isImpostors: true, ssaA: 64, ssaB: 48, ssaDiscard: 3.5 }),
+        features: expect.objectContaining({
+          lod: expect.objectContaining({ isImpostors: true, ssaA: 64, ssaB: 48, ssaDiscard: 3.5 }),
+        }),
+        mode: expect.objectContaining({ isBumped: true, surfaceColor: ERenderSurfaceColor.TEXTURED }),
       }),
       viewport: VIEWPORT,
     });
@@ -277,7 +278,9 @@ describe("LevelRenderService", () => {
 
     expect(sent("set_view_options")).toEqual([
       {
-        options: expect.objectContaining({ debugView: ERenderDebugView.FINAL, surfaceColor: ERenderSurfaceColor.CLAY }),
+        options: expect.objectContaining({
+          mode: expect.objectContaining({ debugView: ERenderDebugView.FINAL, surfaceColor: ERenderSurfaceColor.CLAY }),
+        }),
         viewport: VIEWPORT,
       },
     ]);
@@ -288,7 +291,10 @@ describe("LevelRenderService", () => {
     const view: LevelViewService = container.get(LevelViewService);
 
     expect(sent("set_view_options").at(-1)).toEqual({
-      options: expect.objectContaining({ isWireframe: false, renderHeight: null }),
+      options: expect.objectContaining({
+        mode: expect.objectContaining({ isWireframe: false }),
+        output: expect.objectContaining({ renderHeight: null }),
+      }),
       viewport: VIEWPORT,
     });
 
@@ -297,7 +303,10 @@ describe("LevelRenderService", () => {
     await flush();
 
     expect(sent("set_view_options").at(-1)).toEqual({
-      options: expect.objectContaining({ isWireframe: true, renderHeight: 720 }),
+      options: expect.objectContaining({
+        mode: expect.objectContaining({ isWireframe: true }),
+        output: expect.objectContaining({ renderHeight: 720 }),
+      }),
       viewport: VIEWPORT,
     });
   });

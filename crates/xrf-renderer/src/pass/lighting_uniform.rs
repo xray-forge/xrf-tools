@@ -52,20 +52,25 @@ impl LightingUniform {
     let to_sun: Vec3 = view
       .transform_vector3(-lighting.get_sun_direction())
       .normalize_or_zero();
-    let fog = lighting.fog.filter(|_| options.is_fogged);
+    let fog = lighting.fog.filter(|_| options.show.is_fogged);
     let (offset, scale) = fog.map_or((0.0, 0.0), |fog| fog.get_params());
     let flag = |is: bool| is as u32 as f32;
 
     Self {
       to_sun: to_sun.extend(0.0),
       sun: lighting
-        .get_sun_color(&options.light_scales)
-        .extend(lighting.get_sun_specular(&options.light_scales)),
-      ambient: lighting.get_ambient(&options.light_scales).extend(0.0),
-      environment: lighting.get_environment(&options.light_scales).extend(0.0),
+        .get_sun_color(&options.features.light_scales)
+        .extend(lighting.get_sun_specular(&options.features.light_scales)),
+      ambient: lighting.get_ambient(&options.features.light_scales).extend(0.0),
+      environment: lighting.get_environment(&options.features.light_scales).extend(0.0),
       sky_irradiance: lighting.sky_irradiance.extend(flag(frame.is_irradiance_up)),
       fog_color: fog.map_or(Vec3::ZERO, |fog| fog.color).extend(flag(fog.is_some())),
-      fog: Vec4::new(offset, scale, flag(options.is_sky_hazed), flag(options.is_sky_visible)),
+      fog: Vec4::new(
+        offset,
+        scale,
+        flag(options.show.is_sky_hazed),
+        flag(options.show.is_sky_visible),
+      ),
       sky: lighting.sky.color.extend(frame.sky_blend),
       sky_params: Vec4::new(
         lighting.sky.rotation,
@@ -73,7 +78,7 @@ impl LightingUniform {
         frame.clouds_time,
         0.0,
       ),
-      clouds: if options.is_clouded {
+      clouds: if options.show.is_clouded {
         lighting.sky.clouds.color
       } else {
         Vec4::ZERO
@@ -82,25 +87,25 @@ impl LightingUniform {
         flag(lighting.engine == XrayEngine::Extended),
         lighting
           .rain
-          .filter(|_| options.is_rainy)
+          .filter(|_| options.world.is_rainy)
           .map_or(0.0, |rain| rain.density),
         0.0,
         0.0,
       ),
       params: Vec4::new(
         0.0,
-        flag(options.is_lit),
+        flag(options.mode.is_lit),
         flag(frame.is_adapting),
-        flag(options.ambient_occlusion.is_enabled),
+        flag(options.features.ambient_occlusion.is_enabled),
       ),
       forward_ambient: lighting.ambient_color.extend(0.0),
       forward_hemi: lighting.hemisphere_color.extend(0.0),
       forward_sun: lighting.sun_color.extend(0.0),
       sun_sprite: frame.sun_sprite,
-      shafts: if options.is_sun_shafted && options.is_lit {
+      shafts: if options.show.is_sun_shafted && options.mode.is_lit {
         Vec4::new(
-          lighting.get_sun_shafts(&options.sun_shafts),
-          options.sun_shafts.quality.get_steps(lighting.engine) as f32,
+          lighting.get_sun_shafts(&options.features.sun_shafts),
+          options.features.sun_shafts.quality.get_steps(lighting.engine) as f32,
           0.0,
           0.0,
         )

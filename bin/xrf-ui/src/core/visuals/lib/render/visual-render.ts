@@ -54,18 +54,23 @@ export function toVisualViewOptions(
   features: IRenderFeatureSettings,
   renderHeight: Nullable<number> = null
 ): RenderViewOptions {
+  const view: RenderViewOptions = toNativeAssetViewOptions(
+    { isBumped: options.isBumpVisible, isLit: true, isWireframe: options.isWireframe },
+    features,
+    renderHeight
+  );
+
   return {
-    ...toNativeAssetViewOptions(
-      { isBumped: options.isBumpVisible, isLit: true, isWireframe: options.isWireframe },
-      features,
-      renderHeight
-    ),
-    assetLighting: toNativeAssetLighting(lighting),
-    backdrop: toRawColor(config.backgroundColor),
-    checker: options.isCheckerVisible ? config.checkerRepeat : 0,
-    isAlphaVisible: options.isAlphaVisible,
-    // Untextured, a surface is the viewer's plain mesh colour rather than white.
-    plainColor: toRawColor(config.meshColor),
+    ...view,
+    asset: {
+      ...view.asset,
+      backdrop: toRawColor(config.backgroundColor),
+      checker: options.isCheckerVisible ? config.checkerRepeat : 0,
+      lighting: toNativeAssetLighting(lighting),
+      // Untextured, a surface is the viewer's plain mesh colour rather than white.
+      plainColor: toRawColor(config.meshColor),
+    },
+    show: { ...view.show, isAlphaVisible: options.isAlphaVisible },
   };
 }
 

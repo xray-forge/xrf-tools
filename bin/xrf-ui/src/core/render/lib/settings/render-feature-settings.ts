@@ -6,13 +6,14 @@ import {
   RenderLodSettings,
   RenderShadowSettings,
   RenderUpscalingSettings,
-  RenderViewOptions,
+  RenderViewFeatures,
+  RenderViewOutput,
   RenderWaterSettings,
 } from "@/core/ipc/types/xrf-renderer";
 import { TSettled } from "@/core/render/lib/settings/render-settled";
 
-/** The view options every viewport takes from the application's settings rather than from its own toolbar. */
-export type TRenderFeatureKey =
+/** The features every viewport takes from the application's settings rather than from its own toolbar. */
+export type TRenderViewFeatureKey =
   | "ambientOcclusion"
   | "antialiasing"
   | "exposure"
@@ -21,14 +22,18 @@ export type TRenderFeatureKey =
   | "lights"
   | "lod"
   | "shadows"
-  | "upscaling"
   | "water";
+
+/** The view options every viewport takes from the application's settings: those features, and how it upscales. */
+export type TRenderFeatureKey = TRenderViewFeatureKey | "upscaling";
 
 /**
  * What the renderer's features are set to: the same for every viewport, chosen as a preset and whatever was changed
  * on top of it. A feature that is off costs nothing: its passes leave the frame and its targets are freed.
  */
-export interface IRenderFeatureSettings extends TSettled<Pick<RenderViewOptions, TRenderFeatureKey>> {}
+export interface IRenderFeatureSettings extends TSettled<
+  Pick<RenderViewFeatures, TRenderViewFeatureKey> & Pick<RenderViewOutput, "upscaling">
+> {}
 
 export type TRenderAmbientOcclusionSettings = TSettled<RenderAmbientOcclusionSettings>;
 

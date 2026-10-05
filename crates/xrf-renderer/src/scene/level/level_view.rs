@@ -177,8 +177,8 @@ impl LevelView {
 
     if let Some(rain) = weather.and_then(|weather| weather.rain.as_ref())
       && lighting.rain.is_some()
-      && options.is_rainy
-      && options.is_lit
+      && options.world.is_rainy
+      && options.mode.is_lit
     {
       weather_textures.request(&rain.streak, WeatherTextureKind::Flat, &assets);
 
@@ -194,8 +194,8 @@ impl LevelView {
 
     // Every bolt's textures are held while the weather may strike, so a strike has them.
     if let Some(thunder) = weather.and_then(|weather| weather.thunder.as_ref())
-      && options.is_thundering
-      && options.is_lit
+      && options.world.is_thundering
+      && options.mode.is_lit
     {
       let references = thunder.models.iter().map(|model| model.mesh.texture.as_str()).chain(
         thunder
@@ -209,12 +209,12 @@ impl LevelView {
       }
     }
 
-    if options.is_lit && options.is_sky_visible {
+    if options.mode.is_lit && options.show.is_sky_visible {
       self
         .renderer
         .flares
         .request((lighting, weather), weather_textures, &assets);
-      weather_textures.request_sky(&lighting.sky, options.is_clouded, &assets);
+      weather_textures.request_sky(&lighting.sky, options.show.is_clouded, &assets);
     } else {
       // The irradiance cubes light the hemisphere whether or not the sky is drawn.
       for reference in lighting.sky.environments.iter().flatten() {
@@ -369,7 +369,10 @@ impl LevelView {
       ));
     }
 
-    self.renderer.shadows.prepare(device, options.shadows.resolution);
+    self
+      .renderer
+      .shadows
+      .prepare(device, options.features.shadows.resolution);
 
     let shadow_epoch: u64 = self.renderer.shadows.get_epoch();
 
@@ -426,7 +429,10 @@ impl LevelView {
       self.renderer.light_groups = Some((shadow_epoch, groups));
     }
 
-    self.state.exposure.prepare(queue, &options.exposure, Instant::now());
+    self
+      .state
+      .exposure
+      .prepare(queue, &options.features.exposure, Instant::now());
 
     self.info.sun_sprite = self.renderer.flares.prepare(
       device,
@@ -504,7 +510,7 @@ impl LevelView {
     );
 
     let sway_time: f32 = self.scene.started.elapsed().as_secs_f32();
-    let wind: WindUniform = WindUniform::new(lighting.trees.as_ref().filter(|_| options.is_windy), sway_time)
+    let wind: WindUniform = WindUniform::new(lighting.trees.as_ref().filter(|_| options.world.is_windy), sway_time)
       .following(self.state.last_wind.as_ref());
 
     self.state.last_wind = Some(wind);
@@ -523,7 +529,9 @@ impl LevelView {
 
     // A keyframe whose textures are not all up is blended out, so a sky still going up shows the other one.
     let side = |index: usize| {
-      let clouds: Option<&str> = sky.clouds.textures[index].as_deref().filter(|_| options.is_clouded);
+      let clouds: Option<&str> = sky.clouds.textures[index]
+        .as_deref()
+        .filter(|_| options.show.is_clouded);
 
       weather_textures.is_settled(sky.textures[index].as_deref())
         && weather_textures.is_settled(sky.environments[index].as_deref())
@@ -550,21 +558,21 @@ impl LevelView {
         .map_or(Vec4::ZERO, |(_, sprite)| *sprite),
     };
 
-    self.info.is_hazing = options.is_lit && options.is_sky_visible && options.is_sky_hazed;
-    self.info.is_shafted = options.is_lit
-      && options.is_sun_shafted
-      && lighting.get_sun_shafts(&options.sun_shafts) > 0.0
-      && options.shadows.get_cascade_count() > 0;
-    self.info.is_wallmarked = options.is_wallmarked;
+    self.info.is_hazing = options.mode.is_lit && options.show.is_sky_visible && options.show.is_sky_hazed;
+    self.info.is_shafted = options.mode.is_lit
+      && options.show.is_sun_shafted
+      && lighting.get_sun_shafts(&options.features.sun_shafts) > 0.0
+      && options.features.shadows.get_cascade_count() > 0;
+    self.info.is_wallmarked = options.show.is_wallmarked;
     self.prepare_bloom(device, queue, passes, options, lighting.engine);
 
-    if !options.is_occlusion_culled {
+    if !options.features.is_occlusion_culled {
       self.state.history = None;
     }
 
     // The engine's screen: the viewport's pixels, widened for a lens narrower than its 90 degrees.
     let screen: f32 =
-      (width * height) as f32 * (90.0 / field_of_view.max(1.0)).powi(2) * (EPS_S + options.lod.geometry_lod);
+      (width * height) as f32 * (90.0 / field_of_view.max(1.0)).powi(2) * (EPS_S + options.features.lod.geometry_lod);
     let threshold = |area: f32| -> f32 { (area / 3.0).powi(2) / screen };
 
     self.info.cull = StaticCullParams {
@@ -572,14 +580,14 @@ impl LevelView {
       row_count: self.scene.statics.get_row_count(),
       batch_count: StaticBatch::COUNT as u32,
       impostor_count: self.scene.statics.get_impostor_count(),
-      glod_start: threshold(options.lod.ssa_glod_start),
-      glod_end: threshold(options.lod.ssa_glod_end),
-      discard_below: options.lod.ssa_discard.powi(2) / screen,
+      glod_start: threshold(options.features.lod.ssa_glod_start),
+      glod_end: threshold(options.features.lod.ssa_glod_end),
+      discard_below: options.features.lod.ssa_discard.powi(2) / screen,
       candidate_capacity: self.scene.statics.get_list_capacity(),
-      is_occluding: options.is_occlusion_culled as u32,
-      lod_a: threshold(options.lod.ssa_a),
-      lod_b: threshold(options.lod.ssa_b),
-      is_impostors: options.lod.is_impostors as u32,
+      is_occluding: options.features.is_occlusion_culled as u32,
+      lod_a: threshold(options.features.lod.ssa_a),
+      lod_b: threshold(options.features.lod.ssa_b),
+      is_impostors: options.features.lod.is_impostors as u32,
       hidden_groups: to_hidden_groups(options),
       pad: [0; 3],
       lod_origin: view.position.extend(1.0),
@@ -589,24 +597,24 @@ impl LevelView {
       device,
       queue,
       passes.grass,
-      &options.grass,
+      &options.features.grass,
       view,
       self.info.cull.discard_below,
       (
         self.scene.started.elapsed().as_secs_f32(),
-        options.is_windy,
+        options.world.is_windy,
         gust.strength,
       ),
     );
     // The campfires switch and the moving zones move whatever of them is drawn, so their lights and particles follow
     // them alike.
-    self.scene.campfires.prepare(options.is_campfire_lit);
+    self.scene.campfires.prepare(options.world.is_campfire_lit);
     self.scene.object_motions.prepare();
     self.scene.lights.prepare(
       queue,
       LightsFrame {
         camera: view,
-        settings: &options.lights,
+        settings: &options.features.lights,
         lod: (self.info.cull.glod_start, self.info.cull.glod_end),
         contents: self.scene.statics.get_contents(),
         sway: &to_sway(&self.scene.statics, self.info.sway),
@@ -616,24 +624,24 @@ impl LevelView {
     );
     self.info.camera = *view;
     self.info.sun_direction = lighting.get_sun_direction();
-    self.info.shadow_settings = options.shadows.clone();
-    self.info.ambient_occlusion = options.ambient_occlusion;
+    self.info.shadow_settings = options.features.shadows.clone();
+    self.info.ambient_occlusion = options.features.ambient_occlusion;
     self.info.output = output;
-    self.info.upscaling = options.upscaling;
-    self.info.debug_view = options.debug_view;
-    self.info.is_wireframe = options.is_wireframe;
-    self.info.corrections = options.corrections;
-    self.info.is_occlusion_drawn = options.is_lit && options.ambient_occlusion.is_enabled;
+    self.info.upscaling = options.output.upscaling;
+    self.info.debug_view = options.mode.debug_view;
+    self.info.is_wireframe = options.mode.is_wireframe;
+    self.info.corrections = options.features.corrections;
+    self.info.is_occlusion_drawn = options.mode.is_lit && options.features.ambient_occlusion.is_enabled;
     self.prepare_temporal(device, queue, passes, view);
-    self.prepare_smoothing(device, passes, options.antialiasing);
+    self.prepare_smoothing(device, passes, options.features.antialiasing);
     self.prepare_upscale(device, queue, passes);
-    self.info.lights_settings = options.lights;
+    self.info.lights_settings = options.features.lights;
 
     queue.write_buffer(
       &self.renderer.occlusion_uniform,
       0,
       bytemuck::bytes_of(&AmbientOcclusionUniform::new(
-        &options.ambient_occlusion,
+        &options.features.ambient_occlusion,
         view.projection,
         (width.div_ceil(2), height.div_ceil(2)),
       )),
@@ -960,9 +968,10 @@ impl LevelView {
     let Some(targets) = &self.state.targets else {
       return;
     };
-    let water: &RenderWaterSettings = &options.water;
-    let is_water_distorting: bool = water.is_enabled && water.is_distorted && options.is_lit;
-    let is_distorting: bool = !options.is_wireframe && (is_water_distorting || self.scene.particles.is_distorting());
+    let water: &RenderWaterSettings = &options.features.water;
+    let is_water_distorting: bool = water.is_enabled && water.is_distorted && options.mode.is_lit;
+    let is_distorting: bool =
+      !options.mode.is_wireframe && (is_water_distorting || self.scene.particles.is_distorting());
 
     queue.write_buffer(
       &self.renderer.present,
@@ -990,9 +999,10 @@ impl LevelView {
     options: &RenderViewOptions,
     engine: XrayEngine,
   ) {
-    let bloom: &RenderBloomSettings = &options.bloom;
+    let bloom: &RenderBloomSettings = &options.features.bloom;
 
-    self.info.is_bloomed = bloom.is_enabled && options.is_lit && !options.is_wireframe && self.state.targets.is_some();
+    self.info.is_bloomed =
+      bloom.is_enabled && options.mode.is_lit && !options.mode.is_wireframe && self.state.targets.is_some();
 
     let Some(targets) = self.state.targets.as_ref().filter(|_| self.info.is_bloomed) else {
       return;
@@ -1047,7 +1057,7 @@ impl LevelView {
     }) else {
       return;
     };
-    let Some(rainfall) = lighting.rain.filter(|_| options.is_rainy && options.is_lit) else {
+    let Some(rainfall) = lighting.rain.filter(|_| options.world.is_rainy && options.mode.is_lit) else {
       return;
     };
 
@@ -1153,7 +1163,7 @@ impl LevelView {
     let Some(thunder) = weather
       .thunder
       .as_ref()
-      .filter(|_| options.is_thundering && options.is_lit)
+      .filter(|_| options.world.is_thundering && options.mode.is_lit)
     else {
       return;
     };
@@ -1852,8 +1862,9 @@ impl LevelView {
   /// Where the next frame's samples sit within their pixels, in drawn pixels, `y` down: jittered while it resolves
   /// frames temporally and shows the finished frame, still otherwise.
   pub fn next_jitter(&mut self, options: &RenderViewOptions, ratio: f32) -> Vec2 {
-    self.info.is_temporal = options.antialiasing.is_temporal() && options.debug_view == RenderDebugView::Final;
-    self.info.is_fsr = self.info.is_temporal && options.antialiasing == RenderAntialiasing::Fsr2;
+    self.info.is_temporal =
+      options.features.antialiasing.is_temporal() && options.mode.debug_view == RenderDebugView::Final;
+    self.info.is_fsr = self.info.is_temporal && options.features.antialiasing == RenderAntialiasing::Fsr2;
     self.info.jitter_phases = TemporalJitter::get_phases(ratio);
     self.info.jitter = if self.info.is_temporal {
       self.state.jitter.next(ratio)
@@ -2181,7 +2192,7 @@ impl LevelView {
   /// What its frames are drawn with, as resolved from what `options` asked; the weather's light is the viewport's to add.
   pub fn describe_applied(&self, options: &RenderViewOptions) -> RenderAppliedReport {
     let antialiasing: RenderAntialiasing = if self.info.is_temporal {
-      options.antialiasing
+      options.features.antialiasing
     } else {
       self
         .state
@@ -2208,8 +2219,8 @@ impl LevelView {
         .lights_settings
         .is_enabled
         .then_some(self.info.lights_settings),
-      grass: self.scene.grass.get_applied(&options.grass),
-      is_water: options.water.is_enabled,
+      grass: self.scene.grass.get_applied(&options.features.grass),
+      is_water: options.features.water.is_enabled,
       environment: None,
       sun: self
         .info
@@ -2329,9 +2340,9 @@ fn to_hidden_groups(options: &RenderViewOptions) -> u32 {
   ]
   .into_iter()
   .fold(0, |hidden, category| {
-    let is_shown: bool = options.is_spawned(category);
+    let is_shown: bool = options.world.is_spawned(category);
     let kept: u32 = if is_shown { 0 } else { 1 << (category.get_group() - 1) };
-    let released: u32 = if is_shown && options.is_spawned_released {
+    let released: u32 = if is_shown && options.world.is_spawned_released {
       0
     } else {
       1 << (category.get_released_group() - 1)

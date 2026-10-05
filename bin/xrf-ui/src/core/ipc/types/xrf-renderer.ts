@@ -164,6 +164,26 @@ export type RenderAssetLighting = {
 };
 
 /**
+ * How an asset viewer stages what it shows: its own light, the backdrop behind it, and how its surfaces are textured
+ * where it checks their coordinates or they name no texture.
+ */
+export type RenderAssetPreview = {
+  /** An asset viewer's light, in place of the weather's; none for a level. */
+  lighting: RenderAssetLighting | null;
+  /**
+   * What shows where nothing was drawn and neither the sky nor the fog is, each channel zero to one; none for the
+   * level viewer's own.
+   */
+  backdrop: [number | null, number | null, number | null] | null;
+  /** The backdrop laid out as a checkerboard with a second colour, as behind a picture with alpha; none for a plain one. */
+  backdropSquares: RenderBackdropSquares | null;
+  /** Times a uv checker repeats over a surface's base coordinate, drawn in place of its textures; zero for none. */
+  checker: number | null;
+  /** The colour a surface naming no base texture is drawn, each channel zero to one; none for white. */
+  plainColor: [number | null, number | null, number | null] | null;
+};
+
+/**
  * A checkerboard where nothing was drawn, as the one behind a picture with alpha: the backdrop and a second colour in
  * squares.
  */
@@ -812,6 +832,37 @@ export type RenderShadowSettings = {
   isStaggered: boolean;
 };
 
+/**
+ * What of a scene a view shows, each feeding which passes its frame graph declares: the sky and what crosses it, the
+ * fog, the sun's flares and shafts, the wall marks, the particles, and the surfaces that cut out or blend.
+ */
+export type RenderShowFlags = {
+  /** Whether the weather's sky is drawn behind the level, rather than a plain backdrop. */
+  isSkyVisible: boolean;
+  /** Whether the weather's clouds cross the sky. */
+  isClouded: boolean;
+  /** Whether the distance fades into the sky's haze rather than into the sky itself. */
+  isSkyHazed: boolean;
+  /** Whether the weather's fog hides the distance. */
+  isFogged: boolean;
+  /**
+   * Whether the sun's lens flares are drawn over the frame, `disable_lens_flare 0`; its sprite and gradient are drawn
+   * either way.
+   */
+  isLensFlared: boolean;
+  /**
+   * Whether the sun's light shafts are drawn through its shadow, `r2_sun_shafts` (`r2_sunshafts_mode volumetric` on
+   * Monolith) at its highest quality.
+   */
+  isSunShafted: boolean;
+  /** Whether the level's wall marks are laid over its surfaces. */
+  isWallmarked: boolean;
+  /** Whether the level's particle systems play and draw. */
+  isParticled: boolean;
+  /** Whether surfaces cut out and blend as their shaders ask, or draw solid. */
+  isAlphaVisible: boolean;
+};
+
 /** How full a level's static draws' pools are, and what the camera's cull kept and occlusion hid. */
 export type RenderStaticReport = {
   /** Slots, a draw each. */
@@ -931,8 +982,36 @@ export type RenderUpscalingSettings = {
   sharpening: number | null;
 };
 
-/** What one viewport draws its scene with, as its viewer's toolbar sets it. */
-export type RenderViewOptions = {
+/** Each of the renderer's features as a view sets it, a full set a view: one struct a feature, owned by its module. */
+export type RenderViewFeatures = {
+  exposure: RenderExposureSettings;
+  bloom: RenderBloomSettings;
+  shadows: RenderShadowSettings;
+  ambientOcclusion: RenderAmbientOcclusionSettings;
+  lights: RenderLightsSettings;
+  water: RenderWaterSettings;
+  grass: RenderGrassSettings;
+  /** How finely the sun's shafts step, and Monolith's floor under their density. */
+  sunShafts: RenderSunShafts;
+  /** How much of the static geometry draws at a distance. */
+  lod: RenderLodSettings;
+  /** How the frame's edges are smoothed. */
+  antialiasing: RenderAntialiasing;
+  /** What the finished frame is corrected by. */
+  corrections: RenderImageCorrections;
+  /** How the game's console scales the sun, the hemisphere and the ambient. */
+  lightScales: RenderLightScales;
+  /** How far the baked hemisphere darkens the ambient: zero for not at all. */
+  hemiStrength: number | null;
+  /** Whether what the last frame's depth hides is left undrawn. */
+  isOcclusionCulled: boolean;
+};
+
+/**
+ * How a view shades what it shows: lit or as its albedo, filled or as its edges, what colours the surfaces, whether
+ * bumps bend them, and which picture it shows.
+ */
+export type RenderViewMode = {
   /** Whether the scene is lit, else shown as its raw albedo. */
   isLit: boolean;
   /** Whether every static surface draws as its triangles' edges. */
@@ -941,79 +1020,26 @@ export type RenderViewOptions = {
   surfaceColor: RenderSurfaceColor;
   /** Whether bump textures bend the normal. */
   isBumped: boolean;
-  /** How far the baked hemisphere darkens the ambient: zero for not at all. */
-  hemiStrength: number | null;
-  /** Whether what the last frame's depth hides is left undrawn. */
-  isOcclusionCulled: boolean;
-  /** How much of the static geometry draws at a distance. */
-  lod: RenderLodSettings;
-  /** An asset viewer's light, in place of the weather's; none for a level. */
-  assetLighting: RenderAssetLighting | null;
-  /**
-   * What shows where nothing was drawn and neither the sky nor the fog is, each channel zero to one; none for the
-   * level viewer's own.
-   */
-  backdrop: [number | null, number | null, number | null] | null;
-  /** The backdrop laid out as a checkerboard with a second colour, as behind a picture with alpha; none for a plain one. */
-  backdropSquares: RenderBackdropSquares | null;
-  /** Times a uv checker repeats over a surface's base coordinate, drawn in place of its textures; zero for none. */
-  checker: number | null;
-  /** The colour a surface naming no base texture is drawn, each channel zero to one; none for white. */
-  plainColor: [number | null, number | null, number | null] | null;
-  /** Whether surfaces cut out and blend as their shaders ask, or draw solid. */
-  isAlphaVisible: boolean;
-  /** Whether the weather's fog hides the distance. */
-  isFogged: boolean;
-  /** Whether the weather's sky is drawn behind the level, rather than a plain backdrop. */
-  isSkyVisible: boolean;
-  /** Whether the distance fades into the sky's haze rather than into the sky itself. */
-  isSkyHazed: boolean;
-  /** Whether the weather's clouds cross the sky. */
-  isClouded: boolean;
-  /**
-   * Whether the sun's lens flares are drawn over the frame, `disable_lens_flare 0`; its sprite and gradient are drawn
-   * either way.
-   */
-  isLensFlared: boolean;
-  /**
-   * Whether the sun's light shafts are drawn through its shadow, `r2_sun_shafts` (`r2_sunshafts_mode volumetric` on
-   * Monolith) at its highest quality.
-   */
-  isSunShafted: boolean;
-  /** How finely they step, and Monolith's floor under their density. */
-  sunShafts: RenderSunShafts;
-  /** Whether the weather's rain falls and wets surfaces. */
-  isRainy: boolean;
-  /** Whether the weather's bolts strike. */
-  isThundering: boolean;
-  /** Whether the weather's wind sways trees and grass. */
-  isWindy: boolean;
-  /** Whether the level's wall marks are laid over its surfaces. */
-  isWallmarked: boolean;
-  /** Whether the level's particle systems play and draw. */
-  isParticled: boolean;
-  /** Whether its campfires burn, as `CZoneCampfire` starts, rather than smoulder out. */
-  isCampfireLit: boolean;
-  /** Whether the weather's ambient effects play near the camera and bring their wind. */
-  isAmbientPlayed: boolean;
-  /** Which groups of the level's spawned objects are drawn. */
-  isSpawnedProps: boolean;
-  isSpawnedItems: boolean;
-  isSpawnedWeapons: boolean;
-  isSpawnedLamps: boolean;
-  /** Whether the spawned objects a new game releases are drawn too, each with its group. */
-  isSpawnedReleased: boolean;
-  exposure: RenderExposureSettings;
-  bloom: RenderBloomSettings;
-  shadows: RenderShadowSettings;
-  ambientOcclusion: RenderAmbientOcclusionSettings;
-  lights: RenderLightsSettings;
-  water: RenderWaterSettings;
-  grass: RenderGrassSettings;
   /** Which picture the viewport shows: its frame, or one of the targets the frame was built from. */
   debugView: RenderDebugView;
-  /** How the frame's edges are smoothed. */
-  antialiasing: RenderAntialiasing;
+};
+
+/**
+ * What one viewport draws its scene with, split by who owns each part: what it shows, how it shades it, each
+ * feature's settings, what its frame is drawn at, what of the world plays, and an asset viewer's staging.
+ */
+export type RenderViewOptions = {
+  show: RenderShowFlags;
+  mode: RenderViewMode;
+  features: RenderViewFeatures;
+  output: RenderViewOutput;
+  /** What of the level plays; the world's to own once it is a layer of its own. */
+  world: RenderWorldToggles;
+  asset: RenderAssetPreview;
+};
+
+/** What a view's frame is drawn at before it is put into its rectangle, and how it is upscaled. */
+export type RenderViewOutput = {
   /** What the scene is drawn at, and how its upscaled frame is sharpened. */
   upscaling: RenderUpscalingSettings;
   /**
@@ -1021,10 +1047,6 @@ export type RenderViewOptions = {
    * the viewport draws at the viewport's.
    */
   renderHeight: number | null;
-  /** How the game's console scales the sun, the hemisphere and the ambient. */
-  lightScales: RenderLightScales;
-  /** What the finished frame is corrected by. */
-  corrections: RenderImageCorrections;
 };
 
 /** Every `kind` the `RenderViewportEvent` union is told apart by, so a switch or a comparison names one. */
@@ -1210,3 +1232,27 @@ export enum ERenderWeatherTransition {
 
 /** Every `ERenderWeatherTransition` as the spelling it crosses IPC as, for a value no member has narrowed. */
 export type RenderWeatherTransition = `${ERenderWeatherTransition}`;
+
+/**
+ * What of the level's world plays, rather than what is drawn of it: the weather's rain, bolts and wind, the campfires,
+ * the ambient effects, and which groups of the spawned objects stream in.
+ */
+export type RenderWorldToggles = {
+  /** Whether the weather's rain falls and wets surfaces. */
+  isRainy: boolean;
+  /** Whether the weather's bolts strike. */
+  isThundering: boolean;
+  /** Whether the weather's wind sways trees and grass. */
+  isWindy: boolean;
+  /** Whether its campfires burn, as `CZoneCampfire` starts, rather than smoulder out. */
+  isCampfireLit: boolean;
+  /** Whether the weather's ambient effects play near the camera and bring their wind. */
+  isAmbientPlayed: boolean;
+  /** Which groups of the level's spawned objects are drawn. */
+  isSpawnedProps: boolean;
+  isSpawnedItems: boolean;
+  isSpawnedWeapons: boolean;
+  isSpawnedLamps: boolean;
+  /** Whether the spawned objects a new game releases are drawn too, each with its group. */
+  isSpawnedReleased: boolean;
+};

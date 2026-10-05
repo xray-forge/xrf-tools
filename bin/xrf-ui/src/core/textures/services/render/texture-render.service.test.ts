@@ -7,6 +7,7 @@ import {
   ERenderCameraCommand,
   ERenderTextureState,
   ERenderViewportEvent,
+  RenderViewOptions,
   RenderViewportEvent,
 } from "@/core/ipc/types/xrf-renderer";
 import { DEFAULT_TEXTURE_LIGHTING } from "@/core/textures/lib/texture-lighting";
@@ -101,10 +102,10 @@ describe("TextureRenderService", () => {
 
   it("draws the body against the alpha checkerboard, under the view's light", async () => {
     const { service } = await mockAttached();
-    const options = sent("set_view_options").at(-1)?.options as Record<string, unknown>;
+    const options = sent("set_view_options").at(-1)?.options as RenderViewOptions;
 
-    expect(options.backdropSquares).not.toBeNull();
-    expect(options.assetLighting).toMatchObject({ sunAzimuth: DEFAULT_TEXTURE_LIGHTING.sunAzimuth });
+    expect(options.asset.backdropSquares).not.toBeNull();
+    expect(options.asset.lighting).toMatchObject({ sunAzimuth: DEFAULT_TEXTURE_LIGHTING.sunAzimuth });
     expect(sent("set_camera")).toHaveLength(1);
 
     service.dispose();

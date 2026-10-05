@@ -67,18 +67,23 @@ export function toTextureViewOptions(
   pixelRatio: number,
   renderHeight: Nullable<number> = null
 ): RenderViewOptions {
+  const view: RenderViewOptions = toNativeAssetViewOptions(
+    { isBumped: options.isBumped, isLit: options.isLit, isWireframe: false },
+    features,
+    renderHeight
+  );
+
   return {
-    ...toNativeAssetViewOptions(
-      { isBumped: options.isBumped, isLit: options.isLit, isWireframe: false },
-      features,
-      renderHeight
-    ),
-    assetLighting: toNativeAssetLighting(lighting),
-    backdrop: toRawColor(toHexColor(VIEWPORT.checkerboardDark)),
-    backdropSquares: {
-      color: toRawColor(toHexColor(VIEWPORT.checkerboardLight)),
-      size: VIEWPORT.checkerboardSquare * pixelRatio,
+    ...view,
+    asset: {
+      ...view.asset,
+      backdrop: toRawColor(toHexColor(VIEWPORT.checkerboardDark)),
+      backdropSquares: {
+        color: toRawColor(toHexColor(VIEWPORT.checkerboardLight)),
+        size: VIEWPORT.checkerboardSquare * pixelRatio,
+      },
+      lighting: toNativeAssetLighting(lighting),
+      plainColor: toRawColor(TEXTURE_EDGE_COLOR),
     },
-    plainColor: toRawColor(TEXTURE_EDGE_COLOR),
   };
 }
