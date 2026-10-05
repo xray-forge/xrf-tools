@@ -118,6 +118,10 @@ pub fn build_static_surface(
     flags |= StaticSurface::IS_ENVIRONMENT_MAPPED;
   }
 
+  if descriptor.is_some_and(|it| it.is_object_lod) {
+    flags |= StaticSurface::IS_STILL;
+  }
+
   let environment: u32 = descriptor
     .and_then(|it| it.environment.as_deref())
     .filter(|_| flags & StaticSurface::IS_ENVIRONMENT_MAPPED != 0)

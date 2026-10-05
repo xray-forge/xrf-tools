@@ -40,6 +40,8 @@ pub struct XraySurfaceDescriptor {
   pub is_texture_clamped: bool,
   /// Whether it also draws into the distortion target, by a script's `l_special` pass.
   pub is_distorting: bool,
+  /// `B_TREE`'s `Object LOD`: an object the level stores as a tree, drawn by `tree_s`, which the wind leaves standing.
+  pub is_object_lod: bool,
 }
 
 impl XraySurfaceDescriptor {
@@ -58,6 +60,7 @@ impl XraySurfaceDescriptor {
       environment: None,
       is_texture_clamped: false,
       is_distorting: false,
+      is_object_lod: false,
     }
   }
 

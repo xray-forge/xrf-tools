@@ -91,6 +91,7 @@ impl XraySurfaceScript {
       environment: None,
       is_texture_clamped: false,
       is_distorting: distortion.is_some(),
+      is_object_lod: false,
     })
   }
 
