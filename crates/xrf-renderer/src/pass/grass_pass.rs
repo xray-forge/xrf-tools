@@ -56,22 +56,22 @@ impl GrassPass {
     let level_layout: wgpu::BindGroupLayout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
       label: Some("grass level"),
       entries: &[
-        uniform_entry(0, compute),
+        storage_entry(0, compute, false),
         storage_entry(1, compute, false),
         storage_entry(2, compute, false),
         storage_entry(3, compute, false),
         storage_entry(4, compute, false),
         storage_entry(5, compute, false),
-        storage_entry(6, compute, false),
+        storage_entry(6, compute, true),
         storage_entry(7, compute, true),
         storage_entry(8, compute, true),
-        storage_entry(9, compute, true),
       ],
     });
     let build_layout: wgpu::BindGroupLayout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
       label: Some("grass build"),
       entries: &(0..8)
         .map(|binding| storage_entry(binding, compute, true))
+        .chain([uniform_entry(8, compute)])
         .collect::<Vec<_>>(),
     });
     let vertex: wgpu::ShaderStages = wgpu::ShaderStages::VERTEX;

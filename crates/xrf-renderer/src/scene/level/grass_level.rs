@@ -36,7 +36,6 @@ impl GrassLevel {
   pub fn new(
     device: &wgpu::Device,
     pass: &GrassPass,
-    uniform: &wgpu::Buffer,
     details: &RenderLevelDetails,
     (textures, source): (&mut TextureCache, &Arc<dyn RenderAssetSource>),
   ) -> Self {
@@ -107,7 +106,7 @@ impl GrassLevel {
       label: Some("grass level"),
       layout: pass.get_level_layout(),
       entries: &[
-        uniform, &grid, &slots, &bins, &triangles, &dither, &models, &counts, &cursors, &args,
+        &grid, &slots, &bins, &triangles, &dither, &models, &counts, &cursors, &args,
       ]
       .iter()
       .enumerate()

@@ -22,6 +22,7 @@ use crate::contract::render_level_hit::RenderLevelHit;
 use crate::contract::render_lights_report::RenderLightsReport;
 use crate::contract::render_load_report::RenderLoadReport;
 use crate::contract::render_overlay::RenderOverlay;
+use crate::contract::render_particles_report::RenderParticlesReport;
 use crate::contract::render_pool_use::RenderPoolUse;
 use crate::contract::render_rect::RenderRect;
 use crate::contract::render_selection::RenderSelection;
@@ -75,8 +76,8 @@ use crate::pass::view_light_groups::ViewLightGroups;
 use crate::pass::water_draw::WaterDraw;
 use crate::pass::wet_uniform::WetUniform;
 use crate::pass::wind_uniform::WindUniform;
+use crate::scene::level::grass_level::GrassLevel;
 use crate::scene::level::level_frame::LevelFrame;
-use crate::scene::level::level_lights::LevelLights;
 use crate::scene::level::level_load::LevelLoad;
 use crate::scene::level::level_overlays::LevelOverlays;
 use crate::scene::level::level_scene::LevelScene;
@@ -84,6 +85,7 @@ use crate::scene::level::level_smoothing::LevelSmoothing;
 use crate::scene::level::level_water::WaterFrame;
 use crate::scene::level::level_world_input::LevelWorldInput;
 use crate::scene::level::lights_frame::LightsFrame;
+use crate::scene::level::lights_view::LightsView;
 use crate::scene::level::particle_emitter_proxy::ParticleEmitterProxy;
 use crate::scene::level::placed_effect::PlacedEffect;
 use crate::scene::level::scene_renderer::{SceneRenderer, SkyGroupKey};
@@ -153,6 +155,11 @@ impl LevelView {
   /// The effects whose particles stopped playing this frame, for the world.
   pub fn take_finished_effects(&mut self) -> Vec<(ProxyHandle<ParticleEmitterProxy>, PlacedEffect)> {
     self.scene.particles.take_finished()
+  }
+
+  /// What its level's particles came to since the last report, as this view draws them.
+  pub fn take_particles_report(&mut self) -> RenderParticlesReport {
+    self.scene.particles.take_report(self.state.particles.drawn)
   }
 
   /// What it keeps from one frame to the next.
@@ -352,7 +359,7 @@ impl LevelView {
           device,
           targets,
           passes.table,
-          &self.scene.lights.get_buffers(),
+          &self.state.lights.get_buffers(),
           self.scene.lights.get_shadow_atlas(),
         ),
         occlusion: passes
@@ -540,10 +547,9 @@ impl LevelView {
       lod_origin: view.position.extend(1.0),
     };
     self.info.matrices = (view.view, view.projection);
-    self.scene.grass.prepare(
-      device,
-      queue,
-      passes.grass,
+    self.state.grass.prepare(
+      (device, queue),
+      (passes.grass, self.scene.grass.get_level()),
       &options.features.grass,
       view,
       self.info.cull.discard_below,
@@ -555,6 +561,7 @@ impl LevelView {
     );
     self.scene.lights.prepare(
       queue,
+      &mut self.state.lights,
       LightsFrame {
         camera: view,
         settings: &options.features.lights,
@@ -605,14 +612,14 @@ impl LevelView {
     self.info.lighting = LightingUniform::new(lighting, view.view, options, &frame);
     queue.write_buffer(&self.renderer.lighting, 0, bytemuck::bytes_of(&self.info.lighting));
 
-    self.scene.particles.step(view, options);
+    self.scene.particles.simulate(view, options);
+    self.scene.particles.fill(view, options, &mut self.state.particles);
 
     if let Some(targets) = &self.state.targets {
-      self.scene.particles.upload(
-        device,
-        queue,
+      self.state.particles.upload(
+        (device, queue),
         passes.particles,
-        &self.renderer.lighting,
+        (&self.renderer.lighting, self.scene.particles.get_surfaces()),
         (targets, self.state.targets_epoch),
       );
     }
@@ -748,7 +755,7 @@ impl LevelView {
     targets: ViewTargetHandles,
     (has_lights, is_occlusion_ambient): (bool, bool),
   ) {
-    let lights: &'a LevelLights = &self.scene.lights;
+    let lights: &'a LightsView = &self.state.lights;
     let counts: GraphBuffer = bindings.import_buffer(graph, "light cluster counts", &lights.counts);
     let gbuffer: [GraphTexture; 4] = [targets.albedo, targets.normal, targets.material, targets.depth];
 
@@ -884,7 +891,7 @@ impl LevelView {
     let water: &RenderWaterSettings = &options.features.water;
     let is_water_distorting: bool = water.is_enabled && water.is_distorted && options.mode.is_lit;
     let is_distorting: bool =
-      !options.mode.is_wireframe && (is_water_distorting || self.scene.particles.is_distorting());
+      !options.mode.is_wireframe && (is_water_distorting || self.state.particles.is_distorting());
 
     queue.write_buffer(
       &self.renderer.present,
@@ -1204,12 +1211,12 @@ impl LevelView {
     let is_raining: bool = self.info.rain_draw.is_some();
     let is_wet: bool = is_raining && self.renderer.wet_groups.is_some();
     let is_lit: bool = frame.is_lit;
-    let has_lights: bool = self.scene.lights.get_count() > 0;
+    let has_lights: bool = self.state.lights.get_count() > 0;
     let is_occlusion_ambient: bool = self.info.ambient_occlusion.is_enabled;
     let has_sky: bool = self.renderer.sky_group.is_some();
     let is_hazing: bool = has_sky && self.info.is_hazing;
     let is_composited: bool = is_drawn && has_sky;
-    let has_particles: bool = is_drawn && self.scene.particles.is_drawing();
+    let has_particles: bool = is_drawn && self.state.particles.is_drawing();
     let is_shafted: bool = self.info.is_shafted;
     let is_rain_drawn: bool = is_raining && self.renderer.rain_group.is_some();
     let is_thundering: bool = self.info.thunder_draw.is_some() && self.renderer.thunder_groups.is_some();
@@ -1244,11 +1251,12 @@ impl LevelView {
       ))
       .record(|_| {});
 
+    let grass_level: Option<&GrassLevel> = level_view.scene.grass.get_level();
     let grass_args: Option<GraphBuffer> =
       level_view
-        .scene
+        .state
         .grass
-        .add_planting(&mut *graph, &mut *bindings, passes.grass);
+        .add_planting(&mut *graph, &mut *bindings, (passes.grass, grass_level));
 
     level_view.add_gbuffer_passes(
       &mut *graph,
@@ -1275,10 +1283,12 @@ impl LevelView {
       });
 
     if let (true, Some(grass_args)) = (is_drawn, grass_args) {
-      level_view
-        .scene
-        .grass
-        .add_draw(&mut *graph, passes.grass, (handles, grass_args), (view, texture_group));
+      level_view.state.grass.add_draw(
+        &mut *graph,
+        (passes.grass, grass_level),
+        (handles, grass_args),
+        (view, texture_group),
+      );
     }
 
     if is_wallmarked {
@@ -1491,7 +1501,7 @@ impl LevelView {
 
       if has_particles {
         level_view
-          .scene
+          .state
           .particles
           .add_passes(&mut *graph, passes.particles, handles, (view, texture_group));
       }
@@ -2117,7 +2127,7 @@ impl LevelView {
   /// Asks for the counts recorded with the frame just submitted.
   pub fn request_stats(&self) {
     self.state.stats.request();
-    self.scene.lights.request_report();
+    self.state.lights.request_report();
   }
 
   /// What its frames are drawn with, as resolved from what `options` asked; the weather's light is the viewport's to add.
@@ -2150,7 +2160,7 @@ impl LevelView {
         .lights_settings
         .is_enabled
         .then_some(self.info.lights_settings),
-      grass: self.scene.grass.get_applied(&options.features.grass),
+      grass: self.state.grass.get_applied(&options.features.grass),
       is_water: options.features.water.is_enabled,
       environment: None,
       sun: self
@@ -2181,7 +2191,7 @@ impl LevelView {
         occluded_triangles,
         ..pools
       },
-      self.scene.lights.take_report(),
+      self.state.lights.take_report(),
     )
   }
 

@@ -4,7 +4,6 @@ use std::time::Instant;
 use glam::Vec4;
 use xrf_error::XrfResult;
 
-use crate::contract::render_particles_report::RenderParticlesReport;
 use crate::contract::render_texture_report::RenderTextureReport;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::host::render_level_source::RenderLevelSource;
@@ -54,7 +53,7 @@ impl LevelScene {
     let statics: StaticScene = StaticScene::new(device, queue);
 
     Self {
-      grass: LevelGrass::new(device, &source, workers),
+      grass: LevelGrass::new(&source, workers),
       lights: LevelLights::new(device, view_layout, statics.args.size()),
       particles: LevelParticles::new(device, workers),
       statics,
@@ -172,11 +171,6 @@ impl LevelScene {
   /// A spawned object's bounding sphere in renderer space, once its model is in the scene.
   pub fn get_object_sphere(&self, object: u32) -> Option<Vec4> {
     self.statics.get_object_sphere(object)
-  }
-
-  /// What the level's particle systems came to since the last report.
-  pub fn take_particles_report(&mut self) -> RenderParticlesReport {
-    self.particles.take_report()
   }
 
   /// Every environment slot it samples, so the cubes no scene samples can be freed.

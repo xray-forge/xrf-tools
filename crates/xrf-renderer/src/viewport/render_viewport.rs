@@ -247,7 +247,7 @@ impl RenderViewport {
     let particles: RenderParticlesReport = self
       .level_view
       .as_mut()
-      .map_or_else(Default::default, |level| level.get_scene_mut().take_particles_report());
+      .map_or_else(Default::default, |level| level.take_particles_report());
     let (is_gpu_timed, passes): (bool, Vec<RenderPassCost>) = timer.map_or((false, Vec::new()), |timer| {
       let mut times: Vec<GraphPassTime> = timer.take(self.id.0);
 
