@@ -278,3 +278,67 @@ fn a_channel_reports_the_span_its_own_keys_cover() -> XrfResult {
 
   Ok(())
 }
+
+/// A motion from frame 0 to 60 at 30 frames a second, two seconds long, its x rising 3 metres a second and its heading
+/// keyed in channel 3.
+fn new_moving_motion() -> AnmFile {
+  let line = |values: [f32; 2]| AnimationEnvelope {
+    behavior: (1, 1),
+    keys: vec![
+      AnimationKey {
+        value: values[0],
+        time: 0.0,
+        shape: 3,
+        interpolation: Some(AnimationInterpolation {
+          tension: 0.0,
+          continuity: 0.0,
+          bias: 0.0,
+          parameters: [0.0; 4],
+        }),
+      },
+      AnimationKey {
+        value: values[1],
+        time: 2.0,
+        shape: 3,
+        interpolation: Some(AnimationInterpolation {
+          tension: 0.0,
+          continuity: 0.0,
+          bias: 0.0,
+          parameters: [0.0; 4],
+        }),
+      },
+    ],
+  };
+  let flat = || AnimationEnvelope {
+    behavior: (1, 1),
+    keys: Vec::new(),
+  };
+
+  AnmFile {
+    name: String::new(),
+    frame_start: 0,
+    frame_end: 60,
+    fps: 30.0,
+    version: AnmFile::CURRENT_VERSION,
+    channels: vec![line([0.0, 6.0]), flat(), flat(), line([0.0, 1.0]), flat(), flat()],
+  }
+}
+
+#[test]
+fn test_looped_time_wraps_by_whole_lengths() {
+  let motion: AnmFile = new_moving_motion();
+
+  assert_eq!(motion.get_looped_time(0.5), 0.5);
+  assert_eq!(motion.get_looped_time(2.0), 2.0);
+  assert!((motion.get_looped_time(5.5) - 1.5).abs() < 1e-5);
+}
+
+#[test]
+fn test_evaluate_reads_the_heading_from_channel_three() {
+  let (position, rotation) = new_moving_motion().evaluate(1.0);
+
+  assert!((position.x - 3.0).abs() < 1e-5);
+  // `_Evaluate` puts `ctRotationH`, channel 3, in `y` and `ctRotationP`, channel 4, in `x`.
+  assert!((rotation.y - 0.5).abs() < 1e-5);
+  assert_eq!(rotation.x, 0.0);
+}

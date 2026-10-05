@@ -626,8 +626,8 @@ export function mockArchiveAnmDescription(overrides: Partial<ArchiveAnmDescripti
       maximum: null,
       shapes: [],
     }),
-    mockArchiveAnimationChannel("rotation pitch", { shapes: ["tcb", "linear"] }),
-    mockArchiveAnimationChannel("rotation heading"),
+    mockArchiveAnimationChannel("rotation heading", { shapes: ["tcb", "linear"] }),
+    mockArchiveAnimationChannel("rotation pitch"),
     mockArchiveAnimationChannel("rotation bank", { keys: 1, firstSeconds: 0, lastSeconds: 0, shapes: ["stepped"] }),
   ];
 

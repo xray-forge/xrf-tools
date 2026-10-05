@@ -8,6 +8,7 @@ pub mod hemi;
 pub mod lens_flares;
 pub mod lights;
 pub mod new_game;
+pub mod object_motions;
 pub mod particle_collider;
 pub mod particles;
 pub mod plugin;

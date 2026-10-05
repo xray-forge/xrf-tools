@@ -1,3 +1,4 @@
+use xrf_anm::AnmFile;
 use xrf_environment::WeatherDescriptor;
 use xrf_error::{XrfError, XrfResult};
 use xrf_material::XraySurfaceDescriptor;
@@ -90,5 +91,17 @@ pub trait RenderLevelSource: RenderAssetSource {
   /// Returns an error for a motion the model does not have, or files that cannot be read.
   fn read_motion(&self, name: &str) -> XrfResult<RenderMotion> {
     Err(XrfError::new_not_found_error(format!("No motion '{name}' to play")))
+  }
+
+  /// An object motion a spawned object moves along (`CObjectAnimator::Load`), by the name its spawn gives, called from a
+  /// loader thread.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error for a motion that cannot be found or read.
+  fn read_object_motion(&self, name: &str) -> XrfResult<AnmFile> {
+    Err(XrfError::new_not_found_error(format!(
+      "No object motion '{name}' to play"
+    )))
   }
 }

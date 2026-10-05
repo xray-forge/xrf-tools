@@ -23,6 +23,12 @@ impl VisualTransform {
     BindTransform::from_angle(angle, position).to_renderer_space()
   }
 
+  /// Where an object animator stands its object, `CObjectAnimator::Update`'s `XFORM`: `setXYZi(rotation)` at
+  /// `position`, both as `COMotion::_Evaluate` gives them.
+  pub fn of_motion(position: &Vector3d, rotation: &Vector3d) -> Self {
+    BindTransform::from_bind(rotation, position).to_renderer_space()
+  }
+
   /// The same transform mirrored through `z`, which takes it between renderer and engine space either way.
   pub fn mirrored(&self) -> Self {
     BindTransform::from_renderer_space(self).mirrored().to_visual()

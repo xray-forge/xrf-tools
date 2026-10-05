@@ -25,6 +25,7 @@ fn point() -> LightDescription {
     is_shadowed: false,
     is_level: false,
     campfire: None,
+    motion: None,
   }
 }
 

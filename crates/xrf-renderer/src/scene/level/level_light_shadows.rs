@@ -189,12 +189,20 @@ impl LevelLightShadows {
     // How wide a face's texels are, for each metre from the light, times the square's side.
     let spread: f32 = 2.0 * ((cone + LIGHT_SHADOW_WIDENING) * 0.5).tan();
 
-    for (is_next, set) in [(false, &entry.shown), (true, &entry.next)] {
+    for (is_next, set) in [(false, &mut entry.shown), (true, &mut entry.next)] {
       if let Some(set) = set {
-        for (face, state) in set.faces.iter().enumerate() {
+        for (face, state) in set.faces.iter_mut().enumerate() {
+          // A light a motion carries has moved off where its faces look from: each looks from where it stands now,
+          // and is drawn again as a swaying one is, lighting with what it holds meanwhile.
+          let is_moved: bool = state.view.position != basis.position;
+
+          if is_moved {
+            state.view = to_face_view(light, basis, face, set.near, set.far);
+          }
+
           if state.drawn != Some(contents) {
             self.candidates.push(((false, distance), index, is_next, face));
-          } else if sway.is_redrawn(swaying, spread / state.tile.size as f32, state.drawn_at) {
+          } else if is_moved || sway.is_redrawn(swaying, spread / state.tile.size as f32, state.drawn_at) {
             self.candidates.push(((true, state.drawn_at), index, is_next, face));
           }
         }

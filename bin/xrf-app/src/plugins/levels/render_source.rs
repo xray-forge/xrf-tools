@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, PoisonError, RwLock};
 use std::time::Instant;
 
+use xrf_anm::AnmFile;
 use xrf_chunk::XRayByteOrder;
 use xrf_environment::{EnvironmentCatalog, WeatherDescriptor, WeatherModifier};
 use xrf_error::{XrfError, XrfResult};
@@ -26,6 +27,7 @@ use crate::plugins::levels::drawn_attributes::DRAWN_ATTRIBUTES;
 use crate::plugins::levels::hemi::{estimate_visuals_hemi, get_level_hemi};
 use crate::plugins::levels::lens_flares::to_render_lens_flare;
 use crate::plugins::levels::lights::{PackedLevelLights, pack_lights};
+use crate::plugins::levels::object_motions::read_object_motion;
 use crate::plugins::levels::particle_collider::LevelParticleCollider;
 use crate::plugins::levels::particles::{PackedLevelParticles, pack_particles};
 use crate::plugins::levels::report::{
@@ -328,6 +330,16 @@ impl RenderLevelSource for LevelRenderSource {
         .ok()
         .map(|tracer| Arc::new(LevelParticleCollider::new(tracer)) as Arc<dyn ParticleCollider>),
     }))
+  }
+
+  fn read_object_motion(&self, name: &str) -> XrfResult<AnmFile> {
+    let level: &SelectedLevel = &self.level;
+
+    self
+      .assets
+      .with_probe(&level.roots, |probe| read_object_motion(&level.source, probe, name))
+      .map_err(XrfError::new_asset_error)?
+      .map_err(XrfError::new_asset_error)
   }
 
   fn read_spawn_models(&self, names: &[String]) -> XrfResult<RenderSpawnModels> {

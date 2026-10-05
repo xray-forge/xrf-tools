@@ -48,8 +48,12 @@ decides which encoding to read.
 for one key. It neither sorts keys nor finds the minimum and maximum times; keep keys in chronological order when
 constructing an envelope.
 
-Behavior and shape codes are stored as numbers. This crate does not evaluate curves, apply before/after behavior, or
-validate that those codes are supported by a player.
+Behavior and shape codes are stored as numbers. `evaluate(time)` reads the channel's value at a time as the engine's
+`evalEnvelope` (`xrCore/Animation/interp.cpp`) does: zero without keys, the one key's value with one, the keys' curve
+by each span's shape (TCB, Hermite, Bezier, line, step, `BEZ2`), and outside the keys the before/after behaviour
+(reset, constant, repeat, oscillate, offset, linear). It ports the engine's own arithmetic, quirks included: `range`
+wraps by `low + time - span * floor(time / span)`, so a span not starting at zero repeats from where that lands, and
+oscillation reads the span's length less the time. A stepped key's missing interpolation reads as zeros.
 
 ## Encoding and caller obligations
 

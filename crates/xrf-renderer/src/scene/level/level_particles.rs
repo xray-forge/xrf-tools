@@ -29,6 +29,7 @@ use crate::pass::particle_vertex::ParticleVertex;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::campfire::Campfire;
 use crate::scene::level::level_campfires::LevelCampfires;
+use crate::scene::level::level_object_motions::LevelObjectMotions;
 use crate::scene::level::loader_answer::take_answer;
 use crate::scene::level::particle_sprite::ParticleSprite;
 use crate::scene::level::placed_effect::PlacedEffect;
@@ -80,10 +81,12 @@ struct LevelSystems {
   texture_slots: Vec<u32>,
 }
 
-/// One placement, what plays at it, and for a campfire whether it was lit when last placed.
+/// One placement, what plays at it, where it stands this frame, and for a campfire whether it was lit when last placed.
 struct PlacedSystem {
   source: RenderParticleSource,
   transform: Mat4,
+  /// The object motion carrying its zone, which moves the transform each frame.
+  motion: Option<String>,
   seed: i32,
   campfire_lit: Option<bool>,
   objects: PlacedObjects,
@@ -207,6 +210,7 @@ impl LevelParticles {
       .map(|(index, placement)| PlacedSystem {
         source: placement.source.clone(),
         transform: Mat4::from_cols_array(&placement.transform),
+        motion: placement.motion.clone(),
         seed: index as i32 + 1,
         campfire_lit: None,
         objects: PlacedObjects::default(),
@@ -238,7 +242,13 @@ impl LevelParticles {
   }
 
   /// Steps every system as the engine schedules it, and fills the effects in view into quads, far to near.
-  pub fn step(&mut self, view: &CameraView, options: &RenderViewOptions, campfires: &mut LevelCampfires) {
+  pub fn step(
+    &mut self,
+    view: &CameraView,
+    options: &RenderViewOptions,
+    campfires: &mut LevelCampfires,
+    motions: &mut LevelObjectMotions,
+  ) {
     self.vertices.clear();
     self.batches.clear();
     self.distortion_runs.clear();
@@ -258,6 +268,7 @@ impl LevelParticles {
     let planes: [Vec4; 6] = view.get_planes();
     let started: Instant = Instant::now();
 
+    Self::move_systems(level, motions);
     Self::place(level, eye, now, campfires);
 
     let context: ParticleUpdateContext = ParticleUpdateContext {
@@ -423,6 +434,22 @@ impl LevelParticles {
     self.report.frames = 0;
 
     report
+  }
+
+  /// Moves each system a motion carries to where it has its zone this frame, and its objects with it
+  /// (`CCustomZone::OnMove`, `UpdateParent`), their sources taking on the zone's velocity.
+  fn move_systems(level: &mut LevelSystems, motions: &mut LevelObjectMotions) {
+    for system in &mut level.systems {
+      let Some((transform, velocity)) = system.motion.as_deref().and_then(|name| motions.get_pose(name)) else {
+        continue;
+      };
+
+      system.transform = transform;
+
+      for object in system.objects.iter_mut() {
+        object.update_parent(&transform, velocity);
+      }
+    }
   }
 
   /// Plays what each system's source plays: a planted system always; a zone's idle effect while it is enabled, stopped

@@ -86,6 +86,7 @@ use crate::scene::level::level_flares::LevelFlares;
 use crate::scene::level::level_grass::LevelGrass;
 use crate::scene::level::level_lights::LevelLights;
 use crate::scene::level::level_loader::LevelLoader;
+use crate::scene::level::level_object_motions::LevelObjectMotions;
 use crate::scene::level::level_overlays::LevelOverlays;
 use crate::scene::level::level_particles::LevelParticles;
 use crate::scene::level::level_shadows::LevelShadows;
@@ -253,6 +254,8 @@ pub struct LevelView {
   shadows: LevelShadows,
   lights: LevelLights,
   campfires: LevelCampfires,
+  /// The object motions its moving zones follow, which their particles and lights both read.
+  object_motions: LevelObjectMotions,
   lights_settings: RenderLightsSettings,
   particles: LevelParticles,
   occlusion_uniform: wgpu::Buffer,
@@ -306,6 +309,7 @@ impl LevelView {
       grass: LevelGrass::new(device, &source, workers),
       lights: LevelLights::new(device, view_layout, scene.args.size(), &source, workers),
       campfires: LevelCampfires::new(),
+      object_motions: LevelObjectMotions::new(&source, workers),
       particles: LevelParticles::new(device, &source, workers),
       rain_cover: RainCover::new(device, view_layout, scene.args.size()),
       scene,
@@ -851,8 +855,10 @@ impl LevelView {
       self.params.discard_below,
       (self.started.elapsed().as_secs_f32(), options.is_windy),
     );
-    // The campfires switch whatever of them is drawn, so their lights and particles follow them alike.
+    // The campfires switch and the moving zones move whatever of them is drawn, so their lights and particles follow
+    // them alike.
     self.campfires.prepare(options.is_campfire_lit);
+    self.object_motions.prepare();
     self.lights.prepare(
       queue,
       LightsFrame {
@@ -862,6 +868,7 @@ impl LevelView {
         contents: self.scene.get_contents(),
         sway: &to_sway(&self.scene, self.frame_sway),
         campfires: &mut self.campfires,
+        motions: &mut self.object_motions,
       },
     );
     self.frame_camera = *view;
@@ -912,7 +919,9 @@ impl LevelView {
       bytemuck::bytes_of(&LightingUniform::new(lighting, view.view, options, &frame)),
     );
 
-    self.particles.step(view, options, &mut self.campfires);
+    self
+      .particles
+      .step(view, options, &mut self.campfires, &mut self.object_motions);
 
     if let Some(targets) = &self.targets {
       self.particles.upload(
