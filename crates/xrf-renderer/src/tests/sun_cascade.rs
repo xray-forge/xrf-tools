@@ -185,3 +185,29 @@ fn sun_cascade_draws_from_the_suns_side_looking_along_its_light() {
   assert!((looking.dot(light) - 1.0).abs() < 1e-4);
   assert!((2.0 / cascade.view.projection.x_axis.x - 40.0).abs() < 1e-3);
 }
+
+// A staggered map waits for its turn while the camera walks, and draws at once when a turn leaves its view outside it.
+#[test]
+fn sun_cascade_is_held_by_its_map_through_a_walk_but_not_a_sharp_turn() {
+  let position: Vec3 = Vec3::new(0.0, 1.7, 0.0);
+  let drawn: SunCascade = fit_first(&create_forward_camera(position), DOWN, 160.0);
+
+  assert!(fit_first(&create_forward_camera(position + Vec3::new(0.5, 0.0, 1.5)), DOWN, 160.0).is_held_by(&drawn));
+  assert!(!fit_first(&create_camera(position, position + Vec3::X), DOWN, 160.0).is_held_by(&drawn));
+  assert!(!fit_first(&create_camera(position, position - Vec3::Z), DOWN, 160.0).is_held_by(&drawn));
+}
+
+#[test]
+fn sun_cascade_is_not_held_by_a_map_drawn_at_other_settings() {
+  let camera: CameraView = create_forward_camera(Vec3::new(0.0, 1.7, 0.0));
+  let drawn: SunCascade = fit_first(&camera, DOWN, 160.0);
+  let mut rays: SunViewRays = SunViewRays::new(&camera);
+  let mut finer: SunCascade = SunCascade::default();
+
+  finer.fit(&camera, &mut rays, DOWN, 160.0, 4096, 400.0);
+
+  assert!(fit_first(&camera, DOWN, 160.0).is_held_by(&drawn));
+  assert!(!finer.is_held_by(&drawn));
+  assert!(!fit_first(&camera, Vec3::new(0.3, -1.0, 0.0).normalize(), 160.0).is_held_by(&drawn));
+  assert!(!drawn.is_held_by(&SunCascade::default()));
+}

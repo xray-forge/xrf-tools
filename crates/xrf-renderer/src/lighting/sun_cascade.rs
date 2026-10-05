@@ -11,6 +11,9 @@ const DEPTH: f32 = std::f32::consts::SQRT_2;
 /// The step, in widths, a cascade's place along the light is rounded to, so a move along it alone keeps the map.
 const DEPTH_STEP: f32 = 1.0 / 16.0;
 
+/// How far, in widths, a cascade may stray from where its map was drawn and still wait for its stagger to draw it.
+const DRIFT: f32 = 1.0 / 16.0;
+
 /// One cascade of the sun's shadow: a square of the level seen from the sun, placed every frame as the engine places it
 /// (`compute_caster_model_fixed`), then snapped to the map's own texels, so moving the camera slides the map a whole
 /// texel at a time and its edges do not shimmer.
@@ -96,5 +99,20 @@ impl SunCascade {
       // Near and far swapped reverse the depth, as the camera's own is.
       projection: glam::camera::rh::proj::directx::orthographic(-half, half, -half, half, far, 0.0),
     };
+  }
+
+  /// Whether a map drawn at `drawn` still holds this fit near enough to wait for its turn: drawn at the same width,
+  /// resolution, reach and light, and strayed from it by a sixteenth of the width at most along each axis. A sharp turn
+  /// moves the square further, and its view would fall out of the map until the map's turn came.
+  pub fn is_held_by(&self, drawn: &SunCascade) -> bool {
+    let [x, y, z, width, settings @ ..] = self.key;
+    let [drawn_x, drawn_y, drawn_z, drawn_width, drawn_settings @ ..] = drawn.key;
+    let slack: f32 = width * DRIFT;
+
+    width == drawn_width
+      && settings == drawn_settings
+      && [x - drawn_x, y - drawn_y, z - drawn_z]
+        .iter()
+        .all(|offset| offset.abs() <= slack)
   }
 }

@@ -12,7 +12,8 @@ use crate::scene::level::shadow_frame::ShadowFrame;
 use crate::scene::static_scene::static_layout::StaticLayout;
 
 /// A level's sun shadow: its cascades fitted along the camera's view every frame, each culled and drawn into its map
-/// only when its box moved or the scene grew, and then at most as often as its stagger allows.
+/// only when its box moved or the scene grew, and then at most as often as its stagger allows, unless its box strayed
+/// too far from its map to wait.
 pub struct LevelShadows {
   maps: SunShadowMaps,
   uniform: wgpu::Buffer,
@@ -130,7 +131,10 @@ impl LevelShadows {
       );
 
       let state: (u64, usize) = (cascade.cascade.version, scene.get_contents());
-      let is_due: bool = cascade.drawn.is_none() || !frame.settings.is_staggered || is_cascade_due(index, self.frames);
+      let is_due: bool = cascade.drawn.is_none()
+        || !frame.settings.is_staggered
+        || is_cascade_due(index, self.frames)
+        || !cascade.cascade.is_held_by(&cascade.drawn_fit);
 
       // A map holds depth in the world, sampled with the matrix it was drawn with, so a still one is still exact.
       let is_changed: bool = cascade.drawn != Some(state);
@@ -207,6 +211,7 @@ impl LevelShadows {
       );
       cascade.drawn = Some(state);
       cascade.drawn_at = frame.sway.time;
+      cascade.drawn_fit = cascade.cascade;
       self.values.matrices[index] = cascade.cascade.view.get_view_projection();
       self.values.texels[index] = cascade.cascade.texel;
     }
@@ -214,7 +219,7 @@ impl LevelShadows {
 }
 
 /// Whether a cascade may draw on a frame counted from one: the nearest every frame, the second every other, the third
-/// every fourth, each on frames the ones before it leave, so at most two draw in one frame.
+/// every fourth, each on frames the ones before it leave, so at most two draw in one frame of a steady view.
 fn is_cascade_due(cascade: usize, frame: u64) -> bool {
   let rate: u64 = 1 << cascade;
 
