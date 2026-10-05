@@ -1,12 +1,15 @@
 use std::sync::Arc;
 use std::sync::atomic::AtomicU8;
 
+/// A timed pass, by its owner and its name.
+pub(crate) type TimedPass = (u32, String);
+
 /// One frame's timestamps on their way back: the readback buffer, where its map stands, and what each stamp ends.
 pub(crate) struct TimerSlot {
   pub buffer: wgpu::Buffer,
   pub state: Arc<AtomicU8>,
   /// The pass each stamp ends, by stamp; `None` for a stamp starting an encode group.
-  pub names: Vec<Option<String>>,
+  pub names: Vec<Option<TimedPass>>,
 }
 
 impl TimerSlot {

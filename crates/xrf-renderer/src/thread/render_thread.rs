@@ -4,7 +4,11 @@ use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::time::{Duration, Instant};
 
 use glam::{Mat4, Vec2, Vec4};
-use xrf_renderer_core::{ExecutedGraph, GraphRuntime};
+use xrf_error::{XrfError, XrfResult};
+use xrf_renderer_core::{
+  ExecutedGraph, FrameGraph, GraphBindings, GraphColorAttachment, GraphCompileOptions, GraphRuntime, GraphTexture,
+  GraphTextureAccess,
+};
 
 use crate::camera::camera_view::CameraView;
 use crate::context::gpu_context::GpuContext;
@@ -31,6 +35,7 @@ use crate::lighting::render_lighting::RenderLighting;
 use crate::pass::backdrop_uniform::BackdropUniform;
 use crate::pass::camera_uniform::CameraUniform;
 use crate::pass::view_binding::ViewBinding;
+use crate::scene::level::level_frame::LevelFrame;
 use crate::scene::level::level_view::LevelView;
 use crate::scene::level::level_world_input::LevelWorldInput;
 use crate::scene::static_scene::static_selection::StaticSelection;
@@ -43,7 +48,10 @@ use crate::thread::render_workers::RenderWorkers;
 use crate::viewport::pending_pick::PendingPick;
 use crate::viewport::pick_in_flight::PickInFlight;
 use crate::viewport::render_viewport::RenderViewport;
+use crate::window::acquired_window::AcquiredWindow;
+use crate::window::composed_view::ComposedView;
 use crate::window::render_window::RenderWindow;
+use crate::window::window_backdrop::WindowBackdrop;
 
 /// How long a thread with nothing to draw waits for a command before looking again at its windows, which may have
 /// been restored from minimised meanwhile.
@@ -65,6 +73,9 @@ const TEXTURE_SWEEP: Duration = Duration::from_secs(2);
 /// How often a debug build looks for edited shader files.
 const SHADER_RELOAD: Duration = Duration::from_millis(500);
 
+/// A viewport's readied frame, with the pick it draws and what unprojects that pick's depth.
+type ViewFrame = (RenderViewportId, LevelFrame, Option<(PendingPick, (Mat4, Vec2))>);
+
 /// The render thread: owns the GPU and every viewport, and is the only place GPU work happens.
 pub struct RenderThread {
   receiver: Receiver<RenderCommand>,
@@ -77,6 +88,8 @@ pub struct RenderThread {
   world: Arc<Mutex<dyn RenderWorld>>,
   shaders: ShaderLibrary,
   gpu: Option<GpuState>,
+  /// What the frames' graphs keep between frames, their passes' GPU timer among them; made with the GPU.
+  runtime: Option<GraphRuntime>,
   /// Why the GPU last failed to start, and when.
   failure: Option<(String, Instant)>,
   /// The windows viewports are drawn into, by their key.
@@ -113,6 +126,7 @@ impl RenderThread {
       world,
       shaders: ShaderLibrary::default(),
       gpu: None,
+      runtime: None,
       failure: None,
       hosts: HashMap::new(),
       viewports: BTreeMap::new(),
@@ -350,6 +364,8 @@ impl RenderThread {
     if self.gpu.as_ref().is_some_and(|gpu| gpu.context.is_lost()) {
       log::warn!("Restarting the renderer after its GPU was lost");
       self.gpu = None;
+      // Its pool, bind groups and timer belong to the device that was lost.
+      self.runtime = None;
 
       for viewport in self.viewports.values_mut() {
         viewport.binding = None;
@@ -366,6 +382,7 @@ impl RenderThread {
       .and_then(|context| GpuState::new(context, &self.shaders, &self.workers, self.bundle.as_ref()))
     {
       Ok(gpu) => {
+        self.runtime = Some(GraphRuntime::new(&gpu.context.device, &gpu.context.queue));
         self.gpu = Some(gpu);
         self.failure = None;
 
@@ -462,12 +479,7 @@ impl RenderThread {
       gpu.weather_textures.update(&gpu.context.device, &gpu.context.queue);
     }
 
-    let windows: Vec<u64> = self.hosts.keys().copied().collect();
-    let update: Duration = now.elapsed();
-
-    for window in windows {
-      self.draw_window(window, update);
-    }
+    self.draw_windows(now.elapsed());
 
     let Some(gpu) = &self.gpu else {
       return;
@@ -478,7 +490,12 @@ impl RenderThread {
 
     for viewport in self.viewports.values_mut() {
       viewport.answer_readbacks();
-      viewport.report(now, backend, adapter, gpu.textures.get_bytes());
+      viewport.report(
+        now,
+        (backend, adapter),
+        gpu.textures.get_bytes(),
+        self.runtime.as_mut().map(|runtime| &mut runtime.timer),
+      );
 
       if let Some(report) = viewport
         .level_view
@@ -490,484 +507,612 @@ impl RenderThread {
     }
   }
 
-  /// Draws every viewport of one window into its swapchain and presents it; `update` is what the frame spent before
-  /// any window, which its phases report.
-  fn draw_window(&mut self, window: u64, update: Duration) {
+  /// Draws every window's viewports in one frame graph and presents each window: acquires every window's image first,
+  /// skipping a window that cannot give one (minimised, occluded, outdated, lost) rather than waiting for it; readies
+  /// each of their viewports' frames; declares the viewports' frames, then each window's composition and captures;
+  /// submits once; and presents every window. `update` is what the frame spent before any window.
+  fn draw_windows(&mut self, update: Duration) {
     let Some(gpu) = &mut self.gpu else {
       return;
     };
-    let Some(host) = self.hosts.get(&window) else {
-      return;
-    };
+    let is_vsync: bool = self.settings.frame_rate.is_vsync;
+    let mut acquired: Vec<AcquiredWindow> = Vec::new();
 
-    if !gpu.windows.contains_key(&window) {
-      match RenderWindow::new(&gpu.context, Arc::clone(host)) {
-        Ok(created) => {
-          gpu.windows.insert(window, created);
-        }
-        Err(error) => {
-          let message: String = error.to_string();
-
-          for viewport in self.viewports.values_mut().filter(|it| it.window == window) {
-            viewport.fail(&message);
+    for (key, host) in &self.hosts {
+      if !gpu.windows.contains_key(key) {
+        match RenderWindow::new(&gpu.context, Arc::clone(host)) {
+          Ok(created) => {
+            gpu.windows.insert(*key, created);
           }
+          Err(error) => {
+            let message: String = error.to_string();
 
-          return;
+            for viewport in self.viewports.values_mut().filter(|it| it.window == *key) {
+              viewport.fail(&message);
+            }
+
+            continue;
+          }
         }
       }
+
+      let Some(format) = gpu.windows.get(key).map(RenderWindow::get_format) else {
+        continue;
+      };
+
+      if let Err(error) = gpu.ensure_grid(&self.shaders, format) {
+        log::error!("Viewport cannot be drawn: {error}");
+
+        continue;
+      }
+
+      let Some(window) = gpu.windows.get_mut(key) else {
+        continue;
+      };
+      let acquiring: Instant = Instant::now();
+      let Some((image, width, height)) = window.acquire(&gpu.context, is_vsync) else {
+        // A lost surface is let go, so the next frame draws into a new one.
+        if window.is_lost() {
+          gpu.windows.remove(key);
+        }
+
+        continue;
+      };
+      let acquire: Duration = acquiring.elapsed();
+      // Each viewport's whole rectangle, which its camera and targets are sized by, and the part of it the window
+      // shows, which its picture is cropped to.
+      let drawn: Vec<(RenderViewportId, RenderRect, RenderRect)> = self
+        .viewports
+        .values()
+        .filter(|viewport| viewport.window == *key)
+        .filter_map(|viewport| {
+          Some((
+            viewport.id,
+            viewport.layout?.rect,
+            viewport.get_drawn_rect(width, height)?,
+          ))
+        })
+        .collect();
+      // The page's backdrop around the viewports, and where a layout change has not reached the renderer yet.
+      let backdrop: BackdropUniform = self
+        .viewports
+        .values()
+        .find(|viewport| viewport.window == *key)
+        .and_then(|viewport| viewport.layout)
+        .map(|layout| BackdropUniform::new(&layout.backdrop))
+        .unwrap_or_default();
+
+      let is_washed: bool = backdrop.is_washed()
+        && gpu
+          .backdrop
+          .prepare(
+            (&gpu.context.device, &gpu.context.queue),
+            &self.shaders,
+            format,
+            (window.get_backdrop_slot(), &backdrop),
+          )
+          .inspect_err(|error| log::error!("The page's wash cannot be drawn: {error}"))
+          .is_ok();
+
+      acquired.push(AcquiredWindow {
+        key: *key,
+        image,
+        format,
+        drawn,
+        clear: wgpu::Color {
+          r: f64::from(backdrop.color[0]),
+          g: f64::from(backdrop.color[1]),
+          b: f64::from(backdrop.color[2]),
+          a: 1.0,
+        },
+        is_washed,
+        acquire,
+      });
     }
 
-    let is_vsync: bool = self.settings.frame_rate.is_vsync;
-    let Some(drawn_window) = gpu.windows.get_mut(&window) else {
+    if acquired.is_empty() {
       return;
-    };
-    let acquiring: Instant = Instant::now();
-    let Some((frame, width, height)) = drawn_window.acquire(&gpu.context, is_vsync) else {
-      // A lost surface is let go, so the next frame draws into a new one.
-      if drawn_window.is_lost() {
-        gpu.windows.remove(&window);
-      }
+    }
 
-      return;
-    };
+    let started: Instant = Instant::now();
     let mut phases: FramePhases = FramePhases {
       update,
-      acquire: acquiring.elapsed(),
       ..FramePhases::default()
     };
-    let started: Instant = Instant::now();
-    let format: wgpu::TextureFormat = gpu.windows[&window].get_format();
-
-    if let Err(error) = gpu.ensure_grid(&self.shaders, format) {
-      log::error!("Viewport cannot be drawn: {error}");
-
-      return;
-    }
-
-    // Each viewport's whole rectangle, which its camera and targets are sized by, and the part of it the window shows,
-    // which its picture is cropped to.
-    let drawn: Vec<(RenderViewportId, RenderRect, RenderRect)> = self
-      .viewports
-      .values()
-      .filter(|viewport| viewport.window == window)
-      .filter_map(|viewport| {
-        Some((
-          viewport.id,
-          viewport.layout?.rect,
-          viewport.get_drawn_rect(width, height)?,
-        ))
-      })
-      .collect();
-    // The page's backdrop around the viewports, and where a layout change has not reached the renderer yet.
-    let backdrop: BackdropUniform = self
-      .viewports
-      .values()
-      .find(|viewport| viewport.window == window)
-      .and_then(|viewport| viewport.layout)
-      .map(|layout| BackdropUniform::new(&layout.backdrop))
-      .unwrap_or_default();
-    let clear: wgpu::Color = wgpu::Color {
-      r: f64::from(backdrop.color[0]),
-      g: f64::from(backdrop.color[1]),
-      b: f64::from(backdrop.color[2]),
-      a: 1.0,
-    };
-
+    // What the viewports' loading and preparing encode, which runs before the frame's graph.
     let mut encoder: wgpu::CommandEncoder = gpu.context.device.create_command_encoder(&Default::default());
-    // What the frame submits, in order: the encoder up to each viewport's frame graph, the graph's own, and so on.
-    let mut commands: Vec<wgpu::CommandBuffer> = Vec::new();
-    let mut is_lit: bool = false;
-    let mut picked: Vec<(RenderViewportId, PendingPick, (Mat4, Vec2), usize)> = Vec::new();
+    // Each viewport's readied frame, with the pick it draws and what unprojects that pick's depth.
+    let mut frames: Vec<ViewFrame> = Vec::new();
 
-    for (id, rect, _) in &drawn {
+    for (id, rect, _) in acquired.iter().flat_map(|window| &window.drawn) {
       let Some(viewport) = self.viewports.get_mut(id) else {
         continue;
       };
-      let device: &wgpu::Device = &gpu.context.device;
-      let queue: &wgpu::Queue = &gpu.context.queue;
-      let scale: f32 = viewport.get_scale();
-      let binding: &ViewBinding = viewport
-        .binding
-        .get_or_insert_with(|| ViewBinding::new(device, &gpu.view_layout));
-      // A lit and fogged level ends where its fog is total, or at the weather's far plane, as the engine's does.
-      let far_limit: f32 = viewport
-        .world
-        .lighting
-        .fog
-        .filter(|_| viewport.options.mode.is_lit && viewport.options.show.is_fogged)
-        .map_or(f32::INFINITY, |fog| fog.get_total_distance());
-      let view: CameraView = viewport
-        .world
-        .camera
-        .to_view(rect.width as f32 / rect.height as f32, far_limit);
 
-      let options: RenderViewOptions = viewport.options.clone();
-      let switches: Vec4 = Vec4::new(
-        f32::from(u8::from(options.mode.surface_color == RenderSurfaceColor::Textured)),
-        options.mode.is_bumped as u32 as f32,
-        options.features.hemi_strength,
-        0.0,
-      );
-
-      // A level is drawn at a share of the viewport and upscaled to it; nothing else is drawn but at its size.
-      let render_scale: RenderScale = if viewport.level.is_some() {
-        options.output.upscaling.scale
-      } else {
-        RenderScale::Native
-      };
-      // The settings' resolution first, as a share of the viewport, then the render scale's share of that.
-      let resolution: f32 = options
-        .output
-        .render_height
-        .filter(|_| viewport.level.is_some())
-        .map_or(1.0, |height| (height as f32 / rect.height.max(1) as f32).min(1.0));
-      let drawn_rect: RenderRect = RenderRect {
-        width: render_scale.get_drawn(((rect.width as f32 * resolution).round() as u32).max(1)),
-        height: render_scale.get_drawn(((rect.height as f32 * resolution).round() as u32).max(1)),
-        ..*rect
-      };
-      // A temporal resolve's jitter moves every scene pass's samples, never the view its history is measured by.
-      let jitter: Vec2 = viewport.level_view.as_mut().map_or(Vec2::ZERO, |level| {
-        level.next_jitter(&options, rect.width as f32 / drawn_rect.width.max(1) as f32)
-      });
-      let drawn: CameraView = view.jittered(jitter, Vec2::new(drawn_rect.width as f32, drawn_rect.height as f32));
-      let unjittered: Mat4 = view.get_view_projection();
-      let motion: (Mat4, Mat4) = viewport.level_view.as_mut().map_or((unjittered, unjittered), |level| {
-        level.get_state_mut().next_motion(unjittered)
-      });
-
-      let selection: Option<StaticSelection> = viewport
-        .level_view
-        .as_mut()
-        .and_then(|level| level.resolve_selection(viewport.selection.as_ref()).cloned());
-
-      binding.write(
-        queue,
-        &CameraUniform::new(&drawn, drawn_rect, switches)
-          .with_selection(selection.as_ref())
-          .with_wireframe(options.mode.is_wireframe)
-          .with_surface_color(options.mode.surface_color)
-          .with_motion(motion)
-          .with_asset_view(&options, drawn_rect.height as f32 / rect.height.max(1) as f32),
-      );
-
-      let Some(source) = &viewport.level else {
-        continue;
-      };
-      // An asset viewer lights by its rig rather than a weather, and plays none.
-      let asset_lighting: Option<RenderLighting> = options.asset.lighting.as_ref().map(RenderLighting::for_asset);
-      let (lighting, weather) = match &asset_lighting {
-        Some(lighting) => (lighting, None),
-        None => (&viewport.world.lighting, viewport.world.weather.as_ref()),
-      };
-
-      let loading: Instant = Instant::now();
-
-      let is_incoming: bool = viewport
-        .level_view
-        .as_ref()
-        .is_some_and(|level| !level.get_scene().is_showing(source));
-
-      if is_incoming {
-        let incoming: &mut LevelView = viewport
-          .incoming_view
-          .get_or_insert_with(|| LevelView::new(device, queue, &gpu.view_layout, Arc::clone(source), &self.workers));
-
-        let failures: Vec<RenderSectorFailure> = incoming.load(
-          device,
-          queue,
-          &mut encoder,
-          (&mut gpu.textures, &mut gpu.weather_textures),
-          &gpu.grass,
-          (lighting, weather),
-          &options,
-          Some(LevelWorldInput {
-            updates: std::mem::take(&mut viewport.world.updates),
-            streaming: viewport.world.streaming,
-            skeleton_segments: &viewport.world.skeleton_segments,
-            gust: viewport.world.gust,
-            campfire_shares: &viewport.world.campfire_shares,
-            motions: &viewport.world.motions,
-          }),
-        );
-
-        viewport.failures.extend(failures);
-
-        if incoming.is_ready(&gpu.textures) {
-          viewport.level_view = viewport.incoming_view.take();
-        }
-      }
-
-      let level: &mut LevelView = viewport
-        .level_view
-        .get_or_insert_with(|| LevelView::new(device, queue, &gpu.view_layout, Arc::clone(source), &self.workers));
-
-      let runtime: &mut GraphRuntime = viewport.runtime.get_or_insert_with(|| GraphRuntime::new(device, queue));
-
-      runtime.timer.set_enabled(self.settings.is_gpu_timed);
-      level.set_overlays(
-        device,
-        &viewport.overlays,
-        viewport.overlays_version,
-        viewport.selection.as_ref(),
-      );
-      let world: Option<LevelWorldInput<'_>> = (!is_incoming).then(|| LevelWorldInput {
-        updates: std::mem::take(&mut viewport.world.updates),
-        streaming: viewport.world.streaming,
-        skeleton_segments: &viewport.world.skeleton_segments,
-        gust: viewport.world.gust,
-        campfire_shares: &viewport.world.campfire_shares,
-        motions: &viewport.world.motions,
-      });
-      let failures: Vec<RenderSectorFailure> = level.load(
-        device,
-        queue,
+      frames.extend(Self::ready_view(
+        (gpu, &self.workers),
+        viewport,
+        rect,
         &mut encoder,
-        (&mut gpu.textures, &mut gpu.weather_textures),
-        &gpu.grass,
-        (lighting, weather),
-        &options,
-        world,
-      );
-
-      viewport.failures.extend(failures);
-      phases.load += loading.elapsed();
-
-      let preparing: Instant = Instant::now();
-
-      level.prepare(
-        device,
-        queue,
-        &mut encoder,
-        gpu.get_level_passes(),
-        &view,
-        ((drawn_rect.width, drawn_rect.height), *rect),
-        viewport.world.camera.field_of_view,
-        &options,
-        (lighting, weather),
-        &gpu.weather_textures,
-        viewport.world.clock_rate,
-        (&gpu.view_layout, &gpu.textures),
-      );
-      phases.prepare += preparing.elapsed();
-
-      // An incoming scene steps none of its effects, so only the shown one's finish.
-      if !is_incoming {
-        viewport.finished_effects.extend(level.take_finished_effects());
-      }
-
-      let recording: Instant = Instant::now();
-      let finishing: Instant = Instant::now();
-
-      // What the encoder holds so far runs before the graph; what follows it, after.
-      commands.push(std::mem::replace(&mut encoder, device.create_command_encoder(&Default::default())).finish());
-
-      // One pick a frame, drawn from this frame's culled clusters while a readback is free for it.
-      let pick: Option<(PendingPick, Vec2, CameraUniform)> = (!viewport.picks.is_empty()).then(|| {
-        let pick: PendingPick = viewport.picks.remove(0);
-        let ndc: Vec2 = Vec2::new(
-          (pick.x * scale + 0.5) / rect.width as f32 * 2.0 - 1.0,
-          1.0 - (pick.y * scale + 0.5) / rect.height as f32 * 2.0,
-        );
-        let narrowed: CameraView = view.narrow_to(ndc, Vec2::new(2.0 / rect.width as f32, 2.0 / rect.height as f32));
-        let pixel: RenderRect = RenderRect {
-          x: 0,
-          y: 0,
-          width: 1,
-          height: 1,
-        };
-
-        (pick, ndc, CameraUniform::new(&narrowed, pixel, switches))
-      });
-      let finished: Duration = finishing.elapsed();
-      let recorded: Option<(ExecutedGraph, Option<usize>)> = level
-        .record(
-          runtime,
-          (device, queue),
-          gpu.get_level_passes(),
-          binding,
-          &gpu.textures,
-          pick.as_ref().map(|(_, _, camera)| (camera, &gpu.view_layout)),
-        )
-        .unwrap_or_else(|error| {
-          log::error!("The level's frame cannot be recorded: {error}");
-          None
-        });
-      let (executed, pick_slot): (Option<ExecutedGraph>, Option<usize>) = match recorded {
-        Some((executed, slot)) => (Some(executed), slot),
-        None => (None, None),
-      };
-      let encoded: Duration = finished + executed.iter().map(|executed| executed.encode).sum::<Duration>();
-
-      commands.extend(executed.into_iter().flat_map(|executed| executed.commands));
-      phases.record += recording.elapsed().saturating_sub(encoded);
-      phases.encode += encoded;
-      is_lit = true;
-
-      if let Some((pick, ndc, _)) = pick {
-        match pick_slot {
-          Some(slot) => picked.push((*id, pick, (view.get_view_projection().inverse(), ndc), slot)),
-          None => viewport.picks.insert(0, pick),
-        }
-      }
+        (&mut phases.load, &mut phases.prepare),
+      ));
     }
 
     let composing: Instant = Instant::now();
-    let is_washed: bool = backdrop.is_washed()
-      && gpu
-        .backdrop
-        .prepare(
-          &gpu.context.device,
-          &gpu.context.queue,
-          &self.shaders,
-          format,
-          &backdrop,
-        )
-        .inspect_err(|error| log::error!("The page's wash cannot be drawn: {error}"))
-        .is_ok();
 
-    if is_lit && let Err(error) = gpu.present.prepare(&gpu.context.device, &self.shaders, format) {
-      log::error!("Level viewport cannot be presented: {error}");
-    }
-
-    if is_lit && let Err(error) = gpu.overlay.prepare(&gpu.context.device, &self.shaders, format) {
-      log::error!("Level overlays cannot be drawn: {error}");
-    }
-
-    let Some(grid) = gpu.get_grid(format) else {
-      return;
-    };
-    let target: wgpu::TextureView = frame.texture.create_view(&Default::default());
-
-    {
-      let mut pass: wgpu::RenderPass<'_> = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-        label: Some("window"),
-        color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-          view: &target,
-          depth_slice: None,
-          resolve_target: None,
-          ops: wgpu::Operations {
-            load: wgpu::LoadOp::Clear(clear),
-            store: wgpu::StoreOp::Store,
-          },
-        })],
-        ..Default::default()
-      });
-
-      if is_washed {
-        gpu.backdrop.draw(&mut pass, format);
-      }
-
-      for (id, rect, shown) in &drawn {
-        let Some(viewport) = self.viewports.get(id) else {
-          continue;
-        };
-        let Some(binding) = viewport.binding.as_ref() else {
-          continue;
-        };
-
-        // The whole viewport, past the window's edges where it reaches them, cropped to what the window shows.
-        pass.set_viewport(
-          rect.x as f32,
-          rect.y as f32,
-          rect.width as f32,
-          rect.height as f32,
-          0.0,
-          1.0,
-        );
-        pass.set_scissor_rect(shown.x as u32, shown.y as u32, shown.width, shown.height);
-
-        match viewport.level_view.as_ref().and_then(|level| level.get_present_group()) {
-          Some(present) => gpu.present.draw(&mut pass, format, binding, present),
-          None => grid.draw(&mut pass, binding),
+    if !frames.is_empty() {
+      for format in acquired.iter().map(|window| window.format).collect::<HashSet<_>>() {
+        if let Err(error) = gpu.present.prepare(&gpu.context.device, &self.shaders, format) {
+          log::error!("Level viewport cannot be presented: {error}");
         }
 
-        if let Some((group, overlays)) = viewport.level_view.as_ref().and_then(|level| level.get_overlays()) {
-          gpu.overlay.draw(&mut pass, format, (binding, group), overlays);
+        if let Err(error) = gpu.overlay.prepare(&gpu.context.device, &self.shaders, format) {
+          log::error!("Level overlays cannot be drawn: {error}");
         }
       }
     }
 
     phases.compose = composing.elapsed();
 
-    let encoding: Instant = Instant::now();
-    let last: wgpu::CommandBuffer = encoder.finish();
-    let submitting: Instant = Instant::now();
+    let Some(runtime) = self.runtime.as_mut() else {
+      return;
+    };
+    let gpu: &GpuState = gpu;
+    let (device, queue): (&wgpu::Device, &wgpu::Queue) = (&gpu.context.device, &gpu.context.queue);
+    // Copied out of their window's image after it is composed, before it is presented; read once each is back.
+    let mut captures: Vec<(RenderViewportId, FrameCapture, CaptureReply)> = Vec::new();
 
-    phases.encode += submitting.duration_since(encoding);
-    commands.push(last);
-    gpu.context.queue.submit(commands);
-    phases.submit = submitting.elapsed();
+    for window in &acquired {
+      for (id, _, shown) in &window.drawn {
+        let Some(viewport) = self.viewports.get_mut(id) else {
+          continue;
+        };
 
-    for (id, pick, unprojection, slot) in picked {
-      let Some(viewport) = self.viewports.get_mut(&id) else {
-        continue;
-      };
-
-      if let Some(level) = &viewport.level_view {
-        level.request_pick(slot);
-      }
-
-      viewport.picks_in_flight.push(PickInFlight {
-        pick,
-        slot,
-        unprojection,
-        frame: viewport.frame,
-      });
-    }
-
-    for (id, _, _) in &drawn {
-      if let Some(viewport) = self.viewports.get(id) {
-        if let Some(level) = &viewport.level_view {
-          level.request_stats();
-        }
-
-        if let Some(runtime) = &viewport.runtime {
-          runtime.timer.request();
-        }
-      }
-    }
-
-    let cpu: Duration = started.elapsed();
-
-    // Copied out before presenting, after which the frame is no longer the renderer's to copy; read once it is back.
-    for (id, _, shown) in &drawn {
-      if let Some(viewport) = self.viewports.get_mut(id) {
-        let replies: Vec<CaptureReply> = std::mem::take(&mut viewport.captures);
-
-        for reply in replies {
-          match FrameCapture::new(
-            (&gpu.context.device, &gpu.context.queue),
-            &frame.texture,
-            *shown,
-            viewport.frame,
-          ) {
-            Ok(capture) => viewport.captures_in_flight.push((capture, reply)),
+        for reply in std::mem::take(&mut viewport.captures) {
+          match FrameCapture::new(device, window.format, *shown, viewport.frame) {
+            Ok(capture) => captures.push((*id, capture, reply)),
             Err(error) => {
               let _ = reply.send(Err(error));
             }
           }
         }
-
-        viewport.frame += 1;
       }
     }
 
-    let presenting: Instant = Instant::now();
+    runtime.timer.set_enabled(self.settings.is_gpu_timed);
 
-    gpu.context.queue.present(frame);
+    let recording: Instant = Instant::now();
+    let targets: Vec<wgpu::TextureView> = acquired
+      .iter()
+      .map(|window| window.image.texture.create_view(&Default::default()))
+      .collect();
+    let executed: XrfResult<ExecutedGraph> = {
+      let mut graph: FrameGraph<'_> = FrameGraph::new();
+      let mut bindings: GraphBindings<'_> = GraphBindings::new();
 
-    let presented: Instant = Instant::now();
+      // Each viewport's frame, its passes timed as its own.
+      for (id, frame, _) in &frames {
+        let Some(viewport) = self.viewports.get(id) else {
+          continue;
+        };
+        let (Some(level), Some(binding)) = (&viewport.level_view, &viewport.binding) else {
+          continue;
+        };
 
-    phases.present = presented.duration_since(presenting);
-    let interval: Duration = self
-      .last_present
-      .insert(window, presented)
-      .map_or(Duration::ZERO, |last| presented.duration_since(last));
+        graph.begin_owner(id.0);
+        level.record(
+          (&mut graph, &mut bindings, &mut *runtime),
+          gpu.get_level_passes(),
+          binding,
+          &gpu.textures,
+          frame,
+        );
+      }
 
-    for (id, _, _) in &drawn {
-      if let Some(viewport) = self.viewports.get_mut(id) {
-        viewport.record_frame(interval, cpu, &phases);
+      // Then each window: the page's backdrop, each viewport's picture or its grid cropped to what the window shows,
+      // its overlays, and the captures copied out of it.
+      graph.begin_owner(FrameGraph::FRAME_OWNER);
+
+      for (window, target) in acquired.iter().zip(&targets) {
+        let Some(grid) = gpu.get_grid(window.format) else {
+          continue;
+        };
+        let composed: Vec<ComposedView<'_>> = window
+          .drawn
+          .iter()
+          .filter_map(|(id, rect, shown)| {
+            let viewport: &RenderViewport = self.viewports.get(id)?;
+            let level: Option<&LevelView> = viewport.level_view.as_ref();
+
+            Some(ComposedView {
+              binding: viewport.binding.as_ref()?,
+              present: level.and_then(LevelView::get_present_group),
+              overlays: level.and_then(LevelView::get_overlays),
+              rect: *rect,
+              shown: *shown,
+            })
+          })
+          .collect();
+        let backdrop: Option<&WindowBackdrop> = gpu
+          .windows
+          .get(&window.key)
+          .and_then(RenderWindow::get_backdrop)
+          .filter(|_| window.is_washed);
+        let (backdrop_pass, present, overlay) = (&gpu.backdrop, &gpu.present, &gpu.overlay);
+        let format: wgpu::TextureFormat = window.format;
+
+        graph.begin_group("window");
+
+        let window_texture: GraphTexture = bindings.import_view(&mut graph, "window", target);
+
+        graph
+          .add_raster_pass("window")
+          .color(GraphColorAttachment::new(
+            window_texture,
+            wgpu::LoadOp::Clear(window.clear),
+          ))
+          .record(move |context| {
+            let pass: &mut wgpu::RenderPass<'static> = context.get_pass();
+
+            if let Some(backdrop) = backdrop {
+              backdrop_pass.draw(pass, format, backdrop);
+            }
+
+            for view in &composed {
+              let (rect, shown, binding): (RenderRect, RenderRect, &ViewBinding) =
+                (view.rect, view.shown, view.binding);
+
+              // The whole viewport, past the window's edges where it reaches them, cropped to what the window shows.
+              pass.set_viewport(
+                rect.x as f32,
+                rect.y as f32,
+                rect.width as f32,
+                rect.height as f32,
+                0.0,
+                1.0,
+              );
+              pass.set_scissor_rect(shown.x as u32, shown.y as u32, shown.width, shown.height);
+
+              match view.present {
+                Some(group) => present.draw(pass, format, binding, group),
+                None => grid.draw(pass, binding),
+              }
+
+              if let Some((group, overlays)) = view.overlays {
+                overlay.draw(pass, format, (binding, group), overlays);
+              }
+            }
+          });
+
+        for (id, capture, _) in &captures {
+          if !window.drawn.iter().any(|(drawn, ..)| drawn == id) {
+            continue;
+          }
+
+          graph
+            .add_encoder_pass("capture")
+            .texture(window_texture, GraphTextureAccess::CopySource)
+            .keep()
+            .record(move |context| {
+              let texture: &wgpu::Texture = context.get_texture(window_texture).texture;
+
+              capture.encode(context.get_encoder(), texture);
+            });
+        }
+      }
+
+      graph
+        .compile(&GraphCompileOptions::default())
+        .and_then(|compiled| compiled.execute((device, queue), runtime, &bindings))
+    };
+    let executed: ExecutedGraph = match executed {
+      Ok(executed) => executed,
+      Err(error) => {
+        log::error!("The frame cannot be drawn: {error}");
+
+        // Nothing of it was submitted: its picks wait for the next frame, and its captures are refused.
+        for (id, _, pick) in frames {
+          if let (Some(viewport), Some((pick, _))) = (self.viewports.get_mut(&id), pick) {
+            viewport.picks.insert(0, pick);
+          }
+        }
+
+        let message: String = error.to_string();
+
+        for (_, _, reply) in captures {
+          let _ = reply.send(Err(XrfError::new_invalid_error(message.clone())));
+        }
+
+        return;
+      }
+    };
+    let finishing: Instant = Instant::now();
+    let mut commands: Vec<wgpu::CommandBuffer> = vec![encoder.finish()];
+    let encoded: Duration = finishing.elapsed() + executed.encode;
+
+    phases.record += recording.elapsed().saturating_sub(encoded);
+    phases.encode += encoded;
+    commands.extend(executed.commands);
+
+    let submitting: Instant = Instant::now();
+
+    queue.submit(commands);
+    phases.submit = submitting.elapsed();
+    runtime.timer.request();
+
+    for (id, frame, pick) in frames {
+      let Some(viewport) = self.viewports.get_mut(&id) else {
+        continue;
+      };
+      let Some(level) = viewport.level_view.as_mut() else {
+        continue;
+      };
+
+      level.end_frame(&frame);
+      level.request_stats();
+
+      if let (Some(slot), Some((pick, unprojection))) = (frame.pick_slot, pick) {
+        level.request_pick(slot);
+        viewport.picks_in_flight.push(PickInFlight {
+          pick,
+          slot,
+          unprojection,
+          frame: viewport.frame,
+        });
+      }
+    }
+
+    for (id, capture, reply) in captures {
+      capture.request();
+
+      if let Some(viewport) = self.viewports.get_mut(&id) {
+        viewport.captures_in_flight.push((capture, reply));
+      }
+    }
+
+    let cpu: Duration = started.elapsed();
+
+    // Each window presents, and its viewports note the frame with its own acquire, present and interval.
+    for window in acquired {
+      let presenting: Instant = Instant::now();
+
+      queue.present(window.image);
+
+      let presented: Instant = Instant::now();
+      let window_phases: FramePhases = FramePhases {
+        acquire: window.acquire,
+        present: presented.duration_since(presenting),
+        ..phases
+      };
+      let interval: Duration = self
+        .last_present
+        .insert(window.key, presented)
+        .map_or(Duration::ZERO, |last| presented.duration_since(last));
+
+      for (id, _, _) in &window.drawn {
+        if let Some(viewport) = self.viewports.get_mut(id) {
+          viewport.frame += 1;
+          viewport.record_frame(interval, cpu, &window_phases);
+        }
+      }
+    }
+  }
+
+  /// Readies one viewport's frame: writes its camera, loads and prepares its level (and the level coming in after it),
+  /// and readies its graph's frame with a pick when one waits; none where it draws no level. `rect` is its whole
+  /// rectangle; what loading and preparing take is added to `load` and `prepare`.
+  fn ready_view(
+    (gpu, workers): (&mut GpuState, &RenderWorkers),
+    viewport: &mut RenderViewport,
+    rect: &RenderRect,
+    encoder: &mut wgpu::CommandEncoder,
+    (load, prepare): (&mut Duration, &mut Duration),
+  ) -> Option<ViewFrame> {
+    let device: &wgpu::Device = &gpu.context.device;
+    let queue: &wgpu::Queue = &gpu.context.queue;
+    let scale: f32 = viewport.get_scale();
+    let binding: &ViewBinding = viewport
+      .binding
+      .get_or_insert_with(|| ViewBinding::new(device, &gpu.view_layout));
+    // A lit and fogged level ends where its fog is total, or at the weather's far plane, as the engine's does.
+    let far_limit: f32 = viewport
+      .world
+      .lighting
+      .fog
+      .filter(|_| viewport.options.mode.is_lit && viewport.options.show.is_fogged)
+      .map_or(f32::INFINITY, |fog| fog.get_total_distance());
+    let view: CameraView = viewport
+      .world
+      .camera
+      .to_view(rect.width as f32 / rect.height as f32, far_limit);
+
+    let options: RenderViewOptions = viewport.options.clone();
+    let switches: Vec4 = Vec4::new(
+      f32::from(u8::from(options.mode.surface_color == RenderSurfaceColor::Textured)),
+      options.mode.is_bumped as u32 as f32,
+      options.features.hemi_strength,
+      0.0,
+    );
+
+    // A level is drawn at a share of the viewport and upscaled to it; nothing else is drawn but at its size.
+    let render_scale: RenderScale = if viewport.level.is_some() {
+      options.output.upscaling.scale
+    } else {
+      RenderScale::Native
+    };
+    // The settings' resolution first, as a share of the viewport, then the render scale's share of that.
+    let resolution: f32 = options
+      .output
+      .render_height
+      .filter(|_| viewport.level.is_some())
+      .map_or(1.0, |height| (height as f32 / rect.height.max(1) as f32).min(1.0));
+    let drawn_rect: RenderRect = RenderRect {
+      width: render_scale.get_drawn(((rect.width as f32 * resolution).round() as u32).max(1)),
+      height: render_scale.get_drawn(((rect.height as f32 * resolution).round() as u32).max(1)),
+      ..*rect
+    };
+    // A temporal resolve's jitter moves every scene pass's samples, never the view its history is measured by.
+    let jitter: Vec2 = viewport.level_view.as_mut().map_or(Vec2::ZERO, |level| {
+      level.next_jitter(&options, rect.width as f32 / drawn_rect.width.max(1) as f32)
+    });
+    let drawn: CameraView = view.jittered(jitter, Vec2::new(drawn_rect.width as f32, drawn_rect.height as f32));
+    let unjittered: Mat4 = view.get_view_projection();
+    let motion: (Mat4, Mat4) = viewport.level_view.as_mut().map_or((unjittered, unjittered), |level| {
+      level.get_state_mut().next_motion(unjittered)
+    });
+
+    let selection: Option<StaticSelection> = viewport
+      .level_view
+      .as_mut()
+      .and_then(|level| level.resolve_selection(viewport.selection.as_ref()).cloned());
+
+    binding.write(
+      queue,
+      &CameraUniform::new(&drawn, drawn_rect, switches)
+        .with_selection(selection.as_ref())
+        .with_wireframe(options.mode.is_wireframe)
+        .with_surface_color(options.mode.surface_color)
+        .with_motion(motion)
+        .with_asset_view(&options, drawn_rect.height as f32 / rect.height.max(1) as f32),
+    );
+
+    let Some(source) = &viewport.level else {
+      return None;
+    };
+    // An asset viewer lights by its rig rather than a weather, and plays none.
+    let asset_lighting: Option<RenderLighting> = options.asset.lighting.as_ref().map(RenderLighting::for_asset);
+    let (lighting, weather) = match &asset_lighting {
+      Some(lighting) => (lighting, None),
+      None => (&viewport.world.lighting, viewport.world.weather.as_ref()),
+    };
+
+    let loading: Instant = Instant::now();
+
+    let is_incoming: bool = viewport
+      .level_view
+      .as_ref()
+      .is_some_and(|level| !level.get_scene().is_showing(source));
+
+    if is_incoming {
+      let incoming: &mut LevelView = viewport
+        .incoming_view
+        .get_or_insert_with(|| LevelView::new(device, queue, &gpu.view_layout, Arc::clone(source), workers));
+
+      let failures: Vec<RenderSectorFailure> = incoming.load(
+        device,
+        queue,
+        encoder,
+        (&mut gpu.textures, &mut gpu.weather_textures),
+        &gpu.grass,
+        (lighting, weather),
+        &options,
+        Some(LevelWorldInput {
+          updates: std::mem::take(&mut viewport.world.updates),
+          streaming: viewport.world.streaming,
+          skeleton_segments: &viewport.world.skeleton_segments,
+          gust: viewport.world.gust,
+          campfire_shares: &viewport.world.campfire_shares,
+          motions: &viewport.world.motions,
+        }),
+      );
+
+      viewport.failures.extend(failures);
+
+      if incoming.is_ready(&gpu.textures) {
+        viewport.level_view = viewport.incoming_view.take();
+      }
+    }
+
+    let level: &mut LevelView = viewport
+      .level_view
+      .get_or_insert_with(|| LevelView::new(device, queue, &gpu.view_layout, Arc::clone(source), workers));
+
+    level.set_overlays(
+      device,
+      &viewport.overlays,
+      viewport.overlays_version,
+      viewport.selection.as_ref(),
+    );
+    let world: Option<LevelWorldInput<'_>> = (!is_incoming).then(|| LevelWorldInput {
+      updates: std::mem::take(&mut viewport.world.updates),
+      streaming: viewport.world.streaming,
+      skeleton_segments: &viewport.world.skeleton_segments,
+      gust: viewport.world.gust,
+      campfire_shares: &viewport.world.campfire_shares,
+      motions: &viewport.world.motions,
+    });
+    let failures: Vec<RenderSectorFailure> = level.load(
+      device,
+      queue,
+      encoder,
+      (&mut gpu.textures, &mut gpu.weather_textures),
+      &gpu.grass,
+      (lighting, weather),
+      &options,
+      world,
+    );
+
+    viewport.failures.extend(failures);
+    *load += loading.elapsed();
+
+    let preparing: Instant = Instant::now();
+
+    level.prepare(
+      device,
+      queue,
+      encoder,
+      gpu.get_level_passes(),
+      &view,
+      ((drawn_rect.width, drawn_rect.height), *rect),
+      viewport.world.camera.field_of_view,
+      &options,
+      (lighting, weather),
+      &gpu.weather_textures,
+      viewport.world.clock_rate,
+      (&gpu.view_layout, &gpu.textures),
+    );
+    *prepare += preparing.elapsed();
+
+    // An incoming scene steps none of its effects, so only the shown one's finish.
+    if !is_incoming {
+      viewport.finished_effects.extend(level.take_finished_effects());
+    }
+
+    // One pick a frame, drawn from this frame's culled clusters while a readback is free for it.
+    let pick: Option<(PendingPick, Vec2, CameraUniform)> = (!viewport.picks.is_empty()).then(|| {
+      let pick: PendingPick = viewport.picks.remove(0);
+      let ndc: Vec2 = Vec2::new(
+        (pick.x * scale + 0.5) / rect.width as f32 * 2.0 - 1.0,
+        1.0 - (pick.y * scale + 0.5) / rect.height as f32 * 2.0,
+      );
+      let narrowed: CameraView = view.narrow_to(ndc, Vec2::new(2.0 / rect.width as f32, 2.0 / rect.height as f32));
+      let pixel: RenderRect = RenderRect {
+        x: 0,
+        y: 0,
+        width: 1,
+        height: 1,
+      };
+
+      (pick, ndc, CameraUniform::new(&narrowed, pixel, switches))
+    });
+    let readied: Option<LevelFrame> = level.begin_frame(
+      (device, queue),
+      pick.as_ref().map(|(_, _, camera)| (camera, &gpu.view_layout)),
+    );
+
+    match (readied, pick) {
+      (Some(frame), Some((pick, ndc, _))) if frame.pick_slot.is_some() => Some((
+        viewport.id,
+        frame,
+        Some((pick, (view.get_view_projection().inverse(), ndc))),
+      )),
+      (readied, pick) => {
+        // A pick no readback is free for waits for the next frame.
+        if let Some((pick, ..)) = pick {
+          viewport.picks.insert(0, pick);
+        }
+
+        readied.map(|frame| (viewport.id, frame, None))
       }
     }
   }

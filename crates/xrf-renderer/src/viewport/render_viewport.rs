@@ -2,7 +2,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use glam::Vec3;
-use xrf_renderer_core::{GraphRuntime, ProxyHandle};
+use xrf_renderer_core::{FrameGraph, GraphPassTime, GraphTimer, ProxyHandle};
 
 use crate::contract::render_applied_environment::RenderAppliedEnvironment;
 use crate::contract::render_applied_fog::RenderAppliedFog;
@@ -75,9 +75,6 @@ pub struct RenderViewport {
   pub frame: u64,
   /// Its camera on the GPU, made once a GPU is there.
   pub binding: Option<ViewBinding>,
-  /// What its frame graphs keep between frames, its passes' GPU timer among them; made once a GPU is there, and kept
-  /// across levels.
-  pub runtime: Option<GraphRuntime>,
   sink: Box<dyn RenderEventSink>,
   statistics: FrameStatistics,
   /// What it was last told its frames cost, answered to a caller polling rather than listening.
@@ -157,7 +154,6 @@ impl RenderViewport {
       picks_in_flight: Vec::new(),
       frame: 0,
       binding: None,
-      runtime: None,
       sink,
       statistics: FrameStatistics::new(now),
       sent_frame: None,
@@ -232,9 +228,15 @@ impl RenderViewport {
     self.statistics.record(interval, cpu, phases);
   }
 
-  /// Reports the frames since the last report, once one is due.
-  /// `texture_bytes` is what every viewport's textures hold on the GPU together.
-  pub fn report(&mut self, now: Instant, backend: &str, adapter: &str, texture_bytes: u64) {
+  /// Reports the frames since the last report, once one is due: `texture_bytes` is what every viewport's textures hold
+  /// on the GPU together, and `timer` what the frames' passes cost, its own and its window's taken from it.
+  pub fn report(
+    &mut self,
+    now: Instant,
+    (backend, adapter): (&str, &str),
+    texture_bytes: u64,
+    timer: Option<&mut GraphTimer>,
+  ) {
     let Some(summary) = self.statistics.take(now) else {
       return;
     };
@@ -246,21 +248,22 @@ impl RenderViewport {
       .level_view
       .as_mut()
       .map_or_else(Default::default, |level| level.get_scene_mut().take_particles_report());
-    let (is_gpu_timed, passes): (bool, Vec<RenderPassCost>) =
-      self.runtime.as_mut().map_or((false, Vec::new()), |runtime| {
-        (
-          runtime.timer.is_timing(),
-          runtime
-            .timer
-            .take()
-            .into_iter()
-            .map(|time| RenderPassCost {
-              name: time.name,
-              gpu_time: time.gpu_time,
-            })
-            .collect(),
-        )
-      });
+    let (is_gpu_timed, passes): (bool, Vec<RenderPassCost>) = timer.map_or((false, Vec::new()), |timer| {
+      let mut times: Vec<GraphPassTime> = timer.take(self.id.0);
+
+      times.extend(timer.take(FrameGraph::FRAME_OWNER));
+
+      (
+        timer.is_timing(),
+        times
+          .into_iter()
+          .map(|time| RenderPassCost {
+            name: time.name,
+            gpu_time: time.gpu_time,
+          })
+          .collect(),
+      )
+    });
     let FrameSummary {
       frames_per_second,
       frame_time,
@@ -349,8 +352,6 @@ impl RenderViewport {
 
   pub fn recover(&mut self) {
     self.is_failed = false;
-    // Its pool, bind groups and timer belong to the device that was lost.
-    self.runtime = None;
   }
 
   fn send(&mut self, event: RenderViewportEvent) {

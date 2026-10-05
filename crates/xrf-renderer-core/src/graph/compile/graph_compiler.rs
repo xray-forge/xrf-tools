@@ -24,6 +24,7 @@ impl GraphCompiler {
       buffers,
       passes,
       groups,
+      ..
     } = graph;
 
     for pass in &passes {
