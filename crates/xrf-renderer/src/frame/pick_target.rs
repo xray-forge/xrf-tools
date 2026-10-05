@@ -1,15 +1,20 @@
-use xrf_error::{XrfError, XrfResult};
+use xrf_error::XrfResult;
 
-/// A pick's one texel and its depth, and the buffer it is read back through.
+use crate::frame::gpu_readback::GpuReadback;
+
+/// A pick's one texel and its depth, and the buffers it is read back through: a few, so a pick asked while another is
+/// on its way is drawn without waiting for it.
 pub struct PickTarget {
   pub color: wgpu::TextureView,
   pub depth: wgpu::TextureView,
   texture: wgpu::Texture,
-  readback: wgpu::Buffer,
+  readbacks: [GpuReadback; Self::READBACKS],
 }
 
 impl PickTarget {
   pub const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba32Uint;
+  /// Picks on their way back at once.
+  pub const READBACKS: usize = 3;
 
   pub fn new(device: &wgpu::Device) -> Self {
     let create = |format: wgpu::TextureFormat, usage: wgpu::TextureUsages| -> wgpu::Texture {
@@ -40,22 +45,27 @@ impl PickTarget {
     Self {
       color: texture.create_view(&Default::default()),
       depth: depth.create_view(&Default::default()),
-      readback: device.create_buffer(&wgpu::BufferDescriptor {
-        label: Some("pick readback"),
-        size: wgpu::COPY_BYTES_PER_ROW_ALIGNMENT as u64,
-        usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
-        mapped_at_creation: false,
+      readbacks: std::array::from_fn(|_| {
+        GpuReadback::new(device, "pick readback", wgpu::COPY_BYTES_PER_ROW_ALIGNMENT as u64)
       }),
       texture,
     }
   }
 
-  /// Copies the texel out with the frame's work.
-  pub fn copy_out(&self, encoder: &mut wgpu::CommandEncoder) {
+  /// Whether a pick may be drawn this frame: a readback is free for it.
+  pub fn has_free_readback(&self) -> bool {
+    self.readbacks.iter().any(GpuReadback::is_free)
+  }
+
+  /// Copies the texel out with the frame's work into a free readback, and answers which.
+  pub fn copy_out(&self, encoder: &mut wgpu::CommandEncoder) -> Option<usize> {
+    let slot: usize = self.readbacks.iter().position(GpuReadback::is_free)?;
+    let readback: &GpuReadback = &self.readbacks[slot];
+
     encoder.copy_texture_to_buffer(
       self.texture.as_image_copy(),
       wgpu::TexelCopyBufferInfo {
-        buffer: &self.readback,
+        buffer: readback.get_buffer(),
         layout: wgpu::TexelCopyBufferLayout {
           offset: 0,
           bytes_per_row: Some(wgpu::COPY_BYTES_PER_ROW_ALIGNMENT),
@@ -68,27 +78,18 @@ impl PickTarget {
         depth_or_array_layers: 1,
       },
     );
+    readback.mark_recorded();
+
+    Some(slot)
   }
 
-  /// Waits for the frame's work and reads the texel: kind, cluster, place and the depth's bits.
-  pub fn read(&self, device: &wgpu::Device) -> XrfResult<[u32; 4]> {
-    self.readback.slice(..).map_async(wgpu::MapMode::Read, |_| ());
-    device
-      .poll(wgpu::PollType::wait_indefinitely())
-      .map_err(|error| XrfError::new_unexpected_error(format!("Pick readback: {error}")))?;
+  /// Asks for a readback's texel, its frame just submitted.
+  pub fn request(&self, slot: usize) {
+    self.readbacks[slot].request();
+  }
 
-    let texel: [u32; 4] = {
-      let view = self
-        .readback
-        .slice(..)
-        .get_mapped_range()
-        .map_err(|error| XrfError::new_unexpected_error(format!("Pick readback: {error}")))?;
-
-      bytemuck::pod_read_unaligned::<[u32; 4]>(&view[..16])
-    };
-
-    self.readback.unmap();
-
-    Ok(texel)
+  /// A readback's texel once it is back: kind, cluster, place and the depth's bits.
+  pub fn take(&self, slot: usize) -> Option<XrfResult<[u32; 4]>> {
+    self.readbacks[slot].take(|bytes| bytemuck::pod_read_unaligned::<[u32; 4]>(&bytes[..16]))
   }
 }

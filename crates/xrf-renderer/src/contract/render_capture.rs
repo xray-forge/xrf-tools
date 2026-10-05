@@ -4,4 +4,6 @@ pub struct RenderCapture {
   pub width: u32,
   pub height: u32,
   pub pixels: Vec<u8>,
+  /// The viewport's frame it was copied out of, counted from its first.
+  pub frame: u64,
 }

@@ -65,6 +65,7 @@ pub use crate::contract::render_page_backdrop::RenderPageBackdrop;
 pub use crate::contract::render_page_wash::RenderPageWash;
 pub use crate::contract::render_particles_report::RenderParticlesReport;
 pub use crate::contract::render_pass_cost::RenderPassCost;
+pub use crate::contract::render_pick::RenderPick;
 pub use crate::contract::render_pool_use::RenderPoolUse;
 pub use crate::contract::render_rect::RenderRect;
 pub use crate::contract::render_scale::RenderScale;

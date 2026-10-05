@@ -3,6 +3,7 @@ pub(crate) mod frame_capture;
 pub(crate) mod frame_phases;
 pub(crate) mod frame_statistics;
 pub(crate) mod fsr_targets;
+pub(crate) mod gpu_readback;
 pub(crate) mod pick_target;
 pub(crate) mod smaa_targets;
 pub(crate) mod smoothing_target;
