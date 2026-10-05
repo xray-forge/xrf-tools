@@ -38,6 +38,8 @@ struct Water {
 @group(3) @binding(3) var sky_cube_0: texture_cube<f32>;
 @group(3) @binding(4) var sky_cube_1: texture_cube<f32>;
 @group(3) @binding(5) var sky_clamp: sampler;
+// The nearest water along each pixel, which its depth pass wrote: only that surface draws.
+@group(3) @binding(6) var nearest_water: texture_depth_2d;
 
 // `watermove`: the wave's direction through the level, in renderer space, where the engine's `z` is negated.
 const WAVE_DIRECTION: vec3<f32> = vec3<f32>(0.11, 0.13, -0.07);
@@ -53,7 +55,8 @@ const LAYER_AMPLITUDES: vec2<f32> = vec2<f32>(0.15, 0.55);
 const FAR_BEHIND: f32 = 1e6;
 
 struct WaterVarying {
-  @builtin(position) clip: vec4<f32>,
+  // Invariant, so the depth pass and the surface pass place each surface alike.
+  @builtin(position) @invariant clip: vec4<f32>,
   // In renderer space, lifted by the wave.
   @location(0) world: vec3<f32>,
   @location(1) normal: vec3<f32>,
@@ -155,8 +158,9 @@ fn fs_water(in: WaterVarying) -> WaterOutput {
   let position: vec3<f32> = (camera.view * vec4<f32>(in.world, 1.0)).xyz;
   let fog: f32 = select(0.0, fog_amount(lighting, position), lighting.params.y > 0.5);
 
-  // The far plane ends where fog is total, so nothing past it is drawn but the sky.
-  if (fog >= 1.0) {
+  // The far plane ends where fog is total, so nothing past it is drawn but the sky; a fold of the surface behind a
+  // nearer one is not drawn either, whatever order the two are drawn in.
+  if (fog >= 1.0 || in.clip.z < textureLoad(nearest_water, vec2<i32>(in.clip.xy), 0)) {
     discard;
   }
 
