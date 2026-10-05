@@ -1,0 +1,14 @@
+{
+  "extends": "@xrf/toolchain/tsconfig.base.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "./target/tsconfig.tsbuildinfo",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "experimentalDecorators": true,
+    "jsx": "react-jsx",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": ["src", "cli"],
+  "exclude": ["cli/build"]
+}

@@ -3,20 +3,50 @@ import * as path from "path";
 import { default as tailwindcss } from "@tailwindcss/vite";
 import { default as react } from "@vitejs/plugin-react";
 import { wirestate } from "@wirestate/dev/vite";
-import { defineConfig, Plugin } from "vite";
+import { defineConfig, normalizePath, type Plugin, runnerImport } from "vite";
 import { default as inlineSource } from "vite-plugin-inline-source";
 
-import { replaceModuleName } from "./cli/build/module-name";
-import { applyObserver } from "./cli/build/observer";
-import { repository } from "./package.json";
-import { getPreloadThemeCss } from "./src/core/theme/preload";
+import { replaceModuleName } from "./cli/build/module-name.ts";
+import { applyObserver } from "./cli/build/observer.ts";
+import { default as manifest } from "./package.json" with { type: "json" };
 
+/**
+ * Inlines the first-paint theme stylesheet into `index.html`.
+ */
 function preloadThemePlugin(): Plugin {
+  const entry: string = normalizePath(path.resolve(import.meta.dirname, "./src/core/theme/preload.ts"));
+  let files: ReadonlySet<string> = new Set([entry]);
+  let css = null;
+
+  async function load(): Promise<string> {
+    const { module, dependencies } = await runnerImport<typeof import("./src/core/theme/preload.ts")>(entry);
+
+    files = new Set([entry, ...dependencies.map(normalizePath)]);
+
+    return module.getPreloadThemeCss();
+  }
+
   return {
     name: "xrf-preload-theme",
+    configureServer(server) {
+      // The stylesheet's variables outlive the first paint, so a changed theme needs a fresh page, not just HMR.
+      server.watcher.on("change", (file: string) => {
+        if (files.has(normalizePath(file))) {
+          css = null;
+          server.ws.send({ type: "full-reload" });
+        }
+      });
+    },
     transformIndexHtml: {
       order: "pre",
-      handler: () => [{ tag: "style", children: getPreloadThemeCss(), injectTo: "head" }],
+      handler: async () => {
+        css ??= load().catch((error: unknown) => {
+          css = null;
+          throw error;
+        });
+
+        return [{ tag: "style", children: await css, injectTo: "head" }];
+      },
     },
   };
 }
@@ -51,7 +81,7 @@ function reactObserverPlugin(): Plugin {
   };
 }
 
-function getInitialVendorChunk(id: string): string | null {
+function getInitialVendorChunk(id: string) {
   const normalized: string = id.replaceAll("\\", "/");
 
   if (normalized.includes("/node_modules/")) {
@@ -75,11 +105,11 @@ function getInitialVendorChunk(id: string): string | null {
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  root: path.resolve(__dirname, "./src"),
-  publicDir: path.resolve(__dirname, "./public"),
-  cacheDir: path.resolve(__dirname, "./node_modules/.vite"),
+  root: path.resolve(import.meta.dirname, "./src"),
+  publicDir: path.resolve(import.meta.dirname, "./public"),
+  cacheDir: path.resolve(import.meta.dirname, "./node_modules/.vite"),
   define: {
-    __REPOSITORY_URL__: JSON.stringify(repository.url),
+    __REPOSITORY_URL__: JSON.stringify(manifest.repository.url),
   },
   plugins: [
     moduleNamePlugin(),
@@ -92,7 +122,7 @@ export default defineConfig({
   ],
   build: {
     // Beside, not over, the tool caches in `target/`: Tauri embeds this whole directory and this build empties it.
-    outDir: path.resolve(__dirname, "./target/dist"),
+    outDir: path.resolve(import.meta.dirname, "./target/dist"),
     emptyOutDir: true,
     rolldownOptions: {
       output: {
@@ -111,7 +141,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "./src"),
+      "@": path.resolve(import.meta.dirname, "./src"),
     },
   },
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
