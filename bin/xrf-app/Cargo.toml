@@ -21,6 +21,7 @@ glam = { workspace = true }
 http-body-util = { workspace = true }
 hyper = { workspace = true }
 hyper-util = { workspace = true }
+image = { workspace = true, features = ["png"] }
 indexmap = { workspace = true }
 log = { workspace = true }
 percent-encoding = "2.3.2"
@@ -33,57 +34,57 @@ specta-typescript = { workspace = true, optional = true }
 specta-util = { workspace = true, optional = true }
 sysinfo = { workspace = true }
 tauri = { version = "2.12.0", features = [] }
-tauri-specta = { workspace = true, optional = true }
 tauri-plugin-dialog = "2.7.3"
 tauri-plugin-fs = "2.5.2"
 tauri-plugin-shell = "2.3.6"
 tauri-plugin-store = "2.4.5"
+tauri-specta = { workspace = true, optional = true }
 tokio = { workspace = true }
 uuid = { workspace = true, features = ["serde", "v4"] }
+xrf-animation-envelope = { workspace = true }
+xrf-anm = { workspace = true }
 xrf-archive = { workspace = true }
-xrf-chunk = { workspace = true }
 xrf-archive-stats = { workspace = true }
 xrf-build-info = { workspace = true }
-xrf-job = { workspace = true, features = ["rayon"] }
-xrf-vfs = { workspace = true }
-xrf-math = { workspace = true }
-xrf-ogf = { workspace = true }
-xrf-skeleton = { workspace = true }
+xrf-chunk = { workspace = true }
 xrf-dds = { workspace = true }
 xrf-dialog = { workspace = true }
+xrf-dltx = { workspace = true }
+xrf-efd = { workspace = true }
+xrf-engine-target = { workspace = true }
+xrf-environment = { workspace = true }
 xrf-error = { workspace = true }
 xrf-export = { workspace = true }
 xrf-extension = { workspace = true }
 xrf-gamedata = { workspace = true }
+xrf-gamemtl = { workspace = true }
 xrf-ipc-typescript = { workspace = true, optional = true }
-xrf-dltx = { workspace = true }
-xrf-engine-target = { workspace = true }
-xrf-environment = { workspace = true }
+xrf-job = { workspace = true, features = ["rayon"] }
 xrf-level = { workspace = true }
+xrf-light-anim = { workspace = true }
 xrf-ltx = { workspace = true }
 xrf-ltx-inspect = { workspace = true }
 xrf-material = { workspace = true }
+xrf-math = { workspace = true }
+xrf-ogf = { workspace = true }
+xrf-omf = { workspace = true }
 xrf-output = { workspace = true }
+xrf-pack = { workspace = true }
+xrf-particles = { workspace = true }
+xrf-ppe = { workspace = true }
+xrf-renderer = { workspace = true }
+xrf-shaders = { workspace = true }
+xrf-skeleton = { workspace = true }
 xrf-sound = { workspace = true }
+xrf-spawn = { workspace = true }
 xrf-texture = { workspace = true }
-xrf-utils = { workspace = true }
+xrf-thm = { workspace = true }
 xrf-translation = { workspace = true }
 xrf-typescript = { workspace = true, optional = true }
+xrf-utils = { workspace = true }
+xrf-vfs = { workspace = true }
 xrf-visual = { workspace = true }
-xrf-pack = { workspace = true }
-xrf-animation-envelope = { workspace = true }
-xrf-anm = { workspace = true }
-xrf-efd = { workspace = true }
-xrf-gamemtl = { workspace = true }
-xrf-light-anim = { workspace = true }
-xrf-omf = { workspace = true }
-xrf-ppe = { workspace = true }
-xrf-thm = { workspace = true }
-xrf-shaders = { workspace = true }
-xrf-spawn = { workspace = true }
-xrf-particles = { workspace = true }
-xrf-renderer = { workspace = true }
-image = { workspace = true, features = ["png"] }
+xrf-world = { workspace = true }
 
 # Both already in the tree through wry, at the versions it resolves: the memory reading asks WebView2 for its processes.
 [target.'cfg(windows)'.dependencies]

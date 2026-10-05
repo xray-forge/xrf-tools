@@ -1,4 +1,4 @@
-use crate::store::{ProxyHandle, ProxyStore};
+use crate::store::{ProxyAllocator, ProxyHandle, ProxyStore};
 
 #[test]
 fn reaches_each_item_by_its_handle() {
@@ -98,4 +98,27 @@ fn lists_a_record_changed_again_and_again_only_once_while_nothing_takes_it() {
     [0],
     "taken, it is listed again on its next change"
   );
+}
+
+#[test]
+fn holds_items_at_the_handles_an_allocator_gave_out() {
+  let mut allocator: ProxyAllocator<&str> = ProxyAllocator::new();
+  let mut store: ProxyStore<&str> = ProxyStore::new();
+  let (first, second): (ProxyHandle<&str>, ProxyHandle<&str>) = (allocator.allocate(), allocator.allocate());
+
+  // Posted out of order, as a world's adds may be applied.
+  store.insert(second, "second");
+  store.insert(first, "first");
+
+  assert_eq!((store.get(first), store.get(second)), (Some(&"first"), Some(&"second")));
+  assert_eq!(store.remove(first), Some("first"));
+  assert!(allocator.free(first));
+  assert!(!allocator.free(first), "given back once");
+
+  let reused: ProxyHandle<&str> = allocator.allocate();
+
+  assert_ne!(reused, first, "the reused slot's handle carries a newer generation");
+  store.insert(reused, "reused");
+  assert_eq!(store.get(reused), Some(&"reused"));
+  assert_eq!(store.get(first), None);
 }

@@ -65,6 +65,39 @@ impl<T> ProxyStore<T> {
     ProxyHandle::new(slot, self.slots[slot as usize].generation)
   }
 
+  /// Puts an item in at a handle a `ProxyAllocator` gave out, at the end of the dense records. A store takes its handles
+  /// either from `add` or from an allocator, never both, so the two never hand out one slot.
+  ///
+  /// # Panics
+  ///
+  /// When the handle's slot holds an item.
+  pub fn insert(&mut self, handle: ProxyHandle<T>, item: T) {
+    let slot: usize = handle.slot as usize;
+
+    if self.slots.len() <= slot {
+      self.slots.resize(
+        slot + 1,
+        ProxySlot {
+          dense: ProxySlot::FREE,
+          generation: 0,
+        },
+      );
+    }
+
+    assert_eq!(self.slots[slot].dense, ProxySlot::FREE, "{handle:?} is held already");
+
+    let dense: u32 = self.items.len() as u32;
+
+    self.slots[slot] = ProxySlot {
+      dense,
+      generation: handle.generation,
+    };
+    self.items.push(item);
+    self.owners.push(handle.slot);
+    self.marked.push(false);
+    self.mark(dense);
+  }
+
   /// Takes an item out, the last record moving into its place; nothing for a handle whose item is gone.
   pub fn remove(&mut self, handle: ProxyHandle<T>) -> Option<T> {
     let dense: u32 = self.get_index(handle)?;

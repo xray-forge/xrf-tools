@@ -1,5 +1,6 @@
-use crate::thread::loader_receiver::LoaderReceiver;
 use std::sync::mpsc::TryRecvError;
+
+use crate::thread::loader_receiver::LoaderReceiver;
 
 /// Takes what a loader thread answered, once, leaving nothing pending afterwards; a loader gone without answering, as
 /// one that panicked is, also ends the wait, so the level still settles as loaded.

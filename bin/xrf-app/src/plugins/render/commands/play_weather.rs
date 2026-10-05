@@ -12,5 +12,5 @@ pub fn render_play_weather(
   play: RenderWeatherPlay,
   transition: RenderWeatherTransition,
 ) {
-  state.renderer.play_weather(viewport, play, transition);
+  state.lock_world().play_weather(viewport, play, transition);
 }

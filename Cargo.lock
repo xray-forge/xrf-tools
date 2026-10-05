@@ -7094,6 +7094,7 @@ dependencies = [
  "xrf-utils",
  "xrf-vfs",
  "xrf-visual",
+ "xrf-world",
 ]
 
 [[package]]
@@ -7863,6 +7864,22 @@ dependencies = [
  "xrf-spawn",
  "xrf-test-utils",
  "xrf-vfs",
+]
+
+[[package]]
+name = "xrf-world"
+version = "0.1.0"
+dependencies = [
+ "glam",
+ "log",
+ "xrf-engine-target",
+ "xrf-environment",
+ "xrf-error",
+ "xrf-material",
+ "xrf-math",
+ "xrf-renderer",
+ "xrf-renderer-core",
+ "xrf-visual",
 ]
 
 [[package]]

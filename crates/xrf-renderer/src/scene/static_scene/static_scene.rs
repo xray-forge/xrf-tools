@@ -413,13 +413,8 @@ impl StaticScene {
 
   /// Stands a skinned object in a pose: each bone's matrix as three rows, from its bind to where it stands, this frame
   /// and the last, as many as its model has bones each; written with the scene's other changes.
-  pub fn write_pose(&mut self, object: u32, current: &[[Vec4; 3]], previous: &[[Vec4; 3]]) {
-    let Some((span, bones)) = self
-      .object_handles
-      .get(&object)
-      .and_then(|handle| self.objects.get(*handle))
-      .and_then(|object| object.bones.as_ref())
-    else {
+  pub fn write_pose(&mut self, handle: ProxyHandle<StaticObjectProxy>, current: &[[Vec4; 3]], previous: &[[Vec4; 3]]) {
+    let Some((span, bones)) = self.objects.get(handle).and_then(|object| object.bones.as_ref()) else {
       return;
     };
     let count: usize = *bones as usize;
@@ -463,7 +458,8 @@ impl StaticScene {
       + self.candidates.get_capacity()
   }
 
-  /// Puts one packed sector into the scene: its baked sections as single draws, its tree groups as rows.
+  /// Puts one packed sector into the scene at the handle its poster allocated: its baked sections as single draws, its
+  /// tree groups as rows.
   ///
   /// # Errors
   ///
@@ -477,8 +473,8 @@ impl StaticScene {
     textures: &mut TextureCache,
     source: &Arc<dyn RenderAssetSource>,
     descriptors: &[XraySurfaceDescriptor],
-    package: &SectorPackage,
-  ) -> XrfResult<ProxyHandle<StaticSectorProxy>> {
+    (handle, package): (ProxyHandle<StaticSectorProxy>, &SectorPackage),
+  ) -> XrfResult {
     let mut writer: StaticSceneWriter = StaticSceneWriter::default();
     let mut swaying: Vec<(Vec4, f32)> = Vec::new();
     let description = &package.description;
@@ -546,17 +542,22 @@ impl StaticScene {
     self.swaying.extend_from_slice(&swaying);
     self.contents += 1;
 
-    Ok(self.sectors.add(StaticSectorProxy {
-      sector: description.sector,
-      bytes: buffer.len() as u64,
-      spans,
-      rows,
-      capacities: writer.capacities,
-      slot_infos: writer.slot_infos,
-      cluster_slots: writer.cluster_slots,
-      impostor_shaders: writer.impostor_shaders,
-      swaying,
-    }))
+    self.sectors.insert(
+      handle,
+      StaticSectorProxy {
+        sector: description.sector,
+        bytes: buffer.len() as u64,
+        spans,
+        rows,
+        capacities: writer.capacities,
+        slot_infos: writer.slot_infos,
+        cluster_slots: writer.cluster_slots,
+        impostor_shaders: writer.impostor_shaders,
+        swaying,
+      },
+    );
+
+    Ok(())
   }
 
   /// Takes a sector out of the scene, its ranges cleared and freed; false for one already gone.
@@ -583,8 +584,8 @@ impl StaticScene {
     true
   }
 
-  /// Puts a spawned model into the scene: its geometry once and a slot a part, which each object standing as it adds a
-  /// row of.
+  /// Puts a spawned model into the scene at the handle its poster allocated: its geometry once and a slot a part, which
+  /// each object standing as it adds a row of.
   ///
   /// # Errors
   ///
@@ -595,8 +596,8 @@ impl StaticScene {
     queue: &wgpu::Queue,
     encoder: &mut wgpu::CommandEncoder,
     (textures, source): (&mut TextureCache, &Arc<dyn RenderAssetSource>),
-    model: &StaticModel,
-  ) -> XrfResult<ProxyHandle<StaticModelProxy>> {
+    (handle, model): (ProxyHandle<StaticModelProxy>, &StaticModel),
+  ) -> XrfResult {
     let mut writer: StaticSceneWriter = StaticSceneWriter::default();
     let base: StaticGeometryBase = writer.put_words(StaticLayout::Model, &model.words, &model.indices);
     let mut slots: Vec<(u32, u32, StaticBatch)> = Vec::new();
@@ -658,8 +659,9 @@ impl StaticScene {
     self.write_spans(&spans, &writer);
     self.contents += 1;
 
-    Ok(
-      self.models.add(StaticModelProxy {
+    self.models.insert(
+      handle,
+      StaticModelProxy {
         slots: slots
           .into_iter()
           .map(|(slot, count, batch)| (first_slot + slot, count, batch))
@@ -678,8 +680,10 @@ impl StaticScene {
           .as_ref()
           .map(|skin| (StaticSpans::get_offset(&spans.skins), skin.bones)),
         spans,
-      }),
-    )
+      },
+    );
+
+    Ok(())
   }
 
   /// Takes a model out of the scene with every object standing as it, its ranges cleared and freed; false for one
@@ -709,8 +713,8 @@ impl StaticScene {
     true
   }
 
-  /// Stands a spawned object as a model in the scene: a place, its bone matrices in the bind pose where the model is
-  /// skinned, and a row a slot of the model.
+  /// Stands a spawned object as a model in the scene at the handle its poster allocated: a place, its bone matrices in
+  /// the bind pose where the model is skinned, and a row a slot of the model.
   ///
   /// # Errors
   ///
@@ -720,9 +724,9 @@ impl StaticScene {
     &mut self,
     device: &wgpu::Device,
     queue: &wgpu::Queue,
-    model: ProxyHandle<StaticModelProxy>,
-    place: &StaticModelPlace,
-  ) -> XrfResult<ProxyHandle<StaticObjectProxy>> {
+    handle: ProxyHandle<StaticObjectProxy>,
+    (model, place): (ProxyHandle<StaticModelProxy>, &StaticModelPlace),
+  ) -> XrfResult {
     let Some(proxy) = self.models.get(model) else {
       return Err(XrfError::new_invalid_error(format!(
         "Spawned object {} stands as a model no longer in the scene",
@@ -792,16 +796,19 @@ impl StaticScene {
     self.add_capacities(&capacities);
     self.contents += 1;
 
-    let handle: ProxyHandle<StaticObjectProxy> = self.objects.add(StaticObjectProxy {
-      object: place.object,
-      model,
-      place: span,
-      bones,
-      rows,
-      capacities,
-      transform: matrix,
-      sphere: placed,
-    });
+    self.objects.insert(
+      handle,
+      StaticObjectProxy {
+        object: place.object,
+        model,
+        place: span,
+        bones,
+        rows,
+        capacities,
+        transform: matrix,
+        sphere: placed,
+      },
+    );
 
     // An object stood again replaces where it stood.
     if let Some(replaced) = self.object_handles.insert(place.object, handle) {
@@ -810,7 +817,7 @@ impl StaticScene {
 
     self.place_objects.insert(index, handle);
 
-    Ok(handle)
+    Ok(())
   }
 
   /// Takes a spawned object out of the scene: its place, bone matrices and rows; false for one already gone.
@@ -838,15 +845,6 @@ impl StaticScene {
     self.contents += 1;
 
     true
-  }
-
-  /// Takes a spawned object out of the scene by its index; false for one not standing in it.
-  pub fn remove_object_by_index(&mut self, object: u32) -> bool {
-    self
-      .object_handles
-      .get(&object)
-      .copied()
-      .is_some_and(|handle| self.remove_object(handle))
   }
 
   /// Items added and removed so far, which a view drawn with another count is drawn again for.

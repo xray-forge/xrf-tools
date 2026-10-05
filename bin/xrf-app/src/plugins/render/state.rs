@@ -2,14 +2,18 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
 use xrf_renderer::{
-  RenderBundle, RenderEventSink, RenderLevelSource, RenderViewportId, RenderWindowHost, RenderWorkers, Renderer,
+  RenderBundle, RenderEventSink, RenderLevelSource, RenderViewportId, RenderWindowHost, RenderWorkers, RenderWorld,
+  Renderer,
 };
+use xrf_world::World;
 
 use crate::plugins::render::viewport_windows::ViewportWindows;
 
 /// The application's one renderer, which starts a GPU only once a viewport is attached.
 pub struct RenderState {
   pub renderer: Renderer,
+  /// The world the renderer draws, which the camera and weather commands steer; its thread runs it each frame.
+  world: Arc<Mutex<World>>,
   /// The latest show asked of each viewport, so one that took longer to prepare never replaces one asked after it.
   shows: Mutex<HashMap<RenderViewportId, u64>>,
   /// The window each viewport draws into, so a page that goes takes its viewports with it.
@@ -19,8 +23,11 @@ pub struct RenderState {
 impl RenderState {
   /// A renderer whose loaders read and decode on `workers`, reading the files it ships with from `bundle`.
   pub fn new(workers: RenderWorkers, bundle: Arc<dyn RenderBundle>) -> Self {
+    let world: Arc<Mutex<World>> = Arc::new(Mutex::new(World::new(workers.clone())));
+
     Self {
-      renderer: Renderer::new(workers, bundle),
+      renderer: Renderer::new(workers, bundle, Arc::clone(&world) as Arc<Mutex<dyn RenderWorld>>),
+      world,
       shows: Mutex::default(),
       windows: Mutex::default(),
     }
@@ -31,9 +38,11 @@ impl RenderState {
     &self,
     window: &str,
     host: Arc<dyn RenderWindowHost>,
-    sink: Box<dyn RenderEventSink>,
+    (sink, world_sink): (Box<dyn RenderEventSink>, Box<dyn RenderEventSink>),
   ) -> RenderViewportId {
     let viewport: RenderViewportId = self.renderer.attach_viewport(host, sink);
+
+    self.lock_world().attach(viewport, world_sink);
 
     self.lock_windows().insert(viewport, window);
 
@@ -82,14 +91,20 @@ impl RenderState {
     let shows: MutexGuard<'_, HashMap<RenderViewportId, u64>> = self.lock_shows();
 
     if shows.get(&viewport) == Some(&ticket) {
-      self.renderer.show_level(viewport, source);
+      self.lock_world().show_level(viewport, source);
     } else {
       log::info!("Native viewport {} was asked to show something newer", viewport.0);
     }
   }
 
+  /// The world, locked for a command; the render thread holds it only while it runs a viewport's frame.
+  pub fn lock_world(&self) -> MutexGuard<'_, World> {
+    self.world.lock().unwrap_or_else(PoisonError::into_inner)
+  }
+
   fn release(&self, viewport: RenderViewportId) {
     self.renderer.detach_viewport(viewport);
+    self.lock_world().detach(viewport);
     self.lock_shows().remove(&viewport);
   }
 

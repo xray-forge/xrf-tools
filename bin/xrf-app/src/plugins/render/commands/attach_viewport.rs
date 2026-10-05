@@ -38,7 +38,10 @@ fn attach(
   Ok(state.attach_viewport(
     window,
     Arc::new(Win32WindowHost::new(handle)),
-    Box::new(ChannelEventSink::new(events)),
+    (
+      Box::new(ChannelEventSink::new(events.clone())),
+      Box::new(ChannelEventSink::new(events)),
+    ),
   ))
 }
 

@@ -5,12 +5,11 @@ use glam::{Mat4, UVec4, Vec2, Vec3, Vec4};
 use xrf_engine_target::XrayEngine;
 use xrf_error::XrfResult;
 use xrf_material::XraySurfaceDraw;
+use xrf_math::EPS_S;
 use xrf_renderer_core::{
   ExecutedGraph, FrameGraph, GraphBindings, GraphBuffer, GraphBufferAccess, GraphColorAttachment, GraphCompileOptions,
   GraphDepthAttachment, GraphRuntime, GraphTexture, GraphTextureAccess, RasterPassBuilder, StorageArray,
 };
-
-use xrf_math::EPS_S;
 
 use crate::camera::camera_view::CameraView;
 use crate::contract::render_ambient_occlusion_quality::RenderAmbientOcclusionQuality;
@@ -45,6 +44,7 @@ use crate::host::render_asset_source::RenderAssetSource;
 use crate::host::render_level_source::RenderLevelSource;
 use crate::host::render_level_weather::RenderLevelWeather;
 use crate::host::render_rain::RenderRain;
+use crate::host::render_sector_failure::RenderSectorFailure;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::pass::ambient_occlusion_pass::AmbientOcclusionPass;
 use crate::pass::ambient_occlusion_uniform::AmbientOcclusionUniform;
@@ -77,11 +77,12 @@ use crate::pass::wind_uniform::WindUniform;
 use crate::scene::level::ambient_frame::AmbientFrame;
 use crate::scene::level::ambient_gust::AmbientGust;
 use crate::scene::level::level_lights::LevelLights;
+use crate::scene::level::level_load::LevelLoad;
 use crate::scene::level::level_overlays::LevelOverlays;
 use crate::scene::level::level_scene::LevelScene;
 use crate::scene::level::level_smoothing::LevelSmoothing;
-use crate::scene::level::level_streaming::LevelStreaming;
 use crate::scene::level::level_water::WaterFrame;
+use crate::scene::level::level_world_input::LevelWorldInput;
 use crate::scene::level::lights_frame::LightsFrame;
 use crate::scene::level::scene_renderer::{SceneRenderer, SkyGroupKey};
 use crate::scene::level::shadow_frame::ShadowFrame;
@@ -106,8 +107,8 @@ const PICKED_IMPOSTOR: u32 = 2;
 
 /// A level as one viewport draws it, held as the four things a frame is made from: the level (`LevelScene`), what the
 /// view keeps between frames (`ViewState`), this frame as prepared (`ViewInfo`), and what draws it (`SceneRenderer`);
-/// and what streams the level in (`LevelStreaming`). It orchestrates them: streams the level, prepares the frame, and
-/// records it as a frame graph.
+/// and what its load reports (`LevelLoad`). It orchestrates them: applies what the world posted, prepares the frame,
+/// and records it as a frame graph.
 pub struct LevelView {
   /// This frame as prepared, which its passes read.
   info: ViewInfo,
@@ -115,8 +116,8 @@ pub struct LevelView {
   state: ViewState,
   /// The level it draws.
   scene: LevelScene,
-  /// What streams the level into the scene, and what its load reports.
-  streaming: LevelStreaming,
+  /// What its load reports, from how far the world streamed it.
+  load: LevelLoad,
   /// What draws it, and what that keeps between frames: the passes' buffers and bind groups, and the effects
   /// drawn from the view.
   renderer: SceneRenderer,
@@ -132,24 +133,19 @@ impl LevelView {
     &mut self.scene
   }
 
-  /// What streams the level in, and what its load reports.
-  pub fn get_streaming(&self) -> &LevelStreaming {
-    &self.streaming
-  }
-
   /// How far the level has loaded, when that changed since it was last asked.
   pub fn take_load_report(&mut self, textures: &TextureCache) -> Option<RenderLoadReport> {
-    self.streaming.take_report(&self.scene, textures)
+    self.load.take_report(&self.scene, textures)
   }
 
   /// Whether everything the level opens with is resident, so it draws as it will.
   pub fn is_ready(&self, textures: &TextureCache) -> bool {
-    self.streaming.is_ready(&self.scene, textures)
+    self.load.is_ready(&self.scene, textures)
   }
 
   /// How far the level has loaded.
   pub fn describe_load(&self, textures: &TextureCache) -> RenderLoadReport {
-    self.streaming.describe_load(&self.scene, textures)
+    self.load.describe(&self.scene, textures)
   }
 
   /// What it keeps from one frame to the next.
@@ -168,21 +164,21 @@ impl LevelView {
     source: Arc<dyn RenderLevelSource>,
     workers: &RenderWorkers,
   ) -> Self {
-    let streaming: LevelStreaming = LevelStreaming::start(Arc::clone(&source), workers);
     let scene: LevelScene = LevelScene::new(device, queue, view_layout, source, workers);
     let args_size: u64 = scene.statics.args.size();
 
     Self {
       info: ViewInfo::default(),
       state: ViewState::new(device, queue),
+      load: LevelLoad::new(scene.started),
       scene,
-      streaming,
       renderer: SceneRenderer::new(device, view_layout, args_size),
     }
   }
 
-  /// Streams this frame's changes into the scene, takes the grass and particles their loaders finished, and asks for
-  /// the textures the lighting's sky draws with.
+  /// Applies what the world posted this frame where it is the world's level, takes the grass and particles their
+  /// loaders finished, and asks for the textures the lighting's sky draws with; answers the sectors it could not take
+  /// in.
   #[allow(clippy::too_many_arguments)]
   pub fn load(
     &mut self,
@@ -193,7 +189,8 @@ impl LevelView {
     grass_pass: &GrassPass,
     (lighting, weather): (&RenderLighting, Option<&Arc<RenderLevelWeather>>),
     options: &RenderViewOptions,
-  ) {
+    world: Option<LevelWorldInput<'_>>,
+  ) -> Vec<RenderSectorFailure> {
     let assets: Arc<dyn RenderAssetSource> = Arc::clone(&self.scene.source) as Arc<dyn RenderAssetSource>;
 
     if let Some(rain) = weather.and_then(|weather| weather.rain.as_ref())
@@ -263,14 +260,23 @@ impl LevelView {
       self.scene.statics.texture_slots.extend(slots);
     }
 
-    self.streaming.stream(
-      device,
-      queue,
-      encoder,
-      &mut self.scene,
-      (textures, &assets),
-      options.world.get_hidden_spawn_groups(),
-    );
+    let Some(LevelWorldInput {
+      updates,
+      streaming,
+      skeleton_segments,
+    }) = world
+    else {
+      return Vec::new();
+    };
+    let failures: Vec<RenderSectorFailure> =
+      self
+        .scene
+        .apply((device, queue, encoder), (&mut *textures, &assets), updates);
+
+    self.load.advance(streaming, &self.scene, textures);
+    self.info.skeleton_segments = skeleton_segments.to_vec();
+
+    failures
   }
 
   /// Sizes the targets to the viewport and writes what this frame's cull and lighting read.
@@ -305,15 +311,10 @@ impl LevelView {
       self.renderer.light_groups = None;
     }
 
-    self.scene.pose_skeletons();
     self.scene.statics.prepare_draws(device, queue, encoder);
 
-    if self.state.overlays.as_ref().is_some_and(|it| it.skeleton.is_some()) {
-      let segments: Vec<(Vec3, Vec3)> = self.scene.list_skeleton_segments();
-
-      if let Some(overlays) = &mut self.state.overlays {
-        overlays.set_skeleton(device, &segments);
-      }
+    if let Some(overlays) = self.state.overlays.as_mut().filter(|it| it.skeleton.is_some()) {
+      overlays.set_skeleton(device, &self.info.skeleton_segments);
     }
 
     self

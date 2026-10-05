@@ -1,7 +1,6 @@
-use crate::camera::fly_camera_controller::FlyCameraController;
+use crate::camera::camera_frame::CameraFrame;
 use crate::context::gpu_context::GpuContext;
 use crate::context::render_backend::RenderBackend;
-use crate::contract::render_camera::RenderCamera;
 use crate::contract::render_rect::RenderRect;
 use crate::pass::camera_uniform::CameraUniform;
 use crate::pass::grid_pass::GridPass;
@@ -33,21 +32,19 @@ fn draws_sky_over_ground_offscreen() {
   let layout: wgpu::BindGroupLayout = ViewBinding::create_layout(device);
   let grid: GridPass = GridPass::new(device, &shaders, &layout, format).unwrap();
   let binding: ViewBinding = ViewBinding::new(device, &layout);
-  let camera: FlyCameraController = FlyCameraController::new(RenderCamera::Fly {
-    position: [0.5, 2.0, 0.5],
-    target: [0.5, 2.0, -10.0],
+  let position: glam::Vec3 = glam::Vec3::new(0.5, 2.0, 0.5);
+  let camera: CameraFrame = CameraFrame {
+    position,
+    view: glam::camera::rh::view::look_at_mat4(position, glam::Vec3::new(0.5, 2.0, -10.0), glam::Vec3::Y),
     field_of_view: 60.0,
     near: 0.1,
     far: 1000.0,
-    speed: 1.0,
-    boost: 1.0,
-    sensitivity: 0.01,
-  });
+  };
 
   binding.write(
     &context.queue,
     &CameraUniform::new(
-      &camera.get_view(1.0, f32::INFINITY),
+      &camera.to_view(1.0, f32::INFINITY),
       RenderRect {
         x: 0,
         y: 0,
