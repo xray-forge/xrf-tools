@@ -39,6 +39,7 @@ use crate::contract::render_surface_geometry::RenderSurfaceGeometry;
 use crate::contract::render_texture_report::RenderTextureReport;
 use crate::contract::render_upscaling_settings::RenderUpscalingSettings;
 use crate::contract::render_view_options::RenderViewOptions;
+use crate::contract::render_water_mode::RenderWaterMode;
 use crate::contract::render_water_settings::RenderWaterSettings;
 use crate::frame::depth_pyramid::DepthPyramid;
 use crate::frame::fsr_targets::FsrTargets;
@@ -52,6 +53,7 @@ use crate::frame::temporal_jitter::TemporalJitter;
 use crate::frame::upscale_targets::UpscaleTargets;
 use crate::frame::view_exposure::ViewExposure;
 use crate::frame::view_targets::ViewTargets;
+use crate::frame::water_scene::WaterScene;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::host::render_level_source::RenderLevelSource;
 use crate::host::render_level_weather::RenderLevelWeather;
@@ -222,8 +224,10 @@ pub struct LevelView {
   /// What this frame's present shows, and whether its occlusion was searched.
   frame_debug_view: RenderDebugView,
   frame_occlusion: bool,
-  /// The water's bind groups, with the sky's version and the targets' epoch they bind.
-  water_groups: Option<((u64, u64), WaterGroups)>,
+  /// The water's bind groups, with the sky's version, the targets' epoch and whether they bind the scene before it.
+  water_groups: Option<((u64, u64, bool), WaterGroups)>,
+  /// The scene as it stood before the water, which the enhanced water refracts; none while it does not draw.
+  water_scene: Option<WaterScene>,
   water_settings: RenderWaterSettings,
   rain_cover: RainCover,
   rain: wgpu::Buffer,
@@ -373,6 +377,7 @@ impl LevelView {
       frame_debug_view: RenderDebugView::Final,
       frame_occlusion: false,
       water_groups: None,
+      water_scene: None,
       water_settings: RenderWaterSettings::default(),
       rain: uniform("rain", size_of::<RainUniform>()),
       splash: None,
@@ -743,7 +748,22 @@ impl LevelView {
       self.sky_version += 1;
     }
 
-    let water_key: (u64, u64) = (self.sky_version, self.targets_epoch);
+    // The copy the enhanced water refracts lives only while that water draws.
+    let is_refracting: bool =
+      options.water.is_enabled && options.water.mode == RenderWaterMode::Enhanced && !options.is_wireframe;
+
+    if !is_refracting {
+      self.water_scene = None;
+    } else if let Some(targets) = &self.targets
+      && self
+        .water_scene
+        .as_ref()
+        .is_none_or(|scene| scene.epoch != self.targets_epoch)
+    {
+      self.water_scene = Some(WaterScene::new(device, targets, self.targets_epoch));
+    }
+
+    let water_key: (u64, u64, bool) = (self.sky_version, self.targets_epoch, is_refracting);
 
     if self.water_groups.as_ref().is_none_or(|(key, _)| *key != water_key)
       && let Some(targets) = &self.targets
@@ -759,6 +779,7 @@ impl LevelView {
         &self.water,
         skies,
         passes.sky.get_clamp(),
+        self.water_scene.as_ref().map(|scene| &scene.view),
       );
 
       self.water_groups = Some((water_key, groups));
@@ -1299,13 +1320,17 @@ impl LevelView {
         && !self.is_wireframe
         && let Some((_, water_groups)) = &self.water_groups
       {
+        if let Some(scene) = &self.water_scene {
+          scene.copy(encoder, targets);
+        }
+
         passes.water.draw(
           encoder,
           targets,
           view,
           draw_groups,
           texture_group,
-          water_groups,
+          (water_groups, self.water_settings.mode),
           &list_args,
         );
         timer.mark(encoder, "water");

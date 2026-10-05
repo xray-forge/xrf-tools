@@ -83,6 +83,7 @@ pub use crate::contract::render_view_options::RenderViewOptions;
 pub use crate::contract::render_viewport_event::RenderViewportEvent;
 pub use crate::contract::render_viewport_id::RenderViewportId;
 pub use crate::contract::render_viewport_layout::RenderViewportLayout;
+pub use crate::contract::render_water_mode::RenderWaterMode;
 pub use crate::contract::render_water_settings::RenderWaterSettings;
 pub use crate::contract::render_weather_control::RenderWeatherControl;
 pub use crate::contract::render_weather_effect_report::RenderWeatherEffectReport;

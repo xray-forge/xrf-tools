@@ -1,4 +1,4 @@
-import { ERenderAntialiasing } from "@/core/ipc/types/xrf-renderer";
+import { ERenderAntialiasing, ERenderWaterMode } from "@/core/ipc/types/xrf-renderer";
 import {
   DEFAULT_RENDER_AMBIENT_OCCLUSION_SETTINGS,
   DEFAULT_RENDER_EXPOSURE_SETTINGS,
@@ -33,7 +33,8 @@ export const RENDER_PRESETS: Readonly<Record<ERenderPreset, IRenderFeatureSettin
     lod: DEFAULT_RENDER_LOD_SETTINGS,
     shadows: DEFAULT_RENDER_SHADOW_SETTINGS,
     upscaling: DEFAULT_RENDER_UPSCALING_SETTINGS,
-    water: DEFAULT_RENDER_WATER_SETTINGS,
+    // The application's own choice over the engine's, as the antialiasing is: Screen Space Shaders' water.
+    water: { ...DEFAULT_RENDER_WATER_SETTINGS, mode: ERenderWaterMode.ENHANCED },
   },
   [ERenderPreset.EDITING]: {
     ambientOcclusion: { ...DEFAULT_RENDER_AMBIENT_OCCLUSION_SETTINGS, isEnabled: false },
