@@ -6,6 +6,7 @@ use crate::pass::fullscreen_pipeline::{buffer_binding, texture_binding};
 use crate::pass::layout_entries::{storage_entry, texture_entry, uniform_entry};
 use crate::pass::material_table::MaterialTable;
 use crate::pass::shader_pipelines::{create_checked, create_module};
+use crate::pass::sky_parameters::SkyParameters;
 use crate::pass::static_draw_parameters::StaticDrawParameters;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::level_shadows::LevelShadows;
@@ -47,6 +48,9 @@ pub struct CompositedPass {
 }
 
 impl CompositedPass {
+  /// Where its pipelines hold the sky's group.
+  const SKY_GROUP: u32 = 4;
+
   /// # Errors
   ///
   /// Returns an error when the shader does not compose or compile.
@@ -138,16 +142,18 @@ impl CompositedPass {
       &[StaticDrawParameters; StaticLayout::COUNT],
       &wgpu::BindGroup,
     ),
-    (composited_group, sky_group): (&wgpu::BindGroup, &wgpu::BindGroup),
+    (composited_group, sky): (&wgpu::BindGroup, &SkyParameters<'_>),
     args: &[&wgpu::Buffer],
     (sorted, sorted_count): (Option<&StaticDrawParameters>, u32),
   ) {
+    // The sky's group sits above the composited surfaces' own here, past the bindless textures and the draws.
+    context.bind_at(Self::SKY_GROUP, sky);
+
     let pass: &mut wgpu::RenderPass<'static> = context.get_pass();
 
     pass.set_bind_group(0, &view.bind_group, &[]);
     pass.set_bind_group(1, textures, &[]);
     pass.set_bind_group(3, composited_group, &[]);
-    pass.set_bind_group(4, sky_group, &[]);
 
     for (batch, pipeline) in StaticBatch::list_composited().zip(&self.pipelines.0) {
       // The models' are drawn back to front from the view's sorted list rather than as the cull listed them.

@@ -37,9 +37,12 @@ use crate::host::render_world::RenderWorld;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::pass::backdrop_uniform::BackdropUniform;
 use crate::pass::camera_uniform::CameraUniform;
+use crate::pass::overlay_parameters::OverlayParameters;
+use crate::pass::present_parameters::PresentParameters;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::level_frame::LevelFrame;
 use crate::scene::level::level_scene::LevelScene;
+use crate::scene::level::scene_output::SceneOutput;
 use crate::scene::level::scene_view::SceneView;
 use crate::scene::static_scene::static_selection::StaticSelection;
 use crate::scene::texture::sky_texture_requests::SkyTextureRequests;
@@ -824,7 +827,9 @@ impl RenderThread {
       let mut graph: FrameGraph<'_> = FrameGraph::new();
       let mut bindings: GraphBindings<'_> = GraphBindings::new();
 
-      // Each viewport's frame, its passes timed as its own.
+      // Each viewport's frame, its passes timed as its own, and what it leaves for its window's composition.
+      let mut outputs: HashMap<RenderViewportId, SceneOutput> = HashMap::with_capacity(frames.len());
+
       for (id, frame, _) in &frames {
         let Some(viewport) = self.viewports.get(id) else {
           continue;
@@ -837,7 +842,8 @@ impl RenderThread {
         };
 
         graph.begin_owner(id.0);
-        view.record(
+
+        let output: Option<SceneOutput> = view.record(
           scene,
           (&mut graph, &mut bindings, &mut *runtime),
           gpu.get_level_passes(),
@@ -845,6 +851,8 @@ impl RenderThread {
           &gpu.textures,
           frame,
         );
+
+        outputs.extend(output.map(|output| (*id, output)));
       }
 
       // Then each window: the page's backdrop, each viewport's picture or its grid cropped to what the window shows,
@@ -861,11 +869,37 @@ impl RenderThread {
           .filter_map(|(id, rect, shown)| {
             let viewport: &RenderViewport = self.viewports.get(id)?;
             let level: Option<&SceneView> = viewport.shown.as_ref().map(|(_, view)| view);
+            let output: Option<&SceneOutput> = outputs.get(id);
 
             Some(ComposedView {
               binding: viewport.binding.as_ref()?,
-              present: level.and_then(SceneView::get_present_group),
-              overlays: level.and_then(SceneView::get_overlays),
+              present: output.map(|output| PresentParameters {
+                scene: output.targets.scene,
+                distortion: output.targets.distortion,
+                depth_target: output.targets.depth,
+                albedo_target: output.targets.albedo,
+                normal_target: output.targets.normal,
+                material_target: output.targets.material,
+                light_target: output.targets.light,
+                occlusion_target: output.targets.occlusion[0],
+                present: output.present,
+                upscaled: output.shown,
+                motion_target: output.targets.motion,
+                bloom_target: output.targets.bloom[0],
+                bloom_sampler: gpu.present.get_bloom_sampler(),
+              }),
+              overlays: output
+                .zip(level.and_then(SceneView::get_overlays))
+                .map(|(output, overlays)| {
+                  (
+                    OverlayParameters {
+                      depth_target: output.targets.depth,
+                      present: output.present,
+                      lighting: output.lighting,
+                    },
+                    overlays,
+                  )
+                }),
               rect: *rect,
               shown: *shown,
             })
@@ -883,44 +917,55 @@ impl RenderThread {
 
         let window_texture: GraphTexture = bindings.import_view(&mut graph, "window", target);
 
-        graph
-          .add_raster_pass("window")
-          .color(GraphColorAttachment::new(
+        let declared = composed.iter().fold(
+          graph.add_raster_pass("window").color(GraphColorAttachment::new(
             window_texture,
             wgpu::LoadOp::Clear(window.clear),
-          ))
-          .record(move |context| {
+          )),
+          |builder, view| {
+            let builder = match &view.present {
+              Some(present) => builder.parameters(present),
+              None => builder,
+            };
+
+            match &view.overlays {
+              Some((overlay, _)) => builder.parameters(overlay),
+              None => builder,
+            }
+          },
+        );
+
+        declared.record(move |context| {
+          if let Some(backdrop) = backdrop {
+            backdrop_pass.draw(context.get_pass(), format, backdrop);
+          }
+
+          for view in &composed {
+            let (rect, shown, binding): (RenderRect, RenderRect, &ViewBinding) = (view.rect, view.shown, view.binding);
+
             let pass: &mut wgpu::RenderPass<'static> = context.get_pass();
 
-            if let Some(backdrop) = backdrop {
-              backdrop_pass.draw(pass, format, backdrop);
+            // The whole viewport, past the window's edges where it reaches them, cropped to what the window shows.
+            pass.set_viewport(
+              rect.x as f32,
+              rect.y as f32,
+              rect.width as f32,
+              rect.height as f32,
+              0.0,
+              1.0,
+            );
+            pass.set_scissor_rect(shown.x as u32, shown.y as u32, shown.width, shown.height);
+
+            match &view.present {
+              Some(parameters) => present.draw(context, format, binding, parameters),
+              None => grid.draw(pass, binding),
             }
 
-            for view in &composed {
-              let (rect, shown, binding): (RenderRect, RenderRect, &ViewBinding) =
-                (view.rect, view.shown, view.binding);
-
-              // The whole viewport, past the window's edges where it reaches them, cropped to what the window shows.
-              pass.set_viewport(
-                rect.x as f32,
-                rect.y as f32,
-                rect.width as f32,
-                rect.height as f32,
-                0.0,
-                1.0,
-              );
-              pass.set_scissor_rect(shown.x as u32, shown.y as u32, shown.width, shown.height);
-
-              match view.present {
-                Some(group) => present.draw(pass, format, binding, group),
-                None => grid.draw(pass, binding),
-              }
-
-              if let Some((group, overlays)) = view.overlays {
-                overlay.draw(pass, format, (binding, group), overlays);
-              }
+            if let Some((parameters, overlays)) = &view.overlays {
+              overlay.draw(context, format, (binding, parameters), overlays);
             }
-          });
+          }
+        });
 
         for (id, capture, _) in &captures {
           if !window.drawn.iter().any(|(drawn, ..)| drawn == id) {

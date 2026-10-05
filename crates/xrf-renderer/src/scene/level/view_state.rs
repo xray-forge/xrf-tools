@@ -16,7 +16,6 @@ use crate::pass::view_binding::ViewBinding;
 use crate::pass::wind_uniform::WindUniform;
 use crate::scene::level::grass_view::GrassView;
 use crate::scene::level::level_overlays::LevelOverlays;
-use crate::scene::level::level_smoothing::LevelSmoothing;
 use crate::scene::level::level_water::LevelWater;
 use crate::scene::level::lights_view::LightsView;
 use crate::scene::level::particles_view::ParticlesView;
@@ -46,10 +45,8 @@ pub struct ViewState {
   pub water: LevelWater,
   /// The trees' sway the last frame drew with.
   pub last_wind: Option<WindUniform>,
-  /// The frame at the viewport's size while it is drawn smaller, with its epoch, and the upscale passes' bind groups:
-  /// EASU reading the scene, RCAS reading the upscaled frame.
-  pub upscale: Option<(UpscaleTargets, [wgpu::BindGroup; 2])>,
-  pub upscale_epoch: u64,
+  /// The frame at the viewport's size while it is drawn smaller: EASU's upscale, then RCAS's sharpening.
+  pub upscale: Option<UpscaleTargets>,
   /// The models' composited clusters this frame, back to front, as `(cluster, place)` entries.
   pub sorted_list: Option<wgpu::Buffer>,
   /// What it draws over its frame.
@@ -58,8 +55,6 @@ pub struct ViewState {
   pub overlays_box: Option<RenderOverlay>,
   /// What the selection marks, for the target it was resolved for and the scene's contents it was resolved with.
   pub selection: Option<(RenderSelectionTarget, usize, Option<StaticSelection>)>,
-  /// The smoothing pass while one smooths the scene as drawn.
-  pub smoothing: Option<LevelSmoothing>,
   /// The eye's adaptation, carried from frame to frame.
   pub exposure: ViewExposure,
   /// What the cull kept, read back without waiting.
@@ -90,8 +85,6 @@ impl ViewState {
       water: LevelWater::default(),
       last_wind: None,
       upscale: None,
-      upscale_epoch: 0,
-      smoothing: None,
       overlays: None,
       overlays_box: None,
       selection: None,

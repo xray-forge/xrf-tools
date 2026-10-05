@@ -4,17 +4,10 @@
 // The weather's sky as the engine draws it: both keyframes' cubes through the half box `RenderSky` draws, their
 // irradiance cubes `hmodel` samples, and the clouds' dome over them, each read with the frame's lighting.
 
-@group(2) @binding(0) var sky_cube_0: texture_cube<f32>;
-@group(2) @binding(1) var sky_cube_1: texture_cube<f32>;
-@group(2) @binding(2) var sky_environment_0: texture_cube<f32>;
-@group(2) @binding(3) var sky_environment_1: texture_cube<f32>;
-@group(2) @binding(4) var sky_clouds_0: texture_2d<f32>;
-@group(2) @binding(5) var sky_clouds_1: texture_2d<f32>;
-// Linear and clamped, as a script binds a sky; linear, repeating and trilinear, as the clouds tile.
-@group(2) @binding(6) var sky_clamp: sampler;
-@group(2) @binding(7) var sky_repeat: sampler;
-// The sun's sprite the lens flare draws in the sky (`sun_texture`).
-@group(2) @binding(9) var sky_sun: texture_2d<f32>;
+// Both keyframes' cubes, irradiance cubes and clouds; linear and clamped, as a script binds a sky, and linear,
+// repeating and trilinear, as the clouds tile; the environment cubes; and the sun's sprite the lens flare draws in the
+// sky (`sun_texture`).
+#import "generated/common/sky"
 
 const SKY_PI: f32 = 3.14159265;
 

@@ -8,22 +8,9 @@
 // The viewport's finished scene put into its rectangle of the window, moved where the water and the particles distort
 // it; or, for a debug view, one of the targets the scene was built from.
 
-@group(1) @binding(0) var scene: texture_2d<f32>;
-// How far the water and the particles move what is seen through them, around what the target is cleared to.
-@group(1) @binding(1) var distortion: texture_2d<f32>;
-@group(1) @binding(2) var depth_target: texture_depth_2d;
-@group(1) @binding(3) var albedo_target: texture_2d<f32>;
-@group(1) @binding(4) var normal_target: texture_2d<f32>;
-@group(1) @binding(5) var material_target: texture_2d<f32>;
-@group(1) @binding(6) var light_target: texture_2d<f32>;
-@group(1) @binding(7) var occlusion_target: texture_2d<f32>;
-@group(1) @binding(8) var<uniform> present: Present;
-// The frame upscaled to the viewport's size, or the scene again where it is drawn at that size.
-@group(1) @binding(9) var upscaled: texture_2d<f32>;
-@group(1) @binding(10) var motion_target: texture_2d<f32>;
-// The bloom, finished in its 256-square target, and how it is read between its texels.
-@group(1) @binding(11) var bloom_target: texture_2d<f32>;
-@group(1) @binding(12) var bloom_sampler: sampler;
+// The scene, what the water and the particles move what is seen through them by, the targets a debug view shows, what
+// the frame shows, the frame upscaled or the scene again, and the bloom, finished in its 256-square target.
+#import "generated/frame/present"
 
 const VIEW_ALBEDO: u32 = 1u;
 const VIEW_GLOSS: u32 = 2u;

@@ -1,8 +1,10 @@
 use xrf_error::XrfResult;
+use xrf_renderer_core::RasterContext;
 
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::fullscreen_pipeline::{buffer_binding, create_fullscreen_pipeline};
 use crate::pass::layout_entries::{storage_entry, uniform_entry};
+use crate::pass::sky_parameters::SkyParameters;
 use crate::shader::shader_library::ShaderLibrary;
 
 /// Draws the sky as the frame shows it, clouds and all, blurred into a viewport's haze map, which the distance fades
@@ -57,10 +59,13 @@ impl SkyHazePass {
     })
   }
 
-  pub fn record(&self, pass: &mut wgpu::RenderPass<'_>, bind_group: &wgpu::BindGroup, sky_group: &wgpu::BindGroup) {
+  pub fn record(&self, context: &mut RasterContext<'_>, bind_group: &wgpu::BindGroup, sky: &SkyParameters<'_>) {
+    context.bind(sky);
+
+    let pass: &mut wgpu::RenderPass<'static> = context.get_pass();
+
     pass.set_pipeline(&self.pipeline);
     pass.set_bind_group(1, bind_group, &[]);
-    pass.set_bind_group(2, sky_group, &[]);
     pass.draw(0..3, 0..1);
   }
 

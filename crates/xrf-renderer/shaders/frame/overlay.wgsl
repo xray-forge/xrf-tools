@@ -6,9 +6,7 @@
 // segments, hidden where the scene stands in front of them if they ask to be, and the sun as a disc where the light
 // comes from.
 
-@group(1) @binding(0) var depth_target: texture_depth_2d;
-@group(1) @binding(1) var<uniform> present: Present;
-@group(1) @binding(2) var<uniform> lighting: Lighting;
+#import "generated/frame/overlay"
 
 // How far out the sun's disc stands, in metres: well inside the far plane, and past whatever is near.
 const SUN_REACH: f32 = 1000.0;

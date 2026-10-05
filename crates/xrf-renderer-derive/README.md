@@ -58,7 +58,9 @@ accesses the pass makes, and what each binding binds this frame. Field kinds:
 - `#[storage]` on a `StorageArray<T>` or `StorageArrayMut<T>`: a graph buffer read, or read and written, as
   `array<T>`.
 - `#[texture(dimension, sample)]` on a `GraphTexture`: `d2`, `d2_array`, `cube`, `cube_array` or `d3`, sampled as
-  `float`, `unfilterable`, `uint`, `sint` or `depth`.
+  `float`, `unfilterable`, `uint`, `sint` or `depth`. On a `[GraphTexture; N]` it is a binding array of `N`,
+  `binding_array<T, N>`, every element sampled; the struct's `ENABLES` then names `wgpu_binding_array`, which
+  `ShaderBindings` writes as an `enable` line above the bindings.
 - `#[storage_texture(dimension, format, access)]` on a `GraphTexture`: `d2`, `d2_array` or `d3`, a format such as
   `rgba16float`, and `read`, `write` or `read_write`.
 - `#[sampler(kind)]` on a `&wgpu::Sampler`: `filtering`, `non_filtering` or `comparison`.

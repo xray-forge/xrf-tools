@@ -1,10 +1,12 @@
-use bytemuck::{Pod, Zeroable};
+use glam::Vec2;
+use xrf_renderer_core::ShaderStruct;
 
-/// What the upscale passes read, as `frame/upscale.wgsl`'s `Upscale` lays it out.
+/// What the upscale passes read, as WGSL's `Upscale`: the frame's size at the viewport, and RCAS's sharpness.
 #[repr(C)]
-#[derive(Clone, Copy, Debug, Default, Pod, Zeroable)]
+#[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
+#[shader(name = "Upscale")]
 pub struct UpscaleUniform {
-  pub output_size: [f32; 2],
+  pub output_size: Vec2,
   pub sharpness: f32,
-  pub pad: f32,
+  pub _pad: f32,
 }

@@ -1,6 +1,6 @@
 use proc_macro2::{Ident, TokenStream};
 use quote::quote;
-use syn::{Attribute, Data, DataStruct, DeriveInput, Error, Fields, LitInt, Meta, Type};
+use syn::{Attribute, Data, DataStruct, DeriveInput, Error, Expr, Fields, LitInt, Meta, Type};
 
 /// One field's binding, read from its attribute.
 enum Binding {
@@ -117,6 +117,13 @@ pub fn expand(input: &DeriveInput) -> syn::Result<TokenStream> {
   let mut resources: Vec<TokenStream> = Vec::new();
   let mut dynamic_offsets: Vec<TokenStream> = Vec::new();
   let indices: Vec<u32> = bindings.iter().map(|(index, ..)| *index).collect();
+  // A binding array needs wgpu's extension enabled in the module declaring it.
+  let enables: Vec<&str> = bindings
+    .iter()
+    .any(|(_, _, ty, binding)| matches!(binding, Binding::Texture { .. }) && get_array_length(ty).is_some())
+    .then_some("wgpu_binding_array")
+    .into_iter()
+    .collect();
 
   for (index, ident, ty, binding) in &bindings {
     let index: u32 = *index;
@@ -161,10 +168,31 @@ pub fn expand(input: &DeriveInput) -> syn::Result<TokenStream> {
           Sample::Depth => quote!(::xrf_renderer_core::wgpu::TextureSampleType::Depth),
         };
 
-        layout_entries.push(quote!(#core::PassBindingLayout::texture(#index, #sample_type, #view)));
-        wgsl.push(quote!(::std::format!("{} {}: {};\n", #prefix, #field_name, #wgsl_type)));
-        texture_accesses.push(quote!((self.#ident, #core::GraphTextureAccess::Sampled)));
-        resources.push(quote!(#core::PassBinding::TextureView(resources.get_texture(self.#ident).view)));
+        match get_array_length(ty) {
+          // A binding array: every element sampled, bound as one array of views.
+          Some(length) => {
+            layout_entries.push(quote! {
+              #core::PassBindingLayout::texture_array(#index, #sample_type, #view, (#length) as u32)
+            });
+            wgsl.push(quote! {
+              ::std::format!("{} {}: binding_array<{}, {}>;\n", #prefix, #field_name, #wgsl_type, #length)
+            });
+            texture_accesses.push(quote! {
+              accesses.extend(self.#ident.iter().map(|texture| (*texture, #core::GraphTextureAccess::Sampled)));
+            });
+            resources.push(quote! {
+              #core::PassBinding::TextureViewArray(
+                self.#ident.iter().map(|texture| resources.get_texture(*texture).view).collect()
+              )
+            });
+          }
+          None => {
+            layout_entries.push(quote!(#core::PassBindingLayout::texture(#index, #sample_type, #view)));
+            wgsl.push(quote!(::std::format!("{} {}: {};\n", #prefix, #field_name, #wgsl_type)));
+            texture_accesses.push(quote!(accesses.push((self.#ident, #core::GraphTextureAccess::Sampled));));
+            resources.push(quote!(#core::PassBinding::TextureView(resources.get_texture(self.#ident).view)));
+          }
+        }
       }
       Binding::StorageTexture {
         dimension,
@@ -209,7 +237,7 @@ pub fn expand(input: &DeriveInput) -> syn::Result<TokenStream> {
           #core::PassBindingLayout::storage_texture(#index, #wgpu_access, #format, #view, #is_writable)
         });
         wgsl.push(quote!(::std::format!("{} {}: {};\n", #prefix, #field_name, #wgsl_type)));
-        texture_accesses.push(quote!((self.#ident, #graph_access)));
+        texture_accesses.push(quote!(accesses.push((self.#ident, #graph_access));));
         resources.push(quote!(#core::PassBinding::TextureView(resources.get_texture(self.#ident).view)));
       }
       Binding::Sampler { kind } => {
@@ -240,6 +268,7 @@ pub fn expand(input: &DeriveInput) -> syn::Result<TokenStream> {
       const GROUP: u32 = #group;
       const LAYOUT_KEY: &'static str = ::core::concat!(::core::module_path!(), "::", #key);
       const BINDINGS: &'static [u32] = &[#(#indices),*];
+      const ENABLES: &'static [&'static str] = &[#(#enables),*];
 
       fn get_layout_entries() -> ::std::vec::Vec<::xrf_renderer_core::wgpu::BindGroupLayoutEntry> {
         ::std::vec![#(#layout_entries),*]
@@ -257,7 +286,10 @@ pub fn expand(input: &DeriveInput) -> syn::Result<TokenStream> {
       }
 
       fn list_texture_accesses(&self) -> ::std::vec::Vec<(#core::GraphTexture, #core::GraphTextureAccess)> {
-        ::std::vec![#(#texture_accesses),*]
+        let mut accesses: ::std::vec::Vec<(#core::GraphTexture, #core::GraphTextureAccess)> = ::std::vec::Vec::new();
+
+        #(#texture_accesses)*
+        accesses
       }
 
       fn list_buffer_accesses(&self) -> ::std::vec::Vec<(#core::GraphBuffer, #core::GraphBufferAccess)> {
@@ -275,6 +307,14 @@ pub fn expand(input: &DeriveInput) -> syn::Result<TokenStream> {
       }
     }
   })
+}
+
+/// The length of a field typed as an array, `[T; N]`, which makes a texture a binding array of `N`.
+fn get_array_length(ty: &Type) -> Option<&Expr> {
+  match ty {
+    Type::Array(array) => Some(&array.len),
+    _ => None,
+  }
 }
 
 fn read_group(attrs: &[Attribute], name: &Ident) -> syn::Result<u32> {

@@ -1,12 +1,12 @@
 use std::ops::Range;
 
 use xrf_error::XrfResult;
+use xrf_renderer_core::{PassParameters, RasterContext};
 
 use crate::frame::view_targets::ViewTargets;
-use crate::pass::fullscreen_pipeline::{buffer_binding, texture_binding};
-use crate::pass::layout_entries::{storage_entry, texture_entry, uniform_entry};
 use crate::pass::particle_batch::ParticleBatch;
 use crate::pass::particle_blend::ParticleBlend;
+use crate::pass::particle_parameters::ParticleParameters;
 use crate::pass::shader_pipelines::{create_checked, create_module};
 use crate::pass::view_binding::ViewBinding;
 use crate::shader::shader_library::ShaderLibrary;
@@ -42,27 +42,7 @@ impl ParticlePass {
     view_layout: &wgpu::BindGroupLayout,
     texture_layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<Self> {
-    let stages: wgpu::ShaderStages = wgpu::ShaderStages::VERTEX_FRAGMENT;
-    let layout: wgpu::BindGroupLayout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-      label: Some("particles"),
-      entries: &[
-        storage_entry(0, stages, false),
-        storage_entry(1, stages, false),
-        uniform_entry(2, stages),
-        texture_entry(
-          3,
-          stages,
-          wgpu::TextureSampleType::Depth,
-          wgpu::TextureViewDimension::D2,
-        ),
-        wgpu::BindGroupLayoutEntry {
-          binding: 4,
-          visibility: stages,
-          ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-          count: None,
-        },
-      ],
-    });
+    let layout: wgpu::BindGroupLayout = ParticleParameters::create_layout(device);
 
     Ok(Self {
       pipelines: Self::create_pipelines(device, shaders, view_layout, &layout, texture_layout)?,
@@ -96,39 +76,19 @@ impl ParticlePass {
     }
   }
 
-  /// What the draws read: the quads' corners, the effects' surfaces, the frame's lighting and the scene's depth.
-  pub fn create_bind_group(
-    &self,
-    device: &wgpu::Device,
-    vertices: &wgpu::Buffer,
-    surfaces: &wgpu::Buffer,
-    lighting: &wgpu::Buffer,
-    targets: &ViewTargets,
-  ) -> wgpu::BindGroup {
-    device.create_bind_group(&wgpu::BindGroupDescriptor {
-      label: Some("particles"),
-      layout: &self.layout,
-      entries: &[
-        buffer_binding(0, vertices),
-        buffer_binding(1, surfaces),
-        buffer_binding(2, lighting),
-        texture_binding(3, &targets.depth),
-        wgpu::BindGroupEntry {
-          binding: 4,
-          resource: wgpu::BindingResource::Sampler(&self.clamped_sampler),
-        },
-      ],
-    })
+  /// The sampler its draws read the scene's depth through, which their parameters bind.
+  pub fn get_clamped_sampler(&self) -> &wgpu::Sampler {
+    &self.clamped_sampler
   }
 
   /// Draws every batch into the scene the pass draws into, each blended as its own.
   pub fn record_colour(
     &self,
-    pass: &mut wgpu::RenderPass<'_>,
-    groups: (&ViewBinding, &wgpu::BindGroup, &wgpu::BindGroup),
+    context: &mut RasterContext<'_>,
+    groups: (&ViewBinding, &ParticleParameters<'_>, &wgpu::BindGroup),
     batches: &[ParticleBatch],
   ) {
-    Self::bind(pass, groups);
+    let pass: &mut wgpu::RenderPass<'static> = Self::bind(context, groups);
 
     for batch in batches {
       pass.set_pipeline(&self.pipelines.colour[batch.blend.get_index()]);
@@ -139,11 +99,11 @@ impl ParticlePass {
   /// Draws the distorting sprites' runs into the distortion target the pass draws into.
   pub fn record_distortion(
     &self,
-    pass: &mut wgpu::RenderPass<'_>,
-    groups: (&ViewBinding, &wgpu::BindGroup, &wgpu::BindGroup),
+    context: &mut RasterContext<'_>,
+    groups: (&ViewBinding, &ParticleParameters<'_>, &wgpu::BindGroup),
     runs: &[Range<u32>],
   ) {
-    Self::bind(pass, groups);
+    let pass: &mut wgpu::RenderPass<'static> = Self::bind(context, groups);
     pass.set_pipeline(&self.pipelines.distortion);
 
     for run in runs {
@@ -151,13 +111,17 @@ impl ParticlePass {
     }
   }
 
-  fn bind(
-    pass: &mut wgpu::RenderPass<'_>,
-    (view, bind_group, texture_group): (&ViewBinding, &wgpu::BindGroup, &wgpu::BindGroup),
-  ) {
+  fn bind<'c>(
+    context: &'c mut RasterContext<'_>,
+    (view, parameters, texture_group): (&ViewBinding, &ParticleParameters<'_>, &wgpu::BindGroup),
+  ) -> &'c mut wgpu::RenderPass<'static> {
+    context.bind(parameters);
+
+    let pass: &mut wgpu::RenderPass<'static> = context.get_pass();
+
     pass.set_bind_group(0, &view.bind_group, &[]);
-    pass.set_bind_group(1, bind_group, &[]);
     pass.set_bind_group(2, texture_group, &[]);
+    pass
   }
 
   /// The vertices drawing a run of quads, six a quad as `QuadIB` indexes them.

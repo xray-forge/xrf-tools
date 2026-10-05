@@ -1,13 +1,9 @@
 use crate::pass::ambient_occlusion_uniform::AmbientOcclusionUniform;
-use crate::pass::bloom_pass::BloomGroups;
-use crate::pass::bloom_uniform::BloomUniform;
 use crate::pass::fsr_uniform::FsrUniform;
 use crate::pass::lighting_uniform::LightingUniform;
-use crate::pass::present_uniform::PresentUniform;
 use crate::pass::rain_uniform::RainUniform;
 use crate::pass::temporal_uniform::TemporalUniform;
 use crate::pass::thunder_uniform::ThunderUniform;
-use crate::pass::upscale_uniform::UpscaleUniform;
 use crate::pass::view_light_groups::ViewLightGroups;
 use crate::pass::wet_uniform::WetUniform;
 use crate::scene::level::level_flares::LevelFlares;
@@ -26,17 +22,8 @@ pub struct SceneRenderer {
   pub lighting: wgpu::Buffer,
   /// The lighting passes' bind groups, made again with the targets, and the shadow maps' epoch they bind.
   pub light_groups: Option<(u64, ViewLightGroups)>,
-  /// The sky's textures as bound, with the cache's generation and the references they bind.
-  pub sky_group: Option<(SkyGroupKey, wgpu::BindGroup)>,
-  /// What the present pass shows, a [`PresentUniform`].
-  pub present: wgpu::Buffer,
   pub temporal_uniform: wgpu::Buffer,
   pub fsr_uniform: wgpu::Buffer,
-  pub upscale_uniform: wgpu::Buffer,
-  /// The present pass's bind group, with the targets' and the upscale's epochs and the frame it shows.
-  pub present_group: Option<((u64, u64, usize), wgpu::BindGroup)>,
-  /// The overlay pass's bind group, with the targets' epoch it binds.
-  pub overlay_group: Option<(u64, wgpu::BindGroup)>,
   pub rain_cover: RainCover,
   pub rain: wgpu::Buffer,
   /// The rain's bind group, with the weather textures' generation and the splash's weather it binds.
@@ -54,9 +41,6 @@ pub struct SceneRenderer {
   /// Every bolt model of the level's weather, with the weather they were built for, and an empty one the glows bind.
   pub thunder_models: Option<(usize, Vec<WeatherModelBuffers>)>,
   pub no_model: WeatherModelBuffers,
-  /// What the bloom's build and its two blurs read, and what they draw with, at the targets' epoch.
-  pub bloom_uniforms: [wgpu::Buffer; 3],
-  pub bloom_groups: Option<(u64, BloomGroups)>,
   pub shadows: LevelShadows,
   pub occlusion_uniform: wgpu::Buffer,
 }
@@ -76,13 +60,8 @@ impl SceneRenderer {
       rain_cover: RainCover::new(device, view_layout, args_size),
       lighting: uniform("lighting", size_of::<LightingUniform>()),
       light_groups: None,
-      sky_group: None,
-      present: uniform("present", size_of::<PresentUniform>()),
       temporal_uniform: uniform("temporal", size_of::<TemporalUniform>()),
       fsr_uniform: uniform("fsr2", size_of::<FsrUniform>()),
-      upscale_uniform: uniform("upscale", size_of::<UpscaleUniform>()),
-      present_group: None,
-      overlay_group: None,
       rain: uniform("rain", size_of::<RainUniform>()),
       rain_group: None,
       wet: uniform("wet", size_of::<WetUniform>()),
@@ -93,9 +72,6 @@ impl SceneRenderer {
       splash: None,
       thunder_models: None,
       no_model: WeatherModelBuffers::new(device, None),
-      bloom_uniforms: ["bloom build", "bloom across", "bloom down"]
-        .map(|label| uniform(label, size_of::<BloomUniform>())),
-      bloom_groups: None,
       shadows: LevelShadows::new(device),
       occlusion_uniform: uniform("ambient occlusion", size_of::<AmbientOcclusionUniform>()),
     }

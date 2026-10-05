@@ -1,10 +1,9 @@
 use std::collections::HashMap;
 
 use xrf_error::XrfResult;
+use xrf_renderer_core::{PassParameters, RasterContext};
 
-use crate::frame::view_targets::ViewTargets;
-use crate::pass::fullscreen_pipeline::{buffer_binding, texture_binding};
-use crate::pass::layout_entries::{texture_entry, uniform_entry};
+use crate::pass::overlay_parameters::OverlayParameters;
 use crate::pass::shader_pipelines::{create_checked, create_module};
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::level_overlays::LevelOverlays;
@@ -22,21 +21,7 @@ pub struct OverlayPass {
 
 impl OverlayPass {
   pub fn new(device: &wgpu::Device, shaders: &ShaderLibrary, view_layout: &wgpu::BindGroupLayout) -> Self {
-    let fragment: wgpu::ShaderStages = wgpu::ShaderStages::FRAGMENT;
-    let both: wgpu::ShaderStages = wgpu::ShaderStages::VERTEX_FRAGMENT;
-    let layout: wgpu::BindGroupLayout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-      label: Some("overlay"),
-      entries: &[
-        texture_entry(
-          0,
-          fragment,
-          wgpu::TextureSampleType::Depth,
-          wgpu::TextureViewDimension::D2,
-        ),
-        uniform_entry(1, both),
-        uniform_entry(2, both),
-      ],
-    });
+    let layout: wgpu::BindGroupLayout = OverlayParameters::create_layout(device);
 
     Self {
       layout,
@@ -135,39 +120,23 @@ impl OverlayPass {
     Ok(())
   }
 
-  /// Binds what the overlays read of a viewport's frame: its depth, where it stands in the window, and its lighting.
-  pub fn create_bind_group(
-    &self,
-    device: &wgpu::Device,
-    targets: &ViewTargets,
-    present: &wgpu::Buffer,
-    lighting: &wgpu::Buffer,
-  ) -> wgpu::BindGroup {
-    device.create_bind_group(&wgpu::BindGroupDescriptor {
-      label: Some("overlay"),
-      layout: &self.layout,
-      entries: &[
-        texture_binding(0, &targets.depth),
-        buffer_binding(1, present),
-        buffer_binding(2, lighting),
-      ],
-    })
-  }
-
   /// Draws into the window's pass, whose viewport and scissor are the viewport's rectangle already.
   pub fn draw(
     &self,
-    pass: &mut wgpu::RenderPass<'_>,
+    context: &mut RasterContext<'_>,
     format: wgpu::TextureFormat,
-    (view, bind_group): (&ViewBinding, &wgpu::BindGroup),
+    (view, parameters): (&ViewBinding, &OverlayParameters),
     overlays: &LevelOverlays,
   ) {
     let Some([lines, sun, points]) = self.pipelines.get(&format) else {
       return;
     };
 
+    context.bind(parameters);
+
+    let pass: &mut wgpu::RenderPass<'static> = context.get_pass();
+
     pass.set_bind_group(0, &view.bind_group, &[]);
-    pass.set_bind_group(1, bind_group, &[]);
 
     for (buffer, count) in [&overlays.lines, &overlays.skeleton_lines].into_iter().flatten() {
       pass.set_pipeline(lines);

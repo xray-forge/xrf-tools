@@ -123,8 +123,9 @@ because WGSL lays them out otherwise.
 
 A pass's bind group is declared as a struct with `#[derive(PassParameters)]` (`xrf-renderer-derive`'s README lists the
 field kinds). A builder's `parameters(&p)` adds the accesses the struct makes, and the recording binds it with
-`context.bind(&p)`, at the group the struct names, with its dynamic offsets. Groups below it that the scene owns (a
-bindless texture array, the scene's buffers) are bound on the context's render pass directly.
+`context.bind(&p)`, at the group the struct names, with its dynamic offsets; `bind_at` binds it at another index, for a
+pipeline holding the same layout elsewhere. Groups below it that the scene owns (a bindless texture array, the scene's
+buffers) are bound on the context's render pass directly.
 
 - **`create_layout`** makes the struct's layout; layouts of the same entries are interchangeable, so a pipeline made
   once with it takes the bind groups any runtime's cache makes.

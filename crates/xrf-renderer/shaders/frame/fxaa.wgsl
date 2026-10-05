@@ -4,8 +4,7 @@
 // of the luma around a pixel, walked along to its ends, and the pixel blended across it by where along the edge it
 // lies, with a sub-pixel term for features thinner than a pixel.
 
-@group(0) @binding(0) var frame: texture_2d<f32>;
-@group(0) @binding(1) var frame_sampler: sampler;
+#import "generated/frame/fxaa"
 
 // The least contrast an edge needs, and the least against the brightest of its neighbours.
 const EDGE_THRESHOLD: f32 = 0.166;

@@ -1,8 +1,9 @@
 use xrf_error::XrfResult;
+use xrf_renderer_core::{PassParameters, RasterContext};
 
 use crate::frame::view_targets::ViewTargets;
-use crate::pass::fullscreen_pipeline::{buffer_binding, create_fullscreen_pipeline, texture_binding};
-use crate::pass::layout_entries::{texture_entry, uniform_entry};
+use crate::pass::bloom_parameters::BloomParameters;
+use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline;
 use crate::shader::shader_library::ShaderLibrary;
 
 /// The engine's bloom (`phase_bloom`): the frame's high part built into the first bloom target, blurred across into the
@@ -16,33 +17,12 @@ pub struct BloomPass {
   generation: u64,
 }
 
-/// What each of the bloom's three draws reads: the build's, then across's, then down's.
-pub struct BloomGroups(pub [wgpu::BindGroup; 3]);
-
 impl BloomPass {
   /// # Errors
   ///
   /// Returns an error when the shader does not compose or compile.
   pub fn new(device: &wgpu::Device, shaders: &ShaderLibrary) -> XrfResult<Self> {
-    let fragment: wgpu::ShaderStages = wgpu::ShaderStages::FRAGMENT;
-    let layout: wgpu::BindGroupLayout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-      label: Some("bloom"),
-      entries: &[
-        texture_entry(
-          0,
-          fragment,
-          wgpu::TextureSampleType::Float { filterable: true },
-          wgpu::TextureViewDimension::D2,
-        ),
-        wgpu::BindGroupLayoutEntry {
-          binding: 1,
-          visibility: fragment,
-          ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-          count: None,
-        },
-        uniform_entry(2, fragment),
-      ],
-    });
+    let layout: wgpu::BindGroupLayout = BloomParameters::create_layout(device);
     let (build, filter) = Self::create_pipelines(device, shaders, &layout)?;
 
     Ok(Self {
@@ -70,44 +50,21 @@ impl BloomPass {
     }
   }
 
-  /// What the three draws read: the high part, then each bloom target in turn, each with its own uniform.
-  pub fn create_bind_groups(
-    &self,
-    device: &wgpu::Device,
-    targets: &ViewTargets,
-    uniforms: &[wgpu::Buffer; 3],
-  ) -> BloomGroups {
-    let group = |label: &str, source: &wgpu::TextureView, uniform: &wgpu::Buffer| {
-      device.create_bind_group(&wgpu::BindGroupDescriptor {
-        label: Some(label),
-        layout: &self.layout,
-        entries: &[
-          texture_binding(0, source),
-          wgpu::BindGroupEntry {
-            binding: 1,
-            resource: wgpu::BindingResource::Sampler(&self.sampler),
-          },
-          buffer_binding(2, uniform),
-        ],
-      })
-    };
-
-    BloomGroups([
-      group("bloom build", &targets.high, &uniforms[0]),
-      group("bloom across", &targets.bloom[0], &uniforms[1]),
-      group("bloom down", &targets.bloom[1], &uniforms[2]),
-    ])
+  /// The sampler its draws read their source with, which their parameters bind.
+  pub fn get_sampler(&self) -> &wgpu::Sampler {
+    &self.sampler
   }
 
-  /// Builds the bloom into the first target, blurs it across into the second and down back into the first.
   /// The bloom's three stages: built from the high target, blurred across, then down.
   pub const STAGES: [&'static str; 3] = ["bloom build", "bloom across", "bloom down"];
 
   /// Draws one of its stages into the target the pass draws into.
-  pub fn record(&self, pass: &mut wgpu::RenderPass<'_>, stage: usize, groups: &BloomGroups) {
-    pass.set_pipeline(if stage == 0 { &self.build } else { &self.filter });
-    pass.set_bind_group(0, &groups.0[stage], &[]);
-    pass.draw(0..3, 0..1);
+  pub fn record(&self, context: &mut RasterContext<'_>, stage: usize, parameters: &BloomParameters<'_>) {
+    context
+      .get_pass()
+      .set_pipeline(if stage == 0 { &self.build } else { &self.filter });
+    context.bind(parameters);
+    context.get_pass().draw(0..3, 0..1);
   }
 
   fn create_pipelines(

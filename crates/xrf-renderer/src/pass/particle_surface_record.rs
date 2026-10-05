@@ -1,6 +1,9 @@
+use xrf_renderer_core::ShaderStruct;
+
 /// How one particle effect's sprite is sampled and tested, as `shaders/frame/particles.wgsl` reads it.
 #[repr(C)]
-#[derive(Clone, Copy, Debug, Default, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
+#[shader(name = "ParticleSurface")]
 pub struct ParticleSurfaceRecord {
   /// The sprite's base texture, by its bindless slot.
   pub texture: u32,

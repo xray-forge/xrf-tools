@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use xrf_error::{XrfError, XrfResult};
 
@@ -9,6 +9,7 @@ use crate::param::pass_parameters::PassParameters;
 #[derive(Default)]
 pub struct ShaderBindings {
   declarations: BTreeMap<(u32, u32), String>,
+  enables: BTreeSet<&'static str>,
 }
 
 impl ShaderBindings {
@@ -23,6 +24,8 @@ impl ShaderBindings {
   /// Returns an error when `P` declares a binding that parameters added before declare otherwise.
   pub fn add<P: PassParameters>(&mut self) -> XrfResult<&mut Self> {
     let wgsl: String = P::get_wgsl_bindings();
+
+    self.enables.extend(P::ENABLES);
 
     for (index, line) in P::BINDINGS.iter().zip(wgsl.lines()) {
       match self.declarations.get(&(P::GROUP, *index)) {
@@ -42,7 +45,11 @@ impl ShaderBindings {
     Ok(self)
   }
 
+  /// The extensions its bindings need enabled, then the bindings.
   pub fn to_wgsl(&self) -> String {
-    self.declarations.values().map(|line| format!("{line}\n")).collect()
+    let enables = self.enables.iter().map(|name| format!("enable {name};\n"));
+    let declarations = self.declarations.values().map(|line| format!("{line}\n"));
+
+    enables.chain(declarations).collect()
   }
 }

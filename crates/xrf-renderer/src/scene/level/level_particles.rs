@@ -43,10 +43,8 @@ pub struct LevelParticles {
   finished: Vec<(ProxyHandle<ParticleEmitterProxy>, PlacedEffect)>,
   workers: RenderWorkers,
   started: Instant,
-  /// Each surface's record, which every view's particle pass reads, and how many times it was made, which their bind
-  /// groups follow.
+  /// Each surface's record, which every view's particle pass reads.
   surface_buffer: wgpu::Buffer,
-  surfaces_generation: u64,
   report: ParticlesTally,
 }
 
@@ -90,7 +88,6 @@ impl LevelParticles {
         usage: wgpu::BufferUsages::STORAGE,
         mapped_at_creation: false,
       }),
-      surfaces_generation: 0,
       report: ParticlesTally::default(),
     }
   }
@@ -164,7 +161,6 @@ impl LevelParticles {
       contents: bytemuck::cast_slice(&records),
       usage: wgpu::BufferUsages::STORAGE,
     });
-    self.surfaces_generation += 1;
     self.systems = Some(LevelSystems {
       library: read.library,
       rules: read.rules,
@@ -375,8 +371,8 @@ impl LevelParticles {
   }
 
   /// Every surface's record, which each view's particle pass reads, and how many times it was made.
-  pub fn get_surfaces(&self) -> (&wgpu::Buffer, u64) {
-    (&self.surface_buffer, self.surfaces_generation)
+  pub fn get_surfaces(&self) -> &wgpu::Buffer {
+    &self.surface_buffer
   }
 
   /// The texture slots the sprites sample.

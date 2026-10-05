@@ -1,9 +1,11 @@
 use xrf_error::XrfResult;
+use xrf_renderer_core::RasterContext;
 
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::fullscreen_pipeline::{create_fullscreen_pipeline_into, texture_binding};
 use crate::pass::layout_entries::{storage_entry, texture_entry, uniform_entry};
 use crate::pass::material_table::MaterialTable;
+use crate::pass::sky_parameters::SkyParameters;
 use crate::pass::view_binding::ViewBinding;
 use crate::shader::shader_library::ShaderLibrary;
 
@@ -104,15 +106,18 @@ impl CombinePass {
 
   pub fn record(
     &self,
-    pass: &mut wgpu::RenderPass<'_>,
+    context: &mut RasterContext<'_>,
     view: &ViewBinding,
     bind_group: &wgpu::BindGroup,
-    sky_group: &wgpu::BindGroup,
+    sky: &SkyParameters<'_>,
   ) {
+    context.bind(sky);
+
+    let pass: &mut wgpu::RenderPass<'static> = context.get_pass();
+
     pass.set_pipeline(&self.pipeline);
     pass.set_bind_group(0, &view.bind_group, &[]);
     pass.set_bind_group(1, bind_group, &[]);
-    pass.set_bind_group(2, sky_group, &[]);
     pass.draw(0..3, 0..1);
   }
 

@@ -1,15 +1,13 @@
-use std::num::NonZeroU32;
+use xrf_renderer_core::{FrameGraph, GraphBindings, GraphTexture, PassParameters};
 
 use crate::lighting::render_sky::RenderSky;
-use crate::pass::fullscreen_pipeline::texture_binding;
-use crate::pass::layout_entries::texture_entry;
-use crate::scene::texture::texture_cache::ENVIRONMENT_SLOTS;
+use crate::pass::sky_parameters::SkyParameters;
+use crate::scene::level::sky_views::SkyViews;
 use crate::scene::texture::weather_texture_cache::WeatherTextureCache;
 use crate::scene::texture::weather_texture_kind::WeatherTextureKind;
 
-/// What every pass drawing the weather's sky binds as its third group, as `shaders/common/sky.wgsl` declares it: both
-/// keyframes' sky cubes, their irradiance cubes and their clouds, and the two samplers they are read through; and the
-/// cubes environment-mapped models mix toward, which are weather textures too and share a group without buffers.
+/// What every pass drawing the weather's sky binds as its sky group: the layout [`SkyParameters`] make and the two
+/// samplers they read through, and the views a frame's sky takes from the weather textures.
 pub struct SkyBindings {
   layout: wgpu::BindGroupLayout,
   clamp: wgpu::Sampler,
@@ -18,43 +16,8 @@ pub struct SkyBindings {
 
 impl SkyBindings {
   pub fn new(device: &wgpu::Device) -> Self {
-    let fragment: wgpu::ShaderStages = wgpu::ShaderStages::FRAGMENT;
-    let filtered: wgpu::TextureSampleType = wgpu::TextureSampleType::Float { filterable: true };
-    let cube: wgpu::TextureViewDimension = wgpu::TextureViewDimension::Cube;
-    let flat: wgpu::TextureViewDimension = wgpu::TextureViewDimension::D2;
-    let sampler = |binding: u32| wgpu::BindGroupLayoutEntry {
-      binding,
-      visibility: fragment,
-      ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-      count: None,
-    };
-    let layout: wgpu::BindGroupLayout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-      label: Some("sky"),
-      entries: &[
-        texture_entry(0, fragment, filtered, cube),
-        texture_entry(1, fragment, filtered, cube),
-        texture_entry(2, fragment, filtered, cube),
-        texture_entry(3, fragment, filtered, cube),
-        texture_entry(4, fragment, filtered, flat),
-        texture_entry(5, fragment, filtered, flat),
-        sampler(6),
-        sampler(7),
-        wgpu::BindGroupLayoutEntry {
-          binding: 8,
-          visibility: fragment,
-          ty: wgpu::BindingType::Texture {
-            sample_type: filtered,
-            view_dimension: cube,
-            multisampled: false,
-          },
-          count: NonZeroU32::new(ENVIRONMENT_SLOTS),
-        },
-        texture_entry(9, fragment, filtered, flat),
-      ],
-    });
-
     Self {
-      layout,
+      layout: SkyParameters::create_layout(device),
       clamp: device.create_sampler(&wgpu::SamplerDescriptor {
         label: Some("sky clamp"),
         mag_filter: wgpu::FilterMode::Linear,
@@ -83,52 +46,66 @@ impl SkyBindings {
     &self.clamp
   }
 
-  /// Binds a sky's textures, the sun's sprite and the environment cubes as the cache holds them now, each slot its kind's
+  /// A sky's textures, the sun's sprite and the environment cubes as the cache holds them now, each slot its kind's
   /// placeholder until its file is up; the first environment slot, and every one past `environments`, stands for none.
-  pub fn create_bind_group(
+  pub fn collect(
     &self,
-    device: &wgpu::Device,
     cache: &WeatherTextureCache,
     (sky, sun): (&RenderSky, Option<&str>),
     environments: &[String],
-  ) -> wgpu::BindGroup {
-    let view = |reference: &Option<String>, kind: WeatherTextureKind| cache.get_view(reference.as_deref(), kind);
-    let environment_views: Vec<&wgpu::TextureView> = (0..ENVIRONMENT_SLOTS as usize)
-      .map(|slot| {
+  ) -> SkyViews {
+    let view =
+      |reference: &Option<String>, kind: WeatherTextureKind| cache.get_view(reference.as_deref(), kind).clone();
+
+    SkyViews {
+      cubes: [0, 1].map(|index| view(&sky.textures[index], WeatherTextureKind::Cube)),
+      irradiance: [0, 1].map(|index| view(&sky.environments[index], WeatherTextureKind::Cube)),
+      clouds: [0, 1].map(|index| view(&sky.clouds.textures[index], WeatherTextureKind::Flat)),
+      sun: cache.get_view(sun, WeatherTextureKind::Flat).clone(),
+      environments: std::array::from_fn(|slot| {
         let reference: Option<&str> = slot
           .checked_sub(1)
           .and_then(|index| environments.get(index))
           .filter(|reference| !reference.is_empty())
           .map(String::as_str);
 
-        cache.get_view(reference, WeatherTextureKind::Cube)
-      })
-      .collect();
+        cache.get_view(reference, WeatherTextureKind::Cube).clone()
+      }),
+    }
+  }
 
-    device.create_bind_group(&wgpu::BindGroupDescriptor {
-      label: Some("sky"),
-      layout: &self.layout,
-      entries: &[
-        texture_binding(0, view(&sky.textures[0], WeatherTextureKind::Cube)),
-        texture_binding(1, view(&sky.textures[1], WeatherTextureKind::Cube)),
-        texture_binding(2, view(&sky.environments[0], WeatherTextureKind::Cube)),
-        texture_binding(3, view(&sky.environments[1], WeatherTextureKind::Cube)),
-        texture_binding(4, view(&sky.clouds.textures[0], WeatherTextureKind::Flat)),
-        texture_binding(5, view(&sky.clouds.textures[1], WeatherTextureKind::Flat)),
-        wgpu::BindGroupEntry {
-          binding: 6,
-          resource: wgpu::BindingResource::Sampler(&self.clamp),
-        },
-        wgpu::BindGroupEntry {
-          binding: 7,
-          resource: wgpu::BindingResource::Sampler(&self.repeat),
-        },
-        wgpu::BindGroupEntry {
-          binding: 8,
-          resource: wgpu::BindingResource::TextureViewArray(&environment_views),
-        },
-        texture_binding(9, cache.get_view(sun, WeatherTextureKind::Flat)),
-      ],
-    })
+  /// Imports a frame's sky views into its graph, as the parameters every pass drawing the sky binds.
+  pub fn import<'r>(
+    &'r self,
+    views: &'r SkyViews,
+    graph: &mut FrameGraph<'_>,
+    bindings: &mut GraphBindings<'r>,
+  ) -> SkyParameters<'r> {
+    let mut import = |label: &'static str, view: &'r wgpu::TextureView| bindings.import_view(&mut *graph, label, view);
+    let [sky_cube_0, sky_cube_1] =
+      [("sky cube 0", &views.cubes[0]), ("sky cube 1", &views.cubes[1])].map(|(label, view)| import(label, view));
+    let [sky_environment_0, sky_environment_1] = [
+      ("sky irradiance 0", &views.irradiance[0]),
+      ("sky irradiance 1", &views.irradiance[1]),
+    ]
+    .map(|(label, view)| import(label, view));
+    let [sky_clouds_0, sky_clouds_1] =
+      [("sky clouds 0", &views.clouds[0]), ("sky clouds 1", &views.clouds[1])].map(|(label, view)| import(label, view));
+    let sky_sun: GraphTexture = import("sky sun", &views.sun);
+    let environments: [GraphTexture; _] =
+      std::array::from_fn(|slot| import("environment cube", &views.environments[slot]));
+
+    SkyParameters {
+      sky_cube_0,
+      sky_cube_1,
+      sky_environment_0,
+      sky_environment_1,
+      sky_clouds_0,
+      sky_clouds_1,
+      sky_clamp: &self.clamp,
+      sky_repeat: &self.repeat,
+      environments,
+      sky_sun,
+    }
   }
 }

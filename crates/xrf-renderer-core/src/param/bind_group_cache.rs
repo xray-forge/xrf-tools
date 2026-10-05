@@ -76,6 +76,9 @@ impl BindGroupCache {
             BindingKey::Buffer((*buffer).clone(), Some((*offset, *size)))
           }
           PassBinding::TextureView(view) => BindingKey::TextureView((*view).clone()),
+          PassBinding::TextureViewArray(views) => {
+            BindingKey::TextureViewArray(views.iter().map(|view| (*view).clone()).collect())
+          }
           PassBinding::Sampler(sampler) => BindingKey::Sampler((*sampler).clone()),
         })
         .collect(),
@@ -96,6 +99,7 @@ impl BindGroupCache {
               size: wgpu::BufferSize::new(*size),
             }),
             PassBinding::TextureView(view) => wgpu::BindingResource::TextureView(view),
+            PassBinding::TextureViewArray(views) => wgpu::BindingResource::TextureViewArray(views),
             PassBinding::Sampler(sampler) => wgpu::BindingResource::Sampler(sampler),
           },
         })

@@ -1,10 +1,10 @@
 use xrf_error::{XrfError, XrfResult};
+use xrf_renderer_core::{PassParameters, RasterContext};
 
-use crate::frame::smaa_targets::SmaaTargets;
 use crate::frame::view_targets::ViewTargets;
 use crate::host::render_bundle::RenderBundle;
-use crate::pass::fullscreen_pipeline::{create_fullscreen_pipeline, texture_binding};
-use crate::pass::layout_entries::texture_entry;
+use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline;
+use crate::pass::smaa_parameters::SmaaParameters;
 use crate::shader::shader_library::ShaderLibrary;
 
 /// `AreaTex` and `SearchTex` of SMAA v2.8 (MIT, Jorge Jimenez et al.), as three.js's `SMAANode` carries them, by their
@@ -13,7 +13,7 @@ const AREA_TEXTURE: &str = "smaa/area.png";
 const SEARCH_TEXTURE: &str = "smaa/search.png";
 
 /// SMAA 1x over a viewport's scene as drawn: its edges, their blending weights, then the scene blended across them into
-/// a target the scene is copied back from.
+/// a frame's target the scene is copied back from.
 pub struct SmaaPass {
   layout: wgpu::BindGroupLayout,
   /// The edges', the weights' and the blend's.
@@ -28,6 +28,9 @@ pub struct SmaaPass {
 }
 
 impl SmaaPass {
+  /// The edges' and the blend weights' format.
+  pub const TARGET_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
+
   /// # Errors
   ///
   /// Returns an error when the shader does not compose or compile, or a lookup texture cannot be read or decoded.
@@ -37,27 +40,7 @@ impl SmaaPass {
     shaders: &ShaderLibrary,
     bundle: &dyn RenderBundle,
   ) -> XrfResult<Self> {
-    let fragment: wgpu::ShaderStages = wgpu::ShaderStages::FRAGMENT;
-    let filtered: wgpu::TextureSampleType = wgpu::TextureSampleType::Float { filterable: true };
-    let flat: wgpu::TextureViewDimension = wgpu::TextureViewDimension::D2;
-    let sampler = |binding: u32| wgpu::BindGroupLayoutEntry {
-      binding,
-      visibility: fragment,
-      ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-      count: None,
-    };
-    let layout: wgpu::BindGroupLayout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-      label: Some("smaa"),
-      entries: &[
-        texture_entry(0, fragment, filtered, flat),
-        texture_entry(1, fragment, filtered, flat),
-        texture_entry(2, fragment, filtered, flat),
-        texture_entry(3, fragment, filtered, flat),
-        texture_entry(4, fragment, filtered, flat),
-        sampler(5),
-        sampler(6),
-      ],
-    });
+    let layout: wgpu::BindGroupLayout = SmaaParameters::create_layout(device);
     let area: image::RgbImage =
       image::load_from_memory_with_format(&bundle.read_bundled(AREA_TEXTURE)?, image::ImageFormat::Png)
         .map_err(|error| XrfError::new_unexpected_error(format!("SMAA's area texture does not decode: {error}")))?
@@ -111,47 +94,21 @@ impl SmaaPass {
     }
   }
 
-  /// One bind group a stage: each binds an empty texture where it would read the target it writes.
-  pub fn create_bind_groups(
-    &self,
-    device: &wgpu::Device,
-    targets: &ViewTargets,
-    smaa: &SmaaTargets,
-  ) -> [wgpu::BindGroup; 3] {
-    [
-      (&self.empty, &self.empty),
-      (&smaa.edges, &self.empty),
-      (&smaa.edges, &smaa.weights),
-    ]
-    .map(|(edges, weights)| {
-      device.create_bind_group(&wgpu::BindGroupDescriptor {
-        label: Some("smaa"),
-        layout: &self.layout,
-        entries: &[
-          texture_binding(0, &targets.scene),
-          texture_binding(1, edges),
-          texture_binding(2, weights),
-          texture_binding(3, &self.area),
-          texture_binding(4, &self.search),
-          wgpu::BindGroupEntry {
-            binding: 5,
-            resource: wgpu::BindingResource::Sampler(&self.linear),
-          },
-          wgpu::BindGroupEntry {
-            binding: 6,
-            resource: wgpu::BindingResource::Sampler(&self.point),
-          },
-        ],
-      })
-    })
+  /// The area and search lookups, and the empty texture a stage reads in place of what it writes or precedes.
+  pub fn get_lookups(&self) -> [&wgpu::TextureView; 3] {
+    [&self.area, &self.search, &self.empty]
   }
 
-  /// The three stages, the last blending into `target`.
+  /// The linear and point samplers its stages read with.
+  pub fn get_samplers(&self) -> [&wgpu::Sampler; 2] {
+    [&self.linear, &self.point]
+  }
+
   /// Draws one of its three stages into the target the pass draws into: the edges, the blend weights, then the blend.
-  pub fn record(&self, pass: &mut wgpu::RenderPass<'_>, stage: usize, groups: &[wgpu::BindGroup]) {
-    pass.set_pipeline(&self.pipelines[stage]);
-    pass.set_bind_group(0, &groups[stage], &[]);
-    pass.draw(0..3, 0..1);
+  pub fn record(&self, context: &mut RasterContext<'_>, stage: usize, parameters: &SmaaParameters<'_>) {
+    context.get_pass().set_pipeline(&self.pipelines[stage]);
+    context.bind(parameters);
+    context.get_pass().draw(0..3, 0..1);
   }
 
   fn create_pipelines(
@@ -164,8 +121,8 @@ impl SmaaPass {
     };
 
     Ok([
-      create("fs_smaa_edges", SmaaTargets::FORMAT)?,
-      create("fs_smaa_weights", SmaaTargets::FORMAT)?,
+      create("fs_smaa_edges", Self::TARGET_FORMAT)?,
+      create("fs_smaa_weights", Self::TARGET_FORMAT)?,
       create("fs_smaa_blend", ViewTargets::SCENE)?,
     ])
   }

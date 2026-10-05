@@ -46,6 +46,19 @@ pub struct Blur<'a> {
   pub linear: &'a wgpu::Sampler,
 }
 
+/// A texture and a binding array of four.
+#[derive(PassParameters)]
+#[parameters(group = 3)]
+pub struct Environment {
+  #[texture(cube, float)]
+  pub sky: GraphTexture,
+  #[texture(cube, float)]
+  pub cubes: [GraphTexture; ENVIRONMENT_CUBES],
+}
+
+/// The cubes [`Environment`] binds.
+pub const ENVIRONMENT_CUBES: usize = 4;
+
 /// Textures alone, which need no device to build.
 #[derive(PassParameters)]
 #[parameters(group = 1)]

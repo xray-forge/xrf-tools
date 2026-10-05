@@ -113,6 +113,38 @@ const EMBEDDED: &[(&str, &str)] = &[
   ("frame/wet_apply", include_str!("../../shaders/frame/wet_apply.wgsl")),
   ("frame/wet_patch", include_str!("../../shaders/frame/wet_patch.wgsl")),
   (
+    "generated/common/sky",
+    include_str!("../../shaders/generated/common/sky.wgsl"),
+  ),
+  (
+    "generated/frame/bloom",
+    include_str!("../../shaders/generated/frame/bloom.wgsl"),
+  ),
+  (
+    "generated/frame/fxaa",
+    include_str!("../../shaders/generated/frame/fxaa.wgsl"),
+  ),
+  (
+    "generated/frame/overlay",
+    include_str!("../../shaders/generated/frame/overlay.wgsl"),
+  ),
+  (
+    "generated/frame/particles",
+    include_str!("../../shaders/generated/frame/particles.wgsl"),
+  ),
+  (
+    "generated/frame/present",
+    include_str!("../../shaders/generated/frame/present.wgsl"),
+  ),
+  (
+    "generated/frame/smaa",
+    include_str!("../../shaders/generated/frame/smaa.wgsl"),
+  ),
+  (
+    "generated/frame/upscale",
+    include_str!("../../shaders/generated/frame/upscale.wgsl"),
+  ),
+  (
     "generated/frame/water_blur",
     include_str!("../../shaders/generated/frame/water_blur.wgsl"),
   ),

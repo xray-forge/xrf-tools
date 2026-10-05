@@ -4,5 +4,6 @@ pub(crate) enum BindingKey {
   /// A buffer, with the offset and size of the range bound where it binds one.
   Buffer(wgpu::Buffer, Option<(u64, u64)>),
   TextureView(wgpu::TextureView),
+  TextureViewArray(Vec<wgpu::TextureView>),
   Sampler(wgpu::Sampler),
 }

@@ -3,16 +3,9 @@
 // FidelityFX Super Resolution 1 (`ffx_fsr1.h`, MIT): EASU upscales a frame drawn smaller than its viewport, RCAS
 // sharpens an upscaled one.
 
-struct Upscale {
-  // The size EASU upscales to, in pixels.
-  output_size: vec2<f32>,
-  // RCAS's `con`: `exp2(-stops)`, one sharpening most.
-  sharpness: f32,
-  pad: f32,
-};
-
-@group(0) @binding(0) var source: texture_2d<f32>;
-@group(0) @binding(1) var<uniform> upscale: Upscale;
+// The frame read: the scene for EASU, the upscaled one for RCAS; and `Upscale`: the size EASU upscales to, in pixels,
+// and RCAS's `con`, `exp2(-stops)`, one sharpening most.
+#import "generated/frame/upscale"
 
 // EASU's taps by `ffx_fsr1.h`'s names, as indices into its twelve.
 const B: u32 = 0u;
