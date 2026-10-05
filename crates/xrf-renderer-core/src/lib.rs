@@ -8,6 +8,7 @@ mod graph;
 mod param;
 mod pipeline;
 mod shader;
+mod store;
 
 #[cfg(test)]
 mod tests;
@@ -33,5 +34,6 @@ pub use crate::shader::{
   GeneratedShaderFile, ShaderAddressSpace, ShaderDeclarations, ShaderLayoutVerifier, ShaderMember, ShaderStruct,
   ShaderType, max_of, round_up,
 };
+pub use crate::store::{ProxyHandle, ProxyStore, StoreMirror};
 pub use wgpu;
 pub use xrf_renderer_derive::{PassParameters, ShaderPermutation, ShaderStruct};
