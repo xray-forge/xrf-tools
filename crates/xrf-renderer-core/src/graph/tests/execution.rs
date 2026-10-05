@@ -5,6 +5,7 @@ use crate::graph::{
   FrameGraph, GraphBindings, GraphBufferAccess, GraphBufferDescriptor, GraphColorAttachment, GraphCompileOptions,
   GraphTextureAccess, TransientPool,
 };
+use crate::param::BindGroupCache;
 use crate::tests::test_device::create_device;
 
 const SIZE: u32 = 64;
@@ -65,6 +66,7 @@ fn executes_a_graph_and_reads_back_what_it_drew() {
     mapped_at_creation: false,
   });
   let mut pool: TransientPool = TransientPool::new();
+  let cache: BindGroupCache = BindGroupCache::new();
   let drawn: AtomicUsize = AtomicUsize::new(0);
 
   for _ in 0..2 {
@@ -77,7 +79,7 @@ fn executes_a_graph_and_reads_back_what_it_drew() {
     let mut bindings: GraphBindings<'_> = GraphBindings::new();
 
     bindings.bind_buffer(output, &readback);
-    queue.submit(compiled.execute(&device, &mut pool, &bindings).unwrap());
+    queue.submit(compiled.execute(&device, &mut pool, &cache, &bindings).unwrap());
   }
 
   assert_eq!(drawn.load(Ordering::Relaxed), 4);
@@ -107,7 +109,12 @@ fn refuses_an_unbound_import() {
   declare(&mut graph, &drawn);
 
   let compiled = graph.compile(&GraphCompileOptions::default()).unwrap();
-  let error: String = match compiled.execute(&device, &mut TransientPool::new(), &GraphBindings::new()) {
+  let error: String = match compiled.execute(
+    &device,
+    &mut TransientPool::new(),
+    &BindGroupCache::new(),
+    &GraphBindings::new(),
+  ) {
     Ok(_) => panic!("expected the unbound import to be refused"),
     Err(error) => error.to_string(),
   };
@@ -154,5 +161,9 @@ fn refuses_an_import_bound_to_a_mismatched_texture() {
     },
   );
 
-  assert!(compiled.execute(&device, &mut TransientPool::new(), &bindings).is_err());
+  assert!(
+    compiled
+      .execute(&device, &mut TransientPool::new(), &BindGroupCache::new(), &bindings)
+      .is_err()
+  );
 }

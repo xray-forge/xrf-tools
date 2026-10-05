@@ -14,6 +14,7 @@ use crate::graph::pool::{TransientBufferKey, TransientPool, TransientTextureKey}
 use crate::graph::record::{GraphBufferRecord, GraphPassWork, GraphTextureRecord};
 use crate::graph::report::{GraphPassKind, GraphPassReport, GraphReport, GraphTransientReport};
 use crate::graph::resource::{GraphBuffer, GraphTexture, GraphTextureDescriptor};
+use crate::param::BindGroupCache;
 
 /// A frame graph ready to execute: its surviving passes in order, the render passes they share, the encode groups they
 /// are recorded in, and the slot each transient takes in the pool.
@@ -141,9 +142,11 @@ impl<'a> CompiledGraph<'a> {
     self,
     device: &wgpu::Device,
     pool: &mut TransientPool,
+    cache: &BindGroupCache,
     bindings: &GraphBindings<'_>,
   ) -> XrfResult<Vec<wgpu::CommandBuffer>> {
     pool.begin_frame();
+    cache.begin_frame();
 
     for (key, count) in Self::count_slots(&self.texture_slots) {
       pool.reserve_textures(device, key, count);
@@ -190,9 +193,9 @@ impl<'a> CompiledGraph<'a> {
               remaining -= 1;
             }
 
-            Self::record_render_pass(&mut encoder, run, &textures, &resources);
+            Self::record_render_pass(&mut encoder, run, &textures, (device, cache, &resources));
           }
-          None => Self::record_pass(&mut encoder, pass, &resources),
+          None => Self::record_pass(&mut encoder, pass, (device, cache, &resources)),
         }
       }
 
@@ -322,7 +325,7 @@ impl<'a> CompiledGraph<'a> {
     encoder: &mut wgpu::CommandEncoder,
     run: Vec<CompiledPass<'a>>,
     textures: &[GraphTextureRecord],
-    resources: &GraphResources<'_>,
+    (device, cache, resources): (&wgpu::Device, &BindGroupCache, &GraphResources<'_>),
   ) {
     let first: &GraphPassWork<'a> = &run[0].pass.work;
     let view_of = |texture: GraphTexture, mip_level: u32, array_layer: u32| -> Cow<'_, wgpu::TextureView> {
@@ -401,6 +404,8 @@ impl<'a> CompiledGraph<'a> {
           pass: &mut render_pass,
           scope: GraphPassScope {
             name: pass.name,
+            device,
+            cache,
             resources,
             textures: &textures,
             buffers: &buffers,
@@ -410,7 +415,11 @@ impl<'a> CompiledGraph<'a> {
     }
   }
 
-  fn record_pass(encoder: &mut wgpu::CommandEncoder, pass: CompiledPass<'a>, resources: &GraphResources<'_>) {
+  fn record_pass(
+    encoder: &mut wgpu::CommandEncoder,
+    pass: CompiledPass<'a>,
+    (device, cache, resources): (&wgpu::Device, &BindGroupCache, &GraphResources<'_>),
+  ) {
     let CompiledPass {
       pass,
       textures,
@@ -419,6 +428,8 @@ impl<'a> CompiledGraph<'a> {
     } = pass;
     let scope: GraphPassScope<'_> = GraphPassScope {
       name: pass.name,
+      device,
+      cache,
       resources,
       textures: &textures,
       buffers: &buffers,

@@ -44,3 +44,42 @@ struct Box3 {
   max: Vec3,
 }
 ```
+
+## `PassParameters`
+
+Declares one bind group of a pass as a struct: a binding per field, in order, at the group `#[parameters(group = G)]`
+names. From it come the bind group's layout, the WGSL that declares its bindings (named as the fields are), the graph
+accesses the pass makes, and what each binding binds this frame. Field kinds:
+
+- `#[uniform]` on a `UniformBinding<'_, T>`: a value pushed to the upload ring this frame, read at its dynamic offset;
+  `var<uniform> name: T;`.
+- `#[storage]` on a `StorageArray<T>` or `StorageArrayMut<T>`: a graph buffer read, or read and written, as
+  `array<T>`.
+- `#[texture(dimension, sample)]` on a `GraphTexture`: `d2`, `d2_array`, `cube`, `cube_array` or `d3`, sampled as
+  `float`, `unfilterable`, `uint`, `sint` or `depth`.
+- `#[storage_texture(dimension, format, access)]` on a `GraphTexture`: `d2`, `d2_array` or `d3`, a format such as
+  `rgba16float`, and `read`, `write` or `read_write`.
+- `#[sampler(kind)]` on a `&wgpu::Sampler`: `filtering`, `non_filtering` or `comparison`.
+
+A binding is visible to every stage, except a writable one, which a vertex shader may not hold. A field's name is its
+WGSL name, so it must not be one of WGSL's reserved words (`target`, `filter`, …); the naga check in a pass's tests is
+what catches one.
+
+```rust
+use xrf_renderer_core::{GraphTexture, PassParameters};
+
+#[derive(PassParameters)]
+#[parameters(group = 1)]
+struct Shade {
+  #[texture(d2, float)]
+  source: GraphTexture,
+  #[storage_texture(d2, rgba16float, write)]
+  destination: GraphTexture,
+}
+
+assert_eq!(
+  Shade::get_wgsl_bindings(),
+  "@group(1) @binding(0) var source: texture_2d<f32>;\n\
+   @group(1) @binding(1) var destination: texture_storage_2d<rgba16float, write>;\n"
+);
+```
