@@ -1,7 +1,7 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use crate::graph::tests::fixtures::{COLOR, color_texture, load};
-use crate::graph::tests::test_device::create_device;
+use crate::tests::test_device::create_device;
 use crate::graph::{
   FrameGraph, GraphBindings, GraphBufferAccess, GraphBufferDescriptor, GraphColorAttachment, GraphCompileOptions,
   GraphTextureAccess, TransientPool,

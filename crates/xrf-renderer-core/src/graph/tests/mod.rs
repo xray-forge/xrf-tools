@@ -5,5 +5,4 @@ mod grouping;
 mod merging;
 mod pooling;
 mod report;
-mod test_device;
 mod validation;

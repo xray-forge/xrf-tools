@@ -69,3 +69,18 @@ assert_eq!(compiled.get_render_pass_count(), 1);
 - **Diagnostics.** `GraphCompileOptions` turns culling, pooling, merging and grouping off one at a time, or all at once
   (`serial`), to bisect a difference in a capture. `CompiledGraph::describe` reports the passes, the render passes and
   groups they fall in, the culled, and the transients with their slots and sizes; it serializes to JSON.
+
+## Allocators
+
+- **`SpanBuffer`** holds what persists and changes: a GPU buffer of fixed-size elements that ranges (`Span`) are taken
+  from and given back to, so a scene's contents can be removed as well as added. `SpanAllocator` is its bookkeeping,
+  with no GPU: each growth adds a region of its own `offset-allocator` (O(1), binned, cannot grow in place), so a held
+  span keeps its offset. Growing copies the buffer into one at least twice the size and submits the copy at once;
+  `get_generation` changes so anything bound to the old buffer is rebuilt. A new region is at least twice the request,
+  because the allocator rounds a request up to its size bin and a region exactly the request's size may not hold it.
+  Writes are queued and `flush` uploads them as contiguous runs (`SpanWrites`), a later write to the same bytes winning.
+  The stride is a multiple of four bytes, since copies move whole words.
+- **`UploadRing`** holds what one frame needs: values pushed during the frame are packed at offsets aligned for both
+  uniform and storage dynamic offsets (`UploadSlice`) and uploaded in one write at `flush`, which first replaces the
+  buffer with a larger one if the frame outgrew it (`get_generation` again). A value is valid from that `flush` until
+  the next frame's, which the queue orders after the frame that read it.
