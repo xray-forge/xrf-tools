@@ -1,7 +1,11 @@
 #![doc = include_str!("../README.md")]
 
+// The derives name this crate by its path, which resolves inside it too.
+extern crate self as xrf_renderer_core;
+
 mod alloc;
 mod graph;
+mod shader;
 
 #[cfg(test)]
 mod tests;
@@ -14,3 +18,8 @@ pub use crate::graph::{
   GraphTextureAccess, GraphTextureDescriptor, GraphTransientReport, RasterContext, RasterPassBuilder,
   TransientBufferKey, TransientPool, TransientSlot, TransientTextureKey,
 };
+pub use crate::shader::{
+  ShaderAddressSpace, ShaderDeclarations, ShaderLayoutVerifier, ShaderMember, ShaderStruct, ShaderType, max_of,
+  round_up,
+};
+pub use xrf_renderer_derive::ShaderStruct;

@@ -1,11 +1,11 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use crate::graph::tests::fixtures::{COLOR, color_texture, load};
-use crate::tests::test_device::create_device;
 use crate::graph::{
   FrameGraph, GraphBindings, GraphBufferAccess, GraphBufferDescriptor, GraphColorAttachment, GraphCompileOptions,
   GraphTextureAccess, TransientPool,
 };
+use crate::tests::test_device::create_device;
 
 const SIZE: u32 = 64;
 const BYTES: u64 = (SIZE * SIZE * 4) as u64;
