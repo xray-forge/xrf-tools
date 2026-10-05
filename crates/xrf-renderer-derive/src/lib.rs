@@ -1,6 +1,7 @@
 #![doc = include_str!("../README.md")]
 
 mod pass_parameters;
+mod shader_permutation;
 mod shader_struct;
 
 use proc_macro::TokenStream;
@@ -27,6 +28,17 @@ pub fn pass_parameters_derive(input: TokenStream) -> TokenStream {
   let input: DeriveInput = parse_macro_input!(input as DeriveInput);
 
   pass_parameters::expand(&input)
+    .unwrap_or_else(Error::into_compile_error)
+    .into()
+}
+
+/// Declares a shader's permutation domain: each field a WGSL `override` constant of its name, set from the field's value
+/// when a pipeline is made; see the crate's README.
+#[proc_macro_derive(ShaderPermutation)]
+pub fn shader_permutation_derive(input: TokenStream) -> TokenStream {
+  let input: DeriveInput = parse_macro_input!(input as DeriveInput);
+
+  shader_permutation::expand(&input)
     .unwrap_or_else(Error::into_compile_error)
     .into()
 }

@@ -2,9 +2,9 @@ use glam::Vec4;
 
 use crate::param::tests::fixtures::{Blur, Scale, Settings, Shade};
 use crate::{
-  BindGroupCache, FrameGraph, GraphBindings, GraphBufferAccess, GraphBufferDescriptor, GraphCompileOptions,
+  FrameGraph, GraphBindings, GraphBufferAccess, GraphBufferDescriptor, GraphCompileOptions, GraphRuntime,
   GraphTextureAccess, GraphTextureDescriptor, PassParameters, ShaderDeclarations, StorageArray, StorageArrayMut,
-  TransientPool, UniformBinding, UploadRing,
+  UniformBinding, UploadRing,
 };
 
 #[test]
@@ -169,8 +169,7 @@ fn binds_parameters_in_a_compute_pass_and_reuses_the_bind_group() {
   );
 
   let mut ring: UploadRing = UploadRing::new(&device, "uniforms", wgpu::BufferUsages::UNIFORM, 256);
-  let cache: BindGroupCache = BindGroupCache::new();
-  let mut pool: TransientPool = TransientPool::new();
+  let mut runtime: GraphRuntime = GraphRuntime::new(&device, &queue);
   let mut declarations: ShaderDeclarations = ShaderDeclarations::new();
 
   Scale::declare(&mut declarations);
@@ -190,7 +189,7 @@ fn binds_parameters_in_a_compute_pass_and_reuses_the_bind_group() {
   });
   let layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
     label: Some("scale"),
-    bind_group_layouts: &[Some(&cache.get_layout::<Scale<'_>>(&device))],
+    bind_group_layouts: &[Some(&runtime.bind_groups.get_layout::<Scale<'_>>(&device))],
     ..Default::default()
   });
   let pipeline: wgpu::ComputePipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
@@ -234,11 +233,11 @@ fn binds_parameters_in_a_compute_pass_and_reuses_the_bind_group() {
     bindings
       .bind_buffer(input, &input_buffer)
       .bind_buffer(output, &output_buffer);
-    queue.submit(compiled.execute(&device, &mut pool, &cache, &bindings).unwrap());
+    queue.submit(compiled.execute(&device, &mut runtime, &bindings).unwrap().commands);
   }
 
   assert_eq!(
-    cache.get_bind_group_count(),
+    runtime.bind_groups.get_bind_group_count(),
     1,
     "the second frame binds the same resources"
   );
