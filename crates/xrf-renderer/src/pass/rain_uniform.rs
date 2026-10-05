@@ -14,9 +14,6 @@ const MAX_LEAN: f32 = 10.0 * std::f32::consts::PI / 180.0;
 /// `drop_max_wind_vel`: the wind that leans them that far.
 const MAX_LEAN_WIND: f32 = 20.0;
 
-/// `wind_strength_factor / 10` with no gusts: the weather's Perlin noise is zero, so the factor is a half.
-const GUST: f32 = 0.5 / 10.0;
-
 /// What `shaders/frame/rain.wgsl` reads as its `Rain`, as `dxRainRender::Render` sets the rain up.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable)]
@@ -37,9 +34,17 @@ pub struct RainUniform {
 }
 
 impl RainUniform {
-  pub fn new(rain: &RenderRainfall, wind: RenderWind, window: Vec4, time: f32, splash_indices: u32) -> Self {
+  /// `strength` is `wind_strength_factor`, a tenth of which leans the streaks with the wind (`CEffect_Rain::Born`).
+  pub fn new(
+    rain: &RenderRainfall,
+    (wind, strength): (RenderWind, f32),
+    window: Vec4,
+    time: f32,
+    splash_indices: u32,
+  ) -> Self {
     let density: f32 = rain.density.clamp(0.0, 1.0);
-    let lean: f32 = (wind.velocity * GUST / MAX_LEAN_WIND).clamp(0.0, 1.0);
+    // todo: Lean the rain as Monolith's `CEffect_Rain::Prepare` does on its engine, by the wind's velocity alone.
+    let lean: f32 = (wind.velocity * strength / 10.0 / MAX_LEAN_WIND).clamp(0.0, 1.0);
     let pitch: f32 = MAX_LEAN * lean - FRAC_PI_2;
     let heading: f32 = wind.direction;
     // `axis.setHP(wind_direction, pitch)`, engine `z` negated into renderer space.

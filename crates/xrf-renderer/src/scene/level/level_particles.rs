@@ -28,6 +28,7 @@ use crate::pass::particle_surface_record::ParticleSurfaceRecord;
 use crate::pass::particle_vertex::ParticleVertex;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::ambient_frame::AmbientFrame;
+use crate::scene::level::ambient_gust::AmbientGust;
 use crate::scene::level::camera_hemi::CameraHemi;
 use crate::scene::level::campfire::Campfire;
 use crate::scene::level::level_ambient_effects::LevelAmbientEffects;
@@ -248,14 +249,47 @@ impl LevelParticles {
     });
   }
 
-  /// Plays the weather's ambient effects by the frame's weather, steps every system as the engine schedules it, and
-  /// fills the effects in view into quads, far to near.
+  /// Plays the weather's ambient effects by the frame's weather and blows the wind they bring, before anything reads
+  /// the wind this frame; frozen while particles are not drawn.
+  pub fn update_ambient(&mut self, view: &CameraView, options: &RenderViewOptions, ambient: Option<AmbientFrame<'_>>) {
+    let Some(level) = self.systems.as_mut() else {
+      return;
+    };
+
+    if !options.is_particled || !options.is_lit {
+      return;
+    }
+
+    let now: u64 = self.started.elapsed().as_millis() as u64;
+    let eye: Vec3 = ParticleSprite::mirror(view.position);
+    let context: ParticleUpdateContext = ParticleUpdateContext {
+      library: &level.library,
+      rules: &level.rules,
+      collider: level.collider.as_deref(),
+    };
+
+    level.hemi.advance(eye, now);
+    level
+      .ambient
+      .update(ambient, (eye, level.hemi.is_indoors()), now, &context);
+  }
+
+  /// The wind as the ambient effects blow it this frame, still air until the particles are read.
+  pub fn get_gust(&self) -> AmbientGust {
+    self
+      .systems
+      .as_ref()
+      .map_or_else(AmbientGust::default, |level| level.ambient.get_gust())
+  }
+
+  /// Steps every system and the ambient effect playing as the engine schedules them, and fills the effects in view into
+  /// quads, far to near.
   pub fn step(
     &mut self,
     view: &CameraView,
     options: &RenderViewOptions,
-    (campfires, motions): (&mut LevelCampfires, &mut LevelObjectMotions),
-    ambient: Option<AmbientFrame<'_>>,
+    campfires: &mut LevelCampfires,
+    motions: &mut LevelObjectMotions,
   ) {
     self.vertices.clear();
     self.batches.clear();
@@ -278,18 +312,12 @@ impl LevelParticles {
 
     Self::move_systems(level, motions);
     Self::place(level, eye, now, campfires);
-    level.hemi.advance(eye, now);
 
     let context: ParticleUpdateContext = ParticleUpdateContext {
       library: &level.library,
       rules: &level.rules,
       collider: level.collider.as_deref(),
     };
-
-    level
-      .ambient
-      .update(ambient, (eye, level.hemi.is_indoors()), now, &context);
-
     let systems: &mut Vec<PlacedSystem> = &mut level.systems;
     let mut simulated: u32 = self.workers.install(|| {
       systems
@@ -479,8 +507,10 @@ impl LevelParticles {
 
   /// Plays what each system's source plays: a planted system always; a zone's idle effect while it is enabled, stopped
   /// on Monolith while the camera stands past `FASTMODE_DISTANCE` (`o_switch_2_slow`) and played afresh once it comes
-  /// back (`o_switch_2_fast`); a campfire's as `CZoneCampfire` switches them, following its campfire's state.
+  /// back (`o_switch_2_fast`); a campfire's as `CZoneCampfire` switches them, following its campfire's state, its idle
+  /// particles carried by the wind.
   fn place(level: &mut LevelSystems, eye: Vec3, now: u64, campfires: &mut LevelCampfires) {
+    let wind: Vec3 = level.ambient.get_gust().get_velocity();
     let context: ParticleUpdateContext = ParticleUpdateContext {
       library: &level.library,
       rules: &level.rules,
@@ -538,6 +568,8 @@ impl LevelParticles {
           } else if campfire.can_stop_idle(at) {
             objects.stop(PlacedEffect::Idle);
           }
+
+          objects.carry(PlacedEffect::Idle, &system.transform, wind);
         }
       }
     }
@@ -614,6 +646,14 @@ impl PlacedObjects {
     object.update_parent(transform, Vec3::ZERO);
     object.play(now, context);
     *slot = Some(object);
+  }
+
+  /// Moves an effect's sources at a velocity where it stands, as `CZoneCampfire::shedule_Update` carries its idle
+  /// particles by the wind.
+  fn carry(&mut self, effect: PlacedEffect, transform: &Mat4, velocity: Vec3) {
+    if let Some(object) = &mut self.0[effect.get_index()] {
+      object.update_parent(transform, velocity);
+    }
   }
 
   /// Stops an effect at once, its particles gone with it: `Stop(FALSE)`, then `Destroy`.

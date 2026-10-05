@@ -81,6 +81,7 @@ use crate::pass::view_light_groups::ViewLightGroups;
 use crate::pass::wet_uniform::WetUniform;
 use crate::pass::wind_uniform::WindUniform;
 use crate::scene::level::ambient_frame::AmbientFrame;
+use crate::scene::level::ambient_gust::AmbientGust;
 use crate::scene::level::level_campfires::LevelCampfires;
 use crate::scene::level::level_flares::LevelFlares;
 use crate::scene::level::level_grass::LevelGrass;
@@ -739,6 +740,18 @@ impl LevelView {
       self.sky_version += 1;
     }
 
+    // The ambient effects blow the wind the grass, the rain and the campfires read this frame.
+    self.particles.update_ambient(
+      view,
+      options,
+      weather.map(|level| AmbientFrame {
+        ambients: &lighting.ambients,
+        level,
+      }),
+    );
+
+    let gust: AmbientGust = self.particles.get_gust();
+
     self.water.prepare(
       device,
       queue,
@@ -769,7 +782,14 @@ impl LevelView {
     self.last_wind = Some(wind);
 
     self.frame_sway = (wind.get_amplitude(), sway_time);
-    self.prepare_rain(device, queue, passes, (lighting, weather), options, weather_textures);
+    self.prepare_rain(
+      device,
+      queue,
+      passes,
+      (lighting, weather),
+      (options, gust),
+      weather_textures,
+    );
     self.prepare_thunder(device, queue, passes, (lighting, weather), options, weather_textures);
     queue.write_buffer(&self.scene.wind, 0, bytemuck::bytes_of(&wind));
 
@@ -842,7 +862,7 @@ impl LevelView {
       &options.grass,
       view,
       self.params.discard_below,
-      (self.started.elapsed().as_secs_f32(), options.is_windy),
+      (self.started.elapsed().as_secs_f32(), options.is_windy, gust.strength),
     );
     // The campfires switch and the moving zones move whatever of them is drawn, so their lights and particles follow
     // them alike.
@@ -908,15 +928,9 @@ impl LevelView {
       bytemuck::bytes_of(&LightingUniform::new(lighting, view.view, options, &frame)),
     );
 
-    self.particles.step(
-      view,
-      options,
-      (&mut self.campfires, &mut self.object_motions),
-      weather.map(|level| AmbientFrame {
-        ambients: &lighting.ambients,
-        level,
-      }),
-    );
+    self
+      .particles
+      .step(view, options, &mut self.campfires, &mut self.object_motions);
 
     if let Some(targets) = &self.targets {
       self.particles.upload(
@@ -964,7 +978,7 @@ impl LevelView {
     queue: &wgpu::Queue,
     passes: LevelPasses<'_>,
     (lighting, weather): (&RenderLighting, Option<&Arc<RenderLevelWeather>>),
-    options: &RenderViewOptions,
+    (options, gust): (&RenderViewOptions, AmbientGust),
     weather_textures: &WeatherTextureCache,
   ) {
     self.rain_draw = None;
@@ -990,7 +1004,7 @@ impl LevelView {
     };
     let uniform: RainUniform = RainUniform::new(
       &rainfall,
-      lighting.wind,
+      (lighting.wind, gust.strength),
       self.rain_cover.get_window(),
       self.started.elapsed().as_secs_f32(),
       splash.index_count,

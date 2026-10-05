@@ -43,27 +43,27 @@ fn holds_a_cell_a_slot_the_planting_reaches_and_rebuilds_for_a_want_past_it_or_u
 fn sways_the_grass_on_its_two_winds_and_stills_it_without_wind() {
   let mut wind: GrassWind = GrassWind::default();
 
-  wind.advance(0.0, true);
+  wind.advance(0.0, true, 0.5);
 
-  let blowing = wind.advance(0.5, true);
+  let blowing = wind.advance(0.5, true, 0.5);
 
   // Half the normal swing and half the fast one: 0.225 and 0.125 across the ground.
   assert!((blowing.wind_1.length() - 0.225).abs() < 1e-5);
   assert!((blowing.wind_2.length() - 0.125).abs() < 1e-5);
   assert!(blowing.wave_1.w > 0.0);
-  assert_eq!(wind.advance(1.0, false).wind_1.length(), 0.0);
+  assert_eq!(wind.advance(1.0, false, 0.5).wind_1.length(), 0.0);
 }
 
 #[test]
 fn carries_the_last_frames_sway_for_the_tufts_motion() {
   let mut wind: GrassWind = GrassWind::default();
-  let first = wind.advance(0.0, true);
+  let first = wind.advance(0.0, true, 0.5);
 
   // A first frame moved from nowhere.
   assert_eq!(first.previous_wind_1, first.wind_1);
   assert_eq!(first.previous_wave_2, first.wave_2);
 
-  let second = wind.advance(0.5, true);
+  let second = wind.advance(0.5, true, 0.5);
 
   assert_eq!(second.previous_wind_1, first.wind_1);
   assert_eq!(second.previous_wind_2, first.wind_2);

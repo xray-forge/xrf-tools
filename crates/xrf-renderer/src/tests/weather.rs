@@ -263,10 +263,13 @@ fn rains_as_many_streaks_as_the_engine_and_leans_them_with_the_wind() {
         color: Vec3::ONE,
         density,
       },
-      RenderWind {
-        direction: 0.0,
-        velocity,
-      },
+      (
+        RenderWind {
+          direction: 0.0,
+          velocity,
+        },
+        0.5,
+      ),
       Vec4::ZERO,
       0.0,
       0,
