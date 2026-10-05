@@ -14,6 +14,7 @@ use xrf_particles::{
 };
 
 use crate::camera::camera_view::CameraView;
+use crate::contract::render_ambient_report::RenderAmbientReport;
 use crate::contract::render_particles_report::RenderParticlesReport;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::frame::view_targets::ViewTargets;
@@ -250,7 +251,7 @@ impl LevelParticles {
   }
 
   /// Plays the weather's ambient effects by the frame's weather and blows the wind they bring, before anything reads
-  /// the wind this frame; frozen while particles are not drawn.
+  /// the wind this frame; frozen while particles are not drawn, and played as though indoors while switched off.
   pub fn update_ambient(&mut self, view: &CameraView, options: &RenderViewOptions, ambient: Option<AmbientFrame<'_>>) {
     let Some(level) = self.systems.as_mut() else {
       return;
@@ -269,9 +270,29 @@ impl LevelParticles {
     };
 
     level.hemi.advance(eye, now);
-    level
-      .ambient
-      .update(ambient, (eye, level.hemi.is_indoors()), now, &context);
+    level.ambient.update(
+      ambient,
+      (eye, level.hemi.is_indoors() || !options.is_ambient_played),
+      now,
+      &context,
+    );
+  }
+
+  /// Plays an ambient effect on the next frame, ending the one playing, without waiting.
+  pub fn play_ambient_now(&mut self) {
+    if let Some(level) = &mut self.systems {
+      level.ambient.play_now();
+    }
+  }
+
+  /// Where the ambient effects stand, none until the particles are read.
+  pub fn get_ambient_report(&self) -> Option<RenderAmbientReport> {
+    let now: u64 = self.started.elapsed().as_millis() as u64;
+
+    self
+      .systems
+      .as_ref()
+      .map(|level| level.ambient.report(now, level.hemi.is_indoors()))
   }
 
   /// The wind as the ambient effects blow it this frame, still air until the particles are read.

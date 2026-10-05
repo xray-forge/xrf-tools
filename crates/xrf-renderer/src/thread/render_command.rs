@@ -139,4 +139,8 @@ pub enum RenderCommand {
     id: RenderViewportId,
     name: Option<String>,
   },
+  /// Plays a weather ambient effect near a viewport's camera at once.
+  AmbientEffect {
+    id: RenderViewportId,
+  },
 }

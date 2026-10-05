@@ -11,7 +11,8 @@ interface ILevelParticlesActionProps extends BaseComponentProps {
 }
 
 /**
- * Whether the particle systems the level plants and its zones play are drawn, and whether its campfires burn.
+ * Whether the particle systems the level plants and its zones play are drawn, whether its campfires burn, and whether
+ * the weather's ambient effects play near the camera.
  */
 export function LevelParticlesAction({
   "data-testid": dataTestId = "level-particles-action",
@@ -20,7 +21,7 @@ export function LevelParticlesAction({
   options,
   onToggle,
 }: ILevelParticlesActionProps): ReactElement {
-  const { isParticled, isCampfireLit } = options;
+  const { isParticled, isCampfireLit, isAmbientPlayed } = options;
 
   return (
     <EditorPopoverGroup
@@ -46,6 +47,17 @@ export function LevelParticlesAction({
         }
         isOn={isCampfireLit}
         onToggle={() => onToggle("isCampfireLit")}
+      />
+
+      <EditorPopoverGroupSection
+        label={"Ambient effects"}
+        description={
+          isAmbientPlayed
+            ? "The weather's fog, leaves and vortices near the camera, outdoors, with their wind"
+            : "None near the camera, and still air"
+        }
+        isOn={isAmbientPlayed}
+        onToggle={() => onToggle("isAmbientPlayed")}
       />
     </EditorPopoverGroup>
   );

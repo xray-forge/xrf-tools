@@ -4,18 +4,19 @@ import { ReactElement, useCallback, useMemo } from "react";
 
 import { LevelWeatherCycle, LevelWeatherDescription } from "@/core/ipc/types/xrf-app";
 import { EXrayEngine } from "@/core/ipc/types/xrf-engine-target";
+import { LevelWeatherAmbientSection } from "@/core/level/components/panels/LevelWeatherPanel/LevelWeatherAmbientSection";
 import { LevelWeatherClockSection } from "@/core/level/components/panels/LevelWeatherPanel/LevelWeatherClockSection";
 import { LevelWeatherFindingsSection } from "@/core/level/components/panels/LevelWeatherPanel/LevelWeatherFindingsSection";
 import { LevelWeatherModifiersSection } from "@/core/level/components/panels/LevelWeatherPanel/LevelWeatherModifiersSection";
 import { LevelWeatherPlaySection } from "@/core/level/components/panels/LevelWeatherPanel/LevelWeatherPlaySection";
 import { ILevelWeatherCycleChoice, listLevelWeatherCycles } from "@/core/level/lib/weather/level-weather-cycle-choice";
-import { LevelLoadService, LevelWeatherService } from "@/core/level/services";
+import { LevelLoadService, LevelViewService, LevelWeatherService } from "@/core/level/services";
 import { EditorPanel, EditorPanelEmpty } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /**
  * The level's weather: what lights it, the time of day and how it runs, the sun, the effects over it, the level's own
- * overrides, the cycle, and what is wrong in it.
+ * overrides, the ambient effects near the camera, the cycle, and what is wrong in it.
  */
 export function LevelWeatherPanel({
   "data-testid": dataTestId = "level-weather-panel",
@@ -24,6 +25,7 @@ export function LevelWeatherPanel({
 }: BaseComponentProps): ReactElement {
   const loadService: LevelLoadService = useInjection(LevelLoadService);
   const weatherService: LevelWeatherService = useInjection(LevelWeatherService);
+  const viewService: LevelViewService = useInjection(LevelViewService);
 
   const description: Nullable<LevelWeatherDescription> = weatherService.description;
   const cycle: Nullable<LevelWeatherCycle> = weatherService.cycle;
@@ -83,6 +85,12 @@ export function LevelWeatherPanel({
           <LevelWeatherModifiersSection
             count={description.modifiers.length}
             reaching={isWeather ? (weatherService.report?.modifiers ?? 0) : 0}
+          />
+
+          <LevelWeatherAmbientSection
+            ambient={isWeather ? (weatherService.report?.ambient ?? null) : null}
+            isPlayed={viewService.options.isAmbientPlayed}
+            onPlay={weatherService.playAmbientEffect}
           />
 
           {cycle ? <LevelWeatherFindingsSection file={cycle.file} findings={cycle.findings} /> : null}

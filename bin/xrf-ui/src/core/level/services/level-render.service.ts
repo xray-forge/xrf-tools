@@ -336,6 +336,14 @@ export class LevelRenderService extends NativeRenderSurfaceService {
           }
         }
       ),
+      reaction(
+        () => weatherService.ambientPlays,
+        (plays: number) => {
+          if (plays > 0) {
+            viewport.playAmbientEffect();
+          }
+        }
+      ),
     ];
   }
 

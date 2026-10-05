@@ -11,6 +11,7 @@ use xrf_math::EPS_S;
 
 use crate::camera::camera_view::CameraView;
 use crate::contract::render_ambient_occlusion_settings::RenderAmbientOcclusionSettings;
+use crate::contract::render_ambient_report::RenderAmbientReport;
 use crate::contract::render_antialiasing::RenderAntialiasing;
 use crate::contract::render_applied_report::RenderAppliedReport;
 use crate::contract::render_applied_shadows::RenderAppliedShadows;
@@ -1891,6 +1892,16 @@ impl LevelView {
   /// A spawned object's bounding sphere in renderer space, once its model is in the scene.
   pub fn get_object_sphere(&self, object: u32) -> Option<Vec4> {
     self.scene.get_object_sphere(object)
+  }
+
+  /// Plays a weather ambient effect on the next frame, without waiting.
+  pub fn play_ambient_now(&mut self) {
+    self.particles.play_ambient_now();
+  }
+
+  /// Where the weather's ambient effects near the camera stand, none until the particles are read.
+  pub fn get_ambient_report(&self) -> Option<RenderAmbientReport> {
+    self.particles.get_ambient_report()
   }
 
   /// What the level's particle systems came to since the last report.

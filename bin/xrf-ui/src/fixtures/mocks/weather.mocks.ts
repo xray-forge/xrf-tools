@@ -113,6 +113,7 @@ export function mockRenderWeatherReport(overrides: Partial<RenderWeatherReport> 
   const time: number = overrides.time ?? 43_200;
 
   return {
+    ambient: null,
     between: [0, 43_200],
     current: toLevelManualDescriptor(DEFAULT_LEVEL_MANUAL_WEATHER, time),
     effect: null,

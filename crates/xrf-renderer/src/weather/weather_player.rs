@@ -281,6 +281,7 @@ impl WeatherPlayer {
       }),
       modifiers: mix.modifiers,
       current: Box::new(current.to_descriptor(&heavier.descriptor)),
+      ambient: None,
     })
   }
 

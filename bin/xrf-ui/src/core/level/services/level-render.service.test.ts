@@ -340,6 +340,8 @@ describe("LevelRenderService", () => {
     weather.setPlaying(true);
     weather.seekTo(3_600);
     weather.playEffect("fx_storm");
+    weather.playAmbientEffect();
+    weather.playAmbientEffect();
     await flush();
 
     expect(sent("set_weather_control")).toEqual([
@@ -347,6 +349,7 @@ describe("LevelRenderService", () => {
     ]);
     expect(sent("seek_weather")).toEqual([{ time: 3_600, viewport: VIEWPORT }]);
     expect(sent("play_weather_effect")).toEqual([{ name: "fx_storm", viewport: VIEWPORT }]);
+    expect(sent("play_ambient_effect")).toEqual([{ viewport: VIEWPORT }, { viewport: VIEWPORT }]);
 
     emit({ kind: ERenderViewportEvent.WEATHER, report: mockRenderWeatherReport({ time: 4_000 }) });
     expect(weather.time).toBe(4_000);

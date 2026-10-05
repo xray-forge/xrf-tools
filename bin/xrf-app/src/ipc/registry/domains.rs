@@ -118,6 +118,7 @@ macro_rules! for_each_tauri_command_domain {
         measure_surfaces => crate::plugins::render::commands::measure_surfaces::render_measure_surfaces,
         pick => crate::plugins::render::commands::pick::render_pick,
         pose_model => crate::plugins::render::commands::pose_model::render_pose_model,
+        play_ambient_effect => crate::plugins::render::commands::play_ambient_effect::render_play_ambient_effect,
         play_weather => crate::plugins::render::commands::play_weather::render_play_weather,
         play_weather_effect => crate::plugins::render::commands::play_weather_effect::render_play_weather_effect,
         save_capture => crate::plugins::render::commands::save_capture::render_save_capture,

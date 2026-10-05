@@ -9,6 +9,7 @@ pub mod detach_viewport;
 pub mod locate_spawn_object;
 pub mod measure_surfaces;
 pub mod pick;
+pub mod play_ambient_effect;
 pub mod play_weather;
 pub mod play_weather_effect;
 pub mod pose_model;

@@ -3,6 +3,16 @@
 import { WeatherDescriptor } from "@/core/ipc/types/xrf-environment";
 import { SectorSkip } from "@/core/ipc/types/xrf-visual";
 
+/** The weather's ambient effect playing near a viewport's camera. */
+export type RenderAmbientEffectReport = {
+  /** Its `effects.ltx` section. */
+  name: string;
+  /** The `particles.xr` effect or group it plays. */
+  particles: string;
+  /** Real seconds of its life left; none while what it emitted dies out. */
+  remaining: number | null;
+};
+
 /** How hard the ambient occlusion searches: XeGTAO's presets. */
 export enum ERenderAmbientOcclusionQuality {
   /** One direction, two steps each way. */
@@ -29,6 +39,16 @@ export type RenderAmbientOcclusionSettings = {
   /** How dark the occlusion goes: one XeGTAO's own curve, zero none, two its square. */
   strength: number | null;
   quality: RenderAmbientOcclusionQuality;
+};
+
+/** Where the weather's ambient effects near a viewport's camera stand. */
+export type RenderAmbientReport = {
+  /** The effect playing, or none. */
+  effect: RenderAmbientEffectReport | null;
+  /** Whether the camera stands indoors, where none starts. */
+  isIndoors: boolean;
+  /** Real seconds until the next may start, none once it may. */
+  wait: number | null;
 };
 
 /** How a viewport's finished frame has its edges smoothed. */
@@ -937,6 +957,8 @@ export type RenderViewOptions = {
   isParticled: boolean;
   /** Whether its campfires burn, as `CZoneCampfire` starts, rather than smoulder out. */
   isCampfireLit: boolean;
+  /** Whether the weather's ambient effects play near the camera and bring their wind. */
+  isAmbientPlayed: boolean;
   /** Which groups of the level's spawned objects are drawn. */
   isSpawnedProps: boolean;
   isSpawnedItems: boolean;
@@ -1122,6 +1144,8 @@ export type RenderWeatherReport = {
   modifiers: number;
   /** What is mixed now as one keyframe, without the modifiers: what a keyframe set by hand starts from. */
   current: WeatherDescriptor;
+  /** The ambient effects near the camera, none until the level's particles are read. */
+  ambient: RenderAmbientReport | null;
 };
 
 /** How a weather handed to a viewport takes over from what it shows. */

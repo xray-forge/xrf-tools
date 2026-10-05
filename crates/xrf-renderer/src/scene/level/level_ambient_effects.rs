@@ -4,6 +4,8 @@ use glam::{Mat4, Vec3};
 use xrf_engine_target::XrayEngine;
 use xrf_particles::{ParticleObject, ParticleUpdateContext};
 
+use crate::contract::render_ambient_effect_report::RenderAmbientEffectReport;
+use crate::contract::render_ambient_report::RenderAmbientReport;
 use crate::host::render_ambient::RenderAmbient;
 use crate::host::render_ambient_effect::RenderAmbientEffect;
 use crate::scene::level::ambient_frame::AmbientFrame;
@@ -27,9 +29,18 @@ pub struct LevelAmbientEffects {
   next_time: u64,
   stop_time: u64,
   /// `ambient_particles`.
-  playing: Option<ParticleObject>,
+  playing: Option<PlayingEffect>,
   played: i32,
+  /// Whether the next update is to play an effect at once, whatever plays or is waited for.
+  is_forced: bool,
   wind: AmbientWind,
+}
+
+/// The effect playing, with the names it is reported by.
+struct PlayingEffect {
+  object: ParticleObject,
+  name: String,
+  particles: String,
 }
 
 impl Default for LevelAmbientEffects {
@@ -40,6 +51,7 @@ impl Default for LevelAmbientEffects {
       stop_time: 0,
       playing: None,
       played: 0,
+      is_forced: false,
       wind: AmbientWind::default(),
     }
   }
@@ -60,6 +72,12 @@ impl LevelAmbientEffects {
 
     self.wind.blow(time);
 
+    if self.is_forced {
+      self.is_forced = false;
+      self.playing = None;
+      self.next_time = 0;
+    }
+
     if !is_indoors
       && self.playing.is_none()
       && now > self.next_time
@@ -73,9 +91,9 @@ impl LevelAmbientEffects {
     if is_indoors || now >= self.stop_time {
       // `Stop()`, deferred: it emits no more, and what it emitted lives on.
       if let Some(playing) = &mut self.playing
-        && !playing.is_stopping()
+        && !playing.object.is_stopping()
       {
-        playing.stop(true);
+        playing.object.stop(true);
       }
 
       self.wind.calm();
@@ -83,7 +101,11 @@ impl LevelAmbientEffects {
 
     self.wind.fall(time);
 
-    if self.playing.as_ref().is_some_and(|playing| !playing.is_playing()) {
+    if self
+      .playing
+      .as_ref()
+      .is_some_and(|playing| !playing.object.is_playing())
+    {
       self.playing = None;
     }
   }
@@ -93,13 +115,36 @@ impl LevelAmbientEffects {
     self.wind.get_gust()
   }
 
+  /// Ends what plays at once and plays an effect on the next update, outdoors, without waiting.
+  pub fn play_now(&mut self) {
+    self.is_forced = true;
+  }
+
+  /// Where they stand at a moment of the particles' clock: what plays and how much of its life is left, and how long
+  /// until the next may start.
+  pub fn report(&self, now: u64, is_indoors: bool) -> RenderAmbientReport {
+    RenderAmbientReport {
+      effect: self.playing.as_ref().map(|playing| RenderAmbientEffectReport {
+        name: playing.name.clone(),
+        particles: playing.particles.clone(),
+        remaining: if playing.object.is_stopping() {
+          0.0
+        } else {
+          self.stop_time.saturating_sub(now) as f32 / 1000.0
+        },
+      }),
+      is_indoors,
+      wait: self.next_time.saturating_sub(now) as f32 / 1000.0,
+    }
+  }
+
   /// The effect playing, if any.
   pub fn get_playing(&self) -> Option<&ParticleObject> {
-    self.playing.as_ref()
+    self.playing.as_ref().map(|playing| &playing.object)
   }
 
   pub fn get_playing_mut(&mut self) -> Option<&mut ParticleObject> {
-    self.playing.as_mut()
+    self.playing.as_mut().map(|playing| &mut playing.object)
   }
 
   /// Plays an effect of the ambient the frame plays, `get_rnd_effect`, and draws when the next may start,
@@ -160,7 +205,12 @@ impl LevelAmbientEffects {
 
     object.update_parent(&Mat4::from_translation(eye + offset), Vec3::ZERO);
     object.play(now, context);
-    self.playing = Some(object);
+
+    self.playing = Some(PlayingEffect {
+      object,
+      name: chosen.to_owned(),
+      particles: effect.particles.clone(),
+    });
   }
 
   /// `Random.randI(count)`.

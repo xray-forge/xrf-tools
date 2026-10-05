@@ -21,8 +21,10 @@ pub(crate) mod window;
 #[cfg(test)]
 mod tests;
 
+pub use crate::contract::render_ambient_effect_report::RenderAmbientEffectReport;
 pub use crate::contract::render_ambient_occlusion_quality::RenderAmbientOcclusionQuality;
 pub use crate::contract::render_ambient_occlusion_settings::RenderAmbientOcclusionSettings;
+pub use crate::contract::render_ambient_report::RenderAmbientReport;
 pub use crate::contract::render_antialiasing::RenderAntialiasing;
 pub use crate::contract::render_applied_environment::RenderAppliedEnvironment;
 pub use crate::contract::render_applied_fog::RenderAppliedFog;
