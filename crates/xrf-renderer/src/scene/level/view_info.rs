@@ -10,6 +10,7 @@ use crate::contract::render_rect::RenderRect;
 use crate::contract::render_shadow_settings::RenderShadowSettings;
 use crate::contract::render_upscaling_settings::RenderUpscalingSettings;
 use crate::lighting::render_lighting::RenderLighting;
+use crate::pass::lighting_uniform::LightingUniform;
 use crate::pass::static_cull_params::StaticCullParams;
 
 /// One frame of a view as its preparation leaves it: the camera and sun it is drawn by, what its options and weather
@@ -50,6 +51,10 @@ pub struct ViewInfo {
   /// Whether the sun's light shafts are added, drawn through its shadow's cascades.
   pub is_shafted: bool,
   pub is_bloomed: bool,
+  /// The lighting the passes read, as the frame's weather and options make it.
+  pub lighting: LightingUniform,
+  /// Both skies' cubes, which the water reflects; none until the frame's sky is prepared.
+  pub sky_cubes: Option<[wgpu::TextureView; 2]>,
   /// The sun's sprite as the sky draws it: its texture, and its colour and radius.
   pub sun_sprite: Option<(String, Vec4)>,
   /// The rain: the streaks drawn and the splash's indices, none while it does not rain.
@@ -91,6 +96,8 @@ impl Default for ViewInfo {
       is_wallmarked: true,
       is_shafted: false,
       is_bloomed: false,
+      lighting: bytemuck::Zeroable::zeroed(),
+      sky_cubes: None,
       sun_sprite: None,
       rain_draw: None,
       thunder_draw: None,

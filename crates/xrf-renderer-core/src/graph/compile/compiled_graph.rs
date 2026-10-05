@@ -134,10 +134,10 @@ impl<'a> CompiledGraph<'a> {
     }
   }
 
-  /// Records the frame: draws the transients from the runtime's pool, resolves the imports from their bindings, and
-  /// records each encode group into a command buffer of its own, returned in order for one submit, with what each group
-  /// cost the CPU. While the runtime's timer is timing, it stamps the start of each group and the end of each pass or
-  /// render pass; call its `request` after the submit.
+  /// Records the frame: uploads what was pushed to the runtime's ring, draws the transients from its pool, resolves the
+  /// imports from their bindings, and records each encode group into a command buffer of its own, returned in order for
+  /// one submit, with what each group cost the CPU. While the runtime's timer is timing, it stamps the start of each
+  /// group and the end of each pass or render pass; call its `request` after the submit.
   ///
   /// # Errors
   ///
@@ -145,16 +145,19 @@ impl<'a> CompiledGraph<'a> {
   /// format or too little usage.
   pub fn execute(
     self,
-    device: &wgpu::Device,
+    (device, queue): (&wgpu::Device, &wgpu::Queue),
     runtime: &mut GraphRuntime,
     bindings: &GraphBindings<'_>,
   ) -> XrfResult<ExecutedGraph> {
     let GraphRuntime {
       pool,
       bind_groups,
+      uploads,
       timer,
     } = runtime;
 
+    // The frame's uniforms go up first, so the buffer they are bound from is the one they lie in.
+    uploads.flush(device, queue);
     pool.begin_frame();
     bind_groups.begin_frame();
 
@@ -168,7 +171,7 @@ impl<'a> CompiledGraph<'a> {
 
     let pool: &TransientPool = pool;
     let cache: &BindGroupCache = bind_groups;
-    let resources: GraphResources<'_> = self.resolve(pool, bindings)?;
+    let resources: GraphResources<'_> = self.resolve(pool, bindings, uploads.get_buffer())?;
     let is_timing: bool = timer.begin_frame();
     let CompiledGraph {
       textures,
@@ -270,7 +273,12 @@ impl<'a> CompiledGraph<'a> {
     counts
   }
 
-  fn resolve<'r>(&self, pool: &'r TransientPool, bindings: &GraphBindings<'r>) -> XrfResult<GraphResources<'r>> {
+  fn resolve<'r>(
+    &self,
+    pool: &'r TransientPool,
+    bindings: &GraphBindings<'r>,
+    upload: &'r wgpu::Buffer,
+  ) -> XrfResult<GraphResources<'r>> {
     let mut used_textures: Vec<bool> = vec![false; self.textures.len()];
     let mut used_buffers: Vec<bool> = vec![false; self.buffers.len()];
 
@@ -343,7 +351,11 @@ impl<'a> CompiledGraph<'a> {
       });
     }
 
-    Ok(GraphResources { textures, buffers })
+    Ok(GraphResources {
+      textures,
+      buffers,
+      upload,
+    })
   }
 
   fn validate_texture_binding(record: &GraphTextureRecord, texture: &wgpu::Texture) -> XrfResult {

@@ -14,4 +14,3 @@ pub(crate) mod upscale_targets;
 pub(crate) mod view_exposure;
 pub(crate) mod view_targets;
 pub(crate) mod water_reflection;
-pub(crate) mod water_scene;

@@ -820,7 +820,7 @@ impl RenderThread {
 
       let finished: Duration = finishing.elapsed();
       let executed: Option<ExecutedGraph> = level
-        .record(runtime, device, gpu.get_level_passes(), binding, &gpu.textures)
+        .record(runtime, (device, queue), gpu.get_level_passes(), binding, &gpu.textures)
         .unwrap_or_else(|error| {
           log::error!("The level's frame cannot be recorded: {error}");
           None

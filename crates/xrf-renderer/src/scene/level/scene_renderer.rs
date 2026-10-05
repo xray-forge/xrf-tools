@@ -15,7 +15,6 @@ use crate::pass::view_light_groups::ViewLightGroups;
 use crate::pass::wet_uniform::WetUniform;
 use crate::scene::level::level_flares::LevelFlares;
 use crate::scene::level::level_shadows::LevelShadows;
-use crate::scene::level::level_water::LevelWater;
 use crate::scene::level::rain_cover::RainCover;
 
 /// What a sky's bind group binds: the weather textures' generation, the references of its seven slots (the two skies,
@@ -23,8 +22,8 @@ use crate::scene::level::rain_cover::RainCover;
 pub(crate) type SkyGroupKey = (u64, [Option<String>; 7], u64);
 
 /// What draws a level in one view, and what that keeps from frame to frame: the uniform buffers its passes read, the
-/// bind groups made for them with what each was made from, and the effects drawn from the view (the water, the sun's
-/// shadows, the rain cover, the flares).
+/// bind groups made for them with what each was made from, and the effects drawn from the view (the sun's shadows, the
+/// rain cover, the flares).
 pub struct SceneRenderer {
   pub cull_params: wgpu::Buffer,
   pub occlusion: wgpu::Buffer,
@@ -36,10 +35,6 @@ pub struct SceneRenderer {
   pub light_groups: Option<(u64, ViewLightGroups)>,
   /// The sky's textures as bound, with the cache's generation and the references they bind.
   pub sky_group: Option<(SkyGroupKey, wgpu::BindGroup)>,
-  /// Bumped whenever the sky's bind group is made again, which the water's follows.
-  pub sky_version: u64,
-  /// The water, its uniform, and what its enhanced kind reads and draws first.
-  pub water: LevelWater,
   /// What the present pass shows, a [`PresentUniform`].
   pub present: wgpu::Buffer,
   pub temporal_uniform: wgpu::Buffer,
@@ -90,8 +85,6 @@ impl SceneRenderer {
       draw_groups: None,
       light_groups: None,
       sky_group: None,
-      sky_version: 0,
-      water: LevelWater::new(device),
       present: uniform("present", size_of::<PresentUniform>()),
       temporal_uniform: uniform("temporal", size_of::<TemporalUniform>()),
       fsr_uniform: uniform("fsr2", size_of::<FsrUniform>()),

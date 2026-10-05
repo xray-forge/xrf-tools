@@ -1,0 +1,5 @@
+error: binding 2 is already taken by a field before
+  --> tests/ui/taken_binding.rs:12:3
+   |
+12 |   second: GraphTexture,
+   |   ^^^^^^

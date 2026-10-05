@@ -13,8 +13,6 @@ pub struct ViewTargets {
   pub motion: wgpu::TextureView,
   /// Reversed: one at the near plane, zero where nothing was drawn.
   pub depth: wgpu::TextureView,
-  /// The nearest water along each pixel, reversed as the depth is: zero where none is.
-  pub water_depth: wgpu::TextureView,
   /// What the lights accumulate: diffuse in colour, specular in alpha.
   pub light: wgpu::TextureView,
   /// The scene combine finished, tonemapped, before it is put into the window.
@@ -106,7 +104,6 @@ impl ViewTargets {
       material: create("material", Self::MATERIAL),
       motion: create("motion", Self::MOTION),
       depth: create("depth", Self::DEPTH),
-      water_depth: create("water depth", Self::DEPTH),
       light: create("light", Self::LIGHT),
       scene: scene_texture.create_view(&Default::default()),
       scene_texture,

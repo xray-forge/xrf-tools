@@ -1,5 +1,3 @@
-use crate::pass::lighting_uniform::LightingUniform;
-use crate::pass::water_uniform::WaterUniform;
 use crate::scene::static_scene::static_surface::StaticSurface;
 use crate::shader::shader_library::ShaderLibrary;
 
@@ -41,16 +39,6 @@ fn get_struct_size(library: &ShaderLibrary, name: &str, type_name: &str) -> u32 
   layouter[handle].size
 }
 
-/// Both shaders reading the water's uniform lay it out as large as it is written.
-#[test]
-fn the_water_uniform_is_as_large_as_both_its_shaders_read() {
-  let library: ShaderLibrary = ShaderLibrary::default();
-  let size: u32 = size_of::<WaterUniform>() as u32;
-
-  assert_eq!(get_struct_size(&library, "static/water", "Water"), size);
-  assert_eq!(get_struct_size(&library, "frame/water_blur", "Water"), size);
-}
-
 /// The static draws lay a surface out as large as it is written.
 #[test]
 fn a_static_surface_is_as_large_as_its_shaders_read() {
@@ -59,16 +47,5 @@ fn a_static_surface_is_as_large_as_its_shaders_read() {
   assert_eq!(
     get_struct_size(&library, "static/gbuffer", "Surface"),
     size_of::<StaticSurface>() as u32
-  );
-}
-
-/// The frame's lighting is laid out as large as it is written.
-#[test]
-fn the_lighting_uniform_is_as_large_as_its_shaders_read() {
-  let library: ShaderLibrary = ShaderLibrary::default();
-
-  assert_eq!(
-    get_struct_size(&library, "frame/combine", "Lighting"),
-    size_of::<LightingUniform>() as u32
   );
 }

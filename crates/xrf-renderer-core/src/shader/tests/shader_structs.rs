@@ -22,6 +22,14 @@ struct Frame {
   _end: [u32; 3],
 }
 
+/// A struct WGSL knows by another name than Rust does.
+#[repr(C)]
+#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable, crate::ShaderStruct)]
+#[shader(name = "Fog")]
+struct FogUniform {
+  color: Vec4,
+}
+
 /// An array of scalars: fine in a storage buffer, refused in a uniform one, whose arrays step sixteen bytes.
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable, crate::ShaderStruct)]
@@ -95,5 +103,14 @@ fn rewrites_a_stale_generated_file_once() {
       )
       .unwrap(),
     "a stale file is rewritten"
+  );
+}
+
+#[test]
+fn declares_a_struct_by_the_wgsl_name_it_is_given() {
+  assert_eq!(FogUniform::get_wgsl_name(), "Fog");
+  assert_eq!(
+    FogUniform::get_wgsl_declaration(),
+    "struct Fog {\n  color: vec4<f32>,\n}\n"
   );
 }

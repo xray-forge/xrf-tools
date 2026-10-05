@@ -26,6 +26,18 @@ impl GraphTextureDescriptor {
     }
   }
 
+  /// What `texture` is, as an import of it is declared.
+  pub fn from_texture(label: &'static str, texture: &wgpu::Texture) -> Self {
+    Self {
+      label,
+      size: texture.size(),
+      mip_level_count: texture.mip_level_count(),
+      sample_count: texture.sample_count(),
+      dimension: texture.dimension(),
+      format: texture.format(),
+    }
+  }
+
   pub fn with_mip_level_count(mut self, count: u32) -> Self {
     self.mip_level_count = count;
     self

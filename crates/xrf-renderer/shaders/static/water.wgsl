@@ -4,6 +4,7 @@ enable wgpu_binding_array;
 #import "common/lighting"
 #import "common/sky_box"
 #import "static/pulling"
+#import "generated/static/water"
 
 // Water as OpenXRay's `water.vs`, `water.ps` and `waterd.ps` draw it, and Anomaly's programs over them: the wave
 // lifting the surface, two scrolling normal layers bending the sky's reflection, the fresnel mixing it with the base by
@@ -11,82 +12,10 @@ enable wgpu_binding_array;
 // darkens with it towards `water_intensity`, lays foam in the shallows and is fogged. Drawn over the lit frame as it
 // shows, which `water.ps` writes without the tonemap, and the distortion it causes into a target of its own.
 
-struct Water {
-  // Seconds the water has moved.
-  time: f32,
-  // `W_POSITION_SHIFT_HEIGHT` and `W_POSITION_SHIFT_SPEED`.
-  wave_height: f32,
-  wave_speed: f32,
-  // What the normal layers' scroll and the sky's reflection are multiplied by.
-  ripple: f32,
-  reflection: f32,
-  // `water_intensity`.
-  intensity: f32,
-  // One while soft water reads the depth behind it, `r2_soft_water`.
-  soft: f32,
-  // One while the water writes the distortion it causes.
-  distorted: f32,
-  // The enhanced water's refraction, turbidity, soft border and reflectivity.
-  refraction: f32,
-  turbidity: f32,
-  soft_border: f32,
-  reflectivity: f32,
-  // Its reflection's blur and the noise mixing the clear reflection in.
-  reflection_blur: f32,
-  blur_noise: f32,
-  // One where its reflection drew this frame, and one where the history it accumulates over holds a frame.
-  reflected: f32,
-  history: f32,
-  // The weather's wind velocity, which strengthens its waves.
-  wind_velocity: f32,
-  // Its sun highlight and caustics.
-  specular: f32,
-  caustics: f32,
-  // Its waves' height in its parallax and its rain ripples, and how hard it rains.
-  parallax_height: f32,
-  ripples: f32,
-  rain: f32,
-  // How far its maps have scrolled: seconds at its flow, then at its normals', its heights' and its wind layer's paces,
-  // summed frame by frame.
-  flowed: f32,
-  waves: f32,
-  heights: f32,
-  gusts_x: f32,
-  gusts_y: f32,
-  // How far it breaks its maps' repeat.
-  variation: f32,
-};
-
 @group(1) @binding(0) var textures: binding_array<texture_2d<f32>>;
 @group(1) @binding(1) var texture_sampler: sampler;
 
-@group(3) @binding(0) var<uniform> lighting: Lighting;
-@group(3) @binding(1) var<uniform> water: Water;
-// The G-buffer's depth, which the water is tested against and fades by.
-@group(3) @binding(2) var depth_target: texture_depth_2d;
-@group(3) @binding(3) var sky_cube_0: texture_cube<f32>;
-@group(3) @binding(4) var sky_cube_1: texture_cube<f32>;
-@group(3) @binding(5) var sky_clamp: sampler;
-// The nearest water along each pixel, which its depth pass wrote: only that surface draws.
-@group(3) @binding(6) var nearest_water: texture_depth_2d;
-// The scene as it stood before the water, which the enhanced water refracts; a texel alone while the engine's draws.
-@group(3) @binding(7) var water_scene: texture_2d<f32>;
-// The enhanced water's surface: its reflection blurred at half the size and clear, and the noise mixing the two.
-@group(3) @binding(8) var reflection_blurred: texture_2d<f32>;
-@group(3) @binding(9) var reflection_clear: texture_2d<f32>;
-@group(3) @binding(10) var perlin_map: texture_2d<f32>;
-// The enhanced water's reflection: the history it accumulates over and the noise jittering its march.
-@group(3) @binding(11) var reflection_history: texture_2d<f32>;
-@group(3) @binding(12) var blue_noise: texture_2d<f32>;
-// The enhanced water's own maps: its waves' normals, the wind's layer over them, and the light it gathers on its
-// bottom; then what the lights laid on the scene, which says where the sun reaches the bottom.
-@group(3) @binding(13) var wave_map: texture_2d<f32>;
-@group(3) @binding(14) var wind_map: texture_2d<f32>;
-@group(3) @binding(15) var caustics_map: texture_2d<f32>;
-@group(3) @binding(16) var light_target: texture_2d<f32>;
-// The enhanced water's waves' height, which its parallax marches into, and the rain's ripples on it.
-@group(3) @binding(17) var height_map: texture_2d<f32>;
-@group(3) @binding(18) var ripple_map: texture_2d<f32>;
+// Group 3, the water's own, is declared from its passes' parameters.
 
 // `watermove`: the wave's direction through the level, in renderer space, where the engine's `z` is negated.
 const WAVE_DIRECTION: vec3<f32> = vec3<f32>(0.11, 0.13, -0.07);

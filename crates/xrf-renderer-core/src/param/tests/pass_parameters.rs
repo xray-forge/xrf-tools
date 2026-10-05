@@ -1,10 +1,10 @@
 use glam::Vec4;
 
-use crate::param::tests::fixtures::{Blur, Scale, Settings, Shade};
+use crate::param::tests::fixtures::{Blur, Clashing, Reflection, Scale, Settings, Shade, Surface};
 use crate::{
   FrameGraph, GraphBindings, GraphBufferAccess, GraphBufferDescriptor, GraphCompileOptions, GraphRuntime,
-  GraphTextureAccess, GraphTextureDescriptor, PassParameters, ShaderDeclarations, StorageArray, StorageArrayMut,
-  UniformBinding, UploadRing,
+  GraphTextureAccess, GraphTextureDescriptor, PassParameters, ShaderBindings, ShaderDeclarations, StorageArray,
+  StorageArrayMut,
 };
 
 #[test]
@@ -168,7 +168,6 @@ fn binds_parameters_in_a_compute_pass_and_reuses_the_bind_group() {
     bytemuck::cast_slice(&(0..64u32).collect::<Vec<u32>>()),
   );
 
-  let mut ring: UploadRing = UploadRing::new(&device, "uniforms", wgpu::BufferUsages::UNIFORM, 256);
   let mut runtime: GraphRuntime = GraphRuntime::new(&device, &queue);
   let mut declarations: ShaderDeclarations = ShaderDeclarations::new();
 
@@ -189,7 +188,7 @@ fn binds_parameters_in_a_compute_pass_and_reuses_the_bind_group() {
   });
   let layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
     label: Some("scale"),
-    bind_group_layouts: &[Some(&runtime.bind_groups.get_layout::<Scale<'_>>(&device))],
+    bind_group_layouts: &[Some(&runtime.bind_groups.get_layout::<Scale>(&device))],
     ..Default::default()
   });
   let pipeline: wgpu::ComputePipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
@@ -202,17 +201,14 @@ fn binds_parameters_in_a_compute_pass_and_reuses_the_bind_group() {
   });
 
   for factor in [2.0f32, 3.0] {
-    let slice = ring.push(&Settings {
+    let settings = runtime.push_uniform(&Settings {
       factor: Vec4::splat(factor),
     });
-
-    ring.flush(&device, &queue);
-
     let mut graph: FrameGraph<'_> = FrameGraph::new();
     let input = graph.import_buffer(GraphBufferDescriptor::new("input", size));
     let output = graph.import_buffer(GraphBufferDescriptor::new("output", size));
-    let scale: Scale<'_> = Scale {
-      settings: UniformBinding::new(ring.get_buffer(), slice),
+    let scale: Scale = Scale {
+      settings,
       input: StorageArray::new(input),
       output: StorageArrayMut::new(output),
     };
@@ -233,7 +229,12 @@ fn binds_parameters_in_a_compute_pass_and_reuses_the_bind_group() {
     bindings
       .bind_buffer(input, &input_buffer)
       .bind_buffer(output, &output_buffer);
-    queue.submit(compiled.execute(&device, &mut runtime, &bindings).unwrap().commands);
+    queue.submit(
+      compiled
+        .execute((&device, &queue), &mut runtime, &bindings)
+        .unwrap()
+        .commands,
+    );
   }
 
   assert_eq!(
@@ -257,4 +258,41 @@ fn binds_parameters_in_a_compute_pass_and_reuses_the_bind_group() {
     "the second frame's factor, read at its own offset"
   );
   assert_eq!(words[63], 189);
+}
+
+#[test]
+fn numbers_a_binding_as_given_and_the_next_one_past_it() {
+  assert_eq!(Surface::BINDINGS, [0, 3, 4]);
+  assert_eq!(
+    Surface::get_layout_entries()
+      .iter()
+      .map(|entry| entry.binding)
+      .collect::<Vec<_>>(),
+    [0, 3, 4]
+  );
+  assert_eq!(
+    Surface::get_wgsl_bindings(),
+    "@group(2) @binding(0) var scene: texture_2d<f32>;\n\
+     @group(2) @binding(3) var foam: texture_2d<f32>;\n\
+     @group(2) @binding(4) var waves: texture_2d<f32>;\n"
+  );
+}
+
+#[test]
+fn gathers_a_shared_module_s_bindings_once_each() {
+  let mut bindings: ShaderBindings = ShaderBindings::new();
+
+  bindings.add::<Surface>().unwrap().add::<Reflection>().unwrap();
+
+  assert_eq!(
+    bindings.to_wgsl(),
+    "@group(2) @binding(0) var scene: texture_2d<f32>;\n\
+     @group(2) @binding(1) var depth: texture_depth_2d;\n\
+     @group(2) @binding(3) var foam: texture_2d<f32>;\n\
+     @group(2) @binding(4) var waves: texture_2d<f32>;\n"
+  );
+
+  let error: String = bindings.add::<Clashing>().err().expect("a clash").to_string();
+
+  assert!(error.contains("var history"), "{error}");
 }

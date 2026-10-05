@@ -7,6 +7,7 @@ mod compute_grid;
 mod frame_rate;
 mod frame_statistics;
 mod fsr;
+mod generated_shaders;
 mod grass;
 mod headless;
 mod lens_flares;

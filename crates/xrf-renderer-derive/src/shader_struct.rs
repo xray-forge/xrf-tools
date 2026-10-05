@@ -1,9 +1,10 @@
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::{format_ident, quote};
-use syn::{Data, DataStruct, DeriveInput, Error, Fields, Type};
+use syn::{Attribute, Data, DataStruct, DeriveInput, Error, Fields, LitStr, Type};
 
 /// Expands `#[derive(ShaderStruct)]`: WGSL's layout of the struct computed in constants from each member's
-/// `ShaderType`, every member's Rust offset and the struct's size asserted against it, and the WGSL declaration.
+/// `ShaderType`, every member's Rust offset and the struct's size asserted against it, and the WGSL declaration, named as
+/// the struct is unless `#[shader(name = "...")]` names it.
 pub fn expand(input: &DeriveInput) -> syn::Result<TokenStream> {
   let name: &Ident = &input.ident;
   let fields = match &input.data {
@@ -64,6 +65,7 @@ pub fn expand(input: &DeriveInput) -> syn::Result<TokenStream> {
   let member_names: Vec<String> = members.iter().map(|(ident, _)| ident.to_string()).collect();
   let member_idents: Vec<&Ident> = members.iter().map(|(ident, _)| *ident).collect();
   let struct_name: String = name.to_string();
+  let wgsl_name: String = read_wgsl_name(&input.attrs)?.unwrap_or_else(|| struct_name.clone());
   let offset_messages: Vec<String> = member_names
     .iter()
     .map(|member| format!("`{struct_name}.{member}` is not where WGSL places it: pad before it with `_`-named fields"))
@@ -87,7 +89,7 @@ pub fn expand(input: &DeriveInput) -> syn::Result<TokenStream> {
         const IS_STRUCT: bool = true;
 
         fn get_wgsl_name() -> ::std::string::String {
-          ::std::string::String::from(#struct_name)
+          ::std::string::String::from(#wgsl_name)
         }
 
         fn declare(declarations: &mut #core::ShaderDeclarations) {
@@ -108,4 +110,22 @@ pub fn expand(input: &DeriveInput) -> syn::Result<TokenStream> {
       }
     };
   })
+}
+
+/// The WGSL name `#[shader(name = "...")]` gives the struct, if it gives one.
+fn read_wgsl_name(attrs: &[Attribute]) -> syn::Result<Option<String>> {
+  let mut name: Option<String> = None;
+
+  for attr in attrs.iter().filter(|attr| attr.path().is_ident("shader")) {
+    attr.parse_nested_meta(|meta| {
+      if meta.path.is_ident("name") {
+        name = Some(meta.value()?.parse::<LitStr>()?.value());
+        Ok(())
+      } else {
+        Err(meta.error("expected `name = \"<WGSL name>\"`"))
+      }
+    })?;
+  }
+
+  Ok(name)
 }

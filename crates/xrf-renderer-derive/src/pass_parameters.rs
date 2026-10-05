@@ -65,7 +65,7 @@ const STORAGE_FORMATS: &[(&str, &str, &str)] = &[
 ];
 
 /// Expands `#[derive(PassParameters)]`: one bind group's layout, WGSL declarations, graph accesses and bindings, a
-/// binding per field in order.
+/// binding per field in order, each numbered one past the field before unless `#[binding(N)]` numbers it.
 pub fn expand(input: &DeriveInput) -> syn::Result<TokenStream> {
   let name: &Ident = &input.ident;
   let fields = match &input.data {
@@ -81,12 +81,22 @@ pub fn expand(input: &DeriveInput) -> syn::Result<TokenStream> {
     }
   };
   let group: u32 = read_group(&input.attrs, name)?;
-  let mut bindings: Vec<(&Ident, &Type, Binding)> = Vec::new();
+  let mut bindings: Vec<(u32, &Ident, &Type, Binding)> = Vec::new();
+  let mut next: u32 = 0;
 
   for field in fields {
     let ident: &Ident = field.ident.as_ref().expect("named fields");
+    let index: u32 = read_index(&field.attrs)?.unwrap_or(next);
 
-    bindings.push((ident, &field.ty, read_binding(&field.attrs, ident)?));
+    if bindings.iter().any(|(taken, ..)| *taken == index) {
+      return Err(Error::new_spanned(
+        ident,
+        format!("binding {index} is already taken by a field before"),
+      ));
+    }
+
+    next = index + 1;
+    bindings.push((index, ident, &field.ty, read_binding(&field.attrs, ident)?));
   }
 
   if bindings.is_empty() {
@@ -106,9 +116,10 @@ pub fn expand(input: &DeriveInput) -> syn::Result<TokenStream> {
   let mut buffer_accesses: Vec<TokenStream> = Vec::new();
   let mut resources: Vec<TokenStream> = Vec::new();
   let mut dynamic_offsets: Vec<TokenStream> = Vec::new();
+  let indices: Vec<u32> = bindings.iter().map(|(index, ..)| *index).collect();
 
-  for (index, (ident, ty, binding)) in bindings.iter().enumerate() {
-    let index: u32 = index as u32;
+  for (index, ident, ty, binding) in &bindings {
+    let index: u32 = *index;
     let field_name: String = ident.to_string();
     let prefix: String = format!("@group({group}) @binding({index}) var");
 
@@ -122,7 +133,7 @@ pub fn expand(input: &DeriveInput) -> syn::Result<TokenStream> {
             <<#ty as #core::UniformField>::Value as #core::ShaderType>::get_wgsl_name())
         });
         declares.push(quote!(<<#ty as #core::UniformField>::Value as #core::ShaderType>::declare(declarations);));
-        resources.push(quote!(#core::UniformField::get_binding(&self.#ident)));
+        resources.push(quote!(#core::UniformField::get_binding(&self.#ident, resources)));
         dynamic_offsets.push(quote!(#core::UniformField::get_dynamic_offset(&self.#ident)));
       }
       Binding::Storage => {
@@ -230,6 +241,7 @@ pub fn expand(input: &DeriveInput) -> syn::Result<TokenStream> {
     impl #impl_generics #core::PassParameters for #name #type_generics #where_clause {
       const GROUP: u32 = #group;
       const LAYOUT_KEY: &'static str = ::core::concat!(::core::module_path!(), "::", #key);
+      const BINDINGS: &'static [u32] = &[#(#indices),*];
 
       fn get_layout_entries() -> ::std::vec::Vec<::xrf_renderer_core::wgpu::BindGroupLayoutEntry> {
         ::std::vec![#(#layout_entries),*]
@@ -282,6 +294,21 @@ fn read_group(attrs: &[Attribute], name: &Ident) -> syn::Result<u32> {
   }
 
   group.ok_or_else(|| Error::new_spanned(name, "`PassParameters` needs `#[parameters(group = <index>)]`"))
+}
+
+/// The index `#[binding(N)]` gives a field, if it gives one.
+fn read_index(attrs: &[Attribute]) -> syn::Result<Option<u32>> {
+  let mut index: Option<u32> = None;
+
+  for attr in attrs.iter().filter(|attr| attr.path().is_ident("binding")) {
+    if index.is_some() {
+      return Err(Error::new_spanned(attr, "a field is numbered once"));
+    }
+
+    index = Some(attr.parse_args::<LitInt>()?.base10_parse()?);
+  }
+
+  Ok(index)
 }
 
 fn read_binding(attrs: &[Attribute], ident: &Ident) -> syn::Result<Binding> {
