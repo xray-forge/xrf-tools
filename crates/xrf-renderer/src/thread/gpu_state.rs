@@ -113,10 +113,10 @@ impl GpuState {
 
     let water: WaterPass = WaterPass::new(
       device,
+      &context.queue,
       shaders,
-      &view_layout,
-      static_gbuffer.get_layout(),
-      textures.get_layout(),
+      [&view_layout, static_gbuffer.get_layout(), textures.get_layout()],
+      bundle,
     )?;
     let composited: CompositedPass = CompositedPass::new(
       device,

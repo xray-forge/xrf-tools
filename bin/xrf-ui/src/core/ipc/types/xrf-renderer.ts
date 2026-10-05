@@ -1018,7 +1018,7 @@ export type RenderViewportLayout = {
 export enum ERenderWaterMode {
   /** The engine's own: `water.ps` and `waterd.ps`, reflecting the sky over the base. */
   ENGINE = "engine",
-  /** Screen Space Shaders' water (Ascii1457): what lies under it refracted, clouded with depth, and bordered softly. */
+  /** Screen Space Shaders' water: what lies under it refracted, clouded with depth, and bordered softly. */
   ENHANCED = "enhanced",
 }
 
@@ -1057,6 +1057,12 @@ export type RenderWaterSettings = {
   turbidity: number | null;
   /** Metres of depth over which the enhanced water's edge fades into what lies under it, `ssfx_water_setup1.z`. */
   softBorder: number | null;
+  /** How much of its reflection the enhanced water shows by the fresnel, `ssfx_water_setup2.x`; none draws no reflection. */
+  reflectivity: number | null;
+  /** How far the enhanced water's reflection is blurred, `ssfx_water.y`. */
+  reflectionBlur: number | null;
+  /** How much noise mixes the clear reflection into the blurred one, `ssfx_water.z`. */
+  blurNoise: number | null;
 };
 
 /** How a viewport's weather clock runs. */

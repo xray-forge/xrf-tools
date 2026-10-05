@@ -360,7 +360,7 @@ impl TextureCache {
 
       spent += texture.get_size();
       self.sizes[slot as usize] = texture.get_size();
-      self.views[slot as usize] = Self::upload(device, queue, &texture);
+      self.views[slot as usize] = texture.upload(device, queue);
       self.states[slot as usize] = RenderTextureState::Loaded {
         width: texture.width,
         height: texture.height,
@@ -385,50 +385,6 @@ impl TextureCache {
     }
 
     self.states[slot as usize] = state;
-  }
-
-  fn upload(device: &wgpu::Device, queue: &wgpu::Queue, texture: &DecodedTexture) -> wgpu::TextureView {
-    let size: wgpu::Extent3d = wgpu::Extent3d {
-      width: texture.width,
-      height: texture.height,
-      depth_or_array_layers: 1,
-    };
-    let gpu: wgpu::Texture = device.create_texture(&wgpu::TextureDescriptor {
-      label: None,
-      size,
-      mip_level_count: texture.levels.len() as u32,
-      sample_count: 1,
-      dimension: wgpu::TextureDimension::D2,
-      format: texture.format,
-      usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-      view_formats: &[],
-    });
-    let (block_width, block_height) = texture.format.block_dimensions();
-    let block_bytes: u32 = texture.format.block_copy_size(None).unwrap_or(4);
-
-    for (level, bytes) in texture.levels.iter().enumerate() {
-      let physical: wgpu::Extent3d = size
-        .mip_level_size(level as u32, wgpu::TextureDimension::D2)
-        .physical_size(texture.format);
-
-      queue.write_texture(
-        wgpu::TexelCopyTextureInfo {
-          texture: &gpu,
-          mip_level: level as u32,
-          origin: wgpu::Origin3d::ZERO,
-          aspect: wgpu::TextureAspect::All,
-        },
-        bytes,
-        wgpu::TexelCopyBufferLayout {
-          offset: 0,
-          bytes_per_row: Some(physical.width / block_width * block_bytes),
-          rows_per_image: Some(physical.height / block_height),
-        },
-        physical,
-      );
-    }
-
-    gpu.create_view(&Default::default())
   }
 
   /// Magenta and near black squares, as the WebGPU viewers stand in for a texture they cannot have.

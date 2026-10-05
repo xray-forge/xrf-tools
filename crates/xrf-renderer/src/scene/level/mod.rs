@@ -16,6 +16,7 @@ pub(crate) mod level_particles;
 pub(crate) mod level_shadows;
 pub(crate) mod level_smoothing;
 pub(crate) mod level_view;
+pub(crate) mod level_water;
 pub(crate) mod light_shadow_entry;
 pub(crate) mod light_shadow_face;
 pub(crate) mod light_shadow_set;

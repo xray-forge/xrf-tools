@@ -39,7 +39,6 @@ use crate::contract::render_surface_geometry::RenderSurfaceGeometry;
 use crate::contract::render_texture_report::RenderTextureReport;
 use crate::contract::render_upscaling_settings::RenderUpscalingSettings;
 use crate::contract::render_view_options::RenderViewOptions;
-use crate::contract::render_water_mode::RenderWaterMode;
 use crate::contract::render_water_settings::RenderWaterSettings;
 use crate::frame::depth_pyramid::DepthPyramid;
 use crate::frame::fsr_targets::FsrTargets;
@@ -53,7 +52,6 @@ use crate::frame::temporal_jitter::TemporalJitter;
 use crate::frame::upscale_targets::UpscaleTargets;
 use crate::frame::view_exposure::ViewExposure;
 use crate::frame::view_targets::ViewTargets;
-use crate::frame::water_scene::WaterScene;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::host::render_level_source::RenderLevelSource;
 use crate::host::render_level_weather::RenderLevelWeather;
@@ -80,8 +78,6 @@ use crate::pass::thunder_uniform::ThunderUniform;
 use crate::pass::upscale_uniform::UpscaleUniform;
 use crate::pass::view_binding::ViewBinding;
 use crate::pass::view_light_groups::ViewLightGroups;
-use crate::pass::water_groups::WaterGroups;
-use crate::pass::water_uniform::WaterUniform;
 use crate::pass::wet_uniform::WetUniform;
 use crate::pass::wind_uniform::WindUniform;
 use crate::scene::level::level_campfires::LevelCampfires;
@@ -94,6 +90,7 @@ use crate::scene::level::level_overlays::LevelOverlays;
 use crate::scene::level::level_particles::LevelParticles;
 use crate::scene::level::level_shadows::LevelShadows;
 use crate::scene::level::level_smoothing::LevelSmoothing;
+use crate::scene::level::level_water::{LevelWater, WaterFrame};
 use crate::scene::level::lights_frame::LightsFrame;
 use crate::scene::level::model_motions::ModelMotions;
 use crate::scene::level::posed_skeleton::PosedSkeleton;
@@ -168,7 +165,8 @@ pub struct LevelView {
   is_wallmarked: bool,
   /// Bumped whenever the sky's bind group is made again, which the water's follows.
   sky_version: u64,
-  water: wgpu::Buffer,
+  /// The water, its uniform, and what its enhanced kind reads and draws first.
+  water: LevelWater,
   /// What the present pass shows, a [`PresentUniform`].
   present: wgpu::Buffer,
   /// Where this frame's samples sit within their pixels, and whether a temporal resolve gathers them.
@@ -224,11 +222,6 @@ pub struct LevelView {
   /// What this frame's present shows, and whether its occlusion was searched.
   frame_debug_view: RenderDebugView,
   frame_occlusion: bool,
-  /// The water's bind groups, with the sky's version, the targets' epoch and whether they bind the scene before it.
-  water_groups: Option<((u64, u64, bool), WaterGroups)>,
-  /// The scene as it stood before the water, which the enhanced water refracts; none while it does not draw.
-  water_scene: Option<WaterScene>,
-  water_settings: RenderWaterSettings,
   rain_cover: RainCover,
   rain: wgpu::Buffer,
   /// The splash's model, with the level's weather it was built for.
@@ -342,7 +335,7 @@ impl LevelView {
       is_hazing: false,
       is_wallmarked: true,
       sky_version: 0,
-      water: uniform("water", size_of::<WaterUniform>()),
+      water: LevelWater::new(device),
       present: uniform("present", size_of::<PresentUniform>()),
       jitter: TemporalJitter::default(),
       frame_jitter: Vec2::ZERO,
@@ -376,9 +369,6 @@ impl LevelView {
       frame_corrections: RenderImageCorrections::default(),
       frame_debug_view: RenderDebugView::Final,
       frame_occlusion: false,
-      water_groups: None,
-      water_scene: None,
-      water_settings: RenderWaterSettings::default(),
       rain: uniform("rain", size_of::<RainUniform>()),
       splash: None,
       rain_group: None,
@@ -748,42 +738,26 @@ impl LevelView {
       self.sky_version += 1;
     }
 
-    // The copy the enhanced water refracts lives only while that water draws.
-    let is_refracting: bool =
-      options.water.is_enabled && options.water.mode == RenderWaterMode::Enhanced && !options.is_wireframe;
-
-    if !is_refracting {
-      self.water_scene = None;
-    } else if let Some(targets) = &self.targets
-      && self
-        .water_scene
-        .as_ref()
-        .is_none_or(|scene| scene.epoch != self.targets_epoch)
-    {
-      self.water_scene = Some(WaterScene::new(device, targets, self.targets_epoch));
-    }
-
-    let water_key: (u64, u64, bool) = (self.sky_version, self.targets_epoch, is_refracting);
-
-    if self.water_groups.as_ref().is_none_or(|(key, _)| *key != water_key)
-      && let Some(targets) = &self.targets
-    {
-      let skies = [
-        weather_textures.get_view(sky.textures[0].as_deref(), WeatherTextureKind::Cube),
-        weather_textures.get_view(sky.textures[1].as_deref(), WeatherTextureKind::Cube),
-      ];
-      let groups: WaterGroups = passes.water.create_bind_groups(
-        device,
-        targets,
-        &self.lighting,
-        &self.water,
-        skies,
-        passes.sky.get_clamp(),
-        self.water_scene.as_ref().map(|scene| &scene.view),
-      );
-
-      self.water_groups = Some((water_key, groups));
-    }
+    self.water.prepare(
+      device,
+      queue,
+      passes.water,
+      options,
+      WaterFrame {
+        targets: self.targets.as_ref().map(|targets| (targets, self.targets_epoch)),
+        lighting: &self.lighting,
+        skies: (
+          [
+            weather_textures.get_view(sky.textures[0].as_deref(), WeatherTextureKind::Cube),
+            weather_textures.get_view(sky.textures[1].as_deref(), WeatherTextureKind::Cube),
+          ],
+          passes.sky.get_clamp(),
+          self.sky_version,
+        ),
+        intensity: lighting.water_intensity,
+        time: self.started.elapsed().as_secs_f32(),
+      },
+    );
 
     let sway_time: f32 = self.started.elapsed().as_secs_f32();
     let wind: WindUniform = WindUniform::new(lighting.trees.as_ref().filter(|_| options.is_windy), sway_time)
@@ -795,16 +769,6 @@ impl LevelView {
     self.prepare_rain(device, queue, passes, (lighting, weather), options, weather_textures);
     self.prepare_thunder(device, queue, passes, (lighting, weather), options, weather_textures);
     queue.write_buffer(&self.scene.wind, 0, bytemuck::bytes_of(&wind));
-    self.water_settings = options.water;
-    queue.write_buffer(
-      &self.water,
-      0,
-      bytemuck::bytes_of(&WaterUniform::new(
-        &options.water,
-        lighting.water_intensity,
-        self.started.elapsed().as_secs_f32(),
-      )),
-    );
 
     // A keyframe whose textures are not all up is blended out, so a sky still going up shows the other one.
     let side = |index: usize| {
@@ -1316,25 +1280,14 @@ impl LevelView {
         );
       }
 
-      if self.water_settings.is_enabled
-        && !self.is_wireframe
-        && let Some((_, water_groups)) = &self.water_groups
-      {
-        if let Some(scene) = &self.water_scene {
-          scene.copy(encoder, targets);
-        }
-
-        passes.water.draw(
-          encoder,
-          targets,
-          view,
-          draw_groups,
-          texture_group,
-          (water_groups, self.water_settings.mode),
-          &list_args,
-        );
-        timer.mark(encoder, "water");
-      }
+      self.water.record(
+        encoder,
+        passes.water,
+        targets,
+        (view, draw_groups, texture_group),
+        &list_args,
+        timer,
+      );
 
       if !self.is_wireframe
         && let Some((_, sky_group)) = &self.sky_group

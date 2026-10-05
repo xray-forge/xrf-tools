@@ -28,6 +28,51 @@ impl DecodedTexture {
     self.levels.iter().map(|level| level.len() as u64).sum()
   }
 
+  /// Makes a two dimensional texture of it on the GPU, every level written, and answers its view.
+  pub fn upload(&self, device: &wgpu::Device, queue: &wgpu::Queue) -> wgpu::TextureView {
+    let size: wgpu::Extent3d = wgpu::Extent3d {
+      width: self.width,
+      height: self.height,
+      depth_or_array_layers: 1,
+    };
+    let gpu: wgpu::Texture = device.create_texture(&wgpu::TextureDescriptor {
+      label: None,
+      size,
+      mip_level_count: self.levels.len() as u32,
+      sample_count: 1,
+      dimension: wgpu::TextureDimension::D2,
+      format: self.format,
+      usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+      view_formats: &[],
+    });
+    let (block_width, block_height) = self.format.block_dimensions();
+    let block_bytes: u32 = self.format.block_copy_size(None).unwrap_or(4);
+
+    for (level, bytes) in self.levels.iter().enumerate() {
+      let physical: wgpu::Extent3d = size
+        .mip_level_size(level as u32, wgpu::TextureDimension::D2)
+        .physical_size(self.format);
+
+      queue.write_texture(
+        wgpu::TexelCopyTextureInfo {
+          texture: &gpu,
+          mip_level: level as u32,
+          origin: wgpu::Origin3d::ZERO,
+          aspect: wgpu::TextureAspect::All,
+        },
+        bytes,
+        wgpu::TexelCopyBufferLayout {
+          offset: 0,
+          bytes_per_row: Some(physical.width / block_width * block_bytes),
+          rows_per_image: Some(physical.height / block_height),
+        },
+        physical,
+      );
+    }
+
+    gpu.create_view(&Default::default())
+  }
+
   /// Lays a DDS file out for upload as the engine samples it: block compressed layouts as stored, raw and never
   /// decoded from sRGB, with the file's own mip chain; anything else expanded to eight bits a channel. A cube keeps
   /// its six faces, which only a block layout may hold.

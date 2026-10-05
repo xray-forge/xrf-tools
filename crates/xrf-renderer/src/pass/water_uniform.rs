@@ -17,11 +17,18 @@ pub struct WaterUniform {
   pub refraction: f32,
   pub turbidity: f32,
   pub soft_border: f32,
-  pub pad: f32,
+  pub reflectivity: f32,
+  /// The enhanced water's reflection blur and the noise mixing the clear reflection in.
+  pub reflection_blur: f32,
+  pub blur_noise: f32,
+  /// One where the reflection drew this frame, and one where the history it accumulates over holds a frame.
+  pub reflected: f32,
+  pub history: f32,
 }
 
 impl WaterUniform {
-  pub fn new(settings: &RenderWaterSettings, intensity: f32, time: f32) -> Self {
+  /// `reflection` says whether the enhanced water's reflection draws this frame, and whether its history holds a frame.
+  pub fn new(settings: &RenderWaterSettings, intensity: f32, time: f32, (reflected, history): (bool, bool)) -> Self {
     Self {
       time,
       wave_height: settings.wave_height,
@@ -34,7 +41,11 @@ impl WaterUniform {
       refraction: settings.refraction,
       turbidity: settings.turbidity,
       soft_border: settings.soft_border,
-      pad: 0.0,
+      reflectivity: settings.reflectivity,
+      reflection_blur: settings.reflection_blur,
+      blur_noise: settings.blur_noise,
+      reflected: reflected as u32 as f32,
+      history: history as u32 as f32,
     }
   }
 }
