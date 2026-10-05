@@ -168,12 +168,7 @@ impl FlarePass {
   }
 
   /// Measures how much of the sun shows this frame, eased from the last.
-  pub fn measure(&self, encoder: &mut wgpu::CommandEncoder, view: &ViewBinding, group: &wgpu::BindGroup) {
-    let mut pass: wgpu::ComputePass<'_> = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-      label: Some("flare visibility"),
-      timestamp_writes: None,
-    });
-
+  pub fn record_measure(&self, pass: &mut wgpu::ComputePass<'_>, view: &ViewBinding, group: &wgpu::BindGroup) {
     pass.set_pipeline(&self.measure);
     pass.set_bind_group(0, &view.bind_group, &[]);
     pass.set_bind_group(1, group, &[]);
@@ -181,28 +176,13 @@ impl FlarePass {
   }
 
   /// Draws each flare, by instance, with its texture's group; the gradient is `GRADIENT_INSTANCE`.
-  pub fn draw(
+  pub fn record_draw(
     &self,
-    encoder: &mut wgpu::CommandEncoder,
-    targets: &ViewTargets,
+    pass: &mut wgpu::RenderPass<'_>,
     view: &ViewBinding,
     group: &wgpu::BindGroup,
     draws: &[(u32, &wgpu::BindGroup)],
   ) {
-    let mut pass: wgpu::RenderPass<'_> = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-      label: Some("flares"),
-      color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-        view: &targets.scene,
-        depth_slice: None,
-        resolve_target: None,
-        ops: wgpu::Operations {
-          load: wgpu::LoadOp::Load,
-          store: wgpu::StoreOp::Store,
-        },
-      })],
-      ..Default::default()
-    });
-
     pass.set_pipeline(&self.draw);
     pass.set_bind_group(0, &view.bind_group, &[]);
     pass.set_bind_group(1, group, &[]);

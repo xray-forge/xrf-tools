@@ -1,7 +1,7 @@
 use xrf_error::XrfResult;
 
 use crate::frame::view_targets::ViewTargets;
-use crate::pass::fullscreen_pipeline::{begin_cleared_pass, buffer_binding, create_fullscreen_pipeline};
+use crate::pass::fullscreen_pipeline::{buffer_binding, create_fullscreen_pipeline};
 use crate::pass::layout_entries::{storage_entry, uniform_entry};
 use crate::shader::shader_library::ShaderLibrary;
 
@@ -57,15 +57,7 @@ impl SkyHazePass {
     })
   }
 
-  pub fn draw(
-    &self,
-    encoder: &mut wgpu::CommandEncoder,
-    targets: &ViewTargets,
-    bind_group: &wgpu::BindGroup,
-    sky_group: &wgpu::BindGroup,
-  ) {
-    let mut pass: wgpu::RenderPass<'_> = begin_cleared_pass(encoder, "sky haze", &targets.haze);
-
+  pub fn record(&self, pass: &mut wgpu::RenderPass<'_>, bind_group: &wgpu::BindGroup, sky_group: &wgpu::BindGroup) {
     pass.set_pipeline(&self.pipeline);
     pass.set_bind_group(1, bind_group, &[]);
     pass.set_bind_group(2, sky_group, &[]);
