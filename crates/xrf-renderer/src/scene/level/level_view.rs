@@ -39,6 +39,7 @@ use crate::frame::smoothing_target::SmoothingTarget;
 use crate::frame::temporal_history::TemporalHistory;
 use crate::frame::temporal_jitter::TemporalJitter;
 use crate::frame::upscale_targets::UpscaleTargets;
+use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::frame::view_targets::ViewTargets;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::host::render_level_source::RenderLevelSource;
@@ -735,7 +736,7 @@ impl LevelView {
       &'a StaticDrawGroups,
       &'a wgpu::BindGroup,
     ),
-    (targets, pyramid, pyramid_groups): (&'a ViewTargets, &'a DepthPyramid, &'a [wgpu::BindGroup]),
+    (targets, pyramid, pyramid_groups): (ViewTargetHandles, &'a DepthPyramid, &'a [wgpu::BindGroup]),
     is_occluding: bool,
   ) {
     let scene: &'a StaticScene = &self.scene.statics;
@@ -744,13 +745,8 @@ impl LevelView {
     let late: GraphBuffer = bindings.import_buffer(graph, "static late arguments", &scene.late);
     let lists: GraphBuffer = bindings.import_buffer(graph, "static lists", scene.lists.get_buffer());
     let candidates: GraphBuffer = bindings.import_buffer(graph, "static candidates", scene.candidates.get_buffer());
-    let gbuffer: [GraphTexture; 4] = [
-      bindings.import_view(graph, "albedo", &targets.albedo),
-      bindings.import_view(graph, "normal", &targets.normal),
-      bindings.import_view(graph, "material", &targets.material),
-      bindings.import_view(graph, "motion", &targets.motion),
-    ];
-    let depth: GraphTexture = bindings.import_view(graph, "depth", &targets.depth);
+    let gbuffer: [GraphTexture; 4] = targets.get_gbuffer();
+    let depth: GraphTexture = targets.depth;
     let add_draw = |graph: &mut FrameGraph<'a>, name: &'static str, draw_args: GraphBuffer, is_first: bool| {
       let color_load: wgpu::LoadOp<wgpu::Color> = if is_first {
         wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT)
@@ -1181,6 +1177,7 @@ impl LevelView {
     };
     let mut graph: FrameGraph<'_> = FrameGraph::new();
     let mut bindings: GraphBindings<'_> = GraphBindings::new();
+    let handles: ViewTargetHandles = ViewTargetHandles::import(&mut graph, &mut bindings, targets);
 
     // A bridge pass recording as the frame did before the graph, reading the view and nothing more.
     macro_rules! bridge {
@@ -1195,13 +1192,19 @@ impl LevelView {
       };
     }
 
-    bridge!("grass planting", |level, encoder, marker| {
-      if let Some(targets) = &level.state.targets {
-        targets.clear_distortion(encoder);
-      }
+    graph
+      .add_raster_pass("distortion clear")
+      .color(GraphColorAttachment::new(
+        handles.distortion,
+        wgpu::LoadOp::Clear(ViewTargets::DISTORTION_CLEAR),
+      ))
+      .record(|_| {});
 
-      level.scene.grass.plant(encoder, passes.grass);
-    });
+    let grass_args: Option<GraphBuffer> = level_view
+      .scene
+      .grass
+      .add_planting(&mut graph, &mut bindings, passes.grass);
+
     if let (Some((_, cull_group)), Some((pyramid, pyramid_groups))) =
       (&level_view.renderer.cull_group, &level_view.state.pyramid)
     {
@@ -1209,42 +1212,55 @@ impl LevelView {
         (&mut graph, &mut bindings),
         passes,
         (view, texture_group, draw_groups, cull_group),
-        (targets, pyramid, pyramid_groups),
+        (handles, pyramid, pyramid_groups),
         is_occluding,
       );
     }
 
-    bridge!("stats", |level, encoder, marker| {
-      level
-        .state
-        .stats
-        .record(encoder, &level.scene.statics.args, StaticScene::STATS_OFFSET);
-    });
+    let stats_args: GraphBuffer =
+      bindings.import_buffer(&mut graph, "static draw arguments", &level_view.scene.statics.args);
 
-    if is_drawn {
-      bridge!("grass", |level, encoder, marker| {
-        if let Some(targets) = &level.state.targets {
-          level
-            .scene
-            .grass
-            .draw(encoder, passes.grass, (targets, view), texture_group);
-        }
+    // The cull's counts, read back for a report a frame or more later: an effect the graph cannot see.
+    graph
+      .add_encoder_pass("stats")
+      .buffer(stats_args, GraphBufferAccess::CopySource)
+      .keep()
+      .record(move |context| {
+        let args: &wgpu::Buffer = context.get_buffer(stats_args);
+
+        level_view
+          .state
+          .stats
+          .record(context.get_encoder(), args, StaticScene::STATS_OFFSET);
       });
+
+    if let (true, Some(grass_args)) = (is_drawn, grass_args) {
+      level_view
+        .scene
+        .grass
+        .add_draw(&mut graph, passes.grass, (handles, grass_args), (view, texture_group));
     }
 
     if is_wallmarked {
-      bridge!("wall marks", |level, encoder, marker| {
-        if let (Some(targets), Some((_, draw_groups))) = (&level.state.targets, &level.renderer.draw_groups) {
-          passes.composited.draw_wallmarks(
-            encoder,
-            targets,
-            view,
-            draw_groups,
-            texture_group,
-            &Self::list_draw_args(&level.scene.statics, &level.info.cull),
-          );
-        }
-      });
+      let args: Vec<GraphBuffer> = Self::list_draw_args(&level_view.scene.statics, &level_view.info.cull)
+        .into_iter()
+        .map(|args| bindings.import_buffer(&mut graph, "static draw arguments", args))
+        .collect();
+
+      args
+        .iter()
+        .fold(graph.add_raster_pass("wall marks"), |builder, args| {
+          builder.buffer(*args, GraphBufferAccess::Indirect)
+        })
+        .color(GraphColorAttachment::new(handles.albedo, wgpu::LoadOp::Load))
+        .depth(GraphDepthAttachment::new_read_only(handles.depth))
+        .record(move |context| {
+          let args: Vec<&wgpu::Buffer> = args.iter().map(|args| context.get_buffer(*args)).collect();
+
+          passes
+            .composited
+            .record_wallmarks(context.get_pass(), (view, draw_groups, texture_group), &args);
+        });
     }
 
     level_view.renderer.shadows.add_passes(
@@ -1271,12 +1287,39 @@ impl LevelView {
     );
 
     // The rain wets the G-buffer before any light is drawn over it.
-    if is_wet {
-      bridge!("wet", |level, encoder, marker| {
-        if let (Some(targets), Some((_, wet_groups))) = (&level.state.targets, &level.renderer.wet_groups) {
-          passes.wet.draw(encoder, targets, view, wet_groups);
-        }
-      });
+    if let (true, Some((_, [patch, apply]))) = (is_wet, &level_view.renderer.wet_groups) {
+      // The patches go into the light, which the wet look over the normals and the albedo then reads.
+      for (stage, (name, target, group, reads)) in [
+        (
+          "wet patch",
+          handles.light,
+          patch,
+          [handles.depth, handles.albedo, handles.normal],
+        ),
+        (
+          "wet normal",
+          handles.normal,
+          apply,
+          [handles.depth, handles.light, handles.light],
+        ),
+        (
+          "wet albedo",
+          handles.albedo,
+          apply,
+          [handles.depth, handles.light, handles.light],
+        ),
+      ]
+      .into_iter()
+      .enumerate()
+      {
+        reads
+          .into_iter()
+          .fold(graph.add_raster_pass(name), |builder, texture| {
+            builder.texture(texture, GraphTextureAccess::Sampled)
+          })
+          .color(GraphColorAttachment::new(target, wgpu::LoadOp::Load))
+          .record(move |context| passes.wet.record(context.get_pass(), stage, view, group));
+      }
     }
 
     if is_lit {
@@ -1342,7 +1385,7 @@ impl LevelView {
         });
       }
 
-      let scene: GraphTexture = bindings.import_view(&mut graph, "scene", &targets.scene);
+      let scene: GraphTexture = handles.scene;
 
       // FSR 2's reactive mask is what the water and the blended surfaces change of the frame drawn so far.
       if let Some((fsr, _)) = &level_view.state.fsr {
@@ -1365,11 +1408,7 @@ impl LevelView {
 
       if let (true, Some(skies)) = (level_view.state.water.is_drawn(), &level_view.info.sky_cubes) {
         let draw: WaterDraw<'_> = WaterDraw {
-          size: (targets.width, targets.height),
-          scene,
-          depth: bindings.import_view(&mut graph, "depth", &targets.depth),
-          light: bindings.import_view(&mut graph, "light", &targets.light),
-          distortion: bindings.import_view(&mut graph, "distortion", &targets.distortion),
+          targets: handles,
           view,
           textures: texture_group,
           draw_groups,

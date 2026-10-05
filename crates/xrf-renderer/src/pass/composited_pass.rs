@@ -171,17 +171,12 @@ impl CompositedPass {
   }
 
   /// Lays the wall marks each argument buffer lists into the G-buffer's albedo, before any light reads it.
-  pub fn draw_wallmarks(
+  pub fn record_wallmarks(
     &self,
-    encoder: &mut wgpu::CommandEncoder,
-    targets: &ViewTargets,
-    view: &ViewBinding,
-    bind_groups: &StaticDrawGroups,
-    textures: &wgpu::BindGroup,
+    pass: &mut wgpu::RenderPass<'_>,
+    (view, bind_groups, textures): (&ViewBinding, &StaticDrawGroups, &wgpu::BindGroup),
     args: &[&wgpu::Buffer],
   ) {
-    let mut pass: wgpu::RenderPass<'_> = begin_composite(encoder, "wall marks", &targets.albedo, &targets.depth);
-
     pass.set_bind_group(0, &view.bind_group, &[]);
     pass.set_bind_group(1, textures, &[]);
 

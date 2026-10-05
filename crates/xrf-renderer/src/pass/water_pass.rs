@@ -148,7 +148,7 @@ impl WaterPass {
     draw: WaterDraw<'a>,
   ) {
     let water = draw.water;
-    let (width, height) = draw.size;
+    let (width, height) = draw.targets.size;
     let uniform: UniformBinding<WaterUniform> = runtime.push_uniform(water.get_uniform());
     let mut import = |label: &'static str, view: &'a wgpu::TextureView| bindings.import_view(graph, label, view);
     let nothing: GraphTexture = import("water nothing", &self.nothing);
@@ -186,7 +186,7 @@ impl WaterPass {
         height,
         ViewTargets::SCENE,
       ));
-      let source: GraphTexture = draw.scene;
+      let source: GraphTexture = draw.targets.scene;
 
       graph
         .add_encoder_pass("water copy")
@@ -231,7 +231,7 @@ impl WaterPass {
         let reflection_parameters: WaterReflectionParameters<'a> = WaterReflectionParameters {
           lighting: draw.lighting,
           water: uniform,
-          depth_target: draw.depth,
+          depth_target: draw.targets.depth,
           sky_cube_0: skies[0],
           sky_cube_1: skies[1],
           sky_clamp: draw.sky_sampler,
@@ -248,7 +248,7 @@ impl WaterPass {
               histories[index],
               wgpu::LoadOp::Clear(wgpu::Color::BLACK),
             ))
-            .depth(GraphDepthAttachment::new_read_only(draw.depth)),
+            .depth(GraphDepthAttachment::new_read_only(draw.targets.depth)),
           reflection_parameters,
           (&args, groups),
           |it| &it.reflection,
@@ -276,7 +276,7 @@ impl WaterPass {
     let surface_parameters: WaterSurfaceParameters<'a> = WaterSurfaceParameters {
       lighting: draw.lighting,
       water: uniform,
-      depth_target: draw.depth,
+      depth_target: draw.targets.depth,
       sky_cube_0: skies[0],
       sky_cube_1: skies[1],
       sky_clamp: draw.sky_sampler,
@@ -288,7 +288,7 @@ impl WaterPass {
       wave_map: maps[1],
       wind_map: maps[2],
       caustics_map: maps[3],
-      light_target: draw.light,
+      light_target: draw.targets.light,
       height_map: maps[4],
       ripple_map: maps[5],
     };
@@ -297,10 +297,10 @@ impl WaterPass {
     self.add_batch_pass(
       graph
         .add_raster_pass("water")
-        .color(GraphColorAttachment::new(draw.scene, wgpu::LoadOp::Load))
-        .color(GraphColorAttachment::new(draw.distortion, wgpu::LoadOp::Load))
+        .color(GraphColorAttachment::new(draw.targets.scene, wgpu::LoadOp::Load))
+        .color(GraphColorAttachment::new(draw.targets.distortion, wgpu::LoadOp::Load))
         // Read only, so the same depth is sampled for what lies behind the water.
-        .depth(GraphDepthAttachment::new_read_only(draw.depth)),
+        .depth(GraphDepthAttachment::new_read_only(draw.targets.depth)),
       surface_parameters,
       (&args, groups),
       move |it| match mode {
