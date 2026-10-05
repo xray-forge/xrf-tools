@@ -77,8 +77,4 @@ pub enum RenderCommand {
     id: RenderViewportId,
     reply: CaptureReply,
   },
-  /// Plays a weather ambient effect near a viewport's camera at once.
-  AmbientEffect {
-    id: RenderViewportId,
-  },
 }

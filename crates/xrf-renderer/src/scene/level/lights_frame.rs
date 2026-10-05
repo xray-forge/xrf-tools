@@ -1,7 +1,9 @@
+use std::collections::HashMap;
+
+use glam::{Mat4, Vec3};
+
 use crate::camera::camera_view::CameraView;
 use crate::contract::render_lights_settings::RenderLightsSettings;
-use crate::scene::level::level_campfires::LevelCampfires;
-use crate::scene::level::level_object_motions::LevelObjectMotions;
 use crate::scene::level::shadow_sway::ShadowSway;
 
 /// What a level's frame hands its local lights: the camera and settings, what has their shadow faces drawn again, the
@@ -15,6 +17,8 @@ pub struct LightsFrame<'a> {
   pub contents: usize,
   /// How the trees sway, which has a face over them drawn again.
   pub sway: &'a ShadowSway<'a>,
-  pub campfires: &'a mut LevelCampfires,
-  pub motions: &'a mut LevelObjectMotions,
+  /// How much of each campfire's idle light shows, by its id.
+  pub campfire_shares: &'a HashMap<u16, f32>,
+  /// Where each object motion has its object, in engine space, by the motion's name.
+  pub motions: &'a HashMap<String, (Mat4, Vec3)>,
 }

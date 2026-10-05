@@ -2,7 +2,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use glam::Vec3;
-use xrf_renderer_core::GraphRuntime;
+use xrf_renderer_core::{GraphRuntime, ProxyHandle};
 
 use crate::contract::render_applied_environment::RenderAppliedEnvironment;
 use crate::contract::render_applied_fog::RenderAppliedFog;
@@ -34,6 +34,8 @@ use crate::host::render_world_frame::RenderWorldFrame;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::level_view::LevelView;
+use crate::scene::level::particle_emitter_proxy::ParticleEmitterProxy;
+use crate::scene::level::placed_effect::PlacedEffect;
 use crate::viewport::pending_pick::PendingPick;
 use crate::viewport::pick_in_flight::PickInFlight;
 
@@ -61,6 +63,8 @@ pub struct RenderViewport {
   pub world: RenderWorldFrame,
   /// The sectors its scene could not take in of the world's last posts, told back with the next frame.
   pub failures: Vec<RenderSectorFailure>,
+  /// The effects whose particles stopped playing, told back with the next frame.
+  pub finished_effects: Vec<(ProxyHandle<ParticleEmitterProxy>, PlacedEffect)>,
   /// Captures asked for, copied out of the next frame presented, and those copied, answered once they are back.
   pub captures: Vec<CaptureReply>,
   pub captures_in_flight: Vec<(FrameCapture, CaptureReply)>,
@@ -142,6 +146,7 @@ impl RenderViewport {
       overlays_version: 0,
       selection: None,
       failures: Vec::new(),
+      finished_effects: Vec::new(),
       level: None,
       level_view: None,
       incoming_view: None,

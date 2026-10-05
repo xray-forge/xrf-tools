@@ -1,5 +1,3 @@
-mod ambient_effects;
-mod ambient_wind;
 mod backdrop;
 mod bloom;
 mod camera_view;

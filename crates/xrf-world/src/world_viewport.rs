@@ -2,11 +2,13 @@ use std::time::{Duration, Instant};
 
 use glam::Vec3;
 use xrf_renderer::{
-  RenderCameraPose, RenderEventSink, RenderModelPose, RenderViewportEvent, RenderWorldFrame, RenderWorldInput,
-  WeatherTextureKind,
+  RenderCameraPose, RenderEventSink, RenderModelPose, RenderSceneUpdate, RenderViewportEvent, RenderWorldFrame,
+  RenderWorldInput, WeatherTextureKind,
 };
 
 use crate::camera::camera_controller::CameraController;
+use crate::level::ambient_frame::AmbientFrame;
+use crate::level::effects_frame::EffectsFrame;
 use crate::level::world_level::WorldLevel;
 use crate::weather::viewport_weather::ViewportWeather;
 
@@ -52,8 +54,8 @@ impl WorldViewport {
       height,
       options,
       skies,
-      ambient,
       failures,
+      finished_effects,
     } = input;
 
     self.camera.update(delta, height);
@@ -62,11 +64,11 @@ impl WorldViewport {
     let position: Vec3 = self.camera.get_pose().position.into();
     let is_thundering: bool = options.world.is_thundering && options.mode.is_lit;
 
-    self
-      .weather
-      .advance(now, [position.x, position.y, -position.z], is_thundering, |lighting| {
-        skies.request_sky(&lighting.sky)
-      });
+    let eye: Vec3 = Vec3::new(position.x, position.y, -position.z);
+
+    self.weather.advance(now, eye.to_array(), is_thundering, |lighting| {
+      skies.request_sky(&lighting.sky)
+    });
 
     // The keyframe the clock walks to next has its skies fetched before it is reached.
     if let Some(next) = self.weather.get_player().get_next() {
@@ -85,14 +87,21 @@ impl WorldViewport {
 
     self.publish_pose(now);
 
-    if let Some(report) = self.weather.take_report(now, ambient) {
+    let ambient: Option<AmbientFrame<'_>> = self.weather.get_level().map(|level| AmbientFrame {
+      ambients: &self.weather.get_lighting().ambients,
+      level,
+    });
+    let (updates, effects): (Vec<RenderSceneUpdate>, EffectsFrame) = match &mut self.level {
+      Some(level) => level.advance((options, ambient), eye, failures, finished_effects),
+      None => (Vec::new(), EffectsFrame::default()),
+    };
+
+    if let Some(report) = self
+      .weather
+      .take_report(now, self.level.as_ref().and_then(WorldLevel::report_ambient))
+    {
       self.send(RenderViewportEvent::Weather { report });
     }
-
-    let updates = match &mut self.level {
-      Some(level) => level.advance(options.world.get_hidden_spawn_groups(), failures),
-      None => Vec::new(),
-    };
 
     RenderWorldFrame {
       level: self.level.as_ref().map(|level| level.get_source().clone()),
@@ -103,6 +112,9 @@ impl WorldViewport {
       lighting: self.weather.get_lighting().clone(),
       weather: self.weather.get_level().cloned(),
       clock_rate: self.weather.get_player().get_clock_rate(),
+      gust: effects.gust,
+      campfire_shares: effects.campfire_shares,
+      motions: effects.motions,
     }
   }
 

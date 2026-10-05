@@ -1,8 +1,5 @@
 use glam::Vec4;
-
-use crate::host::render_ambient_effect::RenderAmbientEffect;
-use crate::lighting::wind_noise::WindNoise;
-use crate::scene::level::ambient_gust::AmbientGust;
+use xrf_renderer::{AmbientGust, RenderAmbientEffect, WindNoise};
 
 /// `MAX_NOISE_FREQ`: the noise's frequency at a gust factor of one.
 const MAX_NOISE_FREQUENCY: f32 = 0.03;

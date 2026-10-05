@@ -11,8 +11,11 @@ pub enum PlacedEffect {
 }
 
 impl PlacedEffect {
-  /// How many there are, which a system keeps a slot each for.
-  pub const COUNT: usize = 3;
+  /// Every one, in slot order.
+  pub const ALL: [PlacedEffect; 3] = [PlacedEffect::Idle, PlacedEffect::Disabled, PlacedEffect::Enabling];
+
+  /// How many there are, which an emitter keeps a slot each for.
+  pub const COUNT: usize = Self::ALL.len();
 
   /// Its slot among a system's, in declaration order.
   pub fn get_index(self) -> usize {

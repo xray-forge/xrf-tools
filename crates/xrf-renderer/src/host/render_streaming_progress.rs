@@ -13,6 +13,8 @@ pub struct RenderStreamingProgress {
   pub is_sectors_done: bool,
   pub is_spawn_done: bool,
   pub is_lights_done: bool,
+  /// Whether the level's particles were read, whatever the read answered.
+  pub is_particles_done: bool,
   /// Bytes of every sector's pack taken in.
   pub bytes: u64,
 }

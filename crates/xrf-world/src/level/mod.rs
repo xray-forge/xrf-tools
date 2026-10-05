@@ -1,7 +1,17 @@
+pub(crate) mod ambient_frame;
+pub(crate) mod ambient_wind;
+pub(crate) mod camera_hemi;
+pub(crate) mod campfire;
+pub(crate) mod effects_frame;
+pub(crate) mod level_ambient_effects;
 pub(crate) mod level_animation;
+pub(crate) mod level_campfires;
+pub(crate) mod level_effects;
 pub(crate) mod level_loader;
+pub(crate) mod level_object_motions;
 pub(crate) mod level_streaming;
 pub(crate) mod model_motions;
+pub(crate) mod placed_emitter;
 pub(crate) mod posed_skeleton;
 pub(crate) mod spawn_loader;
 pub(crate) mod streamed_model;

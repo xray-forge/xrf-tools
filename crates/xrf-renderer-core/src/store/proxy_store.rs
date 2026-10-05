@@ -163,6 +163,22 @@ impl<T> ProxyStore<T> {
       .map(|(item, slot)| (ProxyHandle::new(*slot, self.slots[*slot as usize].generation), item))
   }
 
+  /// The dense records to change in place, none noted: for a store no GPU mirror reads.
+  pub fn as_mut_slice(&mut self) -> &mut [T] {
+    &mut self.items
+  }
+
+  /// Each item to change with the handle it is held by, in dense order, none noted: for a store no GPU mirror reads.
+  pub fn iter_mut(&mut self) -> impl Iterator<Item = (ProxyHandle<T>, &mut T)> {
+    let slots: &[ProxySlot] = &self.slots;
+
+    self
+      .items
+      .iter_mut()
+      .zip(&self.owners)
+      .map(|(item, slot)| (ProxyHandle::new(*slot, slots[*slot as usize].generation), item))
+  }
+
   /// The dense records added, changed or moved since the last call, each once and in order, still standing.
   pub fn take_changed(&mut self) -> Vec<u32> {
     let mut changed: Vec<u32> = std::mem::take(&mut self.changed);

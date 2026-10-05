@@ -113,6 +113,14 @@ impl World {
     self.get_viewport(viewport).weather.play_effect(name);
   }
 
+  /// Plays a weather ambient effect near a viewport's camera on its next frame, ending the one playing; none plays
+  /// indoors.
+  pub fn play_ambient_effect(&mut self, viewport: RenderViewportId) {
+    if let Some(level) = &mut self.get_viewport(viewport).level {
+      level.play_ambient_now();
+    }
+  }
+
   fn get_level(&self, viewport: RenderViewportId) -> Option<&WorldLevel> {
     self.viewports.get(&viewport)?.level.as_ref()
   }

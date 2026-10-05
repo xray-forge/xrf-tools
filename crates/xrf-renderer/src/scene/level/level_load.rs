@@ -41,7 +41,7 @@ impl LevelLoad {
       progress.is_spawn_done,
       scene.grass.is_loaded(),
       progress.is_lights_done,
-      scene.particles.is_loaded(),
+      progress.is_particles_done,
       self.describe(scene, textures).is_ready,
     ];
     let RenderLoadDurations {
@@ -70,7 +70,7 @@ impl LevelLoad {
     let settled: u32 = textures.count_settled(scene.list_texture_slots());
     let total: u32 = scene.list_texture_slots().count() as u32;
     let is_read: bool =
-      progress.is_spawn_done && progress.is_lights_done && scene.grass.is_loaded() && scene.particles.is_loaded();
+      progress.is_spawn_done && progress.is_lights_done && progress.is_particles_done && scene.grass.is_loaded();
 
     RenderLoadReport {
       sectors: progress.sectors,

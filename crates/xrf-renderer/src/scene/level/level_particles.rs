@@ -5,45 +5,31 @@ use std::time::Instant;
 
 use glam::{Mat4, Vec3, Vec4};
 use rayon::prelude::*;
-use xrf_engine_target::XrayEngine;
 use xrf_material::{XraySurfaceDraw, XraySurfaceSampler};
 use xrf_particles::{
-  ParticleBounds, ParticleCollider, ParticleEffectInstance, ParticleEngineRules, ParticleLibrary, ParticleObject,
-  ParticleUpdateContext,
+  ParticleBounds, ParticleCollider, ParticleEffectInstance, ParticleEngineRules, ParticleLibrary, ParticleUpdateContext,
 };
-use xrf_renderer_core::{FrameGraph, GraphColorAttachment, GraphDepthAttachment};
-use xrf_visual::ZoneSphere;
+use xrf_renderer_core::{FrameGraph, GraphColorAttachment, GraphDepthAttachment, ProxyHandle, ProxyStore};
 
 use crate::camera::camera_view::CameraView;
-use crate::contract::render_ambient_report::RenderAmbientReport;
 use crate::contract::render_particles_report::RenderParticlesReport;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::frame::view_targets::ViewTargets;
 use crate::host::render_asset_source::RenderAssetSource;
-use crate::host::render_level_particles::RenderLevelParticles;
-use crate::host::render_level_source::RenderLevelSource;
-use crate::host::render_particle_source::RenderParticleSource;
+use crate::host::render_particle_definitions::RenderParticleDefinitions;
 use crate::pass::particle_batch::ParticleBatch;
 use crate::pass::particle_blend::ParticleBlend;
 use crate::pass::particle_pass::ParticlePass;
 use crate::pass::particle_surface_record::ParticleSurfaceRecord;
 use crate::pass::particle_vertex::ParticleVertex;
 use crate::pass::view_binding::ViewBinding;
-use crate::scene::level::ambient_frame::AmbientFrame;
-use crate::scene::level::ambient_gust::AmbientGust;
-use crate::scene::level::camera_hemi::CameraHemi;
-use crate::scene::level::campfire::Campfire;
-use crate::scene::level::level_ambient_effects::LevelAmbientEffects;
-use crate::scene::level::level_campfires::LevelCampfires;
-use crate::scene::level::level_object_motions::LevelObjectMotions;
-use crate::scene::level::loader_answer::take_answer;
+use crate::scene::level::particle_emitter_proxy::ParticleEmitterProxy;
 use crate::scene::level::particle_sprite::ParticleSprite;
 use crate::scene::level::placed_effect::PlacedEffect;
-use crate::scene::level::zone_fast_mode::ZONE_FAST_DISTANCE;
+use crate::scene::level::placed_objects::PlacedObjects;
 use crate::scene::texture::texture_cache::TextureCache;
 use crate::scene::texture::texture_role::TextureRole;
-use crate::thread::loader_receiver::LoaderReceiver;
 use crate::thread::render_workers::RenderWorkers;
 
 /// Quads the vertex buffer holds at first; it doubles past them.
@@ -52,12 +38,14 @@ const INITIAL_QUADS: u64 = 4096;
 /// The sampler a distorting effect's `l_special` pass binds its distortion map to.
 const DISTORTION_SAMPLER: &str = "s_distort";
 
-/// A level's particle systems and the weather's ambient effects: read once on a loader thread, then each frame stepped
-/// on the workers as the engine schedules them, and the effects in view filled into quads far to near for the particle
-/// pass, which draws their colour and then their distortion.
+/// A level's particles: the effects and groups the world read and the emitters it placed, each frame stepped on the
+/// workers as the engine schedules them, and the effects in view filled into quads far to near for the particle pass,
+/// which draws their colour and then their distortion. The world says what plays where; this simulates and draws it.
 pub struct LevelParticles {
-  pending: Option<LoaderReceiver<Result<Option<RenderLevelParticles>, String>>>,
   systems: Option<LevelSystems>,
+  emitters: ProxyStore<ParticleEmitterProxy>,
+  /// The effects that stopped playing this frame, told back to the world.
+  finished: Vec<(ProxyHandle<ParticleEmitterProxy>, PlacedEffect)>,
   workers: RenderWorkers,
   started: Instant,
   vertices: Vec<ParticleVertex>,
@@ -75,36 +63,16 @@ pub struct LevelParticles {
   report: ParticlesTally,
 }
 
-/// What the loader read, placed and stepping.
+/// What the effects are made from, and how each draws.
 struct LevelSystems {
   library: Arc<ParticleLibrary>,
   rules: ParticleEngineRules,
   collider: Option<Arc<dyn ParticleCollider>>,
-  systems: Vec<PlacedSystem>,
-  ambient: LevelAmbientEffects,
-  hemi: CameraHemi,
   surfaces: Vec<ParticleSurface>,
   /// Each effect definition's surface, by the definition's address.
   surface_of: HashMap<usize, u32>,
   texture_slots: Vec<u32>,
 }
-
-/// One placement, what plays at it, where it stands this frame, and for a campfire whether it was lit when last placed.
-struct PlacedSystem {
-  source: RenderParticleSource,
-  transform: Mat4,
-  /// The object motion carrying its zone, which moves the transform each frame.
-  motion: Option<String>,
-  /// Its zone's sphere, offset from the transform's place, which Monolith measures how far the camera stands by.
-  zone_sphere: Option<ZoneSphere>,
-  seed: i32,
-  campfire_lit: Option<bool>,
-  objects: PlacedObjects,
-}
-
-/// What plays at a placed system, an object a [`PlacedEffect`].
-#[derive(Default)]
-struct PlacedObjects([Option<ParticleObject>; PlacedEffect::COUNT]);
 
 /// How an effect's sprite draws: its equation, none for one drawing no colour, whether it distorts, and its record.
 struct ParticleSurface {
@@ -122,23 +90,11 @@ struct ParticlesTally {
 }
 
 impl LevelParticles {
-  pub fn new(device: &wgpu::Device, source: &Arc<dyn RenderLevelSource>, workers: &RenderWorkers) -> Self {
-    let (sender, receiver) = LoaderReceiver::channel();
-    let source: Arc<dyn RenderLevelSource> = Arc::clone(source);
-
-    workers.spawn(move || {
-      let particles = source.read_particles().map_err(|error| error.to_string());
-
-      if let Err(error) = &particles {
-        log::error!("The level's particles cannot be drawn: {error}");
-      }
-
-      let _ = sender.send(particles);
-    });
-
+  pub fn new(device: &wgpu::Device, workers: &RenderWorkers) -> Self {
     Self {
-      pending: Some(receiver),
       systems: None,
+      emitters: ProxyStore::new(),
+      finished: Vec::new(),
       workers: workers.clone(),
       started: Instant::now(),
       vertices: Vec::new(),
@@ -157,14 +113,13 @@ impl LevelParticles {
     }
   }
 
-  /// Takes the systems once their loader read them: asks for every sprite's textures and places each system.
-  pub fn poll(&mut self, device: &wgpu::Device, textures: &mut TextureCache, source: &Arc<dyn RenderAssetSource>) {
-    let Some(read) = take_answer(&mut self.pending, "particles") else {
-      return;
-    };
-    let Ok(Some(read)) = read else {
-      return;
-    };
+  /// Takes what the effects are made from, asking for every sprite's textures.
+  pub fn add_definitions(
+    &mut self,
+    device: &wgpu::Device,
+    (textures, source): (&mut TextureCache, &Arc<dyn RenderAssetSource>),
+    read: RenderParticleDefinitions,
+  ) {
     let mut surfaces: Vec<ParticleSurface> = Vec::with_capacity(read.surfaces.len());
     let mut surface_of: HashMap<usize, u32> = HashMap::with_capacity(read.surfaces.len());
     let mut texture_slots: Vec<u32> = Vec::new();
@@ -213,26 +168,7 @@ impl LevelParticles {
       });
     }
 
-    let systems: Vec<PlacedSystem> = read
-      .placements
-      .iter()
-      .enumerate()
-      .map(|(index, placement)| PlacedSystem {
-        source: placement.source.clone(),
-        transform: Mat4::from_cols_array(&placement.transform),
-        motion: placement.motion.clone(),
-        zone_sphere: placement.zone_sphere.clone(),
-        seed: index as i32 + 1,
-        campfire_lit: None,
-        objects: PlacedObjects::default(),
-      })
-      .collect();
-
-    log::info!(
-      "Native viewport particles {} placed systems, {} effect surfaces",
-      systems.len(),
-      surfaces.len()
-    );
+    log::info!("Native viewport particles {} effect surfaces", surfaces.len());
 
     self.surface_buffer = Self::create_storage(
       device,
@@ -245,77 +181,75 @@ impl LevelParticles {
       library: read.library,
       rules: read.rules,
       collider: read.collider,
-      systems,
-      ambient: LevelAmbientEffects::default(),
-      hemi: CameraHemi::new(read.hemi, &self.workers),
       surfaces,
       surface_of,
       texture_slots,
     });
   }
 
-  /// Plays the weather's ambient effects by the frame's weather and blows the wind they bring, before anything reads
-  /// the wind this frame; frozen while particles are not drawn, and played as though indoors while switched off.
-  pub fn update_ambient(&mut self, view: &CameraView, options: &RenderViewOptions, ambient: Option<AmbientFrame<'_>>) {
-    let Some(level) = self.systems.as_mut() else {
-      return;
-    };
-
-    if !options.show.is_particled || !options.mode.is_lit {
-      return;
-    }
-
-    let now: u64 = self.started.elapsed().as_millis() as u64;
-    let eye: Vec3 = ParticleSprite::mirror(view.position);
-    let context: ParticleUpdateContext = ParticleUpdateContext {
-      library: &level.library,
-      rules: &level.rules,
-      collider: level.collider.as_deref(),
-    };
-
-    level.hemi.advance(eye, now);
-    level.ambient.update(
-      ambient,
-      (eye, level.hemi.is_indoors() || !options.world.is_ambient_played),
-      now,
-      &context,
+  /// Places an emitter at the handle the world allocated, nothing playing at it yet.
+  pub fn add_emitter(&mut self, handle: ProxyHandle<ParticleEmitterProxy>, transform: Mat4, seed: i32) {
+    self.emitters.insert(
+      handle,
+      ParticleEmitterProxy {
+        transform,
+        seed,
+        objects: PlacedObjects::default(),
+      },
     );
   }
 
-  /// Plays an ambient effect on the next frame, ending the one playing, without waiting.
-  pub fn play_ambient_now(&mut self) {
-    if let Some(level) = &mut self.systems {
-      level.ambient.play_now();
+  /// Takes an emitter out with whatever plays at it.
+  pub fn remove_emitter(&mut self, handle: ProxyHandle<ParticleEmitterProxy>) {
+    self.emitters.remove(handle);
+  }
+
+  /// Plays an effect at an emitter unless it already plays there; nothing before the definitions are in.
+  pub fn play(&mut self, handle: ProxyHandle<ParticleEmitterProxy>, effect: PlacedEffect, name: &str) {
+    let now: u64 = self.started.elapsed().as_millis() as u64;
+    let (Some(systems), Some(emitter)) = (&self.systems, self.emitters.get_mut(handle)) else {
+      return;
+    };
+    let context: ParticleUpdateContext = ParticleUpdateContext {
+      library: &systems.library,
+      rules: &systems.rules,
+      collider: systems.collider.as_deref(),
+    };
+
+    emitter
+      .objects
+      .play(effect, name, (&emitter.transform, emitter.seed), &context, now);
+  }
+
+  pub fn stop(&mut self, handle: ProxyHandle<ParticleEmitterProxy>, effect: PlacedEffect, is_deferred: bool) {
+    if let Some(emitter) = self.emitters.get_mut(handle) {
+      emitter.objects.stop(effect, is_deferred);
     }
   }
 
-  /// Where the ambient effects stand, none until the particles are read.
-  pub fn get_ambient_report(&self) -> Option<RenderAmbientReport> {
-    let now: u64 = self.started.elapsed().as_millis() as u64;
-
-    self
-      .systems
-      .as_ref()
-      .map(|level| level.ambient.report(now, level.hemi.is_indoors()))
+  /// Moves an emitter and every effect playing at it, their sources taking on its velocity.
+  pub fn move_emitter(&mut self, handle: ProxyHandle<ParticleEmitterProxy>, transform: Mat4, velocity: Vec3) {
+    if let Some(emitter) = self.emitters.get_mut(handle) {
+      emitter.transform = transform;
+      emitter.objects.move_to(&transform, velocity);
+    }
   }
 
-  /// The wind as the ambient effects blow it this frame, still air until the particles are read.
-  pub fn get_gust(&self) -> AmbientGust {
-    self
-      .systems
-      .as_ref()
-      .map_or_else(AmbientGust::default, |level| level.ambient.get_gust())
+  /// Moves one effect's sources at a velocity where its emitter stands.
+  pub fn carry(&mut self, handle: ProxyHandle<ParticleEmitterProxy>, effect: PlacedEffect, velocity: Vec3) {
+    if let Some(emitter) = self.emitters.get_mut(handle) {
+      emitter.objects.carry(effect, &emitter.transform, velocity);
+    }
   }
 
-  /// Steps every system and the ambient effect playing as the engine schedules them, and fills the effects in view into
-  /// quads, far to near.
-  pub fn step(
-    &mut self,
-    view: &CameraView,
-    options: &RenderViewOptions,
-    campfires: &mut LevelCampfires,
-    motions: &mut LevelObjectMotions,
-  ) {
+  /// The effects that stopped playing since the last call, for the world.
+  pub fn take_finished(&mut self) -> Vec<(ProxyHandle<ParticleEmitterProxy>, PlacedEffect)> {
+    std::mem::take(&mut self.finished)
+  }
+
+  /// Steps every effect playing as the engine schedules them, notes the ones that stopped, and fills the effects in
+  /// view into quads, far to near.
+  pub fn step(&mut self, view: &CameraView, options: &RenderViewOptions) {
     self.vertices.clear();
     self.batches.clear();
     self.distortion_runs.clear();
@@ -335,19 +269,16 @@ impl LevelParticles {
     let planes: [Vec4; 6] = view.get_planes();
     let started: Instant = Instant::now();
 
-    Self::move_systems(level, motions);
-    Self::place(level, eye, now, campfires);
-
     let context: ParticleUpdateContext = ParticleUpdateContext {
       library: &level.library,
       rules: &level.rules,
       collider: level.collider.as_deref(),
     };
-    let systems: &mut Vec<PlacedSystem> = &mut level.systems;
-    let mut simulated: u32 = self.workers.install(|| {
-      systems
+    let emitters: &mut [ParticleEmitterProxy] = self.emitters.as_mut_slice();
+    let simulated: u32 = self.workers.install(|| {
+      emitters
         .par_iter_mut()
-        .flat_map_iter(|system| system.objects.iter_mut())
+        .flat_map_iter(|emitter| emitter.objects.iter_mut())
         .map(|object| {
           let is_in_view: bool = Self::is_in_view(&planes, object.get_instance().get_bounds());
 
@@ -356,11 +287,16 @@ impl LevelParticles {
         .sum()
     });
 
-    if let Some(object) = level.ambient.get_playing_mut() {
-      let is_in_view: bool = Self::is_in_view(&planes, object.get_instance().get_bounds());
-
-      simulated += u32::from(object.advance(now, eye, is_in_view, &context));
+    for (handle, emitter) in self.emitters.iter_mut() {
+      self.finished.extend(
+        emitter
+          .objects
+          .take_finished()
+          .into_iter()
+          .map(|effect| (handle, effect)),
+      );
     }
+
     let simulation_time: f32 = started.elapsed().as_secs_f32() * 1000.0;
     let mut drawn: Vec<(f32, &ParticleEffectInstance, u32, &ParticleSurface)> = Vec::new();
     let mut report: RenderParticlesReport = RenderParticlesReport {
@@ -368,11 +304,11 @@ impl LevelParticles {
       ..RenderParticlesReport::default()
     };
 
-    for object in level
-      .systems
+    for object in self
+      .emitters
+      .as_slice()
       .iter()
-      .flat_map(|system| system.objects.iter())
-      .chain(level.ambient.get_playing())
+      .flat_map(|emitter| emitter.objects.iter())
     {
       for effect in object.get_instance().get_effects() {
         let count: usize = effect.get_pool().len();
@@ -500,11 +436,6 @@ impl LevelParticles {
     !self.distortion_runs.is_empty()
   }
 
-  /// Whether its loader has answered, whatever it answered.
-  pub fn is_loaded(&self) -> bool {
-    self.pending.is_none()
-  }
-
   /// The texture slots the sprites sample.
   pub fn get_texture_slots(&self) -> &[u32] {
     self
@@ -524,95 +455,6 @@ impl LevelParticles {
     self.report.frames = 0;
 
     report
-  }
-
-  /// Moves each system a motion carries to where it has its zone this frame, and its objects with it
-  /// (`CCustomZone::OnMove`, `UpdateParent`), their sources taking on the zone's velocity.
-  fn move_systems(level: &mut LevelSystems, motions: &mut LevelObjectMotions) {
-    for system in &mut level.systems {
-      let Some((transform, velocity)) = system.motion.as_deref().and_then(|name| motions.get_pose(name)) else {
-        continue;
-      };
-
-      system.transform = transform;
-
-      for object in system.objects.iter_mut() {
-        object.update_parent(&transform, velocity);
-      }
-    }
-  }
-
-  /// Plays what each system's source plays: a planted system always; a zone's idle effect while it is enabled, stopped
-  /// on Monolith while the camera stands past `FASTMODE_DISTANCE` (`o_switch_2_slow`) and played afresh once it comes
-  /// back (`o_switch_2_fast`); a campfire's as `CZoneCampfire` switches them, following its campfire's state, its idle
-  /// particles carried by the wind.
-  fn place(level: &mut LevelSystems, eye: Vec3, now: u64, campfires: &mut LevelCampfires) {
-    let wind: Vec3 = level.ambient.get_gust().get_velocity();
-    let context: ParticleUpdateContext = ParticleUpdateContext {
-      library: &level.library,
-      rules: &level.rules,
-      collider: level.collider.as_deref(),
-    };
-    // Only Monolith stops a slowed zone's idle particles.
-    let is_slowed: bool = level.rules.get_engine() == XrayEngine::Extended;
-
-    for system in &mut level.systems {
-      let placement: (&Mat4, i32) = (&system.transform, system.seed);
-      let objects: &mut PlacedObjects = &mut system.objects;
-      let is_far: bool = is_slowed
-        && system.zone_sphere.as_ref().is_some_and(|sphere| {
-          sphere.get_distance(system.transform.w_axis.truncate().to_array(), eye.to_array()) > ZONE_FAST_DISTANCE
-        });
-
-      match &system.source {
-        RenderParticleSource::Static { name } => objects.play(PlacedEffect::Idle, name, placement, &context, now),
-        RenderParticleSource::Zone { .. } if is_far => objects.stop(PlacedEffect::Idle),
-        RenderParticleSource::Zone { idle } => objects.play(PlacedEffect::Idle, idle, placement, &context, now),
-        RenderParticleSource::Campfire {
-          id,
-          idle,
-          disabled,
-          enabling,
-        } => {
-          let campfire: Campfire = *campfires.get(*id);
-          let at: u64 = campfires.get_now();
-
-          match system.campfire_lit {
-            // One placed out from the first plays its disabled effect once.
-            None if !campfire.is_lit() => objects.play(PlacedEffect::Disabled, disabled, placement, &context, now),
-            // A turn plays its effects (`GoEnabledState`, `GoDisabledState`); one that ended while nothing was placed,
-            // the particles hidden, leaves only what the state it settled in keeps.
-            Some(was_lit) if was_lit != campfire.is_lit() => {
-              if campfire.is_lit() {
-                objects.stop(PlacedEffect::Disabled);
-
-                if campfire.is_turning() {
-                  objects.play(PlacedEffect::Enabling, enabling, placement, &context, now);
-                }
-              } else if campfire.is_turning() {
-                objects.play(PlacedEffect::Disabled, disabled, placement, &context, now);
-              }
-            }
-            _ => {}
-          }
-
-          system.campfire_lit = Some(campfire.is_lit());
-
-          // The zone's idle effect through the campfire's gates: played while lit and near, taking over from the
-          // enabling one; stopped while out, or while far on Monolith.
-          if campfire.is_lit() && !is_far {
-            if campfire.can_play_idle(at) {
-              objects.play(PlacedEffect::Idle, idle, placement, &context, now);
-              objects.stop(PlacedEffect::Enabling);
-            }
-          } else if campfire.can_stop_idle(at) {
-            objects.stop(PlacedEffect::Idle);
-          }
-
-          objects.carry(PlacedEffect::Idle, &system.transform, wind);
-        }
-      }
-    }
   }
 
   /// Whether bounds in engine space stand within the frustum's planes in renderer space.
@@ -658,54 +500,5 @@ impl LevelParticles {
       usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
       mapped_at_creation: false,
     })
-  }
-}
-
-impl PlacedObjects {
-  /// Plays an effect at the placement unless it already plays, as a zone makes its idle object only once.
-  fn play(
-    &mut self,
-    effect: PlacedEffect,
-    name: &str,
-    (transform, seed): (&Mat4, i32),
-    context: &ParticleUpdateContext,
-    now: u64,
-  ) {
-    let slot: &mut Option<ParticleObject> = &mut self.0[effect.get_index()];
-
-    if slot.is_some() {
-      return;
-    }
-
-    // Each effect a sequence of its own, so a campfire's effects do not repeat one another.
-    let Some(instance) = context.library.create(name, seed ^ ((effect.get_index() as i32) << 16)) else {
-      return;
-    };
-    let mut object: ParticleObject = ParticleObject::new(instance);
-
-    object.update_parent(transform, Vec3::ZERO);
-    object.play(now, context);
-    *slot = Some(object);
-  }
-
-  /// Moves an effect's sources at a velocity where it stands, as `CZoneCampfire::shedule_Update` carries its idle
-  /// particles by the wind.
-  fn carry(&mut self, effect: PlacedEffect, transform: &Mat4, velocity: Vec3) {
-    if let Some(object) = &mut self.0[effect.get_index()] {
-      object.update_parent(transform, velocity);
-    }
-  }
-
-  /// Stops an effect at once, its particles gone with it: `Stop(FALSE)`, then `Destroy`.
-  fn stop(&mut self, effect: PlacedEffect) {
-    self.0[effect.get_index()] = None;
-  }
-
-  fn iter(&self) -> impl Iterator<Item = &ParticleObject> {
-    self.0.iter().flatten()
-  }
-
-  fn iter_mut(&mut self) -> impl Iterator<Item = &mut ParticleObject> {
-    self.0.iter_mut().flatten()
   }
 }
