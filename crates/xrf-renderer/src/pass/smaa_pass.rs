@@ -3,7 +3,7 @@ use xrf_error::{XrfError, XrfResult};
 use crate::frame::smaa_targets::SmaaTargets;
 use crate::frame::view_targets::ViewTargets;
 use crate::host::render_bundle::RenderBundle;
-use crate::pass::fullscreen_pipeline::{begin_cleared_pass, create_fullscreen_pipeline, texture_binding};
+use crate::pass::fullscreen_pipeline::{create_fullscreen_pipeline, texture_binding};
 use crate::pass::layout_entries::texture_entry;
 use crate::shader::shader_library::ShaderLibrary;
 
@@ -147,27 +147,11 @@ impl SmaaPass {
   }
 
   /// The three stages, the last blending into `target`.
-  pub fn draw(
-    &self,
-    encoder: &mut wgpu::CommandEncoder,
-    smaa: &SmaaTargets,
-    groups: &[wgpu::BindGroup],
-    target: &wgpu::TextureView,
-  ) {
-    for (index, (written, label)) in [
-      (&smaa.edges, "smaa edges"),
-      (&smaa.weights, "smaa weights"),
-      (target, "smaa"),
-    ]
-    .into_iter()
-    .enumerate()
-    {
-      let mut pass: wgpu::RenderPass<'_> = begin_cleared_pass(encoder, label, written);
-
-      pass.set_pipeline(&self.pipelines[index]);
-      pass.set_bind_group(0, &groups[index], &[]);
-      pass.draw(0..3, 0..1);
-    }
+  /// Draws one of its three stages into the target the pass draws into: the edges, the blend weights, then the blend.
+  pub fn record(&self, pass: &mut wgpu::RenderPass<'_>, stage: usize, groups: &[wgpu::BindGroup]) {
+    pass.set_pipeline(&self.pipelines[stage]);
+    pass.set_bind_group(0, &groups[stage], &[]);
+    pass.draw(0..3, 0..1);
   }
 
   fn create_pipelines(

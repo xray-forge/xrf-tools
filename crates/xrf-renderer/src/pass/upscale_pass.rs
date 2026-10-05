@@ -1,9 +1,7 @@
 use xrf_error::XrfResult;
 
 use crate::frame::upscale_targets::UpscaleTargets;
-use crate::pass::fullscreen_pipeline::{
-  begin_cleared_pass, buffer_binding, create_fullscreen_pipeline, texture_binding,
-};
+use crate::pass::fullscreen_pipeline::{buffer_binding, create_fullscreen_pipeline, texture_binding};
 use crate::pass::layout_entries::{texture_entry, uniform_entry};
 use crate::shader::shader_library::ShaderLibrary;
 
@@ -66,26 +64,9 @@ impl UpscalePass {
     })
   }
 
-  /// Upscales into the first of the targets.
-  pub fn draw_easu(&self, encoder: &mut wgpu::CommandEncoder, targets: &UpscaleTargets, bind_group: &wgpu::BindGroup) {
-    self.draw(encoder, 0, &targets.views[0], bind_group);
-  }
-
-  /// Sharpens the first of the targets into the second.
-  pub fn draw_rcas(&self, encoder: &mut wgpu::CommandEncoder, targets: &UpscaleTargets, bind_group: &wgpu::BindGroup) {
-    self.draw(encoder, 1, &targets.views[1], bind_group);
-  }
-
-  fn draw(
-    &self,
-    encoder: &mut wgpu::CommandEncoder,
-    pipeline: usize,
-    target: &wgpu::TextureView,
-    group: &wgpu::BindGroup,
-  ) {
-    let mut pass: wgpu::RenderPass<'_> = begin_cleared_pass(encoder, "upscale", target);
-
-    pass.set_pipeline(&self.pipelines[pipeline]);
+  /// Draws EASU's upscale (`stage` 0) or RCAS's sharpening (1) into the target the pass draws into.
+  pub fn record(&self, pass: &mut wgpu::RenderPass<'_>, stage: usize, group: &wgpu::BindGroup) {
+    pass.set_pipeline(&self.pipelines[stage]);
     pass.set_bind_group(0, group, &[]);
     pass.draw(0..3, 0..1);
   }

@@ -903,6 +903,23 @@ impl LevelView {
     }
   }
 
+  /// Adds a pass copying the whole of one texture into another of its size.
+  fn add_copy(graph: &mut FrameGraph<'_>, name: &'static str, source: GraphTexture, destination: GraphTexture) {
+    graph
+      .add_encoder_pass(name)
+      .texture(source, GraphTextureAccess::CopySource)
+      .texture(destination, GraphTextureAccess::CopyDestination)
+      .record(move |context| {
+        let (source, destination) = (context.get_texture(source), context.get_texture(destination));
+
+        context.get_encoder().copy_texture_to_texture(
+          source.texture.as_image_copy(),
+          destination.texture.as_image_copy(),
+          source.texture.size(),
+        );
+      });
+  }
+
   /// Adds a raster pass blending over the scene, tested against its depth without writing it.
   fn add_over_scene<'g, 'a>(
     graph: &'g mut FrameGraph<'a>,
@@ -1214,15 +1231,15 @@ impl LevelView {
     ));
   }
 
-  /// Records the frame as a frame graph of bridge passes, each the pass it was before the graph, and executes it with
-  /// the viewport's runtime: culls the scene and draws it into the G-buffer (what last frame's depth does not hide,
-  /// then, culling occlusion, what this frame's first draw does not hide of the rest, leaving this frame's depth reduced
-  /// for the next), shadows and lights it, draws the water and what blends over it, and resolves the frame. Which
-  /// passes run is decided here; each bridge reaches the view through one lock, as they record one after another.
+  /// Records the frame as a frame graph and executes it with the viewport's runtime: culls the scene and draws it into
+  /// the G-buffer (what last frame's depth does not hide, then, culling occlusion, what this frame's first draw does not
+  /// hide of the rest, leaving this frame's depth reduced for the next), shadows and lights it, draws the water and what
+  /// blends over it, and resolves the frame. Which passes run is decided here; each reads the view, which recording
+  /// leaves as it is.
   ///
   /// # Errors
   ///
-  /// Returns an error when the graph cannot compile or execute, which a frame of bridges should never meet.
+  /// Returns an error when the graph cannot compile or execute.
   pub fn record(
     &mut self,
     runtime: &mut GraphRuntime,
@@ -1280,19 +1297,6 @@ impl LevelView {
     let mut graph: FrameGraph<'_> = FrameGraph::new();
     let mut bindings: GraphBindings<'_> = GraphBindings::new();
     let handles: ViewTargetHandles = ViewTargetHandles::import(&mut graph, &mut bindings, targets);
-
-    // A bridge pass recording as the frame did before the graph, reading the view and nothing more.
-    macro_rules! bridge {
-      ($name:literal, |$level:ident, $encoder:ident, $marker:ident| $body:block) => {
-        graph.add_encoder_pass($name).bridge().record(move |context| {
-          let $level: &LevelView = level_view;
-          let ($encoder, $marker) = context.split();
-          let _ = &$marker;
-
-          $body
-        });
-      };
-    }
 
     graph
       .add_raster_pass("distortion clear")
@@ -1598,98 +1602,120 @@ impl LevelView {
         }
       }
 
-      if is_smoothed {
-        bridge!("smoothing", |level, encoder, marker| {
-          let (Some(targets), Some(smoothing)) = (&level.state.targets, &level.state.smoothing) else {
-            return;
-          };
-          let target: &SmoothingTarget = &smoothing.target;
+      if let Some(smoothing) = level_view.state.smoothing.as_ref().filter(|_| is_smoothed) {
+        let target: GraphTexture = bindings.import_view(&mut graph, "smoothed", &smoothing.target.view);
 
-          match (&smoothing.smaa, passes.smaa) {
-            (Some(smaa), Some(pass)) => pass.draw(encoder, smaa, &smoothing.groups, &target.view),
-            _ => passes.fxaa.draw(encoder, &smoothing.groups[0], &target.view),
+        match (&smoothing.smaa, passes.smaa) {
+          (Some(smaa), Some(pass)) => {
+            let edges: GraphTexture = bindings.import_view(&mut graph, "smaa edges", &smaa.edges);
+            let weights: GraphTexture = bindings.import_view(&mut graph, "smaa weights", &smaa.weights);
+
+            for (stage, (name, reads, written)) in [
+              ("smaa edges", vec![handles.scene], edges),
+              ("smaa weights", vec![edges], weights),
+              ("smaa", vec![handles.scene, weights], target),
+            ]
+            .into_iter()
+            .enumerate()
+            {
+              reads
+                .into_iter()
+                .fold(graph.add_raster_pass(name), |builder, texture| {
+                  builder.texture(texture, GraphTextureAccess::Sampled)
+                })
+                .color(GraphColorAttachment::new(
+                  written,
+                  wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                ))
+                .record(move |context| pass.record(context.get_pass(), stage, &smoothing.groups));
+            }
           }
+          _ => {
+            graph
+              .add_raster_pass("fxaa")
+              .texture(handles.scene, GraphTextureAccess::Sampled)
+              .color(GraphColorAttachment::new(
+                target,
+                wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+              ))
+              .record(move |context| passes.fxaa.record(context.get_pass(), &smoothing.groups[0]));
+          }
+        }
 
-          encoder.copy_texture_to_texture(
-            target.texture.as_image_copy(),
-            targets.scene_texture.as_image_copy(),
-            target.texture.size(),
-          );
-        });
+        Self::add_copy(&mut graph, "smoothed copy", target, handles.scene);
       }
 
       // The resolved frame goes where the present pass reads it: the upscaled frame, or the scene drawn at its size.
-      match resolve {
-        Some("fsr2") => {
-          bridge!("fsr2", |level, encoder, marker| {
-            let ViewState {
-              targets, fsr, upscale, ..
-            } = &level.state;
-            let (Some(targets), Some((fsr, groups))) = (targets.as_ref(), fsr.as_ref()) else {
-              return;
-            };
-            let resolved: &wgpu::Texture = upscale
-              .as_ref()
-              .map_or(&targets.scene_texture, |(upscale, _)| &upscale.textures[0]);
-            let history: &wgpu::Texture = &fsr.history_textures[fsr.index];
+      let upscaled: Option<[GraphTexture; 2]> = level_view.state.upscale.as_ref().map(|(upscale, _)| {
+        [
+          bindings.import_view(&mut graph, "upscaled", &upscale.views[0]),
+          bindings.import_view(&mut graph, "sharpened", &upscale.views[1]),
+        ]
+      });
+      let resolved: GraphTexture = upscaled.map_or(handles.scene, |[upscaled, _]| upscaled);
 
-            passes
-              .fsr
-              .draw(encoder, fsr, groups, &mut |encoder, name| marker.mark(encoder, name));
-            encoder.copy_texture_to_texture(history.as_image_copy(), resolved.as_image_copy(), history.size());
-            marker.mark(encoder, "fsr2 output");
-          });
-        }
-        Some("temporal") => {
-          bridge!("temporal", |level, encoder, marker| {
-            let ViewState {
-              targets,
-              temporal,
-              upscale,
-              ..
-            } = &level.state;
-            let (Some(targets), Some((history, groups))) = (targets.as_ref(), temporal.as_ref()) else {
-              return;
-            };
-            let index: usize = history.index;
-            let resolved: &wgpu::Texture = upscale
-              .as_ref()
-              .map_or(&targets.scene_texture, |(upscale, _)| &upscale.textures[0]);
+      match (
+        resolve,
+        &level_view.state.fsr,
+        &level_view.state.temporal,
+        &level_view.state.upscale,
+      ) {
+        (Some("fsr2"), Some((fsr, groups)), _, _) => {
+          let history: GraphTexture = bindings.import_view(&mut graph, "fsr2 history", &fsr.history[fsr.index]);
 
-            passes
-              .temporal
-              .draw(encoder, view, &groups[index], &history.views[index]);
-            encoder.copy_texture_to_texture(
-              history.textures[index].as_image_copy(),
-              resolved.as_image_copy(),
-              history.textures[index].size(),
-            );
-          });
+          passes.fsr.add_passes(&mut graph, &mut bindings, (fsr, groups));
+          Self::add_copy(&mut graph, "fsr2 output", history, resolved);
         }
-        Some(_) => {
-          bridge!("upscale", |level, encoder, marker| {
-            if let Some((upscale, groups)) = &level.state.upscale {
-              passes.upscale.draw_easu(encoder, upscale, &groups[0]);
-            }
-          });
+        (Some("temporal"), _, Some((history, groups)), _) => {
+          let index: usize = history.index;
+          let target: GraphTexture = bindings.import_view(&mut graph, "temporal history", &history.views[index]);
+
+          graph
+            .add_raster_pass("temporal")
+            .texture(handles.scene, GraphTextureAccess::Sampled)
+            .color(GraphColorAttachment::new(
+              target,
+              wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+            ))
+            .record(move |context| passes.temporal.record(context.get_pass(), view, &groups[index]));
+          Self::add_copy(&mut graph, "temporal output", target, resolved);
         }
-        None => {}
+        (Some(_), _, _, Some((_, groups))) => {
+          if let Some([upscaled, _]) = upscaled {
+            graph
+              .add_raster_pass("upscale")
+              .texture(handles.scene, GraphTextureAccess::Sampled)
+              .color(GraphColorAttachment::new(
+                upscaled,
+                wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+              ))
+              .record(move |context| passes.upscale.record(context.get_pass(), 0, &groups[0]));
+          }
+        }
+        _ => {}
       }
 
-      if is_sharpened {
-        bridge!("sharpen", |level, encoder, marker| {
-          if let Some((upscale, groups)) = &level.state.upscale {
-            passes.upscale.draw_rcas(encoder, upscale, &groups[1]);
-          }
-        });
+      if let (true, Some((_, groups)), Some([upscaled, sharpened])) =
+        (is_sharpened, &level_view.state.upscale, upscaled)
+      {
+        graph
+          .add_raster_pass("sharpen")
+          .texture(upscaled, GraphTextureAccess::Sampled)
+          .color(GraphColorAttachment::new(
+            sharpened,
+            wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+          ))
+          .record(move |context| passes.upscale.record(context.get_pass(), 1, &groups[1]));
       }
 
       if is_adapting {
-        bridge!("exposure", |level, encoder, marker| {
-          if let Some((_, groups)) = &level.renderer.light_groups {
-            passes.exposure.dispatch(encoder, &groups.exposure);
-          }
-        });
+        let state: GraphBuffer = bindings.import_buffer(&mut graph, "exposure", &level_view.state.exposure.state);
+
+        graph
+          .add_compute_pass("exposure")
+          .texture(resolved, GraphTextureAccess::Sampled)
+          .buffer(state, GraphBufferAccess::StorageReadWrite)
+          .record(move |context| passes.exposure.record(context.get_pass(), &groups.exposure));
       }
     }
 

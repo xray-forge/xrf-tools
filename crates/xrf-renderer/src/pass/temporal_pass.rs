@@ -2,9 +2,7 @@ use xrf_error::XrfResult;
 
 use crate::frame::temporal_history::TemporalHistory;
 use crate::frame::view_targets::ViewTargets;
-use crate::pass::fullscreen_pipeline::{
-  begin_cleared_pass, buffer_binding, create_fullscreen_pipeline, texture_binding,
-};
+use crate::pass::fullscreen_pipeline::{buffer_binding, create_fullscreen_pipeline, texture_binding};
 use crate::pass::layout_entries::{texture_entry, uniform_entry};
 use crate::pass::view_binding::ViewBinding;
 use crate::shader::shader_library::ShaderLibrary;
@@ -95,15 +93,7 @@ impl TemporalPass {
   }
 
   /// Resolves into the history this frame writes.
-  pub fn draw(
-    &self,
-    encoder: &mut wgpu::CommandEncoder,
-    view: &ViewBinding,
-    bind_group: &wgpu::BindGroup,
-    target: &wgpu::TextureView,
-  ) {
-    let mut pass: wgpu::RenderPass<'_> = begin_cleared_pass(encoder, "temporal", target);
-
+  pub fn record(&self, pass: &mut wgpu::RenderPass<'_>, view: &ViewBinding, bind_group: &wgpu::BindGroup) {
     pass.set_pipeline(&self.pipeline);
     pass.set_bind_group(0, &view.bind_group, &[]);
     pass.set_bind_group(1, bind_group, &[]);

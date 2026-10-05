@@ -1,4 +1,7 @@
 use xrf_error::XrfResult;
+use xrf_renderer_core::{
+  FrameGraph, GraphBindings, GraphBuffer, GraphBufferAccess, GraphColorAttachment, GraphTexture,
+};
 
 use crate::frame::fsr_targets::FsrTargets;
 use crate::frame::view_targets::ViewTargets;
@@ -186,131 +189,133 @@ impl FsrPass {
     }
   }
 
-  /// Every stage of one frame, into the frame `fsr.index` names, each ended by `mark` with its name; the history it
-  /// writes is the frame shown.
-  pub fn draw(
-    &self,
-    encoder: &mut wgpu::CommandEncoder,
-    fsr: &FsrTargets,
-    groups: &FsrGroups,
-    mark: &mut dyn FnMut(&mut wgpu::CommandEncoder, &'static str),
+  /// Declares FSR 2's stages, which leave the upscaled frame in this frame's history: the reconstruction's buffer
+  /// cleared (`ClearResourcesForNextFrame`, run before the reconstruction rather than after the lock: the far plane, zero
+  /// reversed), the luma, the reconstruction, the dilation, the reactive mask, the depth clip, the locks and the
+  /// accumulation, each full-screen stage into its targets cleared first.
+  pub fn add_passes<'a>(
+    &'a self,
+    graph: &mut FrameGraph<'a>,
+    bindings: &mut GraphBindings<'a>,
+    (fsr, groups): (&'a FsrTargets, &'a FsrGroups),
   ) {
     let index: usize = fsr.index;
-    let pipelines: &FsrPipelines = &self.pipelines;
+    let pipelines: &'a FsrPipelines = &self.pipelines;
+    let reconstructed: GraphBuffer = bindings.import_buffer(graph, "fsr2 reconstructed", &fsr.reconstructed);
+    let mut import = |label: &'static str, view: &'a wgpu::TextureView| bindings.import_view(graph, label, view);
+    let stages: [(
+      &'static str,
+      Vec<GraphTexture>,
+      &'a wgpu::RenderPipeline,
+      &'a wgpu::BindGroup,
+    ); 7] = [
+      (
+        "fsr2 luma first",
+        vec![import("fsr2 luma first", &fsr.luma_first)],
+        &pipelines.luma_first,
+        &groups.luma_first,
+      ),
+      (
+        "fsr2 luma shading",
+        vec![import("fsr2 luma shading", &fsr.luma_shading)],
+        &pipelines.luma_shading,
+        &groups.luma_shading,
+      ),
+      (
+        "fsr2 dilate",
+        vec![
+          import("fsr2 dilated depth", &fsr.dilated_depth[index]),
+          import("fsr2 dilated motion", &fsr.dilated_motion[index]),
+          import("fsr2 lock luma", &fsr.lock_luma[index]),
+        ],
+        &pipelines.dilate,
+        &groups.dilate,
+      ),
+      (
+        "fsr2 reactive",
+        vec![import("fsr2 reactive", &fsr.reactive)],
+        &pipelines.reactive,
+        &groups.reactive,
+      ),
+      (
+        "fsr2 depth clip",
+        vec![import("fsr2 prepared", &fsr.prepared), import("fsr2 masks", &fsr.masks)],
+        &pipelines.depth_clip,
+        &groups.depth_clip[index],
+      ),
+      (
+        "fsr2 lock",
+        vec![import("fsr2 locks", &fsr.locks)],
+        &pipelines.lock,
+        &groups.lock[index],
+      ),
+      (
+        "fsr2 accumulate",
+        vec![
+          import("fsr2 history", &fsr.history[index]),
+          import("fsr2 lock status", &fsr.lock_status[index]),
+          import("fsr2 luma history", &fsr.luma_history[index]),
+        ],
+        &pipelines.accumulate,
+        &groups.accumulate[index],
+      ),
+    ];
+    let add_stage = |graph: &mut FrameGraph<'a>,
+                     (name, targets, pipeline, group): (
+      &'static str,
+      Vec<GraphTexture>,
+      &'a wgpu::RenderPipeline,
+      &'a wgpu::BindGroup,
+    )| {
+      targets
+        .into_iter()
+        .fold(graph.add_raster_pass(name), |builder, target| {
+          builder.color(GraphColorAttachment::new(
+            target,
+            wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+          ))
+        })
+        .record(move |context| {
+          let pass: &mut wgpu::RenderPass<'static> = context.get_pass();
 
-    // `ClearResourcesForNextFrame`, run before the reconstruction rather than after the lock: the far plane, zero
-    // reversed.
-    encoder.clear_buffer(&fsr.reconstructed, 0, None);
-    Self::draw_into(
-      encoder,
-      "fsr2 luma first",
-      &[&fsr.luma_first],
-      &pipelines.luma_first,
-      &groups.luma_first,
-    );
-    Self::draw_into(
-      encoder,
-      "fsr2 luma shading",
-      &[&fsr.luma_shading],
-      &pipelines.luma_shading,
-      &groups.luma_shading,
-    );
-    mark(encoder, "fsr2 luma");
+          pass.set_pipeline(pipeline);
+          pass.set_bind_group(0, group, &[]);
+          pass.draw(0..3, 0..1);
+        });
+    };
+    let mut stages = stages.into_iter();
 
-    {
-      let mut pass: wgpu::ComputePass<'_> = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-        label: Some("fsr2 reconstruct"),
-        timestamp_writes: None,
+    graph
+      .add_encoder_pass("fsr2 clear")
+      .buffer(reconstructed, GraphBufferAccess::CopyDestination)
+      .record(move |context| {
+        let reconstructed: &wgpu::Buffer = context.get_buffer(reconstructed);
+
+        context.get_encoder().clear_buffer(reconstructed, 0, None);
       });
 
-      pass.set_pipeline(&pipelines.reconstruct);
-      pass.set_bind_group(0, &groups.reconstruct, &[]);
-      pass.dispatch_workgroups(
-        fsr.render.0.div_ceil(RECONSTRUCT_WORKGROUP),
-        fsr.render.1.div_ceil(RECONSTRUCT_WORKGROUP),
-        1,
-      );
+    for stage in stages.by_ref().take(2) {
+      add_stage(graph, stage);
     }
 
-    mark(encoder, "fsr2 reconstruct");
+    graph
+      .add_compute_pass("fsr2 reconstruct")
+      .buffer(reconstructed, GraphBufferAccess::StorageReadWrite)
+      .record(move |context| {
+        let pass: &mut wgpu::ComputePass<'static> = context.get_pass();
 
-    Self::draw_into(
-      encoder,
-      "fsr2 dilate",
-      &[
-        &fsr.dilated_depth[index],
-        &fsr.dilated_motion[index],
-        &fsr.lock_luma[index],
-      ],
-      &pipelines.dilate,
-      &groups.dilate,
-    );
-    mark(encoder, "fsr2 dilate");
-    Self::draw_into(
-      encoder,
-      "fsr2 reactive",
-      &[&fsr.reactive],
-      &pipelines.reactive,
-      &groups.reactive,
-    );
-    mark(encoder, "fsr2 reactive");
-    Self::draw_into(
-      encoder,
-      "fsr2 depth clip",
-      &[&fsr.prepared, &fsr.masks],
-      &pipelines.depth_clip,
-      &groups.depth_clip[index],
-    );
-    mark(encoder, "fsr2 depth clip");
-    Self::draw_into(
-      encoder,
-      "fsr2 lock",
-      &[&fsr.locks],
-      &pipelines.lock,
-      &groups.lock[index],
-    );
-    mark(encoder, "fsr2 lock");
-    Self::draw_into(
-      encoder,
-      "fsr2 accumulate",
-      &[&fsr.history[index], &fsr.lock_status[index], &fsr.luma_history[index]],
-      &pipelines.accumulate,
-      &groups.accumulate[index],
-    );
-    mark(encoder, "fsr2 accumulate");
-  }
+        pass.set_pipeline(&pipelines.reconstruct);
+        pass.set_bind_group(0, &groups.reconstruct, &[]);
+        pass.dispatch_workgroups(
+          fsr.render.0.div_ceil(RECONSTRUCT_WORKGROUP),
+          fsr.render.1.div_ceil(RECONSTRUCT_WORKGROUP),
+          1,
+        );
+      });
 
-  /// One full-screen stage into its targets, each cleared first.
-  fn draw_into(
-    encoder: &mut wgpu::CommandEncoder,
-    label: &str,
-    targets: &[&wgpu::TextureView],
-    pipeline: &wgpu::RenderPipeline,
-    group: &wgpu::BindGroup,
-  ) {
-    let attachments: Vec<Option<wgpu::RenderPassColorAttachment<'_>>> = targets
-      .iter()
-      .map(|view| {
-        Some(wgpu::RenderPassColorAttachment {
-          view,
-          depth_slice: None,
-          resolve_target: None,
-          ops: wgpu::Operations {
-            load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-            store: wgpu::StoreOp::Store,
-          },
-        })
-      })
-      .collect();
-    let mut pass: wgpu::RenderPass<'_> = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-      label: Some(label),
-      color_attachments: &attachments,
-      ..Default::default()
-    });
-
-    pass.set_pipeline(pipeline);
-    pass.set_bind_group(0, group, &[]);
-    pass.draw(0..3, 0..1);
+    for stage in stages {
+      add_stage(graph, stage);
+    }
   }
 
   fn create_layouts(device: &wgpu::Device) -> FsrLayouts {

@@ -1,4 +1,5 @@
 use glam::{Mat4, Vec2, Vec3};
+use xrf_renderer_core::{FrameGraph, GraphBindings, GraphCompileOptions, GraphRuntime};
 
 use crate::camera::camera_view::CameraView;
 use crate::context::gpu_context::GpuContext;
@@ -41,6 +42,7 @@ fn upscales_two_frames_without_a_validation_error() {
   let groups: FsrGroups = pass.create_bind_groups(device, &targets, &fsr, &uniform);
   let view: CameraView = CameraView::new(Vec3::ZERO, Mat4::IDENTITY, 60.0, 4.0 / 3.0, 0.2, 1000.0);
   let mut jitter: TemporalJitter = TemporalJitter::default();
+  let mut runtime: GraphRuntime = GraphRuntime::new(device, &context.queue);
 
   for _ in 0..2 {
     let offset: Vec2 = jitter.next(1.5);
@@ -51,11 +53,25 @@ fn upscales_two_frames_without_a_validation_error() {
       (FsrTargets::get_luma_mip_size(render), TemporalJitter::get_phases(1.5)),
       fsr.frame_index,
     );
-    let mut encoder: wgpu::CommandEncoder = device.create_command_encoder(&Default::default());
 
     context.queue.write_buffer(&uniform, 0, bytemuck::bytes_of(&constants));
-    pass.draw(&mut encoder, &fsr, &groups, &mut |_, _| {});
-    context.queue.submit([encoder.finish()]);
+
+    {
+      let mut graph: FrameGraph<'_> = FrameGraph::new();
+      let mut bindings: GraphBindings<'_> = GraphBindings::new();
+
+      pass.add_passes(&mut graph, &mut bindings, (&fsr, &groups));
+
+      let commands: Vec<wgpu::CommandBuffer> = graph
+        .compile(&GraphCompileOptions::default())
+        .unwrap()
+        .execute((device, &context.queue), &mut runtime, &bindings)
+        .unwrap()
+        .commands;
+
+      context.queue.submit(commands);
+    }
+
     fsr.swap();
   }
 
