@@ -43,6 +43,10 @@ pub struct RenderWaterSettings {
   pub specular: f32,
   /// How bright the light the enhanced water gathers onto its bottom is, `ssfx_water_setup2.z`.
   pub caustics: f32,
+  /// How high the enhanced water's waves stand in its parallax, `ssfx_water_setup1.w`; none draws it flat.
+  pub parallax_height: f32,
+  /// How strongly rain ripples the enhanced water, `ssfx_water_setup2.w`; none skips them.
+  pub ripples: f32,
 }
 
 impl Default for RenderWaterSettings {
@@ -66,6 +70,8 @@ impl Default for RenderWaterSettings {
       blur_noise: 1.0,
       specular: 6.0,
       caustics: 0.3,
+      parallax_height: 0.05,
+      ripples: 0.5,
     }
   }
 }

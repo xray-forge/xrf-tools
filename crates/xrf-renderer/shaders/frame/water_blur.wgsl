@@ -25,6 +25,10 @@ struct Water {
   wind_velocity: f32,
   specular: f32,
   caustics: f32,
+  parallax_height: f32,
+  ripples: f32,
+  rain: f32,
+  pad: f32,
 };
 
 // xy: the way it blurs; z: how many times the target's size the source's is.
