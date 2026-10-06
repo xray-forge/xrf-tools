@@ -22,6 +22,8 @@ pub struct ReflectionPass {
   empty: wgpu::TextureView,
   /// What combine and the debug view read where nothing is traced: one texel marked untraced.
   untraced: wgpu::TextureView,
+  /// What the ends view reads while nothing is traced: one texel of no ray.
+  no_ends: wgpu::TextureView,
   /// The history's bilinear reads.
   sampler: wgpu::Sampler,
   generation: u64,
@@ -44,6 +46,8 @@ impl ReflectionPass {
   pub const RESOLVE: &'static str = "fs_resolve";
   /// What the trace writes: what is reflected, then the ray's length in metres, below none where nothing is traced.
   pub const TRACED: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
+  /// How each ray ended, a reason's number over 255 (`common/reflection_end.wgsl`), which the ends view colours.
+  pub const ENDS: wgpu::TextureFormat = wgpu::TextureFormat::R8Unorm;
   /// The reprojected history, then how many frames it holds; and its variance.
   pub const REPROJECTED: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
   pub const VARIANCE: wgpu::TextureFormat = wgpu::TextureFormat::R32Float;
@@ -64,8 +68,7 @@ impl ReflectionPass {
     sky_layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<Self> {
     let layout: wgpu::BindGroupLayout = ReflectionParameters::create_layout(device);
-    // Half floats: nothing, and nothing with an alpha of minus one.
-    let texel = |label: &str, alpha: u16| -> wgpu::TextureView {
+    let texel = |label: &str, format: wgpu::TextureFormat, bytes: &[u8]| -> wgpu::TextureView {
       device
         .create_texture_with_data(
           queue,
@@ -79,12 +82,12 @@ impl ReflectionPass {
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
-            format: Self::TRACED,
+            format,
             usage: wgpu::TextureUsages::TEXTURE_BINDING,
             view_formats: &[],
           },
           Default::default(),
-          bytemuck::cast_slice(&[0u16, 0, 0, alpha]),
+          bytes,
         )
         .create_view(&Default::default())
     };
@@ -93,8 +96,14 @@ impl ReflectionPass {
       pipelines: Self::create_pipelines(device, shaders, (view_layout, &layout, sky_layout))?,
       view_layout: view_layout.clone(),
       sky_layout: sky_layout.clone(),
-      empty: texel("reflections empty", 0),
-      untraced: texel("reflections none", 0xbc00),
+      // Half floats: nothing, and nothing with an alpha of minus one; then no ray.
+      empty: texel("reflections empty", Self::TRACED, bytemuck::cast_slice(&[0u16; 4])),
+      untraced: texel(
+        "reflections none",
+        Self::TRACED,
+        bytemuck::cast_slice(&[0u16, 0, 0, 0xbc00]),
+      ),
+      no_ends: texel("reflection ends none", Self::ENDS, &[0u8]),
       sampler: device.create_sampler(&wgpu::SamplerDescriptor {
         label: Some("reflection history"),
         mag_filter: wgpu::FilterMode::Linear,
@@ -125,6 +134,11 @@ impl ReflectionPass {
   /// The texel combine and the debug view read where nothing is traced.
   pub fn get_untraced(&self) -> &wgpu::TextureView {
     &self.untraced
+  }
+
+  /// The texel the ends view reads while nothing is traced.
+  pub fn get_no_ends(&self) -> &wgpu::TextureView {
+    &self.no_ends
   }
 
   /// The history's bilinear sampler.
@@ -231,7 +245,7 @@ impl ReflectionPass {
     };
 
     Ok(ReflectionPipelines {
-      trace: create(&traced_layout, "fs_trace", &[Self::TRACED])?,
+      trace: create(&traced_layout, "fs_trace", &[Self::TRACED, Self::ENDS])?,
       reproject: create(&stage_layout, Self::REPROJECT, &[Self::REPROJECTED, Self::VARIANCE])?,
       average: create(&stage_layout, Self::AVERAGE_STAGE, &[Self::AVERAGE])?,
       prefilter: create(&stage_layout, Self::PREFILTER, &[Self::PREFILTERED])?,

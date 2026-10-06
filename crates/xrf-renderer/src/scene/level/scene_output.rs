@@ -16,6 +16,8 @@ pub struct SceneOutput {
   pub indirect_light: GraphTexture,
   /// The reflections a debug view shows, a texel marked untraced where they are not traced.
   pub reflections: GraphTexture,
+  /// How the reflections' rays ended, which a debug view shows; a texel of no ray where they are not traced.
+  pub reflection_ends: GraphTexture,
   /// The bloom the present lays over the frame: the enhanced bloom's where it draws, the engine's target otherwise.
   pub bloom: GraphTexture,
 }

@@ -923,6 +923,7 @@ impl RenderThread {
                 bloom_sampler: gpu.present.get_bloom_sampler(),
                 indirect_light: output.indirect_light,
                 reflections: output.reflections,
+                reflection_ends: output.reflection_ends,
               }),
               overlays: output
                 .zip(level.and_then(SceneView::get_overlays))

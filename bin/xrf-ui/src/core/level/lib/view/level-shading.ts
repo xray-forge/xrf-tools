@@ -24,6 +24,7 @@ export enum ELevelShading {
   AMBIENT_OCCLUSION = "ambientOcclusion",
   INDIRECT_LIGHT = "indirectLight",
   REFLECTIONS = "reflections",
+  REFLECTION_ENDS = "reflectionEnds",
   MOTION = "motion",
 }
 
@@ -53,6 +54,7 @@ export const LEVEL_SHADINGS: ReadonlyArray<ILevelShadingChoice> = [
   { label: "Ambient occlusion", value: ELevelShading.AMBIENT_OCCLUSION, debugView: ERenderDebugView.AMBIENT_OCCLUSION },
   { label: "Indirect light", value: ELevelShading.INDIRECT_LIGHT, debugView: ERenderDebugView.INDIRECT_LIGHT },
   { label: "Reflections", value: ELevelShading.REFLECTIONS, debugView: ERenderDebugView.REFLECTIONS },
+  { label: "Reflection rays", value: ELevelShading.REFLECTION_ENDS, debugView: ERenderDebugView.REFLECTION_ENDS },
   { label: "Motion", value: ELevelShading.MOTION, debugView: ERenderDebugView.MOTION },
 ].map((choice) => ({ ...choice, surfaceColor: toSurfaceColor(choice.value) }));
 

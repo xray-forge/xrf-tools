@@ -5,6 +5,7 @@
 #import "common/hmodel"
 #import "common/occlusion"
 #import "common/reflection_trace"
+#import "common/reflection_end"
 #import "common/water_enhanced"
 
 // Stochastic screen-space reflections on the frame's surfaces, at the size the quality traces at, a pixel per `ratio`
@@ -159,21 +160,31 @@ fn hit_confidence(hit: vec3<f32>, origin: vec3<f32>) -> f32 {
   return edges.x * edges.y * reach;
 }
 
+// What the trace writes: what is reflected, then the ray's length; and how the ray ended.
+struct TraceTargets {
+  @location(0) traced: vec4<f32>,
+  @location(1) end: f32,
+};
+
+fn trace_targets(traced: vec4<f32>, end: u32) -> TraceTargets {
+  return TraceTargets(traced, reflection_end_value(end));
+}
+
 @fragment
-fn fs_trace(in: FullscreenVarying) -> @location(0) vec4<f32> {
+fn fs_trace(in: FullscreenVarying) -> TraceTargets {
   let pixel: vec2<f32> = floor(in.clip.xy);
   let texel: vec2<i32> = traced_texel(pixel);
   let depth: f32 = textureLoad(depth_target, texel, 0);
 
   if (depth <= 0.0) {
-    return UNTRACED;
+    return trace_targets(UNTRACED, END_UNTRACED);
   }
 
   let material: vec4<f32> = textureLoad(material_target, texel, 0);
 
   // Grass and leaves reflect the environment as `hmodel` does, and are never traced.
   if (has_mark(material.a, MARK_PLANT)) {
-    return UNTRACED;
+    return trace_targets(UNTRACED, END_UNTRACED);
   }
 
   let albedo: vec4<f32> = textureLoad(albedo_target, texel, 0);
@@ -189,7 +200,7 @@ fn fs_trace(in: FullscreenVarying) -> @location(0) vec4<f32> {
 
   // Traced only where combine would show enough of it.
   if (max(slice, coat_share(wet.r, facing, reflection.intensity)) <= TRACE_FLOOR) {
-    return UNTRACED;
+    return trace_targets(UNTRACED, END_UNTRACED);
   }
 
   let roughness: f32 = traced_roughness(albedo.a, wet.g);
@@ -203,7 +214,7 @@ fn fs_trace(in: FullscreenVarying) -> @location(0) vec4<f32> {
   let sky: vec3<f32> = mix(drawn, blurred, smoothstep(MIRROR_ROUGHNESS.x, MIRROR_ROUGHNESS.y, roughness));
 
   if (roughness > ROUGHNESS_LIMIT) {
-    return vec4<f32>(sky, MISSED_LENGTH);
+    return trace_targets(vec4<f32>(sky, MISSED_LENGTH), END_ROUGH);
   }
 
   // The ray's end, the distance traced out, or short of the near plane where it comes back towards the camera: its
@@ -224,13 +235,16 @@ fn fs_trace(in: FullscreenVarying) -> @location(0) vec4<f32> {
   let confidence: f32 = select(0.0, hit_confidence(walk.position, position), walk.is_met);
 
   if (confidence <= 0.0) {
-    return vec4<f32>(sky, MISSED_LENGTH);
+    return trace_targets(vec4<f32>(sky, MISSED_LENGTH), select(walk.end, END_UNTRUSTED, walk.is_met));
   }
 
   let met: vec3<f32> = met_radiance(vec2<i32>(walk.position.xy * camera.viewport.xy));
   let length_met: f32 = length(ray_view_point(walk.position) - position);
 
-  return vec4<f32>(mix(sky, met, confidence), select(MISSED_LENGTH, length_met, confidence > 0.5));
+  return trace_targets(
+    vec4<f32>(mix(sky, met, confidence), select(MISSED_LENGTH, length_met, confidence > 0.5)),
+    walk.end,
+  );
 }
 
 // A traced pixel's surface: its world normal, roughness and distance along the view, as the history keeps them.
