@@ -79,12 +79,7 @@ impl ExposurePass {
     })
   }
 
-  pub fn dispatch(&self, encoder: &mut wgpu::CommandEncoder, bind_group: &wgpu::BindGroup) {
-    let mut pass: wgpu::ComputePass<'_> = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-      label: Some("exposure"),
-      timestamp_writes: None,
-    });
-
+  pub fn record(&self, pass: &mut wgpu::ComputePass<'_>, bind_group: &wgpu::BindGroup) {
     pass.set_bind_group(0, bind_group, &[]);
     pass.set_pipeline(&self.pipelines[0]);
     pass.dispatch_workgroups((EXPOSURE_CELLS * EXPOSURE_CELLS).div_ceil(MEASURE_WORKGROUP), 1, 1);

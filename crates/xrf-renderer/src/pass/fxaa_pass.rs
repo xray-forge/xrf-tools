@@ -1,7 +1,7 @@
 use xrf_error::XrfResult;
 
 use crate::frame::view_targets::ViewTargets;
-use crate::pass::fullscreen_pipeline::{begin_cleared_pass, create_fullscreen_pipeline, texture_binding};
+use crate::pass::fullscreen_pipeline::{create_fullscreen_pipeline, texture_binding};
 use crate::pass::layout_entries::texture_entry;
 use crate::shader::shader_library::ShaderLibrary;
 
@@ -75,9 +75,7 @@ impl FxaaPass {
     })
   }
 
-  pub fn draw(&self, encoder: &mut wgpu::CommandEncoder, bind_group: &wgpu::BindGroup, target: &wgpu::TextureView) {
-    let mut pass: wgpu::RenderPass<'_> = begin_cleared_pass(encoder, "fxaa", target);
-
+  pub fn record(&self, pass: &mut wgpu::RenderPass<'_>, bind_group: &wgpu::BindGroup) {
     pass.set_pipeline(&self.pipeline);
     pass.set_bind_group(0, bind_group, &[]);
     pass.draw(0..3, 0..1);
