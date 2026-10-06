@@ -1,5 +1,4 @@
 use std::sync::Arc;
-use std::sync::mpsc::{Receiver, channel};
 
 use glam::{IVec2, IVec4, Vec3};
 use xrf_error::XrfResult;
@@ -23,6 +22,7 @@ use crate::scene::level::grass_build_size::GrassBuildSize;
 use crate::scene::level::grass_level::GrassLevel;
 use crate::scene::level::loader_answer::take_answer;
 use crate::scene::texture::texture_cache::TextureCache;
+use crate::thread::loader_receiver::LoaderReceiver;
 use crate::thread::render_workers::RenderWorkers;
 
 /// Metres a detail slot spans, `dm_slot_size`.
@@ -32,7 +32,7 @@ const SLOT_METERS: f32 = 2.0;
 /// frame in a ring around the camera and drawn into the G-buffer. The ring and lists are built again when the settings
 /// outgrow them, or need less than half; a density changed plants every slot again.
 pub struct LevelGrass {
-  pending: Option<Receiver<XrfResult<Option<RenderLevelDetails>>>>,
+  pending: Option<LoaderReceiver<XrfResult<Option<RenderLevelDetails>>>>,
   level: Option<GrassLevel>,
   build: Option<GrassBuild>,
   uniform: wgpu::Buffer,
@@ -48,7 +48,7 @@ pub struct LevelGrass {
 
 impl LevelGrass {
   pub fn new(device: &wgpu::Device, source: &Arc<dyn RenderLevelSource>, workers: &RenderWorkers) -> Self {
-    let (sender, receiver) = channel();
+    let (sender, receiver) = LoaderReceiver::channel();
     let source: Arc<dyn RenderLevelSource> = Arc::clone(source);
 
     workers.spawn(move || {

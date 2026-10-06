@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::sync::mpsc::{Receiver, TryRecvError, channel};
+use std::sync::mpsc::TryRecvError;
 use std::time::Instant;
 
 use glam::{Mat4, Vec3};
@@ -9,11 +9,12 @@ use xrf_visual::VisualTransform;
 
 use crate::host::render_level_source::RenderLevelSource;
 use crate::lighting::light_basis::to_vec3;
+use crate::thread::loader_receiver::LoaderReceiver;
 use crate::thread::render_workers::RenderWorkers;
 
 /// One object motion asked for: on its way from a loader thread, read, or not to be had.
 enum MotionState {
-  Reading(Receiver<Option<AnmFile>>),
+  Reading(LoaderReceiver<Option<AnmFile>>),
   Read(AnmFile),
   Missing,
 }
@@ -76,7 +77,7 @@ impl LevelObjectMotions {
   fn get(&mut self, name: &str) -> Option<&AnmFile> {
     let (source, workers) = (&self.source, &self.workers);
     let state: &mut MotionState = self.motions.entry(name.to_owned()).or_insert_with(|| {
-      let (sender, receiver) = channel();
+      let (sender, receiver) = LoaderReceiver::channel();
       let (source, name) = (Arc::clone(source), name.to_owned());
 
       workers.spawn(move || {

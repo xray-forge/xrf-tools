@@ -1,11 +1,12 @@
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::sync::mpsc::{Receiver, Sender, channel};
+use std::sync::mpsc::Sender;
 
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::lighting::render_sky::RenderSky;
 use crate::scene::texture::decoded_texture::{CUBE_FACES, DecodedTexture};
 use crate::scene::texture::weather_texture_kind::WeatherTextureKind;
+use crate::thread::loader_receiver::LoaderReceiver;
 use crate::thread::render_workers::RenderWorkers;
 
 /// Frames a texture no viewport asks for is kept, so the skies of a weather faded away a moment ago come back at once.
@@ -35,7 +36,7 @@ struct SkyTextureEntry {
 pub struct WeatherTextureCache {
   entries: HashMap<String, SkyTextureEntry>,
   sender: Sender<SkyTextureLoad>,
-  receiver: Receiver<SkyTextureLoad>,
+  receiver: LoaderReceiver<SkyTextureLoad>,
   placeholder_cube: wgpu::TextureView,
   placeholder_flat: wgpu::TextureView,
   placeholder_volume: wgpu::TextureView,
@@ -47,7 +48,7 @@ pub struct WeatherTextureCache {
 
 impl WeatherTextureCache {
   pub fn new(device: &wgpu::Device, queue: &wgpu::Queue, workers: &RenderWorkers) -> Self {
-    let (sender, receiver) = channel();
+    let (sender, receiver) = LoaderReceiver::channel();
 
     Self {
       entries: HashMap::new(),

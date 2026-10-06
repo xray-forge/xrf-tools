@@ -1,11 +1,11 @@
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::mpsc::{Receiver, channel};
 
 use xrf_visual::SectorPackage;
 
 use crate::host::render_level_source::RenderLevelSource;
 use crate::scene::level::surface_tally::SurfaceTally;
+use crate::thread::loader_receiver::LoaderReceiver;
 use crate::thread::render_workers::RenderWorkers;
 
 /// One sector's pack as a loader thread finished it, with what its surfaces draw, or why it could not be packed.
@@ -14,7 +14,7 @@ pub type SectorLoad = (u32, Result<(SectorPackage, SurfaceTally), String>);
 /// Packs every sector of a level side by side on the loader threads, handing each to the render thread as it is done.
 /// Dropped, it lets go of the sectors not started yet, so a level closed mid open stops costing work.
 pub struct LevelLoader {
-  receiver: Receiver<SectorLoad>,
+  receiver: LoaderReceiver<SectorLoad>,
   total: u32,
   received: u32,
   is_cancelled: Arc<AtomicBool>,
@@ -22,7 +22,7 @@ pub struct LevelLoader {
 
 impl LevelLoader {
   pub fn start(source: Arc<dyn RenderLevelSource>, workers: &RenderWorkers) -> Self {
-    let (sender, receiver) = channel();
+    let (sender, receiver) = LoaderReceiver::channel();
     let total: u32 = source.get_sector_count();
     let is_cancelled: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
 

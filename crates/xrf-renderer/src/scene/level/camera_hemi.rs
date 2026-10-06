@@ -1,10 +1,11 @@
 use std::sync::Arc;
-use std::sync::mpsc::{Receiver, TryRecvError, channel};
+use std::sync::mpsc::TryRecvError;
 
 use glam::Vec3;
 use xrf_math::Vector3d;
 use xrf_visual::HemiEstimator;
 
+use crate::thread::loader_receiver::LoaderReceiver;
 use crate::thread::render_workers::RenderWorkers;
 
 /// `get_luminocity_hemi() < 0.05`: the hemi under which the actor stands indoors (`CGamePersistent::WeathersUpdate`).
@@ -20,7 +21,7 @@ const SMOOTHING: f32 = 1.0;
 /// camera stands, which stands in for the actor's sphere, and smoothed towards each estimate (`update_smooth`).
 pub struct CameraHemi {
   estimator: Option<Arc<HemiEstimator>>,
-  pending: Option<Receiver<f32>>,
+  pending: Option<LoaderReceiver<f32>>,
   /// The last estimate, `hemi_value`.
   value: Option<f32>,
   /// `hemi_smooth`, one half until the first estimate replaces it.
@@ -47,7 +48,7 @@ impl CameraHemi {
   /// Takes a finished estimate, asks for the next one once due, and smooths the hemi on to `now`. `eye` is where the
   /// camera stands, in engine space.
   pub fn advance(&mut self, eye: Vec3, now: u64) {
-    match self.pending.as_ref().map(Receiver::try_recv) {
+    match self.pending.as_mut().map(LoaderReceiver::try_recv) {
       Some(Ok(value)) => {
         // The first estimate is taken as it is, as the first update takes it.
         if self.value.is_none() {
@@ -66,7 +67,7 @@ impl CameraHemi {
       && now >= self.due
       && let Some(estimator) = &self.estimator
     {
-      let (sender, receiver) = channel();
+      let (sender, receiver) = LoaderReceiver::channel();
       let estimator: Arc<HemiEstimator> = Arc::clone(estimator);
 
       self.workers.spawn(move || {

@@ -1,5 +1,4 @@
 use std::sync::Arc;
-use std::sync::mpsc::{Receiver, channel};
 use std::time::Instant;
 
 use glam::{Mat4, Vec3, Vec4};
@@ -27,6 +26,7 @@ use crate::scene::level::shadow_frame::ShadowFrame;
 use crate::scene::level::zone_fast_mode::ZONE_FAST_DISTANCE;
 use crate::scene::texture::texture_cache::{MISSING_SLOT, TextureCache};
 use crate::scene::texture::texture_role::TextureRole;
+use crate::thread::loader_receiver::LoaderReceiver;
 use crate::thread::render_workers::RenderWorkers;
 
 /// Lights standing in view at most in one frame: the nearest are kept.
@@ -45,7 +45,7 @@ const FALLOFF_RANGE: f32 = 0.95;
 /// A level's local lights: read once on a loader thread, then each frame the nearest in view written out in view
 /// space, animated as the engine animates them, for the lights pass to bin and accumulate.
 pub struct LevelLights {
-  pending: Option<Receiver<Result<LightsDescription, String>>>,
+  pending: Option<LoaderReceiver<Result<LightsDescription, String>>>,
   description: Option<LightsDescription>,
   /// Each projector's texture slot, by its index among the description's projectors.
   projectors: Vec<u32>,
@@ -72,7 +72,7 @@ impl LevelLights {
     source: &Arc<dyn RenderLevelSource>,
     workers: &RenderWorkers,
   ) -> Self {
-    let (sender, receiver) = channel();
+    let (sender, receiver) = LoaderReceiver::channel();
     let source: Arc<dyn RenderLevelSource> = Arc::clone(source);
     let storage = |label: &str, size: u64| -> wgpu::Buffer {
       device.create_buffer(&wgpu::BufferDescriptor {
