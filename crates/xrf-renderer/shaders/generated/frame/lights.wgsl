@@ -12,3 +12,4 @@
 @group(1) @binding(7) var<storage, read> items: array<u32>;
 @group(1) @binding(8) var<uniform> lights: Lights;
 @group(1) @binding(9) var shadow_atlas: texture_depth_2d;
+@group(1) @binding(10) var<uniform> contact: ContactShadows;

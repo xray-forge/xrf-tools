@@ -12,6 +12,7 @@ import {
   formatCascadeBlend,
   formatContactShadowIntensity,
   formatContactShadowLength,
+  formatContactShadowLights,
   formatContactShadowSteps,
   formatContactShadowThickness,
   formatShadowBias,
@@ -154,6 +155,14 @@ export function LevelShadowAction({
             {...RENDER_CONTACT_SHADOW_LIMITS.steps}
             format={formatContactShadowSteps}
             onChange={(steps: number) => setContact({ steps })}
+          />
+
+          <RenderValueSlider
+            label={"Contact lights"}
+            value={contact.lights}
+            {...RENDER_CONTACT_SHADOW_LIMITS.lights}
+            format={formatContactShadowLights}
+            onChange={(lights: number) => setContact({ lights })}
           />
         </>
       ) : null}

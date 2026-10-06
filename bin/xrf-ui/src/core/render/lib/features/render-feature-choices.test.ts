@@ -1,6 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 
 import {
+  formatContactShadowLights,
   formatLowLuminance,
   formatShadowBias,
   formatShadowReach,
@@ -33,6 +34,9 @@ describe("render choice formatters", () => {
     expect(formatShadowReach(150)).toBe("150 m");
     expect(formatWaveSpeed(12)).toBe("12");
     expect(formatLowLuminance(0.0001)).toBe("0.0001");
+    expect(formatContactShadowLights(0)).toBe("Sun only");
+    expect(formatContactShadowLights(1)).toBe("1 light");
+    expect(formatContactShadowLights(4)).toBe("4 lights");
   });
 });
 

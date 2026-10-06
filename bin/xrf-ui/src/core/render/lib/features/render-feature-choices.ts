@@ -88,16 +88,17 @@ export function formatShadowReach(reach: number): string {
 export const RENDER_CONTACT_SHADOW_LIMITS = {
   intensity: toRenderLimits(RENDER_FEATURE_SCHEMA.shadows.contact.intensity, 0.05),
   length: toRenderLimits(RENDER_FEATURE_SCHEMA.shadows.contact.length, 0.05),
+  lights: toRenderLimits(RENDER_FEATURE_SCHEMA.shadows.contact.lights, 1),
   steps: toRenderLimits(RENDER_FEATURE_SCHEMA.shadows.contact.steps, 1),
   thickness: toRenderLimits(RENDER_FEATURE_SCHEMA.shadows.contact.thickness, 0.01),
 } as const;
 
-/** @returns How far a contact shadow's ray reaches towards the sun, in metres. */
+/** @returns How far a contact shadow's ray reaches towards the sun or a light, in metres. */
 export function formatContactShadowLength(length: number): string {
   return `${formatNumber(length, 2)} m`;
 }
 
-/** @returns How much sunlight a contact shadow takes away. */
+/** @returns How much light a contact shadow takes away. */
 export function formatContactShadowIntensity(intensity: number): string {
   return formatPercent(intensity);
 }
@@ -110,6 +111,14 @@ export function formatContactShadowThickness(thickness: number): string {
 /** @returns How many depth reads a contact shadow's ray takes. */
 export function formatContactShadowSteps(steps: number): string {
   return formatNumber(steps, 0);
+}
+
+/**
+ * @param lights - Local lights each pixel marches contact shadows towards at most, the strongest there.
+ * @returns It as the popover reads it: a count of lights, or the sun's alone for none.
+ */
+export function formatContactShadowLights(lights: number): string {
+  return lights ? `${lights} light${lights > 1 ? "s" : ""}` : "Sun only";
 }
 
 /** The engine's grass density, `r__detail_density`, which is a spacing: a smaller one plants more. */

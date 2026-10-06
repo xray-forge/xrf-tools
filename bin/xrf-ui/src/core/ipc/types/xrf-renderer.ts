@@ -198,17 +198,22 @@ export enum ERenderContactShadowMode {
 /** Every `ERenderContactShadowMode` as the spelling it crosses IPC as, for a value no member has narrowed. */
 export type RenderContactShadowMode = `${ERenderContactShadowMode}`;
 
-/** Contact shadows: the small shadows the sun's cascades are too coarse to cast, found in the frame's depth. */
+/**
+ * Contact shadows: the small shadows the sun's cascades and the lights' maps are too coarse to cast, or the lights
+ * without a map do not cast at all, found in the frame's depth.
+ */
 export type RenderContactShadowSettings = {
   mode: RenderContactShadowMode;
-  /** Metres each pixel's ray reaches towards the sun. */
+  /** Metres each pixel's ray reaches towards the sun, or towards a light as far as the light at most. */
   length: number | null;
-  /** How much of the sunlight what the ray meets takes away: one all of it. */
+  /** How much of the light what the ray meets takes away: one all of it. */
   intensity: number | null;
   /** Metres behind what the depth shows that it is taken to be solid, near the camera; it grows with distance. */
   thickness: number | null;
   /** Depth reads along each ray. */
   steps: number;
+  /** Local lights each pixel marches towards at most, the strongest there: none for the sun's alone. */
+  lights: number;
 };
 
 /** Which picture a viewport shows: its finished frame, or one of the targets the frame was built from. */
@@ -772,7 +777,10 @@ export type RenderShadowSettings = {
   blend: number | null;
   /** Whether cascade `n` is drawn at most every `2^n` frames, the far ones sharing frames the near one does not. */
   isStaggered: boolean;
-  /** The contact shadows under the cascades, drawn only while the cascades are. */
+  /**
+   * The contact shadows: the sun's under the cascades, drawn only while the cascades are, and the local lights',
+   * drawn whether the cascades are or not.
+   */
   contact: RenderContactShadowSettings;
 };
 

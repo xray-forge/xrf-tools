@@ -27,7 +27,8 @@ pub struct RenderShadowSettings {
   pub blend: f32,
   /// Whether cascade `n` is drawn at most every `2^n` frames, the far ones sharing frames the near one does not.
   pub is_staggered: bool,
-  /// The contact shadows under the cascades, drawn only while the cascades are.
+  /// The contact shadows: the sun's under the cascades, drawn only while the cascades are, and the local lights',
+  /// drawn whether the cascades are or not.
   pub contact: RenderContactShadowSettings,
 }
 
@@ -56,5 +57,10 @@ impl RenderShadowSettings {
     } else {
       0
     }
+  }
+
+  /// Whether the sun's contact shadows are drawn: only under its cascades.
+  pub fn is_sun_contact_drawn(&self) -> bool {
+    self.is_enabled && self.contact.is_drawn()
   }
 }

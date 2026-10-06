@@ -6,7 +6,10 @@ import {
   ERenderScale,
   ERenderWaterMode,
 } from "@/core/ipc/types/xrf-renderer";
-import { RENDER_MAX_SHADOW_CASCADES } from "@/core/render/lib/settings/render-feature-defaults";
+import {
+  RENDER_MAX_CONTACT_SHADOW_LIGHTS,
+  RENDER_MAX_SHADOW_CASCADES,
+} from "@/core/render/lib/settings/render-feature-defaults";
 import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-feature-settings";
 import {
   ERenderSettingKind,
@@ -79,6 +82,7 @@ export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings>
     contact: {
       intensity: toNumber(0, 1),
       length: toNumber(0, 4),
+      lights: toNumber(0, RENDER_MAX_CONTACT_SHADOW_LIGHTS, true),
       mode: toChoice(ERenderContactShadowMode),
       steps: toNumber(4, 64, true),
       thickness: toNumber(0.01, 1),

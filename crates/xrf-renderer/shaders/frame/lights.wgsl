@@ -4,11 +4,13 @@ enable wgpu_binding_array;
 #import "common/octahedral"
 #import "common/light_clusters"
 #import "common/fullscreen"
+#import "common/contact_march"
 
 // Every local light reaching a pixel, as the engine's `accum_omni` and `accum_spot` accumulate each:
 // `Ldynamic_color * plight_local(m, P, N) * lightmap * shadow`, a spot's `lightmap` its projector where the pixel
 // stands in its cone, and the shadow of a light that casts one. Diffuse in colour, specular in alpha, added to what the
-// sun accumulated.
+// sun accumulated. While contact shadows are marched towards lights, the strongest few at each pixel are also
+// shadowed by what `common/contact_march` meets on the way to them, shadow map or not.
 
 #import "generated/frame/lights"
 
@@ -81,6 +83,64 @@ const POINT_RIGHTS: array<vec3<f32>, 6> = array<vec3<f32>, 6>(
 
 // `cot` of half an omni part's widened cone: a quarter turn and `tan_shift`.
 const POINT_SCALE: f32 = 0.94070607;
+
+// Whether this pipeline marches contact shadows at all: one that does not leaves the march out, and its registers.
+override CONTACT_MARCHED: bool = true;
+
+// Lights a pixel marches contact shadows towards at most, as `RENDER_MAX_CONTACT_SHADOW_LIGHTS` caps them.
+const MAX_CONTACT_LIGHTS: u32 = 8u;
+
+// Metres short of a light a contact shadow's ray stops, so the lamp's own glass and housing around it hide nothing.
+const CONTACT_CLEARANCE: f32 = 0.2;
+
+// How much a contact hit weakens in the back half of the thickness: wholly, so a ray passing behind a thin board's
+// silhouette (a table's back edge beside the wall) is not taken to be inside it.
+const CONTACT_FALLOFF: f32 = 1.0;
+
+// How many times the sun's spacing at its full reach a ray towards a light spaces its reads: near the camera half the
+// sun's reads, and fewer as the span shortens.
+const CONTACT_SPACING: f32 = 2.0;
+
+// How much a light gives a point, as the contact shadows rank the lights by: its falloff, its colour's luminance and
+// the surface's facing of it, none outside a spot's cone or on a surface facing away.
+fn contact_weight(record: LightRecord, position: vec3<f32>, normal: vec3<f32>) -> f32 {
+  let to_point: vec3<f32> = position - record.position.xyz;
+  let reach: f32 = length(to_point);
+  let falloff: f32 = saturate(1.0 - dot(to_point, to_point) * record.position.w);
+  let facing: f32 = saturate(-dot(normal, to_point) / max(reach, 1e-4));
+  let along: f32 = dot(to_point, record.axis.xyz);
+  let is_lit: bool = record.axis.w <= -1.0 || (along > 0.0 && along >= record.axis.w * reach);
+  let luminance: f32 = max(dot(record.color.rgb, vec3<f32>(0.2126, 0.7152, 0.0722)), 0.0);
+
+  return select(0.0, falloff * luminance * facing, is_lit);
+}
+
+// The weight a light must reach at a point to be among the `count` strongest of its cluster's lights; zero where the
+// cluster holds no more than that, so any light giving the point something is.
+fn contact_threshold(cluster: u32, count: u32, position: vec3<f32>, normal: vec3<f32>) -> f32 {
+  let held: u32 = counts[cluster];
+
+  if (held <= count) {
+    return 0.0;
+  }
+
+  // Strongest first: a heavier weight takes each place it beats and carries the one it took on down.
+  var strongest: array<f32, MAX_CONTACT_LIGHTS> = array<f32, MAX_CONTACT_LIGHTS>();
+
+  for (var index: u32 = 0u; index < held; index++) {
+    var weight: f32 = contact_weight(records[items[cluster * LIGHT_CLUSTER_CAPACITY + index]], position, normal);
+
+    for (var rank: u32 = 0u; rank < MAX_CONTACT_LIGHTS; rank++) {
+      let kept: f32 = strongest[rank];
+      let is_heavier: bool = weight > kept;
+
+      strongest[rank] = select(kept, weight, is_heavier);
+      weight = select(weight, kept, is_heavier);
+    }
+  }
+
+  return strongest[count - 1u];
+}
 
 // A comparison filtered as hardware filters it, between the four texels around a point: lit where the stored depth,
 // reversed, is no nearer than the reference.
@@ -230,7 +290,16 @@ fn fs_lights(in: FullscreenVarying) -> @location(0) vec4<f32> {
   let cluster: u32 = light_cluster(lights, in.clip.xy / camera.viewport.xy, -position.z);
   let to_eye: vec3<f32> = normalize(-position);
   let offset: vec3<f32> = position + normal * VIRTUAL_OFFSET;
+  let contact_count: u32 = select(0u, min(contact.lights, MAX_CONTACT_LIGHTS), CONTACT_MARCHED);
+  var threshold: f32 = 0.0;
+  var marched: u32 = 0u;
+  var plane_normal: vec3<f32> = vec3<f32>(0.0);
+  let step_pixels: f32 = contact.reach / f32(max(contact.steps, 1u)) * CONTACT_SPACING;
   var total: vec4<f32> = vec4<f32>(0.0);
+
+  if (contact_count > 0u) {
+    threshold = contact_threshold(cluster, contact_count, position, normal);
+  }
 
   for (var index: u32 = 0u; index < counts[cluster]; index++) {
     let record: LightRecord = records[items[cluster * LIGHT_CLUSTER_CAPACITY + index]];
@@ -277,6 +346,33 @@ fn fs_lights(in: FullscreenVarying) -> @location(0) vec4<f32> {
 
     if (is_shadowed) {
       light *= light_shadow(record, to_point, normal, is_spot);
+    }
+
+    // Among the strongest at the pixel and still reaching it: marched towards, stopping short of the light.
+    if (marched < contact_count && any(light > vec4<f32>(0.0))) {
+      let weight: f32 = contact_weight(record, position, normal);
+
+      if (weight > 0.0 && weight >= threshold) {
+        let to_light_point: vec3<f32> = record.position.xyz - position;
+        let reach: f32 = length(to_light_point);
+
+        if (marched == 0u) {
+          plane_normal = contact_plane_normal(depth_target, texel, in.clip.xy, position);
+        }
+
+        marched++;
+        light *= contact_lit(
+          depth_target,
+          contact,
+          in.clip.xy,
+          position,
+          plane_normal,
+          to_light_point / reach,
+          min(contact.length, reach - CONTACT_CLEARANCE),
+          CONTACT_FALLOFF,
+          step_pixels
+        );
+      }
     }
 
     total += record.color * light;

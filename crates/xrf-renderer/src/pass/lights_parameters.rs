@@ -1,10 +1,11 @@
 use xrf_renderer_core::{GraphTexture, PassParameters, StorageArray, UniformBinding};
 
+use crate::pass::contact_shadow_uniform::ContactShadowUniform;
 use crate::pass::light_record::LightRecord;
 use crate::pass::lights_uniform::LightsUniform;
 
 /// What the lights' pass reads: the G-buffer's normals, material and depth, the material table, the lights binned into
-/// the view's clusters, and the scene's light shadow atlas.
+/// the view's clusters, the scene's light shadow atlas, and what the contact shadows towards the lights march by.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 1)]
 pub struct LightsParameters<'a> {
@@ -28,4 +29,6 @@ pub struct LightsParameters<'a> {
   pub lights: UniformBinding<LightsUniform>,
   #[texture(d2, depth)]
   pub shadow_atlas: GraphTexture,
+  #[uniform]
+  pub contact: UniformBinding<ContactShadowUniform>,
 }
