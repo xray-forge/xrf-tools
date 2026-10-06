@@ -6,6 +6,7 @@ import {
   ERenderFoliageMode,
   ERenderIndirectLightMode,
   ERenderLightShadowFilter,
+  ERenderRainMode,
   ERenderReflectionMode,
   ERenderReflectionQuality,
   ERenderScale,
@@ -95,6 +96,14 @@ export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings>
   // The renderer's own: a surface's share of reflection is its gloss by a Fresnel term by the intensity, held to one,
   // and the shipped glosses lie under about 0.15, so four still leaves the most matte surfaces matte; past two hundred
   // metres a ray leaves the frame long before its steps reach.
+  // The renderer's own: puddles from none to most of flat terrain, a puddle's reflection at most a mirror's, the rain's
+  // ripples up to twice their designed strength.
+  rain: {
+    mode: toChoice(ERenderRainMode),
+    puddles: toNumber(0, 1),
+    reflectivity: toNumber(0, 1),
+    ripples: toNumber(0, 2),
+  },
   reflections: {
     distance: toNumber(5, 200),
     intensity: toNumber(0, 4),

@@ -9,6 +9,7 @@ import {
   TRenderGrassSettings,
   TRenderIndirectLightSettings,
   TRenderLightsSettings,
+  TRenderRainSettings,
   TRenderReflectionSettings,
   TRenderShadowSettings,
   TRenderWaterSettings,
@@ -32,6 +33,9 @@ export type TLevelIndirectLightOptions = TRenderIndirectLightSettings;
 /** The reflection settings a level view may set for itself: all of them. */
 export type TLevelReflectionOptions = TRenderReflectionSettings;
 
+/** The rain settings a level view may set for itself: all of them. */
+export type TLevelRainOptions = TRenderRainSettings;
+
 /** The grass settings a level view may set for itself. */
 export type TLevelGrassOptions = Pick<TRenderGrassSettings, "density" | "foliage" | "height" | "radius">;
 
@@ -52,6 +56,8 @@ export interface ILevelFeatureOptions {
   lights: Partial<TLevelLightsOptions>;
   /** The reflections, which no toolbar toggle turns off: their own mode does. */
   reflections: Partial<TLevelReflectionOptions>;
+  /** The rain's wetting, which no toolbar toggle turns off: its own mode does. */
+  rain: Partial<TLevelRainOptions>;
   /** The mode edges are smoothed with while the settings smooth them at all, or null for the settings' own. */
   antialiasing: Nullable<RenderAntialiasing>;
   shadows: Partial<TLevelShadowOptions>;
@@ -76,6 +82,9 @@ const LEVEL_FEATURE_KEYS: {
 
 /** The indirect light's settings a view may set. */
 const LEVEL_INDIRECT_LIGHT_KEYS: ReadonlyArray<keyof TLevelIndirectLightOptions> = ["intensity", "mode", "radius"];
+
+/** The rain's settings a view may set. */
+const LEVEL_RAIN_KEYS: ReadonlyArray<keyof TLevelRainOptions> = ["mode", "puddles", "reflectivity", "ripples"];
 
 /** The reflections' settings a view may set. */
 const LEVEL_REFLECTION_KEYS: ReadonlyArray<keyof TLevelReflectionOptions> = [
@@ -103,6 +112,7 @@ export function toLevelFeatureOptions(stored: unknown): ILevelFeatureOptions {
   const antialiasing: RenderAntialiasing | undefined = overrides.antialiasing;
   const indirectLight: Record<string, unknown> = (overrides.indirectLight ?? {}) as Record<string, unknown>;
   const reflections: Record<string, unknown> = (overrides.reflections ?? {}) as Record<string, unknown>;
+  const rain: Record<string, unknown> = (overrides.rain ?? {}) as Record<string, unknown>;
 
   return {
     ambientOcclusion: pick("ambientOcclusion"),
@@ -112,6 +122,9 @@ export function toLevelFeatureOptions(stored: unknown): ILevelFeatureOptions {
       LEVEL_INDIRECT_LIGHT_KEYS.filter((it) => indirectLight[it] !== undefined).map((it) => [it, indirectLight[it]])
     ) as Partial<TLevelIndirectLightOptions>,
     lights: pick("lights"),
+    rain: Object.fromEntries(
+      LEVEL_RAIN_KEYS.filter((it) => rain[it] !== undefined).map((it) => [it, rain[it]])
+    ) as Partial<TLevelRainOptions>,
     reflections: Object.fromEntries(
       LEVEL_REFLECTION_KEYS.filter((it) => reflections[it] !== undefined).map((it) => [it, reflections[it]])
     ) as Partial<TLevelReflectionOptions>,
@@ -166,6 +179,15 @@ export function toLevelIndirectLight(
   view: ILevelFeatureOptions
 ): TRenderIndirectLightSettings {
   return { ...settings.indirectLight, ...view.indirectLight };
+}
+
+/**
+ * @param settings - What the renderer's settings set, for every viewport.
+ * @param view - What the view sets over them.
+ * @returns The rain's wetting the view is drawn with: the settings', the view's own values over them.
+ */
+export function toLevelRain(settings: IRenderFeatureSettings, view: ILevelFeatureOptions): TRenderRainSettings {
+  return { ...settings.rain, ...view.rain };
 }
 
 /**

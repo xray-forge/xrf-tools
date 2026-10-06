@@ -119,6 +119,8 @@ pub struct ViewInfo {
   pub sun_sprite: Option<(String, Vec4)>,
   /// The rain: the streaks drawn and the splash's indices, none while it does not rain.
   pub rain_draw: Option<(u32, u32)>,
+  /// Whether the surfaces are wetted this frame: while it rains, or, enhanced, while the level is still wet after.
+  pub is_wet: bool,
   /// A strike: how its model and glows composite and the model's indices, none while none strikes.
   pub thunder_draw: Option<([XraySurfaceDraw; 3], u32)>,
   /// Composited clusters sorted back to front.
@@ -182,6 +184,7 @@ impl Default for ViewInfo {
       sky: None,
       sun_sprite: None,
       rain_draw: None,
+      is_wet: false,
       thunder_draw: None,
       sorted_count: 0,
       selection_color: None,

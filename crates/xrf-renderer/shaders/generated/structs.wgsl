@@ -214,7 +214,9 @@ struct Wet {
   density: f32,
   time: f32,
   is_extended: f32,
+  is_enhanced: f32,
   window: vec4<f32>,
+  puddles: vec4<f32>,
 }
 
 struct Thunder {

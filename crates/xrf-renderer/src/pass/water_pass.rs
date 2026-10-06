@@ -101,6 +101,11 @@ impl WaterPass {
     })
   }
 
+  /// The bundled maps, which the enhanced rain's puddles and ripples read too.
+  pub fn get_maps(&self) -> &EnhancedWaterMaps {
+    &self.maps
+  }
+
   pub fn refresh(&mut self, device: &wgpu::Device, shaders: &ShaderLibrary) {
     if shaders.get_generation() != self.generation {
       self.generation = shaders.get_generation();

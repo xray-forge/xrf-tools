@@ -28,6 +28,7 @@ pub(crate) mod particles_view;
 pub(crate) mod placed_effect;
 pub(crate) mod placed_objects;
 pub(crate) mod rain_cover;
+pub(crate) mod rain_wetness;
 pub(crate) mod scene_output;
 pub(crate) mod scene_renderer;
 pub(crate) mod scene_view;

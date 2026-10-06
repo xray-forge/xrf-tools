@@ -5,6 +5,7 @@ import {
   ERenderFoliageMode,
   ERenderIndirectLightMode,
   ERenderLightShadowFilter,
+  ERenderRainMode,
   ERenderReflectionMode,
   ERenderReflectionQuality,
   ERenderScale,
@@ -21,6 +22,7 @@ import {
   TRenderIndirectLightSettings,
   TRenderLightsSettings,
   TRenderLodSettings,
+  TRenderRainSettings,
   TRenderReflectionSettings,
   TRenderShadowSettings,
   TRenderUpscalingSettings,
@@ -94,6 +96,14 @@ export const DEFAULT_RENDER_INDIRECT_LIGHT_SETTINGS: TRenderIndirectLightSetting
   intensity: 1,
   mode: ERenderIndirectLightMode.ENGINE,
   radius: 3,
+};
+
+/** The engine's own wetting, and for when it is enhanced, puddles over most of flat terrain, taking up to 40% reflection. */
+export const DEFAULT_RENDER_RAIN_SETTINGS: TRenderRainSettings = {
+  mode: ERenderRainMode.ENGINE,
+  puddles: 0.8,
+  reflectivity: 0.4,
+  ripples: 1,
 };
 
 /** The engine's own: the cube alone, and for when it is traced, rays of 150 metres at high quality at full strength. */
