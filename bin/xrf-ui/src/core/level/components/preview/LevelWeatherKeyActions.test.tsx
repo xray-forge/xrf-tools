@@ -6,6 +6,7 @@ import {
   ERenderDebandingMode,
   ERenderDebandingQuality,
   ERenderFogMode,
+  ERenderRainMode,
   ERenderSunShaftsQuality,
 } from "@/core/ipc/types/xrf-renderer";
 import { LevelFogAction } from "@/core/level/components/preview/LevelFogAction";
@@ -22,7 +23,9 @@ import {
 import {
   DEFAULT_RENDER_DEBANDING_SETTINGS,
   DEFAULT_RENDER_FOG_SETTINGS,
+  DEFAULT_RENDER_RAIN_SETTINGS,
 } from "@/core/render/lib/settings/render-feature-defaults";
+import { TRenderRainSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { mockLevelFeatureOptions, mockLevelTextureReference } from "@/fixtures/mocks/level.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
@@ -227,8 +230,11 @@ describe("level weather key actions", () => {
         collections={[
           { file: "environment\\thunderbolt_collections.ltx", name: "collection_default", thunderbolts: ["a", "b"] },
         ]}
+        puddles={DEFAULT_RENDER_RAIN_SETTINGS}
+        features={mockLevelFeatureOptions()}
         onToggle={onToggle}
         onEdit={onEdit}
+        onChangeFeatures={() => {}}
       />
     );
 
@@ -248,6 +254,56 @@ describe("level weather key actions", () => {
     await userEvent.click(getByRole("option", { name: /collection_default/ }));
 
     expect(onEdit).toHaveBeenCalledWith({ thunderboltCollection: "collection_default" });
+  });
+
+  it("gathers puddles on the ground as the rain's third section, offering their strengths only then", async () => {
+    const onChangeFeatures = jest.fn<(features: ILevelFeatureOptions) => void>();
+    const enhanced: TRenderRainSettings = { ...DEFAULT_RENDER_RAIN_SETTINGS, mode: ERenderRainMode.ENHANCED };
+
+    function render(puddles: TRenderRainSettings): ReactElement {
+      return (
+        <LevelRainAction
+          options={DEFAULT_LEVEL_VIEW_OPTIONS}
+          manual={DEFAULT_LEVEL_MANUAL_WEATHER}
+          collections={[]}
+          puddles={puddles}
+          features={mockLevelFeatureOptions()}
+          onToggle={() => {}}
+          onEdit={() => {}}
+          onChangeFeatures={onChangeFeatures}
+        />
+      );
+    }
+
+    const { getByRole, findByRole, queryByRole, rerender } = renderWithProviders(render(DEFAULT_RENDER_RAIN_SETTINGS));
+
+    expect(getByRole("button", { name: "Rain" })).toHaveAccessibleDescription("No rain, no thunder, no puddles");
+
+    await userEvent.click(getByRole("button", { name: "Rain" }));
+    await findByRole("dialog", { name: "Rain" });
+
+    expect(queryByRole("slider", { name: "Puddles" })).toBeNull();
+
+    await userEvent.click(getByRole("checkbox", { name: "Puddles" }));
+
+    expect(onChangeFeatures).toHaveBeenLastCalledWith({
+      ...mockLevelFeatureOptions(),
+      rain: { mode: ERenderRainMode.ENHANCED },
+    });
+
+    rerender(render(enhanced));
+
+    expect(getByRole("checkbox", { name: "Puddles" })).toBeChecked();
+    expect(getByRole("slider", { name: "Puddles" })).toHaveAttribute("aria-valuetext", "100%");
+    expect(getByRole("slider", { name: "Reflectivity" })).toHaveAttribute("aria-valuetext", "40%");
+    expect(getByRole("slider", { name: "Distance" })).toHaveAttribute("aria-valuetext", "120 m");
+    expect(getByRole("button", { hidden: true, name: "Rain" })).toHaveAccessibleDescription(
+      "No rain, no thunder, puddles at 100% of the sites"
+    );
+
+    await userEvent.click(getByRole("button", { name: "Back to the settings for the puddles" }));
+
+    expect(onChangeFeatures).toHaveBeenLastCalledWith({ ...mockLevelFeatureOptions(), rain: {} });
   });
 
   // The sky draws the weather's sun or moon as the game does; the button says whether one shows now.

@@ -57,6 +57,8 @@ use crate::pass::static_draw_parameters::StaticDrawParameters;
 use crate::pass::static_impostor_parameters::StaticImpostorParameters;
 use crate::pass::sun_parameters::SunParameters;
 use crate::pass::sun_shafts_parameters::SunShaftsParameters;
+use crate::pass::surroundings_parameters::SurroundingsParameters;
+use crate::pass::surroundings_uniform::SurroundingsUniform;
 use crate::pass::temporal_parameters::TemporalParameters;
 use crate::pass::temporal_uniform::TemporalUniform;
 use crate::pass::thunder_parameters::ThunderParameters;
@@ -122,6 +124,7 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
   let mut pyramid: ShaderBindings = ShaderBindings::new();
   let mut puddle_sites: ShaderBindings = ShaderBindings::new();
   let mut sky_prefilter: ShaderBindings = ShaderBindings::new();
+  let mut surroundings: ShaderBindings = ShaderBindings::new();
   let mut static_cull: ShaderBindings = ShaderBindings::new();
   let mut static_draw: ShaderBindings = ShaderBindings::new();
   let mut static_impostor: ShaderBindings = ShaderBindings::new();
@@ -138,6 +141,7 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
     .declare::<FogScatteringUniform>()
     .declare::<PuddleSitesUniform>()
     .declare::<SkyPrefilterUniform>()
+    .declare::<SurroundingsUniform>()
     .declare::<ParticleVertex>()
     .declare::<ParticleSurfaceRecord>()
     .declare::<ShadowUniform>()
@@ -204,6 +208,7 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
     .add::<PuddleSitesParameters>()?
     .add::<PuddleKeepParameters<'_>>()?;
   sky_prefilter.add::<SkyPrefilterParameters<'_>>()?;
+  surroundings.add::<SurroundingsParameters<'_>>()?;
   static_cull.add::<StaticCullParameters>()?;
   static_draw.add::<StaticDrawParameters>()?;
   static_impostor.add::<StaticImpostorParameters>()?;
@@ -322,6 +327,10 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
     (
       "generated/frame/sky_prefilter",
       format!("{STRUCTS_IMPORT}{}", sky_prefilter.to_wgsl()),
+    ),
+    (
+      "generated/frame/surroundings",
+      format!("{STRUCTS_IMPORT}{}", surroundings.to_wgsl()),
     ),
     (
       "generated/static/cull",

@@ -62,9 +62,10 @@ impl ViewExposure {
 
     self.is_adapting = true;
     self.last = Some(now);
-    // `f_luminance_adapt = .9 * f + .1 * dt * adaptation`.
+    // `f_luminance_adapt = .9 * f + .1 * dt * adaptation`; the scale moves by it at most all the way, since past one
+    // the move overshoots and a slow frame under a fast adaptation would swing the scale about its target.
     self.rate = 0.9 * self.rate + 0.1 * delta.as_secs_f32() * settings.adaptation;
-    self.params = ExposureUniform::new(settings, self.rate);
+    self.params = ExposureUniform::new(settings, self.rate.min(1.0));
   }
 
   pub fn is_adapting(&self) -> bool {

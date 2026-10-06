@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::contract::render_reflection_mode::RenderReflectionMode;
+use crate::contract::render_reflection_probe::RenderReflectionProbe;
 use crate::contract::render_reflection_quality::RenderReflectionQuality;
 
 /// Screen-space reflections on the frame's surfaces: what each surface's reflected rays meet over the frame, or the
@@ -15,7 +16,12 @@ pub struct RenderReflectionSettings {
   pub intensity: f32,
   /// Metres a ray is traced at most.
   pub distance: f32,
+  /// Metres out to which the rain wets the ground's gloss for the rays to trace, fading over the last fifth; the
+  /// engine alone wets it over 25 m.
+  pub reach: f32,
   pub quality: RenderReflectionQuality,
+  /// How fine the surroundings cube a ray meeting nothing on the screen reads is.
+  pub probe: RenderReflectionProbe,
 }
 
 impl Default for RenderReflectionSettings {
@@ -25,7 +31,9 @@ impl Default for RenderReflectionSettings {
       mode: RenderReflectionMode::Engine,
       intensity: 1.0,
       distance: 150.0,
+      reach: 250.0,
       quality: RenderReflectionQuality::High,
+      probe: RenderReflectionProbe::Fine,
     }
   }
 }

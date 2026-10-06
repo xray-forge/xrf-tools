@@ -35,3 +35,15 @@ fn dries_at_the_weather_clocks_pace() {
 
   assert!((dried_fast - dried_slowly * 10.0).abs() < 1e-5);
 }
+
+// A clock standing still leaves the level at least as wet as the rain it stands in: a view that saw the rain fade in
+// and then stopped its clock shows the rain, not the fade's first frame; nothing dries or builds meanwhile.
+#[test]
+fn stands_at_least_as_wet_as_the_rain_while_the_clock_stands_still() {
+  let mut wetness: RainWetness = RainWetness::default();
+
+  assert_eq!(wetness.advance(0.0, 0.01, 1.0), 0.01);
+  assert_eq!(wetness.advance(1.0, 0.4, 0.0), 0.4);
+  assert_eq!(wetness.advance(2.0, 0.2, 0.0), 0.4);
+  assert_eq!(wetness.advance(100.0, 0.0, 0.0), 0.4);
+}

@@ -63,6 +63,10 @@ const EMBEDDED: &[(&str, &str)] = &[
     include_str!("../../shaders/common/sun_shadow.wgsl"),
   ),
   ("common/sky_box", include_str!("../../shaders/common/sky_box.wgsl")),
+  (
+    "common/sky_clouds",
+    include_str!("../../shaders/common/sky_clouds.wgsl"),
+  ),
   ("common/wet", include_str!("../../shaders/common/wet.wgsl")),
   (
     "common/visibility_bitmask",
@@ -148,6 +152,10 @@ const EMBEDDED: &[(&str, &str)] = &[
   (
     "frame/sky_prefilter",
     include_str!("../../shaders/frame/sky_prefilter.wgsl"),
+  ),
+  (
+    "frame/surroundings",
+    include_str!("../../shaders/frame/surroundings.wgsl"),
   ),
   (
     "frame/reflections",
@@ -261,6 +269,10 @@ const EMBEDDED: &[(&str, &str)] = &[
   (
     "generated/frame/sky_prefilter",
     include_str!("../../shaders/generated/frame/sky_prefilter.wgsl"),
+  ),
+  (
+    "generated/frame/surroundings",
+    include_str!("../../shaders/generated/frame/surroundings.wgsl"),
   ),
   (
     "generated/frame/bloom",

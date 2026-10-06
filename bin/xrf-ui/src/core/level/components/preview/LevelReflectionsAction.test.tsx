@@ -47,6 +47,7 @@ describe("LevelReflectionsAction", () => {
     expect(getByRole("checkbox", { name: "Trace reflections" })).toBeChecked();
     expect(getByRole("slider", { name: "Intensity" })).toHaveAttribute("aria-valuetext", "100%");
     expect(getByRole("slider", { name: "Distance" })).toHaveAttribute("aria-valuetext", "150 m");
+    expect(getByRole("slider", { name: "Wet reach" })).toHaveAttribute("aria-valuetext", "250 m");
     expect(getByRole("button", { hidden: true, name: "Reflections" })).toHaveAccessibleDescription(
       "Screen-space reflections, high quality, 100% over 150 m. Right-click for its settings"
     );

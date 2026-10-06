@@ -978,13 +978,13 @@ export type RenderPoolUse = {
   capacity: number;
 };
 
-/** How rain wets the frame's surfaces. */
+/** Whether puddles gather on the ground when it rains, over the engine's own wetting of the surfaces either way. */
 export enum ERenderRainMode {
-  /** The engine's own: splashes and running water near the camera, wet only while it rains. */
+  /** The engine's own wetting alone: splashes and running water near the camera, wet only while it rains. */
   ENGINE = "engine",
   /**
-   * Wet surfaces that build up and dry over time, rippling and running with water out to the distance, and puddles
-   * gathering on flat, low terrain.
+   * Puddles gathering on flat, low terrain over the engine's own wetting, filling with the rain and draining after,
+   * their water reflecting as the reflections trace.
    */
   ENHANCED = "enhanced",
 }
@@ -992,10 +992,13 @@ export enum ERenderRainMode {
 /** Every `ERenderRainMode` as the spelling it crosses IPC as, for a value no member has narrowed. */
 export type RenderRainMode = `${ERenderRainMode}`;
 
-/** How rain wets the frame's surfaces, and the enhanced wetting's strengths. */
+/**
+ * How rain wets the frame's surfaces: the engine's own wetting, and whether puddles gather over it, with their
+ * strengths.
+ */
 export type RenderRainSettings = {
   mode: RenderRainMode;
-  /** How much of flat terrain puddles may cover, from none to most of it. */
+  /** How many puddles the level's sites hold: none at nought, about seven in ten at one, nearly all at two. */
   puddles: number | null;
   /** How much of a reflection a puddle takes at most. */
   reflectivity: number | null;
@@ -1028,6 +1031,23 @@ export enum ERenderReflectionMode {
 export type RenderReflectionMode = `${ERenderReflectionMode}`;
 
 /**
+ * How fine the surroundings cube is, the level around the camera a reflection reads where it meets nothing on the
+ * screen: texels a side of each of its six faces. Finer is sharper far reflections for more memory and a larger face
+ * drawn and resolved each frame.
+ */
+export enum ERenderReflectionProbe {
+  /** 256 texels a side: 12 MB, a soft probe. */
+  COARSE = "coarse",
+  /** 512 texels a side: 50 MB, a seventh of the frame's detail at the default field of view. */
+  FINE = "fine",
+  /** 1,024 texels a side: 200 MB, a planar reflection's spend. */
+  FINEST = "finest",
+}
+
+/** Every `ERenderReflectionProbe` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type RenderReflectionProbe = `${ERenderReflectionProbe}`;
+
+/**
  * How hard the screen-space reflections trace: the size traced at and how many cells of the depth pyramid a ray may
  * cross before it gives up.
  */
@@ -1056,7 +1076,14 @@ export type RenderReflectionSettings = {
   intensity: number | null;
   /** Metres a ray is traced at most. */
   distance: number | null;
+  /**
+   * Metres out to which the rain wets the ground's gloss for the rays to trace, fading over the last fifth; the
+   * engine alone wets it over 25 m.
+   */
+  reach: number | null;
   quality: RenderReflectionQuality;
+  /** How fine the surroundings cube a ray meeting nothing on the screen reads is. */
+  probe: RenderReflectionProbe;
 };
 
 /**

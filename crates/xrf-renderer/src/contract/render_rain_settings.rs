@@ -2,13 +2,14 @@ use serde::{Deserialize, Serialize};
 
 use crate::contract::render_rain_mode::RenderRainMode;
 
-/// How rain wets the frame's surfaces, and the enhanced wetting's strengths.
+/// How rain wets the frame's surfaces: the engine's own wetting, and whether puddles gather over it, with their
+/// strengths.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Copy, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RenderRainSettings {
   pub mode: RenderRainMode,
-  /// How much of flat terrain puddles may cover, from none to most of it.
+  /// How many puddles the level's sites hold: none at nought, about seven in ten at one, nearly all at two.
   pub puddles: f32,
   /// How much of a reflection a puddle takes at most.
   pub reflectivity: f32,
@@ -23,7 +24,7 @@ impl Default for RenderRainSettings {
   fn default() -> Self {
     Self {
       mode: RenderRainMode::Engine,
-      puddles: 0.8,
+      puddles: 1.0,
       reflectivity: 0.4,
       ripples: 1.0,
       distance: 120.0,

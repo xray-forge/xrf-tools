@@ -67,6 +67,9 @@ pub struct ViewInfo {
   pub matrices: (Mat4, Mat4),
   /// Where the sunlight travels.
   pub sun_direction: Vec3,
+  /// What the static scene is drawn with off the viewport (the surroundings cube): textured, the viewport's bumping
+  /// and the baked hemisphere's strength.
+  pub switches: Vec4,
   /// The wind's amplitude and the time the trees sway by: what has still shadows drawn again.
   pub sway: (f32, f32),
   /// Where this frame's samples sit within their pixels, and how many places the jitter cycles through.
@@ -164,6 +167,7 @@ impl Default for ViewInfo {
       },
       matrices: (Mat4::IDENTITY, Mat4::IDENTITY),
       sun_direction: RenderLighting::default().get_sun_direction(),
+      switches: Vec4::new(1.0, 1.0, 1.0, 0.0),
       sway: (0.0, 0.0),
       jitter: Vec2::ZERO,
       jitter_phases: 1,

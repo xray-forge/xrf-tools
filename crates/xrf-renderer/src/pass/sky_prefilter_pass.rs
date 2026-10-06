@@ -22,13 +22,16 @@ pub struct SkyPrefilterPass {
 
 impl SkyPrefilterPass {
   /// Each mip's pass, by its mip.
-  pub const PASSES: [&'static str; SkyPrefilter::LEVELS as usize] = [
+  pub const PASSES: [&'static str; SkyPrefilter::MOST_LEVELS as usize] = [
     "sky prefilter 0",
     "sky prefilter 1",
     "sky prefilter 2",
     "sky prefilter 3",
     "sky prefilter 4",
     "sky prefilter 5",
+    "sky prefilter 6",
+    "sky prefilter 7",
+    "sky prefilter 8",
   ];
   /// Directions a texel of a blurred mip samples over its lobe.
   pub const SAMPLES: u32 = 32;

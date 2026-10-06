@@ -28,6 +28,7 @@ use crate::pass::static_gbuffer_pass::StaticGBufferPass;
 use crate::pass::static_shadow_pass::StaticShadowPass;
 use crate::pass::sun_pass::SunPass;
 use crate::pass::sun_shafts_pass::SunShaftsPass;
+use crate::pass::surroundings_pass::SurroundingsPass;
 use crate::pass::temporal_pass::TemporalPass;
 use crate::pass::thunder_pass::ThunderPass;
 use crate::pass::upscale_pass::UpscalePass;
@@ -52,6 +53,7 @@ pub struct LevelPasses<'a> {
   pub combine: &'a CombinePass,
   pub sky_haze: &'a SkyHazePass,
   pub sky_prefilter: &'a SkyPrefilterPass,
+  pub surroundings: &'a SurroundingsPass,
   pub sky: &'a SkyBindings,
   pub water: &'a WaterPass,
   pub composited: &'a CompositedPass,

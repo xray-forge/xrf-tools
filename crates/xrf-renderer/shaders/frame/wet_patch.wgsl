@@ -39,47 +39,7 @@ fn rain_open(world: vec3<f32>) -> f32 {
   return open * 0.25;
 }
 
-// How far falling rain leans off straight down, as a tangent, and the taps and metres the disc its spread is read over
-// spans, at least and at most: an overhang a height above a point shelters it from a disc that height by the spread
-// across, so a pipe high overhead only thins the rain under it where a low roof stops it, and a fence's wire or a
-// bush's twig, a sliver of the disc, shelters nothing.
-const RAIN_SPREAD: f32 = 0.35;
-const RAIN_SPREAD_TAPS: u32 = 12u;
-const RAIN_SPREAD_LEAST: f32 = 0.5;
-const RAIN_SPREAD_REACH: f32 = 4.0;
-// The share of the disc open from which the rain wets a point whole: whatever stands over the rest of it is too thin
-// or too sparse to keep it dry.
-const RAIN_SPREAD_OPEN: f32 = 0.7;
-// How far the ground's tilt is trusted, as the least of its up, so a wall's foot does not lift its plane off the disc.
-const RAIN_SPREAD_UP: f32 = 0.3;
-const GOLDEN_ANGLE: f32 = 2.39996323;
-
-// How much of the rain reaches a point, falling with its spread: the share of a disc of the cover open over the
-// ground's plane through it, the disc as wide as the spread makes the overhang straight above it, turned by where it
-// lies so its taps do not line up from one point to the next.
-fn rain_reach(world: vec3<f32>, normal: vec3<f32>) -> f32 {
-  let texel: f32 = wet.window.z * 2.0 / RAIN_COVER_RESOLUTION;
-  let over: f32 = rain_cover_height(cover, wet.window, world) - world.y - COVER_BIAS;
-  let radius: f32 = clamp(over * RAIN_SPREAD, RAIN_SPREAD_LEAST, RAIN_SPREAD_REACH);
-  // The plane's rise along the ground, metres a metre, each way.
-  let tilt: vec2<f32> = -normal.xz / max(normal.y, RAIN_SPREAD_UP);
-  let turn: f32 = fract(sin(dot(floor(world.xz / texel), vec2<f32>(12.9898, 78.233))) * 43758.5453) * 6.2831853;
-  var open: f32 = 0.0;
-
-  for (var tap: u32 = 0u; tap < RAIN_SPREAD_TAPS; tap++) {
-    let along: f32 = sqrt((f32(tap) + 0.5) / f32(RAIN_SPREAD_TAPS)) * radius;
-    let angle: f32 = f32(tap) * GOLDEN_ANGLE + turn;
-    let offset: vec2<f32> = vec2<f32>(cos(angle), sin(angle)) * along;
-    let ground: f32 = world.y + dot(tilt, offset);
-
-    open += select(0.0, 1.0, ground + COVER_BIAS >= rain_cover_height(cover, wet.window,
-      world + vec3<f32>(offset.x, 0.0, offset.y)));
-  }
-
-  return smoothstep(0.0, RAIN_SPREAD_OPEN, open / f32(RAIN_SPREAD_TAPS));
-}
-
-// `GetNVNMap`: the splashes' volume at a place and a moment, repeating every way and blended between its slices, its
+/// `GetNVNMap`: the splashes' volume at a place and a moment, repeating every way and blended between its slices, its
 // normal in `w`, `y` and `z`, laid flat.
 fn splash_normal(place: vec2<f32>, moment: f32) -> vec3<f32> {
   let layers: f32 = f32(textureNumLayers(splash));
@@ -103,24 +63,15 @@ fn flow_normal(at: vec2<f32>) -> vec3<f32> {
   return vec3<f32>(water.x, engine_value(0.0, 0.1), water.z);
 }
 
-@fragment
-fn fs_wet_patch(in: FullscreenVarying) -> @location(0) vec4<f32> {
-  let texel: vec2<i32> = vec2<i32>(in.clip.xy);
-  let depth: f32 = textureLoad(depth_target, texel, 0);
+// The engine's wetting of a surface (`rain_patch_normal`): how its normal is bent by the splashes on what faces up and
+// the water running down what stands near the camera, in view space, and how wet it is, from the G-buffer's normal
+// and point in view space and the world they stand in.
+struct EngineWetting {
+  bent: vec3<f32>,
+  wetness: f32,
+};
 
-  // Reversed: nought where nothing was drawn.
-  if (depth <= 0.0) {
-    discard;
-  }
-
-  let albedo: vec3<f32> = textureLoad(albedo_target, texel, 0).rgb;
-  let normal: vec3<f32> = normalize(octahedral_decode(textureLoad(normal_target, texel, 0).xy));
-  let position: vec3<f32> = camera_view_position(in.clip.xy, depth);
-  let size: vec2<f32> = camera.viewport.xy;
-  let ndc: vec2<f32> = vec2<f32>(in.clip.x / size.x * 2.0 - 1.0, 1.0 - in.clip.y / size.y * 2.0);
-  let world: vec3<f32> = camera_unproject(ndc, depth);
-  let rotation: mat3x3<f32> = transpose(mat3x3<f32>(camera.view[0].xyz, camera.view[1].xyz, camera.view[2].xyz));
-  let world_normal: vec3<f32> = normalize(rotation * normal);
+fn engine_wetting(normal: vec3<f32>, position: vec3<f32>, world: vec3<f32>, world_normal: vec3<f32>) -> EngineWetting {
   // The engine's axes: `z` negated.
   let place: vec3<f32> = vec3<f32>(world.x, world.y, -world.z);
   let facing: vec3<f32> = vec3<f32>(world_normal.x, world_normal.y, -world_normal.z);
@@ -138,56 +89,114 @@ fn fs_wet_patch(in: FullscreenVarying) -> @location(0) vec4<f32> {
   let applied: f32 = wetness * smoothstep(0.8, 0.9, length(position));
   let water: vec3<f32> = splashed * (upward * applied) + fall_x.yxz * (abs(facing.x) * applied) +
     fall_z.zxy * (abs(facing.z) * applied);
-  let bent: vec3<f32> = (camera.view * vec4<f32>(water.x, water.y, -water.z, 0.0)).xyz;
 
-  return vec4<f32>(normalize(normal + bent), wetness * dot(albedo, vec3<f32>(0.33)));
+  return EngineWetting((camera.view * vec4<f32>(water.x, water.y, -water.z, 0.0)).xyz, wetness);
 }
 
-// The enhanced wetting's ripples on what faces up: how large, how fast and how slow at least, and how strong; and its
-// running water on what stands: how large its columns, how fast and how slow at least, and how strong.
-const RIPPLE_SCALE: f32 = 0.5;
-const RIPPLE_SPEED: f32 = 1.4;
-const RIPPLE_LEAST_SPEED: f32 = 0.7;
-const RIPPLE_STRENGTH: f32 = 1.25;
-const FALL_SCALE: f32 = 0.8;
-const FALL_SPEED: f32 = 1.5;
-const FALL_LEAST_SPEED: f32 = 0.2;
-const FALL_STRENGTH: f32 = 0.35;
-const FALL_COLUMNS: f32 = 50.0;
-// Metres within which rain ripples, and over which the wetting fades out; and the share of the cover's half width
-// over which the cover gives way to open sky, so its square's edge never shows.
+// The share of the reflections' reach (`wet.reach.y`, metres) over which the wetness fades out at its end; and the
+// share of the cover's half width over which the cover gives way to the level surface's say, so its square's edge
+// never shows.
+const REACH_FADE: f32 = 0.8;
+const COVER_FADE: vec2<f32> = vec2<f32>(0.6, 0.95);
+// The gloss a wet surface is brought up to at most where the reflections trace: the engine's gain of up to 0.8 over
+// a bright surface's own gloss made a mirror of it, and the sky sparkled in every bump of its normal map as foil;
+// below a puddle's water, so wet ground never reads as water.
+const WET_GLOSS_MOST: f32 = 0.6;
+
+// How wet a surface reads, from none to one: the engine's, by its splashes' fade over 5 to 25 m, or where the
+// reflections trace (`wet.reach.x`) as far as the rain reaches, so they have wet gloss to trace over the whole ground
+// and not a ring about the camera: within the cover as the cover says, beyond it where the level surface makes the
+// point the topmost (a tunnel's vault, a bridge or a roof keeps what is under it dry), fading out to the reach.
+fn surface_wetness(wetting: EngineWetting, world: vec3<f32>, world_normal: vec3<f32>, position: vec3<f32>) -> f32 {
+  if (wet.reach.x < 0.5) {
+    return wetting.wetness;
+  }
+
+  let edge: f32 = max(abs(world.x - wet.window.x), abs(world.z - wet.window.y)) / wet.window.z;
+  let beyond: f32 = smoothstep(COVER_FADE.x, COVER_FADE.y, edge);
+  let open: f32 = mix(rain_open(world), select(0.0, 1.0, is_topmost(world)), beyond);
+  let facing_up: f32 = saturate(world_normal.y * 10.0 + 10.0 * 0.5 + 0.5);
+
+  return open * wet.density * facing_up * smoothstep(wet.reach.y, wet.reach.y * REACH_FADE, length(position));
+}
+
+// The gloss the wetness gains over the surface's own, from how wet it reads and the engine's gain a unit of wetness
+// brings (0.8 in Anomaly, 1 in Extended): the engine's where it alone wets, no more than `WET_GLOSS_MOST` where the
+// reflections trace.
+fn wet_gloss_gain(soaked: f32, gloss: f32) -> f32 {
+  let gain: f32 = soaked * select(0.8, 1.0, wet.is_extended > 0.5);
+
+  return select(gain, min(gain, max(WET_GLOSS_MOST - gloss, 0.0)), wet.reach.x > 0.5);
+}
+
+@fragment
+fn fs_wet_patch(in: FullscreenVarying) -> @location(0) vec4<f32> {
+  let texel: vec2<i32> = vec2<i32>(in.clip.xy);
+  let depth: f32 = textureLoad(depth_target, texel, 0);
+
+  // Reversed: nought where nothing was drawn.
+  if (depth <= 0.0) {
+    discard;
+  }
+
+  let albedo: vec4<f32> = textureLoad(albedo_target, texel, 0);
+  let normal: vec3<f32> = normalize(octahedral_decode(textureLoad(normal_target, texel, 0).xy));
+  let position: vec3<f32> = camera_view_position(in.clip.xy, depth);
+  let size: vec2<f32> = camera.viewport.xy;
+  let ndc: vec2<f32> = vec2<f32>(in.clip.x / size.x * 2.0 - 1.0, 1.0 - in.clip.y / size.y * 2.0);
+  let world: vec3<f32> = camera_unproject(ndc, depth);
+  let rotation: mat3x3<f32> = transpose(mat3x3<f32>(camera.view[0].xyz, camera.view[1].xyz, camera.view[2].xyz));
+  let world_normal: vec3<f32> = normalize(rotation * normal);
+  let wetting: EngineWetting = engine_wetting(normal, position, world, world_normal);
+  let wetness: f32 = surface_wetness(wetting, world, world_normal, position);
+
+  // The bent normal packed as the enhanced patch packs it; how wet the engine reads the surface, by the albedo's
+  // brightness, which the apply pass darkens by; and the gloss that gains, the engine's own factor folded in.
+  let soaked: f32 = wetness * dot(albedo.rgb, vec3<f32>(0.33));
+
+  return vec4<f32>(octahedral_encode(normalize(normal + wetting.bent)), wet_gloss_gain(soaked, albedo.a), soaked);
+}
+
+// The puddles' rain rings: how fast each of their three layers runs, where the second and third are moved to, and the
+// metres within which they ripple, fading out over them.
 const RIPPLE_REACH: f32 = 15.0;
-// Metres out to which water runs down what stands, fading: no further, where its narrow columns alias into a sheen.
-const FALL_REACH: f32 = 25.0;
-const WET_REACH: vec2<f32> = vec2<f32>(200.0, 250.0);
+const RIPPLE_LAYER_SPEEDS: vec3<f32> = vec3<f32>(1.05, 1.31, 1.58);
+const RIPPLE_LAYER_OFFSETS: vec4<f32> = vec4<f32>(0.5, 0.25, 0.31, 0.5);
 // The share of the puddles' distance over which they fade out.
 const PUDDLE_FADE: f32 = 0.15;
 // The reflectivity setting at which a puddle's water reflects as water does, the default; a lower one reflects less,
 // a higher one more.
 const WATER_REFLECTIVITY: f32 = 0.4;
-const COVER_FADE: vec2<f32> = vec2<f32>(0.6, 0.95);
-// Ripple layers: how fast each runs, and where the second and third are moved to.
-const RIPPLE_LAYER_SPEEDS: vec3<f32> = vec3<f32>(1.05, 1.31, 1.58);
-const RIPPLE_LAYER_OFFSETS: vec4<f32> = vec4<f32>(0.5, 0.25, 0.31, 0.5);
 // Metres a puddle's noise repeats over, and its ripples' normals; and how strongly rain ripples a puddle.
 const PUDDLE_TILE: f32 = 60.0;
 const PUDDLE_RIPPLE_TILE: f32 = 12.0;
 const PUDDLE_RIPPLE_SHARE: f32 = 0.5;
-// A puddle's shape about its site: as long as wide at most by `PUDDLE_STRETCH`, its border moved in and out by a
-// noise every `PUDDLE_EDGE_TILE` metres and by the puddles' own over `PUDDLE_TILE`, a share of its radius; and the
-// share of its radius its border softens over.
-const PUDDLE_STRETCH: f32 = 1.6;
+// A puddle's shape about its site: as long as wide at most by `PUDDLE_STRETCH` (`common/puddle_site`), its border
+// moved in and out by a noise every `PUDDLE_EDGE_TILE` metres and by the puddles' own over `PUDDLE_TILE`, a share of
+// its radius; and the share of its radius its border softens over.
 const PUDDLE_EDGE_TILE: f32 = 8.0;
 const PUDDLE_EDGE_SHAPE: f32 = 0.35;
 const PUDDLE_NOISE_SHAPE: f32 = 0.25;
 const PUDDLE_SOFTNESS: f32 = 0.12;
-// How deep a puddle reads at its middle, against its rim, so its water darkens inward; and how far past its rim the
-// ground around it stays darker and glossier with the water it soaked, a share of its radius, and how glossy.
-const PUDDLE_DEEPENING: f32 = 0.6;
+// Metres a puddle's water stands over the ground at its site's spot, its plane lying along the ground's own up there;
+// the most water the tint sees, a puddle's depth, whatever the plane's height over a dip in the ground says; how far
+// past its rim the ground around it stays damp with the water it soaked, a share of its radius, and how wet, as the
+// engine's wetness reads.
+const PUDDLE_LEVEL: f32 = 0.03;
+const PUDDLE_DEEPEST: f32 = 0.12;
 const PUDDLE_HALO: f32 = 0.4;
-const PUDDLE_HALO_GLOSS: f32 = 0.25;
+const PUDDLE_HALO_WET: f32 = 0.25;
 // How much the coat's coverage varies with the puddles' own noise, for floating film and debris.
 const PUDDLE_FILM: f32 = 0.15;
+// The gloss of water's roughness of 0.02, a puddle's at rest.
+const WATER_GLOSS: f32 = 0.737;
+// How far the ripples bend a puddle's normal at most, as a slope: at full strength the water looked like foil.
+const RIPPLE_BEND_MOST: f32 = 0.08;
+// The lean built into the water's wave map by its generator, which the water shader expects and a puddle takes off:
+// its calm water lies level on average.
+const WAVE_TILT: vec2<f32> = vec2<f32>(-0.105, -0.104);
+// The least a filtered normal's length is divided by for the variance it lost.
+const TOKSVIG_LEAST: f32 = 0.05;
 
 // Metres a point may stand off its site's height, beside how far the placing let the ground rise and fall across it
 // (`SITE_LEVEL`), and still be in its water; and how far under the level surface's highest lowest about it it may stand
@@ -198,25 +207,19 @@ const PUDDLE_TOP: f32 = 0.25;
 // The least a surface faces up to hold a puddle.
 const PUDDLE_UP: f32 = 0.85;
 
-// A hash of a place, from nothing to one each way.
-fn hash22(place: vec2<f32>) -> vec2<f32> {
-  var p3: vec3<f32> = fract(vec3<f32>(place.xyx) * vec3<f32>(0.1031, 0.1030, 0.0973));
-
-  p3 += dot(p3, p3.yzx + 19.19);
-
-  return fract((p3.xx + p3.yz) * p3.zy);
-}
-
-// One layer of rain ripples: each texel a ring arriving on its own clock (arrival, normal y, normal x, clock),
-// spreading and fading; `setup` is its speed, strength and how many rings a ripple spreads.
-fn ripple_layer(texel: vec4<f32>, setup: vec3<f32>) -> vec2<f32> {
-  let normal: vec2<f32> = texel.yz * 2.0 - 1.0;
+// One layer of rain rings: each texel a ring arriving on its own clock (arrival, direction x, direction y, clock),
+// spreading and fading; `setup` is its speed, strength and how many rings a ripple spreads. The tilt in `xy`, and in
+// `z` the tilt's variance the map's filtering folded away (Toksvig): over a footprint spanning many rings their
+// directions average shorter, and what the tilt lost in length the surface keeps as roughness.
+fn ripple_layer(texel: vec4<f32>, setup: vec3<f32>) -> vec3<f32> {
+  let direction: vec2<f32> = texel.yz * 2.0 - 1.0;
   let moment: f32 = fract(texel.w + wet.time * setup.x);
   let age: f32 = moment - 1.0 + texel.x;
   let rings: f32 = clamp(age * setup.z, 0.0, 4.0);
-  let height: f32 = saturate(0.7 - moment) * texel.x * sin(rings * 3.141592) * smoothstep(4.0, 0.0, rings);
+  let height: f32 = saturate(0.7 - moment) * texel.x * sin(rings * 3.141592) * smoothstep(4.0, 0.0, rings) * setup.y;
+  let kept: f32 = length(direction);
 
-  return normal * height * setup.y;
+  return vec3<f32>(direction * height, height * height * max(1.0 - kept, 0.0) / max(kept, TOKSVIG_LEAST));
 }
 
 // How a place on the ground changes to the next pixel across and down, which the maps are filtered by.
@@ -225,13 +228,13 @@ struct PlaceGradients {
   down: vec2<f32>,
 };
 
-// Rain ripples at a place, three layers over each other, fading out to `RIPPLE_REACH` metres away; `gradients` are the
-// place's.
-fn rain_ripples(place: vec2<f32>, gradients: PlaceGradients, setup: vec3<f32>, distance: f32) -> vec2<f32> {
+// Rain rings at a place on a puddle, three layers over each other, fading out to `RIPPLE_REACH` metres away: the tilt
+// in `xy`, its lost variance in `z`; `gradients` are the place's.
+fn rain_ripples(place: vec2<f32>, gradients: PlaceGradients, setup: vec3<f32>, distance: f32) -> vec3<f32> {
   let near: f32 = RIPPLE_REACH - distance;
 
   if (near < 0.0) {
-    return vec2<f32>(0.0);
+    return vec3<f32>(0.0);
   }
 
   let first: vec4<f32> = textureSampleGrad(ripples, wet_sampler, place, gradients.across, gradients.down);
@@ -239,33 +242,18 @@ fn rain_ripples(place: vec2<f32>, gradients: PlaceGradients, setup: vec3<f32>, d
     gradients.across * 0.61, gradients.down * 0.61);
   let third: vec4<f32> = textureSampleGrad(ripples, wet_sampler, place * 0.87 + RIPPLE_LAYER_OFFSETS.zw,
     gradients.across * 0.87, gradients.down * 0.87);
-  let summed: vec2<f32> = ripple_layer(first, vec3<f32>(RIPPLE_LAYER_SPEEDS.x * setup.x, setup.yz)) +
+  let summed: vec3<f32> = ripple_layer(first, vec3<f32>(RIPPLE_LAYER_SPEEDS.x * setup.x, setup.yz)) +
     ripple_layer(second, vec3<f32>(RIPPLE_LAYER_SPEEDS.y * setup.x, setup.yz)) +
     ripple_layer(third, vec3<f32>(RIPPLE_LAYER_SPEEDS.z * setup.x, setup.yz));
+  let fade: f32 = near / RIPPLE_REACH;
 
-  return clamp(summed * near / RIPPLE_REACH, vec2<f32>(-1.0), vec2<f32>(1.0));
+  return vec3<f32>(clamp(summed.xy * fade, vec2<f32>(-1.0), vec2<f32>(1.0)), summed.z * fade * fade);
 }
 
-// Water running down a wall at a place on it: narrow columns, each sliding at its own pace, faster as it pours;
-// `gradients` are the place's.
-fn running_water(place: vec2<f32>, gradients: PlaceGradients) -> vec3<f32> {
-  let scaled: vec2<f32> = place * FALL_SCALE;
-  let column: f32 = ceil(scaled.x * FALL_COLUMNS);
-  var offset: f32 = hash22(vec2<f32>(column, 1.0)).x;
-
-  offset = select(offset, offset * 3.0, offset < FALL_LEAST_SPEED);
-  offset += wet.time * offset * wet.density * FALL_SPEED;
-
-  let uv: vec2<f32> = vec2<f32>((fract(scaled.x * FALL_COLUMNS) + column) / FALL_COLUMNS, scaled.y + offset);
-
-  let texel: vec4<f32> = textureSampleGrad(flow, wet_sampler, uv, gradients.across * FALL_SCALE,
-    gradients.down * FALL_SCALE);
-
-  return (texel.xzy * 2.0 - 1.0) * FALL_STRENGTH;
-}
-
-// Metres either side the ground's slope under a puddle is read at: across a puddle, past its bumps.
+// Metres either side the ground's slope under a puddle is read at: across a puddle, past its bumps; and the texels
+// either side of its own the lowest map's lowest is taken over (`LOWEST_REACH` in `frame/puddle_sites.wgsl`).
 const GROUND_SPAN: f32 = 1.5;
+const LOWEST_REACH: f32 = 1.0;
 
 // The level surface's lowest height at a place in the world, none outside its map.
 fn lowest_at(place: vec2<f32>) -> f32 {
@@ -305,18 +293,33 @@ fn is_topmost(world: vec3<f32>) -> bool {
   return world.y > highest - PUDDLE_TOP;
 }
 
-// How much of a puddle a point is, how deep into it, and how much of the damp halo around it: this frame's puddles in
-// its cell and those about it, each a whole stretched blob about its site as big as the placing made it, turned and
-// stretched by the site's hash; `border` moves each blob's edge in and out, a share of its radius; `footprint` is the
-// metres a pixel spans there, over which a border is softened at least, so a far one does not shimmer. Nothing outside
-// the level surface's map.
-fn site_puddle(world: vec3<f32>, border: f32, footprint: f32) -> vec3<f32> {
+// What a point has of the puddles about it: how much of one it is, how deep its water stands there in metres, how
+// much of the damp halo around one, and the water's up, the plane's.
+struct SitePuddle {
+  inside: f32,
+  depth: f32,
+  halo: f32,
+  up: vec3<f32>,
+};
+
+// How much of a puddle a point is: this frame's puddles in its cell and those about it, each a whole stretched blob
+// about its site as big as the placing made it, turned and stretched by the site's hash, a soft rim, seated within
+// the band the placing let the ground rise and fall over. Its water is one plane a puddle, `PUDDLE_LEVEL` over the
+// ground at the site's spot and lying along the ground's own up there (the site's height is the lowest map's, which
+// lies under the ground on a slope by its window's half width times the slope, taken back), so nothing of it steps
+// with the map's texels; how far that plane stands over the ground is the depth the water's tint sees, at most a
+// puddle's, and it never cuts the puddle, since the placing already found the disc level. `border` moves each blob's
+// edge in and out, a share of its radius; `footprint` is the metres a pixel spans there, over which a border is
+// softened at least, so a far one does not shimmer. Nothing outside the level surface's map.
+fn site_puddle(world: vec3<f32>, border: f32, footprint: f32) -> SitePuddle {
   let cell: f32 = wet.surface_shape.z;
   let cells: f32 = floor(wet.surface.z * 2.0 / cell);
   let corner: vec2<f32> = wet.surface.xy - wet.surface.z;
-  let at: vec2<f32> = floor((world.xz - corner) / cell);
   let origin: vec2<f32> = site_origin(corner, cell);
-  var puddle: vec3<f32> = vec3<f32>(0.0);
+  // The point's cell of the sites' map: its world cell past the map's first.
+  let at: vec2<f32> = floor(world.xz / cell) - origin;
+  let texel: f32 = wet.surface.z * 2.0 / wet.surface_shape.x;
+  var puddle: SitePuddle = SitePuddle(0.0, 0.0, 0.0, vec3<f32>(0.0, 1.0, 0.0));
 
   for (var y: i32 = -1; y <= 1; y++) {
     for (var x: i32 = -1; x <= 1; x++) {
@@ -343,10 +346,20 @@ fn site_puddle(world: vec3<f32>, border: f32, footprint: f32) -> vec3<f32> {
       let band: f32 = PUDDLE_DEPTH + SITE_LEVEL.x + SITE_LEVEL.y * site.w;
       let seated: f32 = 1.0 - smoothstep(band * 0.75, band, abs(world.y - site.z));
       let inside: f32 = (1.0 - smoothstep(1.0 - softness, 1.0, distance)) * seated;
-      let deep: f32 = saturate((1.0 - distance) / PUDDLE_DEEPENING) * inside;
       let halo: f32 = (1.0 - smoothstep(1.0, 1.0 + PUDDLE_HALO, distance)) * seated;
 
-      puddle = max(puddle, vec3<f32>(inside, deep, halo));
+      puddle.halo = max(puddle.halo, halo);
+
+      if (inside > puddle.inside) {
+        // The water's plane: along the ground's own up at the site's spot, through the ground there.
+        let up: vec3<f32> = ground_up(vec3<f32>(site.x, site.z, site.y));
+        let under: f32 = (LOWEST_REACH + 0.5) * texel * (abs(up.x) + abs(up.z)) / up.y;
+        let lift: f32 = site.z + under + PUDDLE_LEVEL - dot(up.xz, offset) / up.y - world.y;
+
+        puddle.inside = inside;
+        puddle.depth = clamp(lift, 0.0, PUDDLE_DEEPEST);
+        puddle.up = up;
+      }
     }
   }
 
@@ -354,18 +367,21 @@ fn site_puddle(world: vec3<f32>, border: f32, footprint: f32) -> vec3<f32> {
 }
 
 // What the enhanced wetting writes: into the light target, as the engine's wetting does, the normal packed into `xy`
-// (its ripples and running water bent into it, a puddle levelling it), the gloss the rain adds into `z`, and how deep
-// into a puddle the point is into `w`, which browns it; into the wet surface, what the enhanced rain adds over it: how
-// much of the surface a puddle's clear coat of water covers (the puddle scaled by the reflectivity setting against
-// water's, and by floating film), how much a puddle, and the puddle's ripple across the ground in the world's `x` and
-// `z`, which shifts what it reflects rather than bending the normal the reflections are traced and held by.
+// (bent as the engine bends it, a puddle levelling it to the ground's own up and its rings bending that), what the
+// wetness and a puddle's water add to the gloss into `z`, and how wet the engine reads the surface into `w`, which
+// darkens it as the engine's wetting does; into the wet surface, what the puddles add over it: how much of the surface
+// a puddle's clear coat of water covers (the puddle scaled by the reflectivity setting against water's, and by
+// floating film), how much a puddle, the water's depth over the ground, metres, which a reflection's ray leaves from
+// and the water darkens by, and the variance of the rings' tilt the maps' filtering folded away, which the
+// reflection's roughness takes up.
 struct WetPatchTargets {
   @location(0) patched: vec4<f32>,
   @location(1) surface: vec4<f32>,
 };
 
-// The enhanced wetting: the level's wetness wetting what the rain reaches out to the distance, ripples on what faces up
-// and water running down what stands near the camera, and this frame's puddles on level, open terrain, rippling.
+// The puddles: the engine's own wetting of every surface, as the engine's patch writes it, and this frame's puddles on
+// level, open terrain over it, each a layer of water lying along the ground's own up, rippling. The reflections
+// traced over the wet gloss are the rest of the wet look; nothing else is added to a surface.
 @fragment
 fn fs_wet_patch_enhanced(in: FullscreenVarying) -> WetPatchTargets {
   let texel: vec2<i32> = vec2<i32>(in.clip.xy);
@@ -375,10 +391,9 @@ fn fs_wet_patch_enhanced(in: FullscreenVarying) -> WetPatchTargets {
     discard;
   }
 
-  let marks: f32 = textureLoad(material_target, texel, 0).a;
-  let is_flora: bool = has_mark(marks, MARK_PLANT);
-  let is_terrain: bool = has_mark(marks, MARK_TERRAIN);
-  let gloss: f32 = textureLoad(albedo_target, texel, 0).a;
+  let is_terrain: bool = has_mark(textureLoad(material_target, texel, 0).a, MARK_TERRAIN);
+  let albedo: vec4<f32> = textureLoad(albedo_target, texel, 0);
+  let gloss: f32 = albedo.a;
   var normal: vec3<f32> = normalize(octahedral_decode(textureLoad(normal_target, texel, 0).xy));
   let position: vec3<f32> = camera_view_position(in.clip.xy, depth);
   let size: vec2<f32> = camera.viewport.xy;
@@ -388,54 +403,20 @@ fn fs_wet_patch_enhanced(in: FullscreenVarying) -> WetPatchTargets {
   let world_normal: vec3<f32> = normalize(rotation * normal);
   // The engine's axes: `z` negated.
   let place: vec3<f32> = vec3<f32>(world.x, world.y, -world.z);
-  let facing: vec3<f32> = vec3<f32>(world_normal.x, world_normal.y, -world_normal.z);
   let distance: f32 = -position.z;
-  let wetness: f32 = wet.puddles.x;
-  let soaked: f32 = saturate(wetness * 2.0);
-  let pouring: f32 = clamp(wet.density * RIPPLE_SPEED, select(0.0, RIPPLE_LEAST_SPEED, wet.density > 0.0), 2.0);
-  // The cover gives way to open sky towards its square's edge, past which nothing is known to stand over the rain.
-  let edge: f32 = max(abs(world.x - wet.window.x), abs(world.z - wet.window.y)) / wet.window.z;
-  let open: f32 = max(rain_reach(world, world_normal), smoothstep(COVER_FADE.x, COVER_FADE.y, edge));
-  let kept: f32 = select(1.0, 0.0, is_flora);
   let gradients: PlaceGradients = PlaceGradients(dpdx(place.xz), dpdy(place.xz));
   let footprint: f32 = max(length(gradients.across), length(gradients.down));
-  let wall_x: PlaceGradients = PlaceGradients(dpdx(place.zy), dpdy(place.zy));
-  let wall_z: PlaceGradients = PlaceGradients(dpdx(place.xy), dpdy(place.xy));
-
-  // Ripples on what faces up, water running down what stands, as much as the rain pours and reaches.
-  let rippled: vec2<f32> = rain_ripples(place.xz * RIPPLE_SCALE,
-    PlaceGradients(gradients.across * RIPPLE_SCALE, gradients.down * RIPPLE_SCALE),
-    vec3<f32>(pouring, RIPPLE_STRENGTH * wet.puddles.w, 6.0), distance);
-  var weights: vec3<f32> = facing * kept;
-  var ripple: vec2<f32> = vec2<f32>(0.0);
-  var water: vec3<f32> = vec3<f32>(rippled.x, 0.0, rippled.y) * smoothstep(0.75, 0.8, weights.y);
-
-  weights = vec3<f32>(saturate(abs(weights.x) - 0.15), weights.y, saturate(abs(weights.z) - 0.15));
-  weights = vec3<f32>(weights.x * f32(weights.x > weights.z), weights.y, weights.z * f32(weights.x < weights.z));
-  // Down walls, rocks and objects, never terrain, whose bumps tilt its gentlest slopes past the threshold and lay the
-  // columns across open ground.
-  let falling: f32 = select(saturate((FALL_REACH - distance) / FALL_REACH), 0.0, is_terrain);
-
-  water += (running_water(place.zy, wall_x).yxz * weights.x + running_water(place.xy, wall_z).zxy * weights.z) *
-    falling;
-
-  let reaching: f32 = kept * saturate(pouring) * open;
-
-  water *= reaching;
-
-  // The gloss the wetness gives what the rain reaches, none on what faces down, fading out in the distance; terrain
-  // already glossy keeps a puddle's.
-  let reached: f32 = saturate(open + f32(gloss > 0.3));
-  var rain_gloss: f32 = (0.15 + saturate(pouring) * 0.05) * soaked * kept * reached;
-
-  rain_gloss = select(rain_gloss, 0.15, is_terrain && gloss > 0.3);
-  rain_gloss *= saturate(weights.y * 1.5) * smoothstep(WET_REACH.y, WET_REACH.x, length(position));
+  let wetting: EngineWetting = engine_wetting(normal, position, world, world_normal);
+  // How wet the engine reads the surface, by the albedo's brightness, as far as the reflections want it.
+  var wetness: f32 = surface_wetness(wetting, world, world_normal, position) * dot(albedo.rgb, vec3<f32>(0.33));
+  var water: vec3<f32> = wetting.bent;
+  var variance: f32 = 0.0;
 
   // Puddles: whole puddles where the placing put them this frame, faded out over the last of the puddle distance,
-  // rippled by the rain.
+  // each a layer of water over the ground, rippled by the rain.
   var puddle: f32 = 0.0;
-  var film: f32 = 1.0;
-  var deep: f32 = 0.0;
+  var floating: f32 = 1.0;
+  var lift: f32 = 0.0;
 
   // On the ground alone, terrain facing up and the topmost surface there: never a roof, a deck or a ceiling.
   let is_ground: bool = is_terrain && world_normal.y > PUDDLE_UP && is_topmost(world);
@@ -446,38 +427,50 @@ fn fs_wet_patch_enhanced(in: FullscreenVarying) -> WetPatchTargets {
     let edge: f32 = textureSampleGrad(puddle_noise, wet_sampler, place.zx / PUDDLE_EDGE_TILE + 0.37,
       gradients.across.yx / PUDDLE_EDGE_TILE, gradients.down.yx / PUDDLE_EDGE_TILE).r;
     let border: f32 = (edge - 0.5) * PUDDLE_EDGE_SHAPE + (noise - 0.5) * PUDDLE_NOISE_SHAPE;
-
+    let fade: f32 = smoothstep(wet.puddle_state.x, wet.puddle_state.x * (1.0 - PUDDLE_FADE), length(position));
     // The cover only reaches some tens of metres; a site is on open ground already, so a puddle does not wait for it.
-    let found: vec3<f32> = site_puddle(world, border, footprint) *
-      smoothstep(wet.puddle_state.x, wet.puddle_state.x * (1.0 - PUDDLE_FADE), length(position));
+    let found: SitePuddle = site_puddle(world, border, footprint);
 
-    puddle = found.x;
-    deep = found.y;
-    film = 1.0 - PUDDLE_FILM * noise;
-    rain_gloss = max(rain_gloss, PUDDLE_HALO_GLOSS * found.z * (1.0 - found.x));
+    puddle = found.inside * fade;
+    lift = found.depth;
+    floating = 1.0 - PUDDLE_FILM * noise;
+    wetness = max(wetness, PUDDLE_HALO_WET * found.halo * fade * (1.0 - found.inside));
 
     if (puddle > 0.0) {
       let pace: f32 = wet.time * (0.01 + saturate(wet.density * 1.5) * 0.008);
       let uv: vec2<f32> = place.xz / PUDDLE_RIPPLE_TILE;
       let across: vec2<f32> = gradients.across / PUDDLE_RIPPLE_TILE;
       let down: vec2<f32> = gradients.down / PUDDLE_RIPPLE_TILE;
-      let waves: vec3<f32> = textureSampleGrad(puddle_normal, wet_sampler, uv + vec2<f32>(0.0, pace), across, down).xyz +
-        textureSampleGrad(puddle_normal, wet_sampler, uv - vec2<f32>(0.33, pace), across, down).xyz - 1.0;
-      let drops: vec2<f32> = rain_ripples(uv * 1.3, PlaceGradients(across * 1.3, down * 1.3),
-        vec3<f32>(0.85, 1.0, 10.0), distance) * wet.density * 3.0 * wet.puddles.w * PUDDLE_RIPPLE_SHARE;
-      let calm: vec2<f32> = waves.xy * saturate(0.05 + saturate(wet.density * 1.5) * 0.1);
-      let surface: vec2<f32> = calm * 0.666 + drops * 0.15;
+      // The water's calm waves, two scrolls of the map read filtered, its lean taken off; what the filtering left of
+      // their normals' length is the tilt they lost, kept as variance.
+      let first: vec3<f32> = textureSampleGrad(puddle_normal, wet_sampler, uv + vec2<f32>(0.0, pace), across, down).xyz *
+        2.0 - 1.0 - vec3<f32>(WAVE_TILT, 0.0);
+      let second: vec3<f32> = textureSampleGrad(puddle_normal, wet_sampler, uv - vec2<f32>(0.33, pace), across, down).xyz *
+        2.0 - 1.0 - vec3<f32>(WAVE_TILT, 0.0);
+      let kept_length: f32 = 0.5 * (length(first) + length(second));
+      let calm_scale: f32 = saturate(0.05 + saturate(wet.density * 1.5) * 0.1) * 0.666;
+      let drop_scale: f32 = wet.density * 3.0 * wet.puddles.w * PUDDLE_RIPPLE_SHARE * 0.15;
+      let drops: vec3<f32> = rain_ripples(uv * 1.3, PlaceGradients(across * 1.3, down * 1.3), vec3<f32>(0.85, 1.0, 10.0),
+        distance);
+      let tilt: vec2<f32> = 0.5 * (first.xy + second.xy) * calm_scale + drops.xy * drop_scale;
+      // Bent no further than the most; the variance is the whole tilt's, since what the clamp takes off is roughness too.
+      let bend: vec2<f32> = tilt * min(1.0, RIPPLE_BEND_MOST / max(length(tilt), 1e-4)) * puddle;
+      let spread: f32 = calm_scale * calm_scale * max(1.0 - kept_length, 0.0) / max(kept_length, TOKSVIG_LEAST) +
+        drop_scale * drop_scale * drops.z;
+      let bent: vec3<f32> = (camera.view * vec4<f32>(bend.x, 0.0, -bend.y, 0.0)).xyz;
 
-      normal = normalize(mix(normal, (camera.view * vec4<f32>(ground_up(world), 0.0)).xyz, puddle));
-      ripple = surface * puddle;
-      water *= 1.0 - puddle;
+      normal = normalize(mix(normal, (camera.view * vec4<f32>(found.up, 0.0)).xyz, puddle));
+      water = water * (1.0 - puddle) + bent;
+      variance = spread * puddle * puddle;
     }
   }
 
-  let bent: vec3<f32> = (camera.view * vec4<f32>(water.x, water.y, -water.z, 0.0)).xyz;
+  // What the gloss gains: the engine's wet gloss over its own, capped below a mirror, a puddle's water's.
+  let glossed: f32 = mix(min(wetness * select(0.8, 1.0, wet.is_extended > 0.5), max(WET_GLOSS_MOST - gloss, 0.0)),
+    WATER_GLOSS - gloss, puddle);
 
   return WetPatchTargets(
-    vec4<f32>(octahedral_encode(normalize(normal + bent)), rain_gloss, deep),
-    vec4<f32>(puddle * film * wet.puddles.z / WATER_REFLECTIVITY, puddle, ripple.x, -ripple.y),
+    vec4<f32>(octahedral_encode(normalize(normal + water)), glossed, wetness),
+    vec4<f32>(puddle * floating * wet.puddles.z / WATER_REFLECTIVITY, puddle, lift, variance),
   );
 }

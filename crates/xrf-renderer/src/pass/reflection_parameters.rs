@@ -42,6 +42,8 @@ pub struct ReflectionParameters<'a> {
   pub source_scene: GraphTexture,
   #[texture(d2, depth)]
   pub source_depth: GraphTexture,
+  #[texture(d2, depth)]
+  pub traced_depth: GraphTexture,
   #[texture(d2, unfilterable)]
   pub nearest_depth: GraphTexture,
   #[texture(d2, unfilterable)]

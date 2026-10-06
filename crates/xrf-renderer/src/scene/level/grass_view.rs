@@ -12,6 +12,7 @@ use crate::pass::foliage_wind_values::FoliageWindValues;
 use crate::pass::grass_dispatch::GrassDispatch;
 use crate::pass::grass_draws::GrassDraws;
 use crate::pass::grass_pass::GrassPass;
+use crate::pass::grass_puddles_uniform::GrassPuddlesUniform;
 use crate::pass::grass_uniform::GrassUniform;
 use crate::pass::grass_wind_uniform::GrassWindUniform;
 use crate::pass::view_binding::ViewBinding;
@@ -31,6 +32,8 @@ pub struct GrassView {
   values: GrassUniform,
   wind: GrassWind,
   wind_buffer: wgpu::Buffer,
+  /// Where the puddles stand, which no tuft is planted in.
+  puddles_buffer: wgpu::Buffer,
   draw_group: Option<wgpu::BindGroup>,
   /// The steps and jitter the planting last ran with, which a change of plants every slot again.
   planted: Option<(i32, u32)>,
@@ -58,6 +61,7 @@ impl GrassView {
       },
       wind: GrassWind::default(),
       wind_buffer: uniform("grass wind", size_of::<GrassWindUniform>()),
+      puddles_buffer: uniform("grass puddles", size_of::<GrassPuddlesUniform>()),
       draw_group: None,
       planted: None,
       is_drawn: false,
@@ -77,6 +81,7 @@ impl GrassView {
     discard_below: f32,
     (time, is_windy, strength): (f32, bool, f32),
     foliage: &FoliageWindValues,
+    puddles: (&wgpu::TextureView, GrassPuddlesUniform),
   ) {
     let wind: GrassWindUniform = self.wind.advance(time, is_windy, strength).with_foliage(foliage);
 
@@ -97,7 +102,7 @@ impl GrassView {
     );
 
     if self.build.as_ref().is_none_or(|build| !build.size.is_fitting(&wanted)) {
-      let build: GrassBuild = GrassBuild::new(device, pass, wanted, &self.uniform);
+      let build: GrassBuild = GrassBuild::new(device, pass, wanted, &self.uniform, (puddles.0, &self.puddles_buffer));
 
       self.draw_group = Some(pass.create_draw_group(device, &build.sorted, &level.models, &self.wind_buffer));
       self.build = Some(build);
@@ -138,6 +143,7 @@ impl GrassView {
     };
     queue.write_buffer(&self.uniform, 0, bytemuck::bytes_of(&self.values));
     queue.write_buffer(&self.wind_buffer, 0, bytemuck::bytes_of(&wind));
+    queue.write_buffer(&self.puddles_buffer, 0, bytemuck::bytes_of(&puddles.1));
     self.is_drawn = true;
   }
 

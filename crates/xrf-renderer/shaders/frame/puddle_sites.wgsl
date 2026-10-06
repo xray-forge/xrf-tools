@@ -9,7 +9,9 @@
 
 // Texels a side the lowest height is taken over: at half a metre a texel, a metre and a half.
 const LOWEST_REACH: i32 = 1;
-// The radii a site is tried at, largest first, metres; the share more of each around it that must be level too.
+// The radii a site is tried at, largest first, metres, each site starting at one its hash prefers so puddles come in
+// every size and not the largest the ground allows everywhere; the share more of each around it that must be level
+// too.
 const SITE_RADII: vec4<f32> = vec4<f32>(3.5, 2.5, 1.8, 1.2);
 const SITE_MARGIN: f32 = 1.25;
 // Metres past a site's edge no water may lie within, and how far below the site it must be at most.
@@ -107,13 +109,18 @@ fn surface_sites(@builtin(global_invocation_id) id: vec3<u32>) {
 
   let cell: f32 = shape.shape.z;
   let corner: vec2<f32> = shape.window.xy - shape.window.z;
-  let jitter: vec2<f32> = site_jitter(site_origin(corner, cell) + vec2<f32>(id.xy));
-  let centre: vec2<f32> = corner + (vec2<f32>(id.xy) + 0.15 + jitter * 0.7) * cell;
+  // The site's world cell, and its spot in it: of the world cell, not the map's corner, so the map moving by a step
+  // that is no whole number of cells moves no site.
+  let world_cell: vec2<f32> = site_origin(corner, cell) + vec2<f32>(id.xy);
+  let jitter: vec2<f32> = site_jitter(world_cell);
+  let centre: vec2<f32> = (world_cell + 0.05 + jitter * 0.9) * cell;
+  // Which radius the site tries first: a third of the sites the largest, a third the next, a third the one after.
+  let first: u32 = u32(fract(jitter.x * 7.31 + jitter.y * 3.17) * 3.0);
   let height: f32 = lowest_at(centre);
   var site: vec4<f32> = vec4<f32>(centre, height, 0.0);
 
   if (height > NOTHING) {
-    for (var index: u32 = 0u; index < 4u; index++) {
+    for (var index: u32 = first; index < 4u; index++) {
       let radius: f32 = SITE_RADII[index];
 
       if (is_level(centre, height, radius) && !is_near_water(centre, height, radius)) {
@@ -127,8 +134,9 @@ fn surface_sites(@builtin(global_invocation_id) id: vec3<u32>) {
   textureStore(sites, id.xy, site);
 }
 
-// Which sites hold a puddle, decided once a frame for each, so every pixel of a puddle sees the same: a share of them,
-// set by the puddles setting and a broader noise at the site, more in a storm and after a long rain soaked the level;
+// Which sites hold a puddle, decided once a frame for each, so every pixel of a puddle sees the same: a share of them
+// (`SITE_SHARE` at the setting's one, nearly all at its two), set by the puddles setting and a broader noise at the
+// site, more in a storm and after a long rain soaked the level;
 // of those, no more than a few about each, the first by their hash keeping theirs so no stretch gathers a lake. A kept
 // site's puddle grows from `PUDDLE_GROWTH` of its radius as the puddles fill, and a site newly within the share or the
 // neighbour limit grows in rather than popping.
@@ -136,7 +144,7 @@ const SITE_SHARE: f32 = 0.7;
 const STORM_SHARE: f32 = 0.6;
 const STORM_GROWTH: f32 = 0.15;
 const SOAK_SHARE: f32 = 0.5;
-const SITE_NEIGHBOURS: f32 = 2.0;
+const SITE_NEIGHBOURS: f32 = 3.0;
 const SOAK_NEIGHBOURS: f32 = 3.0;
 const SITE_GROW_IN: f32 = 0.15;
 const PUDDLE_GROWTH: f32 = 0.35;
@@ -151,7 +159,7 @@ fn share_at(spot: vec2<f32>) -> f32 {
   let place: vec2<f32> = vec2<f32>(spot.x, -spot.y);
   let region: f32 = textureSampleLevel(region_noise, noise_sampler, REGION_TURN * place / REGION_TILE, 0.0).r;
 
-  return SITE_SHARE * wet.puddles.y / 0.8 * (1.0 + (region - 0.5) * 2.0 * REGION_SHAPE) *
+  return SITE_SHARE * wet.puddles.y * (1.0 + (region - 0.5) * 2.0 * REGION_SHAPE) *
     (1.0 + STORM_SHARE * wet.puddle_state.z) * (1.0 + SOAK_SHARE * wet.puddle_state.w);
 }
 

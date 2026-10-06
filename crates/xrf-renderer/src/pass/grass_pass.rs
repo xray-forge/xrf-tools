@@ -5,7 +5,7 @@ use crate::pass::compute_grid::ComputeGrid;
 use crate::pass::fullscreen_pipeline::buffer_binding;
 use crate::pass::grass_dispatch::GrassDispatch;
 use crate::pass::grass_draws::GrassDraws;
-use crate::pass::layout_entries::{storage_entry, uniform_entry};
+use crate::pass::layout_entries::{storage_entry, texture_entry, uniform_entry};
 use crate::pass::shader_pipelines::{create_checked, create_module};
 use crate::pass::view_binding::ViewBinding;
 use crate::shader::shader_library::ShaderLibrary;
@@ -71,7 +71,17 @@ impl GrassPass {
       label: Some("grass build"),
       entries: &(0..8)
         .map(|binding| storage_entry(binding, compute, true))
-        .chain([uniform_entry(8, compute)])
+        .chain([
+          uniform_entry(8, compute),
+          // This frame's puddle sites and where they stand, so no tuft is planted in a puddle's water.
+          texture_entry(
+            9,
+            compute,
+            wgpu::TextureSampleType::Float { filterable: false },
+            wgpu::TextureViewDimension::D2,
+          ),
+          uniform_entry(10, compute),
+        ])
         .collect::<Vec<_>>(),
     });
     let vertex: wgpu::ShaderStages = wgpu::ShaderStages::VERTEX;

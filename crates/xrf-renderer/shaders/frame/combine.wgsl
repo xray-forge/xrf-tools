@@ -30,6 +30,11 @@ fn world_direction(toward: vec3<f32>) -> vec3<f32> {
   return normalize((transpose(camera.view) * vec4<f32>(toward, 0.0)).xyz);
 }
 
+// A view space point's offset from the camera in the world's frame, metres.
+fn world_offset(position: vec3<f32>) -> vec3<f32> {
+  return (transpose(camera.view) * vec4<f32>(position, 0.0)).xyz;
+}
+
 // The sky as the frame draws it behind a pixel: the sky, the sun's sprite on it, and the clouds over both.
 fn sky_drawn(direction: vec3<f32>, toward: vec3<f32>, scale: f32) -> vec3<f32> {
   let below: vec3<f32> = sky_color(lighting, direction, scale) + sky_sun_sprite(lighting, toward);
@@ -70,22 +75,6 @@ fn shaded_terms(albedo: vec4<f32>, light: vec4<f32>, normal: vec3<f32>, position
   occlusion: f32, visible: vec3<f32>) -> HmodelTerms {
   return hmodel_terms(lighting, material_lut, lut_sampler, sky_environment_0, sky_environment_1, sky_clamp, albedo,
     light, world_direction(normal), world_direction(normalize(position)), slice, occlusion, visible);
-}
-
-// Metres the rain's ripples shift what the wet ground reflects, as the game's water shifts its own; the most pixels
-// they shift it, and the metres over which the shift fades out, so a far puddle's reflection does not crawl.
-const RIPPLE_SHIFT: f32 = 0.12;
-const RIPPLE_SHIFT_MOST: f32 = 3.0;
-const RIPPLE_SHIFT_REACH: vec2<f32> = vec2<f32>(10.0, 60.0);
-
-// Where a pixel reads its reflection, shifted by the ripple across the ground at its view space point.
-fn rippled_pixel(pixel: vec2<f32>, position: vec3<f32>, ripple: vec2<f32>) -> vec2<f32> {
-  let across: vec3<f32> = (camera.view * vec4<f32>(ripple.x, 0.0, ripple.y, 0.0)).xyz * RIPPLE_SHIFT;
-  let scale: vec2<f32> = vec2<f32>(camera.projection[0][0], -camera.projection[1][1]) * 0.5 * camera.viewport.xy;
-  let shift: vec2<f32> = clamp(across.xy * scale / max(-position.z, 1.0), vec2<f32>(-RIPPLE_SHIFT_MOST),
-    vec2<f32>(RIPPLE_SHIFT_MOST)) * smoothstep(RIPPLE_SHIFT_REACH.y, RIPPLE_SHIFT_REACH.x, -position.z);
-
-  return clamp(pixel + shift, vec2<f32>(0.0), camera.viewport.xy - 1.0);
 }
 
 // What shows at a pixel where nothing was drawn: the backdrop, or its checkerboard with a second colour.
@@ -170,28 +159,27 @@ fn fs_combine(in: FullscreenVarying) -> CombineOutput {
   // What the surface reflects, before the fog, which lies between the camera and it alike. Engine: the environment
   // `hmodel` reflects by the engine's own weight. Enhanced: a physically based specular in its place, the split-sum
   // environment BRDF over the surface's reflectance head on (a dielectric's, a metal's by its gloss, water's under a
-  // puddle's coat) and roughness, times the intensity, over the traced reflection where there is one (shifted by the
-  // rain's ripples) and the prefiltered sky, seen as the hemisphere lets it, where there is none.
+  // puddle's coat) and roughness (its gloss's, widened by the ripples the wet patch filtered away), times the
+  // intensity, over the traced reflection where there is one and the prefiltered sky, seen as the hemisphere lets it,
+  // where there is none.
   let wet: vec4<f32> = textureLoad(wet_surface, texel, 0);
 
   if (lighting.reflections.x > 0.5) {
-    // The puddle's ripple tilts what its water reflects across it a little, so it is never one even plate.
-    let facing: f32 = saturate(dot(normal, -normalize(position)) +
-      dot(wet.ba, world_direction(normalize(position)).xz) * 0.1);
-    let roughness: f32 = traced_roughness(albedo.a, wet.g);
+    let facing: f32 = saturate(dot(normal, -normalize(position)));
+    let roughness: f32 = traced_roughness(albedo.a, wet.a + geometric_variance(normal_target, texel));
     let head_on: vec3<f32> = reflectance_head_on(albedo.rgb, albedo.a, wet.r);
     let brdf: vec3<f32> = environment_brdf(head_on, roughness, facing) * lighting.reflections.z;
-    let at: vec2<f32> = rippled_pixel(floor(in.clip.xy), position, wet.ba);
-    let traced: vec4<f32> = upsampled_reflection(reflections, depth_target, material_target, at, -position.z,
-      lighting.reflections.y);
+    let traced: vec4<f32> = upsampled_reflection(reflections, depth_target, material_target, floor(in.clip.xy),
+      -position.z, lighting.reflections.y);
     var radiance: vec3<f32>;
 
     if (traced.a >= 0.0) {
       radiance = max(traced.rgb, vec3<f32>(0.0));
     } else {
       let reflected: vec3<f32> = world_direction(reflect(normalize(position), normal));
+      let aimed: vec3<f32> = surroundings_direction(sky_prefiltered, sky_clamp, world_offset(position), reflected);
 
-      radiance = prefiltered_sky(sky_prefiltered, sky_clamp, reflected, roughness) *
+      radiance = prefiltered_sky(sky_prefiltered, sky_clamp, aimed, roughness) *
         specular_occlusion(facing, occlusion * visible, roughness);
     }
 

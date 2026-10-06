@@ -1,6 +1,7 @@
 /// How wet the level has become: built up while it rains, by how hard, and dried slowly after, as Monolith's weather
 /// accumulates `wetness_factor`, on the weather's clock; already as wet as the rain's density where a view first sees
-/// it rain.
+/// it rain, and at least that wet while the clock stands still, since a view stopped at a moment of rain shows that
+/// moment's rain and not the fade it arrived through.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct RainWetness {
   /// Its wetness, from nothing to one, and the clock it was last moved on at.
@@ -14,13 +15,15 @@ impl RainWetness {
   const DRYING: f32 = 0.0018;
 
   /// Moves it on to the real clock `time`, in seconds, under a rain of `density`, its weather running `pace` times as
-  /// fast as the game's own clock does (the weather's clock rate over the game's `time_factor`), and returns it.
+  /// fast as the game's own clock does (the weather's clock rate over the game's `time_factor`), and returns it. A
+  /// clock standing still moves nothing on, but the level is then at least as wet as the rain it stands in.
   pub fn advance(&mut self, time: f32, density: f32, pace: f32) -> f32 {
     let density: f32 = density.clamp(0.0, 1.0);
     let wetness: f32 = match self.state {
       None => density,
+      Some((wetness, _)) if pace <= 0.0 => wetness.max(density),
       Some((wetness, clock)) => {
-        let elapsed: f32 = (time - clock).max(0.0) * pace.max(0.0);
+        let elapsed: f32 = (time - clock).max(0.0) * pace;
         let change: f32 = if density > 0.0 {
           density * Self::BUILD_UP
         } else {

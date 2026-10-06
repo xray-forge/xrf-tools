@@ -22,7 +22,6 @@ import { LevelSpawnAction } from "@/core/level/components/preview/LevelSpawnActi
 import { LevelSunAction } from "@/core/level/components/preview/LevelSunAction";
 import { LevelWaterAction } from "@/core/level/components/preview/LevelWaterAction";
 import { LevelWeatherAction } from "@/core/level/components/preview/LevelWeatherAction";
-import { LevelWetSurfacesAction } from "@/core/level/components/preview/LevelWetSurfacesAction";
 import { LevelWindAction } from "@/core/level/components/preview/LevelWindAction";
 import {
   ILevelFeatureOptions,
@@ -224,12 +223,6 @@ export function LevelPreviewToolbar({
             onChange={onChangeFeatures}
           />
 
-          <LevelWetSurfacesAction
-            value={toLevelRain(settings, features)}
-            features={features}
-            onChange={onChangeFeatures}
-          />
-
           <EditorToolbarSeparator />
 
           <LevelWeatherAction />
@@ -262,8 +255,11 @@ export function LevelPreviewToolbar({
             options={options}
             manual={manual}
             collections={collections}
+            puddles={toLevelRain(settings, features)}
+            features={features}
             onToggle={onToggle}
             onEdit={onEditManual}
+            onChangeFeatures={onChangeFeatures}
           />
 
           <LevelWindAction
