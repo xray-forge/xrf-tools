@@ -62,30 +62,13 @@ impl StaticShadowPass {
     }
   }
 
-  /// Clears a cascade's layer and draws the casters its own list holds into it.
-  pub fn draw(
+  /// Draws the casters a shadow's own list holds into the map the pass draws into, cleared to the far plane.
+  pub fn record(
     &self,
-    encoder: &mut wgpu::CommandEncoder,
-    target: &wgpu::TextureView,
-    view: &ViewBinding,
-    bind_groups: &[wgpu::BindGroup; StaticLayout::COUNT],
-    textures: &wgpu::BindGroup,
+    pass: &mut wgpu::RenderPass<'_>,
+    (view, bind_groups, textures): (&ViewBinding, &[wgpu::BindGroup; StaticLayout::COUNT], &wgpu::BindGroup),
     args: &wgpu::Buffer,
   ) {
-    let mut pass: wgpu::RenderPass<'_> = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-      label: Some("static shadow"),
-      color_attachments: &[],
-      depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-        view: target,
-        depth_ops: Some(wgpu::Operations {
-          load: wgpu::LoadOp::Clear(0.0),
-          store: wgpu::StoreOp::Store,
-        }),
-        stencil_ops: None,
-      }),
-      ..Default::default()
-    });
-
     pass.set_bind_group(0, &view.bind_group, &[]);
     pass.set_bind_group(1, textures, &[]);
 
@@ -96,32 +79,15 @@ impl StaticShadowPass {
     }
   }
 
-  /// Clears one tile of an atlas and draws the casters a light face's list holds into it, the rest of the atlas kept.
-  #[allow(clippy::too_many_arguments)]
-  pub fn draw_tile(
+  /// Clears one tile of the atlas the pass draws into and draws the casters a light face's list holds into it, the
+  /// rest of the atlas kept: its arguments start at `args_offset`.
+  pub fn record_tile(
     &self,
-    encoder: &mut wgpu::CommandEncoder,
-    target: &wgpu::TextureView,
+    pass: &mut wgpu::RenderPass<'_>,
     tile: ShadowTile,
-    view: &ViewBinding,
-    bind_groups: &[wgpu::BindGroup; StaticLayout::COUNT],
-    textures: &wgpu::BindGroup,
-    args: &wgpu::Buffer,
+    (view, bind_groups, textures): (&ViewBinding, &[wgpu::BindGroup; StaticLayout::COUNT], &wgpu::BindGroup),
+    (args, args_offset): (&wgpu::Buffer, u64),
   ) {
-    let mut pass: wgpu::RenderPass<'_> = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-      label: Some("light shadow face"),
-      color_attachments: &[],
-      depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-        view: target,
-        depth_ops: Some(wgpu::Operations {
-          load: wgpu::LoadOp::Load,
-          store: wgpu::StoreOp::Store,
-        }),
-        stencil_ops: None,
-      }),
-      ..Default::default()
-    });
-
     pass.set_viewport(
       tile.x as f32,
       tile.y as f32,
@@ -139,7 +105,7 @@ impl StaticShadowPass {
     for (batch, pipeline) in StaticBatch::list_deferred().zip(&self.pipelines) {
       pass.set_pipeline(pipeline);
       pass.set_bind_group(2, &bind_groups[batch.layout.get_index()], &[]);
-      pass.draw_indirect(args, batch.get_index() as u64 * 16);
+      pass.draw_indirect(args, args_offset + batch.get_index() as u64 * 16);
     }
   }
 

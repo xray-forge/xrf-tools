@@ -341,7 +341,10 @@ impl LevelView {
         &self.renderer.cull_params,
         &pyramid.view,
         &self.renderer.occlusion,
-        (self.scene.statics.lists.get_buffer(), &self.scene.statics.args),
+        (
+          self.scene.statics.lists.get_buffer().as_entire_buffer_binding(),
+          self.scene.statics.args.as_entire_buffer_binding(),
+        ),
       );
 
       self.renderer.cull_group = Some((cull_key, group));
@@ -1180,48 +1183,28 @@ impl LevelView {
       });
     }
 
-    bridge!("shadows", |level, encoder, marker| {
-      let LevelView {
-        scene,
-        info,
-        state,
-        renderer,
-      } = level;
-      let SceneRenderer {
-        cull_params,
-        occlusion,
-        shadows,
-        rain_cover,
-        ..
-      } = renderer;
-      let Some((pyramid, _)) = state.pyramid.as_ref() else {
-        return;
-      };
-      let frame: ShadowFrame<'_> = ShadowFrame {
-        scene: &scene.statics,
-        camera: &info.camera,
-        settings: &info.shadow_settings,
-        sun_direction: info.sun_direction,
-        sway: to_sway(&scene.statics, info.sway),
-        cull_params,
-        params: &info.cull,
-        pyramid: &pyramid.view,
-        occlusion,
-        targets_epoch: state.targets_epoch,
-        textures,
-      };
+    level_view.renderer.shadows.add_passes(
+      &mut graph,
+      &mut bindings,
+      passes,
+      (&level_view.info.cull, texture_group),
+    );
 
-      shadows.record(encoder, passes, &frame);
-      marker.mark(encoder, "sun shadows");
+    if is_raining {
+      level_view.renderer.rain_cover.add_passes(
+        &mut graph,
+        &mut bindings,
+        passes,
+        (&level_view.info.cull, texture_group),
+      );
+    }
 
-      if is_raining {
-        rain_cover.record(encoder, passes, &frame);
-        marker.mark(encoder, "rain cover");
-      }
-
-      scene.lights.record_shadows(encoder, passes, &frame);
-      marker.mark(encoder, "light shadows");
-    });
+    level_view.scene.lights.add_shadow_passes(
+      &mut graph,
+      &mut bindings,
+      passes,
+      (&level_view.scene.statics, &level_view.info.cull, texture_group),
+    );
 
     // The rain wets the G-buffer before any light is drawn over it.
     if is_wet {
@@ -1802,7 +1785,10 @@ impl LevelView {
     let key: (u64, u64) = (generation, self.state.sorted_epoch);
 
     if self.renderer.sorted_group.as_ref().is_none_or(|(it, _)| *it != key) {
-      let [_, _, model] = passes.gbuffer.create_layout_groups(device, &self.scene.statics, buffer);
+      let [_, _, model] =
+        passes
+          .gbuffer
+          .create_layout_groups(device, &self.scene.statics, buffer.as_entire_buffer_binding());
 
       self.renderer.sorted_group = Some((key, model));
     }

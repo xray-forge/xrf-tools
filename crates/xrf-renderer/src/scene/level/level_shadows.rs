@@ -1,4 +1,7 @@
 use glam::{Vec3, Vec4};
+use xrf_renderer_core::{
+  FrameGraph, GraphBindings, GraphBuffer, GraphBufferAccess, GraphDepthAttachment, GraphTexture,
+};
 
 use crate::contract::render_rect::RenderRect;
 use crate::contract::render_shadow_settings::RENDER_MAX_SHADOW_CASCADES;
@@ -7,9 +10,14 @@ use crate::lighting::sun_view_rays::SunViewRays;
 use crate::pass::camera_uniform::CameraUniform;
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::shadow_uniform::ShadowUniform;
+use crate::pass::static_cull_params::StaticCullParams;
 use crate::scene::level::shadow_cascade_view::ShadowCascadeView;
 use crate::scene::level::shadow_frame::ShadowFrame;
 use crate::scene::static_scene::static_layout::StaticLayout;
+
+/// Each cascade's draw, as the frame's timings name it.
+const CASCADE_PASSES: [&str; RENDER_MAX_SHADOW_CASCADES] =
+  ["sun shadow 0", "sun shadow 1", "sun shadow 2", "sun shadow 3"];
 
 /// A level's sun shadow: its cascades fitted along the camera's view every frame, each culled and drawn into its map
 /// only when its box moved or the scene grew, and then at most as often as its stagger allows, unless its box strayed
@@ -101,25 +109,76 @@ impl LevelShadows {
     queue.write_buffer(&self.uniform, 0, bytemuck::bytes_of(&self.values));
   }
 
-  /// Culls and draws the cascades due this frame.
-  pub fn record(&self, encoder: &mut wgpu::CommandEncoder, passes: LevelPasses<'_>, frame: &ShadowFrame<'_>) {
-    for &index in &self.due {
-      let cascade: &ShadowCascadeView = &self.cascades[index];
-      let (Some((_, cull_group)), Some((_, draw_groups))) = (&cascade.cull_group, &cascade.draw_groups) else {
-        continue;
-      };
+  /// Declares the cascades due this frame: every one culled into its own lists in one compute pass, then each drawn
+  /// into its layer of the maps.
+  pub fn add_passes<'a>(
+    &'a self,
+    graph: &mut FrameGraph<'a>,
+    bindings: &mut GraphBindings<'a>,
+    passes: LevelPasses<'a>,
+    (params, textures): (&'a StaticCullParams, &'a wgpu::BindGroup),
+  ) {
+    // A cascade is drawn where its culls and draws are bound, which `prepare_cascades` saw to.
+    let due: Vec<(usize, &'a ShadowCascadeView, GraphBuffer, GraphBuffer)> = self
+      .due
+      .iter()
+      .map(|&index| (index, &self.cascades[index]))
+      .filter(|(_, cascade)| cascade.cull_group.is_some() && cascade.draw_groups.is_some())
+      .map(|(index, cascade)| {
+        (
+          index,
+          cascade,
+          bindings.import_buffer(graph, "sun shadow draw arguments", &cascade.args),
+          bindings.import_buffer(graph, "sun shadow lists", cascade.lists.get_buffer()),
+        )
+      })
+      .collect();
 
-      passes
-        .cull
-        .dispatch_shadow(encoder, &cascade.view, cull_group, frame.params, false);
-      passes.shadow.draw(
-        encoder,
-        &self.maps.layers[index],
-        &cascade.view,
-        draw_groups,
-        frame.textures.get_bind_group(),
-        &cascade.args,
-      );
+    if due.is_empty() {
+      return;
+    }
+
+    let maps: GraphTexture = bindings.import_view(graph, "sun shadow maps", &self.maps.view);
+
+    due
+      .iter()
+      .fold(
+        graph.add_compute_pass("sun shadow cull"),
+        |builder, (_, _, args, lists)| {
+          builder
+            .buffer(*args, GraphBufferAccess::StorageReadWrite)
+            .buffer(*lists, GraphBufferAccess::StorageWrite)
+        },
+      )
+      .record({
+        let due: Vec<&'a ShadowCascadeView> = due.iter().map(|(_, cascade, ..)| *cascade).collect();
+
+        move |context| {
+          for cascade in due {
+            if let Some((_, cull_group)) = &cascade.cull_group {
+              passes
+                .cull
+                .record_shadow(context.get_pass(), &cascade.view, cull_group, params, false);
+            }
+          }
+        }
+      });
+
+    for (index, cascade, args, lists) in due {
+      graph
+        .add_raster_pass(CASCADE_PASSES[index])
+        .depth(GraphDepthAttachment::new(maps, wgpu::LoadOp::Clear(0.0)).with_array_layer(index as u32))
+        .buffer(args, GraphBufferAccess::Indirect)
+        .buffer(lists, GraphBufferAccess::StorageRead)
+        .record(move |context| {
+          let args: &wgpu::Buffer = context.get_buffer(args);
+
+          if let Some((_, draw_groups)) = &cascade.draw_groups {
+            passes
+              .shadow
+              .record(context.get_pass(), (&cascade.view, draw_groups, textures), args);
+          }
+        });
     }
   }
 
@@ -204,7 +263,10 @@ impl LevelShadows {
           frame.cull_params,
           frame.pyramid,
           frame.occlusion,
-          (cascade.lists.get_buffer(), &cascade.args),
+          (
+            cascade.lists.get_buffer().as_entire_buffer_binding(),
+            cascade.args.as_entire_buffer_binding(),
+          ),
         );
 
         cascade.cull_group = Some((cull_key, group));
@@ -216,7 +278,7 @@ impl LevelShadows {
         let groups: [wgpu::BindGroup; StaticLayout::COUNT] =
           passes
             .gbuffer
-            .create_layout_groups(device, scene, cascade.lists.get_buffer());
+            .create_layout_groups(device, scene, cascade.lists.get_buffer().as_entire_buffer_binding());
 
         cascade.draw_groups = Some((draw_key, groups));
       }
