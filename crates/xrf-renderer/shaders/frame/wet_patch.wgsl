@@ -190,6 +190,12 @@ const PUDDLE_MURK: vec2<f32> = vec2<f32>(0.6, 1.3);
 const WAVE_PHASE: f32 = 0.5;
 const WAVE_STRENGTH: vec2<f32> = vec2<f32>(0.6, 1.4);
 const VARIATION_TILES: vec3<f32> = vec3<f32>(37.0, 53.0, 43.0);
+// Gusts: patches of stronger wind drifting downwind across the level (`wet.gust`), two readings of the regional noise
+// at metres apart, the second drifting half as fast; the calm waves under a gust's lull and its strongest, and the rain
+// rings' share of it, so a gust ruffles some puddles while others lie still.
+const GUST_TILES: vec2<f32> = vec2<f32>(70.0, 29.0);
+const GUST_WAVES: vec2<f32> = vec2<f32>(0.3, 1.9);
+const GUST_RINGS: vec2<f32> = vec2<f32>(0.8, 1.2);
 // A puddle's rim: the share of its radius from which its water roughens to a wet film's, the roughness it reaches at
 // its edge, and how much of its clear coat the rim gives up, so a puddle's reflection fades in from a damp edge.
 const RIM_START: f32 = 0.55;
@@ -384,6 +390,16 @@ fn puddle_variation(place: vec2<f32>) -> vec3<f32> {
   );
 }
 
+// How gusty the wind is over a place in renderer space, from a lull to a gust's strongest.
+fn gustiness(place: vec2<f32>) -> f32 {
+  let drift: vec2<f32> = wet.gust.xy * wet.time;
+  let broad: f32 = textureSampleLevel(puddle_noise, wet_sampler, (place - drift) / GUST_TILES.x + 0.21, 0.0).r;
+  let fine: f32 =
+    textureSampleLevel(puddle_noise, wet_sampler, (place.yx - drift.yx * 0.5) / GUST_TILES.y + 0.67, 0.0).r;
+
+  return smoothstep(0.35, 0.75, broad * 0.7 + fine * 0.3);
+}
+
 // The gloss a puddle's water of a roughness has, as `reflection_roughness` reads gloss back.
 fn water_gloss(roughness: f32) -> f32 {
   let glassy: f32 = 1.0 - sqrt(roughness);
@@ -480,9 +496,11 @@ fn fs_wet_patch_enhanced(in: FullscreenVarying) -> WetPatchTargets {
       let second: vec3<f32> = textureSampleGrad(puddle_normal, wet_sampler, waves - vec2<f32>(0.33, pace), across, down)
         .xyz * 2.0 - 1.0 - vec3<f32>(WAVE_TILT, 0.0);
       let kept_length: f32 = 0.5 * (length(first) + length(second));
+      let gust: f32 = gustiness(world.xz);
       let calm_scale: f32 = saturate(0.05 + saturate(wet.density * 1.5) * 0.1) * 0.666 *
-        mix(WAVE_STRENGTH.x, WAVE_STRENGTH.y, variation.z);
-      let drop_scale: f32 = wet.density * 3.0 * wet.puddles.w * PUDDLE_RIPPLE_SHARE * 0.15;
+        mix(WAVE_STRENGTH.x, WAVE_STRENGTH.y, variation.z) * mix(GUST_WAVES.x, GUST_WAVES.y, gust);
+      let drop_scale: f32 = wet.density * 3.0 * wet.puddles.w * PUDDLE_RIPPLE_SHARE * 0.15 *
+        mix(GUST_RINGS.x, GUST_RINGS.y, gust);
       let drops: vec3<f32> = rain_ripples(uv * 1.3, PlaceGradients(across * 1.3, down * 1.3), vec3<f32>(0.85, 1.0, 10.0),
         distance);
       let tilt: vec2<f32> = 0.5 * (first.xy + second.xy) * calm_scale + drops.xy * drop_scale;

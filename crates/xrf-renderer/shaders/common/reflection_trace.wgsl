@@ -214,10 +214,14 @@ fn ray_walk(pyramid: texture_2d<f32>, origin: vec3<f32>, direction: vec3<f32>, c
   return RayWalk(position, false, END_SPENT, 0.0);
 }
 
-// The gloss past which a surface's reflectance head on rises from a dielectric's towards its own colour: X-Ray's
-// glossiest surfaces are its metals, and its data holds no metalness. Glass, polished paint and a puddle's water stand
-// below it (Skadovsk's television screen at 0.64 reflected as a metal and read as wet from 0.6).
-const METAL_GLOSS: vec2<f32> = vec2<f32>(0.8, 0.95);
+// The gloss past which a surface its texture's material marks a metal rises from a dielectric's reflectance head on
+// towards its own colour, and the share of metal in that material it takes to be marked one. X-Ray's data holds no
+// metalness, only the material its `hmodel` blends between (the G-buffer's `material.z`: 2 to 3 Phong to Metal, 3 to 4
+// Metal to Oren-Nayar), authored for that look, so both must agree: glass, screens and polished paint under Blinn-Phong
+// never turn metal, a rough wall tagged a fifth metal stays a dielectric (Skadovsk's television glass at gloss 0.64
+// reflected as a metal and read as wet on gloss alone).
+const METAL_GLOSS: vec2<f32> = vec2<f32>(0.6, 0.9);
+const METAL_TAGGED: vec2<f32> = vec2<f32>(0.45, 0.55);
 // The roughness past which a surface is not traced and reflects the prefiltered sky alone.
 const TRACED_ROUGHNESS_LIMIT: f32 = 0.5;
 
@@ -255,10 +259,18 @@ fn lobe_alpha(roughness: f32) -> f32 {
   return roughness * roughness;
 }
 
-// A surface's reflectance head on: a dielectric's, lifted towards its own colour as its gloss passes the metals', and
-// water's over the share of it a puddle's clear coat covers.
-fn reflectance_head_on(albedo: vec3<f32>, gloss: f32, coat: f32) -> vec3<f32> {
-  let metal: f32 = smoothstep(METAL_GLOSS.x, METAL_GLOSS.y, gloss);
+// The share of metal in a texture's material, as the G-buffer's `material.z` holds it (`float(material) + weight`):
+// rising over Phong to Metal, falling over Metal to Oren-Nayar, none in any other.
+fn material_metal(slice: f32) -> f32 {
+  return select(0.0, slice - 2.0, slice >= 2.0 && slice < 3.0) + select(0.0, 4.0 - slice, slice >= 3.0 && slice < 4.0);
+}
+
+// A surface's reflectance head on: a dielectric's, lifted towards its own colour as its gloss passes the metals' where
+// its material (`slice`, the G-buffer's `material.z`) marks it a metal, and water's over the share of it a puddle's
+// clear coat covers.
+fn reflectance_head_on(albedo: vec3<f32>, gloss: f32, coat: f32, slice: f32) -> vec3<f32> {
+  let metal: f32 = smoothstep(METAL_GLOSS.x, METAL_GLOSS.y, gloss) *
+    smoothstep(METAL_TAGGED.x, METAL_TAGGED.y, material_metal(slice));
 
   return mix(mix(vec3<f32>(DIELECTRIC_F0), albedo, metal), vec3<f32>(COAT_F0), saturate(coat));
 }

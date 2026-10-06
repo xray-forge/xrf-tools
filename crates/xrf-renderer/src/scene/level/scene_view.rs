@@ -1854,6 +1854,7 @@ impl SceneView {
         0.0,
         0.0,
       ),
+      gust: WetUniform::get_gust(lighting.wind.direction, lighting.wind.velocity),
     };
     self.info.weather_views.wet = Some([
       weather_textures

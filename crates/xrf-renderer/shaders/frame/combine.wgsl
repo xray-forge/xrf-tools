@@ -167,7 +167,7 @@ fn fs_combine(in: FullscreenVarying) -> CombineOutput {
   if (lighting.reflections.x > 0.5) {
     let facing: f32 = saturate(dot(normal, -normalize(position)));
     let roughness: f32 = traced_roughness(albedo.a, wet.a + geometric_variance(normal_target, texel));
-    let head_on: vec3<f32> = reflectance_head_on(albedo.rgb, albedo.a, wet.r);
+    let head_on: vec3<f32> = reflectance_head_on(albedo.rgb, albedo.a, wet.r, material.z);
     let brdf: vec3<f32> = environment_brdf(head_on, roughness, facing) * lighting.reflections.z;
     let traced: vec4<f32> = upsampled_reflection(reflections, depth_target, material_target, floor(in.clip.xy),
       -position.z, lighting.reflections.y);
