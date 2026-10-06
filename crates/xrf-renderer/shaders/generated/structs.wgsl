@@ -195,6 +195,8 @@ struct Reflections {
   distance: f32,
   has_history: f32,
   ratio: f32,
+  has_source: f32,
+  pad0: f32,
 }
 
 struct ExposureParams {

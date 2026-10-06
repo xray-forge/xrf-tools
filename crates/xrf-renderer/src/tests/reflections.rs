@@ -183,12 +183,13 @@ fn climbs_the_quality_ladder() {
 
 #[test]
 fn writes_the_settings_the_trace_reads() {
-  let high: ReflectionUniform = ReflectionUniform::new(&enhanced(), 7, true);
+  let high: ReflectionUniform = ReflectionUniform::new(&enhanced(), 7, (true, true));
 
   assert_eq!(high.crossings, RenderReflectionQuality::High.get_crossings());
   assert_eq!(high.frame, 7);
   assert_eq!(high.ratio, 2.0);
   assert_eq!(high.has_history, 1.0);
+  assert_eq!(high.has_source, 1.0);
   assert_eq!(high.distance, 150.0);
 
   let ultra: ReflectionUniform = ReflectionUniform::new(
@@ -198,10 +199,11 @@ fn writes_the_settings_the_trace_reads() {
       ..enhanced()
     },
     0,
-    false,
+    (false, false),
   );
 
   assert_eq!(ultra.intensity, 3.0);
   assert_eq!(ultra.ratio, 1.0);
   assert_eq!(ultra.has_history, 0.0);
+  assert_eq!(ultra.has_source, 0.0);
 }

@@ -1,13 +1,14 @@
-use xrf_renderer_core::{GraphTexture, PassParameters, UniformBinding};
+use xrf_renderer_core::{GraphTexture, PassParameters, StorageValue, UniformBinding};
 
+use crate::pass::exposure_head::ExposureHead;
 use crate::pass::lighting_uniform::LightingUniform;
 use crate::pass::reflection_uniform::ReflectionUniform;
 
-/// What a stage of the screen-space reflections reads: the G-buffer, its light and occlusion, the wet surface, the
-/// material table, the lighting and the settings; the frame's nearest depth pyramid and the blue noise rays are
-/// scattered by; the stages before (the trace, the reprojected history and its variance, the eighth-size average, the
-/// prefiltered reflection); and the last frame's reflection, surface and held distance, read through a filtering
-/// sampler.
+/// What a stage of the screen-space reflections reads: the G-buffer, its light, occlusion and motion, the wet surface,
+/// the material table, the lighting, the exposure and the settings; the frame's nearest depth pyramid and the blue
+/// noise rays are scattered by; the last frame's scene and depth a hit reads its colour from; the stages before (the
+/// trace, the reprojected history and its variance, the eighth-size average, the prefiltered reflection); and the last
+/// frame's reflection, surface and held distance, read through a filtering sampler.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 1)]
 pub struct ReflectionParameters<'a> {
@@ -33,6 +34,14 @@ pub struct ReflectionParameters<'a> {
   pub lighting: UniformBinding<LightingUniform>,
   #[uniform]
   pub reflection: UniformBinding<ReflectionUniform>,
+  #[storage]
+  pub exposure: StorageValue<ExposureHead>,
+  #[texture(d2, unfilterable)]
+  pub motion_target: GraphTexture,
+  #[texture(d2, float)]
+  pub source_scene: GraphTexture,
+  #[texture(d2, depth)]
+  pub source_depth: GraphTexture,
   #[texture(d2, unfilterable)]
   pub nearest_depth: GraphTexture,
   #[texture(d2, unfilterable)]
