@@ -6,7 +6,9 @@ edition.workspace = true
 rust-version.workspace = true
 
 [dependencies]
+bytemuck = { workspace = true }
 log = { workspace = true }
+offset-allocator = { workspace = true }
 serde = { workspace = true }
 wgpu = { workspace = true }
 xrf-error = { workspace = true }
