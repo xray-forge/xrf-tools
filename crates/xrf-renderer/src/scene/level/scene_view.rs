@@ -18,6 +18,7 @@ use crate::contract::render_antialiasing::RenderAntialiasing;
 use crate::contract::render_applied_report::RenderAppliedReport;
 use crate::contract::render_applied_shadows::RenderAppliedShadows;
 use crate::contract::render_bloom_settings::RenderBloomSettings;
+use crate::contract::render_contact_shadow_settings::RenderContactShadowSettings;
 use crate::contract::render_debug_view::RenderDebugView;
 use crate::contract::render_level_hit::RenderLevelHit;
 use crate::contract::render_lights_report::RenderLightsReport;
@@ -53,6 +54,9 @@ use crate::pass::bloom_uniform::BloomUniform;
 use crate::pass::camera_uniform::CameraUniform;
 use crate::pass::combine_parameters::CombineParameters;
 use crate::pass::composited_parameters::CompositedParameters;
+use crate::pass::contact_shadow_parameters::ContactShadowParameters;
+use crate::pass::contact_shadow_pass::ContactShadowPass;
+use crate::pass::contact_shadow_uniform::ContactShadowUniform;
 use crate::pass::exposure_parameters::ExposureParameters;
 use crate::pass::fsr_uniform::FsrUniform;
 use crate::pass::fxaa_parameters::FxaaParameters;
@@ -435,6 +439,16 @@ impl SceneView {
     }
     self.info.lighting = LightingUniform::new(lighting, view.view, options, &frame);
 
+    if self.info.is_temporal {
+      self.state.noise_frame = self.state.noise_frame.wrapping_add(1);
+    }
+
+    let contact: &RenderContactShadowSettings = &options.features.shadows.contact;
+
+    self.info.contact_shadows =
+      (options.mode.is_lit && !options.mode.is_wireframe && options.features.shadows.is_enabled && contact.is_drawn())
+        .then(|| ContactShadowUniform::new(contact, self.info.lighting.to_sun, height, self.state.noise_frame));
+
     scene.particles.fill(view, options, &mut self.state.particles);
 
     self.state.particles.upload((device, queue));
@@ -598,8 +612,9 @@ impl SceneView {
     add_draw(graph, "late g-buffer", late, false);
   }
 
-  /// Declares the lighting: the lights binned into the view's clusters, the sun then every light drawn into the light
-  /// target, the binning's overflow read back, and the ambient occlusion searched and denoised.
+  /// Declares the lighting: the lights binned into the view's clusters, the contact shadows marched, the sun then every
+  /// light drawn into the light target, the binning's overflow read back, and the ambient occlusion searched and
+  /// denoised.
   fn add_lighting_passes<'a>(
     &'a self,
     (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
@@ -633,6 +648,35 @@ impl SceneView {
         .record(move |context| passes.lights.record_binning(context, &parameters));
     }
 
+    // The contact shadows the sun multiplies its own by, or a lit texel where none are drawn.
+    let contact_shadows: GraphTexture = match &self.info.contact_shadows {
+      Some(contact) => {
+        let (width, height) = targets.size;
+        let marched: GraphTexture = graph.create_texture(GraphTextureDescriptor::new_2d(
+          "contact shadows",
+          width,
+          height,
+          ContactShadowPass::FORMAT,
+        ));
+        let parameters: ContactShadowParameters = ContactShadowParameters {
+          normal_target: targets.normal,
+          depth_target: targets.depth,
+          contact: runtime.push_uniform(contact),
+        };
+
+        graph
+          .add_raster_pass("contact shadows")
+          .parameters(&parameters)
+          .color(GraphColorAttachment::new(
+            marched,
+            wgpu::LoadOp::Clear(wgpu::Color::WHITE),
+          ))
+          .record(move |context| passes.contact_shadows.record(context, view, &parameters));
+
+        marched
+      }
+      None => bindings.import_view(graph, "contact shadows lit", passes.contact_shadows.get_lit()),
+    };
     let sun: SunParameters = SunParameters {
       normal_target: targets.normal,
       material_target: targets.material,
@@ -642,6 +686,7 @@ impl SceneView {
       lighting: lit.lighting,
       shadow_maps: lit.shadow_maps,
       shadows: lit.shadows,
+      contact_shadows,
     };
 
     graph

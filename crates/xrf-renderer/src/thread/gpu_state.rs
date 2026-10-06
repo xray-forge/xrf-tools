@@ -10,6 +10,7 @@ use crate::pass::backdrop_pass::BackdropPass;
 use crate::pass::bloom_pass::BloomPass;
 use crate::pass::combine_pass::CombinePass;
 use crate::pass::composited_pass::CompositedPass;
+use crate::pass::contact_shadow_pass::ContactShadowPass;
 use crate::pass::depth_pyramid_pass::DepthPyramidPass;
 use crate::pass::exposure_pass::ExposurePass;
 use crate::pass::flare_pass::FlarePass;
@@ -77,6 +78,7 @@ pub struct GpuState {
   pub static_gbuffer: StaticGBufferPass,
   pub static_shadow: StaticShadowPass,
   pub pyramid: DepthPyramidPass,
+  pub contact_shadows: ContactShadowPass,
   pub sun: SunPass,
   pub ambient_occlusion: AmbientOcclusionPass,
   pub lights: LightsPass,
@@ -150,6 +152,7 @@ impl GpuState {
       static_gbuffer,
       static_shadow,
       pyramid: DepthPyramidPass::new(device, shaders)?,
+      contact_shadows: ContactShadowPass::new(device, &context.queue, shaders, &view_layout)?,
       sun: SunPass::new(device, shaders, &view_layout)?,
       ambient_occlusion: AmbientOcclusionPass::new(device, shaders, &view_layout)?,
       lights: LightsPass::new(device, shaders, &view_layout, textures.get_layout())?,
@@ -196,6 +199,7 @@ impl GpuState {
       gbuffer: &self.static_gbuffer,
       shadow: &self.static_shadow,
       pyramid: &self.pyramid,
+      contact_shadows: &self.contact_shadows,
       sun: &self.sun,
       ambient_occlusion: &self.ambient_occlusion,
       lights: &self.lights,
@@ -236,6 +240,7 @@ impl GpuState {
     self.static_gbuffer.refresh(device, shaders);
     self.static_shadow.refresh(device, shaders);
     self.pyramid.refresh(device, shaders);
+    self.contact_shadows.refresh(device, shaders);
     self.sun.refresh(device, shaders);
     self.ambient_occlusion.refresh(device, shaders);
     self.lights.refresh(device, shaders);

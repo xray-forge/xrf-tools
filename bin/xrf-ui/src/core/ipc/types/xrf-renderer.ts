@@ -187,6 +187,30 @@ export type RenderColor = {
   b: number;
 };
 
+/** Whether the sun's light is shadowed by what the frame's depth shows standing between a surface and the sun. */
+export enum ERenderContactShadowMode {
+  /** The engine's own: the sun's cascades alone. */
+  ENGINE = "engine",
+  /** Contact shadows: each pixel's ray towards the sun marched over the frame's depth, under the cascades. */
+  ENHANCED = "enhanced",
+}
+
+/** Every `ERenderContactShadowMode` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type RenderContactShadowMode = `${ERenderContactShadowMode}`;
+
+/** Contact shadows: the small shadows the sun's cascades are too coarse to cast, found in the frame's depth. */
+export type RenderContactShadowSettings = {
+  mode: RenderContactShadowMode;
+  /** Metres each pixel's ray reaches towards the sun. */
+  length: number | null;
+  /** How much of the sunlight what the ray meets takes away: one all of it. */
+  intensity: number | null;
+  /** Metres behind what the depth shows that it is taken to be solid, near the camera; it grows with distance. */
+  thickness: number | null;
+  /** Depth reads along each ray. */
+  steps: number;
+};
+
 /** Which picture a viewport shows: its finished frame, or one of the targets the frame was built from. */
 export enum ERenderDebugView {
   /** The finished frame. */
@@ -748,6 +772,8 @@ export type RenderShadowSettings = {
   blend: number | null;
   /** Whether cascade `n` is drawn at most every `2^n` frames, the far ones sharing frames the near one does not. */
   isStaggered: boolean;
+  /** The contact shadows under the cascades, drawn only while the cascades are. */
+  contact: RenderContactShadowSettings;
 };
 
 /**

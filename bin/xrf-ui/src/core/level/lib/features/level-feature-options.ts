@@ -13,7 +13,10 @@ import {
 } from "@/core/render/lib/settings/render-feature-settings";
 
 /** The shadow settings a level view may set for itself. */
-export type TLevelShadowOptions = Pick<TRenderShadowSettings, "bias" | "blend" | "cascades" | "filter" | "resolution">;
+export type TLevelShadowOptions = Pick<
+  TRenderShadowSettings,
+  "bias" | "blend" | "cascades" | "contact" | "filter" | "resolution"
+>;
 
 /** The ambient occlusion settings a level view may set for itself. */
 export type TLevelAmbientOcclusionOptions = Pick<TRenderAmbientOcclusionSettings, "quality" | "radius" | "strength">;
@@ -52,7 +55,7 @@ const LEVEL_FEATURE_KEYS: {
   ambientOcclusion: ["quality", "radius", "strength"],
   grass: ["density", "height", "radius"],
   lights: ["isLevelLights", "isShadowed", "shadowFilter"],
-  shadows: ["bias", "blend", "cascades", "filter", "resolution"],
+  shadows: ["bias", "blend", "cascades", "contact", "filter", "resolution"],
   water: [
     "blurNoise",
     "calmFlow",
@@ -122,7 +125,7 @@ export type TLevelFeatureView = { readonly [K in TLevelFeatureKey]: ILevelFeatur
  * @param settings - What the renderer's settings set, for every viewport.
  * @param view - What the view sets over them.
  * @param isOn - Whether the toolbar draws the group, which it can turn off but not on.
- * @returns The group the view is drawn with: the settings', the view's own values over them.
+ * @returns The group the view is drawn with: the settings', the view's own values over them, a nested group's too.
  */
 export function toLevelRendererFeature<K extends TLevelFeatureKey>(
   key: K,
@@ -130,7 +133,23 @@ export function toLevelRendererFeature<K extends TLevelFeatureKey>(
   view: ILevelFeatureOptions,
   isOn: boolean
 ): IRenderFeatureSettings[K] {
-  return { ...settings[key], ...view[key], isEnabled: settings[key].isEnabled && isOn } as IRenderFeatureSettings[K];
+  const group: Record<string, unknown> = { ...settings[key] };
+
+  for (const [name, value] of Object.entries(view[key] as Record<string, unknown>)) {
+    const base: unknown = group[name];
+
+    group[name] = isNestedGroup(base) && isNestedGroup(value) ? { ...base, ...value } : value;
+  }
+
+  return { ...group, isEnabled: settings[key].isEnabled && isOn } as IRenderFeatureSettings[K];
+}
+
+/**
+ * @param value - One value of a feature group.
+ * @returns Whether it is a group of its own, as the contact shadows are within the shadows, rather than one value.
+ */
+function isNestedGroup(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 /**

@@ -3,6 +3,7 @@ import { describe, expect, it } from "@jest/globals";
 import {
   ERenderAmbientOcclusionQuality,
   ERenderAntialiasing,
+  ERenderContactShadowMode,
   ERenderLightShadowFilter,
   ERenderWaterMode,
 } from "@/core/ipc/types/xrf-renderer";
@@ -120,5 +121,18 @@ describe("level feature options", () => {
       toLevelFeatureOptions({ water: { mode: ERenderWaterMode.ENHANCED, softBorder: 0.5, turbidity: 40 } }).water
     ).toEqual({ mode: ERenderWaterMode.ENHANCED, softBorder: 0.5, turbidity: 10 });
     expect(toLevelFeatureOptions({ water: { mode: "ocean", refraction: 1.2 } }).water).toEqual({ refraction: 1.2 });
+  });
+
+  it("keeps the contact shadows' own values, held to their bounds, over the settings' others", () => {
+    const view: ILevelFeatureOptions = toLevelFeatureOptions({
+      shadows: { contact: { length: 9, mode: ERenderContactShadowMode.ENGINE } },
+    });
+
+    expect(view.shadows).toEqual({ contact: { length: 4, mode: ERenderContactShadowMode.ENGINE } });
+    expect(toLevelRendererFeature("shadows", SETTINGS, view, true).contact).toEqual({
+      ...SETTINGS.shadows.contact,
+      length: 4,
+      mode: ERenderContactShadowMode.ENGINE,
+    });
   });
 });

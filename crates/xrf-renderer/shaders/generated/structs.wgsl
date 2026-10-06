@@ -103,6 +103,16 @@ struct Shadows {
   blend: f32,
 }
 
+struct ContactShadows {
+  to_sun: vec4<f32>,
+  length: f32,
+  intensity: f32,
+  thickness: f32,
+  steps: u32,
+  reach: f32,
+  noise: f32,
+}
+
 struct Lights {
   count: u32,
   near: f32,

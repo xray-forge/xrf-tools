@@ -1,6 +1,7 @@
-import { ERenderAntialiasing, ERenderWaterMode } from "@/core/ipc/types/xrf-renderer";
+import { ERenderAntialiasing, ERenderContactShadowMode, ERenderWaterMode } from "@/core/ipc/types/xrf-renderer";
 import {
   DEFAULT_RENDER_AMBIENT_OCCLUSION_SETTINGS,
+  DEFAULT_RENDER_CONTACT_SHADOW_SETTINGS,
   DEFAULT_RENDER_EXPOSURE_SETTINGS,
   DEFAULT_RENDER_GRASS_SETTINGS,
   DEFAULT_RENDER_LIGHTS_SETTINGS,
@@ -31,7 +32,11 @@ export const RENDER_PRESETS: Readonly<Record<ERenderPreset, IRenderFeatureSettin
     isOcclusionCulled: true,
     lights: DEFAULT_RENDER_LIGHTS_SETTINGS,
     lod: DEFAULT_RENDER_LOD_SETTINGS,
-    shadows: DEFAULT_RENDER_SHADOW_SETTINGS,
+    // The application's own choice over the engine's, as the antialiasing is: contact shadows under the cascades.
+    shadows: {
+      ...DEFAULT_RENDER_SHADOW_SETTINGS,
+      contact: { ...DEFAULT_RENDER_CONTACT_SHADOW_SETTINGS, mode: ERenderContactShadowMode.ENHANCED },
+    },
     upscaling: DEFAULT_RENDER_UPSCALING_SETTINGS,
     // The application's own choice over the engine's, as the antialiasing is: Screen Space Shaders' water.
     water: { ...DEFAULT_RENDER_WATER_SETTINGS, mode: ERenderWaterMode.ENHANCED },

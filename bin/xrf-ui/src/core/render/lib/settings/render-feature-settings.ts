@@ -1,5 +1,6 @@
 import {
   RenderAmbientOcclusionSettings,
+  RenderContactShadowSettings,
   RenderExposureSettings,
   RenderGrassSettings,
   RenderLightsSettings,
@@ -36,6 +37,8 @@ export interface IRenderFeatureSettings extends TSettled<
 > {}
 
 export type TRenderAmbientOcclusionSettings = TSettled<RenderAmbientOcclusionSettings>;
+
+export type TRenderContactShadowSettings = TSettled<RenderContactShadowSettings>;
 
 export type TRenderExposureSettings = TSettled<RenderExposureSettings>;
 

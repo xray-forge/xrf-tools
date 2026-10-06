@@ -38,6 +38,8 @@ pub struct ViewState {
   pub fsr: Option<FsrTargets>,
   /// The last frame's unjittered view projection, which every surface's motion is measured from.
   pub motion_previous: Option<Mat4>,
+  /// Frames a temporal resolve gathered, which the screen-space effects turn their noise by.
+  pub noise_frame: u32,
   /// The water's settings and flow, and the enhanced water's reflection histories.
   pub water: LevelWater,
   /// The trees' sway the last frame drew with.
@@ -78,6 +80,7 @@ impl ViewState {
       temporal_previous: None,
       fsr: None,
       motion_previous: None,
+      noise_frame: 0,
       water: LevelWater::default(),
       last_wind: None,
       upscale: None,

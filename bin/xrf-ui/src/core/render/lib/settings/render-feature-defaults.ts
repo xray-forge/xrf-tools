@@ -1,11 +1,13 @@
 import {
   ERenderAmbientOcclusionQuality,
+  ERenderContactShadowMode,
   ERenderLightShadowFilter,
   ERenderScale,
   ERenderWaterMode,
 } from "@/core/ipc/types/xrf-renderer";
 import {
   TRenderAmbientOcclusionSettings,
+  TRenderContactShadowSettings,
   TRenderExposureSettings,
   TRenderGrassSettings,
   TRenderLightsSettings,
@@ -65,11 +67,21 @@ export const DEFAULT_RENDER_LOD_SETTINGS: TRenderLodSettings = {
   ssaGlodStart: 256,
 };
 
-/** Every cascade, the engine's three and the far one, and a filter a texel wide. */
+/** The engine's own: no contact shadows, and their strengths for when they are drawn. */
+export const DEFAULT_RENDER_CONTACT_SHADOW_SETTINGS: TRenderContactShadowSettings = {
+  intensity: 1,
+  length: 0.6,
+  mode: ERenderContactShadowMode.ENGINE,
+  steps: 16,
+  thickness: 0.1,
+};
+
+/** Every cascade, the engine's three and the far one, a filter a texel wide, and no contact shadows. */
 export const DEFAULT_RENDER_SHADOW_SETTINGS: TRenderShadowSettings = {
   bias: 1.5,
   blend: 0.1,
   cascades: RENDER_SHADOW_CASCADE_WIDTHS,
+  contact: DEFAULT_RENDER_CONTACT_SHADOW_SETTINGS,
   filter: 1,
   isEnabled: true,
   isStaggered: true,
