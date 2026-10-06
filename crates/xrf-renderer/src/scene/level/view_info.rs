@@ -13,11 +13,13 @@ use crate::contract::render_upscaling_settings::RenderUpscalingSettings;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::pass::ambient_occlusion_uniform::AmbientOcclusionUniform;
 use crate::pass::bloom_uniform::BloomUniform;
+use crate::pass::fsr_uniform::FsrUniform;
 use crate::pass::lighting_uniform::LightingUniform;
 use crate::pass::present_uniform::PresentUniform;
 use crate::pass::rain_uniform::RainUniform;
 use crate::pass::static_cull_params::StaticCullParams;
 use crate::pass::static_occlusion_uniform::StaticOcclusionUniform;
+use crate::pass::temporal_uniform::TemporalUniform;
 use crate::pass::thunder_uniform::ThunderUniform;
 use crate::pass::upscale_uniform::UpscaleUniform;
 use crate::pass::wet_uniform::WetUniform;
@@ -40,6 +42,9 @@ pub struct ViewInfo {
   pub wet: WetUniform,
   pub thunder: ThunderUniform,
   pub weather_views: WeatherViews,
+  /// What the temporal resolve, or FSR 2, moves its history by this frame.
+  pub temporal: TemporalUniform,
+  pub fsr: FsrUniform,
   pub camera: CameraView,
   /// The camera's view and projection, which become the depth history once the pyramid is reduced.
   pub matrices: (Mat4, Mat4),
@@ -108,6 +113,8 @@ impl Default for ViewInfo {
       wet: WetUniform::default(),
       thunder: ThunderUniform::default(),
       weather_views: WeatherViews::default(),
+      temporal: TemporalUniform::default(),
+      fsr: FsrUniform::default(),
       camera: CameraView {
         position: Vec3::ZERO,
         view: Mat4::IDENTITY,

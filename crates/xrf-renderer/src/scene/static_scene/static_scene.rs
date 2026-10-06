@@ -436,19 +436,6 @@ impl StaticScene {
     self.sectors.as_slice().iter().map(|sector| sector.bytes).sum()
   }
 
-  /// A generation of every buffer a bind group holds, which changes whenever one of them was replaced.
-  pub fn get_generation(&self) -> u64 {
-    self
-      .list_spans()
-      .iter()
-      .map(|buffer| buffer.get_generation())
-      .sum::<u64>()
-      + self.rows.get_generation()
-      + self.surfaces.get_generation()
-      + self.lists.get_generation()
-      + self.candidates.get_generation()
-  }
-
   /// Bytes the scene's growing buffers hold on the GPU, which is what grows with a level or a model.
   pub fn get_buffer_bytes(&self) -> u64 {
     self.list_spans().iter().map(|buffer| buffer.get_bytes()).sum::<u64>()

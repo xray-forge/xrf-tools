@@ -182,6 +182,24 @@ struct Thunder {
   center_extent: vec4<f32>,
 }
 
+struct Temporal {
+  current: mat4x4<f32>,
+  previous: mat4x4<f32>,
+  previous_view: mat4x4<f32>,
+  params: vec4<f32>,
+}
+
+struct Fsr {
+  render_size: vec2<f32>,
+  display_size: vec2<f32>,
+  jitter: vec2<f32>,
+  downscale: vec2<f32>,
+  device_to_view: vec4<f32>,
+  luma_mip_size: vec2<f32>,
+  jitter_phase_count: f32,
+  frame_index: f32,
+}
+
 struct Cluster {
   first_index: u32,
   triangles: u32,

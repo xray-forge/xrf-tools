@@ -1,7 +1,9 @@
 use xrf_error::XrfResult;
+use xrf_renderer_core::{ComputeContext, PassParameters};
 
 use crate::frame::depth_pyramid::DepthPyramid;
-use crate::pass::layout_entries::texture_entry;
+use crate::pass::pyramid_depth_parameters::PyramidDepthParameters;
+use crate::pass::pyramid_level_parameters::PyramidLevelParameters;
 use crate::pass::shader_pipelines::{create_checked, create_module};
 use crate::shader::shader_library::ShaderLibrary;
 
@@ -19,29 +21,8 @@ pub struct DepthPyramidPass {
 
 impl DepthPyramidPass {
   pub fn new(device: &wgpu::Device, shaders: &ShaderLibrary) -> XrfResult<Self> {
-    let compute: wgpu::ShaderStages = wgpu::ShaderStages::COMPUTE;
-    let flat: wgpu::TextureViewDimension = wgpu::TextureViewDimension::D2;
-    let target: wgpu::BindGroupLayoutEntry = wgpu::BindGroupLayoutEntry {
-      binding: 2,
-      visibility: compute,
-      ty: wgpu::BindingType::StorageTexture {
-        access: wgpu::StorageTextureAccess::WriteOnly,
-        format: DepthPyramid::FORMAT,
-        view_dimension: flat,
-      },
-      count: None,
-    };
-    let depth_layout: wgpu::BindGroupLayout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-      label: Some("depth pyramid first level"),
-      entries: &[texture_entry(0, compute, wgpu::TextureSampleType::Depth, flat), target],
-    });
-    let level_layout: wgpu::BindGroupLayout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-      label: Some("depth pyramid level"),
-      entries: &[
-        texture_entry(1, compute, wgpu::TextureSampleType::Float { filterable: false }, flat),
-        target,
-      ],
-    });
+    let depth_layout: wgpu::BindGroupLayout = PyramidDepthParameters::create_layout(device);
+    let level_layout: wgpu::BindGroupLayout = PyramidLevelParameters::create_layout(device);
 
     Ok(Self {
       pipelines: Self::create_pipelines(device, shaders, &depth_layout, &level_layout)?,
@@ -62,54 +43,24 @@ impl DepthPyramidPass {
     }
   }
 
-  /// A bind group a level: the first reading the depth, each next the level before it.
-  pub fn create_bind_groups(
+  /// Reduces the depth into the first level, then each level into the next, a dispatch each.
+  pub fn record(
     &self,
-    device: &wgpu::Device,
-    depth: &wgpu::TextureView,
+    context: &mut ComputeContext<'_>,
     pyramid: &DepthPyramid,
-  ) -> Vec<wgpu::BindGroup> {
-    (0..pyramid.levels as usize)
-      .map(|level| {
-        let (layout, source): (&wgpu::BindGroupLayout, wgpu::BindGroupEntry<'_>) = if level == 0 {
-          (
-            &self.depth_layout,
-            wgpu::BindGroupEntry {
-              binding: 0,
-              resource: wgpu::BindingResource::TextureView(depth),
-            },
-          )
-        } else {
-          (
-            &self.level_layout,
-            wgpu::BindGroupEntry {
-              binding: 1,
-              resource: wgpu::BindingResource::TextureView(&pyramid.level_views[level - 1]),
-            },
-          )
-        };
-
-        device.create_bind_group(&wgpu::BindGroupDescriptor {
-          label: Some("depth pyramid"),
-          layout,
-          entries: &[
-            source,
-            wgpu::BindGroupEntry {
-              binding: 2,
-              resource: wgpu::BindingResource::TextureView(&pyramid.level_views[level]),
-            },
-          ],
-        })
-      })
-      .collect()
-  }
-
-  pub fn record(&self, pass: &mut wgpu::ComputePass<'_>, pyramid: &DepthPyramid, bind_groups: &[wgpu::BindGroup]) {
-    for (level, bind_group) in bind_groups.iter().enumerate() {
+    (first, levels): (&PyramidDepthParameters, &[PyramidLevelParameters]),
+  ) {
+    for level in 0..pyramid.levels as usize {
       let (width, height): (u32, u32) = pyramid.get_level_size(level as u32);
 
+      match level {
+        0 => context.bind(first),
+        _ => context.bind(&levels[level - 1]),
+      }
+
+      let pass: &mut wgpu::ComputePass<'static> = context.get_pass();
+
       pass.set_pipeline(&self.pipelines[(level > 0) as usize]);
-      pass.set_bind_group(0, bind_group, &[]);
       pass.dispatch_workgroups(width.div_ceil(WORKGROUP), height.div_ceil(WORKGROUP), 1);
     }
   }

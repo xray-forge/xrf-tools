@@ -11,7 +11,6 @@ use crate::frame::temporal_jitter::TemporalJitter;
 use crate::frame::upscale_targets::UpscaleTargets;
 use crate::frame::view_exposure::ViewExposure;
 use crate::frame::view_targets::ViewTargets;
-use crate::pass::fsr_groups::FsrGroups;
 use crate::pass::view_binding::ViewBinding;
 use crate::pass::wind_uniform::WindUniform;
 use crate::scene::level::grass_view::GrassView;
@@ -25,20 +24,18 @@ use crate::scene::static_scene::static_selection::StaticSelection;
 /// its exposure, what was asked of it (picks, the selection, overlays) and what it reads back.
 pub struct ViewState {
   pub targets: Option<ViewTargets>,
-  /// The depth pyramid over the targets, and its reduction's bind group a level.
-  pub pyramid: Option<(DepthPyramid, Vec<wgpu::BindGroup>)>,
-  /// Made again with the targets, which the cull's bind group follows.
-  pub targets_epoch: u64,
+  /// The depth pyramid over the targets.
+  pub pyramid: Option<DepthPyramid>,
   /// The view and projection the pyramid holds a frame's depth through, once one was reduced.
   pub history: Option<(Mat4, Mat4)>,
   /// The sequence each frame's samples are moved within their pixels by, while a temporal resolve gathers them.
   pub jitter: TemporalJitter,
-  /// The temporal resolve's histories and its bind group writing each, while it resolves.
-  pub temporal: Option<(TemporalHistory, [wgpu::BindGroup; 2])>,
+  /// The temporal resolve's histories, while it resolves.
+  pub temporal: Option<TemporalHistory>,
   /// The last resolved frame's view projection without its jitter, and its view.
   pub temporal_previous: Option<(Mat4, Mat4)>,
-  /// FSR 2's targets and bind groups, while it resolves.
-  pub fsr: Option<(FsrTargets, FsrGroups)>,
+  /// FSR 2's targets, while it upscales.
+  pub fsr: Option<FsrTargets>,
   /// The last frame's unjittered view projection, which every surface's motion is measured from.
   pub motion_previous: Option<Mat4>,
   /// The water's settings and flow, and the enhanced water's reflection histories.
@@ -75,7 +72,6 @@ impl ViewState {
     Self {
       targets: None,
       pyramid: None,
-      targets_epoch: 0,
       history: None,
       jitter: TemporalJitter::default(),
       temporal: None,
