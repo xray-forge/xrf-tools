@@ -10,6 +10,7 @@ import {
   NO_LEVEL_BLOOM,
   OPENXRAY_LEVEL_LOOK,
   toSettingsLevelLook,
+  XRF_LEVEL_LOOK,
 } from "@/core/level/lib/look/level-look";
 import { TRenderExposureSettings } from "@/core/render/lib/settings/render-feature-settings";
 
@@ -19,6 +20,8 @@ export enum ELevelLookSource {
   GAME = "game",
   /** The settings' exposure, nothing scaled or corrected. */
   SETTINGS = "settings",
+  /** What XRF's render presets ship, whatever game is open. */
+  XRF = "xrf",
   /** What Anomaly ships, whatever game is open. */
   ANOMALY = "anomaly",
   /** OpenXRay's own defaults, whatever game is open. */
@@ -62,6 +65,9 @@ export function resolveLevelLook(
 
     case ELevelLookSource.SETTINGS:
       return toSettingsLevelLook(exposure);
+
+    case ELevelLookSource.XRF:
+      return XRF_LEVEL_LOOK;
 
     case ELevelLookSource.ANOMALY:
       return ANOMALY_LEVEL_LOOK;

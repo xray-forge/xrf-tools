@@ -34,6 +34,7 @@ fn attach(
   let handle = handles
     .get(window)
     .ok_or_else(|| format!("Window '{window}' cannot host a native viewport"))?;
+
   Ok(state.attach_viewport(
     window,
     Arc::new(Win32WindowHost::new(handle)),
