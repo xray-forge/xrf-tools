@@ -13,6 +13,7 @@ use xrf_renderer_core::{
 use xrf_math::EPS_S;
 
 use crate::camera::camera_view::CameraView;
+use crate::contract::render_ambient_occlusion_quality::RenderAmbientOcclusionQuality;
 use crate::contract::render_antialiasing::RenderAntialiasing;
 use crate::contract::render_applied_report::RenderAppliedReport;
 use crate::contract::render_applied_shadows::RenderAppliedShadows;
@@ -46,6 +47,7 @@ use crate::host::render_level_source::RenderLevelSource;
 use crate::host::render_level_weather::RenderLevelWeather;
 use crate::host::render_rain::RenderRain;
 use crate::lighting::render_lighting::RenderLighting;
+use crate::pass::ambient_occlusion_pass::AmbientOcclusionPass;
 use crate::pass::ambient_occlusion_uniform::AmbientOcclusionUniform;
 use crate::pass::bloom_uniform::BloomUniform;
 use crate::pass::camera_uniform::CameraUniform;
@@ -72,6 +74,7 @@ use crate::pass::wet_uniform::WetUniform;
 use crate::pass::wind_uniform::WindUniform;
 use crate::scene::level::ambient_frame::AmbientFrame;
 use crate::scene::level::ambient_gust::AmbientGust;
+use crate::scene::level::level_lights::LevelLights;
 use crate::scene::level::level_overlays::LevelOverlays;
 use crate::scene::level::level_scene::LevelScene;
 use crate::scene::level::level_smoothing::LevelSmoothing;
@@ -813,6 +816,92 @@ impl LevelView {
     add_draw(graph, "late g-buffer", late, false);
   }
 
+  /// Declares the lighting: the lights binned into the view's clusters, the sun then every light drawn into the light
+  /// target, the binning's overflow read back, and the ambient occlusion searched and denoised.
+  fn add_lighting_passes<'a>(
+    &'a self,
+    (graph, bindings): (&mut FrameGraph<'a>, &mut GraphBindings<'a>),
+    passes: LevelPasses<'a>,
+    (view, textures, groups): (&'a ViewBinding, &'a wgpu::BindGroup, &'a ViewLightGroups),
+    targets: ViewTargetHandles,
+    (has_lights, is_occlusion_ambient): (bool, bool),
+  ) {
+    let lights: &'a LevelLights = &self.scene.lights;
+    let counts: GraphBuffer = bindings.import_buffer(graph, "light cluster counts", &lights.counts);
+    let gbuffer: [GraphTexture; 4] = [targets.albedo, targets.normal, targets.material, targets.depth];
+
+    graph
+      .add_encoder_pass("light counts clear")
+      .buffer(counts, GraphBufferAccess::CopyDestination)
+      .record(move |context| lights.clear_overflow(context.get_encoder()));
+
+    if has_lights {
+      graph
+        .add_compute_pass("light binning")
+        .buffer(counts, GraphBufferAccess::StorageReadWrite)
+        .record(move |context| passes.lights.record_binning(context.get_pass(), &groups.lights[0]));
+    }
+
+    gbuffer
+      .into_iter()
+      .fold(graph.add_raster_pass("sun"), |builder, texture| {
+        builder.texture(texture, GraphTextureAccess::Sampled)
+      })
+      .color(GraphColorAttachment::new(
+        targets.light,
+        wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+      ))
+      .record(move |context| passes.sun.record(context.get_pass(), view, &groups.sun));
+
+    if has_lights {
+      gbuffer
+        .into_iter()
+        .fold(graph.add_raster_pass("lights"), |builder, texture| {
+          builder.texture(texture, GraphTextureAccess::Sampled)
+        })
+        .buffer(counts, GraphBufferAccess::StorageRead)
+        .color(GraphColorAttachment::new(targets.light, wgpu::LoadOp::Load))
+        .record(move |context| {
+          passes
+            .lights
+            .record_draw(context.get_pass(), view, &groups.lights, textures)
+        });
+    }
+
+    // The overflow, read back for a report a frame or more later: an effect the graph cannot see.
+    graph
+      .add_encoder_pass("light overflow")
+      .buffer(counts, GraphBufferAccess::CopySource)
+      .keep()
+      .record(move |context| lights.record_overflow(context.get_encoder()));
+
+    if is_occlusion_ambient {
+      let quality: RenderAmbientOcclusionQuality = self.info.ambient_occlusion.quality;
+
+      for (stage, (name, (read, written))) in ["ambient occlusion", "occlusion denoise", "occlusion denoise back"]
+        .into_iter()
+        .zip(AmbientOcclusionPass::STAGES)
+        .enumerate()
+      {
+        // Each stage reads the other target than it draws into, with the normals and the depth.
+        [targets.occlusion[1 - read], targets.normal, targets.depth]
+          .into_iter()
+          .fold(graph.add_raster_pass(name), |builder, texture| {
+            builder.texture(texture, GraphTextureAccess::Sampled)
+          })
+          .color(GraphColorAttachment::new(
+            targets.occlusion[written],
+            wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+          ))
+          .record(move |context| {
+            passes
+              .ambient_occlusion
+              .record(context.get_pass(), (stage, quality), view, &groups.occlusion)
+          });
+      }
+    }
+  }
+
   /// Ends a frame its graph recorded: the water's reflection and the temporal resolve's history it wrote become the
   /// ones the next frame keeps.
   fn finish_frame(&mut self, is_lit: bool, resolve: Option<&'static str>) {
@@ -1322,44 +1411,14 @@ impl LevelView {
       }
     }
 
-    if is_lit {
-      bridge!("sun", |level, encoder, marker| {
-        if let (Some(targets), Some((_, groups))) = (&level.state.targets, &level.renderer.light_groups) {
-          passes.sun.draw(encoder, targets, view, &groups.sun);
-        }
-
-        level.scene.lights.clear_overflow(encoder);
-
-        if !has_lights {
-          level.scene.lights.record_overflow(encoder);
-        }
-      });
-
-      if has_lights {
-        bridge!("lights", |level, encoder, marker| {
-          if let (Some(targets), Some((_, groups))) = (&level.state.targets, &level.renderer.light_groups) {
-            passes
-              .lights
-              .draw(encoder, targets, view, &groups.lights, texture_group);
-          }
-
-          level.scene.lights.record_overflow(encoder);
-        });
-      }
-
-      if is_occlusion_ambient {
-        bridge!("ambient occlusion", |level, encoder, marker| {
-          if let (Some(targets), Some((_, groups))) = (&level.state.targets, &level.renderer.light_groups) {
-            passes.ambient_occlusion.draw(
-              encoder,
-              targets,
-              view,
-              &groups.occlusion,
-              level.info.ambient_occlusion.quality,
-            );
-          }
-        });
-      }
+    if let (true, Some((_, groups))) = (is_lit, &level_view.renderer.light_groups) {
+      level_view.add_lighting_passes(
+        (&mut graph, &mut bindings),
+        passes,
+        (view, texture_group, groups),
+        handles,
+        (has_lights, is_occlusion_ambient),
+      );
 
       if is_hazing {
         bridge!("haze", |level, encoder, marker| {

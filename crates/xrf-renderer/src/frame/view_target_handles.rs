@@ -15,6 +15,8 @@ pub struct ViewTargetHandles {
   pub light: GraphTexture,
   pub scene: GraphTexture,
   pub distortion: GraphTexture,
+  /// The ambient occlusion's two half-size targets, searched into the first and denoised through the second.
+  pub occlusion: [GraphTexture; 2],
 }
 
 impl ViewTargetHandles {
@@ -31,6 +33,10 @@ impl ViewTargetHandles {
       light: import("light", &targets.light),
       scene: import("scene", &targets.scene),
       distortion: import("distortion", &targets.distortion),
+      occlusion: [
+        import("ambient occlusion", &targets.occlusion[0]),
+        import("ambient occlusion denoised", &targets.occlusion[1]),
+      ],
     }
   }
 

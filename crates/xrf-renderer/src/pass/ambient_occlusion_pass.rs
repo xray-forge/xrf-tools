@@ -2,7 +2,7 @@ use xrf_error::XrfResult;
 
 use crate::contract::render_ambient_occlusion_quality::RenderAmbientOcclusionQuality;
 use crate::frame::view_targets::ViewTargets;
-use crate::pass::fullscreen_pipeline::{begin_cleared_pass, texture_binding};
+use crate::pass::fullscreen_pipeline::texture_binding;
 use crate::pass::layout_entries::{texture_entry, uniform_entry};
 use crate::pass::shader_pipelines::{create_checked, create_module};
 use crate::pass::view_binding::ViewBinding;
@@ -94,28 +94,28 @@ impl AmbientOcclusionPass {
     })
   }
 
-  pub fn draw(
+  /// Which group each stage reads (the other target than it draws into), and which target it draws into: the search,
+  /// then the denoise across, then back.
+  pub const STAGES: [(usize, usize); 3] = [(0, 0), (1, 1), (0, 0)];
+
+  /// Draws one of its stages into the target the pass draws into: the search at `quality`, or a denoise.
+  pub fn record(
     &self,
-    encoder: &mut wgpu::CommandEncoder,
-    targets: &ViewTargets,
+    pass: &mut wgpu::RenderPass<'_>,
+    (stage, quality): (usize, RenderAmbientOcclusionQuality),
     view: &ViewBinding,
     bind_groups: &[wgpu::BindGroup; 2],
-    quality: RenderAmbientOcclusionQuality,
   ) {
     let search: usize = QUALITIES.iter().position(|it| *it == quality).unwrap_or(2);
+    let pipeline: &wgpu::RenderPipeline = match stage {
+      0 => &self.searches[search],
+      _ => &self.denoises[stage - 1],
+    };
 
-    for (pipeline, target, group) in [
-      (&self.searches[search], &targets.occlusion[0], &bind_groups[0]),
-      (&self.denoises[0], &targets.occlusion[1], &bind_groups[1]),
-      (&self.denoises[1], &targets.occlusion[0], &bind_groups[0]),
-    ] {
-      let mut pass: wgpu::RenderPass<'_> = begin_cleared_pass(encoder, "ambient occlusion", target);
-
-      pass.set_pipeline(pipeline);
-      pass.set_bind_group(0, &view.bind_group, &[]);
-      pass.set_bind_group(1, group, &[]);
-      pass.draw(0..3, 0..1);
-    }
+    pass.set_pipeline(pipeline);
+    pass.set_bind_group(0, &view.bind_group, &[]);
+    pass.set_bind_group(1, &bind_groups[Self::STAGES[stage].0], &[]);
+    pass.draw(0..3, 0..1);
   }
 
   #[allow(clippy::type_complexity)]

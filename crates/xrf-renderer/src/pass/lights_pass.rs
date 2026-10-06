@@ -141,39 +141,21 @@ impl LightsPass {
   }
 
   /// Bins the lights, then adds them over what the sun left in the light target.
-  pub fn draw(
+  /// Bins the lights into the view's clusters.
+  pub fn record_binning(&self, pass: &mut wgpu::ComputePass<'_>, bind_group: &wgpu::BindGroup) {
+    pass.set_pipeline(&self.binning);
+    pass.set_bind_group(0, bind_group, &[]);
+    pass.dispatch_workgroups(LIGHT_CLUSTERS.div_ceil(BINNING_WORKGROUP), 1, 1);
+  }
+
+  /// Adds every binned light's light to the light target the pass draws into.
+  pub fn record_draw(
     &self,
-    encoder: &mut wgpu::CommandEncoder,
-    targets: &ViewTargets,
+    pass: &mut wgpu::RenderPass<'_>,
     view: &ViewBinding,
     bind_groups: &[wgpu::BindGroup; 2],
     textures: &wgpu::BindGroup,
   ) {
-    {
-      let mut pass: wgpu::ComputePass<'_> = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-        label: Some("light binning"),
-        timestamp_writes: None,
-      });
-
-      pass.set_pipeline(&self.binning);
-      pass.set_bind_group(0, &bind_groups[0], &[]);
-      pass.dispatch_workgroups(LIGHT_CLUSTERS.div_ceil(BINNING_WORKGROUP), 1, 1);
-    }
-
-    let mut pass: wgpu::RenderPass<'_> = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-      label: Some("lights"),
-      color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-        view: &targets.light,
-        depth_slice: None,
-        resolve_target: None,
-        ops: wgpu::Operations {
-          load: wgpu::LoadOp::Load,
-          store: wgpu::StoreOp::Store,
-        },
-      })],
-      ..Default::default()
-    });
-
     pass.set_pipeline(&self.pipeline);
     pass.set_bind_group(0, &view.bind_group, &[]);
     pass.set_bind_group(1, &bind_groups[1], &[]);
