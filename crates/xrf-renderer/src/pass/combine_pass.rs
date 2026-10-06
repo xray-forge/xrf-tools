@@ -1,7 +1,7 @@
 use xrf_error::XrfResult;
 
 use crate::frame::view_targets::ViewTargets;
-use crate::pass::fullscreen_pipeline::{begin_cleared_pass_into, create_fullscreen_pipeline_into, texture_binding};
+use crate::pass::fullscreen_pipeline::{create_fullscreen_pipeline_into, texture_binding};
 use crate::pass::layout_entries::{storage_entry, texture_entry, uniform_entry};
 use crate::pass::material_table::MaterialTable;
 use crate::pass::view_binding::ViewBinding;
@@ -102,16 +102,13 @@ impl CombinePass {
     })
   }
 
-  pub fn draw(
+  pub fn record(
     &self,
-    encoder: &mut wgpu::CommandEncoder,
-    targets: &ViewTargets,
+    pass: &mut wgpu::RenderPass<'_>,
     view: &ViewBinding,
     bind_group: &wgpu::BindGroup,
     sky_group: &wgpu::BindGroup,
   ) {
-    let mut pass: wgpu::RenderPass<'_> = begin_cleared_pass_into(encoder, "combine", &[&targets.scene, &targets.high]);
-
     pass.set_pipeline(&self.pipeline);
     pass.set_bind_group(0, &view.bind_group, &[]);
     pass.set_bind_group(1, bind_group, &[]);

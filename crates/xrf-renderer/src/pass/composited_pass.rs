@@ -129,19 +129,14 @@ impl CompositedPass {
 
   /// Draws the composited surfaces each argument buffer lists, in cluster order.
   #[allow(clippy::too_many_arguments)]
-  pub fn draw(
+  pub fn record(
     &self,
-    encoder: &mut wgpu::CommandEncoder,
-    targets: &ViewTargets,
-    view: &ViewBinding,
-    bind_groups: &StaticDrawGroups,
-    textures: &wgpu::BindGroup,
+    pass: &mut wgpu::RenderPass<'_>,
+    (view, bind_groups, textures): (&ViewBinding, &StaticDrawGroups, &wgpu::BindGroup),
     (composited_group, sky_group): (&wgpu::BindGroup, &wgpu::BindGroup),
     args: &[&wgpu::Buffer],
     (sorted_group, sorted_count): (Option<&wgpu::BindGroup>, u32),
   ) {
-    let mut pass: wgpu::RenderPass<'_> = begin_composite(encoder, "composited", &targets.scene, &targets.depth);
-
     pass.set_bind_group(0, &view.bind_group, &[]);
     pass.set_bind_group(1, textures, &[]);
     pass.set_bind_group(3, composited_group, &[]);
@@ -292,31 +287,4 @@ impl CompositedPass {
       })
       .collect()
   }
-}
-
-/// A pass over a target it blends into, against the G-buffer's depth read only.
-fn begin_composite<'a>(
-  encoder: &'a mut wgpu::CommandEncoder,
-  label: &str,
-  target: &wgpu::TextureView,
-  depth: &wgpu::TextureView,
-) -> wgpu::RenderPass<'a> {
-  encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-    label: Some(label),
-    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-      view: target,
-      depth_slice: None,
-      resolve_target: None,
-      ops: wgpu::Operations {
-        load: wgpu::LoadOp::Load,
-        store: wgpu::StoreOp::Store,
-      },
-    })],
-    depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-      view: depth,
-      depth_ops: None,
-      stencil_ops: None,
-    }),
-    ..Default::default()
-  })
 }

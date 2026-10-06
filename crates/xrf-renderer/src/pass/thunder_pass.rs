@@ -111,33 +111,13 @@ impl ThunderPass {
   }
 
   /// Draws the strike: its model's indices, when it has a model, then both glows, each by its own blend.
-  pub fn draw(
+  pub fn record(
     &self,
-    encoder: &mut wgpu::CommandEncoder,
-    targets: &ViewTargets,
+    pass: &mut wgpu::RenderPass<'_>,
     view: &ViewBinding,
     groups: &[wgpu::BindGroup; 3],
     (draws, model_indices): ([XraySurfaceDraw; 3], u32),
   ) {
-    let mut pass: wgpu::RenderPass<'_> = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-      label: Some("thunder"),
-      color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-        view: &targets.scene,
-        depth_slice: None,
-        resolve_target: None,
-        ops: wgpu::Operations {
-          load: wgpu::LoadOp::Load,
-          store: wgpu::StoreOp::Store,
-        },
-      })],
-      depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-        view: &targets.depth,
-        depth_ops: None,
-        stencil_ops: None,
-      }),
-      ..Default::default()
-    });
-
     pass.set_bind_group(0, &view.bind_group, &[]);
 
     for (entry, (group, draw)) in groups.iter().zip(draws).enumerate() {

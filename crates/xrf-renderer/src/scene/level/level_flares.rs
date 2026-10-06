@@ -2,9 +2,11 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use glam::{Vec3, Vec4};
+use xrf_renderer_core::{FrameGraph, GraphColorAttachment, GraphTextureAccess};
 
 use crate::camera::camera_view::CameraView;
 use crate::contract::render_view_options::RenderViewOptions;
+use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::frame::view_targets::ViewTargets;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::host::render_lens_flare::RenderLensFlare;
@@ -168,26 +170,35 @@ impl LevelFlares {
   }
 
   /// Measures how much of the sun shows and draws the flares and the gradient, where this frame draws them.
-  pub fn record(
-    &self,
-    encoder: &mut wgpu::CommandEncoder,
-    pass: &FlarePass,
-    targets: &ViewTargets,
-    view: &ViewBinding,
+  pub fn add_passes<'a>(
+    &'a self,
+    graph: &mut FrameGraph<'a>,
+    pass: &'a FlarePass,
+    targets: ViewTargetHandles,
+    view: &'a ViewBinding,
   ) {
     let (true, Some(draw_group), Some((_, measure_group)), Some((_, textures))) =
       (self.is_drawn, &self.draw_group, &self.measure_group, &self.textures)
     else {
       return;
     };
-    let draws: Vec<(u32, &wgpu::BindGroup)> = textures
+    let draws: Vec<(u32, &'a wgpu::BindGroup)> = textures
       .iter()
       .filter(|(instance, _)| self.is_flared || *instance == GRADIENT_INSTANCE)
       .map(|(instance, group)| (*instance, group))
       .collect();
 
-    pass.measure(encoder, view, measure_group);
-    pass.draw(encoder, targets, view, draw_group, &draws);
+    // How much of the sun shows, measured from the depth, which the draw reads on the GPU: kept, since what it writes
+    // is the flares' own.
+    graph
+      .add_compute_pass("flare visibility")
+      .texture(targets.depth, GraphTextureAccess::Sampled)
+      .keep()
+      .record(move |context| pass.record_measure(context.get_pass(), view, measure_group));
+    graph
+      .add_raster_pass("flares")
+      .color(GraphColorAttachment::new(targets.scene, wgpu::LoadOp::Load))
+      .record(move |context| pass.record_draw(context.get_pass(), view, draw_group, &draws));
   }
 
   fn prepare_groups(

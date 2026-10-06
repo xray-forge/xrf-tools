@@ -7,7 +7,7 @@ use xrf_error::XrfResult;
 use xrf_material::XraySurfaceDraw;
 use xrf_renderer_core::{
   ExecutedGraph, FrameGraph, GraphBindings, GraphBuffer, GraphBufferAccess, GraphColorAttachment, GraphCompileOptions,
-  GraphDepthAttachment, GraphRuntime, GraphTexture, GraphTextureAccess,
+  GraphDepthAttachment, GraphRuntime, GraphTexture, GraphTextureAccess, RasterPassBuilder,
 };
 
 use xrf_math::EPS_S;
@@ -49,6 +49,7 @@ use crate::host::render_rain::RenderRain;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::pass::ambient_occlusion_pass::AmbientOcclusionPass;
 use crate::pass::ambient_occlusion_uniform::AmbientOcclusionUniform;
+use crate::pass::bloom_pass::BloomPass;
 use crate::pass::bloom_uniform::BloomUniform;
 use crate::pass::camera_uniform::CameraUniform;
 use crate::pass::fsr_groups::FsrGroups;
@@ -902,6 +903,18 @@ impl LevelView {
     }
   }
 
+  /// Adds a raster pass blending over the scene, tested against its depth without writing it.
+  fn add_over_scene<'g, 'a>(
+    graph: &'g mut FrameGraph<'a>,
+    targets: ViewTargetHandles,
+    name: &'static str,
+  ) -> RasterPassBuilder<'g, 'a> {
+    graph
+      .add_raster_pass(name)
+      .color(GraphColorAttachment::new(targets.scene, wgpu::LoadOp::Load))
+      .depth(GraphDepthAttachment::new_read_only(targets.depth))
+  }
+
   /// Ends a frame its graph recorded: the water's reflection and the temporal resolve's history it wrote become the
   /// ones the next frame keeps.
   fn finish_frame(&mut self, is_lit: bool, resolve: Option<&'static str>) {
@@ -1420,27 +1433,42 @@ impl LevelView {
         (has_lights, is_occlusion_ambient),
       );
 
-      if is_hazing {
-        bridge!("haze", |level, encoder, marker| {
-          if let (Some(targets), Some((_, groups)), Some((_, sky_group))) = (
-            &level.state.targets,
-            &level.renderer.light_groups,
-            &level.renderer.sky_group,
-          ) {
-            passes.sky_haze.draw(encoder, targets, &groups.haze, sky_group);
-          }
-        });
+      if let (true, Some((_, sky_group))) = (is_hazing, &level_view.renderer.sky_group) {
+        graph
+          .add_raster_pass("haze")
+          .color(GraphColorAttachment::new(
+            handles.haze,
+            wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+          ))
+          .record(move |context| passes.sky_haze.record(context.get_pass(), &groups.haze, sky_group));
       }
 
-      if has_sky {
-        bridge!("combine", |level, encoder, marker| {
-          if let (Some(targets), Some((_, groups)), Some((_, sky_group))) = (
-            &level.state.targets,
-            &level.renderer.light_groups,
-            &level.renderer.sky_group,
-          ) {
-            passes.combine.draw(encoder, targets, view, &groups.combine, sky_group);
-          }
+      if let (true, Some((_, sky_group))) = (has_sky, &level_view.renderer.sky_group) {
+        [
+          handles.albedo,
+          handles.normal,
+          handles.material,
+          handles.depth,
+          handles.light,
+          handles.occlusion[0],
+          handles.haze,
+        ]
+        .into_iter()
+        .fold(graph.add_raster_pass("combine"), |builder, texture| {
+          builder.texture(texture, GraphTextureAccess::Sampled)
+        })
+        .color(GraphColorAttachment::new(
+          handles.scene,
+          wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+        ))
+        .color(GraphColorAttachment::new(
+          handles.high,
+          wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+        ))
+        .record(move |context| {
+          passes
+            .combine
+            .record(context.get_pass(), view, &groups.combine, sky_group)
         });
       }
 
@@ -1481,86 +1509,93 @@ impl LevelView {
         passes.water.add_passes(&mut graph, &mut bindings, runtime, draw);
       }
 
-      if is_composited {
-        bridge!("composited", |level, encoder, marker| {
-          let args: Vec<&wgpu::Buffer> = Self::list_draw_args(&level.scene.statics, &level.info.cull);
+      if let (true, Some((_, sky_group))) = (is_composited, &level_view.renderer.sky_group) {
+        let args: Vec<GraphBuffer> = Self::list_draw_args(&level_view.scene.statics, &level_view.info.cull)
+          .into_iter()
+          .map(|args| bindings.import_buffer(&mut graph, "static draw arguments", args))
+          .collect();
+        let sorted: (Option<&wgpu::BindGroup>, u32) = (
+          level_view.renderer.sorted_group.as_ref().map(|(_, group)| group),
+          level_view.info.sorted_count,
+        );
 
-          if let (Some(targets), Some((_, draw_groups)), Some((_, groups)), Some((_, sky_group))) = (
-            &level.state.targets,
-            &level.renderer.draw_groups,
-            &level.renderer.light_groups,
-            &level.renderer.sky_group,
-          ) {
-            passes.composited.draw(
-              encoder,
-              targets,
-              view,
-              draw_groups,
-              texture_group,
+        args
+          .iter()
+          .fold(
+            Self::add_over_scene(&mut graph, handles, "composited"),
+            |builder, args| builder.buffer(*args, GraphBufferAccess::Indirect),
+          )
+          .record(move |context| {
+            let args: Vec<&wgpu::Buffer> = args.iter().map(|args| context.get_buffer(*args)).collect();
+
+            passes.composited.record(
+              context.get_pass(),
+              (view, draw_groups, texture_group),
               (&groups.composited, sky_group),
               &args,
-              (
-                level.renderer.sorted_group.as_ref().map(|(_, group)| group),
-                level.info.sorted_count,
-              ),
+              sorted,
             );
-          }
-        });
+          });
       }
 
       if has_particles {
-        bridge!("particles", |level, encoder, marker| {
-          if let Some(targets) = &level.state.targets {
-            level
-              .scene
-              .particles
-              .record(encoder, passes.particles, targets, view, texture_group);
-          }
-        });
+        level_view
+          .scene
+          .particles
+          .add_passes(&mut graph, passes.particles, handles, (view, texture_group));
       }
 
       if is_shafted {
-        bridge!("sun shafts", |level, encoder, marker| {
-          if let (Some(targets), Some((_, groups))) = (&level.state.targets, &level.renderer.light_groups) {
-            passes.sun_shafts.draw(encoder, targets, view, &groups.sun_shafts);
-          }
-        });
+        graph
+          .add_raster_pass("sun shafts")
+          .texture(handles.depth, GraphTextureAccess::Sampled)
+          .color(GraphColorAttachment::new(handles.scene, wgpu::LoadOp::Load))
+          .color(GraphColorAttachment::new(handles.high, wgpu::LoadOp::Load))
+          .record(move |context| passes.sun_shafts.record(context.get_pass(), view, &groups.sun_shafts));
       }
 
-      if is_rain_drawn {
-        bridge!("rain", |level, encoder, marker| {
-          if let (Some(targets), Some(counts), Some((_, rain_group))) =
-            (&level.state.targets, level.info.rain_draw, &level.renderer.rain_group)
-          {
-            passes.rain.draw(encoder, targets, view, rain_group, counts);
-          }
-        });
+      if let (true, Some(counts), Some((_, rain_group))) = (
+        is_rain_drawn,
+        level_view.info.rain_draw,
+        &level_view.renderer.rain_group,
+      ) {
+        Self::add_over_scene(&mut graph, handles, "rain")
+          .record(move |context| passes.rain.record(context.get_pass(), view, rain_group, counts));
       }
 
-      if is_thundering {
-        bridge!("thunder", |level, encoder, marker| {
-          if let (Some(targets), Some(draws), Some((_, thunder_groups))) = (
-            &level.state.targets,
-            level.info.thunder_draw,
-            &level.renderer.thunder_groups,
-          ) {
-            passes.thunder.draw(encoder, targets, view, thunder_groups, draws);
-          }
-        });
+      if let (true, Some(draws), Some((_, thunder_groups))) = (
+        is_thundering,
+        level_view.info.thunder_draw,
+        &level_view.renderer.thunder_groups,
+      ) {
+        Self::add_over_scene(&mut graph, handles, "thunder")
+          .record(move |context| passes.thunder.record(context.get_pass(), view, thunder_groups, draws));
       }
 
-      bridge!("flares", |level, encoder, marker| {
-        if let Some(targets) = &level.state.targets {
-          level.renderer.flares.record(encoder, passes.flares, targets, view);
+      level_view
+        .renderer
+        .flares
+        .add_passes(&mut graph, passes.flares, handles, view);
+
+      if let (true, Some((_, bloom_groups))) = (is_bloomed, &level_view.renderer.bloom_groups) {
+        // Built from the high target into the first, blurred across into the second, then down into the first.
+        for (stage, (read, written)) in [
+          (handles.high, handles.bloom[0]),
+          (handles.bloom[0], handles.bloom[1]),
+          (handles.bloom[1], handles.bloom[0]),
+        ]
+        .into_iter()
+        .enumerate()
+        {
+          graph
+            .add_raster_pass(BloomPass::STAGES[stage])
+            .texture(read, GraphTextureAccess::Sampled)
+            .color(GraphColorAttachment::new(
+              written,
+              wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+            ))
+            .record(move |context| passes.bloom.record(context.get_pass(), stage, bloom_groups));
         }
-      });
-
-      if is_bloomed {
-        bridge!("bloom", |level, encoder, marker| {
-          if let (Some(targets), Some((_, groups))) = (&level.state.targets, &level.renderer.bloom_groups) {
-            passes.bloom.draw(encoder, targets, groups);
-          }
-        });
       }
 
       if is_smoothed {

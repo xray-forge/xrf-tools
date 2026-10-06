@@ -121,15 +121,14 @@ impl ParticlePass {
     })
   }
 
-  /// Draws each run of quads in order over the scene, with its equation's pipeline.
-  pub fn draw(
+  /// Draws every batch into the scene the pass draws into, each blended as its own.
+  pub fn record_colour(
     &self,
-    encoder: &mut wgpu::CommandEncoder,
-    targets: &ViewTargets,
+    pass: &mut wgpu::RenderPass<'_>,
     groups: (&ViewBinding, &wgpu::BindGroup, &wgpu::BindGroup),
     batches: &[ParticleBatch],
   ) {
-    let mut pass: wgpu::RenderPass<'_> = Self::begin(encoder, "particles", &targets.scene, targets, groups);
+    Self::bind(pass, groups);
 
     for batch in batches {
       pass.set_pipeline(&self.pipelines.colour[batch.blend.get_index()]);
@@ -137,17 +136,14 @@ impl ParticlePass {
     }
   }
 
-  /// Draws each run of quads, back to front, into the distortion target.
-  pub fn draw_distortion(
+  /// Draws the distorting sprites' runs into the distortion target the pass draws into.
+  pub fn record_distortion(
     &self,
-    encoder: &mut wgpu::CommandEncoder,
-    targets: &ViewTargets,
+    pass: &mut wgpu::RenderPass<'_>,
     groups: (&ViewBinding, &wgpu::BindGroup, &wgpu::BindGroup),
     runs: &[Range<u32>],
   ) {
-    let mut pass: wgpu::RenderPass<'_> =
-      Self::begin(encoder, "particle distortion", &targets.distortion, targets, groups);
-
+    Self::bind(pass, groups);
     pass.set_pipeline(&self.pipelines.distortion);
 
     for run in runs {
@@ -155,38 +151,13 @@ impl ParticlePass {
     }
   }
 
-  /// A pass drawing into one target, tested against the scene's depth, which stays read only so it is sampled too.
-  fn begin<'a>(
-    encoder: &'a mut wgpu::CommandEncoder,
-    label: &str,
-    target: &wgpu::TextureView,
-    targets: &ViewTargets,
+  fn bind(
+    pass: &mut wgpu::RenderPass<'_>,
     (view, bind_group, texture_group): (&ViewBinding, &wgpu::BindGroup, &wgpu::BindGroup),
-  ) -> wgpu::RenderPass<'a> {
-    let mut pass: wgpu::RenderPass<'a> = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-      label: Some(label),
-      color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-        view: target,
-        depth_slice: None,
-        resolve_target: None,
-        ops: wgpu::Operations {
-          load: wgpu::LoadOp::Load,
-          store: wgpu::StoreOp::Store,
-        },
-      })],
-      depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-        view: &targets.depth,
-        depth_ops: None,
-        stencil_ops: None,
-      }),
-      ..Default::default()
-    });
-
+  ) {
     pass.set_bind_group(0, &view.bind_group, &[]);
     pass.set_bind_group(1, bind_group, &[]);
     pass.set_bind_group(2, texture_group, &[]);
-
-    pass
   }
 
   /// The vertices drawing a run of quads, six a quad as `QuadIB` indexes them.

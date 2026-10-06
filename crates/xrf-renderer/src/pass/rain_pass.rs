@@ -91,33 +91,13 @@ impl RainPass {
   }
 
   /// Draws the streaks falling, and the splashes where the model has indices.
-  pub fn draw(
+  pub fn record(
     &self,
-    encoder: &mut wgpu::CommandEncoder,
-    targets: &ViewTargets,
+    pass: &mut wgpu::RenderPass<'_>,
     view: &ViewBinding,
     bind_group: &wgpu::BindGroup,
     (streaks, splash_indices): (u32, u32),
   ) {
-    let mut pass: wgpu::RenderPass<'_> = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-      label: Some("rain"),
-      color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-        view: &targets.scene,
-        depth_slice: None,
-        resolve_target: None,
-        ops: wgpu::Operations {
-          load: wgpu::LoadOp::Load,
-          store: wgpu::StoreOp::Store,
-        },
-      })],
-      depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-        view: &targets.depth,
-        depth_ops: None,
-        stencil_ops: None,
-      }),
-      ..Default::default()
-    });
-
     pass.set_bind_group(0, &view.bind_group, &[]);
     pass.set_bind_group(1, bind_group, &[]);
     pass.set_pipeline(&self.pipelines[0]);

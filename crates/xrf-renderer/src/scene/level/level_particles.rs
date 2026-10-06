@@ -11,12 +11,14 @@ use xrf_particles::{
   ParticleBounds, ParticleCollider, ParticleEffectInstance, ParticleEngineRules, ParticleLibrary, ParticleObject,
   ParticleUpdateContext,
 };
+use xrf_renderer_core::{FrameGraph, GraphColorAttachment, GraphDepthAttachment};
 use xrf_visual::ZoneSphere;
 
 use crate::camera::camera_view::CameraView;
 use crate::contract::render_ambient_report::RenderAmbientReport;
 use crate::contract::render_particles_report::RenderParticlesReport;
 use crate::contract::render_view_options::RenderViewOptions;
+use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::frame::view_targets::ViewTargets;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::host::render_level_particles::RenderLevelParticles;
@@ -458,27 +460,34 @@ impl LevelParticles {
 
   /// Draws the quads filled this frame over the scene, then the distorting ones into the distortion target; whether
   /// anything drew.
-  pub fn record(
-    &self,
-    encoder: &mut wgpu::CommandEncoder,
-    pass: &ParticlePass,
-    targets: &ViewTargets,
-    view: &ViewBinding,
-    texture_group: &wgpu::BindGroup,
-  ) -> bool {
+  pub fn add_passes<'a>(
+    &'a self,
+    graph: &mut FrameGraph<'a>,
+    pass: &'a ParticlePass,
+    targets: ViewTargetHandles,
+    (view, texture_group): (&'a ViewBinding, &'a wgpu::BindGroup),
+  ) {
     let Some((_, group)) = &self.group else {
-      return false;
+      return;
     };
 
     if !self.batches.is_empty() {
-      pass.draw(encoder, targets, (view, group, texture_group), &self.batches);
+      graph
+        .add_raster_pass("particles")
+        .color(GraphColorAttachment::new(targets.scene, wgpu::LoadOp::Load))
+        .depth(GraphDepthAttachment::new_read_only(targets.depth))
+        .record(move |context| pass.record_colour(context.get_pass(), (view, group, texture_group), &self.batches));
     }
 
     if self.is_distorting() {
-      pass.draw_distortion(encoder, targets, (view, group, texture_group), &self.distortion_runs);
+      graph
+        .add_raster_pass("particle distortion")
+        .color(GraphColorAttachment::new(targets.distortion, wgpu::LoadOp::Load))
+        .depth(GraphDepthAttachment::new_read_only(targets.depth))
+        .record(move |context| {
+          pass.record_distortion(context.get_pass(), (view, group, texture_group), &self.distortion_runs)
+        });
     }
-
-    !self.batches.is_empty() || self.is_distorting()
   }
 
   /// Whether this frame has particles to draw, as `record` would draw them.

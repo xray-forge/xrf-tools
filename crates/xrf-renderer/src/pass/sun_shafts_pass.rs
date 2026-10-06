@@ -83,30 +83,7 @@ impl SunShaftsPass {
     })
   }
 
-  pub fn draw(
-    &self,
-    encoder: &mut wgpu::CommandEncoder,
-    targets: &ViewTargets,
-    view: &ViewBinding,
-    group: &wgpu::BindGroup,
-  ) {
-    let added = |view| {
-      Some(wgpu::RenderPassColorAttachment {
-        view,
-        depth_slice: None,
-        resolve_target: None,
-        ops: wgpu::Operations {
-          load: wgpu::LoadOp::Load,
-          store: wgpu::StoreOp::Store,
-        },
-      })
-    };
-    let mut pass: wgpu::RenderPass<'_> = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-      label: Some("sun shafts"),
-      color_attachments: &[added(&targets.scene), added(&targets.high)],
-      ..Default::default()
-    });
-
+  pub fn record(&self, pass: &mut wgpu::RenderPass<'_>, view: &ViewBinding, group: &wgpu::BindGroup) {
     pass.set_pipeline(&self.pipeline);
     pass.set_bind_group(0, &view.bind_group, &[]);
     pass.set_bind_group(1, group, &[]);
