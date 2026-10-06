@@ -2,11 +2,14 @@ use std::sync::Arc;
 
 use glam::{IVec2, IVec4, Vec3};
 use xrf_error::XrfResult;
+use xrf_renderer_core::{
+  FrameGraph, GraphBindings, GraphBuffer, GraphBufferAccess, GraphColorAttachment, GraphDepthAttachment,
+};
 
 use crate::camera::camera_view::CameraView;
 use crate::contract::render_applied_grass::RenderAppliedGrass;
 use crate::contract::render_grass_settings::RenderGrassSettings;
-use crate::frame::view_targets::ViewTargets;
+use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::host::render_level_details::RenderLevelDetails;
 use crate::host::render_level_source::RenderLevelSource;
@@ -214,57 +217,72 @@ impl LevelGrass {
   }
 
   /// Plants the frame's grass, where it is drawn.
-  pub fn plant(&self, encoder: &mut wgpu::CommandEncoder, pass: &GrassPass) {
+  pub fn add_planting<'a>(
+    &'a self,
+    graph: &mut FrameGraph<'a>,
+    bindings: &mut GraphBindings<'a>,
+    pass: &'a GrassPass,
+  ) -> Option<GraphBuffer> {
     let (Some(level), Some(build)) = (&self.level, &self.build) else {
-      return;
+      return None;
     };
 
     if !self.is_drawn {
-      return;
+      return None;
     }
 
     let line: u32 = self.values.reach as u32 * 2 + 1;
+    let dispatch: GrassDispatch = GrassDispatch {
+      cells: line * line,
+      bands: build.size.bands,
+      models: level.model_count,
+      capacity: build.size.capacity,
+    };
+    let args: GraphBuffer = bindings.import_buffer(graph, "grass draw arguments", &level.args);
 
-    pass.plant(
-      encoder,
-      (&level.bind_group, &build.bind_group),
-      GrassDispatch {
-        cells: line * line,
-        bands: build.size.bands,
-        models: level.model_count,
-        capacity: build.size.capacity,
-      },
-    );
+    graph
+      .add_compute_pass("grass planting")
+      .buffer(args, GraphBufferAccess::StorageReadWrite)
+      .record(move |context| {
+        pass.record_plant(context.get_pass(), (&level.bind_group, &build.bind_group), dispatch);
+      });
+
+    Some(args)
   }
 
-  /// Draws what the frame planted into the G-buffer.
-  pub fn draw(
-    &self,
-    encoder: &mut wgpu::CommandEncoder,
-    pass: &GrassPass,
-    (targets, view): (&ViewTargets, &ViewBinding),
-    textures: &wgpu::BindGroup,
+  /// Declares the draw of what the frame planted, its arguments `args`, into the G-buffer.
+  pub fn add_draw<'a>(
+    &'a self,
+    graph: &mut FrameGraph<'a>,
+    pass: &'a GrassPass,
+    (targets, args): (ViewTargetHandles, GraphBuffer),
+    (view, textures): (&'a ViewBinding, &'a wgpu::BindGroup),
   ) {
     let (Some(level), Some(draw_group)) = (&self.level, &self.draw_group) else {
       return;
     };
 
-    if !self.is_drawn {
-      return;
-    }
-
-    pass.draw(
-      encoder,
-      targets,
-      view,
-      (draw_group, textures),
-      &GrassDraws {
-        positions: &level.positions,
-        uvs: &level.uvs,
-        indices: &level.indices,
-        args: &level.args,
-        models: level.model_count,
-      },
-    );
+    targets
+      .get_gbuffer()
+      .into_iter()
+      .fold(graph.add_raster_pass("grass"), |builder, texture| {
+        builder.color(GraphColorAttachment::new(texture, wgpu::LoadOp::Load))
+      })
+      .depth(GraphDepthAttachment::new(targets.depth, wgpu::LoadOp::Load))
+      .buffer(args, GraphBufferAccess::Indirect)
+      .record(move |context| {
+        pass.record_draw(
+          context.get_pass(),
+          view,
+          (draw_group, textures),
+          &GrassDraws {
+            positions: &level.positions,
+            uvs: &level.uvs,
+            indices: &level.indices,
+            args: &level.args,
+            models: level.model_count,
+          },
+        );
+      });
   }
 }

@@ -1,5 +1,6 @@
-use xrf_renderer_core::{GraphTexture, UniformBinding};
+use xrf_renderer_core::UniformBinding;
 
+use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::pass::lighting_uniform::LightingUniform;
 use crate::pass::static_draw_groups::StaticDrawGroups;
 use crate::pass::view_binding::ViewBinding;
@@ -8,12 +9,7 @@ use crate::scene::level::level_water::LevelWater;
 /// What a frame's water is drawn from: the view's targets as its graph imported them, what the static draws bind, the
 /// frame's lighting, both skies, and the view's water.
 pub struct WaterDraw<'a> {
-  /// The targets' size, which the water's own transients take.
-  pub size: (u32, u32),
-  pub scene: GraphTexture,
-  pub depth: GraphTexture,
-  pub light: GraphTexture,
-  pub distortion: GraphTexture,
+  pub targets: ViewTargetHandles,
   pub view: &'a ViewBinding,
   pub textures: &'a wgpu::BindGroup,
   pub draw_groups: &'a StaticDrawGroups,

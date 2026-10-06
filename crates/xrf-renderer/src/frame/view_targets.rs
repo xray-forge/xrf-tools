@@ -53,6 +53,13 @@ impl ViewTargets {
   pub const BLOOM_SIZE: (u32, u32) = (256, 256);
   /// What the distortion target holds where nothing distorts it, `(127, 127, 0, 127)` as the engine clears it.
   pub const NEUTRAL_DISTORTION: f64 = 127.0 / 255.0;
+  /// The distortion target cleared to nothing distorting, as each frame starts it.
+  pub const DISTORTION_CLEAR: wgpu::Color = wgpu::Color {
+    r: Self::NEUTRAL_DISTORTION,
+    g: Self::NEUTRAL_DISTORTION,
+    b: 0.0,
+    a: Self::NEUTRAL_DISTORTION,
+  };
   /// Texels the haze map holds across, one a bearing, and down, one a height, as `shaders/frame/sky_haze.wgsl` says.
   pub const HAZE_SIZE: (u32, u32) = (64, 32);
 
@@ -123,27 +130,5 @@ impl ViewTargets {
 
   pub fn is_sized(&self, width: u32, height: u32) -> bool {
     self.width == width && self.height == height
-  }
-
-  /// Clears the distortion target to nothing distorting, before anything of the frame writes it.
-  pub fn clear_distortion(&self, encoder: &mut wgpu::CommandEncoder) {
-    encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-      label: Some("distortion clear"),
-      color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-        view: &self.distortion,
-        depth_slice: None,
-        resolve_target: None,
-        ops: wgpu::Operations {
-          load: wgpu::LoadOp::Clear(wgpu::Color {
-            r: Self::NEUTRAL_DISTORTION,
-            g: Self::NEUTRAL_DISTORTION,
-            b: 0.0,
-            a: Self::NEUTRAL_DISTORTION,
-          }),
-          store: wgpu::StoreOp::Store,
-        },
-      })],
-      ..Default::default()
-    });
   }
 }

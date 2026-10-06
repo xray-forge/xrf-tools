@@ -124,40 +124,13 @@ impl WetPass {
     ]
   }
 
-  pub fn draw(
-    &self,
-    encoder: &mut wgpu::CommandEncoder,
-    targets: &ViewTargets,
-    view: &ViewBinding,
-    [patch, apply]: &[wgpu::BindGroup; 2],
-  ) {
-    for (index, (target, group)) in [
-      (&targets.light, patch),
-      (&targets.normal, apply),
-      (&targets.albedo, apply),
-    ]
-    .into_iter()
-    .enumerate()
-    {
-      let mut pass: wgpu::RenderPass<'_> = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-        label: Some("wet"),
-        color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-          view: target,
-          depth_slice: None,
-          resolve_target: None,
-          ops: wgpu::Operations {
-            load: wgpu::LoadOp::Load,
-            store: wgpu::StoreOp::Store,
-          },
-        })],
-        ..Default::default()
-      });
-
-      pass.set_pipeline(&self.pipelines[index]);
-      pass.set_bind_group(0, &view.bind_group, &[]);
-      pass.set_bind_group(1, group, &[]);
-      pass.draw(0..3, 0..1);
-    }
+  /// Draws one of its three stages into the target the pass draws into: the wet patches into the light, then the wet
+  /// look into the normals and the albedo, each from the group it reads.
+  pub fn record(&self, pass: &mut wgpu::RenderPass<'_>, stage: usize, view: &ViewBinding, group: &wgpu::BindGroup) {
+    pass.set_pipeline(&self.pipelines[stage]);
+    pass.set_bind_group(0, &view.bind_group, &[]);
+    pass.set_bind_group(1, group, &[]);
+    pass.draw(0..3, 0..1);
   }
 
   fn create_pipelines(

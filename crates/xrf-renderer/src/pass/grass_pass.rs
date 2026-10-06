@@ -150,9 +150,9 @@ impl GrassPass {
 
   /// Plants the frame's grass: the ring's stale cells ranked and the nearest planted, every current cell culled, and
   /// what it keeps sorted into a draw a model.
-  pub fn plant(
+  pub fn record_plant(
     &self,
-    encoder: &mut wgpu::CommandEncoder,
+    pass: &mut wgpu::ComputePass<'_>,
     (level, build): (&wgpu::BindGroup, &wgpu::BindGroup),
     dispatch: GrassDispatch,
   ) {
@@ -167,60 +167,24 @@ impl GrassPass {
       1,
       groups(dispatch.capacity),
     ];
-    let mut pass: wgpu::ComputePass<'_> = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-      label: Some("grass planting"),
-      timestamp_writes: None,
-    });
-
     pass.set_bind_group(0, level, &[]);
     pass.set_bind_group(1, build, &[]);
 
     for (pipeline, size) in self.planting.iter().zip(sizes) {
       pass.set_pipeline(pipeline);
-      self.grid.dispatch(&mut pass, size);
+      self.grid.dispatch(pass, size);
     }
   }
 
-  /// Draws every model's tufts the planting sorted into the G-buffer, over what the static draws left.
-  pub fn draw(
+  /// Draws every model's tufts the planting sorted into the G-buffer the pass draws into, over what the static draws
+  /// left.
+  pub fn record_draw(
     &self,
-    encoder: &mut wgpu::CommandEncoder,
-    targets: &ViewTargets,
+    pass: &mut wgpu::RenderPass<'_>,
     view: &ViewBinding,
     (draw_group, textures): (&wgpu::BindGroup, &wgpu::BindGroup),
     draws: &GrassDraws<'_>,
   ) {
-    let load = || wgpu::Operations {
-      load: wgpu::LoadOp::Load,
-      store: wgpu::StoreOp::Store,
-    };
-    let attachment = |view| {
-      Some(wgpu::RenderPassColorAttachment {
-        view,
-        depth_slice: None,
-        resolve_target: None,
-        ops: load(),
-      })
-    };
-    let mut pass: wgpu::RenderPass<'_> = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-      label: Some("grass"),
-      color_attachments: &[
-        attachment(&targets.albedo),
-        attachment(&targets.normal),
-        attachment(&targets.material),
-        attachment(&targets.motion),
-      ],
-      depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-        view: &targets.depth,
-        depth_ops: Some(wgpu::Operations {
-          load: wgpu::LoadOp::Load,
-          store: wgpu::StoreOp::Store,
-        }),
-        stencil_ops: None,
-      }),
-      ..Default::default()
-    });
-
     pass.set_pipeline(&self.draw);
     pass.set_bind_group(0, &view.bind_group, &[]);
     pass.set_bind_group(1, draw_group, &[]);
