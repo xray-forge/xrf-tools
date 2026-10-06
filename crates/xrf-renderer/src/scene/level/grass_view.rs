@@ -8,6 +8,7 @@ use crate::contract::render_applied_grass::RenderAppliedGrass;
 use crate::contract::render_grass_settings::RenderGrassSettings;
 use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::lighting::grass_wind::GrassWind;
+use crate::pass::foliage_wind_values::FoliageWindValues;
 use crate::pass::grass_dispatch::GrassDispatch;
 use crate::pass::grass_draws::GrassDraws;
 use crate::pass::grass_pass::GrassPass;
@@ -75,8 +76,9 @@ impl GrassView {
     camera: &CameraView,
     discard_below: f32,
     (time, is_windy, strength): (f32, bool, f32),
+    foliage: &FoliageWindValues,
   ) {
-    let wind: GrassWindUniform = self.wind.advance(time, is_windy, strength);
+    let wind: GrassWindUniform = self.wind.advance(time, is_windy, strength).with_foliage(foliage);
 
     self.is_drawn = false;
 

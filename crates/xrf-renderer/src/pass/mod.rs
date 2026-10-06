@@ -29,6 +29,7 @@ pub(crate) mod flare_measure_parameters;
 pub(crate) mod flare_pass;
 pub(crate) mod flare_texture_parameters;
 pub(crate) mod flare_uniform;
+pub(crate) mod foliage_wind_values;
 pub(crate) mod fsr_accumulate_parameters;
 pub(crate) mod fsr_depth_clip_parameters;
 pub(crate) mod fsr_dilate_parameters;

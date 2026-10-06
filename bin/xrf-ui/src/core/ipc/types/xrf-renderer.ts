@@ -328,6 +328,42 @@ export type RenderExposureSettings = {
   adaptation: number | null;
 };
 
+/** How trees and grass move in the wind. */
+export enum ERenderFoliageMode {
+  /**
+   * The engine's own: each tree leant by a wind turning through the weather's `trees_*` keys, each waving tuft by
+   * its wave.
+   */
+  ENGINE = "engine",
+  /** Trunks swinging downwind and branches and grass carried by a flow field drifting with the weather's wind. */
+  ENHANCED = "enhanced",
+}
+
+/** Every `ERenderFoliageMode` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type RenderFoliageMode = `${ERenderFoliageMode}`;
+
+/** How trees and grass move in the wind, and the enhanced motion's strengths. */
+export type RenderFoliageSettings = {
+  mode: RenderFoliageMode;
+  /** The least share of the strongest wind the foliage moves at, from nothing to one. */
+  minSpeed: number | null;
+  /**
+   * How fast the grass's flow field drifts, how far it tosses the tufts, how far the wind pushes them downwind, and
+   * how much its gusts lift them.
+   */
+  grassSpeed: number | null;
+  grassTurbulence: number | null;
+  grassPush: number | null;
+  grassWave: number | null;
+  /** How fast the branches' flow field drifts, how fast the trunks swing, and how far. */
+  treesSpeed: number | null;
+  treesTrunk: number | null;
+  treesBend: number | null;
+  /** How much sunlight leaves and grass pass through from behind, and how much of the sun's colour that light keeps. */
+  sssIntensity: number | null;
+  sssColor: number | null;
+};
+
 /** Where the render thread's time goes a frame, mean milliseconds over a report's span, in the order it spends them. */
 export type RenderFramePhases = {
   /** Moving the cameras and weathers on, and uploading the textures that arrived. */
@@ -485,6 +521,8 @@ export type RenderGrassSettings = {
   radius: number | null;
   /** What every planted tuft is scaled by: `r__detail_height`. */
   height: number | null;
+  /** How the trees and the grass move in the wind. */
+  foliage: RenderFoliageSettings;
 };
 
 /**

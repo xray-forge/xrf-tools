@@ -4,6 +4,7 @@ use glam::Vec4;
 use xrf_renderer_core::ShaderStruct;
 
 use crate::lighting::render_tree_wind::RenderTreeWind;
+use crate::pass::foliage_wind_values::FoliageWindValues;
 
 /// The sway of the trees as `shaders/static/pulling.wgsl` reads it, built each frame as `FTreeVisual_setup::calculate`
 /// builds it: a wind turning once every `rotation` seconds at the amplitude's length, and a wave travelling through the
@@ -19,6 +20,14 @@ pub struct WindUniform {
   /// The same two the frame before, which a swaying vertex's motion is measured from.
   pub previous_wind: Vec4,
   pub previous_wave: Vec4,
+  /// The enhanced foliage motion's wind, grass and trees strengths, and its flow fields' drift this frame and the last
+  /// (`FoliageWindValues`).
+  pub foliage_wind: Vec4,
+  pub foliage_grass: Vec4,
+  pub foliage_trees: Vec4,
+  pub foliage_anim: Vec4,
+  pub foliage_previous_anim: Vec4,
+  pub foliage_flora: Vec4,
 }
 
 impl WindUniform {
@@ -41,6 +50,7 @@ impl WindUniform {
       wave,
       previous_wind: wind,
       previous_wave: wave,
+      ..Self::default()
     }
   }
 
@@ -51,6 +61,17 @@ impl WindUniform {
       self.previous_wave = before.wave;
     }
 
+    self
+  }
+
+  /// This sway with the enhanced foliage motion's values.
+  pub fn with_foliage(mut self, foliage: &FoliageWindValues) -> Self {
+    self.foliage_wind = foliage.wind;
+    self.foliage_grass = foliage.grass;
+    self.foliage_trees = foliage.trees;
+    self.foliage_anim = foliage.anim;
+    self.foliage_previous_anim = foliage.previous_anim;
+    self.foliage_flora = foliage.flora;
     self
   }
 

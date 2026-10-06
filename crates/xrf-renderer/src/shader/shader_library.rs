@@ -26,6 +26,10 @@ const EMBEDDED: &[(&str, &str)] = &[
     "common/contact_march",
     include_str!("../../shaders/common/contact_march.wgsl"),
   ),
+  (
+    "common/foliage_wind",
+    include_str!("../../shaders/common/foliage_wind.wgsl"),
+  ),
   ("common/cut_out", include_str!("../../shaders/common/cut_out.wgsl")),
   ("common/hmodel", include_str!("../../shaders/common/hmodel.wgsl")),
   ("common/lighting", include_str!("../../shaders/common/lighting.wgsl")),

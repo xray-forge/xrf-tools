@@ -47,5 +47,16 @@ fn fs_sun(in: FullscreenVarying) -> @location(0) vec4<f32> {
   let contact: f32 = textureLoad(contact_shadows, min(texel, vec2<i32>(textureDimensions(contact_shadows)) - 1), 0).r;
   let shadow: f32 = sun_shadow(shadow_maps, shadows, world, world_normal, dot(normal, to_light)) * contact;
 
-  return vec4<f32>(lighting.sun.rgb * lit.x, lighting.sun.w * lit.y) * shadow;
+  // Foliage passes the sun through from behind: by how directly the eye looks into it past the leaf, tinted by the
+  // sun's colour as far as the flora's colour share says.
+  var through: vec3<f32> = vec3<f32>(0.0);
+
+  if (lighting.flora.x > 0.5 && has_mark(material.a, MARK_FLORA)) {
+    let to_eye: vec3<f32> = -normalize(position);
+    let amount: f32 = saturate(dot(to_eye, -(to_light + normal))) * lighting.flora.y;
+
+    through = amount * mix(vec3<f32>(1.0), lighting.sun.rgb, lighting.flora.z);
+  }
+
+  return vec4<f32>(lighting.sun.rgb * lit.x + through, lighting.sun.w * lit.y) * shadow;
 }

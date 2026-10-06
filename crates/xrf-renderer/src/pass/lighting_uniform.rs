@@ -46,6 +46,9 @@ pub struct LightingUniform {
   /// The sun shafts' density, then the steps along a ray `accum_volumetric_sun` takes at the chosen quality; nothing
   /// where they are not drawn.
   pub shafts: Vec4,
+  /// One while flora is lit as foliage, how much sunlight it passes through from behind, and how much of the sun's
+  /// colour that light keeps.
+  pub flora: Vec4,
 }
 
 impl LightingUniform {
@@ -118,6 +121,12 @@ impl LightingUniform {
       } else {
         Vec4::ZERO
       },
+      flora: Vec4::new(
+        flag(options.features.grass.foliage.is_enhanced()),
+        options.features.grass.foliage.sss_intensity,
+        options.features.grass.foliage.sss_color,
+        0.0,
+      ),
     }
   }
 }

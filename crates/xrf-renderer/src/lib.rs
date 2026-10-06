@@ -44,6 +44,8 @@ pub use crate::contract::render_contact_shadow_settings::RenderContactShadowSett
 pub use crate::contract::render_debug_view::RenderDebugView;
 pub use crate::contract::render_enhanced_water_settings::RenderEnhancedWaterSettings;
 pub use crate::contract::render_exposure_settings::RenderExposureSettings;
+pub use crate::contract::render_foliage_mode::RenderFoliageMode;
+pub use crate::contract::render_foliage_settings::RenderFoliageSettings;
 pub use crate::contract::render_frame_phases::RenderFramePhases;
 pub use crate::contract::render_frame_rate::RenderFrameRate;
 pub use crate::contract::render_frame_report::RenderFrameReport;

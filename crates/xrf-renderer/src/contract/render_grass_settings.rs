@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use crate::contract::render_foliage_settings::RenderFoliageSettings;
+
 /// The grass (`CDetailManager`): planted on the GPU around the camera as the engine plants it, and drawn into the
 /// G-buffer. The engine's are 49 metres round at a density of 0.6 (`r__detail_radius`, `r__detail_density`).
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -13,6 +15,8 @@ pub struct RenderGrassSettings {
   pub radius: f32,
   /// What every planted tuft is scaled by: `r__detail_height`.
   pub height: f32,
+  /// How the trees and the grass move in the wind.
+  pub foliage: RenderFoliageSettings,
 }
 
 impl Default for RenderGrassSettings {
@@ -23,6 +27,7 @@ impl Default for RenderGrassSettings {
       density: 0.6,
       radius: 49.0,
       height: 1.0,
+      foliage: RenderFoliageSettings::default(),
     }
   }
 }

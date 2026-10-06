@@ -4,6 +4,7 @@ import {
   RenderContactShadowSettings,
   RenderEnhancedWaterSettings,
   RenderExposureSettings,
+  RenderFoliageSettings,
   RenderGrassSettings,
   RenderLightsSettings,
   RenderLodSettings,
@@ -47,6 +48,8 @@ export type TRenderContactShadowSettings = TSettled<RenderContactShadowSettings>
 export type TRenderEnhancedWaterSettings = TSettled<RenderEnhancedWaterSettings>;
 
 export type TRenderExposureSettings = TSettled<RenderExposureSettings>;
+
+export type TRenderFoliageSettings = TSettled<RenderFoliageSettings>;
 
 export type TRenderGrassSettings = TSettled<RenderGrassSettings>;
 

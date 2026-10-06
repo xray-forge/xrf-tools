@@ -2,12 +2,14 @@ import {
   ERenderAmbientOcclusionMethod,
   ERenderAntialiasing,
   ERenderContactShadowMode,
+  ERenderFoliageMode,
   ERenderWaterMode,
 } from "@/core/ipc/types/xrf-renderer";
 import {
   DEFAULT_RENDER_AMBIENT_OCCLUSION_SETTINGS,
   DEFAULT_RENDER_CONTACT_SHADOW_SETTINGS,
   DEFAULT_RENDER_EXPOSURE_SETTINGS,
+  DEFAULT_RENDER_FOLIAGE_SETTINGS,
   DEFAULT_RENDER_GRASS_SETTINGS,
   DEFAULT_RENDER_LIGHTS_SETTINGS,
   DEFAULT_RENDER_LOD_SETTINGS,
@@ -38,7 +40,11 @@ export const RENDER_PRESETS: Readonly<Record<ERenderPreset, IRenderFeatureSettin
     // The application's own choice over the engine's: the resolve the cut-outs' hashed alpha and the jitter are for.
     antialiasing: ERenderAntialiasing.TAA,
     exposure: DEFAULT_RENDER_EXPOSURE_SETTINGS,
-    grass: DEFAULT_RENDER_GRASS_SETTINGS,
+    // The application's own choice over the engine's, as the antialiasing is: the enhanced foliage motion.
+    grass: {
+      ...DEFAULT_RENDER_GRASS_SETTINGS,
+      foliage: { ...DEFAULT_RENDER_FOLIAGE_SETTINGS, mode: ERenderFoliageMode.ENHANCED },
+    },
     isOcclusionCulled: true,
     lights: DEFAULT_RENDER_LIGHTS_SETTINGS,
     lod: DEFAULT_RENDER_LOD_SETTINGS,

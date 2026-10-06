@@ -286,7 +286,10 @@ fn fs_lights(in: FullscreenVarying) -> @location(0) vec4<f32> {
 
   let position: vec3<f32> = camera_view_position(in.clip.xy, depth);
   let normal: vec3<f32> = octahedral_decode(textureLoad(normal_target, texel, 0).xy);
-  let slice: f32 = textureLoad(material_target, texel, 0).z;
+  let material_texel: vec4<f32> = textureLoad(material_target, texel, 0);
+  let slice: f32 = material_texel.z;
+  // Foliage is lit from each light's side, as the light passes through its leaves.
+  let is_flora: bool = has_mark(material_texel.a, MARK_FLORA);
   let cluster: u32 = light_cluster(lights, in.clip.xy / camera.viewport.xy, -position.z);
   let to_eye: vec3<f32> = normalize(-position);
   let offset: vec3<f32> = position + normal * VIRTUAL_OFFSET;
@@ -317,13 +320,19 @@ fn fs_lights(in: FullscreenVarying) -> @location(0) vec4<f32> {
 
     let to_light: vec3<f32> = normalize(-to_point);
     let half_way: vec3<f32> = normalize(to_light + to_eye);
+    // Foliage's normal turns towards the light, halfway for a spot or a shadowed omni, wholly for an unshadowed one,
+    // and its gloss is cut as far.
+    let is_unshadowed_omni: bool = !(is_spot || is_shadowed);
+    let lit_normal: vec3<f32> = select(normal,
+      select(normalize(normal + to_light), to_light, is_unshadowed_omni), is_flora);
     let material: vec4<f32> = textureSampleLevel(
       material_lut,
       lut_sampler,
-      vec3<f32>(dot(to_light, normal), dot(half_way, normal), slice),
+      vec3<f32>(dot(to_light, lit_normal), dot(half_way, lit_normal), slice),
       0.0
     );
-    var light: vec4<f32> = vec4<f32>(material.xxx, material.y) * falloff;
+    let flora_gloss: f32 = select(1.0, select(0.5, 0.3, is_unshadowed_omni), is_flora);
+    var light: vec4<f32> = vec4<f32>(material.xxx, material.y * flora_gloss) * falloff;
 
     if (is_spot) {
       let along: f32 = dot(to_point, record.axis.xyz);

@@ -2,6 +2,7 @@ import {
   ERenderAmbientOcclusionMethod,
   ERenderAmbientOcclusionQuality,
   ERenderContactShadowMode,
+  ERenderFoliageMode,
   ERenderLightShadowFilter,
   ERenderScale,
   ERenderWaterMode,
@@ -12,6 +13,7 @@ import {
   TRenderContactShadowSettings,
   TRenderEnhancedWaterSettings,
   TRenderExposureSettings,
+  TRenderFoliageSettings,
   TRenderGrassSettings,
   TRenderLightsSettings,
   TRenderLodSettings,
@@ -58,9 +60,25 @@ export const DEFAULT_RENDER_EXPOSURE_SETTINGS: TRenderExposureSettings = {
   middleGray: 1,
 };
 
+/** The engine's own foliage motion, with the enhanced motion's designed strengths. */
+export const DEFAULT_RENDER_FOLIAGE_SETTINGS: TRenderFoliageSettings = {
+  grassPush: 1.5,
+  grassSpeed: 9.5,
+  grassTurbulence: 1.4,
+  grassWave: 0.4,
+  minSpeed: 0.1,
+  mode: ERenderFoliageMode.ENGINE,
+  sssColor: 1,
+  sssIntensity: 2,
+  treesBend: 0.5,
+  treesSpeed: 11,
+  treesTrunk: 0.15,
+};
+
 /** The engine's own grass. */
 export const DEFAULT_RENDER_GRASS_SETTINGS: TRenderGrassSettings = {
   density: 0.6,
+  foliage: DEFAULT_RENDER_FOLIAGE_SETTINGS,
   height: 1,
   isEnabled: true,
   radius: 49,
