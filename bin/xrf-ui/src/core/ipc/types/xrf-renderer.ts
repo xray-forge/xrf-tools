@@ -1,14 +1,25 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
-/** How hard the ambient occlusion searches: XeGTAO's presets. */
+/** How the screen's ambient occlusion is searched. */
+export enum ERenderAmbientOcclusionMethod {
+  /** GTAO as XeGTAO computes it: everything the depth shows taken to reach infinitely behind it. */
+  GTAO = "gtao",
+  /** VBAO, visibility-bitmask ambient occlusion: every occluder a thickness deep, so light passes behind thin things. */
+  VBAO = "vbao",
+}
+
+/** Every `ERenderAmbientOcclusionMethod` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type RenderAmbientOcclusionMethod = `${ERenderAmbientOcclusionMethod}`;
+
+/** How hard the ambient occlusion searches: XeGTAO's presets, and VBAO's own. */
 export enum ERenderAmbientOcclusionQuality {
-  /** One direction, two steps each way. */
+  /** GTAO one direction, two steps each way; VBAO three steps. */
   LOW = "low",
-  /** Two directions, two steps. */
+  /** GTAO two directions, two steps; VBAO five steps. */
   MEDIUM = "medium",
-  /** Three directions, three steps, `Base`'s choice. */
+  /** GTAO three directions, three steps; VBAO eight steps. `Base`'s choice. */
   HIGH = "high",
-  /** Six directions, three steps. */
+  /** GTAO six directions, three steps; VBAO two directions, eight steps. */
   ULTRA = "ultra",
 }
 
@@ -16,16 +27,32 @@ export enum ERenderAmbientOcclusionQuality {
 export type RenderAmbientOcclusionQuality = `${ERenderAmbientOcclusionQuality}`;
 
 /**
- * Ambient occlusion from the depth of the frame, GTAO as XeGTAO computes it at half resolution: it darkens the
- * hemisphere and ambient light over the baked hemisphere occlusion, as the engine's SSAO does.
+ * Ambient occlusion from the depth of the frame at half resolution: it darkens the hemisphere and ambient light over
+ * the baked hemisphere occlusion, as the engine's SSAO does. The radius, strength and quality are every method's.
  */
 export type RenderAmbientOcclusionSettings = {
   isEnabled: boolean;
+  /** GTAO's horizons, or VBAO's visibility bitmask, which `vbao` shapes. */
+  method: RenderAmbientOcclusionMethod;
   /** Metres around a point that what stands there occludes it from. */
   radius: number | null;
-  /** How dark the occlusion goes: one XeGTAO's own curve, zero none, two its square. */
+  /** How dark the occlusion goes: one the method's own curve, zero none, two its square. */
   strength: number | null;
   quality: RenderAmbientOcclusionQuality;
+  vbao: RenderAmbientOcclusionVbaoSettings;
+};
+
+/**
+ * VBAO's strengths: how deep an occluder is taken to be, how much light bounces back off a
+ * surface into its own creases, and over how many frames it is gathered.
+ */
+export type RenderAmbientOcclusionVbaoSettings = {
+  /** Metres behind what the depth shows that it is taken to be solid: light passes behind anything thinner. */
+  thickness: number | null;
+  /** How much of the light a surface's colour bounces between the sides of its creases comes back, one all of it. */
+  bounce: number | null;
+  /** Frames each pixel's occlusion is averaged over at most; one gathers none, its noise then holding still. */
+  accumulation: number;
 };
 
 /** How a viewport's finished frame has its edges smoothed. */

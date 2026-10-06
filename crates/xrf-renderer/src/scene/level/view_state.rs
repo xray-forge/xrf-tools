@@ -9,6 +9,7 @@ use crate::frame::stats_readback::StatsReadback;
 use crate::frame::temporal_history::TemporalHistory;
 use crate::frame::temporal_jitter::TemporalJitter;
 use crate::frame::upscale_targets::UpscaleTargets;
+use crate::frame::vbao_history::VbaoHistory;
 use crate::frame::view_exposure::ViewExposure;
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::view_binding::ViewBinding;
@@ -40,6 +41,8 @@ pub struct ViewState {
   pub motion_previous: Option<Mat4>,
   /// Frames a temporal resolve gathered, which the screen-space effects turn their noise by.
   pub noise_frame: u32,
+  /// VBAO's accumulations, while it accumulates.
+  pub occlusion: Option<VbaoHistory>,
   /// The water's settings and flow, and the enhanced water's reflection histories.
   pub water: LevelWater,
   /// The trees' sway the last frame drew with.
@@ -81,6 +84,7 @@ impl ViewState {
       fsr: None,
       motion_previous: None,
       noise_frame: 0,
+      occlusion: None,
       water: LevelWater::default(),
       last_wind: None,
       upscale: None,

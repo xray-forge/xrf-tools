@@ -1,7 +1,8 @@
 import { describe, expect, it, jest } from "@jest/globals";
 import { userEvent } from "@testing-library/user-event";
+import { ReactElement } from "react";
 
-import { RenderGraphSettings } from "@/core/ipc/types/xrf-renderer";
+import { ERenderAmbientOcclusionMethod, RenderGraphSettings } from "@/core/ipc/types/xrf-renderer";
 import { LevelCullingAction } from "@/core/level/components/preview/LevelCullingAction";
 import { LevelOcclusionAction } from "@/core/level/components/preview/LevelOcclusionAction";
 import { LevelOverlaysAction } from "@/core/level/components/preview/LevelOverlaysAction";
@@ -12,6 +13,7 @@ import { DEFAULT_LEVEL_LOD_OPTIONS } from "@/core/level/lib/lod/level-lod-option
 import { ELevelShading } from "@/core/level/lib/view/level-shading";
 import { DEFAULT_LEVEL_VIEW_OPTIONS, ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { DEFAULT_RENDER_AMBIENT_OCCLUSION_SETTINGS } from "@/core/render/lib/settings/render-feature-defaults";
+import { TRenderAmbientOcclusionSettings } from "@/core/render/lib/settings/render-feature-settings";
 import {
   DEFAULT_RENDER_GRAPH_SETTINGS,
   SERIAL_RENDER_GRAPH_SETTINGS,
@@ -133,6 +135,52 @@ describe("level toolbar groups", () => {
 
     expect(onChange).toHaveBeenLastCalledWith({ ...mockLevelFeatureOptions(), ambientOcclusion: {} });
     expect(onChangeHemiStrength).toHaveBeenLastCalledWith(1);
+  });
+
+  it("switches the view to VBAO, offering its strengths only then", async () => {
+    const onChange = jest.fn<(features: ILevelFeatureOptions) => void>();
+    const vbao: TRenderAmbientOcclusionSettings = {
+      ...DEFAULT_RENDER_AMBIENT_OCCLUSION_SETTINGS,
+      method: ERenderAmbientOcclusionMethod.VBAO,
+    };
+
+    function render(value: TRenderAmbientOcclusionSettings): ReactElement {
+      return (
+        <LevelOcclusionAction
+          options={DEFAULT_LEVEL_VIEW_OPTIONS}
+          state={{ isAvailable: true, value }}
+          features={mockLevelFeatureOptions()}
+          hemiStrength={1}
+          onToggle={() => {}}
+          onChange={onChange}
+          onChangeHemiStrength={() => {}}
+        />
+      );
+    }
+
+    const { getByRole, findByRole, queryByRole, rerender } = renderWithProviders(
+      render(DEFAULT_RENDER_AMBIENT_OCCLUSION_SETTINGS)
+    );
+
+    await userEvent.click(getByRole("button", { name: "Occlusion" }));
+    await findByRole("dialog", { name: "Occlusion" });
+
+    expect(queryByRole("slider", { name: "Thickness" })).toBeNull();
+
+    await userEvent.click(getByRole("button", { name: "VBAO" }));
+
+    expect(onChange).toHaveBeenLastCalledWith({
+      ...mockLevelFeatureOptions(),
+      ambientOcclusion: { method: ERenderAmbientOcclusionMethod.VBAO },
+    });
+
+    rerender(render(vbao));
+
+    expect(getByRole("slider", { name: "Thickness" })).toHaveAttribute("aria-valuetext", "0.25 m");
+    expect(getByRole("slider", { name: "Accumulation" })).toHaveAttribute("aria-valuetext", "8 frames");
+    expect(getByRole("button", { hidden: true, name: "Occlusion" })).toHaveAccessibleDescription(
+      "VBAO occlusion over 1.00 m, high quality, baked at 100%"
+    );
   });
 
   it("names the overlays shown, and times the passes from the readouts", async () => {

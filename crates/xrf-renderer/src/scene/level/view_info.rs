@@ -23,6 +23,7 @@ use crate::pass::static_occlusion_uniform::StaticOcclusionUniform;
 use crate::pass::temporal_uniform::TemporalUniform;
 use crate::pass::thunder_uniform::ThunderUniform;
 use crate::pass::upscale_uniform::UpscaleUniform;
+use crate::pass::vbao_uniform::VbaoUniform;
 use crate::pass::wet_uniform::WetUniform;
 use crate::pass::wind_uniform::WindUniform;
 use crate::scene::level::sky_views::SkyViews;
@@ -38,6 +39,8 @@ pub struct ViewInfo {
   pub bloom: [BloomUniform; 3],
   /// What the ambient occlusion searches by this frame.
   pub occlusion_settings: AmbientOcclusionUniform,
+  /// What VBAO searches, accumulates and filters by this frame.
+  pub vbao: VbaoUniform,
   /// What the contact shadows march by this frame: towards no light where none are drawn.
   pub contact_shadows: ContactShadowUniform,
   /// Whether the sun's contact shadows pass draws this frame.
@@ -80,8 +83,10 @@ pub struct ViewInfo {
   /// What corrects the finished image, and what the present shows.
   pub corrections: RenderImageCorrections,
   pub debug_view: RenderDebugView,
-  /// Whether its ambient occlusion is searched.
+  /// Whether its ambient occlusion is searched: on, and the view lit and solid.
   pub is_occlusion_drawn: bool,
+  /// Whether VBAO accumulates into its history this frame.
+  pub is_occlusion_accumulated: bool,
   /// Whether the static surfaces draw as their edges, which nothing composited or planted is drawn over.
   pub is_wireframe: bool,
   /// Whether the sky is blurred into the haze map the distance fades into.
@@ -114,6 +119,7 @@ impl Default for ViewInfo {
       upscale: UpscaleUniform::default(),
       bloom: [BloomUniform::default(); 3],
       occlusion_settings: AmbientOcclusionUniform::default(),
+      vbao: VbaoUniform::default(),
       contact_shadows: ContactShadowUniform::default(),
       is_sun_contact: false,
       rain: RainUniform::default(),
@@ -146,6 +152,7 @@ impl Default for ViewInfo {
       corrections: RenderImageCorrections::default(),
       debug_view: RenderDebugView::Final,
       is_occlusion_drawn: false,
+      is_occlusion_accumulated: false,
       is_wireframe: false,
       is_hazing: false,
       is_wallmarked: true,

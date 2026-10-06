@@ -1,4 +1,9 @@
-import { ERenderAntialiasing, ERenderContactShadowMode, ERenderWaterMode } from "@/core/ipc/types/xrf-renderer";
+import {
+  ERenderAmbientOcclusionMethod,
+  ERenderAntialiasing,
+  ERenderContactShadowMode,
+  ERenderWaterMode,
+} from "@/core/ipc/types/xrf-renderer";
 import {
   DEFAULT_RENDER_AMBIENT_OCCLUSION_SETTINGS,
   DEFAULT_RENDER_CONTACT_SHADOW_SETTINGS,
@@ -24,7 +29,12 @@ export enum ERenderPreset {
 /** What each preset sets every feature to. */
 export const RENDER_PRESETS: Readonly<Record<ERenderPreset, IRenderFeatureSettings>> = {
   [ERenderPreset.BASE]: {
-    ambientOcclusion: DEFAULT_RENDER_AMBIENT_OCCLUSION_SETTINGS,
+    // The application's own choice over XeGTAO's, as the antialiasing is: VBAO, which lets light
+    // through behind grass and fences.
+    ambientOcclusion: {
+      ...DEFAULT_RENDER_AMBIENT_OCCLUSION_SETTINGS,
+      method: ERenderAmbientOcclusionMethod.VBAO,
+    },
     // The application's own choice over the engine's: the resolve the cut-outs' hashed alpha and the jitter are for.
     antialiasing: ERenderAntialiasing.TAA,
     exposure: DEFAULT_RENDER_EXPOSURE_SETTINGS,

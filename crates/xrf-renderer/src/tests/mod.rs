@@ -26,5 +26,6 @@ pub(crate) mod test_bundle;
 pub(crate) mod test_workers;
 mod texture_cache;
 mod texture_role;
+mod vbao;
 mod water_flow;
 mod weather;

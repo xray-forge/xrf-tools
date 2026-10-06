@@ -2,6 +2,7 @@ use glam::{Mat4, Vec3, Vec4};
 use xrf_engine_target::XrayEngine;
 use xrf_renderer_core::ShaderStruct;
 
+use crate::contract::render_ambient_occlusion_settings::RenderAmbientOcclusionSettings;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::pass::lighting_frame::LightingFrame;
@@ -31,7 +32,8 @@ pub struct LightingUniform {
   pub clouds: Vec4,
   /// One for Anomaly's shading, then the rain's density.
   pub engine: Vec4,
-  /// Nothing, then ones where the scene is lit, the exposure adapts and the occlusion darkens.
+  /// How much light the occlusion's creases bounce back (VBAO's alone), then ones where the scene is
+  /// lit, the exposure adapts and the occlusion darkens.
   pub params: Vec4,
   /// `L_ambient`, `L_hemi_color` and `L_sun_color` as a forward pass binds them: the weather's own, neither doubled
   /// nor scaled by the console.
@@ -55,6 +57,9 @@ impl LightingUniform {
     let fog = lighting.fog.filter(|_| options.show.is_fogged);
     let (offset, scale) = fog.map_or((0.0, 0.0), |fog| fog.get_params());
     let flag = |is: bool| is as u32 as f32;
+    let occlusion: &RenderAmbientOcclusionSettings = &options.features.ambient_occlusion;
+    // Searched only where the view is lit and solid.
+    let is_occluded: bool = occlusion.is_enabled && options.mode.is_lit && !options.mode.is_wireframe;
 
     Self {
       to_sun: to_sun.extend(0.0),
@@ -90,10 +95,14 @@ impl LightingUniform {
         0.0,
       ),
       params: Vec4::new(
-        0.0,
+        if is_occluded && occlusion.is_vbao() {
+          occlusion.vbao.bounce.clamp(0.0, 1.0)
+        } else {
+          0.0
+        },
         flag(options.mode.is_lit),
         flag(frame.is_adapting),
-        flag(options.features.ambient_occlusion.is_enabled),
+        flag(is_occluded),
       ),
       forward_ambient: lighting.ambient_color.extend(0.0),
       forward_hemi: lighting.hemisphere_color.extend(0.0),

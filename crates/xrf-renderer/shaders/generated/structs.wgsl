@@ -143,6 +143,18 @@ struct AmbientOcclusion {
   reach: f32,
 }
 
+struct Vbao {
+  radius: f32,
+  thickness: f32,
+  power: f32,
+  spread: f32,
+  reach: f32,
+  frames: f32,
+  has_history: f32,
+  slice_noise: f32,
+  step_noise: f32,
+}
+
 struct ExposureParams {
   target_gray: f32,
   weight: f32,

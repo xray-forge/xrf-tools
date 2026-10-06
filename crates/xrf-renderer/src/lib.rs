@@ -23,8 +23,10 @@ pub use raw_window_handle;
 
 pub use crate::camera::camera_frame::CameraFrame;
 pub use crate::camera::camera_view::CameraView;
+pub use crate::contract::render_ambient_occlusion_method::RenderAmbientOcclusionMethod;
 pub use crate::contract::render_ambient_occlusion_quality::RenderAmbientOcclusionQuality;
 pub use crate::contract::render_ambient_occlusion_settings::RenderAmbientOcclusionSettings;
+pub use crate::contract::render_ambient_occlusion_vbao_settings::RenderAmbientOcclusionVbaoSettings;
 pub use crate::contract::render_antialiasing::RenderAntialiasing;
 pub use crate::contract::render_applied_environment::RenderAppliedEnvironment;
 pub use crate::contract::render_applied_fog::RenderAppliedFog;

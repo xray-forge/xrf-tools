@@ -1,5 +1,7 @@
+pub(crate) mod render_ambient_occlusion_method;
 pub(crate) mod render_ambient_occlusion_quality;
 pub(crate) mod render_ambient_occlusion_settings;
+pub(crate) mod render_ambient_occlusion_vbao_settings;
 pub(crate) mod render_antialiasing;
 pub(crate) mod render_applied_environment;
 pub(crate) mod render_applied_fog;

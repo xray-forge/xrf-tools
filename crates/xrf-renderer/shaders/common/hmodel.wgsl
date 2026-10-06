@@ -42,7 +42,7 @@ fn sun_light(state: Lighting, table: texture_3d<f32>, table_sampler: sampler, no
 // space; `albedo` carries the gloss in alpha.
 fn hmodel(state: Lighting, table: texture_3d<f32>, table_sampler: sampler, cube_0: texture_cube<f32>,
   cube_1: texture_cube<f32>, cube_sampler: sampler, albedo: vec4<f32>, light: vec4<f32>, normal_world: vec3<f32>,
-  to_point_world: vec3<f32>, slice: f32, occlusion: f32, visible: f32) -> vec3<f32> {
+  to_point_world: vec3<f32>, slice: f32, occlusion: f32, visible: vec3<f32>) -> vec3<f32> {
   let reflected: vec3<f32> = reflect(to_point_world, normal_world);
   let gloss: f32 = albedo.a;
   // The hemisphere looked up by occlusion and by how far the reflection turns from the view.

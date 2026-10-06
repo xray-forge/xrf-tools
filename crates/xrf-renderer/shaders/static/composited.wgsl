@@ -37,7 +37,8 @@ fn lit_color(shaded: GBufferOutput, position: vec3<f32>, fog: f32) -> vec3<f32> 
   let rotation: mat3x3<f32> = transpose(mat3x3<f32>(camera.view[0].xyz, camera.view[1].xyz, camera.view[2].xyz));
   let occlusion: f32 = mix(1.0, shaded.material.x, camera.switches.z);
   let color: vec3<f32> = hmodel(lighting, material_lut, lut_sampler, sky_environment_0, sky_environment_1, sky_clamp,
-    shaded.albedo, light, normalize(rotation * normal), normalize(rotation * normalize(position)), slice, occlusion, 1.0);
+    shaded.albedo, light, normalize(rotation * normal), normalize(rotation * normalize(position)), slice, occlusion,
+    vec3<f32>(1.0));
 
   return tonemap(mix(color, lighting.fog_color.rgb, fog), frame_scale(lighting, exposure));
 }

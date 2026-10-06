@@ -26,7 +26,13 @@ export function SettingsRendererAmbientOcclusion(): ReactElement {
   const onSet = useRendererOverride("ambientOcclusion");
 
   return (
-    <DetailSection title={"Ambient occlusion"} description={"Screen-space GTAO, the counterpart of the game's SSAO."}>
+    <DetailSection
+      title={"Ambient occlusion"}
+      description={
+        "Screen-space occlusion, the counterpart of the game's SSAO: GTAO or VBAO, picked in a " +
+        "level's Occlusion popover."
+      }
+    >
       <div className={"mt-4 flex flex-col gap-6"}>
         <CheckboxFormRow
           label={"Ambient occlusion"}
@@ -54,7 +60,7 @@ export function SettingsRendererAmbientOcclusion(): ReactElement {
 
         <SliderFormRow
           label={"Strength"}
-          description={"Occlusion intensity. 1 matches XeGTAO."}
+          description={"Occlusion intensity. 1 is each method's own curve."}
           value={occlusion.strength}
           {...RENDER_AMBIENT_OCCLUSION_LIMITS.strength}
           format={formatOcclusionStrength}
