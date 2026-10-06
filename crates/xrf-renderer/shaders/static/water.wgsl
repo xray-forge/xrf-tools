@@ -312,19 +312,17 @@ fn read_water(in: WaterVarying) -> WaterFragment {
     discard;
   }
 
-  // The true remapping, then the fast one below the top: the cube's lower half is never shown.
+  // `vreflect.y = vreflect.y * 2 - 1`, the fake remapping of the DirectX 11 programs, which the fresnel reads as well.
   out.reflected = reflect(out.to_point, out.surface_normal);
-
-  let scaled: vec3<f32> = out.reflected / max(abs(out.reflected.x), max(abs(out.reflected.y), abs(out.reflected.z)));
-
-  out.remapped = vec3<f32>(scaled.x, select(scaled.y, scaled.y * 2.0 - 1.0, scaled.y < 0.999), scaled.z);
+  out.remapped = vec3<f32>(out.reflected.x, out.reflected.y * 2.0 - 1.0, out.reflected.z);
 
   // `c0`: the vertex's baked light, the hemisphere by its occlusion, the sun by its sun occlusion, and the ambient, as
-  // `L_hemi_color`, `L_sun_color` and `L_ambient` bind them raw.
+  // `L_hemi_color`, `L_sun_color` and `L_ambient` bind them raw: the weather's own, which the console's light scales
+  // and combine's doubling and floor never reach.
   let normal_view: vec3<f32> = (camera.view * vec4<f32>(out.normal, 0.0)).xyz;
 
-  out.light = in.baked.rgb + lighting.environment.rgb * 0.25 * (0.5 + out.normal.y * 0.5) * in.hemi +
-    lighting.sun.rgb * dot(normal_view, lighting.to_sun.xyz) * in.baked.a + lighting.ambient.rgb * 0.5;
+  out.light = in.baked.rgb + lighting.forward_hemi.rgb * (0.5 + out.normal.y * 0.5) * in.hemi +
+    lighting.forward_sun.rgb * dot(normal_view, lighting.to_sun.xyz) * in.baked.a + lighting.forward_ambient.rgb;
   out.stored = textureLoad(depth_target, vec2<i32>(in.clip.xy), 0);
 
   let behind: f32 = select(-camera_view_position(in.clip.xy, out.stored).z, FAR_BEHIND, out.stored <= 0.0);

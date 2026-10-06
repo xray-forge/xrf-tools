@@ -1,3 +1,4 @@
+use crate::pass::lighting_uniform::LightingUniform;
 use crate::pass::water_uniform::WaterUniform;
 use crate::scene::static_scene::static_surface::StaticSurface;
 use crate::shader::shader_library::ShaderLibrary;
@@ -58,5 +59,16 @@ fn a_static_surface_is_as_large_as_its_shaders_read() {
   assert_eq!(
     get_struct_size(&library, "static/gbuffer", "Surface"),
     size_of::<StaticSurface>() as u32
+  );
+}
+
+/// The frame's lighting is laid out as large as it is written.
+#[test]
+fn the_lighting_uniform_is_as_large_as_its_shaders_read() {
+  let library: ShaderLibrary = ShaderLibrary::default();
+
+  assert_eq!(
+    get_struct_size(&library, "frame/combine", "Lighting"),
+    size_of::<LightingUniform>() as u32
   );
 }

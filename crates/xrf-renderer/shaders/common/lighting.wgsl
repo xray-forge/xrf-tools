@@ -25,9 +25,11 @@ struct Lighting {
   // y: one where the scene is lit; z: one where the exposure adapts; w: one where the ambient occlusion darkens the
   // hemisphere.
   params: vec4<f32>,
-  // `L_ambient` and `L_hemi_color` as a forward pass binds them: the weather's own, neither doubled nor scaled.
+  // `L_ambient`, `L_hemi_color` and `L_sun_color` as a forward pass binds them: the weather's own, neither doubled nor
+  // scaled by the console.
   forward_ambient: vec4<f32>,
   forward_hemi: vec4<f32>,
+  forward_sun: vec4<f32>,
   // rgb: the sun's sprite colour times how far it has faded in; w: half its side as a share of the distance it stands
   // at, zero where none is drawn.
   sun_sprite: vec4<f32>,
@@ -62,13 +64,6 @@ const DEF_HDR: f32 = 9.0;
 // `tonemap`'s high part: the scaled colour within `def_hdr`, which an eight-bit target clamps to one.
 fn tonemap_high(color: vec3<f32>, scale: f32) -> vec3<f32> {
   return color * scale / DEF_HDR;
-}
-
-// The scaled colour `tonemap` took to a tonemapped one: the curve solved for `x`.
-fn untonemap(color: vec3<f32>) -> vec3<f32> {
-  let rest: vec3<f32> = 1.0 - color;
-
-  return (sqrt(rest * rest + color * (4.0 / WHITE_INTENSITY_SQUARED)) - rest) * (WHITE_INTENSITY_SQUARED / 2.0);
 }
 
 // How much fog lies between the camera and a view space point: none without fog, one where it is total.
