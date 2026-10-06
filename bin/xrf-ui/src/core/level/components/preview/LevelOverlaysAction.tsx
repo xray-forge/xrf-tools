@@ -1,9 +1,7 @@
 import { default as GridOnIcon } from "@mui/icons-material/GridOn";
 import { ReactElement } from "react";
 
-import { RenderGraphSettings } from "@/core/ipc/types/xrf-renderer";
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
-import { RenderGraphFormRows } from "@/core/render/components/controls/RenderGraphFormRows";
 import { RenderPassTimingFormRow } from "@/core/render/components/controls/RenderPassTimingFormRow";
 import { EditorPopoverGroup, EditorPopoverGroupSection } from "@/core/shell/editor/EditorPopoverGroup";
 import { BaseComponentProps } from "@/lib/dom/element-types";
@@ -15,9 +13,6 @@ interface ILevelOverlaysActionProps extends BaseComponentProps {
   onToggle: (option: keyof ILevelViewOptions) => void;
   /** Sets in the settings whether every viewport times its passes. */
   onChangeGpuTimed: (isGpuTimed: boolean) => void;
-  /** Which of the frame graph's mechanisms the frames compile with, and sets them. */
-  graph: RenderGraphSettings;
-  onChangeGraph: (graph: RenderGraphSettings) => void;
 }
 
 /**
@@ -31,8 +26,6 @@ export function LevelOverlaysAction({
   isGpuTimed,
   onToggle,
   onChangeGpuTimed,
-  graph,
-  onChangeGraph,
 }: ILevelOverlaysActionProps): ReactElement {
   const { isGridVisible, isAxesVisible, isSunMarked, isStatsVisible } = options;
   const shown: Array<string> = [
@@ -80,7 +73,6 @@ export function LevelOverlaysAction({
         onToggle={() => onToggle("isStatsVisible")}
       >
         <RenderPassTimingFormRow isChecked={isGpuTimed} onChange={onChangeGpuTimed} />
-        <RenderGraphFormRows graph={graph} onChange={onChangeGraph} />
       </EditorPopoverGroupSection>
     </EditorPopoverGroup>
   );

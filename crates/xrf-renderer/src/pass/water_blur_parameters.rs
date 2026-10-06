@@ -1,9 +1,9 @@
 use xrf_renderer_core::{GraphTexture, PassParameters, UniformBinding};
 
+use crate::pass::enhanced_water_uniform::EnhancedWaterUniform;
 use crate::pass::water_blur_uniform::WaterBlurUniform;
-use crate::pass::water_uniform::WaterUniform;
 
-/// What one way of the enhanced water's reflection blur reads: its source, the water's uniform, and its way.
+/// What one way of the enhanced water's reflection blur reads: its source, the enhanced water's uniform, and its way.
 #[derive(PassParameters)]
 #[parameters(group = 0)]
 pub struct WaterBlurParameters<'a> {
@@ -12,7 +12,7 @@ pub struct WaterBlurParameters<'a> {
   #[sampler(filtering)]
   pub source_sampler: &'a wgpu::Sampler,
   #[uniform]
-  pub water: UniformBinding<WaterUniform>,
+  pub enhanced: UniformBinding<EnhancedWaterUniform>,
   #[uniform]
   pub blur: UniformBinding<WaterBlurUniform>,
 }

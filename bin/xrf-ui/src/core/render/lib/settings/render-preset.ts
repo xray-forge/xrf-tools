@@ -38,7 +38,7 @@ export const RENDER_PRESETS: Readonly<Record<ERenderPreset, IRenderFeatureSettin
       contact: { ...DEFAULT_RENDER_CONTACT_SHADOW_SETTINGS, mode: ERenderContactShadowMode.ENHANCED },
     },
     upscaling: DEFAULT_RENDER_UPSCALING_SETTINGS,
-    // The application's own choice over the engine's, as the antialiasing is: Screen Space Shaders' water.
+    // The application's own choice over the engine's, as the antialiasing is: the enhanced water.
     water: { ...DEFAULT_RENDER_WATER_SETTINGS, mode: ERenderWaterMode.ENHANCED },
   },
   [ERenderPreset.EDITING]: {

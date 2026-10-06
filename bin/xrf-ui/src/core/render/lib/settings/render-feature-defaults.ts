@@ -8,6 +8,7 @@ import {
 import {
   TRenderAmbientOcclusionSettings,
   TRenderContactShadowSettings,
+  TRenderEnhancedWaterSettings,
   TRenderExposureSettings,
   TRenderGrassSettings,
   TRenderLightsSettings,
@@ -100,31 +101,35 @@ export const DEFAULT_RENDER_UPSCALING_SETTINGS: TRenderUpscalingSettings = {
 };
 
 /**
- * The engine's own water: `shared/waterconfig.h`'s constants and `def_distort`, and the enhanced water's strengths at
- * Screen Space Shaders' own defaults (`ssfx_water`, `ssfx_water_setup1` and `ssfx_water_setup2`) and flow, but for
- * caustics a sixth as bright, calm water flowing a fifth as fast, and its maps' repeat broken.
+ * The enhanced water's designed strengths, but for caustics a sixth as bright, calm water flowing a fifth as fast, and
+ * its maps' repeat broken.
  */
-export const DEFAULT_RENDER_WATER_SETTINGS: TRenderWaterSettings = {
+export const DEFAULT_RENDER_ENHANCED_WATER_SETTINGS: TRenderEnhancedWaterSettings = {
   blurNoise: 1,
-  caustics: 0.05,
   calmFlow: 0.2,
-  distortion: 0.05,
+  caustics: 0.05,
   flow: 1,
+  parallaxHeight: 0.05,
+  reflectionBlur: 0.8,
+  reflectivity: 0.8,
+  refraction: 0.6,
+  ripples: 0.5,
+  softBorder: 0.05,
+  specular: 6,
+  turbidity: 3,
+  variation: 0.75,
+};
+
+/** The engine's own water: `shared/waterconfig.h`'s constants and `def_distort`. */
+export const DEFAULT_RENDER_WATER_SETTINGS: TRenderWaterSettings = {
+  distortion: 0.05,
+  enhanced: DEFAULT_RENDER_ENHANCED_WATER_SETTINGS,
   isDistorted: true,
   isEnabled: true,
   isSoft: true,
   mode: ERenderWaterMode.ENGINE,
-  parallaxHeight: 0.05,
   reflection: 1,
-  reflectionBlur: 0.8,
-  reflectivity: 0.8,
-  refraction: 0.6,
   ripple: 1,
-  ripples: 0.5,
-  softBorder: 0.3,
-  specular: 6,
-  turbidity: 3,
-  variation: 0.75,
   waveHeight: 1 / 60,
   waveSpeed: 25,
 };

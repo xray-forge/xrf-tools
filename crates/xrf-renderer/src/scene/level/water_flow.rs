@@ -1,8 +1,8 @@
-use crate::contract::render_water_settings::RenderWaterSettings;
+use crate::contract::render_enhanced_water_settings::RenderEnhancedWaterSettings;
 use crate::lighting::render_wind::RenderWind;
 
 /// How far the enhanced water's maps have scrolled, each frame's seconds at that frame's flow and at the pace its wind
-/// sets (`ssfx_water.ps`'s `ssfx_wind_anim.w * TimeSpeed`). Summed rather than multiplied out, so a change of wind,
+/// sets. Summed rather than multiplied out, so a change of wind,
 /// flow or the weather's clock changes how fast the maps move from then on, never where they stand.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct WaterFlow {
@@ -19,11 +19,11 @@ pub struct WaterFlow {
 }
 
 impl WaterFlow {
-  /// The share of its strongest the module takes a wind's velocity for, `saturate(wind_velocity * 0.001)`.
+  /// The share of its strongest a wind's velocity is taken for.
   const WIND_SHARE: f32 = 0.001;
 
   /// Moves the maps on by the seconds since the last frame, at this frame's settings and wind.
-  pub fn advance(&mut self, time: f32, settings: &RenderWaterSettings, wind: RenderWind) {
+  pub fn advance(&mut self, time: f32, settings: &RenderEnhancedWaterSettings, wind: RenderWind) {
     let elapsed: f32 = self.clock.map_or(0.0, |clock| (time - clock).max(0.0)) * settings.flow;
     let strength: f32 = (wind.velocity * Self::WIND_SHARE).clamp(0.0, 1.0);
     let pace = |most: f32, least: f32| (most * strength).max(least * settings.calm_flow).min(most);

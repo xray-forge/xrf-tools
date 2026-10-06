@@ -150,8 +150,6 @@ export function LevelPreviewToolbar({
             isGpuTimed={isGpuTimed}
             onToggle={onToggle}
             onChangeGpuTimed={onChangeGpuTimed}
-            graph={graph}
-            onChangeGraph={onChangeGraph}
           />
 
           <EditorToolbarSeparator />
@@ -274,6 +272,8 @@ export function LevelPreviewToolbar({
             lod={lod}
             onToggle={onToggle}
             onChangeLod={onChangeLod}
+            graph={graph}
+            onChangeGraph={onChangeGraph}
           />
 
           {actions ? (

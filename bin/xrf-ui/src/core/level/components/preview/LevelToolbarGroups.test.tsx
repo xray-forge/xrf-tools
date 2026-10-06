@@ -12,7 +12,10 @@ import { DEFAULT_LEVEL_LOD_OPTIONS } from "@/core/level/lib/lod/level-lod-option
 import { ELevelShading } from "@/core/level/lib/view/level-shading";
 import { DEFAULT_LEVEL_VIEW_OPTIONS, ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { DEFAULT_RENDER_AMBIENT_OCCLUSION_SETTINGS } from "@/core/render/lib/settings/render-feature-defaults";
-import { DEFAULT_RENDER_GRAPH_SETTINGS } from "@/core/render/lib/settings/render-graph-settings";
+import {
+  DEFAULT_RENDER_GRAPH_SETTINGS,
+  SERIAL_RENDER_GRAPH_SETTINGS,
+} from "@/core/render/lib/settings/render-graph-settings";
 import { mockLevelFeatureOptions } from "@/fixtures/mocks/level.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
@@ -93,6 +96,8 @@ describe("level toolbar groups", () => {
         lod={DEFAULT_LEVEL_LOD_OPTIONS}
         onToggle={() => {}}
         onChangeLod={() => {}}
+        graph={DEFAULT_RENDER_GRAPH_SETTINGS}
+        onChangeGraph={() => {}}
       />
     );
 
@@ -138,8 +143,6 @@ describe("level toolbar groups", () => {
         isGpuTimed={false}
         onToggle={() => {}}
         onChangeGpuTimed={onChangeGpuTimed}
-        graph={DEFAULT_RENDER_GRAPH_SETTINGS}
-        onChangeGraph={() => {}}
       />
     );
 
@@ -151,24 +154,30 @@ describe("level toolbar groups", () => {
     expect(getByRole("checkbox", { name: "Grid" })).not.toBeChecked();
   });
 
-  it("turns the frame graph's mechanisms off one at a time from the readouts, to bisect a capture", async () => {
+  it("turns the frame graph's optimizations off one at a time or all at once from the culling, to bisect a capture", async () => {
     const onChangeGraph = jest.fn<(graph: RenderGraphSettings) => void>();
     const { getByRole, findByRole } = renderWithProviders(
-      <LevelOverlaysAction
-        options={{ ...DEFAULT_LEVEL_VIEW_OPTIONS, isStatsVisible: true }}
-        isGpuTimed={false}
+      <LevelCullingAction
+        options={DEFAULT_LEVEL_VIEW_OPTIONS}
+        isOcclusionAvailable
+        isImpostorsAvailable
+        lod={DEFAULT_LEVEL_LOD_OPTIONS}
         onToggle={() => {}}
-        onChangeGpuTimed={() => {}}
+        onChangeLod={() => {}}
         graph={DEFAULT_RENDER_GRAPH_SETTINGS}
         onChangeGraph={onChangeGraph}
       />
     );
 
-    await userEvent.click(getByRole("button", { name: "Overlays" }));
-    await findByRole("dialog", { name: "Overlays" });
+    await userEvent.click(getByRole("button", { name: "Culling" }));
+    await findByRole("dialog", { name: "Culling" });
     await userEvent.click(getByRole("checkbox", { name: "Merge render passes" }));
 
     expect(onChangeGraph).toHaveBeenLastCalledWith({ ...DEFAULT_RENDER_GRAPH_SETTINGS, isMerging: false });
+
+    await userEvent.click(getByRole("checkbox", { name: "Frame graph" }));
+
+    expect(onChangeGraph).toHaveBeenLastCalledWith(SERIAL_RENDER_GRAPH_SETTINGS);
   });
 
   // The marker says where the level's sunlight comes from, which the weather's own sun in the sky already shows by day.
@@ -180,8 +189,6 @@ describe("level toolbar groups", () => {
         isGpuTimed={false}
         onToggle={onToggle}
         onChangeGpuTimed={() => {}}
-        graph={DEFAULT_RENDER_GRAPH_SETTINGS}
-        onChangeGraph={() => {}}
       />
     );
 

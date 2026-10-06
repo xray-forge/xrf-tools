@@ -48,6 +48,14 @@ const EMBEDDED: &[(&str, &str)] = &[
   ("common/sky_box", include_str!("../../shaders/common/sky_box.wgsl")),
   ("common/wet", include_str!("../../shaders/common/wet.wgsl")),
   (
+    "common/water_enhanced",
+    include_str!("../../shaders/common/water_enhanced.wgsl"),
+  ),
+  (
+    "common/water_surface",
+    include_str!("../../shaders/common/water_surface.wgsl"),
+  ),
+  (
     "frame/ambient_occlusion",
     include_str!("../../shaders/frame/ambient_occlusion.wgsl"),
   ),
@@ -245,6 +253,14 @@ const EMBEDDED: &[(&str, &str)] = &[
     include_str!("../../shaders/generated/static/water.wgsl"),
   ),
   (
+    "generated/static/water_enhanced",
+    include_str!("../../shaders/generated/static/water_enhanced.wgsl"),
+  ),
+  (
+    "generated/static/water_reflection",
+    include_str!("../../shaders/generated/static/water_reflection.wgsl"),
+  ),
+  (
     "generated/structs",
     include_str!("../../shaders/generated/structs.wgsl"),
   ),
@@ -262,6 +278,14 @@ const EMBEDDED: &[(&str, &str)] = &[
   ("static/pulling", include_str!("../../shaders/static/pulling.wgsl")),
   ("static/records", include_str!("../../shaders/static/records.wgsl")),
   ("static/water", include_str!("../../shaders/static/water.wgsl")),
+  (
+    "static/water_enhanced",
+    include_str!("../../shaders/static/water_enhanced.wgsl"),
+  ),
+  (
+    "static/water_reflection",
+    include_str!("../../shaders/static/water_reflection.wgsl"),
+  ),
 ];
 
 /// The renderer's WGSL modules: embedded in a release build, read from the crate's `shaders/` directory in a debug

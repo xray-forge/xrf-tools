@@ -40,6 +40,7 @@ pub use crate::contract::render_color::RenderColor;
 pub use crate::contract::render_contact_shadow_mode::RenderContactShadowMode;
 pub use crate::contract::render_contact_shadow_settings::RenderContactShadowSettings;
 pub use crate::contract::render_debug_view::RenderDebugView;
+pub use crate::contract::render_enhanced_water_settings::RenderEnhancedWaterSettings;
 pub use crate::contract::render_exposure_settings::RenderExposureSettings;
 pub use crate::contract::render_frame_phases::RenderFramePhases;
 pub use crate::contract::render_frame_rate::RenderFrameRate;

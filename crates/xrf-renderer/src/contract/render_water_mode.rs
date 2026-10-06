@@ -8,6 +8,6 @@ pub enum RenderWaterMode {
   /// The engine's own: `water.ps` and `waterd.ps`, reflecting the sky over the base.
   #[default]
   Engine,
-  /// Screen Space Shaders' water: what lies under it refracted, clouded with depth, and bordered softly.
+  /// The enhanced water: what lies under it refracted, clouded with depth, the scene reflected, bordered softly.
   Enhanced,
 }

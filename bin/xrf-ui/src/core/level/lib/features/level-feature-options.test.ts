@@ -118,9 +118,13 @@ describe("level feature options", () => {
 
   it("keeps the water's mode and its enhanced strengths, held to their bounds, and drops a mode it does not know", () => {
     expect(
-      toLevelFeatureOptions({ water: { mode: ERenderWaterMode.ENHANCED, softBorder: 0.5, turbidity: 40 } }).water
-    ).toEqual({ mode: ERenderWaterMode.ENHANCED, softBorder: 0.5, turbidity: 10 });
-    expect(toLevelFeatureOptions({ water: { mode: "ocean", refraction: 1.2 } }).water).toEqual({ refraction: 1.2 });
+      toLevelFeatureOptions({
+        water: { enhanced: { softBorder: 0.5, turbidity: 40 }, mode: ERenderWaterMode.ENHANCED },
+      }).water
+    ).toEqual({ enhanced: { softBorder: 0.5, turbidity: 10 }, mode: ERenderWaterMode.ENHANCED });
+    expect(toLevelFeatureOptions({ water: { enhanced: { refraction: 1.2 }, mode: "ocean" } }).water).toEqual({
+      enhanced: { refraction: 1.2 },
+    });
   });
 
   it("keeps the contact shadows' own values, held to their bounds, over the settings' others", () => {

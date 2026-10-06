@@ -246,6 +246,45 @@ export enum ERenderDebugView {
 export type RenderDebugView = `${ERenderDebugView}`;
 
 /**
+ * The enhanced water's strengths: what lies under it refracted, clouded with depth, the scene reflected,
+ * bordered softly.
+ */
+export type RenderEnhancedWaterSettings = {
+  /** How far its waves move what lies under it. */
+  refraction: number | null;
+  /** How deep it clears before it clouds into its colour. */
+  turbidity: number | null;
+  /** Metres of depth over which its edge fades into what lies under it. */
+  softBorder: number | null;
+  /** How much of its reflection it shows by the fresnel; none draws no reflection. */
+  reflectivity: number | null;
+  /** How far its reflection is blurred. */
+  reflectionBlur: number | null;
+  /** How much noise mixes the clear reflection into the blurred one. */
+  blurNoise: number | null;
+  /** How bright the sun's highlight on it is. */
+  specular: number | null;
+  /** How bright the light it gathers onto its bottom is. */
+  caustics: number | null;
+  /** How high its waves stand in its parallax; none draws it flat. */
+  parallaxHeight: number | null;
+  /** How strongly rain ripples it; none skips them. */
+  ripples: number | null;
+  /** What every scroll of its maps is multiplied by, one as designed; none stills it. */
+  flow: number | null;
+  /**
+   * How much of its pace it keeps in still air, one as designed; none stills it while no
+   * wind blows.
+   */
+  calmFlow: number | null;
+  /**
+   * How far it breaks its maps' repeat: its second layer tiled apart from the first, a broad layer faded in with
+   * distance, and its colour's read bent and mixed with a second; none draws a single repeat.
+   */
+  variation: number | null;
+};
+
+/**
  * The engine's exposure (`r2_tonemap`): the frame's average luminance measured every frame, and the scale the tonemap
  * multiplies by moved towards `middle_gray / luminance` at the adaptation's rate.
  */
@@ -1022,7 +1061,7 @@ export type RenderViewportLayout = {
 export enum ERenderWaterMode {
   /** The engine's own: `water.ps` and `waterd.ps`, reflecting the sky over the base. */
   ENGINE = "engine",
-  /** Screen Space Shaders' water: what lies under it refracted, clouded with depth, and bordered softly. */
+  /** The enhanced water: what lies under it refracted, clouded with depth, the scene reflected, bordered softly. */
   ENHANCED = "enhanced",
 }
 
@@ -1036,7 +1075,7 @@ export type RenderWaterMode = `${ERenderWaterMode}`;
 export type RenderWaterSettings = {
   /** Off, what lies under the water shows. */
   isEnabled: boolean;
-  /** The engine's water, or Screen Space Shaders' water, which the strengths below the distortion's shape. */
+  /** The engine's water, or the enhanced water, which `enhanced` shapes. */
   mode: RenderWaterMode;
   /** `r2_soft_water`: soft water fades by the depth behind it, darkens with it and lays foam in the shallows. */
   isSoft: boolean;
@@ -1055,36 +1094,5 @@ export type RenderWaterSettings = {
    * the distorting particles write as well.
    */
   distortion: number | null;
-  /** The enhanced water's refraction: how far its waves move what lies under it, `ssfx_water_setup1.x`. */
-  refraction: number | null;
-  /** How deep the enhanced water clears before it clouds into its colour, `ssfx_water_setup1.y`. */
-  turbidity: number | null;
-  /** Metres of depth over which the enhanced water's edge fades into what lies under it, `ssfx_water_setup1.z`. */
-  softBorder: number | null;
-  /** How much of its reflection the enhanced water shows by the fresnel, `ssfx_water_setup2.x`; none draws no reflection. */
-  reflectivity: number | null;
-  /** How far the enhanced water's reflection is blurred, `ssfx_water.y`. */
-  reflectionBlur: number | null;
-  /** How much noise mixes the clear reflection into the blurred one, `ssfx_water.z`. */
-  blurNoise: number | null;
-  /** How bright the sun's highlight on the enhanced water is, `ssfx_water_setup2.y`. */
-  specular: number | null;
-  /** How bright the light the enhanced water gathers onto its bottom is, `ssfx_water_setup2.z`. */
-  caustics: number | null;
-  /** How high the enhanced water's waves stand in its parallax, `ssfx_water_setup1.w`; none draws it flat. */
-  parallaxHeight: number | null;
-  /** How strongly rain ripples the enhanced water, `ssfx_water_setup2.w`; none skips them. */
-  ripples: number | null;
-  /** What every scroll of the enhanced water is multiplied by, one as the module scrolls it; none stills it. */
-  flow: number | null;
-  /**
-   * How much of the pace the module keeps in still air the enhanced water keeps, one as the module does; none stills
-   * it while no wind blows.
-   */
-  calmFlow: number | null;
-  /**
-   * How far the enhanced water breaks its maps' repeat: its second layer tiled apart from the first, a broad layer
-   * faded in with distance, and its colour's read bent and mixed with a second; none draws the module's own.
-   */
-  variation: number | null;
+  enhanced: RenderEnhancedWaterSettings;
 };
