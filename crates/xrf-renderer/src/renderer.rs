@@ -9,11 +9,11 @@ use crate::contract::render_camera_command::RenderCameraCommand;
 use crate::contract::render_capture::RenderCapture;
 use crate::contract::render_frame_report::RenderFrameReport;
 use crate::contract::render_input_event::RenderInputEvent;
-use crate::contract::render_level_hit::RenderLevelHit;
 use crate::contract::render_level_problems::RenderLevelProblems;
 use crate::contract::render_load_report::RenderLoadReport;
 use crate::contract::render_model_pose::RenderModelPose;
 use crate::contract::render_overlay::RenderOverlay;
+use crate::contract::render_pick::RenderPick;
 use crate::contract::render_selection::RenderSelection;
 use crate::contract::render_settings::RenderSettings;
 use crate::contract::render_surface_geometry::RenderSurfaceGeometry;
@@ -88,7 +88,7 @@ impl Renderer {
 
   /// What a viewport's level draws under a point, css pixels from its corner, answered after its next frame; the
   /// answer never comes for a viewport the renderer does not draw.
-  pub fn pick(&self, id: RenderViewportId, x: f32, y: f32) -> Receiver<XrfResult<Option<RenderLevelHit>>> {
+  pub fn pick(&self, id: RenderViewportId, x: f32, y: f32) -> Receiver<XrfResult<RenderPick>> {
     let (reply, answer) = channel();
 
     self.send(RenderCommand::Pick {

@@ -1,6 +1,7 @@
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
+use glam::Vec3;
 use xrf_renderer_core::GraphRuntime;
 
 use crate::camera::camera_controller::CameraController;
@@ -10,6 +11,7 @@ use crate::contract::render_applied_fog::RenderAppliedFog;
 use crate::contract::render_applied_report::RenderAppliedReport;
 use crate::contract::render_camera_pose::RenderCameraPose;
 use crate::contract::render_frame_report::RenderFrameReport;
+use crate::contract::render_level_hit::RenderLevelHit;
 use crate::contract::render_light_scales::RenderLightScales;
 use crate::contract::render_lights_report::RenderLightsReport;
 use crate::contract::render_load_report::RenderLoadReport;
@@ -18,6 +20,7 @@ use crate::contract::render_model_pose::RenderModelPose;
 use crate::contract::render_overlay::RenderOverlay;
 use crate::contract::render_particles_report::RenderParticlesReport;
 use crate::contract::render_pass_cost::RenderPassCost;
+use crate::contract::render_pick::RenderPick;
 use crate::contract::render_rect::RenderRect;
 use crate::contract::render_selection::RenderSelection;
 use crate::contract::render_static_report::RenderStaticReport;
@@ -25,7 +28,7 @@ use crate::contract::render_view_options::RenderViewOptions;
 use crate::contract::render_viewport_event::RenderViewportEvent;
 use crate::contract::render_viewport_id::RenderViewportId;
 use crate::contract::render_viewport_layout::RenderViewportLayout;
-use crate::frame::frame_capture::CaptureReply;
+use crate::frame::frame_capture::{CaptureReply, FrameCapture};
 use crate::frame::frame_phases::FramePhases;
 use crate::frame::frame_statistics::{FrameStatistics, FrameSummary};
 use crate::host::render_event_sink::RenderEventSink;
@@ -35,6 +38,7 @@ use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::level_view::LevelView;
 use crate::thread::render_workers::RenderWorkers;
 use crate::viewport::pending_pick::PendingPick;
+use crate::viewport::pick_in_flight::PickInFlight;
 use crate::weather::viewport_weather::ViewportWeather;
 
 /// How often a moving camera's pose is published.
@@ -65,10 +69,14 @@ pub struct RenderViewport {
   pub incoming_view: Option<LevelView>,
   /// The level's weather, which lights it.
   pub weather: ViewportWeather,
-  /// Captures asked for, answered by the next frame presented.
+  /// Captures asked for, copied out of the next frame presented, and those copied, answered once they are back.
   pub captures: Vec<CaptureReply>,
-  /// Picks asked for, answered one a frame.
+  pub captures_in_flight: Vec<(FrameCapture, CaptureReply)>,
+  /// Picks asked for, drawn one a frame while a readback is free, and those drawn, answered once they are back.
   pub picks: Vec<PendingPick>,
+  pub picks_in_flight: Vec<PickInFlight>,
+  /// Frames drawn, which a pick's or capture's answer names its own by.
+  pub frame: u64,
   /// Its camera on the GPU, made once a GPU is there.
   pub binding: Option<ViewBinding>,
   /// What its frame graphs keep between frames, its passes' GPU timer among them; made once a GPU is there, and kept
@@ -89,6 +97,51 @@ pub struct RenderViewport {
 }
 
 impl RenderViewport {
+  /// Answers the picks and captures whose readbacks a poll found back, keeping those still on their way.
+  pub fn answer_readbacks(&mut self) {
+    let in_flight: Vec<PickInFlight> = std::mem::take(&mut self.picks_in_flight);
+
+    for entry in in_flight {
+      let Some(level) = &self.level_view else {
+        let _ = entry.pick.reply.send(Ok(RenderPick {
+          frame: entry.frame,
+          hit: None,
+        }));
+
+        continue;
+      };
+
+      match level.take_pick(entry.slot) {
+        Some(Ok(texel)) => {
+          let (inverse, ndc) = entry.unprojection;
+          let hit: Option<RenderLevelHit> = level.resolve_pick(texel, |depth: f32| -> Vec3 {
+            inverse.project_point3(ndc.extend(depth))
+          });
+
+          let _ = entry.pick.reply.send(Ok(RenderPick {
+            frame: entry.frame,
+            hit,
+          }));
+        }
+        Some(Err(error)) => {
+          let _ = entry.pick.reply.send(Err(error));
+        }
+        None => self.picks_in_flight.push(entry),
+      }
+    }
+
+    let captures: Vec<(FrameCapture, CaptureReply)> = std::mem::take(&mut self.captures_in_flight);
+
+    for (capture, reply) in captures {
+      match capture.take() {
+        Some(result) => {
+          let _ = reply.send(result);
+        }
+        None => self.captures_in_flight.push((capture, reply)),
+      }
+    }
+  }
+
   pub fn new(
     id: RenderViewportId,
     window: u64,
@@ -111,7 +164,10 @@ impl RenderViewport {
       incoming_view: None,
       weather: ViewportWeather::new(now, workers),
       captures: Vec::new(),
+      captures_in_flight: Vec::new(),
       picks: Vec::new(),
+      picks_in_flight: Vec::new(),
+      frame: 0,
       binding: None,
       runtime: None,
       sink,

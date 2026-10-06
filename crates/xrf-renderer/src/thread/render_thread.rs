@@ -13,6 +13,7 @@ use crate::context::render_backend::RenderBackend;
 use crate::contract::render_frame_report::RenderFrameReport;
 use crate::contract::render_level_problems::RenderLevelProblems;
 use crate::contract::render_load_report::RenderLoadReport;
+use crate::contract::render_pick::RenderPick;
 use crate::contract::render_rect::RenderRect;
 use crate::contract::render_scale::RenderScale;
 use crate::contract::render_settings::RenderSettings;
@@ -21,7 +22,7 @@ use crate::contract::render_surface_geometry::RenderSurfaceGeometry;
 use crate::contract::render_texture_report::RenderTextureReport;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::contract::render_viewport_id::RenderViewportId;
-use crate::frame::frame_capture::capture_frame;
+use crate::frame::frame_capture::{CaptureReply, FrameCapture};
 use crate::frame::frame_phases::FramePhases;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::host::render_bundle::RenderBundle;
@@ -40,6 +41,7 @@ use crate::thread::render_command::RenderCommand;
 use crate::thread::render_link::RenderLink;
 use crate::thread::render_workers::RenderWorkers;
 use crate::viewport::pending_pick::PendingPick;
+use crate::viewport::pick_in_flight::PickInFlight;
 use crate::viewport::render_viewport::RenderViewport;
 use crate::window::render_window::RenderWindow;
 
@@ -249,8 +251,14 @@ impl RenderThread {
       RenderCommand::Pick { id, pick } => match self.viewports.get_mut(&id) {
         Some(viewport) if viewport.level.is_some() => viewport.picks.push(pick),
         // Nothing is drawn there to pick.
-        _ => {
-          let _ = pick.reply.send(Ok(None));
+        Some(viewport) => {
+          let _ = pick.reply.send(Ok(RenderPick {
+            frame: viewport.frame,
+            hit: None,
+          }));
+        }
+        None => {
+          let _ = pick.reply.send(Ok(RenderPick { frame: 0, hit: None }));
         }
       },
       RenderCommand::MeasureSurfaces { id, reply } => {
@@ -559,6 +567,7 @@ impl RenderThread {
     let (backend, adapter) = (gpu.context.backend.get_label(), gpu.context.adapter_name.as_str());
 
     for viewport in self.viewports.values_mut() {
+      viewport.answer_readbacks();
       viewport.report(now, backend, adapter, gpu.textures.get_bytes());
       viewport.publish_pose(now);
       viewport.publish_weather(now);
@@ -660,7 +669,7 @@ impl RenderThread {
     // What the frame submits, in order: the encoder up to each viewport's frame graph, the graph's own, and so on.
     let mut commands: Vec<wgpu::CommandBuffer> = Vec::new();
     let mut is_lit: bool = false;
-    let mut picked: Vec<(RenderViewportId, PendingPick, Mat4, Vec2)> = Vec::new();
+    let mut picked: Vec<(RenderViewportId, PendingPick, (Mat4, Vec2), usize)> = Vec::new();
 
     for (id, rect, _) in &drawn {
       let Some(viewport) = self.viewports.get_mut(id) else {
@@ -832,7 +841,7 @@ impl RenderThread {
       phases.encode += encoded;
       is_lit = true;
 
-      // One pick a frame, drawn from this frame's culled clusters.
+      // One pick a frame, drawn from this frame's culled clusters while a readback is free for it.
       if !viewport.picks.is_empty() {
         let pick: PendingPick = viewport.picks.remove(0);
         let ndc: Vec2 = Vec2::new(
@@ -847,7 +856,7 @@ impl RenderThread {
           height: 1,
         };
 
-        level.record_pick(
+        match level.record_pick(
           device,
           queue,
           &mut encoder,
@@ -855,8 +864,10 @@ impl RenderThread {
           &gpu.view_layout,
           &gpu.textures,
           &CameraUniform::new(&narrowed, pixel, switches),
-        );
-        picked.push((*id, pick, view.get_view_projection().inverse(), ndc));
+        ) {
+          Some(slot) => picked.push((*id, pick, (view.get_view_projection().inverse(), ndc), slot)),
+          None => viewport.picks.insert(0, pick),
+        }
       }
     }
 
@@ -947,13 +958,21 @@ impl RenderThread {
     gpu.context.queue.submit(commands);
     phases.submit = submitting.elapsed();
 
-    for (id, pick, inverse, ndc) in picked {
-      let Some(level) = self.viewports.get(&id).and_then(|it| it.level_view.as_ref()) else {
+    for (id, pick, unprojection, slot) in picked {
+      let Some(viewport) = self.viewports.get_mut(&id) else {
         continue;
       };
-      let unproject = |depth: f32| -> Vec3 { inverse.project_point3(ndc.extend(depth)) };
 
-      let _ = pick.reply.send(level.resolve_pick(&gpu.context.device, unproject));
+      if let Some(level) = &viewport.level_view {
+        level.request_pick(slot);
+      }
+
+      viewport.picks_in_flight.push(PickInFlight {
+        pick,
+        slot,
+        unprojection,
+        frame: viewport.frame,
+      });
     }
 
     for (id, _, _) in &drawn {
@@ -970,17 +989,26 @@ impl RenderThread {
 
     let cpu: Duration = started.elapsed();
 
-    // Read back before presenting, after which the frame is no longer the renderer's to copy.
+    // Copied out before presenting, after which the frame is no longer the renderer's to copy; read once it is back.
     for (id, _, shown) in &drawn {
       if let Some(viewport) = self.viewports.get_mut(id) {
-        for reply in viewport.captures.drain(..) {
-          let _ = reply.send(capture_frame(
-            &gpu.context.device,
-            &gpu.context.queue,
+        let replies: Vec<CaptureReply> = std::mem::take(&mut viewport.captures);
+
+        for reply in replies {
+          match FrameCapture::new(
+            (&gpu.context.device, &gpu.context.queue),
             &frame.texture,
             *shown,
-          ));
+            viewport.frame,
+          ) {
+            Ok(capture) => viewport.captures_in_flight.push((capture, reply)),
+            Err(error) => {
+              let _ = reply.send(Err(error));
+            }
+          }
         }
+
+        viewport.frame += 1;
       }
     }
 

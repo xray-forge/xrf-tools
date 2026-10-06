@@ -42,6 +42,7 @@ pub(crate) mod render_page_backdrop;
 pub(crate) mod render_page_wash;
 pub(crate) mod render_particles_report;
 pub(crate) mod render_pass_cost;
+pub(crate) mod render_pick;
 pub(crate) mod render_pool_use;
 pub(crate) mod render_rect;
 pub(crate) mod render_scale;

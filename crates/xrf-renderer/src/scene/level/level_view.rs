@@ -1759,11 +1759,16 @@ impl LevelView {
     view_layout: &wgpu::BindGroupLayout,
     textures: &TextureCache,
     camera: &CameraUniform,
-  ) {
+  ) -> Option<usize> {
     let Some((_, draw_groups)) = &self.renderer.draw_groups else {
-      return;
+      return None;
     };
     let target: &PickTarget = self.state.pick_target.get_or_insert_with(|| PickTarget::new(device));
+
+    if !target.has_free_readback() {
+      return None;
+    }
+
     let view: &ViewBinding = self
       .state
       .pick_view
@@ -1778,63 +1783,70 @@ impl LevelView {
       textures.get_bind_group(),
       &[&self.scene.statics.args, &self.scene.statics.late],
     );
+
+    target.copy_out(encoder)
   }
 
-  /// Reads a recorded pick back, once its frame was submitted, and names what it met.
+  /// Asks for a pick's texel back, its frame just submitted.
+  pub fn request_pick(&self, slot: usize) {
+    if let Some(target) = &self.state.pick_target {
+      target.request(slot);
+    }
+  }
+
+  /// A pick's texel once it is back; a view made since the pick has no readback for it, and it met nothing still drawn.
+  pub fn take_pick(&self, slot: usize) -> Option<XrfResult<[u32; 4]>> {
+    match &self.state.pick_target {
+      Some(target) => target.take(slot),
+      None => Some(Ok([0; 4])),
+    }
+  }
+
+  /// Names what a pick's texel met.
   pub fn resolve_pick(
     &self,
-    device: &wgpu::Device,
+    [kind, cluster, place, depth]: [u32; 4],
     unproject: impl Fn(f32) -> Vec3,
-  ) -> XrfResult<Option<RenderLevelHit>> {
-    let Some(target) = &self.state.pick_target else {
-      return Ok(None);
-    };
-    let [kind, cluster, place, depth] = target.read(device)?;
+  ) -> Option<RenderLevelHit> {
     let point: [f32; 3] = unproject(f32::from_bits(depth)).to_array();
 
     match kind {
       PICKED_CLUSTER => {}
       PICKED_IMPOSTOR => {
-        return Ok(
-          self
-            .scene
-            .statics
-            .resolve_impostor_pick(cluster)
-            .map(|(sector, shader_id)| RenderLevelHit::Surface {
-              sector,
-              shader_id: shader_id as u32,
-              mesh: None,
-              place: None,
-              is_impostor: true,
-              point,
-            }),
-        );
-      }
-      _ => return Ok(None),
-    }
-
-    let Some((info, instance)) = self.scene.statics.resolve_pick(cluster, place) else {
-      return Ok(None);
-    };
-
-    if info.sector == StaticSlotInfo::NO_SECTOR {
-      return Ok(
-        self
+        return self
           .scene
           .statics
-          .resolve_spawn_pick(place)
-          .map(|object| RenderLevelHit::Spawn { object, point }),
-      );
+          .resolve_impostor_pick(cluster)
+          .map(|(sector, shader_id)| RenderLevelHit::Surface {
+            sector,
+            shader_id: shader_id as u32,
+            mesh: None,
+            place: None,
+            is_impostor: true,
+            point,
+          });
+      }
+      _ => return None,
     }
 
-    Ok(Some(RenderLevelHit::Surface {
+    let (info, instance) = self.scene.statics.resolve_pick(cluster, place)?;
+
+    if info.sector == StaticSlotInfo::NO_SECTOR {
+      return self
+        .scene
+        .statics
+        .resolve_spawn_pick(place)
+        .map(|object| RenderLevelHit::Spawn { object, point });
+    }
+
+    Some(RenderLevelHit::Surface {
       sector: info.sector,
       shader_id: info.shader_id as u32,
       mesh: info.mesh,
       place: instance,
       is_impostor: false,
       point,
-    }))
+    })
   }
 
   /// Where the next frame's samples sit within their pixels, in drawn pixels, `y` down: jittered while it resolves

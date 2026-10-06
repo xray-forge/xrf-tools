@@ -182,7 +182,8 @@ impl StaticGBufferPass {
     }
   }
 
-  /// Draws the frame's visible clusters again into a pick's one texel, through a camera narrowed to it.
+  /// Draws the frame's visible clusters again into a pick's one texel, through a camera narrowed to it; the caller
+  /// copies the texel out.
   pub fn pick(
     &self,
     encoder: &mut wgpu::CommandEncoder,
@@ -192,49 +193,45 @@ impl StaticGBufferPass {
     textures: &wgpu::BindGroup,
     args: &[&wgpu::Buffer],
   ) {
-    {
-      let mut pass: wgpu::RenderPass<'_> = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-        label: Some("static pick"),
-        color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-          view: &target.color,
-          depth_slice: None,
-          resolve_target: None,
-          ops: wgpu::Operations {
-            load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-            store: wgpu::StoreOp::Store,
-          },
-        })],
-        depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-          view: &target.depth,
-          depth_ops: Some(wgpu::Operations {
-            load: wgpu::LoadOp::Clear(0.0),
-            store: wgpu::StoreOp::Discard,
-          }),
-          stencil_ops: None,
+    let mut pass: wgpu::RenderPass<'_> = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+      label: Some("static pick"),
+      color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+        view: &target.color,
+        depth_slice: None,
+        resolve_target: None,
+        ops: wgpu::Operations {
+          load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+          store: wgpu::StoreOp::Store,
+        },
+      })],
+      depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+        view: &target.depth,
+        depth_ops: Some(wgpu::Operations {
+          load: wgpu::LoadOp::Clear(0.0),
+          store: wgpu::StoreOp::Discard,
         }),
-        ..Default::default()
-      });
+        stencil_ops: None,
+      }),
+      ..Default::default()
+    });
 
-      pass.set_bind_group(0, &view.bind_group, &[]);
-      pass.set_bind_group(1, textures, &[]);
+    pass.set_bind_group(0, &view.bind_group, &[]);
+    pass.set_bind_group(1, textures, &[]);
 
-      for (batch, pipeline) in StaticBatch::list_deferred().zip(&self.pick_pipelines) {
-        pass.set_pipeline(pipeline);
-        pass.set_bind_group(2, &bind_groups.layouts[batch.layout.get_index()], &[]);
+    for (batch, pipeline) in StaticBatch::list_deferred().zip(&self.pick_pipelines) {
+      pass.set_pipeline(pipeline);
+      pass.set_bind_group(2, &bind_groups.layouts[batch.layout.get_index()], &[]);
 
-        for args in args {
-          pass.draw_indirect(args, batch.get_index() as u64 * 16);
-        }
-      }
-
-      if let Some(args) = args.first() {
-        pass.set_pipeline(&self.impostor_pipelines[1]);
-        pass.set_bind_group(2, &bind_groups.impostors, &[]);
-        pass.draw_indirect(args, StaticScene::IMPOSTOR_ARGS_OFFSET);
+      for args in args {
+        pass.draw_indirect(args, batch.get_index() as u64 * 16);
       }
     }
 
-    target.copy_out(encoder);
+    if let Some(args) = args.first() {
+      pass.set_pipeline(&self.impostor_pipelines[1]);
+      pass.set_bind_group(2, &bind_groups.impostors, &[]);
+      pass.draw_indirect(args, StaticScene::IMPOSTOR_ARGS_OFFSET);
+    }
   }
 
   /// The impostors' draw and pick: a quad either way round, so neither culls a face.
