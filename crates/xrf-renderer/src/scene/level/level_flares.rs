@@ -2,39 +2,39 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use glam::{Vec3, Vec4};
-use xrf_renderer_core::{FrameGraph, GraphColorAttachment, GraphTextureAccess};
+use xrf_renderer_core::{
+  FrameGraph, GraphBindings, GraphBuffer, GraphColorAttachment, GraphRuntime, GraphTexture, StorageValue,
+  StorageValueMut, UniformBinding,
+};
 
 use crate::camera::camera_view::CameraView;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::frame::view_target_handles::ViewTargetHandles;
-use crate::frame::view_targets::ViewTargets;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::host::render_lens_flare::RenderLensFlare;
 use crate::host::render_level_weather::RenderLevelWeather;
 use crate::lighting::render_lighting::RenderLighting;
+use crate::pass::flare_draw_parameters::FlareDrawParameters;
+use crate::pass::flare_measure_parameters::FlareMeasureParameters;
 use crate::pass::flare_pass::{FlarePass, GRADIENT_INSTANCE};
+use crate::pass::flare_texture_parameters::FlareTextureParameters;
 use crate::pass::flare_uniform::{FLARE_SLOTS, FlareUniform};
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::lens_flare_fade::LensFlareFade;
-use crate::scene::level::level_shadows::LevelShadows;
+use crate::scene::level::lighting_handles::LightingHandles;
 use crate::scene::texture::weather_texture_cache::WeatherTextureCache;
 use crate::scene::texture::weather_texture_kind::WeatherTextureKind;
-
-/// What the flares' texture groups were bound for: the weather textures' generation and the lens flare.
-type FlareTexturesKey = (u64, String);
 
 /// The sun a level's viewport draws as `CLensFlare` does: the lens flare its keyframes name, faded between them, its
 /// sprite in the sky and its flares and gradient over the frame, each shown as much as the sun is.
 pub struct LevelFlares {
   fade: LensFlareFade,
-  uniform: wgpu::Buffer,
+  /// What the flares draw this frame by.
+  values: FlareUniform,
   /// How much of the sun shows, eased on the GPU from frame to frame.
   state: wgpu::Buffer,
-  draw_group: Option<wgpu::BindGroup>,
-  /// Keyed by the targets and the shadow maps it reads.
-  measure_group: Option<((u64, u64), wgpu::BindGroup)>,
-  /// Each flare's instance and texture, keyed by the textures' generation and the lens flare.
-  textures: Option<(FlareTexturesKey, Vec<(u32, wgpu::BindGroup)>)>,
+  /// Each flare's instance and texture as the weather textures hold it this frame, the gradient's last.
+  textures: Vec<(u32, wgpu::TextureView)>,
   is_drawn: bool,
   /// Whether this frame draws the flares as well as the gradient.
   is_flared: bool,
@@ -45,21 +45,14 @@ impl LevelFlares {
   pub fn new(device: &wgpu::Device) -> Self {
     Self {
       fade: LensFlareFade::new(),
-      uniform: device.create_buffer(&wgpu::BufferDescriptor {
-        label: Some("flares"),
-        size: size_of::<FlareUniform>() as u64,
-        usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-        mapped_at_creation: false,
-      }),
+      values: FlareUniform::default(),
       state: device.create_buffer(&wgpu::BufferDescriptor {
         label: Some("flare visibility"),
         size: 16,
         usage: wgpu::BufferUsages::STORAGE,
         mapped_at_creation: false,
       }),
-      draw_group: None,
-      measure_group: None,
-      textures: None,
+      textures: Vec::new(),
       is_drawn: false,
       is_flared: true,
       last: None,
@@ -92,19 +85,15 @@ impl LevelFlares {
     }
   }
 
-  /// Steps the fade, writes the flares' uniform and binds what they draw with; answers the sun's sprite as the sky
-  /// draws it, its texture and its colour and radius, none where no sprite is drawn.
-  #[allow(clippy::too_many_arguments)]
+  /// Steps the fade and notes what the flares draw by and with; answers the sun's sprite as the sky draws it, its
+  /// texture and its colour and radius, none where no sprite is drawn.
   pub fn prepare(
     &mut self,
-    device: &wgpu::Device,
-    queue: &wgpu::Queue,
-    pass: &FlarePass,
     (lighting, weather): (&RenderLighting, Option<&Arc<RenderLevelWeather>>),
     options: &RenderViewOptions,
     weather_textures: &WeatherTextureCache,
     (view, rate): (&CameraView, f32),
-    (targets, targets_epoch, shadows): (Option<&ViewTargets>, u64, &LevelShadows),
+    has_targets: bool,
   ) -> Option<(String, Vec4)> {
     let now: Instant = Instant::now();
     let delta: f32 = self
@@ -139,27 +128,11 @@ impl LevelFlares {
       (sprite.texture.clone(), (color * faded).extend(sprite.radius))
     });
 
-    queue.write_buffer(
-      &self.uniform,
-      0,
-      bytemuck::bytes_of(&FlareUniform::new(
-        flare,
-        (to_sun, toward_sun),
-        lighting.sun_color,
-        faded,
-        delta,
-      )),
-    );
+    self.values = FlareUniform::new(flare, (to_sun, toward_sun), lighting.sun_color, faded, delta);
 
-    self.prepare_groups(
-      device,
-      pass,
-      flare,
-      (&name, weather_textures),
-      (targets, targets_epoch, shadows),
-    );
+    self.collect_textures(flare, weather_textures);
     self.is_flared = options.show.is_lens_flared;
-    self.is_drawn = targets.is_some() && ((self.is_flared && !flare.flares.is_empty()) || flare.gradient.is_some());
+    self.is_drawn = has_targets && ((self.is_flared && !flare.flares.is_empty()) || flare.gradient.is_some());
 
     sprite
   }
@@ -172,76 +145,73 @@ impl LevelFlares {
   /// Measures how much of the sun shows and draws the flares and the gradient, where this frame draws them.
   pub fn add_passes<'a>(
     &'a self,
-    graph: &mut FrameGraph<'a>,
+    (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
     pass: &'a FlarePass,
-    targets: ViewTargetHandles,
+    (targets, lit): (ViewTargetHandles, LightingHandles<'a>),
     view: &'a ViewBinding,
   ) {
-    let (true, Some(draw_group), Some((_, measure_group)), Some((_, textures))) =
-      (self.is_drawn, &self.draw_group, &self.measure_group, &self.textures)
-    else {
+    if !self.is_drawn {
       return;
+    }
+
+    let flares: UniformBinding<FlareUniform> = runtime.push_uniform(&self.values);
+    let state: GraphBuffer = bindings.import_buffer(&mut *graph, "flare visibility", &self.state);
+    let measure: FlareMeasureParameters = FlareMeasureParameters {
+      flares,
+      state: StorageValueMut::new(state),
+      depth_target: targets.depth,
+      shadow_maps: lit.shadow_maps,
+      shadows: lit.shadows,
     };
-    let draws: Vec<(u32, &'a wgpu::BindGroup)> = textures
+    let draw: FlareDrawParameters = FlareDrawParameters {
+      flares,
+      state: StorageValue::new(state),
+      flare_sampler: pass.get_sampler(),
+    };
+    let draws: Vec<(u32, FlareTextureParameters)> = self
+      .textures
       .iter()
       .filter(|(instance, _)| self.is_flared || *instance == GRADIENT_INSTANCE)
-      .map(|(instance, group)| (*instance, group))
+      .map(|(instance, texture)| {
+        let flare_texture: GraphTexture = bindings.import_view(&mut *graph, "flare texture", texture);
+
+        (*instance, FlareTextureParameters { flare_texture })
+      })
       .collect();
 
     // How much of the sun shows, measured from the depth, which the draw reads on the GPU: kept, since what it writes
     // is the flares' own.
     graph
       .add_compute_pass("flare visibility")
-      .texture(targets.depth, GraphTextureAccess::Sampled)
+      .parameters(&measure)
       .keep()
-      .record(move |context| pass.record_measure(context.get_pass(), view, measure_group));
-    graph
-      .add_raster_pass("flares")
+      .record(move |context| pass.record_measure(context, view, &measure));
+
+    let builder = draws.iter().fold(
+      graph.add_raster_pass("flares").parameters(&draw),
+      |builder, (_, texture)| builder.parameters(texture),
+    );
+
+    builder
       .color(GraphColorAttachment::new(targets.scene, wgpu::LoadOp::Load))
-      .record(move |context| pass.record_draw(context.get_pass(), view, draw_group, &draws));
+      .record(move |context| pass.record_draw(context, view, &draw, &draws));
   }
 
-  fn prepare_groups(
-    &mut self,
-    device: &wgpu::Device,
-    pass: &FlarePass,
-    flare: &RenderLensFlare,
-    (name, weather_textures): (&str, &WeatherTextureCache),
-    (targets, targets_epoch, shadows): (Option<&ViewTargets>, u64, &LevelShadows),
-  ) {
-    if self.draw_group.is_none() {
-      self.draw_group = Some(pass.create_draw_group(device, &self.uniform, &self.state));
-    }
+  /// Each flare's texture and the gradient's, as the weather textures hold them now.
+  fn collect_textures(&mut self, flare: &RenderLensFlare, weather_textures: &WeatherTextureCache) {
+    let view = |reference: &str| {
+      weather_textures
+        .get_view(Some(reference), WeatherTextureKind::Flat)
+        .clone()
+    };
+    let flares = flare
+      .flares
+      .iter()
+      .take(FLARE_SLOTS)
+      .enumerate()
+      .map(|(index, it)| (index as u32, view(&it.texture)));
+    let gradient = flare.gradient.iter().map(|it| (GRADIENT_INSTANCE, view(&it.texture)));
 
-    let measure_key: (u64, u64) = (targets_epoch, shadows.get_epoch());
-
-    if self.measure_group.as_ref().is_none_or(|(key, _)| *key != measure_key)
-      && let Some(targets) = targets
-    {
-      self.measure_group = Some((
-        measure_key,
-        pass.create_measure_group(device, (&self.uniform, &self.state), targets, shadows),
-      ));
-    }
-
-    let texture_key: FlareTexturesKey = (weather_textures.get_generation(), name.to_owned());
-
-    if self.textures.as_ref().is_none_or(|(key, _)| *key != texture_key) {
-      let group = |reference: &str| {
-        pass.create_texture_group(
-          device,
-          weather_textures.get_view(Some(reference), WeatherTextureKind::Flat),
-        )
-      };
-      let flares = flare
-        .flares
-        .iter()
-        .take(FLARE_SLOTS)
-        .enumerate()
-        .map(|(index, it)| (index as u32, group(&it.texture)));
-      let gradient = flare.gradient.iter().map(|it| (GRADIENT_INSTANCE, group(&it.texture)));
-
-      self.textures = Some((texture_key, flares.chain(gradient).collect()));
-    }
+    self.textures = flares.chain(gradient).collect();
   }
 }

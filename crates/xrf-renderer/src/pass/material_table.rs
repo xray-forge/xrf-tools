@@ -40,42 +40,4 @@ impl MaterialTable {
 
     Self { view, sampler }
   }
-
-  /// The table's texture and sampler as layout entries, at a binding and the one after it.
-  pub fn get_layout_entries(binding: u32) -> [wgpu::BindGroupLayoutEntry; 2] {
-    let visibility: wgpu::ShaderStages = wgpu::ShaderStages::FRAGMENT;
-
-    [
-      wgpu::BindGroupLayoutEntry {
-        binding,
-        visibility,
-        ty: wgpu::BindingType::Texture {
-          sample_type: wgpu::TextureSampleType::Float { filterable: true },
-          view_dimension: wgpu::TextureViewDimension::D3,
-          multisampled: false,
-        },
-        count: None,
-      },
-      wgpu::BindGroupLayoutEntry {
-        binding: binding + 1,
-        visibility,
-        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-        count: None,
-      },
-    ]
-  }
-
-  /// The table's texture and sampler as bind group entries, at a binding and the one after it.
-  pub fn get_entries(&self, binding: u32) -> [wgpu::BindGroupEntry<'_>; 2] {
-    [
-      wgpu::BindGroupEntry {
-        binding,
-        resource: wgpu::BindingResource::TextureView(&self.view),
-      },
-      wgpu::BindGroupEntry {
-        binding: binding + 1,
-        resource: wgpu::BindingResource::Sampler(&self.sampler),
-      },
-    ]
-  }
 }

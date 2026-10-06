@@ -1,9 +1,8 @@
 use xrf_error::XrfResult;
+use xrf_renderer_core::{PassParameters, RasterContext};
 
 use crate::frame::view_targets::ViewTargets;
-use crate::pass::fullscreen_pipeline::{buffer_binding, texture_binding};
-use crate::pass::layout_entries::{storage_entry, texture_entry, uniform_entry};
-use crate::pass::rain_bindings::RainBindings;
+use crate::pass::rain_parameters::RainParameters;
 use crate::pass::shader_pipelines::{create_checked, create_module};
 use crate::pass::view_binding::ViewBinding;
 use crate::shader::shader_library::ShaderLibrary;
@@ -24,26 +23,7 @@ impl RainPass {
   ///
   /// Returns an error when the shader does not compose or compile.
   pub fn new(device: &wgpu::Device, shaders: &ShaderLibrary, view_layout: &wgpu::BindGroupLayout) -> XrfResult<Self> {
-    let stages: wgpu::ShaderStages = wgpu::ShaderStages::VERTEX_FRAGMENT;
-    let filtered: wgpu::TextureSampleType = wgpu::TextureSampleType::Float { filterable: true };
-    let flat: wgpu::TextureViewDimension = wgpu::TextureViewDimension::D2;
-    let layout: wgpu::BindGroupLayout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-      label: Some("rain"),
-      entries: &[
-        uniform_entry(0, stages),
-        texture_entry(1, stages, wgpu::TextureSampleType::Depth, flat),
-        texture_entry(2, stages, filtered, flat),
-        texture_entry(3, stages, filtered, flat),
-        wgpu::BindGroupLayoutEntry {
-          binding: 4,
-          visibility: stages,
-          ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-          count: None,
-        },
-        storage_entry(5, stages, false),
-        storage_entry(6, stages, false),
-      ],
-    });
+    let layout: wgpu::BindGroupLayout = RainParameters::create_layout(device);
 
     Ok(Self {
       pipelines: Self::create_pipelines(device, shaders, view_layout, &layout)?,
@@ -71,35 +51,24 @@ impl RainPass {
     }
   }
 
-  pub fn create_bind_group(&self, device: &wgpu::Device, bindings: &RainBindings<'_>) -> wgpu::BindGroup {
-    device.create_bind_group(&wgpu::BindGroupDescriptor {
-      label: Some("rain"),
-      layout: &self.layout,
-      entries: &[
-        buffer_binding(0, bindings.uniform),
-        texture_binding(1, bindings.cover),
-        texture_binding(2, bindings.streak),
-        texture_binding(3, bindings.splash),
-        wgpu::BindGroupEntry {
-          binding: 4,
-          resource: wgpu::BindingResource::Sampler(&self.sampler),
-        },
-        buffer_binding(5, bindings.vertices),
-        buffer_binding(6, bindings.indices),
-      ],
-    })
+  /// The sampler the streak and the splash are read through, which the parameters bind.
+  pub fn get_sampler(&self) -> &wgpu::Sampler {
+    &self.sampler
   }
 
   /// Draws the streaks falling, and the splashes where the model has indices.
   pub fn record(
     &self,
-    pass: &mut wgpu::RenderPass<'_>,
+    context: &mut RasterContext<'_>,
     view: &ViewBinding,
-    bind_group: &wgpu::BindGroup,
+    parameters: &RainParameters<'_>,
     (streaks, splash_indices): (u32, u32),
   ) {
+    context.bind(parameters);
+
+    let pass: &mut wgpu::RenderPass<'static> = context.get_pass();
+
     pass.set_bind_group(0, &view.bind_group, &[]);
-    pass.set_bind_group(1, bind_group, &[]);
     pass.set_pipeline(&self.pipelines[0]);
     pass.draw(0..streaks * 6, 0..1);
 

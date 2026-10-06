@@ -8,11 +8,7 @@
 // a pixel apart; the sky as dense as the whole ray. Weighted towards the sun, in its colour, tonemapped and added to
 // the frame.
 
-@group(1) @binding(0) var depth_target: texture_depth_2d;
-@group(1) @binding(1) var shadow_maps: texture_depth_2d_array;
-@group(1) @binding(2) var<uniform> shadows: Shadows;
-@group(1) @binding(3) var<uniform> lighting: Lighting;
-@group(1) @binding(4) var<storage, read> exposure: Exposure;
+#import "generated/frame/sun_shafts"
 
 // Closer than this along the view, metres, the air adds nothing: `depth > 0.3`.
 const NEAR: f32 = 0.3;

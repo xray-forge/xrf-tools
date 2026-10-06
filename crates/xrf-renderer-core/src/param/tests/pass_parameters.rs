@@ -1,12 +1,12 @@
 use glam::Vec4;
 
 use crate::param::tests::fixtures::{
-  Blur, Clashing, Count, ENVIRONMENT_CUBES, Environment, Reflection, Scale, Settings, Shade, Surface,
+  Blur, Clashing, Count, ENVIRONMENT_CUBES, Environment, Head, Reflection, Scale, Settings, Shade, Surface,
 };
 use crate::{
   FrameGraph, GraphBindings, GraphBufferAccess, GraphBufferDescriptor, GraphCompileOptions, GraphRuntime, GraphTexture,
   GraphTextureAccess, GraphTextureDescriptor, PassParameters, ShaderBindings, ShaderDeclarations, StorageArray,
-  StorageArrayMut, StorageField,
+  StorageArrayMut, StorageField, StorageValue, StorageValueMut,
 };
 
 #[test]
@@ -369,5 +369,30 @@ fn binds_an_array_typed_texture_as_a_binding_array() {
   assert_eq!(
     accesses[1..].iter().map(|(texture, _)| *texture).collect::<Vec<_>>(),
     cubes
+  );
+}
+
+#[test]
+fn binds_a_storage_value_as_one_struct() {
+  assert_eq!(
+    Head::get_wgsl_bindings(),
+    "@group(0) @binding(0) var<storage, read> settings: Settings;\n\
+     @group(0) @binding(1) var<storage, read_write> state: Settings;\n"
+  );
+
+  let mut graph: FrameGraph<'_> = FrameGraph::new();
+  let settings = graph.create_buffer(GraphBufferDescriptor::new("settings", 64));
+  let state = graph.create_buffer(GraphBufferDescriptor::new("state", 64));
+  let head: Head = Head {
+    settings: StorageValue::new(settings),
+    state: StorageValueMut::new(state),
+  };
+
+  assert_eq!(
+    head.list_buffer_accesses(),
+    [
+      (settings, GraphBufferAccess::StorageRead),
+      (state, GraphBufferAccess::StorageReadWrite)
+    ]
   );
 }

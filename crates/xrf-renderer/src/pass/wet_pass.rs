@@ -1,9 +1,11 @@
 use xrf_error::XrfResult;
+use xrf_renderer_core::{PassParameters, RasterContext};
 
 use crate::frame::view_targets::ViewTargets;
-use crate::pass::fullscreen_pipeline::{buffer_binding, create_fullscreen_pipeline, texture_binding};
-use crate::pass::layout_entries::{texture_entry, uniform_entry};
+use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline;
 use crate::pass::view_binding::ViewBinding;
+use crate::pass::wet_apply_parameters::WetApplyParameters;
+use crate::pass::wet_patch_parameters::WetPatchParameters;
 use crate::shader::shader_library::ShaderLibrary;
 
 /// Rain on the G-buffer before any light, as `draw_rain` wets it (`r3_rendertarget_draw_rain.cpp`): where the rain
@@ -24,37 +26,8 @@ impl WetPass {
   ///
   /// Returns an error when a shader does not compose or compile.
   pub fn new(device: &wgpu::Device, shaders: &ShaderLibrary, view_layout: &wgpu::BindGroupLayout) -> XrfResult<Self> {
-    let fragment: wgpu::ShaderStages = wgpu::ShaderStages::FRAGMENT;
-    let unfiltered: wgpu::TextureSampleType = wgpu::TextureSampleType::Float { filterable: false };
-    let filtered: wgpu::TextureSampleType = wgpu::TextureSampleType::Float { filterable: true };
-    let depth: wgpu::TextureSampleType = wgpu::TextureSampleType::Depth;
-    let flat: wgpu::TextureViewDimension = wgpu::TextureViewDimension::D2;
-    let patch: wgpu::BindGroupLayout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-      label: Some("wet patch"),
-      entries: &[
-        texture_entry(0, fragment, depth, flat),
-        texture_entry(1, fragment, unfiltered, flat),
-        texture_entry(2, fragment, unfiltered, flat),
-        texture_entry(3, fragment, depth, flat),
-        texture_entry(4, fragment, filtered, wgpu::TextureViewDimension::D2Array),
-        texture_entry(5, fragment, filtered, flat),
-        wgpu::BindGroupLayoutEntry {
-          binding: 6,
-          visibility: fragment,
-          ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-          count: None,
-        },
-        uniform_entry(7, fragment),
-      ],
-    });
-    let apply: wgpu::BindGroupLayout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-      label: Some("wet apply"),
-      entries: &[
-        texture_entry(0, fragment, depth, flat),
-        texture_entry(1, fragment, unfiltered, flat),
-        uniform_entry(2, fragment),
-      ],
-    });
+    let patch: wgpu::BindGroupLayout = WetPatchParameters::create_layout(device);
+    let apply: wgpu::BindGroupLayout = WetApplyParameters::create_layout(device);
     let layouts: [wgpu::BindGroupLayout; 2] = [patch, apply];
 
     Ok(Self {
@@ -85,51 +58,27 @@ impl WetPass {
     }
   }
 
-  /// The patch's bind group, then the write back's and the wetting's.
-  pub fn create_bind_groups(
-    &self,
-    device: &wgpu::Device,
-    targets: &ViewTargets,
-    cover: &wgpu::TextureView,
-    (splash, flow): (&wgpu::TextureView, &wgpu::TextureView),
-    uniform: &wgpu::Buffer,
-  ) -> [wgpu::BindGroup; 2] {
-    [
-      device.create_bind_group(&wgpu::BindGroupDescriptor {
-        label: Some("wet patch"),
-        layout: &self.layouts[0],
-        entries: &[
-          texture_binding(0, &targets.depth),
-          texture_binding(1, &targets.albedo),
-          texture_binding(2, &targets.normal),
-          texture_binding(3, cover),
-          texture_binding(4, splash),
-          texture_binding(5, flow),
-          wgpu::BindGroupEntry {
-            binding: 6,
-            resource: wgpu::BindingResource::Sampler(&self.sampler),
-          },
-          buffer_binding(7, uniform),
-        ],
-      }),
-      device.create_bind_group(&wgpu::BindGroupDescriptor {
-        label: Some("wet apply"),
-        layout: &self.layouts[1],
-        entries: &[
-          texture_binding(0, &targets.depth),
-          texture_binding(1, &targets.light),
-          buffer_binding(2, uniform),
-        ],
-      }),
-    ]
-  }
-
   /// Draws one of its three stages into the target the pass draws into: the wet patches into the light, then the wet
   /// look into the normals and the albedo, each from the group it reads.
-  pub fn record(&self, pass: &mut wgpu::RenderPass<'_>, stage: usize, view: &ViewBinding, group: &wgpu::BindGroup) {
+  /// The sampler the splash volume and the flow are read through, which the patch's parameters bind.
+  pub fn get_sampler(&self) -> &wgpu::Sampler {
+    &self.sampler
+  }
+
+  /// Draws one stage: the patches, bound by `P` as [`WetPatchParameters`], or a wet look, as [`WetApplyParameters`].
+  pub fn record<P: PassParameters>(
+    &self,
+    context: &mut RasterContext<'_>,
+    stage: usize,
+    view: &ViewBinding,
+    parameters: &P,
+  ) {
+    context.bind(parameters);
+
+    let pass: &mut wgpu::RenderPass<'static> = context.get_pass();
+
     pass.set_pipeline(&self.pipelines[stage]);
     pass.set_bind_group(0, &view.bind_group, &[]);
-    pass.set_bind_group(1, group, &[]);
     pass.draw(0..3, 0..1);
   }
 

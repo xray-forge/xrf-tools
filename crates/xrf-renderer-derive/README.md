@@ -56,7 +56,7 @@ accesses the pass makes, and what each binding binds this frame. Field kinds:
 - `#[uniform]` on a `UniformBinding<'_, T>`: a value pushed to the upload ring this frame, read at its dynamic offset;
   `var<uniform> name: T;`.
 - `#[storage]` on a `StorageArray<T>` or `StorageArrayMut<T>`: a graph buffer read, or read and written, as
-  `array<T>`.
+  `array<T>`; on a `StorageValue<T>` or `StorageValueMut<T>`, as one `T` read from the buffer's head.
 - `#[texture(dimension, sample)]` on a `GraphTexture`: `d2`, `d2_array`, `cube`, `cube_array` or `d3`, sampled as
   `float`, `unfilterable`, `uint`, `sint` or `depth`. On a `[GraphTexture; N]` it is a binding array of `N`,
   `binding_array<T, N>`, every element sampled; the struct's `ENABLES` then names `wgpu_binding_array`, which

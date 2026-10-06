@@ -11,12 +11,7 @@ enable dual_source_blending;
 // leaving what is behind them; and wall marks laid into the G-buffer's albedo before any light. Every blend is one
 // equation, the surface's colour plus what is behind it times a second colour, so one pipeline a target draws them all.
 
-@group(3) @binding(0) var<uniform> lighting: Lighting;
-@group(3) @binding(1) var<storage, read> exposure: Exposure;
-@group(3) @binding(2) var material_lut: texture_3d<f32>;
-@group(3) @binding(3) var lut_sampler: sampler;
-@group(3) @binding(4) var shadow_maps: texture_depth_2d_array;
-@group(3) @binding(5) var<uniform> shadows: Shadows;
+#import "generated/static/composited"
 // The sky's own bind group, of which both skies, the irradiance cubes and their sampler are read.
 @group(4) @binding(0) var sky_cube_0: texture_cube<f32>;
 @group(4) @binding(1) var sky_cube_1: texture_cube<f32>;

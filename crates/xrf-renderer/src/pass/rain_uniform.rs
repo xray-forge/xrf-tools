@@ -1,6 +1,7 @@
 use std::f32::consts::FRAC_PI_2;
 
 use glam::{Vec3, Vec4};
+use xrf_renderer_core::ShaderStruct;
 
 use crate::lighting::render_rainfall::RenderRainfall;
 use crate::lighting::render_wind::RenderWind;
@@ -16,7 +17,8 @@ const MAX_LEAN_WIND: f32 = 20.0;
 
 /// What `shaders/frame/rain.wgsl` reads as its `Rain`, as `dxRainRender::Render` sets the rain up.
 #[repr(C)]
-#[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
+#[shader(name = "Rain")]
 pub struct RainUniform {
   /// `rain_color`, then the streaks' cover, `factor / 2 + .5`.
   pub color: Vec4,
@@ -30,7 +32,7 @@ pub struct RainUniform {
   pub time: f32,
   /// Indices the splash's model draws.
   pub splash_indices: u32,
-  pub pad: u32,
+  pub _pad: u32,
 }
 
 impl RainUniform {
@@ -61,7 +63,7 @@ impl RainUniform {
       count: Self::get_count(density),
       time,
       splash_indices,
-      pad: 0,
+      _pad: 0,
     }
   }
 

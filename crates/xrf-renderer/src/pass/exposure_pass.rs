@@ -1,9 +1,8 @@
 use xrf_error::XrfResult;
+use xrf_renderer_core::{ComputeContext, PassParameters};
 
-use crate::frame::view_exposure::{EXPOSURE_CELLS, ViewExposure};
-use crate::frame::view_targets::ViewTargets;
-use crate::pass::fullscreen_pipeline::texture_binding;
-use crate::pass::layout_entries::{storage_entry, texture_entry, uniform_entry};
+use crate::frame::view_exposure::EXPOSURE_CELLS;
+use crate::pass::exposure_parameters::ExposureParameters;
 use crate::pass::shader_pipelines::{create_checked, create_module};
 use crate::shader::shader_library::ShaderLibrary;
 
@@ -23,20 +22,7 @@ impl ExposurePass {
   ///
   /// Returns an error when the shader does not compose or compile.
   pub fn new(device: &wgpu::Device, shaders: &ShaderLibrary) -> XrfResult<Self> {
-    let compute: wgpu::ShaderStages = wgpu::ShaderStages::COMPUTE;
-    let layout: wgpu::BindGroupLayout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-      label: Some("exposure"),
-      entries: &[
-        texture_entry(
-          0,
-          compute,
-          wgpu::TextureSampleType::Float { filterable: false },
-          wgpu::TextureViewDimension::D2,
-        ),
-        storage_entry(1, compute, true),
-        uniform_entry(2, compute),
-      ],
-    });
+    let layout: wgpu::BindGroupLayout = ExposureParameters::create_layout(device);
 
     Ok(Self {
       pipelines: Self::create_pipelines(device, shaders, &layout)?,
@@ -56,31 +42,11 @@ impl ExposurePass {
     }
   }
 
-  pub fn create_bind_group(
-    &self,
-    device: &wgpu::Device,
-    targets: &ViewTargets,
-    exposure: &ViewExposure,
-  ) -> wgpu::BindGroup {
-    device.create_bind_group(&wgpu::BindGroupDescriptor {
-      label: Some("exposure"),
-      layout: &self.layout,
-      entries: &[
-        texture_binding(0, &targets.high),
-        wgpu::BindGroupEntry {
-          binding: 1,
-          resource: exposure.state.as_entire_binding(),
-        },
-        wgpu::BindGroupEntry {
-          binding: 2,
-          resource: exposure.params.as_entire_binding(),
-        },
-      ],
-    })
-  }
+  pub fn record(&self, context: &mut ComputeContext<'_>, parameters: &ExposureParameters) {
+    context.bind(parameters);
 
-  pub fn record(&self, pass: &mut wgpu::ComputePass<'_>, bind_group: &wgpu::BindGroup) {
-    pass.set_bind_group(0, bind_group, &[]);
+    let pass: &mut wgpu::ComputePass<'static> = context.get_pass();
+
     pass.set_pipeline(&self.pipelines[0]);
     pass.dispatch_workgroups((EXPOSURE_CELLS * EXPOSURE_CELLS).div_ceil(MEASURE_WORKGROUP), 1, 1);
     pass.set_pipeline(&self.pipelines[1]);

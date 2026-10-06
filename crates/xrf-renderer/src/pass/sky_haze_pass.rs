@@ -1,9 +1,9 @@
 use xrf_error::XrfResult;
-use xrf_renderer_core::RasterContext;
+use xrf_renderer_core::{PassParameters, RasterContext};
 
 use crate::frame::view_targets::ViewTargets;
-use crate::pass::fullscreen_pipeline::{buffer_binding, create_fullscreen_pipeline};
-use crate::pass::layout_entries::{storage_entry, uniform_entry};
+use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline;
+use crate::pass::sky_haze_parameters::SkyHazeParameters;
 use crate::pass::sky_parameters::SkyParameters;
 use crate::shader::shader_library::ShaderLibrary;
 
@@ -21,11 +21,7 @@ impl SkyHazePass {
   ///
   /// Returns an error when the shader does not compose or compile.
   pub fn new(device: &wgpu::Device, shaders: &ShaderLibrary, sky_layout: &wgpu::BindGroupLayout) -> XrfResult<Self> {
-    let fragment: wgpu::ShaderStages = wgpu::ShaderStages::FRAGMENT;
-    let layout: wgpu::BindGroupLayout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-      label: Some("sky haze"),
-      entries: &[uniform_entry(0, fragment), storage_entry(1, fragment, false)],
-    });
+    let layout: wgpu::BindGroupLayout = SkyHazeParameters::create_layout(device);
 
     Ok(Self {
       pipeline: Self::create_pipeline(device, shaders, &layout, sky_layout)?,
@@ -46,26 +42,13 @@ impl SkyHazePass {
     }
   }
 
-  pub fn create_bind_group(
-    &self,
-    device: &wgpu::Device,
-    lighting: &wgpu::Buffer,
-    exposure: &wgpu::Buffer,
-  ) -> wgpu::BindGroup {
-    device.create_bind_group(&wgpu::BindGroupDescriptor {
-      label: Some("sky haze"),
-      layout: &self.layout,
-      entries: &[buffer_binding(0, lighting), buffer_binding(1, exposure)],
-    })
-  }
-
-  pub fn record(&self, context: &mut RasterContext<'_>, bind_group: &wgpu::BindGroup, sky: &SkyParameters<'_>) {
+  pub fn record(&self, context: &mut RasterContext<'_>, parameters: &SkyHazeParameters, sky: &SkyParameters<'_>) {
+    context.bind(parameters);
     context.bind(sky);
 
     let pass: &mut wgpu::RenderPass<'static> = context.get_pass();
 
     pass.set_pipeline(&self.pipeline);
-    pass.set_bind_group(1, bind_group, &[]);
     pass.draw(0..3, 0..1);
   }
 

@@ -1,12 +1,11 @@
 use xrf_error::XrfResult;
 use xrf_material::XraySurfaceDraw;
+use xrf_renderer_core::{PassParameters, RasterContext};
 
 use crate::frame::view_targets::ViewTargets;
-use crate::pass::fullscreen_pipeline::{buffer_binding, texture_binding};
-use crate::pass::layout_entries::{storage_entry, texture_entry, uniform_entry};
 use crate::pass::shader_pipelines::{create_checked, create_module};
+use crate::pass::thunder_parameters::ThunderParameters;
 use crate::pass::view_binding::ViewBinding;
-use crate::scene::level::weather_model_buffers::WeatherModelBuffers;
 use crate::shader::shader_library::ShaderLibrary;
 
 /// What draws a strike: its model, then its top glow, then its middle one, as `shaders/frame/thunder.wgsl` names them.
@@ -38,27 +37,7 @@ impl ThunderPass {
   ///
   /// Returns an error when the shader does not compose or compile.
   pub fn new(device: &wgpu::Device, shaders: &ShaderLibrary, view_layout: &wgpu::BindGroupLayout) -> XrfResult<Self> {
-    let stages: wgpu::ShaderStages = wgpu::ShaderStages::VERTEX_FRAGMENT;
-    let layout: wgpu::BindGroupLayout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-      label: Some("thunder"),
-      entries: &[
-        uniform_entry(0, stages),
-        texture_entry(
-          1,
-          stages,
-          wgpu::TextureSampleType::Float { filterable: true },
-          wgpu::TextureViewDimension::D2,
-        ),
-        wgpu::BindGroupLayoutEntry {
-          binding: 2,
-          visibility: stages,
-          ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-          count: None,
-        },
-        storage_entry(3, stages, false),
-        storage_entry(4, stages, false),
-      ],
-    });
+    let layout: wgpu::BindGroupLayout = ThunderParameters::create_layout(device);
 
     Ok(Self {
       pipelines: Self::create_pipelines(device, shaders, view_layout, &layout)?,
@@ -86,50 +65,33 @@ impl ThunderPass {
     }
   }
 
-  /// One draw's bind group: the strike's uniform, the texture it draws with, and the model it places.
-  pub fn create_bind_group(
-    &self,
-    device: &wgpu::Device,
-    uniform: &wgpu::Buffer,
-    texture: &wgpu::TextureView,
-    model: &WeatherModelBuffers,
-  ) -> wgpu::BindGroup {
-    device.create_bind_group(&wgpu::BindGroupDescriptor {
-      label: Some("thunder"),
-      layout: &self.layout,
-      entries: &[
-        buffer_binding(0, uniform),
-        texture_binding(1, texture),
-        wgpu::BindGroupEntry {
-          binding: 2,
-          resource: wgpu::BindingResource::Sampler(&self.sampler),
-        },
-        buffer_binding(3, &model.vertices),
-        buffer_binding(4, &model.indices),
-      ],
-    })
+  /// The sampler the strike's textures are read through, which its parameters bind.
+  pub fn get_sampler(&self) -> &wgpu::Sampler {
+    &self.sampler
   }
 
   /// Draws the strike: its model's indices, when it has a model, then both glows, each by its own blend.
   pub fn record(
     &self,
-    pass: &mut wgpu::RenderPass<'_>,
+    context: &mut RasterContext<'_>,
     view: &ViewBinding,
-    groups: &[wgpu::BindGroup; 3],
+    entries: &[ThunderParameters<'_>; 3],
     (draws, model_indices): ([XraySurfaceDraw; 3], u32),
   ) {
-    pass.set_bind_group(0, &view.bind_group, &[]);
+    context.get_pass().set_bind_group(0, &view.bind_group, &[]);
 
-    for (entry, (group, draw)) in groups.iter().zip(draws).enumerate() {
+    for (entry, (parameters, draw)) in entries.iter().zip(draws).enumerate() {
       let vertices: u32 = if entry == 0 { model_indices } else { 6 };
 
       if vertices == 0 {
         continue;
       }
 
-      pass.set_pipeline(&self.pipelines[entry * BLENDS.len() + to_blend(draw)]);
-      pass.set_bind_group(1, group, &[]);
-      pass.draw(0..vertices, 0..1);
+      context.bind(parameters);
+      context
+        .get_pass()
+        .set_pipeline(&self.pipelines[entry * BLENDS.len() + to_blend(draw)]);
+      context.get_pass().draw(0..vertices, 0..1);
     }
   }
 

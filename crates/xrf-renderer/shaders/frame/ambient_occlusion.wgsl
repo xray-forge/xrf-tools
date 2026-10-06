@@ -6,26 +6,12 @@
 // denoised one way and the other. Visibility in red, from none to all, and the point's distance along the view in
 // green; nothing drawn is all visible at no distance.
 
-struct AmbientOcclusion {
-  // Metres around a point that what stands there occludes it from: `EffectRadius * RadiusMultiplier`.
-  radius: f32,
-  // What the visibility is raised to: XeGTAO's curve times the strength.
-  power: f32,
-  // Metres one pixel of the search target spans at a metre from the camera.
-  spread: f32,
-  // Pixels of the search target a horizon is searched across at most.
-  reach: f32,
-};
-
 // Directions around the view, and steps each way along each: the quality's.
 override SLICES: u32 = 3u;
 override STEPS: u32 = 3u;
 
-@group(1) @binding(0) var normal_target: texture_2d<f32>;
-@group(1) @binding(1) var depth_target: texture_depth_2d;
-@group(1) @binding(2) var<uniform> occlusion: AmbientOcclusion;
-// What the other way of the denoise reads.
-@group(1) @binding(3) var source: texture_2d<f32>;
+// The normals and depth, the settings, and the occlusion target the other way of the denoise wrote.
+#import "generated/frame/ambient_occlusion"
 
 const PI: f32 = 3.14159265;
 

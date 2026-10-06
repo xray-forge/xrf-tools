@@ -1,4 +1,5 @@
 use glam::{Vec3, Vec4};
+use xrf_renderer_core::ShaderStruct;
 
 use crate::host::render_lens_flare::RenderLensFlare;
 
@@ -7,7 +8,8 @@ pub const FLARE_SLOTS: usize = 16;
 
 /// What `shaders/common/flares.wgsl` reads as its `Flares`: where the sun stands, its colour and the lens flare's.
 #[repr(C)]
-#[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
+#[shader(name = "Flares")]
 pub struct FlareUniform {
   pub to_sun: Vec4,
   pub sun: Vec4,

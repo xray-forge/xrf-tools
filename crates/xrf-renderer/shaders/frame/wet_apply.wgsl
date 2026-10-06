@@ -5,10 +5,9 @@
 // `rain_apply_normal` and `rain_apply_gloss`: the normal the patch bent written back, and the albedo darkened and the
 // gloss raised by how wet it is, wherever anything was drawn.
 
-@group(1) @binding(0) var depth_target: texture_depth_2d;
-// The patched normal in colour, the wetness in alpha: the light target, borrowed before any light is drawn.
-@group(1) @binding(1) var patched: texture_2d<f32>;
-@group(1) @binding(2) var<uniform> wet: Wet;
+// The depth, the patches (the patched normal in colour, the wetness in alpha: the light target, borrowed before any
+// light is drawn), and the settings.
+#import "generated/frame/wet_apply"
 
 // Whether anything was drawn at a pixel, reversed: nought where nothing was.
 fn is_drawn(texel: vec2<i32>) -> bool {

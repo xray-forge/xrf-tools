@@ -27,7 +27,7 @@ pub use crate::graph::{
 };
 pub use crate::param::{
   BindGroupCache, PassBinding, PassBindingLayout, PassParameters, PassResources, ShaderBindings, StorageArray,
-  StorageArrayMut, StorageField, UniformBinding, UniformField,
+  StorageArrayMut, StorageField, StorageValue, StorageValueMut, UniformBinding, UniformField,
 };
 pub use crate::pipeline::{
   ComputePipelineDescription, PipelineCache, PipelineConstants, RenderPipelineDescription, ShaderOverride,

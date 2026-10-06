@@ -5,11 +5,7 @@
 // the camera, the flares along the line from the screen's centre through the sun and turned along it, the gradient
 // about the sun; each its texture times its colour, `srcalpha, one`.
 
-@group(1) @binding(0) var<uniform> flares: Flares;
-// x: how much of the sun shows, eased, `fBlend`.
-@group(1) @binding(1) var<storage, read> state: array<f32, 4>;
-@group(1) @binding(2) var flare_sampler: sampler;
-@group(2) @binding(0) var flare_texture: texture_2d<f32>;
+#import "generated/frame/flare"
 
 // The instance the gradient is drawn as; the flares are the ones before it.
 const GRADIENT_INSTANCE: u32 = 16u;

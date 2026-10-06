@@ -1,9 +1,9 @@
 use xrf_error::XrfResult;
+use xrf_renderer_core::{PassParameters, RasterContext};
 
 use crate::contract::render_ambient_occlusion_quality::RenderAmbientOcclusionQuality;
 use crate::frame::view_targets::ViewTargets;
-use crate::pass::fullscreen_pipeline::texture_binding;
-use crate::pass::layout_entries::{texture_entry, uniform_entry};
+use crate::pass::ambient_occlusion_parameters::AmbientOcclusionParameters;
 use crate::pass::shader_pipelines::{create_checked, create_module};
 use crate::pass::view_binding::ViewBinding;
 use crate::shader::shader_library::ShaderLibrary;
@@ -33,18 +33,7 @@ impl AmbientOcclusionPass {
   ///
   /// Returns an error when the shader does not compose or compile.
   pub fn new(device: &wgpu::Device, shaders: &ShaderLibrary, view_layout: &wgpu::BindGroupLayout) -> XrfResult<Self> {
-    let fragment: wgpu::ShaderStages = wgpu::ShaderStages::FRAGMENT;
-    let unfiltered: wgpu::TextureSampleType = wgpu::TextureSampleType::Float { filterable: false };
-    let flat: wgpu::TextureViewDimension = wgpu::TextureViewDimension::D2;
-    let layout: wgpu::BindGroupLayout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-      label: Some("ambient occlusion"),
-      entries: &[
-        texture_entry(0, fragment, unfiltered, flat),
-        texture_entry(1, fragment, wgpu::TextureSampleType::Depth, flat),
-        uniform_entry(2, fragment),
-        texture_entry(3, fragment, unfiltered, flat),
-      ],
-    });
+    let layout: wgpu::BindGroupLayout = AmbientOcclusionParameters::create_layout(device);
     let (searches, denoises) = Self::create_pipelines(device, shaders, view_layout, &layout)?;
 
     Ok(Self {
@@ -70,30 +59,6 @@ impl AmbientOcclusionPass {
     }
   }
 
-  /// The two bind groups the passes alternate: each reads the target the other draws into.
-  pub fn create_bind_groups(
-    &self,
-    device: &wgpu::Device,
-    targets: &ViewTargets,
-    uniform: &wgpu::Buffer,
-  ) -> [wgpu::BindGroup; 2] {
-    [&targets.occlusion[1], &targets.occlusion[0]].map(|source| {
-      device.create_bind_group(&wgpu::BindGroupDescriptor {
-        label: Some("ambient occlusion"),
-        layout: &self.layout,
-        entries: &[
-          texture_binding(0, &targets.normal),
-          texture_binding(1, &targets.depth),
-          wgpu::BindGroupEntry {
-            binding: 2,
-            resource: uniform.as_entire_binding(),
-          },
-          texture_binding(3, source),
-        ],
-      })
-    })
-  }
-
   /// Which group each stage reads (the other target than it draws into), and which target it draws into: the search,
   /// then the denoise across, then back.
   pub const STAGES: [(usize, usize); 3] = [(0, 0), (1, 1), (0, 0)];
@@ -101,10 +66,10 @@ impl AmbientOcclusionPass {
   /// Draws one of its stages into the target the pass draws into: the search at `quality`, or a denoise.
   pub fn record(
     &self,
-    pass: &mut wgpu::RenderPass<'_>,
+    context: &mut RasterContext<'_>,
     (stage, quality): (usize, RenderAmbientOcclusionQuality),
     view: &ViewBinding,
-    bind_groups: &[wgpu::BindGroup; 2],
+    parameters: &AmbientOcclusionParameters,
   ) {
     let search: usize = QUALITIES.iter().position(|it| *it == quality).unwrap_or(2);
     let pipeline: &wgpu::RenderPipeline = match stage {
@@ -112,9 +77,12 @@ impl AmbientOcclusionPass {
       _ => &self.denoises[stage - 1],
     };
 
+    context.bind(parameters);
+
+    let pass: &mut wgpu::RenderPass<'static> = context.get_pass();
+
     pass.set_pipeline(pipeline);
     pass.set_bind_group(0, &view.bind_group, &[]);
-    pass.set_bind_group(1, &bind_groups[Self::STAGES[stage].0], &[]);
     pass.draw(0..3, 0..1);
   }
 

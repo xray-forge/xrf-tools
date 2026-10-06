@@ -1,10 +1,9 @@
 use xrf_error::XrfResult;
-use xrf_renderer_core::RasterContext;
+use xrf_renderer_core::{PassParameters, RasterContext};
 
 use crate::frame::view_targets::ViewTargets;
-use crate::pass::fullscreen_pipeline::{create_fullscreen_pipeline_into, texture_binding};
-use crate::pass::layout_entries::{storage_entry, texture_entry, uniform_entry};
-use crate::pass::material_table::MaterialTable;
+use crate::pass::combine_parameters::CombineParameters;
+use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline_into;
 use crate::pass::sky_parameters::SkyParameters;
 use crate::pass::view_binding::ViewBinding;
 use crate::shader::shader_library::ShaderLibrary;
@@ -28,26 +27,7 @@ impl CombinePass {
     view_layout: &wgpu::BindGroupLayout,
     sky_layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<Self> {
-    let fragment: wgpu::ShaderStages = wgpu::ShaderStages::FRAGMENT;
-    let unfiltered: wgpu::TextureSampleType = wgpu::TextureSampleType::Float { filterable: false };
-    let flat: wgpu::TextureViewDimension = wgpu::TextureViewDimension::D2;
-    let [table, sampler] = MaterialTable::get_layout_entries(5);
-    let layout: wgpu::BindGroupLayout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-      label: Some("combine"),
-      entries: &[
-        texture_entry(0, fragment, unfiltered, flat),
-        texture_entry(1, fragment, unfiltered, flat),
-        texture_entry(2, fragment, unfiltered, flat),
-        texture_entry(3, fragment, wgpu::TextureSampleType::Depth, flat),
-        texture_entry(4, fragment, unfiltered, flat),
-        table,
-        sampler,
-        uniform_entry(7, fragment),
-        storage_entry(8, fragment, false),
-        texture_entry(9, fragment, unfiltered, flat),
-        texture_entry(10, fragment, wgpu::TextureSampleType::Float { filterable: true }, flat),
-      ],
-    });
+    let layout: wgpu::BindGroupLayout = CombineParameters::create_layout(device);
 
     Ok(Self {
       pipeline: Self::create_pipeline(device, shaders, view_layout, &layout, sky_layout)?,
@@ -69,55 +49,20 @@ impl CombinePass {
     }
   }
 
-  pub fn create_bind_group(
-    &self,
-    device: &wgpu::Device,
-    targets: &ViewTargets,
-    table: &MaterialTable,
-    lighting: &wgpu::Buffer,
-    exposure: &wgpu::Buffer,
-  ) -> wgpu::BindGroup {
-    let [table, sampler] = table.get_entries(5);
-
-    device.create_bind_group(&wgpu::BindGroupDescriptor {
-      label: Some("combine"),
-      layout: &self.layout,
-      entries: &[
-        texture_binding(0, &targets.albedo),
-        texture_binding(1, &targets.normal),
-        texture_binding(2, &targets.material),
-        texture_binding(3, &targets.depth),
-        texture_binding(4, &targets.light),
-        table,
-        sampler,
-        wgpu::BindGroupEntry {
-          binding: 7,
-          resource: lighting.as_entire_binding(),
-        },
-        wgpu::BindGroupEntry {
-          binding: 8,
-          resource: exposure.as_entire_binding(),
-        },
-        texture_binding(9, &targets.occlusion[0]),
-        texture_binding(10, &targets.haze),
-      ],
-    })
-  }
-
   pub fn record(
     &self,
     context: &mut RasterContext<'_>,
     view: &ViewBinding,
-    bind_group: &wgpu::BindGroup,
+    parameters: &CombineParameters<'_>,
     sky: &SkyParameters<'_>,
   ) {
+    context.bind(parameters);
     context.bind(sky);
 
     let pass: &mut wgpu::RenderPass<'static> = context.get_pass();
 
     pass.set_pipeline(&self.pipeline);
     pass.set_bind_group(0, &view.bind_group, &[]);
-    pass.set_bind_group(1, bind_group, &[]);
     pass.draw(0..3, 0..1);
   }
 

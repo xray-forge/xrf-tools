@@ -1,10 +1,10 @@
 use xrf_error::XrfResult;
+use xrf_renderer_core::{PassParameters, RasterContext};
 
 use crate::frame::view_targets::ViewTargets;
-use crate::pass::fullscreen_pipeline::{buffer_binding, create_fullscreen_pipeline_into, texture_binding};
-use crate::pass::layout_entries::{storage_entry, texture_entry, uniform_entry};
+use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline_into;
+use crate::pass::sun_shafts_parameters::SunShaftsParameters;
 use crate::pass::view_binding::ViewBinding;
-use crate::scene::level::level_shadows::LevelShadows;
 use crate::shader::shader_library::ShaderLibrary;
 
 /// Adds the sun's light shafts to a viewport's frame after its forward surfaces, as `phase_combine_volumetric` adds
@@ -21,27 +21,7 @@ impl SunShaftsPass {
   ///
   /// Returns an error when the shader does not compose or compile.
   pub fn new(device: &wgpu::Device, shaders: &ShaderLibrary, view_layout: &wgpu::BindGroupLayout) -> XrfResult<Self> {
-    let fragment: wgpu::ShaderStages = wgpu::ShaderStages::FRAGMENT;
-    let layout: wgpu::BindGroupLayout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-      label: Some("sun shafts"),
-      entries: &[
-        texture_entry(
-          0,
-          fragment,
-          wgpu::TextureSampleType::Depth,
-          wgpu::TextureViewDimension::D2,
-        ),
-        texture_entry(
-          1,
-          fragment,
-          wgpu::TextureSampleType::Depth,
-          wgpu::TextureViewDimension::D2Array,
-        ),
-        uniform_entry(2, fragment),
-        uniform_entry(3, fragment),
-        storage_entry(4, fragment, false),
-      ],
-    });
+    let layout: wgpu::BindGroupLayout = SunShaftsParameters::create_layout(device);
 
     Ok(Self {
       pipeline: Self::create_pipeline(device, shaders, view_layout, &layout)?,
@@ -62,31 +42,13 @@ impl SunShaftsPass {
     }
   }
 
-  /// What the shafts read: the frame's depth, the sun's shadow, the lighting and the exposure.
-  pub fn create_bind_group(
-    &self,
-    device: &wgpu::Device,
-    targets: &ViewTargets,
-    shadows: &LevelShadows,
-    (lighting, exposure): (&wgpu::Buffer, &wgpu::Buffer),
-  ) -> wgpu::BindGroup {
-    device.create_bind_group(&wgpu::BindGroupDescriptor {
-      label: Some("sun shafts"),
-      layout: &self.layout,
-      entries: &[
-        texture_binding(0, &targets.depth),
-        texture_binding(1, &shadows.get_maps().view),
-        buffer_binding(2, shadows.get_uniform()),
-        buffer_binding(3, lighting),
-        buffer_binding(4, exposure),
-      ],
-    })
-  }
+  pub fn record(&self, context: &mut RasterContext<'_>, view: &ViewBinding, parameters: &SunShaftsParameters) {
+    context.bind(parameters);
 
-  pub fn record(&self, pass: &mut wgpu::RenderPass<'_>, view: &ViewBinding, group: &wgpu::BindGroup) {
+    let pass: &mut wgpu::RenderPass<'static> = context.get_pass();
+
     pass.set_pipeline(&self.pipeline);
     pass.set_bind_group(0, &view.bind_group, &[]);
-    pass.set_bind_group(1, group, &[]);
     pass.draw(0..3, 0..1);
   }
 

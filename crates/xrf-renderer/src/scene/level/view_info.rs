@@ -11,14 +11,19 @@ use crate::contract::render_rect::RenderRect;
 use crate::contract::render_shadow_settings::RenderShadowSettings;
 use crate::contract::render_upscaling_settings::RenderUpscalingSettings;
 use crate::lighting::render_lighting::RenderLighting;
+use crate::pass::ambient_occlusion_uniform::AmbientOcclusionUniform;
 use crate::pass::bloom_uniform::BloomUniform;
 use crate::pass::lighting_uniform::LightingUniform;
 use crate::pass::present_uniform::PresentUniform;
+use crate::pass::rain_uniform::RainUniform;
 use crate::pass::static_cull_params::StaticCullParams;
 use crate::pass::static_occlusion_uniform::StaticOcclusionUniform;
+use crate::pass::thunder_uniform::ThunderUniform;
 use crate::pass::upscale_uniform::UpscaleUniform;
+use crate::pass::wet_uniform::WetUniform;
 use crate::pass::wind_uniform::WindUniform;
 use crate::scene::level::sky_views::SkyViews;
+use crate::scene::level::weather_views::WeatherViews;
 
 /// One frame of a view as its preparation leaves it: the camera and sun it is drawn by, what its options and weather
 /// decided it draws, and what its passes read of that. Prepared before the frame graph is declared, and read by it.
@@ -28,6 +33,13 @@ pub struct ViewInfo {
   pub upscale: UpscaleUniform,
   /// What the bloom's build and its two blurs read this frame.
   pub bloom: [BloomUniform; 3],
+  /// What the ambient occlusion searches by this frame.
+  pub occlusion_settings: AmbientOcclusionUniform,
+  /// What the rain, the wet surfaces and a strike draw by this frame, and the weather textures they draw with.
+  pub rain: RainUniform,
+  pub wet: WetUniform,
+  pub thunder: ThunderUniform,
+  pub weather_views: WeatherViews,
   pub camera: CameraView,
   /// The camera's view and projection, which become the depth history once the pyramid is reduced.
   pub matrices: (Mat4, Mat4),
@@ -91,6 +103,11 @@ impl Default for ViewInfo {
       present: PresentUniform::default(),
       upscale: UpscaleUniform::default(),
       bloom: [BloomUniform::default(); 3],
+      occlusion_settings: AmbientOcclusionUniform::default(),
+      rain: RainUniform::default(),
+      wet: WetUniform::default(),
+      thunder: ThunderUniform::default(),
+      weather_views: WeatherViews::default(),
       camera: CameraView {
         position: Vec3::ZERO,
         view: Mat4::IDENTITY,

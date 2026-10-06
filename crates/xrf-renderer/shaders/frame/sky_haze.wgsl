@@ -5,8 +5,7 @@
 // The sky as the frame draws it, both skies and the clouds over them, blurred into the haze map the distance fades
 // into: each texel's direction, the bearing across and the height up, averaged over a flat ellipse about it.
 
-@group(1) @binding(0) var<uniform> lighting: Lighting;
-@group(1) @binding(1) var<storage, read> exposure: Exposure;
+#import "generated/frame/sky_haze"
 
 // Texels across, one a bearing, and down, one a height, as `frame/view_targets.rs` sizes the map.
 const HAZE_SIZE: vec2<f32> = vec2<f32>(64.0, 32.0);
