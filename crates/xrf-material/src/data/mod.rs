@@ -13,3 +13,5 @@ pub(crate) mod xray_surface_descriptor;
 pub(crate) mod xray_surface_detail;
 pub(crate) mod xray_surface_draw;
 pub(crate) mod xray_surface_sampler;
+pub(crate) mod xray_surface_terrain;
+pub(crate) mod xray_surface_terrain_layer;

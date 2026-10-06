@@ -1,3 +1,5 @@
+use crate::scene::static_scene::static_terrain_slots::StaticTerrainSlots;
+
 /// One shader table entry as the static draws read it: its values, what it binds, and the slot of each texture.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable)]
@@ -15,6 +17,8 @@ pub struct StaticSurface {
   pub flags: u32,
   /// Texture slots, in [`StaticSurface::BASE`] order.
   pub textures: [u32; 8],
+  /// A terrain's details, bumps and mask, read where it is [`StaticSurface::IS_TERRAIN`].
+  pub terrain: StaticTerrainSlots,
 }
 
 impl StaticSurface {
@@ -49,6 +53,8 @@ impl StaticSurface {
   pub const IS_ENVIRONMENT_MAPPED: u32 = 1 << 20;
   /// An object the level stores as a tree, which `tree_s` draws without the wind.
   pub const IS_STILL: u32 = 1 << 21;
+  /// A terrain's, which lays four details and their bumps over its base by its mask, and is lit by its base's alpha.
+  pub const IS_TERRAIN: u32 = 1 << 22;
 
   pub const BASE: usize = 0;
   pub const DETAIL: usize = 1;

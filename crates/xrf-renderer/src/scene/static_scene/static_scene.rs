@@ -369,6 +369,11 @@ impl StaticScene {
         self.texture_slots.insert(*slot);
       }
     }
+
+    // A terrain's details, bumps and mask are sampled as surely as its base.
+    self
+      .texture_slots
+      .extend(surface.terrain.iter_slots().filter(|slot| *slot != MISSING_SLOT));
   }
 
   /// Stands a skinned object in a pose: each bone's matrix as three rows, from its bind to where it stands, this frame

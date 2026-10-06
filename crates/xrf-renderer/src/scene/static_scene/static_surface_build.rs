@@ -6,6 +6,7 @@ use xrf_visual::SectorSurface;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::scene::static_scene::static_class::StaticClass;
 use crate::scene::static_scene::static_surface::StaticSurface;
+use crate::scene::static_scene::static_terrain_slots::StaticTerrainSlots;
 use crate::scene::static_scene::static_water_surface::build_water_surface;
 use crate::scene::texture::texture_cache::TextureCache;
 use crate::scene::texture::texture_role::TextureRole;
@@ -67,11 +68,17 @@ pub fn build_static_surface(
   let detail = descriptor
     .and_then(|it| it.detail.as_ref())
     .filter(|detail| detail.scale.is_finite());
-  let bump = descriptor.and_then(|it| it.bump.as_ref());
-  let detail_bump = detail.and_then(|detail| detail.bump.as_ref());
+  // A terrain lays its own four details and bumps, at its detail's tiling; its single detail and bump pair are the
+  // low-quality path's, which it does not draw.
+  let is_terrain: bool = descriptor.is_some_and(|it| it.terrain.is_some());
+  let bump = descriptor.and_then(|it| it.bump.as_ref()).filter(|_| !is_terrain);
+  let detail_bump = detail.and_then(|detail| detail.bump.as_ref()).filter(|_| !is_terrain);
   let slots: [Option<u32>; 7] = [
     request(surface.texture_name.as_deref(), TextureRole::Base),
-    request(detail.map(|it| it.reference.as_str()), TextureRole::Detail),
+    request(
+      detail.filter(|_| !is_terrain).map(|it| it.reference.as_str()),
+      TextureRole::Detail,
+    ),
     request(bump.map(|it| it.bump.reference.as_str()), TextureRole::Bump),
     request(
       bump.map(|it| it.companion.reference.as_str()),
@@ -122,6 +129,25 @@ pub fn build_static_surface(
     flags |= StaticSurface::IS_STILL;
   }
 
+  let terrain: StaticTerrainSlots = match descriptor.and_then(|it| it.terrain.as_ref()) {
+    Some(terrain) if flags & StaticSurface::HAS_BASE != 0 => {
+      flags |= StaticSurface::IS_TERRAIN;
+
+      StaticTerrainSlots {
+        details: terrain
+          .layers
+          .each_ref()
+          .map(|layer| textures.request(&layer.reference, TextureRole::Detail, source)),
+        bumps: terrain
+          .layers
+          .each_ref()
+          .map(|layer| textures.request(&layer.bump, TextureRole::Bump, source)),
+        mask: textures.request(&terrain.mask, TextureRole::TerrainMask, source),
+        pad: [0; 3],
+      }
+    }
+    _ => StaticTerrainSlots::default(),
+  };
   let environment: u32 = descriptor
     .and_then(|it| it.environment.as_deref())
     .filter(|_| flags & StaticSurface::IS_ENVIRONMENT_MAPPED != 0)
@@ -146,6 +172,7 @@ pub fn build_static_surface(
       color: to_surface_color(surface.shader_id),
       flags,
       textures: texture_slots,
+      terrain,
     },
     class,
   ))
@@ -184,6 +211,7 @@ pub fn build_impostor_surface(
     color: to_surface_color(surface.shader_id),
     flags,
     textures: texture_slots,
+    terrain: StaticTerrainSlots::default(),
   }
 }
 

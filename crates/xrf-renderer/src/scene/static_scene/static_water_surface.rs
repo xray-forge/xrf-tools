@@ -5,6 +5,7 @@ use xrf_visual::SectorSurface;
 
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::scene::static_scene::static_surface::StaticSurface;
+use crate::scene::static_scene::static_terrain_slots::StaticTerrainSlots;
 use crate::scene::texture::texture_cache::TextureCache;
 use crate::scene::texture::texture_role::TextureRole;
 
@@ -84,5 +85,6 @@ pub fn build_water_surface(
     color,
     flags,
     textures: texture_slots,
+    terrain: StaticTerrainSlots::default(),
   }
 }

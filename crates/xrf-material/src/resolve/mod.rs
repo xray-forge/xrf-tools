@@ -7,4 +7,5 @@ pub(crate) mod xray_surface_detail_rule;
 pub(crate) mod xray_surface_resolver;
 pub(crate) mod xray_surface_rule;
 pub(crate) mod xray_surface_script;
+pub(crate) mod xray_surface_terrain_rule;
 pub(crate) mod xray_texture_scope;
