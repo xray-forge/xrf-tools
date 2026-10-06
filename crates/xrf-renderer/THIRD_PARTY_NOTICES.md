@@ -147,4 +147,5 @@ THE SOFTWARE.
 
 ## Screen Space Shaders
 
-By Ascii1457. The enhanced water and the enhanced foliage's motion and lighting.
+By Ascii1457. The enhanced water, the enhanced foliage's motion and lighting, and the screen-space reflections' share
+of reflection and blend.

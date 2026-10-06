@@ -312,7 +312,7 @@ export const RENDER_REFLECTION_LIMITS = {
 const RENDER_REFLECTION_MODE_DESCRIPTIONS: Readonly<Record<RenderReflectionMode, string>> = {
   [ERenderReflectionMode.ENGINE]: "The game's own: glossy and wet surfaces reflect the sky's cube alone.",
   [ERenderReflectionMode.ENHANCED]:
-    "Glossy and wet surfaces reflect what the frame shows where a traced ray meets it, the sky's cube elsewhere.",
+    "Glossy and wet surfaces reflect what the frame shows where a traced ray meets it, the sky's cube elsewhere, more at grazing angles.",
 };
 
 /**
@@ -351,7 +351,7 @@ export const RENDER_REFLECTION_QUALITY_OPTIONS: ReadonlyArray<IRenderChoiceOptio
     value,
   }));
 
-/** @returns How much of the cube a hit replaces. */
+/** @returns What a surface's share of reflection is scaled by. */
 export function formatReflectionIntensity(intensity: number): string {
   return formatPercent(intensity);
 }

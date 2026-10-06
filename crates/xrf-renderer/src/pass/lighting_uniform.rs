@@ -53,8 +53,8 @@ pub struct LightingUniform {
   pub flora: Vec4,
   /// One where the indirect light is gathered and added.
   pub indirect: Vec4,
-  /// One where the reflections are traced and stand in for the cube, then the frame's pixels a traced pixel stands for
-  /// each way.
+  /// One where the reflections are traced and blended in, the frame's pixels a traced pixel stands for each way, and
+  /// what the share of reflection is scaled by.
   pub reflections: Vec4,
 }
 
@@ -140,8 +140,9 @@ impl LightingUniform {
         0.0,
         0.0,
       ),
-      reflections: ReflectionTrace::new(options, lighting)
-        .map_or(Vec4::ZERO, |trace| Vec4::new(1.0, trace.get_ratio() as f32, 0.0, 0.0)),
+      reflections: ReflectionTrace::new(options).map_or(Vec4::ZERO, |trace| {
+        Vec4::new(1.0, trace.get_ratio() as f32, trace.intensity, 0.0)
+      }),
     }
   }
 }

@@ -28,7 +28,7 @@ interface ILevelReflectionsActionProps extends BaseComponentProps {
 
 /**
  * What glossy and wet surfaces reflect: the engine's sky cube alone, or screen-space reflections of what the frame
- * shows where a traced ray meets it; how hard they trace, how much of the cube a hit replaces and how far a ray goes.
+ * shows where a traced ray meets it; how hard they trace, how strongly surfaces reflect and how far a ray goes.
  */
 export function LevelReflectionsAction({
   "data-testid": dataTestId = "level-reflections-action",

@@ -1,6 +1,5 @@
-/// The screen-space reflections' two accumulations at the size they trace at, each its radiance and trust and what it
-/// held (the distance along the view of the point, then the frames gathered): one pair read while the other is
-/// written, swapped every frame.
+/// The screen-space reflections' two blends over frames at the size they trace at, each the reflection and the distance
+/// along the view of the point it stood at: one pair read while the other is written, swapped every frame.
 pub struct ReflectionHistory {
   pub colours: [wgpu::Texture; 2],
   pub colour_views: [wgpu::TextureView; 2],
@@ -10,13 +9,11 @@ pub struct ReflectionHistory {
   pub index: usize,
   /// Whether the pair this frame reads holds a frame.
   pub is_valid: bool,
-  /// Frames written, which the trace's noise turns by.
-  pub frame: u32,
 }
 
 impl ReflectionHistory {
   pub const COLOUR_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
-  pub const HELD_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rg16Float;
+  pub const HELD_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::R32Float;
 
   pub fn new(device: &wgpu::Device, width: u32, height: u32) -> Self {
     let create = |label: &str, format: wgpu::TextureFormat| -> wgpu::Texture {
@@ -55,20 +52,23 @@ impl ReflectionHistory {
       held_views,
       index: 0,
       is_valid: false,
-      frame: 0,
     }
   }
 
   pub fn is_sized(&self, width: u32, height: u32) -> bool {
+    self.get_size() == (width, height)
+  }
+
+  /// The size it is traced at.
+  pub fn get_size(&self) -> (u32, u32) {
     let size: wgpu::Extent3d = self.colours[0].size();
 
-    size.width == width && size.height == height
+    (size.width, size.height)
   }
 
   /// The written pair becomes the one read.
   pub fn swap(&mut self) {
     self.index = 1 - self.index;
     self.is_valid = true;
-    self.frame = self.frame.wrapping_add(1);
   }
 }

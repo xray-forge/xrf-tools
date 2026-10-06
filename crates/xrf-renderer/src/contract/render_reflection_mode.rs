@@ -8,7 +8,7 @@ pub enum RenderReflectionMode {
   /// The engine's own: the irradiance cube along the reflection, weighed by the surface's gloss.
   #[default]
   Engine,
-  /// Screen-space reflections: each glossy pixel's reflected ray traced over the frame's depth, what it meets in place
-  /// of the cube, the cube where it meets nothing.
+  /// Screen-space reflections: each glossy pixel blended towards what its reflected ray meets over the frame's depth,
+  /// by its gloss and a Fresnel term, towards the cube where the ray meets nothing.
   Enhanced,
 }

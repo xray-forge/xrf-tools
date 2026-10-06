@@ -161,15 +161,15 @@ describe("level feature options", () => {
 
   it("keeps the reflections' own mode and strengths, held to their bounds, over the settings'", () => {
     const view: ILevelFeatureOptions = toLevelFeatureOptions({
-      reflections: { distance: 900, intensity: 3, mode: ERenderReflectionMode.ENGINE, steps: 12 },
+      reflections: { distance: 900, intensity: 7, mode: ERenderReflectionMode.ENGINE, steps: 12 },
     });
 
-    expect(view.reflections).toEqual({ distance: 200, intensity: 1, mode: ERenderReflectionMode.ENGINE });
+    expect(view.reflections).toEqual({ distance: 200, intensity: 4, mode: ERenderReflectionMode.ENGINE });
     expect(toLevelReflections(SETTINGS, mockLevelFeatureOptions())).toEqual(SETTINGS.reflections);
     expect(toLevelReflections(SETTINGS, view)).toEqual({
       ...SETTINGS.reflections,
       distance: 200,
-      intensity: 1,
+      intensity: 4,
       mode: ERenderReflectionMode.ENGINE,
     });
     expect(toLevelFeatureOptions({ reflections: { mode: "raytraced" } }).reflections).toEqual({});

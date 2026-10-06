@@ -39,7 +39,6 @@ use crate::frame::depth_pyramid::DepthPyramid;
 use crate::frame::fsr_targets::FsrTargets;
 use crate::frame::indirect_light_history::IndirectLightHistory;
 use crate::frame::pick_target::PickTarget;
-use crate::frame::reflection_depth::ReflectionDepth;
 use crate::frame::reflection_history::ReflectionHistory;
 use crate::frame::static_scene_handles::StaticSceneHandles;
 use crate::frame::temporal_history::TemporalHistory;
@@ -451,7 +450,7 @@ impl SceneView {
     self.info.indirect_light = options.features.indirect_light;
     self.info.bitmask = BitmaskSearch::new(options);
     self.info.reflection_settings = options.features.reflections;
-    self.info.reflection = ReflectionTrace::new(options, lighting);
+    self.info.reflection = ReflectionTrace::new(options);
     self.info.output = output;
     self.info.upscaling = options.output.upscaling;
     self.info.debug_view = options.mode.debug_view;
@@ -1046,32 +1045,20 @@ impl SceneView {
   ) -> Option<GraphTexture> {
     self.info.reflection?;
 
-    let (Some(depth), Some(history)) = (&self.state.reflection_depth, &self.state.reflections) else {
-      return None;
-    };
+    let history: &ReflectionHistory = self.state.reflections.as_ref()?;
     let sky: SkyParameters<'a> = *sky;
     let reflection: UniformBinding<ReflectionUniform> = runtime.push_uniform(&self.info.reflections);
     let empty: GraphTexture = bindings.import_view(graph, "reflections empty", passes.reflections.get_empty());
-    let nearest: GraphTexture = bindings.import_view(graph, "reflection depth", &depth.view);
-    let reduction: PyramidDepthParameters = PyramidDepthParameters {
-      source_depth: targets.depth,
-      target_level: nearest,
-    };
-
-    graph
-      .add_compute_pass(ReflectionTrace::DEPTH_PASS)
-      .parameters(&reduction)
-      .record(move |context| passes.reflections.record_depth(context, depth, &reduction));
-
-    let (width, height) = (depth.width, depth.height);
+    let (width, height) = history.get_size();
     let mut create = |label: &'static str, format: wgpu::TextureFormat| -> GraphTexture {
       graph.create_texture(GraphTextureDescriptor::new_2d(label, width, height, format))
     };
     let traced: GraphTexture = create("reflections traced", ReflectionPass::TRACED);
-    let traced_length: GraphTexture = create("reflections length", ReflectionPass::LENGTH);
-    let filtered: GraphTexture = create("reflections", ReflectionPass::TRACED);
-    // What a stage reads: the stage before's result and its rays' lengths, and the last frame's accumulation.
-    let parameters = |(source, lengths): (GraphTexture, GraphTexture),
+    let traced_depth: GraphTexture = create("reflections depth", ReflectionPass::DEPTH);
+    let blurred: GraphTexture = create("reflections blurred", ReflectionPass::TRACED);
+    let reflected: GraphTexture = create("reflections", ReflectionPass::TRACED);
+    // What a stage reads: the stage before's result and its hits' depths, and the last frame's reflections.
+    let parameters = |(source, depths): (GraphTexture, GraphTexture),
                       (previous, held): (GraphTexture, GraphTexture)| {
       ReflectionParameters {
         albedo_target: targets.albedo,
@@ -1079,15 +1066,13 @@ impl SceneView {
         material_target: targets.material,
         depth_target: targets.depth,
         light_target: targets.light,
-        motion_target: targets.motion,
         occlusion_target: targets.occlusion[0],
         material_lut: lit.material_lut,
         lut_sampler: lit.lut_sampler,
         lighting: lit.lighting,
         reflection,
-        nearest_depth: nearest,
         traced: source,
-        traced_length: lengths,
+        traced_depth: depths,
         history: previous,
         history_held: held,
       }
@@ -1100,7 +1085,7 @@ impl SceneView {
       .parameters(&tracing)
       .parameters(&sky)
       .color(clear(traced))
-      .color(clear(traced_length))
+      .color(clear(traced_depth))
       .record(move |context| passes.reflections.record_trace(context, view, &tracing, &sky));
 
     let index: usize = history.index;
@@ -1108,7 +1093,7 @@ impl SceneView {
       [1 - index, index].map(|at| bindings.import_view(&mut *graph, "reflection history", &history.colour_views[at]));
     let [previous_held, written_held] = [1 - index, index]
       .map(|at| bindings.import_view(&mut *graph, "reflection history held", &history.held_views[at]));
-    let accumulating: ReflectionParameters = parameters((traced, traced_length), (previous, previous_held));
+    let accumulating: ReflectionParameters = parameters((traced, traced_depth), (previous, previous_held));
 
     graph
       .add_raster_pass(ReflectionTrace::ACCUMULATE_PASS)
@@ -1117,37 +1102,32 @@ impl SceneView {
       .color(clear(written_held))
       .record(move |context| passes.reflections.record_accumulate(context, view, &accumulating));
 
-    let filtering: ReflectionParameters = parameters((written, empty), (empty, empty));
+    for (name, (source, target), is_fine) in [
+      (ReflectionTrace::BLUR_PASS, (written, blurred), false),
+      (ReflectionTrace::FINE_BLUR_PASS, (blurred, reflected), true),
+    ] {
+      let blurring: ReflectionParameters = parameters((source, empty), (empty, empty));
 
-    graph
-      .add_raster_pass(ReflectionTrace::FILTER_PASS)
-      .parameters(&filtering)
-      .color(clear(filtered))
-      .record(move |context| passes.reflections.record_filter(context, view, &filtering));
+      graph
+        .add_raster_pass(name)
+        .parameters(&blurring)
+        .color(clear(target))
+        .record(move |context| passes.reflections.record_blur(context, view, &blurring, is_fine));
+    }
 
-    Some(filtered)
+    Some(reflected)
   }
 
-  /// Makes the nearest depth and the history at the size the reflections trace at while they are traced,
-  /// dropping both otherwise, and writes what their passes read.
+  /// Makes the history at the size the reflections trace at while they are traced, dropping it otherwise, and writes
+  /// what their passes read.
   fn prepare_reflections(&mut self, device: &wgpu::Device, (width, height): (u32, u32)) {
     let Some(trace) = self.info.reflection else {
-      self.state.reflection_depth = None;
       self.state.reflections = None;
 
       return;
     };
     let ratio: u32 = trace.get_ratio();
     let (traced_width, traced_height) = (width.div_ceil(ratio), height.div_ceil(ratio));
-
-    if !self
-      .state
-      .reflection_depth
-      .as_ref()
-      .is_some_and(|it| it.is_sized(traced_width, traced_height))
-    {
-      self.state.reflection_depth = Some(ReflectionDepth::new(device, traced_width, traced_height));
-    }
 
     if !self
       .state
@@ -1158,14 +1138,9 @@ impl SceneView {
       self.state.reflections = Some(ReflectionHistory::new(device, traced_width, traced_height));
     }
 
-    let history: Option<&ReflectionHistory> = self.state.reflections.as_ref();
+    let has_history: bool = self.state.reflections.as_ref().is_some_and(|it| it.is_valid);
 
-    self.info.reflections = ReflectionUniform::new(
-      &self.info.reflection_settings,
-      (width, height),
-      history.map_or(0, |it| it.frame),
-      history.is_some_and(|it| it.is_valid),
-    );
+    self.info.reflections = ReflectionUniform::new(&self.info.reflection_settings, has_history);
   }
 
   /// Adds a pass copying the whole of one texture into another of its size.

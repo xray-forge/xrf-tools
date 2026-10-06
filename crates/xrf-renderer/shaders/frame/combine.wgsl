@@ -5,6 +5,7 @@
 #import "common/sky"
 #import "common/fullscreen"
 #import "common/occlusion"
+#import "common/reflection_trace"
 
 // `hmodel` and `combine_1` over the light the frame accumulated, then the fog and tonemap of `combine_2`, faded into the
 // weather's sky, into the viewport's scene; and `combine_1`'s and the sky's high part beside it, which the bloom is
@@ -13,7 +14,7 @@
 // The G-buffer and its light, the material table, the lighting and exposure, the ambient occlusion (visibility, then
 // distance along the view, at half the frame's size), the haze map (the sky as drawn, clouds and all, blurred by
 // bearing and height), the indirect light (colour, then distance along the view, at half the frame's size) and the
-// reflections traced (radiance met times trust, then trust, at the size they are traced at).
+// reflections (what each surface reflects, then one, at the size they are traced at).
 #import "generated/frame/combine"
 
 // What shows where nothing was drawn and neither the sky nor the fog is: the level viewer's backdrop, #202428.
@@ -64,14 +65,13 @@ fn sky_behind(direction: vec3<f32>, toward: vec3<f32>, scale: f32, is_hazed: boo
   return mix(shown, sky_haze(direction), sky_above_fold(lighting, direction));
 }
 
-// `hmodel` over the G-buffer's view space normal and point, what the reflections traced standing in for the cube.
+// `hmodel` over the G-buffer's view space normal and point.
 fn shaded_color(albedo: vec4<f32>, light: vec4<f32>, normal: vec3<f32>, position: vec3<f32>, slice: f32, occlusion: f32,
-  visible: vec3<f32>, traced: vec4<f32>) -> vec3<f32> {
-  let rotation: mat3x3<f32> = transpose(mat3x3<f32>(camera.view[0].xyz, camera.view[1].xyz, camera.view[2].xyz));
-
-  return hmodel_traced(lighting, material_lut, lut_sampler, sky_environment_0, sky_environment_1, sky_clamp, albedo,
-    light, normalize(rotation * normal), normalize(rotation * normalize(position)), slice, occlusion, visible, traced);
+  visible: vec3<f32>) -> vec3<f32> {
+  return hmodel(lighting, material_lut, lut_sampler, sky_environment_0, sky_environment_1, sky_clamp, albedo, light,
+    world_direction(normal), world_direction(normalize(position)), slice, occlusion, visible);
 }
+
 
 // What shows at a pixel where nothing was drawn: the backdrop, or its checkerboard with a second colour.
 fn backdrop_at(pixel: vec2<f32>) -> vec3<f32> {
@@ -144,17 +144,7 @@ fn fs_combine(in: FullscreenVarying) -> CombineOutput {
     lighting.params.w > 0.5);
   let bounced: vec3<f32> = bounced_occlusion(visible, albedo.rgb, lighting.params.x);
   let occlusion: f32 = mix(1.0, material.x, camera.switches.z);
-  // What the reflections met along this pixel's reflection, none where they are not traced.
-  var traced: vec4<f32> = vec4<f32>(0.0);
-
-  if (lighting.reflections.x > 0.5) {
-    let upsampled: vec4<f32> = upsampled_reflection(reflections, depth_target, floor(in.clip.xy), -position.z,
-      lighting.reflections.y);
-
-    traced = max(upsampled, vec4<f32>(0.0));
-  }
-
-  var shaded: vec3<f32> = shaded_color(albedo, light, normal, position, material.z, occlusion, bounced, traced);
+  var shaded: vec3<f32> = shaded_color(albedo, light, normal, position, material.z, occlusion, bounced);
 
   // The light the frame's surfaces bounce onto this one, lighting its albedo as the hemisphere does.
   if (lighting.indirect.x > 0.5) {
@@ -163,7 +153,20 @@ fn fs_combine(in: FullscreenVarying) -> CombineOutput {
 
   // The engine fogs towards `fog_color` before the tonemap, then fades into the sky itself by the fog squared, both
   // parts alike (`skyblend` in either's alpha).
-  let fogged: vec3<f32> = mix(shaded, lighting.fog_color.rgb, fog);
+  var fogged: vec3<f32> = mix(shaded, lighting.fog_color.rgb, fog);
+
+  // The fogged surface blended towards what it reflects by its share of reflection.
+  if (lighting.reflections.x > 0.5) {
+    let share: f32 = reflection_share(albedo.a, normal, normalize(position), lighting.reflections.z,
+      has_mark(material.a, MARK_FLORA), fog);
+
+    if (share > 0.0) {
+      let reflected: vec4<f32> = upsampled_reflection(reflections, depth_target, floor(in.clip.xy), -position.z,
+        lighting.reflections.y);
+
+      fogged = mix(fogged, max(reflected.rgb, vec3<f32>(0.0)), share);
+    }
+  }
   let finished: vec3<f32> = tonemap(fogged, scale);
   let high: vec3<f32> = tonemap_high(fogged, scale);
 
