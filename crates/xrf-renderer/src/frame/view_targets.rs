@@ -84,6 +84,25 @@ impl ViewTargets {
     };
     let create =
       |label: &str, format: wgpu::TextureFormat| -> wgpu::TextureView { create_sized(label, format, (width, height)) };
+    // The depth is copied out for the reflections to read a frame later.
+    let depth: wgpu::TextureView = device
+      .create_texture(&wgpu::TextureDescriptor {
+        label: Some("depth"),
+        size: wgpu::Extent3d {
+          width,
+          height,
+          depth_or_array_layers: 1,
+        },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: Self::DEPTH,
+        usage: wgpu::TextureUsages::RENDER_ATTACHMENT
+          | wgpu::TextureUsages::TEXTURE_BINDING
+          | wgpu::TextureUsages::COPY_SRC,
+        view_formats: &[],
+      })
+      .create_view(&Default::default());
     let scene_texture: wgpu::Texture = device.create_texture(&wgpu::TextureDescriptor {
       label: Some("scene"),
       size: wgpu::Extent3d {
@@ -110,7 +129,7 @@ impl ViewTargets {
       normal: create("normal", Self::NORMAL),
       material: create("material", Self::MATERIAL),
       motion: create("motion", Self::MOTION),
-      depth: create("depth", Self::DEPTH),
+      depth,
       light: create("light", Self::LIGHT),
       scene: scene_texture.create_view(&Default::default()),
       scene_texture,

@@ -1214,6 +1214,7 @@ impl RenderThread {
     let drawn: CameraView = view.jittered(jitter, Vec2::new(drawn_rect.width as f32, drawn_rect.height as f32));
     let unjittered: Mat4 = view.get_view_projection();
     let motion: (Mat4, Mat4) = view_state.get_state_mut().next_motion(unjittered);
+    let previous: Mat4 = view_state.get_state_mut().next_jittered(drawn.get_view_projection());
     let selected: Option<StaticSelection> = view_state.resolve_selection(scene, selection.as_ref()).cloned();
 
     binding.write(
@@ -1223,6 +1224,7 @@ impl RenderThread {
         .with_wireframe(options.mode.is_wireframe)
         .with_surface_color(options.mode.surface_color)
         .with_motion(motion)
+        .with_previous(previous)
         .with_asset_view(&options, drawn_rect.height as f32 / rect.height.max(1) as f32),
     );
 

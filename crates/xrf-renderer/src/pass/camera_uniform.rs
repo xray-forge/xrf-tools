@@ -28,6 +28,8 @@ pub struct CameraUniform {
   /// World to clip without the jitter, this frame and the last, which a surface's motion is measured by.
   pub motion_current: Mat4,
   pub motion_previous: Mat4,
+  /// World to clip with the jitter the last frame drew by, which a read of that frame's targets reprojects through.
+  pub view_projection_previous: Mat4,
   /// What shows where nothing was drawn and neither the sky nor the fog is; `w` one where it is set.
   pub backdrop: Vec4,
   /// What a surface naming no base texture is drawn; `w` one where it is set, white where it is not.
@@ -60,6 +62,7 @@ impl CameraUniform {
       modes: Vec4::ZERO,
       motion_current: view_projection,
       motion_previous: view_projection,
+      view_projection_previous: view_projection,
       backdrop: Vec4::ZERO,
       plain: Vec4::ZERO,
       backdrop_squares: Vec4::ZERO,
@@ -89,6 +92,12 @@ impl CameraUniform {
   pub fn with_motion(mut self, (current, previous): (Mat4, Mat4)) -> Self {
     self.motion_current = current;
     self.motion_previous = previous;
+    self
+  }
+
+  /// The same camera remembering the jittered view projection the last frame drew by.
+  pub fn with_previous(mut self, previous: Mat4) -> Self {
+    self.view_projection_previous = previous;
     self
   }
 

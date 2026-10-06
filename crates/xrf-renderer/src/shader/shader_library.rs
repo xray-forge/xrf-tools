@@ -146,6 +146,10 @@ const EMBEDDED: &[(&str, &str)] = &[
     include_str!("../../shaders/frame/puddle_sites.wgsl"),
   ),
   (
+    "frame/sky_prefilter",
+    include_str!("../../shaders/frame/sky_prefilter.wgsl"),
+  ),
+  (
     "frame/reflections",
     include_str!("../../shaders/frame/reflections.wgsl"),
   ),
@@ -253,6 +257,10 @@ const EMBEDDED: &[(&str, &str)] = &[
   (
     "generated/frame/puddle_sites",
     include_str!("../../shaders/generated/frame/puddle_sites.wgsl"),
+  ),
+  (
+    "generated/frame/sky_prefilter",
+    include_str!("../../shaders/generated/frame/sky_prefilter.wgsl"),
   ),
   (
     "generated/frame/bloom",
