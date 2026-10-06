@@ -24,6 +24,7 @@ pub struct WetUniform {
   /// The level's wetness, how much of flat terrain puddles may cover, how much of a reflection a puddle takes at most,
   /// and how strongly rain ripples.
   pub puddles: Vec4,
-  /// Metres out to which puddles are drawn, how full they are, and how stormy the rain has been.
+  /// Metres out to which puddles are drawn, how full they are, how stormy the rain has been, and how soaked a long
+  /// rain has left the level.
   pub puddle_state: Vec4,
 }

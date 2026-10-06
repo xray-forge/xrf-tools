@@ -1617,7 +1617,7 @@ impl SceneView {
     };
     let density: f32 = lighting.rain.map_or(0.0, |rain| rain.density);
     let wetness: f32 = self.state.wetness.advance(time, density, weather_rate / time_factor);
-    let (fill, storm): (f32, f32) = self
+    let puddles: (f32, f32, f32) = self
       .state
       .puddle_fill
       .advance(time, density, weather_rate / time_factor);
@@ -1628,7 +1628,7 @@ impl SceneView {
     self.prepare_wet(
       (lighting, weather),
       options,
-      (falling.as_ref(), time, wetness, (fill, storm)),
+      (falling.as_ref(), time, wetness, puddles),
       weather_textures,
     );
   }
@@ -1679,7 +1679,7 @@ impl SceneView {
     &mut self,
     (lighting, weather): (&RenderLighting, Option<&Arc<RenderLevelWeather>>),
     options: &RenderViewOptions,
-    (falling, time, wetness, (fill, storm)): (Option<&RainUniform>, f32, f32, (f32, f32)),
+    (falling, time, wetness, (fill, storm, soak)): (Option<&RainUniform>, f32, f32, (f32, f32, f32)),
     weather_textures: &WeatherTextureCache,
   ) {
     let settings: RenderRainSettings = options.features.rain;
@@ -1702,7 +1702,7 @@ impl SceneView {
       surface: self.renderer.level_surface.get_window().0,
       surface_shape: self.renderer.level_surface.get_window().1,
       puddles: Vec4::new(wetness, settings.puddles, settings.reflectivity, settings.ripples),
-      puddle_state: Vec4::new(settings.distance.max(0.0), fill, storm, 0.0),
+      puddle_state: Vec4::new(settings.distance.max(0.0), fill, storm, soak),
     };
     self.info.weather_views.wet = Some([
       weather_textures

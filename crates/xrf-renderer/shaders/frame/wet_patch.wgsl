@@ -177,9 +177,13 @@ const PUDDLE_RIPPLE_SHARE: f32 = 0.5;
 // `PUDDLE_REGION_TILE` metres, turned off the cells' grid, move that, whole stretches wetter or drier.
 const SITE_CELL: f32 = 8.0;
 const SITE_SHARE: f32 = 0.7;
-// The most sites about one, in the cells around it, that may hold puddles before it holds none: those first by their
-// hash keep theirs, so no stretch gathers a lake of them.
-const SITE_NEIGHBOURS: u32 = 2u;
+// How many sites about one, in the cells around it, may hold puddles before it holds none, those first by their hash
+// keeping theirs, so no stretch gathers a lake of them: after a short rain, and how many more after a long one soaked
+// the level; a site past the limit by less than one grows in by that much rather than popping. And how much more of
+// the sites a long rain fills.
+const SITE_NEIGHBOURS: f32 = 2.0;
+const SOAK_NEIGHBOURS: f32 = 3.0;
+const SOAK_SHARE: f32 = 0.5;
 const PUDDLE_REGION_TILE: f32 = 240.0;
 const PUDDLE_REGION_TURN: mat2x2<f32> = mat2x2<f32>(0.8, 0.6, -0.6, 0.8);
 const PUDDLE_REGION_SHAPE: f32 = 0.6;
@@ -330,10 +334,9 @@ fn site_hash(cell: vec2<f32>) -> vec3<f32> {
   return fract((mixed.xxy + mixed.yzz) * mixed.zyx);
 }
 
-// Whether a site holding a puddle is among the first `SITE_NEIGHBOURS` + 1 by their hash of those holding one in the
-// cells about it.
-fn is_site_first(cell: vec2<f32>, origin: vec2<f32>, rank: f32, share: f32, cells: f32) -> bool {
-  var before: u32 = 0u;
+// How many sites holding puddles in the cells about one come before it by their hash.
+fn sites_before(cell: vec2<f32>, origin: vec2<f32>, rank: f32, share: f32, cells: f32) -> f32 {
+  var before: f32 = 0.0;
 
   for (var y: i32 = -1; y <= 1; y++) {
     for (var x: i32 = -1; x <= 1; x++) {
@@ -346,20 +349,21 @@ fn is_site_first(cell: vec2<f32>, origin: vec2<f32>, rank: f32, share: f32, cell
       let hash: f32 = site_hash(origin + other).x;
 
       if (hash < rank && hash < share && textureLoad(puddle_sites, vec2<i32>(other), 0).w > 0.0) {
-        before++;
+        before += 1.0;
       }
     }
   }
 
-  return before < SITE_NEIGHBOURS;
+  return before;
 }
 
 // How much of a puddle a point is, how deep into it, and how much of the damp halo around it: the sites of its cell
 // and those about it, each a whole stretched blob about its spot as big as the puddles have filled it (`growth`),
-// those the share kept, a site newly within it growing in; `border` moves each blob's edge in and out, a share of its
+// those the share kept with no more than `neighbours` before them about it, a site newly within either growing in; `border` moves each blob's edge in and out, a share of its
 // radius; `footprint` is the metres a pixel spans there, over which a border is softened at least, so a far one does
 // not shimmer. Nothing outside the level surface's map.
-fn site_puddle(world: vec3<f32>, growth: f32, share: f32, border: f32, footprint: f32) -> vec3<f32> {
+fn site_puddle(world: vec3<f32>, growth: f32, share: f32, neighbours: f32, border: f32, footprint: f32)
+  -> vec3<f32> {
   let cells: f32 = wet.surface.z * 2.0 / SITE_CELL;
   let corner: vec2<f32> = wet.surface.xy - wet.surface.z;
   let at: vec2<f32> = floor((world.xz - corner) / SITE_CELL);
@@ -377,8 +381,13 @@ fn site_puddle(world: vec3<f32>, growth: f32, share: f32, border: f32, footprint
       let site: vec4<f32> = textureLoad(puddle_sites, vec2<i32>(cell), 0);
       let hash: vec3<f32> = site_hash(origin + cell);
 
-      if (site.w <= 0.0 || hash.x >= share || length(world.xz - site.xy) > site.w * 2.0 ||
-        !is_site_first(cell, origin, hash.x, share, cells)) {
+      if (site.w <= 0.0 || hash.x >= share || length(world.xz - site.xy) > site.w * 2.0) {
+        continue;
+      }
+
+      let room: f32 = saturate(neighbours + 1.0 - sites_before(cell, origin, hash.x, share, cells));
+
+      if (room <= 0.0) {
         continue;
       }
 
@@ -387,7 +396,7 @@ fn site_puddle(world: vec3<f32>, growth: f32, share: f32, border: f32, footprint
       let offset: vec2<f32> = world.xz - site.xy;
       let stretched: vec2<f32> = vec2<f32>(dot(offset, across), dot(offset, vec2<f32>(-across.y, across.x))) /
         vec2<f32>(1.0, mix(1.0, 1.0 / PUDDLE_STRETCH, hash.z));
-      let radius: f32 = site.w * growth * saturate((share - hash.x) / SITE_GROW_IN);
+      let radius: f32 = site.w * growth * saturate((share - hash.x) / SITE_GROW_IN) * room;
       let distance: f32 = length(stretched) / radius + border;
       let softness: f32 = max(PUDDLE_SOFTNESS, 1.5 * footprint / radius);
       let band: f32 = PUDDLE_DEPTH + SITE_LEVEL.x + SITE_LEVEL.y * site.w;
@@ -502,13 +511,15 @@ fn fs_wet_patch_enhanced(in: FullscreenVarying) -> WetPatchTargets {
     let region: f32 = textureSampleGrad(puddle_noise, wet_sampler,
       PUDDLE_REGION_TURN * place.xz / PUDDLE_REGION_TILE, PUDDLE_REGION_TURN * gradients.across / PUDDLE_REGION_TILE,
       PUDDLE_REGION_TURN * gradients.down / PUDDLE_REGION_TILE).r;
+    let soak: f32 = wet.puddle_state.w;
     let share: f32 = SITE_SHARE * wet.puddles.y / 0.8 * (1.0 + (region - 0.5) * 2.0 * PUDDLE_REGION_SHAPE) *
-      (1.0 + STORM_SHARE * storm);
+      (1.0 + STORM_SHARE * storm) * (1.0 + SOAK_SHARE * soak);
+    let neighbours: f32 = SITE_NEIGHBOURS + SOAK_NEIGHBOURS * soak;
     let growth: f32 = mix(PUDDLE_GROWTH, 1.0, fill) * (1.0 + STORM_GROWTH * storm);
     let border: f32 = (edge - 0.5) * PUDDLE_EDGE_SHAPE + (noise - 0.5) * PUDDLE_NOISE_SHAPE;
 
     // The cover only reaches some tens of metres; a site is on open ground already, so a puddle does not wait for it.
-    let found: vec3<f32> = site_puddle(world, growth, share, border, footprint) *
+    let found: vec3<f32> = site_puddle(world, growth, share, neighbours, border, footprint) *
       smoothstep(wet.puddle_state.x, wet.puddle_state.x * (1.0 - PUDDLE_FADE), length(position));
 
     puddle = found.x;
