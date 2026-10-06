@@ -24,4 +24,8 @@ pub struct LevelConsoleDefaults {
   pub image_gamma: Option<f32>,
   pub image_saturation: Option<f32>,
   pub color_grading: Option<[f32; 3]>,
+  /// `r2_ls_bloom_threshold`, `r2_ls_bloom_kernel_g` and `r2_ls_bloom_kernel_scale`.
+  pub bloom_threshold: Option<f32>,
+  pub bloom_radius: Option<f32>,
+  pub bloom_strength: Option<f32>,
 }

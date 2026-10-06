@@ -57,6 +57,9 @@ pub fn parse_console_defaults(text: &str) -> LevelConsoleDefaults {
       "r__gamma" => defaults.image_gamma = number(),
       "r__saturation" => defaults.image_saturation = number(),
       "r__color_grading" => defaults.color_grading = parse_vector(value),
+      "r2_ls_bloom_threshold" => defaults.bloom_threshold = number(),
+      "r2_ls_bloom_kernel_g" => defaults.bloom_radius = number(),
+      "r2_ls_bloom_kernel_scale" => defaults.bloom_strength = number(),
       _ => {}
     }
   }

@@ -1,7 +1,7 @@
 use xrf_error::XrfResult;
 
 use crate::frame::view_targets::ViewTargets;
-use crate::pass::fullscreen_pipeline::{begin_cleared_pass, create_fullscreen_pipeline, texture_binding};
+use crate::pass::fullscreen_pipeline::{begin_cleared_pass_into, create_fullscreen_pipeline_into, texture_binding};
 use crate::pass::layout_entries::{storage_entry, texture_entry, uniform_entry};
 use crate::pass::material_table::MaterialTable;
 use crate::pass::view_binding::ViewBinding;
@@ -110,7 +110,7 @@ impl CombinePass {
     bind_group: &wgpu::BindGroup,
     sky_group: &wgpu::BindGroup,
   ) {
-    let mut pass: wgpu::RenderPass<'_> = begin_cleared_pass(encoder, "combine", &targets.scene);
+    let mut pass: wgpu::RenderPass<'_> = begin_cleared_pass_into(encoder, "combine", &[&targets.scene, &targets.high]);
 
     pass.set_pipeline(&self.pipeline);
     pass.set_bind_group(0, &view.bind_group, &[]);
@@ -126,13 +126,13 @@ impl CombinePass {
     layout: &wgpu::BindGroupLayout,
     sky_layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<wgpu::RenderPipeline> {
-    create_fullscreen_pipeline(
+    create_fullscreen_pipeline_into(
       device,
       shaders,
       "frame/combine",
       "fs_combine",
       &[Some(view_layout), Some(layout), Some(sky_layout)],
-      ViewTargets::SCENE,
+      &[Some(ViewTargets::SCENE.into()), Some(ViewTargets::HIGH.into())],
     )
   }
 }

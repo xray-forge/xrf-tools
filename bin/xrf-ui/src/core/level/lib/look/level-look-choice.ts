@@ -7,6 +7,7 @@ import {
   ILevelLook,
   NEUTRAL_LEVEL_IMAGE_CORRECTIONS,
   NEUTRAL_LEVEL_LIGHT_SCALES,
+  NO_LEVEL_BLOOM,
   OPENXRAY_LEVEL_LOOK,
   toSettingsLevelLook,
 } from "@/core/level/lib/look/level-look";
@@ -99,8 +100,16 @@ function toLevelLook(stored: Record<string, unknown>, exposure: TRenderExposureS
   const scales: Record<string, unknown> = isRecord(stored.lightScales) ? stored.lightScales : {};
   const corrections: Record<string, unknown> = isRecord(stored.corrections) ? stored.corrections : {};
   const grading: Array<unknown> = Array.isArray(corrections.grading) ? corrections.grading : [];
+  // A look kept before the bloom was drawn blooms nothing, as it drew.
+  const bloom: Record<string, unknown> = isRecord(stored.bloom) ? stored.bloom : {};
 
   return {
+    bloom: {
+      isEnabled: typeof bloom.isEnabled === "boolean" ? bloom.isEnabled : NO_LEVEL_BLOOM.isEnabled,
+      radius: toNumber(bloom.radius, NO_LEVEL_BLOOM.radius),
+      strength: toNumber(bloom.strength, NO_LEVEL_BLOOM.strength),
+      threshold: toNumber(bloom.threshold, NO_LEVEL_BLOOM.threshold),
+    },
     corrections: {
       exposure: toNumber(corrections.exposure, NEUTRAL_LEVEL_IMAGE_CORRECTIONS.exposure),
       gamma: toNumber(corrections.gamma, NEUTRAL_LEVEL_IMAGE_CORRECTIONS.gamma),

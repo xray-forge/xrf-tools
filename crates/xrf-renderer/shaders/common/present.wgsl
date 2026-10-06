@@ -17,6 +17,8 @@ struct Present {
   grading: vec4<f32>,
   // The colour a selection is outlined in; `w` one while something is selected.
   selection: vec4<f32>,
+  // Whether the frame blooms, its bloom added where the scene is read.
+  is_bloomed: u32,
 };
 
 // The drawn texel under a point of a viewport `size` pixels across whose scene is drawn `drawn` texels across.

@@ -33,6 +33,7 @@ pub use crate::contract::render_applied_report::RenderAppliedReport;
 pub use crate::contract::render_applied_shadows::RenderAppliedShadows;
 pub use crate::contract::render_asset_lighting::RenderAssetLighting;
 pub use crate::contract::render_backdrop_squares::RenderBackdropSquares;
+pub use crate::contract::render_bloom_settings::RenderBloomSettings;
 pub use crate::contract::render_camera::RenderCamera;
 pub use crate::contract::render_camera_command::RenderCameraCommand;
 pub use crate::contract::render_camera_pose::RenderCameraPose;

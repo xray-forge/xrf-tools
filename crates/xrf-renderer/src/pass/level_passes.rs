@@ -1,4 +1,5 @@
 use crate::pass::ambient_occlusion_pass::AmbientOcclusionPass;
+use crate::pass::bloom_pass::BloomPass;
 use crate::pass::combine_pass::CombinePass;
 use crate::pass::composited_pass::CompositedPass;
 use crate::pass::depth_pyramid_pass::DepthPyramidPass;
@@ -49,6 +50,7 @@ pub struct LevelPasses<'a> {
   pub thunder: &'a ThunderPass,
   pub flares: &'a FlarePass,
   pub sun_shafts: &'a SunShaftsPass,
+  pub bloom: &'a BloomPass,
   pub temporal: &'a TemporalPass,
   pub fsr: &'a FsrPass,
   pub fxaa: &'a FxaaPass,

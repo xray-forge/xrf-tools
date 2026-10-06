@@ -79,17 +79,33 @@ pub fn begin_cleared_pass<'a>(
   label: &str,
   target: &'a wgpu::TextureView,
 ) -> wgpu::RenderPass<'a> {
+  begin_cleared_pass_into(encoder, label, &[target])
+}
+
+/// The same, drawing into several colour targets at once, each cleared to nothing first.
+pub fn begin_cleared_pass_into<'a>(
+  encoder: &'a mut wgpu::CommandEncoder,
+  label: &str,
+  targets: &[&'a wgpu::TextureView],
+) -> wgpu::RenderPass<'a> {
+  let attachments: Vec<Option<wgpu::RenderPassColorAttachment<'a>>> = targets
+    .iter()
+    .map(|view| {
+      Some(wgpu::RenderPassColorAttachment {
+        view,
+        depth_slice: None,
+        resolve_target: None,
+        ops: wgpu::Operations {
+          load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+          store: wgpu::StoreOp::Store,
+        },
+      })
+    })
+    .collect();
+
   encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
     label: Some(label),
-    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-      view: target,
-      depth_slice: None,
-      resolve_target: None,
-      ops: wgpu::Operations {
-        load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-        store: wgpu::StoreOp::Store,
-      },
-    })],
+    color_attachments: &attachments,
     ..Default::default()
   })
 }

@@ -174,6 +174,17 @@ export type RenderBackdropSquares = {
   size: number | null;
 };
 
+/** The engine's bloom (`phase_bloom`): the bright part of the frame blurred over it, as the console sets it. */
+export type RenderBloomSettings = {
+  isEnabled: boolean;
+  /** `r2_ls_bloom_threshold`: what the summed brightness loses before it scales the blur. */
+  threshold: number | null;
+  /** `r2_ls_bloom_kernel_g`: the blur's radius, in texels of its 256-square target. */
+  radius: number | null;
+  /** `r2_ls_bloom_kernel_scale`: how strong the blur is. */
+  strength: number | null;
+};
+
 /** Every `kind` the `RenderCamera` union is told apart by, so a switch or a comparison names one. */
 export enum ERenderCamera {
   /** Flies free, turned by a drag and moved by the keys, as a level is walked. */
@@ -969,6 +980,7 @@ export type RenderViewOptions = {
   /** Whether the spawned objects a new game releases are drawn too, each with its group. */
   isSpawnedReleased: boolean;
   exposure: RenderExposureSettings;
+  bloom: RenderBloomSettings;
   shadows: RenderShadowSettings;
   ambientOcclusion: RenderAmbientOcclusionSettings;
   lights: RenderLightsSettings;

@@ -6,6 +6,7 @@ use crate::context::gpu_context::GpuContext;
 use crate::host::render_bundle::RenderBundle;
 use crate::pass::ambient_occlusion_pass::AmbientOcclusionPass;
 use crate::pass::backdrop_pass::BackdropPass;
+use crate::pass::bloom_pass::BloomPass;
 use crate::pass::combine_pass::CombinePass;
 use crate::pass::composited_pass::CompositedPass;
 use crate::pass::depth_pyramid_pass::DepthPyramidPass;
@@ -63,6 +64,7 @@ pub struct GpuState {
   pub thunder: ThunderPass,
   pub flares: FlarePass,
   pub sun_shafts: SunShaftsPass,
+  pub bloom: BloomPass,
   pub temporal: TemporalPass,
   pub fsr: FsrPass,
   pub fxaa: FxaaPass,
@@ -137,6 +139,7 @@ impl GpuState {
       thunder: ThunderPass::new(device, shaders, &view_layout)?,
       flares: FlarePass::new(device, shaders, &view_layout)?,
       sun_shafts: SunShaftsPass::new(device, shaders, &view_layout)?,
+      bloom: BloomPass::new(device, shaders)?,
       temporal: TemporalPass::new(device, shaders, &view_layout)?,
       fsr: FsrPass::new(device, shaders)?,
       fxaa: FxaaPass::new(device, shaders)?,
@@ -209,6 +212,7 @@ impl GpuState {
       thunder: &self.thunder,
       flares: &self.flares,
       sun_shafts: &self.sun_shafts,
+      bloom: &self.bloom,
       temporal: &self.temporal,
       fsr: &self.fsr,
       fxaa: &self.fxaa,
@@ -247,6 +251,7 @@ impl GpuState {
     self.thunder.refresh(device, shaders);
     self.flares.refresh(device, shaders);
     self.sun_shafts.refresh(device, shaders);
+    self.bloom.refresh(device, shaders);
     self.temporal.refresh(device, shaders);
     self.fsr.refresh(device, shaders);
     self.fxaa.refresh(device, shaders);

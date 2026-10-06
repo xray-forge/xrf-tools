@@ -1,6 +1,7 @@
 mod ambient_effects;
 mod ambient_wind;
 mod backdrop;
+mod bloom;
 mod cameras;
 mod compute_grid;
 mod frame_rate;

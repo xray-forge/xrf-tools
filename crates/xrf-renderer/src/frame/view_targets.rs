@@ -30,6 +30,11 @@ pub struct ViewTargets {
   /// How far the water and the distorting particles move what is seen through them, around a half, which the present
   /// reads the scene by; cleared at the frame's start.
   pub distortion: wgpu::TextureView,
+  /// `rt_Generic_1`: what combine, the sky and the sun shafts leave of the scene's light past the tonemap, scaled down by
+  /// `def_hdr`, which the bloom is built from.
+  pub high: wgpu::TextureView,
+  /// `rt_Bloom_1` and `rt_Bloom_2`: the bloom built and blurred to and fro between them, the first holding it finished.
+  pub bloom: [wgpu::TextureView; 2],
 }
 
 impl ViewTargets {
@@ -43,6 +48,11 @@ impl ViewTargets {
   pub const OCCLUSION: wgpu::TextureFormat = wgpu::TextureFormat::Rg32Float;
   pub const HAZE: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
   pub const DISTORTION: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
+  /// Eight bits a channel, as the engine's `A8R8G8B8` targets, so each stage of the bloom clamps to one as there.
+  pub const HIGH: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
+  pub const BLOOM: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
+  /// `BLOOM_size_X` and `BLOOM_size_Y`, whatever the frame's size.
+  pub const BLOOM_SIZE: (u32, u32) = (256, 256);
   /// What the distortion target holds where nothing distorts it, `(127, 127, 0, 127)` as the engine clears it.
   pub const NEUTRAL_DISTORTION: f64 = 127.0 / 255.0;
   /// Texels the haze map holds across, one a bearing, and down, one a height, as `shaders/frame/sky_haze.wgsl` says.
@@ -106,6 +116,11 @@ impl ViewTargets {
       ],
       haze: create_sized("sky haze", Self::HAZE, Self::HAZE_SIZE),
       distortion: create("distortion", Self::DISTORTION),
+      high: create("high", Self::HIGH),
+      bloom: [
+        create_sized("bloom", Self::BLOOM, Self::BLOOM_SIZE),
+        create_sized("bloom blurred", Self::BLOOM, Self::BLOOM_SIZE),
+      ],
     }
   }
 

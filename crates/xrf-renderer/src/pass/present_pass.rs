@@ -12,6 +12,8 @@ use crate::shader::shader_library::ShaderLibrary;
 /// the window's eight bits; or, for a debug view, one of the targets the scene was built from.
 pub struct PresentPass {
   layout: wgpu::BindGroupLayout,
+  /// The bloom's, `smp_rtlinear`: filtered, clamped to the edge.
+  bloom_sampler: wgpu::Sampler,
   view_layout: wgpu::BindGroupLayout,
   /// One a window format, built on first use.
   pipelines: HashMap<wgpu::TextureFormat, wgpu::RenderPipeline>,
@@ -37,11 +39,24 @@ impl PresentPass {
         uniform_entry(8, fragment),
         texture_entry(9, fragment, unfiltered, flat),
         texture_entry(10, fragment, unfiltered, flat),
+        texture_entry(11, fragment, wgpu::TextureSampleType::Float { filterable: true }, flat),
+        wgpu::BindGroupLayoutEntry {
+          binding: 12,
+          visibility: fragment,
+          ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+          count: None,
+        },
       ],
     });
 
     Self {
       layout,
+      bloom_sampler: device.create_sampler(&wgpu::SamplerDescriptor {
+        label: Some("present bloom"),
+        mag_filter: wgpu::FilterMode::Linear,
+        min_filter: wgpu::FilterMode::Linear,
+        ..Default::default()
+      }),
       view_layout: view_layout.clone(),
       pipelines: HashMap::new(),
       generation: shaders.get_generation(),
@@ -102,6 +117,11 @@ impl PresentPass {
         buffer_binding(8, uniform),
         texture_binding(9, upscaled.unwrap_or(&targets.scene)),
         texture_binding(10, &targets.motion),
+        texture_binding(11, &targets.bloom[0]),
+        wgpu::BindGroupEntry {
+          binding: 12,
+          resource: wgpu::BindingResource::Sampler(&self.bloom_sampler),
+        },
       ],
     })
   }

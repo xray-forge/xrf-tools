@@ -10,6 +10,7 @@ pub(crate) mod render_applied_report;
 pub(crate) mod render_applied_shadows;
 pub(crate) mod render_asset_lighting;
 pub(crate) mod render_backdrop_squares;
+pub(crate) mod render_bloom_settings;
 pub(crate) mod render_camera;
 pub(crate) mod render_camera_command;
 pub(crate) mod render_camera_pose;

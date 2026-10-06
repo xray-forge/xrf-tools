@@ -56,6 +56,14 @@ fn tonemap(color: vec3<f32>, scale: f32) -> vec3<f32> {
   return x * (1.0 + x / WHITE_INTENSITY_SQUARED) / (1.0 + x);
 }
 
+// `def_hdr`: the range the high target holds past the tonemap, which the bloom is built from.
+const DEF_HDR: f32 = 9.0;
+
+// `tonemap`'s high part: the scaled colour within `def_hdr`, which an eight-bit target clamps to one.
+fn tonemap_high(color: vec3<f32>, scale: f32) -> vec3<f32> {
+  return color * scale / DEF_HDR;
+}
+
 // The scaled colour `tonemap` took to a tonemapped one: the curve solved for `x`.
 fn untonemap(color: vec3<f32>) -> vec3<f32> {
   let rest: vec3<f32> = 1.0 - color;

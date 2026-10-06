@@ -1731,6 +1731,10 @@ export type LevelConsoleDefaults = {
   imageGamma: number | null;
   imageSaturation: number | null;
   colorGrading: [number | null, number | null, number | null] | null;
+  /** `r2_ls_bloom_threshold`, `r2_ls_bloom_kernel_g` and `r2_ls_bloom_kernel_scale`. */
+  bloomThreshold: number | null;
+  bloomRadius: number | null;
+  bloomStrength: number | null;
 };
 
 /** One compiled level the roots hold, as a picker lists it. */
