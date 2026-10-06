@@ -2316,7 +2316,7 @@ impl SceneView {
             prefilter,
             &lit,
             surroundings
-              .is_due()
+              .is_active()
               .then_some((surroundings, &statics, (&scene_view.info.cull, texture_group))),
           );
 
