@@ -1,0 +1,23 @@
+[package]
+name = "xrf-renderer-derive"
+version = "0.1.0"
+publish = false
+edition.workspace = true
+rust-version.workspace = true
+
+[lib]
+proc-macro = true
+
+[dependencies]
+proc-macro2 = "1.0.107"
+quote = "1.0.47"
+syn = "3.0.5"
+
+[dev-dependencies]
+bytemuck = { workspace = true }
+glam = { workspace = true }
+trybuild = "1.0.121"
+xrf-renderer-core = { workspace = true }
+
+[lints]
+workspace = true

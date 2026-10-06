@@ -7,11 +7,14 @@ rust-version.workspace = true
 
 [dependencies]
 bytemuck = { workspace = true }
+glam = { workspace = true }
 log = { workspace = true }
+naga = { workspace = true }
 offset-allocator = { workspace = true }
 serde = { workspace = true }
 wgpu = { workspace = true }
 xrf-error = { workspace = true }
+xrf-renderer-derive = { workspace = true }
 
 [dev-dependencies]
 pollster = { workspace = true }

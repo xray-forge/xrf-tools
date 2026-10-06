@@ -84,3 +84,20 @@ assert_eq!(compiled.get_render_pass_count(), 1);
   uniform and storage dynamic offsets (`UploadSlice`) and uploaded in one write at `flush`, which first replaces the
   buffer with a larger one if the frame outgrew it (`get_generation` again). A value is valid from that `flush` until
   the next frame's, which the queue orders after the frame that read it.
+
+## Shared structs
+
+A struct a shader and Rust share is declared once, in Rust, with `#[derive(ShaderStruct)]` (from `xrf-renderer-derive`,
+re-exported here; its README shows it). Its members are `ShaderType`s: `f32`, `u32`, `i32`, glam's `Vec2`/`Vec3`/`Vec4`,
+their `U` and `I` forms, `Mat3A` and `Mat4`, arrays of any of these, and other shared structs. A Rust array is a WGSL
+`array`, never a vector (`[u32; 4]` is `array<u32, 4>`, `UVec4` is `vec4<u32>`); glam's `Mat3` and `Vec3A` are left out,
+because WGSL lays them out otherwise.
+
+- The derive computes WGSL's layout in constants and asserts every member's Rust offset and the struct's size against
+  it at compile time. Padding is written out as members named with a leading underscore, which WGSL never sees; where
+  Rust would pad on its own, `bytemuck::Pod` refuses the struct first.
+- `ShaderStruct::get_wgsl_declaration` writes the WGSL struct; `ShaderDeclarations` gathers a shader's, each once and a
+  held struct before its holder.
+- `ShaderLayoutVerifier::verify` is the independent check: naga parses that declaration, lays it out itself, and
+  validates it bound in a `ShaderAddressSpace`. A uniform buffer's sixteen-byte array stride and struct alignment are
+  naga's to enforce, so an array of scalars passes in storage and is refused as a uniform.

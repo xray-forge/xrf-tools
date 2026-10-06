@@ -1,0 +1,5 @@
+error[E0080]: evaluation panicked: `Box3.max` is not where WGSL places it: pad before it with `_`-named fields
+ --> tests/ui/misaligned_member.rs:6:58
+  |
+6 | #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
+  |                                                          ^^^^^^^^^^^^ evaluation of `_` failed here
