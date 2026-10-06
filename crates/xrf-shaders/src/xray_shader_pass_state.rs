@@ -18,6 +18,10 @@ pub struct XRayShaderPassState {
   pub is_depth_written: bool,
   /// Whether the pass is a wall mark, `wmark(true)`, which the engine draws with its own depth bias.
   pub is_wallmark: bool,
+  /// Whether the pass draws into the distortion target, `distort(true)`, which the engine files a special pass under.
+  pub is_distorting: bool,
+  /// Whether the surface is self-lit, `emissive(true)`, which has its special pass fill the light it gathers.
+  pub is_emissive: bool,
 }
 
 impl XRayShaderPassState {
@@ -31,6 +35,8 @@ impl XRayShaderPassState {
     is_depth_tested: true,
     is_depth_written: true,
     is_wallmark: false,
+    is_distorting: false,
+    is_emissive: false,
   };
 
   /// Reads the state off the calls chained onto one `shader:begin`.
@@ -43,6 +49,8 @@ impl XRayShaderPassState {
         "aref" => state.read_alpha_reference(chained),
         "zb" => state.read_depth(chained),
         "wmark" => state.is_wallmark = Self::is_switched_on(chained),
+        "distort" => state.is_distorting = Self::is_switched_on(chained),
+        "emissive" => state.is_emissive = Self::is_switched_on(chained),
         _ => {}
       }
     }

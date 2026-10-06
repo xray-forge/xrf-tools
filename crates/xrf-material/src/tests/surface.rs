@@ -602,6 +602,7 @@ fn a_script_with_only_a_distortion_pass_is_the_shader_and_draws_nothing() {
     r#"
 function l_special (shader, t_base, t_second, t_detail)
   shader:begin ("particle","particle_distort") : blend (true, blend.srcalpha, blend.invsrcalpha) : zb (true, false)
+    : distort (true)
   shader:sampler ("s_distort") :texture (t_base)
 end
 "#,
@@ -617,6 +618,30 @@ end
   assert_eq!(descriptor.samplers[0].texture, "pfx\\pfx_dist_flame");
 }
 
+// `models_selflight.s`: a self-lit base pass, whose special pass fills the light it gathers rather than distorting.
+#[test]
+fn a_self_lit_script_fills_its_light_and_distorts_nothing() {
+  let tree: FixtureTree = library("surface_script_self_lit", &[]).with_shader_script(
+    "models\\selflight",
+    r#"
+function normal (shader, t_base, t_second, t_detail)
+  shader:begin ("deffer_model_flat","deffer_base_flat") : fog (false) : emissive (true)
+end
+
+function l_special (shader, t_base, t_second, t_detail)
+  shader:begin ("shadow_direct_model","accum_emissive") : zb (true,false) : fog (false) : emissive (true)
+end
+"#,
+  );
+  let descriptor: XraySurfaceDescriptor = describe_dressed(&tree, "models\\selflight", &["prop\\prop_lampa_g"]);
+
+  assert_eq!(descriptor.draw, XraySurfaceDraw::Opaque);
+  assert!(descriptor.is_emissive);
+  assert!(!descriptor.is_distorting);
+  // Without an `l_point` it has no shadow element, so the lamp never shadows its own light.
+  assert!(descriptor.is_shadowless);
+}
+
 // `_lua_Compile` hands a function its first two textures after the compiler, whatever the script names them.
 #[test]
 fn a_script_parameter_binds_the_surfaces_texture_at_its_position() {
@@ -630,6 +655,7 @@ end
 
 function l_special (shader, first, second, detail)
   shader:begin ("particle","particle_distort") : blend (true, blend.srcalpha, blend.invsrcalpha) : zb (true, false)
+    : distort (true)
   shader:sampler ("s_distort") :texture (second)
   shader:sampler ("s_detail") :texture (detail)
 end

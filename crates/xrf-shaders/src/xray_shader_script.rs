@@ -181,6 +181,43 @@ end
     Ok(())
   }
 
+  // `shaders/r3/models_selflight.s`: the base pass is self-lit, and its special pass fills the light rather than
+  // distorting.
+  #[test]
+  fn reads_a_self_lit_pass_apart_from_a_distorting_one() -> XrfResult {
+    let script: XRayShaderScript = XRayShaderScript::parse(
+      Path::new("shaders/r3/models_selflight.s"),
+      r#"
+function normal		(shader, t_base, t_second, t_detail)
+	shader:begin	("deffer_model_flat","deffer_base_flat")
+			: fog		(false)
+			: emissive 	(true)
+end
+
+function l_special	(shader, t_base, t_second, t_detail)
+	shader:begin	("shadow_direct_model",	"accum_emissive")
+			: zb 		(true,false)
+			: fog		(false)
+			: emissive 	(true)
+end
+"#,
+    )?;
+
+    let base: &XRayShaderPassState = script
+      .pass_of(XRayShaderPass::BASE_FUNCTION)
+      .expect("a base pass")
+      .state();
+    let special: &XRayShaderPassState = script
+      .pass_of(XRayShaderPass::SPECIAL_FUNCTION)
+      .expect("a special pass")
+      .state();
+
+    assert!(base.is_emissive && !base.is_distorting);
+    assert!(special.is_emissive && !special.is_distorting);
+
+    Ok(())
+  }
+
   // `shaders/r2/effects_water.s`: its textures are named once at the top, each pass binds its own.
   #[test]
   fn reads_the_samplers_each_pass_binds() -> XrfResult {
@@ -209,7 +246,7 @@ end
 
     let normal: &XRayShaderPass = script.pass_of(XRayShaderPass::BASE_FUNCTION).expect("a base pass");
     let special: &XRayShaderPass = script
-      .pass_of(XRayShaderPass::DISTORTION_FUNCTION)
+      .pass_of(XRayShaderPass::SPECIAL_FUNCTION)
       .expect("a distortion pass");
     let texture = |pass: &XRayShaderPass, name: &str| pass.sampler(name).map(|sampler| sampler.texture().clone());
 
@@ -294,7 +331,7 @@ end
     )?;
 
     assert!(script.pass_of(XRayShaderPass::BASE_FUNCTION).is_none());
-    assert!(script.pass_of(XRayShaderPass::DISTORTION_FUNCTION).is_some());
+    assert!(script.pass_of(XRayShaderPass::SPECIAL_FUNCTION).is_some());
 
     Ok(())
   }

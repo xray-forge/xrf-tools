@@ -56,14 +56,14 @@ impl XraySurfaceScript {
       .ok()?;
     let script: XRayShaderScript = XRayShaderScript::parse(&logical_path, &source).ok()?;
     let base: Option<&XRayShaderPass> = script.pass_of(XRayShaderPass::BASE_FUNCTION);
-    let distortion: Option<&XRayShaderPass> = script.pass_of(XRayShaderPass::DISTORTION_FUNCTION);
-    // `_lua_HasShader`: a script is the shader when it declares either; one with only a distortion pass draws nothing
+    let special: Option<&XRayShaderPass> = script.pass_of(XRayShaderPass::SPECIAL_FUNCTION);
+    // `_lua_HasShader`: a script is the shader when it declares either; one with only a special pass draws nothing
     // into the scene itself.
-    let pass: &XRayShaderPass = base.or(distortion)?;
+    let pass: &XRayShaderPass = base.or(special)?;
     let state: &XRayShaderPassState = pass.state();
     let samplers: Vec<XraySurfaceSampler> = base
       .into_iter()
-      .chain(distortion)
+      .chain(special)
       .flat_map(|pass| Self::to_samplers(pass, textures))
       .collect();
 
@@ -91,7 +91,11 @@ impl XraySurfaceScript {
       material: XrayMaterialDescriptor::DEFAULT_MATERIAL,
       environment: None,
       is_texture_clamped: false,
-      is_distorting: distortion.is_some(),
+      // `r__dsgraph_build`: the special pass goes to the distortion when it says `distort(true)`, and to the light
+      // gathered when the base pass says `emissive(true)`.
+      is_distorting: special.is_some_and(|pass| pass.state().is_distorting),
+      is_emissive: special.is_some() && base.is_some_and(|pass| pass.state().is_emissive),
+      is_shadowless: script.pass_of(XRayShaderPass::SHADOW_FUNCTION).is_none(),
       is_object_lod: false,
     })
   }

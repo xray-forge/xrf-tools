@@ -111,7 +111,8 @@ fn report_unresolved(source: &LevelSource, textures: &[LevelTextureReference]) {
   );
 }
 
-/// Says how many surfaces read alpha, how many are detailed, and how many the library could say nothing about.
+/// Says how many surfaces read alpha, how many are detailed, and how many neither the library nor a script could say
+/// anything about.
 fn report_surfaces(source: &LevelSource, surfaces: &[(&str, &XraySurfaceDescriptor)]) {
   let alpha: usize = surfaces
     .iter()
@@ -120,7 +121,12 @@ fn report_surfaces(source: &LevelSource, surfaces: &[(&str, &XraySurfaceDescript
   let detailed: usize = surfaces.iter().filter(|(_, surface)| surface.detail.is_some()).count();
   let undescribed: Vec<&str> = surfaces
     .iter()
-    .filter(|(_, surface)| !matches!(surface.declaration, XraySurfaceDeclaration::Described { .. }))
+    .filter(|(_, surface)| {
+      !matches!(
+        surface.declaration,
+        XraySurfaceDeclaration::Described { .. } | XraySurfaceDeclaration::Scripted { .. }
+      )
+    })
     .map(|(shader, _)| *shader)
     .collect();
 
@@ -134,7 +140,7 @@ fn report_surfaces(source: &LevelSource, surfaces: &[(&str, &XraySurfaceDescript
 
   if !undescribed.is_empty() {
     log::warn!(
-      "Level {} names {} shaders the library could not describe, so they draw opaque: {}",
+      "Level {} names {} shaders neither the library nor a script could describe, so they draw opaque: {}",
       source.get_label(),
       undescribed.len(),
       name_a_few(&undescribed)

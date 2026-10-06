@@ -19,5 +19,5 @@ impl XraySurfaceSampler {
   pub const BASE_ELEMENT: &'static str = XRayShaderPass::BASE_FUNCTION;
 
   /// The element binding what it draws into the distortion target.
-  pub const DISTORTION_ELEMENT: &'static str = XRayShaderPass::DISTORTION_FUNCTION;
+  pub const DISTORTION_ELEMENT: &'static str = XRayShaderPass::SPECIAL_FUNCTION;
 }

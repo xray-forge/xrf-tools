@@ -129,6 +129,14 @@ pub fn build_static_surface(
     flags |= StaticSurface::IS_STILL;
   }
 
+  if descriptor.is_some_and(|it| it.is_emissive) {
+    flags |= StaticSurface::IS_EMISSIVE;
+  }
+
+  if descriptor.is_some_and(|it| it.is_shadowless) {
+    flags |= StaticSurface::IS_SHADOWLESS;
+  }
+
   let terrain: StaticTerrainSlots = match descriptor.and_then(|it| it.terrain.as_ref()) {
     Some(terrain) if flags & StaticSurface::HAS_BASE != 0 => {
       flags |= StaticSurface::IS_TERRAIN;

@@ -41,8 +41,14 @@ pub struct XraySurfaceDescriptor {
   pub environment: Option<String>,
   /// Whether its base is sampled clamped to the edge rather than wrapped, `Texture clamp`.
   pub is_texture_clamped: bool,
-  /// Whether it also draws into the distortion target, by a script's `l_special` pass.
+  /// Whether it also draws into the distortion target, by a script's `l_special` pass marked `distort(true)`.
   pub is_distorting: bool,
+  /// Whether it is self-lit, a script's base pass marked `emissive(true)` with an `l_special` pass to fill the light it
+  /// gathers (`accum_emissive`).
+  pub is_emissive: bool,
+  /// Whether it casts no shadow: a script declaring no `l_point`, which the deferred renderers compile its shadow element
+  /// from, leaving it out of every shadow map.
+  pub is_shadowless: bool,
   /// `B_TREE`'s `Object LOD`: an object the level stores as a tree, drawn by `tree_s`, which the wind leaves standing.
   pub is_object_lod: bool,
 }
@@ -64,6 +70,8 @@ impl XraySurfaceDescriptor {
       environment: None,
       is_texture_clamped: false,
       is_distorting: false,
+      is_emissive: false,
+      is_shadowless: false,
       is_object_lod: false,
     }
   }

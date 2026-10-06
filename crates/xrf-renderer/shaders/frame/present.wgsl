@@ -135,7 +135,7 @@ const SELECTION_TINT: f32 = 0.15;
 fn is_marked(texel: vec2<i32>) -> bool {
   let last: vec2<i32> = vec2<i32>(camera.viewport.xy) - 1;
 
-  return textureLoad(material_target, clamp(texel, vec2<i32>(0), last), 0).a > 0.5;
+  return has_mark(textureLoad(material_target, clamp(texel, vec2<i32>(0), last), 0).a, MARK_SELECTED);
 }
 
 // How much of the selection's colour a texel shows: its outline outside what is selected, a tint over it, or none.

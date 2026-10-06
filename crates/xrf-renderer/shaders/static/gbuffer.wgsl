@@ -14,6 +14,9 @@ enable wgpu_binding_array;
 // What `def_gloss` writes for a surface without a bump: 2 of 255.
 const DEFAULT_GLOSS: f32 = 2.0 / 255.0;
 
+// Whether this pipeline draws a shadow map, whose surfaces casting none are collapsed to nothing.
+override IS_SHADOW_DRAW: bool = false;
+
 // The untextured grey a wireframe draws every edge with, lit as a surface is.
 const WIRE_COLOR: vec3<f32> = vec3<f32>(0.75);
 
@@ -79,6 +82,11 @@ fn place_vertex(pulled: PulledVertex, position: vec3<f32>, normal: vec4<f32>, ta
   out.barycentric = vec3<f32>(0.0);
   out.world = world.xyz;
   out.moved = swayed_before(placed, place.m3.y, rigidity) - world.xyz;
+
+  // A script declaring no shadow element leaves the surface out of every shadow map (`_lua_Compile`'s `E[2]`).
+  if (IS_SHADOW_DRAW && (surfaces[pulled.surface].flags & SURFACE_IS_SHADOWLESS) != 0u) {
+    out.clip = vec4<f32>(0.0);
+  }
 
   return out;
 }
@@ -406,8 +414,9 @@ fn shade(in: GBufferVarying, base: vec4<f32>, at: Footprint) -> GBufferOutput {
 
   out.albedo = vec4<f32>(mix(untextured_color(surface.color), diffuse, is_textured), gloss);
   out.normal = octahedral_encode(normal);
-  // Its alpha marks what is selected, which the present pass outlines.
-  out.material = vec4<f32>(hemi, sun, surface.slice, select(0.0, 1.0, is_selected(in.entry)));
+  // Its alpha holds the marks: what is selected, which the present pass outlines, and what is self-lit.
+  out.material = vec4<f32>(hemi, sun, surface.slice,
+    encode_marks(is_selected(in.entry), (surface.flags & SURFACE_IS_EMISSIVE) != 0u));
   out.motion = camera_motion(in.world, in.world + in.moved);
 
   return out;
