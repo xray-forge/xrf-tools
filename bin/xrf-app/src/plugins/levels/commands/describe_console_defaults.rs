@@ -6,10 +6,11 @@ use crate::core::assets::AssetMountState;
 use crate::core::execution::ExecutionState;
 use crate::core::session::{SessionId, SessionSnapshot};
 use crate::core::types::TauriResult;
-use crate::plugins::levels::console_defaults::read_console_defaults;
+use crate::plugins::levels::console_defaults::read_level_console;
 use crate::plugins::levels::state::{LevelConsoleDefaults, LevelState, SelectedLevel};
 
-/// Describe what the open level's game ships as its console defaults of how levels are lit and exposed.
+/// Describe what the open level's game runs its console with of how levels are lit and exposed: its `user.ltx` over
+/// its shipped defaults.
 #[cfg_attr(
   feature = "typescript-bindings",
   specta::specta(rename = "describe_console_defaults")
@@ -26,7 +27,7 @@ pub async fn levels_describe_console_defaults(
   let value: LevelConsoleDefaults = execution
     .run_blocking("Reading the game's console defaults", move || {
       assets.with_probe(&current.roots, |probe| {
-        read_console_defaults(probe).map_err(|error| error.to_string())
+        read_level_console(probe, &current.roots).map_err(|error| error.to_string())
       })
     })
     .await???;
