@@ -37,6 +37,8 @@ pub struct RainCover {
   draw_groups: Option<((u64, u64), [wgpu::BindGroup; StaticLayout::COUNT])>,
   /// Where it was drawn, centred and seen from, and what the scene held then, or none before it was.
   drawn: Option<(Vec3, usize)>,
+  /// Whether this frame draws it, as `prepare` decided.
+  is_due: bool,
 }
 
 impl RainCover {
@@ -69,6 +71,7 @@ impl RainCover {
       cull_group: None,
       draw_groups: None,
       drawn: None,
+      is_due: false,
     }
   }
 
@@ -81,8 +84,9 @@ impl RainCover {
     }
   }
 
-  /// Centres it over the camera, a whole step at a time, and draws it where it moved or the scene grew.
-  pub fn record(
+  /// Centres it over the camera, a whole step at a time, and readies it to be drawn where it moved or the scene grew;
+  /// `encoder` takes the copies a list growing makes.
+  pub fn prepare(
     &mut self,
     device: &wgpu::Device,
     queue: &wgpu::Queue,
@@ -98,6 +102,8 @@ impl RainCover {
     );
     let scene = frame.scene;
     let state: (Vec3, usize) = (center, scene.get_contents());
+
+    self.is_due = false;
 
     if self.drawn == Some(state) {
       return;
@@ -154,7 +160,18 @@ impl RainCover {
       self.draw_groups = Some((draw_key, groups));
     }
 
-    let (Some((_, cull_group)), Some((_, draw_groups))) = (&self.cull_group, &self.draw_groups) else {
+    if self.cull_group.is_none() || self.draw_groups.is_none() {
+      return;
+    }
+
+    self.is_due = true;
+    self.drawn = Some(state);
+  }
+
+  /// Culls and draws it, where this frame's `prepare` found it due.
+  pub fn record(&self, encoder: &mut wgpu::CommandEncoder, passes: LevelPasses<'_>, frame: &ShadowFrame<'_>) {
+    let (true, Some((_, cull_group)), Some((_, draw_groups))) = (self.is_due, &self.cull_group, &self.draw_groups)
+    else {
       return;
     };
 
@@ -169,6 +186,5 @@ impl RainCover {
       frame.textures.get_bind_group(),
       &self.args,
     );
-    self.drawn = Some(state);
   }
 }

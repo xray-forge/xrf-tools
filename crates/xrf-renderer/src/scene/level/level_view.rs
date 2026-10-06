@@ -417,6 +417,7 @@ impl LevelView {
     (lighting, weather): (&RenderLighting, Option<&Arc<RenderLevelWeather>>),
     weather_textures: &WeatherTextureCache,
     weather_rate: f32,
+    (view_layout, textures): (&wgpu::BindGroupLayout, &TextureCache),
   ) {
     if !self.state.targets.as_ref().is_some_and(|it| it.is_sized(width, height)) {
       let targets: ViewTargets = ViewTargets::new(device, width, height);
@@ -776,6 +777,76 @@ impl LevelView {
     }
 
     self.write_present(queue, options);
+    self.prepare_shadows(device, queue, encoder, passes, (view_layout, textures));
+  }
+
+  /// Readies this frame's shadows, sun, rain cover and lights, which the frame's passes then draw; `encoder` takes
+  /// the copies a list growing makes.
+  fn prepare_shadows(
+    &mut self,
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    encoder: &mut wgpu::CommandEncoder,
+    passes: LevelPasses<'_>,
+    (view_layout, textures): (&wgpu::BindGroupLayout, &TextureCache),
+  ) {
+    let LevelView {
+      scene,
+      info,
+      state,
+      cull_params,
+      occlusion,
+      shadows,
+      rain_cover,
+      ..
+    } = self;
+    let Some((pyramid, _)) = state.pyramid.as_ref() else {
+      return;
+    };
+    let LevelScene { statics, lights, .. } = scene;
+    let frame: ShadowFrame<'_> = ShadowFrame {
+      scene: statics,
+      camera: &info.camera,
+      settings: &info.shadow_settings,
+      sun_direction: info.sun_direction,
+      sway: to_sway(statics, info.sway),
+      cull_params,
+      params: &info.cull,
+      pyramid: &pyramid.view,
+      occlusion,
+      targets_epoch: state.targets_epoch,
+      textures,
+    };
+
+    shadows.prepare_cascades(device, queue, encoder, passes, view_layout, &frame);
+
+    if info.rain_draw.is_some() {
+      rain_cover.prepare(device, queue, encoder, passes, &frame);
+    }
+
+    lights.prepare_shadows(device, queue, encoder, passes, &frame);
+  }
+
+  /// Ends a frame its graph recorded: the water's reflection and the temporal resolve's history it wrote become the
+  /// ones the next frame keeps.
+  fn finish_frame(&mut self, is_lit: bool, resolve: Option<&'static str>) {
+    if is_lit {
+      self.water.finish_frame();
+    }
+
+    match resolve {
+      Some("fsr2") => {
+        if let Some((fsr, _)) = &mut self.state.fsr {
+          fsr.swap();
+        }
+      }
+      Some("temporal") => {
+        if let Some((history, _)) = &mut self.state.temporal {
+          history.swap();
+        }
+      }
+      _ => {}
+    }
   }
 
   /// Writes what the present pass reads, once the frame knows what draws into the distortion target: `def_distort`
@@ -1040,14 +1111,11 @@ impl LevelView {
   /// # Errors
   ///
   /// Returns an error when the graph cannot compile or execute, which a frame of bridges should never meet.
-  #[allow(clippy::too_many_arguments)]
   pub fn record(
     &mut self,
     runtime: &mut GraphRuntime,
     device: &wgpu::Device,
-    queue: &wgpu::Queue,
     passes: LevelPasses<'_>,
-    view_layout: &wgpu::BindGroupLayout,
     view: &ViewBinding,
     textures: &TextureCache,
   ) -> XrfResult<Option<ExecutedGraph>> {
@@ -1100,8 +1168,8 @@ impl LevelView {
     macro_rules! bridge {
       ($name:literal, |$level:ident, $encoder:ident, $marker:ident| $body:block) => {
         graph.add_encoder_pass($name).bridge().record(|context| {
-          let mut guard = cell.lock().expect("level view lock");
-          let $level: &mut LevelView = &mut guard;
+          let guard = cell.lock().expect("level view lock");
+          let $level: &LevelView = &guard;
           let ($encoder, $marker) = context.split();
           let _ = &$marker;
 
@@ -1204,17 +1272,16 @@ impl LevelView {
         shadows,
         rain_cover,
         ..
-      } = &mut *level;
-      let LevelScene { statics, lights, .. } = scene;
+      } = level;
       let Some((pyramid, _)) = state.pyramid.as_ref() else {
         return;
       };
       let frame: ShadowFrame<'_> = ShadowFrame {
-        scene: statics,
+        scene: &scene.statics,
         camera: &info.camera,
         settings: &info.shadow_settings,
         sun_direction: info.sun_direction,
-        sway: to_sway(statics, info.sway),
+        sway: to_sway(&scene.statics, info.sway),
         cull_params,
         params: &info.cull,
         pyramid: &pyramid.view,
@@ -1223,15 +1290,15 @@ impl LevelView {
         textures,
       };
 
-      shadows.record(device, queue, encoder, passes, view_layout, &frame);
+      shadows.record(encoder, passes, &frame);
       marker.mark(encoder, "sun shadows");
 
       if is_raining {
-        rain_cover.record(device, queue, encoder, passes, &frame);
+        rain_cover.record(encoder, passes, &frame);
         marker.mark(encoder, "rain cover");
       }
 
-      lights.record_shadows(device, queue, encoder, passes, &frame);
+      scene.lights.record_shadows(encoder, passes, &frame);
       marker.mark(encoder, "light shadows");
     });
 
@@ -1434,8 +1501,8 @@ impl LevelView {
           bridge!("fsr2", |level, encoder, marker| {
             let ViewState {
               targets, fsr, upscale, ..
-            } = &mut level.state;
-            let (Some(targets), Some((fsr, groups))) = (targets.as_ref(), fsr.as_mut()) else {
+            } = &level.state;
+            let (Some(targets), Some((fsr, groups))) = (targets.as_ref(), fsr.as_ref()) else {
               return;
             };
             let resolved: &wgpu::Texture = upscale
@@ -1447,7 +1514,6 @@ impl LevelView {
               .fsr
               .draw(encoder, fsr, groups, &mut |encoder, name| marker.mark(encoder, name));
             encoder.copy_texture_to_texture(history.as_image_copy(), resolved.as_image_copy(), history.size());
-            fsr.swap();
             marker.mark(encoder, "fsr2 output");
           });
         }
@@ -1458,8 +1524,8 @@ impl LevelView {
               temporal,
               upscale,
               ..
-            } = &mut level.state;
-            let (Some(targets), Some((history, groups))) = (targets.as_ref(), temporal.as_mut()) else {
+            } = &level.state;
+            let (Some(targets), Some((history, groups))) = (targets.as_ref(), temporal.as_ref()) else {
               return;
             };
             let index: usize = history.index;
@@ -1475,7 +1541,6 @@ impl LevelView {
               resolved.as_image_copy(),
               history.textures[index].size(),
             );
-            history.swap();
           });
         }
         Some(_) => {
@@ -1505,10 +1570,17 @@ impl LevelView {
       }
     }
 
-    graph
-      .compile(&GraphCompileOptions::default())?
-      .execute(device, runtime, &GraphBindings::new())
-      .map(Some)
+    let executed: ExecutedGraph =
+      graph
+        .compile(&GraphCompileOptions::default())?
+        .execute(device, runtime, &GraphBindings::new())?;
+
+    cell
+      .into_inner()
+      .expect("level view lock")
+      .finish_frame(is_lit, resolve);
+
+    Ok(Some(executed))
   }
 
   /// The draw arguments a forward pass replays: the early phase's, and the late phase's where occlusion culls.

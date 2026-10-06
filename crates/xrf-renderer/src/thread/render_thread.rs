@@ -805,6 +805,7 @@ impl RenderThread {
         (lighting, weather),
         &gpu.weather_textures,
         viewport.weather.get_player().get_clock_rate(),
+        (&gpu.view_layout, &gpu.textures),
       );
       phases.prepare += preparing.elapsed();
 
@@ -816,15 +817,7 @@ impl RenderThread {
 
       let finished: Duration = finishing.elapsed();
       let executed: Option<ExecutedGraph> = level
-        .record(
-          runtime,
-          device,
-          queue,
-          gpu.get_level_passes(),
-          &gpu.view_layout,
-          binding,
-          &gpu.textures,
-        )
+        .record(runtime, device, gpu.get_level_passes(), binding, &gpu.textures)
         .unwrap_or_else(|error| {
           log::error!("The level's frame cannot be recorded: {error}");
           None

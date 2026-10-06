@@ -53,6 +53,8 @@ pub struct LevelLightShadows {
   candidates: Vec<((bool, f32), usize, bool, usize)>,
   /// The faces drawn this frame, a camera each from the pool.
   queue: Vec<(usize, bool, usize)>,
+  /// The faces this frame draws, by their view's slot and their square, as `prepare` readied them.
+  due: Vec<(usize, ShadowTile)>,
   views: Vec<ViewBinding>,
   lists: GrowableBuffer,
   args: wgpu::Buffer,
@@ -86,6 +88,7 @@ impl LevelLightShadows {
       frame: 0,
       candidates: Vec::new(),
       queue: Vec::new(),
+      due: Vec::new(),
       views: (0..FACE_BUDGET)
         .map(|_| ViewBinding::new(device, view_layout))
         .collect(),
@@ -229,8 +232,9 @@ impl LevelLightShadows {
     self.entries.get(&index)?.shown.as_ref().filter(|set| set.is_drawn())
   }
 
-  /// Culls and draws the faces queued this frame into their squares of the atlas.
-  pub fn record(
+  /// Readies the faces queued this frame to be culled and drawn into their squares of the atlas, and lets a light's
+  /// new faces take the place of its old once all are drawn; `encoder` takes the copies a list growing makes.
+  pub fn prepare(
     &mut self,
     device: &wgpu::Device,
     queue: &wgpu::Queue,
@@ -240,6 +244,8 @@ impl LevelLightShadows {
   ) {
     let scene = frame.scene;
     let contents: usize = scene.get_contents();
+
+    self.due.clear();
 
     if self.queue.is_empty() {
       return;
@@ -275,9 +281,9 @@ impl LevelLightShadows {
       ));
     }
 
-    let (Some((_, cull_group)), Some((_, draw_groups))) = (&self.cull_group, &self.draw_groups) else {
+    if self.cull_group.is_none() || self.draw_groups.is_none() {
       return;
-    };
+    }
 
     for (slot, (index, is_next, face)) in self.queue.iter().enumerate() {
       let Some(state) = self
@@ -309,20 +315,7 @@ impl LevelLightShadows {
           Vec4::ZERO,
         ),
       );
-      // Each face's cull starts from the arguments a cull starts with, the face before it drawn already.
-      encoder.copy_buffer_to_buffer(&scene.args_template, 0, &self.args, 0, scene.args.size());
-      passes
-        .cull
-        .dispatch_shadow(encoder, view, cull_group, frame.params, true);
-      passes.shadow.draw_tile(
-        encoder,
-        &self.atlas,
-        state.tile,
-        view,
-        draw_groups,
-        frame.textures.get_bind_group(),
-        &self.args,
-      );
+      self.due.push((slot, state.tile));
       state.drawn = Some(contents);
       state.drawn_at = frame.sway.time;
     }
@@ -336,6 +329,33 @@ impl LevelLightShadows {
 
         entry.shown = entry.next.take();
       }
+    }
+  }
+
+  /// Culls and draws the faces this frame's `prepare` readied, each from the arguments a cull starts with.
+  pub fn record(&self, encoder: &mut wgpu::CommandEncoder, passes: LevelPasses<'_>, frame: &ShadowFrame<'_>) {
+    let (Some((_, cull_group)), Some((_, draw_groups))) = (&self.cull_group, &self.draw_groups) else {
+      return;
+    };
+    let scene = frame.scene;
+
+    for (slot, tile) in &self.due {
+      let view: &ViewBinding = &self.views[*slot];
+
+      // Each face's cull starts from the arguments a cull starts with, the face before it drawn already.
+      encoder.copy_buffer_to_buffer(&scene.args_template, 0, &self.args, 0, scene.args.size());
+      passes
+        .cull
+        .dispatch_shadow(encoder, view, cull_group, frame.params, true);
+      passes.shadow.draw_tile(
+        encoder,
+        &self.atlas,
+        *tile,
+        view,
+        draw_groups,
+        frame.textures.get_bind_group(),
+        &self.args,
+      );
     }
   }
 
