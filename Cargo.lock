@@ -7632,7 +7632,6 @@ version = "0.1.0"
 dependencies = [
  "bytemuck",
  "glam",
- "log",
  "naga",
  "offset-allocator",
  "pollster",
@@ -7641,6 +7640,7 @@ dependencies = [
  "wgpu",
  "xrf-error",
  "xrf-renderer-derive",
+ "xrf-test-utils",
 ]
 
 [[package]]

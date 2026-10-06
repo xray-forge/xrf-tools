@@ -3,9 +3,8 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use crate::graph::tests::fixtures::{COLOR, color_texture, load};
 use crate::graph::{
   FrameGraph, GraphBindings, GraphBufferAccess, GraphBufferDescriptor, GraphColorAttachment, GraphCompileOptions,
-  GraphTextureAccess, TransientPool,
+  GraphRuntime, GraphTextureAccess,
 };
-use crate::param::BindGroupCache;
 use crate::tests::test_device::create_device;
 
 const SIZE: u32 = 64;
@@ -65,8 +64,7 @@ fn executes_a_graph_and_reads_back_what_it_drew() {
     usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
     mapped_at_creation: false,
   });
-  let mut pool: TransientPool = TransientPool::new();
-  let cache: BindGroupCache = BindGroupCache::new();
+  let mut runtime: GraphRuntime = GraphRuntime::new(&device, &queue);
   let drawn: AtomicUsize = AtomicUsize::new(0);
 
   for _ in 0..2 {
@@ -79,12 +77,12 @@ fn executes_a_graph_and_reads_back_what_it_drew() {
     let mut bindings: GraphBindings<'_> = GraphBindings::new();
 
     bindings.bind_buffer(output, &readback);
-    queue.submit(compiled.execute(&device, &mut pool, &cache, &bindings).unwrap());
+    queue.submit(compiled.execute(&device, &mut runtime, &bindings).unwrap().commands);
   }
 
   assert_eq!(drawn.load(Ordering::Relaxed), 4);
   assert_eq!(
-    pool.get_texture_count(),
+    runtime.pool.get_texture_count(),
     1,
     "the second frame reuses the first frame's texture"
   );
@@ -100,7 +98,7 @@ fn executes_a_graph_and_reads_back_what_it_drew() {
 
 #[test]
 fn refuses_an_unbound_import() {
-  let Some((device, _queue)) = create_device() else {
+  let Some((device, queue)) = create_device() else {
     return;
   };
   let mut graph: FrameGraph<'_> = FrameGraph::new();
@@ -109,12 +107,7 @@ fn refuses_an_unbound_import() {
   declare(&mut graph, &drawn);
 
   let compiled = graph.compile(&GraphCompileOptions::default()).unwrap();
-  let error: String = match compiled.execute(
-    &device,
-    &mut TransientPool::new(),
-    &BindGroupCache::new(),
-    &GraphBindings::new(),
-  ) {
+  let error: String = match compiled.execute(&device, &mut GraphRuntime::new(&device, &queue), &GraphBindings::new()) {
     Ok(_) => panic!("expected the unbound import to be refused"),
     Err(error) => error.to_string(),
   };
@@ -124,7 +117,7 @@ fn refuses_an_unbound_import() {
 
 #[test]
 fn refuses_an_import_bound_to_a_mismatched_texture() {
-  let Some((device, _queue)) = create_device() else {
+  let Some((device, queue)) = create_device() else {
     return;
   };
   let small: wgpu::Texture = device.create_texture(&wgpu::TextureDescriptor {
@@ -163,7 +156,50 @@ fn refuses_an_import_bound_to_a_mismatched_texture() {
 
   assert!(
     compiled
-      .execute(&device, &mut TransientPool::new(), &BindGroupCache::new(), &bindings)
+      .execute(&device, &mut GraphRuntime::new(&device, &queue), &bindings)
       .is_err()
   );
+}
+
+#[test]
+fn times_each_pass_and_render_pass_on_the_gpu() {
+  let Some((device, queue)) = create_device() else {
+    return;
+  };
+  let readback: wgpu::Buffer = device.create_buffer(&wgpu::BufferDescriptor {
+    label: Some("readback"),
+    size: BYTES,
+    usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+    mapped_at_creation: false,
+  });
+  let mut runtime: GraphRuntime = GraphRuntime::new(&device, &queue);
+  let drawn: AtomicUsize = AtomicUsize::new(0);
+
+  runtime.timer.set_enabled(true);
+
+  if !runtime.timer.is_timing() {
+    eprintln!("Skipped: the device writes no timestamps inside encoders");
+
+    return;
+  }
+
+  for _ in 0..4 {
+    let mut graph: FrameGraph<'_> = FrameGraph::new();
+    let output = declare(&mut graph, &drawn);
+    let compiled = graph.compile(&GraphCompileOptions::default()).unwrap();
+    let mut bindings: GraphBindings<'_> = GraphBindings::new();
+
+    bindings.bind_buffer(output, &readback);
+
+    let executed = compiled.execute(&device, &mut runtime, &bindings).unwrap();
+
+    assert_eq!(executed.groups.len(), 1);
+    queue.submit(executed.commands);
+    runtime.timer.request();
+    device.poll(wgpu::PollType::wait_indefinitely()).unwrap();
+  }
+
+  let names: Vec<String> = runtime.timer.take().into_iter().map(|time| time.name).collect();
+
+  assert_eq!(names, ["clear + over", "copy"]);
 }

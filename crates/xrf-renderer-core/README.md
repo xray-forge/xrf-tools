@@ -8,7 +8,9 @@ X-Ray format; `xrf-renderer` builds the level renderer on it.
 A frame is declared as passes, in the order they run, each saying what it reads and writes. Compiling the graph culls
 the passes whose effects nothing reads, gives every transient a slot in a pool shared with transients whose lifetimes do
 not overlap, draws consecutive raster passes into the same attachments in one render pass, and cuts the frame into
-encode groups. Executing it records each group into a command buffer of its own.
+encode groups. Executing it records each group into a command buffer of its own, from a `GraphRuntime` that keeps
+the transient pool, the bind group cache and the GPU timer between frames, and reports what each group cost the CPU
+(`ExecutedGraph::groups`: recording, and wgpu's encoding in `finish`).
 
 ```rust
 use xrf_renderer_core::{
@@ -113,6 +115,32 @@ field kinds). A builder's `parameters(&p)` adds the accesses the struct makes, a
   identity of what they bind (wgpu's resources compare and hash by identity), so the pooled transients a pass binds give
   the same bind group back every frame; one unused for `BindGroupCache::MAX_IDLE_FRAMES` is dropped. It locks, for the
   passes recording a frame.
-- `CompiledGraph::execute` takes the cache beside the pool, and starts a frame of both.
+- The cache lives in the `GraphRuntime` beside the pool; `CompiledGraph::execute` starts a frame of both.
 - `UniformBinding` binds the upload ring's buffer once and the value's offset as a dynamic offset, so one bind group
   serves every frame's uniforms.
+
+## Timing
+
+`GraphTimer` (in the runtime) measures each pass on the GPU with no code in any pass: while enabled, the graph writes a
+timestamp at the start of each encode group and after each pass, a render pass of merged passes counting as one under
+their names joined with ` + `. The last group resolves the stamps; `request` after the submit maps them without
+waiting, a few frames in flight at once, and `take` answers each pass's mean milliseconds since the last call. A device
+without timestamps inside encoders times nothing.
+
+## Permutations and pipelines
+
+- **`ShaderPermutation`** (`#[derive(ShaderPermutation)]`) declares a shader's variants as a struct of `bool`, `u32`,
+  `i32` or `f32` fields (or any `ShaderOverride`): each a WGSL `override` constant of its name, declared by
+  `get_wgsl_overrides` and set from the field when a pipeline is made. A permutation switches code, never bindings.
+- **`PipelineCache`** makes pipelines from hashable descriptions (`RenderPipelineDescription`,
+  `ComputePipelineDescription`: module, entry points, the permutation's `PipelineConstants`, the bind group layouts by
+  identity, the render state, owned `VertexLayout`s) and keeps them, and the modules they compile, by that key. WGSL
+  comes from a `ShaderSource` (a module by name, imports resolved). `invalidate_module` drops a module hot reload
+  changed and every pipeline made from it; `warm` makes a level's pipelines ahead of the frames that draw with them.
+  What wgpu refuses comes back as an error naming the module or pipeline.
+
+## Generated files
+
+`GeneratedShaderFile::sync` keeps a checked-in WGSL file written from Rust declarations (`ShaderDeclarations`, pass
+parameters' `get_wgsl_bindings`, permutations' `get_wgsl_overrides`) the way the TypeScript bindings are kept: a test
+syncs it, the file is rewritten when stale and the test fails once, then passes with the file committed.

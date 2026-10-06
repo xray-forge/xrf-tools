@@ -18,7 +18,14 @@ pub fn create_device() -> Option<(wgpu::Device, wgpu::Queue)> {
         continue;
       };
 
-      if let Ok(pair) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor::default())) {
+      // Timestamps where the adapter writes them, so the graph's timer has something to time.
+      let features: wgpu::Features =
+        adapter.features() & (wgpu::Features::TIMESTAMP_QUERY | wgpu::Features::TIMESTAMP_QUERY_INSIDE_ENCODERS);
+
+      if let Ok(pair) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
+        required_features: features,
+        ..Default::default()
+      })) {
         return Some(pair);
       }
     }

@@ -83,3 +83,26 @@ assert_eq!(
    @group(1) @binding(1) var destination: texture_storage_2d<rgba16float, write>;\n"
 );
 ```
+
+## `ShaderPermutation`
+
+Declares a shader's permutation domain: each field a WGSL `override` constant of its name, its type from
+`ShaderOverride` (`bool`, `u32`, `i32`, `f32`, or an implementation of one's own), set from the field's value when a
+pipeline is made.
+
+```rust
+use xrf_renderer_core::ShaderPermutation;
+
+#[derive(ShaderPermutation)]
+struct Shadowing {
+  is_shadow: bool,
+  cascade: u32,
+}
+
+let shadowing = Shadowing { is_shadow: true, cascade: 2 };
+
+assert_eq!(shadowing.list_constants(), [("is_shadow", 1.0), ("cascade", 2.0)]);
+assert_eq!(Shadowing::get_wgsl_overrides(), "override is_shadow: bool;
+override cascade: u32;
+");
+```

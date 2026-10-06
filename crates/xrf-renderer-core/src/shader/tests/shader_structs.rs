@@ -77,3 +77,23 @@ fn refuses_what_a_uniform_buffer_cannot_hold() {
 
   assert!(error.contains("naga refuses `Counts` bound as Uniform"), "{error}");
 }
+
+#[test]
+fn rewrites_a_stale_generated_file_once() {
+  let file: crate::GeneratedShaderFile = crate::GeneratedShaderFile::new(
+    xrf_test_utils::utils::build_absolute_generated_test_resource_path("generated_shader_file/frame.wgsl"),
+  );
+  let wgsl: String = ShaderDeclarations::new().declare::<Frame>().to_wgsl();
+
+  assert!(file.sync(&wgsl).unwrap(), "a missing file is written");
+  assert!(!file.sync(&wgsl).unwrap(), "an up to date file is left");
+  assert!(
+    file
+      .sync(
+        "struct Other { value: f32, }
+"
+      )
+      .unwrap(),
+    "a stale file is rewritten"
+  );
+}

@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 use std::collections::{HashMap, VecDeque};
+use std::time::Instant;
 
 use xrf_error::{XrfError, XrfResult};
 
@@ -7,7 +8,8 @@ use crate::graph::compile::compiled_pass::CompiledPass;
 use crate::graph::compile::encode_group::EncodeGroup;
 use crate::graph::compile::transient_slot::TransientSlot;
 use crate::graph::execute::{
-  ComputeContext, EncoderContext, GraphBindings, GraphPassScope, GraphResolvedTexture, GraphResources, RasterContext,
+  ComputeContext, EncoderContext, ExecutedGraph, ExecutedGroup, GraphBindings, GraphPassScope, GraphResolvedTexture,
+  GraphResources, GraphRuntime, RasterContext,
 };
 use crate::graph::frame_graph::FrameGraph;
 use crate::graph::pool::{TransientBufferKey, TransientPool, TransientTextureKey};
@@ -131,8 +133,10 @@ impl<'a> CompiledGraph<'a> {
     }
   }
 
-  /// Records the frame: draws the transients from the pool, resolves the imports from their bindings, and records each
-  /// encode group into a command buffer of its own, returned in order for one submit.
+  /// Records the frame: draws the transients from the runtime's pool, resolves the imports from their bindings, and
+  /// records each encode group into a command buffer of its own, returned in order for one submit, with what each group
+  /// cost the CPU. While the runtime's timer is timing, it stamps the start of each group and the end of each pass or
+  /// render pass; call its `request` after the submit.
   ///
   /// # Errors
   ///
@@ -141,12 +145,17 @@ impl<'a> CompiledGraph<'a> {
   pub fn execute(
     self,
     device: &wgpu::Device,
-    pool: &mut TransientPool,
-    cache: &BindGroupCache,
+    runtime: &mut GraphRuntime,
     bindings: &GraphBindings<'_>,
-  ) -> XrfResult<Vec<wgpu::CommandBuffer>> {
+  ) -> XrfResult<ExecutedGraph> {
+    let GraphRuntime {
+      pool,
+      bind_groups,
+      timer,
+    } = runtime;
+
     pool.begin_frame();
-    cache.begin_frame();
+    bind_groups.begin_frame();
 
     for (key, count) in Self::count_slots(&self.texture_slots) {
       pool.reserve_textures(device, key, count);
@@ -157,7 +166,9 @@ impl<'a> CompiledGraph<'a> {
     }
 
     let pool: &TransientPool = pool;
+    let cache: &BindGroupCache = bind_groups;
     let resources: GraphResources<'_> = self.resolve(pool, bindings)?;
+    let is_timing: bool = timer.begin_frame();
     let CompiledGraph {
       textures,
       passes,
@@ -165,13 +176,21 @@ impl<'a> CompiledGraph<'a> {
       ..
     } = self;
     let mut pending: VecDeque<CompiledPass<'a>> = passes.into();
-    let mut commands: Vec<wgpu::CommandBuffer> = Vec::with_capacity(groups.len());
+    let mut executed: ExecutedGraph = ExecutedGraph {
+      commands: Vec::with_capacity(groups.len()),
+      groups: Vec::with_capacity(groups.len()),
+    };
 
-    for group in &groups {
+    for (index, group) in groups.iter().enumerate() {
+      let recording: Instant = Instant::now();
       let mut encoder: wgpu::CommandEncoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
         label: Some(group.name),
       });
       let mut remaining: usize = group.passes.len();
+
+      if is_timing {
+        timer.stamp(&mut encoder, None);
+      }
 
       while remaining > 0 {
         let Some(pass) = pending.pop_front() else {
@@ -180,7 +199,7 @@ impl<'a> CompiledGraph<'a> {
 
         remaining -= 1;
 
-        match pass.render_pass {
+        let name: String = match pass.render_pass {
           Some(render_pass) => {
             let mut run: Vec<CompiledPass<'a>> = vec![pass];
 
@@ -193,16 +212,39 @@ impl<'a> CompiledGraph<'a> {
               remaining -= 1;
             }
 
+            let name: String = run.iter().map(|pass| pass.pass.name).collect::<Vec<_>>().join(" + ");
+
             Self::record_render_pass(&mut encoder, run, &textures, (device, cache, &resources));
+            name
           }
-          None => Self::record_pass(&mut encoder, pass, (device, cache, &resources)),
+          None => {
+            let name: String = pass.pass.name.to_string();
+
+            Self::record_pass(&mut encoder, pass, (device, cache, &resources));
+            name
+          }
+        };
+
+        if is_timing {
+          timer.stamp(&mut encoder, Some(name));
         }
       }
 
-      commands.push(encoder.finish());
+      if is_timing && index + 1 == groups.len() {
+        timer.finish_frame(&mut encoder);
+      }
+
+      let finishing: Instant = Instant::now();
+
+      executed.commands.push(encoder.finish());
+      executed.groups.push(ExecutedGroup {
+        name: group.name,
+        record: finishing.duration_since(recording),
+        finish: finishing.elapsed(),
+      });
     }
 
-    Ok(commands)
+    Ok(executed)
   }
 
   fn count_slots<K: Copy + Eq + std::hash::Hash>(slots: &[Option<TransientSlot<K>>]) -> HashMap<K, usize> {
