@@ -3,9 +3,10 @@
 
 // Screen-space reflection rays: a reflected direction drawn from a surface's GGX lobe, walked across the screen up and
 // down a pyramid of the frame's nearest depth, skipping whole cells it passes over and stepping down where it meets a
-// surface, until it stands on one at the finest level; and how much of what a surface reflects a traced reflection
-// shows, of its own reflection's slice and as a puddle's clear coat of water, which combine blends and the trace gates
-// by alike. The pyramid is passed in, so each pass binds it where it likes.
+// surface, until it stands behind one texel's surface at the finest level, met within a thin thickness or uncertain
+// beyond it; and how much of what a surface reflects a traced reflection shows, of its own reflection's slice and as a
+// puddle's clear coat of water, which combine blends and the trace gates by alike. The pyramid is passed in, so each
+// pass binds it where it likes.
 
 // Water's reflectance head on, from its index of refraction of 1.33, and a dry dielectric's.
 const COAT_F0: f32 = 0.02;
@@ -86,28 +87,26 @@ fn ray_cell_depth(pyramid: texture_2d<f32>, cell: vec2<i32>, level: i32) -> f32 
   return textureLoad(pyramid, clamp(cell, vec2<i32>(0), size - 1), level).x;
 }
 
-// Where a ray from a screen point along a screen direction meets the frame's nearest depth, walked over at most
-// `crossings` cells; its second part is whether it ended on a surface, never where it left the screen or ran out.
-//
-// A surface the ray lies behind by no more than `thickness` (metres, then a share of the distance) it met. Further
-// behind, it met it only where it crossed into it from the pixel it left: in front of the surface there, and that
-// surface running on into this one (their depths no further apart than the ray moved), as ground rising or a wall going
-// up from its foot. Otherwise the surface stands nearer than the ray, unconnected to what the ray came over, a twig, a
-// wire, a tree's crown before the sky: the ray passes behind it and walks on.
-//
-// Nothing under the plane it was reflected off stops it (`mirror`: that plane's view space normal and its own point's
-// distance along it; `slack`: metres over it a surface may stand and still lie beneath it, a little for anything, more
-// for what stands in a puddle, `wet`'s `g`, or a plant there): a mirror's ray cannot meet what lies beneath it, as the
-// ground under a puddle's level water or a bush's foot in it, which the depth shows a little above the water.
+// Where a ray from a screen point along a screen direction ends against the frame's nearest depth, walked over at most
+// `crossings` cells of the pyramid: the standard hierarchical traversal. At each step the ray stands in a cell of some
+// level; in front of the cell's nearest depth it moves to the cell's far edge and climbs a level, so empty space is
+// crossed in few steps; behind it, it descends a level without moving, until at the finest level it stands behind one
+// texel's surface. There it has met the surface where it lies behind it by no more than `thickness` (metres, then a
+// share of the distance); further behind, nothing on the screen can say what it met, a twig, a wire or a bush's crown
+// standing nearer than what the ray went for, and the walk ends uncertain: the miss chain answers, never a guess from
+// the pixels about it. Its second part is whether it met a surface, never where it left the screen, ran out of
+// crossings or ended uncertain.
 struct RayWalk {
   position: vec3<f32>,
   is_met: bool,
   // How it ended (`common/reflection_end`).
   end: u32,
+  // Metres behind the surface it met the ray stood, none where it crossed into it.
+  behind: f32,
 };
 
-fn ray_walk(pyramid: texture_2d<f32>, material: texture_2d<f32>, wet: texture_2d<f32>, origin: vec3<f32>,
-  direction: vec3<f32>, crossings: u32, thickness: vec2<f32>, mirror: vec4<f32>, slack: vec2<f32>) -> RayWalk {
+fn ray_walk(pyramid: texture_2d<f32>, origin: vec3<f32>, direction: vec3<f32>, crossings: u32,
+  thickness: vec2<f32>) -> RayWalk {
   let screen: vec2<f32> = camera.viewport.xy;
   let inverse: vec3<f32> = select(vec3<f32>(RAY_FAR), 1.0 / direction, direction != vec3<f32>(0.0));
   var level: i32 = 0;
@@ -118,83 +117,79 @@ fn ray_walk(pyramid: texture_2d<f32>, material: texture_2d<f32>, wet: texture_2d
   var along: f32 = ray_first_cell(origin, direction, inverse, cells, floor_offset, nudge);
   var position: vec3<f32> = origin + along * direction;
   var count: u32 = 0u;
-  // Whether the last crossing passed behind a surface.
-  var was_passed: bool = false;
-  // Ray parameter a frame pixel spans along the ray, for the pixel it came from.
-  let pixel_along: f32 = 1.0 / max(max(abs(direction.x) * screen.x, abs(direction.y) * screen.y), 1e-6);
+  // Whether the last step landed on a cell's depth plane: the ray crossed into the surface rather than entering the
+  // cell already behind it.
+  var was_depth_crossed: bool = false;
 
   while (count < crossings && level >= 0) {
-    // Off the screen, or past the far plane, there is nothing left to meet; past its reach, nothing is looked for.
-    if (any(position.xy < vec2<f32>(0.0)) || any(position.xy > vec2<f32>(1.0)) || position.z <= 0.0) {
-      let is_far: bool = position.z <= 0.0 || along >= 1.0;
+    // Past its reach or the far plane, nothing is looked for; off the screen, there is nothing left to meet.
+    if (along >= 1.0 || position.z <= 0.0) {
+      return RayWalk(position, false, END_FAR, 0.0);
+    }
 
-      return RayWalk(position, false, select(END_OFF_SCREEN, END_FAR, is_far));
+    if (any(position.xy < vec2<f32>(0.0)) || any(position.xy > vec2<f32>(1.0))) {
+      return RayWalk(position, false, END_OFF_SCREEN, 0.0);
     }
 
     let at: vec2<f32> = cells * position.xy;
     let surface: f32 = ray_cell_depth(pyramid, vec2<i32>(at), level);
+    let is_above: bool = surface < position.z;
+
+    if (!is_above) {
+      // Behind the cell's nearest: at the finest level the ray stands behind one texel's surface, and the thickness
+      // says whether it met it; above it, the cell holds nearer texels than the ray's, and only descending can tell.
+      if (level == 0) {
+        let shown: vec3<f32> = ray_view_point(vec3<f32>(position.xy, surface));
+        let ray: vec3<f32> = ray_view_point(position);
+        let behind: f32 = shown.z - ray.z;
+        let reach: f32 = thickness.x - shown.z * thickness.y;
+
+        if (behind <= reach) {
+          return RayWalk(vec3<f32>(position.xy, surface), true, select(END_MET_THICK, END_MET_CROSSED, was_depth_crossed),
+            max(behind, 0.0));
+        }
+
+        return RayWalk(position, false, END_UNCERTAIN, behind);
+      }
+
+      level -= 1;
+      cells *= 2.0;
+      count++;
+
+      continue;
+    }
+
+    // In front of the cell's nearest: to its far edge, or onto its depth plane where the ray reaches that first (a
+    // reversed depth: the plane stops only a ray going away from the camera), and up a level, since the cells about
+    // this one are likelier empty too.
     let plane: vec2<f32> = (floor(at) + floor_offset) / cells + nudge;
     var crossing: vec3<f32> = vec3<f32>(plane, surface) * inverse - origin * inverse;
 
-    // Reversed depth: the surface's plane only stops a ray going away from the camera.
     crossing.z = select(RAY_FAR, crossing.z, direction.z < 0.0);
 
     let nearest: f32 = min(min(crossing.x, crossing.y), crossing.z);
-    let is_above: bool = surface < position.z;
-    let is_skipped: bool = bitcast<u32>(nearest) != bitcast<u32>(crossing.z) && is_above;
 
-    // Behind a frame pixel's surface: met, beneath the mirror, or passed behind.
-    if (!is_above && level == 0) {
-      let texel: vec2<i32> = vec2<i32>(at);
-      let shown: vec3<f32> = ray_view_point(vec3<f32>(position.xy, surface));
-      let ray: vec3<f32> = ray_view_point(position);
-      let reach: f32 = thickness.x - shown.z * thickness.y;
-      let is_in_puddle: bool = textureLoad(wet, texel, 0).g > 0.5 ||
-        has_mark(textureLoad(material, texel, 0).a, MARK_PLANT);
-      let is_beneath: bool = dot(mirror.xyz, shown) < mirror.w + select(slack.x, slack.y, is_in_puddle);
-      var is_passed: bool = is_beneath;
-
-      if (!is_beneath && length(shown - ray) > reach) {
-        let came: vec3<f32> = origin + max(along - pixel_along, 0.0) * direction;
-        let came_ray: vec3<f32> = ray_view_point(came);
-        let came_surface: vec3<f32> = ray_view_point(vec3<f32>(came.xy,
-          ray_cell_depth(pyramid, vec2<i32>(came.xy * screen), 0)));
-        let was_in_front: bool = -came_ray.z <= -came_surface.z + reach;
-        let is_connected: bool = abs(came_surface.z - shown.z) <= abs(ray.z - came_ray.z) + reach;
-
-        if (was_in_front && is_connected) {
-          return RayWalk(vec3<f32>(position.xy, surface), true, END_MET_CROSSED);
-        }
-
-        is_passed = true;
-      }
-
-      if (is_passed) {
-        along = min(crossing.x, crossing.y);
-        position = origin + along * direction;
-        count++;
-        was_passed = true;
-
-        continue;
-      }
-    }
-
-    along = select(along, nearest, is_above);
+    was_depth_crossed = bitcast<u32>(nearest) == bitcast<u32>(crossing.z);
+    along = max(along, nearest);
     position = origin + along * direction;
-    was_passed = false;
 
-    if (!(is_skipped && level >= RAY_TOP_LEVEL)) {
-      level += select(-1, 1, is_skipped);
-      cells *= select(2.0, 0.5, is_skipped);
+    if (was_depth_crossed) {
+      // Onto the depth plane: at the finest level that is the surface itself, met where the ray crossed into it.
+      if (level == 0) {
+        return RayWalk(vec3<f32>(position.xy, surface), true, END_MET_CROSSED, 0.0);
+      }
+
+      level -= 1;
+      cells *= 2.0;
+    } else if (level < RAY_TOP_LEVEL) {
+      level += 1;
+      cells *= 0.5;
     }
 
     count++;
   }
 
-  let is_met: bool = level < 0;
-  let spent: u32 = select(select(END_SPENT, END_SPENT_BEHIND, was_passed), END_FAR, along >= 1.0);
-
-  return RayWalk(position, is_met, select(spent, END_MET_THICK, is_met));
+  return RayWalk(position, false, END_SPENT, 0.0);
 }
 
 // The roughness over which a surface's own reflection is no longer sharpened by a traced one: rough wet ground keeps

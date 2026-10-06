@@ -36,12 +36,12 @@ const SKY_SEEN: vec2<f32> = vec2<f32>(0.05, 0.35);
 const MIRROR_ROUGHNESS: vec2<f32> = vec2<f32>(0.02, 0.15);
 // The luminance what a ray meets is held to, so a lamp's glass or a sunlit highlight does not flare what reflects it.
 const RADIANCE_LIMIT: f32 = 6.0;
-// Metres behind a surface a ray may lie, and what of its distance more, and still have met it; further, only where it
-// crossed into it.
-const HIT_THICKNESS: vec2<f32> = vec2<f32>(0.2, 0.008);
-// Metres over the plane a ray was reflected off a surface must stand to stop it: a little, and for what stands in a
-// puddle, whose level water lies under the bumps of the ground the depth shows, as far as the placing let it rise.
-const PLANE_SLACK: vec2<f32> = vec2<f32>(0.02, 0.3);
+// Metres behind a surface a ray may lie, and what of its distance more, and still have met it: thin, so a leaf stays a
+// leaf and a ray aimed past its edge goes past it; further behind, the walk ends uncertain and the miss chain answers.
+const HIT_THICKNESS: vec2<f32> = vec2<f32>(0.05, 0.005);
+// How far along the ray the met surface's own normal may point before the hit is a back face: faded out from none to
+// this, since the depth's normal at an edge leans.
+const BACK_FACING: f32 = 0.2;
 // The share of the screen a hit fades out over towards its edges.
 const EDGE_FADE: f32 = 0.05;
 // The length a ray that met nothing is given, so its reflection is carried as the sky's, far off.
@@ -134,12 +134,34 @@ fn met_radiance(texel: vec2<i32>) -> vec3<f32> {
   return fogged * min(1.0, RADIANCE_LIMIT / luminance(fogged));
 }
 
-// How sure a ray's end is a surface it met: none off the screen or on the sky; faded towards the screen's edges and out
-// to the distance traced. The walk has already judged what it met; a surface's back or a hit right where it left still
-// counts, as a grazing ray off a puddle meets the ground rising just past it, which the puddle's level normal shows as
-// a back.
-fn hit_confidence(hit: vec3<f32>, origin: vec3<f32>) -> f32 {
+// The view space point the depth shows at a frame texel, held to the frame.
+fn shown_point(texel: vec2<i32>) -> vec3<f32> {
+  let held: vec2<i32> = clamp(texel, vec2<i32>(0), vec2<i32>(camera.viewport.xy) - 1);
+
+  return camera_view_position(vec2<f32>(held) + 0.5, max(textureLoad(depth_target, held, 0), 1e-7));
+}
+
+// The view space normal of the surface the depth shows at a texel, from the points about it, the nearer neighbour
+// each way so an edge does not lean it; towards the camera. The G-buffer's normal is bumped by tens of degrees, which
+// would turn a facing test into speckle.
+fn depth_normal(texel: vec2<i32>, point: vec3<f32>) -> vec3<f32> {
+  let right: vec3<f32> = shown_point(texel + vec2<i32>(1, 0)) - point;
+  let left: vec3<f32> = point - shown_point(texel - vec2<i32>(1, 0));
+  let down: vec3<f32> = shown_point(texel + vec2<i32>(0, 1)) - point;
+  let up: vec3<f32> = point - shown_point(texel - vec2<i32>(0, 1));
+  let across: vec3<f32> = select(left, right, dot(right, right) < dot(left, left));
+  let along: vec3<f32> = select(up, down, dot(down, down) < dot(up, up));
+  let normal: vec3<f32> = normalize(cross(across, along));
+
+  return select(normal, -normal, dot(normal, point) > 0.0);
+}
+
+// How sure a ray's end is a surface it met: none off the screen or on the sky; faded by how far behind the surface it
+// stood of the thickness, out where the surface's own normal points along the ray (a back face, which no reflection
+// shows), towards the screen's edges and out to the distance traced.
+fn hit_confidence(walk: RayWalk, origin: vec3<f32>, reach: f32) -> f32 {
   let size: vec2<f32> = camera.viewport.xy;
+  let hit: vec3<f32> = walk.position;
 
   if (any(hit.xy < vec2<f32>(0.0)) || any(hit.xy > vec2<f32>(1.0))) {
     return 0.0;
@@ -153,11 +175,14 @@ fn hit_confidence(hit: vec3<f32>, origin: vec3<f32>) -> f32 {
   }
 
   let met: vec3<f32> = ray_view_point(hit);
+  let direction: vec3<f32> = normalize(met - origin);
+  let facing: f32 = dot(depth_normal(texel, met), direction);
+  let thick: f32 = 1.0 - smoothstep(0.0, reach, walk.behind);
   let edges: vec2<f32> = smoothstep(vec2<f32>(0.0), vec2<f32>(EDGE_FADE * size.y / size.x, EDGE_FADE), hit.xy) *
     (1.0 - smoothstep(1.0 - vec2<f32>(EDGE_FADE * size.y / size.x, EDGE_FADE), vec2<f32>(1.0), hit.xy));
-  let reach: f32 = 1.0 - smoothstep(reflection.distance * 0.75, reflection.distance, length(met - origin));
+  let far: f32 = 1.0 - smoothstep(reflection.distance * 0.75, reflection.distance, length(met - origin));
 
-  return edges.x * edges.y * reach;
+  return thick * thick * (1.0 - smoothstep(0.0, BACK_FACING, facing)) * edges.x * edges.y * far;
 }
 
 // What the trace writes: what is reflected, then the ray's length; and how the ray ended.
@@ -226,13 +251,9 @@ fn fs_trace(in: FullscreenVarying) -> TraceTargets {
   let start: vec2<f32> = (vec2<f32>(texel) + 0.5) / camera.viewport.xy;
   let origin: vec3<f32> = vec3<f32>(start, depth);
   let toward_screen: vec3<f32> = ray_screen_point(position + direction * max(reach, 1e-3)) - origin;
-  // The plane it was reflected off, which nothing beneath can stop it: a puddle's level water standing some way under
-  // the ground its depth shows, anything else's own surface.
-  let slack: vec2<f32> = vec2<f32>(PLANE_SLACK.x, select(PLANE_SLACK.x, PLANE_SLACK.y, wet.g > PUDDLE_LEAST));
-  let walk: RayWalk = ray_walk(nearest_depth, material_target, wet_surface, origin, toward_screen,
-    reflection.crossings, HIT_THICKNESS, vec4<f32>(normal, dot(normal, position)), slack);
-
-  let confidence: f32 = select(0.0, hit_confidence(walk.position, position), walk.is_met);
+  let walk: RayWalk = ray_walk(nearest_depth, origin, toward_screen, reflection.crossings, HIT_THICKNESS);
+  let thickness: f32 = HIT_THICKNESS.x - ray_view_point(walk.position).z * HIT_THICKNESS.y;
+  let confidence: f32 = select(0.0, hit_confidence(walk, position, thickness), walk.is_met);
 
   if (confidence <= 0.0) {
     return trace_targets(vec4<f32>(sky, MISSED_LENGTH), select(walk.end, END_UNTRUSTED, walk.is_met));
