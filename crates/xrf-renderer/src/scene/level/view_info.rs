@@ -9,6 +9,7 @@ use crate::contract::render_image_corrections::RenderImageCorrections;
 use crate::contract::render_indirect_light_settings::RenderIndirectLightSettings;
 use crate::contract::render_lights_settings::RenderLightsSettings;
 use crate::contract::render_rect::RenderRect;
+use crate::contract::render_reflection_settings::RenderReflectionSettings;
 use crate::contract::render_shadow_settings::RenderShadowSettings;
 use crate::contract::render_upscaling_settings::RenderUpscalingSettings;
 use crate::lighting::render_lighting::RenderLighting;
@@ -20,6 +21,8 @@ use crate::pass::fsr_uniform::FsrUniform;
 use crate::pass::lighting_uniform::LightingUniform;
 use crate::pass::present_uniform::PresentUniform;
 use crate::pass::rain_uniform::RainUniform;
+use crate::pass::reflection_trace::ReflectionTrace;
+use crate::pass::reflection_uniform::ReflectionUniform;
 use crate::pass::static_cull_params::StaticCullParams;
 use crate::pass::static_occlusion_uniform::StaticOcclusionUniform;
 use crate::pass::temporal_uniform::TemporalUniform;
@@ -93,6 +96,12 @@ pub struct ViewInfo {
   pub is_bitmask_accumulated: bool,
   /// What the indirect light is gathered with, whether or not it is.
   pub indirect_light: RenderIndirectLightSettings,
+  /// What the reflections are traced with, whether or not they are.
+  pub reflection_settings: RenderReflectionSettings,
+  /// Whether and how the reflections are traced this frame, none where they are not.
+  pub reflection: Option<ReflectionTrace>,
+  /// What the reflections' trace, accumulation and filter read this frame.
+  pub reflections: ReflectionUniform,
   /// Whether the static surfaces draw as their edges, which nothing composited or planted is drawn over.
   pub is_wireframe: bool,
   /// Whether the sky is blurred into the haze map the distance fades into.
@@ -161,6 +170,9 @@ impl Default for ViewInfo {
       bitmask: None,
       is_bitmask_accumulated: false,
       indirect_light: RenderIndirectLightSettings::default(),
+      reflection_settings: RenderReflectionSettings::default(),
+      reflection: None,
+      reflections: ReflectionUniform::default(),
       is_wireframe: false,
       is_hazing: false,
       is_wallmarked: true,

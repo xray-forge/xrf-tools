@@ -153,6 +153,7 @@ export function mockLevelFeatureOptions(overrides: Partial<ILevelFeatureOptions>
     grass: {},
     indirectLight: {},
     lights: {},
+    reflections: {},
     shadows: {},
     water: {},
     ...overrides,

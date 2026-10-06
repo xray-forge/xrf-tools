@@ -17,6 +17,7 @@ use crate::contract::render_ambient_occlusion_quality::RenderAmbientOcclusionQua
 use crate::contract::render_ambient_occlusion_settings::RenderAmbientOcclusionSettings;
 use crate::contract::render_antialiasing::RenderAntialiasing;
 use crate::contract::render_applied_indirect_light::RenderAppliedIndirectLight;
+use crate::contract::render_applied_reflections::RenderAppliedReflections;
 use crate::contract::render_applied_report::RenderAppliedReport;
 use crate::contract::render_applied_shadows::RenderAppliedShadows;
 use crate::contract::render_bloom_settings::RenderBloomSettings;
@@ -38,6 +39,8 @@ use crate::frame::depth_pyramid::DepthPyramid;
 use crate::frame::fsr_targets::FsrTargets;
 use crate::frame::indirect_light_history::IndirectLightHistory;
 use crate::frame::pick_target::PickTarget;
+use crate::frame::reflection_depth::ReflectionDepth;
+use crate::frame::reflection_history::ReflectionHistory;
 use crate::frame::static_scene_handles::StaticSceneHandles;
 use crate::frame::temporal_history::TemporalHistory;
 use crate::frame::temporal_jitter::TemporalJitter;
@@ -79,6 +82,10 @@ use crate::pass::pyramid_depth_parameters::PyramidDepthParameters;
 use crate::pass::pyramid_level_parameters::PyramidLevelParameters;
 use crate::pass::rain_parameters::RainParameters;
 use crate::pass::rain_uniform::RainUniform;
+use crate::pass::reflection_parameters::ReflectionParameters;
+use crate::pass::reflection_pass::ReflectionPass;
+use crate::pass::reflection_trace::ReflectionTrace;
+use crate::pass::reflection_uniform::ReflectionUniform;
 use crate::pass::sky_haze_parameters::SkyHazeParameters;
 use crate::pass::sky_parameters::SkyParameters;
 use crate::pass::smaa_parameters::SmaaParameters;
@@ -443,6 +450,8 @@ impl SceneView {
     self.info.ambient_occlusion = options.features.ambient_occlusion;
     self.info.indirect_light = options.features.indirect_light;
     self.info.bitmask = BitmaskSearch::new(options);
+    self.info.reflection_settings = options.features.reflections;
+    self.info.reflection = ReflectionTrace::new(options, lighting);
     self.info.output = output;
     self.info.upscaling = options.output.upscaling;
     self.info.debug_view = options.mode.debug_view;
@@ -461,6 +470,7 @@ impl SceneView {
       (width.div_ceil(2), height.div_ceil(2)),
     );
     self.prepare_bitmask(device, view.projection, (width.div_ceil(2), height.div_ceil(2)));
+    self.prepare_reflections(device, (width, height));
     self.prepare_sorted(scene, device, queue, view);
 
     if let Some(pyramid) = &self.state.pyramid {
@@ -1023,6 +1033,141 @@ impl SceneView {
     );
   }
 
+  /// Declares the screen-space reflections while they are traced: the depth reduced to its nearest at the quality's
+  /// size, every glossy pixel's ray marched over it, accumulated with the last frame's into the view's history, and filtered.
+  /// Answers the reflections filtered, none where they are not traced.
+  fn add_reflection_passes<'a>(
+    &'a self,
+    (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
+    passes: LevelPasses<'a>,
+    view: &'a ViewBinding,
+    (targets, lit): (ViewTargetHandles, LightingHandles<'a>),
+    sky: &SkyParameters<'a>,
+  ) -> Option<GraphTexture> {
+    self.info.reflection?;
+
+    let (Some(depth), Some(history)) = (&self.state.reflection_depth, &self.state.reflections) else {
+      return None;
+    };
+    let sky: SkyParameters<'a> = *sky;
+    let reflection: UniformBinding<ReflectionUniform> = runtime.push_uniform(&self.info.reflections);
+    let empty: GraphTexture = bindings.import_view(graph, "reflections empty", passes.reflections.get_empty());
+    let nearest: GraphTexture = bindings.import_view(graph, "reflection depth", &depth.view);
+    let reduction: PyramidDepthParameters = PyramidDepthParameters {
+      source_depth: targets.depth,
+      target_level: nearest,
+    };
+
+    graph
+      .add_compute_pass(ReflectionTrace::DEPTH_PASS)
+      .parameters(&reduction)
+      .record(move |context| passes.reflections.record_depth(context, depth, &reduction));
+
+    let (width, height) = (depth.width, depth.height);
+    let mut create = |label: &'static str, format: wgpu::TextureFormat| -> GraphTexture {
+      graph.create_texture(GraphTextureDescriptor::new_2d(label, width, height, format))
+    };
+    let traced: GraphTexture = create("reflections traced", ReflectionPass::TRACED);
+    let traced_length: GraphTexture = create("reflections length", ReflectionPass::LENGTH);
+    let filtered: GraphTexture = create("reflections", ReflectionPass::TRACED);
+    // What a stage reads: the stage before's result and its rays' lengths, and the last frame's accumulation.
+    let parameters = |(source, lengths): (GraphTexture, GraphTexture),
+                      (previous, held): (GraphTexture, GraphTexture)| {
+      ReflectionParameters {
+        albedo_target: targets.albedo,
+        normal_target: targets.normal,
+        material_target: targets.material,
+        depth_target: targets.depth,
+        light_target: targets.light,
+        motion_target: targets.motion,
+        occlusion_target: targets.occlusion[0],
+        material_lut: lit.material_lut,
+        lut_sampler: lit.lut_sampler,
+        lighting: lit.lighting,
+        reflection,
+        nearest_depth: nearest,
+        traced: source,
+        traced_length: lengths,
+        history: previous,
+        history_held: held,
+      }
+    };
+    let clear = |target: GraphTexture| GraphColorAttachment::new(target, wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT));
+    let tracing: ReflectionParameters = parameters((empty, empty), (empty, empty));
+
+    graph
+      .add_raster_pass(ReflectionTrace::TRACE_PASS)
+      .parameters(&tracing)
+      .parameters(&sky)
+      .color(clear(traced))
+      .color(clear(traced_length))
+      .record(move |context| passes.reflections.record_trace(context, view, &tracing, &sky));
+
+    let index: usize = history.index;
+    let [previous, written] =
+      [1 - index, index].map(|at| bindings.import_view(&mut *graph, "reflection history", &history.colour_views[at]));
+    let [previous_held, written_held] = [1 - index, index]
+      .map(|at| bindings.import_view(&mut *graph, "reflection history held", &history.held_views[at]));
+    let accumulating: ReflectionParameters = parameters((traced, traced_length), (previous, previous_held));
+
+    graph
+      .add_raster_pass(ReflectionTrace::ACCUMULATE_PASS)
+      .parameters(&accumulating)
+      .color(clear(written))
+      .color(clear(written_held))
+      .record(move |context| passes.reflections.record_accumulate(context, view, &accumulating));
+
+    let filtering: ReflectionParameters = parameters((written, empty), (empty, empty));
+
+    graph
+      .add_raster_pass(ReflectionTrace::FILTER_PASS)
+      .parameters(&filtering)
+      .color(clear(filtered))
+      .record(move |context| passes.reflections.record_filter(context, view, &filtering));
+
+    Some(filtered)
+  }
+
+  /// Makes the nearest depth and the history at the size the reflections trace at while they are traced,
+  /// dropping both otherwise, and writes what their passes read.
+  fn prepare_reflections(&mut self, device: &wgpu::Device, (width, height): (u32, u32)) {
+    let Some(trace) = self.info.reflection else {
+      self.state.reflection_depth = None;
+      self.state.reflections = None;
+
+      return;
+    };
+    let ratio: u32 = trace.get_ratio();
+    let (traced_width, traced_height) = (width.div_ceil(ratio), height.div_ceil(ratio));
+
+    if !self
+      .state
+      .reflection_depth
+      .as_ref()
+      .is_some_and(|it| it.is_sized(traced_width, traced_height))
+    {
+      self.state.reflection_depth = Some(ReflectionDepth::new(device, traced_width, traced_height));
+    }
+
+    if !self
+      .state
+      .reflections
+      .as_ref()
+      .is_some_and(|it| it.is_sized(traced_width, traced_height))
+    {
+      self.state.reflections = Some(ReflectionHistory::new(device, traced_width, traced_height));
+    }
+
+    let history: Option<&ReflectionHistory> = self.state.reflections.as_ref();
+
+    self.info.reflections = ReflectionUniform::new(
+      &self.info.reflection_settings,
+      (width, height),
+      history.map_or(0, |it| it.frame),
+      history.is_some_and(|it| it.is_valid),
+    );
+  }
+
   /// Adds a pass copying the whole of one texture into another of its size.
   fn add_copy(graph: &mut FrameGraph<'_>, name: &'static str, source: GraphTexture, destination: GraphTexture) {
     graph
@@ -1067,6 +1212,12 @@ impl SceneView {
           history.swap();
         }
       }
+
+      if self.info.reflection.is_some()
+        && let Some(history) = &mut self.state.reflections
+      {
+        history.swap();
+      }
     }
 
     match frame.resolve {
@@ -1100,6 +1251,7 @@ impl SceneView {
       (
         self.info.is_occlusion_drawn,
         self.info.bitmask.is_some_and(|search| search.is_lit),
+        self.info.reflection.map(ReflectionTrace::get_ratio),
       ),
       !targets.is_sized(self.info.output.width, self.info.output.height),
       if is_distorting { water.distortion } else { 0.0 },
@@ -1348,6 +1500,8 @@ impl SceneView {
       return None;
     };
     let unlit: GraphTexture = bindings.import_view(&mut *graph, "indirect light none", passes.vbao.get_dark());
+    let untraced: GraphTexture =
+      bindings.import_view(&mut *graph, "reflections none", passes.reflections.get_untraced());
     let handles: ViewTargetHandles = ViewTargetHandles::import(&mut *graph, &mut *bindings, targets);
     // The resolved frame goes where the present pass reads it: the upscaled frame, or the scene drawn at its size.
     let upscaled: Option<[GraphTexture; 2]> = scene_view.state.upscale.as_ref().map(|upscale| {
@@ -1522,8 +1676,9 @@ impl SceneView {
       }
     }
 
-    // The indirect light combine adds and a debug view shows, or a texel of none.
+    // The indirect light combine adds and a debug view shows, or a texel of none; and the reflections traced.
     let mut indirect_light: Option<GraphTexture> = None;
+    let mut reflections: Option<GraphTexture> = None;
 
     if is_lit {
       indirect_light = scene_view.add_lighting_passes(
@@ -1558,6 +1713,14 @@ impl SceneView {
       }
 
       if let Some(sky) = sky {
+        reflections = scene_view.add_reflection_passes(
+          (&mut *graph, &mut *bindings, runtime),
+          passes,
+          view,
+          (handles, lit),
+          &sky,
+        );
+
         let parameters: CombineParameters = CombineParameters {
           albedo_target: handles.albedo,
           normal_target: handles.normal,
@@ -1571,6 +1734,7 @@ impl SceneView {
           occlusion_target: handles.occlusion[0],
           haze_map: handles.haze,
           indirect_light: indirect_light.unwrap_or(unlit),
+          reflections: reflections.unwrap_or(untraced),
         };
 
         graph
@@ -1969,6 +2133,7 @@ impl SceneView {
       present: runtime.push_uniform(&scene_view.info.present),
       lighting: lit.lighting,
       indirect_light: indirect_light.unwrap_or(unlit),
+      reflections: reflections.unwrap_or(untraced),
     })
   }
 
@@ -2320,6 +2485,10 @@ impl SceneView {
           intensity: self.info.indirect_light.intensity,
           is_shared: search.is_occluding,
         }),
+      reflections: self.info.reflection.map(|trace| RenderAppliedReflections {
+        intensity: trace.intensity,
+        quality: trace.quality,
+      }),
       lights: self
         .info
         .lights_settings

@@ -7,6 +7,7 @@ import { ILevelViewpoint } from "@/core/level/lib/camera/level-viewpoint";
 import {
   ILevelFeatureOptions,
   toLevelIndirectLight,
+  toLevelReflections,
   toLevelRendererAntialiasing,
   toLevelRendererFeature,
 } from "@/core/level/lib/features/level-feature-options";
@@ -92,6 +93,7 @@ export function toLevelViewOptions(inputs: ILevelViewOptionsInputs): RenderViewO
       isOcclusionCulled: features.isOcclusionCulled && options.isOcclusionCulled,
       lights: toLevelRendererFeature("lights", features, view, options.isLamplit),
       lod: toLevelRendererLod(features.lod, lod, options.isImpostors),
+      reflections: toLevelReflections(features, view),
       shadows: toLevelRendererFeature("shadows", features, view, options.isShadowed),
       water: toLevelRendererFeature("water", features, view, options.isWaterVisible),
     },

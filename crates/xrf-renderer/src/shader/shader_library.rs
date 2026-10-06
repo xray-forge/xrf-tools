@@ -36,6 +36,10 @@ const EMBEDDED: &[(&str, &str)] = &[
   ("common/occlusion", include_str!("../../shaders/common/occlusion.wgsl")),
   ("common/present", include_str!("../../shaders/common/present.wgsl")),
   (
+    "common/reflection_trace",
+    include_str!("../../shaders/common/reflection_trace.wgsl"),
+  ),
+  (
     "common/octahedral",
     include_str!("../../shaders/common/octahedral.wgsl"),
   ),
@@ -120,6 +124,14 @@ const EMBEDDED: &[(&str, &str)] = &[
   ("frame/bloom", include_str!("../../shaders/frame/bloom.wgsl")),
   ("frame/present", include_str!("../../shaders/frame/present.wgsl")),
   ("frame/pyramid", include_str!("../../shaders/frame/pyramid.wgsl")),
+  (
+    "frame/reflection_depth",
+    include_str!("../../shaders/frame/reflection_depth.wgsl"),
+  ),
+  (
+    "frame/reflections",
+    include_str!("../../shaders/frame/reflections.wgsl"),
+  ),
   ("frame/particles", include_str!("../../shaders/frame/particles.wgsl")),
   ("frame/rain", include_str!("../../shaders/frame/rain.wgsl")),
   ("frame/sky_haze", include_str!("../../shaders/frame/sky_haze.wgsl")),
@@ -160,6 +172,10 @@ const EMBEDDED: &[(&str, &str)] = &[
   (
     "generated/frame/vbao",
     include_str!("../../shaders/generated/frame/vbao.wgsl"),
+  ),
+  (
+    "generated/frame/reflections",
+    include_str!("../../shaders/generated/frame/reflections.wgsl"),
   ),
   (
     "generated/frame/combine",

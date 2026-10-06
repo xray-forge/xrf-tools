@@ -14,3 +14,4 @@
 @group(1) @binding(9) var occlusion_target: texture_2d<f32>;
 @group(1) @binding(10) var haze_map: texture_2d<f32>;
 @group(1) @binding(11) var indirect_light: texture_2d<f32>;
+@group(1) @binding(12) var reflections: texture_2d<f32>;

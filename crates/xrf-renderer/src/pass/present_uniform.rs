@@ -30,13 +30,15 @@ pub struct PresentUniform {
   pub is_bloomed: u32,
   /// One where the indirect light was gathered this frame.
   pub is_indirect: u32,
-  pub _pad: [u32; 2],
+  /// One where the reflections were traced this frame, then the frame's pixels a traced pixel stands for each way.
+  pub is_reflected: u32,
+  pub reflection_ratio: f32,
 }
 
 impl PresentUniform {
   pub fn new(
     view: RenderDebugView,
-    (is_occluded, is_indirect): (bool, bool),
+    (is_occluded, is_indirect, reflection_ratio): (bool, bool, Option<u32>),
     is_upscaled: bool,
     distortion: f32,
     output: RenderRect,
@@ -57,7 +59,8 @@ impl PresentUniform {
       selection: selection.map_or(Vec4::ZERO, |[r, g, b]| Vec4::new(r, g, b, 1.0)),
       is_bloomed: u32::from(is_bloomed),
       is_indirect: u32::from(is_indirect),
-      _pad: [0; 2],
+      is_reflected: u32::from(reflection_ratio.is_some()),
+      reflection_ratio: reflection_ratio.unwrap_or(1) as f32,
     }
   }
 }

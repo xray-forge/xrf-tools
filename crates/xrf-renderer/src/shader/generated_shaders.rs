@@ -36,6 +36,8 @@ use crate::pass::pyramid_depth_parameters::PyramidDepthParameters;
 use crate::pass::pyramid_level_parameters::PyramidLevelParameters;
 use crate::pass::rain_parameters::RainParameters;
 use crate::pass::rain_uniform::RainUniform;
+use crate::pass::reflection_parameters::ReflectionParameters;
+use crate::pass::reflection_uniform::ReflectionUniform;
 use crate::pass::shadow_uniform::ShadowUniform;
 use crate::pass::sky_haze_parameters::SkyHazeParameters;
 use crate::pass::sky_parameters::SkyParameters;
@@ -92,6 +94,7 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
   let mut lights: ShaderBindings = ShaderBindings::new();
   let mut ambient_occlusion: ShaderBindings = ShaderBindings::new();
   let mut vbao: ShaderBindings = ShaderBindings::new();
+  let mut reflections: ShaderBindings = ShaderBindings::new();
   let mut combine: ShaderBindings = ShaderBindings::new();
   let mut composited: ShaderBindings = ShaderBindings::new();
   let mut sky_haze: ShaderBindings = ShaderBindings::new();
@@ -125,6 +128,7 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
     .declare::<LightRecord>()
     .declare::<AmbientOcclusionUniform>()
     .declare::<VbaoUniform>()
+    .declare::<ReflectionUniform>()
     .declare::<ExposureUniform>()
     .declare::<ExposureState>()
     .declare::<ExposureHead>()
@@ -157,6 +161,7 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
   lights.add::<LightsParameters<'_>>()?;
   ambient_occlusion.add::<AmbientOcclusionParameters>()?;
   vbao.add::<VbaoParameters>()?;
+  reflections.add::<ReflectionParameters<'_>>()?;
   combine.add::<CombineParameters<'_>>()?;
   composited.add::<CompositedParameters<'_>>()?;
   sky_haze.add::<SkyHazeParameters>()?;
@@ -227,6 +232,10 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
       format!("{STRUCTS_IMPORT}{}", ambient_occlusion.to_wgsl()),
     ),
     ("generated/frame/vbao", format!("{STRUCTS_IMPORT}{}", vbao.to_wgsl())),
+    (
+      "generated/frame/reflections",
+      format!("{STRUCTS_IMPORT}{}", reflections.to_wgsl()),
+    ),
     (
       "generated/frame/combine",
       format!("{STRUCTS_IMPORT}{}", combine.to_wgsl()),

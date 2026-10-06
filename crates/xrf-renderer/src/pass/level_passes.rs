@@ -15,6 +15,7 @@ use crate::pass::overlay_pass::OverlayPass;
 use crate::pass::particle_pass::ParticlePass;
 use crate::pass::present_pass::PresentPass;
 use crate::pass::rain_pass::RainPass;
+use crate::pass::reflection_pass::ReflectionPass;
 use crate::pass::sky_bindings::SkyBindings;
 use crate::pass::sky_haze_pass::SkyHazePass;
 use crate::pass::smaa_pass::SmaaPass;
@@ -41,6 +42,7 @@ pub struct LevelPasses<'a> {
   pub sun: &'a SunPass,
   pub ambient_occlusion: &'a AmbientOcclusionPass,
   pub vbao: &'a VbaoPass,
+  pub reflections: &'a ReflectionPass,
   pub lights: &'a LightsPass,
   pub combine: &'a CombinePass,
   pub sky_haze: &'a SkyHazePass,

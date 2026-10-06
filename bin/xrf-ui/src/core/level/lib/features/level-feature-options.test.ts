@@ -6,6 +6,7 @@ import {
   ERenderContactShadowMode,
   ERenderIndirectLightMode,
   ERenderLightShadowFilter,
+  ERenderReflectionMode,
   ERenderWaterMode,
 } from "@/core/ipc/types/xrf-renderer";
 import {
@@ -16,6 +17,7 @@ import {
   toLevelFeatureOptions,
   toLevelFeatureView,
   toLevelIndirectLight,
+  toLevelReflections,
   toLevelRendererAntialiasing,
   toLevelRendererFeature,
 } from "@/core/level/lib/features/level-feature-options";
@@ -155,5 +157,21 @@ describe("level feature options", () => {
       mode: ERenderIndirectLightMode.ENGINE,
     });
     expect(toLevelFeatureOptions({ indirectLight: { mode: "radiosity" } }).indirectLight).toEqual({});
+  });
+
+  it("keeps the reflections' own mode and strengths, held to their bounds, over the settings'", () => {
+    const view: ILevelFeatureOptions = toLevelFeatureOptions({
+      reflections: { distance: 900, intensity: 3, mode: ERenderReflectionMode.ENGINE, steps: 12 },
+    });
+
+    expect(view.reflections).toEqual({ distance: 200, intensity: 1, mode: ERenderReflectionMode.ENGINE });
+    expect(toLevelReflections(SETTINGS, mockLevelFeatureOptions())).toEqual(SETTINGS.reflections);
+    expect(toLevelReflections(SETTINGS, view)).toEqual({
+      ...SETTINGS.reflections,
+      distance: 200,
+      intensity: 1,
+      mode: ERenderReflectionMode.ENGINE,
+    });
+    expect(toLevelFeatureOptions({ reflections: { mode: "raytraced" } }).reflections).toEqual({});
   });
 });

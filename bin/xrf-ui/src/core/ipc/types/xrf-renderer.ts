@@ -122,6 +122,13 @@ export type RenderAppliedIndirectLight = {
   isShared: boolean;
 };
 
+/** The screen-space reflections as traced. */
+export type RenderAppliedReflections = {
+  /** How much of the cube a hit replaces. */
+  intensity: number | null;
+  quality: RenderReflectionQuality;
+};
+
 /** What a viewport's frames are drawn with, as the renderer resolved what it was asked: sent as it changes. */
 export type RenderAppliedReport = {
   /** What smooths the finished frame: none where a target other than the frame is shown. */
@@ -134,6 +141,8 @@ export type RenderAppliedReport = {
   ambientOcclusion: RenderAmbientOcclusionQuality | null;
   /** The screen-space indirect light, or none where it is not gathered. */
   indirectLight: RenderAppliedIndirectLight | null;
+  /** The screen-space reflections, or none where they are not traced. */
+  reflections: RenderAppliedReflections | null;
   /** The local lights, or none where they are off. */
   lights: RenderLightsSettings | null;
   /** The grass planted, or none where none is. */
@@ -279,6 +288,11 @@ export enum ERenderDebugView {
   MOTION = "motion",
   /** The indirect light as it would light a white surface, black where it is not gathered. */
   INDIRECT_LIGHT = "indirectLight",
+  /**
+   * The screen-space reflections as traced: what a ray met in its colour, deep blue where it met nothing and the cube
+   * stands, black where nothing is traced.
+   */
+  REFLECTIONS = "reflections",
 }
 
 /** Every `ERenderDebugView` as the spelling it crosses IPC as, for a value no member has narrowed. */
@@ -838,6 +852,51 @@ export type RenderRect = {
   height: number;
 };
 
+/** What a glossy surface reflects: the sky's cube alone, or what the frame shows where a ray finds it. */
+export enum ERenderReflectionMode {
+  /** The engine's own: the irradiance cube along the reflection, weighed by the surface's gloss. */
+  ENGINE = "engine",
+  /**
+   * Screen-space reflections: each glossy pixel's reflected ray traced over the frame's depth, what it meets in place
+   * of the cube, the cube where it meets nothing.
+   */
+  ENHANCED = "enhanced",
+}
+
+/** Every `ERenderReflectionMode` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type RenderReflectionMode = `${ERenderReflectionMode}`;
+
+/**
+ * How hard the screen-space reflections trace: the size traced at and the steps a ray takes through the depth's
+ * pyramid at most.
+ */
+export enum ERenderReflectionQuality {
+  /** Half size, 24 steps. */
+  LOW = "low",
+  /** Half size, 32 steps. */
+  MEDIUM = "medium",
+  /** Half size, 48 steps. */
+  HIGH = "high",
+  /** The frame's own size, 64 steps. */
+  ULTRA = "ultra",
+}
+
+/** Every `ERenderReflectionQuality` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type RenderReflectionQuality = `${ERenderReflectionQuality}`;
+
+/**
+ * Screen-space reflections on the frame's surfaces: where a glossy surface's reflected ray meets something the frame
+ * shows, that in place of the sky's cube the engine reflects.
+ */
+export type RenderReflectionSettings = {
+  mode: RenderReflectionMode;
+  /** How much of the cube a ray's hit replaces: one all of it, none the engine's look. */
+  intensity: number | null;
+  /** Metres a ray is traced at most. */
+  distance: number | null;
+  quality: RenderReflectionQuality;
+};
+
 /**
  * How much smaller than the viewport the scene is drawn and then upscaled: FSR's quality modes, by the ratio of the
  * viewport's side to the drawing's.
@@ -1060,6 +1119,8 @@ export type RenderViewFeatures = {
   ambientOcclusion: RenderAmbientOcclusionSettings;
   /** The light the frame's surfaces bounce onto each other, searched as the ambient occlusion's settings describe. */
   indirectLight: RenderIndirectLightSettings;
+  /** What glossy surfaces reflect: the sky's cube, or what the frame shows where a ray finds it. */
+  reflections: RenderReflectionSettings;
   lights: RenderLightsSettings;
   water: RenderWaterSettings;
   grass: RenderGrassSettings;
