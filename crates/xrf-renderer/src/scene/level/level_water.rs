@@ -1,7 +1,8 @@
 use crate::contract::render_view_options::RenderViewOptions;
+use xrf_renderer_core::PassMarker;
+
 use crate::contract::render_water_mode::RenderWaterMode;
 use crate::contract::render_water_settings::RenderWaterSettings;
-use crate::frame::pass_timer::PassTimer;
 use crate::frame::view_targets::ViewTargets;
 use crate::frame::water_reflection::WaterReflection;
 use crate::frame::water_scene::WaterScene;
@@ -149,7 +150,7 @@ impl LevelWater {
     targets: &ViewTargets,
     (view, draw_groups, texture_group): (&ViewBinding, &StaticDrawGroups, &wgpu::BindGroup),
     args: &[&wgpu::Buffer],
-    timer: &mut PassTimer,
+    timer: &mut PassMarker<'_>,
   ) {
     let Some((_, groups)) = self.groups.as_ref().filter(|_| self.is_drawn) else {
       return;

@@ -19,7 +19,7 @@ pub use builder::{ComputePassBuilder, EncoderPassBuilder, RasterPassBuilder};
 pub use compile::{CompiledGraph, EncodeGroup, GraphCompileOptions, TransientSlot};
 pub use execute::{
   ComputeContext, EncoderContext, ExecutedGraph, ExecutedGroup, GraphBindings, GraphResolvedTexture, GraphRuntime,
-  RasterContext,
+  PassMarker, RasterContext,
 };
 pub use frame_graph::FrameGraph;
 pub use pool::{TransientBufferKey, TransientPool, TransientTextureKey};

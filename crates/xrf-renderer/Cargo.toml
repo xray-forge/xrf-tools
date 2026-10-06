@@ -27,6 +27,7 @@ xrf-material = { workspace = true }
 xrf-math = { workspace = true }
 xrf-anm = { workspace = true }
 xrf-particles = { workspace = true }
+xrf-renderer-core = { workspace = true }
 xrf-utils = { workspace = true }
 xrf-visual = { workspace = true }
 

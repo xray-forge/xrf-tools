@@ -7622,6 +7622,7 @@ dependencies = [
  "xrf-material",
  "xrf-math",
  "xrf-particles",
+ "xrf-renderer-core",
  "xrf-utils",
  "xrf-visual",
 ]

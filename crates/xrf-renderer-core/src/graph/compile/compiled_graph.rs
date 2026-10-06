@@ -9,13 +9,14 @@ use crate::graph::compile::encode_group::EncodeGroup;
 use crate::graph::compile::transient_slot::TransientSlot;
 use crate::graph::execute::{
   ComputeContext, EncoderContext, ExecutedGraph, ExecutedGroup, GraphBindings, GraphPassScope, GraphResolvedTexture,
-  GraphResources, GraphRuntime, RasterContext,
+  GraphResources, GraphRuntime, PassMarker, RasterContext,
 };
 use crate::graph::frame_graph::FrameGraph;
 use crate::graph::pool::{TransientBufferKey, TransientPool, TransientTextureKey};
 use crate::graph::record::{GraphBufferRecord, GraphPassWork, GraphTextureRecord};
 use crate::graph::report::{GraphPassKind, GraphPassReport, GraphReport, GraphTransientReport};
 use crate::graph::resource::{GraphBuffer, GraphTexture, GraphTextureDescriptor};
+use crate::graph::timing::GraphTimer;
 use crate::param::BindGroupCache;
 
 /// A frame graph ready to execute: its surviving passes in order, the render passes they share, the encode groups they
@@ -219,8 +220,18 @@ impl<'a> CompiledGraph<'a> {
           }
           None => {
             let name: String = pass.pass.name.to_string();
+            let is_marked: bool = Self::record_pass(
+              &mut encoder,
+              pass,
+              (device, cache, &resources),
+              is_timing.then_some(&mut *timer),
+            );
 
-            Self::record_pass(&mut encoder, pass, (device, cache, &resources));
+            // A pass that marked its own stages is timed by them.
+            if is_marked {
+              continue;
+            }
+
             name
           }
         };
@@ -457,11 +468,13 @@ impl<'a> CompiledGraph<'a> {
     }
   }
 
+  /// Records a compute or encoder pass, answering whether it marked stages of its own.
   fn record_pass(
     encoder: &mut wgpu::CommandEncoder,
     pass: CompiledPass<'a>,
     (device, cache, resources): (&wgpu::Device, &BindGroupCache, &GraphResources<'_>),
-  ) {
+    timer: Option<&mut GraphTimer>,
+  ) -> bool {
     let CompiledPass {
       pass,
       textures,
@@ -490,8 +503,22 @@ impl<'a> CompiledGraph<'a> {
           pass: &mut compute_pass,
           scope,
         });
+
+        false
       }
-      GraphPassWork::Encoder { record, .. } => record(&mut EncoderContext { encoder, scope }),
+      GraphPassWork::Encoder { record, .. } => {
+        let mut context: EncoderContext<'_> = EncoderContext {
+          encoder,
+          scope,
+          marker: PassMarker {
+            timer,
+            is_marked: false,
+          },
+        };
+
+        record(&mut context);
+        context.marker.is_marked
+      }
       GraphPassWork::Raster { .. } => unreachable!("a raster pass always has a render pass"),
     }
   }

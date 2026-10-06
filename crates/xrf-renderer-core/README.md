@@ -67,7 +67,8 @@ assert_eq!(compiled.get_render_pass_count(), 1);
 - **Scope.** A pass records through its context and reaches only the resources it declared; debug builds assert it.
 - **Bridges.** An encoder pass marked `bridge` is one recorded as before the graph, opening its own render and compute
   passes. Its accesses are declared by hand, it is never culled, and the report names it so what is left to convert
-  stays visible.
+  stays visible. A bridge recording several stages times each through `EncoderContext::split`'s `PassMarker`; a pass that
+  marks is timed by its marks alone.
 - **Diagnostics.** `GraphCompileOptions` turns culling, pooling, merging and grouping off one at a time, or all at once
   (`serial`), to bisect a difference in a capture. `CompiledGraph::describe` reports the passes, the render passes and
   groups they fall in, the culled, and the transients with their slots and sizes; it serializes to JSON.

@@ -481,6 +481,11 @@ impl LevelParticles {
     !self.batches.is_empty() || self.is_distorting()
   }
 
+  /// Whether this frame has particles to draw, as `record` would draw them.
+  pub fn is_drawing(&self) -> bool {
+    self.group.is_some() && (!self.batches.is_empty() || self.is_distorting())
+  }
+
   /// Whether this frame's particles draw into the distortion target.
   pub fn is_distorting(&self) -> bool {
     !self.distortion_runs.is_empty()

@@ -1,6 +1,8 @@
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
+use xrf_renderer_core::GraphRuntime;
+
 use crate::camera::camera_controller::CameraController;
 use crate::contract::render_ambient_report::RenderAmbientReport;
 use crate::contract::render_applied_environment::RenderAppliedEnvironment;
@@ -15,6 +17,7 @@ use crate::contract::render_memory_report::RenderMemoryReport;
 use crate::contract::render_model_pose::RenderModelPose;
 use crate::contract::render_overlay::RenderOverlay;
 use crate::contract::render_particles_report::RenderParticlesReport;
+use crate::contract::render_pass_cost::RenderPassCost;
 use crate::contract::render_rect::RenderRect;
 use crate::contract::render_selection::RenderSelection;
 use crate::contract::render_static_report::RenderStaticReport;
@@ -68,6 +71,9 @@ pub struct RenderViewport {
   pub picks: Vec<PendingPick>,
   /// Its camera on the GPU, made once a GPU is there.
   pub binding: Option<ViewBinding>,
+  /// What its frame graphs keep between frames, its passes' GPU timer among them; made once a GPU is there, and kept
+  /// across levels.
+  pub runtime: Option<GraphRuntime>,
   sink: Box<dyn RenderEventSink>,
   statistics: FrameStatistics,
   /// What it was last told its frames cost, answered to a caller polling rather than listening.
@@ -107,6 +113,7 @@ impl RenderViewport {
       captures: Vec::new(),
       picks: Vec::new(),
       binding: None,
+      runtime: None,
       sink,
       statistics: FrameStatistics::new(now),
       sent_frame: None,
@@ -163,11 +170,6 @@ impl RenderViewport {
   /// `texture_bytes` is what every viewport's textures hold on the GPU together.
   pub fn report(&mut self, now: Instant, backend: &str, adapter: &str, texture_bytes: u64) {
     let Some(summary) = self.statistics.take(now) else {
-      // Read back every frame, so the report averages its whole span rather than the frame it falls on.
-      if let Some(level) = self.level_view.as_mut() {
-        level.collect_timings();
-      }
-
       return;
     };
     let (static_draws, lights): (RenderStaticReport, RenderLightsReport) = self
@@ -178,10 +180,21 @@ impl RenderViewport {
       .level_view
       .as_mut()
       .map_or_else(Default::default, LevelView::take_particles_report);
-    let (is_gpu_timed, passes) = self
-      .level_view
-      .as_mut()
-      .map_or((false, Vec::new()), |level| level.take_timings());
+    let (is_gpu_timed, passes): (bool, Vec<RenderPassCost>) =
+      self.runtime.as_mut().map_or((false, Vec::new()), |runtime| {
+        (
+          runtime.timer.is_timing(),
+          runtime
+            .timer
+            .take()
+            .into_iter()
+            .map(|time| RenderPassCost {
+              name: time.name,
+              gpu_time: time.gpu_time,
+            })
+            .collect(),
+        )
+      });
     let FrameSummary {
       frames_per_second,
       frame_time,
@@ -292,6 +305,8 @@ impl RenderViewport {
 
   pub fn recover(&mut self) {
     self.is_failed = false;
+    // Its pool, bind groups and timer belong to the device that was lost.
+    self.runtime = None;
   }
 
   fn send(&mut self, event: RenderViewportEvent) {

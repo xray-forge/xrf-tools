@@ -5,6 +5,8 @@ use std::time::{Duration, Instant};
 
 use glam::{Mat4, Vec2, Vec3, Vec4};
 
+use xrf_renderer_core::{ExecutedGraph, GraphRuntime};
+
 use crate::camera::camera_view::CameraView;
 use crate::context::gpu_context::GpuContext;
 use crate::context::render_backend::RenderBackend;
@@ -651,6 +653,8 @@ impl RenderThread {
     };
 
     let mut encoder: wgpu::CommandEncoder = gpu.context.device.create_command_encoder(&Default::default());
+    // What the frame submits, in order: the encoder up to each viewport's frame graph, the graph's own, and so on.
+    let mut commands: Vec<wgpu::CommandBuffer> = Vec::new();
     let mut is_lit: bool = false;
     let mut picked: Vec<(RenderViewportId, PendingPick, Mat4, Vec2)> = Vec::new();
 
@@ -766,7 +770,9 @@ impl RenderThread {
         .level_view
         .get_or_insert_with(|| LevelView::new(device, queue, &gpu.view_layout, Arc::clone(source), &self.workers));
 
-      level.set_timed(self.settings.is_gpu_timed);
+      let runtime: &mut GraphRuntime = viewport.runtime.get_or_insert_with(|| GraphRuntime::new(device, queue));
+
+      runtime.timer.set_enabled(self.settings.is_gpu_timed);
       level.set_overlays(
         device,
         &viewport.overlays,
@@ -803,17 +809,36 @@ impl RenderThread {
       phases.prepare += preparing.elapsed();
 
       let recording: Instant = Instant::now();
+      let finishing: Instant = Instant::now();
 
-      level.record(
-        device,
-        queue,
-        &mut encoder,
-        gpu.get_level_passes(),
-        &gpu.view_layout,
-        binding,
-        &gpu.textures,
-      );
-      phases.record += recording.elapsed();
+      // What the encoder holds so far runs before the graph; what follows it, after.
+      commands.push(std::mem::replace(&mut encoder, device.create_command_encoder(&Default::default())).finish());
+
+      let finished: Duration = finishing.elapsed();
+      let executed: Option<ExecutedGraph> = level
+        .record(
+          runtime,
+          device,
+          queue,
+          gpu.get_level_passes(),
+          &gpu.view_layout,
+          binding,
+          &gpu.textures,
+        )
+        .unwrap_or_else(|error| {
+          log::error!("The level's frame cannot be recorded: {error}");
+          None
+        });
+      let encoded: Duration = finished
+        + executed
+          .iter()
+          .flat_map(|executed| &executed.groups)
+          .map(|group| group.finish)
+          .sum::<Duration>();
+
+      commands.extend(executed.into_iter().flat_map(|executed| executed.commands));
+      phases.record += recording.elapsed().saturating_sub(encoded);
+      phases.encode += encoded;
       is_lit = true;
 
       // One pick a frame, drawn from this frame's culled clusters.
@@ -923,11 +948,12 @@ impl RenderThread {
     phases.compose = composing.elapsed();
 
     let encoding: Instant = Instant::now();
-    let commands: wgpu::CommandBuffer = encoder.finish();
+    let last: wgpu::CommandBuffer = encoder.finish();
     let submitting: Instant = Instant::now();
 
-    phases.encode = submitting.duration_since(encoding);
-    gpu.context.queue.submit([commands]);
+    phases.encode += submitting.duration_since(encoding);
+    commands.push(last);
+    gpu.context.queue.submit(commands);
     phases.submit = submitting.elapsed();
 
     for (id, pick, inverse, ndc) in picked {
@@ -940,8 +966,14 @@ impl RenderThread {
     }
 
     for (id, _, _) in &drawn {
-      if let Some(level) = self.viewports.get(id).and_then(|it| it.level_view.as_ref()) {
-        level.request_stats();
+      if let Some(viewport) = self.viewports.get(id) {
+        if let Some(level) = &viewport.level_view {
+          level.request_stats();
+        }
+
+        if let Some(runtime) = &viewport.runtime {
+          runtime.timer.request();
+        }
       }
     }
 
