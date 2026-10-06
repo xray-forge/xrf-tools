@@ -212,3 +212,88 @@ fn times_each_pass_and_render_pass_on_the_gpu() {
 
   assert_eq!(names, ["clear + over", "copy"]);
 }
+
+#[test]
+fn records_encode_groups_apart_and_returns_them_in_order() {
+  let Some((device, queue)) = create_device() else {
+    return;
+  };
+  let readback: wgpu::Buffer = device.create_buffer(&wgpu::BufferDescriptor {
+    label: Some("readback"),
+    size: BYTES,
+    usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+    mapped_at_creation: false,
+  });
+  let mut runtime: GraphRuntime = GraphRuntime::new(&device, &queue);
+  let drawn: AtomicUsize = AtomicUsize::new(0);
+  let mut graph: FrameGraph<'_> = FrameGraph::new();
+
+  // The draws in one group and the copy in another, the second reading what the first drew.
+  graph.begin_group("draw");
+
+  let output = declare_grouped(&mut graph, &drawn);
+  let compiled = graph.compile(&GraphCompileOptions::default()).unwrap();
+  let mut bindings: GraphBindings<'_> = GraphBindings::new();
+
+  bindings.bind_buffer(output, &readback);
+
+  let executed = compiled.execute((&device, &queue), &mut runtime, &bindings).unwrap();
+
+  assert_eq!(
+    executed.groups.iter().map(|group| group.name).collect::<Vec<_>>(),
+    ["draw", "copy"]
+  );
+  assert_eq!(executed.commands.len(), 2);
+  queue.submit(executed.commands);
+  readback.slice(..).map_async(wgpu::MapMode::Read, |_| {});
+  device.poll(wgpu::PollType::wait_indefinitely()).unwrap();
+
+  let texels: Vec<u8> = readback.slice(..).get_mapped_range().unwrap().to_vec();
+
+  assert_eq!(drawn.load(Ordering::Relaxed), 2);
+  assert_eq!(&texels[..4], &[255, 0, 0, 255]);
+}
+
+/// `declare`'s passes with its copy in a group of its own.
+fn declare_grouped<'a>(graph: &mut FrameGraph<'a>, drawn: &'a AtomicUsize) -> crate::graph::GraphBuffer {
+  let scene = graph.create_texture(color_texture("scene"));
+  let output = graph.import_buffer(GraphBufferDescriptor::new("output", BYTES));
+
+  graph
+    .add_raster_pass("clear")
+    .color(GraphColorAttachment::new(scene, wgpu::LoadOp::Clear(wgpu::Color::RED)))
+    .record(move |_| {
+      drawn.fetch_add(1, Ordering::Relaxed);
+    });
+  graph.add_raster_pass("over").color(load(scene)).record(move |_| {
+    drawn.fetch_add(1, Ordering::Relaxed);
+  });
+  graph.begin_group("copy");
+  graph
+    .add_encoder_pass("copy")
+    .texture(scene, GraphTextureAccess::CopySource)
+    .buffer(output, GraphBufferAccess::CopyDestination)
+    .record(move |context| {
+      let texture: &wgpu::Texture = context.get_texture(scene).texture;
+      let buffer: &wgpu::Buffer = context.get_buffer(output);
+
+      context.get_encoder().copy_texture_to_buffer(
+        texture.as_image_copy(),
+        wgpu::TexelCopyBufferInfo {
+          buffer,
+          layout: wgpu::TexelCopyBufferLayout {
+            offset: 0,
+            bytes_per_row: Some(SIZE * 4),
+            rows_per_image: Some(SIZE),
+          },
+        },
+        wgpu::Extent3d {
+          width: SIZE,
+          height: SIZE,
+          depth_or_array_layers: 1,
+        },
+      );
+    });
+
+  output
+}

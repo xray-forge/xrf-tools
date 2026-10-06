@@ -1,7 +1,8 @@
 use std::borrow::Cow;
 use std::collections::{HashMap, VecDeque};
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
+use rayon::prelude::*;
 use xrf_error::{XrfError, XrfResult};
 
 use crate::graph::compile::compiled_pass::CompiledPass;
@@ -180,85 +181,120 @@ impl<'a> CompiledGraph<'a> {
       ..
     } = self;
     let mut pending: VecDeque<CompiledPass<'a>> = passes.into();
-    let mut executed: ExecutedGraph = ExecutedGraph {
-      commands: Vec::with_capacity(groups.len()),
-      groups: Vec::with_capacity(groups.len()),
+    let batches: Vec<Vec<CompiledPass<'a>>> = groups
+      .iter()
+      .map(|group| pending.drain(..group.passes.len()).collect())
+      .collect();
+    let started: Instant = Instant::now();
+    let shared = (device, cache, &resources);
+    // A timed frame records its groups in order, its timer's stamps written into one query set one after another.
+    let is_parallel: bool = !is_timing && groups.len() > 1;
+    let recorded: Vec<(wgpu::CommandBuffer, ExecutedGroup)> = if is_parallel {
+      batches
+        .into_par_iter()
+        .zip(groups.par_iter())
+        .map(|(passes, group)| Self::record_group(group, passes, &textures, shared, None))
+        .collect()
+    } else {
+      let count: usize = groups.len();
+      let mut recorded: Vec<(wgpu::CommandBuffer, ExecutedGroup)> = Vec::with_capacity(count);
+
+      for (index, (passes, group)) in batches.into_iter().zip(&groups).enumerate() {
+        let timing: Option<(&mut GraphTimer, bool)> = is_timing.then_some((&mut *timer, index + 1 == count));
+
+        recorded.push(Self::record_group(group, passes, &textures, shared, timing));
+      }
+
+      recorded
+    };
+    let (commands, executed_groups): (Vec<wgpu::CommandBuffer>, Vec<ExecutedGroup>) = recorded.into_iter().unzip();
+    let encode: Duration = if is_parallel {
+      started.elapsed()
+    } else {
+      executed_groups.iter().map(|group| group.finish).sum()
     };
 
-    for (index, group) in groups.iter().enumerate() {
-      let recording: Instant = Instant::now();
-      let mut encoder: wgpu::CommandEncoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-        label: Some(group.name),
-      });
-      let mut remaining: usize = group.passes.len();
+    Ok(ExecutedGraph {
+      commands,
+      groups: executed_groups,
+      encode,
+    })
+  }
 
-      if is_timing {
-        timer.stamp(&mut encoder, None);
-      }
+  /// Records one encode group's passes into an encoder of its own, a run of passes sharing a render pass into one, and
+  /// finishes it; `timing` stamps each pass, and closes the frame's stamps after its last group.
+  fn record_group(
+    group: &EncodeGroup,
+    passes: Vec<CompiledPass<'a>>,
+    textures: &[GraphTextureRecord],
+    (device, cache, resources): (&wgpu::Device, &BindGroupCache, &GraphResources<'_>),
+    mut timing: Option<(&mut GraphTimer, bool)>,
+  ) -> (wgpu::CommandBuffer, ExecutedGroup) {
+    let recording: Instant = Instant::now();
+    let mut encoder: wgpu::CommandEncoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+      label: Some(group.name),
+    });
+    let mut pending: VecDeque<CompiledPass<'a>> = passes.into();
 
-      while remaining > 0 {
-        let Some(pass) = pending.pop_front() else {
-          break;
-        };
+    if let Some((timer, _)) = timing.as_mut() {
+      timer.stamp(&mut encoder, None);
+    }
 
-        remaining -= 1;
+    while let Some(pass) = pending.pop_front() {
+      let name: String = match pass.render_pass {
+        Some(render_pass) => {
+          let mut run: Vec<CompiledPass<'a>> = vec![pass];
 
-        let name: String = match pass.render_pass {
-          Some(render_pass) => {
-            let mut run: Vec<CompiledPass<'a>> = vec![pass];
-
-            while remaining > 0
-              && pending
-                .front()
-                .is_some_and(|next| next.render_pass == Some(render_pass))
-            {
-              run.extend(pending.pop_front());
-              remaining -= 1;
-            }
-
-            let name: String = run.iter().map(|pass| pass.pass.name).collect::<Vec<_>>().join(" + ");
-
-            Self::record_render_pass(&mut encoder, run, &textures, (device, cache, &resources));
-            name
+          while pending
+            .front()
+            .is_some_and(|next| next.render_pass == Some(render_pass))
+          {
+            run.extend(pending.pop_front());
           }
-          None => {
-            let name: String = pass.pass.name.to_string();
-            let is_marked: bool = Self::record_pass(
-              &mut encoder,
-              pass,
-              (device, cache, &resources),
-              is_timing.then_some(&mut *timer),
-            );
 
-            // A pass that marked its own stages is timed by them.
-            if is_marked {
-              continue;
-            }
+          let name: String = run.iter().map(|pass| pass.pass.name).collect::<Vec<_>>().join(" + ");
 
-            name
-          }
-        };
-
-        if is_timing {
-          timer.stamp(&mut encoder, Some(name));
+          Self::record_render_pass(&mut encoder, run, textures, (device, cache, resources));
+          name
         }
+        None => {
+          let name: String = pass.pass.name.to_string();
+          let is_marked: bool = Self::record_pass(
+            &mut encoder,
+            pass,
+            (device, cache, resources),
+            timing.as_mut().map(|(timer, _)| &mut **timer),
+          );
+
+          // A pass that marked its own stages is timed by them.
+          if is_marked {
+            continue;
+          }
+
+          name
+        }
+      };
+
+      if let Some((timer, _)) = timing.as_mut() {
+        timer.stamp(&mut encoder, Some(name));
       }
+    }
 
-      if is_timing && index + 1 == groups.len() {
-        timer.finish_frame(&mut encoder);
-      }
+    if let Some((timer, true)) = timing.as_mut() {
+      timer.finish_frame(&mut encoder);
+    }
 
-      let finishing: Instant = Instant::now();
+    let finishing: Instant = Instant::now();
+    let commands: wgpu::CommandBuffer = encoder.finish();
 
-      executed.commands.push(encoder.finish());
-      executed.groups.push(ExecutedGroup {
+    (
+      commands,
+      ExecutedGroup {
         name: group.name,
         record: finishing.duration_since(recording),
         finish: finishing.elapsed(),
-      });
-    }
-
-    Ok(executed)
+      },
+    )
   }
 
   fn count_slots<K: Copy + Eq + std::hash::Hash>(slots: &[Option<TransientSlot<K>>]) -> HashMap<K, usize> {

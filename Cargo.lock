@@ -7636,6 +7636,7 @@ dependencies = [
  "naga",
  "offset-allocator",
  "pollster",
+ "rayon",
  "serde",
  "serde_json",
  "wgpu",

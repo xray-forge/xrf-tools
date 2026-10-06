@@ -11,6 +11,7 @@ glam = { workspace = true }
 naga = { workspace = true }
 offset-allocator = { workspace = true }
 pollster = { workspace = true }
+rayon = { workspace = true }
 serde = { workspace = true }
 wgpu = { workspace = true }
 xrf-error = { workspace = true }

@@ -1298,6 +1298,10 @@ impl LevelView {
     let mut bindings: GraphBindings<'_> = GraphBindings::new();
     let handles: ViewTargetHandles = ViewTargetHandles::import(&mut graph, &mut bindings, targets);
 
+    // The frame is encoded in four groups, on as many threads where it is not timed: the scene, its shadows, its
+    // lighting and water, and what blends over it and resolves it.
+    graph.begin_group("scene");
+
     graph
       .add_raster_pass("distortion clear")
       .color(GraphColorAttachment::new(
@@ -1369,6 +1373,8 @@ impl LevelView {
         });
     }
 
+    graph.begin_group("shadows");
+
     level_view.renderer.shadows.add_passes(
       &mut graph,
       &mut bindings,
@@ -1391,6 +1397,8 @@ impl LevelView {
       passes,
       (&level_view.scene.statics, &level_view.info.cull, texture_group),
     );
+
+    graph.begin_group("lighting");
 
     // The rain wets the G-buffer before any light is drawn over it.
     if let (true, Some((_, [patch, apply]))) = (is_wet, &level_view.renderer.wet_groups) {
@@ -1512,6 +1520,8 @@ impl LevelView {
 
         passes.water.add_passes(&mut graph, &mut bindings, runtime, draw);
       }
+
+      graph.begin_group("post");
 
       if let (true, Some((_, sky_group))) = (is_composited, &level_view.renderer.sky_group) {
         let args: Vec<GraphBuffer> = Self::list_draw_args(&level_view.scene.statics, &level_view.info.cull)
