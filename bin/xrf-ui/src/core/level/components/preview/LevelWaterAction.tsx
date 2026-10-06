@@ -161,6 +161,30 @@ export function LevelWaterAction({
           />
 
           <RenderValueSlider
+            label={"Flow"}
+            value={water.flow}
+            {...RENDER_WATER_LIMITS.flow}
+            format={formatWaterMultiple}
+            onChange={(flow: number) => set({ flow })}
+          />
+
+          <RenderValueSlider
+            label={"Calm flow"}
+            value={water.calmFlow}
+            {...RENDER_WATER_LIMITS.calmFlow}
+            format={formatPercent}
+            onChange={(calmFlow: number) => set({ calmFlow })}
+          />
+
+          <RenderValueSlider
+            label={"Variation"}
+            value={water.variation}
+            {...RENDER_WATER_LIMITS.variation}
+            format={formatWaterStrength}
+            onChange={(variation: number) => set({ variation })}
+          />
+
+          <RenderValueSlider
             label={"Rain ripples"}
             value={water.ripples}
             {...RENDER_WATER_LIMITS.ripples}

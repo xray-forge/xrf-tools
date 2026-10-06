@@ -1107,6 +1107,18 @@ export type RenderWaterSettings = {
   parallaxHeight: number | null;
   /** How strongly rain ripples the enhanced water, `ssfx_water_setup2.w`; none skips them. */
   ripples: number | null;
+  /** What every scroll of the enhanced water is multiplied by, one as the module scrolls it; none stills it. */
+  flow: number | null;
+  /**
+   * How much of the pace the module keeps in still air the enhanced water keeps, one as the module does; none stills
+   * it while no wind blows.
+   */
+  calmFlow: number | null;
+  /**
+   * How far the enhanced water breaks its maps' repeat: its second layer tiled apart from the first, a broad layer
+   * faded in with distance, and its colour's read bent and mixed with a second; none draws the module's own.
+   */
+  variation: number | null;
 };
 
 /** How a viewport's weather clock runs. */

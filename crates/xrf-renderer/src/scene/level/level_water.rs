@@ -37,6 +37,11 @@ pub struct LevelWater {
   reflection: Option<WaterReflection>,
   /// With the sky's version, the targets' epoch, and whether they bind the scene and the reflection.
   groups: Option<((u64, u64, bool, bool), WaterGroups)>,
+  /// Seconds the enhanced water's maps have scrolled, each frame's at the flow it was drawn with, so changing the flow
+  /// moves them no further than they stood.
+  flowed: f32,
+  /// The clock the last frame was drawn at.
+  clock: Option<f32>,
 }
 
 impl LevelWater {
@@ -53,6 +58,8 @@ impl LevelWater {
       scene: None,
       reflection: None,
       groups: None,
+      flowed: 0.0,
+      clock: None,
     }
   }
 
@@ -70,6 +77,8 @@ impl LevelWater {
 
     self.settings = settings;
     self.is_drawn = settings.is_enabled && !options.is_wireframe;
+    self.flowed += self.clock.map_or(0.0, |clock| (frame.time - clock).max(0.0)) * settings.flow;
+    self.clock = Some(frame.time);
 
     let is_refracting: bool = self.is_drawn && settings.mode == RenderWaterMode::Enhanced;
     let is_reflecting: bool = is_refracting && settings.reflectivity > 0.0;
@@ -125,7 +134,7 @@ impl LevelWater {
       bytemuck::bytes_of(&WaterUniform::new(
         &settings,
         (frame.intensity, frame.wind, frame.rain),
-        frame.time,
+        (frame.time, self.flowed),
         self
           .reflection
           .as_ref()

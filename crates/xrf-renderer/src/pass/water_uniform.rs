@@ -35,15 +35,21 @@ pub struct WaterUniform {
   pub parallax_height: f32,
   pub ripples: f32,
   pub rain: f32,
-  pub pad: f32,
+  /// Seconds the enhanced water's maps have scrolled at its flow, and how much of the pace it keeps in still air.
+  pub flowed: f32,
+  pub calm_flow: f32,
+  /// How far the enhanced water breaks its maps' repeat.
+  pub variation: f32,
+  pub pad: [f32; 2],
 }
 
 impl WaterUniform {
-  /// `reflection` says whether the enhanced water's reflection draws this frame, and whether its history holds a frame.
+  /// `time` is the clock and the seconds the enhanced water has flowed; `reflection` says whether its reflection draws
+  /// this frame, and whether its history holds a frame.
   pub fn new(
     settings: &RenderWaterSettings,
     (intensity, wind, rain): (f32, RenderWind, f32),
-    time: f32,
+    (time, flowed): (f32, f32),
     (reflected, history): (bool, bool),
   ) -> Self {
     Self {
@@ -70,7 +76,10 @@ impl WaterUniform {
       parallax_height: settings.parallax_height,
       ripples: settings.ripples,
       rain,
-      pad: 0.0,
+      flowed,
+      calm_flow: settings.calm_flow,
+      variation: settings.variation,
+      pad: [0.0; 2],
     }
   }
 }
