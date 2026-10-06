@@ -36,16 +36,19 @@ struct Camera {
 @group(0) @binding(0) var<uniform> camera: Camera;
 
 // The marks the G-buffer's material target holds in its alpha, a bit each: what is selected, which the present outlines,
-// what is self-lit, whose light the sun pass fills, what is lit as foliage, which passes light through from behind, and
-// what is terrain, which reflects the sky where a reflection meets nothing.
+// what is self-lit, whose light the sun pass fills, what is lit as foliage, which passes light through from behind,
+// what is terrain, which reflects the sky where a reflection meets nothing, and what is a plant (grass and leaves,
+// however lit), which rain does not wet and which reflects little.
 const MARK_SELECTED: u32 = 128u;
 const MARK_EMISSIVE: u32 = 64u;
 const MARK_FLORA: u32 = 32u;
 const MARK_TERRAIN: u32 = 16u;
+const MARK_PLANT: u32 = 8u;
 
-fn encode_marks(is_selected: bool, is_emissive: bool, is_flora: bool, is_terrain: bool) -> f32 {
+fn encode_marks(is_selected: bool, is_emissive: bool, is_flora: bool, is_terrain: bool, is_plant: bool) -> f32 {
   return f32(select(0u, MARK_SELECTED, is_selected) | select(0u, MARK_EMISSIVE, is_emissive) |
-    select(0u, MARK_FLORA, is_flora) | select(0u, MARK_TERRAIN, is_terrain)) / 255.0;
+    select(0u, MARK_FLORA, is_flora) | select(0u, MARK_TERRAIN, is_terrain) | select(0u, MARK_PLANT, is_plant)) /
+    255.0;
 }
 
 fn has_mark(marks: f32, mark: u32) -> bool {

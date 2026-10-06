@@ -25,4 +25,6 @@ pub struct RenderSceneFrame {
   pub campfire_shares: HashMap<u16, f32>,
   /// Where each object motion has its object this frame, in engine space, and how fast it moves, by the motion's name.
   pub motions: HashMap<String, (Mat4, Vec3)>,
+  /// The driving camera's smoothed hemi, which says how far outdoors it stands; none where it is not estimated.
+  pub camera_hemi: Option<f32>,
 }

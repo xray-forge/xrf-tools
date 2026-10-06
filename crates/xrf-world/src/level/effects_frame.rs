@@ -11,4 +11,6 @@ pub struct EffectsFrame {
   pub gust: AmbientGust,
   pub campfire_shares: HashMap<u16, f32>,
   pub motions: HashMap<String, (Mat4, Vec3)>,
+  /// The camera's smoothed hemi, none where the level has no estimator.
+  pub camera_hemi: Option<f32>,
 }

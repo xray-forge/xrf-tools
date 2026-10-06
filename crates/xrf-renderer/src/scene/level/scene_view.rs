@@ -154,6 +154,10 @@ use crate::scene::texture::weather_texture_kind::WeatherTextureKind;
 /// reach, a tall crown's trunk swing over its height.
 const FOLIAGE_SHADOW_AMPLITUDE: f32 = 0.02;
 
+/// The camera hemi under which the enhanced fog's height fog is gone and over which it is whole, about the engine's
+/// indoors at `0.05` (`CGamePersistent::WeathersUpdate`).
+const INDOOR_HEMI_FADE: (f32, f32) = (0.03, 0.1);
+
 /// What a pick's texel says it met: a cluster, by its index and place, or an impostor, by its index.
 const PICKED_CLUSTER: u32 = 1;
 const PICKED_IMPOSTOR: u32 = 2;
@@ -360,7 +364,7 @@ impl SceneView {
       queue,
       passes,
       (lighting, weather),
-      (options, gust, scene.started.elapsed().as_secs_f32()),
+      (options, gust, scene.started.elapsed().as_secs_f32(), weather_rate),
       weather_textures,
     );
     self.prepare_thunder(device, queue, passes, (lighting, weather), options, weather_textures);
@@ -499,6 +503,12 @@ impl SceneView {
       };
     }
     self.info.lighting = LightingUniform::new(lighting, view.view, options, &frame);
+    // The enhanced fog's height fog fades out as the camera goes indoors, by its hemi as the engine tells indoors.
+    self.info.lighting.height_fog.w *= scene.camera_hemi.map_or(1.0, |hemi| {
+      let share: f32 = ((hemi - INDOOR_HEMI_FADE.0) / (INDOOR_HEMI_FADE.1 - INDOOR_HEMI_FADE.0)).clamp(0.0, 1.0);
+
+      share * share * (3.0 - 2.0 * share)
+    });
 
     if self.info.is_temporal {
       self.state.noise_frame = self.state.noise_frame.wrapping_add(1);
@@ -1492,7 +1502,7 @@ impl SceneView {
     _queue: &wgpu::Queue,
     _passes: LevelPasses<'_>,
     (lighting, weather): (&RenderLighting, Option<&Arc<RenderLevelWeather>>),
-    (options, gust, time): (&RenderViewOptions, AmbientGust, f32),
+    (options, gust, time, weather_rate): (&RenderViewOptions, AmbientGust, f32, f32),
     weather_textures: &WeatherTextureCache,
   ) {
     self.info.rain_draw = None;
@@ -1500,10 +1510,17 @@ impl SceneView {
     self.info.weather_views.wet = None;
     self.info.is_wet = false;
 
-    let wetness: f32 = self
-      .state
-      .wetness
-      .advance(time, lighting.rain.map_or(0.0, |rain| rain.density));
+    // The game's `time_factor`: Anomaly's `alife.ltx` runs its clock six times a real second, Call of Pripyat's ten.
+    let time_factor: f32 = if lighting.engine == XrayEngine::Extended {
+      6.0
+    } else {
+      10.0
+    };
+    let wetness: f32 = self.state.wetness.advance(
+      time,
+      lighting.rain.map_or(0.0, |rain| rain.density),
+      weather_rate / time_factor,
+    );
     let falling: Option<RainUniform> = lighting.rain.filter(|_| options.mode.is_lit).and_then(|rainfall| {
       self.prepare_falling_rain(device, (lighting, weather), (&rainfall, gust, time), weather_textures)
     });

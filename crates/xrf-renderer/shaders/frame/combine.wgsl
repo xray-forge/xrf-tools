@@ -151,25 +151,27 @@ fn fs_combine(in: FullscreenVarying) -> CombineOutput {
     shaded += albedo.rgb * upsampled_light(indirect_light, floor(in.clip.xy), -position.z);
   }
 
-  // The engine fogs towards `fog_color` before the tonemap, then fades into the sky itself by the fog squared, both
-  // parts alike (`skyblend` in either's alpha). The enhanced fog thickens the first and tints it below its height;
-  // the sky's fade stays the distance fog's.
-  let height: f32 = camera.position.y + (transpose(camera.view) * vec4<f32>(position, 0.0)).y;
-  let thickened: f32 = select(0.0, fog_amount_at(lighting, position, height), is_fogged);
-  var fogged: vec3<f32> = mix(shaded, fog_color_at(lighting, position, height), thickened);
-
-  // The fogged surface blended towards what it reflects by its share of reflection.
+  // The surface blended towards what it reflects by its share of reflection, before the fog, which lies between the
+  // camera and both alike: a far wet field fades into the fog as the grass on it does.
   if (lighting.reflections.x > 0.5) {
     let share: f32 = reflection_share(albedo.a, normal, normalize(position), lighting.reflections.z,
-      has_mark(material.a, MARK_FLORA), fog);
+      has_mark(material.a, MARK_PLANT), fog);
 
     if (share > 0.0) {
       let reflected: vec4<f32> = upsampled_reflection(reflections, depth_target, floor(in.clip.xy), -position.z,
         lighting.reflections.y);
 
-      fogged = mix(fogged, max(reflected.rgb, vec3<f32>(0.0)), share);
+      shaded = mix(shaded, max(reflected.rgb, vec3<f32>(0.0)), share);
     }
   }
+
+  // The engine fogs towards `fog_color` before the tonemap, then fades into the sky itself by the fog squared, both
+  // parts alike (`skyblend` in either's alpha). The enhanced fog thickens the first and tints it below its height;
+  // the sky's fade stays the distance fog's.
+  let height: f32 = camera.position.y + (transpose(camera.view) * vec4<f32>(position, 0.0)).y;
+  let thickened: f32 = select(0.0, fog_amount_at(lighting, position, height), is_fogged);
+  let fogged: vec3<f32> = mix(shaded, fog_color_at(lighting, position, height), thickened);
+
   let finished: vec3<f32> = tonemap(fogged, scale);
   let high: vec3<f32> = tonemap_high(fogged, scale);
 

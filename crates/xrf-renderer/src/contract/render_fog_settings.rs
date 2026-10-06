@@ -19,14 +19,14 @@ pub struct RenderFogSettings {
 }
 
 impl Default for RenderFogSettings {
-  /// The engine's own fog, with the enhanced fog's shipped strengths.
+  /// The engine's own fog, with the enhanced fog's shipped strengths but no scattering, which haloes what stands in fog.
   fn default() -> Self {
     Self {
       mode: RenderFogMode::Engine,
       height: 8.0,
       density: 1.3,
       sun_color: 0.1,
-      scattering: 0.7,
+      scattering: 0.0,
     }
   }
 }

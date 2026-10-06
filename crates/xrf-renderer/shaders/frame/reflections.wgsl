@@ -35,12 +35,21 @@ const RADIANCE_LIMIT: f32 = 6.0;
 const HISTORY_SHARE: f32 = 0.8;
 const HISTORY_SKY: f32 = 0.2;
 const HISTORY_DEPTH_SCALE: f32 = 5.0;
+// What of it each traced pixel the reflected point moved across the screen since gives up, so a fast turn carries none.
+const HISTORY_MOTION_SCALE: f32 = 0.06;
 // The blur's taps, each turned from the last, and how much the gloss keeps of the unblurred reflection.
 const BLUR_TAPS: u32 = 12u;
 const BLUR_TURN: mat2x2<f32> = mat2x2<f32>(-0.666276, -0.745705, 0.745705, -0.666276);
 const BLUR_GLOSS: f32 = 2.5;
 const LUMINANCE: vec3<f32> = vec3<f32>(0.2126, 0.7152, 0.0722);
 const UNTRACED: vec4<f32> = vec4<f32>(0.0, 0.0, 0.0, -1.0);
+
+// Where a pixel's ray takes its first step, between one and a half and two and a half steps out: interleaved gradient
+// noise, fixed on the screen, so neighbouring rays meet a surface at different steps and the blur smooths their steps
+// away rather than showing them as bands.
+fn first_step(pixel: vec2<f32>) -> f32 {
+  return 1.5 + fract(52.9829189 * fract(dot(pixel, vec2<f32>(0.06711056, 0.00583715))));
+}
 
 // The frame's texel a traced pixel stands for: the first of its block.
 fn traced_texel(pixel: vec2<f32>) -> vec2<i32> {
@@ -96,13 +105,13 @@ fn fs_trace(in: FullscreenVarying) -> TracedTargets {
   let to_point: vec3<f32> = normalize(position);
   let mirrored: vec3<f32> = reflect(to_point, normal);
   let share: f32 = reflection_share(albedo.a, normal, to_point, reflection.intensity,
-    has_mark(material.a, MARK_FLORA), fog_amount(lighting, position));
+    has_mark(material.a, MARK_PLANT), fog_amount(lighting, position));
   let is_terrain: f32 = select(0.0, 1.0, has_mark(material.a, MARK_TERRAIN));
   var hit: ReflectionHit = ReflectionHit(vec2<f32>(0.0), 0.0, 0.0);
 
   if (share > TRACE_FLOOR) {
     hit = reflection_march(depth_target, position, mirrored, reflection.distance, reflection.steps, reflection.limit,
-      reflection.is_refined > 0.5);
+      reflection.is_refined > 0.5, first_step(pixel));
   }
 
   var colour: vec3<f32> = enhanced_sky(world_direction(mirrored), lighting, sky_cube_0, sky_cube_1, sky_clamp);
@@ -140,8 +149,8 @@ struct AccumulatedTargets {
 };
 
 // This frame's trace blended with the last frame's reflection, read where the point the pixel reflects stood: along the
-// pixel's view at its hit's depth, or far off where it reflects the sky. Kept less where it reflects the sky, and none
-// where it stood off the screen or where the depth there has changed.
+// pixel's view at its hit's depth, or far off where it reflects the sky. Kept less where it reflects the sky or moved
+// far across the screen, and none where it stood off the screen or where the depth there has changed.
 @fragment
 fn fs_accumulate(in: FullscreenVarying) -> AccumulatedTargets {
   let pixel: vec2<f32> = floor(in.clip.xy);
@@ -192,7 +201,9 @@ fn fs_accumulate(in: FullscreenVarying) -> AccumulatedTargets {
 
   let held: f32 = textureLoad(history_held, vec2<i32>(clamp(floor(before * size), vec2<f32>(0.0), size - 1.0)), 0).x;
   let changed: f32 = select(1.0, abs(1.0 - point.distance / held) * HISTORY_DEPTH_SCALE, held > 0.0);
-  let kept: f32 = saturate(HISTORY_SHARE - changed - select(0.0, HISTORY_SKY, hit_depth <= 0.0));
+  let moved: f32 = length(before * size - (pixel + 0.5));
+  let kept: f32 = saturate(HISTORY_SHARE - changed - select(0.0, HISTORY_SKY, hit_depth <= 0.0) -
+    moved * HISTORY_MOTION_SCALE);
 
   return AccumulatedTargets(mix(fresh, carried / weights, kept), vec2<f32>(point.distance, 1.0));
 }

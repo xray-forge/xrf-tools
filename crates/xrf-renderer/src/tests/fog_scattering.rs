@@ -11,9 +11,11 @@ use crate::pass::fog_scattering_uniform::FogScatteringUniform;
 use crate::pass::lighting_frame::LightingFrame;
 use crate::pass::lighting_uniform::LightingUniform;
 
+// The enhanced fog, scattering as the pack ships it.
 fn enhanced() -> RenderFogSettings {
   RenderFogSettings {
     mode: RenderFogMode::Enhanced,
+    scattering: 0.7,
     ..RenderFogSettings::default()
   }
 }
@@ -68,9 +70,16 @@ fn ships_the_engines_fog_with_the_enhanced_strengths() {
       defaults.sun_color,
       defaults.scattering
     ),
-    (8.0, 1.3, 0.1, 0.7)
+    (8.0, 1.3, 0.1, 0.0)
   );
   assert!(!defaults.is_enhanced() && !defaults.is_scattered());
+  assert!(
+    !RenderFogSettings {
+      mode: RenderFogMode::Enhanced,
+      ..defaults
+    }
+    .is_scattered()
+  );
   assert!(enhanced().is_scattered());
   assert!(
     !RenderFogSettings {

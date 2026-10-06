@@ -84,6 +84,11 @@ impl CameraHemi {
     self.smoothed_at = Some(now);
   }
 
+  /// The smoothed hemi, none where the level has no estimator.
+  pub fn get_smooth(&self) -> Option<f32> {
+    self.estimator.is_some().then_some(self.smooth)
+  }
+
   /// Whether the camera stands indoors, which a level without an estimator never does. The engine estimates the
   /// actor's hemi in its first frame; until the first estimate is back the camera counts as indoors, so nothing starts
   /// where it is not yet known.
