@@ -8,6 +8,7 @@ import {
   ERenderWeatherTransition,
   RenderCamera,
   RenderCameraCommand,
+  RenderFramePhases,
   RenderInputEvent,
   RenderLevelProblems,
   RenderLightsReport,
@@ -58,6 +59,8 @@ export const renderCommands = {
       frameTimeMax: number | null;
       /** Mean milliseconds of the render thread's own work a frame: recording and submitting, not waiting. */
       cpuTime: number | null;
+      /** Where the render thread's time goes a frame, waiting for the window's image and presenting included. */
+      phases: RenderFramePhases;
       /** Drawn width, in device pixels. */
       width: number;
       /** Drawn height, in device pixels. */

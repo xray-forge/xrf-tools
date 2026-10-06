@@ -23,6 +23,7 @@ use crate::contract::render_viewport_event::RenderViewportEvent;
 use crate::contract::render_viewport_id::RenderViewportId;
 use crate::contract::render_viewport_layout::RenderViewportLayout;
 use crate::frame::frame_capture::CaptureReply;
+use crate::frame::frame_phases::FramePhases;
 use crate::frame::frame_statistics::{FrameStatistics, FrameSummary};
 use crate::host::render_event_sink::RenderEventSink;
 use crate::host::render_level_source::RenderLevelSource;
@@ -154,8 +155,8 @@ impl RenderViewport {
     self.is_gone
   }
 
-  pub fn record_frame(&mut self, interval: Duration, cpu: Duration) {
-    self.statistics.record(interval, cpu);
+  pub fn record_frame(&mut self, interval: Duration, cpu: Duration, phases: &FramePhases) {
+    self.statistics.record(interval, cpu, phases);
   }
 
   /// Reports the frames since the last report, once one is due.
@@ -186,6 +187,7 @@ impl RenderViewport {
       frame_time,
       frame_time_max,
       cpu_time,
+      phases,
     } = summary;
     let rect: RenderRect = self.layout.map(|layout| layout.rect).unwrap_or_default();
     let (render_width, render_height): (u32, u32) = self
@@ -205,6 +207,7 @@ impl RenderViewport {
       frame_time,
       frame_time_max,
       cpu_time,
+      phases,
       width: rect.width,
       height: rect.height,
       render_width,

@@ -304,6 +304,28 @@ export type RenderExposureSettings = {
   adaptation: number | null;
 };
 
+/** Where the render thread's time goes a frame, mean milliseconds over a report's span, in the order it spends them. */
+export type RenderFramePhases = {
+  /** Moving the cameras and weathers on, and uploading the textures that arrived. */
+  update: number | null;
+  /** Waiting for the window's next image. */
+  acquire: number | null;
+  /** Taking in what the level's workers loaded. */
+  load: number | null;
+  /** Readying the frame: its uniforms, culling arguments, lights, particles and water. */
+  prepare: number | null;
+  /** Recording the level's passes. */
+  record: number | null;
+  /** Recording the window's own pass, which every viewport's picture is drawn into. */
+  compose: number | null;
+  /** Encoding what was recorded into the graphics API's commands, which wgpu leaves until the encoder is finished. */
+  encode: number | null;
+  /** Handing the encoded frame to the queue. */
+  submit: number | null;
+  /** Presenting it. */
+  present: number | null;
+};
+
 /** How often a viewport's frames are drawn and how they are presented. */
 export type RenderFrameRate = {
   /**
@@ -325,6 +347,8 @@ export type RenderFrameReport = {
   frameTimeMax: number | null;
   /** Mean milliseconds of the render thread's own work a frame: recording and submitting, not waiting. */
   cpuTime: number | null;
+  /** Where the render thread's time goes a frame, waiting for the window's image and presenting included. */
+  phases: RenderFramePhases;
   /** Drawn width, in device pixels. */
   width: number;
   /** Drawn height, in device pixels. */

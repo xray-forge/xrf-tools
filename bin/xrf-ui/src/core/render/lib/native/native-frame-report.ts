@@ -1,4 +1,5 @@
 import {
+  RenderFramePhases,
   RenderFrameReport,
   RenderLightsReport,
   RenderParticlesReport,
@@ -42,6 +43,19 @@ export const EMPTY_RENDER_PARTICLES_REPORT: RenderParticlesReport = {
   simulationTime: 0,
 };
 
+/** A frame whose render thread spent nothing anywhere. */
+export const EMPTY_RENDER_FRAME_PHASES: RenderFramePhases = {
+  acquire: 0,
+  compose: 0,
+  load: 0,
+  prepare: 0,
+  present: 0,
+  record: 0,
+  encode: 0,
+  submit: 0,
+  update: 0,
+};
+
 /** What a viewport reads before its first frame is reported, and after it is let go. */
 export const EMPTY_RENDER_FRAME_REPORT: RenderFrameReport = {
   adapter: "",
@@ -56,6 +70,7 @@ export const EMPTY_RENDER_FRAME_REPORT: RenderFrameReport = {
   memory: { scene: 0, textures: 0 },
   particles: EMPTY_RENDER_PARTICLES_REPORT,
   passes: [],
+  phases: EMPTY_RENDER_FRAME_PHASES,
   renderHeight: 0,
   renderWidth: 0,
   sectorTime: 0,
