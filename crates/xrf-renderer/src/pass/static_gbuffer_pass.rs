@@ -214,18 +214,18 @@ impl StaticGBufferPass {
     });
 
     pass.set_bind_group(0, &view.bind_group, &[]);
-    pass.set_bind_group(2, textures, &[]);
+    pass.set_bind_group(1, textures, &[]);
 
     for (batch, pipeline) in StaticBatch::list_deferred().zip(&self.pipelines) {
       pass.set_pipeline(pipeline);
-      pass.set_bind_group(1, &bind_groups.layouts[batch.layout.get_index()], &[]);
+      pass.set_bind_group(2, &bind_groups.layouts[batch.layout.get_index()], &[]);
       pass.draw_indirect(args, batch.get_index() as u64 * 16);
     }
 
     // The impostors are drawn with the first draw alone: no occlusion sets one aside.
     if is_first {
       pass.set_pipeline(&self.impostor_pipelines[0]);
-      pass.set_bind_group(1, &bind_groups.impostors, &[]);
+      pass.set_bind_group(2, &bind_groups.impostors, &[]);
       pass.draw_indirect(args, StaticScene::IMPOSTOR_ARGS_OFFSET);
     }
   }
@@ -264,11 +264,11 @@ impl StaticGBufferPass {
       });
 
       pass.set_bind_group(0, &view.bind_group, &[]);
-      pass.set_bind_group(2, textures, &[]);
+      pass.set_bind_group(1, textures, &[]);
 
       for (batch, pipeline) in StaticBatch::list_deferred().zip(&self.pick_pipelines) {
         pass.set_pipeline(pipeline);
-        pass.set_bind_group(1, &bind_groups.layouts[batch.layout.get_index()], &[]);
+        pass.set_bind_group(2, &bind_groups.layouts[batch.layout.get_index()], &[]);
 
         for args in args {
           pass.draw_indirect(args, batch.get_index() as u64 * 16);
@@ -277,7 +277,7 @@ impl StaticGBufferPass {
 
       if let Some(args) = args.first() {
         pass.set_pipeline(&self.impostor_pipelines[1]);
-        pass.set_bind_group(1, &bind_groups.impostors, &[]);
+        pass.set_bind_group(2, &bind_groups.impostors, &[]);
         pass.draw_indirect(args, StaticScene::IMPOSTOR_ARGS_OFFSET);
       }
     }
@@ -296,7 +296,7 @@ impl StaticGBufferPass {
     let module: wgpu::ShaderModule = create_module(device, shaders, "static/impostor")?;
     let pipeline_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
       label: Some("static impostors"),
-      bind_group_layouts: &[Some(view_layout), Some(layout), Some(texture_layout)],
+      bind_group_layouts: &[Some(view_layout), Some(texture_layout), Some(layout)],
       ..Default::default()
     });
     let targets: [Option<wgpu::ColorTargetState>; 4] = [
@@ -354,7 +354,7 @@ impl StaticGBufferPass {
     let module: wgpu::ShaderModule = create_module(device, shaders, "static/gbuffer")?;
     let pipeline_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
       label: Some("static g-buffer"),
-      bind_group_layouts: &[Some(view_layout), Some(layout), Some(texture_layout)],
+      bind_group_layouts: &[Some(view_layout), Some(texture_layout), Some(layout)],
       ..Default::default()
     });
     let targets: [Option<wgpu::ColorTargetState>; 4] = [

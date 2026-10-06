@@ -154,6 +154,7 @@ impl TextureCache {
     &self.layout
   }
 
+  /// The bindless group, bound at group 1, below the per-batch groups, so switching batches never re-walks its views.
   pub fn get_bind_group(&self) -> &wgpu::BindGroup {
     &self.bind_group
   }

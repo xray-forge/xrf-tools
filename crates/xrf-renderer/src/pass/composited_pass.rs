@@ -143,7 +143,7 @@ impl CompositedPass {
     let mut pass: wgpu::RenderPass<'_> = begin_composite(encoder, "composited", &targets.scene, &targets.depth);
 
     pass.set_bind_group(0, &view.bind_group, &[]);
-    pass.set_bind_group(2, textures, &[]);
+    pass.set_bind_group(1, textures, &[]);
     pass.set_bind_group(3, composited_group, &[]);
     pass.set_bind_group(4, sky_group, &[]);
 
@@ -155,14 +155,14 @@ impl CompositedPass {
         if let Some(group) = sorted_group
           && sorted_count > 0
         {
-          pass.set_bind_group(1, group, &[]);
+          pass.set_bind_group(2, group, &[]);
           pass.draw(0..StaticScene::CLUSTER_VERTICES, 0..sorted_count);
         }
 
         continue;
       }
 
-      pass.set_bind_group(1, &bind_groups.layouts[batch.layout.get_index()], &[]);
+      pass.set_bind_group(2, &bind_groups.layouts[batch.layout.get_index()], &[]);
 
       for args in args {
         pass.draw_indirect(args, batch.get_index() as u64 * 16);
@@ -183,11 +183,11 @@ impl CompositedPass {
     let mut pass: wgpu::RenderPass<'_> = begin_composite(encoder, "wall marks", &targets.albedo, &targets.depth);
 
     pass.set_bind_group(0, &view.bind_group, &[]);
-    pass.set_bind_group(2, textures, &[]);
+    pass.set_bind_group(1, textures, &[]);
 
     for (batch, pipeline) in StaticBatch::list_wallmarks().zip(&self.pipelines.1) {
       pass.set_pipeline(pipeline);
-      pass.set_bind_group(1, &bind_groups.layouts[batch.layout.get_index()], &[]);
+      pass.set_bind_group(2, &bind_groups.layouts[batch.layout.get_index()], &[]);
 
       for args in args {
         pass.draw_indirect(args, batch.get_index() as u64 * 16);
@@ -206,8 +206,8 @@ impl CompositedPass {
       label: Some("composited"),
       bind_group_layouts: &[
         Some(view_layout),
-        Some(scene_layout),
         Some(texture_layout),
+        Some(scene_layout),
         Some(layout),
         Some(sky_layout),
       ],
@@ -215,7 +215,7 @@ impl CompositedPass {
     });
     let wallmark_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
       label: Some("wall marks"),
-      bind_group_layouts: &[Some(view_layout), Some(scene_layout), Some(texture_layout)],
+      bind_group_layouts: &[Some(view_layout), Some(texture_layout), Some(scene_layout)],
       ..Default::default()
     });
     let composited = Self::create_batch_pipelines(

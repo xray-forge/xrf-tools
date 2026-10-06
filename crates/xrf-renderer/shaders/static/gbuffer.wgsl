@@ -8,8 +8,8 @@ enable wgpu_binding_array;
 // Static draws into the G-buffer, pulled as `static/pulling` reads them.
 
 
-@group(2) @binding(0) var textures: binding_array<texture_2d<f32>>;
-@group(2) @binding(1) var texture_sampler: sampler;
+@group(1) @binding(0) var textures: binding_array<texture_2d<f32>>;
+@group(1) @binding(1) var texture_sampler: sampler;
 
 // What `def_gloss` writes for a surface without a bump: 2 of 255.
 const DEFAULT_GLOSS: f32 = 2.0 / 255.0;

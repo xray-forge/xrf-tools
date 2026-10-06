@@ -3,18 +3,18 @@
 // A batch's visible clusters as its static draws pull them: every cluster one instance of `CLUSTER_VERTICES` vertices,
 // read from its layout's arena through the shared index arena.
 
-@group(1) @binding(0) var<storage, read> clusters: array<Cluster>;
-@group(1) @binding(1) var<storage, read> slots: array<Slot>;
-@group(1) @binding(2) var<storage, read> places: array<Place>;
-@group(1) @binding(3) var<storage, read> surfaces: array<Surface>;
-@group(1) @binding(4) var<storage, read> indices: array<u32>;
-@group(1) @binding(5) var<storage, read> lists: array<vec2<u32>>;
-@group(1) @binding(6) var<storage, read> words: array<u32>;
-@group(1) @binding(7) var<uniform> wind: Wind;
+@group(2) @binding(0) var<storage, read> clusters: array<Cluster>;
+@group(2) @binding(1) var<storage, read> slots: array<Slot>;
+@group(2) @binding(2) var<storage, read> places: array<Place>;
+@group(2) @binding(3) var<storage, read> surfaces: array<Surface>;
+@group(2) @binding(4) var<storage, read> indices: array<u32>;
+@group(2) @binding(5) var<storage, read> lists: array<vec2<u32>>;
+@group(2) @binding(6) var<storage, read> words: array<u32>;
+@group(2) @binding(7) var<uniform> wind: Wind;
 // Skinned models' links, two words a vertex: four bones' indices as bytes, then their weights as bytes.
-@group(1) @binding(8) var<storage, read> skins: array<u32>;
+@group(2) @binding(8) var<storage, read> skins: array<u32>;
 // Skinned places' bone matrices, three rows a bone, from its bind to where it stands.
-@group(1) @binding(9) var<storage, read> bones: array<vec4<f32>>;
+@group(2) @binding(9) var<storage, read> bones: array<vec4<f32>>;
 
 // How the trees sway this frame, as `pass/wind_uniform.rs` writes it.
 struct Wind {
