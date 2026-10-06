@@ -101,7 +101,7 @@ struct FogScattering {
   time: f32,
 }
 
-struct SurfaceMask {
+struct PuddleSites {
   window: vec4<f32>,
   shape: vec4<f32>,
 }

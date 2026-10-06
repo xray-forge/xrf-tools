@@ -8,7 +8,7 @@
 @group(1) @binding(3) var material_target: texture_2d<f32>;
 @group(1) @binding(4) var cover: texture_depth_2d;
 @group(1) @binding(5) var surface_lowest: texture_2d<f32>;
-@group(1) @binding(6) var puddle_sites: texture_2d<f32>;
+@group(1) @binding(6) var puddles: texture_2d<f32>;
 @group(1) @binding(7) var surface_water: texture_depth_2d;
 @group(1) @binding(8) var splash: texture_2d_array<f32>;
 @group(1) @binding(9) var flow: texture_2d<f32>;

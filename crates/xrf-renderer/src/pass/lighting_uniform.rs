@@ -55,7 +55,7 @@ pub struct LightingUniform {
   /// One where the indirect light is gathered and added.
   pub indirect: Vec4,
   /// One where the reflections are traced and blended in, the frame's pixels a traced pixel stands for each way, and
-  /// what the share of reflection is scaled by.
+  /// their intensity.
   pub reflections: Vec4,
   /// The enhanced fog's height, density and sun colour, then one where it is drawn; nothing where the engine's alone is.
   pub height_fog: Vec4,

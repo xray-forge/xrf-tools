@@ -2,8 +2,9 @@ use xrf_renderer_core::{GraphTexture, PassParameters, UniformBinding};
 
 use crate::pass::wet_uniform::WetUniform;
 
-/// What the wet patches read: the G-buffer's depth, albedo, normals and material marks, the rain's cover, the level's
-/// surface's lowest heights, its puddle sites and its water, the splash volume and the flow, the enhanced wetting's ripples, puddle noise and puddle normals, and the wet surfaces' settings.
+/// What the wet patches read: the G-buffer's depth, albedo, normals and material marks, the rain's cover, the level
+/// surface's lowest heights, this frame's puddles and its water, the splash volume and the flow, the enhanced wetting's
+/// ripples, puddle noise and puddle normals, and the wet surfaces' settings.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 1)]
 pub struct WetPatchParameters<'a> {
@@ -20,7 +21,7 @@ pub struct WetPatchParameters<'a> {
   #[texture(d2, unfilterable)]
   pub surface_lowest: GraphTexture,
   #[texture(d2, unfilterable)]
-  pub puddle_sites: GraphTexture,
+  pub puddles: GraphTexture,
   #[texture(d2, depth)]
   pub surface_water: GraphTexture,
   #[texture(d2_array, float)]

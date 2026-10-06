@@ -3,6 +3,7 @@
 #import "common/rain_cover"
 #import "common/fullscreen"
 #import "common/wet"
+#import "common/puddle_site"
 
 // `rain_patch_normal` (`r3_rendertarget_draw_rain.cpp`): where the rain reaches a surface near the camera, splashes on
 // what faces up and water running down what stands, as a normal bent in view space, and how wet it is in alpha, weighed
@@ -172,35 +173,14 @@ const RIPPLE_LAYER_OFFSETS: vec4<f32> = vec4<f32>(0.5, 0.25, 0.31, 0.5);
 const PUDDLE_TILE: f32 = 60.0;
 const PUDDLE_RIPPLE_TILE: f32 = 12.0;
 const PUDDLE_RIPPLE_SHARE: f32 = 0.5;
-// Puddles stand at sites the level surface's placing found room for, a site a cell of `SITE_CELL` metres: how many
-// of them hold one at the default puddles setting, and how far the setting and a broader noise over
-// `PUDDLE_REGION_TILE` metres, turned off the cells' grid, move that, whole stretches wetter or drier.
-const SITE_CELL: f32 = 8.0;
-const SITE_SHARE: f32 = 0.7;
-// How many sites about one, in the cells around it, may hold puddles before it holds none, those first by their hash
-// keeping theirs, so no stretch gathers a lake of them: after a short rain, and how many more after a long one soaked
-// the level; a site past the limit by less than one grows in by that much rather than popping. And how much more of
-// the sites a long rain fills.
-const SITE_NEIGHBOURS: f32 = 2.0;
-const SOAK_NEIGHBOURS: f32 = 3.0;
-const SOAK_SHARE: f32 = 0.5;
-const PUDDLE_REGION_TILE: f32 = 240.0;
-const PUDDLE_REGION_TURN: mat2x2<f32> = mat2x2<f32>(0.8, 0.6, -0.6, 0.8);
-const PUDDLE_REGION_SHAPE: f32 = 0.6;
 // A puddle's shape about its site: as long as wide at most by `PUDDLE_STRETCH`, its border moved in and out by a
-// noise every `PUDDLE_EDGE_TILE` metres and by the puddles' own over `PUDDLE_TILE`, a share of its radius; how small it
-// starts as the level wets, against its whole size; and the share of its radius its border softens over.
+// noise every `PUDDLE_EDGE_TILE` metres and by the puddles' own over `PUDDLE_TILE`, a share of its radius; and the
+// share of its radius its border softens over.
 const PUDDLE_STRETCH: f32 = 1.6;
 const PUDDLE_EDGE_TILE: f32 = 8.0;
 const PUDDLE_EDGE_SHAPE: f32 = 0.35;
 const PUDDLE_NOISE_SHAPE: f32 = 0.25;
-const PUDDLE_GROWTH: f32 = 0.35;
 const PUDDLE_SOFTNESS: f32 = 0.12;
-// How much more of the sites a storm fills, and how much bigger it grows each puddle, within the margin the placing
-// tested around them; and the share over which a site newly within the share grows in rather than popping.
-const STORM_SHARE: f32 = 0.6;
-const STORM_GROWTH: f32 = 0.15;
-const SITE_GROW_IN: f32 = 0.15;
 // How deep a puddle reads at its middle, against its rim, so its water darkens inward; and how far past its rim the
 // ground around it stays darker and glossier with the water it soaked, a share of its radius, and how glossy.
 const PUDDLE_DEEPENING: f32 = 0.6;
@@ -210,10 +190,10 @@ const PUDDLE_HALO_GLOSS: f32 = 0.25;
 const PUDDLE_FILM: f32 = 0.15;
 
 // Metres a point may stand off its site's height, beside how far the placing let the ground rise and fall across it
-// (a little and a share of its radius), and still be in its water; and how far over the level surface's lowest there
-// it may stand: a stone or a post in a puddle stays dry, as does what lies under anything standing over the ground.
+// (`SITE_LEVEL`), and still be in its water; and how far under the level surface's highest lowest about it it may stand
+// and still be the topmost surface: a stone or a post in a puddle stays dry, as does what lies under anything standing
+// over the ground.
 const PUDDLE_DEPTH: f32 = 0.15;
-const SITE_LEVEL: vec2<f32> = vec2<f32>(0.15, 0.07);
 const PUDDLE_TOP: f32 = 0.25;
 // The least a surface faces up to hold a puddle.
 const PUDDLE_UP: f32 = 0.85;
@@ -325,83 +305,43 @@ fn is_topmost(world: vec3<f32>) -> bool {
   return world.y > highest - PUDDLE_TOP;
 }
 
-// A hash of a cell, from nothing to one each way, three ways.
-fn site_hash(cell: vec2<f32>) -> vec3<f32> {
-  var mixed: vec3<f32> = fract(vec3<f32>(cell.xyx) * vec3<f32>(0.1031, 0.1030, 0.0973));
-
-  mixed += dot(mixed, mixed.yxz + 33.33);
-
-  return fract((mixed.xxy + mixed.yzz) * mixed.zyx);
-}
-
-// How many sites holding puddles in the cells about one come before it by their hash.
-fn sites_before(cell: vec2<f32>, origin: vec2<f32>, rank: f32, share: f32, cells: f32) -> f32 {
-  var before: f32 = 0.0;
-
-  for (var y: i32 = -1; y <= 1; y++) {
-    for (var x: i32 = -1; x <= 1; x++) {
-      let other: vec2<f32> = cell + vec2<f32>(f32(x), f32(y));
-
-      if ((x == 0 && y == 0) || any(other < vec2<f32>(0.0)) || any(other >= vec2<f32>(cells))) {
-        continue;
-      }
-
-      let hash: f32 = site_hash(origin + other).x;
-
-      if (hash < rank && hash < share && textureLoad(puddle_sites, vec2<i32>(other), 0).w > 0.0) {
-        before += 1.0;
-      }
-    }
-  }
-
-  return before;
-}
-
-// How much of a puddle a point is, how deep into it, and how much of the damp halo around it: the sites of its cell
-// and those about it, each a whole stretched blob about its spot as big as the puddles have filled it (`growth`),
-// those the share kept with no more than `neighbours` before them about it, a site newly within either growing in; `border` moves each blob's edge in and out, a share of its
-// radius; `footprint` is the metres a pixel spans there, over which a border is softened at least, so a far one does
-// not shimmer. Nothing outside the level surface's map.
-fn site_puddle(world: vec3<f32>, growth: f32, share: f32, neighbours: f32, border: f32, footprint: f32)
-  -> vec3<f32> {
-  let cells: f32 = wet.surface.z * 2.0 / SITE_CELL;
+// How much of a puddle a point is, how deep into it, and how much of the damp halo around it: this frame's puddles in
+// its cell and those about it, each a whole stretched blob about its site as big as the placing made it, turned and
+// stretched by the site's hash; `border` moves each blob's edge in and out, a share of its radius; `footprint` is the
+// metres a pixel spans there, over which a border is softened at least, so a far one does not shimmer. Nothing outside
+// the level surface's map.
+fn site_puddle(world: vec3<f32>, border: f32, footprint: f32) -> vec3<f32> {
+  let cell: f32 = wet.surface_shape.z;
+  let cells: f32 = floor(wet.surface.z * 2.0 / cell);
   let corner: vec2<f32> = wet.surface.xy - wet.surface.z;
-  let at: vec2<f32> = floor((world.xz - corner) / SITE_CELL);
-  let origin: vec2<f32> = floor(corner / SITE_CELL + 0.5);
+  let at: vec2<f32> = floor((world.xz - corner) / cell);
+  let origin: vec2<f32> = site_origin(corner, cell);
   var puddle: vec3<f32> = vec3<f32>(0.0);
 
   for (var y: i32 = -1; y <= 1; y++) {
     for (var x: i32 = -1; x <= 1; x++) {
-      let cell: vec2<f32> = at + vec2<f32>(f32(x), f32(y));
+      let near: vec2<f32> = at + vec2<f32>(f32(x), f32(y));
 
-      if (any(cell < vec2<f32>(0.0)) || any(cell >= vec2<f32>(cells))) {
+      if (any(near < vec2<f32>(0.0)) || any(near >= vec2<f32>(cells))) {
         continue;
       }
 
-      let site: vec4<f32> = textureLoad(puddle_sites, vec2<i32>(cell), 0);
-      let hash: vec3<f32> = site_hash(origin + cell);
+      let site: vec4<f32> = textureLoad(puddles, vec2<i32>(near), 0);
 
-      if (site.w <= 0.0 || hash.x >= share || length(world.xz - site.xy) > site.w * 2.0) {
+      if (site.w <= 0.0 || length(world.xz - site.xy) > site.w * 2.0) {
         continue;
       }
 
-      let room: f32 = saturate(neighbours + 1.0 - sites_before(cell, origin, hash.x, share, cells));
-
-      if (room <= 0.0) {
-        continue;
-      }
-
+      let hash: vec3<f32> = site_hash(origin + near);
       let turn: f32 = hash.y * 6.2831853;
       let across: vec2<f32> = vec2<f32>(cos(turn), sin(turn));
       let offset: vec2<f32> = world.xz - site.xy;
       let stretched: vec2<f32> = vec2<f32>(dot(offset, across), dot(offset, vec2<f32>(-across.y, across.x))) /
         vec2<f32>(1.0, mix(1.0, 1.0 / PUDDLE_STRETCH, hash.z));
-      let radius: f32 = site.w * growth * saturate((share - hash.x) / SITE_GROW_IN) * room;
-      let distance: f32 = length(stretched) / radius + border;
-      let softness: f32 = max(PUDDLE_SOFTNESS, 1.5 * footprint / radius);
+      let distance: f32 = length(stretched) / site.w + border;
+      let softness: f32 = max(PUDDLE_SOFTNESS, 1.5 * footprint / site.w);
       let band: f32 = PUDDLE_DEPTH + SITE_LEVEL.x + SITE_LEVEL.y * site.w;
       let seated: f32 = 1.0 - smoothstep(band * 0.75, band, abs(world.y - site.z));
-
       let inside: f32 = (1.0 - smoothstep(1.0 - softness, 1.0, distance)) * seated;
       let deep: f32 = saturate((1.0 - distance) / PUDDLE_DEEPENING) * inside;
       let halo: f32 = (1.0 - smoothstep(1.0, 1.0 + PUDDLE_HALO, distance)) * seated;
@@ -414,18 +354,18 @@ fn site_puddle(world: vec3<f32>, growth: f32, share: f32, neighbours: f32, borde
 }
 
 // What the enhanced wetting writes: into the light target, as the engine's wetting does, the normal packed into `xy`
-// (its ripples and running water bent into it, a puddle levelling it), the gloss the rain adds into `z`, and how much
-// of a puddle the point is into `w`; into the wet surface, what the enhanced rain adds over it: how much of the
-// surface a puddle's clear coat of water covers, how much a puddle, and the puddle's ripple across the ground in the
-// world's `x` and `z`, which shifts what it reflects rather than bending the normal the reflections are traced and
-// held by. The coat's coverage is the puddle's scaled by the reflectivity setting, against water's.
+// (its ripples and running water bent into it, a puddle levelling it), the gloss the rain adds into `z`, and how deep
+// into a puddle the point is into `w`, which browns it; into the wet surface, what the enhanced rain adds over it: how
+// much of the surface a puddle's clear coat of water covers (the puddle scaled by the reflectivity setting against
+// water's, and by floating film), how much a puddle, and the puddle's ripple across the ground in the world's `x` and
+// `z`, which shifts what it reflects rather than bending the normal the reflections are traced and held by.
 struct WetPatchTargets {
   @location(0) patched: vec4<f32>,
   @location(1) surface: vec4<f32>,
 };
 
 // The enhanced wetting: the level's wetness wetting what the rain reaches out to the distance, ripples on what faces up
-// and water running down what stands near the camera, and puddles on flat, low terrain, rippling.
+// and water running down what stands near the camera, and this frame's puddles on level, open terrain, rippling.
 @fragment
 fn fs_wet_patch_enhanced(in: FullscreenVarying) -> WetPatchTargets {
   let texel: vec2<i32> = vec2<i32>(in.clip.xy);
@@ -491,35 +431,24 @@ fn fs_wet_patch_enhanced(in: FullscreenVarying) -> WetPatchTargets {
   rain_gloss = select(rain_gloss, 0.15, is_terrain && gloss > 0.3);
   rain_gloss *= saturate(weights.y * 1.5) * smoothstep(WET_REACH.y, WET_REACH.x, length(position));
 
-  // Puddles: whole puddles at the sites the level surface's placing found room for, level, whole and away from water,
-  // terrain, a road or a bridge's deck alike; fewer where the setting and the stretch are drier, as big as the level
-  // is wet, where the rain reaches, rippled by the rain.
+  // Puddles: whole puddles where the placing put them this frame, faded out over the last of the puddle distance,
+  // rippled by the rain.
   var puddle: f32 = 0.0;
   var film: f32 = 1.0;
-  let fill: f32 = wet.puddle_state.y;
-  let storm: f32 = wet.puddle_state.z;
   var deep: f32 = 0.0;
 
   // On the ground alone, terrain facing up and the topmost surface there: never a roof, a deck or a ceiling.
   let is_ground: bool = is_terrain && world_normal.y > PUDDLE_UP && is_topmost(world);
 
-  if (is_ground && fill > 0.0 && length(position) < wet.puddle_state.x) {
+  if (is_ground && wet.puddle_state.y > 0.0 && length(position) < wet.puddle_state.x) {
     let noise: f32 = textureSampleGrad(puddle_noise, wet_sampler, place.xz / PUDDLE_TILE,
       gradients.across / PUDDLE_TILE, gradients.down / PUDDLE_TILE).r;
     let edge: f32 = textureSampleGrad(puddle_noise, wet_sampler, place.zx / PUDDLE_EDGE_TILE + 0.37,
       gradients.across.yx / PUDDLE_EDGE_TILE, gradients.down.yx / PUDDLE_EDGE_TILE).r;
-    let region: f32 = textureSampleGrad(puddle_noise, wet_sampler,
-      PUDDLE_REGION_TURN * place.xz / PUDDLE_REGION_TILE, PUDDLE_REGION_TURN * gradients.across / PUDDLE_REGION_TILE,
-      PUDDLE_REGION_TURN * gradients.down / PUDDLE_REGION_TILE).r;
-    let soak: f32 = wet.puddle_state.w;
-    let share: f32 = SITE_SHARE * wet.puddles.y / 0.8 * (1.0 + (region - 0.5) * 2.0 * PUDDLE_REGION_SHAPE) *
-      (1.0 + STORM_SHARE * storm) * (1.0 + SOAK_SHARE * soak);
-    let neighbours: f32 = SITE_NEIGHBOURS + SOAK_NEIGHBOURS * soak;
-    let growth: f32 = mix(PUDDLE_GROWTH, 1.0, fill) * (1.0 + STORM_GROWTH * storm);
     let border: f32 = (edge - 0.5) * PUDDLE_EDGE_SHAPE + (noise - 0.5) * PUDDLE_NOISE_SHAPE;
 
     // The cover only reaches some tens of metres; a site is on open ground already, so a puddle does not wait for it.
-    let found: vec3<f32> = site_puddle(world, growth, share, neighbours, border, footprint) *
+    let found: vec3<f32> = site_puddle(world, border, footprint) *
       smoothstep(wet.puddle_state.x, wet.puddle_state.x * (1.0 - PUDDLE_FADE), length(position));
 
     puddle = found.x;
@@ -547,10 +476,8 @@ fn fs_wet_patch_enhanced(in: FullscreenVarying) -> WetPatchTargets {
 
   let bent: vec3<f32> = (camera.view * vec4<f32>(water.x, water.y, -water.z, 0.0)).xyz;
 
-  // The light target's `w` carries how deep into a puddle the point is, which tints it; the wet surface's `g` how much
-  // of a puddle.
   return WetPatchTargets(
-    vec4<f32>(octahedral_encode(normalize(normal + bent)), rain_gloss, max(deep, puddle * 0.01)),
+    vec4<f32>(octahedral_encode(normalize(normal + bent)), rain_gloss, deep),
     vec4<f32>(puddle * film * wet.puddles.z / WATER_REFLECTIVITY, puddle, ripple.x, -ripple.y),
   );
 }

@@ -7,7 +7,7 @@ use crate::contract::render_reflection_quality::RenderReflectionQuality;
 #[derive(Clone, Copy, Debug, Default, Deserialize, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RenderAppliedReflections {
-  /// What a surface's gloss and Fresnel term are scaled by into its share of reflection.
+  /// What scales how much of a surface's reflection a traced one replaces, and how much a puddle's coat reflects.
   pub intensity: f32,
   pub quality: RenderReflectionQuality,
 }

@@ -1,28 +1,30 @@
 use xrf_error::XrfResult;
 use xrf_renderer_core::{ComputeContext, PassParameters};
 
+use crate::pass::lowest_heights_parameters::LowestHeightsParameters;
+use crate::pass::puddle_keep_parameters::PuddleKeepParameters;
+use crate::pass::puddle_sites_parameters::PuddleSitesParameters;
 use crate::pass::shader_pipelines::{create_checked, create_module};
-use crate::pass::surface_heights_parameters::SurfaceHeightsParameters;
-use crate::pass::surface_sites_parameters::SurfaceSitesParameters;
 use crate::shader::shader_library::ShaderLibrary;
 
-/// Invocations a workgroup runs a side, as `shaders/frame/surface_mask.wgsl` declares them.
+/// Invocations a workgroup runs a side, as `shaders/frame/puddle_sites.wgsl` declares them.
 const WORKGROUP: u32 = 8;
 
 /// Places the puddles on the level's surface seen from overhead: its lowest heights, then a site a cell, a dispatch
-/// each.
-pub struct SurfaceMaskPass {
-  layouts: [wgpu::BindGroupLayout; 2],
-  /// The lowest heights and the sites.
-  pipelines: [wgpu::ComputePipeline; 2],
+/// each, where it is drawn; and each frame, which sites hold a puddle and how big.
+pub struct PuddleSitesPass {
+  layouts: [wgpu::BindGroupLayout; 3],
+  /// The lowest heights, the sites, and the puddles.
+  pipelines: [wgpu::ComputePipeline; 3],
   generation: u64,
 }
 
-impl SurfaceMaskPass {
+impl PuddleSitesPass {
   pub fn new(device: &wgpu::Device, shaders: &ShaderLibrary) -> XrfResult<Self> {
-    let layouts: [wgpu::BindGroupLayout; 2] = [
-      SurfaceHeightsParameters::create_layout(device),
-      SurfaceSitesParameters::create_layout(device),
+    let layouts: [wgpu::BindGroupLayout; 3] = [
+      LowestHeightsParameters::create_layout(device),
+      PuddleSitesParameters::create_layout(device),
+      PuddleKeepParameters::create_layout(device),
     ];
 
     Ok(Self {
@@ -48,7 +50,7 @@ impl SurfaceMaskPass {
     &self,
     context: &mut ComputeContext<'_>,
     (size, cells): (u32, u32),
-    (lowest, sites): (&SurfaceHeightsParameters, &SurfaceSitesParameters),
+    (lowest, sites): (&LowestHeightsParameters, &PuddleSitesParameters),
   ) {
     context.bind(lowest);
     context.get_pass().set_pipeline(&self.pipelines[0]);
@@ -62,12 +64,21 @@ impl SurfaceMaskPass {
       .dispatch_workgroups(cells.div_ceil(WORKGROUP), cells.div_ceil(WORKGROUP), 1);
   }
 
+  /// Decides each of `cells` a side's puddle this frame.
+  pub fn record_keep(&self, context: &mut ComputeContext<'_>, cells: u32, keep: &PuddleKeepParameters<'_>) {
+    context.bind(keep);
+    context.get_pass().set_pipeline(&self.pipelines[2]);
+    context
+      .get_pass()
+      .dispatch_workgroups(cells.div_ceil(WORKGROUP), cells.div_ceil(WORKGROUP), 1);
+  }
+
   fn create_pipelines(
     device: &wgpu::Device,
     shaders: &ShaderLibrary,
-    [heights, sites]: &[wgpu::BindGroupLayout; 2],
-  ) -> XrfResult<[wgpu::ComputePipeline; 2]> {
-    let module: wgpu::ShaderModule = create_module(device, shaders, "frame/surface_mask")?;
+    [heights, sites, keep]: &[wgpu::BindGroupLayout; 3],
+  ) -> XrfResult<[wgpu::ComputePipeline; 3]> {
+    let module: wgpu::ShaderModule = create_module(device, shaders, "frame/puddle_sites")?;
     let create = |entry: &str, layout: &wgpu::BindGroupLayout| -> XrfResult<wgpu::ComputePipeline> {
       let pipeline_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some(entry),
@@ -87,6 +98,10 @@ impl SurfaceMaskPass {
       })
     };
 
-    Ok([create("surface_lowest", heights)?, create("surface_sites", sites)?])
+    Ok([
+      create("surface_lowest", heights)?,
+      create("surface_sites", sites)?,
+      create("puddle_keep", keep)?,
+    ])
   }
 }

@@ -45,6 +45,10 @@ const EMBEDDED: &[(&str, &str)] = &[
     include_str!("../../shaders/common/octahedral.wgsl"),
   ),
   (
+    "common/puddle_site",
+    include_str!("../../shaders/common/puddle_site.wgsl"),
+  ),
+  (
     "common/rain_cover",
     include_str!("../../shaders/common/rain_cover.wgsl"),
   ),
@@ -134,8 +138,8 @@ const EMBEDDED: &[(&str, &str)] = &[
   ("frame/present", include_str!("../../shaders/frame/present.wgsl")),
   ("frame/pyramid", include_str!("../../shaders/frame/pyramid.wgsl")),
   (
-    "frame/surface_mask",
-    include_str!("../../shaders/frame/surface_mask.wgsl"),
+    "frame/puddle_sites",
+    include_str!("../../shaders/frame/puddle_sites.wgsl"),
   ),
   (
     "frame/reflections",
@@ -243,8 +247,8 @@ const EMBEDDED: &[(&str, &str)] = &[
     include_str!("../../shaders/generated/frame/pyramid.wgsl"),
   ),
   (
-    "generated/frame/surface_mask",
-    include_str!("../../shaders/generated/frame/surface_mask.wgsl"),
+    "generated/frame/puddle_sites",
+    include_str!("../../shaders/generated/frame/puddle_sites.wgsl"),
   ),
   (
     "generated/frame/bloom",
