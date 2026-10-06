@@ -104,12 +104,7 @@ impl DepthPyramidPass {
       .collect()
   }
 
-  pub fn dispatch(&self, encoder: &mut wgpu::CommandEncoder, pyramid: &DepthPyramid, bind_groups: &[wgpu::BindGroup]) {
-    let mut pass: wgpu::ComputePass<'_> = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-      label: Some("depth pyramid"),
-      timestamp_writes: None,
-    });
-
+  pub fn record(&self, pass: &mut wgpu::ComputePass<'_>, pyramid: &DepthPyramid, bind_groups: &[wgpu::BindGroup]) {
     for (level, bind_group) in bind_groups.iter().enumerate() {
       let (width, height): (u32, u32) = pyramid.get_level_size(level as u32);
 

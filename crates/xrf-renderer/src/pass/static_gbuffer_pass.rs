@@ -157,69 +157,15 @@ impl StaticGBufferPass {
     &self.layout
   }
 
-  #[allow(clippy::too_many_arguments)]
-  pub fn draw(
+  /// Draws the visible clusters an argument buffer lists into the G-buffer the pass draws into, and with the frame's
+  /// first draw the impostors too: no occlusion sets one aside.
+  pub fn record(
     &self,
-    encoder: &mut wgpu::CommandEncoder,
-    targets: &ViewTargets,
-    view: &ViewBinding,
-    bind_groups: &StaticDrawGroups,
-    textures: &wgpu::BindGroup,
+    pass: &mut wgpu::RenderPass<'_>,
+    (view, bind_groups, textures): (&ViewBinding, &StaticDrawGroups, &wgpu::BindGroup),
     args: &wgpu::Buffer,
     is_first: bool,
   ) {
-    // The first draw of a frame clears what the last left; a later one draws over it.
-    let clear = |color: wgpu::Color| wgpu::Operations {
-      load: if is_first {
-        wgpu::LoadOp::Clear(color)
-      } else {
-        wgpu::LoadOp::Load
-      },
-      store: wgpu::StoreOp::Store,
-    };
-    let mut pass: wgpu::RenderPass<'_> = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-      label: Some("static g-buffer"),
-      color_attachments: &[
-        Some(wgpu::RenderPassColorAttachment {
-          view: &targets.albedo,
-          depth_slice: None,
-          resolve_target: None,
-          ops: clear(wgpu::Color::TRANSPARENT),
-        }),
-        Some(wgpu::RenderPassColorAttachment {
-          view: &targets.normal,
-          depth_slice: None,
-          resolve_target: None,
-          ops: clear(wgpu::Color::TRANSPARENT),
-        }),
-        Some(wgpu::RenderPassColorAttachment {
-          view: &targets.material,
-          depth_slice: None,
-          resolve_target: None,
-          ops: clear(wgpu::Color::TRANSPARENT),
-        }),
-        Some(wgpu::RenderPassColorAttachment {
-          view: &targets.motion,
-          depth_slice: None,
-          resolve_target: None,
-          ops: clear(wgpu::Color::TRANSPARENT),
-        }),
-      ],
-      depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-        view: &targets.depth,
-        depth_ops: Some(wgpu::Operations {
-          load: if is_first {
-            wgpu::LoadOp::Clear(0.0)
-          } else {
-            wgpu::LoadOp::Load
-          },
-          store: wgpu::StoreOp::Store,
-        }),
-        stencil_ops: None,
-      }),
-      ..Default::default()
-    });
-
     pass.set_bind_group(0, &view.bind_group, &[]);
     pass.set_bind_group(1, textures, &[]);
 
@@ -229,7 +175,6 @@ impl StaticGBufferPass {
       pass.draw_indirect(args, batch.get_index() as u64 * 16);
     }
 
-    // The impostors are drawn with the first draw alone: no occlusion sets one aside.
     if is_first {
       pass.set_pipeline(&self.impostor_pipelines[0]);
       pass.set_bind_group(2, &bind_groups.impostors, &[]);

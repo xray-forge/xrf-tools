@@ -150,18 +150,13 @@ impl StaticCullPass {
 
   /// Decides each impostor's level of detail, culls every cluster and row by it, then clamps each batch's count to its
   /// run and sizes the late phase.
-  pub fn dispatch_early(
+  pub fn record_early(
     &self,
-    encoder: &mut wgpu::CommandEncoder,
+    pass: &mut wgpu::ComputePass<'_>,
     view: &ViewBinding,
     bind_group: &wgpu::BindGroup,
     params: &StaticCullParams,
   ) {
-    let mut pass: wgpu::ComputePass<'_> = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-      label: Some("static cull"),
-      timestamp_writes: None,
-    });
-
     pass.set_bind_group(0, &view.bind_group, &[]);
     pass.set_bind_group(1, bind_group, &[]);
 
@@ -173,7 +168,7 @@ impl StaticCullPass {
     ] {
       if count > 0 {
         pass.set_pipeline(pipeline);
-        self.grid.dispatch(&mut pass, count.div_ceil(WORKGROUP));
+        self.grid.dispatch(pass, count.div_ceil(WORKGROUP));
       }
     }
   }
@@ -205,14 +200,9 @@ impl StaticCullPass {
     }
   }
 
-  /// Tests what the early phase set aside again, as many workgroups as it set aside, then clamps the late counts.
-  pub fn dispatch_late(
-    &self,
-    encoder: &mut wgpu::CommandEncoder,
-    view: &ViewBinding,
-    bind_group: &wgpu::BindGroup,
-    scene: &StaticScene,
-  ) {
+  /// Copies how many workgroups the late phase takes, as many as the early phase set aside, where its dispatch reads
+  /// them.
+  pub fn record_late_dispatch(&self, encoder: &mut wgpu::CommandEncoder, scene: &StaticScene) {
     encoder.copy_buffer_to_buffer(
       &scene.late,
       StaticScene::LATE_DISPATCH_OFFSET,
@@ -220,12 +210,16 @@ impl StaticCullPass {
       0,
       12,
     );
+  }
 
-    let mut pass: wgpu::ComputePass<'_> = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-      label: Some("static late cull"),
-      timestamp_writes: None,
-    });
-
+  /// Tests what the early phase set aside again, then clamps the late counts.
+  pub fn record_late(
+    &self,
+    pass: &mut wgpu::ComputePass<'_>,
+    view: &ViewBinding,
+    bind_group: &wgpu::BindGroup,
+    scene: &StaticScene,
+  ) {
     pass.set_bind_group(0, &view.bind_group, &[]);
     pass.set_bind_group(1, bind_group, &[]);
     pass.set_pipeline(&self.pipelines[4]);

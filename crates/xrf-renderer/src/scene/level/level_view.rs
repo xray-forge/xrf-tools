@@ -6,7 +6,8 @@ use xrf_engine_target::XrayEngine;
 use xrf_error::XrfResult;
 use xrf_material::XraySurfaceDraw;
 use xrf_renderer_core::{
-  ExecutedGraph, FrameGraph, GraphBindings, GraphCompileOptions, GraphRuntime, GraphTexture, GraphTextureAccess,
+  ExecutedGraph, FrameGraph, GraphBindings, GraphBuffer, GraphBufferAccess, GraphColorAttachment, GraphCompileOptions,
+  GraphDepthAttachment, GraphRuntime, GraphTexture, GraphTextureAccess,
 };
 
 use xrf_math::EPS_S;
@@ -57,6 +58,7 @@ use crate::pass::present_uniform::PresentUniform;
 use crate::pass::rain_bindings::RainBindings;
 use crate::pass::rain_uniform::RainUniform;
 use crate::pass::static_cull_params::StaticCullParams;
+use crate::pass::static_draw_groups::StaticDrawGroups;
 use crate::pass::static_gbuffer_pass::StaticGBufferPass;
 use crate::pass::static_occlusion_uniform::StaticOcclusionUniform;
 use crate::pass::temporal_uniform::TemporalUniform;
@@ -721,6 +723,100 @@ impl LevelView {
     lights.prepare_shadows(device, queue, encoder, passes, &frame);
   }
 
+  /// Declares the scene's culls and G-buffer draws: what last frame's depth does not hide, culled and drawn; then, while
+  /// it culls occlusion, this frame's depth reduced and what the first draw does not hide of the rest culled and drawn.
+  fn add_gbuffer_passes<'a>(
+    &'a self,
+    (graph, bindings): (&mut FrameGraph<'a>, &mut GraphBindings<'a>),
+    passes: LevelPasses<'a>,
+    (view, textures, draw_groups, cull_group): (
+      &'a ViewBinding,
+      &'a wgpu::BindGroup,
+      &'a StaticDrawGroups,
+      &'a wgpu::BindGroup,
+    ),
+    (targets, pyramid, pyramid_groups): (&'a ViewTargets, &'a DepthPyramid, &'a [wgpu::BindGroup]),
+    is_occluding: bool,
+  ) {
+    let scene: &'a StaticScene = &self.scene.statics;
+    let params: &'a StaticCullParams = &self.info.cull;
+    let args: GraphBuffer = bindings.import_buffer(graph, "static draw arguments", &scene.args);
+    let late: GraphBuffer = bindings.import_buffer(graph, "static late arguments", &scene.late);
+    let lists: GraphBuffer = bindings.import_buffer(graph, "static lists", scene.lists.get_buffer());
+    let candidates: GraphBuffer = bindings.import_buffer(graph, "static candidates", scene.candidates.get_buffer());
+    let gbuffer: [GraphTexture; 4] = [
+      bindings.import_view(graph, "albedo", &targets.albedo),
+      bindings.import_view(graph, "normal", &targets.normal),
+      bindings.import_view(graph, "material", &targets.material),
+      bindings.import_view(graph, "motion", &targets.motion),
+    ];
+    let depth: GraphTexture = bindings.import_view(graph, "depth", &targets.depth);
+    let add_draw = |graph: &mut FrameGraph<'a>, name: &'static str, draw_args: GraphBuffer, is_first: bool| {
+      let color_load: wgpu::LoadOp<wgpu::Color> = if is_first {
+        wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT)
+      } else {
+        wgpu::LoadOp::Load
+      };
+      let depth_load: wgpu::LoadOp<f32> = if is_first {
+        wgpu::LoadOp::Clear(0.0)
+      } else {
+        wgpu::LoadOp::Load
+      };
+
+      gbuffer
+        .iter()
+        .fold(graph.add_raster_pass(name), |builder, texture| {
+          builder.color(GraphColorAttachment::new(*texture, color_load))
+        })
+        .depth(GraphDepthAttachment::new(depth, depth_load))
+        .buffer(draw_args, GraphBufferAccess::Indirect)
+        .buffer(lists, GraphBufferAccess::StorageRead)
+        .record(move |context| {
+          let draw_args: &wgpu::Buffer = context.get_buffer(draw_args);
+
+          passes
+            .gbuffer
+            .record(context.get_pass(), (view, draw_groups, textures), draw_args, is_first);
+        });
+    };
+
+    graph
+      .add_compute_pass("cull")
+      .buffer(args, GraphBufferAccess::StorageReadWrite)
+      .buffer(late, GraphBufferAccess::StorageReadWrite)
+      .buffer(lists, GraphBufferAccess::StorageWrite)
+      .buffer(candidates, GraphBufferAccess::StorageWrite)
+      .record(move |context| passes.cull.record_early(context.get_pass(), view, cull_group, params));
+    add_draw(graph, "g-buffer", args, true);
+
+    if !is_occluding {
+      return;
+    }
+
+    let reduced: GraphTexture = bindings.import_view(graph, "depth pyramid", &pyramid.view);
+    let late_dispatch: GraphBuffer = bindings.import_buffer(graph, "static late dispatch", &scene.late_dispatch);
+
+    graph
+      .add_compute_pass("depth pyramid")
+      .texture(depth, GraphTextureAccess::Sampled)
+      .texture(reduced, GraphTextureAccess::StorageReadWrite)
+      .record(move |context| passes.pyramid.record(context.get_pass(), pyramid, pyramid_groups));
+    graph
+      .add_encoder_pass("late cull dispatch")
+      .buffer(late, GraphBufferAccess::CopySource)
+      .buffer(late_dispatch, GraphBufferAccess::CopyDestination)
+      .record(move |context| passes.cull.record_late_dispatch(context.get_encoder(), scene));
+    graph
+      .add_compute_pass("late cull")
+      .buffer(late_dispatch, GraphBufferAccess::Indirect)
+      .buffer(candidates, GraphBufferAccess::StorageRead)
+      .buffer(late, GraphBufferAccess::StorageReadWrite)
+      .buffer(lists, GraphBufferAccess::StorageReadWrite)
+      .texture(reduced, GraphTextureAccess::Sampled)
+      .record(move |context| passes.cull.record_late(context.get_pass(), view, cull_group, scene));
+    add_draw(graph, "late g-buffer", late, false);
+  }
+
   /// Ends a frame its graph recorded: the water's reflection and the temporal resolve's history it wrote become the
   /// ones the next frame keeps.
   fn finish_frame(&mut self, is_lit: bool, resolve: Option<&'static str>) {
@@ -1106,48 +1202,16 @@ impl LevelView {
 
       level.scene.grass.plant(encoder, passes.grass);
     });
-    bridge!("cull", |level, encoder, marker| {
-      if let Some((_, cull_group)) = &level.renderer.cull_group {
-        passes.cull.dispatch_early(encoder, view, cull_group, &level.info.cull);
-      }
-    });
-    bridge!("g-buffer", |level, encoder, marker| {
-      if let (Some(targets), Some((_, draw_groups))) = (&level.state.targets, &level.renderer.draw_groups) {
-        passes.gbuffer.draw(
-          encoder,
-          targets,
-          view,
-          draw_groups,
-          texture_group,
-          &level.scene.statics.args,
-          true,
-        );
-      }
-    });
-
-    if is_occluding {
-      bridge!("occlusion", |level, encoder, marker| {
-        if let (Some(targets), Some((pyramid, pyramid_groups)), Some((_, cull_group)), Some((_, draw_groups))) = (
-          &level.state.targets,
-          &level.state.pyramid,
-          &level.renderer.cull_group,
-          &level.renderer.draw_groups,
-        ) {
-          passes.pyramid.dispatch(encoder, pyramid, pyramid_groups);
-          passes
-            .cull
-            .dispatch_late(encoder, view, cull_group, &level.scene.statics);
-          passes.gbuffer.draw(
-            encoder,
-            targets,
-            view,
-            draw_groups,
-            texture_group,
-            &level.scene.statics.late,
-            false,
-          );
-        }
-      });
+    if let (Some((_, cull_group)), Some((pyramid, pyramid_groups))) =
+      (&level_view.renderer.cull_group, &level_view.state.pyramid)
+    {
+      level_view.add_gbuffer_passes(
+        (&mut graph, &mut bindings),
+        passes,
+        (view, texture_group, draw_groups, cull_group),
+        (targets, pyramid, pyramid_groups),
+        is_occluding,
+      );
     }
 
     bridge!("stats", |level, encoder, marker| {
