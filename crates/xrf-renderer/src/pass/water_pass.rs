@@ -1,20 +1,25 @@
-use wgpu::util::DeviceExt;
 use xrf_error::XrfResult;
+use xrf_renderer_core::{
+  FrameGraph, GraphBindings, GraphBuffer, GraphBufferAccess, GraphColorAttachment, GraphDepthAttachment, GraphRuntime,
+  GraphTexture, GraphTextureAccess, GraphTextureDescriptor, PassParameters, RasterPassBuilder, UniformBinding,
+};
 
 use crate::contract::render_water_mode::RenderWaterMode;
 use crate::frame::view_targets::ViewTargets;
 use crate::frame::water_reflection::WaterReflection;
 use crate::host::render_bundle::RenderBundle;
-use crate::pass::fullscreen_pipeline::{
-  begin_cleared_pass, buffer_binding, create_fullscreen_pipeline, texture_binding,
-};
-use crate::pass::layout_entries::{texture_entry, uniform_entry};
+use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline;
 use crate::pass::shader_pipelines::{create_checked, create_module};
 use crate::pass::static_draw_groups::StaticDrawGroups;
 use crate::pass::view_binding::ViewBinding;
 use crate::pass::water_batch_pipelines::WaterBatchPipelines;
-use crate::pass::water_groups::WaterGroups;
-use crate::pass::water_sources::WaterSources;
+use crate::pass::water_blur_parameters::WaterBlurParameters;
+use crate::pass::water_blur_uniform::WaterBlurUniform;
+use crate::pass::water_depth_parameters::WaterDepthParameters;
+use crate::pass::water_draw::WaterDraw;
+use crate::pass::water_reflection_parameters::WaterReflectionParameters;
+use crate::pass::water_surface_parameters::WaterSurfaceParameters;
+use crate::pass::water_uniform::WaterUniform;
 use crate::scene::static_scene::static_batch::StaticBatch;
 use crate::scene::texture::decoded_texture::DecodedTexture;
 use crate::shader::shader_library::ShaderLibrary;
@@ -30,9 +35,8 @@ const CAUSTICS: &str = "water/caustics.dds";
 const HEIGHT: &str = "water/height.dds";
 const RIPPLES: &str = "water/ripples.dds";
 
-/// What each blur pass reads its source by: its direction, and the share of the source's size its target is.
-const BLUR_ACROSS: [f32; 4] = [1.0, 0.0, 2.0, 0.0];
-const BLUR_DOWN: [f32; 4] = [0.0, 1.0, 1.0, 0.0];
+/// What every water batch binds below its pass's own group: the view, the bindless textures, and the static draws.
+type WaterGroups<'a> = (&'a ViewBinding, &'a wgpu::BindGroup, &'a StaticDrawGroups);
 
 /// Draws a viewport's visible water over its lit scene, tested against the G-buffer's depth without writing it, and the
 /// distortion each surface causes into the distortion target while the water distorts. Only the water nearest along
@@ -40,16 +44,12 @@ const BLUR_DOWN: [f32; 4] = [0.0, 1.0, 1.0, 0.0];
 /// surface draw over a nearer one. The enhanced water reads the scene as it stood before the water, which it refracts,
 /// and while it reflects draws its reflection first, accumulated over the frames before and blurred.
 pub struct WaterPass {
-  layout: wgpu::BindGroupLayout,
-  depth_layout: wgpu::BindGroupLayout,
-  reflection_layout: wgpu::BindGroupLayout,
-  blur_layout: wgpu::BindGroupLayout,
+  /// The view's, the bindless textures' and the static draws' layouts, which every water pipeline binds below its own.
   layouts: [wgpu::BindGroupLayout; 3],
   /// One a water batch, in `StaticBatch::list_water` order.
   pipelines: Vec<WaterBatchPipelines>,
   blur: wgpu::RenderPipeline,
   blur_sampler: wgpu::Sampler,
-  blur_directions: [wgpu::Buffer; 2],
   blue_noise: wgpu::TextureView,
   perlin: wgpu::TextureView,
   normal: wgpu::TextureView,
@@ -73,75 +73,7 @@ impl WaterPass {
     [view_layout, scene_layout, texture_layout]: [&wgpu::BindGroupLayout; 3],
     bundle: &dyn RenderBundle,
   ) -> XrfResult<Self> {
-    let fragment: wgpu::ShaderStages = wgpu::ShaderStages::VERTEX_FRAGMENT;
-    let cube: wgpu::TextureViewDimension = wgpu::TextureViewDimension::Cube;
-    let flat: wgpu::TextureViewDimension = wgpu::TextureViewDimension::D2;
-    let filtered: wgpu::TextureSampleType = wgpu::TextureSampleType::Float { filterable: true };
-    let depth = |binding: u32| texture_entry(binding, fragment, wgpu::TextureSampleType::Depth, flat);
-    let sampler = |binding: u32| wgpu::BindGroupLayoutEntry {
-      binding,
-      visibility: fragment,
-      ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-      count: None,
-    };
-    // What both the surface and the reflection read of the frame.
-    let shared: [wgpu::BindGroupLayoutEntry; 8] = [
-      uniform_entry(0, fragment),
-      uniform_entry(1, fragment),
-      depth(2),
-      texture_entry(3, fragment, filtered, cube),
-      texture_entry(4, fragment, filtered, cube),
-      sampler(5),
-      depth(6),
-      texture_entry(7, fragment, filtered, flat),
-    ];
-    let create_layout = |label: &str, extra: &[wgpu::BindGroupLayoutEntry]| {
-      device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-        label: Some(label),
-        entries: &[shared.as_slice(), extra].concat(),
-      })
-    };
-    let layout: wgpu::BindGroupLayout = create_layout(
-      "water",
-      &[
-        texture_entry(8, fragment, filtered, flat),
-        texture_entry(9, fragment, filtered, flat),
-        texture_entry(10, fragment, filtered, flat),
-        texture_entry(13, fragment, filtered, flat),
-        texture_entry(14, fragment, filtered, flat),
-        texture_entry(15, fragment, filtered, flat),
-        texture_entry(16, fragment, filtered, flat),
-        texture_entry(17, fragment, filtered, flat),
-        texture_entry(18, fragment, filtered, flat),
-      ],
-    );
-    let reflection_layout: wgpu::BindGroupLayout = create_layout(
-      "water reflection",
-      &[
-        texture_entry(11, fragment, filtered, flat),
-        texture_entry(12, fragment, filtered, flat),
-      ],
-    );
-    let depth_layout: wgpu::BindGroupLayout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-      label: Some("water depth"),
-      entries: &[uniform_entry(1, wgpu::ShaderStages::VERTEX)],
-    });
-    let blur_stages: wgpu::ShaderStages = wgpu::ShaderStages::FRAGMENT;
-    let blur_layout: wgpu::BindGroupLayout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-      label: Some("water blur"),
-      entries: &[
-        texture_entry(0, blur_stages, filtered, flat),
-        wgpu::BindGroupLayoutEntry {
-          binding: 1,
-          visibility: blur_stages,
-          ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-          count: None,
-        },
-        uniform_entry(2, blur_stages),
-        uniform_entry(3, blur_stages),
-      ],
-    });
-    let layouts: [wgpu::BindGroupLayout; 3] = [view_layout.clone(), scene_layout.clone(), texture_layout.clone()];
+    let layouts: [wgpu::BindGroupLayout; 3] = [view_layout.clone(), texture_layout.clone(), scene_layout.clone()];
     let nothing: wgpu::TextureView = device
       .create_texture(&wgpu::TextureDescriptor {
         label: Some("water nothing"),
@@ -159,49 +91,34 @@ impl WaterPass {
       })
       .create_view(&Default::default());
     // A map the bundle cannot give is nothing: the reflection's march unjittered, its blur unmixed, the waves flat.
-    let load = |path: &str| -> Option<wgpu::TextureView> {
+    let load = |path: &str| -> wgpu::TextureView {
       bundle
         .read_bundled(path)
         .and_then(|bytes| DecodedTexture::from_dds(&bytes))
         .inspect_err(|error| log::error!("The enhanced water reads no map '{path}': {error}"))
         .ok()
-        .map(|texture| texture.upload(device, queue))
-    };
-    let direction = |label: &str, values: [f32; 4]| {
-      device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some(label),
-        contents: bytemuck::cast_slice(&values),
-        usage: wgpu::BufferUsages::UNIFORM,
-      })
+        .map_or_else(|| nothing.clone(), |texture| texture.upload(device, queue))
     };
 
     Ok(Self {
-      pipelines: Self::create_pipelines(device, shaders, &layouts, [&layout, &depth_layout, &reflection_layout])?,
-      blur: Self::create_blur(device, shaders, &blur_layout)?,
+      pipelines: Self::create_pipelines(device, shaders, &layouts)?,
+      blur: Self::create_blur(device, shaders)?,
       blur_sampler: device.create_sampler(&wgpu::SamplerDescriptor {
         label: Some("water blur"),
         mag_filter: wgpu::FilterMode::Linear,
         min_filter: wgpu::FilterMode::Linear,
         ..Default::default()
       }),
-      blur_directions: [
-        direction("water blur across", BLUR_ACROSS),
-        direction("water blur down", BLUR_DOWN),
-      ],
-      blue_noise: load(BLUE_NOISE).unwrap_or_else(|| nothing.clone()),
-      perlin: load(PERLIN).unwrap_or_else(|| nothing.clone()),
-      normal: load(NORMAL).unwrap_or_else(|| nothing.clone()),
-      wind: load(WIND).unwrap_or_else(|| nothing.clone()),
-      caustics: load(CAUSTICS).unwrap_or_else(|| nothing.clone()),
-      height: load(HEIGHT).unwrap_or_else(|| nothing.clone()),
-      ripples: load(RIPPLES).unwrap_or_else(|| nothing.clone()),
+      blue_noise: load(BLUE_NOISE),
+      perlin: load(PERLIN),
+      normal: load(NORMAL),
+      wind: load(WIND),
+      caustics: load(CAUSTICS),
+      height: load(HEIGHT),
+      ripples: load(RIPPLES),
       nothing,
       layouts,
       generation: shaders.get_generation(),
-      layout,
-      depth_layout,
-      reflection_layout,
-      blur_layout,
     })
   }
 
@@ -209,10 +126,8 @@ impl WaterPass {
     if shaders.get_generation() != self.generation {
       self.generation = shaders.get_generation();
 
-      let layouts = [&self.layout, &self.depth_layout, &self.reflection_layout];
-
-      match Self::create_pipelines(device, shaders, &self.layouts, layouts)
-        .and_then(|pipelines| Ok((pipelines, Self::create_blur(device, shaders, &self.blur_layout)?)))
+      match Self::create_pipelines(device, shaders, &self.layouts)
+        .and_then(|pipelines| Ok((pipelines, Self::create_blur(device, shaders)?)))
       {
         Ok((pipelines, blur)) => {
           self.pipelines = pipelines;
@@ -223,247 +138,253 @@ impl WaterPass {
     }
   }
 
-  /// Binds what each of the water's passes reads of its frame.
-  pub fn create_bind_groups(&self, device: &wgpu::Device, sources: &WaterSources<'_>) -> WaterGroups {
-    let targets: &ViewTargets = sources.targets;
-    let scene: &wgpu::TextureView = sources.scene.unwrap_or(&self.nothing);
-    let create = |label: &str, layout: &wgpu::BindGroupLayout, extra: &[wgpu::BindGroupEntry<'_>]| {
-      let shared: [wgpu::BindGroupEntry<'_>; 8] = [
-        buffer_binding(0, sources.lighting),
-        buffer_binding(1, sources.water),
-        texture_binding(2, &targets.depth),
-        texture_binding(3, sources.skies[0]),
-        texture_binding(4, sources.skies[1]),
-        wgpu::BindGroupEntry {
-          binding: 5,
-          resource: wgpu::BindingResource::Sampler(sources.sky_sampler),
-        },
-        texture_binding(6, &targets.water_depth),
-        texture_binding(7, scene),
-      ];
-
-      device.create_bind_group(&wgpu::BindGroupDescriptor {
-        label: Some(label),
-        layout,
-        entries: &[shared.as_slice(), extra].concat(),
-      })
-    };
-    let surface = |index: usize| {
-      let (blurred, clear) = sources.reflection.map_or((&self.nothing, &self.nothing), |reflection| {
-        (&reflection.blurred[1], &reflection.histories[index])
-      });
-
-      create(
-        "water",
-        &self.layout,
-        &[
-          texture_binding(8, blurred),
-          texture_binding(9, clear),
-          texture_binding(10, &self.perlin),
-          texture_binding(13, &self.normal),
-          texture_binding(14, &self.wind),
-          texture_binding(15, &self.caustics),
-          texture_binding(16, &targets.light),
-          texture_binding(17, &self.height),
-          texture_binding(18, &self.ripples),
-        ],
-      )
-    };
-    let blur = |source: &wgpu::TextureView, direction: &wgpu::Buffer| {
-      device.create_bind_group(&wgpu::BindGroupDescriptor {
-        label: Some("water blur"),
-        layout: &self.blur_layout,
-        entries: &[
-          texture_binding(0, source),
-          wgpu::BindGroupEntry {
-            binding: 1,
-            resource: wgpu::BindingResource::Sampler(&self.blur_sampler),
-          },
-          buffer_binding(2, sources.water),
-          buffer_binding(3, direction),
-        ],
-      })
-    };
-
-    WaterGroups {
-      depth: device.create_bind_group(&wgpu::BindGroupDescriptor {
-        label: Some("water depth"),
-        layout: &self.depth_layout,
-        entries: &[buffer_binding(1, sources.water)],
-      }),
-      surface: [surface(0), surface(1)],
-      reflection: sources.reflection.map(|reflection| {
-        [0, 1].map(|index| {
-          create(
-            "water reflection",
-            &self.reflection_layout,
-            &[
-              texture_binding(11, &reflection.histories[1 - index]),
-              texture_binding(12, &self.blue_noise),
-            ],
-          )
-        })
-      }),
-      blur: sources.reflection.map(|reflection| {
-        (
-          [0, 1].map(|index| blur(&reflection.histories[index], &self.blur_directions[0])),
-          blur(&reflection.blurred[0], &self.blur_directions[1]),
-        )
-      }),
-    }
-  }
-
-  /// Draws the water each argument buffer lists: the nearest surface's depth, the enhanced water's reflection and its
-  /// blur while it reflects, then the surface as the mode draws it; `mark` times each but the surface, which the caller
-  /// times.
-  #[allow(clippy::too_many_arguments)]
-  pub fn draw(
-    &self,
-    encoder: &mut wgpu::CommandEncoder,
-    targets: &ViewTargets,
-    view: &ViewBinding,
-    bind_groups: &StaticDrawGroups,
-    textures: &wgpu::BindGroup,
-    (groups, mode, reflection): (&WaterGroups, RenderWaterMode, Option<&WaterReflection>),
-    args: &[&wgpu::Buffer],
-    mark: &mut dyn FnMut(&mut wgpu::CommandEncoder, &'static str),
+  /// Declares the frame's water: the scene copied for the enhanced water to refract, the nearest surface's depth, the
+  /// enhanced water's reflection and its blur while it reflects, then the surface as the mode draws it.
+  pub fn add_passes<'a>(
+    &'a self,
+    graph: &mut FrameGraph<'a>,
+    bindings: &mut GraphBindings<'a>,
+    runtime: &mut GraphRuntime,
+    draw: WaterDraw<'a>,
   ) {
-    {
-      let mut pass: wgpu::RenderPass<'_> = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-        label: Some("water depth"),
-        color_attachments: &[],
+    let water = draw.water;
+    let (width, height) = draw.size;
+    let uniform: UniformBinding<WaterUniform> = runtime.push_uniform(water.get_uniform());
+    let mut import = |label: &'static str, view: &'a wgpu::TextureView| bindings.import_view(graph, label, view);
+    let nothing: GraphTexture = import("water nothing", &self.nothing);
+    let skies: [GraphTexture; 2] = [import("sky cube 0", draw.skies[0]), import("sky cube 1", draw.skies[1])];
+    let maps: [GraphTexture; 6] = [
+      import("water perlin", &self.perlin),
+      import("water normal", &self.normal),
+      import("water wind", &self.wind),
+      import("water caustics", &self.caustics),
+      import("water height", &self.height),
+      import("water ripples", &self.ripples),
+    ];
+    let reflection: Option<(&WaterReflection, [GraphTexture; 2], GraphTexture)> =
+      water.get_reflection().map(|reflection| {
+        (
+          reflection,
+          [
+            import("water reflection 0", &reflection.histories[0]),
+            import("water reflection 1", &reflection.histories[1]),
+          ],
+          import("water blue noise", &self.blue_noise),
+        )
+      });
+    let args: Vec<GraphBuffer> = draw
+      .args
+      .iter()
+      .map(|args| bindings.import_buffer(graph, "static draw arguments", args))
+      .collect();
+    let groups: WaterGroups<'a> = (draw.view, draw.textures, draw.draw_groups);
+
+    let scene: GraphTexture = if water.is_refracting() {
+      let copy: GraphTexture = graph.create_texture(GraphTextureDescriptor::new_2d(
+        "water scene",
+        width,
+        height,
+        ViewTargets::SCENE,
+      ));
+      let source: GraphTexture = draw.scene;
+
+      graph
+        .add_encoder_pass("water copy")
+        .texture(source, GraphTextureAccess::CopySource)
+        .texture(copy, GraphTextureAccess::CopyDestination)
+        .record(move |context| {
+          let (source, copy) = (context.get_texture(source), context.get_texture(copy));
+
+          context.get_encoder().copy_texture_to_texture(
+            source.texture.as_image_copy(),
+            copy.texture.as_image_copy(),
+            copy.texture.size(),
+          );
+        });
+
+      copy
+    } else {
+      nothing
+    };
+
+    let nearest: GraphTexture = graph.create_texture(GraphTextureDescriptor::new_2d(
+      "water depth",
+      width,
+      height,
+      ViewTargets::DEPTH,
+    ));
+    let depth_parameters: WaterDepthParameters = WaterDepthParameters { water: uniform };
+
+    self.add_batch_pass(
+      graph
+        .add_raster_pass("water depth")
         // Reversed, so nothing is zero and the nearest water is the greatest.
-        depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-          view: &targets.water_depth,
-          depth_ops: Some(wgpu::Operations {
-            load: wgpu::LoadOp::Clear(0.0),
-            store: wgpu::StoreOp::Store,
-          }),
-          stencil_ops: None,
-        }),
-        ..Default::default()
-      });
+        .depth(GraphDepthAttachment::new(nearest, wgpu::LoadOp::Clear(0.0))),
+      depth_parameters,
+      (&args, groups),
+      |it| &it.depth,
+    );
 
-      self.record(&mut pass, (view, bind_groups, textures, &groups.depth), args, |it| {
-        &it.depth
-      });
-    }
+    let (blurred, clear): (GraphTexture, GraphTexture) = match reflection {
+      Some((reflection, histories, blue_noise)) => {
+        let index: usize = reflection.index;
+        let reflection_parameters: WaterReflectionParameters<'a> = WaterReflectionParameters {
+          lighting: draw.lighting,
+          water: uniform,
+          depth_target: draw.depth,
+          sky_cube_0: skies[0],
+          sky_cube_1: skies[1],
+          sky_clamp: draw.sky_sampler,
+          nearest_water: nearest,
+          water_scene: scene,
+          reflection_history: histories[1 - index],
+          blue_noise,
+        };
 
-    mark(encoder, "water depth");
+        self.add_batch_pass(
+          graph
+            .add_raster_pass("water reflection")
+            .color(GraphColorAttachment::new(
+              histories[index],
+              wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+            ))
+            .depth(GraphDepthAttachment::new_read_only(draw.depth)),
+          reflection_parameters,
+          (&args, groups),
+          |it| &it.reflection,
+        );
 
-    let index: usize = reflection.map_or(0, |it| it.index);
+        let half: (u32, u32) = (width.div_ceil(2), height.div_ceil(2));
+        let across: GraphTexture = self.add_blur(
+          graph,
+          runtime,
+          ("water blur across", histories[index], half, WaterBlurUniform::ACROSS),
+          uniform,
+        );
+        let down: GraphTexture = self.add_blur(
+          graph,
+          runtime,
+          ("water blur down", across, half, WaterBlurUniform::DOWN),
+          uniform,
+        );
 
-    if mode == RenderWaterMode::Enhanced
-      && let (Some(reflection), Some(reflection_groups), Some((across, down))) =
-        (reflection, &groups.reflection, &groups.blur)
-    {
-      self.draw_reflection(
-        encoder,
-        targets,
-        (view, bind_groups, textures, &reflection_groups[index]),
-        &reflection.histories[index],
-        args,
-      );
-      mark(encoder, "water reflection");
-      self.draw_blur(encoder, &across[index], &reflection.blurred[0]);
-      self.draw_blur(encoder, down, &reflection.blurred[1]);
-      mark(encoder, "water blur");
-    }
+        (down, histories[index])
+      }
+      None => (nothing, nothing),
+    };
 
-    let mut pass: wgpu::RenderPass<'_> = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-      label: Some("water"),
-      color_attachments: &[
-        Some(wgpu::RenderPassColorAttachment {
-          view: &targets.scene,
-          depth_slice: None,
-          resolve_target: None,
-          ops: wgpu::Operations {
-            load: wgpu::LoadOp::Load,
-            store: wgpu::StoreOp::Store,
-          },
-        }),
-        Some(wgpu::RenderPassColorAttachment {
-          view: &targets.distortion,
-          depth_slice: None,
-          resolve_target: None,
-          ops: wgpu::Operations {
-            load: wgpu::LoadOp::Load,
-            store: wgpu::StoreOp::Store,
-          },
-        }),
-      ],
-      // Read only, so the same depth is sampled for what lies behind the water.
-      depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-        view: &targets.depth,
-        depth_ops: None,
-        stencil_ops: None,
-      }),
-      ..Default::default()
-    });
+    let surface_parameters: WaterSurfaceParameters<'a> = WaterSurfaceParameters {
+      lighting: draw.lighting,
+      water: uniform,
+      depth_target: draw.depth,
+      sky_cube_0: skies[0],
+      sky_cube_1: skies[1],
+      sky_clamp: draw.sky_sampler,
+      nearest_water: nearest,
+      water_scene: scene,
+      reflection_blurred: blurred,
+      reflection_clear: clear,
+      perlin_map: maps[0],
+      wave_map: maps[1],
+      wind_map: maps[2],
+      caustics_map: maps[3],
+      light_target: draw.light,
+      height_map: maps[4],
+      ripple_map: maps[5],
+    };
+    let mode: RenderWaterMode = water.get_mode();
 
-    self.record(
-      &mut pass,
-      (view, bind_groups, textures, &groups.surface[index]),
-      args,
-      |it| match mode {
+    self.add_batch_pass(
+      graph
+        .add_raster_pass("water")
+        .color(GraphColorAttachment::new(draw.scene, wgpu::LoadOp::Load))
+        .color(GraphColorAttachment::new(draw.distortion, wgpu::LoadOp::Load))
+        // Read only, so the same depth is sampled for what lies behind the water.
+        .depth(GraphDepthAttachment::new_read_only(draw.depth)),
+      surface_parameters,
+      (&args, groups),
+      move |it| match mode {
         RenderWaterMode::Engine => &it.engine,
         RenderWaterMode::Enhanced => &it.enhanced,
       },
     );
   }
 
-  fn draw_reflection(
-    &self,
-    encoder: &mut wgpu::CommandEncoder,
-    targets: &ViewTargets,
-    groups: (&ViewBinding, &StaticDrawGroups, &wgpu::BindGroup, &wgpu::BindGroup),
-    history: &wgpu::TextureView,
-    args: &[&wgpu::Buffer],
+  /// Declares one way of the reflection's blur, from `source` into a transient of `size`, and answers that transient.
+  fn add_blur<'a>(
+    &'a self,
+    graph: &mut FrameGraph<'a>,
+    runtime: &mut GraphRuntime,
+    (name, source, (width, height), way): (&'static str, GraphTexture, (u32, u32), WaterBlurUniform),
+    water: UniformBinding<WaterUniform>,
+  ) -> GraphTexture {
+    let target: GraphTexture = graph.create_texture(GraphTextureDescriptor::new_2d(
+      name,
+      width,
+      height,
+      WaterReflection::FORMAT,
+    ));
+    let parameters: WaterBlurParameters<'a> = WaterBlurParameters {
+      source,
+      source_sampler: &self.blur_sampler,
+      water,
+      blur: runtime.push_uniform(&way),
+    };
+
+    graph
+      .add_raster_pass(name)
+      .color(GraphColorAttachment::new(
+        target,
+        wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+      ))
+      .parameters(&parameters)
+      .record(move |context| {
+        context.bind(&parameters);
+        context.get_pass().set_pipeline(&self.blur);
+        context.get_pass().draw(0..3, 0..1);
+      });
+
+    target
+  }
+
+  /// Adds a pass drawing every water batch from the cull's argument buffers, with its parameters bound and the pipeline
+  /// `pick` chooses.
+  fn add_batch_pass<'a, P: PassParameters + Send + 'a>(
+    &'a self,
+    builder: RasterPassBuilder<'_, 'a>,
+    parameters: P,
+    (args, groups): (&[GraphBuffer], WaterGroups<'a>),
+    pick: impl Fn(&WaterBatchPipelines) -> &wgpu::RenderPipeline + Send + 'a,
   ) {
-    let mut pass: wgpu::RenderPass<'_> = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-      label: Some("water reflection"),
-      color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-        view: history,
-        depth_slice: None,
-        resolve_target: None,
-        ops: wgpu::Operations {
-          load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
-          store: wgpu::StoreOp::Store,
-        },
-      })],
-      depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-        view: &targets.depth,
-        depth_ops: None,
-        stencil_ops: None,
-      }),
-      ..Default::default()
-    });
+    let args: Vec<GraphBuffer> = args.to_vec();
 
-    self.record(&mut pass, groups, args, |it| &it.reflection);
+    args
+      .iter()
+      .fold(builder.parameters(&parameters), |builder, args| {
+        builder.buffer(*args, GraphBufferAccess::Indirect)
+      })
+      .record(move |context| {
+        let args: Vec<&wgpu::Buffer> = args.iter().map(|args| context.get_buffer(*args)).collect();
+
+        context.bind(&parameters);
+        self.draw_batches(context.get_pass(), groups, &args, pick);
+      });
   }
 
-  fn draw_blur(&self, encoder: &mut wgpu::CommandEncoder, group: &wgpu::BindGroup, target: &wgpu::TextureView) {
-    let mut pass: wgpu::RenderPass<'_> = begin_cleared_pass(encoder, "water blur", target);
-
-    pass.set_pipeline(&self.blur);
-    pass.set_bind_group(0, group, &[]);
-    pass.draw(0..3, 0..1);
-  }
-
-  fn record(
+  /// Draws every water batch each argument buffer lists with the pipeline `pick` chooses, the pass's own group bound.
+  fn draw_batches(
     &self,
     pass: &mut wgpu::RenderPass<'_>,
-    (view, bind_groups, textures, water_group): (&ViewBinding, &StaticDrawGroups, &wgpu::BindGroup, &wgpu::BindGroup),
+    (view, textures, draw_groups): WaterGroups<'_>,
     args: &[&wgpu::Buffer],
     pick: impl Fn(&WaterBatchPipelines) -> &wgpu::RenderPipeline,
   ) {
     pass.set_bind_group(0, &view.bind_group, &[]);
     pass.set_bind_group(1, textures, &[]);
-    pass.set_bind_group(3, water_group, &[]);
 
     for (batch, pipelines) in StaticBatch::list_water().zip(&self.pipelines) {
       pass.set_pipeline(pick(pipelines));
-      pass.set_bind_group(2, &bind_groups.layouts[batch.layout.get_index()], &[]);
+      pass.set_bind_group(2, &draw_groups.layouts[batch.layout.get_index()], &[]);
 
       for args in args {
         pass.draw_indirect(args, batch.get_index() as u64 * 16);
@@ -471,17 +392,13 @@ impl WaterPass {
     }
   }
 
-  fn create_blur(
-    device: &wgpu::Device,
-    shaders: &ShaderLibrary,
-    layout: &wgpu::BindGroupLayout,
-  ) -> XrfResult<wgpu::RenderPipeline> {
+  fn create_blur(device: &wgpu::Device, shaders: &ShaderLibrary) -> XrfResult<wgpu::RenderPipeline> {
     create_fullscreen_pipeline(
       device,
       shaders,
       "frame/water_blur",
       "fs_water_blur",
-      &[Some(layout)],
+      &[Some(&WaterBlurParameters::create_layout(device))],
       WaterReflection::FORMAT,
     )
   }
@@ -489,8 +406,7 @@ impl WaterPass {
   fn create_pipelines(
     device: &wgpu::Device,
     shaders: &ShaderLibrary,
-    [view_layout, scene_layout, texture_layout]: &[wgpu::BindGroupLayout; 3],
-    [layout, depth_layout, reflection_layout]: [&wgpu::BindGroupLayout; 3],
+    [view_layout, texture_layout, scene_layout]: &[wgpu::BindGroupLayout; 3],
   ) -> XrfResult<Vec<WaterBatchPipelines>> {
     let module: wgpu::ShaderModule = create_module(device, shaders, "static/water")?;
     let create_layout = |label: &str, water: &wgpu::BindGroupLayout| {
@@ -500,9 +416,11 @@ impl WaterPass {
         ..Default::default()
       })
     };
-    let pipeline_layout: wgpu::PipelineLayout = create_layout("water", layout);
-    let depth_pipeline_layout: wgpu::PipelineLayout = create_layout("water depth", depth_layout);
-    let reflection_pipeline_layout: wgpu::PipelineLayout = create_layout("water reflection", reflection_layout);
+    let pipeline_layout: wgpu::PipelineLayout = create_layout("water", &WaterSurfaceParameters::create_layout(device));
+    let depth_pipeline_layout: wgpu::PipelineLayout =
+      create_layout("water depth", &WaterDepthParameters::create_layout(device));
+    let reflection_pipeline_layout: wgpu::PipelineLayout =
+      create_layout("water reflection", &WaterReflectionParameters::create_layout(device));
     let blended = |format: wgpu::TextureFormat| {
       Some(wgpu::ColorTargetState {
         format,

@@ -1,17 +1,25 @@
+use xrf_renderer_core::ShaderStruct;
+
 use crate::contract::render_water_settings::RenderWaterSettings;
 use crate::lighting::render_wind::RenderWind;
 use crate::scene::level::water_flow::WaterFlow;
 
-/// What `shaders/static/water.wgsl` reads as its `Water`: the clock, the settings, and the weather's `water_intensity`.
+/// What the water's shaders read as their `Water`: the clock, the settings, and the weather's `water_intensity`.
 #[repr(C)]
-#[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
+#[shader(name = "Water")]
 pub struct WaterUniform {
+  /// Seconds the water has moved.
   pub time: f32,
+  /// `W_POSITION_SHIFT_HEIGHT` and `W_POSITION_SHIFT_SPEED`.
   pub wave_height: f32,
   pub wave_speed: f32,
+  /// What the normal layers' scroll and the sky's reflection are multiplied by.
   pub ripple: f32,
   pub reflection: f32,
+  /// `water_intensity`.
   pub intensity: f32,
+  /// One while soft water reads the depth behind it, `r2_soft_water`.
   pub soft: f32,
   /// One while the water writes the distortion it causes.
   pub distorted: f32,
@@ -40,7 +48,8 @@ pub struct WaterUniform {
   pub flowed: f32,
   pub waves: f32,
   pub heights: f32,
-  pub gusts: [f32; 2],
+  pub gusts_x: f32,
+  pub gusts_y: f32,
   /// How far the enhanced water breaks its maps' repeat.
   pub variation: f32,
 }
@@ -80,7 +89,8 @@ impl WaterUniform {
       flowed: flow.seconds,
       waves: flow.waves,
       heights: flow.heights,
-      gusts: flow.gusts,
+      gusts_x: flow.gusts[0],
+      gusts_y: flow.gusts[1],
       variation: settings.variation,
     }
   }

@@ -1,0 +1,56 @@
+// Generated from Rust declarations; do not edit. Regenerate with `cargo test`.
+
+struct Lighting {
+  to_sun: vec4<f32>,
+  sun: vec4<f32>,
+  ambient: vec4<f32>,
+  environment: vec4<f32>,
+  sky_irradiance: vec4<f32>,
+  fog_color: vec4<f32>,
+  fog: vec4<f32>,
+  sky: vec4<f32>,
+  sky_params: vec4<f32>,
+  clouds: vec4<f32>,
+  engine: vec4<f32>,
+  params: vec4<f32>,
+  forward_ambient: vec4<f32>,
+  forward_hemi: vec4<f32>,
+  forward_sun: vec4<f32>,
+  sun_sprite: vec4<f32>,
+  shafts: vec4<f32>,
+}
+
+struct Water {
+  time: f32,
+  wave_height: f32,
+  wave_speed: f32,
+  ripple: f32,
+  reflection: f32,
+  intensity: f32,
+  soft: f32,
+  distorted: f32,
+  refraction: f32,
+  turbidity: f32,
+  soft_border: f32,
+  reflectivity: f32,
+  reflection_blur: f32,
+  blur_noise: f32,
+  reflected: f32,
+  history: f32,
+  wind_velocity: f32,
+  specular: f32,
+  caustics: f32,
+  parallax_height: f32,
+  ripples: f32,
+  rain: f32,
+  flowed: f32,
+  waves: f32,
+  heights: f32,
+  gusts_x: f32,
+  gusts_y: f32,
+  variation: f32,
+}
+
+struct WaterBlur {
+  direction: vec4<f32>,
+}

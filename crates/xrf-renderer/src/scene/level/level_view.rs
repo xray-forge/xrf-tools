@@ -5,7 +5,9 @@ use glam::{Mat4, Vec2, Vec3, Vec4};
 use xrf_engine_target::XrayEngine;
 use xrf_error::XrfResult;
 use xrf_material::XraySurfaceDraw;
-use xrf_renderer_core::{ExecutedGraph, FrameGraph, GraphBindings, GraphCompileOptions, GraphRuntime};
+use xrf_renderer_core::{
+  ExecutedGraph, FrameGraph, GraphBindings, GraphCompileOptions, GraphRuntime, GraphTexture, GraphTextureAccess,
+};
 
 use xrf_math::EPS_S;
 
@@ -62,6 +64,7 @@ use crate::pass::thunder_uniform::ThunderUniform;
 use crate::pass::upscale_uniform::UpscaleUniform;
 use crate::pass::view_binding::ViewBinding;
 use crate::pass::view_light_groups::ViewLightGroups;
+use crate::pass::water_draw::WaterDraw;
 use crate::pass::wet_uniform::WetUniform;
 use crate::pass::wind_uniform::WindUniform;
 use crate::scene::level::ambient_frame::AmbientFrame;
@@ -455,7 +458,6 @@ impl LevelView {
           &self.scene.environments.1,
         ),
       ));
-      self.renderer.sky_version += 1;
     }
 
     // The ambient effects blow the wind the grass, the rain and the campfires read this frame.
@@ -470,10 +472,13 @@ impl LevelView {
 
     let gust: AmbientGust = self.scene.particles.get_gust();
 
-    self.renderer.water.prepare(
+    self.info.sky_cubes = Some([0, 1].map(|index| {
+      weather_textures
+        .get_view(sky.textures[index].as_deref(), WeatherTextureKind::Cube)
+        .clone()
+    }));
+    self.state.water.prepare(
       device,
-      queue,
-      passes.water,
       options,
       WaterFrame {
         targets: self
@@ -481,15 +486,6 @@ impl LevelView {
           .targets
           .as_ref()
           .map(|targets| (targets, self.state.targets_epoch)),
-        lighting: &self.renderer.lighting,
-        skies: (
-          [
-            weather_textures.get_view(sky.textures[0].as_deref(), WeatherTextureKind::Cube),
-            weather_textures.get_view(sky.textures[1].as_deref(), WeatherTextureKind::Cube),
-          ],
-          passes.sky.get_clamp(),
-          self.renderer.sky_version,
-        ),
         intensity: lighting.water_intensity,
         wind: lighting.wind,
         rain: lighting.rain.map_or(0.0, |rain| rain.density),
@@ -650,11 +646,8 @@ impl LevelView {
         }),
       );
     }
-    queue.write_buffer(
-      &self.renderer.lighting,
-      0,
-      bytemuck::bytes_of(&LightingUniform::new(lighting, view.view, options, &frame)),
-    );
+    self.info.lighting = LightingUniform::new(lighting, view.view, options, &frame);
+    queue.write_buffer(&self.renderer.lighting, 0, bytemuck::bytes_of(&self.info.lighting));
 
     self
       .scene
@@ -729,7 +722,7 @@ impl LevelView {
   /// ones the next frame keeps.
   fn finish_frame(&mut self, is_lit: bool, resolve: Option<&'static str>) {
     if is_lit {
-      self.renderer.water.finish_frame();
+      self.state.water.finish_frame();
     }
 
     match resolve {
@@ -1036,7 +1029,7 @@ impl LevelView {
   pub fn record(
     &mut self,
     runtime: &mut GraphRuntime,
-    device: &wgpu::Device,
+    (device, queue): (&wgpu::Device, &wgpu::Queue),
     passes: LevelPasses<'_>,
     view: &ViewBinding,
     textures: &TextureCache,
@@ -1084,7 +1077,11 @@ impl LevelView {
     let is_adapting: bool = self.state.exposure.is_adapting();
     let texture_group: &wgpu::BindGroup = textures.get_bind_group();
     let level_view: &LevelView = self;
+    let (Some(targets), Some((_, draw_groups))) = (&level_view.state.targets, &level_view.renderer.draw_groups) else {
+      return Ok(None);
+    };
     let mut graph: FrameGraph<'_> = FrameGraph::new();
+    let mut bindings: GraphBindings<'_> = GraphBindings::new();
 
     // A bridge pass recording as the frame did before the graph, reading the view and nothing more.
     macro_rules! bridge {
@@ -1298,30 +1295,46 @@ impl LevelView {
         });
       }
 
-      bridge!("water", |level, encoder, marker| {
-        let args: Vec<&wgpu::Buffer> = Self::list_draw_args(&level.scene.statics, &level.info.cull);
-        let (Some(targets), Some((_, draw_groups))) = (&level.state.targets, &level.renderer.draw_groups) else {
-          return;
+      let scene: GraphTexture = bindings.import_view(&mut graph, "scene", &targets.scene);
+
+      // FSR 2's reactive mask is what the water and the blended surfaces change of the frame drawn so far.
+      if let Some((fsr, _)) = &level_view.state.fsr {
+        let opaque: GraphTexture = bindings.import_view(&mut graph, "fsr2 opaque", &fsr.opaque);
+
+        graph
+          .add_encoder_pass("fsr2 opaque")
+          .texture(scene, GraphTextureAccess::CopySource)
+          .texture(opaque, GraphTextureAccess::CopyDestination)
+          .record(move |context| {
+            let (scene, opaque) = (context.get_texture(scene), context.get_texture(opaque));
+
+            context.get_encoder().copy_texture_to_texture(
+              scene.texture.as_image_copy(),
+              opaque.texture.as_image_copy(),
+              opaque.texture.size(),
+            );
+          });
+      }
+
+      if let (true, Some(skies)) = (level_view.state.water.is_drawn(), &level_view.info.sky_cubes) {
+        let draw: WaterDraw<'_> = WaterDraw {
+          size: (targets.width, targets.height),
+          scene,
+          depth: bindings.import_view(&mut graph, "depth", &targets.depth),
+          light: bindings.import_view(&mut graph, "light", &targets.light),
+          distortion: bindings.import_view(&mut graph, "distortion", &targets.distortion),
+          view,
+          textures: texture_group,
+          draw_groups,
+          args: Self::list_draw_args(&level_view.scene.statics, &level_view.info.cull),
+          lighting: runtime.push_uniform(&level_view.info.lighting),
+          skies: [&skies[0], &skies[1]],
+          sky_sampler: passes.sky.get_clamp(),
+          water: &level_view.state.water,
         };
 
-        // FSR 2's reactive mask is what the water and the blended surfaces change of the frame drawn so far.
-        if let Some((fsr, _)) = &level.state.fsr {
-          encoder.copy_texture_to_texture(
-            targets.scene_texture.as_image_copy(),
-            fsr.opaque_texture.as_image_copy(),
-            fsr.opaque_texture.size(),
-          );
-        }
-
-        level.renderer.water.record(
-          encoder,
-          passes.water,
-          targets,
-          (view, draw_groups, texture_group),
-          &args,
-          marker,
-        );
-      });
+        passes.water.add_passes(&mut graph, &mut bindings, runtime, draw);
+      }
 
       if is_composited {
         bridge!("composited", |level, encoder, marker| {
@@ -1503,7 +1516,7 @@ impl LevelView {
     let executed: ExecutedGraph =
       graph
         .compile(&GraphCompileOptions::default())?
-        .execute(device, runtime, &GraphBindings::new())?;
+        .execute((device, queue), runtime, &bindings)?;
 
     self.finish_frame(is_lit, resolve);
 

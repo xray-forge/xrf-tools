@@ -3,32 +3,39 @@ use std::marker::PhantomData;
 use crate::alloc::UploadSlice;
 use crate::param::field::uniform_field::UniformField;
 use crate::param::pass_binding::PassBinding;
+use crate::param::pass_resources::PassResources;
 use crate::shader::ShaderType;
 
-/// A value pushed to an upload ring this frame, bound as a uniform at its offset.
-pub struct UniformBinding<'a, T: ShaderType> {
-  buffer: &'a wgpu::Buffer,
+/// A value pushed to the graph runtime's upload ring this frame, bound as a uniform at its offset.
+pub struct UniformBinding<T: ShaderType> {
   slice: UploadSlice,
-  value: PhantomData<T>,
+  value: PhantomData<fn() -> T>,
 }
 
-impl<'a, T: ShaderType> UniformBinding<'a, T> {
-  /// The value at `slice` of the ring's buffer.
-  pub fn new(buffer: &'a wgpu::Buffer, slice: UploadSlice) -> Self {
+impl<T: ShaderType> UniformBinding<T> {
+  /// The value at `slice` of the ring's buffer, which is resolved when the pass binds it, after the ring is flushed.
+  pub fn new(slice: UploadSlice) -> Self {
     Self {
-      buffer,
       slice,
       value: PhantomData,
     }
   }
 }
 
-impl<T: ShaderType> UniformField for UniformBinding<'_, T> {
+impl<T: ShaderType> Clone for UniformBinding<T> {
+  fn clone(&self) -> Self {
+    *self
+  }
+}
+
+impl<T: ShaderType> Copy for UniformBinding<T> {}
+
+impl<T: ShaderType> UniformField for UniformBinding<T> {
   type Value = T;
 
-  fn get_binding(&self) -> PassBinding<'_> {
+  fn get_binding<'r>(&'r self, resources: &dyn PassResources<'r>) -> PassBinding<'r> {
     PassBinding::BufferRange {
-      buffer: self.buffer,
+      buffer: resources.get_upload_buffer(),
       size: T::SIZE,
     }
   }

@@ -1,41 +1,6 @@
 // The frame's lighting, as `pass/lighting_uniform.rs` writes it, and the engine's own lighting functions.
 
-struct Lighting {
-  // xyz: towards the sun, in view space.
-  to_sun: vec4<f32>,
-  // rgb: the sun's colour; w: its specular weight.
-  sun: vec4<f32>,
-  ambient: vec4<f32>,
-  environment: vec4<f32>,
-  // rgb: what the irradiance cubes return while they are not up; w: one once both are.
-  sky_irradiance: vec4<f32>,
-  // rgb: the fog's colour; w: one where it fogs.
-  fog_color: vec4<f32>,
-  // x, y: `fog_params.x` and `.w`; z: one where far geometry fades into the sky's haze above the fold; w: one where the
-  // sky is drawn.
-  fog: vec4<f32>,
-  // rgb: `sky_color`; w: how far from the first keyframe's sky to the second's.
-  sky: vec4<f32>,
-  // x: the sky's rotation; y: the clouds'; z: the clouds' clock, in seconds.
-  sky_params: vec4<f32>,
-  // The clouds' colour, then their cover; nothing where they are hidden.
-  clouds: vec4<f32>,
-  // x: one for Anomaly's shading; y: the rain's density.
-  engine: vec4<f32>,
-  // y: one where the scene is lit; z: one where the exposure adapts; w: one where the ambient occlusion darkens the
-  // hemisphere.
-  params: vec4<f32>,
-  // `L_ambient`, `L_hemi_color` and `L_sun_color` as a forward pass binds them: the weather's own, neither doubled nor
-  // scaled by the console.
-  forward_ambient: vec4<f32>,
-  forward_hemi: vec4<f32>,
-  forward_sun: vec4<f32>,
-  // rgb: the sun's sprite colour times how far it has faded in; w: half its side as a share of the distance it stands
-  // at, zero where none is drawn.
-  sun_sprite: vec4<f32>,
-  // x: the sun shafts' density; y: the steps along a ray; nothing where they are not drawn.
-  shafts: vec4<f32>,
-};
+#import "generated/structs"
 
 // The exposure's state as `frame/exposure.wgsl` adapts it, read from its head.
 struct Exposure {

@@ -8,7 +8,8 @@ Declares a struct a shader and Rust share once, in Rust. The derive lays the str
 in constants, from each member's `ShaderType`, and asserts at compile time that Rust laid it out the same: a member
 WGSL places elsewhere, or a size WGSL rounds differently, fails the build with the member named. Members named with a
 leading underscore are padding, written in Rust and left out of WGSL, which pads implicitly. The struct must be
-`#[repr(C)]` and `bytemuck::Pod`, so a write stays a copy of its bytes.
+`#[repr(C)]` and `bytemuck::Pod`, so a write stays a copy of its bytes. WGSL knows it by its Rust name unless
+`#[shader(name = "...")]` gives another, as a `LightingUniform` read as `Lighting`.
 
 ```rust
 use glam::{Vec3, Vec4};
@@ -47,8 +48,9 @@ struct Box3 {
 
 ## `PassParameters`
 
-Declares one bind group of a pass as a struct: a binding per field, in order, at the group `#[parameters(group = G)]`
-names. From it come the bind group's layout, the WGSL that declares its bindings (named as the fields are), the graph
+Declares one bind group of a pass as a struct: a binding per field, at the group `#[parameters(group = G)]` names,
+each numbered one past the field before unless `#[binding(N)]` numbers it (an index taken twice is refused), so passes
+drawing with one module can keep their bindings apart. From it come the bind group's layout, the WGSL that declares its bindings (named as the fields are), the graph
 accesses the pass makes, and what each binding binds this frame. Field kinds:
 
 - `#[uniform]` on a `UniformBinding<'_, T>`: a value pushed to the upload ring this frame, read at its dynamic offset;

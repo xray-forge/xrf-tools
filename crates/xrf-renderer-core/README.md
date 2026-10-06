@@ -8,9 +8,10 @@ X-Ray format; `xrf-renderer` builds the level renderer on it.
 A frame is declared as passes, in the order they run, each saying what it reads and writes. Compiling the graph culls
 the passes whose effects nothing reads, gives every transient a slot in a pool shared with transients whose lifetimes do
 not overlap, draws consecutive raster passes into the same attachments in one render pass, and cuts the frame into
-encode groups. Executing it records each group into a command buffer of its own, from a `GraphRuntime` that keeps
-the transient pool, the bind group cache and the GPU timer between frames, and reports what each group cost the CPU
-(`ExecutedGraph::groups`: recording, and wgpu's encoding in `finish`).
+encode groups. Executing it uploads the frame's uniforms, then records each group into a command buffer of its own,
+from a `GraphRuntime` that keeps the transient pool, the bind group cache, the upload ring and the GPU timer between
+frames, and reports what each group cost the CPU (`ExecutedGraph::groups`: recording, and wgpu's encoding in
+`finish`).
 
 ```rust
 use xrf_renderer_core::{
@@ -54,8 +55,9 @@ assert_eq!(compiled.get_render_pass_count(), 1);
 - **Transients and imports.** A transient is made for the frame from the `TransientPool`, which keeps textures and
   buffers across frames by what makes them interchangeable (`TransientTextureKey`: everything but the label, plus the
   usage) and frees one left unused for `TransientPool::MAX_IDLE_FRAMES`. An import comes from outside the frame and is
-  bound when the graph executes (`GraphBindings`); writing one is an effect the graph keeps. A transient's usage is not
-  declared: the graph gathers it from the accesses.
+  bound when the graph executes (`GraphBindings`); writing one is an effect the graph keeps. `import_view` and
+  `import_buffer` import a resource declared as it is and bind it in one step. A transient's usage is not declared: the
+  graph gathers it from the accesses.
 - **What survives.** Walking back from the last pass, a pass lives when it is kept (`keep`, for an effect the graph
   cannot see, as a readback has), is a bridge, writes an import, or writes something a living pass after it reads.
 - **What is refused.** A transient read before anything writes it (a loaded attachment counts as a read), a raster pass
@@ -109,7 +111,14 @@ because WGSL lays them out otherwise.
 
 A pass's bind group is declared as a struct with `#[derive(PassParameters)]` (`xrf-renderer-derive`'s README lists the
 field kinds). A builder's `parameters(&p)` adds the accesses the struct makes, and the recording binds it with
-`context.bind(&p)`, at the group the struct names, with its dynamic offsets.
+`context.bind(&p)`, at the group the struct names, with its dynamic offsets. Groups below it that the scene owns (a
+bindless texture array, the scene's buffers) are bound on the context's render pass directly.
+
+- **`create_layout`** makes the struct's layout; layouts of the same entries are interchangeable, so a pipeline made
+  once with it takes the bind groups any runtime's cache makes.
+- **`ShaderBindings`** gathers the WGSL bindings of every struct whose passes draw with one module, each once: passes
+  sharing a module number their bindings apart (`#[binding(N)]`) or declare a shared one alike, and a clash is an
+  error.
 
 - **`BindGroupCache`** makes each struct's layout once (keyed by its path, `PassParameters::LAYOUT_KEY`); a pipeline for
   that pass takes its layout from `get_layout`, so the bind groups match it. Bind groups are kept across frames by the
@@ -117,8 +126,9 @@ field kinds). A builder's `parameters(&p)` adds the accesses the struct makes, a
   the same bind group back every frame; one unused for `BindGroupCache::MAX_IDLE_FRAMES` is dropped. It locks, for the
   passes recording a frame.
 - The cache lives in the `GraphRuntime` beside the pool; `CompiledGraph::execute` starts a frame of both.
-- `UniformBinding` binds the upload ring's buffer once and the value's offset as a dynamic offset, so one bind group
-  serves every frame's uniforms.
+- `UniformBinding` (from `GraphRuntime::push_uniform`) binds the runtime's upload ring once and the value's offset as a
+  dynamic offset, so one bind group serves every frame's uniforms. The ring's buffer is resolved when the pass binds,
+  after `execute` has flushed it, so a ring that grew is never bound stale.
 
 ## Timing
 

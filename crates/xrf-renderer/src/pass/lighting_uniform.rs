@@ -1,14 +1,17 @@
 use glam::{Mat4, Vec3, Vec4};
 use xrf_engine_target::XrayEngine;
+use xrf_renderer_core::ShaderStruct;
 
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::pass::lighting_frame::LightingFrame;
 
-/// The lighting as `shaders/common/lighting.wgsl` declares it: one viewport's, since the sun is given in its view space.
+/// The lighting the shaders read as their `Lighting`: one viewport's, since the sun is given in its view space.
 #[repr(C)]
-#[derive(Clone, Copy, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Clone, Copy, Debug, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
+#[shader(name = "Lighting")]
 pub struct LightingUniform {
+  /// Towards the sun, in view space.
   pub to_sun: Vec4,
   /// The sun's colour, then its specular weight.
   pub sun: Vec4,

@@ -53,12 +53,7 @@ impl BindGroupCache {
       .lock()
       .expect("bind group cache lock")
       .entry(P::LAYOUT_KEY)
-      .or_insert_with(|| {
-        device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-          label: Some(P::LAYOUT_KEY),
-          entries: &P::get_layout_entries(),
-        })
-      })
+      .or_insert_with(|| P::create_layout(device))
       .clone()
   }
 
@@ -88,9 +83,9 @@ impl BindGroupCache {
     let (group, last_frame) = groups.entry(key).or_insert_with(|| {
       let entries: Vec<wgpu::BindGroupEntry<'_>> = bindings
         .iter()
-        .enumerate()
-        .map(|(index, binding)| wgpu::BindGroupEntry {
-          binding: index as u32,
+        .zip(P::BINDINGS)
+        .map(|(binding, index)| wgpu::BindGroupEntry {
+          binding: *index,
           resource: match binding {
             PassBinding::Buffer(buffer) => buffer.as_entire_binding(),
             PassBinding::BufferRange { buffer, size } => wgpu::BindingResource::Buffer(wgpu::BufferBinding {

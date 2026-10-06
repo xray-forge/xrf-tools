@@ -16,6 +16,7 @@ use crate::pass::view_binding::ViewBinding;
 use crate::pass::wind_uniform::WindUniform;
 use crate::scene::level::level_overlays::LevelOverlays;
 use crate::scene::level::level_smoothing::LevelSmoothing;
+use crate::scene::level::level_water::LevelWater;
 use crate::scene::static_scene::static_selection::StaticSelection;
 
 /// What one view keeps from one frame to the next: its targets and depth history, its temporal and upscaling state,
@@ -38,6 +39,8 @@ pub struct ViewState {
   pub fsr: Option<(FsrTargets, FsrGroups)>,
   /// The last frame's unjittered view projection, which every surface's motion is measured from.
   pub motion_previous: Option<Mat4>,
+  /// The water's settings and flow, and the enhanced water's reflection histories.
+  pub water: LevelWater,
   /// The trees' sway the last frame drew with.
   pub last_wind: Option<WindUniform>,
   /// The frame at the viewport's size while it is drawn smaller, with its epoch, and the upscale passes' bind groups:
@@ -77,6 +80,7 @@ impl ViewState {
       temporal_previous: None,
       fsr: None,
       motion_previous: None,
+      water: LevelWater::default(),
       last_wind: None,
       upscale: None,
       upscale_epoch: 0,

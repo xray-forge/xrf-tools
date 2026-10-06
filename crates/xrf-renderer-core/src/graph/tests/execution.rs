@@ -77,7 +77,12 @@ fn executes_a_graph_and_reads_back_what_it_drew() {
     let mut bindings: GraphBindings<'_> = GraphBindings::new();
 
     bindings.bind_buffer(output, &readback);
-    queue.submit(compiled.execute(&device, &mut runtime, &bindings).unwrap().commands);
+    queue.submit(
+      compiled
+        .execute((&device, &queue), &mut runtime, &bindings)
+        .unwrap()
+        .commands,
+    );
   }
 
   assert_eq!(drawn.load(Ordering::Relaxed), 4);
@@ -107,7 +112,11 @@ fn refuses_an_unbound_import() {
   declare(&mut graph, &drawn);
 
   let compiled = graph.compile(&GraphCompileOptions::default()).unwrap();
-  let error: String = match compiled.execute(&device, &mut GraphRuntime::new(&device, &queue), &GraphBindings::new()) {
+  let error: String = match compiled.execute(
+    (&device, &queue),
+    &mut GraphRuntime::new(&device, &queue),
+    &GraphBindings::new(),
+  ) {
     Ok(_) => panic!("expected the unbound import to be refused"),
     Err(error) => error.to_string(),
   };
@@ -156,7 +165,7 @@ fn refuses_an_import_bound_to_a_mismatched_texture() {
 
   assert!(
     compiled
-      .execute(&device, &mut GraphRuntime::new(&device, &queue), &bindings)
+      .execute((&device, &queue), &mut GraphRuntime::new(&device, &queue), &bindings)
       .is_err()
   );
 }
@@ -191,7 +200,7 @@ fn times_each_pass_and_render_pass_on_the_gpu() {
 
     bindings.bind_buffer(output, &readback);
 
-    let executed = compiled.execute(&device, &mut runtime, &bindings).unwrap();
+    let executed = compiled.execute((&device, &queue), &mut runtime, &bindings).unwrap();
 
     assert_eq!(executed.groups.len(), 1);
     queue.submit(executed.commands);

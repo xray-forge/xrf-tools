@@ -53,4 +53,8 @@ impl<'c> PassResources<'c> for GraphPassScope<'c> {
   fn get_buffer(&self, buffer: GraphBuffer) -> &'c wgpu::Buffer {
     GraphPassScope::get_buffer(self, buffer)
   }
+
+  fn get_upload_buffer(&self) -> &'c wgpu::Buffer {
+    self.resources.upload
+  }
 }

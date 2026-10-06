@@ -1,10 +1,8 @@
 use crate::frame::view_targets::ViewTargets;
 
-/// The enhanced water's reflection: two histories at the drawn size, one written each frame over the other it reads,
-/// and two at half the size its blur runs through, across then down.
+/// The enhanced water's reflection: two histories at the drawn size, one written each frame over the other it reads.
 pub struct WaterReflection {
   pub histories: [wgpu::TextureView; 2],
-  pub blurred: [wgpu::TextureView; 2],
   /// The history this frame writes.
   pub index: usize,
   /// Whether the history this frame reads holds a frame.
@@ -17,13 +15,13 @@ impl WaterReflection {
   pub const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
 
   pub fn new(device: &wgpu::Device, targets: &ViewTargets, epoch: u64) -> Self {
-    let create = |label: &str, (width, height): (u32, u32)| -> wgpu::TextureView {
+    let create = |label: &str| -> wgpu::TextureView {
       device
         .create_texture(&wgpu::TextureDescriptor {
           label: Some(label),
           size: wgpu::Extent3d {
-            width,
-            height,
+            width: targets.width,
+            height: targets.height,
             depth_or_array_layers: 1,
           },
           mip_level_count: 1,
@@ -35,15 +33,9 @@ impl WaterReflection {
         })
         .create_view(&Default::default())
     };
-    let full: (u32, u32) = (targets.width, targets.height);
-    let half: (u32, u32) = (targets.width.div_ceil(2), targets.height.div_ceil(2));
 
     Self {
-      histories: [create("water reflection 0", full), create("water reflection 1", full)],
-      blurred: [
-        create("water reflection across", half),
-        create("water reflection down", half),
-      ],
+      histories: [create("water reflection 0"), create("water reflection 1")],
       index: 0,
       is_valid: false,
       epoch,

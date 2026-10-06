@@ -9,6 +9,7 @@ mod pass_binding;
 mod pass_binding_layout;
 mod pass_parameters;
 mod pass_resources;
+mod shader_bindings;
 
 #[cfg(test)]
 mod tests;
@@ -19,3 +20,4 @@ pub use pass_binding::PassBinding;
 pub use pass_binding_layout::PassBindingLayout;
 pub use pass_parameters::PassParameters;
 pub use pass_resources::PassResources;
+pub use shader_bindings::ShaderBindings;

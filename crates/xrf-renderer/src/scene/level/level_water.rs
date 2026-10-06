@@ -1,186 +1,95 @@
 use crate::contract::render_view_options::RenderViewOptions;
-use xrf_renderer_core::PassMarker;
-
 use crate::contract::render_water_mode::RenderWaterMode;
 use crate::contract::render_water_settings::RenderWaterSettings;
 use crate::frame::view_targets::ViewTargets;
 use crate::frame::water_reflection::WaterReflection;
-use crate::frame::water_scene::WaterScene;
 use crate::lighting::render_wind::RenderWind;
-use crate::pass::static_draw_groups::StaticDrawGroups;
-use crate::pass::view_binding::ViewBinding;
-use crate::pass::water_groups::WaterGroups;
-use crate::pass::water_pass::WaterPass;
-use crate::pass::water_sources::WaterSources;
 use crate::pass::water_uniform::WaterUniform;
 use crate::scene::level::water_flow::WaterFlow;
 
-/// What a level view's water reads of its frame beside its own state: the targets and their epoch, the lighting, both
-/// skies with the sampler and version they were bound at, the weather's `water_intensity`, wind and rain density, and the
-/// clock.
+/// What a level view's water reads of its frame beside its own state: the targets and their epoch, the weather's
+/// `water_intensity`, wind and rain density, and the clock.
 pub struct WaterFrame<'a> {
   pub targets: Option<(&'a ViewTargets, u64)>,
-  pub lighting: &'a wgpu::Buffer,
-  pub skies: ([&'a wgpu::TextureView; 2], &'a wgpu::Sampler, u64),
   pub intensity: f32,
   pub wind: RenderWind,
   pub rain: f32,
   pub time: f32,
 }
 
-/// A level view's water: its settings and uniform, the scene before it that the enhanced water refracts, the enhanced
-/// water's reflection, and what binds them, each made only while the frame draws what needs it.
+/// A view's water as it lasts between frames: its settings and what they make its uniform this frame, how far its maps
+/// have scrolled, and the enhanced water's reflection histories, kept only while it reflects.
+#[derive(Default)]
 pub struct LevelWater {
-  uniform: wgpu::Buffer,
   settings: RenderWaterSettings,
   /// Whether this frame draws the water at all: it is on, and the view is not wireframe.
   is_drawn: bool,
-  scene: Option<WaterScene>,
+  uniform: WaterUniform,
   reflection: Option<WaterReflection>,
-  /// With the sky's version, the targets' epoch, and whether they bind the scene and the reflection.
-  groups: Option<((u64, u64, bool, bool), WaterGroups)>,
   /// How far the enhanced water's maps have scrolled.
   flow: WaterFlow,
 }
 
 impl LevelWater {
-  pub fn new(device: &wgpu::Device) -> Self {
-    Self {
-      uniform: device.create_buffer(&wgpu::BufferDescriptor {
-        label: Some("water"),
-        size: size_of::<WaterUniform>() as u64,
-        usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-        mapped_at_creation: false,
-      }),
-      settings: RenderWaterSettings::default(),
-      is_drawn: false,
-      scene: None,
-      reflection: None,
-      groups: None,
-      flow: WaterFlow::default(),
-    }
-  }
-
-  /// Takes this frame's settings: makes or drops the scene copy and the reflection, binds what draws, and writes the
-  /// uniform.
-  pub fn prepare(
-    &mut self,
-    device: &wgpu::Device,
-    queue: &wgpu::Queue,
-    pass: &WaterPass,
-    options: &RenderViewOptions,
-    frame: WaterFrame<'_>,
-  ) {
+  /// Takes this frame's settings: makes or drops the reflection's histories, and works out the uniform.
+  pub fn prepare(&mut self, device: &wgpu::Device, options: &RenderViewOptions, frame: WaterFrame<'_>) {
     let settings: RenderWaterSettings = options.water;
 
     self.settings = settings;
     self.is_drawn = settings.is_enabled && !options.is_wireframe;
     self.flow.advance(frame.time, &settings, frame.wind);
 
-    let is_refracting: bool = self.is_drawn && settings.mode == RenderWaterMode::Enhanced;
-    let is_reflecting: bool = is_refracting && settings.reflectivity > 0.0;
+    let is_reflecting: bool = self.is_refracting() && settings.reflectivity > 0.0;
 
     match frame.targets {
-      Some((targets, epoch)) => {
-        if !is_refracting {
-          self.scene = None;
-        } else if self.scene.as_ref().is_none_or(|scene| scene.epoch != epoch) {
-          self.scene = Some(WaterScene::new(device, targets, epoch));
-        }
-
-        if !is_reflecting {
-          self.reflection = None;
-        } else if self
+      Some((targets, epoch)) if is_reflecting => {
+        if self
           .reflection
           .as_ref()
           .is_none_or(|reflection| reflection.epoch != epoch)
         {
           self.reflection = Some(WaterReflection::new(device, targets, epoch));
         }
-
-        let (skies, sky_sampler, sky_version) = frame.skies;
-        let key: (u64, u64, bool, bool) = (sky_version, epoch, is_refracting, is_reflecting);
-
-        if self.groups.as_ref().is_none_or(|(bound, _)| *bound != key) {
-          let groups: WaterGroups = pass.create_bind_groups(
-            device,
-            &WaterSources {
-              targets,
-              lighting: frame.lighting,
-              water: &self.uniform,
-              skies,
-              sky_sampler,
-              scene: self.scene.as_ref().map(|scene| &scene.view),
-              reflection: self.reflection.as_ref(),
-            },
-          );
-
-          self.groups = Some((key, groups));
-        }
       }
-      None => {
-        self.scene = None;
-        self.reflection = None;
-        self.groups = None;
-      }
+      _ => self.reflection = None,
     }
 
-    queue.write_buffer(
-      &self.uniform,
-      0,
-      bytemuck::bytes_of(&WaterUniform::new(
-        &settings,
-        (frame.intensity, frame.wind, frame.rain),
-        (frame.time, self.flow),
-        self
-          .reflection
-          .as_ref()
-          .map_or((false, false), |reflection| (true, reflection.is_valid)),
-      )),
+    self.uniform = WaterUniform::new(
+      &settings,
+      (frame.intensity, frame.wind, frame.rain),
+      (frame.time, self.flow),
+      self
+        .reflection
+        .as_ref()
+        .map_or((false, false), |reflection| (true, reflection.is_valid)),
     );
   }
 
-  /// Draws the water over the scene drawn so far, its stages timed, copying that scene first for the enhanced water.
-  #[allow(clippy::too_many_arguments)]
-  pub fn record(
-    &self,
-    encoder: &mut wgpu::CommandEncoder,
-    pass: &WaterPass,
-    targets: &ViewTargets,
-    (view, draw_groups, texture_group): (&ViewBinding, &StaticDrawGroups, &wgpu::BindGroup),
-    args: &[&wgpu::Buffer],
-    timer: &mut PassMarker<'_>,
-  ) {
-    let Some((_, groups)) = self.groups.as_ref().filter(|_| self.is_drawn) else {
-      return;
-    };
+  pub fn is_drawn(&self) -> bool {
+    self.is_drawn
+  }
 
-    if let Some(scene) = &self.scene {
-      scene.copy(encoder, targets);
-      timer.mark(encoder, "water copy");
-    }
+  /// Whether the enhanced water draws, reading the scene before it to refract.
+  pub fn is_refracting(&self) -> bool {
+    self.is_drawn && self.settings.mode == RenderWaterMode::Enhanced
+  }
 
-    pass.draw(
-      encoder,
-      targets,
-      view,
-      draw_groups,
-      texture_group,
-      (groups, self.settings.mode, self.reflection.as_ref()),
-      args,
-      &mut |encoder, name| timer.mark(encoder, name),
-    );
+  pub fn get_mode(&self) -> RenderWaterMode {
+    self.settings.mode
+  }
 
-    timer.mark(encoder, "water");
+  pub fn get_uniform(&self) -> &WaterUniform {
+    &self.uniform
+  }
+
+  /// The enhanced water's reflection, while it reflects.
+  pub fn get_reflection(&self) -> Option<&WaterReflection> {
+    self.reflection.as_ref()
   }
 
   /// Makes the reflection a frame drew the one the next frame keeps, where the frame drew the water.
   pub fn finish_frame(&mut self) {
-    if let Some(reflection) = self
-      .reflection
-      .as_mut()
-      .filter(|_| self.groups.is_some() && self.is_drawn)
-    {
+    if let Some(reflection) = self.reflection.as_mut().filter(|_| self.is_drawn) {
       reflection.swap();
     }
   }

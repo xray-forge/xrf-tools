@@ -1,11 +1,12 @@
 use crate::graph::execute::graph_resolved_texture::GraphResolvedTexture;
 use crate::graph::resource::{GraphBuffer, GraphTexture};
 
-/// Every resource of a compiled graph resolved for the frame: transients from the pool, imports from their bindings.
-/// A culled resource is resolved to nothing.
+/// Every resource of a compiled graph resolved for the frame: transients from the pool, imports from their bindings,
+/// and the upload ring's buffer. A culled resource is resolved to nothing.
 pub(crate) struct GraphResources<'r> {
   pub(crate) textures: Vec<Option<GraphResolvedTexture<'r>>>,
   pub(crate) buffers: Vec<Option<&'r wgpu::Buffer>>,
+  pub(crate) upload: &'r wgpu::Buffer,
 }
 
 impl<'r> GraphResources<'r> {
