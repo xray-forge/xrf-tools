@@ -24,8 +24,10 @@ pub struct RainUniform {
   pub color: Vec4,
   /// The way the rain falls, in renderer space.
   pub axis: Vec4,
-  /// The cover's centre in `x` and `z`, its half width, and the height it is seen from.
+  /// The cover's centre in `x` and `z`, its half width, and the height it is seen from; then its texels across and
+  /// the metres it reaches down, the rest unused.
   pub window: Vec4,
+  pub cover_shape: Vec4,
   /// Streaks drawn.
   pub count: u32,
   /// Seconds the rain has fallen.
@@ -40,7 +42,7 @@ impl RainUniform {
   pub fn new(
     rain: &RenderRainfall,
     (wind, strength): (RenderWind, f32),
-    window: Vec4,
+    (window, cover_shape): (Vec4, Vec4),
     time: f32,
     splash_indices: u32,
   ) -> Self {
@@ -60,6 +62,7 @@ impl RainUniform {
       color: rain.color.clamp(Vec3::ZERO, Vec3::ONE).extend(density / 2.0 + 0.5),
       axis: axis.extend(0.0),
       window,
+      cover_shape,
       count: Self::get_count(density),
       time,
       splash_indices,

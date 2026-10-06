@@ -21,20 +21,21 @@ pub struct OverheadShape {
 }
 
 impl OverheadShape {
-  /// What stands over the rain: every streak's column falls within it, however far the camera is from its centre, and
-  /// every surface the rain wets near the camera; six centimetres a texel, its step a whole 64 of them so a thin edge
-  /// never shifts in it as it moves; trees and all, as their leaves shelter.
+  /// What stands over the rain, trees and all, as their leaves shelter: 64 m wide where only the streaks and the
+  /// engine's wetting near the camera read it, three centimetres a texel, and fitted to the wet reach where the traced
+  /// reflections want the wetness that far (`OverheadMap::fit_width`, 28 cm a texel at the default 250 m); its step a
+  /// whole 64 texels of whatever width it has, so a thin edge never shifts in it as it moves.
   pub const RAIN_COVER: Self = Self {
     label: "rain cover",
     cull_pass: "rain cover cull",
     draw_pass: "rain cover",
     width: 64.0,
-    resolution: 1024,
-    height: 60.0,
-    depth: 120.0,
-    step: 4.0,
-    height_step: 4.0,
-    content_delay: 0,
+    resolution: 2048,
+    height: 200.0,
+    depth: 400.0,
+    step: 2.0,
+    height_step: 128.0,
+    content_delay: 30,
     is_tree_drawn: true,
     is_water: false,
   };

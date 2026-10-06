@@ -80,6 +80,22 @@ impl OverheadMap {
     self.shape
   }
 
+  /// Makes it `width` metres across, its step a whole 64 texels of it, drawn again where that changes it.
+  pub fn fit_width(&mut self, width: f32) {
+    if width == self.shape.width {
+      return;
+    }
+
+    self.shape.width = width;
+    self.shape.step = width / self.shape.resolution as f32 * 64.0;
+    self.drawn = None;
+  }
+
+  /// Draws nothing this frame.
+  pub fn rest(&mut self) {
+    self.is_due = false;
+  }
+
   /// Whether this frame draws it, as `prepare` decided.
   pub fn is_due(&self) -> bool {
     self.is_due

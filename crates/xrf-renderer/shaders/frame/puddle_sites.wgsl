@@ -138,8 +138,8 @@ fn surface_sites(@builtin(global_invocation_id) id: vec3<u32>) {
 // (`SITE_SHARE` at the setting's one, nearly all at its two), set by the puddles setting and a broader noise at the
 // site, more in a storm and after a long rain soaked the level;
 // of those, no more than a few about each, the first by their hash keeping theirs so no stretch gathers a lake. A kept
-// site's puddle grows from `PUDDLE_GROWTH` of its radius as the puddles fill, and a site newly within the share or the
-// neighbour limit grows in rather than popping.
+// site's puddle grows from nothing as the puddles fill and shrinks back to nothing as they drain, and a site newly
+// within the share or the neighbour limit grows in rather than popping.
 const SITE_SHARE: f32 = 0.7;
 const STORM_SHARE: f32 = 0.6;
 const STORM_GROWTH: f32 = 0.15;
@@ -147,7 +147,6 @@ const SOAK_SHARE: f32 = 0.5;
 const SITE_NEIGHBOURS: f32 = 3.0;
 const SOAK_NEIGHBOURS: f32 = 3.0;
 const SITE_GROW_IN: f32 = 0.15;
-const PUDDLE_GROWTH: f32 = 0.35;
 // Metres the regional noise repeats over, turned off the cells' grid, and how far it moves the share either way.
 const REGION_TILE: f32 = 240.0;
 const REGION_TURN: mat2x2<f32> = mat2x2<f32>(0.8, 0.6, -0.6, 0.8);
@@ -201,7 +200,7 @@ fn puddle_keep(@builtin(global_invocation_id) id: vec3<u32>) {
     }
 
     let room: f32 = saturate(SITE_NEIGHBOURS + SOAK_NEIGHBOURS * wet.puddle_state.w + 1.0 - before);
-    let growth: f32 = mix(PUDDLE_GROWTH, 1.0, wet.puddle_state.y) * (1.0 + STORM_GROWTH * wet.puddle_state.z);
+    let growth: f32 = wet.puddle_state.y * (1.0 + STORM_GROWTH * wet.puddle_state.z);
 
     radius = site.w * growth * saturate((share - rank) / SITE_GROW_IN) * room;
   }

@@ -9,6 +9,8 @@ use crate::pass::combine_parameters::CombineParameters;
 use crate::pass::composited_parameters::CompositedParameters;
 use crate::pass::contact_shadow_parameters::ContactShadowParameters;
 use crate::pass::contact_shadow_uniform::ContactShadowUniform;
+use crate::pass::cover_pyramid_depth_parameters::CoverPyramidDepthParameters;
+use crate::pass::cover_pyramid_level_parameters::CoverPyramidLevelParameters;
 use crate::pass::enhanced_bloom_parameters::EnhancedBloomParameters;
 use crate::pass::enhanced_bloom_uniform::EnhancedBloomUniform;
 use crate::pass::enhanced_water_parameters::EnhancedWaterParameters;
@@ -202,7 +204,9 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
   temporal.add::<TemporalParameters<'_>>()?;
   pyramid
     .add::<PyramidDepthParameters>()?
-    .add::<PyramidLevelParameters>()?;
+    .add::<PyramidLevelParameters>()?
+    .add::<CoverPyramidDepthParameters>()?
+    .add::<CoverPyramidLevelParameters>()?;
   puddle_sites
     .add::<LowestHeightsParameters>()?
     .add::<PuddleSitesParameters>()?

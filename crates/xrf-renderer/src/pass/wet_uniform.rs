@@ -7,7 +7,7 @@ use xrf_renderer_core::ShaderStruct;
 #[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "Wet")]
 pub struct WetUniform {
-  /// `RainDensity.x`.
+  /// `RainDensity.x`, the falling rain's, which splashes and ripples by; none once it stops.
   pub density: f32,
   /// Seconds the rain has fallen.
   pub time: f32,
@@ -15,8 +15,11 @@ pub struct WetUniform {
   pub is_extended: f32,
   /// One where the surfaces are wetted as the enhanced rain wets them.
   pub is_enhanced: f32,
-  /// The cover's centre in `x` and `z`, its half width, and the height it is seen from.
-  pub window: Vec4,
+  /// The rain cover's centre in `x` and `z`, its half width, and the height it is seen from; then its texels across,
+  /// the metres it reaches down, the metres the wetness creeps under a cover from its wet edges, and the pixels the
+  /// creep's noise is moved by this frame.
+  pub cover: Vec4,
+  pub cover_state: Vec4,
   /// The level's surface map's centre in `x` and `z`, its half width, and the height it is seen from; then its texels
   /// across and the metres it reaches down.
   pub surface: Vec4,
@@ -31,4 +34,17 @@ pub struct WetUniform {
   /// trace, rather than over the metres the engine fades its splashes over; then the metres it reaches; the rest
   /// unused.
   pub reach: Vec4,
+}
+
+impl WetUniform {
+  /// Metres the wetness creeps under a cover from its wet edges once a long rain has soaked the level through.
+  pub const CREEP_MOST: f32 = 1.5;
+  /// Interleaved gradient noise's step between frames, Jimenez's, in pixels, and the frames it cycles through.
+  const NOISE_STEP: f32 = 5.588_238;
+  const NOISE_FRAMES: u32 = 64;
+
+  /// The pixels the cover's noise is moved by on the noise's `frame`.
+  pub fn get_cover_noise(frame: u32) -> f32 {
+    (frame % Self::NOISE_FRAMES) as f32 * Self::NOISE_STEP
+  }
 }
