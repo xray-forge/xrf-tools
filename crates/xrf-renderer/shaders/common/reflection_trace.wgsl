@@ -245,6 +245,36 @@ fn geometric_variance(normals: texture_2d<f32>, texel: vec2<i32>) -> f32 {
   return min(GEOMETRIC_SCALE * (dot(across, across) + dot(down, down)), GEOMETRIC_MOST);
 }
 
+// The metres of surface a pixel covers over which its normal map's bumps are filtered away by the mips, from none to
+// all, and the variance that stands in for them at most, a slope's: far and grazing ground keeps the roughness its
+// bumps gave it up close, rather than reading as a mirror of the sky as the mipped normals flatten (far wet dirt read
+// as snow).
+const FOOTPRINT: vec2<f32> = vec2<f32>(0.02, 0.3);
+const FOOTPRINT_MOST: f32 = 0.04;
+
+// The variance standing in for the bumps a pixel's mipped normal lost, by the metres of surface it covers: its
+// distance over the frame's pixels a radian, stretched by how grazing it is seen.
+fn footprint_variance(normals: texture_2d<f32>, depth: texture_depth_2d, texel: vec2<i32>) -> f32 {
+  let stored: f32 = textureLoad(depth, texel, 0);
+
+  if (stored <= 0.0) {
+    return 0.0;
+  }
+
+  let position: vec3<f32> = camera_view_position(vec2<f32>(texel) + 0.5, stored);
+  let normal: vec3<f32> = normalize(octahedral_decode(textureLoad(normals, texel, 0).xy));
+  let facing: f32 = max(dot(normal, -normalize(position)), 0.05);
+  let footprint: f32 = -position.z * 2.0 / (camera.projection[1][1] * camera.viewport.y) / facing;
+
+  return FOOTPRINT_MOST * smoothstep(FOOTPRINT.x, FOOTPRINT.y, footprint);
+}
+
+// The variance a surface's lobe widens by beyond its gloss: its normal's across the pixel, and the bumps its mips
+// lost, the latter never over a puddle's water, which is flat.
+fn surface_variance(normals: texture_2d<f32>, depth: texture_depth_2d, texel: vec2<i32>, puddle: f32) -> f32 {
+  return geometric_variance(normals, texel) + footprint_variance(normals, depth, texel) * (1.0 - saturate(puddle));
+}
+
 // A surface's roughness for its reflection's lobe: the engine's gloss as `reflection_roughness` reads it, the engine's
 // wetness and a puddle's water's written into the gloss by the wet patch, widened by the variance of the ripples the
 // patch's filtering folded away (Toksvig), so a far puddle's rings soften its reflection instead of vanishing. The

@@ -80,6 +80,7 @@ pub(crate) mod render_static_report;
 pub(crate) mod render_sun_shafts;
 pub(crate) mod render_sun_shafts_quality;
 pub(crate) mod render_surface_color;
+pub(crate) mod render_texture_filtering;
 pub(crate) mod render_texture_report;
 pub(crate) mod render_texture_state;
 pub(crate) mod render_upscaling_settings;

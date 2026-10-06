@@ -153,6 +153,7 @@ export const DEFAULT_RENDER_REFLECTION_SETTINGS: TRenderReflectionSettings = {
   probe: ERenderReflectionProbe.FINE,
   quality: ERenderReflectionQuality.HIGH,
   skyGain: 1.25,
+  isGrassReflected: false,
 };
 
 /** The engine's own: every spawned light, and none of the level file's. */

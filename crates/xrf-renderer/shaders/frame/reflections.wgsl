@@ -367,7 +367,7 @@ fn fs_trace(in: FullscreenVarying) -> TraceTargets {
 
   let albedo: vec4<f32> = textureLoad(albedo_target, texel, 0);
   let wet: vec4<f32> = textureLoad(wet_surface, texel, 0);
-  let roughness: f32 = traced_roughness(albedo.a, wet.a + geometric_variance(normal_target, texel));
+  let roughness: f32 = traced_roughness(albedo.a, wet.a + surface_variance(normal_target, depth_target, texel, wet.g));
 
   // Past the limit the surface reflects the prefiltered sky alone, which combine reads for it.
   if (roughness > TRACED_ROUGHNESS_LIMIT) {
@@ -486,7 +486,8 @@ fn traced_surface(pixel: vec2<f32>) -> TracedSurface {
     (normal.y > LEVEL_UP || wet.g > PUDDLE_LEAST);
   let uv: vec2<f32> = (vec2<f32>(texel) + 0.5) / camera.viewport.xy;
   let world: vec3<f32> = camera_unproject(vec2<f32>(uv.x * 2.0 - 1.0, 1.0 - uv.y * 2.0), depth);
-  let roughness: f32 = traced_roughness(textureLoad(albedo_target, texel, 0).a, wet.a);
+  let roughness: f32 = traced_roughness(textureLoad(albedo_target, texel, 0).a,
+    wet.a + surface_variance(normal_target, depth_target, texel, wet.g));
 
   return TracedSurface(select(normal, vec3<f32>(0.0, 1.0, 0.0), is_level), roughness,
     -camera_view_position(vec2<f32>(texel) + 0.5, depth).z, world);
@@ -837,7 +838,9 @@ fn fs_upscale(in: FullscreenVarying) -> @location(0) vec4<f32> {
   let normal: vec3<f32> = normalize(octahedral_decode(textureLoad(normal_target, texel, 0).xy));
   let position: vec3<f32> = camera_view_position(in.clip.xy, depth);
   let distance: f32 = -position.z;
-  let roughness: f32 = traced_roughness(textureLoad(albedo_target, texel, 0).a, textureLoad(wet_surface, texel, 0).a);
+  let wet: vec4<f32> = textureLoad(wet_surface, texel, 0);
+  let roughness: f32 = traced_roughness(textureLoad(albedo_target, texel, 0).a,
+    wet.a + surface_variance(normal_target, depth_target, texel, wet.g));
   let current: vec4<f32> = upsampled_reflection(resolved, depth_target, material_target, normal_target, albedo_target,
     pixel, vec4<f32>(normal, distance), roughness, reflection.ratio, reflection.frame);
 

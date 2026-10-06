@@ -25,6 +25,9 @@ pub struct RenderReflectionSettings {
   /// How far the sky's highlights are scaled at its white as light for the traced reflections, one as the engine's sky
   /// picture shows them.
   pub sky_gain: f32,
+  /// Whether the rays meet the grass: walked over the depth as the grass left it, rather than as it stood before the
+  /// grass drew, so blades and tufts stand in the reflections as solid as they draw, and stop rays behind them.
+  pub is_grass_reflected: bool,
 }
 
 impl Default for RenderReflectionSettings {
@@ -38,6 +41,7 @@ impl Default for RenderReflectionSettings {
       quality: RenderReflectionQuality::High,
       probe: RenderReflectionProbe::Fine,
       sky_gain: 1.25,
+      is_grass_reflected: false,
     }
   }
 }
