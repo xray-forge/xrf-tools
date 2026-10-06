@@ -21,7 +21,10 @@ import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 export const levelsCommands = {
   /** Release only the openings owned by the departing viewer. */
   closeLevel: (sessionIds: Array<SessionId>) => __TAURI_INVOKE<null>("plugin:levels|close_level", { sessionIds }),
-  /** Describe what the open level's game ships as its console defaults of how levels are lit and exposed. */
+  /**
+   * Describe what the open level's game runs its console with of how levels are lit and exposed: its `user.ltx` over
+   * its shipped defaults.
+   */
   describeConsoleDefaults: (sessionId: SessionId) =>
     __TAURI_INVOKE<SessionSnapshot<LevelConsoleDefaults>>("plugin:levels|describe_console_defaults", { sessionId }),
   /** Describe one of the open level's spawned objects, by its place among them, as open_spawn_objects numbered it. */

@@ -2,7 +2,7 @@ use std::fs;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use xrf_engine_target::XrayEngine;
+use xrf_engine_target::XrayEngineChoice;
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 
 use super::verify_environment_result::GamedataEnvironmentVerificationResult;
@@ -59,7 +59,7 @@ impl EnvironmentTree {
     self
   }
 
-  fn verify(&self, engine: XrayEngine) -> GamedataEnvironmentVerificationResult {
+  fn verify(&self, engine: XrayEngineChoice) -> GamedataEnvironmentVerificationResult {
     GamedataProject::open(&GamedataProjectReadOptions {
       engine,
       root: self.root.clone(),
@@ -115,7 +115,7 @@ fn reported(result: &GamedataEnvironmentVerificationResult) -> Vec<(String, Stri
 
 #[test]
 fn passes_a_tree_the_engine_loads_whole() {
-  let result: GamedataEnvironmentVerificationResult = EnvironmentTree::new().verify(XrayEngine::Vanilla);
+  let result: GamedataEnvironmentVerificationResult = EnvironmentTree::new().verify(XrayEngineChoice::Vanilla);
 
   assert_eq!(reported(&result), Vec::new());
   assert_eq!(result.get_failure_message(), "5/5 environment configs valid");
@@ -126,7 +126,7 @@ fn reports_what_the_engine_refuses_under_its_rule() {
   let broken: String = keyframe("00:00:00").replace("far_plane = 500\n", "") + &keyframe("12:00:00");
   let result = EnvironmentTree::new()
     .with("configs/environment/weathers/day.ltx", &broken)
-    .verify(XrayEngine::Vanilla);
+    .verify(XrayEngineChoice::Vanilla);
 
   assert_eq!(
     reported(&result),
@@ -147,7 +147,7 @@ fn reports_what_the_engine_refuses_under_its_rule() {
 fn reports_a_sky_the_game_does_not_hold() {
   let result = EnvironmentTree::new()
     .without("textures/sky/sky_cube#small.dds")
-    .verify(XrayEngine::Vanilla);
+    .verify(XrayEngineChoice::Vanilla);
 
   assert_eq!(
     reported(&result),
@@ -173,14 +173,14 @@ fn takes_an_empty_clouds_texture_for_none() {
   let result = EnvironmentTree::new()
     .with("configs/environment/weathers/day.ltx", &clear)
     .without("textures/sky/clouds.dds")
-    .verify(XrayEngine::Vanilla);
+    .verify(XrayEngineChoice::Vanilla);
 
   assert_eq!(reported(&result), Vec::new());
 }
 
 #[test]
 fn reads_the_configs_as_the_engine_the_tree_is_for() {
-  let result = EnvironmentTree::new().verify(XrayEngine::Extended);
+  let result = EnvironmentTree::new().verify(XrayEngineChoice::Extended);
 
   assert_eq!(
     reported(&result),
@@ -188,6 +188,41 @@ fn reads_the_configs_as_the_engine_the_tree_is_for() {
       String::from("environment.engine"),
       String::from("There is no environment\\sun_positions.ltx, which the engine stands the sun by")
     )]
+  );
+}
+
+#[test]
+fn reads_an_atmosfear_tree_as_extended_when_left_to_detection() {
+  let tree: EnvironmentTree = EnvironmentTree::new().with(
+    "configs/environment/dynamic_weather_graphs.ltx",
+    "[weather_cycles]\nclear\n\n[cycle_clear]\nday\n",
+  );
+
+  let detected = tree.verify(XrayEngineChoice::Auto);
+  let vanilla = EnvironmentTree::new().verify(XrayEngineChoice::Auto);
+
+  assert_eq!(
+    reported(&detected),
+    vec![(
+      String::from("environment.engine"),
+      String::from("There is no environment\\sun_positions.ltx, which the engine stands the sun by")
+    )]
+  );
+  assert_eq!(reported(&vanilla), Vec::new());
+}
+
+#[test]
+fn resolves_the_engine_when_the_project_opens() {
+  let tree: EnvironmentTree = EnvironmentTree::new();
+  let project: GamedataProject = GamedataProject::open(&GamedataProjectReadOptions {
+    root: tree.root.clone(),
+    ..Default::default()
+  })
+  .unwrap();
+
+  assert_eq!(
+    project.get_engine(),
+    &xrf_engine_target::XrayEngineResolution::undetected()
   );
 }
 

@@ -1,5 +1,5 @@
 import { LevelConsoleDefaults } from "@/core/ipc/types/xrf-app";
-import { EXrayEngine } from "@/core/ipc/types/xrf-engine-target";
+import { EXrayEngine, XrayEngine } from "@/core/ipc/types/xrf-engine-target";
 import { DEFAULT_RENDER_EXPOSURE_SETTINGS } from "@/core/render/lib/settings/render-feature-defaults";
 import { TRenderExposureSettings } from "@/core/render/lib/settings/render-feature-settings";
 
@@ -110,7 +110,7 @@ export function toSettingsLevelLook(exposure: TRenderExposureSettings): ILevelLo
 export function toGameLevelLook(
   defaults: LevelConsoleDefaults,
   exposure: TRenderExposureSettings,
-  engine: EXrayEngine
+  engine: XrayEngine
 ): ILevelLook {
   const [r, g, b] = defaults.colorGrading ?? NEUTRAL_LEVEL_IMAGE_CORRECTIONS.grading;
   const bloom: ILevelBloom = engine === EXrayEngine.EXTENDED ? MONOLITH_LEVEL_BLOOM : OPENXRAY_LEVEL_BLOOM;

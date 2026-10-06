@@ -3,7 +3,7 @@ import { isObservableProp } from "@wirestate/mobx";
 
 import { createRoots } from "@/core/assets/lib";
 import { LevelSource, LevelSpawnObjectsDescription, SelectedLevelDescription } from "@/core/ipc/types/xrf-app";
-import { EXrayEngine } from "@/core/ipc/types/xrf-engine-target";
+import { EXrayEngineChoice } from "@/core/ipc/types/xrf-engine-target";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { EMPTY_LEVEL_SPAWN_REPORT, isLevelSpawnReading } from "@/core/level/lib/spawn";
 import { mockLevelSpawnObject, mockSectorOutline, mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
@@ -89,7 +89,12 @@ describe("LevelLoadService", () => {
 
     armLevel();
 
-    const opened: unknown = service.load({ engine: EXrayEngine.VANILLA, isDltx: false, roots: ROOTS, source: SOURCE });
+    const opened: unknown = service.load({
+      engine: EXrayEngineChoice.VANILLA,
+      isDltx: false,
+      roots: ROOTS,
+      source: SOURCE,
+    });
 
     expect(service.opening).toEqual(SOURCE);
 
@@ -104,7 +109,7 @@ describe("LevelLoadService", () => {
 
     armLevel();
 
-    await service.load({ engine: EXrayEngine.VANILLA, isDltx: false, roots: ROOTS, source: SOURCE });
+    await service.load({ engine: EXrayEngineChoice.VANILLA, isDltx: false, roots: ROOTS, source: SOURCE });
     await flush();
 
     expect(service.level.value?.selected.value.sectors).toHaveLength(1);
@@ -127,7 +132,7 @@ describe("LevelLoadService", () => {
       }),
     });
 
-    await service.load({ engine: EXrayEngine.VANILLA, isDltx: false, roots: ROOTS, source: SOURCE });
+    await service.load({ engine: EXrayEngineChoice.VANILLA, isDltx: false, roots: ROOTS, source: SOURCE });
     await flush();
 
     expect(service.spawn).toBeNull();
@@ -143,7 +148,7 @@ describe("LevelLoadService", () => {
 
     armLevel();
 
-    await service.load({ engine: EXrayEngine.VANILLA, isDltx: false, roots: ROOTS, source: SOURCE });
+    await service.load({ engine: EXrayEngineChoice.VANILLA, isDltx: false, roots: ROOTS, source: SOURCE });
     await flush();
     await service.close();
 
@@ -161,7 +166,7 @@ describe("LevelLoadService", () => {
       }),
     });
 
-    await service.load({ engine: EXrayEngine.VANILLA, isDltx: false, roots: ROOTS, source: SOURCE });
+    await service.load({ engine: EXrayEngineChoice.VANILLA, isDltx: false, roots: ROOTS, source: SOURCE });
 
     expect(service.level.value).toBeNull();
     expect(service.level.error?.message).toBe("level carries no visuals chunk, so it draws nothing");

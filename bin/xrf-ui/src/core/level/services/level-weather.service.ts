@@ -1,4 +1,4 @@
-import { inject, Injectable, OnDeactivation } from "@wirestate/core";
+import { Injectable, OnDeactivation } from "@wirestate/core";
 import { BoundAction, comparer, Computed, RefObservable, runInAction } from "@wirestate/mobx";
 import { Maybe, Nullable } from "@xrf/types";
 
@@ -11,7 +11,7 @@ import {
   SelectedLevelDescription,
   SessionSnapshot,
 } from "@/core/ipc/types/xrf-app";
-import { XrayEngine } from "@/core/ipc/types/xrf-engine-target";
+import { EXrayEngine, XrayEngine } from "@/core/ipc/types/xrf-engine-target";
 import { EWeatherCycleKind, WeatherDescriptor } from "@/core/ipc/types/xrf-environment";
 import {
   EWorldWeatherPlay,
@@ -45,7 +45,6 @@ import {
 import { ILevelWeatherSeed } from "@/core/level/lib/weather/level-weather-seed";
 import { ILevelWeatherSeek } from "@/core/level/lib/weather/level-weather-seek";
 import { ELevelWeatherSource } from "@/core/level/lib/weather/level-weather-source";
-import { SettingsService } from "@/core/settings/services/settings";
 import { Logger } from "@/lib/logging";
 
 /**
@@ -128,8 +127,6 @@ export class LevelWeatherService {
   /** The cycle the level was last played with, kept until one plays so a level left early forgets nothing. */
   private remembered: string = "";
 
-  public constructor(private readonly settingsService: SettingsService = inject(SettingsService)) {}
-
   /**
    * What the renderer plays: the keyframe set by hand while it lights the level, the cycle otherwise, and the keyframe
    * again where no cycle plays; null while neither was handed over.
@@ -149,9 +146,9 @@ export class LevelWeatherService {
     return this.cycle ? { kind: EWorldWeatherPlay.CYCLE, name: this.cycle.name } : manual;
   }
 
-  /** The engine the weather is read for: the level's, or the setting's where its weather does not read. */
+  /** The engine the weather is read for: the open level's, Vanilla with none open. */
   public get engine(): XrayEngine {
-    return this.description?.engine ?? this.settingsService.engine;
+    return this.selected?.value.engine.engine ?? EXrayEngine.VANILLA;
   }
 
   /** The keyframe on screen as one set by hand: the one set, or the weather's mix, which a first edit seeds it from. */

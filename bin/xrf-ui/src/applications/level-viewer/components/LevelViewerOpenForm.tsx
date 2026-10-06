@@ -3,11 +3,12 @@ import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useEffect, useMemo, useState } from "react";
 
 import { createRoots } from "@/core/assets/lib";
+import { EngineChoiceFormRow } from "@/core/engine-target/components";
+import { IEngineChoice, useEngineChoice } from "@/core/engine-target/lib";
 import { LevelEntry } from "@/core/ipc/types/xrf-app";
 import { LevelListService, LevelLoadService } from "@/core/level/services";
 import { ConfigsDialectFormRow } from "@/core/ltx/components/configs-dialect/ConfigsDialectFormRow";
 import { EApplicationId } from "@/core/routing/application";
-import { SettingsService } from "@/core/settings/services/settings";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { ChoiceListFormRow, IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 import { BaseComponentProps } from "@/lib/dom/element-types";
@@ -28,7 +29,6 @@ export function LevelViewerOpenForm({
 }: ILevelViewerOpenFormProps): ReactElement {
   const listService: LevelListService = useInjection(LevelListService);
   const loadService: LevelLoadService = useInjection(LevelLoadService);
-  const settingsService: SettingsService = useInjection(SettingsService);
 
   const [selected, setSelected] = useState<string>("");
   const [listedRoot, setListedRoot] = useState<Nullable<string>>(null);
@@ -53,6 +53,9 @@ export function LevelViewerOpenForm({
 
   const isListed: boolean = listedRoot !== null;
 
+  // Asked of the root once it is listed: the listing mounted it, so detection reads through what is already open.
+  const engine: IEngineChoice = useEngineChoice(listedRoot);
+
   const onList = useCallback(async () => {
     if (!root.value) {
       return;
@@ -76,14 +79,14 @@ export function LevelViewerOpenForm({
     }
 
     await loadService.load({
-      engine: settingsService.engine,
+      engine: engine.choice,
       isDltx,
       roots: createRoots([root.value]),
       source: { kind: "asset", logicalPath: selected },
     });
 
     onFinished?.();
-  }, [isDltx, loadService, onFinished, root.value, selected, settingsService]);
+  }, [engine.choice, isDltx, loadService, onFinished, root.value, selected]);
 
   useEffect(() => {
     if (listedRoot !== null && listedRoot !== root.value) {
@@ -131,6 +134,8 @@ export function LevelViewerOpenForm({
       ) : null}
 
       {isListed ? <ConfigsDialectFormRow isDltx={isDltx} isDisabled={isLoading} onChange={setDltx} /> : null}
+
+      {isListed ? <EngineChoiceFormRow engine={engine} isDisabled={isLoading} /> : null}
     </PickerForm>
   );
 }

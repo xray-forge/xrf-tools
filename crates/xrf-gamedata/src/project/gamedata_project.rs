@@ -4,13 +4,13 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use xrf_chunk::{ChunkReader, InMemoryChunkDataSource};
-use xrf_engine_target::XrayEngine;
+use xrf_engine_target::{XrayEngineResolution, detect_engine};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{LtxProject, LtxProjectOptions};
 use xrf_utils::format_path;
 use xrf_vfs::{
   XrayAsset, XrayAssetType, XrayCachePolicy, XrayCacheStats, XrayLookupScope, XrayMountMode, XrayPathCollision,
-  XrayReadTraceSummary, XraySkippedMount, XrayVfs,
+  XrayReadTraceSummary, XrayRoots, XraySkippedMount, XrayVfs,
 };
 
 use crate::project::gamedata_project_options::GamedataProjectReadOptions;
@@ -28,13 +28,18 @@ pub struct GamedataProject {
   pub(crate) scope: XrayLookupScope,
   /// Location shown in output, which for an installation is the game directory rather than any one mount.
   pub(crate) root: PathBuf,
-  /// The engine the tree is meant for, which the environment check reads its configs as.
-  pub(crate) engine: XrayEngine,
+  /// The engine the tree is meant for, which the environment check reads its configs as, and what decided it.
+  pub(crate) engine: XrayEngineResolution,
 }
 
 impl GamedataProject {
   pub fn root(&self) -> &Path {
     &self.root
+  }
+
+  /// The engine the project's configs are read as, and what decided it.
+  pub fn get_engine(&self) -> &XrayEngineResolution {
+    &self.engine
   }
 
   /// Opens a project at a path, reading it the way `mode` says.
@@ -76,6 +81,12 @@ impl GamedataProject {
       );
     }
 
+    let engine: XrayEngineResolution = options.engine.resolve(|| {
+      detect_engine(&XrayRoots::one(options.root.clone(), mode), |logical_path| {
+        identity_vfs.scoped(&scope).read_bytes(logical_path).ok()
+      })
+    });
+
     // Checks enumerate and read only what the caller left in scope.
     // Retaining motions is what keeps a sweep from re-reading a shared animation bank once per referencing visual.
     let vfs: XrayVfs =
@@ -104,7 +115,7 @@ impl GamedataProject {
     .map_err(|error| XrfError::new_asset_error(format!("Failed to open gamedata project ltx configs: {}", error)))?;
 
     Ok(Self {
-      engine: options.engine,
+      engine,
       ltx_project,
       root: options.root.clone(),
       scope,

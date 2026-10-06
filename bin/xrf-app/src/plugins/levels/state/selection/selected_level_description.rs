@@ -1,4 +1,5 @@
 use serde::Serialize;
+use xrf_engine_target::XrayEngineResolution;
 use xrf_material::XraySurfaceDescriptor;
 use xrf_vfs::XrayRoots;
 use xrf_visual::{SectorOutline, VisualBounds};
@@ -16,6 +17,8 @@ pub struct SelectedLevelDescription {
   pub source: LevelSource,
   /// The roots the level and its textures were resolved in, centred on the level itself.
   pub roots: XrayRoots,
+  /// The engine everything engine-dependent about the level follows, and what decided it.
+  pub engine: XrayEngineResolution,
   pub xrlc_version: u16,
   pub xrlc_quality: u16,
   pub visuals: u32,

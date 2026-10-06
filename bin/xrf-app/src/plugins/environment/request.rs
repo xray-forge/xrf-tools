@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use xrf_engine_target::XrayEngine;
+use xrf_engine_target::XrayEngineChoice;
 use xrf_vfs::XrayRoots;
 
 /// Which game's environment configs to read, and as which engine.
@@ -11,5 +11,6 @@ pub struct EnvironmentRequest {
   pub roots: XrayRoots,
   /// Whether to resolve with the Monolith/Anomaly DLTX patch dialect.
   pub is_dltx: bool,
-  pub engine: XrayEngine,
+  /// Which engine the configs are read as; detected on `auto`.
+  pub engine: XrayEngineChoice,
 }

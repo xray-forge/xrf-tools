@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use xrf_engine_target::XrayEngine;
+use xrf_engine_target::XrayEngineChoice;
 use xrf_vfs::XrayRoots;
 
 use crate::plugins::levels::state::LevelSource;
@@ -14,6 +14,6 @@ pub struct LevelOpenRequest {
   pub roots: XrayRoots,
   /// Whether the game's configs resolve with the Monolith/Anomaly DLTX patch dialect.
   pub is_dltx: bool,
-  /// Which engine the game's configs, its weather among them, are read as.
-  pub engine: XrayEngine,
+  /// Which engine the game's configs, its weather among them, are read as; detected on `auto`.
+  pub engine: XrayEngineChoice,
 }

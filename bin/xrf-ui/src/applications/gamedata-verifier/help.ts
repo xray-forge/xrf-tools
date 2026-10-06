@@ -6,6 +6,8 @@ export const GAMEDATA_VERIFIER_HELP: IApplicationHelp = {
     "textures, sounds, scripts, particles, shaders, spawns, levels and animations. Nothing is written.",
   workflow: [
     "Pick the gamedata directory; it is mounted the way the engine would read it, so archived assets count too.",
+    "`Engine` is `Auto` unless you choose otherwise, as in the level viewer: the environment check reads configs as " +
+      "the engine it shows. An override is remembered for that directory, matching `xrf-cli gamedata verify --engine`.",
     "Start the run and watch the check counter. A long check reports its own progress underneath it.",
     "Read the per-check table: a verdict, how many findings were behind it, and how long it took.",
   ],

@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use xrf_error::XrfResult;
 use xrf_utils::format_path;
 
+use crate::FsgameFile;
 use crate::mount::xray_mount_mode::XrayMountMode;
 use crate::mount::xray_mount_plan::XrayMountPlan;
 use crate::mount::xray_probe_plan::XrayProbePlan;
@@ -61,6 +62,24 @@ impl XrayRoots {
       asset: self.asset.clone().or_else(|| asset.map(Path::to_path_buf)),
       roots: self.roots.clone(),
     }
+  }
+
+  /// Each installation these roots sit in, asset's first, once each: a root holding `fsgame.ltx`, or the nearest
+  /// ancestor that does.
+  pub fn list_installations(&self) -> Vec<PathBuf> {
+    let mut installations: Vec<PathBuf> = Vec::new();
+
+    for path in self.asset.iter().chain(self.roots.iter().map(|root| &root.path)) {
+      if let Some(installation) = path
+        .ancestors()
+        .find(|candidate| candidate.join(FsgameFile::FILE_NAME).is_file())
+        && !installations.iter().any(|known| known == installation)
+      {
+        installations.push(installation.to_path_buf());
+      }
+    }
+
+    installations
   }
 
   /// Whether this names nowhere at all.

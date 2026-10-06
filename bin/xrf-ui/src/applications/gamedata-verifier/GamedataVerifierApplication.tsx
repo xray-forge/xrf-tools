@@ -3,9 +3,10 @@ import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 
 import { GamedataVerifierService } from "@/applications/gamedata-verifier/services/verifier";
+import { EngineChoiceFormRow } from "@/core/engine-target/components";
+import { IEngineChoice, useEngineChoice } from "@/core/engine-target/lib";
 import { JobPickerForm } from "@/core/jobs/components/JobPickerForm";
 import { EApplicationId } from "@/core/routing/application";
-import { SettingsService } from "@/core/settings/services/settings";
 import { CheckboxFormRow, IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 import { Logger, useLogger } from "@/lib/logging";
 
@@ -15,7 +16,6 @@ export function GamedataVerifierApplication(): ReactElement {
   const log: Logger = useLogger(__MODULE_NAME__);
 
   const verifierService: GamedataVerifierService = useInjection(GamedataVerifierService);
-  const settingsService: SettingsService = useInjection(SettingsService);
 
   const [isStrict, setIsStrict] = useState<boolean>(false);
 
@@ -32,6 +32,7 @@ export function GamedataVerifierApplication(): ReactElement {
   });
 
   const root: Nullable<string> = gamedata.value;
+  const engine: IEngineChoice = useEngineChoice(gamedata.isValid ? root : null);
 
   const onVerify = useCallback(async () => {
     if (!root) {
@@ -40,12 +41,12 @@ export function GamedataVerifierApplication(): ReactElement {
 
     log.info("Verifying gamedata:", root);
 
-    await verifierService.verify({ engine: settingsService.engine, isStrict, root });
-  }, [isStrict, log, root, settingsService, verifierService]);
+    await verifierService.verify({ engine: engine.choice, isStrict, root });
+  }, [engine.choice, isStrict, log, root, verifierService]);
 
   useEffect(() => {
     verifierService.operation.reset();
-  }, [root, isStrict, verifierService]);
+  }, [engine.choice, root, isStrict, verifierService]);
 
   return (
     <JobPickerForm
@@ -71,6 +72,8 @@ export function GamedataVerifierApplication(): ReactElement {
         isDisabled={isRunning}
         onChange={setIsStrict}
       />
+
+      <EngineChoiceFormRow engine={engine} isDisabled={isRunning} />
     </JobPickerForm>
   );
 }

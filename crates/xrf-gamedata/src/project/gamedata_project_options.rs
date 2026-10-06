@@ -2,7 +2,7 @@ use std::collections::HashSet;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use xrf_engine_target::XrayEngine;
+use xrf_engine_target::XrayEngineChoice;
 use xrf_ltx::LtxDialect;
 use xrf_output::OutputOptions;
 
@@ -17,15 +17,15 @@ pub struct GamedataProjectReadOptions {
   pub is_tracing_reads: bool,
   /// Which rules resolve this project's configs.
   pub dialect: Arc<dyn LtxDialect>,
-  /// Which engine the tree is meant for, where the engines read the same configs differently.
-  pub engine: XrayEngine,
+  /// Which engine the tree is meant for, where the engines read the same configs differently; detected on `Auto`.
+  pub engine: XrayEngineChoice,
 }
 
 impl Default for GamedataProjectReadOptions {
   fn default() -> Self {
     Self {
       dialect: Arc::new(xrf_ltx::LtxStandardDialect),
-      engine: XrayEngine::default(),
+      engine: XrayEngineChoice::default(),
       ignored: Vec::new(),
       is_strict: false,
       is_tracing_reads: false,

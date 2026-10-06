@@ -5,7 +5,7 @@ import { Container, Injectable } from "@wirestate/core";
 import { runInAction } from "@wirestate/mobx";
 
 import { ELevelSpawnCategory, LevelSpawnObjectsDescription } from "@/core/ipc/types/xrf-app";
-import { EXrayEngine } from "@/core/ipc/types/xrf-engine-target";
+import { EXrayEngineChoice } from "@/core/ipc/types/xrf-engine-target";
 import { ILevelGoTo } from "@/core/level/lib/camera/level-camera-goto";
 import { ELevelPick } from "@/core/level/lib/pick/level-pick";
 import { EMPTY_LEVEL_SPAWN_REPORT } from "@/core/level/lib/spawn";
@@ -98,7 +98,7 @@ async function renderPanel(
     source: { kind: "asset", logicalPath: "levels\\zaton" },
     roots: level.roots,
     isDltx: false,
-    engine: EXrayEngine.VANILLA,
+    engine: EXrayEngineChoice.VANILLA,
   });
   await settle();
   arrange?.(container);
@@ -253,7 +253,7 @@ describe("LevelSpawnPanel", () => {
         source: { kind: "asset", logicalPath: "levels\\zaton" },
         roots: mockSelectedLevelDescription().roots,
         isDltx: false,
-        engine: EXrayEngine.VANILLA,
+        engine: EXrayEngineChoice.VANILLA,
       });
       await settle();
     });

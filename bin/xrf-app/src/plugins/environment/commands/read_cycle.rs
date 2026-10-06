@@ -7,6 +7,7 @@ use xrf_environment::{
 };
 use xrf_ltx::LtxProject;
 
+use crate::core::assets::{AssetMountState, detect_roots_engine};
 use crate::core::execution::ExecutionState;
 use crate::core::types::TauriResult;
 use crate::plugins::environment::catalog::{open_configs, read_catalog};
@@ -21,15 +22,18 @@ pub async fn environment_read_cycle(
   request: EnvironmentRequest,
   cycle: WeatherCycleId,
   state: State<'_, EnvironmentState>,
+  assets: State<'_, AssetMountState>,
   execution: State<'_, ExecutionState>,
 ) -> TauriResult<EnvironmentCycleDescription> {
   let held: Option<Arc<EnvironmentCatalog>> = state.get(&request);
   let read: EnvironmentRequest = request.clone();
+  let assets: AssetMountState = AssetMountState::clone(&assets);
   let (description, catalog) = execution
     .run_blocking("Reading a weather cycle", move || {
       let project: LtxProject = open_configs(&read.roots, select_ltx_dialect(read.is_dltx))?;
       // Findings about what the cycle names are the whole catalog's to find, so it is read where none is held.
-      let options: EnvironmentReadOptions = EnvironmentReadOptions::default().with_engine(read.engine);
+      let options: EnvironmentReadOptions = EnvironmentReadOptions::default()
+        .with_engine(read.engine.resolve(|| detect_roots_engine(&assets, &read.roots)).engine);
       let catalog: Arc<EnvironmentCatalog> = match held {
         Some(catalog) => catalog,
         None => Arc::new(read_catalog(&project, &options)?),

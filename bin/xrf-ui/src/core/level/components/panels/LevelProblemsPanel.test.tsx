@@ -2,7 +2,7 @@ import { describe, expect, it } from "@jest/globals";
 import { RenderResult, waitFor, within } from "@testing-library/react";
 import { Container } from "@wirestate/core";
 
-import { EXrayEngine } from "@/core/ipc/types/xrf-engine-target";
+import { EXrayEngineChoice } from "@/core/ipc/types/xrf-engine-target";
 import { RenderLoadFailure } from "@/core/ipc/types/xrf-renderer";
 import { EMPTY_LEVEL_TEXTURE_REPORT } from "@/core/level/lib/texture/level-texture-report";
 import { LevelLoadService, LevelViewportService } from "@/core/level/services";
@@ -48,7 +48,7 @@ async function renderProblems({ isPresent, unreadable }: IRenderProblemsOptions)
     source: { kind: "asset", logicalPath: "levels\\zaton" },
     roots: level.roots,
     isDltx: false,
-    engine: EXrayEngine.VANILLA,
+    engine: EXrayEngineChoice.VANILLA,
   });
   // The spawn is listed after the level opens; waited for, so the panel renders once with both.
   await waitFor(() => expect(service.spawnReport.isListed).toBe(true));

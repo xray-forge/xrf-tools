@@ -8,6 +8,7 @@ import {
   LevelTextureReference,
   SelectedLevelDescription,
 } from "@/core/ipc/types/xrf-app";
+import { EXrayEngine, EXrayEngineEvidence } from "@/core/ipc/types/xrf-engine-target";
 import { EClsId } from "@/core/ipc/types/xrf-spawn";
 import { SectorOutline } from "@/core/ipc/types/xrf-visual";
 import { ILevelFeatureOptions } from "@/core/level/lib/features/level-feature-options";
@@ -88,6 +89,7 @@ export function mockSelectedLevelDescription(
   return {
     bounds: mockVisualBounds(),
     drawables: 1,
+    engine: { engine: EXrayEngine.VANILLA, evidence: EXrayEngineEvidence.NAMED, subject: null },
     sun: null,
     hasSun: true,
     lights: 2,

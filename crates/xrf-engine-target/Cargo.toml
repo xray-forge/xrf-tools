@@ -8,6 +8,7 @@ rust-version.workspace = true
 [dependencies]
 serde = { workspace = true }
 specta = { workspace = true, optional = true }
+xrf-vfs = { workspace = true }
 
 [features]
 # Emits TypeScript mirrors of the serialized types. Nothing in a normal build turns this on.
@@ -15,6 +16,7 @@ typescript-bindings = ["specta"]
 
 [dev-dependencies]
 serde_json = { workspace = true }
+xrf-test-utils = { workspace = true }
 
 [lints]
 workspace = true

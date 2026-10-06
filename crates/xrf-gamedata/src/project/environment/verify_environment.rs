@@ -32,7 +32,7 @@ impl GamedataProject {
 
     let started_at: Instant = Instant::now();
     let read: EnvironmentReadOptions = EnvironmentReadOptions::default()
-      .with_engine(self.engine)
+      .with_engine(self.engine.engine)
       .with_job(options.job.clone());
     let catalog: EnvironmentCatalog = EnvironmentReader::read_opt(&self.ltx_project, &read)?;
 
@@ -69,7 +69,7 @@ impl GamedataProject {
     xrf_output::info!(
       options.output,
       "Verified environment configs as {} in {}, {}/{} valid",
-      self.engine,
+      self.engine.engine,
       xrf_utils::format_duration(duration),
       checked_configs_count - invalid_configs_count,
       checked_configs_count
