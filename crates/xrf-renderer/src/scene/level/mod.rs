@@ -18,6 +18,7 @@ pub(crate) mod level_loader;
 pub(crate) mod level_object_motions;
 pub(crate) mod level_overlays;
 pub(crate) mod level_particles;
+pub(crate) mod level_scene;
 pub(crate) mod level_shadows;
 pub(crate) mod level_smoothing;
 pub(crate) mod level_view;
