@@ -131,8 +131,9 @@ export const DEFAULT_RENDER_INDIRECT_LIGHT_SETTINGS: TRenderIndirectLightSetting
   radius: 3,
 };
 
-/** The engine's own wetting; enhanced, puddles over most of level terrain, taking up to 40% reflection. */
+/** The engine's own wetting; enhanced, puddles over most of level terrain to 120 m, taking up to 40% reflection. */
 export const DEFAULT_RENDER_RAIN_SETTINGS: TRenderRainSettings = {
+  distance: 120,
   mode: ERenderRainMode.ENGINE,
   puddles: 0.8,
   reflectivity: 0.4,

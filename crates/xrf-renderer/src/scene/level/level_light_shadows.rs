@@ -19,6 +19,7 @@ use crate::lighting::light_shadow_size::{
 };
 use crate::pass::camera_uniform::CameraUniform;
 use crate::pass::level_passes::LevelPasses;
+use crate::pass::shadow_cull::ShadowCull;
 use crate::pass::static_cull_parameters::StaticCullParameters;
 use crate::pass::static_cull_params::StaticCullParams;
 use crate::pass::static_draw_parameters::StaticDrawParameters;
@@ -405,7 +406,7 @@ impl LevelLightShadows {
           for (slot, cull) in &culls {
             passes
               .cull
-              .record_shadow(context, &self.views[*slot], cull, params, true);
+              .record_shadow(context, &self.views[*slot], cull, params, ShadowCull::LightFace);
           }
         }
       });

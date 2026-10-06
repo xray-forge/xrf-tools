@@ -165,19 +165,16 @@ fn blends_reflections_in_only_where_traced() {
   assert_eq!(present(None).is_reflected, 0);
 }
 
-// Each step up the ladder takes more steps and lands nearer behind a surface to count; only the top two halve back,
-// and only Ultra traces at the frame's own size.
+// Each step up the ladder lets a ray cross more of the depth pyramid's cells, and only Ultra traces at the frame's own
+// size.
 #[test]
 fn climbs_the_quality_ladder() {
-  let steps: Vec<u32> = RenderReflectionQuality::ALL.iter().map(|it| it.get_steps()).collect();
-  let limits: Vec<f32> = RenderReflectionQuality::ALL.iter().map(|it| it.get_limit()).collect();
+  let crossings: Vec<u32> = RenderReflectionQuality::ALL
+    .iter()
+    .map(|it| it.get_crossings())
+    .collect();
 
-  assert!(steps.windows(2).all(|pair| pair[0] < pair[1]));
-  assert!(limits.windows(2).all(|pair| pair[0] > pair[1]));
-  assert_eq!(
-    RenderReflectionQuality::ALL.map(RenderReflectionQuality::is_refined),
-    [false, false, true, true]
-  );
+  assert!(crossings.windows(2).all(|pair| pair[0] < pair[1]));
   assert_eq!(
     RenderReflectionQuality::ALL.map(RenderReflectionQuality::get_ratio),
     [2, 2, 2, 1]
@@ -186,11 +183,10 @@ fn climbs_the_quality_ladder() {
 
 #[test]
 fn writes_the_settings_the_trace_reads() {
-  let high: ReflectionUniform = ReflectionUniform::new(&enhanced(), true);
+  let high: ReflectionUniform = ReflectionUniform::new(&enhanced(), 7, true);
 
-  assert_eq!(high.steps, RenderReflectionQuality::High.get_steps());
-  assert_eq!(high.limit, RenderReflectionQuality::High.get_limit());
-  assert_eq!(high.is_refined, 1.0);
+  assert_eq!(high.crossings, RenderReflectionQuality::High.get_crossings());
+  assert_eq!(high.frame, 7);
   assert_eq!(high.ratio, 2.0);
   assert_eq!(high.has_history, 1.0);
   assert_eq!(high.distance, 150.0);
@@ -201,6 +197,7 @@ fn writes_the_settings_the_trace_reads() {
       quality: RenderReflectionQuality::Ultra,
       ..enhanced()
     },
+    0,
     false,
   );
 

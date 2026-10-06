@@ -34,4 +34,6 @@ pub struct CombineParameters<'a> {
   pub indirect_light: GraphTexture,
   #[texture(d2, unfilterable)]
   pub reflections: GraphTexture,
+  #[texture(d2, unfilterable)]
+  pub wet_surface: GraphTexture,
 }

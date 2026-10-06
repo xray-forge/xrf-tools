@@ -134,6 +134,10 @@ const EMBEDDED: &[(&str, &str)] = &[
   ("frame/present", include_str!("../../shaders/frame/present.wgsl")),
   ("frame/pyramid", include_str!("../../shaders/frame/pyramid.wgsl")),
   (
+    "frame/surface_mask",
+    include_str!("../../shaders/frame/surface_mask.wgsl"),
+  ),
+  (
     "frame/reflections",
     include_str!("../../shaders/frame/reflections.wgsl"),
   ),
@@ -237,6 +241,10 @@ const EMBEDDED: &[(&str, &str)] = &[
   (
     "generated/frame/pyramid",
     include_str!("../../shaders/generated/frame/pyramid.wgsl"),
+  ),
+  (
+    "generated/frame/surface_mask",
+    include_str!("../../shaders/generated/frame/surface_mask.wgsl"),
   ),
   (
     "generated/frame/bloom",

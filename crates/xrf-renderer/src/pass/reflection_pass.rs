@@ -9,9 +9,10 @@ use crate::pass::sky_parameters::SkyParameters;
 use crate::pass::view_binding::ViewBinding;
 use crate::shader::shader_library::ShaderLibrary;
 
-/// Screen-space reflections at the size their quality traces at: each reflecting pixel's ray marched over the frame's
-/// depth and what it met lit, blended with the last frame's into the view's history, then blurred twice into what
-/// combine reads.
+/// Stochastic screen-space reflections at the size their quality traces at: each glossy pixel's ray scattered by its
+/// roughness and walked up and down the frame's nearest depth pyramid, what it met lit; then denoised, the last frame's
+/// reflection reprojected, an eighth-size average taken, filtered across the surface and resolved over time into the
+/// view's history, which combine reads.
 pub struct ReflectionPass {
   layout: wgpu::BindGroupLayout,
   view_layout: wgpu::BindGroupLayout,
@@ -21,22 +22,36 @@ pub struct ReflectionPass {
   empty: wgpu::TextureView,
   /// What combine and the debug view read where nothing is traced: one texel marked untraced.
   untraced: wgpu::TextureView,
+  /// The history's bilinear reads.
+  sampler: wgpu::Sampler,
   generation: u64,
 }
 
-/// The trace, the blend over frames and the two blurs.
+/// The trace and the denoiser's four stages.
 struct ReflectionPipelines {
   trace: wgpu::RenderPipeline,
-  accumulate: wgpu::RenderPipeline,
-  blur: wgpu::RenderPipeline,
-  fine_blur: wgpu::RenderPipeline,
+  reproject: wgpu::RenderPipeline,
+  average: wgpu::RenderPipeline,
+  prefilter: wgpu::RenderPipeline,
+  resolve: wgpu::RenderPipeline,
 }
 
 impl ReflectionPass {
-  /// What the trace writes and the blurs leave: what is reflected, then one, below none where only the sky is.
+  /// The denoiser's stages, by their entry points.
+  pub const REPROJECT: &'static str = "fs_reproject";
+  pub const AVERAGE_STAGE: &'static str = "fs_average";
+  pub const PREFILTER: &'static str = "fs_prefilter";
+  pub const RESOLVE: &'static str = "fs_resolve";
+  /// What the trace writes: what is reflected, then the ray's length in metres, below none where nothing is traced.
   pub const TRACED: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
-  /// How far along the view each ray's hit lies, in metres, nothing where it met none.
-  pub const DEPTH: wgpu::TextureFormat = wgpu::TextureFormat::R32Float;
+  /// The reprojected history, then how many frames it holds; and its variance.
+  pub const REPROJECTED: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
+  pub const VARIANCE: wgpu::TextureFormat = wgpu::TextureFormat::R32Float;
+  /// The eighth-size average, and the prefiltered reflection, then its variance.
+  pub const AVERAGE: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
+  pub const PREFILTERED: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
+  /// Traced pixels a side each texel of the average stands for.
+  pub const AVERAGE_RATIO: u32 = 8;
 
   /// # Errors
   ///
@@ -80,6 +95,12 @@ impl ReflectionPass {
       sky_layout: sky_layout.clone(),
       empty: texel("reflections empty", 0),
       untraced: texel("reflections none", 0xbc00),
+      sampler: device.create_sampler(&wgpu::SamplerDescriptor {
+        label: Some("reflection history"),
+        mag_filter: wgpu::FilterMode::Linear,
+        min_filter: wgpu::FilterMode::Linear,
+        ..Default::default()
+      }),
       generation: shaders.get_generation(),
       layout,
     })
@@ -106,6 +127,11 @@ impl ReflectionPass {
     &self.untraced
   }
 
+  /// The history's bilinear sampler.
+  pub fn get_sampler(&self) -> &wgpu::Sampler {
+    &self.sampler
+  }
+
   /// Traces every reflecting pixel's ray into the targets the pass draws into.
   pub fn record_trace(
     &self,
@@ -124,28 +150,19 @@ impl ReflectionPass {
     pass.draw(0..3, 0..1);
   }
 
-  /// Blends the trace with the last frame's reflections into this frame's.
-  pub fn record_accumulate(
+  /// Draws one of the denoiser's stages into the targets the pass draws into.
+  pub fn record_stage(
     &self,
     context: &mut RasterContext<'_>,
     view: &ViewBinding,
     parameters: &ReflectionParameters<'_>,
+    stage: &str,
   ) {
-    Self::draw(context, &self.pipelines.accumulate, view, parameters);
-  }
-
-  /// Blurs the reflections, its taps a traced pixel apart, or a frame's pixel apart where `is_fine`.
-  pub fn record_blur(
-    &self,
-    context: &mut RasterContext<'_>,
-    view: &ViewBinding,
-    parameters: &ReflectionParameters<'_>,
-    is_fine: bool,
-  ) {
-    let pipeline: &wgpu::RenderPipeline = if is_fine {
-      &self.pipelines.fine_blur
-    } else {
-      &self.pipelines.blur
+    let pipeline: &wgpu::RenderPipeline = match stage {
+      Self::REPROJECT => &self.pipelines.reproject,
+      Self::AVERAGE_STAGE => &self.pipelines.average,
+      Self::PREFILTER => &self.pipelines.prefilter,
+      _ => &self.pipelines.resolve,
     };
 
     Self::draw(context, pipeline, view, parameters);
@@ -214,14 +231,19 @@ impl ReflectionPass {
     };
 
     Ok(ReflectionPipelines {
-      trace: create(&traced_layout, "fs_trace", &[Self::TRACED, Self::DEPTH])?,
-      accumulate: create(
+      trace: create(&traced_layout, "fs_trace", &[Self::TRACED])?,
+      reproject: create(&stage_layout, Self::REPROJECT, &[Self::REPROJECTED, Self::VARIANCE])?,
+      average: create(&stage_layout, Self::AVERAGE_STAGE, &[Self::AVERAGE])?,
+      prefilter: create(&stage_layout, Self::PREFILTER, &[Self::PREFILTERED])?,
+      resolve: create(
         &stage_layout,
-        "fs_accumulate",
-        &[ReflectionHistory::COLOUR_FORMAT, ReflectionHistory::HELD_FORMAT],
+        Self::RESOLVE,
+        &[
+          ReflectionHistory::RADIANCE_FORMAT,
+          ReflectionHistory::SURFACE_FORMAT,
+          ReflectionHistory::HELD_FORMAT,
+        ],
       )?,
-      blur: create(&stage_layout, "fs_blur", &[Self::TRACED])?,
-      fine_blur: create(&stage_layout, "fs_blur_fine", &[Self::TRACED])?,
     })
   }
 }

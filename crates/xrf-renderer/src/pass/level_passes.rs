@@ -26,6 +26,7 @@ use crate::pass::static_gbuffer_pass::StaticGBufferPass;
 use crate::pass::static_shadow_pass::StaticShadowPass;
 use crate::pass::sun_pass::SunPass;
 use crate::pass::sun_shafts_pass::SunShaftsPass;
+use crate::pass::surface_mask_pass::SurfaceMaskPass;
 use crate::pass::temporal_pass::TemporalPass;
 use crate::pass::thunder_pass::ThunderPass;
 use crate::pass::upscale_pass::UpscalePass;
@@ -40,6 +41,7 @@ pub struct LevelPasses<'a> {
   pub gbuffer: &'a StaticGBufferPass,
   pub shadow: &'a StaticShadowPass,
   pub pyramid: &'a DepthPyramidPass,
+  pub surface_mask: &'a SurfaceMaskPass,
   pub contact_shadows: &'a ContactShadowPass,
   pub sun: &'a SunPass,
   pub ambient_occlusion: &'a AmbientOcclusionPass,

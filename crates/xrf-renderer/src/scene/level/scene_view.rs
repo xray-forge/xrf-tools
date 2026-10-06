@@ -121,7 +121,9 @@ use crate::pass::vbao_pass::VbaoPass;
 use crate::pass::vbao_uniform::VbaoUniform;
 use crate::pass::view_binding::ViewBinding;
 use crate::pass::water_draw::WaterDraw;
+use crate::pass::water_uniform::WaterUniform;
 use crate::pass::wet_apply_parameters::WetApplyParameters;
+use crate::pass::wet_pass::WetPass;
 use crate::pass::wet_patch_parameters::WetPatchParameters;
 use crate::pass::wet_uniform::WetUniform;
 use crate::pass::wind_uniform::WindUniform;
@@ -129,6 +131,7 @@ use crate::scene::level::grass_level::GrassLevel;
 use crate::scene::level::level_frame::LevelFrame;
 use crate::scene::level::level_overlays::LevelOverlays;
 use crate::scene::level::level_scene::LevelScene;
+use crate::scene::level::level_surface::LevelSurface;
 use crate::scene::level::level_water::WaterFrame;
 use crate::scene::level::lighting_handles::LightingHandles;
 use crate::scene::level::lights_frame::LightsFrame;
@@ -536,6 +539,19 @@ impl SceneView {
 
     self.write_present(options, scene.started.elapsed().as_secs_f32());
     self.prepare_shadows(scene, device, queue, encoder, (view_layout, textures));
+    self.follow_overhead_maps();
+  }
+
+  /// Writes where the rain cover and the level's surface now stand into what reads them, once `prepare_shadows` has
+  /// moved them: written before, a frame redrawing one would read it through where it stood the frame before.
+  fn follow_overhead_maps(&mut self) {
+    let cover: Vec4 = self.renderer.rain_cover.get_window();
+    let (surface, surface_shape): (Vec4, Vec4) = self.renderer.level_surface.get_window();
+
+    self.info.rain.window = cover;
+    self.info.wet.window = cover;
+    self.info.wet.surface = surface;
+    self.info.wet.surface_shape = surface_shape;
   }
 
   /// Readies this frame's shadows, sun, rain cover and lights, which the frame's passes then draw; `encoder` takes
@@ -550,7 +566,10 @@ impl SceneView {
   ) {
     let SceneView { info, renderer, .. } = self;
     let SceneRenderer {
-      shadows, rain_cover, ..
+      shadows,
+      rain_cover,
+      level_surface,
+      ..
     } = renderer;
     let statics: &StaticScene = &scene.statics;
     let frame: ShadowFrame<'_> = ShadowFrame {
@@ -567,6 +586,10 @@ impl SceneView {
 
     if info.rain_draw.is_some() || info.is_wet {
       rain_cover.prepare(device, queue, encoder, &frame);
+    }
+
+    if info.is_wet && info.wet.is_enhanced > 0.5 {
+      level_surface.prepare(device, queue, encoder, &frame);
     }
   }
 
@@ -671,7 +694,7 @@ impl SceneView {
         graph.add_compute_pass("depth pyramid").parameters(&first),
         |builder, level| builder.parameters(level),
       )
-      .record(move |context| passes.pyramid.record(context, pyramid, (&first, &levels)));
+      .record(move |context| passes.pyramid.record(context, pyramid, (&first, &levels), false));
     graph
       .add_encoder_pass("late cull dispatch")
       .buffer(late, GraphBufferAccess::CopySource)
@@ -1057,94 +1080,166 @@ impl SceneView {
     );
   }
 
-  /// Declares the screen-space reflections while they are traced: the depth reduced to its nearest at the quality's
-  /// size, every glossy pixel's ray marched over it, accumulated with the last frame's into the view's history, and filtered.
-  /// Answers the reflections filtered, none where they are not traced.
+  /// Declares the screen-space reflections while they are traced: the depth reduced to its nearest level by level,
+  /// every glossy pixel's ray walked over it, then the last frame's reflection reprojected, an eighth-size average, the
+  /// trace filtered across the surface and resolved over time into the view's history. Answers the history written,
+  /// none where they are not traced.
   fn add_reflection_passes<'a>(
     &'a self,
     (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
     passes: LevelPasses<'a>,
     view: &'a ViewBinding,
-    (targets, lit): (ViewTargetHandles, LightingHandles<'a>),
+    (targets, lit, wet_surface): (ViewTargetHandles, LightingHandles<'a>, GraphTexture),
     sky: &SkyParameters<'a>,
   ) -> Option<GraphTexture> {
     self.info.reflection?;
 
-    let history: &ReflectionHistory = self.state.reflections.as_ref()?;
+    let history: &'a ReflectionHistory = self.state.reflections.as_ref()?;
     let sky: SkyParameters<'a> = *sky;
     let reflection: UniformBinding<ReflectionUniform> = runtime.push_uniform(&self.info.reflections);
     let empty: GraphTexture = bindings.import_view(graph, "reflections empty", passes.reflections.get_empty());
+    let blue_noise: GraphTexture =
+      bindings.import_view(graph, "reflection blue noise", &passes.water.get_maps().blue_noise);
+    let pyramid: &'a DepthPyramid = &history.pyramid;
+    let level_views: Vec<GraphTexture> = pyramid
+      .level_views
+      .iter()
+      .map(|level| bindings.import_view(&mut *graph, "nearest depth level", level))
+      .collect();
+    let nearest_depth: GraphTexture = bindings.import_view(graph, "nearest depth pyramid", &pyramid.view);
+    let first: PyramidDepthParameters = PyramidDepthParameters {
+      source_depth: targets.depth,
+      target_level: level_views[0],
+    };
+    let levels: Vec<PyramidLevelParameters> = level_views
+      .windows(2)
+      .map(|pair| PyramidLevelParameters {
+        source_level: pair[0],
+        target_level: pair[1],
+      })
+      .collect();
+
+    levels
+      .iter()
+      .fold(
+        graph.add_compute_pass(ReflectionTrace::PYRAMID_PASS).parameters(&first),
+        |builder, level| builder.parameters(level),
+      )
+      .record(move |context| passes.pyramid.record(context, pyramid, (&first, &levels), true));
+
     let (width, height) = history.get_size();
-    let mut create = |label: &'static str, format: wgpu::TextureFormat| -> GraphTexture {
+    let ratio: u32 = ReflectionPass::AVERAGE_RATIO;
+    let mut create = |label: &'static str, (width, height): (u32, u32), format: wgpu::TextureFormat| -> GraphTexture {
       graph.create_texture(GraphTextureDescriptor::new_2d(label, width, height, format))
     };
-    let traced: GraphTexture = create("reflections traced", ReflectionPass::TRACED);
-    let traced_depth: GraphTexture = create("reflections depth", ReflectionPass::DEPTH);
-    let blurred: GraphTexture = create("reflections blurred", ReflectionPass::TRACED);
-    let reflected: GraphTexture = create("reflections", ReflectionPass::TRACED);
-    // What a stage reads: the stage before's result and its hits' depths, and the last frame's reflections.
-    let parameters = |(source, depths): (GraphTexture, GraphTexture),
-                      (previous, held): (GraphTexture, GraphTexture)| {
-      ReflectionParameters {
-        albedo_target: targets.albedo,
-        normal_target: targets.normal,
-        material_target: targets.material,
-        depth_target: targets.depth,
-        light_target: targets.light,
-        occlusion_target: targets.occlusion[0],
-        material_lut: lit.material_lut,
-        lut_sampler: lit.lut_sampler,
-        lighting: lit.lighting,
-        reflection,
-        traced: source,
-        traced_depth: depths,
-        history: previous,
-        history_held: held,
-      }
+    let traced: GraphTexture = create("reflections traced", (width, height), ReflectionPass::TRACED);
+    let reprojected: GraphTexture = create("reflections reprojected", (width, height), ReflectionPass::REPROJECTED);
+    let variance: GraphTexture = create("reflections variance", (width, height), ReflectionPass::VARIANCE);
+    let average: GraphTexture = create(
+      "reflections average",
+      (width.div_ceil(ratio), height.div_ceil(ratio)),
+      ReflectionPass::AVERAGE,
+    );
+    let prefiltered: GraphTexture = create("reflections prefiltered", (width, height), ReflectionPass::PREFILTERED);
+    let index: usize = history.index;
+    let mut import_pair = |label: &'static str, views: &'a [wgpu::TextureView; 2]| -> [GraphTexture; 2] {
+      [1 - index, index].map(|at| bindings.import_view(&mut *graph, label, &views[at]))
+    };
+    let [previous, written] = import_pair("reflection history", &history.radiance_views);
+    let [previous_surface, written_surface] = import_pair("reflection history surface", &history.surface_views);
+    let [previous_held, written_held] = import_pair("reflection history held", &history.held_views);
+    let parameters: ReflectionParameters = ReflectionParameters {
+      albedo_target: targets.albedo,
+      normal_target: targets.normal,
+      material_target: targets.material,
+      depth_target: targets.depth,
+      light_target: targets.light,
+      occlusion_target: targets.occlusion[0],
+      wet_surface,
+      material_lut: lit.material_lut,
+      lut_sampler: lit.lut_sampler,
+      lighting: lit.lighting,
+      reflection,
+      nearest_depth,
+      blue_noise,
+      traced: empty,
+      reprojected: empty,
+      variance: empty,
+      average: empty,
+      prefiltered: empty,
+      history_radiance: previous,
+      history_surface: previous_surface,
+      history_held: previous_held,
+      history_sampler: passes.reflections.get_sampler(),
     };
     let clear = |target: GraphTexture| GraphColorAttachment::new(target, wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT));
-    let tracing: ReflectionParameters = parameters((empty, empty), (empty, empty));
 
     graph
       .add_raster_pass(ReflectionTrace::TRACE_PASS)
-      .parameters(&tracing)
+      .parameters(&parameters)
       .parameters(&sky)
       .color(clear(traced))
-      .color(clear(traced_depth))
-      .record(move |context| passes.reflections.record_trace(context, view, &tracing, &sky));
+      .record(move |context| passes.reflections.record_trace(context, view, &parameters, &sky));
 
-    let index: usize = history.index;
-    let [previous, written] =
-      [1 - index, index].map(|at| bindings.import_view(&mut *graph, "reflection history", &history.colour_views[at]));
-    let [previous_held, written_held] = [1 - index, index]
-      .map(|at| bindings.import_view(&mut *graph, "reflection history held", &history.held_views[at]));
-    let accumulating: ReflectionParameters = parameters((traced, traced_depth), (previous, previous_held));
+    // Each stage, what it reads beside the G-buffer and the history, and what it writes.
+    let stages: [(&'static str, &'static str, ReflectionParameters<'a>, Vec<GraphTexture>); 4] = [
+      (
+        ReflectionTrace::REPROJECT_PASS,
+        ReflectionPass::REPROJECT,
+        ReflectionParameters { traced, ..parameters },
+        vec![reprojected, variance],
+      ),
+      (
+        ReflectionTrace::AVERAGE_PASS,
+        ReflectionPass::AVERAGE_STAGE,
+        ReflectionParameters {
+          traced,
+          reprojected,
+          ..parameters
+        },
+        vec![average],
+      ),
+      (
+        ReflectionTrace::PREFILTER_PASS,
+        ReflectionPass::PREFILTER,
+        ReflectionParameters {
+          traced,
+          variance,
+          average,
+          ..parameters
+        },
+        vec![prefiltered],
+      ),
+      (
+        ReflectionTrace::RESOLVE_PASS,
+        ReflectionPass::RESOLVE,
+        ReflectionParameters {
+          traced,
+          reprojected,
+          variance,
+          average,
+          prefiltered,
+          ..parameters
+        },
+        vec![written, written_surface, written_held],
+      ),
+    ];
 
-    graph
-      .add_raster_pass(ReflectionTrace::ACCUMULATE_PASS)
-      .parameters(&accumulating)
-      .color(clear(written))
-      .color(clear(written_held))
-      .record(move |context| passes.reflections.record_accumulate(context, view, &accumulating));
-
-    for (name, (source, target), is_fine) in [
-      (ReflectionTrace::BLUR_PASS, (written, blurred), false),
-      (ReflectionTrace::FINE_BLUR_PASS, (blurred, reflected), true),
-    ] {
-      let blurring: ReflectionParameters = parameters((source, empty), (empty, empty));
-
-      graph
-        .add_raster_pass(name)
-        .parameters(&blurring)
-        .color(clear(target))
-        .record(move |context| passes.reflections.record_blur(context, view, &blurring, is_fine));
+    for (name, stage, stage_parameters, outputs) in stages {
+      outputs
+        .into_iter()
+        .fold(
+          graph.add_raster_pass(name).parameters(&stage_parameters),
+          |builder, output| builder.color(clear(output)),
+        )
+        .record(move |context| passes.reflections.record_stage(context, view, &stage_parameters, stage));
     }
 
-    Some(reflected)
+    Some(written)
   }
 
-  /// Makes the history at the size the reflections trace at while they are traced, dropping it otherwise, and writes
-  /// what their passes read.
+  /// Makes the history at the size the reflections trace at, and the pyramid over the frame's depth, while they are
+  /// traced, dropping them otherwise, and writes what their passes read.
   fn prepare_reflections(&mut self, device: &wgpu::Device, (width, height): (u32, u32)) {
     let Some(trace) = self.info.reflection else {
       self.state.reflections = None;
@@ -1152,20 +1247,24 @@ impl SceneView {
       return;
     };
     let ratio: u32 = trace.get_ratio();
-    let (traced_width, traced_height) = (width.div_ceil(ratio), height.div_ceil(ratio));
+    let traced: (u32, u32) = (width.div_ceil(ratio), height.div_ceil(ratio));
 
     if !self
       .state
       .reflections
       .as_ref()
-      .is_some_and(|it| it.is_sized(traced_width, traced_height))
+      .is_some_and(|it| it.is_sized(traced, (width, height)))
     {
-      self.state.reflections = Some(ReflectionHistory::new(device, traced_width, traced_height));
+      self.state.reflections = Some(ReflectionHistory::new(device, traced, (width, height)));
     }
 
-    let has_history: bool = self.state.reflections.as_ref().is_some_and(|it| it.is_valid);
+    let (frame, has_history): (u32, bool) = self
+      .state
+      .reflections
+      .as_ref()
+      .map_or((0, false), |it| (it.frame, it.is_valid));
 
-    self.info.reflections = ReflectionUniform::new(&self.info.reflection_settings, has_history);
+    self.info.reflections = ReflectionUniform::new(&self.info.reflection_settings, frame, has_history);
   }
 
   /// Adds the enhanced fog's scattering over the scene: the blurs to a quarter and to half its size, the scattering
@@ -1516,11 +1615,12 @@ impl SceneView {
     } else {
       10.0
     };
-    let wetness: f32 = self.state.wetness.advance(
-      time,
-      lighting.rain.map_or(0.0, |rain| rain.density),
-      weather_rate / time_factor,
-    );
+    let density: f32 = lighting.rain.map_or(0.0, |rain| rain.density);
+    let wetness: f32 = self.state.wetness.advance(time, density, weather_rate / time_factor);
+    let (fill, storm): (f32, f32) = self
+      .state
+      .puddle_fill
+      .advance(time, density, weather_rate / time_factor);
     let falling: Option<RainUniform> = lighting.rain.filter(|_| options.mode.is_lit).and_then(|rainfall| {
       self.prepare_falling_rain(device, (lighting, weather), (&rainfall, gust, time), weather_textures)
     });
@@ -1528,7 +1628,7 @@ impl SceneView {
     self.prepare_wet(
       (lighting, weather),
       options,
-      (falling.as_ref(), time, wetness),
+      (falling.as_ref(), time, wetness, (fill, storm)),
       weather_textures,
     );
   }
@@ -1579,13 +1679,13 @@ impl SceneView {
     &mut self,
     (lighting, weather): (&RenderLighting, Option<&Arc<RenderLevelWeather>>),
     options: &RenderViewOptions,
-    (falling, time, wetness): (Option<&RainUniform>, f32, f32),
+    (falling, time, wetness, (fill, storm)): (Option<&RainUniform>, f32, f32, (f32, f32)),
     weather_textures: &WeatherTextureCache,
   ) {
     let settings: RenderRainSettings = options.features.rain;
     let is_enhanced: bool = settings.is_enhanced();
 
-    if !options.mode.is_lit || (falling.is_none() && !(is_enhanced && wetness > 0.0)) {
+    if !options.mode.is_lit || (falling.is_none() && !(is_enhanced && wetness.max(fill) > 0.0)) {
       return;
     }
 
@@ -1599,7 +1699,10 @@ impl SceneView {
       is_extended: (lighting.engine == XrayEngine::Extended) as u32 as f32,
       is_enhanced: f32::from(u8::from(is_enhanced)),
       window: falling.map_or_else(|| self.renderer.rain_cover.get_window(), |uniform| uniform.window),
+      surface: self.renderer.level_surface.get_window().0,
+      surface_shape: self.renderer.level_surface.get_window().1,
       puddles: Vec4::new(wetness, settings.puddles, settings.reflectivity, settings.ripples),
+      puddle_state: Vec4::new(settings.distance.max(0.0), fill, storm, 0.0),
     };
     self.info.weather_views.wet = Some([
       weather_textures
@@ -1882,8 +1985,32 @@ impl SceneView {
         passes,
         (&statics, cover),
         (&scene_view.info.cull, texture_group),
+        None,
       );
     }
+
+    // The level's surface seen from overhead, its lowest heights, its puddle sites and its water, which the enhanced
+    // wetting places its puddles by.
+    let [surface_lowest, puddle_sites, surface_water]: [GraphTexture; 3] =
+      if is_wet && scene_view.info.wet.is_enhanced > 0.5 {
+        let water: UniformBinding<WaterUniform> = runtime.push_uniform(scene_view.state.water.get_uniform());
+
+        scene_view.renderer.level_surface.add_passes(
+          (&mut *graph, &mut *bindings, runtime),
+          passes,
+          &statics,
+          (&scene_view.info.cull, texture_group),
+          water,
+        )
+      } else {
+        let surface: &LevelSurface = &scene_view.renderer.level_surface;
+
+        [
+          bindings.import_view(&mut *graph, "level surface lowest", &surface.lowest),
+          bindings.import_view(&mut *graph, "puddle sites", &surface.sites),
+          bindings.import_view(&mut *graph, "level water", &surface.water.depth),
+        ]
+      };
 
     if frame.is_scene_first {
       scene.lights.add_shadow_passes(
@@ -1896,6 +2023,10 @@ impl SceneView {
 
     graph.begin_group("lighting");
 
+    // The wet surface the enhanced patch writes, which the reflections and combine read; a texel of nothing otherwise.
+    let mut wet_surface: GraphTexture =
+      bindings.import_view(&mut *graph, "wet surface none", passes.reflections.get_empty());
+
     // The rain wets the G-buffer before any light is drawn over it.
     if let (Some(cover), Some(wet), Some([splash, flow])) = (cover, wet, &scene_view.info.weather_views.wet) {
       let is_enhanced: bool = scene_view.info.wet.is_enhanced > 0.5;
@@ -1906,6 +2037,9 @@ impl SceneView {
         normal_target: handles.normal,
         material_target: handles.material,
         cover,
+        surface_lowest,
+        puddle_sites,
+        surface_water,
         splash: bindings.import_view(&mut *graph, "wet splash", splash),
         flow: bindings.import_view(&mut *graph, "wet flow", flow),
         ripples: bindings.import_view(&mut *graph, "wet ripples", &maps.ripples),
@@ -1921,12 +2055,33 @@ impl SceneView {
         wet,
       };
 
-      // The patches go into the light, which the wet look over the normals and the albedo then reads.
-      graph
+      // The patches go into the light, which the wet look over the normals and the albedo then reads; the enhanced
+      // patch's wet surface beside them.
+      if is_enhanced {
+        let (width, height) = handles.size;
+
+        wet_surface = graph.create_texture(GraphTextureDescriptor::new_2d(
+          "wet surface",
+          width,
+          height,
+          WetPass::SURFACE,
+        ));
+      }
+
+      let builder = graph
         .add_raster_pass("wet patch")
         .parameters(&patch)
-        .color(GraphColorAttachment::new(handles.light, wgpu::LoadOp::Load))
-        .record(move |context| passes.wet.record(context, (0, is_enhanced), view, &patch));
+        .color(GraphColorAttachment::new(handles.light, wgpu::LoadOp::Load));
+      let builder = if is_enhanced {
+        builder.color(GraphColorAttachment::new(
+          wet_surface,
+          wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+        ))
+      } else {
+        builder
+      };
+
+      builder.record(move |context| passes.wet.record(context, (0, is_enhanced), view, &patch));
 
       for (stage, (name, target)) in [("wet normal", handles.normal), ("wet albedo", handles.albedo)]
         .into_iter()
@@ -1982,7 +2137,7 @@ impl SceneView {
           (&mut *graph, &mut *bindings, runtime),
           passes,
           view,
-          (handles, lit),
+          (handles, lit, wet_surface),
           &sky,
         );
 
@@ -2000,6 +2155,7 @@ impl SceneView {
           haze_map: handles.haze,
           indirect_light: indirect_light.unwrap_or(unlit),
           reflections: reflections.unwrap_or(untraced),
+          wet_surface,
         };
 
         graph

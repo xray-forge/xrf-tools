@@ -5,7 +5,12 @@ import { ReactElement, useCallback } from "react";
 import { ERenderRainMode } from "@/core/ipc/types/xrf-renderer";
 import { ILevelFeatureOptions, TLevelRainOptions } from "@/core/level/lib/features";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
-import { explainRenderRainMode, formatRainShare, RENDER_RAIN_LIMITS } from "@/core/render/lib/features";
+import {
+  explainRenderRainMode,
+  formatGrassRadius,
+  formatRainShare,
+  RENDER_RAIN_LIMITS,
+} from "@/core/render/lib/features";
 import { TRenderRainSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { EditorPopoverToggle } from "@/core/shell/editor/EditorPopoverToggle";
 import { BaseComponentProps } from "@/lib/dom/element-types";
@@ -45,8 +50,8 @@ export function LevelWetSurfacesAction({
       label={"Wet surfaces"}
       description={
         isEnhanced
-          ? `Wet surfaces and puddles, ${formatRainShare(value.puddles)} of flat ground, ` +
-            `${formatRainShare(value.reflectivity)} reflective`
+          ? `Wet surfaces and puddles, ${formatRainShare(value.puddles)} of flat ground to ` +
+            `${formatGrassRadius(value.distance)}, ${formatRainShare(value.reflectivity)} reflective`
           : "The engine's splashes"
       }
       icon={<OpacityIcon />}
@@ -72,6 +77,14 @@ export function LevelWetSurfacesAction({
             {...RENDER_RAIN_LIMITS.reflectivity}
             format={formatRainShare}
             onChange={(reflectivity: number) => set({ reflectivity })}
+          />
+
+          <RenderValueSlider
+            label={"Distance"}
+            value={value.distance}
+            {...RENDER_RAIN_LIMITS.distance}
+            format={formatGrassRadius}
+            onChange={(distance: number) => set({ distance })}
           />
 
           <RenderValueSlider

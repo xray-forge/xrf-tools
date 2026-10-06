@@ -65,11 +65,33 @@ fn sky_behind(direction: vec3<f32>, toward: vec3<f32>, scale: f32, is_hazed: boo
   return mix(shown, sky_haze(direction), sky_above_fold(lighting, direction));
 }
 
-// `hmodel` over the G-buffer's view space normal and point.
-fn shaded_color(albedo: vec4<f32>, light: vec4<f32>, normal: vec3<f32>, position: vec3<f32>, slice: f32, occlusion: f32,
-  visible: vec3<f32>) -> vec3<f32> {
-  return hmodel(lighting, material_lut, lut_sampler, sky_environment_0, sky_environment_1, sky_clamp, albedo, light,
-    world_direction(normal), world_direction(normalize(position)), slice, occlusion, visible);
+// `hmodel` over the G-buffer's view space normal and point, its reflection of the environment apart.
+fn shaded_terms(albedo: vec4<f32>, light: vec4<f32>, normal: vec3<f32>, position: vec3<f32>, slice: f32,
+  occlusion: f32, visible: vec3<f32>) -> HmodelTerms {
+  return hmodel_terms(lighting, material_lut, lut_sampler, sky_environment_0, sky_environment_1, sky_clamp, albedo,
+    light, world_direction(normal), world_direction(normalize(position)), slice, occlusion, visible);
+}
+
+// The most a surface's reflection of the environment outshines the light it shows of its own, with the enhanced
+// reflections: Anomaly's rain sheen rides on the lit albedo by thirty times the rain, and wet metal under a lamp at
+// night turns into one.
+const SHEEN_LIMIT: f32 = 4.0;
+const SHEEN_LUMINANCE: vec3<f32> = vec3<f32>(0.2126, 0.7152, 0.0722);
+
+// Metres the rain's ripples shift what the wet ground reflects, as the game's water shifts its own; the most pixels
+// they shift it, and the metres over which the shift fades out, so a far puddle's reflection does not crawl.
+const RIPPLE_SHIFT: f32 = 0.12;
+const RIPPLE_SHIFT_MOST: f32 = 3.0;
+const RIPPLE_SHIFT_REACH: vec2<f32> = vec2<f32>(10.0, 60.0);
+
+// Where a pixel reads its reflection, shifted by the ripple across the ground at its view space point.
+fn rippled_pixel(pixel: vec2<f32>, position: vec3<f32>, ripple: vec2<f32>) -> vec2<f32> {
+  let across: vec3<f32> = (camera.view * vec4<f32>(ripple.x, 0.0, ripple.y, 0.0)).xyz * RIPPLE_SHIFT;
+  let scale: vec2<f32> = vec2<f32>(camera.projection[0][0], -camera.projection[1][1]) * 0.5 * camera.viewport.xy;
+  let shift: vec2<f32> = clamp(across.xy * scale / max(-position.z, 1.0), vec2<f32>(-RIPPLE_SHIFT_MOST),
+    vec2<f32>(RIPPLE_SHIFT_MOST)) * smoothstep(RIPPLE_SHIFT_REACH.y, RIPPLE_SHIFT_REACH.x, -position.z);
+
+  return clamp(pixel + shift, vec2<f32>(0.0), camera.viewport.xy - 1.0);
 }
 
 
@@ -144,26 +166,45 @@ fn fs_combine(in: FullscreenVarying) -> CombineOutput {
     lighting.params.w > 0.5);
   let bounced: vec3<f32> = bounced_occlusion(visible, albedo.rgb, lighting.params.x);
   let occlusion: f32 = mix(1.0, material.x, camera.switches.z);
-  var shaded: vec3<f32> = shaded_color(albedo, light, normal, position, material.z, occlusion, bounced);
+  let terms: HmodelTerms = shaded_terms(albedo, light, normal, position, material.z, occlusion, bounced);
+  var shaded: vec3<f32> = terms.base;
 
   // The light the frame's surfaces bounce onto this one, lighting its albedo as the hemisphere does.
   if (lighting.indirect.x > 0.5) {
     shaded += albedo.rgb * upsampled_light(indirect_light, floor(in.clip.xy), -position.z);
   }
 
-  // The surface blended towards what it reflects by its share of reflection, before the fog, which lies between the
-  // camera and both alike: a far wet field fades into the fog as the grass on it does.
+  // What the surface reflects: the traced reflection where there is one, shifted by the rain's ripples, the
+  // environment `hmodel` reflects otherwise. The engine's reflection keeps its whole weight, the wet look as the engine
+  // tuned it; the traced one only sharpens the slice of it a dielectric would reflect, never under a puddle, so where
+  // nothing is traced the frame is the engine's. A puddle's clear coat of water reflects it over all of that by water's
+  // Fresnel. All before the fog, which lies between the camera and both alike.
+  let wet: vec4<f32> = textureLoad(wet_surface, texel, 0);
+  var reflected: vec3<f32> = terms.environment;
+
   if (lighting.reflections.x > 0.5) {
-    let share: f32 = reflection_share(albedo.a, normal, normalize(position), lighting.reflections.z,
-      has_mark(material.a, MARK_PLANT), fog);
+    let traced: vec4<f32> = upsampled_reflection(reflections, depth_target, material_target, rippled_pixel(floor(in.clip.xy), position,
+      wet.ba), -position.z, lighting.reflections.y);
 
-    if (share > 0.0) {
-      let reflected: vec4<f32> = upsampled_reflection(reflections, depth_target, floor(in.clip.xy), -position.z,
-        lighting.reflections.y);
-
-      shaded = mix(shaded, max(reflected.rgb, vec3<f32>(0.0)), share);
-    }
+    reflected = select(reflected, max(traced.rgb, vec3<f32>(0.0)), traced.a >= 0.0);
   }
+
+  // The traced reflections' intensity scales the coat too; without them, water reflects as it is.
+  let intensity: f32 = select(1.0, lighting.reflections.z, lighting.reflections.x > 0.5);
+  // The puddle's ripple tilts what its water reflects across it a little, so it is never one even plate.
+  let facing: f32 = saturate(dot(normal, -normalize(position)) +
+    dot(wet.ba, world_direction(normalize(position)).xz) * 0.1);
+  let puddle: f32 = saturate(wet.g);
+  let roughness: f32 = reflection_roughness(albedo.a);
+  let sheen: f32 = dot(terms.environment * terms.weight, SHEEN_LUMINANCE);
+  let weight: vec3<f32> = select(terms.weight, terms.weight * min(1.0, SHEEN_LIMIT * dot(terms.lit, SHEEN_LUMINANCE) /
+    max(sheen, 1e-4)), lighting.reflections.x > 0.5);
+  let sharp: vec3<f32> = min(weight, vec3<f32>(dielectric_fresnel(facing, roughness, DIELECTRIC_F0) * intensity)) *
+    (1.0 - puddle) * sharpened(roughness);
+  let coat: f32 = saturate(wet.r * coat_fresnel(facing, coat_roughness(puddle)) * intensity);
+
+  shaded += terms.environment * weight + (reflected - terms.environment) * sharp;
+  shaded = mix(shaded, reflected, coat);
 
   // The engine fogs towards `fog_color` before the tonemap, then fades into the sky itself by the fog squared, both
   // parts alike (`skyblend` in either's alpha). The enhanced fog thickens the first and tints it below its height;

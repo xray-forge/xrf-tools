@@ -10,10 +10,12 @@ pub struct ReflectionTrace {
 }
 
 impl ReflectionTrace {
+  pub const PYRAMID_PASS: &'static str = "reflection pyramid";
   pub const TRACE_PASS: &'static str = "reflection trace";
-  pub const ACCUMULATE_PASS: &'static str = "reflection accumulate";
-  pub const BLUR_PASS: &'static str = "reflection blur";
-  pub const FINE_BLUR_PASS: &'static str = "reflection blur fine";
+  pub const REPROJECT_PASS: &'static str = "reflection reproject";
+  pub const AVERAGE_PASS: &'static str = "reflection average";
+  pub const PREFILTER_PASS: &'static str = "reflection prefilter";
+  pub const RESOLVE_PASS: &'static str = "reflection resolve";
 
   /// What the view traces, or none: unlit, wireframe, or the engine's own reflections asked for.
   pub fn new(options: &RenderViewOptions) -> Option<Self> {

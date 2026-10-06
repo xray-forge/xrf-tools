@@ -49,11 +49,11 @@ fn fs_wet_gloss(in: FullscreenVarying) -> @location(0) vec4<f32> {
   return vec4<f32>(vec3<f32>(wet_darkening(gloss)), gloss * select(0.8, 1.0, wet.is_extended > 0.5));
 }
 
-// How a puddle tints what it covers, how much more terrain glosses at full wetness, and the up of its normal from
-// which that gloss starts and at which it is whole: water films level ground, and runs off a slope.
-const PUDDLE_TINT: vec3<f32> = vec3<f32>(0.66, 0.63, 0.6);
-const TERRAIN_WETNESS: f32 = 0.15;
-const TERRAIN_WETNESS_LEVEL: vec2<f32> = vec2<f32>(0.9, 0.98);
+// How a puddle darkens what it covers, soaked through, at its rim, and what its muddy water takes away a metre deep,
+// each way, and how deep its middle is, metres: its water darkens and browns inward, as blue is taken first.
+const PUDDLE_TINT: vec3<f32> = vec3<f32>(0.42, 0.4, 0.38);
+const PUDDLE_ABSORPTION: vec3<f32> = vec3<f32>(6.0, 9.0, 14.0);
+const PUDDLE_DEEPEST: f32 = 0.012;
 
 @fragment
 fn fs_wet_normal_enhanced(in: FullscreenVarying) -> @location(0) vec2<f32> {
@@ -66,8 +66,8 @@ fn fs_wet_normal_enhanced(in: FullscreenVarying) -> @location(0) vec2<f32> {
   return textureLoad(patched, texel, 0).xy;
 }
 
-// The enhanced wet look: the albedo darkened by the rain's gloss and tinted under a puddle, and the gloss raised by
-// the rain's, and on terrain by a puddle's, held to the reflectivity, and by the level's wetness.
+// The enhanced wet look: the engine's, the albedo darkened and the gloss raised by the rain's gloss, which `hmodel`'s
+// reflection of the environment then weighs; tinted under a puddle, whose clear coat of water combine lays over it.
 @fragment
 fn fs_wet_gloss_enhanced(in: FullscreenVarying) -> @location(0) vec4<f32> {
   let texel: vec2<i32> = vec2<i32>(in.clip.xy);
@@ -77,13 +77,8 @@ fn fs_wet_gloss_enhanced(in: FullscreenVarying) -> @location(0) vec4<f32> {
   }
 
   let wetted: vec4<f32> = textureLoad(patched, texel, 0);
-  let is_terrain: bool = has_mark(textureLoad(material_target, texel, 0).a, MARK_TERRAIN);
-  let normal: vec3<f32> = octahedral_decode(wetted.xy);
-  let up: f32 = dot(normal, camera.view[1].xyz);
-  let level: f32 = smoothstep(TERRAIN_WETNESS_LEVEL.x, TERRAIN_WETNESS_LEVEL.y, up);
-  let puddle: f32 = min(wetted.w, wet.puddles.z) + saturate(wet.puddles.x * 2.0) * TERRAIN_WETNESS * level;
-  let tint: vec3<f32> = mix(vec3<f32>(1.0), PUDDLE_TINT, wetted.w);
-  let rain: f32 = wetted.z * select(0.8, 1.0, wet.is_extended > 0.5);
+  let tint: vec3<f32> = mix(vec3<f32>(1.0), PUDDLE_TINT, saturate(wetted.w * 100.0)) *
+    exp(-PUDDLE_ABSORPTION * 2.0 * PUDDLE_DEEPEST * wetted.w);
 
-  return vec4<f32>(tint * wet_darkening(wetted.z), rain + select(0.0, puddle, is_terrain));
+  return vec4<f32>(tint * wet_darkening(wetted.z), wetted.z * select(0.8, 1.0, wet.is_extended > 0.5));
 }

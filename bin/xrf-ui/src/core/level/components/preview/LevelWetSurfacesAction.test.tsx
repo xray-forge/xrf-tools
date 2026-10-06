@@ -42,8 +42,9 @@ describe("LevelWetSurfacesAction", () => {
     expect(getByRole("checkbox", { name: "Wet surfaces and puddles" })).toBeChecked();
     expect(getByRole("slider", { name: "Puddles" })).toHaveAttribute("aria-valuetext", "80%");
     expect(getByRole("slider", { name: "Reflectivity" })).toHaveAttribute("aria-valuetext", "40%");
+    expect(getByRole("slider", { name: "Distance" })).toHaveAttribute("aria-valuetext", "120 m");
     expect(getByRole("button", { hidden: true, name: "Wet surfaces" })).toHaveAccessibleDescription(
-      "Wet surfaces and puddles, 80% of flat ground, 40% reflective. Right-click for its settings"
+      "Wet surfaces and puddles, 80% of flat ground to 120 m, 40% reflective. Right-click for its settings"
     );
 
     await userEvent.click(getByRole("button", { name: "Back to the settings for the rain" }));

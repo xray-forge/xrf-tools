@@ -17,6 +17,7 @@ mod lens_flares;
 mod light_geometry;
 mod lighting;
 mod overlays;
+mod puddle_fill;
 mod rain_wetness;
 mod reflections;
 mod selection;

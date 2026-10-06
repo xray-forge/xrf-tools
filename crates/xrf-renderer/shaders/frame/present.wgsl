@@ -114,7 +114,7 @@ fn shown_target(texel: vec2<i32>) -> vec3<f32> {
         return vec3<f32>(0.0);
       }
 
-      let traced: vec4<f32> = upsampled_reflection(reflections, depth_target, vec2<f32>(texel), distance,
+      let traced: vec4<f32> = upsampled_reflection(reflections, depth_target, material_target, vec2<f32>(texel), distance,
         present.reflection_ratio);
 
       if (traced.a < 0.0) {

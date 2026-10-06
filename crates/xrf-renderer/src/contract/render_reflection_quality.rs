@@ -1,19 +1,19 @@
 use serde::{Deserialize, Serialize};
 
-/// How hard the screen-space reflections trace: the size traced at, the steps a ray takes at most, how far behind a
-/// surface a step may land and still have met it, and whether a step behind one is halved back to where it crossed.
+/// How hard the screen-space reflections trace: the size traced at and how many cells of the depth pyramid a ray may
+/// cross before it gives up.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Copy, Debug, Default, Deserialize, Eq, Hash, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum RenderReflectionQuality {
-  /// Half size, 16 steps.
+  /// Half size, 24 crossings.
   Low,
-  /// Half size, 24 steps.
+  /// Half size, 48 crossings.
   Medium,
-  /// Half size, 32 steps, refined.
+  /// Half size, 96 crossings.
   #[default]
   High,
-  /// The frame's own size, 64 steps, refined.
+  /// The frame's own size, 128 crossings.
   Ultra,
 }
 
@@ -21,29 +21,14 @@ impl RenderReflectionQuality {
   /// Every quality, cheapest first.
   pub const ALL: [Self; 4] = [Self::Low, Self::Medium, Self::High, Self::Ultra];
 
-  /// Steps a ray takes at most.
-  pub const fn get_steps(self) -> u32 {
+  /// Cells of the depth pyramid a ray crosses at most before it is given up as having met nothing.
+  pub const fn get_crossings(self) -> u32 {
     match self {
-      Self::Low => 16,
-      Self::Medium => 24,
-      Self::High => 32,
-      Self::Ultra => 64,
+      Self::Low => 24,
+      Self::Medium => 48,
+      Self::High => 96,
+      Self::Ultra => 128,
     }
-  }
-
-  /// Metres behind a surface an unrefined step may land and still have met it: the longer the steps, the further.
-  pub const fn get_limit(self) -> f32 {
-    match self {
-      Self::Low => 36.0,
-      Self::Medium => 18.0,
-      Self::High => 5.0,
-      Self::Ultra => 1.0,
-    }
-  }
-
-  /// Whether a step behind a surface is halved back to where it crossed, which then holds it to a thin surface.
-  pub const fn is_refined(self) -> bool {
-    matches!(self, Self::High | Self::Ultra)
   }
 
   /// The frame's pixels a traced pixel stands for each way.
