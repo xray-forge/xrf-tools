@@ -97,19 +97,76 @@ const REACH_FADE: f32 = 0.8;
 // a bright surface's own gloss made a mirror of it, and the sky sparkled in every bump of its normal map as foil;
 // below a puddle's water, so wet ground never reads as water.
 const WET_GLOSS_MOST: f32 = 0.6;
+// Where the reflections trace, surfaces wet in patches that grow and join as the level wets and dry back the same way:
+// how readily a spot wets, from two readings of the regional noise metres apart (`PATCH_TILES`), the finer's share,
+// and hollows in the level surface first where it is drawn (`PATCH_HOLLOW` a metre of depth under the ground about,
+// at most `PATCH_HOLLOW_MOST`, read `PATCH_HOLLOW_SPAN` metres out); the level's wetness at which every spot is wet,
+// a share of a full one, and the share of readiness a patch's edge softens over. The gloss a fully wet spot gains is
+// the engine's gain times `WET_GLOSS_SHARE`, about the albedo brightness the engine weighed it by, the same over every
+// texel so no texel crosses the trace's cut alone.
+const PATCH_TILES: vec2<f32> = vec2<f32>(9.0, 31.0);
+const PATCH_FINE: f32 = 0.45;
+const PATCH_HOLLOW: f32 = 4.0;
+const PATCH_HOLLOW_MOST: f32 = 0.4;
+const PATCH_HOLLOW_SPAN: f32 = 2.0;
+const PATCH_FULL: f32 = 0.66;
+const PATCH_SOFT: f32 = 0.25;
+const WET_GLOSS_SHARE: f32 = 0.45;
+
+// How readily a point in the world wets, from nothing to one.
+fn wet_readiness(world: vec3<f32>) -> f32 {
+  let fine: f32 = textureSampleLevel(puddle_noise, wet_sampler, world.xz / PATCH_TILES.x + 0.11, 0.0).r;
+  let broad: f32 = textureSampleLevel(puddle_noise, wet_sampler, world.zx / PATCH_TILES.y + 0.53, 0.0).r;
+  var ready: f32 = mix(broad, fine, PATCH_FINE);
+
+  if (wet.is_enhanced > 0.5) {
+    let span: f32 = PATCH_HOLLOW_SPAN;
+    let around: f32 = 0.25 * (lowest_at(world.xz + vec2<f32>(span, 0.0)) + lowest_at(world.xz - vec2<f32>(span, 0.0)) +
+      lowest_at(world.xz + vec2<f32>(0.0, span)) + lowest_at(world.xz - vec2<f32>(0.0, span)));
+
+    ready += min(max(around - lowest_at(world.xz), 0.0) * PATCH_HOLLOW, PATCH_HOLLOW_MOST);
+  }
+
+  return saturate(ready);
+}
+
+// How much of a point's patch is wet at the level's wetness, from none to all, softened at its edge.
+fn patch_wetness(world: vec3<f32>) -> f32 {
+  let drive: f32 = saturate(wet.puddles.x / PATCH_FULL);
+
+  return smoothstep(0.0, 1.0, saturate((drive * (1.0 + PATCH_SOFT) - (1.0 - wet_readiness(world))) / PATCH_SOFT));
+}
 
 // How wet a surface reads, from none to one: the engine's, by its splashes' fade over 5 to 25 m, or where the
 // reflections trace (`wet.reach.x`) as far as the rain reaches, so they have wet gloss to trace over the whole ground
-// and not a ring about the camera, as much as the rain `reached` it (a tunnel's vault, a bridge, a roof or a tree's
-// crown keeps what is under it dry), fading out to the reach.
-fn surface_wetness(wetting: EngineWetting, reached: f32, world_normal: vec3<f32>, position: vec3<f32>) -> f32 {
+// and not a ring about the camera, in the patches the level's wetness has reached (`patch_wetness`) and as much as the
+// rain `reached` it (a tunnel's vault, a bridge, a roof or a tree's crown keeps what is under it dry), fading out to
+// the reach.
+fn surface_wetness(
+  wetting: EngineWetting,
+  reached: f32,
+  world: vec3<f32>,
+  world_normal: vec3<f32>,
+  position: vec3<f32>,
+) -> f32 {
   if (wet.reach.x < 0.5) {
     return wetting.wetness;
   }
 
   let facing_up: f32 = saturate(world_normal.y * 10.0 + 10.0 * 0.5 + 0.5);
 
-  return reached * wet.puddles.x * facing_up * smoothstep(wet.reach.y, wet.reach.y * REACH_FADE, length(position));
+  return reached * patch_wetness(world) * facing_up *
+    smoothstep(wet.reach.y, wet.reach.y * REACH_FADE, length(position));
+}
+
+// The wetness a surface's gloss gains by, from how wet it reads and how wet the engine reads it by its albedo's
+// brightness (`soaked`): the same over every texel where the reflections trace, the engine's own where it alone wets
+// and on foliage and grass (`marks`), whose dark leaves the engine's weight keeps nearly matte and an even gloss lit
+// white against the sky.
+fn glossing_wetness(wetness: f32, soaked: f32, marks: f32) -> f32 {
+  let is_leafy: bool = has_mark(marks, MARK_FLORA) || has_mark(marks, MARK_PLANT);
+
+  return select(soaked, wetness * WET_GLOSS_SHARE, wet.reach.x > 0.5 && !is_leafy);
 }
 
 // The gloss the wetness gains over the surface's own, from how wet it reads and the engine's gain a unit of wetness
@@ -141,13 +198,14 @@ fn fs_wet_patch(in: FullscreenVarying) -> @location(0) vec4<f32> {
   let world_normal: vec3<f32> = normalize(rotation * normal);
   let reached: f32 = rain_reached(world, world_normal, in.clip.xy);
   let wetting: EngineWetting = engine_wetting(normal, position, world, world_normal, reached);
-  let wetness: f32 = surface_wetness(wetting, reached, world_normal, position);
+  let wetness: f32 = surface_wetness(wetting, reached, world, world_normal, position);
 
   // The bent normal packed as the enhanced patch packs it; how wet the engine reads the surface, by the albedo's
   // brightness, which the apply pass darkens by; and the gloss that gains, the engine's own factor folded in.
   let soaked: f32 = wetness * dot(albedo.rgb, vec3<f32>(0.33));
 
-  return vec4<f32>(octahedral_encode(normalize(normal + wetting.bent)), wet_gloss_gain(soaked, albedo.a), soaked);
+  return vec4<f32>(octahedral_encode(normalize(normal + wetting.bent)),
+    wet_gloss_gain(glossing_wetness(wetness, soaked, textureLoad(material_target, texel, 0).a), albedo.a), soaked);
 }
 
 // The puddles' rain rings: how fast each of their three layers runs, where the second and third are moved to, and the
@@ -432,7 +490,8 @@ fn fs_wet_patch_enhanced(in: FullscreenVarying) -> WetPatchTargets {
     discard;
   }
 
-  let is_terrain: bool = has_mark(textureLoad(material_target, texel, 0).a, MARK_TERRAIN);
+  let marks: f32 = textureLoad(material_target, texel, 0).a;
+  let is_terrain: bool = has_mark(marks, MARK_TERRAIN);
   let albedo: vec4<f32> = textureLoad(albedo_target, texel, 0);
   let gloss: f32 = albedo.a;
   var normal: vec3<f32> = normalize(octahedral_decode(textureLoad(normal_target, texel, 0).xy));
@@ -450,7 +509,9 @@ fn fs_wet_patch_enhanced(in: FullscreenVarying) -> WetPatchTargets {
   let reached: f32 = rain_reached(world, world_normal, in.clip.xy);
   let wetting: EngineWetting = engine_wetting(normal, position, world, world_normal, reached);
   // How wet the engine reads the surface, by the albedo's brightness, as far as the reflections want it.
-  var wetness: f32 = surface_wetness(wetting, reached, world_normal, position) * dot(albedo.rgb, vec3<f32>(0.33));
+  let surface_wet: f32 = surface_wetness(wetting, reached, world, world_normal, position);
+  var wetness: f32 = surface_wet * dot(albedo.rgb, vec3<f32>(0.33));
+  var glossing: f32 = glossing_wetness(surface_wet, wetness, marks);
   var water: vec3<f32> = wetting.bent;
   var variance: f32 = 0.0;
 
@@ -482,6 +543,7 @@ fn fs_wet_patch_enhanced(in: FullscreenVarying) -> WetPatchTargets {
     floating = (1.0 - PUDDLE_FILM * noise) * (1.0 - RIM_COAT * rim);
     water_roughness = mix(mix(WATER_ROUGHNESS.x, WATER_ROUGHNESS.y, variation.x), RIM_ROUGHNESS, rim);
     wetness = max(wetness, PUDDLE_HALO_WET * found.halo * fade * (1.0 - found.inside));
+    glossing = max(glossing, PUDDLE_HALO_WET * found.halo * fade * (1.0 - found.inside));
 
     if (puddle > 0.0) {
       let pace: f32 = wet.time * (0.01 + saturate(wet.density * 1.5) * 0.008);
@@ -517,7 +579,7 @@ fn fs_wet_patch_enhanced(in: FullscreenVarying) -> WetPatchTargets {
   }
 
   // What the gloss gains: the engine's wet gloss over its own, capped below a mirror, a puddle's water's.
-  let glossed: f32 = mix(min(wetness * select(0.8, 1.0, wet.is_extended > 0.5), max(WET_GLOSS_MOST - gloss, 0.0)),
+  let glossed: f32 = mix(min(glossing * select(0.8, 1.0, wet.is_extended > 0.5), max(WET_GLOSS_MOST - gloss, 0.0)),
     water_gloss(water_roughness) - gloss, puddle);
 
   return WetPatchTargets(
