@@ -49,8 +49,8 @@ fn hmodel_reflection_lookup(state: Lighting, reflected: vec3<f32>) -> vec3<f32> 
 }
 
 // `hmodel` and `combine_1` in two parts: what the surface shows without its reflection of the environment, the
-// environment it reflects, and what that is weighed by; their sum is `hmodel`. The reflections pass sharpens the
-// reflected part where it traces one.
+// environment it reflects, and what that is weighed by; their sum is `hmodel`. The enhanced reflections put their
+// own specular in place of the reflected part.
 struct HmodelTerms {
   base: vec3<f32>,
   environment: vec3<f32>,
@@ -58,16 +58,6 @@ struct HmodelTerms {
   // The lit albedo alone, what the surface shows of the light that reaches it.
   lit: vec3<f32>,
 };
-
-// How much of the environment a surface reflects, before the occlusion and the lit colour Anomaly tints it by: the
-// hemisphere's reflection term by the gloss, or by Anomaly's rain. `reflected` and `to_point_world` in world space.
-fn hmodel_environment_weight(state: Lighting, table: texture_3d<f32>, table_sampler: sampler, gloss: f32,
-  occlusion: f32, reflected: vec3<f32>, to_point_world: vec3<f32>, slice: f32) -> f32 {
-  let hemisphere: vec4<f32> = material_lookup(table, table_sampler, occlusion, 0.5 + 0.5 * dot(reflected, to_point_world),
-    slice);
-
-  return hemisphere.y * hmodel_gloss_weight(state, gloss, hemisphere.x);
-}
 
 // The gloss a reflection is weighed by: vanilla's own; Anomaly's none while dry, a sheen as it pours, brightest where
 // the hemisphere lights least.
