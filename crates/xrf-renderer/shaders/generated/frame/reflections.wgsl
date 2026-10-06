@@ -28,4 +28,6 @@
 @group(1) @binding(23) var history_radiance: texture_2d<f32>;
 @group(1) @binding(24) var history_surface: texture_2d<f32>;
 @group(1) @binding(25) var history_held: texture_2d<f32>;
-@group(1) @binding(26) var history_sampler: sampler;
+@group(1) @binding(26) var resolved: texture_2d<f32>;
+@group(1) @binding(27) var history_full: texture_2d<f32>;
+@group(1) @binding(28) var history_sampler: sampler;

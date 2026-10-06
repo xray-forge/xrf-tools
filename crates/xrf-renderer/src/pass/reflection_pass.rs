@@ -36,6 +36,7 @@ struct ReflectionPipelines {
   average: wgpu::RenderPipeline,
   prefilter: wgpu::RenderPipeline,
   resolve: wgpu::RenderPipeline,
+  upscale: wgpu::RenderPipeline,
 }
 
 impl ReflectionPass {
@@ -44,6 +45,7 @@ impl ReflectionPass {
   pub const AVERAGE_STAGE: &'static str = "fs_average";
   pub const PREFILTER: &'static str = "fs_prefilter";
   pub const RESOLVE: &'static str = "fs_resolve";
+  pub const UPSCALE: &'static str = "fs_upscale";
   /// What the trace writes: what is reflected, then the ray's length in metres, below none where nothing is traced.
   pub const TRACED: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
   /// How each ray ended, a reason's number over 255 (`common/reflection_end.wgsl`), which the ends view colours.
@@ -176,6 +178,7 @@ impl ReflectionPass {
       Self::REPROJECT => &self.pipelines.reproject,
       Self::AVERAGE_STAGE => &self.pipelines.average,
       Self::PREFILTER => &self.pipelines.prefilter,
+      Self::UPSCALE => &self.pipelines.upscale,
       _ => &self.pipelines.resolve,
     };
 
@@ -258,6 +261,7 @@ impl ReflectionPass {
           ReflectionHistory::HELD_FORMAT,
         ],
       )?,
+      upscale: create(&stage_layout, Self::UPSCALE, &[ReflectionHistory::RADIANCE_FORMAT])?,
     })
   }
 }

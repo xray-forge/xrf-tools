@@ -101,9 +101,10 @@ const PREFILTER_TAPS: array<vec2<i32>, 15> = array<vec2<i32>, 15>(
   vec2<i32>(2, 1), vec2<i32>(-2, -2), vec2<i32>(1, 0), vec2<i32>(0, 2), vec2<i32>(3, -1),
 );
 
-// The frame's texel a traced pixel stands for: the first of its block that is not a plant.
+// The frame's texel a traced pixel stands for this frame: the first of its block that is not a plant, from the cell
+// the frame turns to.
 fn traced_texel(pixel: vec2<f32>) -> vec2<i32> {
-  return reflection_texel(material_target, depth_target, pixel, reflection.ratio);
+  return reflection_texel(material_target, depth_target, pixel, reflection.ratio, reflection.frame);
 }
 
 // The world's direction for one in view space.
@@ -810,6 +811,80 @@ fn fs_resolve(in: FullscreenVarying) -> ResolvedTargets {
   }
 
   return ResolvedTargets(vec4<f32>(resolved, variance), kept.surface, kept.held);
+}
+
+// The full-size history's share of this frame's reflection a frame where it holds, and how far, a share of the
+// distance, the point it held may stand from where this frame shows it before it is dropped: four frames bring each
+// cell of a block its own ray, so the history keeps about as many.
+const UPSCALE_FRESH: f32 = 0.25;
+const UPSCALE_MOVED: f32 = 0.1;
+
+// The reflection brought up to the frame's size and held there over time: this frame's resolve upsampled by depth,
+// normal and roughness, the cells it was traced from turning every frame, blended into the last frame's full-size
+// history reprojected by the surface's motion and clipped to the resolve's neighbourhood, so the history rebuilds
+// what the half-size trace cannot hold in one frame, with or without the frame's own antialiasing. What is reflected,
+// then the pixel's distance along the view, which the next frame's reprojection checks; below none where untraced.
+@fragment
+fn fs_upscale(in: FullscreenVarying) -> @location(0) vec4<f32> {
+  let pixel: vec2<f32> = floor(in.clip.xy);
+  let texel: vec2<i32> = vec2<i32>(pixel);
+  let depth: f32 = textureLoad(depth_target, texel, 0);
+
+  if (depth <= 0.0) {
+    return UNTRACED;
+  }
+
+  let normal: vec3<f32> = normalize(octahedral_decode(textureLoad(normal_target, texel, 0).xy));
+  let position: vec3<f32> = camera_view_position(in.clip.xy, depth);
+  let distance: f32 = -position.z;
+  let roughness: f32 = traced_roughness(textureLoad(albedo_target, texel, 0).a, textureLoad(wet_surface, texel, 0).a);
+  let current: vec4<f32> = upsampled_reflection(resolved, depth_target, material_target, normal_target, albedo_target,
+    pixel, vec4<f32>(normal, distance), roughness, reflection.ratio, reflection.frame);
+
+  if (current.a < 0.0) {
+    return UNTRACED;
+  }
+
+  if (reflection.has_history < 0.5) {
+    return vec4<f32>(current.rgb, distance);
+  }
+
+  let size: vec2<f32> = camera.viewport.xy;
+  let ndc: vec2<f32> = vec2<f32>(in.clip.x / size.x * 2.0 - 1.0, 1.0 - in.clip.y / size.y * 2.0);
+  let clip: vec4<f32> = camera.motion_previous * vec4<f32>(camera_unproject(ndc, depth), 1.0);
+  let uv: vec2<f32> = (clip.xy / clip.w) * vec2<f32>(0.5, -0.5) + 0.5;
+
+  if (clip.w <= 0.0 || any(uv < vec2<f32>(0.0)) || any(uv > vec2<f32>(1.0))) {
+    return vec4<f32>(current.rgb, distance);
+  }
+
+  let held: vec4<f32> = textureSampleLevel(history_full, history_sampler, uv, 0.0);
+
+  if (held.a < 0.0 || abs(held.a - clip.w) > clip.w * UPSCALE_MOVED) {
+    return vec4<f32>(current.rgb, distance);
+  }
+
+  // The resolve's three by three about the pixel's block, which the history is clipped to.
+  let last: vec2<i32> = vec2<i32>(textureDimensions(resolved)) - 1;
+  let block: vec2<i32> = vec2<i32>(pixel / reflection.ratio);
+  var least: vec3<f32> = current.rgb;
+  var most: vec3<f32> = current.rgb;
+
+  for (var y: i32 = -1; y <= 1; y++) {
+    for (var x: i32 = -1; x <= 1; x++) {
+      let around: vec4<f32> = textureLoad(resolved, clamp(block + vec2<i32>(x, y), vec2<i32>(0), last), 0);
+
+      if (around.a >= 0.0) {
+        least = min(least, around.rgb);
+        most = max(most, around.rgb);
+      }
+    }
+  }
+
+  let kept: vec3<f32> = clip_box(least, most, held.rgb);
+  let blended: vec3<f32> = mix(kept, current.rgb, UPSCALE_FRESH);
+
+  return vec4<f32>(select(current.rgb, blended, all(blended == blended)), distance);
 }
 
 // A colour clipped towards a box's centre onto its surface where it lies outside it.

@@ -116,11 +116,7 @@ fn shown_target(texel: vec2<i32>) -> vec3<f32> {
         return vec3<f32>(0.0);
       }
 
-      let surface_normal: vec3<f32> = normalize(octahedral_decode(textureLoad(normal_target, texel, 0).xy));
-      let gloss_rough: f32 = 1.0 - sqrt(saturate(textureLoad(albedo_target, texel, 0).a));
-      let traced: vec4<f32> = upsampled_reflection(reflections, depth_target, material_target, normal_target,
-        albedo_target, vec2<f32>(texel), vec4<f32>(surface_normal, distance), gloss_rough * gloss_rough,
-        present.reflection_ratio);
+      let traced: vec4<f32> = textureLoad(reflections, min(texel, vec2<i32>(textureDimensions(reflections)) - 1), 0);
 
       if (traced.a < 0.0) {
         return vec3<f32>(0.0);

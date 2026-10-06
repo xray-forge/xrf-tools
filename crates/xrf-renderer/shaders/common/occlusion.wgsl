@@ -63,13 +63,19 @@ fn bounced_occlusion(visible: f32, albedo: vec3<f32>, bounce: f32) -> vec3<f32> 
 
 // The frame's texel a traced pixel stands for, its block `ratio` texels a side: the first of it that shows anything
 // but a plant, which a reflection is never traced from, so a blade over a puddle does not leave its block untraced;
-// the first of it where all are plants or none shows anything.
-fn reflection_texel(material: texture_2d<f32>, depth: texture_depth_2d, pixel: vec2<f32>, ratio: f32) -> vec2<i32> {
+// the cell it starts from where all are plants or none shows anything. It starts from a different cell each frame
+// (`turn`), three cells on a time, so every cell of a block of four is traced in turn and the full-size history
+// rebuilds the frame's resolution from them.
+fn reflection_texel(material: texture_2d<f32>, depth: texture_depth_2d, pixel: vec2<f32>, ratio: f32, turn: u32)
+  -> vec2<i32> {
   let last: vec2<i32> = vec2<i32>(camera.viewport.xy) - 1;
   let first: vec2<i32> = min(vec2<i32>(pixel * ratio), last);
   let side: i32 = i32(ratio);
+  let cells: i32 = side * side;
+  let start: i32 = i32((turn * 3u) % u32(cells));
 
-  for (var index: i32 = 0; index < side * side; index++) {
+  for (var step: i32 = 0; step < cells; step++) {
+    let index: i32 = (start + step) % cells;
     let texel: vec2<i32> = min(first + vec2<i32>(index % side, index / side), last);
 
     if (textureLoad(depth, texel, 0) > 0.0 && !has_mark(textureLoad(material, texel, 0).a, MARK_PLANT)) {
@@ -77,7 +83,7 @@ fn reflection_texel(material: texture_2d<f32>, depth: texture_depth_2d, pixel: v
     }
   }
 
-  return first;
+  return min(first + vec2<i32>(start % side, start / side), last);
 }
 
 // How far apart two surfaces' normals may face and their roughnesses stand before a traced pixel stops speaking for a
@@ -102,6 +108,7 @@ fn upsampled_reflection(
   surface: vec4<f32>,
   roughness: f32,
   ratio: f32,
+  turn: u32,
 ) -> vec4<f32> {
   let distance: f32 = surface.w;
   let last: vec2<f32> = vec2<f32>(textureDimensions(traced)) - 1.0;
@@ -114,7 +121,7 @@ fn upsampled_reflection(
     let offset: vec2<f32> = vec2<f32>(f32(corner & 1u), f32(corner >> 1u));
     let at: vec2<f32> = clamp(base + offset, vec2<f32>(0.0), last);
     let texel: vec4<f32> = textureLoad(traced, vec2<i32>(at), 0);
-    let shown: vec2<i32> = reflection_texel(material, depth, at, ratio);
+    let shown: vec2<i32> = reflection_texel(material, depth, at, ratio, turn);
     let stored: f32 = textureLoad(depth, shown, 0);
     let there: f32 = -camera_view_position(vec2<f32>(shown) + 0.5, max(stored, 1e-7)).z;
     let bilinear: f32 = mix(1.0 - fraction.x, fraction.x, offset.x) * mix(1.0 - fraction.y, fraction.y, offset.y);

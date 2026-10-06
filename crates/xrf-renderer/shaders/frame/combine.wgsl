@@ -169,8 +169,8 @@ fn fs_combine(in: FullscreenVarying) -> CombineOutput {
     let roughness: f32 = traced_roughness(albedo.a, wet.a + geometric_variance(normal_target, texel));
     let head_on: vec3<f32> = reflectance_head_on(albedo.rgb, albedo.a, wet.r, material.z);
     let brdf: vec3<f32> = environment_brdf(head_on, roughness, facing) * lighting.reflections.z;
-    let traced: vec4<f32> = upsampled_reflection(reflections, depth_target, material_target, normal_target,
-      albedo_target, floor(in.clip.xy), vec4<f32>(normal, -position.z), roughness, lighting.reflections.y);
+    // The full-size history the reflections were resolved into; a texel of nothing where none is traced.
+    let traced: vec4<f32> = textureLoad(reflections, min(texel, vec2<i32>(textureDimensions(reflections)) - 1), 0);
     // The traced reflection where there is one, faded into the prefiltered sky towards the trace's roughness cut.
     let kept: f32 = select(0.0, smoothstep(TRACED_ROUGHNESS_FADE.y, TRACED_ROUGHNESS_FADE.x, roughness),
       traced.a >= 0.0);

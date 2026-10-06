@@ -1203,6 +1203,7 @@ impl SceneView {
     let [previous, written] = import_pair("reflection history", &history.radiance_views);
     let [previous_surface, written_surface] = import_pair("reflection history surface", &history.surface_views);
     let [previous_held, written_held] = import_pair("reflection history held", &history.held_views);
+    let [previous_full, written_full] = import_pair("reflection history full", &history.full_views);
     let parameters: ReflectionParameters = ReflectionParameters {
       albedo_target: targets.albedo,
       normal_target: targets.normal,
@@ -1230,6 +1231,8 @@ impl SceneView {
       history_radiance: previous,
       history_surface: previous_surface,
       history_held: previous_held,
+      resolved: empty,
+      history_full: empty,
       history_sampler: passes.reflections.get_sampler(),
     };
     let clear = |target: GraphTexture| GraphColorAttachment::new(target, wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT));
@@ -1243,7 +1246,7 @@ impl SceneView {
       .record(move |context| passes.reflections.record_trace(context, view, &parameters, &sky));
 
     // Each stage, what it reads beside the G-buffer and the history, and what it writes.
-    let stages: [(&'static str, &'static str, ReflectionParameters<'a>, Vec<GraphTexture>); 4] = [
+    let stages: [(&'static str, &'static str, ReflectionParameters<'a>, Vec<GraphTexture>); 5] = [
       (
         ReflectionTrace::REPROJECT_PASS,
         ReflectionPass::REPROJECT,
@@ -1284,6 +1287,16 @@ impl SceneView {
         },
         vec![written, written_surface, written_held],
       ),
+      (
+        ReflectionTrace::UPSCALE_PASS,
+        ReflectionPass::UPSCALE,
+        ReflectionParameters {
+          resolved: written,
+          history_full: previous_full,
+          ..parameters
+        },
+        vec![written_full],
+      ),
     ];
 
     for (name, stage, stage_parameters, outputs) in stages {
@@ -1296,7 +1309,7 @@ impl SceneView {
         .record(move |context| passes.reflections.record_stage(context, view, &stage_parameters, stage));
     }
 
-    Some((written, ends))
+    Some((written_full, ends))
   }
 
   /// Adds the passes filling the prefiltered sky cube this frame, a mip each: the first the surroundings cube's face
