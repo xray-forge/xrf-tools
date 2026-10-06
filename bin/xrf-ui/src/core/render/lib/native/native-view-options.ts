@@ -1,6 +1,7 @@
 import { Nullable } from "@xrf/types";
 
 import {
+  ERenderBloomMode,
   ERenderDebugView,
   ERenderSunShaftsQuality,
   ERenderSurfaceColor,
@@ -103,7 +104,10 @@ export function toNativeViewOptions(
       antialiasing: features.antialiasing,
       bloom: look.bloom,
       corrections: { ...corrections, grading: [...corrections.grading] },
+      debanding: features.debanding,
+      enhancedBloom: features.enhancedBloom,
       exposure: look.exposure,
+      fog: features.fog,
       grass: { ...grass, isEnabled: grass.isEnabled && switches.isGrassy },
       hemiStrength: shading.hemiStrength,
       indirectLight: features.indirectLight,
@@ -180,7 +184,8 @@ export function toNativeAssetViewOptions(
       hemiStrength: 1,
       surfaceColor: ERenderSurfaceColor.TEXTURED,
     },
-    features,
+    // Nothing blooms over one asset, the enhanced bloom no more than the engine's.
+    { ...features, enhancedBloom: { ...features.enhancedBloom, mode: ERenderBloomMode.ENGINE } },
     NO_NATIVE_VIEW_SWITCHES,
     { ...NEUTRAL_NATIVE_LOOK, exposure: { ...features.exposure, isEnabled: false } },
     renderHeight

@@ -29,3 +29,29 @@ fn tonemap_high(color: vec3<f32>, scale: f32) -> vec3<f32> {
 fn fog_amount(state: Lighting, position: vec3<f32>) -> f32 {
   return saturate(length(position) * state.fog.y + state.fog.x) * state.fog_color.w;
 }
+
+// How much of the enhanced fog's height fog lies at a world height: none from its height up, rising smoothly to whole as
+// far below the world's zero; none while it is not drawn.
+fn height_fog_share(state: Lighting, height: f32) -> f32 {
+  let range: f32 = max(state.height_fog.x, 1e-3);
+  let rise: f32 = saturate((range - height) / (2.0 * range));
+
+  return rise * rise * (3.0 - 2.0 * rise) * state.height_fog.w;
+}
+
+// How much fog lies between the camera and a view space point standing at a world height: the distance fog, thickened
+// by the enhanced fog's density where its height fog lies.
+fn fog_amount_at(state: Lighting, position: vec3<f32>, height: f32) -> f32 {
+  let fog: f32 = fog_amount(state, position);
+
+  return saturate(fog + height_fog_share(state, height) * fog * state.height_fog.y);
+}
+
+// The colour the fog takes towards a view space point at a world height: the weather's, taking the sun's colour where
+// the enhanced fog's height fog lies and the view faces the sun.
+fn fog_color_at(state: Lighting, position: vec3<f32>, height: f32) -> vec3<f32> {
+  let facing: f32 = saturate(dot(state.to_sun.xyz, normalize(position)));
+  let sunlit: vec3<f32> = mix(state.fog_color.rgb, state.sun.rgb, facing);
+
+  return mix(state.fog_color.rgb, sunlit, height_fog_share(state, height) * state.height_fog.z);
+}

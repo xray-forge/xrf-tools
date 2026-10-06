@@ -28,6 +28,7 @@ import {
   ILevelFeatureOptions,
   TLevelFeatureView,
   toLevelIndirectLight,
+  toLevelModeFeature,
   toLevelRain,
   toLevelReflections,
 } from "@/core/level/lib/features";
@@ -162,7 +163,11 @@ export function LevelPreviewToolbar({
 
           <EditorToolbarSeparator />
 
-          <LevelLookAction />
+          <LevelLookAction
+            bloom={toLevelModeFeature("enhancedBloom", settings, features)}
+            features={features}
+            onChangeFeatures={onChangeFeatures}
+          />
 
           <LevelAntialiasingAction
             isOn={options.isAntialiased}
@@ -234,17 +239,23 @@ export function LevelPreviewToolbar({
             manual={manual}
             skies={skies}
             clouds={clouds}
+            debanding={toLevelModeFeature("debanding", settings, features)}
+            features={features}
             onToggle={onToggle}
             onEdit={onEditManual}
+            onChangeFeatures={onChangeFeatures}
           />
 
           <LevelFogAction
             isOn={options.isFogged}
             manual={manual}
             isHazed={options.isSkyHazed}
+            value={toLevelModeFeature("fog", settings, features)}
+            features={features}
             onToggle={() => onToggle("isFogged")}
             onEdit={onEditManual}
             onHazed={(isSkyHazed: boolean) => onChangeOptions({ ...options, isSkyHazed })}
+            onChangeFeatures={onChangeFeatures}
           />
 
           <LevelRainAction

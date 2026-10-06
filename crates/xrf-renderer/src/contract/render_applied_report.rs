@@ -4,9 +4,12 @@ use crate::contract::render_ambient_occlusion_quality::RenderAmbientOcclusionQua
 use crate::contract::render_antialiasing::RenderAntialiasing;
 use crate::contract::render_applied_environment::RenderAppliedEnvironment;
 use crate::contract::render_applied_grass::RenderAppliedGrass;
+use crate::contract::render_applied_height_fog::RenderAppliedHeightFog;
 use crate::contract::render_applied_indirect_light::RenderAppliedIndirectLight;
 use crate::contract::render_applied_reflections::RenderAppliedReflections;
 use crate::contract::render_applied_shadows::RenderAppliedShadows;
+use crate::contract::render_bloom_mode::RenderBloomMode;
+use crate::contract::render_debanding_quality::RenderDebandingQuality;
 use crate::contract::render_lights_settings::RenderLightsSettings;
 use crate::contract::render_scale::RenderScale;
 
@@ -27,6 +30,12 @@ pub struct RenderAppliedReport {
   pub indirect_light: Option<RenderAppliedIndirectLight>,
   /// The screen-space reflections, or none where they are not traced.
   pub reflections: Option<RenderAppliedReflections>,
+  /// The enhanced height fog, or none where the engine's fog alone is drawn or none at all.
+  pub height_fog: Option<RenderAppliedHeightFog>,
+  /// How hard the sky is debanded, or none where it is drawn as it is.
+  pub debanding: Option<RenderDebandingQuality>,
+  /// Which bloom is drawn, or none where the frame blooms nothing.
+  pub bloom: Option<RenderBloomMode>,
   /// The local lights, or none where they are off.
   pub lights: Option<RenderLightsSettings>,
   /// The grass planted, or none where none is.

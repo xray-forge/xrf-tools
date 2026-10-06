@@ -147,11 +147,13 @@ fn read_water(
   out.surface_normal = normalize(in.tangent * out.bent.x + in.binormal * out.bent.y + out.normal * out.bent.z);
   out.to_point = normalize(in.world - camera.position.xyz);
   out.position = (camera.view * vec4<f32>(in.world, 1.0)).xyz;
-  out.fog = select(0.0, fog_amount(lighting, out.position), lighting.params.y > 0.5);
+  out.fog = select(0.0, fog_amount_at(lighting, out.position, in.world.y), lighting.params.y > 0.5);
 
   // The far plane ends where fog is total, so nothing past it is drawn but the sky; a fold of the surface behind a
   // nearer one is not drawn either, whatever order the two are drawn in.
-  if (out.fog >= 1.0 || in.clip.z < textureLoad(nearest_water, vec2<i32>(in.clip.xy), 0)) {
+  let is_past_fog: bool = lighting.params.y > 0.5 && fog_amount(lighting, out.position) >= 1.0;
+
+  if (is_past_fog || in.clip.z < textureLoad(nearest_water, vec2<i32>(in.clip.xy), 0)) {
     discard;
   }
 

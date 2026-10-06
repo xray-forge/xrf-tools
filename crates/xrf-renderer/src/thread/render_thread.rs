@@ -885,7 +885,7 @@ impl RenderThread {
                 present: output.present,
                 upscaled: output.shown,
                 motion_target: output.targets.motion,
-                bloom_target: output.targets.bloom[0],
+                bloom_target: output.bloom,
                 bloom_sampler: gpu.present.get_bloom_sampler(),
                 indirect_light: output.indirect_light,
                 reflections: output.reflections,

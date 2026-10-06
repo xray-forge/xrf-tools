@@ -1,7 +1,11 @@
 import {
   ERenderAmbientOcclusionMethod,
   ERenderAmbientOcclusionQuality,
+  ERenderBloomMode,
   ERenderContactShadowMode,
+  ERenderDebandingMode,
+  ERenderDebandingQuality,
+  ERenderFogMode,
   ERenderFoliageMode,
   ERenderIndirectLightMode,
   ERenderLightShadowFilter,
@@ -15,8 +19,11 @@ import {
   TRenderAmbientOcclusionSettings,
   TRenderAmbientOcclusionVbaoSettings,
   TRenderContactShadowSettings,
+  TRenderDebandingSettings,
+  TRenderEnhancedBloomSettings,
   TRenderEnhancedWaterSettings,
   TRenderExposureSettings,
+  TRenderFogSettings,
   TRenderFoliageSettings,
   TRenderGrassSettings,
   TRenderIndirectLightSettings,
@@ -65,6 +72,32 @@ export const DEFAULT_RENDER_EXPOSURE_SETTINGS: TRenderExposureSettings = {
   isEnabled: true,
   lowLuminance: 0.0001,
   middleGray: 1,
+};
+
+/** The engine's own fog, with the enhanced fog's shipped strengths for when it is drawn. */
+export const DEFAULT_RENDER_FOG_SETTINGS: TRenderFogSettings = {
+  density: 1.3,
+  height: 8,
+  mode: ERenderFogMode.ENGINE,
+  scattering: 0.7,
+  sunColor: 0.1,
+};
+
+/** The sky as drawn, with the debanding's shipped strengths for when it is debanded: two passes out to 48 pixels. */
+export const DEFAULT_RENDER_DEBANDING_SETTINGS: TRenderDebandingSettings = {
+  mode: ERenderDebandingMode.ENGINE,
+  quality: ERenderDebandingQuality.MEDIUM,
+  radius: 48,
+};
+
+/** The engine's own bloom, as the look sets it, with the enhanced bloom's shipped strengths for when it draws. */
+export const DEFAULT_RENDER_ENHANCED_BLOOM_SETTINGS: TRenderEnhancedBloomSettings = {
+  blur: 3,
+  exposure: 3,
+  mode: ERenderBloomMode.ENGINE,
+  sky: 0.6,
+  threshold: 3.5,
+  vibrance: 1.5,
 };
 
 /** The engine's own foliage motion, with the enhanced motion's designed strengths. */

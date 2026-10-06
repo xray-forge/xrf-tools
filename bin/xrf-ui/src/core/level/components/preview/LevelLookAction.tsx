@@ -1,11 +1,21 @@
 import { default as ExposureIcon } from "@mui/icons-material/Exposure";
-import { Typography } from "@mui/material";
+import { Button, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
-import { ReactElement } from "react";
+import { ReactElement, useCallback } from "react";
 
+import { ERenderBloomMode, RenderBloomMode } from "@/core/ipc/types/xrf-renderer";
+import { ILevelFeatureOptions, TLevelEnhancedBloomOptions } from "@/core/level/lib/features";
 import { ELevelLookSource, ILevelLook } from "@/core/level/lib/look";
 import { LevelLookService } from "@/core/level/services/level-look.service";
+import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
+import {
+  explainRenderBloomMode,
+  formatBloomStrength,
+  RENDER_BLOOM_MODE_OPTIONS,
+  RENDER_ENHANCED_BLOOM_LIMITS,
+} from "@/core/render/lib/features";
+import { TRenderEnhancedBloomSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { EditorPopoverAction } from "@/core/shell/editor/EditorPopoverAction";
 import { ChoiceListFormRow, IChoiceFormRowOption } from "@/core/ui/form";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
@@ -41,6 +51,32 @@ interface ILookField {
   step: number;
   read: (look: ILevelLook) => number;
   write: (look: ILevelLook, value: number) => ILevelLook;
+}
+
+/** The title of the group of the engine bloom's sliders, which the enhanced bloom's replace. */
+const BLOOM_GROUP: string = "Bloom";
+
+/** One of the enhanced bloom's strengths a slider sets. */
+interface IEnhancedBloomField {
+  key: Exclude<keyof TRenderEnhancedBloomSettings, "mode">;
+  label: string;
+}
+
+/** The enhanced bloom's sliders, in the order they are offered. */
+const ENHANCED_BLOOM_FIELDS: ReadonlyArray<IEnhancedBloomField> = [
+  { key: "threshold", label: "Threshold" },
+  { key: "exposure", label: "Brightness" },
+  { key: "blur", label: "Blur" },
+  { key: "vibrance", label: "Vibrance" },
+  { key: "sky", label: "Sky" },
+];
+
+interface ILevelLookActionProps extends BaseComponentProps {
+  /** Which bloom the view draws, and the enhanced bloom's strengths. */
+  bloom: TRenderEnhancedBloomSettings;
+  /** What the view sets over the settings, of which the bloom's part is changed. */
+  features: ILevelFeatureOptions;
+  onChangeFeatures: (features: ILevelFeatureOptions) => void;
 }
 
 /** The sliders, by the group they sit under. */
@@ -138,7 +174,7 @@ const FIELD_GROUPS: ReadonlyArray<{ title: string; fields: ReadonlyArray<ILookFi
         write: (look, strength) => ({ ...look, bloom: { ...look.bloom, strength } }),
       },
     ],
-    title: "Bloom",
+    title: BLOOM_GROUP,
   },
   {
     fields: [
@@ -189,14 +225,24 @@ const FIELD_GROUPS: ReadonlyArray<{ title: string; fields: ReadonlyArray<ILookFi
 
 /**
  * How the level is exposed, lit, bloomed and corrected: the game's console defaults, the settings', a built-in engine's,
- * or values edited by hand.
+ * or values edited by hand; and whether the engine's bloom draws or the enhanced one in its place.
  */
 export function LevelLookAction({
   "data-testid": dataTestId = "level-look-action",
   id,
   className,
-}: BaseComponentProps): ReactElement {
+  bloom,
+  features,
+  onChangeFeatures,
+}: ILevelLookActionProps): ReactElement {
   const lookService: LevelLookService = useInjection(LevelLookService);
+  const isEnhancedBloom: boolean = bloom.mode === ERenderBloomMode.ENHANCED;
+
+  const setBloom = useCallback(
+    (part: Partial<TLevelEnhancedBloomOptions>): void =>
+      onChangeFeatures({ ...features, enhancedBloom: { ...features.enhancedBloom, ...part } }),
+    [features, onChangeFeatures]
+  );
 
   const { choice, look, defaults } = lookService;
   const picked: string = choice.source === ELevelLookSource.CUSTOM ? EDITED : choice.source;
@@ -228,7 +274,7 @@ export function LevelLookAction({
       label={"Look"}
       description={`Exposure, light and image as ${options.find((it) => it.value === picked)?.label ?? "set"}`}
       icon={<ExposureIcon />}
-      isActive={picked !== ELevelLookSource.GAME}
+      isActive={picked !== ELevelLookSource.GAME || isEnhancedBloom}
     >
       <div className={"flex w-72 flex-col gap-3 px-4 py-2"}>
         <Typography className={"text-text-secondary"} variant={"overline"}>
@@ -252,14 +298,46 @@ export function LevelLookAction({
           onChange={(isEnabled: boolean) => lookService.edit({ ...look, exposure: { ...look.exposure, isEnabled } })}
         />
 
-        <CheckboxFormRow
-          label={"Bloom"}
-          description={"`phase_bloom`: the bright part of the frame blurred over it, as the console sets it"}
-          isChecked={look.bloom.isEnabled}
-          onChange={(isEnabled: boolean) => lookService.edit({ ...look, bloom: { ...look.bloom, isEnabled } })}
+        <RenderValueChoice
+          label={"Bloom drawn as"}
+          options={RENDER_BLOOM_MODE_OPTIONS}
+          value={bloom.mode}
+          onChange={(mode: RenderBloomMode) => setBloom({ mode })}
         />
 
-        {FIELD_GROUPS.map((group) => (
+        <p className={"text-xs text-text-secondary"}>{explainRenderBloomMode(bloom.mode)}</p>
+
+        {isEnhancedBloom ? (
+          <div className={"flex flex-col gap-1"}>
+            <Typography variant={"caption"} className={"text-text-secondary"}>
+              Enhanced bloom
+            </Typography>
+
+            {ENHANCED_BLOOM_FIELDS.map((field: IEnhancedBloomField) => (
+              <RenderValueSlider
+                key={field.key}
+                label={field.label}
+                value={bloom[field.key]}
+                {...RENDER_ENHANCED_BLOOM_LIMITS[field.key]}
+                format={formatBloomStrength}
+                onChange={(value: number) => setBloom({ [field.key]: value })}
+              />
+            ))}
+          </div>
+        ) : (
+          <CheckboxFormRow
+            label={"Bloom"}
+            description={"`phase_bloom`: the bright part of the frame blurred over it, as the console sets it"}
+            isChecked={look.bloom.isEnabled}
+            onChange={(isEnabled: boolean) => lookService.edit({ ...look, bloom: { ...look.bloom, isEnabled } })}
+          />
+        )}
+
+        <Button size={"small"} onClick={() => onChangeFeatures({ ...features, enhancedBloom: {} })}>
+          Back to the settings for the bloom
+        </Button>
+
+        {FIELD_GROUPS.filter((group) => !isEnhancedBloom || group.title !== BLOOM_GROUP).map((group) => (
           <div key={group.title} className={"flex flex-col gap-1"}>
             <Typography variant={"caption"} className={"text-text-secondary"}>
               {group.title}

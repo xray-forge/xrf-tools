@@ -2,8 +2,11 @@ import {
   RenderAmbientOcclusionSettings,
   RenderAmbientOcclusionVbaoSettings,
   RenderContactShadowSettings,
+  RenderDebandingSettings,
+  RenderEnhancedBloomSettings,
   RenderEnhancedWaterSettings,
   RenderExposureSettings,
+  RenderFogSettings,
   RenderFoliageSettings,
   RenderGrassSettings,
   RenderIndirectLightSettings,
@@ -23,7 +26,10 @@ import { TSettled } from "@/core/render/lib/settings/render-settled";
 export type TRenderViewFeatureKey =
   | "ambientOcclusion"
   | "antialiasing"
+  | "debanding"
+  | "enhancedBloom"
   | "exposure"
+  | "fog"
   | "grass"
   | "indirectLight"
   | "isOcclusionCulled"
@@ -51,9 +57,15 @@ export type TRenderAmbientOcclusionSettings = TSettled<RenderAmbientOcclusionSet
 
 export type TRenderContactShadowSettings = TSettled<RenderContactShadowSettings>;
 
+export type TRenderDebandingSettings = TSettled<RenderDebandingSettings>;
+
+export type TRenderEnhancedBloomSettings = TSettled<RenderEnhancedBloomSettings>;
+
 export type TRenderEnhancedWaterSettings = TSettled<RenderEnhancedWaterSettings>;
 
 export type TRenderExposureSettings = TSettled<RenderExposureSettings>;
+
+export type TRenderFogSettings = TSettled<RenderFogSettings>;
 
 export type TRenderFoliageSettings = TSettled<RenderFoliageSettings>;
 

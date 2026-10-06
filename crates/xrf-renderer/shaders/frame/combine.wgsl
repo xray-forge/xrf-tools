@@ -152,8 +152,11 @@ fn fs_combine(in: FullscreenVarying) -> CombineOutput {
   }
 
   // The engine fogs towards `fog_color` before the tonemap, then fades into the sky itself by the fog squared, both
-  // parts alike (`skyblend` in either's alpha).
-  var fogged: vec3<f32> = mix(shaded, lighting.fog_color.rgb, fog);
+  // parts alike (`skyblend` in either's alpha). The enhanced fog thickens the first and tints it below its height;
+  // the sky's fade stays the distance fog's.
+  let height: f32 = camera.position.y + (transpose(camera.view) * vec4<f32>(position, 0.0)).y;
+  let thickened: f32 = select(0.0, fog_amount_at(lighting, position, height), is_fogged);
+  var fogged: vec3<f32> = mix(shaded, fog_color_at(lighting, position, height), thickened);
 
   // The fogged surface blended towards what it reflects by its share of reflection.
   if (lighting.reflections.x > 0.5) {

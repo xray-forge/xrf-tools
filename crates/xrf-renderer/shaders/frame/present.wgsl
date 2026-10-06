@@ -4,13 +4,15 @@
 #import "common/occlusion"
 #import "common/octahedral"
 #import "common/present"
+#import "common/debanding"
 
 // The viewport's finished scene put into its rectangle of the window, moved where the water and the particles distort
 // it; or, for a debug view, one of the targets the scene was built from.
 
 // The scene, what the water and the particles move what is seen through them by, the targets a debug view shows, what
-// the frame shows, the frame upscaled or the scene again, the bloom, finished in its 256-square target, the indirect
-// light at half the frame's size, and the reflections at the size they are traced at.
+// the frame shows, the frame upscaled or the scene again (filtered for the debanding's reads), the bloom, finished in
+// the engine's 256-square target or at half the frame's size for the enhanced bloom, the indirect light at half the
+// frame's size, and the reflections at the size they are traced at.
 #import "generated/frame/present"
 
 const VIEW_ALBEDO: u32 = 1u;
@@ -30,6 +32,10 @@ const REFLECTION_MISS: vec3<f32> = vec3<f32>(0.05, 0.1, 0.45);
 const REFLECTION_VIEW_GAIN: f32 = 4.0;
 // Drawn pixels of motion the motion view spans from black to full colour on each axis.
 const MOTION_VIEW_RANGE: f32 = 16.0;
+
+// `is_bloomed` for the engine's bloom and for the enhanced one.
+const BLOOM_ENGINE: u32 = 1u;
+const BLOOM_ENHANCED: u32 = 2u;
 
 // Metres the depth view spreads over, logarithmically, so a metre up close and a kilometre away both read.
 const DEPTH_VIEW_RANGE: f32 = 5000.0;
@@ -214,9 +220,31 @@ fn fs_present(in: FullscreenVarying) -> @location(0) vec4<f32> {
   var color: vec3<f32> = select(textureLoad(scene, drawn_texel(read), 0).rgb,
     textureLoad(upscaled, vec2<i32>(read), 0).rgb, present.is_upscaled != 0u);
 
+  // The sky debanding, where nothing was drawn: its neighbours read about the pixel itself, not where the distortion
+  // moved its read.
+  if (present.deband.x > 0.0 && textureLoad(depth_target, texel, 0) <= 0.0) {
+    color = debanded(upscaled, bloom_sampler, color, (pixel + 0.5) / present.size, 1.0 / present.size,
+      u32(present.deband.x), present.deband.y, present.deband.z);
+  }
+
+  // The enhanced bloom screened over the frame, `1 - (1 - img)(1 - bloom)`, before its corrections; where the
+  // distortion blurs, the corrected frame then goes towards the bloom by the distortion's `z`, as the engine's does.
+  if (present.is_bloomed == BLOOM_ENHANCED) {
+    let bloom: vec3<f32> = textureSampleLevel(bloom_target, bloom_sampler, (read + 0.5) / present.size, 0.0).rgb;
+    var finished: vec3<f32> = corrected(1.0 - (1.0 - saturate(color)) * (1.0 - bloom));
+
+    if (strength > 0.0) {
+      finished = mix(finished, bloom * DEF_HDR, textureLoad(distortion, texel, 0).z);
+    }
+
+    let shown: vec3<f32> = mix(finished, present.selection.rgb, selection_share(texel));
+
+    return vec4<f32>(shown + output_dither(in.clip.xy), 1.0);
+  }
+
   // `combine_2`: the bloom read where the scene is; where the distortion blurs, the scene first goes towards it by the
   // distortion's `z`, `lerp(img, bloom * def_hdr, distort.z)`; then the bloom added, `combine_bloom`.
-  if (present.is_bloomed != 0u) {
+  if (present.is_bloomed == BLOOM_ENGINE) {
     let bloom: vec4<f32> = textureSampleLevel(bloom_target, bloom_sampler, (read + 0.5) / present.size, 0.0);
 
     if (strength > 0.0) {

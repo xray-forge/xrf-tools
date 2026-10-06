@@ -3,7 +3,8 @@ use xrf_renderer_core::{GraphTexture, PassParameters, UniformBinding};
 use crate::pass::present_uniform::PresentUniform;
 
 /// What the present pass reads of a viewport's frame: its finished scene and the targets a debug view shows, what the
-/// water and the particles distort it by, the frame upscaled or the scene again, its bloom, what it shows, and the indirect light and reflections a debug view shows.
+/// water and the particles distort it by, the frame upscaled or the scene again, which the sky debanding samples, its
+/// bloom, the engine's or the enhanced one, what it shows, and the indirect light and reflections a debug view shows.
 #[derive(PassParameters)]
 #[parameters(group = 1)]
 pub struct PresentParameters<'a> {
@@ -25,7 +26,7 @@ pub struct PresentParameters<'a> {
   pub occlusion_target: GraphTexture,
   #[uniform]
   pub present: UniformBinding<PresentUniform>,
-  #[texture(d2, unfilterable)]
+  #[texture(d2, float)]
   pub upscaled: GraphTexture,
   #[texture(d2, unfilterable)]
   pub motion_target: GraphTexture,

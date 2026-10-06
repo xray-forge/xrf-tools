@@ -31,6 +31,7 @@ const EMBEDDED: &[(&str, &str)] = &[
     include_str!("../../shaders/common/foliage_wind.wgsl"),
   ),
   ("common/cut_out", include_str!("../../shaders/common/cut_out.wgsl")),
+  ("common/debanding", include_str!("../../shaders/common/debanding.wgsl")),
   ("common/hmodel", include_str!("../../shaders/common/hmodel.wgsl")),
   ("common/lighting", include_str!("../../shaders/common/lighting.wgsl")),
   ("common/occlusion", include_str!("../../shaders/common/occlusion.wgsl")),
@@ -122,6 +123,14 @@ const EMBEDDED: &[(&str, &str)] = &[
   ("frame/overlay", include_str!("../../shaders/frame/overlay.wgsl")),
   ("frame/backdrop", include_str!("../../shaders/frame/backdrop.wgsl")),
   ("frame/bloom", include_str!("../../shaders/frame/bloom.wgsl")),
+  (
+    "frame/enhanced_bloom",
+    include_str!("../../shaders/frame/enhanced_bloom.wgsl"),
+  ),
+  (
+    "frame/fog_scattering",
+    include_str!("../../shaders/frame/fog_scattering.wgsl"),
+  ),
   ("frame/present", include_str!("../../shaders/frame/present.wgsl")),
   ("frame/pyramid", include_str!("../../shaders/frame/pyramid.wgsl")),
   (
@@ -232,6 +241,14 @@ const EMBEDDED: &[(&str, &str)] = &[
   (
     "generated/frame/bloom",
     include_str!("../../shaders/generated/frame/bloom.wgsl"),
+  ),
+  (
+    "generated/frame/enhanced_bloom",
+    include_str!("../../shaders/generated/frame/enhanced_bloom.wgsl"),
+  ),
+  (
+    "generated/frame/fog_scattering",
+    include_str!("../../shaders/generated/frame/fog_scattering.wgsl"),
   ),
   (
     "generated/frame/fxaa",

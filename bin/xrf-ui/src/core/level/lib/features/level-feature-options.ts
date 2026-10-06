@@ -6,6 +6,9 @@ import { IRenderFeatureOverrides } from "@/core/render/lib/settings/render-featu
 import {
   IRenderFeatureSettings,
   TRenderAmbientOcclusionSettings,
+  TRenderDebandingSettings,
+  TRenderEnhancedBloomSettings,
+  TRenderFogSettings,
   TRenderGrassSettings,
   TRenderIndirectLightSettings,
   TRenderLightsSettings,
@@ -36,6 +39,15 @@ export type TLevelReflectionOptions = TRenderReflectionSettings;
 /** The rain settings a level view may set for itself: all of them. */
 export type TLevelRainOptions = TRenderRainSettings;
 
+/** The fog settings a level view may set for itself: all of them. */
+export type TLevelFogOptions = TRenderFogSettings;
+
+/** The sky debanding settings a level view may set for itself: all of them. */
+export type TLevelDebandingOptions = TRenderDebandingSettings;
+
+/** The bloom's mode and the enhanced bloom's settings a level view may set for itself: all of them. */
+export type TLevelEnhancedBloomOptions = TRenderEnhancedBloomSettings;
+
 /** The grass settings a level view may set for itself. */
 export type TLevelGrassOptions = Pick<TRenderGrassSettings, "density" | "foliage" | "height" | "radius">;
 
@@ -58,6 +70,12 @@ export interface ILevelFeatureOptions {
   reflections: Partial<TLevelReflectionOptions>;
   /** The rain's wetting, which no toolbar toggle turns off: its own mode does. */
   rain: Partial<TLevelRainOptions>;
+  /** How the fog is drawn beyond the weather's keys, which the fog's toggle does not turn: its own mode does. */
+  fog: Partial<TLevelFogOptions>;
+  /** The sky debanding, which no toolbar toggle turns off: its own mode does. */
+  debanding: Partial<TLevelDebandingOptions>;
+  /** Which bloom draws and the enhanced bloom's strengths, which no toolbar toggle turns off: its own mode does. */
+  enhancedBloom: Partial<TLevelEnhancedBloomOptions>;
   /** The mode edges are smoothed with while the settings smooth them at all, or null for the settings' own. */
   antialiasing: Nullable<RenderAntialiasing>;
   shadows: Partial<TLevelShadowOptions>;
@@ -80,19 +98,20 @@ const LEVEL_FEATURE_KEYS: {
   water: ["distortion", "enhanced", "isDistorted", "isSoft", "mode", "reflection", "ripple", "waveHeight", "waveSpeed"],
 };
 
-/** The indirect light's settings a view may set. */
-const LEVEL_INDIRECT_LIGHT_KEYS: ReadonlyArray<keyof TLevelIndirectLightOptions> = ["intensity", "mode", "radius"];
+/** The groups no toolbar toggle turns off, whose own mode does, of which a view may set every setting. */
+export type TLevelModeFeatureKey = "debanding" | "enhancedBloom" | "fog" | "indirectLight" | "rain" | "reflections";
 
-/** The rain's settings a view may set. */
-const LEVEL_RAIN_KEYS: ReadonlyArray<keyof TLevelRainOptions> = ["mode", "puddles", "reflectivity", "ripples"];
-
-/** The reflections' settings a view may set. */
-const LEVEL_REFLECTION_KEYS: ReadonlyArray<keyof TLevelReflectionOptions> = [
-  "distance",
-  "intensity",
-  "mode",
-  "quality",
-];
+/** Each such group's settings a view may set. */
+const LEVEL_MODE_FEATURE_KEYS: {
+  readonly [K in TLevelModeFeatureKey]: ReadonlyArray<keyof ILevelFeatureOptions[K]>;
+} = {
+  debanding: ["mode", "quality", "radius"],
+  enhancedBloom: ["blur", "exposure", "mode", "sky", "threshold", "vibrance"],
+  fog: ["density", "height", "mode", "scattering", "sunColor"],
+  indirectLight: ["intensity", "mode", "radius"],
+  rain: ["mode", "puddles", "reflectivity", "ripples"],
+  reflections: ["distance", "intensity", "mode", "quality"],
+};
 
 /**
  * @param stored - What was stored for a view's features, parsed from wherever it is kept.
@@ -109,25 +128,29 @@ export function toLevelFeatureOptions(stored: unknown): ILevelFeatureOptions {
     ) as ILevelFeatureOptions[K];
   }
 
+  function pickModeFeature<K extends TLevelModeFeatureKey>(key: K): ILevelFeatureOptions[K] {
+    const group: Record<string, unknown> = (overrides[key] ?? {}) as Record<string, unknown>;
+
+    return Object.fromEntries(
+      LEVEL_MODE_FEATURE_KEYS[key]
+        .filter((it) => group[it as string] !== undefined)
+        .map((it) => [it, group[it as string]])
+    ) as ILevelFeatureOptions[K];
+  }
+
   const antialiasing: RenderAntialiasing | undefined = overrides.antialiasing;
-  const indirectLight: Record<string, unknown> = (overrides.indirectLight ?? {}) as Record<string, unknown>;
-  const reflections: Record<string, unknown> = (overrides.reflections ?? {}) as Record<string, unknown>;
-  const rain: Record<string, unknown> = (overrides.rain ?? {}) as Record<string, unknown>;
 
   return {
     ambientOcclusion: pick("ambientOcclusion"),
     antialiasing: antialiasing && LEVEL_ANTIALIASING_MODES.includes(antialiasing) ? antialiasing : null,
+    debanding: pickModeFeature("debanding"),
+    enhancedBloom: pickModeFeature("enhancedBloom"),
+    fog: pickModeFeature("fog"),
     grass: pick("grass"),
-    indirectLight: Object.fromEntries(
-      LEVEL_INDIRECT_LIGHT_KEYS.filter((it) => indirectLight[it] !== undefined).map((it) => [it, indirectLight[it]])
-    ) as Partial<TLevelIndirectLightOptions>,
+    indirectLight: pickModeFeature("indirectLight"),
     lights: pick("lights"),
-    rain: Object.fromEntries(
-      LEVEL_RAIN_KEYS.filter((it) => rain[it] !== undefined).map((it) => [it, rain[it]])
-    ) as Partial<TLevelRainOptions>,
-    reflections: Object.fromEntries(
-      LEVEL_REFLECTION_KEYS.filter((it) => reflections[it] !== undefined).map((it) => [it, reflections[it]])
-    ) as Partial<TLevelReflectionOptions>,
+    rain: pickModeFeature("rain"),
+    reflections: pickModeFeature("reflections"),
     shadows: pick("shadows"),
     water: pick("water"),
   };
@@ -178,7 +201,7 @@ export function toLevelIndirectLight(
   settings: IRenderFeatureSettings,
   view: ILevelFeatureOptions
 ): TRenderIndirectLightSettings {
-  return { ...settings.indirectLight, ...view.indirectLight };
+  return toLevelModeFeature("indirectLight", settings, view);
 }
 
 /**
@@ -187,7 +210,7 @@ export function toLevelIndirectLight(
  * @returns The rain's wetting the view is drawn with: the settings', the view's own values over them.
  */
 export function toLevelRain(settings: IRenderFeatureSettings, view: ILevelFeatureOptions): TRenderRainSettings {
-  return { ...settings.rain, ...view.rain };
+  return toLevelModeFeature("rain", settings, view);
 }
 
 /**
@@ -199,7 +222,22 @@ export function toLevelReflections(
   settings: IRenderFeatureSettings,
   view: ILevelFeatureOptions
 ): TRenderReflectionSettings {
-  return { ...settings.reflections, ...view.reflections };
+  return toLevelModeFeature("reflections", settings, view);
+}
+
+/**
+ * @param key - A group no toolbar toggle turns off: the fog's, the sky debanding's, the bloom's, the indirect light's
+ *   or the reflections'.
+ * @param settings - What the renderer's settings set, for every viewport.
+ * @param view - What the view sets over them.
+ * @returns The group the view is drawn with: the settings', the view's own values over them.
+ */
+export function toLevelModeFeature<K extends TLevelModeFeatureKey>(
+  key: K,
+  settings: IRenderFeatureSettings,
+  view: ILevelFeatureOptions
+): IRenderFeatureSettings[K] {
+  return { ...settings[key], ...view[key] };
 }
 
 /**

@@ -1,18 +1,32 @@
-import { afterEach, describe, expect, it } from "@jest/globals";
+import { afterEach, describe, expect, it, jest } from "@jest/globals";
 import { act } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { Container } from "@wirestate/core";
 
+import { ERenderBloomMode } from "@/core/ipc/types/xrf-renderer";
 import { LevelLookAction } from "@/core/level/components/preview/LevelLookAction";
+import { ILevelFeatureOptions } from "@/core/level/lib/features";
 import { ELevelLookSource } from "@/core/level/lib/look";
 import { LevelLookService } from "@/core/level/services";
+import { DEFAULT_RENDER_ENHANCED_BLOOM_SETTINGS } from "@/core/render/lib/settings/render-feature-defaults";
+import { TRenderEnhancedBloomSettings } from "@/core/render/lib/settings/render-feature-settings";
+import { mockLevelFeatureOptions } from "@/fixtures/mocks/level.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
-function renderAction(): { look: LevelLookService } & ReturnType<typeof renderWithProviders> {
+function renderAction(
+  bloom: TRenderEnhancedBloomSettings = DEFAULT_RENDER_ENHANCED_BLOOM_SETTINGS,
+  onChangeFeatures: (features: ILevelFeatureOptions) => void = () => {}
+): { look: LevelLookService } & ReturnType<typeof renderWithProviders> {
   const container: Container = mockContainer([LevelLookService]);
 
-  return { ...renderWithProviders(<LevelLookAction />, { container }), look: container.get(LevelLookService) };
+  return {
+    ...renderWithProviders(
+      <LevelLookAction bloom={bloom} features={mockLevelFeatureOptions()} onChangeFeatures={onChangeFeatures} />,
+      { container }
+    ),
+    look: container.get(LevelLookService),
+  };
 }
 
 afterEach(() => {
@@ -67,5 +81,36 @@ describe("LevelLookAction", () => {
 
     expect(look.choice.source).toBe(ELevelLookSource.CUSTOM);
     expect(look.look.lightScales.sun).toBe(3);
+  });
+
+  // The enhanced bloom's strengths stand in the engine bloom's place while it draws.
+  it("draws the enhanced bloom on asking, its strengths in place of the engine bloom's", async () => {
+    const onChangeFeatures = jest.fn<(features: ILevelFeatureOptions) => void>();
+    const { getByRole, findByRole, queryByRole, unmount } = renderAction(undefined, onChangeFeatures);
+
+    await userEvent.click(getByRole("button", { name: "Look" }));
+    await findByRole("dialog", { name: "Look" });
+
+    expect(getByRole("checkbox", { name: "Bloom" })).toBeInTheDocument();
+    expect(queryByRole("slider", { name: "Vibrance" })).toBeNull();
+
+    await userEvent.click(getByRole("button", { name: "Enhanced" }));
+
+    expect(onChangeFeatures).toHaveBeenLastCalledWith({
+      ...mockLevelFeatureOptions(),
+      enhancedBloom: { mode: ERenderBloomMode.ENHANCED },
+    });
+
+    unmount();
+
+    const enhanced = renderAction({ ...DEFAULT_RENDER_ENHANCED_BLOOM_SETTINGS, mode: ERenderBloomMode.ENHANCED });
+
+    await userEvent.click(enhanced.getByRole("button", { name: "Look" }));
+    await enhanced.findByRole("dialog", { name: "Look" });
+
+    expect(enhanced.queryByRole("checkbox", { name: "Bloom" })).toBeNull();
+    expect(enhanced.queryByRole("slider", { name: "Radius" })).toBeNull();
+    expect(enhanced.getByRole("slider", { name: "Threshold" })).toHaveAttribute("aria-valuetext", "3.5");
+    expect(enhanced.getByRole("slider", { name: "Vibrance" })).toHaveAttribute("aria-valuetext", "1.5");
   });
 });

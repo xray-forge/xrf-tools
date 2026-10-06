@@ -3,6 +3,7 @@ use xrf_engine_target::XrayEngine;
 use xrf_renderer_core::ShaderStruct;
 
 use crate::contract::render_ambient_occlusion_settings::RenderAmbientOcclusionSettings;
+use crate::contract::render_fog_settings::RenderFogSettings;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::pass::bitmask_search::BitmaskSearch;
@@ -56,6 +57,8 @@ pub struct LightingUniform {
   /// One where the reflections are traced and blended in, the frame's pixels a traced pixel stands for each way, and
   /// what the share of reflection is scaled by.
   pub reflections: Vec4,
+  /// The enhanced fog's height, density and sun colour, then one where it is drawn; nothing where the engine's alone is.
+  pub height_fog: Vec4,
 }
 
 impl LightingUniform {
@@ -68,6 +71,7 @@ impl LightingUniform {
     let (offset, scale) = fog.map_or((0.0, 0.0), |fog| fog.get_params());
     let flag = |is: bool| is as u32 as f32;
     let occlusion: &RenderAmbientOcclusionSettings = &options.features.ambient_occlusion;
+    let height_fog: &RenderFogSettings = &options.features.fog;
     // Searched only where the view is lit and solid.
     let is_occluded: bool = occlusion.is_enabled && options.mode.is_lit && !options.mode.is_wireframe;
 
@@ -143,6 +147,16 @@ impl LightingUniform {
       reflections: ReflectionTrace::new(options).map_or(Vec4::ZERO, |trace| {
         Vec4::new(1.0, trace.get_ratio() as f32, trace.intensity, 0.0)
       }),
+      height_fog: if fog.is_some() && options.mode.is_lit && height_fog.is_enhanced() {
+        Vec4::new(
+          height_fog.height.max(0.01),
+          height_fog.density,
+          height_fog.sun_color,
+          1.0,
+        )
+      } else {
+        Vec4::ZERO
+      },
     }
   }
 }
