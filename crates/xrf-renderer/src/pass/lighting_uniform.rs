@@ -10,9 +10,6 @@ use crate::pass::bitmask_search::BitmaskSearch;
 use crate::pass::lighting_frame::LightingFrame;
 use crate::pass::reflection_trace::ReflectionTrace;
 
-/// How far the sky's highlights are expanded at its white as light for the reflections (`sky_as_light`).
-const SKY_LIGHT_GAIN: f32 = 1.5;
-
 /// The lighting the shaders read as their `Lighting`: one viewport's, since the sun is given in its view space.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
@@ -148,7 +145,7 @@ impl LightingUniform {
         0.0,
       ),
       reflections: ReflectionTrace::new(options).map_or(Vec4::ZERO, |trace| {
-        Vec4::new(1.0, trace.get_ratio() as f32, trace.intensity, SKY_LIGHT_GAIN)
+        Vec4::new(1.0, trace.get_ratio() as f32, trace.intensity, trace.sky_gain)
       }),
       height_fog: if fog.is_some() && options.mode.is_lit && height_fog.is_enhanced() {
         Vec4::new(

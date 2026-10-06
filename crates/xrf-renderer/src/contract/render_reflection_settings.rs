@@ -22,6 +22,9 @@ pub struct RenderReflectionSettings {
   pub quality: RenderReflectionQuality,
   /// How fine the surroundings cube a ray meeting nothing on the screen reads is.
   pub probe: RenderReflectionProbe,
+  /// How far the sky's highlights are scaled at its white as light for the traced reflections, one as the engine's sky
+  /// picture shows them.
+  pub sky_gain: f32,
 }
 
 impl Default for RenderReflectionSettings {
@@ -31,9 +34,10 @@ impl Default for RenderReflectionSettings {
       mode: RenderReflectionMode::Engine,
       intensity: 1.0,
       distance: 150.0,
-      reach: 250.0,
+      reach: 300.0,
       quality: RenderReflectionQuality::High,
       probe: RenderReflectionProbe::Fine,
+      sky_gain: 1.25,
     }
   }
 }
