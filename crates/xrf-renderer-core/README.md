@@ -101,3 +101,18 @@ because WGSL lays them out otherwise.
 - `ShaderLayoutVerifier::verify` is the independent check: naga parses that declaration, lays it out itself, and
   validates it bound in a `ShaderAddressSpace`. A uniform buffer's sixteen-byte array stride and struct alignment are
   naga's to enforce, so an array of scalars passes in storage and is refused as a uniform.
+
+## Pass parameters
+
+A pass's bind group is declared as a struct with `#[derive(PassParameters)]` (`xrf-renderer-derive`'s README lists the
+field kinds). A builder's `parameters(&p)` adds the accesses the struct makes, and the recording binds it with
+`context.bind(&p)`, at the group the struct names, with its dynamic offsets.
+
+- **`BindGroupCache`** makes each struct's layout once (keyed by its path, `PassParameters::LAYOUT_KEY`); a pipeline for
+  that pass takes its layout from `get_layout`, so the bind groups match it. Bind groups are kept across frames by the
+  identity of what they bind (wgpu's resources compare and hash by identity), so the pooled transients a pass binds give
+  the same bind group back every frame; one unused for `BindGroupCache::MAX_IDLE_FRAMES` is dropped. It locks, for the
+  passes recording a frame.
+- `CompiledGraph::execute` takes the cache beside the pool, and starts a frame of both.
+- `UniformBinding` binds the upload ring's buffer once and the value's offset as a dynamic offset, so one bind group
+  serves every frame's uniforms.
