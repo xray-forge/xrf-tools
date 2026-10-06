@@ -7,6 +7,6 @@ use serde::{Deserialize, Serialize};
 pub struct RenderPassCost {
   /// The pass, as the frame names it.
   pub name: String,
-  /// Mean GPU milliseconds over the report's span.
+  /// Mean GPU milliseconds a frame over the report's span, a frame it did not run in counting nought.
   pub gpu_time: f32,
 }
