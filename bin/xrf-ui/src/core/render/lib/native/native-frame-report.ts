@@ -1,4 +1,5 @@
 import {
+  ERenderBackend,
   RenderFramePhases,
   RenderFrameReport,
   RenderLightsReport,
@@ -59,7 +60,7 @@ export const EMPTY_RENDER_FRAME_PHASES: RenderFramePhases = {
 /** What a viewport reads before its first frame is reported, and after it is let go. */
 export const EMPTY_RENDER_FRAME_REPORT: RenderFrameReport = {
   adapter: "",
-  backend: "",
+  backend: ERenderBackend.D3D12,
   cpuTime: 0,
   frameTime: 0,
   frameTimeMax: 0,

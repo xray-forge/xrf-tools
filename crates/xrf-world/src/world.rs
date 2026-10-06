@@ -260,4 +260,16 @@ impl RenderWorld for World {
 
     frames
   }
+
+  fn restart_scenes(&mut self) {
+    for scene in self.scenes.values_mut() {
+      let source: Arc<dyn RenderLevelSource> = Arc::clone(scene.level.get_source());
+
+      scene.level = WorldLevel::start(source, &self.workers);
+
+      if let Some(driving) = scene.get_driver().and_then(|driver| self.viewports.get(&driver)) {
+        scene.level.set_pose(&driving.pose);
+      }
+    }
+  }
 }

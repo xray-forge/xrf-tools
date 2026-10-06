@@ -20,6 +20,7 @@ mod overlays;
 mod puddle_fill;
 mod rain_wetness;
 mod reflections;
+mod render_backend;
 mod selection;
 mod shader_composer;
 mod shaders;

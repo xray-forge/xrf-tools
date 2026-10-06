@@ -7,6 +7,7 @@ use xrf_renderer_core::{FrameGraph, GraphPassTime, GraphReport, GraphTimer};
 use crate::contract::render_applied_environment::RenderAppliedEnvironment;
 use crate::contract::render_applied_fog::RenderAppliedFog;
 use crate::contract::render_applied_report::RenderAppliedReport;
+use crate::contract::render_backend::RenderBackend;
 use crate::contract::render_frame_report::RenderFrameReport;
 use crate::contract::render_graph_report::RenderGraphReport;
 use crate::contract::render_level_hit::RenderLevelHit;
@@ -189,7 +190,7 @@ impl RenderViewport {
   pub fn report(
     &mut self,
     now: Instant,
-    (backend, adapter): (&str, &str),
+    (backend, adapter): (RenderBackend, &str),
     (texture_bytes, scenes): (u64, &mut HashMap<RenderSceneId, LevelScene>),
     (timer, graph): (Option<&mut GraphTimer>, Option<&GraphReport>),
   ) {
@@ -268,7 +269,7 @@ impl RenderViewport {
       height: rect.height,
       render_width,
       render_height,
-      backend: backend.to_string(),
+      backend,
       adapter: adapter.to_string(),
       is_gpu_timed,
       passes,

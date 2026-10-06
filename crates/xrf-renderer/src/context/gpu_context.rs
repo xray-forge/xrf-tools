@@ -4,7 +4,8 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use xrf_error::{XrfError, XrfResult};
 
 use crate::context::gpu_requirements::{OPTIONAL_FEATURES, REQUIRED_FEATURES, get_missing_features};
-use crate::context::render_backend::RenderBackend;
+use crate::contract::render_backend::RenderBackend;
+use crate::contract::render_backend_availability::RenderBackendAvailability;
 
 /// The GPU the renderer draws with: one per process, owned by the render thread.
 pub struct GpuContext {
@@ -29,6 +30,51 @@ impl GpuContext {
     Self::create_with(backend, false)
   }
 
+  /// Starts the GPU on the first backend of `RenderBackend::list_tried` that starts: the one asked for, else the first
+  /// other that does, so a remembered backend this machine has lost falls back rather than failing.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error, every backend's reason in it, when none starts.
+  pub fn create_preferred(asked: Option<RenderBackend>) -> XrfResult<Self> {
+    let mut problems: Vec<String> = Vec::new();
+
+    for backend in RenderBackend::list_tried(asked) {
+      match Self::create(backend) {
+        Ok(context) => {
+          if !problems.is_empty() {
+            log::warn!("Renderer fell back to {}: {}", backend.get_label(), problems.join("; "));
+          }
+
+          return Ok(context);
+        }
+        Err(error) => problems.push(format!("{}: {error}", backend.get_label())),
+      }
+    }
+
+    Err(XrfError::new_unexpected_error(format!(
+      "No graphics backend starts: {}",
+      problems.join("; ")
+    )))
+  }
+
+  /// Whether the renderer can draw with a backend here: a hardware adapter of it with every feature it needs, without
+  /// starting a device on it.
+  pub fn probe(backend: RenderBackend) -> RenderBackendAvailability {
+    match Self::request_adapter(backend, false).and_then(|(_, adapter)| Self::check_adapter(&adapter)) {
+      Ok(info) => RenderBackendAvailability {
+        backend,
+        adapter: Some(info.name),
+        problem: None,
+      },
+      Err(error) => RenderBackendAvailability {
+        backend,
+        adapter: None,
+        problem: Some(error.to_string()),
+      },
+    }
+  }
+
   /// Starts the GPU for drawing without a window, falling back to a software adapter (WARP under D3D12) where no
   /// hardware one exists, which is what a test machine without a GPU has.
   ///
@@ -44,7 +90,8 @@ impl GpuContext {
     self.lost.load(Ordering::Acquire)
   }
 
-  fn create_with(backend: RenderBackend, is_fallback: bool) -> XrfResult<Self> {
+  /// An instance of a backend and its high-performance adapter, a software one where `is_fallback`.
+  fn request_adapter(backend: RenderBackend, is_fallback: bool) -> XrfResult<(wgpu::Instance, wgpu::Adapter)> {
     let mut descriptor: wgpu::InstanceDescriptor = wgpu::InstanceDescriptor::new_without_display_handle();
 
     descriptor.backends = backend.to_backends();
@@ -61,15 +108,27 @@ impl GpuContext {
     }))
     .map_err(|error| XrfError::new_unexpected_error(format!("No {} adapter: {error}", backend.get_label())))?;
 
+    Ok((instance, adapter))
+  }
+
+  /// What an adapter is, where it has every feature the renderer needs.
+  fn check_adapter(adapter: &wgpu::Adapter) -> XrfResult<wgpu::AdapterInfo> {
     let info: wgpu::AdapterInfo = adapter.get_info();
     let missing: wgpu::Features = get_missing_features(adapter.features());
 
-    if !missing.is_empty() {
-      return Err(XrfError::new_unexpected_error(format!(
+    if missing.is_empty() {
+      Ok(info)
+    } else {
+      Err(XrfError::new_unexpected_error(format!(
         "The GPU '{}' lacks what the renderer needs: {missing:?}",
         info.name
-      )));
+      )))
     }
+  }
+
+  fn create_with(backend: RenderBackend, is_fallback: bool) -> XrfResult<Self> {
+    let (instance, adapter) = Self::request_adapter(backend, is_fallback)?;
+    let info: wgpu::AdapterInfo = Self::check_adapter(&adapter)?;
 
     let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
       label: Some("xrf-renderer"),

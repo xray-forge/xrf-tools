@@ -2,6 +2,7 @@
 
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::time::Duration;
 
 use xrf_environment::WeatherDescriptor;
 use xrf_error::{XrfError, XrfResult};
@@ -150,4 +151,27 @@ fn showing_another_level_leaves_the_last_scene() {
 
   world.show_level(viewport, None);
   assert!(list_drivers(&mut world).is_empty());
+}
+
+#[test]
+fn restarting_the_scenes_streams_each_again_under_its_id_and_driver() {
+  let mut world: World = World::new(create_workers());
+  let viewport: RenderViewportId = RenderViewportId(1);
+
+  world.show_level(viewport, Some(source(Some("zaton"))));
+
+  let before: HashMap<RenderSceneId, RenderSceneFrame> = world.advance_scenes(HashMap::new());
+
+  // So the restarted streaming's start is later than the first's on any clock.
+  std::thread::sleep(Duration::from_millis(1));
+  world.restart_scenes();
+
+  let after: HashMap<RenderSceneId, RenderSceneFrame> = world.advance_scenes(HashMap::new());
+
+  assert_eq!(after.keys().collect::<Vec<_>>(), before.keys().collect::<Vec<_>>());
+
+  for (id, frame) in &after {
+    assert_eq!(frame.driver, Some(viewport));
+    assert!(frame.streaming.started > before[id].streaming.started);
+  }
 }

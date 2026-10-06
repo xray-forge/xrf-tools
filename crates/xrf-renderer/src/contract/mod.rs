@@ -14,6 +14,8 @@ pub(crate) mod render_applied_shadows;
 pub(crate) mod render_asset_lighting;
 pub(crate) mod render_asset_preview;
 pub(crate) mod render_backdrop_squares;
+pub(crate) mod render_backend;
+pub(crate) mod render_backend_availability;
 pub(crate) mod render_bloom_mode;
 pub(crate) mod render_bloom_settings;
 pub(crate) mod render_capture;

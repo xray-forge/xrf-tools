@@ -11,6 +11,8 @@ export interface IChoiceFormRowOption<T extends string> {
   label: string;
   /** Accessible name when the visible label needs more context. */
   "aria-label"?: string;
+  /** Whether it cannot be chosen, shown but greyed out. */
+  isDisabled?: boolean;
 }
 
 export interface IChoiceFormRowProps<T extends string> extends BaseComponentProps {
@@ -57,7 +59,12 @@ export function ChoiceFormRow<T extends string>({
           }}
         >
           {options.map((option) => (
-            <ToggleButton key={option.value} aria-label={option["aria-label"]} value={option.value}>
+            <ToggleButton
+              key={option.value}
+              aria-label={option["aria-label"]}
+              value={option.value}
+              disabled={option.isDisabled}
+            >
               {option.label}
             </ToggleButton>
           ))}

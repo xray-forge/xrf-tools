@@ -6,7 +6,7 @@ use std::time::{Duration, Instant};
 use xrf_error::{XrfError, XrfResult};
 
 use crate::context::gpu_context::GpuContext;
-use crate::context::render_backend::RenderBackend;
+use crate::contract::render_backend::RenderBackend;
 use crate::contract::render_texture_state::RenderTextureState;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::scene::texture::texture_cache::TextureCache;

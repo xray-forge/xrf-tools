@@ -1,6 +1,7 @@
 import { ReactElement } from "react";
 
 import { RenderFrameReport } from "@/core/ipc/types/xrf-renderer";
+import { describeRenderBackend } from "@/core/render/lib/settings/render-backend-choice";
 import { EditorPanelProperty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatMilliseconds } from "@/lib/format/duration";
@@ -25,7 +26,8 @@ export function LevelRendererFrameSection({
       <EditorPanelProperty label={"Render thread"} value={formatMilliseconds(frame.cpuTime ?? 0)} />
       <EditorPanelProperty label={"Frames a second"} value={(frame.framesPerSecond ?? 0).toFixed(0)} />
       <EditorPanelProperty label={"Taking a sector in"} value={formatMilliseconds(frame.sectorTime ?? 0)} />
-      <EditorPanelProperty label={"Drawn on"} value={frame.adapter ? `${frame.adapter} · ${frame.backend}` : "—"} />
+      <EditorPanelProperty label={"Graphics API"} value={frame.adapter ? describeRenderBackend(frame.backend) : "—"} />
+      <EditorPanelProperty label={"GPU"} value={frame.adapter || "—"} />
     </EditorPanelSection>
   );
 }

@@ -1,6 +1,6 @@
 use crate::camera::camera_frame::CameraFrame;
 use crate::context::gpu_context::GpuContext;
-use crate::context::render_backend::RenderBackend;
+use crate::contract::render_backend::RenderBackend;
 use crate::contract::render_rect::RenderRect;
 use crate::pass::camera_uniform::CameraUniform;
 use crate::pass::grid_pass::GridPass;
