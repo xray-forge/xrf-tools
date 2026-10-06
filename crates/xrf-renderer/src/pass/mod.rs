@@ -3,6 +3,8 @@ pub(crate) mod ambient_occlusion_pass;
 pub(crate) mod ambient_occlusion_uniform;
 pub(crate) mod backdrop_pass;
 pub(crate) mod backdrop_uniform;
+pub(crate) mod bitmask_pass_names;
+pub(crate) mod bitmask_search;
 pub(crate) mod bloom_parameters;
 pub(crate) mod bloom_pass;
 pub(crate) mod bloom_uniform;

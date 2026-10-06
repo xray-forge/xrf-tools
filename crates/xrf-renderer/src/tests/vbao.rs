@@ -65,7 +65,7 @@ fn searches_with_gtao_unless_asked_for_vbao() {
 #[test]
 fn turns_its_noise_only_while_it_accumulates() {
   let uniform = |settings: &RenderAmbientOcclusionSettings, frame: u32| {
-    VbaoUniform::new(settings, Mat4::IDENTITY, (800, 600), frame, true)
+    VbaoUniform::new(settings, (0.0, 0.0), Mat4::IDENTITY, (800, 600), frame, (true, false))
   };
   let gathering: RenderAmbientOcclusionSettings = vbao(8);
   let still: RenderAmbientOcclusionSettings = vbao(1);

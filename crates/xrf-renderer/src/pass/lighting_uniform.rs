@@ -5,6 +5,7 @@ use xrf_renderer_core::ShaderStruct;
 use crate::contract::render_ambient_occlusion_settings::RenderAmbientOcclusionSettings;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::lighting::render_lighting::RenderLighting;
+use crate::pass::bitmask_search::BitmaskSearch;
 use crate::pass::lighting_frame::LightingFrame;
 
 /// The lighting the shaders read as their `Lighting`: one viewport's, since the sun is given in its view space.
@@ -49,6 +50,8 @@ pub struct LightingUniform {
   /// One while flora is lit as foliage, how much sunlight it passes through from behind, and how much of the sun's
   /// colour that light keeps.
   pub flora: Vec4,
+  /// One where the indirect light is gathered and added.
+  pub indirect: Vec4,
 }
 
 impl LightingUniform {
@@ -125,6 +128,12 @@ impl LightingUniform {
         flag(options.features.grass.foliage.is_enhanced()),
         options.features.grass.foliage.sss_intensity,
         options.features.grass.foliage.sss_color,
+        0.0,
+      ),
+      indirect: Vec4::new(
+        flag(BitmaskSearch::new(options).is_some_and(|search| search.is_lit)),
+        0.0,
+        0.0,
         0.0,
       ),
     }

@@ -37,4 +37,13 @@ impl RenderAmbientOcclusionQuality {
       Self::Ultra => (2, 8),
     }
   }
+
+  /// The indirect light's steps each way past the occlusion's radius, out to its own.
+  pub const fn get_indirect_steps(self) -> u32 {
+    match self {
+      Self::Low => 1,
+      Self::Medium | Self::High => 2,
+      Self::Ultra => 4,
+    }
+  }
 }

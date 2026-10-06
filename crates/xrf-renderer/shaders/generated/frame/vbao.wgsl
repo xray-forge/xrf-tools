@@ -8,3 +8,9 @@
 @group(1) @binding(3) var<uniform> occlusion: Vbao;
 @group(1) @binding(4) var source: texture_2d<f32>;
 @group(1) @binding(5) var history: texture_2d<f32>;
+@group(1) @binding(6) var albedo_target: texture_2d<f32>;
+@group(1) @binding(7) var material_target: texture_2d<f32>;
+@group(1) @binding(8) var light_target: texture_2d<f32>;
+@group(1) @binding(9) var light_source: texture_2d<f32>;
+@group(1) @binding(10) var gathered: texture_2d<f32>;
+@group(1) @binding(11) var light_history: texture_2d<f32>;

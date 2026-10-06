@@ -28,6 +28,8 @@ pub enum RenderDebugView {
   AmbientOcclusion,
   /// How far each surface moved on the screen since the last frame: red across, green down, grey still.
   Motion,
+  /// The indirect light as it would light a white surface, black where it is not gathered.
+  IndirectLight,
 }
 
 impl RenderDebugView {

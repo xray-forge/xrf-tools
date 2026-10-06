@@ -12,4 +12,6 @@ pub struct SceneOutput {
   pub shown: GraphTexture,
   pub present: UniformBinding<PresentUniform>,
   pub lighting: UniformBinding<LightingUniform>,
+  /// The indirect light a debug view shows, a texel of none where it is not gathered.
+  pub indirect_light: GraphTexture,
 }

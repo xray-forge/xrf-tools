@@ -11,8 +11,8 @@
 // built from. Unlit, a surface is its raw albedo.
 
 // The G-buffer and its light, the material table, the lighting and exposure, the ambient occlusion (visibility, then
-// distance along the view, at half the frame's size) and the haze map (the sky as drawn, clouds and all, blurred by
-// bearing and height).
+// distance along the view, at half the frame's size), the haze map (the sky as drawn, clouds and all, blurred by
+// bearing and height) and the indirect light (colour, then distance along the view, at half the frame's size).
 #import "generated/frame/combine"
 
 // What shows where nothing was drawn and neither the sky nor the fog is: the level viewer's backdrop, #202428.
@@ -143,7 +143,13 @@ fn fs_combine(in: FullscreenVarying) -> CombineOutput {
     lighting.params.w > 0.5);
   let bounced: vec3<f32> = bounced_occlusion(visible, albedo.rgb, lighting.params.x);
   let occlusion: f32 = mix(1.0, material.x, camera.switches.z);
-  let shaded: vec3<f32> = shaded_color(albedo, light, normal, position, material.z, occlusion, bounced);
+  var shaded: vec3<f32> = shaded_color(albedo, light, normal, position, material.z, occlusion, bounced);
+
+  // The light the frame's surfaces bounce onto this one, lighting its albedo as the hemisphere does.
+  if (lighting.indirect.x > 0.5) {
+    shaded += albedo.rgb * upsampled_light(indirect_light, floor(in.clip.xy), -position.z);
+  }
+
   // The engine fogs towards `fog_color` before the tonemap, then fades into the sky itself by the fog squared, both
   // parts alike (`skyblend` in either's alpha).
   let fogged: vec3<f32> = mix(shaded, lighting.fog_color.rgb, fog);

@@ -6,6 +6,7 @@ import {
   RenderExposureSettings,
   RenderFoliageSettings,
   RenderGrassSettings,
+  RenderIndirectLightSettings,
   RenderLightsSettings,
   RenderLodSettings,
   RenderShadowSettings,
@@ -22,6 +23,7 @@ export type TRenderViewFeatureKey =
   | "antialiasing"
   | "exposure"
   | "grass"
+  | "indirectLight"
   | "isOcclusionCulled"
   | "lights"
   | "lod"
@@ -52,6 +54,8 @@ export type TRenderExposureSettings = TSettled<RenderExposureSettings>;
 export type TRenderFoliageSettings = TSettled<RenderFoliageSettings>;
 
 export type TRenderGrassSettings = TSettled<RenderGrassSettings>;
+
+export type TRenderIndirectLightSettings = TSettled<RenderIndirectLightSettings>;
 
 export type TRenderLightsSettings = TSettled<RenderLightsSettings>;
 

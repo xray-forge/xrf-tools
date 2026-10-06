@@ -22,7 +22,7 @@ import { LevelSunAction } from "@/core/level/components/preview/LevelSunAction";
 import { LevelWaterAction } from "@/core/level/components/preview/LevelWaterAction";
 import { LevelWeatherAction } from "@/core/level/components/preview/LevelWeatherAction";
 import { LevelWindAction } from "@/core/level/components/preview/LevelWindAction";
-import { ILevelFeatureOptions, TLevelFeatureView } from "@/core/level/lib/features";
+import { ILevelFeatureOptions, TLevelFeatureView, toLevelIndirectLight } from "@/core/level/lib/features";
 import { ILevelLodOptions } from "@/core/level/lib/lod/level-lod-options";
 import { ELevelShading } from "@/core/level/lib/view/level-shading";
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
@@ -199,6 +199,7 @@ export function LevelPreviewToolbar({
             state={featureView.ambientOcclusion}
             features={features}
             hemiStrength={hemiStrength}
+            indirectLight={toLevelIndirectLight(settings, features)}
             onToggle={onToggle}
             onChange={onChangeFeatures}
             onChangeHemiStrength={onChangeHemiStrength}

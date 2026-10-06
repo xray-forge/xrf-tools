@@ -4,6 +4,7 @@ import {
   ERenderAntialiasing,
   ERenderContactShadowMode,
   ERenderFoliageMode,
+  ERenderIndirectLightMode,
   ERenderLightShadowFilter,
   ERenderScale,
   ERenderWaterMode,
@@ -80,6 +81,13 @@ export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings>
     height: toNumber(0.5, 2),
     isEnabled: FLAG,
     radius: toNumber(49, 300, true),
+  },
+  // The renderer's own: up to four times what the frame shows, for the light a screen-space search cannot see; past
+  // eight metres its steps lie too far apart to follow a surface.
+  indirectLight: {
+    intensity: toNumber(0, 4),
+    mode: toChoice(ERenderIndirectLightMode),
+    radius: toNumber(0.5, 8),
   },
   isOcclusionCulled: FLAG,
   lights: {

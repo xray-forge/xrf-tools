@@ -3,6 +3,7 @@ import {
   ERenderAmbientOcclusionQuality,
   ERenderContactShadowMode,
   ERenderFoliageMode,
+  ERenderIndirectLightMode,
   ERenderLightShadowFilter,
   ERenderScale,
   ERenderWaterMode,
@@ -15,6 +16,7 @@ import {
   TRenderExposureSettings,
   TRenderFoliageSettings,
   TRenderGrassSettings,
+  TRenderIndirectLightSettings,
   TRenderLightsSettings,
   TRenderLodSettings,
   TRenderShadowSettings,
@@ -82,6 +84,13 @@ export const DEFAULT_RENDER_GRASS_SETTINGS: TRenderGrassSettings = {
   height: 1,
   isEnabled: true,
   radius: 49,
+};
+
+/** The engine's own: no bounced light, and all of it from three metres around for when it is gathered. */
+export const DEFAULT_RENDER_INDIRECT_LIGHT_SETTINGS: TRenderIndirectLightSettings = {
+  intensity: 1,
+  mode: ERenderIndirectLightMode.ENGINE,
+  radius: 3,
 };
 
 /** The engine's own: every spawned light, and none of the level file's. */

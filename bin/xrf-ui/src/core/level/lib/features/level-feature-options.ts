@@ -7,6 +7,7 @@ import {
   IRenderFeatureSettings,
   TRenderAmbientOcclusionSettings,
   TRenderGrassSettings,
+  TRenderIndirectLightSettings,
   TRenderLightsSettings,
   TRenderShadowSettings,
   TRenderWaterSettings,
@@ -24,6 +25,9 @@ export type TLevelAmbientOcclusionOptions = Pick<
   "method" | "quality" | "radius" | "strength" | "vbao"
 >;
 
+/** The indirect light settings a level view may set for itself: all of them. */
+export type TLevelIndirectLightOptions = TRenderIndirectLightSettings;
+
 /** The grass settings a level view may set for itself. */
 export type TLevelGrassOptions = Pick<TRenderGrassSettings, "density" | "foliage" | "height" | "radius">;
 
@@ -39,6 +43,8 @@ export type TLevelLightsOptions = Pick<TRenderLightsSettings, "isLevelLights" | 
 export interface ILevelFeatureOptions {
   ambientOcclusion: Partial<TLevelAmbientOcclusionOptions>;
   grass: Partial<TLevelGrassOptions>;
+  /** The indirect light, which no toolbar toggle turns off: its own mode does. */
+  indirectLight: Partial<TLevelIndirectLightOptions>;
   lights: Partial<TLevelLightsOptions>;
   /** The mode edges are smoothed with while the settings smooth them at all, or null for the settings' own. */
   antialiasing: Nullable<RenderAntialiasing>;
@@ -62,6 +68,9 @@ const LEVEL_FEATURE_KEYS: {
   water: ["distortion", "enhanced", "isDistorted", "isSoft", "mode", "reflection", "ripple", "waveHeight", "waveSpeed"],
 };
 
+/** The indirect light's settings a view may set. */
+const LEVEL_INDIRECT_LIGHT_KEYS: ReadonlyArray<keyof TLevelIndirectLightOptions> = ["intensity", "mode", "radius"];
+
 /**
  * @param stored - What was stored for a view's features, parsed from wherever it is kept.
  * @returns What the view sets, held to the renderer's own bounds, with everything a view does not set dropped.
@@ -78,11 +87,15 @@ export function toLevelFeatureOptions(stored: unknown): ILevelFeatureOptions {
   }
 
   const antialiasing: RenderAntialiasing | undefined = overrides.antialiasing;
+  const indirectLight: Record<string, unknown> = (overrides.indirectLight ?? {}) as Record<string, unknown>;
 
   return {
     ambientOcclusion: pick("ambientOcclusion"),
     antialiasing: antialiasing && LEVEL_ANTIALIASING_MODES.includes(antialiasing) ? antialiasing : null,
     grass: pick("grass"),
+    indirectLight: Object.fromEntries(
+      LEVEL_INDIRECT_LIGHT_KEYS.filter((it) => indirectLight[it] !== undefined).map((it) => [it, indirectLight[it]])
+    ) as Partial<TLevelIndirectLightOptions>,
     lights: pick("lights"),
     shadows: pick("shadows"),
     water: pick("water"),
@@ -123,6 +136,18 @@ export function toLevelRendererFeature<K extends TLevelFeatureKey>(
   }
 
   return { ...group, isEnabled: settings[key].isEnabled && isOn } as IRenderFeatureSettings[K];
+}
+
+/**
+ * @param settings - What the renderer's settings set, for every viewport.
+ * @param view - What the view sets over them.
+ * @returns The indirect light the view is drawn with: the settings', the view's own values over them.
+ */
+export function toLevelIndirectLight(
+  settings: IRenderFeatureSettings,
+  view: ILevelFeatureOptions
+): TRenderIndirectLightSettings {
+  return { ...settings.indirectLight, ...view.indirectLight };
 }
 
 /**

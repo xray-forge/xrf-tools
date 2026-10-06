@@ -9,6 +9,7 @@ import {
   describeRenderScale,
   formatGrassDensity,
   formatGrassRadius,
+  formatIndirectLightIntensity,
   formatShadowFilter,
 } from "@/core/render/lib/features/render-feature-choices";
 import { EditorPanelProperty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
@@ -76,6 +77,15 @@ export function LevelRendererAppliedSection({
         <EditorPanelProperty
           label={"Ambient occlusion"}
           value={applied.ambientOcclusion ? describeRenderAmbientOcclusionQuality(applied.ambientOcclusion) : "Off"}
+        />
+        <EditorPanelProperty
+          label={"Indirect light"}
+          value={
+            applied.indirectLight
+              ? `${formatIndirectLightIntensity(applied.indirectLight.intensity ?? 0)} · ` +
+                (applied.indirectLight.isShared ? "in VBAO's search" : "its own search")
+              : "Off"
+          }
         />
         <EditorPanelProperty
           label={"Lights"}

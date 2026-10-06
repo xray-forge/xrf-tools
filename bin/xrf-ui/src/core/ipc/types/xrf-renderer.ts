@@ -114,6 +114,14 @@ export type RenderAppliedGrass = {
   wanted: number;
 };
 
+/** The screen-space indirect light as gathered. */
+export type RenderAppliedIndirectLight = {
+  /** How much of the bounced light is added. */
+  intensity: number | null;
+  /** Whether VBAO's own search gathers it, rather than a search of its own. */
+  isShared: boolean;
+};
+
 /** What a viewport's frames are drawn with, as the renderer resolved what it was asked: sent as it changes. */
 export type RenderAppliedReport = {
   /** What smooths the finished frame: none where a target other than the frame is shown. */
@@ -124,6 +132,8 @@ export type RenderAppliedReport = {
   shadows: RenderAppliedShadows | null;
   /** The screen's ambient occlusion, or none where it is off or the scene is unlit. */
   ambientOcclusion: RenderAmbientOcclusionQuality | null;
+  /** The screen-space indirect light, or none where it is not gathered. */
+  indirectLight: RenderAppliedIndirectLight | null;
   /** The local lights, or none where they are off. */
   lights: RenderLightsSettings | null;
   /** The grass planted, or none where none is. */
@@ -267,6 +277,8 @@ export enum ERenderDebugView {
   AMBIENT_OCCLUSION = "ambientOcclusion",
   /** How far each surface moved on the screen since the last frame: red across, green down, grey still. */
   MOTION = "motion",
+  /** The indirect light as it would light a white surface, black where it is not gathered. */
+  INDIRECT_LIGHT = "indirectLight",
 }
 
 /** Every `ERenderDebugView` as the spelling it crosses IPC as, for a value no member has narrowed. */
@@ -538,6 +550,29 @@ export type RenderImageCorrections = {
   saturation: number | null;
   /** The colour the mid tones are graded towards; black grades nothing. */
   grading: [number | null, number | null, number | null];
+};
+
+/** Whether the light surfaces bounce onto each other is gathered from what the frame shows. */
+export enum ERenderIndirectLightMode {
+  /** The engine's own: the hemisphere and the ambient alone stand for every bounce. */
+  ENGINE = "engine",
+  /** Screen-space indirect light: the sunlight and lamplight on what the frame shows, bounced once onto what faces it. */
+  ENHANCED = "enhanced",
+}
+
+/** Every `ERenderIndirectLightMode` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type RenderIndirectLightMode = `${ERenderIndirectLightMode}`;
+
+/**
+ * Screen-space indirect light: what the sun and the lamps light on screen, bounced once onto the surfaces facing it,
+ * searched as VBAO searches and with it where VBAO occludes.
+ */
+export type RenderIndirectLightSettings = {
+  mode: RenderIndirectLightMode;
+  /** How much of the bounced light is added: one all of it. */
+  intensity: number | null;
+  /** Metres around a point it is gathered from; the occlusion's radius where that is further. */
+  radius: number | null;
 };
 
 /** Every `kind` the `RenderLevelHit` union is told apart by, so a switch or a comparison names one. */
@@ -1023,6 +1058,8 @@ export type RenderViewFeatures = {
   bloom: RenderBloomSettings;
   shadows: RenderShadowSettings;
   ambientOcclusion: RenderAmbientOcclusionSettings;
+  /** The light the frame's surfaces bounce onto each other, searched as the ambient occlusion's settings describe. */
+  indirectLight: RenderIndirectLightSettings;
   lights: RenderLightsSettings;
   water: RenderWaterSettings;
   grass: RenderGrassSettings;

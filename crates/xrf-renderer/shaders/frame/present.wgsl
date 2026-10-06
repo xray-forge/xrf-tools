@@ -9,7 +9,8 @@
 // it; or, for a debug view, one of the targets the scene was built from.
 
 // The scene, what the water and the particles move what is seen through them by, the targets a debug view shows, what
-// the frame shows, the frame upscaled or the scene again, and the bloom, finished in its 256-square target.
+// the frame shows, the frame upscaled or the scene again, the bloom, finished in its 256-square target, and the indirect
+// light at half the frame's size.
 #import "generated/frame/present"
 
 const VIEW_ALBEDO: u32 = 1u;
@@ -21,6 +22,7 @@ const VIEW_MATERIAL: u32 = 6u;
 const VIEW_DEPTH: u32 = 7u;
 const VIEW_LIGHT: u32 = 8u;
 const VIEW_MOTION: u32 = 10u;
+const VIEW_INDIRECT_LIGHT: u32 = 11u;
 // Drawn pixels of motion the motion view spans from black to full colour on each axis.
 const MOTION_VIEW_RANGE: f32 = 16.0;
 
@@ -86,6 +88,15 @@ fn shown_target(texel: vec2<i32>) -> vec3<f32> {
       let pixels: vec2<f32> = textureLoad(motion_target, texel, 0).xy * camera.viewport.xy;
 
       return vec3<f32>(pixels / MOTION_VIEW_RANGE + 0.5, 0.5);
+    }
+    case VIEW_INDIRECT_LIGHT: {
+      let is_gathered: bool = present.is_indirect != 0u && stored > 0.0;
+
+      if (!is_gathered) {
+        return vec3<f32>(0.0);
+      }
+
+      return upsampled_light(indirect_light, vec2<f32>(texel), distance);
     }
     default: {
       let is_searched: bool = present.is_occluded != 0u && stored > 0.0;

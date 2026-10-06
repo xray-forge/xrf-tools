@@ -3,6 +3,7 @@ import {
   ERenderAntialiasing,
   ERenderContactShadowMode,
   ERenderFoliageMode,
+  ERenderIndirectLightMode,
   ERenderWaterMode,
 } from "@/core/ipc/types/xrf-renderer";
 import {
@@ -11,6 +12,7 @@ import {
   DEFAULT_RENDER_EXPOSURE_SETTINGS,
   DEFAULT_RENDER_FOLIAGE_SETTINGS,
   DEFAULT_RENDER_GRASS_SETTINGS,
+  DEFAULT_RENDER_INDIRECT_LIGHT_SETTINGS,
   DEFAULT_RENDER_LIGHTS_SETTINGS,
   DEFAULT_RENDER_LOD_SETTINGS,
   DEFAULT_RENDER_SHADOW_SETTINGS,
@@ -45,6 +47,9 @@ export const RENDER_PRESETS: Readonly<Record<ERenderPreset, IRenderFeatureSettin
       ...DEFAULT_RENDER_GRASS_SETTINGS,
       foliage: { ...DEFAULT_RENDER_FOLIAGE_SETTINGS, mode: ERenderFoliageMode.ENHANCED },
     },
+    // The application's own choice over the engine's, as the antialiasing is: the light bounced in the occlusion's
+    // own search.
+    indirectLight: { ...DEFAULT_RENDER_INDIRECT_LIGHT_SETTINGS, mode: ERenderIndirectLightMode.ENHANCED },
     isOcclusionCulled: true,
     lights: DEFAULT_RENDER_LIGHTS_SETTINGS,
     lod: DEFAULT_RENDER_LOD_SETTINGS,
@@ -62,6 +67,7 @@ export const RENDER_PRESETS: Readonly<Record<ERenderPreset, IRenderFeatureSettin
     antialiasing: ERenderAntialiasing.NONE,
     exposure: DEFAULT_RENDER_EXPOSURE_SETTINGS,
     grass: { ...DEFAULT_RENDER_GRASS_SETTINGS, isEnabled: false },
+    indirectLight: DEFAULT_RENDER_INDIRECT_LIGHT_SETTINGS,
     isOcclusionCulled: true,
     // Unshadowed, the lights cost a pass over the screen: an editor keeps seeing what lights a room.
     lights: { ...DEFAULT_RENDER_LIGHTS_SETTINGS, isShadowed: false },

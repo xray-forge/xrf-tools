@@ -28,13 +28,15 @@ pub struct PresentUniform {
   pub selection: Vec4,
   /// One where the frame blooms, which the present adds where it reads the scene.
   pub is_bloomed: u32,
-  pub _pad: [u32; 3],
+  /// One where the indirect light was gathered this frame.
+  pub is_indirect: u32,
+  pub _pad: [u32; 2],
 }
 
 impl PresentUniform {
   pub fn new(
     view: RenderDebugView,
-    is_occluded: bool,
+    (is_occluded, is_indirect): (bool, bool),
     is_upscaled: bool,
     distortion: f32,
     output: RenderRect,
@@ -54,7 +56,8 @@ impl PresentUniform {
       size: Vec2::new(output.width as f32, output.height as f32),
       selection: selection.map_or(Vec4::ZERO, |[r, g, b]| Vec4::new(r, g, b, 1.0)),
       is_bloomed: u32::from(is_bloomed),
-      _pad: [0; 3],
+      is_indirect: u32::from(is_indirect),
+      _pad: [0; 2],
     }
   }
 }

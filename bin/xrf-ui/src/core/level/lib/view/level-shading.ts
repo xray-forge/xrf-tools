@@ -22,6 +22,7 @@ export enum ELevelShading {
   DEPTH = "depth",
   LIGHT = "light",
   AMBIENT_OCCLUSION = "ambientOcclusion",
+  INDIRECT_LIGHT = "indirectLight",
   MOTION = "motion",
 }
 
@@ -49,6 +50,7 @@ export const LEVEL_SHADINGS: ReadonlyArray<ILevelShadingChoice> = [
   { label: "Depth", value: ELevelShading.DEPTH, debugView: ERenderDebugView.DEPTH },
   { label: "Accumulated light", value: ELevelShading.LIGHT, debugView: ERenderDebugView.LIGHT },
   { label: "Ambient occlusion", value: ELevelShading.AMBIENT_OCCLUSION, debugView: ERenderDebugView.AMBIENT_OCCLUSION },
+  { label: "Indirect light", value: ELevelShading.INDIRECT_LIGHT, debugView: ERenderDebugView.INDIRECT_LIGHT },
   { label: "Motion", value: ELevelShading.MOTION, debugView: ERenderDebugView.MOTION },
 ].map((choice) => ({ ...choice, surfaceColor: toSurfaceColor(choice.value) }));
 

@@ -16,6 +16,7 @@ use crate::camera::camera_view::CameraView;
 use crate::contract::render_ambient_occlusion_quality::RenderAmbientOcclusionQuality;
 use crate::contract::render_ambient_occlusion_settings::RenderAmbientOcclusionSettings;
 use crate::contract::render_antialiasing::RenderAntialiasing;
+use crate::contract::render_applied_indirect_light::RenderAppliedIndirectLight;
 use crate::contract::render_applied_report::RenderAppliedReport;
 use crate::contract::render_applied_shadows::RenderAppliedShadows;
 use crate::contract::render_bloom_settings::RenderBloomSettings;
@@ -35,6 +36,7 @@ use crate::contract::render_view_options::RenderViewOptions;
 use crate::contract::render_water_settings::RenderWaterSettings;
 use crate::frame::depth_pyramid::DepthPyramid;
 use crate::frame::fsr_targets::FsrTargets;
+use crate::frame::indirect_light_history::IndirectLightHistory;
 use crate::frame::pick_target::PickTarget;
 use crate::frame::static_scene_handles::StaticSceneHandles;
 use crate::frame::temporal_history::TemporalHistory;
@@ -51,6 +53,8 @@ use crate::lighting::render_lighting::RenderLighting;
 use crate::pass::ambient_occlusion_parameters::AmbientOcclusionParameters;
 use crate::pass::ambient_occlusion_pass::AmbientOcclusionPass;
 use crate::pass::ambient_occlusion_uniform::AmbientOcclusionUniform;
+use crate::pass::bitmask_pass_names::BitmaskPassNames;
+use crate::pass::bitmask_search::BitmaskSearch;
 use crate::pass::bloom_parameters::BloomParameters;
 use crate::pass::bloom_pass::BloomPass;
 use crate::pass::bloom_uniform::BloomUniform;
@@ -94,6 +98,7 @@ use crate::pass::thunder_uniform::ThunderUniform;
 use crate::pass::upscale_parameters::UpscaleParameters;
 use crate::pass::upscale_uniform::UpscaleUniform;
 use crate::pass::vbao_parameters::VbaoParameters;
+use crate::pass::vbao_pass::VbaoPass;
 use crate::pass::vbao_uniform::VbaoUniform;
 use crate::pass::view_binding::ViewBinding;
 use crate::pass::water_draw::WaterDraw;
@@ -436,6 +441,8 @@ impl SceneView {
     self.info.sun_direction = lighting.get_sun_direction();
     self.info.shadow_settings = options.features.shadows.clone();
     self.info.ambient_occlusion = options.features.ambient_occlusion;
+    self.info.indirect_light = options.features.indirect_light;
+    self.info.bitmask = BitmaskSearch::new(options);
     self.info.output = output;
     self.info.upscaling = options.output.upscaling;
     self.info.debug_view = options.mode.debug_view;
@@ -453,7 +460,7 @@ impl SceneView {
       view.projection,
       (width.div_ceil(2), height.div_ceil(2)),
     );
-    self.prepare_vbao(device, view.projection, (width.div_ceil(2), height.div_ceil(2)));
+    self.prepare_bitmask(device, view.projection, (width.div_ceil(2), height.div_ceil(2)));
     self.prepare_sorted(scene, device, queue, view);
 
     if let Some(pyramid) = &self.state.pyramid {
@@ -653,8 +660,8 @@ impl SceneView {
   }
 
   /// Declares the lighting: the lights binned into the view's clusters, the contact shadows marched, the sun then every
-  /// light drawn into the light target, the binning's overflow read back, and the ambient occlusion searched and
-  /// denoised.
+  /// light drawn into the light target, the binning's overflow read back, and the ambient occlusion and the indirect
+  /// light searched and filtered. Answers the indirect light filtered, none where it is not gathered.
   fn add_lighting_passes<'a>(
     &'a self,
     (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
@@ -662,7 +669,7 @@ impl SceneView {
     (view, textures, scene): (&'a ViewBinding, &'a wgpu::BindGroup, &'a LevelScene),
     (targets, lit): (ViewTargetHandles, LightingHandles<'a>),
     (has_lights, is_occlusion_ambient): (bool, bool),
-  ) {
+  ) -> Option<GraphTexture> {
     let lights: &'a LightsView = &self.state.lights;
     let counts: GraphBuffer = bindings.import_buffer(graph, "light cluster counts", &lights.counts);
     let records: GraphBuffer = bindings.import_buffer(graph, "light records", &lights.record_buffer);
@@ -772,9 +779,8 @@ impl SceneView {
       .keep()
       .record(move |context| lights.record_overflow(context.get_encoder()));
 
-    if is_occlusion_ambient && self.info.ambient_occlusion.is_vbao() {
-      self.add_vbao_passes((graph, bindings, runtime), passes, view, targets);
-    } else if is_occlusion_ambient {
+    // GTAO searches on its own; VBAO, the indirect light or both share one bitmask search.
+    if is_occlusion_ambient && !self.info.ambient_occlusion.is_vbao() {
       let quality: RenderAmbientOcclusionQuality = self.info.ambient_occlusion.quality;
       let occlusion: UniformBinding<AmbientOcclusionUniform> = runtime.push_uniform(&self.info.occlusion_settings);
 
@@ -805,90 +811,167 @@ impl SceneView {
           });
       }
     }
+
+    self
+      .info
+      .bitmask
+      .and_then(|search| self.add_bitmask_passes((graph, bindings, runtime), passes, view, targets, search))
   }
 
-  /// Declares VBAO, the visibility-bitmask ambient occlusion: searched into the first occlusion target, accumulated with
-  /// the last frame's into the view's history while it accumulates, and filtered into the second, which combine reads.
-  fn add_vbao_passes<'a>(
+  /// Declares the visibility-bitmask search, for VBAO's occlusion, the indirect light or both: the frame's light copied
+  /// at half size while lit, searched (into the first occlusion target while it occludes), accumulated with the last
+  /// frame's into the view's histories while it accumulates, and filtered (into the second occlusion target, which
+  /// combine reads). Answers the indirect light filtered while lit.
+  fn add_bitmask_passes<'a>(
     &'a self,
     (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
     passes: LevelPasses<'a>,
     view: &'a ViewBinding,
     targets: ViewTargetHandles,
-  ) {
+    search: BitmaskSearch,
+  ) -> Option<GraphTexture> {
     let quality: RenderAmbientOcclusionQuality = self.info.ambient_occlusion.quality;
+    let names: BitmaskPassNames = search.get_names();
+    let is_lit: bool = search.is_lit;
     let occlusion: UniformBinding<VbaoUniform> = runtime.push_uniform(&self.info.vbao);
     let empty: GraphTexture = bindings.import_view(graph, "vbao history empty", passes.vbao.get_empty());
-    let parameters = |source: GraphTexture, history: GraphTexture| VbaoParameters {
-      normal_target: targets.normal,
-      depth_target: targets.depth,
-      motion_target: targets.motion,
-      occlusion,
-      source,
-      history,
+    let dark: GraphTexture = bindings.import_view(graph, "indirect light none", passes.vbao.get_dark());
+    let (width, height) = (targets.size.0.div_ceil(2), targets.size.1.div_ceil(2));
+    let mut create = |label: &'static str, format: wgpu::TextureFormat| -> GraphTexture {
+      graph.create_texture(GraphTextureDescriptor::new_2d(label, width, height, format))
     };
-    let search: VbaoParameters = parameters(empty, empty);
-    let [searched, filtered] = [targets.occlusion[1], targets.occlusion[0]];
+    // What a stage reads: the occlusion before it and its history, the light copied, and the light before it and its
+    // history.
+    let parameters =
+      |(source, history): (GraphTexture, GraphTexture),
+       (light_source, gathered, light_history): (GraphTexture, GraphTexture, GraphTexture)| {
+        VbaoParameters {
+          normal_target: targets.normal,
+          depth_target: targets.depth,
+          motion_target: targets.motion,
+          occlusion,
+          source,
+          history,
+          albedo_target: targets.albedo,
+          material_target: targets.material,
+          light_target: targets.light,
+          light_source,
+          gathered,
+          light_history,
+        }
+      };
+    let clear = |target: GraphTexture| GraphColorAttachment::new(target, wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT));
+    // The occlusion targets while it occludes; a search of the light alone has its own, its visibility unused.
+    let [searched, filtered] = if search.is_occluding {
+      [targets.occlusion[1], targets.occlusion[0]]
+    } else {
+      [create("indirect search", ViewTargets::OCCLUSION), dark]
+    };
+    let light_source: GraphTexture = if is_lit {
+      create("indirect source", VbaoPass::LIGHT)
+    } else {
+      dark
+    };
+    let lit_searched: Option<GraphTexture> = is_lit.then(|| create("indirect gathered", VbaoPass::LIGHT));
+    let lit_filtered: Option<GraphTexture> = is_lit.then(|| create("indirect light", VbaoPass::LIGHT));
 
-    graph
-      .add_raster_pass("vbao")
-      .parameters(&search)
-      .color(GraphColorAttachment::new(
-        searched,
-        wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-      ))
-      .record(move |context| passes.vbao.record_search(context, quality, view, &search));
+    if is_lit {
+      let copy: VbaoParameters = parameters((empty, empty), (dark, dark, dark));
 
-    // The last frame's accumulation and this frame's, while it accumulates.
-    let histories: Option<[GraphTexture; 2]> = self
+      graph
+        .add_raster_pass(BitmaskSearch::SOURCE_PASS)
+        .parameters(&copy)
+        .color(clear(light_source))
+        .record(move |context| passes.vbao.record_light_source(context, view, &copy));
+    }
+
+    let searching: VbaoParameters = parameters((empty, empty), (light_source, dark, dark));
+
+    lit_searched
+      .into_iter()
+      .fold(
+        graph
+          .add_raster_pass(names.search)
+          .parameters(&searching)
+          .color(clear(searched)),
+        |builder, light| builder.color(clear(light)),
+      )
+      .record(move |context| passes.vbao.record_search(context, (quality, is_lit), view, &searching));
+
+    // The last frame's accumulations and this frame's, while it accumulates.
+    let accumulated: bool = self.info.is_bitmask_accumulated;
+    let histories: Option<[GraphTexture; 2]> = self.state.occlusion.as_ref().filter(|_| accumulated).map(|history| {
+      [
+        bindings.import_view(graph, "vbao history", &history.views[1 - history.index]),
+        bindings.import_view(graph, "vbao history", &history.views[history.index]),
+      ]
+    });
+    let light_histories: Option<[GraphTexture; 2]> = self
       .state
-      .occlusion
+      .indirect
       .as_ref()
-      .filter(|_| self.info.is_occlusion_accumulated)
+      .filter(|_| accumulated && is_lit)
       .map(|history| {
         [
-          bindings.import_view(graph, "vbao history", &history.views[1 - history.index]),
-          bindings.import_view(graph, "vbao history", &history.views[history.index]),
+          bindings.import_view(graph, "indirect light history", &history.views[1 - history.index]),
+          bindings.import_view(graph, "indirect light history", &history.views[history.index]),
         ]
       });
-    let gathered: GraphTexture = match histories {
+    let (gathered, gathered_light): (GraphTexture, Option<GraphTexture>) = match histories {
       Some([previous, written]) => {
-        let accumulate: VbaoParameters = parameters(searched, previous);
+        let [previous_light, written_light] = light_histories.unwrap_or([dark, dark]);
+        let written_light: Option<GraphTexture> = light_histories.map(|_| written_light);
+        let accumulate: VbaoParameters = parameters(
+          (searched, previous),
+          (dark, lit_searched.unwrap_or(dark), previous_light),
+        );
+        let is_lit_accumulated: bool = written_light.is_some();
 
-        graph
-          .add_raster_pass("vbao accumulate")
-          .parameters(&accumulate)
-          .color(GraphColorAttachment::new(
-            written,
-            wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-          ))
-          .record(move |context| passes.vbao.record_accumulate(context, view, &accumulate));
+        written_light
+          .into_iter()
+          .fold(
+            graph
+              .add_raster_pass(names.accumulate)
+              .parameters(&accumulate)
+              .color(clear(written)),
+            |builder, light| builder.color(clear(light)),
+          )
+          .record(move |context| {
+            passes
+              .vbao
+              .record_accumulate(context, is_lit_accumulated, view, &accumulate)
+          });
 
-        written
+        (written, written_light.or(lit_searched))
       }
-      None => searched,
+      None => (searched, lit_searched),
     };
-    let filter: VbaoParameters = parameters(gathered, empty);
+    let filtering: VbaoParameters = parameters((gathered, empty), (dark, gathered_light.unwrap_or(dark), dark));
 
-    graph
-      .add_raster_pass("vbao filter")
-      .parameters(&filter)
-      .color(GraphColorAttachment::new(
-        filtered,
-        wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-      ))
-      .record(move |context| passes.vbao.record_filter(context, view, &filter));
+    search
+      .is_occluding
+      .then_some(filtered)
+      .into_iter()
+      .chain(lit_filtered)
+      .fold(
+        graph.add_raster_pass(names.filter).parameters(&filtering),
+        |builder, target| builder.color(clear(target)),
+      )
+      .record(move |context| passes.vbao.record_filter(context, search, view, &filtering));
+
+    lit_filtered
   }
 
-  /// Makes VBAO's history while it accumulates, dropping it otherwise, and writes what its
-  /// passes read, over the search's half size.
-  fn prepare_vbao(&mut self, device: &wgpu::Device, projection: Mat4, (width, height): (u32, u32)) {
-    let settings: &RenderAmbientOcclusionSettings = &self.info.ambient_occlusion;
+  /// Makes the bitmask search's histories while it accumulates, the light's while it is lit too, dropping them
+  /// otherwise, and writes what its passes read, over the search's half size.
+  fn prepare_bitmask(&mut self, device: &wgpu::Device, projection: Mat4, (width, height): (u32, u32)) {
+    let settings: RenderAmbientOcclusionSettings = self.info.ambient_occlusion;
+    let is_lit: bool = self.info.bitmask.is_some_and(|search| search.is_lit);
+    let is_accumulated: bool = self.info.bitmask.is_some() && settings.vbao.get_accumulation() > 1;
 
-    self.info.is_occlusion_accumulated =
-      self.info.is_occlusion_drawn && settings.is_vbao() && settings.vbao.get_accumulation() > 1;
+    self.info.is_bitmask_accumulated = is_accumulated;
 
-    if !self.info.is_occlusion_accumulated
+    if !is_accumulated
       || self
         .state
         .occlusion
@@ -898,7 +981,23 @@ impl SceneView {
       self.state.occlusion = None;
     }
 
-    let history: Option<&VbaoHistory> = if self.info.is_occlusion_accumulated {
+    if !(is_accumulated && is_lit)
+      || self
+        .state
+        .indirect
+        .as_ref()
+        .is_some_and(|history| !history.is_sized(width, height))
+    {
+      self.state.indirect = None;
+    }
+
+    if is_accumulated && is_lit && self.state.indirect.is_none() {
+      self.state.indirect = Some(IndirectLightHistory::new(device, width, height));
+      // Both start afresh, so the light's frames are counted from its own first.
+      self.state.occlusion = None;
+    }
+
+    let history: Option<&VbaoHistory> = if is_accumulated {
       Some(
         self
           .state
@@ -908,13 +1007,19 @@ impl SceneView {
     } else {
       None
     };
+    let has_light_history: bool = self.state.indirect.as_ref().is_some_and(|it| it.is_valid);
 
     self.info.vbao = VbaoUniform::new(
-      &self.info.ambient_occlusion,
+      &settings,
+      if is_lit {
+        (self.info.indirect_light.intensity, self.info.indirect_light.radius)
+      } else {
+        (0.0, 0.0)
+      },
       projection,
       (width, height),
       history.map_or(0, |it| it.frame),
-      history.is_some_and(|it| it.is_valid),
+      (history.is_some_and(|it| it.is_valid), has_light_history),
     );
   }
 
@@ -947,19 +1052,20 @@ impl SceneView {
       .depth(GraphDepthAttachment::new_read_only(targets.depth))
   }
 
-  /// Ends a frame its graph recorded: the water's reflection, VBAO's accumulation and the temporal
+  /// Ends a frame its graph recorded: the water's reflection, the bitmask search's accumulations and the temporal
   /// resolve's history it wrote become the ones the next frame keeps.
   pub fn end_frame(&mut self, frame: &LevelFrame) {
     if frame.is_lit {
       self.state.water.finish_frame();
 
-      if let Some(history) = self
-        .state
-        .occlusion
-        .as_mut()
-        .filter(|_| self.info.is_occlusion_accumulated)
-      {
-        history.swap();
+      if self.info.is_bitmask_accumulated {
+        if let Some(history) = &mut self.state.occlusion {
+          history.swap();
+        }
+
+        if let Some(history) = &mut self.state.indirect {
+          history.swap();
+        }
       }
     }
 
@@ -991,7 +1097,10 @@ impl SceneView {
 
     self.info.present = PresentUniform::new(
       self.info.debug_view,
-      self.info.is_occlusion_drawn,
+      (
+        self.info.is_occlusion_drawn,
+        self.info.bitmask.is_some_and(|search| search.is_lit),
+      ),
       !targets.is_sized(self.info.output.width, self.info.output.height),
       if is_distorting { water.distortion } else { 0.0 },
       self.info.output,
@@ -1238,6 +1347,7 @@ impl SceneView {
     let (Some(targets), Some(pyramid)) = (&scene_view.state.targets, &scene_view.state.pyramid) else {
       return None;
     };
+    let unlit: GraphTexture = bindings.import_view(&mut *graph, "indirect light none", passes.vbao.get_dark());
     let handles: ViewTargetHandles = ViewTargetHandles::import(&mut *graph, &mut *bindings, targets);
     // The resolved frame goes where the present pass reads it: the upscaled frame, or the scene drawn at its size.
     let upscaled: Option<[GraphTexture; 2]> = scene_view.state.upscale.as_ref().map(|upscale| {
@@ -1412,8 +1522,11 @@ impl SceneView {
       }
     }
 
+    // The indirect light combine adds and a debug view shows, or a texel of none.
+    let mut indirect_light: Option<GraphTexture> = None;
+
     if is_lit {
-      scene_view.add_lighting_passes(
+      indirect_light = scene_view.add_lighting_passes(
         (&mut *graph, &mut *bindings, runtime),
         passes,
         (view, texture_group, scene),
@@ -1457,6 +1570,7 @@ impl SceneView {
           exposure: StorageValue::new(lit.exposure),
           occlusion_target: handles.occlusion[0],
           haze_map: handles.haze,
+          indirect_light: indirect_light.unwrap_or(unlit),
         };
 
         graph
@@ -1854,6 +1968,7 @@ impl SceneView {
       ),
       present: runtime.push_uniform(&scene_view.info.present),
       lighting: lit.lighting,
+      indirect_light: indirect_light.unwrap_or(unlit),
     })
   }
 
@@ -2197,6 +2312,14 @@ impl SceneView {
         .info
         .is_occlusion_drawn
         .then_some(self.info.ambient_occlusion.quality),
+      indirect_light: self
+        .info
+        .bitmask
+        .filter(|search| search.is_lit)
+        .map(|search| RenderAppliedIndirectLight {
+          intensity: self.info.indirect_light.intensity,
+          is_shared: search.is_occluding,
+        }),
       lights: self
         .info
         .lights_settings
