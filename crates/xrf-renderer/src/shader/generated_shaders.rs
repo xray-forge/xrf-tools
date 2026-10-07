@@ -15,6 +15,7 @@ use crate::pass::flare_draw_parameters::FlareDrawParameters;
 use crate::pass::flare_measure_parameters::FlareMeasureParameters;
 use crate::pass::flare_texture_parameters::FlareTextureParameters;
 use crate::pass::flare_uniform::FlareUniform;
+use crate::pass::fsr_uniform::FsrUniform;
 use crate::pass::fxaa_parameters::FxaaParameters;
 use crate::pass::light_binning_parameters::LightBinningParameters;
 use crate::pass::light_record::LightRecord;
@@ -27,6 +28,8 @@ use crate::pass::particle_surface_record::ParticleSurfaceRecord;
 use crate::pass::particle_vertex::ParticleVertex;
 use crate::pass::present_parameters::PresentParameters;
 use crate::pass::present_uniform::PresentUniform;
+use crate::pass::pyramid_depth_parameters::PyramidDepthParameters;
+use crate::pass::pyramid_level_parameters::PyramidLevelParameters;
 use crate::pass::rain_parameters::RainParameters;
 use crate::pass::rain_uniform::RainUniform;
 use crate::pass::shadow_uniform::ShadowUniform;
@@ -38,6 +41,8 @@ use crate::pass::static_draw_parameters::StaticDrawParameters;
 use crate::pass::static_impostor_parameters::StaticImpostorParameters;
 use crate::pass::sun_parameters::SunParameters;
 use crate::pass::sun_shafts_parameters::SunShaftsParameters;
+use crate::pass::temporal_parameters::TemporalParameters;
+use crate::pass::temporal_uniform::TemporalUniform;
 use crate::pass::thunder_parameters::ThunderParameters;
 use crate::pass::thunder_uniform::ThunderUniform;
 use crate::pass::upscale_parameters::UpscaleParameters;
@@ -88,6 +93,8 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
   let mut wet_patch: ShaderBindings = ShaderBindings::new();
   let mut wet_apply: ShaderBindings = ShaderBindings::new();
   let mut thunder: ShaderBindings = ShaderBindings::new();
+  let mut temporal: ShaderBindings = ShaderBindings::new();
+  let mut pyramid: ShaderBindings = ShaderBindings::new();
   let mut static_cull: ShaderBindings = ShaderBindings::new();
   let mut static_draw: ShaderBindings = ShaderBindings::new();
   let mut static_impostor: ShaderBindings = ShaderBindings::new();
@@ -111,7 +118,9 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
     .declare::<FlareUniform>()
     .declare::<RainUniform>()
     .declare::<WetUniform>()
-    .declare::<ThunderUniform>();
+    .declare::<ThunderUniform>()
+    .declare::<TemporalUniform>()
+    .declare::<FsrUniform>();
   StaticCullParameters::declare(&mut structs);
   StaticDrawParameters::declare(&mut structs);
   StaticImpostorParameters::declare(&mut structs);
@@ -145,6 +154,10 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
   wet_patch.add::<WetPatchParameters<'_>>()?;
   wet_apply.add::<WetApplyParameters>()?;
   thunder.add::<ThunderParameters<'_>>()?;
+  temporal.add::<TemporalParameters<'_>>()?;
+  pyramid
+    .add::<PyramidDepthParameters>()?
+    .add::<PyramidLevelParameters>()?;
   static_cull.add::<StaticCullParameters>()?;
   static_draw.add::<StaticDrawParameters>()?;
   static_impostor.add::<StaticImpostorParameters>()?;
@@ -222,6 +235,14 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
     (
       "generated/frame/thunder",
       format!("{STRUCTS_IMPORT}{}", thunder.to_wgsl()),
+    ),
+    (
+      "generated/frame/temporal",
+      format!("{STRUCTS_IMPORT}{}", temporal.to_wgsl()),
+    ),
+    (
+      "generated/frame/pyramid",
+      format!("{STRUCTS_IMPORT}{}", pyramid.to_wgsl()),
     ),
     (
       "generated/static/cull",

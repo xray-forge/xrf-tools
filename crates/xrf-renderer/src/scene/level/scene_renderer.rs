@@ -1,5 +1,3 @@
-use crate::pass::fsr_uniform::FsrUniform;
-use crate::pass::temporal_uniform::TemporalUniform;
 use crate::scene::level::level_flares::LevelFlares;
 use crate::scene::level::level_shadows::LevelShadows;
 use crate::scene::level::rain_cover::RainCover;
@@ -13,8 +11,6 @@ pub(crate) type SkyGroupKey = (u64, [Option<String>; 7], u64);
 /// bind groups made for them with what each was made from, and the effects drawn from the view (the sun's shadows, the
 /// rain cover, the flares).
 pub struct SceneRenderer {
-  pub temporal_uniform: wgpu::Buffer,
-  pub fsr_uniform: wgpu::Buffer,
   pub rain_cover: RainCover,
   /// The sun's sprite, lens flares and gradient.
   pub flares: LevelFlares,
@@ -28,7 +24,7 @@ pub struct SceneRenderer {
 
 impl SceneRenderer {
   pub fn new(device: &wgpu::Device, view_layout: &wgpu::BindGroupLayout, args_size: u64) -> Self {
-    let uniform = |label: &str, size: usize| -> wgpu::Buffer {
+    let _uniform = |label: &str, size: usize| -> wgpu::Buffer {
       device.create_buffer(&wgpu::BufferDescriptor {
         label: Some(label),
         size: size as u64,
@@ -39,8 +35,6 @@ impl SceneRenderer {
 
     Self {
       rain_cover: RainCover::new(device, view_layout, args_size),
-      temporal_uniform: uniform("temporal", size_of::<TemporalUniform>()),
-      fsr_uniform: uniform("fsr2", size_of::<FsrUniform>()),
       flares: LevelFlares::new(device),
       splash: None,
       thunder_models: None,

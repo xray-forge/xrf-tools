@@ -1,22 +1,9 @@
 // FidelityFX FSR 2.2 (`ffx_fsr2_common.h`, `ffx_fsr2_sample.h`, AMD, MIT): what its passes share, for reversed depth,
 // colour in the display's range with an exposure of one, and motion drawn at the render size.
 
-// `cbFSR2`'s fields the passes read, as `pass/fsr_uniform.rs` writes them.
-struct Fsr {
-  render_size: vec2<f32>,
-  display_size: vec2<f32>,
-  // In FSR's sense: a drawn texel `m` stands at `m + 0.5 - jitter`.
-  jitter: vec2<f32>,
-  // The drawing's size over the display's.
-  downscale: vec2<f32>,
-  // `fDeviceToViewDepth`: device depth to view depth, `y / (d - x)`, and the projection's inverse scales.
-  device_to_view: vec4<f32>,
-  luma_mip_size: vec2<f32>,
-  jitter_phase_count: f32,
-  // Zero on the first frame after a reset.
-  frame_index: f32,
-};
+#import "generated/structs"
 
+// `cbFSR2`'s fields the passes read, declared in Rust.
 @group(0) @binding(0) var<uniform> fsr: Fsr;
 
 const FSR2_EPSILON: f32 = 1e-3;

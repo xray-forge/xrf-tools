@@ -7,14 +7,14 @@ pub struct WaterReflection {
   pub index: usize,
   /// Whether the history this frame reads holds a frame.
   pub is_valid: bool,
-  /// The targets' epoch it was sized for, made again past it.
-  pub epoch: u64,
+  /// The size it was made at, the targets' drawn size.
+  pub size: (u32, u32),
 }
 
 impl WaterReflection {
   pub const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
 
-  pub fn new(device: &wgpu::Device, targets: &ViewTargets, epoch: u64) -> Self {
+  pub fn new(device: &wgpu::Device, targets: &ViewTargets) -> Self {
     let create = |label: &str| -> wgpu::TextureView {
       device
         .create_texture(&wgpu::TextureDescriptor {
@@ -38,7 +38,7 @@ impl WaterReflection {
       histories: [create("water reflection 0"), create("water reflection 1")],
       index: 0,
       is_valid: false,
-      epoch,
+      size: (targets.width, targets.height),
     }
   }
 

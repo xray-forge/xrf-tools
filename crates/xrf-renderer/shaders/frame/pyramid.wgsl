@@ -1,9 +1,7 @@
 // Reduces a viewport's depth to a pyramid of the farthest depth under each texel, which occlusion tests read: with
 // reversed depth the farthest is the smallest.
 
-@group(0) @binding(0) var source_depth: texture_depth_2d;
-@group(0) @binding(1) var source_level: texture_2d<f32>;
-@group(0) @binding(2) var target_level: texture_storage_2d<r32float, write>;
+#import "generated/frame/pyramid"
 
 // The depth's first level: a power of two at most the depth's size, so each texel covers up to three depth texels a
 // side and is reduced over all of them.

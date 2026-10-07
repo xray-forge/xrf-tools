@@ -1,20 +1,28 @@
 use xrf_error::XrfResult;
 use xrf_renderer_core::{
-  FrameGraph, GraphBindings, GraphBuffer, GraphBufferAccess, GraphColorAttachment, GraphTexture,
+  FrameGraph, GraphBindings, GraphBuffer, GraphBufferAccess, GraphColorAttachment, GraphRuntime, GraphTexture,
+  PassParameters, StorageArray, StorageArrayMut, UniformBinding,
 };
 
 use crate::frame::fsr_targets::FsrTargets;
-use crate::frame::view_targets::ViewTargets;
-use crate::pass::fsr_groups::FsrGroups;
-use crate::pass::fullscreen_pipeline::{buffer_binding, create_fullscreen_pipeline_into, texture_binding};
-use crate::pass::layout_entries::{storage_entry, texture_entry, uniform_entry};
+use crate::frame::view_target_handles::ViewTargetHandles;
+use crate::pass::fsr_accumulate_parameters::FsrAccumulateParameters;
+use crate::pass::fsr_depth_clip_parameters::FsrDepthClipParameters;
+use crate::pass::fsr_dilate_parameters::FsrDilateParameters;
+use crate::pass::fsr_lock_parameters::FsrLockParameters;
+use crate::pass::fsr_luma_first_parameters::FsrLumaFirstParameters;
+use crate::pass::fsr_luma_shading_parameters::FsrLumaShadingParameters;
+use crate::pass::fsr_reactive_parameters::FsrReactiveParameters;
+use crate::pass::fsr_reconstruct_parameters::FsrReconstructParameters;
+use crate::pass::fsr_uniform::FsrUniform;
+use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline_into;
 use crate::pass::shader_pipelines::{create_checked, create_module};
 use crate::shader::shader_library::ShaderLibrary;
 
 /// Drawn texels a side of one workgroup of the depth reconstruction.
 const RECONSTRUCT_WORKGROUP: u32 = 8;
 
-/// The layouts FSR 2's stages bind, in their order.
+/// The layouts FSR 2's stages bind, in their order, each its parameters'.
 struct FsrLayouts {
   luma_first: wgpu::BindGroupLayout,
   luma_shading: wgpu::BindGroupLayout,
@@ -24,6 +32,21 @@ struct FsrLayouts {
   depth_clip: wgpu::BindGroupLayout,
   lock: wgpu::BindGroupLayout,
   accumulate: wgpu::BindGroupLayout,
+}
+
+impl FsrLayouts {
+  fn new(device: &wgpu::Device) -> Self {
+    Self {
+      luma_first: FsrLumaFirstParameters::create_layout(device),
+      luma_shading: FsrLumaShadingParameters::create_layout(device),
+      reconstruct: FsrReconstructParameters::create_layout(device),
+      dilate: FsrDilateParameters::create_layout(device),
+      reactive: FsrReactiveParameters::create_layout(device),
+      depth_clip: FsrDepthClipParameters::create_layout(device),
+      lock: FsrLockParameters::create_layout(device),
+      accumulate: FsrAccumulateParameters::create_layout(device),
+    }
+  }
 }
 
 /// The pipelines of FSR 2's stages.
@@ -52,7 +75,7 @@ impl FsrPass {
   ///
   /// Returns an error when a shader does not compose or compile.
   pub fn new(device: &wgpu::Device, shaders: &ShaderLibrary) -> XrfResult<Self> {
-    let layouts: FsrLayouts = Self::create_layouts(device);
+    let layouts: FsrLayouts = FsrLayouts::new(device);
 
     Ok(Self {
       pipelines: Self::create_pipelines(device, shaders, &layouts)?,
@@ -78,212 +101,39 @@ impl FsrPass {
     }
   }
 
-  pub fn create_bind_groups(
-    &self,
-    device: &wgpu::Device,
-    targets: &ViewTargets,
-    fsr: &FsrTargets,
-    uniform: &wgpu::Buffer,
-  ) -> FsrGroups {
-    let sampler = |binding: u32| wgpu::BindGroupEntry {
-      binding,
-      resource: wgpu::BindingResource::Sampler(&self.sampler),
-    };
-    let create = |label: &str, layout: &wgpu::BindGroupLayout, entries: &[wgpu::BindGroupEntry<'_>]| {
-      device.create_bind_group(&wgpu::BindGroupDescriptor {
-        label: Some(label),
-        layout,
-        entries,
-      })
-    };
-    let layouts: &FsrLayouts = &self.layouts;
-
-    FsrGroups {
-      luma_first: create(
-        "fsr2 luma first",
-        &layouts.luma_first,
-        &[
-          buffer_binding(0, uniform),
-          texture_binding(1, &targets.scene),
-          sampler(2),
-        ],
-      ),
-      luma_shading: create(
-        "fsr2 luma shading",
-        &layouts.luma_shading,
-        &[buffer_binding(0, uniform), texture_binding(1, &fsr.luma_first)],
-      ),
-      reconstruct: create(
-        "fsr2 reconstruct",
-        &layouts.reconstruct,
-        &[
-          buffer_binding(0, uniform),
-          texture_binding(1, &targets.depth),
-          texture_binding(2, &targets.motion),
-          buffer_binding(3, &fsr.reconstructed),
-        ],
-      ),
-      dilate: create(
-        "fsr2 dilate",
-        &layouts.dilate,
-        &[
-          buffer_binding(0, uniform),
-          texture_binding(1, &targets.depth),
-          texture_binding(2, &targets.motion),
-          texture_binding(3, &targets.scene),
-        ],
-      ),
-      reactive: create(
-        "fsr2 reactive",
-        &layouts.reactive,
-        &[
-          buffer_binding(0, uniform),
-          texture_binding(1, &fsr.opaque),
-          texture_binding(2, &targets.scene),
-        ],
-      ),
-      depth_clip: [0, 1].map(|index: usize| {
-        create(
-          "fsr2 depth clip",
-          &layouts.depth_clip,
-          &[
-            buffer_binding(0, uniform),
-            texture_binding(1, &targets.scene),
-            texture_binding(2, &targets.motion),
-            buffer_binding(3, &fsr.reconstructed),
-            texture_binding(4, &fsr.dilated_depth[index]),
-            texture_binding(5, &fsr.dilated_motion[index]),
-            texture_binding(6, &fsr.dilated_motion[1 - index]),
-            texture_binding(7, &fsr.reactive),
-            sampler(8),
-          ],
-        )
-      }),
-      lock: [0, 1].map(|index: usize| {
-        create(
-          "fsr2 lock",
-          &layouts.lock,
-          &[buffer_binding(0, uniform), texture_binding(1, &fsr.lock_luma[index])],
-        )
-      }),
-      accumulate: [0, 1].map(|index: usize| {
-        let read: usize = 1 - index;
-
-        create(
-          "fsr2 accumulate",
-          &layouts.accumulate,
-          &[
-            buffer_binding(0, uniform),
-            texture_binding(1, &fsr.prepared),
-            texture_binding(2, &fsr.masks),
-            texture_binding(3, &fsr.dilated_motion[index]),
-            texture_binding(4, &fsr.locks),
-            texture_binding(5, &fsr.luma_shading),
-            texture_binding(6, &fsr.history[read]),
-            texture_binding(7, &fsr.lock_status[read]),
-            texture_binding(8, &fsr.luma_history[read]),
-            sampler(9),
-          ],
-        )
-      }),
-    }
-  }
-
   /// Declares FSR 2's stages, which leave the upscaled frame in this frame's history: the reconstruction's buffer
   /// cleared (`ClearResourcesForNextFrame`, run before the reconstruction rather than after the lock: the far plane, zero
   /// reversed), the luma, the reconstruction, the dilation, the reactive mask, the depth clip, the locks and the
   /// accumulation, each full-screen stage into its targets cleared first.
   pub fn add_passes<'a>(
     &'a self,
-    graph: &mut FrameGraph<'a>,
-    bindings: &mut GraphBindings<'a>,
-    (fsr, groups): (&'a FsrTargets, &'a FsrGroups),
+    (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
+    targets: ViewTargetHandles,
+    (fsr, uniform): (&'a FsrTargets, &FsrUniform),
   ) {
     let index: usize = fsr.index;
     let pipelines: &'a FsrPipelines = &self.pipelines;
+    let sampler: &'a wgpu::Sampler = &self.sampler;
+    let uniform: UniformBinding<FsrUniform> = runtime.push_uniform(uniform);
     let reconstructed: GraphBuffer = bindings.import_buffer(graph, "fsr2 reconstructed", &fsr.reconstructed);
     let mut import = |label: &'static str, view: &'a wgpu::TextureView| bindings.import_view(graph, label, view);
-    let stages: [(
-      &'static str,
-      Vec<GraphTexture>,
-      &'a wgpu::RenderPipeline,
-      &'a wgpu::BindGroup,
-    ); 7] = [
-      (
-        "fsr2 luma first",
-        vec![import("fsr2 luma first", &fsr.luma_first)],
-        &pipelines.luma_first,
-        &groups.luma_first,
-      ),
-      (
-        "fsr2 luma shading",
-        vec![import("fsr2 luma shading", &fsr.luma_shading)],
-        &pipelines.luma_shading,
-        &groups.luma_shading,
-      ),
-      (
-        "fsr2 dilate",
-        vec![
-          import("fsr2 dilated depth", &fsr.dilated_depth[index]),
-          import("fsr2 dilated motion", &fsr.dilated_motion[index]),
-          import("fsr2 lock luma", &fsr.lock_luma[index]),
-        ],
-        &pipelines.dilate,
-        &groups.dilate,
-      ),
-      (
-        "fsr2 reactive",
-        vec![import("fsr2 reactive", &fsr.reactive)],
-        &pipelines.reactive,
-        &groups.reactive,
-      ),
-      (
-        "fsr2 depth clip",
-        vec![import("fsr2 prepared", &fsr.prepared), import("fsr2 masks", &fsr.masks)],
-        &pipelines.depth_clip,
-        &groups.depth_clip[index],
-      ),
-      (
-        "fsr2 lock",
-        vec![import("fsr2 locks", &fsr.locks)],
-        &pipelines.lock,
-        &groups.lock[index],
-      ),
-      (
-        "fsr2 accumulate",
-        vec![
-          import("fsr2 history", &fsr.history[index]),
-          import("fsr2 lock status", &fsr.lock_status[index]),
-          import("fsr2 luma history", &fsr.luma_history[index]),
-        ],
-        &pipelines.accumulate,
-        &groups.accumulate[index],
-      ),
-    ];
-    let add_stage = |graph: &mut FrameGraph<'a>,
-                     (name, targets, pipeline, group): (
-      &'static str,
-      Vec<GraphTexture>,
-      &'a wgpu::RenderPipeline,
-      &'a wgpu::BindGroup,
-    )| {
-      targets
-        .into_iter()
-        .fold(graph.add_raster_pass(name), |builder, target| {
-          builder.color(GraphColorAttachment::new(
-            target,
-            wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-          ))
-        })
-        .record(move |context| {
-          let pass: &mut wgpu::RenderPass<'static> = context.get_pass();
-
-          pass.set_pipeline(pipeline);
-          pass.set_bind_group(0, group, &[]);
-          pass.draw(0..3, 0..1);
-        });
-    };
-    let mut stages = stages.into_iter();
+    let luma_first: GraphTexture = import("fsr2 luma first", &fsr.luma_first);
+    let luma_shading: GraphTexture = import("fsr2 luma shading", &fsr.luma_shading);
+    let opaque: GraphTexture = import("fsr2 opaque", &fsr.opaque);
+    let reactive: GraphTexture = import("fsr2 reactive", &fsr.reactive);
+    let prepared: GraphTexture = import("fsr2 prepared", &fsr.prepared);
+    let masks: GraphTexture = import("fsr2 masks", &fsr.masks);
+    let locks: GraphTexture = import("fsr2 locks", &fsr.locks);
+    let dilated_depth: GraphTexture = import("fsr2 dilated depth", &fsr.dilated_depth[index]);
+    let [dilated_motion, previous_dilated_motion] =
+      [index, 1 - index].map(|frame| import("fsr2 dilated motion", &fsr.dilated_motion[frame]));
+    let lock_luma: GraphTexture = import("fsr2 lock luma", &fsr.lock_luma[index]);
+    // This frame's histories, written, and the last frame's, read.
+    let [history, previous_history] = [index, 1 - index].map(|frame| import("fsr2 history", &fsr.history[frame]));
+    let [lock_status, previous_lock_status] =
+      [index, 1 - index].map(|frame| import("fsr2 lock status", &fsr.lock_status[frame]));
+    let [luma_history, previous_luma_history] =
+      [index, 1 - index].map(|frame| import("fsr2 luma history", &fsr.luma_history[frame]));
 
     graph
       .add_encoder_pass("fsr2 clear")
@@ -294,18 +144,40 @@ impl FsrPass {
         context.get_encoder().clear_buffer(reconstructed, 0, None);
       });
 
-    for stage in stages.by_ref().take(2) {
-      add_stage(graph, stage);
-    }
+    Self::add_stage(
+      graph,
+      ("fsr2 luma first", &[luma_first], &pipelines.luma_first),
+      FsrLumaFirstParameters {
+        fsr: uniform,
+        color: targets.scene,
+        linear_sampler: sampler,
+      },
+    );
+    Self::add_stage(
+      graph,
+      ("fsr2 luma shading", &[luma_shading], &pipelines.luma_shading),
+      FsrLumaShadingParameters {
+        fsr: uniform,
+        first_step: luma_first,
+      },
+    );
+
+    let reconstruct: FsrReconstructParameters = FsrReconstructParameters {
+      fsr: uniform,
+      depth_target: targets.depth,
+      motion_target: targets.motion,
+      reconstructed: StorageArrayMut::new(reconstructed),
+    };
 
     graph
       .add_compute_pass("fsr2 reconstruct")
-      .buffer(reconstructed, GraphBufferAccess::StorageReadWrite)
+      .parameters(&reconstruct)
       .record(move |context| {
+        context.bind(&reconstruct);
+
         let pass: &mut wgpu::ComputePass<'static> = context.get_pass();
 
         pass.set_pipeline(&pipelines.reconstruct);
-        pass.set_bind_group(0, &groups.reconstruct, &[]);
         pass.dispatch_workgroups(
           fsr.render.0.div_ceil(RECONSTRUCT_WORKGROUP),
           fsr.render.1.div_ceil(RECONSTRUCT_WORKGROUP),
@@ -313,104 +185,99 @@ impl FsrPass {
         );
       });
 
-    for stage in stages {
-      add_stage(graph, stage);
-    }
+    Self::add_stage(
+      graph,
+      (
+        "fsr2 dilate",
+        &[dilated_depth, dilated_motion, lock_luma],
+        &pipelines.dilate,
+      ),
+      FsrDilateParameters {
+        fsr: uniform,
+        depth_target: targets.depth,
+        motion_target: targets.motion,
+        color: targets.scene,
+      },
+    );
+    Self::add_stage(
+      graph,
+      ("fsr2 reactive", &[reactive], &pipelines.reactive),
+      FsrReactiveParameters {
+        fsr: uniform,
+        opaque,
+        color: targets.scene,
+      },
+    );
+    Self::add_stage(
+      graph,
+      ("fsr2 depth clip", &[prepared, masks], &pipelines.depth_clip),
+      FsrDepthClipParameters {
+        fsr: uniform,
+        color: targets.scene,
+        motion_target: targets.motion,
+        reconstructed: StorageArray::new(reconstructed),
+        dilated_depth,
+        dilated_motion,
+        previous_dilated_motion,
+        reactive_mask: reactive,
+        linear_sampler: sampler,
+      },
+    );
+    Self::add_stage(
+      graph,
+      ("fsr2 lock", &[locks], &pipelines.lock),
+      FsrLockParameters {
+        fsr: uniform,
+        lock_luma,
+      },
+    );
+    Self::add_stage(
+      graph,
+      (
+        "fsr2 accumulate",
+        &[history, lock_status, luma_history],
+        &pipelines.accumulate,
+      ),
+      FsrAccumulateParameters {
+        fsr: uniform,
+        prepared,
+        reactive_masks: masks,
+        dilated_motion,
+        locks,
+        shading_luma: luma_shading,
+        history: previous_history,
+        lock_status: previous_lock_status,
+        luma_history: previous_luma_history,
+        linear_sampler: sampler,
+      },
+    );
   }
 
-  fn create_layouts(device: &wgpu::Device) -> FsrLayouts {
-    let fragment: wgpu::ShaderStages = wgpu::ShaderStages::FRAGMENT;
-    let compute: wgpu::ShaderStages = wgpu::ShaderStages::COMPUTE;
-    let flat: wgpu::TextureViewDimension = wgpu::TextureViewDimension::D2;
-    let filtered: wgpu::TextureSampleType = wgpu::TextureSampleType::Float { filterable: true };
-    let unfiltered: wgpu::TextureSampleType = wgpu::TextureSampleType::Float { filterable: false };
-    let depth: wgpu::TextureSampleType = wgpu::TextureSampleType::Depth;
-    let sampler = |binding: u32| wgpu::BindGroupLayoutEntry {
-      binding,
-      visibility: fragment,
-      ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-      count: None,
-    };
-    let create = |label: &str, entries: &[wgpu::BindGroupLayoutEntry]| {
-      device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-        label: Some(label),
-        entries,
-      })
-    };
+  /// A full-screen stage drawing into its targets, cleared first, with its parameters.
+  fn add_stage<'a, P: PassParameters + Send + Sync + 'a>(
+    graph: &mut FrameGraph<'a>,
+    (name, targets, pipeline): (&'static str, &[GraphTexture], &'a wgpu::RenderPipeline),
+    parameters: P,
+  ) {
+    targets
+      .iter()
+      .fold(
+        graph.add_raster_pass(name).parameters(&parameters),
+        |builder, target| {
+          builder.color(GraphColorAttachment::new(
+            *target,
+            wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+          ))
+        },
+      )
+      .record(move |context| {
+        context.bind(&parameters);
 
-    FsrLayouts {
-      luma_first: create(
-        "fsr2 luma first",
-        &[
-          uniform_entry(0, fragment),
-          texture_entry(1, fragment, filtered, flat),
-          sampler(2),
-        ],
-      ),
-      luma_shading: create(
-        "fsr2 luma shading",
-        &[uniform_entry(0, fragment), texture_entry(1, fragment, unfiltered, flat)],
-      ),
-      reconstruct: create(
-        "fsr2 reconstruct",
-        &[
-          uniform_entry(0, compute),
-          texture_entry(1, compute, depth, flat),
-          texture_entry(2, compute, unfiltered, flat),
-          storage_entry(3, compute, true),
-        ],
-      ),
-      dilate: create(
-        "fsr2 dilate",
-        &[
-          uniform_entry(0, fragment),
-          texture_entry(1, fragment, depth, flat),
-          texture_entry(2, fragment, unfiltered, flat),
-          texture_entry(3, fragment, unfiltered, flat),
-        ],
-      ),
-      reactive: create(
-        "fsr2 reactive",
-        &[
-          uniform_entry(0, fragment),
-          texture_entry(1, fragment, unfiltered, flat),
-          texture_entry(2, fragment, unfiltered, flat),
-        ],
-      ),
-      depth_clip: create(
-        "fsr2 depth clip",
-        &[
-          uniform_entry(0, fragment),
-          texture_entry(1, fragment, unfiltered, flat),
-          texture_entry(2, fragment, unfiltered, flat),
-          storage_entry(3, fragment, false),
-          texture_entry(4, fragment, unfiltered, flat),
-          texture_entry(5, fragment, unfiltered, flat),
-          texture_entry(6, fragment, filtered, flat),
-          texture_entry(7, fragment, unfiltered, flat),
-          sampler(8),
-        ],
-      ),
-      lock: create(
-        "fsr2 lock",
-        &[uniform_entry(0, fragment), texture_entry(1, fragment, unfiltered, flat)],
-      ),
-      accumulate: create(
-        "fsr2 accumulate",
-        &[
-          uniform_entry(0, fragment),
-          texture_entry(1, fragment, filtered, flat),
-          texture_entry(2, fragment, filtered, flat),
-          texture_entry(3, fragment, unfiltered, flat),
-          texture_entry(4, fragment, unfiltered, flat),
-          texture_entry(5, fragment, filtered, flat),
-          texture_entry(6, fragment, unfiltered, flat),
-          texture_entry(7, fragment, filtered, flat),
-          texture_entry(8, fragment, filtered, flat),
-          sampler(9),
-        ],
-      ),
-    }
+        let pass: &mut wgpu::RenderPass<'static> = context.get_pass();
+
+        pass.set_pipeline(pipeline);
+        pass.draw(0..3, 0..1);
+      });
   }
 
   fn create_pipelines(device: &wgpu::Device, shaders: &ShaderLibrary, layouts: &FsrLayouts) -> XrfResult<FsrPipelines> {

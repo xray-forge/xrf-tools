@@ -6,25 +6,10 @@
 // as TAAU where the frame is drawn smaller than the history. Motion is each surface's own, from the motion target, and
 // the camera's from depth where nothing was drawn.
 
-struct Temporal {
-  // This frame's view projection without its jitter, and the last frame's.
-  current: mat4x4<f32>,
-  previous: mat4x4<f32>,
-  // The last frame's view, which the history's distances were measured along.
-  previous_view: mat4x4<f32>,
-  // xy: this frame's jitter in drawn pixels, y down; z: one while the history holds a frame; w: the least share of
-  // this frame a pixel takes.
-  params: vec4<f32>,
-};
-
-@group(1) @binding(0) var frame: texture_2d<f32>;
-@group(1) @binding(1) var depth_target: texture_depth_2d;
-// Colour, then distance along the view, zero where nothing was drawn.
-@group(1) @binding(2) var history: texture_2d<f32>;
-@group(1) @binding(3) var history_sampler: sampler;
-@group(1) @binding(4) var<uniform> temporal: Temporal;
-// How far each surface's point moved since the last frame, as the G-buffer wrote it.
-@group(1) @binding(5) var motion_target: texture_2d<f32>;
+// This frame as drawn, its depth, the history (colour, then distance along the view, zero where nothing was drawn)
+// and its sampler, what moves the history onto this frame, and how far each surface's point moved since the last frame,
+// as the G-buffer wrote it.
+#import "generated/frame/temporal"
 
 // Share of a point's distance its history's may differ by and still be taken as the same surface.
 const DISTANCE_TOLERANCE: f32 = 0.1;

@@ -1,9 +1,9 @@
 use xrf_error::XrfResult;
+use xrf_renderer_core::{PassParameters, RasterContext};
 
 use crate::frame::temporal_history::TemporalHistory;
-use crate::frame::view_targets::ViewTargets;
-use crate::pass::fullscreen_pipeline::{buffer_binding, create_fullscreen_pipeline, texture_binding};
-use crate::pass::layout_entries::{texture_entry, uniform_entry};
+use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline;
+use crate::pass::temporal_parameters::TemporalParameters;
 use crate::pass::view_binding::ViewBinding;
 use crate::shader::shader_library::ShaderLibrary;
 
@@ -21,24 +21,7 @@ impl TemporalPass {
   ///
   /// Returns an error when the shader does not compose or compile.
   pub fn new(device: &wgpu::Device, shaders: &ShaderLibrary, view_layout: &wgpu::BindGroupLayout) -> XrfResult<Self> {
-    let fragment: wgpu::ShaderStages = wgpu::ShaderStages::FRAGMENT;
-    let flat: wgpu::TextureViewDimension = wgpu::TextureViewDimension::D2;
-    let layout: wgpu::BindGroupLayout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-      label: Some("temporal"),
-      entries: &[
-        texture_entry(0, fragment, wgpu::TextureSampleType::Float { filterable: false }, flat),
-        texture_entry(1, fragment, wgpu::TextureSampleType::Depth, flat),
-        texture_entry(2, fragment, wgpu::TextureSampleType::Float { filterable: true }, flat),
-        wgpu::BindGroupLayoutEntry {
-          binding: 3,
-          visibility: fragment,
-          ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-          count: None,
-        },
-        uniform_entry(4, fragment),
-        texture_entry(5, fragment, wgpu::TextureSampleType::Float { filterable: false }, flat),
-      ],
-    });
+    let layout: wgpu::BindGroupLayout = TemporalParameters::create_layout(device);
 
     Ok(Self {
       pipeline: Self::create_pipeline(device, shaders, view_layout, &layout)?,
@@ -65,38 +48,19 @@ impl TemporalPass {
     }
   }
 
-  /// One bind group a history written: each reads the other.
-  pub fn create_bind_groups(
-    &self,
-    device: &wgpu::Device,
-    targets: &ViewTargets,
-    history: &TemporalHistory,
-    uniform: &wgpu::Buffer,
-  ) -> [wgpu::BindGroup; 2] {
-    [1, 0].map(|read: usize| {
-      device.create_bind_group(&wgpu::BindGroupDescriptor {
-        label: Some("temporal"),
-        layout: &self.layout,
-        entries: &[
-          texture_binding(0, &targets.scene),
-          texture_binding(1, &targets.depth),
-          texture_binding(2, &history.views[read]),
-          wgpu::BindGroupEntry {
-            binding: 3,
-            resource: wgpu::BindingResource::Sampler(&self.sampler),
-          },
-          buffer_binding(4, uniform),
-          texture_binding(5, &targets.motion),
-        ],
-      })
-    })
+  /// Resolves into the history this frame writes.
+  /// The sampler the history is read through, which the parameters bind.
+  pub fn get_sampler(&self) -> &wgpu::Sampler {
+    &self.sampler
   }
 
-  /// Resolves into the history this frame writes.
-  pub fn record(&self, pass: &mut wgpu::RenderPass<'_>, view: &ViewBinding, bind_group: &wgpu::BindGroup) {
+  pub fn record(&self, context: &mut RasterContext<'_>, view: &ViewBinding, parameters: &TemporalParameters<'_>) {
+    context.bind(parameters);
+
+    let pass: &mut wgpu::RenderPass<'static> = context.get_pass();
+
     pass.set_pipeline(&self.pipeline);
     pass.set_bind_group(0, &view.bind_group, &[]);
-    pass.set_bind_group(1, bind_group, &[]);
     pass.draw(0..3, 0..1);
   }
 

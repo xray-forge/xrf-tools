@@ -54,7 +54,6 @@ use crate::pass::camera_uniform::CameraUniform;
 use crate::pass::combine_parameters::CombineParameters;
 use crate::pass::composited_parameters::CompositedParameters;
 use crate::pass::exposure_parameters::ExposureParameters;
-use crate::pass::fsr_groups::FsrGroups;
 use crate::pass::fsr_uniform::FsrUniform;
 use crate::pass::fxaa_parameters::FxaaParameters;
 use crate::pass::level_passes::LevelPasses;
@@ -64,6 +63,8 @@ use crate::pass::lighting_uniform::LightingUniform;
 use crate::pass::lights_parameters::LightsParameters;
 use crate::pass::lights_uniform::LightsUniform;
 use crate::pass::present_uniform::PresentUniform;
+use crate::pass::pyramid_depth_parameters::PyramidDepthParameters;
+use crate::pass::pyramid_level_parameters::PyramidLevelParameters;
 use crate::pass::rain_parameters::RainParameters;
 use crate::pass::rain_uniform::RainUniform;
 use crate::pass::sky_haze_parameters::SkyHazeParameters;
@@ -78,6 +79,7 @@ use crate::pass::static_gbuffer_pass::StaticGBufferPass;
 use crate::pass::static_occlusion_uniform::StaticOcclusionUniform;
 use crate::pass::sun_parameters::SunParameters;
 use crate::pass::sun_shafts_parameters::SunShaftsParameters;
+use crate::pass::temporal_parameters::TemporalParameters;
 use crate::pass::temporal_uniform::TemporalUniform;
 use crate::pass::thunder_parameters::ThunderParameters;
 use crate::pass::thunder_uniform::ThunderUniform;
@@ -237,11 +239,9 @@ impl SceneView {
     if !self.state.targets.as_ref().is_some_and(|it| it.is_sized(width, height)) {
       let targets: ViewTargets = ViewTargets::new(device, width, height);
       let pyramid: DepthPyramid = DepthPyramid::new(device, width, height);
-      let groups: Vec<wgpu::BindGroup> = passes.pyramid.create_bind_groups(device, &targets.depth, &pyramid);
 
       self.state.targets = Some(targets);
-      self.state.pyramid = Some((pyramid, groups));
-      self.state.targets_epoch += 1;
+      self.state.pyramid = Some(pyramid);
       self.state.temporal = None;
       self.state.fsr = None;
       // A pyramid of another size holds no depth this frame can be tested against.
@@ -285,11 +285,7 @@ impl SceneView {
       device,
       options,
       WaterFrame {
-        targets: self
-          .state
-          .targets
-          .as_ref()
-          .map(|targets| (targets, self.state.targets_epoch)),
+        targets: self.state.targets.as_ref(),
         intensity: lighting.water_intensity,
         wind: lighting.wind,
         rain: lighting.rain.map_or(0.0, |rain| rain.density),
@@ -414,7 +410,7 @@ impl SceneView {
     self.info.is_wireframe = options.mode.is_wireframe;
     self.info.corrections = options.features.corrections;
     self.info.is_occlusion_drawn = options.mode.is_lit && options.features.ambient_occlusion.is_enabled;
-    self.prepare_temporal(device, queue, passes, view);
+    self.prepare_temporal(device, view);
     self.prepare_smoothing(passes, options.features.antialiasing);
     self.prepare_upscale(device);
     self.info.lights_settings = options.features.lights;
@@ -426,7 +422,7 @@ impl SceneView {
     );
     self.prepare_sorted(scene, device, queue, view);
 
-    if let Some((pyramid, _)) = &self.state.pyramid {
+    if let Some(pyramid) = &self.state.pyramid {
       let (history_view, history_projection): (Mat4, Mat4) = self.state.history.unwrap_or(self.info.matrices);
 
       self.info.occlusion = StaticOcclusionUniform {
@@ -506,10 +502,10 @@ impl SceneView {
   /// it culls occlusion, this frame's depth reduced and what the first draw does not hide of the rest culled and drawn.
   fn add_gbuffer_passes<'a>(
     &'a self,
-    graph: &mut FrameGraph<'a>,
+    (graph, bindings): (&mut FrameGraph<'a>, &mut GraphBindings<'a>),
     passes: LevelPasses<'a>,
     (view, textures, scene): (&'a ViewBinding, &'a wgpu::BindGroup, &StaticSceneHandles),
-    (targets, pyramid, pyramid_groups): (ViewTargetHandles, &'a DepthPyramid, &'a [wgpu::BindGroup]),
+    (targets, pyramid): (ViewTargetHandles, &'a DepthPyramid),
     is_occluding: bool,
   ) {
     let params: &'a StaticCullParams = &self.info.cull;
@@ -555,14 +551,32 @@ impl SceneView {
       return;
     }
 
-    let (late, late_dispatch, reduced): (GraphBuffer, GraphBuffer, GraphTexture) =
-      (scene.late, scene.late_dispatch, scene.pyramid);
+    let (late, late_dispatch): (GraphBuffer, GraphBuffer) = (scene.late, scene.late_dispatch);
+    // Each level as its own resource, the depth reduced into the first and each into the next.
+    let level_views: Vec<GraphTexture> = pyramid
+      .level_views
+      .iter()
+      .map(|view| bindings.import_view(&mut *graph, "depth pyramid level", view))
+      .collect();
+    let first: PyramidDepthParameters = PyramidDepthParameters {
+      source_depth: depth,
+      target_level: level_views[0],
+    };
+    let levels: Vec<PyramidLevelParameters> = level_views
+      .windows(2)
+      .map(|pair| PyramidLevelParameters {
+        source_level: pair[0],
+        target_level: pair[1],
+      })
+      .collect();
 
-    graph
-      .add_compute_pass("depth pyramid")
-      .texture(depth, GraphTextureAccess::Sampled)
-      .texture(reduced, GraphTextureAccess::StorageReadWrite)
-      .record(move |context| passes.pyramid.record(context.get_pass(), pyramid, pyramid_groups));
+    levels
+      .iter()
+      .fold(
+        graph.add_compute_pass("depth pyramid").parameters(&first),
+        |builder, level| builder.parameters(level),
+      )
+      .record(move |context| passes.pyramid.record(context, pyramid, (&first, &levels)));
     graph
       .add_encoder_pass("late cull dispatch")
       .buffer(late, GraphBufferAccess::CopySource)
@@ -738,12 +752,12 @@ impl SceneView {
 
     match frame.resolve {
       Some("fsr2") => {
-        if let Some((fsr, _)) = &mut self.state.fsr {
+        if let Some(fsr) = &mut self.state.fsr {
           fsr.swap();
         }
       }
       Some("temporal") => {
-        if let Some((history, _)) = &mut self.state.temporal {
+        if let Some(history) = &mut self.state.temporal {
           history.swap();
         }
       }
@@ -1008,8 +1022,7 @@ impl SceneView {
     let is_adapting: bool = self.state.exposure.is_adapting();
     let texture_group: &wgpu::BindGroup = textures.get_bind_group();
     let scene_view: &'a SceneView = self;
-    let (Some(targets), Some((pyramid, pyramid_groups))) = (&scene_view.state.targets, &scene_view.state.pyramid)
-    else {
+    let (Some(targets), Some(pyramid)) = (&scene_view.state.targets, &scene_view.state.pyramid) else {
       return None;
     };
     let handles: ViewTargetHandles = ViewTargetHandles::import(&mut *graph, &mut *bindings, targets);
@@ -1061,10 +1074,10 @@ impl SceneView {
         .add_planting(&mut *graph, &mut *bindings, (passes.grass, grass_level));
 
     scene_view.add_gbuffer_passes(
-      &mut *graph,
+      (&mut *graph, &mut *bindings),
       passes,
       (view, texture_group, &statics),
-      (handles, pyramid, pyramid_groups),
+      (handles, pyramid),
       is_occluding,
     );
 
@@ -1251,7 +1264,7 @@ impl SceneView {
       let scene: GraphTexture = handles.scene;
 
       // FSR 2's reactive mask is what the water and the blended surfaces change of the frame drawn so far.
-      if let Some((fsr, _)) = &scene_view.state.fsr {
+      if let Some(fsr) = &scene_view.state.fsr {
         let opaque: GraphTexture = bindings.import_view(&mut *graph, "fsr2 opaque", &fsr.opaque);
 
         graph
@@ -1525,24 +1538,36 @@ impl SceneView {
         &scene_view.state.temporal,
         &scene_view.state.upscale,
       ) {
-        (Some("fsr2"), Some((fsr, groups)), _, _) => {
+        (Some("fsr2"), Some(fsr), _, _) => {
           let history: GraphTexture = bindings.import_view(&mut *graph, "fsr2 history", &fsr.history[fsr.index]);
 
-          passes.fsr.add_passes(&mut *graph, &mut *bindings, (fsr, groups));
+          passes.fsr.add_passes(
+            (&mut *graph, &mut *bindings, runtime),
+            handles,
+            (fsr, &scene_view.info.fsr),
+          );
           Self::add_copy(&mut *graph, "fsr2 output", history, resolved);
         }
-        (Some("temporal"), _, Some((history, groups)), _) => {
+        (Some("temporal"), _, Some(history), _) => {
           let index: usize = history.index;
           let target: GraphTexture = bindings.import_view(&mut *graph, "temporal history", &history.views[index]);
+          let parameters: TemporalParameters = TemporalParameters {
+            frame: handles.scene,
+            depth_target: handles.depth,
+            history: bindings.import_view(&mut *graph, "temporal history", &history.views[1 - index]),
+            history_sampler: passes.temporal.get_sampler(),
+            temporal: runtime.push_uniform(&scene_view.info.temporal),
+            motion_target: handles.motion,
+          };
 
           graph
             .add_raster_pass("temporal")
-            .texture(handles.scene, GraphTextureAccess::Sampled)
+            .parameters(&parameters)
             .color(GraphColorAttachment::new(
               target,
               wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
             ))
-            .record(move |context| passes.temporal.record(context.get_pass(), view, &groups[index]));
+            .record(move |context| passes.temporal.record(context, view, &parameters));
           Self::add_copy(&mut *graph, "temporal output", target, resolved);
         }
         (Some(_), _, _, Some(_)) => {
@@ -1770,25 +1795,14 @@ impl SceneView {
 
   /// Makes the temporal resolve's histories while it resolves, dropping them otherwise, and writes what it reads: this
   /// frame's view projection, the last one's, and the jitter.
-  fn prepare_temporal(
-    &mut self,
-    device: &wgpu::Device,
-    queue: &wgpu::Queue,
-    passes: LevelPasses<'_>,
-    view: &CameraView,
-  ) {
-    let Some(targets) = self
-      .state
-      .targets
-      .as_ref()
-      .filter(|_| self.info.is_temporal && !self.info.is_fsr)
-    else {
+  fn prepare_temporal(&mut self, device: &wgpu::Device, view: &CameraView) {
+    if self.state.targets.is_none() || !self.info.is_temporal || self.info.is_fsr {
       self.state.temporal = None;
       self.state.temporal_previous = None;
-      self.prepare_fsr(device, queue, passes, view);
+      self.prepare_fsr(device, view);
 
       return;
-    };
+    }
 
     self.state.fsr = None;
     let (width, height): (u32, u32) = (self.info.output.width.max(1), self.info.output.height.max(1));
@@ -1797,39 +1811,30 @@ impl SceneView {
       .state
       .temporal
       .as_ref()
-      .is_some_and(|(history, _)| !history.is_sized(width, height))
+      .is_some_and(|history| !history.is_sized(width, height))
     {
       self.state.temporal = None;
     }
 
-    let (history, _) = self.state.temporal.get_or_insert_with(|| {
-      let history: TemporalHistory = TemporalHistory::new(device, width, height);
-      let groups: [wgpu::BindGroup; 2] =
-        passes
-          .temporal
-          .create_bind_groups(device, targets, &history, &self.renderer.temporal_uniform);
-
-      (history, groups)
-    });
+    let history: &TemporalHistory = self
+      .state
+      .temporal
+      .get_or_insert_with(|| TemporalHistory::new(device, width, height));
     let current: Mat4 = view.get_view_projection();
     let (previous, previous_view): (Mat4, Mat4) = self.state.temporal_previous.unwrap_or((current, view.view));
 
-    queue.write_buffer(
-      &self.renderer.temporal_uniform,
-      0,
-      bytemuck::bytes_of(&TemporalUniform::new(
-        current,
-        previous,
-        previous_view,
-        self.info.jitter,
-        history.is_valid && self.state.temporal_previous.is_some(),
-      )),
+    self.info.temporal = TemporalUniform::new(
+      current,
+      previous,
+      previous_view,
+      self.info.jitter,
+      history.is_valid && self.state.temporal_previous.is_some(),
     );
     self.state.temporal_previous = Some((current, view.view));
   }
 
   /// Makes FSR 2's targets while it resolves, dropping them otherwise, and writes its constants.
-  fn prepare_fsr(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, passes: LevelPasses<'_>, view: &CameraView) {
+  fn prepare_fsr(&mut self, device: &wgpu::Device, view: &CameraView) {
     let Some(targets) = self.state.targets.as_ref().filter(|_| self.info.is_fsr) else {
       self.state.fsr = None;
 
@@ -1842,30 +1847,22 @@ impl SceneView {
       .state
       .fsr
       .as_ref()
-      .is_some_and(|(fsr, _)| !fsr.is_sized(render, display))
+      .is_some_and(|fsr| !fsr.is_sized(render, display))
     {
       self.state.fsr = None;
     }
 
-    let (fsr, _) = self.state.fsr.get_or_insert_with(|| {
-      let fsr: FsrTargets = FsrTargets::new(device, render, display, ViewTargets::SCENE);
-      let groups: FsrGroups = passes
-        .fsr
-        .create_bind_groups(device, targets, &fsr, &self.renderer.fsr_uniform);
+    let fsr: &FsrTargets = self
+      .state
+      .fsr
+      .get_or_insert_with(|| FsrTargets::new(device, render, display, ViewTargets::SCENE));
 
-      (fsr, groups)
-    });
-
-    queue.write_buffer(
-      &self.renderer.fsr_uniform,
-      0,
-      bytemuck::bytes_of(&FsrUniform::new(
-        (render, display),
-        self.info.jitter,
-        view,
-        (FsrTargets::get_luma_mip_size(render), self.info.jitter_phases),
-        fsr.frame_index,
-      )),
+    self.info.fsr = FsrUniform::new(
+      (render, display),
+      self.info.jitter,
+      view,
+      (FsrTargets::get_luma_mip_size(render), self.info.jitter_phases),
+      fsr.frame_index,
     );
   }
 

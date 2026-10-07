@@ -7,10 +7,10 @@ use crate::lighting::render_wind::RenderWind;
 use crate::pass::water_uniform::WaterUniform;
 use crate::scene::level::water_flow::WaterFlow;
 
-/// What a level view's water reads of its frame beside its own state: the targets and their epoch, the weather's
+/// What a level view's water reads of its frame beside its own state: the targets, the weather's
 /// `water_intensity`, wind and rain density, and the clock.
 pub struct WaterFrame<'a> {
-  pub targets: Option<(&'a ViewTargets, u64)>,
+  pub targets: Option<&'a ViewTargets>,
   pub intensity: f32,
   pub wind: RenderWind,
   pub rain: f32,
@@ -42,13 +42,13 @@ impl LevelWater {
     let is_reflecting: bool = self.is_refracting() && settings.reflectivity > 0.0;
 
     match frame.targets {
-      Some((targets, epoch)) if is_reflecting => {
+      Some(targets) if is_reflecting => {
         if self
           .reflection
           .as_ref()
-          .is_none_or(|reflection| reflection.epoch != epoch)
+          .is_none_or(|reflection| reflection.size != (targets.width, targets.height))
         {
-          self.reflection = Some(WaterReflection::new(device, targets, epoch));
+          self.reflection = Some(WaterReflection::new(device, targets));
         }
       }
       _ => self.reflection = None,
