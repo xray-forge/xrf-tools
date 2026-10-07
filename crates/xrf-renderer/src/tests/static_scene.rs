@@ -17,6 +17,7 @@ use crate::scene::static_scene::static_model_proxy::StaticModelProxy;
 use crate::scene::static_scene::static_object_proxy::StaticObjectProxy;
 use crate::scene::static_scene::static_scene::StaticScene;
 use crate::scene::texture::texture_cache::TextureCache;
+use crate::tests::test_bundle::checkout_dxc;
 use crate::tests::test_workers::create_workers;
 
 /// A source holding no textures.
@@ -66,8 +67,8 @@ fn place(object: u32) -> StaticModelPlace {
 
 #[test]
 fn stands_objects_as_a_model_and_takes_them_out_again() {
-  let Ok(context) =
-    GpuContext::create_headless(RenderBackend::D3d12).or_else(|_| GpuContext::create_headless(RenderBackend::Vulkan))
+  let Ok(context) = GpuContext::create_headless(RenderBackend::D3d12, checkout_dxc().as_deref())
+    .or_else(|_| GpuContext::create_headless(RenderBackend::Vulkan, None))
   else {
     eprintln!("Skipped: no GPU to hold a scene");
 

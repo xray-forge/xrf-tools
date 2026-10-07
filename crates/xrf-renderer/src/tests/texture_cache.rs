@@ -11,6 +11,7 @@ use crate::contract::render_texture_state::RenderTextureState;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::scene::texture::texture_cache::TextureCache;
 use crate::scene::texture::texture_role::TextureRole;
+use crate::tests::test_bundle::checkout_dxc;
 use crate::tests::test_workers::{TEST_WORKER_NAME, create_workers};
 
 /// A source holding nothing, whose `slow` texture answers only once the test lets it, and then with a failure.
@@ -35,8 +36,8 @@ impl RenderAssetSource for GatedSource {
 }
 
 fn create_context() -> Option<GpuContext> {
-  GpuContext::create_headless(RenderBackend::D3d12)
-    .or_else(|_| GpuContext::create_headless(RenderBackend::Vulkan))
+  GpuContext::create_headless(RenderBackend::D3d12, checkout_dxc().as_deref())
+    .or_else(|_| GpuContext::create_headless(RenderBackend::Vulkan, None))
     .map_err(|error| eprintln!("Skipped: no GPU to upload to ({error})"))
     .ok()
 }
