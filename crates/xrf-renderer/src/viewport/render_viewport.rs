@@ -239,6 +239,7 @@ impl RenderViewport {
       frames_per_second,
       frame_time,
       frame_time_max,
+      frame_times,
       cpu_time,
       phases,
     } = summary;
@@ -263,6 +264,7 @@ impl RenderViewport {
       frames_per_second,
       frame_time,
       frame_time_max,
+      frame_times,
       cpu_time,
       phases,
       width: rect.width,

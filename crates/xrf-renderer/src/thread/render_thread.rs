@@ -479,6 +479,8 @@ impl RenderThread {
   }
 
   fn frame(&mut self) {
+    profiling::scope!("frame");
+
     let now: Instant = Instant::now();
     let delta: f32 = now.duration_since(self.last_frame).as_secs_f32();
 
@@ -725,7 +727,12 @@ impl RenderThread {
         continue;
       };
       let acquiring: Instant = Instant::now();
-      let Some((image, width, height)) = window.acquire(&gpu.context, is_vsync) else {
+      let image = {
+        profiling::scope!("acquire");
+
+        window.acquire(&gpu.context, is_vsync)
+      };
+      let Some((image, width, height)) = image else {
         // A lost surface is let go, so the next frame draws into a new one.
         if window.is_lost() {
           gpu.windows.remove(key);
@@ -912,6 +919,8 @@ impl RenderThread {
       .map(|window| window.image.texture.create_view(&Default::default()))
       .collect();
     let executed: XrfResult<ExecutedGraph> = {
+      profiling::scope!("record");
+
       let mut graph: FrameGraph<'_> = FrameGraph::new();
       let mut bindings: GraphBindings<'_> = GraphBindings::new();
 
@@ -1110,7 +1119,11 @@ impl RenderThread {
       }
     };
     let finishing: Instant = Instant::now();
-    let mut commands: Vec<wgpu::CommandBuffer> = vec![encoder.finish()];
+    let mut commands: Vec<wgpu::CommandBuffer> = {
+      profiling::scope!("finish", "frame");
+
+      vec![encoder.finish()]
+    };
     let encoded: Duration = finishing.elapsed() + executed.encode;
 
     phases.record += recording.elapsed().saturating_sub(encoded);
@@ -1119,7 +1132,11 @@ impl RenderThread {
 
     let submitting: Instant = Instant::now();
 
-    queue.submit(commands);
+    {
+      profiling::scope!("submit");
+
+      queue.submit(commands);
+    }
     phases.submit = submitting.elapsed();
     runtime.timer.request();
 
@@ -1159,7 +1176,11 @@ impl RenderThread {
     for window in acquired {
       let presenting: Instant = Instant::now();
 
-      queue.present(window.image);
+      {
+        profiling::scope!("present");
+
+        queue.present(window.image);
+      }
 
       let presented: Instant = Instant::now();
       let window_phases: FramePhases = FramePhases {
@@ -1179,6 +1200,8 @@ impl RenderThread {
         }
       }
     }
+
+    profiling::finish_frame!();
   }
 
   /// Readies one viewport's frame of the scene it shows: writes its camera, asks for the textures its weather draws
@@ -1300,40 +1323,50 @@ impl RenderThread {
 
     let loading: Instant = Instant::now();
 
-    view_state.set_overlays(scene, device, overlays, *overlays_version, selection.as_ref());
-    view_state.request_textures(scene, &mut gpu.weather_textures, (lighting, weather), &options);
-    gpu
-      .textures
-      .set_anisotropy(device, options.features.texture_filtering.get_anisotropy());
-    gpu.textures.set_lod(options.features.texture_lod);
+    {
+      profiling::scope!("load");
 
-    if options.features.parallax.is_enhanced() || options.mode.debug_view == RenderDebugView::Heights {
-      gpu.textures.want_heights();
+      view_state.set_overlays(scene, device, overlays, *overlays_version, selection.as_ref());
+      view_state.request_textures(scene, &mut gpu.weather_textures, (lighting, weather), &options);
+      gpu
+        .textures
+        .set_anisotropy(device, options.features.texture_filtering.get_anisotropy());
+      gpu.textures.set_lod(options.features.texture_lod);
+
+      if options.features.parallax.is_enhanced() || options.mode.debug_view == RenderDebugView::Heights {
+        gpu.textures.want_heights();
+      }
     }
     *load += loading.elapsed();
 
     let preparing: Instant = Instant::now();
 
-    // The scene's effects step once a frame, by the camera standing for the actor.
-    if is_simulating {
-      scene.particles.simulate(&view, &options);
-    }
+    {
+      profiling::scope!("prepare");
 
-    view_state.prepare(
-      scene,
-      device,
-      queue,
-      encoder,
-      gpu.get_level_passes(),
-      &view,
-      ((drawn_rect.width, drawn_rect.height), *rect),
-      world.camera.field_of_view,
-      &options,
-      (lighting, weather),
-      &gpu.weather_textures,
-      world.clock_rate,
-      (&gpu.view_layout, &gpu.textures),
-    );
+      // The scene's effects step once a frame, by the camera standing for the actor.
+      if is_simulating {
+        profiling::scope!("particles");
+
+        scene.particles.simulate(&view, &options);
+      }
+
+      view_state.prepare(
+        scene,
+        device,
+        queue,
+        encoder,
+        gpu.get_level_passes(),
+        &view,
+        ((drawn_rect.width, drawn_rect.height), *rect),
+        world.camera.field_of_view,
+        &options,
+        (lighting, weather),
+        &gpu.weather_textures,
+        world.clock_rate,
+        (&gpu.view_layout, &gpu.textures),
+      );
+    }
     *prepare += preparing.elapsed();
 
     // One pick a frame, drawn from this frame's culled clusters while a readback is free for it.

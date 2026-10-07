@@ -11,6 +11,7 @@ pub const REPORT_INTERVAL: Duration = Duration::from_millis(250);
 pub struct FrameStatistics {
   since: Instant,
   frames: u32,
+  intervals: Vec<f32>,
   interval_sum: f32,
   interval_max: f32,
   cpu_sum: f32,
@@ -21,11 +22,12 @@ pub struct FrameStatistics {
 pub(crate) const PHASES: usize = 9;
 
 /// What a span of frames cost, in milliseconds.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct FrameSummary {
   pub frames_per_second: f32,
   pub frame_time: f32,
   pub frame_time_max: f32,
+  pub frame_times: Vec<f32>,
   pub cpu_time: f32,
   pub phases: RenderFramePhases,
 }
@@ -35,6 +37,7 @@ impl FrameStatistics {
     Self {
       since: now,
       frames: 0,
+      intervals: Vec::new(),
       interval_sum: 0.0,
       interval_max: 0.0,
       cpu_sum: 0.0,
@@ -48,6 +51,7 @@ impl FrameStatistics {
     let interval: f32 = interval.as_secs_f32() * 1000.0;
 
     self.frames += 1;
+    self.intervals.push(interval);
     self.interval_sum += interval;
     self.interval_max = self.interval_max.max(interval);
     self.cpu_sum += cpu.as_secs_f32() * 1000.0;
@@ -70,6 +74,7 @@ impl FrameStatistics {
       frames_per_second: frames / elapsed.as_secs_f32(),
       frame_time: self.interval_sum / frames,
       frame_time_max: self.interval_max,
+      frame_times: std::mem::take(&mut self.intervals),
       cpu_time: self.cpu_sum / frames,
       phases: to_phases(self.phase_sums.map(|sum| sum / frames)),
     };

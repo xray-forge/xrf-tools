@@ -8,6 +8,7 @@ pub mod describe_textures;
 pub mod detach_viewport;
 pub mod list_backends;
 pub mod locate_spawn_object;
+pub mod mark_profile;
 pub mod measure_surfaces;
 pub mod pick;
 pub mod play_ambient_effect;

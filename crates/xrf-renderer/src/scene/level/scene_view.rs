@@ -306,6 +306,8 @@ impl SceneView {
     weather_rate: f32,
     (view_layout, textures): (&wgpu::BindGroupLayout, &TextureCache),
   ) {
+    profiling::scope!("prepare view");
+
     if !self.state.targets.as_ref().is_some_and(|it| it.is_sized(width, height)) {
       let targets: ViewTargets = ViewTargets::new(device, width, height);
       let pyramid: DepthPyramid = DepthPyramid::new(device, width, height);
@@ -2211,6 +2213,8 @@ impl SceneView {
     textures: &'a TextureCache,
     frame: &LevelFrame,
   ) -> Option<SceneOutput> {
+    profiling::scope!("declare");
+
     let is_occluding: bool = self.info.cull.is_occluding != 0;
     let pick_slot: Option<usize> = frame.pick_slot;
     let is_pick_through: bool = frame.is_pick_through;

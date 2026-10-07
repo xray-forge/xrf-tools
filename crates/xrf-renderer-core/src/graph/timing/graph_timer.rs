@@ -1,6 +1,7 @@
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU8, Ordering};
 
+use crate::graph::timing::gpu_zones::GpuZones;
 use crate::graph::timing::graph_pass_time::GraphPassTime;
 use crate::graph::timing::timer_slot::{TimedPass, TimerSlot};
 
@@ -21,6 +22,7 @@ pub struct GraphTimer {
   sums: Vec<(u32, String, f64)>,
   /// Frames read back per owner since its last `take`, which its passes' sums are averaged over.
   frames: Vec<(u32, u32)>,
+  zones: GpuZones,
 }
 
 impl GraphTimer {
@@ -67,6 +69,7 @@ impl GraphTimer {
       frame: None,
       sums: Vec::new(),
       frames: Vec::new(),
+      zones: GpuZones::default(),
     }
   }
 
@@ -195,6 +198,8 @@ impl GraphTimer {
           .iter()
           .map(|bytes| u64::from_le_bytes(*bytes))
           .collect();
+
+        self.zones.send(&stamps, &slot.names, self.period);
 
         let mut owners: Vec<u32> = Vec::new();
 

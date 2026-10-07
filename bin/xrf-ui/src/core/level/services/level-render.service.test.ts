@@ -57,6 +57,7 @@ const REPORT: RenderFrameReport = {
   cpuTime: 0.8,
   frameTime: 6.25,
   frameTimeMax: 9,
+  frameTimes: [6, 6.5, 9],
   graph: null,
   framesPerSecond: 160,
   height: 600,
