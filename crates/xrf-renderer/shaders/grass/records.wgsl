@@ -1,4 +1,7 @@
-// The grass's records, as `pass/grass_uniform.rs` and `scene/level/level_grass.rs` write them.
+#import "generated/structs"
+
+// The grass's records, as `pass/grass_uniform.rs` and `scene/level/level_grass.rs` write them; its models'
+// (`GrassModel`) as `pass/grass_model_record.rs` declares them.
 
 // Steps a ground normal's `x` and `z` are kept on each, as a tuft's record packs them.
 const GROUND_NORMAL_STEPS: u32 = 1024u;
@@ -39,20 +42,6 @@ struct GrassParams {
   pad: u32,
 };
 
-// One detail model: its least and most scale, radius and height, then whether it waves, its base texture's slot, its
-// alpha reference and its first index and base vertex in the grass's arenas.
-struct GrassModel {
-  shape: vec4<f32>,
-  is_waving: f32,
-  texture: u32,
-  alpha_reference: f32,
-  index_count: u32,
-  first_index: u32,
-  pad0: u32,
-  pad1: u32,
-  pad2: u32,
-};
-
 // Words a cached slot's key takes: the world slot it holds on each axis, the generation it was planted under, its tufts.
 const GRASS_KEY_WORDS: u32 = 4u;
 
@@ -61,6 +50,9 @@ const GRASS_SLOT_WORDS: u32 = 6u;
 
 // Floats a collision triangle takes: its three corners.
 const GRASS_TRIANGLE_FLOATS: u32 = 9u;
+
+// `DetailSlot::ID_Empty`: a slot's mark for a model it does not plant.
+const GRASS_EMPTY_ID: u32 = 0x3fu;
 
 // Metres a detail slot spans, `dm_slot_size`.
 const GRASS_SLOT_METERS: f32 = 2.0;

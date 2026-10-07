@@ -12,6 +12,7 @@ import {
   ERenderReflectionMode,
   ERenderReflectionProbe,
   ERenderReflectionQuality,
+  ERenderReflectionTraceQuality,
   ERenderScale,
   ERenderTextureFiltering,
   RenderAmbientOcclusionMethod,
@@ -27,6 +28,7 @@ import {
   RenderReflectionMode,
   RenderReflectionProbe,
   RenderReflectionQuality,
+  RenderReflectionTraceQuality,
   RenderScale,
   RenderTextureFiltering,
 } from "@/core/ipc/types/xrf-renderer";
@@ -413,6 +415,28 @@ export const RENDER_REFLECTION_PROBE_OPTIONS: ReadonlyArray<IRenderChoiceOption<
 export const RENDER_REFLECTION_QUALITY_OPTIONS: ReadonlyArray<IRenderChoiceOption<RenderReflectionQuality>> =
   Object.values(ERenderReflectionQuality).map((value: RenderReflectionQuality) => ({
     label: describeRenderReflectionQuality(value),
+    value,
+  }));
+
+const RENDER_REFLECTION_TRACE_QUALITY_NAMES: Readonly<Record<RenderReflectionTraceQuality, string>> = {
+  [ERenderReflectionTraceQuality.LOW]: "Low",
+  [ERenderReflectionTraceQuality.MEDIUM]: "Medium",
+  [ERenderReflectionTraceQuality.HIGH]: "High",
+  [ERenderReflectionTraceQuality.ULTRA]: "Ultra",
+};
+
+/**
+ * @param quality - How often a pixel the screen misses is traced.
+ * @returns Its name as the settings say it.
+ */
+export function describeRenderReflectionTraceQuality(quality: RenderReflectionTraceQuality): string {
+  return RENDER_REFLECTION_TRACE_QUALITY_NAMES[quality];
+}
+
+/** How often a pixel the screen misses is traced, cheapest first: once in eight frames up to every frame. */
+export const RENDER_REFLECTION_TRACE_QUALITY_OPTIONS: ReadonlyArray<IRenderChoiceOption<RenderReflectionTraceQuality>> =
+  Object.values(ERenderReflectionTraceQuality).map((value: RenderReflectionTraceQuality) => ({
+    label: describeRenderReflectionTraceQuality(value),
     value,
   }));
 

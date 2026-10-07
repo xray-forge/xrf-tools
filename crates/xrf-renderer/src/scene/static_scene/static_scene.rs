@@ -498,7 +498,8 @@ impl StaticScene {
           layout: StaticLayout::Baked,
           class,
         };
-        let cut: Vec<(u32, u32, Vec4)> = cut_clusters(&description.geometry, buffer, section.draw.start, section.draw.count);
+        let cut: Vec<(u32, u32, Vec4)> =
+          cut_clusters(&description.geometry, buffer, section.draw.start, section.draw.count);
         let sphere: Vec4 = bound_spheres(&cut.iter().map(|(_, _, sphere)| *sphere).collect::<Vec<Vec4>>());
         let (slot, clusters): (u32, u32) = writer.put_slot(
           &base,
@@ -605,6 +606,30 @@ impl StaticScene {
     })
   }
 
+  /// Every spawned model the scene's objects stand as that the level's acceleration structures take, with its traced
+  /// parts.
+  pub fn list_trace_models(&self) -> impl Iterator<Item = (ProxyHandle<StaticModelProxy>, &[StaticTraceGeometry])> {
+    self
+      .models
+      .iter()
+      .filter(|(_, model)| !model.trace_geometries.is_empty())
+      .map(|(handle, model)| (handle, model.trace_geometries.as_slice()))
+  }
+
+  /// Every spawned object standing as a traced model: its model, its place and its transform.
+  pub fn list_trace_objects(&self) -> impl Iterator<Item = (ProxyHandle<StaticModelProxy>, u32, &Mat4)> {
+    self
+      .objects
+      .iter()
+      .filter(|(_, object)| {
+        self
+          .models
+          .get(object.model)
+          .is_some_and(|model| !model.trace_geometries.is_empty())
+      })
+      .map(|(_, object)| (object.model, object.place.get_offset(), &object.transform))
+  }
+
   /// Takes a sector out of the scene, its ranges cleared and freed; false for one already gone.
   pub fn remove_sector(&mut self, handle: ProxyHandle<StaticSectorProxy>) -> bool {
     let Some(sector) = self.sectors.remove(handle) else {
@@ -645,6 +670,7 @@ impl StaticScene {
   ) -> XrfResult {
     let mut writer: StaticSceneWriter = StaticSceneWriter::default();
     let base: StaticGeometryBase = writer.put_words(StaticLayout::Model, &model.words, &model.indices);
+    let vertex_count: u32 = (model.words.len() / StaticLayout::STRIDE as usize) as u32;
     let mut slots: Vec<(u32, u32, StaticBatch)> = Vec::new();
     // The composited parts' clusters, which each object lists to be drawn sorted.
     let mut sorted: Vec<(u32, u32)> = Vec::new();
@@ -666,6 +692,18 @@ impl StaticScene {
         layout: StaticLayout::Model,
         class,
       };
+
+      if class.is_deferred() && model.skin.is_none() {
+        writer.trace_geometries.push(StaticTraceGeometry {
+          layout: StaticLayout::Model,
+          first_index: base.index_start + part.indices.0,
+          index_count: part.indices.1,
+          vertex_start: base.vertex_start,
+          vertex_count,
+          surface,
+          is_cut_out: class == StaticClass::CutOut,
+        });
+      }
 
       // A row's clusters are culled one after another by one thread, so a large part is cut into several slots.
       for clusters in part.clusters.chunks(MODEL_ROW_CLUSTERS) {
@@ -724,6 +762,7 @@ impl StaticScene {
           .skin
           .as_ref()
           .map(|skin| (StaticSpans::get_offset(&spans.skins), skin.bones)),
+        trace_geometries: writer.trace_geometries,
         spans,
       },
     );
@@ -1381,7 +1420,9 @@ impl StaticScene {
       }
     }
 
-    writer.trace_groups.extend(traced.filter(|group| !group.transforms.is_empty()));
+    writer
+      .trace_groups
+      .extend(traced.filter(|group| !group.transforms.is_empty()));
   }
 
   /// Puts a sector's impostors in its own order, each with its run's surface; one no run dresses is never drawn.

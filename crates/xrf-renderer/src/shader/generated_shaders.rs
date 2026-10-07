@@ -27,6 +27,7 @@ use crate::pass::fog_scattering_parameters::FogScatteringParameters;
 use crate::pass::fog_scattering_uniform::FogScatteringUniform;
 use crate::pass::fsr_uniform::FsrUniform;
 use crate::pass::fxaa_parameters::FxaaParameters;
+use crate::pass::grass_model_record::GrassModelRecord;
 use crate::pass::light_binning_parameters::LightBinningParameters;
 use crate::pass::light_record::LightRecord;
 use crate::pass::lighting_uniform::LightingUniform;
@@ -47,6 +48,7 @@ use crate::pass::pyramid_level_parameters::PyramidLevelParameters;
 use crate::pass::rain_parameters::RainParameters;
 use crate::pass::rain_uniform::RainUniform;
 use crate::pass::reflection_parameters::ReflectionParameters;
+use crate::pass::reflection_scene_parameters::ReflectionSceneParameters;
 use crate::pass::reflection_uniform::ReflectionUniform;
 use crate::pass::shadow_uniform::ShadowUniform;
 use crate::pass::sky_haze_parameters::SkyHazeParameters;
@@ -65,7 +67,10 @@ use crate::pass::temporal_parameters::TemporalParameters;
 use crate::pass::temporal_uniform::TemporalUniform;
 use crate::pass::thunder_parameters::ThunderParameters;
 use crate::pass::thunder_uniform::ThunderUniform;
+use crate::pass::trace_grass_uniform::TraceGrassUniform;
 use crate::pass::trace_parameters::TraceParameters;
+use crate::pass::trace_request::TraceRequest;
+use crate::pass::trace_request_parameters::TraceRequestParameters;
 use crate::pass::upscale_parameters::UpscaleParameters;
 use crate::pass::upscale_uniform::UpscaleUniform;
 use crate::pass::vbao_parameters::VbaoParameters;
@@ -113,6 +118,7 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
   let mut ambient_occlusion: ShaderBindings = ShaderBindings::new();
   let mut vbao: ShaderBindings = ShaderBindings::new();
   let mut reflections: ShaderBindings = ShaderBindings::new();
+  let mut reflection_scene: ShaderBindings = ShaderBindings::new();
   let mut combine: ShaderBindings = ShaderBindings::new();
   let mut composited: ShaderBindings = ShaderBindings::new();
   let mut sky_haze: ShaderBindings = ShaderBindings::new();
@@ -135,6 +141,9 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
 
   structs
     .declare::<LightingUniform>()
+    .declare::<GrassModelRecord>()
+    .declare::<TraceGrassUniform>()
+    .declare::<TraceRequest>()
     .declare::<WaterUniform>()
     .declare::<EnhancedWaterUniform>()
     .declare::<WaterBlurUniform>()
@@ -191,7 +200,10 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
   lights.add::<LightsParameters<'_>>()?;
   ambient_occlusion.add::<AmbientOcclusionParameters>()?;
   vbao.add::<VbaoParameters>()?;
-  reflections.add::<ReflectionParameters<'_>>()?;
+  reflections
+    .add::<ReflectionParameters<'_>>()?
+    .add::<TraceRequestParameters>()?;
+  reflection_scene.add::<ReflectionSceneParameters<'_>>()?;
   combine.add::<CombineParameters<'_>>()?;
   composited.add::<CompositedParameters<'_>>()?;
   sky_haze.add::<SkyHazeParameters>()?;
@@ -285,6 +297,10 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
     (
       "generated/frame/reflections",
       format!("{STRUCTS_IMPORT}{}", reflections.to_wgsl()),
+    ),
+    (
+      "generated/frame/reflection_scene",
+      format!("{STRUCTS_IMPORT}{}", reflection_scene.to_wgsl()),
     ),
     (
       "generated/frame/combine",

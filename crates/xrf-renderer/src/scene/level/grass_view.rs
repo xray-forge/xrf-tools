@@ -15,6 +15,7 @@ use crate::pass::grass_pass::GrassPass;
 use crate::pass::grass_puddles_uniform::GrassPuddlesUniform;
 use crate::pass::grass_uniform::GrassUniform;
 use crate::pass::grass_wind_uniform::GrassWindUniform;
+use crate::pass::trace_grass_uniform::TraceGrassUniform;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::grass_build::GrassBuild;
 use crate::scene::level::grass_build_size::GrassBuildSize;
@@ -39,6 +40,8 @@ pub struct GrassView {
   planted: Option<(i32, u32, u32)>,
   /// Whether this frame plants and draws.
   is_drawn: bool,
+  /// The planting as a traced hit reads it, no models while none is drawn.
+  trace: TraceGrassUniform,
 }
 
 impl GrassView {
@@ -65,6 +68,7 @@ impl GrassView {
       draw_group: None,
       planted: None,
       is_drawn: false,
+      trace: TraceGrassUniform::default(),
     }
   }
 
@@ -90,6 +94,7 @@ impl GrassView {
       .with_alignment(settings.is_aligned);
 
     self.is_drawn = false;
+    self.trace = TraceGrassUniform::default();
 
     let Some(level) = level.filter(|level| settings.is_enabled && level.model_count > 0) else {
       return;
@@ -153,6 +158,18 @@ impl GrassView {
     queue.write_buffer(&self.wind_buffer, 0, bytemuck::bytes_of(&wind));
     queue.write_buffer(&self.puddles_buffer, 0, bytemuck::bytes_of(&puddles.1));
     self.is_drawn = true;
+    self.trace = TraceGrassUniform {
+      grid: self.values.grid,
+      steps,
+      fade: self.values.fade,
+      height: settings.height,
+      model_count: level.model_count,
+    };
+  }
+
+  /// The planting as a traced hit reads it this frame.
+  pub fn get_trace_uniform(&self) -> &TraceGrassUniform {
+    &self.trace
   }
 
   /// The grass as planted, or none where none is.

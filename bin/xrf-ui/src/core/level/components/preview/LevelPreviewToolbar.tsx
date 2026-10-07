@@ -72,6 +72,8 @@ interface ILevelPreviewToolbarProps extends BaseComponentProps {
   settings: IRenderFeatureSettings;
   /** Whether the settings time every viewport's passes. */
   isGpuTimed: boolean;
+  /** Whether the GPU drawing the view traces rays. */
+  isTraceable: boolean;
   /** Which of the frame graph's mechanisms the frames compile with. */
   graph: RenderGraphSettings;
   /** What the viewport shows of its surfaces. */
@@ -116,6 +118,7 @@ export function LevelPreviewToolbar({
   featureView,
   settings,
   isGpuTimed,
+  isTraceable,
   graph,
   shading,
   actions,
@@ -224,6 +227,7 @@ export function LevelPreviewToolbar({
           <LevelReflectionsAction
             value={toLevelReflections(settings, features)}
             features={features}
+            isTraceable={isTraceable}
             onChange={onChangeFeatures}
           />
 

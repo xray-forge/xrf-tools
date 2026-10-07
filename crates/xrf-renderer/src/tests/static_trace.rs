@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use glam::{Mat4, Vec3, Vec4};
 use xrf_error::XrfResult;
 use xrf_renderer_core::{PassParameters, ProxyAllocator, ProxyHandle};
 use xrf_visual::{
@@ -11,8 +12,16 @@ use crate::context::gpu_context::GpuContext;
 use crate::context::gpu_requirements::RAY_QUERY_FEATURES;
 use crate::contract::render_backend::RenderBackend;
 use crate::host::render_asset_source::RenderAssetSource;
+use crate::pass::light_record::LightRecord;
+use crate::pass::lights_uniform::LightsUniform;
+use crate::pass::trace_grass_uniform::TraceGrassUniform;
 use crate::pass::trace_parameters::TraceParameters;
 use crate::scene::static_scene::static_layout::StaticLayout;
+use crate::scene::static_scene::static_model::StaticModel;
+use crate::scene::static_scene::static_model_part::StaticModelPart;
+use crate::scene::static_scene::static_model_place::StaticModelPlace;
+use crate::scene::static_scene::static_model_proxy::StaticModelProxy;
+use crate::scene::static_scene::static_object_proxy::StaticObjectProxy;
 use crate::scene::static_scene::static_scene::StaticScene;
 use crate::scene::static_scene::static_sector_proxy::StaticSectorProxy;
 use crate::scene::static_scene::static_trace::StaticTrace;
@@ -35,7 +44,8 @@ impl RenderAssetSource for EmptySource {
 }
 
 /// A ray a probe traces, and what it met: its distance, below none for nothing; its record and triangle; and how far
-/// the hit triangle's corners, read back through its record from the arenas, interpolated, stand off the ray's point.
+/// the hit triangle's corners, read back through its record from its arena, interpolated and stood where its instance
+/// stands them, are off the ray's point.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable)]
 struct Answer {
@@ -62,6 +72,14 @@ struct Answer {
 @group(0) @binding(0) var<storage, read> probes: array<Probe>;
 @group(0) @binding(1) var<storage, read_write> answers: array<Answer>;
 
+fn probe_word(flags: u32, at: u32) -> u32 {
+  if ((flags & 4u) != 0u) {
+    return trace_model_words[at];
+  }
+
+  return trace_baked_words[at];
+}
+
 @compute @workgroup_size(1)
 fn cs_probe(@builtin(global_invocation_id) id: vec3<u32>) {
   let probe: Probe = probes[id.x];
@@ -87,12 +105,13 @@ fn cs_probe(@builtin(global_invocation_id) id: vec3<u32>) {
     let at: u32 = (trace_indices[record.first_index + hit.primitive_index * 3u + corner] + record.vertex_start) *
       VERTEX_WORDS;
 
-    point += vertex_position(trace_baked_words[at + VERTEX_POSITION], trace_baked_words[at + VERTEX_POSITION + 1u],
-      trace_baked_words[at + VERTEX_POSITION + 2u]) * weights[corner];
+    point += vertex_position(probe_word(record.flags, at + VERTEX_POSITION),
+      probe_word(record.flags, at + VERTEX_POSITION + 1u), probe_word(record.flags, at + VERTEX_POSITION + 2u)) *
+      weights[corner];
   }
 
   answers[id.x] = Answer(hit.t, index, hit.primitive_index,
-    distance(point, probe.origin.xyz + probe.direction.xyz * hit.t));
+    distance(hit.object_to_world * vec4<f32>(point, 1.0), probe.origin.xyz + probe.direction.xyz * hit.t));
 }
 ";
 
@@ -169,26 +188,66 @@ fn create_sector() -> SectorPackage {
   }
 }
 
-/// A sector's sections become a structure each traced against: a ray meets the ground and the raised triangle at their
-/// distances, each on its own record, the hit's corners read back through the record from the arenas landing where the
-/// ray met it; a ray past both meets nothing. Skipped, and says so, on a device without ray queries.
-#[test]
-fn traces_a_sector_through_its_records() {
+/// A model of one triangle two metres across, flat at its origin, in the model layout: its position in its first three
+/// words as floats.
+fn create_model() -> StaticModel {
+  let positions: [[f32; 3]; 3] = [[-1.0, 0.0, -1.0], [1.0, 0.0, -1.0], [0.0, 0.0, 1.0]];
+  let mut words: Vec<u32> = vec![0; StaticLayout::STRIDE as usize * positions.len()];
+
+  for (vertex, position) in positions.iter().enumerate() {
+    let at: usize = vertex * StaticLayout::STRIDE as usize + StaticLayout::POSITION;
+
+    words[at..at + 3].copy_from_slice(bytemuck::cast_slice(position));
+  }
+
+  StaticModel {
+    words,
+    indices: vec![0, 1, 2],
+    parts: vec![StaticModelPart {
+      indices: (0, 3),
+      clusters: vec![(0, 1, Vec4::new(0.0, 0.0, 0.0, 1.5))],
+      surface: SectorSurface {
+        shader_id: 0,
+        shader_name: Some(String::from("models/model")),
+        texture_name: Some(String::from("test")),
+        hemi: None,
+      },
+      descriptor: None,
+    }],
+    sphere: Vec4::new(0.0, 0.0, 0.0, 1.5),
+    bounds: [Vec3::new(-1.0, 0.0, -1.0), Vec3::new(1.0, 0.0, 1.0)],
+    skin: None,
+  }
+}
+
+/// A headless device that traces rays; none, saying why, where no GPU or no ray query is there.
+fn create_tracing_context() -> Option<GpuContext> {
   let Ok(context) = GpuContext::create_headless(RenderBackend::D3d12, checkout_dxc().as_deref())
     .or_else(|_| GpuContext::create_headless(RenderBackend::Vulkan, None))
   else {
     eprintln!("Skipped: no GPU to trace with");
 
+    return None;
+  };
+
+  if !context.device.features().contains(RAY_QUERY_FEATURES) {
+    eprintln!("Skipped: '{}' has no ray queries", context.adapter_name);
+
+    return None;
+  }
+
+  Some(context)
+}
+
+/// A sector's sections become a structure each traced against: a ray meets the ground and the raised triangle at their
+/// distances, each on its own record, the hit's corners read back through the record from the arenas landing where the
+/// ray met it; a ray past both meets nothing. Skipped, and says so, on a device without ray queries.
+#[test]
+fn traces_a_sector_through_its_records() {
+  let Some(context) = create_tracing_context() else {
     return;
   };
   let (device, queue): (&wgpu::Device, &wgpu::Queue) = (&context.device, &context.queue);
-
-  if !device.features().contains(RAY_QUERY_FEATURES) {
-    eprintln!("Skipped: '{}' has no ray queries", context.adapter_name);
-
-    return;
-  }
-
   let source: Arc<dyn RenderAssetSource> = Arc::new(EmptySource);
   let mut textures: TextureCache = TextureCache::new(device, queue, &create_workers());
   let mut scene: StaticScene = StaticScene::new(device, queue);
@@ -197,7 +256,15 @@ fn traces_a_sector_through_its_records() {
   let mut encoder: wgpu::CommandEncoder = device.create_command_encoder(&Default::default());
 
   scene
-    .add_sector(device, queue, &mut encoder, &mut textures, &source, &[], (handle, &create_sector()))
+    .add_sector(
+      device,
+      queue,
+      &mut encoder,
+      &mut textures,
+      &source,
+      &[],
+      (handle, &create_sector()),
+    )
     .unwrap();
   scene.prepare_draws(device, queue, &mut encoder);
 
@@ -214,7 +281,11 @@ fn traces_a_sector_through_its_records() {
 
   assert!((answers[0].distance - 10.0).abs() < 1e-3, "{:?}", answers[0]);
   assert!((answers[1].distance - 5.0).abs() < 1e-3, "{:?}", answers[1]);
-  assert_eq!((answers[0].record, answers[1].record), (0, 1), "a record a section, in order");
+  assert_eq!(
+    (answers[0].record, answers[1].record),
+    (0, 1),
+    "a record a section, in order"
+  );
   assert!(answers[0].error < 1e-3 && answers[1].error < 1e-3, "{answers:?}");
   assert!(answers[2].distance < 0.0, "{:?}", answers[2]);
 }
@@ -227,10 +298,10 @@ fn run_probes(
   (scene, trace): (&StaticScene, &StaticTrace),
   probes: &[[f32; 8]],
 ) -> Vec<Answer> {
+  let scope: wgpu::ErrorScopeGuard = device.push_error_scope(wgpu::ErrorFilter::Validation);
   let library: ShaderLibrary = ShaderLibrary::default();
-  let source: String = library.compose("generated/common/scene_trace").unwrap() +
-    &library.compose("static/vertex").unwrap() +
-    PROBE;
+  let source: String =
+    library.compose("generated/common/scene_trace").unwrap() + &library.compose("static/vertex").unwrap() + PROBE;
   let module: wgpu::ShaderModule = device.create_shader_module(wgpu::ShaderModuleDescriptor {
     label: Some("trace probe"),
     source: wgpu::ShaderSource::Wgsl(source.into()),
@@ -298,7 +369,7 @@ fn run_probes(
       },
     ],
   });
-  // `TraceParameters`' bindings in their order, after the structure.
+  // `TraceParameters`' buffers in their order, after the structure.
   let buffers: [&wgpu::Buffer; 8] = [
     trace.get_instances(),
     trace.get_records(),
@@ -319,6 +390,79 @@ fn run_probes(
     resource: buffer.as_entire_binding(),
   }));
 
+  // No light, and an atlas of one texel: the probe lights nothing.
+  let lights: wgpu::Buffer = device.create_buffer(&wgpu::BufferDescriptor {
+    label: Some("trace probe lights"),
+    size: size_of::<LightRecord>() as u64,
+    usage: wgpu::BufferUsages::STORAGE,
+    mapped_at_creation: false,
+  });
+  let light_view: wgpu::Buffer = device.create_buffer(&wgpu::BufferDescriptor {
+    label: Some("trace probe light view"),
+    size: size_of::<LightsUniform>() as u64,
+    usage: wgpu::BufferUsages::UNIFORM,
+    mapped_at_creation: false,
+  });
+  let atlas: wgpu::TextureView = device
+    .create_texture(&wgpu::TextureDescriptor {
+      label: Some("trace probe atlas"),
+      size: wgpu::Extent3d {
+        width: 1,
+        height: 1,
+        depth_or_array_layers: 1,
+      },
+      mip_level_count: 1,
+      sample_count: 1,
+      dimension: wgpu::TextureDimension::D2,
+      format: wgpu::TextureFormat::Depth32Float,
+      usage: wgpu::TextureUsages::TEXTURE_BINDING,
+      view_formats: &[],
+    })
+    .create_view(&Default::default());
+  let first_light: u32 = buffers.len() as u32 + 1;
+
+  entries.extend([
+    wgpu::BindGroupEntry {
+      binding: first_light,
+      resource: lights.as_entire_binding(),
+    },
+    wgpu::BindGroupEntry {
+      binding: first_light + 1,
+      resource: light_view.as_entire_binding(),
+    },
+    wgpu::BindGroupEntry {
+      binding: first_light + 2,
+      resource: wgpu::BindingResource::TextureView(&atlas),
+    },
+  ]);
+
+  // No grass either: its grid, slots and models nothing, its uniform naming no model.
+  let grass: wgpu::Buffer = device.create_buffer(&wgpu::BufferDescriptor {
+    label: Some("trace probe grass"),
+    size: size_of::<TraceGrassUniform>() as u64,
+    usage: wgpu::BufferUsages::UNIFORM,
+    mapped_at_creation: false,
+  });
+
+  entries.extend([
+    wgpu::BindGroupEntry {
+      binding: first_light + 3,
+      resource: trace.get_empty().as_entire_binding(),
+    },
+    wgpu::BindGroupEntry {
+      binding: first_light + 4,
+      resource: trace.get_empty().as_entire_binding(),
+    },
+    wgpu::BindGroupEntry {
+      binding: first_light + 5,
+      resource: trace.get_empty().as_entire_binding(),
+    },
+    wgpu::BindGroupEntry {
+      binding: first_light + 6,
+      resource: grass.as_entire_binding(),
+    },
+  ]);
+
   let trace_group: wgpu::BindGroup = device.create_bind_group(&wgpu::BindGroupDescriptor {
     label: Some("trace probe scene"),
     layout: &trace_layout,
@@ -330,7 +474,7 @@ fn run_probes(
 
     pass.set_pipeline(&pipeline);
     pass.set_bind_group(0, &probe_group, &[]);
-    pass.set_bind_group(3, &trace_group, &[]);
+    pass.set_bind_group(3, &trace_group, &[0, 0]);
     pass.dispatch_workgroups(probes.len() as u32, 1, 1);
   }
 
@@ -341,5 +485,92 @@ fn run_probes(
 
   let bytes: Vec<u8> = readback.slice(..).get_mapped_range().unwrap().to_vec();
 
+  if let Some(error) = pollster::block_on(scope.pop()) {
+    panic!("The probe does not validate: {error}");
+  }
+
   bytemuck::cast_slice(&bytes).to_vec()
+}
+
+/// A spawned model is traced where each of its objects stands, both on the model's one record, its corners landing
+/// where the ray met it; an object taken out of the scene is traced no more.
+#[test]
+fn traces_spawned_objects_where_they_stand() {
+  let Some(context) = create_tracing_context() else {
+    return;
+  };
+  let (device, queue): (&wgpu::Device, &wgpu::Queue) = (&context.device, &context.queue);
+  let source: Arc<dyn RenderAssetSource> = Arc::new(EmptySource);
+  let mut textures: TextureCache = TextureCache::new(device, queue, &create_workers());
+  let mut scene: StaticScene = StaticScene::new(device, queue);
+  let mut sectors: ProxyAllocator<StaticSectorProxy> = ProxyAllocator::new();
+  let mut models: ProxyAllocator<StaticModelProxy> = ProxyAllocator::new();
+  let mut objects: ProxyAllocator<StaticObjectProxy> = ProxyAllocator::new();
+  let model: ProxyHandle<StaticModelProxy> = models.allocate();
+  let standing: [ProxyHandle<StaticObjectProxy>; 2] = [objects.allocate(), objects.allocate()];
+  let mut encoder: wgpu::CommandEncoder = device.create_command_encoder(&Default::default());
+
+  scene
+    .add_sector(
+      device,
+      queue,
+      &mut encoder,
+      &mut textures,
+      &source,
+      &[],
+      (sectors.allocate(), &create_sector()),
+    )
+    .unwrap();
+  scene
+    .add_model(
+      device,
+      queue,
+      &mut encoder,
+      (&mut textures, &source),
+      (model, &create_model()),
+    )
+    .unwrap();
+
+  for (index, handle) in standing.iter().enumerate() {
+    let place: StaticModelPlace = StaticModelPlace {
+      object: index as u32,
+      transform: Mat4::from_translation(Vec3::new(30.0 + index as f32 * 10.0, 2.0 + index as f32, 0.0)),
+      lighting: None,
+      group: 0,
+    };
+
+    scene.add_object(device, queue, *handle, (model, &place)).unwrap();
+  }
+
+  scene.prepare_draws(device, queue, &mut encoder);
+
+  let mut trace: StaticTrace = StaticTrace::new(device, queue);
+
+  trace.update(device, queue, &mut encoder, &scene);
+
+  let probes: [[f32; 8]; 2] = [
+    [30.0, 10.0, 0.0, 1.0, 0.0, -1.0, 0.0, 0.0],
+    [40.0, 10.0, 0.0, 1.0, 0.0, -1.0, 0.0, 0.0],
+  ];
+  let answers: Vec<Answer> = run_probes(device, queue, encoder, (&scene, &trace), &probes);
+
+  assert!((answers[0].distance - 8.0).abs() < 1e-3, "{:?}", answers[0]);
+  assert!((answers[1].distance - 7.0).abs() < 1e-3, "{:?}", answers[1]);
+  assert_eq!(
+    (answers[0].record, answers[1].record),
+    (2, 2),
+    "the model's record, after the sector's two"
+  );
+  assert!(answers[0].error < 1e-3 && answers[1].error < 1e-3, "{answers:?}");
+
+  let mut encoder: wgpu::CommandEncoder = device.create_command_encoder(&Default::default());
+
+  scene.remove_object(standing[0]);
+  scene.prepare_draws(device, queue, &mut encoder);
+  trace.update(device, queue, &mut encoder, &scene);
+
+  let answers: Vec<Answer> = run_probes(device, queue, encoder, (&scene, &trace), &probes);
+
+  assert!(answers[0].distance < 0.0, "{:?}", answers[0]);
+  assert!((answers[1].distance - 7.0).abs() < 1e-3, "{:?}", answers[1]);
 }

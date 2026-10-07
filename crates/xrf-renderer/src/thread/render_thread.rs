@@ -13,6 +13,7 @@ use xrf_renderer_core::{
 
 use crate::camera::camera_view::CameraView;
 use crate::context::gpu_context::GpuContext;
+use crate::context::gpu_requirements::RAY_QUERY_FEATURES;
 use crate::contract::render_backend::RenderBackend;
 use crate::contract::render_debug_view::RenderDebugView;
 use crate::contract::render_frame_report::RenderFrameReport;
@@ -619,7 +620,11 @@ impl RenderThread {
     };
     // Delivers what earlier frames' reads asked for, without waiting on this frame's work.
     let _ = gpu.context.device.poll(wgpu::PollType::Poll);
-    let (backend, adapter) = (gpu.context.backend, gpu.context.adapter_name.as_str());
+    let device: (RenderBackend, &str, bool) = (
+      gpu.context.backend,
+      gpu.context.adapter_name.as_str(),
+      gpu.context.device.features().contains(RAY_QUERY_FEATURES),
+    );
 
     if self
       .allocator_report
@@ -640,7 +645,7 @@ impl RenderThread {
       viewport.answer_readbacks(&self.scenes);
       viewport.report(
         now,
-        (backend, adapter),
+        device,
         (gpu.textures.get_bytes(), allocator, &mut self.scenes),
         (
           self.runtime.as_mut().map(|runtime| &mut runtime.timer),

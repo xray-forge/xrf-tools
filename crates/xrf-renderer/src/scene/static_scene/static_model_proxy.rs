@@ -3,6 +3,7 @@ use glam::{Vec3, Vec4};
 use crate::scene::static_scene::static_batch::StaticBatch;
 use crate::scene::static_scene::static_slot_info::StaticSlotInfo;
 use crate::scene::static_scene::static_spans::StaticSpans;
+use crate::scene::static_scene::static_trace_geometry::StaticTraceGeometry;
 
 /// One spawned model as the scene holds it, once whatever objects stand as it: the ranges its geometry, clusters, slots
 /// and skin take, and what an object standing as it needs.
@@ -23,4 +24,7 @@ pub struct StaticModelProxy {
   pub vertex_start: u32,
   /// Its skin's first link and its skeleton's bones, where it is skinned.
   pub skin: Option<(u32, u32)>,
+  /// Its deferred parts as the level's acceleration structures take them; none for a skinned model, whose bind pose
+  /// would reflect where its bones do not stand it.
+  pub trace_geometries: Vec<StaticTraceGeometry>,
 }

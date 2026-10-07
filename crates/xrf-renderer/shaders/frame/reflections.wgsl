@@ -6,7 +6,6 @@
 #import "common/occlusion"
 #import "common/reflection_trace"
 #import "common/reflection_end"
-#import "common/scene_trace"
 
 // Stochastic screen-space reflections on the frame's surfaces, at the size the quality traces at, a pixel per `ratio`
 // by `ratio` of the frame. Each reflecting pixel's ray leaves in a direction drawn from its surface's GGX lobe (a
@@ -40,8 +39,6 @@ const MIRROR_FRAMES: f32 = 4.0;
 // The share of the roughness's mip a missed ray reads the prefiltered sky at: its lobe spreads the rays already, and
 // the denoiser gathers them, so the cube supplies the other half of the blur.
 const MISS_BLUR: f32 = 0.5;
-// The luminance what a ray meets is held to, so a lamp's glass or a sunlit highlight does not flare what reflects it.
-const RADIANCE_LIMIT: f32 = 6.0;
 // Metres behind a surface a ray may lie, and what of its distance more, and still have met it: thin, so a leaf stays a
 // leaf and a ray aimed past its edge goes past it; further behind, the walk ends uncertain. Within `PROBABLE_BEHIND`
 // more (metres, then a share of the distance: a wall met at a glancing step) the surface it stands behind is the
@@ -62,12 +59,8 @@ const MISSED_LENGTH: f32 = 1e4;
 // Metres a traced ray starts off its surface, and what of its distance more, so the triangles the G-buffer's depth
 // stands a little off of do not meet it.
 const TRACED_BIAS: vec2<f32> = vec2<f32>(0.02, 0.002);
-// Metres a ray to the sun from a traced hit starts off it, and reaches at most.
-const TRACED_SUN_BIAS: f32 = 0.05;
-const TRACED_SUN_REACH: f32 = 1000.0;
 // The R2 sequence, which turns a pixel's noise from one frame to the next.
 const NOISE_TURN: vec2<f32> = vec2<f32>(0.7548776662, 0.5698402910);
-const LUMINANCE: vec3<f32> = vec3<f32>(0.299, 0.587, 0.114);
 const UNTRACED: vec4<f32> = vec4<f32>(0.0, 0.0, 0.0, -1.0);
 // The roughness over which a ray's crossings fall to `ROUGH_CROSSINGS` of the quality's, its blurred reflection needing
 // no finer walk.
@@ -95,6 +88,12 @@ const DISOCCLUSION_DEPTH_WEIGHT: f32 = 4.0;
 const DISOCCLUSION_HIT_WEIGHT: f32 = 1.0;
 const DISOCCLUSION_THRESHOLD: f32 = 0.9;
 const REPROJECTION_NORMAL_SIMILARITY: f32 = 0.9999;
+// How far a surface held from the frame before may stand off this one, a share of its distance, and how near its
+// normal must face, for its reflection to be held off the pixel's turn to trace.
+const HELD_DISTANCE: f32 = 0.1;
+const HELD_NORMAL: f32 = 0.8;
+// Pixels a side of the tiles that take their turn to trace together, a wave of the GPU or two.
+const TRACE_TURN_TILE: u32 = 8u;
 const SURFACE_DISCARD_VARIANCE: f32 = 1.5;
 const MOST_SAMPLES: f32 = 32.0;
 const HISTORY_CLIP: f32 = 1.1;
@@ -131,52 +130,106 @@ fn world_offset(position: vec3<f32>) -> vec3<f32> {
 // What the level's static geometry shows along a ray the screen could not answer: traced by ray query from the
 // surface, the hit lit as combine lights it, its sun through a second ray rather than the shadow maps, its fog along
 // the way taken as a met point's is; the ray's length in `w`, below none where it met nothing or nothing is traced.
-fn traced_radiance(position: vec3<f32>, normal: vec3<f32>, direction: vec3<f32>, roughness: f32) -> vec4<f32> {
-  if (!IS_SCENE_TRACED || reflection.is_traced < 0.5) {
-    return vec4<f32>(0.0, 0.0, 0.0, -1.0);
-  }
+// Whether a pixel the screen leaves unanswered traces against the level's geometry this frame: once in its
+// `trace_turns`, a tile of `TRACE_TURN_TILE` pixels taking its turn together, so whole waves of the GPU skip the trace
+// rather than wait on a few of their lanes; each tile's turn its own by the blue noise.
+fn is_trace_turn(pixel: vec2<f32>) -> bool {
+  let turns: u32 = max(reflection.trace_turns, 1u);
+  let size: vec2<u32> = textureDimensions(blue_noise);
+  let tile: vec2<u32> = vec2<u32>(pixel) / TRACE_TURN_TILE;
+  let noise: f32 = textureLoad(blue_noise, tile % size, 0).r;
 
-  let world_normal: vec3<f32> = world_direction(normal);
-  let toward: vec3<f32> = world_direction(direction);
-  let distance: f32 = -position.z;
-  let origin: vec3<f32> = camera.position.xyz + world_offset(position) +
-    world_normal * (TRACED_BIAS.x + distance * TRACED_BIAS.y);
-  // The ray's cone: a traced pixel's width where it leaves the surface, widening by the pixel's angle and its lobe's.
-  let pixel_angle: f32 = 2.0 * reflection.ratio / (camera.projection[1][1] * camera.viewport.y);
-  let cone: SceneCone = SceneCone(distance * pixel_angle, pixel_angle + roughness);
-  let hit: SceneHit = trace_scene_ray(origin, toward, 0.0, reflection.distance, cone);
-
-  if (hit.distance < 0.0) {
-    return vec4<f32>(0.0, 0.0, 0.0, -1.0);
-  }
-
-  let met: SceneSurface = scene_surface(hit, cone.width + cone.spread * hit.distance);
-  let facing: vec3<f32> = select(met.normal, -met.normal, dot(met.normal, toward) > 0.0);
-  let to_sun: vec3<f32> = world_direction(lighting.to_sun.xyz);
-  let half_way: vec3<f32> = normalize(to_sun - toward);
-  // `plight_infinity` as the sun pass lights a surface, its shadow a ray to the sun.
-  let lit: vec4<f32> = textureSampleLevel(material_lut, lut_sampler,
-    vec3<f32>(dot(to_sun, facing), dot(half_way, facing), met.slice), 0.0);
-  var sun: vec4<f32> = vec4<f32>(0.0);
-
-  // The sun's ray reads the holes it passes as coarsely as the reflection read the hit.
-  let sun_cone: SceneCone = SceneCone(cone.width + cone.spread * hit.distance, pixel_angle);
-
-  if (lit.x > 0.0 && !trace_scene_blocked(met.position + facing * TRACED_SUN_BIAS, to_sun, TRACED_SUN_REACH, sun_cone)) {
-    sun = vec4<f32>(lighting.sun.rgb * lit.x, lighting.sun.w * lit.y);
-  }
-
-  let occlusion: f32 = mix(1.0, met.hemi, camera.switches.z);
-  let shown: vec3<f32> = hmodel(lighting, material_lut, lut_sampler, sky_environment_0, sky_environment_1, sky_clamp,
-    vec4<f32>(met.albedo, 0.0), sun, facing, toward, met.slice, occlusion, vec3<f32>(1.0));
-  let held: vec3<f32> = shown * min(1.0, RADIANCE_LIMIT / luminance(shown));
-  let fog: f32 = path_fog(hit.distance);
-
-  return vec4<f32>(mix(held, lighting.fog_color.rgb, fog), hit.distance);
+  return (min(u32(noise * f32(turns)), turns - 1u) + reflection.frame) % turns == 0u;
 }
 
-fn luminance(colour: vec3<f32>) -> f32 {
-  return max(dot(colour, LUMINANCE), 0.001);
+// What a pixel reflected the frame before, off its turn to trace: read where its reflected point stood then, through
+// the surface by the length it held, where the surface there is this one, its distance within `HELD_DISTANCE` of it
+// and its normal within `HELD_NORMAL`, as the guide describes surfaces; in `w` that length, below none where the frame
+// before held nothing here, which traces instead. Looser than the reprojection's match: the traced texel of a block
+// moves from one frame to the next, so the history at a surface is a neighbour's.
+fn held_radiance(texel: vec2<i32>) -> vec4<f32> {
+  let none: vec4<f32> = vec4<f32>(0.0, 0.0, 0.0, -1.0);
+
+  if (reflection.is_traced < 0.5 || reflection.has_history < 0.5) {
+    return none;
+  }
+
+  let surface: TracedSurface = traced_geometry(texel);
+  let surface_uv: vec2<f32> = previous_uv(surface.world);
+
+  if (any(surface_uv <= vec2<f32>(0.0)) || any(surface_uv >= vec2<f32>(1.0))) {
+    return none;
+  }
+
+  let held: vec4<f32> = held_at(surface_uv);
+  let length_held: f32 = held.z - held.x;
+  let is_same: bool = abs(held.x - surface.distance) <= surface.distance * HELD_DISTANCE &&
+    dot(normalize(history_surface_at(surface_uv).xyz + 1e-6), surface.normal) >= HELD_NORMAL;
+
+  if (!is_same || length_held <= 0.0) {
+    return none;
+  }
+
+  let toward: vec3<f32> = surface.world - camera.position.xyz;
+  let hit_uv: vec2<f32> = previous_uv(camera.position.xyz + normalize(toward) * (length(toward) + length_held));
+  let is_hit_shown: bool = all(hit_uv > vec2<f32>(0.0)) && all(hit_uv < vec2<f32>(1.0));
+
+  return vec4<f32>(history_radiance_at(select(surface_uv, hit_uv, is_hit_shown)).rgb, length_held);
+}
+
+// The ray a pixel leaves to the scene pass: it starts off the surface as far as the depth's own offset needs, reaches
+// the reflections' distance, and widens by the traced pixel's angle and the surface's lobe.
+fn scene_ray(pixel: vec2<f32>, position: vec3<f32>, normal: vec3<f32>, direction: vec3<f32>, roughness: f32)
+  -> TraceRequest {
+  let distance: f32 = -position.z;
+  let origin: vec3<f32> = camera.position.xyz + world_offset(position) +
+    world_direction(normal) * (TRACED_BIAS.x + distance * TRACED_BIAS.y);
+  let pixel_angle: f32 = 2.0 * reflection.ratio / (camera.projection[1][1] * camera.viewport.y);
+  var request: TraceRequest;
+
+  request.origin = vec4<f32>(origin, reflection.distance);
+  request.cone = vec2<f32>(distance * pixel_angle, pixel_angle + roughness);
+  request.toward = pack2x16snorm(octahedral_encode(world_direction(direction)));
+  request.pixel = u32(pixel.x) | (u32(pixel.y) << 16u);
+
+  return request;
+}
+
+// The ray this invocation's pixel leaves to the scene pass, where it leaves one.
+var<private> scene_request: TraceRequest;
+var<private> is_scene_requested: bool = false;
+
+// Lists the pixel's ray for the scene pass with what the screen answered (`answer`'s colour weighed by its `share`,
+// its length) and the reason `hit_end` its ends take where the ray meets something; counts the scene pass's dispatch a
+// workgroup at a time. A ray past the list's room leaves its pixel the sky.
+fn request_scene(answer: vec4<f32>, share: f32, hit_end: u32) {
+  let index: u32 = atomicAdd(&trace_request_head[0], 1u);
+
+  if (index >= arrayLength(&trace_requests)) {
+    return;
+  }
+
+  if (index % TRACE_REQUEST_WORKGROUP == 0u) {
+    atomicAdd(&trace_request_head[1], 1u);
+  }
+
+  var request: TraceRequest = scene_request;
+
+  request.screen = vec2<u32>(pack2x16float(answer.rg * share), pack2x16float(vec2<f32>(answer.b * share, share)));
+  request.screen_length = answer.w;
+  request.hit_end = hit_end;
+  trace_requests[index] = request;
+}
+
+// What the trace writes for a pixel: what the screen answered (`answer`, its colour, and its length where its `share`
+// holds most) over `fallback`, the sky and the length a missed ray takes, and the pixel's reason; and, where the pixel
+// leaves its ray to the scene pass, its request, the reason its ends take on a hit `hit_end`.
+fn answer_trace(fallback: vec4<f32>, answer: vec4<f32>, share: f32, end: u32, hit_end: u32) -> TraceTargets {
+  if (is_scene_requested) {
+    request_scene(answer, share, hit_end);
+  }
+
+  return trace_targets(vec4<f32>(mix(fallback.rgb, answer.rgb, share), select(fallback.w, answer.w, share > 0.5)), end);
 }
 
 // Two uniform numbers for a pixel this frame: the blue noise there and half its tile away, turned by the frame.
@@ -207,13 +260,6 @@ fn relit_radiance(texel: vec2<i32>) -> vec3<f32> {
 
   return hmodel(lighting, material_lut, lut_sampler, sky_environment_0, sky_environment_1, sky_clamp, albedo, light,
     world_direction(normal), world_direction(normalize(position)), material.z, occlusion, bounced);
-}
-
-// Fog along a path of `length` metres between two points seen, none of the camera's own offset: what a reflection
-// gathers on its way from what it reflects to the surface, which combine then fogs from the camera as it fogs the
-// surface.
-fn path_fog(length: f32) -> f32 {
-  return saturate(length * lighting.fog.y) * lighting.fog_color.w;
 }
 
 // The share of its distance the depth kept may stand off a point for the last frame to have shown it.
@@ -299,7 +345,7 @@ fn remembered_sky(direction: vec3<f32>) -> vec4<f32> {
   let kept_texel: vec2<i32> = clamp(vec2<i32>(kept_uv * size), vec2<i32>(0), vec2<i32>(size) - 1);
   let kept: f32 = textureLoad(source_depth, kept_texel, 0);
 
-  if (kept > 0.0 && path_fog(camera.projection[3][2] / (kept + camera.projection[2][2])) < SOURCE_FOG_LIMIT) {
+  if (kept > 0.0 && path_fog(lighting, camera.projection[3][2] / (kept + camera.projection[2][2])) < SOURCE_FOG_LIMIT) {
     return vec4<f32>(0.0);
   }
 
@@ -323,7 +369,7 @@ fn met_radiance(texel: vec2<i32>, hit: vec3<f32>, origin: vec3<f32>) -> vec4<f32
     lit = relit_radiance(texel);
   }
 
-  let fogged: vec3<f32> = mix(lit, lighting.fog_color.rgb, path_fog(length(hit - origin)));
+  let fogged: vec3<f32> = mix(lit, lighting.fog_color.rgb, path_fog(lighting, length(hit - origin)));
 
   return vec4<f32>(fogged * min(1.0, RADIANCE_LIMIT / luminance(fogged)), remembered.w);
 }
@@ -481,14 +527,22 @@ fn fs_trace(in: FullscreenVarying) -> TraceTargets {
   var end: u32 = walk.end;
   var missed_length: f32 = MISSED_LENGTH;
 
-  // Where the screen's answer is less than sure, the level's geometry answers in the sky's place.
-  if (confidence < 1.0) {
-    let traced: vec4<f32> = traced_radiance(position, normal, direction, roughness);
+  // Where the screen's answer is less than sure, the level's geometry answers in the sky's place: what the pixel
+  // reflected the frame before, off its turn, or the scene pass's trace, on its turn or where that cannot be held.
+  if (confidence < 1.0 && reflection.is_traced > 0.5) {
+    var held: vec4<f32> = vec4<f32>(0.0, 0.0, 0.0, -1.0);
 
-    if (traced.w >= 0.0) {
-      sky = traced.rgb;
-      missed_length = traced.w;
-      end = END_TRACED;
+    if (!is_trace_turn(pixel)) {
+      held = held_radiance(texel);
+    }
+
+    if (held.w >= 0.0) {
+      sky = held.rgb;
+      missed_length = held.w;
+      end = END_HELD;
+    } else {
+      scene_request = scene_ray(pixel, position, normal, direction, roughness);
+      is_scene_requested = true;
     }
   }
 
@@ -500,7 +554,7 @@ fn fs_trace(in: FullscreenVarying) -> TraceTargets {
     let end_texel: vec2<i32> = clamp(vec2<i32>(walk.position.xy * camera.viewport.xy), vec2<i32>(0), size - 1);
     let end_depth: f32 = textureLoad(depth_target, end_texel, 0);
 
-    if (end_depth <= 0.0 || path_fog(camera.projection[3][2] / (end_depth + camera.projection[2][2])) >= SOURCE_FOG_LIMIT) {
+    if (end_depth <= 0.0 || path_fog(lighting, camera.projection[3][2] / (end_depth + camera.projection[2][2])) >= SOURCE_FOG_LIMIT) {
       let seen: vec4<f32> = remembered_sky(world_direction(direction));
 
       if (seen.w > 0.5) {
@@ -521,25 +575,25 @@ fn fs_trace(in: FullscreenVarying) -> TraceTargets {
       let shown: vec3<f32> = shown_point(behind_texel);
       let taken: vec4<f32> = met_radiance(behind_texel, shown, position);
 
-      return trace_targets(
-        vec4<f32>(mix(sky, taken.rgb, probable), select(missed_length, length(shown - position), probable > 0.5)),
-        select(END_UNCERTAIN, END_PROBABLE, probable > 0.5) | select(END_RELIT, 0u, taken.w > 0.5),
-      );
+      let probable_end: u32 = select(END_UNCERTAIN, END_PROBABLE, probable > 0.5) | select(END_RELIT, 0u, taken.w > 0.5);
+
+      return answer_trace(vec4<f32>(sky, missed_length), vec4<f32>(taken.rgb, length(shown - position)), probable,
+        probable_end, probable_end);
     }
   }
 
   if (confidence <= 0.0) {
-    return trace_targets(vec4<f32>(sky, missed_length), select(end, END_UNTRUSTED, walk.is_met && end != END_TRACED));
+    return answer_trace(vec4<f32>(sky, missed_length), vec4<f32>(0.0), 0.0,
+      select(end, END_UNTRUSTED, walk.is_met && end != END_HELD), END_TRACED);
   }
 
   let hit: vec3<f32> = ray_view_point(walk.position);
   let met: vec4<f32> = met_radiance(vec2<i32>(walk.position.xy * camera.viewport.xy), hit, position);
   let length_met: f32 = length(hit - position);
 
-  return trace_targets(
-    vec4<f32>(mix(sky, met.rgb, confidence), select(missed_length, length_met, confidence > 0.5)),
-    walk.end | select(END_RELIT, 0u, met.w > 0.5),
-  );
+  let met_end: u32 = walk.end | select(END_RELIT, 0u, met.w > 0.5);
+
+  return answer_trace(vec4<f32>(sky, missed_length), vec4<f32>(met.rgb, length_met), confidence, met_end, met_end);
 }
 
 // A traced pixel's surface: its world normal, roughness and distance along the view, as the history keeps them.

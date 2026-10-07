@@ -190,7 +190,7 @@ impl RenderViewport {
   pub fn report(
     &mut self,
     now: Instant,
-    (backend, adapter): (RenderBackend, &str),
+    (backend, adapter, has_ray_queries): (RenderBackend, &str, bool),
     (texture_bytes, allocator, scenes): (u64, Option<(u64, u64)>, &mut HashMap<RenderSceneId, LevelScene>),
     (timer, graph): (Option<&mut GraphTimer>, Option<&GraphReport>),
   ) {
@@ -271,6 +271,7 @@ impl RenderViewport {
       render_height,
       backend,
       adapter: adapter.to_string(),
+      has_ray_queries,
       is_gpu_timed,
       passes,
       static_draws,

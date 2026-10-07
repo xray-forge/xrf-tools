@@ -73,6 +73,7 @@ impl StaticModel {
           .map(|it| u32::from(*it) + vertex_base),
       );
       parts.push(StaticModelPart {
+        indices: (index_base, level.count),
         clusters: if geometry.clusters.is_some() && !is_skinned {
           to_clusters(geometry, &package.buffer, (level.start, level.count), index_base)
         } else {

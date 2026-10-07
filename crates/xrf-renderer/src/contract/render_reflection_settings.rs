@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use crate::contract::render_reflection_mode::RenderReflectionMode;
 use crate::contract::render_reflection_probe::RenderReflectionProbe;
 use crate::contract::render_reflection_quality::RenderReflectionQuality;
+use crate::contract::render_reflection_trace_quality::RenderReflectionTraceQuality;
 
 /// Screen-space reflections on the frame's surfaces: what each surface's reflected rays meet over the frame, or the
 /// sky prefiltered to its roughness where they meet nothing, shown by a physically based specular in place of the
@@ -31,6 +32,7 @@ pub struct RenderReflectionSettings {
   /// Whether a ray the screen does not answer is traced against the level's static geometry by hardware ray query,
   /// its hit lit, in place of the sky; on a device without ray queries it falls back to the sky as before.
   pub is_traced: bool,
+  pub trace_quality: RenderReflectionTraceQuality,
 }
 
 impl Default for RenderReflectionSettings {
@@ -45,7 +47,8 @@ impl Default for RenderReflectionSettings {
       probe: RenderReflectionProbe::Fine,
       sky_gain: 1.25,
       is_grass_reflected: false,
-      is_traced: true,
+      is_traced: false,
+      trace_quality: RenderReflectionTraceQuality::High,
     }
   }
 }

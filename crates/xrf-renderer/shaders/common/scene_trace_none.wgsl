@@ -1,3 +1,5 @@
+#import "generated/structs"
+
 // `common/scene_trace` for a device without ray queries: the same functions, binding nothing, meeting nothing.
 
 struct SceneHit {
@@ -32,6 +34,31 @@ fn trace_scene_ray(origin: vec3<f32>, direction: vec3<f32>, near: f32, far: f32,
 
 fn trace_scene_blocked(origin: vec3<f32>, direction: vec3<f32>, far: f32, cone: SceneCone) -> bool {
   return false;
+}
+
+fn shade_scene_hit(
+  hit: SceneHit,
+  toward: vec3<f32>,
+  cone: SceneCone,
+  state: Lighting,
+  lut: texture_3d<f32>,
+  lut_sampler: sampler,
+  environment_0: texture_cube<f32>,
+  environment_1: texture_cube<f32>,
+  cube_sampler: sampler,
+) -> vec3<f32> {
+  return vec3<f32>(0.0);
+}
+
+fn scene_lamps(
+  position: vec3<f32>,
+  normal: vec3<f32>,
+  toward: vec3<f32>,
+  slice: f32,
+  lut: texture_3d<f32>,
+  lut_sampler: sampler,
+) -> vec4<f32> {
+  return vec4<f32>(0.0);
 }
 
 fn scene_surface(hit: SceneHit, spread: f32) -> SceneSurface {

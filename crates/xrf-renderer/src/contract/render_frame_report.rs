@@ -36,6 +36,9 @@ pub struct RenderFrameReport {
   pub backend: RenderBackend,
   /// The GPU drawn on.
   pub adapter: String,
+  /// Whether it traces rays, by hardware ray query: what the reflections' and the water's tracing of what the screen
+  /// misses needs.
+  pub has_ray_queries: bool,
   /// Whether its passes were timed on the GPU over the span.
   pub is_gpu_timed: bool,
   /// What each pass cost on the GPU, in frame order; none while untimed.

@@ -1,6 +1,7 @@
 #import "common/camera"
 #import "common/octahedral"
 #import "common/reflection_end"
+#import "generated/structs"
 
 // Screen-space reflection rays: a reflected direction drawn from a surface's GGX lobe, walked across the screen up and
 // down a pyramid of the frame's nearest depth, skipping whole cells it passes over and stepping down where it meets a
@@ -376,3 +377,22 @@ fn reflection_roughness(gloss: f32) -> f32 {
 
   return rough * rough;
 }
+
+// The weights a colour's luminance is taken by.
+const LUMINANCE: vec3<f32> = vec3<f32>(0.299, 0.587, 0.114);
+// The luminance what a ray meets is held to, so a lamp's glass or a sunlit highlight does not flare what reflects it.
+const RADIANCE_LIMIT: f32 = 6.0;
+
+fn luminance(colour: vec3<f32>) -> f32 {
+  return max(dot(colour, LUMINANCE), 0.001);
+}
+
+// Fog along a path of `length` metres between two points seen under the frame's lighting `state`, none of the camera's
+// own offset: what a reflection gathers on its way from what it reflects to the surface, which combine then fogs from
+// the camera as it fogs the surface.
+fn path_fog(state: Lighting, length: f32) -> f32 {
+  return saturate(length * state.fog.y) * state.fog_color.w;
+}
+
+// Requests a workgroup of the reflections' scene pass traces, which the trace counts its dispatch by.
+const TRACE_REQUEST_WORKGROUP: u32 = 64u;

@@ -14,6 +14,7 @@ pub struct ReflectionTrace {
 impl ReflectionTrace {
   pub const PYRAMID_PASS: &'static str = "reflection pyramid";
   pub const TRACE_PASS: &'static str = "reflection trace";
+  pub const SCENE_PASS: &'static str = "reflection scene";
   pub const REPROJECT_PASS: &'static str = "reflection reproject";
   pub const AVERAGE_PASS: &'static str = "reflection average";
   pub const PREFILTER_PASS: &'static str = "reflection prefilter";

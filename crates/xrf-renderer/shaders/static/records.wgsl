@@ -84,3 +84,18 @@ const SURFACE_HAS_LIGHTMAP: u32 = 67108864u;
 
 // Vertices one cluster's draw spans: 128 triangles, those past its own collapsed.
 const CLUSTER_VERTICES: u32 = 384u;
+
+// The hemisphere a cube gives along a world normal, each axis's face on the side it points to weighed by how far it
+// points along it.
+fn cube_hemi(cube: vec4<u32>, normal: vec3<f32>) -> f32 {
+  let first: vec4<f32> = unpack4x8unorm(cube.x);
+  let second: vec4<f32> = unpack4x8unorm(cube.y);
+  let positive: vec3<f32> = first.xyz;
+  let negative: vec3<f32> = vec3<f32>(first.w, second.x, second.y);
+
+  return saturate(dot(select(positive, negative, normal < vec3<f32>(0.0)), abs(normal)));
+}
+
+// The weight under which a terrain's layer is left unread: what it would add is below a channel's rounding, and a mask
+// mostly weighs one or two layers, so most texels skip most of the four.
+const TERRAIN_LAYER_LEAST: f32 = 0.004;

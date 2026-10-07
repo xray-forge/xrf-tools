@@ -302,17 +302,6 @@ fn model_vertex(pulled: PulledVertex) -> GBufferVarying {
   return out;
 }
 
-// The hemisphere a cube gives along a world normal, each axis's face on the side it points to weighed by how far it
-// points along it.
-fn cube_hemi(cube: vec4<u32>, normal: vec3<f32>) -> f32 {
-  let first: vec4<f32> = unpack4x8unorm(cube.x);
-  let second: vec4<f32> = unpack4x8unorm(cube.y);
-  let positive: vec3<f32> = first.xyz;
-  let negative: vec3<f32> = vec3<f32>(first.w, second.x, second.y);
-
-  return saturate(dot(select(positive, negative, normal < vec3<f32>(0.0)), abs(normal)));
-}
-
 // The base coordinate's and the lightmap coordinate's derivatives, taken where control flow is uniform: a surface's
 // textures are sampled under its own flags, where no implicit derivative may be taken.
 struct Footprint {
@@ -549,9 +538,6 @@ struct TerrainTexel {
   relief: f32,
 };
 
-// The weight under which a terrain's layer is left unread: what it would add is below a channel's rounding, and a mask
-// mostly weighs one or two layers, so most texels skip most of the four.
-const TERRAIN_LAYER_LEAST: f32 = 0.004;
 // The enhanced parallax, a terrain's and a steep surface's: the steps a march takes looking straight down, at least;
 // what is added to the eye's rise over the surface, so a grazing look reaches a bounded way along it rather than without
 // end; the share of the range it fades out over, ending there; the halvings a refined march settles by; how far the

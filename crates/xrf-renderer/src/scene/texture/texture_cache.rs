@@ -99,7 +99,7 @@ impl TextureCache {
       entries: &[
         wgpu::BindGroupLayoutEntry {
           binding: 0,
-          visibility: wgpu::ShaderStages::FRAGMENT,
+          visibility: wgpu::ShaderStages::FRAGMENT | wgpu::ShaderStages::COMPUTE,
           ty: wgpu::BindingType::Texture {
             sample_type: wgpu::TextureSampleType::Float { filterable: true },
             view_dimension: wgpu::TextureViewDimension::D2,
@@ -109,7 +109,7 @@ impl TextureCache {
         },
         wgpu::BindGroupLayoutEntry {
           binding: 1,
-          visibility: wgpu::ShaderStages::FRAGMENT,
+          visibility: wgpu::ShaderStages::FRAGMENT | wgpu::ShaderStages::COMPUTE,
           ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
           count: None,
         },

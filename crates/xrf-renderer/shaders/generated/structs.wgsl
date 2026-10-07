@@ -24,6 +24,34 @@ struct Lighting {
   height_fog: vec4<f32>,
 }
 
+struct GrassModel {
+  shape: vec4<f32>,
+  is_waving: f32,
+  texture: u32,
+  alpha_reference: f32,
+  index_count: u32,
+  first_index: u32,
+  pad: array<u32, 3>,
+}
+
+struct TraceGrass {
+  grid: vec4<i32>,
+  steps: i32,
+  fade: f32,
+  height: f32,
+  model_count: u32,
+}
+
+struct TraceRequest {
+  origin: vec4<f32>,
+  cone: vec2<f32>,
+  toward: u32,
+  pixel: u32,
+  screen: vec2<u32>,
+  screen_length: f32,
+  hit_end: u32,
+}
+
 struct Water {
   time: f32,
   wave_height: f32,
@@ -56,6 +84,7 @@ struct EnhancedWater {
   gusts_x: f32,
   gusts_y: f32,
   variation: f32,
+  trace_distance: f32,
 }
 
 struct WaterBlur {
@@ -203,6 +232,7 @@ struct Reflections {
   ratio: f32,
   has_source: f32,
   is_traced: f32,
+  trace_turns: u32,
 }
 
 struct ExposureParams {
