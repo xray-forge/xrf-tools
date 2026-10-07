@@ -38,8 +38,8 @@ impl Default for RenderFoliageSettings {
       trees_speed: 11.0,
       trees_trunk: 0.15,
       trees_bend: 0.5,
-      sss_intensity: 2.0,
-      sss_color: 1.0,
+      sss_intensity: 1.0,
+      sss_color: 0.75,
     }
   }
 }
