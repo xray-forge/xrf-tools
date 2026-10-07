@@ -6,6 +6,7 @@
 #import "common/occlusion"
 #import "common/reflection_trace"
 #import "common/reflection_end"
+#import "common/scene_trace"
 
 // Stochastic screen-space reflections on the frame's surfaces, at the size the quality traces at, a pixel per `ratio`
 // by `ratio` of the frame. Each reflecting pixel's ray leaves in a direction drawn from its surface's GGX lobe (a
@@ -58,6 +59,12 @@ const BACK_FACING: f32 = 0.2;
 const EDGE_FADE: f32 = 0.05;
 // The length a ray that met nothing is given, so its reflection is carried as the sky's, far off.
 const MISSED_LENGTH: f32 = 1e4;
+// Metres a traced ray starts off its surface, and what of its distance more, so the triangles the G-buffer's depth
+// stands a little off of do not meet it.
+const TRACED_BIAS: vec2<f32> = vec2<f32>(0.02, 0.002);
+// Metres a ray to the sun from a traced hit starts off it, and reaches at most.
+const TRACED_SUN_BIAS: f32 = 0.05;
+const TRACED_SUN_REACH: f32 = 1000.0;
 // The R2 sequence, which turns a pixel's noise from one frame to the next.
 const NOISE_TURN: vec2<f32> = vec2<f32>(0.7548776662, 0.5698402910);
 const LUMINANCE: vec3<f32> = vec3<f32>(0.299, 0.587, 0.114);
@@ -119,6 +126,50 @@ fn world_direction(direction: vec3<f32>) -> vec3<f32> {
 // A view space point's offset from the camera in the world's frame, metres.
 fn world_offset(position: vec3<f32>) -> vec3<f32> {
   return (transpose(camera.view) * vec4<f32>(position, 0.0)).xyz;
+}
+
+// What the level's static geometry shows along a ray the screen could not answer: traced by ray query from the
+// surface, the hit lit as combine lights it, its sun through a second ray rather than the shadow maps, its fog along
+// the way taken as a met point's is; the ray's length in `w`, below none where it met nothing or nothing is traced.
+fn traced_radiance(position: vec3<f32>, normal: vec3<f32>, direction: vec3<f32>, roughness: f32) -> vec4<f32> {
+  if (!IS_SCENE_TRACED || reflection.is_traced < 0.5) {
+    return vec4<f32>(0.0, 0.0, 0.0, -1.0);
+  }
+
+  let world_normal: vec3<f32> = world_direction(normal);
+  let toward: vec3<f32> = world_direction(direction);
+  let distance: f32 = -position.z;
+  let origin: vec3<f32> = camera.position.xyz + world_offset(position) +
+    world_normal * (TRACED_BIAS.x + distance * TRACED_BIAS.y);
+  let hit: SceneHit = trace_scene_ray(origin, toward, 0.0, reflection.distance);
+
+  if (hit.distance < 0.0) {
+    return vec4<f32>(0.0, 0.0, 0.0, -1.0);
+  }
+
+  // The width the ray's cone has grown to at the hit: a traced pixel's own and its lobe's.
+  let pixel_angle: f32 = 2.0 * reflection.ratio / (camera.projection[1][1] * camera.viewport.y);
+  let spread: f32 = (distance + hit.distance) * pixel_angle + hit.distance * roughness;
+  let met: SceneSurface = scene_surface(hit, spread);
+  let facing: vec3<f32> = select(met.normal, -met.normal, dot(met.normal, toward) > 0.0);
+  let to_sun: vec3<f32> = world_direction(lighting.to_sun.xyz);
+  let half_way: vec3<f32> = normalize(to_sun - toward);
+  // `plight_infinity` as the sun pass lights a surface, its shadow a ray to the sun.
+  let lit: vec4<f32> = textureSampleLevel(material_lut, lut_sampler,
+    vec3<f32>(dot(to_sun, facing), dot(half_way, facing), met.slice), 0.0);
+  var sun: vec4<f32> = vec4<f32>(0.0);
+
+  if (lit.x > 0.0 && !trace_scene_blocked(met.position + facing * TRACED_SUN_BIAS, to_sun, TRACED_SUN_REACH)) {
+    sun = vec4<f32>(lighting.sun.rgb * lit.x, lighting.sun.w * lit.y);
+  }
+
+  let occlusion: f32 = mix(1.0, met.hemi, camera.switches.z);
+  let shown: vec3<f32> = hmodel(lighting, material_lut, lut_sampler, sky_environment_0, sky_environment_1, sky_clamp,
+    vec4<f32>(met.albedo, 0.0), sun, facing, toward, met.slice, occlusion, vec3<f32>(1.0));
+  let held: vec3<f32> = shown * min(1.0, RADIANCE_LIMIT / luminance(shown));
+  let fog: f32 = path_fog(hit.distance);
+
+  return vec4<f32>(mix(held, lighting.fog_color.rgb, fog), hit.distance);
 }
 
 fn luminance(colour: vec3<f32>) -> f32 {
@@ -425,11 +476,23 @@ fn fs_trace(in: FullscreenVarying) -> TraceTargets {
   let thickness: f32 = HIT_THICKNESS.x + distance_met * HIT_THICKNESS.y;
   let confidence: f32 = select(0.0, hit_confidence(walk, position, thickness), walk.is_met);
   var end: u32 = walk.end;
+  var missed_length: f32 = MISSED_LENGTH;
+
+  // Where the screen's answer is less than sure, the level's geometry answers in the sky's place.
+  if (confidence < 1.0) {
+    let traced: vec4<f32> = traced_radiance(position, normal, direction, roughness);
+
+    if (traced.w >= 0.0) {
+      sky = traced.rgb;
+      missed_length = traced.w;
+      end = END_TRACED;
+    }
+  }
 
   // A ray that ran its reach over the screen's own sky, or ground so far the fog has it, reflects the sky as the
   // screen shows it, exact in colour and fog, in place of the cube's, whose texel is coarser and whose sky is the
   // frame's sky at best.
-  if (walk.end == END_FAR && all(walk.position.xy >= vec2<f32>(0.0)) && all(walk.position.xy <= vec2<f32>(1.0))) {
+  if (end == END_FAR && all(walk.position.xy >= vec2<f32>(0.0)) && all(walk.position.xy <= vec2<f32>(1.0))) {
     let size: vec2<i32> = vec2<i32>(camera.viewport.xy);
     let end_texel: vec2<i32> = clamp(vec2<i32>(walk.position.xy * camera.viewport.xy), vec2<i32>(0), size - 1);
     let end_depth: f32 = textureLoad(depth_target, end_texel, 0);
@@ -456,14 +519,14 @@ fn fs_trace(in: FullscreenVarying) -> TraceTargets {
       let taken: vec4<f32> = met_radiance(behind_texel, shown, position);
 
       return trace_targets(
-        vec4<f32>(mix(sky, taken.rgb, probable), select(MISSED_LENGTH, length(shown - position), probable > 0.5)),
+        vec4<f32>(mix(sky, taken.rgb, probable), select(missed_length, length(shown - position), probable > 0.5)),
         select(END_UNCERTAIN, END_PROBABLE, probable > 0.5) | select(END_RELIT, 0u, taken.w > 0.5),
       );
     }
   }
 
   if (confidence <= 0.0) {
-    return trace_targets(vec4<f32>(sky, MISSED_LENGTH), select(end, END_UNTRUSTED, walk.is_met));
+    return trace_targets(vec4<f32>(sky, missed_length), select(end, END_UNTRUSTED, walk.is_met && end != END_TRACED));
   }
 
   let hit: vec3<f32> = ray_view_point(walk.position);
@@ -471,7 +534,7 @@ fn fs_trace(in: FullscreenVarying) -> TraceTargets {
   let length_met: f32 = length(hit - position);
 
   return trace_targets(
-    vec4<f32>(mix(sky, met.rgb, confidence), select(MISSED_LENGTH, length_met, confidence > 0.5)),
+    vec4<f32>(mix(sky, met.rgb, confidence), select(missed_length, length_met, confidence > 0.5)),
     walk.end | select(END_RELIT, 0u, met.w > 0.5),
   );
 }

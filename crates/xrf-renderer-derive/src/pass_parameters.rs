@@ -18,6 +18,7 @@ enum Binding {
   Sampler {
     kind: SamplerKind,
   },
+  AccelerationStructure,
 }
 
 #[derive(Clone, Copy)]
@@ -117,13 +118,20 @@ pub fn expand(input: &DeriveInput) -> syn::Result<TokenStream> {
   let mut resources: Vec<TokenStream> = Vec::new();
   let mut dynamic_offsets: Vec<TokenStream> = Vec::new();
   let indices: Vec<u32> = bindings.iter().map(|(index, ..)| *index).collect();
-  // A binding array needs wgpu's extension enabled in the module declaring it.
-  let enables: Vec<&str> = bindings
-    .iter()
-    .any(|(_, _, ty, binding)| matches!(binding, Binding::Texture { .. }) && get_array_length(ty).is_some())
-    .then_some("wgpu_binding_array")
-    .into_iter()
-    .collect();
+  // A binding array and an acceleration structure need wgpu's extensions enabled in the module declaring them.
+  let enables: Vec<&str> = [
+    bindings
+      .iter()
+      .any(|(_, _, ty, binding)| matches!(binding, Binding::Texture { .. }) && get_array_length(ty).is_some())
+      .then_some("wgpu_binding_array"),
+    bindings
+      .iter()
+      .any(|(_, _, _, binding)| matches!(binding, Binding::AccelerationStructure))
+      .then_some("wgpu_ray_query"),
+  ]
+  .into_iter()
+  .flatten()
+  .collect();
 
   for (index, ident, ty, binding) in &bindings {
     let index: u32 = *index;
@@ -265,6 +273,11 @@ pub fn expand(input: &DeriveInput) -> syn::Result<TokenStream> {
         wgsl.push(quote!(::std::format!("{} {}: {};\n", #prefix, #field_name, #wgsl_type)));
         resources.push(quote!(#core::PassBinding::Sampler(self.#ident)));
       }
+      Binding::AccelerationStructure => {
+        layout_entries.push(quote!(#core::PassBindingLayout::acceleration_structure(#index)));
+        wgsl.push(quote!(::std::format!("{} {}: acceleration_structure;\n", #prefix, #field_name)));
+        resources.push(quote!(#core::PassBinding::AccelerationStructure(self.#ident)));
+      }
     }
   }
 
@@ -393,6 +406,8 @@ fn read_binding(attrs: &[Attribute], ident: &Ident) -> syn::Result<Binding> {
           }
         },
       })
+    } else if path.is_ident("acceleration_structure") {
+      Some(Binding::AccelerationStructure)
     } else if path.is_ident("sampler") {
       let words: Vec<String> = read_words(attr)?;
 
@@ -425,7 +440,8 @@ fn read_binding(attrs: &[Attribute], ident: &Ident) -> syn::Result<Binding> {
   binding.ok_or_else(|| {
     Error::new_spanned(
       ident,
-      "a parameter is `#[uniform]`, `#[storage]`, `#[texture(..)]`, `#[storage_texture(..)]` or `#[sampler(..)]`",
+      "a parameter is `#[uniform]`, `#[storage]`, `#[texture(..)]`, `#[storage_texture(..)]`, `#[sampler(..)]` \
+       or `#[acceleration_structure]`",
     )
   })
 }

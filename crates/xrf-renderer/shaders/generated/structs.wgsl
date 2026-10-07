@@ -201,7 +201,7 @@ struct Reflections {
   has_history: f32,
   ratio: f32,
   has_source: f32,
-  pad0: f32,
+  is_traced: f32,
 }
 
 struct ExposureParams {
@@ -383,4 +383,11 @@ struct Wind {
   foliage_anim: vec4<f32>,
   foliage_previous_anim: vec4<f32>,
   foliage_flora: vec4<f32>,
+}
+
+struct TraceRecord {
+  first_index: u32,
+  vertex_start: u32,
+  surface: u32,
+  flags: u32,
 }

@@ -2,21 +2,26 @@ use wgpu::util::DeviceExt;
 use xrf_error::XrfResult;
 use xrf_renderer_core::{PassParameters, RasterContext};
 
+use crate::context::gpu_requirements::RAY_QUERY_FEATURES;
 use crate::frame::reflection_history::ReflectionHistory;
 use crate::pass::reflection_parameters::ReflectionParameters;
 use crate::pass::shader_pipelines::{create_checked, create_module};
 use crate::pass::sky_parameters::SkyParameters;
+use crate::pass::trace_parameters::TraceParameters;
 use crate::pass::view_binding::ViewBinding;
 use crate::shader::shader_library::ShaderLibrary;
 
 /// Stochastic screen-space reflections at the size their quality traces at: each glossy pixel's ray scattered by its
 /// roughness and walked up and down the frame's nearest depth pyramid, what it met lit; then denoised, the last frame's
 /// reflection reprojected, an eighth-size average taken, filtered across the surface and resolved over time into the
-/// view's history, which combine reads.
+/// view's history, which combine reads. On a device with ray queries a ray the screen does not answer is traced
+/// against the level's static geometry, its trace binding `TraceParameters` and the texture cache's group.
 pub struct ReflectionPass {
   layout: wgpu::BindGroupLayout,
   view_layout: wgpu::BindGroupLayout,
   sky_layout: wgpu::BindGroupLayout,
+  /// The trace's and the textures' layouts, on a device with ray queries.
+  traced_layouts: Option<(wgpu::BindGroupLayout, wgpu::BindGroupLayout)>,
   pipelines: ReflectionPipelines,
   /// What a stage reads in place of a history or a stage before it where there is none: one texel of nothing.
   empty: wgpu::TextureView,
@@ -62,6 +67,8 @@ impl ReflectionPass {
   pub const PREFILTERED: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
   /// Traced pixels a side each texel of the average stands for.
   pub const AVERAGE_RATIO: u32 = 8;
+  /// Where the trace binds the texture cache's group on a device with ray queries, after `TraceParameters`.
+  const TEXTURE_GROUP: u32 = 4;
 
   /// # Errors
   ///
@@ -72,8 +79,13 @@ impl ReflectionPass {
     shaders: &ShaderLibrary,
     view_layout: &wgpu::BindGroupLayout,
     sky_layout: &wgpu::BindGroupLayout,
+    texture_layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<Self> {
     let layout: wgpu::BindGroupLayout = ReflectionParameters::create_layout(device);
+    let traced_layouts: Option<(wgpu::BindGroupLayout, wgpu::BindGroupLayout)> = device
+      .features()
+      .contains(RAY_QUERY_FEATURES)
+      .then(|| (TraceParameters::create_layout(device), texture_layout.clone()));
     let texel = |label: &str, format: wgpu::TextureFormat, bytes: &[u8]| -> wgpu::TextureView {
       device
         .create_texture_with_data(
@@ -99,9 +111,10 @@ impl ReflectionPass {
     };
 
     Ok(Self {
-      pipelines: Self::create_pipelines(device, shaders, (view_layout, &layout, sky_layout))?,
+      pipelines: Self::create_pipelines(device, shaders, (view_layout, &layout, sky_layout), traced_layouts.as_ref())?,
       view_layout: view_layout.clone(),
       sky_layout: sky_layout.clone(),
+      traced_layouts,
       // Half floats: nothing, and nothing with an alpha of minus one; then no ray.
       empty: texel("reflections empty", Self::TRACED, bytemuck::cast_slice(&[0u16; 4])),
       untraced: texel(
@@ -125,11 +138,21 @@ impl ReflectionPass {
     if shaders.get_generation() != self.generation {
       self.generation = shaders.get_generation();
 
-      match Self::create_pipelines(device, shaders, (&self.view_layout, &self.layout, &self.sky_layout)) {
+      match Self::create_pipelines(
+        device,
+        shaders,
+        (&self.view_layout, &self.layout, &self.sky_layout),
+        self.traced_layouts.as_ref(),
+      ) {
         Ok(pipelines) => self.pipelines = pipelines,
         Err(error) => log::error!("Reflections rejected, tracing with the last ones: {error}"),
       }
     }
+  }
+
+  /// Whether its trace takes `TraceParameters` and the texture cache's group: a device with ray queries.
+  pub fn is_traced(&self) -> bool {
+    self.traced_layouts.is_some()
   }
 
   /// The texel a stage reads where no history or stage before it is bound.
@@ -152,21 +175,31 @@ impl ReflectionPass {
     &self.sampler
   }
 
-  /// Traces every reflecting pixel's ray into the targets the pass draws into.
+  /// Traces every reflecting pixel's ray into the targets the pass draws into; `traced`, the level's geometry and the
+  /// texture cache's group, wherever `is_traced`.
   pub fn record_trace(
     &self,
     context: &mut RasterContext<'_>,
     view: &ViewBinding,
-    parameters: &ReflectionParameters<'_>,
-    sky: &SkyParameters<'_>,
+    (parameters, sky): (&ReflectionParameters<'_>, &SkyParameters<'_>),
+    traced: Option<(&TraceParameters<'_>, &wgpu::BindGroup)>,
   ) {
     context.bind(parameters);
     context.bind(sky);
+
+    if let Some((trace, _)) = traced {
+      context.bind(trace);
+    }
 
     let pass: &mut wgpu::RenderPass<'static> = context.get_pass();
 
     pass.set_pipeline(&self.pipelines.trace);
     pass.set_bind_group(0, &view.bind_group, &[]);
+
+    if let Some((_, textures)) = traced {
+      pass.set_bind_group(Self::TEXTURE_GROUP, textures, &[]);
+    }
+
     pass.draw(0..3, 0..1);
   }
 
@@ -209,11 +242,18 @@ impl ReflectionPass {
     device: &wgpu::Device,
     shaders: &ShaderLibrary,
     (view_layout, layout, sky_layout): (&wgpu::BindGroupLayout, &wgpu::BindGroupLayout, &wgpu::BindGroupLayout),
+    traced_layouts: Option<&(wgpu::BindGroupLayout, wgpu::BindGroupLayout)>,
   ) -> XrfResult<ReflectionPipelines> {
     let module: wgpu::ShaderModule = create_module(device, shaders, "frame/reflections")?;
+    let mut trace_layouts: Vec<Option<&wgpu::BindGroupLayout>> = vec![Some(view_layout), Some(layout), Some(sky_layout)];
+
+    if let Some((trace_layout, texture_layout)) = traced_layouts {
+      trace_layouts.extend([Some(trace_layout), Some(texture_layout)]);
+    }
+
     let traced_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
       label: Some("reflection trace"),
-      bind_group_layouts: &[Some(view_layout), Some(layout), Some(sky_layout)],
+      bind_group_layouts: &trace_layouts,
       ..Default::default()
     });
     let stage_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {

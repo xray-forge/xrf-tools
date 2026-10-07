@@ -1,7 +1,7 @@
 use glam::Vec4;
 
 use crate::{
-  GraphTexture, PassParameters, ShaderAtomicU32, ShaderStruct, StorageArray, StorageArrayMut, StorageValue,
+  AccelerationStructureBinding, GraphTexture, PassParameters, ShaderAtomicU32, ShaderStruct, StorageArray, StorageArrayMut, StorageValue,
   StorageValueMut, UniformBinding,
 };
 
@@ -65,6 +65,16 @@ pub struct Environment {
   pub sky: GraphTexture,
   #[texture(cube, float)]
   pub cubes: [GraphTexture; ENVIRONMENT_CUBES],
+}
+
+/// A structure rays are traced against and the records its hits read.
+#[derive(PassParameters)]
+#[parameters(group = 3)]
+pub struct Traced<'a> {
+  #[acceleration_structure]
+  pub scene: AccelerationStructureBinding<'a>,
+  #[storage]
+  pub records: StorageArray<u32>,
 }
 
 /// The cubes [`Environment`] binds.

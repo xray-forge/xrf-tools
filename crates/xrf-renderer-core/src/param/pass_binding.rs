@@ -1,3 +1,5 @@
+use crate::param::acceleration_structure_binding::AccelerationStructureBinding;
+
 /// What one binding of a pass's parameters binds this frame.
 #[derive(Clone, Debug)]
 pub enum PassBinding<'r> {
@@ -12,4 +14,5 @@ pub enum PassBinding<'r> {
   /// A binding array's views, one an element.
   TextureViewArray(Vec<&'r wgpu::TextureView>),
   Sampler(&'r wgpu::Sampler),
+  AccelerationStructure(AccelerationStructureBinding<'r>),
 }

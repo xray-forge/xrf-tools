@@ -26,7 +26,7 @@ pub use crate::graph::{
   TransientSlot, TransientTextureKey,
 };
 pub use crate::param::{
-  BindGroupCache, PassBinding, PassBindingLayout, PassParameters, PassResources, ShaderBindings, StorageArray,
+  AccelerationStructureBinding, BindGroupCache, PassBinding, PassBindingLayout, PassParameters, PassResources, ShaderBindings, StorageArray,
   StorageArrayMut, StorageField, StorageValue, StorageValueMut, UniformBinding, UniformField,
 };
 pub use crate::pipeline::{

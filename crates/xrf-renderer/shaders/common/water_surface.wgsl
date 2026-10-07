@@ -55,13 +55,13 @@ fn water_vertex(vertex_index: u32, instance_index: u32, water: Water) -> WaterVa
   let linear: mat3x3<f32> = mat3x3<f32>(place.transform[0].xyz, place.transform[1].xyz, place.transform[2].xyz);
   let scale: vec3<f32> = vec3<f32>(dot(place.transform[0].xyz, place.transform[0].xyz), dot(place.transform[1].xyz, place.transform[1].xyz),
     dot(place.transform[2].xyz, place.transform[2].xyz));
-  let binormal: vec4<f32> = unpack4x8unorm(words[at]);
-  let normal: vec4<f32> = unpack4x8unorm(words[at + 1u]);
-  let tangent: vec4<f32> = unpack4x8unorm(words[at + 2u]);
-  let position: vec3<f32> = vec3<f32>(bitcast<f32>(words[at + 5u]), bitcast<f32>(words[at + 6u]),
-    bitcast<f32>(words[at + 7u]));
+  let binormal: vec4<f32> = unpack4x8unorm(words[at + VERTEX_BINORMAL]);
+  let normal: vec4<f32> = unpack4x8unorm(words[at + VERTEX_NORMAL]);
+  let tangent: vec4<f32> = unpack4x8unorm(words[at + VERTEX_TANGENT]);
+  let position: vec3<f32> = vertex_position(words[at + VERTEX_POSITION], words[at + VERTEX_POSITION + 1u],
+    words[at + VERTEX_POSITION + 2u]);
   // `D3DCOLOR`: blue, green, red and the sun's share.
-  let color: vec4<f32> = unpack4x8unorm(words[at + 4u]);
+  let color: vec4<f32> = unpack4x8unorm(words[at + VERTEX_EXTRA]);
   var world: vec3<f32> = (matrix * vec4<f32>(position, 1.0)).xyz;
   let phase: f32 = water.time + dot(world, WAVE_DIRECTION * water.wave_speed);
 
@@ -74,8 +74,7 @@ fn water_vertex(vertex_index: u32, instance_index: u32, water: Water) -> WaterVa
   out.normal = normalize(linear * (unpack_direction(normal) / scale));
   out.tangent = linear * unpack_direction(tangent);
   out.binormal = linear * unpack_direction(binormal);
-  // The base coordinate's fraction rides in the tangent's and binormal's fourth bytes.
-  out.uv = (unpack_shorts(words[at + 3u]) + vec2<f32>(tangent.w, binormal.w)) / 1024.0;
+  out.uv = baked_uv(words[at + VERTEX_UV], tangent, binormal);
   out.baked = vec4<f32>(color.zyx, color.w);
   out.hemi = normal.w * place.info.x + place.info.y;
   out.surface = pulled.surface;

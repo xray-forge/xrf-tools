@@ -1,6 +1,7 @@
 //! A pass's parameters: one bind group declared as a struct, from which its layout, WGSL declarations, graph accesses
 //! and bindings come, and the cache its bind groups are kept in.
 
+mod acceleration_structure_binding;
 mod bind_group_cache;
 mod bind_group_key;
 mod binding_key;
@@ -14,6 +15,7 @@ mod shader_bindings;
 #[cfg(test)]
 mod tests;
 
+pub use acceleration_structure_binding::AccelerationStructureBinding;
 pub use bind_group_cache::BindGroupCache;
 pub use field::{
   StorageArray, StorageArrayMut, StorageField, StorageValue, StorageValueMut, UniformBinding, UniformField,

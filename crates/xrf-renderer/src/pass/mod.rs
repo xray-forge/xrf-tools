@@ -103,6 +103,7 @@ pub(crate) mod sky_bindings;
 pub(crate) mod sky_haze_parameters;
 pub(crate) mod sky_haze_pass;
 pub(crate) mod sky_parameters;
+pub(crate) mod trace_parameters;
 pub(crate) mod sky_prefilter_parameters;
 pub(crate) mod sky_prefilter_pass;
 pub(crate) mod sky_prefilter_uniform;

@@ -14,6 +14,24 @@ pub const REQUIRED_FEATURES: wgpu::Features = wgpu::Features::TEXTURE_COMPRESSIO
 pub const OPTIONAL_FEATURES: wgpu::Features =
   wgpu::Features::TIMESTAMP_QUERY.union(wgpu::Features::TIMESTAMP_QUERY_INSIDE_ENCODERS);
 
+/// What the renderer traces rays with where present: hardware ray queries against the level's acceleration structures,
+/// still experimental in wgpu. `RAY_QUERY_SWITCH` set to `0` leaves them off.
+pub const RAY_QUERY_FEATURES: wgpu::Features = wgpu::Features::EXPERIMENTAL_RAY_QUERY;
+
+/// The environment variable that turns ray queries off where it is `0`.
+pub const RAY_QUERY_SWITCH: &str = "XRF_RAY_QUERY";
+
+/// The ray query features to ask an adapter for: all of them where it has them and they are not switched off.
+pub fn get_ray_query_features(features: wgpu::Features) -> wgpu::Features {
+  let is_off: bool = std::env::var(RAY_QUERY_SWITCH).is_ok_and(|value| value.trim() == "0");
+
+  if is_off || !features.contains(RAY_QUERY_FEATURES) {
+    wgpu::Features::empty()
+  } else {
+    RAY_QUERY_FEATURES
+  }
+}
+
 /// The required features an adapter lacks, empty when it has every one.
 pub fn get_missing_features(features: wgpu::Features) -> wgpu::Features {
   REQUIRED_FEATURES.difference(features)
