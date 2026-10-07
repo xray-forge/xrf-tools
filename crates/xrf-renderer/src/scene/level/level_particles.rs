@@ -261,7 +261,7 @@ impl LevelParticles {
       return;
     };
 
-    if !options.is_particled || !options.is_lit {
+    if !options.show.is_particled || !options.mode.is_lit {
       return;
     }
 
@@ -276,7 +276,7 @@ impl LevelParticles {
     level.hemi.advance(eye, now);
     level.ambient.update(
       ambient,
-      (eye, level.hemi.is_indoors() || !options.is_ambient_played),
+      (eye, level.hemi.is_indoors() || !options.world.is_ambient_played),
       now,
       &context,
     );
@@ -324,7 +324,7 @@ impl LevelParticles {
       return;
     };
 
-    if !options.is_particled || !options.is_lit {
+    if !options.show.is_particled || !options.mode.is_lit {
       self.report.last = RenderParticlesReport::default();
 
       return;

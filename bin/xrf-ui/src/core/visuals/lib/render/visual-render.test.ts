@@ -30,17 +30,17 @@ describe("toVisualViewOptions", () => {
       mockRenderFeatures()
     );
 
-    expect(options.backdrop).toEqual(toRawColor(DEFAULT_VISUAL_PREVIEW_SCENE_CONFIG.backgroundColor));
-    expect(options.plainColor).toEqual(toRawColor(DEFAULT_VISUAL_PREVIEW_SCENE_CONFIG.meshColor));
-    expect(options.assetLighting?.sunElevation).toBe(DEFAULT_VISUAL_LIGHTING.sunElevation);
-    expect(options.isWireframe).toBe(true);
-    expect(options.isSkyVisible).toBe(false);
-    expect(options.isFogged).toBe(false);
-    expect(options.grass.isEnabled).toBe(false);
-    expect(options.water.isEnabled).toBe(false);
-    expect(options.exposure.isEnabled).toBe(false);
+    expect(options.asset.backdrop).toEqual(toRawColor(DEFAULT_VISUAL_PREVIEW_SCENE_CONFIG.backgroundColor));
+    expect(options.asset.plainColor).toEqual(toRawColor(DEFAULT_VISUAL_PREVIEW_SCENE_CONFIG.meshColor));
+    expect(options.asset.lighting?.sunElevation).toBe(DEFAULT_VISUAL_LIGHTING.sunElevation);
+    expect(options.mode.isWireframe).toBe(true);
+    expect(options.show.isSkyVisible).toBe(false);
+    expect(options.show.isFogged).toBe(false);
+    expect(options.features.grass.isEnabled).toBe(false);
+    expect(options.features.water.isEnabled).toBe(false);
+    expect(options.features.exposure.isEnabled).toBe(false);
     // The one model stands as a prop, which is a group the view keeps drawn.
-    expect(options.isSpawnedProps).toBe(true);
+    expect(options.world.isSpawnedProps).toBe(true);
   });
 
   it("lays the uv checker over every surface while the toolbar asks, and draws them solid with the alpha off", () => {
@@ -51,8 +51,8 @@ describe("toVisualViewOptions", () => {
       mockRenderFeatures()
     );
 
-    expect(options.checker).toBe(DEFAULT_VISUAL_PREVIEW_SCENE_CONFIG.checkerRepeat);
-    expect(options.isAlphaVisible).toBe(false);
+    expect(options.asset.checker).toBe(DEFAULT_VISUAL_PREVIEW_SCENE_CONFIG.checkerRepeat);
+    expect(options.show.isAlphaVisible).toBe(false);
   });
 });
 

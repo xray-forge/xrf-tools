@@ -33,10 +33,10 @@ pub struct LevelWater {
 impl LevelWater {
   /// Takes this frame's settings: makes or drops the reflection's histories, and works out the uniform.
   pub fn prepare(&mut self, device: &wgpu::Device, options: &RenderViewOptions, frame: WaterFrame<'_>) {
-    let settings: RenderWaterSettings = options.water;
+    let settings: RenderWaterSettings = options.features.water;
 
     self.settings = settings;
-    self.is_drawn = settings.is_enabled && !options.is_wireframe;
+    self.is_drawn = settings.is_enabled && !options.mode.is_wireframe;
     self.flow.advance(frame.time, &settings, frame.wind);
 
     let is_reflecting: bool = self.is_refracting() && settings.reflectivity > 0.0;

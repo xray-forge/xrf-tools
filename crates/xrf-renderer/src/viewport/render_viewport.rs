@@ -310,10 +310,10 @@ impl RenderViewport {
     };
     let mut applied: RenderAppliedReport = level.describe_applied(&self.options);
 
-    if self.options.asset_lighting.is_none() {
+    if self.options.asset.lighting.is_none() {
       applied.environment = Some(to_applied_environment(
         self.weather.get_lighting(),
-        &self.options.light_scales,
+        &self.options.features.light_scales,
       ));
     }
 

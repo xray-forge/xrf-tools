@@ -128,7 +128,7 @@ impl LevelFlares {
     let toward_sun: Vec3 = -lighting.get_sun_direction();
     let to_sun: Vec3 = view.view.transform_vector3(toward_sun).normalize_or_zero();
 
-    if !options.is_lit || !options.is_sky_visible || lighting.sun_color.max_element() <= 0.0 {
+    if !options.mode.is_lit || !options.show.is_sky_visible || lighting.sun_color.max_element() <= 0.0 {
       return None;
     }
 
@@ -158,7 +158,7 @@ impl LevelFlares {
       (&name, weather_textures),
       (targets, targets_epoch, shadows),
     );
-    self.is_flared = options.is_lens_flared;
+    self.is_flared = options.show.is_lens_flared;
     self.is_drawn = targets.is_some() && ((self.is_flared && !flare.flares.is_empty()) || flare.gradient.is_some());
 
     sprite

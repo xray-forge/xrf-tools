@@ -484,8 +484,8 @@ impl RenderThread {
       let position: Vec3 = viewport.camera.get_pose().position.into();
       let source: Option<Arc<dyn RenderAssetSource>> =
         viewport.level.clone().map(|level| level as Arc<dyn RenderAssetSource>);
-      let is_clouded: bool = viewport.options.is_clouded;
-      let is_thundering: bool = viewport.options.is_thundering && viewport.options.is_lit;
+      let is_clouded: bool = viewport.options.show.is_clouded;
+      let is_thundering: bool = viewport.options.world.is_thundering && viewport.options.mode.is_lit;
       let mut weather_textures: Option<&mut WeatherTextureCache> =
         self.gpu.as_mut().map(|gpu| &mut gpu.weather_textures);
 
@@ -686,7 +686,7 @@ impl RenderThread {
         .weather
         .get_lighting()
         .fog
-        .filter(|_| viewport.options.is_lit && viewport.options.is_fogged)
+        .filter(|_| viewport.options.mode.is_lit && viewport.options.show.is_fogged)
         .map_or(f32::INFINITY, |fog| fog.get_total_distance());
       let view: CameraView = viewport
         .camera
@@ -694,20 +694,21 @@ impl RenderThread {
 
       let options: RenderViewOptions = viewport.options.clone();
       let switches: Vec4 = Vec4::new(
-        f32::from(u8::from(options.surface_color == RenderSurfaceColor::Textured)),
-        options.is_bumped as u32 as f32,
-        options.hemi_strength,
+        f32::from(u8::from(options.mode.surface_color == RenderSurfaceColor::Textured)),
+        options.mode.is_bumped as u32 as f32,
+        options.features.hemi_strength,
         0.0,
       );
 
       // A level is drawn at a share of the viewport and upscaled to it; nothing else is drawn but at its size.
       let render_scale: RenderScale = if viewport.level.is_some() {
-        options.upscaling.scale
+        options.output.upscaling.scale
       } else {
         RenderScale::Native
       };
       // The settings' resolution first, as a share of the viewport, then the render scale's share of that.
       let resolution: f32 = options
+        .output
         .render_height
         .filter(|_| viewport.level.is_some())
         .map_or(1.0, |height| (height as f32 / rect.height.max(1) as f32).min(1.0));
@@ -735,8 +736,8 @@ impl RenderThread {
         queue,
         &CameraUniform::new(&drawn, drawn_rect, switches)
           .with_selection(selection.as_ref())
-          .with_wireframe(options.is_wireframe)
-          .with_surface_color(options.surface_color)
+          .with_wireframe(options.mode.is_wireframe)
+          .with_surface_color(options.mode.surface_color)
           .with_motion(motion)
           .with_asset_view(&options, drawn_rect.height as f32 / rect.height.max(1) as f32),
       );
@@ -745,7 +746,7 @@ impl RenderThread {
         continue;
       };
       // An asset viewer lights by its rig rather than a weather, and plays none.
-      let asset_lighting: Option<RenderLighting> = options.asset_lighting.as_ref().map(RenderLighting::for_asset);
+      let asset_lighting: Option<RenderLighting> = options.asset.lighting.as_ref().map(RenderLighting::for_asset);
       let (lighting, weather) = match &asset_lighting {
         Some(lighting) => (lighting, None),
         None => (viewport.weather.get_lighting(), viewport.weather.get_level()),

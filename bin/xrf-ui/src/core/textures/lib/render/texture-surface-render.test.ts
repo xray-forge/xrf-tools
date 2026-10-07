@@ -42,10 +42,10 @@ describe("toTextureViewOptions", () => {
   it("carries the lit and bump switches, against the alpha checkerboard at the device's pixel size", () => {
     const options: RenderViewOptions = toTextureViewOptions(OPTIONS, DEFAULT_TEXTURE_LIGHTING, mockRenderFeatures(), 2);
 
-    expect(options.isLit).toBe(false);
-    expect(options.isBumped).toBe(false);
-    expect(options.backdropSquares?.size).toBe(VIEWPORT.checkerboardSquare * 2);
-    expect(options.isSkyVisible).toBe(false);
-    expect(options.exposure.isEnabled).toBe(false);
+    expect(options.mode.isLit).toBe(false);
+    expect(options.mode.isBumped).toBe(false);
+    expect(options.asset.backdropSquares?.size).toBe(VIEWPORT.checkerboardSquare * 2);
+    expect(options.show.isSkyVisible).toBe(false);
+    expect(options.features.exposure.isEnabled).toBe(false);
   });
 });

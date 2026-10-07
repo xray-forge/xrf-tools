@@ -35,20 +35,21 @@ describe("toLevelViewOptions", () => {
   it("steps the sunshafts as the sun's popover sets them", () => {
     const sunShafts = { minimum: 0.25, quality: ERenderSunShaftsQuality.LOW };
 
-    expect(toLevelViewOptions(toInputs({ sunShafts })).sunShafts).toEqual(sunShafts);
+    expect(toLevelViewOptions(toInputs({ sunShafts })).features.sunShafts).toEqual(sunShafts);
   });
 
   it("composites the wall marks while the toolbar shows them", () => {
-    expect(toLevelViewOptions(toInputs()).isWallmarked).toBe(true);
+    expect(toLevelViewOptions(toInputs()).show.isWallmarked).toBe(true);
     expect(
-      toLevelViewOptions(toInputs({ options: { ...DEFAULT_LEVEL_VIEW_OPTIONS, isWallmarked: false } })).isWallmarked
+      toLevelViewOptions(toInputs({ options: { ...DEFAULT_LEVEL_VIEW_OPTIONS, isWallmarked: false } })).show
+        .isWallmarked
     ).toBe(false);
   });
 
   it("darkens the ambient by the baked hemisphere only while the toolbar bakes it", () => {
-    expect(toLevelViewOptions(toInputs()).hemiStrength).toBe(0.8);
+    expect(toLevelViewOptions(toInputs()).features.hemiStrength).toBe(0.8);
     expect(
-      toLevelViewOptions(toInputs({ options: { ...DEFAULT_LEVEL_VIEW_OPTIONS, isBaked: false } })).hemiStrength
+      toLevelViewOptions(toInputs({ options: { ...DEFAULT_LEVEL_VIEW_OPTIONS, isBaked: false } })).features.hemiStrength
     ).toBe(0);
   });
 
@@ -60,23 +61,29 @@ describe("toLevelViewOptions", () => {
       })
     );
 
-    expect(options.antialiasing).toBe(ERenderAntialiasing.NONE);
-    expect(options.grass.isEnabled).toBe(false);
-    expect(options.shadows.isEnabled).toBe(false);
+    expect(options.features.antialiasing).toBe(ERenderAntialiasing.NONE);
+    expect(options.features.grass.isEnabled).toBe(false);
+    expect(options.features.shadows.isEnabled).toBe(false);
   });
 
   it("draws at the height the settings ask, and at the look's exposure", () => {
     const options: RenderViewOptions = toLevelViewOptions(toInputs({ renderHeight: 1080 }));
 
-    expect(options.renderHeight).toBe(1080);
-    expect(options.exposure).toEqual(OPENXRAY_LEVEL_LOOK.exposure);
+    expect(options.output.renderHeight).toBe(1080);
+    expect(options.features.exposure).toEqual(OPENXRAY_LEVEL_LOOK.exposure);
   });
 
   it("shows the shading chosen as a surface colour and a picture", () => {
     const shader: RenderViewOptions = toLevelViewOptions(toInputs({ shading: ELevelShading.SHADER }));
     const normal: RenderViewOptions = toLevelViewOptions(toInputs({ shading: ELevelShading.NORMAL }));
 
-    expect([shader.surfaceColor, shader.debugView]).toEqual([ERenderSurfaceColor.SHADER, ERenderDebugView.FINAL]);
-    expect([normal.surfaceColor, normal.debugView]).toEqual([ERenderSurfaceColor.TEXTURED, ERenderDebugView.NORMAL]);
+    expect([shader.mode.surfaceColor, shader.mode.debugView]).toEqual([
+      ERenderSurfaceColor.SHADER,
+      ERenderDebugView.FINAL,
+    ]);
+    expect([normal.mode.surfaceColor, normal.mode.debugView]).toEqual([
+      ERenderSurfaceColor.TEXTURED,
+      ERenderDebugView.NORMAL,
+    ]);
   });
 });
