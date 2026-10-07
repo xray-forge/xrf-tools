@@ -89,6 +89,7 @@ struct EnhancedWater {
   trace_distance: f32,
   trace_turns: u32,
   trace_frame: u32,
+  vibrance: f32,
 }
 
 struct WaterBlur {

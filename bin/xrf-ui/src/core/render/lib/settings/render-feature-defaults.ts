@@ -249,6 +249,7 @@ export const DEFAULT_RENDER_ENHANCED_WATER_SETTINGS: TRenderEnhancedWaterSetting
   specular: 6,
   turbidity: 3,
   variation: 0.75,
+  vibrance: 1,
 };
 
 /** The engine's own water: `shared/waterconfig.h`'s constants and `def_distort`. */

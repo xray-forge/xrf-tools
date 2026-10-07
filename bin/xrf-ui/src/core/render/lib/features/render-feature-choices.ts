@@ -620,6 +620,7 @@ export const RENDER_ENHANCED_WATER_LIMITS = {
   specular: toRenderLimits(RENDER_FEATURE_SCHEMA.water.enhanced.specular, 0.1),
   turbidity: toRenderLimits(RENDER_FEATURE_SCHEMA.water.enhanced.turbidity, 0.1),
   variation: toRenderLimits(RENDER_FEATURE_SCHEMA.water.enhanced.variation, 0.05),
+  vibrance: toRenderLimits(RENDER_FEATURE_SCHEMA.water.enhanced.vibrance, 0.05),
 } as const;
 
 /** @returns A wave's height, in centimetres, which is the size the engine's are. */

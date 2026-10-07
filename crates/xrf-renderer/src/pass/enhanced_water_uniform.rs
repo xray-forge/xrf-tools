@@ -44,6 +44,8 @@ pub struct EnhancedWaterUniform {
   /// Frames a pixel the screen does not answer waits between its rays, the history held between, and the frame's count.
   pub trace_turns: u32,
   pub trace_frame: u32,
+  /// How much of its colour the reflection keeps.
+  pub vibrance: f32,
 }
 
 impl EnhancedWaterUniform {
@@ -80,6 +82,7 @@ impl EnhancedWaterUniform {
       trace_distance,
       trace_turns,
       trace_frame,
+      vibrance: settings.vibrance,
     }
   }
 }

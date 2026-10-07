@@ -435,6 +435,8 @@ export type RenderEnhancedWaterSettings = {
   reflectionBlur: number | null;
   /** How much noise mixes the clear reflection into the blurred one. */
   blurNoise: number | null;
+  /** How much of its colour the reflection keeps, one all of it, none grey. */
+  vibrance: number | null;
   /** How bright the sun's highlight on it is. */
   specular: number | null;
   /** How bright the light it gathers onto its bottom is. */
