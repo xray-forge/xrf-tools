@@ -10,10 +10,6 @@ const MARCH_REFINES: i32 = 2;
 const MARCH_THICKNESS: f32 = 3.0;
 const MARCH_REACH: f32 = 150.0;
 
-// The flat surface's fresnel, cubed and by the reflectivity, below which the surface would show too little of a hit to
-// march for it: looking that steeply down, the waves' normals cannot raise it into sight.
-const MARCH_LEAST_SHOWN: f32 = 0.002;
-
 // How much of the reflection the last frames keep, and how much less of it where the ray met the sky.
 const REFLECTION_HISTORY: f32 = 0.97;
 const REFLECTION_SKY_HISTORY: f32 = 0.2;
@@ -282,10 +278,10 @@ fn fs_water_reflection(in: WaterVarying) -> @location(0) vec4<f32> {
   let reflected: vec3<f32> = reflect(eye, normal_view);
   let to_point: vec3<f32> = normalize(in.world - camera.position.xyz);
   let flat_reflected: vec3<f32> = reflect(to_point, normal);
-  // Rays towards the eye are not traced: looking down they only mess the reflection. Nor are those the surface would
-  // show too little of.
-  let shown: f32 = pow(saturate(dot(flat_reflected, to_point)), 3.0) * enhanced.reflectivity;
-  let is_away: bool = dot(-eye, reflected) <= -0.3 && shown >= MARCH_LEAST_SHOWN;
+  // Rays towards the eye are not traced: looking down they only mess the reflection. Every other ray is marched and
+  // traced, however little the flat surface shows of it: until 2026-10-11 those under a fresnel of 0.002 took the sky,
+  // which the waves raised into sight as a bright disc about the eye under a bridge (owner's report).
+  let is_away: bool = dot(-eye, reflected) <= -0.3;
   let noise_uv: vec2<f32> = (uv * 1.33 + water.time * 0.02) * vec2<f32>(size.x / size.y, 1.0);
   let noise: f32 = textureSampleLevel(blue_noise, texture_sampler, noise_uv, 0.0).x * 1.5;
   // A branch rather than a select, which would march every ray to throw most away.
