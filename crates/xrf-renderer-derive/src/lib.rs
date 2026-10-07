@@ -22,7 +22,16 @@ pub fn shader_struct_derive(input: TokenStream) -> TokenStream {
 /// per field in order or as `#[binding(N)]` numbers it; see the crate's README.
 #[proc_macro_derive(
   PassParameters,
-  attributes(parameters, binding, uniform, storage, texture, storage_texture, sampler, acceleration_structure)
+  attributes(
+    parameters,
+    binding,
+    uniform,
+    storage,
+    texture,
+    storage_texture,
+    sampler,
+    acceleration_structure
+  )
 )]
 pub fn pass_parameters_derive(input: TokenStream) -> TokenStream {
   let input: DeriveInput = parse_macro_input!(input as DeriveInput);
