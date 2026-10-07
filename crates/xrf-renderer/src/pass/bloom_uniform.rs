@@ -1,25 +1,29 @@
+use glam::Vec4;
+use xrf_renderer_core::ShaderStruct;
+
 use crate::frame::view_targets::ViewTargets;
 
 /// Taps each way of `bloom_filter.ps`, beside its centre.
 const TAPS: usize = 7;
 
-/// What `shaders/frame/bloom.wgsl` reads as its `Bloom`: one for the build and one for each way the bloom is blurred.
+/// What the bloom reads, as WGSL's `Bloom`: one for the build and one for each way the bloom is blurred.
 #[repr(C)]
-#[derive(Clone, Copy, Debug, Default, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
+#[shader(name = "Bloom")]
 pub struct BloomUniform {
   /// The build: half a texel of the frame, then the threshold. A filter: one texel of the target along its way, then
   /// one where only the side behind is read.
-  pub params: [f32; 4],
+  pub params: Vec4,
   /// `CalcGauss_wave`'s weights: the taps one to four out, then five to seven out and the centre.
-  pub weights: [[f32; 4]; 2],
+  pub weights: [Vec4; 2],
 }
 
 impl BloomUniform {
   /// `bloom_build.ps` over a frame drawn `size` texels, losing `threshold` of the summed brightness.
   pub fn build(size: (u32, u32), threshold: f32) -> Self {
     Self {
-      params: [0.5 / size.0 as f32, 0.5 / size.1 as f32, threshold, 0.0],
-      weights: [[0.0; 4]; 2],
+      params: Vec4::new(0.5 / size.0 as f32, 0.5 / size.1 as f32, threshold, 0.0),
+      weights: [Vec4::ZERO; 2],
     }
   }
 
@@ -34,19 +38,19 @@ impl BloomUniform {
     };
 
     Self {
-      params: [along[0], along[1], f32::from(u8::from(is_one_sided)), 0.0],
+      params: Vec4::new(along[0], along[1], f32::from(u8::from(is_one_sided)), 0.0),
       weights: Self::get_wave(radius, strength),
     }
   }
 
   /// `CalcGauss_wave`: two kernels added, one of the radius and one of a third of it, each of the strength.
-  pub fn get_wave(radius: f32, strength: f32) -> [[f32; 4]; 2] {
+  pub fn get_wave(radius: f32, strength: f32) -> [Vec4; 2] {
     let [base, detail] = [radius, radius / 3.0].map(|it| Self::get_kernel(it, strength));
     let weights: Vec<f32> = (0..=TAPS).map(|tap| base[tap] + detail[tap]).collect();
 
     [
-      [weights[1], weights[2], weights[3], weights[4]],
-      [weights[5], weights[6], weights[7], weights[0]],
+      Vec4::new(weights[1], weights[2], weights[3], weights[4]),
+      Vec4::new(weights[5], weights[6], weights[7], weights[0]),
     ]
   }
 

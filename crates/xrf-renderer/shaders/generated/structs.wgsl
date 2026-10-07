@@ -55,6 +55,43 @@ struct WaterBlur {
   direction: vec4<f32>,
 }
 
+struct Present {
+  view: u32,
+  is_occluded: u32,
+  is_upscaled: u32,
+  distortion: f32,
+  origin: vec2<f32>,
+  size: vec2<f32>,
+  corrections: vec4<f32>,
+  grading: vec4<f32>,
+  selection: vec4<f32>,
+  is_bloomed: u32,
+}
+
+struct Upscale {
+  output_size: vec2<f32>,
+  sharpness: f32,
+}
+
+struct Bloom {
+  params: vec4<f32>,
+  weights: array<vec4<f32>, 2>,
+}
+
+struct ParticleVertex {
+  position: vec3<f32>,
+  color: u32,
+  uv: vec2<f32>,
+  surface: u32,
+}
+
+struct ParticleSurface {
+  texture: u32,
+  flags: u32,
+  alpha_reference: f32,
+  distortion: u32,
+}
+
 struct Cluster {
   first_index: u32,
   triangles: u32,

@@ -1,8 +1,10 @@
 use glam::Vec4;
 
-use crate::param::tests::fixtures::{Blur, Clashing, Count, Reflection, Scale, Settings, Shade, Surface};
+use crate::param::tests::fixtures::{
+  Blur, Clashing, Count, ENVIRONMENT_CUBES, Environment, Reflection, Scale, Settings, Shade, Surface,
+};
 use crate::{
-  FrameGraph, GraphBindings, GraphBufferAccess, GraphBufferDescriptor, GraphCompileOptions, GraphRuntime,
+  FrameGraph, GraphBindings, GraphBufferAccess, GraphBufferDescriptor, GraphCompileOptions, GraphRuntime, GraphTexture,
   GraphTextureAccess, GraphTextureDescriptor, PassParameters, ShaderBindings, ShaderDeclarations, StorageArray,
   StorageArrayMut, StorageField,
 };
@@ -321,4 +323,51 @@ fn gathers_a_shared_module_s_bindings_once_each() {
   let error: String = bindings.add::<Clashing>().err().expect("a clash").to_string();
 
   assert!(error.contains("var history"), "{error}");
+}
+
+#[test]
+fn binds_an_array_typed_texture_as_a_binding_array() {
+  let entries: Vec<wgpu::BindGroupLayoutEntry> = Environment::get_layout_entries();
+
+  assert_eq!(entries[0].count, None);
+  assert_eq!(entries[1].count, std::num::NonZeroU32::new(ENVIRONMENT_CUBES as u32));
+  assert_eq!(Environment::ENABLES, ["wgpu_binding_array"]);
+  assert!(Blur::ENABLES.is_empty());
+  assert!(
+    ShaderBindings::new()
+      .add::<Environment>()
+      .unwrap()
+      .to_wgsl()
+      .starts_with("enable wgpu_binding_array;\n@group(3) @binding(0)")
+  );
+  assert_eq!(
+    Environment::get_wgsl_bindings(),
+    "@group(3) @binding(0) var sky: texture_cube<f32>;\n\
+     @group(3) @binding(1) var cubes: binding_array<texture_cube<f32>, 4>;\n"
+  );
+
+  let mut graph: FrameGraph<'_> = FrameGraph::new();
+  let mut create = || {
+    graph.create_texture(GraphTextureDescriptor::new_2d(
+      "cube",
+      8,
+      8,
+      wgpu::TextureFormat::Rgba8Unorm,
+    ))
+  };
+  let sky: GraphTexture = create();
+  let cubes: [GraphTexture; ENVIRONMENT_CUBES] = std::array::from_fn(|_| create());
+  let environment: Environment = Environment { sky, cubes };
+  let accesses: Vec<(GraphTexture, GraphTextureAccess)> = environment.list_texture_accesses();
+
+  assert_eq!(accesses.len(), 1 + ENVIRONMENT_CUBES);
+  assert!(
+    accesses
+      .iter()
+      .all(|(_, access)| *access == GraphTextureAccess::Sampled)
+  );
+  assert_eq!(
+    accesses[1..].iter().map(|(texture, _)| *texture).collect::<Vec<_>>(),
+    cubes
+  );
 }

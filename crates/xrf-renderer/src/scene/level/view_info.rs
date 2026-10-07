@@ -3,6 +3,7 @@ use xrf_material::XraySurfaceDraw;
 
 use crate::camera::camera_view::CameraView;
 use crate::contract::render_ambient_occlusion_settings::RenderAmbientOcclusionSettings;
+use crate::contract::render_antialiasing::RenderAntialiasing;
 use crate::contract::render_debug_view::RenderDebugView;
 use crate::contract::render_image_corrections::RenderImageCorrections;
 use crate::contract::render_lights_settings::RenderLightsSettings;
@@ -10,14 +11,23 @@ use crate::contract::render_rect::RenderRect;
 use crate::contract::render_shadow_settings::RenderShadowSettings;
 use crate::contract::render_upscaling_settings::RenderUpscalingSettings;
 use crate::lighting::render_lighting::RenderLighting;
+use crate::pass::bloom_uniform::BloomUniform;
 use crate::pass::lighting_uniform::LightingUniform;
+use crate::pass::present_uniform::PresentUniform;
 use crate::pass::static_cull_params::StaticCullParams;
 use crate::pass::static_occlusion_uniform::StaticOcclusionUniform;
+use crate::pass::upscale_uniform::UpscaleUniform;
 use crate::pass::wind_uniform::WindUniform;
+use crate::scene::level::sky_views::SkyViews;
 
 /// One frame of a view as its preparation leaves it: the camera and sun it is drawn by, what its options and weather
 /// decided it draws, and what its passes read of that. Prepared before the frame graph is declared, and read by it.
 pub struct ViewInfo {
+  /// What the present pass shows and the upscale passes read this frame.
+  pub present: PresentUniform,
+  pub upscale: UpscaleUniform,
+  /// What the bloom's build and its two blurs read this frame.
+  pub bloom: [BloomUniform; 3],
   pub camera: CameraView,
   /// The camera's view and projection, which become the depth history once the pyramid is reduced.
   pub matrices: (Mat4, Mat4),
@@ -30,6 +40,8 @@ pub struct ViewInfo {
   pub jitter_phases: u32,
   /// Whether a temporal resolve gathers this frame's samples, and whether it is FSR 2's rather than TAA.
   pub is_temporal: bool,
+  /// The smoothing pass over the scene as drawn, FXAA or SMAA, while one smooths it.
+  pub smoothing: Option<RenderAntialiasing>,
   pub is_fsr: bool,
   /// The cull's parameters for this frame's view and options.
   pub cull: StaticCullParams,
@@ -59,8 +71,8 @@ pub struct ViewInfo {
   pub is_bloomed: bool,
   /// The lighting the passes read, as the frame's weather and options make it.
   pub lighting: LightingUniform,
-  /// Both skies' cubes, which the water reflects; none until the frame's sky is prepared.
-  pub sky_cubes: Option<[wgpu::TextureView; 2]>,
+  /// The weather textures the sky draws with and the water reflects; none until the frame's sky is prepared.
+  pub sky: Option<SkyViews>,
   /// The sun's sprite as the sky draws it: its texture, and its colour and radius.
   pub sun_sprite: Option<(String, Vec4)>,
   /// The rain: the streaks drawn and the splash's indices, none while it does not rain.
@@ -76,6 +88,9 @@ pub struct ViewInfo {
 impl Default for ViewInfo {
   fn default() -> Self {
     Self {
+      present: PresentUniform::default(),
+      upscale: UpscaleUniform::default(),
+      bloom: [BloomUniform::default(); 3],
       camera: CameraView {
         position: Vec3::ZERO,
         view: Mat4::IDENTITY,
@@ -87,6 +102,7 @@ impl Default for ViewInfo {
       jitter: Vec2::ZERO,
       jitter_phases: 1,
       is_temporal: false,
+      smoothing: None,
       is_fsr: false,
       cull: StaticCullParams::default(),
       occlusion: bytemuck::Zeroable::zeroed(),
@@ -105,7 +121,7 @@ impl Default for ViewInfo {
       is_shafted: false,
       is_bloomed: false,
       lighting: bytemuck::Zeroable::zeroed(),
-      sky_cubes: None,
+      sky: None,
       sun_sprite: None,
       rain_draw: None,
       thunder_draw: None,

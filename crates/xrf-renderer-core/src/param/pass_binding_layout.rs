@@ -54,6 +54,19 @@ impl PassBindingLayout {
     }
   }
 
+  /// A binding array of `count` sampled textures alike.
+  pub fn texture_array(
+    binding: u32,
+    sample_type: wgpu::TextureSampleType,
+    view_dimension: wgpu::TextureViewDimension,
+    count: u32,
+  ) -> wgpu::BindGroupLayoutEntry {
+    wgpu::BindGroupLayoutEntry {
+      count: std::num::NonZeroU32::new(count),
+      ..Self::texture(binding, sample_type, view_dimension)
+    }
+  }
+
   pub fn storage_texture(
     binding: u32,
     access: wgpu::StorageTextureAccess,

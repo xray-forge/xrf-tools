@@ -8,26 +8,8 @@ enable wgpu_binding_array;
 // (`USE_SOFT_PARTICLES`) and, on Anomaly, into the fog. Unlit: `particle.ps` is the vertex colour times the texture.
 // A distorting effect's quads draw again into the distortion target, as `particle_distort.ps` writes them.
 
-struct ParticleVertex {
-  position: vec3<f32>,
-  color: u32,
-  uv: vec2<f32>,
-  surface: u32,
-  pad: u32,
-};
-
-struct ParticleSurface {
-  texture: u32,
-  flags: u32,
-  alpha_reference: f32,
-  distortion: u32,
-};
-
-@group(1) @binding(0) var<storage, read> vertices: array<ParticleVertex>;
-@group(1) @binding(1) var<storage, read> surfaces: array<ParticleSurface>;
-@group(1) @binding(2) var<uniform> lighting: Lighting;
-@group(1) @binding(3) var depth_target: texture_depth_2d;
-@group(1) @binding(4) var clamped_sampler: sampler;
+// The quads' corners as the engine fills them, the effects' surfaces, the frame's lighting, and the scene's depth.
+#import "generated/frame/particles"
 
 @group(2) @binding(0) var textures: binding_array<texture_2d<f32>>;
 @group(2) @binding(1) var texture_sampler: sampler;

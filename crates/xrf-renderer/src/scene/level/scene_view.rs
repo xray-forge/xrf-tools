@@ -8,7 +8,7 @@ use xrf_material::XraySurfaceDraw;
 use xrf_math::EPS_S;
 use xrf_renderer_core::{
   FrameGraph, GraphBindings, GraphBuffer, GraphBufferAccess, GraphColorAttachment, GraphDepthAttachment, GraphRuntime,
-  GraphTexture, GraphTextureAccess, RasterPassBuilder, StorageArray,
+  GraphTexture, GraphTextureAccess, GraphTextureDescriptor, RasterPassBuilder, StorageArray, UniformBinding,
 };
 
 use crate::camera::camera_view::CameraView;
@@ -32,8 +32,6 @@ use crate::contract::render_water_settings::RenderWaterSettings;
 use crate::frame::depth_pyramid::DepthPyramid;
 use crate::frame::fsr_targets::FsrTargets;
 use crate::frame::pick_target::PickTarget;
-use crate::frame::smaa_targets::SmaaTargets;
-use crate::frame::smoothing_target::SmoothingTarget;
 use crate::frame::static_scene_handles::StaticSceneHandles;
 use crate::frame::temporal_history::TemporalHistory;
 use crate::frame::temporal_jitter::TemporalJitter;
@@ -47,17 +45,22 @@ use crate::lighting::ambient_gust::AmbientGust;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::pass::ambient_occlusion_pass::AmbientOcclusionPass;
 use crate::pass::ambient_occlusion_uniform::AmbientOcclusionUniform;
+use crate::pass::bloom_parameters::BloomParameters;
 use crate::pass::bloom_pass::BloomPass;
 use crate::pass::bloom_uniform::BloomUniform;
 use crate::pass::camera_uniform::CameraUniform;
 use crate::pass::fsr_groups::FsrGroups;
 use crate::pass::fsr_uniform::FsrUniform;
+use crate::pass::fxaa_parameters::FxaaParameters;
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::lighting_frame::LightingFrame;
 use crate::pass::lighting_uniform::LightingUniform;
 use crate::pass::present_uniform::PresentUniform;
 use crate::pass::rain_bindings::RainBindings;
 use crate::pass::rain_uniform::RainUniform;
+use crate::pass::sky_parameters::SkyParameters;
+use crate::pass::smaa_parameters::SmaaParameters;
+use crate::pass::smaa_pass::SmaaPass;
 use crate::pass::static_cull_parameters::StaticCullParameters;
 use crate::pass::static_cull_params::StaticCullParams;
 use crate::pass::static_draw_parameters::StaticDrawParameters;
@@ -66,6 +69,7 @@ use crate::pass::static_gbuffer_pass::StaticGBufferPass;
 use crate::pass::static_occlusion_uniform::StaticOcclusionUniform;
 use crate::pass::temporal_uniform::TemporalUniform;
 use crate::pass::thunder_uniform::ThunderUniform;
+use crate::pass::upscale_parameters::UpscaleParameters;
 use crate::pass::upscale_uniform::UpscaleUniform;
 use crate::pass::view_binding::ViewBinding;
 use crate::pass::view_light_groups::ViewLightGroups;
@@ -76,11 +80,11 @@ use crate::scene::level::grass_level::GrassLevel;
 use crate::scene::level::level_frame::LevelFrame;
 use crate::scene::level::level_overlays::LevelOverlays;
 use crate::scene::level::level_scene::LevelScene;
-use crate::scene::level::level_smoothing::LevelSmoothing;
 use crate::scene::level::level_water::WaterFrame;
 use crate::scene::level::lights_frame::LightsFrame;
 use crate::scene::level::lights_view::LightsView;
-use crate::scene::level::scene_renderer::{SceneRenderer, SkyGroupKey};
+use crate::scene::level::scene_output::SceneOutput;
+use crate::scene::level::scene_renderer::SceneRenderer;
 use crate::scene::level::shadow_frame::ShadowFrame;
 use crate::scene::level::shadow_sway::ShadowSway;
 use crate::scene::level::view_info::ViewInfo;
@@ -316,40 +320,16 @@ impl SceneView {
     );
 
     let sky = &lighting.sky;
-    let sky_key: SkyGroupKey = (
-      weather_textures.get_generation(),
-      [
-        sky.textures[0].clone(),
-        sky.textures[1].clone(),
-        sky.environments[0].clone(),
-        sky.environments[1].clone(),
-        sky.clouds.textures[0].clone(),
-        sky.clouds.textures[1].clone(),
-        self.info.sun_sprite.as_ref().map(|(texture, _)| texture.clone()),
-      ],
-      scene.environments.0,
-    );
 
-    if self.renderer.sky_group.as_ref().is_none_or(|(key, _)| *key != sky_key) {
-      self.renderer.sky_group = Some((
-        sky_key,
-        passes.sky.create_bind_group(
-          device,
-          weather_textures,
-          (sky, self.info.sun_sprite.as_ref().map(|(texture, _)| texture.as_str())),
-          &scene.environments.1,
-        ),
-      ));
-    }
+    self.info.sky = Some(passes.sky.collect(
+      weather_textures,
+      (sky, self.info.sun_sprite.as_ref().map(|(texture, _)| texture.as_str())),
+      &scene.environments.1,
+    ));
 
     // The ambient effects blow the wind the grass, the rain and the campfires read this frame.
     let gust: AmbientGust = scene.gust;
 
-    self.info.sky_cubes = Some([0, 1].map(|index| {
-      weather_textures
-        .get_view(sky.textures[index].as_deref(), WeatherTextureKind::Cube)
-        .clone()
-    }));
     self.state.water.prepare(
       device,
       options,
@@ -421,7 +401,7 @@ impl SceneView {
       && lighting.get_sun_shafts(&options.features.sun_shafts) > 0.0
       && options.features.shadows.get_cascade_count() > 0;
     self.info.is_wallmarked = options.show.is_wallmarked;
-    self.prepare_bloom(device, queue, passes, options, lighting.engine);
+    self.prepare_bloom(options, lighting.engine);
 
     if !options.features.is_occlusion_culled {
       self.state.history = None;
@@ -484,8 +464,8 @@ impl SceneView {
     self.info.corrections = options.features.corrections;
     self.info.is_occlusion_drawn = options.mode.is_lit && options.features.ambient_occlusion.is_enabled;
     self.prepare_temporal(device, queue, passes, view);
-    self.prepare_smoothing(device, passes, options.features.antialiasing);
-    self.prepare_upscale(device, queue, passes);
+    self.prepare_smoothing(passes, options.features.antialiasing);
+    self.prepare_upscale(device);
     self.info.lights_settings = options.features.lights;
 
     queue.write_buffer(
@@ -515,16 +495,9 @@ impl SceneView {
 
     scene.particles.fill(view, options, &mut self.state.particles);
 
-    if let Some(targets) = &self.state.targets {
-      self.state.particles.upload(
-        (device, queue),
-        passes.particles,
-        (&self.renderer.lighting, scene.particles.get_surfaces()),
-        (targets, self.state.targets_epoch),
-      );
-    }
+    self.state.particles.upload((device, queue));
 
-    self.write_present(queue, options);
+    self.write_present(options);
     self.prepare_shadows(scene, device, queue, encoder, (view_layout, textures));
   }
 
@@ -802,9 +775,9 @@ impl SceneView {
     }
   }
 
-  /// Writes what the present pass reads, once the frame knows what draws into the distortion target: `def_distort`
+  /// Notes what the present pass reads, once the frame knows what draws into the distortion target: `def_distort`
   /// while the water or a particle does, nothing otherwise.
-  fn write_present(&self, queue: &wgpu::Queue, options: &RenderViewOptions) {
+  fn write_present(&mut self, options: &RenderViewOptions) {
     let Some(targets) = &self.state.targets else {
       return;
     };
@@ -813,32 +786,21 @@ impl SceneView {
     let is_distorting: bool =
       !options.mode.is_wireframe && (is_water_distorting || self.state.particles.is_distorting());
 
-    queue.write_buffer(
-      &self.renderer.present,
-      0,
-      bytemuck::bytes_of(&PresentUniform::new(
-        self.info.debug_view,
-        self.info.is_occlusion_drawn,
-        !targets.is_sized(self.info.output.width, self.info.output.height),
-        if is_distorting { water.distortion } else { 0.0 },
-        self.info.output,
-        &self.info.corrections,
-        (self.info.selection_color, self.info.is_bloomed),
-      )),
+    self.info.present = PresentUniform::new(
+      self.info.debug_view,
+      self.info.is_occlusion_drawn,
+      !targets.is_sized(self.info.output.width, self.info.output.height),
+      if is_distorting { water.distortion } else { 0.0 },
+      self.info.output,
+      &self.info.corrections,
+      (self.info.selection_color, self.info.is_bloomed),
     );
   }
 
-  /// Writes this frame's bloom while the view blooms (`phase_bloom`): the build's threshold over the frame's size, and
+  /// Notes this frame's bloom while the view blooms (`phase_bloom`): the build's threshold over the frame's size, and
   /// the blur across and down, down by the frame's height over its width, one-sided on Monolith as Anomaly's
-  /// `bloom_filter.ps` reads it; and what the draws bind.
-  fn prepare_bloom(
-    &mut self,
-    device: &wgpu::Device,
-    queue: &wgpu::Queue,
-    passes: LevelPasses<'_>,
-    options: &RenderViewOptions,
-    engine: XrayEngine,
-  ) {
+  /// `bloom_filter.ps` reads it.
+  fn prepare_bloom(&mut self, options: &RenderViewOptions, engine: XrayEngine) {
     let bloom: &RenderBloomSettings = &options.features.bloom;
 
     self.info.is_bloomed =
@@ -851,29 +813,12 @@ impl SceneView {
     let size: (u32, u32) = (targets.width, targets.height);
     let aspect: f32 = size.1 as f32 / size.0 as f32;
     let is_one_sided: bool = engine == XrayEngine::Extended;
-    let uniforms: [BloomUniform; 3] = [
+
+    self.info.bloom = [
       BloomUniform::build(size, bloom.threshold),
       BloomUniform::filter(true, (bloom.radius, bloom.strength), aspect, is_one_sided),
       BloomUniform::filter(false, (bloom.radius, bloom.strength), aspect, is_one_sided),
     ];
-
-    for (buffer, uniform) in self.renderer.bloom_uniforms.iter().zip(uniforms) {
-      queue.write_buffer(buffer, 0, bytemuck::bytes_of(&uniform));
-    }
-
-    if self
-      .renderer
-      .bloom_groups
-      .as_ref()
-      .is_none_or(|(epoch, _)| *epoch != self.state.targets_epoch)
-    {
-      self.renderer.bloom_groups = Some((
-        self.state.targets_epoch,
-        passes
-          .bloom
-          .create_bind_groups(device, targets, &self.renderer.bloom_uniforms),
-      ));
-    }
   }
 
   /// Writes this frame's rain, while the weather rains and the view shows it: the splash's model built for the
@@ -1124,7 +1069,7 @@ impl SceneView {
     view: &'a ViewBinding,
     textures: &'a TextureCache,
     frame: &LevelFrame,
-  ) {
+  ) -> Option<SceneOutput> {
     let is_occluding: bool = self.info.cull.is_occluding != 0;
     let pick_slot: Option<usize> = frame.pick_slot;
     let resolve: Option<&'static str> = frame.resolve;
@@ -1135,24 +1080,33 @@ impl SceneView {
     let is_lit: bool = frame.is_lit;
     let has_lights: bool = self.state.lights.get_count() > 0;
     let is_occlusion_ambient: bool = self.info.ambient_occlusion.is_enabled;
-    let has_sky: bool = self.renderer.sky_group.is_some();
+    let has_sky: bool = self.info.sky.is_some();
     let is_hazing: bool = has_sky && self.info.is_hazing;
     let is_composited: bool = is_drawn && has_sky;
     let has_particles: bool = is_drawn && self.state.particles.is_drawing();
     let is_shafted: bool = self.info.is_shafted;
     let is_rain_drawn: bool = is_raining && self.renderer.rain_group.is_some();
     let is_thundering: bool = self.info.thunder_draw.is_some() && self.renderer.thunder_groups.is_some();
-    let is_bloomed: bool = self.info.is_bloomed && self.renderer.bloom_groups.is_some();
-    let is_smoothed: bool = self.state.smoothing.is_some();
+    let is_bloomed: bool = self.info.is_bloomed;
+    let particle_surfaces: &wgpu::Buffer = scene.particles.get_surfaces();
+    let smoothing: Option<RenderAntialiasing> = self.info.smoothing;
     let is_sharpened: bool = self.state.upscale.is_some() && self.info.upscaling.is_sharpened();
     let is_adapting: bool = self.state.exposure.is_adapting();
     let texture_group: &wgpu::BindGroup = textures.get_bind_group();
     let scene_view: &'a SceneView = self;
     let (Some(targets), Some((pyramid, pyramid_groups))) = (&scene_view.state.targets, &scene_view.state.pyramid)
     else {
-      return;
+      return None;
     };
     let handles: ViewTargetHandles = ViewTargetHandles::import(&mut *graph, &mut *bindings, targets);
+    // The resolved frame goes where the present pass reads it: the upscaled frame, or the scene drawn at its size.
+    let upscaled: Option<[GraphTexture; 2]> = scene_view.state.upscale.as_ref().map(|upscale| {
+      [
+        bindings.import_view(&mut *graph, "upscaled", &upscale.views[0]),
+        bindings.import_view(&mut *graph, "sharpened", &upscale.views[1]),
+      ]
+    });
+    let upscale: UniformBinding<UpscaleUniform> = runtime.push_uniform(&scene_view.info.upscale);
     let statics: StaticSceneHandles = StaticSceneHandles::import(
       (&mut *graph, &mut *bindings, runtime),
       &scene.statics,
@@ -1309,17 +1263,24 @@ impl SceneView {
         (has_lights, is_occlusion_ambient),
       );
 
-      if let (true, Some((_, sky_group))) = (is_hazing, &scene_view.renderer.sky_group) {
+      let sky: Option<SkyParameters> = scene_view
+        .info
+        .sky
+        .as_ref()
+        .map(|views| passes.sky.import(views, &mut *graph, &mut *bindings));
+
+      if let (true, Some(sky)) = (is_hazing, sky) {
         graph
           .add_raster_pass("haze")
+          .parameters(&sky)
           .color(GraphColorAttachment::new(
             handles.haze,
             wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
           ))
-          .record(move |context| passes.sky_haze.record(context.get_pass(), &groups.haze, sky_group));
+          .record(move |context| passes.sky_haze.record(context, &groups.haze, &sky));
       }
 
-      if let (true, Some((_, sky_group))) = (has_sky, &scene_view.renderer.sky_group) {
+      if let Some(sky) = sky {
         [
           handles.albedo,
           handles.normal,
@@ -1330,7 +1291,7 @@ impl SceneView {
           handles.haze,
         ]
         .into_iter()
-        .fold(graph.add_raster_pass("combine"), |builder, texture| {
+        .fold(graph.add_raster_pass("combine").parameters(&sky), |builder, texture| {
           builder.texture(texture, GraphTextureAccess::Sampled)
         })
         .color(GraphColorAttachment::new(
@@ -1341,11 +1302,7 @@ impl SceneView {
           handles.high,
           wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
         ))
-        .record(move |context| {
-          passes
-            .combine
-            .record(context.get_pass(), view, &groups.combine, sky_group)
-        });
+        .record(move |context| passes.combine.record(context, view, &groups.combine, &sky));
       }
 
       let scene: GraphTexture = handles.scene;
@@ -1369,7 +1326,10 @@ impl SceneView {
           });
       }
 
-      if let (true, Some(skies)) = (scene_view.state.water.is_drawn(), &scene_view.info.sky_cubes) {
+      if let (true, Some(skies)) = (
+        scene_view.state.water.is_drawn(),
+        scene_view.info.sky.as_ref().map(|sky| &sky.cubes),
+      ) {
         let draw: WaterDraw<'_> = WaterDraw {
           targets: handles,
           view,
@@ -1387,7 +1347,7 @@ impl SceneView {
 
       graph.begin_group("post");
 
-      if let (true, Some((_, sky_group))) = (is_composited, &scene_view.renderer.sky_group) {
+      if let (true, Some(sky)) = (is_composited, sky) {
         let args: Vec<GraphBuffer> = Self::list_draw_args(&statics, &scene_view.info.cull);
         // The models' composited clusters, back to front, which the view lists itself.
         let sorted: Option<StaticDrawParameters> = scene_view
@@ -1408,7 +1368,8 @@ impl SceneView {
         let builder = match &sorted {
           Some(sorted) => builder.parameters(sorted),
           None => builder,
-        };
+        }
+        .parameters(&sky);
 
         builder.record(move |context| {
           let args: Vec<&wgpu::Buffer> = args.iter().map(|args| context.get_buffer(*args)).collect();
@@ -1416,7 +1377,7 @@ impl SceneView {
           passes.composited.record(
             context,
             (view, &layouts, texture_group),
-            (&groups.composited, sky_group),
+            (&groups.composited, &sky),
             &args,
             (sorted.as_ref(), sorted_count),
           );
@@ -1424,10 +1385,16 @@ impl SceneView {
       }
 
       if has_particles {
-        scene_view
-          .state
-          .particles
-          .add_passes(&mut *graph, passes.particles, handles, (view, texture_group));
+        scene_view.state.particles.add_passes(
+          (&mut *graph, &mut *bindings),
+          passes.particles,
+          (
+            handles,
+            runtime.push_uniform(&scene_view.info.lighting),
+            particle_surfaces,
+          ),
+          (view, texture_group),
+        );
       }
 
       if is_shafted {
@@ -1462,7 +1429,7 @@ impl SceneView {
         .flares
         .add_passes(&mut *graph, passes.flares, handles, view);
 
-      if let (true, Some((_, bloom_groups))) = (is_bloomed, &scene_view.renderer.bloom_groups) {
+      if is_bloomed {
         // Built from the high target into the first, blurred across into the second, then down into the first.
         for (stage, (read, written)) in [
           (handles.high, handles.bloom[0]),
@@ -1472,67 +1439,89 @@ impl SceneView {
         .into_iter()
         .enumerate()
         {
+          let parameters: BloomParameters = BloomParameters {
+            source: read,
+            source_sampler: passes.bloom.get_sampler(),
+            bloom: runtime.push_uniform(&scene_view.info.bloom[stage]),
+          };
+
           graph
             .add_raster_pass(BloomPass::STAGES[stage])
-            .texture(read, GraphTextureAccess::Sampled)
+            .parameters(&parameters)
             .color(GraphColorAttachment::new(
               written,
               wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
             ))
-            .record(move |context| passes.bloom.record(context.get_pass(), stage, bloom_groups));
+            .record(move |context| passes.bloom.record(context, stage, &parameters));
         }
       }
 
-      if let Some(smoothing) = scene_view.state.smoothing.as_ref().filter(|_| is_smoothed) {
-        let target: GraphTexture = bindings.import_view(&mut *graph, "smoothed", &smoothing.target.view);
+      if let Some(mode) = smoothing {
+        let sized = |label: &'static str, format: wgpu::TextureFormat| {
+          GraphTextureDescriptor::new_2d(label, targets.width, targets.height, format)
+        };
+        let target: GraphTexture = graph.create_texture(sized("smoothed", ViewTargets::SCENE));
 
-        match (&smoothing.smaa, passes.smaa) {
-          (Some(smaa), Some(pass)) => {
-            let edges: GraphTexture = bindings.import_view(&mut *graph, "smaa edges", &smaa.edges);
-            let weights: GraphTexture = bindings.import_view(&mut *graph, "smaa weights", &smaa.weights);
+        match (mode, passes.smaa) {
+          (RenderAntialiasing::Smaa, Some(pass)) => {
+            let edges: GraphTexture = graph.create_texture(sized("smaa edges", SmaaPass::TARGET_FORMAT));
+            let weights: GraphTexture = graph.create_texture(sized("smaa weights", SmaaPass::TARGET_FORMAT));
+            let [area, search, empty] = pass.get_lookups();
+            let [area, search] = [("smaa area", area), ("smaa search", search)]
+              .map(|(label, view)| bindings.import_view(&mut *graph, label, view));
+            // Each stage reads an empty texture where it would read what it writes or what comes after it.
+            let [no_edges, no_weights] =
+              ["smaa no edges", "smaa no weights"].map(|label| bindings.import_view(&mut *graph, label, empty));
+            let [linear_sampler, point_sampler] = pass.get_samplers();
 
-            for (stage, (name, reads, written)) in [
-              ("smaa edges", vec![handles.scene], edges),
-              ("smaa weights", vec![edges], weights),
-              ("smaa", vec![handles.scene, weights], target),
+            for (stage, (name, (edges_texture, weights_texture), written)) in [
+              ("smaa edges", (no_edges, no_weights), edges),
+              ("smaa weights", (edges, no_weights), weights),
+              ("smaa", (edges, weights), target),
             ]
             .into_iter()
             .enumerate()
             {
-              reads
-                .into_iter()
-                .fold(graph.add_raster_pass(name), |builder, texture| {
-                  builder.texture(texture, GraphTextureAccess::Sampled)
-                })
+              let parameters: SmaaParameters = SmaaParameters {
+                source: handles.scene,
+                edges_texture,
+                weights_texture,
+                area_texture: area,
+                search_texture: search,
+                linear_sampler,
+                point_sampler,
+              };
+
+              graph
+                .add_raster_pass(name)
+                .parameters(&parameters)
                 .color(GraphColorAttachment::new(
                   written,
                   wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
                 ))
-                .record(move |context| pass.record(context.get_pass(), stage, &smoothing.groups));
+                .record(move |context| pass.record(context, stage, &parameters));
             }
           }
           _ => {
+            let parameters: FxaaParameters = FxaaParameters {
+              frame: handles.scene,
+              frame_sampler: passes.fxaa.get_sampler(),
+            };
+
             graph
               .add_raster_pass("fxaa")
-              .texture(handles.scene, GraphTextureAccess::Sampled)
+              .parameters(&parameters)
               .color(GraphColorAttachment::new(
                 target,
                 wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
               ))
-              .record(move |context| passes.fxaa.record(context.get_pass(), &smoothing.groups[0]));
+              .record(move |context| passes.fxaa.record(context, &parameters));
           }
         }
 
         Self::add_copy(&mut *graph, "smoothed copy", target, handles.scene);
       }
 
-      // The resolved frame goes where the present pass reads it: the upscaled frame, or the scene drawn at its size.
-      let upscaled: Option<[GraphTexture; 2]> = scene_view.state.upscale.as_ref().map(|(upscale, _)| {
-        [
-          bindings.import_view(&mut *graph, "upscaled", &upscale.views[0]),
-          bindings.import_view(&mut *graph, "sharpened", &upscale.views[1]),
-        ]
-      });
       let resolved: GraphTexture = upscaled.map_or(handles.scene, |[upscaled, _]| upscaled);
 
       match (
@@ -1561,32 +1550,40 @@ impl SceneView {
             .record(move |context| passes.temporal.record(context.get_pass(), view, &groups[index]));
           Self::add_copy(&mut *graph, "temporal output", target, resolved);
         }
-        (Some(_), _, _, Some((_, groups))) => {
+        (Some(_), _, _, Some(_)) => {
           if let Some([upscaled, _]) = upscaled {
+            let parameters: UpscaleParameters = UpscaleParameters {
+              source: handles.scene,
+              upscale,
+            };
+
             graph
               .add_raster_pass("upscale")
-              .texture(handles.scene, GraphTextureAccess::Sampled)
+              .parameters(&parameters)
               .color(GraphColorAttachment::new(
                 upscaled,
                 wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
               ))
-              .record(move |context| passes.upscale.record(context.get_pass(), 0, &groups[0]));
+              .record(move |context| passes.upscale.record(context, 0, &parameters));
           }
         }
         _ => {}
       }
 
-      if let (true, Some((_, groups)), Some([upscaled, sharpened])) =
-        (is_sharpened, &scene_view.state.upscale, upscaled)
-      {
+      if let (true, Some([upscaled, sharpened])) = (is_sharpened, upscaled) {
+        let parameters: UpscaleParameters = UpscaleParameters {
+          source: upscaled,
+          upscale,
+        };
+
         graph
           .add_raster_pass("sharpen")
-          .texture(upscaled, GraphTextureAccess::Sampled)
+          .parameters(&parameters)
           .color(GraphColorAttachment::new(
             sharpened,
             wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
           ))
-          .record(move |context| passes.upscale.record(context.get_pass(), 1, &groups[1]));
+          .record(move |context| passes.upscale.record(context, 1, &parameters));
       }
 
       if is_adapting {
@@ -1610,6 +1607,18 @@ impl SceneView {
         (target, slot),
       );
     }
+
+    Some(SceneOutput {
+      targets: handles,
+      shown: upscaled.map_or(
+        handles.scene,
+        |[upscaled, sharpened]| {
+          if is_sharpened { sharpened } else { upscaled }
+        },
+      ),
+      present: runtime.push_uniform(&scene_view.info.present),
+      lighting: runtime.push_uniform(&scene_view.info.lighting),
+    })
   }
 
   /// The draw arguments a forward pass replays: the early phase's, and the late phase's where occlusion culls.
@@ -1913,137 +1922,44 @@ impl SceneView {
     queue.write_buffer(buffer, 0, bytes);
   }
 
-  /// Makes the smoothing pass's targets while one smooths the frame as drawn, dropping them otherwise.
-  fn prepare_smoothing(&mut self, device: &wgpu::Device, passes: LevelPasses<'_>, mode: RenderAntialiasing) {
+  /// Notes the smoothing pass while one smooths the frame as drawn.
+  fn prepare_smoothing(&mut self, passes: LevelPasses<'_>, mode: RenderAntialiasing) {
     // SMAA whose lookup textures could not be read smooths as FXAA does, which needs none.
     let mode: RenderAntialiasing = match (mode, passes.smaa) {
       (RenderAntialiasing::Smaa, None) => RenderAntialiasing::Fxaa,
       _ => mode,
     };
-    let is_smoothed: bool = matches!(mode, RenderAntialiasing::Fxaa | RenderAntialiasing::Smaa);
-    let Some(targets) = self
-      .state
-      .targets
-      .as_ref()
-      .filter(|_| is_smoothed && self.info.debug_view == RenderDebugView::Final)
-    else {
-      self.state.smoothing = None;
+    let is_smoothed: bool = matches!(mode, RenderAntialiasing::Fxaa | RenderAntialiasing::Smaa)
+      && self.state.targets.is_some()
+      && self.info.debug_view == RenderDebugView::Final;
 
-      return;
-    };
-
-    if self
-      .state
-      .smoothing
-      .as_ref()
-      .is_none_or(|it| it.epoch != self.state.targets_epoch || it.mode != mode)
-    {
-      let target: SmoothingTarget = SmoothingTarget::new(device, targets.width, targets.height, ViewTargets::SCENE);
-      let (smaa, groups): (Option<SmaaTargets>, Vec<wgpu::BindGroup>) = match (mode, passes.smaa) {
-        (RenderAntialiasing::Smaa, Some(pass)) => {
-          let smaa: SmaaTargets = SmaaTargets::new(device, targets.width, targets.height);
-          let groups: [wgpu::BindGroup; 3] = pass.create_bind_groups(device, targets, &smaa);
-
-          (Some(smaa), groups.into())
-        }
-        _ => (None, vec![passes.fxaa.create_bind_group(device, targets)]),
-      };
-
-      self.state.smoothing = Some(LevelSmoothing {
-        epoch: self.state.targets_epoch,
-        mode,
-        target,
-        smaa,
-        groups,
-      });
-    }
+    self.info.smoothing = is_smoothed.then_some(mode);
   }
 
-  /// Makes the frame at the viewport's size while the scene is drawn smaller, dropping it otherwise; writes what the
-  /// upscale pass reads, and binds the frame the present pass shows.
-  fn prepare_upscale(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, passes: LevelPasses<'_>) {
+  /// Makes the frame at the viewport's size while the scene is drawn smaller, dropping it otherwise, and notes what the
+  /// upscale passes read.
+  fn prepare_upscale(&mut self, device: &wgpu::Device) {
     let Some(targets) = &self.state.targets else {
       return;
     };
     let output: RenderRect = self.info.output;
-    let is_upscaled: bool = !targets.is_sized(output.width, output.height);
 
-    if !is_upscaled {
+    if targets.is_sized(output.width, output.height) {
       self.state.upscale = None;
     } else if self
       .state
       .upscale
       .as_ref()
-      .is_none_or(|(upscale, _)| !upscale.is_sized(output.width, output.height))
+      .is_none_or(|upscale| !upscale.is_sized(output.width, output.height))
     {
-      let upscale: UpscaleTargets = UpscaleTargets::new(device, output.width, output.height);
-      let groups: [wgpu::BindGroup; 2] = [
-        passes
-          .upscale
-          .create_bind_group(device, &targets.scene, &self.renderer.upscale_uniform),
-        passes
-          .upscale
-          .create_bind_group(device, &upscale.views[0], &self.renderer.upscale_uniform),
-      ];
-
-      self.state.upscale = Some((upscale, groups));
-      self.state.upscale_epoch += 1;
+      self.state.upscale = Some(UpscaleTargets::new(device, output.width, output.height));
     }
 
-    // An upscale made before the targets were reads a scene since dropped.
-    if let Some((upscale, groups)) = &mut self.state.upscale
-      && self
-        .renderer
-        .present_group
-        .as_ref()
-        .is_none_or(|(key, _)| key.0 != self.state.targets_epoch)
-    {
-      groups[0] = passes
-        .upscale
-        .create_bind_group(device, &targets.scene, &self.renderer.upscale_uniform);
-      groups[1] = passes
-        .upscale
-        .create_bind_group(device, &upscale.views[0], &self.renderer.upscale_uniform);
-    }
-
-    queue.write_buffer(
-      &self.renderer.upscale_uniform,
-      0,
-      bytemuck::bytes_of(&UpscaleUniform {
-        output_size: [output.width as f32, output.height as f32],
-        sharpness: self.info.upscaling.get_sharpness(),
-        pad: 0.0,
-      }),
-    );
-    if self
-      .renderer
-      .overlay_group
-      .as_ref()
-      .is_none_or(|(epoch, _)| *epoch != self.state.targets_epoch)
-    {
-      let group: wgpu::BindGroup =
-        passes
-          .overlay
-          .create_bind_group(device, targets, &self.renderer.present, &self.renderer.lighting);
-
-      self.renderer.overlay_group = Some((self.state.targets_epoch, group));
-    }
-
-    let shown: usize = usize::from(self.info.upscaling.is_sharpened());
-    let key: (u64, u64, usize) = (
-      self.state.targets_epoch,
-      if is_upscaled { self.state.upscale_epoch } else { 0 },
-      shown,
-    );
-
-    if self.renderer.present_group.as_ref().is_none_or(|(it, _)| *it != key) {
-      let upscaled: Option<&wgpu::TextureView> = self.state.upscale.as_ref().map(|(upscale, _)| &upscale.views[shown]);
-      let group: wgpu::BindGroup = passes
-        .present
-        .create_bind_group(device, targets, &self.renderer.present, upscaled);
-
-      self.renderer.present_group = Some((key, group));
-    }
+    self.info.upscale = UpscaleUniform {
+      output_size: Vec2::new(output.width as f32, output.height as f32),
+      sharpness: self.info.upscaling.get_sharpness(),
+      _pad: 0.0,
+    };
   }
 
   /// Asks for the counts recorded with the frame just submitted.
@@ -2057,11 +1973,7 @@ impl SceneView {
     let antialiasing: RenderAntialiasing = if self.info.is_temporal {
       options.features.antialiasing
     } else {
-      self
-        .state
-        .smoothing
-        .as_ref()
-        .map_or(RenderAntialiasing::None, |it| it.mode)
+      self.info.smoothing.unwrap_or(RenderAntialiasing::None)
     };
     let cascades: usize = self.info.shadow_settings.get_cascade_count();
 
@@ -2175,14 +2087,9 @@ impl SceneView {
     Some(resolved)
   }
 
-  /// What it draws over its frame, with the bind group drawing it, once both are made.
-  pub fn get_overlays(&self) -> Option<(&wgpu::BindGroup, &LevelOverlays)> {
-    Some((&self.renderer.overlay_group.as_ref()?.1, self.state.overlays.as_ref()?))
-  }
-
-  /// What puts the level's finished scene into the window, once its targets are made.
-  pub fn get_present_group(&self) -> Option<&wgpu::BindGroup> {
-    self.renderer.present_group.as_ref().map(|(_, group)| group)
+  /// What it draws over its frame, once made.
+  pub fn get_overlays(&self) -> Option<&LevelOverlays> {
+    self.state.overlays.as_ref()
   }
 }
 

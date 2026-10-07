@@ -12,6 +12,8 @@ pub trait PassParameters {
   const LAYOUT_KEY: &'static str;
   /// Each field's binding index, in field order.
   const BINDINGS: &'static [u32];
+  /// The WGSL extensions its bindings need enabled, as `wgpu_binding_array` for a binding array.
+  const ENABLES: &'static [&'static str];
 
   fn get_layout_entries() -> Vec<wgpu::BindGroupLayoutEntry>;
 

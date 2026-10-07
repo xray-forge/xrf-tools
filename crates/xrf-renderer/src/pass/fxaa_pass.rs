@@ -1,11 +1,12 @@
 use xrf_error::XrfResult;
+use xrf_renderer_core::{PassParameters, RasterContext};
 
 use crate::frame::view_targets::ViewTargets;
-use crate::pass::fullscreen_pipeline::{create_fullscreen_pipeline, texture_binding};
-use crate::pass::layout_entries::texture_entry;
+use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline;
+use crate::pass::fxaa_parameters::FxaaParameters;
 use crate::shader::shader_library::ShaderLibrary;
 
-/// FXAA over a viewport's scene as drawn, into a target the scene is copied back from.
+/// FXAA over a viewport's scene as drawn, into a frame's target the scene is copied back from.
 pub struct FxaaPass {
   layout: wgpu::BindGroupLayout,
   sampler: wgpu::Sampler,
@@ -18,24 +19,7 @@ impl FxaaPass {
   ///
   /// Returns an error when the shader does not compose or compile.
   pub fn new(device: &wgpu::Device, shaders: &ShaderLibrary) -> XrfResult<Self> {
-    let fragment: wgpu::ShaderStages = wgpu::ShaderStages::FRAGMENT;
-    let layout: wgpu::BindGroupLayout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-      label: Some("fxaa"),
-      entries: &[
-        texture_entry(
-          0,
-          fragment,
-          wgpu::TextureSampleType::Float { filterable: true },
-          wgpu::TextureViewDimension::D2,
-        ),
-        wgpu::BindGroupLayoutEntry {
-          binding: 1,
-          visibility: fragment,
-          ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-          count: None,
-        },
-      ],
-    });
+    let layout: wgpu::BindGroupLayout = FxaaParameters::create_layout(device);
 
     Ok(Self {
       pipeline: Self::create_pipeline(device, shaders, &layout)?,
@@ -61,24 +45,15 @@ impl FxaaPass {
     }
   }
 
-  pub fn create_bind_group(&self, device: &wgpu::Device, targets: &ViewTargets) -> wgpu::BindGroup {
-    device.create_bind_group(&wgpu::BindGroupDescriptor {
-      label: Some("fxaa"),
-      layout: &self.layout,
-      entries: &[
-        texture_binding(0, &targets.scene),
-        wgpu::BindGroupEntry {
-          binding: 1,
-          resource: wgpu::BindingResource::Sampler(&self.sampler),
-        },
-      ],
-    })
+  /// The sampler it reads the scene with, which its parameters bind.
+  pub fn get_sampler(&self) -> &wgpu::Sampler {
+    &self.sampler
   }
 
-  pub fn record(&self, pass: &mut wgpu::RenderPass<'_>, bind_group: &wgpu::BindGroup) {
-    pass.set_pipeline(&self.pipeline);
-    pass.set_bind_group(0, bind_group, &[]);
-    pass.draw(0..3, 0..1);
+  pub fn record(&self, context: &mut RasterContext<'_>, parameters: &FxaaParameters<'_>) {
+    context.get_pass().set_pipeline(&self.pipeline);
+    context.bind(parameters);
+    context.get_pass().draw(0..3, 0..1);
   }
 
   fn create_pipeline(

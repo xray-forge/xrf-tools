@@ -110,11 +110,11 @@ impl ParticleSprite {
     let b: Vec3 = along_top + along_right;
     let color: u32 = Self::pack_color(m);
     let corner = |offset: Vec3, uv: Vec2| ParticleVertex {
-      position: Self::mirror(m.position + offset).to_array(),
+      position: Self::mirror(m.position + offset),
       color,
-      uv: uv.to_array(),
+      uv,
       surface,
-      pad: 0,
+      _pad: 0,
     };
 
     vertices.push(corner(-b, Vec2::new(lt.x, rb.y)));

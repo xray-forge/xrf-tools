@@ -4,13 +4,7 @@
 // Fernando Navarro, Diego Gutierrez), as three.js's `SMAANode` stages it: the frame's edges found, the area each edge
 // pattern covers looked up for every edge pixel, and each pixel blended with its neighbour across the strongest.
 
-@group(0) @binding(0) var source: texture_2d<f32>;
-@group(0) @binding(1) var edges_texture: texture_2d<f32>;
-@group(0) @binding(2) var weights_texture: texture_2d<f32>;
-@group(0) @binding(3) var area_texture: texture_2d<f32>;
-@group(0) @binding(4) var search_texture: texture_2d<f32>;
-@group(0) @binding(5) var linear_sampler: sampler;
-@group(0) @binding(6) var point_sampler: sampler;
+#import "generated/frame/smaa"
 
 const THRESHOLD: f32 = 0.1;
 const MAX_SEARCH_STEPS: i32 = 8;

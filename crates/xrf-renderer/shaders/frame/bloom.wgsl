@@ -4,17 +4,11 @@
 // blurred across and down by a fifteen-tap Gaussian (`bloom_filter.ps`). Every target is eight bits a channel, as the
 // engine's are, so each stage clamps to one.
 
-@group(0) @binding(0) var source: texture_2d<f32>;
-@group(0) @binding(1) var source_sampler: sampler;
-@group(0) @binding(2) var<uniform> bloom: Bloom;
-
-struct Bloom {
-  // The build: x, y half a texel of the frame, z the threshold. A filter: x, y one texel of the target along its way,
-  // z one where only the side behind is read, as Anomaly's `bloom_filter.ps` reads it.
-  params: vec4<f32>,
-  // `CalcGauss_wave`'s weights: the taps one to four out, then five to seven out and the centre.
-  weights: array<vec4<f32>, 2>,
-};
+// The source and its sampler, and the draw's `Bloom`: for the build, x, y half a texel of the frame and z the threshold;
+// for a filter, x, y one texel of the target along its way and z one where only the side behind is read, as Anomaly's
+// `bloom_filter.ps` reads it; then `CalcGauss_wave`'s weights, the taps one to four out, then five to seven out and the
+// centre.
+#import "generated/frame/bloom"
 
 // `BLOOM_size_X`, `BLOOM_size_Y`.
 const BLOOM_SIZE: vec2<f32> = vec2<f32>(256.0, 256.0);

@@ -1,10 +1,13 @@
 use std::ops::Range;
 
-use xrf_renderer_core::{FrameGraph, GraphColorAttachment, GraphDepthAttachment};
+use xrf_renderer_core::{
+  FrameGraph, GraphBindings, GraphColorAttachment, GraphDepthAttachment, StorageArray, UniformBinding,
+};
 
 use crate::frame::view_target_handles::ViewTargetHandles;
-use crate::frame::view_targets::ViewTargets;
+use crate::pass::lighting_uniform::LightingUniform;
 use crate::pass::particle_batch::ParticleBatch;
+use crate::pass::particle_parameters::ParticleParameters;
 use crate::pass::particle_pass::ParticlePass;
 use crate::pass::particle_vertex::ParticleVertex;
 use crate::pass::view_binding::ViewBinding;
@@ -22,10 +25,6 @@ pub struct ParticlesView {
   /// How many effects it draws this frame.
   pub drawn: u32,
   vertex_buffer: wgpu::Buffer,
-  /// Bumped whenever the vertex buffer is replaced, which the bind group follows.
-  vertices_generation: u64,
-  /// The bind group, with the targets' epoch and the vertex and surface buffers' generations it binds.
-  group: Option<((u64, u64, u64), wgpu::BindGroup)>,
 }
 
 impl ParticlesView {
@@ -39,8 +38,6 @@ impl ParticlesView {
         device,
         INITIAL_QUADS * u64::from(ParticleVertex::CORNERS) * size_of::<ParticleVertex>() as u64,
       ),
-      vertices_generation: 0,
-      group: None,
     }
   }
 
@@ -52,71 +49,59 @@ impl ParticlesView {
     self.drawn = 0;
   }
 
-  /// Writes the quads filled this frame, growing the buffer past them, and binds what the pass draws them with: the
-  /// scene's `surfaces` and how many times they were made.
-  pub fn upload(
-    &mut self,
-    (device, queue): (&wgpu::Device, &wgpu::Queue),
-    pass: &ParticlePass,
-    (lighting, surfaces): (&wgpu::Buffer, (&wgpu::Buffer, u64)),
-    (targets, targets_epoch): (&ViewTargets, u64),
-  ) {
+  /// Writes the quads filled this frame, growing the buffer past them.
+  pub fn upload(&mut self, (device, queue): (&wgpu::Device, &wgpu::Queue)) {
     let size: u64 = (self.vertices.len() * size_of::<ParticleVertex>()) as u64;
 
     if size > self.vertex_buffer.size() {
       self.vertex_buffer = Self::create_storage(device, size.next_power_of_two());
-      self.vertices_generation += 1;
     }
 
     if !self.vertices.is_empty() {
       queue.write_buffer(&self.vertex_buffer, 0, bytemuck::cast_slice(&self.vertices));
-    }
-
-    let (surfaces, surfaces_generation) = surfaces;
-    let key: (u64, u64, u64) = (targets_epoch, self.vertices_generation, surfaces_generation);
-
-    if self.group.as_ref().is_none_or(|(bound, _)| *bound != key) {
-      self.group = Some((
-        key,
-        pass.create_bind_group(device, &self.vertex_buffer, surfaces, lighting, targets),
-      ));
     }
   }
 
   /// Draws the quads filled this frame over the scene, then the distorting ones into the distortion target.
   pub fn add_passes<'a>(
     &'a self,
-    graph: &mut FrameGraph<'a>,
+    (graph, bindings): (&mut FrameGraph<'a>, &mut GraphBindings<'a>),
     pass: &'a ParticlePass,
-    targets: ViewTargetHandles,
+    (targets, lighting, surfaces): (ViewTargetHandles, UniformBinding<LightingUniform>, &'a wgpu::Buffer),
     (view, texture_group): (&'a ViewBinding, &'a wgpu::BindGroup),
   ) {
-    let Some((_, group)) = &self.group else {
-      return;
+    let parameters: ParticleParameters = ParticleParameters {
+      vertices: StorageArray::new(bindings.import_buffer(&mut *graph, "particle vertices", &self.vertex_buffer)),
+      surfaces: StorageArray::new(bindings.import_buffer(&mut *graph, "particle surfaces", surfaces)),
+      lighting,
+      depth_target: targets.depth,
+      clamped_sampler: pass.get_clamped_sampler(),
     };
 
     if !self.batches.is_empty() {
       graph
         .add_raster_pass("particles")
+        .parameters(&parameters)
         .color(GraphColorAttachment::new(targets.scene, wgpu::LoadOp::Load))
         .depth(GraphDepthAttachment::new_read_only(targets.depth))
-        .record(move |context| pass.record_colour(context.get_pass(), (view, group, texture_group), &self.batches));
+        .record(move |context| pass.record_colour(context, (view, &parameters, texture_group), &self.batches));
     }
 
     if self.is_distorting() {
       graph
         .add_raster_pass("particle distortion")
+        .parameters(&parameters)
         .color(GraphColorAttachment::new(targets.distortion, wgpu::LoadOp::Load))
         .depth(GraphDepthAttachment::new_read_only(targets.depth))
         .record(move |context| {
-          pass.record_distortion(context.get_pass(), (view, group, texture_group), &self.distortion_runs)
+          pass.record_distortion(context, (view, &parameters, texture_group), &self.distortion_runs)
         });
     }
   }
 
   /// Whether this frame has particles to draw, as `add_passes` would draw them.
   pub fn is_drawing(&self) -> bool {
-    self.group.is_some() && (!self.batches.is_empty() || self.is_distorting())
+    !self.batches.is_empty() || self.is_distorting()
   }
 
   /// Whether this frame's particles draw into the distortion target.

@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 
 use xrf_error::XrfResult;
+use xrf_renderer_core::{PassParameters, RasterContext};
 
-use crate::frame::view_targets::ViewTargets;
-use crate::pass::fullscreen_pipeline::{buffer_binding, create_fullscreen_pipeline, texture_binding};
-use crate::pass::layout_entries::{texture_entry, uniform_entry};
+use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline;
+use crate::pass::present_parameters::PresentParameters;
 use crate::pass::view_binding::ViewBinding;
 use crate::shader::shader_library::ShaderLibrary;
 
@@ -22,32 +22,7 @@ pub struct PresentPass {
 
 impl PresentPass {
   pub fn new(device: &wgpu::Device, shaders: &ShaderLibrary, view_layout: &wgpu::BindGroupLayout) -> Self {
-    let fragment: wgpu::ShaderStages = wgpu::ShaderStages::FRAGMENT;
-    let unfiltered: wgpu::TextureSampleType = wgpu::TextureSampleType::Float { filterable: false };
-    let flat: wgpu::TextureViewDimension = wgpu::TextureViewDimension::D2;
-    let layout: wgpu::BindGroupLayout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-      label: Some("present"),
-      entries: &[
-        texture_entry(0, fragment, unfiltered, flat),
-        texture_entry(1, fragment, unfiltered, flat),
-        texture_entry(2, fragment, wgpu::TextureSampleType::Depth, flat),
-        texture_entry(3, fragment, unfiltered, flat),
-        texture_entry(4, fragment, unfiltered, flat),
-        texture_entry(5, fragment, unfiltered, flat),
-        texture_entry(6, fragment, unfiltered, flat),
-        texture_entry(7, fragment, unfiltered, flat),
-        uniform_entry(8, fragment),
-        texture_entry(9, fragment, unfiltered, flat),
-        texture_entry(10, fragment, unfiltered, flat),
-        texture_entry(11, fragment, wgpu::TextureSampleType::Float { filterable: true }, flat),
-        wgpu::BindGroupLayoutEntry {
-          binding: 12,
-          visibility: fragment,
-          ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-          count: None,
-        },
-      ],
-    });
+    let layout: wgpu::BindGroupLayout = PresentParameters::create_layout(device);
 
     Self {
       layout,
@@ -93,51 +68,26 @@ impl PresentPass {
     Ok(())
   }
 
-  /// Binds the targets it shows, the uniform saying which, a `PresentUniform`, and the upscaled frame, or the scene
-  /// again where it is drawn at the viewport's size.
-  pub fn create_bind_group(
-    &self,
-    device: &wgpu::Device,
-    targets: &ViewTargets,
-    uniform: &wgpu::Buffer,
-    upscaled: Option<&wgpu::TextureView>,
-  ) -> wgpu::BindGroup {
-    device.create_bind_group(&wgpu::BindGroupDescriptor {
-      label: Some("present"),
-      layout: &self.layout,
-      entries: &[
-        texture_binding(0, &targets.scene),
-        texture_binding(1, &targets.distortion),
-        texture_binding(2, &targets.depth),
-        texture_binding(3, &targets.albedo),
-        texture_binding(4, &targets.normal),
-        texture_binding(5, &targets.material),
-        texture_binding(6, &targets.light),
-        texture_binding(7, &targets.occlusion[0]),
-        buffer_binding(8, uniform),
-        texture_binding(9, upscaled.unwrap_or(&targets.scene)),
-        texture_binding(10, &targets.motion),
-        texture_binding(11, &targets.bloom[0]),
-        wgpu::BindGroupEntry {
-          binding: 12,
-          resource: wgpu::BindingResource::Sampler(&self.bloom_sampler),
-        },
-      ],
-    })
+  /// The bloom's sampler, which a viewport's parameters bind.
+  pub fn get_bloom_sampler(&self) -> &wgpu::Sampler {
+    &self.bloom_sampler
   }
 
   /// Draws into the window's pass, whose viewport and scissor are the viewport's rectangle already.
   pub fn draw(
     &self,
-    pass: &mut wgpu::RenderPass<'_>,
+    context: &mut RasterContext<'_>,
     format: wgpu::TextureFormat,
     view: &ViewBinding,
-    bind_group: &wgpu::BindGroup,
+    parameters: &PresentParameters<'_>,
   ) {
     if let Some(pipeline) = self.pipelines.get(&format) {
-      pass.set_pipeline(pipeline);
+      context.get_pass().set_pipeline(pipeline);
+      context.bind(parameters);
+
+      let pass: &mut wgpu::RenderPass<'static> = context.get_pass();
+
       pass.set_bind_group(0, &view.bind_group, &[]);
-      pass.set_bind_group(1, bind_group, &[]);
       pass.draw(0..3, 0..1);
     }
   }

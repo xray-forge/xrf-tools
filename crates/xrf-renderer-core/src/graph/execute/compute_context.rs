@@ -24,8 +24,13 @@ impl<'c> ComputeContext<'c> {
 
   /// Binds the bind group of `parameters` at the index they declare, with their dynamic offsets.
   pub fn bind<P: PassParameters>(&mut self, parameters: &P) {
+    self.bind_at(P::GROUP, parameters);
+  }
+
+  /// Binds the bind group of `parameters` at `index`, for a pipeline holding their layout at another index.
+  pub fn bind_at<P: PassParameters>(&mut self, index: u32, parameters: &P) {
     let (group, offsets) = self.scope.get_bind_group(parameters);
 
-    self.pass.set_bind_group(P::GROUP, &group, &offsets);
+    self.pass.set_bind_group(index, &group, &offsets);
   }
 }

@@ -1,12 +1,14 @@
-use bytemuck::{Pod, Zeroable};
+use glam::{Vec2, Vec4};
+use xrf_renderer_core::ShaderStruct;
 
 use crate::contract::render_debug_view::RenderDebugView;
 use crate::contract::render_image_corrections::RenderImageCorrections;
 use crate::contract::render_rect::RenderRect;
 
-/// What the present pass shows, as `common/present.wgsl`'s `Present` declares it.
+/// What the present pass shows and the overlays drawn over it read, as WGSL's `Present`.
 #[repr(C)]
-#[derive(Clone, Copy, Debug, Default, Pod, Zeroable)]
+#[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
+#[shader(name = "Present")]
 pub struct PresentUniform {
   /// The debug view's index, zero for the finished scene.
   pub view: u32,
@@ -17,16 +19,16 @@ pub struct PresentUniform {
   /// How far the distortion target moves the scene, a share of the screen; zero where nothing wrote it this frame.
   pub distortion: f32,
   /// The viewport's top left corner in the window, and its size, in pixels.
-  pub origin: [f32; 2],
-  pub size: [f32; 2],
+  pub origin: Vec2,
+  pub size: Vec2,
   /// `img_corrections`' exposure, gamma and saturation, then its grading colour.
-  pub corrections: [f32; 4],
-  pub grading: [f32; 4],
+  pub corrections: Vec4,
+  pub grading: Vec4,
   /// The colour a selection is outlined in, `w` one while something is selected.
-  pub selection: [f32; 4],
+  pub selection: Vec4,
   /// One where the frame blooms, which the present adds where it reads the scene.
   pub is_bloomed: u32,
-  pub pad: [u32; 3],
+  pub _pad: [u32; 3],
 }
 
 impl PresentUniform {
@@ -42,17 +44,17 @@ impl PresentUniform {
     let [r, g, b] = corrections.grading;
 
     Self {
-      corrections: [corrections.exposure, corrections.gamma, corrections.saturation, 0.0],
-      grading: [r, g, b, 0.0],
+      corrections: Vec4::new(corrections.exposure, corrections.gamma, corrections.saturation, 0.0),
+      grading: Vec4::new(r, g, b, 0.0),
       view: view.get_index(),
       is_occluded: u32::from(is_occluded),
       is_upscaled: u32::from(is_upscaled),
       distortion,
-      origin: [output.x as f32, output.y as f32],
-      size: [output.width as f32, output.height as f32],
-      selection: selection.map_or([0.0; 4], |[r, g, b]| [r, g, b, 1.0]),
+      origin: Vec2::new(output.x as f32, output.y as f32),
+      size: Vec2::new(output.width as f32, output.height as f32),
+      selection: selection.map_or(Vec4::ZERO, |[r, g, b]| Vec4::new(r, g, b, 1.0)),
       is_bloomed: u32::from(is_bloomed),
-      pad: [0; 3],
+      _pad: [0; 3],
     }
   }
 }
