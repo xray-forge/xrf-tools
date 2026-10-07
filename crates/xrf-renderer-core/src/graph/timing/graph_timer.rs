@@ -17,9 +17,10 @@ pub struct GraphTimer {
   /// The slot this frame records into and what its stamps so far end, each pass by its owner and name, while a frame
   /// is timed.
   frame: Option<(usize, Vec<Option<TimedPass>>)>,
-  /// Milliseconds and frames summed per owner's pass since that owner's last `take`, in the order passes were first
-  /// seen.
-  sums: Vec<(u32, String, f64, u32)>,
+  /// Milliseconds summed per owner's pass since that owner's last `take`, in the order passes were first seen.
+  sums: Vec<(u32, String, f64)>,
+  /// Frames read back per owner since its last `take`, which its passes' sums are averaged over.
+  frames: Vec<(u32, u32)>,
 }
 
 impl GraphTimer {
@@ -65,6 +66,7 @@ impl GraphTimer {
       is_enabled: false,
       frame: None,
       sums: Vec::new(),
+      frames: Vec::new(),
     }
   }
 
@@ -77,6 +79,7 @@ impl GraphTimer {
     if self.is_enabled != is_enabled {
       self.is_enabled = is_enabled;
       self.sums.clear();
+      self.frames.clear();
     }
   }
 
@@ -101,20 +104,27 @@ impl GraphTimer {
     }
   }
 
-  /// Each of an owner's passes' mean GPU milliseconds over the frames read back since that owner's last call, which
-  /// starts its next span; `FrameGraph::FRAME_OWNER` for passes no owner was named for.
+  /// Each of an owner's passes' mean GPU milliseconds a frame over the frames read back since that owner's last call,
+  /// which starts its next span: a pass a frame did not run, as a cascade redrawn only when due, counts nought there, so
+  /// the passes add up to the frame. `FrameGraph::FRAME_OWNER` for passes no owner was named for.
   pub fn take(&mut self, owner: u32) -> Vec<GraphPassTime> {
     self.collect();
 
     let (taken, kept): (Vec<_>, Vec<_>) = std::mem::take(&mut self.sums)
       .into_iter()
       .partition(|(it, ..)| *it == owner);
+    let frames: u32 = self
+      .frames
+      .iter()
+      .find(|(it, _)| *it == owner)
+      .map_or(0, |(_, frames)| *frames);
 
     self.sums = kept;
+    self.frames.retain(|(it, _)| *it != owner);
 
     taken
       .into_iter()
-      .map(|(_, name, total, frames)| GraphPassTime {
+      .map(|(_, name, total)| GraphPassTime {
         name,
         gpu_time: (total / f64::from(frames.max(1))) as f32,
       })
@@ -186,6 +196,8 @@ impl GraphTimer {
           .map(|bytes| u64::from_le_bytes(*bytes))
           .collect();
 
+        let mut owners: Vec<u32> = Vec::new();
+
         for (index, name) in slot.names.iter().enumerate() {
           let Some((owner, name)) = name.as_ref().filter(|_| index > 0) else {
             continue;
@@ -193,16 +205,21 @@ impl GraphTimer {
           // A tick count running backwards across a pass is a driver's, not a negative cost.
           let spent: f64 = stamps[index].saturating_sub(stamps[index - 1]) as f64 * to_milliseconds;
 
-          match self
-            .sums
-            .iter_mut()
-            .find(|(it, named, ..)| it == owner && named == name)
-          {
-            Some((_, _, total, frames)) => {
-              *total += spent;
-              *frames += 1;
-            }
-            None => self.sums.push((*owner, name.clone(), spent, 1)),
+          match self.sums.iter_mut().find(|(it, named, _)| it == owner && named == name) {
+            Some((_, _, total)) => *total += spent,
+            None => self.sums.push((*owner, name.clone(), spent)),
+          }
+
+          if !owners.contains(owner) {
+            owners.push(*owner);
+          }
+        }
+
+        // Each owner's frame counted once, whatever it ran.
+        for owner in owners {
+          match self.frames.iter_mut().find(|(it, _)| *it == owner) {
+            Some((_, frames)) => *frames += 1,
+            None => self.frames.push((owner, 1)),
           }
         }
       }

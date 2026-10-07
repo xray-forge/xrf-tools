@@ -652,7 +652,7 @@ export type RenderParticlesReport = {
 export type RenderPassCost = {
   /** The pass, as the frame names it. */
   name: string;
-  /** Mean GPU milliseconds over the report's span. */
+  /** Mean GPU milliseconds a frame over the report's span, a frame it did not run in counting nought. */
   gpuTime: number | null;
 };
 
