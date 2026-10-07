@@ -3,9 +3,11 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use xrf_renderer::{
-  RenderLevelSource, RenderViewportId, RenderWorkers, RenderWorld, RenderWorldFrame, RenderWorldInput,
+  RenderLevelSource, RenderSceneFeedback, RenderSceneFrame, RenderSceneId, RenderSceneUpdate, RenderViewFrame,
+  RenderViewInput, RenderViewportId, RenderWorkers, RenderWorld,
 };
 
+use crate::contract::world_ambient_report::WorldAmbientReport;
 use crate::contract::world_camera::WorldCamera;
 use crate::contract::world_camera_command::WorldCameraCommand;
 use crate::contract::world_input_event::WorldInputEvent;
@@ -16,17 +18,22 @@ use crate::contract::world_toggles::WorldToggles;
 use crate::contract::world_weather_control::WorldWeatherControl;
 use crate::contract::world_weather_play::WorldWeatherPlay;
 use crate::contract::world_weather_transition::WorldWeatherTransition;
+use crate::level::effects_frame::EffectsFrame;
 use crate::level::world_level::WorldLevel;
 use crate::weather::viewport_weather::ViewportWeather;
 use crate::world_event_sink::WorldEventSink;
+use crate::world_scene::WorldScene;
 use crate::world_viewport::WorldViewport;
 
-/// What moves and plays in the levels the viewports show, a viewport's own: its camera, the level it shows streaming
-/// into its scene, and that level's weather and poses. The host steers it; the render thread runs it before each frame
-/// and draws what it answers.
+/// What moves and plays in the levels the viewports show: each viewport's camera and its level's weather as it plays
+/// there, and each level's scene, streamed, posed and played once for every viewport showing it, driven by the first.
+/// The host steers it; the render thread runs it before each frame and draws what it answers.
 pub struct World {
   viewports: HashMap<RenderViewportId, WorldViewport>,
-  /// The pool its weather is read on.
+  scenes: HashMap<RenderSceneId, WorldScene>,
+  /// The id the next scene takes; none is named again.
+  next_scene: u32,
+  /// The pool its levels and weather are read on.
   workers: RenderWorkers,
 }
 
@@ -34,6 +41,8 @@ impl World {
   pub fn new(workers: RenderWorkers) -> Self {
     Self {
       viewports: HashMap::new(),
+      scenes: HashMap::new(),
+      next_scene: 1,
       workers,
     }
   }
@@ -44,6 +53,7 @@ impl World {
   }
 
   pub fn detach(&mut self, viewport: RenderViewportId) {
+    self.leave_scene(viewport);
     self.viewports.remove(&viewport);
   }
 
@@ -64,19 +74,49 @@ impl World {
     self.get_viewport(viewport).camera.input(event);
   }
 
-  /// Shows a level in a viewport, or none: it streams into a scene of its own from the next frame, and its weather plays.
+  /// Shows a level in a viewport, or none, and plays its weather there: the scene of the same level another viewport
+  /// shows where its source shares one, else a scene of its own streaming in from the next frame.
   pub fn show_level(&mut self, viewport: RenderViewportId, source: Option<Arc<dyn RenderLevelSource>>) {
-    let mut level: Option<WorldLevel> = source
-      .as_ref()
-      .map(|source| WorldLevel::start(Arc::clone(source), &self.workers));
-    let world: &mut WorldViewport = self.get_viewport(viewport);
+    self.leave_scene(viewport);
+    self.get_viewport(viewport).weather.show(source.clone());
 
-    if let Some(level) = &mut level {
-      level.set_pose(&world.pose);
+    let Some(source) = source else {
+      return;
+    };
+    let key: Option<String> = source.get_scene_key();
+    let shared: Option<RenderSceneId> = key.as_ref().and_then(|key| {
+      self
+        .scenes
+        .iter()
+        .find(|(_, scene)| scene.key.as_ref() == Some(key))
+        .map(|(id, _)| *id)
+    });
+    let id: RenderSceneId = match shared {
+      Some(id) => id,
+      None => {
+        let id: RenderSceneId = RenderSceneId(self.next_scene);
+        let mut level: WorldLevel = WorldLevel::start(source, &self.workers);
+
+        self.next_scene += 1;
+        level.set_pose(&self.get_viewport(viewport).pose);
+        self.scenes.insert(
+          id,
+          WorldScene {
+            level,
+            key,
+            viewers: Vec::new(),
+          },
+        );
+
+        id
+      }
+    };
+
+    if let Some(scene) = self.scenes.get_mut(&id) {
+      scene.viewers.push(viewport);
     }
 
-    world.weather.show(source);
-    world.level = level;
+    self.get_viewport(viewport).scene = Some(id);
   }
 
   /// Stands a viewport's skinned objects as asked from the next frame on.
@@ -85,24 +125,24 @@ impl World {
 
     world.pose = pose.clone();
 
-    if let Some(level) = &mut world.level {
-      level.set_pose(pose);
+    if let Some(scene) = world.scene.and_then(|id| self.scenes.get_mut(&id)) {
+      scene.level.set_pose(pose);
     }
   }
 
   /// How much each shader table entry draws across the sectors a viewport's level streamed in.
   pub fn measure_surfaces(&self, viewport: RenderViewportId) -> Vec<WorldSurfaceGeometry> {
     self
-      .get_level(viewport)
-      .map(WorldLevel::measure_surfaces)
+      .get_scene(viewport)
+      .map(|scene| scene.level.measure_surfaces())
       .unwrap_or_default()
   }
 
   /// What a viewport's level could not draw the way it asked, so far.
   pub fn describe_problems(&self, viewport: RenderViewportId) -> WorldLevelProblems {
     self
-      .get_level(viewport)
-      .map(WorldLevel::describe_problems)
+      .get_scene(viewport)
+      .map(|scene| scene.level.describe_problems())
       .unwrap_or_default()
   }
 
@@ -127,16 +167,34 @@ impl World {
     self.get_viewport(viewport).weather.play_effect(name);
   }
 
-  /// Plays a weather ambient effect near a viewport's camera on its next frame, ending the one playing; none plays
-  /// indoors.
+  /// Plays a weather ambient effect near the camera of the viewport driving a viewport's scene on its next frame,
+  /// ending the one playing; none plays indoors.
   pub fn play_ambient_effect(&mut self, viewport: RenderViewportId) {
-    if let Some(level) = &mut self.get_viewport(viewport).level {
-      level.play_ambient_now();
+    let scene: Option<RenderSceneId> = self.viewports.get(&viewport).and_then(|world| world.scene);
+
+    if let Some(scene) = scene.and_then(|id| self.scenes.get_mut(&id)) {
+      scene.level.play_ambient_now();
     }
   }
 
-  fn get_level(&self, viewport: RenderViewportId) -> Option<&WorldLevel> {
-    self.viewports.get(&viewport)?.level.as_ref()
+  /// The scene a viewport shows.
+  fn get_scene(&self, viewport: RenderViewportId) -> Option<&WorldScene> {
+    self.scenes.get(&self.viewports.get(&viewport)?.scene?)
+  }
+
+  /// Takes a viewport out of the scene it shows, which goes once no viewport shows it; the next shows on drive it.
+  fn leave_scene(&mut self, viewport: RenderViewportId) {
+    let Some(id) = self.viewports.get_mut(&viewport).and_then(|world| world.scene.take()) else {
+      return;
+    };
+
+    if let Some(scene) = self.scenes.get_mut(&id) {
+      scene.viewers.retain(|it| *it != viewport);
+
+      if scene.viewers.is_empty() {
+        self.scenes.remove(&id);
+      }
+    }
   }
 
   /// A viewport's world, started for whatever names it first: a command may arrive before its attach.
@@ -152,7 +210,53 @@ impl World {
 }
 
 impl RenderWorld for World {
-  fn advance(&mut self, viewport: RenderViewportId, input: RenderWorldInput<'_>) -> RenderWorldFrame {
-    self.get_viewport(viewport).advance(input)
+  fn get_asked_scene(&self, viewport: RenderViewportId) -> Option<RenderSceneId> {
+    self.viewports.get(&viewport)?.scene
+  }
+
+  fn advance_view(&mut self, viewport: RenderViewportId, input: RenderViewInput<'_>) -> RenderViewFrame {
+    let ambient: Option<WorldAmbientReport> = self.get_scene(viewport).and_then(|scene| scene.level.report_ambient());
+
+    self.get_viewport(viewport).advance(input, ambient)
+  }
+
+  fn advance_scenes(
+    &mut self,
+    mut feedback: HashMap<RenderSceneId, RenderSceneFeedback>,
+  ) -> HashMap<RenderSceneId, RenderSceneFrame> {
+    let mut frames: HashMap<RenderSceneId, RenderSceneFrame> = HashMap::with_capacity(self.scenes.len());
+
+    for (id, scene) in &mut self.scenes {
+      let driver: Option<RenderViewportId> = scene.get_driver();
+      let Some(driving) = driver.and_then(|driver| self.viewports.get(&driver)) else {
+        continue;
+      };
+      let RenderSceneFeedback {
+        failures,
+        finished_effects,
+      } = feedback.remove(id).unwrap_or_default();
+      let (updates, effects): (Vec<RenderSceneUpdate>, EffectsFrame) = scene.level.advance(
+        (&driving.options, &driving.toggles, driving.get_ambient_frame()),
+        driving.eye,
+        failures,
+        finished_effects,
+      );
+
+      frames.insert(
+        *id,
+        RenderSceneFrame {
+          source: Arc::clone(scene.level.get_source()),
+          driver,
+          updates,
+          streaming: scene.level.get_progress(),
+          skeleton_segments: scene.level.list_segments(),
+          gust: effects.gust,
+          campfire_shares: effects.campfire_shares,
+          motions: effects.motions,
+        },
+      );
+    }
+
+    frames
   }
 }

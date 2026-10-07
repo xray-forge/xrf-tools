@@ -18,6 +18,12 @@ pub trait RenderLevelSource: RenderAssetSource {
   /// How many sectors the level has.
   fn get_sector_count(&self) -> u32;
 
+  /// What every source of the same level names, so the viewports showing it share one scene; none for a source no
+  /// other shares, as a model posed for one viewport is.
+  fn get_scene_key(&self) -> Option<String> {
+    None
+  }
+
   /// One sector's geometry, packed, called from loader threads side by side.
   ///
   /// # Errors

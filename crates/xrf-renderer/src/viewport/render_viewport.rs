@@ -1,8 +1,8 @@
-use std::sync::Arc;
+use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
 use glam::Vec3;
-use xrf_renderer_core::{FrameGraph, GraphPassTime, GraphTimer, ProxyHandle};
+use xrf_renderer_core::{FrameGraph, GraphPassTime, GraphTimer};
 
 use crate::contract::render_applied_environment::RenderAppliedEnvironment;
 use crate::contract::render_applied_fog::RenderAppliedFog;
@@ -28,14 +28,12 @@ use crate::frame::frame_capture::{CaptureReply, FrameCapture};
 use crate::frame::frame_phases::FramePhases;
 use crate::frame::frame_statistics::{FrameStatistics, FrameSummary};
 use crate::host::render_event_sink::RenderEventSink;
-use crate::host::render_level_source::RenderLevelSource;
-use crate::host::render_sector_failure::RenderSectorFailure;
-use crate::host::render_world_frame::RenderWorldFrame;
+use crate::host::render_scene_id::RenderSceneId;
+use crate::host::render_view_frame::RenderViewFrame;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::pass::view_binding::ViewBinding;
-use crate::scene::level::level_view::LevelView;
-use crate::scene::level::particle_emitter_proxy::ParticleEmitterProxy;
-use crate::scene::level::placed_effect::PlacedEffect;
+use crate::scene::level::level_scene::LevelScene;
+use crate::scene::level::scene_view::SceneView;
 use crate::viewport::pending_pick::PendingPick;
 use crate::viewport::pick_in_flight::PickInFlight;
 
@@ -52,19 +50,11 @@ pub struct RenderViewport {
   pub overlays_version: u64,
   /// What of its level is selected, marked as it draws.
   pub selection: Option<RenderSelection>,
-  /// The level it draws, as its source gives it.
-  pub level: Option<Arc<dyn RenderLevelSource>>,
-  /// The level as this viewport draws it, made once a GPU is there; a scene of models alone keeps the one it replaces
-  /// here while its successor loads.
-  pub level_view: Option<LevelView>,
-  /// The successor of a scene of models alone, loading out of sight until it can be drawn whole.
-  pub incoming_view: Option<LevelView>,
-  /// Where its camera stands and what lights it this frame, as its world answered.
-  pub world: RenderWorldFrame,
-  /// The sectors its scene could not take in of the world's last posts, told back with the next frame.
-  pub failures: Vec<RenderSectorFailure>,
-  /// The effects whose particles stopped playing, told back with the next frame.
-  pub finished_effects: Vec<(ProxyHandle<ParticleEmitterProxy>, PlacedEffect)>,
+  /// The scene it shows and its view of it, made once a GPU is there; a scene of models alone keeps showing the one it
+  /// replaces while its successor loads.
+  pub shown: Option<(RenderSceneId, SceneView)>,
+  /// The scene it asks to show, where its camera stands and what lights it this frame, as its world answered.
+  pub world: RenderViewFrame,
   /// Captures asked for, copied out of the next frame presented, and those copied, answered once they are back.
   pub captures: Vec<CaptureReply>,
   pub captures_in_flight: Vec<(FrameCapture, CaptureReply)>,
@@ -79,8 +69,9 @@ pub struct RenderViewport {
   statistics: FrameStatistics,
   /// What it was last told its frames cost, answered to a caller polling rather than listening.
   sent_frame: Option<RenderFrameReport>,
-  /// What it was last told its frames are drawn with.
+  /// What it was last told its frames are drawn with, and how far its scene has loaded.
   sent_applied: Option<RenderAppliedReport>,
+  sent_load: Option<RenderLoadReport>,
   /// Whether its page stopped listening, after which it is detached.
   is_gone: bool,
   /// Whether it was told the renderer cannot draw, so it is told once.
@@ -88,12 +79,13 @@ pub struct RenderViewport {
 }
 
 impl RenderViewport {
-  /// Answers the picks and captures whose readbacks a poll found back, keeping those still on their way.
-  pub fn answer_readbacks(&mut self) {
+  /// Answers the picks and captures whose readbacks a poll found back, keeping those still on their way; a pick names
+  /// what it hit in the scene it shows, among `scenes`.
+  pub fn answer_readbacks(&mut self, scenes: &HashMap<RenderSceneId, LevelScene>) {
     let in_flight: Vec<PickInFlight> = std::mem::take(&mut self.picks_in_flight);
 
     for entry in in_flight {
-      let Some(level) = &self.level_view else {
+      let Some((scene, level)) = self.shown.as_ref().and_then(|(id, view)| Some((scenes.get(id)?, view))) else {
         let _ = entry.pick.reply.send(Ok(RenderPick {
           frame: entry.frame,
           hit: None,
@@ -105,7 +97,7 @@ impl RenderViewport {
       match level.take_pick(entry.slot) {
         Some(Ok(texel)) => {
           let (inverse, ndc) = entry.unprojection;
-          let hit: Option<RenderLevelHit> = level.resolve_pick(texel, |depth: f32| -> Vec3 {
+          let hit: Option<RenderLevelHit> = level.resolve_pick(scene, texel, |depth: f32| -> Vec3 {
             inverse.project_point3(ndc.extend(depth))
           });
 
@@ -142,12 +134,8 @@ impl RenderViewport {
       overlays: Vec::new(),
       overlays_version: 0,
       selection: None,
-      failures: Vec::new(),
-      finished_effects: Vec::new(),
-      level: None,
-      level_view: None,
-      incoming_view: None,
-      world: RenderWorldFrame::default(),
+      shown: None,
+      world: RenderViewFrame::default(),
       captures: Vec::new(),
       captures_in_flight: Vec::new(),
       picks: Vec::new(),
@@ -158,6 +146,7 @@ impl RenderViewport {
       statistics: FrameStatistics::new(now),
       sent_frame: None,
       sent_applied: None,
+      sent_load: None,
       is_gone: false,
       is_failed: false,
     }
@@ -166,30 +155,6 @@ impl RenderViewport {
   /// Where it is drawn in a window frame of the given size, or `None` when nothing of it shows.
   pub fn get_drawn_rect(&self, width: u32, height: u32) -> Option<RenderRect> {
     self.layout.and_then(|layout| layout.rect.clip(width, height))
-  }
-
-  /// Shows the level its world shows, once that changed: a scene of models alone keeps drawing the one before until it
-  /// can be drawn whole, so a model swapped for another, or for itself at another detail, never leaves the viewport
-  /// empty; a level starts afresh.
-  pub fn follow_level(&mut self) {
-    let is_same: bool = match (&self.level, &self.world.level) {
-      (Some(shown), Some(asked)) => Arc::ptr_eq(shown, asked),
-      (None, None) => true,
-      _ => false,
-    };
-
-    if is_same {
-      return;
-    }
-
-    let source: Option<Arc<dyn RenderLevelSource>> = self.world.level.clone();
-
-    if source.as_ref().is_none_or(|source| source.get_sector_count() > 0) {
-      self.level_view = None;
-    }
-
-    self.level = source;
-    self.incoming_view = None;
   }
 
   /// Device pixels per CSS pixel.
@@ -202,17 +167,6 @@ impl RenderViewport {
     self
       .layout
       .map_or(1.0, |layout| layout.rect.height as f32 / layout.scale.max(0.1))
-  }
-
-  /// The view of the level it was last asked to show: the one coming in while it loads, else the one drawn; none before
-  /// that level's view is made, or where it shows no level.
-  pub fn get_asked_view(&self) -> Option<&LevelView> {
-    let source: &Arc<dyn RenderLevelSource> = self.level.as_ref()?;
-
-    [&self.incoming_view, &self.level_view]
-      .into_iter()
-      .flatten()
-      .find(|view| view.get_scene().is_showing(source))
   }
 
   /// What its frames cost when it last reported them, none before its first report.
@@ -229,25 +183,40 @@ impl RenderViewport {
   }
 
   /// Reports the frames since the last report, once one is due: `texture_bytes` is what every viewport's textures hold
-  /// on the GPU together, and `timer` what the frames' passes cost, its own and its window's taken from it.
+  /// on the GPU together, `scenes` every scene, its own among them, and `timer` what the frames' passes cost, its own
+  /// and its window's taken from it.
   pub fn report(
     &mut self,
     now: Instant,
     (backend, adapter): (&str, &str),
-    texture_bytes: u64,
+    (texture_bytes, scenes): (u64, &mut HashMap<RenderSceneId, LevelScene>),
     timer: Option<&mut GraphTimer>,
   ) {
     let Some(summary) = self.statistics.take(now) else {
       return;
     };
-    let (static_draws, lights): (RenderStaticReport, RenderLightsReport) = self
-      .level_view
+    let shown: Option<(&mut LevelScene, &mut SceneView)> = self
+      .shown
       .as_mut()
-      .map_or_else(Default::default, |level| level.take_stats());
-    let particles: RenderParticlesReport = self
-      .level_view
-      .as_mut()
-      .map_or_else(Default::default, |level| level.take_particles_report());
+      .and_then(|(id, view)| Some((scenes.get_mut(id)?, view)));
+    let (static_draws, lights, particles, sector_time): (
+      RenderStaticReport,
+      RenderLightsReport,
+      RenderParticlesReport,
+      f32,
+    ) = match shown {
+      Some((scene, view)) => {
+        let (static_draws, lights) = view.take_stats(scene);
+
+        (
+          static_draws,
+          lights,
+          view.take_particles_report(scene),
+          scene.sector_time,
+        )
+      }
+      None => Default::default(),
+    };
     let (is_gpu_timed, passes): (bool, Vec<RenderPassCost>) = timer.map_or((false, Vec::new()), |timer| {
       let mut times: Vec<GraphPassTime> = timer.take(self.id.0);
 
@@ -273,15 +242,19 @@ impl RenderViewport {
     } = summary;
     let rect: RenderRect = self.layout.map(|layout| layout.rect).unwrap_or_default();
     let (render_width, render_height): (u32, u32) = self
-      .level_view
+      .shown
       .as_ref()
-      .and_then(|level| level.get_state().get_render_size())
+      .and_then(|(_, view)| view.get_state().get_render_size())
       .unwrap_or((rect.width, rect.height));
+    // The scene it shows, and the one it asks for while that comes in.
+    let mut held: Vec<RenderSceneId> = self.shown.iter().map(|(id, _)| *id).chain(self.world.scene).collect();
 
-    let scene: u64 = [&self.level_view, &self.incoming_view]
-      .into_iter()
-      .flatten()
-      .map(|level| level.get_scene().get_buffer_bytes())
+    held.dedup();
+
+    let scene: u64 = held
+      .iter()
+      .filter_map(|id| scenes.get(id))
+      .map(LevelScene::get_buffer_bytes)
       .sum();
 
     let report: RenderFrameReport = RenderFrameReport {
@@ -301,10 +274,7 @@ impl RenderViewport {
       static_draws,
       lights,
       particles,
-      sector_time: self
-        .level_view
-        .as_ref()
-        .map_or(0.0, |level| level.get_scene().sector_time),
+      sector_time,
       memory: RenderMemoryReport {
         textures: texture_bytes,
         scene,
@@ -318,7 +288,7 @@ impl RenderViewport {
 
   /// Tells the page what its frames are drawn with, where that changed since it was last told.
   fn publish_applied(&mut self) {
-    let Some(level) = self.level_view.as_ref() else {
+    let Some((_, level)) = self.shown.as_ref() else {
       return;
     };
     let mut applied: RenderAppliedReport = level.describe_applied(&self.options);
@@ -336,8 +306,12 @@ impl RenderViewport {
     }
   }
 
+  /// Tells the page how far the scene it shows has loaded, where that changed since it was last told.
   pub fn report_load(&mut self, report: RenderLoadReport) {
-    self.send(RenderViewportEvent::Load { report });
+    if self.sent_load != Some(report) {
+      self.sent_load = Some(report);
+      self.send(RenderViewportEvent::Load { report });
+    }
   }
 
   /// Tells the page the renderer cannot draw, once until it can again.
