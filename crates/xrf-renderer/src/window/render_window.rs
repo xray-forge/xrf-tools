@@ -4,6 +4,7 @@ use xrf_error::{XrfError, XrfResult};
 
 use crate::context::gpu_context::GpuContext;
 use crate::host::render_window_host::RenderWindowHost;
+use crate::window::window_backdrop::WindowBackdrop;
 
 /// Frames the swapchain may queue ahead of the display: one fewer misses every other refresh under the window's
 /// composition.
@@ -20,6 +21,8 @@ pub struct RenderWindow {
   configured: Option<(u32, u32, bool)>,
   /// Whether the surface was lost, which only a new one recovers from.
   is_lost: bool,
+  /// What its page's backdrop is painted with, once it is.
+  backdrop: Option<WindowBackdrop>,
 }
 
 impl RenderWindow {
@@ -52,10 +55,20 @@ impl RenderWindow {
       usages: capabilities.usages,
       configured: None,
       is_lost: false,
+      backdrop: None,
       host,
       surface,
       format,
     })
+  }
+
+  pub fn get_backdrop(&self) -> Option<&WindowBackdrop> {
+    self.backdrop.as_ref()
+  }
+
+  /// Where its backdrop is kept, for the backdrop pass to make and write.
+  pub fn get_backdrop_slot(&mut self) -> &mut Option<WindowBackdrop> {
+    &mut self.backdrop
   }
 
   pub fn get_format(&self) -> wgpu::TextureFormat {

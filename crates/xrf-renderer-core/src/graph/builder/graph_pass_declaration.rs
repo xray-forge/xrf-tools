@@ -24,10 +24,12 @@ impl GraphPassDeclaration {
   /// Adds the pass to the graph, recording what it does.
   pub fn declare<'a>(self, graph: &mut FrameGraph<'a>, work: GraphPassWork<'a>) {
     let group: usize = graph.groups.len() - 1;
+    let owner: u32 = graph.owner;
 
     graph.push_pass(GraphPass {
       name: self.name,
       group,
+      owner,
       textures: self.textures,
       buffers: self.buffers,
       is_kept: self.is_kept,

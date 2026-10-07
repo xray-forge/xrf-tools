@@ -2,10 +2,12 @@ use crate::graph::access::{GraphBufferAccess, GraphTextureAccess};
 use crate::graph::record::graph_pass_work::GraphPassWork;
 use crate::graph::resource::{GraphBuffer, GraphTexture};
 
-/// One declared pass: its name, the encode group it falls in, what it accesses, and what it records.
+/// One declared pass: its name, the encode group it falls in and whose it is, what it accesses, and what it records.
 pub(crate) struct GraphPass<'a> {
   pub name: &'static str,
   pub group: usize,
+  /// Whose it is, which its cost is summed by.
+  pub owner: u32,
   pub textures: Vec<(GraphTexture, GraphTextureAccess)>,
   pub buffers: Vec<(GraphBuffer, GraphBufferAccess)>,
   /// Kept whatever reads its outputs: it has an effect the graph cannot see, as a readback or a timer has.

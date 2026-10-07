@@ -6,15 +6,12 @@ use crate::pass::backdrop_uniform::BackdropUniform;
 use crate::pass::fullscreen_pipeline::{buffer_binding, create_fullscreen_pipeline};
 use crate::pass::layout_entries::uniform_entry;
 use crate::shader::shader_library::ShaderLibrary;
+use crate::window::window_backdrop::WindowBackdrop;
 
 /// Paints the page's backdrop over a window where it is transparent, under its viewports: the colour the page shows
-/// there, and its wash.
+/// there, and its wash. Each window keeps its own backdrop's uniform.
 pub struct BackdropPass {
   layout: wgpu::BindGroupLayout,
-  uniform: wgpu::Buffer,
-  bind_group: wgpu::BindGroup,
-  /// What the uniform holds, so an unchanged backdrop writes nothing.
-  written: Option<BackdropUniform>,
   /// One a window format, built on first use.
   pipelines: HashMap<wgpu::TextureFormat, wgpu::RenderPipeline>,
   generation: u64,
@@ -26,23 +23,9 @@ impl BackdropPass {
       label: Some("backdrop"),
       entries: &[uniform_entry(0, wgpu::ShaderStages::FRAGMENT)],
     });
-    let uniform: wgpu::Buffer = device.create_buffer(&wgpu::BufferDescriptor {
-      label: Some("backdrop"),
-      size: size_of::<BackdropUniform>() as u64,
-      usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-      mapped_at_creation: false,
-    });
-    let bind_group: wgpu::BindGroup = device.create_bind_group(&wgpu::BindGroupDescriptor {
-      label: Some("backdrop"),
-      layout: &layout,
-      entries: &[buffer_binding(0, &uniform)],
-    });
 
     Self {
       layout,
-      uniform,
-      bind_group,
-      written: None,
       pipelines: HashMap::new(),
       generation: shaders.get_generation(),
     }
@@ -56,22 +39,42 @@ impl BackdropPass {
     }
   }
 
-  /// Builds the pipeline drawing into a window format, unless it is built, and writes the backdrop where it changed.
+  /// Builds the pipeline drawing into a window format, unless it is built, and writes a window's backdrop where it
+  /// changed, making the window's uniform the first time.
   ///
   /// # Errors
   ///
   /// Returns an error when the shader does not compose or compile.
   pub fn prepare(
     &mut self,
-    device: &wgpu::Device,
-    queue: &wgpu::Queue,
+    (device, queue): (&wgpu::Device, &wgpu::Queue),
     shaders: &ShaderLibrary,
     format: wgpu::TextureFormat,
-    backdrop: &BackdropUniform,
+    (window, backdrop): (&mut Option<WindowBackdrop>, &BackdropUniform),
   ) -> XrfResult {
-    if self.written.as_ref() != Some(backdrop) {
-      queue.write_buffer(&self.uniform, 0, bytemuck::bytes_of(backdrop));
-      self.written = Some(*backdrop);
+    let window: &mut WindowBackdrop = window.get_or_insert_with(|| {
+      let uniform: wgpu::Buffer = device.create_buffer(&wgpu::BufferDescriptor {
+        label: Some("backdrop"),
+        size: size_of::<BackdropUniform>() as u64,
+        usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        mapped_at_creation: false,
+      });
+      let bind_group: wgpu::BindGroup = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some("backdrop"),
+        layout: &self.layout,
+        entries: &[buffer_binding(0, &uniform)],
+      });
+
+      WindowBackdrop {
+        uniform,
+        bind_group,
+        written: None,
+      }
+    });
+
+    if window.written.as_ref() != Some(backdrop) {
+      queue.write_buffer(&window.uniform, 0, bytemuck::bytes_of(backdrop));
+      window.written = Some(*backdrop);
     }
 
     if !self.pipelines.contains_key(&format) {
@@ -90,11 +93,11 @@ impl BackdropPass {
     Ok(())
   }
 
-  /// Paints the backdrop over the whole window, before its viewports are drawn.
-  pub fn draw(&self, pass: &mut wgpu::RenderPass<'_>, format: wgpu::TextureFormat) {
+  /// Paints a window's backdrop over the whole window, before its viewports are drawn.
+  pub fn draw(&self, pass: &mut wgpu::RenderPass<'_>, format: wgpu::TextureFormat, window: &WindowBackdrop) {
     if let Some(pipeline) = self.pipelines.get(&format) {
       pass.set_pipeline(pipeline);
-      pass.set_bind_group(0, &self.bind_group, &[]);
+      pass.set_bind_group(0, &window.bind_group, &[]);
       pass.draw(0..3, 0..1);
     }
   }

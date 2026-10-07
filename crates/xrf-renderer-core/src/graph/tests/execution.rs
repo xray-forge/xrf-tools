@@ -208,9 +208,73 @@ fn times_each_pass_and_render_pass_on_the_gpu() {
     device.poll(wgpu::PollType::wait_indefinitely()).unwrap();
   }
 
-  let names: Vec<String> = runtime.timer.take().into_iter().map(|time| time.name).collect();
+  let names: Vec<String> = runtime
+    .timer
+    .take(FrameGraph::FRAME_OWNER)
+    .into_iter()
+    .map(|time| time.name)
+    .collect();
 
   assert_eq!(names, ["clear + over", "copy"]);
+}
+
+#[test]
+fn sums_each_owners_passes_apart() {
+  let Some((device, queue)) = create_device() else {
+    return;
+  };
+  let readbacks: [wgpu::Buffer; 2] = std::array::from_fn(|_| {
+    device.create_buffer(&wgpu::BufferDescriptor {
+      label: Some("readback"),
+      size: BYTES,
+      usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+      mapped_at_creation: false,
+    })
+  });
+  let mut runtime: GraphRuntime = GraphRuntime::new(&device, &queue);
+  let drawn: AtomicUsize = AtomicUsize::new(0);
+
+  runtime.timer.set_enabled(true);
+
+  if !runtime.timer.is_timing() {
+    eprintln!("Skipped: the device writes no timestamps inside encoders");
+
+    return;
+  }
+
+  for _ in 0..4 {
+    let mut graph: FrameGraph<'_> = FrameGraph::new();
+
+    graph.begin_owner(1);
+
+    let first = declare(&mut graph, &drawn);
+
+    graph.begin_owner(2);
+
+    let second = declare(&mut graph, &drawn);
+    let compiled = graph.compile(&GraphCompileOptions::default()).unwrap();
+    let mut bindings: GraphBindings<'_> = GraphBindings::new();
+
+    bindings
+      .bind_buffer(first, &readbacks[0])
+      .bind_buffer(second, &readbacks[1]);
+
+    let executed = compiled.execute((&device, &queue), &mut runtime, &bindings).unwrap();
+
+    queue.submit(executed.commands);
+    runtime.timer.request();
+    device.poll(wgpu::PollType::wait_indefinitely()).unwrap();
+  }
+
+  let names = |owner: u32, runtime: &mut GraphRuntime| -> Vec<String> {
+    runtime.timer.take(owner).into_iter().map(|time| time.name).collect()
+  };
+
+  assert_eq!(names(1, &mut runtime), ["clear + over", "copy"]);
+  // Taking one owner's leaves the other's to be taken.
+  assert_eq!(names(2, &mut runtime), ["clear + over", "copy"]);
+  assert!(names(1, &mut runtime).is_empty());
+  assert!(names(FrameGraph::FRAME_OWNER, &mut runtime).is_empty());
 }
 
 #[test]

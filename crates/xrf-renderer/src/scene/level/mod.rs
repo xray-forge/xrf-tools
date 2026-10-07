@@ -4,6 +4,7 @@ pub(crate) mod grass_dither;
 pub(crate) mod grass_level;
 pub(crate) mod lens_flare_fade;
 pub(crate) mod level_flares;
+pub(crate) mod level_frame;
 pub(crate) mod level_grass;
 pub(crate) mod level_light_shadows;
 pub(crate) mod level_lights;

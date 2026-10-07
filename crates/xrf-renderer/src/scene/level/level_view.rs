@@ -7,8 +7,8 @@ use xrf_error::XrfResult;
 use xrf_material::XraySurfaceDraw;
 use xrf_math::EPS_S;
 use xrf_renderer_core::{
-  ExecutedGraph, FrameGraph, GraphBindings, GraphBuffer, GraphBufferAccess, GraphColorAttachment, GraphCompileOptions,
-  GraphDepthAttachment, GraphRuntime, GraphTexture, GraphTextureAccess, ProxyHandle, RasterPassBuilder, StorageArray,
+  FrameGraph, GraphBindings, GraphBuffer, GraphBufferAccess, GraphColorAttachment, GraphDepthAttachment, GraphRuntime,
+  GraphTexture, GraphTextureAccess, ProxyHandle, RasterPassBuilder, StorageArray,
 };
 
 use crate::camera::camera_view::CameraView;
@@ -75,6 +75,7 @@ use crate::pass::view_light_groups::ViewLightGroups;
 use crate::pass::water_draw::WaterDraw;
 use crate::pass::wet_uniform::WetUniform;
 use crate::pass::wind_uniform::WindUniform;
+use crate::scene::level::level_frame::LevelFrame;
 use crate::scene::level::level_lights::LevelLights;
 use crate::scene::level::level_load::LevelLoad;
 use crate::scene::level::level_overlays::LevelOverlays;
@@ -854,12 +855,12 @@ impl LevelView {
 
   /// Ends a frame its graph recorded: the water's reflection and the temporal resolve's history it wrote become the
   /// ones the next frame keeps.
-  fn finish_frame(&mut self, is_lit: bool, resolve: Option<&'static str>) {
-    if is_lit {
+  pub fn end_frame(&mut self, frame: &LevelFrame) {
+    if frame.is_lit {
       self.state.water.finish_frame();
     }
 
-    match resolve {
+    match frame.resolve {
       Some("fsr2") => {
         if let Some((fsr, _)) = &mut self.state.fsr {
           fsr.swap();
@@ -1149,45 +1150,60 @@ impl LevelView {
     ));
   }
 
-  /// Records the frame as a frame graph and executes it with the viewport's runtime: culls the scene and draws it into
-  /// the G-buffer (what last frame's depth does not hide, then, culling occlusion, what this frame's first draw does not
-  /// hide of the rest, leaving this frame's depth reduced for the next), shadows and lights it, draws the water and what
-  /// blends over it, and resolves the frame. Which passes run is decided here; each reads the view, which recording
-  /// leaves as it is.
-  ///
-  /// A pick, its camera narrowed to the texel picked, is drawn last from the frame's culled clusters while a readback is
-  /// free for it; the answer names the readback it is copied into.
-  ///
-  /// # Errors
-  ///
-  /// Returns an error when the graph cannot compile or execute.
-  pub fn record(
+  /// Readies a frame for its graph, none before the view's targets are made: a pick's camera narrowed to the texel
+  /// picked and the readback it is copied into while one is free, and the depth the next frame's occlusion tests.
+  pub fn begin_frame(
     &mut self,
-    runtime: &mut GraphRuntime,
     (device, queue): (&wgpu::Device, &wgpu::Queue),
-    passes: LevelPasses<'_>,
-    view: &ViewBinding,
-    textures: &TextureCache,
     pick: Option<(&CameraUniform, &wgpu::BindGroupLayout)>,
-  ) -> XrfResult<Option<(ExecutedGraph, Option<usize>)>> {
+  ) -> Option<LevelFrame> {
     if self.state.targets.is_none() || self.state.pyramid.is_none() {
-      return Ok(None);
+      return None;
     }
 
     let pick_slot: Option<usize> =
       pick.and_then(|(camera, view_layout)| self.ready_pick(device, queue, camera, view_layout));
 
-    let is_occluding: bool = self.info.cull.is_occluding != 0;
-
-    if is_occluding {
+    if self.info.cull.is_occluding != 0 {
       self.state.history = Some(self.info.matrices);
     }
 
+    Some(LevelFrame {
+      pick_slot,
+      is_lit: self.renderer.light_groups.is_some(),
+      resolve: if self.state.fsr.is_some() {
+        Some("fsr2")
+      } else if self.state.temporal.is_some() {
+        Some("temporal")
+      } else if self.state.upscale.is_some() {
+        Some("upscale")
+      } else {
+        None
+      },
+    })
+  }
+
+  /// Declares the frame `begin_frame` readied into the frame's graph: culls the scene and draws it into the G-buffer
+  /// (what last frame's depth does not hide, then, culling occlusion, what this frame's first draw does not hide of the
+  /// rest, leaving this frame's depth reduced for the next), shadows and lights it, draws the water and what blends over
+  /// it, resolves the frame, and draws the pick last. Which passes run is decided here; each reads the view, which
+  /// recording leaves as it is. The present pass reads what it leaves.
+  pub fn record<'a>(
+    &'a self,
+    (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
+    passes: LevelPasses<'a>,
+    view: &'a ViewBinding,
+    textures: &'a TextureCache,
+    frame: &LevelFrame,
+  ) {
+    let is_occluding: bool = self.info.cull.is_occluding != 0;
+    let pick_slot: Option<usize> = frame.pick_slot;
+    let resolve: Option<&'static str> = frame.resolve;
     let is_drawn: bool = !self.info.is_wireframe;
     let is_wallmarked: bool = self.info.is_wallmarked && is_drawn;
     let is_raining: bool = self.info.rain_draw.is_some();
     let is_wet: bool = is_raining && self.renderer.wet_groups.is_some();
-    let is_lit: bool = self.renderer.light_groups.is_some();
+    let is_lit: bool = frame.is_lit;
     let has_lights: bool = self.scene.lights.get_count() > 0;
     let is_occlusion_ambient: bool = self.info.ambient_occlusion.is_enabled;
     let has_sky: bool = self.renderer.sky_group.is_some();
@@ -1199,28 +1215,17 @@ impl LevelView {
     let is_thundering: bool = self.info.thunder_draw.is_some() && self.renderer.thunder_groups.is_some();
     let is_bloomed: bool = self.info.is_bloomed && self.renderer.bloom_groups.is_some();
     let is_smoothed: bool = self.state.smoothing.is_some();
-    let resolve: Option<&'static str> = if self.state.fsr.is_some() {
-      Some("fsr2")
-    } else if self.state.temporal.is_some() {
-      Some("temporal")
-    } else if self.state.upscale.is_some() {
-      Some("upscale")
-    } else {
-      None
-    };
     let is_sharpened: bool = self.state.upscale.is_some() && self.info.upscaling.is_sharpened();
     let is_adapting: bool = self.state.exposure.is_adapting();
     let texture_group: &wgpu::BindGroup = textures.get_bind_group();
-    let level_view: &LevelView = self;
+    let level_view: &'a LevelView = self;
     let (Some(targets), Some((pyramid, pyramid_groups))) = (&level_view.state.targets, &level_view.state.pyramid)
     else {
-      return Ok(None);
+      return;
     };
-    let mut graph: FrameGraph<'_> = FrameGraph::new();
-    let mut bindings: GraphBindings<'_> = GraphBindings::new();
-    let handles: ViewTargetHandles = ViewTargetHandles::import(&mut graph, &mut bindings, targets);
+    let handles: ViewTargetHandles = ViewTargetHandles::import(&mut *graph, &mut *bindings, targets);
     let statics: StaticSceneHandles = StaticSceneHandles::import(
-      (&mut graph, &mut bindings, runtime),
+      (&mut *graph, &mut *bindings, runtime),
       &level_view.scene.statics,
       &pyramid.view,
       (&level_view.info.cull, &level_view.info.occlusion, &level_view.info.wind),
@@ -1239,13 +1244,14 @@ impl LevelView {
       ))
       .record(|_| {});
 
-    let grass_args: Option<GraphBuffer> = level_view
-      .scene
-      .grass
-      .add_planting(&mut graph, &mut bindings, passes.grass);
+    let grass_args: Option<GraphBuffer> =
+      level_view
+        .scene
+        .grass
+        .add_planting(&mut *graph, &mut *bindings, passes.grass);
 
     level_view.add_gbuffer_passes(
-      &mut graph,
+      &mut *graph,
       passes,
       (view, texture_group, &statics),
       (handles, pyramid, pyramid_groups),
@@ -1272,7 +1278,7 @@ impl LevelView {
       level_view
         .scene
         .grass
-        .add_draw(&mut graph, passes.grass, (handles, grass_args), (view, texture_group));
+        .add_draw(&mut *graph, passes.grass, (handles, grass_args), (view, texture_group));
     }
 
     if is_wallmarked {
@@ -1300,7 +1306,7 @@ impl LevelView {
     graph.begin_group("shadows");
 
     level_view.renderer.shadows.add_passes(
-      (&mut graph, &mut bindings),
+      (&mut *graph, &mut *bindings),
       passes,
       &statics,
       (&level_view.info.cull, texture_group),
@@ -1308,7 +1314,7 @@ impl LevelView {
 
     if is_raining {
       level_view.renderer.rain_cover.add_passes(
-        (&mut graph, &mut bindings),
+        (&mut *graph, &mut *bindings),
         passes,
         &statics,
         (&level_view.info.cull, texture_group),
@@ -1316,7 +1322,7 @@ impl LevelView {
     }
 
     level_view.scene.lights.add_shadow_passes(
-      (&mut graph, &mut bindings),
+      (&mut *graph, &mut *bindings),
       passes,
       &statics,
       (&level_view.info.cull, texture_group),
@@ -1362,7 +1368,7 @@ impl LevelView {
 
     if let (true, Some((_, groups))) = (is_lit, &level_view.renderer.light_groups) {
       level_view.add_lighting_passes(
-        (&mut graph, &mut bindings),
+        (&mut *graph, &mut *bindings),
         passes,
         (view, texture_group, groups),
         handles,
@@ -1412,7 +1418,7 @@ impl LevelView {
 
       // FSR 2's reactive mask is what the water and the blended surfaces change of the frame drawn so far.
       if let Some((fsr, _)) = &level_view.state.fsr {
-        let opaque: GraphTexture = bindings.import_view(&mut graph, "fsr2 opaque", &fsr.opaque);
+        let opaque: GraphTexture = bindings.import_view(&mut *graph, "fsr2 opaque", &fsr.opaque);
 
         graph
           .add_encoder_pass("fsr2 opaque")
@@ -1442,7 +1448,7 @@ impl LevelView {
           water: &level_view.state.water,
         };
 
-        passes.water.add_passes(&mut graph, &mut bindings, runtime, draw);
+        passes.water.add_passes(&mut *graph, &mut *bindings, runtime, draw);
       }
 
       graph.begin_group("post");
@@ -1456,13 +1462,13 @@ impl LevelView {
           .as_ref()
           .filter(|_| level_view.info.sorted_count > 0)
           .map(|list| {
-            let list: GraphBuffer = bindings.import_buffer(&mut graph, "sorted composited", list);
+            let list: GraphBuffer = bindings.import_buffer(&mut *graph, "sorted composited", list);
 
             statics.get_layout_draws(StorageArray::new(list))[StaticLayout::Model.get_index()]
           });
         let sorted_count: u32 = level_view.info.sorted_count;
         let builder = args.iter().fold(
-          StaticDraws::declare_layouts(Self::add_over_scene(&mut graph, handles, "composited"), &layouts),
+          StaticDraws::declare_layouts(Self::add_over_scene(&mut *graph, handles, "composited"), &layouts),
           |builder, args| builder.buffer(*args, GraphBufferAccess::Indirect),
         );
         let builder = match &sorted {
@@ -1487,7 +1493,7 @@ impl LevelView {
         level_view
           .scene
           .particles
-          .add_passes(&mut graph, passes.particles, handles, (view, texture_group));
+          .add_passes(&mut *graph, passes.particles, handles, (view, texture_group));
       }
 
       if is_shafted {
@@ -1504,7 +1510,7 @@ impl LevelView {
         level_view.info.rain_draw,
         &level_view.renderer.rain_group,
       ) {
-        Self::add_over_scene(&mut graph, handles, "rain")
+        Self::add_over_scene(&mut *graph, handles, "rain")
           .record(move |context| passes.rain.record(context.get_pass(), view, rain_group, counts));
       }
 
@@ -1513,14 +1519,14 @@ impl LevelView {
         level_view.info.thunder_draw,
         &level_view.renderer.thunder_groups,
       ) {
-        Self::add_over_scene(&mut graph, handles, "thunder")
+        Self::add_over_scene(&mut *graph, handles, "thunder")
           .record(move |context| passes.thunder.record(context.get_pass(), view, thunder_groups, draws));
       }
 
       level_view
         .renderer
         .flares
-        .add_passes(&mut graph, passes.flares, handles, view);
+        .add_passes(&mut *graph, passes.flares, handles, view);
 
       if let (true, Some((_, bloom_groups))) = (is_bloomed, &level_view.renderer.bloom_groups) {
         // Built from the high target into the first, blurred across into the second, then down into the first.
@@ -1544,12 +1550,12 @@ impl LevelView {
       }
 
       if let Some(smoothing) = level_view.state.smoothing.as_ref().filter(|_| is_smoothed) {
-        let target: GraphTexture = bindings.import_view(&mut graph, "smoothed", &smoothing.target.view);
+        let target: GraphTexture = bindings.import_view(&mut *graph, "smoothed", &smoothing.target.view);
 
         match (&smoothing.smaa, passes.smaa) {
           (Some(smaa), Some(pass)) => {
-            let edges: GraphTexture = bindings.import_view(&mut graph, "smaa edges", &smaa.edges);
-            let weights: GraphTexture = bindings.import_view(&mut graph, "smaa weights", &smaa.weights);
+            let edges: GraphTexture = bindings.import_view(&mut *graph, "smaa edges", &smaa.edges);
+            let weights: GraphTexture = bindings.import_view(&mut *graph, "smaa weights", &smaa.weights);
 
             for (stage, (name, reads, written)) in [
               ("smaa edges", vec![handles.scene], edges),
@@ -1583,14 +1589,14 @@ impl LevelView {
           }
         }
 
-        Self::add_copy(&mut graph, "smoothed copy", target, handles.scene);
+        Self::add_copy(&mut *graph, "smoothed copy", target, handles.scene);
       }
 
       // The resolved frame goes where the present pass reads it: the upscaled frame, or the scene drawn at its size.
       let upscaled: Option<[GraphTexture; 2]> = level_view.state.upscale.as_ref().map(|(upscale, _)| {
         [
-          bindings.import_view(&mut graph, "upscaled", &upscale.views[0]),
-          bindings.import_view(&mut graph, "sharpened", &upscale.views[1]),
+          bindings.import_view(&mut *graph, "upscaled", &upscale.views[0]),
+          bindings.import_view(&mut *graph, "sharpened", &upscale.views[1]),
         ]
       });
       let resolved: GraphTexture = upscaled.map_or(handles.scene, |[upscaled, _]| upscaled);
@@ -1602,14 +1608,14 @@ impl LevelView {
         &level_view.state.upscale,
       ) {
         (Some("fsr2"), Some((fsr, groups)), _, _) => {
-          let history: GraphTexture = bindings.import_view(&mut graph, "fsr2 history", &fsr.history[fsr.index]);
+          let history: GraphTexture = bindings.import_view(&mut *graph, "fsr2 history", &fsr.history[fsr.index]);
 
-          passes.fsr.add_passes(&mut graph, &mut bindings, (fsr, groups));
-          Self::add_copy(&mut graph, "fsr2 output", history, resolved);
+          passes.fsr.add_passes(&mut *graph, &mut *bindings, (fsr, groups));
+          Self::add_copy(&mut *graph, "fsr2 output", history, resolved);
         }
         (Some("temporal"), _, Some((history, groups)), _) => {
           let index: usize = history.index;
-          let target: GraphTexture = bindings.import_view(&mut graph, "temporal history", &history.views[index]);
+          let target: GraphTexture = bindings.import_view(&mut *graph, "temporal history", &history.views[index]);
 
           graph
             .add_raster_pass("temporal")
@@ -1619,7 +1625,7 @@ impl LevelView {
               wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
             ))
             .record(move |context| passes.temporal.record(context.get_pass(), view, &groups[index]));
-          Self::add_copy(&mut graph, "temporal output", target, resolved);
+          Self::add_copy(&mut *graph, "temporal output", target, resolved);
         }
         (Some(_), _, _, Some((_, groups))) => {
           if let Some([upscaled, _]) = upscaled {
@@ -1650,7 +1656,7 @@ impl LevelView {
       }
 
       if is_adapting {
-        let state: GraphBuffer = bindings.import_buffer(&mut graph, "exposure", &level_view.state.exposure.state);
+        let state: GraphBuffer = bindings.import_buffer(&mut *graph, "exposure", &level_view.state.exposure.state);
 
         graph
           .add_compute_pass("exposure")
@@ -1664,21 +1670,12 @@ impl LevelView {
       (pick_slot, &level_view.state.pick_target, &level_view.state.pick_view)
     {
       level_view.add_pick_passes(
-        (&mut graph, &mut bindings),
+        (&mut *graph, &mut *bindings),
         passes.gbuffer,
         (pick_view, texture_group, &statics),
         (target, slot),
       );
     }
-
-    let executed: ExecutedGraph =
-      graph
-        .compile(&GraphCompileOptions::default())?
-        .execute((device, queue), runtime, &bindings)?;
-
-    self.finish_frame(is_lit, resolve);
-
-    Ok(Some((executed, pick_slot)))
   }
 
   /// The draw arguments a forward pass replays: the early phase's, and the late phase's where occlusion culls.

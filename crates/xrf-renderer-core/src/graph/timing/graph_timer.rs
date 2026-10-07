@@ -2,7 +2,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicU8, Ordering};
 
 use crate::graph::timing::graph_pass_time::GraphPassTime;
-use crate::graph::timing::timer_slot::TimerSlot;
+use crate::graph::timing::timer_slot::{TimedPass, TimerSlot};
 
 /// What each pass of the graph's frames cost on the GPU, with no code in any pass: the graph writes a timestamp at the
 /// start of each encode group and after each pass or render pass, and the stamps are read back without waiting, a few
@@ -14,10 +14,12 @@ pub struct GraphTimer {
   /// Nanoseconds a timestamp tick lasts.
   period: f32,
   is_enabled: bool,
-  /// The slot this frame records into and what its stamps so far end, while a frame is timed.
-  frame: Option<(usize, Vec<Option<String>>)>,
-  /// Milliseconds and frames summed per pass since the last `take`, in the order passes were first seen.
-  sums: Vec<(String, f64, u32)>,
+  /// The slot this frame records into and what its stamps so far end, each pass by its owner and name, while a frame
+  /// is timed.
+  frame: Option<(usize, Vec<Option<TimedPass>>)>,
+  /// Milliseconds and frames summed per owner's pass since that owner's last `take`, in the order passes were first
+  /// seen.
+  sums: Vec<(u32, String, f64, u32)>,
 }
 
 impl GraphTimer {
@@ -99,14 +101,20 @@ impl GraphTimer {
     }
   }
 
-  /// Each pass's mean GPU milliseconds over the frames read back since the last call, which starts the next span.
-  pub fn take(&mut self) -> Vec<GraphPassTime> {
+  /// Each of an owner's passes' mean GPU milliseconds over the frames read back since that owner's last call, which
+  /// starts its next span; `FrameGraph::FRAME_OWNER` for passes no owner was named for.
+  pub fn take(&mut self, owner: u32) -> Vec<GraphPassTime> {
     self.collect();
 
-    self
-      .sums
-      .drain(..)
-      .map(|(name, total, frames)| GraphPassTime {
+    let (taken, kept): (Vec<_>, Vec<_>) = std::mem::take(&mut self.sums)
+      .into_iter()
+      .partition(|(it, ..)| *it == owner);
+
+    self.sums = kept;
+
+    taken
+      .into_iter()
+      .map(|(_, name, total, frames)| GraphPassTime {
         name,
         gpu_time: (total / f64::from(frames.max(1))) as f32,
       })
@@ -131,8 +139,9 @@ impl GraphTimer {
     self.frame.is_some()
   }
 
-  /// Writes a stamp ending `name`, or starting an encode group where `None`; nothing past the capacity.
-  pub(crate) fn stamp(&mut self, encoder: &mut wgpu::CommandEncoder, name: Option<String>) {
+  /// Writes a stamp ending an owner's pass by its name, or starting an encode group where `None`; nothing past the
+  /// capacity.
+  pub(crate) fn stamp(&mut self, encoder: &mut wgpu::CommandEncoder, name: Option<TimedPass>) {
     if let (Some(queries), Some((_, names))) = (&self.queries, &mut self.frame)
       && (names.len() as u32) < Self::CAPACITY
     {
@@ -178,18 +187,22 @@ impl GraphTimer {
           .collect();
 
         for (index, name) in slot.names.iter().enumerate() {
-          let Some(name) = name.as_ref().filter(|_| index > 0) else {
+          let Some((owner, name)) = name.as_ref().filter(|_| index > 0) else {
             continue;
           };
           // A tick count running backwards across a pass is a driver's, not a negative cost.
           let spent: f64 = stamps[index].saturating_sub(stamps[index - 1]) as f64 * to_milliseconds;
 
-          match self.sums.iter_mut().find(|(it, ..)| it == name) {
-            Some((_, total, frames)) => {
+          match self
+            .sums
+            .iter_mut()
+            .find(|(it, named, ..)| it == owner && named == name)
+          {
+            Some((_, _, total, frames)) => {
               *total += spent;
               *frames += 1;
             }
-            None => self.sums.push((name.clone(), spent, 1)),
+            None => self.sums.push((*owner, name.clone(), spent, 1)),
           }
         }
       }

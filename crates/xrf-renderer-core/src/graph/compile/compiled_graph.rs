@@ -263,6 +263,7 @@ impl<'a> CompiledGraph<'a> {
     }
 
     while let Some(pass) = pending.pop_front() {
+      let owner: u32 = pass.pass.owner;
       let name: String = match pass.render_pass {
         Some(render_pass) => {
           let mut run: Vec<CompiledPass<'a>> = vec![pass];
@@ -298,7 +299,7 @@ impl<'a> CompiledGraph<'a> {
       };
 
       if let Some((timer, _)) = timing.as_mut() {
-        timer.stamp(&mut encoder, Some(name));
+        timer.stamp(&mut encoder, Some((owner, name)));
       }
     }
 
@@ -585,6 +586,7 @@ impl<'a> CompiledGraph<'a> {
           scope,
           marker: PassMarker {
             timer,
+            owner: pass.owner,
             is_marked: false,
           },
         };

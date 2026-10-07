@@ -21,19 +21,12 @@ pub struct FrameCapture {
 }
 
 impl FrameCapture {
-  /// Copies `rect` out of `texture`, the frame `frame` just drawn, and asks for it back.
+  /// A capture of `rect` of a frame of `format`, the frame `frame`, waiting for its copy.
   ///
   /// # Errors
   ///
   /// Returns an error for a frame of a format a capture cannot read.
-  pub fn new(
-    (device, queue): (&wgpu::Device, &wgpu::Queue),
-    texture: &wgpu::Texture,
-    rect: RenderRect,
-    frame: u64,
-  ) -> XrfResult<Self> {
-    let format: wgpu::TextureFormat = texture.format();
-
+  pub fn new(device: &wgpu::Device, format: wgpu::TextureFormat, rect: RenderRect, frame: u64) -> XrfResult<Self> {
     if !matches!(
       format,
       wgpu::TextureFormat::Bgra8Unorm | wgpu::TextureFormat::Rgba8Unorm
@@ -44,8 +37,19 @@ impl FrameCapture {
     }
 
     let row: u32 = (rect.width * 4).next_multiple_of(wgpu::COPY_BYTES_PER_ROW_ALIGNMENT);
-    let readback: GpuReadback = GpuReadback::new(device, "capture", (row * rect.height) as u64);
-    let mut encoder: wgpu::CommandEncoder = device.create_command_encoder(&Default::default());
+
+    Ok(Self {
+      readback: GpuReadback::new(device, "capture", (row * rect.height) as u64),
+      rect,
+      format,
+      row,
+      frame,
+    })
+  }
+
+  /// Copies its rectangle out of `texture`, the frame drawn; asked for once the copy is submitted.
+  pub fn encode(&self, encoder: &mut wgpu::CommandEncoder, texture: &wgpu::Texture) {
+    let rect: RenderRect = self.rect;
 
     encoder.copy_texture_to_buffer(
       wgpu::TexelCopyTextureInfo {
@@ -59,10 +63,10 @@ impl FrameCapture {
         aspect: wgpu::TextureAspect::All,
       },
       wgpu::TexelCopyBufferInfo {
-        buffer: readback.get_buffer(),
+        buffer: self.readback.get_buffer(),
         layout: wgpu::TexelCopyBufferLayout {
           offset: 0,
-          bytes_per_row: Some(row),
+          bytes_per_row: Some(self.row),
           rows_per_image: Some(rect.height),
         },
       },
@@ -72,17 +76,12 @@ impl FrameCapture {
         depth_or_array_layers: 1,
       },
     );
-    readback.mark_recorded();
-    queue.submit([encoder.finish()]);
-    readback.request();
+    self.readback.mark_recorded();
+  }
 
-    Ok(Self {
-      readback,
-      rect,
-      format,
-      row,
-      frame,
-    })
+  /// Asks for the copy back, after the frame copying it is submitted.
+  pub fn request(&self) {
+    self.readback.request();
   }
 
   /// The capture once it is back, as eight bit RGBA rows top to bottom; nothing while it is on its way.
