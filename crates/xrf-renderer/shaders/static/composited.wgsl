@@ -6,9 +6,9 @@ enable dual_source_blending;
 #import "common/sun_shadow"
 
 // Static surfaces composited over the lit frame, as the engine's forward passes draw them after the deferred ones:
-// blended surfaces lit by the sun and the hemisphere, fogged and tonemapped, a spawned model's per vertex as
-// `model_def_lq` or `model_env_lq` lights it; added and multiplied ones as their texture reads, fading into the fog by
-// leaving what is behind them; and wall marks laid into the G-buffer's albedo before any light. Every blend is one
+// a blended level surface as `lmapE` or `vert` lights it, a spawned model's per vertex as `model_def_lq` or
+// `model_env_lq` lights it, each into the frame already tonemapped; added and multiplied ones as their texture reads,
+// fading into the fog by leaving what is behind them; and wall marks laid into the G-buffer's albedo before any light. Every blend is one
 // equation, the surface's colour plus what is behind it times a second colour, so one pipeline a target draws them all.
 
 #import "generated/static/composited"
@@ -63,6 +63,91 @@ fn vs_model_lit(@builtin(vertex_index) vertex_index: u32, @builtin(instance_inde
   return out;
 }
 
+// A level surface's vertex with the light `vert.vs` gives a vertex-lit one: its baked colour, the hemisphere by its
+// occlusion, the sun by its share, and the ambient. A lightmapped one is lit by its lightmap in the fragment instead.
+@vertex
+fn vs_baked_lit(@builtin(vertex_index) vertex_index: u32, @builtin(instance_index) instance_index: u32)
+  -> GBufferVarying {
+  var out: GBufferVarying = baked_vertex(vertex_index, instance_index);
+  let pulled: PulledVertex = pull(vertex_index, instance_index);
+
+  if ((surfaces[pulled.surface].flags & SURFACE_HAS_LIGHTMAP) == 0u) {
+    let rotation: mat3x3<f32> = transpose(mat3x3<f32>(camera.view[0].xyz, camera.view[1].xyz, camera.view[2].xyz));
+    let normal_world: vec3<f32> = normalize(rotation * out.normal);
+    // `D3DCOLOR`: blue, green, red, then the sun's share.
+    let color: vec4<f32> = unpack4x8unorm(words[pulled.word + VERTEX_EXTRA]);
+    let hemi: f32 = unpack4x8unorm(words[pulled.word + VERTEX_NORMAL]).w;
+
+    out.light = color.zyx + forward_hemi(normal_world) * hemi + forward_sun(normal_world) * color.w +
+      lighting.forward_ambient.rgb;
+  }
+
+  return out;
+}
+
+// `v_hemi`: the hemisphere's colour by how far a world normal faces up.
+fn forward_hemi(normal_world: vec3<f32>) -> vec3<f32> {
+  return lighting.forward_hemi.rgb * (0.5 + 0.5 * normal_world.y);
+}
+
+// `v_sun`: the sun's colour by how far a world normal faces it. Clamped at none, as the forward models' is: the
+// engine's leaves it unclamped, and on a pane facing away from the sun it cancels the hemisphere and the ambient.
+fn forward_sun(normal_world: vec3<f32>) -> vec3<f32> {
+  let rotation: mat3x3<f32> = transpose(mat3x3<f32>(camera.view[0].xyz, camera.view[1].xyz, camera.view[2].xyz));
+
+  return lighting.forward_sun.rgb * saturate(dot(normal_world, normalize(rotation * lighting.to_sun.xyz)));
+}
+
+// The sky's cube a world direction reflects, between the two keyframes as the sky itself is.
+fn sky_reflection(reflected: vec3<f32>) -> vec3<f32> {
+  let lookup: vec3<f32> = cube_lookup(reflected);
+
+  return mix(textureSampleLevel(sky_cube_0, sky_clamp, lookup, 0.0).rgb,
+    textureSampleLevel(sky_cube_1, sky_clamp, lookup, 0.0).rgb, lighting.sky.w);
+}
+
+// A blended level surface as the engine draws it forward, into the frame already tonemapped: `lmapE` by its lightmap's
+// colour, the sun by the lightmap's share and the hemisphere by its hemisphere lightmap, its base mixed toward the
+// sky's cube, reflected, where its alpha is thin; `vert` by the light its vertices carry; both doubled, fogged, and
+// their alpha faded by the fog's square. Both test alpha against the reference, none for most, so what the texture
+// leaves empty is never blended.
+fn level_composited(in: GBufferVarying, surface: Surface, base: vec4<f32>) -> CompositedOutput {
+  if (base.a <= surface.alpha_reference) {
+    discard;
+  }
+
+  let texel: vec3<f32> = mix(untextured_color(surface.color), base.rgb, camera.switches.x);
+  let position: vec3<f32> = camera_view_position(in.clip.xy, in.clip.z);
+  let fog: f32 = fog_amount_at(lighting, position, in.world.y);
+
+  if (fog_amount(lighting, position) >= 1.0) {
+    discard;
+  }
+
+  var color: vec3<f32> = in.light * texel * 2.0;
+
+  if ((surface.flags & SURFACE_HAS_LIGHTMAP) != 0u) {
+    let rotation: mat3x3<f32> = transpose(mat3x3<f32>(camera.view[0].xyz, camera.view[1].xyz, camera.view[2].xyz));
+    let normal_world: vec3<f32> = normalize(rotation * normalize(in.normal));
+    let lightmap: vec4<f32> =
+      textureSampleLevel(textures[surface.textures[SLOT_LIGHTMAP]], texture_sampler, in.lightmap_uv, 0.0);
+    var hemi: f32 = 1.0;
+
+    if ((surface.flags & SURFACE_HAS_HEMI) != 0u) {
+      hemi = textureSampleLevel(textures[surface.textures[SLOT_HEMI]], texture_sampler, in.lightmap_uv, 0.0).a;
+    }
+
+    let light: vec3<f32> = lighting.forward_ambient.rgb + lightmap.rgb + forward_sun(normal_world) * lightmap.a +
+      forward_hemi(normal_world) * hemi;
+    let environment: vec3<f32> = sky_reflection(reflect(normalize(rotation * position), normal_world));
+
+    color = light * mix(environment, texel, base.a) * 2.0;
+  }
+
+  return composite(surface.flags, texel, base.a * (1.0 - fog) * (1.0 - fog),
+    saturate(mix(color, lighting.fog_color.rgb, fog)), 0.0);
+}
+
 // A blended model as the engine draws it forward, into the frame already tonemapped: its light times its base, doubled.
 // `model_def_lq` takes the base as it is, unfogged; `model_env_lq` mixes it toward its class's cube, reflected, where
 // its alpha is thin (the sky's where it names none), fogs it, and fades its alpha by the fog's square.
@@ -95,12 +180,11 @@ fn model_composited(in: GBufferVarying, surface: Surface, base: vec4<f32>) -> Co
 
   let rotation: mat3x3<f32> = transpose(mat3x3<f32>(camera.view[0].xyz, camera.view[1].xyz, camera.view[2].xyz));
   let reflected: vec3<f32> = reflect(normalize(rotation * position), normalize(rotation * normalize(in.normal)));
-  let lookup: vec3<f32> = cube_lookup(reflected);
-  var reflection: vec3<f32> = mix(textureSampleLevel(sky_cube_0, sky_clamp, lookup, 0.0).rgb,
-    textureSampleLevel(sky_cube_1, sky_clamp, lookup, 0.0).rgb, lighting.sky.w);
+  var reflection: vec3<f32> = sky_reflection(reflected);
 
   if (surface.textures[SLOT_ENVIRONMENT] != 0u) {
-    reflection = textureSampleLevel(environments[surface.textures[SLOT_ENVIRONMENT]], sky_clamp, lookup, 0.0).rgb;
+    reflection =
+      textureSampleLevel(environments[surface.textures[SLOT_ENVIRONMENT]], sky_clamp, cube_lookup(reflected), 0.0).rgb;
   }
 
   let color: vec3<f32> = in.light * mix(reflection, texel, base.a) * 2.0;
@@ -144,6 +228,10 @@ fn fs_composited(in: GBufferVarying) -> CompositedOutput {
 
   if ((surface.flags & SURFACE_IS_MODEL) != 0u && is_blended && is_lit) {
     return model_composited(in, surface, base);
+  }
+
+  if (is_blended && is_lit && (surface.flags & SURFACE_IS_TERRAIN) == 0u) {
+    return level_composited(in, surface, base);
   }
 
   let position: vec3<f32> = camera_view_position(in.clip.xy, in.clip.z);

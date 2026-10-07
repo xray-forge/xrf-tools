@@ -8,3 +8,4 @@
 @group(1) @binding(3) var history_sampler: sampler;
 @group(1) @binding(4) var<uniform> temporal: Temporal;
 @group(1) @binding(5) var motion_target: texture_2d<f32>;
+@group(1) @binding(6) var opaque: texture_2d<f32>;

@@ -33,7 +33,8 @@ impl StaticBatch {
     Self::list().filter(|batch| batch.class == StaticClass::Water)
   }
 
-  /// The batches the composited pass draws over the lit frame.
+  /// The batches the composited pass draws over the lit frame in the cull's order; the sorted ones it draws from the
+  /// view's list.
   pub fn list_composited() -> impl Iterator<Item = StaticBatch> {
     Self::list().filter(|batch| batch.class == StaticClass::Composited)
   }

@@ -67,6 +67,10 @@ impl StaticSurface {
   /// the level's flat or alpha-tested ones (`canUseSteepParallax`), and it binds its bump pair, whose second's alpha is
   /// the height.
   pub const IS_STEEP: u32 = 1 << 25;
+  /// A blended level surface's own lightmap, its baked light in colour and the sun's share in alpha, which `lmapE`
+  /// lights it by forward, bound in the detail slot a forward pass reads no detail from; a blended level surface
+  /// without one is lit by its vertices, as `vert` lights it.
+  pub const HAS_LIGHTMAP: u32 = 1 << 26;
 
   pub const BASE: usize = 0;
   pub const DETAIL: usize = 1;
@@ -77,6 +81,8 @@ impl StaticSurface {
   pub const HEMI: usize = 6;
   /// An environment-mapped model's cube, in the environment slots rather than the textures'.
   pub const ENVIRONMENT: usize = 7;
+  /// A blended level surface's lightmap, in its detail slot.
+  pub const LIGHTMAP: usize = 1;
   pub const WATER_NORMAL: usize = 1;
   pub const FOAM: usize = 2;
   pub const DISTORTION: usize = 3;

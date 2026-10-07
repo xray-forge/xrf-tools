@@ -58,10 +58,10 @@ pub fn build_static_surface(
     Some(_) => return None,
   };
 
-  let class: StaticClass = if class == StaticClass::Composited && descriptor.is_some_and(is_wallmark) {
-    StaticClass::Wallmark
-  } else {
-    class
+  let class: StaticClass = match class {
+    StaticClass::Composited if descriptor.is_some_and(is_wallmark) => StaticClass::Wallmark,
+    StaticClass::Composited if descriptor.is_some_and(is_strictly_sorted) => StaticClass::Sorted,
+    class => class,
   };
 
   let mut request = |reference: Option<&str>, role: TextureRole| -> Option<u32> {
@@ -119,7 +119,7 @@ pub fn build_static_surface(
   }
 
   // A composited surface tests its own reference where it has one.
-  if class == StaticClass::CutOut || (class == StaticClass::Composited && reference > 0) {
+  if class == StaticClass::CutOut || (class.is_composited() && reference > 0) {
     flags |= StaticSurface::IS_CUT_OUT;
   }
 
@@ -188,6 +188,19 @@ pub fn build_static_surface(
 
   texture_slots[StaticSurface::ENVIRONMENT] = environment;
 
+  // A blended level surface is drawn forward as `lmapE` draws it, by its own lightmap, the shader entry's second
+  // texture where it names one.
+  let lightmap: Option<u32> = descriptor
+    .filter(|_| class.is_composited() && blend == 0)
+    .and_then(|it| it.textures.get(1))
+    .filter(|reference| reference.starts_with(LIGHTMAP_PREFIX))
+    .map(|reference| textures.request(reference, TextureRole::Hemi, source));
+
+  if let Some(lightmap) = lightmap {
+    texture_slots[StaticSurface::LIGHTMAP] = lightmap;
+    flags = (flags & !StaticSurface::HAS_DETAIL) | StaticSurface::HAS_LIGHTMAP;
+  }
+
   let material: f32 = descriptor.map_or(DEFAULT_MATERIAL, |it| it.material);
 
   Some((
@@ -204,6 +217,20 @@ pub fn build_static_surface(
     class,
   ))
 }
+
+/// Whether a shader entry's blender is strictly sorted, which the engine draws in `mapSorted`, back to front.
+fn is_strictly_sorted(descriptor: &XraySurfaceDescriptor) -> bool {
+  matches!(
+    descriptor.declaration,
+    XraySurfaceDeclaration::Described {
+      is_strict_sorting: true,
+      ..
+    }
+  )
+}
+
+/// What a level's lightmaps are named by, `lmap#<n>_1` and `lmap#<n>_2`.
+const LIGHTMAP_PREFIX: &str = "lmap#";
 
 /// What `details_lod.s` appends to the atlas for its `s_hemi`.
 const IMPOSTOR_COMPANION_SUFFIX: &str = "_nm";

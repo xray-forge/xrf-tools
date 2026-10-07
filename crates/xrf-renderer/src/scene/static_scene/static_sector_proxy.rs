@@ -4,6 +4,7 @@ use xrf_renderer_core::ProxyHandle;
 use crate::scene::static_scene::static_batch::StaticBatch;
 use crate::scene::static_scene::static_row::StaticRow;
 use crate::scene::static_scene::static_slot_info::StaticSlotInfo;
+use crate::scene::static_scene::static_sorted_run::StaticSortedRun;
 use crate::scene::static_scene::static_spans::StaticSpans;
 use crate::scene::static_scene::static_trace_geometry::StaticTraceGeometry;
 use crate::scene::static_scene::static_trace_group::StaticTraceGroup;
@@ -28,6 +29,8 @@ pub struct StaticSectorProxy {
   /// Its deferred baked sections and instanced meshes, which the level's acceleration structures take.
   pub trace_geometries: Vec<StaticTraceGeometry>,
   pub trace_groups: Vec<StaticTraceGroup>,
+  /// Its strictly sorted composited runs, which a view draws back to front.
+  pub sorted_runs: Vec<StaticSortedRun>,
   /// The bounding sphere of each of its places that sways, and its reach.
   pub swaying: Vec<(Vec4, f32)>,
 }

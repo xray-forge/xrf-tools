@@ -2503,6 +2503,23 @@ impl SceneView {
 
       let scene: GraphTexture = handles.scene;
 
+      // The temporal resolve's reactive weight is what the water, the composited surfaces and the particles change of
+      // the frame drawn so far, as FSR 2's mask below is.
+      let temporal_opaque: Option<GraphTexture> = (resolve == Some("temporal") && scene_view.state.temporal.is_some())
+        .then(|| {
+          let (width, height) = handles.size;
+          let opaque: GraphTexture = graph.create_texture(GraphTextureDescriptor::new_2d(
+            "temporal opaque",
+            width,
+            height,
+            ViewTargets::SCENE,
+          ));
+
+          Self::add_copy(&mut *graph, "temporal opaque", scene, opaque);
+
+          opaque
+        });
+
       // FSR 2's reactive mask is what the water and the blended surfaces change of the frame drawn so far.
       if let Some(fsr) = &scene_view.state.fsr {
         let opaque: GraphTexture = bindings.import_view(&mut *graph, "fsr2 opaque", &fsr.opaque);
@@ -2543,49 +2560,29 @@ impl SceneView {
 
       graph.begin_group("post");
 
+      let composited: CompositedParameters = CompositedParameters {
+        lighting: lit.lighting,
+        exposure: StorageValue::new(lit.exposure),
+        material_lut: lit.material_lut,
+        lut_sampler: lit.lut_sampler,
+        shadow_maps: lit.shadow_maps,
+        shadows: lit.shadows,
+      };
+
       if let (true, Some(sky)) = (is_composited, sky) {
         let args: Vec<GraphBuffer> = Self::list_draw_args(&statics, &scene_view.info.cull);
-        // The models' composited clusters, back to front, which the view lists itself.
-        let sorted: Option<StaticDrawParameters> = scene_view
-          .state
-          .sorted_list
-          .as_ref()
-          .filter(|_| scene_view.info.sorted_count > 0)
-          .map(|list| {
-            let list: GraphBuffer = bindings.import_buffer(&mut *graph, "sorted composited", list);
-
-            statics.get_layout_draws(StorageArray::new(list))[StaticLayout::Model.get_index()]
-          });
-        let sorted_count: u32 = scene_view.info.sorted_count;
         let builder = args.iter().fold(
           StaticDraws::declare_layouts(Self::add_over_scene(&mut *graph, handles, "composited"), &layouts),
           |builder, args| builder.buffer(*args, GraphBufferAccess::Indirect),
         );
-        let composited: CompositedParameters = CompositedParameters {
-          lighting: lit.lighting,
-          exposure: StorageValue::new(lit.exposure),
-          material_lut: lit.material_lut,
-          lut_sampler: lit.lut_sampler,
-          shadow_maps: lit.shadow_maps,
-          shadows: lit.shadows,
-        };
-        let builder = match &sorted {
-          Some(sorted) => builder.parameters(sorted),
-          None => builder,
-        }
-        .parameters(&composited)
-        .parameters(&sky);
+        let builder = builder.parameters(&composited).parameters(&sky);
 
         builder.record(move |context| {
           let args: Vec<&wgpu::Buffer> = args.iter().map(|args| context.get_buffer(*args)).collect();
 
-          passes.composited.record(
-            context,
-            (view, &layouts, texture_group),
-            (&composited, &sky),
-            &args,
-            (sorted.as_ref(), sorted_count),
-          );
+          passes
+            .composited
+            .record(context, (view, &layouts, texture_group), (&composited, &sky), &args);
         });
       }
 
@@ -2596,6 +2593,31 @@ impl SceneView {
           (handles, lit.lighting, particle_surfaces),
           (view, texture_group),
         );
+      }
+
+      // The sorted composited surfaces, the models' and the level's strictly sorted ones, back to front after the
+      // particles, as the engine draws `mapSorted` after its unsorted forward passes.
+      if let (true, Some(sky), Some(list)) = (
+        is_composited,
+        sky,
+        scene_view
+          .state
+          .sorted_list
+          .as_ref()
+          .filter(|_| scene_view.info.sorted_count > 0),
+      ) {
+        let list: GraphBuffer = bindings.import_buffer(&mut *graph, "sorted composited", list);
+        let sorted: [StaticDrawParameters; StaticLayout::COUNT] = statics.get_layout_draws(StorageArray::new(list));
+        let runs: &'a [(StaticLayout, u32, u32)] = &scene_view.info.sorted_runs;
+
+        StaticDraws::declare_layouts(Self::add_over_scene(&mut *graph, handles, "sorted composited"), &sorted)
+          .parameters(&composited)
+          .parameters(&sky)
+          .record(move |context| {
+            passes
+              .composited
+              .record_sorted(context, (view, &sorted, texture_group), (&composited, &sky), runs);
+          });
       }
 
       // What a reflection reads a frame later: the scene with the water and the particles drawn, before the sun shafts,
@@ -2845,6 +2867,7 @@ impl SceneView {
             history_sampler: passes.temporal.get_sampler(),
             temporal: runtime.push_uniform(&scene_view.info.temporal),
             motion_target: handles.motion,
+            opaque: temporal_opaque.unwrap_or(handles.scene),
           };
 
           graph
@@ -3157,8 +3180,9 @@ impl SceneView {
     );
   }
 
-  /// Lists the models' composited clusters in view, their places back to front by distance and each place's clusters in
-  /// their parts' order, as the engine draws its sorted blended objects; binds the list for the composited pass.
+  /// Lists the sorted composited clusters in view, the models' and the level's strictly sorted runs, back to front by
+  /// distance and each place's clusters in their parts' order, as the engine draws its sorted blended objects, and the
+  /// runs of them alike in layout, which each draw with their layout's program; binds the list for the sorted pass.
   fn prepare_sorted(&mut self, scene: &LevelScene, device: &wgpu::Device, queue: &wgpu::Queue, view: &CameraView) {
     let planes: [Vec4; 6] = view.get_planes();
     let mut places: Vec<(f32, StaticSortedPlace<'_>)> = scene
@@ -3170,18 +3194,31 @@ impl SceneView {
 
     places.sort_by(|a, b| b.0.total_cmp(&a.0));
 
-    let entries: Vec<[u32; 2]> = places
-      .iter()
-      .flat_map(|(_, place)| {
+    let mut entries: Vec<[u32; 2]> = Vec::new();
+    let mut runs: Vec<(StaticLayout, u32, u32)> = Vec::new();
+
+    for (_, place) in &places {
+      let first: u32 = entries.len() as u32;
+
+      entries.extend(
         place
           .clusters
           .iter()
-          .flat_map(|(first, count)| (*first..first + count).map(|cluster| [cluster, place.place]))
-      })
-      .collect();
+          .flat_map(|(first, count)| (*first..first + count).map(|cluster| [cluster, place.place])),
+      );
+
+      let count: u32 = entries.len() as u32 - first;
+
+      match runs.last_mut() {
+        Some((layout, _, run)) if *layout == place.layout => *run += count,
+        _ => runs.push((place.layout, first, count)),
+      }
+    }
+
     let bytes: &[u8] = bytemuck::cast_slice(&entries);
 
     self.info.sorted_count = entries.len() as u32;
+    self.info.sorted_runs = runs;
 
     if bytes.is_empty() {
       return;

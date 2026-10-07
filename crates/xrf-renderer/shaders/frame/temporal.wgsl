@@ -4,7 +4,9 @@
 // The temporal resolve, after Karis's "High Quality Temporal Supersampling": this frame's jittered samples blended
 // with the history the camera's motion carries to each pixel, the history clipped to the colours around it, upscaling
 // as TAAU where the frame is drawn smaller than the history. Motion is each surface's own, from the motion target, and
-// the camera's from depth where nothing was drawn.
+// the camera's from depth where nothing was drawn. Where the water, a composited surface or a particle changed the
+// frame, whose motion and depth are what lies behind them, the history counts for less and is clipped tighter, as
+// FSR 2's reactive mask weighs it.
 
 // This frame as drawn, its depth, the history (colour, then distance along the view, zero where nothing was drawn)
 // and its sampler, what moves the history onto this frame, and how far each surface's point moved since the last frame,
@@ -18,6 +20,20 @@ const MAX_MOTION: f32 = 128.0;
 // `exp(-2.29 x²)`'s factor: Karis's fit of a Blackman-Harris window a pixel wide.
 const WINDOW: f32 = -2.29;
 const NEIGHBOURS: f32 = 9.0;
+// How strongly a change over the opaque frame, relative to its brightness, marks a pixel reactive; the share of this
+// frame a fully reactive pixel takes at least; and how far its history's clip box narrows.
+const REACTIVE_GAIN: f32 = 2.0;
+const REACTIVE_WEIGHT: f32 = 0.5;
+const REACTIVE_CLIP: f32 = 0.5;
+
+// How far what was drawn over the opaque frame changed a drawn texel, from none to one.
+fn reactive_at(at: vec2<f32>, size: vec2<f32>) -> f32 {
+  let texel: vec2<i32> = vec2<i32>(clamp(at, vec2<f32>(0.0), size - 1.0));
+  let over: vec3<f32> = max(textureLoad(frame, texel, 0).rgb, vec3<f32>(0.0));
+  let under: vec3<f32> = max(textureLoad(opaque, texel, 0).rgb, vec3<f32>(0.0));
+
+  return saturate(length(over - under) / (luminance(over) + luminance(under) + 0.05) * REACTIVE_GAIN);
+}
 
 fn load_frame(at: vec2<f32>, size: vec2<f32>) -> vec3<f32> {
   return max(textureLoad(frame, vec2<i32>(clamp(at, vec2<f32>(0.0), size - 1.0)), 0).rgb, vec3<f32>(0.0));
@@ -164,12 +180,15 @@ fn fs_temporal(in: FullscreenVarying) -> @location(0) vec4<f32> {
   let motion_share: f32 = saturate(length(moved * output_size) / MAX_MOTION);
   // Wider while still, so a sub-pixel edge keeps its history; tighter while moving, so nothing trails.
   let still: f32 = (1.0 - motion_share) * (1.0 - motion_share);
-  let spread: vec3<f32> = sqrt(max(moment_squared / NEIGHBOURS - mean * mean, vec3<f32>(0.0))) * mix(0.5, 1.0, still);
+  let reactive: f32 = reactive_at(nearest, input_size);
+  let spread: vec3<f32> = sqrt(max(moment_squared / NEIGHBOURS - mean * mean, vec3<f32>(0.0))) * mix(0.5, 1.0, still) *
+    mix(1.0, REACTIVE_CLIP, reactive);
   let previous: vec3<f32> = clipped(catmull_rom(before, output_size), mean, mean - spread, mean + spread);
   // The nearest sample's distance from this pixel's centre, in output pixels, weighs this frame; unscaled, as is.
   let landed: vec2<f32> = (position - (nearest + 0.5 + jitter)) * upscale;
   let confidence: f32 = select(1.0, exp(dot(landed, landed) * WINDOW) * upscale * upscale, upscale > 1.001);
-  let weight: f32 = select(1.0, saturate(temporal.params.w * confidence + motion_share), is_valid);
+  let resolved_weight: f32 = saturate(temporal.params.w * confidence + motion_share);
+  let weight: f32 = select(1.0, mix(resolved_weight, max(resolved_weight, REACTIVE_WEIGHT), reactive), is_valid);
 
   return vec4<f32>(blended(current, previous, weight), select(0.0, distance, is_drawn));
 }

@@ -98,6 +98,11 @@ fn place_vertex(pulled: PulledVertex, position: vec3<f32>, normal: vec4<f32>, ta
 
 @vertex
 fn vs_baked(@builtin(vertex_index) vertex_index: u32, @builtin(instance_index) instance_index: u32) -> GBufferVarying {
+  return baked_vertex(vertex_index, instance_index);
+}
+
+// A sector's or an instanced mesh's vertex, its base and lightmap coordinates as the baked layout packs them.
+fn baked_vertex(vertex_index: u32, instance_index: u32) -> GBufferVarying {
   let pulled: PulledVertex = pull(vertex_index, instance_index);
   let at: u32 = pulled.word;
   let binormal: vec4<f32> = unpack4x8unorm(words[at + VERTEX_BINORMAL]);

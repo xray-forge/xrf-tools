@@ -33,6 +33,7 @@ use crate::scene::static_scene::static_selection::StaticSelection;
 use crate::scene::static_scene::static_slot::StaticSlot;
 use crate::scene::static_scene::static_slot_info::StaticSlotInfo;
 use crate::scene::static_scene::static_sorted_place::StaticSortedPlace;
+use crate::scene::static_scene::static_sorted_run::StaticSortedRun;
 use crate::scene::static_scene::static_spans::StaticSpans;
 use crate::scene::static_scene::static_surface::StaticSurface;
 use crate::scene::static_scene::static_surface_build::{build_impostor_surface, build_static_surface};
@@ -497,9 +498,11 @@ impl StaticScene {
           layout: StaticLayout::Baked,
           class,
         };
-        let (_, clusters): (u32, u32) = writer.put_slot(
+        let cut: Vec<(u32, u32, Vec4)> = cut_clusters(&description.geometry, buffer, section.draw.start, section.draw.count);
+        let sphere: Vec4 = bound_spheres(&cut.iter().map(|(_, _, sphere)| *sphere).collect::<Vec<Vec4>>());
+        let (slot, clusters): (u32, u32) = writer.put_slot(
           &base,
-          cut_clusters(&description.geometry, buffer, section.draw.start, section.draw.count),
+          cut,
           (StaticSlot::SINGLE, batch, surface),
           StaticSlotInfo {
             sector: description.sector,
@@ -510,6 +513,15 @@ impl StaticScene {
         );
 
         writer.capacities[batch.get_index() as usize] += clusters;
+
+        if class == StaticClass::Sorted {
+          writer.sorted_runs.push(StaticSortedRun {
+            sphere,
+            place: None,
+            layout: StaticLayout::Baked,
+            clusters: (writer.slots[slot as usize].first_cluster, clusters),
+          });
+        }
 
         if class.is_deferred() {
           writer.trace_geometries.push(StaticTraceGeometry {
@@ -568,6 +580,7 @@ impl StaticScene {
         impostor_shaders: writer.impostor_shaders,
         trace_geometries: writer.trace_geometries,
         trace_groups: writer.trace_groups,
+        sorted_runs: writer.sorted_runs,
         swaying,
       },
     );
@@ -942,17 +955,32 @@ impl StaticScene {
     self.sway_reach
   }
 
-  /// The spawned objects with composited surfaces, which a view draws back to front itself.
+  /// The spawned objects with composited surfaces and the level's strictly sorted composited runs, which a view draws
+  /// back to front itself.
   pub fn list_sorted_places(&self) -> impl Iterator<Item = StaticSortedPlace<'_>> {
-    self.objects.as_slice().iter().filter_map(|object| {
+    let objects = self.objects.as_slice().iter().filter_map(|object| {
       let model: &StaticModelProxy = self.models.get(object.model)?;
 
       (!model.sorted.is_empty()).then(|| StaticSortedPlace {
         sphere: object.sphere,
         place: object.place.get_offset(),
+        layout: StaticLayout::Model,
         clusters: &model.sorted,
       })
-    })
+    });
+    let runs = self
+      .sectors
+      .as_slice()
+      .iter()
+      .flat_map(|sector| sector.sorted_runs.iter())
+      .map(|run| StaticSortedPlace {
+        sphere: run.sphere,
+        place: run.place.unwrap_or(self.origin.get_offset()),
+        layout: run.layout,
+        clusters: std::slice::from_ref(&run.clusters),
+      });
+
+    objects.chain(runs)
   }
 
   fn get_object(&self, object: u32) -> Option<&StaticObjectProxy> {
@@ -1315,6 +1343,18 @@ impl StaticScene {
 
       if let Some(traced) = &mut traced {
         traced.transforms.push(StaticTraceGroup::to_transform(&matrix));
+      }
+
+      // A strictly sorted mesh is drawn place by place back to front, at its whole detail.
+      if class == StaticClass::Sorted
+        && let Some((slot, clusters)) = band_slots.first()
+      {
+        writer.sorted_runs.push(StaticSortedRun {
+          sphere: center.extend(local.w * scale),
+          place: Some(place),
+          layout,
+          clusters: (writer.slots[*slot as usize].first_cluster, *clusters),
+        });
       }
 
       writer.places.push(StaticPlace {
