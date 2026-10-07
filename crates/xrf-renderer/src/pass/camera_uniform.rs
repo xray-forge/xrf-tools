@@ -21,8 +21,8 @@ pub struct CameraUniform {
   /// The frustum's planes in renderer space, pointing inward.
   pub planes: [Vec4; 6],
   /// Textured, bumped, the baked hemisphere's strength, and the surfaces' bits: one where the engines' steep parallax is
-  /// drawn, two and four where the G-buffer draws the parallax or the bumps in place of the albedo for their debug
-  /// views.
+  /// drawn, two, four and eight where the G-buffer draws the parallax, the bumps or the heights in place of the albedo
+  /// for their debug views.
   pub switches: Vec4,
   /// One where the static surfaces draw as their triangles' edges; times a uv checker repeats in place of every
   /// surface's textures; one where surfaces draw solid.

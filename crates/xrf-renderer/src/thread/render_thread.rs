@@ -1189,7 +1189,8 @@ impl RenderThread {
       f32::from(
         u8::from(options.features.parallax.is_steep)
           | u8::from(options.mode.debug_view == RenderDebugView::Parallax) << 1
-          | u8::from(options.mode.debug_view == RenderDebugView::Bumps) << 2,
+          | u8::from(options.mode.debug_view == RenderDebugView::Bumps) << 2
+          | u8::from(options.mode.debug_view == RenderDebugView::Heights) << 3,
       ),
     );
     let is_scened: bool = scene.is_some();

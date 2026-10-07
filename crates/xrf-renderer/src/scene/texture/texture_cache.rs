@@ -4,6 +4,8 @@ use std::num::NonZeroU32;
 use std::sync::Arc;
 use std::sync::mpsc::Sender;
 
+use xrf_error::XrfResult;
+
 use crate::contract::render_texture_report::RenderTextureReport;
 use crate::contract::render_texture_state::RenderTextureState;
 use crate::host::render_asset_source::RenderAssetSource;
@@ -238,24 +240,44 @@ impl TextureCache {
     let Some(source) = self.sources[index].clone() else {
       return;
     };
-    let (sender, generation, reference, lod) = (
+    let (sender, generation, reference, role, lod) = (
       self.sender.clone(),
       self.generations[index],
       self.references[index].clone(),
+      self.roles[index],
       self.lod,
     );
 
     self.workers.spawn(move || {
       // At full quality the listed textures load whole too, so the list is never read.
       let dropped: u32 = get_dropped_levels(lod, lod > 0 && source.is_texture_reduced(&reference));
-      let load: Result<Option<DecodedTexture>, String> = source
-        .read_texture(&reference)
-        .and_then(|bytes| {
-          bytes
-            .map(|bytes| DecodedTexture::from_dds(&bytes).map(|texture| texture.without_levels(dropped)))
-            .transpose()
-        })
-        .map_err(|error| error.to_string());
+      let read = |reference: &str| -> XrfResult<Option<DecodedTexture>> {
+        source
+          .read_texture(reference)?
+          .map(|bytes| DecodedTexture::from_dds(&bytes).map(|texture| texture.without_levels(dropped)))
+          .transpose()
+      };
+      let load: Result<Option<DecodedTexture>, String> = match role {
+        // A detail's height where the installation brings one, else integrated from its bump.
+        TextureRole::TerrainHeight => read(&reference)
+          .and_then(|own| match own {
+            Some(own) => Ok(Some(own)),
+            None => {
+              let bump: String = format!(
+                "{}{}",
+                reference.strip_suffix(TextureRole::HEIGHT_SUFFIX).unwrap_or(&reference),
+                TextureRole::BUMP_SUFFIX
+              );
+
+              source
+                .read_texture(&bump)?
+                .map(|bytes| DecodedTexture::from_bump_heights(&bytes, dropped))
+                .transpose()
+            }
+          })
+          .map_err(|error| error.to_string()),
+        _ => read(&reference).map_err(|error| error.to_string()),
+      };
 
       if let Err(error) = &load {
         log::warn!("Texture '{reference}' cannot be drawn: {error}");

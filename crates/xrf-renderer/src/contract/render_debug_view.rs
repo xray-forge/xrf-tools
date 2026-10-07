@@ -42,6 +42,9 @@ pub enum RenderDebugView {
   /// Which surfaces are bumped: a bumped one's normal in its own tangent space as a normal map colours it, lavender
   /// where flat, a terrain's by its four details' bumps; a surface without a bump red by its brightness.
   Bumps,
+  /// The heights parallax reads: a terrain's details' weighed by its mask, an installation's own or derived from their
+  /// bumps, and a steep surface's, grey from black low to white high; every other surface a dim blue.
+  Heights,
 }
 
 impl RenderDebugView {

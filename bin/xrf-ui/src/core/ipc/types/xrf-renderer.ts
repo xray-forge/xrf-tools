@@ -393,6 +393,11 @@ export enum ERenderDebugView {
    * where flat, a terrain's by its four details' bumps; a surface without a bump red by its brightness.
    */
   BUMPS = "bumps",
+  /**
+   * The heights parallax reads: a terrain's details' weighed by its mask, an installation's own or derived from their
+   * bumps, and a steep surface's, grey from black low to white high; every other surface a dim blue.
+   */
+  HEIGHTS = "heights",
 }
 
 /** Every `ERenderDebugView` as the spelling it crosses IPC as, for a value no member has narrowed. */

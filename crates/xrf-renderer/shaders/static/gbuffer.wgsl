@@ -381,11 +381,14 @@ fn steep_footprint(in: GBufferVarying, at: Footprint) -> Footprint {
 // how far the coordinate moved, across in red and down in green about a half, out to the march's reach, over full
 // blue; a half in both where the surface takes parallax and stood past its reach; every other surface a dim grey of its
 // own brightness. The bumps view: a bumped surface's normal in its own tangent space as a normal map colours it,
-// lavender where flat, a terrain's by its four details' bumps; a surface without a bump red by its brightness.
+// lavender where flat, a terrain's by its four details' bumps; a surface without a bump red by its brightness. The
+// heights view: a terrain's details' heights weighed by its mask, and a steep surface's height, grey from black low to
+// white high; every other surface a dim blue of its own brightness.
 fn surfaces_shown(in: GBufferVarying, at: Footprint, shaded: GBufferOutput) -> GBufferOutput {
   let is_parallax: bool = has_surfaces_bit(SURFACES_PARALLAX_SHOWN);
+  let is_heights: bool = has_surfaces_bit(SURFACES_HEIGHTS_SHOWN);
 
-  if (!is_parallax && !has_surfaces_bit(SURFACES_BUMPS_SHOWN)) {
+  if (!is_parallax && !is_heights && !has_surfaces_bit(SURFACES_BUMPS_SHOWN)) {
     return shaded;
   }
 
@@ -399,6 +402,31 @@ fn surfaces_shown(in: GBufferVarying, at: Footprint, shaded: GBufferOutput) -> G
 
     out.albedo = vec4<f32>(select(vec3<f32>(0.08 + 0.25 * brightness), vec3<f32>(moved * 0.5 + 0.5, 1.0), is_steep),
       shaded.albedo.a);
+
+    return out;
+  }
+
+  if (is_heights) {
+    out.albedo = vec4<f32>(vec3<f32>(0.04, 0.06, 0.14) * (0.5 + brightness), shaded.albedo.a);
+
+    if ((flags & SURFACE_IS_TERRAIN) != 0u) {
+      let surface: Surface = surfaces[in.surface];
+      let mask: vec4<f32> = sample_slot(surface.terrain.mask, at.uv, at.dx, at.dy);
+      let weights: vec4<f32> = mask / max(dot(mask, vec4<f32>(1.0)), 1e-4);
+      let scale: f32 = surface.detail_scale;
+      var height: f32 = 0.0;
+
+      for (var layer: u32 = 0u; layer < 4u; layer++) {
+        height += sample_slot(surface.terrain.heights[layer], at.origin * scale, at.dx * scale, at.dy * scale).r *
+          weights[layer];
+      }
+
+      out.albedo = vec4<f32>(vec3<f32>(height), shaded.albedo.a);
+    } else if ((flags & SURFACE_IS_STEEP) != 0u) {
+      let height: f32 = sample_slot(surfaces[in.surface].textures[SLOT_BUMP_COMPANION], at.uv, at.dx, at.dy).a;
+
+      out.albedo = vec4<f32>(vec3<f32>(height), shaded.albedo.a);
+    }
 
     return out;
   }

@@ -30,6 +30,7 @@ const VIEW_REFLECTIONS: u32 = 12u;
 const VIEW_REFLECTION_ENDS: u32 = 13u;
 const VIEW_PARALLAX: u32 = 14u;
 const VIEW_BUMPS: u32 = 15u;
+const VIEW_HEIGHTS: u32 = 16u;
 // What the reflections view shows where a ray met nothing and the cube stands.
 const REFLECTION_MISS: vec3<f32> = vec3<f32>(0.05, 0.1, 0.45);
 // What the reflections view multiplies what was met by before its shoulder.
@@ -130,8 +131,8 @@ fn shown_target(texel: vec2<i32>) -> vec3<f32> {
 
       return mix(REFLECTION_MISS, met / (1.0 + met), saturate(traced.a));
     }
-    // The G-buffer draws the parallax or the bumps into the albedo for these views alone.
-    case VIEW_PARALLAX, VIEW_BUMPS: {
+    // The G-buffer draws the parallax, the bumps or the heights into the albedo for these views alone.
+    case VIEW_PARALLAX, VIEW_BUMPS, VIEW_HEIGHTS: {
       return textureLoad(albedo_target, texel, 0).rgb;
     }
     case VIEW_REFLECTION_ENDS: {

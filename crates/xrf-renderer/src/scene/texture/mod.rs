@@ -1,4 +1,5 @@
 pub(crate) mod decoded_texture;
+pub(crate) mod height_field;
 pub(crate) mod sky_texture_requests;
 pub(crate) mod texture_cache;
 pub(crate) mod texture_role;

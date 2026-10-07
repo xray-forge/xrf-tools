@@ -1,8 +1,14 @@
 use xrf_dds::{D3DFormat, DdsFile, DdsFormat, DdsMetadata, DxgiFormat};
 use xrf_error::{XrfError, XrfResult};
 
+use crate::scene::texture::height_field::{BUMP_LOW_CUT, integrate_normals, to_unit_heights};
+
 /// Faces a cube holds.
 pub const CUBE_FACES: u32 = 6;
+
+/// Texels a side a derived height is integrated at most, the bump read at its largest level within it, so a load spends
+/// a fraction of a second on one rather than seconds.
+const DERIVED_HEIGHT_MOST: u32 = 2048;
 
 /// A texture read off its file and laid out for upload: its mip chain as the GPU stores it, a cube's six faces each
 /// level, or a volume's slices as the layers of its top level alone.
@@ -49,6 +55,93 @@ impl DecodedTexture {
     self.height >>= dropped;
 
     self
+  }
+
+  /// The heights a tiling bump's normals integrate to (`height_field`), as a texture of one channel from nought to one
+  /// about a half, its mips averaged down to a texel: read at the bump's largest level within `DERIVED_HEIGHT_MOST`
+  /// texels a side, `dropped` levels below that, as a texture quality drops them. The normal is a bump's `.wzy`.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error for a file that does not parse or decode, or one whose sides are not powers of two.
+  pub fn from_bump_heights(bytes: &[u8], dropped: u32) -> XrfResult<Self> {
+    let file: DdsFile = DdsFile::read_from_bytes(bytes)?;
+    let metadata: DdsMetadata = file.metadata();
+    let levels: u32 = metadata.mipmap_levels.max(1);
+    let largest: u32 = metadata.width.max(metadata.height);
+    let within: u32 = largest.div_ceil(DERIVED_HEIGHT_MOST).max(1).ilog2();
+    let level: u32 = (within + dropped).min(levels - 1);
+    let image = file.decode_rgba(level)?;
+    let (width, height): (u32, u32) = (image.width(), image.height());
+
+    if !width.is_power_of_two() || !height.is_power_of_two() {
+      return Err(XrfError::new_texture_processing_error(format!(
+        "A bump of {width} by {height} texels has no height derived from it"
+      )));
+    }
+
+    let normals: Vec<[f32; 3]> = image
+      .as_raw()
+      .as_chunks::<4>()
+      .0
+      .iter()
+      .map(|texel| {
+        let unit = |channel: u8| f32::from(channel) / 255.0 * 2.0 - 1.0;
+
+        [unit(texel[3]), unit(texel[2]), unit(texel[1])]
+      })
+      .collect();
+    let heights: Vec<f32> = to_unit_heights(&integrate_normals(
+      width as usize,
+      height as usize,
+      &normals,
+      BUMP_LOW_CUT,
+    ));
+
+    Ok(Self::from_heights(width, height, heights))
+  }
+
+  /// Heights from nought to one as a texture of one channel, each mip the average of the four texels above it.
+  pub fn from_heights(width: u32, height: u32, heights: Vec<f32>) -> Self {
+    let mut levels: Vec<Vec<u8>> = Vec::new();
+    let (mut level_width, mut level_height, mut level): (u32, u32, Vec<f32>) = (width, height, heights);
+
+    loop {
+      levels.push(
+        level
+          .iter()
+          .map(|it| (it.clamp(0.0, 1.0) * 255.0).round() as u8)
+          .collect(),
+      );
+
+      if level_width == 1 && level_height == 1 {
+        break;
+      }
+
+      let (next_width, next_height): (u32, u32) = ((level_width / 2).max(1), (level_height / 2).max(1));
+      let at =
+        |column: u32, row: u32| level[(row.min(level_height - 1) * level_width + column.min(level_width - 1)) as usize];
+
+      level = (0..next_width * next_height)
+        .map(|index| {
+          let (column, row): (u32, u32) = ((index % next_width) * 2, (index / next_width) * 2);
+
+          (at(column, row) + at(column + 1, row) + at(column, row + 1) + at(column + 1, row + 1)) * 0.25
+        })
+        .collect();
+      (level_width, level_height) = (next_width, next_height);
+    }
+
+    Self {
+      format: wgpu::TextureFormat::R8Unorm,
+      width,
+      height,
+      layers: 1,
+      is_volume: false,
+      levels,
+      layout: String::from("derived height"),
+      is_expanded: false,
+    }
   }
 
   /// Makes a two dimensional texture of it on the GPU, every level written, and answers its view.
