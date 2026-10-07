@@ -205,6 +205,18 @@ struct LightRecord {
   faces: array<vec4<f32>, 6>,
 }
 
+struct LightVolume {
+  near: vec4<f32>,
+  far: vec4<f32>,
+  color: vec4<f32>,
+  frustum: vec4<f32>,
+}
+
+struct LightVolumes {
+  noise: u32,
+  scroll: f32,
+}
+
 struct AmbientOcclusion {
   radius: f32,
   power: f32,

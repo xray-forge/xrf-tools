@@ -62,7 +62,10 @@ export type TLevelGrassOptions = Pick<
 export type TLevelWaterOptions = Omit<TRenderWaterSettings, "isEnabled">;
 
 /** The lights settings a level view may set for itself. */
-export type TLevelLightsOptions = Pick<TRenderLightsSettings, "isLevelLights" | "isShadowed" | "shadowFilter">;
+export type TLevelLightsOptions = Pick<
+  TRenderLightsSettings,
+  "isLevelLights" | "isShadowed" | "isVolumetric" | "shadowFilter"
+>;
 
 /**
  * What a level view sets over the renderer's settings for itself: whatever it leaves unset follows them.
@@ -104,7 +107,7 @@ const LEVEL_FEATURE_KEYS: {
 } = {
   ambientOcclusion: ["method", "quality", "radius", "strength", "vbao"],
   grass: ["density", "foliage", "height", "isAligned", "radius", "slopeLimit"],
-  lights: ["isLevelLights", "isShadowed", "shadowFilter"],
+  lights: ["isLevelLights", "isShadowed", "isVolumetric", "shadowFilter"],
   shadows: ["bias", "blend", "cascades", "contact", "filter", "resolution"],
   water: ["distortion", "enhanced", "isDistorted", "isSoft", "mode", "reflection", "ripple", "waveHeight", "waveSpeed"],
 };

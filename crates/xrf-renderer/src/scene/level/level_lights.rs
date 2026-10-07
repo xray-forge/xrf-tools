@@ -3,6 +3,7 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use glam::{Mat4, Vec3, Vec4};
+use xrf_engine_target::XrayEngine;
 use xrf_math::{EPS_L, Vector3d};
 use xrf_renderer_core::{FrameGraph, GraphBindings, ProxyHandle, ProxyStore};
 use xrf_visual::{LightAnimatorDescription, LightDescription, LightKind, LightsDescription};
@@ -16,6 +17,8 @@ use crate::lighting::light_shadow_size::{LIGHT_SHADOW_POINT_FACES, to_light_shad
 use crate::lighting::light_specular::to_light_specular;
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::light_record::{LIGHT_NO_CONE, LIGHT_NO_PROJECTOR, LightRecord};
+use crate::pass::light_volume_record::LightVolumeRecord;
+use crate::pass::light_volumes_uniform::LightVolumesUniform;
 use crate::pass::static_cull_params::StaticCullParams;
 use crate::scene::level::level_light_shadows::{LIGHT_SHADOW_ATLAS_SIZE, LevelLightShadows};
 use crate::scene::level::light_shadow_set::LightShadowSet;
@@ -29,6 +32,31 @@ use crate::scene::texture::texture_role::TextureRole;
 /// What a light's falloff reaches zero at, a share of its range: `L_R` (`r3_rendertarget_accum_point.cpp`).
 const FALLOFF_RANGE: f32 = 0.95;
 
+/// The noise breaking the shafts (`s_noise`), and the projector Monolith draws every light's shafts through
+/// (`s_accum_volume`, `r4_rendertarget.cpp`), which a point's faces and a spot without its own take in OpenXRay too.
+const VOLUME_NOISE: &str = "fx\\fx_noise";
+const VOLUME_PROJECTOR: &str = "lights\\lights_spot01";
+
+/// `VOLUMETRIC_SLICES`: the slices the engines' buffer holds, of which a light's shafts draw some.
+const VOLUME_SLICES: u32 = 100;
+
+/// OpenXRay's fewest slices a light's shafts draw (`_max(10, iNumSlices)`).
+const VOLUME_FEWEST_SLICES: u32 = 10;
+
+/// Monolith's `ps_ssfx_volumetric` as it ships, which forces every light's shafts on: their intensity and quality, its
+/// slices a quality (`24 * fQuality`), and the most a quality draws (`24 * 5`), which its depth is stretched by.
+const MONOLITH_INTENSITY: f32 = 1.0;
+const MONOLITH_QUALITY: f32 = 3.0;
+const MONOLITH_SLICES_PER_QUALITY: f32 = 24.0;
+const MONOLITH_MOST_SLICES: f32 = 120.0;
+
+/// Metres from the eye Monolith's shafts start fading at, and the share of their intensity a metre past it takes.
+const MONOLITH_FADE_START: f32 = 20.0;
+const MONOLITH_FADE_RATE: f32 = 0.01;
+
+/// What Monolith scales an omni part's shafts by (`IntensityMod`).
+const MONOLITH_PART_INTENSITY: f32 = 0.2;
+
 /// A level's local lights: read once on a loader thread, moved by their motions, and each frame the nearest in a view
 /// written out into its `LightsView` in its view space, animated as the engine animates them, for the lights pass to
 /// bin and accumulate; and the shadow faces they cast, cached in an atlas.
@@ -41,6 +69,8 @@ pub struct LevelLights {
   animators: Vec<LightAnimatorDescription>,
   /// Each projector's texture slot, by its index among the description's projectors.
   projectors: Vec<u32>,
+  /// The slots of the shafts' noise and of the projector Monolith draws them through.
+  volume_textures: (u32, u32),
   shadows: LevelLightShadows,
   started: Instant,
 }
@@ -52,6 +82,7 @@ impl LevelLights {
       moving: Vec::new(),
       animators: Vec::new(),
       projectors: Vec::new(),
+      volume_textures: (MISSING_SLOT, MISSING_SLOT),
       shadows: LevelLightShadows::new(device, view_layout, args_size),
       started: Instant::now(),
     }
@@ -74,6 +105,10 @@ impl LevelLights {
       .iter()
       .map(|reference| textures.request(reference, TextureRole::Projector, source))
       .collect();
+    self.volume_textures = (
+      textures.request(VOLUME_NOISE, TextureRole::Projector, source),
+      textures.request(VOLUME_PROJECTOR, TextureRole::Projector, source),
+    );
     log::info!("Native viewport lights {} local lights", lights.lights.len());
     self.animators = lights.animators;
 
@@ -93,6 +128,7 @@ impl LevelLights {
     let LightsFrame {
       camera,
       settings,
+      engine,
       lod,
       contents,
       sway,
@@ -100,7 +136,14 @@ impl LevelLights {
     } = frame;
 
     into.records.clear();
+    into.volumes.clear();
+    into.volume_slices.clear();
     into.report = RenderLightsReport::default();
+    // `timers.z * 0.1`: the engine's global seconds over a hundred.
+    into.volumes_uniform = LightVolumesUniform {
+      noise: self.volume_textures.0,
+      scroll: self.started.elapsed().as_secs_f32() / 100.0,
+    };
 
     let is_shadowing: bool = settings.is_enabled && settings.is_shadowed;
 
@@ -212,6 +255,17 @@ impl LevelLights {
               state.tile.size as f32 / atlas,
               it.fades.faces[face],
             );
+          }
+        }
+
+        if set.is_some() && settings.is_volumetric {
+          let index: u32 = into.records.len() as u32;
+
+          if let Some((volume, slices)) =
+            to_volume(light, &it.basis, &record, index, (eye, camera.view), engine, self.volume_textures.1)
+          {
+            into.volumes.push(volume);
+            into.volume_slices.push(slices);
           }
         }
 
@@ -396,4 +450,90 @@ fn to_frame_range(light: &LightDescription, random: &mut u64) -> f32 {
   let unit: f32 = (*random >> 40) as f32 / (1u64 << 24) as f32;
 
   light.range + light.range_jitter * (unit * 2.0 - 1.0)
+}
+
+/// A shadowed light's shafts this frame, and the slices they draw, as the view's engine gives them out
+/// (`r3_rendertarget_accum_spot.cpp`, `accum_volumetric`): OpenXRay only for a light whose owner asks, by its own
+/// quality, intensity and distance, drawing the whole buffer however few slices its quality asks; Monolith, as
+/// `ps_ssfx_volumetric` ships, for every light whose owner sets them, by its own constants, a fifth for an omni part,
+/// fading from 20 m to none at 120. A shadowed point is one volume over its sphere where the engine draws six omni
+/// parts, each over the box of its own sphere, `1 / sqrt(2)` of the range: as many slices a metre take root two times
+/// as many over the whole sphere's box.
+fn to_volume(
+  light: &LightDescription,
+  basis: &LightBasis,
+  record: &LightRecord,
+  index: u32,
+  (eye, view): (Vec3, Mat4),
+  engine: XrayEngine,
+  projector: u32,
+) -> Option<(LightVolumeRecord, u32)> {
+  let volumetric = light.volumetric.as_ref()?;
+  let is_spot: bool = matches!(light.kind, LightKind::Spot);
+  // The slices drawn, the share of the buffer the volume's depth is stretched over, the colour's scale and the distance.
+  let (slices, quality, intensity, distance): (u32, f32, f32, f32) = match engine {
+    XrayEngine::Vanilla => {
+      if !volumetric.is_asked {
+        return None;
+      }
+
+      let asked: u32 = ((VOLUME_SLICES as f32 * volumetric.quality) as u32).max(VOLUME_FEWEST_SLICES);
+      let quality: f32 = asked as f32 / VOLUME_SLICES as f32;
+
+      (VOLUME_SLICES, quality, volumetric.intensity / quality, volumetric.distance)
+    }
+    XrayEngine::Extended => {
+      let fade: f32 = MONOLITH_INTENSITY
+        - ((eye.distance(basis.position) - MONOLITH_FADE_START) * MONOLITH_FADE_RATE).clamp(0.0, 1.0)
+          * MONOLITH_INTENSITY;
+
+      if fade <= 0.0 {
+        return None;
+      }
+
+      let part: f32 = if is_spot { 1.0 } else { MONOLITH_PART_INTENSITY };
+      let slices: f32 = (MONOLITH_SLICES_PER_QUALITY * MONOLITH_QUALITY).floor();
+
+      (slices as u32, slices / MONOLITH_MOST_SLICES, fade * part / MONOLITH_QUALITY, 1.0)
+    }
+  };
+  let slices: u32 = if is_spot {
+    slices
+  } else {
+    (slices as f32 * std::f32::consts::SQRT_2).round() as u32
+  };
+  // The light's sphere pulled towards it by its distance, in view space: the box the slices fill.
+  let sphere: Vec4 = if is_spot {
+    basis.get_spatial_sphere(light)
+  } else {
+    basis.position.extend(light.range)
+  };
+  let centre: Vec3 = view.transform_point3(basis.position + (sphere.truncate() - basis.position) * distance);
+  let radius: f32 = sphere.w * distance;
+  let near: f32 = centre.z + radius;
+  let shadow: Vec4 = record.shadow;
+  let slot: f32 = match engine {
+    XrayEngine::Vanilla if is_spot && record.up.w >= 0.0 => record.up.w,
+    _ if projector != MISSING_SLOT => projector as f32,
+    _ => LIGHT_NO_PROJECTOR,
+  };
+
+  if slot < 0.0 {
+    return None;
+  }
+
+  Some((
+    LightVolumeRecord {
+      near: Vec4::new(centre.x - radius, centre.y - radius, near, slices as f32),
+      far: Vec4::new(centre.x + radius, centre.y + radius, near - 2.0 * radius / quality, index as f32),
+      color: (record.color.truncate() * distance * intensity).extend(record.position.w / (distance * distance)),
+      frustum: Vec4::new(
+        shadow.x + (shadow.y - shadow.x) * distance,
+        slot,
+        if is_spot { 1.0 } else { 0.0 },
+        0.0,
+      ),
+    },
+    slices,
+  ))
 }

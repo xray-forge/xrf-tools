@@ -31,6 +31,8 @@ use crate::pass::grass_colour_parameters::GrassColourParameters;
 use crate::pass::grass_model_record::GrassModelRecord;
 use crate::pass::light_binning_parameters::LightBinningParameters;
 use crate::pass::light_record::LightRecord;
+use crate::pass::light_volume_record::LightVolumeRecord;
+use crate::pass::light_volumes_uniform::LightVolumesUniform;
 use crate::pass::lighting_uniform::LightingUniform;
 use crate::pass::lights_parameters::LightsParameters;
 use crate::pass::lights_uniform::LightsUniform;
@@ -62,6 +64,7 @@ use crate::pass::static_draw_parameters::StaticDrawParameters;
 use crate::pass::static_impostor_parameters::StaticImpostorParameters;
 use crate::pass::sun_parameters::SunParameters;
 use crate::pass::sun_shafts_parameters::SunShaftsParameters;
+use crate::pass::light_volume_parameters::LightVolumeParameters;
 use crate::pass::surroundings_parameters::SurroundingsParameters;
 use crate::pass::surroundings_uniform::SurroundingsUniform;
 use crate::pass::temporal_parameters::TemporalParameters;
@@ -126,6 +129,7 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
   let mut composited: ShaderBindings = ShaderBindings::new();
   let mut sky_haze: ShaderBindings = ShaderBindings::new();
   let mut sun_shafts: ShaderBindings = ShaderBindings::new();
+  let mut light_volumes: ShaderBindings = ShaderBindings::new();
   let mut exposure: ShaderBindings = ShaderBindings::new();
   let mut flare: ShaderBindings = ShaderBindings::new();
   let mut flare_visibility: ShaderBindings = ShaderBindings::new();
@@ -164,6 +168,8 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
     .declare::<ContactShadowUniform>()
     .declare::<LightsUniform>()
     .declare::<LightRecord>()
+    .declare::<LightVolumeRecord>()
+    .declare::<LightVolumesUniform>()
     .declare::<AmbientOcclusionUniform>()
     .declare::<VbaoUniform>()
     .declare::<ReflectionUniform>()
@@ -211,6 +217,7 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
   composited.add::<CompositedParameters<'_>>()?;
   sky_haze.add::<SkyHazeParameters>()?;
   sun_shafts.add::<SunShaftsParameters>()?;
+  light_volumes.add::<LightVolumeParameters>()?;
   exposure.add::<ExposureParameters>()?;
   flare
     .add::<FlareDrawParameters<'_>>()?
@@ -328,6 +335,10 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
     (
       "generated/frame/sun_shafts",
       format!("{STRUCTS_IMPORT}{}", sun_shafts.to_wgsl()),
+    ),
+    (
+      "generated/frame/light_volumes",
+      format!("{STRUCTS_IMPORT}{}", light_volumes.to_wgsl()),
     ),
     (
       "generated/frame/exposure",

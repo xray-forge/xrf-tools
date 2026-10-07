@@ -120,6 +120,8 @@ use crate::pass::static_occlusion_uniform::StaticOcclusionUniform;
 use crate::pass::sun_parameters::SunParameters;
 use crate::pass::sun_shafts_parameters::SunShaftsParameters;
 use crate::pass::sun_shafts_pass::SunShaftsPass;
+use crate::pass::light_volume_parameters::LightVolumeParameters;
+use crate::pass::light_volume_pass::LightVolumePass;
 use crate::pass::temporal_parameters::TemporalParameters;
 use crate::pass::temporal_uniform::TemporalUniform;
 use crate::pass::thunder_parameters::ThunderParameters;
@@ -495,6 +497,7 @@ impl SceneView {
       LightsFrame {
         camera: view,
         settings: &options.features.lights,
+        engine: lighting.engine,
         lod: (self.info.cull.glod_start, self.info.cull.glod_end),
         contents: scene.statics.get_contents(),
         sway: &to_sway(&scene.statics, self.info.sway),
@@ -2115,6 +2118,9 @@ impl SceneView {
     let is_wet: bool = self.info.is_wet && self.info.weather_views.wet.is_some();
     let is_lit: bool = frame.is_lit;
     let has_lights: bool = self.state.lights.get_count() > 0;
+    // The shadowed lights' shafts, drawn into a target of their own for the sun shafts' composite to add.
+    let is_volumed: bool = is_lit && !self.state.lights.volumes.is_empty();
+    let light_atlas: &'a wgpu::TextureView = scene.lights.get_shadow_atlas();
     let is_occlusion_ambient: bool = self.info.is_occlusion_drawn;
     let has_sky: bool = self.info.sky.is_some();
     let is_hazing: bool = has_sky && self.info.is_hazing;
@@ -2731,35 +2737,89 @@ impl SceneView {
         Self::add_copy(&mut *graph, "reflection source depth", handles.depth, depth);
       }
 
-      if is_shafted {
-        let (width, height) = handles.size;
-        let marched: GraphTexture = graph.create_texture(GraphTextureDescriptor::new_2d(
-          "sun shafts marched",
-          width.div_ceil(2),
-          height.div_ceil(2),
-          SunShaftsPass::MARCHED,
+      // The shadowed lights' shafts (`accum_volumetric`), added up over the frame's depth for the composite below.
+      let light_volumes: Option<GraphTexture> = is_volumed.then(|| {
+        let (width, height) = (handles.size.0.div_ceil(2), handles.size.1.div_ceil(2));
+        let lights = &scene_view.state.lights;
+        let target: GraphTexture = graph.create_texture(GraphTextureDescriptor::new_2d(
+          "light volumes",
+          width,
+          height,
+          LightVolumePass::FORMAT,
         ));
+        let depth: GraphTexture = graph.create_texture(GraphTextureDescriptor::new_2d(
+          "light volumes depth",
+          width,
+          height,
+          ViewTargets::DEPTH,
+        ));
+        let parameters: LightVolumeParameters = LightVolumeParameters {
+          light_volumes: StorageArray::new(bindings.import_buffer(&mut *graph, "light volumes", &lights.volume_buffer)),
+          records: StorageArray::new(bindings.import_buffer(&mut *graph, "light records", &lights.record_buffer)),
+          shadow_atlas: bindings.import_view(&mut *graph, "light shadow atlas", light_atlas),
+          volumes: runtime.push_uniform(&lights.volumes_uniform),
+          depth_target: handles.depth,
+        };
+        let slices: &'a [u32] = &lights.volume_slices;
+
+        graph
+          .add_raster_pass("light volumes depth")
+          .parameters(&parameters)
+          .depth(GraphDepthAttachment::new(depth, wgpu::LoadOp::Clear(0.0)))
+          .record(move |context| passes.light_volumes.record_depth(context, view, &parameters, texture_group));
+        graph
+          .add_raster_pass("light volumes")
+          .parameters(&parameters)
+          .color(GraphColorAttachment::new(
+            target,
+            wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+          ))
+          .depth(GraphDepthAttachment::new_read_only(depth))
+          .record(move |context| {
+            passes
+              .light_volumes
+              .record(context, view, &parameters, texture_group, slices)
+          });
+
+        target
+      });
+
+      if is_shafted || light_volumes.is_some() {
+        let (width, height) = handles.size;
+        let empty: GraphTexture = bindings.import_view(&mut *graph, "sun shafts none", passes.reflections.get_empty());
         let march: SunShaftsParameters = SunShaftsParameters {
           depth_target: handles.depth,
           shadow_maps: lit.shadow_maps,
           shadows: lit.shadows,
           lighting: lit.lighting,
           exposure: StorageValue::new(lit.exposure),
-          shafts: bindings.import_view(&mut *graph, "sun shafts none", passes.reflections.get_empty()),
+          shafts: empty,
+          light_volumes: empty,
         };
-        let parameters: SunShaftsParameters = SunShaftsParameters {
-          shafts: marched,
+        let mut parameters: SunShaftsParameters = SunShaftsParameters {
+          light_volumes: light_volumes.unwrap_or(empty),
           ..march
         };
 
-        graph
-          .add_raster_pass("sun shafts march")
-          .parameters(&march)
-          .color(GraphColorAttachment::new(
-            marched,
-            wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-          ))
-          .record(move |context| passes.sun_shafts.record(context, view, &march, true));
+        if is_shafted {
+          let marched: GraphTexture = graph.create_texture(GraphTextureDescriptor::new_2d(
+            "sun shafts marched",
+            width.div_ceil(2),
+            height.div_ceil(2),
+            SunShaftsPass::MARCHED,
+          ));
+
+          parameters.shafts = marched;
+          graph
+            .add_raster_pass("sun shafts march")
+            .parameters(&march)
+            .color(GraphColorAttachment::new(
+              marched,
+              wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+            ))
+            .record(move |context| passes.sun_shafts.record(context, view, &march, true));
+        }
+
         graph
           .add_raster_pass("sun shafts")
           .parameters(&parameters)

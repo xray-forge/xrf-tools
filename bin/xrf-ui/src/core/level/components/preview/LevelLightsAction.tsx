@@ -64,6 +64,13 @@ export function LevelLightsAction({
       />
 
       <CheckboxFormRow
+        label={"Light shafts"}
+        description={"Shadowed lamps' shafts (r2_volumetric_lights)."}
+        isChecked={lights.isVolumetric}
+        onChange={(isVolumetric: boolean) => set({ isVolumetric })}
+      />
+
+      <CheckboxFormRow
         label={"Level lights"}
         description={"The level file's own, which the game draws only with r2_allow_r1_lights."}
         isChecked={lights.isLevelLights}

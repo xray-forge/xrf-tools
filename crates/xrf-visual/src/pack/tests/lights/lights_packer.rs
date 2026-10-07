@@ -15,6 +15,7 @@ use xrf_spawn::{
 use crate::data::lights::light_description::LightDescription;
 use crate::data::lights::light_kind::LightKind;
 use crate::data::lights::light_motion::LightMotion;
+use crate::data::lights::light_volumetric::LightVolumetric;
 use crate::data::lights::lights_description::LightsDescription;
 use crate::data::lights::zone_sphere::ZoneSphere;
 use crate::data::visual::skeleton::visual_rest_pose::VisualRestPose;
@@ -26,6 +27,7 @@ const FLAG_CAST_SHADOW: u16 = AlifeObjectHangingLamp::FLAG_CAST_SHADOW;
 const FLAG_R2: u16 = AlifeObjectHangingLamp::FLAG_R2;
 const FLAG_SPOT: u16 = AlifeObjectHangingLamp::FLAG_SPOT;
 const FLAG_POINT_AMBIENT: u16 = AlifeObjectHangingLamp::FLAG_POINT_AMBIENT;
+const FLAG_VOLUMETRIC: u16 = AlifeObjectHangingLamp::FLAG_VOLUMETRIC;
 
 fn assert_close(actual: &Vector3d, expected: Vector3d) {
   assert!(
@@ -371,6 +373,8 @@ fn keeps_the_level_files_point_lights_and_leaves_its_sun() {
   assert_eq!(only.range, 12.0);
   assert!(only.is_shadowed);
   assert!(only.is_level);
+  // The level's own lights never set their shafts, so not even Monolith's forcing gives them any.
+  assert_eq!(only.volumetric, None);
 }
 
 fn sections() -> Ltx {
@@ -387,6 +391,14 @@ idle_light_height = 0.7
 idle_light = off
 idle_light_range = 8
 idle_light_anim = koster_00
+
+[zone_volumetric]
+idle_light = on
+idle_light_range = 6
+idle_light_anim = koster_00
+idle_light_volumetric = true
+idle_light_volumetric_quality = 0.3
+idle_light_volumetric_intensity = 0.4
 
 [zone_unanimated]
 idle_light = on
@@ -641,5 +653,75 @@ fn measures_how_far_a_point_stands_outside_a_zone_sphere() {
       offset: vector(1.0, 0.5, -2.0),
       radius: 2.0
     }
+  );
+}
+
+// A lamp's main light sets its shafts, asked for by the spawn's flag and carrying the spawn's values; its ambient light
+// sets them unasked with the light's own, which only Monolith's forcing turns on.
+#[test]
+fn sets_a_lamps_shafts_asked_by_its_flag_and_its_ambients_unasked() {
+  let mut asking: AlifeObjectHangingLamp = lamp(FLAG_R2 | FLAG_CAST_SHADOW | FLAG_POINT_AMBIENT | FLAG_VOLUMETRIC, 0);
+
+  asking.volumetric_quality = 0.5;
+  asking.volumetric_intensity = 2.0;
+  asking.volumetric_distance = 0.75;
+
+  let description: LightsDescription = pack_one(&object("lamp", asking), None);
+  let [main, ambient] = description.lights.as_slice() else {
+    panic!("expected two lights, got {:?}", description.lights)
+  };
+
+  assert_eq!(
+    main.volumetric,
+    Some(LightVolumetric {
+      is_asked: true,
+      quality: 0.5,
+      intensity: 2.0,
+      distance: 0.75,
+    })
+  );
+  assert_eq!(
+    ambient.volumetric,
+    Some(LightVolumetric {
+      is_asked: false,
+      quality: 1.0,
+      intensity: 1.0,
+      distance: 1.0,
+    })
+  );
+
+  let quiet: LightsDescription = pack_one(&object("lamp", lamp(FLAG_R2 | FLAG_CAST_SHADOW, 0)), None);
+
+  assert_eq!(quiet.lights[0].volumetric.as_ref().map(|it| it.is_asked), Some(false));
+}
+
+// A zone sets its idle light's shafts only where its section asks, and OpenXRay gives them no values of the section's.
+#[test]
+fn sets_a_zones_shafts_only_where_its_section_asks() {
+  let ltx: Ltx = sections();
+  let animations: LightAnimFile = animations();
+  let mut packer: LightsPacker = LightsPacker::new(Some(&animations)).with_sections(&ltx);
+
+  for section in ["campfire", "zone_volumetric"] {
+    let mut zone: AlifeObject = object(section, lamp(FLAG_R2, 0));
+
+    zone.section = String::from(section);
+    packer.add_zone(&zone, None);
+  }
+
+  let description: LightsDescription = packer.pack();
+  let [fire, volumetric] = description.lights.as_slice() else {
+    panic!("expected two zones' lights, got {:?}", description.lights)
+  };
+
+  assert_eq!(fire.volumetric, None);
+  assert_eq!(
+    volumetric.volumetric,
+    Some(LightVolumetric {
+      is_asked: true,
+      quality: 1.0,
+      intensity: 1.0,
+      distance: 1.0,
+    })
   );
 }

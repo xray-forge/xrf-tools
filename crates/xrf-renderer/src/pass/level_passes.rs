@@ -29,6 +29,7 @@ use crate::pass::static_cull_pass::StaticCullPass;
 use crate::pass::static_gbuffer_pass::StaticGBufferPass;
 use crate::pass::static_shadow_pass::StaticShadowPass;
 use crate::pass::sun_pass::SunPass;
+use crate::pass::light_volume_pass::LightVolumePass;
 use crate::pass::sun_shafts_pass::SunShaftsPass;
 use crate::pass::surroundings_pass::SurroundingsPass;
 use crate::pass::temporal_pass::TemporalPass;
@@ -68,6 +69,7 @@ pub struct LevelPasses<'a> {
   pub thunder: &'a ThunderPass,
   pub flares: &'a FlarePass,
   pub sun_shafts: &'a SunShaftsPass,
+  pub light_volumes: &'a LightVolumePass,
   pub bloom: &'a BloomPass,
   pub enhanced_bloom: &'a EnhancedBloomPass,
   pub fog_scattering: &'a FogScatteringPass,

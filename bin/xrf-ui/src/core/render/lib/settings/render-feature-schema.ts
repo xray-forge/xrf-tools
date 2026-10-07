@@ -157,6 +157,7 @@ export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings>
     isLevelLights: FLAG,
     isShadowed: FLAG,
     shadowFilter: toChoice(ERenderLightShadowFilter),
+    isVolumetric: FLAG,
   },
   lod: {
     geometryLod: toNumber(0.1, 2),

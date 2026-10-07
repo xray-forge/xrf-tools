@@ -6,7 +6,8 @@
 // `accum_volumetric_sun` and `combine_volumetric`: the light the air scatters towards the camera where the sun reaches
 // it, stepped along each ray from what it shows back to the camera through the sun's shadow, the steps jittered a pixel
 // apart, at half the frame's size and brought up by depth; the sky as dense as the whole ray. Weighted towards the sun,
-// in its colour, tonemapped and added to the frame.
+// in its colour, added to what the local lights' shafts gathered (`frame/light_volumes`), as both add up in
+// `rt_Generic_2`, tonemapped together and added to the frame.
 
 #import "generated/frame/sun_shafts"
 
@@ -68,14 +69,15 @@ fn fs_sun_shafts_march(in: FullscreenVarying) -> @location(0) vec4<f32> {
   return vec4<f32>(shafts_gathered(texel, depth, density, steps, jitter(in.clip.xy)), 0.0, 0.0, 0.0);
 }
 
-// The march brought up to a frame pixel: the four half-size texels about it by their bilinear share and how near the
-// distance each one's frame texel shows lies to the pixel's, so the shafts keep to the edges the depth draws.
-fn shafts_upsampled(pixel: vec2<f32>, distance: f32) -> f32 {
-  let last: vec2<i32> = vec2<i32>(textureDimensions(shafts)) - 1;
+// A half-size target brought up to a frame pixel, the march's or the light volumes': the four half-size texels about it
+// by their bilinear share and how near the distance each one's frame texel shows lies to the pixel's, so the shafts
+// keep to the edges the depth draws.
+fn half_upsampled(source: texture_2d<f32>, pixel: vec2<f32>, distance: f32) -> vec4<f32> {
+  let last: vec2<i32> = vec2<i32>(textureDimensions(source)) - 1;
   let at: vec2<f32> = pixel * 0.5 - 0.25;
   let base: vec2<f32> = floor(at);
   let fraction: vec2<f32> = at - base;
-  var sum: f32 = 0.0;
+  var sum: vec4<f32> = vec4<f32>(0.0);
   var weights: f32 = 0.0;
 
   for (var corner: u32 = 0u; corner < 4u; corner++) {
@@ -88,7 +90,7 @@ fn shafts_upsampled(pixel: vec2<f32>, distance: f32) -> f32 {
     let difference: f32 = abs(there - distance) / max(distance, 1e-3);
     let weight: f32 = (bilinear + 1e-4) / (difference * difference + 1e-3);
 
-    sum += textureLoad(shafts, half_texel, 0).r * weight;
+    sum += textureLoad(source, half_texel, 0) * weight;
     weights += weight;
   }
 
@@ -99,21 +101,29 @@ fn shafts_upsampled(pixel: vec2<f32>, distance: f32) -> f32 {
 fn fs_sun_shafts(in: FullscreenVarying) -> ShaftsOutput {
   let density: f32 = lighting.shafts.x;
   let steps: f32 = lighting.shafts.y;
-
-  if (density <= 0.0 || steps < 1.0) {
-    return ShaftsOutput(vec4<f32>(0.0), vec4<f32>(0.0));
-  }
+  var light: vec3<f32> = vec3<f32>(0.0);
 
   let depth: f32 = textureLoad(depth_target, vec2<i32>(in.clip.xy), 0);
-  var shown: f32 = density;
+  // The distance along the view the pixel shows, the sky's far off.
+  let distance: f32 = select(1e6, -camera_view_position(in.clip.xy, max(depth, 1e-7)).z, depth > 0.0);
 
-  if (depth > 0.0) {
-    shown = shafts_upsampled(floor(in.clip.xy), -camera_view_position(in.clip.xy, depth).z);
+  // An empty texel stands in for a march or a light volume not drawn this frame.
+  if (density > 0.0 && steps >= 1.0 && textureDimensions(shafts).x > 1u) {
+    var shown: f32 = density;
+
+    if (depth > 0.0) {
+      shown = half_upsampled(shafts, floor(in.clip.xy), distance).r;
+    }
+
+    // Facing the sun weighs one, facing away a fifth: `0.8 * (0.5 * cos + 0.5) + 0.2`.
+    let facing: f32 = 0.8 * (0.5 * -lighting.to_sun.z + 0.5) + 0.2;
+
+    light = shown * facing * lighting.sun.rgb;
   }
 
-  // Facing the sun weighs one, facing away a fifth: `0.8 * (0.5 * cos + 0.5) + 0.2`.
-  let facing: f32 = 0.8 * (0.5 * -lighting.to_sun.z + 0.5) + 0.2;
-  let light: vec3<f32> = shown * facing * lighting.sun.rgb;
+  if (textureDimensions(light_volumes).x > 1u) {
+    light += half_upsampled(light_volumes, floor(in.clip.xy), distance).rgb;
+  }
 
   let scale: f32 = frame_scale(lighting, exposure);
 

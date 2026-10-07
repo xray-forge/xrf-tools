@@ -40,6 +40,7 @@ use crate::pass::static_draw_parameters::StaticDrawParameters;
 use crate::pass::static_gbuffer_pass::StaticGBufferPass;
 use crate::pass::static_shadow_pass::StaticShadowPass;
 use crate::pass::sun_pass::SunPass;
+use crate::pass::light_volume_pass::LightVolumePass;
 use crate::pass::sun_shafts_pass::SunShaftsPass;
 use crate::pass::surroundings_pass::SurroundingsPass;
 use crate::pass::temporal_pass::TemporalPass;
@@ -79,6 +80,7 @@ pub struct GpuState {
   pub thunder: ThunderPass,
   pub flares: FlarePass,
   pub sun_shafts: SunShaftsPass,
+  pub light_volumes: LightVolumePass,
   pub bloom: BloomPass,
   pub enhanced_bloom: EnhancedBloomPass,
   pub fog_scattering: FogScatteringPass,
@@ -159,6 +161,7 @@ impl GpuState {
       thunder: ThunderPass::new(device, shaders, &view_layout)?,
       flares: FlarePass::new(device, shaders, &view_layout)?,
       sun_shafts: SunShaftsPass::new(device, shaders, &view_layout)?,
+      light_volumes: LightVolumePass::new(device, shaders, &view_layout, textures.get_layout())?,
       bloom: BloomPass::new(device, shaders)?,
       enhanced_bloom: EnhancedBloomPass::new(device, shaders, &view_layout)?,
       fog_scattering: FogScatteringPass::new(device, &context.queue, shaders, &view_layout)?,
@@ -249,6 +252,7 @@ impl GpuState {
       thunder: &self.thunder,
       flares: &self.flares,
       sun_shafts: &self.sun_shafts,
+      light_volumes: &self.light_volumes,
       bloom: &self.bloom,
       enhanced_bloom: &self.enhanced_bloom,
       fog_scattering: &self.fog_scattering,
@@ -298,6 +302,7 @@ impl GpuState {
     self.thunder.refresh(device, shaders);
     self.flares.refresh(device, shaders);
     self.sun_shafts.refresh(device, shaders);
+    self.light_volumes.refresh(device, shaders);
     self.bloom.refresh(device, shaders);
     self.enhanced_bloom.refresh(device, shaders);
     self.fog_scattering.refresh(device, shaders);

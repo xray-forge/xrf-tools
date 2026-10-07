@@ -11,6 +11,7 @@ use crate::data::lights::light_animator_description::LightAnimatorDescription;
 use crate::data::lights::light_description::LightDescription;
 use crate::data::lights::light_kind::LightKind;
 use crate::data::lights::light_motion::LightMotion;
+use crate::data::lights::light_volumetric::LightVolumetric;
 use crate::data::lights::lights_description::LightsDescription;
 use crate::data::lights::zone_sphere::ZoneSphere;
 use crate::data::visual::skeleton::bind_transform::BindTransform;
@@ -45,6 +46,9 @@ impl<'a> LightsPacker<'a> {
 
   /// `idle_light_range_delta`'s default (xray-16's `CCustomZone::Load`), and the only value xray-monolith knows.
   const ZONE_RANGE_JITTER: f32 = 0.25;
+
+  /// A light's own shaft quality, intensity and distance where its owner sets none (`light::light`).
+  const VOLUMETRIC_DEFAULT: f32 = 1.0;
 
   /// `CLSID_Z_CAMPFIRE`'s class name, which a campfire's section names: its idle light switches with it.
   pub const CAMPFIRE_CLASS: &'static str = "Z_CFIRE";
@@ -118,6 +122,7 @@ impl<'a> LightsPacker<'a> {
         campfire: None,
         motion: None,
         zone_sphere: None,
+        volumetric: None,
       });
     }
   }
@@ -186,6 +191,12 @@ impl<'a> LightsPacker<'a> {
       campfire: None,
       motion: None,
       zone_sphere: None,
+      volumetric: Some(LightVolumetric {
+        is_asked: lamp.is_volumetric(),
+        quality: lamp.volumetric_quality,
+        intensity: lamp.volumetric_intensity,
+        distance: lamp.volumetric_distance,
+      }),
     });
 
     if lamp.has_point_ambient() {
@@ -207,6 +218,14 @@ impl<'a> LightsPacker<'a> {
         campfire: None,
         motion: None,
         zone_sphere: None,
+        // Monolith sets the ambient light's shafts by the section's `ambient_volumetric`, which its forcing overrides;
+        // OpenXRay never asks for them. Neither sets its values, which keep the light's own.
+        volumetric: Some(LightVolumetric {
+          is_asked: false,
+          quality: Self::VOLUMETRIC_DEFAULT,
+          intensity: Self::VOLUMETRIC_DEFAULT,
+          distance: Self::VOLUMETRIC_DEFAULT,
+        }),
       });
     }
   }
@@ -240,6 +259,15 @@ impl<'a> LightsPacker<'a> {
       return;
     };
     let position: Vector3d = Vector3d::new(object.position.x, object.position.y + height, object.position.z);
+    // OpenXRay sets no values on a zone's shafts, which keep the light's own; Monolith reads the section's, which its
+    // forcing then overrides.
+    let volumetric: Option<LightVolumetric> =
+      (section.get_bool("idle_light_volumetric") == Some(true)).then(|| LightVolumetric {
+        is_asked: true,
+        quality: Self::VOLUMETRIC_DEFAULT,
+        intensity: Self::VOLUMETRIC_DEFAULT,
+        distance: Self::VOLUMETRIC_DEFAULT,
+      });
 
     self.lights.push(LightDescription {
       kind: LightKind::Point,
@@ -269,6 +297,7 @@ impl<'a> LightsPacker<'a> {
         name: name.to_owned(),
         height,
       }),
+      volumetric,
     });
   }
 

@@ -3,6 +3,8 @@ use crate::contract::render_light_shadow_filter::RenderLightShadowFilter;
 use crate::contract::render_lights_report::RenderLightsReport;
 use crate::frame::stats_readback::StatsReadback;
 use crate::pass::light_record::LightRecord;
+use crate::pass::light_volume_record::LightVolumeRecord;
+use crate::pass::light_volumes_uniform::LightVolumesUniform;
 use crate::pass::lights_uniform::LightsUniform;
 
 /// Lights standing in view at most in one frame: the nearest are kept.
@@ -20,6 +22,11 @@ const OVERFLOW_BYTES: u64 = 16;
 pub struct LightsView {
   pub records: Vec<LightRecord>,
   pub record_buffer: wgpu::Buffer,
+  /// The shafts the shadowed lights draw this frame, the slices each draws, and what they all share.
+  pub volumes: Vec<LightVolumeRecord>,
+  pub volume_slices: Vec<u32>,
+  pub volume_buffer: wgpu::Buffer,
+  pub volumes_uniform: LightVolumesUniform,
   pub counts: wgpu::Buffer,
   pub items: wgpu::Buffer,
   /// What the passes bin and light the records with this frame.
@@ -46,6 +53,10 @@ impl LightsView {
     Self {
       records: Vec::with_capacity(MAX_LIGHTS),
       record_buffer: storage("light records", (MAX_LIGHTS * size_of::<LightRecord>()) as u64),
+      volumes: Vec::with_capacity(MAX_LIGHTS),
+      volume_slices: Vec::with_capacity(MAX_LIGHTS),
+      volume_buffer: storage("light volumes", (MAX_LIGHTS * size_of::<LightVolumeRecord>()) as u64),
+      volumes_uniform: LightVolumesUniform::default(),
       // The clusters' counts, then the binning's two words of overflow.
       counts: device.create_buffer(&wgpu::BufferDescriptor {
         label: Some("light cluster counts"),
@@ -76,6 +87,12 @@ impl LightsView {
 
     if !self.records.is_empty() {
       queue.write_buffer(&self.record_buffer, 0, bytemuck::cast_slice(&self.records));
+    }
+
+    self.report.volumetric = self.volumes.len() as u32;
+
+    if !self.volumes.is_empty() {
+      queue.write_buffer(&self.volume_buffer, 0, bytemuck::cast_slice(&self.volumes));
     }
   }
 
