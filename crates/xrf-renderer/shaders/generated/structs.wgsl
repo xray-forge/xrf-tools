@@ -92,6 +92,96 @@ struct ParticleSurface {
   distortion: u32,
 }
 
+struct Shadows {
+  matrices: array<mat4x4<f32>, 4>,
+  texels: vec4<f32>,
+  forward: vec4<f32>,
+  count: u32,
+  filter_reach: u32,
+  resolution: f32,
+  bias: f32,
+  blend: f32,
+}
+
+struct Lights {
+  count: u32,
+  near: f32,
+  far: f32,
+  shadow_filter: u32,
+  projection: vec4<f32>,
+}
+
+struct LightRecord {
+  position: vec4<f32>,
+  color: vec4<f32>,
+  axis: vec4<f32>,
+  right: vec4<f32>,
+  up: vec4<f32>,
+  sphere: vec4<f32>,
+  shadow: vec4<f32>,
+  faces: array<vec4<f32>, 6>,
+}
+
+struct AmbientOcclusion {
+  radius: f32,
+  power: f32,
+  spread: f32,
+  reach: f32,
+}
+
+struct ExposureParams {
+  target_gray: f32,
+  weight: f32,
+  floor_luminance: f32,
+  blend: f32,
+}
+
+struct ExposureState {
+  adapted: f32,
+  pad0: f32,
+  pad1: f32,
+  pad2: f32,
+  cells: array<f32, 4096>,
+}
+
+struct Exposure {
+  adapted: f32,
+}
+
+struct Flares {
+  to_sun: vec4<f32>,
+  sun: vec4<f32>,
+  color: vec4<f32>,
+  gradient: vec4<f32>,
+  flares: array<vec4<f32>, 16>,
+}
+
+struct Rain {
+  color: vec4<f32>,
+  axis: vec4<f32>,
+  window: vec4<f32>,
+  count: u32,
+  time: f32,
+  splash_indices: u32,
+}
+
+struct Wet {
+  density: f32,
+  time: f32,
+  is_extended: f32,
+  window: vec4<f32>,
+}
+
+struct Thunder {
+  axes: array<vec4<f32>, 3>,
+  position: vec4<f32>,
+  shift: vec4<f32>,
+  top: vec4<f32>,
+  top_extent: vec4<f32>,
+  center: vec4<f32>,
+  center_extent: vec4<f32>,
+}
+
 struct Cluster {
   first_index: u32,
   triangles: u32,

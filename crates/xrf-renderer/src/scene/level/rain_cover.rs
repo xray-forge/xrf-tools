@@ -147,7 +147,7 @@ impl RainCover {
     &'a self,
     (graph, bindings): (&mut FrameGraph<'a>, &mut GraphBindings<'a>),
     passes: LevelPasses<'a>,
-    scene: &StaticSceneHandles,
+    (scene, depth): (&StaticSceneHandles, GraphTexture),
     (params, textures): (&'a StaticCullParams, &'a wgpu::BindGroup),
   ) {
     if !self.is_due {
@@ -156,7 +156,6 @@ impl RainCover {
 
     let args: GraphBuffer = bindings.import_buffer(graph, "rain cover draw arguments", &self.args);
     let lists: GraphBuffer = bindings.import_buffer(graph, "rain cover lists", self.lists.get_buffer());
-    let depth: GraphTexture = bindings.import_view(graph, "rain cover", &self.depth);
     let cull: StaticCullParameters = scene.get_cull_parameters(StorageArrayMut::new(lists), StorageArrayMut::new(args));
     let layouts: [StaticDrawParameters; StaticLayout::COUNT] = scene.get_layout_draws(StorageArray::new(lists));
 

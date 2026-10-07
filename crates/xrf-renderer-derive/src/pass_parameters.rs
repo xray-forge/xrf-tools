@@ -148,9 +148,14 @@ pub fn expand(input: &DeriveInput) -> syn::Result<TokenStream> {
           #core::PassBindingLayout::storage(#index, <#ty as #core::StorageField>::IS_WRITABLE)
         });
         wgsl.push(quote! {
-          ::std::format!("{}<storage, {}> {}: array<{}>;\n", #prefix,
-            if <#ty as #core::StorageField>::IS_WRITABLE { "read_write" } else { "read" }, #field_name,
-            <<#ty as #core::StorageField>::Element as #core::ShaderType>::get_wgsl_name())
+          {
+            let element: ::std::string::String =
+              <<#ty as #core::StorageField>::Element as #core::ShaderType>::get_wgsl_name();
+
+            ::std::format!("{}<storage, {}> {}: {};\n", #prefix,
+              if <#ty as #core::StorageField>::IS_WRITABLE { "read_write" } else { "read" }, #field_name,
+              if <#ty as #core::StorageField>::IS_ARRAY { ::std::format!("array<{element}>") } else { element })
+          }
         });
         declares.push(quote!(<<#ty as #core::StorageField>::Element as #core::ShaderType>::declare(declarations);));
         buffer_accesses.push(quote! {

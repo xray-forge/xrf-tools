@@ -4,10 +4,7 @@
 // sphere reaches its box, up to its capacity. The two words after the clusters' counts count the clusters that ran out of
 // room and the lights they left out, for the readouts.
 
-@group(0) @binding(0) var<storage, read> records: array<LightRecord>;
-@group(0) @binding(1) var<storage, read_write> counts: array<atomic<u32>>;
-@group(0) @binding(2) var<storage, read_write> items: array<u32>;
-@group(0) @binding(3) var<uniform> lights: Lights;
+#import "generated/frame/light_binning"
 
 // A device coordinate across or up at a depth, in view space: `(ndc + offset) * depth / scale`.
 fn to_view(ndc: f32, offset: f32, scale: f32, depth: f32) -> f32 {

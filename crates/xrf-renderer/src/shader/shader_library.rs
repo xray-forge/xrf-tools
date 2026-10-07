@@ -117,6 +117,66 @@ const EMBEDDED: &[(&str, &str)] = &[
     include_str!("../../shaders/generated/common/sky.wgsl"),
   ),
   (
+    "generated/frame/sun",
+    include_str!("../../shaders/generated/frame/sun.wgsl"),
+  ),
+  (
+    "generated/frame/light_binning",
+    include_str!("../../shaders/generated/frame/light_binning.wgsl"),
+  ),
+  (
+    "generated/frame/lights",
+    include_str!("../../shaders/generated/frame/lights.wgsl"),
+  ),
+  (
+    "generated/frame/ambient_occlusion",
+    include_str!("../../shaders/generated/frame/ambient_occlusion.wgsl"),
+  ),
+  (
+    "generated/frame/combine",
+    include_str!("../../shaders/generated/frame/combine.wgsl"),
+  ),
+  (
+    "generated/static/composited",
+    include_str!("../../shaders/generated/static/composited.wgsl"),
+  ),
+  (
+    "generated/frame/sky_haze",
+    include_str!("../../shaders/generated/frame/sky_haze.wgsl"),
+  ),
+  (
+    "generated/frame/sun_shafts",
+    include_str!("../../shaders/generated/frame/sun_shafts.wgsl"),
+  ),
+  (
+    "generated/frame/exposure",
+    include_str!("../../shaders/generated/frame/exposure.wgsl"),
+  ),
+  (
+    "generated/frame/flare",
+    include_str!("../../shaders/generated/frame/flare.wgsl"),
+  ),
+  (
+    "generated/frame/flare_visibility",
+    include_str!("../../shaders/generated/frame/flare_visibility.wgsl"),
+  ),
+  (
+    "generated/frame/rain",
+    include_str!("../../shaders/generated/frame/rain.wgsl"),
+  ),
+  (
+    "generated/frame/wet_patch",
+    include_str!("../../shaders/generated/frame/wet_patch.wgsl"),
+  ),
+  (
+    "generated/frame/wet_apply",
+    include_str!("../../shaders/generated/frame/wet_apply.wgsl"),
+  ),
+  (
+    "generated/frame/thunder",
+    include_str!("../../shaders/generated/frame/thunder.wgsl"),
+  ),
+  (
     "generated/frame/bloom",
     include_str!("../../shaders/generated/frame/bloom.wgsl"),
   ),

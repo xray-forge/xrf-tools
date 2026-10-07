@@ -1,33 +1,7 @@
+#import "generated/structs"
+
 // The local lights' records and the clusters of the view they are binned into, as `pass/light_record.rs` and
 // `pass/lights_uniform.rs` write them.
-
-struct LightRecord {
-  // Its position, then `1 / L_R²`.
-  position: vec4<f32>,
-  // Its colour, then its specular weight.
-  color: vec4<f32>,
-  // Where it points, then `cos` of half its cone, or less than minus one for none.
-  axis: vec4<f32>,
-  // Its right, then its projection's scale.
-  right: vec4<f32>,
-  // Its up, then its projector's texture slot, or less than zero for none.
-  up: vec4<f32>,
-  // The sphere it is binned by.
-  sphere: vec4<f32>,
-  // A shadowed light's near and far planes and face count.
-  shadow: vec4<f32>,
-  faces: array<vec4<f32>, 6>,
-};
-
-struct Lights {
-  count: u32,
-  near: f32,
-  far: f32,
-  // How the shadowed lights' maps are compared: zero `shadow_hw`, one `shadow_pcss`.
-  shadow_filter: u32,
-  // The projection's `x` and `y` scales and its offsets.
-  projection: vec4<f32>,
-};
 
 // Tiles the view is cut into across and down, and slices into along it.
 const LIGHT_CLUSTERS_X: u32 = 16u;

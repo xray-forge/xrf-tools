@@ -1,11 +1,13 @@
 use glam::Vec4;
+use xrf_renderer_core::ShaderStruct;
 
 use crate::lighting::render_thunderbolt_glow::RenderThunderboltGlow;
 use crate::lighting::render_thunderbolt_strike::RenderThunderboltStrike;
 
 /// What `shaders/frame/thunder.wgsl` reads as its `Thunder`: where the strike stands, and its glows.
 #[repr(C)]
-#[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
+#[shader(name = "Thunder")]
 pub struct ThunderUniform {
   pub axes: [Vec4; 3],
   pub position: Vec4,

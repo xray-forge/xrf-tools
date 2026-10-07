@@ -1,6 +1,7 @@
 use std::time::{Duration, Instant};
 
 use crate::contract::render_exposure_settings::RenderExposureSettings;
+use crate::pass::exposure_state::ExposureState;
 use crate::pass::exposure_uniform::ExposureUniform;
 
 /// Cells a side the frame's luminance is measured over, as `rt_LUM_64` is.
@@ -14,7 +15,8 @@ const LONGEST_STEP: Duration = Duration::from_millis(250);
 pub struct ViewExposure {
   /// The adapted scale, then each cell's luminance.
   pub state: wgpu::Buffer,
-  pub params: wgpu::Buffer,
+  /// How it adapts this frame.
+  pub params: ExposureUniform,
   /// `f_luminance_adapt`, how far this frame moves the scale.
   rate: f32,
   last: Option<Instant>,
@@ -25,19 +27,13 @@ impl ViewExposure {
   pub fn new(device: &wgpu::Device, queue: &wgpu::Queue) -> Self {
     let state: wgpu::Buffer = device.create_buffer(&wgpu::BufferDescriptor {
       label: Some("exposure"),
-      size: 16 + (EXPOSURE_CELLS * EXPOSURE_CELLS * 4) as u64,
+      size: size_of::<ExposureState>() as u64,
       usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-      mapped_at_creation: false,
-    });
-    let params: wgpu::Buffer = device.create_buffer(&wgpu::BufferDescriptor {
-      label: Some("exposure parameters"),
-      size: size_of::<ExposureUniform>() as u64,
-      usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
       mapped_at_creation: false,
     });
     let exposure: Self = Self {
       state,
-      params,
+      params: ExposureUniform::default(),
       rate: 0.5,
       last: None,
       is_adapting: false,
@@ -68,11 +64,7 @@ impl ViewExposure {
     self.last = Some(now);
     // `f_luminance_adapt = .9 * f + .1 * dt * adaptation`.
     self.rate = 0.9 * self.rate + 0.1 * delta.as_secs_f32() * settings.adaptation;
-    queue.write_buffer(
-      &self.params,
-      0,
-      bytemuck::bytes_of(&ExposureUniform::new(settings, self.rate)),
-    );
+    self.params = ExposureUniform::new(settings, self.rate);
   }
 
   pub fn is_adapting(&self) -> bool {

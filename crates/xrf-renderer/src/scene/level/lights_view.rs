@@ -2,7 +2,6 @@ use crate::camera::camera_view::CameraView;
 use crate::contract::render_light_shadow_filter::RenderLightShadowFilter;
 use crate::contract::render_lights_report::RenderLightsReport;
 use crate::frame::stats_readback::StatsReadback;
-use crate::pass::light_buffers::LightBuffers;
 use crate::pass::light_record::LightRecord;
 use crate::pass::lights_uniform::LightsUniform;
 
@@ -23,7 +22,8 @@ pub struct LightsView {
   pub record_buffer: wgpu::Buffer,
   pub counts: wgpu::Buffer,
   pub items: wgpu::Buffer,
-  pub uniform: wgpu::Buffer,
+  /// What the passes bin and light the records with this frame.
+  pub uniform: LightsUniform,
   count: u32,
   /// What the last frame's lights came to, and the binning's count of the clusters it filled, read back.
   pub report: RenderLightsReport,
@@ -54,25 +54,11 @@ impl LightsView {
         mapped_at_creation: false,
       }),
       items: storage("light cluster items", LIGHT_CLUSTERS * LIGHT_CLUSTER_CAPACITY * 4),
-      uniform: device.create_buffer(&wgpu::BufferDescriptor {
-        label: Some("lights"),
-        size: size_of::<LightsUniform>() as u64,
-        usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-        mapped_at_creation: false,
-      }),
+      uniform: LightsUniform::default(),
       count: 0,
       report: RenderLightsReport::default(),
       overflow: StatsReadback::new(device),
       random: 0x9E37_79B9_7F4A_7C15,
-    }
-  }
-
-  pub fn get_buffers(&self) -> LightBuffers<'_> {
-    LightBuffers {
-      records: &self.record_buffer,
-      counts: &self.counts,
-      items: &self.items,
-      uniform: &self.uniform,
     }
   }
 
@@ -86,11 +72,7 @@ impl LightsView {
 
     self.count = self.records.len() as u32;
     self.report.in_view = self.count;
-    queue.write_buffer(
-      &self.uniform,
-      0,
-      bytemuck::bytes_of(&LightsUniform::new(self.count, camera.projection, near, far, filter)),
-    );
+    self.uniform = LightsUniform::new(self.count, camera.projection, near, far, filter);
 
     if !self.records.is_empty() {
       queue.write_buffer(&self.record_buffer, 0, bytemuck::cast_slice(&self.records));

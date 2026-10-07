@@ -1,12 +1,13 @@
 use xrf_error::XrfResult;
+use xrf_renderer_core::{ComputeContext, PassParameters, RasterContext};
 
 use crate::frame::view_targets::ViewTargets;
+use crate::pass::flare_draw_parameters::FlareDrawParameters;
+use crate::pass::flare_measure_parameters::FlareMeasureParameters;
+use crate::pass::flare_texture_parameters::FlareTextureParameters;
 use crate::pass::flare_uniform::FLARE_SLOTS;
-use crate::pass::fullscreen_pipeline::{buffer_binding, texture_binding};
-use crate::pass::layout_entries::{storage_entry, texture_entry, uniform_entry};
 use crate::pass::shader_pipelines::{create_checked, create_module};
 use crate::pass::view_binding::ViewBinding;
-use crate::scene::level::level_shadows::LevelShadows;
 use crate::shader::shader_library::ShaderLibrary;
 
 /// The instance the gradient is drawn as, as `shaders/frame/flare.wgsl` reads it.
@@ -30,50 +31,9 @@ impl FlarePass {
   ///
   /// Returns an error when a shader does not compose or compile.
   pub fn new(device: &wgpu::Device, shaders: &ShaderLibrary, view_layout: &wgpu::BindGroupLayout) -> XrfResult<Self> {
-    let compute: wgpu::ShaderStages = wgpu::ShaderStages::COMPUTE;
-    let stages: wgpu::ShaderStages = wgpu::ShaderStages::VERTEX_FRAGMENT;
-    let measure_layout: wgpu::BindGroupLayout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-      label: Some("flare visibility"),
-      entries: &[
-        uniform_entry(0, compute),
-        storage_entry(1, compute, true),
-        texture_entry(
-          2,
-          compute,
-          wgpu::TextureSampleType::Depth,
-          wgpu::TextureViewDimension::D2,
-        ),
-        texture_entry(
-          3,
-          compute,
-          wgpu::TextureSampleType::Depth,
-          wgpu::TextureViewDimension::D2Array,
-        ),
-        uniform_entry(4, compute),
-      ],
-    });
-    let draw_layout: wgpu::BindGroupLayout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-      label: Some("flare"),
-      entries: &[
-        uniform_entry(0, stages),
-        storage_entry(1, wgpu::ShaderStages::VERTEX, false),
-        wgpu::BindGroupLayoutEntry {
-          binding: 2,
-          visibility: wgpu::ShaderStages::FRAGMENT,
-          ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-          count: None,
-        },
-      ],
-    });
-    let texture_layout: wgpu::BindGroupLayout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-      label: Some("flare texture"),
-      entries: &[texture_entry(
-        0,
-        wgpu::ShaderStages::FRAGMENT,
-        wgpu::TextureSampleType::Float { filterable: true },
-        wgpu::TextureViewDimension::D2,
-      )],
-    });
+    let measure_layout: wgpu::BindGroupLayout = FlareMeasureParameters::create_layout(device);
+    let draw_layout: wgpu::BindGroupLayout = FlareDrawParameters::create_layout(device);
+    let texture_layout: wgpu::BindGroupLayout = FlareTextureParameters::create_layout(device);
     let (measure, draw) = Self::create_pipelines(
       device,
       shaders,
@@ -115,81 +75,42 @@ impl FlarePass {
     }
   }
 
-  /// What the measure reads and writes: the flare's uniform, the eased visibility, the frame's depth and the sun's
-  /// shadow.
-  pub fn create_measure_group(
-    &self,
-    device: &wgpu::Device,
-    (uniform, state): (&wgpu::Buffer, &wgpu::Buffer),
-    targets: &ViewTargets,
-    shadows: &LevelShadows,
-  ) -> wgpu::BindGroup {
-    device.create_bind_group(&wgpu::BindGroupDescriptor {
-      label: Some("flare visibility"),
-      layout: &self.measure_layout,
-      entries: &[
-        buffer_binding(0, uniform),
-        buffer_binding(1, state),
-        texture_binding(2, &targets.depth),
-        texture_binding(3, &shadows.get_maps().view),
-        buffer_binding(4, shadows.get_uniform()),
-      ],
-    })
-  }
-
-  /// What every flare's draw reads: the flare's uniform, the eased visibility and the sampler.
-  pub fn create_draw_group(
-    &self,
-    device: &wgpu::Device,
-    uniform: &wgpu::Buffer,
-    state: &wgpu::Buffer,
-  ) -> wgpu::BindGroup {
-    device.create_bind_group(&wgpu::BindGroupDescriptor {
-      label: Some("flare"),
-      layout: &self.draw_layout,
-      entries: &[
-        buffer_binding(0, uniform),
-        buffer_binding(1, state),
-        wgpu::BindGroupEntry {
-          binding: 2,
-          resource: wgpu::BindingResource::Sampler(&self.sampler),
-        },
-      ],
-    })
-  }
-
-  /// One flare's texture.
-  pub fn create_texture_group(&self, device: &wgpu::Device, texture: &wgpu::TextureView) -> wgpu::BindGroup {
-    device.create_bind_group(&wgpu::BindGroupDescriptor {
-      label: Some("flare texture"),
-      layout: &self.texture_layout,
-      entries: &[texture_binding(0, texture)],
-    })
+  /// The sampler the flares' textures are read through, which their parameters bind.
+  pub fn get_sampler(&self) -> &wgpu::Sampler {
+    &self.sampler
   }
 
   /// Measures how much of the sun shows this frame, eased from the last.
-  pub fn record_measure(&self, pass: &mut wgpu::ComputePass<'_>, view: &ViewBinding, group: &wgpu::BindGroup) {
+  pub fn record_measure(
+    &self,
+    context: &mut ComputeContext<'_>,
+    view: &ViewBinding,
+    parameters: &FlareMeasureParameters,
+  ) {
+    context.bind(parameters);
+
+    let pass: &mut wgpu::ComputePass<'static> = context.get_pass();
+
     pass.set_pipeline(&self.measure);
     pass.set_bind_group(0, &view.bind_group, &[]);
-    pass.set_bind_group(1, group, &[]);
     pass.dispatch_workgroups(1, 1, 1);
   }
 
   /// Draws each flare, by instance, with its texture's group; the gradient is `GRADIENT_INSTANCE`.
   pub fn record_draw(
     &self,
-    pass: &mut wgpu::RenderPass<'_>,
+    context: &mut RasterContext<'_>,
     view: &ViewBinding,
-    group: &wgpu::BindGroup,
-    draws: &[(u32, &wgpu::BindGroup)],
+    parameters: &FlareDrawParameters<'_>,
+    draws: &[(u32, FlareTextureParameters)],
   ) {
-    pass.set_pipeline(&self.draw);
-    pass.set_bind_group(0, &view.bind_group, &[]);
-    pass.set_bind_group(1, group, &[]);
+    context.bind(parameters);
+    context.get_pass().set_pipeline(&self.draw);
+    context.get_pass().set_bind_group(0, &view.bind_group, &[]);
 
     for (instance, texture) in draws {
-      pass.set_bind_group(2, *texture, &[]);
-      pass.draw(0..6, *instance..*instance + 1);
+      context.bind(texture);
+      context.get_pass().draw(0..6, *instance..*instance + 1);
     }
   }
 

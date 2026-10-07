@@ -15,7 +15,9 @@ mod shader_bindings;
 mod tests;
 
 pub use bind_group_cache::BindGroupCache;
-pub use field::{StorageArray, StorageArrayMut, StorageField, UniformBinding, UniformField};
+pub use field::{
+  StorageArray, StorageArrayMut, StorageField, StorageValue, StorageValueMut, UniformBinding, UniformField,
+};
 pub use pass_binding::PassBinding;
 pub use pass_binding_layout::PassBindingLayout;
 pub use pass_parameters::PassParameters;

@@ -1,15 +1,12 @@
 use xrf_error::XrfResult;
-use xrf_renderer_core::RasterContext;
+use xrf_renderer_core::{PassParameters, RasterContext};
 
 use crate::frame::view_targets::ViewTargets;
-use crate::pass::fullscreen_pipeline::{buffer_binding, texture_binding};
-use crate::pass::layout_entries::{storage_entry, texture_entry, uniform_entry};
-use crate::pass::material_table::MaterialTable;
+use crate::pass::composited_parameters::CompositedParameters;
 use crate::pass::shader_pipelines::{create_checked, create_module};
 use crate::pass::sky_parameters::SkyParameters;
 use crate::pass::static_draw_parameters::StaticDrawParameters;
 use crate::pass::view_binding::ViewBinding;
-use crate::scene::level::level_shadows::LevelShadows;
 use crate::scene::static_scene::static_batch::StaticBatch;
 use crate::scene::static_scene::static_layout::StaticLayout;
 use crate::scene::static_scene::static_scene::StaticScene;
@@ -62,26 +59,8 @@ impl CompositedPass {
     texture_layout: &wgpu::BindGroupLayout,
     sky_layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<Self> {
-    let fragment: wgpu::ShaderStages = wgpu::ShaderStages::FRAGMENT;
     // A forward-drawn model is lit, and its sun read, per vertex.
-    let lit: wgpu::ShaderStages = wgpu::ShaderStages::VERTEX_FRAGMENT;
-    let [table, sampler] = MaterialTable::get_layout_entries(2);
-    let layout: wgpu::BindGroupLayout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-      label: Some("composited"),
-      entries: &[
-        uniform_entry(0, lit),
-        storage_entry(1, fragment, false),
-        table,
-        sampler,
-        texture_entry(
-          4,
-          lit,
-          wgpu::TextureSampleType::Depth,
-          wgpu::TextureViewDimension::D2Array,
-        ),
-        uniform_entry(5, lit),
-      ],
-    });
+    let layout: wgpu::BindGroupLayout = CompositedParameters::create_layout(device);
     let layouts: [wgpu::BindGroupLayout; 4] = [
       view_layout.clone(),
       scene_layout.clone(),
@@ -108,30 +87,6 @@ impl CompositedPass {
     }
   }
 
-  /// Binds what the surfaces read of their frame: the lighting, the exposure, the material table and the sun's shadow.
-  pub fn create_bind_group(
-    &self,
-    device: &wgpu::Device,
-    table: &MaterialTable,
-    (lighting, exposure): (&wgpu::Buffer, &wgpu::Buffer),
-    shadows: &LevelShadows,
-  ) -> wgpu::BindGroup {
-    let [table, sampler] = table.get_entries(2);
-
-    device.create_bind_group(&wgpu::BindGroupDescriptor {
-      label: Some("composited"),
-      layout: &self.layout,
-      entries: &[
-        buffer_binding(0, lighting),
-        buffer_binding(1, exposure),
-        table,
-        sampler,
-        texture_binding(4, &shadows.get_maps().view),
-        buffer_binding(5, shadows.get_uniform()),
-      ],
-    })
-  }
-
   /// Draws the composited surfaces each argument buffer lists, in cluster order.
   #[allow(clippy::too_many_arguments)]
   pub fn record(
@@ -142,18 +97,18 @@ impl CompositedPass {
       &[StaticDrawParameters; StaticLayout::COUNT],
       &wgpu::BindGroup,
     ),
-    (composited_group, sky): (&wgpu::BindGroup, &SkyParameters<'_>),
+    (composited, sky): (&CompositedParameters<'_>, &SkyParameters<'_>),
     args: &[&wgpu::Buffer],
     (sorted, sorted_count): (Option<&StaticDrawParameters>, u32),
   ) {
     // The sky's group sits above the composited surfaces' own here, past the bindless textures and the draws.
+    context.bind(composited);
     context.bind_at(Self::SKY_GROUP, sky);
 
     let pass: &mut wgpu::RenderPass<'static> = context.get_pass();
 
     pass.set_bind_group(0, &view.bind_group, &[]);
     pass.set_bind_group(1, textures, &[]);
-    pass.set_bind_group(3, composited_group, &[]);
 
     for (batch, pipeline) in StaticBatch::list_composited().zip(&self.pipelines.0) {
       // The models' are drawn back to front from the view's sorted list rather than as the cull listed them.

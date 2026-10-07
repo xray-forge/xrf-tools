@@ -2,12 +2,6 @@
 
 #import "generated/structs"
 
-// The exposure's state as `frame/exposure.wgsl` adapts it, read from its head.
-struct Exposure {
-  // The scale the tonemap multiplies by, adapted on the GPU frame by frame.
-  adapted: f32,
-};
-
 // The scale this frame's tonemap multiplies by: the adapted exposure where it adapts, one otherwise.
 fn frame_scale(state: Lighting, exposure: Exposure) -> f32 {
   return select(1.0, exposure.adapted, state.params.z > 0.5);

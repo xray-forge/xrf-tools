@@ -1,13 +1,16 @@
+use xrf_renderer_core::ShaderStruct;
+
 use crate::contract::render_exposure_settings::RenderExposureSettings;
 
 /// `MiddleGray`, as `shaders/frame/exposure.wgsl` declares it: the scale is `target / (luminance * weight + floor)`,
 /// moved towards by `blend` of the way.
 #[repr(C)]
-#[derive(Clone, Copy, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
+#[shader(name = "ExposureParams")]
 pub struct ExposureUniform {
-  pub target: f32,
+  pub target_gray: f32,
   pub weight: f32,
-  pub floor: f32,
+  pub floor_luminance: f32,
   pub blend: f32,
 }
 
@@ -17,9 +20,9 @@ impl ExposureUniform {
     let amount: f32 = settings.amount;
 
     Self {
-      target: 1.0 + (settings.middle_gray - 1.0) * amount,
+      target_gray: 1.0 + (settings.middle_gray - 1.0) * amount,
       weight: amount,
-      floor: 1.0 + (settings.low_luminance - 1.0) * amount,
+      floor_luminance: 1.0 + (settings.low_luminance - 1.0) * amount,
       blend,
     }
   }

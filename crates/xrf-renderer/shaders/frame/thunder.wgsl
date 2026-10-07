@@ -4,25 +4,8 @@
 // placed by the strike, its coordinates shifted down by it, and its two glows facing the view, each composited as its
 // shader says.
 
-struct Thunder {
-  // `current_xform`'s axes in renderer space, each scaled by the bolt's length, then where it strikes from.
-  axes: array<vec4<f32>, 3>,
-  position: vec4<f32>,
-  // x: what the model's coordinates are shifted down by.
-  shift: vec4<f32>,
-  // Each glow's position, then half its width and height and its opacity.
-  top: vec4<f32>,
-  top_extent: vec4<f32>,
-  center: vec4<f32>,
-  center_extent: vec4<f32>,
-};
-
-@group(1) @binding(0) var<uniform> thunder: Thunder;
-@group(1) @binding(1) var thunder_texture: texture_2d<f32>;
-@group(1) @binding(2) var thunder_sampler: sampler;
-// The model in renderer space: its position, then its coordinate, a vertex.
-@group(1) @binding(3) var<storage, read> model_vertices: array<vec4<f32>>;
-@group(1) @binding(4) var<storage, read> model_indices: array<u32>;
+// The strike, the draw's texture, and the bolt's model in renderer space (its position, then its coordinate, a vertex).
+#import "generated/frame/thunder"
 
 // A glow's quad: its corners as two triangles, each from minus one to one across and up.
 const GLOW_CORNERS: array<vec2<f32>, 6> = array<vec2<f32>, 6>(

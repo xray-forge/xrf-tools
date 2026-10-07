@@ -3,10 +3,12 @@ use crate::param::pass_binding::PassBinding;
 use crate::param::pass_resources::PassResources;
 use crate::shader::ShaderType;
 
-/// A parameter field bound as a storage buffer: an array of `Element`, read or read and written.
+/// A parameter field bound as a storage buffer: an array of `Element`, or one, read or read and written.
 pub trait StorageField {
   type Element: ShaderType;
   const IS_WRITABLE: bool;
+  /// Whether WGSL reads it as `array<Element>` rather than as one `Element`.
+  const IS_ARRAY: bool = true;
 
   fn get_buffer(&self) -> GraphBuffer;
 

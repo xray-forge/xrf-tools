@@ -1,11 +1,10 @@
 use xrf_error::XrfResult;
+use xrf_renderer_core::{PassParameters, RasterContext};
 
 use crate::frame::view_targets::ViewTargets;
-use crate::pass::fullscreen_pipeline::{create_fullscreen_pipeline, texture_binding};
-use crate::pass::layout_entries::{texture_entry, uniform_entry};
-use crate::pass::material_table::MaterialTable;
+use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline;
+use crate::pass::sun_parameters::SunParameters;
 use crate::pass::view_binding::ViewBinding;
-use crate::scene::level::level_shadows::LevelShadows;
 use crate::shader::shader_library::ShaderLibrary;
 
 /// Lights a viewport's G-buffer with the sun through its shadow's cascades, into the light its frame accumulates, which
@@ -22,28 +21,7 @@ impl SunPass {
   ///
   /// Returns an error when the shader does not compose or compile.
   pub fn new(device: &wgpu::Device, shaders: &ShaderLibrary, view_layout: &wgpu::BindGroupLayout) -> XrfResult<Self> {
-    let fragment: wgpu::ShaderStages = wgpu::ShaderStages::FRAGMENT;
-    let unfiltered: wgpu::TextureSampleType = wgpu::TextureSampleType::Float { filterable: false };
-    let flat: wgpu::TextureViewDimension = wgpu::TextureViewDimension::D2;
-    let [table, sampler] = MaterialTable::get_layout_entries(3);
-    let layout: wgpu::BindGroupLayout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-      label: Some("sun"),
-      entries: &[
-        texture_entry(0, fragment, unfiltered, flat),
-        texture_entry(1, fragment, unfiltered, flat),
-        texture_entry(2, fragment, wgpu::TextureSampleType::Depth, flat),
-        table,
-        sampler,
-        uniform_entry(5, fragment),
-        texture_entry(
-          6,
-          fragment,
-          wgpu::TextureSampleType::Depth,
-          wgpu::TextureViewDimension::D2Array,
-        ),
-        uniform_entry(7, fragment),
-      ],
-    });
+    let layout: wgpu::BindGroupLayout = SunParameters::create_layout(device);
 
     Ok(Self {
       pipeline: Self::create_pipeline(device, shaders, view_layout, &layout)?,
@@ -64,43 +42,14 @@ impl SunPass {
     }
   }
 
-  pub fn create_bind_group(
-    &self,
-    device: &wgpu::Device,
-    targets: &ViewTargets,
-    table: &MaterialTable,
-    lighting: &wgpu::Buffer,
-    shadows: &LevelShadows,
-  ) -> wgpu::BindGroup {
-    let [table, sampler] = table.get_entries(3);
-
-    device.create_bind_group(&wgpu::BindGroupDescriptor {
-      label: Some("sun"),
-      layout: &self.layout,
-      entries: &[
-        texture_binding(0, &targets.normal),
-        texture_binding(1, &targets.material),
-        texture_binding(2, &targets.depth),
-        table,
-        sampler,
-        wgpu::BindGroupEntry {
-          binding: 5,
-          resource: lighting.as_entire_binding(),
-        },
-        texture_binding(6, &shadows.get_maps().view),
-        wgpu::BindGroupEntry {
-          binding: 7,
-          resource: shadows.get_uniform().as_entire_binding(),
-        },
-      ],
-    })
-  }
-
   /// Lights the G-buffer by the sun into the light target the pass draws into.
-  pub fn record(&self, pass: &mut wgpu::RenderPass<'_>, view: &ViewBinding, bind_group: &wgpu::BindGroup) {
+  pub fn record(&self, context: &mut RasterContext<'_>, view: &ViewBinding, parameters: &SunParameters<'_>) {
+    context.bind(parameters);
+
+    let pass: &mut wgpu::RenderPass<'static> = context.get_pass();
+
     pass.set_pipeline(&self.pipeline);
     pass.set_bind_group(0, &view.bind_group, &[]);
-    pass.set_bind_group(1, bind_group, &[]);
     pass.draw(0..3, 0..1);
   }
 

@@ -3,26 +3,8 @@
 // `phase_luminance`: the frame's high part measured in 64 by 64 cells, then the scale every later tonemap multiplies
 // by adapted towards the middle gray, read by the next frame as the engine's `s_tonemap` is.
 
-struct ExposureState {
-  adapted: f32,
-  pad0: f32,
-  pad1: f32,
-  pad2: f32,
-  cells: array<f32, 4096>,
-};
-
-// `MiddleGray`: the scale is `target / (luminance * weight + floor)`, moved towards by `blend` of the way.
-struct ExposureParams {
-  target_gray: f32,
-  weight: f32,
-  floor_luminance: f32,
-  blend: f32,
-};
-
 // The high part (`rt_Generic_1`), the scaled colour over `def_hdr` that the bloom is built from.
-@group(0) @binding(0) var high: texture_2d<f32>;
-@group(0) @binding(1) var<storage, read_write> state: ExposureState;
-@group(0) @binding(2) var<uniform> params: ExposureParams;
+#import "generated/frame/exposure"
 
 // `LUMINANCE_VECTOR` (`common_defines.h`).
 const LUMINANCE: vec3<f32> = vec3<f32>(0.3, 0.38, 0.22);

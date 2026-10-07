@@ -10,19 +10,10 @@
 // weather's sky, into the viewport's scene; and `combine_1`'s and the sky's high part beside it, which the bloom is
 // built from. Unlit, a surface is its raw albedo.
 
-@group(1) @binding(0) var albedo_target: texture_2d<f32>;
-@group(1) @binding(1) var normal_target: texture_2d<f32>;
-@group(1) @binding(2) var material_target: texture_2d<f32>;
-@group(1) @binding(3) var depth_target: texture_depth_2d;
-@group(1) @binding(4) var light_target: texture_2d<f32>;
-@group(1) @binding(5) var material_lut: texture_3d<f32>;
-@group(1) @binding(6) var lut_sampler: sampler;
-@group(1) @binding(7) var<uniform> lighting: Lighting;
-@group(1) @binding(8) var<storage, read> exposure: Exposure;
-// Visibility, then distance along the view, at half the frame's size.
-@group(1) @binding(9) var occlusion_target: texture_2d<f32>;
-// The sky as drawn, clouds and all, blurred by bearing and height.
-@group(1) @binding(10) var haze_map: texture_2d<f32>;
+// The G-buffer and its light, the material table, the lighting and exposure, the ambient occlusion (visibility, then
+// distance along the view, at half the frame's size) and the haze map (the sky as drawn, clouds and all, blurred by
+// bearing and height).
+#import "generated/frame/combine"
 
 // What shows where nothing was drawn and neither the sky nor the fog is: the level viewer's backdrop, #202428.
 const BACKDROP: vec3<f32> = vec3<f32>(32.0, 36.0, 40.0) / 255.0;

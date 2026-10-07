@@ -8,15 +8,9 @@
 // what faces up and water running down what stands, as a normal bent in view space, and how wet it is in alpha, weighed
 // by the albedo's brightness. Computed in the engine's axes, so the ripples run as the game's do.
 
-@group(1) @binding(0) var depth_target: texture_depth_2d;
-@group(1) @binding(1) var albedo_target: texture_2d<f32>;
-@group(1) @binding(2) var normal_target: texture_2d<f32>;
-@group(1) @binding(3) var cover: texture_depth_2d;
-// `s_water`, a volume of rippling normals as its slices, and `s_waterFall`, the normals of water running down.
-@group(1) @binding(4) var splash: texture_2d_array<f32>;
-@group(1) @binding(5) var flow: texture_2d<f32>;
-@group(1) @binding(6) var wet_sampler: sampler;
-@group(1) @binding(7) var<uniform> wet: Wet;
+// The G-buffer, the rain's cover, `s_water` (a volume of rippling normals as its slices) and `s_waterFall` (the normals
+// of water running down), and the settings.
+#import "generated/frame/wet_patch"
 
 // Metres a point may stand under its cover's texel and still take the rain, as a slope spans one.
 const COVER_BIAS: f32 = 0.2;

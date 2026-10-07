@@ -1,7 +1,8 @@
 use glam::Vec4;
 
 use crate::{
-  GraphTexture, PassParameters, ShaderAtomicU32, ShaderStruct, StorageArray, StorageArrayMut, UniformBinding,
+  GraphTexture, PassParameters, ShaderAtomicU32, ShaderStruct, StorageArray, StorageArrayMut, StorageValue,
+  StorageValueMut, UniformBinding,
 };
 
 #[repr(C)]
@@ -44,6 +45,16 @@ pub struct Blur<'a> {
   pub destination: GraphTexture,
   #[sampler(filtering)]
   pub linear: &'a wgpu::Sampler,
+}
+
+/// A value read from a buffer's head, and one read and written.
+#[derive(PassParameters)]
+#[parameters(group = 0)]
+pub struct Head {
+  #[storage]
+  pub settings: StorageValue<Settings>,
+  #[storage]
+  pub state: StorageValueMut<Settings>,
 }
 
 /// A texture and a binding array of four.

@@ -6,30 +6,9 @@
 // streak falls again and again at its own speed from a column of the level the camera's square wraps as it moves, and
 // stops where the cover under that column stands, which is where its splash is.
 
-struct Rain {
-  // `rain_color`, then the streaks' cover, `factor / 2 + .5`.
-  color: vec4<f32>,
-  // The way the rain falls, in renderer space, before each streak strays from it.
-  axis: vec4<f32>,
-  // The cover's centre in `x` and `z`, its half width, and the height it is seen from.
-  window: vec4<f32>,
-  // Streaks drawn, `0.5 * (1 + factor) * max_desired_items`.
-  count: u32,
-  // Seconds the rain has fallen.
-  time: f32,
-  // Indices the splash's model draws.
-  splash_indices: u32,
-  pad: u32,
-};
-
-@group(1) @binding(0) var<uniform> rain: Rain;
-@group(1) @binding(1) var cover: texture_depth_2d;
-@group(1) @binding(2) var streak_texture: texture_2d<f32>;
-@group(1) @binding(3) var splash_texture: texture_2d<f32>;
-@group(1) @binding(4) var rain_sampler: sampler;
-// The splash's model in renderer space: its position, then its coordinate, a vertex.
-@group(1) @binding(5) var<storage, read> splash_vertices: array<vec4<f32>>;
-@group(1) @binding(6) var<storage, read> splash_indices: array<u32>;
+// The rain, its cover, the streak's and the splash's textures, and the splash's model in renderer space (its position,
+// then its coordinate, a vertex).
+#import "generated/frame/rain"
 
 const RAIN_PI: f32 = 3.14159265;
 

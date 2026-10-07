@@ -1,22 +1,7 @@
+#import "generated/structs"
+
 // The sun's shadow as every pass lit by the sun reads it: its cascades' maps and what they were drawn with, passed in
 // so each pass binds them where it likes.
-
-struct Shadows {
-  // Renderer space into each cascade's clip space, as its map was last drawn.
-  matrices: array<mat4x4<f32>, 4>,
-  // Metres one texel of each cascade's map is across.
-  texels: vec4<f32>,
-  // xyz: where the camera looks, which the last cascade fades out towards.
-  forward: vec4<f32>,
-  count: u32,
-  filter_reach: u32,
-  resolution: f32,
-  bias: f32,
-  blend: f32,
-  pad0: f32,
-  pad1: f32,
-  pad2: f32,
-};
 
 // The share of a map's edge a point is kept off, so the filter never reads past it into the next cascade's edge.
 const EDGE: f32 = 0.02;

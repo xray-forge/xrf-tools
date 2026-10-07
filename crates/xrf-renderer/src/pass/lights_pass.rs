@@ -1,10 +1,9 @@
 use xrf_error::XrfResult;
+use xrf_renderer_core::{ComputeContext, PassParameters, RasterContext};
 
 use crate::frame::view_targets::ViewTargets;
-use crate::pass::fullscreen_pipeline::{buffer_binding, texture_binding};
-use crate::pass::layout_entries::{storage_entry, texture_entry, uniform_entry};
-use crate::pass::light_buffers::LightBuffers;
-use crate::pass::material_table::MaterialTable;
+use crate::pass::light_binning_parameters::LightBinningParameters;
+use crate::pass::lights_parameters::LightsParameters;
 use crate::pass::shader_pipelines::{create_checked, create_module};
 use crate::pass::view_binding::ViewBinding;
 use crate::shader::shader_library::ShaderLibrary;
@@ -35,35 +34,8 @@ impl LightsPass {
     view_layout: &wgpu::BindGroupLayout,
     texture_layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<Self> {
-    let compute: wgpu::ShaderStages = wgpu::ShaderStages::COMPUTE;
-    let fragment: wgpu::ShaderStages = wgpu::ShaderStages::FRAGMENT;
-    let unfiltered: wgpu::TextureSampleType = wgpu::TextureSampleType::Float { filterable: false };
-    let flat: wgpu::TextureViewDimension = wgpu::TextureViewDimension::D2;
-    let binning_layout: wgpu::BindGroupLayout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-      label: Some("light binning"),
-      entries: &[
-        storage_entry(0, compute, false),
-        storage_entry(1, compute, true),
-        storage_entry(2, compute, true),
-        uniform_entry(3, compute),
-      ],
-    });
-    let [table, sampler] = MaterialTable::get_layout_entries(3);
-    let layout: wgpu::BindGroupLayout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-      label: Some("lights"),
-      entries: &[
-        texture_entry(0, fragment, unfiltered, flat),
-        texture_entry(1, fragment, unfiltered, flat),
-        texture_entry(2, fragment, wgpu::TextureSampleType::Depth, flat),
-        table,
-        sampler,
-        storage_entry(5, fragment, false),
-        storage_entry(6, fragment, false),
-        storage_entry(7, fragment, false),
-        uniform_entry(8, fragment),
-        texture_entry(9, fragment, wgpu::TextureSampleType::Depth, flat),
-      ],
-    });
+    let binning_layout: wgpu::BindGroupLayout = LightBinningParameters::create_layout(device);
+    let layout: wgpu::BindGroupLayout = LightsParameters::create_layout(device);
     let (binning, pipeline) =
       Self::create_pipelines(device, shaders, &binning_layout, view_layout, &layout, texture_layout)?;
 
@@ -99,66 +71,31 @@ impl LightsPass {
     }
   }
 
-  /// The binning's bind group, then the shading's.
-  pub fn create_bind_groups(
-    &self,
-    device: &wgpu::Device,
-    targets: &ViewTargets,
-    table: &MaterialTable,
-    buffers: &LightBuffers<'_>,
-    atlas: &wgpu::TextureView,
-  ) -> [wgpu::BindGroup; 2] {
-    let [table, sampler] = table.get_entries(3);
-
-    [
-      device.create_bind_group(&wgpu::BindGroupDescriptor {
-        label: Some("light binning"),
-        layout: &self.binning_layout,
-        entries: &[
-          buffer_binding(0, buffers.records),
-          buffer_binding(1, buffers.counts),
-          buffer_binding(2, buffers.items),
-          buffer_binding(3, buffers.uniform),
-        ],
-      }),
-      device.create_bind_group(&wgpu::BindGroupDescriptor {
-        label: Some("lights"),
-        layout: &self.layout,
-        entries: &[
-          texture_binding(0, &targets.normal),
-          texture_binding(1, &targets.material),
-          texture_binding(2, &targets.depth),
-          table,
-          sampler,
-          buffer_binding(5, buffers.records),
-          buffer_binding(6, buffers.counts),
-          buffer_binding(7, buffers.items),
-          buffer_binding(8, buffers.uniform),
-          texture_binding(9, atlas),
-        ],
-      }),
-    ]
-  }
-
   /// Bins the lights, then adds them over what the sun left in the light target.
   /// Bins the lights into the view's clusters.
-  pub fn record_binning(&self, pass: &mut wgpu::ComputePass<'_>, bind_group: &wgpu::BindGroup) {
+  pub fn record_binning(&self, context: &mut ComputeContext<'_>, parameters: &LightBinningParameters) {
+    context.bind(parameters);
+
+    let pass: &mut wgpu::ComputePass<'static> = context.get_pass();
+
     pass.set_pipeline(&self.binning);
-    pass.set_bind_group(0, bind_group, &[]);
     pass.dispatch_workgroups(LIGHT_CLUSTERS.div_ceil(BINNING_WORKGROUP), 1, 1);
   }
 
   /// Adds every binned light's light to the light target the pass draws into.
   pub fn record_draw(
     &self,
-    pass: &mut wgpu::RenderPass<'_>,
+    context: &mut RasterContext<'_>,
     view: &ViewBinding,
-    bind_groups: &[wgpu::BindGroup; 2],
+    parameters: &LightsParameters<'_>,
     textures: &wgpu::BindGroup,
   ) {
+    context.bind(parameters);
+
+    let pass: &mut wgpu::RenderPass<'static> = context.get_pass();
+
     pass.set_pipeline(&self.pipeline);
     pass.set_bind_group(0, &view.bind_group, &[]);
-    pass.set_bind_group(1, &bind_groups[1], &[]);
     pass.set_bind_group(2, textures, &[]);
     pass.draw(0..3, 0..1);
   }

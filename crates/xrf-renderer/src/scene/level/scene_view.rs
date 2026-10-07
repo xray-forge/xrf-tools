@@ -8,7 +8,8 @@ use xrf_material::XraySurfaceDraw;
 use xrf_math::EPS_S;
 use xrf_renderer_core::{
   FrameGraph, GraphBindings, GraphBuffer, GraphBufferAccess, GraphColorAttachment, GraphDepthAttachment, GraphRuntime,
-  GraphTexture, GraphTextureAccess, GraphTextureDescriptor, RasterPassBuilder, StorageArray, UniformBinding,
+  GraphTexture, GraphTextureAccess, GraphTextureDescriptor, RasterPassBuilder, StorageArray, StorageArrayMut,
+  StorageValue, StorageValueMut, UniformBinding,
 };
 
 use crate::camera::camera_view::CameraView;
@@ -43,21 +44,29 @@ use crate::host::render_level_weather::RenderLevelWeather;
 use crate::host::render_rain::RenderRain;
 use crate::lighting::ambient_gust::AmbientGust;
 use crate::lighting::render_lighting::RenderLighting;
+use crate::pass::ambient_occlusion_parameters::AmbientOcclusionParameters;
 use crate::pass::ambient_occlusion_pass::AmbientOcclusionPass;
 use crate::pass::ambient_occlusion_uniform::AmbientOcclusionUniform;
 use crate::pass::bloom_parameters::BloomParameters;
 use crate::pass::bloom_pass::BloomPass;
 use crate::pass::bloom_uniform::BloomUniform;
 use crate::pass::camera_uniform::CameraUniform;
+use crate::pass::combine_parameters::CombineParameters;
+use crate::pass::composited_parameters::CompositedParameters;
+use crate::pass::exposure_parameters::ExposureParameters;
 use crate::pass::fsr_groups::FsrGroups;
 use crate::pass::fsr_uniform::FsrUniform;
 use crate::pass::fxaa_parameters::FxaaParameters;
 use crate::pass::level_passes::LevelPasses;
+use crate::pass::light_binning_parameters::LightBinningParameters;
 use crate::pass::lighting_frame::LightingFrame;
 use crate::pass::lighting_uniform::LightingUniform;
+use crate::pass::lights_parameters::LightsParameters;
+use crate::pass::lights_uniform::LightsUniform;
 use crate::pass::present_uniform::PresentUniform;
-use crate::pass::rain_bindings::RainBindings;
+use crate::pass::rain_parameters::RainParameters;
 use crate::pass::rain_uniform::RainUniform;
+use crate::pass::sky_haze_parameters::SkyHazeParameters;
 use crate::pass::sky_parameters::SkyParameters;
 use crate::pass::smaa_parameters::SmaaParameters;
 use crate::pass::smaa_pass::SmaaPass;
@@ -67,13 +76,17 @@ use crate::pass::static_draw_parameters::StaticDrawParameters;
 use crate::pass::static_draws::StaticDraws;
 use crate::pass::static_gbuffer_pass::StaticGBufferPass;
 use crate::pass::static_occlusion_uniform::StaticOcclusionUniform;
+use crate::pass::sun_parameters::SunParameters;
+use crate::pass::sun_shafts_parameters::SunShaftsParameters;
 use crate::pass::temporal_uniform::TemporalUniform;
+use crate::pass::thunder_parameters::ThunderParameters;
 use crate::pass::thunder_uniform::ThunderUniform;
 use crate::pass::upscale_parameters::UpscaleParameters;
 use crate::pass::upscale_uniform::UpscaleUniform;
 use crate::pass::view_binding::ViewBinding;
-use crate::pass::view_light_groups::ViewLightGroups;
 use crate::pass::water_draw::WaterDraw;
+use crate::pass::wet_apply_parameters::WetApplyParameters;
+use crate::pass::wet_patch_parameters::WetPatchParameters;
 use crate::pass::wet_uniform::WetUniform;
 use crate::pass::wind_uniform::WindUniform;
 use crate::scene::level::grass_level::GrassLevel;
@@ -81,6 +94,7 @@ use crate::scene::level::level_frame::LevelFrame;
 use crate::scene::level::level_overlays::LevelOverlays;
 use crate::scene::level::level_scene::LevelScene;
 use crate::scene::level::level_water::WaterFrame;
+use crate::scene::level::lighting_handles::LightingHandles;
 use crate::scene::level::lights_frame::LightsFrame;
 use crate::scene::level::lights_view::LightsView;
 use crate::scene::level::scene_output::SceneOutput;
@@ -232,7 +246,6 @@ impl SceneView {
       self.state.fsr = None;
       // A pyramid of another size holds no depth this frame can be tested against.
       self.state.history = None;
-      self.renderer.light_groups = None;
     }
 
     if let Some(overlays) = self.state.overlays.as_mut().filter(|it| it.skeleton.is_some()) {
@@ -244,79 +257,17 @@ impl SceneView {
       .shadows
       .prepare(device, options.features.shadows.resolution);
 
-    let shadow_epoch: u64 = self.renderer.shadows.get_epoch();
-
-    if self
-      .renderer
-      .light_groups
-      .as_ref()
-      .is_none_or(|(epoch, _)| *epoch != shadow_epoch)
-      && let Some(targets) = &self.state.targets
-    {
-      let groups: ViewLightGroups = ViewLightGroups {
-        sun: passes.sun.create_bind_group(
-          device,
-          targets,
-          passes.table,
-          &self.renderer.lighting,
-          &self.renderer.shadows,
-        ),
-        lights: passes.lights.create_bind_groups(
-          device,
-          targets,
-          passes.table,
-          &self.state.lights.get_buffers(),
-          scene.lights.get_shadow_atlas(),
-        ),
-        occlusion: passes
-          .ambient_occlusion
-          .create_bind_groups(device, targets, &self.renderer.occlusion_uniform),
-        combine: passes.combine.create_bind_group(
-          device,
-          targets,
-          passes.table,
-          &self.renderer.lighting,
-          &self.state.exposure.state,
-        ),
-        composited: passes.composited.create_bind_group(
-          device,
-          passes.table,
-          (&self.renderer.lighting, &self.state.exposure.state),
-          &self.renderer.shadows,
-        ),
-        haze: passes
-          .sky_haze
-          .create_bind_group(device, &self.renderer.lighting, &self.state.exposure.state),
-        sun_shafts: passes.sun_shafts.create_bind_group(
-          device,
-          targets,
-          &self.renderer.shadows,
-          (&self.renderer.lighting, &self.state.exposure.state),
-        ),
-        exposure: passes.exposure.create_bind_group(device, targets, &self.state.exposure),
-      };
-
-      self.renderer.light_groups = Some((shadow_epoch, groups));
-    }
-
     self
       .state
       .exposure
       .prepare(queue, &options.features.exposure, Instant::now());
 
     self.info.sun_sprite = self.renderer.flares.prepare(
-      device,
-      queue,
-      passes.flares,
       (lighting, weather),
       options,
       weather_textures,
       (view, weather_rate),
-      (
-        self.state.targets.as_ref(),
-        self.state.targets_epoch,
-        &self.renderer.shadows,
-      ),
+      self.state.targets.is_some(),
     );
 
     let sky = &lighting.sky;
@@ -468,14 +419,10 @@ impl SceneView {
     self.prepare_upscale(device);
     self.info.lights_settings = options.features.lights;
 
-    queue.write_buffer(
-      &self.renderer.occlusion_uniform,
-      0,
-      bytemuck::bytes_of(&AmbientOcclusionUniform::new(
-        &options.features.ambient_occlusion,
-        view.projection,
-        (width.div_ceil(2), height.div_ceil(2)),
-      )),
+    self.info.occlusion_settings = AmbientOcclusionUniform::new(
+      &options.features.ambient_occlusion,
+      view.projection,
+      (width.div_ceil(2), height.div_ceil(2)),
     );
     self.prepare_sorted(scene, device, queue, view);
 
@@ -491,7 +438,6 @@ impl SceneView {
       };
     }
     self.info.lighting = LightingUniform::new(lighting, view.view, options, &frame);
-    queue.write_buffer(&self.renderer.lighting, 0, bytemuck::bytes_of(&self.info.lighting));
 
     scene.particles.fill(view, options, &mut self.state.particles);
 
@@ -642,15 +588,17 @@ impl SceneView {
   /// target, the binning's overflow read back, and the ambient occlusion searched and denoised.
   fn add_lighting_passes<'a>(
     &'a self,
-    (graph, bindings): (&mut FrameGraph<'a>, &mut GraphBindings<'a>),
+    (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
     passes: LevelPasses<'a>,
-    (view, textures, groups): (&'a ViewBinding, &'a wgpu::BindGroup, &'a ViewLightGroups),
-    targets: ViewTargetHandles,
+    (view, textures, scene): (&'a ViewBinding, &'a wgpu::BindGroup, &'a LevelScene),
+    (targets, lit): (ViewTargetHandles, LightingHandles<'a>),
     (has_lights, is_occlusion_ambient): (bool, bool),
   ) {
     let lights: &'a LightsView = &self.state.lights;
     let counts: GraphBuffer = bindings.import_buffer(graph, "light cluster counts", &lights.counts);
-    let gbuffer: [GraphTexture; 4] = [targets.albedo, targets.normal, targets.material, targets.depth];
+    let records: GraphBuffer = bindings.import_buffer(graph, "light records", &lights.record_buffer);
+    let items: GraphBuffer = bindings.import_buffer(graph, "light cluster items", &lights.items);
+    let lights_uniform: UniformBinding<LightsUniform> = runtime.push_uniform(&lights.uniform);
 
     graph
       .add_encoder_pass("light counts clear")
@@ -658,36 +606,58 @@ impl SceneView {
       .record(move |context| lights.clear_overflow(context.get_encoder()));
 
     if has_lights {
+      let parameters: LightBinningParameters = LightBinningParameters {
+        records: StorageArray::new(records),
+        counts: StorageArrayMut::new(counts),
+        items: StorageArrayMut::new(items),
+        lights: lights_uniform,
+      };
+
       graph
         .add_compute_pass("light binning")
-        .buffer(counts, GraphBufferAccess::StorageReadWrite)
-        .record(move |context| passes.lights.record_binning(context.get_pass(), &groups.lights[0]));
+        .parameters(&parameters)
+        .record(move |context| passes.lights.record_binning(context, &parameters));
     }
 
-    gbuffer
-      .into_iter()
-      .fold(graph.add_raster_pass("sun"), |builder, texture| {
-        builder.texture(texture, GraphTextureAccess::Sampled)
-      })
+    let sun: SunParameters = SunParameters {
+      normal_target: targets.normal,
+      material_target: targets.material,
+      depth_target: targets.depth,
+      material_lut: lit.material_lut,
+      lut_sampler: lit.lut_sampler,
+      lighting: lit.lighting,
+      shadow_maps: lit.shadow_maps,
+      shadows: lit.shadows,
+    };
+
+    graph
+      .add_raster_pass("sun")
+      .parameters(&sun)
       .color(GraphColorAttachment::new(
         targets.light,
         wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
       ))
-      .record(move |context| passes.sun.record(context.get_pass(), view, &groups.sun));
+      .record(move |context| passes.sun.record(context, view, &sun));
 
     if has_lights {
-      gbuffer
-        .into_iter()
-        .fold(graph.add_raster_pass("lights"), |builder, texture| {
-          builder.texture(texture, GraphTextureAccess::Sampled)
-        })
-        .buffer(counts, GraphBufferAccess::StorageRead)
+      let parameters: LightsParameters = LightsParameters {
+        normal_target: targets.normal,
+        material_target: targets.material,
+        depth_target: targets.depth,
+        material_lut: lit.material_lut,
+        lut_sampler: lit.lut_sampler,
+        records: StorageArray::new(records),
+        counts: StorageArray::new(counts),
+        items: StorageArray::new(items),
+        lights: lights_uniform,
+        shadow_atlas: bindings.import_view(graph, "light shadow atlas", scene.lights.get_shadow_atlas()),
+      };
+
+      graph
+        .add_raster_pass("lights")
+        .parameters(&parameters)
         .color(GraphColorAttachment::new(targets.light, wgpu::LoadOp::Load))
-        .record(move |context| {
-          passes
-            .lights
-            .record_draw(context.get_pass(), view, &groups.lights, textures)
-        });
+        .record(move |context| passes.lights.record_draw(context, view, &parameters, textures));
     }
 
     // The overflow, read back for a report a frame or more later: an effect the graph cannot see.
@@ -699,6 +669,7 @@ impl SceneView {
 
     if is_occlusion_ambient {
       let quality: RenderAmbientOcclusionQuality = self.info.ambient_occlusion.quality;
+      let occlusion: UniformBinding<AmbientOcclusionUniform> = runtime.push_uniform(&self.info.occlusion_settings);
 
       for (stage, (name, (read, written))) in ["ambient occlusion", "occlusion denoise", "occlusion denoise back"]
         .into_iter()
@@ -706,11 +677,16 @@ impl SceneView {
         .enumerate()
       {
         // Each stage reads the other target than it draws into, with the normals and the depth.
-        [targets.occlusion[1 - read], targets.normal, targets.depth]
-          .into_iter()
-          .fold(graph.add_raster_pass(name), |builder, texture| {
-            builder.texture(texture, GraphTextureAccess::Sampled)
-          })
+        let parameters: AmbientOcclusionParameters = AmbientOcclusionParameters {
+          normal_target: targets.normal,
+          depth_target: targets.depth,
+          occlusion,
+          source: targets.occlusion[1 - read],
+        };
+
+        graph
+          .add_raster_pass(name)
+          .parameters(&parameters)
           .color(GraphColorAttachment::new(
             targets.occlusion[written],
             wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
@@ -718,7 +694,7 @@ impl SceneView {
           .record(move |context| {
             passes
               .ambient_occlusion
-              .record(context.get_pass(), (stage, quality), view, &groups.occlusion)
+              .record(context, (stage, quality), view, &parameters)
           });
       }
     }
@@ -826,13 +802,15 @@ impl SceneView {
   fn prepare_rain(
     &mut self,
     device: &wgpu::Device,
-    queue: &wgpu::Queue,
-    passes: LevelPasses<'_>,
+    _queue: &wgpu::Queue,
+    _passes: LevelPasses<'_>,
     (lighting, weather): (&RenderLighting, Option<&Arc<RenderLevelWeather>>),
     (options, gust, time): (&RenderViewOptions, AmbientGust, f32),
     weather_textures: &WeatherTextureCache,
   ) {
     self.info.rain_draw = None;
+    self.info.weather_views.rain = None;
+    self.info.weather_views.wet = None;
 
     let Some((key, rain)) = weather.and_then(|weather| {
       weather
@@ -860,73 +838,33 @@ impl SceneView {
       time,
       splash.index_count,
     );
-    let group_key: (u64, usize) = (weather_textures.get_generation(), key);
+    let flat = |reference: Option<&str>| weather_textures.get_view(reference, WeatherTextureKind::Flat).clone();
 
-    queue.write_buffer(&self.renderer.rain, 0, bytemuck::bytes_of(&uniform));
-
-    if self
-      .renderer
-      .rain_group
-      .as_ref()
-      .is_none_or(|(built, _)| *built != group_key)
-    {
-      let flat = |reference: Option<&str>| weather_textures.get_view(reference, WeatherTextureKind::Flat);
-      let group: wgpu::BindGroup = passes.rain.create_bind_group(
-        device,
-        &RainBindings {
-          uniform: &self.renderer.rain,
-          cover: &self.renderer.rain_cover.depth,
-          streak: flat(Some(&rain.streak)),
-          splash: flat(rain.drop.as_ref().map(|drop| drop.texture.as_str())),
-          vertices: &splash.vertices,
-          indices: &splash.indices,
-        },
-      );
-
-      self.renderer.rain_group = Some((group_key, group));
-    }
-
+    self.info.rain = uniform;
+    self.info.weather_views.rain = Some([
+      flat(Some(&rain.streak)),
+      flat(rain.drop.as_ref().map(|drop| drop.texture.as_str())),
+    ]);
     self.info.rain_draw = Some((uniform.count, splash.index_count));
 
     let Some(wet) = weather.and_then(|weather| weather.wet.as_ref()) else {
       return;
     };
-    let Some(targets) = &self.state.targets else {
-      return;
+    self.info.wet = WetUniform {
+      density: rainfall.density.clamp(0.0, 1.0),
+      time: uniform.time,
+      is_extended: (lighting.engine == XrayEngine::Extended) as u32 as f32,
+      _pad: 0.0,
+      window: uniform.window,
     };
-    let wet_key: (u64, u64) = (self.state.targets_epoch, weather_textures.get_generation());
-
-    queue.write_buffer(
-      &self.renderer.wet,
-      0,
-      bytemuck::bytes_of(&WetUniform {
-        density: rainfall.density.clamp(0.0, 1.0),
-        time: uniform.time,
-        is_extended: (lighting.engine == XrayEngine::Extended) as u32 as f32,
-        pad: 0.0,
-        window: uniform.window,
-      }),
-    );
-
-    if self
-      .renderer
-      .wet_groups
-      .as_ref()
-      .is_none_or(|(built, _)| *built != wet_key)
-    {
-      let groups: [wgpu::BindGroup; 2] = passes.wet.create_bind_groups(
-        device,
-        targets,
-        &self.renderer.rain_cover.depth,
-        (
-          weather_textures.get_view(Some(&wet.splash), WeatherTextureKind::Volume),
-          weather_textures.get_view(Some(&wet.flow), WeatherTextureKind::Flat),
-        ),
-        &self.renderer.wet,
-      );
-
-      self.renderer.wet_groups = Some((wet_key, groups));
-    }
+    self.info.weather_views.wet = Some([
+      weather_textures
+        .get_view(Some(&wet.splash), WeatherTextureKind::Volume)
+        .clone(),
+      weather_textures
+        .get_view(Some(&wet.flow), WeatherTextureKind::Flat)
+        .clone(),
+    ]);
   }
 
   /// Writes this frame's strike, while a bolt strikes and the view shows it: every bolt model built for the level's
@@ -934,13 +872,14 @@ impl SceneView {
   fn prepare_thunder(
     &mut self,
     device: &wgpu::Device,
-    queue: &wgpu::Queue,
-    passes: LevelPasses<'_>,
+    _queue: &wgpu::Queue,
+    _passes: LevelPasses<'_>,
     (lighting, weather): (&RenderLighting, Option<&Arc<RenderLevelWeather>>),
     options: &RenderViewOptions,
     weather_textures: &WeatherTextureCache,
   ) {
     self.info.thunder_draw = None;
+    self.info.weather_views.thunder = None;
 
     let (Some(weather), Some(strike)) = (weather, &lighting.thunderbolt) else {
       return;
@@ -974,43 +913,18 @@ impl SceneView {
     let model = bolt
       .model
       .and_then(|index| Some((models.get(index)?, thunder.models.get(index)?)));
-    let group_key: (u64, usize, String) = (weather_textures.get_generation(), key, strike.bolt.clone());
+    let flat = |reference: &str| {
+      weather_textures
+        .get_view(Some(reference), WeatherTextureKind::Flat)
+        .clone()
+    };
+    let model_texture: &str = model.map_or("", |(_, model)| model.mesh.texture.as_str());
 
-    queue.write_buffer(
-      &self.renderer.thunder,
-      0,
-      bytemuck::bytes_of(&ThunderUniform::new(strike)),
-    );
-
-    if self
-      .renderer
-      .thunder_groups
-      .as_ref()
-      .is_none_or(|(built, _)| *built != group_key)
-    {
-      let flat = |reference: &str| weather_textures.get_view(Some(reference), WeatherTextureKind::Flat);
-      let buffers: &WeatherModelBuffers = model.map_or(&self.renderer.no_model, |(buffers, _)| buffers);
-      let model_texture: &str = model.map_or("", |(_, model)| model.mesh.texture.as_str());
-      let groups: [wgpu::BindGroup; 3] = [
-        passes
-          .thunder
-          .create_bind_group(device, &self.renderer.thunder, flat(model_texture), buffers),
-        passes.thunder.create_bind_group(
-          device,
-          &self.renderer.thunder,
-          flat(&bolt.top.texture),
-          &self.renderer.no_model,
-        ),
-        passes.thunder.create_bind_group(
-          device,
-          &self.renderer.thunder,
-          flat(&bolt.center.texture),
-          &self.renderer.no_model,
-        ),
-      ];
-
-      self.renderer.thunder_groups = Some((group_key, groups));
-    }
+    self.info.thunder = ThunderUniform::new(strike);
+    self.info.weather_views.thunder = Some((
+      [flat(model_texture), flat(&bolt.top.texture), flat(&bolt.center.texture)],
+      bolt.model.filter(|_| model.is_some()),
+    ));
 
     self.info.thunder_draw = Some((
       [
@@ -1043,7 +957,7 @@ impl SceneView {
     Some(LevelFrame {
       pick_slot,
       is_scene_first: false,
-      is_lit: self.renderer.light_groups.is_some(),
+      is_lit: self.state.targets.is_some(),
       resolve: if self.state.fsr.is_some() {
         Some("fsr2")
       } else if self.state.temporal.is_some() {
@@ -1076,7 +990,7 @@ impl SceneView {
     let is_drawn: bool = !self.info.is_wireframe;
     let is_wallmarked: bool = self.info.is_wallmarked && is_drawn;
     let is_raining: bool = self.info.rain_draw.is_some();
-    let is_wet: bool = is_raining && self.renderer.wet_groups.is_some();
+    let is_wet: bool = is_raining && self.info.weather_views.wet.is_some();
     let is_lit: bool = frame.is_lit;
     let has_lights: bool = self.state.lights.get_count() > 0;
     let is_occlusion_ambient: bool = self.info.ambient_occlusion.is_enabled;
@@ -1085,8 +999,8 @@ impl SceneView {
     let is_composited: bool = is_drawn && has_sky;
     let has_particles: bool = is_drawn && self.state.particles.is_drawing();
     let is_shafted: bool = self.info.is_shafted;
-    let is_rain_drawn: bool = is_raining && self.renderer.rain_group.is_some();
-    let is_thundering: bool = self.info.thunder_draw.is_some() && self.renderer.thunder_groups.is_some();
+    let is_rain_drawn: bool = is_raining && self.info.weather_views.rain.is_some();
+    let is_thundering: bool = self.info.thunder_draw.is_some() && self.info.weather_views.thunder.is_some();
     let is_bloomed: bool = self.info.is_bloomed;
     let particle_surfaces: &wgpu::Buffer = scene.particles.get_surfaces();
     let smoothing: Option<RenderAntialiasing> = self.info.smoothing;
@@ -1114,6 +1028,18 @@ impl SceneView {
       (&scene_view.info.cull, &scene_view.info.occlusion, &scene_view.info.wind),
     );
     let layouts: [StaticDrawParameters; StaticLayout::COUNT] = statics.get_camera_draws().layouts;
+    let lit: LightingHandles = LightingHandles {
+      lighting: runtime.push_uniform(&scene_view.info.lighting),
+      exposure: bindings.import_buffer(&mut *graph, "exposure", &scene_view.state.exposure.state),
+      material_lut: bindings.import_view(&mut *graph, "material table", &passes.table.view),
+      lut_sampler: &passes.table.sampler,
+      shadow_maps: bindings.import_view(
+        &mut *graph,
+        "sun shadow maps",
+        &scene_view.renderer.shadows.get_maps().view,
+      ),
+      shadows: runtime.push_uniform(scene_view.renderer.shadows.get_values()),
+    };
 
     // The frame is encoded in four groups, on as many threads where it is not timed: the scene, its shadows, its
     // lighting and water, and what blends over it and resolves it.
@@ -1194,15 +1120,20 @@ impl SceneView {
     scene_view.renderer.shadows.add_passes(
       (&mut *graph, &mut *bindings),
       passes,
-      &statics,
+      (&statics, lit.shadow_maps),
       (&scene_view.info.cull, texture_group),
     );
 
-    if is_raining {
+    // The rain's cover, which its passes draw and the rain and the wet surfaces read.
+    let cover: Option<GraphTexture> =
+      is_raining.then(|| bindings.import_view(&mut *graph, "rain cover", &scene_view.renderer.rain_cover.depth));
+    let wet: Option<UniformBinding<WetUniform>> = is_wet.then(|| runtime.push_uniform(&scene_view.info.wet));
+
+    if let Some(cover) = cover {
       scene_view.renderer.rain_cover.add_passes(
         (&mut *graph, &mut *bindings),
         passes,
-        &statics,
+        (&statics, cover),
         (&scene_view.info.cull, texture_group),
       );
     }
@@ -1219,47 +1150,48 @@ impl SceneView {
     graph.begin_group("lighting");
 
     // The rain wets the G-buffer before any light is drawn over it.
-    if let (true, Some((_, [patch, apply]))) = (is_wet, &scene_view.renderer.wet_groups) {
+    if let (Some(cover), Some(wet), Some([splash, flow])) = (cover, wet, &scene_view.info.weather_views.wet) {
+      let patch: WetPatchParameters = WetPatchParameters {
+        depth_target: handles.depth,
+        albedo_target: handles.albedo,
+        normal_target: handles.normal,
+        cover,
+        splash: bindings.import_view(&mut *graph, "wet splash", splash),
+        flow: bindings.import_view(&mut *graph, "wet flow", flow),
+        wet_sampler: passes.wet.get_sampler(),
+        wet,
+      };
+      let apply: WetApplyParameters = WetApplyParameters {
+        depth_target: handles.depth,
+        patched: handles.light,
+        wet,
+      };
+
       // The patches go into the light, which the wet look over the normals and the albedo then reads.
-      for (stage, (name, target, group, reads)) in [
-        (
-          "wet patch",
-          handles.light,
-          patch,
-          [handles.depth, handles.albedo, handles.normal],
-        ),
-        (
-          "wet normal",
-          handles.normal,
-          apply,
-          [handles.depth, handles.light, handles.light],
-        ),
-        (
-          "wet albedo",
-          handles.albedo,
-          apply,
-          [handles.depth, handles.light, handles.light],
-        ),
-      ]
-      .into_iter()
-      .enumerate()
+      graph
+        .add_raster_pass("wet patch")
+        .parameters(&patch)
+        .color(GraphColorAttachment::new(handles.light, wgpu::LoadOp::Load))
+        .record(move |context| passes.wet.record(context, 0, view, &patch));
+
+      for (stage, (name, target)) in [("wet normal", handles.normal), ("wet albedo", handles.albedo)]
+        .into_iter()
+        .enumerate()
       {
-        reads
-          .into_iter()
-          .fold(graph.add_raster_pass(name), |builder, texture| {
-            builder.texture(texture, GraphTextureAccess::Sampled)
-          })
+        graph
+          .add_raster_pass(name)
+          .parameters(&apply)
           .color(GraphColorAttachment::new(target, wgpu::LoadOp::Load))
-          .record(move |context| passes.wet.record(context.get_pass(), stage, view, group));
+          .record(move |context| passes.wet.record(context, stage + 1, view, &apply));
       }
     }
 
-    if let (true, Some((_, groups))) = (is_lit, &scene_view.renderer.light_groups) {
+    if is_lit {
       scene_view.add_lighting_passes(
-        (&mut *graph, &mut *bindings),
+        (&mut *graph, &mut *bindings, runtime),
         passes,
-        (view, texture_group, groups),
-        handles,
+        (view, texture_group, scene),
+        (handles, lit),
         (has_lights, is_occlusion_ambient),
       );
 
@@ -1270,39 +1202,50 @@ impl SceneView {
         .map(|views| passes.sky.import(views, &mut *graph, &mut *bindings));
 
       if let (true, Some(sky)) = (is_hazing, sky) {
+        let parameters: SkyHazeParameters = SkyHazeParameters {
+          lighting: lit.lighting,
+          exposure: StorageValue::new(lit.exposure),
+        };
+
         graph
           .add_raster_pass("haze")
+          .parameters(&parameters)
           .parameters(&sky)
           .color(GraphColorAttachment::new(
             handles.haze,
             wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
           ))
-          .record(move |context| passes.sky_haze.record(context, &groups.haze, &sky));
+          .record(move |context| passes.sky_haze.record(context, &parameters, &sky));
       }
 
       if let Some(sky) = sky {
-        [
-          handles.albedo,
-          handles.normal,
-          handles.material,
-          handles.depth,
-          handles.light,
-          handles.occlusion[0],
-          handles.haze,
-        ]
-        .into_iter()
-        .fold(graph.add_raster_pass("combine").parameters(&sky), |builder, texture| {
-          builder.texture(texture, GraphTextureAccess::Sampled)
-        })
-        .color(GraphColorAttachment::new(
-          handles.scene,
-          wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-        ))
-        .color(GraphColorAttachment::new(
-          handles.high,
-          wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-        ))
-        .record(move |context| passes.combine.record(context, view, &groups.combine, &sky));
+        let parameters: CombineParameters = CombineParameters {
+          albedo_target: handles.albedo,
+          normal_target: handles.normal,
+          material_target: handles.material,
+          depth_target: handles.depth,
+          light_target: handles.light,
+          material_lut: lit.material_lut,
+          lut_sampler: lit.lut_sampler,
+          lighting: lit.lighting,
+          exposure: StorageValue::new(lit.exposure),
+          occlusion_target: handles.occlusion[0],
+          haze_map: handles.haze,
+        };
+
+        graph
+          .add_raster_pass("combine")
+          .parameters(&parameters)
+          .parameters(&sky)
+          .color(GraphColorAttachment::new(
+            handles.scene,
+            wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+          ))
+          .color(GraphColorAttachment::new(
+            handles.high,
+            wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+          ))
+          .record(move |context| passes.combine.record(context, view, &parameters, &sky));
       }
 
       let scene: GraphTexture = handles.scene;
@@ -1336,7 +1279,7 @@ impl SceneView {
           textures: texture_group,
           layouts,
           args: Self::list_draw_args(&statics, &scene_view.info.cull),
-          lighting: runtime.push_uniform(&scene_view.info.lighting),
+          lighting: lit.lighting,
           skies: [&skies[0], &skies[1]],
           sky_sampler: passes.sky.get_clamp(),
           water: &scene_view.state.water,
@@ -1365,10 +1308,19 @@ impl SceneView {
           StaticDraws::declare_layouts(Self::add_over_scene(&mut *graph, handles, "composited"), &layouts),
           |builder, args| builder.buffer(*args, GraphBufferAccess::Indirect),
         );
+        let composited: CompositedParameters = CompositedParameters {
+          lighting: lit.lighting,
+          exposure: StorageValue::new(lit.exposure),
+          material_lut: lit.material_lut,
+          lut_sampler: lit.lut_sampler,
+          shadow_maps: lit.shadow_maps,
+          shadows: lit.shadows,
+        };
         let builder = match &sorted {
           Some(sorted) => builder.parameters(sorted),
           None => builder,
         }
+        .parameters(&composited)
         .parameters(&sky);
 
         builder.record(move |context| {
@@ -1377,7 +1329,7 @@ impl SceneView {
           passes.composited.record(
             context,
             (view, &layouts, texture_group),
-            (&groups.composited, &sky),
+            (&composited, &sky),
             &args,
             (sorted.as_ref(), sorted_count),
           );
@@ -1388,46 +1340,89 @@ impl SceneView {
         scene_view.state.particles.add_passes(
           (&mut *graph, &mut *bindings),
           passes.particles,
-          (
-            handles,
-            runtime.push_uniform(&scene_view.info.lighting),
-            particle_surfaces,
-          ),
+          (handles, lit.lighting, particle_surfaces),
           (view, texture_group),
         );
       }
 
       if is_shafted {
+        let parameters: SunShaftsParameters = SunShaftsParameters {
+          depth_target: handles.depth,
+          shadow_maps: lit.shadow_maps,
+          shadows: lit.shadows,
+          lighting: lit.lighting,
+          exposure: StorageValue::new(lit.exposure),
+        };
+
         graph
           .add_raster_pass("sun shafts")
-          .texture(handles.depth, GraphTextureAccess::Sampled)
+          .parameters(&parameters)
           .color(GraphColorAttachment::new(handles.scene, wgpu::LoadOp::Load))
           .color(GraphColorAttachment::new(handles.high, wgpu::LoadOp::Load))
-          .record(move |context| passes.sun_shafts.record(context.get_pass(), view, &groups.sun_shafts));
+          .record(move |context| passes.sun_shafts.record(context, view, &parameters));
       }
 
-      if let (true, Some(counts), Some((_, rain_group))) = (
+      if let (true, Some(counts), Some(cover), Some([streak, splash]), Some((_, model))) = (
         is_rain_drawn,
         scene_view.info.rain_draw,
-        &scene_view.renderer.rain_group,
+        cover,
+        &scene_view.info.weather_views.rain,
+        &scene_view.renderer.splash,
       ) {
+        let parameters: RainParameters = RainParameters {
+          rain: runtime.push_uniform(&scene_view.info.rain),
+          cover,
+          streak_texture: bindings.import_view(&mut *graph, "rain streak", streak),
+          splash_texture: bindings.import_view(&mut *graph, "rain splash", splash),
+          rain_sampler: passes.rain.get_sampler(),
+          splash_vertices: StorageArray::new(bindings.import_buffer(&mut *graph, "splash vertices", &model.vertices)),
+          splash_indices: StorageArray::new(bindings.import_buffer(&mut *graph, "splash indices", &model.indices)),
+        };
+
         Self::add_over_scene(&mut *graph, handles, "rain")
-          .record(move |context| passes.rain.record(context.get_pass(), view, rain_group, counts));
+          .parameters(&parameters)
+          .record(move |context| passes.rain.record(context, view, &parameters, counts));
       }
 
-      if let (true, Some(draws), Some((_, thunder_groups))) = (
+      if let (true, Some(draws), Some((textures, model))) = (
         is_thundering,
         scene_view.info.thunder_draw,
-        &scene_view.renderer.thunder_groups,
+        &scene_view.info.weather_views.thunder,
       ) {
-        Self::add_over_scene(&mut *graph, handles, "thunder")
-          .record(move |context| passes.thunder.record(context.get_pass(), view, thunder_groups, draws));
+        let thunder: UniformBinding<ThunderUniform> = runtime.push_uniform(&scene_view.info.thunder);
+        let no_model: &WeatherModelBuffers = &scene_view.renderer.no_model;
+        let bolt: &WeatherModelBuffers = model
+          .and_then(|index| scene_view.renderer.thunder_models.as_ref()?.1.get(index))
+          .unwrap_or(no_model);
+        // The bolt's model with its texture, then each glow's quad with its own.
+        let entries: [ThunderParameters; 3] =
+          [(0, bolt), (1, no_model), (2, no_model)].map(|(entry, buffers)| ThunderParameters {
+            thunder,
+            thunder_texture: bindings.import_view(&mut *graph, "thunder texture", &textures[entry]),
+            thunder_sampler: passes.thunder.get_sampler(),
+            model_vertices: StorageArray::new(bindings.import_buffer(
+              &mut *graph,
+              "thunder vertices",
+              &buffers.vertices,
+            )),
+            model_indices: StorageArray::new(bindings.import_buffer(&mut *graph, "thunder indices", &buffers.indices)),
+          });
+
+        entries
+          .iter()
+          .fold(
+            Self::add_over_scene(&mut *graph, handles, "thunder"),
+            |builder, parameters| builder.parameters(parameters),
+          )
+          .record(move |context| passes.thunder.record(context, view, &entries, draws));
       }
 
-      scene_view
-        .renderer
-        .flares
-        .add_passes(&mut *graph, passes.flares, handles, view);
+      scene_view.renderer.flares.add_passes(
+        (&mut *graph, &mut *bindings, runtime),
+        passes.flares,
+        (handles, lit),
+        view,
+      );
 
       if is_bloomed {
         // Built from the high target into the first, blurred across into the second, then down into the first.
@@ -1587,13 +1582,16 @@ impl SceneView {
       }
 
       if is_adapting {
-        let state: GraphBuffer = bindings.import_buffer(&mut *graph, "exposure", &scene_view.state.exposure.state);
+        let parameters: ExposureParameters = ExposureParameters {
+          high: handles.high,
+          state: StorageValueMut::new(lit.exposure),
+          params: runtime.push_uniform(&scene_view.state.exposure.params),
+        };
 
         graph
           .add_compute_pass("exposure")
-          .texture(resolved, GraphTextureAccess::Sampled)
-          .buffer(state, GraphBufferAccess::StorageReadWrite)
-          .record(move |context| passes.exposure.record(context.get_pass(), &groups.exposure));
+          .parameters(&parameters)
+          .record(move |context| passes.exposure.record(context, &parameters));
       }
     }
 
@@ -1617,7 +1615,7 @@ impl SceneView {
         },
       ),
       present: runtime.push_uniform(&scene_view.info.present),
-      lighting: runtime.push_uniform(&scene_view.info.lighting),
+      lighting: lit.lighting,
     })
   }
 

@@ -1,4 +1,5 @@
 use glam::Mat4;
+use xrf_renderer_core::ShaderStruct;
 
 use crate::contract::render_ambient_occlusion_settings::RenderAmbientOcclusionSettings;
 
@@ -13,7 +14,8 @@ const MAX_REACH: f32 = 0.25;
 
 /// What the occlusion's search reads, as `shaders/frame/ambient_occlusion.wgsl` declares it.
 #[repr(C)]
-#[derive(Clone, Copy, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
+#[shader(name = "AmbientOcclusion")]
 pub struct AmbientOcclusionUniform {
   pub radius: f32,
   pub power: f32,

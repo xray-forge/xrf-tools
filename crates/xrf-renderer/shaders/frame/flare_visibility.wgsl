@@ -6,12 +6,7 @@
 // `BLEND_DEC_SPEED` a second. A ray the screen holds is tested against the frame's depth, as the sky shows only where
 // nothing was drawn; one off the screen against the sun's shadow at the camera.
 
-@group(1) @binding(0) var<uniform> flares: Flares;
-// x: how much of the sun shows, eased, `fBlend`.
-@group(1) @binding(1) var<storage, read_write> state: array<f32, 4>;
-@group(1) @binding(2) var depth_target: texture_depth_2d;
-@group(1) @binding(3) var shadow_maps: texture_depth_2d_array;
-@group(1) @binding(4) var<uniform> shadows: Shadows;
+#import "generated/frame/flare_visibility"
 
 // The rays' bends across and up, `RayDeltas`.
 const RAYS: array<vec2<f32>, 5> = array<vec2<f32>, 5>(

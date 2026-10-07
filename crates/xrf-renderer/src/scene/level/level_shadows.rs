@@ -29,32 +29,22 @@ const CASCADE_PASSES: [&str; RENDER_MAX_SHADOW_CASCADES] =
 /// too far from its map to wait.
 pub struct LevelShadows {
   maps: SunShadowMaps,
-  uniform: wgpu::Buffer,
   values: ShadowUniform,
   cascades: Vec<ShadowCascadeView>,
   /// Frames the shadow has been in, which a cascade's stagger is counted by.
   frames: u64,
   /// The cascades this frame draws, as `prepare_cascades` decided.
   due: Vec<usize>,
-  /// Bumped whenever the maps are made again, which the sun's bind group follows.
-  epoch: u64,
 }
 
 impl LevelShadows {
   pub fn new(device: &wgpu::Device) -> Self {
     Self {
       maps: SunShadowMaps::new(device, 1),
-      uniform: device.create_buffer(&wgpu::BufferDescriptor {
-        label: Some("sun shadows"),
-        size: size_of::<ShadowUniform>() as u64,
-        usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-        mapped_at_creation: false,
-      }),
       values: ShadowUniform::default(),
       cascades: Vec::new(),
       frames: 0,
       due: Vec::new(),
-      epoch: 0,
     }
   }
 
@@ -62,12 +52,9 @@ impl LevelShadows {
     &self.maps
   }
 
-  pub fn get_uniform(&self) -> &wgpu::Buffer {
-    &self.uniform
-  }
-
-  pub fn get_epoch(&self) -> u64 {
-    self.epoch
+  /// What the passes lit by the sun sample its cascades by, as this frame fitted them.
+  pub fn get_values(&self) -> &ShadowUniform {
+    &self.values
   }
 
   /// Makes the maps again at the resolution the settings ask for, when it changed, so the sun binds them before the
@@ -77,7 +64,6 @@ impl LevelShadows {
 
     if resolution != self.maps.resolution {
       self.maps = SunShadowMaps::new(device, resolution);
-      self.epoch += 1;
       self.cascades.iter_mut().for_each(|cascade| cascade.drawn = None);
     }
   }
@@ -106,11 +92,10 @@ impl LevelShadows {
     let look: Vec3 = -frame.camera.view.inverse().z_axis.truncate();
 
     self.values.forward = look.extend(0.0);
-    self.values.filter = settings.filter;
+    self.values.filter_reach = settings.filter;
     self.values.resolution = self.maps.resolution as f32;
     self.values.bias = settings.bias;
     self.values.blend = settings.blend;
-    queue.write_buffer(&self.uniform, 0, bytemuck::bytes_of(&self.values));
   }
 
   /// Declares the cascades due this frame: every one culled into its own lists in one compute pass, then each drawn
@@ -119,14 +104,13 @@ impl LevelShadows {
     &'a self,
     (graph, bindings): (&mut FrameGraph<'a>, &mut GraphBindings<'a>),
     passes: LevelPasses<'a>,
-    scene: &StaticSceneHandles,
+    (scene, maps): (&StaticSceneHandles, GraphTexture),
     (params, textures): (&'a StaticCullParams, &'a wgpu::BindGroup),
   ) {
     if self.due.is_empty() {
       return;
     }
 
-    let maps: GraphTexture = bindings.import_view(graph, "sun shadow maps", &self.maps.view);
     let due: Vec<(usize, &'a ShadowCascadeView, [GraphBuffer; 2], StaticCullParameters)> = self
       .due
       .iter()
