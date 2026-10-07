@@ -76,7 +76,11 @@ impl LevelWater {
 
       reflection.requests.fit(
         device,
-        if is_traced { (width * height).div_ceil(WaterReflection::REQUEST_SHARE) } else { 0 },
+        if is_traced {
+          (width * height).div_ceil(WaterReflection::REQUEST_SHARE)
+        } else {
+          0
+        },
       );
     }
 

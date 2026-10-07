@@ -10,6 +10,7 @@ use crate::pass::flare_pass::FlarePass;
 use crate::pass::fog_scattering_pass::FogScatteringPass;
 use crate::pass::fsr_pass::FsrPass;
 use crate::pass::fxaa_pass::FxaaPass;
+use crate::pass::grass_colour_pass::GrassColourPass;
 use crate::pass::grass_pass::GrassPass;
 use crate::pass::lights_pass::LightsPass;
 use crate::pass::material_table::MaterialTable;
@@ -51,6 +52,7 @@ pub struct LevelPasses<'a> {
   pub vbao: &'a VbaoPass,
   pub reflections: &'a ReflectionPass,
   pub scene_trace: &'a SceneTracePass,
+  pub grass_colours: &'a GrassColourPass,
   pub lights: &'a LightsPass,
   pub combine: &'a CombinePass,
   pub sky_haze: &'a SkyHazePass,

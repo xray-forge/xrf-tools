@@ -86,6 +86,7 @@ use crate::pass::fog_scattering_uniform::FogScatteringUniform;
 use crate::pass::foliage_wind_values::FoliageWindValues;
 use crate::pass::fsr_uniform::FsrUniform;
 use crate::pass::fxaa_parameters::FxaaParameters;
+use crate::pass::grass_colour_parameters::GrassColourParameters;
 use crate::pass::grass_puddles_uniform::GrassPuddlesUniform;
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::light_binning_parameters::LightBinningParameters;
@@ -1486,7 +1487,11 @@ impl SceneView {
 
       history.requests.fit(
         device,
-        if is_traced { (traced.0 * traced.1).div_ceil(ReflectionHistory::REQUEST_SHARE) } else { 0 },
+        if is_traced {
+          (traced.0 * traced.1).div_ceil(ReflectionHistory::REQUEST_SHARE)
+        } else {
+          0
+        },
       );
     }
 
@@ -2470,6 +2475,28 @@ impl SceneView {
         )
       });
 
+      // Each grass model's colour, which a traced hit on grassed ground blends towards, averaged while the scene traces.
+      let grass_colours: Option<GraphBuffer> = scene
+        .trace
+        .as_ref()
+        .filter(|_| passes.scene_trace.is_traced())
+        .zip(grass_level)
+        .map(|(_, grass)| {
+          let colours: GraphBuffer = bindings.import_buffer(&mut *graph, "grass colours", &grass.colours);
+          let parameters: GrassColourParameters = GrassColourParameters {
+            grass_models: StorageArray::new(bindings.import_buffer(&mut *graph, "grass models", &grass.models)),
+            grass_colours: StorageArrayMut::new(colours),
+          };
+          let models: u32 = grass.model_count;
+
+          graph
+            .add_compute_pass("grass colours")
+            .parameters(&parameters)
+            .record(move |context| passes.grass_colours.record(context, &parameters, texture_group, models));
+
+          colours
+        });
+
       // The level's geometry a ray the screen does not answer is traced against, where the device traces rays.
       let traced: Option<(TraceParameters, &wgpu::BindGroup)> = scene
         .trace
@@ -2521,6 +2548,10 @@ impl SceneView {
                 "grass models",
                 grass_level.map_or(trace.get_empty(), |grass| &grass.models),
               )),
+              trace_grass_colours: StorageArray::new(
+                grass_colours
+                  .unwrap_or_else(|| bindings.import_buffer(&mut *graph, "grass colours", trace.get_empty())),
+              ),
               trace_grass: runtime.push_uniform(scene_view.state.grass.get_trace_uniform()),
             },
             texture_group,

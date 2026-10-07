@@ -436,7 +436,7 @@ fn run_probes(
     },
   ]);
 
-  // No grass either: its grid, slots and models nothing, its uniform naming no model.
+  // No grass either: its grid, slots, models and colours nothing, its uniform naming no model.
   let grass: wgpu::Buffer = device.create_buffer(&wgpu::BufferDescriptor {
     label: Some("trace probe grass"),
     size: size_of::<TraceGrassUniform>() as u64,
@@ -459,6 +459,10 @@ fn run_probes(
     },
     wgpu::BindGroupEntry {
       binding: first_light + 6,
+      resource: trace.get_empty().as_entire_binding(),
+    },
+    wgpu::BindGroupEntry {
+      binding: first_light + 7,
       resource: grass.as_entire_binding(),
     },
   ]);

@@ -25,21 +25,75 @@ const HISTORY_MOTION: f32 = 40.0;
 // Metres a traced ray starts off the water, so its own surface's triangles beneath do not meet it.
 const TRACED_LIFT: f32 = 0.05;
 
-// Pixels a side of the tiles that take their turn to trace together, so whole waves of the GPU list or skip theirs.
-const TRACE_TURN_TILE: u32 = 8u;
+// How far a surface the screen met may face along the ray before the trace answers in its place.
+const FACING_AWAY: f32 = 0.1;
+
+// Pixels a side of the window whose fresh pixels bound what a pixel keeps of its history.
+const FRESH_WINDOW: i32 = 2;
 
 // The distance this frame's reflection gives a pixel that holds what it reflected the frame before: off its turn to
 // trace, or past the list's room.
 const WATER_HELD: f32 = -2.0;
 
-// Whether a pixel the screen does not answer traces this frame: once in its `trace_turns`, a tile taking its turn
-// together, each tile's turn its own by the blue noise.
+// The distance along the view the history keeps for a pixel whose ray met the sky; the history keeps none where no
+// water drew.
+const SKY_DISTANCE: f32 = 60000.0;
+
+// Where a pixel's point stood on the last frame's screen: along its view as far as what its ray met, or far off at the
+// sky where it met nothing or holds.
+fn previous_place(uv: vec2<f32>, eye: vec3<f32>, met_distance: f32) -> vec2<f32> {
+  let hit_distance: f32 = select(met_distance, 1e5, met_distance <= 0.0);
+  let along: vec3<f32> = eye * (hit_distance / max(-eye.z, 1e-4));
+  let rotation: mat3x3<f32> = transpose(mat3x3<f32>(camera.view[0].xyz, camera.view[1].xyz, camera.view[2].xyz));
+  let world_hit: vec4<f32> = vec4<f32>(camera.position.xyz + rotation * along, 1.0);
+  let now: vec4<f32> = camera.motion_current * world_hit;
+  let before: vec4<f32> = camera.motion_previous * world_hit;
+
+  return uv - (now.xy / now.w - before.xy / before.w) * vec2<f32>(0.5, -0.5);
+}
+
+// Whether a place is off the last frame's screen.
+fn is_off_screen(previous: vec2<f32>) -> bool {
+  return any(previous < vec2<f32>(0.0)) || any(previous > vec2<f32>(1.0));
+}
+
+// The distance the history keeps at a place on the last frame's screen, none off it or where no water drew.
+fn history_distance(previous: vec2<f32>) -> f32 {
+  let size: vec2<f32> = camera.viewport.xy;
+  let pixel: vec2<i32> = vec2<i32>(clamp(floor(previous * size), vec2<f32>(0.0), size - 1.0));
+
+  return select(textureLoad(reflection_history, pixel, 0).a, 0.0, is_off_screen(previous));
+}
+
+// Where a held pixel's reflection stood on the last frame's screen, its distance unknown this frame: first as the sky
+// would, then again as far as the history kept there, so a near reflection follows the eye's motion rather than lag
+// behind it as the sky's would.
+fn held_place(uv: vec2<f32>, eye: vec3<f32>) -> vec2<f32> {
+  let far: vec2<f32> = previous_place(uv, eye, -1.0);
+  let kept: f32 = history_distance(far);
+
+  if (kept <= 0.0 || kept >= SKY_DISTANCE) {
+    return far;
+  }
+
+  let near: vec2<f32> = previous_place(uv, eye, kept);
+
+  return select(far, near, history_distance(near) > 0.0);
+}
+
+// The distance along the view of a reflection whose ray left a point of the water (in view space) and met what it met
+// `travelled` on: where the mirror shows it, behind the water along the pixel's view, which its motion follows.
+fn mirrored_distance(position: vec3<f32>, travelled: f32) -> f32 {
+  return -position.z * (1.0 + travelled / max(length(position), 1e-4));
+}
+
+// Whether a pixel the screen does not answer traces this frame: once in its `trace_turns`, each pixel's turn its own
+// (`trace_turn_of`), so every frame traces pixels spread over the whole water and a held pixel has fresh ones about it.
+// The scene pass traces the listed rays packed, so scattered turns cost its waves nothing.
 fn is_water_trace_turn(pixel: vec2<f32>) -> bool {
   let turns: u32 = max(enhanced.trace_turns, 1u);
-  let size: vec2<u32> = textureDimensions(blue_noise);
-  let noise: f32 = textureLoad(blue_noise, (vec2<u32>(pixel) / TRACE_TURN_TILE) % size, 0).r;
 
-  return (min(u32(noise * f32(turns)), turns - 1u) + enhanced.trace_frame) % turns == 0u;
+  return (trace_turn_of(vec2<u32>(pixel), turns) + enhanced.trace_frame) % turns == 0u;
 }
 
 // The ray a water's pixel leaves to the scene pass where the screen answers it only in part or not at all: from its
@@ -101,6 +155,37 @@ fn ray_behind(ray: ReflectionRay, at: vec2<f32>) -> vec2<f32> {
   let scene: f32 = scene_distance(at, depth_target);
 
   return vec2<f32>(along - scene, scene);
+}
+
+// The view space point at a place on the screen, a distance along the view.
+fn view_point(at: vec2<f32>, distance: f32) -> vec3<f32> {
+  let ndc: vec2<f32> = (at * 2.0 - 1.0) * vec2<f32>(1.0, -1.0);
+
+  return vec3<f32>(ndc.x / camera.projection[0][0], ndc.y / camera.projection[1][1], -1.0) * distance;
+}
+
+// The view space point the screen shows at a place.
+fn screen_point(at: vec2<f32>) -> vec3<f32> {
+  return view_point(at, scene_distance(at, depth_target));
+}
+
+// Whether the surface the screen shows at a place faces away from a ray that met it: a face the mirror cannot see, such
+// as a stone's sunlit top over the water, which the march meets only because the eye sees it. Its normal is the depth's
+// slope towards the nearer neighbour each way, so an edge does not tilt it.
+fn is_facing_away(at: vec2<f32>, direction: vec3<f32>) -> bool {
+  let texel: vec2<f32> = 1.0 / camera.viewport.xy;
+  let centre: vec3<f32> = screen_point(at);
+  let right: vec3<f32> = screen_point(at + vec2<f32>(texel.x, 0.0));
+  let left: vec3<f32> = screen_point(at - vec2<f32>(texel.x, 0.0));
+  let below: vec3<f32> = screen_point(at + vec2<f32>(0.0, texel.y));
+  let above: vec3<f32> = screen_point(at - vec2<f32>(0.0, texel.y));
+  let across: vec3<f32> = select(centre - left, right - centre, abs(right.z - centre.z) < abs(centre.z - left.z));
+  let down: vec3<f32> = select(centre - above, below - centre, abs(below.z - centre.z) < abs(centre.z - above.z));
+  var normal: vec3<f32> = normalize(cross(across, down));
+
+  normal = select(normal, -normal, dot(normal, centre) > 0.0);
+
+  return dot(normal, direction) > FACING_AWAY;
 }
 
 // The ray from a point of the water along its reflection, marched over the screen and refined
@@ -210,7 +295,10 @@ fn fs_water_reflection(in: WaterVarying) -> @location(0) vec4<f32> {
     hit = march_reflection(position, reflected, noise, uv);
   }
   let sky: vec3<f32> = enhanced_sky(flat_reflected, lighting, sky_cube_0, sky_cube_1, sky_clamp) * water.reflection;
-  let screen_share: f32 = select(0.0, saturate(hit.y * 5.0 * f32(is_away)), all(hit.xy != vec2<f32>(0.0)));
+  // Where the trace answers, a surface the screen met facing away from the ray is left to it.
+  let is_met: bool = all(hit.xy != vec2<f32>(0.0)) &&
+    !(enhanced.trace_distance > 0.0 && is_away && is_facing_away(hit.xy, reflected));
+  let screen_share: f32 = select(0.0, saturate(hit.y * 5.0 * f32(is_away)), is_met);
   var scene: vec3<f32> = vec3<f32>(0.0);
   var share: f32 = 0.0;
 
@@ -220,11 +308,16 @@ fn fs_water_reflection(in: WaterVarying) -> @location(0) vec4<f32> {
       (1.0 - saturate((length(vec3<f32>(position.xy, hit.z)) * lighting.fog.y + lighting.fog.x) * 1.4));
   }
 
-  // The distance along the view of what the ray met on the screen, none where it met nothing there.
-  var met_distance: f32 = select(-1.0, hit.z, screen_share > 0.0);
+  // The distance along the view of what the ray met on the screen, where the mirror shows it; none where it met nothing
+  // there.
+  let travelled: f32 = distance(view_point(hit.xy, hit.z), position);
+  var met_distance: f32 = select(-1.0, mirrored_distance(position, travelled), screen_share > 0.0);
 
   // Where the screen answers the ray only in part or not at all, the scene pass traces it on its turn, a hit written
-  // over the sky; off its turn, or past the list's room, the pixel holds what it reflected the frame before.
+  // over the sky; off its turn, or past the list's room, the pixel holds what it reflected the frame before. Only turns
+  // trace, so the list always has room: water with no history to hold (newly in view, a fast turn's edge) takes its
+  // fresh neighbours' instead. Tracing it too overflowed the list wherever much of the water lost its history, and the
+  // pixels drawn last never traced again.
   if (is_away && screen_share < 1.0 && enhanced.trace_distance > 0.0) {
     let pixel: vec2<f32> = floor(in.clip.xy);
     let answer: vec4<f32> = vec4<f32>(scene, met_distance);
@@ -238,8 +331,45 @@ fn fs_water_reflection(in: WaterVarying) -> @location(0) vec4<f32> {
   return vec4<f32>(mix(sky, scene, share), met_distance);
 }
 
+// What this frame's fresh pixels (traced, or answered by the screen) show about a pixel: the colours they span, their
+// mean colour and distance (the sky's for a ray that met nothing), and whether there are any.
+struct FreshBounds {
+  low: vec3<f32>,
+  high: vec3<f32>,
+  mean: vec3<f32>,
+  distance: f32,
+  is_found: bool,
+};
+
+fn fresh_bounds(pixel: vec2<i32>) -> FreshBounds {
+  let last: vec2<i32> = vec2<i32>(textureDimensions(water_current)) - 1;
+  var bounds: FreshBounds = FreshBounds(vec3<f32>(1e9), vec3<f32>(-1e9), vec3<f32>(0.0), 0.0, false);
+  var count: f32 = 0.0;
+
+  for (var y: i32 = -FRESH_WINDOW; y <= FRESH_WINDOW; y++) {
+    for (var x: i32 = -FRESH_WINDOW; x <= FRESH_WINDOW; x++) {
+      let fresh: vec4<f32> = textureLoad(water_current, clamp(pixel + vec2<i32>(x, y), vec2<i32>(0), last), 0);
+
+      if (fresh.a != 0.0 && fresh.a != WATER_HELD) {
+        bounds.low = min(bounds.low, fresh.rgb);
+        bounds.high = max(bounds.high, fresh.rgb);
+        bounds.mean += fresh.rgb;
+        bounds.distance += select(fresh.a, SKY_DISTANCE, fresh.a <= 0.0);
+        count += 1.0;
+      }
+    }
+  }
+
+  bounds.is_found = count > 0.0;
+  bounds.mean /= max(count, 1.0);
+  bounds.distance /= max(count, 1.0);
+
+  return bounds;
+}
+
 // This frame's reflection, its traced hits written in, kept over the frames before, read where this one's point stood
-// in the last: along this pixel's view as far as what the ray met, or far off at the sky.
+// in the last: along this pixel's view as far as what the ray met, or far off at the sky, or for a held pixel as far
+// as the history kept; with that distance, which the next frame's held pixels follow.
 @fragment
 fn fs_water_resolve(in: WaterVarying) -> @location(0) vec4<f32> {
   let position: vec3<f32> = (camera.view * vec4<f32>(in.world, 1.0)).xyz;
@@ -254,27 +384,37 @@ fn fs_water_resolve(in: WaterVarying) -> @location(0) vec4<f32> {
   let eye: vec3<f32> = normalize(position);
   let current: vec4<f32> = textureLoad(water_current, vec2<i32>(in.clip.xy), 0);
   let reflection: vec3<f32> = current.rgb;
-  // A held pixel reprojects as the sky does, what it met unknown this frame.
   let is_held: bool = current.a == WATER_HELD;
   let met_distance: f32 = select(current.a, -1.0, is_held);
-  let hit_distance: f32 = select(met_distance, 1e5, met_distance <= 0.0);
-  let along: vec3<f32> = eye * (hit_distance / max(-eye.z, 1e-4));
-  let rotation: mat3x3<f32> = transpose(mat3x3<f32>(camera.view[0].xyz, camera.view[1].xyz, camera.view[2].xyz));
-  let world_hit: vec4<f32> = vec4<f32>(camera.position.xyz + rotation * along, 1.0);
-  let now: vec4<f32> = camera.motion_current * world_hit;
-  let before: vec4<f32> = camera.motion_previous * world_hit;
-  let moved: vec2<f32> = (now.xy / now.w - before.xy / before.w) * vec2<f32>(0.5, -0.5);
-  let previous: vec2<f32> = uv - moved;
-  let is_off: bool = any(previous < vec2<f32>(0.0)) || any(previous > vec2<f32>(1.0));
-  let kept: f32 = saturate(REFLECTION_HISTORY - select(0.0, REFLECTION_SKY_HISTORY, met_distance <= 0.0) - f32(is_off)) *
+  let previous: vec2<f32> = select(previous_place(uv, eye, met_distance), held_place(uv, eye), is_held);
+  let moved: vec2<f32> = uv - previous;
+  let is_off: bool = is_off_screen(previous);
+  // A pixel on its turn brings the only fresh ray of its turns, so it keeps of the history what as many frames would.
+  let frames: f32 = select(1.0, f32(max(enhanced.trace_turns, 1u)), enhanced.trace_distance > 0.0 &&
+    is_water_trace_turn(floor(in.clip.xy)));
+  let kept: f32 =
+    pow(saturate(REFLECTION_HISTORY - select(0.0, REFLECTION_SKY_HISTORY, met_distance <= 0.0) - f32(is_off)), frames) *
     enhanced.history;
   let jitter: vec2<f32> = (hash22(uv * 100.0 + water.time * 100.0) * 2.0 - 1.0) / size * 0.25;
-  // The history's alpha says whether the last frame drew water there: newly seen water keeps none of it.
-  let history: vec4<f32> = textureSampleLevel(reflection_history, sky_clamp, previous + jitter, 0.0);
+  let sampled: vec3<f32> = textureSampleLevel(reflection_history, sky_clamp, previous + jitter, 0.0).rgb;
+  // The history held within what this frame's fresh pixels about it show, so a reflection that moved onto a pixel, which
+  // its history never had, stands at once rather than when its turn comes.
+  let bounds: FreshBounds = fresh_bounds(vec2<i32>(in.clip.xy));
+  let history: vec3<f32> = select(sampled, clamp(sampled, bounds.low, bounds.high), bounds.is_found);
+  // The history's distance says whether the last frame drew water there: newly seen water keeps none of it.
+  let is_history: f32 = f32(history_distance(previous) > 0.0);
   let settled: f32 = saturate(1.0 - length(moved * size) / HISTORY_MOTION);
 
-  // A held pixel keeps the history whole where it holds a frame there, its sky fallback where it does not.
-  let weight: f32 = select(kept * history.a * settled, history.a * f32(!is_off) * enhanced.history, is_held);
+  // A held pixel keeps the history whole where it holds a frame there; where it does not, it takes what its fresh
+  // neighbours show, and where there are none either it shows its sky fallback but leaves no history of it, so the
+  // answer its next ray brings stands at once rather than fading in over the white the history would have kept.
+  let weight: f32 = select(kept * is_history * settled, is_history * enhanced.history, is_held);
+  let is_unheld: bool = is_held && weight < 0.5;
+  let shown: vec3<f32> = select(mix(reflection, history, weight), bounds.mean, is_unheld && bounds.is_found);
+  var kept_distance: f32 = select(select(met_distance, SKY_DISTANCE, met_distance <= 0.0), history_distance(previous),
+    is_held);
 
-  return vec4<f32>(mix(reflection, history.rgb, weight), 1.0);
+  kept_distance = select(kept_distance, select(0.0, bounds.distance, bounds.is_found), is_unheld);
+
+  return vec4<f32>(shown, min(kept_distance, SKY_DISTANCE));
 }

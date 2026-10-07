@@ -314,7 +314,8 @@ fn scene_lamps(
 // hemisphere its slot was baked with. Each of the slot's four models is planted at a candidate as often as its density
 // there says (`InterpolateAndDither` without the dither), one model a candidate where several pass; each tuft covers
 // its mean radius's disc; the slot shrinks to nothing towards the planting's fade, as its tufts do. None past a slot's
-// heights, where the point stands off the ground it was planted on.
+// heights, where the point stands off the ground it was planted on. Each model's colour is its solid texels' average
+// (`grass/colours`).
 struct SceneGrass {
   cover: f32,
   albedo: vec3<f32>,
@@ -394,29 +395,13 @@ fn scene_grass(position: vec3<f32>) -> SceneGrass {
       let share: f32 = planted * densities[object] / total * footprint;
 
       cover += share;
-      albedo += grass_color(model.texture) * share;
+      albedo += trace_grass_colours[ids[object]].rgb * share;
     }
   }
 
   let hemi: f32 = f32((w1 >> 16u) & 0xfu) / 15.0;
 
   return SceneGrass(saturate(cover) * fade * fade, albedo / max(cover, 1e-4), hemi);
-}
-
-// A grass texture's colour where its tufts stand: four reads of a level four texels across, weighed by their alpha.
-fn grass_color(slot: u32) -> vec3<f32> {
-  let size: vec2<f32> = vec2<f32>(textureDimensions(trace_textures[slot]));
-  let lod: f32 = max(log2(max(size.x, size.y)) - 2.0, 0.0);
-  var sum: vec4<f32> = vec4<f32>(0.0);
-
-  for (var read: u32 = 0u; read < 4u; read++) {
-    let at: vec2<f32> = vec2<f32>(f32(read & 1u), f32(read >> 1u)) * 0.5 + 0.25;
-    let texel: vec4<f32> = textureSampleLevel(trace_textures[slot], trace_sampler, at, lod);
-
-    sum += vec4<f32>(texel.rgb * texel.a, texel.a);
-  }
-
-  return sum.rgb / max(sum.a, 1e-3);
 }
 
 // A triangle's corners, read from its layout's arena through its record: its outline, then each corner's normal and,

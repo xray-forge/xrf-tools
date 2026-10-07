@@ -128,19 +128,13 @@ fn world_offset(position: vec3<f32>) -> vec3<f32> {
   return (transpose(camera.view) * vec4<f32>(position, 0.0)).xyz;
 }
 
-// What the level's static geometry shows along a ray the screen could not answer: traced by ray query from the
-// surface, the hit lit as combine lights it, its sun through a second ray rather than the shadow maps, its fog along
-// the way taken as a met point's is; the ray's length in `w`, below none where it met nothing or nothing is traced.
 // Whether a pixel the screen leaves unanswered traces against the level's geometry this frame: once in its
 // `trace_turns`, a tile of `TRACE_TURN_TILE` pixels taking its turn together, so whole waves of the GPU skip the trace
-// rather than wait on a few of their lanes; each tile's turn its own by the blue noise.
+// rather than wait on a few of their lanes; each tile's turn its own (`trace_turn_of`).
 fn is_trace_turn(pixel: vec2<f32>) -> bool {
   let turns: u32 = max(reflection.trace_turns, 1u);
-  let size: vec2<u32> = textureDimensions(blue_noise);
-  let tile: vec2<u32> = vec2<u32>(pixel) / TRACE_TURN_TILE;
-  let noise: f32 = textureLoad(blue_noise, tile % size, 0).r;
 
-  return (min(u32(noise * f32(turns)), turns - 1u) + reflection.frame) % turns == 0u;
+  return (trace_turn_of(vec2<u32>(pixel) / TRACE_TURN_TILE, turns) + reflection.frame) % turns == 0u;
 }
 
 // What a pixel reflected the frame before, off its turn to trace: read where its reflected point stood then, through

@@ -231,6 +231,10 @@ const EMBEDDED: &[(&str, &str)] = &[
     include_str!("../../shaders/generated/frame/reflections.wgsl"),
   ),
   (
+    "generated/grass/colours",
+    include_str!("../../shaders/generated/grass/colours.wgsl"),
+  ),
+  (
     "generated/common/trace_requests",
     include_str!("../../shaders/generated/common/trace_requests.wgsl"),
   ),
@@ -374,6 +378,7 @@ const EMBEDDED: &[(&str, &str)] = &[
     "generated/structs",
     include_str!("../../shaders/generated/structs.wgsl"),
   ),
+  ("grass/colours", include_str!("../../shaders/grass/colours.wgsl")),
   ("grass/grass", include_str!("../../shaders/grass/grass.wgsl")),
   ("grass/planting", include_str!("../../shaders/grass/planting.wgsl")),
   ("grass/records", include_str!("../../shaders/grass/records.wgsl")),

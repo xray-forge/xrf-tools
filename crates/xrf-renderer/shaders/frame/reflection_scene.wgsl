@@ -13,8 +13,8 @@
 // trace's registers and no wave waits on a few of its lanes. A ray meeting something writes its pixel's answer over the
 // sky the trace wrote: the screen's weighed answer and the hit's light by the share the screen left, the hit's length
 // where the screen held less than half, and the reason the trace gave it; a miss leaves the sky. A water's request
-// (`TRACE_REQUEST_WATER`) writes into the water's reflection, its hit tonemapped and unheld, the hit's distance along
-// the view where the screen met nothing, and no reason.
+// (`TRACE_REQUEST_WATER`) writes into the water's reflection, its hit tonemapped and unheld, the distance along the
+// view where the mirror shows the hit, or the screen's where it met something, and no reason.
 
 @compute @workgroup_size(64)
 fn cs_scene(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workgroups) groups: vec3<u32>) {
@@ -41,7 +41,8 @@ fn cs_scene(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workgroup
 
   if ((request.hit_end & TRACE_REQUEST_WATER) != 0u) {
     let met: vec3<f32> = tonemap(mix(shown, lighting.fog_color.rgb, fog), frame_scale(lighting, exposure));
-    let along: f32 = -(camera.view * vec4<f32>(hit.position, 1.0)).z;
+    let origin: vec3<f32> = (camera.view * vec4<f32>(request.origin.xyz, 1.0)).xyz;
+    let along: f32 = -origin.z * (1.0 + hit.distance / max(length(origin), 1e-4));
 
     textureStore(traced_out, pixel, vec4<f32>(screen.rgb + met * (1.0 - screen.w),
       select(along, request.screen_length, request.screen_length > 0.0)));
