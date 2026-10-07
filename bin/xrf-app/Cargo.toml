@@ -133,6 +133,7 @@ typescript-bindings = [
   "xrf-translation/typescript-bindings",
   "xrf-visual/typescript-bindings",
   "xrf-renderer/typescript-bindings",
+  "xrf-world/typescript-bindings",
   "xrf-pack/typescript-bindings",
   "xrf-archive-stats/typescript-bindings",
 ]

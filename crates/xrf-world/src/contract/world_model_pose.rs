@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct RenderModelPose {
+pub struct WorldModelPose {
   /// The motion, by its name, or none for the bind pose.
   pub motion: Option<String>,
   /// Which of its frames; one outside it shows the bind pose.

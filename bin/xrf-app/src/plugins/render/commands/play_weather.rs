@@ -1,5 +1,6 @@
 use tauri::State;
-use xrf_renderer::{RenderViewportId, RenderWeatherPlay, RenderWeatherTransition};
+use xrf_renderer::RenderViewportId;
+use xrf_world::{WorldWeatherPlay, WorldWeatherTransition};
 
 use crate::plugins::render::state::RenderState;
 
@@ -9,8 +10,8 @@ use crate::plugins::render::state::RenderState;
 pub fn render_play_weather(
   state: State<'_, RenderState>,
   viewport: RenderViewportId,
-  play: RenderWeatherPlay,
-  transition: RenderWeatherTransition,
+  play: WorldWeatherPlay,
+  transition: WorldWeatherTransition,
 ) {
   state.lock_world().play_weather(viewport, play, transition);
 }

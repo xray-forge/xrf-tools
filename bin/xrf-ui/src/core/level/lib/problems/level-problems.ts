@@ -1,5 +1,6 @@
 import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
-import { RenderLoadFailure, RenderSectorSkip } from "@/core/ipc/types/xrf-renderer";
+import { RenderLoadFailure } from "@/core/ipc/types/xrf-renderer";
+import { WorldSectorSkip } from "@/core/ipc/types/xrf-world";
 import { ILevelSpawnReport } from "@/core/level/lib/spawn/level-spawn-report";
 import { ILevelTextureProblem } from "@/core/level/lib/texture/level-texture-report";
 import { IEditorProblem } from "@/core/shell/editor/EditorProblemsPanel";
@@ -16,7 +17,7 @@ export interface ILevelProblemSources {
   /** The level's resolved shader table, in its own order. */
   surfaces: ReadonlyArray<XraySurfaceDescriptor>;
   /** What the resident packs could not read. */
-  skipped: ReadonlyArray<RenderSectorSkip>;
+  skipped: ReadonlyArray<WorldSectorSkip>;
   /** The sectors that could not be read at all, by their index. */
   sectors: ReadonlyArray<RenderLoadFailure>;
   /** What the spawn's listing came to. */

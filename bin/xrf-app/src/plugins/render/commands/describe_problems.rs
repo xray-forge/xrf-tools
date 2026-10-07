@@ -1,5 +1,6 @@
 use tauri::State;
-use xrf_renderer::{RenderLevelProblems, RenderViewportId};
+use xrf_renderer::RenderViewportId;
+use xrf_world::WorldLevelProblems;
 
 use crate::core::types::TauriResult;
 use crate::plugins::render::state::RenderState;
@@ -10,6 +11,6 @@ use crate::plugins::render::state::RenderState;
 pub async fn render_describe_problems(
   state: State<'_, RenderState>,
   viewport: RenderViewportId,
-) -> TauriResult<RenderLevelProblems> {
+) -> TauriResult<WorldLevelProblems> {
   Ok(state.lock_world().describe_problems(viewport))
 }

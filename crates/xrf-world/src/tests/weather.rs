@@ -7,10 +7,12 @@ use xrf_environment::{WeatherDescriptor, WeatherMix, WeatherMixPoint, WeatherMix
 use xrf_material::XraySurfaceDraw;
 use xrf_renderer::{
   RenderLevelWeather, RenderLighting, RenderThunder, RenderThunderSettings, RenderThunderbolt,
-  RenderThunderboltGradient, RenderWeatherControl, RenderWeatherTransition,
+  RenderThunderboltGradient,
 };
 use xrf_visual::{LightAnimatorDescription, LightAnimatorKey};
 
+use crate::contract::world_weather_control::WorldWeatherControl;
+use crate::contract::world_weather_transition::WorldWeatherTransition;
 use crate::weather::played_weather::PlayedWeather;
 use crate::weather::weather_fade::to_faded_lighting;
 use crate::weather::weather_player::WeatherPlayer;
@@ -82,7 +84,7 @@ fn plays_a_cycle_from_a_seek_and_runs_its_clock() {
   let start: Instant = Instant::now();
   let mut player: WeatherPlayer = WeatherPlayer::default();
 
-  player.take(Some(afternoon()), RenderWeatherTransition::Cut);
+  player.take(Some(afternoon()), WorldWeatherTransition::Cut);
   // A second past noon: exactly on a keyframe, `SelectEnvs` blends towards it from the one before.
   player.seek((NOON + 1) as f32);
 
@@ -92,7 +94,7 @@ fn plays_a_cycle_from_a_seek_and_runs_its_clock() {
   assert_eq!(player.report().unwrap().between, [NOON as f32, (NOON + 7200) as f32]);
 
   // An hour a second, one second on: halfway to two.
-  player.set_control(RenderWeatherControl {
+  player.set_control(WorldWeatherControl {
     factor: 3600.0,
     is_paused: false,
     is_dynamic_sun: false,
@@ -106,7 +108,7 @@ fn plays_a_cycle_from_a_seek_and_runs_its_clock() {
   assert!((sun_of(&later) - 0.75).abs() < 1e-3);
   assert!((player.report().unwrap().time - (NOON + 3601) as f32).abs() < 1e-2);
   // A paused clock lights nothing anew.
-  player.set_control(RenderWeatherControl::default());
+  player.set_control(WorldWeatherControl::default());
   player.advance(start + Duration::from_secs(1), [0.0; 3], false, |_| true);
   assert_eq!(
     player.advance(start + Duration::from_secs(2), [0.0; 3], false, |_| true),
@@ -119,7 +121,7 @@ fn fades_into_another_weather_once_its_skies_are_up() {
   let start: Instant = Instant::now();
   let mut player: WeatherPlayer = WeatherPlayer::default();
 
-  player.take(Some(afternoon()), RenderWeatherTransition::Cut);
+  player.take(Some(afternoon()), WorldWeatherTransition::Cut);
   player.seek(NOON as f32);
   player.advance(start, [0.0; 3], false, |_| true);
 
@@ -128,7 +130,7 @@ fn fades_into_another_weather_once_its_skies_are_up() {
     Arc::new(RenderLevelWeather::default()),
   );
 
-  player.take(Some(bright), RenderWeatherTransition::Fade);
+  player.take(Some(bright), WorldWeatherTransition::Fade);
 
   // Its skies still going up, it waits on what was shown.
   let waiting: RenderLighting = player.advance(start, [0.0; 3], false, |_| false).unwrap();
@@ -165,7 +167,7 @@ fn lays_an_effect_over_the_cycle_and_gives_the_cycle_back() {
       vec![keyframe(0, 0.5), keyframe(NOON, 0.5)],
       Arc::new(level),
     )),
-    RenderWeatherTransition::Cut,
+    WorldWeatherTransition::Cut,
   );
   player.seek(1000.0);
   player.advance(start, [0.0; 3], false, |_| true);
@@ -178,7 +180,7 @@ fn lays_an_effect_over_the_cycle_and_gives_the_cycle_back() {
   // A lead-in, its own minute, and a lead-in back, at twelve game seconds a real one.
   assert!((playing.remaining - (60.0 + 2.0 * 5.0 * 12.0)).abs() < 1e-3);
 
-  player.set_control(RenderWeatherControl {
+  player.set_control(WorldWeatherControl {
     factor: 1000.0,
     is_paused: false,
     is_dynamic_sun: false,
@@ -193,7 +195,7 @@ fn lays_an_effect_over_the_cycle_and_gives_the_cycle_back() {
 
 #[test]
 fn stands_a_keyframe_set_by_hand_by_its_own_angles() {
-  let control: RenderWeatherControl = RenderWeatherControl {
+  let control: WorldWeatherControl = WorldWeatherControl {
     is_dynamic_sun: true,
     ..Default::default()
   };

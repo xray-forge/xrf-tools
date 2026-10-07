@@ -2,11 +2,12 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
 use xrf_renderer::{
-  RenderBundle, RenderEventSink, RenderLevelSource, RenderViewportId, RenderWindowHost, RenderWorkers, RenderWorld,
-  Renderer,
+  RenderBundle, RenderEventSink, RenderLevelSource, RenderQueue, RenderViewportId, RenderWindowHost, RenderWorkers,
+  RenderWorld,
 };
-use xrf_world::World;
+use xrf_world::{World, WorldEventSink};
 
+use crate::plugins::render::renderer::Renderer;
 use crate::plugins::render::viewport_windows::ViewportWindows;
 
 /// The application's one renderer, which starts a GPU only once a viewport is attached.
@@ -26,7 +27,11 @@ impl RenderState {
     let world: Arc<Mutex<World>> = Arc::new(Mutex::new(World::new(workers.clone())));
 
     Self {
-      renderer: Renderer::new(workers, bundle, Arc::clone(&world) as Arc<Mutex<dyn RenderWorld>>),
+      renderer: Renderer::new(RenderQueue::new(
+        workers,
+        bundle,
+        Arc::clone(&world) as Arc<Mutex<dyn RenderWorld>>,
+      )),
       world,
       shows: Mutex::default(),
       windows: Mutex::default(),
@@ -38,7 +43,7 @@ impl RenderState {
     &self,
     window: &str,
     host: Arc<dyn RenderWindowHost>,
-    (sink, world_sink): (Box<dyn RenderEventSink>, Box<dyn RenderEventSink>),
+    (sink, world_sink): (Box<dyn RenderEventSink>, Box<dyn WorldEventSink>),
   ) -> RenderViewportId {
     let viewport: RenderViewportId = self.renderer.attach_viewport(host, sink);
 

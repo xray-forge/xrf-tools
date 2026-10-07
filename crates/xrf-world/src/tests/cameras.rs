@@ -1,11 +1,14 @@
 use glam::Vec3;
-use xrf_renderer::{RenderCamera, RenderCameraCommand, RenderInputEvent, RenderInputKind};
 
 use crate::camera::fly_camera_controller::FlyCameraController;
 use crate::camera::orbit_camera_controller::OrbitCameraController;
+use crate::contract::world_camera::WorldCamera;
+use crate::contract::world_camera_command::WorldCameraCommand;
+use crate::contract::world_input_event::WorldInputEvent;
+use crate::contract::world_input_kind::WorldInputKind;
 
-fn fly(position: [f32; 3], target: [f32; 3]) -> RenderCamera {
-  RenderCamera::Fly {
+fn fly(position: [f32; 3], target: [f32; 3]) -> WorldCamera {
+  WorldCamera::Fly {
     position,
     target,
     field_of_view: 60.0,
@@ -17,8 +20,8 @@ fn fly(position: [f32; 3], target: [f32; 3]) -> RenderCamera {
   }
 }
 
-fn key(kind: RenderInputKind, code: &str) -> RenderInputEvent {
-  RenderInputEvent {
+fn key(kind: WorldInputKind, code: &str) -> WorldInputEvent {
+  WorldInputEvent {
     kind,
     code: code.to_string(),
     ..Default::default()
@@ -26,13 +29,13 @@ fn key(kind: RenderInputKind, code: &str) -> RenderInputEvent {
 }
 
 /// A gesture of the main pointer, its main button held through a press and the moves after it.
-fn pointer(kind: RenderInputKind, x: f32, y: f32) -> RenderInputEvent {
-  RenderInputEvent {
+fn pointer(kind: WorldInputKind, x: f32, y: f32) -> WorldInputEvent {
+  WorldInputEvent {
     kind,
     is_primary: true,
     buttons: u32::from(matches!(
       kind,
-      RenderInputKind::PointerDown | RenderInputKind::PointerMove
+      WorldInputKind::PointerDown | WorldInputKind::PointerMove
     )),
     x,
     y,
@@ -58,16 +61,16 @@ fn fly_starts_looking_at_its_target() {
 fn fly_walks_where_it_faces_and_faster_boosted() {
   let mut camera: FlyCameraController = FlyCameraController::new(fly([0.0, 2.0, 0.0], [0.0, 2.0, -1.0]));
 
-  camera.input(&key(RenderInputKind::KeyDown, "KeyW"));
+  camera.input(&key(WorldInputKind::KeyDown, "KeyW"));
   camera.update(0.1);
   assert_near(camera.get_pose().position, [0.0, 2.0, -1.0]);
 
-  camera.input(&key(RenderInputKind::KeyDown, "ShiftLeft"));
+  camera.input(&key(WorldInputKind::KeyDown, "ShiftLeft"));
   camera.update(0.1);
   assert_near(camera.get_pose().position, [0.0, 2.0, -5.0]);
 
   // A long stall moves no further than a quarter second would.
-  camera.input(&key(RenderInputKind::KeyUp, "ShiftLeft"));
+  camera.input(&key(WorldInputKind::KeyUp, "ShiftLeft"));
   camera.update(10.0);
   assert_near(camera.get_pose().position, [0.0, 2.0, -7.5]);
 }
@@ -76,8 +79,8 @@ fn fly_walks_where_it_faces_and_faster_boosted() {
 fn fly_lets_go_of_every_key_on_blur() {
   let mut camera: FlyCameraController = FlyCameraController::new(fly([0.0, 0.0, 0.0], [0.0, 0.0, -1.0]));
 
-  camera.input(&key(RenderInputKind::KeyDown, "KeyW"));
-  camera.input(&key(RenderInputKind::Blur, ""));
+  camera.input(&key(WorldInputKind::KeyDown, "KeyW"));
+  camera.input(&key(WorldInputKind::Blur, ""));
   camera.update(0.1);
 
   assert_near(camera.get_pose().position, [0.0, 0.0, 0.0]);
@@ -88,10 +91,10 @@ fn fly_lets_go_of_every_key_on_blur() {
 fn fly_turns_by_a_drag() {
   let mut camera: FlyCameraController = FlyCameraController::new(fly([0.0, 0.0, 0.0], [0.0, 0.0, -1.0]));
 
-  camera.input(&pointer(RenderInputKind::PointerDown, 100.0, 100.0));
+  camera.input(&pointer(WorldInputKind::PointerDown, 100.0, 100.0));
   // A quarter turn to the right, at a hundredth of a radian a pixel.
   camera.input(&pointer(
-    RenderInputKind::PointerMove,
+    WorldInputKind::PointerMove,
     100.0 + std::f32::consts::FRAC_PI_2 * 100.0,
     100.0,
   ));
@@ -99,7 +102,7 @@ fn fly_turns_by_a_drag() {
 
   assert_near(camera.get_pose().target, [1.0, 0.0, 0.0]);
 
-  camera.input(&pointer(RenderInputKind::PointerUp, 0.0, 0.0));
+  camera.input(&pointer(WorldInputKind::PointerUp, 0.0, 0.0));
   assert!(!camera.is_moving());
 }
 
@@ -107,12 +110,12 @@ fn fly_turns_by_a_drag() {
 #[test]
 fn fly_ends_a_drag_on_a_move_with_no_button_held() {
   let mut camera: FlyCameraController = FlyCameraController::new(fly([0.0, 0.0, 0.0], [0.0, 0.0, -1.0]));
-  let mut hover: RenderInputEvent = pointer(RenderInputKind::PointerMove, 300.0, 100.0);
+  let mut hover: WorldInputEvent = pointer(WorldInputKind::PointerMove, 300.0, 100.0);
 
   hover.buttons = 0;
-  camera.input(&pointer(RenderInputKind::PointerDown, 100.0, 100.0));
+  camera.input(&pointer(WorldInputKind::PointerDown, 100.0, 100.0));
   camera.input(&hover);
-  camera.input(&pointer(RenderInputKind::PointerMove, 400.0, 100.0));
+  camera.input(&pointer(WorldInputKind::PointerMove, 400.0, 100.0));
   camera.update(0.016);
 
   assert_near(camera.get_pose().target, [0.0, 0.0, -1.0]);
@@ -122,7 +125,7 @@ fn fly_ends_a_drag_on_a_move_with_no_button_held() {
 fn fly_keeps_its_place_when_described_again_from_the_same_start() {
   let mut camera: FlyCameraController = FlyCameraController::new(fly([0.0, 0.0, 0.0], [0.0, 0.0, -1.0]));
 
-  camera.input(&key(RenderInputKind::KeyDown, "KeyW"));
+  camera.input(&key(WorldInputKind::KeyDown, "KeyW"));
   camera.update(0.1);
 
   assert!(!camera.describe(fly([0.0, 0.0, 0.0], [0.0, 0.0, -1.0])));
@@ -134,7 +137,7 @@ fn fly_keeps_its_place_when_described_again_from_the_same_start() {
 
 #[test]
 fn orbit_dollies_and_resets() {
-  let mut camera: OrbitCameraController = OrbitCameraController::new(RenderCamera::Orbit {
+  let mut camera: OrbitCameraController = OrbitCameraController::new(WorldCamera::Orbit {
     position: [0.0, 0.0, 4.0],
     target: [0.0, 0.0, 0.0],
     field_of_view: 45.0,
@@ -142,16 +145,16 @@ fn orbit_dollies_and_resets() {
     far: 100.0,
   });
 
-  camera.command(RenderCameraCommand::Dolly { step: 0.5 });
+  camera.command(WorldCameraCommand::Dolly { step: 0.5 });
   assert_near(camera.get_pose().position, [0.0, 0.0, 2.0]);
 
-  camera.command(RenderCameraCommand::Reset);
+  camera.command(WorldCameraCommand::Reset);
   assert_near(camera.get_pose().position, [0.0, 0.0, 4.0]);
 }
 
 #[test]
 fn orbit_turns_around_its_target_at_the_same_distance() {
-  let mut camera: OrbitCameraController = OrbitCameraController::new(RenderCamera::Orbit {
+  let mut camera: OrbitCameraController = OrbitCameraController::new(WorldCamera::Orbit {
     position: [0.0, 0.0, 4.0],
     target: [1.0, 0.0, 0.0],
     field_of_view: 45.0,
@@ -160,8 +163,8 @@ fn orbit_turns_around_its_target_at_the_same_distance() {
   });
 
   camera.resize(400.0);
-  camera.input(&pointer(RenderInputKind::PointerDown, 0.0, 0.0));
-  camera.input(&pointer(RenderInputKind::PointerMove, 100.0, 40.0));
+  camera.input(&pointer(WorldInputKind::PointerDown, 0.0, 0.0));
+  camera.input(&pointer(WorldInputKind::PointerMove, 100.0, 40.0));
 
   let pose = camera.get_pose();
 
@@ -171,19 +174,19 @@ fn orbit_turns_around_its_target_at_the_same_distance() {
 
 #[test]
 fn orbit_pans_its_target_with_it() {
-  let mut camera: OrbitCameraController = OrbitCameraController::new(RenderCamera::Orbit {
+  let mut camera: OrbitCameraController = OrbitCameraController::new(WorldCamera::Orbit {
     position: [0.0, 0.0, 4.0],
     target: [0.0, 0.0, 0.0],
     field_of_view: 45.0,
     near: 0.01,
     far: 100.0,
   });
-  let mut down: RenderInputEvent = pointer(RenderInputKind::PointerDown, 0.0, 0.0);
+  let mut down: WorldInputEvent = pointer(WorldInputKind::PointerDown, 0.0, 0.0);
 
   down.button = 2;
   camera.resize(400.0);
   camera.input(&down);
-  camera.input(&pointer(RenderInputKind::PointerMove, -50.0, 0.0));
+  camera.input(&pointer(WorldInputKind::PointerMove, -50.0, 0.0));
 
   let pose = camera.get_pose();
 

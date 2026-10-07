@@ -1,9 +1,10 @@
-use xrf_renderer::{RenderSurfaceGeometry, RenderSurfaceSpan};
 use xrf_visual::{
   SectorDescription, SectorGeometry, SectorPackage, SectorSection, SectorSurface, VisualClusters, VisualDrawRange,
   VisualSection,
 };
 
+use crate::contract::world_surface_geometry::WorldSurfaceGeometry;
+use crate::contract::world_surface_span::WorldSurfaceSpan;
 use crate::level::surface_tally::SurfaceTally;
 
 fn section(byte_offset: u32, byte_length: u32) -> VisualSection {
@@ -74,7 +75,7 @@ fn package() -> SectorPackage {
 
 #[test]
 fn surface_tally_counts_an_entry_across_its_sections() {
-  let measured: Vec<RenderSurfaceGeometry> = SurfaceTally::measure(&package()).list();
+  let measured: Vec<WorldSurfaceGeometry> = SurfaceTally::measure(&package()).list();
   let fraction: f32 = (1024.0 + 51.0 / 255.0) / 1024.0;
 
   assert_eq!(measured.len(), 1);
@@ -83,7 +84,7 @@ fn surface_tally_counts_an_entry_across_its_sections() {
   assert_eq!(measured[0].triangles, 2);
   assert_eq!(
     measured[0].span,
-    Some(RenderSurfaceSpan {
+    Some(WorldSurfaceSpan {
       u_min: 0.0,
       u_max: fraction,
       v_min: 0.0,
@@ -93,7 +94,7 @@ fn surface_tally_counts_an_entry_across_its_sections() {
   // The second triangle never reaches the vertex carrying the fraction, so it covers less.
   assert_eq!(
     measured[0].narrowest,
-    Some(RenderSurfaceSpan {
+    Some(WorldSurfaceSpan {
       u_min: 0.0,
       u_max: 1.0,
       v_min: 0.0,
@@ -108,7 +109,7 @@ fn surface_tally_merges_sectors() {
 
   tally.merge(SurfaceTally::measure(&package()));
 
-  let measured: Vec<RenderSurfaceGeometry> = tally.list();
+  let measured: Vec<WorldSurfaceGeometry> = tally.list();
 
   assert_eq!(measured[0].drawables, 6);
   assert_eq!(measured[0].triangles, 4);
@@ -120,7 +121,7 @@ fn surface_tally_reads_no_coordinates_from_a_short_pack() {
 
   short.buffer.truncate(40);
 
-  let measured: Vec<RenderSurfaceGeometry> = SurfaceTally::measure(&short).list();
+  let measured: Vec<WorldSurfaceGeometry> = SurfaceTally::measure(&short).list();
 
   assert_eq!(measured[0].triangles, 2);
   assert_eq!(measured[0].span, None);

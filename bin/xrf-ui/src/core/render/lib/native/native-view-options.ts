@@ -8,8 +8,8 @@ import {
   RenderViewFeatures,
   RenderViewMode,
   RenderViewOptions,
-  RenderWorldToggles,
 } from "@/core/ipc/types/xrf-renderer";
+import { WorldToggles } from "@/core/ipc/types/xrf-world";
 import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { ERenderResolution } from "@/core/render/lib/settings/render-resolution";
 import { TSettled } from "@/core/render/lib/settings/render-settled";
@@ -21,8 +21,8 @@ export type TNativeViewShading = TSettled<
 >;
 
 /**
- * What a view switches of a scene: the weather, the grass, the water, the wall marks, the particles, the campfires and
- * the spawned objects' groups; and how its sunshafts step.
+ * What a view switches of how a scene is drawn: the sky and its weather, the grass, the water, the wall marks and the
+ * particles; and how its sunshafts step. What of the world plays is the world's, {@link toNativeWorldToggles}.
  */
 export interface INativeViewSwitches
   extends
@@ -37,7 +37,6 @@ export interface INativeViewSwitches
       | "isSunShafted"
       | "isWallmarked"
     >,
-    RenderWorldToggles,
     Pick<RenderViewFeatures, "sunShafts"> {
   /** Whether the grass the features plant is drawn in this view. */
   isGrassy: boolean;
@@ -50,26 +49,16 @@ export type TNativeLook = TSettled<Pick<RenderViewFeatures, "bloom" | "correctio
 
 /** Nothing switched on: what an asset viewer's scene of one model has none of. */
 export const NO_NATIVE_VIEW_SWITCHES: INativeViewSwitches = {
-  isAmbientPlayed: false,
-  isCampfireLit: true,
   isClouded: false,
   isFogged: false,
   isGrassy: false,
   isLensFlared: false,
   isParticled: false,
-  isRainy: false,
   isSkyHazed: false,
   isSkyVisible: false,
-  isSpawnedItems: true,
-  isSpawnedLamps: true,
-  isSpawnedProps: true,
-  isSpawnedReleased: false,
-  isSpawnedWeapons: true,
   isSunShafted: false,
-  isThundering: false,
   isWallmarked: true,
   isWaterVisible: false,
-  isWindy: false,
   sunShafts: { minimum: 0, quality: ERenderSunShaftsQuality.HIGH },
 };
 
@@ -94,7 +83,8 @@ export function toNativeRenderHeight(resolution: ERenderResolution): Nullable<nu
  * @param switches - What the view switches of its scene.
  * @param look - How the scene is exposed, lit and corrected.
  * @param renderHeight - How many rows the scene is drawn with at most; null for as many as the viewport covers.
- * @returns What a native viewport draws a level with; an asset viewer sets its own light and backdrop over it.
+ * @returns What a native viewport draws a level with; an asset viewer sets its own light and backdrop over it. What of
+ *   the world plays goes to the world apart, {@link toNativeWorldToggles}.
  */
 export function toNativeViewOptions(
   shading: TNativeViewShading,
@@ -143,18 +133,26 @@ export function toNativeViewOptions(
       isSunShafted: switches.isSunShafted,
       isWallmarked: switches.isWallmarked,
     },
-    world: {
-      isAmbientPlayed: switches.isAmbientPlayed,
-      isCampfireLit: switches.isCampfireLit,
-      isRainy: switches.isRainy,
-      isSpawnedItems: switches.isSpawnedItems,
-      isSpawnedLamps: switches.isSpawnedLamps,
-      isSpawnedProps: switches.isSpawnedProps,
-      isSpawnedReleased: switches.isSpawnedReleased,
-      isSpawnedWeapons: switches.isSpawnedWeapons,
-      isThundering: switches.isThundering,
-      isWindy: switches.isWindy,
-    },
+  };
+}
+
+/**
+ * @param switches - What the view switches of its scene, the world's part among them.
+ * @returns What of the level's world plays in the view: the weather's rain, bolts and wind, the campfires, the ambient
+ *   effects and the spawned objects' groups.
+ */
+export function toNativeWorldToggles(switches: WorldToggles): WorldToggles {
+  return {
+    isAmbientPlayed: switches.isAmbientPlayed,
+    isCampfireLit: switches.isCampfireLit,
+    isRainy: switches.isRainy,
+    isSpawnedItems: switches.isSpawnedItems,
+    isSpawnedLamps: switches.isSpawnedLamps,
+    isSpawnedProps: switches.isSpawnedProps,
+    isSpawnedReleased: switches.isSpawnedReleased,
+    isSpawnedWeapons: switches.isSpawnedWeapons,
+    isThundering: switches.isThundering,
+    isWindy: switches.isWindy,
   };
 }
 

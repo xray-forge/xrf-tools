@@ -2,13 +2,13 @@ import { Button, Typography } from "@mui/material";
 import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
-import { RenderAmbientReport } from "@/core/ipc/types/xrf-renderer";
+import { WorldAmbientReport } from "@/core/ipc/types/xrf-world";
 import { EditorPanelProperty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface ILevelWeatherAmbientSectionProps extends BaseComponentProps {
   /** Where the ambient effects near the camera stand, null while no weather plays or the particles are unread. */
-  ambient: Nullable<RenderAmbientReport>;
+  ambient: Nullable<WorldAmbientReport>;
   /** Whether the view plays them at all. */
   isPlayed: boolean;
   onPlay: () => void;

@@ -3,31 +3,35 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { assertExhaustive, Nullable } from "@xrf/types";
 
 import { renderCommands } from "@/core/ipc/commands/render";
+import { ViewportEvent } from "@/core/ipc/types/xrf-app";
 import {
   ERenderViewportEvent,
-  ERenderWeatherTransition,
   RenderAppliedReport,
-  RenderCamera,
-  RenderCameraCommand,
-  RenderCameraPose,
   RenderFrameReport,
-  RenderInputEvent,
   RenderLevelHit,
-  RenderLevelProblems,
   RenderLoadReport,
-  RenderModelPose,
   RenderOverlay,
   RenderSelection,
-  RenderSurfaceGeometry,
   RenderTextureReport,
   RenderViewOptions,
-  RenderViewportEvent,
   RenderViewportId,
   RenderViewportLayout,
-  RenderWeatherControl,
-  RenderWeatherPlay,
-  RenderWeatherReport,
 } from "@/core/ipc/types/xrf-renderer";
+import {
+  EWorldViewportEvent,
+  EWorldWeatherTransition,
+  WorldCamera,
+  WorldCameraCommand,
+  WorldCameraPose,
+  WorldInputEvent,
+  WorldLevelProblems,
+  WorldModelPose,
+  WorldSurfaceGeometry,
+  WorldToggles,
+  WorldWeatherControl,
+  WorldWeatherPlay,
+  WorldWeatherReport,
+} from "@/core/ipc/types/xrf-world";
 
 /** A texture laid on a body, as the renderer is asked to draw one, or null for none. */
 export type TNativeTextureRequest = Parameters<typeof renderCommands.showTexture>[1];
@@ -41,11 +45,11 @@ export interface INativeViewportListener {
   /** What its frames are drawn with, as the renderer resolved what it was asked, as that changes. */
   onApplied(report: RenderAppliedReport): void;
   /** Where its camera stands, while it moves and once after. */
-  onCamera(pose: RenderCameraPose): void;
+  onCamera(pose: WorldCameraPose): void;
   /** How far its scene has loaded, as that changes. */
   onLoad(report: RenderLoadReport): void;
   /** Where its weather stands, as that changes; null while none plays. */
-  onWeather(report: Nullable<RenderWeatherReport>): void;
+  onWeather(report: Nullable<WorldWeatherReport>): void;
   /** Why it cannot be drawn. */
   onFailed(message: string): void;
 }
@@ -60,9 +64,9 @@ export class NativeViewport {
   private isDisposed: boolean = false;
 
   public constructor(listener: INativeViewportListener) {
-    const events: Channel<RenderViewportEvent> = new Channel<RenderViewportEvent>();
+    const events: Channel<ViewportEvent> = new Channel<ViewportEvent>();
 
-    events.onmessage = (event: RenderViewportEvent): void => {
+    events.onmessage = (event: ViewportEvent): void => {
       if (this.isDisposed) {
         return;
       }
@@ -74,13 +78,13 @@ export class NativeViewport {
         case ERenderViewportEvent.APPLIED:
           return listener.onApplied(event.report);
 
-        case ERenderViewportEvent.CAMERA:
+        case EWorldViewportEvent.CAMERA:
           return listener.onCamera(event.pose);
 
         case ERenderViewportEvent.LOAD:
           return listener.onLoad(event.report);
 
-        case ERenderViewportEvent.WEATHER:
+        case EWorldViewportEvent.WEATHER:
           return listener.onWeather(event.report);
 
         case ERenderViewportEvent.FAILURE:
@@ -114,20 +118,28 @@ export class NativeViewport {
     this.call((id: RenderViewportId) => renderCommands.setViewportLayout(id, layout));
   }
 
-  public sendInput(event: RenderInputEvent): void {
+  public sendInput(event: WorldInputEvent): void {
     this.call((id: RenderViewportId) => renderCommands.sendInput(id, event));
   }
 
-  public setCamera(camera: RenderCamera): void {
+  public setCamera(camera: WorldCamera): void {
     this.call((id: RenderViewportId) => renderCommands.setCamera(id, camera));
   }
 
-  public commandCamera(command: RenderCameraCommand): void {
+  public commandCamera(command: WorldCameraCommand): void {
     this.call((id: RenderViewportId) => renderCommands.commandCamera(id, command));
   }
 
   public setViewOptions(options: RenderViewOptions): void {
     this.call((id: RenderViewportId) => renderCommands.setViewOptions(id, options));
+  }
+
+  /**
+   * @param toggles - What of the shown level's world plays: its weather's rain, bolts and wind, its campfires, its
+   *   ambient effects and which spawned groups stream in.
+   */
+  public setWorldToggles(toggles: WorldToggles): void {
+    this.call((id: RenderViewportId) => renderCommands.setWorldToggles(id, toggles));
   }
 
   /**
@@ -141,11 +153,11 @@ export class NativeViewport {
     this.call((id: RenderViewportId) => renderCommands.setSelection(id, selection));
   }
 
-  public playWeather(play: RenderWeatherPlay, transition: ERenderWeatherTransition): void {
+  public playWeather(play: WorldWeatherPlay, transition: EWorldWeatherTransition): void {
     this.call((id: RenderViewportId) => renderCommands.playWeather(id, play, transition));
   }
 
-  public setWeatherControl(control: RenderWeatherControl): void {
+  public setWeatherControl(control: WorldWeatherControl): void {
     this.call((id: RenderViewportId) => renderCommands.setWeatherControl(id, control));
   }
 
@@ -194,7 +206,7 @@ export class NativeViewport {
    *
    * @returns Every entry something draws, or none for a viewport not attached or a measure that failed.
    */
-  public async measureSurfaces(): Promise<Array<RenderSurfaceGeometry>> {
+  public async measureSurfaces(): Promise<Array<WorldSurfaceGeometry>> {
     const id: Nullable<RenderViewportId> = await this.attached;
 
     if (id === null || this.isDisposed) {
@@ -212,9 +224,9 @@ export class NativeViewport {
    * @returns What the viewport's level could not draw the way it asked; nothing for a viewport not attached or a
    *   description that failed.
    */
-  public async describeProblems(): Promise<RenderLevelProblems> {
+  public async describeProblems(): Promise<WorldLevelProblems> {
     const id: Nullable<RenderViewportId> = await this.attached;
-    const none: RenderLevelProblems = { models: [], sectors: [], skipped: [] };
+    const none: WorldLevelProblems = { models: [], sectors: [], skipped: [] };
 
     if (id === null || this.isDisposed) {
       return none;
@@ -297,7 +309,7 @@ export class NativeViewport {
   /**
    * @param pose - How the viewport's skinned models stand from now on.
    */
-  public poseModel(pose: RenderModelPose): void {
+  public poseModel(pose: WorldModelPose): void {
     this.call((id: RenderViewportId) => renderCommands.poseModel(id, pose));
   }
 

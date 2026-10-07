@@ -2,11 +2,13 @@ use std::sync::Arc;
 use std::sync::mpsc::{Receiver, Sender, channel};
 use std::time::{Duration, Instant};
 
-use xrf_renderer::{
-  RenderAmbientReport, RenderLevelSource, RenderLevelWeather, RenderLighting, RenderWeatherControl, RenderWeatherPlay,
-  RenderWeatherReport, RenderWeatherTransition, RenderWorkers,
-};
+use xrf_renderer::{RenderLevelSource, RenderLevelWeather, RenderLighting, RenderWorkers};
 
+use crate::contract::world_ambient_report::WorldAmbientReport;
+use crate::contract::world_weather_control::WorldWeatherControl;
+use crate::contract::world_weather_play::WorldWeatherPlay;
+use crate::contract::world_weather_report::WorldWeatherReport;
+use crate::contract::world_weather_transition::WorldWeatherTransition;
 use crate::weather::played_weather::PlayedWeather;
 use crate::weather::weather_load::WeatherLoad;
 use crate::weather::weather_player::WeatherPlayer;
@@ -20,7 +22,7 @@ const REPORT_INTERVAL: Duration = Duration::from_millis(100);
 pub struct ViewportWeather {
   player: WeatherPlayer,
   /// What was last asked to play, and how it takes over.
-  request: (RenderWeatherPlay, RenderWeatherTransition),
+  request: (WorldWeatherPlay, WorldWeatherTransition),
   source: Option<Arc<dyn RenderLevelSource>>,
   /// What every weather of the shown level plays with, once read.
   level: Option<Arc<RenderLevelWeather>>,
@@ -30,7 +32,7 @@ pub struct ViewportWeather {
   sender: Sender<WeatherLoad>,
   receiver: Receiver<WeatherLoad>,
   lighting: RenderLighting,
-  sent_report: Option<Option<RenderWeatherReport>>,
+  sent_report: Option<Option<WorldWeatherReport>>,
   report_due: Instant,
   workers: RenderWorkers,
 }
@@ -41,7 +43,7 @@ impl ViewportWeather {
 
     Self {
       player: WeatherPlayer::default(),
-      request: (RenderWeatherPlay::None, RenderWeatherTransition::Cut),
+      request: (WorldWeatherPlay::None, WorldWeatherTransition::Cut),
       source: None,
       level: None,
       level_generation: 0,
@@ -74,7 +76,7 @@ impl ViewportWeather {
   pub fn show(&mut self, source: Option<Arc<dyn RenderLevelSource>>) {
     self.level_generation += 1;
     self.level = None;
-    self.player.take(None, RenderWeatherTransition::Cut);
+    self.player.take(None, WorldWeatherTransition::Cut);
     self.source = source;
 
     let Some(source) = &self.source else {
@@ -94,13 +96,13 @@ impl ViewportWeather {
   }
 
   /// Plays something else from now on.
-  pub fn play(&mut self, play: RenderWeatherPlay, transition: RenderWeatherTransition) {
+  pub fn play(&mut self, play: WorldWeatherPlay, transition: WorldWeatherTransition) {
     self.request = (play, transition);
     self.request_generation += 1;
     self.start();
   }
 
-  pub fn set_control(&mut self, control: RenderWeatherControl) {
+  pub fn set_control(&mut self, control: WorldWeatherControl) {
     self.player.set_control(control);
   }
 
@@ -137,16 +139,16 @@ impl ViewportWeather {
   pub fn take_report(
     &mut self,
     now: Instant,
-    ambient: Option<RenderAmbientReport>,
-  ) -> Option<Option<RenderWeatherReport>> {
+    ambient: Option<WorldAmbientReport>,
+  ) -> Option<Option<WorldWeatherReport>> {
     if now < self.report_due {
       return None;
     }
 
-    let report: Option<RenderWeatherReport> = self
+    let report: Option<WorldWeatherReport> = self
       .player
       .report()
-      .map(|report| RenderWeatherReport { ambient, ..report });
+      .map(|report| WorldWeatherReport { ambient, ..report });
 
     if self.sent_report.as_ref() == Some(&report) {
       return None;
@@ -163,7 +165,7 @@ impl ViewportWeather {
       // A level whose configs do not read is lit as though nothing played.
       WeatherLoad::Level { level, read: Ok(read) } if level == self.level_generation => {
         self.level = Some(read);
-        self.request.1 = RenderWeatherTransition::Cut;
+        self.request.1 = WorldWeatherTransition::Cut;
         self.start();
       }
       WeatherLoad::Cycle {
@@ -192,13 +194,13 @@ impl ViewportWeather {
     let (play, transition) = &self.request;
 
     match play {
-      RenderWeatherPlay::None => self.player.take(None, *transition),
-      RenderWeatherPlay::Keyframe { keyframe } => {
+      WorldWeatherPlay::None => self.player.take(None, *transition),
+      WorldWeatherPlay::Keyframe { keyframe } => {
         let played: PlayedWeather = PlayedWeather::keyframe(keyframe.as_ref().clone(), Arc::clone(level));
 
         self.player.take(Some(played), *transition);
       }
-      RenderWeatherPlay::Cycle { name } => {
+      WorldWeatherPlay::Cycle { name } => {
         let (sender, source, name, transition) = (self.sender.clone(), Arc::clone(source), name.clone(), *transition);
         let (level, request) = (self.level_generation, self.request_generation);
 

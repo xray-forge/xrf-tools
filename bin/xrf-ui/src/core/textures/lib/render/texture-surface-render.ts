@@ -1,7 +1,8 @@
 import { Nullable } from "@xrf/types";
 
 import { TextureDescription } from "@/core/ipc/types/xrf-app";
-import { ERenderCamera, RenderCamera, RenderViewOptions } from "@/core/ipc/types/xrf-renderer";
+import { RenderViewOptions } from "@/core/ipc/types/xrf-renderer";
+import { EWorldCamera, WorldCamera } from "@/core/ipc/types/xrf-world";
 import { IRenderLighting, toNativeAssetLighting } from "@/core/render/lib/lighting/render-lighting";
 import { toNativeAssetViewOptions } from "@/core/render/lib/native/native-view-options";
 import { TNativeTextureRequest } from "@/core/render/lib/native/native-viewport";
@@ -11,10 +12,10 @@ import { ITextureSurfaceOptions, toTextureAspect } from "@/core/textures/lib/tex
 import { VIEWPORT } from "@/core/theme/tokens";
 
 /** The camera the body is first seen from, and returned to. */
-export const TEXTURE_SURFACE_CAMERA: RenderCamera = {
+export const TEXTURE_SURFACE_CAMERA: WorldCamera = {
   far: 100,
   fieldOfView: 45,
-  kind: ERenderCamera.ORBIT,
+  kind: EWorldCamera.ORBIT,
   near: 0.01,
   position: [0, 0, 5],
   target: [0, 0, 0],

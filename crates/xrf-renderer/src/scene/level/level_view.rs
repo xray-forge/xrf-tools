@@ -201,7 +201,6 @@ impl LevelView {
 
     if let Some(rain) = weather.and_then(|weather| weather.rain.as_ref())
       && lighting.rain.is_some()
-      && options.world.is_rainy
       && options.mode.is_lit
     {
       weather_textures.request(&rain.streak, WeatherTextureKind::Flat, &assets);
@@ -216,9 +215,8 @@ impl LevelView {
       }
     }
 
-    // Every bolt's textures are held while the weather may strike, so a strike has them.
+    // Every bolt's textures are held while the level's weather has bolts, so a strike has them.
     if let Some(thunder) = weather.and_then(|weather| weather.thunder.as_ref())
-      && options.world.is_thundering
       && options.mode.is_lit
     {
       let references = thunder.models.iter().map(|model| model.mesh.texture.as_str()).chain(
@@ -459,8 +457,8 @@ impl LevelView {
     );
 
     let sway_time: f32 = self.scene.started.elapsed().as_secs_f32();
-    let wind: WindUniform = WindUniform::new(lighting.trees.as_ref().filter(|_| options.world.is_windy), sway_time)
-      .following(self.state.last_wind.as_ref());
+    let wind: WindUniform =
+      WindUniform::new(lighting.trees.as_ref(), sway_time).following(self.state.last_wind.as_ref());
 
     self.state.last_wind = Some(wind);
 
@@ -550,7 +548,7 @@ impl LevelView {
       self.info.cull.discard_below,
       (
         self.scene.started.elapsed().as_secs_f32(),
-        options.world.is_windy,
+        lighting.trees.is_some(),
         gust.strength,
       ),
     );
@@ -971,7 +969,7 @@ impl LevelView {
     }) else {
       return;
     };
-    let Some(rainfall) = lighting.rain.filter(|_| options.world.is_rainy && options.mode.is_lit) else {
+    let Some(rainfall) = lighting.rain.filter(|_| options.mode.is_lit) else {
       return;
     };
 
@@ -1074,11 +1072,7 @@ impl LevelView {
     let (Some(weather), Some(strike)) = (weather, &lighting.thunderbolt) else {
       return;
     };
-    let Some(thunder) = weather
-      .thunder
-      .as_ref()
-      .filter(|_| options.world.is_thundering && options.mode.is_lit)
-    else {
+    let Some(thunder) = weather.thunder.as_ref().filter(|_| options.mode.is_lit) else {
       return;
     };
     let Some(bolt) = thunder.bolts.get(&strike.bolt) else {

@@ -3,13 +3,15 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use xrf_renderer::{
-  LoaderReceiver, RenderLevelProblems, RenderLevelSource, RenderLoadFailure, RenderModelSkeleton, RenderSceneUpdate,
-  RenderSectorFailure, RenderSectorSkip, RenderStreamingProgress, RenderSurfaceGeometry, RenderWorkers,
-  StaticModelProxy, StaticObjectProxy, StaticSectorProxy, take_answer,
+  LoaderReceiver, RenderLevelSource, RenderLoadFailure, RenderModelSkeleton, RenderSceneUpdate, RenderSectorFailure,
+  RenderStreamingProgress, RenderWorkers, StaticModelProxy, StaticObjectProxy, StaticSectorProxy, take_answer,
 };
 use xrf_renderer_core::{ProxyAllocator, ProxyHandle};
 use xrf_visual::LightsDescription;
 
+use crate::contract::world_level_problems::WorldLevelProblems;
+use crate::contract::world_sector_skip::WorldSectorSkip;
+use crate::contract::world_surface_geometry::WorldSurfaceGeometry;
 use crate::level::level_animation::LevelAnimation;
 use crate::level::level_loader::LevelLoader;
 use crate::level::spawn_loader::SpawnLoader;
@@ -44,7 +46,7 @@ pub struct LevelStreaming {
   hidden_groups: u32,
   /// The sectors that could not be read or taken in, and the drawables the packer left out of those that were.
   failed_sectors: Vec<RenderLoadFailure>,
-  skipped: Vec<RenderSectorSkip>,
+  skipped: Vec<WorldSectorSkip>,
   surfaces: SurfaceTally,
   /// When it began opening the level, which the load is timed from.
   started: Instant,
@@ -127,7 +129,7 @@ impl LevelStreaming {
 
           self
             .skipped
-            .extend(package.description.skipped.iter().map(|skip| RenderSectorSkip {
+            .extend(package.description.skipped.iter().map(|skip| WorldSectorSkip {
               sector,
               skip: skip.clone(),
             }));
@@ -187,13 +189,13 @@ impl LevelStreaming {
   }
 
   /// How much each shader table entry draws across the sectors streamed in.
-  pub fn measure_surfaces(&self) -> Vec<RenderSurfaceGeometry> {
+  pub fn measure_surfaces(&self) -> Vec<WorldSurfaceGeometry> {
     self.surfaces.list()
   }
 
   /// What the level could not draw the way it asked, so far.
-  pub fn describe_problems(&self) -> RenderLevelProblems {
-    RenderLevelProblems {
+  pub fn describe_problems(&self) -> WorldLevelProblems {
+    WorldLevelProblems {
       skipped: self.skipped.clone(),
       sectors: self.failed_sectors.clone(),
       models: self.spawn.list_failures(),

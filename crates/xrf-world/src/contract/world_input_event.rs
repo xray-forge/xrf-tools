@@ -1,13 +1,13 @@
 use serde::{Deserialize, Serialize};
 
-use crate::contract::render_input_kind::RenderInputKind;
+use crate::contract::world_input_kind::WorldInputKind;
 
 /// One gesture over a viewport, as much of the browser's event as crosses.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct RenderInputEvent {
-  pub kind: RenderInputKind,
+pub struct WorldInputEvent {
+  pub kind: WorldInputKind,
   pub pointer_id: i32,
   pub is_primary: bool,
   pub button: i32,

@@ -3,12 +3,12 @@ import { comparer, reaction, RefObservable, runInAction } from "@wirestate/mobx"
 import { Nullable } from "@xrf/types";
 
 import {
-  ERenderCameraCommand,
   ERenderTextureState,
   RenderLoadReport,
   RenderTextureReport,
   RenderViewOptions,
 } from "@/core/ipc/types/xrf-renderer";
+import { EWorldCameraCommand } from "@/core/ipc/types/xrf-world";
 import { NativeRenderSurfaceService } from "@/core/render/lib/native/native-render-surface-service";
 import { toNativeRenderHeight } from "@/core/render/lib/native/native-view-options";
 import { NativeViewport, TNativeTextureRequest } from "@/core/render/lib/native/native-viewport";
@@ -73,12 +73,12 @@ export class TextureRenderService extends NativeRenderSurfaceService {
    * @param step - What to multiply the distance by.
    */
   public dolly(step: number): void {
-    this.viewport?.commandCamera({ kind: ERenderCameraCommand.DOLLY, step });
+    this.viewport?.commandCamera({ kind: EWorldCameraCommand.DOLLY, step });
   }
 
   /** Back to the distance and the angle the body is first seen from. */
   public reset(): void {
-    this.viewport?.commandCamera({ kind: ERenderCameraCommand.RESET });
+    this.viewport?.commandCamera({ kind: EWorldCameraCommand.RESET });
   }
 
   protected start(viewport: NativeViewport): Array<() => void> {

@@ -10,11 +10,11 @@ use xrf_particles::{
   ParticleUpdateContext, ParticlesEffectsChunk, ParticlesFile, ParticlesGroupsChunk, ParticlesHeaderChunk,
 };
 use xrf_renderer::{
-  ParticleEmitterProxy, RenderAmbient, RenderAmbientEffect, RenderAmbientReport, RenderAmbients, RenderLevelWeather,
-  RenderSceneUpdate,
+  ParticleEmitterProxy, RenderAmbient, RenderAmbientEffect, RenderAmbients, RenderLevelWeather, RenderSceneUpdate,
 };
 use xrf_renderer_core::{ProxyAllocator, ProxyHandle};
 
+use crate::contract::world_ambient_report::WorldAmbientReport;
 use crate::level::ambient_frame::AmbientFrame;
 use crate::level::level_ambient_effects::{AmbientSystems, LevelAmbientEffects};
 
@@ -343,7 +343,7 @@ fn playing_one_now_ends_the_one_playing_and_starts_without_waiting() {
 
   scene.update(frame, false, 1);
 
-  let first: RenderAmbientReport = scene.effects.report(500, false);
+  let first: WorldAmbientReport = scene.effects.report(500, false);
 
   assert!(
     first
@@ -356,7 +356,7 @@ fn playing_one_now_ends_the_one_playing_and_starts_without_waiting() {
   scene.effects.play_now();
   scene.update(frame, false, 600);
 
-  let second: RenderAmbientReport = scene.effects.report(600, false);
+  let second: WorldAmbientReport = scene.effects.report(600, false);
 
   assert!(
     second

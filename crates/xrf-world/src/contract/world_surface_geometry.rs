@@ -1,24 +1,24 @@
 use serde::{Deserialize, Serialize};
 
-use crate::contract::render_surface_span::RenderSurfaceSpan;
+use crate::contract::world_surface_span::WorldSurfaceSpan;
 
 /// How much geometry one shader table entry of a viewport's level draws, across the sectors resident.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Copy, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct RenderSurfaceGeometry {
+pub struct WorldSurfaceGeometry {
   pub shader_id: u16,
   /// Drawables of the level's visuals naming the entry.
   pub drawables: u32,
   /// Triangles drawn at whole detail, a mesh's once for each place it stands in.
   pub triangles: u32,
   /// What its base coordinate covers over every draw together.
-  pub span: Option<RenderSurfaceSpan>,
+  pub span: Option<WorldSurfaceSpan>,
   /// The narrowest range any single draw covers.
-  pub narrowest: Option<RenderSurfaceSpan>,
+  pub narrowest: Option<WorldSurfaceSpan>,
 }
 
-impl RenderSurfaceGeometry {
+impl WorldSurfaceGeometry {
   pub fn new(shader_id: u16) -> Self {
     Self {
       shader_id,
@@ -30,7 +30,7 @@ impl RenderSurfaceGeometry {
   }
 
   /// Counts one draw's drawables, triangles and the range its coordinate covers in.
-  pub fn add(&mut self, drawables: u32, triangles: u32, drawn: Option<RenderSurfaceSpan>) {
+  pub fn add(&mut self, drawables: u32, triangles: u32, drawn: Option<WorldSurfaceSpan>) {
     self.merge(&Self {
       shader_id: self.shader_id,
       drawables,
@@ -44,7 +44,7 @@ impl RenderSurfaceGeometry {
   pub fn merge(&mut self, other: &Self) {
     self.drawables = self.drawables.saturating_add(other.drawables);
     self.triangles = self.triangles.saturating_add(other.triangles);
-    self.span = merge_spans(self.span, other.span, RenderSurfaceSpan::merge);
+    self.span = merge_spans(self.span, other.span, WorldSurfaceSpan::merge);
     self.narrowest = merge_spans(self.narrowest, other.narrowest, |held, drawn| {
       if drawn.get_area() < held.get_area() {
         drawn
@@ -56,10 +56,10 @@ impl RenderSurfaceGeometry {
 }
 
 fn merge_spans(
-  held: Option<RenderSurfaceSpan>,
-  drawn: Option<RenderSurfaceSpan>,
-  combine: impl Fn(RenderSurfaceSpan, RenderSurfaceSpan) -> RenderSurfaceSpan,
-) -> Option<RenderSurfaceSpan> {
+  held: Option<WorldSurfaceSpan>,
+  drawn: Option<WorldSurfaceSpan>,
+  combine: impl Fn(WorldSurfaceSpan, WorldSurfaceSpan) -> WorldSurfaceSpan,
+) -> Option<WorldSurfaceSpan> {
   match (held, drawn) {
     (Some(held), Some(drawn)) => Some(combine(held, drawn)),
     (held, drawn) => held.or(drawn),

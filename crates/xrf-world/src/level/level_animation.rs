@@ -3,11 +3,11 @@ use std::sync::Arc;
 
 use glam::{Mat4, Vec3};
 use xrf_renderer::{
-  RenderLevelSource, RenderModelPose, RenderModelSkeleton, RenderMotion, RenderSceneUpdate, RenderWorkers,
-  StaticObjectProxy,
+  RenderLevelSource, RenderModelSkeleton, RenderMotion, RenderSceneUpdate, RenderWorkers, StaticObjectProxy,
 };
 use xrf_renderer_core::ProxyHandle;
 
+use crate::contract::world_model_pose::WorldModelPose;
 use crate::level::model_motions::ModelMotions;
 use crate::level::posed_skeleton::PosedSkeleton;
 
@@ -16,7 +16,7 @@ use crate::level::posed_skeleton::PosedSkeleton;
 pub struct LevelAnimation {
   skeletons: HashMap<ProxyHandle<StaticObjectProxy>, (PosedSkeleton, Mat4)>,
   motions: ModelMotions,
-  pose: RenderModelPose,
+  pose: WorldModelPose,
 }
 
 impl LevelAnimation {
@@ -24,12 +24,12 @@ impl LevelAnimation {
     Self {
       skeletons: HashMap::new(),
       motions: ModelMotions::new(workers),
-      pose: RenderModelPose::default(),
+      pose: WorldModelPose::default(),
     }
   }
 
   /// Stands every skinned object as asked from the next frame on.
-  pub fn set_pose(&mut self, pose: &RenderModelPose) {
+  pub fn set_pose(&mut self, pose: &WorldModelPose) {
     if self.pose != *pose {
       self.pose = pose.clone();
     }
@@ -51,7 +51,7 @@ impl LevelAnimation {
       return;
     }
 
-    let pose: &RenderModelPose = &self.pose;
+    let pose: &WorldModelPose = &self.pose;
     let motion: Option<&RenderMotion> = match &pose.motion {
       Some(name) => self.motions.get(source, name),
       None => None,

@@ -3,7 +3,7 @@ import { Nullable } from "@xrf/types";
 import { ChangeEvent, ReactElement } from "react";
 
 import { LevelWeatherCycle } from "@/core/ipc/types/xrf-app";
-import { RenderWeatherEffectReport } from "@/core/ipc/types/xrf-renderer";
+import { WorldWeatherEffectReport } from "@/core/ipc/types/xrf-world";
 import { formatLevelWeatherTime } from "@/core/level/lib/weather/level-weather-time";
 import { CONTROL } from "@/core/theme/tokens";
 import { BaseComponentProps } from "@/lib/dom/element-types";
@@ -14,7 +14,7 @@ const NONE: string = "";
 interface ILevelWeatherEffectSelectProps extends BaseComponentProps {
   effects: ReadonlyArray<LevelWeatherCycle>;
   /** The effect playing, or null for none. */
-  playing: Nullable<RenderWeatherEffectReport>;
+  playing: Nullable<WorldWeatherEffectReport>;
   isDisabled?: boolean;
   onPlay: (name: Nullable<string>) => void;
 }

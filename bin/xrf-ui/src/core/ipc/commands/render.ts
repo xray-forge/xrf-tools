@@ -3,34 +3,36 @@
 import { Channel } from "@tauri-apps/api/core";
 
 import { invoke as __TAURI_INVOKE } from "@/core/ipc/invoke";
-import { ETextureSurfaceAlpha, ETextureSurfaceShape, TextureSource } from "@/core/ipc/types/xrf-app";
+import { ETextureSurfaceAlpha, ETextureSurfaceShape, TextureSource, ViewportEvent } from "@/core/ipc/types/xrf-app";
 import {
-  ERenderWeatherTransition,
-  RenderCamera,
-  RenderCameraCommand,
   RenderFramePhases,
-  RenderInputEvent,
-  RenderLevelProblems,
   RenderLightsReport,
   RenderLoadDurations,
   RenderMemoryReport,
-  RenderModelPose,
   RenderOverlay,
   RenderParticlesReport,
   RenderPassCost,
   RenderSelectionTarget,
   RenderSettings,
   RenderStaticReport,
-  RenderSurfaceGeometry,
   RenderTextureReport,
   RenderViewOptions,
-  RenderViewportEvent,
   RenderViewportId,
   RenderViewportLayout,
-  RenderWeatherControl,
-  RenderWeatherPlay,
 } from "@/core/ipc/types/xrf-renderer";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
+import {
+  EWorldWeatherTransition,
+  WorldCamera,
+  WorldCameraCommand,
+  WorldInputEvent,
+  WorldLevelProblems,
+  WorldModelPose,
+  WorldSurfaceGeometry,
+  WorldToggles,
+  WorldWeatherControl,
+  WorldWeatherPlay,
+} from "@/core/ipc/types/xrf-world";
 
 /** Commands */
 export const renderCommands = {
@@ -38,10 +40,10 @@ export const renderCommands = {
    * Start drawing a native viewport into a window, named by its label, telling the page what it costs and where its
    * camera is through `events`.
    */
-  attachViewport: (window: string, events: Channel<RenderViewportEvent>) =>
+  attachViewport: (window: string, events: Channel<ViewportEvent>) =>
     __TAURI_INVOKE<RenderViewportId>("plugin:render|attach_viewport", { window, events }),
   /** Ask a viewport's camera to reset or dolly. */
-  commandCamera: (viewport: RenderViewportId, command: RenderCameraCommand) =>
+  commandCamera: (viewport: RenderViewportId, command: WorldCameraCommand) =>
     __TAURI_INVOKE<void>("plugin:render|command_camera", { viewport, command }),
   /** Apply settings every native viewport draws with. */
   configure: (settings: RenderSettings) => __TAURI_INVOKE<void>("plugin:render|configure", { settings }),
@@ -114,7 +116,7 @@ export const renderCommands = {
     } | null>("plugin:render|describe_load", { viewport }),
   /** Say what a viewport's level could not draw: drawables the packer left out, sectors and spawned models unread. */
   describeProblems: (viewport: RenderViewportId) =>
-    __TAURI_INVOKE<RenderLevelProblems>("plugin:render|describe_problems", { viewport }),
+    __TAURI_INVOKE<WorldLevelProblems>("plugin:render|describe_problems", { viewport }),
   /** Say what became of every texture a viewport's level samples. */
   describeTextures: (viewport: RenderViewportId) =>
     __TAURI_INVOKE<Array<RenderTextureReport>>("plugin:render|describe_textures", { viewport }),
@@ -131,7 +133,7 @@ export const renderCommands = {
     ),
   /** Count what each shader table entry of a viewport's level draws across the sectors resident. */
   measureSurfaces: (viewport: RenderViewportId) =>
-    __TAURI_INVOKE<Array<RenderSurfaceGeometry>>("plugin:render|measure_surfaces", { viewport }),
+    __TAURI_INVOKE<Array<WorldSurfaceGeometry>>("plugin:render|measure_surfaces", { viewport }),
   /** Name what a viewport's level draws under a point, css pixels from its corner, or nothing. */
   pick: (viewport: RenderViewportId, x: number | null, y: number | null) =>
     __TAURI_INVOKE<
@@ -159,13 +161,13 @@ export const renderCommands = {
       | null
     >("plugin:render|pick", { viewport, x, y }),
   /** Stand one viewport's skinned models in a pose. */
-  poseModel: (viewport: RenderViewportId, pose: RenderModelPose) =>
+  poseModel: (viewport: RenderViewportId, pose: WorldModelPose) =>
     __TAURI_INVOKE<void>("plugin:render|pose_model", { viewport, pose }),
   /** Play a weather ambient effect near a viewport's camera at once, ending the one playing; none plays indoors. */
   playAmbientEffect: (viewport: RenderViewportId) =>
     __TAURI_INVOKE<void>("plugin:render|play_ambient_effect", { viewport }),
   /** Play a weather in a viewport's level from now on: a cycle by name, a keyframe set by hand, or nothing. */
-  playWeather: (viewport: RenderViewportId, play: RenderWeatherPlay, transition: ERenderWeatherTransition) =>
+  playWeather: (viewport: RenderViewportId, play: WorldWeatherPlay, transition: EWorldWeatherTransition) =>
     __TAURI_INVOKE<void>("plugin:render|play_weather", { viewport, play, transition }),
   /** Play a weather effect over a viewport's cycle from its clock's time, or end the one playing for none. */
   playWeatherEffect: (viewport: RenderViewportId, name: string | null) =>
@@ -177,10 +179,10 @@ export const renderCommands = {
   seekWeather: (viewport: RenderViewportId, time: number | null) =>
     __TAURI_INVOKE<void>("plugin:render|seek_weather", { viewport, time }),
   /** Hand a viewport one gesture the page heard over it. */
-  sendInput: (viewport: RenderViewportId, event: RenderInputEvent) =>
+  sendInput: (viewport: RenderViewportId, event: WorldInputEvent) =>
     __TAURI_INVOKE<void>("plugin:render|send_input", { viewport, event }),
   /** Describe a viewport's camera; described again from the same start, it keeps where it has been moved. */
-  setCamera: (viewport: RenderViewportId, camera: RenderCamera) =>
+  setCamera: (viewport: RenderViewportId, camera: WorldCamera) =>
     __TAURI_INVOKE<void>("plugin:render|set_camera", { viewport, camera }),
   /** Set the helpers drawn over one viewport's frame. */
   setOverlays: (viewport: RenderViewportId, overlays: Array<RenderOverlay>) =>
@@ -201,8 +203,14 @@ export const renderCommands = {
   setViewportLayout: (viewport: RenderViewportId, layout: RenderViewportLayout) =>
     __TAURI_INVOKE<void>("plugin:render|set_viewport_layout", { viewport, layout }),
   /** Set how a viewport's weather clock runs. */
-  setWeatherControl: (viewport: RenderViewportId, control: RenderWeatherControl) =>
+  setWeatherControl: (viewport: RenderViewportId, control: WorldWeatherControl) =>
     __TAURI_INVOKE<void>("plugin:render|set_weather_control", { viewport, control }),
+  /**
+   * Set what of one viewport's world plays: the weather's rain, bolts and wind, the campfires, the ambient effects, and
+   * which spawn groups stream in.
+   */
+  setWorldToggles: (viewport: RenderViewportId, toggles: WorldToggles) =>
+    __TAURI_INVOKE<void>("plugin:render|set_world_toggles", { viewport, toggles }),
   /** Draw the open level in a viewport, its sectors and textures read by the renderer; no session draws none. */
   showLevel: (viewport: RenderViewportId, sessionId: string | null) =>
     __TAURI_INVOKE<null>("plugin:render|show_level", { viewport, sessionId }),

@@ -1,14 +1,14 @@
 import { describe, expect, it } from "@jest/globals";
 
 import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
-import { RenderSectorSkip } from "@/core/ipc/types/xrf-renderer";
 import { SectorSkip } from "@/core/ipc/types/xrf-visual";
+import { WorldSectorSkip } from "@/core/ipc/types/xrf-world";
 import { ELevelProblemRule, ILevelProblemSources, listLevelProblems } from "@/core/level/lib/problems";
 import { EMPTY_LEVEL_SPAWN_REPORT } from "@/core/level/lib/spawn/level-spawn-report";
 import { IEditorProblem } from "@/core/shell/editor/EditorProblemsPanel";
 import { mockSurfaceDescriptor } from "@/fixtures/mocks/visual.mocks";
 
-function sectorOf(sector: number, skipped: ReadonlyArray<SectorSkip>): ReadonlyArray<RenderSectorSkip> {
+function sectorOf(sector: number, skipped: ReadonlyArray<SectorSkip>): ReadonlyArray<WorldSectorSkip> {
   return skipped.map((skip: SectorSkip) => ({ sector, skip }));
 }
 
@@ -75,7 +75,7 @@ describe("listLevelProblems", () => {
   // Geometry the packer could not read is simply absent from the picture, which is the hardest kind of wrong to
   // notice: nothing is drawn oddly, something is not drawn at all.
   it("names what a resident sector could not pack, and why it counts as missing", () => {
-    const sectors: ReadonlyArray<RenderSectorSkip> = sectorOf(4, [
+    const sectors: ReadonlyArray<WorldSectorSkip> = sectorOf(4, [
       { cause: "unsupported", drawable: 91, reason: "progressive geometry" },
     ]);
     const problems: Array<IEditorProblem> = listLevelProblems(mockSources({ skipped: sectors }));

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { ERenderCamera, ERenderOverlay, RenderCamera, RenderViewOptions } from "@/core/ipc/types/xrf-renderer";
+import { ERenderOverlay, RenderViewOptions } from "@/core/ipc/types/xrf-renderer";
+import { EWorldCamera, WorldCamera } from "@/core/ipc/types/xrf-world";
 import { toRawColor } from "@/core/render/lib/scene/render-color";
 import { toVisualCamera, toVisualOverlays, toVisualViewOptions } from "@/core/visuals/lib/render/visual-render";
 import { DEFAULT_VISUAL_PREVIEW_SCENE_CONFIG } from "@/core/visuals/lib/scene/scene-config";
@@ -10,11 +11,11 @@ import { mockRenderFeatures } from "@/fixtures/mocks/render.mocks";
 
 describe("toVisualCamera", () => {
   it("frames the model's sphere from the viewer's direction, far enough to fit it", () => {
-    const camera: RenderCamera = toVisualCamera({ center: [1, 2, 3], radius: 2 }, DEFAULT_VISUAL_PREVIEW_SCENE_CONFIG);
+    const camera: WorldCamera = toVisualCamera({ center: [1, 2, 3], radius: 2 }, DEFAULT_VISUAL_PREVIEW_SCENE_CONFIG);
     const [x, y, z] = camera.position.map((it) => it ?? 0);
     const distance: number = Math.hypot(x - 1, y - 2, z - 3);
 
-    expect(camera.kind).toBe(ERenderCamera.ORBIT);
+    expect(camera.kind).toBe(EWorldCamera.ORBIT);
     expect(camera.target).toEqual([1, 2, 3]);
     expect(distance).toBeGreaterThan(2);
     expect(camera.near ?? 0).toBeLessThan(distance);
@@ -39,8 +40,6 @@ describe("toVisualViewOptions", () => {
     expect(options.features.grass.isEnabled).toBe(false);
     expect(options.features.water.isEnabled).toBe(false);
     expect(options.features.exposure.isEnabled).toBe(false);
-    // The one model stands as a prop, which is a group the view keeps drawn.
-    expect(options.world.isSpawnedProps).toBe(true);
   });
 
   it("lays the uv checker over every surface while the toolbar asks, and draws them solid with the alpha off", () => {

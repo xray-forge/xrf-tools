@@ -5,7 +5,7 @@ use xrf_environment::WeatherDescriptor;
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
-pub enum RenderWeatherPlay {
+pub enum WorldWeatherPlay {
   /// Nothing: the level is lit by noon of `default_clear`, standing still.
   None,
   /// A cycle of the level's game, by name, read through the level's source.

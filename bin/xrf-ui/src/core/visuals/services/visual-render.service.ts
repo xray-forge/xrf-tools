@@ -2,13 +2,8 @@ import { inject, Injectable } from "@wirestate/core";
 import { BoundAction, comparer, reaction } from "@wirestate/mobx";
 import { Nullable } from "@xrf/types";
 
-import {
-  ERenderCameraCommand,
-  RenderLoadReport,
-  RenderModelPose,
-  RenderTextureReport,
-  RenderViewOptions,
-} from "@/core/ipc/types/xrf-renderer";
+import { RenderLoadReport, RenderTextureReport, RenderViewOptions } from "@/core/ipc/types/xrf-renderer";
+import { EWorldCameraCommand, WorldModelPose } from "@/core/ipc/types/xrf-world";
 import { NativeRenderSurfaceService } from "@/core/render/lib/native/native-render-surface-service";
 import { toNativeRenderHeight } from "@/core/render/lib/native/native-view-options";
 import { NativeViewport } from "@/core/render/lib/native/native-viewport";
@@ -50,7 +45,7 @@ export class VisualRenderService extends NativeRenderSurfaceService {
    * @param step - What to multiply the distance by.
    */
   public dolly(step: number): void {
-    this.viewport?.commandCamera({ kind: ERenderCameraCommand.DOLLY, step });
+    this.viewport?.commandCamera({ kind: EWorldCameraCommand.DOLLY, step });
   }
 
   /** Frames the open model again. */
@@ -79,12 +74,12 @@ export class VisualRenderService extends NativeRenderSurfaceService {
         { equals: comparer.structural, fireImmediately: true }
       ),
       reaction(
-        (): RenderModelPose => {
+        (): WorldModelPose => {
           const { frame, motion } = this.source.pose ?? BIND_POSE;
 
           return { frame, hiddenBones: [...(this.source.hiddenBoneIndices ?? NO_HIDDEN_BONES)], motion };
         },
-        (pose: RenderModelPose) => viewport.poseModel(pose),
+        (pose: WorldModelPose) => viewport.poseModel(pose),
         { equals: comparer.structural, fireImmediately: true }
       ),
       // Keyed by the switches, the extent and the joint alone: the overlays themselves are long arrays.
@@ -147,7 +142,7 @@ export class VisualRenderService extends NativeRenderSurfaceService {
 
     if (model && this.viewport) {
       this.viewport.setCamera(toVisualCamera(model.fit, this.config));
-      this.viewport.commandCamera({ kind: ERenderCameraCommand.RESET });
+      this.viewport.commandCamera({ kind: EWorldCameraCommand.RESET });
     }
   }
 }

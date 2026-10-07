@@ -4,11 +4,12 @@ use glam::{Mat4, Vec3};
 use xrf_engine_target::XrayEngine;
 use xrf_particles::ParticleLibrary;
 use xrf_renderer::{
-  AmbientGust, ParticleEmitterProxy, PlacedEffect, RenderAmbient, RenderAmbientEffect, RenderAmbientEffectReport,
-  RenderAmbientReport, RenderSceneUpdate, WeatherRandom,
+  AmbientGust, ParticleEmitterProxy, PlacedEffect, RenderAmbient, RenderAmbientEffect, RenderSceneUpdate, WeatherRandom,
 };
 use xrf_renderer_core::{ProxyAllocator, ProxyHandle};
 
+use crate::contract::world_ambient_effect_report::WorldAmbientEffectReport;
+use crate::contract::world_ambient_report::WorldAmbientReport;
 use crate::level::ambient_frame::AmbientFrame;
 use crate::level::ambient_wind::AmbientWind;
 
@@ -136,9 +137,9 @@ impl LevelAmbientEffects {
 
   /// Where they stand at a moment of the particles' clock: what plays and how much of its life is left, and how long
   /// until the next may start.
-  pub fn report(&self, now: u64, is_indoors: bool) -> RenderAmbientReport {
-    RenderAmbientReport {
-      effect: self.playing.as_ref().map(|playing| RenderAmbientEffectReport {
+  pub fn report(&self, now: u64, is_indoors: bool) -> WorldAmbientReport {
+    WorldAmbientReport {
+      effect: self.playing.as_ref().map(|playing| WorldAmbientEffectReport {
         name: playing.name.clone(),
         particles: playing.particles.clone(),
         remaining: if playing.is_stopping {

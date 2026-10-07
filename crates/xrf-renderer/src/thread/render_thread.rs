@@ -231,19 +231,23 @@ impl RenderThread {
           viewport.selection = selection;
         }
       }
-      RenderCommand::Pick { id, pick } => match self.viewports.get_mut(&id) {
-        Some(viewport) if viewport.level.is_some() => viewport.picks.push(pick),
-        // Nothing is drawn there to pick.
-        Some(viewport) => {
-          let _ = pick.reply.send(Ok(RenderPick {
-            frame: viewport.frame,
-            hit: None,
-          }));
+      RenderCommand::Pick { id, x, y, reply } => {
+        let pick: PendingPick = PendingPick { x, y, reply };
+
+        match self.viewports.get_mut(&id) {
+          Some(viewport) if viewport.level.is_some() => viewport.picks.push(pick),
+          // Nothing is drawn there to pick.
+          Some(viewport) => {
+            let _ = pick.reply.send(Ok(RenderPick {
+              frame: viewport.frame,
+              hit: None,
+            }));
+          }
+          None => {
+            let _ = pick.reply.send(Ok(RenderPick { frame: 0, hit: None }));
+          }
         }
-        None => {
-          let _ = pick.reply.send(Ok(RenderPick { frame: 0, hit: None }));
-        }
-      },
+      }
       RenderCommand::DescribeTextures { id, reply } => {
         let described: Vec<RenderTextureReport> = self
           .gpu

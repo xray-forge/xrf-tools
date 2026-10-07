@@ -5,7 +5,7 @@ use xrf_visual::SectorSkip;
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct RenderSectorSkip {
+pub struct WorldSectorSkip {
   pub sector: u32,
   pub skip: SectorSkip,
 }

@@ -2,12 +2,16 @@ use std::sync::Arc;
 
 use glam::Vec3;
 use xrf_renderer::{
-  ParticleEmitterProxy, PlacedEffect, RenderAmbientReport, RenderLevelProblems, RenderLevelSource, RenderModelPose,
-  RenderSceneUpdate, RenderSectorFailure, RenderStreamingProgress, RenderSurfaceGeometry, RenderViewOptions,
-  RenderWorkers,
+  ParticleEmitterProxy, PlacedEffect, RenderLevelSource, RenderSceneUpdate, RenderSectorFailure,
+  RenderStreamingProgress, RenderViewOptions, RenderWorkers,
 };
 use xrf_renderer_core::ProxyHandle;
 
+use crate::contract::world_ambient_report::WorldAmbientReport;
+use crate::contract::world_level_problems::WorldLevelProblems;
+use crate::contract::world_model_pose::WorldModelPose;
+use crate::contract::world_surface_geometry::WorldSurfaceGeometry;
+use crate::contract::world_toggles::WorldToggles;
 use crate::level::ambient_frame::AmbientFrame;
 use crate::level::effects_frame::EffectsFrame;
 use crate::level::level_animation::LevelAnimation;
@@ -35,7 +39,7 @@ impl WorldLevel {
     self.streaming.get_source()
   }
 
-  pub fn set_pose(&mut self, pose: &RenderModelPose) {
+  pub fn set_pose(&mut self, pose: &WorldModelPose) {
     self.animation.set_pose(pose);
   }
 
@@ -45,7 +49,7 @@ impl WorldLevel {
   }
 
   /// Where the weather's ambient effects stand, none until the particles are read.
-  pub fn report_ambient(&self) -> Option<RenderAmbientReport> {
+  pub fn report_ambient(&self) -> Option<WorldAmbientReport> {
     self.effects.report_ambient()
   }
 
@@ -54,7 +58,7 @@ impl WorldLevel {
   /// take in of the last frame's posts, and `finished` the effects it finished.
   pub fn advance(
     &mut self,
-    (options, ambient): (&RenderViewOptions, Option<AmbientFrame<'_>>),
+    (options, toggles, ambient): (&RenderViewOptions, &WorldToggles, Option<AmbientFrame<'_>>),
     eye: Vec3,
     failures: Vec<RenderSectorFailure>,
     finished: Vec<(ProxyHandle<ParticleEmitterProxy>, PlacedEffect)>,
@@ -64,7 +68,7 @@ impl WorldLevel {
     self.streaming.stream(
       &mut updates,
       &mut self.animation,
-      (options.world.get_hidden_spawn_groups(), failures),
+      (toggles.get_hidden_spawn_groups(), failures),
     );
     self.animation.pose(&mut updates, self.streaming.get_source());
 
@@ -72,7 +76,7 @@ impl WorldLevel {
 
     let effects: EffectsFrame = self.effects.advance(
       &mut updates,
-      (options, ambient),
+      (options, toggles, ambient),
       eye,
       self.streaming.list_light_followed(),
     );
@@ -92,11 +96,11 @@ impl WorldLevel {
     self.animation.list_segments()
   }
 
-  pub fn measure_surfaces(&self) -> Vec<RenderSurfaceGeometry> {
+  pub fn measure_surfaces(&self) -> Vec<WorldSurfaceGeometry> {
     self.streaming.measure_surfaces()
   }
 
-  pub fn describe_problems(&self) -> RenderLevelProblems {
+  pub fn describe_problems(&self) -> WorldLevelProblems {
     self.streaming.describe_problems()
   }
 }

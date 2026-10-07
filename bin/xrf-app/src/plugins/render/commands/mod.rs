@@ -22,6 +22,7 @@ pub mod set_selection;
 pub mod set_view_options;
 pub mod set_viewport_layout;
 pub mod set_weather_control;
+pub mod set_world_toggles;
 pub mod show_level;
 pub mod show_model;
 pub mod show_texture;

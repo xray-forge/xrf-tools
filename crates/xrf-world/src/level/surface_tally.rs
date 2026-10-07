@@ -1,7 +1,10 @@
 use std::collections::HashMap;
 
-use xrf_renderer::{RenderSurfaceGeometry, RenderSurfaceSpan, get_section_bytes};
+use xrf_renderer::get_section_bytes;
 use xrf_visual::{SectorGeometry, SectorPackage};
+
+use crate::contract::world_surface_geometry::WorldSurfaceGeometry;
+use crate::contract::world_surface_span::WorldSurfaceSpan;
 
 /// Indices looked at per draw when measuring a coordinate's range.
 const SPAN_SAMPLES: u32 = 2048;
@@ -18,7 +21,7 @@ const TREE_COMPONENTS: u32 = 4;
 /// How much each shader table entry of a level draws, counted sector by sector as the loader packs them.
 #[derive(Default)]
 pub struct SurfaceTally {
-  entries: HashMap<u16, RenderSurfaceGeometry>,
+  entries: HashMap<u16, WorldSurfaceGeometry>,
 }
 
 impl SurfaceTally {
@@ -62,31 +65,31 @@ impl SurfaceTally {
       self
         .entries
         .entry(shader_id)
-        .or_insert_with(|| RenderSurfaceGeometry::new(shader_id))
+        .or_insert_with(|| WorldSurfaceGeometry::new(shader_id))
         .merge(&geometry);
     }
   }
 
   /// Every entry something draws, by shader id.
-  pub fn list(&self) -> Vec<RenderSurfaceGeometry> {
-    let mut listed: Vec<RenderSurfaceGeometry> = self.entries.values().copied().collect();
+  pub fn list(&self) -> Vec<WorldSurfaceGeometry> {
+    let mut listed: Vec<WorldSurfaceGeometry> = self.entries.values().copied().collect();
 
     listed.sort_unstable_by_key(|geometry| geometry.shader_id);
 
     listed
   }
 
-  fn add(&mut self, shader_id: u16, drawables: u32, triangles: u32, drawn: Option<RenderSurfaceSpan>) {
+  fn add(&mut self, shader_id: u16, drawables: u32, triangles: u32, drawn: Option<WorldSurfaceSpan>) {
     self
       .entries
       .entry(shader_id)
-      .or_insert_with(|| RenderSurfaceGeometry::new(shader_id))
+      .or_insert_with(|| WorldSurfaceGeometry::new(shader_id))
       .add(drawables, triangles, drawn);
   }
 }
 
 /// The range one draw's base coordinate covers, sampled across its indices; none where the geometry carries none.
-fn measure_span(geometry: &SectorGeometry, buffer: &[u8], start: u32, count: u32) -> Option<RenderSurfaceSpan> {
+fn measure_span(geometry: &SectorGeometry, buffer: &[u8], start: u32, count: u32) -> Option<WorldSurfaceSpan> {
   let uvs: &[u8] = get_section_bytes(buffer, geometry.uvs.as_ref()?);
   let indices: &[u8] = get_section_bytes(buffer, &geometry.indices);
   let tangents: &[u8] = geometry
@@ -99,7 +102,7 @@ fn measure_span(geometry: &SectorGeometry, buffer: &[u8], start: u32, count: u32
     .map_or(&[], |it| get_section_bytes(buffer, it));
   let end: u32 = start.saturating_add(count).min((indices.len() / 4) as u32);
   let stride: usize = (count / SPAN_SAMPLES).max(1) as usize;
-  let mut span: Option<RenderSurfaceSpan> = None;
+  let mut span: Option<WorldSurfaceSpan> = None;
 
   for at in (start..end).step_by(stride) {
     let vertex: usize = read_u32(indices, at as usize) as usize;
@@ -123,7 +126,7 @@ fn measure_span(geometry: &SectorGeometry, buffer: &[u8], start: u32, count: u32
     };
 
     if let Some((u, v)) = coordinate.filter(|(u, v)| u.is_finite() && v.is_finite()) {
-      let at: RenderSurfaceSpan = RenderSurfaceSpan::at(u, v);
+      let at: WorldSurfaceSpan = WorldSurfaceSpan::at(u, v);
 
       span = Some(span.map_or(at, |span| span.merge(at)));
     }

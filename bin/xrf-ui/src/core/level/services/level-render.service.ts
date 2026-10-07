@@ -9,23 +9,26 @@ import {
   SessionSnapshot,
 } from "@/core/ipc/types/xrf-app";
 import {
-  ERenderCameraCommand,
   ERenderLevelHit,
   ERenderTextureState,
-  ERenderWeatherPlay,
-  RenderCamera,
-  RenderCameraPose,
   RenderLevelHit,
   RenderLoadReport,
-  RenderSurfaceGeometry,
-  RenderSurfaceSpan,
   RenderTextureReport,
   RenderTextureState,
   RenderViewOptions,
-  RenderWeatherControl,
-  RenderWeatherPlay,
-  RenderWeatherReport,
 } from "@/core/ipc/types/xrf-renderer";
+import {
+  EWorldCameraCommand,
+  EWorldWeatherPlay,
+  WorldCamera,
+  WorldCameraPose,
+  WorldSurfaceGeometry,
+  WorldSurfaceSpan,
+  WorldToggles,
+  WorldWeatherControl,
+  WorldWeatherPlay,
+  WorldWeatherReport,
+} from "@/core/ipc/types/xrf-world";
 import { ILevelGoTo, toLevelGoToViewpoint } from "@/core/level/lib/camera/level-camera-goto";
 import { ILevelCameraOptions } from "@/core/level/lib/camera/level-camera-options";
 import { toLevelCameraReading } from "@/core/level/lib/camera/level-camera-reading";
@@ -50,7 +53,7 @@ import { LevelWeatherService } from "@/core/level/services/level-weather.service
 import { listenRenderClicks } from "@/core/render/lib/frame/render-clicks";
 import { IRenderViewPoint } from "@/core/render/lib/frame/render-view-point";
 import { NativeRenderSurfaceService } from "@/core/render/lib/native/native-render-surface-service";
-import { toNativeRenderHeight } from "@/core/render/lib/native/native-view-options";
+import { toNativeRenderHeight, toNativeWorldToggles } from "@/core/render/lib/native/native-view-options";
 import { NativeViewport } from "@/core/render/lib/native/native-viewport";
 import { toXraySpace } from "@/core/render/lib/scene/render-space";
 import { SettingsService } from "@/core/settings/services/settings";
@@ -86,16 +89,16 @@ export function toLevelPick(hit: RenderLevelHit, spawn: Nullable<LevelSpawnObjec
  * @param measured - What a native viewport counted each shader table entry of its level drawing.
  * @returns The same, keyed by shader id.
  */
-export function toLevelSurfaceGeometry(measured: Array<RenderSurfaceGeometry>): Map<number, ILevelSurfaceGeometry> {
+export function toLevelSurfaceGeometry(measured: Array<WorldSurfaceGeometry>): Map<number, ILevelSurfaceGeometry> {
   return new Map(
-    measured.map(({ shaderId, drawables, triangles, span, narrowest }: RenderSurfaceGeometry) => [
+    measured.map(({ shaderId, drawables, triangles, span, narrowest }: WorldSurfaceGeometry) => [
       shaderId,
       { drawables, narrowest: toLevelSurfaceSpan(narrowest), span: toLevelSurfaceSpan(span), triangles },
     ])
   );
 }
 
-function toLevelSurfaceSpan(span: Nullable<RenderSurfaceSpan>): Nullable<ILevelSurfaceSpan> {
+function toLevelSurfaceSpan(span: Nullable<WorldSurfaceSpan>): Nullable<ILevelSurfaceSpan> {
   return span ? { uMax: span.uMax ?? 0, uMin: span.uMin ?? 0, vMax: span.vMax ?? 0, vMin: span.vMin ?? 0 } : null;
 }
 
@@ -211,6 +214,12 @@ export class LevelRenderService extends NativeRenderSurfaceService {
     });
   }
 
+  /** What of the level's world the toolbar lets play. */
+  @Computed()
+  public get worldToggles(): WorldToggles {
+    return toNativeWorldToggles(this.viewService.options);
+  }
+
   /**
    * Stands the camera at a place, facing the way asked.
    *
@@ -270,6 +279,11 @@ export class LevelRenderService extends NativeRenderSurfaceService {
         { equals: comparer.structural, fireImmediately: true }
       ),
       reaction(
+        () => this.worldToggles,
+        (toggles: WorldToggles) => viewport.setWorldToggles(toggles),
+        { equals: comparer.structural, fireImmediately: true }
+      ),
+      reaction(
         () => this.viewportService.picked,
         (picked: Nullable<TLevelPick>) => viewport.setSelection(toLevelPickSelection(picked)),
         { fireImmediately: true }
@@ -307,17 +321,17 @@ export class LevelRenderService extends NativeRenderSurfaceService {
       ),
       reaction(
         () => weatherService.weather,
-        (play: Nullable<RenderWeatherPlay>) =>
-          viewport.playWeather(play ?? { kind: ERenderWeatherPlay.NONE }, weatherService.transition),
+        (play: Nullable<WorldWeatherPlay>) =>
+          viewport.playWeather(play ?? { kind: EWorldWeatherPlay.NONE }, weatherService.transition),
         { equals: comparer.structural, fireImmediately: true }
       ),
       reaction(
-        (): RenderWeatherControl => ({
+        (): WorldWeatherControl => ({
           ...weatherService.control,
           // The keyframe set by hand stands its sun by its own angles.
           isDynamicSun: weatherService.control.isDynamicSun && !weatherService.isManual,
         }),
-        (control: RenderWeatherControl) => viewport.setWeatherControl(control),
+        (control: WorldWeatherControl) => viewport.setWeatherControl(control),
         { equals: comparer.structural, fireImmediately: true }
       ),
       reaction(
@@ -377,11 +391,11 @@ export class LevelRenderService extends NativeRenderSurfaceService {
     this.viewpoint = null;
   }
 
-  protected onCamera(pose: RenderCameraPose): void {
+  protected onCamera(pose: WorldCameraPose): void {
     this.viewportService.noteCamera(toLevelCameraReading(pose));
   }
 
-  protected onWeather(report: Nullable<RenderWeatherReport>): void {
+  protected onWeather(report: Nullable<WorldWeatherReport>): void {
     this.weatherService.noteReport(report);
   }
 
@@ -453,10 +467,10 @@ export class LevelRenderService extends NativeRenderSurfaceService {
 
     this.viewpoint = viewpoint;
     viewport?.setCamera(this.toCamera(viewpoint, this.viewService.camera));
-    viewport?.commandCamera({ kind: ERenderCameraCommand.RESET });
+    viewport?.commandCamera({ kind: EWorldCameraCommand.RESET });
   }
 
-  private toCamera(viewpoint: ILevelViewpoint, options: ILevelCameraOptions): RenderCamera {
+  private toCamera(viewpoint: ILevelViewpoint, options: ILevelCameraOptions): WorldCamera {
     return toLevelCameraAt(viewpoint, options, this.config);
   }
 }

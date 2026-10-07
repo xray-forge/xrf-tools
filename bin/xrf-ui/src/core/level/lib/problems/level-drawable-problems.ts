@@ -1,5 +1,6 @@
-import { RenderLoadFailure, RenderSectorSkip } from "@/core/ipc/types/xrf-renderer";
+import { RenderLoadFailure } from "@/core/ipc/types/xrf-renderer";
 import { EVisualSkipCause, SectorSkip } from "@/core/ipc/types/xrf-visual";
+import { WorldSectorSkip } from "@/core/ipc/types/xrf-world";
 import { ELevelProblemRule } from "@/core/level/lib/problems/level-problem-rule";
 import { IEditorProblem } from "@/core/shell/editor/EditorProblemsPanel";
 
@@ -12,7 +13,7 @@ import { IEditorProblem } from "@/core/shell/editor/EditorProblemsPanel";
  * @returns The rows, each naming the sector, and the visual where one was left out.
  */
 export function listDrawableProblems(
-  skipped: ReadonlyArray<RenderSectorSkip>,
+  skipped: ReadonlyArray<WorldSectorSkip>,
   sectors: ReadonlyArray<RenderLoadFailure> = []
 ): Array<IEditorProblem> {
   return [
@@ -21,7 +22,7 @@ export function listDrawableProblems(
       rule: ELevelProblemRule.DRAWABLE,
       subject: `sector ${name}`,
     })),
-    ...skipped.map(({ sector, skip }: RenderSectorSkip) => ({
+    ...skipped.map(({ sector, skip }: WorldSectorSkip) => ({
       message: `${describeCause(skip)}: ${skip.reason}`,
       rule: ELevelProblemRule.DRAWABLE,
       subject: `sector ${sector}, visual ${skip.drawable}`,
