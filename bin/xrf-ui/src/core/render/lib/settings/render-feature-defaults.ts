@@ -23,6 +23,9 @@ export const RENDER_SHADOW_CASCADE_WIDTHS: ReadonlyArray<number> = [20, 40, 160,
 /** Cascades the sun's shadow can be cut into at most: the sun reads their texels from one `vec4`. */
 export const RENDER_MAX_SHADOW_CASCADES: number = 4;
 
+/** Local lights a pixel marches contact shadows towards at most: the lights' shader keeps their weights in an array. */
+export const RENDER_MAX_CONTACT_SHADOW_LIGHTS: number = 8;
+
 /** XeGTAO's defaults, at a metre. */
 export const DEFAULT_RENDER_AMBIENT_OCCLUSION_SETTINGS: TRenderAmbientOcclusionSettings = {
   isEnabled: true,
@@ -67,10 +70,11 @@ export const DEFAULT_RENDER_LOD_SETTINGS: TRenderLodSettings = {
   ssaGlodStart: 256,
 };
 
-/** The engine's own: no contact shadows, and their strengths for when they are drawn. */
+/** The engine's own: no contact shadows, and their strengths for when they are drawn, towards four lights a pixel. */
 export const DEFAULT_RENDER_CONTACT_SHADOW_SETTINGS: TRenderContactShadowSettings = {
   intensity: 1,
   length: 0.6,
+  lights: 4,
   mode: ERenderContactShadowMode.ENGINE,
   steps: 16,
   thickness: 0.1,

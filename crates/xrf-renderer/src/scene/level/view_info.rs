@@ -38,8 +38,10 @@ pub struct ViewInfo {
   pub bloom: [BloomUniform; 3],
   /// What the ambient occlusion searches by this frame.
   pub occlusion_settings: AmbientOcclusionUniform,
-  /// What the contact shadows march by this frame, none where they are not drawn.
-  pub contact_shadows: Option<ContactShadowUniform>,
+  /// What the contact shadows march by this frame: towards no light where none are drawn.
+  pub contact_shadows: ContactShadowUniform,
+  /// Whether the sun's contact shadows pass draws this frame.
+  pub is_sun_contact: bool,
   /// What the rain, the wet surfaces and a strike draw by this frame, and the weather textures they draw with.
   pub rain: RainUniform,
   pub wet: WetUniform,
@@ -112,7 +114,8 @@ impl Default for ViewInfo {
       upscale: UpscaleUniform::default(),
       bloom: [BloomUniform::default(); 3],
       occlusion_settings: AmbientOcclusionUniform::default(),
-      contact_shadows: None,
+      contact_shadows: ContactShadowUniform::default(),
+      is_sun_contact: false,
       rain: RainUniform::default(),
       wet: WetUniform::default(),
       thunder: ThunderUniform::default(),

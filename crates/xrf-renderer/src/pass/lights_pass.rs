@@ -20,7 +20,8 @@ pub struct LightsPass {
   view_layout: wgpu::BindGroupLayout,
   texture_layout: wgpu::BindGroupLayout,
   binning: wgpu::ComputePipeline,
-  pipeline: wgpu::RenderPipeline,
+  /// Draws without contact shadows, and with them: the march's registers cost every pixel even where it never runs.
+  pipelines: [wgpu::RenderPipeline; 2],
   generation: u64,
 }
 
@@ -36,12 +37,12 @@ impl LightsPass {
   ) -> XrfResult<Self> {
     let binning_layout: wgpu::BindGroupLayout = LightBinningParameters::create_layout(device);
     let layout: wgpu::BindGroupLayout = LightsParameters::create_layout(device);
-    let (binning, pipeline) =
+    let (binning, pipelines) =
       Self::create_pipelines(device, shaders, &binning_layout, view_layout, &layout, texture_layout)?;
 
     Ok(Self {
       binning,
-      pipeline,
+      pipelines,
       binning_layout,
       layout,
       view_layout: view_layout.clone(),
@@ -62,9 +63,9 @@ impl LightsPass {
         &self.layout,
         &self.texture_layout,
       ) {
-        Ok((binning, pipeline)) => {
+        Ok((binning, pipelines)) => {
           self.binning = binning;
-          self.pipeline = pipeline;
+          self.pipelines = pipelines;
         }
         Err(error) => log::error!("Lights rejected, lighting with the last one: {error}"),
       }
@@ -82,19 +83,20 @@ impl LightsPass {
     pass.dispatch_workgroups(LIGHT_CLUSTERS.div_ceil(BINNING_WORKGROUP), 1, 1);
   }
 
-  /// Adds every binned light's light to the light target the pass draws into.
+  /// Adds every binned light's light to the light target the pass draws into, marching contact shadows towards the
+  /// strongest where `is_contact`.
   pub fn record_draw(
     &self,
     context: &mut RasterContext<'_>,
     view: &ViewBinding,
     parameters: &LightsParameters<'_>,
-    textures: &wgpu::BindGroup,
+    (textures, is_contact): (&wgpu::BindGroup, bool),
   ) {
     context.bind(parameters);
 
     let pass: &mut wgpu::RenderPass<'static> = context.get_pass();
 
-    pass.set_pipeline(&self.pipeline);
+    pass.set_pipeline(&self.pipelines[is_contact as usize]);
     pass.set_bind_group(0, &view.bind_group, &[]);
     pass.set_bind_group(2, textures, &[]);
     pass.draw(0..3, 0..1);
@@ -107,7 +109,7 @@ impl LightsPass {
     view_layout: &wgpu::BindGroupLayout,
     layout: &wgpu::BindGroupLayout,
     texture_layout: &wgpu::BindGroupLayout,
-  ) -> XrfResult<(wgpu::ComputePipeline, wgpu::RenderPipeline)> {
+  ) -> XrfResult<(wgpu::ComputePipeline, [wgpu::RenderPipeline; 2])> {
     let binning_module: wgpu::ShaderModule = create_module(device, shaders, "frame/light_binning")?;
     let module: wgpu::ShaderModule = create_module(device, shaders, "frame/lights")?;
     let binning_pipeline_layout: wgpu::PipelineLayout =
@@ -137,37 +139,42 @@ impl LightsPass {
       dst_factor: wgpu::BlendFactor::One,
       operation: wgpu::BlendOperation::Add,
     };
-    let pipeline: wgpu::RenderPipeline = create_checked(device, "lights", || {
-      device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-        label: Some("lights"),
-        layout: Some(&pipeline_layout),
-        vertex: wgpu::VertexState {
-          module: &module,
-          entry_point: Some("vs_fullscreen"),
-          compilation_options: Default::default(),
-          buffers: &[],
-        },
-        fragment: Some(wgpu::FragmentState {
-          module: &module,
-          entry_point: Some("fs_lights"),
-          compilation_options: Default::default(),
-          targets: &[Some(wgpu::ColorTargetState {
-            format: ViewTargets::LIGHT,
-            blend: Some(wgpu::BlendState {
-              color: additive,
-              alpha: additive,
-            }),
-            write_mask: wgpu::ColorWrites::ALL,
-          })],
-        }),
-        primitive: Default::default(),
-        depth_stencil: None,
-        multisample: Default::default(),
-        multiview_mask: None,
-        cache: None,
+    let create = |is_contact: bool| -> XrfResult<wgpu::RenderPipeline> {
+      create_checked(device, "lights", || {
+        device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+          label: Some("lights"),
+          layout: Some(&pipeline_layout),
+          vertex: wgpu::VertexState {
+            module: &module,
+            entry_point: Some("vs_fullscreen"),
+            compilation_options: Default::default(),
+            buffers: &[],
+          },
+          fragment: Some(wgpu::FragmentState {
+            module: &module,
+            entry_point: Some("fs_lights"),
+            compilation_options: wgpu::PipelineCompilationOptions {
+              constants: &[("CONTACT_MARCHED", f64::from(u8::from(is_contact)))],
+              ..Default::default()
+            },
+            targets: &[Some(wgpu::ColorTargetState {
+              format: ViewTargets::LIGHT,
+              blend: Some(wgpu::BlendState {
+                color: additive,
+                alpha: additive,
+              }),
+              write_mask: wgpu::ColorWrites::ALL,
+            })],
+          }),
+          primitive: Default::default(),
+          depth_stencil: None,
+          multisample: Default::default(),
+          multiview_mask: None,
+          cache: None,
+        })
       })
-    })?;
+    };
 
-    Ok((binning, pipeline))
+    Ok((binning, [create(false)?, create(true)?]))
   }
 }

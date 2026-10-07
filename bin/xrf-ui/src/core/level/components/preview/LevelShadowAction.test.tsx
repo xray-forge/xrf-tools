@@ -69,6 +69,7 @@ describe("LevelShadowAction", () => {
     );
 
     expect(getByRole("slider", { name: "Contact length" })).toBeInTheDocument();
+    expect(getByRole("slider", { name: "Contact lights" })).toHaveAttribute("aria-valuetext", "4 lights");
     expect(getByRole("button", { hidden: true, name: "Shadows" })).toHaveAccessibleDescription(
       "Shadows in 4 cascades, the widest 480 m across, at 2048, with contact shadows. Right-click for its settings"
     );

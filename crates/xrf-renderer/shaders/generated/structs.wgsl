@@ -111,6 +111,7 @@ struct ContactShadows {
   steps: u32,
   reach: f32,
   noise: f32,
+  lights: u32,
 }
 
 struct Lights {

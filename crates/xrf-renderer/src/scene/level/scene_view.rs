@@ -18,7 +18,6 @@ use crate::contract::render_antialiasing::RenderAntialiasing;
 use crate::contract::render_applied_report::RenderAppliedReport;
 use crate::contract::render_applied_shadows::RenderAppliedShadows;
 use crate::contract::render_bloom_settings::RenderBloomSettings;
-use crate::contract::render_contact_shadow_settings::RenderContactShadowSettings;
 use crate::contract::render_debug_view::RenderDebugView;
 use crate::contract::render_level_hit::RenderLevelHit;
 use crate::contract::render_lights_report::RenderLightsReport;
@@ -28,6 +27,7 @@ use crate::contract::render_pool_use::RenderPoolUse;
 use crate::contract::render_rect::RenderRect;
 use crate::contract::render_selection::RenderSelection;
 use crate::contract::render_selection_target::RenderSelectionTarget;
+use crate::contract::render_shadow_settings::RenderShadowSettings;
 use crate::contract::render_static_report::RenderStaticReport;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::contract::render_water_settings::RenderWaterSettings;
@@ -443,11 +443,21 @@ impl SceneView {
       self.state.noise_frame = self.state.noise_frame.wrapping_add(1);
     }
 
-    let contact: &RenderContactShadowSettings = &options.features.shadows.contact;
+    // Marched only where the view is lit and solid: the sun's under its cascades, the lights' with or without them.
+    let shadows: &RenderShadowSettings = &options.features.shadows;
+    let is_marched: bool = options.mode.is_lit && !options.mode.is_wireframe;
 
-    self.info.contact_shadows =
-      (options.mode.is_lit && !options.mode.is_wireframe && options.features.shadows.is_enabled && contact.is_drawn())
-        .then(|| ContactShadowUniform::new(contact, self.info.lighting.to_sun, height, self.state.noise_frame));
+    self.info.is_sun_contact = is_marched && shadows.is_sun_contact_drawn();
+    self.info.contact_shadows = if is_marched {
+      ContactShadowUniform::new(
+        &shadows.contact,
+        self.info.lighting.to_sun,
+        height,
+        self.state.noise_frame,
+      )
+    } else {
+      ContactShadowUniform::default()
+    };
 
     scene.particles.fill(view, options, &mut self.state.particles);
 
@@ -648,34 +658,34 @@ impl SceneView {
         .record(move |context| passes.lights.record_binning(context, &parameters));
     }
 
+    let contact: UniformBinding<ContactShadowUniform> = runtime.push_uniform(&self.info.contact_shadows);
     // The contact shadows the sun multiplies its own by, or a lit texel where none are drawn.
-    let contact_shadows: GraphTexture = match &self.info.contact_shadows {
-      Some(contact) => {
-        let (width, height) = targets.size;
-        let marched: GraphTexture = graph.create_texture(GraphTextureDescriptor::new_2d(
-          "contact shadows",
-          width,
-          height,
-          ContactShadowPass::FORMAT,
-        ));
-        let parameters: ContactShadowParameters = ContactShadowParameters {
-          normal_target: targets.normal,
-          depth_target: targets.depth,
-          contact: runtime.push_uniform(contact),
-        };
+    let contact_shadows: GraphTexture = if self.info.is_sun_contact {
+      let (width, height) = targets.size;
+      let marched: GraphTexture = graph.create_texture(GraphTextureDescriptor::new_2d(
+        "contact shadows",
+        width,
+        height,
+        ContactShadowPass::FORMAT,
+      ));
+      let parameters: ContactShadowParameters = ContactShadowParameters {
+        normal_target: targets.normal,
+        depth_target: targets.depth,
+        contact,
+      };
 
-        graph
-          .add_raster_pass("contact shadows")
-          .parameters(&parameters)
-          .color(GraphColorAttachment::new(
-            marched,
-            wgpu::LoadOp::Clear(wgpu::Color::WHITE),
-          ))
-          .record(move |context| passes.contact_shadows.record(context, view, &parameters));
+      graph
+        .add_raster_pass("contact shadows")
+        .parameters(&parameters)
+        .color(GraphColorAttachment::new(
+          marched,
+          wgpu::LoadOp::Clear(wgpu::Color::WHITE),
+        ))
+        .record(move |context| passes.contact_shadows.record(context, view, &parameters));
 
-        marched
-      }
-      None => bindings.import_view(graph, "contact shadows lit", passes.contact_shadows.get_lit()),
+      marched
+    } else {
+      bindings.import_view(graph, "contact shadows lit", passes.contact_shadows.get_lit())
     };
     let sun: SunParameters = SunParameters {
       normal_target: targets.normal,
@@ -710,13 +720,19 @@ impl SceneView {
         items: StorageArray::new(items),
         lights: lights_uniform,
         shadow_atlas: bindings.import_view(graph, "light shadow atlas", scene.lights.get_shadow_atlas()),
+        contact,
       };
+      let is_contact: bool = self.info.contact_shadows.lights > 0;
 
       graph
         .add_raster_pass("lights")
         .parameters(&parameters)
         .color(GraphColorAttachment::new(targets.light, wgpu::LoadOp::Load))
-        .record(move |context| passes.lights.record_draw(context, view, &parameters, textures));
+        .record(move |context| {
+          passes
+            .lights
+            .record_draw(context, view, &parameters, (textures, is_contact))
+        });
     }
 
     // The overflow, read back for a report a frame or more later: an effect the graph cannot see.
