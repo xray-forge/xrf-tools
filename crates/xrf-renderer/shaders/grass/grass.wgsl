@@ -54,8 +54,6 @@ const DEFAULT_GLOSS: f32 = 2.0 / 255.0;
 // How far below its foot a tuft's normals point from: up, and never zero.
 const NORMAL_DROP: f32 = 0.75;
 
-// The lighting model's slice of the material table for the default, Blinn: `(1 + 0.5) / 4`.
-const MATERIAL_SLICE: f32 = 0.375;
 
 struct GrassVarying {
   @builtin(position) clip: vec4<f32>,
@@ -190,7 +188,8 @@ fn fs_grass(in: GrassVarying) -> GrassOutput {
 
   out.albedo = vec4<f32>(mix(untextured_color(vec3<f32>(1.0)), base.rgb, camera.switches.x), DEFAULT_GLOSS);
   out.normal = octahedral_encode(normal);
-  out.material = vec4<f32>(in.hemi, in.sun, MATERIAL_SLICE, encode_marks(false, false, is_flora, false, false, true));
+  out.material =
+    vec4<f32>(in.hemi, in.sun, GRASS_MATERIAL_SLICE, encode_marks(false, false, is_flora, false, false, true));
   out.motion = camera_motion(in.world, in.world + in.moved);
 
   return out;

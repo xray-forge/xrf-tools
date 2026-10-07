@@ -269,9 +269,71 @@ fn shade_scene_hit(
 
   let lamps: vec4<f32> = scene_lamps(lifted, facing, toward, met.slice, lut, lut_sampler);
   let occlusion: f32 = mix(1.0, select(met.hemi, clamp(met.hemi, 0.3, 1.0), is_crown), camera.switches.z);
+  let visible: f32 = scene_occlusion(lifted, facing, width, own);
 
   return hmodel(state, lut, lut_sampler, environment_0, environment_1, cube_sampler, vec4<f32>(met.albedo, 0.0),
-    sun + lamps, facing, toward, met.slice, occlusion, vec3<f32>(1.0));
+    sun + lamps, facing, toward, met.slice, occlusion, vec3<f32>(visible));
+}
+
+// Metres the occlusion's rays reach from a traced hit, and how many it casts.
+const SCENE_OCCLUSION_REACH: f32 = 1.5;
+const SCENE_OCCLUSION_RAYS: u32 = 4u;
+
+// How much of the light about it reaches a traced hit, which its hemisphere and ambient are lit by as the frame's
+// occlusion lets them: the share of a few short rays from it, half way between its normal and the ground, turned by its
+// place, that meet nothing within `SCENE_OCCLUSION_REACH`, the cut-out geometry at `passed` aside. Without it the trace
+// read a quarter brighter than the screen's own reflection of the same bank, which the frame's occlusion darkens.
+fn scene_occlusion(position: vec3<f32>, normal: vec3<f32>, width: f32, passed: u32) -> f32 {
+  let axis: vec3<f32> = select(vec3<f32>(0.0, 1.0, 0.0), vec3<f32>(1.0, 0.0, 0.0), abs(normal.y) > 0.9);
+  let across: vec3<f32> = normalize(cross(normal, axis));
+  let along: vec3<f32> = cross(normal, across);
+  let turn: f32 = fract(sin(dot(position, vec3<f32>(12.9898, 78.233, 37.719))) * 43758.547) * 6.2831853;
+  var open: f32 = 0.0;
+
+  for (var ray: u32 = 0u; ray < SCENE_OCCLUSION_RAYS; ray++) {
+    let angle: f32 = turn + f32(ray) * 6.2831853 / f32(SCENE_OCCLUSION_RAYS);
+    let direction: vec3<f32> = normalize(normal + across * cos(angle) + along * sin(angle));
+
+    open += f32(!trace_scene_blocked(position, direction, SCENE_OCCLUSION_REACH, SceneCone(width, 0.0), passed));
+  }
+
+  return open / f32(SCENE_OCCLUSION_RAYS);
+}
+
+// The grass a ray passed through, lit as the frame lights its tufts: its blades facing the ray across and leaning up as
+// the frame's flora normal leans them, the sun through a ray towards it from where the ray first met grass and passed
+// through from behind under the enhanced foliage, and the hemisphere its slots were baked with.
+fn shade_scene_grass(
+  grass: SceneGrassPassed,
+  origin: vec3<f32>,
+  toward: vec3<f32>,
+  state: Lighting,
+  lut: texture_3d<f32>,
+  lut_sampler: sampler,
+  environment_0: texture_cube<f32>,
+  environment_1: texture_cube<f32>,
+  cube_sampler: sampler,
+) -> vec3<f32> {
+  let up: vec3<f32> = vec3<f32>(0.0, 1.0, 0.0);
+  let across: vec3<f32> = -vec3<f32>(toward.x, 0.0, toward.z) / max(length(toward.xz), 1e-4);
+  let facing: vec3<f32> = normalize(across + up);
+  let point: vec3<f32> = origin + toward * grass.entry + up * SCENE_SUN_BIAS;
+  let to_sun: vec3<f32> = normalize((transpose(camera.view) * vec4<f32>(state.to_sun.xyz, 0.0)).xyz);
+  let half_way: vec3<f32> = normalize(to_sun - toward);
+  let lit: vec4<f32> = textureSampleLevel(lut, lut_sampler,
+    vec3<f32>(dot(to_sun, facing), dot(half_way, facing), GRASS_MATERIAL_SLICE), 0.0);
+  let through: vec3<f32> = select(vec3<f32>(0.0), saturate(dot(-toward, -(to_sun + facing))) * state.flora.y *
+    mix(vec3<f32>(1.0), state.sun.rgb, state.flora.z), state.flora.x > 0.5);
+  var sun: vec4<f32> = vec4<f32>(0.0);
+
+  if (!trace_scene_blocked(point, to_sun, SCENE_SUN_REACH, SceneCone(0.0, 0.0), SCENE_NO_PLACE)) {
+    sun = vec4<f32>(state.sun.rgb * lit.x + through, state.sun.w * lit.y);
+  }
+
+  let occlusion: f32 = mix(1.0, grass.hemi, camera.switches.z);
+
+  return hmodel(state, lut, lut_sampler, environment_0, environment_1, cube_sampler, vec4<f32>(grass.albedo, 0.0), sun,
+    facing, toward, GRASS_MATERIAL_SLICE, occlusion, vec3<f32>(1.0));
 }
 
 // What the view's local lights give a point a ray met, its `normal` facing the ray, as the lights pass gives a pixel
@@ -335,43 +397,38 @@ fn scene_lamps(
   return total;
 }
 
-// How much of a point of terrain the level's grass covers as the view plants it, the colour it covers it in and the
-// hemisphere its slot was baked with. Each of the slot's four models is planted at a candidate as often as its density
-// there says (`InterpolateAndDither` without the dither), one model a candidate where several pass, and none on a slope
-// past the planting's limit; each tuft covers the disc its vertices spread over at its mean planted size, by the share
-// of its texture its blades fill, the discs overlapping at random (`1 - e^-sum`); the slot shrinks to nothing towards
-// the planting's fade, as its tufts do. None past a slot's heights, where the point stands off the ground it was
-// planted on. Each model's colour and blade share are its texture's solid texels' (`grass/colours`).
-struct SceneGrass {
+// The level's grass about a slot as the view plants it: its ground's lowest and highest heights; how much of the ground
+// its tufts cover from above, summed before they overlap; how much of a metre of a ray crossing them sideways they stop,
+// likewise; their mean height; the colour they are of and the hemisphere the slot was baked with; whether any stand.
+// Each of the slot's four models is planted at a candidate as often as its density there says (`InterpolateAndDither`
+// without the dither), one model a candidate where several pass, as many of them as `standing` leaves; each tuft is
+// the disc its vertices spread over at its mean planted size, as tall as its model at that size, by the share of its
+// texture its blades fill (`grass/colours`): its disc seen from above, its width by its height sideways.
+struct SceneGrassSlot {
+  base: f32,
+  top: f32,
   cover: f32,
+  extinction: f32,
+  height: f32,
   albedo: vec3<f32>,
   hemi: f32,
+  is_planted: bool,
 }
 
-// Metres a point may stand off its slot's heights and still be the ground the slot's tufts stand on.
-const SCENE_GRASS_REACH: f32 = 0.5;
-
-fn scene_grass(position: vec3<f32>, normal: vec3<f32>) -> SceneGrass {
-  let none: SceneGrass = SceneGrass(0.0, vec3<f32>(0.0), 0.0);
-  let fade: f32 = saturate(1.0 - distance(position, camera.position.xyz) / max(trace_grass.fade, 1e-3));
-
-  if (trace_grass.model_count == 0u || fade <= 0.0) {
-    return none;
-  }
-
-  // The engine's space: renderer space with `z` negated.
-  let engine: vec2<f32> = vec2<f32>(position.x, -position.z) / GRASS_SLOT_METERS;
-  let slot: vec2<i32> = vec2<i32>(floor(engine));
+// The slot `slot` (in the engine's space, slots across) at `within` it, nought to one each way, its tufts thinned to
+// the share `standing` of them.
+fn scene_grass_slot(slot: vec2<i32>, within: vec2<f32>, standing: f32) -> SceneGrassSlot {
+  var out: SceneGrassSlot;
   let cell: vec2<i32> = slot + trace_grass.grid.zw;
 
-  if (any(cell < vec2<i32>(0)) || any(cell >= trace_grass.grid.xy)) {
-    return none;
+  if (trace_grass.model_count == 0u || any(cell < vec2<i32>(0)) || any(cell >= trace_grass.grid.xy)) {
+    return out;
   }
 
   let record: u32 = trace_grass_grid[u32(cell.y * trace_grass.grid.x + cell.x)];
 
   if (record == 0u) {
-    return none;
+    return out;
   }
 
   let at: u32 = (record - 1u) * GRASS_SLOT_WORDS;
@@ -379,19 +436,14 @@ fn scene_grass(position: vec3<f32>, normal: vec3<f32>) -> SceneGrass {
   let w1: u32 = trace_grass_slots[at + 1u];
   let w2: u32 = trace_grass_slots[at + 2u];
   let w3: u32 = trace_grass_slots[at + 3u];
-  let base: f32 = f32(w0 & 0xfffu) * 0.2 - 200.0;
-  let top: f32 = base + f32((w0 >> 12u) & 0xffu) * 0.1;
-
-  if (position.y < base - SCENE_GRASS_REACH || position.y > top + SCENE_GRASS_REACH) {
-    return none;
-  }
-
   let ids: array<u32, 4> = array<u32, 4>((w0 >> 20u) & 0x3fu, (w0 >> 26u) & 0x3fu, w1 & 0x3fu, (w1 >> 6u) & 0x3fu);
   let palettes: array<u32, 4> = array<u32, 4>(w2 & 0xffffu, w2 >> 16u, w3 & 0xffffu, w3 >> 16u);
-  let within: vec2<f32> = engine - vec2<f32>(slot);
-  let candidates: f32 = f32((trace_grass.steps + 1) * (trace_grass.steps + 1));
   var densities: vec4<f32> = vec4<f32>(0.0);
   var missed: f32 = 1.0;
+
+  out.base = f32(w0 & 0xfffu) * 0.2 - 200.0;
+  out.top = out.base + f32((w0 >> 12u) & 0xffu) * 0.1;
+  out.hemi = f32((w1 >> 16u) & 0xfu) / 15.0;
 
   for (var object: u32 = 0u; object < 4u; object++) {
     if (ids[object] != GRASS_EMPTY_ID && ids[object] < trace_grass.model_count) {
@@ -403,38 +455,161 @@ fn scene_grass(position: vec3<f32>, normal: vec3<f32>) -> SceneGrass {
     }
   }
 
-  // The share of the candidates the slope leaves a tuft on: the planting draws each one's limit down by up to
-  // `SLOPE_THINNING` of it, so the grass thins up a bank and stands on none of it past the limit. Without it a steep
-  // bank's sparse tufts covered it as its slot's density says and greened its reflection.
-  let slope: f32 = acos(clamp(abs(normal.y), -1.0, 1.0));
-  let limit: f32 = trace_grass.slope_limit;
-  let standing: f32 = select(saturate((limit - slope) / max(limit * SLOPE_THINNING, 1e-4)), 1.0, limit >= SLOPE_NONE);
   let planted: f32 = (1.0 - missed) * standing;
   let total: f32 = dot(densities, vec4<f32>(1.0));
 
   if (planted <= 0.0) {
-    return none;
+    return out;
   }
 
-  var cover: f32 = 0.0;
-  var albedo: vec3<f32> = vec3<f32>(0.0);
+  // Tufts a square metre: the slot's candidates over its area, as many planted as its densities say.
+  let tufts: f32 = planted * f32((trace_grass.steps + 1) * (trace_grass.steps + 1)) /
+    (GRASS_SLOT_METERS * GRASS_SLOT_METERS);
+  var counted: f32 = 0.0;
 
   for (var object: u32 = 0u; object < 4u; object++) {
     if (densities[object] > 0.0) {
       let model: GrassModel = trace_grass_models[ids[object]];
-      let radius: f32 = model.spread * (model.shape.x * 0.5 + model.shape.y * 0.9) * 0.5 * trace_grass.height;
-      let footprint: f32 = candidates * 3.14159265 * radius * radius / (GRASS_SLOT_METERS * GRASS_SLOT_METERS);
       let colour: vec4<f32> = trace_grass_colours[ids[object]];
-      let share: f32 = planted * densities[object] / total * footprint * colour.a;
+      let size: f32 = (model.shape.x * 0.5 + model.shape.y * 0.9) * 0.5 * trace_grass.height;
+      let radius: f32 = model.spread * size;
+      let count: f32 = tufts * densities[object] / total;
+      let blades: f32 = count * colour.a;
 
-      cover += share;
-      albedo += colour.rgb * share;
+      out.cover += blades * 3.14159265 * radius * radius;
+      out.extinction += blades * 2.0 * radius;
+      out.albedo += colour.rgb * blades * radius;
+      out.height += count * model.shape.w * size;
+      counted += count;
     }
   }
 
-  let hemi: f32 = f32((w1 >> 16u) & 0xfu) / 15.0;
+  out.albedo /= max(out.extinction * 0.5, 1e-6);
+  out.height /= max(counted, 1e-6);
+  out.is_planted = true;
 
-  return SceneGrass((1.0 - exp(-cover)) * fade * fade, albedo / max(cover, 1e-4), hemi);
+  return out;
+}
+
+// How much of a point of terrain the level's grass covers as the view plants it, the colour it covers it in and the
+// hemisphere its slot was baked with: its slot's tufts, overlapping at random (`1 - e^-cover`), none on a slope past
+// the planting's limit, the slot shrinking to nothing towards the planting's fade as its tufts do. None past a slot's
+// heights, where the point stands off the ground it was planted on.
+struct SceneGrass {
+  cover: f32,
+  albedo: vec3<f32>,
+  hemi: f32,
+}
+
+// Metres a point may stand off its slot's heights and still be the ground the slot's tufts stand on.
+const SCENE_GRASS_REACH: f32 = 0.5;
+
+fn scene_grass(position: vec3<f32>, normal: vec3<f32>) -> SceneGrass {
+  let none: SceneGrass = SceneGrass(0.0, vec3<f32>(0.0), 0.0);
+  let fade: f32 = scene_grass_fade(position);
+
+  if (fade <= 0.0) {
+    return none;
+  }
+
+  // The share of the candidates the slope leaves a tuft on: the planting draws each one's limit down by up to
+  // `SLOPE_THINNING` of it, so the grass thins up a bank and stands on none of it past the limit.
+  let slope: f32 = acos(clamp(abs(normal.y), -1.0, 1.0));
+  let limit: f32 = trace_grass.slope_limit;
+  let standing: f32 = select(saturate((limit - slope) / max(limit * SLOPE_THINNING, 1e-4)), 1.0, limit >= SLOPE_NONE);
+  // The engine's space: renderer space with `z` negated.
+  let engine: vec2<f32> = vec2<f32>(position.x, -position.z) / GRASS_SLOT_METERS;
+  let slot: vec2<i32> = vec2<i32>(floor(engine));
+  let grass: SceneGrassSlot = scene_grass_slot(slot, engine - vec2<f32>(slot), standing);
+
+  if (!grass.is_planted || position.y < grass.base - SCENE_GRASS_REACH ||
+    position.y > grass.top + SCENE_GRASS_REACH) {
+    return none;
+  }
+
+  return SceneGrass((1.0 - exp(-grass.cover)) * fade * fade, grass.albedo, grass.hemi);
+}
+
+// How far the planting reaches at a point: one at the eye, nought at its fade.
+fn scene_grass_fade(position: vec3<f32>) -> f32 {
+  return saturate(1.0 - distance(position, camera.position.xyz) / max(trace_grass.fade, 1e-3));
+}
+
+// The level's grass a ray passes through before what it met: how much of what lies behind the grass hides, the colour
+// it hides it with and the hemisphere its slots were baked with, and how far along the ray it first meets grass.
+struct SceneGrassPassed {
+  opacity: f32,
+  albedo: vec3<f32>,
+  hemi: f32,
+  entry: f32,
+}
+
+// Metres a ray is walked through the grass at most, and a step of the walk; and the metres before what the ray met
+// that it is not, where the grass the hit stands in covers it instead (`scene_grass`).
+const SCENE_GRASS_WALK: f32 = 32.0;
+const SCENE_GRASS_STEP: f32 = 0.5;
+const SCENE_GRASS_SHORT: f32 = 2.0;
+// Metres over its start a ray rising is walked to: the grass a reflection passes stands on the shores about the water.
+const SCENE_GRASS_RISE: f32 = 3.0;
+
+// The grass a ray from `origin` along `toward` passes through before what it met `length` metres on (or its reach,
+// `is_met` false), each slot's tufts a layer as tall as they stand over its ground's middle height, stopping a ray
+// crossing it as their sideways extinction says. Only a slot whose ground spans less than its tufts stand is walked,
+// where that middle is the ground: on a bank the layer would float over one side and sink into the other, and the
+// bank's own grass covers it where the ray meets it. Grass is planted on the GPU each frame and has no geometry to
+// trace, so tall reeds stood in a reflection as the sky behind them.
+fn scene_grass_passed(origin: vec3<f32>, toward: vec3<f32>, length: f32, is_met: bool) -> SceneGrassPassed {
+  var out: SceneGrassPassed = SceneGrassPassed(0.0, vec3<f32>(0.0), 0.0, -1.0);
+
+  if (trace_grass.model_count == 0u) {
+    return out;
+  }
+
+  let risen: f32 = select(SCENE_GRASS_WALK, SCENE_GRASS_RISE / toward.y, toward.y > 0.0);
+  let reach: f32 = min(min(select(length, length - SCENE_GRASS_SHORT, is_met), SCENE_GRASS_WALK), risen);
+  var through: f32 = 1.0;
+  var last: vec2<i32> = vec2<i32>(-2147483647);
+  var grass: SceneGrassSlot;
+
+  for (var along: f32 = SCENE_GRASS_STEP * 0.5; along < reach; along += SCENE_GRASS_STEP) {
+    let point: vec3<f32> = origin + toward * along;
+    let fade: f32 = scene_grass_fade(point);
+
+    if (fade <= 0.0) {
+      continue;
+    }
+
+    let engine: vec2<f32> = vec2<f32>(point.x, -point.z) / GRASS_SLOT_METERS;
+    let slot: vec2<i32> = vec2<i32>(floor(engine));
+
+    if (any(slot != last)) {
+      last = slot;
+      grass = scene_grass_slot(slot, vec2<f32>(0.5), 1.0);
+    }
+
+    let above: f32 = point.y - (grass.base + grass.top) * 0.5;
+
+    if (!grass.is_planted || grass.top - grass.base > grass.height || above < 0.0 || above > grass.height) {
+      continue;
+    }
+
+    let stopped: f32 = 1.0 - exp(-grass.extinction * fade * fade * SCENE_GRASS_STEP);
+
+    out.albedo += grass.albedo * through * stopped;
+    out.hemi += grass.hemi * through * stopped;
+    out.entry = select(out.entry, along, out.entry < 0.0);
+    through *= 1.0 - stopped;
+
+    if (through < 0.02) {
+      break;
+    }
+  }
+
+  out.opacity = 1.0 - through;
+  out.albedo /= max(out.opacity, 1e-4);
+  out.hemi /= max(out.opacity, 1e-4);
+
+  return out;
 }
 
 // A triangle's corners, read from its layout's arena through its record: its outline, then each corner's normal and,
