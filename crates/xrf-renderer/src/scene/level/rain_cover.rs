@@ -8,6 +8,7 @@ use crate::pass::level_passes::LevelPasses;
 use crate::pass::static_cull_params::StaticCullParams;
 use crate::scene::level::cover_pyramid::CoverPyramid;
 use crate::scene::level::cover_textures::CoverTextures;
+use crate::scene::level::frame_load::FrameLoad;
 use crate::scene::level::overhead_map::OverheadMap;
 use crate::scene::level::overhead_shape::OverheadShape;
 use crate::scene::level::shadow_frame::ShadowFrame;
@@ -31,15 +32,15 @@ impl RainCover {
   }
 
   /// Centres it over the camera, out to `reach` metres where the wetting reaches that far and over the near square
-  /// otherwise, and readies it to be drawn where it moved, changed width or the scene grew; `encoder` takes the copies a
-  /// list growing makes.
+  /// otherwise, and readies it to be drawn where it moved, changed width or the scene grew, on a frame `load` leaves
+  /// light; `encoder` takes the copies a list growing makes.
   pub fn prepare(
     &mut self,
     device: &wgpu::Device,
     queue: &wgpu::Queue,
     encoder: &mut wgpu::CommandEncoder,
     frame: &ShadowFrame<'_>,
-    reach: Option<f32>,
+    (reach, load): (Option<f32>, &mut FrameLoad),
   ) {
     // Twice the reach across and a twentieth more, as the camera stands up to half a step off the centre, in whole
     // 64 m.
@@ -48,7 +49,7 @@ impl RainCover {
     });
 
     self.map.fit_width(width);
-    self.map.prepare(device, queue, encoder, frame);
+    self.map.prepare(device, queue, encoder, frame, load);
   }
 
   /// Draws nothing this frame.

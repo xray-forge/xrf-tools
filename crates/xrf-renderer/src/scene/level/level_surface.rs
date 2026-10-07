@@ -10,6 +10,7 @@ use crate::pass::puddle_sites_uniform::PuddleSitesUniform;
 use crate::pass::static_cull_params::StaticCullParams;
 use crate::pass::water_uniform::WaterUniform;
 use crate::pass::wet_uniform::WetUniform;
+use crate::scene::level::frame_load::FrameLoad;
 use crate::scene::level::overhead_map::OverheadMap;
 use crate::scene::level::overhead_shape::OverheadShape;
 use crate::scene::level::shadow_frame::ShadowFrame;
@@ -78,16 +79,17 @@ impl LevelSurface {
   }
 
   /// Centres it and its water over the camera, readying them to be drawn and derived where they moved or the scene
-  /// grew; both alike, as the sites read the water through the surface's window.
+  /// grew, each on a frame `load` leaves light; both alike, as the sites read the water through the surface's window.
   pub fn prepare(
     &mut self,
     device: &wgpu::Device,
     queue: &wgpu::Queue,
     encoder: &mut wgpu::CommandEncoder,
     frame: &ShadowFrame<'_>,
+    load: &mut FrameLoad,
   ) {
-    self.map.prepare(device, queue, encoder, frame);
-    self.water.prepare(device, queue, encoder, frame);
+    self.map.prepare(device, queue, encoder, frame, load);
+    self.water.prepare(device, queue, encoder, frame, load);
   }
 
   /// Its centre in `x` and `z`, its half width and the height it is seen from; then its texels across, the metres it

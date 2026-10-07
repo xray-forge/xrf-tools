@@ -17,6 +17,7 @@ use crate::pass::static_cull_parameters::StaticCullParameters;
 use crate::pass::static_cull_params::StaticCullParams;
 use crate::pass::static_draw_parameters::StaticDrawParameters;
 use crate::pass::static_draws::StaticDraws;
+use crate::scene::level::frame_load::FrameLoad;
 use crate::scene::level::shadow_cascade_view::ShadowCascadeView;
 use crate::scene::level::shadow_frame::ShadowFrame;
 use crate::scene::static_scene::static_layout::StaticLayout;
@@ -54,9 +55,10 @@ impl LevelShadows {
   }
 
   /// What the passes lit by the sun sample its cascades by, as this frame fitted them.
-  /// How many cascades this frame draws, as `prepare_cascades` decided.
-  pub fn get_due_count(&self) -> usize {
-    self.due.len()
+  /// The frame's load as the cascades it draws leave it, as `prepare_cascades` decided: heavy where one past the
+  /// second draws, on its staggered turn or out of it.
+  pub fn get_load(&self) -> FrameLoad {
+    FrameLoad::new(self.due.iter().any(|index| *index >= 2))
   }
 
   pub fn get_values(&self) -> &ShadowUniform {
