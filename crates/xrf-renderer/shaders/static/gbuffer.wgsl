@@ -359,6 +359,10 @@ struct TerrainTexel {
   gloss: f32,
 };
 
+// The weight under which a terrain's layer is left unread: what it would add is below a channel's rounding, and a mask
+// mostly weighs one or two layers, so most texels skip most of the four.
+const TERRAIN_LAYER_LEAST: f32 = 0.004;
+
 fn terrain_texel(surface: Surface, at: Footprint, uv: vec2<f32>, dx: vec2<f32>, dy: vec2<f32>) -> TerrainTexel {
   let mask: vec4<f32> = sample_slot(surface.terrain.mask, at.uv, at.dx, at.dy);
   let weights: vec4<f32> = mask / max(dot(mask, vec4<f32>(1.0)), 1e-4);
@@ -366,6 +370,11 @@ fn terrain_texel(surface: Surface, at: Footprint, uv: vec2<f32>, dx: vec2<f32>, 
 
   for (var layer: u32 = 0u; layer < 4u; layer++) {
     let weight: f32 = weights[layer];
+
+    if (weight <= TERRAIN_LAYER_LEAST) {
+      continue;
+    }
+
     // `.wzyx`: the normal in the last three channels, the gloss in the first.
     let bump: vec4<f32> = sample_slot(surface.terrain.bumps[layer], uv, dx, dy).wzyx;
 
