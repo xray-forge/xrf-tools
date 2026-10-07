@@ -30,6 +30,9 @@ pub struct LevelStreaming {
   sectors: LevelLoader,
   spawn: SpawnLoader,
   lights: Option<LoaderReceiver<Result<LightsDescription, String>>>,
+  /// The campfires and the object motions the lights follow, by the campfires' ids and the motions' names.
+  light_campfires: Vec<u16>,
+  light_motions: Vec<String>,
   sector_handles: ProxyAllocator<StaticSectorProxy>,
   model_handles: ProxyAllocator<StaticModelProxy>,
   object_handles: ProxyAllocator<StaticObjectProxy>,
@@ -66,6 +69,8 @@ impl LevelStreaming {
       sectors: LevelLoader::start(Arc::clone(&source), workers),
       spawn: SpawnLoader::start(Arc::clone(&source), workers),
       lights: Some(receiver),
+      light_campfires: Vec::new(),
+      light_motions: Vec::new(),
       sector_handles: ProxyAllocator::new(),
       model_handles: ProxyAllocator::new(),
       object_handles: ProxyAllocator::new(),
@@ -106,6 +111,12 @@ impl LevelStreaming {
     self.filter_spawn(updates, animation, hidden);
 
     if let Some(Ok(lights)) = take_answer(&mut self.lights, "lights") {
+      self.light_campfires = lights.lights.iter().filter_map(|light| light.campfire).collect();
+      self.light_motions = lights
+        .lights
+        .iter()
+        .filter_map(|light| light.motion.as_ref().map(|motion| motion.name.clone()))
+        .collect();
       updates.push(RenderSceneUpdate::AddLights(lights));
     }
 
@@ -166,7 +177,13 @@ impl LevelStreaming {
       is_spawn_done: self.spawn.is_done(),
       is_lights_done: self.lights.is_none(),
       bytes: self.posted.values().map(|(_, bytes)| bytes).sum(),
+      ..RenderStreamingProgress::default()
     }
+  }
+
+  /// The campfires and the object motions the level's lights follow, by the campfires' ids and the motions' names.
+  pub fn list_light_followed(&self) -> (&[u16], &[String]) {
+    (&self.light_campfires, &self.light_motions)
   }
 
   /// How much each shader table entry draws across the sectors streamed in.

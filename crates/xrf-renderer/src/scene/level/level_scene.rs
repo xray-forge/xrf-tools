@@ -4,17 +4,14 @@ use std::time::Instant;
 use glam::Vec4;
 use xrf_error::XrfResult;
 
-use crate::contract::render_ambient_report::RenderAmbientReport;
 use crate::contract::render_particles_report::RenderParticlesReport;
 use crate::contract::render_texture_report::RenderTextureReport;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::host::render_level_source::RenderLevelSource;
 use crate::host::render_scene_update::RenderSceneUpdate;
 use crate::host::render_sector_failure::RenderSectorFailure;
-use crate::scene::level::level_campfires::LevelCampfires;
 use crate::scene::level::level_grass::LevelGrass;
 use crate::scene::level::level_lights::LevelLights;
-use crate::scene::level::level_object_motions::LevelObjectMotions;
 use crate::scene::level::level_particles::LevelParticles;
 use crate::scene::level::weather_model_buffers::WeatherModelBuffers;
 use crate::scene::static_scene::static_scene::StaticScene;
@@ -39,9 +36,6 @@ pub struct LevelScene {
   /// When the level began opening, which the clouds drift and the trees sway from.
   pub started: Instant,
   pub lights: LevelLights,
-  pub campfires: LevelCampfires,
-  /// The object motions its moving zones follow, which their particles and lights both read.
-  pub object_motions: LevelObjectMotions,
   pub particles: LevelParticles,
   /// Milliseconds the last sector taken in took to put into the scene.
   pub sector_time: f32,
@@ -62,9 +56,7 @@ impl LevelScene {
     Self {
       grass: LevelGrass::new(device, &source, workers),
       lights: LevelLights::new(device, view_layout, statics.args.size()),
-      campfires: LevelCampfires::new(),
-      object_motions: LevelObjectMotions::new(&source, workers),
-      particles: LevelParticles::new(device, &source, workers),
+      particles: LevelParticles::new(device, workers),
       statics,
       environments: (0, Vec::new()),
       splash: None,
@@ -134,6 +126,33 @@ impl LevelScene {
           self.statics.remove_object(handle);
         }
         RenderSceneUpdate::AddLights(lights) => self.lights.add_lights(lights, textures, assets),
+        RenderSceneUpdate::AddParticles(definitions) => {
+          self
+            .particles
+            .add_definitions(device, (&mut *textures, assets), definitions);
+        }
+        RenderSceneUpdate::AddEmitter {
+          handle,
+          transform,
+          seed,
+        } => self.particles.add_emitter(handle, transform, seed),
+        RenderSceneUpdate::RemoveEmitter(handle) => self.particles.remove_emitter(handle),
+        RenderSceneUpdate::PlayEffect { handle, effect, name } => self.particles.play(handle, effect, &name),
+        RenderSceneUpdate::StopEffect {
+          handle,
+          effect,
+          is_deferred,
+        } => self.particles.stop(handle, effect, is_deferred),
+        RenderSceneUpdate::MoveEmitter {
+          handle,
+          transform,
+          velocity,
+        } => self.particles.move_emitter(handle, transform, velocity),
+        RenderSceneUpdate::CarryEffect {
+          handle,
+          effect,
+          velocity,
+        } => self.particles.carry(handle, effect, velocity),
         RenderSceneUpdate::PoseObject {
           handle,
           current,
@@ -153,16 +172,6 @@ impl LevelScene {
   /// A spawned object's bounding sphere in renderer space, once its model is in the scene.
   pub fn get_object_sphere(&self, object: u32) -> Option<Vec4> {
     self.statics.get_object_sphere(object)
-  }
-
-  /// Plays a weather ambient effect on the next frame, without waiting.
-  pub fn play_ambient_now(&mut self) {
-    self.particles.play_ambient_now();
-  }
-
-  /// Where the weather's ambient effects near the camera stand, none until the particles are read.
-  pub fn get_ambient_report(&self) -> Option<RenderAmbientReport> {
-    self.particles.get_ambient_report()
   }
 
   /// What the level's particle systems came to since the last report.

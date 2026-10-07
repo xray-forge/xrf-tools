@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -20,7 +21,6 @@ use crate::pass::light_record::{LIGHT_NO_CONE, LIGHT_NO_PROJECTOR, LightRecord};
 use crate::pass::lights_uniform::LightsUniform;
 use crate::pass::static_cull_params::StaticCullParams;
 use crate::scene::level::level_light_shadows::{LIGHT_SHADOW_ATLAS_SIZE, LevelLightShadows};
-use crate::scene::level::level_object_motions::LevelObjectMotions;
 use crate::scene::level::light_shadow_set::LightShadowSet;
 use crate::scene::level::lights_frame::LightsFrame;
 use crate::scene::level::shadow_frame::ShadowFrame;
@@ -160,7 +160,7 @@ impl LevelLights {
       lod,
       contents,
       sway,
-      campfires,
+      campfire_shares,
       motions,
     } = frame;
 
@@ -182,7 +182,9 @@ impl LevelLights {
         .filter(|(_, light)| settings.is_level_lights || !light.is_level)
         .filter_map(|(handle, light)| {
           // A campfire's idle light: out while it is, faded over a turn (`UpdateWorkload`).
-          let share: f32 = light.campfire.map_or(1.0, |id| campfires.get_light_share(id));
+          let share: f32 = light
+            .campfire
+            .map_or(1.0, |id| campfire_shares.get(&id).copied().unwrap_or(1.0));
 
           if share <= 0.0 {
             return None;
@@ -311,12 +313,12 @@ impl LevelLights {
 
   /// Stands each light a motion carries `height` over where the motion has its zone this frame (`UpdateIdleLight`);
   /// one whose motion is still read stays where its zone spawned.
-  fn move_lights(&mut self, motions: &mut LevelObjectMotions) {
+  fn move_lights(&mut self, motions: &HashMap<String, (Mat4, Vec3)>) {
     for handle in &self.moving {
       let Some(motion) = self.lights.get(*handle).and_then(|light| light.motion.clone()) else {
         continue;
       };
-      let Some((transform, _)) = motions.get_pose(&motion.name) else {
+      let Some((transform, _)) = motions.get(&motion.name) else {
         continue;
       };
       let at: Vec3 = transform.w_axis.truncate();

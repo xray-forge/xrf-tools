@@ -147,11 +147,6 @@ impl Renderer {
     self.send(RenderCommand::Selection { id, selection });
   }
 
-  /// Plays a weather ambient effect near a viewport's camera at once, ending the one playing; none plays indoors.
-  pub fn play_ambient_effect(&self, id: RenderViewportId) {
-    self.send(RenderCommand::AmbientEffect { id });
-  }
-
   /// Applies settings to every viewport, now and in every thread started later.
   pub fn configure(&self, settings: RenderSettings) {
     self.lock().settings = settings;

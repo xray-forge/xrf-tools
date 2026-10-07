@@ -12,6 +12,7 @@ pub(crate) mod render_level_spawn;
 pub(crate) mod render_level_weather;
 pub(crate) mod render_model_skeleton;
 pub(crate) mod render_motion;
+pub(crate) mod render_particle_definitions;
 pub(crate) mod render_particle_placement;
 pub(crate) mod render_particle_source;
 pub(crate) mod render_rain;

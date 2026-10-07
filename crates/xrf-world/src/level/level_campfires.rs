@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::time::Instant;
 
-use crate::scene::level::campfire::Campfire;
+use crate::level::campfire::Campfire;
 
 /// A level's campfires, by their spawned objects' ids, switched together as the view lights them or puts them out:
 /// each stands in the switch's state the first time anything asks for it, and every one turns whenever the switch
@@ -74,7 +74,7 @@ impl LevelCampfires {
 #[cfg(test)]
 mod tests {
   use super::LevelCampfires;
-  use crate::scene::level::campfire::Campfire;
+  use crate::level::campfire::Campfire;
 
   #[test]
   fn stands_a_campfire_first_asked_for_in_the_switchs_state() {

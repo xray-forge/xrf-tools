@@ -5,12 +5,8 @@ use std::time::Instant;
 
 use glam::{Mat4, Vec3};
 use xrf_anm::AnmFile;
+use xrf_renderer::{LoaderReceiver, RenderLevelSource, RenderWorkers, to_vec3};
 use xrf_visual::VisualTransform;
-
-use crate::host::render_level_source::RenderLevelSource;
-use crate::lighting::light_basis::to_vec3;
-use crate::thread::loader_receiver::LoaderReceiver;
-use crate::thread::render_workers::RenderWorkers;
 
 /// One object motion asked for: on its way from a loader thread, read, or not to be had.
 enum MotionState {
@@ -118,16 +114,13 @@ mod tests {
   use xrf_environment::WeatherDescriptor;
   use xrf_error::{XrfError, XrfResult};
   use xrf_material::XraySurfaceDescriptor;
+  use xrf_renderer::{
+    RenderAssetSource, RenderLevelDetails, RenderLevelParticles, RenderLevelSource, RenderLevelSpawn,
+    RenderLevelWeather, RenderSpawnModels,
+  };
   use xrf_visual::{LightsDescription, SectorPackage};
 
-  use crate::host::render_asset_source::RenderAssetSource;
-  use crate::host::render_level_details::RenderLevelDetails;
-  use crate::host::render_level_particles::RenderLevelParticles;
-  use crate::host::render_level_source::RenderLevelSource;
-  use crate::host::render_level_spawn::RenderLevelSpawn;
-  use crate::host::render_level_weather::RenderLevelWeather;
-  use crate::host::render_spawn_models::RenderSpawnModels;
-  use crate::scene::level::level_object_motions::{LevelObjectMotions, MotionState};
+  use crate::level::level_object_motions::{LevelObjectMotions, MotionState};
   use crate::tests::test_workers::create_workers;
 
   /// A level with nothing but one motion, `line.anm`: two seconds carrying its object 3 metres a second along x.

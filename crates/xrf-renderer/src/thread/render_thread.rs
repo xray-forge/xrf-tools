@@ -9,7 +9,6 @@ use xrf_renderer_core::{ExecutedGraph, GraphRuntime};
 use crate::camera::camera_view::CameraView;
 use crate::context::gpu_context::GpuContext;
 use crate::context::render_backend::RenderBackend;
-use crate::contract::render_ambient_report::RenderAmbientReport;
 use crate::contract::render_frame_report::RenderFrameReport;
 use crate::contract::render_load_report::RenderLoadReport;
 use crate::contract::render_pick::RenderPick;
@@ -293,15 +292,6 @@ impl RenderThread {
           viewport.captures.push(reply);
         }
       }
-      RenderCommand::AmbientEffect { id } => {
-        if let Some(level) = self
-          .viewports
-          .get_mut(&id)
-          .and_then(|viewport| viewport.level_view.as_mut())
-        {
-          level.get_scene_mut().play_ambient_now();
-        }
-      }
     }
   }
 
@@ -415,10 +405,6 @@ impl RenderThread {
         source: viewport.level.clone().map(|level| level as Arc<dyn RenderAssetSource>),
         is_clouded: viewport.options.show.is_clouded,
       };
-      let ambient: Option<RenderAmbientReport> = viewport
-        .level_view
-        .as_ref()
-        .and_then(|level| level.get_scene().get_ambient_report());
 
       viewport.world = world.advance(
         viewport.id,
@@ -428,8 +414,8 @@ impl RenderThread {
           height: viewport.get_css_height(),
           options: &viewport.options,
           skies: &mut skies,
-          ambient,
           failures: std::mem::take(&mut viewport.failures),
+          finished_effects: std::mem::take(&mut viewport.finished_effects),
         },
       );
       viewport.follow_level();
@@ -695,6 +681,9 @@ impl RenderThread {
             updates: std::mem::take(&mut viewport.world.updates),
             streaming: viewport.world.streaming,
             skeleton_segments: &viewport.world.skeleton_segments,
+            gust: viewport.world.gust,
+            campfire_shares: &viewport.world.campfire_shares,
+            motions: &viewport.world.motions,
           }),
         );
 
@@ -722,6 +711,9 @@ impl RenderThread {
         updates: std::mem::take(&mut viewport.world.updates),
         streaming: viewport.world.streaming,
         skeleton_segments: &viewport.world.skeleton_segments,
+        gust: viewport.world.gust,
+        campfire_shares: &viewport.world.campfire_shares,
+        motions: &viewport.world.motions,
       });
       let failures: Vec<RenderSectorFailure> = level.load(
         device,
@@ -754,6 +746,11 @@ impl RenderThread {
         (&gpu.view_layout, &gpu.textures),
       );
       phases.prepare += preparing.elapsed();
+
+      // An incoming scene steps none of its effects, so only the shown one's finish.
+      if !is_incoming {
+        viewport.finished_effects.extend(level.take_finished_effects());
+      }
 
       let recording: Instant = Instant::now();
       let finishing: Instant = Instant::now();

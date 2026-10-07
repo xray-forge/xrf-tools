@@ -8,7 +8,7 @@ use xrf_material::XraySurfaceDraw;
 use xrf_math::EPS_S;
 use xrf_renderer_core::{
   ExecutedGraph, FrameGraph, GraphBindings, GraphBuffer, GraphBufferAccess, GraphColorAttachment, GraphCompileOptions,
-  GraphDepthAttachment, GraphRuntime, GraphTexture, GraphTextureAccess, RasterPassBuilder, StorageArray,
+  GraphDepthAttachment, GraphRuntime, GraphTexture, GraphTextureAccess, ProxyHandle, RasterPassBuilder, StorageArray,
 };
 
 use crate::camera::camera_view::CameraView;
@@ -45,6 +45,7 @@ use crate::host::render_level_source::RenderLevelSource;
 use crate::host::render_level_weather::RenderLevelWeather;
 use crate::host::render_rain::RenderRain;
 use crate::host::render_sector_failure::RenderSectorFailure;
+use crate::lighting::ambient_gust::AmbientGust;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::pass::ambient_occlusion_pass::AmbientOcclusionPass;
 use crate::pass::ambient_occlusion_uniform::AmbientOcclusionUniform;
@@ -74,8 +75,6 @@ use crate::pass::view_light_groups::ViewLightGroups;
 use crate::pass::water_draw::WaterDraw;
 use crate::pass::wet_uniform::WetUniform;
 use crate::pass::wind_uniform::WindUniform;
-use crate::scene::level::ambient_frame::AmbientFrame;
-use crate::scene::level::ambient_gust::AmbientGust;
 use crate::scene::level::level_lights::LevelLights;
 use crate::scene::level::level_load::LevelLoad;
 use crate::scene::level::level_overlays::LevelOverlays;
@@ -84,6 +83,8 @@ use crate::scene::level::level_smoothing::LevelSmoothing;
 use crate::scene::level::level_water::WaterFrame;
 use crate::scene::level::level_world_input::LevelWorldInput;
 use crate::scene::level::lights_frame::LightsFrame;
+use crate::scene::level::particle_emitter_proxy::ParticleEmitterProxy;
+use crate::scene::level::placed_effect::PlacedEffect;
 use crate::scene::level::scene_renderer::{SceneRenderer, SkyGroupKey};
 use crate::scene::level::shadow_frame::ShadowFrame;
 use crate::scene::level::shadow_sway::ShadowSway;
@@ -146,6 +147,11 @@ impl LevelView {
   /// How far the level has loaded.
   pub fn describe_load(&self, textures: &TextureCache) -> RenderLoadReport {
     self.load.describe(&self.scene, textures)
+  }
+
+  /// The effects whose particles stopped playing this frame, for the world.
+  pub fn take_finished_effects(&mut self) -> Vec<(ProxyHandle<ParticleEmitterProxy>, PlacedEffect)> {
+    self.scene.particles.take_finished()
   }
 
   /// What it keeps from one frame to the next.
@@ -254,8 +260,6 @@ impl LevelView {
       }
     }
 
-    self.scene.particles.poll(device, textures, &assets);
-
     if let Some(slots) = self.scene.grass.poll(device, grass_pass, textures, &assets) {
       self.scene.statics.texture_slots.extend(slots);
     }
@@ -264,6 +268,9 @@ impl LevelView {
       updates,
       streaming,
       skeleton_segments,
+      gust,
+      campfire_shares,
+      motions,
     }) = world
     else {
       return Vec::new();
@@ -275,6 +282,9 @@ impl LevelView {
 
     self.load.advance(streaming, &self.scene, textures);
     self.info.skeleton_segments = skeleton_segments.to_vec();
+    self.info.gust = gust;
+    self.info.campfire_shares.clone_from(campfire_shares);
+    self.info.motions.clone_from(motions);
 
     failures
   }
@@ -425,16 +435,7 @@ impl LevelView {
     }
 
     // The ambient effects blow the wind the grass, the rain and the campfires read this frame.
-    self.scene.particles.update_ambient(
-      view,
-      options,
-      weather.map(|level| AmbientFrame {
-        ambients: &lighting.ambients,
-        level,
-      }),
-    );
-
-    let gust: AmbientGust = self.scene.particles.get_gust();
+    let gust: AmbientGust = self.info.gust;
 
     self.info.sky_cubes = Some([0, 1].map(|index| {
       weather_textures
@@ -553,10 +554,6 @@ impl LevelView {
         gust.strength,
       ),
     );
-    // The campfires switch and the moving zones move whatever of them is drawn, so their lights and particles follow
-    // them alike.
-    self.scene.campfires.prepare(options.world.is_campfire_lit);
-    self.scene.object_motions.prepare();
     self.scene.lights.prepare(
       queue,
       LightsFrame {
@@ -565,8 +562,8 @@ impl LevelView {
         lod: (self.info.cull.glod_start, self.info.cull.glod_end),
         contents: self.scene.statics.get_contents(),
         sway: &to_sway(&self.scene.statics, self.info.sway),
-        campfires: &mut self.scene.campfires,
-        motions: &mut self.scene.object_motions,
+        campfire_shares: &self.info.campfire_shares,
+        motions: &self.info.motions,
       },
     );
     self.info.camera = *view;
@@ -609,10 +606,7 @@ impl LevelView {
     self.info.lighting = LightingUniform::new(lighting, view.view, options, &frame);
     queue.write_buffer(&self.renderer.lighting, 0, bytemuck::bytes_of(&self.info.lighting));
 
-    self
-      .scene
-      .particles
-      .step(view, options, &mut self.scene.campfires, &mut self.scene.object_motions);
+    self.scene.particles.step(view, options);
 
     if let Some(targets) = &self.state.targets {
       self.scene.particles.upload(

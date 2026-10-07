@@ -3,10 +3,8 @@ use std::sync::mpsc::TryRecvError;
 
 use glam::Vec3;
 use xrf_math::Vector3d;
+use xrf_renderer::{LoaderReceiver, RenderWorkers};
 use xrf_visual::HemiEstimator;
-
-use crate::thread::loader_receiver::LoaderReceiver;
-use crate::thread::render_workers::RenderWorkers;
 
 /// `get_luminocity_hemi() < 0.05`: the hemi under which the actor stands indoors (`CGamePersistent::WeathersUpdate`).
 const INDOOR_HEMI: f32 = 0.05;
