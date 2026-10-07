@@ -83,6 +83,8 @@ const SURFACE_IS_STEEP: u32 = 33554432u;
 const SURFACE_HAS_LIGHTMAP: u32 = 67108864u;
 // A composited surface drawn into the distortion target too, by its `distortion` texture.
 const SURFACE_IS_DISTORTING: u32 = 134217728u;
+// Glass, which the enhanced glass draws.
+const SURFACE_IS_GLASS: u32 = 268435456u;
 
 // Vertices one cluster's draw spans: 128 triangles, those past its own collapsed.
 const CLUSTER_VERTICES: u32 = 384u;

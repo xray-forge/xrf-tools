@@ -8,6 +8,7 @@ import {
   ERenderDebandingQuality,
   ERenderFogMode,
   ERenderFoliageMode,
+  ERenderGlassMode,
   ERenderIndirectLightMode,
   ERenderLightShadowFilter,
   ERenderParallaxMode,
@@ -93,6 +94,11 @@ export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings>
     mode: toChoice(ERenderFogMode),
     scattering: toNumber(0, 1),
     sunColor: toNumber(0, 1),
+  },
+  // The renderer's own: from flat to twice the designed bend.
+  glass: {
+    mode: toChoice(ERenderGlassMode),
+    refraction: toNumber(0, 2),
   },
   grass: {
     // `r__detail_density`: a spacing. The console goes to 0.1, six times the game's; past three times it at the widest
@@ -196,7 +202,7 @@ export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings>
     isRefined: FLAG,
     isSteep: FLAG,
     mode: toChoice(ERenderParallaxMode),
-    range: toNumber(0, 60),
+    range: toNumber(0, 100),
     shadow: toNumber(0, 1),
     steps: toNumber(1, 64, true),
     surfaceHeight: toNumber(0, 0.1),

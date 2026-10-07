@@ -7,6 +7,7 @@ use crate::contract::render_debanding_settings::RenderDebandingSettings;
 use crate::contract::render_enhanced_bloom_settings::RenderEnhancedBloomSettings;
 use crate::contract::render_exposure_settings::RenderExposureSettings;
 use crate::contract::render_fog_settings::RenderFogSettings;
+use crate::contract::render_glass_settings::RenderGlassSettings;
 use crate::contract::render_grass_settings::RenderGrassSettings;
 use crate::contract::render_image_corrections::RenderImageCorrections;
 use crate::contract::render_indirect_light_settings::RenderIndirectLightSettings;
@@ -44,6 +45,8 @@ pub struct RenderViewFeatures {
   pub rain: RenderRainSettings,
   pub lights: RenderLightsSettings,
   pub water: RenderWaterSettings,
+  /// How glass is drawn: the engine's, or physically based.
+  pub glass: RenderGlassSettings,
   pub grass: RenderGrassSettings,
   /// How finely the sun's shafts step, and Monolith's floor under their density.
   pub sun_shafts: RenderSunShafts,
@@ -82,6 +85,7 @@ impl Default for RenderViewFeatures {
       rain: RenderRainSettings::default(),
       lights: RenderLightsSettings::default(),
       water: RenderWaterSettings::default(),
+      glass: RenderGlassSettings::default(),
       grass: RenderGrassSettings::default(),
       sun_shafts: RenderSunShafts::default(),
       lod: RenderLodSettings::default(),

@@ -78,6 +78,8 @@ impl StaticSurface {
   /// A composited surface whose script's special pass distorts what is behind it (`models\xwindows`,
   /// `models\xdistort*`), drawn into the distortion target too.
   pub const IS_DISTORTING: u32 = 1 << 27;
+  /// Glass: a blended surface of one of the engines' glass shaders, which the enhanced glass draws.
+  pub const IS_GLASS: u32 = 1 << 28;
 
   pub const BASE: usize = 0;
   pub const DETAIL: usize = 1;

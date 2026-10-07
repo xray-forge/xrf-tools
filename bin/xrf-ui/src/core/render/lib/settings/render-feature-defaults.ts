@@ -7,6 +7,7 @@ import {
   ERenderDebandingQuality,
   ERenderFogMode,
   ERenderFoliageMode,
+  ERenderGlassMode,
   ERenderIndirectLightMode,
   ERenderLightShadowFilter,
   ERenderParallaxMode,
@@ -28,6 +29,7 @@ import {
   TRenderExposureSettings,
   TRenderFogSettings,
   TRenderFoliageSettings,
+  TRenderGlassSettings,
   TRenderGrassSettings,
   TRenderIndirectLightSettings,
   TRenderLightsSettings,
@@ -119,6 +121,12 @@ export const DEFAULT_RENDER_FOLIAGE_SETTINGS: TRenderFoliageSettings = {
   treesTrunk: 0.15,
 };
 
+/** The engine's own glass, with the enhanced glass's designed refraction for when it is drawn. */
+export const DEFAULT_RENDER_GLASS_SETTINGS: TRenderGlassSettings = {
+  mode: ERenderGlassMode.ENGINE,
+  refraction: 1,
+};
+
 /** The engine's own grass. */
 export const DEFAULT_RENDER_GRASS_SETTINGS: TRenderGrassSettings = {
   density: 0.6,
@@ -185,7 +193,7 @@ export const DEFAULT_RENDER_LOD_SETTINGS: TRenderLodSettings = {
 
 /**
  * The engines' own, steep as Anomaly's high and extreme presets set `r2_steep_parallax`, with the enhanced parallax's
- * strengths for when it is drawn: sixteen steps within 20 m, 0.02 of the detail deep, refined, self-shadowed, its layers
+ * strengths for when it is drawn: sixteen steps within 60 m, 0.02 of the detail deep, refined, self-shadowed, its layers
  * half blended by height.
  */
 export const DEFAULT_RENDER_PARALLAX_SETTINGS: TRenderParallaxSettings = {
@@ -195,7 +203,7 @@ export const DEFAULT_RENDER_PARALLAX_SETTINGS: TRenderParallaxSettings = {
   isRefined: true,
   isSteep: true,
   mode: ERenderParallaxMode.ENGINE,
-  range: 20,
+  range: 60,
   shadow: 1,
   steps: 16,
   surfaceHeight: 0.02,

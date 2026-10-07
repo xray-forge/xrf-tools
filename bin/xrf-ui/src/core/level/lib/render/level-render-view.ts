@@ -94,6 +94,7 @@ export function toLevelViewOptions(inputs: ILevelViewOptionsInputs): RenderViewO
       debanding: toLevelModeFeature("debanding", features, view),
       enhancedBloom: toLevelModeFeature("enhancedBloom", features, view),
       fog: toLevelModeFeature("fog", features, view),
+      glass: toLevelModeFeature("glass", features, view),
       grass: toLevelRendererFeature("grass", features, view, options.isGrassy),
       indirectLight: toLevelIndirectLight(features, view),
       isOcclusionCulled: features.isOcclusionCulled && options.isOcclusionCulled,

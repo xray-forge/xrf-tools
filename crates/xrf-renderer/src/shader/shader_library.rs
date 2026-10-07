@@ -259,6 +259,10 @@ const EMBEDDED: &[(&str, &str)] = &[
     include_str!("../../shaders/generated/static/composited.wgsl"),
   ),
   (
+    "generated/static/glass",
+    include_str!("../../shaders/generated/static/glass.wgsl"),
+  ),
+  (
     "generated/frame/sky_haze",
     include_str!("../../shaders/generated/frame/sky_haze.wgsl"),
   ),
@@ -395,6 +399,7 @@ const EMBEDDED: &[(&str, &str)] = &[
     "static/composited",
     include_str!("../../shaders/static/composited.wgsl"),
   ),
+  ("static/glass", include_str!("../../shaders/static/glass.wgsl")),
   ("static/cull", include_str!("../../shaders/static/cull.wgsl")),
   ("static/gbuffer", include_str!("../../shaders/static/gbuffer.wgsl")),
   ("static/impostor", include_str!("../../shaders/static/impostor.wgsl")),

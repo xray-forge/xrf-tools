@@ -86,6 +86,8 @@ use crate::pass::fog_scattering_uniform::FogScatteringUniform;
 use crate::pass::foliage_wind_values::FoliageWindValues;
 use crate::pass::fsr_uniform::FsrUniform;
 use crate::pass::fxaa_parameters::FxaaParameters;
+use crate::pass::glass_parameters::GlassParameters;
+use crate::pass::glass_uniform::GlassUniform;
 use crate::pass::grass_colour_parameters::GrassColourParameters;
 use crate::pass::grass_puddles_uniform::GrassPuddlesUniform;
 use crate::pass::level_passes::LevelPasses;
@@ -587,6 +589,13 @@ impl SceneView {
       options.mode.is_lit && scene.statics.is_distorting(),
       scene.started.elapsed().as_secs_f32(),
     );
+    self.info.glass = (options.features.glass.is_enhanced()
+      && options.mode.is_lit
+      && !options.mode.is_wireframe
+      && scene.statics.is_glassed())
+    .then_some(GlassUniform {
+      refraction: options.features.glass.refraction,
+    });
     self.prepare_shadows(scene, device, queue, encoder, (view_layout, textures));
     self.follow_overhead_maps();
   }
@@ -2736,6 +2745,46 @@ impl SceneView {
               .composited
               .record_sorted(context, (view, &sorted, texture_group), (&composited, &sky), runs);
           });
+      }
+
+      // The enhanced glass after every composited surface and particle, over the frame copied just before it, which it
+      // refracts.
+      if let (true, Some(sky), Some(glass)) = (is_composited, sky, scene_view.info.glass) {
+        let (width, height) = handles.size;
+        let copy: GraphTexture = graph.create_texture(GraphTextureDescriptor::new_2d(
+          "glass scene",
+          width,
+          height,
+          ViewTargets::SCENE,
+        ));
+
+        Self::add_copy(&mut *graph, "glass copy", handles.scene, copy);
+
+        let parameters: GlassParameters = GlassParameters {
+          lighting: lit.lighting,
+          exposure: StorageValue::new(lit.exposure),
+          material_lut: lit.material_lut,
+          lut_sampler: lit.lut_sampler,
+          shadow_maps: lit.shadow_maps,
+          shadows: lit.shadows,
+          glass: runtime.push_uniform(&glass),
+          glass_scene: copy,
+          scene_sampler: passes.glass.get_scene_sampler(),
+          depth_target: handles.depth,
+        };
+        let args: Vec<GraphBuffer> = Self::list_draw_args(&statics, &scene_view.info.cull);
+        let builder = args.iter().fold(
+          StaticDraws::declare_layouts(Self::add_over_scene(&mut *graph, handles, "glass"), &layouts),
+          |builder, args| builder.buffer(*args, GraphBufferAccess::Indirect),
+        );
+
+        builder.parameters(&parameters).parameters(&sky).record(move |context| {
+          let args: Vec<&wgpu::Buffer> = args.iter().map(|args| context.get_buffer(*args)).collect();
+
+          passes
+            .glass
+            .record(context, (view, &layouts, texture_group), (&parameters, &sky), &args);
+        });
       }
 
       // The distorting surfaces' special pass, a window's glass bending what is behind it, into the distortion target

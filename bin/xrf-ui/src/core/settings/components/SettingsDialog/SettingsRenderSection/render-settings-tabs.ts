@@ -62,7 +62,7 @@ export const RENDER_SETTINGS_TABS: ReadonlyArray<IRenderSettingsTab> = [
     sections: [SettingsRendererShadows],
   },
   {
-    features: ["water", "grass", "fog", "parallax"],
+    features: ["water", "glass", "grass", "fog", "parallax"],
     id: ERenderSettingsTab.WORLD,
     label: "World",
     sections: [SettingsRendererWater, SettingsRendererGrass, SettingsRendererParallax],

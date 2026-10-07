@@ -9,6 +9,7 @@ import {
   TRenderDebandingSettings,
   TRenderEnhancedBloomSettings,
   TRenderFogSettings,
+  TRenderGlassSettings,
   TRenderGrassSettings,
   TRenderIndirectLightSettings,
   TRenderLightsSettings,
@@ -45,6 +46,9 @@ export type TLevelFogOptions = TRenderFogSettings;
 
 /** The sky debanding settings a level view may set for itself: all of them. */
 export type TLevelDebandingOptions = TRenderDebandingSettings;
+
+/** The glass settings a level view may set for itself: all of them. */
+export type TLevelGlassOptions = TRenderGlassSettings;
 
 /** The parallax settings a level view may set for itself: all of them; turning it off is the shading's toggle. */
 export type TLevelParallaxOptions = TRenderParallaxSettings;
@@ -84,6 +88,8 @@ export interface ILevelFeatureOptions {
   fog: Partial<TLevelFogOptions>;
   /** The sky debanding, which no toolbar toggle turns off: its own mode does. */
   debanding: Partial<TLevelDebandingOptions>;
+  /** How glass is drawn, which no toolbar toggle turns off: its own mode does. */
+  glass: Partial<TLevelGlassOptions>;
   /** How the surfaces are displaced by their height, which the shading's toggle turns off whole. */
   parallax: Partial<TLevelParallaxOptions>;
   /** Which bloom draws and the enhanced bloom's strengths, which no toolbar toggle turns off: its own mode does. */
@@ -114,7 +120,7 @@ const LEVEL_FEATURE_KEYS: {
 
 /** The groups no toolbar toggle turns off, whose own mode does, of which a view may set every setting. */
 export type TLevelModeFeatureKey =
-  "debanding" | "enhancedBloom" | "fog" | "indirectLight" | "parallax" | "rain" | "reflections";
+  "debanding" | "enhancedBloom" | "fog" | "glass" | "indirectLight" | "parallax" | "rain" | "reflections";
 
 /** Each such group's settings a view may set. */
 const LEVEL_MODE_FEATURE_KEYS: {
@@ -123,6 +129,7 @@ const LEVEL_MODE_FEATURE_KEYS: {
   debanding: ["mode", "quality", "radius"],
   enhancedBloom: ["blur", "exposure", "mode", "sky", "threshold", "vibrance"],
   fog: ["density", "height", "mode", "scattering", "sunColor"],
+  glass: ["mode", "refraction"],
   indirectLight: ["intensity", "mode", "radius"],
   parallax: [
     "blending",
@@ -174,6 +181,7 @@ export function toLevelFeatureOptions(stored: unknown): ILevelFeatureOptions {
     debanding: pickModeFeature("debanding"),
     enhancedBloom: pickModeFeature("enhancedBloom"),
     fog: pickModeFeature("fog"),
+    glass: pickModeFeature("glass"),
     grass: pick("grass"),
     indirectLight: pickModeFeature("indirectLight"),
     lights: pick("lights"),

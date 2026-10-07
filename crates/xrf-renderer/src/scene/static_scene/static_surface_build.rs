@@ -21,6 +21,20 @@ const ENVIRONMENT_MAPPED_CLASS: &str = "MODELEbB";
 /// `B_DEFAULT_AREF`, `B_VERT` and `B_VERT_AREF` (`r2_blenders.cpp`).
 const STEEP_CLASSES: [&str; 4] = ["LM", "LM_AREF", "V", "V_AREF"];
 
+/// The engines' glass shaders: the level's blended panes (`def_trans`, `def_trans_v`, `def_refl_trans`) and the models'
+/// windows (`models\window`, `models\xwindows`), as their shader table names them. The level's blended fences and
+/// wire share them, so a pane is told apart by its base too (`GLASS_TEXTURES`).
+const GLASS_SHADERS: [&str; 5] = [
+  "def_shaders\\def_trans",
+  "def_shaders\\def_trans_v",
+  "def_shaders\\def_refl_trans",
+  "models\\window",
+  "models\\xwindows",
+];
+
+/// What a pane's base is named by, lower case: in the glass or window folders, or glass by name.
+const GLASS_TEXTURES: [&str; 3] = ["glas\\", "wind\\", "glass"];
+
 /// Turns of the golden angle between consecutive shader ids, which spreads their colours rather than grouping them.
 const HUE_STEP: f32 = 137.508;
 
@@ -212,6 +226,10 @@ pub fn build_static_surface(
     flags |= StaticSurface::IS_DISTORTING;
   }
 
+  if class.is_composited() && blend == 0 && descriptor.is_some_and(is_glass) && is_glass_texture(surface) {
+    flags |= StaticSurface::IS_GLASS;
+  }
+
   let material: f32 = descriptor.map_or(DEFAULT_MATERIAL, |it| it.material);
 
   Some((
@@ -282,6 +300,25 @@ pub fn build_impostor_surface(
     distortion: 0,
     _pad: [0; 3],
   }
+}
+
+/// Whether a shader entry names one of the engines' glass shaders, whatever its case.
+fn is_glass(descriptor: &XraySurfaceDescriptor) -> bool {
+  descriptor
+    .shader
+    .as_deref()
+    .is_some_and(|shader| GLASS_SHADERS.iter().any(|glass| shader.eq_ignore_ascii_case(glass)))
+}
+
+/// Whether a surface's base is named as a pane's.
+fn is_glass_texture(surface: &SectorSurface) -> bool {
+  surface.texture_name.as_deref().is_some_and(|name| {
+    let name: String = name.to_ascii_lowercase();
+
+    GLASS_TEXTURES
+      .iter()
+      .any(|glass| if glass.ends_with('\\') { name.starts_with(glass) } else { name.contains(glass) })
+  })
 }
 
 fn is_wallmark(descriptor: &XraySurfaceDescriptor) -> bool {

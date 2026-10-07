@@ -62,6 +62,8 @@ pub use crate::contract::render_foliage_settings::RenderFoliageSettings;
 pub use crate::contract::render_frame_phases::RenderFramePhases;
 pub use crate::contract::render_frame_rate::RenderFrameRate;
 pub use crate::contract::render_frame_report::RenderFrameReport;
+pub use crate::contract::render_glass_mode::RenderGlassMode;
+pub use crate::contract::render_glass_settings::RenderGlassSettings;
 pub use crate::contract::render_graph_pass::RenderGraphPass;
 pub use crate::contract::render_graph_pass_kind::RenderGraphPassKind;
 pub use crate::contract::render_graph_report::RenderGraphReport;

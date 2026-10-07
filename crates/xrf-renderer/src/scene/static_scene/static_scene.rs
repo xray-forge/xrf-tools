@@ -97,8 +97,9 @@ pub struct StaticScene {
   pub texture_slots: BTreeSet<u32>,
   /// Every environment slot its environment-mapped surfaces sample.
   pub environment_slots: BTreeSet<u32>,
-  /// Whether any of its surfaces draws into the distortion target.
+  /// Whether any of its surfaces draws into the distortion target, and whether any is glass.
   is_distorting: bool,
+  is_glassed: bool,
   surface_count: u32,
   /// Entries of the visible list each batch may need: its clusters, each counted once per place drawing it.
   capacities: [u32; StaticBatch::COUNT],
@@ -243,6 +244,7 @@ impl StaticScene {
       texture_slots: BTreeSet::new(),
       environment_slots: BTreeSet::new(),
       is_distorting: false,
+      is_glassed: false,
       surface_count: 0,
       capacities: [0; StaticBatch::COUNT],
       sectors: ProxyStore::new(),
@@ -939,6 +941,11 @@ impl StaticScene {
     self.is_distorting
   }
 
+  /// Whether any of its surfaces is glass.
+  pub fn is_glassed(&self) -> bool {
+    self.is_glassed
+  }
+
   /// Items added and removed so far, which a view drawn with another count is drawn again for.
   pub fn get_contents(&self) -> usize {
     self.contents
@@ -1255,6 +1262,8 @@ impl StaticScene {
       self.texture_slots.insert(surface.distortion);
       self.is_distorting = true;
     }
+
+    self.is_glassed |= surface.flags & StaticSurface::IS_GLASS != 0;
   }
 
   fn resolve_surface(

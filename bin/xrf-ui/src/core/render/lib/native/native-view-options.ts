@@ -112,6 +112,7 @@ export function toNativeViewOptions(
       enhancedBloom: features.enhancedBloom,
       exposure: look.exposure,
       fog: features.fog,
+      glass: features.glass,
       grass: { ...grass, isEnabled: grass.isEnabled && switches.isGrassy },
       hemiStrength: shading.hemiStrength,
       indirectLight: features.indirectLight,

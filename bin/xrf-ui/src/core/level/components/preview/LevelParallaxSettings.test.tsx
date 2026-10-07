@@ -50,6 +50,6 @@ describe("LevelParallaxSettings", () => {
     );
 
     expect(queryByRole("slider", { name: "Steps" })).toHaveAttribute("aria-valuetext", "16");
-    expect(queryByRole("slider", { name: "Range" })).toHaveAttribute("aria-valuetext", "20 m");
+    expect(queryByRole("slider", { name: "Range" })).toHaveAttribute("aria-valuetext", "60 m");
   });
 });

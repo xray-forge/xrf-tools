@@ -622,6 +622,27 @@ export type RenderFrameReport = {
   graph: RenderGraphReport | null;
 };
 
+/** How glass is drawn. */
+export enum ERenderGlassMode {
+  /** The engine's own: its base blended over what is behind it, mixed toward the sky's cube where it is thin. */
+  ENGINE = "engine",
+  /**
+   * Physically based glass: what stands behind it refracted, blurred where it is dirty, the sky reflected by the
+   * fresnel and the sun's highlight on it.
+   */
+  ENHANCED = "enhanced",
+}
+
+/** Every `ERenderGlassMode` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type RenderGlassMode = `${ERenderGlassMode}`;
+
+/** How glass is drawn, and the enhanced glass's strengths. */
+export type RenderGlassSettings = {
+  mode: RenderGlassMode;
+  /** How far the enhanced glass bends what is behind it, one as designed; none draws it flat. */
+  refraction: number | null;
+};
+
 /** One pass a viewport's frame ran, as the frame graph placed it. */
 export type RenderGraphPass = {
   name: string;
@@ -1459,6 +1480,8 @@ export type RenderViewFeatures = {
   rain: RenderRainSettings;
   lights: RenderLightsSettings;
   water: RenderWaterSettings;
+  /** How glass is drawn: the engine's, or physically based. */
+  glass: RenderGlassSettings;
   grass: RenderGrassSettings;
   /** How finely the sun's shafts step, and Monolith's floor under their density. */
   sunShafts: RenderSunShafts;

@@ -10,6 +10,7 @@ use crate::pass::flare_pass::FlarePass;
 use crate::pass::fog_scattering_pass::FogScatteringPass;
 use crate::pass::fsr_pass::FsrPass;
 use crate::pass::fxaa_pass::FxaaPass;
+use crate::pass::glass_pass::GlassPass;
 use crate::pass::grass_colour_pass::GrassColourPass;
 use crate::pass::grass_pass::GrassPass;
 use crate::pass::light_volume_pass::LightVolumePass;
@@ -62,6 +63,7 @@ pub struct LevelPasses<'a> {
   pub sky: &'a SkyBindings,
   pub water: &'a WaterPass,
   pub composited: &'a CompositedPass,
+  pub glass: &'a GlassPass,
   pub particles: &'a ParticlePass,
   pub grass: &'a GrassPass,
   pub rain: &'a RainPass,

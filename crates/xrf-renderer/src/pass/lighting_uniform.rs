@@ -33,7 +33,8 @@ pub struct LightingUniform {
   pub sky_params: Vec4,
   /// The clouds' colour and cover; nothing where they are hidden.
   pub clouds: Vec4,
-  /// One for Anomaly's shading, then the rain's density.
+  /// One for Anomaly's shading, the rain's density, and one where the enhanced glass draws glass in place of the
+  /// composited surfaces.
   pub engine: Vec4,
   /// How much light the occlusion's creases bounce back (VBAO's alone), then ones where the scene is
   /// lit, the exposure adapts and the occlusion darkens.
@@ -105,7 +106,7 @@ impl LightingUniform {
       engine: Vec4::new(
         flag(lighting.engine == XrayEngine::Extended),
         lighting.rain.map_or(0.0, |rain| rain.density),
-        0.0,
+        flag(options.mode.is_lit && !options.mode.is_wireframe && options.features.glass.is_enhanced()),
         0.0,
       ),
       params: Vec4::new(

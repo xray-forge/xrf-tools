@@ -8,6 +8,7 @@ import {
   RenderExposureSettings,
   RenderFogSettings,
   RenderFoliageSettings,
+  RenderGlassSettings,
   RenderGrassSettings,
   RenderIndirectLightSettings,
   RenderLightsSettings,
@@ -31,6 +32,7 @@ export type TRenderViewFeatureKey =
   | "enhancedBloom"
   | "exposure"
   | "fog"
+  | "glass"
   | "grass"
   | "indirectLight"
   | "isOcclusionCulled"
@@ -72,6 +74,8 @@ export type TRenderExposureSettings = TSettled<RenderExposureSettings>;
 export type TRenderFogSettings = TSettled<RenderFogSettings>;
 
 export type TRenderFoliageSettings = TSettled<RenderFoliageSettings>;
+
+export type TRenderGlassSettings = TSettled<RenderGlassSettings>;
 
 export type TRenderGrassSettings = TSettled<RenderGrassSettings>;
 

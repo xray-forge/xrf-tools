@@ -8,6 +8,7 @@ import {
   ERenderDebandingMode,
   ERenderDebandingQuality,
   ERenderFogMode,
+  ERenderGlassMode,
   ERenderIndirectLightMode,
   ERenderLightShadowFilter,
   ERenderReflectionMode,
@@ -180,14 +181,17 @@ describe("level feature options", () => {
     expect(toLevelFeatureOptions({ reflections: { mode: "raytraced" } }).reflections).toEqual({});
   });
 
-  it("keeps the fog's, the sky debanding's and the bloom's own modes and strengths, held to their bounds", () => {
+  it("keeps the fog's, the sky debanding's, the glass's and the bloom's own modes and strengths, held to their bounds", () => {
     const view: ILevelFeatureOptions = toLevelFeatureOptions({
       debanding: { mode: ERenderDebandingMode.ENGINE, quality: ERenderDebandingQuality.ULTRA, radius: 400 },
       enhancedBloom: { lens: 2, mode: ERenderBloomMode.ENHANCED, threshold: 0.5 },
       fog: { density: 9, height: 6, mode: ERenderFogMode.ENGINE, steps: 3 },
+      glass: { blur: 1, mode: ERenderGlassMode.ENGINE, refraction: 5 },
     });
 
     expect(view.fog).toEqual({ density: 5, height: 6, mode: ERenderFogMode.ENGINE });
+    expect(view.glass).toEqual({ mode: ERenderGlassMode.ENGINE, refraction: 2 });
+    expect(toLevelModeFeature("glass", SETTINGS, view)).toEqual({ mode: ERenderGlassMode.ENGINE, refraction: 2 });
     expect(view.debanding).toEqual({
       mode: ERenderDebandingMode.ENGINE,
       quality: ERenderDebandingQuality.ULTRA,
