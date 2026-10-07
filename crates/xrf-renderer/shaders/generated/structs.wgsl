@@ -31,7 +31,8 @@ struct GrassModel {
   alpha_reference: f32,
   index_count: u32,
   first_index: u32,
-  pad: array<u32, 3>,
+  spread: f32,
+  pad: array<u32, 2>,
 }
 
 struct TraceGrass {
@@ -40,6 +41,7 @@ struct TraceGrass {
   fade: f32,
   height: f32,
   model_count: u32,
+  slope_limit: f32,
 }
 
 struct TraceRequest {

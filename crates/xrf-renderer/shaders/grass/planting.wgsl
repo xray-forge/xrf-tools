@@ -93,11 +93,6 @@ fn is_in_puddle(foot: vec3<f32>) -> bool {
   return false;
 }
 
-// A slope's limit standing for none, a right angle; the share of it a tuft's limit is drawn down by at most, so the
-// grass thins up a bank.
-const SLOPE_NONE: f32 = 1.5707;
-const SLOPE_THINNING: f32 = 0.2;
-
 // A share from nought to one drawn of a foot's place alone, apart from the planting's generators.
 fn place_share(x: f32, z: f32) -> f32 {
   return fract(sin(dot(vec2<f32>(x, z), vec2<f32>(12.9898, 78.233))) * 43758.547);

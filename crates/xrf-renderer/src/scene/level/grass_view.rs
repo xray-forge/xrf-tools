@@ -164,6 +164,8 @@ impl GrassView {
       fade: self.values.fade,
       height: settings.height,
       model_count: level.model_count,
+      slope_limit,
+      _pad: [0.0; 3],
     };
   }
 
