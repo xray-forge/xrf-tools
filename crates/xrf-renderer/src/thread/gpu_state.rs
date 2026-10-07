@@ -29,6 +29,7 @@ use crate::pass::present_pass::PresentPass;
 use crate::pass::puddle_sites_pass::PuddleSitesPass;
 use crate::pass::rain_pass::RainPass;
 use crate::pass::reflection_pass::ReflectionPass;
+use crate::pass::scene_trace_pass::SceneTracePass;
 use crate::pass::sky_bindings::SkyBindings;
 use crate::pass::sky_haze_pass::SkyHazePass;
 use crate::pass::sky_prefilter_pass::SkyPrefilterPass;
@@ -95,6 +96,7 @@ pub struct GpuState {
   pub ambient_occlusion: AmbientOcclusionPass,
   pub vbao: VbaoPass,
   pub reflections: ReflectionPass,
+  pub scene_trace: SceneTracePass,
   pub lights: LightsPass,
   pub combine: CombinePass,
   pub exposure: ExposurePass,
@@ -173,14 +175,8 @@ impl GpuState {
       sun: SunPass::new(device, shaders, &view_layout)?,
       ambient_occlusion: AmbientOcclusionPass::new(device, shaders, &view_layout)?,
       vbao: VbaoPass::new(device, &context.queue, shaders, &view_layout)?,
-      reflections: ReflectionPass::new(
-        device,
-        &context.queue,
-        shaders,
-        &view_layout,
-        sky.get_layout(),
-        textures.get_layout(),
-      )?,
+      reflections: ReflectionPass::new(device, &context.queue, shaders, &view_layout, sky.get_layout())?,
+      scene_trace: SceneTracePass::new(device, shaders, &view_layout, sky.get_layout(), textures.get_layout())?,
       lights: LightsPass::new(device, shaders, &view_layout, textures.get_layout())?,
       combine: CombinePass::new(device, shaders, &view_layout, sky.get_layout())?,
       sky_haze: SkyHazePass::new(device, shaders, sky.get_layout())?,
@@ -233,6 +229,7 @@ impl GpuState {
       ambient_occlusion: &self.ambient_occlusion,
       vbao: &self.vbao,
       reflections: &self.reflections,
+      scene_trace: &self.scene_trace,
       lights: &self.lights,
       combine: &self.combine,
       sky_haze: &self.sky_haze,
@@ -283,6 +280,7 @@ impl GpuState {
     self.ambient_occlusion.refresh(device, shaders);
     self.vbao.refresh(device, shaders);
     self.reflections.refresh(device, shaders);
+    self.scene_trace.refresh(device, shaders);
     self.lights.refresh(device, shaders);
     self.combine.refresh(device, shaders);
     self.sky_haze.refresh(device, shaders);

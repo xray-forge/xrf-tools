@@ -85,6 +85,8 @@ struct EnhancedWater {
   gusts_y: f32,
   variation: f32,
   trace_distance: f32,
+  trace_turns: u32,
+  trace_frame: u32,
 }
 
 struct WaterBlur {

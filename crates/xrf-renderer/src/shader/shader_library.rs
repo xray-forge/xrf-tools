@@ -174,6 +174,10 @@ const EMBEDDED: &[(&str, &str)] = &[
     include_str!("../../shaders/frame/reflections.wgsl"),
   ),
   (
+    "common/trace_requests",
+    include_str!("../../shaders/common/trace_requests.wgsl"),
+  ),
+  (
     "frame/reflection_scene",
     include_str!("../../shaders/frame/reflection_scene.wgsl"),
   ),
@@ -225,6 +229,10 @@ const EMBEDDED: &[(&str, &str)] = &[
   (
     "generated/frame/reflections",
     include_str!("../../shaders/generated/frame/reflections.wgsl"),
+  ),
+  (
+    "generated/common/trace_requests",
+    include_str!("../../shaders/generated/common/trace_requests.wgsl"),
   ),
   (
     "generated/frame/reflection_scene",

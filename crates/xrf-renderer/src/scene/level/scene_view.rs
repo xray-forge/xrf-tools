@@ -99,8 +99,8 @@ use crate::pass::pyramid_level_parameters::PyramidLevelParameters;
 use crate::pass::rain_parameters::RainParameters;
 use crate::pass::rain_uniform::RainUniform;
 use crate::pass::reflection_parameters::ReflectionParameters;
-use crate::pass::reflection_scene_parameters::ReflectionSceneParameters;
 use crate::pass::reflection_pass::ReflectionPass;
+use crate::pass::reflection_scene_parameters::ReflectionSceneParameters;
 use crate::pass::reflection_trace::ReflectionTrace;
 use crate::pass::reflection_uniform::ReflectionUniform;
 use crate::pass::sky_haze_parameters::SkyHazeParameters;
@@ -124,7 +124,7 @@ use crate::pass::temporal_uniform::TemporalUniform;
 use crate::pass::thunder_parameters::ThunderParameters;
 use crate::pass::thunder_uniform::ThunderUniform;
 use crate::pass::trace_parameters::TraceParameters;
-use crate::pass::trace_request::TraceRequest;
+use crate::pass::trace_request_handles::TraceRequestHandles;
 use crate::pass::trace_request_parameters::TraceRequestParameters;
 use crate::pass::upscale_parameters::UpscaleParameters;
 use crate::pass::upscale_uniform::UpscaleUniform;
@@ -1271,80 +1271,48 @@ impl SceneView {
     };
     let clear = |target: GraphTexture| GraphColorAttachment::new(target, wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT));
 
-    let requests: GraphBuffer = bindings.import_buffer(graph, "reflection trace requests", &history.requests);
-    let request_head: GraphBuffer = bindings.import_buffer(graph, "reflection trace request head", &history.request_head);
-    let request_reset: GraphBuffer = bindings.import_buffer(
-      graph,
-      "reflection trace request head reset",
-      passes.reflections.get_request_head_reset(),
-    );
-    let listed: TraceRequestParameters = TraceRequestParameters {
-      trace_requests: StorageArrayMut::new(requests),
-      trace_request_head: StorageArrayMut::new(request_head),
-    };
+    let listed: TraceRequestHandles =
+      passes
+        .scene_trace
+        .add_reset(graph, bindings, ("reflection trace requests clear", &history.requests));
+    let requests: TraceRequestParameters = listed.to_listed();
 
-    // The list the trace leaves rays to the scene pass in, emptied for this frame.
-    graph
-      .add_encoder_pass("reflection trace requests clear")
-      .buffer(request_reset, GraphBufferAccess::CopySource)
-      .buffer(request_head, GraphBufferAccess::CopyDestination)
-      .record(move |context| {
-        let (reset, head) = (context.get_buffer(request_reset), context.get_buffer(request_head));
-
-        context
-          .get_encoder()
-          .copy_buffer_to_buffer(reset, 0, head, 0, size_of_val(&TraceRequest::HEAD) as u64);
-      });
     graph
       .add_raster_pass(ReflectionTrace::TRACE_PASS)
       .parameters(&parameters)
       .parameters(&sky)
-      .parameters(&listed)
+      .parameters(&requests)
       .color(clear(traced))
       .color(clear(ends))
       .record(move |context| {
         passes
           .reflections
-          .record_trace(context, view, (&parameters, &sky), &listed)
+          .record_trace(context, view, (&parameters, &sky), &requests)
       });
 
-    // The rays the trace left, traced against the level's geometry as many workgroups as it counted.
-    if let Some((trace, textures)) = scene_trace {
-      let dispatch: GraphBuffer =
-        bindings.import_buffer(graph, "reflection trace request dispatch", &history.request_dispatch);
-      let scene: ReflectionSceneParameters<'a> = ReflectionSceneParameters {
-        lighting: lit.lighting,
-        reflection,
-        material_lut: lit.material_lut,
-        lut_sampler: lit.lut_sampler,
-        trace_requests: StorageArray::new(requests),
-        trace_request_head: StorageArray::new(request_head),
-        traced_out: traced,
-        ends_out: ends,
-      };
+    // The rays the trace left, traced against the level's geometry.
+    if let Some(scene_trace) = scene_trace {
+      let (trace_requests, trace_request_head) = listed.to_read();
 
-      graph
-        .add_encoder_pass("reflection scene dispatch")
-        .buffer(request_head, GraphBufferAccess::CopySource)
-        .buffer(dispatch, GraphBufferAccess::CopyDestination)
-        .record(move |context| {
-          let (head, copied) = (context.get_buffer(request_head), context.get_buffer(dispatch));
-
-          context.get_encoder().copy_buffer_to_buffer(head, 4, copied, 0, 12);
-        });
-      graph
-        .add_compute_pass(ReflectionTrace::SCENE_PASS)
-        .parameters(&scene)
-        .parameters(&sky)
-        .parameters(&trace)
-        .buffer(dispatch, GraphBufferAccess::Indirect)
-        .record(move |context| {
-          let copied: &wgpu::Buffer = context.get_buffer(dispatch);
-
-          passes
-            .reflections
-            .record_scene(context, view, (&scene, &sky), (&trace, textures), copied);
-        });
+      passes.scene_trace.add_trace(
+        graph,
+        (("reflection scene dispatch", ReflectionTrace::SCENE_PASS), listed),
+        view,
+        (
+          ReflectionSceneParameters {
+            lighting: lit.lighting,
+            material_lut: lit.material_lut,
+            lut_sampler: lit.lut_sampler,
+            exposure: StorageValue::new(lit.exposure),
+            trace_requests,
+            trace_request_head,
+            traced_out: traced,
+            ends_out: ends,
+          },
+          sky,
+        ),
+        scene_trace,
+      );
     }
 
     // Each traced pixel's surface for the stages after the trace, worked out once.
@@ -1511,6 +1479,17 @@ impl SceneView {
       self.state.reflections = Some(ReflectionHistory::new(device, traced, (width, height)));
     }
 
+    let can_trace: bool = device.features().contains(RAY_QUERY_FEATURES);
+
+    if let Some(history) = &mut self.state.reflections {
+      let is_traced: bool = self.info.reflection_settings.is_traced && can_trace;
+
+      history.requests.fit(
+        device,
+        if is_traced { (traced.0 * traced.1).div_ceil(ReflectionHistory::REQUEST_SHARE) } else { 0 },
+      );
+    }
+
     let (frame, has_history, has_source): (u32, bool, bool) = self
       .state
       .reflections
@@ -1521,7 +1500,7 @@ impl SceneView {
       &self.info.reflection_settings,
       frame,
       (has_history, has_source),
-      device.features().contains(RAY_QUERY_FEATURES),
+      can_trace,
     );
   }
 
@@ -2462,6 +2441,8 @@ impl SceneView {
         }
         _ => None,
       };
+      // The sky's group, which the water's scene pass reads too once the water's own sky views shadow the name.
+      let sky_parameters: Option<SkyParameters> = sky;
 
       if let (true, Some(sky)) = (is_hazing, sky) {
         let parameters: SkyHazeParameters = SkyHazeParameters {
@@ -2493,7 +2474,7 @@ impl SceneView {
       let traced: Option<(TraceParameters, &wgpu::BindGroup)> = scene
         .trace
         .as_ref()
-        .filter(|_| passes.reflections.is_traced())
+        .filter(|_| passes.scene_trace.is_traced())
         .map(|trace| {
           (
             TraceParameters {
@@ -2639,10 +2620,12 @@ impl SceneView {
           args: Self::list_draw_args(&statics, &scene_view.info.cull),
           lit,
           skies: [&sky.cubes[0], &sky.cubes[1]],
-          environments: [&sky.irradiance[0], &sky.irradiance[1]],
           sky_sampler: passes.sky.get_clamp(),
           water: &scene_view.state.water,
-          traced,
+          scene_trace: passes.scene_trace,
+          traced: sky_parameters
+            .zip(traced)
+            .map(|(sky, (trace, textures))| (sky, trace, textures)),
         };
 
         passes.water.add_passes(&mut *graph, &mut *bindings, runtime, draw);

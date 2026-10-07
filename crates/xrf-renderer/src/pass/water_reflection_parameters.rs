@@ -1,15 +1,14 @@
-use xrf_renderer_core::{GraphTexture, PassParameters, StorageValue, UniformBinding};
+use xrf_renderer_core::{GraphTexture, PassParameters, UniformBinding};
 
 use crate::pass::enhanced_water_uniform::EnhancedWaterUniform;
-use crate::pass::exposure_head::ExposureHead;
 use crate::pass::lighting_uniform::LightingUniform;
 use crate::pass::water_uniform::WaterUniform;
 
 /// What the enhanced water's reflection reads beside the scene: what every water program reads, the scene before the
-/// water, the history the frames before accumulated, and the noise jittering its march; and what a traced hit is lit
-/// and tonemapped by, the material table, the hemisphere's cubes and the exposure. Group 5, past the trace's two.
-#[derive(PassParameters)]
-#[parameters(group = 5)]
+/// water, the history the frames before accumulated, and the noise jittering its march; and this frame's reflection,
+/// its traced hits written in, which the resolve keeps over the history. Group 4, past the request list's.
+#[derive(Clone, Copy, PassParameters)]
+#[parameters(group = 4)]
 pub struct WaterReflectionParameters<'a> {
   #[uniform]
   pub lighting: UniformBinding<LightingUniform>,
@@ -36,14 +35,6 @@ pub struct WaterReflectionParameters<'a> {
   pub reflection_history: GraphTexture,
   #[texture(d2, float)]
   pub blue_noise: GraphTexture,
-  #[texture(d3, float)]
-  pub material_lut: GraphTexture,
-  #[sampler(filtering)]
-  pub lut_sampler: &'a wgpu::Sampler,
-  #[texture(cube, float)]
-  pub sky_environment_0: GraphTexture,
-  #[texture(cube, float)]
-  pub sky_environment_1: GraphTexture,
-  #[storage]
-  pub exposure: StorageValue<ExposureHead>,
+  #[texture(d2, unfilterable)]
+  pub water_current: GraphTexture,
 }

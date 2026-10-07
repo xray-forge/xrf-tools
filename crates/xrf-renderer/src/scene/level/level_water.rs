@@ -1,3 +1,5 @@
+use crate::context::gpu_requirements::RAY_QUERY_FEATURES;
+use crate::contract::render_reflection_settings::RenderReflectionSettings;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::contract::render_water_mode::RenderWaterMode;
 use crate::contract::render_water_settings::RenderWaterSettings;
@@ -30,6 +32,8 @@ pub struct LevelWater {
   reflection: Option<WaterReflection>,
   /// How far the enhanced water's maps have scrolled.
   flow: WaterFlow,
+  /// Frames prepared, which turns which of its pixels trace.
+  frame: u32,
 }
 
 impl LevelWater {
@@ -62,6 +66,20 @@ impl LevelWater {
       _ => self.reflection = None,
     }
 
+    let reflections: RenderReflectionSettings = options.features.reflections;
+    let is_traced: bool = reflections.is_traced && device.features().contains(RAY_QUERY_FEATURES);
+
+    self.frame = self.frame.wrapping_add(1);
+
+    if let Some(reflection) = &mut self.reflection {
+      let (width, height) = reflection.size;
+
+      reflection.requests.fit(
+        device,
+        if is_traced { (width * height).div_ceil(WaterReflection::REQUEST_SHARE) } else { 0 },
+      );
+    }
+
     self.enhanced = EnhancedWaterUniform::new(
       &settings.enhanced,
       (frame.wind, frame.rain),
@@ -70,11 +88,14 @@ impl LevelWater {
         .reflection
         .as_ref()
         .map_or((false, false), |reflection| (true, reflection.is_valid)),
-      if options.features.reflections.is_traced {
-        options.features.reflections.distance
-      } else {
-        0.0
-      },
+      (
+        if is_traced { reflections.distance } else { 0.0 },
+        reflections
+          .trace_quality
+          .get_turns()
+          .max(WaterReflection::TRACE_TURNS_LEAST),
+        self.frame,
+      ),
     );
   }
 

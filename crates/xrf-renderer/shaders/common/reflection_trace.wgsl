@@ -394,5 +394,9 @@ fn path_fog(state: Lighting, length: f32) -> f32 {
   return saturate(length * state.fog.y) * state.fog_color.w;
 }
 
-// Requests a workgroup of the reflections' scene pass traces, which the trace counts its dispatch by.
+// Requests a workgroup of the reflections' scene pass traces, which a pass listing them counts its dispatch by.
 const TRACE_REQUEST_WORKGROUP: u32 = 64u;
+
+// Set in a request's `hit_end` for the water's reflection: its hit written tonemapped, as the scene the water reads
+// was, its length the hit's distance along the view, and no reason, the water keeping no ends.
+const TRACE_REQUEST_WATER: u32 = 0x80000000u;

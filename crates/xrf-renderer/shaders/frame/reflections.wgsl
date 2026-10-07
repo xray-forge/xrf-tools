@@ -6,6 +6,7 @@
 #import "common/occlusion"
 #import "common/reflection_trace"
 #import "common/reflection_end"
+#import "common/trace_requests"
 
 // Stochastic screen-space reflections on the frame's surfaces, at the size the quality traces at, a pixel per `ratio`
 // by `ratio` of the frame. Each reflecting pixel's ray leaves in a direction drawn from its surface's GGX lobe (a
@@ -195,41 +196,41 @@ fn scene_ray(pixel: vec2<f32>, position: vec3<f32>, normal: vec3<f32>, direction
   return request;
 }
 
-// The ray this invocation's pixel leaves to the scene pass, where it leaves one.
+// The ray this invocation's pixel leaves to the scene pass, where it leaves one, and the frame's texel it stands for.
 var<private> scene_request: TraceRequest;
 var<private> is_scene_requested: bool = false;
+var<private> scene_texel: vec2<i32>;
 
 // Lists the pixel's ray for the scene pass with what the screen answered (`answer`'s colour weighed by its `share`,
-// its length) and the reason `hit_end` its ends take where the ray meets something; counts the scene pass's dispatch a
-// workgroup at a time. A ray past the list's room leaves its pixel the sky.
-fn request_scene(answer: vec4<f32>, share: f32, hit_end: u32) {
-  let index: u32 = atomicAdd(&trace_request_head[0], 1u);
-
-  if (index >= arrayLength(&trace_requests)) {
-    return;
-  }
-
-  if (index % TRACE_REQUEST_WORKGROUP == 0u) {
-    atomicAdd(&trace_request_head[1], 1u);
-  }
-
+// its length) and the reason `hit_end` its ends take where the ray meets something; whether the list took it.
+fn request_scene(answer: vec4<f32>, share: f32, hit_end: u32) -> bool {
   var request: TraceRequest = scene_request;
 
-  request.screen = vec2<u32>(pack2x16float(answer.rg * share), pack2x16float(vec2<f32>(answer.b * share, share)));
+  request.screen = trace_request_screen(answer.rgb, share);
   request.screen_length = answer.w;
   request.hit_end = hit_end;
-  trace_requests[index] = request;
+
+  return list_trace_request(request);
 }
 
 // What the trace writes for a pixel: what the screen answered (`answer`, its colour, and its length where its `share`
 // holds most) over `fallback`, the sky and the length a missed ray takes, and the pixel's reason; and, where the pixel
-// leaves its ray to the scene pass, its request, the reason its ends take on a hit `hit_end`.
+// leaves its ray to the scene pass, its request, the reason its ends take on a hit `hit_end`; where the list has no
+// room for it, what the pixel reflected the frame before in the sky's place, where that holds.
 fn answer_trace(fallback: vec4<f32>, answer: vec4<f32>, share: f32, end: u32, hit_end: u32) -> TraceTargets {
-  if (is_scene_requested) {
-    request_scene(answer, share, hit_end);
+  var behind: vec4<f32> = fallback;
+  var reason: u32 = end;
+
+  if (is_scene_requested && !request_scene(answer, share, hit_end)) {
+    let held: vec4<f32> = held_radiance(scene_texel);
+
+    if (held.w >= 0.0) {
+      behind = held;
+      reason = select(end, END_HELD, share <= 0.5);
+    }
   }
 
-  return trace_targets(vec4<f32>(mix(fallback.rgb, answer.rgb, share), select(fallback.w, answer.w, share > 0.5)), end);
+  return trace_targets(vec4<f32>(mix(behind.rgb, answer.rgb, share), select(behind.w, answer.w, share > 0.5)), reason);
 }
 
 // Two uniform numbers for a pixel this frame: the blue noise there and half its tile away, turned by the frame.
@@ -543,6 +544,7 @@ fn fs_trace(in: FullscreenVarying) -> TraceTargets {
     } else {
       scene_request = scene_ray(pixel, position, normal, direction, roughness);
       is_scene_requested = true;
+      scene_texel = texel;
     }
   }
 
