@@ -93,6 +93,15 @@ assert_eq!(compiled.get_render_pass_count(), 1);
   buffer with a larger one if the frame outgrew it (`get_generation` again). A value is valid from that `flush` until
   the next frame's, which the queue orders after the frame that read it.
 
+## Scene stores
+
+A scene's items are stores, one kind each: `ProxyStore<T>` keeps them as dense records the GPU mirrors element for
+element. An add appends and answers a `ProxyHandle<T>`; a remove moves the last record into the gap, so the records stay
+dense and the moved item keeps its handle. A handle is generational: once its item is gone it answers nothing, even after
+its slot is reused. Every record added, changed (`get_mut`) or moved is noted; `StoreMirror::sync` uploads those as
+contiguous runs into a buffer of the store's records, growing it by a GPU copy. The CPU records are the source of truth,
+so a lost device's mirrors are rebuilt with `mark_all_changed` and a sync.
+
 ## Shared structs
 
 A struct a shader and Rust share is declared once, in Rust, with `#[derive(ShaderStruct)]` (from `xrf-renderer-derive`,
