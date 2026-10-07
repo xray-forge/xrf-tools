@@ -1,6 +1,6 @@
 import { default as WaterIcon } from "@mui/icons-material/Water";
 import { Button } from "@mui/material";
-import { ReactElement } from "react";
+import { ReactElement, useCallback } from "react";
 
 import { ERenderWaterMode, RenderWaterMode } from "@/core/ipc/types/xrf-renderer";
 import { ILevelFeatureActionProps } from "@/core/level/components/preview/level-feature-action-props";
@@ -18,9 +18,10 @@ import {
   formatWaveHeight,
   formatWaveSpeed,
   IRenderChoiceOption,
+  RENDER_ENHANCED_WATER_LIMITS,
   RENDER_WATER_LIMITS,
 } from "@/core/render/lib/features";
-import { TRenderWaterSettings } from "@/core/render/lib/settings/render-feature-settings";
+import { TRenderEnhancedWaterSettings, TRenderWaterSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { EditorPopoverToggle } from "@/core/shell/editor/EditorPopoverToggle";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { formatPercent } from "@/lib/format/number";
@@ -38,7 +39,7 @@ interface ILevelWaterActionProps extends ILevelFeatureActionProps<"water"> {
 
 /**
  * Whether this view draws the water, how strongly the weather has it reflect, and how it moves, reflects and
- * distorts: the engine's own, or Screen Space Shaders' refracting what lies under it.
+ * distorts: the engine's own, or the enhanced water refracting what lies under it.
  */
 export function LevelWaterAction({
   "data-testid": dataTestId = "level-water-action",
@@ -54,6 +55,14 @@ export function LevelWaterAction({
 }: ILevelWaterActionProps): ReactElement {
   const { set, reset } = useLevelFeatureOverride("water", features, onChange);
   const water: TRenderWaterSettings = state.value;
+  const enhanced: TRenderEnhancedWaterSettings = water.enhanced;
+
+  const setEnhanced = useCallback(
+    (part: Partial<TRenderEnhancedWaterSettings>): void => {
+      set({ enhanced: { ...enhanced, ...part } });
+    },
+    [enhanced, set]
+  );
 
   return (
     <EditorPopoverToggle
@@ -90,106 +99,106 @@ export function LevelWaterAction({
         <>
           <RenderValueSlider
             label={"Refraction"}
-            value={water.refraction}
-            {...RENDER_WATER_LIMITS.refraction}
+            value={enhanced.refraction}
+            {...RENDER_ENHANCED_WATER_LIMITS.refraction}
             format={formatWaterStrength}
-            onChange={(refraction: number) => set({ refraction })}
+            onChange={(refraction: number) => setEnhanced({ refraction })}
           />
 
           <RenderValueSlider
             label={"Turbidity"}
-            value={water.turbidity}
-            {...RENDER_WATER_LIMITS.turbidity}
+            value={enhanced.turbidity}
+            {...RENDER_ENHANCED_WATER_LIMITS.turbidity}
             format={formatWaterStrength}
-            onChange={(turbidity: number) => set({ turbidity })}
+            onChange={(turbidity: number) => setEnhanced({ turbidity })}
           />
 
           <RenderValueSlider
             label={"Soft border"}
-            value={water.softBorder}
-            {...RENDER_WATER_LIMITS.softBorder}
+            value={enhanced.softBorder}
+            {...RENDER_ENHANCED_WATER_LIMITS.softBorder}
             format={formatWaterBorder}
-            onChange={(softBorder: number) => set({ softBorder })}
+            onChange={(softBorder: number) => setEnhanced({ softBorder })}
           />
 
           <RenderValueSlider
             label={"Reflectivity"}
-            value={water.reflectivity}
-            {...RENDER_WATER_LIMITS.reflectivity}
+            value={enhanced.reflectivity}
+            {...RENDER_ENHANCED_WATER_LIMITS.reflectivity}
             format={formatWaterStrength}
-            onChange={(reflectivity: number) => set({ reflectivity })}
+            onChange={(reflectivity: number) => setEnhanced({ reflectivity })}
           />
 
           <RenderValueSlider
             label={"Reflection blur"}
-            value={water.reflectionBlur}
-            {...RENDER_WATER_LIMITS.reflectionBlur}
+            value={enhanced.reflectionBlur}
+            {...RENDER_ENHANCED_WATER_LIMITS.reflectionBlur}
             format={formatWaterStrength}
-            onChange={(reflectionBlur: number) => set({ reflectionBlur })}
+            onChange={(reflectionBlur: number) => setEnhanced({ reflectionBlur })}
           />
 
           <RenderValueSlider
             label={"Blur noise"}
-            value={water.blurNoise}
-            {...RENDER_WATER_LIMITS.blurNoise}
+            value={enhanced.blurNoise}
+            {...RENDER_ENHANCED_WATER_LIMITS.blurNoise}
             format={formatWaterStrength}
-            onChange={(blurNoise: number) => set({ blurNoise })}
+            onChange={(blurNoise: number) => setEnhanced({ blurNoise })}
           />
 
           <RenderValueSlider
             label={"Specular"}
-            value={water.specular}
-            {...RENDER_WATER_LIMITS.specular}
+            value={enhanced.specular}
+            {...RENDER_ENHANCED_WATER_LIMITS.specular}
             format={formatWaterStrength}
-            onChange={(specular: number) => set({ specular })}
+            onChange={(specular: number) => setEnhanced({ specular })}
           />
 
           <RenderValueSlider
             label={"Caustics"}
-            value={water.caustics}
-            {...RENDER_WATER_LIMITS.caustics}
+            value={enhanced.caustics}
+            {...RENDER_ENHANCED_WATER_LIMITS.caustics}
             format={formatWaterStrength}
-            onChange={(caustics: number) => set({ caustics })}
+            onChange={(caustics: number) => setEnhanced({ caustics })}
           />
 
           <RenderValueSlider
             label={"Parallax height"}
-            value={water.parallaxHeight}
-            {...RENDER_WATER_LIMITS.parallaxHeight}
+            value={enhanced.parallaxHeight}
+            {...RENDER_ENHANCED_WATER_LIMITS.parallaxHeight}
             format={formatWaveHeight}
-            onChange={(parallaxHeight: number) => set({ parallaxHeight })}
+            onChange={(parallaxHeight: number) => setEnhanced({ parallaxHeight })}
           />
 
           <RenderValueSlider
             label={"Flow"}
-            value={water.flow}
-            {...RENDER_WATER_LIMITS.flow}
+            value={enhanced.flow}
+            {...RENDER_ENHANCED_WATER_LIMITS.flow}
             format={formatWaterMultiple}
-            onChange={(flow: number) => set({ flow })}
+            onChange={(flow: number) => setEnhanced({ flow })}
           />
 
           <RenderValueSlider
             label={"Calm flow"}
-            value={water.calmFlow}
-            {...RENDER_WATER_LIMITS.calmFlow}
+            value={enhanced.calmFlow}
+            {...RENDER_ENHANCED_WATER_LIMITS.calmFlow}
             format={formatPercent}
-            onChange={(calmFlow: number) => set({ calmFlow })}
+            onChange={(calmFlow: number) => setEnhanced({ calmFlow })}
           />
 
           <RenderValueSlider
             label={"Variation"}
-            value={water.variation}
-            {...RENDER_WATER_LIMITS.variation}
+            value={enhanced.variation}
+            {...RENDER_ENHANCED_WATER_LIMITS.variation}
             format={formatWaterStrength}
-            onChange={(variation: number) => set({ variation })}
+            onChange={(variation: number) => setEnhanced({ variation })}
           />
 
           <RenderValueSlider
             label={"Rain ripples"}
-            value={water.ripples}
-            {...RENDER_WATER_LIMITS.ripples}
+            value={enhanced.ripples}
+            {...RENDER_ENHANCED_WATER_LIMITS.ripples}
             format={formatWaterStrength}
-            onChange={(ripples: number) => set({ ripples })}
+            onChange={(ripples: number) => setEnhanced({ ripples })}
           />
         </>
       ) : null}

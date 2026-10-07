@@ -9,6 +9,8 @@ use crate::pass::combine_parameters::CombineParameters;
 use crate::pass::composited_parameters::CompositedParameters;
 use crate::pass::contact_shadow_parameters::ContactShadowParameters;
 use crate::pass::contact_shadow_uniform::ContactShadowUniform;
+use crate::pass::enhanced_water_parameters::EnhancedWaterParameters;
+use crate::pass::enhanced_water_uniform::EnhancedWaterUniform;
 use crate::pass::exposure_head::ExposureHead;
 use crate::pass::exposure_parameters::ExposureParameters;
 use crate::pass::exposure_state::ExposureState;
@@ -71,6 +73,8 @@ const STRUCTS_IMPORT: &str = "#import \"generated/structs\"\n\n";
 pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
   let mut structs: ShaderDeclarations = ShaderDeclarations::new();
   let mut water: ShaderBindings = ShaderBindings::new();
+  let mut water_enhanced: ShaderBindings = ShaderBindings::new();
+  let mut water_reflection: ShaderBindings = ShaderBindings::new();
   let mut water_blur: ShaderBindings = ShaderBindings::new();
   let mut present: ShaderBindings = ShaderBindings::new();
   let mut overlay: ShaderBindings = ShaderBindings::new();
@@ -105,6 +109,7 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
   structs
     .declare::<LightingUniform>()
     .declare::<WaterUniform>()
+    .declare::<EnhancedWaterUniform>()
     .declare::<WaterBlurUniform>()
     .declare::<PresentUniform>()
     .declare::<UpscaleUniform>()
@@ -130,8 +135,9 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
   StaticImpostorParameters::declare(&mut structs);
   water
     .add::<WaterDepthParameters>()?
-    .add::<WaterReflectionParameters<'_>>()?
     .add::<WaterSurfaceParameters<'_>>()?;
+  water_enhanced.add::<EnhancedWaterParameters<'_>>()?;
+  water_reflection.add::<WaterReflectionParameters<'_>>()?;
   water_blur.add::<WaterBlurParameters<'_>>()?;
   present.add::<PresentParameters<'_>>()?;
   overlay.add::<OverlayParameters>()?;
@@ -170,6 +176,14 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
   Ok(vec![
     ("generated/structs", structs.to_wgsl()),
     ("generated/static/water", format!("{STRUCTS_IMPORT}{}", water.to_wgsl())),
+    (
+      "generated/static/water_enhanced",
+      format!("{STRUCTS_IMPORT}{}", water_enhanced.to_wgsl()),
+    ),
+    (
+      "generated/static/water_reflection",
+      format!("{STRUCTS_IMPORT}{}", water_reflection.to_wgsl()),
+    ),
     (
       "generated/frame/present",
       format!("{STRUCTS_IMPORT}{}", present.to_wgsl()),

@@ -1,6 +1,6 @@
 //! How far the enhanced water's maps scroll, summed frame by frame.
 
-use crate::contract::render_water_settings::RenderWaterSettings;
+use crate::contract::render_enhanced_water_settings::RenderEnhancedWaterSettings;
 use crate::lighting::render_wind::RenderWind;
 use crate::scene::level::water_flow::WaterFlow;
 
@@ -13,7 +13,7 @@ fn wind(velocity: f32) -> RenderWind {
 
 #[test]
 fn a_change_of_wind_changes_how_fast_the_water_moves_not_where_it_stands() {
-  let settings: RenderWaterSettings = RenderWaterSettings::default();
+  let settings: RenderEnhancedWaterSettings = RenderEnhancedWaterSettings::default();
   let mut flow: WaterFlow = WaterFlow::default();
 
   flow.advance(1000.0, &settings, wind(0.0));
@@ -26,16 +26,16 @@ fn a_change_of_wind_changes_how_fast_the_water_moves_not_where_it_stands() {
 
   assert!((flow.waves - calm.waves - 0.1 * 0.97).abs() < 1e-3);
   assert!((flow.gusts[0] - calm.gusts[0]).hypot(flow.gusts[1] - calm.gusts[1]) - 0.1 < 1e-3);
-  // Before it, the calm drifted at the module's floor times the calm flow, for the hundred seconds it was drawn.
+  // Before it, the calm drifted at its floor times the calm flow, for the hundred seconds it was drawn.
   assert!((calm.waves - 100.0 * 0.45 * settings.calm_flow).abs() < 1e-2);
   assert_eq!(calm.gusts, [0.0; 2]);
 }
 
 #[test]
 fn the_flow_scales_every_scroll_and_none_stills_them() {
-  let still: RenderWaterSettings = RenderWaterSettings {
+  let still: RenderEnhancedWaterSettings = RenderEnhancedWaterSettings {
     flow: 0.0,
-    ..RenderWaterSettings::default()
+    ..RenderEnhancedWaterSettings::default()
   };
   let mut flow: WaterFlow = WaterFlow::default();
 

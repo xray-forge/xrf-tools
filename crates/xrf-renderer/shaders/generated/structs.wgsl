@@ -29,6 +29,9 @@ struct Water {
   intensity: f32,
   soft: f32,
   distorted: f32,
+}
+
+struct EnhancedWater {
   refraction: f32,
   turbidity: f32,
   soft_border: f32,

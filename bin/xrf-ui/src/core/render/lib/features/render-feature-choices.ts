@@ -208,24 +208,28 @@ export function formatLowLuminance(luminance: number): string {
 
 /** The bounds each water value is offered between. */
 export const RENDER_WATER_LIMITS = {
-  blurNoise: toRenderLimits(RENDER_FEATURE_SCHEMA.water.blurNoise, 0.05),
-  calmFlow: toRenderLimits(RENDER_FEATURE_SCHEMA.water.calmFlow, 0.05),
-  caustics: toRenderLimits(RENDER_FEATURE_SCHEMA.water.caustics, 0.01),
   distortion: toRenderLimits(RENDER_FEATURE_SCHEMA.water.distortion, 0.005),
-  flow: toRenderLimits(RENDER_FEATURE_SCHEMA.water.flow, 0.05),
-  parallaxHeight: toRenderLimits(RENDER_FEATURE_SCHEMA.water.parallaxHeight, 0.005),
   reflection: toRenderLimits(RENDER_FEATURE_SCHEMA.water.reflection, 0.05),
-  reflectionBlur: toRenderLimits(RENDER_FEATURE_SCHEMA.water.reflectionBlur, 0.05),
-  reflectivity: toRenderLimits(RENDER_FEATURE_SCHEMA.water.reflectivity, 0.05),
-  refraction: toRenderLimits(RENDER_FEATURE_SCHEMA.water.refraction, 0.05),
   ripple: toRenderLimits(RENDER_FEATURE_SCHEMA.water.ripple, 0.05),
-  ripples: toRenderLimits(RENDER_FEATURE_SCHEMA.water.ripples, 0.05),
-  softBorder: toRenderLimits(RENDER_FEATURE_SCHEMA.water.softBorder, 0.05),
-  specular: toRenderLimits(RENDER_FEATURE_SCHEMA.water.specular, 0.1),
-  turbidity: toRenderLimits(RENDER_FEATURE_SCHEMA.water.turbidity, 0.1),
-  variation: toRenderLimits(RENDER_FEATURE_SCHEMA.water.variation, 0.05),
   waveHeight: toRenderLimits(RENDER_FEATURE_SCHEMA.water.waveHeight, 0.001),
   waveSpeed: toRenderLimits(RENDER_FEATURE_SCHEMA.water.waveSpeed, 1),
+} as const;
+
+/** The bounds each enhanced water value is offered between. */
+export const RENDER_ENHANCED_WATER_LIMITS = {
+  blurNoise: toRenderLimits(RENDER_FEATURE_SCHEMA.water.enhanced.blurNoise, 0.05),
+  calmFlow: toRenderLimits(RENDER_FEATURE_SCHEMA.water.enhanced.calmFlow, 0.05),
+  caustics: toRenderLimits(RENDER_FEATURE_SCHEMA.water.enhanced.caustics, 0.01),
+  flow: toRenderLimits(RENDER_FEATURE_SCHEMA.water.enhanced.flow, 0.05),
+  parallaxHeight: toRenderLimits(RENDER_FEATURE_SCHEMA.water.enhanced.parallaxHeight, 0.005),
+  reflectionBlur: toRenderLimits(RENDER_FEATURE_SCHEMA.water.enhanced.reflectionBlur, 0.05),
+  reflectivity: toRenderLimits(RENDER_FEATURE_SCHEMA.water.enhanced.reflectivity, 0.05),
+  refraction: toRenderLimits(RENDER_FEATURE_SCHEMA.water.enhanced.refraction, 0.05),
+  ripples: toRenderLimits(RENDER_FEATURE_SCHEMA.water.enhanced.ripples, 0.05),
+  softBorder: toRenderLimits(RENDER_FEATURE_SCHEMA.water.enhanced.softBorder, 0.05),
+  specular: toRenderLimits(RENDER_FEATURE_SCHEMA.water.enhanced.specular, 0.1),
+  turbidity: toRenderLimits(RENDER_FEATURE_SCHEMA.water.enhanced.turbidity, 0.1),
+  variation: toRenderLimits(RENDER_FEATURE_SCHEMA.water.enhanced.variation, 0.05),
 } as const;
 
 /** @returns A wave's height, in centimetres, which is the size the engine's are. */
@@ -243,7 +247,7 @@ export function formatWaterMultiple(multiple: number): string {
   return `${formatNumber(multiple, 2)}×`;
 }
 
-/** @returns One of the enhanced water's strengths, as Screen Space Shaders sets them. */
+/** @returns One of the enhanced water's strengths. */
 export function formatWaterStrength(strength: number): string {
   return formatNumber(strength, 2);
 }

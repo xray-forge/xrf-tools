@@ -2,6 +2,7 @@ import { default as LayersIcon } from "@mui/icons-material/Layers";
 import { Button } from "@mui/material";
 import { ReactElement } from "react";
 
+import { RenderGraphSettings } from "@/core/ipc/types/xrf-renderer";
 import {
   DEFAULT_LEVEL_LOD_OPTIONS,
   formatLevelLodDistance,
@@ -9,7 +10,13 @@ import {
   LEVEL_LOD_LIMITS,
 } from "@/core/level/lib/lod/level-lod-options";
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
+import { RenderGraphFormRows } from "@/core/render/components/controls/RenderGraphFormRows";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
+import {
+  DEFAULT_RENDER_GRAPH_SETTINGS,
+  isRenderGraphBisected,
+  SERIAL_RENDER_GRAPH_SETTINGS,
+} from "@/core/render/lib/settings/render-graph-settings";
 import { EditorPopoverGroup, EditorPopoverGroupSection } from "@/core/shell/editor/EditorPopoverGroup";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
@@ -22,10 +29,14 @@ interface ILevelCullingActionProps extends BaseComponentProps {
   lod: ILevelLodOptions;
   onToggle: (option: keyof ILevelViewOptions) => void;
   onChangeLod: (lod: ILevelLodOptions) => void;
+  /** Which of the frame graph's optimizations the frames compile with, and sets them. */
+  graph: RenderGraphSettings;
+  onChangeGraph: (graph: RenderGraphSettings) => void;
 }
 
 /**
- * What is spared drawing: static draws the depth hides, and distant trees drawn as their impostors.
+ * What is spared drawing: static draws the depth hides, distant trees drawn as their impostors, and the frame graph's
+ * passes culled, pooled, merged and grouped.
  */
 export function LevelCullingAction({
   "data-testid": dataTestId = "level-culling-action",
@@ -37,9 +48,12 @@ export function LevelCullingAction({
   lod,
   onToggle,
   onChangeLod,
+  graph,
+  onChangeGraph,
 }: ILevelCullingActionProps): ReactElement {
   const isOccluding: boolean = options.isOcclusionCulled && isOcclusionAvailable;
   const isImpostors: boolean = options.isImpostors && isImpostorsAvailable;
+  const isGraphBisected: boolean = isRenderGraphBisected(graph);
 
   return (
     <EditorPopoverGroup
@@ -50,7 +64,10 @@ export function LevelCullingAction({
       description={[
         isOccluding ? "Occlusion culled" : "Occlusion culling off",
         isImpostors ? `impostors past ${formatLevelLodDistance(lod.distance)} the game's distance` : "every tree drawn",
-      ].join(", ")}
+        isGraphBisected ? "frame graph bisected" : null,
+      ]
+        .filter(Boolean)
+        .join(", ")}
       icon={<LayersIcon />}
       isActive={isOccluding || isImpostors}
     >
@@ -82,6 +99,15 @@ export function LevelCullingAction({
         <Button size={"small"} onClick={() => onChangeLod(DEFAULT_LEVEL_LOD_OPTIONS)}>
           Back to the game&apos;s distance
         </Button>
+      </EditorPopoverGroupSection>
+
+      <EditorPopoverGroupSection
+        label={"Frame graph"}
+        description={"Its optimizations, each turned off alone or all at once to bisect a difference in a capture"}
+        isOn={!isGraphBisected}
+        onToggle={() => onChangeGraph(isGraphBisected ? DEFAULT_RENDER_GRAPH_SETTINGS : SERIAL_RENDER_GRAPH_SETTINGS)}
+      >
+        <RenderGraphFormRows graph={graph} onChange={onChangeGraph} />
       </EditorPopoverGroupSection>
     </EditorPopoverGroup>
   );
