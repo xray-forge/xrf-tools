@@ -69,6 +69,9 @@ pub struct ReflectionParameters<'a> {
   pub resolved: GraphTexture,
   #[texture(d2, float)]
   pub history_full: GraphTexture,
+  /// Each traced pixel's surface, worked out once a frame for the stages after the trace.
+  #[texture(d2, unfilterable)]
+  pub guide: GraphTexture,
   #[sampler(filtering)]
   pub history_sampler: &'a wgpu::Sampler,
 }
