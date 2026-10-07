@@ -49,6 +49,10 @@ const EMBEDDED: &[(&str, &str)] = &[
   ),
   ("frame/combine", include_str!("../../shaders/frame/combine.wgsl")),
   (
+    "frame/contact_shadows",
+    include_str!("../../shaders/frame/contact_shadows.wgsl"),
+  ),
+  (
     "frame/depth_clear",
     include_str!("../../shaders/frame/depth_clear.wgsl"),
   ),
@@ -135,6 +139,10 @@ const EMBEDDED: &[(&str, &str)] = &[
   (
     "generated/frame/combine",
     include_str!("../../shaders/generated/frame/combine.wgsl"),
+  ),
+  (
+    "generated/frame/contact_shadows",
+    include_str!("../../shaders/generated/frame/contact_shadows.wgsl"),
   ),
   (
     "generated/static/composited",

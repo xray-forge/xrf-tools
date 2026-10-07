@@ -1,6 +1,7 @@
 import {
   ERenderAmbientOcclusionQuality,
   ERenderAntialiasing,
+  ERenderContactShadowMode,
   ERenderLightShadowFilter,
   ERenderScale,
   ERenderWaterMode,
@@ -74,6 +75,14 @@ export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings>
     // Kept short of the map's middle, where every point would blend.
     blend: toNumber(0, 0.4),
     cascades: { kind: ERenderSettingKind.WIDTHS, max: 2000, min: 1, most: RENDER_MAX_SHADOW_CASCADES },
+    // The renderer's own: past a few metres a ray leaves what screen space can see.
+    contact: {
+      intensity: toNumber(0, 1),
+      length: toNumber(0, 4),
+      mode: toChoice(ERenderContactShadowMode),
+      steps: toNumber(4, 64, true),
+      thickness: toNumber(0.01, 1),
+    },
     filter: toNumber(0, 3, true),
     isEnabled: FLAG,
     isStaggered: FLAG,

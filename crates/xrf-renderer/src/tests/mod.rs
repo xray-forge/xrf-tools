@@ -2,6 +2,7 @@ mod backdrop;
 mod bloom;
 mod camera_view;
 mod compute_grid;
+mod contact_shadows;
 mod frame_rate;
 mod frame_statistics;
 mod fsr;

@@ -13,6 +13,7 @@ use crate::contract::render_upscaling_settings::RenderUpscalingSettings;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::pass::ambient_occlusion_uniform::AmbientOcclusionUniform;
 use crate::pass::bloom_uniform::BloomUniform;
+use crate::pass::contact_shadow_uniform::ContactShadowUniform;
 use crate::pass::fsr_uniform::FsrUniform;
 use crate::pass::lighting_uniform::LightingUniform;
 use crate::pass::present_uniform::PresentUniform;
@@ -37,6 +38,8 @@ pub struct ViewInfo {
   pub bloom: [BloomUniform; 3],
   /// What the ambient occlusion searches by this frame.
   pub occlusion_settings: AmbientOcclusionUniform,
+  /// What the contact shadows march by this frame, none where they are not drawn.
+  pub contact_shadows: Option<ContactShadowUniform>,
   /// What the rain, the wet surfaces and a strike draw by this frame, and the weather textures they draw with.
   pub rain: RainUniform,
   pub wet: WetUniform,
@@ -109,6 +112,7 @@ impl Default for ViewInfo {
       upscale: UpscaleUniform::default(),
       bloom: [BloomUniform::default(); 3],
       occlusion_settings: AmbientOcclusionUniform::default(),
+      contact_shadows: None,
       rain: RainUniform::default(),
       wet: WetUniform::default(),
       thunder: ThunderUniform::default(),

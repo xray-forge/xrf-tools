@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use crate::contract::render_contact_shadow_settings::RenderContactShadowSettings;
+
 /// Cascades the sun's shadow can be cut into at most.
 pub const RENDER_MAX_SHADOW_CASCADES: usize = 4;
 
@@ -25,6 +27,8 @@ pub struct RenderShadowSettings {
   pub blend: f32,
   /// Whether cascade `n` is drawn at most every `2^n` frames, the far ones sharing frames the near one does not.
   pub is_staggered: bool,
+  /// The contact shadows under the cascades, drawn only while the cascades are.
+  pub contact: RenderContactShadowSettings,
 }
 
 impl Default for RenderShadowSettings {
@@ -39,6 +43,7 @@ impl Default for RenderShadowSettings {
       reach: 400.0,
       blend: 0.1,
       is_staggered: true,
+      contact: RenderContactShadowSettings::default(),
     }
   }
 }

@@ -7,6 +7,8 @@ use crate::pass::bloom_parameters::BloomParameters;
 use crate::pass::bloom_uniform::BloomUniform;
 use crate::pass::combine_parameters::CombineParameters;
 use crate::pass::composited_parameters::CompositedParameters;
+use crate::pass::contact_shadow_parameters::ContactShadowParameters;
+use crate::pass::contact_shadow_uniform::ContactShadowUniform;
 use crate::pass::exposure_head::ExposureHead;
 use crate::pass::exposure_parameters::ExposureParameters;
 use crate::pass::exposure_state::ExposureState;
@@ -78,6 +80,7 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
   let mut smaa: ShaderBindings = ShaderBindings::new();
   let mut sky: ShaderBindings = ShaderBindings::new();
   let mut particles: ShaderBindings = ShaderBindings::new();
+  let mut contact_shadows: ShaderBindings = ShaderBindings::new();
   let mut sun: ShaderBindings = ShaderBindings::new();
   let mut light_binning: ShaderBindings = ShaderBindings::new();
   let mut lights: ShaderBindings = ShaderBindings::new();
@@ -109,6 +112,7 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
     .declare::<ParticleVertex>()
     .declare::<ParticleSurfaceRecord>()
     .declare::<ShadowUniform>()
+    .declare::<ContactShadowUniform>()
     .declare::<LightsUniform>()
     .declare::<LightRecord>()
     .declare::<AmbientOcclusionUniform>()
@@ -137,6 +141,7 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
   smaa.add::<SmaaParameters<'_>>()?;
   sky.add::<SkyParameters<'_>>()?;
   particles.add::<ParticleParameters<'_>>()?;
+  contact_shadows.add::<ContactShadowParameters>()?;
   sun.add::<SunParameters<'_>>()?;
   light_binning.add::<LightBinningParameters>()?;
   lights.add::<LightsParameters<'_>>()?;
@@ -184,6 +189,10 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
     (
       "generated/frame/particles",
       format!("{STRUCTS_IMPORT}{}", particles.to_wgsl()),
+    ),
+    (
+      "generated/frame/contact_shadows",
+      format!("{STRUCTS_IMPORT}{}", contact_shadows.to_wgsl()),
     ),
     ("generated/frame/sun", format!("{STRUCTS_IMPORT}{}", sun.to_wgsl())),
     (

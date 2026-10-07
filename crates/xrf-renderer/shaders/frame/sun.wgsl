@@ -5,8 +5,8 @@
 #import "common/sun_shadow"
 
 // `accum_sun`: the sun at every drawn pixel, `Ldynamic_color * plight_infinity(m, P, N, L)`, times how much of it
-// reaches the pixel through the cascades' maps. Diffuse in colour, specular in alpha, into the light the frame
-// accumulates.
+// reaches the pixel through the cascades' maps and past what its contact shadows found. Diffuse in colour, specular in
+// alpha, into the light the frame accumulates.
 
 #import "generated/frame/sun"
 
@@ -43,7 +43,9 @@ fn fs_sun(in: FullscreenVarying) -> @location(0) vec4<f32> {
   );
   let world: vec3<f32> = (transpose(camera.view) * vec4<f32>(position, 0.0)).xyz + camera.position.xyz;
   let world_normal: vec3<f32> = normalize((transpose(camera.view) * vec4<f32>(normal, 0.0)).xyz);
-  let shadow: f32 = sun_shadow(shadow_maps, shadows, world, world_normal, dot(normal, to_light));
+  // A single lit texel stands in where no contact shadows are drawn.
+  let contact: f32 = textureLoad(contact_shadows, min(texel, vec2<i32>(textureDimensions(contact_shadows)) - 1), 0).r;
+  let shadow: f32 = sun_shadow(shadow_maps, shadows, world, world_normal, dot(normal, to_light)) * contact;
 
   return vec4<f32>(lighting.sun.rgb * lit.x, lighting.sun.w * lit.y) * shadow;
 }

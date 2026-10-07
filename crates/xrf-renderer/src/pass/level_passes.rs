@@ -2,6 +2,7 @@ use crate::pass::ambient_occlusion_pass::AmbientOcclusionPass;
 use crate::pass::bloom_pass::BloomPass;
 use crate::pass::combine_pass::CombinePass;
 use crate::pass::composited_pass::CompositedPass;
+use crate::pass::contact_shadow_pass::ContactShadowPass;
 use crate::pass::depth_pyramid_pass::DepthPyramidPass;
 use crate::pass::exposure_pass::ExposurePass;
 use crate::pass::flare_pass::FlarePass;
@@ -35,6 +36,7 @@ pub struct LevelPasses<'a> {
   pub gbuffer: &'a StaticGBufferPass,
   pub shadow: &'a StaticShadowPass,
   pub pyramid: &'a DepthPyramidPass,
+  pub contact_shadows: &'a ContactShadowPass,
   pub sun: &'a SunPass,
   pub ambient_occlusion: &'a AmbientOcclusionPass,
   pub lights: &'a LightsPass,
