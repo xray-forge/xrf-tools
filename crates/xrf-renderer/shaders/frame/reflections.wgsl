@@ -509,29 +509,53 @@ fn traced_geometry(texel: vec2<i32>) -> TracedSurface {
     -camera_view_position(vec2<f32>(texel) + 0.5, depth).z, world);
 }
 
-// The guide a traced pixel's surface is read from by the stages after the trace, worked out once a frame: the frame's
-// texel it stands for, packed in `w`; its world normal, terrain's levelled, packed in `x`; its roughness; its depth.
-// What every stage and tap would otherwise find again from the G-buffer, its block's search included.
+// The first frame texel of a traced pixel's block, which the guide's texel is counted from.
+fn guide_block(pixel: vec2<i32>) -> vec2<i32> {
+  return min(vec2<i32>(vec2<f32>(pixel) * reflection.ratio), vec2<i32>(camera.viewport.xy) - 1);
+}
+
+// The frame texel a traced pixel stands for, from the guide's `w`: its place in the pixel's block.
+fn guide_texel(pixel: vec2<i32>, packed: f32) -> vec2<f32> {
+  let place: u32 = u32(packed);
+
+  return vec2<f32>(guide_block(pixel) + vec2<i32>(i32(place & 15u), i32(place >> 4u)));
+}
+
+// A world normal as the guide's `x` holds it, twelve bits an octahedral axis.
+fn guide_normal(packed: f32) -> vec3<f32> {
+  let bits: u32 = u32(packed);
+
+  return octahedral_decode(vec2<f32>(vec2<u32>(bits >> 12u, bits & 4095u)) / 4095.0 * 2.0 - 1.0);
+}
+
+// The guide a traced pixel's surface is read from by the stages after the trace, worked out once a frame: its world
+// normal, terrain's levelled, in `x`; its roughness; its depth; the frame texel it stands for, as its place in the
+// pixel's block, in `w`. The packed values are whole numbers a float holds exactly, never bit patterns a target's write
+// may bend into a NaN or flush as a denormal. What every stage and tap would otherwise find again from the G-buffer,
+// its block's search included.
 @fragment
 fn fs_guide(in: FullscreenVarying) -> @location(0) vec4<f32> {
-  let texel: vec2<i32> = traced_texel(floor(in.clip.xy));
+  let pixel: vec2<i32> = vec2<i32>(floor(in.clip.xy));
+  let texel: vec2<i32> = traced_texel(vec2<f32>(pixel));
   let surface: TracedSurface = traced_surface_at(texel);
+  let place: vec2<u32> = vec2<u32>(texel - guide_block(pixel));
+  let normal: vec2<u32> = vec2<u32>(round((octahedral_encode(surface.normal) * 0.5 + 0.5) * 4095.0));
 
-  return vec4<f32>(bitcast<f32>(pack2x16snorm(octahedral_encode(surface.normal))), surface.roughness,
-    textureLoad(depth_target, texel, 0), bitcast<f32>(u32(texel.x) | (u32(texel.y) << 16u)));
+  return vec4<f32>(f32(normal.x * 4096u + normal.y), surface.roughness, textureLoad(depth_target, texel, 0),
+    f32(place.x + place.y * 16u));
 }
 
 // The surface a traced pixel stands for, read from this frame's guide.
 fn guided_surface(pixel: vec2<f32>) -> TracedSurface {
   let last: vec2<i32> = vec2<i32>(textureDimensions(guide)) - 1;
-  let read: vec4<f32> = textureLoad(guide, clamp(vec2<i32>(pixel), vec2<i32>(0), last), 0);
-  let packed: u32 = bitcast<u32>(read.w);
-  let texel: vec2<f32> = vec2<f32>(f32(packed & 0xffffu), f32(packed >> 16u)) + 0.5;
+  let at: vec2<i32> = clamp(vec2<i32>(pixel), vec2<i32>(0), last);
+  let read: vec4<f32> = textureLoad(guide, at, 0);
+  let texel: vec2<f32> = guide_texel(at, read.w) + 0.5;
   let depth: f32 = max(read.z, 1e-7);
   let uv: vec2<f32> = texel / camera.viewport.xy;
   let world: vec3<f32> = camera_unproject(vec2<f32>(uv.x * 2.0 - 1.0, 1.0 - uv.y * 2.0), depth);
 
-  return TracedSurface(normalize(octahedral_decode(unpack2x16snorm(bitcast<u32>(read.x)))), read.y,
+  return TracedSurface(guide_normal(read.x), read.y,
     -camera_view_position(texel, depth).z, world);
 }
 
@@ -876,10 +900,9 @@ fn guided_upsample(pixel: vec2<f32>, normal: vec3<f32>, distance: f32, roughness
     let at: vec2<i32> = vec2<i32>(clamp(base + offset, vec2<f32>(0.0), last));
     let texel: vec4<f32> = textureLoad(resolved, at, 0);
     let read: vec4<f32> = textureLoad(guide, at, 0);
-    let packed: u32 = bitcast<u32>(read.w);
-    let shown: vec2<f32> = vec2<f32>(f32(packed & 0xffffu), f32(packed >> 16u)) + 0.5;
+    let shown: vec2<f32> = guide_texel(at, read.w) + 0.5;
     let there: f32 = -camera_view_position(shown, max(read.z, 1e-7)).z;
-    let facing: f32 = pow(saturate(dot(octahedral_decode(unpack2x16snorm(bitcast<u32>(read.x))), normal)),
+    let facing: f32 = pow(saturate(dot(guide_normal(read.x), normal)),
       UPSAMPLE_NORMAL_POWER);
     let alike: f32 = 1.0 / (1.0 + UPSAMPLE_ROUGHNESS_SCALE * abs(read.y - roughness));
     let bilinear: f32 = mix(1.0 - fraction.x, fraction.x, offset.x) * mix(1.0 - fraction.y, fraction.y, offset.y);
