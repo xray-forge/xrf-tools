@@ -1,6 +1,7 @@
 import { describe, expect, it, jest } from "@jest/globals";
 import { userEvent } from "@testing-library/user-event";
 
+import { RenderGraphSettings } from "@/core/ipc/types/xrf-renderer";
 import { LevelCullingAction } from "@/core/level/components/preview/LevelCullingAction";
 import { LevelOcclusionAction } from "@/core/level/components/preview/LevelOcclusionAction";
 import { LevelOverlaysAction } from "@/core/level/components/preview/LevelOverlaysAction";
@@ -11,6 +12,7 @@ import { DEFAULT_LEVEL_LOD_OPTIONS } from "@/core/level/lib/lod/level-lod-option
 import { ELevelShading } from "@/core/level/lib/view/level-shading";
 import { DEFAULT_LEVEL_VIEW_OPTIONS, ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { DEFAULT_RENDER_AMBIENT_OCCLUSION_SETTINGS } from "@/core/render/lib/settings/render-feature-defaults";
+import { DEFAULT_RENDER_GRAPH_SETTINGS } from "@/core/render/lib/settings/render-graph-settings";
 import { mockLevelFeatureOptions } from "@/fixtures/mocks/level.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
@@ -136,6 +138,8 @@ describe("level toolbar groups", () => {
         isGpuTimed={false}
         onToggle={() => {}}
         onChangeGpuTimed={onChangeGpuTimed}
+        graph={DEFAULT_RENDER_GRAPH_SETTINGS}
+        onChangeGraph={() => {}}
       />
     );
 
@@ -147,6 +151,26 @@ describe("level toolbar groups", () => {
     expect(getByRole("checkbox", { name: "Grid" })).not.toBeChecked();
   });
 
+  it("turns the frame graph's mechanisms off one at a time from the readouts, to bisect a capture", async () => {
+    const onChangeGraph = jest.fn<(graph: RenderGraphSettings) => void>();
+    const { getByRole, findByRole } = renderWithProviders(
+      <LevelOverlaysAction
+        options={{ ...DEFAULT_LEVEL_VIEW_OPTIONS, isStatsVisible: true }}
+        isGpuTimed={false}
+        onToggle={() => {}}
+        onChangeGpuTimed={() => {}}
+        graph={DEFAULT_RENDER_GRAPH_SETTINGS}
+        onChangeGraph={onChangeGraph}
+      />
+    );
+
+    await userEvent.click(getByRole("button", { name: "Overlays" }));
+    await findByRole("dialog", { name: "Overlays" });
+    await userEvent.click(getByRole("checkbox", { name: "Merge render passes" }));
+
+    expect(onChangeGraph).toHaveBeenLastCalledWith({ ...DEFAULT_RENDER_GRAPH_SETTINGS, isMerging: false });
+  });
+
   // The marker says where the level's sunlight comes from, which the weather's own sun in the sky already shows by day.
   it("marks the sun among the overlays, off unless asked for", async () => {
     const onToggle = jest.fn<TToggle>();
@@ -156,6 +180,8 @@ describe("level toolbar groups", () => {
         isGpuTimed={false}
         onToggle={onToggle}
         onChangeGpuTimed={() => {}}
+        graph={DEFAULT_RENDER_GRAPH_SETTINGS}
+        onChangeGraph={() => {}}
       />
     );
 

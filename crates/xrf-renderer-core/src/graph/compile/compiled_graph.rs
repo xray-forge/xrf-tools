@@ -83,6 +83,7 @@ impl<'a> CompiledGraph<'a> {
         name: pass.pass.name.to_string(),
         kind: GraphPassKind::of(&pass.pass.work),
         group: group_of(position).to_string(),
+        owner: pass.pass.owner,
         render_pass: pass.render_pass,
       })
       .collect();

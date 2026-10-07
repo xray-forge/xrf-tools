@@ -9,6 +9,8 @@ pub struct GraphPassReport {
   pub name: String,
   pub kind: GraphPassKind,
   pub group: String,
+  /// Whose it is: a view of a frame drawing several, or the frame's own.
+  pub owner: u32,
   /// The render pass it draws in, which raster passes beside it may share.
   pub render_pass: Option<usize>,
 }

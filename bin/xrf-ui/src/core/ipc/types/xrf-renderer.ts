@@ -304,6 +304,78 @@ export type RenderFrameReport = {
   sectorTime: number | null;
   /** What the renderer holds on the GPU. */
   memory: RenderMemoryReport;
+  /** What the frame graph made of its latest frame, none before its first. */
+  graph: RenderGraphReport | null;
+};
+
+/** One pass a viewport's frame ran, as the frame graph placed it. */
+export type RenderGraphPass = {
+  name: string;
+  kind: RenderGraphPassKind;
+  /** The encode group it is recorded in. */
+  group: string;
+  /** The render pass it draws in, which the raster passes beside it may share. */
+  renderPass: number | null;
+};
+
+/**
+ * What kind of pass a frame graph ran: a raster or compute pass, or an encoder pass recording copies and readbacks; a
+ * bridge is an encoder pass the graph cannot check.
+ */
+export enum ERenderGraphPassKind {
+  RASTER = "raster",
+  COMPUTE = "compute",
+  ENCODER = "encoder",
+  BRIDGE = "bridge",
+}
+
+/** Every `ERenderGraphPassKind` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type RenderGraphPassKind = `${ERenderGraphPassKind}`;
+
+/**
+ * What the frame graph made of a frame a viewport drew: its passes and its window's, in the order they ran, the
+ * passes culled, the encode groups, the render passes, and the transients the whole frame made with the pooled
+ * resources they share.
+ */
+export type RenderGraphReport = {
+  passes: Array<RenderGraphPass>;
+  culled: Array<string>;
+  groups: Array<string>;
+  /** Render passes the whole frame began. */
+  renderPassCount: number;
+  transients: Array<RenderGraphTransient>;
+  /** Bytes the transients would take apart, and the pooled textures and buffers they share and their bytes. */
+  transientBytes: number;
+  pooledCount: number;
+  pooledBytes: number;
+};
+
+/**
+ * Which of the frame graph's mechanisms every frame compiles with, each to be turned off alone, or all for serial mode,
+ * to bisect a difference in a capture.
+ */
+export type RenderGraphSettings = {
+  /** Drops passes whose effects nothing reads. */
+  isCulling: boolean;
+  /** Lets transients whose lifetimes do not overlap share one texture or buffer. */
+  isPooling: boolean;
+  /** Draws consecutive raster passes into the same attachments in one render pass. */
+  isMerging: boolean;
+  /** Records each encode group into an encoder of its own, in parallel; off, the whole frame is one. */
+  isGrouping: boolean;
+};
+
+/**
+ * One resource a frame made for itself, as the frame graph placed it: its label, the pooled texture or buffer of its
+ * kind it shares, the passes it lives between, and its bytes.
+ */
+export type RenderGraphTransient = {
+  label: string;
+  isTexture: boolean;
+  ordinal: number;
+  first: number;
+  last: number;
+  bytes: number;
 };
 
 /**
@@ -651,6 +723,8 @@ export type RenderSettings = {
   frameRate: RenderFrameRate;
   /** Whether each pass of a frame is timed on the GPU, where the device writes timestamps between passes. */
   isGpuTimed: boolean;
+  /** Which of the frame graph's mechanisms the frames compile with. */
+  graph: RenderGraphSettings;
 };
 
 /**

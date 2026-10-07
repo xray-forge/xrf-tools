@@ -3,7 +3,7 @@ import { BoundAction, Computed, Observable, RefObservable } from "@wirestate/mob
 import { Nullable } from "@xrf/types";
 
 import { EXrayEngine } from "@/core/ipc/types/xrf-engine-target";
-import { RenderSettings } from "@/core/ipc/types/xrf-renderer";
+import { RenderGraphSettings, RenderSettings } from "@/core/ipc/types/xrf-renderer";
 import {
   IRenderFeatureChoice,
   mergeRenderFeatureOverrides,
@@ -17,6 +17,7 @@ import {
   toFrameRateLimit,
   toRenderFrameRate,
 } from "@/core/render/lib/settings/render-frame-rate-limit";
+import { DEFAULT_RENDER_GRAPH_SETTINGS } from "@/core/render/lib/settings/render-graph-settings";
 import { ERenderPreset } from "@/core/render/lib/settings/render-preset";
 import { ERenderResolution, toRenderResolution } from "@/core/render/lib/settings/render-resolution";
 import { TCatalogView, toCatalogView } from "@/core/settings/lib/catalog-view";
@@ -69,6 +70,13 @@ export class SettingsService {
   @Observable()
   public isGpuTimed: boolean = getLocalStorageValue(GPU_TIMED_STORAGE_KEY) === String(true);
 
+  /**
+   * Which of the frame graph's mechanisms every frame compiles with: all on unless one is turned off to bisect a
+   * difference in a capture, for the session only, as a diagnostic.
+   */
+  @Observable()
+  public graph: RenderGraphSettings = { ...DEFAULT_RENDER_GRAPH_SETTINGS };
+
   /** Whether every viewport's frames wait for the display's refresh: on unless turned off. */
   @Observable()
   public isVsync: boolean = getLocalStorageValue(VSYNC_STORAGE_KEY) !== String(false);
@@ -86,10 +94,14 @@ export class SettingsService {
     return resolveRenderFeatures(this.rendererChoice);
   }
 
-  /** What the renderer draws every viewport with: how often, and whether its passes are timed. */
+  /** What the renderer draws every viewport with: how often, whether its passes are timed, and how its graph compiles. */
   @Computed()
   public get renderSettings(): RenderSettings {
-    return { frameRate: toRenderFrameRate(this.frameRateLimit, this.isVsync), isGpuTimed: this.isGpuTimed };
+    return {
+      frameRate: toRenderFrameRate(this.frameRateLimit, this.isVsync),
+      graph: { ...this.graph },
+      isGpuTimed: this.isGpuTimed,
+    };
   }
 
   /**
@@ -156,6 +168,13 @@ export class SettingsService {
 
     this.isGpuTimed = isGpuTimed;
     setLocalStorageValue(GPU_TIMED_STORAGE_KEY, String(isGpuTimed));
+  }
+
+  @BoundAction()
+  public setGraph(graph: RenderGraphSettings): void {
+    this.log.info("Set frame graph:", graph);
+
+    this.graph = { ...graph };
   }
 
   @BoundAction()

@@ -64,6 +64,7 @@ export const EMPTY_RENDER_FRAME_REPORT: RenderFrameReport = {
   frameTime: 0,
   frameTimeMax: 0,
   framesPerSecond: 0,
+  graph: null,
   height: 0,
   isGpuTimed: false,
   lights: EMPTY_RENDER_LIGHTS_REPORT,

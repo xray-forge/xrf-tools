@@ -4,6 +4,7 @@ import { ReactElement } from "react";
 import { RenderFrameReport } from "@/core/ipc/types/xrf-renderer";
 import { LevelRendererAppliedSection } from "@/core/level/components/panels/LevelRendererPanel/LevelRendererAppliedSection";
 import { LevelRendererFrameSection } from "@/core/level/components/panels/LevelRendererPanel/LevelRendererFrameSection";
+import { LevelRendererGraphSection } from "@/core/level/components/panels/LevelRendererPanel/LevelRendererGraphSection";
 import { LevelRendererLightsSection } from "@/core/level/components/panels/LevelRendererPanel/LevelRendererLightsSection";
 import { LevelRendererParticlesSection } from "@/core/level/components/panels/LevelRendererPanel/LevelRendererParticlesSection";
 import { LevelRendererResidentSection } from "@/core/level/components/panels/LevelRendererPanel/LevelRendererResidentSection";
@@ -43,6 +44,7 @@ export function LevelRendererPanel({
       <LevelRendererAppliedSection applied={renderService.applied} requested={renderService.viewOptions} />
 
       <LevelRendererFrameSection frame={frame} />
+      <LevelRendererGraphSection graph={frame.graph} />
       <LevelRendererStaticDrawsSection staticDraws={frame.staticDraws} />
       <LevelRendererLightsSection lights={frame.lights} />
       <LevelRendererParticlesSection particles={frame.particles} />
