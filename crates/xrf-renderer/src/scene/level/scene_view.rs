@@ -663,7 +663,7 @@ impl SceneView {
 
     // The puddles seat on it.
     if info.is_wet && info.wet.is_enhanced > 0.5 {
-      level_surface.prepare(device, queue, encoder, &frame, &mut load);
+      level_surface.prepare(device, queue, encoder, &frame, (scene.lights.get_fires(), &mut load));
     }
   }
 

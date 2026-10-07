@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Instant;
 
-use glam::{Mat4, Vec3, Vec4};
+use glam::{Mat4, Vec2, Vec3, Vec4};
 use xrf_engine_target::XrayEngine;
 use xrf_math::{EPS_L, Vector3d};
 use xrf_renderer_core::{FrameGraph, GraphBindings, ProxyHandle, ProxyStore};
@@ -71,6 +71,8 @@ pub struct LevelLights {
   projectors: Vec<u32>,
   /// The slots of the shafts' noise and of the projector Monolith draws them through.
   volume_textures: (u32, u32),
+  /// Where the level's campfires burn, by their idle lights' `x` and `z`.
+  fires: Vec<Vec2>,
   shadows: LevelLightShadows,
   started: Instant,
 }
@@ -83,6 +85,7 @@ impl LevelLights {
       animators: Vec::new(),
       projectors: Vec::new(),
       volume_textures: (MISSING_SLOT, MISSING_SLOT),
+      fires: Vec::new(),
       shadows: LevelLightShadows::new(device, view_layout, args_size),
       started: Instant::now(),
     }
@@ -91,6 +94,11 @@ impl LevelLights {
   /// The texture slots the projectors sample.
   pub fn get_projectors(&self) -> &[u32] {
     &self.projectors
+  }
+
+  /// Where the level's campfires burn, lit or out, by `x` and `z`.
+  pub fn get_fires(&self) -> &[Vec2] {
+    &self.fires
   }
 
   /// Adds a level's lights, asking for every projector they name.
@@ -114,6 +122,11 @@ impl LevelLights {
 
     for light in lights.lights {
       let is_moving: bool = light.motion.is_some();
+
+      if light.campfire.is_some() {
+        self.fires.push(Vec2::new(light.position.x, light.position.z));
+      }
+
       let handle: ProxyHandle<LightDescription> = self.lights.add(light);
 
       if is_moving {
