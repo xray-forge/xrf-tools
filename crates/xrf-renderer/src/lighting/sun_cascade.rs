@@ -14,6 +14,10 @@ const DEPTH_STEP: f32 = 1.0 / 16.0;
 /// How far, in widths, a cascade may stray from where its map was drawn and still wait for its stagger to draw it.
 const DRIFT: f32 = 1.0 / 16.0;
 
+/// Texels a caster as far towards the sun as the reach may see its shadow move as the sun turns before a map stops
+/// holding: a clock running turns the light a little every frame, which alone would draw every cascade every frame.
+const TURN_TEXELS: f32 = 0.5;
+
 /// One cascade of the sun's shadow: a square of the level seen from the sun, placed every frame as the engine places it
 /// (`compute_caster_model_fixed`), then snapped to the map's own texels, so moving the camera slides the map a whole
 /// texel at a time and its edges do not shimmer.
@@ -102,15 +106,29 @@ impl SunCascade {
   }
 
   /// Whether a map drawn at `drawn` still holds this fit near enough to wait for its turn: drawn at the same width,
-  /// resolution, reach and light, and strayed from it by a sixteenth of the width at most along each axis. A sharp turn
-  /// moves the square further, and its view would fall out of the map until the map's turn came.
+  /// resolution and reach, strayed from it by a sixteenth of the width at most along each axis, and under a light turned
+  /// by no more than moves a caster as far as the reach `TURN_TEXELS` across. A sharp turn moves the square further,
+  /// and its view would fall out of the map until the map's turn came.
   pub fn is_held_by(&self, drawn: &SunCascade) -> bool {
-    let [x, y, z, width, settings @ ..] = self.key;
-    let [drawn_x, drawn_y, drawn_z, drawn_width, drawn_settings @ ..] = drawn.key;
+    let [x, y, z, width, resolution, reach, light @ ..] = self.key;
+    let [
+      drawn_x,
+      drawn_y,
+      drawn_z,
+      drawn_width,
+      drawn_resolution,
+      drawn_reach,
+      drawn_light @ ..,
+    ] = drawn.key;
     let slack: f32 = width * DRIFT;
+    // The turn's sine, as a cosine this near one rounds to it.
+    let turn: f32 = Vec3::from(light).cross(Vec3::from(drawn_light)).length();
 
     width == drawn_width
-      && settings == drawn_settings
+      && resolution == drawn_resolution
+      && reach == drawn_reach
+      && Vec3::from(light).dot(Vec3::from(drawn_light)) > 0.0
+      && turn <= TURN_TEXELS * self.texel / reach.max(1.0)
       && [x - drawn_x, y - drawn_y, z - drawn_z]
         .iter()
         .all(|offset| offset.abs() <= slack)
