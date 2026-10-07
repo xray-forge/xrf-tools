@@ -7,5 +7,5 @@ use crate::plugins::render::state::RenderState;
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "seek_weather"))]
 #[tauri::command(rename = "seek_weather")]
 pub fn render_seek_weather(state: State<'_, RenderState>, viewport: RenderViewportId, time: f32) {
-  state.renderer.seek_weather(viewport, time);
+  state.lock_world().seek_weather(viewport, time);
 }

@@ -69,6 +69,8 @@ pub struct ViewInfo {
   pub thunder_draw: Option<([XraySurfaceDraw; 3], u32)>,
   /// Composited clusters sorted back to front.
   pub sorted_count: u32,
+  /// Every skinned object's bones as segments, which the skeleton overlay draws.
+  pub skeleton_segments: Vec<(Vec3, Vec3)>,
   /// The colour the selection is outlined in, or none while nothing it names is drawn.
   pub selection_color: Option<[f32; 3]>,
 }
@@ -110,6 +112,7 @@ impl Default for ViewInfo {
       rain_draw: None,
       thunder_draw: None,
       sorted_count: 0,
+      skeleton_segments: Vec::new(),
       selection_color: None,
     }
   }

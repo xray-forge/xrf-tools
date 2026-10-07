@@ -7,5 +7,5 @@ use crate::plugins::render::state::RenderState;
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "pose_model"))]
 #[tauri::command(rename = "pose_model")]
 pub fn render_pose_model(state: State<'_, RenderState>, viewport: RenderViewportId, pose: RenderModelPose) {
-  state.renderer.pose_model(viewport, pose);
+  state.lock_world().pose_model(viewport, &pose);
 }

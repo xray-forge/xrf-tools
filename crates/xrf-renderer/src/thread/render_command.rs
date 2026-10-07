@@ -1,27 +1,17 @@
 use std::sync::Arc;
 use std::sync::mpsc::Sender;
 
-use crate::contract::render_camera::RenderCamera;
-use crate::contract::render_camera_command::RenderCameraCommand;
 use crate::contract::render_frame_report::RenderFrameReport;
-use crate::contract::render_input_event::RenderInputEvent;
-use crate::contract::render_level_problems::RenderLevelProblems;
 use crate::contract::render_load_report::RenderLoadReport;
-use crate::contract::render_model_pose::RenderModelPose;
 use crate::contract::render_overlay::RenderOverlay;
 use crate::contract::render_selection::RenderSelection;
 use crate::contract::render_settings::RenderSettings;
-use crate::contract::render_surface_geometry::RenderSurfaceGeometry;
 use crate::contract::render_texture_report::RenderTextureReport;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::contract::render_viewport_id::RenderViewportId;
 use crate::contract::render_viewport_layout::RenderViewportLayout;
-use crate::contract::render_weather_control::RenderWeatherControl;
-use crate::contract::render_weather_play::RenderWeatherPlay;
-use crate::contract::render_weather_transition::RenderWeatherTransition;
 use crate::frame::frame_capture::CaptureReply;
 use crate::host::render_event_sink::RenderEventSink;
-use crate::host::render_level_source::RenderLevelSource;
 use crate::host::render_window_host::RenderWindowHost;
 use crate::viewport::pending_pick::PendingPick;
 
@@ -38,18 +28,6 @@ pub enum RenderCommand {
   Layout {
     id: RenderViewportId,
     layout: RenderViewportLayout,
-  },
-  Input {
-    id: RenderViewportId,
-    event: RenderInputEvent,
-  },
-  Camera {
-    id: RenderViewportId,
-    camera: RenderCamera,
-  },
-  CameraCommand {
-    id: RenderViewportId,
-    command: RenderCameraCommand,
   },
   Settings {
     settings: RenderSettings,
@@ -73,20 +51,10 @@ pub enum RenderCommand {
     id: RenderViewportId,
     pick: PendingPick,
   },
-  /// Counts what each shader table entry of a viewport's level draws; empty where it draws no level.
-  MeasureSurfaces {
-    id: RenderViewportId,
-    reply: Sender<Vec<RenderSurfaceGeometry>>,
-  },
   /// Says what became of every texture a viewport's level samples; empty where it draws no level.
   DescribeTextures {
     id: RenderViewportId,
     reply: Sender<Vec<RenderTextureReport>>,
-  },
-  /// Stands a viewport's skinned models in a pose.
-  PoseModel {
-    id: RenderViewportId,
-    pose: RenderModelPose,
   },
   /// Says how far the level a viewport was last asked to show has loaded; none before its view is made.
   DescribeLoad {
@@ -98,11 +66,6 @@ pub enum RenderCommand {
     id: RenderViewportId,
     reply: Sender<Option<RenderFrameReport>>,
   },
-  /// Says what a viewport's level could not draw; empty where it draws no level.
-  DescribeProblems {
-    id: RenderViewportId,
-    reply: Sender<RenderLevelProblems>,
-  },
   /// Finds a spawned object's bounding sphere in a viewport's level, none until its model is in the scene.
   LocateSpawnObject {
     id: RenderViewportId,
@@ -113,31 +76,6 @@ pub enum RenderCommand {
   Capture {
     id: RenderViewportId,
     reply: CaptureReply,
-  },
-  /// Draws a level in a viewport, or nothing for `None`.
-  Level {
-    id: RenderViewportId,
-    source: Option<Arc<dyn RenderLevelSource>>,
-  },
-  /// Plays a weather in a viewport's level from now on.
-  Weather {
-    id: RenderViewportId,
-    play: RenderWeatherPlay,
-    transition: RenderWeatherTransition,
-  },
-  WeatherControl {
-    id: RenderViewportId,
-    control: RenderWeatherControl,
-  },
-  /// Plays a viewport's weather on from a time of day, ending the effect playing.
-  WeatherSeek {
-    id: RenderViewportId,
-    time: f32,
-  },
-  /// Plays a weather effect over a viewport's cycle, or ends the one playing for `None`.
-  WeatherEffect {
-    id: RenderViewportId,
-    name: Option<String>,
   },
   /// Plays a weather ambient effect near a viewport's camera at once.
   AmbientEffect {

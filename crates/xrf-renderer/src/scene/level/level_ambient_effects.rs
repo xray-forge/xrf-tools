@@ -8,10 +8,10 @@ use crate::contract::render_ambient_effect_report::RenderAmbientEffectReport;
 use crate::contract::render_ambient_report::RenderAmbientReport;
 use crate::host::render_ambient::RenderAmbient;
 use crate::host::render_ambient_effect::RenderAmbientEffect;
+use crate::lighting::weather_random::WeatherRandom;
 use crate::scene::level::ambient_frame::AmbientFrame;
 use crate::scene::level::ambient_gust::AmbientGust;
 use crate::scene::level::ambient_wind::AmbientWind;
-use crate::weather::weather_random::WeatherRandom;
 
 /// What the schedule's numbers are drawn from on every level open, so a driven capture plays the same effects.
 const SEED: u64 = 0x5EED_AB1E;
@@ -156,7 +156,7 @@ impl LevelAmbientEffects {
     let name: Option<&str> = if frame.ambients.is_settled() {
       frame.ambients.names[0].as_deref()
     } else {
-      frame.ambients.pick(self.random.next())
+      frame.ambients.pick(self.random.next_fraction())
     };
     let Some(ambient) = name.and_then(|name| frame.level.ambients.get(name)) else {
       return;
@@ -216,7 +216,7 @@ impl LevelAmbientEffects {
 
   /// `Random.randI(count)`.
   fn draw_index(&mut self, count: usize) -> usize {
-    ((self.random.next() * count as f32) as usize).min(count - 1)
+    ((self.random.next_fraction() * count as f32) as usize).min(count - 1)
   }
 
   /// `Random.randI(min, max)` over the ambient's period, in milliseconds.
@@ -224,7 +224,7 @@ impl LevelAmbientEffects {
     let (least, most): (Duration, Duration) = ambient.period;
     let (least, most): (u64, u64) = (least.as_millis() as u64, most.as_millis() as u64);
 
-    least + ((most.saturating_sub(least)) as f32 * self.random.next()) as u64
+    least + ((most.saturating_sub(least)) as f32 * self.random.next_fraction()) as u64
   }
 
   /// The effect's offset, which Monolith moves half a metre to five aside on each level axis, either way.
@@ -243,6 +243,10 @@ impl LevelAmbientEffects {
   fn draw_aside(&mut self) -> f32 {
     let distance: f32 = self.random.between(0.5, 5.0);
 
-    if self.random.next() < 0.5 { -distance } else { distance }
+    if self.random.next_fraction() < 0.5 {
+      -distance
+    } else {
+      distance
+    }
   }
 }

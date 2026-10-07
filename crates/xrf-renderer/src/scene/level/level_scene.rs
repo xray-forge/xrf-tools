@@ -1,22 +1,21 @@
-use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Instant;
 
-use glam::{Mat4, Vec3, Vec4};
+use glam::Vec4;
+use xrf_error::XrfResult;
 
 use crate::contract::render_ambient_report::RenderAmbientReport;
-use crate::contract::render_model_pose::RenderModelPose;
 use crate::contract::render_particles_report::RenderParticlesReport;
 use crate::contract::render_texture_report::RenderTextureReport;
+use crate::host::render_asset_source::RenderAssetSource;
 use crate::host::render_level_source::RenderLevelSource;
-use crate::host::render_motion::RenderMotion;
+use crate::host::render_scene_update::RenderSceneUpdate;
+use crate::host::render_sector_failure::RenderSectorFailure;
 use crate::scene::level::level_campfires::LevelCampfires;
 use crate::scene::level::level_grass::LevelGrass;
 use crate::scene::level::level_lights::LevelLights;
 use crate::scene::level::level_object_motions::LevelObjectMotions;
 use crate::scene::level::level_particles::LevelParticles;
-use crate::scene::level::model_motions::ModelMotions;
-use crate::scene::level::posed_skeleton::PosedSkeleton;
 use crate::scene::level::weather_model_buffers::WeatherModelBuffers;
 use crate::scene::static_scene::static_scene::StaticScene;
 use crate::scene::texture::texture_cache::TextureCache;
@@ -44,10 +43,8 @@ pub struct LevelScene {
   /// The object motions its moving zones follow, which their particles and lights both read.
   pub object_motions: LevelObjectMotions,
   pub particles: LevelParticles,
-  /// Each skinned object's skeleton, by its index, the motions they are posed by, and the pose asked for.
-  pub skeletons: HashMap<u32, PosedSkeleton>,
-  pub motions: ModelMotions,
-  pub model_pose: RenderModelPose,
+  /// Milliseconds the last sector taken in took to put into the scene.
+  pub sector_time: f32,
 }
 
 impl LevelScene {
@@ -74,63 +71,83 @@ impl LevelScene {
       thunder_models: None,
       no_model: WeatherModelBuffers::new(device, None),
       started,
-      skeletons: HashMap::new(),
-      motions: ModelMotions::new(workers),
-      model_pose: RenderModelPose::default(),
+      sector_time: 0.0,
       source,
     }
+  }
+
+  /// Applies what the world posted this frame, in the order posted; answers the sectors it could not take in.
+  pub fn apply(
+    &mut self,
+    (device, queue, encoder): (&wgpu::Device, &wgpu::Queue, &mut wgpu::CommandEncoder),
+    (textures, assets): (&mut TextureCache, &Arc<dyn RenderAssetSource>),
+    updates: Vec<RenderSceneUpdate>,
+  ) -> Vec<RenderSectorFailure> {
+    let mut failures: Vec<RenderSectorFailure> = Vec::new();
+
+    for update in updates {
+      match update {
+        RenderSceneUpdate::AddSector { handle, package } => {
+          let started: Instant = Instant::now();
+          let added: XrfResult = self.statics.add_sector(
+            device,
+            queue,
+            encoder,
+            textures,
+            assets,
+            self.source.get_surfaces(),
+            (handle, &package),
+          );
+
+          self.sector_time = started.elapsed().as_secs_f32() * 1000.0;
+
+          if let Err(error) = added {
+            failures.push(RenderSectorFailure {
+              handle,
+              reason: error.to_string(),
+            });
+          }
+        }
+        RenderSceneUpdate::RemoveSector(handle) => {
+          self.statics.remove_sector(handle);
+        }
+        RenderSceneUpdate::AddModel { handle, model } => {
+          if let Err(error) = self
+            .statics
+            .add_model(device, queue, encoder, (&mut *textures, assets), (handle, &model))
+          {
+            log::warn!("Native viewport could not add a spawned model: {error}");
+          }
+        }
+        RenderSceneUpdate::RemoveModel(handle) => {
+          self.statics.remove_model(handle);
+        }
+        RenderSceneUpdate::AddObject { handle, model, place } => {
+          if let Err(error) = self.statics.add_object(device, queue, handle, (model, &place)) {
+            log::warn!(
+              "Native viewport could not stand spawned object {}: {error}",
+              place.object
+            );
+          }
+        }
+        RenderSceneUpdate::RemoveObject(handle) => {
+          self.statics.remove_object(handle);
+        }
+        RenderSceneUpdate::AddLights(lights) => self.lights.add_lights(lights, textures, assets),
+        RenderSceneUpdate::PoseObject {
+          handle,
+          current,
+          previous,
+        } => self.statics.write_pose(handle, &current, &previous),
+      }
+    }
+
+    failures
   }
 
   /// What became of every texture the level's surfaces sample.
   pub fn describe_textures(&self, textures: &TextureCache) -> Vec<RenderTextureReport> {
     textures.describe(&self.statics.texture_slots)
-  }
-
-  /// Stands every skinned object as asked from the next frame on.
-  pub fn set_model_pose(&mut self, pose: &RenderModelPose) {
-    if self.model_pose != *pose {
-      self.model_pose = pose.clone();
-    }
-  }
-
-  /// Writes every standing skinned object's bone matrices for this frame, and the last frame's beside them; a motion
-  /// still on its way poses the bind pose meanwhile.
-  pub fn pose_skeletons(&mut self) {
-    if self.skeletons.is_empty() {
-      return;
-    }
-
-    let pose: &RenderModelPose = &self.model_pose;
-    let motion: Option<&RenderMotion> = match &pose.motion {
-      Some(name) => self.motions.get(&self.source, name),
-      None => None,
-    };
-
-    for (object, skeleton) in &mut self.skeletons {
-      if !self.statics.has_object(*object) {
-        continue;
-      }
-
-      let (current, previous) = skeleton.pose(motion, pose.frame, &pose.hidden_bones);
-
-      self.statics.write_pose(*object, &current, &previous);
-    }
-  }
-
-  /// Every skinned object's bones as segments in renderer space, child then parent, where this frame poses them.
-  pub fn list_skeleton_segments(&self) -> Vec<(Vec3, Vec3)> {
-    self
-      .skeletons
-      .iter()
-      .flat_map(|(object, skeleton)| {
-        let place: Mat4 = self.statics.get_object_transform(*object).unwrap_or(Mat4::IDENTITY);
-
-        skeleton
-          .list_segments()
-          .into_iter()
-          .map(move |(child, parent)| (place.transform_point3(child), place.transform_point3(parent)))
-      })
-      .collect()
   }
 
   /// A spawned object's bounding sphere in renderer space, once its model is in the scene.

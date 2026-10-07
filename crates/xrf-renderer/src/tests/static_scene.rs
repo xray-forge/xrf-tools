@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use glam::{Mat4, Vec3, Vec4};
 use xrf_error::XrfResult;
-use xrf_renderer_core::ProxyHandle;
+use xrf_renderer_core::{ProxyAllocator, ProxyHandle};
 use xrf_visual::SectorSurface;
 
 use crate::context::gpu_context::GpuContext;
@@ -14,6 +14,7 @@ use crate::scene::static_scene::static_model::StaticModel;
 use crate::scene::static_scene::static_model_part::StaticModelPart;
 use crate::scene::static_scene::static_model_place::StaticModelPlace;
 use crate::scene::static_scene::static_model_proxy::StaticModelProxy;
+use crate::scene::static_scene::static_object_proxy::StaticObjectProxy;
 use crate::scene::static_scene::static_scene::StaticScene;
 use crate::scene::texture::texture_cache::TextureCache;
 use crate::tests::test_workers::create_workers;
@@ -77,13 +78,31 @@ fn stands_objects_as_a_model_and_takes_them_out_again() {
   let mut textures: TextureCache = TextureCache::new(device, queue, &create_workers());
   let mut scene: StaticScene = StaticScene::new(device, queue);
   let mut encoder: wgpu::CommandEncoder = device.create_command_encoder(&Default::default());
-  let model: ProxyHandle<StaticModelProxy> = scene
-    .add_model(device, queue, &mut encoder, (&mut textures, &source), &create_model(2))
+  let (mut models, mut objects): (ProxyAllocator<StaticModelProxy>, ProxyAllocator<StaticObjectProxy>) =
+    (ProxyAllocator::new(), ProxyAllocator::new());
+  let model: ProxyHandle<StaticModelProxy> = models.allocate();
+
+  scene
+    .add_model(
+      device,
+      queue,
+      &mut encoder,
+      (&mut textures, &source),
+      (model, &create_model(2)),
+    )
     .unwrap();
 
-  for object in 1..=3 {
-    scene.add_object(device, queue, model, &place(object)).unwrap();
-  }
+  let standing: Vec<ProxyHandle<StaticObjectProxy>> = (1..=3)
+    .map(|object| {
+      let handle: ProxyHandle<StaticObjectProxy> = objects.allocate();
+
+      scene
+        .add_object(device, queue, handle, (model, &place(object)))
+        .unwrap();
+
+      handle
+    })
+    .collect();
 
   scene.prepare_draws(device, queue, &mut encoder);
 
@@ -97,8 +116,8 @@ fn stands_objects_as_a_model_and_takes_them_out_again() {
     .unwrap();
 
   assert_eq!(scene.resolve_spawn_pick(at), Some(2));
-  assert!(scene.remove_object_by_index(2));
-  assert!(!scene.remove_object_by_index(2), "it is gone already");
+  assert!(scene.remove_object(standing[1]));
+  assert!(!scene.remove_object(standing[1]), "it is gone already");
 
   scene.prepare_draws(device, queue, &mut encoder);
 
@@ -107,7 +126,9 @@ fn stands_objects_as_a_model_and_takes_them_out_again() {
   assert_eq!(scene.resolve_spawn_pick(at), None);
   assert!(!scene.has_object(2) && scene.has_object(1) && scene.has_object(3));
 
-  scene.add_object(device, queue, model, &place(2)).unwrap();
+  scene
+    .add_object(device, queue, objects.allocate(), (model, &place(2)))
+    .unwrap();
 
   assert!(scene.has_object(2), "shown again, it stands again");
   assert!(scene.remove_model(model));
@@ -123,5 +144,9 @@ fn stands_objects_as_a_model_and_takes_them_out_again() {
   );
   assert_eq!(scene.get_pools().clusters.used, 0, "its clusters were given back");
   assert_eq!(scene.get_pools().places.used, 1, "only the origin place is held");
-  assert!(scene.add_object(device, queue, model, &place(4)).is_err());
+  assert!(
+    scene
+      .add_object(device, queue, objects.allocate(), (model, &place(4)))
+      .is_err()
+  );
 }

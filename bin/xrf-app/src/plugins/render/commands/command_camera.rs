@@ -7,5 +7,5 @@ use crate::plugins::render::state::RenderState;
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "command_camera"))]
 #[tauri::command(rename = "command_camera")]
 pub fn render_command_camera(state: State<'_, RenderState>, viewport: RenderViewportId, command: RenderCameraCommand) {
-  state.renderer.command_camera(viewport, command);
+  state.lock_world().command_camera(viewport, command);
 }

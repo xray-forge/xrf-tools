@@ -13,6 +13,9 @@ mod store;
 #[cfg(test)]
 mod tests;
 
+pub use wgpu;
+pub use xrf_renderer_derive::{PassParameters, ShaderPermutation, ShaderStruct};
+
 pub use crate::alloc::{Span, SpanAllocator, SpanBuffer, SpanLane, SpanWrites, UploadRing, UploadSlice};
 pub use crate::graph::{
   CompiledGraph, ComputeContext, ComputePassBuilder, EncodeGroup, EncoderContext, EncoderPassBuilder, ExecutedGraph,
@@ -34,6 +37,4 @@ pub use crate::shader::{
   GeneratedShaderFile, ShaderAddressSpace, ShaderAtomicU32, ShaderDeclarations, ShaderLayoutVerifier, ShaderMember,
   ShaderStruct, ShaderType, max_of, round_up,
 };
-pub use crate::store::{ProxyHandle, ProxyStore, StoreMirror};
-pub use wgpu;
-pub use xrf_renderer_derive::{PassParameters, ShaderPermutation, ShaderStruct};
+pub use crate::store::{ProxyAllocator, ProxyHandle, ProxyStore, StoreMirror};

@@ -11,5 +11,5 @@ pub fn render_set_weather_control(
   viewport: RenderViewportId,
   control: RenderWeatherControl,
 ) {
-  state.renderer.set_weather_control(viewport, control);
+  state.lock_world().set_weather_control(viewport, control);
 }

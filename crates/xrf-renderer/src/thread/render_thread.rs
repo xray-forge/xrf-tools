@@ -1,24 +1,22 @@
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::sync::mpsc::{Receiver, RecvTimeoutError, TryRecvError};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::time::{Duration, Instant};
 
-use glam::{Mat4, Vec2, Vec3, Vec4};
-
+use glam::{Mat4, Vec2, Vec4};
 use xrf_renderer_core::{ExecutedGraph, GraphRuntime};
 
 use crate::camera::camera_view::CameraView;
 use crate::context::gpu_context::GpuContext;
 use crate::context::render_backend::RenderBackend;
+use crate::contract::render_ambient_report::RenderAmbientReport;
 use crate::contract::render_frame_report::RenderFrameReport;
-use crate::contract::render_level_problems::RenderLevelProblems;
 use crate::contract::render_load_report::RenderLoadReport;
 use crate::contract::render_pick::RenderPick;
 use crate::contract::render_rect::RenderRect;
 use crate::contract::render_scale::RenderScale;
 use crate::contract::render_settings::RenderSettings;
 use crate::contract::render_surface_color::RenderSurfaceColor;
-use crate::contract::render_surface_geometry::RenderSurfaceGeometry;
 use crate::contract::render_texture_report::RenderTextureReport;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::contract::render_viewport_id::RenderViewportId;
@@ -26,15 +24,18 @@ use crate::frame::frame_capture::{CaptureReply, FrameCapture};
 use crate::frame::frame_phases::FramePhases;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::host::render_bundle::RenderBundle;
+use crate::host::render_sector_failure::RenderSectorFailure;
 use crate::host::render_window_host::RenderWindowHost;
+use crate::host::render_world::RenderWorld;
+use crate::host::render_world_input::RenderWorldInput;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::pass::backdrop_uniform::BackdropUniform;
 use crate::pass::camera_uniform::CameraUniform;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::level_view::LevelView;
+use crate::scene::level::level_world_input::LevelWorldInput;
 use crate::scene::static_scene::static_selection::StaticSelection;
-use crate::scene::texture::weather_texture_cache::WeatherTextureCache;
-use crate::scene::texture::weather_texture_kind::WeatherTextureKind;
+use crate::scene::texture::sky_texture_requests::SkyTextureRequests;
 use crate::shader::shader_library::ShaderLibrary;
 use crate::thread::gpu_state::GpuState;
 use crate::thread::render_command::RenderCommand;
@@ -73,6 +74,8 @@ pub struct RenderThread {
   workers: RenderWorkers,
   /// The files the renderer ships with, which the GPU's passes read when it starts.
   bundle: Arc<dyn RenderBundle>,
+  /// The world it draws, asked for each viewport's frame.
+  world: Arc<Mutex<dyn RenderWorld>>,
   shaders: ShaderLibrary,
   gpu: Option<GpuState>,
   /// Why the GPU last failed to start, and when.
@@ -98,7 +101,7 @@ impl RenderThread {
     link: Arc<Mutex<RenderLink>>,
     settings: RenderSettings,
     workers: RenderWorkers,
-    bundle: Arc<dyn RenderBundle>,
+    (bundle, world): (Arc<dyn RenderBundle>, Arc<Mutex<dyn RenderWorld>>),
   ) -> Self {
     let now: Instant = Instant::now();
 
@@ -108,6 +111,7 @@ impl RenderThread {
       settings,
       workers,
       bundle,
+      world,
       shaders: ShaderLibrary::default(),
       gpu: None,
       failure: None,
@@ -199,7 +203,7 @@ impl RenderThread {
         self.hosts.entry(window).or_insert(host);
         self
           .viewports
-          .insert(id, RenderViewport::new(id, window, sink, Instant::now(), &self.workers));
+          .insert(id, RenderViewport::new(id, window, sink, Instant::now()));
         self.idle_since = None;
       }
       RenderCommand::Detach { id } => {
@@ -211,30 +215,10 @@ impl RenderThread {
           viewport.layout = Some(layout);
         }
       }
-      RenderCommand::Input { id, event } => {
-        if let Some(viewport) = self.viewports.get_mut(&id) {
-          viewport.camera.input(&event);
-        }
-      }
-      RenderCommand::Camera { id, camera } => {
-        if let Some(viewport) = self.viewports.get_mut(&id) {
-          viewport.camera.describe(camera);
-        }
-      }
-      RenderCommand::CameraCommand { id, command } => {
-        if let Some(viewport) = self.viewports.get_mut(&id) {
-          viewport.camera.command(command);
-        }
-      }
       RenderCommand::Settings { settings } => self.settings = settings,
       RenderCommand::Options { id, options } => {
         if let Some(viewport) = self.viewports.get_mut(&id) {
           viewport.options = *options;
-        }
-      }
-      RenderCommand::PoseModel { id, pose } => {
-        if let Some(viewport) = self.viewports.get_mut(&id) {
-          viewport.model_pose = pose;
         }
       }
       RenderCommand::Overlays { id, overlays } => {
@@ -261,16 +245,6 @@ impl RenderThread {
           let _ = pick.reply.send(Ok(RenderPick { frame: 0, hit: None }));
         }
       },
-      RenderCommand::MeasureSurfaces { id, reply } => {
-        let measured: Vec<RenderSurfaceGeometry> = self
-          .viewports
-          .get(&id)
-          .and_then(|viewport| viewport.level_view.as_ref())
-          .map(|level| level.get_streaming().measure_surfaces())
-          .unwrap_or_default();
-
-        let _ = reply.send(measured);
-      }
       RenderCommand::DescribeTextures { id, reply } => {
         let described: Vec<RenderTextureReport> = self
           .gpu
@@ -304,16 +278,6 @@ impl RenderThread {
 
         let _ = reply.send(described);
       }
-      RenderCommand::DescribeProblems { id, reply } => {
-        let described: RenderLevelProblems = self
-          .viewports
-          .get(&id)
-          .and_then(|viewport| viewport.level_view.as_ref())
-          .map(|level| level.get_streaming().describe_problems())
-          .unwrap_or_default();
-
-        let _ = reply.send(described);
-      }
       RenderCommand::LocateSpawnObject { id, object, reply } => {
         let sphere: Option<[f32; 4]> = self
           .viewports
@@ -327,39 +291,6 @@ impl RenderThread {
       RenderCommand::Capture { id, reply } => {
         if let Some(viewport) = self.viewports.get_mut(&id) {
           viewport.captures.push(reply);
-        }
-      }
-      RenderCommand::Level { id, source } => {
-        if let Some(viewport) = self.viewports.get_mut(&id) {
-          viewport.weather.show(source.clone());
-          // A scene of models alone keeps drawing the one before until it can be drawn whole, so a model swapped for
-          // another, or for itself at another detail, never leaves the viewport empty; a level starts afresh.
-          if source.as_ref().is_none_or(|source| source.get_sector_count() > 0) {
-            viewport.level_view = None;
-          }
-
-          viewport.level = source;
-          viewport.incoming_view = None;
-        }
-      }
-      RenderCommand::Weather { id, play, transition } => {
-        if let Some(viewport) = self.viewports.get_mut(&id) {
-          viewport.weather.play(play, transition);
-        }
-      }
-      RenderCommand::WeatherControl { id, control } => {
-        if let Some(viewport) = self.viewports.get_mut(&id) {
-          viewport.weather.set_control(control);
-        }
-      }
-      RenderCommand::WeatherSeek { id, time } => {
-        if let Some(viewport) = self.viewports.get_mut(&id) {
-          viewport.weather.seek(time);
-        }
-      }
-      RenderCommand::WeatherEffect { id, name } => {
-        if let Some(viewport) = self.viewports.get_mut(&id) {
-          viewport.weather.play_effect(name.as_deref());
         }
       }
       RenderCommand::AmbientEffect { id } => {
@@ -475,47 +406,36 @@ impl RenderThread {
       .get_interval()
       .map(|interval| (self.frame_due.unwrap_or(now) + interval).max(now));
 
+    // The world runs inline before each viewport's frame: it moves the camera, plays the weather, and answers both.
+    let mut world: MutexGuard<'_, dyn RenderWorld> = self.world.lock().unwrap_or_else(PoisonError::into_inner);
+
     for viewport in self.viewports.values_mut() {
-      let height: f32 = viewport.get_css_height();
+      let mut skies: SkyTextureRequests<'_> = SkyTextureRequests {
+        cache: self.gpu.as_mut().map(|gpu| &mut gpu.weather_textures),
+        source: viewport.level.clone().map(|level| level as Arc<dyn RenderAssetSource>),
+        is_clouded: viewport.options.show.is_clouded,
+      };
+      let ambient: Option<RenderAmbientReport> = viewport
+        .level_view
+        .as_ref()
+        .and_then(|level| level.get_scene().get_ambient_report());
 
-      viewport.camera.update(delta, height);
-
-      // The weather is weighed where the camera stands, in engine space; a fade waits for the skies it fades into.
-      let position: Vec3 = viewport.camera.get_pose().position.into();
-      let source: Option<Arc<dyn RenderAssetSource>> =
-        viewport.level.clone().map(|level| level as Arc<dyn RenderAssetSource>);
-      let is_clouded: bool = viewport.options.show.is_clouded;
-      let is_thundering: bool = viewport.options.world.is_thundering && viewport.options.mode.is_lit;
-      let mut weather_textures: Option<&mut WeatherTextureCache> =
-        self.gpu.as_mut().map(|gpu| &mut gpu.weather_textures);
-
-      viewport.weather.advance(
-        now,
-        [position.x, position.y, -position.z],
-        is_thundering,
-        |lighting: &RenderLighting| match (weather_textures.as_deref_mut(), &source) {
-          (Some(cache), Some(source)) => cache.request_sky(&lighting.sky, is_clouded, source),
-          _ => true,
+      viewport.world = world.advance(
+        viewport.id,
+        RenderWorldInput {
+          now,
+          delta,
+          height: viewport.get_css_height(),
+          options: &viewport.options,
+          skies: &mut skies,
+          ambient,
+          failures: std::mem::take(&mut viewport.failures),
         },
       );
-
-      // The keyframe the clock walks to next has its skies fetched before it is reached.
-      if let (Some(cache), Some(source), Some(next)) =
-        (weather_textures, &source, viewport.weather.get_player().get_next())
-      {
-        let keyframe = &next.descriptor;
-
-        for (reference, kind) in [
-          (keyframe.sky_texture.as_str(), WeatherTextureKind::Cube),
-          (keyframe.sky_texture_env.as_str(), WeatherTextureKind::Cube),
-          (keyframe.clouds_texture.as_str(), WeatherTextureKind::Flat),
-        ] {
-          if !reference.is_empty() && !keyframe.sky_texture.is_empty() {
-            cache.request(reference, kind, source);
-          }
-        }
-      }
+      viewport.follow_level();
     }
+
+    drop(world);
 
     if cfg!(debug_assertions) && now.duration_since(self.shaders_checked) >= SHADER_RELOAD {
       self.shaders_checked = now;
@@ -569,8 +489,6 @@ impl RenderThread {
     for viewport in self.viewports.values_mut() {
       viewport.answer_readbacks();
       viewport.report(now, backend, adapter, gpu.textures.get_bytes());
-      viewport.publish_pose(now);
-      viewport.publish_weather(now);
 
       if let Some(report) = viewport
         .level_view
@@ -683,14 +601,15 @@ impl RenderThread {
         .get_or_insert_with(|| ViewBinding::new(device, &gpu.view_layout));
       // A lit and fogged level ends where its fog is total, or at the weather's far plane, as the engine's does.
       let far_limit: f32 = viewport
-        .weather
-        .get_lighting()
+        .world
+        .lighting
         .fog
         .filter(|_| viewport.options.mode.is_lit && viewport.options.show.is_fogged)
         .map_or(f32::INFINITY, |fog| fog.get_total_distance());
       let view: CameraView = viewport
+        .world
         .camera
-        .get_view(rect.width as f32 / rect.height as f32, far_limit);
+        .to_view(rect.width as f32 / rect.height as f32, far_limit);
 
       let options: RenderViewOptions = viewport.options.clone();
       let switches: Vec4 = Vec4::new(
@@ -749,22 +668,22 @@ impl RenderThread {
       let asset_lighting: Option<RenderLighting> = options.asset.lighting.as_ref().map(RenderLighting::for_asset);
       let (lighting, weather) = match &asset_lighting {
         Some(lighting) => (lighting, None),
-        None => (viewport.weather.get_lighting(), viewport.weather.get_level()),
+        None => (&viewport.world.lighting, viewport.world.weather.as_ref()),
       };
 
       let loading: Instant = Instant::now();
 
-      if viewport
+      let is_incoming: bool = viewport
         .level_view
         .as_ref()
-        .is_some_and(|level| !level.get_scene().is_showing(source))
-      {
+        .is_some_and(|level| !level.get_scene().is_showing(source));
+
+      if is_incoming {
         let incoming: &mut LevelView = viewport
           .incoming_view
           .get_or_insert_with(|| LevelView::new(device, queue, &gpu.view_layout, Arc::clone(source), &self.workers));
 
-        incoming.get_scene_mut().set_model_pose(&viewport.model_pose);
-        incoming.load(
+        let failures: Vec<RenderSectorFailure> = incoming.load(
           device,
           queue,
           &mut encoder,
@@ -772,7 +691,14 @@ impl RenderThread {
           &gpu.grass,
           (lighting, weather),
           &options,
+          Some(LevelWorldInput {
+            updates: std::mem::take(&mut viewport.world.updates),
+            streaming: viewport.world.streaming,
+            skeleton_segments: &viewport.world.skeleton_segments,
+          }),
         );
+
+        viewport.failures.extend(failures);
 
         if incoming.is_ready(&gpu.textures) {
           viewport.level_view = viewport.incoming_view.take();
@@ -792,8 +718,12 @@ impl RenderThread {
         viewport.overlays_version,
         viewport.selection.as_ref(),
       );
-      level.get_scene_mut().set_model_pose(&viewport.model_pose);
-      level.load(
+      let world: Option<LevelWorldInput<'_>> = (!is_incoming).then(|| LevelWorldInput {
+        updates: std::mem::take(&mut viewport.world.updates),
+        streaming: viewport.world.streaming,
+        skeleton_segments: &viewport.world.skeleton_segments,
+      });
+      let failures: Vec<RenderSectorFailure> = level.load(
         device,
         queue,
         &mut encoder,
@@ -801,7 +731,10 @@ impl RenderThread {
         &gpu.grass,
         (lighting, weather),
         &options,
+        world,
       );
+
+      viewport.failures.extend(failures);
       phases.load += loading.elapsed();
 
       let preparing: Instant = Instant::now();
@@ -813,11 +746,11 @@ impl RenderThread {
         gpu.get_level_passes(),
         &view,
         ((drawn_rect.width, drawn_rect.height), *rect),
-        viewport.camera.get_field_of_view(),
+        viewport.world.camera.field_of_view,
         &options,
         (lighting, weather),
         &gpu.weather_textures,
-        viewport.weather.get_player().get_clock_rate(),
+        viewport.world.clock_rate,
         (&gpu.view_layout, &gpu.textures),
       );
       phases.prepare += preparing.elapsed();

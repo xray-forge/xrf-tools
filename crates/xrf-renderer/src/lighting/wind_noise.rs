@@ -1,4 +1,4 @@
-use crate::weather::weather_random::WeatherRandom;
+use crate::lighting::weather_random::WeatherRandom;
 
 /// `PERLIN_SAMPLE_SIZE`: gradients in the table, and the mask that wraps into it.
 const SAMPLES: usize = 256;
@@ -36,7 +36,7 @@ impl WindNoise {
     }
 
     for index in (1..SAMPLES).rev() {
-      let other: usize = ((random.next() * SAMPLES as f32) as usize).min(SAMPLES - 1);
+      let other: usize = ((random.next_fraction() * SAMPLES as f32) as usize).min(SAMPLES - 1);
 
       order.swap(index, other);
     }
