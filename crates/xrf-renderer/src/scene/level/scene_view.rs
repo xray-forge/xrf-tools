@@ -146,6 +146,7 @@ use crate::scene::level::level_water::WaterFrame;
 use crate::scene::level::lighting_handles::LightingHandles;
 use crate::scene::level::lights_frame::LightsFrame;
 use crate::scene::level::lights_view::LightsView;
+use crate::scene::level::rain_wetness::RainWetness;
 use crate::scene::level::scene_output::SceneOutput;
 use crate::scene::level::scene_renderer::SceneRenderer;
 use crate::scene::level::shadow_frame::ShadowFrame;
@@ -1815,7 +1816,12 @@ impl SceneView {
     } else {
       1.0
     };
-    let wetness: f32 = self.state.wetness.advance(time, density, pace);
+    let build_up: f32 = if options.features.rain.is_enhanced() {
+      RainWetness::ENHANCED_BUILD_UP
+    } else {
+      RainWetness::ENGINE_BUILD_UP
+    };
+    let wetness: f32 = self.state.wetness.advance(time, density, pace, build_up);
     let puddles: (f32, f32, f32) = self.state.puddle_fill.advance(time, density, pace);
     let falling: Option<RainUniform> = lighting.rain.filter(|_| options.mode.is_lit).and_then(|rainfall| {
       self.prepare_falling_rain(device, (lighting, weather), (&rainfall, gust, time), weather_textures)
