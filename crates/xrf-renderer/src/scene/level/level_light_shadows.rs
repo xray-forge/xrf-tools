@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use glam::{Vec3, Vec4};
 use xrf_math::EPS_S;
 use xrf_renderer_core::{
-  FrameGraph, GraphBindings, GraphBuffer, GraphBufferAccess, GraphDepthAttachment, GraphTexture,
+  FrameGraph, GraphBindings, GraphBuffer, GraphBufferAccess, GraphDepthAttachment, GraphTexture, ProxyHandle,
 };
 use xrf_visual::{LightDescription, LightKind};
 
@@ -43,6 +43,10 @@ const SHRINK: f32 = 0.66;
 /// Where a face's projection starts where the light gives none: `light::virtual_size`'s default.
 const DEFAULT_NEAR: f32 = 0.1;
 
+/// A face wanting a draw: what orders it (stale, then how near or how long ago drawn), its light, whether of the light's
+/// next set, and which face.
+type FaceCandidate = ((bool, f32), ProxyHandle<LightDescription>, bool, usize);
+
 /// Each slot's bind groups, with what they were made from.
 type SlotGroups<K, G> = Option<(K, Vec<G>)>;
 
@@ -56,13 +60,13 @@ type SlotGroups<K, G> = Option<(K, Vec<G>)>;
 pub struct LevelLightShadows {
   atlas: wgpu::TextureView,
   allocator: ShadowTileAllocator,
-  entries: HashMap<usize, LightShadowEntry>,
+  entries: HashMap<ProxyHandle<LightDescription>, LightShadowEntry>,
   frame: u64,
   /// The faces wanting a draw this frame, as their light, set and face, behind what orders them: stale ones first,
   /// nearest lights first, then the ones over what sways, drawn longest ago first.
-  candidates: Vec<((bool, f32), usize, bool, usize)>,
+  candidates: Vec<FaceCandidate>,
   /// The faces drawn this frame, a camera each from the pool.
-  queue: Vec<(usize, bool, usize)>,
+  queue: Vec<(ProxyHandle<LightDescription>, bool, usize)>,
   /// The faces this frame draws, by their slot and their square, as `prepare` readied them.
   due: Vec<(usize, ShadowTile)>,
   /// A face's camera, a slot each.
@@ -154,7 +158,7 @@ impl LevelLightShadows {
   #[allow(clippy::too_many_arguments)]
   pub fn ask(
     &mut self,
-    index: usize,
+    handle: ProxyHandle<LightDescription>,
     light: &LightDescription,
     basis: &LightBasis,
     eye: Vec3,
@@ -173,7 +177,7 @@ impl LevelLightShadows {
     };
     let cone: f32 = if is_spot { light.cone } else { LIGHT_SHADOW_POINT_CONE };
     let wanted: f32 = to_light_shadow_size(light.range, distance, to_light_intensity(color), duel, cone);
-    let entry: &mut LightShadowEntry = self.entries.entry(index).or_default();
+    let entry: &mut LightShadowEntry = self.entries.entry(handle).or_default();
 
     entry.seen = self.frame;
 
@@ -189,18 +193,18 @@ impl LevelLightShadows {
         release_set(&mut self.allocator, next);
       }
     } else if entry.next.as_ref().is_none_or(|set| set.size != asked) {
-      if let Some(next) = self.entries.get_mut(&index).and_then(|entry| entry.next.take()) {
+      if let Some(next) = self.entries.get_mut(&handle).and_then(|entry| entry.next.take()) {
         release_set(&mut self.allocator, next);
       }
 
       let set: Option<LightShadowSet> = self.create_set(light, basis, asked);
 
-      if let Some(entry) = self.entries.get_mut(&index) {
+      if let Some(entry) = self.entries.get_mut(&handle) {
         entry.next = set;
       }
     }
 
-    let Some(entry) = self.entries.get_mut(&index) else {
+    let Some(entry) = self.entries.get_mut(&handle) else {
       return;
     };
 
@@ -230,9 +234,9 @@ impl LevelLightShadows {
           }
 
           if state.drawn != Some(contents) {
-            self.candidates.push(((false, distance), index, is_next, face));
+            self.candidates.push(((false, distance), handle, is_next, face));
           } else if is_moved || sway.is_redrawn(swaying, spread / state.tile.size as f32, state.drawn_at) {
-            self.candidates.push(((true, state.drawn_at), index, is_next, face));
+            self.candidates.push(((true, state.drawn_at), handle, is_next, face));
           }
         }
       }
@@ -254,8 +258,8 @@ impl LevelLightShadows {
   }
 
   /// The faces a light lights with this frame, every one drawn, or none where it has none whole.
-  pub fn get_set(&self, index: usize) -> Option<&LightShadowSet> {
-    self.entries.get(&index)?.shown.as_ref().filter(|set| set.is_drawn())
+  pub fn get_set(&self, handle: ProxyHandle<LightDescription>) -> Option<&LightShadowSet> {
+    self.entries.get(&handle)?.shown.as_ref().filter(|set| set.is_drawn())
   }
 
   /// Readies the faces queued this frame to be culled into their slots and drawn into their squares of the atlas, and

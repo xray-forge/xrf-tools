@@ -57,7 +57,11 @@ fn notes_each_record_added_or_changed_once() {
 
   store.remove(first);
 
-  assert_eq!(store.take_changed(), [0], "the last record moved into the first's place");
+  assert_eq!(
+    store.take_changed(),
+    [0],
+    "the last record moved into the first's place"
+  );
 
   store.remove(second);
 
@@ -74,4 +78,24 @@ fn walks_the_records_with_their_handles() {
   let walked: Vec<(ProxyHandle<char>, char)> = store.iter().map(|(handle, item)| (handle, *item)).collect();
 
   assert_eq!(walked, [(handles[2], 'c'), (handles[1], 'b')]);
+}
+
+#[test]
+fn lists_a_record_changed_again_and_again_only_once_while_nothing_takes_it() {
+  let mut store: ProxyStore<u32> = ProxyStore::new();
+  let handle: ProxyHandle<u32> = store.add(0);
+
+  for value in 0..1000 {
+    *store.get_mut(handle).unwrap() = value;
+  }
+
+  assert_eq!(store.take_changed(), [0]);
+
+  *store.get_mut(handle).unwrap() = 1;
+
+  assert_eq!(
+    store.take_changed(),
+    [0],
+    "taken, it is listed again on its next change"
+  );
 }

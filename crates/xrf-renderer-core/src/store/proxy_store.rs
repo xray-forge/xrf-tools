@@ -11,8 +11,10 @@ pub struct ProxyStore<T> {
   slots: Vec<ProxySlot>,
   /// Slots no item holds, reused before new ones.
   free: Vec<u32>,
-  /// Dense records added, changed or moved since the mirror last took them.
+  /// Dense records added, changed or moved since the mirror last took them, each listed once while it is marked, so
+  /// a store no mirror takes from stays bounded.
   changed: Vec<u32>,
+  marked: Vec<bool>,
 }
 
 impl<T> Default for ProxyStore<T> {
@@ -29,6 +31,7 @@ impl<T> ProxyStore<T> {
       slots: Vec::new(),
       free: Vec::new(),
       changed: Vec::new(),
+      marked: Vec::new(),
     }
   }
 
@@ -56,7 +59,8 @@ impl<T> ProxyStore<T> {
 
     self.items.push(item);
     self.owners.push(slot);
-    self.changed.push(dense);
+    self.marked.push(false);
+    self.mark(dense);
 
     ProxyHandle::new(slot, self.slots[slot as usize].generation)
   }
@@ -68,10 +72,13 @@ impl<T> ProxyStore<T> {
     let item: T = self.items.swap_remove(dense as usize);
 
     self.owners.swap_remove(dense as usize);
+    self.marked.swap_remove(dense as usize);
 
     if dense != last {
       self.slots[self.owners[dense as usize] as usize].dense = dense;
-      self.changed.push(dense);
+      // Listed afresh at its new place: an entry at its old one falls past the end.
+      self.marked[dense as usize] = false;
+      self.mark(dense);
     }
 
     let slot: &mut ProxySlot = &mut self.slots[handle.slot as usize];
@@ -104,7 +111,7 @@ impl<T> ProxyStore<T> {
   pub fn get_mut(&mut self, handle: ProxyHandle<T>) -> Option<&mut T> {
     let dense: u32 = self.get_index(handle)?;
 
-    self.changed.push(dense);
+    self.mark(dense);
 
     Some(&mut self.items[dense as usize])
   }
@@ -116,12 +123,11 @@ impl<T> ProxyStore<T> {
 
   /// Each item with the handle it is held by, in dense order.
   pub fn iter(&self) -> impl Iterator<Item = (ProxyHandle<T>, &T)> {
-    self.items.iter().zip(&self.owners).map(|(item, slot)| {
-      (
-        ProxyHandle::new(*slot, self.slots[*slot as usize].generation),
-        item,
-      )
-    })
+    self
+      .items
+      .iter()
+      .zip(&self.owners)
+      .map(|(item, slot)| (ProxyHandle::new(*slot, self.slots[*slot as usize].generation), item))
   }
 
   /// The dense records added, changed or moved since the last call, each once and in order, still standing.
@@ -132,11 +138,24 @@ impl<T> ProxyStore<T> {
     changed.retain(|dense| *dense < count);
     changed.sort_unstable();
     changed.dedup();
+
+    for dense in &changed {
+      self.marked[*dense as usize] = false;
+    }
+
     changed
   }
 
   /// Notes every record as changed, for a mirror that lost what it held (a device made again).
   pub fn mark_all_changed(&mut self) {
     self.changed = (0..self.items.len() as u32).collect();
+    self.marked.fill(true);
+  }
+
+  fn mark(&mut self, dense: u32) {
+    if !self.marked[dense as usize] {
+      self.marked[dense as usize] = true;
+      self.changed.push(dense);
+    }
   }
 }
