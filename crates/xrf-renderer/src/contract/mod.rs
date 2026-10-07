@@ -58,6 +58,7 @@ pub(crate) mod render_memory_report;
 pub(crate) mod render_overlay;
 pub(crate) mod render_page_backdrop;
 pub(crate) mod render_page_wash;
+pub(crate) mod render_parallax_mode;
 pub(crate) mod render_parallax_settings;
 pub(crate) mod render_particles_report;
 pub(crate) mod render_pass_cost;

@@ -3,7 +3,7 @@ use std::sync::mpsc::{Receiver, RecvTimeoutError, TryRecvError};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::time::{Duration, Instant};
 
-use glam::{Mat4, Vec2, Vec4};
+use glam::{Mat4, Vec2, Vec3, Vec4};
 use xrf_error::{XrfError, XrfResult};
 use xrf_renderer_core::{
   ExecutedGraph, FrameGraph, GraphBindings, GraphColorAttachment, GraphReport, GraphRuntime, GraphTexture,
@@ -1190,7 +1190,8 @@ impl RenderThread {
         u8::from(options.features.parallax.is_steep)
           | u8::from(options.mode.debug_view == RenderDebugView::Parallax) << 1
           | u8::from(options.mode.debug_view == RenderDebugView::Bumps) << 2
-          | u8::from(options.mode.debug_view == RenderDebugView::Heights) << 3,
+          | u8::from(options.mode.debug_view == RenderDebugView::Heights) << 3
+          | u8::from(options.features.parallax.is_enhanced()) << 4,
       ),
     );
     let is_scened: bool = scene.is_some();
@@ -1245,9 +1246,19 @@ impl RenderThread {
     let previous: Mat4 = view_state.get_state_mut().next_jittered(drawn.get_view_projection());
     let selected: Option<StaticSelection> = view_state.resolve_selection(scene, selection.as_ref()).cloned();
 
+    // An asset viewer lights by its rig rather than a weather, and plays none.
+    let asset_lighting: Option<RenderLighting> = options.asset.lighting.as_ref().map(RenderLighting::for_asset);
+    let (lighting, weather) = match &asset_lighting {
+      Some(lighting) => (lighting, None),
+      None => (&world.lighting, world.weather.as_ref()),
+    };
+    // The enhanced parallax shadows its relief towards the sun, as the view sees it.
+    let to_sun: Vec3 = drawn.view.transform_vector3(-lighting.get_sun_direction());
+
     binding.write(
       queue,
       &CameraUniform::new(&drawn, drawn_rect, switches)
+        .with_parallax(&options.features.parallax, to_sun)
         .with_selection(selected.as_ref())
         .with_wireframe(options.mode.is_wireframe)
         .with_surface_color(options.mode.surface_color)
@@ -1256,12 +1267,6 @@ impl RenderThread {
         .with_asset_view(&options, drawn_rect.height as f32 / rect.height.max(1) as f32),
     );
 
-    // An asset viewer lights by its rig rather than a weather, and plays none.
-    let asset_lighting: Option<RenderLighting> = options.asset.lighting.as_ref().map(RenderLighting::for_asset);
-    let (lighting, weather) = match &asset_lighting {
-      Some(lighting) => (lighting, None),
-      None => (&world.lighting, world.weather.as_ref()),
-    };
     let loading: Instant = Instant::now();
 
     view_state.set_overlays(scene, device, overlays, *overlays_version, selection.as_ref());
@@ -1270,6 +1275,10 @@ impl RenderThread {
       .textures
       .set_anisotropy(device, options.features.texture_filtering.get_anisotropy());
     gpu.textures.set_lod(options.features.texture_lod);
+
+    if options.features.parallax.is_enhanced() || options.mode.debug_view == RenderDebugView::Heights {
+      gpu.textures.want_heights();
+    }
     *load += loading.elapsed();
 
     let preparing: Instant = Instant::now();

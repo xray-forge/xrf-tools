@@ -65,6 +65,8 @@ pub struct TextureCache {
   sources: Vec<Option<Arc<dyn RenderAssetSource>>>,
   /// `texture_lod`: how much coarser than stored the textures load, the engine's rule deciding each one's levels.
   lod: u32,
+  /// Whether a terrain's heights are loaded: held deferred, their neutral standing in, until a view first reads them.
+  is_heights_wanted: bool,
   /// Bytes each slot's upload holds on the GPU.
   sizes: Vec<u64>,
   /// Slots freed, taken again before the array grows.
@@ -141,6 +143,7 @@ impl TextureCache {
       generations: vec![0],
       sources: vec![None],
       lod: 0,
+      is_heights_wanted: false,
       sizes: vec![0],
       free: Vec::new(),
       sender,
@@ -213,9 +216,31 @@ impl TextureCache {
 
     self.is_dirty = true;
     self.by_reference.insert(key, slot);
-    self.load(slot);
+
+    if role == TextureRole::TerrainHeight && !self.is_heights_wanted {
+      self.states[slot as usize] = RenderTextureState::Deferred;
+    } else {
+      self.load(slot);
+    }
 
     slot
+  }
+
+  /// Loads the terrains' heights from now on, those held deferred among them, once a view first reads them: each costs
+  /// an integration where the installation brings none, so they wait for an enhanced parallax or the heights view.
+  pub fn want_heights(&mut self) {
+    if self.is_heights_wanted {
+      return;
+    }
+
+    self.is_heights_wanted = true;
+
+    for slot in 1..self.views.len() {
+      if self.states[slot] == RenderTextureState::Deferred {
+        self.states[slot] = RenderTextureState::Loading;
+        self.load(slot as u32);
+      }
+    }
   }
 
   /// Loads every texture again at `texture_lod`, where it changed: each keeps what it shows until its new levels land.
@@ -227,7 +252,7 @@ impl TextureCache {
     self.lod = lod;
 
     for slot in 1..self.views.len() {
-      if self.keys[slot].is_some() {
+      if self.keys[slot].is_some() && self.states[slot] != RenderTextureState::Deferred {
         self.generations[slot] = self.generations[slot].wrapping_add(1);
         self.load(slot as u32);
       }

@@ -1,6 +1,7 @@
 use glam::{Mat4, Vec3, Vec4};
 
 use crate::camera::camera_view::CameraView;
+use crate::contract::render_parallax_settings::RenderParallaxSettings;
 use crate::contract::render_rect::RenderRect;
 use crate::contract::render_surface_color::RenderSurfaceColor;
 use crate::contract::render_view_options::RenderViewOptions;
@@ -22,7 +23,7 @@ pub struct CameraUniform {
   pub planes: [Vec4; 6],
   /// Textured, bumped, the baked hemisphere's strength, and the surfaces' bits: one where the engines' steep parallax is
   /// drawn, two, four and eight where the G-buffer draws the parallax, the bumps or the heights in place of the albedo
-  /// for their debug views.
+  /// for their debug views, sixteen where the enhanced parallax is marched.
   pub switches: Vec4,
   /// One where the static surfaces draw as their triangles' edges; times a uv checker repeats in place of every
   /// surface's textures; one where surfaces draw solid.
@@ -42,6 +43,12 @@ pub struct CameraUniform {
   pub selection: [u32; 4],
   /// The selection's runs of clusters, two a row: each its first and the one past its last.
   pub selection_runs: [[u32; 4]; SELECTION_ROWS],
+  /// The enhanced parallax's steps at most, its range in metres, its depth in detail coordinates, and one where its
+  /// march is refined; the sun's direction in view space and how much of it its relief keeps from its hollows; how far a
+  /// terrain's layers blend by height and how much its low ground darkens.
+  pub parallax: Vec4,
+  pub parallax_light: Vec4,
+  pub parallax_mix: Vec4,
 }
 
 /// Rows of the camera's selection runs, two runs each.
@@ -70,7 +77,24 @@ impl CameraUniform {
       backdrop_squares: Vec4::ZERO,
       selection: [0; 4],
       selection_runs: [[0; 4]; SELECTION_ROWS],
+      parallax: Vec4::ZERO,
+      parallax_light: Vec4::ZERO,
+      parallax_mix: Vec4::ZERO,
     }
+  }
+
+  /// The same camera marching the enhanced parallax by `settings`, shadowing towards the sun along `to_sun`, a view
+  /// space direction.
+  pub fn with_parallax(mut self, settings: &RenderParallaxSettings, to_sun: Vec3) -> Self {
+    self.parallax = Vec4::new(
+      settings.steps.max(1) as f32,
+      settings.range,
+      settings.height,
+      f32::from(u8::from(settings.is_refined)),
+    );
+    self.parallax_light = to_sun.normalize_or_zero().extend(settings.shadow);
+    self.parallax_mix = Vec4::new(settings.blending, settings.cavity, 0.0, 0.0);
+    self
   }
 
   /// The same camera drawing as an asset viewer asks: a uv checker in place of every texture, surfaces solid where

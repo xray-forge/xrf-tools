@@ -19,6 +19,7 @@ import { DEFAULT_LEVEL_VIEW_OPTIONS, ILevelViewOptions } from "@/core/level/lib/
 import {
   DEFAULT_RENDER_AMBIENT_OCCLUSION_SETTINGS,
   DEFAULT_RENDER_INDIRECT_LIGHT_SETTINGS,
+  DEFAULT_RENDER_PARALLAX_SETTINGS,
 } from "@/core/render/lib/settings/render-feature-defaults";
 import {
   TRenderAmbientOcclusionSettings,
@@ -39,6 +40,9 @@ describe("level toolbar groups", () => {
     const { getByRole, findByRole } = renderWithProviders(
       <LevelShadingAction
         options={DEFAULT_LEVEL_VIEW_OPTIONS}
+        parallax={DEFAULT_RENDER_PARALLAX_SETTINGS}
+        features={mockLevelFeatureOptions()}
+        onChangeFeatures={() => {}}
         shading={ELevelShading.FINAL}
         onToggle={onToggle}
         onChangeShading={() => {}}
@@ -62,6 +66,9 @@ describe("level toolbar groups", () => {
     const { getByRole, findByRole } = renderWithProviders(
       <LevelShadingAction
         options={DEFAULT_LEVEL_VIEW_OPTIONS}
+        parallax={DEFAULT_RENDER_PARALLAX_SETTINGS}
+        features={mockLevelFeatureOptions()}
+        onChangeFeatures={() => {}}
         shading={ELevelShading.CLAY}
         onToggle={() => {}}
         onChangeShading={onChangeShading}

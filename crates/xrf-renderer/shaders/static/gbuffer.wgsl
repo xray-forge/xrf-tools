@@ -470,21 +470,152 @@ fn base_texel(in: GBufferVarying, at: Footprint) -> vec4<f32> {
 
 // What a terrain lays over its base (`deffer_impl_flat` with `USE_4_DETAIL` and `USE_4_BUMP`): its four details,
 // their bumps in tangent space at twice the contrast, and their gloss, each weighed by its mask's channel over the
-// mask's sum.
+// mask's sum; and what the enhanced parallax darkens its low ground by and keeps of the sun from its hollows, none and
+// all without it.
 struct TerrainTexel {
   detail: vec3<f32>,
   bump: vec3<f32>,
   gloss: f32,
+  cavity: f32,
+  relief: f32,
 };
 
 // The weight under which a terrain's layer is left unread: what it would add is below a channel's rounding, and a mask
 // mostly weighs one or two layers, so most texels skip most of the four.
 const TERRAIN_LAYER_LEAST: f32 = 0.004;
+// The enhanced terrain parallax: the steps a march takes looking straight down, at least; what is added to the eye's
+// rise over the surface, so a grazing look reaches a bounded way along it rather than without end; the share of the
+// range it fades out over, ending there; the halvings a refined march settles by; how far the lowest ground darkens at
+// most; the steps a shadow ray takes towards the sun and how sharply one passing under the relief is shadowed; and the
+// band of height within which layers blending by height share a texel.
+const TERRAIN_STEPS_LEAST: f32 = 3.0;
+const TERRAIN_GRAZING: f32 = 0.41;
+const TERRAIN_FADE_SHARE: f32 = 0.2;
+const TERRAIN_REFINES: u32 = 3u;
+const TERRAIN_CAVITY: f32 = 0.125;
+const TERRAIN_SHADOW_STEPS: u32 = 8u;
+const TERRAIN_SHADOW_SHARPNESS: f32 = 8.0;
+const TERRAIN_BLEND_BAND: f32 = 0.25;
 
-fn terrain_texel(surface: Surface, at: Footprint, uv: vec2<f32>, dx: vec2<f32>, dy: vec2<f32>) -> TerrainTexel {
+// How deep a layer's surface lies under a coordinate, from nought at its top: its height's depth, by its weight, so a
+// layer weighing little lies nearly flat.
+fn terrain_depth(slot: u32, uv: vec2<f32>, lod: f32, weight: f32) -> f32 {
+  return (1.0 - textureSampleLevel(textures[slot], texture_sampler, uv, lod).r) * weight;
+}
+
+// The level a height is read at for a footprint, as trilinear sampling would choose it: a march reads at a distance
+// what the eye sees there, never the full texture.
+fn terrain_lod(slot: u32, dx: vec2<f32>, dy: vec2<f32>) -> f32 {
+  let size: vec2<f32> = vec2<f32>(textureDimensions(textures[slot]));
+  let extent: f32 = max(dot(dx * size, dx * size), dot(dy * size, dy * size));
+
+  return max(0.5 * log2(max(extent, 1e-8)), 0.0);
+}
+
+// Where a view ray into a layer meets its surface, marched from the top at `uv` along `reach`, the coordinate it moves
+// by down to the deepest, in `steps`: settled between its last two steps as straight lines, then by halving where
+// refined. The coordinate, and the depth.
+fn terrain_march(slot: u32, uv: vec2<f32>, lod: f32, weight: f32, reach: vec2<f32>, steps: f32) -> vec3<f32> {
+  let count: u32 = u32(ceil(steps));
+  let step: f32 = 1.0 / f32(count);
+  var depth: f32 = 0.0;
+  var surface: f32 = terrain_depth(slot, uv, lod, weight);
+  var before_depth: f32 = 0.0;
+  var before_surface: f32 = surface;
+
+  for (var index: u32 = 0u; index < count; index++) {
+    if (surface <= depth) {
+      break;
+    }
+
+    before_depth = depth;
+    before_surface = surface;
+    depth += step;
+    surface = terrain_depth(slot, uv + reach * depth, lod, weight);
+  }
+
+  let above: f32 = before_surface - before_depth;
+  let below: f32 = surface - depth;
+  var hit: f32 = select(depth, mix(before_depth, depth, above / (above - below)), above - below > 1e-6);
+
+  if (camera.parallax.w > 0.5) {
+    var low: f32 = before_depth;
+    var high: f32 = depth;
+
+    for (var index: u32 = 0u; index < TERRAIN_REFINES; index++) {
+      let middle: f32 = (low + high) * 0.5;
+
+      if (terrain_depth(slot, uv + reach * middle, lod, weight) <= middle) {
+        high = middle;
+      } else {
+        low = middle;
+      }
+    }
+
+    hit = (low + high) * 0.5;
+  }
+
+  return vec3<f32>(uv + reach * hit, hit);
+}
+
+// How much of the sun reaches a layer's point at `hit`, its coordinate and depth: a ray rising from it towards the sun
+// along `to_sun`, the coordinate it moves by a unit of depth, shadowed softly where it passes under the relief and the
+// more the nearer the point.
+fn terrain_shadow(slot: u32, hit: vec3<f32>, lod: f32, weight: f32, to_sun: vec2<f32>) -> f32 {
+  var shadow: f32 = 0.0;
+
+  for (var index: u32 = 1u; index <= TERRAIN_SHADOW_STEPS; index++) {
+    let along: f32 = f32(index) / f32(TERRAIN_SHADOW_STEPS);
+    let ray: f32 = hit.z * (1.0 - along);
+    let surface: f32 = terrain_depth(slot, hit.xy + to_sun * (hit.z * along), lod, weight);
+
+    shadow = max(shadow, (ray - surface) * TERRAIN_SHADOW_SHARPNESS * (1.0 - along));
+  }
+
+  return 1.0 - saturate(shadow);
+}
+
+fn terrain_texel(
+  in: GBufferVarying,
+  surface: Surface,
+  at: Footprint,
+  uv: vec2<f32>,
+  dx: vec2<f32>,
+  dy: vec2<f32>,
+) -> TerrainTexel {
   let mask: vec4<f32> = sample_slot(surface.terrain.mask, at.uv, at.dx, at.dy);
   let weights: vec4<f32> = mask / max(dot(mask, vec4<f32>(1.0)), 1e-4);
-  var out: TerrainTexel = TerrainTexel(vec3<f32>(0.0), vec3<f32>(0.0), 0.0);
+  var out: TerrainTexel = TerrainTexel(vec3<f32>(0.0), vec3<f32>(0.0), 0.0, 0.0, 1.0);
+  let position: vec3<f32> = (camera.view * vec4<f32>(in.world, 1.0)).xyz;
+  let range: f32 = camera.parallax.y;
+  let is_marched: bool = has_surfaces_bit(SURFACES_ENHANCED) && -position.z < range;
+  var reach: vec2<f32> = vec2<f32>(0.0);
+  var to_sun: vec2<f32> = vec2<f32>(0.0);
+  var steps: f32 = 0.0;
+  var is_lit: bool = false;
+
+  // The eye and the sun in the surface's tangent space, the depth faded out over the last of the range.
+  if (is_marched) {
+    let tangent: vec3<f32> = normalize(in.tangent);
+    let binormal: vec3<f32> = normalize(in.binormal);
+    let normal: vec3<f32> = normalize(in.normal);
+    let eye: vec3<f32> = normalize(vec3<f32>(dot(tangent, -position), dot(binormal, -position), dot(normal, -position)));
+    let sun: vec3<f32> = camera.parallax_light.xyz;
+    let light: vec3<f32> = vec3<f32>(dot(tangent, sun), dot(binormal, sun), dot(normal, sun));
+    let depth: f32 = camera.parallax.z * (1.0 - smoothstep(range * (1.0 - TERRAIN_FADE_SHARE), range, -position.z));
+
+    reach = -eye.xy / (abs(eye.z) + TERRAIN_GRAZING) * depth;
+    steps = mix(camera.parallax.x, TERRAIN_STEPS_LEAST, saturate(abs(eye.z)));
+    is_lit = light.z > 0.0 && camera.parallax_light.w > 0.0;
+    to_sun = light.xy / (light.z + TERRAIN_GRAZING) * depth;
+  }
+
+  // Each layer's coordinate where its march met it, its height there and its depth; the plane where none marches.
+  var coords: array<vec2<f32>, 4> = array<vec2<f32>, 4>(uv, uv, uv, uv);
+  var heights: vec4<f32> = vec4<f32>(0.5);
+  var depths: vec4<f32> = vec4<f32>(0.0);
+  var lods: vec4<f32> = vec4<f32>(0.0);
+  var dominant: u32 = 0u;
 
   for (var layer: u32 = 0u; layer < 4u; layer++) {
     let weight: f32 = weights[layer];
@@ -493,15 +624,61 @@ fn terrain_texel(surface: Surface, at: Footprint, uv: vec2<f32>, dx: vec2<f32>, 
       continue;
     }
 
-    // `.wzyx`: the normal in the last three channels, the gloss in the first.
-    let bump: vec4<f32> = sample_slot(surface.terrain.bumps[layer], uv, dx, dy).wzyx;
+    if (weight > weights[dominant]) {
+      dominant = layer;
+    }
 
-    out.detail += sample_slot(surface.terrain.details[layer], uv, dx, dy).rgb * weight;
+    if (is_marched) {
+      let slot: u32 = surface.terrain.heights[layer];
+      let lod: f32 = terrain_lod(slot, dx, dy);
+      let hit: vec3<f32> = terrain_march(slot, uv, lod, weight, reach, steps);
+
+      coords[layer] = hit.xy;
+      heights[layer] = textureSampleLevel(textures[slot], texture_sampler, hit.xy, lod).r;
+      depths[layer] = hit.z;
+      lods[layer] = lod;
+    }
+  }
+
+  // Layers blended by height: within a band of the one standing highest, weight and height together, each shares by how
+  // far it stands into the band; the mask alone at none.
+  let present: vec4<f32> = step(vec4<f32>(TERRAIN_LAYER_LEAST + 1e-6), weights);
+  var blended: vec4<f32> = weights;
+
+  if (is_marched && camera.parallax_mix.x > 0.0) {
+    let keys: vec4<f32> = (weights + heights * camera.parallax_mix.x) * present - (1.0 - present);
+    let top: f32 = max(max(keys.x, keys.y), max(keys.z, keys.w));
+    let shares: vec4<f32> = max(keys - (top - TERRAIN_BLEND_BAND), vec4<f32>(0.0)) * present;
+
+    blended = mix(weights, shares / max(dot(shares, vec4<f32>(1.0)), 1e-4), camera.parallax_mix.x);
+  }
+
+  for (var layer: u32 = 0u; layer < 4u; layer++) {
+    let weight: f32 = blended[layer];
+
+    if (weight <= TERRAIN_LAYER_LEAST || present[layer] < 0.5) {
+      continue;
+    }
+
+    // `.wzyx`: the normal in the last three channels, the gloss in the first.
+    let bump: vec4<f32> = sample_slot(surface.terrain.bumps[layer], coords[layer], dx, dy).wzyx;
+
+    out.detail += sample_slot(surface.terrain.details[layer], coords[layer], dx, dy).rgb * weight;
     out.bump += (bump.xyz - 0.5) * weight;
     out.gloss += bump.w * weight;
+    out.cavity += (1.0 - heights[layer] * heights[layer]) * weight;
   }
 
   out.bump.z *= 0.5;
+  out.cavity = select(0.0, out.cavity * TERRAIN_CAVITY * camera.parallax_mix.y, is_marched);
+
+  if (is_lit) {
+    let slot: u32 = surface.terrain.heights[dominant];
+    let shadow: f32 = terrain_shadow(slot, vec3<f32>(coords[dominant], depths[dominant]), lods[dominant],
+      weights[dominant], to_sun);
+
+    out.relief = mix(1.0, shadow, camera.parallax_light.w);
+  }
 
   return out;
 }
@@ -520,12 +697,14 @@ fn shade(in: GBufferVarying, base: vec4<f32>, at: Footprint) -> GBufferOutput {
   var detail: vec4<f32> = vec4<f32>(0.5);
 
   let is_terrain: bool = (surface.flags & SURFACE_IS_TERRAIN) != 0u;
+  var relief: f32 = 1.0;
 
   if (is_terrain) {
-    let terrain: TerrainTexel = terrain_texel(surface, at, detail_uv, detail_dx, detail_dy);
+    let terrain: TerrainTexel = terrain_texel(in, surface, at, detail_uv, detail_dx, detail_dy);
     let weight: f32 = is_bumped * is_textured;
 
-    diffuse *= terrain.detail * 2.0;
+    diffuse *= terrain.detail * 2.0 * (1.0 - terrain.cavity);
+    relief = terrain.relief;
     normal = normalize(mix(normal, normalize(in.tangent * terrain.bump.x + in.binormal * terrain.bump.y +
       in.normal * terrain.bump.z), weight));
     gloss = mix(DEFAULT_GLOSS, terrain.gloss, weight);
@@ -581,6 +760,12 @@ fn shade(in: GBufferVarying, base: vec4<f32>, at: Footprint) -> GBufferOutput {
 
     hemi = lightmap.a;
     sun = lightmap.g;
+  }
+
+  // A terrain's sun term is what its enhanced parallax keeps of the sun, which the sun pass takes, its baked sun unread
+  // as the deferred engines leave it.
+  if (is_terrain) {
+    sun = relief;
   }
 
   var out: GBufferOutput;

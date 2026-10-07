@@ -12,7 +12,7 @@ struct Camera {
   // The frustum's six planes in renderer space, pointing inward.
   planes: array<vec4<f32>, 6>,
   // x: textured, y: bumped, z: the baked hemisphere's strength, w: the surfaces' bits, `SURFACES_STEEP`,
-  // `SURFACES_PARALLAX_SHOWN`, `SURFACES_BUMPS_SHOWN` and `SURFACES_HEIGHTS_SHOWN`.
+  // `SURFACES_PARALLAX_SHOWN`, `SURFACES_BUMPS_SHOWN`, `SURFACES_HEIGHTS_SHOWN` and `SURFACES_ENHANCED`.
   switches: vec4<f32>,
   // x: one where every static surface draws as its triangles' edges; y: times a uv checker repeats in place of every
   // surface's textures, zero for none; z: one where surfaces draw solid, their alpha ignored; w: one where an
@@ -34,6 +34,12 @@ struct Camera {
   selection: vec4<u32>,
   // Runs of clusters in order, two a vector: each its first and the one past its last.
   selection_runs: array<vec4<u32>, 32>,
+  // The enhanced parallax: x its steps at most, y its range in metres, z its depth in detail coordinates, w one where
+  // its march is refined; then xyz the sun's direction in view space, w how much of it the relief keeps from its
+  // hollows; then x how far a terrain's layers blend by height, y how much its low ground darkens.
+  parallax: vec4<f32>,
+  parallax_light: vec4<f32>,
+  parallax_mix: vec4<f32>,
 };
 
 @group(0) @binding(0) var<uniform> camera: Camera;
@@ -90,12 +96,13 @@ fn selection_run(index: u32) -> vec2<u32> {
   return select(row.xy, row.zw, index % 2u == 1u);
 }
 
-// The surfaces' bits in `switches.w`: the engines' steep parallax drawn, and the parallax, the bumps or the heights
-// drawn in place of the albedo for their debug views.
+// The surfaces' bits in `switches.w`: the engines' steep parallax drawn; the parallax, the bumps or the heights drawn in
+// place of the albedo for their debug views; and the enhanced parallax marched.
 const SURFACES_STEEP: u32 = 1u;
 const SURFACES_PARALLAX_SHOWN: u32 = 2u;
 const SURFACES_BUMPS_SHOWN: u32 = 4u;
 const SURFACES_HEIGHTS_SHOWN: u32 = 8u;
+const SURFACES_ENHANCED: u32 = 16u;
 
 fn has_surfaces_bit(bit: u32) -> bool {
   return (u32(camera.switches.w) & bit) != 0u;

@@ -6,6 +6,8 @@ use serde::{Deserialize, Serialize};
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum RenderTextureState {
   Loading,
+  /// Held for what reads it, unread until something does: a terrain's heights while no parallax marches them.
+  Deferred,
   #[serde(rename_all = "camelCase")]
   Loaded {
     width: u32,

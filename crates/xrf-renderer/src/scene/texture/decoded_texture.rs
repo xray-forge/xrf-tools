@@ -1,7 +1,7 @@
 use xrf_dds::{D3DFormat, DdsFile, DdsFormat, DdsMetadata, DxgiFormat};
 use xrf_error::{XrfError, XrfResult};
 
-use crate::scene::texture::height_field::{BUMP_LOW_CUT, integrate_normals, to_unit_heights};
+use crate::scene::texture::height_field::{BUMP_GRAIN_TEXELS, BUMP_LOW_CUT, integrate_normals, to_unit_heights};
 
 /// Faces a cube holds.
 pub const CUBE_FACES: u32 = 6;
@@ -95,7 +95,7 @@ impl DecodedTexture {
       width as usize,
       height as usize,
       &normals,
-      BUMP_LOW_CUT,
+      (BUMP_LOW_CUT, width.max(height) as f32 / BUMP_GRAIN_TEXELS),
     ));
 
     Ok(Self::from_heights(width, height, heights))

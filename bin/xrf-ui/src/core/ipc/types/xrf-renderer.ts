@@ -972,10 +972,39 @@ export type RenderPageWash = {
   to: [number | null, number | null, number | null, number | null];
 };
 
+/** Whose parallax displaces the level's surfaces. */
+export enum ERenderParallaxMode {
+  /** The engines' own: steep parallax on a level surface whose texture asks for it, none on terrain. */
+  ENGINE = "engine",
+  /**
+   * Terrain marched over its details' heights, each layer by its own, self-shadowed towards the sun, its layers blended
+   * by height.
+   */
+  ENHANCED = "enhanced",
+}
+
+/** Every `ERenderParallaxMode` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type RenderParallaxMode = `${ERenderParallaxMode}`;
+
 /** How the level's surfaces are displaced by their height. */
 export type RenderParallaxSettings = {
+  mode: RenderParallaxMode;
   /** `r2_steep_parallax`: the engines' steep parallax on a level surface whose texture asks for it. */
   isSteep: boolean;
+  /** Steps an enhanced march takes at most, looking along a surface; three looking straight down at it. */
+  steps: number;
+  /** Metres within which the enhanced parallax is marched, faded over the last fifth of them. */
+  range: number | null;
+  /** How deep the enhanced parallax reaches, in the detail's texture coordinates. */
+  height: number | null;
+  /** Whether an enhanced march settles where it crossed the surface by halving its last step three times. */
+  isRefined: boolean;
+  /** How much of the sun the enhanced parallax's own relief keeps from its hollows: none to all. */
+  shadow: number | null;
+  /** How far a terrain's layers blend by height, the one standing highest showing through: none, the mask alone, to all. */
+  blending: number | null;
+  /** How much the enhanced parallax darkens the low ground of its relief: none to its whole share. */
+  cavity: number | null;
 };
 
 /** What a level's particle systems came to over the span reported. */
@@ -1326,6 +1355,8 @@ export type RenderTextureReport = {
 /** Every `kind` the `RenderTextureState` union is told apart by, so a switch or a comparison names one. */
 export enum ERenderTextureState {
   LOADING = "loading",
+  /** Held for what reads it, unread until something does: a terrain's heights while no parallax marches them. */
+  DEFERRED = "deferred",
   LOADED = "loaded",
   /** Its reference resolved to no file. */
   MISSING = "missing",
@@ -1336,6 +1367,8 @@ export enum ERenderTextureState {
 /** Where one texture a viewport's scene samples stands. */
 export type RenderTextureState =
   | { kind: "loading" }
+  /** Held for what reads it, unread until something does: a terrain's heights while no parallax marches them. */
+  | { kind: "deferred" }
   | {
       kind: "loaded";
       width: number;

@@ -9,6 +9,7 @@ import {
   ERenderFoliageMode,
   ERenderIndirectLightMode,
   ERenderLightShadowFilter,
+  ERenderParallaxMode,
   ERenderRainMode,
   ERenderReflectionMode,
   ERenderReflectionProbe,
@@ -176,9 +177,21 @@ export const DEFAULT_RENDER_LOD_SETTINGS: TRenderLodSettings = {
   ssaGlodStart: 256,
 };
 
-/** Steep, as Anomaly's high and extreme presets set `r2_steep_parallax`. */
+/**
+ * The engines' own, steep as Anomaly's high and extreme presets set `r2_steep_parallax`, with the enhanced parallax's
+ * strengths for when it is drawn: sixteen steps within 20 m, 0.02 of the detail deep, refined, self-shadowed, its layers
+ * half blended by height.
+ */
 export const DEFAULT_RENDER_PARALLAX_SETTINGS: TRenderParallaxSettings = {
+  blending: 0.5,
+  cavity: 1,
+  height: 0.02,
+  isRefined: true,
   isSteep: true,
+  mode: ERenderParallaxMode.ENGINE,
+  range: 20,
+  shadow: 1,
+  steps: 16,
 };
 
 /** The engine's own: no contact shadows, and their strengths for when they are drawn, towards four lights a pixel. */

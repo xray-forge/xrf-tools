@@ -3,6 +3,7 @@ import { Nullable } from "@xrf/types";
 import {
   ERenderBloomMode,
   ERenderDebugView,
+  ERenderParallaxMode,
   ERenderSunShaftsQuality,
   ERenderSurfaceColor,
   RenderShowFlags,
@@ -120,7 +121,10 @@ export function toNativeViewOptions(
       rain: features.rain,
       reflections: features.reflections,
       lod: features.lod,
-      parallax: { ...features.parallax, isSteep: features.parallax.isSteep && switches.isParallaxed },
+      // The view's switch turns every parallax off, the engine's steep and the enhanced march alike.
+      parallax: switches.isParallaxed
+        ? features.parallax
+        : { ...features.parallax, isSteep: false, mode: ERenderParallaxMode.ENGINE },
       shadows: { ...shadows, cascades: [...shadows.cascades] },
       sunShafts: { ...switches.sunShafts },
       textureFiltering: features.textureFiltering,

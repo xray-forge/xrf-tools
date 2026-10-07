@@ -35,6 +35,7 @@ function toOutcomes(reports: Array<RenderTextureReport>): Map<string, IVisualTex
 
       switch (state.kind) {
         case ERenderTextureState.LOADING:
+        case ERenderTextureState.DEFERRED:
           return [toReferenceKey(report.reference), PENDING];
 
         case ERenderTextureState.LOADED:

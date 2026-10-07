@@ -45,7 +45,9 @@ fn fs_sun(in: FullscreenVarying) -> @location(0) vec4<f32> {
   let world_normal: vec3<f32> = normalize((transpose(camera.view) * vec4<f32>(normal, 0.0)).xyz);
   // A single lit texel stands in where no contact shadows are drawn.
   let contact: f32 = textureLoad(contact_shadows, min(texel, vec2<i32>(textureDimensions(contact_shadows)) - 1), 0).r;
-  let shadow: f32 = sun_shadow(shadow_maps, shadows, world, world_normal, dot(normal, to_light)) * contact;
+  // Terrain's own sun term is what its enhanced parallax keeps from its hollows, one where none marches it.
+  let relief: f32 = select(1.0, material.y, has_mark(material.a, MARK_TERRAIN));
+  let shadow: f32 = sun_shadow(shadow_maps, shadows, world, world_normal, dot(normal, to_light)) * contact * relief;
 
   // Foliage passes the sun through from behind: by how directly the eye looks into it past the leaf, tinted by the
   // sun's colour as far as the flora's colour share says.
