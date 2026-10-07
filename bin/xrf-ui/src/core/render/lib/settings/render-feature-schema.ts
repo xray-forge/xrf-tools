@@ -19,6 +19,7 @@ import {
   ERenderReflectionTraceQuality,
   ERenderScale,
   ERenderTextureFiltering,
+  ERenderVolumetricMode,
   ERenderWaterMode,
 } from "@/core/ipc/types/xrf-renderer";
 import {
@@ -213,6 +214,14 @@ export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings>
   upscaling: {
     scale: toChoice(ERenderScale),
     sharpening: toNumber(0, 1),
+  },
+  // The renderer's own: up to four times the designed scattering, a phase function short of a beam, and from a
+  // nearby grid to 300 m.
+  volumetric: {
+    anisotropy: toNumber(0, 0.9),
+    distance: toNumber(25, 300),
+    intensity: toNumber(0, 4),
+    mode: toChoice(ERenderVolumetricMode),
   },
   water: {
     distortion: toNumber(0, 0.2),

@@ -8,6 +8,7 @@ use crate::pass::enhanced_bloom_pass::EnhancedBloomPass;
 use crate::pass::exposure_pass::ExposurePass;
 use crate::pass::flare_pass::FlarePass;
 use crate::pass::fog_scattering_pass::FogScatteringPass;
+use crate::pass::froxel_pass::FroxelPass;
 use crate::pass::fsr_pass::FsrPass;
 use crate::pass::fxaa_pass::FxaaPass;
 use crate::pass::glass_pass::GlassPass;
@@ -72,6 +73,7 @@ pub struct LevelPasses<'a> {
   pub flares: &'a FlarePass,
   pub sun_shafts: &'a SunShaftsPass,
   pub light_volumes: &'a LightVolumePass,
+  pub froxels: &'a FroxelPass,
   pub bloom: &'a BloomPass,
   pub enhanced_bloom: &'a EnhancedBloomPass,
   pub fog_scattering: &'a FogScatteringPass,

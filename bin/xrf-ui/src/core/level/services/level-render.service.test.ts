@@ -75,6 +75,7 @@ const REPORT: RenderFrameReport = {
     fullClusters: 2,
     inView: 12,
     shadowed: 4,
+    volumetric: 2,
   },
   particles: { drawn: 9, effects: 14, particles: 210, simulated: 11, simulationTime: 0.3 },
   renderHeight: 400,

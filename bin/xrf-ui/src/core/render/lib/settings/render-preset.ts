@@ -13,6 +13,7 @@ import {
   ERenderRainMode,
   ERenderReflectionMode,
   ERenderTextureFiltering,
+  ERenderVolumetricMode,
   ERenderWaterMode,
 } from "@/core/ipc/types/xrf-renderer";
 import {
@@ -33,6 +34,7 @@ import {
   DEFAULT_RENDER_REFLECTION_SETTINGS,
   DEFAULT_RENDER_SHADOW_SETTINGS,
   DEFAULT_RENDER_UPSCALING_SETTINGS,
+  DEFAULT_RENDER_VOLUMETRIC_SETTINGS,
   DEFAULT_RENDER_WATER_SETTINGS,
 } from "@/core/render/lib/settings/render-feature-defaults";
 import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-feature-settings";
@@ -108,6 +110,9 @@ export const RENDER_PRESETS: Readonly<Record<ERenderPreset, IRenderFeatureSettin
     // The engine's full quality, `texture_lod 0`, as Anomaly's extreme preset sets it.
     textureLod: 0,
     upscaling: DEFAULT_RENDER_UPSCALING_SETTINGS,
+    // The application's own choice over the engine's, as the antialiasing is: the sun and every lamp scattered in one
+    // froxel volume, in the engine's shafts' place.
+    volumetric: { ...DEFAULT_RENDER_VOLUMETRIC_SETTINGS, mode: ERenderVolumetricMode.ENHANCED },
     // The application's own choice over the engine's, as the antialiasing is: the enhanced water.
     water: { ...DEFAULT_RENDER_WATER_SETTINGS, mode: ERenderWaterMode.ENHANCED },
   },
@@ -133,6 +138,7 @@ export const RENDER_PRESETS: Readonly<Record<ERenderPreset, IRenderFeatureSettin
     // The engine's full quality, `texture_lod 0`, as Anomaly's extreme preset sets it.
     textureLod: 0,
     upscaling: DEFAULT_RENDER_UPSCALING_SETTINGS,
+    volumetric: DEFAULT_RENDER_VOLUMETRIC_SETTINGS,
     water: DEFAULT_RENDER_WATER_SETTINGS,
   },
 };

@@ -192,8 +192,11 @@ export function LevelPreviewToolbar({
             suns={suns}
             options={options}
             sunShafts={sunShafts}
+            volumetric={toLevelModeFeature("volumetric", settings, features)}
+            features={features}
             onToggle={onToggle}
             onChangeSunShafts={onChangeSunShafts}
+            onChangeFeatures={onChangeFeatures}
             onEdit={onEditManual}
           />
 

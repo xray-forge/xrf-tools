@@ -28,6 +28,11 @@ struct Glass {
   refraction: f32,
 }
 
+struct Froxels {
+  size: vec4<f32>,
+  params: vec4<f32>,
+}
+
 struct GrassModel {
   shape: vec4<f32>,
   is_waving: f32,

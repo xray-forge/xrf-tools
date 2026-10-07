@@ -10,6 +10,7 @@ use crate::shader::shader_composer::compose_shader;
 /// extension.
 const EMBEDDED: &[(&str, &str)] = &[
   ("common/camera", include_str!("../../shaders/common/camera.wgsl")),
+  ("common/froxel", include_str!("../../shaders/common/froxel.wgsl")),
   (
     "common/compute_grid",
     include_str!("../../shaders/common/compute_grid.wgsl"),
@@ -191,6 +192,14 @@ const EMBEDDED: &[(&str, &str)] = &[
     "frame/light_volumes",
     include_str!("../../shaders/frame/light_volumes.wgsl"),
   ),
+  (
+    "frame/froxel_inject",
+    include_str!("../../shaders/frame/froxel_inject.wgsl"),
+  ),
+  (
+    "frame/froxel_integrate",
+    include_str!("../../shaders/frame/froxel_integrate.wgsl"),
+  ),
   ("frame/temporal", include_str!("../../shaders/frame/temporal.wgsl")),
   ("frame/flare", include_str!("../../shaders/frame/flare.wgsl")),
   (
@@ -273,6 +282,14 @@ const EMBEDDED: &[(&str, &str)] = &[
   (
     "generated/frame/light_volumes",
     include_str!("../../shaders/generated/frame/light_volumes.wgsl"),
+  ),
+  (
+    "generated/frame/froxel_inject",
+    include_str!("../../shaders/generated/frame/froxel_inject.wgsl"),
+  ),
+  (
+    "generated/frame/froxel_integrate",
+    include_str!("../../shaders/generated/frame/froxel_integrate.wgsl"),
   ),
   (
     "generated/frame/exposure",

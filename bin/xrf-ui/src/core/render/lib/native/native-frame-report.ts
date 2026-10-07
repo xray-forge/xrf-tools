@@ -33,6 +33,7 @@ export const EMPTY_RENDER_LIGHTS_REPORT: RenderLightsReport = {
   fullClusters: 0,
   inView: 0,
   shadowed: 0,
+  volumetric: 0,
 };
 
 /** A frame with no level's particle systems. */

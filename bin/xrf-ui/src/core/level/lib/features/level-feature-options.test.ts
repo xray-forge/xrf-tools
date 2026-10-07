@@ -12,6 +12,7 @@ import {
   ERenderIndirectLightMode,
   ERenderLightShadowFilter,
   ERenderReflectionMode,
+  ERenderVolumetricMode,
   ERenderWaterMode,
 } from "@/core/ipc/types/xrf-renderer";
 import {
@@ -211,5 +212,21 @@ describe("level feature options", () => {
       threshold: 1,
     });
     expect(toLevelFeatureOptions({ fog: { mode: "volumetric" } }).fog).toEqual({});
+  });
+
+  it("keeps the volumetric lighting's own mode and strengths, held to their bounds", () => {
+    const view: ILevelFeatureOptions = toLevelFeatureOptions({
+      volumetric: { anisotropy: 2, distance: 10, mode: ERenderVolumetricMode.ENGINE, steps: 64 },
+    });
+
+    expect(view.volumetric).toEqual({ anisotropy: 0.9, distance: 25, mode: ERenderVolumetricMode.ENGINE });
+    expect(toLevelModeFeature("volumetric", SETTINGS, view)).toEqual({
+      ...SETTINGS.volumetric,
+      anisotropy: 0.9,
+      distance: 25,
+      mode: ERenderVolumetricMode.ENGINE,
+    });
+    expect(toLevelModeFeature("volumetric", SETTINGS, mockLevelFeatureOptions())).toEqual(SETTINGS.volumetric);
+    expect(toLevelFeatureOptions({ volumetric: { mode: "froxel" } }).volumetric).toEqual({});
   });
 });

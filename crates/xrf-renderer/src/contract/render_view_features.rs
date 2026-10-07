@@ -20,6 +20,7 @@ use crate::contract::render_reflection_settings::RenderReflectionSettings;
 use crate::contract::render_shadow_settings::RenderShadowSettings;
 use crate::contract::render_sun_shafts::RenderSunShafts;
 use crate::contract::render_texture_filtering::RenderTextureFiltering;
+use crate::contract::render_volumetric_settings::RenderVolumetricSettings;
 use crate::contract::render_water_settings::RenderWaterSettings;
 
 /// Each of the renderer's features as a view sets it, a full set a view: one struct a feature, owned by its module.
@@ -50,6 +51,8 @@ pub struct RenderViewFeatures {
   pub grass: RenderGrassSettings,
   /// How finely the sun's shafts step, and Monolith's floor under their density.
   pub sun_shafts: RenderSunShafts,
+  /// How the light the air scatters is drawn: the engine's shafts, or a froxel volume.
+  pub volumetric: RenderVolumetricSettings,
   /// How much of the static geometry draws at a distance.
   pub lod: RenderLodSettings,
   /// How the frame's edges are smoothed.
@@ -88,6 +91,7 @@ impl Default for RenderViewFeatures {
       glass: RenderGlassSettings::default(),
       grass: RenderGrassSettings::default(),
       sun_shafts: RenderSunShafts::default(),
+      volumetric: RenderVolumetricSettings::default(),
       lod: RenderLodSettings::default(),
       antialiasing: RenderAntialiasing::None,
       texture_filtering: RenderTextureFiltering::default(),

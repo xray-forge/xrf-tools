@@ -162,6 +162,7 @@ export function mockLevelFeatureOptions(overrides: Partial<ILevelFeatureOptions>
     rain: {},
     reflections: {},
     shadows: {},
+    volumetric: {},
     water: {},
     ...overrides,
   };

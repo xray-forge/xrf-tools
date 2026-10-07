@@ -43,6 +43,7 @@ use crate::contract::render_static_report::RenderStaticReport;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::contract::render_water_settings::RenderWaterSettings;
 use crate::frame::depth_pyramid::DepthPyramid;
+use crate::frame::froxel_volume::FroxelVolume;
 use crate::frame::fsr_targets::FsrTargets;
 use crate::frame::indirect_light_history::IndirectLightHistory;
 use crate::frame::pick_target::PickTarget;
@@ -84,6 +85,9 @@ use crate::pass::fog_scattering_parameters::FogScatteringParameters;
 use crate::pass::fog_scattering_pass::FogScatteringPass;
 use crate::pass::fog_scattering_uniform::FogScatteringUniform;
 use crate::pass::foliage_wind_values::FoliageWindValues;
+use crate::pass::froxel_inject_parameters::FroxelInjectParameters;
+use crate::pass::froxel_integrate_parameters::FroxelIntegrateParameters;
+use crate::pass::froxel_uniform::FroxelUniform;
 use crate::pass::fsr_uniform::FsrUniform;
 use crate::pass::fxaa_parameters::FxaaParameters;
 use crate::pass::glass_parameters::GlassParameters;
@@ -596,6 +600,7 @@ impl SceneView {
     .then_some(GlassUniform {
       refraction: options.features.glass.refraction,
     });
+    self.prepare_froxels(device, options);
     self.prepare_shadows(scene, device, queue, encoder, (view_layout, textures));
     self.follow_overhead_maps();
   }
@@ -1718,6 +1723,81 @@ impl SceneView {
       });
   }
 
+  /// Notes this frame's enhanced volumetric lighting, readying its froxels where it draws and letting them go where it
+  /// does not.
+  fn prepare_froxels(&mut self, device: &wgpu::Device, options: &RenderViewOptions) {
+    let settings = options.features.volumetric;
+
+    if !(settings.is_enhanced() && options.mode.is_lit && !options.mode.is_wireframe) {
+      self.info.froxels = None;
+      self.state.froxels = None;
+
+      return;
+    }
+
+    let volume: &FroxelVolume = self.state.froxels.get_or_insert_with(|| FroxelVolume::new(device));
+    let [width, height, depth] = FroxelVolume::SIZE;
+    // Each frame's points a golden share further along their slices, so the history gathers the whole of each.
+    let jitter: f32 = (volume.frame as f32 * 0.618_034).fract();
+
+    self.info.froxels = Some(FroxelUniform {
+      size: Vec4::new(width as f32, height as f32, depth as f32, settings.distance),
+      params: Vec4::new(
+        settings.intensity,
+        settings.anisotropy.clamp(0.0, 0.95),
+        jitter,
+        if volume.is_valid { 1.0 } else { 0.0 },
+      ),
+    });
+  }
+
+  /// Fills the froxels over their history and integrates them along the view; answers the grid's uniform and what was
+  /// integrated, for the composite to read.
+  fn add_froxel_passes<'a>(
+    (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
+    passes: LevelPasses<'a>,
+    view: &'a ViewBinding,
+    (lit, atlas, lights): (LightingHandles<'a>, &'a wgpu::TextureView, &'a LightsView),
+    (uniform, volume): (FroxelUniform, &'a FroxelVolume),
+  ) -> (UniformBinding<FroxelUniform>, GraphTexture) {
+    let froxels: UniformBinding<FroxelUniform> = runtime.push_uniform(&uniform);
+    let history: GraphTexture =
+      bindings.import_view(graph, "froxel history read", &volume.history_views[1 - volume.index]);
+    let current: GraphTexture =
+      bindings.import_view(graph, "froxel history write", &volume.history_views[volume.index]);
+    let integrated: GraphTexture = bindings.import_view(graph, "froxels integrated", &volume.integrated_view);
+    let inject: FroxelInjectParameters<'a> = FroxelInjectParameters {
+      lighting: lit.lighting,
+      shadow_maps: lit.shadow_maps,
+      shadows: lit.shadows,
+      records: StorageArray::new(bindings.import_buffer(graph, "light records", &lights.record_buffer)),
+      counts: StorageArray::new(bindings.import_buffer(graph, "light cluster counts", &lights.counts)),
+      items: StorageArray::new(bindings.import_buffer(graph, "light cluster items", &lights.items)),
+      lights: runtime.push_uniform(&lights.uniform),
+      shadow_atlas: bindings.import_view(graph, "light shadow atlas", atlas),
+      froxels,
+      froxel_history: history,
+      froxel_sampler: passes.froxels.get_sampler(),
+      froxel_current: current,
+    };
+    let integrate: FroxelIntegrateParameters = FroxelIntegrateParameters {
+      froxels,
+      froxel_scattered: current,
+      froxel_integrated: integrated,
+    };
+
+    graph
+      .add_compute_pass("froxels")
+      .parameters(&inject)
+      .record(move |context| passes.froxels.record_inject(context, view, &inject));
+    graph
+      .add_compute_pass("froxels integrate")
+      .parameters(&integrate)
+      .record(move |context| passes.froxels.record_integrate(context, view, &integrate));
+
+    (froxels, integrated)
+  }
+
   /// Adds a raster pass blending over the scene, tested against its depth without writing it.
   fn add_over_scene<'g, 'a>(
     graph: &'g mut FrameGraph<'a>,
@@ -1750,6 +1830,12 @@ impl SceneView {
         && let Some(history) = &mut self.state.reflections
       {
         history.swap();
+      }
+
+      if self.info.froxels.is_some()
+        && let Some(froxels) = &mut self.state.froxels
+      {
+        froxels.swap();
       }
     }
 
@@ -2136,14 +2222,15 @@ impl SceneView {
     let is_lit: bool = frame.is_lit;
     let has_lights: bool = self.state.lights.get_count() > 0;
     // The shadowed lights' shafts, drawn into a target of their own for the sun shafts' composite to add.
-    let is_volumed: bool = is_lit && !self.state.lights.volumes.is_empty();
+    let is_froxeled: bool = is_lit && self.info.froxels.is_some() && self.state.froxels.is_some();
+    let is_volumed: bool = is_lit && !is_froxeled && !self.state.lights.volumes.is_empty();
     let light_atlas: &'a wgpu::TextureView = scene.lights.get_shadow_atlas();
     let is_occlusion_ambient: bool = self.info.is_occlusion_drawn;
     let has_sky: bool = self.info.sky.is_some();
     let is_hazing: bool = has_sky && self.info.is_hazing;
     let is_composited: bool = is_drawn && has_sky;
     let has_particles: bool = is_drawn && self.state.particles.is_drawing();
-    let is_shafted: bool = self.info.is_shafted;
+    let is_shafted: bool = self.info.is_shafted && !is_froxeled;
     let is_rain_drawn: bool = is_raining && self.info.weather_views.rain.is_some();
     let is_thundering: bool = self.info.thunder_draw.is_some() && self.info.weather_views.thunder.is_some();
     let is_bloomed: bool = self.info.is_bloomed;
@@ -2869,9 +2956,29 @@ impl SceneView {
         target
       });
 
-      if is_shafted || light_volumes.is_some() {
+      // The enhanced volume's froxels, filled over their history and integrated along the view, which the composite
+      // below reads in place of both shafts.
+      let froxels: Option<(UniformBinding<FroxelUniform>, GraphTexture)> = scene_view
+        .info
+        .froxels
+        .zip(scene_view.state.froxels.as_ref())
+        .filter(|_| is_froxeled)
+        .map(|(uniform, volume)| {
+          Self::add_froxel_passes(
+            (&mut *graph, &mut *bindings, runtime),
+            passes,
+            view,
+            (lit, light_atlas, &scene_view.state.lights),
+            (uniform, volume),
+          )
+        });
+
+      if is_shafted || light_volumes.is_some() || froxels.is_some() {
         let (width, height) = handles.size;
         let empty: GraphTexture = bindings.import_view(&mut *graph, "sun shafts none", passes.reflections.get_empty());
+        let no_froxels: GraphTexture = bindings.import_view(&mut *graph, "froxels none", passes.froxels.get_empty());
+        let (froxel_uniform, froxel_integrated) =
+          froxels.unwrap_or_else(|| (runtime.push_uniform(&FroxelUniform::default()), no_froxels));
         let march: SunShaftsParameters = SunShaftsParameters {
           depth_target: handles.depth,
           shadow_maps: lit.shadow_maps,
@@ -2880,9 +2987,13 @@ impl SceneView {
           exposure: StorageValue::new(lit.exposure),
           shafts: empty,
           light_volumes: empty,
+          froxels: froxel_uniform,
+          froxel_integrated: no_froxels,
+          froxel_sampler: passes.froxels.get_sampler(),
         };
         let mut parameters: SunShaftsParameters = SunShaftsParameters {
           light_volumes: light_volumes.unwrap_or(empty),
+          froxel_integrated,
           ..march
         };
 

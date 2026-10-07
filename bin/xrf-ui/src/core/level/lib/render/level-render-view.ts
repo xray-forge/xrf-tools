@@ -104,6 +104,7 @@ export function toLevelViewOptions(inputs: ILevelViewOptionsInputs): RenderViewO
       rain: toLevelRain(features, view),
       reflections: toLevelReflections(features, view),
       shadows: toLevelRendererFeature("shadows", features, view, options.isShadowed),
+      volumetric: toLevelModeFeature("volumetric", features, view),
       water: toLevelRendererFeature("water", features, view, options.isWaterVisible),
     },
     { ...options, sunShafts },

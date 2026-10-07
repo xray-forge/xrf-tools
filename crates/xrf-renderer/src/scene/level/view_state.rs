@@ -3,6 +3,7 @@ use glam::Mat4;
 use crate::contract::render_overlay::RenderOverlay;
 use crate::contract::render_selection_target::RenderSelectionTarget;
 use crate::frame::depth_pyramid::DepthPyramid;
+use crate::frame::froxel_volume::FroxelVolume;
 use crate::frame::fsr_targets::FsrTargets;
 use crate::frame::indirect_light_history::IndirectLightHistory;
 use crate::frame::pick_target::PickTarget;
@@ -58,6 +59,8 @@ pub struct ViewState {
   pub indirect: Option<IndirectLightHistory>,
   /// The reflections' blends over frames, while they are traced.
   pub reflections: Option<ReflectionHistory>,
+  /// The enhanced volumetric lighting's froxels, while it draws.
+  pub froxels: Option<FroxelVolume>,
   /// The water's settings and flow, and the enhanced water's reflection histories.
   pub water: LevelWater,
   /// The trees' sway the last frame drew with.
@@ -110,6 +113,7 @@ impl ViewState {
       noise_frame: 0,
       occlusion: None,
       indirect: None,
+      froxels: None,
       reflections: None,
       water: LevelWater::default(),
       last_wind: None,

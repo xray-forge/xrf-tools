@@ -130,6 +130,7 @@ export function toNativeViewOptions(
       sunShafts: { ...switches.sunShafts },
       textureFiltering: features.textureFiltering,
       textureLod: features.textureLod,
+      volumetric: features.volumetric,
       water: { ...water, isEnabled: water.isEnabled && switches.isWaterVisible },
     },
     mode: {
