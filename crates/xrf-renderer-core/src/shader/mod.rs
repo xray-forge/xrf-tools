@@ -3,6 +3,7 @@
 
 mod generated_shader_file;
 mod shader_address_space;
+mod shader_atomic_u32;
 mod shader_declarations;
 mod shader_layout;
 mod shader_layout_verifier;
@@ -16,6 +17,7 @@ mod tests;
 
 pub use generated_shader_file::GeneratedShaderFile;
 pub use shader_address_space::ShaderAddressSpace;
+pub use shader_atomic_u32::ShaderAtomicU32;
 pub use shader_declarations::ShaderDeclarations;
 pub use shader_layout::{max_of, round_up};
 pub use shader_layout_verifier::ShaderLayoutVerifier;

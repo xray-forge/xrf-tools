@@ -15,7 +15,14 @@ pub enum RenderSpawnCategory {
 }
 
 impl RenderSpawnCategory {
-  /// The visibility group its objects are culled by, from one.
+  pub const ALL: [RenderSpawnCategory; 4] = [
+    RenderSpawnCategory::Props,
+    RenderSpawnCategory::Items,
+    RenderSpawnCategory::Weapons,
+    RenderSpawnCategory::Lamps,
+  ];
+
+  /// The spawn group its objects are shown and hidden by, from one.
   pub const fn get_group(self) -> u32 {
     match self {
       RenderSpawnCategory::Props => 1,
@@ -25,7 +32,7 @@ impl RenderSpawnCategory {
     }
   }
 
-  /// The visibility group its objects a new game releases are culled by, apart from the ones it keeps.
+  /// The spawn group its objects a new game releases are shown and hidden by, apart from the ones it keeps.
   pub const fn get_released_group(self) -> u32 {
     self.get_group() + 4
   }

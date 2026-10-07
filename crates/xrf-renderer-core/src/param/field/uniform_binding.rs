@@ -36,6 +36,7 @@ impl<T: ShaderType> UniformField for UniformBinding<T> {
   fn get_binding<'r>(&'r self, resources: &dyn PassResources<'r>) -> PassBinding<'r> {
     PassBinding::BufferRange {
       buffer: resources.get_upload_buffer(),
+      offset: 0,
       size: T::SIZE,
     }
   }

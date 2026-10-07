@@ -5,6 +5,7 @@ pub enum PassBinding<'r> {
   Buffer(&'r wgpu::Buffer),
   BufferRange {
     buffer: &'r wgpu::Buffer,
+    offset: u64,
     size: u64,
   },
   TextureView(&'r wgpu::TextureView),

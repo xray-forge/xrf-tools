@@ -297,3 +297,56 @@ fn declare_grouped<'a>(graph: &mut FrameGraph<'a>, drawn: &'a AtomicUsize) -> cr
 
   output
 }
+
+#[test]
+fn drops_a_frame_any_group_of_which_wgpu_refuses() {
+  let Some((device, queue)) = create_device() else {
+    return;
+  };
+  let make = |label: &str| -> wgpu::Buffer {
+    device.create_buffer(&wgpu::BufferDescriptor {
+      label: Some(label),
+      size: 16,
+      usage: wgpu::BufferUsages::COPY_SRC | wgpu::BufferUsages::COPY_DST,
+      mapped_at_creation: false,
+    })
+  };
+  let (source_buffer, destination_buffer): (wgpu::Buffer, wgpu::Buffer) = (make("source"), make("destination"));
+  let mut runtime: GraphRuntime = GraphRuntime::new(&device, &queue);
+  let mut graph: FrameGraph<'_> = FrameGraph::new();
+  let source = graph.import_buffer(GraphBufferDescriptor::new("source", 16));
+  let destination = graph.import_buffer(GraphBufferDescriptor::new("destination", 16));
+
+  graph.begin_group("fine");
+  graph.add_encoder_pass("nothing").keep().record(|_| {});
+  graph.begin_group("refused");
+  graph
+    .add_encoder_pass("overrun")
+    .buffer(source, GraphBufferAccess::CopySource)
+    .buffer(destination, GraphBufferAccess::CopyDestination)
+    .record(move |context| {
+      let (source, destination) = (context.get_buffer(source), context.get_buffer(destination));
+
+      // Past both buffers' ends, which wgpu refuses.
+      context
+        .get_encoder()
+        .copy_buffer_to_buffer(source, 0, destination, 0, 64);
+    });
+
+  let mut bindings: GraphBindings<'_> = GraphBindings::new();
+
+  bindings
+    .bind_buffer(source, &source_buffer)
+    .bind_buffer(destination, &destination_buffer);
+
+  let error: String = graph
+    .compile(&GraphCompileOptions::default())
+    .unwrap()
+    .execute((&device, &queue), &mut runtime, &bindings)
+    .err()
+    .expect("the frame is dropped")
+    .to_string();
+
+  assert!(error.contains("group 'refused'"), "{error}");
+  assert!(!error.contains("group 'fine'"), "{error}");
+}

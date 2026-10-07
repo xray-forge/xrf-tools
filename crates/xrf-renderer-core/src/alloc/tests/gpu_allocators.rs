@@ -1,4 +1,4 @@
-use crate::alloc::{Span, SpanBuffer, UploadRing, UploadSlice};
+use crate::alloc::{Span, SpanBuffer, SpanLane, UploadRing, UploadSlice};
 use crate::tests::test_device::create_device;
 
 /// Copies `buffer` into a mappable one and reads it back.
@@ -42,6 +42,45 @@ fn grows_a_span_buffer_keeping_what_it_held() {
   let words: Vec<u32> = bytemuck::cast_slice(&read_back(&device, &queue, buffer.get_buffer())).to_vec();
 
   assert_eq!(words[..8], [1, 2, 3, 40, 5, 6, 7, 8]);
+}
+
+#[test]
+fn keeps_a_span_buffers_lanes_parallel_through_growth_and_clears() {
+  let Some((device, queue)) = create_device() else {
+    return;
+  };
+  let mut buffer: SpanBuffer = SpanBuffer::with_lanes(
+    &device,
+    &[SpanLane::new("words", 4), SpanLane::new("pairs", 8)],
+    wgpu::BufferUsages::STORAGE,
+    2,
+  );
+  let first: Span = buffer.allocate(&device, &queue, 2).unwrap();
+
+  buffer.write_lane(&first, 0, 0, bytemuck::cast_slice(&[1u32, 2]));
+  buffer.write_lane(&first, 1, 0, bytemuck::cast_slice(&[10u32, 11, 20, 21]));
+
+  let second: Span = buffer.allocate(&device, &queue, 2).unwrap();
+
+  buffer.write_lane(&second, 1, 1, bytemuck::cast_slice(&[40u32, 41]));
+  buffer.flush(&queue);
+
+  let words: Vec<u32> = bytemuck::cast_slice(&read_back(&device, &queue, buffer.get_lane(0))).to_vec();
+  let pairs: Vec<u32> = bytemuck::cast_slice(&read_back(&device, &queue, buffer.get_lane(1))).to_vec();
+  let (one, two): (usize, usize) = (first.get_offset() as usize, second.get_offset() as usize);
+
+  assert!(buffer.get_generation() > 0, "both lanes grew together");
+  assert_eq!(words[one..one + 2], [1, 2]);
+  assert_eq!(pairs[one * 2..one * 2 + 4], [10, 11, 20, 21]);
+  assert_eq!(pairs[(two + 1) * 2..(two + 2) * 2], [40, 41]);
+
+  buffer.clear(&first);
+  buffer.free(first);
+  buffer.flush(&queue);
+
+  let pairs: Vec<u32> = bytemuck::cast_slice(&read_back(&device, &queue, buffer.get_lane(1))).to_vec();
+
+  assert_eq!(pairs[one * 2..one * 2 + 4], [0; 4], "a cleared span reads as nothing");
 }
 
 #[test]

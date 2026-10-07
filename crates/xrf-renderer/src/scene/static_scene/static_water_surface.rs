@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use glam::Vec3;
 use xrf_material::{XraySurfaceDeclaration, XraySurfaceDescriptor, XraySurfaceSampler};
 use xrf_visual::SectorSurface;
 
@@ -26,7 +27,7 @@ pub fn build_water_surface(
   is_soft: bool,
   textures: &mut TextureCache,
   source: &Arc<dyn RenderAssetSource>,
-  color: [f32; 3],
+  color: Vec3,
 ) -> StaticSurface {
   let base_sampler = |name: &str| descriptor.find_sampler(XraySurfaceSampler::BASE_ELEMENT, name);
   let base: Option<&str> = base_sampler("s_base").or(surface.texture_name.as_deref());

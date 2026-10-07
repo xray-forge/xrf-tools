@@ -1,10 +1,10 @@
 use glam::Vec4;
 
-use crate::param::tests::fixtures::{Blur, Clashing, Reflection, Scale, Settings, Shade, Surface};
+use crate::param::tests::fixtures::{Blur, Clashing, Count, Reflection, Scale, Settings, Shade, Surface};
 use crate::{
   FrameGraph, GraphBindings, GraphBufferAccess, GraphBufferDescriptor, GraphCompileOptions, GraphRuntime,
   GraphTextureAccess, GraphTextureDescriptor, PassParameters, ShaderBindings, ShaderDeclarations, StorageArray,
-  StorageArrayMut,
+  StorageArrayMut, StorageField,
 };
 
 #[test]
@@ -49,6 +49,32 @@ fn derives_the_layout_with_writable_bindings_kept_from_the_vertex_stage() {
     entries[3].ty,
     wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering)
   ));
+}
+
+#[test]
+fn declares_atomic_counters_naga_accepts_and_binds_a_range() {
+  let source: String = format!(
+    "{}@compute @workgroup_size(1) fn main() {{ atomicAdd(&counters[0], list[0]); }}
+",
+    Count::get_wgsl_bindings()
+  );
+
+  assert!(source.contains("var<storage, read_write> counters: array<atomic<u32>>;"));
+
+  let module: naga::Module = naga::front::wgsl::parse_str(&source).unwrap();
+
+  naga::valid::Validator::new(naga::valid::ValidationFlags::all(), naga::valid::Capabilities::all())
+    .validate(&module)
+    .unwrap();
+
+  let mut graph: FrameGraph<'_> = FrameGraph::new();
+  let list = graph.import_buffer(GraphBufferDescriptor::new("list", 1024));
+
+  assert_eq!(
+    StorageArray::<u32>::new_range(list, 256, 64).get_range(),
+    Some((256, 64))
+  );
+  assert_eq!(StorageArray::<u32>::new(list).get_range(), None);
 }
 
 #[test]

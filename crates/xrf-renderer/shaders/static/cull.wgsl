@@ -1,6 +1,7 @@
 #import "common/compute_grid"
 #import "common/camera"
 #import "static/records"
+#import "generated/static/cull"
 
 // Decides which clusters a frame draws: each visible one is appended to its batch's run of the list, which the
 // batch's indirect draw then draws as instances.
@@ -17,60 +18,6 @@ override IS_SHADOW: bool = false;
 // Whether the shadow is a light's face, kept while nothing it casts from changes: its trees cast at their finest band,
 // and nothing too small for the camera is dropped, so no move of the camera is drawn into it.
 override IS_FINEST: bool = false;
-
-struct CullParams {
-  cluster_count: u32,
-  row_count: u32,
-  batch_count: u32,
-  impostor_count: u32,
-  // Squared screen area thresholds, as the engine's `ssa` compares them.
-  glod_start: f32,
-  glod_end: f32,
-  discard_below: f32,
-  candidate_capacity: u32,
-  is_occluding: u32,
-  // Screen areas an impostor draws below, and its trees above.
-  lod_a: f32,
-  lod_b: f32,
-  is_impostors: u32,
-  // A bit a visibility group, from the lowest, set where the view hides it.
-  hidden_groups: u32,
-  pad1: u32,
-  pad2: u32,
-  pad3: u32,
-  // xyz: the camera every view's levels of detail are measured from.
-  lod_origin: vec4<f32>,
-};
-
-// The view the pyramid was reduced through, which the early phase tests against.
-struct Occlusion {
-  view: mat4x4<f32>,
-  projection: mat4x4<f32>,
-  // The pyramid's first level's size.
-  size: vec2<f32>,
-  levels: u32,
-  // Whether the pyramid holds an earlier frame's depth drawn through this view.
-  has_history: u32,
-};
-
-@group(1) @binding(0) var<storage, read> clusters: array<Cluster>;
-@group(1) @binding(1) var<storage, read> spheres: array<vec4<f32>>;
-@group(1) @binding(2) var<storage, read> slots: array<Slot>;
-@group(1) @binding(3) var<storage, read> places: array<Place>;
-@group(1) @binding(4) var<storage, read> rows: array<Row>;
-@group(1) @binding(5) var<storage, read> regions: array<Region>;
-@group(1) @binding(6) var<storage, read_write> lists: array<vec2<u32>>;
-@group(1) @binding(7) var<storage, read_write> args: array<atomic<u32>>;
-@group(1) @binding(8) var<uniform> params: CullParams;
-@group(1) @binding(9) var<storage, read_write> candidates: array<vec2<u32>>;
-// Each batch's late draw arguments, then the late phase's dispatch and the candidates' count.
-@group(1) @binding(10) var<storage, read_write> late: array<atomic<u32>>;
-@group(1) @binding(11) var pyramid: texture_2d<f32>;
-@group(1) @binding(12) var<uniform> occlusion: Occlusion;
-@group(1) @binding(13) var<storage, read> impostors: array<Impostor>;
-// Each impostor's best facet, the next best, its fade and blend bytes, and what its level of detail draws.
-@group(1) @binding(14) var<storage, read_write> terms: array<vec4<u32>>;
-@group(1) @binding(15) var<storage, read_write> impostor_list: array<u32>;
 
 // `EPS_S`, the least a fade's range is taken as.
 const RANGE_EPSILON: f32 = 1e-6;
@@ -201,7 +148,7 @@ fn keep(batch: u32, cluster: u32, place: u32, sphere: vec4<f32>) {
 
 // A cluster's sphere where its place stands it: moved by the place's matrix, grown by its largest scale.
 fn placed_sphere(sphere: vec4<f32>, place: Place) -> vec4<f32> {
-  let center: vec4<f32> = place_matrix(place) * vec4<f32>(sphere.xyz, 1.0);
+  let center: vec4<f32> = place.transform * vec4<f32>(sphere.xyz, 1.0);
 
   return vec4<f32>(center.xyz, sphere.w * place.info.w);
 }
@@ -315,12 +262,6 @@ fn cull_rows(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workgrou
   }
 
   let row: Row = rows[index];
-  let group: u32 = row_group(row.band);
-
-  // A row of a visibility group the view hides.
-  if (group != 0u && (params.hidden_groups & (1u << (group - 1u))) != 0u) {
-    return;
-  }
 
   // A tree its clump's impostor stands in for is drawn only while the clump is near enough; a shadow casts it always.
   if (!IS_SHADOW && row.lod != NO_LOD && (terms[row.lod].w & LOD_TREES) == 0u) {

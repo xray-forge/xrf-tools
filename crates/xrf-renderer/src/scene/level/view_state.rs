@@ -47,16 +47,14 @@ pub struct ViewState {
   /// EASU reading the scene, RCAS reading the upscaled frame.
   pub upscale: Option<(UpscaleTargets, [wgpu::BindGroup; 2])>,
   pub upscale_epoch: u64,
-  /// The models' composited clusters this frame, back to front, as `(cluster, place)` entries, and the times it was
-  /// made again, which its bind group follows.
+  /// The models' composited clusters this frame, back to front, as `(cluster, place)` entries.
   pub sorted_list: Option<wgpu::Buffer>,
-  pub sorted_epoch: u64,
   /// What it draws over its frame.
   pub overlays: Option<LevelOverlays>,
   /// The selection box the overlays were made with, so a box that moved or came into the scene makes them again.
   pub overlays_box: Option<RenderOverlay>,
-  /// What the selection marks, for the target it was resolved for and the scene generation it was resolved in.
-  pub selection: Option<(RenderSelectionTarget, u64, Option<StaticSelection>)>,
+  /// What the selection marks, for the target it was resolved for and the scene's contents it was resolved with.
+  pub selection: Option<(RenderSelectionTarget, usize, Option<StaticSelection>)>,
   /// The smoothing pass while one smooths the scene as drawn.
   pub smoothing: Option<LevelSmoothing>,
   /// The eye's adaptation, carried from frame to frame.
@@ -89,7 +87,6 @@ impl ViewState {
       overlays_box: None,
       selection: None,
       sorted_list: None,
-      sorted_epoch: 0,
       exposure: ViewExposure::new(device, queue),
       stats: StatsReadback::new(device),
       pick_target: None,

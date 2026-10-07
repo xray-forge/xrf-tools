@@ -1,8 +1,10 @@
-use glam::Vec4;
+use glam::{UVec4, Vec4};
+use xrf_renderer_core::ShaderStruct;
 
 /// What the cull is told besides the camera: how much there is to test and the level of detail's thresholds.
 #[repr(C)]
-#[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
+#[shader(name = "CullParams")]
 pub struct StaticCullParams {
   pub cluster_count: u32,
   pub row_count: u32,
@@ -22,9 +24,8 @@ pub struct StaticCullParams {
   pub lod_b: f32,
   /// Whether impostors stand in for distant trees at all.
   pub is_impostors: u32,
-  /// A bit a visibility group, from the lowest, set where the view hides it.
-  pub hidden_groups: u32,
-  pub pad: [u32; 3],
+  /// Keeps `lod_origin` where it was; a uniform's arrays step sixteen bytes, so a vector.
+  pub pad: UVec4,
   /// The camera every view's levels of detail are measured from, a shadow's too.
   pub lod_origin: Vec4,
 }

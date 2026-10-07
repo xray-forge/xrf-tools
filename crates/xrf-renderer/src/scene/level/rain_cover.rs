@@ -1,14 +1,19 @@
 use glam::{Vec3, Vec4};
 use xrf_renderer_core::{
-  FrameGraph, GraphBindings, GraphBuffer, GraphBufferAccess, GraphDepthAttachment, GraphTexture,
+  FrameGraph, GraphBindings, GraphBuffer, GraphBufferAccess, GraphDepthAttachment, GraphTexture, StorageArray,
+  StorageArrayMut,
 };
 
 use crate::camera::camera_view::CameraView;
 use crate::contract::render_rect::RenderRect;
+use crate::frame::static_scene_handles::StaticSceneHandles;
 use crate::frame::sun_shadow_maps::SunShadowMaps;
 use crate::pass::camera_uniform::CameraUniform;
 use crate::pass::level_passes::LevelPasses;
+use crate::pass::static_cull_parameters::StaticCullParameters;
 use crate::pass::static_cull_params::StaticCullParams;
+use crate::pass::static_draw_parameters::StaticDrawParameters;
+use crate::pass::static_draws::StaticDraws;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::shadow_frame::ShadowFrame;
 use crate::scene::static_scene::growable_buffer::GrowableBuffer;
@@ -37,8 +42,6 @@ pub struct RainCover {
   lists: GrowableBuffer,
   args: wgpu::Buffer,
   view: ViewBinding,
-  cull_group: Option<((u64, u64, u64), wgpu::BindGroup)>,
-  draw_groups: Option<((u64, u64), [wgpu::BindGroup; StaticLayout::COUNT])>,
   /// Where it was drawn, centred and seen from, and what the scene held then, or none before it was.
   drawn: Option<(Vec3, usize)>,
   /// Whether this frame draws it, as `prepare` decided.
@@ -72,8 +75,6 @@ impl RainCover {
         mapped_at_creation: false,
       }),
       view: ViewBinding::new(device, view_layout),
-      cull_group: None,
-      draw_groups: None,
       drawn: None,
       is_due: false,
     }
@@ -95,7 +96,6 @@ impl RainCover {
     device: &wgpu::Device,
     queue: &wgpu::Queue,
     encoder: &mut wgpu::CommandEncoder,
-    passes: LevelPasses<'_>,
     frame: &ShadowFrame<'_>,
   ) {
     let position: Vec3 = frame.camera.position;
@@ -138,39 +138,6 @@ impl RainCover {
       ),
     );
 
-    let cull_key: (u64, u64, u64) = (scene.get_generation(), self.lists.get_generation(), frame.targets_epoch);
-
-    if self.cull_group.as_ref().is_none_or(|(key, _)| *key != cull_key) {
-      let group: wgpu::BindGroup = passes.cull.create_bind_group(
-        device,
-        scene,
-        frame.cull_params,
-        frame.pyramid,
-        frame.occlusion,
-        (
-          self.lists.get_buffer().as_entire_buffer_binding(),
-          self.args.as_entire_buffer_binding(),
-        ),
-      );
-
-      self.cull_group = Some((cull_key, group));
-    }
-
-    let draw_key: (u64, u64) = (scene.get_generation(), self.lists.get_generation());
-
-    if self.draw_groups.as_ref().is_none_or(|(key, _)| *key != draw_key) {
-      let groups: [wgpu::BindGroup; StaticLayout::COUNT] =
-        passes
-          .gbuffer
-          .create_layout_groups(device, scene, self.lists.get_buffer().as_entire_buffer_binding());
-
-      self.draw_groups = Some((draw_key, groups));
-    }
-
-    if self.cull_group.is_none() || self.draw_groups.is_none() {
-      return;
-    }
-
     self.is_due = true;
     self.drawn = Some(state);
   }
@@ -178,39 +145,38 @@ impl RainCover {
   /// Declares its cull and its draw, where this frame's `prepare` found it due.
   pub fn add_passes<'a>(
     &'a self,
-    graph: &mut FrameGraph<'a>,
-    bindings: &mut GraphBindings<'a>,
+    (graph, bindings): (&mut FrameGraph<'a>, &mut GraphBindings<'a>),
     passes: LevelPasses<'a>,
+    scene: &StaticSceneHandles,
     (params, textures): (&'a StaticCullParams, &'a wgpu::BindGroup),
   ) {
-    let (true, Some((_, cull_group)), Some((_, draw_groups))) = (self.is_due, &self.cull_group, &self.draw_groups)
-    else {
+    if !self.is_due {
       return;
-    };
+    }
+
     let args: GraphBuffer = bindings.import_buffer(graph, "rain cover draw arguments", &self.args);
     let lists: GraphBuffer = bindings.import_buffer(graph, "rain cover lists", self.lists.get_buffer());
     let depth: GraphTexture = bindings.import_view(graph, "rain cover", &self.depth);
+    let cull: StaticCullParameters = scene.get_cull_parameters(StorageArrayMut::new(lists), StorageArrayMut::new(args));
+    let layouts: [StaticDrawParameters; StaticLayout::COUNT] = scene.get_layout_draws(StorageArray::new(lists));
 
     graph
       .add_compute_pass("rain cover cull")
-      .buffer(args, GraphBufferAccess::StorageReadWrite)
-      .buffer(lists, GraphBufferAccess::StorageWrite)
+      .parameters(&cull)
       .record(move |context| {
-        passes
-          .cull
-          .record_shadow(context.get_pass(), &self.view, cull_group, params, false);
+        passes.cull.record_shadow(context, &self.view, &cull, params, false);
       });
-    graph
-      .add_raster_pass("rain cover")
-      .depth(GraphDepthAttachment::new(depth, wgpu::LoadOp::Clear(0.0)))
-      .buffer(args, GraphBufferAccess::Indirect)
-      .buffer(lists, GraphBufferAccess::StorageRead)
-      .record(move |context| {
-        let args: &wgpu::Buffer = context.get_buffer(args);
+    StaticDraws::declare_layouts(
+      graph
+        .add_raster_pass("rain cover")
+        .depth(GraphDepthAttachment::new(depth, wgpu::LoadOp::Clear(0.0)))
+        .buffer(args, GraphBufferAccess::Indirect),
+      &layouts,
+    )
+    .record(move |context| {
+      let args: &wgpu::Buffer = context.get_buffer(args);
 
-        passes
-          .shadow
-          .record(context.get_pass(), (&self.view, draw_groups, textures), args);
-      });
+      passes.shadow.record(context, (&self.view, &layouts, textures), args);
+    });
   }
 }

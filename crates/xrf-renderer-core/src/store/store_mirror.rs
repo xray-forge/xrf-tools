@@ -55,6 +55,16 @@ impl StoreMirror {
     self.count
   }
 
+  /// Records the buffer holds room for before it grows.
+  pub fn get_capacity(&self) -> u32 {
+    self.capacity
+  }
+
+  /// Bytes the buffer holds on the GPU.
+  pub fn get_bytes(&self) -> u64 {
+    self.buffer.size()
+  }
+
   /// Changes each time the buffer is replaced by a larger one, after which anything bound to the old one is stale.
   pub fn get_generation(&self) -> u64 {
     self.generation

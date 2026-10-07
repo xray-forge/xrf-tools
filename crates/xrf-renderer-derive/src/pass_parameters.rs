@@ -149,9 +149,7 @@ pub fn expand(input: &DeriveInput) -> syn::Result<TokenStream> {
         buffer_accesses.push(quote! {
           (#core::StorageField::get_buffer(&self.#ident), #core::StorageField::get_access(&self.#ident))
         });
-        resources.push(quote! {
-          #core::PassBinding::Buffer(resources.get_buffer(#core::StorageField::get_buffer(&self.#ident)))
-        });
+        resources.push(quote!(#core::StorageField::get_binding(&self.#ident, resources)));
       }
       Binding::Texture { dimension, sample } => {
         let (view, wgsl_type) = texture_view(*dimension, *sample)?;

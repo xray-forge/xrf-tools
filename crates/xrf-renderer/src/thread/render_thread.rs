@@ -266,7 +266,7 @@ impl RenderThread {
           .viewports
           .get(&id)
           .and_then(|viewport| viewport.level_view.as_ref())
-          .map(|level| level.get_scene().measure_surfaces())
+          .map(|level| level.get_streaming().measure_surfaces())
           .unwrap_or_default();
 
         let _ = reply.send(measured);
@@ -291,7 +291,7 @@ impl RenderThread {
           .gpu
           .as_ref()
           .zip(self.viewports.get(&id).and_then(RenderViewport::get_asked_view))
-          .map(|(gpu, level)| level.get_scene().describe_load(&gpu.textures));
+          .map(|(gpu, level)| level.describe_load(&gpu.textures));
 
         let _ = reply.send(described);
       }
@@ -309,7 +309,7 @@ impl RenderThread {
           .viewports
           .get(&id)
           .and_then(|viewport| viewport.level_view.as_ref())
-          .map(|level| level.get_scene().describe_problems())
+          .map(|level| level.get_streaming().describe_problems())
           .unwrap_or_default();
 
         let _ = reply.send(described);
@@ -575,7 +575,7 @@ impl RenderThread {
       if let Some(report) = viewport
         .level_view
         .as_mut()
-        .and_then(|level| level.get_scene_mut().take_report(&gpu.textures))
+        .and_then(|level| level.take_load_report(&gpu.textures))
       {
         viewport.report_load(report);
       }
@@ -774,7 +774,7 @@ impl RenderThread {
           &options,
         );
 
-        if incoming.get_scene().is_ready(&gpu.textures) {
+        if incoming.is_ready(&gpu.textures) {
           viewport.level_view = viewport.incoming_view.take();
         }
       }
@@ -828,22 +828,8 @@ impl RenderThread {
       // What the encoder holds so far runs before the graph; what follows it, after.
       commands.push(std::mem::replace(&mut encoder, device.create_command_encoder(&Default::default())).finish());
 
-      let finished: Duration = finishing.elapsed();
-      let executed: Option<ExecutedGraph> = level
-        .record(runtime, (device, queue), gpu.get_level_passes(), binding, &gpu.textures)
-        .unwrap_or_else(|error| {
-          log::error!("The level's frame cannot be recorded: {error}");
-          None
-        });
-      let encoded: Duration = finished + executed.iter().map(|executed| executed.encode).sum::<Duration>();
-
-      commands.extend(executed.into_iter().flat_map(|executed| executed.commands));
-      phases.record += recording.elapsed().saturating_sub(encoded);
-      phases.encode += encoded;
-      is_lit = true;
-
       // One pick a frame, drawn from this frame's culled clusters while a readback is free for it.
-      if !viewport.picks.is_empty() {
+      let pick: Option<(PendingPick, Vec2, CameraUniform)> = (!viewport.picks.is_empty()).then(|| {
         let pick: PendingPick = viewport.picks.remove(0);
         let ndc: Vec2 = Vec2::new(
           (pick.x * scale + 0.5) / rect.width as f32 * 2.0 - 1.0,
@@ -857,15 +843,35 @@ impl RenderThread {
           height: 1,
         };
 
-        match level.record_pick(
-          device,
-          queue,
-          &mut encoder,
-          &gpu.static_gbuffer,
-          &gpu.view_layout,
+        (pick, ndc, CameraUniform::new(&narrowed, pixel, switches))
+      });
+      let finished: Duration = finishing.elapsed();
+      let recorded: Option<(ExecutedGraph, Option<usize>)> = level
+        .record(
+          runtime,
+          (device, queue),
+          gpu.get_level_passes(),
+          binding,
           &gpu.textures,
-          &CameraUniform::new(&narrowed, pixel, switches),
-        ) {
+          pick.as_ref().map(|(_, _, camera)| (camera, &gpu.view_layout)),
+        )
+        .unwrap_or_else(|error| {
+          log::error!("The level's frame cannot be recorded: {error}");
+          None
+        });
+      let (executed, pick_slot): (Option<ExecutedGraph>, Option<usize>) = match recorded {
+        Some((executed, slot)) => (Some(executed), slot),
+        None => (None, None),
+      };
+      let encoded: Duration = finished + executed.iter().map(|executed| executed.encode).sum::<Duration>();
+
+      commands.extend(executed.into_iter().flat_map(|executed| executed.commands));
+      phases.record += recording.elapsed().saturating_sub(encoded);
+      phases.encode += encoded;
+      is_lit = true;
+
+      if let Some((pick, ndc, _)) = pick {
+        match pick_slot {
           Some(slot) => picked.push((*id, pick, (view.get_view_projection().inverse(), ndc), slot)),
           None => viewport.picks.insert(0, pick),
         }

@@ -1,8 +1,12 @@
+use glam::Vec3;
+use xrf_renderer_core::ShaderStruct;
+
 use crate::scene::static_scene::static_terrain_slots::StaticTerrainSlots;
 
 /// One shader table entry as the static draws read it: its values, what it binds, and the slot of each texture.
 #[repr(C)]
-#[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
+#[shader(name = "Surface")]
 pub struct StaticSurface {
   /// Times every texture repeats across the base coordinate.
   pub tiling: f32,
@@ -13,7 +17,7 @@ pub struct StaticSurface {
   /// The lighting model's slice of the material table: `(material + 0.5) / 4`.
   pub slice: f32,
   /// Its flat colour, drawn where textures are off.
-  pub color: [f32; 3],
+  pub color: Vec3,
   pub flags: u32,
   /// Texture slots, in [`StaticSurface::BASE`] order.
   pub textures: [u32; 8],

@@ -5,9 +5,6 @@ use crate::pass::fsr_uniform::FsrUniform;
 use crate::pass::lighting_uniform::LightingUniform;
 use crate::pass::present_uniform::PresentUniform;
 use crate::pass::rain_uniform::RainUniform;
-use crate::pass::static_cull_params::StaticCullParams;
-use crate::pass::static_draw_groups::StaticDrawGroups;
-use crate::pass::static_occlusion_uniform::StaticOcclusionUniform;
 use crate::pass::temporal_uniform::TemporalUniform;
 use crate::pass::thunder_uniform::ThunderUniform;
 use crate::pass::upscale_uniform::UpscaleUniform;
@@ -25,12 +22,7 @@ pub(crate) type SkyGroupKey = (u64, [Option<String>; 7], u64);
 /// bind groups made for them with what each was made from, and the effects drawn from the view (the sun's shadows, the
 /// rain cover, the flares).
 pub struct SceneRenderer {
-  pub cull_params: wgpu::Buffer,
-  pub occlusion: wgpu::Buffer,
   pub lighting: wgpu::Buffer,
-  /// The cull's and the draws' bind groups, with the scene generation (and the cull, the targets epoch) they bind.
-  pub cull_group: Option<((u64, u64), wgpu::BindGroup)>,
-  pub draw_groups: Option<(u64, StaticDrawGroups)>,
   /// The lighting passes' bind groups, made again with the targets, and the shadow maps' epoch they bind.
   pub light_groups: Option<(u64, ViewLightGroups)>,
   /// The sky's textures as bound, with the cache's generation and the references they bind.
@@ -42,8 +34,6 @@ pub struct SceneRenderer {
   pub upscale_uniform: wgpu::Buffer,
   /// The present pass's bind group, with the targets' and the upscale's epochs and the frame it shows.
   pub present_group: Option<((u64, u64, usize), wgpu::BindGroup)>,
-  /// The sorted composited clusters' bind group, with the scene generation and the list's epoch it binds.
-  pub sorted_group: Option<((u64, u64), wgpu::BindGroup)>,
   /// The overlay pass's bind group, with the targets' epoch it binds.
   pub overlay_group: Option<(u64, wgpu::BindGroup)>,
   pub rain_cover: RainCover,
@@ -78,11 +68,7 @@ impl SceneRenderer {
 
     Self {
       rain_cover: RainCover::new(device, view_layout, args_size),
-      cull_params: uniform("static cull", size_of::<StaticCullParams>()),
-      occlusion: uniform("static occlusion", size_of::<StaticOcclusionUniform>()),
       lighting: uniform("lighting", size_of::<LightingUniform>()),
-      cull_group: None,
-      draw_groups: None,
       light_groups: None,
       sky_group: None,
       present: uniform("present", size_of::<PresentUniform>()),
@@ -91,7 +77,6 @@ impl SceneRenderer {
       upscale_uniform: uniform("upscale", size_of::<UpscaleUniform>()),
       present_group: None,
       overlay_group: None,
-      sorted_group: None,
       rain: uniform("rain", size_of::<RainUniform>()),
       rain_group: None,
       wet: uniform("wet", size_of::<WetUniform>()),

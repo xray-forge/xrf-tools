@@ -1,8 +1,10 @@
 use glam::Vec4;
+use xrf_renderer_core::ShaderStruct;
 
 /// One place of a listed slot: culled on its own, then drawn as its slot's clusters.
 #[repr(C)]
-#[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
+#[shader(name = "Row")]
 pub struct StaticRow {
   /// The place's sphere in renderer space; a negative radius is none.
   pub sphere: Vec4,
@@ -23,8 +25,7 @@ impl StaticRow {
   /// these.
   pub const MAX_WINDOWS: u32 = 0xFFFF;
 
-  /// A progressive band, of the bands its mesh has, in four bits each, and the windows they share in sixteen, which
-  /// leaves the top byte to [`StaticRow::pack_group`]: a mesh of hundreds of windows must not spill into it.
+  /// A progressive band, of the bands its mesh has, in four bits each, and the windows they share in sixteen.
   pub const fn pack_band(band: u32, bands: u32, windows: u32) -> u32 {
     let windows: u32 = if windows > Self::MAX_WINDOWS {
       Self::MAX_WINDOWS
@@ -33,10 +34,5 @@ impl StaticRow {
     };
 
     (band & 0xF) | ((bands & 0xF) << 4) | (windows << 8)
-  }
-
-  /// A visibility group's bits, from one; at most eight groups.
-  pub const fn pack_group(group: u32) -> u32 {
-    group << 24
   }
 }

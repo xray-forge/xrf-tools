@@ -1,6 +1,7 @@
 use std::f32::consts::TAU;
 
 use glam::Vec4;
+use xrf_renderer_core::ShaderStruct;
 
 use crate::lighting::render_tree_wind::RenderTreeWind;
 
@@ -8,7 +9,8 @@ use crate::lighting::render_tree_wind::RenderTreeWind;
 /// builds it: a wind turning once every `rotation` seconds at the amplitude's length, and a wave travelling through the
 /// level at the speed. In renderer space, where the engine's `z` is negated.
 #[repr(C)]
-#[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
+#[shader(name = "Wind")]
 pub struct WindUniform {
   /// The engine's `wind`: which way the trees lean, and how far, across the ground.
   pub wind: Vec4,

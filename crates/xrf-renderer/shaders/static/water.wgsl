@@ -115,10 +115,10 @@ fn vs_water(@builtin(vertex_index) vertex_index: u32, @builtin(instance_index) i
   let pulled: PulledVertex = pull(vertex_index, instance_index);
   let at: u32 = pulled.word;
   let place: Place = pulled.place;
-  let matrix: mat4x4<f32> = place_matrix(place);
-  let linear: mat3x3<f32> = mat3x3<f32>(place.m0.xyz, place.m1.xyz, place.m2.xyz);
-  let scale: vec3<f32> = vec3<f32>(dot(place.m0.xyz, place.m0.xyz), dot(place.m1.xyz, place.m1.xyz),
-    dot(place.m2.xyz, place.m2.xyz));
+  let matrix: mat4x4<f32> = place.transform;
+  let linear: mat3x3<f32> = mat3x3<f32>(place.transform[0].xyz, place.transform[1].xyz, place.transform[2].xyz);
+  let scale: vec3<f32> = vec3<f32>(dot(place.transform[0].xyz, place.transform[0].xyz), dot(place.transform[1].xyz, place.transform[1].xyz),
+    dot(place.transform[2].xyz, place.transform[2].xyz));
   let binormal: vec4<f32> = unpack4x8unorm(words[at]);
   let normal: vec4<f32> = unpack4x8unorm(words[at + 1u]);
   let tangent: vec4<f32> = unpack4x8unorm(words[at + 2u]);
@@ -216,11 +216,11 @@ fn read_water(in: WaterVarying) -> WaterFragment {
   let first: vec2<f32> = scrolled(in.uv, in.world, LAYER_TILES.x, LAYER_AMPLITUDES.x);
   let second: vec2<f32> = scrolled(in.uv, in.world, LAYER_TILES.y, LAYER_AMPLITUDES.y);
   // Sampled before any branch, where every derivative is taken alike; a texture the surface binds none of is ignored.
-  let sampled: vec4<f32> = sample_slot(surface.base, in.uv);
-  let normals: vec3<f32> = sample_slot(surface.detail, first).xyz + sample_slot(surface.detail, second).xyz - 1.0;
-  let foam_texel: vec4<f32> = sample_slot(surface.bump, in.uv);
-  let distorted: vec2<f32> = (sample_slot(surface.bump_companion, first).xy +
-    sample_slot(surface.bump_companion, second).xy) * 0.5;
+  let sampled: vec4<f32> = sample_slot(surface.textures[SLOT_BASE], in.uv);
+  let normals: vec3<f32> = sample_slot(surface.textures[SLOT_WATER_NORMAL], first).xyz + sample_slot(surface.textures[SLOT_WATER_NORMAL], second).xyz - 1.0;
+  let foam_texel: vec4<f32> = sample_slot(surface.textures[SLOT_FOAM], in.uv);
+  let distorted: vec2<f32> = (sample_slot(surface.textures[SLOT_DISTORTION], first).xy +
+    sample_slot(surface.textures[SLOT_DISTORTION], second).xy) * 0.5;
   let is_textured: f32 = camera.switches.x;
   var out: WaterFragment;
 
@@ -564,7 +564,7 @@ fn fs_water_enhanced(in: WaterVarying) -> WaterOutput {
 // its coordinates; with its variation, a second read turned and tiled apart mixed in by a noise, so no repeat shows.
 fn enhanced_colour(in: WaterVarying, tilt: vec2<f32>) -> vec3<f32> {
   let level: vec2<f32> = vec2<f32>(in.world.x, -in.world.z);
-  let slot: u32 = surfaces[in.surface].base;
+  let slot: u32 = surfaces[in.surface].textures[SLOT_BASE];
   let noise: f32 = textureSample(perlin_map, texture_sampler, level * COLOUR_NOISE).r;
   // The noise bends the first read's repeat as well, by up to a repeat's half.
   let bent: vec2<f32> = (noise - 0.5) * COLOUR_BEND * water.variation;

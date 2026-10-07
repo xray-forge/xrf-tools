@@ -52,14 +52,13 @@ impl PickTarget {
     }
   }
 
-  /// Whether a pick may be drawn this frame: a readback is free for it.
-  pub fn has_free_readback(&self) -> bool {
-    self.readbacks.iter().any(GpuReadback::is_free)
+  /// A readback free for a pick drawn this frame, none while every one is on its way.
+  pub fn find_free_readback(&self) -> Option<usize> {
+    self.readbacks.iter().position(GpuReadback::is_free)
   }
 
-  /// Copies the texel out with the frame's work into a free readback, and answers which.
-  pub fn copy_out(&self, encoder: &mut wgpu::CommandEncoder) -> Option<usize> {
-    let slot: usize = self.readbacks.iter().position(GpuReadback::is_free)?;
+  /// Copies the texel out with the frame's work into a readback `find_free_readback` answered.
+  pub fn copy_out(&self, encoder: &mut wgpu::CommandEncoder, slot: usize) {
     let readback: &GpuReadback = &self.readbacks[slot];
 
     encoder.copy_texture_to_buffer(
@@ -79,8 +78,6 @@ impl PickTarget {
       },
     );
     readback.mark_recorded();
-
-    Some(slot)
   }
 
   /// Asks for a readback's texel, its frame just submitted.

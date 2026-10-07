@@ -13,7 +13,7 @@ mod store;
 #[cfg(test)]
 mod tests;
 
-pub use crate::alloc::{Span, SpanAllocator, SpanBuffer, SpanWrites, UploadRing, UploadSlice};
+pub use crate::alloc::{Span, SpanAllocator, SpanBuffer, SpanLane, SpanWrites, UploadRing, UploadSlice};
 pub use crate::graph::{
   CompiledGraph, ComputeContext, ComputePassBuilder, EncodeGroup, EncoderContext, EncoderPassBuilder, ExecutedGraph,
   ExecutedGroup, FrameGraph, GraphBindings, GraphBuffer, GraphBufferAccess, GraphBufferDescriptor,
@@ -31,8 +31,8 @@ pub use crate::pipeline::{
   ShaderPermutation, ShaderSource, VertexLayout,
 };
 pub use crate::shader::{
-  GeneratedShaderFile, ShaderAddressSpace, ShaderDeclarations, ShaderLayoutVerifier, ShaderMember, ShaderStruct,
-  ShaderType, max_of, round_up,
+  GeneratedShaderFile, ShaderAddressSpace, ShaderAtomicU32, ShaderDeclarations, ShaderLayoutVerifier, ShaderMember,
+  ShaderStruct, ShaderType, max_of, round_up,
 };
 pub use crate::store::{ProxyHandle, ProxyStore, StoreMirror};
 pub use wgpu;

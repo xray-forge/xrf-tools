@@ -1,11 +1,12 @@
 use xrf_error::XrfResult;
+use xrf_renderer_core::RasterContext;
 
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::fullscreen_pipeline::{buffer_binding, texture_binding};
 use crate::pass::layout_entries::{storage_entry, texture_entry, uniform_entry};
 use crate::pass::material_table::MaterialTable;
 use crate::pass::shader_pipelines::{create_checked, create_module};
-use crate::pass::static_draw_groups::StaticDrawGroups;
+use crate::pass::static_draw_parameters::StaticDrawParameters;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::level_shadows::LevelShadows;
 use crate::scene::static_scene::static_batch::StaticBatch;
@@ -131,36 +132,44 @@ impl CompositedPass {
   #[allow(clippy::too_many_arguments)]
   pub fn record(
     &self,
-    pass: &mut wgpu::RenderPass<'_>,
-    (view, bind_groups, textures): (&ViewBinding, &StaticDrawGroups, &wgpu::BindGroup),
+    context: &mut RasterContext<'_>,
+    (view, layouts, textures): (
+      &ViewBinding,
+      &[StaticDrawParameters; StaticLayout::COUNT],
+      &wgpu::BindGroup,
+    ),
     (composited_group, sky_group): (&wgpu::BindGroup, &wgpu::BindGroup),
     args: &[&wgpu::Buffer],
-    (sorted_group, sorted_count): (Option<&wgpu::BindGroup>, u32),
+    (sorted, sorted_count): (Option<&StaticDrawParameters>, u32),
   ) {
+    let pass: &mut wgpu::RenderPass<'static> = context.get_pass();
+
     pass.set_bind_group(0, &view.bind_group, &[]);
     pass.set_bind_group(1, textures, &[]);
     pass.set_bind_group(3, composited_group, &[]);
     pass.set_bind_group(4, sky_group, &[]);
 
     for (batch, pipeline) in StaticBatch::list_composited().zip(&self.pipelines.0) {
-      pass.set_pipeline(pipeline);
-
       // The models' are drawn back to front from the view's sorted list rather than as the cull listed them.
       if batch.layout == StaticLayout::Model {
-        if let Some(group) = sorted_group
+        if let Some(sorted) = sorted
           && sorted_count > 0
         {
-          pass.set_bind_group(2, group, &[]);
-          pass.draw(0..StaticScene::CLUSTER_VERTICES, 0..sorted_count);
+          context.bind(sorted);
+          context.get_pass().set_pipeline(pipeline);
+          context
+            .get_pass()
+            .draw(0..StaticScene::CLUSTER_VERTICES, 0..sorted_count);
         }
 
         continue;
       }
 
-      pass.set_bind_group(2, &bind_groups.layouts[batch.layout.get_index()], &[]);
+      context.bind(&layouts[batch.layout.get_index()]);
+      context.get_pass().set_pipeline(pipeline);
 
       for args in args {
-        pass.draw_indirect(args, batch.get_index() as u64 * 16);
+        context.get_pass().draw_indirect(args, batch.get_index() as u64 * 16);
       }
     }
   }
@@ -168,19 +177,23 @@ impl CompositedPass {
   /// Lays the wall marks each argument buffer lists into the G-buffer's albedo, before any light reads it.
   pub fn record_wallmarks(
     &self,
-    pass: &mut wgpu::RenderPass<'_>,
-    (view, bind_groups, textures): (&ViewBinding, &StaticDrawGroups, &wgpu::BindGroup),
+    context: &mut RasterContext<'_>,
+    (view, layouts, textures): (
+      &ViewBinding,
+      &[StaticDrawParameters; StaticLayout::COUNT],
+      &wgpu::BindGroup,
+    ),
     args: &[&wgpu::Buffer],
   ) {
-    pass.set_bind_group(0, &view.bind_group, &[]);
-    pass.set_bind_group(1, textures, &[]);
+    context.get_pass().set_bind_group(0, &view.bind_group, &[]);
+    context.get_pass().set_bind_group(1, textures, &[]);
 
     for (batch, pipeline) in StaticBatch::list_wallmarks().zip(&self.pipelines.1) {
-      pass.set_pipeline(pipeline);
-      pass.set_bind_group(2, &bind_groups.layouts[batch.layout.get_index()], &[]);
+      context.bind(&layouts[batch.layout.get_index()]);
+      context.get_pass().set_pipeline(pipeline);
 
       for args in args {
-        pass.draw_indirect(args, batch.get_index() as u64 * 16);
+        context.get_pass().draw_indirect(args, batch.get_index() as u64 * 16);
       }
     }
   }

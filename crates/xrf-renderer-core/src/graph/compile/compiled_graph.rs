@@ -20,6 +20,9 @@ use crate::graph::resource::{GraphBuffer, GraphTexture, GraphTextureDescriptor};
 use crate::graph::timing::GraphTimer;
 use crate::param::BindGroupCache;
 
+/// One encode group as recorded: its commands, what its encoding took, and what wgpu refused of it.
+type RecordedGroup = (wgpu::CommandBuffer, ExecutedGroup, Option<wgpu::Error>);
+
 /// A frame graph ready to execute: its surviving passes in order, the render passes they share, the encode groups they
 /// are recorded in, and the slot each transient takes in the pool.
 pub struct CompiledGraph<'a> {
@@ -189,7 +192,7 @@ impl<'a> CompiledGraph<'a> {
     let shared = (device, cache, &resources);
     // A timed frame records its groups in order, its timer's stamps written into one query set one after another.
     let is_parallel: bool = !is_timing && groups.len() > 1;
-    let recorded: Vec<(wgpu::CommandBuffer, ExecutedGroup)> = if is_parallel {
+    let recorded: Vec<RecordedGroup> = if is_parallel {
       batches
         .into_par_iter()
         .zip(groups.par_iter())
@@ -197,7 +200,7 @@ impl<'a> CompiledGraph<'a> {
         .collect()
     } else {
       let count: usize = groups.len();
-      let mut recorded: Vec<(wgpu::CommandBuffer, ExecutedGroup)> = Vec::with_capacity(count);
+      let mut recorded: Vec<RecordedGroup> = Vec::with_capacity(count);
 
       for (index, (passes, group)) in batches.into_iter().zip(&groups).enumerate() {
         let timing: Option<(&mut GraphTimer, bool)> = is_timing.then_some((&mut *timer, index + 1 == count));
@@ -207,7 +210,23 @@ impl<'a> CompiledGraph<'a> {
 
       recorded
     };
-    let (commands, executed_groups): (Vec<wgpu::CommandBuffer>, Vec<ExecutedGroup>) = recorded.into_iter().unzip();
+    let errors: Vec<String> = recorded
+      .iter()
+      .filter_map(|(_, group, error)| error.as_ref().map(|error| format!("group '{}': {error}", group.name)))
+      .collect();
+
+    // A frame any group of which wgpu refused is dropped whole: what the others drew is of a frame never finished.
+    if !errors.is_empty() {
+      return Err(XrfError::new_invalid_error(format!(
+        "The frame was dropped: {}",
+        errors.join("; ")
+      )));
+    }
+
+    let (commands, executed_groups): (Vec<wgpu::CommandBuffer>, Vec<ExecutedGroup>) = recorded
+      .into_iter()
+      .map(|(commands, group, _)| (commands, group))
+      .unzip();
     let encode: Duration = if is_parallel {
       started.elapsed()
     } else {
@@ -222,15 +241,18 @@ impl<'a> CompiledGraph<'a> {
   }
 
   /// Records one encode group's passes into an encoder of its own, a run of passes sharing a render pass into one, and
-  /// finishes it; `timing` stamps each pass, and closes the frame's stamps after its last group.
+  /// finishes it; `timing` stamps each pass, and closes the frame's stamps after its last group. What wgpu refused of
+  /// it, recording or finishing, comes back beside it, caught on the thread recording it.
   fn record_group(
     group: &EncodeGroup,
     passes: Vec<CompiledPass<'a>>,
     textures: &[GraphTextureRecord],
     (device, cache, resources): (&wgpu::Device, &BindGroupCache, &GraphResources<'_>),
     mut timing: Option<(&mut GraphTimer, bool)>,
-  ) -> (wgpu::CommandBuffer, ExecutedGroup) {
+  ) -> RecordedGroup {
     let recording: Instant = Instant::now();
+    let out_of_memory: wgpu::ErrorScopeGuard = device.push_error_scope(wgpu::ErrorFilter::OutOfMemory);
+    let validation: wgpu::ErrorScopeGuard = device.push_error_scope(wgpu::ErrorFilter::Validation);
     let mut encoder: wgpu::CommandEncoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
       label: Some(group.name),
     });
@@ -286,14 +308,17 @@ impl<'a> CompiledGraph<'a> {
 
     let finishing: Instant = Instant::now();
     let commands: wgpu::CommandBuffer = encoder.finish();
+    let finished: Duration = finishing.elapsed();
+    let error: Option<wgpu::Error> = pollster::block_on(validation.pop()).or(pollster::block_on(out_of_memory.pop()));
 
     (
       commands,
       ExecutedGroup {
         name: group.name,
         record: finishing.duration_since(recording),
-        finish: finishing.elapsed(),
+        finish: finished,
       },
+      error,
     )
   }
 

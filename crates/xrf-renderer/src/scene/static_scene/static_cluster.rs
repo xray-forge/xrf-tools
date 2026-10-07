@@ -1,6 +1,9 @@
+use xrf_renderer_core::ShaderStruct;
+
 /// One cluster as the cull and the vertex shader read it: up to 128 triangles of one slot.
 #[repr(C)]
-#[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
+#[shader(name = "Cluster")]
 pub struct StaticCluster {
   /// Its first index, in the shared index arena.
   pub first_index: u32,
