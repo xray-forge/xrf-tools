@@ -256,6 +256,7 @@ struct Wet {
   puddle_state: vec4<f32>,
   reach: vec4<f32>,
   gust: vec4<f32>,
+  water: vec4<f32>,
 }
 
 struct Thunder {

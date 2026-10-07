@@ -593,6 +593,7 @@ impl SceneView {
     self.info.wet.cover_state.y = reach;
     self.info.wet.surface = surface;
     self.info.wet.surface_shape = surface_shape;
+    self.info.wet.water = self.renderer.level_surface.get_water_window();
   }
 
   /// Readies this frame's shadows, sun, rain cover and lights, which the frame's passes then draw; `encoder` takes
@@ -1918,6 +1919,7 @@ impl SceneView {
       ),
       surface: self.renderer.level_surface.get_window().0,
       surface_shape: self.renderer.level_surface.get_window().1,
+      water: self.renderer.level_surface.get_water_window(),
       puddles: Vec4::new(wetness, settings.puddles, settings.reflectivity, settings.ripples),
       puddle_state: Vec4::new(settings.distance.max(0.0), fill, storm, soak),
       reach: Vec4::new(

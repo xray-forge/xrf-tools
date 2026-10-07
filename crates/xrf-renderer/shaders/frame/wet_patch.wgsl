@@ -98,14 +98,21 @@ const REACH_FADE: f32 = 0.8;
 // below a puddle's water, so wet ground never reads as water.
 const WET_GLOSS_MOST: f32 = 0.6;
 // Where the reflections trace, surfaces wet in patches that grow and join as the level wets and dry back the same way:
-// how readily a spot wets, from two readings of the regional noise metres apart (`PATCH_TILES`), the finer's share,
-// and hollows in the level surface first where it is drawn (`PATCH_HOLLOW` a metre of depth under the ground about,
+// how readily a spot wets, from two readings of the regional noise metres apart (`PATCH_TILES`), the finer's share, its
+// coordinate warped by the broader's (`PATCH_WARP`, a share of its tile) and each turned its own way so their tiles never
+// line up from above, shifted by a third reading a level's stretch across (`PATCH_BIAS` either way), so one stretch wets
+// before another; and hollows in the level surface first where it is drawn (`PATCH_HOLLOW` a metre of depth under the ground about,
 // at most `PATCH_HOLLOW_MOST`, read `PATCH_HOLLOW_SPAN` metres out); the level's wetness at which every spot is wet,
 // a share of a full one, and the share of readiness a patch's edge softens over. The gloss a fully wet spot gains is
 // the engine's gain times `WET_GLOSS_SHARE`, about the albedo brightness the engine weighed it by, the same over every
 // texel so no texel crosses the trace's cut alone.
-const PATCH_TILES: vec2<f32> = vec2<f32>(9.0, 31.0);
+const PATCH_TILES: vec3<f32> = vec3<f32>(9.0, 31.0, 173.0);
 const PATCH_FINE: f32 = 0.45;
+const PATCH_WARP: f32 = 0.35;
+const PATCH_BIAS: f32 = 0.2;
+const PATCH_TURN_FINE: mat2x2<f32> = mat2x2<f32>(0.8253, 0.5646, -0.5646, 0.8253);
+const PATCH_TURN_BROAD: mat2x2<f32> = mat2x2<f32>(-0.4161, 0.9093, -0.9093, -0.4161);
+const PATCH_TURN_REGION: mat2x2<f32> = mat2x2<f32>(0.0707, -0.9975, 0.9975, 0.0707);
 const PATCH_HOLLOW: f32 = 4.0;
 const PATCH_HOLLOW_MOST: f32 = 0.4;
 const PATCH_HOLLOW_SPAN: f32 = 2.0;
@@ -113,11 +120,29 @@ const PATCH_FULL: f32 = 0.66;
 const PATCH_SOFT: f32 = 0.25;
 const WET_GLOSS_SHARE: f32 = 0.45;
 
+// Metres under the water's surface over which the ground turns from the wetting's to the water's, so a shore's edge
+// does not step.
+const UNDER_WATER_BAND: f32 = 0.05;
+
+// How far a point stands under the level's water, from none at its surface to one a band below; none where no water
+// is over it or the map does not reach.
+fn under_water(world: vec3<f32>) -> f32 {
+  let surface: f32 = overhead_height(surface_water, wet.water, wet.surface_shape.x, wet.surface_shape.y, world);
+
+  return smoothstep(0.0, UNDER_WATER_BAND, surface - world.y);
+}
+
 // How readily a point in the world wets, from nothing to one.
 fn wet_readiness(world: vec3<f32>) -> f32 {
-  let fine: f32 = textureSampleLevel(puddle_noise, wet_sampler, world.xz / PATCH_TILES.x + 0.11, 0.0).r;
-  let broad: f32 = textureSampleLevel(puddle_noise, wet_sampler, world.zx / PATCH_TILES.y + 0.53, 0.0).r;
-  var ready: f32 = mix(broad, fine, PATCH_FINE);
+  let broad_place: vec2<f32> = PATCH_TURN_BROAD * world.xz / PATCH_TILES.y + 0.53;
+  let broad: f32 = textureSampleLevel(puddle_noise, wet_sampler, broad_place, 0.0).r;
+  let warp: vec2<f32> =
+    vec2<f32>(broad, textureSampleLevel(puddle_noise, wet_sampler, broad_place.yx + 0.29, 0.0).r) - 0.5;
+  let fine: f32 = textureSampleLevel(puddle_noise, wet_sampler,
+    PATCH_TURN_FINE * world.xz / PATCH_TILES.x + 0.11 + warp * PATCH_WARP, 0.0).r;
+  let region: f32 =
+    textureSampleLevel(puddle_noise, wet_sampler, PATCH_TURN_REGION * world.xz / PATCH_TILES.z + 0.77, 0.0).r;
+  var ready: f32 = mix(broad, fine, PATCH_FINE) + (region - 0.5) * 2.0 * PATCH_BIAS;
 
   if (wet.is_enhanced > 0.5) {
     let span: f32 = PATCH_HOLLOW_SPAN;
@@ -603,6 +628,17 @@ fn fs_wet_patch_enhanced(in: FullscreenVarying) -> WetPatchTargets {
       variance = spread * puddle * puddle;
     }
   }
+
+  // Under the level's water the ground is soaked through, as dark as the wettest, but takes no sheen, no puddle and no
+  // traced reflection: what is seen there is the water's surface, which the water pass reflects.
+  let under: f32 = under_water(world);
+  let brightness_under: f32 = dot(albedo.rgb, vec3<f32>(0.33));
+
+  puddle *= 1.0 - under;
+  lift *= 1.0 - under;
+  variance *= 1.0 - under;
+  wetness = mix(wetness, brightness_under, under);
+  glossing *= 1.0 - under;
 
   // What the gloss gains: the engine's wet gloss over its own, capped below a mirror, a puddle's water's.
   let wet_gain: f32 = min(glossing * select(0.8, 1.0, wet.is_extended > 0.5), max(WET_GLOSS_MOST - gloss, 0.0));
