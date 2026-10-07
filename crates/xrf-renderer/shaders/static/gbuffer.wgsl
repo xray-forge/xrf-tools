@@ -340,6 +340,11 @@ const STEEP_STEPS: vec2<f32> = vec2<f32>(25.0, 5.0);
 // `fParallaxOffset * 1.2`: the coordinate the march reaches at most.
 const STEEP_REACH: f32 = -0.0156;
 
+// How far a marched terrain's coordinate moved, its layers weighed as they blend, out of the most its march reaches,
+// which the parallax view shows; set where the enhanced parallax marched the invocation's terrain.
+var<private> terrain_moved: vec2<f32> = vec2<f32>(0.0);
+var<private> is_terrain_marched: bool = false;
+
 fn steep_footprint(in: GBufferVarying, at: Footprint) -> Footprint {
   let surface: Surface = surfaces[in.surface];
   let position: vec3<f32> = (camera.view * vec4<f32>(in.world, 1.0)).xyz;
@@ -432,8 +437,8 @@ fn surface_relief(in: GBufferVarying, at: Footprint, position: vec3<f32>) -> Foo
 
 // What a surfaces debug view draws in place of a surface's albedo, the shading otherwise as it was. The parallax view:
 // how far the coordinate moved, across in red and down in green about a half, out to the march's reach, over full
-// blue; a half in both where the surface takes parallax and stood past its reach; every other surface a dim grey of its
-// own brightness. The bumps view: a bumped surface's normal in its own tangent space as a normal map colours it,
+// blue, a terrain's by its layers as they blend; a half in both where the surface takes parallax and stood past its
+// reach; every other surface a dim grey of its own brightness. The bumps view: a bumped surface's normal in its own tangent space as a normal map colours it,
 // lavender where flat, a terrain's by its four details' bumps; a surface without a bump red by its brightness. The
 // heights view: a terrain's details' heights weighed by its mask, and a steep surface's height, grey from black low to
 // white high; every other surface a dim blue of its own brightness.
@@ -451,10 +456,13 @@ fn surfaces_shown(in: GBufferVarying, at: Footprint, shaded: GBufferOutput) -> G
 
   if (is_parallax) {
     let is_steep: bool = has_surfaces_bit(SURFACES_STEEP) && (flags & SURFACE_IS_STEEP) != 0u;
-    let reach: f32 = select(abs(STEEP_REACH), max(camera.parallax_mix.z, 1e-4), has_surfaces_bit(SURFACES_ENHANCED));
-    let moved: vec2<f32> = clamp((at.uv - at.origin) / reach, vec2<f32>(-1.0), vec2<f32>(1.0));
+    // The most a march reaches: the engines' fixed one, or an enhanced surface's depth over the grazing bias.
+    let reach: f32 = select(abs(STEEP_REACH), max(camera.parallax_mix.z / RELIEF_GRAZING, 1e-4),
+      has_surfaces_bit(SURFACES_ENHANCED));
+    let moved: vec2<f32> = select((at.uv - at.origin) / reach, terrain_moved, is_terrain_marched);
 
-    out.albedo = vec4<f32>(select(vec3<f32>(0.08 + 0.25 * brightness), vec3<f32>(moved * 0.5 + 0.5, 1.0), is_steep),
+    out.albedo = vec4<f32>(select(vec3<f32>(0.08 + 0.25 * brightness),
+      vec3<f32>(clamp(moved, vec2<f32>(-1.0), vec2<f32>(1.0)) * 0.5 + 0.5, 1.0), is_steep || is_terrain_marched),
       shaded.albedo.a);
 
     return out;
@@ -736,6 +744,12 @@ fn terrain_texel(
     out.bump += (bump.xyz - 0.5) * weight;
     out.gloss += bump.w * weight;
     out.cavity += (1.0 - heights[layer] * heights[layer]) * weight;
+    terrain_moved += (coords[layer] - uv) * weight;
+  }
+
+  if (is_marched) {
+    terrain_moved /= max(camera.parallax.z / RELIEF_GRAZING, 1e-4);
+    is_terrain_marched = true;
   }
 
   out.bump.z *= 0.5;
