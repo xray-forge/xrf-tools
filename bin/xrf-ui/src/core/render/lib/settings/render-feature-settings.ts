@@ -12,6 +12,7 @@ import {
   RenderIndirectLightSettings,
   RenderLightsSettings,
   RenderLodSettings,
+  RenderParallaxSettings,
   RenderRainSettings,
   RenderReflectionSettings,
   RenderShadowSettings,
@@ -35,10 +36,12 @@ export type TRenderViewFeatureKey =
   | "isOcclusionCulled"
   | "lights"
   | "lod"
+  | "parallax"
   | "rain"
   | "reflections"
   | "shadows"
   | "textureFiltering"
+  | "textureLod"
   | "water";
 
 /** The view options every viewport takes from the application's settings: those features, and how it upscales. */
@@ -77,6 +80,8 @@ export type TRenderIndirectLightSettings = TSettled<RenderIndirectLightSettings>
 export type TRenderLightsSettings = TSettled<RenderLightsSettings>;
 
 export type TRenderLodSettings = TSettled<RenderLodSettings>;
+
+export type TRenderParallaxSettings = TSettled<RenderParallaxSettings>;
 
 export type TRenderRainSettings = TSettled<RenderRainSettings>;
 

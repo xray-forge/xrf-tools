@@ -23,6 +23,7 @@ import {
   DEFAULT_RENDER_INDIRECT_LIGHT_SETTINGS,
   DEFAULT_RENDER_LIGHTS_SETTINGS,
   DEFAULT_RENDER_LOD_SETTINGS,
+  DEFAULT_RENDER_PARALLAX_SETTINGS,
   DEFAULT_RENDER_RAIN_SETTINGS,
   DEFAULT_RENDER_REFLECTION_SETTINGS,
   DEFAULT_RENDER_SHADOW_SETTINGS,
@@ -71,6 +72,7 @@ export const RENDER_PRESETS: Readonly<Record<ERenderPreset, IRenderFeatureSettin
     isOcclusionCulled: true,
     lights: DEFAULT_RENDER_LIGHTS_SETTINGS,
     lod: DEFAULT_RENDER_LOD_SETTINGS,
+    parallax: DEFAULT_RENDER_PARALLAX_SETTINGS,
     // The application's own choice over the engine's, as the antialiasing is: wet surfaces that build up and dry,
     // and puddles.
     rain: { ...DEFAULT_RENDER_RAIN_SETTINGS, mode: ERenderRainMode.ENHANCED },
@@ -83,6 +85,8 @@ export const RENDER_PRESETS: Readonly<Record<ERenderPreset, IRenderFeatureSettin
       contact: { ...DEFAULT_RENDER_CONTACT_SHADOW_SETTINGS, mode: ERenderContactShadowMode.ENHANCED },
     },
     textureFiltering: ERenderTextureFiltering.ANISOTROPIC8,
+    // The engine's full quality, `texture_lod 0`, as Anomaly's extreme preset sets it.
+    textureLod: 0,
     upscaling: DEFAULT_RENDER_UPSCALING_SETTINGS,
     // The application's own choice over the engine's, as the antialiasing is: the enhanced water.
     water: { ...DEFAULT_RENDER_WATER_SETTINGS, mode: ERenderWaterMode.ENHANCED },
@@ -100,10 +104,13 @@ export const RENDER_PRESETS: Readonly<Record<ERenderPreset, IRenderFeatureSettin
     // Unshadowed, the lights cost a pass over the screen: an editor keeps seeing what lights a room.
     lights: { ...DEFAULT_RENDER_LIGHTS_SETTINGS, isShadowed: false },
     lod: DEFAULT_RENDER_LOD_SETTINGS,
+    parallax: DEFAULT_RENDER_PARALLAX_SETTINGS,
     rain: DEFAULT_RENDER_RAIN_SETTINGS,
     reflections: DEFAULT_RENDER_REFLECTION_SETTINGS,
     shadows: { ...DEFAULT_RENDER_SHADOW_SETTINGS, isEnabled: false },
     textureFiltering: ERenderTextureFiltering.ANISOTROPIC8,
+    // The engine's full quality, `texture_lod 0`, as Anomaly's extreme preset sets it.
+    textureLod: 0,
     upscaling: DEFAULT_RENDER_UPSCALING_SETTINGS,
     water: DEFAULT_RENDER_WATER_SETTINGS,
   },

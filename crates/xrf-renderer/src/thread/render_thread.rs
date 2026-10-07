@@ -13,6 +13,7 @@ use xrf_renderer_core::{
 use crate::camera::camera_view::CameraView;
 use crate::context::gpu_context::GpuContext;
 use crate::contract::render_backend::RenderBackend;
+use crate::contract::render_debug_view::RenderDebugView;
 use crate::contract::render_frame_report::RenderFrameReport;
 use crate::contract::render_load_report::RenderLoadReport;
 use crate::contract::render_pick::RenderPick;
@@ -79,6 +80,9 @@ const TEXTURE_SWEEP: Duration = Duration::from_secs(2);
 /// How often a debug build looks for edited shader files.
 const SHADER_RELOAD: Duration = Duration::from_millis(500);
 
+/// How often the GPU allocator is asked what it holds, for the viewports' memory reports.
+const ALLOCATOR_REPORT_EVERY: Duration = Duration::from_millis(500);
+
 /// A viewport's readied frame, with the pick it draws and what unprojects that pick's depth.
 type ViewFrame = (RenderViewportId, LevelFrame, Option<(PendingPick, (Mat4, Vec2))>);
 
@@ -98,6 +102,9 @@ pub struct RenderThread {
   runtime: Option<GraphRuntime>,
   /// What the last described frame's graph came to, and when it was described: as often as the viewports report.
   graph_report: Option<(Instant, GraphReport)>,
+  /// What the GPU allocator held, allocated and reserved, when it was last asked: a report lists every allocation, so it
+  /// is asked at most every `ALLOCATOR_REPORT_EVERY`.
+  allocator_report: Option<(Instant, Option<(u64, u64)>)>,
   /// Why the GPU last failed to start, and when.
   failure: Option<(String, Instant)>,
   /// The windows viewports are drawn into, by their key.
@@ -139,6 +146,7 @@ impl RenderThread {
       gpu: None,
       runtime: None,
       graph_report: None,
+      allocator_report: None,
       failure: None,
       hosts: HashMap::new(),
       viewports: BTreeMap::new(),
@@ -610,12 +618,27 @@ impl RenderThread {
     let _ = gpu.context.device.poll(wgpu::PollType::Poll);
     let (backend, adapter) = (gpu.context.backend, gpu.context.adapter_name.as_str());
 
+    if self
+      .allocator_report
+      .is_none_or(|(asked, _)| now.duration_since(asked) >= ALLOCATOR_REPORT_EVERY)
+    {
+      let held: Option<(u64, u64)> = gpu
+        .context
+        .device
+        .generate_allocator_report()
+        .map(|report| (report.total_allocated_bytes, report.total_reserved_bytes));
+
+      self.allocator_report = Some((now, held));
+    }
+
+    let allocator: Option<(u64, u64)> = self.allocator_report.and_then(|(_, held)| held);
+
     for viewport in self.viewports.values_mut() {
       viewport.answer_readbacks(&self.scenes);
       viewport.report(
         now,
         (backend, adapter),
-        (gpu.textures.get_bytes(), &mut self.scenes),
+        (gpu.textures.get_bytes(), allocator, &mut self.scenes),
         (
           self.runtime.as_mut().map(|runtime| &mut runtime.timer),
           self.graph_report.as_ref().map(|(_, report)| report),
@@ -1163,7 +1186,11 @@ impl RenderThread {
       f32::from(u8::from(options.mode.surface_color == RenderSurfaceColor::Textured)),
       options.mode.is_bumped as u32 as f32,
       options.features.hemi_strength,
-      0.0,
+      f32::from(
+        u8::from(options.features.parallax.is_steep)
+          | u8::from(options.mode.debug_view == RenderDebugView::Parallax) << 1
+          | u8::from(options.mode.debug_view == RenderDebugView::Bumps) << 2,
+      ),
     );
     let is_scened: bool = scene.is_some();
 
@@ -1241,6 +1268,7 @@ impl RenderThread {
     gpu
       .textures
       .set_anisotropy(device, options.features.texture_filtering.get_anisotropy());
+    gpu.textures.set_lod(options.features.texture_lod);
     *load += loading.elapsed();
 
     let preparing: Instant = Instant::now();

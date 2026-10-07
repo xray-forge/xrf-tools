@@ -382,6 +382,17 @@ export enum ERenderDebugView {
   REFLECTIONS = "reflections",
   /** How each reflection ray ended, one colour a reason (`common/reflection_end.wgsl`); black where nothing is traced. */
   REFLECTION_ENDS = "reflectionEnds",
+  /**
+   * How far parallax moved each surface's texture: across in red and down in green about a half, out to the march's
+   * reach, over full blue; a half in both where a surface takes parallax but stands past its reach; every other
+   * surface a dim grey of its own brightness.
+   */
+  PARALLAX = "parallax",
+  /**
+   * Which surfaces are bumped: a bumped one's normal in its own tangent space as a normal map colours it, lavender
+   * where flat, a terrain's by its four details' bumps; a surface without a bump red by its brightness.
+   */
+  BUMPS = "bumps",
 }
 
 /** Every `ERenderDebugView` as the spelling it crosses IPC as, for a value no member has narrowed. */
@@ -878,6 +889,12 @@ export type RenderMemoryReport = {
   textures: number;
   /** Bytes of this viewport's scene buffers: geometry, clusters, places and the rest that grow with what it shows. */
   scene: number;
+  /**
+   * Bytes the GPU allocator holds allocated for everything the renderer made, textures, buffers and targets of every
+   * viewport, and those it reserved in its blocks; none where the backend reports none.
+   */
+  allocated: number | null;
+  reserved: number | null;
 };
 
 /** Every `kind` the `RenderOverlay` union is told apart by, so a switch or a comparison names one. */
@@ -948,6 +965,12 @@ export type RenderPageWash = {
   /** Its first and last colours, sRGB channels and alpha from 0 to 1. */
   from: [number | null, number | null, number | null, number | null];
   to: [number | null, number | null, number | null, number | null];
+};
+
+/** How the level's surfaces are displaced by their height. */
+export type RenderParallaxSettings = {
+  /** `r2_steep_parallax`: the engines' steep parallax on a level surface whose texture asks for it. */
+  isSteep: boolean;
 };
 
 /** What a level's particle systems came to over the span reported. */
@@ -1359,6 +1382,10 @@ export type RenderViewFeatures = {
   antialiasing: RenderAntialiasing;
   /** How the level's surfaces sample their textures. */
   textureFiltering: RenderTextureFiltering;
+  /** `texture_lod`, nought to four: how much coarser than stored the textures load, the engine's texture quality. */
+  textureLod: number;
+  /** How the level's surfaces are displaced by their height. */
+  parallax: RenderParallaxSettings;
   /** What the finished frame is corrected by. */
   corrections: RenderImageCorrections;
   /** How the game's console scales the sun, the hemisphere and the ambient. */

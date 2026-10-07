@@ -15,6 +15,8 @@ const SHADING_OPTIONS: ReadonlyArray<IChoiceFormRowOption<ELevelShading>> = LEVE
 
 interface ILevelShadingActionProps extends BaseComponentProps {
   options: ILevelViewOptions;
+  /** Whether the settings draw any parallax, without which this view has none to show. */
+  isParallaxAvailable: boolean;
   /** What the viewport shows of its surfaces. */
   shading: ELevelShading;
   onToggle: (option: keyof ILevelViewOptions) => void;
@@ -23,18 +25,20 @@ interface ILevelShadingActionProps extends BaseComponentProps {
 
 /**
  * How the level is shaded: the frame as dressed, as clay or by shader, or one of the targets it is built from; and the
- * surfaces as wireframe, with their bumps, under their wall marks, whichever of those is shown.
+ * surfaces as wireframe, with their bumps and parallax, under their wall marks, whichever of those is shown.
  */
 export function LevelShadingAction({
   "data-testid": dataTestId = "level-shading-action",
   id,
   className,
   options,
+  isParallaxAvailable,
   shading,
   onToggle,
   onChangeShading,
 }: ILevelShadingActionProps): ReactElement {
   const { isWireframe, isBumped, isWallmarked } = options;
+  const isParallaxed: boolean = options.isParallaxed && isParallaxAvailable;
 
   return (
     <EditorPopoverGroup
@@ -46,12 +50,19 @@ export function LevelShadingAction({
         getLevelShading(shading).label,
         isWireframe ? "wireframe" : null,
         isBumped ? null : "flat",
+        isParallaxed || !isParallaxAvailable ? null : "without parallax",
         isWallmarked ? null : "without wall marks",
       ]
         .filter((it): it is string => it !== null)
         .join(", ")}
       icon={<TextureIcon />}
-      isActive={shading !== ELevelShading.FINAL || isWireframe || !isBumped || !isWallmarked}
+      isActive={
+        shading !== ELevelShading.FINAL ||
+        isWireframe ||
+        !isBumped ||
+        (isParallaxAvailable && !isParallaxed) ||
+        !isWallmarked
+      }
     >
       <ChoiceListFormRow
         data-testid={"level-shading"}
@@ -70,6 +81,20 @@ export function LevelShadingAction({
         description={isBumped ? "Shaded with the bump pairs their textures declare" : "Shaded flat, as though unbound"}
         isOn={isBumped}
         onToggle={() => onToggle("isBumped")}
+      />
+
+      <EditorPopoverGroupSection
+        label={"Parallax"}
+        description={
+          isParallaxAvailable
+            ? isParallaxed
+              ? "Surfaces displaced by the height their textures carry"
+              : "Every surface flat, its height unread"
+            : "Parallax is off in the settings"
+        }
+        isOn={isParallaxed}
+        isDisabled={!isParallaxAvailable}
+        onToggle={() => onToggle("isParallaxed")}
       />
 
       <EditorPopoverGroupSection

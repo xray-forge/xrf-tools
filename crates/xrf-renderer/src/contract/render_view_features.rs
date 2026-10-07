@@ -13,6 +13,7 @@ use crate::contract::render_indirect_light_settings::RenderIndirectLightSettings
 use crate::contract::render_light_scales::RenderLightScales;
 use crate::contract::render_lights_settings::RenderLightsSettings;
 use crate::contract::render_lod_settings::RenderLodSettings;
+use crate::contract::render_parallax_settings::RenderParallaxSettings;
 use crate::contract::render_rain_settings::RenderRainSettings;
 use crate::contract::render_reflection_settings::RenderReflectionSettings;
 use crate::contract::render_shadow_settings::RenderShadowSettings;
@@ -52,6 +53,10 @@ pub struct RenderViewFeatures {
   pub antialiasing: RenderAntialiasing,
   /// How the level's surfaces sample their textures.
   pub texture_filtering: RenderTextureFiltering,
+  /// `texture_lod`, nought to four: how much coarser than stored the textures load, the engine's texture quality.
+  pub texture_lod: u32,
+  /// How the level's surfaces are displaced by their height.
+  pub parallax: RenderParallaxSettings,
   /// What the finished frame is corrected by.
   pub corrections: RenderImageCorrections,
   /// How the game's console scales the sun, the hemisphere and the ambient.
@@ -82,6 +87,8 @@ impl Default for RenderViewFeatures {
       lod: RenderLodSettings::default(),
       antialiasing: RenderAntialiasing::None,
       texture_filtering: RenderTextureFiltering::default(),
+      texture_lod: 0,
+      parallax: RenderParallaxSettings::default(),
       corrections: RenderImageCorrections::default(),
       light_scales: RenderLightScales::default(),
       hemi_strength: 1.0,

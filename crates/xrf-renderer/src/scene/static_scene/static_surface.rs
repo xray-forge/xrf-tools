@@ -63,6 +63,10 @@ impl StaticSurface {
   pub const IS_EMISSIVE: u32 = 1 << 23;
   /// A surface casting no shadow, whose script declares no shadow element.
   pub const IS_SHADOWLESS: u32 = 1 << 24;
+  /// A level surface the engines' steep parallax reaches: its base's descriptor asks for parallax, its class is one of
+  /// the level's flat or alpha-tested ones (`canUseSteepParallax`), and it binds its bump pair, whose second's alpha is
+  /// the height.
+  pub const IS_STEEP: u32 = 1 << 25;
 
   pub const BASE: usize = 0;
   pub const DETAIL: usize = 1;

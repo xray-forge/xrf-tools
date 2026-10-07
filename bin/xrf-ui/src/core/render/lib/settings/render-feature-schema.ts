@@ -180,7 +180,11 @@ export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings>
     reach: toNumber(0, 2000),
     resolution: toNumber(256, 8192, true),
   },
+  parallax: {
+    isSteep: FLAG,
+  },
   textureFiltering: toChoice(ERenderTextureFiltering),
+  textureLod: toNumber(0, 4, true),
   upscaling: {
     scale: toChoice(ERenderScale),
     sharpening: toNumber(0, 1),

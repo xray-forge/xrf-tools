@@ -12,8 +12,12 @@ use crate::plugins::levels::state::{LevelSpawn, SelectedLevel};
 /// Where the game keeps its configs, which `system.ltx` is read from.
 const CONFIGS_DIRECTORY: &str = "configs";
 
-/// The sections the open level's spawned objects name, out of `system.ltx` with its includes merged and every
-/// section's parents resolved, read the first time anything asks and kept with the level.
+/// The textures the game loads a step coarser at the same texture quality, by part of their reference
+/// (`get_texture_load_lod`), kept beside the spawned objects' sections.
+pub const REDUCED_TEXTURES_SECTION: &str = "reduce_lod_texture_list";
+
+/// The sections the open level's spawned objects name and [`REDUCED_TEXTURES_SECTION`], out of `system.ltx` with its
+/// includes merged and every section's parents resolved, read the first time anything asks and kept with the level.
 ///
 /// The rest of the resolution is let go once read: a resolved tree is tens of megabytes, and the level reads a handful
 /// of keys of the sections its own objects name. Read with the dialect the level was opened with.
@@ -27,7 +31,12 @@ pub fn get_level_sections(current: &SelectedLevel, spawn: &LevelSpawn) -> Result
     .get_or_init(|| {
       let started: Instant = Instant::now();
       let resolved: Arc<LtxResolution> = read_system_ltx(current)?;
-      let names: BTreeSet<&str> = spawn.objects.iter().map(|object| object.section.as_str()).collect();
+      let names: BTreeSet<&str> = spawn
+        .objects
+        .iter()
+        .map(|object| object.section.as_str())
+        .chain([REDUCED_TEXTURES_SECTION])
+        .collect();
       let mut kept: Ltx = Ltx::new();
 
       for name in names {

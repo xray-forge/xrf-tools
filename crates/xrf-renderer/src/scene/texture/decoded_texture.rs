@@ -28,6 +28,29 @@ impl DecodedTexture {
     self.levels.iter().map(|level| level.len() as u64).sum()
   }
 
+  /// Without its `count` largest levels, as the engine loads a texture coarser (`img_loaded_lod`): its smallest always
+  /// kept, and a block compressed one's top level a whole number of blocks.
+  pub fn without_levels(mut self, count: u32) -> Self {
+    let (block_width, block_height) = self.format.block_dimensions();
+    let mut dropped: usize = 0;
+
+    while dropped < count as usize
+      && dropped + 1 < self.levels.len()
+      && (self.width >> (dropped + 1)).is_multiple_of(block_width)
+      && (self.height >> (dropped + 1)).is_multiple_of(block_height)
+      && self.width >> (dropped + 1) > 0
+      && self.height >> (dropped + 1) > 0
+    {
+      dropped += 1;
+    }
+
+    self.levels.drain(..dropped);
+    self.width >>= dropped;
+    self.height >>= dropped;
+
+    self
+  }
+
   /// Makes a two dimensional texture of it on the GPU, every level written, and answers its view.
   pub fn upload(&self, device: &wgpu::Device, queue: &wgpu::Queue) -> wgpu::TextureView {
     let size: wgpu::Extent3d = wgpu::Extent3d {

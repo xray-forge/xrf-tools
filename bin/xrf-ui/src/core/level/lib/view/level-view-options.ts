@@ -43,6 +43,8 @@ export interface ILevelViewOptions extends ILevelSurfaceOptions {
   isWindy: boolean;
   /** Draws the grass, while the settings draw it. */
   isGrassy: boolean;
+  /** Displaces the surfaces by their height, while the settings draw parallax. */
+  isParallaxed: boolean;
   /** Lights the level with its lamps, while the settings draw lights. */
   isLamplit: boolean;
   /** Draws the water, while the settings draw it. */
@@ -83,6 +85,7 @@ export const DEFAULT_LEVEL_VIEW_OPTIONS: ILevelViewOptions = {
   isLensFlared: true,
   isOccluded: true,
   isOcclusionCulled: true,
+  isParallaxed: true,
   isParticled: true,
   isRainy: true,
   isShadowed: true,

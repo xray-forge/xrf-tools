@@ -76,6 +76,8 @@ const SURFACE_IS_TERRAIN: u32 = 4194304u;
 const SURFACE_IS_EMISSIVE: u32 = 8388608u;
 // A surface casting no shadow, whose script declares no shadow element.
 const SURFACE_IS_SHADOWLESS: u32 = 16777216u;
+// A level surface the engines' steep parallax reaches, its height in its bump pair's second's alpha.
+const SURFACE_IS_STEEP: u32 = 33554432u;
 
 // Vertices one cluster's draw spans: 128 triangles, those past its own collapsed.
 const CLUSTER_VERTICES: u32 = 384u;

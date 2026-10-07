@@ -12,4 +12,10 @@ pub trait RenderAssetSource: Send + Sync + 'static {
   ///
   /// Returns an error when the texture exists but cannot be read.
   fn read_texture(&self, reference: &str) -> XrfResult<Option<Vec<u8>>>;
+
+  /// Whether the game loads a texture a step coarser than the rest at the same texture quality, as its
+  /// `reduce_lod_texture_list` names it by part of its reference.
+  fn is_texture_reduced(&self, _reference: &str) -> bool {
+    false
+  }
 }
