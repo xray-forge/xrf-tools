@@ -14,9 +14,12 @@ use crate::frame::view_targets::ViewTargets;
 use crate::pass::fsr_groups::FsrGroups;
 use crate::pass::view_binding::ViewBinding;
 use crate::pass::wind_uniform::WindUniform;
+use crate::scene::level::grass_view::GrassView;
 use crate::scene::level::level_overlays::LevelOverlays;
 use crate::scene::level::level_smoothing::LevelSmoothing;
 use crate::scene::level::level_water::LevelWater;
+use crate::scene::level::lights_view::LightsView;
+use crate::scene::level::particles_view::ParticlesView;
 use crate::scene::static_scene::static_selection::StaticSelection;
 
 /// What one view keeps from one frame to the next: its targets and depth history, its temporal and upscaling state,
@@ -64,6 +67,12 @@ pub struct ViewState {
   /// The texel a pick is drawn into, and the camera narrowed to it.
   pub pick_target: Option<PickTarget>,
   pub pick_view: Option<ViewBinding>,
+  /// The grass as it plants around its camera.
+  pub grass: GrassView,
+  /// The particles in its camera, as their quads.
+  pub particles: ParticlesView,
+  /// The lights in its camera, and their clusters.
+  pub lights: LightsView,
 }
 
 impl ViewState {
@@ -91,6 +100,9 @@ impl ViewState {
       stats: StatsReadback::new(device),
       pick_target: None,
       pick_view: None,
+      grass: GrassView::new(device),
+      particles: ParticlesView::new(device),
+      lights: LightsView::new(device),
     }
   }
 

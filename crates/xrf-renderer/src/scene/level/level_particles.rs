@@ -1,46 +1,41 @@
 use std::collections::HashMap;
-use std::ops::Range;
 use std::sync::Arc;
 use std::time::Instant;
 
 use glam::{Mat4, Vec3, Vec4};
 use rayon::prelude::*;
+use wgpu::util::DeviceExt;
 use xrf_material::{XraySurfaceDraw, XraySurfaceSampler};
 use xrf_particles::{
   ParticleBounds, ParticleCollider, ParticleEffectInstance, ParticleEngineRules, ParticleLibrary, ParticleUpdateContext,
 };
-use xrf_renderer_core::{FrameGraph, GraphColorAttachment, GraphDepthAttachment, ProxyHandle, ProxyStore};
+use xrf_renderer_core::{ProxyHandle, ProxyStore};
 
 use crate::camera::camera_view::CameraView;
 use crate::contract::render_particles_report::RenderParticlesReport;
 use crate::contract::render_view_options::RenderViewOptions;
-use crate::frame::view_target_handles::ViewTargetHandles;
-use crate::frame::view_targets::ViewTargets;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::host::render_particle_definitions::RenderParticleDefinitions;
 use crate::pass::particle_batch::ParticleBatch;
 use crate::pass::particle_blend::ParticleBlend;
-use crate::pass::particle_pass::ParticlePass;
 use crate::pass::particle_surface_record::ParticleSurfaceRecord;
 use crate::pass::particle_vertex::ParticleVertex;
-use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::particle_emitter_proxy::ParticleEmitterProxy;
 use crate::scene::level::particle_sprite::ParticleSprite;
+use crate::scene::level::particles_view::ParticlesView;
 use crate::scene::level::placed_effect::PlacedEffect;
 use crate::scene::level::placed_objects::PlacedObjects;
 use crate::scene::texture::texture_cache::TextureCache;
 use crate::scene::texture::texture_role::TextureRole;
 use crate::thread::render_workers::RenderWorkers;
 
-/// Quads the vertex buffer holds at first; it doubles past them.
-const INITIAL_QUADS: u64 = 4096;
-
 /// The sampler a distorting effect's `l_special` pass binds its distortion map to.
 const DISTORTION_SAMPLER: &str = "s_distort";
 
 /// A level's particles: the effects and groups the world read and the emitters it placed, each frame stepped on the
-/// workers as the engine schedules them, and the effects in view filled into quads far to near for the particle pass,
-/// which draws their colour and then their distortion. The world says what plays where; this simulates and draws it.
+/// workers as the engine schedules them, and the effects each view sees filled into its quads far to near for the
+/// particle pass (`ParticlesView`), which draws their colour and then their distortion. The world says what plays
+/// where; this simulates it, and each view draws it.
 pub struct LevelParticles {
   systems: Option<LevelSystems>,
   emitters: ProxyStore<ParticleEmitterProxy>,
@@ -48,18 +43,10 @@ pub struct LevelParticles {
   finished: Vec<(ProxyHandle<ParticleEmitterProxy>, PlacedEffect)>,
   workers: RenderWorkers,
   started: Instant,
-  vertices: Vec<ParticleVertex>,
-  batches: Vec<ParticleBatch>,
-  /// The distorting effects' quads, far to near.
-  distortion_runs: Vec<Range<u32>>,
-  vertex_buffer: wgpu::Buffer,
+  /// Each surface's record, which every view's particle pass reads, and how many times it was made, which their bind
+  /// groups follow.
   surface_buffer: wgpu::Buffer,
-  /// Bumped whenever either buffer is replaced, which the bind group follows.
-  buffers_generation: u64,
-  /// Whether the surfaces' records still have to be written.
-  is_surfaces_dirty: bool,
-  /// The bind group, with the targets' epoch and the buffers' generation it binds.
-  group: Option<((u64, u64), wgpu::BindGroup)>,
+  surfaces_generation: u64,
   report: ParticlesTally,
 }
 
@@ -97,18 +84,13 @@ impl LevelParticles {
       finished: Vec::new(),
       workers: workers.clone(),
       started: Instant::now(),
-      vertices: Vec::new(),
-      batches: Vec::new(),
-      distortion_runs: Vec::new(),
-      vertex_buffer: Self::create_storage(
-        device,
-        "particle vertices",
-        INITIAL_QUADS * u64::from(ParticleVertex::CORNERS) * size_of::<ParticleVertex>() as u64,
-      ),
-      surface_buffer: Self::create_storage(device, "particle surfaces", size_of::<ParticleSurfaceRecord>() as u64),
-      buffers_generation: 0,
-      is_surfaces_dirty: false,
-      group: None,
+      surface_buffer: device.create_buffer(&wgpu::BufferDescriptor {
+        label: Some("particle surfaces"),
+        size: size_of::<ParticleSurfaceRecord>() as u64,
+        usage: wgpu::BufferUsages::STORAGE,
+        mapped_at_creation: false,
+      }),
+      surfaces_generation: 0,
       report: ParticlesTally::default(),
     }
   }
@@ -170,13 +152,19 @@ impl LevelParticles {
 
     log::info!("Native viewport particles {} effect surfaces", surfaces.len());
 
-    self.surface_buffer = Self::create_storage(
-      device,
-      "particle surfaces",
-      (surfaces.len().max(1) * size_of::<ParticleSurfaceRecord>()) as u64,
-    );
-    self.buffers_generation += 1;
-    self.is_surfaces_dirty = true;
+    let mut records: Vec<ParticleSurfaceRecord> = surfaces.iter().map(|surface| surface.record).collect();
+
+    // A binding cannot be empty: no surface is bound as one.
+    if records.is_empty() {
+      records.push(ParticleSurfaceRecord::default());
+    }
+
+    self.surface_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+      label: Some("particle surfaces"),
+      contents: bytemuck::cast_slice(&records),
+      usage: wgpu::BufferUsages::STORAGE,
+    });
+    self.surfaces_generation += 1;
     self.systems = Some(LevelSystems {
       library: read.library,
       rules: read.rules,
@@ -247,14 +235,10 @@ impl LevelParticles {
     std::mem::take(&mut self.finished)
   }
 
-  /// Steps every effect playing as the engine schedules them, notes the ones that stopped, and fills the effects in
-  /// view into quads, far to near.
-  pub fn step(&mut self, view: &CameraView, options: &RenderViewOptions) {
-    self.vertices.clear();
-    self.batches.clear();
-    self.distortion_runs.clear();
-
-    let Some(level) = self.systems.as_mut() else {
+  /// Steps every effect playing as the engine schedules them, as `view` sees them (the scene's first view, which stands
+  /// for the actor), and notes the ones that stopped; nothing while particles are not drawn.
+  pub fn simulate(&mut self, view: &CameraView, options: &RenderViewOptions) {
+    let Some(level) = self.systems.as_ref() else {
       return;
     };
 
@@ -268,7 +252,6 @@ impl LevelParticles {
     let eye: Vec3 = ParticleSprite::mirror(view.position);
     let planes: [Vec4; 6] = view.get_planes();
     let started: Instant = Instant::now();
-
     let context: ParticleUpdateContext = ParticleUpdateContext {
       library: &level.library,
       rules: &level.rules,
@@ -297,61 +280,84 @@ impl LevelParticles {
       );
     }
 
-    let simulation_time: f32 = started.elapsed().as_secs_f32() * 1000.0;
-    let mut drawn: Vec<(f32, &ParticleEffectInstance, u32, &ParticleSurface)> = Vec::new();
     let mut report: RenderParticlesReport = RenderParticlesReport {
       simulated,
       ..RenderParticlesReport::default()
     };
 
-    for object in self
+    for effect in self
       .emitters
       .as_slice()
       .iter()
       .flat_map(|emitter| emitter.objects.iter())
+      .flat_map(|object| object.get_instance().get_effects())
     {
-      for effect in object.get_instance().get_effects() {
-        let count: usize = effect.get_pool().len();
+      report.effects += u32::from(effect.is_playing());
+      report.particles += effect.get_pool().len() as u32;
+    }
 
-        report.effects += u32::from(effect.is_playing());
-        report.particles += count as u32;
+    self.report.last = report;
+    self.report.simulation_time += started.elapsed().as_secs_f32() * 1000.0;
+    self.report.frames += 1;
+  }
 
-        let Some(&surface) = level
-          .surface_of
-          .get(&(std::ptr::from_ref(effect.get_definition()) as usize))
-        else {
-          continue;
-        };
+  /// Fills a view's quads with the effects in its camera, far to near; none while particles are not drawn in it.
+  pub fn fill(&self, view: &CameraView, options: &RenderViewOptions, into: &mut ParticlesView) {
+    into.clear();
 
-        let drawing: &ParticleSurface = &level.surfaces[surface as usize];
-        let is_drawing: bool = drawing.blend.is_some() || drawing.is_distorting;
+    let Some(level) = self.systems.as_ref() else {
+      return;
+    };
 
-        if is_drawing && count > 0 && Self::is_in_view(&planes, effect.get_bounds()) {
-          let (center, _) = effect.get_bounds().get_sphere();
+    if !options.show.is_particled || !options.mode.is_lit {
+      return;
+    }
 
-          drawn.push((center.distance_squared(eye), effect, surface, drawing));
-        }
+    let eye: Vec3 = ParticleSprite::mirror(view.position);
+    let planes: [Vec4; 6] = view.get_planes();
+    let mut drawn: Vec<(f32, &ParticleEffectInstance, u32, &ParticleSurface)> = Vec::new();
+
+    for effect in self
+      .emitters
+      .as_slice()
+      .iter()
+      .flat_map(|emitter| emitter.objects.iter())
+      .flat_map(|object| object.get_instance().get_effects())
+    {
+      let Some(&surface) = level
+        .surface_of
+        .get(&(std::ptr::from_ref(effect.get_definition()) as usize))
+      else {
+        continue;
+      };
+      let drawing: &ParticleSurface = &level.surfaces[surface as usize];
+      let is_drawing: bool = drawing.blend.is_some() || drawing.is_distorting;
+
+      if is_drawing && !effect.get_pool().is_empty() && Self::is_in_view(&planes, effect.get_bounds()) {
+        let (center, _) = effect.get_bounds().get_sphere();
+
+        drawn.push((center.distance_squared(eye), effect, surface, drawing));
       }
     }
 
     // Far to near, as `mapSorted` draws what blends and `mapDistort` what distorts; every effect is sorted, as nothing
     // else orders them.
     drawn.sort_by(|a, b| b.0.total_cmp(&a.0));
-    report.drawn = drawn.len() as u32;
+    into.drawn = drawn.len() as u32;
 
     let sprite: ParticleSprite = ParticleSprite::new(view.view);
 
     for (_, effect, surface, drawing) in drawn {
-      let first: u32 = self.vertices.len() as u32 / ParticleVertex::CORNERS;
+      let first: u32 = into.vertices.len() as u32 / ParticleVertex::CORNERS;
 
-      sprite.push(effect, surface, &mut self.vertices);
+      sprite.push(effect, surface, &mut into.vertices);
 
-      let end: u32 = self.vertices.len() as u32 / ParticleVertex::CORNERS;
+      let end: u32 = into.vertices.len() as u32 / ParticleVertex::CORNERS;
 
       if let Some(blend) = drawing.blend {
-        match self.batches.last_mut() {
+        match into.batches.last_mut() {
           Some(last) if last.blend == blend && last.first + last.count == first => last.count = end - last.first,
-          _ => self.batches.push(ParticleBatch {
+          _ => into.batches.push(ParticleBatch {
             blend,
             first,
             count: end - first,
@@ -360,80 +366,17 @@ impl LevelParticles {
       }
 
       if drawing.is_distorting {
-        match self.distortion_runs.last_mut() {
+        match into.distortion_runs.last_mut() {
           Some(last) if last.end == first => last.end = end,
-          _ => self.distortion_runs.push(first..end),
+          _ => into.distortion_runs.push(first..end),
         }
       }
     }
-
-    self.report.last = report;
-    self.report.simulation_time += simulation_time;
-    self.report.frames += 1;
   }
 
-  /// Writes the quads the last step filled, and the surfaces once they are read, and binds what the pass draws them
-  /// with.
-  pub fn upload(
-    &mut self,
-    device: &wgpu::Device,
-    queue: &wgpu::Queue,
-    pass: &ParticlePass,
-    lighting: &wgpu::Buffer,
-    (targets, targets_epoch): (&ViewTargets, u64),
-  ) {
-    self.write_buffers(device, queue);
-
-    let key: (u64, u64) = (targets_epoch, self.buffers_generation);
-
-    if self.group.as_ref().is_none_or(|(bound, _)| *bound != key) {
-      self.group = Some((
-        key,
-        pass.create_bind_group(device, &self.vertex_buffer, &self.surface_buffer, lighting, targets),
-      ));
-    }
-  }
-
-  /// Draws the quads filled this frame over the scene, then the distorting ones into the distortion target; whether
-  /// anything drew.
-  pub fn add_passes<'a>(
-    &'a self,
-    graph: &mut FrameGraph<'a>,
-    pass: &'a ParticlePass,
-    targets: ViewTargetHandles,
-    (view, texture_group): (&'a ViewBinding, &'a wgpu::BindGroup),
-  ) {
-    let Some((_, group)) = &self.group else {
-      return;
-    };
-
-    if !self.batches.is_empty() {
-      graph
-        .add_raster_pass("particles")
-        .color(GraphColorAttachment::new(targets.scene, wgpu::LoadOp::Load))
-        .depth(GraphDepthAttachment::new_read_only(targets.depth))
-        .record(move |context| pass.record_colour(context.get_pass(), (view, group, texture_group), &self.batches));
-    }
-
-    if self.is_distorting() {
-      graph
-        .add_raster_pass("particle distortion")
-        .color(GraphColorAttachment::new(targets.distortion, wgpu::LoadOp::Load))
-        .depth(GraphDepthAttachment::new_read_only(targets.depth))
-        .record(move |context| {
-          pass.record_distortion(context.get_pass(), (view, group, texture_group), &self.distortion_runs)
-        });
-    }
-  }
-
-  /// Whether this frame has particles to draw, as `record` would draw them.
-  pub fn is_drawing(&self) -> bool {
-    self.group.is_some() && (!self.batches.is_empty() || self.is_distorting())
-  }
-
-  /// Whether this frame's particles draw into the distortion target.
-  pub fn is_distorting(&self) -> bool {
-    !self.distortion_runs.is_empty()
+  /// Every surface's record, which each view's particle pass reads, and how many times it was made.
+  pub fn get_surfaces(&self) -> (&wgpu::Buffer, u64) {
+    (&self.surface_buffer, self.surfaces_generation)
   }
 
   /// The texture slots the sprites sample.
@@ -444,10 +387,12 @@ impl LevelParticles {
       .map_or(&[], |systems| systems.texture_slots.as_slice())
   }
 
-  /// What the last frame came to, with the simulation's mean cost since the last report.
-  pub fn take_report(&mut self) -> RenderParticlesReport {
+  /// What the last frame's simulation came to, with its mean cost since the last report; `drawn` is what a view drew
+  /// of it.
+  pub fn take_report(&mut self, drawn: u32) -> RenderParticlesReport {
     let report: RenderParticlesReport = RenderParticlesReport {
       simulation_time: self.report.simulation_time / self.report.frames.max(1) as f32,
+      drawn,
       ..self.report.last
     };
 
@@ -465,40 +410,5 @@ impl LevelParticles {
     planes
       .iter()
       .all(|plane| plane.truncate().dot(center) + plane.w >= -radius)
-  }
-
-  /// Writes the frame's quads, growing the buffer past them, and the surfaces once after they are read.
-  fn write_buffers(&mut self, device: &wgpu::Device, queue: &wgpu::Queue) {
-    let size: u64 = (self.vertices.len() * size_of::<ParticleVertex>()) as u64;
-
-    if size > self.vertex_buffer.size() {
-      self.vertex_buffer = Self::create_storage(device, "particle vertices", size.next_power_of_two());
-      self.buffers_generation += 1;
-    }
-
-    if !self.vertices.is_empty() {
-      queue.write_buffer(&self.vertex_buffer, 0, bytemuck::cast_slice(&self.vertices));
-    }
-
-    if self.is_surfaces_dirty
-      && let Some(level) = &self.systems
-    {
-      let records: Vec<ParticleSurfaceRecord> = level.surfaces.iter().map(|surface| surface.record).collect();
-
-      if !records.is_empty() {
-        queue.write_buffer(&self.surface_buffer, 0, bytemuck::cast_slice(&records));
-      }
-
-      self.is_surfaces_dirty = false;
-    }
-  }
-
-  fn create_storage(device: &wgpu::Device, label: &str, size: u64) -> wgpu::Buffer {
-    device.create_buffer(&wgpu::BufferDescriptor {
-      label: Some(label),
-      size,
-      usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-      mapped_at_creation: false,
-    })
   }
 }

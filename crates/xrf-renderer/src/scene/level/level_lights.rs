@@ -9,40 +9,29 @@ use xrf_visual::{LightAnimatorDescription, LightDescription, LightKind, LightsDe
 
 use crate::contract::render_lights_report::RenderLightsReport;
 use crate::frame::static_scene_handles::StaticSceneHandles;
-use crate::frame::stats_readback::StatsReadback;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::lighting::light_animation::to_animated_color;
 use crate::lighting::light_basis::{LightBasis, to_light_lod};
 use crate::lighting::light_shadow_size::{LIGHT_SHADOW_POINT_FACES, to_light_shadow_scale};
 use crate::lighting::light_specular::to_light_specular;
 use crate::pass::level_passes::LevelPasses;
-use crate::pass::light_buffers::LightBuffers;
 use crate::pass::light_record::{LIGHT_NO_CONE, LIGHT_NO_PROJECTOR, LightRecord};
-use crate::pass::lights_uniform::LightsUniform;
 use crate::pass::static_cull_params::StaticCullParams;
 use crate::scene::level::level_light_shadows::{LIGHT_SHADOW_ATLAS_SIZE, LevelLightShadows};
 use crate::scene::level::light_shadow_set::LightShadowSet;
 use crate::scene::level::lights_frame::LightsFrame;
+use crate::scene::level::lights_view::{LightsView, MAX_LIGHTS};
 use crate::scene::level::shadow_frame::ShadowFrame;
 use crate::scene::level::zone_fast_mode::ZONE_FAST_DISTANCE;
 use crate::scene::texture::texture_cache::{MISSING_SLOT, TextureCache};
 use crate::scene::texture::texture_role::TextureRole;
 
-/// Lights standing in view at most in one frame: the nearest are kept.
-pub const MAX_LIGHTS: usize = 1024;
-
-/// Clusters the view is cut into, and lights one holds at most, as `shaders/common/light_clusters.wgsl` declares them.
-const LIGHT_CLUSTERS: u64 = 16 * 9 * 24;
-const LIGHT_CLUSTER_CAPACITY: u64 = 64;
-
-/// The bytes after the clusters' counts the binning counts its overflow in, as a readback copies them.
-const OVERFLOW_BYTES: u64 = 16;
-
 /// What a light's falloff reaches zero at, a share of its range: `L_R` (`r3_rendertarget_accum_point.cpp`).
 const FALLOFF_RANGE: f32 = 0.95;
 
-/// A level's local lights: read once on a loader thread, then each frame the nearest in view written out in view
-/// space, animated as the engine animates them, for the lights pass to bin and accumulate.
+/// A level's local lights: read once on a loader thread, moved by their motions, and each frame the nearest in a view
+/// written out into its `LightsView` in its view space, animated as the engine animates them, for the lights pass to
+/// bin and accumulate; and the shadow faces they cast, cached in an atlas.
 pub struct LevelLights {
   /// The level's lights, each reached by the handle it was added under.
   lights: ProxyStore<LightDescription>,
@@ -52,78 +41,25 @@ pub struct LevelLights {
   animators: Vec<LightAnimatorDescription>,
   /// Each projector's texture slot, by its index among the description's projectors.
   projectors: Vec<u32>,
-  records: Vec<LightRecord>,
-  pub record_buffer: wgpu::Buffer,
-  pub counts: wgpu::Buffer,
-  pub items: wgpu::Buffer,
-  pub uniform: wgpu::Buffer,
-  count: u32,
-  /// What the last frame's lights came to, and the binning's count of the clusters it filled, read back.
-  report: RenderLightsReport,
-  overflow: StatsReadback,
   shadows: LevelLightShadows,
   started: Instant,
-  /// What a zone's range strays by each frame.
-  random: u64,
 }
 
 impl LevelLights {
   pub fn new(device: &wgpu::Device, view_layout: &wgpu::BindGroupLayout, args_size: u64) -> Self {
-    let storage = |label: &str, size: u64| -> wgpu::Buffer {
-      device.create_buffer(&wgpu::BufferDescriptor {
-        label: Some(label),
-        size,
-        usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-        mapped_at_creation: false,
-      })
-    };
-
     Self {
       lights: ProxyStore::new(),
       moving: Vec::new(),
       animators: Vec::new(),
       projectors: Vec::new(),
-      records: Vec::with_capacity(MAX_LIGHTS),
-      record_buffer: storage("light records", (MAX_LIGHTS * size_of::<LightRecord>()) as u64),
-      // The clusters' counts, then the binning's two words of overflow.
-      counts: device.create_buffer(&wgpu::BufferDescriptor {
-        label: Some("light cluster counts"),
-        size: LIGHT_CLUSTERS * 4 + OVERFLOW_BYTES,
-        usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::COPY_SRC,
-        mapped_at_creation: false,
-      }),
-      items: storage("light cluster items", LIGHT_CLUSTERS * LIGHT_CLUSTER_CAPACITY * 4),
-      uniform: device.create_buffer(&wgpu::BufferDescriptor {
-        label: Some("lights"),
-        size: size_of::<LightsUniform>() as u64,
-        usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-        mapped_at_creation: false,
-      }),
-      count: 0,
-      report: RenderLightsReport::default(),
-      overflow: StatsReadback::new(device),
       shadows: LevelLightShadows::new(device, view_layout, args_size),
       started: Instant::now(),
-      random: 0x9E37_79B9_7F4A_7C15,
-    }
-  }
-
-  pub fn get_buffers(&self) -> LightBuffers<'_> {
-    LightBuffers {
-      records: &self.record_buffer,
-      counts: &self.counts,
-      items: &self.items,
-      uniform: &self.uniform,
     }
   }
 
   /// The texture slots the projectors sample.
   pub fn get_projectors(&self) -> &[u32] {
     &self.projectors
-  }
-
-  pub fn get_count(&self) -> u32 {
-    self.count
   }
 
   /// Adds a level's lights, asking for every projector they name.
@@ -151,9 +87,9 @@ impl LevelLights {
     }
   }
 
-  /// Writes out the lights standing in view this frame, nearest first, animated and faded as the engine would, in the
-  /// camera's view space; a shadowed one only once its faces are drawn, with their squares of the atlas.
-  pub fn prepare(&mut self, queue: &wgpu::Queue, frame: LightsFrame<'_>) {
+  /// Writes out the lights standing in a view this frame into its own, nearest first, animated and faded as the engine
+  /// would, in the camera's view space; a shadowed one only once its faces are drawn, with their squares of the atlas.
+  pub fn prepare(&mut self, queue: &wgpu::Queue, into: &mut LightsView, frame: LightsFrame<'_>) {
     let LightsFrame {
       camera,
       settings,
@@ -165,9 +101,9 @@ impl LevelLights {
     } = frame;
 
     self.move_lights(motions);
-    self.records.clear();
+    into.records.clear();
     self.shadows.begin();
-    self.report = RenderLightsReport::default();
+    into.report = RenderLightsReport::default();
 
     let is_shadowing: bool = settings.is_enabled && settings.is_shadowed;
 
@@ -224,7 +160,7 @@ impl LevelLights {
         .collect();
 
       in_view.sort_by(|a, b| a.distance.total_cmp(&b.distance));
-      self.report.excess = in_view.len().saturating_sub(MAX_LIGHTS) as u32;
+      into.report.excess = in_view.len().saturating_sub(MAX_LIGHTS) as u32;
       in_view.truncate(MAX_LIGHTS);
 
       if is_shadowing {
@@ -263,14 +199,14 @@ impl LevelLights {
           None
         };
         let color: Vec3 = to_color(&self.animators, light, seconds) * it.fades.whole * it.share;
-        let range: f32 = to_frame_range(light, &mut self.random) * it.share * FALLOFF_RANGE;
+        let range: f32 = to_frame_range(light, &mut into.random) * it.share * FALLOFF_RANGE;
         let mut record: LightRecord =
           to_record(&self.projectors, light, &it.basis, it.bound, color, range, camera.view);
 
         if let Some(set) = set {
           let atlas: f32 = LIGHT_SHADOW_ATLAS_SIZE as f32;
 
-          self.report.shadowed += 1;
+          into.report.shadowed += 1;
 
           record.shadow = Vec4::new(set.near, set.far, set.faces.len() as f32, 0.0);
 
@@ -284,31 +220,12 @@ impl LevelLights {
           }
         }
 
-        self.records.push(record);
+        into.records.push(record);
       }
     }
 
-    self.count = self.records.len() as u32;
-    self.report.in_view = self.count;
-    self.report.atlas = self.shadows.get_atlas_use();
-
-    let (near, far): (f32, f32) = camera.get_depth_range();
-
-    queue.write_buffer(
-      &self.uniform,
-      0,
-      bytemuck::bytes_of(&LightsUniform::new(
-        self.count,
-        camera.projection,
-        near,
-        far,
-        settings.shadow_filter,
-      )),
-    );
-
-    if !self.records.is_empty() {
-      queue.write_buffer(&self.record_buffer, 0, bytemuck::cast_slice(&self.records));
-    }
+    into.report.atlas = self.shadows.get_atlas_use();
+    into.write(queue, camera, settings.shadow_filter);
   }
 
   /// Stands each light a motion carries `height` over where the motion has its zone this frame (`UpdateIdleLight`);
@@ -350,32 +267,6 @@ impl LevelLights {
     frame: (&'a StaticCullParams, &'a wgpu::BindGroup),
   ) {
     self.shadows.add_passes(graph, passes, scene, frame);
-  }
-
-  /// Clears the binning's overflow words before it counts this frame's.
-  pub fn clear_overflow(&self, encoder: &mut wgpu::CommandEncoder) {
-    encoder.clear_buffer(&self.counts, LIGHT_CLUSTERS * 4, Some(OVERFLOW_BYTES));
-  }
-
-  /// Copies the binning's overflow out with this frame's work, for a report a frame or more later.
-  pub fn record_overflow(&self, encoder: &mut wgpu::CommandEncoder) {
-    self.overflow.record(encoder, &self.counts, LIGHT_CLUSTERS * 4);
-  }
-
-  /// Asks for the overflow recorded with the frame just submitted.
-  pub fn request_report(&self) {
-    self.overflow.request();
-  }
-
-  /// What the last frame's lights came to, with the binning's overflow as last read back.
-  pub fn take_report(&mut self) -> RenderLightsReport {
-    let [full_clusters, dropped, ..] = self.overflow.take();
-
-    RenderLightsReport {
-      full_clusters,
-      dropped,
-      ..self.report
-    }
   }
 
   pub fn get_shadow_atlas(&self) -> &wgpu::TextureView {

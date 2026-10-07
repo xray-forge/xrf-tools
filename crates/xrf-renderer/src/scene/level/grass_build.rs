@@ -14,7 +14,8 @@ pub struct GrassBuild {
 }
 
 impl GrassBuild {
-  pub fn new(device: &wgpu::Device, pass: &GrassPass, size: GrassBuildSize) -> Self {
+  /// A ring of `size`, planted with the view's parameters in `uniform`.
+  pub fn new(device: &wgpu::Device, pass: &GrassPass, size: GrassBuildSize, uniform: &wgpu::Buffer) -> Self {
     let buffer = |label: &str, bytes: u64| -> wgpu::Buffer {
       device.create_buffer(&wgpu::BufferDescriptor {
         label: Some(label),
@@ -42,6 +43,7 @@ impl GrassBuild {
       layout: pass.get_build_layout(),
       entries: &buffers
         .iter()
+        .chain([uniform])
         .enumerate()
         .map(|(binding, buffer)| wgpu::BindGroupEntry {
           binding: binding as u32,
