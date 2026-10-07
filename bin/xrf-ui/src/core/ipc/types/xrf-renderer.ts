@@ -699,6 +699,13 @@ export type RenderGrassSettings = {
   height: number | null;
   /** How the trees and the grass move in the wind. */
   foliage: RenderFoliageSettings;
+  /**
+   * Degrees of slope past which a tuft is not planted, thinning over the last fifth: ninety for none, as the engine
+   * plants on any ground.
+   */
+  slopeLimit: number | null;
+  /** Whether a tuft stands along its ground's normal rather than straight up. */
+  isAligned: boolean;
 };
 
 /**

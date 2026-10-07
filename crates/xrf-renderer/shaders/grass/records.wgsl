@@ -1,5 +1,8 @@
 // The grass's records, as `pass/grass_uniform.rs` and `scene/level/level_grass.rs` write them.
 
+// Steps a ground normal's `x` and `z` are kept on each, as a tuft's record packs them.
+const GROUND_NORMAL_STEPS: u32 = 1024u;
+
 // Where the camera stands and what the planting is set to, `CDetailManager`'s terms.
 struct GrassParams {
   // The eye, in the engine's space: renderer space with `z` negated.
@@ -31,8 +34,9 @@ struct GrassParams {
   model_count: u32,
   // Metres the largest tuft reaches past its ground at a height of one, which a slot's sphere grows by.
   tuft_reach: f32,
-  pad0: u32,
-  pad1: u32,
+  // Radians of slope past which a tuft is not planted, thinning over the last fifth; a right angle for none.
+  slope_limit: f32,
+  pad: u32,
 };
 
 // One detail model: its least and most scale, radius and height, then whether it waves, its base texture's slot, its
