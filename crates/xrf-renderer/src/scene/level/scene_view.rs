@@ -961,6 +961,7 @@ impl SceneView {
     };
     // What a stage reads: the occlusion before it and its history, the light copied, and the light before it and its
     // history.
+    let points: GraphTexture = create("vbao points", VbaoPass::POINTS);
     let parameters =
       |(source, history): (GraphTexture, GraphTexture),
        (light_source, gathered, light_history): (GraphTexture, GraphTexture, GraphTexture)| {
@@ -977,6 +978,7 @@ impl SceneView {
           light_source,
           gathered,
           light_history,
+          points,
         }
       };
     let clear = |target: GraphTexture| GraphColorAttachment::new(target, wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT));
@@ -993,6 +995,17 @@ impl SceneView {
     };
     let lit_searched: Option<GraphTexture> = is_lit.then(|| create("indirect gathered", VbaoPass::LIGHT));
     let lit_filtered: Option<GraphTexture> = is_lit.then(|| create("indirect light", VbaoPass::LIGHT));
+
+    let laying: VbaoParameters = VbaoParameters {
+      points: empty,
+      ..parameters((empty, empty), (dark, dark, dark))
+    };
+
+    graph
+      .add_raster_pass(VbaoPass::POINTS_PASS)
+      .parameters(&laying)
+      .color(clear(points))
+      .record(move |context| passes.vbao.record_points(context, view, &laying));
 
     if is_lit {
       let copy: VbaoParameters = parameters((empty, empty), (dark, dark, dark));

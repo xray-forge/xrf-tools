@@ -56,13 +56,55 @@ struct SearchPoint {
   pixel: vec2<f32>,
 };
 
-// The frame's point under a search pixel: the even texel of its two by two.
-fn search_point(at: vec2<f32>, last: vec2<f32>) -> SearchPoint {
-  let pixel: vec2<f32> = clamp(at, vec2<f32>(0.0), last);
-  let texel: vec2<f32> = pixel * 2.0;
-  let depth: f32 = textureLoad(depth_target, vec2<i32>(texel), 0);
+// The view rays under a search pixel and one pixel along each axis from it, at a view depth of one: a perspective's
+// rays change evenly across the viewport, so any search pixel's ray is a sum of these, and its point that ray times its
+// depth.
+struct SearchRays {
+  origin: vec3<f32>,
+  along_x: vec3<f32>,
+  along_y: vec3<f32>,
+};
 
-  return SearchPoint(depth, camera_view_position(texel + 0.5, depth), pixel);
+// The view ray under a search pixel's even texel, at a view depth of one.
+fn search_ray(pixel: vec2<f32>) -> vec3<f32> {
+  let point: vec3<f32> = camera_view_position(pixel * 2.0 + 0.5, 1.0);
+
+  return point / -point.z;
+}
+
+fn search_rays(pixel: vec2<f32>) -> SearchRays {
+  let origin: vec3<f32> = search_ray(pixel);
+
+  return SearchRays(
+    origin,
+    search_ray(pixel + vec2<f32>(1.0, 0.0)) - origin,
+    search_ray(pixel + vec2<f32>(0.0, 1.0)) - origin,
+  );
+}
+
+// The view depth under a search pixel, the even texel of its two by two, as the points pass lays it out, so the
+// search's samples read four bytes each rather than the depth and its unprojection; none where nothing was drawn.
+@fragment
+fn fs_points(in: FullscreenVarying) -> @location(0) vec4<f32> {
+  let texel: vec2<i32> = min(vec2<i32>(floor(in.clip.xy) * 2.0), vec2<i32>(textureDimensions(depth_target)) - 1);
+  let depth: f32 = textureLoad(depth_target, texel, 0);
+
+  return vec4<f32>(select(0.0, camera_view_position(vec2<f32>(texel) + 0.5, depth).z, depth > 0.0), 0.0, 0.0, 0.0);
+}
+
+// The frame's point under a search pixel, from its view depth along its ray: none drawn where its depth reads none.
+fn search_point(rays: SearchRays, origin: vec2<f32>, at: vec2<f32>, last: vec2<f32>) -> SearchPoint {
+  let pixel: vec2<f32> = clamp(at, vec2<f32>(0.0), last);
+  let depth: f32 = textureLoad(points, vec2<i32>(pixel), 0).x;
+  let along: vec2<f32> = pixel - origin;
+  let ray: vec3<f32> = rays.origin + rays.along_x * along.x + rays.along_y * along.y;
+
+  return SearchPoint(select(0.0, 1.0, depth < 0.0), ray * -depth, pixel);
+}
+
+// The view space normal under a search pixel's even texel.
+fn point_normal(pixel: vec2<i32>) -> vec3<f32> {
+  return octahedral_decode(textureLoad(normal_target, pixel * 2, 0).xy);
 }
 
 // Bayer's four by four ordered dither, from zero to fifteen sixteenths: each value once in every tile, neighbours far
@@ -106,7 +148,8 @@ fn search(clip: vec2<f32>, is_lit: bool) -> Searched {
   let frame: vec2<f32> = vec2<f32>(textureDimensions(depth_target));
   let last: vec2<f32> = floor((frame - 1.0) / 2.0);
   let pixel: vec2<f32> = floor(clip);
-  let center: SearchPoint = search_point(pixel, last);
+  let rays: SearchRays = search_rays(pixel);
+  let center: SearchPoint = search_point(rays, pixel, pixel, last);
   let dark: vec4<f32> = vec4<f32>(0.0, 0.0, 0.0, 1.0);
 
   if (center.depth <= 0.0) {
@@ -115,7 +158,7 @@ fn search(clip: vec2<f32>, is_lit: bool) -> Searched {
 
   let position: vec3<f32> = center.position;
   let distance: f32 = -position.z;
-  let normal: vec3<f32> = octahedral_decode(textureLoad(normal_target, vec2<i32>(pixel * 2.0), 0).xy);
+  let normal: vec3<f32> = point_normal(vec2<i32>(pixel));
   let to_camera: vec3<f32> = normalize(-position);
   let screen_radius: f32 = min(occlusion.radius / (distance * occlusion.spread), occlusion.reach);
 
@@ -159,7 +202,7 @@ fn search(clip: vec2<f32>, is_lit: bool) -> Searched {
       let light_falloff: f32 = select(falloff, occlusion.light_radius * spread, is_lit);
 
       for (var side: i32 = -1; side <= 1; side += 2) {
-        let sample: SearchPoint = search_point(pixel + offset * f32(side), last);
+        let sample: SearchPoint = search_point(rays, pixel, pixel + offset * f32(side), last);
         let front: vec3<f32> = sample.position - position;
         let reach_metres: f32 = length(front);
 
@@ -187,7 +230,7 @@ fn search(clip: vec2<f32>, is_lit: bool) -> Searched {
         if (fresh != 0u) {
           let at: vec2<i32> = vec2<i32>(sample.pixel);
           let leaving: vec3<f32> = textureLoad(light_source, at, 0).rgb;
-          let facing: f32 = dot(octahedral_decode(textureLoad(normal_target, at * 2, 0).xy), -front / reach_metres);
+          let facing: f32 = dot(point_normal(at), -front / reach_metres);
 
           slice_light += leaving * (f32(countOneBits(fresh)) * smoothstep(0.0, FACING_FADE, facing));
         }

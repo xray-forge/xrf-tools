@@ -14,3 +14,4 @@
 @group(1) @binding(9) var light_source: texture_2d<f32>;
 @group(1) @binding(10) var gathered: texture_2d<f32>;
 @group(1) @binding(11) var light_history: texture_2d<f32>;
+@group(1) @binding(12) var points: texture_2d<f32>;
