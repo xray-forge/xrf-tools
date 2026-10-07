@@ -27,7 +27,7 @@ impl Default for RenderRainSettings {
       puddles: 1.0,
       reflectivity: 0.4,
       ripples: 1.0,
-      distance: 120.0,
+      distance: 300.0,
     }
   }
 }

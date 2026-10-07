@@ -98,7 +98,7 @@ export function SettingsRendererParallax(): ReactElement {
           description={"Metres within which those surfaces are marched, faded out over the last fifth."}
           value={parallax.surfaceRange}
           min={4}
-          max={30}
+          max={100}
           step={1}
           isDisabled={isEngine}
           format={(value: number) => `${formatNumber(value, 0)} m`}
