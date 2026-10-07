@@ -261,9 +261,15 @@ impl LevelLights {
         if set.is_some() && settings.is_volumetric {
           let index: u32 = into.records.len() as u32;
 
-          if let Some((volume, slices)) =
-            to_volume(light, &it.basis, &record, index, (eye, camera.view), engine, self.volume_textures.1)
-          {
+          if let Some((volume, slices)) = to_volume(
+            light,
+            &it.basis,
+            &record,
+            index,
+            (eye, camera.view),
+            engine,
+            self.volume_textures.1,
+          ) {
             into.volumes.push(volume);
             into.volume_slices.push(slices);
           }
@@ -480,7 +486,12 @@ fn to_volume(
       let asked: u32 = ((VOLUME_SLICES as f32 * volumetric.quality) as u32).max(VOLUME_FEWEST_SLICES);
       let quality: f32 = asked as f32 / VOLUME_SLICES as f32;
 
-      (VOLUME_SLICES, quality, volumetric.intensity / quality, volumetric.distance)
+      (
+        VOLUME_SLICES,
+        quality,
+        volumetric.intensity / quality,
+        volumetric.distance,
+      )
     }
     XrayEngine::Extended => {
       let fade: f32 = MONOLITH_INTENSITY
@@ -494,7 +505,12 @@ fn to_volume(
       let part: f32 = if is_spot { 1.0 } else { MONOLITH_PART_INTENSITY };
       let slices: f32 = (MONOLITH_SLICES_PER_QUALITY * MONOLITH_QUALITY).floor();
 
-      (slices as u32, slices / MONOLITH_MOST_SLICES, fade * part / MONOLITH_QUALITY, 1.0)
+      (
+        slices as u32,
+        slices / MONOLITH_MOST_SLICES,
+        fade * part / MONOLITH_QUALITY,
+        1.0,
+      )
     }
   };
   let slices: u32 = if is_spot {
@@ -525,7 +541,12 @@ fn to_volume(
   Some((
     LightVolumeRecord {
       near: Vec4::new(centre.x - radius, centre.y - radius, near, slices as f32),
-      far: Vec4::new(centre.x + radius, centre.y + radius, near - 2.0 * radius / quality, index as f32),
+      far: Vec4::new(
+        centre.x + radius,
+        centre.y + radius,
+        near - 2.0 * radius / quality,
+        index as f32,
+      ),
       color: (record.color.truncate() * distance * intensity).extend(record.position.w / (distance * distance)),
       frustum: Vec4::new(
         shadow.x + (shadow.y - shadow.x) * distance,

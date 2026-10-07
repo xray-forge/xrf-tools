@@ -169,7 +169,7 @@ export const DEFAULT_RENDER_LIGHTS_SETTINGS: TRenderLightsSettings = {
   isLevelLights: false,
   isShadowed: true,
   shadowFilter: ERenderLightShadowFilter.ENGINE,
-  isVolumetric: false,
+  isVolumetric: true,
 };
 
 /** The engine's own values (`xrRender_console.cpp`). */

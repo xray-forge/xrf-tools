@@ -16,6 +16,8 @@ pub struct LightVolumePass {
   texture_layout: wgpu::BindGroupLayout,
   /// The slices, then the half-size depth they are tested against.
   pipelines: [wgpu::RenderPipeline; 2],
+  /// Compares the shadow atlas between four texels, lit where the stored depth, reversed, is no nearer.
+  shadow_sampler: wgpu::Sampler,
   generation: u64,
 }
 
@@ -39,8 +41,19 @@ impl LightVolumePass {
       layout,
       view_layout: view_layout.clone(),
       texture_layout: texture_layout.clone(),
+      shadow_sampler: device.create_sampler(&wgpu::SamplerDescriptor {
+        label: Some("light volumes shadow"),
+        mag_filter: wgpu::FilterMode::Linear,
+        min_filter: wgpu::FilterMode::Linear,
+        compare: Some(wgpu::CompareFunction::GreaterEqual),
+        ..Default::default()
+      }),
       generation: shaders.get_generation(),
     })
+  }
+
+  pub fn get_shadow_sampler(&self) -> &wgpu::Sampler {
+    &self.shadow_sampler
   }
 
   pub fn refresh(&mut self, device: &wgpu::Device, shaders: &ShaderLibrary) {

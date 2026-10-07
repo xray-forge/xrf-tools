@@ -147,18 +147,40 @@ fn penumbra_lit(atlas: texture_depth_2d, centre: vec2<f32>, least: vec2<f32>, mo
   return total / 12.0;
 }
 
-// How much of a shadowed light reaches a point, as `shadow_hw` finds it: the face the point stands in, its depth there
-// in the engine's own depth moved by its scale and bias, and its comparison filtered. A point light's face is its
-// direction's longest axis, its faces standing in the world; a spot has one, in view space. `is_soft` compares as
-// `shadow_pcss` does.
-fn light_shadow(
-  atlas: texture_depth_2d,
-  record: LightRecord,
-  to_point: vec3<f32>,
-  normal: vec3<f32>,
-  is_spot: bool,
-  is_soft: bool,
-) -> f32 {
+// Where a point reads a shadowed light's map: the square of the atlas its face holds, in texels, a texel in at each
+// edge (`least` and `most`), where the point falls in it (`centre`), its depth in the engine's own moved by its scale and
+// bias (`moved`, `0` near), and how far the face has faded.
+struct ShadowPlace {
+  centre: vec2<f32>,
+  least: vec2<f32>,
+  most: vec2<f32>,
+  moved: f32,
+  fade: f32,
+}
+
+// A face's square of the shadow atlas, picked by constant indices: indexing the faces by a runtime value keeps the
+// whole record in scratch memory.
+fn face_rect(record: LightRecord, face: u32) -> vec4<f32> {
+  var rect: vec4<f32> = record.faces[0];
+
+  if (face == 1u) {
+    rect = record.faces[1];
+  } else if (face == 2u) {
+    rect = record.faces[2];
+  } else if (face == 3u) {
+    rect = record.faces[3];
+  } else if (face == 4u) {
+    rect = record.faces[4];
+  } else if (face == 5u) {
+    rect = record.faces[5];
+  }
+
+  return rect;
+}
+
+// A point's place in a shadowed light's map: the face it stands in, a point light's its direction's longest axis, its
+// faces standing in the world, a spot's its one, in view space; moved along its normal by a texel of the face.
+fn shadow_place(record: LightRecord, to_point: vec3<f32>, normal: vec3<f32>, is_spot: bool, is_soft: bool) -> ShadowPlace {
   var face: u32 = 0u;
   var right: vec3<f32> = record.right.xyz;
   var up: vec3<f32> = record.up.xyz;
@@ -188,7 +210,7 @@ fn light_shadow(
     scale = POINT_SCALE;
   }
 
-  let rect: vec4<f32> = record.faces[face];
+  let rect: vec4<f32> = face_rect(record, face);
   let side: f32 = rect.z / ATLAS_TEXEL;
   // A texel of the face across, in metres where the point stands: the face's `2 / scale` of its depth over its texels.
   let reach: f32 = dot(point, axis) * 2.0 / (scale * (side - 2.0));
@@ -204,25 +226,42 @@ fn light_shadow(
   let uv: vec2<f32> = face_uv(across, along, scale);
   // In texels of the atlas: the face maps into its square a texel in; each tap is kept inside the square.
   let corner: vec2<f32> = rect.xy / ATLAS_TEXEL;
-  let least: vec2<f32> = corner + 0.5;
-  let most: vec2<f32> = corner + side - 0.5;
-  let centre: vec2<f32> = corner + 1.0 + uv * (side - 2.0);
 
   // A point's faces fade each on its own, as the engine's omni parts do.
+  return ShadowPlace(corner + 1.0 + uv * (side - 2.0), corner + 0.5, corner + side - 0.5, moved, rect.w);
+}
+
+// `shadow_hw`'s four taps about a point of the atlas, each kept inside its face's square.
+fn shadow_tap(place: ShadowPlace, tap: u32) -> vec2<f32> {
+  let offset: vec2<f32> = vec2<f32>(f32(tap & 1u) * 2.0 - 1.0, f32(tap >> 1u) * 2.0 - 1.0) * SHADOW_KERNEL;
+
+  return clamp(place.centre + offset, place.least, place.most);
+}
+
+// How much of a shadowed light reaches a point, as `shadow_hw` finds it: its place in the light's map (`shadow_place`)
+// and its comparison filtered. `is_soft` compares as `shadow_pcss` does.
+fn light_shadow(
+  atlas: texture_depth_2d,
+  record: LightRecord,
+  to_point: vec3<f32>,
+  normal: vec3<f32>,
+  is_spot: bool,
+  is_soft: bool,
+) -> f32 {
+  let place: ShadowPlace = shadow_place(record, to_point, normal, is_spot, is_soft);
+
   if (is_soft) {
-    return penumbra_lit(atlas, centre, least, most, moved) * rect.w;
+    return penumbra_lit(atlas, place.centre, place.least, place.most, place.moved) * place.fade;
   }
 
-  let reference: f32 = 1.0 - moved;
+  let reference: f32 = 1.0 - place.moved;
   var lit: f32 = 0.0;
 
   for (var tap: u32 = 0u; tap < 4u; tap++) {
-    let offset: vec2<f32> = vec2<f32>(f32(tap & 1u) * 2.0 - 1.0, f32(tap >> 1u) * 2.0 - 1.0) * SHADOW_KERNEL;
-
-    lit += compared_texels(atlas, clamp(centre + offset, least, most), reference);
+    lit += compared_texels(atlas, shadow_tap(place, tap), reference);
   }
 
-  return lit / 4.0 * rect.w;
+  return lit / 4.0 * place.fade;
 }
 
 // `m_Lmap`: a point in a light's view, `x` right, `y` up, `along` its direction, over the square the widened cone
