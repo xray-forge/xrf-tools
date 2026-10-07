@@ -413,7 +413,7 @@ fn surface_relief(in: GBufferVarying, at: Footprint, position: vec3<f32>) -> Foo
   let steps: f32 = mix(camera.parallax.x, RELIEF_STEPS_LEAST, saturate(abs(eye.z)));
   let slot: u32 = surfaces[in.surface].textures[SLOT_BUMP_COMPANION];
   let lod: f32 = relief_lod(slot, at.dx, at.dy);
-  let hit: vec3<f32> = relief_march(slot, at.uv, lod, 1.0, reach, steps, 3u);
+  let hit: vec3<f32> = relief_march(slot, at.uv, lod, 1.0, reach, steps, 3u, 0.0);
   let height: f32 = 1.0 - hit.z;
   var out: Footprint = at;
 
@@ -550,6 +550,10 @@ const RELIEF_CAVITY: f32 = 0.125;
 const RELIEF_SHADOW_STEPS: u32 = 8u;
 const RELIEF_SHADOW_SHARPNESS: f32 = 8.0;
 const TERRAIN_BLEND_BAND: f32 = 0.25;
+// Where a terrain's drawn surface stands in its relief, a share of its depth: at its heights' mean, which their solve
+// sets at a half, so its bumps rise above the ground as far as its hollows sink below it and the ground meets a wall's
+// foot where it is drawn, rather than all of it sunk under the top and the wall seen standing over it.
+const TERRAIN_PLANE: f32 = 0.5;
 
 // How deep a relief lies under a coordinate, from nought at its top: its height's depth, the height in `channel` of
 // its texture, by its weight, so a terrain's layer weighing little lies nearly flat.
@@ -566,9 +570,10 @@ fn relief_lod(slot: u32, dx: vec2<f32>, dy: vec2<f32>) -> f32 {
   return max(0.5 * log2(max(extent, 1e-8)), 0.0);
 }
 
-// Where a view ray into a relief meets it, marched from the top at `uv` along `reach`, the coordinate it moves by down
-// to the deepest, in `steps`: settled between its last two steps as straight lines, then by halving where refined. The
-// coordinate, and the depth.
+// Where a view ray into a relief meets it, the surface drawn standing at depth `plane` under its top: marched from
+// where the ray enters the top, `plane` before `uv` along `reach`, the coordinate it moves by down to the deepest, in
+// `steps`; settled between its last two steps as straight lines, then by halving where refined. The coordinate, and
+// the depth.
 fn relief_march(
   slot: u32,
   uv: vec2<f32>,
@@ -577,11 +582,13 @@ fn relief_march(
   reach: vec2<f32>,
   steps: f32,
   channel: u32,
+  plane: f32,
 ) -> vec3<f32> {
   let count: u32 = u32(ceil(steps));
   let step: f32 = 1.0 / f32(count);
+  let entry: vec2<f32> = uv - reach * plane;
   var depth: f32 = 0.0;
-  var surface: f32 = relief_depth(slot, uv, lod, weight, channel);
+  var surface: f32 = relief_depth(slot, entry, lod, weight, channel);
   var before_depth: f32 = 0.0;
   var before_surface: f32 = surface;
 
@@ -593,7 +600,7 @@ fn relief_march(
     before_depth = depth;
     before_surface = surface;
     depth += step;
-    surface = relief_depth(slot, uv + reach * depth, lod, weight, channel);
+    surface = relief_depth(slot, entry + reach * depth, lod, weight, channel);
   }
 
   let above: f32 = before_surface - before_depth;
@@ -607,7 +614,7 @@ fn relief_march(
     for (var index: u32 = 0u; index < RELIEF_REFINES; index++) {
       let middle: f32 = (low + high) * 0.5;
 
-      if (relief_depth(slot, uv + reach * middle, lod, weight, channel) <= middle) {
+      if (relief_depth(slot, entry + reach * middle, lod, weight, channel) <= middle) {
         high = middle;
       } else {
         low = middle;
@@ -617,7 +624,7 @@ fn relief_march(
     hit = (low + high) * 0.5;
   }
 
-  return vec3<f32>(uv + reach * hit, hit);
+  return vec3<f32>(entry + reach * hit, hit);
 }
 
 // How much of the sun reaches a relief's point at `hit`, its coordinate and depth: a ray rising from it towards the sun
@@ -693,7 +700,7 @@ fn terrain_texel(
     if (is_marched) {
       let slot: u32 = surface.terrain.heights[layer];
       let lod: f32 = relief_lod(slot, dx, dy);
-      let hit: vec3<f32> = relief_march(slot, uv, lod, weight, reach, steps, 0u);
+      let hit: vec3<f32> = relief_march(slot, uv, lod, weight, reach, steps, 0u, TERRAIN_PLANE * weight);
 
       coords[layer] = hit.xy;
       heights[layer] = textureSampleLevel(textures[slot], texture_sampler, hit.xy, lod).r;
