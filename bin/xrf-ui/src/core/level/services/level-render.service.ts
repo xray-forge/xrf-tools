@@ -242,16 +242,17 @@ export class LevelRenderService extends NativeRenderSurfaceService {
    * Says what of the open level is drawn under a point of the viewport, which is then what is selected.
    *
    * @param point - Where, in css pixels from the viewport's top left corner.
+   * @param isThrough - Whether glass is passed by, picking what stands behind it.
    * @returns Settles once the pick is noted: what it hit, or nothing.
    */
-  public async pick(point: IRenderViewPoint): Promise<void> {
+  public async pick(point: IRenderViewPoint, isThrough: boolean): Promise<void> {
     const { viewport, opening } = this;
 
     if (!viewport || !this.level) {
       return;
     }
 
-    const hit: Nullable<RenderLevelHit> = await viewport.pick(point.x, point.y);
+    const hit: Nullable<RenderLevelHit> = await viewport.pick(point.x, point.y, isThrough);
 
     // Asked of a viewport or a level since replaced, it names something else now.
     if (viewport !== this.viewport || opening !== this.opening) {
@@ -372,7 +373,7 @@ export class LevelRenderService extends NativeRenderSurfaceService {
   protected onAttached(container: HTMLElement): void {
     const unlistenClicks: () => void = listenRenderClicks(
       container,
-      (point: IRenderViewPoint) => void this.pick(point)
+      (point: IRenderViewPoint, isThrough: boolean) => void this.pick(point, isThrough)
     );
     const onFocus = (): void => this.viewportService.noteSceneFocused(true);
     const onBlur = (): void => this.viewportService.noteSceneFocused(false);

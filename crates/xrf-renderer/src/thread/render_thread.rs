@@ -285,8 +285,19 @@ impl RenderThread {
           viewport.selection = selection;
         }
       }
-      RenderCommand::Pick { id, x, y, reply } => {
-        let pick: PendingPick = PendingPick { x, y, reply };
+      RenderCommand::Pick {
+        id,
+        x,
+        y,
+        is_through,
+        reply,
+      } => {
+        let pick: PendingPick = PendingPick {
+          x,
+          y,
+          is_through,
+          reply,
+        };
 
         match self.viewports.get_mut(&id) {
           Some(viewport) if viewport.shown.is_some() => viewport.picks.push(pick),
@@ -1344,7 +1355,9 @@ impl RenderThread {
     });
     let readied: Option<LevelFrame> = view_state.begin_frame(
       (device, queue),
-      pick.as_ref().map(|(_, _, camera)| (camera, &gpu.view_layout)),
+      pick
+        .as_ref()
+        .map(|(pick, _, camera)| (camera, &gpu.view_layout, pick.is_through)),
     );
 
     match (readied, pick) {

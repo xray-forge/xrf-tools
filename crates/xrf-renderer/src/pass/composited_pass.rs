@@ -12,13 +12,16 @@ use crate::scene::static_scene::static_layout::StaticLayout;
 use crate::scene::static_scene::static_scene::StaticScene;
 use crate::shader::shader_library::ShaderLibrary;
 
-/// Reversed depth steps a composited surface is pulled towards the eye by, so a surface laid on a wall never loses
-/// to it, and the same scaled by its slope for one seen at a grazing angle.
 /// The fragment entry compositing surfaces over the lit frame.
 const COMPOSITED_FRAGMENT: &str = "fs_composited";
 
-const DEPTH_BIAS: i32 = 256;
-const SLOPE_BIAS: f32 = 1.0;
+/// Reversed depth steps a composited surface is pulled towards the eye by, so a surface laid on a wall never loses
+/// to it, and the same scaled by its slope for one seen at a grazing angle.
+pub const COMPOSITED_DEPTH_BIAS: wgpu::DepthBiasState = wgpu::DepthBiasState {
+  constant: 256,
+  slope_scale: 1.0,
+  clamp: 0.0,
+};
 
 /// `out = colour + behind × second colour`, by dual-source blending: over by alpha, added and multiplied all in one.
 const COMPOSITED_BLEND: wgpu::BlendState = wgpu::BlendState {
@@ -34,15 +37,24 @@ const COMPOSITED_BLEND: wgpu::BlendState = wgpu::BlendState {
   },
 };
 
-/// Draws a viewport's visible blended, added and multiplied static surfaces over its lit scene, and its wall marks into
-/// its G-buffer's albedo before any light, each tested against the G-buffer's depth without writing it.
+/// Draws a viewport's visible blended, added and multiplied static surfaces over its lit scene, its wall marks into its
+/// G-buffer's albedo before any light, its distorting surfaces' special pass into the distortion target, and its
+/// selected ones' mark into the material target, each tested against the G-buffer's depth without writing it.
 pub struct CompositedPass {
   layout: wgpu::BindGroupLayout,
   layouts: [wgpu::BindGroupLayout; 4],
-  /// One a composited batch, in `StaticBatch::list_composited` order, then one a wall mark batch.
-  pipelines: (Vec<wgpu::RenderPipeline>, Vec<wgpu::RenderPipeline>),
+  pipelines: CompositedPipelines,
   generation: u64,
 }
+
+/// One a composited batch, in `StaticBatch::list_composited` order; one a wall mark batch; and one a batch of either
+/// composited class, in `CompositedPass::list_distorted` order, for the distortion, then for the selection's mark.
+type CompositedPipelines = (
+  Vec<wgpu::RenderPipeline>,
+  Vec<wgpu::RenderPipeline>,
+  Vec<wgpu::RenderPipeline>,
+  Vec<wgpu::RenderPipeline>,
+);
 
 impl CompositedPass {
   /// Where its pipelines hold the sky's group.
@@ -157,6 +169,62 @@ impl CompositedPass {
     pass.set_bind_group(1, textures, &[]);
   }
 
+  /// Draws the distorting surfaces among the composited ones each argument buffer lists into the distortion target, as
+  /// `model_distort4glass` draws their special pass: unsorted and strictly sorted, the models' too, in cluster order,
+  /// which blending offsets makes no matter.
+  pub fn record_distortion(
+    &self,
+    context: &mut RasterContext<'_>,
+    (view, layouts, textures): (
+      &ViewBinding,
+      &[StaticDrawParameters; StaticLayout::COUNT],
+      &wgpu::BindGroup,
+    ),
+    (composited, sky): (&CompositedParameters<'_>, &SkyParameters<'_>),
+    args: &[&wgpu::Buffer],
+  ) {
+    Self::bind_common(context, (view, textures), (composited, sky));
+
+    for (batch, pipeline) in Self::list_distorted().zip(&self.pipelines.2) {
+      context.bind(&layouts[batch.layout.get_index()]);
+      context.get_pass().set_pipeline(pipeline);
+
+      for args in args {
+        context.get_pass().draw_indirect(args, batch.get_index() as u64 * 16);
+      }
+    }
+  }
+
+  /// Marks the selected surfaces among the composited ones each argument buffer lists in the material target's alpha,
+  /// which the present outlines the selection by.
+  pub fn record_selection(
+    &self,
+    context: &mut RasterContext<'_>,
+    (view, layouts, textures): (
+      &ViewBinding,
+      &[StaticDrawParameters; StaticLayout::COUNT],
+      &wgpu::BindGroup,
+    ),
+    args: &[&wgpu::Buffer],
+  ) {
+    context.get_pass().set_bind_group(0, &view.bind_group, &[]);
+    context.get_pass().set_bind_group(1, textures, &[]);
+
+    for (batch, pipeline) in Self::list_distorted().zip(&self.pipelines.3) {
+      context.bind(&layouts[batch.layout.get_index()]);
+      context.get_pass().set_pipeline(pipeline);
+
+      for args in args {
+        context.get_pass().draw_indirect(args, batch.get_index() as u64 * 16);
+      }
+    }
+  }
+
+  /// The batches a distorting surface may stand in: either composited class, of every layout.
+  fn list_distorted() -> impl Iterator<Item = StaticBatch> {
+    StaticBatch::list().filter(|batch| batch.class.is_composited())
+  }
+
   /// Lays the wall marks each argument buffer lists into the G-buffer's albedo, before any light reads it.
   pub fn record_wallmarks(
     &self,
@@ -186,7 +254,7 @@ impl CompositedPass {
     shaders: &ShaderLibrary,
     [view_layout, scene_layout, texture_layout, sky_layout]: &[wgpu::BindGroupLayout; 4],
     layout: &wgpu::BindGroupLayout,
-  ) -> XrfResult<(Vec<wgpu::RenderPipeline>, Vec<wgpu::RenderPipeline>)> {
+  ) -> XrfResult<CompositedPipelines> {
     let module: wgpu::ShaderModule = create_module(device, shaders, "static/composited")?;
     let composited_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
       label: Some("composited"),
@@ -208,31 +276,51 @@ impl CompositedPass {
       device,
       &module,
       (&composited_layout, COMPOSITED_FRAGMENT),
-      ViewTargets::SCENE,
+      (ViewTargets::SCENE, Some(COMPOSITED_BLEND), wgpu::ColorWrites::ALL),
       StaticBatch::list_composited(),
     )?;
     let wallmarks = Self::create_batch_pipelines(
       device,
       &module,
       (&wallmark_layout, "fs_wallmark"),
-      ViewTargets::ALBEDO,
+      (ViewTargets::ALBEDO, Some(COMPOSITED_BLEND), wgpu::ColorWrites::ALL),
       StaticBatch::list_wallmarks(),
     )?;
+    // Blended over what the water and the particles wrote, as `distort(true)` passes blend by their alpha.
+    let distortion = Self::create_batch_pipelines(
+      device,
+      &module,
+      (&composited_layout, "fs_composited_distort"),
+      (
+        ViewTargets::DISTORTION,
+        Some(wgpu::BlendState::ALPHA_BLENDING),
+        wgpu::ColorWrites::ALL,
+      ),
+      Self::list_distorted(),
+    )?;
+    // The mark alone, in the alpha, over whatever the surface behind it marked.
+    let selection = Self::create_batch_pipelines(
+      device,
+      &module,
+      (&wallmark_layout, "fs_composited_selected"),
+      (ViewTargets::MATERIAL, None, wgpu::ColorWrites::ALPHA),
+      Self::list_distorted(),
+    )?;
 
-    Ok((composited, wallmarks))
+    Ok((composited, wallmarks, distortion, selection))
   }
 
   fn create_batch_pipelines(
     device: &wgpu::Device,
     module: &wgpu::ShaderModule,
     (pipeline_layout, fragment): (&wgpu::PipelineLayout, &str),
-    format: wgpu::TextureFormat,
+    (format, blend, write_mask): (wgpu::TextureFormat, Option<wgpu::BlendState>, wgpu::ColorWrites),
     batches: impl Iterator<Item = StaticBatch>,
   ) -> XrfResult<Vec<wgpu::RenderPipeline>> {
     let targets: [Option<wgpu::ColorTargetState>; 1] = [Some(wgpu::ColorTargetState {
       format,
-      blend: Some(COMPOSITED_BLEND),
-      write_mask: wgpu::ColorWrites::ALL,
+      blend,
+      write_mask,
     })];
 
     batches
@@ -271,11 +359,7 @@ impl CompositedPass {
               depth_write_enabled: Some(false),
               depth_compare: Some(wgpu::CompareFunction::GreaterEqual),
               stencil: Default::default(),
-              bias: wgpu::DepthBiasState {
-                constant: DEPTH_BIAS,
-                slope_scale: SLOPE_BIAS,
-                clamp: 0.0,
-              },
+              bias: COMPOSITED_DEPTH_BIAS,
             }),
             multisample: Default::default(),
             multiview_mask: None,

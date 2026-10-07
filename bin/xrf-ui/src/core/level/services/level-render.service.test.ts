@@ -415,9 +415,9 @@ describe("LevelRenderService", () => {
     };
 
     setMockInvokeResponses({ ["plugin:render|pick"]: hit });
-    await service.pick({ x: 10, y: 20 });
+    await service.pick({ x: 10, y: 20 }, true);
 
-    expect(sent("pick").at(-1)).toEqual({ viewport: VIEWPORT, x: 10, y: 20 });
+    expect(sent("pick").at(-1)).toEqual({ viewport: VIEWPORT, x: 10, y: 20, isThrough: true });
     expect(container.get(LevelViewportService).picked).toEqual({
       isImpostor: false,
       kind: ELevelPick.SURFACE,

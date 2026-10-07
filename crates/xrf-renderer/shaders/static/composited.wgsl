@@ -250,6 +250,51 @@ fn fs_composited(in: GBufferVarying) -> CompositedOutput {
   return composite(surface.flags, texel, base.a, laid, fog);
 }
 
+// A distorting surface's special pass as `model_distort4glass` and `particle_distort` draw it into the distortion
+// target: its distortion texture's offset, by its alpha times the vertex's fade, `0.9 |dot(view, normal)|`, so a pane
+// seen edge on bends nothing; and on Monolith into the fog by what is left of it, squared, as Anomaly's
+// `particle_distort.ps` fades it (OpenXRay's does not).
+@fragment
+fn fs_composited_distort(in: GBufferVarying) -> @location(0) vec4<f32> {
+  let surface: Surface = surfaces[in.surface];
+  // Taken before the branch: the texture's index varies across the frame.
+  let at: Footprint = take_footprint(in);
+
+  if ((surface.flags & SURFACE_IS_DISTORTING) == 0u) {
+    discard;
+  }
+
+  let position: vec3<f32> = camera_view_position(in.clip.xy, in.clip.z);
+  let fade: f32 = 0.9 * abs(dot(normalize(position), normalize(in.normal)));
+  let distort: vec4<f32> = sample_slot(surface.distortion, at.uv, at.dx, at.dy);
+  var factor: f32 = distort.a * fade;
+
+  if (lighting.engine.x > 0.5 && lighting.params.y > 0.5) {
+    let left: f32 = 1.0 - fog_amount(lighting, position);
+
+    factor *= left * left;
+  }
+
+  return vec4<f32>(distort.rgb, factor);
+}
+
+// A selected composited surface's mark in the material target's alpha, which the present outlines the selection by, as
+// the G-buffer marks what it draws: where a pick meets it (`fs_pick_composited`), glass and not a glow. Past the
+// enhanced bloom nothing else reads the marks, so the mark stands alone.
+@fragment
+fn fs_composited_selected(in: GBufferVarying) -> @location(0) vec4<f32> {
+  let at: Footprint = take_footprint(in);
+  let surface: Surface = surfaces[in.surface];
+  let base: vec4<f32> = base_texel(in, at);
+
+  if (!is_selected(in.entry) || (surface.flags & (SURFACE_IS_ADDED | SURFACE_IS_MULTIPLIED)) != 0u ||
+    base.a <= max(surface.alpha_reference, PICK_SHOWN)) {
+    discard;
+  }
+
+  return vec4<f32>(0.0, 0.0, 0.0, f32(MARK_SELECTED) / 255.0);
+}
+
 // A wall mark laid into the G-buffer's albedo as `wmark` lays it: its base alone, at its top level and clamped, unlit
 // and unfogged, the gloss left alone. Nothing cuts it, as `simple.ps` reads no reference.
 @fragment

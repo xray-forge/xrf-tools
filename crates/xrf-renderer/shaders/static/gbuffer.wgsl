@@ -923,6 +923,27 @@ fn fs_pick_cut_out(in: GBufferVarying) -> @location(0) vec4<u32> {
   return pick_texel(in);
 }
 
+// The share of a blended composited texel past which a click meets it: any that shows at all, glass however clear (a
+// gauge's is a fiftieth), and not the empty texels about a blended fence's wires.
+const PICK_SHOWN: f32 = 0.5 / 255.0;
+
+// A composited surface in a pick, the nearest thing a click meets as glass is: one blended over what is behind it, where
+// its texel shows and its own reference passes. Light added or multiplied in, a glow or a halo, stands for nothing a
+// click could meet, and is passed by.
+@fragment
+fn fs_pick_composited(in: GBufferVarying) -> @location(0) vec4<u32> {
+  let at: Footprint = take_footprint(in);
+  let surface: Surface = surfaces[in.surface];
+  let base: vec4<f32> = base_texel(in, at);
+
+  if ((surface.flags & (SURFACE_IS_ADDED | SURFACE_IS_MULTIPLIED)) != 0u ||
+    base.a <= max(surface.alpha_reference, PICK_SHOWN)) {
+    discard;
+  }
+
+  return pick_texel(in);
+}
+
 // A cut-out caster in a shadow's map: depth alone, cut as the G-buffer cuts it, so light falls between its leaves.
 @fragment
 fn fs_shadow_cut_out(in: GBufferVarying) {
