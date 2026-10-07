@@ -413,7 +413,8 @@ fn surface_relief(in: GBufferVarying, at: Footprint, position: vec3<f32>) -> Foo
   let eye: vec3<f32> = normalize(vec3<f32>(dot(tangent, -position), dot(binormal, -position), dot(normal, -position)));
   let sun: vec3<f32> = camera.parallax_light.xyz;
   let light: vec3<f32> = vec3<f32>(dot(tangent, sun), dot(binormal, sun), dot(normal, sun));
-  let depth: f32 = camera.parallax_mix.z * (1.0 - smoothstep(range * (1.0 - RELIEF_FADE_SHARE), range, distance));
+  let fade: f32 = relief_fade(range, distance);
+  let depth: f32 = camera.parallax_mix.z * fade;
   let reach: vec2<f32> = -eye.xy / (abs(eye.z) + RELIEF_GRAZING) * depth;
   let steps: f32 = mix(camera.parallax.x, RELIEF_STEPS_LEAST, saturate(abs(eye.z)));
   let slot: u32 = surfaces[in.surface].textures[SLOT_BUMP_COMPANION];
@@ -423,7 +424,7 @@ fn surface_relief(in: GBufferVarying, at: Footprint, position: vec3<f32>) -> Foo
   var out: Footprint = at;
 
   out.uv = hit.xy;
-  out.cavity = (1.0 - height * height) * RELIEF_CAVITY * camera.parallax_mix.y;
+  out.cavity = (1.0 - height * height) * RELIEF_CAVITY * camera.parallax_mix.y * fade;
   out.is_relief = true;
 
   if (light.z > 0.0 && camera.parallax_light.w > 0.0) {
@@ -558,6 +559,12 @@ const RELIEF_CAVITY: f32 = 0.125;
 const RELIEF_SHADOW_STEPS: u32 = 8u;
 const RELIEF_SHADOW_SHARPNESS: f32 = 8.0;
 const TERRAIN_BLEND_BAND: f32 = 0.25;
+
+// How much of the enhanced parallax stands at `distance`: whole short of the last of `range`, none at it. Its depth,
+// hollows and height blending all fade by it, so nothing it changes ends at a line.
+fn relief_fade(range: f32, distance: f32) -> f32 {
+  return 1.0 - smoothstep(range * (1.0 - RELIEF_FADE_SHARE), range, distance);
+}
 // Where a terrain's drawn surface stands in its relief, a share of its depth: at its heights' mean, which their solve
 // sets at a half, so its bumps rise above the ground as far as its hollows sink below it and the ground meets a wall's
 // foot where it is drawn, rather than all of it sunk under the top and the wall seen standing over it.
@@ -670,6 +677,7 @@ fn terrain_texel(
   var to_sun: vec2<f32> = vec2<f32>(0.0);
   var steps: f32 = 0.0;
   var is_lit: bool = false;
+  var fade: f32 = 0.0;
 
   // The eye and the sun in the surface's tangent space, the depth faded out over the last of the range.
   if (is_marched) {
@@ -679,7 +687,9 @@ fn terrain_texel(
     let eye: vec3<f32> = normalize(vec3<f32>(dot(tangent, -position), dot(binormal, -position), dot(normal, -position)));
     let sun: vec3<f32> = camera.parallax_light.xyz;
     let light: vec3<f32> = vec3<f32>(dot(tangent, sun), dot(binormal, sun), dot(normal, sun));
-    let depth: f32 = camera.parallax.z * (1.0 - smoothstep(range * (1.0 - RELIEF_FADE_SHARE), range, -position.z));
+    fade = relief_fade(range, -position.z);
+
+    let depth: f32 = camera.parallax.z * fade;
 
     reach = -eye.xy / (abs(eye.z) + RELIEF_GRAZING) * depth;
     steps = mix(camera.parallax.x, RELIEF_STEPS_LEAST, saturate(abs(eye.z)));
@@ -722,12 +732,12 @@ fn terrain_texel(
   let present: vec4<f32> = step(vec4<f32>(TERRAIN_LAYER_LEAST + 1e-6), weights);
   var blended: vec4<f32> = weights;
 
-  if (is_marched && camera.parallax_mix.x > 0.0) {
+  if (is_marched && camera.parallax_mix.x * fade > 0.0) {
     let keys: vec4<f32> = (weights + heights * camera.parallax_mix.x) * present - (1.0 - present);
     let top: f32 = max(max(keys.x, keys.y), max(keys.z, keys.w));
     let shares: vec4<f32> = max(keys - (top - TERRAIN_BLEND_BAND), vec4<f32>(0.0)) * present;
 
-    blended = mix(weights, shares / max(dot(shares, vec4<f32>(1.0)), 1e-4), camera.parallax_mix.x);
+    blended = mix(weights, shares / max(dot(shares, vec4<f32>(1.0)), 1e-4), camera.parallax_mix.x * fade);
   }
 
   for (var layer: u32 = 0u; layer < 4u; layer++) {
@@ -753,7 +763,7 @@ fn terrain_texel(
   }
 
   out.bump.z *= 0.5;
-  out.cavity = select(0.0, out.cavity * RELIEF_CAVITY * camera.parallax_mix.y, is_marched);
+  out.cavity = select(0.0, out.cavity * RELIEF_CAVITY * camera.parallax_mix.y * fade, is_marched);
 
   if (is_lit) {
     let slot: u32 = surface.terrain.heights[dominant];
