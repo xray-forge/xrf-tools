@@ -2215,15 +2215,24 @@ impl SceneView {
     // The wet surface the enhanced patch writes, which the reflections and combine read; a texel of nothing otherwise.
     let mut wet_surface: GraphTexture =
       bindings.import_view(&mut *graph, "wet surface none", passes.reflections.get_empty());
+    // The gloss the reflections' wet reach adds, which combine's lights leave out; a texel of none while dry.
+    let mut wet_reach: GraphTexture =
+      bindings.import_view(&mut *graph, "wet reach none", passes.reflections.get_empty());
 
     // The rain wets the G-buffer before any light is drawn over it.
     if let (Some(covers), Some(wet), Some([splash, flow])) = (covers, wet, &scene_view.info.weather_views.wet) {
       let is_enhanced: bool = scene_view.info.wet.is_enhanced > 0.5;
       let maps: &EnhancedWaterMaps = passes.water.get_maps();
+      let (width, height) = handles.size;
+
+      wet_reach = graph.create_texture(GraphTextureDescriptor::new_2d(
+        "wet reach",
+        width,
+        height,
+        WetPass::REACH,
+      ));
 
       if is_enhanced {
-        let (width, height) = handles.size;
-
         wet_surface = graph.create_texture(GraphTextureDescriptor::new_2d(
           "wet surface",
           width,
@@ -2273,7 +2282,12 @@ impl SceneView {
         builder
       };
 
-      builder.record(move |context| passes.wet.record(context, (0, is_enhanced), view, &patch));
+      builder
+        .color(GraphColorAttachment::new(
+          wet_reach,
+          wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+        ))
+        .record(move |context| passes.wet.record(context, (0, is_enhanced), view, &patch));
 
       for (stage, (name, target)) in [("wet normal", handles.normal), ("wet albedo", handles.albedo)]
         .into_iter()
@@ -2379,6 +2393,7 @@ impl SceneView {
           indirect_light: indirect_light.unwrap_or(unlit),
           reflections: reflections.unwrap_or(untraced),
           wet_surface,
+          wet_reach,
         };
 
         graph
