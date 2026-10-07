@@ -141,16 +141,16 @@ fn traced_radiance(position: vec3<f32>, normal: vec3<f32>, direction: vec3<f32>,
   let distance: f32 = -position.z;
   let origin: vec3<f32> = camera.position.xyz + world_offset(position) +
     world_normal * (TRACED_BIAS.x + distance * TRACED_BIAS.y);
-  let hit: SceneHit = trace_scene_ray(origin, toward, 0.0, reflection.distance);
+  // The ray's cone: a traced pixel's width where it leaves the surface, widening by the pixel's angle and its lobe's.
+  let pixel_angle: f32 = 2.0 * reflection.ratio / (camera.projection[1][1] * camera.viewport.y);
+  let cone: SceneCone = SceneCone(distance * pixel_angle, pixel_angle + roughness);
+  let hit: SceneHit = trace_scene_ray(origin, toward, 0.0, reflection.distance, cone);
 
   if (hit.distance < 0.0) {
     return vec4<f32>(0.0, 0.0, 0.0, -1.0);
   }
 
-  // The width the ray's cone has grown to at the hit: a traced pixel's own and its lobe's.
-  let pixel_angle: f32 = 2.0 * reflection.ratio / (camera.projection[1][1] * camera.viewport.y);
-  let spread: f32 = (distance + hit.distance) * pixel_angle + hit.distance * roughness;
-  let met: SceneSurface = scene_surface(hit, spread);
+  let met: SceneSurface = scene_surface(hit, cone.width + cone.spread * hit.distance);
   let facing: vec3<f32> = select(met.normal, -met.normal, dot(met.normal, toward) > 0.0);
   let to_sun: vec3<f32> = world_direction(lighting.to_sun.xyz);
   let half_way: vec3<f32> = normalize(to_sun - toward);
@@ -159,7 +159,10 @@ fn traced_radiance(position: vec3<f32>, normal: vec3<f32>, direction: vec3<f32>,
     vec3<f32>(dot(to_sun, facing), dot(half_way, facing), met.slice), 0.0);
   var sun: vec4<f32> = vec4<f32>(0.0);
 
-  if (lit.x > 0.0 && !trace_scene_blocked(met.position + facing * TRACED_SUN_BIAS, to_sun, TRACED_SUN_REACH)) {
+  // The sun's ray reads the holes it passes as coarsely as the reflection read the hit.
+  let sun_cone: SceneCone = SceneCone(cone.width + cone.spread * hit.distance, pixel_angle);
+
+  if (lit.x > 0.0 && !trace_scene_blocked(met.position + facing * TRACED_SUN_BIAS, to_sun, TRACED_SUN_REACH, sun_cone)) {
     sun = vec4<f32>(lighting.sun.rgb * lit.x, lighting.sun.w * lit.y);
   }
 

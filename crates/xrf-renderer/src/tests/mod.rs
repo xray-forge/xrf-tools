@@ -29,6 +29,7 @@ mod shaders;
 mod shadow_tile_allocator;
 mod static_row;
 mod static_scene;
+mod static_trace;
 mod sun_cascade;
 mod sun_shafts;
 mod temporal;

@@ -387,6 +387,12 @@ struct Wind {
   foliage_flora: vec4<f32>,
 }
 
+struct TraceInstance {
+  first_record: u32,
+  place: u32,
+  pad: array<u32, 2>,
+}
+
 struct TraceRecord {
   first_index: u32,
   vertex_start: u32,
