@@ -31,7 +31,8 @@ use crate::scene::static_scene::static_layout::StaticLayout;
 /// mip, so a reflection that meets nothing on the screen reads the trees and the hills around it rather than the sky
 /// alone. Camera-centred: a face at most a frame, each in turn, drawn again only where the camera moved from where it
 /// was drawn, the sun turned, the scene's contents or the probe changed, or it has stood `REFRESH_FRAMES`, so a still
-/// view draws a face every so often rather than every frame.
+/// view draws a face every so often rather than every frame; a face due by age alone waits for a frame light on other
+/// work, so its cost never lands on a frame already heavy with the sun's far cascades.
 pub struct SurroundingsCube {
   lists: GrowableBuffer,
   args: wgpu::Buffer,
@@ -122,7 +123,7 @@ impl SurroundingsCube {
     queue: &wgpu::Queue,
     encoder: &mut wgpu::CommandEncoder,
     frame: &ShadowFrame<'_>,
-    probe: RenderReflectionProbe,
+    (probe, is_light): (RenderReflectionProbe, bool),
   ) {
     let face: u32 = (self.face + 1) % 6;
     let drawn: u32 = probe.get_size() * Self::DRAWN_OVER;
@@ -139,7 +140,7 @@ impl SurroundingsCube {
         || it.to_sun.dot(to_sun) < Self::SUN_TURNED
         || it.contents != contents
         || it.size != probe.get_size()
-        || self.frame.wrapping_sub(it.frame) >= Self::REFRESH_FRAMES
+        || (is_light && self.frame.wrapping_sub(it.frame) >= Self::REFRESH_FRAMES)
     });
 
     if !is_stale {
