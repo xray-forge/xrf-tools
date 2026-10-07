@@ -283,10 +283,12 @@ fn fs_water_reflection(in: WaterVarying) -> @location(0) vec4<f32> {
   let reflected: vec3<f32> = reflect(eye, normal_view);
   let to_point: vec3<f32> = normalize(in.world - camera.position.xyz);
   let flat_reflected: vec3<f32> = reflect(to_point, normal);
-  // Rays towards the eye are not traced: looking down they only mess the reflection. Every other ray is marched and
-  // traced, however little the flat surface shows of it: until 2026-10-11 those under a fresnel of 0.002 took the sky,
-  // which the waves raised into sight as a bright disc about the eye under a bridge (owner's report).
-  let is_away: bool = dot(-eye, reflected) <= -0.3;
+  // Rays towards the eye are not marched: the screen holds nothing they reach, and looking down they only mess the
+  // reflection; the screen's answer fades out towards them. The trace takes every ray, however little the flat surface
+  // shows of it: until 2026-10-12 those towards the eye took the sky, a circle of one viewing angle about the eye that
+  // cut a bridge's reflection off short (owner's report), and until 2026-10-11 so did those under a fresnel of 0.002.
+  let away: f32 = smoothstep(-0.1, -0.4, dot(-eye, reflected));
+  let is_away: bool = away > 0.0;
   let noise_uv: vec2<f32> = (uv * 1.33 + water.time * 0.02) * vec2<f32>(size.x / size.y, 1.0);
   let noise: f32 = textureSampleLevel(blue_noise, texture_sampler, noise_uv, 0.0).x * 1.5;
   // A branch rather than a select, which would march every ray to throw most away.
@@ -302,7 +304,7 @@ fn fs_water_reflection(in: WaterVarying) -> @location(0) vec4<f32> {
   // where the trace meets nothing but the sky (owner's report, 2026-10-11).
   let is_met: bool = all(hit.xy != vec2<f32>(0.0)) &&
     !(is_traced && is_away && (hit.w < 0.5 || is_facing_away(hit.xy, reflected)));
-  let screen_share: f32 = select(0.0, saturate(hit.y * 5.0 * f32(is_away)), is_met);
+  let screen_share: f32 = select(0.0, saturate(hit.y * 5.0) * away, is_met);
   var scene: vec3<f32> = vec3<f32>(0.0);
   var share: f32 = 0.0;
 
@@ -322,7 +324,7 @@ fn fs_water_reflection(in: WaterVarying) -> @location(0) vec4<f32> {
   // trace, so the list always has room: water with no history to hold (newly in view, a fast turn's edge) takes its
   // fresh neighbours' instead. Tracing it too overflowed the list wherever much of the water lost its history, and the
   // pixels drawn last never traced again.
-  if (is_away && screen_share < 1.0 && is_traced) {
+  if (screen_share < 1.0 && is_traced) {
     let pixel: vec2<f32> = floor(in.clip.xy);
     let answer: vec4<f32> = vec4<f32>(scene, met_distance);
 
