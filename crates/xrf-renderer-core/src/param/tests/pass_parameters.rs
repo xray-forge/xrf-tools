@@ -329,8 +329,14 @@ fn gathers_a_shared_module_s_bindings_once_each() {
 fn binds_an_acceleration_structure_beyond_the_vertex_stage_with_ray_queries_enabled() {
   let entries: Vec<wgpu::BindGroupLayoutEntry> = Traced::get_layout_entries();
 
-  assert!(matches!(entries[0].ty, wgpu::BindingType::AccelerationStructure { vertex_return: false }));
-  assert_eq!(entries[0].visibility, wgpu::ShaderStages::FRAGMENT | wgpu::ShaderStages::COMPUTE);
+  assert!(matches!(
+    entries[0].ty,
+    wgpu::BindingType::AccelerationStructure { vertex_return: false }
+  ));
+  assert_eq!(
+    entries[0].visibility,
+    wgpu::ShaderStages::FRAGMENT | wgpu::ShaderStages::COMPUTE
+  );
   assert_eq!(Traced::ENABLES, ["wgpu_ray_query"]);
   assert_eq!(
     Traced::get_wgsl_bindings(),

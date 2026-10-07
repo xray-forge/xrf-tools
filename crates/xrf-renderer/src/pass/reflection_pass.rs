@@ -111,7 +111,12 @@ impl ReflectionPass {
     };
 
     Ok(Self {
-      pipelines: Self::create_pipelines(device, shaders, (view_layout, &layout, sky_layout), traced_layouts.as_ref())?,
+      pipelines: Self::create_pipelines(
+        device,
+        shaders,
+        (view_layout, &layout, sky_layout),
+        traced_layouts.as_ref(),
+      )?,
       view_layout: view_layout.clone(),
       sky_layout: sky_layout.clone(),
       traced_layouts,
@@ -245,7 +250,8 @@ impl ReflectionPass {
     traced_layouts: Option<&(wgpu::BindGroupLayout, wgpu::BindGroupLayout)>,
   ) -> XrfResult<ReflectionPipelines> {
     let module: wgpu::ShaderModule = create_module(device, shaders, "frame/reflections")?;
-    let mut trace_layouts: Vec<Option<&wgpu::BindGroupLayout>> = vec![Some(view_layout), Some(layout), Some(sky_layout)];
+    let mut trace_layouts: Vec<Option<&wgpu::BindGroupLayout>> =
+      vec![Some(view_layout), Some(layout), Some(sky_layout)];
 
     if let Some((trace_layout, texture_layout)) = traced_layouts {
       trace_layouts.extend([Some(trace_layout), Some(texture_layout)]);

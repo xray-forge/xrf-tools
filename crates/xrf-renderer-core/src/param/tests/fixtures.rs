@@ -1,8 +1,8 @@
 use glam::Vec4;
 
 use crate::{
-  AccelerationStructureBinding, GraphTexture, PassParameters, ShaderAtomicU32, ShaderStruct, StorageArray, StorageArrayMut, StorageValue,
-  StorageValueMut, UniformBinding,
+  AccelerationStructureBinding, GraphTexture, PassParameters, ShaderAtomicU32, ShaderStruct, StorageArray,
+  StorageArrayMut, StorageValue, StorageValueMut, UniformBinding,
 };
 
 #[repr(C)]
