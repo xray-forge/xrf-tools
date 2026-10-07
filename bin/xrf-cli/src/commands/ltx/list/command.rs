@@ -6,6 +6,7 @@ use xrf_ltx_inspect::{LtxInventory, LtxInventoryFile, LtxInventoryReader, LtxInv
 use xrf_output::OutputOptions;
 use xrf_utils::format_path;
 
+use crate::commands::ltx::ltx_installation::INSTALLATION_PATH_HELP;
 use crate::commands::ltx::ltx_project_open::open_ltx_project;
 use crate::core::command_context::CommandContext;
 use crate::core::generic_command::{CommandResult, GenericCommand};
@@ -24,7 +25,7 @@ impl GenericCommand for ListCommand {
       .about("List the LTX configs a project holds, and the role each one plays")
       .arg(
         Arg::new("path")
-          .help("Path to a folder with ltx files, or to a game installation root holding fsgame.ltx")
+          .help(INSTALLATION_PATH_HELP)
           .short('p')
           .long("path")
           .required(true)

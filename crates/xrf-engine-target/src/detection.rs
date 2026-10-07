@@ -40,12 +40,12 @@ pub fn detect_engine(roots: &XrayRoots, read_config: impl FnOnce(&str) -> Option
     .or_else(|| {
       installations
         .iter()
-        .find(|installation| declares_warfare_presets(installation))
-        .map(|installation| {
+        .find_map(|installation| find_warfare_fsgame(installation))
+        .map(|fsgame| {
           XrayEngineResolution::detected(
             XrayEngine::Extended,
             XrayEngineEvidence::AnomalyFsgame,
-            installation.join(FsgameFile::FILE_NAME).display().to_string(),
+            fsgame.display().to_string(),
           )
         })
     })
@@ -87,9 +87,12 @@ fn find_file(directory: &Path, is_matching: impl Fn(&str) -> bool) -> Option<Pat
   found.into_iter().next()
 }
 
-/// Whether an installation's `fsgame.ltx` declares Anomaly's Warfare presets; one that cannot be read declares nothing.
-fn declares_warfare_presets(installation: &Path) -> bool {
-  FsgameFile::read(installation).is_ok_and(|fsgame| fsgame.find_declaration(WARFARE_PRESETS_ALIAS).is_some())
+/// The installation's fsgame file when it declares Anomaly's Warfare presets; one that cannot be read declares nothing.
+fn find_warfare_fsgame(installation: &Path) -> Option<PathBuf> {
+  let path: PathBuf = FsgameFile::find(installation)?;
+  let fsgame: FsgameFile = FsgameFile::read_file(&path).ok()?;
+
+  fsgame.find_declaration(WARFARE_PRESETS_ALIAS).map(|_| path)
 }
 
 /// Whether an LTX file opens a section of this header on a line of its own, whatever its parents or case.
@@ -216,6 +219,7 @@ mod tests {
 
     assert_eq!(resolution.engine, XrayEngine::Extended);
     assert_eq!(resolution.evidence, XrayEngineEvidence::AnomalyFsgame);
+    assert_eq!(resolution.subject, Some(root.join("fsgame.ltx").display().to_string()));
   }
 
   #[test]

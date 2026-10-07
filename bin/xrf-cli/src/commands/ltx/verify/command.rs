@@ -8,7 +8,7 @@ use xrf_output::OutputOptions;
 use xrf_utils::format_path;
 use xrf_vfs::XrayLookupScope;
 
-use crate::commands::ltx::ltx_installation::mount_installation;
+use crate::commands::ltx::ltx_installation::{INSTALLATION_PATH_HELP, mount_installation};
 use crate::core::command_context::CommandContext;
 use crate::core::command_error::CommandError;
 use crate::core::generic_command::{CommandResult, GenericCommand};
@@ -29,7 +29,7 @@ impl GenericCommand for VerifyCommand {
       .about("Command for verification of ltx and ini files")
       .arg(
         Arg::new("path")
-          .help("Path to a folder with ltx files, or to a game installation root holding fsgame.ltx")
+          .help(INSTALLATION_PATH_HELP)
           .short('p')
           .long("path")
           .required(true)

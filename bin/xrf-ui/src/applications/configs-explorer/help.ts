@@ -6,7 +6,8 @@ export const CONFIGS_EXPLORER_HELP: IApplicationHelp = {
     "directory or a whole game installation, whose archived configs are read the way the engine reads them. Nothing " +
     "is ever written.",
   workflow: [
-    "Name a configs root - a `configs` directory, or an installation root holding `fsgame.ltx`.",
+    "Name a configs root - a `configs` directory, or an installation root holding `fsgame.ltx` or an Enhanced " +
+      "Edition's `fsgame_<game>.ltx`.",
     "Choose the dialect. `LTX` is vanilla and OpenXRay; `DLTX` applies the `mod_*.ltx` patch files a Monolith " +
       "or Anomaly install carries, which changes what the same files resolve to.",
     "Pick a config in the tree. Its text opens beside it, coloured, with the section headers and includes marked by " +

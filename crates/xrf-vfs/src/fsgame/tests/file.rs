@@ -1,4 +1,7 @@
+use std::fs;
 use std::path::PathBuf;
+
+use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 
 use crate::fsgame::file::FsgameFile;
 
@@ -24,6 +27,58 @@ fn root() -> PathBuf {
 
 fn file() -> FsgameFile {
   FsgameFile::parse(root(), CONTENTS).expect("contents parse")
+}
+
+/// An installation holding each of `names` as an fsgame file, scoped by name since tests share the scratch root.
+fn installation(name: &str, names: &[&str]) -> PathBuf {
+  let root: PathBuf = build_absolute_generated_test_resource_path(&format!("fsgame_file/{name}"));
+
+  let _ = fs::remove_dir_all(&root);
+
+  fs::create_dir_all(&root).expect("installation root");
+
+  for name in names {
+    fs::write(root.join(name), CONTENTS).expect("fsgame file");
+  }
+
+  root
+}
+
+#[test]
+fn finds_the_fsgame_file_each_edition_names() {
+  for name in FsgameFile::FILE_NAMES {
+    let root: PathBuf = installation(&format!("named/{}", name.trim_end_matches(".ltx")), &[name]);
+
+    assert_eq!(FsgameFile::find(&root), Some(root.join(name)));
+    assert_eq!(
+      FsgameFile::read(&root).expect("fsgame file reads").get_root(),
+      root.as_path()
+    );
+  }
+}
+
+#[test]
+fn prefers_fsgame_ltx_over_an_enhanced_edition_name() {
+  let root: PathBuf = installation("both", &["fsgame_cop.ltx", "fsgame.ltx"]);
+
+  assert_eq!(FsgameFile::find(&root), Some(root.join("fsgame.ltx")));
+}
+
+#[test]
+fn finds_nothing_in_a_directory_without_an_fsgame_file() {
+  let root: PathBuf = installation("none", &["fsgame_backup.ltx"]);
+
+  assert_eq!(FsgameFile::find(&root), None);
+  assert!(FsgameFile::read(&root).is_err());
+}
+
+#[test]
+fn ignores_a_directory_named_like_an_fsgame_file() {
+  let root: PathBuf = installation("directory", &[]);
+
+  fs::create_dir_all(root.join("fsgame.ltx")).expect("directory");
+
+  assert_eq!(FsgameFile::find(&root), None);
 }
 
 #[test]

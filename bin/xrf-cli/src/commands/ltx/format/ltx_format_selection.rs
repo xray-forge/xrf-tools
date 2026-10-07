@@ -20,12 +20,12 @@ pub struct LtxFormatSelection {
 impl LtxFormatSelection {
   /// Selects LTX files from explicit paths or declared game installations.
   ///
-  /// A path directly holding `fsgame.ltx` resolves through the VFS, so loose winning configs are formatted and archived
+  /// A path directly holding an fsgame file resolves through the VFS, so loose winning configs are formatted and archived
   /// winners are reported as declined. Other paths use a filesystem walk.
   ///
   /// # Errors
   ///
-  /// Returns an error when a path does not exist, cannot be walked, or an installation's `fsgame.ltx` cannot be read,
+  /// Returns an error when a path does not exist, cannot be walked, or an installation's fsgame file cannot be read,
   /// decoded, or parsed.
   pub fn select(paths: &[&PathBuf]) -> XrfResult<Self> {
     let mut files: Vec<PathBuf> = Vec::new();

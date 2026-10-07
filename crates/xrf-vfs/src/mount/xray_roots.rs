@@ -64,15 +64,13 @@ impl XrayRoots {
     }
   }
 
-  /// Each installation these roots sit in, asset's first, once each: a root holding `fsgame.ltx`, or the nearest
+  /// Each installation these roots sit in, asset's first, once each: a root holding an fsgame file, or the nearest
   /// ancestor that does.
   pub fn list_installations(&self) -> Vec<PathBuf> {
     let mut installations: Vec<PathBuf> = Vec::new();
 
     for path in self.asset.iter().chain(self.roots.iter().map(|root| &root.path)) {
-      if let Some(installation) = path
-        .ancestors()
-        .find(|candidate| candidate.join(FsgameFile::FILE_NAME).is_file())
+      if let Some(installation) = path.ancestors().find(|candidate| FsgameFile::find(candidate).is_some())
         && !installations.iter().any(|known| known == installation)
       {
         installations.push(installation.to_path_buf());
@@ -109,7 +107,7 @@ impl XrayRoots {
   /// # Errors
   ///
   /// Returns an error when a root cannot be planned — `Installation` on a path declaring none, or an
-  /// `fsgame.ltx` that cannot be read.
+  /// fsgame file that cannot be read.
   pub fn to_mount_plan(&self) -> XrfResult<XrayMountPlan> {
     let mut plan: XrayMountPlan = match &self.asset {
       Some(asset) => XrayMountPlan::implied(asset)?,

@@ -17,24 +17,56 @@ pub struct FsgameFile {
 }
 
 impl FsgameFile {
-  /// Standard filename for an installation's declared layout.
-  pub const FILE_NAME: &'static str = "fsgame.ltx";
+  /// Names an installation declares its layout under, in the order a directory is searched for one.
+  ///
+  /// `fsgame.ltx` first, which every engine xrf targets reads; then each Enhanced Edition's own name.
+  pub const FILE_NAMES: [&'static str; 4] = ["fsgame.ltx", "fsgame_cop.ltx", "fsgame_cs.ltx", "fsgame_soc.ltx"];
 
   /// Alias for the installation directory that anchors resolved paths.
   pub const ROOT_ALIAS: &'static str = "$fs_root$";
 
-  /// Reads and parses the `fsgame.ltx` of an installation directory.
+  /// The fsgame file a directory declares an installation with, if it holds one.
+  pub fn find(directory: impl AsRef<Path>) -> Option<PathBuf> {
+    let directory: &Path = directory.as_ref();
+
+    Self::FILE_NAMES
+      .iter()
+      .map(|name| directory.join(name))
+      .find(|path| path.is_file())
+  }
+
+  /// Reads and parses the fsgame file of an installation directory.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the directory holds no fsgame file, or it cannot be read or parsed.
+  pub fn read(root: impl AsRef<Path>) -> XrfResult<Self> {
+    let root: &Path = root.as_ref();
+    let path: PathBuf = Self::find(root).ok_or_else(|| {
+      XrfError::new_read_error(format!(
+        "{} holds none of {}",
+        format_path(root),
+        Self::FILE_NAMES.join(", ")
+      ))
+    })?;
+
+    Self::read_file(path)
+  }
+
+  /// Reads and parses one fsgame file, anchoring `$fs_root$` at the directory holding it.
   ///
   /// The file is decoded as Windows-1251 so Cyrillic descriptions are preserved.
   ///
   /// # Errors
   ///
   /// Returns an error when the file cannot be read or decoded, or contains no valid declarations.
-  pub fn read(root: impl AsRef<Path>) -> XrfResult<Self> {
-    let root: &Path = root.as_ref();
-    let path: PathBuf = root.join(Self::FILE_NAME);
-    let bytes: Vec<u8> = fs::read(&path)
-      .map_err(|error| XrfError::new_read_error(format!("failed to read {}: {error}", format_path(&path))))?;
+  pub fn read_file(path: impl AsRef<Path>) -> XrfResult<Self> {
+    let path: &Path = path.as_ref();
+    let root: &Path = path
+      .parent()
+      .ok_or_else(|| XrfError::new_read_error(format!("{} has no parent directory", format_path(path))))?;
+    let bytes: Vec<u8> = fs::read(path)
+      .map_err(|error| XrfError::new_read_error(format!("failed to read {}: {error}", format_path(path))))?;
 
     Self::parse(root, &decode_bytes_to_string(&bytes, new_windows1251_encoder())?)
   }

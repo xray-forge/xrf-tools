@@ -26,8 +26,12 @@ let bytes: Vec<u8> = vfs.read_bytes("configs\\system.ltx")?;
   order; the first mount holding a path wins and shadows the rest.
 - **Mode** — `XrayMountMode` says how a caller's path becomes mounts: `Auto` detects an installation at exactly the
   given path, `Directory` forces a loose root, `Volumes` mounts every `.db` volume beneath the path rather than only
-  the ones directly under it, `Installation` requires an `fsgame.ltx`, and `ContainingInstallation` searches upward for
+  the ones directly under it, `Installation` requires an fsgame file, and `ContainingInstallation` searches upward for
   one, falling back to a loose root when none exists.
+- **fsgame file** — the layout file that declares an installation, found by `FsgameFile::find`. Every OpenXRay-family
+  engine reads `fsgame.ltx`; each Enhanced Edition's engine reads only its own game's name instead (`fsgame_soc.ltx`,
+  `fsgame_cs.ltx`, `fsgame_cop.ltx`) and supplies `$fs_root$` and `$app_data_root$` itself. A directory is searched in
+  `FsgameFile::FILE_NAMES` order, `fsgame.ltx` first.
 - **Plan** — `XrayMountPlan` is the inspectable list of sources a mode decided to mount, before anything is opened.
   Reach for it only to inspect or chain plans; `XrayVfs::open` plans and mounts in one call.
 - **Scope** — `XrayLookupScope` narrows where one lookup may look: which mounts, and which logical subtree. Lookups on

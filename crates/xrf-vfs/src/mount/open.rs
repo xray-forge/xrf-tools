@@ -15,7 +15,7 @@ impl XrayVfs {
   ///
   /// # Errors
   ///
-  /// Returns an error when the mode cannot plan the path — most often an `fsgame.ltx` that is absent, unreadable or invalid.
+  /// Returns an error when the mode cannot plan the path — most often an fsgame file that is absent, unreadable or invalid.
   pub fn open(mode: XrayMountMode, path: impl AsRef<Path>) -> XrfResult<Self> {
     Self::from_plan(&mode.plan(path)?)
   }

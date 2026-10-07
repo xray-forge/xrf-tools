@@ -26,7 +26,7 @@ engine for `auto` and answers an `XrayEngineResolution`: the engine, the `XrayEn
 file or logical path that showed it. `read_config` reads a logical path through whatever the caller already mounted,
 so archived configs count, and it is called only when the installation layout decides nothing.
 
-The installation is each root, and the asset roots are centred on, when it holds `fsgame.ltx`, otherwise its nearest
+The installation is each root, and the asset roots are centred on, when it holds an fsgame file (`fsgame.ltx`, or an Enhanced Edition's `fsgame_<game>.ltx`), otherwise its nearest
 ancestor that does. The first rule that matches wins:
 
 1. `AnomalyExecutables`: `AnomalyLauncher.exe` in the installation, or `bin/AnomalyDX*.exe` or `bin/VerifiedDX11.exe`.

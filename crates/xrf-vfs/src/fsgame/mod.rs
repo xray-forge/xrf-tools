@@ -1,4 +1,5 @@
-//! `fsgame.ltx`: the file an installation describes its own directory layout with, parsed and resolved to host paths.
+//! `fsgame.ltx` and its Enhanced Edition namesakes: the file an installation describes its own directory layout with,
+//! parsed and resolved to host paths.
 
 mod declaration;
 mod file;
