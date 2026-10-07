@@ -8,6 +8,9 @@
 const MARCH_STEPS: i32 = 16;
 const MARCH_REFINES: i32 = 2;
 const MARCH_THICKNESS: f32 = 3.0;
+// How thick a surface the march takes for a hit where the trace answers what it does not: a ray passing a few metres
+// behind a pipe or a cable is not its hit, and the trace finds what lies past it.
+const TRACED_MARCH_THICKNESS: f32 = 0.1;
 const MARCH_REACH: f32 = 150.0;
 
 // How much of the reflection the last frames keep, and how much less of it where the ray met the sky.
@@ -185,9 +188,11 @@ fn is_facing_away(at: vec2<f32>, direction: vec3<f32>) -> bool {
 }
 
 // The ray from a point of the water along its reflection, marched over the screen and refined
-// where it passes behind a surface; where it hit, then that surface's distance, or nothing where it left the screen.
-// A surface nearer than 1.3 m, where a game's weapon would stand, is passed through.
-fn march_reflection(start: vec3<f32>, direction: vec3<f32>, noise: f32, uv: vec2<f32>) -> vec3<f32> {
+// where it passes behind a surface `thickness` thick at most; where it hit, then that surface's distance, then one
+// where it crossed the surface or nought where it ran out of steps short of one and takes the last it passed in front
+// of; or nothing where it left the screen. A surface nearer than 1.3 m, where a game's weapon would stand, is passed
+// through.
+fn march_reflection(start: vec3<f32>, direction: vec3<f32>, noise: f32, uv: vec2<f32>, thickness: f32) -> vec4<f32> {
   // A ray turning towards the eye stops short of the near plane rather than wrap behind it.
   let reach: f32 = select(MARCH_REACH, min(MARCH_REACH, (-0.1 - start.z) / direction.z), direction.z > 0.0);
   let end: vec3<f32> = start + direction * max(reach, 0.0);
@@ -213,7 +218,7 @@ fn march_reflection(start: vec3<f32>, direction: vec3<f32>, noise: f32, uv: vec2
 
   for (var step: i32 = 1; step <= MARCH_STEPS; step++) {
     if (any(at < vec2<f32>(0.0)) || any(at > vec2<f32>(1.0))) {
-      return vec3<f32>(0.0);
+      return vec4<f32>(0.0);
     }
 
     var check: vec2<f32> = ray_behind(ray, at);
@@ -222,8 +227,8 @@ fn march_reflection(start: vec3<f32>, direction: vec3<f32>, noise: f32, uv: vec2
     check.x *= f32(is_far);
 
     if (check.x > 0.0) {
-      if (check.x <= MARCH_THICKNESS || start_distance + 40.0 < check.y) {
-        return vec3<f32>(at, check.y);
+      if (check.x <= thickness || start_distance + 40.0 < check.y) {
+        return vec4<f32>(at, check.y, 1.0);
       }
 
       let kept: vec2<f32> = at;
@@ -239,8 +244,8 @@ fn march_reflection(start: vec3<f32>, direction: vec3<f32>, noise: f32, uv: vec2
         at += ray.step;
         check = ray_behind(ray, at);
 
-        if (abs(check.x) <= MARCH_THICKNESS) {
-          return vec3<f32>(at, check.y);
+        if (abs(check.x) <= thickness) {
+          return vec4<f32>(at, check.y, 1.0);
         }
       }
 
@@ -255,7 +260,7 @@ fn march_reflection(start: vec3<f32>, direction: vec3<f32>, noise: f32, uv: vec2
     at += ray.step * select(1.0, 3.5, is_passed);
   }
 
-  return behind;
+  return vec4<f32>(behind, 0.0);
 }
 
 // The scene the water's flat surface reflects, marched over the screen as it stood before the water and faded towards
@@ -285,15 +290,18 @@ fn fs_water_reflection(in: WaterVarying) -> @location(0) vec4<f32> {
   let noise_uv: vec2<f32> = (uv * 1.33 + water.time * 0.02) * vec2<f32>(size.x / size.y, 1.0);
   let noise: f32 = textureSampleLevel(blue_noise, texture_sampler, noise_uv, 0.0).x * 1.5;
   // A branch rather than a select, which would march every ray to throw most away.
-  var hit: vec3<f32> = vec3<f32>(0.0);
+  let is_traced: bool = enhanced.trace_distance > 0.0;
+  var hit: vec4<f32> = vec4<f32>(0.0);
 
   if (is_away) {
-    hit = march_reflection(position, reflected, noise, uv);
+    hit = march_reflection(position, reflected, noise, uv, select(MARCH_THICKNESS, TRACED_MARCH_THICKNESS, is_traced));
   }
   let sky: vec3<f32> = enhanced_sky(flat_reflected, lighting, sky_cube_0, sky_cube_1, sky_clamp) * water.reflection;
-  // Where the trace answers, a surface the screen met facing away from the ray is left to it.
+  // Where the trace answers, a surface the screen met facing away from the ray is left to it, and so is the last surface
+  // a ray that ran out of steps passed in front of: under a pipe and its cables that put them in the water as dark wedges
+  // where the trace meets nothing but the sky (owner's report, 2026-10-11).
   let is_met: bool = all(hit.xy != vec2<f32>(0.0)) &&
-    !(enhanced.trace_distance > 0.0 && is_away && is_facing_away(hit.xy, reflected));
+    !(is_traced && is_away && (hit.w < 0.5 || is_facing_away(hit.xy, reflected)));
   let screen_share: f32 = select(0.0, saturate(hit.y * 5.0 * f32(is_away)), is_met);
   var scene: vec3<f32> = vec3<f32>(0.0);
   var share: f32 = 0.0;
@@ -314,7 +322,7 @@ fn fs_water_reflection(in: WaterVarying) -> @location(0) vec4<f32> {
   // trace, so the list always has room: water with no history to hold (newly in view, a fast turn's edge) takes its
   // fresh neighbours' instead. Tracing it too overflowed the list wherever much of the water lost its history, and the
   // pixels drawn last never traced again.
-  if (is_away && screen_share < 1.0 && enhanced.trace_distance > 0.0) {
+  if (is_away && screen_share < 1.0 && is_traced) {
     let pixel: vec2<f32> = floor(in.clip.xy);
     let answer: vec4<f32> = vec4<f32>(scene, met_distance);
 
