@@ -30,8 +30,8 @@ export function SettingsRendererParallax(): ReactElement {
         <ChoiceFormRow
           label={"Mode"}
           description={
-            "Engine: the engine's steep parallax alone, no terrain. Enhanced: terrain marched over its details' " +
-            "heights, self-shadowed, its layers blended by height."
+            "Engine: the engine's steep parallax alone, no terrain. Enhanced: terrain and steep surfaces marched over " +
+            "their heights, self-shadowed, terrain's layers blended by height."
           }
           options={MODE_OPTIONS}
           value={parallax.mode}
@@ -79,6 +79,30 @@ export function SettingsRendererParallax(): ReactElement {
           isDisabled={isEngine}
           format={(value: number) => formatNumber(value, 3)}
           onChange={(height: number) => onSet({ height })}
+        />
+
+        <SliderFormRow
+          label={"Surface height"}
+          description={"How deep the relief reaches on level surfaces whose texture asks for parallax."}
+          value={parallax.surfaceHeight}
+          min={0.005}
+          max={0.06}
+          step={0.005}
+          isDisabled={isEngine}
+          format={(value: number) => formatNumber(value, 3)}
+          onChange={(surfaceHeight: number) => onSet({ surfaceHeight })}
+        />
+
+        <SliderFormRow
+          label={"Surface range"}
+          description={"Metres within which those surfaces are marched, faded out over the last fifth."}
+          value={parallax.surfaceRange}
+          min={4}
+          max={30}
+          step={1}
+          isDisabled={isEngine}
+          format={(value: number) => `${formatNumber(value, 0)} m`}
+          onChange={(surfaceRange: number) => onSet({ surfaceRange })}
         />
 
         <CheckboxFormRow

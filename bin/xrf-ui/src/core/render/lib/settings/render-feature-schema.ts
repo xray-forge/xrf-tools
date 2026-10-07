@@ -192,6 +192,8 @@ export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings>
     range: toNumber(0, 60),
     shadow: toNumber(0, 1),
     steps: toNumber(1, 64, true),
+    surfaceHeight: toNumber(0, 0.1),
+    surfaceRange: toNumber(0, 40),
   },
   textureFiltering: toChoice(ERenderTextureFiltering),
   textureLod: toNumber(0, 4, true),
