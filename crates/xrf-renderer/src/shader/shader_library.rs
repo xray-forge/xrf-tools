@@ -48,6 +48,10 @@ const EMBEDDED: &[(&str, &str)] = &[
   ("common/sky_box", include_str!("../../shaders/common/sky_box.wgsl")),
   ("common/wet", include_str!("../../shaders/common/wet.wgsl")),
   (
+    "common/visibility_bitmask",
+    include_str!("../../shaders/common/visibility_bitmask.wgsl"),
+  ),
+  (
     "common/water_enhanced",
     include_str!("../../shaders/common/water_enhanced.wgsl"),
   ),
@@ -64,6 +68,7 @@ const EMBEDDED: &[(&str, &str)] = &[
     "frame/contact_shadows",
     include_str!("../../shaders/frame/contact_shadows.wgsl"),
   ),
+  ("frame/vbao", include_str!("../../shaders/frame/vbao.wgsl")),
   (
     "frame/depth_clear",
     include_str!("../../shaders/frame/depth_clear.wgsl"),
@@ -147,6 +152,10 @@ const EMBEDDED: &[(&str, &str)] = &[
   (
     "generated/frame/ambient_occlusion",
     include_str!("../../shaders/generated/frame/ambient_occlusion.wgsl"),
+  ),
+  (
+    "generated/frame/vbao",
+    include_str!("../../shaders/generated/frame/vbao.wgsl"),
   ),
   (
     "generated/frame/combine",

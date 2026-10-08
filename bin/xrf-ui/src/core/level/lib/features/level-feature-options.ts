@@ -19,7 +19,10 @@ export type TLevelShadowOptions = Pick<
 >;
 
 /** The ambient occlusion settings a level view may set for itself. */
-export type TLevelAmbientOcclusionOptions = Pick<TRenderAmbientOcclusionSettings, "quality" | "radius" | "strength">;
+export type TLevelAmbientOcclusionOptions = Pick<
+  TRenderAmbientOcclusionSettings,
+  "method" | "quality" | "radius" | "strength" | "vbao"
+>;
 
 /** The grass settings a level view may set for itself. */
 export type TLevelGrassOptions = Pick<TRenderGrassSettings, "density" | "height" | "radius">;
@@ -52,7 +55,7 @@ export const LEVEL_ANTIALIASING_MODES: ReadonlyArray<RenderAntialiasing> = Objec
 const LEVEL_FEATURE_KEYS: {
   readonly [K in TLevelFeatureKey]: ReadonlyArray<keyof ILevelFeatureOptions[K]>;
 } = {
-  ambientOcclusion: ["quality", "radius", "strength"],
+  ambientOcclusion: ["method", "quality", "radius", "strength", "vbao"],
   grass: ["density", "height", "radius"],
   lights: ["isLevelLights", "isShadowed", "shadowFilter"],
   shadows: ["bias", "blend", "cascades", "contact", "filter", "resolution"],

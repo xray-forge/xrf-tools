@@ -51,6 +51,8 @@ use crate::pass::thunder_parameters::ThunderParameters;
 use crate::pass::thunder_uniform::ThunderUniform;
 use crate::pass::upscale_parameters::UpscaleParameters;
 use crate::pass::upscale_uniform::UpscaleUniform;
+use crate::pass::vbao_parameters::VbaoParameters;
+use crate::pass::vbao_uniform::VbaoUniform;
 use crate::pass::water_blur_parameters::WaterBlurParameters;
 use crate::pass::water_blur_uniform::WaterBlurUniform;
 use crate::pass::water_depth_parameters::WaterDepthParameters;
@@ -89,6 +91,7 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
   let mut light_binning: ShaderBindings = ShaderBindings::new();
   let mut lights: ShaderBindings = ShaderBindings::new();
   let mut ambient_occlusion: ShaderBindings = ShaderBindings::new();
+  let mut vbao: ShaderBindings = ShaderBindings::new();
   let mut combine: ShaderBindings = ShaderBindings::new();
   let mut composited: ShaderBindings = ShaderBindings::new();
   let mut sky_haze: ShaderBindings = ShaderBindings::new();
@@ -121,6 +124,7 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
     .declare::<LightsUniform>()
     .declare::<LightRecord>()
     .declare::<AmbientOcclusionUniform>()
+    .declare::<VbaoUniform>()
     .declare::<ExposureUniform>()
     .declare::<ExposureState>()
     .declare::<ExposureHead>()
@@ -152,6 +156,7 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
   light_binning.add::<LightBinningParameters>()?;
   lights.add::<LightsParameters<'_>>()?;
   ambient_occlusion.add::<AmbientOcclusionParameters>()?;
+  vbao.add::<VbaoParameters>()?;
   combine.add::<CombineParameters<'_>>()?;
   composited.add::<CompositedParameters<'_>>()?;
   sky_haze.add::<SkyHazeParameters>()?;
@@ -221,6 +226,7 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
       "generated/frame/ambient_occlusion",
       format!("{STRUCTS_IMPORT}{}", ambient_occlusion.to_wgsl()),
     ),
+    ("generated/frame/vbao", format!("{STRUCTS_IMPORT}{}", vbao.to_wgsl())),
     (
       "generated/frame/combine",
       format!("{STRUCTS_IMPORT}{}", combine.to_wgsl()),

@@ -14,6 +14,7 @@ use xrf_renderer_core::{
 
 use crate::camera::camera_view::CameraView;
 use crate::contract::render_ambient_occlusion_quality::RenderAmbientOcclusionQuality;
+use crate::contract::render_ambient_occlusion_settings::RenderAmbientOcclusionSettings;
 use crate::contract::render_antialiasing::RenderAntialiasing;
 use crate::contract::render_applied_report::RenderAppliedReport;
 use crate::contract::render_applied_shadows::RenderAppliedShadows;
@@ -38,6 +39,7 @@ use crate::frame::static_scene_handles::StaticSceneHandles;
 use crate::frame::temporal_history::TemporalHistory;
 use crate::frame::temporal_jitter::TemporalJitter;
 use crate::frame::upscale_targets::UpscaleTargets;
+use crate::frame::vbao_history::VbaoHistory;
 use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::frame::view_targets::ViewTargets;
 use crate::host::render_asset_source::RenderAssetSource;
@@ -89,6 +91,8 @@ use crate::pass::thunder_parameters::ThunderParameters;
 use crate::pass::thunder_uniform::ThunderUniform;
 use crate::pass::upscale_parameters::UpscaleParameters;
 use crate::pass::upscale_uniform::UpscaleUniform;
+use crate::pass::vbao_parameters::VbaoParameters;
+use crate::pass::vbao_uniform::VbaoUniform;
 use crate::pass::view_binding::ViewBinding;
 use crate::pass::water_draw::WaterDraw;
 use crate::pass::wet_apply_parameters::WetApplyParameters;
@@ -413,7 +417,8 @@ impl SceneView {
     self.info.debug_view = options.mode.debug_view;
     self.info.is_wireframe = options.mode.is_wireframe;
     self.info.corrections = options.features.corrections;
-    self.info.is_occlusion_drawn = options.mode.is_lit && options.features.ambient_occlusion.is_enabled;
+    self.info.is_occlusion_drawn =
+      options.mode.is_lit && !options.mode.is_wireframe && options.features.ambient_occlusion.is_enabled;
     self.prepare_temporal(device, view);
     self.prepare_smoothing(passes, options.features.antialiasing);
     self.prepare_upscale(device);
@@ -424,6 +429,7 @@ impl SceneView {
       view.projection,
       (width.div_ceil(2), height.div_ceil(2)),
     );
+    self.prepare_vbao(device, view.projection, (width.div_ceil(2), height.div_ceil(2)));
     self.prepare_sorted(scene, device, queue, view);
 
     if let Some(pyramid) = &self.state.pyramid {
@@ -742,7 +748,9 @@ impl SceneView {
       .keep()
       .record(move |context| lights.record_overflow(context.get_encoder()));
 
-    if is_occlusion_ambient {
+    if is_occlusion_ambient && self.info.ambient_occlusion.is_vbao() {
+      self.add_vbao_passes((graph, bindings, runtime), passes, view, targets);
+    } else if is_occlusion_ambient {
       let quality: RenderAmbientOcclusionQuality = self.info.ambient_occlusion.quality;
       let occlusion: UniformBinding<AmbientOcclusionUniform> = runtime.push_uniform(&self.info.occlusion_settings);
 
@@ -775,6 +783,117 @@ impl SceneView {
     }
   }
 
+  /// Declares VBAO, the visibility-bitmask ambient occlusion: searched into the first occlusion target, accumulated with
+  /// the last frame's into the view's history while it accumulates, and filtered into the second, which combine reads.
+  fn add_vbao_passes<'a>(
+    &'a self,
+    (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
+    passes: LevelPasses<'a>,
+    view: &'a ViewBinding,
+    targets: ViewTargetHandles,
+  ) {
+    let quality: RenderAmbientOcclusionQuality = self.info.ambient_occlusion.quality;
+    let occlusion: UniformBinding<VbaoUniform> = runtime.push_uniform(&self.info.vbao);
+    let empty: GraphTexture = bindings.import_view(graph, "vbao history empty", passes.vbao.get_empty());
+    let parameters = |source: GraphTexture, history: GraphTexture| VbaoParameters {
+      normal_target: targets.normal,
+      depth_target: targets.depth,
+      motion_target: targets.motion,
+      occlusion,
+      source,
+      history,
+    };
+    let search: VbaoParameters = parameters(empty, empty);
+    let [searched, filtered] = [targets.occlusion[1], targets.occlusion[0]];
+
+    graph
+      .add_raster_pass("vbao")
+      .parameters(&search)
+      .color(GraphColorAttachment::new(
+        searched,
+        wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+      ))
+      .record(move |context| passes.vbao.record_search(context, quality, view, &search));
+
+    // The last frame's accumulation and this frame's, while it accumulates.
+    let histories: Option<[GraphTexture; 2]> = self
+      .state
+      .occlusion
+      .as_ref()
+      .filter(|_| self.info.is_occlusion_accumulated)
+      .map(|history| {
+        [
+          bindings.import_view(graph, "vbao history", &history.views[1 - history.index]),
+          bindings.import_view(graph, "vbao history", &history.views[history.index]),
+        ]
+      });
+    let gathered: GraphTexture = match histories {
+      Some([previous, written]) => {
+        let accumulate: VbaoParameters = parameters(searched, previous);
+
+        graph
+          .add_raster_pass("vbao accumulate")
+          .parameters(&accumulate)
+          .color(GraphColorAttachment::new(
+            written,
+            wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+          ))
+          .record(move |context| passes.vbao.record_accumulate(context, view, &accumulate));
+
+        written
+      }
+      None => searched,
+    };
+    let filter: VbaoParameters = parameters(gathered, empty);
+
+    graph
+      .add_raster_pass("vbao filter")
+      .parameters(&filter)
+      .color(GraphColorAttachment::new(
+        filtered,
+        wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+      ))
+      .record(move |context| passes.vbao.record_filter(context, view, &filter));
+  }
+
+  /// Makes VBAO's history while it accumulates, dropping it otherwise, and writes what its
+  /// passes read, over the search's half size.
+  fn prepare_vbao(&mut self, device: &wgpu::Device, projection: Mat4, (width, height): (u32, u32)) {
+    let settings: &RenderAmbientOcclusionSettings = &self.info.ambient_occlusion;
+
+    self.info.is_occlusion_accumulated =
+      self.info.is_occlusion_drawn && settings.is_vbao() && settings.vbao.get_accumulation() > 1;
+
+    if !self.info.is_occlusion_accumulated
+      || self
+        .state
+        .occlusion
+        .as_ref()
+        .is_some_and(|history| !history.is_sized(width, height))
+    {
+      self.state.occlusion = None;
+    }
+
+    let history: Option<&VbaoHistory> = if self.info.is_occlusion_accumulated {
+      Some(
+        self
+          .state
+          .occlusion
+          .get_or_insert_with(|| VbaoHistory::new(device, width, height)),
+      )
+    } else {
+      None
+    };
+
+    self.info.vbao = VbaoUniform::new(
+      &self.info.ambient_occlusion,
+      projection,
+      (width, height),
+      history.map_or(0, |it| it.frame),
+      history.is_some_and(|it| it.is_valid),
+    );
+  }
+
   /// Adds a pass copying the whole of one texture into another of its size.
   fn add_copy(graph: &mut FrameGraph<'_>, name: &'static str, source: GraphTexture, destination: GraphTexture) {
     graph
@@ -804,11 +923,20 @@ impl SceneView {
       .depth(GraphDepthAttachment::new_read_only(targets.depth))
   }
 
-  /// Ends a frame its graph recorded: the water's reflection and the temporal resolve's history it wrote become the
-  /// ones the next frame keeps.
+  /// Ends a frame its graph recorded: the water's reflection, VBAO's accumulation and the temporal
+  /// resolve's history it wrote become the ones the next frame keeps.
   pub fn end_frame(&mut self, frame: &LevelFrame) {
     if frame.is_lit {
       self.state.water.finish_frame();
+
+      if let Some(history) = self
+        .state
+        .occlusion
+        .as_mut()
+        .filter(|_| self.info.is_occlusion_accumulated)
+      {
+        history.swap();
+      }
     }
 
     match frame.resolve {
@@ -1068,7 +1196,7 @@ impl SceneView {
     let is_wet: bool = is_raining && self.info.weather_views.wet.is_some();
     let is_lit: bool = frame.is_lit;
     let has_lights: bool = self.state.lights.get_count() > 0;
-    let is_occlusion_ambient: bool = self.info.ambient_occlusion.is_enabled;
+    let is_occlusion_ambient: bool = self.info.is_occlusion_drawn;
     let has_sky: bool = self.info.sky.is_some();
     let is_hazing: bool = has_sky && self.info.is_hazing;
     let is_composited: bool = is_drawn && has_sky;

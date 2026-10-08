@@ -1,4 +1,5 @@
 import {
+  ERenderAmbientOcclusionMethod,
   ERenderAmbientOcclusionQuality,
   ERenderAntialiasing,
   ERenderContactShadowMode,
@@ -7,6 +8,7 @@ import {
   ERenderWaterMode,
 } from "@/core/ipc/types/xrf-renderer";
 import {
+  RENDER_MAX_AMBIENT_OCCLUSION_ACCUMULATION,
   RENDER_MAX_CONTACT_SHADOW_LIGHTS,
   RENDER_MAX_SHADOW_CASCADES,
 } from "@/core/render/lib/settings/render-feature-defaults";
@@ -36,9 +38,16 @@ function toChoice<T extends string>(values: Record<string, T>): IRenderChoiceFie
 export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings> = {
   ambientOcclusion: {
     isEnabled: FLAG,
+    method: toChoice(ERenderAmbientOcclusionMethod),
     quality: toChoice(ERenderAmbientOcclusionQuality),
     radius: toNumber(0.1, 8),
     strength: toNumber(0, 2),
+    // The renderer's own: past two metres a thickness lets nothing through that a horizon would not.
+    vbao: {
+      accumulation: toNumber(1, RENDER_MAX_AMBIENT_OCCLUSION_ACCUMULATION, true),
+      bounce: toNumber(0, 1),
+      thickness: toNumber(0.01, 2),
+    },
   },
   antialiasing: toChoice(ERenderAntialiasing),
   // The console's own bounds.

@@ -1,4 +1,5 @@
 import {
+  ERenderAmbientOcclusionMethod,
   ERenderAmbientOcclusionQuality,
   ERenderContactShadowMode,
   ERenderLightShadowFilter,
@@ -7,6 +8,7 @@ import {
 } from "@/core/ipc/types/xrf-renderer";
 import {
   TRenderAmbientOcclusionSettings,
+  TRenderAmbientOcclusionVbaoSettings,
   TRenderContactShadowSettings,
   TRenderEnhancedWaterSettings,
   TRenderExposureSettings,
@@ -27,12 +29,24 @@ export const RENDER_MAX_SHADOW_CASCADES: number = 4;
 /** Local lights a pixel marches contact shadows towards at most: the lights' shader keeps their weights in an array. */
 export const RENDER_MAX_CONTACT_SHADOW_LIGHTS: number = 8;
 
-/** XeGTAO's defaults, at a metre. */
+/** Frames VBAO accumulates over at most. */
+export const RENDER_MAX_AMBIENT_OCCLUSION_ACCUMULATION: number = 32;
+
+/** VBAO's strengths: a grass clump's depth, every bounce, and eight frames. */
+export const DEFAULT_RENDER_AMBIENT_OCCLUSION_VBAO_SETTINGS: TRenderAmbientOcclusionVbaoSettings = {
+  accumulation: 8,
+  bounce: 1,
+  thickness: 0.25,
+};
+
+/** XeGTAO's defaults, at a metre, and VBAO's strengths for when it searches. */
 export const DEFAULT_RENDER_AMBIENT_OCCLUSION_SETTINGS: TRenderAmbientOcclusionSettings = {
   isEnabled: true,
+  method: ERenderAmbientOcclusionMethod.GTAO,
   quality: ERenderAmbientOcclusionQuality.HIGH,
   radius: 1,
   strength: 1,
+  vbao: DEFAULT_RENDER_AMBIENT_OCCLUSION_VBAO_SETTINGS,
 };
 
 /** OpenXRay's own exposure (`xrRender_console.cpp`). */

@@ -26,6 +26,7 @@ use crate::pass::sun_shafts_pass::SunShaftsPass;
 use crate::pass::temporal_pass::TemporalPass;
 use crate::pass::thunder_pass::ThunderPass;
 use crate::pass::upscale_pass::UpscalePass;
+use crate::pass::vbao_pass::VbaoPass;
 use crate::pass::water_pass::WaterPass;
 use crate::pass::wet_pass::WetPass;
 
@@ -39,6 +40,7 @@ pub struct LevelPasses<'a> {
   pub contact_shadows: &'a ContactShadowPass,
   pub sun: &'a SunPass,
   pub ambient_occlusion: &'a AmbientOcclusionPass,
+  pub vbao: &'a VbaoPass,
   pub lights: &'a LightsPass,
   pub combine: &'a CombinePass,
   pub sky_haze: &'a SkyHazePass,

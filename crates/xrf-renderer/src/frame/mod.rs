@@ -11,6 +11,7 @@ pub(crate) mod sun_shadow_maps;
 pub(crate) mod temporal_history;
 pub(crate) mod temporal_jitter;
 pub(crate) mod upscale_targets;
+pub(crate) mod vbao_history;
 pub(crate) mod view_exposure;
 pub(crate) mod view_target_handles;
 pub(crate) mod view_targets;

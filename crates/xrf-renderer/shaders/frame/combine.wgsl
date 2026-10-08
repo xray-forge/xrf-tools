@@ -65,7 +65,7 @@ fn sky_behind(direction: vec3<f32>, toward: vec3<f32>, scale: f32, is_hazed: boo
 
 // `hmodel` over the G-buffer's view space normal and point.
 fn shaded_color(albedo: vec4<f32>, light: vec4<f32>, normal: vec3<f32>, position: vec3<f32>, slice: f32, occlusion: f32,
-  visible: f32) -> vec3<f32> {
+  visible: vec3<f32>) -> vec3<f32> {
   let rotation: mat3x3<f32> = transpose(mat3x3<f32>(camera.view[0].xyz, camera.view[1].xyz, camera.view[2].xyz));
 
   return hmodel(lighting, material_lut, lut_sampler, sky_environment_0, sky_environment_1, sky_clamp, albedo, light,
@@ -141,8 +141,9 @@ fn fs_combine(in: FullscreenVarying) -> CombineOutput {
   // How much of the hemisphere and ambient light reaches the point, as `combine_1` multiplies them by `occ`.
   let visible: f32 = select(1.0, upsampled_occlusion(occlusion_target, floor(in.clip.xy), -position.z),
     lighting.params.w > 0.5);
+  let bounced: vec3<f32> = bounced_occlusion(visible, albedo.rgb, lighting.params.x);
   let occlusion: f32 = mix(1.0, material.x, camera.switches.z);
-  let shaded: vec3<f32> = shaded_color(albedo, light, normal, position, material.z, occlusion, visible);
+  let shaded: vec3<f32> = shaded_color(albedo, light, normal, position, material.z, occlusion, bounced);
   // The engine fogs towards `fog_color` before the tonemap, then fades into the sky itself by the fog squared, both
   // parts alike (`skyblend` in either's alpha).
   let fogged: vec3<f32> = mix(shaded, lighting.fog_color.rgb, fog);

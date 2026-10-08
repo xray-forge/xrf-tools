@@ -1,5 +1,6 @@
 import {
   RenderAmbientOcclusionSettings,
+  RenderAmbientOcclusionVbaoSettings,
   RenderContactShadowSettings,
   RenderEnhancedWaterSettings,
   RenderExposureSettings,
@@ -36,6 +37,8 @@ export type TRenderFeatureKey = TRenderViewFeatureKey | "upscaling";
 export interface IRenderFeatureSettings extends TSettled<
   Pick<RenderViewFeatures, TRenderViewFeatureKey> & Pick<RenderViewOutput, "upscaling">
 > {}
+
+export type TRenderAmbientOcclusionVbaoSettings = TSettled<RenderAmbientOcclusionVbaoSettings>;
 
 export type TRenderAmbientOcclusionSettings = TSettled<RenderAmbientOcclusionSettings>;
 
