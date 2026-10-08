@@ -414,3 +414,61 @@ fn drops_a_frame_any_group_of_which_wgpu_refuses() {
   assert!(error.contains("group 'refused'"), "{error}");
   assert!(!error.contains("group 'fine'"), "{error}");
 }
+
+#[test]
+fn times_each_encode_group_in_a_range_of_its_own() {
+  let Some((device, queue)) = create_device() else {
+    return;
+  };
+  let readbacks: [wgpu::Buffer; 2] = std::array::from_fn(|_| {
+    device.create_buffer(&wgpu::BufferDescriptor {
+      label: Some("readback"),
+      size: BYTES,
+      usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+      mapped_at_creation: false,
+    })
+  });
+  let mut runtime: GraphRuntime = GraphRuntime::new(&device, &queue);
+  let drawn: AtomicUsize = AtomicUsize::new(0);
+
+  runtime.timer.set_enabled(true);
+
+  if !runtime.timer.is_timing() {
+    eprintln!("Skipped: the device writes no timestamps inside encoders");
+
+    return;
+  }
+
+  for _ in 0..4 {
+    let mut graph: FrameGraph<'_> = FrameGraph::new();
+
+    graph.begin_owner(1);
+    graph.begin_group("first");
+
+    let first = declare(&mut graph, &drawn);
+
+    graph.begin_owner(2);
+    graph.begin_group("second");
+
+    let second = declare(&mut graph, &drawn);
+    let compiled = graph.compile(&GraphCompileOptions::default()).unwrap();
+    let mut bindings: GraphBindings<'_> = GraphBindings::new();
+
+    bindings
+      .bind_buffer(first, &readbacks[0])
+      .bind_buffer(second, &readbacks[1]);
+
+    let executed = compiled.execute((&device, &queue), &mut runtime, &bindings).unwrap();
+
+    assert_eq!(executed.groups.len(), 2);
+    queue.submit(executed.commands);
+    runtime.timer.request();
+    device.poll(wgpu::PollType::wait_indefinitely()).unwrap();
+  }
+
+  for owner in [1, 2] {
+    let names: Vec<String> = runtime.timer.take(owner).into_iter().map(|time| time.name).collect();
+
+    assert_eq!(names, ["clear + over", "copy"], "owner {owner}");
+  }
+}

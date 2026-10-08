@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
 use glam::Vec3;
-use xrf_renderer_core::{FrameGraph, GraphPassTime, GraphReport, GraphTimer};
+use xrf_renderer_core::{ExecutedGroup, FrameGraph, GraphPassTime, GraphReport, GraphTimer};
 
 use crate::contract::render_applied_environment::RenderAppliedEnvironment;
 use crate::contract::render_applied_fog::RenderAppliedFog;
@@ -204,8 +204,8 @@ impl RenderViewport {
     self.is_gone
   }
 
-  pub fn record_frame(&mut self, interval: Duration, cpu: Duration, phases: &FramePhases) {
-    self.statistics.record(interval, cpu, phases);
+  pub fn record_frame(&mut self, interval: Duration, cpu: Duration, phases: &FramePhases, groups: &[ExecutedGroup]) {
+    self.statistics.record(interval, cpu, phases, groups);
   }
 
   /// Reports the frames since the last report, once one is due: `texture_bytes` is what every viewport's textures hold
@@ -265,7 +265,9 @@ impl RenderViewport {
       frame_time_max,
       frame_times,
       cpu_time,
+      cpu_times,
       phases,
+      groups,
     } = summary;
     let rect: RenderRect = self.layout.map(|layout| layout.rect).unwrap_or_default();
     let (render_width, render_height): (u32, u32) = self
@@ -290,7 +292,9 @@ impl RenderViewport {
       frame_time_max,
       frame_times,
       cpu_time,
+      cpu_times,
       phases,
+      groups,
       width: rect.width,
       height: rect.height,
       render_width,
@@ -314,7 +318,9 @@ impl RenderViewport {
     };
 
     self.sent_frame = Some(report.clone());
-    self.send(RenderViewportEvent::Frame { report });
+    self.send(RenderViewportEvent::Frame {
+      report: Box::new(report),
+    });
     self.publish_applied();
   }
 

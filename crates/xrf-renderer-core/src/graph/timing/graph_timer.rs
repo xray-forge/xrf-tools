@@ -3,25 +3,26 @@ use std::sync::atomic::{AtomicU8, Ordering};
 
 use crate::graph::timing::gpu_zones::GpuZones;
 use crate::graph::timing::graph_pass_time::GraphPassTime;
+use crate::graph::timing::group_stamps::GroupStamps;
 use crate::graph::timing::timer_slot::{TimedPass, TimerSlot};
 
 /// What each pass of the graph's frames cost on the GPU, with no code in any pass: the graph writes a timestamp at the
-/// start of each encode group and after each pass or render pass, and the stamps are read back without waiting, a few
-/// frames in flight at once. Timing needs timestamps inside encoders; a device without them times nothing.
+/// start of each encode group and after each pass or render pass, each group into a range of the query set of its own
+/// so the groups still record at once, and the stamps are read back without waiting, a few frames in flight at once.
+/// Timing needs timestamps inside encoders; a device without them times nothing.
 pub struct GraphTimer {
   queries: Option<wgpu::QuerySet>,
   resolve: wgpu::Buffer,
   slots: Vec<TimerSlot>,
   /// Stamps a frame can write.
   capacity: u32,
-  /// Stamps a frame asked for past the capacity, which the timer grows to before it times another.
-  wanted: u32,
+  /// Stamps each group is given past one a pass, for the stages a pass marks of its own; more once a group overflowed.
+  mark_room: u32,
   /// Nanoseconds a timestamp tick lasts.
   period: f32,
   is_enabled: bool,
-  /// The slot this frame records into and what its stamps so far end, each pass by its owner and name, while a frame
-  /// is timed.
-  frame: Option<(usize, Vec<Option<TimedPass>>)>,
+  /// The slot this frame records into and each group's first stamp and how many it has, while a frame is timed.
+  frame: Option<(usize, Vec<(u32, u32)>)>,
   /// Milliseconds summed per owner's pass since that owner's last `take`, in the order passes were first seen.
   sums: Vec<(u32, String, f64)>,
   /// Frames read back per owner since its last `take`, which its passes' sums are averaged over.
@@ -43,7 +44,7 @@ impl GraphTimer {
       resolve,
       slots,
       capacity: Self::CAPACITY,
-      wanted: 0,
+      mark_room: 0,
       period: queue.get_timestamp_period(),
       is_enabled: false,
       frame: None,
@@ -114,79 +115,89 @@ impl GraphTimer {
       .collect()
   }
 
-  /// Starts timing a frame, unless timing is off, every slot is still on its way back, or the timer waits for its
-  /// slots to come back to grow; answers whether it does.
-  pub(crate) fn begin_frame(&mut self, device: &wgpu::Device) -> bool {
+  /// Starts timing a frame of groups writing `counts` stamps each, unless timing is off or every slot is still on its
+  /// way back: answers each group's range, the last resolving the frame. A frame past the capacity grows the timer
+  /// once every slot is back, and goes untimed until then.
+  pub(crate) fn begin_frame(&mut self, device: &wgpu::Device, counts: &[u32]) -> Option<Vec<GroupStamps>> {
     self.collect();
     self.frame = None;
 
-    if !self.is_timing() {
-      return false;
+    if !self.is_timing() || counts.is_empty() {
+      return None;
     }
 
-    if self.wanted > self.capacity {
+    let room: u32 = self.mark_room;
+    let ranges: Vec<(u32, u32)> = counts
+      .iter()
+      .scan(0, |start: &mut u32, count| {
+        let range: (u32, u32) = (*start, count + room);
+
+        *start += range.1;
+
+        Some(range)
+      })
+      .collect();
+    let total: u32 = ranges.last().map_or(0, |(start, count)| start + count);
+
+    if total > self.capacity {
       if !self.is_idle() {
-        return false;
+        return None;
       }
 
-      (self.queries, self.resolve, self.slots) = Self::create(device, self.wanted);
-      self.capacity = self.wanted;
+      let capacity: u32 = total.next_power_of_two();
+
+      (self.queries, self.resolve, self.slots) = Self::create(device, capacity);
+      self.capacity = capacity;
     }
 
-    self.frame = self
+    let index: usize = self
       .slots
       .iter()
-      .position(|slot| slot.state.load(Ordering::Acquire) == TimerSlot::IDLE)
-      .map(|index| (index, Vec::new()));
+      .position(|slot| slot.state.load(Ordering::Acquire) == TimerSlot::IDLE)?;
+    let queries: wgpu::QuerySet = self.queries.clone()?;
+    let last: usize = ranges.len() - 1;
+    let stamps: Vec<GroupStamps> = ranges
+      .iter()
+      .enumerate()
+      .map(|(group, range)| {
+        let resolve = (group == last).then(|| (self.resolve.clone(), self.slots[index].buffer.clone(), total));
 
-    self.frame.is_some()
+        GroupStamps::new(queries.clone(), *range, resolve)
+      })
+      .collect();
+
+    self.frame = Some((index, ranges));
+
+    Some(stamps)
   }
 
-  /// Writes a stamp ending an owner's pass by its name, or starting an encode group where `None`; past the capacity
-  /// it only counts the stamp, and the frame goes untimed.
-  pub(crate) fn stamp(&mut self, encoder: &mut wgpu::CommandEncoder, name: Option<TimedPass>) {
-    if let (Some(queries), Some((_, names))) = (&self.queries, &mut self.frame) {
-      if (names.len() as u32) < self.capacity {
-        encoder.write_timestamp(queries, names.len() as u32);
-      }
-
-      names.push(name);
-    }
-  }
-
-  /// Resolves the frame's stamps into its slot, from the last encode group's encoder.
-  pub(crate) fn finish_frame(&mut self, encoder: &mut wgpu::CommandEncoder) {
-    let (Some(queries), Some((index, names))) = (&self.queries, self.frame.take()) else {
+  /// Takes a recorded frame's stamps into its slot, asked for once the frame is submitted. A frame a group of which
+  /// asked for more stamps than its range goes untimed, and later frames give every group that much more room.
+  pub(crate) fn finish_frame(&mut self, groups: Vec<GroupStamps>) {
+    let Some((index, ranges)) = self.frame.take() else {
       return;
     };
+    let overflow: u32 = groups.iter().map(GroupStamps::get_overflow).max().unwrap_or(0);
 
-    if names.is_empty() {
+    if overflow > 0 {
+      self.mark_room += overflow;
+
       return;
     }
 
-    let count: u32 = names.len() as u32;
+    let total: u32 = ranges.last().map_or(0, |(start, count)| start + count);
+    let mut names: Vec<Option<TimedPass>> = vec![None; total as usize];
 
-    if count > self.capacity {
-      self.wanted = count.next_power_of_two();
-
-      return;
+    for ((start, _), group) in ranges.iter().zip(groups) {
+      for (offset, name) in group.names.into_iter().enumerate() {
+        names[*start as usize + offset] = name;
+      }
     }
 
     let slot: &mut TimerSlot = &mut self.slots[index];
 
-    encoder.resolve_query_set(queries, 0..count, &self.resolve, 0);
-    encoder.copy_buffer_to_buffer(&self.resolve, 0, &slot.buffer, 0, u64::from(count) * 8);
     slot.names = names;
     slot.state.store(TimerSlot::RECORDED, Ordering::Release);
-  }
-
-  /// Frees the slot of a frame that was recorded but never submitted, whose stamps would otherwise be read under it.
-  pub(crate) fn abandon_frame(&mut self) {
-    for slot in &self.slots {
-      if slot.state.load(Ordering::Acquire) == TimerSlot::RECORDED {
-        slot.state.store(TimerSlot::IDLE, Ordering::Release);
-      }
-    }
   }
 
   fn is_idle(&self) -> bool {

@@ -9,6 +9,7 @@ import {
   RenderBackendAvailability,
   RenderFramePhases,
   RenderGraphReport,
+  RenderGroupCost,
   RenderLightsReport,
   RenderLoadDurations,
   RenderMemoryReport,
@@ -66,8 +67,12 @@ export const renderCommands = {
       frameTimes: Array<number | null>;
       /** Mean milliseconds of the render thread's own work a frame: recording and submitting, not waiting. */
       cpuTime: number | null;
+      /** Milliseconds of the render thread's own work each frame over the span, in order. */
+      cpuTimes: Array<number | null>;
       /** Where the render thread's time goes a frame, waiting for the window's image and presenting included. */
       phases: RenderFramePhases;
+      /** What each encode group cost the render thread a frame, in the order the frame records them. */
+      groups: Array<RenderGroupCost>;
       /** Drawn width, in device pixels. */
       width: number;
       /** Drawn height, in device pixels. */

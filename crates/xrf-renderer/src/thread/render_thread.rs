@@ -7,8 +7,8 @@ use std::time::{Duration, Instant};
 use glam::{Mat4, Vec2, Vec3, Vec4};
 use xrf_error::{XrfError, XrfResult};
 use xrf_renderer_core::{
-  ExecutedGraph, FrameGraph, GraphBindings, GraphColorAttachment, GraphReport, GraphRuntime, GraphTexture,
-  GraphTextureAccess,
+  ExecutedGraph, ExecutedGroup, FrameGraph, GraphBindings, GraphColorAttachment, GraphReport, GraphRuntime,
+  GraphTexture, GraphTextureAccess,
 };
 
 use crate::camera::camera_view::CameraView;
@@ -1169,6 +1169,8 @@ impl RenderThread {
     phases.encode += encoded;
     commands.extend(executed.commands);
 
+    let groups: Vec<ExecutedGroup> = executed.groups;
+
     let submitting: Instant = Instant::now();
 
     {
@@ -1235,7 +1237,7 @@ impl RenderThread {
       for (id, _, _) in &window.drawn {
         if let Some(viewport) = self.viewports.get_mut(id) {
           viewport.frame += 1;
-          viewport.record_frame(interval, cpu, &window_phases);
+          viewport.record_frame(interval, cpu, &window_phases, &groups);
         }
       }
     }

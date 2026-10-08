@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use crate::contract::render_backend::RenderBackend;
 use crate::contract::render_frame_phases::RenderFramePhases;
 use crate::contract::render_graph_report::RenderGraphReport;
+use crate::contract::render_group_cost::RenderGroupCost;
 use crate::contract::render_lights_report::RenderLightsReport;
 use crate::contract::render_memory_report::RenderMemoryReport;
 use crate::contract::render_particles_report::RenderParticlesReport;
@@ -24,8 +25,12 @@ pub struct RenderFrameReport {
   pub frame_times: Vec<f32>,
   /// Mean milliseconds of the render thread's own work a frame: recording and submitting, not waiting.
   pub cpu_time: f32,
+  /// Milliseconds of the render thread's own work each frame over the span, in order.
+  pub cpu_times: Vec<f32>,
   /// Where the render thread's time goes a frame, waiting for the window's image and presenting included.
   pub phases: RenderFramePhases,
+  /// What each encode group cost the render thread a frame, in the order the frame records them.
+  pub groups: Vec<RenderGroupCost>,
   /// Drawn width, in device pixels.
   pub width: u32,
   /// Drawn height, in device pixels.

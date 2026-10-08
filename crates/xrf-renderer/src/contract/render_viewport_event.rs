@@ -10,7 +10,7 @@ use crate::contract::render_load_report::RenderLoadReport;
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum RenderViewportEvent {
   /// What the recent frames cost.
-  Frame { report: RenderFrameReport },
+  Frame { report: Box<RenderFrameReport> },
   /// What its frames are drawn with, as the renderer resolved what it was asked, sent as it changes.
   Applied { report: RenderAppliedReport },
   /// How far its scene has loaded, sent as it changes.

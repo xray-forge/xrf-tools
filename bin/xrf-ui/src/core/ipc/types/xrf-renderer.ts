@@ -587,8 +587,12 @@ export type RenderFrameReport = {
   frameTimes: Array<number | null>;
   /** Mean milliseconds of the render thread's own work a frame: recording and submitting, not waiting. */
   cpuTime: number | null;
+  /** Milliseconds of the render thread's own work each frame over the span, in order. */
+  cpuTimes: Array<number | null>;
   /** Where the render thread's time goes a frame, waiting for the window's image and presenting included. */
   phases: RenderFramePhases;
+  /** What each encode group cost the render thread a frame, in the order the frame records them. */
+  groups: Array<RenderGroupCost>;
   /** Drawn width, in device pixels. */
   width: number;
   /** Drawn height, in device pixels. */
@@ -736,6 +740,18 @@ export type RenderGrassSettings = {
   slopeLimit: number | null;
   /** Whether a tuft stands along its ground's normal rather than straight up. */
   isAligned: boolean;
+};
+
+/**
+ * What one of the frame graph's encode groups cost the render thread a frame, mean milliseconds over a report's span:
+ * the groups record and are encoded at once on threads of their own, so the longest bounds the frame's encoding.
+ */
+export type RenderGroupCost = {
+  name: string;
+  /** Recording its passes. */
+  record: number | null;
+  /** wgpu's encoding of what was recorded, in the encoder's `finish`. */
+  finish: number | null;
 };
 
 /**

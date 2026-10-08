@@ -1,9 +1,9 @@
-use crate::graph::timing::GraphTimer;
+use crate::graph::timing::GroupStamps;
 
 /// Lets an encoder pass time stages of its own, as a bridge recording several passes does: each `mark` ends a stage
 /// named for it. A pass that marks is timed by its marks alone.
 pub struct PassMarker<'c> {
-  pub(crate) timer: Option<&'c mut GraphTimer>,
+  pub(crate) timer: Option<&'c mut GroupStamps>,
   /// Whose the pass is, which its stages' costs are summed by.
   pub(crate) owner: u32,
   pub(crate) is_marked: bool,

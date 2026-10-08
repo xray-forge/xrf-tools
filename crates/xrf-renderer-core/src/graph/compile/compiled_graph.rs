@@ -17,7 +17,7 @@ use crate::graph::pool::{TransientBufferKey, TransientPool, TransientTextureKey}
 use crate::graph::record::{GraphBufferRecord, GraphPassWork, GraphTextureRecord};
 use crate::graph::report::{GraphPassKind, GraphPassReport, GraphReport, GraphTransientReport};
 use crate::graph::resource::{GraphBuffer, GraphTexture, GraphTextureDescriptor};
-use crate::graph::timing::GraphTimer;
+use crate::graph::timing::GroupStamps;
 use crate::param::BindGroupCache;
 
 /// One encode group as recorded: its commands, what its encoding took, and what wgpu refused of it.
@@ -177,13 +177,20 @@ impl<'a> CompiledGraph<'a> {
     let pool: &TransientPool = pool;
     let cache: &BindGroupCache = bind_groups;
     let resources: GraphResources<'_> = self.resolve(pool, bindings, uploads.get_buffer())?;
-    let is_timing: bool = timer.begin_frame(device);
     let CompiledGraph {
       textures,
       passes,
       groups,
       ..
     } = self;
+    let counts: Vec<u32> = groups
+      .iter()
+      .map(|group| Self::count_stamps(&passes[group.passes.clone()]))
+      .collect();
+    let mut stamps: Vec<Option<GroupStamps>> = match timer.begin_frame(device, &counts) {
+      Some(stamps) => stamps.into_iter().map(Some).collect(),
+      None => groups.iter().map(|_| None).collect(),
+    };
     let mut pending: VecDeque<CompiledPass<'a>> = passes.into();
     let batches: Vec<Vec<CompiledPass<'a>>> = groups
       .iter()
@@ -191,36 +198,20 @@ impl<'a> CompiledGraph<'a> {
       .collect();
     let started: Instant = Instant::now();
     let shared = (device, cache, &resources);
-    // A timed frame records its groups in order, its timer's stamps written into one query set one after another.
-    let is_parallel: bool = !is_timing && groups.len() > 1;
-    let recorded: Vec<RecordedGroup> = if is_parallel {
-      batches
-        .into_par_iter()
-        .zip(groups.par_iter())
-        .map(|(passes, group)| Self::record_group(group, passes, &textures, shared, None))
-        .collect()
-    } else {
-      let count: usize = groups.len();
-      let mut recorded: Vec<RecordedGroup> = Vec::with_capacity(count);
-
-      for (index, (passes, group)) in batches.into_iter().zip(&groups).enumerate() {
-        let timing: Option<(&mut GraphTimer, bool)> = is_timing.then_some((&mut *timer, index + 1 == count));
-
-        recorded.push(Self::record_group(group, passes, &textures, shared, timing));
-      }
-
-      recorded
-    };
+    let recorded: Vec<RecordedGroup> = batches
+      .into_par_iter()
+      .zip(groups.par_iter())
+      .zip(stamps.par_iter_mut())
+      .map(|((passes, group), stamps)| Self::record_group(group, passes, &textures, shared, stamps.as_mut()))
+      .collect();
     let errors: Vec<String> = recorded
       .iter()
       .filter_map(|(_, group, error)| error.as_ref().map(|error| format!("group '{}': {error}", group.name)))
       .collect();
 
     // A frame any group of which wgpu refused is dropped whole: what the others drew is of a frame never finished, and
-    // the stamps it recorded are never submitted.
+    // the stamps it recorded are never submitted, so the timer takes none of them.
     if !errors.is_empty() {
-      timer.abandon_frame();
-
       return Err(XrfError::new_invalid_error(format!(
         "The frame was dropped: {}",
         errors.join("; ")
@@ -231,11 +222,11 @@ impl<'a> CompiledGraph<'a> {
       .into_iter()
       .map(|(commands, group, _)| (commands, group))
       .unzip();
-    let encode: Duration = if is_parallel {
-      started.elapsed()
-    } else {
-      executed_groups.iter().map(|group| group.finish).sum()
-    };
+    let encode: Duration = started.elapsed();
+
+    if let Some(stamps) = stamps.into_iter().collect::<Option<Vec<GroupStamps>>>() {
+      timer.finish_frame(stamps);
+    }
 
     Ok(ExecutedGraph {
       commands,
@@ -244,15 +235,30 @@ impl<'a> CompiledGraph<'a> {
     })
   }
 
+  /// Stamps a group writes when timed: one starting it, and one ending each pass or each run of passes sharing a
+  /// render pass.
+  fn count_stamps(passes: &[CompiledPass<'_>]) -> u32 {
+    let ends: usize = passes
+      .iter()
+      .enumerate()
+      .filter(|(index, pass)| {
+        pass.render_pass.is_none() || *index == 0 || passes[*index - 1].render_pass != pass.render_pass
+      })
+      .count();
+
+    1 + ends as u32
+  }
+
   /// Records one encode group's passes into an encoder of its own, a run of passes sharing a render pass into one, and
-  /// finishes it; `timing` stamps each pass, and closes the frame's stamps after its last group. What wgpu refused of
-  /// it, recording or finishing, comes back beside it, caught on the thread recording it.
+  /// finishes it; `timing` stamps each pass into the group's own range, and resolves the frame's stamps where the group
+  /// is the last. What wgpu refused of it, recording or finishing, comes back beside it, caught on the thread recording
+  /// it.
   fn record_group(
     group: &EncodeGroup,
     passes: Vec<CompiledPass<'a>>,
     textures: &[GraphTextureRecord],
     (device, cache, resources): (&wgpu::Device, &BindGroupCache, &GraphResources<'_>),
-    mut timing: Option<(&mut GraphTimer, bool)>,
+    mut timing: Option<&mut GroupStamps>,
   ) -> RecordedGroup {
     profiling::scope!("encode group", group.name);
 
@@ -264,8 +270,8 @@ impl<'a> CompiledGraph<'a> {
     });
     let mut pending: VecDeque<CompiledPass<'a>> = passes.into();
 
-    if let Some((timer, _)) = timing.as_mut() {
-      timer.stamp(&mut encoder, None);
+    if let Some(stamps) = timing.as_mut() {
+      stamps.stamp(&mut encoder, None);
     }
 
     while let Some(pass) = pending.pop_front() {
@@ -294,12 +300,8 @@ impl<'a> CompiledGraph<'a> {
 
           profiling::scope!("record", &name);
 
-          let is_marked: bool = Self::record_pass(
-            &mut encoder,
-            pass,
-            (device, cache, resources),
-            timing.as_mut().map(|(timer, _)| &mut **timer),
-          );
+          let is_marked: bool =
+            Self::record_pass(&mut encoder, pass, (device, cache, resources), timing.as_deref_mut());
 
           // A pass that marked its own stages is timed by them.
           if is_marked {
@@ -310,13 +312,13 @@ impl<'a> CompiledGraph<'a> {
         }
       };
 
-      if let Some((timer, _)) = timing.as_mut() {
-        timer.stamp(&mut encoder, Some((owner, name)));
+      if let Some(stamps) = timing.as_mut() {
+        stamps.stamp(&mut encoder, Some((owner, name)));
       }
     }
 
-    if let Some((timer, true)) = timing.as_mut() {
-      timer.finish_frame(&mut encoder);
+    if let Some(stamps) = &timing {
+      stamps.finish(&mut encoder);
     }
 
     let finishing: Instant = Instant::now();
@@ -563,7 +565,7 @@ impl<'a> CompiledGraph<'a> {
     encoder: &mut wgpu::CommandEncoder,
     pass: CompiledPass<'a>,
     (device, cache, resources): (&wgpu::Device, &BindGroupCache, &GraphResources<'_>),
-    timer: Option<&mut GraphTimer>,
+    timer: Option<&mut GroupStamps>,
   ) -> bool {
     let CompiledPass {
       pass,
