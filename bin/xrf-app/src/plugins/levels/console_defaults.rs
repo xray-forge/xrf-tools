@@ -1,14 +1,67 @@
-//! What a game's shipped console defaults say about how its levels are lit and exposed: Anomaly's
-//! `default_controls.ltx`, the commands its first run writes into `user.ltx`.
+//! What a game's console says about how its levels are lit and exposed: the installation's own `user.ltx`, the
+//! commands it runs with, over Anomaly's shipped `default_controls.ltx`, the commands its first run writes there.
+
+use std::path::{Path, PathBuf};
 
 use xrf_error::XrfResult;
 use xrf_utils::{decode_bytes_to_string, new_windows1251_encoder};
-use xrf_vfs::XrayProbe;
+use xrf_vfs::{FsgameFile, XrayProbe, XrayRoots};
 
 use crate::plugins::levels::state::LevelConsoleDefaults;
 
 /// The shipped console defaults, one command a line.
 const DEFAULTS: &str = "configs/default_controls.ltx";
+
+/// The console an installation runs with, in its user data folder.
+const USER_CONSOLE: &str = "user.ltx";
+
+/// The alias `fsgame.ltx` names the user data folder by.
+const APP_DATA_ROOT: &str = "$app_data_root$";
+
+/// The console the game runs with: its installation's `user.ltx` over its shipped defaults, each command `user.ltx`
+/// leaves out taken from the shipped ones.
+///
+/// # Errors
+///
+/// Returns an error when the shipped file is there and cannot be read.
+pub fn read_level_console(probe: &XrayProbe, roots: &XrayRoots) -> XrfResult<LevelConsoleDefaults> {
+  let shipped: LevelConsoleDefaults = read_console_defaults(probe)?;
+
+  let Some((path, text)) = read_user_console(roots) else {
+    return Ok(shipped);
+  };
+
+  log::info!("Reading the game's console from {}", path.display());
+
+  Ok(parse_console_defaults(&text).over(shipped))
+}
+
+/// The `user.ltx` of the first root that is, or sits inside, an installation, found where its `fsgame.ltx` puts the
+/// user data folder; none for a bare data folder or one never run.
+fn read_user_console(roots: &XrayRoots) -> Option<(PathBuf, String)> {
+  roots
+    .asset
+    .iter()
+    .chain(roots.roots.iter().map(|root| &root.path))
+    .find_map(|path| find_installation(path))
+    .and_then(|installation| FsgameFile::read(installation).ok())
+    .and_then(|fsgame| fsgame.resolve(APP_DATA_ROOT))
+    .map(|folder| folder.join(USER_CONSOLE))
+    .and_then(|path| {
+      let bytes: Vec<u8> = std::fs::read(&path).ok()?;
+      let text: String = decode_bytes_to_string(&bytes, new_windows1251_encoder()).ok()?;
+
+      Some((path, text))
+    })
+}
+
+/// The folder at or above a path holding an `fsgame.ltx`.
+fn find_installation(path: &Path) -> Option<PathBuf> {
+  path
+    .ancestors()
+    .find(|folder| folder.join(FsgameFile::FILE_NAME).is_file())
+    .map(Path::to_path_buf)
+}
 
 /// The game's console defaults; nothing shipped where it has no such file.
 ///
