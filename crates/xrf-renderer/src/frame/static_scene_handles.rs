@@ -11,6 +11,7 @@ use crate::pass::static_draws::StaticDraws;
 use crate::pass::static_impostor_parameters::StaticImpostorParameters;
 use crate::pass::static_occlusion_uniform::StaticOcclusionUniform;
 use crate::pass::wind_uniform::WindUniform;
+use crate::scene::static_scene::static_geometry::StaticGeometry;
 use crate::scene::static_scene::static_layout::StaticLayout;
 use crate::scene::static_scene::static_scene::StaticScene;
 
@@ -56,46 +57,49 @@ impl StaticSceneHandles {
   ) -> Self {
     let mut import = |label: &'static str, buffer: &'r wgpu::Buffer| bindings.import_buffer(graph, label, buffer);
     let handles = (
-      import("static clusters", scene.clusters.get_buffer()),
-      import("static spheres", scene.clusters.get_lane(StaticScene::CLUSTER_SPHERES)),
-      import("static slots", scene.slots.get_buffer()),
-      import("static places", scene.places.get_buffer()),
-      import("static rows", scene.rows.get_buffer()),
-      import("static regions", &scene.regions),
-      import("static surfaces", scene.surfaces.get_buffer()),
-      import("static indices", scene.indices.get_buffer()),
+      import("static clusters", scene.geometry.clusters.get_buffer()),
+      import(
+        "static spheres",
+        scene.geometry.clusters.get_lane(StaticGeometry::CLUSTER_SPHERES),
+      ),
+      import("static slots", scene.geometry.slots.get_buffer()),
+      import("static places", scene.geometry.places.get_buffer()),
+      import("static rows", scene.geometry.rows.get_buffer()),
+      import("static regions", &scene.cull.regions),
+      import("static surfaces", scene.surfaces.buffer.get_buffer()),
+      import("static indices", scene.geometry.indices.get_buffer()),
     );
     let words: [GraphBuffer; StaticLayout::COUNT] = [
-      import("static baked vertices", scene.words[0].get_buffer()),
-      import("static tree vertices", scene.words[1].get_buffer()),
-      import("static model vertices", scene.words[2].get_buffer()),
+      import("static baked vertices", scene.geometry.words[0].get_buffer()),
+      import("static tree vertices", scene.geometry.words[1].get_buffer()),
+      import("static model vertices", scene.geometry.words[2].get_buffer()),
     ];
     let skinning: (GraphBuffer, GraphBuffer) = (
-      import("static model skins", scene.skins.get_buffer()),
-      import("static bones", scene.bones.get_buffer()),
+      import("static model skins", scene.geometry.skins.get_buffer()),
+      import("static bones", scene.geometry.bones.get_buffer()),
     );
     let impostors: [GraphBuffer; 4] = [
-      import("static impostors", scene.impostors.get_buffer()),
+      import("static impostors", scene.geometry.impostors.get_buffer()),
       import(
         "static impostor corners",
-        scene.impostors.get_lane(StaticScene::IMPOSTOR_CORNERS),
+        scene.geometry.impostors.get_lane(StaticGeometry::IMPOSTOR_CORNERS),
       ),
       import(
         "static impostor terms",
-        scene.impostors.get_lane(StaticScene::IMPOSTOR_TERMS),
+        scene.geometry.impostors.get_lane(StaticGeometry::IMPOSTOR_TERMS),
       ),
       import(
         "static impostor list",
-        scene.impostors.get_lane(StaticScene::IMPOSTOR_LIST),
+        scene.geometry.impostors.get_lane(StaticGeometry::IMPOSTOR_LIST),
       ),
     ];
     let culled: [GraphBuffer; 6] = [
-      import("static lists", scene.lists.get_buffer()),
-      import("static draw arguments", &scene.args),
-      import("static candidates", scene.candidates.get_buffer()),
-      import("static late arguments", &scene.late),
-      import("static late dispatch", &scene.late_dispatch),
-      import("static draw arguments template", &scene.args_template),
+      import("static lists", scene.cull.lists.get_buffer()),
+      import("static draw arguments", &scene.cull.args),
+      import("static candidates", scene.cull.candidates.get_buffer()),
+      import("static late arguments", &scene.cull.late),
+      import("static late dispatch", &scene.cull.late_dispatch),
+      import("static draw arguments template", &scene.cull.args_template),
     ];
     let (clusters, spheres, slots, places, rows, regions, surfaces, indices) = handles;
 

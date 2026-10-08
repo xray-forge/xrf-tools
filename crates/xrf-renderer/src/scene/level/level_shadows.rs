@@ -182,13 +182,13 @@ impl LevelShadows {
   ) {
     let scene = frame.scene;
     let resolution: u32 = self.maps.resolution;
-    let list_bytes: u64 = (scene.get_list_capacity().max(1) as u64) * 8;
+    let list_bytes: u64 = (scene.cull.get_list_capacity().max(1) as u64) * 8;
     let mut rays: SunViewRays = SunViewRays::new(frame.camera);
 
     while self.cascades.len() < count.min(RENDER_MAX_SHADOW_CASCADES) {
       self
         .cascades
-        .push(ShadowCascadeView::new(device, view_layout, scene.args.size()));
+        .push(ShadowCascadeView::new(device, view_layout, scene.cull.args.size()));
     }
 
     for (index, cascade) in self.cascades.iter_mut().take(count).enumerate() {
@@ -204,13 +204,16 @@ impl LevelShadows {
       );
 
       let state: (u64, usize) = (cascade.cascade.version, scene.get_contents());
+      // A map holds depth in the world, sampled with the matrix it was drawn with, so a still one is still exact;
+      // only an item coming or going within what it covers changes it.
+      let is_changed: bool = cascade.drawn.is_none_or(|(version, contents)| {
+        version != cascade.cascade.version
+          || scene.is_changed_since(contents, |sphere| cascade.cascade.view.reaches(sphere))
+      });
       let is_due: bool = cascade.drawn.is_none()
         || !frame.settings.is_staggered
         || is_cascade_due(index, self.frames)
         || !cascade.cascade.is_held_by(&cascade.drawn_fit);
-
-      // A map holds depth in the world, sampled with the matrix it was drawn with, so a still one is still exact.
-      let is_changed: bool = cascade.drawn != Some(state);
 
       if !is_due
         || !(is_changed
@@ -222,7 +225,7 @@ impl LevelShadows {
       }
 
       cascade.lists.reserve(device, encoder, list_bytes);
-      scene.reset_args(encoder, &cascade.args);
+      scene.cull.reset_args(encoder, &cascade.args);
       cascade.view.write(
         encoder,
         &CameraUniform::new(

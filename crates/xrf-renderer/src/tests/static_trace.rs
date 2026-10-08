@@ -374,12 +374,12 @@ fn run_probes(
   let buffers: [&wgpu::Buffer; 8] = [
     trace.get_instances(),
     trace.get_records(),
-    scene.places.get_buffer(),
-    scene.words[StaticLayout::Baked.get_index()].get_buffer(),
-    scene.words[StaticLayout::Tree.get_index()].get_buffer(),
-    scene.words[StaticLayout::Model.get_index()].get_buffer(),
-    scene.indices.get_buffer(),
-    scene.surfaces.get_buffer(),
+    scene.geometry.places.get_buffer(),
+    scene.geometry.words[StaticLayout::Baked.get_index()].get_buffer(),
+    scene.geometry.words[StaticLayout::Tree.get_index()].get_buffer(),
+    scene.geometry.words[StaticLayout::Model.get_index()].get_buffer(),
+    scene.geometry.indices.get_buffer(),
+    scene.surfaces.buffer.get_buffer(),
   ];
   let mut entries: Vec<wgpu::BindGroupEntry<'_>> = vec![wgpu::BindGroupEntry {
     binding: 0,

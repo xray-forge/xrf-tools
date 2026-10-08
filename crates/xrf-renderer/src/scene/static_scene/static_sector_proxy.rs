@@ -14,6 +14,8 @@ use crate::scene::static_scene::static_trace_group::StaticTraceGroup;
 /// on the CPU what turns a pick of it back into names.
 #[derive(Debug)]
 pub struct StaticSectorProxy {
+  /// The sphere holding all it draws, in the world.
+  pub sphere: Vec4,
   /// The sector, by its index in the level.
   pub sector: u32,
   /// Bytes of its pack.

@@ -133,13 +133,20 @@ impl OverheadMap {
     );
     let scene = frame.scene;
     let state: (Vec3, usize) = (center, scene.get_contents());
+    let half: f32 = self.shape.width / 2.0;
 
     self.is_due = false;
     self.since = self.since.saturating_add(1);
 
     let is_moved: bool = self.drawn.is_none_or(|(drawn, _)| drawn != center);
+    // Only an item coming or going over the square it covers changes it.
+    let is_changed: bool = self.drawn.is_some_and(|(_, contents)| {
+      scene.is_changed_since(contents, |sphere| {
+        (sphere.x - center.x).abs() <= half + sphere.w && (sphere.z - center.z).abs() <= half + sphere.w
+      })
+    });
 
-    if self.drawn == Some(state) || (!is_moved && self.since < self.shape.content_delay) {
+    if !is_moved && (!is_changed || self.since < self.shape.content_delay) {
       self.waited = 0;
 
       return;
@@ -154,7 +161,6 @@ impl OverheadMap {
 
     self.waited = 0;
 
-    let half: f32 = self.shape.width / 2.0;
     let view: CameraView = CameraView {
       position: center,
       view: glam::camera::rh::view::look_at_mat4(center, center - Vec3::Y, -Vec3::Z),
@@ -163,8 +169,8 @@ impl OverheadMap {
 
     self
       .lists
-      .reserve(device, encoder, (scene.get_list_capacity().max(1) as u64) * 8);
-    scene.reset_args(encoder, &self.args);
+      .reserve(device, encoder, (scene.cull.get_list_capacity().max(1) as u64) * 8);
+    scene.cull.reset_args(encoder, &self.args);
     self.view.write(
       encoder,
       &CameraUniform::new(

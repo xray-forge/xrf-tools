@@ -109,8 +109,8 @@ fn stands_objects_as_a_model_and_takes_them_out_again() {
 
   scene.prepare_draws(device, queue, &mut encoder);
 
-  assert_eq!(scene.get_row_count(), 6, "a row an object and part");
-  assert_eq!(scene.get_list_capacity(), 6);
+  assert_eq!(scene.geometry.get_row_count(), 6, "a row an object and part");
+  assert_eq!(scene.cull.get_list_capacity(), 6);
   assert_eq!(scene.get_object_sphere(2), Some(Vec4::new(20.0, 0.0, 0.0, 1.0)));
 
   let at: u32 = scene
@@ -124,8 +124,8 @@ fn stands_objects_as_a_model_and_takes_them_out_again() {
 
   scene.prepare_draws(device, queue, &mut encoder);
 
-  assert_eq!(scene.get_row_count(), 4);
-  assert_eq!(scene.get_list_capacity(), 4);
+  assert_eq!(scene.geometry.get_row_count(), 4);
+  assert_eq!(scene.cull.get_list_capacity(), 4);
   assert_eq!(scene.resolve_spawn_pick(at), None);
   assert!(!scene.has_object(2) && scene.has_object(1) && scene.has_object(3));
 
@@ -139,8 +139,8 @@ fn stands_objects_as_a_model_and_takes_them_out_again() {
   scene.prepare_draws(device, queue, &mut encoder);
   queue.submit([encoder.finish().0]);
 
-  assert_eq!(scene.get_row_count(), 0);
-  assert_eq!(scene.get_list_capacity(), 0);
+  assert_eq!(scene.geometry.get_row_count(), 0);
+  assert_eq!(scene.cull.get_list_capacity(), 0);
   assert!(
     !(1..=3).any(|object| scene.has_object(object)),
     "its objects went with it"
@@ -152,4 +152,57 @@ fn stands_objects_as_a_model_and_takes_them_out_again() {
       .add_object(device, queue, objects.allocate(), (model, &place(4)))
       .is_err()
   );
+}
+
+#[test]
+fn tells_a_cache_only_of_changes_within_what_it_covers() {
+  let Ok(context) = GpuContext::create_headless(RenderBackend::D3d12, checkout_dxc().as_deref())
+    .or_else(|_| GpuContext::create_headless(RenderBackend::Vulkan, None))
+  else {
+    eprintln!("Skipped: no GPU to hold a scene");
+
+    return;
+  };
+  let (device, queue): (&wgpu::Device, &wgpu::Queue) = (&context.device, &context.queue);
+  let source: Arc<dyn RenderAssetSource> = Arc::new(EmptySource);
+  let mut textures: TextureCache = TextureCache::new(device, queue, &create_workers());
+  let mut scene: StaticScene = StaticScene::new(device, queue);
+  let mut encoder: FrameEncoder = FrameEncoder::new(device, FrameEncoder::create_belt(device));
+  let (mut models, mut objects): (ProxyAllocator<StaticModelProxy>, ProxyAllocator<StaticObjectProxy>) =
+    (ProxyAllocator::new(), ProxyAllocator::new());
+  let model: ProxyHandle<StaticModelProxy> = models.allocate();
+
+  scene
+    .add_model(
+      device,
+      queue,
+      &mut encoder,
+      (&mut textures, &source),
+      (model, &create_model(1)),
+    )
+    .unwrap();
+
+  // A model alone stands nowhere: no cache is told of it.
+  let before: usize = scene.get_contents();
+  let near = |sphere: Vec4| sphere.truncate().distance(Vec3::new(20.0, 0.0, 0.0)) < sphere.w + 5.0;
+  let far = |sphere: Vec4| sphere.truncate().distance(Vec3::new(500.0, 0.0, 0.0)) < sphere.w + 5.0;
+
+  assert!(!scene.is_changed_since(before - 1, near));
+
+  // An object stood at 20 m along x is within the near volume and not the far one.
+  let handle: ProxyHandle<StaticObjectProxy> = objects.allocate();
+
+  scene.add_object(device, queue, handle, (model, &place(2))).unwrap();
+
+  assert!(scene.is_changed_since(before, near));
+  assert!(!scene.is_changed_since(before, far));
+  assert!(!scene.is_changed_since(scene.get_contents(), near));
+
+  // Taken out again, it changes the near volume once more.
+  let stood: usize = scene.get_contents();
+
+  scene.remove_object(handle);
+
+  assert!(scene.is_changed_since(stood, near));
+  assert!(!scene.is_changed_since(stood, far));
 }

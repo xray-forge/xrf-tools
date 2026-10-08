@@ -123,10 +123,10 @@ impl StaticTrace {
     statics: &StaticScene,
   ) {
     let generations: [u64; StaticLayout::COUNT + 1] = [
-      statics.words[0].get_generation(),
-      statics.words[1].get_generation(),
-      statics.words[2].get_generation(),
-      statics.indices.get_generation(),
+      statics.geometry.words[0].get_generation(),
+      statics.geometry.words[1].get_generation(),
+      statics.geometry.words[2].get_generation(),
+      statics.geometry.indices.get_generation(),
     ];
     let built: (usize, [u64; StaticLayout::COUNT + 1]) = (statics.get_contents(), generations);
 
@@ -187,10 +187,10 @@ impl StaticTrace {
             .map(|(geometry, size)| wgpu::BlasTriangleGeometry {
               size,
               // Each vertex's position is its first three words, so the arena is read in place.
-              vertex_buffer: statics.words[geometry.layout.get_index()].get_buffer(),
+              vertex_buffer: statics.geometry.words[geometry.layout.get_index()].get_buffer(),
               first_vertex: geometry.vertex_start,
               vertex_stride: u64::from(StaticLayout::STRIDE) * 4,
-              index_buffer: Some(statics.indices.get_buffer()),
+              index_buffer: Some(statics.geometry.indices.get_buffer()),
               first_index: Some(geometry.first_index),
               transform_buffer: None,
               transform_buffer_offset: None,

@@ -144,7 +144,7 @@ impl LevelLights {
       settings,
       engine,
       lod,
-      contents,
+      statics,
       sway,
       campfire_shares,
     } = frame;
@@ -231,7 +231,7 @@ impl LevelLights {
             eye,
             forward,
             Vec3::from(light.color),
-            contents,
+            statics,
             sway,
           );
         }

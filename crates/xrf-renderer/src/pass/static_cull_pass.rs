@@ -8,7 +8,7 @@ use crate::pass::static_cull_parameters::StaticCullParameters;
 use crate::pass::static_cull_params::StaticCullParams;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::static_scene::static_batch::StaticBatch;
-use crate::scene::static_scene::static_scene::StaticScene;
+use crate::scene::static_scene::static_cull_scratch::StaticCullScratch;
 use crate::shader::shader_library::ShaderLibrary;
 
 /// Invocations a cull workgroup runs, as `shaders/static/cull.wgsl` declares them.
@@ -126,7 +126,7 @@ impl StaticCullPass {
   /// Copies how many workgroups the late phase takes, as many as the early phase set aside, where its dispatch reads
   /// them.
   pub fn record_late_dispatch(&self, encoder: &mut wgpu::CommandEncoder, late: &wgpu::Buffer, dispatch: &wgpu::Buffer) {
-    encoder.copy_buffer_to_buffer(late, StaticScene::LATE_DISPATCH_OFFSET, dispatch, 0, 12);
+    encoder.copy_buffer_to_buffer(late, StaticCullScratch::LATE_DISPATCH_OFFSET, dispatch, 0, 12);
   }
 
   /// Tests what the early phase set aside again, then clamps the late counts.

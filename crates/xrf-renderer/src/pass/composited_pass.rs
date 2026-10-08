@@ -8,8 +8,8 @@ use crate::pass::sky_parameters::SkyParameters;
 use crate::pass::static_draw_parameters::StaticDrawParameters;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::static_scene::static_batch::StaticBatch;
+use crate::scene::static_scene::static_geometry::StaticGeometry;
 use crate::scene::static_scene::static_layout::StaticLayout;
-use crate::scene::static_scene::static_scene::StaticScene;
 use crate::scene::static_scene::static_surface_pass::StaticSurfacePass;
 use crate::shader::shader_library::ShaderLibrary;
 
@@ -151,7 +151,7 @@ impl CompositedPass {
       context.get_pass().set_pipeline(&self.pipelines.0[layout.get_index()]);
       context
         .get_pass()
-        .draw(0..StaticScene::CLUSTER_VERTICES, *first..first + count);
+        .draw(0..StaticGeometry::CLUSTER_VERTICES, *first..first + count);
     }
   }
 

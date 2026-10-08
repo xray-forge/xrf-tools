@@ -170,8 +170,12 @@ impl SurroundingsCube {
       Some(face) => (face, true),
       None => {
         let moved: Option<u32> = order().find(|face| {
-          self.drawn[*face as usize]
-            .is_some_and(|it: FaceDrawn| it.position.distance(camera) > Self::MOVED || it.contents != contents)
+          self.drawn[*face as usize].is_some_and(|it: FaceDrawn| {
+            it.position.distance(camera) > Self::MOVED
+              || frame.scene.is_changed_since(it.contents, |sphere| {
+                Self::create_view(*face, it.position).reaches(sphere)
+              })
+          })
         });
 
         match moved {
@@ -212,23 +216,14 @@ impl SurroundingsCube {
     self.face = face;
     self.waited = 0;
 
-    let (forward, up): (Vec3, Vec3) = match face {
-      0 => (Vec3::X, Vec3::Y),
-      1 => (Vec3::NEG_X, Vec3::Y),
-      2 => (Vec3::Y, Vec3::NEG_Z),
-      3 => (Vec3::NEG_Y, Vec3::Z),
-      4 => (Vec3::Z, Vec3::Y),
-      _ => (Vec3::NEG_Z, Vec3::Y),
-    };
-    let look: Mat4 = glam::camera::rh::view::look_at_mat4(position, position + forward, up);
-    let view: CameraView = CameraView::new(position, look, 90.0, 1.0, Self::NEAR, Self::FAR);
+    let view: CameraView = Self::create_view(face, position);
     let scene = frame.scene;
 
     if is_redrawn {
       self
         .lists
-        .reserve(device, encoder, (scene.get_list_capacity().max(1) as u64) * 8);
-      scene.reset_args(encoder, &self.args);
+        .reserve(device, encoder, (scene.cull.get_list_capacity().max(1) as u64) * 8);
+      scene.cull.reset_args(encoder, &self.args);
     }
 
     self.view.write(
@@ -259,6 +254,21 @@ impl SurroundingsCube {
       to_sun,
       lit: self.frame,
     });
+  }
+
+  /// A face's camera from `position`, looking down its axis with the up a cube texture's face lays its texels by.
+  fn create_view(face: u32, position: Vec3) -> CameraView {
+    let (forward, up): (Vec3, Vec3) = match face {
+      0 => (Vec3::X, Vec3::Y),
+      1 => (Vec3::NEG_X, Vec3::Y),
+      2 => (Vec3::Y, Vec3::NEG_Z),
+      3 => (Vec3::NEG_Y, Vec3::Z),
+      4 => (Vec3::Z, Vec3::Y),
+      _ => (Vec3::NEG_Z, Vec3::Y),
+    };
+    let look: Mat4 = glam::camera::rh::view::look_at_mat4(position, position + forward, up);
+
+    CameraView::new(position, look, 90.0, 1.0, Self::NEAR, Self::FAR)
   }
 
   /// Declares the face's cull and its draw into the G-buffer it keeps where it is drawn again, then its resolve into
