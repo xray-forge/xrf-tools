@@ -43,6 +43,8 @@ struct GBufferVarying {
   // Where the point stands in the world, and how far it stood from there the frame before, which its motion is read by.
   @location(11) world: vec3<f32>,
   @location(12) moved: vec3<f32>,
+  // Whether a tree's leaves are lit as foliage, and the wetness, which bends their normal up harder.
+  @location(13) @interpolate(flat) flora: vec2<f32>,
 };
 
 struct GBufferOutput {
@@ -56,13 +58,14 @@ struct GBufferOutput {
   @location(3) motion: vec2<f32>,
 };
 
-// A vertex placed in the world, swayed by as much of the wind as its rigidity takes: none for a sector's geometry.
+// A vertex placed in the world, swayed by as much of the wind as its rigidity takes, or by the enhanced motion as its
+// `foliage` kind and texture `v` say: none for a sector's geometry.
 fn place_vertex(pulled: PulledVertex, position: vec3<f32>, normal: vec4<f32>, tangent: vec4<f32>, binormal: vec4<f32>,
-  rigidity: f32) -> GBufferVarying {
+  rigidity: f32, foliage: vec2<f32>) -> GBufferVarying {
   let place: Place = pulled.place;
   let matrix: mat4x4<f32> = place.transform;
   let placed: vec3<f32> = (matrix * vec4<f32>(position, 1.0)).xyz;
-  let world: vec4<f32> = vec4<f32>(swayed(placed, place.transform[3].y, rigidity), 1.0);
+  let world: vec4<f32> = vec4<f32>(swayed(placed, place.transform[3].y, rigidity, foliage), 1.0);
   let linear: mat3x3<f32> = mat3x3<f32>(place.transform[0].xyz, place.transform[1].xyz, place.transform[2].xyz);
   // The inverse transpose of a matrix without shear: each axis divided by its squared length.
   let scale: vec3<f32> = vec3<f32>(dot(place.transform[0].xyz, place.transform[0].xyz), dot(place.transform[1].xyz, place.transform[1].xyz),
@@ -81,7 +84,8 @@ fn place_vertex(pulled: PulledVertex, position: vec3<f32>, normal: vec4<f32>, ta
   out.light = vec3<f32>(0.0);
   out.barycentric = vec3<f32>(0.0);
   out.world = world.xyz;
-  out.moved = swayed_before(placed, place.transform[3].y, rigidity) - world.xyz;
+  out.flora = vec2<f32>(0.0);
+  out.moved = swayed_before(placed, place.transform[3].y, rigidity, foliage) - world.xyz;
 
   // A script declaring no shadow element leaves the surface out of every shadow map (`_lua_Compile`'s `E[2]`).
   if (IS_SHADOW_DRAW && (surfaces[pulled.surface].flags & SURFACE_IS_SHADOWLESS) != 0u) {
@@ -99,7 +103,8 @@ fn vs_baked(@builtin(vertex_index) vertex_index: u32, @builtin(instance_index) i
   let tangent: vec4<f32> = unpack4x8unorm(words[at + 2u]);
   let position: vec3<f32> = vec3<f32>(bitcast<f32>(words[at + 5u]), bitcast<f32>(words[at + 6u]),
     bitcast<f32>(words[at + 7u]));
-  var out: GBufferVarying = place_vertex(pulled, position, unpack4x8unorm(words[at + 1u]), tangent, binormal, 0.0);
+  var out: GBufferVarying = place_vertex(pulled, position, unpack4x8unorm(words[at + 1u]), tangent, binormal, 0.0,
+    vec2<f32>(FOLIAGE_NONE, 0.0));
 
   // The base coordinate's fraction rides in the tangent's and binormal's fourth bytes.
   out.uv = (unpack_shorts(words[at + 3u]) + vec2<f32>(tangent.w, binormal.w)) / 1024.0;
@@ -119,10 +124,34 @@ fn vs_tree(@builtin(vertex_index) vertex_index: u32, @builtin(instance_index) in
   // stands still, as `tree_s` draws it.
   let is_still: bool = (surfaces[pulled.surface].flags & SURFACE_IS_STILL) != 0u;
   let rigidity: f32 = select(unpack_shorts(words[at + 4u]).x / 2048.0, 0.0, is_still);
+  let uv: vec2<f32> = unpack_shorts(words[at + 3u]) / 2048.0;
+  // The enhanced motion swings a trunk and tosses a cut-out branch or leaf, as `tree_branch` draws those.
+  let is_branch: bool = (surfaces[pulled.surface].flags & SURFACE_IS_CUT_OUT) != 0u;
+  let kind: f32 = select(select(FOLIAGE_TRUNK, FOLIAGE_BRANCH, is_branch), FOLIAGE_NONE, is_still);
   var out: GBufferVarying = place_vertex(pulled, position, unpack4x8unorm(words[at + 1u]),
-    unpack4x8unorm(words[at + 2u]), unpack4x8unorm(words[at]), rigidity);
+    unpack4x8unorm(words[at + 2u]), unpack4x8unorm(words[at]), rigidity, vec2<f32>(kind, uv.y));
 
-  out.uv = unpack_shorts(words[at + 3u]) / 2048.0;
+  // Under the enhanced motion a crown's leaves are lit as a sphere about its foot rather than by their cards, and never
+  // darker than three tenths of the sky.
+  if (kind == FOLIAGE_BRANCH && is_foliage_enhanced(vec2<f32>(kind, uv.y))) {
+    let place: Place = pulled.place;
+    let linear: mat3x3<f32> = mat3x3<f32>(place.transform[0].xyz, place.transform[1].xyz, place.transform[2].xyz);
+    let view: mat3x3<f32> = mat3x3<f32>(camera.view[0].xyz, camera.view[1].xyz, camera.view[2].xyz);
+    let n: vec3<f32> = normalize(position + vec3<f32>(0.0, 1e-4, 0.0));
+    let axis: vec3<f32> = select(vec3<f32>(0.0, 0.0, 1.0), vec3<f32>(0.0, 1.0, 0.0), abs(n.z) > 0.99);
+    let t: vec3<f32> = normalize(cross(n, axis));
+
+    out.normal = normalize(view * (linear * n));
+    out.tangent = view * (linear * t);
+    out.binormal = view * (linear * normalize(cross(n, t)));
+    out.hemi = clamp(out.hemi, 0.3, 1.0);
+
+    if (wind.foliage_flora.w > 0.5) {
+      out.flora = vec2<f32>(1.0, wind.foliage_flora.z);
+    }
+  }
+
+  out.uv = uv;
   out.lightmap_uv = vec2<f32>(0.0);
   out.barycentric = corner_barycentric(vertex_index);
 
@@ -240,7 +269,7 @@ fn skin_vertex(pulled: PulledVertex, is_previous: bool) -> SkinnedVertex {
 fn model_vertex(pulled: PulledVertex) -> GBufferVarying {
   let skinned: SkinnedVertex = skin_vertex(pulled, false);
   var out: GBufferVarying = place_vertex(pulled, skinned.position, skinned.normal, skinned.tangent,
-    skinned.binormal, 0.0);
+    skinned.binormal, 0.0, vec2<f32>(FOLIAGE_NONE, 0.0));
   let place: Place = pulled.place;
   let at: u32 = pulled.word;
   let normal: vec4<f32> = skinned.normal;
@@ -376,9 +405,14 @@ fn shade(in: GBufferVarying, base: vec4<f32>, at: Footprint) -> GBufferOutput {
     diffuse *= detail.rgb * 2.0;
   }
 
+  // A leaf lit as foliage reads its bump's tilt alone, over a normal standing up.
+  var leaf_tilt: vec2<f32> = vec2<f32>(0.0);
+
   if (!is_terrain && (surface.flags & SURFACE_HAS_BUMP) != 0u) {
     let bump: vec4<f32> = sample_slot(surface.textures[SLOT_BUMP], at.uv, at.dx, at.dy);
     var tangent_normal: vec3<f32> = bump.wzy + sample_slot(surface.textures[SLOT_BUMP_COMPANION], at.uv, at.dx, at.dy).xyz - 1.0;
+
+    leaf_tilt = tangent_normal.xy * is_bumped * is_textured;
     var bumped_gloss: f32 = bump.x * bump.x;
 
     if ((surface.flags & SURFACE_HAS_DETAIL_BUMP) != 0u) {
@@ -399,6 +433,16 @@ fn shade(in: GBufferVarying, base: vec4<f32>, at: Footprint) -> GBufferOutput {
     gloss = mix(DEFAULT_GLOSS, bumped_gloss, weight);
   }
 
+  // Foliage: a leaf's normal stands up, tilted by its bump, harder when wet, so the sun lights a crown from above and
+  // through it from behind.
+  let is_flora: bool = in.flora.x > 0.5;
+
+  if (is_flora) {
+    let tilt: vec2<f32> = leaf_tilt * max(5.0 * in.flora.y, 3.0);
+
+    normal = normalize((camera.view * vec4<f32>(tilt.x, 1.0, tilt.y, 0.0)).xyz);
+  }
+
   // A terrain is lit by its base's alpha, `deffer_impl_flat`'s `Ne.w = D.w`.
   var hemi: f32 = select(in.hemi, base.a, is_terrain);
   var sun: f32 = 1.0;
@@ -416,7 +460,7 @@ fn shade(in: GBufferVarying, base: vec4<f32>, at: Footprint) -> GBufferOutput {
   out.normal = octahedral_encode(normal);
   // Its alpha holds the marks: what is selected, which the present pass outlines, and what is self-lit.
   out.material = vec4<f32>(hemi, sun, surface.slice,
-    encode_marks(is_selected(in.entry), (surface.flags & SURFACE_IS_EMISSIVE) != 0u));
+    encode_marks(is_selected(in.entry), (surface.flags & SURFACE_IS_EMISSIVE) != 0u, is_flora));
   out.motion = camera_motion(in.world, in.world + in.moved);
 
   return out;

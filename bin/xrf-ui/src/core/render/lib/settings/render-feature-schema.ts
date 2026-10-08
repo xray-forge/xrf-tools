@@ -3,6 +3,7 @@ import {
   ERenderAmbientOcclusionQuality,
   ERenderAntialiasing,
   ERenderContactShadowMode,
+  ERenderFoliageMode,
   ERenderLightShadowFilter,
   ERenderScale,
   ERenderWaterMode,
@@ -62,6 +63,20 @@ export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings>
     // `r__detail_density`: a spacing. The console goes to 0.1, six times the game's; past three times it at the widest
     // radius the grass's buffers outgrow what the GPU process holds and the renderer crashes.
     density: toNumber(0.2, 0.99),
+    // The enhanced motion's bounds are the engine console's.
+    foliage: {
+      grassPush: toNumber(0, 5),
+      grassSpeed: toNumber(0, 20),
+      grassTurbulence: toNumber(0, 5),
+      grassWave: toNumber(0, 5),
+      minSpeed: toNumber(0, 1),
+      mode: toChoice(ERenderFoliageMode),
+      sssColor: toNumber(0, 1),
+      sssIntensity: toNumber(0, 5),
+      treesBend: toNumber(0, 5),
+      treesSpeed: toNumber(0, 20),
+      treesTrunk: toNumber(0, 5),
+    },
     height: toNumber(0.5, 2),
     isEnabled: FLAG,
     radius: toNumber(49, 300, true),

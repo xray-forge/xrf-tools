@@ -2,6 +2,7 @@ enable wgpu_binding_array;
 
 #import "common/camera"
 #import "common/cut_out"
+#import "common/foliage_wind"
 #import "common/octahedral"
 #import "grass/records"
 
@@ -22,6 +23,13 @@ struct GrassWind {
   previous_wind_2: vec4<f32>,
   previous_wave_1: vec4<f32>,
   previous_wave_2: vec4<f32>,
+  // The enhanced foliage motion's setup and its fields' drift, this frame and the last.
+  foliage_wind: vec4<f32>,
+  foliage_grass: vec4<f32>,
+  foliage_trees: vec4<f32>,
+  foliage_anim: vec4<f32>,
+  foliage_previous_anim: vec4<f32>,
+  foliage_flora: vec4<f32>,
 };
 
 @group(1) @binding(0) var<storage, read> sorted: array<vec4<f32>>;
@@ -56,6 +64,8 @@ struct GrassVarying {
   // Where the vertex stands in the world, and how far it stood from there the frame before.
   @location(4) world: vec3<f32>,
   @location(5) moved: vec3<f32>,
+  // Whether the tuft is lit as foliage.
+  @location(6) @interpolate(flat) flora: f32,
 };
 
 struct GrassOutput {
@@ -78,6 +88,15 @@ fn cyclic(phase: f32) -> f32 {
 fn swayed(standing: vec3<f32>, foot: f32, wave: f32, share: f32, is_previous: bool) -> vec3<f32> {
   if (wave <= 0.5) {
     return standing;
+  }
+
+  // The enhanced motion: the flow field's toss, push and lift at the tuft's place, read in the engine's space.
+  if (wind.foliage_trees.w > 0.5) {
+    let anim: vec4<f32> = select(wind.foliage_anim, wind.foliage_previous_anim, is_previous);
+    let setup: FoliageSetup = FoliageSetup(wind.foliage_wind, wind.foliage_grass, wind.foliage_trees, anim);
+    let moved: vec3<f32> = foliage_grass(vec2<f32>(standing.x, -standing.z), standing.y - foot, setup);
+
+    return standing + vec3<f32>(moved.x, moved.y, -moved.z);
   }
 
   let is_second: bool = wave > 1.5;
@@ -116,6 +135,7 @@ fn vs_grass(@location(0) position: vec3<f32>, @location(1) uv: vec2<f32>,
   out.sun = look.z;
   out.world = current;
   out.moved = swayed(standing, place.y, look.w, share, true) - current;
+  out.flora = select(0.0, 1.0, wind.foliage_flora.w > 0.5);
 
   return out;
 }
@@ -134,9 +154,14 @@ fn fs_grass(in: GrassVarying) -> GrassOutput {
   var out: GrassOutput;
 
   // White without textures, as grass states no flat colour.
+  let is_flora: bool = in.flora > 0.5;
+  // Foliage: the tuft's normal leans up, so the sun lights it from above and through it from behind.
+  let up: vec3<f32> = (camera.view * vec4<f32>(0.0, 1.0, 0.0, 0.0)).xyz;
+  let normal: vec3<f32> = select(normalize(in.normal), normalize(normalize(in.normal) + up), is_flora);
+
   out.albedo = vec4<f32>(mix(untextured_color(vec3<f32>(1.0)), base.rgb, camera.switches.x), DEFAULT_GLOSS);
-  out.normal = octahedral_encode(normalize(in.normal));
-  out.material = vec4<f32>(in.hemi, in.sun, MATERIAL_SLICE, 0.0);
+  out.normal = octahedral_encode(normal);
+  out.material = vec4<f32>(in.hemi, in.sun, MATERIAL_SLICE, encode_marks(false, false, is_flora));
   out.motion = camera_motion(in.world, in.world + in.moved);
 
   return out;

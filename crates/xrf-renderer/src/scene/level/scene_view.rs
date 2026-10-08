@@ -20,6 +20,7 @@ use crate::contract::render_applied_report::RenderAppliedReport;
 use crate::contract::render_applied_shadows::RenderAppliedShadows;
 use crate::contract::render_bloom_settings::RenderBloomSettings;
 use crate::contract::render_debug_view::RenderDebugView;
+use crate::contract::render_foliage_settings::RenderFoliageSettings;
 use crate::contract::render_level_hit::RenderLevelHit;
 use crate::contract::render_lights_report::RenderLightsReport;
 use crate::contract::render_overlay::RenderOverlay;
@@ -60,6 +61,7 @@ use crate::pass::contact_shadow_parameters::ContactShadowParameters;
 use crate::pass::contact_shadow_pass::ContactShadowPass;
 use crate::pass::contact_shadow_uniform::ContactShadowUniform;
 use crate::pass::exposure_parameters::ExposureParameters;
+use crate::pass::foliage_wind_values::FoliageWindValues;
 use crate::pass::fsr_uniform::FsrUniform;
 use crate::pass::fxaa_parameters::FxaaParameters;
 use crate::pass::level_passes::LevelPasses;
@@ -123,6 +125,10 @@ use crate::scene::static_scene::static_sorted_place::StaticSortedPlace;
 use crate::scene::texture::texture_cache::TextureCache;
 use crate::scene::texture::weather_texture_cache::WeatherTextureCache;
 use crate::scene::texture::weather_texture_kind::WeatherTextureKind;
+
+/// The sway amplitude the shadows are redrawn at while the enhanced foliage motion blows: its largest move a metre of
+/// reach, a tall crown's trunk swing over its height.
+const FOLIAGE_SHADOW_AMPLITUDE: f32 = 0.02;
 
 /// What a pick's texel says it met: a cluster, by its index and place, or an impostor, by its index.
 const PICKED_CLUSTER: u32 = 1;
@@ -302,12 +308,29 @@ impl SceneView {
     );
 
     let sway_time: f32 = scene.started.elapsed().as_secs_f32();
-    let wind: WindUniform =
-      WindUniform::new(lighting.trees.as_ref(), sway_time).following(self.state.last_wind.as_ref());
+    let foliage_settings: RenderFoliageSettings = options.features.grass.foliage;
+    let foliage: FoliageWindValues = self.state.foliage.advance(
+      sway_time,
+      &foliage_settings,
+      (lighting.wind, lighting.trees.is_some()),
+      lighting.rain.map_or(0.0, |rain| rain.density.clamp(0.0, 1.0)),
+    );
+    let wind: WindUniform = WindUniform::new(lighting.trees.as_ref(), sway_time)
+      .following(self.state.last_wind.as_ref())
+      .with_foliage(&foliage);
 
     self.state.last_wind = Some(wind);
+    self.state.foliage_values = foliage;
 
-    self.info.sway = (wind.get_amplitude(), sway_time);
+    // The enhanced motion moves a tree by more than the engine's lean for a given reach, so its shadows redraw at the
+    // enhanced reach whenever it blows.
+    let amplitude: f32 = if foliage_settings.is_enhanced() && foliage.wind.z > 0.0 {
+      FOLIAGE_SHADOW_AMPLITUDE
+    } else {
+      wind.get_amplitude()
+    };
+
+    self.info.sway = (amplitude, sway_time);
     self.prepare_rain(
       device,
       queue,
@@ -395,6 +418,7 @@ impl SceneView {
         lighting.trees.is_some(),
         gust.strength,
       ),
+      &self.state.foliage_values,
     );
     scene.lights.prepare(
       queue,

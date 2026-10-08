@@ -18,6 +18,7 @@ struct Lighting {
   forward_sun: vec4<f32>,
   sun_sprite: vec4<f32>,
   shafts: vec4<f32>,
+  flora: vec4<f32>,
 }
 
 struct Water {
@@ -317,4 +318,10 @@ struct Wind {
   wave: vec4<f32>,
   previous_wind: vec4<f32>,
   previous_wave: vec4<f32>,
+  foliage_wind: vec4<f32>,
+  foliage_grass: vec4<f32>,
+  foliage_trees: vec4<f32>,
+  foliage_anim: vec4<f32>,
+  foliage_previous_anim: vec4<f32>,
+  foliage_flora: vec4<f32>,
 }

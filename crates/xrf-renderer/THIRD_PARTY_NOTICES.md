@@ -1,6 +1,6 @@
 # Third-party notices
 
-The renderer adapts the work below. Each adapted file names its source in its header.
+The renderer adapts the work below; this file is the one place their credits live.
 
 ## AMD FidelityFX Super Resolution 2.2
 
@@ -145,8 +145,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ```
 
-## Screen Space Shaders (enhanced water)
+## Screen Space Shaders
 
-By Ascii1457. The enhanced water (`shaders/common/water_enhanced.wgsl`,
-`shaders/static/water_enhanced.wgsl`, `shaders/static/water_reflection.wgsl`, `shaders/frame/water_blur.wgsl`) is based
-on it; its maps (`assets/water/`) are our own, generated in the layout its shaders read.
+By Ascii1457. The enhanced water and the enhanced foliage's motion and lighting.

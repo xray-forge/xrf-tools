@@ -25,7 +25,7 @@ export type TLevelAmbientOcclusionOptions = Pick<
 >;
 
 /** The grass settings a level view may set for itself. */
-export type TLevelGrassOptions = Pick<TRenderGrassSettings, "density" | "height" | "radius">;
+export type TLevelGrassOptions = Pick<TRenderGrassSettings, "density" | "foliage" | "height" | "radius">;
 
 /** The water settings a level view may set for itself: all but whether it is drawn, which the toolbar toggles. */
 export type TLevelWaterOptions = Omit<TRenderWaterSettings, "isEnabled">;
@@ -56,7 +56,7 @@ const LEVEL_FEATURE_KEYS: {
   readonly [K in TLevelFeatureKey]: ReadonlyArray<keyof ILevelFeatureOptions[K]>;
 } = {
   ambientOcclusion: ["method", "quality", "radius", "strength", "vbao"],
-  grass: ["density", "height", "radius"],
+  grass: ["density", "foliage", "height", "radius"],
   lights: ["isLevelLights", "isShadowed", "shadowFilter"],
   shadows: ["bias", "blend", "cascades", "contact", "filter", "resolution"],
   water: ["distortion", "enhanced", "isDistorted", "isSoft", "mode", "reflection", "ripple", "waveHeight", "waveSpeed"],

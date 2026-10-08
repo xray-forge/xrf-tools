@@ -12,6 +12,8 @@ use crate::frame::upscale_targets::UpscaleTargets;
 use crate::frame::vbao_history::VbaoHistory;
 use crate::frame::view_exposure::ViewExposure;
 use crate::frame::view_targets::ViewTargets;
+use crate::lighting::foliage_wind::FoliageWind;
+use crate::pass::foliage_wind_values::FoliageWindValues;
 use crate::pass::view_binding::ViewBinding;
 use crate::pass::wind_uniform::WindUniform;
 use crate::scene::level::grass_view::GrassView;
@@ -47,6 +49,10 @@ pub struct ViewState {
   pub water: LevelWater,
   /// The trees' sway the last frame drew with.
   pub last_wind: Option<WindUniform>,
+  /// How far the enhanced foliage motion's flow fields have drifted.
+  pub foliage: FoliageWind,
+  /// What the foliage motion read this frame, which the grass takes as the trees do.
+  pub foliage_values: FoliageWindValues,
   /// The frame at the viewport's size while it is drawn smaller: EASU's upscale, then RCAS's sharpening.
   pub upscale: Option<UpscaleTargets>,
   /// The models' composited clusters this frame, back to front, as `(cluster, place)` entries.
@@ -87,6 +93,8 @@ impl ViewState {
       occlusion: None,
       water: LevelWater::default(),
       last_wind: None,
+      foliage: FoliageWind::default(),
+      foliage_values: FoliageWindValues::default(),
       upscale: None,
       overlays: None,
       overlays_box: None,
