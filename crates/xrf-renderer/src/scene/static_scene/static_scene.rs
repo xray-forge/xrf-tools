@@ -30,6 +30,7 @@ use crate::scene::static_scene::static_row::StaticRow;
 use crate::scene::static_scene::static_scene_writer::StaticSceneWriter;
 use crate::scene::static_scene::static_sector_proxy::StaticSectorProxy;
 use crate::scene::static_scene::static_selection::StaticSelection;
+use crate::scene::static_scene::static_sight::StaticSight;
 use crate::scene::static_scene::static_slot::StaticSlot;
 use crate::scene::static_scene::static_slot_info::StaticSlotInfo;
 use crate::scene::static_scene::static_sorted_place::StaticSortedPlace;
@@ -100,8 +101,6 @@ pub struct StaticScene {
   /// Every environment slot its environment-mapped surfaces sample.
   pub environment_slots: BTreeSet<u32>,
   /// Whether any of its surfaces draws into the distortion target, and whether any is glass.
-  is_distorting: bool,
-  is_glassed: bool,
   surface_count: u32,
   /// Entries of the visible list each batch may need: its clusters, each counted once per place drawing it.
   capacities: [u32; StaticBatch::LIST_COUNT],
@@ -245,8 +244,6 @@ impl StaticScene {
       surface_rows: HashMap::new(),
       texture_slots: BTreeSet::new(),
       environment_slots: BTreeSet::new(),
-      is_distorting: false,
-      is_glassed: false,
       surface_count: 0,
       capacities: [0; StaticBatch::LIST_COUNT],
       sectors: ProxyStore::new(),
@@ -533,6 +530,12 @@ impl StaticScene {
           });
         }
 
+        let sight: StaticSight = StaticSight::of(class, passes);
+
+        if !sight.is_empty() {
+          writer.sights.push((sphere, sight));
+        }
+
         if class.is_deferred() {
           writer.trace_geometries.push(StaticTraceGeometry {
             layout: StaticLayout::Baked,
@@ -591,6 +594,7 @@ impl StaticScene {
         trace_geometries: writer.trace_geometries,
         trace_groups: writer.trace_groups,
         sorted_runs: writer.sorted_runs,
+        sights: writer.sights,
         swaying,
       },
     );
@@ -683,6 +687,7 @@ impl StaticScene {
     let mut slots: Vec<(u32, u32, StaticBatch, u32)> = Vec::new();
     // The composited parts' clusters, which each object lists to be drawn sorted.
     let mut sorted: Vec<(u32, u32)> = Vec::new();
+    let mut sight: StaticSight = StaticSight::default();
 
     for part in &model.parts {
       let key: StaticSurfaceKey = StaticSurfaceKey::Model {
@@ -733,6 +738,8 @@ impl StaticScene {
           sorted.push((first_cluster, count));
         }
 
+        sight |= StaticSight::of(class, passes);
+
         slots.push((slot, count, batch, passes));
       }
     }
@@ -762,6 +769,7 @@ impl StaticScene {
           .into_iter()
           .map(|(first, count)| (first_cluster + first, count))
           .collect(),
+        sight,
         slot_infos: writer.slot_infos,
         cluster_slots: writer.cluster_slots,
         sphere: model.sphere,
@@ -942,16 +950,6 @@ impl StaticScene {
     true
   }
 
-  /// Whether any of its composited surfaces draws into the distortion target.
-  pub fn is_distorting(&self) -> bool {
-    self.is_distorting
-  }
-
-  /// Whether any of its surfaces is glass.
-  pub fn is_glassed(&self) -> bool {
-    self.is_glassed
-  }
-
   /// Items added and removed so far, which a view drawn with another count is drawn again for.
   pub fn get_contents(&self) -> usize {
     self.contents
@@ -1017,6 +1015,39 @@ impl StaticScene {
 
   /// The spawned objects with composited surfaces and the level's strictly sorted composited runs, which a view draws
   /// back to front itself.
+  /// What of the scene drawn by passes of its own may be seen through a view's frustum `planes`.
+  pub fn get_sight(&self, planes: &[Vec4; 6]) -> StaticSight {
+    let is_in_view = |sphere: &Vec4| {
+      planes
+        .iter()
+        .all(|plane| plane.truncate().dot(sphere.truncate()) + plane.w >= -sphere.w)
+    };
+    let sectors = self
+      .sectors
+      .as_slice()
+      .iter()
+      .flat_map(|sector| sector.sights.iter())
+      .map(|(sphere, sight)| (sphere, *sight));
+    let objects = self.objects.as_slice().iter().filter_map(|object| {
+      let model: &StaticModelProxy = self.models.get(object.model)?;
+
+      (!model.sight.is_empty()).then_some((&object.sphere, model.sight))
+    });
+    let mut seen: StaticSight = StaticSight::default();
+
+    for (sphere, sight) in sectors.chain(objects) {
+      if (seen | sight) != seen && is_in_view(sphere) {
+        seen |= sight;
+
+        if seen == StaticSight::ALL {
+          break;
+        }
+      }
+    }
+
+    seen
+  }
+
   pub fn list_sorted_places(&self) -> impl Iterator<Item = StaticSortedPlace<'_>> {
     let objects = self.objects.as_slice().iter().filter_map(|object| {
       let model: &StaticModelProxy = self.models.get(object.model)?;
@@ -1266,10 +1297,7 @@ impl StaticScene {
 
     if surface.flags & StaticSurface::IS_DISTORTING != 0 {
       self.texture_slots.insert(surface.distortion);
-      self.is_distorting = true;
     }
-
-    self.is_glassed |= surface.flags & StaticSurface::IS_GLASS != 0;
   }
 
   fn resolve_surface(
@@ -1336,6 +1364,7 @@ impl StaticScene {
       StaticLayout::Baked
     };
     let batch: StaticBatch = StaticBatch { layout, class };
+    let sight: StaticSight = StaticSight::of(class, passes);
     let base: StaticGeometryBase = put_geometry(writer, layout, geometry, buffer);
     let (bands, windows): (Vec<(u32, u32)>, u32) = match &group.progressive {
       Some(progressive) if !progressive.bands.is_empty() => (
@@ -1414,6 +1443,10 @@ impl StaticScene {
 
       if let Some(traced) = &mut traced {
         traced.transforms.push(StaticTraceGroup::to_transform(&matrix));
+      }
+
+      if !sight.is_empty() {
+        writer.sights.push((center.extend(local.w * scale), sight));
       }
 
       // A strictly sorted mesh is drawn place by place back to front, at its whole detail.

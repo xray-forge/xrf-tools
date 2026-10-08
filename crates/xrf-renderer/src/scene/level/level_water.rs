@@ -14,6 +14,8 @@ use crate::scene::level::water_flow::WaterFlow;
 /// `water_intensity`, wind and rain density, and the clock.
 pub struct WaterFrame<'a> {
   pub targets: Option<&'a ViewTargets>,
+  /// Whether any of the level's water may be in sight.
+  pub is_in_view: bool,
   pub intensity: f32,
   pub wind: RenderWind,
   pub rain: f32,
@@ -25,7 +27,7 @@ pub struct WaterFrame<'a> {
 #[derive(Default)]
 pub struct LevelWater {
   settings: RenderWaterSettings,
-  /// Whether this frame draws the water at all: it is on, and the view is not wireframe.
+  /// Whether this frame draws the water at all: it is on, some is in sight, and the view is not wireframe.
   is_drawn: bool,
   uniform: WaterUniform,
   enhanced: EnhancedWaterUniform,
@@ -42,7 +44,7 @@ impl LevelWater {
     let settings: RenderWaterSettings = options.features.water;
 
     self.settings = settings;
-    self.is_drawn = settings.is_enabled && !options.mode.is_wireframe;
+    self.is_drawn = settings.is_enabled && frame.is_in_view && !options.mode.is_wireframe;
     self.uniform = WaterUniform::new(&settings, frame.intensity, frame.time);
     // Advanced while the engine's water draws too, so switching back does not lurch the maps by the time between.
     self.flow.advance(frame.time, &settings.enhanced, frame.wind);
@@ -125,10 +127,15 @@ impl LevelWater {
     self.reflection.as_ref()
   }
 
-  /// Makes the reflection a frame drew the one the next frame keeps, where the frame drew the water.
+  /// Makes the reflection a frame drew the one the next frame keeps, where the frame drew the water; a frame that drew
+  /// none leaves nothing to keep, as a frame showing no water clears its history.
   pub fn finish_frame(&mut self) {
-    if let Some(reflection) = self.reflection.as_mut().filter(|_| self.is_drawn) {
-      reflection.swap();
+    if let Some(reflection) = self.reflection.as_mut() {
+      if self.is_drawn {
+        reflection.swap();
+      } else {
+        reflection.invalidate();
+      }
     }
   }
 }

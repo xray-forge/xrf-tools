@@ -1,6 +1,7 @@
 use glam::{Vec3, Vec4};
 
 use crate::scene::static_scene::static_batch::StaticBatch;
+use crate::scene::static_scene::static_sight::StaticSight;
 use crate::scene::static_scene::static_slot_info::StaticSlotInfo;
 use crate::scene::static_scene::static_spans::StaticSpans;
 use crate::scene::static_scene::static_trace_geometry::StaticTraceGeometry;
@@ -14,6 +15,8 @@ pub struct StaticModelProxy {
   pub slots: Vec<(u32, u32, StaticBatch, u32)>,
   /// The runs of clusters its composited parts are cut into, as first cluster and count, in their parts' order.
   pub sorted: Vec<(u32, u32)>,
+  /// What of it drawn by passes of their own its parts bring into sight.
+  pub sight: StaticSight,
   /// Each of its slots' part, and each of its clusters' slot, both counted from its own first.
   pub slot_infos: Vec<StaticSlotInfo>,
   pub cluster_slots: Vec<u32>,
