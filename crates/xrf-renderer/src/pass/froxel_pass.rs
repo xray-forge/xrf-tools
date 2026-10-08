@@ -4,11 +4,11 @@ use xrf_renderer_core::{ComputeContext, PassParameters};
 use crate::frame::froxel_volume::FroxelVolume;
 use crate::pass::froxel_inject_parameters::FroxelInjectParameters;
 use crate::pass::froxel_integrate_parameters::FroxelIntegrateParameters;
-use crate::pass::shader_pipelines::{create_checked, create_module};
+use crate::pass::pipeline_source::PipelineSource;
+use crate::pass::shader_pipelines::create_checked;
 use crate::pass::view_binding::ViewBinding;
-use crate::shader::shader_library::ShaderLibrary;
 
-/// Invocations a workgroup runs across and down the grid, as both shaders declare them.
+/// Invocations a workgroup runs across and down the grid, as both source declare them.
 const WORKGROUP: u32 = 8;
 
 /// Draws the enhanced volumetric lighting's froxels: fills each with what the sun and the local lights scatter in it
@@ -29,7 +29,11 @@ impl FroxelPass {
   /// # Errors
   ///
   /// Returns an error when a shader does not compose or compile.
-  pub fn new(device: &wgpu::Device, shaders: &ShaderLibrary, view_layout: &wgpu::BindGroupLayout) -> XrfResult<Self> {
+  pub fn new(
+    device: &wgpu::Device,
+    source: PipelineSource<'_>,
+    view_layout: &wgpu::BindGroupLayout,
+  ) -> XrfResult<Self> {
     let layouts: [wgpu::BindGroupLayout; 3] = [
       view_layout.clone(),
       FroxelInjectParameters::create_layout(device),
@@ -37,7 +41,7 @@ impl FroxelPass {
     ];
 
     Ok(Self {
-      pipelines: Self::create_pipelines(device, shaders, &layouts)?,
+      pipelines: Self::create_pipelines(device, source, &layouts)?,
       layouts,
       sampler: device.create_sampler(&wgpu::SamplerDescriptor {
         label: Some("froxels"),
@@ -61,7 +65,7 @@ impl FroxelPass {
           view_formats: &[],
         })
         .create_view(&Default::default()),
-      generation: shaders.get_generation(),
+      generation: source.get_generation(),
     })
   }
 
@@ -73,11 +77,11 @@ impl FroxelPass {
     &self.empty
   }
 
-  pub fn refresh(&mut self, device: &wgpu::Device, shaders: &ShaderLibrary) {
-    if shaders.get_generation() != self.generation {
-      self.generation = shaders.get_generation();
+  pub fn refresh(&mut self, device: &wgpu::Device, source: PipelineSource<'_>) {
+    if source.get_generation() != self.generation {
+      self.generation = source.get_generation();
 
-      match Self::create_pipelines(device, shaders, &self.layouts) {
+      match Self::create_pipelines(device, source, &self.layouts) {
         Ok(pipelines) => self.pipelines = pipelines,
         Err(error) => log::error!("Froxels rejected, drawing with the last ones: {error}"),
       }
@@ -120,28 +124,29 @@ impl FroxelPass {
 
   fn create_pipelines(
     device: &wgpu::Device,
-    shaders: &ShaderLibrary,
+    source: PipelineSource<'_>,
     [view_layout, inject_layout, integrate_layout]: &[wgpu::BindGroupLayout; 3],
   ) -> XrfResult<[wgpu::ComputePipeline; 2]> {
-    let create = |module: &str, entry: &str, layout: &wgpu::BindGroupLayout| -> XrfResult<wgpu::ComputePipeline> {
-      let module: wgpu::ShaderModule = create_module(device, shaders, module)?;
-      let pipeline_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-        label: Some(entry),
-        bind_group_layouts: &[Some(view_layout), Some(layout)],
-        ..Default::default()
-      });
-
-      create_checked(device, entry, || {
-        device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+    let create =
+      |module: &'static str, entry: &str, layout: &wgpu::BindGroupLayout| -> XrfResult<wgpu::ComputePipeline> {
+        let module: wgpu::ShaderModule = source.get_module(module)?;
+        let pipeline_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
           label: Some(entry),
-          layout: Some(&pipeline_layout),
-          module: &module,
-          entry_point: Some(entry),
-          compilation_options: Default::default(),
-          cache: None,
+          bind_group_layouts: &[Some(view_layout), Some(layout)],
+          ..Default::default()
+        });
+
+        create_checked(device, entry, || {
+          device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some(entry),
+            layout: Some(&pipeline_layout),
+            module: &module,
+            entry_point: Some(entry),
+            compilation_options: Default::default(),
+            cache: source.get_driver_cache(),
+          })
         })
-      })
-    };
+      };
 
     Ok([
       create("frame/froxel_inject", "froxel_inject", inject_layout)?,

@@ -2,10 +2,10 @@ use xrf_error::XrfResult;
 use xrf_renderer_core::{PassParameters, RasterContext};
 
 use crate::frame::view_targets::ViewTargets;
+use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::rain_parameters::RainParameters;
-use crate::pass::shader_pipelines::{create_checked, create_module};
+use crate::pass::shader_pipelines::create_checked;
 use crate::pass::view_binding::ViewBinding;
-use crate::shader::shader_library::ShaderLibrary;
 
 /// Draws the rain over a viewport's finished scene as `RenderLast` does after the forward surfaces: the streaks, then
 /// the splashes, blended by their alpha and tested against the G-buffer's depth without writing it.
@@ -22,11 +22,15 @@ impl RainPass {
   /// # Errors
   ///
   /// Returns an error when the shader does not compose or compile.
-  pub fn new(device: &wgpu::Device, shaders: &ShaderLibrary, view_layout: &wgpu::BindGroupLayout) -> XrfResult<Self> {
+  pub fn new(
+    device: &wgpu::Device,
+    source: PipelineSource<'_>,
+    view_layout: &wgpu::BindGroupLayout,
+  ) -> XrfResult<Self> {
     let layout: wgpu::BindGroupLayout = RainParameters::create_layout(device);
 
     Ok(Self {
-      pipelines: Self::create_pipelines(device, shaders, view_layout, &layout)?,
+      pipelines: Self::create_pipelines(device, source, view_layout, &layout)?,
       sampler: device.create_sampler(&wgpu::SamplerDescriptor {
         label: Some("rain"),
         mag_filter: wgpu::FilterMode::Linear,
@@ -35,16 +39,16 @@ impl RainPass {
         ..Default::default()
       }),
       view_layout: view_layout.clone(),
-      generation: shaders.get_generation(),
+      generation: source.get_generation(),
       layout,
     })
   }
 
-  pub fn refresh(&mut self, device: &wgpu::Device, shaders: &ShaderLibrary) {
-    if shaders.get_generation() != self.generation {
-      self.generation = shaders.get_generation();
+  pub fn refresh(&mut self, device: &wgpu::Device, source: PipelineSource<'_>) {
+    if source.get_generation() != self.generation {
+      self.generation = source.get_generation();
 
-      match Self::create_pipelines(device, shaders, &self.view_layout, &self.layout) {
+      match Self::create_pipelines(device, source, &self.view_layout, &self.layout) {
         Ok(pipelines) => self.pipelines = pipelines,
         Err(error) => log::error!("Rain rejected, falling with the last one: {error}"),
       }
@@ -80,11 +84,11 @@ impl RainPass {
 
   fn create_pipelines(
     device: &wgpu::Device,
-    shaders: &ShaderLibrary,
+    source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<[wgpu::RenderPipeline; 2]> {
-    let module: wgpu::ShaderModule = create_module(device, shaders, "frame/rain")?;
+    let module: wgpu::ShaderModule = source.get_module("frame/rain")?;
     let pipeline_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
       label: Some("rain"),
       bind_group_layouts: &[Some(view_layout), Some(layout)],
@@ -135,7 +139,7 @@ impl RainPass {
           }),
           multisample: Default::default(),
           multiview_mask: None,
-          cache: None,
+          cache: source.get_driver_cache(),
         })
       })
     };

@@ -17,8 +17,8 @@ use crate::pass::fsr_reactive_parameters::FsrReactiveParameters;
 use crate::pass::fsr_reconstruct_parameters::FsrReconstructParameters;
 use crate::pass::fsr_uniform::FsrUniform;
 use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline_into;
-use crate::pass::shader_pipelines::{create_checked, create_module};
-use crate::shader::shader_library::ShaderLibrary;
+use crate::pass::pipeline_source::PipelineSource;
+use crate::pass::shader_pipelines::create_checked;
 
 /// Drawn texels a side of one workgroup of the depth reconstruction.
 const RECONSTRUCT_WORKGROUP: u32 = 8;
@@ -75,11 +75,11 @@ impl FsrPass {
   /// # Errors
   ///
   /// Returns an error when a shader does not compose or compile.
-  pub fn new(device: &wgpu::Device, shaders: &ShaderLibrary) -> XrfResult<Self> {
+  pub fn new(device: &wgpu::Device, source: PipelineSource<'_>) -> XrfResult<Self> {
     let layouts: FsrLayouts = FsrLayouts::new(device);
 
     Ok(Self {
-      pipelines: Self::create_pipelines(device, shaders, &layouts)?,
+      pipelines: Self::create_pipelines(device, source, &layouts)?,
       layouts,
       sampler: device.create_sampler(&wgpu::SamplerDescriptor {
         label: Some("fsr2"),
@@ -87,15 +87,15 @@ impl FsrPass {
         min_filter: wgpu::FilterMode::Linear,
         ..Default::default()
       }),
-      generation: shaders.get_generation(),
+      generation: source.get_generation(),
     })
   }
 
-  pub fn refresh(&mut self, device: &wgpu::Device, shaders: &ShaderLibrary) {
-    if shaders.get_generation() != self.generation {
-      self.generation = shaders.get_generation();
+  pub fn refresh(&mut self, device: &wgpu::Device, source: PipelineSource<'_>) {
+    if source.get_generation() != self.generation {
+      self.generation = source.get_generation();
 
-      match Self::create_pipelines(device, shaders, &self.layouts) {
+      match Self::create_pipelines(device, source, &self.layouts) {
         Ok(pipelines) => self.pipelines = pipelines,
         Err(error) => log::error!("FSR 2 rejected, upscaling with the last one: {error}"),
       }
@@ -280,13 +280,19 @@ impl FsrPass {
       });
   }
 
-  fn create_pipelines(device: &wgpu::Device, shaders: &ShaderLibrary, layouts: &FsrLayouts) -> XrfResult<FsrPipelines> {
-    let draw = |module: &str, fragment: &str, layout: &wgpu::BindGroupLayout, formats: &[wgpu::TextureFormat]| {
-      let targets: Vec<Option<wgpu::ColorTargetState>> = formats.iter().map(|format| Some((*format).into())).collect();
+  fn create_pipelines(
+    device: &wgpu::Device,
+    source: PipelineSource<'_>,
+    layouts: &FsrLayouts,
+  ) -> XrfResult<FsrPipelines> {
+    let draw =
+      |module: &'static str, fragment: &str, layout: &wgpu::BindGroupLayout, formats: &[wgpu::TextureFormat]| {
+        let targets: Vec<Option<wgpu::ColorTargetState>> =
+          formats.iter().map(|format| Some((*format).into())).collect();
 
-      create_fullscreen_pipeline_into(device, shaders, module, fragment, &[Some(layout)], &targets)
-    };
-    let module: wgpu::ShaderModule = create_module(device, shaders, "frame/fsr/reconstruct")?;
+        create_fullscreen_pipeline_into(device, source, module, fragment, &[Some(layout)], &targets)
+      };
+    let module: wgpu::ShaderModule = source.get_module("frame/fsr/reconstruct")?;
     let reconstruct_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
       label: Some("fsr2 reconstruct"),
       bind_group_layouts: &[Some(&layouts.reconstruct)],
@@ -313,7 +319,7 @@ impl FsrPass {
           module: &module,
           entry_point: Some("cs_reconstruct"),
           compilation_options: Default::default(),
-          cache: None,
+          cache: source.get_driver_cache(),
         })
       })?,
       dilate: draw(

@@ -11,8 +11,9 @@ pub const REQUIRED_FEATURES: wgpu::Features = wgpu::Features::TEXTURE_COMPRESSIO
   .union(wgpu::Features::DUAL_SOURCE_BLENDING);
 
 /// What the renderer uses where present: GPU timings of each pass.
-pub const OPTIONAL_FEATURES: wgpu::Features =
-  wgpu::Features::TIMESTAMP_QUERY.union(wgpu::Features::TIMESTAMP_QUERY_INSIDE_ENCODERS);
+pub const OPTIONAL_FEATURES: wgpu::Features = wgpu::Features::TIMESTAMP_QUERY
+  .union(wgpu::Features::TIMESTAMP_QUERY_INSIDE_ENCODERS)
+  .union(wgpu::Features::PIPELINE_CACHE);
 
 /// What the renderer traces rays with where present: hardware ray queries against the level's acceleration structures,
 /// still experimental in wgpu. `RAY_QUERY_SWITCH` set to `0` leaves them off.

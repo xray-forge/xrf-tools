@@ -11,7 +11,8 @@ use crate::pipeline::shader_source::ShaderSource;
 /// The shader modules and pipelines a renderer has made, kept by what they were made from: a module by name, a
 /// pipeline by its whole description, permutation and bind group layouts included. Asked for one it has, it hands it
 /// back; asked for one it lacks, it makes it, so precompiling a level's pipelines is asking for them ahead. A module
-/// hot reload changed is invalidated with every pipeline made from it.
+/// hot reload changed is invalidated with every pipeline made from it. Every pipeline is made with the driver's own
+/// pipeline cache where the device keeps one, which a renderer saves and hands back at its next start.
 #[derive(Default)]
 pub struct PipelineCache {
   modules: Mutex<HashMap<&'static str, wgpu::ShaderModule>>,
@@ -19,11 +20,43 @@ pub struct PipelineCache {
   compute: Mutex<HashMap<ComputePipelineDescription, wgpu::ComputePipeline>>,
   /// Bumped by every invalidation, so whoever keeps a pipeline it was handed knows to ask again.
   generation: AtomicU64,
+  /// The driver's cache of compiled pipelines, where the device keeps one.
+  driver: Option<wgpu::PipelineCache>,
 }
 
 impl PipelineCache {
   pub fn new() -> Self {
     Self::default()
+  }
+
+  /// A cache whose pipelines are made with a driver cache where `device` keeps one, started from `data` a driver cache
+  /// of the same adapter and driver saved before; one it does not take starts empty.
+  pub fn with_driver_cache(device: &wgpu::Device, data: Option<&[u8]>) -> Self {
+    let driver: Option<wgpu::PipelineCache> = device.features().contains(wgpu::Features::PIPELINE_CACHE).then(|| {
+      // SAFETY: wgpu checks the data's header against the adapter and falls back to an empty cache where it differs.
+      unsafe {
+        device.create_pipeline_cache(&wgpu::PipelineCacheDescriptor {
+          label: Some("pipelines"),
+          data,
+          fallback: true,
+        })
+      }
+    });
+
+    Self {
+      driver,
+      ..Self::default()
+    }
+  }
+
+  /// The driver's cache every pipeline is made with, none where the device keeps none.
+  pub fn get_driver_cache(&self) -> Option<&wgpu::PipelineCache> {
+    self.driver.as_ref()
+  }
+
+  /// What the driver's cache holds, to hand back at the next start; none where the device keeps none.
+  pub fn get_driver_data(&self) -> Option<Vec<u8>> {
+    self.driver.as_ref().and_then(wgpu::PipelineCache::get_data)
   }
 
   /// How many invalidations the cache has had: a pipeline handed out before the latest may be stale.
@@ -83,7 +116,7 @@ impl PipelineCache {
           targets: &description.targets,
         }),
         multiview_mask: None,
-        cache: None,
+        cache: self.driver.as_ref(),
       })
     })?;
 
@@ -124,7 +157,7 @@ impl PipelineCache {
           constants: &constants,
           ..Default::default()
         },
-        cache: None,
+        cache: self.driver.as_ref(),
       })
     })?;
 
@@ -184,7 +217,12 @@ impl PipelineCache {
     self.generation.fetch_add(1, Ordering::AcqRel);
   }
 
-  fn get_module(
+  /// The module `module` names, composed and compiled once.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the module cannot be composed or wgpu refuses it.
+  pub fn get_module(
     &self,
     device: &wgpu::Device,
     source: &dyn ShaderSource,

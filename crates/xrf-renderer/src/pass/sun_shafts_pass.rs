@@ -3,9 +3,9 @@ use xrf_renderer_core::{PassParameters, RasterContext};
 
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline_into;
+use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::sun_shafts_parameters::SunShaftsParameters;
 use crate::pass::view_binding::ViewBinding;
-use crate::shader::shader_library::ShaderLibrary;
 
 /// Adds the sun's light shafts to a viewport's frame after its forward surfaces, as `phase_combine_volumetric` adds
 /// what `accum_direct_volumetric` gathered: `one, one`; marched at half the frame's size first.
@@ -24,22 +24,26 @@ impl SunShaftsPass {
   /// # Errors
   ///
   /// Returns an error when the shader does not compose or compile.
-  pub fn new(device: &wgpu::Device, shaders: &ShaderLibrary, view_layout: &wgpu::BindGroupLayout) -> XrfResult<Self> {
+  pub fn new(
+    device: &wgpu::Device,
+    source: PipelineSource<'_>,
+    view_layout: &wgpu::BindGroupLayout,
+  ) -> XrfResult<Self> {
     let layout: wgpu::BindGroupLayout = SunShaftsParameters::create_layout(device);
 
     Ok(Self {
-      pipelines: Self::create_pipelines(device, shaders, view_layout, &layout)?,
+      pipelines: Self::create_pipelines(device, source, view_layout, &layout)?,
       view_layout: view_layout.clone(),
-      generation: shaders.get_generation(),
+      generation: source.get_generation(),
       layout,
     })
   }
 
-  pub fn refresh(&mut self, device: &wgpu::Device, shaders: &ShaderLibrary) {
-    if shaders.get_generation() != self.generation {
-      self.generation = shaders.get_generation();
+  pub fn refresh(&mut self, device: &wgpu::Device, source: PipelineSource<'_>) {
+    if source.get_generation() != self.generation {
+      self.generation = source.get_generation();
 
-      match Self::create_pipelines(device, shaders, &self.view_layout, &self.layout) {
+      match Self::create_pipelines(device, source, &self.view_layout, &self.layout) {
         Ok(pipelines) => self.pipelines = pipelines,
         Err(error) => log::error!("Sun shafts rejected, drawing with the last ones: {error}"),
       }
@@ -65,7 +69,7 @@ impl SunShaftsPass {
 
   fn create_pipelines(
     device: &wgpu::Device,
-    shaders: &ShaderLibrary,
+    source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<[wgpu::RenderPipeline; 2]> {
@@ -89,7 +93,7 @@ impl SunShaftsPass {
     Ok([
       create_fullscreen_pipeline_into(
         device,
-        shaders,
+        source,
         "frame/sun_shafts",
         "fs_sun_shafts_march",
         &[Some(view_layout), Some(layout)],
@@ -97,7 +101,7 @@ impl SunShaftsPass {
       )?,
       create_fullscreen_pipeline_into(
         device,
-        shaders,
+        source,
         "frame/sun_shafts",
         "fs_sun_shafts",
         &[Some(view_layout), Some(layout)],

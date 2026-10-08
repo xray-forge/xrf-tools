@@ -5,10 +5,10 @@ use xrf_renderer_core::{PassParameters, RasterContext};
 use crate::contract::render_ambient_occlusion_quality::RenderAmbientOcclusionQuality;
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::bitmask_search::BitmaskSearch;
-use crate::pass::shader_pipelines::{create_checked, create_module};
+use crate::pass::pipeline_source::PipelineSource;
+use crate::pass::shader_pipelines::create_checked;
 use crate::pass::vbao_parameters::VbaoParameters;
 use crate::pass::view_binding::ViewBinding;
-use crate::shader::shader_library::ShaderLibrary;
 
 /// Every quality, in the order their search pipelines are held.
 const QUALITIES: [RenderAmbientOcclusionQuality; 4] = [
@@ -60,7 +60,7 @@ impl VbaoPass {
   pub fn new(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
-    shaders: &ShaderLibrary,
+    source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<Self> {
     let layout: wgpu::BindGroupLayout = VbaoParameters::create_layout(device);
@@ -89,20 +89,20 @@ impl VbaoPass {
     };
 
     Ok(Self {
-      pipelines: Self::create_pipelines(device, shaders, view_layout, &layout)?,
+      pipelines: Self::create_pipelines(device, source, view_layout, &layout)?,
       view_layout: view_layout.clone(),
       empty: texel("vbao history empty", [u8::MAX, 0, 0, 0]),
       dark: texel("indirect light none", [0; 4]),
-      generation: shaders.get_generation(),
+      generation: source.get_generation(),
       layout,
     })
   }
 
-  pub fn refresh(&mut self, device: &wgpu::Device, shaders: &ShaderLibrary) {
-    if shaders.get_generation() != self.generation {
-      self.generation = shaders.get_generation();
+  pub fn refresh(&mut self, device: &wgpu::Device, source: PipelineSource<'_>) {
+    if source.get_generation() != self.generation {
+      self.generation = source.get_generation();
 
-      match Self::create_pipelines(device, shaders, &self.view_layout, &self.layout) {
+      match Self::create_pipelines(device, source, &self.view_layout, &self.layout) {
         Ok(pipelines) => self.pipelines = pipelines,
         Err(error) => log::error!("VBAO rejected, searching with the last one: {error}"),
       }
@@ -198,11 +198,11 @@ impl VbaoPass {
 
   fn create_pipelines(
     device: &wgpu::Device,
-    shaders: &ShaderLibrary,
+    source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<VbaoPipelines> {
-    let module: wgpu::ShaderModule = create_module(device, shaders, "frame/vbao")?;
+    let module: wgpu::ShaderModule = source.get_module("frame/vbao")?;
     let pipeline_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
       label: Some("vbao"),
       bind_group_layouts: &[Some(view_layout), Some(layout)],
@@ -235,7 +235,7 @@ impl VbaoPass {
             depth_stencil: None,
             multisample: Default::default(),
             multiview_mask: None,
-            cache: None,
+            cache: source.get_driver_cache(),
           })
         })
       };

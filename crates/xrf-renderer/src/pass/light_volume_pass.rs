@@ -3,9 +3,9 @@ use xrf_renderer_core::{PassParameters, RasterContext};
 
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::light_volume_parameters::LightVolumeParameters;
-use crate::pass::shader_pipelines::{create_checked, create_module};
+use crate::pass::pipeline_source::PipelineSource;
+use crate::pass::shader_pipelines::create_checked;
 use crate::pass::view_binding::ViewBinding;
-use crate::shader::shader_library::ShaderLibrary;
 
 /// Draws the shadowed local lights' shafts (`accum_volumetric`) into a target of their own at half the frame's size,
 /// slices added where the scene stands behind them, tested against its depth taken at that size without writing it,
@@ -30,14 +30,14 @@ impl LightVolumePass {
   /// Returns an error when the shader does not compose or compile.
   pub fn new(
     device: &wgpu::Device,
-    shaders: &ShaderLibrary,
+    source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     texture_layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<Self> {
     let layout: wgpu::BindGroupLayout = LightVolumeParameters::create_layout(device);
 
     Ok(Self {
-      pipelines: Self::create_pipelines(device, shaders, [view_layout, &layout, texture_layout])?,
+      pipelines: Self::create_pipelines(device, source, [view_layout, &layout, texture_layout])?,
       layout,
       view_layout: view_layout.clone(),
       texture_layout: texture_layout.clone(),
@@ -48,7 +48,7 @@ impl LightVolumePass {
         compare: Some(wgpu::CompareFunction::GreaterEqual),
         ..Default::default()
       }),
-      generation: shaders.get_generation(),
+      generation: source.get_generation(),
     })
   }
 
@@ -56,11 +56,11 @@ impl LightVolumePass {
     &self.shadow_sampler
   }
 
-  pub fn refresh(&mut self, device: &wgpu::Device, shaders: &ShaderLibrary) {
-    if shaders.get_generation() != self.generation {
-      self.generation = shaders.get_generation();
+  pub fn refresh(&mut self, device: &wgpu::Device, source: PipelineSource<'_>) {
+    if source.get_generation() != self.generation {
+      self.generation = source.get_generation();
 
-      match Self::create_pipelines(device, shaders, [&self.view_layout, &self.layout, &self.texture_layout]) {
+      match Self::create_pipelines(device, source, [&self.view_layout, &self.layout, &self.texture_layout]) {
         Ok(pipelines) => self.pipelines = pipelines,
         Err(error) => log::error!("Light volumes rejected, drawing with the last ones: {error}"),
       }
@@ -111,10 +111,10 @@ impl LightVolumePass {
 
   fn create_pipelines(
     device: &wgpu::Device,
-    shaders: &ShaderLibrary,
+    source: PipelineSource<'_>,
     layouts: [&wgpu::BindGroupLayout; 3],
   ) -> XrfResult<[wgpu::RenderPipeline; 2]> {
-    let module: wgpu::ShaderModule = create_module(device, shaders, "frame/light_volumes")?;
+    let module: wgpu::ShaderModule = source.get_module("frame/light_volumes")?;
     let pipeline_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
       label: Some("light volumes"),
       bind_group_layouts: &layouts.map(Some),
@@ -163,7 +163,7 @@ impl LightVolumePass {
         }),
         multisample: Default::default(),
         multiview_mask: None,
-        cache: None,
+        cache: source.get_driver_cache(),
       })
     })?;
     let depth: wgpu::RenderPipeline = create_checked(device, "fs_volume_depth", || {
@@ -192,7 +192,7 @@ impl LightVolumePass {
         }),
         multisample: Default::default(),
         multiview_mask: None,
-        cache: None,
+        cache: source.get_driver_cache(),
       })
     })?;
 

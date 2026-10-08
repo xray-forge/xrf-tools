@@ -33,5 +33,7 @@ pub use crate::contract::world_weather_effect_report::WorldWeatherEffectReport;
 pub use crate::contract::world_weather_play::WorldWeatherPlay;
 pub use crate::contract::world_weather_report::WorldWeatherReport;
 pub use crate::contract::world_weather_transition::WorldWeatherTransition;
+pub use crate::level::reduced_textures::ReducedTextures;
+pub use crate::weather::lens_flare::to_render_lens_flare;
 pub use crate::world::World;
 pub use crate::world_event_sink::WorldEventSink;

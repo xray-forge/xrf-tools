@@ -1,4 +1,5 @@
 use serde::Serialize;
+use xrf_level::EnvModifier;
 
 /// One `level.env_mod` volume as the mixer weighs it, `CEnvModifier`: where it is, how far and how strongly it reaches,
 /// and what it adds of each value its flags name.
@@ -29,6 +30,25 @@ impl WeatherModifier {
   pub const HEMI_COLOR: u16 = 1 << 5;
   /// Every value, what a file before the flag word carries.
   pub const ALL: u16 = u16::MAX;
+
+  /// A `level.env_mod` volume as the mixer weighs it: one from a file before the flag word adds every value, as the
+  /// engine's `use_flags.one()` before the read leaves it.
+  pub fn of(modifier: &EnvModifier) -> Self {
+    let to_array = |vector: &xrf_math::Vector3d<f32>| [vector.x, vector.y, vector.z];
+
+    Self {
+      position: to_array(&modifier.position),
+      radius: modifier.radius,
+      power: modifier.power,
+      far_plane: modifier.far_plane,
+      fog_color: to_array(&modifier.fog_color),
+      fog_density: modifier.fog_density,
+      ambient: to_array(&modifier.ambient),
+      sky_color: to_array(&modifier.sky_color),
+      hemi_color: to_array(&modifier.hemi_color),
+      flags: modifier.use_flags.unwrap_or(Self::ALL),
+    }
+  }
 
   /// `CEnvModifier::sum`'s weight at a point: its power, falling off to nothing at its radius.
   pub fn get_power(&self, view: [f32; 3]) -> f32 {

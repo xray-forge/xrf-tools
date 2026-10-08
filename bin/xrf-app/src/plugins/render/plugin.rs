@@ -6,6 +6,7 @@ use tauri::{Manager, Runtime, Webview};
 use xrf_renderer::RenderWorkers;
 
 use crate::core::execution::ExecutionState;
+use crate::plugins::render::disk_cache_store::DiskCacheStore;
 use crate::plugins::render::packaged_bundle::PackagedBundle;
 use crate::plugins::render::state::RenderState;
 
@@ -22,8 +23,14 @@ impl RenderPlugin {
         // The renderer's loaders run on the application's one pool, beside every other job.
         let workers: RenderWorkers = RenderWorkers::new(application.state::<ExecutionState>().get_pool());
         let bundle: PackagedBundle = PackagedBundle::locate(application.path().resource_dir().ok().as_deref());
+        // The driver's compiled pipelines, kept between runs where the backend keeps them.
+        let store: Option<DiskCacheStore> = application
+          .path()
+          .app_cache_dir()
+          .ok()
+          .map(|directory| DiskCacheStore::new(directory.join("renderer")));
 
-        application.manage(RenderState::new(workers, Arc::new(bundle)));
+        application.manage(RenderState::new(workers, Arc::new(bundle), store));
 
         Ok(())
       })

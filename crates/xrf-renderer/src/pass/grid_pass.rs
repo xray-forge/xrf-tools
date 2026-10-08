@@ -1,8 +1,8 @@
 use xrf_error::XrfResult;
 
-use crate::pass::shader_pipelines::{create_checked, create_module};
+use crate::pass::pipeline_source::PipelineSource;
+use crate::pass::shader_pipelines::create_checked;
 use crate::pass::view_binding::ViewBinding;
-use crate::shader::shader_library::ShaderLibrary;
 
 /// Draws the ground grid and a plain sky over a whole viewport.
 pub struct GridPass {
@@ -19,27 +19,27 @@ impl GridPass {
   /// Returns an error when the shader does not compose.
   pub fn new(
     device: &wgpu::Device,
-    shaders: &ShaderLibrary,
+    source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     format: wgpu::TextureFormat,
   ) -> XrfResult<Self> {
     Ok(Self {
-      pipeline: Self::create_pipeline(device, shaders, view_layout, format)?,
+      pipeline: Self::create_pipeline(device, source, view_layout, format)?,
       view_layout: view_layout.clone(),
-      generation: shaders.get_generation(),
+      generation: source.get_generation(),
       format,
     })
   }
 
   /// Builds the pipeline again from a library reloaded since it was built; a broken edit keeps the last good one.
-  pub fn refresh(&mut self, device: &wgpu::Device, shaders: &ShaderLibrary) {
-    if shaders.get_generation() == self.generation {
+  pub fn refresh(&mut self, device: &wgpu::Device, source: PipelineSource<'_>) {
+    if source.get_generation() == self.generation {
       return;
     }
 
-    self.generation = shaders.get_generation();
+    self.generation = source.get_generation();
 
-    match Self::create_pipeline(device, shaders, &self.view_layout, self.format) {
+    match Self::create_pipeline(device, source, &self.view_layout, self.format) {
       Ok(pipeline) => self.pipeline = pipeline,
       Err(error) => log::error!("Grid shader rejected, drawing with the last one: {error}"),
     }
@@ -53,11 +53,11 @@ impl GridPass {
 
   fn create_pipeline(
     device: &wgpu::Device,
-    shaders: &ShaderLibrary,
+    source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     format: wgpu::TextureFormat,
   ) -> XrfResult<wgpu::RenderPipeline> {
-    let module: wgpu::ShaderModule = create_module(device, shaders, "grid/grid")?;
+    let module: wgpu::ShaderModule = source.get_module("grid/grid")?;
     let layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
       label: Some("grid"),
       bind_group_layouts: &[Some(view_layout)],
@@ -84,7 +84,7 @@ impl GridPass {
         depth_stencil: None,
         multisample: Default::default(),
         multiview_mask: None,
-        cache: None,
+        cache: source.get_driver_cache(),
       })
     })
   }

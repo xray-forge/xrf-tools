@@ -10,6 +10,7 @@ use crate::core::execution::ExecutionState;
 use crate::core::jobs::{JobKind, JobRegistration, JobRegistry, JobStart, run_job};
 use crate::core::session::SessionSnapshot;
 use crate::core::types::TauriResult;
+use crate::plugins::render::state::RenderState;
 use crate::plugins::textures::encoding::TextureEncodingSession;
 use crate::plugins::textures::request::TexturesSaveRequest;
 use crate::plugins::textures::save::{TextureSaveOutcome, write_save};
@@ -25,6 +26,7 @@ pub async fn textures_save(
   state: State<'_, TextureState>,
   registry: State<'_, Arc<JobRegistry>>,
   execution: State<'_, ExecutionState>,
+  render: State<'_, RenderState>,
 ) -> TauriResult<TextureSaveOutcome> {
   let start: JobStart = JobStart::new(job_id, JobKind::TexturesSave).with_request(&request);
 
@@ -43,7 +45,7 @@ pub async fn textures_save(
   let (job, registration): (JobHandle, JobRegistration) =
     registry.register(start.with_resources(request.to_resources()).with_progress(progress))?;
 
-  run_job(
+  let outcome: TextureSaveOutcome = run_job(
     &execution,
     "Texture save",
     registration,
@@ -57,5 +59,10 @@ pub async fn textures_save(
     },
     |outcome| outcome.outcome,
   )
-  .await
+  .await?;
+
+  // Every viewport drawing what was written draws it as written.
+  render.reload_written(&outcome.written);
+
+  Ok(outcome)
 }

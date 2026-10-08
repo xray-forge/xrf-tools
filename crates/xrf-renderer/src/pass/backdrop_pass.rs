@@ -6,7 +6,7 @@ use crate::frame::frame_encoder::FrameEncoder;
 use crate::pass::backdrop_uniform::BackdropUniform;
 use crate::pass::fullscreen_pipeline::{buffer_binding, create_fullscreen_pipeline};
 use crate::pass::layout_entries::uniform_entry;
-use crate::shader::shader_library::ShaderLibrary;
+use crate::pass::pipeline_source::PipelineSource;
 use crate::window::window_backdrop::WindowBackdrop;
 
 /// Paints the page's backdrop over a window where it is transparent, under its viewports: the colour the page shows
@@ -19,7 +19,7 @@ pub struct BackdropPass {
 }
 
 impl BackdropPass {
-  pub fn new(device: &wgpu::Device, shaders: &ShaderLibrary) -> Self {
+  pub fn new(device: &wgpu::Device, source: PipelineSource<'_>) -> Self {
     let layout: wgpu::BindGroupLayout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
       label: Some("backdrop"),
       entries: &[uniform_entry(0, wgpu::ShaderStages::FRAGMENT)],
@@ -28,14 +28,14 @@ impl BackdropPass {
     Self {
       layout,
       pipelines: HashMap::new(),
-      generation: shaders.get_generation(),
+      generation: source.get_generation(),
     }
   }
 
   /// Forgets pipelines built from a library reloaded since, so the next frame builds them again.
-  pub fn refresh(&mut self, shaders: &ShaderLibrary) {
-    if shaders.get_generation() != self.generation {
-      self.generation = shaders.get_generation();
+  pub fn refresh(&mut self, source: PipelineSource<'_>) {
+    if source.get_generation() != self.generation {
+      self.generation = source.get_generation();
       self.pipelines.clear();
     }
   }
@@ -49,7 +49,7 @@ impl BackdropPass {
   pub fn prepare(
     &mut self,
     (device, encoder): (&wgpu::Device, &mut FrameEncoder),
-    shaders: &ShaderLibrary,
+    source: PipelineSource<'_>,
     format: wgpu::TextureFormat,
     (window, backdrop): (&mut Option<WindowBackdrop>, &BackdropUniform),
   ) -> XrfResult {
@@ -81,7 +81,7 @@ impl BackdropPass {
     if !self.pipelines.contains_key(&format) {
       let pipeline: wgpu::RenderPipeline = create_fullscreen_pipeline(
         device,
-        shaders,
+        source,
         "frame/backdrop",
         "fs_backdrop",
         &[Some(&self.layout)],

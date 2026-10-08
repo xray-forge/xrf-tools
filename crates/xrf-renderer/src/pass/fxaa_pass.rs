@@ -4,7 +4,7 @@ use xrf_renderer_core::{PassParameters, RasterContext};
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline;
 use crate::pass::fxaa_parameters::FxaaParameters;
-use crate::shader::shader_library::ShaderLibrary;
+use crate::pass::pipeline_source::PipelineSource;
 
 /// FXAA over a viewport's scene as drawn, into a frame's target the scene is copied back from.
 pub struct FxaaPass {
@@ -18,27 +18,27 @@ impl FxaaPass {
   /// # Errors
   ///
   /// Returns an error when the shader does not compose or compile.
-  pub fn new(device: &wgpu::Device, shaders: &ShaderLibrary) -> XrfResult<Self> {
+  pub fn new(device: &wgpu::Device, source: PipelineSource<'_>) -> XrfResult<Self> {
     let layout: wgpu::BindGroupLayout = FxaaParameters::create_layout(device);
 
     Ok(Self {
-      pipeline: Self::create_pipeline(device, shaders, &layout)?,
+      pipeline: Self::create_pipeline(device, source, &layout)?,
       sampler: device.create_sampler(&wgpu::SamplerDescriptor {
         label: Some("fxaa"),
         mag_filter: wgpu::FilterMode::Linear,
         min_filter: wgpu::FilterMode::Linear,
         ..Default::default()
       }),
-      generation: shaders.get_generation(),
+      generation: source.get_generation(),
       layout,
     })
   }
 
-  pub fn refresh(&mut self, device: &wgpu::Device, shaders: &ShaderLibrary) {
-    if shaders.get_generation() != self.generation {
-      self.generation = shaders.get_generation();
+  pub fn refresh(&mut self, device: &wgpu::Device, source: PipelineSource<'_>) {
+    if source.get_generation() != self.generation {
+      self.generation = source.get_generation();
 
-      match Self::create_pipeline(device, shaders, &self.layout) {
+      match Self::create_pipeline(device, source, &self.layout) {
         Ok(pipeline) => self.pipeline = pipeline,
         Err(error) => log::error!("FXAA rejected, smoothing with the last one: {error}"),
       }
@@ -58,12 +58,12 @@ impl FxaaPass {
 
   fn create_pipeline(
     device: &wgpu::Device,
-    shaders: &ShaderLibrary,
+    source: PipelineSource<'_>,
     layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<wgpu::RenderPipeline> {
     create_fullscreen_pipeline(
       device,
-      shaders,
+      source,
       "frame/fxaa",
       "fs_fxaa",
       &[Some(layout)],

@@ -1,8 +1,6 @@
 use serde::Serialize;
 use xrf_environment::{EnvironmentCatalog, EnvironmentFinding, WeatherCycle, WeatherCycleKind, WeatherDescriptor};
 
-use crate::plugins::levels::state::level_environment::LevelEnvironment;
-
 /// One cycle or effect as the engine loads it, which a viewer mixes, and what is wrong in its config.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize)]
@@ -28,7 +26,7 @@ impl LevelWeatherCycle {
         .collect(),
       kind: cycle.kind,
       name: cycle.name.clone(),
-      keyframes: LevelEnvironment::list_keyframes(cycle, catalog.engine),
+      keyframes: cycle.list_descriptors(catalog.engine),
     }
   }
 }

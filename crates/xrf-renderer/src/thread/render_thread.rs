@@ -35,6 +35,7 @@ use crate::frame::frame_statistics::REPORT_INTERVAL;
 use crate::frame::periodic_scheduler::PeriodicScheduler;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::host::render_bundle::RenderBundle;
+use crate::host::render_cache_store::RenderCacheStore;
 use crate::host::render_scene_feedback::RenderSceneFeedback;
 use crate::host::render_scene_frame::RenderSceneFrame;
 use crate::host::render_scene_id::RenderSceneId;
@@ -45,6 +46,7 @@ use crate::lighting::render_lighting::RenderLighting;
 use crate::pass::backdrop_uniform::BackdropUniform;
 use crate::pass::camera_uniform::CameraUniform;
 use crate::pass::overlay_parameters::OverlayParameters;
+use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::present_parameters::PresentParameters;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::level_frame::LevelFrame;
@@ -92,6 +94,14 @@ const ALLOCATOR_REPORT_EVERY: Duration = Duration::from_millis(500);
 /// A viewport's readied frame, with the pick it draws and what unprojects that pick's depth.
 type ViewFrame = (RenderViewportId, LevelFrame, Option<(PendingPick, (Mat4, Vec2))>);
 
+/// What the application hands the render thread beside its commands: the files it ships with, the world it draws, and
+/// where it keeps the driver's compiled pipelines between runs.
+pub(crate) type RenderHosts = (
+  Arc<dyn RenderBundle>,
+  Arc<Mutex<dyn RenderWorld>>,
+  Option<Arc<dyn RenderCacheStore>>,
+);
+
 /// The render thread: owns the GPU and every viewport, and is the only place GPU work happens.
 pub struct RenderThread {
   receiver: Receiver<RenderCommand>,
@@ -100,6 +110,8 @@ pub struct RenderThread {
   workers: RenderWorkers,
   /// The files the renderer ships with, which the GPU's passes read when it starts.
   bundle: Arc<dyn RenderBundle>,
+  /// Where the driver's compiled pipelines are kept between runs, none where nothing keeps them.
+  store: Option<Arc<dyn RenderCacheStore>>,
   /// The world it draws, asked for each viewport's frame.
   world: Arc<Mutex<dyn RenderWorld>>,
   shaders: ShaderLibrary,
@@ -141,7 +153,7 @@ impl RenderThread {
     link: Arc<Mutex<RenderLink>>,
     settings: RenderSettings,
     workers: RenderWorkers,
-    (bundle, world): (Arc<dyn RenderBundle>, Arc<Mutex<dyn RenderWorld>>),
+    (bundle, world, store): RenderHosts,
   ) -> Self {
     let now: Instant = Instant::now();
 
@@ -152,6 +164,7 @@ impl RenderThread {
       workers,
       bundle,
       world,
+      store,
       shaders: ShaderLibrary::default(),
       gpu: None,
       runtime: None,
@@ -259,6 +272,12 @@ impl RenderThread {
       RenderCommand::Layout { id, layout } => {
         if let Some(viewport) = self.viewports.get_mut(&id) {
           viewport.layout = Some(layout);
+        }
+      }
+      RenderCommand::ReloadTextures { names } => {
+        if let Some(gpu) = &mut self.gpu {
+          gpu.textures.reload(&names);
+          gpu.weather_textures.reload(&names);
         }
       }
       RenderCommand::Settings { settings } => {
@@ -466,9 +485,21 @@ impl RenderThread {
 
     let dxc: Option<PathBuf> = self.bundle.locate_bundled(GpuContext::DXC_LIBRARY);
 
-    match GpuContext::create_preferred(RenderBackend::get_asked(self.settings.backend), dxc.as_deref())
-      .and_then(|context| GpuState::new(context, &self.shaders, &self.workers, self.bundle.as_ref()))
-    {
+    match GpuContext::create_preferred(RenderBackend::get_asked(self.settings.backend), dxc.as_deref()).and_then(
+      |context| {
+        let building: Instant = Instant::now();
+        let built: XrfResult<GpuState> = GpuState::new(
+          context,
+          &self.shaders,
+          &self.workers,
+          (self.bundle.as_ref(), self.store.as_deref()),
+        );
+
+        log::info!("Renderer's passes built in {} ms", building.elapsed().as_millis());
+
+        built
+      },
+    ) {
       Ok(gpu) => {
         self.runtime = Some(GraphRuntime::new(&gpu.context.device, &gpu.context.queue));
         self.gpu = Some(gpu);
@@ -801,7 +832,11 @@ impl RenderThread {
           .backdrop
           .prepare(
             (&gpu.context.device, &mut *encoder),
-            &self.shaders,
+            PipelineSource {
+              cache: &gpu.pipelines,
+              device: &gpu.context.device,
+              shaders: &self.shaders,
+            },
             format,
             (window.get_backdrop_slot(), &backdrop),
           )
@@ -953,11 +988,27 @@ impl RenderThread {
 
     if !frames.is_empty() {
       for format in windows.iter().map(|window| window.format).collect::<HashSet<_>>() {
-        if let Err(error) = gpu.present.prepare(&gpu.context.device, &self.shaders, format) {
+        if let Err(error) = gpu.present.prepare(
+          &gpu.context.device,
+          PipelineSource {
+            cache: &gpu.pipelines,
+            device: &gpu.context.device,
+            shaders: &self.shaders,
+          },
+          format,
+        ) {
           log::error!("Level viewport cannot be presented: {error}");
         }
 
-        if let Err(error) = gpu.overlay.prepare(&gpu.context.device, &self.shaders, format) {
+        if let Err(error) = gpu.overlay.prepare(
+          &gpu.context.device,
+          PipelineSource {
+            cache: &gpu.pipelines,
+            device: &gpu.context.device,
+            shaders: &self.shaders,
+          },
+          format,
+        ) {
           log::error!("Level overlays cannot be drawn: {error}");
         }
       }

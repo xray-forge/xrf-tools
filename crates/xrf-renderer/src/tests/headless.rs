@@ -1,3 +1,5 @@
+use xrf_renderer_core::PipelineCache;
+
 use crate::camera::camera_frame::CameraFrame;
 use crate::context::gpu_context::GpuContext;
 use crate::contract::render_backend::RenderBackend;
@@ -5,6 +7,7 @@ use crate::contract::render_rect::RenderRect;
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::pass::camera_uniform::CameraUniform;
 use crate::pass::grid_pass::GridPass;
+use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::view_binding::ViewBinding;
 use crate::shader::shader_library::ShaderLibrary;
 use crate::tests::test_bundle::TestBundle;
@@ -31,8 +34,14 @@ fn draws_sky_over_ground_offscreen() {
   let device: &wgpu::Device = &context.device;
   let format: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
   let shaders: ShaderLibrary = ShaderLibrary::default();
+  let cache: PipelineCache = PipelineCache::new();
+  let source: PipelineSource<'_> = PipelineSource {
+    cache: &cache,
+    device,
+    shaders: &shaders,
+  };
   let layout: wgpu::BindGroupLayout = ViewBinding::create_layout(device);
-  let grid: GridPass = GridPass::new(device, &shaders, &layout, format).unwrap();
+  let grid: GridPass = GridPass::new(device, source, &layout, format).unwrap();
   let binding: ViewBinding = ViewBinding::new(device, &layout);
   let position: glam::Vec3 = glam::Vec3::new(0.5, 2.0, 0.5);
   let camera: CameraFrame = CameraFrame {
@@ -156,7 +165,7 @@ fn builds_every_pass() {
   };
   let shaders: ShaderLibrary = ShaderLibrary::default();
 
-  match GpuState::new(context, &shaders, &create_workers(), &TestBundle::checkout()) {
+  match GpuState::new(context, &shaders, &create_workers(), (&TestBundle::checkout(), None)) {
     Ok(gpu) => assert!(
       gpu.smaa.is_some(),
       "SMAA reads its lookup textures from the checkout's bundle"
@@ -181,7 +190,7 @@ fn builds_without_what_the_bundle_lacks() {
     context,
     &ShaderLibrary::default(),
     &create_workers(),
-    &TestBundle::empty(),
+    (&TestBundle::empty(), None),
   ) {
     Ok(gpu) => assert!(gpu.smaa.is_none()),
     Err(error) => panic!("A missing bundled file failed the GPU: {error}"),

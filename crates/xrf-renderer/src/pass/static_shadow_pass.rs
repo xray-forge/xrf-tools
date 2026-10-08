@@ -3,7 +3,8 @@ use xrf_renderer_core::{PassParameters, RasterContext};
 
 use crate::frame::sun_shadow_maps::SunShadowMaps;
 use crate::pass::overhead_shift_parameters::OverheadShiftParameters;
-use crate::pass::shader_pipelines::{create_checked, create_module};
+use crate::pass::pipeline_source::PipelineSource;
+use crate::pass::shader_pipelines::create_checked;
 use crate::pass::shadow_casters::ShadowCasters;
 use crate::pass::shadow_tile_restore_parameters::ShadowTileRestoreParameters;
 use crate::pass::static_draw_parameters::StaticDrawParameters;
@@ -11,7 +12,6 @@ use crate::pass::view_binding::ViewBinding;
 use crate::scene::static_scene::static_batch::StaticBatch;
 use crate::scene::static_scene::static_class::StaticClass;
 use crate::scene::static_scene::static_layout::StaticLayout;
-use crate::shader::shader_library::ShaderLibrary;
 
 /// The override constants every shadow draw is built with: it leaves out the surfaces casting none.
 const SHADOW_DRAW: &[(&str, f64)] = &[("IS_SHADOW_DRAW", 1.0)];
@@ -39,7 +39,7 @@ impl StaticShadowPass {
   /// Returns an error when the shader does not compose or compile.
   pub fn new(
     device: &wgpu::Device,
-    shaders: &ShaderLibrary,
+    source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     layout: &wgpu::BindGroupLayout,
     texture_layout: &wgpu::BindGroupLayout,
@@ -49,7 +49,7 @@ impl StaticShadowPass {
       OverheadShiftParameters::create_layout(device),
     ];
     let (pipelines, clear, writers) =
-      Self::create_pipelines(device, shaders, (view_layout, layout, texture_layout), &writer_layouts)?;
+      Self::create_pipelines(device, source, (view_layout, layout, texture_layout), &writer_layouts)?;
 
     Ok(Self {
       pipelines,
@@ -59,17 +59,17 @@ impl StaticShadowPass {
       view_layout: view_layout.clone(),
       layout: layout.clone(),
       texture_layout: texture_layout.clone(),
-      generation: shaders.get_generation(),
+      generation: source.get_generation(),
     })
   }
 
-  pub fn refresh(&mut self, device: &wgpu::Device, shaders: &ShaderLibrary) {
-    if shaders.get_generation() != self.generation {
-      self.generation = shaders.get_generation();
+  pub fn refresh(&mut self, device: &wgpu::Device, source: PipelineSource<'_>) {
+    if source.get_generation() != self.generation {
+      self.generation = source.get_generation();
 
       match Self::create_pipelines(
         device,
-        shaders,
+        source,
         (&self.view_layout, &self.layout, &self.texture_layout),
         &self.writer_layouts,
       ) {
@@ -196,7 +196,7 @@ impl StaticShadowPass {
 
   fn create_pipelines(
     device: &wgpu::Device,
-    shaders: &ShaderLibrary,
+    source: PipelineSource<'_>,
     (view_layout, layout, texture_layout): (&wgpu::BindGroupLayout, &wgpu::BindGroupLayout, &wgpu::BindGroupLayout),
     writer_layouts: &[wgpu::BindGroupLayout; 2],
   ) -> XrfResult<(
@@ -204,7 +204,7 @@ impl StaticShadowPass {
     wgpu::RenderPipeline,
     [wgpu::RenderPipeline; 2],
   )> {
-    let module: wgpu::ShaderModule = create_module(device, shaders, "static/gbuffer")?;
+    let module: wgpu::ShaderModule = source.get_module("static/gbuffer")?;
     let pipeline_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
       label: Some("static shadow"),
       bind_group_layouts: &[Some(view_layout), Some(texture_layout), Some(layout)],
@@ -247,12 +247,12 @@ impl StaticShadowPass {
             }),
             multisample: Default::default(),
             multiview_mask: None,
-            cache: None,
+            cache: source.get_driver_cache(),
           })
         })
       })
       .collect::<XrfResult<_>>()?;
-    let clear_module: wgpu::ShaderModule = create_module(device, shaders, "frame/depth_clear")?;
+    let clear_module: wgpu::ShaderModule = source.get_module("frame/depth_clear")?;
     let clear_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&Default::default());
     let clear: wgpu::RenderPipeline = create_checked(device, "shadow tile clear", || {
       device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -275,21 +275,21 @@ impl StaticShadowPass {
         }),
         multisample: Default::default(),
         multiview_mask: None,
-        cache: None,
+        cache: source.get_driver_cache(),
       })
     })?;
 
     let writers: [wgpu::RenderPipeline; 2] = [
       create_depth_writer(
         device,
-        shaders,
+        source,
         ("frame/shadow_tile_restore", "shadow tile restore"),
         ("vs_restore", "fs_restore"),
         &writer_layouts[0],
       )?,
       create_depth_writer(
         device,
-        shaders,
+        source,
         ("frame/overhead_shift", "overhead shift"),
         ("vs_shift", "fs_shift"),
         &writer_layouts[1],
@@ -311,12 +311,12 @@ pub fn set_region(context: &mut RasterContext<'_>, [x, y, width, height]: [u32; 
 /// A pipeline writing a shadow map's depth over its viewport from what its bind group reads, whatever stood there.
 fn create_depth_writer(
   device: &wgpu::Device,
-  shaders: &ShaderLibrary,
-  (module, label): (&str, &'static str),
+  source: PipelineSource<'_>,
+  (module, label): (&'static str, &'static str),
   (vertex, fragment): (&str, &str),
   layout: &wgpu::BindGroupLayout,
 ) -> XrfResult<wgpu::RenderPipeline> {
-  let module: wgpu::ShaderModule = create_module(device, shaders, module)?;
+  let module: wgpu::ShaderModule = source.get_module(module)?;
   let pipeline_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
     label: Some(label),
     bind_group_layouts: &[Some(layout)],
@@ -349,7 +349,7 @@ fn create_depth_writer(
       }),
       multisample: Default::default(),
       multiview_mask: None,
-      cache: None,
+      cache: source.get_driver_cache(),
     })
   })
 }

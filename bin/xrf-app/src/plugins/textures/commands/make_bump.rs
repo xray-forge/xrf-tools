@@ -13,6 +13,7 @@ use xrf_utils::{error_to_string, to_portable_path_string};
 use crate::core::execution::ExecutionState;
 use crate::core::jobs::{JobKind, JobRegistration, JobRegistry, JobResource, JobStart, run_job};
 use crate::core::types::TauriResult;
+use crate::plugins::render::state::RenderState;
 use crate::plugins::textures::lease::TEXTURE_ENCODE_GROUP;
 use crate::plugins::textures::request::TexturesMakeBumpRequest;
 
@@ -42,6 +43,7 @@ pub async fn textures_make_bump(
   progress: Channel<JobProgress>,
   registry: State<'_, Arc<JobRegistry>>,
   execution: State<'_, ExecutionState>,
+  render: State<'_, RenderState>,
 ) -> TauriResult<TextureMakeBumpOutcome> {
   let start: JobStart = JobStart::new(job_id, JobKind::TexturesMakeBump).with_request(&request);
 
@@ -62,7 +64,7 @@ pub async fn textures_make_bump(
       .with_progress(progress),
   )?;
 
-  run_job(
+  let outcome: TextureMakeBumpOutcome = run_job(
     &execution,
     "Bump pair generation",
     registration,
@@ -81,7 +83,12 @@ pub async fn textures_make_bump(
     },
     |outcome| outcome.outcome,
   )
-  .await
+  .await?;
+
+  // Every viewport drawing what was written draws it as written.
+  render.reload_written(&[&outcome.bump, &outcome.companion]);
+
+  Ok(outcome)
 }
 
 /// Both output paths follow the generator's naming rule without decoding input images.

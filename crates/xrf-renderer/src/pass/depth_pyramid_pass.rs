@@ -4,11 +4,11 @@ use xrf_renderer_core::{ComputeContext, PassParameters};
 use crate::frame::depth_pyramid::DepthPyramid;
 use crate::pass::cover_pyramid_depth_parameters::CoverPyramidDepthParameters;
 use crate::pass::cover_pyramid_level_parameters::CoverPyramidLevelParameters;
+use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::pyramid_depth_parameters::PyramidDepthParameters;
 use crate::pass::pyramid_level_parameters::PyramidLevelParameters;
-use crate::pass::shader_pipelines::{create_checked, create_module};
+use crate::pass::shader_pipelines::create_checked;
 use crate::scene::level::cover_pyramid::CoverPyramid;
-use crate::shader::shader_library::ShaderLibrary;
 
 /// Invocations a reduction workgroup runs a side, as `shaders/frame/pyramid.wgsl` declares them.
 const WORKGROUP: u32 = 8;
@@ -25,7 +25,7 @@ pub struct DepthPyramidPass {
 }
 
 impl DepthPyramidPass {
-  pub fn new(device: &wgpu::Device, shaders: &ShaderLibrary) -> XrfResult<Self> {
+  pub fn new(device: &wgpu::Device, source: PipelineSource<'_>) -> XrfResult<Self> {
     let layouts: [wgpu::BindGroupLayout; 4] = [
       PyramidDepthParameters::create_layout(device),
       PyramidLevelParameters::create_layout(device),
@@ -34,17 +34,17 @@ impl DepthPyramidPass {
     ];
 
     Ok(Self {
-      pipelines: Self::create_pipelines(device, shaders, &layouts)?,
-      generation: shaders.get_generation(),
+      pipelines: Self::create_pipelines(device, source, &layouts)?,
+      generation: source.get_generation(),
       layouts,
     })
   }
 
-  pub fn refresh(&mut self, device: &wgpu::Device, shaders: &ShaderLibrary) {
-    if shaders.get_generation() != self.generation {
-      self.generation = shaders.get_generation();
+  pub fn refresh(&mut self, device: &wgpu::Device, source: PipelineSource<'_>) {
+    if source.get_generation() != self.generation {
+      self.generation = source.get_generation();
 
-      match Self::create_pipelines(device, shaders, &self.layouts) {
+      match Self::create_pipelines(device, source, &self.layouts) {
         Ok(pipelines) => self.pipelines = pipelines,
         Err(error) => log::error!("Depth pyramid rejected, reducing with the last one: {error}"),
       }
@@ -99,10 +99,10 @@ impl DepthPyramidPass {
 
   fn create_pipelines(
     device: &wgpu::Device,
-    shaders: &ShaderLibrary,
+    source: PipelineSource<'_>,
     [depth_layout, level_layout, cover_layout, cover_level_layout]: &[wgpu::BindGroupLayout; 4],
   ) -> XrfResult<[wgpu::ComputePipeline; 6]> {
-    let module: wgpu::ShaderModule = create_module(device, shaders, "frame/pyramid")?;
+    let module: wgpu::ShaderModule = source.get_module("frame/pyramid")?;
     let create = |entry: &str, layout: &wgpu::BindGroupLayout| -> XrfResult<wgpu::ComputePipeline> {
       let pipeline_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some(entry),
@@ -117,7 +117,7 @@ impl DepthPyramidPass {
           module: &module,
           entry_point: Some(entry),
           compilation_options: Default::default(),
-          cache: None,
+          cache: source.get_driver_cache(),
         })
       })
     };

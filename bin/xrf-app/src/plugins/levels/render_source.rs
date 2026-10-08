@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::sync::{Arc, OnceLock, PoisonError, RwLock};
+use std::sync::{Arc, OnceLock};
 use std::time::Instant;
 
 use xrf_anm::AnmFile;
@@ -17,16 +17,16 @@ use xrf_renderer::{
   RenderThunderboltGradient, RenderThunderboltModel, RenderWeatherModel, RenderWetSurfaces,
 };
 use xrf_visual::{LightsDescription, SectorPackage, SectorPacker, VisualPoser};
+use xrf_world::{ReducedTextures, to_render_lens_flare};
 
-use crate::core::assets::{AssetMountState, read_located_asset};
+use crate::core::assets::AssetMountState;
 use crate::core::session::SessionSnapshot;
 use crate::plugins::levels::ambients::{to_render_ambient_effects, to_render_ambients};
 use crate::plugins::levels::collision::get_level_collision;
-use crate::plugins::levels::configs::{REDUCED_TEXTURES_SECTION, get_level_sections};
+use crate::plugins::levels::configs::get_level_sections;
 use crate::plugins::levels::details::{PackedLevelDetails, pack_details};
 use crate::plugins::levels::drawn_attributes::DRAWN_ATTRIBUTES;
 use crate::plugins::levels::hemi::{estimate_visuals_hemi, get_level_hemi};
-use crate::plugins::levels::lens_flares::to_render_lens_flare;
 use crate::plugins::levels::lights::{PackedLevelLights, pack_lights};
 use crate::plugins::levels::object_motions::read_object_motion;
 use crate::plugins::levels::particle_collider::LevelParticleCollider;
@@ -43,7 +43,7 @@ use crate::plugins::levels::state::selection::level_thunderbolts::LevelThunderbo
 use crate::plugins::levels::state::selection::level_weather_model::LevelWeatherModel;
 use crate::plugins::levels::state::selection::level_wet_surfaces::LevelWetSurfaces;
 use crate::plugins::levels::state::{LevelEnvironment, LevelSpawnCategory, LevelSpawnVisual, SelectedLevel};
-use crate::plugins::levels::textures::resolve_reference;
+use crate::plugins::levels::texture_resolver::TextureResolver;
 
 /// The open level as the native renderer draws it: sectors packed when its loader asks, textures read from the roots
 /// the level was opened in.
@@ -51,25 +51,28 @@ pub struct LevelRenderSource {
   level: Arc<SessionSnapshot<SelectedLevel>>,
   assets: AssetMountState,
   /// Where each texture reference the level's surfaces bind resolved to at open, each projector its lights name once
-  /// they are read, and anything else once asked for, as the weather's skies are; `None` for one resolving to nothing.
-  textures: RwLock<HashMap<String, Option<String>>>,
-  /// The parts of a reference the game loads a step coarser at the same texture quality, read the first time a
-  /// texture quality above full asks.
-  reduced: OnceLock<Vec<String>>,
+  /// they are read, and anything else once asked for, as the weather's skies are.
+  textures: TextureResolver,
+  /// The textures the game loads a step coarser at the same texture quality, read the first time a texture quality
+  /// above full asks.
+  reduced: OnceLock<ReducedTextures>,
 }
 
 impl LevelRenderSource {
   pub fn new(level: Arc<SessionSnapshot<SelectedLevel>>, assets: AssetMountState) -> Self {
-    let textures: HashMap<String, Option<String>> = level
-      .textures
-      .iter()
-      .map(|texture| (texture.reference.clone(), texture.logical_path.clone()))
-      .collect();
+    let textures: TextureResolver = TextureResolver::new(
+      level.roots.clone(),
+      level.source.get_texture_scope(),
+      level
+        .textures
+        .iter()
+        .map(|texture| (texture.reference.clone(), texture.logical_path.clone())),
+    );
 
     Self {
       level,
       assets,
-      textures: RwLock::new(textures),
+      textures,
       reduced: OnceLock::new(),
     }
   }
@@ -95,63 +98,37 @@ impl LevelRenderSource {
 
 impl RenderAssetSource for LevelRenderSource {
   fn get_texture_scope(&self) -> String {
-    format!("{:?} {:?}", self.level.roots, self.level.source.get_texture_scope())
+    self.textures.get_scope_key()
   }
 
   fn read_texture(&self, reference: &str) -> XrfResult<Option<Vec<u8>>> {
-    let known: Option<Option<String>> = self
-      .textures
-      .read()
-      .unwrap_or_else(PoisonError::into_inner)
-      .get(reference)
-      .cloned();
-    let located: Option<String> = match known {
-      Some(located) => located,
-      // Found as the level finds its own, and kept for the next ask.
-      None => {
-        let located: Option<String> = self
-          .assets
-          .with_probe(&self.level.roots, |probe| {
-            resolve_reference(probe, &self.level.source.get_texture_scope(), reference)
-          })
-          .map_err(XrfError::new_asset_error)?;
+    self.textures.read(&self.assets, reference)
+  }
 
-        self
-          .textures
-          .write()
-          .unwrap_or_else(PoisonError::into_inner)
-          .insert(reference.to_owned(), located.clone());
+  fn forget_textures(&self, names: &[String]) {
+    self.textures.forget(names);
+  }
 
-        located
-      }
-    };
-    let Some(logical_path) = located else {
-      return Ok(None);
-    };
-
-    self
-      .assets
-      .with_probe(&self.level.roots, |probe| read_located_asset(probe, &logical_path))
-      .map_err(XrfError::new_asset_error)?
-      .map(Some)
+  fn get_texture_stamp(&self, reference: &str) -> Option<u64> {
+    self.textures.get_stamp(&self.assets, reference)
   }
 
   fn is_texture_reduced(&self, reference: &str) -> bool {
-    let reduced: &Vec<String> = self.reduced.get_or_init(|| {
-      self
-        .read_sections()
-        .ok()
-        .flatten()
-        .and_then(|sections| {
-          sections
-            .section(REDUCED_TEXTURES_SECTION)
-            .map(|section| section.iter().map(|(key, _)| key.to_lowercase()).collect())
-        })
-        .unwrap_or_default()
-    });
-    let reference: String = reference.to_lowercase();
-
-    reduced.iter().any(|part| reference.contains(part.as_str()))
+    self
+      .reduced
+      .get_or_init(|| {
+        self
+          .read_sections()
+          .ok()
+          .flatten()
+          .and_then(|sections| {
+            sections
+              .section(ReducedTextures::SECTION)
+              .map(|section| ReducedTextures::new(section.iter().map(|(key, _)| key)))
+          })
+          .unwrap_or_default()
+      })
+      .is_reduced(reference)
   }
 }
 
@@ -196,11 +173,13 @@ impl RenderLevelSource for LevelRenderSource {
       .assets
       .with_probe(&level.roots, |probe| pack_lights(level, probe, sections.as_deref()))
       .map_err(XrfError::new_asset_error)?;
-    let mut textures = self.textures.write().unwrap_or_else(PoisonError::into_inner);
 
-    for projector in packed.projectors {
-      textures.insert(projector.reference, projector.logical_path);
-    }
+    self.textures.extend(
+      packed
+        .projectors
+        .into_iter()
+        .map(|projector| (projector.reference, projector.logical_path)),
+    );
 
     Ok(packed.lights)
   }
@@ -228,28 +207,9 @@ impl RenderLevelSource for LevelRenderSource {
         .catalog
         .effects
         .iter()
-        .map(|effect| {
-          (
-            effect.name.clone(),
-            LevelEnvironment::list_keyframes(effect, environment.catalog.engine),
-          )
-        })
+        .map(|effect| (effect.name.clone(), effect.list_descriptors(environment.catalog.engine)))
         .collect(),
-      modifiers: modifiers
-        .iter()
-        .map(|modifier| WeatherModifier {
-          position: [modifier.position.x, modifier.position.y, modifier.position.z],
-          radius: modifier.radius,
-          power: modifier.power,
-          far_plane: modifier.far_plane,
-          fog_color: [modifier.fog_color.x, modifier.fog_color.y, modifier.fog_color.z],
-          fog_density: modifier.fog_density,
-          ambient: [modifier.ambient.x, modifier.ambient.y, modifier.ambient.z],
-          sky_color: [modifier.sky_color.x, modifier.sky_color.y, modifier.sky_color.z],
-          hemi_color: [modifier.hemi_color.x, modifier.hemi_color.y, modifier.hemi_color.z],
-          flags: modifier.use_flags.unwrap_or(WeatherModifier::ALL),
-        })
-        .collect(),
+      modifiers: modifiers.iter().map(WeatherModifier::of).collect(),
       sun_table: environment
         .catalog
         .sun_table
@@ -277,7 +237,7 @@ impl RenderLevelSource for LevelRenderSource {
       .find_cycle(name)
       .ok_or_else(|| XrfError::new_not_found_error(format!("There is no weather cycle '{name}'")))?;
 
-    Ok(LevelEnvironment::list_keyframes(cycle, environment.catalog.engine))
+    Ok(cycle.list_descriptors(environment.catalog.engine))
   }
 
   fn read_details(&self) -> XrfResult<Option<RenderLevelDetails>> {
@@ -290,11 +250,13 @@ impl RenderLevelSource for LevelRenderSource {
     let Some(packed) = packed else {
       return Ok(None);
     };
-    let mut textures = self.textures.write().unwrap_or_else(PoisonError::into_inner);
 
-    for texture in packed.textures {
-      textures.insert(texture.reference, texture.logical_path);
-    }
+    self.textures.extend(
+      packed
+        .textures
+        .iter()
+        .map(|texture| (texture.reference.clone(), texture.logical_path.clone())),
+    );
 
     Ok(Some(RenderLevelDetails {
       package: packed.package,
@@ -345,11 +307,13 @@ impl RenderLevelSource for LevelRenderSource {
       })
       .map_err(XrfError::new_asset_error)?;
     let packed: PackedLevelParticles = packed.map_err(XrfError::new_asset_error)?;
-    let mut textures = self.textures.write().unwrap_or_else(PoisonError::into_inner);
 
-    for texture in packed.textures {
-      textures.insert(texture.reference, texture.logical_path);
-    }
+    self.textures.extend(
+      packed
+        .textures
+        .iter()
+        .map(|texture| (texture.reference.clone(), texture.logical_path.clone())),
+    );
 
     Ok(Some(RenderLevelParticles {
       library: Arc::new(packed.library),
@@ -406,13 +370,13 @@ impl RenderLevelSource for LevelRenderSource {
         (read, failures, hemi)
       })
       .map_err(XrfError::new_asset_error)?;
-    let mut textures = self.textures.write().unwrap_or_else(PoisonError::into_inner);
 
-    for (_, visual) in &read {
-      for texture in &visual.textures {
-        textures.insert(texture.reference.clone(), texture.logical_path.clone());
-      }
-    }
+    self.textures.extend(read.iter().flat_map(|(_, visual)| {
+      visual
+        .textures
+        .iter()
+        .map(|texture| (texture.reference.clone(), texture.logical_path.clone()))
+    }));
 
     Ok(RenderSpawnModels {
       models: read

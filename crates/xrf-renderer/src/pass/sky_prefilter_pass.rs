@@ -3,9 +3,9 @@ use xrf_error::XrfResult;
 use xrf_renderer_core::{ComputeContext, PassParameters};
 
 use crate::frame::sky_prefilter::SkyPrefilter;
-use crate::pass::shader_pipelines::{create_checked, create_module};
+use crate::pass::pipeline_source::PipelineSource;
+use crate::pass::shader_pipelines::create_checked;
 use crate::pass::sky_prefilter_parameters::SkyPrefilterParameters;
-use crate::shader::shader_library::ShaderLibrary;
 
 /// Invocations a workgroup runs a side, as `shaders/frame/sky_prefilter.wgsl` declares them.
 const WORKGROUP: u32 = 8;
@@ -39,7 +39,7 @@ impl SkyPrefilterPass {
   /// # Errors
   ///
   /// Returns an error when the shader does not compose or compile.
-  pub fn new(device: &wgpu::Device, queue: &wgpu::Queue, shaders: &ShaderLibrary) -> XrfResult<Self> {
+  pub fn new(device: &wgpu::Device, queue: &wgpu::Queue, source: PipelineSource<'_>) -> XrfResult<Self> {
     let layout: wgpu::BindGroupLayout = SkyPrefilterParameters::create_layout(device);
     let empty: wgpu::TextureView = device
       .create_texture_with_data(
@@ -67,18 +67,18 @@ impl SkyPrefilterPass {
       });
 
     Ok(Self {
-      pipeline: Self::create_pipeline(device, shaders, &layout)?,
+      pipeline: Self::create_pipeline(device, source, &layout)?,
       empty,
-      generation: shaders.get_generation(),
+      generation: source.get_generation(),
       layout,
     })
   }
 
-  pub fn refresh(&mut self, device: &wgpu::Device, shaders: &ShaderLibrary) {
-    if shaders.get_generation() != self.generation {
-      self.generation = shaders.get_generation();
+  pub fn refresh(&mut self, device: &wgpu::Device, source: PipelineSource<'_>) {
+    if source.get_generation() != self.generation {
+      self.generation = source.get_generation();
 
-      match Self::create_pipeline(device, shaders, &self.layout) {
+      match Self::create_pipeline(device, source, &self.layout) {
         Ok(pipeline) => self.pipeline = pipeline,
         Err(error) => log::error!("Sky prefilter rejected, filling with the last one: {error}"),
       }
@@ -101,10 +101,10 @@ impl SkyPrefilterPass {
 
   fn create_pipeline(
     device: &wgpu::Device,
-    shaders: &ShaderLibrary,
+    source: PipelineSource<'_>,
     layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<wgpu::ComputePipeline> {
-    let module: wgpu::ShaderModule = create_module(device, shaders, "frame/sky_prefilter")?;
+    let module: wgpu::ShaderModule = source.get_module("frame/sky_prefilter")?;
     let pipeline_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
       label: Some("sky prefilter"),
       bind_group_layouts: &[Some(layout)],
@@ -118,7 +118,7 @@ impl SkyPrefilterPass {
         module: &module,
         entry_point: Some("prefilter"),
         compilation_options: Default::default(),
-        cache: None,
+        cache: source.get_driver_cache(),
       })
     })
   }

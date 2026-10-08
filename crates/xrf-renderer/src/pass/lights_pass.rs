@@ -4,11 +4,11 @@ use xrf_renderer_core::{ComputeContext, PassParameters, RasterContext};
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::light_binning_parameters::LightBinningParameters;
 use crate::pass::lights_parameters::LightsParameters;
-use crate::pass::shader_pipelines::{create_checked, create_module};
+use crate::pass::pipeline_source::PipelineSource;
+use crate::pass::shader_pipelines::create_checked;
 use crate::pass::view_binding::ViewBinding;
-use crate::shader::shader_library::ShaderLibrary;
 
-/// Clusters the view is cut into, and invocations a binning workgroup runs, as the shaders declare them.
+/// Clusters the view is cut into, and invocations a binning workgroup runs, as the source declare them.
 const LIGHT_CLUSTERS: u32 = 16 * 9 * 24;
 const BINNING_WORKGROUP: u32 = 64;
 
@@ -31,14 +31,14 @@ impl LightsPass {
   /// Returns an error when a shader does not compose or compile.
   pub fn new(
     device: &wgpu::Device,
-    shaders: &ShaderLibrary,
+    source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     texture_layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<Self> {
     let binning_layout: wgpu::BindGroupLayout = LightBinningParameters::create_layout(device);
     let layout: wgpu::BindGroupLayout = LightsParameters::create_layout(device);
     let (binning, pipelines) =
-      Self::create_pipelines(device, shaders, &binning_layout, view_layout, &layout, texture_layout)?;
+      Self::create_pipelines(device, source, &binning_layout, view_layout, &layout, texture_layout)?;
 
     Ok(Self {
       binning,
@@ -47,17 +47,17 @@ impl LightsPass {
       layout,
       view_layout: view_layout.clone(),
       texture_layout: texture_layout.clone(),
-      generation: shaders.get_generation(),
+      generation: source.get_generation(),
     })
   }
 
-  pub fn refresh(&mut self, device: &wgpu::Device, shaders: &ShaderLibrary) {
-    if shaders.get_generation() != self.generation {
-      self.generation = shaders.get_generation();
+  pub fn refresh(&mut self, device: &wgpu::Device, source: PipelineSource<'_>) {
+    if source.get_generation() != self.generation {
+      self.generation = source.get_generation();
 
       match Self::create_pipelines(
         device,
-        shaders,
+        source,
         &self.binning_layout,
         &self.view_layout,
         &self.layout,
@@ -104,14 +104,14 @@ impl LightsPass {
 
   fn create_pipelines(
     device: &wgpu::Device,
-    shaders: &ShaderLibrary,
+    source: PipelineSource<'_>,
     binning_layout: &wgpu::BindGroupLayout,
     view_layout: &wgpu::BindGroupLayout,
     layout: &wgpu::BindGroupLayout,
     texture_layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<(wgpu::ComputePipeline, [wgpu::RenderPipeline; 2])> {
-    let binning_module: wgpu::ShaderModule = create_module(device, shaders, "frame/light_binning")?;
-    let module: wgpu::ShaderModule = create_module(device, shaders, "frame/lights")?;
+    let binning_module: wgpu::ShaderModule = source.get_module("frame/light_binning")?;
+    let module: wgpu::ShaderModule = source.get_module("frame/lights")?;
     let binning_pipeline_layout: wgpu::PipelineLayout =
       device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some("light binning"),
@@ -130,7 +130,7 @@ impl LightsPass {
         module: &binning_module,
         entry_point: Some("bin"),
         compilation_options: Default::default(),
-        cache: None,
+        cache: source.get_driver_cache(),
       })
     })?;
     // Each light adds to what the sun and the lights before it left.
@@ -170,7 +170,7 @@ impl LightsPass {
           depth_stencil: None,
           multisample: Default::default(),
           multiview_mask: None,
-          cache: None,
+          cache: source.get_driver_cache(),
         })
       })
     };

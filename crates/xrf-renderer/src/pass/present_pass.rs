@@ -4,9 +4,9 @@ use xrf_error::XrfResult;
 use xrf_renderer_core::{PassParameters, RasterContext};
 
 use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline;
+use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::present_parameters::PresentParameters;
 use crate::pass::view_binding::ViewBinding;
-use crate::shader::shader_library::ShaderLibrary;
 
 /// Puts a viewport's finished scene into its rectangle of the window, moved where the water and the particles distort it and dithered to
 /// the window's eight bits; or, for a debug view, one of the targets the scene was built from.
@@ -21,7 +21,7 @@ pub struct PresentPass {
 }
 
 impl PresentPass {
-  pub fn new(device: &wgpu::Device, shaders: &ShaderLibrary, view_layout: &wgpu::BindGroupLayout) -> Self {
+  pub fn new(device: &wgpu::Device, source: PipelineSource<'_>, view_layout: &wgpu::BindGroupLayout) -> Self {
     let layout: wgpu::BindGroupLayout = PresentParameters::create_layout(device);
 
     Self {
@@ -34,14 +34,14 @@ impl PresentPass {
       }),
       view_layout: view_layout.clone(),
       pipelines: HashMap::new(),
-      generation: shaders.get_generation(),
+      generation: source.get_generation(),
     }
   }
 
   /// Forgets pipelines built from a library reloaded since, so the next frame builds them again.
-  pub fn refresh(&mut self, shaders: &ShaderLibrary) {
-    if shaders.get_generation() != self.generation {
-      self.generation = shaders.get_generation();
+  pub fn refresh(&mut self, source: PipelineSource<'_>) {
+    if source.get_generation() != self.generation {
+      self.generation = source.get_generation();
       self.pipelines.clear();
     }
   }
@@ -51,11 +51,16 @@ impl PresentPass {
   /// # Errors
   ///
   /// Returns an error when the shader does not compose or compile.
-  pub fn prepare(&mut self, device: &wgpu::Device, shaders: &ShaderLibrary, format: wgpu::TextureFormat) -> XrfResult {
+  pub fn prepare(
+    &mut self,
+    device: &wgpu::Device,
+    source: PipelineSource<'_>,
+    format: wgpu::TextureFormat,
+  ) -> XrfResult {
     if !self.pipelines.contains_key(&format) {
       let pipeline: wgpu::RenderPipeline = create_fullscreen_pipeline(
         device,
-        shaders,
+        source,
         "frame/present",
         "fs_present",
         &[Some(&self.view_layout), Some(&self.layout)],

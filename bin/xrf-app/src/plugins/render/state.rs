@@ -5,9 +5,12 @@ use xrf_renderer::{
   RenderBundle, RenderEventSink, RenderLevelSource, RenderQueue, RenderSceneId, RenderViewportId, RenderWindowHost,
   RenderWorkers, RenderWorld,
 };
+use xrf_vfs::XrayRoots;
 use xrf_world::{World, WorldEventSink};
 
+use crate::plugins::render::disk_cache_store::DiskCacheStore;
 use crate::plugins::render::renderer::Renderer;
+use crate::plugins::render::texture_watcher::{TextureWatcher, to_texture_name};
 use crate::plugins::render::viewport_windows::ViewportWindows;
 
 /// The application's one renderer, which starts a GPU only once a viewport is attached.
@@ -19,19 +22,24 @@ pub struct RenderState {
   shows: Mutex<HashMap<RenderViewportId, u64>>,
   /// The window each viewport draws into, so a page that goes takes its viewports with it.
   windows: Mutex<ViewportWindows>,
+  /// The shown sources' roots, watched for texture files written there.
+  textures: TextureWatcher,
 }
 
 impl RenderState {
-  /// A renderer whose loaders read and decode on `workers`, reading the files it ships with from `bundle`.
-  pub fn new(workers: RenderWorkers, bundle: Arc<dyn RenderBundle>) -> Self {
+  /// A renderer whose loaders read and decode on `workers`, reading the files it ships with from `bundle` and keeping
+  /// its compiled pipelines in `store`.
+  pub fn new(workers: RenderWorkers, bundle: Arc<dyn RenderBundle>, store: Option<DiskCacheStore>) -> Self {
     let world: Arc<Mutex<World>> = Arc::new(Mutex::new(World::new(workers.clone())));
+    let queue: RenderQueue = RenderQueue::new(workers, bundle, Arc::clone(&world) as Arc<Mutex<dyn RenderWorld>>);
+    let renderer: Renderer = Renderer::new(match store {
+      Some(store) => queue.with_cache_store(Arc::new(store)),
+      None => queue,
+    });
 
     Self {
-      renderer: Renderer::new(RenderQueue::new(
-        workers,
-        bundle,
-        Arc::clone(&world) as Arc<Mutex<dyn RenderWorld>>,
-      )),
+      textures: TextureWatcher::new(renderer.get_queue()),
+      renderer,
       world,
       shows: Mutex::default(),
       windows: Mutex::default(),
@@ -108,6 +116,18 @@ impl RenderState {
 
       None
     }
+  }
+
+  /// Watches the roots a shown source reads for texture files written there.
+  pub fn watch_textures(&self, roots: &XrayRoots) {
+    self.textures.watch(roots);
+  }
+
+  /// Loads again wherever they are drawn the textures among files this application wrote, by their paths.
+  pub fn reload_written<T: AsRef<std::path::Path>>(&self, paths: &[T]) {
+    let names: Vec<String> = paths.iter().filter_map(|path| to_texture_name(path.as_ref())).collect();
+
+    self.renderer.reload_textures(names);
   }
 
   /// The world, locked for a command; the render thread holds it only while it runs a viewport's frame.

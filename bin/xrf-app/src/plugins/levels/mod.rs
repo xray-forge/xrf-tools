@@ -6,7 +6,6 @@ pub mod console_defaults;
 pub mod details;
 pub mod drawn_attributes;
 pub mod hemi;
-pub mod lens_flares;
 pub mod lights;
 pub mod new_game;
 pub mod object_motions;
@@ -23,6 +22,7 @@ pub mod spawn_visuals;
 pub mod start;
 pub mod state;
 pub mod surfaces;
+pub mod texture_resolver;
 pub mod textures;
 
 #[cfg(test)]

@@ -11,8 +11,9 @@ use crate::host::render_bundle::RenderBundle;
 use crate::pass::enhanced_water_maps::EnhancedWaterMaps;
 use crate::pass::enhanced_water_parameters::EnhancedWaterParameters;
 use crate::pass::enhanced_water_uniform::EnhancedWaterUniform;
+use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::reflection_scene_parameters::ReflectionSceneParameters;
-use crate::pass::shader_pipelines::{create_checked, create_module};
+use crate::pass::shader_pipelines::create_checked;
 use crate::pass::static_draw_parameters::StaticDrawParameters;
 use crate::pass::static_draws::StaticDraws;
 use crate::pass::trace_request_handles::TraceRequestHandles;
@@ -29,7 +30,6 @@ use crate::pass::water_uniform::WaterUniform;
 use crate::scene::level::feature::water_feature::WaterFeature;
 use crate::scene::static_scene::static_batch::StaticBatch;
 use crate::scene::static_scene::static_layout::StaticLayout;
-use crate::shader::shader_library::ShaderLibrary;
 
 /// What every water batch binds below its pass's own group: the view, the bindless textures, and the static draws.
 type WaterGroups<'a> = (
@@ -74,7 +74,7 @@ impl WaterPass {
   pub fn new(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
-    shaders: &ShaderLibrary,
+    source: PipelineSource<'_>,
     [view_layout, scene_layout, texture_layout]: [&wgpu::BindGroupLayout; 3],
     bundle: &dyn RenderBundle,
   ) -> XrfResult<Self> {
@@ -98,13 +98,13 @@ impl WaterPass {
       .create_view(&Default::default());
 
     Ok(Self {
-      pipelines: Self::create_pipelines(device, shaders, &layouts, &request_layout)?,
-      blur: WaterBlurPass::new(device, shaders)?,
+      pipelines: Self::create_pipelines(device, source, &layouts, &request_layout)?,
+      blur: WaterBlurPass::new(device, source)?,
       maps: EnhancedWaterMaps::new(device, queue, bundle, &nothing),
       nothing,
       layouts,
       request_layout,
-      generation: shaders.get_generation(),
+      generation: source.get_generation(),
     })
   }
 
@@ -130,16 +130,16 @@ impl WaterPass {
     &self.maps
   }
 
-  pub fn refresh(&mut self, device: &wgpu::Device, shaders: &ShaderLibrary) {
-    if shaders.get_generation() != self.generation {
-      self.generation = shaders.get_generation();
+  pub fn refresh(&mut self, device: &wgpu::Device, source: PipelineSource<'_>) {
+    if source.get_generation() != self.generation {
+      self.generation = source.get_generation();
 
-      match Self::create_pipelines(device, shaders, &self.layouts, &self.request_layout) {
+      match Self::create_pipelines(device, source, &self.layouts, &self.request_layout) {
         Ok(pipelines) => self.pipelines = pipelines,
         Err(error) => log::error!("Water rejected, drawing with the last one: {error}"),
       }
 
-      if let Err(error) = self.blur.refresh(device, shaders) {
+      if let Err(error) = self.blur.refresh(device, source) {
         log::error!("Water blur rejected, blurring with the last one: {error}");
       }
     }
@@ -470,13 +470,13 @@ impl WaterPass {
   /// `static/water_reflection`, with its own group 4 past the request list the reflection fills.
   fn create_pipelines(
     device: &wgpu::Device,
-    shaders: &ShaderLibrary,
+    source: PipelineSource<'_>,
     [view_layout, texture_layout, scene_layout]: &[wgpu::BindGroupLayout; 3],
     request_layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<Vec<WaterBatchPipelines>> {
-    let engine_module: wgpu::ShaderModule = create_module(device, shaders, "static/water")?;
-    let enhanced_module: wgpu::ShaderModule = create_module(device, shaders, "static/water_enhanced")?;
-    let reflection_module: wgpu::ShaderModule = create_module(device, shaders, "static/water_reflection")?;
+    let engine_module: wgpu::ShaderModule = source.get_module("static/water")?;
+    let enhanced_module: wgpu::ShaderModule = source.get_module("static/water_enhanced")?;
+    let reflection_module: wgpu::ShaderModule = source.get_module("static/water_reflection")?;
     let create_layout = |label: &str, water: &wgpu::BindGroupLayout| {
       device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some(label),
@@ -559,7 +559,7 @@ impl WaterPass {
           depth_stencil: Some(depth_state(false)),
           multisample: Default::default(),
           multiview_mask: None,
-          cache: None,
+          cache: source.get_driver_cache(),
         })
       })
     };
@@ -576,7 +576,7 @@ impl WaterPass {
             depth_stencil: Some(depth_state(true)),
             multisample: Default::default(),
             multiview_mask: None,
-            cache: None,
+            cache: source.get_driver_cache(),
           })
         })?;
 

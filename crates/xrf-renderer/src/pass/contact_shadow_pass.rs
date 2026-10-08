@@ -4,8 +4,8 @@ use xrf_renderer_core::{PassParameters, RasterContext};
 
 use crate::pass::contact_shadow_parameters::ContactShadowParameters;
 use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline;
+use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::view_binding::ViewBinding;
-use crate::shader::shader_library::ShaderLibrary;
 
 /// Marches each drawn pixel's ray towards the sun over the frame's depth, into how much sunlight reaches it.
 pub struct ContactShadowPass {
@@ -27,7 +27,7 @@ impl ContactShadowPass {
   pub fn new(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
-    shaders: &ShaderLibrary,
+    source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<Self> {
     let layout: wgpu::BindGroupLayout = ContactShadowParameters::create_layout(device);
@@ -54,19 +54,19 @@ impl ContactShadowPass {
       .create_view(&Default::default());
 
     Ok(Self {
-      pipeline: Self::create_pipeline(device, shaders, view_layout, &layout)?,
+      pipeline: Self::create_pipeline(device, source, view_layout, &layout)?,
       view_layout: view_layout.clone(),
       lit,
-      generation: shaders.get_generation(),
+      generation: source.get_generation(),
       layout,
     })
   }
 
-  pub fn refresh(&mut self, device: &wgpu::Device, shaders: &ShaderLibrary) {
-    if shaders.get_generation() != self.generation {
-      self.generation = shaders.get_generation();
+  pub fn refresh(&mut self, device: &wgpu::Device, source: PipelineSource<'_>) {
+    if source.get_generation() != self.generation {
+      self.generation = source.get_generation();
 
-      match Self::create_pipeline(device, shaders, &self.view_layout, &self.layout) {
+      match Self::create_pipeline(device, source, &self.view_layout, &self.layout) {
         Ok(pipeline) => self.pipeline = pipeline,
         Err(error) => log::error!("Contact shadows rejected, marching with the last ones: {error}"),
       }
@@ -91,13 +91,13 @@ impl ContactShadowPass {
 
   fn create_pipeline(
     device: &wgpu::Device,
-    shaders: &ShaderLibrary,
+    source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<wgpu::RenderPipeline> {
     create_fullscreen_pipeline(
       device,
-      shaders,
+      source,
       "frame/contact_shadows",
       "fs_contact_shadows",
       &[Some(view_layout), Some(layout)],

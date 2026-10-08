@@ -2,14 +2,14 @@ use xrf_error::XrfResult;
 use xrf_renderer_core::{ComputeContext, PassParameters};
 
 use crate::pass::compute_grid::ComputeGrid;
-use crate::pass::shader_pipelines::{create_checked, create_module};
+use crate::pass::pipeline_source::PipelineSource;
+use crate::pass::shader_pipelines::create_checked;
 use crate::pass::shadow_cull::ShadowCull;
 use crate::pass::static_cull_parameters::StaticCullParameters;
 use crate::pass::static_cull_params::StaticCullParams;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::static_scene::static_batch::StaticBatch;
 use crate::scene::static_scene::static_cull_scratch::StaticCullScratch;
-use crate::shader::shader_library::ShaderLibrary;
 
 /// Invocations a cull workgroup runs, as `shaders/static/cull.wgsl` declares them.
 const WORKGROUP: u32 = 64;
@@ -37,25 +37,29 @@ pub struct StaticCullPass {
 }
 
 impl StaticCullPass {
-  pub fn new(device: &wgpu::Device, shaders: &ShaderLibrary, view_layout: &wgpu::BindGroupLayout) -> XrfResult<Self> {
+  pub fn new(
+    device: &wgpu::Device,
+    source: PipelineSource<'_>,
+    view_layout: &wgpu::BindGroupLayout,
+  ) -> XrfResult<Self> {
     let layout: wgpu::BindGroupLayout = StaticCullParameters::create_layout(device);
-    let (pipelines, shadow_pipelines) = Self::create_pipelines(device, shaders, view_layout, &layout)?;
+    let (pipelines, shadow_pipelines) = Self::create_pipelines(device, source, view_layout, &layout)?;
 
     Ok(Self {
       pipelines,
       shadow_pipelines,
       grid: ComputeGrid::new(device),
       view_layout: view_layout.clone(),
-      generation: shaders.get_generation(),
+      generation: source.get_generation(),
       layout,
     })
   }
 
-  pub fn refresh(&mut self, device: &wgpu::Device, shaders: &ShaderLibrary) {
-    if shaders.get_generation() != self.generation {
-      self.generation = shaders.get_generation();
+  pub fn refresh(&mut self, device: &wgpu::Device, source: PipelineSource<'_>) {
+    if source.get_generation() != self.generation {
+      self.generation = source.get_generation();
 
-      match Self::create_pipelines(device, shaders, &self.view_layout, &self.layout) {
+      match Self::create_pipelines(device, source, &self.view_layout, &self.layout) {
         Ok((pipelines, shadow_pipelines)) => {
           self.pipelines = pipelines;
           self.shadow_pipelines = shadow_pipelines;
@@ -150,11 +154,11 @@ impl StaticCullPass {
 
   fn create_pipelines(
     device: &wgpu::Device,
-    shaders: &ShaderLibrary,
+    source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<([wgpu::ComputePipeline; 6], [[wgpu::ComputePipeline; 3]; 3])> {
-    let module: wgpu::ShaderModule = create_module(device, shaders, "static/cull")?;
+    let module: wgpu::ShaderModule = source.get_module("static/cull")?;
     let pipeline_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
       label: Some("static cull"),
       bind_group_layouts: &[Some(view_layout), Some(layout)],
@@ -171,7 +175,7 @@ impl StaticCullPass {
             constants,
             ..Default::default()
           },
-          cache: None,
+          cache: source.get_driver_cache(),
         })
       })
     };

@@ -18,4 +18,19 @@ pub trait RenderAssetSource: Send + Sync + 'static {
   fn is_texture_reduced(&self, _reference: &str) -> bool {
     false
   }
+
+  /// Forgets where the textures of these file names (lowercase, without folder or extension) resolved, found or not,
+  /// so the next read finds them afresh: their files changed.
+  fn forget_textures(&self, _names: &[String]) {}
+
+  /// A stamp of the file a texture reads from, which changes whenever the file does; none where the texture has no
+  /// file of its own (one in an archive, or none found).
+  fn get_texture_stamp(&self, _reference: &str) -> Option<u64> {
+    None
+  }
+}
+
+/// A texture reference's file name, lowercase, as a change of its file names it: its last part, without its folders.
+pub fn get_texture_name(reference: &str) -> String {
+  reference.rsplit(['\\', '/']).next().unwrap_or(reference).to_lowercase()
 }

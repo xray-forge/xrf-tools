@@ -48,6 +48,12 @@ impl RenderPipelineDescription {
     self
   }
 
+  /// Override constants named and valued, where no permutation struct declares them.
+  pub fn with_constants(mut self, values: &[(&'static str, f64)]) -> Self {
+    self.constants = PipelineConstants::new(values);
+    self
+  }
+
   pub fn with_bind_group_layouts(mut self, layouts: Vec<wgpu::BindGroupLayout>) -> Self {
     self.bind_group_layouts = layouts;
     self
@@ -65,6 +71,12 @@ impl RenderPipelineDescription {
 
   pub fn with_depth_stencil(mut self, depth_stencil: wgpu::DepthStencilState) -> Self {
     self.depth_stencil = Some(depth_stencil);
+    self
+  }
+
+  /// Its color targets in attachment order, a gap where a slot draws nothing.
+  pub fn with_targets(mut self, targets: Vec<Option<wgpu::ColorTargetState>>) -> Self {
+    self.targets = targets;
     self
   }
 

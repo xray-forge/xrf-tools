@@ -6,9 +6,9 @@ use crate::pass::flare_draw_parameters::FlareDrawParameters;
 use crate::pass::flare_measure_parameters::FlareMeasureParameters;
 use crate::pass::flare_texture_parameters::FlareTextureParameters;
 use crate::pass::flare_uniform::FLARE_SLOTS;
-use crate::pass::shader_pipelines::{create_checked, create_module};
+use crate::pass::pipeline_source::PipelineSource;
+use crate::pass::shader_pipelines::create_checked;
 use crate::pass::view_binding::ViewBinding;
-use crate::shader::shader_library::ShaderLibrary;
 
 /// The instance the gradient is drawn as, as `shaders/frame/flare.wgsl` reads it.
 pub const GRADIENT_INSTANCE: u32 = FLARE_SLOTS as u32;
@@ -30,13 +30,17 @@ impl FlarePass {
   /// # Errors
   ///
   /// Returns an error when a shader does not compose or compile.
-  pub fn new(device: &wgpu::Device, shaders: &ShaderLibrary, view_layout: &wgpu::BindGroupLayout) -> XrfResult<Self> {
+  pub fn new(
+    device: &wgpu::Device,
+    source: PipelineSource<'_>,
+    view_layout: &wgpu::BindGroupLayout,
+  ) -> XrfResult<Self> {
     let measure_layout: wgpu::BindGroupLayout = FlareMeasureParameters::create_layout(device);
     let draw_layout: wgpu::BindGroupLayout = FlareDrawParameters::create_layout(device);
     let texture_layout: wgpu::BindGroupLayout = FlareTextureParameters::create_layout(device);
     let (measure, draw) = Self::create_pipelines(
       device,
-      shaders,
+      source,
       view_layout,
       [&measure_layout, &draw_layout, &texture_layout],
     )?;
@@ -50,7 +54,7 @@ impl FlarePass {
         ..Default::default()
       }),
       view_layout: view_layout.clone(),
-      generation: shaders.get_generation(),
+      generation: source.get_generation(),
       measure_layout,
       draw_layout,
       texture_layout,
@@ -59,13 +63,13 @@ impl FlarePass {
     })
   }
 
-  pub fn refresh(&mut self, device: &wgpu::Device, shaders: &ShaderLibrary) {
-    if shaders.get_generation() != self.generation {
-      self.generation = shaders.get_generation();
+  pub fn refresh(&mut self, device: &wgpu::Device, source: PipelineSource<'_>) {
+    if source.get_generation() != self.generation {
+      self.generation = source.get_generation();
 
       match Self::create_pipelines(
         device,
-        shaders,
+        source,
         &self.view_layout,
         [&self.measure_layout, &self.draw_layout, &self.texture_layout],
       ) {
@@ -116,12 +120,12 @@ impl FlarePass {
 
   fn create_pipelines(
     device: &wgpu::Device,
-    shaders: &ShaderLibrary,
+    source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     [measure_layout, draw_layout, texture_layout]: [&wgpu::BindGroupLayout; 3],
   ) -> XrfResult<(wgpu::ComputePipeline, wgpu::RenderPipeline)> {
-    let measure_module: wgpu::ShaderModule = create_module(device, shaders, "frame/flare_visibility")?;
-    let draw_module: wgpu::ShaderModule = create_module(device, shaders, "frame/flare")?;
+    let measure_module: wgpu::ShaderModule = source.get_module("frame/flare_visibility")?;
+    let draw_module: wgpu::ShaderModule = source.get_module("frame/flare")?;
     let measure_pipeline_layout: wgpu::PipelineLayout =
       device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some("flare visibility"),
@@ -153,7 +157,7 @@ impl FlarePass {
         module: &measure_module,
         entry_point: Some("cs_visibility"),
         compilation_options: Default::default(),
-        cache: None,
+        cache: source.get_driver_cache(),
       })
     })?;
     let draw: wgpu::RenderPipeline = create_checked(device, "flare", || {
@@ -176,7 +180,7 @@ impl FlarePass {
         depth_stencil: None,
         multisample: Default::default(),
         multiview_mask: None,
-        cache: None,
+        cache: source.get_driver_cache(),
       })
     })?;
 
