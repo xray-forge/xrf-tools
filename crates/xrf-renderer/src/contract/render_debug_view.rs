@@ -30,6 +30,9 @@ pub enum RenderDebugView {
   Motion,
   /// The indirect light as it would light a white surface, black where it is not gathered.
   IndirectLight,
+  /// The screen-space reflections as traced: what a ray met in its colour, deep blue where it met nothing and the cube
+  /// stands, black where nothing is traced.
+  Reflections,
 }
 
 impl RenderDebugView {

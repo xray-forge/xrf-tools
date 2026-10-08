@@ -10,6 +10,7 @@ use crate::contract::render_indirect_light_settings::RenderIndirectLightSettings
 use crate::contract::render_light_scales::RenderLightScales;
 use crate::contract::render_lights_settings::RenderLightsSettings;
 use crate::contract::render_lod_settings::RenderLodSettings;
+use crate::contract::render_reflection_settings::RenderReflectionSettings;
 use crate::contract::render_shadow_settings::RenderShadowSettings;
 use crate::contract::render_sun_shafts::RenderSunShafts;
 use crate::contract::render_water_settings::RenderWaterSettings;
@@ -25,6 +26,8 @@ pub struct RenderViewFeatures {
   pub ambient_occlusion: RenderAmbientOcclusionSettings,
   /// The light the frame's surfaces bounce onto each other, searched as the ambient occlusion's settings describe.
   pub indirect_light: RenderIndirectLightSettings,
+  /// What glossy surfaces reflect: the sky's cube, or what the frame shows where a ray finds it.
+  pub reflections: RenderReflectionSettings,
   pub lights: RenderLightsSettings,
   pub water: RenderWaterSettings,
   pub grass: RenderGrassSettings,
@@ -52,6 +55,7 @@ impl Default for RenderViewFeatures {
       shadows: RenderShadowSettings::default(),
       ambient_occlusion: RenderAmbientOcclusionSettings::default(),
       indirect_light: RenderIndirectLightSettings::default(),
+      reflections: RenderReflectionSettings::default(),
       lights: RenderLightsSettings::default(),
       water: RenderWaterSettings::default(),
       grass: RenderGrassSettings::default(),

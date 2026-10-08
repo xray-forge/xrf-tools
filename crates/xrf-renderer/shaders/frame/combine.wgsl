@@ -12,7 +12,8 @@
 
 // The G-buffer and its light, the material table, the lighting and exposure, the ambient occlusion (visibility, then
 // distance along the view, at half the frame's size), the haze map (the sky as drawn, clouds and all, blurred by
-// bearing and height) and the indirect light (colour, then distance along the view, at half the frame's size).
+// bearing and height), the indirect light (colour, then distance along the view, at half the frame's size) and the
+// reflections traced (radiance met times trust, then trust, at the size they are traced at).
 #import "generated/frame/combine"
 
 // What shows where nothing was drawn and neither the sky nor the fog is: the level viewer's backdrop, #202428.
@@ -63,13 +64,13 @@ fn sky_behind(direction: vec3<f32>, toward: vec3<f32>, scale: f32, is_hazed: boo
   return mix(shown, sky_haze(direction), sky_above_fold(lighting, direction));
 }
 
-// `hmodel` over the G-buffer's view space normal and point.
+// `hmodel` over the G-buffer's view space normal and point, what the reflections traced standing in for the cube.
 fn shaded_color(albedo: vec4<f32>, light: vec4<f32>, normal: vec3<f32>, position: vec3<f32>, slice: f32, occlusion: f32,
-  visible: vec3<f32>) -> vec3<f32> {
+  visible: vec3<f32>, traced: vec4<f32>) -> vec3<f32> {
   let rotation: mat3x3<f32> = transpose(mat3x3<f32>(camera.view[0].xyz, camera.view[1].xyz, camera.view[2].xyz));
 
-  return hmodel(lighting, material_lut, lut_sampler, sky_environment_0, sky_environment_1, sky_clamp, albedo, light,
-    normalize(rotation * normal), normalize(rotation * normalize(position)), slice, occlusion, visible);
+  return hmodel_traced(lighting, material_lut, lut_sampler, sky_environment_0, sky_environment_1, sky_clamp, albedo,
+    light, normalize(rotation * normal), normalize(rotation * normalize(position)), slice, occlusion, visible, traced);
 }
 
 // What shows at a pixel where nothing was drawn: the backdrop, or its checkerboard with a second colour.
@@ -143,7 +144,17 @@ fn fs_combine(in: FullscreenVarying) -> CombineOutput {
     lighting.params.w > 0.5);
   let bounced: vec3<f32> = bounced_occlusion(visible, albedo.rgb, lighting.params.x);
   let occlusion: f32 = mix(1.0, material.x, camera.switches.z);
-  var shaded: vec3<f32> = shaded_color(albedo, light, normal, position, material.z, occlusion, bounced);
+  // What the reflections met along this pixel's reflection, none where they are not traced.
+  var traced: vec4<f32> = vec4<f32>(0.0);
+
+  if (lighting.reflections.x > 0.5) {
+    let upsampled: vec4<f32> = upsampled_reflection(reflections, depth_target, floor(in.clip.xy), -position.z,
+      lighting.reflections.y);
+
+    traced = max(upsampled, vec4<f32>(0.0));
+  }
+
+  var shaded: vec3<f32> = shaded_color(albedo, light, normal, position, material.z, occlusion, bounced, traced);
 
   // The light the frame's surfaces bounce onto this one, lighting its albedo as the hemisphere does.
   if (lighting.indirect.x > 0.5) {

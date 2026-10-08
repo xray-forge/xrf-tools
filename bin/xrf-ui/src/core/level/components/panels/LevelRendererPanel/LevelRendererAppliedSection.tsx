@@ -6,10 +6,12 @@ import {
   describeRenderAmbientOcclusionQuality,
   describeRenderAntialiasing,
   describeRenderLightShadowFilter,
+  describeRenderReflectionQuality,
   describeRenderScale,
   formatGrassDensity,
   formatGrassRadius,
   formatIndirectLightIntensity,
+  formatReflectionIntensity,
   formatShadowFilter,
 } from "@/core/render/lib/features/render-feature-choices";
 import { EditorPanelProperty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
@@ -85,6 +87,15 @@ export function LevelRendererAppliedSection({
               ? `${formatIndirectLightIntensity(applied.indirectLight.intensity ?? 0)} · ` +
                 (applied.indirectLight.isShared ? "in VBAO's search" : "its own search")
               : "Off"
+          }
+        />
+        <EditorPanelProperty
+          label={"Reflections"}
+          value={
+            applied.reflections
+              ? `${formatReflectionIntensity(applied.reflections.intensity ?? 0)} · ` +
+                `${describeRenderReflectionQuality(applied.reflections.quality).toLowerCase()} quality`
+              : "The cube alone"
           }
         />
         <EditorPanelProperty

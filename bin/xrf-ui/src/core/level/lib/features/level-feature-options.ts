@@ -9,6 +9,7 @@ import {
   TRenderGrassSettings,
   TRenderIndirectLightSettings,
   TRenderLightsSettings,
+  TRenderReflectionSettings,
   TRenderShadowSettings,
   TRenderWaterSettings,
 } from "@/core/render/lib/settings/render-feature-settings";
@@ -28,6 +29,9 @@ export type TLevelAmbientOcclusionOptions = Pick<
 /** The indirect light settings a level view may set for itself: all of them. */
 export type TLevelIndirectLightOptions = TRenderIndirectLightSettings;
 
+/** The reflection settings a level view may set for itself: all of them. */
+export type TLevelReflectionOptions = TRenderReflectionSettings;
+
 /** The grass settings a level view may set for itself. */
 export type TLevelGrassOptions = Pick<TRenderGrassSettings, "density" | "foliage" | "height" | "radius">;
 
@@ -46,6 +50,8 @@ export interface ILevelFeatureOptions {
   /** The indirect light, which no toolbar toggle turns off: its own mode does. */
   indirectLight: Partial<TLevelIndirectLightOptions>;
   lights: Partial<TLevelLightsOptions>;
+  /** The reflections, which no toolbar toggle turns off: their own mode does. */
+  reflections: Partial<TLevelReflectionOptions>;
   /** The mode edges are smoothed with while the settings smooth them at all, or null for the settings' own. */
   antialiasing: Nullable<RenderAntialiasing>;
   shadows: Partial<TLevelShadowOptions>;
@@ -71,6 +77,14 @@ const LEVEL_FEATURE_KEYS: {
 /** The indirect light's settings a view may set. */
 const LEVEL_INDIRECT_LIGHT_KEYS: ReadonlyArray<keyof TLevelIndirectLightOptions> = ["intensity", "mode", "radius"];
 
+/** The reflections' settings a view may set. */
+const LEVEL_REFLECTION_KEYS: ReadonlyArray<keyof TLevelReflectionOptions> = [
+  "distance",
+  "intensity",
+  "mode",
+  "quality",
+];
+
 /**
  * @param stored - What was stored for a view's features, parsed from wherever it is kept.
  * @returns What the view sets, held to the renderer's own bounds, with everything a view does not set dropped.
@@ -88,6 +102,7 @@ export function toLevelFeatureOptions(stored: unknown): ILevelFeatureOptions {
 
   const antialiasing: RenderAntialiasing | undefined = overrides.antialiasing;
   const indirectLight: Record<string, unknown> = (overrides.indirectLight ?? {}) as Record<string, unknown>;
+  const reflections: Record<string, unknown> = (overrides.reflections ?? {}) as Record<string, unknown>;
 
   return {
     ambientOcclusion: pick("ambientOcclusion"),
@@ -97,6 +112,9 @@ export function toLevelFeatureOptions(stored: unknown): ILevelFeatureOptions {
       LEVEL_INDIRECT_LIGHT_KEYS.filter((it) => indirectLight[it] !== undefined).map((it) => [it, indirectLight[it]])
     ) as Partial<TLevelIndirectLightOptions>,
     lights: pick("lights"),
+    reflections: Object.fromEntries(
+      LEVEL_REFLECTION_KEYS.filter((it) => reflections[it] !== undefined).map((it) => [it, reflections[it]])
+    ) as Partial<TLevelReflectionOptions>,
     shadows: pick("shadows"),
     water: pick("water"),
   };
@@ -148,6 +166,18 @@ export function toLevelIndirectLight(
   view: ILevelFeatureOptions
 ): TRenderIndirectLightSettings {
   return { ...settings.indirectLight, ...view.indirectLight };
+}
+
+/**
+ * @param settings - What the renderer's settings set, for every viewport.
+ * @param view - What the view sets over them.
+ * @returns The reflections the view is drawn with: the settings', the view's own values over them.
+ */
+export function toLevelReflections(
+  settings: IRenderFeatureSettings,
+  view: ILevelFeatureOptions
+): TRenderReflectionSettings {
+  return { ...settings.reflections, ...view.reflections };
 }
 
 /**

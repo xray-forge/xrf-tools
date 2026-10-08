@@ -9,6 +9,7 @@ import {
   RenderIndirectLightSettings,
   RenderLightsSettings,
   RenderLodSettings,
+  RenderReflectionSettings,
   RenderShadowSettings,
   RenderUpscalingSettings,
   RenderViewFeatures,
@@ -27,6 +28,7 @@ export type TRenderViewFeatureKey =
   | "isOcclusionCulled"
   | "lights"
   | "lod"
+  | "reflections"
   | "shadows"
   | "water";
 
@@ -60,6 +62,8 @@ export type TRenderIndirectLightSettings = TSettled<RenderIndirectLightSettings>
 export type TRenderLightsSettings = TSettled<RenderLightsSettings>;
 
 export type TRenderLodSettings = TSettled<RenderLodSettings>;
+
+export type TRenderReflectionSettings = TSettled<RenderReflectionSettings>;
 
 export type TRenderShadowSettings = TSettled<RenderShadowSettings>;
 

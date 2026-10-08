@@ -4,6 +4,7 @@ import {
   ERenderContactShadowMode,
   ERenderFoliageMode,
   ERenderIndirectLightMode,
+  ERenderReflectionMode,
   ERenderWaterMode,
 } from "@/core/ipc/types/xrf-renderer";
 import {
@@ -15,6 +16,7 @@ import {
   DEFAULT_RENDER_INDIRECT_LIGHT_SETTINGS,
   DEFAULT_RENDER_LIGHTS_SETTINGS,
   DEFAULT_RENDER_LOD_SETTINGS,
+  DEFAULT_RENDER_REFLECTION_SETTINGS,
   DEFAULT_RENDER_SHADOW_SETTINGS,
   DEFAULT_RENDER_UPSCALING_SETTINGS,
   DEFAULT_RENDER_WATER_SETTINGS,
@@ -53,6 +55,9 @@ export const RENDER_PRESETS: Readonly<Record<ERenderPreset, IRenderFeatureSettin
     isOcclusionCulled: true,
     lights: DEFAULT_RENDER_LIGHTS_SETTINGS,
     lod: DEFAULT_RENDER_LOD_SETTINGS,
+    // The application's own choice over the engine's, as the antialiasing is: what the frame shows reflected where a
+    // ray meets it, the cube elsewhere.
+    reflections: { ...DEFAULT_RENDER_REFLECTION_SETTINGS, mode: ERenderReflectionMode.ENHANCED },
     // The application's own choice over the engine's, as the antialiasing is: contact shadows under the cascades.
     shadows: {
       ...DEFAULT_RENDER_SHADOW_SETTINGS,
@@ -72,6 +77,7 @@ export const RENDER_PRESETS: Readonly<Record<ERenderPreset, IRenderFeatureSettin
     // Unshadowed, the lights cost a pass over the screen: an editor keeps seeing what lights a room.
     lights: { ...DEFAULT_RENDER_LIGHTS_SETTINGS, isShadowed: false },
     lod: DEFAULT_RENDER_LOD_SETTINGS,
+    reflections: DEFAULT_RENDER_REFLECTION_SETTINGS,
     shadows: { ...DEFAULT_RENDER_SHADOW_SETTINGS, isEnabled: false },
     upscaling: DEFAULT_RENDER_UPSCALING_SETTINGS,
     water: DEFAULT_RENDER_WATER_SETTINGS,

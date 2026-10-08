@@ -5,6 +5,8 @@ import {
   ERenderFoliageMode,
   ERenderIndirectLightMode,
   ERenderLightShadowFilter,
+  ERenderReflectionMode,
+  ERenderReflectionQuality,
   ERenderScale,
   ERenderWaterMode,
 } from "@/core/ipc/types/xrf-renderer";
@@ -19,6 +21,7 @@ import {
   TRenderIndirectLightSettings,
   TRenderLightsSettings,
   TRenderLodSettings,
+  TRenderReflectionSettings,
   TRenderShadowSettings,
   TRenderUpscalingSettings,
   TRenderWaterSettings,
@@ -91,6 +94,14 @@ export const DEFAULT_RENDER_INDIRECT_LIGHT_SETTINGS: TRenderIndirectLightSetting
   intensity: 1,
   mode: ERenderIndirectLightMode.ENGINE,
   radius: 3,
+};
+
+/** The engine's own: the cube alone, and for when it is traced, rays of sixty metres at high quality replacing all of it. */
+export const DEFAULT_RENDER_REFLECTION_SETTINGS: TRenderReflectionSettings = {
+  distance: 60,
+  intensity: 1,
+  mode: ERenderReflectionMode.ENGINE,
+  quality: ERenderReflectionQuality.HIGH,
 };
 
 /** The engine's own: every spawned light, and none of the level file's. */

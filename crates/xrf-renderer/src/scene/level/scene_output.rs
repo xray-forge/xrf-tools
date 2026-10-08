@@ -14,4 +14,6 @@ pub struct SceneOutput {
   pub lighting: UniformBinding<LightingUniform>,
   /// The indirect light a debug view shows, a texel of none where it is not gathered.
   pub indirect_light: GraphTexture,
+  /// The reflections a debug view shows, a texel marked untraced where they are not traced.
+  pub reflections: GraphTexture,
 }

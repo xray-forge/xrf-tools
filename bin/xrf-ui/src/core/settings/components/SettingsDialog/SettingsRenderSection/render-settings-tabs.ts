@@ -49,7 +49,7 @@ export const RENDER_SETTINGS_TABS: ReadonlyArray<IRenderSettingsTab> = [
     sections: [SettingsRendererAntialiasing, SettingsRendererExposure],
   },
   {
-    features: ["lights", "ambientOcclusion", "indirectLight"],
+    features: ["lights", "ambientOcclusion", "indirectLight", "reflections"],
     id: ERenderSettingsTab.LIGHTING,
     label: "Lighting",
     sections: [SettingsRendererLights, SettingsRendererAmbientOcclusion],

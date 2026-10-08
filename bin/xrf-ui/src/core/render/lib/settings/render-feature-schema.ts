@@ -6,6 +6,8 @@ import {
   ERenderFoliageMode,
   ERenderIndirectLightMode,
   ERenderLightShadowFilter,
+  ERenderReflectionMode,
+  ERenderReflectionQuality,
   ERenderScale,
   ERenderWaterMode,
 } from "@/core/ipc/types/xrf-renderer";
@@ -90,6 +92,14 @@ export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings>
     radius: toNumber(0.5, 8),
   },
   isOcclusionCulled: FLAG,
+  // The renderer's own: a hit replaces at most all of the cube, never more, so nothing brightens; past two hundred
+  // metres a ray leaves the frame long before its steps reach.
+  reflections: {
+    distance: toNumber(5, 200),
+    intensity: toNumber(0, 1),
+    mode: toChoice(ERenderReflectionMode),
+    quality: toChoice(ERenderReflectionQuality),
+  },
   lights: {
     isEnabled: FLAG,
     isLevelLights: FLAG,

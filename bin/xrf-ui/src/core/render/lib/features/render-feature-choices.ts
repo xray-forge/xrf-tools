@@ -4,12 +4,16 @@ import {
   ERenderAntialiasing,
   ERenderIndirectLightMode,
   ERenderLightShadowFilter,
+  ERenderReflectionMode,
+  ERenderReflectionQuality,
   ERenderScale,
   RenderAmbientOcclusionMethod,
   RenderAmbientOcclusionQuality,
   RenderAntialiasing,
   RenderIndirectLightMode,
   RenderLightShadowFilter,
+  RenderReflectionMode,
+  RenderReflectionQuality,
   RenderScale,
 } from "@/core/ipc/types/xrf-renderer";
 import {
@@ -297,6 +301,64 @@ export const RENDER_INDIRECT_LIGHT_MODE_OPTIONS: ReadonlyArray<IRenderChoiceOpti
 /** @returns How much of the bounced light is added. */
 export function formatIndirectLightIntensity(intensity: number): string {
   return formatPercent(intensity);
+}
+
+/** The bounds each reflection value is offered between. */
+export const RENDER_REFLECTION_LIMITS = {
+  distance: toRenderLimits(RENDER_FEATURE_SCHEMA.reflections.distance, 5),
+  intensity: toRenderLimits(RENDER_FEATURE_SCHEMA.reflections.intensity, 0.05),
+} as const;
+
+const RENDER_REFLECTION_MODE_DESCRIPTIONS: Readonly<Record<RenderReflectionMode, string>> = {
+  [ERenderReflectionMode.ENGINE]: "The game's own: glossy and wet surfaces reflect the sky's cube alone.",
+  [ERenderReflectionMode.ENHANCED]:
+    "Glossy and wet surfaces reflect what the frame shows where a traced ray meets it, the sky's cube elsewhere.",
+};
+
+/**
+ * @param mode - A reflection mode.
+ * @returns What it does, in a sentence.
+ */
+export function explainRenderReflectionMode(mode: RenderReflectionMode): string {
+  return RENDER_REFLECTION_MODE_DESCRIPTIONS[mode];
+}
+
+/** The reflection modes, in the order they are offered. */
+export const RENDER_REFLECTION_MODE_OPTIONS: ReadonlyArray<IRenderChoiceOption<RenderReflectionMode>> = [
+  { label: "Engine", value: ERenderReflectionMode.ENGINE },
+  { label: "Enhanced", value: ERenderReflectionMode.ENHANCED },
+];
+
+const RENDER_REFLECTION_QUALITY_NAMES: Readonly<Record<RenderReflectionQuality, string>> = {
+  [ERenderReflectionQuality.LOW]: "Low",
+  [ERenderReflectionQuality.MEDIUM]: "Medium",
+  [ERenderReflectionQuality.HIGH]: "High",
+  [ERenderReflectionQuality.ULTRA]: "Ultra",
+};
+
+/**
+ * @param quality - A reflection quality.
+ * @returns Its name as the settings say it.
+ */
+export function describeRenderReflectionQuality(quality: RenderReflectionQuality): string {
+  return RENDER_REFLECTION_QUALITY_NAMES[quality];
+}
+
+/** The reflection qualities, in the order they are offered. */
+export const RENDER_REFLECTION_QUALITY_OPTIONS: ReadonlyArray<IRenderChoiceOption<RenderReflectionQuality>> =
+  Object.values(ERenderReflectionQuality).map((value: RenderReflectionQuality) => ({
+    label: describeRenderReflectionQuality(value),
+    value,
+  }));
+
+/** @returns How much of the cube a hit replaces. */
+export function formatReflectionIntensity(intensity: number): string {
+  return formatPercent(intensity);
+}
+
+/** @returns How far a ray is traced. */
+export function formatReflectionDistance(distance: number): string {
+  return `${formatNumber(distance, 0)} m`;
 }
 
 /** The bounds each exposure value is offered between: the console's own. */

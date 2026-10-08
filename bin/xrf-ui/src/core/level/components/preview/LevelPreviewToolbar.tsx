@@ -14,6 +14,7 @@ import { LevelOcclusionAction } from "@/core/level/components/preview/LevelOcclu
 import { LevelOverlaysAction } from "@/core/level/components/preview/LevelOverlaysAction";
 import { LevelParticlesAction } from "@/core/level/components/preview/LevelParticlesAction";
 import { LevelRainAction } from "@/core/level/components/preview/LevelRainAction";
+import { LevelReflectionsAction } from "@/core/level/components/preview/LevelReflectionsAction";
 import { LevelShadingAction } from "@/core/level/components/preview/LevelShadingAction";
 import { LevelShadowAction } from "@/core/level/components/preview/LevelShadowAction";
 import { LevelSkyAction } from "@/core/level/components/preview/LevelSkyAction";
@@ -22,7 +23,12 @@ import { LevelSunAction } from "@/core/level/components/preview/LevelSunAction";
 import { LevelWaterAction } from "@/core/level/components/preview/LevelWaterAction";
 import { LevelWeatherAction } from "@/core/level/components/preview/LevelWeatherAction";
 import { LevelWindAction } from "@/core/level/components/preview/LevelWindAction";
-import { ILevelFeatureOptions, TLevelFeatureView, toLevelIndirectLight } from "@/core/level/lib/features";
+import {
+  ILevelFeatureOptions,
+  TLevelFeatureView,
+  toLevelIndirectLight,
+  toLevelReflections,
+} from "@/core/level/lib/features";
 import { ILevelLodOptions } from "@/core/level/lib/lod/level-lod-options";
 import { ELevelShading } from "@/core/level/lib/view/level-shading";
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
@@ -203,6 +209,12 @@ export function LevelPreviewToolbar({
             onToggle={onToggle}
             onChange={onChangeFeatures}
             onChangeHemiStrength={onChangeHemiStrength}
+          />
+
+          <LevelReflectionsAction
+            value={toLevelReflections(settings, features)}
+            features={features}
+            onChange={onChangeFeatures}
           />
 
           <EditorToolbarSeparator />

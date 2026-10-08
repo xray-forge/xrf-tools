@@ -20,6 +20,7 @@ struct Lighting {
   shafts: vec4<f32>,
   flora: vec4<f32>,
   indirect: vec4<f32>,
+  reflections: vec4<f32>,
 }
 
 struct Water {
@@ -72,6 +73,8 @@ struct Present {
   selection: vec4<f32>,
   is_bloomed: u32,
   is_indirect: u32,
+  is_reflected: u32,
+  reflection_ratio: f32,
 }
 
 struct Upscale {
@@ -159,6 +162,17 @@ struct Vbao {
   intensity: f32,
   has_light_history: f32,
   light_radius: f32,
+}
+
+struct Reflections {
+  base: vec2<f32>,
+  steps: u32,
+  intensity: f32,
+  distance: f32,
+  frames: f32,
+  has_history: f32,
+  noise: f32,
+  ratio: f32,
 }
 
 struct ExposureParams {

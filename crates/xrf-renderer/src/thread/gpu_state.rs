@@ -25,6 +25,7 @@ use crate::pass::overlay_pass::OverlayPass;
 use crate::pass::particle_pass::ParticlePass;
 use crate::pass::present_pass::PresentPass;
 use crate::pass::rain_pass::RainPass;
+use crate::pass::reflection_pass::ReflectionPass;
 use crate::pass::sky_bindings::SkyBindings;
 use crate::pass::sky_haze_pass::SkyHazePass;
 use crate::pass::smaa_pass::SmaaPass;
@@ -83,6 +84,7 @@ pub struct GpuState {
   pub sun: SunPass,
   pub ambient_occlusion: AmbientOcclusionPass,
   pub vbao: VbaoPass,
+  pub reflections: ReflectionPass,
   pub lights: LightsPass,
   pub combine: CombinePass,
   pub exposure: ExposurePass,
@@ -158,6 +160,7 @@ impl GpuState {
       sun: SunPass::new(device, shaders, &view_layout)?,
       ambient_occlusion: AmbientOcclusionPass::new(device, shaders, &view_layout)?,
       vbao: VbaoPass::new(device, &context.queue, shaders, &view_layout)?,
+      reflections: ReflectionPass::new(device, &context.queue, shaders, &view_layout, sky.get_layout())?,
       lights: LightsPass::new(device, shaders, &view_layout, textures.get_layout())?,
       combine: CombinePass::new(device, shaders, &view_layout, sky.get_layout())?,
       sky_haze: SkyHazePass::new(device, shaders, sky.get_layout())?,
@@ -206,6 +209,7 @@ impl GpuState {
       sun: &self.sun,
       ambient_occlusion: &self.ambient_occlusion,
       vbao: &self.vbao,
+      reflections: &self.reflections,
       lights: &self.lights,
       combine: &self.combine,
       sky_haze: &self.sky_haze,
@@ -248,6 +252,7 @@ impl GpuState {
     self.sun.refresh(device, shaders);
     self.ambient_occlusion.refresh(device, shaders);
     self.vbao.refresh(device, shaders);
+    self.reflections.refresh(device, shaders);
     self.lights.refresh(device, shaders);
     self.combine.refresh(device, shaders);
     self.sky_haze.refresh(device, shaders);

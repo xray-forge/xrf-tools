@@ -9,8 +9,8 @@
 // it; or, for a debug view, one of the targets the scene was built from.
 
 // The scene, what the water and the particles move what is seen through them by, the targets a debug view shows, what
-// the frame shows, the frame upscaled or the scene again, the bloom, finished in its 256-square target, and the indirect
-// light at half the frame's size.
+// the frame shows, the frame upscaled or the scene again, the bloom, finished in its 256-square target, the indirect
+// light at half the frame's size, and the reflections at the size they are traced at.
 #import "generated/frame/present"
 
 const VIEW_ALBEDO: u32 = 1u;
@@ -23,6 +23,11 @@ const VIEW_DEPTH: u32 = 7u;
 const VIEW_LIGHT: u32 = 8u;
 const VIEW_MOTION: u32 = 10u;
 const VIEW_INDIRECT_LIGHT: u32 = 11u;
+const VIEW_REFLECTIONS: u32 = 12u;
+// What the reflections view shows where a ray met nothing and the cube stands.
+const REFLECTION_MISS: vec3<f32> = vec3<f32>(0.05, 0.1, 0.45);
+// What the reflections view multiplies what was met by before its shoulder.
+const REFLECTION_VIEW_GAIN: f32 = 4.0;
 // Drawn pixels of motion the motion view spans from black to full colour on each axis.
 const MOTION_VIEW_RANGE: f32 = 16.0;
 
@@ -97,6 +102,24 @@ fn shown_target(texel: vec2<i32>) -> vec3<f32> {
       }
 
       return upsampled_light(indirect_light, vec2<f32>(texel), distance);
+    }
+    case VIEW_REFLECTIONS: {
+      if (present.is_reflected == 0u || stored <= 0.0) {
+        return vec3<f32>(0.0);
+      }
+
+      let traced: vec4<f32> = upsampled_reflection(reflections, depth_target, vec2<f32>(texel), distance,
+        present.reflection_ratio);
+
+      if (traced.a < 0.0) {
+        return vec3<f32>(0.0);
+      }
+
+      // What was met, brightened through a shoulder so a dim frame's reflections read, over the miss's colour by how
+      // far the hit is trusted.
+      let met: vec3<f32> = traced.rgb / max(traced.a, 1e-4) * REFLECTION_VIEW_GAIN;
+
+      return mix(REFLECTION_MISS, met / (1.0 + met), saturate(traced.a));
     }
     default: {
       let is_searched: bool = present.is_occluded != 0u && stored > 0.0;
