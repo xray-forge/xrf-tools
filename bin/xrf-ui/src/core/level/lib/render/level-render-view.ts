@@ -7,6 +7,7 @@ import { ILevelViewpoint } from "@/core/level/lib/camera/level-viewpoint";
 import {
   ILevelFeatureOptions,
   toLevelIndirectLight,
+  toLevelModeFeature,
   toLevelRain,
   toLevelReflections,
   toLevelRendererAntialiasing,
@@ -89,6 +90,9 @@ export function toLevelViewOptions(inputs: ILevelViewOptionsInputs): RenderViewO
       ...features,
       ambientOcclusion: toLevelRendererFeature("ambientOcclusion", features, view, options.isOccluded),
       antialiasing: toLevelRendererAntialiasing(features.antialiasing, view, options.isAntialiased),
+      debanding: toLevelModeFeature("debanding", features, view),
+      enhancedBloom: toLevelModeFeature("enhancedBloom", features, view),
+      fog: toLevelModeFeature("fog", features, view),
       grass: toLevelRendererFeature("grass", features, view, options.isGrassy),
       indirectLight: toLevelIndirectLight(features, view),
       isOcclusionCulled: features.isOcclusionCulled && options.isOcclusionCulled,

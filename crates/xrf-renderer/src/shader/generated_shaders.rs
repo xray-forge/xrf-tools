@@ -9,6 +9,8 @@ use crate::pass::combine_parameters::CombineParameters;
 use crate::pass::composited_parameters::CompositedParameters;
 use crate::pass::contact_shadow_parameters::ContactShadowParameters;
 use crate::pass::contact_shadow_uniform::ContactShadowUniform;
+use crate::pass::enhanced_bloom_parameters::EnhancedBloomParameters;
+use crate::pass::enhanced_bloom_uniform::EnhancedBloomUniform;
 use crate::pass::enhanced_water_parameters::EnhancedWaterParameters;
 use crate::pass::enhanced_water_uniform::EnhancedWaterUniform;
 use crate::pass::exposure_head::ExposureHead;
@@ -19,6 +21,8 @@ use crate::pass::flare_draw_parameters::FlareDrawParameters;
 use crate::pass::flare_measure_parameters::FlareMeasureParameters;
 use crate::pass::flare_texture_parameters::FlareTextureParameters;
 use crate::pass::flare_uniform::FlareUniform;
+use crate::pass::fog_scattering_parameters::FogScatteringParameters;
+use crate::pass::fog_scattering_uniform::FogScatteringUniform;
 use crate::pass::fsr_uniform::FsrUniform;
 use crate::pass::fxaa_parameters::FxaaParameters;
 use crate::pass::light_binning_parameters::LightBinningParameters;
@@ -84,6 +88,8 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
   let mut overlay: ShaderBindings = ShaderBindings::new();
   let mut upscale: ShaderBindings = ShaderBindings::new();
   let mut bloom: ShaderBindings = ShaderBindings::new();
+  let mut enhanced_bloom: ShaderBindings = ShaderBindings::new();
+  let mut fog_scattering: ShaderBindings = ShaderBindings::new();
   let mut fxaa: ShaderBindings = ShaderBindings::new();
   let mut smaa: ShaderBindings = ShaderBindings::new();
   let mut sky: ShaderBindings = ShaderBindings::new();
@@ -120,6 +126,8 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
     .declare::<PresentUniform>()
     .declare::<UpscaleUniform>()
     .declare::<BloomUniform>()
+    .declare::<EnhancedBloomUniform>()
+    .declare::<FogScatteringUniform>()
     .declare::<ParticleVertex>()
     .declare::<ParticleSurfaceRecord>()
     .declare::<ShadowUniform>()
@@ -151,6 +159,8 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
   overlay.add::<OverlayParameters>()?;
   upscale.add::<UpscaleParameters>()?;
   bloom.add::<BloomParameters<'_>>()?;
+  enhanced_bloom.add::<EnhancedBloomParameters<'_>>()?;
+  fog_scattering.add::<FogScatteringParameters<'_>>()?;
   fxaa.add::<FxaaParameters<'_>>()?;
   smaa.add::<SmaaParameters<'_>>()?;
   sky.add::<SkyParameters<'_>>()?;
@@ -207,6 +217,14 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
       format!("{STRUCTS_IMPORT}{}", upscale.to_wgsl()),
     ),
     ("generated/frame/bloom", format!("{STRUCTS_IMPORT}{}", bloom.to_wgsl())),
+    (
+      "generated/frame/enhanced_bloom",
+      format!("{STRUCTS_IMPORT}{}", enhanced_bloom.to_wgsl()),
+    ),
+    (
+      "generated/frame/fog_scattering",
+      format!("{STRUCTS_IMPORT}{}", fog_scattering.to_wgsl()),
+    ),
     ("generated/frame/fxaa", format!("{STRUCTS_IMPORT}{}", fxaa.to_wgsl())),
     ("generated/frame/smaa", format!("{STRUCTS_IMPORT}{}", smaa.to_wgsl())),
     ("generated/common/sky", format!("{STRUCTS_IMPORT}{}", sky.to_wgsl())),

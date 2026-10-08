@@ -114,6 +114,18 @@ export type RenderAppliedGrass = {
   wanted: number;
 };
 
+/** The enhanced fog as drawn. */
+export type RenderAppliedHeightFog = {
+  /** Metres either side of the world's zero height the height fog rises over. */
+  height: number | null;
+  /** How much thicker the distance fog grows where the height fog is whole. */
+  density: number | null;
+  /** How far it takes the sun's colour facing the sun. */
+  sunColor: number | null;
+  /** How readily the frame's bright parts are blurred into it, zero where nothing is scattered. */
+  scattering: number | null;
+};
+
 /** The screen-space indirect light as gathered. */
 export type RenderAppliedIndirectLight = {
   /** How much of the bounced light is added. */
@@ -143,6 +155,12 @@ export type RenderAppliedReport = {
   indirectLight: RenderAppliedIndirectLight | null;
   /** The screen-space reflections, or none where they are not traced. */
   reflections: RenderAppliedReflections | null;
+  /** The enhanced height fog, or none where the engine's fog alone is drawn or none at all. */
+  heightFog: RenderAppliedHeightFog | null;
+  /** How hard the sky is debanded, or none where it is drawn as it is. */
+  debanding: RenderDebandingQuality | null;
+  /** Which bloom is drawn, or none where the frame blooms nothing. */
+  bloom: RenderBloomMode | null;
   /** The local lights, or none where they are off. */
   lights: RenderLightsSettings | null;
   /** The grass planted, or none where none is. */
@@ -215,6 +233,20 @@ export type RenderBackdropSquares = {
   size: number | null;
 };
 
+/** Which bloom glows over the frame's bright parts: the engine's, as the look sets it, or the enhanced one. */
+export enum ERenderBloomMode {
+  /** The engine's own (`phase_bloom`), drawn as the look's bloom settings say. */
+  ENGINE = "engine",
+  /**
+   * The enhanced bloom in its place: the finished frame's bright parts and self-lit surfaces blurred over six halving
+   * sizes and back, tonemapped and screened over the frame.
+   */
+  ENHANCED = "enhanced",
+}
+
+/** Every `ERenderBloomMode` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type RenderBloomMode = `${ERenderBloomMode}`;
+
 /** The engine's bloom (`phase_bloom`): the bright part of the frame blurred over it, as the console sets it. */
 export type RenderBloomSettings = {
   isEnabled: boolean;
@@ -262,6 +294,43 @@ export type RenderContactShadowSettings = {
   lights: number;
 };
 
+/** Whether the sky's gradients are smoothed where its colours fall into visible bands. */
+export enum ERenderDebandingMode {
+  /** The engine's own: the sky as drawn. */
+  ENGINE = "engine",
+  /**
+   * Sky debanding: each sky pixel averaged with neighbours scattered around it wherever they differ from it by less
+   * than a band's step.
+   */
+  ENHANCED = "enhanced",
+}
+
+/** Every `ERenderDebandingMode` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type RenderDebandingMode = `${ERenderDebandingMode}`;
+
+/** How many times the sky debanding averages a pixel with its neighbours, each time further out. */
+export enum ERenderDebandingQuality {
+  /** Once. */
+  LOW = "low",
+  /** Twice. */
+  MEDIUM = "medium",
+  /** Three times. */
+  HIGH = "high",
+  /** Four times. */
+  ULTRA = "ultra",
+}
+
+/** Every `ERenderDebandingQuality` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type RenderDebandingQuality = `${ERenderDebandingQuality}`;
+
+/** Whether and how the sky's colour bands are smoothed. */
+export type RenderDebandingSettings = {
+  mode: RenderDebandingMode;
+  quality: RenderDebandingQuality;
+  /** Pixels around a sky pixel its neighbours are read from at most. */
+  radius: number | null;
+};
+
 /** Which picture a viewport shows: its finished frame, or one of the targets the frame was built from. */
 export enum ERenderDebugView {
   /** The finished frame. */
@@ -297,6 +366,21 @@ export enum ERenderDebugView {
 
 /** Every `ERenderDebugView` as the spelling it crosses IPC as, for a value no member has narrowed. */
 export type RenderDebugView = `${ERenderDebugView}`;
+
+/** Which bloom the frame draws, and the enhanced bloom's strengths; the engine bloom's own come with the look. */
+export type RenderEnhancedBloomSettings = {
+  mode: RenderBloomMode;
+  /** The power the finished frame is raised to before it blooms: the higher, the brighter a part must be to glow. */
+  threshold: number | null;
+  /** How bright the bloom is tonemapped. */
+  exposure: number | null;
+  /** How far apart each halving size's reads are spread, in its texels: the bloom's width. */
+  blur: number | null;
+  /** How saturated the bloom's colour is: one as it is, none grey. */
+  vibrance: number | null;
+  /** How much the sky blooms, against the rest of the frame. */
+  sky: number | null;
+};
 
 /**
  * The enhanced water's strengths: what lies under it refracted, clouded with depth, the scene reflected,
@@ -352,6 +436,36 @@ export type RenderExposureSettings = {
   lowLuminance: number | null;
   /** `r2_tonemap_adaptation`: how fast the scale follows the frame. */
   adaptation: number | null;
+};
+
+/**
+ * What fog closes the level in: the weather's distance fog alone, or that fog thickened low down and scattering the
+ * frame's light.
+ */
+export enum ERenderFogMode {
+  /** The engine's own: the weather's distance fog. */
+  ENGINE = "engine",
+  /**
+   * The distance fog thickened below a height and tinted towards the sun there, with the bright parts of the frame
+   * blurred into where it lies.
+   */
+  ENHANCED = "enhanced",
+}
+
+/** Every `ERenderFogMode` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type RenderFogMode = `${ERenderFogMode}`;
+
+/** How the fog is drawn beyond the weather's own keys, and the enhanced fog's strengths. */
+export type RenderFogSettings = {
+  mode: RenderFogMode;
+  /** Metres either side of the world's zero height over which the height fog rises from none, above, to whole, below. */
+  height: number | null;
+  /** How much thicker the distance fog grows where the height fog is whole: one doubles it. */
+  density: number | null;
+  /** How far the height fog takes the sun's colour where the view faces the sun. */
+  sunColor: number | null;
+  /** How readily the bright parts of the frame are blurred into the fog: none blurs nothing. */
+  scattering: number | null;
 };
 
 /** How trees and grass move in the wind. */
@@ -1140,6 +1254,12 @@ export type RenderUpscalingSettings = {
 export type RenderViewFeatures = {
   exposure: RenderExposureSettings;
   bloom: RenderBloomSettings;
+  /** Which bloom is drawn, and the enhanced bloom's strengths. */
+  enhancedBloom: RenderEnhancedBloomSettings;
+  /** How the fog is drawn beyond the weather's keys: the engine's distance fog, or the enhanced height fog. */
+  fog: RenderFogSettings;
+  /** Whether the sky's colour bands are smoothed. */
+  debanding: RenderDebandingSettings;
   shadows: RenderShadowSettings;
   ambientOcclusion: RenderAmbientOcclusionSettings;
   /** The light the frame's surfaces bounce onto each other, searched as the ambient occlusion's settings describe. */

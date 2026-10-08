@@ -2,6 +2,10 @@ import {
   ERenderAmbientOcclusionMethod,
   ERenderAmbientOcclusionQuality,
   ERenderAntialiasing,
+  ERenderBloomMode,
+  ERenderDebandingMode,
+  ERenderDebandingQuality,
+  ERenderFogMode,
   ERenderIndirectLightMode,
   ERenderLightShadowFilter,
   ERenderRainMode,
@@ -11,6 +15,10 @@ import {
   RenderAmbientOcclusionMethod,
   RenderAmbientOcclusionQuality,
   RenderAntialiasing,
+  RenderBloomMode,
+  RenderDebandingMode,
+  RenderDebandingQuality,
+  RenderFogMode,
   RenderIndirectLightMode,
   RenderLightShadowFilter,
   RenderRainMode,
@@ -387,6 +395,129 @@ export function formatReflectionIntensity(intensity: number): string {
 /** @returns How far a ray is traced. */
 export function formatReflectionDistance(distance: number): string {
   return `${formatNumber(distance, 0)} m`;
+}
+
+/** The bounds each enhanced fog value is offered between. */
+export const RENDER_FOG_LIMITS = {
+  density: toRenderLimits(RENDER_FEATURE_SCHEMA.fog.density, 0.1),
+  height: toRenderLimits(RENDER_FEATURE_SCHEMA.fog.height, 0.5),
+  scattering: toRenderLimits(RENDER_FEATURE_SCHEMA.fog.scattering, 0.05),
+  sunColor: toRenderLimits(RENDER_FEATURE_SCHEMA.fog.sunColor, 0.05),
+} as const;
+
+const RENDER_FOG_MODE_DESCRIPTIONS: Readonly<Record<RenderFogMode, string>> = {
+  [ERenderFogMode.ENGINE]: "The game's own: the weather's distance fog.",
+  [ERenderFogMode.ENHANCED]:
+    "The distance fog thickened low down and tinted towards the sun there, the frame's bright parts scattered into it.",
+};
+
+/**
+ * @param mode - A fog mode.
+ * @returns What it does, in a sentence.
+ */
+export function explainRenderFogMode(mode: RenderFogMode): string {
+  return RENDER_FOG_MODE_DESCRIPTIONS[mode];
+}
+
+/** The fog modes, in the order they are offered. */
+export const RENDER_FOG_MODE_OPTIONS: ReadonlyArray<IRenderChoiceOption<RenderFogMode>> = [
+  { label: "Engine", value: ERenderFogMode.ENGINE },
+  { label: "Enhanced", value: ERenderFogMode.ENHANCED },
+];
+
+/** @returns How far either side of the world's zero the height fog rises over. */
+export function formatFogHeight(height: number): string {
+  return `${formatNumber(height, 1)} m`;
+}
+
+/** @returns How much thicker the height fog makes the distance fog, as a share of it. */
+export function formatFogDensity(density: number): string {
+  return `+${formatPercent(density)}`;
+}
+
+/** @returns A share of the enhanced fog's: its sun colour or its scattering. */
+export function formatFogShare(share: number): string {
+  return formatPercent(share);
+}
+
+/** The bounds the sky debanding's radius is offered between. */
+export const RENDER_DEBANDING_LIMITS = {
+  radius: toRenderLimits(RENDER_FEATURE_SCHEMA.debanding.radius, 4),
+} as const;
+
+const RENDER_DEBANDING_MODE_DESCRIPTIONS: Readonly<Record<RenderDebandingMode, string>> = {
+  [ERenderDebandingMode.ENGINE]: "The game's own: the sky as drawn.",
+  [ERenderDebandingMode.ENHANCED]:
+    "The sky's colour bands smoothed: each sky pixel averaged with neighbours around it that differ by less than a band.",
+};
+
+/**
+ * @param mode - A sky debanding mode.
+ * @returns What it does, in a sentence.
+ */
+export function explainRenderDebandingMode(mode: RenderDebandingMode): string {
+  return RENDER_DEBANDING_MODE_DESCRIPTIONS[mode];
+}
+
+const RENDER_DEBANDING_QUALITY_NAMES: Readonly<Record<RenderDebandingQuality, string>> = {
+  [ERenderDebandingQuality.LOW]: "Low",
+  [ERenderDebandingQuality.MEDIUM]: "Medium",
+  [ERenderDebandingQuality.HIGH]: "High",
+  [ERenderDebandingQuality.ULTRA]: "Ultra",
+};
+
+/**
+ * @param quality - A sky debanding quality.
+ * @returns Its name as the settings say it.
+ */
+export function describeRenderDebandingQuality(quality: RenderDebandingQuality): string {
+  return RENDER_DEBANDING_QUALITY_NAMES[quality];
+}
+
+/** The sky debanding qualities, in the order they are offered. */
+export const RENDER_DEBANDING_QUALITY_OPTIONS: ReadonlyArray<IRenderChoiceOption<RenderDebandingQuality>> =
+  Object.values(ERenderDebandingQuality).map((value: RenderDebandingQuality) => ({
+    label: describeRenderDebandingQuality(value),
+    value,
+  }));
+
+/** @returns How far out a sky pixel's neighbours are read at most. */
+export function formatDebandingRadius(radius: number): string {
+  return `${formatNumber(radius, 0)} px`;
+}
+
+/** The bounds each enhanced bloom value is offered between. */
+export const RENDER_ENHANCED_BLOOM_LIMITS = {
+  blur: toRenderLimits(RENDER_FEATURE_SCHEMA.enhancedBloom.blur, 0.1),
+  exposure: toRenderLimits(RENDER_FEATURE_SCHEMA.enhancedBloom.exposure, 0.5),
+  sky: toRenderLimits(RENDER_FEATURE_SCHEMA.enhancedBloom.sky, 0.1),
+  threshold: toRenderLimits(RENDER_FEATURE_SCHEMA.enhancedBloom.threshold, 0.1),
+  vibrance: toRenderLimits(RENDER_FEATURE_SCHEMA.enhancedBloom.vibrance, 0.1),
+} as const;
+
+const RENDER_BLOOM_MODE_DESCRIPTIONS: Readonly<Record<RenderBloomMode, string>> = {
+  [ERenderBloomMode.ENGINE]: "The game's own bloom, as the look's bloom settings draw it.",
+  [ERenderBloomMode.ENHANCED]:
+    "The finished frame's bright parts and self-lit surfaces blurred wide, tonemapped and screened over it, in the game's bloom's place.",
+};
+
+/**
+ * @param mode - A bloom mode.
+ * @returns What it does, in a sentence.
+ */
+export function explainRenderBloomMode(mode: RenderBloomMode): string {
+  return RENDER_BLOOM_MODE_DESCRIPTIONS[mode];
+}
+
+/** The bloom modes, in the order they are offered. */
+export const RENDER_BLOOM_MODE_OPTIONS: ReadonlyArray<IRenderChoiceOption<RenderBloomMode>> = [
+  { label: "Engine", value: ERenderBloomMode.ENGINE },
+  { label: "Enhanced", value: ERenderBloomMode.ENHANCED },
+];
+
+/** @returns One of the enhanced bloom's strengths. */
+export function formatBloomStrength(strength: number): string {
+  return formatNumber(strength, 1);
 }
 
 /** The bounds each exposure value is offered between: the console's own. */

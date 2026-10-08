@@ -12,8 +12,10 @@ use crate::pass::combine_pass::CombinePass;
 use crate::pass::composited_pass::CompositedPass;
 use crate::pass::contact_shadow_pass::ContactShadowPass;
 use crate::pass::depth_pyramid_pass::DepthPyramidPass;
+use crate::pass::enhanced_bloom_pass::EnhancedBloomPass;
 use crate::pass::exposure_pass::ExposurePass;
 use crate::pass::flare_pass::FlarePass;
+use crate::pass::fog_scattering_pass::FogScatteringPass;
 use crate::pass::fsr_pass::FsrPass;
 use crate::pass::fxaa_pass::FxaaPass;
 use crate::pass::grass_pass::GrassPass;
@@ -70,6 +72,8 @@ pub struct GpuState {
   pub flares: FlarePass,
   pub sun_shafts: SunShaftsPass,
   pub bloom: BloomPass,
+  pub enhanced_bloom: EnhancedBloomPass,
+  pub fog_scattering: FogScatteringPass,
   pub temporal: TemporalPass,
   pub fsr: FsrPass,
   pub fxaa: FxaaPass,
@@ -145,6 +149,8 @@ impl GpuState {
       flares: FlarePass::new(device, shaders, &view_layout)?,
       sun_shafts: SunShaftsPass::new(device, shaders, &view_layout)?,
       bloom: BloomPass::new(device, shaders)?,
+      enhanced_bloom: EnhancedBloomPass::new(device, shaders, &view_layout)?,
+      fog_scattering: FogScatteringPass::new(device, &context.queue, shaders, &view_layout)?,
       temporal: TemporalPass::new(device, shaders, &view_layout)?,
       fsr: FsrPass::new(device, shaders)?,
       fxaa: FxaaPass::new(device, shaders)?,
@@ -224,6 +230,8 @@ impl GpuState {
       flares: &self.flares,
       sun_shafts: &self.sun_shafts,
       bloom: &self.bloom,
+      enhanced_bloom: &self.enhanced_bloom,
+      fog_scattering: &self.fog_scattering,
       temporal: &self.temporal,
       fsr: &self.fsr,
       fxaa: &self.fxaa,
@@ -266,6 +274,8 @@ impl GpuState {
     self.flares.refresh(device, shaders);
     self.sun_shafts.refresh(device, shaders);
     self.bloom.refresh(device, shaders);
+    self.enhanced_bloom.refresh(device, shaders);
+    self.fog_scattering.refresh(device, shaders);
     self.temporal.refresh(device, shaders);
     self.fsr.refresh(device, shaders);
     self.fxaa.refresh(device, shaders);

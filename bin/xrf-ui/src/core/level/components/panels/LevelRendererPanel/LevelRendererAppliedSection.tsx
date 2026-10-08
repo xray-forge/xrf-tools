@@ -1,13 +1,17 @@
 import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
-import { RenderAppliedReport, RenderViewOptions } from "@/core/ipc/types/xrf-renderer";
+import { ERenderBloomMode, RenderAppliedReport, RenderViewOptions } from "@/core/ipc/types/xrf-renderer";
 import {
   describeRenderAmbientOcclusionQuality,
   describeRenderAntialiasing,
+  describeRenderDebandingQuality,
   describeRenderLightShadowFilter,
   describeRenderReflectionQuality,
   describeRenderScale,
+  formatFogDensity,
+  formatFogHeight,
+  formatFogShare,
   formatGrassDensity,
   formatGrassRadius,
   formatIndirectLightIntensity,
@@ -72,6 +76,16 @@ export function LevelRendererAppliedSection({
             describeRenderScale(applied.renderScale),
             describeRenderScale(requested.output.upscaling.scale)
           )}
+        />
+        <EditorPanelProperty
+          label={"Bloom"}
+          value={applied.bloom ? (applied.bloom === ERenderBloomMode.ENHANCED ? "Enhanced" : "Engine") : "Off"}
+        />
+        <EditorPanelProperty
+          label={"Sky debanding"}
+          value={
+            applied.debanding ? `${describeRenderDebandingQuality(applied.debanding)} quality` : "The sky as drawn"
+          }
         />
       </EditorPanelSection>
 
@@ -138,6 +152,17 @@ export function LevelRendererAppliedSection({
           }
         />
         <EditorPanelProperty label={"Water"} value={applied.isWater ? "Drawn" : "Off"} />
+        <EditorPanelProperty
+          label={"Height fog"}
+          value={
+            applied.heightFog
+              ? `${formatFogHeight(applied.heightFog.height ?? 0)} · ${formatFogDensity(applied.heightFog.density ?? 0)} · ` +
+                (applied.heightFog.scattering
+                  ? `${formatFogShare(applied.heightFog.scattering)} scattering`
+                  : "no scattering")
+              : "The engine's fog alone"
+          }
+        />
       </EditorPanelSection>
 
       {environment ? (

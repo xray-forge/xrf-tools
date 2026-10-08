@@ -1,18 +1,29 @@
 import { describe, expect, it, jest } from "@jest/globals";
 import { userEvent } from "@testing-library/user-event";
+import { ReactElement } from "react";
 
-import { ERenderSunShaftsQuality } from "@/core/ipc/types/xrf-renderer";
+import {
+  ERenderDebandingMode,
+  ERenderDebandingQuality,
+  ERenderFogMode,
+  ERenderSunShaftsQuality,
+} from "@/core/ipc/types/xrf-renderer";
 import { LevelFogAction } from "@/core/level/components/preview/LevelFogAction";
 import { LevelRainAction } from "@/core/level/components/preview/LevelRainAction";
 import { LevelSkyAction } from "@/core/level/components/preview/LevelSkyAction";
 import { LevelSunAction } from "@/core/level/components/preview/LevelSunAction";
+import { ILevelFeatureOptions } from "@/core/level/lib/features";
 import { DEFAULT_LEVEL_VIEW_OPTIONS } from "@/core/level/lib/view/level-view-options";
 import { DEFAULT_LEVEL_MANUAL_WEATHER, ILevelManualWeather } from "@/core/level/lib/weather/level-manual-weather";
 import {
   DEFAULT_LEVEL_SUN_SHAFTS_OPTIONS,
   ILevelSunShaftsOptions,
 } from "@/core/level/lib/weather/level-sun-shafts-options";
-import { mockLevelTextureReference } from "@/fixtures/mocks/level.mocks";
+import {
+  DEFAULT_RENDER_DEBANDING_SETTINGS,
+  DEFAULT_RENDER_FOG_SETTINGS,
+} from "@/core/render/lib/settings/render-feature-defaults";
+import { mockLevelFeatureOptions, mockLevelTextureReference } from "@/fixtures/mocks/level.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 type TEdit = (patch: Partial<ILevelManualWeather>) => void;
@@ -29,6 +40,9 @@ describe("level weather key actions", () => {
         isOn
         manual={DEFAULT_LEVEL_MANUAL_WEATHER}
         isHazed={false}
+        value={DEFAULT_RENDER_FOG_SETTINGS}
+        features={mockLevelFeatureOptions()}
+        onChangeFeatures={() => {}}
         onToggle={() => {}}
         onEdit={onEdit}
         onHazed={() => {}}
@@ -57,6 +71,9 @@ describe("level weather key actions", () => {
         isOn
         manual={DEFAULT_LEVEL_MANUAL_WEATHER}
         isHazed={false}
+        value={DEFAULT_RENDER_FOG_SETTINGS}
+        features={mockLevelFeatureOptions()}
+        onChangeFeatures={() => {}}
         onToggle={() => {}}
         onEdit={onEdit}
         onHazed={() => {}}
@@ -82,6 +99,9 @@ describe("level weather key actions", () => {
         isOn
         manual={DEFAULT_LEVEL_MANUAL_WEATHER}
         isHazed={false}
+        value={DEFAULT_RENDER_FOG_SETTINGS}
+        features={mockLevelFeatureOptions()}
+        onChangeFeatures={() => {}}
         onToggle={() => {}}
         onEdit={() => {}}
         onHazed={onHazed}
@@ -151,7 +171,10 @@ describe("level weather key actions", () => {
           { texture: mockLevelTextureReference("sky\\gone", false), uses: 1 },
         ]}
         clouds={[]}
+        debanding={DEFAULT_RENDER_DEBANDING_SETTINGS}
+        features={mockLevelFeatureOptions()}
         onToggle={() => {}}
+        onChangeFeatures={() => {}}
         onEdit={onEdit}
       />
     );
@@ -175,7 +198,10 @@ describe("level weather key actions", () => {
         manual={DEFAULT_LEVEL_MANUAL_WEATHER}
         skies={[]}
         clouds={[]}
+        debanding={DEFAULT_RENDER_DEBANDING_SETTINGS}
+        features={mockLevelFeatureOptions()}
         onToggle={() => {}}
+        onChangeFeatures={() => {}}
         onEdit={onEdit}
       />
     );
@@ -298,5 +324,94 @@ describe("level weather key actions", () => {
 
     expect(onChangeSunShafts).toHaveBeenCalledWith({ minimum: 0, quality: ERenderSunShaftsQuality.LOW });
     expect(getByRole("slider", { name: "Minimum" })).toHaveAttribute("aria-valuemax", "0.5");
+  });
+
+  it("draws the fog enhanced on asking, offering its strengths only then, and back to the settings", async () => {
+    const onChangeFeatures = jest.fn<(features: ILevelFeatureOptions) => void>();
+
+    function render(mode: ERenderFogMode): ReactElement {
+      return (
+        <LevelFogAction
+          isOn
+          manual={DEFAULT_LEVEL_MANUAL_WEATHER}
+          isHazed={false}
+          value={{ ...DEFAULT_RENDER_FOG_SETTINGS, mode }}
+          features={mockLevelFeatureOptions()}
+          onToggle={() => {}}
+          onEdit={() => {}}
+          onHazed={() => {}}
+          onChangeFeatures={onChangeFeatures}
+        />
+      );
+    }
+
+    const { getByRole, findByRole, queryByRole, rerender } = renderWithProviders(render(ERenderFogMode.ENGINE));
+
+    await open(getByRole, "Fog");
+    await findByRole("dialog", { name: "Fog" });
+
+    expect(queryByRole("slider", { name: "Height" })).toBeNull();
+
+    await userEvent.click(getByRole("button", { name: "Enhanced" }));
+
+    expect(onChangeFeatures).toHaveBeenLastCalledWith({
+      ...mockLevelFeatureOptions(),
+      fog: { mode: ERenderFogMode.ENHANCED },
+    });
+
+    rerender(render(ERenderFogMode.ENHANCED));
+
+    expect(getByRole("slider", { name: "Height" })).toHaveAttribute("aria-valuetext", "8.0 m");
+    expect(getByRole("slider", { name: "Density" })).toHaveAttribute("aria-valuetext", "+130%");
+    expect(getByRole("slider", { name: "Scattering" })).toHaveAttribute("aria-valuetext", "70%");
+
+    await userEvent.click(getByRole("button", { name: "Back to the settings for the fog" }));
+
+    expect(onChangeFeatures).toHaveBeenLastCalledWith({ ...mockLevelFeatureOptions(), fog: {} });
+  });
+
+  it("debands the sky on asking, offering its quality and radius only then", async () => {
+    const onChangeFeatures = jest.fn<(features: ILevelFeatureOptions) => void>();
+
+    function render(mode: ERenderDebandingMode): ReactElement {
+      return (
+        <LevelSkyAction
+          options={DEFAULT_LEVEL_VIEW_OPTIONS}
+          manual={DEFAULT_LEVEL_MANUAL_WEATHER}
+          skies={[]}
+          clouds={[]}
+          debanding={{ ...DEFAULT_RENDER_DEBANDING_SETTINGS, mode }}
+          features={mockLevelFeatureOptions()}
+          onToggle={() => {}}
+          onEdit={() => {}}
+          onChangeFeatures={onChangeFeatures}
+        />
+      );
+    }
+
+    const { getByRole, findByRole, queryByRole, rerender } = renderWithProviders(render(ERenderDebandingMode.ENGINE));
+
+    await userEvent.click(getByRole("button", { name: "Sky" }));
+    await findByRole("dialog", { name: "Sky" });
+
+    expect(queryByRole("slider", { name: "Radius" })).toBeNull();
+
+    await userEvent.click(getByRole("checkbox", { name: "Debanding" }));
+
+    expect(onChangeFeatures).toHaveBeenLastCalledWith({
+      ...mockLevelFeatureOptions(),
+      debanding: { mode: ERenderDebandingMode.ENHANCED },
+    });
+
+    rerender(render(ERenderDebandingMode.ENHANCED));
+
+    expect(getByRole("slider", { name: "Radius" })).toHaveAttribute("aria-valuetext", "48 px");
+
+    await userEvent.click(getByRole("button", { name: "Ultra" }));
+
+    expect(onChangeFeatures).toHaveBeenLastCalledWith({
+      ...mockLevelFeatureOptions(),
+      debanding: { quality: ERenderDebandingQuality.ULTRA },
+    });
   });
 });

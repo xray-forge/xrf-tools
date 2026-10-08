@@ -3,7 +3,10 @@ use serde::{Deserialize, Serialize};
 use crate::contract::render_ambient_occlusion_settings::RenderAmbientOcclusionSettings;
 use crate::contract::render_antialiasing::RenderAntialiasing;
 use crate::contract::render_bloom_settings::RenderBloomSettings;
+use crate::contract::render_debanding_settings::RenderDebandingSettings;
+use crate::contract::render_enhanced_bloom_settings::RenderEnhancedBloomSettings;
 use crate::contract::render_exposure_settings::RenderExposureSettings;
+use crate::contract::render_fog_settings::RenderFogSettings;
 use crate::contract::render_grass_settings::RenderGrassSettings;
 use crate::contract::render_image_corrections::RenderImageCorrections;
 use crate::contract::render_indirect_light_settings::RenderIndirectLightSettings;
@@ -23,6 +26,12 @@ use crate::contract::render_water_settings::RenderWaterSettings;
 pub struct RenderViewFeatures {
   pub exposure: RenderExposureSettings,
   pub bloom: RenderBloomSettings,
+  /// Which bloom is drawn, and the enhanced bloom's strengths.
+  pub enhanced_bloom: RenderEnhancedBloomSettings,
+  /// How the fog is drawn beyond the weather's keys: the engine's distance fog, or the enhanced height fog.
+  pub fog: RenderFogSettings,
+  /// Whether the sky's colour bands are smoothed.
+  pub debanding: RenderDebandingSettings,
   pub shadows: RenderShadowSettings,
   pub ambient_occlusion: RenderAmbientOcclusionSettings,
   /// The light the frame's surfaces bounce onto each other, searched as the ambient occlusion's settings describe.
@@ -55,6 +64,9 @@ impl Default for RenderViewFeatures {
     Self {
       exposure: RenderExposureSettings::default(),
       bloom: RenderBloomSettings::default(),
+      enhanced_bloom: RenderEnhancedBloomSettings::default(),
+      fog: RenderFogSettings::default(),
+      debanding: RenderDebandingSettings::default(),
       shadows: RenderShadowSettings::default(),
       ambient_occlusion: RenderAmbientOcclusionSettings::default(),
       indirect_light: RenderIndirectLightSettings::default(),

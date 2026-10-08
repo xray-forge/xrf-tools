@@ -2,7 +2,11 @@ import {
   ERenderAmbientOcclusionMethod,
   ERenderAmbientOcclusionQuality,
   ERenderAntialiasing,
+  ERenderBloomMode,
   ERenderContactShadowMode,
+  ERenderDebandingMode,
+  ERenderDebandingQuality,
+  ERenderFogMode,
   ERenderFoliageMode,
   ERenderIndirectLightMode,
   ERenderLightShadowFilter,
@@ -55,6 +59,21 @@ export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings>
     },
   },
   antialiasing: toChoice(ERenderAntialiasing),
+  // The renderer's own: from a few pixels to well past the shipped 48, where neighbours stop sharing a band.
+  debanding: {
+    mode: toChoice(ERenderDebandingMode),
+    quality: toChoice(ERenderDebandingQuality),
+    radius: toNumber(8, 128),
+  },
+  // The enhanced bloom's own menu bounds.
+  enhancedBloom: {
+    blur: toNumber(1, 5),
+    exposure: toNumber(1, 100),
+    mode: toChoice(ERenderBloomMode),
+    sky: toNumber(0, 10),
+    threshold: toNumber(1, 10),
+    vibrance: toNumber(0, 10),
+  },
   // The console's own bounds.
   exposure: {
     adaptation: toNumber(0.01, 10),
@@ -62,6 +81,14 @@ export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings>
     isEnabled: FLAG,
     lowLuminance: toNumber(0.0001, 1),
     middleGray: toNumber(0, 2),
+  },
+  // The enhanced fog's own menu bounds.
+  fog: {
+    density: toNumber(0, 5),
+    height: toNumber(1, 20),
+    mode: toChoice(ERenderFogMode),
+    scattering: toNumber(0, 1),
+    sunColor: toNumber(0, 1),
   },
   grass: {
     // `r__detail_density`: a spacing. The console goes to 0.1, six times the game's; past three times it at the widest

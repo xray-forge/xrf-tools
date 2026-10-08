@@ -3,7 +3,11 @@ import { describe, expect, it } from "@jest/globals";
 import {
   ERenderAmbientOcclusionQuality,
   ERenderAntialiasing,
+  ERenderBloomMode,
   ERenderContactShadowMode,
+  ERenderDebandingMode,
+  ERenderDebandingQuality,
+  ERenderFogMode,
   ERenderIndirectLightMode,
   ERenderLightShadowFilter,
   ERenderReflectionMode,
@@ -17,6 +21,7 @@ import {
   toLevelFeatureOptions,
   toLevelFeatureView,
   toLevelIndirectLight,
+  toLevelModeFeature,
   toLevelReflections,
   toLevelRendererAntialiasing,
   toLevelRendererFeature,
@@ -173,5 +178,34 @@ describe("level feature options", () => {
       mode: ERenderReflectionMode.ENGINE,
     });
     expect(toLevelFeatureOptions({ reflections: { mode: "raytraced" } }).reflections).toEqual({});
+  });
+
+  it("keeps the fog's, the sky debanding's and the bloom's own modes and strengths, held to their bounds", () => {
+    const view: ILevelFeatureOptions = toLevelFeatureOptions({
+      debanding: { mode: ERenderDebandingMode.ENGINE, quality: ERenderDebandingQuality.ULTRA, radius: 400 },
+      enhancedBloom: { lens: 2, mode: ERenderBloomMode.ENHANCED, threshold: 0.5 },
+      fog: { density: 9, height: 6, mode: ERenderFogMode.ENGINE, steps: 3 },
+    });
+
+    expect(view.fog).toEqual({ density: 5, height: 6, mode: ERenderFogMode.ENGINE });
+    expect(view.debanding).toEqual({
+      mode: ERenderDebandingMode.ENGINE,
+      quality: ERenderDebandingQuality.ULTRA,
+      radius: 128,
+    });
+    expect(view.enhancedBloom).toEqual({ mode: ERenderBloomMode.ENHANCED, threshold: 1 });
+    expect(toLevelModeFeature("fog", SETTINGS, mockLevelFeatureOptions())).toEqual(SETTINGS.fog);
+    expect(toLevelModeFeature("fog", SETTINGS, view)).toEqual({
+      ...SETTINGS.fog,
+      density: 5,
+      height: 6,
+      mode: ERenderFogMode.ENGINE,
+    });
+    expect(toLevelModeFeature("enhancedBloom", SETTINGS, view)).toEqual({
+      ...SETTINGS.enhancedBloom,
+      mode: ERenderBloomMode.ENHANCED,
+      threshold: 1,
+    });
+    expect(toLevelFeatureOptions({ fog: { mode: "volumetric" } }).fog).toEqual({});
   });
 });

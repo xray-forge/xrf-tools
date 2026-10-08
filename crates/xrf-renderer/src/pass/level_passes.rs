@@ -4,8 +4,10 @@ use crate::pass::combine_pass::CombinePass;
 use crate::pass::composited_pass::CompositedPass;
 use crate::pass::contact_shadow_pass::ContactShadowPass;
 use crate::pass::depth_pyramid_pass::DepthPyramidPass;
+use crate::pass::enhanced_bloom_pass::EnhancedBloomPass;
 use crate::pass::exposure_pass::ExposurePass;
 use crate::pass::flare_pass::FlarePass;
+use crate::pass::fog_scattering_pass::FogScatteringPass;
 use crate::pass::fsr_pass::FsrPass;
 use crate::pass::fxaa_pass::FxaaPass;
 use crate::pass::grass_pass::GrassPass;
@@ -57,6 +59,8 @@ pub struct LevelPasses<'a> {
   pub flares: &'a FlarePass,
   pub sun_shafts: &'a SunShaftsPass,
   pub bloom: &'a BloomPass,
+  pub enhanced_bloom: &'a EnhancedBloomPass,
+  pub fog_scattering: &'a FogScatteringPass,
   pub temporal: &'a TemporalPass,
   pub fsr: &'a FsrPass,
   pub fxaa: &'a FxaaPass,

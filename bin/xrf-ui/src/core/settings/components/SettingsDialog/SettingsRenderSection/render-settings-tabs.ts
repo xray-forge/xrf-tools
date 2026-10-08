@@ -43,7 +43,7 @@ export const RENDER_SETTINGS_TABS: ReadonlyArray<IRenderSettingsTab> = [
     sections: [SettingsRendererDisplay],
   },
   {
-    features: ["antialiasing", "upscaling", "exposure"],
+    features: ["antialiasing", "upscaling", "exposure", "enhancedBloom", "debanding"],
     id: ERenderSettingsTab.IMAGE,
     label: "Image",
     sections: [SettingsRendererAntialiasing, SettingsRendererExposure],
@@ -61,7 +61,7 @@ export const RENDER_SETTINGS_TABS: ReadonlyArray<IRenderSettingsTab> = [
     sections: [SettingsRendererShadows],
   },
   {
-    features: ["water", "grass"],
+    features: ["water", "grass", "fog"],
     id: ERenderSettingsTab.WORLD,
     label: "World",
     sections: [SettingsRendererWater, SettingsRendererGrass],

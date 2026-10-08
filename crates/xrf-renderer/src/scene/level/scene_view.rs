@@ -16,12 +16,16 @@ use crate::camera::camera_view::CameraView;
 use crate::contract::render_ambient_occlusion_quality::RenderAmbientOcclusionQuality;
 use crate::contract::render_ambient_occlusion_settings::RenderAmbientOcclusionSettings;
 use crate::contract::render_antialiasing::RenderAntialiasing;
+use crate::contract::render_applied_height_fog::RenderAppliedHeightFog;
 use crate::contract::render_applied_indirect_light::RenderAppliedIndirectLight;
 use crate::contract::render_applied_reflections::RenderAppliedReflections;
 use crate::contract::render_applied_report::RenderAppliedReport;
 use crate::contract::render_applied_shadows::RenderAppliedShadows;
+use crate::contract::render_bloom_mode::RenderBloomMode;
 use crate::contract::render_bloom_settings::RenderBloomSettings;
 use crate::contract::render_debug_view::RenderDebugView;
+use crate::contract::render_enhanced_bloom_settings::RenderEnhancedBloomSettings;
+use crate::contract::render_fog_settings::RenderFogSettings;
 use crate::contract::render_foliage_settings::RenderFoliageSettings;
 use crate::contract::render_level_hit::RenderLevelHit;
 use crate::contract::render_lights_report::RenderLightsReport;
@@ -68,8 +72,14 @@ use crate::pass::composited_parameters::CompositedParameters;
 use crate::pass::contact_shadow_parameters::ContactShadowParameters;
 use crate::pass::contact_shadow_pass::ContactShadowPass;
 use crate::pass::contact_shadow_uniform::ContactShadowUniform;
+use crate::pass::enhanced_bloom_parameters::EnhancedBloomParameters;
+use crate::pass::enhanced_bloom_pass::EnhancedBloomPass;
+use crate::pass::enhanced_bloom_uniform::EnhancedBloomUniform;
 use crate::pass::enhanced_water_maps::EnhancedWaterMaps;
 use crate::pass::exposure_parameters::ExposureParameters;
+use crate::pass::fog_scattering_parameters::FogScatteringParameters;
+use crate::pass::fog_scattering_pass::FogScatteringPass;
+use crate::pass::fog_scattering_uniform::FogScatteringUniform;
 use crate::pass::foliage_wind_values::FoliageWindValues;
 use crate::pass::fsr_uniform::FsrUniform;
 use crate::pass::fxaa_parameters::FxaaParameters;
@@ -394,6 +404,8 @@ impl SceneView {
       && options.features.shadows.get_cascade_count() > 0;
     self.info.is_wallmarked = options.show.is_wallmarked;
     self.prepare_bloom(options, lighting.engine);
+    self.prepare_fog(options, lighting, scene.started.elapsed().as_secs_f32());
+    self.info.debanding = PresentUniform::get_debanding(options);
 
     if !options.features.is_occlusion_culled {
       self.state.history = None;
@@ -512,7 +524,7 @@ impl SceneView {
 
     self.state.particles.upload((device, queue));
 
-    self.write_present(options);
+    self.write_present(options, scene.started.elapsed().as_secs_f32());
     self.prepare_shadows(scene, device, queue, encoder, (view_layout, textures));
   }
 
@@ -1146,6 +1158,182 @@ impl SceneView {
     self.info.reflections = ReflectionUniform::new(&self.info.reflection_settings, has_history);
   }
 
+  /// Adds the enhanced fog's scattering over the scene: the blurs to a quarter and to half its size, the scattering
+  /// into a copy of it, and that copied back.
+  fn add_fog_scattering_passes<'a>(
+    (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
+    passes: LevelPasses<'a>,
+    view: &'a ViewBinding,
+    (targets, lit): (ViewTargetHandles, LightingHandles<'a>),
+    stages: [FogScatteringUniform; 3],
+  ) {
+    let empty: GraphTexture =
+      bindings.import_view(&mut *graph, "fog scattering empty", passes.fog_scattering.get_empty());
+    let mut create = |label: &'static str, stage: &FogScatteringUniform, format: wgpu::TextureFormat| {
+      graph.create_texture(GraphTextureDescriptor::new_2d(
+        label,
+        stage.size.x as u32,
+        stage.size.y as u32,
+        format,
+      ))
+    };
+    let quarter: GraphTexture = create("fog scattered quarter", &stages[0], FogScatteringPass::BLURRED);
+    let half: GraphTexture = create("fog scattered half", &stages[1], FogScatteringPass::BLURRED);
+    let scattered: GraphTexture = create("fog scattered", &stages[2], ViewTargets::SCENE);
+
+    for (stage, (source, blurred, written)) in [
+      (targets.scene, empty, quarter),
+      (quarter, empty, half),
+      (targets.scene, half, scattered),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+      let parameters: FogScatteringParameters = FogScatteringParameters {
+        source,
+        blurred,
+        source_sampler: passes.fog_scattering.get_sampler(),
+        depth_target: targets.depth,
+        lighting: lit.lighting,
+        scattering: runtime.push_uniform(&stages[stage]),
+      };
+
+      graph
+        .add_raster_pass(FogScatteringPass::STAGES[stage])
+        .parameters(&parameters)
+        .color(GraphColorAttachment::new(
+          written,
+          wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+        ))
+        .record(move |context| passes.fog_scattering.record(context, view, &parameters, stage == 2));
+    }
+
+    Self::add_copy(&mut *graph, FogScatteringPass::STAGES[3], scattered, targets.scene);
+  }
+
+  /// Adds the enhanced bloom from the scene as it stands, answering what the present screens over the frame: the
+  /// half-size blur across and down, the build, six halvings, five doublings back to half size, and the finish.
+  fn add_enhanced_bloom_passes<'a>(
+    (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
+    passes: LevelPasses<'a>,
+    view: &'a ViewBinding,
+    targets: ViewTargetHandles,
+    (settings, frame): (&RenderEnhancedBloomSettings, (u32, u32)),
+  ) -> GraphTexture {
+    let pass: &'a EnhancedBloomPass = passes.enhanced_bloom;
+    let empty: GraphTexture =
+      bindings.import_view(&mut *graph, "enhanced bloom empty", passes.fog_scattering.get_empty());
+    let half_size: (u32, u32) = EnhancedBloomUniform::get_level_size(frame, 1);
+    let stage = |size: (u32, u32)| EnhancedBloomUniform::new(size, frame, settings);
+    let mut create = |label: &'static str, (width, height): (u32, u32), format: wgpu::TextureFormat| {
+      graph.create_texture(GraphTextureDescriptor::new_2d(label, width, height, format))
+    };
+    let across: GraphTexture = create("enhanced bloom across", half_size, EnhancedBloomPass::BLURRED);
+    let blurred: GraphTexture = create("enhanced bloom blurred", half_size, EnhancedBloomPass::BLURRED);
+    let built: GraphTexture = create("enhanced bloom built", half_size, EnhancedBloomPass::BLOOM);
+    // Each halving's target, the first at half the frame's size, then each doubling's, the last back at half size.
+    let halved: Vec<(GraphTexture, (u32, u32))> = (1..=EnhancedBloomUniform::LEVELS as u32)
+      .map(|level| {
+        let size: (u32, u32) = EnhancedBloomUniform::get_level_size(frame, level);
+
+        (create("enhanced bloom halved", size, EnhancedBloomPass::BLOOM), size)
+      })
+      .collect();
+    let doubled: Vec<(GraphTexture, (u32, u32))> = (1..EnhancedBloomUniform::LEVELS as u32)
+      .rev()
+      .map(|level| {
+        let size: (u32, u32) = EnhancedBloomUniform::get_level_size(frame, level);
+
+        (create("enhanced bloom doubled", size, EnhancedBloomPass::BLOOM), size)
+      })
+      .collect();
+    let finished: GraphTexture = create("enhanced bloom", half_size, EnhancedBloomPass::BLOOM);
+    // Adds one stage: its pass, its pipeline, what it reads and what it adds, what it writes, and its uniform.
+    let mut add = |name: &'static str,
+                   pipeline: usize,
+                   (source, coarser): (GraphTexture, GraphTexture),
+                   written: GraphTexture,
+                   uniform: EnhancedBloomUniform| {
+      let parameters: EnhancedBloomParameters = EnhancedBloomParameters {
+        source,
+        coarser,
+        source_sampler: pass.get_sampler(),
+        depth_target: targets.depth,
+        material_target: targets.material,
+        bloom: runtime.push_uniform(&uniform),
+      };
+
+      graph
+        .add_raster_pass(name)
+        .parameters(&parameters)
+        .color(GraphColorAttachment::new(
+          written,
+          wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+        ))
+        .record(move |context| pass.record(context, view, pipeline, &parameters));
+    };
+
+    add(
+      EnhancedBloomPass::BLUR_PASSES[0],
+      EnhancedBloomPass::BLUR,
+      (targets.scene, empty),
+      across,
+      stage(half_size).along(true),
+    );
+    add(
+      EnhancedBloomPass::BLUR_PASSES[1],
+      EnhancedBloomPass::BLUR,
+      (across, empty),
+      blurred,
+      stage(half_size).along(false),
+    );
+    add(
+      EnhancedBloomPass::BUILD_PASS,
+      EnhancedBloomPass::BUILD,
+      (blurred, empty),
+      built,
+      stage(half_size),
+    );
+
+    let mut source: GraphTexture = built;
+
+    for (index, (target, size)) in halved.iter().enumerate() {
+      add(
+        EnhancedBloomPass::HALVE_PASSES[index],
+        EnhancedBloomPass::HALVE,
+        (source, empty),
+        *target,
+        stage(*size),
+      );
+      source = *target;
+    }
+
+    // The first doubling reads the smallest halving twice over; each after reads the doubling before and adds the
+    // halving of that one's size.
+    for (index, (target, size)) in doubled.iter().enumerate() {
+      let coarser: GraphTexture = halved[halved.len() - 1 - index].0;
+
+      add(
+        EnhancedBloomPass::DOUBLE_PASSES[index],
+        EnhancedBloomPass::DOUBLE,
+        (source, coarser),
+        *target,
+        stage(*size),
+      );
+      source = *target;
+    }
+
+    add(
+      EnhancedBloomPass::FINISH_PASS,
+      EnhancedBloomPass::FINISH,
+      (source, empty),
+      finished,
+      stage(half_size),
+    );
+
+    finished
+  }
+
   /// Adds a pass copying the whole of one texture into another of its size.
   fn add_copy(graph: &mut FrameGraph<'_>, name: &'static str, source: GraphTexture, destination: GraphTexture) {
     graph
@@ -1214,8 +1402,9 @@ impl SceneView {
   }
 
   /// Notes what the present pass reads, once the frame knows what draws into the distortion target: `def_distort`
-  /// while the water or a particle does, nothing otherwise.
-  fn write_present(&mut self, options: &RenderViewOptions) {
+  /// while the water or a particle does, nothing otherwise; which bloom it lays over the frame, and the sky debanding,
+  /// its noise turning with `time`.
+  fn write_present(&mut self, options: &RenderViewOptions, time: f32) {
     let Some(targets) = &self.state.targets else {
       return;
     };
@@ -1224,7 +1413,7 @@ impl SceneView {
     let is_distorting: bool =
       !options.mode.is_wireframe && (is_water_distorting || self.state.particles.is_distorting());
 
-    self.info.present = PresentUniform::new(
+    let present: PresentUniform = PresentUniform::new(
       self.info.debug_view,
       (
         self.info.is_occlusion_drawn,
@@ -1237,16 +1426,27 @@ impl SceneView {
       &self.info.corrections,
       (self.info.selection_color, self.info.is_bloomed),
     );
+    let present: PresentUniform = if self.info.enhanced_bloom.is_some() {
+      present.with_enhanced_bloom()
+    } else {
+      present
+    };
+
+    self.info.present = match self.info.debanding {
+      Some(quality) => present.with_debanding(quality.get_passes(), options.features.debanding.radius, time),
+      None => present,
+    };
   }
 
   /// Notes this frame's bloom while the view blooms (`phase_bloom`): the build's threshold over the frame's size, and
   /// the blur across and down, down by the frame's height over its width, one-sided on Monolith as Anomaly's
-  /// `bloom_filter.ps` reads it.
+  /// `bloom_filter.ps` reads it; or the enhanced bloom in its place, whatever the look's bloom.
   fn prepare_bloom(&mut self, options: &RenderViewOptions, engine: XrayEngine) {
     let bloom: &RenderBloomSettings = &options.features.bloom;
+    let is_drawn: bool = options.mode.is_lit && !options.mode.is_wireframe && self.state.targets.is_some();
 
-    self.info.is_bloomed =
-      bloom.is_enabled && options.mode.is_lit && !options.mode.is_wireframe && self.state.targets.is_some();
+    self.info.enhanced_bloom = EnhancedBloomUniform::for_view(options).filter(|_| is_drawn);
+    self.info.is_bloomed = is_drawn && bloom.is_enabled && self.info.enhanced_bloom.is_none();
 
     let Some(targets) = self.state.targets.as_ref().filter(|_| self.info.is_bloomed) else {
       return;
@@ -1261,6 +1461,27 @@ impl SceneView {
       BloomUniform::filter(true, (bloom.radius, bloom.strength), aspect, is_one_sided),
       BloomUniform::filter(false, (bloom.radius, bloom.strength), aspect, is_one_sided),
     ];
+  }
+
+  /// Notes the enhanced fog while the view draws the weather's fog lit, and its scattering's three stages while it
+  /// scatters and is solid, the noise turning with `time`.
+  fn prepare_fog(&mut self, options: &RenderViewOptions, lighting: &RenderLighting, time: f32) {
+    let fog: &RenderFogSettings = &options.features.fog;
+    let is_fogged: bool = options.mode.is_lit && options.show.is_fogged && lighting.fog.is_some();
+
+    self.info.height_fog = (is_fogged && fog.is_enhanced()).then_some(RenderAppliedHeightFog {
+      height: fog.height,
+      density: fog.density,
+      sun_color: fog.sun_color,
+      scattering: 0.0,
+    });
+    self.info.fog_scattering = self.state.targets.as_ref().and_then(|targets| {
+      FogScatteringUniform::for_view(options, lighting.fog.is_some(), (targets.width, targets.height), time)
+    });
+
+    if let (Some(applied), Some(stages)) = (&mut self.info.height_fog, &self.info.fog_scattering) {
+      applied.scattering = stages[0].intensity;
+    }
   }
 
   /// Writes this frame's rain and wet surfaces: the level's wetness moved on, the falling rain while the weather rains
@@ -1705,6 +1926,7 @@ impl SceneView {
     // The indirect light combine adds and a debug view shows, or a texel of none; and the reflections traced.
     let mut indirect_light: Option<GraphTexture> = None;
     let mut reflections: Option<GraphTexture> = None;
+    let mut enhanced_bloom: Option<GraphTexture> = None;
 
     if is_lit {
       indirect_light = scene_view.add_lighting_passes(
@@ -1954,6 +2176,26 @@ impl SceneView {
         view,
       );
 
+      if let Some(stages) = scene_view.info.fog_scattering {
+        Self::add_fog_scattering_passes(
+          (&mut *graph, &mut *bindings, runtime),
+          passes,
+          view,
+          (handles, lit),
+          stages,
+        );
+      }
+
+      enhanced_bloom = scene_view.info.enhanced_bloom.map(|settings| {
+        Self::add_enhanced_bloom_passes(
+          (&mut *graph, &mut *bindings, runtime),
+          passes,
+          view,
+          handles,
+          (&settings, (targets.width, targets.height)),
+        )
+      });
+
       if is_bloomed {
         // Built from the high target into the first, blurred across into the second, then down into the first.
         for (stage, (read, written)) in [
@@ -2160,6 +2402,7 @@ impl SceneView {
       lighting: lit.lighting,
       indirect_light: indirect_light.unwrap_or(unlit),
       reflections: reflections.unwrap_or(untraced),
+      bloom: enhanced_bloom.unwrap_or(handles.bloom[0]),
     })
   }
 
@@ -2515,6 +2758,13 @@ impl SceneView {
         intensity: trace.intensity,
         quality: trace.quality,
       }),
+      height_fog: self.info.height_fog,
+      debanding: self.info.debanding,
+      bloom: if self.info.enhanced_bloom.is_some() {
+        Some(RenderBloomMode::Enhanced)
+      } else {
+        self.info.is_bloomed.then_some(RenderBloomMode::Engine)
+      },
       lights: self
         .info
         .lights_settings

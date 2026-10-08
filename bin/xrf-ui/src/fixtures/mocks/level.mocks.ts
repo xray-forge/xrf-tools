@@ -150,6 +150,9 @@ export function mockLevelFeatureOptions(overrides: Partial<ILevelFeatureOptions>
   return {
     ambientOcclusion: {},
     antialiasing: null,
+    debanding: {},
+    enhancedBloom: {},
+    fog: {},
     grass: {},
     indirectLight: {},
     lights: {},

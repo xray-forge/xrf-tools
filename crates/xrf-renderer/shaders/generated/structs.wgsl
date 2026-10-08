@@ -21,6 +21,7 @@ struct Lighting {
   flora: vec4<f32>,
   indirect: vec4<f32>,
   reflections: vec4<f32>,
+  height_fog: vec4<f32>,
 }
 
 struct Water {
@@ -75,6 +76,7 @@ struct Present {
   is_indirect: u32,
   is_reflected: u32,
   reflection_ratio: f32,
+  deband: vec4<f32>,
 }
 
 struct Upscale {
@@ -85,6 +87,18 @@ struct Upscale {
 struct Bloom {
   params: vec4<f32>,
   weights: array<vec4<f32>, 2>,
+}
+
+struct EnhancedBloom {
+  size: vec4<f32>,
+  spread: vec4<f32>,
+  strengths: vec4<f32>,
+}
+
+struct FogScattering {
+  size: vec2<f32>,
+  intensity: f32,
+  time: f32,
 }
 
 struct ParticleVertex {

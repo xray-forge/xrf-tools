@@ -74,14 +74,22 @@ fn model_composited(in: GBufferVarying, surface: Surface, base: vec4<f32>) -> Co
 
   let texel: vec3<f32> = mix(untextured_color(surface.color), base.rgb, camera.switches.x);
 
+  let position: vec3<f32> = camera_view_position(in.clip.xy, in.clip.z);
+  let fog: f32 = fog_amount_at(lighting, position, in.world.y);
+
   if ((surface.flags & SURFACE_IS_ENVIRONMENT_MAPPED) == 0u) {
-    return composite(surface.flags, texel, base.a, saturate(in.light * texel * 2.0), 0.0);
+    let lit: vec3<f32> = saturate(in.light * texel * 2.0);
+
+    // The enhanced fog fogs `model_def_lq` too, its alpha fading by the fog's square as `model_env_lq`'s does.
+    if (lighting.height_fog.w > 0.5) {
+      return composite(surface.flags, texel, base.a * (1.0 - fog) * (1.0 - fog),
+        saturate(mix(lit, lighting.fog_color.rgb, fog)), 0.0);
+    }
+
+    return composite(surface.flags, texel, base.a, lit, 0.0);
   }
 
-  let position: vec3<f32> = camera_view_position(in.clip.xy, in.clip.z);
-  let fog: f32 = fog_amount(lighting, position);
-
-  if (fog >= 1.0) {
+  if (fog_amount(lighting, position) >= 1.0) {
     discard;
   }
 
@@ -139,10 +147,11 @@ fn fs_composited(in: GBufferVarying) -> CompositedOutput {
   }
 
   let position: vec3<f32> = camera_view_position(in.clip.xy, in.clip.z);
-  let fog: f32 = select(0.0, fog_amount(lighting, position), is_lit);
+  let fog: f32 = select(0.0, fog_amount_at(lighting, position, in.world.y), is_lit);
+  let is_past_fog: bool = is_lit && fog_amount(lighting, position) >= 1.0;
 
   // Its own reference where it has one; and past total fog, nothing, as the far plane ends there.
-  if (((surface.flags & SURFACE_IS_CUT_OUT) != 0u && base.a <= surface.alpha_reference) || fog >= 1.0) {
+  if (((surface.flags & SURFACE_IS_CUT_OUT) != 0u && base.a <= surface.alpha_reference) || is_past_fog) {
     discard;
   }
 

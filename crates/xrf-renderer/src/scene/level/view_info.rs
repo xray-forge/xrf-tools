@@ -4,7 +4,10 @@ use xrf_material::XraySurfaceDraw;
 use crate::camera::camera_view::CameraView;
 use crate::contract::render_ambient_occlusion_settings::RenderAmbientOcclusionSettings;
 use crate::contract::render_antialiasing::RenderAntialiasing;
+use crate::contract::render_applied_height_fog::RenderAppliedHeightFog;
+use crate::contract::render_debanding_quality::RenderDebandingQuality;
 use crate::contract::render_debug_view::RenderDebugView;
+use crate::contract::render_enhanced_bloom_settings::RenderEnhancedBloomSettings;
 use crate::contract::render_image_corrections::RenderImageCorrections;
 use crate::contract::render_indirect_light_settings::RenderIndirectLightSettings;
 use crate::contract::render_lights_settings::RenderLightsSettings;
@@ -17,6 +20,7 @@ use crate::pass::ambient_occlusion_uniform::AmbientOcclusionUniform;
 use crate::pass::bitmask_search::BitmaskSearch;
 use crate::pass::bloom_uniform::BloomUniform;
 use crate::pass::contact_shadow_uniform::ContactShadowUniform;
+use crate::pass::fog_scattering_uniform::FogScatteringUniform;
 use crate::pass::fsr_uniform::FsrUniform;
 use crate::pass::lighting_uniform::LightingUniform;
 use crate::pass::present_uniform::PresentUniform;
@@ -111,6 +115,14 @@ pub struct ViewInfo {
   /// Whether the sun's light shafts are added, drawn through its shadow's cascades.
   pub is_shafted: bool,
   pub is_bloomed: bool,
+  /// What the enhanced bloom draws with in place of the engine's, none where it does not draw.
+  pub enhanced_bloom: Option<RenderEnhancedBloomSettings>,
+  /// The enhanced fog as drawn, none where the engine's alone is.
+  pub height_fog: Option<RenderAppliedHeightFog>,
+  /// What the fog scattering's blurs and scattering read this frame, none where it does not scatter.
+  pub fog_scattering: Option<[FogScatteringUniform; 3]>,
+  /// How hard the sky is debanded, none where it is drawn as it is.
+  pub debanding: Option<RenderDebandingQuality>,
   /// The lighting the passes read, as the frame's weather and options make it.
   pub lighting: LightingUniform,
   /// The weather textures the sky draws with and the water reflects; none until the frame's sky is prepared.
@@ -180,6 +192,10 @@ impl Default for ViewInfo {
       is_wallmarked: true,
       is_shafted: false,
       is_bloomed: false,
+      enhanced_bloom: None,
+      height_fog: None,
+      fog_scattering: None,
+      debanding: None,
       lighting: bytemuck::Zeroable::zeroed(),
       sky: None,
       sun_sprite: None,
