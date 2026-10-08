@@ -125,10 +125,6 @@ const EMBEDDED: &[(&str, &str)] = &[
   ("frame/present", include_str!("../../shaders/frame/present.wgsl")),
   ("frame/pyramid", include_str!("../../shaders/frame/pyramid.wgsl")),
   (
-    "frame/reflection_depth",
-    include_str!("../../shaders/frame/reflection_depth.wgsl"),
-  ),
-  (
     "frame/reflections",
     include_str!("../../shaders/frame/reflections.wgsl"),
   ),

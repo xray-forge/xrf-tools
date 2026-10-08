@@ -458,9 +458,9 @@ fn shade(in: GBufferVarying, base: vec4<f32>, at: Footprint) -> GBufferOutput {
 
   out.albedo = vec4<f32>(mix(untextured_color(surface.color), diffuse, is_textured), gloss);
   out.normal = octahedral_encode(normal);
-  // Its alpha holds the marks: what is selected, which the present pass outlines, and what is self-lit.
+  // Its alpha holds the marks: what is selected, which the present pass outlines, what is self-lit, foliage and terrain.
   out.material = vec4<f32>(hemi, sun, surface.slice,
-    encode_marks(is_selected(in.entry), (surface.flags & SURFACE_IS_EMISSIVE) != 0u, is_flora));
+    encode_marks(is_selected(in.entry), (surface.flags & SURFACE_IS_EMISSIVE) != 0u, is_flora, is_terrain));
   out.motion = camera_motion(in.world, in.world + in.moved);
 
   return out;

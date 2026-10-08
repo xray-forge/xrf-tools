@@ -1,27 +1,21 @@
 use wgpu::util::DeviceExt;
 use xrf_error::XrfResult;
-use xrf_renderer_core::{ComputeContext, PassParameters, RasterContext};
+use xrf_renderer_core::{PassParameters, RasterContext};
 
-use crate::frame::reflection_depth::ReflectionDepth;
 use crate::frame::reflection_history::ReflectionHistory;
-use crate::pass::pyramid_depth_parameters::PyramidDepthParameters;
 use crate::pass::reflection_parameters::ReflectionParameters;
 use crate::pass::shader_pipelines::{create_checked, create_module};
 use crate::pass::sky_parameters::SkyParameters;
 use crate::pass::view_binding::ViewBinding;
 use crate::shader::shader_library::ShaderLibrary;
 
-/// Invocations a reduction workgroup runs a side, as `shaders/frame/reflection_depth.wgsl` declares them.
-const WORKGROUP: u32 = 8;
-
-/// Screen-space reflections at the size their quality traces at: the depth reduced to its nearest, each glossy pixel's
-/// ray marched over it and what it met lit, accumulated over frames into the view's history, then filtered into what
+/// Screen-space reflections at the size their quality traces at: each reflecting pixel's ray marched over the frame's
+/// depth and what it met lit, blended with the last frame's into the view's history, then blurred twice into what
 /// combine reads.
 pub struct ReflectionPass {
   layout: wgpu::BindGroupLayout,
   view_layout: wgpu::BindGroupLayout,
   sky_layout: wgpu::BindGroupLayout,
-  depth_layout: wgpu::BindGroupLayout,
   pipelines: ReflectionPipelines,
   /// What a stage reads in place of a history or a stage before it where there is none: one texel of nothing.
   empty: wgpu::TextureView,
@@ -30,19 +24,19 @@ pub struct ReflectionPass {
   generation: u64,
 }
 
-/// The depth's reduction, the trace, the accumulation and the filter.
+/// The trace, the blend over frames and the two blurs.
 struct ReflectionPipelines {
-  depth: wgpu::ComputePipeline,
   trace: wgpu::RenderPipeline,
   accumulate: wgpu::RenderPipeline,
-  filter: wgpu::RenderPipeline,
+  blur: wgpu::RenderPipeline,
+  fine_blur: wgpu::RenderPipeline,
 }
 
 impl ReflectionPass {
-  /// What the trace writes and the filter leaves: radiance met times trust, then trust, below none where untraced.
+  /// What the trace writes and the blurs leave: what is reflected, then one, below none where only the sky is.
   pub const TRACED: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
-  /// How far each ray went, in metres.
-  pub const LENGTH: wgpu::TextureFormat = wgpu::TextureFormat::R16Float;
+  /// How far along the view each ray's hit lies, in metres, nothing where it met none.
+  pub const DEPTH: wgpu::TextureFormat = wgpu::TextureFormat::R32Float;
 
   /// # Errors
   ///
@@ -55,7 +49,6 @@ impl ReflectionPass {
     sky_layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<Self> {
     let layout: wgpu::BindGroupLayout = ReflectionParameters::create_layout(device);
-    let depth_layout: wgpu::BindGroupLayout = PyramidDepthParameters::create_layout(device);
     // Half floats: nothing, and nothing with an alpha of minus one.
     let texel = |label: &str, alpha: u16| -> wgpu::TextureView {
       device
@@ -82,14 +75,13 @@ impl ReflectionPass {
     };
 
     Ok(Self {
-      pipelines: Self::create_pipelines(device, shaders, (view_layout, &layout, sky_layout), &depth_layout)?,
+      pipelines: Self::create_pipelines(device, shaders, (view_layout, &layout, sky_layout))?,
       view_layout: view_layout.clone(),
       sky_layout: sky_layout.clone(),
       empty: texel("reflections empty", 0),
       untraced: texel("reflections none", 0xbc00),
       generation: shaders.get_generation(),
       layout,
-      depth_layout,
     })
   }
 
@@ -97,12 +89,7 @@ impl ReflectionPass {
     if shaders.get_generation() != self.generation {
       self.generation = shaders.get_generation();
 
-      match Self::create_pipelines(
-        device,
-        shaders,
-        (&self.view_layout, &self.layout, &self.sky_layout),
-        &self.depth_layout,
-      ) {
+      match Self::create_pipelines(device, shaders, (&self.view_layout, &self.layout, &self.sky_layout)) {
         Ok(pipelines) => self.pipelines = pipelines,
         Err(error) => log::error!("Reflections rejected, tracing with the last ones: {error}"),
       }
@@ -119,22 +106,7 @@ impl ReflectionPass {
     &self.untraced
   }
 
-  /// Reduces the depth to its nearest at the size traced.
-  pub fn record_depth(
-    &self,
-    context: &mut ComputeContext<'_>,
-    depth: &ReflectionDepth,
-    parameters: &PyramidDepthParameters,
-  ) {
-    context.bind(parameters);
-
-    let pass: &mut wgpu::ComputePass<'static> = context.get_pass();
-
-    pass.set_pipeline(&self.pipelines.depth);
-    pass.dispatch_workgroups(depth.width.div_ceil(WORKGROUP), depth.height.div_ceil(WORKGROUP), 1);
-  }
-
-  /// Traces every glossy pixel's ray into the targets the pass draws into.
+  /// Traces every reflecting pixel's ray into the targets the pass draws into.
   pub fn record_trace(
     &self,
     context: &mut RasterContext<'_>,
@@ -152,7 +124,7 @@ impl ReflectionPass {
     pass.draw(0..3, 0..1);
   }
 
-  /// Blends the trace with the last frame's accumulation into this frame's.
+  /// Blends the trace with the last frame's reflections into this frame's.
   pub fn record_accumulate(
     &self,
     context: &mut RasterContext<'_>,
@@ -162,14 +134,21 @@ impl ReflectionPass {
     Self::draw(context, &self.pipelines.accumulate, view, parameters);
   }
 
-  /// Filters the accumulation, or the trace alone, into what combine reads.
-  pub fn record_filter(
+  /// Blurs the reflections, its taps a traced pixel apart, or a frame's pixel apart where `is_fine`.
+  pub fn record_blur(
     &self,
     context: &mut RasterContext<'_>,
     view: &ViewBinding,
     parameters: &ReflectionParameters<'_>,
+    is_fine: bool,
   ) {
-    Self::draw(context, &self.pipelines.filter, view, parameters);
+    let pipeline: &wgpu::RenderPipeline = if is_fine {
+      &self.pipelines.fine_blur
+    } else {
+      &self.pipelines.blur
+    };
+
+    Self::draw(context, pipeline, view, parameters);
   }
 
   fn draw(
@@ -191,28 +170,8 @@ impl ReflectionPass {
     device: &wgpu::Device,
     shaders: &ShaderLibrary,
     (view_layout, layout, sky_layout): (&wgpu::BindGroupLayout, &wgpu::BindGroupLayout, &wgpu::BindGroupLayout),
-    depth_layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<ReflectionPipelines> {
-    let depth_module: wgpu::ShaderModule = create_module(device, shaders, "frame/reflection_depth")?;
     let module: wgpu::ShaderModule = create_module(device, shaders, "frame/reflections")?;
-    let reduce = |entry: &str, layout: &wgpu::BindGroupLayout| -> XrfResult<wgpu::ComputePipeline> {
-      let pipeline_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-        label: Some(entry),
-        bind_group_layouts: &[Some(layout)],
-        ..Default::default()
-      });
-
-      create_checked(device, entry, || {
-        device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-          label: Some(entry),
-          layout: Some(&pipeline_layout),
-          module: &depth_module,
-          entry_point: Some(entry),
-          compilation_options: Default::default(),
-          cache: None,
-        })
-      })
-    };
     let traced_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
       label: Some("reflection trace"),
       bind_group_layouts: &[Some(view_layout), Some(layout), Some(sky_layout)],
@@ -255,14 +214,14 @@ impl ReflectionPass {
     };
 
     Ok(ReflectionPipelines {
-      depth: reduce("reduce_nearest_depth", depth_layout)?,
-      trace: create(&traced_layout, "fs_trace", &[Self::TRACED, Self::LENGTH])?,
+      trace: create(&traced_layout, "fs_trace", &[Self::TRACED, Self::DEPTH])?,
       accumulate: create(
         &stage_layout,
         "fs_accumulate",
         &[ReflectionHistory::COLOUR_FORMAT, ReflectionHistory::HELD_FORMAT],
       )?,
-      filter: create(&stage_layout, "fs_filter", &[Self::TRACED])?,
+      blur: create(&stage_layout, "fs_blur", &[Self::TRACED])?,
+      fine_blur: create(&stage_layout, "fs_blur_fine", &[Self::TRACED])?,
     })
   }
 }

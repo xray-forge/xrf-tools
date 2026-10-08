@@ -92,11 +92,12 @@ export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings>
     radius: toNumber(0.5, 8),
   },
   isOcclusionCulled: FLAG,
-  // The renderer's own: a hit replaces at most all of the cube, never more, so nothing brightens; past two hundred
+  // The renderer's own: a surface's share of reflection is its gloss by a Fresnel term by the intensity, held to one,
+  // and the shipped glosses lie under about 0.15, so four still leaves the most matte surfaces matte; past two hundred
   // metres a ray leaves the frame long before its steps reach.
   reflections: {
     distance: toNumber(5, 200),
-    intensity: toNumber(0, 1),
+    intensity: toNumber(0, 4),
     mode: toChoice(ERenderReflectionMode),
     quality: toChoice(ERenderReflectionQuality),
   },

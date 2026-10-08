@@ -6,7 +6,6 @@ pub(crate) mod fsr_targets;
 pub(crate) mod gpu_readback;
 pub(crate) mod indirect_light_history;
 pub(crate) mod pick_target;
-pub(crate) mod reflection_depth;
 pub(crate) mod reflection_history;
 pub(crate) mod static_scene_handles;
 pub(crate) mod stats_readback;

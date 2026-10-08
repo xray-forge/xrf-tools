@@ -1,4 +1,4 @@
-use glam::{Mat4, Vec3, Vec4};
+use glam::{Mat4, Vec4};
 use xrf_engine_target::XrayEngine;
 
 use crate::contract::render_debug_view::RenderDebugView;
@@ -9,7 +9,6 @@ use crate::contract::render_reflection_quality::RenderReflectionQuality;
 use crate::contract::render_reflection_settings::RenderReflectionSettings;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::lighting::render_lighting::RenderLighting;
-use crate::lighting::render_rainfall::RenderRainfall;
 use crate::pass::lighting_frame::LightingFrame;
 use crate::pass::lighting_uniform::LightingUniform;
 use crate::pass::present_uniform::PresentUniform;
@@ -32,13 +31,9 @@ fn options_with(reflections: RenderReflectionSettings) -> RenderViewOptions {
   options
 }
 
-fn lighting_of(engine: XrayEngine, rain: Option<f32>) -> RenderLighting {
+fn lighting_of(engine: XrayEngine) -> RenderLighting {
   RenderLighting {
     engine,
-    rain: rain.map(|density| RenderRainfall {
-      color: Vec3::ONE,
-      density,
-    }),
     ..RenderLighting::default()
   }
 }
@@ -64,7 +59,7 @@ fn traces_only_enhanced_with_an_intensity_and_a_distance() {
 
   assert_eq!(defaults.mode, RenderReflectionMode::Engine);
   assert_eq!(defaults.intensity, 1.0);
-  assert_eq!(defaults.distance, 60.0);
+  assert_eq!(defaults.distance, 150.0);
   assert_eq!(defaults.quality, RenderReflectionQuality::High);
   assert!(!defaults.is_drawn());
   assert!(enhanced().is_drawn());
@@ -84,50 +79,42 @@ fn traces_only_enhanced_with_an_intensity_and_a_distance() {
   );
 }
 
-// Every pass is skipped while the engine's own reflections are asked for, unlit, in wireframe, or on Anomaly's
-// shading while it is dry, which reflects nothing for a ray to replace.
+// Every pass is skipped while the engine's own reflections are asked for, unlit or in wireframe; either engine traces
+// wet or dry.
 #[test]
 fn skips_every_pass_where_nothing_is_traced() {
-  let vanilla_dry: RenderLighting = lighting_of(XrayEngine::Vanilla, None);
-  let extended_dry: RenderLighting = lighting_of(XrayEngine::Extended, None);
-  let extended_wet: RenderLighting = lighting_of(XrayEngine::Extended, Some(0.6));
   let traced: RenderViewOptions = options_with(enhanced());
 
   assert_eq!(
-    ReflectionTrace::new(&options_with(RenderReflectionSettings::default()), &vanilla_dry),
+    ReflectionTrace::new(&options_with(RenderReflectionSettings::default())),
     None
   );
   assert_eq!(
-    ReflectionTrace::new(&traced, &vanilla_dry),
+    ReflectionTrace::new(&traced),
     Some(ReflectionTrace {
       quality: RenderReflectionQuality::High,
       intensity: 1.0,
     })
   );
-  assert_eq!(ReflectionTrace::new(&traced, &extended_dry), None);
-  assert_eq!(
-    ReflectionTrace::new(&traced, &lighting_of(XrayEngine::Extended, Some(0.0))),
-    None
-  );
-  assert!(ReflectionTrace::new(&traced, &extended_wet).is_some());
 
   let mut unlit: RenderViewOptions = traced.clone();
 
   unlit.mode.is_lit = false;
 
-  assert_eq!(ReflectionTrace::new(&unlit, &vanilla_dry), None);
+  assert_eq!(ReflectionTrace::new(&unlit), None);
 
   let mut wireframe: RenderViewOptions = traced;
 
   wireframe.mode.is_wireframe = true;
 
-  assert_eq!(ReflectionTrace::new(&wireframe, &vanilla_dry), None);
+  assert_eq!(ReflectionTrace::new(&wireframe), None);
 }
 
-// Combine stands the reflections in for the cube only where they are traced, and reads them at the quality's size.
+// Combine blends the reflections in only where they are traced, reads them at the quality's size and scales the share
+// by the intensity, on either engine, wet or dry.
 #[test]
-fn stands_in_for_the_cube_only_where_traced() {
-  let vanilla: RenderLighting = lighting_of(XrayEngine::Vanilla, None);
+fn blends_reflections_in_only_where_traced() {
+  let vanilla: RenderLighting = lighting_of(XrayEngine::Vanilla);
   let ultra: RenderViewOptions = options_with(RenderReflectionSettings {
     quality: RenderReflectionQuality::Ultra,
     ..enhanced()
@@ -135,15 +122,26 @@ fn stands_in_for_the_cube_only_where_traced() {
 
   assert_eq!(
     lighting_uniform(&options_with(enhanced()), &vanilla).reflections,
-    Vec4::new(1.0, 2.0, 0.0, 0.0)
+    Vec4::new(1.0, 2.0, 1.0, 0.0)
   );
   assert_eq!(
     lighting_uniform(&ultra, &vanilla).reflections,
-    Vec4::new(1.0, 1.0, 0.0, 0.0)
+    Vec4::new(1.0, 1.0, 1.0, 0.0)
   );
   assert_eq!(
-    lighting_uniform(&options_with(enhanced()), &lighting_of(XrayEngine::Extended, None)).reflections,
-    Vec4::ZERO
+    lighting_uniform(&options_with(enhanced()), &lighting_of(XrayEngine::Extended)).reflections,
+    Vec4::new(1.0, 2.0, 1.0, 0.0)
+  );
+  assert_eq!(
+    lighting_uniform(
+      &options_with(RenderReflectionSettings {
+        intensity: 2.5,
+        ..enhanced()
+      }),
+      &vanilla
+    )
+    .reflections,
+    Vec4::new(1.0, 2.0, 2.5, 0.0)
   );
   assert_eq!(
     lighting_uniform(&options_with(RenderReflectionSettings::default()), &vanilla).reflections,
@@ -167,12 +165,19 @@ fn stands_in_for_the_cube_only_where_traced() {
   assert_eq!(present(None).is_reflected, 0);
 }
 
-// Each step up the ladder takes more steps; only Ultra traces at the frame's own size.
+// Each step up the ladder takes more steps and lands nearer behind a surface to count; only the top two halve back,
+// and only Ultra traces at the frame's own size.
 #[test]
 fn climbs_the_quality_ladder() {
   let steps: Vec<u32> = RenderReflectionQuality::ALL.iter().map(|it| it.get_steps()).collect();
+  let limits: Vec<f32> = RenderReflectionQuality::ALL.iter().map(|it| it.get_limit()).collect();
 
   assert!(steps.windows(2).all(|pair| pair[0] < pair[1]));
+  assert!(limits.windows(2).all(|pair| pair[0] > pair[1]));
+  assert_eq!(
+    RenderReflectionQuality::ALL.map(RenderReflectionQuality::is_refined),
+    [false, false, true, true]
+  );
   assert_eq!(
     RenderReflectionQuality::ALL.map(RenderReflectionQuality::get_ratio),
     [2, 2, 2, 1]
@@ -180,27 +185,26 @@ fn climbs_the_quality_ladder() {
 }
 
 #[test]
-fn lays_the_traced_depth_over_the_viewport() {
-  let half: ReflectionUniform = ReflectionUniform::new(&enhanced(), (2830, 1930), 3, true);
+fn writes_the_settings_the_trace_reads() {
+  let high: ReflectionUniform = ReflectionUniform::new(&enhanced(), true);
 
-  assert_eq!(half.base.to_array(), [1415.0, 965.0]);
-  assert_eq!(half.ratio, 2.0);
-  assert_eq!(half.steps, RenderReflectionQuality::High.get_steps());
-  assert_eq!(half.has_history, 1.0);
-  assert_eq!(half.distance, 60.0);
+  assert_eq!(high.steps, RenderReflectionQuality::High.get_steps());
+  assert_eq!(high.limit, RenderReflectionQuality::High.get_limit());
+  assert_eq!(high.is_refined, 1.0);
+  assert_eq!(high.ratio, 2.0);
+  assert_eq!(high.has_history, 1.0);
+  assert_eq!(high.distance, 150.0);
 
-  let held: ReflectionUniform = ReflectionUniform::new(
+  let ultra: ReflectionUniform = ReflectionUniform::new(
     &RenderReflectionSettings {
       intensity: 3.0,
       quality: RenderReflectionQuality::Ultra,
       ..enhanced()
     },
-    (800, 600),
-    0,
     false,
   );
 
-  assert_eq!(held.intensity, 1.0);
-  assert_eq!(held.base.to_array(), [800.0, 600.0]);
-  assert_eq!(held.has_history, 0.0);
+  assert_eq!(ultra.intensity, 3.0);
+  assert_eq!(ultra.ratio, 1.0);
+  assert_eq!(ultra.has_history, 0.0);
 }

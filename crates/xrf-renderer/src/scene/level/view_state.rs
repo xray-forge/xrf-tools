@@ -6,7 +6,6 @@ use crate::frame::depth_pyramid::DepthPyramid;
 use crate::frame::fsr_targets::FsrTargets;
 use crate::frame::indirect_light_history::IndirectLightHistory;
 use crate::frame::pick_target::PickTarget;
-use crate::frame::reflection_depth::ReflectionDepth;
 use crate::frame::reflection_history::ReflectionHistory;
 use crate::frame::stats_readback::StatsReadback;
 use crate::frame::temporal_history::TemporalHistory;
@@ -50,8 +49,7 @@ pub struct ViewState {
   pub occlusion: Option<VbaoHistory>,
   /// The indirect light's accumulations, while it is gathered and accumulates.
   pub indirect: Option<IndirectLightHistory>,
-  /// The nearest depth the reflections march over, and their accumulations, while they are traced.
-  pub reflection_depth: Option<ReflectionDepth>,
+  /// The reflections' blends over frames, while they are traced.
   pub reflections: Option<ReflectionHistory>,
   /// The water's settings and flow, and the enhanced water's reflection histories.
   pub water: LevelWater,
@@ -100,7 +98,6 @@ impl ViewState {
       noise_frame: 0,
       occlusion: None,
       indirect: None,
-      reflection_depth: None,
       reflections: None,
       water: LevelWater::default(),
       last_wind: None,

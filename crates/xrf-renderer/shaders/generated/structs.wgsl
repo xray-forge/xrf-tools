@@ -165,13 +165,12 @@ struct Vbao {
 }
 
 struct Reflections {
-  base: vec2<f32>,
   steps: u32,
+  limit: f32,
+  is_refined: f32,
   intensity: f32,
   distance: f32,
-  frames: f32,
   has_history: f32,
-  noise: f32,
   ratio: f32,
 }
 

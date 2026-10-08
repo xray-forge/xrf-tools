@@ -124,7 +124,7 @@ export type RenderAppliedIndirectLight = {
 
 /** The screen-space reflections as traced. */
 export type RenderAppliedReflections = {
-  /** How much of the cube a hit replaces. */
+  /** What a surface's gloss and Fresnel term are scaled by into its share of reflection. */
   intensity: number | null;
   quality: RenderReflectionQuality;
 };
@@ -857,8 +857,8 @@ export enum ERenderReflectionMode {
   /** The engine's own: the irradiance cube along the reflection, weighed by the surface's gloss. */
   ENGINE = "engine",
   /**
-   * Screen-space reflections: each glossy pixel's reflected ray traced over the frame's depth, what it meets in place
-   * of the cube, the cube where it meets nothing.
+   * Screen-space reflections: each glossy pixel blended towards what its reflected ray meets over the frame's depth,
+   * by its gloss and a Fresnel term, towards the cube where the ray meets nothing.
    */
   ENHANCED = "enhanced",
 }
@@ -867,17 +867,17 @@ export enum ERenderReflectionMode {
 export type RenderReflectionMode = `${ERenderReflectionMode}`;
 
 /**
- * How hard the screen-space reflections trace: the size traced at and the steps a ray takes through the depth's
- * pyramid at most.
+ * How hard the screen-space reflections trace: the size traced at, the steps a ray takes at most, how far behind a
+ * surface a step may land and still have met it, and whether a step that lands further is halved back once.
  */
 export enum ERenderReflectionQuality {
-  /** Half size, 24 steps. */
+  /** Half size, 16 steps. */
   LOW = "low",
-  /** Half size, 32 steps. */
+  /** Half size, 24 steps. */
   MEDIUM = "medium",
-  /** Half size, 48 steps. */
+  /** Half size, 32 steps, refined. */
   HIGH = "high",
-  /** The frame's own size, 64 steps. */
+  /** The frame's own size, 64 steps, refined. */
   ULTRA = "ultra",
 }
 
@@ -885,12 +885,12 @@ export enum ERenderReflectionQuality {
 export type RenderReflectionQuality = `${ERenderReflectionQuality}`;
 
 /**
- * Screen-space reflections on the frame's surfaces: where a glossy surface's reflected ray meets something the frame
- * shows, that in place of the sky's cube the engine reflects.
+ * Screen-space reflections on the frame's surfaces: each glossy surface blended towards what its reflected ray meets,
+ * or the sky's cube where it meets nothing, by its share of reflection.
  */
 export type RenderReflectionSettings = {
   mode: RenderReflectionMode;
-  /** How much of the cube a ray's hit replaces: one all of it, none the engine's look. */
+  /** What a surface's gloss and Fresnel term are scaled by into its share of reflection; the share is at most one. */
   intensity: number | null;
   /** Metres a ray is traced at most. */
   distance: number | null;

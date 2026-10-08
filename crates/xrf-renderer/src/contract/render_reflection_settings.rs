@@ -3,14 +3,14 @@ use serde::{Deserialize, Serialize};
 use crate::contract::render_reflection_mode::RenderReflectionMode;
 use crate::contract::render_reflection_quality::RenderReflectionQuality;
 
-/// Screen-space reflections on the frame's surfaces: where a glossy surface's reflected ray meets something the frame
-/// shows, that in place of the sky's cube the engine reflects.
+/// Screen-space reflections on the frame's surfaces: each glossy surface blended towards what its reflected ray meets,
+/// or the sky's cube where it meets nothing, by its share of reflection.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Copy, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RenderReflectionSettings {
   pub mode: RenderReflectionMode,
-  /// How much of the cube a ray's hit replaces: one all of it, none the engine's look.
+  /// What a surface's gloss and Fresnel term are scaled by into its share of reflection; the share is at most one.
   pub intensity: f32,
   /// Metres a ray is traced at most.
   pub distance: f32,
@@ -23,7 +23,7 @@ impl Default for RenderReflectionSettings {
     Self {
       mode: RenderReflectionMode::Engine,
       intensity: 1.0,
-      distance: 60.0,
+      distance: 150.0,
       quality: RenderReflectionQuality::High,
     }
   }

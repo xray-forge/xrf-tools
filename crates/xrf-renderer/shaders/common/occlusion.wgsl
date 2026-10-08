@@ -61,8 +61,8 @@ fn bounced_occlusion(visible: f32, albedo: vec3<f32>, bounce: f32) -> vec3<f32> 
 }
 
 // The reflections traced brought up to the frame's pixel: the traced pixels around it, each standing for `ratio` of the
-// frame's pixels a side, by how near each lies and how near the distance its pixel shows lies to the pixel's. Radiance
-// times trust, then trust; alpha below none where no pixel around it was traced.
+// frame's pixels a side, by how near each lies and how near the distance its pixel shows lies to the pixel's. What is
+// reflected, then one; alpha below none where no pixel around it was traced.
 fn upsampled_reflection(traced: texture_2d<f32>, depth: texture_depth_2d, pixel: vec2<f32>, distance: f32,
   ratio: f32) -> vec4<f32> {
   let last: vec2<f32> = vec2<f32>(textureDimensions(traced)) - 1.0;
