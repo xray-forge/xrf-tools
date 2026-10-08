@@ -1,3 +1,7 @@
+use crate::frame::frame_texture::FrameTexture;
+use crate::frame::fsr_frame::FsrFrame;
+use crate::frame::history::History;
+
 /// What FSR 2 keeps for one viewport: its working targets at the drawn size, the reconstructed depth, and two frames of
 /// its own targets, one written while the other is read, swapped every frame.
 pub struct FsrTargets {
@@ -5,33 +9,20 @@ pub struct FsrTargets {
   pub render: (u32, u32),
   pub display: (u32, u32),
   /// The frame before the blended surfaces drew, which the reactive mask compares with.
-  pub opaque_texture: wgpu::Texture,
-  pub opaque: wgpu::TextureView,
+  pub opaque: FrameTexture,
   /// The mean log luma an eighth a side, then a 32nd.
-  pub luma_first: wgpu::TextureView,
-  pub luma_shading: wgpu::TextureView,
-  pub reactive: wgpu::TextureView,
+  pub luma_first: FrameTexture,
+  pub luma_shading: FrameTexture,
+  pub reactive: FrameTexture,
   /// YCoCg with the depth clip, and the reactive and accumulation masks.
-  pub prepared: wgpu::TextureView,
-  pub masks: wgpu::TextureView,
+  pub prepared: FrameTexture,
+  pub masks: FrameTexture,
   /// Whether each drawn texel is a thin feature to lock.
-  pub locks: wgpu::TextureView,
+  pub locks: FrameTexture,
   /// The depth of the frame before as each texel's nearest depth reprojected puts it, a depth's bits a drawn texel.
   pub reconstructed: wgpu::Buffer,
-  /// Each frame's nearest depth, the motion found there, and the luma the locks read.
-  pub dilated_depth: [wgpu::TextureView; 2],
-  pub dilated_motion: [wgpu::TextureView; 2],
-  pub lock_luma: [wgpu::TextureView; 2],
-  /// Each frame's resolved colour with its temporal reactivity, its locks, and its four last lumas, at the viewport's
-  /// size.
-  pub history_textures: [wgpu::Texture; 2],
-  pub history: [wgpu::TextureView; 2],
-  pub lock_status: [wgpu::TextureView; 2],
-  pub luma_history: [wgpu::TextureView; 2],
-  /// The frame this one writes.
-  pub index: usize,
-  /// Frames resolved since the histories were made: FSR's `FrameIndex`.
-  pub frame_index: u32,
+  /// What each frame writes for the next; its frames swapped are FSR's `FrameIndex`.
+  pub frames: History<FsrFrame>,
 }
 
 impl FsrTargets {
@@ -53,38 +44,20 @@ impl FsrTargets {
     display: (u32, u32),
     opaque_format: wgpu::TextureFormat,
   ) -> Self {
-    let create_texture = |label: &str, format: wgpu::TextureFormat, (width, height): (u32, u32), extra| {
-      device.create_texture(&wgpu::TextureDescriptor {
-        label: Some(label),
-        size: wgpu::Extent3d {
-          width: width.max(1),
-          height: height.max(1),
-          depth_or_array_layers: 1,
-        },
-        mip_level_count: 1,
-        sample_count: 1,
-        dimension: wgpu::TextureDimension::D2,
-        format,
-        usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING | extra,
-        view_formats: &[],
-      })
-    };
     let create = |label: &str, format: wgpu::TextureFormat, size: (u32, u32)| {
-      create_texture(label, format, size, wgpu::TextureUsages::empty()).create_view(&Default::default())
+      FrameTexture::new(device, label, size, format, wgpu::TextureUsages::empty())
     };
-    let pair = |label: &str, format: wgpu::TextureFormat, size: (u32, u32)| {
-      [create(label, format, size), create(label, format, size)]
-    };
-    let opaque_texture: wgpu::Texture =
-      create_texture("fsr2 opaque", opaque_format, render, wgpu::TextureUsages::COPY_DST);
-    let history_textures: [wgpu::Texture; 2] = ["fsr2 history 0", "fsr2 history 1"]
-      .map(|label| create_texture(label, Self::HISTORY, display, wgpu::TextureUsages::COPY_SRC));
 
     Self {
       render,
       display,
-      opaque: opaque_texture.create_view(&Default::default()),
-      opaque_texture,
+      opaque: FrameTexture::new(
+        device,
+        "fsr2 opaque",
+        render,
+        opaque_format,
+        wgpu::TextureUsages::COPY_DST,
+      ),
       luma_first: create(
         "fsr2 luma first",
         Self::LUMA,
@@ -104,18 +77,20 @@ impl FsrTargets {
         usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
         mapped_at_creation: false,
       }),
-      dilated_depth: pair("fsr2 dilated depth", Self::DEPTH, render),
-      dilated_motion: pair("fsr2 dilated motion", Self::PAIR, render),
-      lock_luma: pair("fsr2 lock luma", Self::LUMA, render),
-      history: [
-        history_textures[0].create_view(&Default::default()),
-        history_textures[1].create_view(&Default::default()),
-      ],
-      history_textures,
-      lock_status: pair("fsr2 lock status", Self::PAIR, display),
-      luma_history: pair("fsr2 luma history", Self::LUMA_HISTORY, display),
-      index: 0,
-      frame_index: 0,
+      frames: History::new(|side| FsrFrame {
+        dilated_depth: create("fsr2 dilated depth", Self::DEPTH, render),
+        dilated_motion: create("fsr2 dilated motion", Self::PAIR, render),
+        lock_luma: create("fsr2 lock luma", Self::LUMA, render),
+        history: FrameTexture::new(
+          device,
+          ["fsr2 history 0", "fsr2 history 1"][side],
+          display,
+          Self::HISTORY,
+          wgpu::TextureUsages::COPY_SRC,
+        ),
+        lock_status: create("fsr2 lock status", Self::PAIR, display),
+        luma_history: create("fsr2 luma history", Self::LUMA_HISTORY, display),
+      }),
     }
   }
 
@@ -131,9 +106,22 @@ impl FsrTargets {
     self.render == render && self.display == display
   }
 
-  /// The written frame becomes the one read.
-  pub fn swap(&mut self) {
-    self.index = 1 - self.index;
-    self.frame_index += 1;
+  /// Bytes its targets, both frames and the reconstructed depth take.
+  pub fn get_memory(&self) -> u64 {
+    let singles: u64 = [
+      &self.opaque,
+      &self.luma_first,
+      &self.luma_shading,
+      &self.reactive,
+      &self.prepared,
+      &self.masks,
+      &self.locks,
+    ]
+    .iter()
+    .map(|texture| texture.get_memory())
+    .sum();
+    let frames: u64 = self.frames.get_sides().iter().map(|frame| frame.get_memory()).sum();
+
+    singles + frames + self.reconstructed.size()
   }
 }

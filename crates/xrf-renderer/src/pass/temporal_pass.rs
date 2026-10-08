@@ -1,7 +1,6 @@
 use xrf_error::XrfResult;
 use xrf_renderer_core::{PassParameters, RasterContext};
 
-use crate::frame::temporal_history::TemporalHistory;
 use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline;
 use crate::pass::temporal_parameters::TemporalParameters;
 use crate::pass::view_binding::ViewBinding;
@@ -17,6 +16,9 @@ pub struct TemporalPass {
 }
 
 impl TemporalPass {
+  /// Its history's format: colour and the distance along the view, at half floats.
+  pub const HISTORY: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
+
   /// # Errors
   ///
   /// Returns an error when the shader does not compose or compile.
@@ -76,7 +78,7 @@ impl TemporalPass {
       "frame/temporal",
       "fs_temporal",
       &[Some(view_layout), Some(layout)],
-      TemporalHistory::FORMAT,
+      Self::HISTORY,
     )
   }
 }
