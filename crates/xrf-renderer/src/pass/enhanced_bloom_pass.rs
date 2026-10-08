@@ -1,22 +1,18 @@
 use xrf_error::XrfResult;
-use xrf_renderer_core::{PassParameters, RasterContext};
+use xrf_renderer_core::{PassParameters, RasterContext, RenderPipelineDescription};
 
 use crate::pass::enhanced_bloom_parameters::EnhancedBloomParameters;
-use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline;
+use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::view_binding::ViewBinding;
-use crate::shader::shader_library::ShaderLibrary;
 
 /// The enhanced bloom, in place of the engine's: the finished scene blurred to half its size, its bright parts and
 /// self-lit surfaces built from that, halved six times and doubled back with each halving added, then tonemapped into
-/// what the present screens over the frame.
+/// what the present screens over the frame. Its pipelines come from the pipeline cache, one a stage.
 pub struct EnhancedBloomPass {
   layout: wgpu::BindGroupLayout,
   view_layout: wgpu::BindGroupLayout,
   /// `smp_rtlinear`: filtered, clamped to the edge.
   sampler: wgpu::Sampler,
-  /// One a stage: the blur, the build, a halving, a doubling and the finish.
-  pipelines: [wgpu::RenderPipeline; 5],
-  generation: u64,
 }
 
 impl EnhancedBloomPass {
@@ -24,6 +20,8 @@ impl EnhancedBloomPass {
   pub const BLURRED: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
   /// Every other target: half floats, as the engine's bloom targets are.
   pub const BLOOM: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
+
+  const MODULE: &'static str = "frame/enhanced_bloom";
 
   /// The stages, by the pipeline each draws with.
   pub const BLUR: usize = 0;
@@ -53,14 +51,9 @@ impl EnhancedBloomPass {
   ];
   pub const FINISH_PASS: &'static str = "enhanced bloom finish";
 
-  /// # Errors
-  ///
-  /// Returns an error when the shader does not compose or compile.
-  pub fn new(device: &wgpu::Device, shaders: &ShaderLibrary, view_layout: &wgpu::BindGroupLayout) -> XrfResult<Self> {
-    let layout: wgpu::BindGroupLayout = EnhancedBloomParameters::create_layout(device);
-
-    Ok(Self {
-      pipelines: Self::create_pipelines(device, shaders, (view_layout, &layout))?,
+  pub fn new(device: &wgpu::Device, view_layout: &wgpu::BindGroupLayout) -> Self {
+    Self {
+      layout: EnhancedBloomParameters::create_layout(device),
       view_layout: view_layout.clone(),
       sampler: device.create_sampler(&wgpu::SamplerDescriptor {
         label: Some("enhanced bloom"),
@@ -68,20 +61,39 @@ impl EnhancedBloomPass {
         min_filter: wgpu::FilterMode::Linear,
         ..Default::default()
       }),
-      generation: shaders.get_generation(),
-      layout,
-    })
+    }
   }
 
-  pub fn refresh(&mut self, device: &wgpu::Device, shaders: &ShaderLibrary) {
-    if shaders.get_generation() != self.generation {
-      self.generation = shaders.get_generation();
+  /// Its pipelines, one a stage by the stage's index: a triangle over the target, the view's bind group then the
+  /// stage's, into the half-size blur's format or the bloom's.
+  pub fn describe_pipelines(&self) -> [RenderPipelineDescription; 5] {
+    let describe = |label: &'static str, fragment: &'static str, format: wgpu::TextureFormat| {
+      RenderPipelineDescription::new(label, Self::MODULE, "vs_fullscreen")
+        .with_fragment(fragment)
+        .with_bind_group_layouts(vec![self.view_layout.clone(), self.layout.clone()])
+        .with_target(wgpu::ColorTargetState::from(format))
+    };
 
-      match Self::create_pipelines(device, shaders, (&self.view_layout, &self.layout)) {
-        Ok(pipelines) => self.pipelines = pipelines,
-        Err(error) => log::error!("Enhanced bloom rejected, blooming with the last one: {error}"),
-      }
-    }
+    [
+      describe("enhanced bloom blur", "fs_bloom_blur", Self::BLURRED),
+      describe("enhanced bloom build", "fs_bloom_build", Self::BLOOM),
+      describe("enhanced bloom halve", "fs_bloom_halve", Self::BLOOM),
+      describe("enhanced bloom double", "fs_bloom_double", Self::BLOOM),
+      describe("enhanced bloom finish", "fs_bloom_finish", Self::BLOOM),
+    ]
+  }
+
+  /// Its pipelines as `describe_pipelines` lists them, asked of the cache.
+  ///
+  /// # Errors
+  ///
+  /// Returns the first stage's error where a module cannot be composed or wgpu refuses it.
+  pub fn get_pipelines(&self, source: PipelineSource<'_>) -> XrfResult<[wgpu::RenderPipeline; 5]> {
+    let [blur, build, halve, double, finish] = self
+      .describe_pipelines()
+      .map(|description| source.get_render_pipeline(&description));
+
+    Ok([blur?, build?, halve?, double?, finish?])
   }
 
   /// The sampler its stages read with, which their parameters bind.
@@ -89,39 +101,20 @@ impl EnhancedBloomPass {
     &self.sampler
   }
 
-  /// Draws one of its stages into the target the pass draws into.
+  /// Draws one of its stages with the stage's `pipeline` into the target the pass draws into.
   pub fn record(
     &self,
     context: &mut RasterContext<'_>,
     view: &ViewBinding,
-    stage: usize,
+    pipeline: &wgpu::RenderPipeline,
     parameters: &EnhancedBloomParameters<'_>,
   ) {
     context.bind(parameters);
 
     let pass: &mut wgpu::RenderPass<'static> = context.get_pass();
 
-    pass.set_pipeline(&self.pipelines[stage]);
+    pass.set_pipeline(pipeline);
     pass.set_bind_group(0, &view.bind_group, &[]);
     pass.draw(0..3, 0..1);
-  }
-
-  fn create_pipelines(
-    device: &wgpu::Device,
-    shaders: &ShaderLibrary,
-    (view_layout, layout): (&wgpu::BindGroupLayout, &wgpu::BindGroupLayout),
-  ) -> XrfResult<[wgpu::RenderPipeline; 5]> {
-    let layouts: [Option<&wgpu::BindGroupLayout>; 2] = [Some(view_layout), Some(layout)];
-    let create = |fragment: &str, format: wgpu::TextureFormat| {
-      create_fullscreen_pipeline(device, shaders, "frame/enhanced_bloom", fragment, &layouts, format)
-    };
-
-    Ok([
-      create("fs_bloom_blur", Self::BLURRED)?,
-      create("fs_bloom_build", Self::BLOOM)?,
-      create("fs_bloom_halve", Self::BLOOM)?,
-      create("fs_bloom_double", Self::BLOOM)?,
-      create("fs_bloom_finish", Self::BLOOM)?,
-    ])
   }
 }

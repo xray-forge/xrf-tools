@@ -14,6 +14,7 @@ use crate::pass::enhanced_bloom_parameters::EnhancedBloomParameters;
 use crate::pass::enhanced_bloom_pass::EnhancedBloomPass;
 use crate::pass::enhanced_bloom_uniform::EnhancedBloomUniform;
 use crate::pass::level_passes::LevelPasses;
+use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::feature::view_feature::ViewFeature;
 
@@ -25,15 +26,31 @@ pub struct BloomFeature {
   engine: Option<[BloomUniform; 3]>,
   /// What the enhanced bloom draws with, where it draws in the engine's place.
   enhanced: Option<RenderEnhancedBloomSettings>,
+  /// The enhanced bloom's pipelines, one a stage, with the cache's generation they were asked for in; the last made
+  /// are kept while a reloaded shader is refused.
+  pipelines: Option<(u64, [wgpu::RenderPipeline; 5])>,
 }
 
 impl BloomFeature {
-  /// Takes this frame's bloom for a frame `size` texels across, drawn where the view is lit and not wireframe.
-  pub fn prepare(&mut self, options: &RenderViewOptions, engine: XrayEngine, size: Option<(u32, u32)>) {
+  /// Takes this frame's bloom for a frame `size` texels across, drawn where the view is lit and not wireframe; the
+  /// enhanced bloom's pipelines asked of the cache when it draws and the cache has changed since they were.
+  pub fn prepare(
+    &mut self,
+    passes: LevelPasses<'_>,
+    options: &RenderViewOptions,
+    engine: XrayEngine,
+    size: Option<(u32, u32)>,
+  ) {
     let bloom: &RenderBloomSettings = &options.features.bloom;
     let size: Option<(u32, u32)> = size.filter(|_| options.mode.is_lit && !options.mode.is_wireframe);
 
     self.enhanced = EnhancedBloomUniform::for_view(options).filter(|_| size.is_some());
+
+    if self.enhanced.is_some() {
+      self.ask_pipelines(passes.enhanced_bloom, passes.pipelines);
+      self.enhanced = self.enhanced.filter(|_| self.pipelines.is_some());
+    }
+
     self.engine = size
       .filter(|_| bloom.is_enabled && self.enhanced.is_none())
       .map(|size| {
@@ -46,6 +63,27 @@ impl BloomFeature {
           BloomUniform::filter(false, (bloom.radius, bloom.strength), aspect, is_one_sided),
         ]
       });
+  }
+
+  /// Asks the cache for the enhanced bloom's pipelines where it changed since they were last asked for; a refusal
+  /// keeps the last made, and is not asked again before the cache changes.
+  fn ask_pipelines(&mut self, pass: &EnhancedBloomPass, source: PipelineSource<'_>) {
+    let generation: u64 = source.get_generation();
+
+    if self.pipelines.as_ref().is_some_and(|(asked, _)| *asked == generation) {
+      return;
+    }
+
+    match pass.get_pipelines(source) {
+      Ok(pipelines) => self.pipelines = Some((generation, pipelines)),
+      Err(error) => {
+        log::error!("Enhanced bloom rejected, blooming with the last one: {error}");
+
+        if let Some((asked, _)) = &mut self.pipelines {
+          *asked = generation;
+        }
+      }
+    }
   }
 
   /// Whether the engine's bloom draws this frame, which the present adds.
@@ -62,13 +100,14 @@ impl BloomFeature {
   /// half-size blur across and down, the build, six halvings, five doublings back to half size, and the finish; none
   /// where the enhanced bloom does not draw.
   pub fn add_enhanced_passes<'a>(
-    &self,
+    &'a self,
     (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
     passes: LevelPasses<'a>,
     view: &'a ViewBinding,
     (targets, frame): (ViewTargetHandles, (u32, u32)),
   ) -> Option<GraphTexture> {
     let settings: &RenderEnhancedBloomSettings = self.enhanced.as_ref()?;
+    let (_, pipelines) = self.pipelines.as_ref()?;
     let pass: &'a EnhancedBloomPass = passes.enhanced_bloom;
     let empty: GraphTexture =
       bindings.import_view(&mut *graph, "enhanced bloom empty", passes.fog_scattering.get_empty());
@@ -119,7 +158,7 @@ impl BloomFeature {
           written,
           wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
         ))
-        .record(move |context| pass.record(context, view, pipeline, &parameters));
+        .record(move |context| pass.record(context, view, &pipelines[pipeline], &parameters));
     };
 
     add(

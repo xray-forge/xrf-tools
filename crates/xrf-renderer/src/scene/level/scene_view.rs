@@ -444,6 +444,7 @@ impl SceneView {
       && options.features.shadows.get_cascade_count() > 0;
     self.info.is_wallmarked = options.show.is_wallmarked;
     self.features.bloom.prepare(
+      passes,
       options,
       lighting.engine,
       self

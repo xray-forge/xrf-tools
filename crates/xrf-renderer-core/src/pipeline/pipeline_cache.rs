@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use xrf_error::{XrfError, XrfResult};
 
@@ -16,11 +17,18 @@ pub struct PipelineCache {
   modules: Mutex<HashMap<&'static str, wgpu::ShaderModule>>,
   render: Mutex<HashMap<RenderPipelineDescription, wgpu::RenderPipeline>>,
   compute: Mutex<HashMap<ComputePipelineDescription, wgpu::ComputePipeline>>,
+  /// Bumped by every invalidation, so whoever keeps a pipeline it was handed knows to ask again.
+  generation: AtomicU64,
 }
 
 impl PipelineCache {
   pub fn new() -> Self {
     Self::default()
+  }
+
+  /// How many invalidations the cache has had: a pipeline handed out before the latest may be stale.
+  pub fn get_generation(&self) -> u64 {
+    self.generation.load(Ordering::Acquire)
   }
 
   /// Pipelines held, render and compute.
@@ -165,6 +173,7 @@ impl PipelineCache {
       .lock()
       .expect("pipeline cache lock")
       .retain(|description, _| description.module != module);
+    self.generation.fetch_add(1, Ordering::AcqRel);
   }
 
   /// Forgets every module and pipeline.
@@ -172,6 +181,7 @@ impl PipelineCache {
     self.modules.lock().expect("pipeline cache lock").clear();
     self.render.lock().expect("pipeline cache lock").clear();
     self.compute.lock().expect("pipeline cache lock").clear();
+    self.generation.fetch_add(1, Ordering::AcqRel);
   }
 
   fn get_module(
