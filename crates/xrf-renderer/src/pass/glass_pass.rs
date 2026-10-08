@@ -10,6 +10,7 @@ use crate::pass::static_draw_parameters::StaticDrawParameters;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::static_scene::static_batch::StaticBatch;
 use crate::scene::static_scene::static_layout::StaticLayout;
+use crate::scene::static_scene::static_surface_pass::StaticSurfacePass;
 use crate::shader::shader_library::ShaderLibrary;
 
 /// Draws a viewport's visible glass as the enhanced glass draws it, over the frame and its copy taken just before:
@@ -18,7 +19,7 @@ use crate::shader::shader_library::ShaderLibrary;
 pub struct GlassPass {
   layout: wgpu::BindGroupLayout,
   layouts: [wgpu::BindGroupLayout; 4],
-  /// One a batch of either composited class, in `GlassPass::list_batches` order.
+  /// One a layout, in `StaticLayout::ALL` order.
   pipelines: Vec<wgpu::RenderPipeline>,
   /// Reads the frame's copy between its texels, clamped at its edges.
   scene_sampler: wgpu::Sampler,
@@ -77,8 +78,8 @@ impl GlassPass {
     }
   }
 
-  /// Draws the glass among the composited surfaces each argument buffer lists, unsorted and strictly sorted, the
-  /// models' too: each reads the frame's copy, so none needs what another drew.
+  /// Draws the glass each argument buffer lists, every layout's run of the glass draw list, unsorted and strictly
+  /// sorted surfaces alike: each reads the frame's copy, so none needs what another drew.
   pub fn record(
     &self,
     context: &mut RasterContext<'_>,
@@ -95,19 +96,16 @@ impl GlassPass {
     context.get_pass().set_bind_group(0, &view.bind_group, &[]);
     context.get_pass().set_bind_group(1, textures, &[]);
 
-    for (batch, pipeline) in Self::list_batches().zip(&self.pipelines) {
-      context.bind(&layouts[batch.layout.get_index()]);
+    for (layout, pipeline) in StaticLayout::ALL.into_iter().zip(&self.pipelines) {
+      let list: u64 = StaticBatch::get_pass_list(layout, StaticSurfacePass::Glass).into();
+
+      context.bind(&layouts[layout.get_index()]);
       context.get_pass().set_pipeline(pipeline);
 
       for args in args {
-        context.get_pass().draw_indirect(args, batch.get_index() as u64 * 16);
+        context.get_pass().draw_indirect(args, list * 16);
       }
     }
-  }
-
-  /// The batches glass may stand in: either composited class, of every layout.
-  fn list_batches() -> impl Iterator<Item = StaticBatch> {
-    StaticBatch::list().filter(|batch| batch.class.is_composited())
   }
 
   fn create_pipelines(
@@ -130,15 +128,16 @@ impl GlassPass {
     });
     let targets: [Option<wgpu::ColorTargetState>; 1] = [Some(ViewTargets::SCENE.into())];
 
-    Self::list_batches()
-      .map(|batch| {
+    StaticLayout::ALL
+      .into_iter()
+      .map(|layout| {
         create_checked(device, "fs_glass", || {
           device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("glass"),
             layout: Some(&pipeline_layout),
             vertex: wgpu::VertexState {
               module: &module,
-              entry_point: Some(batch.layout.get_vertex_entry()),
+              entry_point: Some(layout.get_vertex_entry()),
               compilation_options: Default::default(),
               buffers: &[],
             },

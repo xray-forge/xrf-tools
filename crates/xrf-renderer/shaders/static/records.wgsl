@@ -46,6 +46,10 @@ fn row_windows(word: u32) -> u32 {
 const CLASS_COUNT: u32 = 6u;
 const WATER_CLASS: u32 = 2u;
 
+// The surface passes a layout has a draw list of each of after every batch's, as `StaticSurfacePass` orders them: the
+// enhanced glass, then the distortion.
+const SURFACE_PASS_COUNT: u32 = 2u;
+
 const SLOT_SINGLE: u32 = 1u;
 const SLOT_LISTED: u32 = 2u;
 

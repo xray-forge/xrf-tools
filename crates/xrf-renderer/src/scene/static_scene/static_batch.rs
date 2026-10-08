@@ -1,5 +1,6 @@
 use crate::scene::static_scene::static_class::StaticClass;
 use crate::scene::static_scene::static_layout::StaticLayout;
+use crate::scene::static_scene::static_surface_pass::StaticSurfacePass;
 
 /// One indirect draw a frame: every visible cluster of one layout drawn with one class's program.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -11,8 +12,26 @@ pub struct StaticBatch {
 impl StaticBatch {
   pub const COUNT: usize = StaticLayout::ALL.len() * StaticClass::ALL.len();
 
+  /// Draw lists the cull fills a frame: one a batch, then one a layout and surface pass, in that order.
+  pub const LIST_COUNT: usize = Self::COUNT + StaticLayout::COUNT * StaticSurfacePass::COUNT;
+
   pub fn get_index(self) -> u32 {
     (self.layout.get_index() * StaticClass::ALL.len() + self.class.get_index()) as u32
+  }
+
+  /// The draw list of a layout's surfaces taking part in a pass, after every batch's.
+  pub fn get_pass_list(layout: StaticLayout, pass: StaticSurfacePass) -> u32 {
+    (Self::COUNT + layout.get_index() * StaticSurfacePass::COUNT + pass.get_index()) as u32
+  }
+
+  /// Every draw list a slot of this batch is appended to: its own, then each pass's its surface takes part in.
+  pub fn list_draw_lists(self, passes: u32) -> impl Iterator<Item = usize> {
+    std::iter::once(self.get_index() as usize).chain(
+      StaticSurfacePass::ALL
+        .into_iter()
+        .filter(move |pass| passes & 1 << pass.get_index() != 0)
+        .map(move |pass| Self::get_pass_list(self.layout, pass) as usize),
+    )
   }
 
   pub fn list() -> impl Iterator<Item = StaticBatch> {

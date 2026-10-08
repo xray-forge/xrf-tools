@@ -10,6 +10,7 @@ use crate::pass::view_binding::ViewBinding;
 use crate::scene::static_scene::static_batch::StaticBatch;
 use crate::scene::static_scene::static_layout::StaticLayout;
 use crate::scene::static_scene::static_scene::StaticScene;
+use crate::scene::static_scene::static_surface_pass::StaticSurfacePass;
 use crate::shader::shader_library::ShaderLibrary;
 
 /// The fragment entry compositing surfaces over the lit frame.
@@ -47,8 +48,9 @@ pub struct CompositedPass {
   generation: u64,
 }
 
-/// One a composited batch, in `StaticBatch::list_composited` order; one a wall mark batch; and one a batch of either
-/// composited class, in `CompositedPass::list_distorted` order, for the distortion, then for the selection's mark.
+/// One a composited batch, in `StaticBatch::list_composited` order; one a wall mark batch; one a layout, in
+/// `StaticLayout::ALL` order, for the distortion; and one a batch of either composited class, in
+/// `CompositedPass::list_selectable` order, for the selection's mark.
 type CompositedPipelines = (
   Vec<wgpu::RenderPipeline>,
   Vec<wgpu::RenderPipeline>,
@@ -169,9 +171,9 @@ impl CompositedPass {
     pass.set_bind_group(1, textures, &[]);
   }
 
-  /// Draws the distorting surfaces among the composited ones each argument buffer lists into the distortion target, as
-  /// `model_distort4glass` draws their special pass: unsorted and strictly sorted, the models' too, in cluster order,
-  /// which blending offsets makes no matter.
+  /// Draws the distorting surfaces each argument buffer lists, every layout's run of the distortion draw list, into the
+  /// distortion target, as `model_distort4glass` draws their special pass: unsorted and strictly sorted alike, in
+  /// cluster order, which blending offsets makes no matter.
   pub fn record_distortion(
     &self,
     context: &mut RasterContext<'_>,
@@ -185,12 +187,14 @@ impl CompositedPass {
   ) {
     Self::bind_common(context, (view, textures), (composited, sky));
 
-    for (batch, pipeline) in Self::list_distorted().zip(&self.pipelines.2) {
-      context.bind(&layouts[batch.layout.get_index()]);
+    for (layout, pipeline) in StaticLayout::ALL.into_iter().zip(&self.pipelines.2) {
+      let list: u64 = StaticBatch::get_pass_list(layout, StaticSurfacePass::Distortion).into();
+
+      context.bind(&layouts[layout.get_index()]);
       context.get_pass().set_pipeline(pipeline);
 
       for args in args {
-        context.get_pass().draw_indirect(args, batch.get_index() as u64 * 16);
+        context.get_pass().draw_indirect(args, list * 16);
       }
     }
   }
@@ -210,7 +214,7 @@ impl CompositedPass {
     context.get_pass().set_bind_group(0, &view.bind_group, &[]);
     context.get_pass().set_bind_group(1, textures, &[]);
 
-    for (batch, pipeline) in Self::list_distorted().zip(&self.pipelines.3) {
+    for (batch, pipeline) in Self::list_selectable().zip(&self.pipelines.3) {
       context.bind(&layouts[batch.layout.get_index()]);
       context.get_pass().set_pipeline(pipeline);
 
@@ -220,8 +224,8 @@ impl CompositedPass {
     }
   }
 
-  /// The batches a distorting surface may stand in: either composited class, of every layout.
-  fn list_distorted() -> impl Iterator<Item = StaticBatch> {
+  /// The batches a selected composited surface may stand in: either composited class, of every layout.
+  fn list_selectable() -> impl Iterator<Item = StaticBatch> {
     StaticBatch::list().filter(|batch| batch.class.is_composited())
   }
 
@@ -272,22 +276,22 @@ impl CompositedPass {
       bind_group_layouts: &[Some(view_layout), Some(texture_layout), Some(scene_layout)],
       ..Default::default()
     });
-    let composited = Self::create_batch_pipelines(
+    let composited = Self::create_layout_pipelines(
       device,
       &module,
       (&composited_layout, COMPOSITED_FRAGMENT),
       (ViewTargets::SCENE, Some(COMPOSITED_BLEND), wgpu::ColorWrites::ALL),
-      StaticBatch::list_composited(),
+      StaticBatch::list_composited().map(|batch| batch.layout),
     )?;
-    let wallmarks = Self::create_batch_pipelines(
+    let wallmarks = Self::create_layout_pipelines(
       device,
       &module,
       (&wallmark_layout, "fs_wallmark"),
       (ViewTargets::ALBEDO, Some(COMPOSITED_BLEND), wgpu::ColorWrites::ALL),
-      StaticBatch::list_wallmarks(),
+      StaticBatch::list_wallmarks().map(|batch| batch.layout),
     )?;
     // Blended over what the water and the particles wrote, as `distort(true)` passes blend by their alpha.
-    let distortion = Self::create_batch_pipelines(
+    let distortion = Self::create_layout_pipelines(
       device,
       &module,
       (&composited_layout, "fs_composited_distort"),
@@ -296,26 +300,26 @@ impl CompositedPass {
         Some(wgpu::BlendState::ALPHA_BLENDING),
         wgpu::ColorWrites::ALL,
       ),
-      Self::list_distorted(),
+      StaticLayout::ALL.into_iter(),
     )?;
     // The mark alone, in the alpha, over whatever the surface behind it marked.
-    let selection = Self::create_batch_pipelines(
+    let selection = Self::create_layout_pipelines(
       device,
       &module,
       (&wallmark_layout, "fs_composited_selected"),
       (ViewTargets::MATERIAL, None, wgpu::ColorWrites::ALPHA),
-      Self::list_distorted(),
+      Self::list_selectable().map(|batch| batch.layout),
     )?;
 
     Ok((composited, wallmarks, distortion, selection))
   }
 
-  fn create_batch_pipelines(
+  fn create_layout_pipelines(
     device: &wgpu::Device,
     module: &wgpu::ShaderModule,
     (pipeline_layout, fragment): (&wgpu::PipelineLayout, &str),
     (format, blend, write_mask): (wgpu::TextureFormat, Option<wgpu::BlendState>, wgpu::ColorWrites),
-    batches: impl Iterator<Item = StaticBatch>,
+    layouts: impl Iterator<Item = StaticLayout>,
   ) -> XrfResult<Vec<wgpu::RenderPipeline>> {
     let targets: [Option<wgpu::ColorTargetState>; 1] = [Some(wgpu::ColorTargetState {
       format,
@@ -323,11 +327,11 @@ impl CompositedPass {
       write_mask,
     })];
 
-    batches
-      .map(|batch| {
+    layouts
+      .map(|layout| {
         // A model and a vertex-lit level surface composited over the frame are lit by their vertices, as the engine's
         // forward passes light them.
-        let vertex: &str = match batch.layout {
+        let vertex: &str = match layout {
           StaticLayout::Model if fragment == COMPOSITED_FRAGMENT => "vs_model_lit",
           StaticLayout::Baked if fragment == COMPOSITED_FRAGMENT => "vs_baked_lit",
           layout => layout.get_vertex_entry(),

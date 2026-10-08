@@ -17,7 +17,7 @@ pub struct StaticObjectProxy {
   pub bones: Option<(Span, u32)>,
   pub rows: Vec<ProxyHandle<StaticRow>>,
   /// Entries of the visible list it may need a batch.
-  pub capacities: [u32; StaticBatch::COUNT],
+  pub capacities: [u32; StaticBatch::LIST_COUNT],
   pub transform: Mat4,
   /// Its bounding sphere in renderer space, as its model stands in its place.
   pub sphere: Vec4,
