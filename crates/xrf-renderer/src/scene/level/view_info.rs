@@ -11,7 +11,6 @@ use crate::contract::render_shadow_settings::RenderShadowSettings;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::pass::ambient_occlusion_uniform::AmbientOcclusionUniform;
 use crate::pass::contact_shadow_uniform::ContactShadowUniform;
-use crate::pass::glass_uniform::GlassUniform;
 use crate::pass::lighting_uniform::LightingUniform;
 use crate::pass::present_uniform::PresentUniform;
 use crate::pass::static_cull_params::StaticCullParams;
@@ -19,7 +18,6 @@ use crate::pass::static_occlusion_uniform::StaticOcclusionUniform;
 use crate::pass::wet_uniform::WetUniform;
 use crate::pass::wind_uniform::WindUniform;
 use crate::scene::level::sky_views::SkyViews;
-use crate::scene::static_scene::static_layout::StaticLayout;
 
 /// One frame of a view as its preparation leaves it: the camera and sun it is drawn by, what its options and weather
 /// decided it draws, and what its passes read of that. Prepared before the frame graph is declared, and read by it.
@@ -80,14 +78,6 @@ pub struct ViewInfo {
   pub sun_sprite: Option<(String, Vec4)>,
   /// Whether the surfaces are wetted this frame: while it rains, or, enhanced, while the level is still wet after.
   pub is_wet: bool,
-  /// Composited clusters sorted back to front, and the runs of them alike in layout, in their order: the layout,
-  /// the run's first entry in the sorted list and how many.
-  pub sorted_count: u32,
-  pub sorted_runs: Vec<(StaticLayout, u32, u32)>,
-  /// Whether the scene's distorting surfaces are drawn into the distortion target this frame.
-  pub is_glass_distorting: bool,
-  /// The enhanced glass's strengths, where it draws the scene's glass this frame.
-  pub glass: Option<GlassUniform>,
   /// The colour the selection is outlined in, or none while nothing it names is drawn.
   pub selection_color: Option<[f32; 3]>,
 }
@@ -129,10 +119,6 @@ impl Default for ViewInfo {
       sky: None,
       sun_sprite: None,
       is_wet: false,
-      sorted_count: 0,
-      is_glass_distorting: false,
-      glass: None,
-      sorted_runs: Vec::new(),
       selection_color: None,
     }
   }
