@@ -1,40 +1,25 @@
 use crate::frame::depth_pyramid::DepthPyramid;
+use crate::frame::frame_texture::FrameTexture;
+use crate::frame::history::History;
+use crate::frame::reflection_frame::ReflectionFrame;
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::trace_request_list::TraceRequestList;
 
-/// What the screen-space reflections keep from one frame to the next, at the size they trace at: the reflection and
-/// its variance, the surface's world normal and roughness, and the distance along the view of the point, how many
-/// frames its reflection holds and the distance through it to what it reflects; one set read while the other is
-/// written, swapped every frame. Beside them, at the frame's size: the frame's depth reduced to its nearest, which
-/// each frame rebuilds, and the last frame's scene as it stood before the sun shafts and the flares, with the depth it
-/// was drawn over, which a hit reads its colour from; and the reflection resolved again at the frame's size, a pair
-/// read and written in turn as the others are, which combine reads.
+/// What the screen-space reflections keep from one frame to the next: what each frame writes for the next, a side
+/// read while the other is written; at the frame's size, the frame's depth reduced to its nearest, which each frame
+/// rebuilds from the depth as it stood before the grass drew, and the last frame's scene as it stood before the sun
+/// shafts and the flares, with the depth target it was drawn over, which a hit reads its colour from; and the rays the
+/// trace leaves to the scene pass.
 pub struct ReflectionHistory {
-  pub radiances: [wgpu::Texture; 2],
-  pub radiance_views: [wgpu::TextureView; 2],
-  pub surfaces: [wgpu::Texture; 2],
-  pub surface_views: [wgpu::TextureView; 2],
-  pub helds: [wgpu::Texture; 2],
-  pub held_views: [wgpu::TextureView; 2],
-  pub fulls: [wgpu::Texture; 2],
-  pub full_views: [wgpu::TextureView; 2],
+  pub frames: History<ReflectionFrame>,
+  /// The size it traces at.
+  pub size: (u32, u32),
   pub pyramid: DepthPyramid,
-  pub scene: wgpu::Texture,
-  pub scene_view: wgpu::TextureView,
-  pub depth: wgpu::Texture,
-  pub depth_view: wgpu::TextureView,
-  /// This frame's depth as it stood before the grass drew: what the rays are walked over, so a bush's billboards
-  /// stand in for the volume they are and never stop a ray going for what lies behind them.
-  pub traced_depth: wgpu::Texture,
-  pub traced_depth_view: wgpu::TextureView,
-  /// The set this frame writes.
-  pub index: usize,
-  /// Whether the set this frame reads holds a frame.
-  pub is_valid: bool,
+  pub scene: FrameTexture,
+  /// The view's depth target the last frame drew into, which it keeps while the view draws into the other.
+  pub depth: wgpu::TextureView,
   /// Whether the scene and depth kept hold the last frame.
   pub is_source_valid: bool,
-  /// Frames traced since it was made, which turns each pixel's noise.
-  pub frame: u32,
   /// The rays the trace leaves to the scene pass each frame, a quarter of the traced pixels at most while it traces, a
   /// stub otherwise.
   pub requests: TraceRequestList,
@@ -50,126 +35,68 @@ impl ReflectionHistory {
   pub const REQUEST_SHARE: u32 = 4;
 
   /// The history at the size traced at, and the pyramid and the kept scene over the frame's size.
-  pub fn new(device: &wgpu::Device, (width, height): (u32, u32), (frame_width, frame_height): (u32, u32)) -> Self {
-    let create = |label: &str, format: wgpu::TextureFormat| -> (wgpu::Texture, wgpu::TextureView) {
-      let texture: wgpu::Texture = device.create_texture(&wgpu::TextureDescriptor {
-        label: Some(label),
-        size: wgpu::Extent3d {
-          width,
-          height,
-          depth_or_array_layers: 1,
-        },
-        mip_level_count: 1,
-        sample_count: 1,
-        dimension: wgpu::TextureDimension::D2,
-        format,
-        usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
-        view_formats: &[],
-      });
-      let view: wgpu::TextureView = texture.create_view(&Default::default());
-
-      (texture, view)
+  pub fn new(device: &wgpu::Device, size: (u32, u32), frame_size: (u32, u32)) -> Self {
+    let create = |label: &str, size: (u32, u32), format: wgpu::TextureFormat, usage: wgpu::TextureUsages| {
+      FrameTexture::new(device, label, size, format, usage)
     };
-    // What the frame's targets are copied into, at their size.
-    let keep = |label: &str, format: wgpu::TextureFormat| -> (wgpu::Texture, wgpu::TextureView) {
-      let texture: wgpu::Texture = device.create_texture(&wgpu::TextureDescriptor {
-        label: Some(label),
-        size: wgpu::Extent3d {
-          width: frame_width,
-          height: frame_height,
-          depth_or_array_layers: 1,
-        },
-        mip_level_count: 1,
-        sample_count: 1,
-        dimension: wgpu::TextureDimension::D2,
-        format,
-        usage: wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::TEXTURE_BINDING,
-        view_formats: &[],
-      });
-      let view: wgpu::TextureView = texture.create_view(&Default::default());
-
-      (texture, view)
-    };
-    let (scene, scene_view) = keep("reflection source scene", ViewTargets::SCENE);
-    let (depth, depth_view) = keep("reflection source depth", ViewTargets::DEPTH);
-    let (traced_depth, traced_depth_view) = keep("reflection traced depth", ViewTargets::DEPTH);
-    let pair = |labels: [&str; 2], format: wgpu::TextureFormat| {
-      let [(first, first_view), (second, second_view)] = labels.map(|label| create(label, format));
-
-      ([first, second], [first_view, second_view])
-    };
-    let (radiances, radiance_views) = pair(["reflection history 0", "reflection history 1"], Self::RADIANCE_FORMAT);
-    let (surfaces, surface_views) = pair(
-      ["reflection history surface 0", "reflection history surface 1"],
-      Self::SURFACE_FORMAT,
-    );
-    let (helds, held_views) = pair(
-      ["reflection history held 0", "reflection history held 1"],
-      Self::HELD_FORMAT,
-    );
-    let full = |label: &str| -> (wgpu::Texture, wgpu::TextureView) {
-      let texture: wgpu::Texture = device.create_texture(&wgpu::TextureDescriptor {
-        label: Some(label),
-        size: wgpu::Extent3d {
-          width: frame_width,
-          height: frame_height,
-          depth_or_array_layers: 1,
-        },
-        mip_level_count: 1,
-        sample_count: 1,
-        dimension: wgpu::TextureDimension::D2,
-        format: Self::RADIANCE_FORMAT,
-        usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
-        view_formats: &[],
-      });
-      let view: wgpu::TextureView = texture.create_view(&Default::default());
-
-      (texture, view)
-    };
-    let [(full_first, full_first_view), (full_second, full_second_view)] =
-      ["reflection history full 0", "reflection history full 1"].map(full);
+    let none: wgpu::TextureUsages = wgpu::TextureUsages::empty();
+    let copied: wgpu::TextureUsages = wgpu::TextureUsages::COPY_DST;
 
     Self {
-      radiances,
-      radiance_views,
-      surfaces,
-      surface_views,
-      helds,
-      held_views,
-      fulls: [full_first, full_second],
-      full_views: [full_first_view, full_second_view],
-      pyramid: DepthPyramid::new_nearest(device, frame_width, frame_height, Self::PYRAMID_LEVELS),
-      scene,
-      scene_view,
-      depth,
-      depth_view,
-      traced_depth,
-      traced_depth_view,
-      index: 0,
-      is_valid: false,
+      frames: History::new(|side| ReflectionFrame {
+        radiance: create(
+          ["reflection history 0", "reflection history 1"][side],
+          size,
+          Self::RADIANCE_FORMAT,
+          none,
+        ),
+        surface: create(
+          ["reflection history surface 0", "reflection history surface 1"][side],
+          size,
+          Self::SURFACE_FORMAT,
+          none,
+        ),
+        held: create(
+          ["reflection history held 0", "reflection history held 1"][side],
+          size,
+          Self::HELD_FORMAT,
+          none,
+        ),
+        full: create(
+          ["reflection history full 0", "reflection history full 1"][side],
+          frame_size,
+          Self::RADIANCE_FORMAT,
+          none,
+        ),
+      }),
+      size,
+      pyramid: DepthPyramid::new_nearest(device, frame_size.0, frame_size.1, Self::PYRAMID_LEVELS),
+      scene: create("reflection source scene", frame_size, ViewTargets::SCENE, copied),
+      depth: ViewTargets::create_depth(device, frame_size),
       is_source_valid: false,
-      frame: 0,
       requests: TraceRequestList::new(device, "reflection trace", 0),
     }
   }
 
   /// Whether it is traced at a size over a frame of another.
   pub fn is_sized(&self, size: (u32, u32), frame_size: (u32, u32)) -> bool {
-    self.get_size() == size && (self.pyramid.width, self.pyramid.height) == frame_size
+    self.size == size && (self.pyramid.width, self.pyramid.height) == frame_size
   }
 
-  /// The size it is traced at.
-  pub fn get_size(&self) -> (u32, u32) {
-    let size: wgpu::Extent3d = self.radiances[0].size();
-
-    (size.width, size.height)
-  }
-
-  /// The written set becomes the one read, and the scene copied this frame the one the next reads.
-  pub fn swap(&mut self) {
-    self.index = 1 - self.index;
-    self.is_valid = true;
+  /// The written set becomes the one read, the scene copied this frame the one the next reads, and the depth target
+  /// this frame drew into (`depth`, the view's) the one it keeps, the view drawing into the other next.
+  pub fn swap(&mut self, depth: &mut wgpu::TextureView) {
+    self.frames.swap();
+    std::mem::swap(&mut self.depth, depth);
     self.is_source_valid = true;
-    self.frame = self.frame.wrapping_add(1);
+  }
+
+  /// Bytes its textures and the pyramid take.
+  pub fn get_memory(&self) -> u64 {
+    let frames: u64 = self.frames.get_sides().iter().map(|frame| frame.get_memory()).sum();
+    let (width, height) = self.scene.get_size();
+    let depth: u64 = u64::from(width) * u64::from(height) * 4;
+
+    frames + self.scene.get_memory() + depth + self.pyramid.get_memory()
   }
 }

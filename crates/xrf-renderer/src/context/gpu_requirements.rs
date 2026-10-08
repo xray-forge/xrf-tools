@@ -36,3 +36,8 @@ pub fn get_ray_query_features(features: wgpu::Features) -> wgpu::Features {
 pub fn get_missing_features(features: wgpu::Features) -> wgpu::Features {
   REQUIRED_FEATURES.difference(features)
 }
+
+/// Whether `device` traces rays against the scene's geometry.
+pub fn can_trace(device: &wgpu::Device) -> bool {
+  device.features().contains(RAY_QUERY_FEATURES)
+}

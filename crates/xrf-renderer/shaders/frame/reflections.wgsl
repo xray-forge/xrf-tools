@@ -11,7 +11,8 @@
 // Stochastic screen-space reflections on the frame's surfaces, at the size the quality traces at, a pixel per `ratio`
 // by `ratio` of the frame. Each reflecting pixel's ray leaves in a direction drawn from its surface's GGX lobe (a
 // puddle's water's, from the water's own height over the ground) by blue noise that turns every frame, and walks the
-// nearest depth pyramid of the frame as it stood before the grass drew (`traced_depth`): a bush's or a tuft's
+// nearest depth pyramid of the frame as it stood before the grass drew (`nearest_depth`, its first level that depth
+// itself): a bush's or a tuft's
 // billboards stand in for a volume a reflection sees through, so they never stop a ray, and what lies behind them
 // answers; the trees' leaves are the static scene's and stand
 // (`common/reflection_trace`); what it met is lit as the frame shows it, faded towards the screen's edges and the
@@ -274,7 +275,7 @@ fn remembered_radiance(texel: vec2<i32>, hit: vec3<f32>) -> vec4<f32> {
 
   let size: vec2<f32> = camera.viewport.xy;
   let uv: vec2<f32> = (vec2<f32>(texel) + 0.5) / size;
-  let depth: f32 = textureLoad(traced_depth, texel, 0);
+  let depth: f32 = textureLoad(nearest_depth, texel, 0).x;
   let world: vec3<f32> = camera_unproject(vec2<f32>(uv.x * 2.0 - 1.0, 1.0 - uv.y * 2.0), depth);
   let previous: vec4<f32> = camera.view_projection_previous * vec4<f32>(world, 1.0);
 
@@ -373,7 +374,7 @@ fn met_radiance(texel: vec2<i32>, hit: vec3<f32>, origin: vec3<f32>) -> vec4<f32
 fn shown_point(texel: vec2<i32>) -> vec3<f32> {
   let held: vec2<i32> = clamp(texel, vec2<i32>(0), vec2<i32>(camera.viewport.xy) - 1);
 
-  return camera_view_position(vec2<f32>(held) + 0.5, max(textureLoad(traced_depth, held, 0), 1e-7));
+  return camera_view_position(vec2<f32>(held) + 0.5, max(textureLoad(nearest_depth, held, 0).x, 1e-7));
 }
 
 // The view space normal of the surface the depth shows at a texel, from the points about it, the nearer neighbour
@@ -403,7 +404,7 @@ fn hit_confidence(walk: RayWalk, origin: vec3<f32>, reach: f32) -> f32 {
   }
 
   let texel: vec2<i32> = vec2<i32>(hit.xy * size);
-  let surface: f32 = textureLoad(traced_depth, texel, 0);
+  let surface: f32 = textureLoad(nearest_depth, texel, 0).x;
 
   if (surface <= 0.0) {
     return 0.0;

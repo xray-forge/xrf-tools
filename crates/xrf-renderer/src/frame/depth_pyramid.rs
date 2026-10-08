@@ -69,6 +69,17 @@ impl DepthPyramid {
     }
   }
 
+  /// Bytes its levels take.
+  pub fn get_memory(&self) -> u64 {
+    (0..self.levels)
+      .map(|level| {
+        let (width, height) = self.get_level_size(level);
+
+        u64::from(width) * u64::from(height) * 4
+      })
+      .sum()
+  }
+
   /// The size of one level.
   pub fn get_level_size(&self, level: u32) -> (u32, u32) {
     ((self.width >> level).max(1), (self.height >> level).max(1))
