@@ -2530,6 +2530,11 @@ impl SceneView {
     let mut reflection_ends: Option<GraphTexture> = None;
     let mut enhanced_bloom: Option<GraphTexture> = None;
 
+    // The finished frame at the drawn size, and the image the window shows where that differs: each stage of the chain
+    // writes a target of its own that the next reads, so nothing is copied back.
+    let mut frame: GraphTexture = handles.scene;
+    let mut shown: Option<GraphTexture> = None;
+
     if is_lit {
       indirect_light = scene_view.add_lighting_passes(
         (&mut *graph, &mut *bindings, runtime),
@@ -3187,7 +3192,7 @@ impl SceneView {
             .enumerate()
             {
               let parameters: SmaaParameters = SmaaParameters {
-                source: handles.scene,
+                source: frame,
                 edges_texture,
                 weights_texture,
                 area_texture: area,
@@ -3208,7 +3213,7 @@ impl SceneView {
           }
           _ => {
             let parameters: FxaaParameters = FxaaParameters {
-              frame: handles.scene,
+              frame,
               frame_sampler: passes.fxaa.get_sampler(),
             };
 
@@ -3223,10 +3228,8 @@ impl SceneView {
           }
         }
 
-        Self::add_copy(&mut *graph, "smoothed copy", target, handles.scene);
+        frame = target;
       }
-
-      let resolved: GraphTexture = upscaled.map_or(handles.scene, |[upscaled, _]| upscaled);
 
       match (
         resolve,
@@ -3242,13 +3245,16 @@ impl SceneView {
             handles,
             (fsr, &scene_view.info.fsr),
           );
-          Self::add_copy(&mut *graph, "fsr2 output", history, resolved);
+          match upscaled {
+            Some(_) => shown = Some(history),
+            None => frame = history,
+          }
         }
         (Some("temporal"), _, Some(history), _) => {
           let index: usize = history.index;
           let target: GraphTexture = bindings.import_view(&mut *graph, "temporal history", &history.views[index]);
           let parameters: TemporalParameters = TemporalParameters {
-            frame: handles.scene,
+            frame,
             depth_target: handles.depth,
             history: bindings.import_view(&mut *graph, "temporal history", &history.views[1 - index]),
             history_sampler: passes.temporal.get_sampler(),
@@ -3265,14 +3271,14 @@ impl SceneView {
               wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
             ))
             .record(move |context| passes.temporal.record(context, view, &parameters));
-          Self::add_copy(&mut *graph, "temporal output", target, resolved);
+          match upscaled {
+            Some(_) => shown = Some(target),
+            None => frame = target,
+          }
         }
         (Some(_), _, _, Some(_)) => {
           if let Some([upscaled, _]) = upscaled {
-            let parameters: UpscaleParameters = UpscaleParameters {
-              source: handles.scene,
-              upscale,
-            };
+            let parameters: UpscaleParameters = UpscaleParameters { source: frame, upscale };
 
             graph
               .add_raster_pass("upscale")
@@ -3282,6 +3288,7 @@ impl SceneView {
                 wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
               ))
               .record(move |context| passes.upscale.record(context, 0, &parameters));
+            shown = Some(upscaled);
           }
         }
         _ => {}
@@ -3289,7 +3296,7 @@ impl SceneView {
 
       if let (true, Some([upscaled, sharpened])) = (is_sharpened, upscaled) {
         let parameters: UpscaleParameters = UpscaleParameters {
-          source: upscaled,
+          source: shown.unwrap_or(upscaled),
           upscale,
         };
 
@@ -3301,6 +3308,7 @@ impl SceneView {
             wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
           ))
           .record(move |context| passes.upscale.record(context, 1, &parameters));
+        shown = Some(sharpened);
       }
 
       if is_adapting {
@@ -3330,12 +3338,8 @@ impl SceneView {
 
     Some(SceneOutput {
       targets: handles,
-      shown: upscaled.map_or(
-        handles.scene,
-        |[upscaled, sharpened]| {
-          if is_sharpened { sharpened } else { upscaled }
-        },
-      ),
+      scene: frame,
+      shown: shown.or(upscaled.map(|[upscaled, _]| upscaled)).unwrap_or(frame),
       present: runtime.push_uniform(&scene_view.info.present),
       lighting: lit.lighting,
       indirect_light: indirect_light.unwrap_or(unlit),
