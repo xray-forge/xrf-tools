@@ -11,7 +11,6 @@ use crate::pass::lighting_uniform::LightingUniform;
 use crate::pass::present_uniform::PresentUniform;
 use crate::pass::static_cull_params::StaticCullParams;
 use crate::pass::static_occlusion_uniform::StaticOcclusionUniform;
-use crate::pass::wind_uniform::WindUniform;
 
 /// One frame of a view as its preparation leaves it: the camera and sun it is drawn by, what its options and weather
 /// decided it draws, and what its passes read of that. Prepared before the frame graph is declared, and read by it.
@@ -26,14 +25,10 @@ pub struct ViewInfo {
   /// What the static scene is drawn with off the viewport (the surroundings cube): textured, the viewport's bumping
   /// and the baked hemisphere's strength.
   pub switches: Vec4,
-  /// The wind's amplitude and the time the trees sway by: what has still shadows drawn again.
-  pub sway: (f32, f32),
   /// The cull's parameters for this frame's view and options.
   pub cull: StaticCullParams,
   /// The view the depth pyramid was reduced through, which the early cull tests against.
   pub occlusion: StaticOcclusionUniform,
-  /// How the trees sway this frame, which every static draw reads.
-  pub wind: WindUniform,
   /// The viewport's rectangle in its window, which the frame is upscaled to where it is drawn smaller.
   pub output: RenderRect,
   pub shadow_settings: RenderShadowSettings,
@@ -64,10 +59,8 @@ impl Default for ViewInfo {
       matrices: (Mat4::IDENTITY, Mat4::IDENTITY),
       sun_direction: RenderLighting::default().get_sun_direction(),
       switches: Vec4::new(1.0, 1.0, 1.0, 0.0),
-      sway: (0.0, 0.0),
       cull: StaticCullParams::default(),
       occlusion: bytemuck::Zeroable::zeroed(),
-      wind: WindUniform::default(),
       output: RenderRect::default(),
       shadow_settings: RenderShadowSettings::default(),
       corrections: RenderImageCorrections::default(),
