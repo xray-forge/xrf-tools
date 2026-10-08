@@ -23,7 +23,6 @@ pub(crate) mod light_shadow_face;
 pub(crate) mod light_shadow_set;
 pub(crate) mod lighting_handles;
 pub(crate) mod lights_frame;
-pub(crate) mod lights_view;
 pub(crate) mod loader_answer;
 pub(crate) mod overhead_map;
 pub(crate) mod overhead_shape;

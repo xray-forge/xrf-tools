@@ -4,7 +4,6 @@ use crate::camera::camera_view::CameraView;
 use crate::contract::render_debanding_quality::RenderDebandingQuality;
 use crate::contract::render_debug_view::RenderDebugView;
 use crate::contract::render_image_corrections::RenderImageCorrections;
-use crate::contract::render_lights_settings::RenderLightsSettings;
 use crate::contract::render_rect::RenderRect;
 use crate::contract::render_shadow_settings::RenderShadowSettings;
 use crate::lighting::render_lighting::RenderLighting;
@@ -38,7 +37,6 @@ pub struct ViewInfo {
   /// The viewport's rectangle in its window, which the frame is upscaled to where it is drawn smaller.
   pub output: RenderRect,
   pub shadow_settings: RenderShadowSettings,
-  pub lights_settings: RenderLightsSettings,
   /// What corrects the finished image, and what the present shows.
   pub corrections: RenderImageCorrections,
   pub debug_view: RenderDebugView,
@@ -74,7 +72,6 @@ impl Default for ViewInfo {
       wind: WindUniform::default(),
       output: RenderRect::default(),
       shadow_settings: RenderShadowSettings::default(),
-      lights_settings: RenderLightsSettings::default(),
       corrections: RenderImageCorrections::default(),
       debug_view: RenderDebugView::Final,
       is_wireframe: false,

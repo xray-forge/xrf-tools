@@ -1,12 +1,26 @@
+use xrf_renderer_core::{
+  FrameGraph, GraphBindings, GraphBuffer, GraphBufferAccess, GraphColorAttachment, GraphRuntime, StorageArray,
+  StorageArrayMut, UniformBinding,
+};
+
 use crate::camera::camera_view::CameraView;
 use crate::contract::render_light_shadow_filter::RenderLightShadowFilter;
 use crate::contract::render_lights_report::RenderLightsReport;
+use crate::contract::render_lights_settings::RenderLightsSettings;
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::stats_readback::StatsReadback;
+use crate::frame::view_target_handles::ViewTargetHandles;
+use crate::pass::contact_shadow_uniform::ContactShadowUniform;
+use crate::pass::level_passes::LevelPasses;
+use crate::pass::light_binning_parameters::LightBinningParameters;
 use crate::pass::light_record::LightRecord;
 use crate::pass::light_volume_record::LightVolumeRecord;
 use crate::pass::light_volumes_uniform::LightVolumesUniform;
+use crate::pass::lights_parameters::LightsParameters;
 use crate::pass::lights_uniform::LightsUniform;
+use crate::pass::view_binding::ViewBinding;
+use crate::scene::level::feature::light_buffers::LightBuffers;
+use crate::scene::level::lighting_handles::LightingHandles;
 
 /// Lights standing in view at most in one frame: the nearest are kept.
 pub const MAX_LIGHTS: usize = 1024;
@@ -20,7 +34,9 @@ const OVERFLOW_BYTES: u64 = 16;
 
 /// A level's local lights as one view lights its frame with them: the nearest in its camera, written out by the scene's
 /// `LevelLights::prepare` in its view space, the clusters the lights pass bins them into, and what they came to.
-pub struct LightsView {
+pub struct LightsFeature {
+  /// The lights as the view asks for them this frame.
+  pub settings: RenderLightsSettings,
   pub records: Vec<LightRecord>,
   pub record_buffer: wgpu::Buffer,
   /// The shafts the shadowed lights draw this frame, the slices each draws, and what they all share.
@@ -40,7 +56,7 @@ pub struct LightsView {
   pub random: u64,
 }
 
-impl LightsView {
+impl LightsFeature {
   pub fn new(device: &wgpu::Device) -> Self {
     let storage = |label: &str, size: u64| -> wgpu::Buffer {
       device.create_buffer(&wgpu::BufferDescriptor {
@@ -52,6 +68,7 @@ impl LightsView {
     };
 
     Self {
+      settings: RenderLightsSettings::default(),
       records: Vec::with_capacity(MAX_LIGHTS),
       record_buffer: storage("light records", (MAX_LIGHTS * size_of::<LightRecord>()) as u64),
       volumes: Vec::with_capacity(MAX_LIGHTS),
@@ -126,5 +143,90 @@ impl LightsView {
       dropped,
       ..self.report
     }
+  }
+
+  /// Adds the clusters' counts cleared and, while any light stands in view, the records binned into the clusters;
+  /// answers the lights as the graph holds them.
+  pub fn add_binning_passes<'a>(
+    &'a self,
+    (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
+    passes: LevelPasses<'a>,
+  ) -> LightBuffers {
+    let buffers: LightBuffers = LightBuffers {
+      counts: bindings.import_buffer(graph, "light cluster counts", &self.counts),
+      records: bindings.import_buffer(graph, "light records", &self.record_buffer),
+      items: bindings.import_buffer(graph, "light cluster items", &self.items),
+      uniform: runtime.push_uniform(&self.uniform),
+    };
+    let counts: GraphBuffer = buffers.counts;
+
+    graph
+      .add_encoder_pass("light counts clear")
+      .buffer(counts, GraphBufferAccess::CopyDestination)
+      .record(move |context| self.clear_overflow(context.get_encoder()));
+
+    if self.count > 0 {
+      let parameters: LightBinningParameters = LightBinningParameters {
+        records: StorageArray::new(buffers.records),
+        counts: StorageArrayMut::new(buffers.counts),
+        items: StorageArrayMut::new(buffers.items),
+        lights: buffers.uniform,
+      };
+
+      graph
+        .add_compute_pass("light binning")
+        .parameters(&parameters)
+        .record(move |context| passes.lights.record_binning(context, &parameters));
+    }
+
+    buffers
+  }
+
+  /// Adds every light in view drawn into the light target over the sun, through the scene's shadow `atlas`, each
+  /// marching its contact shadows by `contact` where they are marched (`is_contact`); nothing while none stands in view.
+  pub fn add_draw_passes<'a>(
+    &self,
+    (graph, bindings): (&mut FrameGraph<'a>, &mut GraphBindings<'a>),
+    passes: LevelPasses<'a>,
+    (view, textures, atlas): (&'a ViewBinding, &'a wgpu::BindGroup, &'a wgpu::TextureView),
+    (targets, lit, buffers): (ViewTargetHandles, LightingHandles<'a>, LightBuffers),
+    (contact, is_contact): (UniformBinding<ContactShadowUniform>, bool),
+  ) {
+    if self.count == 0 {
+      return;
+    }
+
+    let parameters: LightsParameters = LightsParameters {
+      normal_target: targets.normal,
+      material_target: targets.material,
+      depth_target: targets.depth,
+      material_lut: lit.material_lut,
+      lut_sampler: lit.lut_sampler,
+      records: StorageArray::new(buffers.records),
+      counts: StorageArray::new(buffers.counts),
+      items: StorageArray::new(buffers.items),
+      lights: buffers.uniform,
+      shadow_atlas: bindings.import_view(graph, "light shadow atlas", atlas),
+      contact,
+    };
+
+    graph
+      .add_raster_pass("lights")
+      .parameters(&parameters)
+      .color(GraphColorAttachment::new(targets.light, wgpu::LoadOp::Load))
+      .record(move |context| {
+        passes
+          .lights
+          .record_draw(context, view, &parameters, (textures, is_contact))
+      });
+  }
+
+  /// Adds the binning's overflow read back, for a report a frame or more later: an effect the graph cannot see.
+  pub fn add_overflow_pass<'a>(&'a self, graph: &mut FrameGraph<'a>, buffers: LightBuffers) {
+    graph
+      .add_encoder_pass("light overflow")
+      .buffer(buffers.counts, GraphBufferAccess::CopySource)
+      .keep()
+      .record(move |context| self.record_overflow(context.get_encoder()));
   }
 }
