@@ -91,7 +91,6 @@ use crate::scene::level::lighting_handles::LightingHandles;
 use crate::scene::level::lights_frame::LightsFrame;
 use crate::scene::level::lights_view::LightsView;
 use crate::scene::level::scene_output::SceneOutput;
-use crate::scene::level::scene_renderer::SceneRenderer;
 use crate::scene::level::shadow_frame::ShadowFrame;
 use crate::scene::level::shadow_sway::ShadowSway;
 use crate::scene::level::surroundings_cube::SurroundingsCube;
@@ -128,9 +127,6 @@ pub struct SceneView {
   info: ViewInfo,
   /// What the view keeps from one frame to the next.
   state: ViewState,
-  /// What draws it, and what that keeps between frames: the passes' buffers and bind groups, and the effects drawn from
-  /// the view.
-  renderer: SceneRenderer,
   /// Its feature units.
   features: SceneFeatures,
 }
@@ -160,8 +156,7 @@ impl SceneView {
     Self {
       info: ViewInfo::default(),
       state: ViewState::new(device, queue),
-      renderer: SceneRenderer::new(device, view_layout, scene.statics.cull.args.size()),
-      features: SceneFeatures::new(device, queue),
+      features: SceneFeatures::new((device, queue), view_layout, scene.statics.cull.args.size()),
     }
   }
 
@@ -256,7 +251,7 @@ impl SceneView {
     }
 
     self
-      .renderer
+      .features
       .shadows
       .prepare(device, options.features.shadows.resolution);
 
@@ -449,9 +444,9 @@ impl SceneView {
       &self.state.foliage_values,
       // Where the puddles stood last frame, which no tuft is planted in: the wet readies after the grass.
       (
-        &self.renderer.level_surface.puddles,
+        &self.features.level_surface.puddles,
         GrassPuddlesUniform::new(
-          self.renderer.level_surface.get_window(),
+          self.features.level_surface.get_window(),
           self.features.wet.has_puddles(),
         ),
       ),
@@ -570,14 +565,14 @@ impl SceneView {
 
   /// Where the rain cover and the level's surface stand now.
   fn get_overhead_windows(&self) -> OverheadWindows {
-    let (surface, surface_shape): (Vec4, Vec4) = self.renderer.level_surface.get_window();
+    let (surface, surface_shape): (Vec4, Vec4) = self.features.level_surface.get_window();
 
     OverheadWindows {
-      cover: self.renderer.rain_cover.get_window(),
-      cover_shape: self.renderer.rain_cover.get_shape(),
+      cover: self.features.rain_cover.get_window(),
+      cover_shape: self.features.rain_cover.get_shape(),
       surface,
       surface_shape,
-      water: self.renderer.level_surface.get_water_window(),
+      water: self.features.level_surface.get_water_window(),
     }
   }
 
@@ -590,19 +585,17 @@ impl SceneView {
     encoder: &mut FrameEncoder,
     (view_layout, textures): (&wgpu::BindGroupLayout, &TextureCache),
   ) {
-    let SceneView {
-      info,
-      renderer,
-      features,
-      ..
-    } = self;
-    let SceneRenderer {
+    let SceneView { info, features, .. } = self;
+    let SceneFeatures {
       shadows,
       rain_cover,
       level_surface,
       surroundings,
+      reflections,
+      rain,
+      wet,
       ..
-    } = renderer;
+    } = features;
     let statics: &StaticScene = &scene.statics;
     let frame: ShadowFrame<'_> = ShadowFrame {
       scene: statics,
@@ -621,20 +614,15 @@ impl SceneView {
     let mut load: FrameLoad = shadows.get_load();
 
     // The cube is for the traced reflections alone; the engine's reflect its own.
-    if features.reflections.get_settings().is_drawn() {
-      surroundings.prepare(
-        device,
-        encoder,
-        &frame,
-        (features.reflections.get_settings().probe, &mut load),
-      );
+    if reflections.get_settings().is_drawn() {
+      surroundings.prepare(device, encoder, &frame, (reflections.get_settings().probe, &mut load));
     } else {
       surroundings.rest();
     }
 
     // Out to the wet reach where the wetting reaches past the engine's.
-    if features.rain.is_raining() || features.wet.is_wet() {
-      let reach: Option<f32> = features.wet.get_reach();
+    if rain.is_raining() || wet.is_wet() {
+      let reach: Option<f32> = wet.get_reach();
 
       rain_cover.prepare(device, encoder, &frame, (reach, &mut load));
     } else {
@@ -642,7 +630,7 @@ impl SceneView {
     }
 
     // The puddles seat on it.
-    if features.wet.is_enhanced() {
+    if wet.is_enhanced() {
       level_surface.prepare(device, encoder, &frame, (scene.lights.get_fires(), &mut load));
     }
   }
@@ -1022,9 +1010,9 @@ impl SceneView {
       shadow_maps: bindings.import_view(
         &mut *graph,
         "sun shadow maps",
-        &scene_view.renderer.shadows.get_maps().view,
+        &scene_view.features.shadows.get_maps().view,
       ),
-      shadows: runtime.push_uniform(scene_view.renderer.shadows.get_values()),
+      shadows: runtime.push_uniform(scene_view.features.shadows.get_values()),
     };
 
     // The frame is encoded in four groups, on as many threads where it is not timed: the scene, its shadows, its
@@ -1121,7 +1109,7 @@ impl SceneView {
 
     graph.begin_group("shadows");
 
-    scene_view.renderer.shadows.add_passes(
+    scene_view.features.shadows.add_passes(
       (&mut *graph, &mut *bindings),
       passes,
       (&statics, lit.shadow_maps),
@@ -1130,7 +1118,7 @@ impl SceneView {
 
     // The rain's cover, which its passes draw and reduce and the rain and the wet surfaces read.
     let covers: Option<CoverTextures> = (is_raining || is_wet).then(|| {
-      scene_view.renderer.rain_cover.add_passes(
+      scene_view.features.rain_cover.add_passes(
         (&mut *graph, &mut *bindings),
         passes,
         &statics,
@@ -1151,7 +1139,7 @@ impl SceneView {
           sampler: passes.wet.get_sampler(),
         };
 
-        scene_view.renderer.level_surface.add_passes(
+        scene_view.features.level_surface.add_passes(
           (&mut *graph, &mut *bindings, runtime),
           passes,
           &statics,
@@ -1160,7 +1148,7 @@ impl SceneView {
         )
       }
       _ => {
-        let surface: &LevelSurface = &scene_view.renderer.level_surface;
+        let surface: &LevelSurface = &scene_view.features.level_surface;
 
         [
           bindings.import_view(&mut *graph, "level surface lowest", &surface.lowest),
@@ -1224,7 +1212,7 @@ impl SceneView {
         has_lights,
       );
 
-      let surroundings: &SurroundingsCube = &scene_view.renderer.surroundings;
+      let surroundings: &SurroundingsCube = &scene_view.features.surroundings;
       let sky: Option<SkyParameters> = scene_view.features.sky.add_passes(
         (&mut *graph, &mut *bindings, runtime),
         passes,
@@ -1802,7 +1790,7 @@ impl SceneView {
       render_scale: self.features.resolve.get_upscaling().scale,
       shadows: (cascades > 0).then(|| RenderAppliedShadows {
         cascades: self.info.shadow_settings.cascades[..cascades].to_vec(),
-        resolution: self.renderer.shadows.get_maps().resolution,
+        resolution: self.features.shadows.get_maps().resolution,
         filter: self.info.shadow_settings.filter,
       }),
       ambient_occlusion: self
