@@ -12,6 +12,7 @@ use crate::host::render_asset_source::RenderAssetSource;
 use crate::host::render_level_source::RenderLevelSource;
 use crate::host::render_scene_feedback::RenderSceneFeedback;
 use crate::host::render_scene_frame::RenderSceneFrame;
+use crate::host::render_scene_id::RenderSceneId;
 use crate::host::render_scene_update::RenderSceneUpdate;
 use crate::host::render_sector_failure::RenderSectorFailure;
 use crate::lighting::ambient_gust::AmbientGust;
@@ -170,23 +171,25 @@ impl LevelScene {
     }
   }
 
-  /// How far the level has loaded, when that changed since it was last asked.
-  pub fn take_load_report(&mut self, textures: &TextureCache) -> Option<RenderLoadReport> {
+  /// How far the level, the scene `id`, has loaded, when that changed since it was last asked.
+  pub fn take_load_report(&mut self, id: RenderSceneId, textures: &TextureCache) -> Option<RenderLoadReport> {
     let slots: Vec<u32> = self.list_texture_slots().collect();
 
-    self.load.take_report((self.grass.is_loaded(), &slots), textures)
+    self.load.take_report(id, (self.grass.is_loaded(), &slots), textures)
   }
 
-  /// How far the level has loaded.
-  pub fn describe_load(&self, textures: &TextureCache) -> RenderLoadReport {
+  /// How far the level, the scene `id`, has loaded.
+  pub fn describe_load(&self, id: RenderSceneId, textures: &TextureCache) -> RenderLoadReport {
     let slots: Vec<u32> = self.list_texture_slots().collect();
 
-    self.load.describe((self.grass.is_loaded(), &slots), textures)
+    self.load.describe(id, (self.grass.is_loaded(), &slots), textures)
   }
 
   /// Whether everything the level opens with is resident, so it draws as it will.
   pub fn is_ready(&self, textures: &TextureCache) -> bool {
-    self.describe_load(textures).is_ready
+    let slots: Vec<u32> = self.list_texture_slots().collect();
+
+    self.load.is_ready((self.grass.is_loaded(), &slots), textures)
   }
 
   /// Applies what the world posted this frame, in the order posted; answers the sectors it could not take in.

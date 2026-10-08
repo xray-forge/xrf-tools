@@ -75,14 +75,17 @@ impl World {
   }
 
   /// Shows a level in a viewport, or none, and plays its weather there: the scene of the same level another viewport
-  /// shows where its source shares one, else a scene of its own streaming in from the next frame.
-  pub fn show_level(&mut self, viewport: RenderViewportId, source: Option<Arc<dyn RenderLevelSource>>) {
+  /// shows where its source shares one, else a scene of its own streaming in from the next frame. Answers the scene,
+  /// which its load reports name.
+  pub fn show_level(
+    &mut self,
+    viewport: RenderViewportId,
+    source: Option<Arc<dyn RenderLevelSource>>,
+  ) -> Option<RenderSceneId> {
     self.leave_scene(viewport);
     self.get_viewport(viewport).weather.show(source.clone());
 
-    let Some(source) = source else {
-      return;
-    };
+    let source: Arc<dyn RenderLevelSource> = source?;
     let key: Option<String> = source.get_scene_key();
     let shared: Option<RenderSceneId> = key.as_ref().and_then(|key| {
       self
@@ -117,6 +120,8 @@ impl World {
     }
 
     self.get_viewport(viewport).scene = Some(id);
+
+    Some(id)
   }
 
   /// Stands a viewport's skinned objects as asked from the next frame on.

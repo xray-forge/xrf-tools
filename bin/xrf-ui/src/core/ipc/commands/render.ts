@@ -108,6 +108,8 @@ export const renderCommands = {
    */
   describeLoad: (viewport: RenderViewportId) =>
     __TAURI_INVOKE<{
+      /** The scene it reports on, as showing the level named it. */
+      scene: number;
       /** Sectors resident on the GPU. */
       sectors: number;
       /** Sectors the level has. */
@@ -233,9 +235,12 @@ export const renderCommands = {
    */
   setWorldToggles: (viewport: RenderViewportId, toggles: WorldToggles) =>
     __TAURI_INVOKE<void>("plugin:render|set_world_toggles", { viewport, toggles }),
-  /** Draw the open level in a viewport, its sectors and textures read by the renderer; no session draws none. */
+  /**
+   * Draw the open level in a viewport, its sectors and textures read by the renderer; no session draws none. Answers
+   * the scene drawn, which the viewport's load reports name, or none.
+   */
   showLevel: (viewport: RenderViewportId, sessionId: string | null) =>
-    __TAURI_INVOKE<null>("plugin:render|show_level", { viewport, sessionId }),
+    __TAURI_INVOKE<number | null>("plugin:render|show_level", { viewport, sessionId }),
   /**
    * Draw the open model in a viewport, `detail` down its collapse chain, its textures read by the renderer; no session
    * draws none.

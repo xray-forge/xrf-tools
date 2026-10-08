@@ -13,6 +13,7 @@ export function mockRenderLoadReport(overrides: Partial<RenderLoadReport> = {}):
     bytes: 0,
     durations: { grass: null, lights: null, particles: null, ready: null, sectors: null, spawn: null },
     isReady: false,
+    scene: 0,
     sectors: 0,
     sectorsTotal: 0,
     textures: 0,

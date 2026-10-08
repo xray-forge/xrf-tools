@@ -48,6 +48,7 @@ import { mockLevelWeatherDescription, mockWorldWeatherReport } from "@/fixtures/
 import { mockContainer } from "@/fixtures/utils/container";
 
 const VIEWPORT: number = 7;
+const SCENE: number = 3;
 
 const SPAN: WorldSurfaceSpan = { uMax: 2, uMin: 0, vMax: 1, vMin: -1 };
 
@@ -125,6 +126,7 @@ async function mockAttached(
     ),
     ["plugin:levels|read_level_weather"]: mockSessionResponse(mockLevelWeatherDescription()),
     ["plugin:render|attach_viewport"]: VIEWPORT,
+    ["plugin:render|show_level"]: SCENE,
   });
 
   const container: Container = mockContainer([
@@ -195,12 +197,17 @@ describe("LevelRenderService", () => {
       report: mockRenderLoadReport({
         bytes: 10,
         isReady: false,
+        scene: SCENE,
         sectors: 1,
         sectorsTotal: 2,
         textures: 0,
         texturesTotal: 3,
       }),
     });
+    expect(viewport.isRevealed).toBe(false);
+
+    // A ready report of the level drawn before it reveals nothing.
+    emit({ kind: ERenderViewportEvent.LOAD, report: mockRenderLoadReport({ isReady: true, scene: SCENE - 1 }) });
     expect(viewport.isRevealed).toBe(false);
 
     setMockInvokeResponses({
@@ -218,6 +225,7 @@ describe("LevelRenderService", () => {
       report: mockRenderLoadReport({
         bytes: 20,
         isReady: true,
+        scene: SCENE,
         sectors: 2,
         sectorsTotal: 2,
         textures: 3,
