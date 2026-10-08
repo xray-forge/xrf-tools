@@ -111,6 +111,11 @@ impl LightsView {
     self.overflow.request();
   }
 
+  /// Drops the overflow recorded with a frame that was never submitted.
+  pub fn abandon_report(&self) {
+    self.overflow.abandon();
+  }
+
   /// What the last frame's lights came to, with the binning's overflow as last read back.
   pub fn take_report(&mut self) -> RenderLightsReport {
     let [full_clusters, dropped, ..] = self.overflow.take();

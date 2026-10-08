@@ -85,6 +85,11 @@ impl PickTarget {
     self.readbacks[slot].request();
   }
 
+  /// Frees every readback a frame that was never submitted copied into.
+  pub fn abandon(&self) {
+    self.readbacks.iter().for_each(GpuReadback::abandon);
+  }
+
   /// A readback's texel once it is back: kind, cluster, place and the depth's bits.
   pub fn take(&self, slot: usize) -> Option<XrfResult<[u32; 4]>> {
     self.readbacks[slot].take(|bytes| bytemuck::pod_read_unaligned::<[u32; 4]>(&bytes[..16]))

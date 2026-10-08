@@ -127,6 +127,30 @@ impl RenderViewport {
     }
   }
 
+  /// Shows another view of a scene, or none: the picks asked of the one it replaces, drawn or still waiting, meet
+  /// nothing, since what they were asked of is drawn no more.
+  pub fn show(&mut self, shown: Option<(RenderSceneId, SceneView)>) {
+    for entry in std::mem::take(&mut self.picks_in_flight) {
+      let _ = entry.pick.reply.send(Ok(RenderPick {
+        frame: entry.frame,
+        hit: None,
+      }));
+    }
+
+    self.answer_picks_unseen();
+    self.shown = shown;
+  }
+
+  /// Answers the picks waiting to be drawn as meeting nothing, for a frame in which it was not drawn.
+  pub fn answer_picks_unseen(&mut self) {
+    for pick in std::mem::take(&mut self.picks) {
+      let _ = pick.reply.send(Ok(RenderPick {
+        frame: self.frame,
+        hit: None,
+      }));
+    }
+  }
+
   pub fn new(id: RenderViewportId, window: u64, sink: Box<dyn RenderEventSink>, now: Instant) -> Self {
     Self {
       id,

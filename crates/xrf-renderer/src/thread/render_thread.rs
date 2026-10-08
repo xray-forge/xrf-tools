@@ -434,7 +434,7 @@ impl RenderThread {
 
     for viewport in self.viewports.values_mut() {
       viewport.binding = None;
-      viewport.shown = None;
+      viewport.show(None);
     }
   }
 
@@ -596,7 +596,7 @@ impl RenderThread {
       }
 
       let Some(asked) = asked else {
-        viewport.shown = None;
+        viewport.show(None);
 
         continue;
       };
@@ -605,10 +605,10 @@ impl RenderThread {
       };
 
       if shown.is_none() || scene.source.get_sector_count() > 0 || scene.is_ready(&gpu.textures) {
-        viewport.shown = Some((
+        viewport.show(Some((
           asked,
           SceneView::new(&gpu.context.device, &gpu.context.queue, &gpu.view_layout, scene),
-        ));
+        )));
       }
     }
 
@@ -790,6 +790,18 @@ impl RenderThread {
         is_washed,
         acquire,
       });
+    }
+
+    // A viewport no window draws this frame, laid out nowhere or in a window with no image, has nothing to pick in.
+    let seen: HashSet<RenderViewportId> = acquired
+      .iter()
+      .flat_map(|window| window.drawn.iter().map(|(id, _, _)| *id))
+      .collect();
+
+    for viewport in self.viewports.values_mut() {
+      if !seen.contains(&viewport.id) {
+        viewport.answer_picks_unseen();
+      }
     }
 
     // With nothing to draw into, what the scenes took in still goes up.
@@ -1102,9 +1114,28 @@ impl RenderThread {
       Err(error) => {
         log::error!("The frame cannot be drawn: {error}");
 
-        // Nothing of it was submitted: its picks wait for the next frame, and its captures are refused.
+        // What the frame's own encoder holds is not of the frame: the uploads and the acceleration structures the
+        // scenes built, which they count as done.
+        let scope: wgpu::ErrorScopeGuard = device.push_error_scope(wgpu::ErrorFilter::Validation);
+
+        queue.submit([encoder.finish()]);
+
+        if let Some(error) = pollster::block_on(scope.pop()) {
+          log::error!("The frame's uploads cannot be submitted: {error}");
+        }
+
+        // Nothing of the graph was submitted: what it copied out for reading back is dropped, its picks wait for the
+        // next frame, and its captures are refused.
         for (id, _, pick) in frames {
-          if let (Some(viewport), Some((pick, _))) = (self.viewports.get_mut(&id), pick) {
+          let Some(viewport) = self.viewports.get_mut(&id) else {
+            continue;
+          };
+
+          if let Some((_, level)) = viewport.shown.as_ref() {
+            level.abandon_frame();
+          }
+
+          if let Some((pick, _)) = pick {
             viewport.picks.insert(0, pick);
           }
         }

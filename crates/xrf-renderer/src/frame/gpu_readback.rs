@@ -44,6 +44,13 @@ impl GpuReadback {
     self.state.store(RECORDED, Ordering::Release);
   }
 
+  /// Frees it of a copy recorded with a frame that was never submitted.
+  pub fn abandon(&self) {
+    let _ = self
+      .state
+      .compare_exchange(RECORDED, FREE, Ordering::AcqRel, Ordering::Acquire);
+  }
+
   /// Asks for the copy recorded with the frame just submitted to be mapped.
   pub fn request(&self) {
     if self.state.load(Ordering::Acquire) == RECORDED {

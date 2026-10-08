@@ -12,6 +12,10 @@ pub struct GraphTimer {
   queries: Option<wgpu::QuerySet>,
   resolve: wgpu::Buffer,
   slots: Vec<TimerSlot>,
+  /// Stamps a frame can write.
+  capacity: u32,
+  /// Stamps a frame asked for past the capacity, which the timer grows to before it times another.
+  wanted: u32,
   /// Nanoseconds a timestamp tick lasts.
   period: f32,
   is_enabled: bool,
@@ -26,44 +30,20 @@ pub struct GraphTimer {
 }
 
 impl GraphTimer {
-  /// Stamps a frame writes at most.
+  /// Stamps a frame can write before the timer first grows.
   pub const CAPACITY: u32 = 256;
   /// Frames of stamps on their way back at once.
   pub const SLOTS: usize = 3;
 
   pub fn new(device: &wgpu::Device, queue: &wgpu::Queue) -> Self {
-    let size: u64 = u64::from(Self::CAPACITY) * 8;
-    let queries: Option<wgpu::QuerySet> = device
-      .features()
-      .contains(wgpu::Features::TIMESTAMP_QUERY | wgpu::Features::TIMESTAMP_QUERY_INSIDE_ENCODERS)
-      .then(|| {
-        device.create_query_set(&wgpu::QuerySetDescriptor {
-          label: Some("graph timer"),
-          ty: wgpu::QueryType::Timestamp,
-          count: Self::CAPACITY,
-        })
-      });
+    let (queries, resolve, slots) = Self::create(device, Self::CAPACITY);
 
     Self {
       queries,
-      resolve: device.create_buffer(&wgpu::BufferDescriptor {
-        label: Some("graph timer resolve"),
-        size,
-        usage: wgpu::BufferUsages::QUERY_RESOLVE | wgpu::BufferUsages::COPY_SRC,
-        mapped_at_creation: false,
-      }),
-      slots: (0..Self::SLOTS)
-        .map(|_| TimerSlot {
-          buffer: device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("graph timer readback"),
-            size,
-            usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
-            mapped_at_creation: false,
-          }),
-          state: Arc::new(AtomicU8::new(TimerSlot::IDLE)),
-          names: Vec::new(),
-        })
-        .collect(),
+      resolve,
+      slots,
+      capacity: Self::CAPACITY,
+      wanted: 0,
       period: queue.get_timestamp_period(),
       is_enabled: false,
       frame: None,
@@ -134,13 +114,23 @@ impl GraphTimer {
       .collect()
   }
 
-  /// Starts timing a frame, unless timing is off or every slot is still on its way back; answers whether it does.
-  pub(crate) fn begin_frame(&mut self) -> bool {
+  /// Starts timing a frame, unless timing is off, every slot is still on its way back, or the timer waits for its
+  /// slots to come back to grow; answers whether it does.
+  pub(crate) fn begin_frame(&mut self, device: &wgpu::Device) -> bool {
     self.collect();
     self.frame = None;
 
     if !self.is_timing() {
       return false;
+    }
+
+    if self.wanted > self.capacity {
+      if !self.is_idle() {
+        return false;
+      }
+
+      (self.queries, self.resolve, self.slots) = Self::create(device, self.wanted);
+      self.capacity = self.wanted;
     }
 
     self.frame = self
@@ -152,13 +142,14 @@ impl GraphTimer {
     self.frame.is_some()
   }
 
-  /// Writes a stamp ending an owner's pass by its name, or starting an encode group where `None`; nothing past the
-  /// capacity.
+  /// Writes a stamp ending an owner's pass by its name, or starting an encode group where `None`; past the capacity
+  /// it only counts the stamp, and the frame goes untimed.
   pub(crate) fn stamp(&mut self, encoder: &mut wgpu::CommandEncoder, name: Option<TimedPass>) {
-    if let (Some(queries), Some((_, names))) = (&self.queries, &mut self.frame)
-      && (names.len() as u32) < Self::CAPACITY
-    {
-      encoder.write_timestamp(queries, names.len() as u32);
+    if let (Some(queries), Some((_, names))) = (&self.queries, &mut self.frame) {
+      if (names.len() as u32) < self.capacity {
+        encoder.write_timestamp(queries, names.len() as u32);
+      }
+
       names.push(name);
     }
   }
@@ -174,12 +165,70 @@ impl GraphTimer {
     }
 
     let count: u32 = names.len() as u32;
+
+    if count > self.capacity {
+      self.wanted = count.next_power_of_two();
+
+      return;
+    }
+
     let slot: &mut TimerSlot = &mut self.slots[index];
 
     encoder.resolve_query_set(queries, 0..count, &self.resolve, 0);
     encoder.copy_buffer_to_buffer(&self.resolve, 0, &slot.buffer, 0, u64::from(count) * 8);
     slot.names = names;
     slot.state.store(TimerSlot::RECORDED, Ordering::Release);
+  }
+
+  /// Frees the slot of a frame that was recorded but never submitted, whose stamps would otherwise be read under it.
+  pub(crate) fn abandon_frame(&mut self) {
+    for slot in &self.slots {
+      if slot.state.load(Ordering::Acquire) == TimerSlot::RECORDED {
+        slot.state.store(TimerSlot::IDLE, Ordering::Release);
+      }
+    }
+  }
+
+  fn is_idle(&self) -> bool {
+    self
+      .slots
+      .iter()
+      .all(|slot| slot.state.load(Ordering::Acquire) == TimerSlot::IDLE)
+  }
+
+  /// The query set, the resolve buffer and the readback slots for frames of up to `capacity` stamps.
+  fn create(device: &wgpu::Device, capacity: u32) -> (Option<wgpu::QuerySet>, wgpu::Buffer, Vec<TimerSlot>) {
+    let size: u64 = u64::from(capacity) * 8;
+    let queries: Option<wgpu::QuerySet> = device
+      .features()
+      .contains(wgpu::Features::TIMESTAMP_QUERY | wgpu::Features::TIMESTAMP_QUERY_INSIDE_ENCODERS)
+      .then(|| {
+        device.create_query_set(&wgpu::QuerySetDescriptor {
+          label: Some("graph timer"),
+          ty: wgpu::QueryType::Timestamp,
+          count: capacity,
+        })
+      });
+    let resolve: wgpu::Buffer = device.create_buffer(&wgpu::BufferDescriptor {
+      label: Some("graph timer resolve"),
+      size,
+      usage: wgpu::BufferUsages::QUERY_RESOLVE | wgpu::BufferUsages::COPY_SRC,
+      mapped_at_creation: false,
+    });
+    let slots: Vec<TimerSlot> = (0..Self::SLOTS)
+      .map(|_| TimerSlot {
+        buffer: device.create_buffer(&wgpu::BufferDescriptor {
+          label: Some("graph timer readback"),
+          size,
+          usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+          mapped_at_creation: false,
+        }),
+        state: Arc::new(AtomicU8::new(TimerSlot::IDLE)),
+        names: Vec::new(),
+      })
+      .collect();
+
+    (queries, resolve, slots)
   }
 
   /// Adds every frame read back to the sums, freeing its slot.
