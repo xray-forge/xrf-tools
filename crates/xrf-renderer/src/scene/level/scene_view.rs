@@ -2586,6 +2586,9 @@ impl SceneView {
           .record(move |context| passes.sky_haze.record(context, &parameters, &sky));
       }
 
+      // The reflections and combine record in a group of their own, encoded beside the lights before them.
+      graph.begin_group("reflections");
+
       // The last frame's scene and depth the reflections keep: read by this frame's hits, written again after the
       // particles draw.
       let source: Option<(GraphTexture, GraphTexture)> = scene_view.state.reflections.as_ref().map(|history| {
