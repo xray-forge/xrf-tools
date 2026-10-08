@@ -4,6 +4,7 @@ import {
   ERenderAntialiasing,
   ERenderIndirectLightMode,
   ERenderLightShadowFilter,
+  ERenderRainMode,
   ERenderReflectionMode,
   ERenderReflectionQuality,
   ERenderScale,
@@ -12,6 +13,7 @@ import {
   RenderAntialiasing,
   RenderIndirectLightMode,
   RenderLightShadowFilter,
+  RenderRainMode,
   RenderReflectionMode,
   RenderReflectionQuality,
   RenderScale,
@@ -301,6 +303,32 @@ export const RENDER_INDIRECT_LIGHT_MODE_OPTIONS: ReadonlyArray<IRenderChoiceOpti
 /** @returns How much of the bounced light is added. */
 export function formatIndirectLightIntensity(intensity: number): string {
   return formatPercent(intensity);
+}
+
+/** The bounds each rain value is offered between. */
+export const RENDER_RAIN_LIMITS = {
+  puddles: toRenderLimits(RENDER_FEATURE_SCHEMA.rain.puddles, 0.05),
+  reflectivity: toRenderLimits(RENDER_FEATURE_SCHEMA.rain.reflectivity, 0.05),
+  ripples: toRenderLimits(RENDER_FEATURE_SCHEMA.rain.ripples, 0.05),
+} as const;
+
+const RENDER_RAIN_MODE_DESCRIPTIONS: Readonly<Record<RenderRainMode, string>> = {
+  [ERenderRainMode.ENGINE]: "The game's own: splashes and running water near the camera, wet only while it rains.",
+  [ERenderRainMode.ENHANCED]:
+    "Surfaces wet up and dry over time, rippling and running with water, and puddles gather on flat, low ground.",
+};
+
+/**
+ * @param mode - A rain mode.
+ * @returns What it does, in a sentence.
+ */
+export function explainRenderRainMode(mode: RenderRainMode): string {
+  return RENDER_RAIN_MODE_DESCRIPTIONS[mode];
+}
+
+/** @returns A rain strength as a share. */
+export function formatRainShare(share: number): string {
+  return formatPercent(share);
 }
 
 /** The bounds each reflection value is offered between. */

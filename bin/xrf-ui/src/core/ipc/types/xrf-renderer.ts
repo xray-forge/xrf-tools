@@ -844,6 +844,31 @@ export type RenderPoolUse = {
   capacity: number;
 };
 
+/** How rain wets the frame's surfaces. */
+export enum ERenderRainMode {
+  /** The engine's own: splashes and running water near the camera, wet only while it rains. */
+  ENGINE = "engine",
+  /**
+   * Wet surfaces that build up and dry over time, rippling and running with water out to the distance, and puddles
+   * gathering on flat, low terrain.
+   */
+  ENHANCED = "enhanced",
+}
+
+/** Every `ERenderRainMode` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type RenderRainMode = `${ERenderRainMode}`;
+
+/** How rain wets the frame's surfaces, and the enhanced wetting's strengths. */
+export type RenderRainSettings = {
+  mode: RenderRainMode;
+  /** How much of flat terrain puddles may cover, from none to most of it. */
+  puddles: number | null;
+  /** How much of a reflection a puddle takes at most. */
+  reflectivity: number | null;
+  /** How strongly rain ripples wet surfaces and puddles. */
+  ripples: number | null;
+};
+
 /** A rectangle of a window's client area, in device pixels from its top left corner. */
 export type RenderRect = {
   x: number;
@@ -1121,6 +1146,8 @@ export type RenderViewFeatures = {
   indirectLight: RenderIndirectLightSettings;
   /** What glossy surfaces reflect: the sky's cube, or what the frame shows where a ray finds it. */
   reflections: RenderReflectionSettings;
+  /** How rain wets the surfaces: the engine's splashes, or wet surfaces and puddles that build up and dry. */
+  rain: RenderRainSettings;
   lights: RenderLightsSettings;
   water: RenderWaterSettings;
   grass: RenderGrassSettings;

@@ -77,6 +77,8 @@ pub use crate::contract::render_particles_report::RenderParticlesReport;
 pub use crate::contract::render_pass_cost::RenderPassCost;
 pub use crate::contract::render_pick::RenderPick;
 pub use crate::contract::render_pool_use::RenderPoolUse;
+pub use crate::contract::render_rain_mode::RenderRainMode;
+pub use crate::contract::render_rain_settings::RenderRainSettings;
 pub use crate::contract::render_rect::RenderRect;
 pub use crate::contract::render_reflection_mode::RenderReflectionMode;
 pub use crate::contract::render_reflection_quality::RenderReflectionQuality;

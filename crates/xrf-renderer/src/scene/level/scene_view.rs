@@ -28,6 +28,7 @@ use crate::contract::render_lights_report::RenderLightsReport;
 use crate::contract::render_overlay::RenderOverlay;
 use crate::contract::render_particles_report::RenderParticlesReport;
 use crate::contract::render_pool_use::RenderPoolUse;
+use crate::contract::render_rain_settings::RenderRainSettings;
 use crate::contract::render_rect::RenderRect;
 use crate::contract::render_selection::RenderSelection;
 use crate::contract::render_selection_target::RenderSelectionTarget;
@@ -52,6 +53,7 @@ use crate::host::render_level_weather::RenderLevelWeather;
 use crate::host::render_rain::RenderRain;
 use crate::lighting::ambient_gust::AmbientGust;
 use crate::lighting::render_lighting::RenderLighting;
+use crate::lighting::render_rainfall::RenderRainfall;
 use crate::pass::ambient_occlusion_parameters::AmbientOcclusionParameters;
 use crate::pass::ambient_occlusion_pass::AmbientOcclusionPass;
 use crate::pass::ambient_occlusion_uniform::AmbientOcclusionUniform;
@@ -66,6 +68,7 @@ use crate::pass::composited_parameters::CompositedParameters;
 use crate::pass::contact_shadow_parameters::ContactShadowParameters;
 use crate::pass::contact_shadow_pass::ContactShadowPass;
 use crate::pass::contact_shadow_uniform::ContactShadowUniform;
+use crate::pass::enhanced_water_maps::EnhancedWaterMaps;
 use crate::pass::exposure_parameters::ExposureParameters;
 use crate::pass::foliage_wind_values::FoliageWindValues;
 use crate::pass::fsr_uniform::FsrUniform;
@@ -540,7 +543,7 @@ impl SceneView {
 
     shadows.prepare_cascades(device, queue, encoder, view_layout, &frame);
 
-    if info.rain_draw.is_some() {
+    if info.rain_draw.is_some() || info.is_wet {
       rain_cover.prepare(device, queue, encoder, &frame);
     }
   }
@@ -1260,8 +1263,8 @@ impl SceneView {
     ];
   }
 
-  /// Writes this frame's rain, while the weather rains and the view shows it: the splash's model built for the
-  /// level's weather, the uniform at the cover last drawn, and what the draw binds.
+  /// Writes this frame's rain and wet surfaces: the level's wetness moved on, the falling rain while the weather rains
+  /// and the view shows it, and the wet surfaces while it does or, enhanced, while the level is still wet after.
   fn prepare_rain(
     &mut self,
     device: &wgpu::Device,
@@ -1274,28 +1277,47 @@ impl SceneView {
     self.info.rain_draw = None;
     self.info.weather_views.rain = None;
     self.info.weather_views.wet = None;
+    self.info.is_wet = false;
 
-    let Some((key, rain)) = weather.and_then(|weather| {
+    let wetness: f32 = self
+      .state
+      .wetness
+      .advance(time, lighting.rain.map_or(0.0, |rain| rain.density));
+    let falling: Option<RainUniform> = lighting.rain.filter(|_| options.mode.is_lit).and_then(|rainfall| {
+      self.prepare_falling_rain(device, (lighting, weather), (&rainfall, gust, time), weather_textures)
+    });
+
+    self.prepare_wet(
+      (lighting, weather),
+      options,
+      (falling.as_ref(), time, wetness),
+      weather_textures,
+    );
+  }
+
+  /// Writes the falling rain: the splash's model built for the level's weather, the uniform at the cover last drawn,
+  /// and what the draw binds; none where the weather has no rain to draw.
+  fn prepare_falling_rain(
+    &mut self,
+    device: &wgpu::Device,
+    (lighting, weather): (&RenderLighting, Option<&Arc<RenderLevelWeather>>),
+    (rainfall, gust, time): (&RenderRainfall, AmbientGust, f32),
+    weather_textures: &WeatherTextureCache,
+  ) -> Option<RainUniform> {
+    let (key, rain): (usize, &RenderRain) = weather.and_then(|weather| {
       weather
         .rain
         .as_ref()
         .map(|rain: &RenderRain| (Arc::as_ptr(weather) as usize, rain))
-    }) else {
-      return;
-    };
-    let Some(rainfall) = lighting.rain.filter(|_| options.mode.is_lit) else {
-      return;
-    };
+    })?;
 
     if self.renderer.splash.as_ref().is_none_or(|(built, _)| *built != key) {
       self.renderer.splash = Some((key, WeatherModelBuffers::new(device, rain.drop.as_ref())));
     }
 
-    let Some((_, splash)) = &self.renderer.splash else {
-      return;
-    };
+    let (_, splash) = self.renderer.splash.as_ref()?;
     let uniform: RainUniform = RainUniform::new(
-      &rainfall,
+      rainfall,
       (lighting.wind, gust.strength),
       self.renderer.rain_cover.get_window(),
       time,
@@ -1310,15 +1332,36 @@ impl SceneView {
     ]);
     self.info.rain_draw = Some((uniform.count, splash.index_count));
 
+    Some(uniform)
+  }
+
+  /// Writes the wet surfaces while the rain falls, and, enhanced, while the level is still wet after it stops: the
+  /// uniform, the level's wetness and the enhanced strengths in it, and the splash volume and flow they read.
+  fn prepare_wet(
+    &mut self,
+    (lighting, weather): (&RenderLighting, Option<&Arc<RenderLevelWeather>>),
+    options: &RenderViewOptions,
+    (falling, time, wetness): (Option<&RainUniform>, f32, f32),
+    weather_textures: &WeatherTextureCache,
+  ) {
+    let settings: RenderRainSettings = options.features.rain;
+    let is_enhanced: bool = settings.is_enhanced();
+
+    if !options.mode.is_lit || (falling.is_none() && !(is_enhanced && wetness > 0.0)) {
+      return;
+    }
+
     let Some(wet) = weather.and_then(|weather| weather.wet.as_ref()) else {
       return;
     };
+
     self.info.wet = WetUniform {
-      density: rainfall.density.clamp(0.0, 1.0),
-      time: uniform.time,
+      density: falling.map_or(0.0, |_| lighting.rain.map_or(0.0, |rain| rain.density.clamp(0.0, 1.0))),
+      time: falling.map_or(time, |uniform| uniform.time),
       is_extended: (lighting.engine == XrayEngine::Extended) as u32 as f32,
-      _pad: 0.0,
-      window: uniform.window,
+      is_enhanced: f32::from(u8::from(is_enhanced)),
+      window: falling.map_or_else(|| self.renderer.rain_cover.get_window(), |uniform| uniform.window),
+      puddles: Vec4::new(wetness, settings.puddles, settings.reflectivity, settings.ripples),
     };
     self.info.weather_views.wet = Some([
       weather_textures
@@ -1328,6 +1371,7 @@ impl SceneView {
         .get_view(Some(&wet.flow), WeatherTextureKind::Flat)
         .clone(),
     ]);
+    self.info.is_wet = true;
   }
 
   /// Writes this frame's strike, while a bolt strikes and the view shows it: every bolt model built for the level's
@@ -1453,7 +1497,7 @@ impl SceneView {
     let is_drawn: bool = !self.info.is_wireframe;
     let is_wallmarked: bool = self.info.is_wallmarked && is_drawn;
     let is_raining: bool = self.info.rain_draw.is_some();
-    let is_wet: bool = is_raining && self.info.weather_views.wet.is_some();
+    let is_wet: bool = self.info.is_wet && self.info.weather_views.wet.is_some();
     let is_lit: bool = frame.is_lit;
     let has_lights: bool = self.state.lights.get_count() > 0;
     let is_occlusion_ambient: bool = self.info.is_occlusion_drawn;
@@ -1590,8 +1634,8 @@ impl SceneView {
     );
 
     // The rain's cover, which its passes draw and the rain and the wet surfaces read.
-    let cover: Option<GraphTexture> =
-      is_raining.then(|| bindings.import_view(&mut *graph, "rain cover", &scene_view.renderer.rain_cover.depth));
+    let cover: Option<GraphTexture> = (is_raining || is_wet)
+      .then(|| bindings.import_view(&mut *graph, "rain cover", &scene_view.renderer.rain_cover.depth));
     let wet: Option<UniformBinding<WetUniform>> = is_wet.then(|| runtime.push_uniform(&scene_view.info.wet));
 
     if let Some(cover) = cover {
@@ -1616,18 +1660,25 @@ impl SceneView {
 
     // The rain wets the G-buffer before any light is drawn over it.
     if let (Some(cover), Some(wet), Some([splash, flow])) = (cover, wet, &scene_view.info.weather_views.wet) {
+      let is_enhanced: bool = scene_view.info.wet.is_enhanced > 0.5;
+      let maps: &EnhancedWaterMaps = passes.water.get_maps();
       let patch: WetPatchParameters = WetPatchParameters {
         depth_target: handles.depth,
         albedo_target: handles.albedo,
         normal_target: handles.normal,
+        material_target: handles.material,
         cover,
         splash: bindings.import_view(&mut *graph, "wet splash", splash),
         flow: bindings.import_view(&mut *graph, "wet flow", flow),
+        ripples: bindings.import_view(&mut *graph, "wet ripples", &maps.ripples),
+        puddle_noise: bindings.import_view(&mut *graph, "puddle noise", &maps.perlin),
+        puddle_normal: bindings.import_view(&mut *graph, "puddle normal", &maps.normal),
         wet_sampler: passes.wet.get_sampler(),
         wet,
       };
       let apply: WetApplyParameters = WetApplyParameters {
         depth_target: handles.depth,
+        material_target: handles.material,
         patched: handles.light,
         wet,
       };
@@ -1637,7 +1688,7 @@ impl SceneView {
         .add_raster_pass("wet patch")
         .parameters(&patch)
         .color(GraphColorAttachment::new(handles.light, wgpu::LoadOp::Load))
-        .record(move |context| passes.wet.record(context, 0, view, &patch));
+        .record(move |context| passes.wet.record(context, (0, is_enhanced), view, &patch));
 
       for (stage, (name, target)) in [("wet normal", handles.normal), ("wet albedo", handles.albedo)]
         .into_iter()
@@ -1647,7 +1698,7 @@ impl SceneView {
           .add_raster_pass(name)
           .parameters(&apply)
           .color(GraphColorAttachment::new(target, wgpu::LoadOp::Load))
-          .record(move |context| passes.wet.record(context, stage + 1, view, &apply));
+          .record(move |context| passes.wet.record(context, (stage + 1, is_enhanced), view, &apply));
       }
     }
 

@@ -110,6 +110,7 @@ export function toNativeViewOptions(
       isOcclusionCulled: features.isOcclusionCulled,
       lightScales: look.lightScales,
       lights: features.lights,
+      rain: features.rain,
       reflections: features.reflections,
       lod: features.lod,
       shadows: { ...shadows, cascades: [...shadows.cascades] },
