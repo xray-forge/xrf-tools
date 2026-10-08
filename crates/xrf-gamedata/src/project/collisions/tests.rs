@@ -94,7 +94,7 @@ fn project(collisions: Vec<XrayPathCollision>) -> GamedataProject {
     .expect("the test source mounts at the logical root");
 
   GamedataProject {
-    engine: xrf_engine_target::XrayEngine::Vanilla,
+    engine: xrf_engine_target::XrayEngineResolution::named(xrf_engine_target::XrayEngine::Vanilla),
     ltx_project: LtxProject::open_at_scope_opt(
       PathBuf::new(),
       vfs,

@@ -2,7 +2,6 @@ import { Injectable, OnDeprovision, OnProvision, ProvisionId } from "@wirestate/
 import { BoundAction, Computed, Observable, RefObservable } from "@wirestate/mobx";
 import { Nullable } from "@xrf/types";
 
-import { EXrayEngine } from "@/core/ipc/types/xrf-engine-target";
 import { RenderGraphSettings, RenderSettings } from "@/core/ipc/types/xrf-renderer";
 import {
   IRenderFeatureChoice,
@@ -21,11 +20,9 @@ import { DEFAULT_RENDER_GRAPH_SETTINGS } from "@/core/render/lib/settings/render
 import { ERenderPreset } from "@/core/render/lib/settings/render-preset";
 import { ERenderResolution, toRenderResolution } from "@/core/render/lib/settings/render-resolution";
 import { TCatalogView, toCatalogView } from "@/core/settings/lib/catalog-view";
-import { toXrayEngine } from "@/core/settings/lib/xray-engine";
 import {
   CATALOG_VIEW_STORAGE_KEY,
   DEV_MODE_STORAGE_KEY,
-  ENGINE_STORAGE_KEY,
   FRAME_RATE_LIMIT_STORAGE_KEY,
   GPU_TIMED_STORAGE_KEY,
   RENDER_RESOLUTION_STORAGE_KEY,
@@ -55,10 +52,6 @@ export class SettingsService {
   /** How the root catalog draws its tools. */
   @Observable()
   public catalogView: TCatalogView = toCatalogView(getLocalStorageValue(CATALOG_VIEW_STORAGE_KEY));
-
-  /** Which engine game configs are read as, where the engines read them differently: every tool reading them asks. */
-  @Observable()
-  public engine: EXrayEngine = toXrayEngine(getLocalStorageValue(ENGINE_STORAGE_KEY));
 
   /**
    * Frames a second every viewport is allowed to draw.
@@ -136,14 +129,6 @@ export class SettingsService {
 
     this.isDevModeEnabled = isEnabled;
     setLocalStorageValue(DEV_MODE_STORAGE_KEY, String(isEnabled));
-  }
-
-  @BoundAction()
-  public setEngine(engine: EXrayEngine): void {
-    this.log.info("Set engine:", engine);
-
-    this.engine = engine;
-    setLocalStorageValue(ENGINE_STORAGE_KEY, engine);
   }
 
   @BoundAction()

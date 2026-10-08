@@ -2,6 +2,7 @@ use std::path::Path;
 use std::time::Duration;
 
 use serde::Serialize;
+use xrf_engine_target::XrayEngineResolution;
 use xrf_gamedata::{GamedataVerificationCheckReport, GamedataVerificationResult};
 use xrf_report::{CheckReport, Finding};
 use xrf_utils::to_portable_path_string;
@@ -17,6 +18,8 @@ pub struct GamedataVerificationReportOutput {
   checks: Vec<GamedataVerificationCheckReportOutput>,
   #[serde(with = "xrf_utils::duration_ms")]
   duration: Duration,
+  /// The engine the configs were read as, and what decided it.
+  engine: XrayEngineResolution,
   /// What the sweep physically read, present only when `--trace-reads` asked for the account.
   #[serde(skip_serializing_if = "Option::is_none")]
   reads: Option<XrayReadTraceSummary>,
@@ -50,6 +53,7 @@ struct GamedataVerificationFindingOutput {
 /// verification result cannot say on its own.
 pub struct GamedataVerificationReportPayload<'a> {
   root: &'a Path,
+  engine: &'a XrayEngineResolution,
   report: &'a GamedataVerificationResult,
   skipped: &'a [XraySkippedMount],
   cache: XrayCacheStats,
@@ -59,6 +63,7 @@ pub struct GamedataVerificationReportPayload<'a> {
 impl<'a> GamedataVerificationReportPayload<'a> {
   pub fn new(
     root: &'a Path,
+    engine: &'a XrayEngineResolution,
     report: &'a GamedataVerificationResult,
     skipped: &'a [XraySkippedMount],
     cache: XrayCacheStats,
@@ -66,6 +71,7 @@ impl<'a> GamedataVerificationReportPayload<'a> {
   ) -> Self {
     Self {
       root,
+      engine,
       report,
       skipped,
       cache,
@@ -85,6 +91,7 @@ impl<'a> GamedataVerificationReportPayload<'a> {
       cache: self.cache,
       checks,
       duration: self.report.get_duration(),
+      engine: self.engine.clone(),
       reads: self.reads.clone(),
       skipped_mounts: SkippedMountReport::list(self.skipped),
       status: self.report.get_status().to_string(),
@@ -131,6 +138,7 @@ mod tests {
   use std::sync::atomic::{AtomicU64, Ordering};
   use std::time::Duration;
 
+  use xrf_engine_target::XrayEngineResolution;
   use xrf_gamedata::{
     Finding, GamedataCheckResult, GamedataVerificationReport, GamedataVerificationStatus, GamedataVerificationType,
   };
@@ -211,8 +219,11 @@ mod tests {
       refused: 1,
     };
 
-    let json: serde_json::Value =
-      serde_json::to_value(GamedataVerificationReportPayload::new(&root, &report, &[], cache, None).build()).unwrap();
+    let json: serde_json::Value = serde_json::to_value(
+      GamedataVerificationReportPayload::new(&root, &XrayEngineResolution::undetected(), &report, &[], cache, None)
+        .build(),
+    )
+    .unwrap();
 
     fs::remove_dir_all(&root).unwrap();
 
@@ -220,6 +231,10 @@ mod tests {
     assert!(json.get("schemaVersion").is_none());
     assert_eq!(json["status"], "failed");
     assert_eq!(json["duration"], 42);
+    assert_eq!(
+      json["engine"],
+      serde_json::json!({ "engine": "vanilla", "evidence": "noSigns", "subject": null })
+    );
     assert_eq!(json["checks"][0]["duration"], 7);
     assert_eq!(json["checks"][0]["verificationType"], "textures");
     assert_eq!(json["checks"][0]["findings"][0]["assetPath"], "textures/a.dds");
@@ -240,8 +255,11 @@ mod tests {
       refused: 1,
     };
 
-    let json: serde_json::Value =
-      serde_json::to_value(GamedataVerificationReportPayload::new(&root, &report, &[], cache, None).build()).unwrap();
+    let json: serde_json::Value = serde_json::to_value(
+      GamedataVerificationReportPayload::new(&root, &XrayEngineResolution::undetected(), &report, &[], cache, None)
+        .build(),
+    )
+    .unwrap();
 
     fs::remove_dir_all(&root).unwrap();
 
@@ -278,7 +296,15 @@ mod tests {
     };
 
     let json: serde_json::Value = serde_json::to_value(
-      GamedataVerificationReportPayload::new(&root, &report, &[], XrayCacheStats::default(), Some(reads)).build(),
+      GamedataVerificationReportPayload::new(
+        &root,
+        &XrayEngineResolution::undetected(),
+        &report,
+        &[],
+        XrayCacheStats::default(),
+        Some(reads),
+      )
+      .build(),
     )
     .unwrap();
 
@@ -304,7 +330,15 @@ mod tests {
     }];
 
     let json: serde_json::Value = serde_json::to_value(
-      GamedataVerificationReportPayload::new(&root, &report, &skipped, XrayCacheStats::default(), None).build(),
+      GamedataVerificationReportPayload::new(
+        &root,
+        &XrayEngineResolution::undetected(),
+        &report,
+        &skipped,
+        XrayCacheStats::default(),
+        None,
+      )
+      .build(),
     )
     .unwrap();
 
@@ -329,7 +363,15 @@ mod tests {
     let report: GamedataVerificationReport = GamedataVerificationReport::with_duration(Duration::from_millis(42));
 
     let json: serde_json::Value = serde_json::to_value(
-      GamedataVerificationReportPayload::new(&root, &report, &[], XrayCacheStats::default(), None).build(),
+      GamedataVerificationReportPayload::new(
+        &root,
+        &XrayEngineResolution::undetected(),
+        &report,
+        &[],
+        XrayCacheStats::default(),
+        None,
+      )
+      .build(),
     )
     .unwrap();
 

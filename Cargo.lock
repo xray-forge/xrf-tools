@@ -7257,6 +7257,8 @@ dependencies = [
  "serde",
  "serde_json",
  "specta",
+ "xrf-test-utils",
+ "xrf-vfs",
 ]
 
 [[package]]

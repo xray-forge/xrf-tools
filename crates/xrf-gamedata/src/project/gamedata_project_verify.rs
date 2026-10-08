@@ -133,7 +133,7 @@ mod tests {
   /// A project with nothing mounted, for asserting which checks run rather than what they find.
   fn empty_project() -> GamedataProject {
     GamedataProject {
-      engine: xrf_engine_target::XrayEngine::Vanilla,
+      engine: xrf_engine_target::XrayEngineResolution::named(xrf_engine_target::XrayEngine::Vanilla),
       ltx_project: LtxProject::empty(PathBuf::new()),
       root: PathBuf::new(),
       scope: XrayLookupScope::all(),

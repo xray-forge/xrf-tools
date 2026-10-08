@@ -1,7 +1,7 @@
 use std::sync::{Arc, OnceLock};
 
 use xrf_chunk::InMemoryChunkDataSource;
-use xrf_engine_target::XrayEngine;
+use xrf_engine_target::XrayEngineResolution;
 use xrf_level::{LevelCformTracer, LevelFile, LevelGeomSource, LevelSector, LevelVisualsChunk};
 use xrf_ltx::{Ltx, LtxDialect};
 use xrf_material::XraySurfaceDescriptor;
@@ -29,8 +29,8 @@ pub struct SelectedLevel {
   pub roots: XrayRoots,
   /// The rules the game's configs are resolved with, as the open was asked to read them.
   pub dialect: Arc<dyn LtxDialect>,
-  /// The engine the game's configs are read as, where the engines read them differently.
-  pub engine: XrayEngine,
+  /// The engine the game's configs are read as, where the engines read them differently, and what decided it.
+  pub engine: XrayEngineResolution,
   pub level: LevelFile,
   pub visuals: LevelVisualsChunk,
   /// What each sector is and where, taken at open from what the visuals declare, so a viewer can decide what to
@@ -64,6 +64,7 @@ impl SelectedLevel {
     SelectedLevelDescription {
       bounds: SectorOutline::merge_bounds(&self.outlines),
       drawables: self.visuals.count_drawable() as u32,
+      engine: self.engine.clone(),
       has_sun: level.lights.as_ref().is_some_and(|it| it.get_sun().is_some()),
       sun: LevelSunDescription::of(level.lights.as_ref().and_then(|it| it.get_sun())),
       lights: level.lights.as_ref().map_or(0, |it| it.lights.len()) as u32,

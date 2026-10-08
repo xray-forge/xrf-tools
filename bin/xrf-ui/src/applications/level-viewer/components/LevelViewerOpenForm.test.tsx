@@ -5,6 +5,7 @@ import { Container } from "@wirestate/core";
 
 import { AssetService } from "@/core/assets/services";
 import { LevelEntry } from "@/core/ipc/types/xrf-app";
+import { EXrayEngine, EXrayEngineEvidence, XrayEngineResolution } from "@/core/ipc/types/xrf-engine-target";
 import { LevelListService, LevelLoadService } from "@/core/level/services";
 import { mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
@@ -16,6 +17,12 @@ import { LevelViewerOpenForm } from "./LevelViewerOpenForm";
 
 const INSTALLATION: string = "C:\\game";
 const OTHER_INSTALLATION: string = "C:\\anomaly";
+
+const ANOMALY_DETECTION: XrayEngineResolution = {
+  engine: EXrayEngine.EXTENDED,
+  evidence: EXrayEngineEvidence.ANOMALY_EXECUTABLES,
+  subject: "C:\\anomaly\\AnomalyLauncher.exe",
+};
 
 function mockEntry(name: string): LevelEntry {
   return { hasGeometry: true, logicalPath: `levels\\${name}`, name };
@@ -111,8 +118,64 @@ describe("LevelViewerOpenForm", () => {
     );
 
     expect(opened?.[1]).toMatchObject({
-      request: { engine: "vanilla", isDltx: true, source: { kind: "asset", logicalPath: "levels\\zaton" } },
+      request: { engine: "auto", isDltx: true, source: { kind: "asset", logicalPath: "levels\\zaton" } },
     });
+  });
+
+  it("says what Auto reads the listed root as, and why", async () => {
+    setMockInvokeResponses({
+      ["plugin:levels|list_levels"]: [mockEntry("zaton")],
+      ["plugin:assets|detect_engine"]: ANOMALY_DETECTION,
+    });
+
+    const form: RenderResult = renderForm();
+
+    setRoot(form, OTHER_INSTALLATION);
+    await userEvent.click(form.getByRole("button", { name: "List levels" }));
+
+    const auto: HTMLElement = await form.findByRole("button", { name: "Auto: Extended (Anomaly executables found)" });
+
+    expect(auto).toHaveAttribute("aria-pressed", "true");
+    expect(mockInvoke).toHaveBeenCalledWith("plugin:assets|detect_engine", {
+      roots: { asset: null, roots: [{ mode: "auto", path: OTHER_INSTALLATION }] },
+    });
+  });
+
+  // An override is a fact about one game: the next time that root is listed it is still read the way it was told.
+  it("opens with an override and remembers it for that root alone", async () => {
+    setMockInvokeResponses({
+      ["plugin:levels|list_levels"]: [mockEntry("zaton")],
+      ["plugin:levels|open_level"]: mockSessionResponse(mockSelectedLevelDescription()),
+      ["plugin:assets|detect_engine"]: ANOMALY_DETECTION,
+    });
+
+    const form: RenderResult = renderForm();
+
+    setRoot(form, OTHER_INSTALLATION);
+    await userEvent.click(form.getByRole("button", { name: "List levels" }));
+    await userEvent.click(await form.findByRole("option", { name: "zaton" }));
+    await userEvent.click(form.getByRole("button", { name: "Vanilla" }));
+    await userEvent.click(form.getByRole("button", { name: "Open" }));
+
+    const opened: ReadonlyArray<unknown> | undefined = mockInvoke.mock.calls.find(
+      ([name]: ReadonlyArray<unknown>) => name === "plugin:levels|open_level"
+    );
+
+    expect(opened?.[1]).toMatchObject({ request: { engine: "vanilla" } });
+
+    form.unmount();
+
+    const again: RenderResult = renderForm();
+
+    setRoot(again, OTHER_INSTALLATION);
+    await userEvent.click(again.getByRole("button", { name: "List levels" }));
+
+    expect(await again.findByRole("button", { name: "Vanilla" })).toHaveAttribute("aria-pressed", "true");
+
+    setRoot(again, INSTALLATION);
+    await userEvent.click(again.getByRole("button", { name: "List levels" }));
+
+    expect(await again.findByRole("button", { name: /^Auto/ })).toHaveAttribute("aria-pressed", "true");
   });
 
   it("leaves a failed listing on its own button to retry", async () => {

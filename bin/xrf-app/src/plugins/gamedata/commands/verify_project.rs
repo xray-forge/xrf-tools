@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use tauri::State;
 use tauri::ipc::Channel;
 use uuid::Uuid;
-use xrf_engine_target::XrayEngine;
+use xrf_engine_target::XrayEngineChoice;
 use xrf_error::{XrfError, XrfResult};
 use xrf_gamedata::{
   GamedataProject, GamedataProjectReadOptions, GamedataProjectVerifyOptions, GamedataVerificationCheckReport,
@@ -63,8 +63,8 @@ pub struct GamedataVerifyRequest {
   pub checks: Option<Vec<String>>,
   /// Whether a check that would warn should fail instead.
   pub is_strict: bool,
-  /// The engine the tree is meant for, which configs the engines read differently are read as.
-  pub engine: XrayEngine,
+  /// The engine the tree is meant for, which configs the engines read differently are read as; detected on `auto`.
+  pub engine: XrayEngineChoice,
 }
 
 /// Run the selected checks over a gamedata project.
@@ -204,7 +204,7 @@ mod tests {
   fn request(root: PathBuf) -> GamedataVerifyRequest {
     GamedataVerifyRequest {
       checks: None,
-      engine: xrf_engine_target::XrayEngine::Vanilla,
+      engine: xrf_engine_target::XrayEngineChoice::Vanilla,
       is_strict: false,
       root,
     }

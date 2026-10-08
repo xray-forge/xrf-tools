@@ -5,6 +5,7 @@ use xrf_dltx::select_ltx_dialect;
 use xrf_environment::{EnvironmentCatalog, EnvironmentReadOptions};
 use xrf_ltx::LtxProject;
 
+use crate::core::assets::{AssetMountState, detect_roots_engine};
 use crate::core::execution::ExecutionState;
 use crate::core::types::TauriResult;
 use crate::plugins::environment::catalog::{open_configs, read_catalog};
@@ -18,14 +19,21 @@ use crate::plugins::environment::state::EnvironmentState;
 pub async fn environment_read_catalog(
   request: EnvironmentRequest,
   state: State<'_, EnvironmentState>,
+  assets: State<'_, AssetMountState>,
   execution: State<'_, ExecutionState>,
 ) -> TauriResult<EnvironmentCatalogDescription> {
   let read: EnvironmentRequest = request.clone();
+  let assets: AssetMountState = AssetMountState::clone(&assets);
   let catalog: Arc<EnvironmentCatalog> = execution
     .run_blocking("Reading the environment configs", move || {
       let project: LtxProject = open_configs(&read.roots, select_ltx_dialect(read.is_dltx))?;
 
-      read_catalog(&project, &EnvironmentReadOptions::default().with_engine(read.engine)).map(Arc::new)
+      read_catalog(
+        &project,
+        &EnvironmentReadOptions::default()
+          .with_engine(read.engine.resolve(|| detect_roots_engine(&assets, &read.roots)).engine),
+      )
+      .map(Arc::new)
     })
     .await??;
 

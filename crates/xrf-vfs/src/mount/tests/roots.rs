@@ -210,3 +210,23 @@ fn takes_a_root_with_no_mode_as_auto() {
 
   assert_eq!(spec.roots[0].mode, XrayMountMode::Auto);
 }
+
+#[test]
+fn lists_each_installation_its_roots_sit_in_once_asset_first() {
+  let first: PathBuf = root("installations/first", "fsgame.ltx");
+  let second: PathBuf = root("installations/second", "fsgame.ltx");
+  let bare: PathBuf = root("installations/bare", "configs/system.ltx");
+
+  fs::create_dir_all(first.join("gamedata")).expect("gamedata");
+
+  let roots: XrayRoots = XrayRoots {
+    asset: Some(second.join("gamedata/meshes/a.ogf")),
+    roots: vec![
+      XrayRoot::new(first.join("gamedata"), XrayMountMode::Auto),
+      XrayRoot::new(bare, XrayMountMode::Auto),
+      XrayRoot::new(second.clone(), XrayMountMode::Auto),
+    ],
+  };
+
+  assert_eq!(roots.list_installations(), vec![second, first]);
+}

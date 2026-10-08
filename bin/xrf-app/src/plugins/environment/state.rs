@@ -49,7 +49,7 @@ mod tests {
   use std::path::PathBuf;
   use std::sync::Arc;
 
-  use xrf_engine_target::XrayEngine;
+  use xrf_engine_target::{XrayEngine, XrayEngineChoice};
   use xrf_environment::{EnvironmentCatalog, WeatherGraphs};
   use xrf_vfs::{XrayMountMode, XrayRoot, XrayRoots};
 
@@ -76,7 +76,7 @@ mod tests {
     })
   }
 
-  fn request(root: &str, engine: XrayEngine) -> EnvironmentRequest {
+  fn request(root: &str, engine: XrayEngineChoice) -> EnvironmentRequest {
     EnvironmentRequest {
       engine,
       is_dltx: false,
@@ -88,11 +88,11 @@ mod tests {
   fn holds_a_catalog_for_the_roots_dialect_and_engine_it_was_read_with() {
     let state: EnvironmentState = EnvironmentState::new();
 
-    state.put(request("a", XrayEngine::Vanilla), catalog(XrayEngine::Vanilla));
+    state.put(request("a", XrayEngineChoice::Vanilla), catalog(XrayEngine::Vanilla));
 
-    assert!(state.get(&request("a", XrayEngine::Vanilla)).is_some());
-    assert!(state.get(&request("a", XrayEngine::Extended)).is_none());
-    assert!(state.get(&request("b", XrayEngine::Vanilla)).is_none());
+    assert!(state.get(&request("a", XrayEngineChoice::Vanilla)).is_some());
+    assert!(state.get(&request("a", XrayEngineChoice::Extended)).is_none());
+    assert!(state.get(&request("b", XrayEngineChoice::Vanilla)).is_none());
   }
 
   #[test]
@@ -100,15 +100,15 @@ mod tests {
     let state: EnvironmentState = EnvironmentState::new();
 
     for root in ["a", "b", "c", "d"] {
-      state.put(request(root, XrayEngine::Vanilla), catalog(XrayEngine::Vanilla));
+      state.put(request(root, XrayEngineChoice::Vanilla), catalog(XrayEngine::Vanilla));
     }
 
     // Read again, so it is the newest and another is the oldest.
-    state.put(request("a", XrayEngine::Vanilla), catalog(XrayEngine::Vanilla));
-    state.put(request("e", XrayEngine::Vanilla), catalog(XrayEngine::Vanilla));
+    state.put(request("a", XrayEngineChoice::Vanilla), catalog(XrayEngine::Vanilla));
+    state.put(request("e", XrayEngineChoice::Vanilla), catalog(XrayEngine::Vanilla));
 
-    assert!(state.get(&request("a", XrayEngine::Vanilla)).is_some());
-    assert!(state.get(&request("b", XrayEngine::Vanilla)).is_none());
-    assert!(state.get(&request("e", XrayEngine::Vanilla)).is_some());
+    assert!(state.get(&request("a", XrayEngineChoice::Vanilla)).is_some());
+    assert!(state.get(&request("b", XrayEngineChoice::Vanilla)).is_none());
+    assert!(state.get(&request("e", XrayEngineChoice::Vanilla)).is_some());
   }
 }

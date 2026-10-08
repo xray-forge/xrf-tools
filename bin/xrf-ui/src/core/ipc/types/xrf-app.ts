@@ -2,7 +2,7 @@
 
 import { ArchiveProject, ArchiveReadPolicy } from "@/core/ipc/types/xrf-archive";
 import { DialogProjectMode } from "@/core/ipc/types/xrf-dialog";
-import { XrayEngine } from "@/core/ipc/types/xrf-engine-target";
+import { XrayEngine, XrayEngineChoice, XrayEngineResolution } from "@/core/ipc/types/xrf-engine-target";
 import {
   EnvironmentFinding,
   LevelWeather,
@@ -1497,7 +1497,8 @@ export type EnvironmentRequest = {
   roots: XrayRoots;
   /** Whether to resolve with the Monolith/Anomaly DLTX patch dialect. */
   isDltx: boolean;
-  engine: XrayEngine;
+  /** Which engine the configs are read as; detected on `auto`. */
+  engine: XrayEngineChoice;
 };
 
 /** Every `kind` the `EquipmentConfigSource` union is told apart by, so a switch or a comparison names one. */
@@ -1586,8 +1587,8 @@ export type GamedataVerifyRequest = {
   checks: Array<string> | null;
   /** Whether a check that would warn should fail instead. */
   isStrict: boolean;
-  /** The engine the tree is meant for, which configs the engines read differently are read as. */
-  engine: XrayEngine;
+  /** The engine the tree is meant for, which configs the engines read differently are read as; detected on `auto`. */
+  engine: XrayEngineChoice;
 };
 
 /** What a whole verification reports back to the desktop surface. */
@@ -1711,8 +1712,8 @@ export enum EJobKind {
 export type JobKind = `${EJobKind}`;
 
 /**
- * What a game's shipped console defaults (Anomaly's `default_controls.ltx`) set of how its levels are lit, exposed and
- * corrected; each `None` it leaves to the engine.
+ * What a game's console sets of how its levels are lit, exposed and corrected: its installation's `user.ltx` over its
+ * shipped defaults (Anomaly's `default_controls.ltx`); each `None` it leaves to the engine.
  */
 export type LevelConsoleDefaults = {
   /** Whether the game ships console defaults at all. */
@@ -1756,8 +1757,8 @@ export type LevelOpenRequest = {
   roots: XrayRoots;
   /** Whether the game's configs resolve with the Monolith/Anomaly DLTX patch dialect. */
   isDltx: boolean;
-  /** Which engine the game's configs, its weather among them, are read as. */
-  engine: XrayEngine;
+  /** Which engine the game's configs, its weather among them, are read as; detected on `auto`. */
+  engine: XrayEngineChoice;
 };
 
 /** Every `kind` the `LevelSource` union is told apart by, so a switch or a comparison names one. */
@@ -2007,6 +2008,8 @@ export type SelectedLevelDescription = {
   source: LevelSource;
   /** The roots the level and its textures were resolved in, centred on the level itself. */
   roots: XrayRoots;
+  /** The engine everything engine-dependent about the level follows, and what decided it. */
+  engine: XrayEngineResolution;
   xrlcVersion: number;
   xrlcQuality: number;
   visuals: number;

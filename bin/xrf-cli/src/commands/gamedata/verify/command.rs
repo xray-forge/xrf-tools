@@ -136,6 +136,9 @@ impl GenericCommand for VerifyCommand {
     );
 
     let project: Box<GamedataProject> = Box::new(GamedataProject::open(&open_options)?);
+
+    xrf_output::info!(open_options.output, "Engine: {}", project.get_engine().describe());
+
     let verify_result: GamedataVerificationResult = project.verify(&verify_options)?;
     let status: GamedataVerificationStatus = verify_result.get_status();
 
@@ -143,6 +146,7 @@ impl GenericCommand for VerifyCommand {
     context.set_result(|| {
       GamedataVerificationReportPayload::new(
         &root,
+        project.get_engine(),
         &verify_result,
         project.skipped_mounts(),
         project.get_cache_stats(),

@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 
-import { EXrayEngine } from "@/core/ipc/types/xrf-engine-target";
 import { ERenderAntialiasing, ERenderScale } from "@/core/ipc/types/xrf-renderer";
 import { DEFAULT_RENDER_FEATURE_CHOICE } from "@/core/render/lib/settings/render-feature-choice";
 import { ERenderPreset, RENDER_PRESETS } from "@/core/render/lib/settings/render-preset";
@@ -78,17 +77,6 @@ describe("SettingsService", () => {
     expect(service.frameRateLimit).toBe("30");
     expect(window.localStorage.getItem("xrf.preference.frame-rate-limit")).toBe("30");
     expect(mockInjectedService(SettingsService).service.frameRateLimit).toBe("30");
-  });
-
-  it("reads configs as the vanilla engine until told otherwise, and keeps what it was told", () => {
-    const { service } = mockInjectedService(SettingsService);
-
-    expect(service.engine).toBe(EXrayEngine.VANILLA);
-
-    service.setEngine(EXrayEngine.EXTENDED);
-
-    expect(window.localStorage.getItem("xrf.preference.engine")).toBe("extended");
-    expect(mockInjectedService(SettingsService).service.engine).toBe(EXrayEngine.EXTENDED);
   });
 
   // No cap under vsync is the display's own refresh rate, whatever it is, with nothing to detect.

@@ -39,8 +39,10 @@ impl LevelEnvironment {
       .environment
       .get_or_init(|| {
         let project: LtxProject = open_configs(&current.roots, current.dialect.clone())?;
-        let catalog: EnvironmentCatalog =
-          read_catalog(&project, &EnvironmentReadOptions::default().with_engine(current.engine))?;
+        let catalog: EnvironmentCatalog = read_catalog(
+          &project,
+          &EnvironmentReadOptions::default().with_engine(current.engine.engine),
+        )?;
         let level: String = current.source.get_name().unwrap_or_default();
         let weather: LevelWeather = EnvironmentReader::read_level_weather(&project, &catalog, &level)
           .map_err(|error| format!("Failed to read which weathers level '{level}' plays: {error}"))?;

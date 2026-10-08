@@ -4,6 +4,7 @@ import { Nullable } from "@xrf/types";
 
 import { levelsCommands } from "@/core/ipc/commands/levels";
 import { LevelConsoleDefaults, SelectedLevelDescription, SessionSnapshot } from "@/core/ipc/types/xrf-app";
+import { XrayEngine } from "@/core/ipc/types/xrf-engine-target";
 import {
   ELevelLookSource,
   ILevelLook,
@@ -33,6 +34,10 @@ export class LevelLookService {
   public defaults: Nullable<LevelConsoleDefaults> = null;
 
   private readonly log: Logger = new Logger(__MODULE_NAME__);
+  /** The engine the open level is read as, which a look the game leaves to its engine follows; null with none open. */
+  @RefObservable()
+  public engine: Nullable<XrayEngine> = null;
+
   /** The level whose game's defaults are held or being read. */
   private sessionId: Nullable<string> = null;
 
@@ -46,7 +51,7 @@ export class LevelLookService {
    */
   @Computed()
   public get game(): Nullable<ILevelLook> {
-    return this.defaults ? toGameLevelLook(this.defaults, this.exposure, this.settingsService.engine) : null;
+    return this.defaults && this.engine ? toGameLevelLook(this.defaults, this.exposure, this.engine) : null;
   }
 
   /** The look the level is drawn with. */
@@ -70,6 +75,7 @@ export class LevelLookService {
     this.sessionId = sessionId;
     runInAction(() => {
       this.defaults = null;
+      this.engine = selected?.value.engine.engine ?? null;
     });
 
     if (!sessionId) {

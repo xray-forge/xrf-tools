@@ -4,8 +4,9 @@ export const LEVEL_VIEWER_HELP: IApplicationHelp = {
   summary:
     "Explore a compiled level from a game installation or gamedata directory, including archives. Fly through the scene, preview its weather, and inspect rendering problems. The viewer does not change game files.",
   workflow: [
-    "Set the game's engine target in Settings, then choose its installation or gamedata directory as `Game root` and select `List levels`.",
+    "Choose the game's installation or gamedata directory as `Game root` and select `List levels`.",
     "Choose a `Level` and its configuration `Dialect`: `LTX` for standard configs, or `DLTX` to apply `mod_*.ltx` patches. Select `Open`. If the list is empty, check that the root contains compiled levels with a `level.geom` file.",
+    "`Engine` is `Auto` unless you choose otherwise: it reads `Extended` for an installation with Anomaly's executables or `fsgame.ltx`, or data with Atmosfear's `[weather_cycles]`, and `Vanilla` otherwise, and says which it found. A `Vanilla` or `Extended` override is remembered for that root. The opened level's engine decides its weather, sun, particles and bloom.",
     "Wait for the level to load, then click the viewport to use the flight controls. The whole level is loaded at once; the `Renderer` panel shows what is resident, what each frame costs, and the settings the renderer actually applied.",
     "Use the `Weather` panel to compare times of day. If something looks wrong, check `Problems` for failed assets and the `Surfaces` side panel for the shader and textures used to draw it.",
   ],

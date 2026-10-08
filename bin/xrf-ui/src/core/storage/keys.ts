@@ -22,8 +22,8 @@ export const IPC_PROFILING_STORAGE_KEY: string = buildStorageKey(EStorageNamespa
 export const MEDIA_VOLUME_STORAGE_KEY: string = buildStorageKey(EStorageNamespace.PREFERENCE, "media-volume");
 /** Frames a second a viewport is allowed to draw. */
 export const FRAME_RATE_LIMIT_STORAGE_KEY: string = buildStorageKey(EStorageNamespace.PREFERENCE, "frame-rate-limit");
-/** Which engine game configs are read as, where the engines read them differently. */
-export const ENGINE_STORAGE_KEY: string = buildStorageKey(EStorageNamespace.PREFERENCE, "engine");
+/** Which engine each game root is read as where it was told rather than left to detection, by root, as JSON. */
+export const ENGINE_CHOICES_STORAGE_KEY: string = buildStorageKey(EStorageNamespace.PREFERENCE, "engine-choices");
 /** Whether every viewport's frames wait for the display's refresh. */
 export const VSYNC_STORAGE_KEY: string = buildStorageKey(EStorageNamespace.PREFERENCE, "vsync");
 /** Whether every viewport times its passes on the GPU. */

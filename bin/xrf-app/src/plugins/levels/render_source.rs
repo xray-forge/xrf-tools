@@ -331,7 +331,7 @@ impl RenderLevelSource for LevelRenderSource {
 
     Ok(Some(RenderLevelParticles {
       library: Arc::new(packed.library),
-      rules: ParticleEngineRules::new(level.engine, ParticleEngineRules::DEFAULT_UPDATE_COEFFICIENT),
+      rules: ParticleEngineRules::new(level.engine.engine, ParticleEngineRules::DEFAULT_UPDATE_COEFFICIENT),
       placements: packed.placements,
       surfaces: packed.surfaces,
       collider: collision

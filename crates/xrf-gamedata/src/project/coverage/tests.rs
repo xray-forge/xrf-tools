@@ -59,7 +59,7 @@ fn project_missing_sources(root: &PathBuf, absent: &[(&str, PathBuf)]) -> Gameda
   let vfs: XrayVfs = XrayVfs::from_plan(&plan).expect("the readable mount still opens");
 
   GamedataProject {
-    engine: xrf_engine_target::XrayEngine::Vanilla,
+    engine: xrf_engine_target::XrayEngineResolution::named(xrf_engine_target::XrayEngine::Vanilla),
     ltx_project: LtxProject::open_at_scope_opt(
       root.join("configs"),
       vfs,

@@ -13,6 +13,7 @@ macro_rules! for_each_tauri_command_domain {
       // Reading is generic, so it lives here rather than being reimplemented per domain; what an asset *means* stays with
       // the domain that parses it.
       assets => "assets" {
+        detect_engine => crate::plugins::assets::commands::detect_engine::assets_detect_engine,
         list_assets => crate::plugins::assets::commands::list_assets::assets_list_assets,
         probe_root => crate::plugins::assets::commands::probe_root::assets_probe_root,
       }

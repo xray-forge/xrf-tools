@@ -4,13 +4,14 @@ use std::time::Instant;
 use tauri::State;
 use xrf_chunk::XRayByteOrder;
 use xrf_dltx::select_ltx_dialect;
+use xrf_engine_target::XrayEngineResolution;
 use xrf_level::LevelCformFile;
 use xrf_material::{XraySurfaceDescriptor, XrayTextureScope};
 use xrf_math::Vector3d;
 use xrf_vfs::{XrayProbe, XrayRoots};
 use xrf_visual::SectorOutline;
 
-use crate::core::assets::AssetMountState;
+use crate::core::assets::{AssetMountState, detect_probe_engine};
 use crate::core::execution::ExecutionState;
 use crate::core::session::{SessionId, SessionSnapshot};
 use crate::core::types::TauriResult;
@@ -61,13 +62,17 @@ pub async fn levels_open_level(
 
   let roots: XrayRoots = roots.centred_on(source.get_physical_path());
   let assets: AssetMountState = AssetMountState::clone(&assets);
-  let (opened, source, roots) = execution
+  let (opened, engine, source, roots) = execution
     .run_blocking("Opening the level", move || {
-      let opened: OpenedLevel = assets.with_fresh_probe(&roots, |probe| open(&source, probe))??;
+      let (opened, engine): (OpenedLevel, XrayEngineResolution) = assets.with_fresh_probe(&roots, |probe| {
+        open(&source, probe).map(|opened| (opened, engine.resolve(|| detect_probe_engine(probe, &roots))))
+      })??;
 
-      TauriResult::Ok((opened, source, roots))
+      TauriResult::Ok((opened, engine, source, roots))
     })
     .await??;
+
+  log::info!("Reading level '{}' as {}", source.get_label(), engine.describe());
 
   report_start(&source, opened.start.as_ref());
 
