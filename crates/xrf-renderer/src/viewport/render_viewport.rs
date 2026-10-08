@@ -273,7 +273,7 @@ impl RenderViewport {
     let (render_width, render_height): (u32, u32) = self
       .shown
       .as_ref()
-      .and_then(|(_, view)| view.get_state().get_render_size())
+      .and_then(|(_, view)| view.get_render_size())
       .unwrap_or((rect.width, rect.height));
     // The scene it shows, and the one it asks for while that comes in.
     let mut held: Vec<RenderSceneId> = self.shown.iter().map(|(id, _)| *id).chain(self.world.scene).collect();

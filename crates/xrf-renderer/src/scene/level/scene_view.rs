@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use std::time::Instant;
 
-use glam::{Vec2, Vec3, Vec4};
+use glam::{Mat4, Vec2, Vec3, Vec4};
 use xrf_error::XrfResult;
 use xrf_renderer_core::{
   FrameGraph, GraphBindings, GraphBuffer, GraphColorAttachment, GraphRuntime, GraphTexture, GraphTextureDescriptor,
@@ -76,8 +76,7 @@ use crate::scene::level::scene_output::SceneOutput;
 use crate::scene::level::shadow_frame::ShadowFrame;
 use crate::scene::level::shadow_sway::ShadowSway;
 use crate::scene::level::surroundings_cube::SurroundingsCube;
-use crate::scene::level::view_info::ViewInfo;
-use crate::scene::level::view_state::ViewState;
+use crate::scene::level::view_frame::ViewFrame;
 use crate::scene::static_scene::static_batch::StaticBatch;
 use crate::scene::static_scene::static_layout::StaticLayout;
 use crate::scene::static_scene::static_scene::StaticScene;
@@ -96,14 +95,14 @@ const INDOOR_HEMI_FADE: (f32, f32) = (0.03, 0.1);
 const PICKED_CLUSTER: u32 = 1;
 const PICKED_IMPOSTOR: u32 = 2;
 
-/// A scene as one viewport draws it: this frame as prepared (`ViewInfo`), what the view keeps between frames
-/// (`ViewState`), and what draws it (`SceneRenderer`). The scene (`LevelScene`) is shared by every view of it and passed
-/// in; this prepares the view's frame from it and records it into the frame's graph.
+/// A scene as one viewport draws it: the values its units share this frame (`ViewFrame`), its targets, and its units
+/// (`SceneFeatures`), which each keep what they keep between frames. The scene (`LevelScene`) is shared by every view of
+/// it and passed in; this prepares the view's frame from it and records it into the frame's graph.
 pub struct SceneView {
-  /// This frame as prepared, which its passes read.
-  info: ViewInfo,
-  /// What the view keeps from one frame to the next.
-  state: ViewState,
+  /// The values every unit reads this frame.
+  shared: ViewFrame,
+  /// The G-buffer, depth, light and scene it draws into, once its size is known.
+  targets: Option<ViewTargets>,
   /// Its feature units.
   features: SceneFeatures,
 }
@@ -115,12 +114,19 @@ impl SceneView {
   }
 
   /// What it keeps from one frame to the next.
-  pub fn get_state(&self) -> &ViewState {
-    &self.state
+  /// The size its scene is rendered at, once its targets are made.
+  pub fn get_render_size(&self) -> Option<(u32, u32)> {
+    self.targets.as_ref().map(|it| (it.width, it.height))
   }
 
-  pub fn get_state_mut(&mut self) -> &mut ViewState {
-    &mut self.state
+  /// This frame's unjittered view projection and the last one's, which the surfaces' motion is measured between.
+  pub fn next_motion(&mut self, current: Mat4) -> (Mat4, Mat4) {
+    self.features.resolve.next_motion(current)
+  }
+
+  /// The last frame's jittered view projection, this frame's taking its place.
+  pub fn next_jittered(&mut self, current: Mat4) -> Mat4 {
+    self.features.resolve.next_jittered(current)
   }
 
   /// A view of `scene`, nothing of it drawn yet.
@@ -131,8 +137,8 @@ impl SceneView {
     scene: &LevelScene,
   ) -> Self {
     Self {
-      info: ViewInfo::default(),
-      state: ViewState::default(),
+      shared: ViewFrame::default(),
+      targets: None,
       features: SceneFeatures::new((device, queue), view_layout, scene.statics.cull.args.size()),
     }
   }
@@ -213,9 +219,9 @@ impl SceneView {
   ) {
     profiling::scope!("prepare view");
 
-    if !self.state.targets.as_ref().is_some_and(|it| it.is_sized(width, height)) {
+    if !self.targets.as_ref().is_some_and(|it| it.is_sized(width, height)) {
       let targets: ViewTargets = ViewTargets::new(device, width, height);
-      self.state.targets = Some(targets);
+      self.targets = Some(targets);
       self.features.statics.fit(device, (width, height));
     }
 
@@ -237,7 +243,7 @@ impl SceneView {
       options,
       weather_textures,
       (view, weather_rate),
-      self.state.targets.is_some(),
+      self.targets.is_some(),
     );
 
     let sky = &lighting.sky;
@@ -260,7 +266,7 @@ impl SceneView {
       device,
       options,
       WaterFrame {
-        targets: self.state.targets.as_ref(),
+        targets: self.targets.as_ref(),
         is_in_view: sight.is_water(),
         intensity: lighting.water_intensity,
         wind: lighting.wind,
@@ -288,7 +294,7 @@ impl SceneView {
       (lighting, weather),
       options,
       (falling.as_ref(), time, weather_rate),
-      (windows, self.state.noise_frame),
+      (windows, self.features.resolve.get_noise_frame()),
       weather_textures,
     );
     self
@@ -327,7 +333,7 @@ impl SceneView {
         .map_or(Vec4::ZERO, |(_, sprite)| *sprite),
     };
 
-    self.info.is_shafted = options.mode.is_lit
+    self.shared.is_shafted = options.mode.is_lit
       && options.show.is_sun_shafted
       && lighting.get_sun_shafts(&options.features.sun_shafts) > 0.0
       && options.features.shadows.get_cascade_count() > 0;
@@ -335,20 +341,12 @@ impl SceneView {
       passes,
       options,
       lighting.engine,
-      self
-        .state
-        .targets
-        .as_ref()
-        .map(|targets| (targets.width, targets.height)),
+      self.targets.as_ref().map(|targets| (targets.width, targets.height)),
     );
     self.features.fog.prepare(
       options,
       lighting,
-      self
-        .state
-        .targets
-        .as_ref()
-        .map(|targets| (targets.width, targets.height)),
+      self.targets.as_ref().map(|targets| (targets.width, targets.height)),
       scene.started.elapsed().as_secs_f32(),
     );
 
@@ -393,25 +391,21 @@ impl SceneView {
         campfire_shares: &scene.campfire_shares,
       },
     );
-    self.info.camera = *view;
-    self.info.sun_direction = lighting.get_sun_direction();
-    self.info.switches = Vec4::new(
+    self.shared.camera = *view;
+    self.shared.sun_direction = lighting.get_sun_direction();
+    self.shared.switches = Vec4::new(
       1.0,
       options.mode.is_bumped as u32 as f32,
       options.features.hemi_strength,
       0.0,
     );
-    self.info.shadow_settings = options.features.shadows.clone();
-    self.info.is_wireframe = options.mode.is_wireframe;
+    self.shared.shadow_settings = options.features.shadows.clone();
+    self.shared.is_wireframe = options.mode.is_wireframe;
     self.features.resolve.prepare(
       device,
       view,
       (
-        self
-          .state
-          .targets
-          .as_ref()
-          .map(|targets| (targets.width, targets.height)),
+        self.targets.as_ref().map(|targets| (targets.width, targets.height)),
         output,
       ),
       (options.output.upscaling, options.is_scene_linear()),
@@ -420,7 +414,7 @@ impl SceneView {
       passes,
       options.features.antialiasing,
       (
-        self.state.targets.is_some() && options.mode.debug_view == RenderDebugView::Final,
+        self.targets.is_some() && options.mode.debug_view == RenderDebugView::Final,
         options.is_scene_linear(),
       ),
     );
@@ -442,22 +436,19 @@ impl SceneView {
       .composited
       .prepare((scene, device, &mut *encoder), view, options, &sight);
 
-    self.info.lighting = LightingUniform::new(lighting, view.view, options, &frame);
+    self.shared.lighting = LightingUniform::new(lighting, view.view, options, &frame);
     // The enhanced fog's height fog fades out as the camera goes indoors, by its hemi as the engine tells indoors.
-    self.info.lighting.height_fog.w *= scene.camera_hemi.map_or(1.0, |hemi| {
+    self.shared.lighting.height_fog.w *= scene.camera_hemi.map_or(1.0, |hemi| {
       let share: f32 = ((hemi - INDOOR_HEMI_FADE.0) / (INDOOR_HEMI_FADE.1 - INDOOR_HEMI_FADE.0)).clamp(0.0, 1.0);
 
       share * share * (3.0 - 2.0 * share)
     });
 
-    if self.features.resolve.is_temporal() {
-      self.state.noise_frame = self.state.noise_frame.wrapping_add(1);
-    }
-
-    self
-      .features
-      .contact_shadows
-      .prepare(options, self.info.lighting.to_sun, (height, self.state.noise_frame));
+    self.features.contact_shadows.prepare(
+      options,
+      self.shared.lighting.to_sun,
+      (height, self.features.resolve.get_noise_frame()),
+    );
 
     scene.particles.fill(view, options, &mut self.features.particles);
 
@@ -500,7 +491,7 @@ impl SceneView {
     encoder: &mut FrameEncoder,
     (view_layout, textures): (&wgpu::BindGroupLayout, &TextureCache),
   ) {
-    let SceneView { info, features, .. } = self;
+    let SceneView { shared, features, .. } = self;
     let SceneFeatures {
       shadows,
       rain_cover,
@@ -515,10 +506,10 @@ impl SceneView {
     let statics: &StaticScene = &scene.statics;
     let frame: ShadowFrame<'_> = ShadowFrame {
       scene: statics,
-      camera: &info.camera,
-      settings: &info.shadow_settings,
-      sun_direction: info.sun_direction,
-      switches: info.switches,
+      camera: &shared.camera,
+      settings: &shared.shadow_settings,
+      sun_direction: shared.sun_direction,
+      switches: shared.switches,
       sway: to_sway(statics, features.wind.get_sway()),
       params: statics_feature.get_cull(),
       textures,
@@ -563,10 +554,10 @@ impl SceneView {
     let LevelScene { statics, lights, .. } = scene;
     let frame: ShadowFrame<'_> = ShadowFrame {
       scene: statics,
-      camera: &self.info.camera,
-      settings: &self.info.shadow_settings,
-      sun_direction: self.info.sun_direction,
-      switches: self.info.switches,
+      camera: &self.shared.camera,
+      settings: &self.shared.shadow_settings,
+      sun_direction: self.shared.sun_direction,
+      switches: self.shared.switches,
       sway: to_sway(statics, self.features.wind.get_sway()),
       params: self.features.statics.get_cull(),
       textures,
@@ -643,7 +634,7 @@ impl SceneView {
 
       self.features.bitmask.end_frame();
 
-      if let Some(targets) = &mut self.state.targets {
+      if let Some(targets) = &mut self.targets {
         self.features.reflections.end_frame(&mut targets.depth);
       }
 
@@ -657,12 +648,7 @@ impl SceneView {
   /// distorting surface of the scene moves what is seen through it, which bloom it lays over the frame, and the sky
   /// debanding, its noise turning with `time`.
   fn prepare_present(&mut self, options: &RenderViewOptions, output: RenderRect, time: f32) {
-    let Some(render) = self
-      .state
-      .targets
-      .as_ref()
-      .map(|targets| (targets.width, targets.height))
-    else {
+    let Some(render) = self.targets.as_ref().map(|targets| (targets.width, targets.height)) else {
       return;
     };
     let water: &RenderWaterSettings = &options.features.water;
@@ -689,7 +675,7 @@ impl SceneView {
     (device, encoder): (&wgpu::Device, &mut FrameEncoder),
     pick: Option<(&CameraUniform, &wgpu::BindGroupLayout, bool)>,
   ) -> Option<LevelFrame> {
-    if self.state.targets.is_none() || !self.features.statics.is_ready() {
+    if self.targets.is_none() || !self.features.statics.is_ready() {
       return None;
     }
 
@@ -702,7 +688,7 @@ impl SceneView {
       pick_slot,
       is_pick_through: pick.is_some_and(|(_, _, is_through)| is_through),
       is_scene_first: false,
-      is_lit: self.state.targets.is_some(),
+      is_lit: self.targets.is_some(),
     })
   }
 
@@ -724,7 +710,7 @@ impl SceneView {
 
     let pick_slot: Option<usize> = frame.pick_slot;
     let is_pick_through: bool = frame.is_pick_through;
-    let is_drawn: bool = !self.info.is_wireframe;
+    let is_drawn: bool = !self.shared.is_wireframe;
     let is_raining: bool = self.features.rain.is_raining();
     let is_wet: bool = self.features.wet.is_wet();
     let is_lit: bool = frame.is_lit;
@@ -734,11 +720,11 @@ impl SceneView {
     let has_sky: bool = self.features.sky.get_views().is_some();
     let is_composited: bool = is_drawn && has_sky;
     let has_particles: bool = is_drawn && self.features.particles.is_drawing();
-    let is_shafted: bool = self.info.is_shafted && !is_froxeled;
+    let is_shafted: bool = self.shared.is_shafted && !is_froxeled;
     let particle_surfaces: &wgpu::Buffer = scene.particles.get_surfaces();
     let texture_group: &wgpu::BindGroup = textures.get_bind_group();
     let scene_view: &'a SceneView = self;
-    let Some(targets) = &scene_view.state.targets else {
+    let Some(targets) = &scene_view.targets else {
       return None;
     };
     let unlit: GraphTexture = bindings.import_view(&mut *graph, "indirect light none", passes.vbao.get_dark());
@@ -754,7 +740,7 @@ impl SceneView {
     )?;
     let layouts: [StaticDrawParameters; StaticLayout::COUNT] = statics.get_camera_draws().layouts;
     let lit: LightingHandles = LightingHandles {
-      lighting: runtime.push_uniform(&scene_view.info.lighting),
+      lighting: runtime.push_uniform(&scene_view.shared.lighting),
       exposure: bindings.import_buffer(&mut *graph, "exposure", &scene_view.features.exposure.state),
       material_lut: bindings.import_view(&mut *graph, "material table", &passes.table.view),
       lut_sampler: &passes.table.sampler,
@@ -1404,15 +1390,15 @@ impl SceneView {
       .get_temporal()
       .or(self.features.smoothing.get_mode())
       .unwrap_or(RenderAntialiasing::None);
-    let cascades: usize = self.info.shadow_settings.get_cascade_count();
+    let cascades: usize = self.shared.shadow_settings.get_cascade_count();
 
     RenderAppliedReport {
       antialiasing,
       render_scale: self.features.resolve.get_upscaling().scale,
       shadows: (cascades > 0).then(|| RenderAppliedShadows {
-        cascades: self.info.shadow_settings.cascades[..cascades].to_vec(),
+        cascades: self.shared.shadow_settings.cascades[..cascades].to_vec(),
         resolution: self.features.shadows.get_maps().resolution,
-        filter: self.info.shadow_settings.filter,
+        filter: self.shared.shadow_settings.filter,
       }),
       ambient_occlusion: self
         .features
