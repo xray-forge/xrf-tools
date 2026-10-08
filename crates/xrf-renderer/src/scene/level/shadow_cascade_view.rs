@@ -11,6 +11,8 @@ pub struct ShadowCascadeView {
   pub view: ViewBinding,
   /// The cascade's version and what the scene held when its map was last drawn, or none before it was drawn.
   pub drawn: Option<(u64, usize)>,
+  /// The same for its static layer, where it keeps one.
+  pub drawn_static: Option<(u64, usize)>,
   /// The sway's time its map was last drawn at.
   pub drawn_at: f32,
   /// The fit its map was last drawn at, which a fit strayed too far from draws again whatever its stagger.
@@ -32,6 +34,7 @@ impl ShadowCascadeView {
       }),
       view: ViewBinding::new(device, view_layout),
       drawn: None,
+      drawn_static: None,
       drawn_at: 0.0,
       drawn_fit: SunCascade::default(),
       waited: 0,
