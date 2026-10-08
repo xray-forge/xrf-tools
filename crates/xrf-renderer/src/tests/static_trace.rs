@@ -15,6 +15,7 @@ use crate::frame::frame_encoder::FrameEncoder;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::pass::light_record::LightRecord;
 use crate::pass::lights_uniform::LightsUniform;
+use crate::pass::shadow_uniform::ShadowUniform;
 use crate::pass::trace_grass_uniform::TraceGrassUniform;
 use crate::pass::trace_parameters::TraceParameters;
 use crate::scene::static_scene::static_layout::StaticLayout;
@@ -381,17 +382,7 @@ fn run_probes(
     scene.geometry.indices.get_buffer(),
     scene.surfaces.buffer.get_buffer(),
   ];
-  let mut entries: Vec<wgpu::BindGroupEntry<'_>> = vec![wgpu::BindGroupEntry {
-    binding: 0,
-    resource: trace.get_structure().tlas.as_binding(),
-  }];
-
-  entries.extend(buffers.iter().enumerate().map(|(index, buffer)| wgpu::BindGroupEntry {
-    binding: index as u32 + 1,
-    resource: buffer.as_entire_binding(),
-  }));
-
-  // No light, and an atlas of one texel: the probe lights nothing.
+  // No light, an atlas of one texel and no sun's cascade: the probe lights nothing.
   let lights: wgpu::Buffer = device.create_buffer(&wgpu::BufferDescriptor {
     label: Some("trace probe lights"),
     size: size_of::<LightRecord>() as u64,
@@ -420,23 +411,36 @@ fn run_probes(
       view_formats: &[],
     })
     .create_view(&Default::default());
-  let first_light: u32 = buffers.len() as u32 + 1;
-
-  entries.extend([
-    wgpu::BindGroupEntry {
-      binding: first_light,
-      resource: lights.as_entire_binding(),
-    },
-    wgpu::BindGroupEntry {
-      binding: first_light + 1,
-      resource: light_view.as_entire_binding(),
-    },
-    wgpu::BindGroupEntry {
-      binding: first_light + 2,
-      resource: wgpu::BindingResource::TextureView(&atlas),
-    },
-  ]);
-
+  let sun_maps: wgpu::TextureView = device
+    .create_texture(&wgpu::TextureDescriptor {
+      label: Some("trace probe sun maps"),
+      size: wgpu::Extent3d {
+        width: 1,
+        height: 1,
+        depth_or_array_layers: 1,
+      },
+      mip_level_count: 1,
+      sample_count: 1,
+      dimension: wgpu::TextureDimension::D2,
+      format: wgpu::TextureFormat::Depth32Float,
+      usage: wgpu::TextureUsages::TEXTURE_BINDING,
+      view_formats: &[],
+    })
+    .create_view(&wgpu::TextureViewDescriptor {
+      dimension: Some(wgpu::TextureViewDimension::D2Array),
+      ..Default::default()
+    });
+  let sun_shadows: wgpu::Buffer = device.create_buffer(&wgpu::BufferDescriptor {
+    label: Some("trace probe sun shadows"),
+    size: size_of::<ShadowUniform>() as u64,
+    usage: wgpu::BufferUsages::UNIFORM,
+    mapped_at_creation: false,
+  });
+  let compare: wgpu::Sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+    label: Some("trace probe atlas compare"),
+    compare: Some(wgpu::CompareFunction::GreaterEqual),
+    ..Default::default()
+  });
   // No grass either: its grid, slots, models and colours nothing, its uniform naming no model.
   let grass: wgpu::Buffer = device.create_buffer(&wgpu::BufferDescriptor {
     label: Some("trace probe grass"),
@@ -445,28 +449,33 @@ fn run_probes(
     mapped_at_creation: false,
   });
 
-  entries.extend([
-    wgpu::BindGroupEntry {
-      binding: first_light + 3,
-      resource: trace.get_empty().as_entire_binding(),
-    },
-    wgpu::BindGroupEntry {
-      binding: first_light + 4,
-      resource: trace.get_empty().as_entire_binding(),
-    },
-    wgpu::BindGroupEntry {
-      binding: first_light + 5,
-      resource: trace.get_empty().as_entire_binding(),
-    },
-    wgpu::BindGroupEntry {
-      binding: first_light + 6,
-      resource: trace.get_empty().as_entire_binding(),
-    },
-    wgpu::BindGroupEntry {
-      binding: first_light + 7,
-      resource: grass.as_entire_binding(),
-    },
-  ]);
+  let empty: wgpu::BindingResource<'_> = trace.get_empty().as_entire_binding();
+  // `TraceParameters`' resources in their order, each bound at its place in it.
+  let resources: Vec<wgpu::BindingResource<'_>> = [trace.get_structure().tlas.as_binding()]
+    .into_iter()
+    .chain(buffers.iter().map(|buffer| buffer.as_entire_binding()))
+    .chain([
+      lights.as_entire_binding(),
+      light_view.as_entire_binding(),
+      wgpu::BindingResource::TextureView(&atlas),
+      wgpu::BindingResource::Sampler(&compare),
+      wgpu::BindingResource::TextureView(&sun_maps),
+      sun_shadows.as_entire_binding(),
+      empty.clone(),
+      empty.clone(),
+      empty.clone(),
+      empty,
+      grass.as_entire_binding(),
+    ])
+    .collect();
+  let entries: Vec<wgpu::BindGroupEntry<'_>> = resources
+    .into_iter()
+    .enumerate()
+    .map(|(binding, resource)| wgpu::BindGroupEntry {
+      binding: binding as u32,
+      resource,
+    })
+    .collect();
 
   let trace_group: wgpu::BindGroup = device.create_bind_group(&wgpu::BindGroupDescriptor {
     label: Some("trace probe scene"),
@@ -479,7 +488,7 @@ fn run_probes(
 
     pass.set_pipeline(&pipeline);
     pass.set_bind_group(0, &probe_group, &[]);
-    pass.set_bind_group(3, &trace_group, &[0, 0]);
+    pass.set_bind_group(3, &trace_group, &[0, 0, 0]);
     pass.dispatch_workgroups(probes.len() as u32, 1, 1);
   }
 

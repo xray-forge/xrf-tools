@@ -4,8 +4,9 @@ use crate::pass::contact_shadow_uniform::ContactShadowUniform;
 use crate::pass::light_record::LightRecord;
 use crate::pass::lights_uniform::LightsUniform;
 
-/// What the lights' pass reads: the G-buffer's normals, material and depth, the material table, the lights binned into
-/// the view's clusters, the scene's light shadow atlas, and what the contact shadows towards the lights march by.
+/// What the lights' pass and the light visibility pass before it read: the G-buffer's normals, material and depth, the
+/// material table, the lights binned into the view's clusters, and what the contact shadows towards the lights march
+/// by.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 1)]
 pub struct LightsParameters<'a> {
@@ -27,8 +28,6 @@ pub struct LightsParameters<'a> {
   pub items: StorageArray<u32>,
   #[uniform]
   pub lights: UniformBinding<LightsUniform>,
-  #[texture(d2, depth)]
-  pub shadow_atlas: GraphTexture,
   #[uniform]
   pub contact: UniformBinding<ContactShadowUniform>,
 }

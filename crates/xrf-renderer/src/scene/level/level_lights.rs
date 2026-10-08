@@ -24,6 +24,7 @@ use crate::pass::light_volumes_uniform::LightVolumesUniform;
 use crate::pass::static_cull_params::StaticCullParams;
 use crate::scene::level::feature::lights_feature::{LightsFeature, MAX_LIGHTS};
 use crate::scene::level::level_light_shadows::{LIGHT_SHADOW_ATLAS_SIZE, LevelLightShadows};
+use crate::scene::level::light_shadow_atlas::LightShadowAtlas;
 use crate::scene::level::light_shadow_set::LightShadowSet;
 use crate::scene::level::lights_frame::LightsFrame;
 use crate::scene::level::shadow_frame::ShadowFrame;
@@ -365,7 +366,7 @@ impl LevelLights {
     self.shadows.get_memory()
   }
 
-  pub fn get_shadow_atlas(&self) -> &wgpu::TextureView {
+  pub fn get_shadow_atlas(&self) -> LightShadowAtlas<'_> {
     self.shadows.get_atlas()
   }
 }

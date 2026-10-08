@@ -27,6 +27,8 @@ pub struct FroxelInjectParameters<'a> {
   pub lights: UniformBinding<LightsUniform>,
   #[texture(d2, depth)]
   pub shadow_atlas: GraphTexture,
+  #[sampler(comparison)]
+  pub shadow_sampler: &'a wgpu::Sampler,
   #[uniform]
   pub froxels: UniformBinding<FroxelUniform>,
   #[texture(d3, float)]

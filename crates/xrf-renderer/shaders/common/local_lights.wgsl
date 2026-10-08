@@ -94,22 +94,20 @@ fn projector_uv(record: LightRecord, to_point: vec3<f32>, size: vec2<f32>) -> ve
 
 // A comparison filtered as hardware filters it, between the four texels around a point: lit where the stored depth,
 // reversed, is no nearer than the reference.
-fn compared_texels(atlas: texture_depth_2d, at: vec2<f32>, reference: f32) -> f32 {
-  let corner: vec2<f32> = at - 0.5;
-  let first: vec2<f32> = floor(corner);
-  let blend: vec2<f32> = corner - first;
-  let base: vec2<i32> = vec2<i32>(first);
-  let lit00: f32 = step(textureLoad(atlas, base, 0), reference);
-  let lit10: f32 = step(textureLoad(atlas, base + vec2<i32>(1, 0), 0), reference);
-  let lit01: f32 = step(textureLoad(atlas, base + vec2<i32>(0, 1), 0), reference);
-  let lit11: f32 = step(textureLoad(atlas, base + vec2<i32>(1, 1), 0), reference);
-
-  return mix(mix(lit00, lit10, blend.x), mix(lit01, lit11, blend.x), blend.y);
+fn compared_texels(atlas: texture_depth_2d, compare: sampler_comparison, at: vec2<f32>, reference: f32) -> f32 {
+  return textureSampleCompareLevel(atlas, compare, at * ATLAS_TEXEL, reference);
 }
 
 // Anomaly's `shadow_pcss`: nine texels five apart searched for what stands nearer the light, lit where none does and
 // dark where all do; between, a penumbra of comparisons as wide as the blockers stand from the point.
-fn penumbra_lit(atlas: texture_depth_2d, centre: vec2<f32>, least: vec2<f32>, most: vec2<f32>, depth: f32) -> f32 {
+fn penumbra_lit(
+  atlas: texture_depth_2d,
+  compare: sampler_comparison,
+  centre: vec2<f32>,
+  least: vec2<f32>,
+  most: vec2<f32>,
+  depth: f32,
+) -> f32 {
   let texel_centre: vec2<f32> = floor(centre) + 0.5;
   let reference: f32 = 1.0 - depth;
   var found: f32 = 0.0;
@@ -141,7 +139,7 @@ fn penumbra_lit(atlas: texture_depth_2d, centre: vec2<f32>, least: vec2<f32>, mo
   var total: f32 = 0.0;
 
   for (var index: u32 = 0u; index < 12u; index++) {
-    total += compared_texels(atlas, clamp(centre + POISSON_DISK[index] * radius, least, most), reference);
+    total += compared_texels(atlas, compare, clamp(centre + POISSON_DISK[index] * radius, least, most), reference);
   }
 
   return total / 12.0;
@@ -242,6 +240,7 @@ fn shadow_tap(place: ShadowPlace, tap: u32) -> vec2<f32> {
 // and its comparison filtered. `is_soft` compares as `shadow_pcss` does.
 fn light_shadow(
   atlas: texture_depth_2d,
+  compare: sampler_comparison,
   record: LightRecord,
   to_point: vec3<f32>,
   normal: vec3<f32>,
@@ -251,14 +250,14 @@ fn light_shadow(
   let place: ShadowPlace = shadow_place(record, to_point, normal, is_spot, is_soft);
 
   if (is_soft) {
-    return penumbra_lit(atlas, place.centre, place.least, place.most, place.moved) * place.fade;
+    return penumbra_lit(atlas, compare, place.centre, place.least, place.most, place.moved) * place.fade;
   }
 
   let reference: f32 = 1.0 - place.moved;
   var lit: f32 = 0.0;
 
   for (var tap: u32 = 0u; tap < 4u; tap++) {
-    lit += compared_texels(atlas, shadow_tap(place, tap), reference);
+    lit += compared_texels(atlas, compare, shadow_tap(place, tap), reference);
   }
 
   return lit / 4.0 * place.fade;

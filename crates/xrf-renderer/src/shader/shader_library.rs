@@ -157,6 +157,14 @@ const EMBEDDED: &[(&str, &str)] = &[
   ),
   ("frame/fxaa", include_str!("../../shaders/frame/fxaa.wgsl")),
   ("frame/lights", include_str!("../../shaders/frame/lights.wgsl")),
+  (
+    "frame/light_selection",
+    include_str!("../../shaders/frame/light_selection.wgsl"),
+  ),
+  (
+    "frame/light_visibility",
+    include_str!("../../shaders/frame/light_visibility.wgsl"),
+  ),
   ("frame/overlay", include_str!("../../shaders/frame/overlay.wgsl")),
   ("frame/backdrop", include_str!("../../shaders/frame/backdrop.wgsl")),
   ("frame/bloom", include_str!("../../shaders/frame/bloom.wgsl")),
@@ -242,6 +250,14 @@ const EMBEDDED: &[(&str, &str)] = &[
   (
     "generated/frame/lights",
     include_str!("../../shaders/generated/frame/lights.wgsl"),
+  ),
+  (
+    "generated/frame/light_shadowing",
+    include_str!("../../shaders/generated/frame/light_shadowing.wgsl"),
+  ),
+  (
+    "generated/frame/light_visibility",
+    include_str!("../../shaders/generated/frame/light_visibility.wgsl"),
   ),
   (
     "generated/frame/ambient_occlusion",
