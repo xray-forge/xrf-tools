@@ -11,7 +11,6 @@ use crate::contract::render_shadow_settings::RenderShadowSettings;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::pass::ambient_occlusion_uniform::AmbientOcclusionUniform;
 use crate::pass::contact_shadow_uniform::ContactShadowUniform;
-use crate::pass::froxel_uniform::FroxelUniform;
 use crate::pass::glass_uniform::GlassUniform;
 use crate::pass::lighting_uniform::LightingUniform;
 use crate::pass::present_uniform::PresentUniform;
@@ -89,8 +88,6 @@ pub struct ViewInfo {
   pub is_glass_distorting: bool,
   /// The enhanced glass's strengths, where it draws the scene's glass this frame.
   pub glass: Option<GlassUniform>,
-  /// The enhanced volumetric lighting's grid and strengths, where it draws in place of the engine's shafts this frame.
-  pub froxels: Option<FroxelUniform>,
   /// The colour the selection is outlined in, or none while nothing it names is drawn.
   pub selection_color: Option<[f32; 3]>,
 }
@@ -135,7 +132,6 @@ impl Default for ViewInfo {
       sorted_count: 0,
       is_glass_distorting: false,
       glass: None,
-      froxels: None,
       sorted_runs: Vec::new(),
       selection_color: None,
     }
