@@ -162,6 +162,10 @@ impl LevelLights {
 
     let is_shadowing: bool = settings.is_enabled && settings.is_shadowed;
 
+    if is_shadowing {
+      self.shadows.cast();
+    }
+
     if settings.is_enabled {
       let lights: &ProxyStore<LightDescription> = &self.lights;
       let planes: [Vec4; 6] = camera.get_planes();
@@ -354,6 +358,11 @@ impl LevelLights {
     frame: (&'a StaticCullParams, &'a wgpu::BindGroup),
   ) {
     self.shadows.add_passes(graph, passes, scene, frame);
+  }
+
+  /// Bytes the shadows' atlases take, while held.
+  pub fn get_memory(&self) -> u64 {
+    self.shadows.get_memory()
   }
 
   pub fn get_shadow_atlas(&self) -> &wgpu::TextureView {

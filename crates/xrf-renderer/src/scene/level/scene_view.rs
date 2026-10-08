@@ -912,7 +912,7 @@ impl SceneView {
       .filter(|_| is_raining || is_wet)
       .map(|rain_cover| {
         rain_cover.add_passes(
-          (&mut *graph, &mut *bindings),
+          (&mut *graph, &mut *bindings, &mut *runtime),
           passes,
           &statics,
           (scene_view.features.statics.get_cull(), texture_group),

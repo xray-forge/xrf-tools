@@ -569,6 +569,15 @@ impl RenderThread {
       .take()
       .unwrap_or_else(|| FrameEncoder::create_belt(&gpu.context.device));
     let mut encoder: FrameEncoder = FrameEncoder::new(&gpu.context.device, belt);
+    let times: Vec<GraphTaggedTime> = self
+      .runtime
+      .as_mut()
+      .map(|runtime| runtime.timer.take_tagged())
+      .unwrap_or_default();
+
+    // The frame's periodic work and streaming are granted against one budget, the streaming's rounds first.
+    self.periodic.begin(self.settings.periodic_budget, &times);
+    self.periodic.set_owner(u32::MAX);
 
     let mut scene_frames: HashMap<RenderSceneId, RenderSceneFrame> = scene_frames;
     let live: HashSet<RenderSceneId> = scene_frames.keys().copied().collect();
@@ -598,7 +607,7 @@ impl RenderThread {
       scene.advance(
         (&gpu.context.device, &gpu.context.queue, &mut encoder),
         (&mut gpu.textures, &mut gpu.weather_textures),
-        &gpu.grass,
+        (&gpu.grass, &mut self.periodic),
         (frame, traced.contains(&id)),
       );
     }
@@ -653,7 +662,13 @@ impl RenderThread {
       gpu.textures.retain_environments(&environments);
     }
 
-    gpu.textures.update(&gpu.context.device, &gpu.context.queue);
+    let is_opening: bool = self.scenes.values().any(|scene| !scene.is_ready(&gpu.textures));
+
+    gpu.textures.update(
+      (&gpu.context.device, &gpu.context.queue),
+      &mut self.periodic,
+      is_opening,
+    );
     gpu.weather_textures.update(&gpu.context.device, &gpu.context.queue);
 
     self.draw_windows(now.elapsed(), encoder);
@@ -845,13 +860,6 @@ impl RenderThread {
       update,
       ..FramePhases::default()
     };
-    let times: Vec<GraphTaggedTime> = self
-      .runtime
-      .as_mut()
-      .map(|runtime| runtime.timer.take_tagged())
-      .unwrap_or_default();
-
-    self.periodic.begin(self.settings.periodic_budget, &times);
 
     // Each viewport's readied frame, with the pick it draws and what unprojects that pick's depth; its scene's driving
     // viewport first, which simulates the scene and declares its work, or the first drawn where that one is not.

@@ -227,3 +227,46 @@ fn sun_cascade_is_not_held_by_a_map_drawn_at_other_settings() {
   assert!(!fit_first(&camera, Vec3::new(0.3, -1.0, 0.0).normalize(), 160.0).is_held_by(&drawn));
   assert!(!drawn.is_held_by(&SunCascade::default()));
 }
+
+/// Where a point lands on a map `resolution` texels across drawn by `view` into the rows from `first`: its texel's
+/// column and row, and its depth.
+fn to_texel(view: &CameraView, point: Vec3, (first, rows): (u32, u32), resolution: u32) -> Vec3 {
+  let clip: Vec4 = view.get_view_projection() * point.extend(1.0);
+  let ndc: Vec3 = clip.truncate() / clip.w;
+
+  Vec3::new(
+    (ndc.x + 1.0) / 2.0 * resolution as f32,
+    first as f32 + (1.0 - ndc.y) / 2.0 * rows as f32,
+    ndc.z,
+  )
+}
+
+#[test]
+fn sun_cascade_rows_land_where_the_whole_map_s_would() {
+  let light: Vec3 = Vec3::new(0.3, -1.0, 0.2).normalize();
+  let cascade: SunCascade = fit_first(&create_forward_camera(Vec3::new(5.0, 1.7, 3.0)), light, 160.0);
+  let center: Vec3 = cascade.view.position + light * 400.0;
+  let right: Vec3 = light.cross(Vec3::Y).normalize();
+  let up: Vec3 = right.cross(light);
+  let mut tested: usize = 0;
+
+  for (first, last) in [(0, 512), (512, 1024), (1024, 1536), (1536, 2048)] {
+    let band: CameraView = cascade.get_rows_view((first, last), 2048);
+
+    for (across, down) in [(-60.0, -70.0), (10.0, 0.0), (75.0, 40.0), (-20.0, 79.0)] {
+      let point: Vec3 = center + right * across - up * down;
+      let whole: Vec3 = to_texel(&cascade.view, point, (0, 2048), 2048);
+
+      if whole.y < first as f32 || whole.y >= last as f32 {
+        continue;
+      }
+
+      let banded: Vec3 = to_texel(&band, point, (first, last - first), 2048);
+
+      assert!(whole.distance(banded) < 1e-2, "{whole} against {banded}");
+      tested += 1;
+    }
+  }
+
+  assert_eq!(tested, 4);
+}

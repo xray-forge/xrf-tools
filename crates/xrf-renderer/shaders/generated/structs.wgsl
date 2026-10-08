@@ -162,6 +162,10 @@ struct SkyPrefilter {
   shape: vec4<f32>,
 }
 
+struct OverheadShift {
+  offset: vec4<f32>,
+}
+
 struct Surroundings {
   to_sun: vec4<f32>,
   face: vec4<f32>,

@@ -43,6 +43,8 @@ use crate::pass::lighting_uniform::LightingUniform;
 use crate::pass::lights_parameters::LightsParameters;
 use crate::pass::lights_uniform::LightsUniform;
 use crate::pass::lowest_heights_parameters::LowestHeightsParameters;
+use crate::pass::overhead_shift_parameters::OverheadShiftParameters;
+use crate::pass::overhead_shift_uniform::OverheadShiftUniform;
 use crate::pass::overlay_parameters::OverlayParameters;
 use crate::pass::particle_parameters::ParticleParameters;
 use crate::pass::particle_surface_record::ParticleSurfaceRecord;
@@ -150,6 +152,7 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
   let mut temporal: ShaderBindings = ShaderBindings::new();
   let mut pyramid: ShaderBindings = ShaderBindings::new();
   let mut shadow_tile_restore: ShaderBindings = ShaderBindings::new();
+  let mut overhead_shift: ShaderBindings = ShaderBindings::new();
   let mut puddle_sites: ShaderBindings = ShaderBindings::new();
   let mut sky_prefilter: ShaderBindings = ShaderBindings::new();
   let mut surroundings: ShaderBindings = ShaderBindings::new();
@@ -175,6 +178,7 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
     .declare::<FogScatteringUniform>()
     .declare::<PuddleSitesUniform>()
     .declare::<SkyPrefilterUniform>()
+    .declare::<OverheadShiftUniform>()
     .declare::<SurroundingsUniform>()
     .declare::<ParticleVertex>()
     .declare::<ParticleSurfaceRecord>()
@@ -246,6 +250,7 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
   thunder.add::<ThunderParameters<'_>>()?;
   temporal.add::<TemporalParameters<'_>>()?;
   shadow_tile_restore.add::<ShadowTileRestoreParameters>()?;
+  overhead_shift.add::<OverheadShiftParameters>()?;
   pyramid
     .add::<PyramidDepthParameters>()?
     .add::<PyramidLevelParameters>()?
@@ -400,6 +405,10 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
     (
       "generated/frame/shadow_tile_restore",
       format!("{STRUCTS_IMPORT}{}", shadow_tile_restore.to_wgsl()),
+    ),
+    (
+      "generated/frame/overhead_shift",
+      format!("{STRUCTS_IMPORT}{}", overhead_shift.to_wgsl()),
     ),
     (
       "generated/frame/puddle_sites",

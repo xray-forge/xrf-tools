@@ -130,3 +130,28 @@ fn learns_a_job_s_cost_from_its_passes() {
 
   assert!((scheduler.get_cost(&job) - 0.8).abs() < 1e-6);
 }
+
+#[test]
+fn shares_a_frame_s_budget_and_its_overdue_job_across_rounds() {
+  let mut scheduler: PeriodicScheduler = PeriodicScheduler::new();
+
+  scheduler.begin(0.5, &[]);
+
+  let streamed: PeriodicTicket = scheduler.offer(waiting(0.3, (0, 8)));
+  let late: PeriodicTicket = scheduler.offer(waiting(0.1, (4, 4)));
+
+  scheduler.grant();
+
+  let drawn: PeriodicTicket = scheduler.offer(waiting(0.2, (0, 8)));
+  let later: PeriodicTicket = scheduler.offer(waiting(1.0, (9, 4)));
+  let small: PeriodicTicket = scheduler.offer(waiting(0.1, (0, 8)));
+
+  scheduler.grant();
+
+  // The first round spent 0.4 of 0.5 and took the frame's one overdue job; the second fits only what is left.
+  assert!(scheduler.is_granted(streamed));
+  assert!(scheduler.is_granted(late));
+  assert!(!scheduler.is_granted(drawn));
+  assert!(!scheduler.is_granted(later));
+  assert!(scheduler.is_granted(small));
+}

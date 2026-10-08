@@ -98,15 +98,19 @@ type FaceCandidate = ((bool, f32), ProxyHandle<LightDescription>, bool, usize, u
 /// The local lights' shadows: a square of an atlas a face, sized as the engine sizes its maps, drawn once and kept
 /// while the scene it casts from stays, a few faces a frame as the frame's scheduler grants them by their texels, the
 /// nearest lights first; a face over swaying trees is drawn again once a sway interval, where the lean shows at its
-/// texels. A light lights only once its
-/// faces are drawn; one asked at another size keeps its old faces until its new ones are. While trees sway in a
-/// light's reach, each of its faces keeps what stands still in the same tile of a static atlas, drawn only when the
-/// scene changes under it or its light moves; a sway's draw restores the tile from it and draws the trees over. Room is made from the lights
-/// out of view longest, and where there is still none, a light is asked at smaller squares. Each face drawn in a frame
-/// has a slot of its own in the lists and the draw arguments, so every face is culled before any is drawn, and all are
-/// drawn in one render pass.
+/// texels. A light lights only once its faces are drawn; one asked at another size keeps its old faces until its new
+/// ones are. While trees sway in a light's reach, each of its faces keeps what stands still in the same tile of a
+/// static atlas, drawn only when the scene changes under it or its light moves; a sway's draw restores the tile from it
+/// and draws the trees over. Room is made from the lights out of view longest, and where there is still none, a light
+/// is asked at smaller squares. Each face drawn in a frame has a slot of its own in the lists and the draw arguments,
+/// so every face is culled before any is drawn, and all are drawn in one render pass. The atlas is held only while a
+/// view of the scene casts the lights' shadows; a texel of nothing is bound in its place otherwise.
 pub struct LevelLightShadows {
-  atlas: wgpu::TextureView,
+  /// The atlas, while a view casts the lights' shadows, and what is bound in its place while none does.
+  atlas: Option<wgpu::TextureView>,
+  none: wgpu::TextureView,
+  /// Whether a view cast the lights' shadows this frame.
+  is_cast: bool,
   /// What stands still of the swaying lights' faces, tile for tile as the atlas, while any light asked for sways.
   statics: Option<wgpu::TextureView>,
   /// Whether a light asked for this frame has trees swaying in its reach.
@@ -140,25 +144,10 @@ impl LevelLightShadows {
   pub fn new(device: &wgpu::Device, view_layout: &wgpu::BindGroupLayout, args_size: u64) -> Self {
     let alignment: u64 = u64::from(device.limits().min_storage_buffer_offset_alignment);
     let args_stride: u64 = args_size.next_multiple_of(alignment);
-    let atlas: wgpu::TextureView = device
-      .create_texture(&wgpu::TextureDescriptor {
-        label: Some("light shadow atlas"),
-        size: wgpu::Extent3d {
-          width: LIGHT_SHADOW_ATLAS_SIZE,
-          height: LIGHT_SHADOW_ATLAS_SIZE,
-          depth_or_array_layers: 1,
-        },
-        mip_level_count: 1,
-        sample_count: 1,
-        dimension: wgpu::TextureDimension::D2,
-        format: wgpu::TextureFormat::Depth32Float,
-        usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
-        view_formats: &[],
-      })
-      .create_view(&Default::default());
-
     Self {
-      atlas,
+      atlas: None,
+      none: create_atlas(device, "light shadow atlas none", 1),
+      is_cast: false,
       statics: None,
       is_swaying: false,
       allocator: ShadowTileAllocator::new(LIGHT_SHADOW_ATLAS_SIZE, LIGHT_SHADOW_MIN_SIZE),
@@ -193,8 +182,25 @@ impl LevelLightShadows {
     }
   }
 
+  /// The atlas the lights sample, or a texel of nothing while none is held.
   pub fn get_atlas(&self) -> &wgpu::TextureView {
-    &self.atlas
+    self.atlas.as_ref().unwrap_or(&self.none)
+  }
+
+  /// Takes a view casting the lights' shadows this frame, which holds the atlas.
+  pub fn cast(&mut self) {
+    self.is_cast = true;
+  }
+
+  /// Bytes the atlas and the static atlas take, while held.
+  pub fn get_memory(&self) -> u64 {
+    let atlas: u64 = u64::from(LIGHT_SHADOW_ATLAS_SIZE).pow(2) * 4;
+
+    [self.atlas.is_some(), self.statics.is_some()]
+      .into_iter()
+      .filter(|is_held| *is_held)
+      .count() as u64
+      * atlas
   }
 
   /// Starts a frame's asks.
@@ -203,6 +209,7 @@ impl LevelLightShadows {
     self.candidates.clear();
     self.queue.clear();
     self.is_swaying = false;
+    self.is_cast = false;
   }
 
   /// Takes a shadowed light in view this frame, nearest first: gives it faces where it has none at the size it wants,
@@ -370,6 +377,7 @@ impl LevelLightShadows {
 
     self.due.clear();
     self.drawn.clear();
+    self.hold_atlas(device);
     self.hold_statics(device);
 
     if self.queue.is_empty() {
@@ -471,7 +479,10 @@ impl LevelLightShadows {
     let template: GraphBuffer = scene.args_template;
     let args: GraphBuffer = bindings.import_buffer(graph, "light shadow draw arguments", &self.args);
     let lists: GraphBuffer = bindings.import_buffer(graph, "light shadow lists", self.lists.get_buffer());
-    let atlas: GraphTexture = bindings.import_view(graph, "light shadow atlas", &self.atlas);
+    let Some(atlas) = &self.atlas else {
+      return;
+    };
+    let atlas: GraphTexture = bindings.import_view(graph, "light shadow atlas", atlas);
     // Each slot's cull into its range of the lists and the arguments, and its draws of that range.
     let slots: Vec<FaceSlot> = self
       .due
@@ -551,7 +562,7 @@ impl LevelLightShadows {
           for (slot, tile, layouts) in &statics {
             passes.shadow.record_tile(
               context,
-              (*tile, None),
+              (tile.get_region(), None),
               (&self.views[*slot], layouts, textures),
               (args, *slot as u64 * self.args_stride),
               ShadowCasters::Fixed,
@@ -585,7 +596,7 @@ impl LevelLightShadows {
 
         passes.shadow.record_tile(
           context,
-          (*tile, restored),
+          (tile.get_region(), restored),
           (&self.views[*slot], layouts, textures),
           (args, *slot as u64 * self.args_stride),
           casters,
@@ -613,29 +624,32 @@ impl LevelLightShadows {
     self.due.clear();
   }
 
+  /// Makes the atlas while a view casts the lights' shadows, and lets it go, with every light's faces, once none does.
+  fn hold_atlas(&mut self, device: &wgpu::Device) {
+    match (self.is_cast, self.atlas.is_some()) {
+      (true, false) => {
+        self.atlas = Some(create_atlas(device, "light shadow atlas", LIGHT_SHADOW_ATLAS_SIZE));
+      }
+      (false, true) => {
+        self.atlas = None;
+        self.statics = None;
+        self.entries.clear();
+        self.allocator = ShadowTileAllocator::new(LIGHT_SHADOW_ATLAS_SIZE, LIGHT_SHADOW_MIN_SIZE);
+      }
+      _ => {}
+    }
+  }
+
   /// Makes the static atlas while a light asked for this frame sways, and lets it go, with every face's static tile,
   /// once none does.
   fn hold_statics(&mut self, device: &wgpu::Device) {
     match (self.is_swaying, self.statics.is_some()) {
       (true, false) => {
-        self.statics = Some(
-          device
-            .create_texture(&wgpu::TextureDescriptor {
-              label: Some("light shadow static atlas"),
-              size: wgpu::Extent3d {
-                width: LIGHT_SHADOW_ATLAS_SIZE,
-                height: LIGHT_SHADOW_ATLAS_SIZE,
-                depth_or_array_layers: 1,
-              },
-              mip_level_count: 1,
-              sample_count: 1,
-              dimension: wgpu::TextureDimension::D2,
-              format: wgpu::TextureFormat::Depth32Float,
-              usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
-              view_formats: &[],
-            })
-            .create_view(&Default::default()),
-        );
+        self.statics = Some(create_atlas(
+          device,
+          "light shadow static atlas",
+          LIGHT_SHADOW_ATLAS_SIZE,
+        ));
       }
       (false, true) => {
         self.statics = None;
@@ -650,14 +664,6 @@ impl LevelLightShadows {
       }
       _ => {}
     }
-  }
-
-  /// Bytes the static atlas takes, while held.
-  pub fn get_statics_memory(&self) -> u64 {
-    self
-      .statics
-      .as_ref()
-      .map_or(0, |_| u64::from(LIGHT_SHADOW_ATLAS_SIZE).pow(2) * 4)
   }
 
   /// A face of a light's shown set or its next.
@@ -749,6 +755,26 @@ impl LevelLightShadows {
 
     true
   }
+}
+
+/// A depth atlas `size` texels a side the faces are drawn into and the lights sample.
+fn create_atlas(device: &wgpu::Device, label: &'static str, size: u32) -> wgpu::TextureView {
+  device
+    .create_texture(&wgpu::TextureDescriptor {
+      label: Some(label),
+      size: wgpu::Extent3d {
+        width: size,
+        height: size,
+        depth_or_array_layers: 1,
+      },
+      mip_level_count: 1,
+      sample_count: 1,
+      dimension: wgpu::TextureDimension::D2,
+      format: wgpu::TextureFormat::Depth32Float,
+      usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+      view_formats: &[],
+    })
+    .create_view(&Default::default())
 }
 
 /// The most any swaying place a light's sphere reaches leans for each metre it stands from the light, by its reach

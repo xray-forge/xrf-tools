@@ -18,6 +18,7 @@ mod indirect_light;
 mod lens_flares;
 mod light_geometry;
 mod lighting;
+mod overhead_map;
 mod overlays;
 mod periodic_scheduler;
 mod puddle_fill;
