@@ -1,6 +1,7 @@
 use crate::camera::camera_view::CameraView;
 use crate::contract::render_light_shadow_filter::RenderLightShadowFilter;
 use crate::contract::render_lights_report::RenderLightsReport;
+use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::stats_readback::StatsReadback;
 use crate::pass::light_record::LightRecord;
 use crate::pass::light_volume_record::LightVolumeRecord;
@@ -78,7 +79,7 @@ impl LightsView {
   }
 
   /// Writes the records filled this frame and what the passes bin and light them with.
-  pub fn write(&mut self, queue: &wgpu::Queue, camera: &CameraView, filter: RenderLightShadowFilter) {
+  pub fn write(&mut self, encoder: &mut FrameEncoder, camera: &CameraView, filter: RenderLightShadowFilter) {
     let (near, far): (f32, f32) = camera.get_depth_range();
 
     self.count = self.records.len() as u32;
@@ -86,13 +87,13 @@ impl LightsView {
     self.uniform = LightsUniform::new(self.count, camera.projection, near, far, filter);
 
     if !self.records.is_empty() {
-      queue.write_buffer(&self.record_buffer, 0, bytemuck::cast_slice(&self.records));
+      encoder.write_buffer(&self.record_buffer, 0, bytemuck::cast_slice(&self.records));
     }
 
     self.report.volumetric = self.volumes.len() as u32;
 
     if !self.volumes.is_empty() {
-      queue.write_buffer(&self.volume_buffer, 0, bytemuck::cast_slice(&self.volumes));
+      encoder.write_buffer(&self.volume_buffer, 0, bytemuck::cast_slice(&self.volumes));
     }
   }
 

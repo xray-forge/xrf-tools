@@ -2,6 +2,7 @@ use crate::camera::camera_frame::CameraFrame;
 use crate::context::gpu_context::GpuContext;
 use crate::contract::render_backend::RenderBackend;
 use crate::contract::render_rect::RenderRect;
+use crate::frame::frame_encoder::FrameEncoder;
 use crate::pass::camera_uniform::CameraUniform;
 use crate::pass::grid_pass::GridPass;
 use crate::pass::view_binding::ViewBinding;
@@ -42,8 +43,10 @@ fn draws_sky_over_ground_offscreen() {
     far: 1000.0,
   };
 
+  let mut encoder: FrameEncoder = FrameEncoder::new(device, FrameEncoder::create_belt(device));
+
   binding.write(
-    &context.queue,
+    &mut encoder,
     &CameraUniform::new(
       &camera.to_view(1.0, f32::INFINITY),
       RenderRect {
@@ -77,7 +80,6 @@ fn draws_sky_over_ground_offscreen() {
     mapped_at_creation: false,
   });
   let view: wgpu::TextureView = texture.create_view(&Default::default());
-  let mut encoder: wgpu::CommandEncoder = device.create_command_encoder(&Default::default());
 
   {
     let mut pass: wgpu::RenderPass<'_> = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -118,7 +120,7 @@ fn draws_sky_over_ground_offscreen() {
       depth_or_array_layers: 1,
     },
   );
-  context.queue.submit([encoder.finish()]);
+  context.queue.submit([encoder.finish().0]);
   readback.slice(..).map_async(wgpu::MapMode::Read, |_| ());
   device.poll(wgpu::PollType::wait_indefinitely()).unwrap();
 

@@ -4,6 +4,7 @@ use xrf_renderer_core::{
   FrameGraph, GraphBindings, GraphColorAttachment, GraphDepthAttachment, StorageArray, UniformBinding,
 };
 
+use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::pass::lighting_uniform::LightingUniform;
 use crate::pass::particle_batch::ParticleBatch;
@@ -50,7 +51,7 @@ impl ParticlesView {
   }
 
   /// Writes the quads filled this frame, growing the buffer past them.
-  pub fn upload(&mut self, (device, queue): (&wgpu::Device, &wgpu::Queue)) {
+  pub fn upload(&mut self, (device, encoder): (&wgpu::Device, &mut FrameEncoder)) {
     let size: u64 = (self.vertices.len() * size_of::<ParticleVertex>()) as u64;
 
     if size > self.vertex_buffer.size() {
@@ -58,7 +59,7 @@ impl ParticlesView {
     }
 
     if !self.vertices.is_empty() {
-      queue.write_buffer(&self.vertex_buffer, 0, bytemuck::cast_slice(&self.vertices));
+      encoder.write_buffer(&self.vertex_buffer, 0, bytemuck::cast_slice(&self.vertices));
     }
   }
 

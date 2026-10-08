@@ -6,6 +6,7 @@ use xrf_renderer_core::{
 use crate::camera::camera_view::CameraView;
 use crate::contract::render_applied_grass::RenderAppliedGrass;
 use crate::contract::render_grass_settings::RenderGrassSettings;
+use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::lighting::grass_wind::GrassWind;
 use crate::pass::foliage_wind_values::FoliageWindValues;
@@ -78,7 +79,7 @@ impl GrassView {
   #[allow(clippy::too_many_arguments)]
   pub fn prepare(
     &mut self,
-    (device, queue): (&wgpu::Device, &wgpu::Queue),
+    (device, encoder): (&wgpu::Device, &mut FrameEncoder),
     (pass, level): (&GrassPass, Option<&GrassLevel>),
     settings: &RenderGrassSettings,
     camera: &CameraView,
@@ -154,9 +155,9 @@ impl GrassView {
       slope_limit,
       ..self.values
     };
-    queue.write_buffer(&self.uniform, 0, bytemuck::bytes_of(&self.values));
-    queue.write_buffer(&self.wind_buffer, 0, bytemuck::bytes_of(&wind));
-    queue.write_buffer(&self.puddles_buffer, 0, bytemuck::bytes_of(&puddles.1));
+    encoder.write_buffer(&self.uniform, 0, bytemuck::bytes_of(&self.values));
+    encoder.write_buffer(&self.wind_buffer, 0, bytemuck::bytes_of(&wind));
+    encoder.write_buffer(&self.puddles_buffer, 0, bytemuck::bytes_of(&puddles.1));
     self.is_drawn = true;
     self.trace = TraceGrassUniform {
       grid: self.values.grid,

@@ -11,6 +11,7 @@ use xrf_visual::{
 use crate::context::gpu_context::GpuContext;
 use crate::context::gpu_requirements::RAY_QUERY_FEATURES;
 use crate::contract::render_backend::RenderBackend;
+use crate::frame::frame_encoder::FrameEncoder;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::pass::light_record::LightRecord;
 use crate::pass::lights_uniform::LightsUniform;
@@ -253,7 +254,7 @@ fn traces_a_sector_through_its_records() {
   let mut scene: StaticScene = StaticScene::new(device, queue);
   let mut sectors: ProxyAllocator<StaticSectorProxy> = ProxyAllocator::new();
   let handle: ProxyHandle<StaticSectorProxy> = sectors.allocate();
-  let mut encoder: wgpu::CommandEncoder = device.create_command_encoder(&Default::default());
+  let mut encoder: FrameEncoder = FrameEncoder::new(device, FrameEncoder::create_belt(device));
 
   scene
     .add_sector(
@@ -294,7 +295,7 @@ fn traces_a_sector_through_its_records() {
 fn run_probes(
   device: &wgpu::Device,
   queue: &wgpu::Queue,
-  mut encoder: wgpu::CommandEncoder,
+  mut encoder: FrameEncoder,
   (scene, trace): (&StaticScene, &StaticTrace),
   probes: &[[f32; 8]],
 ) -> Vec<Answer> {
@@ -483,7 +484,7 @@ fn run_probes(
   }
 
   encoder.copy_buffer_to_buffer(&answers, 0, &readback, 0, answer_bytes);
-  queue.submit([encoder.finish()]);
+  queue.submit([encoder.finish().0]);
   readback.slice(..).map_async(wgpu::MapMode::Read, |_| ());
   device.poll(wgpu::PollType::wait_indefinitely()).unwrap();
 
@@ -512,7 +513,7 @@ fn traces_spawned_objects_where_they_stand() {
   let mut objects: ProxyAllocator<StaticObjectProxy> = ProxyAllocator::new();
   let model: ProxyHandle<StaticModelProxy> = models.allocate();
   let standing: [ProxyHandle<StaticObjectProxy>; 2] = [objects.allocate(), objects.allocate()];
-  let mut encoder: wgpu::CommandEncoder = device.create_command_encoder(&Default::default());
+  let mut encoder: FrameEncoder = FrameEncoder::new(device, FrameEncoder::create_belt(device));
 
   scene
     .add_sector(
@@ -567,7 +568,7 @@ fn traces_spawned_objects_where_they_stand() {
   );
   assert!(answers[0].error < 1e-3 && answers[1].error < 1e-3, "{answers:?}");
 
-  let mut encoder: wgpu::CommandEncoder = device.create_command_encoder(&Default::default());
+  let mut encoder: FrameEncoder = FrameEncoder::new(device, FrameEncoder::create_belt(device));
 
   scene.remove_object(standing[0]);
   scene.prepare_draws(device, queue, &mut encoder);

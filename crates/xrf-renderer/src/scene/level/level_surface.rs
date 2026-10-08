@@ -1,6 +1,7 @@
 use glam::{Vec2, Vec4};
 use xrf_renderer_core::{FrameGraph, GraphBindings, GraphRuntime, GraphTexture, UniformBinding};
 
+use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::static_scene_handles::StaticSceneHandles;
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::lowest_heights_parameters::LowestHeightsParameters;
@@ -91,13 +92,12 @@ impl LevelSurface {
   pub fn prepare(
     &mut self,
     device: &wgpu::Device,
-    queue: &wgpu::Queue,
-    encoder: &mut wgpu::CommandEncoder,
+    encoder: &mut FrameEncoder,
     frame: &ShadowFrame<'_>,
     (fires, load): (&[Vec2], &mut FrameLoad),
   ) {
-    self.map.prepare(device, queue, encoder, frame, load);
-    self.water.prepare(device, queue, encoder, frame, load);
+    self.map.prepare(device, encoder, frame, load);
+    self.water.prepare(device, encoder, frame, load);
     self.is_fire_due = self.fires != fires;
 
     if self.is_fire_due {

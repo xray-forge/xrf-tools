@@ -8,6 +8,7 @@ use xrf_visual::SectorSurface;
 use crate::context::gpu_context::GpuContext;
 use crate::contract::render_backend::RenderBackend;
 use crate::contract::render_selection_target::RenderSelectionTarget;
+use crate::frame::frame_encoder::FrameEncoder;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::scene::static_scene::static_layout::StaticLayout;
 use crate::scene::static_scene::static_model::StaticModel;
@@ -79,7 +80,7 @@ fn stands_objects_as_a_model_and_takes_them_out_again() {
   let source: Arc<dyn RenderAssetSource> = Arc::new(EmptySource);
   let mut textures: TextureCache = TextureCache::new(device, queue, &create_workers());
   let mut scene: StaticScene = StaticScene::new(device, queue);
-  let mut encoder: wgpu::CommandEncoder = device.create_command_encoder(&Default::default());
+  let mut encoder: FrameEncoder = FrameEncoder::new(device, FrameEncoder::create_belt(device));
   let (mut models, mut objects): (ProxyAllocator<StaticModelProxy>, ProxyAllocator<StaticObjectProxy>) =
     (ProxyAllocator::new(), ProxyAllocator::new());
   let model: ProxyHandle<StaticModelProxy> = models.allocate();
@@ -136,7 +137,7 @@ fn stands_objects_as_a_model_and_takes_them_out_again() {
   assert!(scene.remove_model(model));
 
   scene.prepare_draws(device, queue, &mut encoder);
-  queue.submit([encoder.finish()]);
+  queue.submit([encoder.finish().0]);
 
   assert_eq!(scene.get_row_count(), 0);
   assert_eq!(scene.get_list_capacity(), 0);

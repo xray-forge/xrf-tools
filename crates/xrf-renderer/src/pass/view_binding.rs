@@ -1,3 +1,4 @@
+use crate::frame::frame_encoder::FrameEncoder;
 use crate::pass::camera_uniform::CameraUniform;
 
 /// One viewport's camera on the GPU: its uniform buffer and the bind group passes read it through.
@@ -43,7 +44,7 @@ impl ViewBinding {
     Self { buffer, bind_group }
   }
 
-  pub fn write(&self, queue: &wgpu::Queue, uniform: &CameraUniform) {
-    queue.write_buffer(&self.buffer, 0, bytemuck::bytes_of(uniform));
+  pub fn write(&self, encoder: &mut FrameEncoder, uniform: &CameraUniform) {
+    encoder.write_buffer(&self.buffer, 0, bytemuck::bytes_of(uniform));
   }
 }

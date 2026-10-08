@@ -8,6 +8,7 @@ use xrf_error::XrfResult;
 use crate::contract::render_load_report::RenderLoadReport;
 use crate::contract::render_texture_report::RenderTextureReport;
 use crate::contract::render_viewport_id::RenderViewportId;
+use crate::frame::frame_encoder::FrameEncoder;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::host::render_level_source::RenderLevelSource;
 use crate::host::render_scene_feedback::RenderSceneFeedback;
@@ -100,7 +101,7 @@ impl LevelScene {
   /// not take in are told back with its feedback.
   pub fn advance(
     &mut self,
-    (device, queue, encoder): (&wgpu::Device, &wgpu::Queue, &mut wgpu::CommandEncoder),
+    (device, queue, encoder): (&wgpu::Device, &wgpu::Queue, &mut FrameEncoder),
     (textures, weather_textures): (&mut TextureCache, &mut WeatherTextureCache),
     grass_pass: &GrassPass,
     (frame, is_traced): (RenderSceneFrame, bool),

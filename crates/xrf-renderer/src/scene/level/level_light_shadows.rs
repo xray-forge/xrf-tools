@@ -11,6 +11,7 @@ use xrf_visual::{LightDescription, LightKind};
 use crate::camera::camera_view::CameraView;
 use crate::contract::render_pool_use::RenderPoolUse;
 use crate::contract::render_rect::RenderRect;
+use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::static_scene_handles::StaticSceneHandles;
 use crate::lighting::light_basis::{LightBasis, to_light_intensity};
 use crate::lighting::light_shadow_size::{
@@ -269,13 +270,7 @@ impl LevelLightShadows {
   /// Readies the faces queued this frame to be culled into their slots and drawn into their squares of the atlas, and
   /// lets a light's new faces take the place of its old once all are drawn; `encoder` takes the copies a list growing
   /// makes.
-  pub fn prepare(
-    &mut self,
-    device: &wgpu::Device,
-    queue: &wgpu::Queue,
-    encoder: &mut wgpu::CommandEncoder,
-    frame: &ShadowFrame<'_>,
-  ) {
+  pub fn prepare(&mut self, device: &wgpu::Device, encoder: &mut FrameEncoder, frame: &ShadowFrame<'_>) {
     let scene = frame.scene;
     let contents: usize = scene.get_contents();
 
@@ -306,7 +301,7 @@ impl LevelLightShadows {
       let view: &ViewBinding = &self.views[slot];
 
       view.write(
-        queue,
+        encoder,
         &CameraUniform::new(
           &state.view,
           RenderRect {

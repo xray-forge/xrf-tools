@@ -43,6 +43,7 @@ use crate::contract::render_static_report::RenderStaticReport;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::contract::render_water_settings::RenderWaterSettings;
 use crate::frame::depth_pyramid::DepthPyramid;
+use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::froxel_volume::FroxelVolume;
 use crate::frame::fsr_targets::FsrTargets;
 use crate::frame::indirect_light_history::IndirectLightHistory;
@@ -297,7 +298,7 @@ impl SceneView {
     scene: &mut LevelScene,
     device: &wgpu::Device,
     queue: &wgpu::Queue,
-    encoder: &mut wgpu::CommandEncoder,
+    encoder: &mut FrameEncoder,
     passes: LevelPasses<'_>,
     view: &CameraView,
     ((width, height), output): ((u32, u32), RenderRect),
@@ -486,7 +487,7 @@ impl SceneView {
     };
     self.info.matrices = (view.view, view.projection);
     self.state.grass.prepare(
-      (device, queue),
+      (device, &mut *encoder),
       (passes.grass, scene.grass.get_level()),
       &options.features.grass,
       view,
@@ -507,7 +508,7 @@ impl SceneView {
       ),
     );
     scene.lights.prepare(
-      queue,
+      &mut *encoder,
       &mut self.state.lights,
       LightsFrame {
         camera: view,
@@ -552,7 +553,7 @@ impl SceneView {
     );
     self.prepare_bitmask(device, view.projection, (width.div_ceil(2), height.div_ceil(2)));
     self.prepare_reflections(device, (width, height));
-    self.prepare_sorted(scene, device, queue, view);
+    self.prepare_sorted(scene, device, &mut *encoder, view);
 
     if let Some(pyramid) = &self.state.pyramid {
       let (history_view, history_projection): (Mat4, Mat4) = self.state.history.unwrap_or(self.info.matrices);
@@ -595,7 +596,7 @@ impl SceneView {
 
     scene.particles.fill(view, options, &mut self.state.particles);
 
-    self.state.particles.upload((device, queue));
+    self.state.particles.upload((device, &mut *encoder));
 
     self.write_present(
       options,
@@ -610,7 +611,7 @@ impl SceneView {
       refraction: options.features.glass.refraction,
     });
     self.prepare_froxels(device, options);
-    self.prepare_shadows(scene, device, queue, encoder, (view_layout, textures));
+    self.prepare_shadows(scene, device, encoder, (view_layout, textures));
     self.follow_overhead_maps();
   }
 
@@ -637,8 +638,7 @@ impl SceneView {
     &mut self,
     scene: &LevelScene,
     device: &wgpu::Device,
-    queue: &wgpu::Queue,
-    encoder: &mut wgpu::CommandEncoder,
+    encoder: &mut FrameEncoder,
     (view_layout, textures): (&wgpu::BindGroupLayout, &TextureCache),
   ) {
     let SceneView { info, renderer, .. } = self;
@@ -661,20 +661,14 @@ impl SceneView {
       textures,
     };
 
-    shadows.prepare_cascades(device, queue, encoder, view_layout, &frame);
+    shadows.prepare_cascades(device, encoder, view_layout, &frame);
 
     // What may wait a few frames draws on one the cascades leave light, one job a frame.
     let mut load: FrameLoad = shadows.get_load();
 
     // The cube is for the traced reflections alone; the engine's reflect its own.
     if info.reflection_settings.is_drawn() {
-      surroundings.prepare(
-        device,
-        queue,
-        encoder,
-        &frame,
-        (info.reflection_settings.probe, &mut load),
-      );
+      surroundings.prepare(device, encoder, &frame, (info.reflection_settings.probe, &mut load));
     } else {
       surroundings.rest();
     }
@@ -683,14 +677,14 @@ impl SceneView {
     if info.rain_draw.is_some() || info.is_wet {
       let reach: Option<f32> = (info.is_wet && info.wet.reach.x > 0.5).then_some(info.wet.reach.y);
 
-      rain_cover.prepare(device, queue, encoder, &frame, (reach, &mut load));
+      rain_cover.prepare(device, encoder, &frame, (reach, &mut load));
     } else {
       rain_cover.rest();
     }
 
     // The puddles seat on it.
     if info.is_wet && info.wet.is_enhanced > 0.5 {
-      level_surface.prepare(device, queue, encoder, &frame, (scene.lights.get_fires(), &mut load));
+      level_surface.prepare(device, encoder, &frame, (scene.lights.get_fires(), &mut load));
     }
   }
 
@@ -699,8 +693,8 @@ impl SceneView {
   pub fn prepare_scene_shadows(
     &self,
     scene: &mut LevelScene,
-    (device, queue): (&wgpu::Device, &wgpu::Queue),
-    encoder: &mut wgpu::CommandEncoder,
+    device: &wgpu::Device,
+    encoder: &mut FrameEncoder,
     textures: &TextureCache,
   ) {
     let LevelScene { statics, lights, .. } = scene;
@@ -715,7 +709,7 @@ impl SceneView {
       textures,
     };
 
-    lights.finish_shadows(device, queue, encoder, &frame);
+    lights.finish_shadows(device, encoder, &frame);
   }
 
   /// Declares the scene's culls and G-buffer draws: what last frame's depth does not hide, culled and drawn; then, while
@@ -2175,7 +2169,7 @@ impl SceneView {
   /// picked and the readback it is copied into while one is free, and the depth the next frame's occlusion tests.
   pub fn begin_frame(
     &mut self,
-    (device, queue): (&wgpu::Device, &wgpu::Queue),
+    (device, encoder): (&wgpu::Device, &mut FrameEncoder),
     pick: Option<(&CameraUniform, &wgpu::BindGroupLayout, bool)>,
   ) -> Option<LevelFrame> {
     if self.state.targets.is_none() || self.state.pyramid.is_none() {
@@ -2183,7 +2177,7 @@ impl SceneView {
     }
 
     let pick_slot: Option<usize> =
-      pick.and_then(|(camera, view_layout, _)| self.ready_pick(device, queue, camera, view_layout));
+      pick.and_then(|(camera, view_layout, _)| self.ready_pick(device, encoder, camera, view_layout));
 
     if self.info.cull.is_occluding != 0 {
       self.state.history = Some(self.info.matrices);
@@ -3370,7 +3364,7 @@ impl SceneView {
   fn ready_pick(
     &mut self,
     device: &wgpu::Device,
-    queue: &wgpu::Queue,
+    encoder: &mut FrameEncoder,
     camera: &CameraUniform,
     view_layout: &wgpu::BindGroupLayout,
   ) -> Option<usize> {
@@ -3384,7 +3378,7 @@ impl SceneView {
       .state
       .pick_view
       .get_or_insert_with(|| ViewBinding::new(device, view_layout))
-      .write(queue, camera);
+      .write(encoder, camera);
 
     Some(slot)
   }
@@ -3581,7 +3575,13 @@ impl SceneView {
   /// Lists the sorted composited clusters in view, the models' and the level's strictly sorted runs, back to front by
   /// distance and each place's clusters in their parts' order, as the engine draws its sorted blended objects, and the
   /// runs of them alike in layout, which each draw with their layout's program; binds the list for the sorted pass.
-  fn prepare_sorted(&mut self, scene: &LevelScene, device: &wgpu::Device, queue: &wgpu::Queue, view: &CameraView) {
+  fn prepare_sorted(
+    &mut self,
+    scene: &LevelScene,
+    device: &wgpu::Device,
+    encoder: &mut FrameEncoder,
+    view: &CameraView,
+  ) {
     let planes: [Vec4; 6] = view.get_planes();
     let mut places: Vec<(f32, StaticSortedPlace<'_>)> = scene
       .statics
@@ -3640,7 +3640,7 @@ impl SceneView {
       return;
     };
 
-    queue.write_buffer(buffer, 0, bytes);
+    encoder.write_buffer(buffer, 0, bytes);
   }
 
   /// Notes the smoothing pass while one smooths the frame as drawn.

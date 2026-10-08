@@ -7,6 +7,7 @@ use xrf_renderer_core::{
 use crate::camera::camera_view::CameraView;
 use crate::contract::render_rect::RenderRect;
 use crate::contract::render_reflection_probe::RenderReflectionProbe;
+use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::static_scene_handles::StaticSceneHandles;
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::camera_uniform::CameraUniform;
@@ -143,8 +144,7 @@ impl SurroundingsCube {
   pub fn prepare(
     &mut self,
     device: &wgpu::Device,
-    queue: &wgpu::Queue,
-    encoder: &mut wgpu::CommandEncoder,
+    encoder: &mut FrameEncoder,
     frame: &ShadowFrame<'_>,
     (probe, load): (RenderReflectionProbe, &mut FrameLoad),
   ) {
@@ -228,11 +228,11 @@ impl SurroundingsCube {
       self
         .lists
         .reserve(device, encoder, (scene.get_list_capacity().max(1) as u64) * 8);
-      queue.write_buffer(&self.args, 0, bytemuck::cast_slice(scene.get_initial_args()));
+      scene.reset_args(encoder, &self.args);
     }
 
     self.view.write(
-      queue,
+      encoder,
       &CameraUniform::new(
         &view,
         RenderRect {

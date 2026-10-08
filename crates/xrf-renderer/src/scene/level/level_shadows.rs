@@ -6,6 +6,7 @@ use xrf_renderer_core::{
 
 use crate::contract::render_rect::RenderRect;
 use crate::contract::render_shadow_settings::RENDER_MAX_SHADOW_CASCADES;
+use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::static_scene_handles::StaticSceneHandles;
 use crate::frame::sun_shadow_maps::SunShadowMaps;
 use crate::lighting::sun_view_rays::SunViewRays;
@@ -81,8 +82,7 @@ impl LevelShadows {
   pub fn prepare_cascades(
     &mut self,
     device: &wgpu::Device,
-    queue: &wgpu::Queue,
-    encoder: &mut wgpu::CommandEncoder,
+    encoder: &mut FrameEncoder,
     view_layout: &wgpu::BindGroupLayout,
     frame: &ShadowFrame<'_>,
   ) {
@@ -94,7 +94,7 @@ impl LevelShadows {
 
     if count > 0 {
       self.frames += 1;
-      self.ready_cascades(device, queue, encoder, view_layout, frame, count);
+      self.ready_cascades(device, encoder, view_layout, frame, count);
     }
 
     let look: Vec3 = -frame.camera.view.inverse().z_axis.truncate();
@@ -175,8 +175,7 @@ impl LevelShadows {
   fn ready_cascades(
     &mut self,
     device: &wgpu::Device,
-    queue: &wgpu::Queue,
-    encoder: &mut wgpu::CommandEncoder,
+    encoder: &mut FrameEncoder,
     view_layout: &wgpu::BindGroupLayout,
     frame: &ShadowFrame<'_>,
     count: usize,
@@ -223,9 +222,9 @@ impl LevelShadows {
       }
 
       cascade.lists.reserve(device, encoder, list_bytes);
-      queue.write_buffer(&cascade.args, 0, bytemuck::cast_slice(scene.get_initial_args()));
+      scene.reset_args(encoder, &cascade.args);
       cascade.view.write(
-        queue,
+        encoder,
         &CameraUniform::new(
           &cascade.cascade.view,
           RenderRect {
