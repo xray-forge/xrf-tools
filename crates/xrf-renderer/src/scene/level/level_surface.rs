@@ -2,6 +2,7 @@ use glam::{Vec2, Vec4};
 use xrf_renderer_core::{FrameGraph, GraphBindings, GraphRuntime, GraphTexture, UniformBinding};
 
 use crate::frame::frame_encoder::FrameEncoder;
+use crate::frame::periodic_scheduler::PeriodicScheduler;
 use crate::frame::static_scene_handles::StaticSceneHandles;
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::lowest_heights_parameters::LowestHeightsParameters;
@@ -11,7 +12,6 @@ use crate::pass::puddle_sites_uniform::PuddleSitesUniform;
 use crate::pass::static_cull_params::StaticCullParams;
 use crate::pass::water_uniform::WaterUniform;
 use crate::pass::wet_uniform::WetUniform;
-use crate::scene::level::frame_load::FrameLoad;
 use crate::scene::level::overhead_map::OverheadMap;
 use crate::scene::level::overhead_shape::OverheadShape;
 use crate::scene::level::shadow_frame::ShadowFrame;
@@ -85,23 +85,39 @@ impl LevelSurface {
     (shape.width / Self::SITE_CELL) as u32
   }
 
-  /// Centres it and its water over the camera, readying them to be drawn and derived where they moved or the scene
-  /// grew, each on a frame `load` leaves light; both alike, as the sites read the water through the surface's window.
-  /// Takes the level's `fires`, placing the sites again where they changed: a level's lights may stream in after its
-  /// surface was drawn.
-  pub fn prepare(
-    &mut self,
-    device: &wgpu::Device,
-    encoder: &mut FrameEncoder,
-    frame: &ShadowFrame<'_>,
-    (fires, load): (&[Vec2], &mut FrameLoad),
-  ) {
-    self.map.prepare(device, encoder, frame, load);
-    self.water.prepare(device, encoder, frame, load);
+  /// Centres it and its water over the camera, offering `scheduler` a draw of each where it moved or the scene changed
+  /// under it; both alike, as the sites read the water through the surface's window. Takes the level's `fires`,
+  /// placing the sites again where they changed: a level's lights may stream in after its surface was drawn.
+  pub fn offer(&mut self, frame: &ShadowFrame<'_>, fires: &[Vec2], scheduler: &mut PeriodicScheduler) {
+    self.map.offer(frame, scheduler);
+    self.water.offer(frame, scheduler);
     self.is_fire_due = self.fires != fires;
 
     if self.is_fire_due {
       self.fires = fires.to_vec();
+    }
+  }
+
+  /// Readies the draws `scheduler` granted; `encoder` takes the copies a list growing makes.
+  pub fn commit(
+    &mut self,
+    device: &wgpu::Device,
+    encoder: &mut FrameEncoder,
+    frame: &ShadowFrame<'_>,
+    scheduler: &PeriodicScheduler,
+  ) {
+    self.map.commit(device, encoder, frame, scheduler);
+    self.water.commit(device, encoder, frame, scheduler);
+  }
+
+  /// Forgets what this frame drew, where its frame was not submitted: drawn again, and the sites placed again.
+  pub fn abandon_frame(&mut self) {
+    self.map.abandon_frame();
+    self.water.abandon_frame();
+
+    if self.is_fire_due {
+      self.is_fire_due = false;
+      self.fires.clear();
     }
   }
 

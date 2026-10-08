@@ -23,6 +23,7 @@ import {
   toRenderFrameRate,
 } from "@/core/render/lib/settings/render-frame-rate-limit";
 import { DEFAULT_RENDER_GRAPH_SETTINGS } from "@/core/render/lib/settings/render-graph-settings";
+import { DEFAULT_PERIODIC_BUDGET } from "@/core/render/lib/settings/render-periodic-budget";
 import { ERenderPreset } from "@/core/render/lib/settings/render-preset";
 import { ERenderResolution, toRenderResolution } from "@/core/render/lib/settings/render-resolution";
 import { TCatalogView, toCatalogView } from "@/core/settings/lib/catalog-view";
@@ -77,6 +78,13 @@ export class SettingsService {
   @Observable()
   public graph: RenderGraphSettings = { ...DEFAULT_RENDER_GRAPH_SETTINGS };
 
+  /**
+   * Milliseconds of GPU time each frame gives the renderer's work drawn once in so many frames: the renderer's default
+   * unless set to measure another, for the session only.
+   */
+  @Observable()
+  public periodicBudget: number = DEFAULT_PERIODIC_BUDGET;
+
   /** Whether every viewport's frames wait for the display's refresh: on unless turned off. */
   @Observable()
   public isVsync: boolean = getLocalStorageValue(VSYNC_STORAGE_KEY) !== String(false);
@@ -113,6 +121,7 @@ export class SettingsService {
       frameRate: toRenderFrameRate(this.frameRateLimit, this.isVsync),
       graph: { ...this.graph },
       isGpuTimed: this.isGpuTimed,
+      periodicBudget: this.periodicBudget,
     };
   }
 
@@ -179,6 +188,13 @@ export class SettingsService {
     this.log.info("Set frame graph:", graph);
 
     this.graph = { ...graph };
+  }
+
+  @BoundAction()
+  public setPeriodicBudget(periodicBudget: number): void {
+    this.log.info("Set periodic budget:", periodicBudget);
+
+    this.periodicBudget = Math.max(0, periodicBudget);
   }
 
   @BoundAction()

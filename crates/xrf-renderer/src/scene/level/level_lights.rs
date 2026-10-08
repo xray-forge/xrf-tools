@@ -10,6 +10,7 @@ use xrf_visual::{LightAnimatorDescription, LightDescription, LightKind, LightsDe
 
 use crate::contract::render_lights_report::RenderLightsReport;
 use crate::frame::frame_encoder::FrameEncoder;
+use crate::frame::periodic_scheduler::PeriodicScheduler;
 use crate::frame::static_scene_handles::StaticSceneHandles;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::lighting::light_animation::to_animated_color;
@@ -321,13 +322,27 @@ impl LevelLights {
     }
   }
 
-  /// Ends what every view of the scene asked of the shadows this frame: picks the faces to draw from all they asked,
-  /// and readies them, which `add_shadow_passes` then draws before the lights read them; then opens the next frame's
-  /// asking.
-  pub fn finish_shadows(&mut self, device: &wgpu::Device, encoder: &mut FrameEncoder, frame: &ShadowFrame<'_>) {
-    self.shadows.finish();
-    self.shadows.prepare(device, encoder, frame);
+  /// Ends what every view of the scene asked of the shadows this frame: offers `scheduler` the faces wanting a draw.
+  pub fn offer_shadows(&mut self, scheduler: &mut PeriodicScheduler) {
+    self.shadows.finish(scheduler);
+  }
+
+  /// Readies the faces `scheduler` granted, which `add_shadow_passes` then draws before the lights read them; then
+  /// opens the next frame's asking.
+  pub fn commit_shadows(
+    &mut self,
+    device: &wgpu::Device,
+    encoder: &mut FrameEncoder,
+    frame: &ShadowFrame<'_>,
+    scheduler: &PeriodicScheduler,
+  ) {
+    self.shadows.prepare(device, encoder, frame, scheduler);
     self.shadows.begin();
+  }
+
+  /// Forgets the faces this frame drew, where its frame was not submitted.
+  pub fn abandon_shadows(&mut self) {
+    self.shadows.abandon_frame();
   }
 
   /// Declares the culls and draws of the shadow faces this frame's `prepare_shadows` readied.

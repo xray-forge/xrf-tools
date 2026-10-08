@@ -8,6 +8,9 @@ use crate::camera::camera_view::CameraView;
 use crate::contract::render_rect::RenderRect;
 use crate::contract::render_reflection_probe::RenderReflectionProbe;
 use crate::frame::frame_encoder::FrameEncoder;
+use crate::frame::periodic_job::PeriodicJob;
+use crate::frame::periodic_scheduler::PeriodicScheduler;
+use crate::frame::periodic_ticket::PeriodicTicket;
 use crate::frame::static_scene_handles::StaticSceneHandles;
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::camera_uniform::CameraUniform;
@@ -22,7 +25,6 @@ use crate::pass::surroundings_parameters::SurroundingsParameters;
 use crate::pass::surroundings_pass::SurroundingsPass;
 use crate::pass::surroundings_uniform::SurroundingsUniform;
 use crate::pass::view_binding::ViewBinding;
-use crate::scene::level::frame_load::FrameLoad;
 use crate::scene::level::lighting_handles::LightingHandles;
 use crate::scene::level::shadow_frame::ShadowFrame;
 use crate::scene::level::surroundings_faces::SurroundingsFaces;
@@ -35,8 +37,8 @@ use crate::scene::static_scene::static_layout::StaticLayout;
 /// than the sky alone. A face is drawn again only where the camera moved from where it was drawn or the scene's
 /// contents changed; where the sun turned or it has stood `REFRESH_FRAMES`, it is only lit again from the G-buffer it
 /// keeps, which costs next to nothing, so a still view draws no geometry at all. A face never drawn at the probe's size
-/// draws at once; any other waits for a frame light on other work (`FrameLoad`), so its cost never lands on a frame
-/// already heavy with the sun's far cascades.
+/// draws at once, and so does a face lit again; one drawn again is offered to the frame's scheduler, waiting at most
+/// `WAIT_MOST` frames, so its cost lands where the frame has room for it.
 pub struct SurroundingsCube {
   lists: GrowableBuffer,
   args: wgpu::Buffer,
@@ -58,9 +60,19 @@ pub struct SurroundingsCube {
   drawn: [Option<FaceDrawn>; 6],
   /// Frames prepared since it was made.
   frame: u32,
-  /// Frames a face has waited, due, for a frame light on other work.
+  /// Frames a face has waited for a draw it wants.
   waited: u32,
+  /// The face offered this frame, whether drawn again, and where it is seen from.
+  offer: Option<(PeriodicTicket, u32, bool, Vec3)>,
 }
+
+/// The passes that draw a face again, and that light one again, as the timer names them.
+static DRAW_PASSES: [&str; 3] = [
+  SurroundingsPass::CULL_PASS,
+  SurroundingsPass::DRAW_PASS,
+  SurroundingsPass::RESOLVE_PASS,
+];
+static LIGHT_PASSES: [&str; 1] = [SurroundingsPass::RESOLVE_PASS];
 
 /// Where a face was drawn from: the camera, what the scene held and its size; and the sun's direction and the frame it
 /// was last lit with.
@@ -87,6 +99,11 @@ impl SurroundingsCube {
   const MOVED: f32 = 1.0;
   const SUN_TURNED: f32 = 0.9994;
   const REFRESH_FRAMES: u32 = 30;
+  /// Frames a face drawn again on a move waits at most.
+  const WAIT_MOST: u32 = 8;
+  /// Milliseconds a texel of a face drawn again costs, and a face lit again, before the timer measured one.
+  const DRAW_SEED: f32 = 1.1e-6;
+  const LIGHT_SEED: f32 = 0.01;
 
   pub fn new(device: &wgpu::Device, view_layout: &wgpu::BindGroupLayout, args_size: u64) -> Self {
     Self {
@@ -108,10 +125,11 @@ impl SurroundingsCube {
       drawn: [None; 6],
       frame: 0,
       waited: 0,
+      offer: None,
     }
   }
 
-  /// Whether this frame draws a face, as `prepare` decided.
+  /// Whether this frame draws a face, as `commit` took it.
   pub fn is_due(&self) -> bool {
     self.is_due
   }
@@ -130,34 +148,33 @@ impl SurroundingsCube {
   /// their mip with the sky meanwhile.
   pub fn rest(&mut self) {
     self.is_due = false;
+    self.offer = None;
     self.is_redrawn = false;
     self.is_active = false;
     self.drawn = [None; 6];
     self.faces = None;
   }
 
-  /// Readies the camera of the face due, if one is, looking down its axis with the up a cube texture's face lays its
-  /// texels by: one never drawn at this size first, then one the camera or the scene left behind, each after the last
-  /// in turn, both drawn from where the viewport's camera stands; else one the sun turned from, then the one lit
-  /// longest ago past `REFRESH_FRAMES`, both lit again from where they were drawn. `encoder` takes the copies a list
-  /// growing makes.
-  pub fn prepare(
+  /// Offers `scheduler` the face due, if one is: one never drawn at this size first, then one the camera or the scene
+  /// left behind, each after the last in turn, both drawn from where the viewport's camera stands; else one the sun
+  /// turned from, then the one lit longest ago past `REFRESH_FRAMES`, both lit again from where they were drawn.
+  pub fn offer(
     &mut self,
     device: &wgpu::Device,
-    encoder: &mut FrameEncoder,
     frame: &ShadowFrame<'_>,
-    (probe, load): (RenderReflectionProbe, &mut FrameLoad),
+    probe: RenderReflectionProbe,
+    scheduler: &mut PeriodicScheduler,
   ) {
     let size: u32 = probe.get_size();
     let drawn: u32 = Self::get_drawn_size(size);
     let camera: Vec3 = frame.camera.position;
     let to_sun: Vec3 = -frame.sun_direction;
-    let contents: usize = frame.scene.get_contents();
 
     self.frame = self.frame.wrapping_add(1);
     self.is_active = true;
     self.is_due = false;
     self.is_redrawn = false;
+    self.offer = None;
 
     if self.faces.as_ref().is_none_or(|faces| faces.drawn != drawn) {
       self.faces = Some(SurroundingsFaces::new(device, drawn));
@@ -166,8 +183,9 @@ impl SurroundingsCube {
 
     let order = || (1..=6).map(|step| (self.face + step) % 6);
     let unready: Option<u32> = order().find(|face| self.drawn[*face as usize].is_none_or(|it| it.size != size));
-    let (face, is_redrawn): (u32, bool) = match unready {
-      Some(face) => (face, true),
+    let texels: f32 = (drawn as f32).powi(2);
+    let (face, is_redrawn, job): (u32, bool, PeriodicJob) = match unready {
+      Some(face) => (face, true, PeriodicJob::new_now(&DRAW_PASSES, Self::DRAW_SEED, texels)),
       None => {
         let moved: Option<u32> = order().find(|face| {
           self.drawn[*face as usize].is_some_and(|it: FaceDrawn| {
@@ -179,15 +197,11 @@ impl SurroundingsCube {
         });
 
         match moved {
-          Some(face) => {
-            if !load.take(self.waited) {
-              self.waited += 1;
-
-              return;
-            }
-
-            (face, true)
-          }
+          Some(face) => (
+            face,
+            true,
+            PeriodicJob::new_waiting(&DRAW_PASSES, Self::DRAW_SEED, texels, (self.waited, Self::WAIT_MOST)),
+          ),
           None => {
             let age = |face: u32| self.drawn[face as usize].map_or(0, |it| self.frame.wrapping_sub(it.lit));
             let turned: Option<u32> = order().find(|face| {
@@ -202,7 +216,7 @@ impl SurroundingsCube {
               return;
             };
 
-            (face, false)
+            (face, false, PeriodicJob::new_now(&LIGHT_PASSES, Self::LIGHT_SEED, 1.0))
           }
         }
       }
@@ -213,11 +227,37 @@ impl SurroundingsCube {
       _ => camera,
     };
 
-    self.face = face;
-    self.waited = 0;
+    self.offer = Some((scheduler.offer(job), face, is_redrawn, position));
+  }
 
+  /// Readies the camera of the face `scheduler` granted, looking down its axis with the up a cube texture's face lays
+  /// its texels by; one not granted waits a frame more. `encoder` takes the copies a list growing makes.
+  pub fn commit(
+    &mut self,
+    device: &wgpu::Device,
+    encoder: &mut FrameEncoder,
+    frame: &ShadowFrame<'_>,
+    probe: RenderReflectionProbe,
+    scheduler: &PeriodicScheduler,
+  ) {
+    let Some((ticket, face, is_redrawn, position)) = self.offer.take() else {
+      return;
+    };
+
+    if !scheduler.is_granted(ticket) {
+      self.waited += 1;
+
+      return;
+    }
+
+    let size: u32 = probe.get_size();
+    let drawn: u32 = Self::get_drawn_size(size);
+    let to_sun: Vec3 = -frame.sun_direction;
     let view: CameraView = Self::create_view(face, position);
     let scene = frame.scene;
+
+    self.face = face;
+    self.waited = 0;
 
     if is_redrawn {
       self
@@ -248,12 +288,20 @@ impl SurroundingsCube {
       position,
       contents: match self.drawn[face as usize] {
         Some(it) if !is_redrawn => it.contents,
-        _ => contents,
+        _ => scene.get_contents(),
       },
       size,
       to_sun,
       lit: self.frame,
     });
+  }
+
+  /// Forgets that this frame drew its face, where its frame was not submitted: it draws again.
+  pub fn abandon_frame(&mut self) {
+    if self.is_due {
+      self.is_due = false;
+      self.drawn[self.face as usize] = None;
+    }
   }
 
   /// A face's camera from `position`, looking down its axis with the up a cube texture's face lays its texels by.

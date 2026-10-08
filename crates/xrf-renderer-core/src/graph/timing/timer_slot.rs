@@ -10,6 +10,8 @@ pub(crate) struct TimerSlot {
   pub state: Arc<AtomicU8>,
   /// The pass each stamp ends, by stamp; `None` for a stamp starting an encode group.
   pub names: Vec<Option<TimedPass>>,
+  /// The tag the frame was timed under.
+  pub tag: u64,
 }
 
 impl TimerSlot {

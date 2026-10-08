@@ -2,6 +2,7 @@ use glam::Vec4;
 use xrf_renderer_core::{FrameGraph, GraphBindings, GraphTexture};
 
 use crate::frame::frame_encoder::FrameEncoder;
+use crate::frame::periodic_scheduler::PeriodicScheduler;
 use crate::frame::static_scene_handles::StaticSceneHandles;
 use crate::pass::cover_pyramid_depth_parameters::CoverPyramidDepthParameters;
 use crate::pass::cover_pyramid_level_parameters::CoverPyramidLevelParameters;
@@ -9,7 +10,6 @@ use crate::pass::level_passes::LevelPasses;
 use crate::pass::static_cull_params::StaticCullParams;
 use crate::scene::level::cover_pyramid::CoverPyramid;
 use crate::scene::level::cover_textures::CoverTextures;
-use crate::scene::level::frame_load::FrameLoad;
 use crate::scene::level::overhead_map::OverheadMap;
 use crate::scene::level::overhead_shape::OverheadShape;
 use crate::scene::level::shadow_frame::ShadowFrame;
@@ -33,15 +33,8 @@ impl RainCover {
   }
 
   /// Centres it over the camera, out to `reach` metres where the wetting reaches that far and over the near square
-  /// otherwise, and readies it to be drawn where it moved, changed width or the scene grew, on a frame `load` leaves
-  /// light; `encoder` takes the copies a list growing makes.
-  pub fn prepare(
-    &mut self,
-    device: &wgpu::Device,
-    encoder: &mut FrameEncoder,
-    frame: &ShadowFrame<'_>,
-    (reach, load): (Option<f32>, &mut FrameLoad),
-  ) {
+  /// otherwise, and offers `scheduler` a draw where it moved, changed width or the scene changed under it.
+  pub fn offer(&mut self, frame: &ShadowFrame<'_>, reach: Option<f32>, scheduler: &mut PeriodicScheduler) {
     // Twice the reach across and a twentieth more, as the camera stands up to half a step off the centre, in whole
     // 64 m.
     let width: f32 = reach.map_or(OverheadShape::RAIN_COVER.width, |reach| {
@@ -49,7 +42,23 @@ impl RainCover {
     });
 
     self.map.fit_width(width);
-    self.map.prepare(device, encoder, frame, load);
+    self.map.offer(frame, scheduler);
+  }
+
+  /// Readies the draw `scheduler` granted; `encoder` takes the copies a list growing makes.
+  pub fn commit(
+    &mut self,
+    device: &wgpu::Device,
+    encoder: &mut FrameEncoder,
+    frame: &ShadowFrame<'_>,
+    scheduler: &PeriodicScheduler,
+  ) {
+    self.map.commit(device, encoder, frame, scheduler);
+  }
+
+  /// Forgets that this frame drew it, where its frame was not submitted.
+  pub fn abandon_frame(&mut self) {
+    self.map.abandon_frame();
   }
 
   /// Draws nothing this frame.
@@ -90,7 +99,7 @@ impl RainCover {
     (shape.resolution as f32, shape.depth)
   }
 
-  /// Declares its draw and its pyramid's reduction where this frame's `prepare` found it due, and answers its depth
+  /// Declares its draw and its pyramid's reduction where this frame's `commit` took it, and answers its depth
   /// and pyramid as the graph knows them.
   pub fn add_passes<'a>(
     &'a self,

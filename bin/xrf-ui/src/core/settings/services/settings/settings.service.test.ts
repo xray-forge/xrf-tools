@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 
 import { ERenderAntialiasing, ERenderScale } from "@/core/ipc/types/xrf-renderer";
 import { DEFAULT_RENDER_FEATURE_CHOICE } from "@/core/render/lib/settings/render-feature-choice";
+import { DEFAULT_PERIODIC_BUDGET } from "@/core/render/lib/settings/render-periodic-budget";
 import { ERenderPreset, RENDER_PRESETS } from "@/core/render/lib/settings/render-preset";
 import { SettingsService } from "@/core/settings/services/settings/settings.service";
 import { mockInjectedService } from "@/fixtures/utils/container";
@@ -112,6 +113,18 @@ describe("SettingsService", () => {
     expect(service.rendererChoice).toEqual(DEFAULT_RENDER_FEATURE_CHOICE);
     expect(window.localStorage.getItem("xrf.preference.gpu-timed")).toBe("true");
     expect(mockInjectedService(SettingsService).service.renderSettings.isGpuTimed).toBe(true);
+  });
+
+  // The budget is the renderer's own unless set for a session's measurement.
+  it("gives periodic work the renderer's budget until set, for the session only", () => {
+    const { service } = mockInjectedService(SettingsService);
+
+    expect(service.renderSettings.periodicBudget).toBe(DEFAULT_PERIODIC_BUDGET);
+
+    service.setPeriodicBudget(0.8);
+
+    expect(service.renderSettings.periodicBudget).toBe(0.8);
+    expect(mockInjectedService(SettingsService).service.renderSettings.periodicBudget).toBe(DEFAULT_PERIODIC_BUDGET);
   });
 
   it("draws with Base until another preset is chosen, and keeps what was changed on top of it", () => {

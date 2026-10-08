@@ -27,6 +27,7 @@ use crate::contract::render_static_report::RenderStaticReport;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::contract::render_water_settings::RenderWaterSettings;
 use crate::frame::frame_encoder::FrameEncoder;
+use crate::frame::periodic_scheduler::PeriodicScheduler;
 use crate::frame::static_scene_handles::StaticSceneHandles;
 use crate::frame::texture_copy::add_texture_copy;
 use crate::frame::view_target_handles::ViewTargetHandles;
@@ -63,7 +64,6 @@ use crate::scene::level::feature::overhead_windows::OverheadWindows;
 use crate::scene::level::feature::present_inputs::PresentInputs;
 use crate::scene::level::feature::scene_features::SceneFeatures;
 use crate::scene::level::feature::water_frame::WaterFrame;
-use crate::scene::level::frame_load::FrameLoad;
 use crate::scene::level::grass_level::GrassLevel;
 use crate::scene::level::level_frame::LevelFrame;
 use crate::scene::level::level_overlays::LevelOverlays;
@@ -215,7 +215,6 @@ impl SceneView {
     (lighting, weather): (&RenderLighting, Option<&Arc<RenderLevelWeather>>),
     weather_textures: &WeatherTextureCache,
     weather_rate: f32,
-    (view_layout, textures): (&wgpu::BindGroupLayout, &TextureCache),
   ) {
     profiling::scope!("prepare view");
 
@@ -462,11 +461,9 @@ impl SceneView {
 
     self.prepare_present(options, output, scene.started.elapsed().as_secs_f32());
     self.features.volumetric.prepare(device, options);
-    self.prepare_shadows(scene, device, encoder, (view_layout, textures));
-    self.follow_overhead_maps();
   }
 
-  /// Writes where the rain cover and the level's surface now stand into what reads them, once `prepare_shadows` has
+  /// Writes where the rain cover and the level's surface now stand into what reads them, once `commit_periodic` has
   /// moved them: written before, a frame redrawing one would read it through where it stood the frame before.
   fn follow_overhead_maps(&mut self) {
     let windows: OverheadWindows = self.get_overhead_windows();
@@ -499,13 +496,14 @@ impl SceneView {
     }
   }
 
-  /// Readies this frame's shadows, sun, rain cover and lights, which the frame's passes then draw; `encoder` takes
-  /// the copies a list growing makes.
-  fn prepare_shadows(
+  /// Offers `scheduler` what the view draws once in so many frames and wants this frame: the sun's cascades, the
+  /// surroundings' face, the rain cover, the level's surface and the sky's refill. `commit_periodic` then readies what
+  /// was granted.
+  pub fn offer_periodic(
     &mut self,
     scene: &LevelScene,
     device: &wgpu::Device,
-    encoder: &mut FrameEncoder,
+    scheduler: &mut PeriodicScheduler,
     (view_layout, textures): (&wgpu::BindGroupLayout, &TextureCache),
   ) {
     let SceneView { shared, features, .. } = self;
@@ -518,6 +516,7 @@ impl SceneView {
       reflections,
       rain,
       wet,
+      sky,
       statics: statics_feature,
       ..
     } = features;
@@ -533,25 +532,20 @@ impl SceneView {
       textures,
     };
 
-    shadows.prepare_cascades(device, encoder, view_layout, &frame);
-
-    // What may wait a few frames draws on one the cascades leave light, one job a frame.
-    let mut load: FrameLoad = shadows.get_load();
+    shadows.prepare_cascades(device, view_layout, &frame, scheduler);
 
     // The cube is for the traced reflections alone; the engine's reflect its own.
     if reflections.get_settings().is_drawn() {
-      surroundings.prepare(device, encoder, &frame, (reflections.get_settings().probe, &mut load));
+      surroundings.offer(device, &frame, reflections.get_settings().probe, scheduler);
     } else {
       surroundings.rest();
     }
 
     // Out to the wet reach where the wetting reaches past the engine's.
     if rain.is_raining() || wet.is_wet() {
-      let reach: Option<f32> = wet.get_reach();
-
       rain_cover
         .get_or_insert_with(|| RainCover::new(device, overhead_view_layout, *args_size))
-        .prepare(device, encoder, &frame, (reach, &mut load));
+        .offer(&frame, wet.get_reach(), scheduler);
     } else {
       *rain_cover = None;
     }
@@ -560,20 +554,74 @@ impl SceneView {
     if wet.is_enhanced() {
       level_surface
         .get_or_insert_with(|| LevelSurface::new(device, overhead_view_layout, *args_size))
-        .prepare(device, encoder, &frame, (scene.lights.get_fires(), &mut load));
+        .offer(&frame, scene.lights.get_fires(), scheduler);
     } else {
       *level_surface = None;
     }
+
+    sky.offer_refill(scheduler);
   }
 
-  /// Readies the scene's light shadow faces every view of it asked for this frame, from this view's culling, once all
-  /// were prepared; `encoder` takes the copies a list growing makes.
-  pub fn prepare_scene_shadows(
+  /// Readies what `scheduler` granted of what `offer_periodic` offered, which the frame's passes then draw, and writes
+  /// where the overhead maps now stand; `encoder` takes the copies a list growing makes.
+  pub fn commit_periodic(
+    &mut self,
+    scene: &LevelScene,
+    device: &wgpu::Device,
+    encoder: &mut FrameEncoder,
+    scheduler: &PeriodicScheduler,
+    textures: &TextureCache,
+  ) {
+    let SceneView { shared, features, .. } = self;
+    let SceneFeatures {
+      shadows,
+      rain_cover,
+      level_surface,
+      surroundings,
+      reflections,
+      sky,
+      statics: statics_feature,
+      ..
+    } = features;
+    let statics: &StaticScene = &scene.statics;
+    let frame: ShadowFrame<'_> = ShadowFrame {
+      scene: statics,
+      camera: &shared.camera,
+      settings: &shared.shadow_settings,
+      sun_direction: shared.sun_direction,
+      switches: shared.switches,
+      sway: to_sway(statics, features.wind.get_sway()),
+      params: statics_feature.get_cull(),
+      textures,
+    };
+
+    shadows.commit_cascades(device, encoder, &frame, scheduler);
+
+    if reflections.get_settings().is_drawn() {
+      surroundings.commit(device, encoder, &frame, reflections.get_settings().probe, scheduler);
+    }
+
+    if let Some(rain_cover) = rain_cover {
+      rain_cover.commit(device, encoder, &frame, scheduler);
+    }
+
+    if let Some(level_surface) = level_surface {
+      level_surface.commit(device, encoder, &frame, scheduler);
+    }
+
+    sky.commit_refill(scheduler);
+    self.follow_overhead_maps();
+  }
+
+  /// Readies the scene's light shadow faces `scheduler` granted of those every view of it asked for this frame, from
+  /// this view's culling; `encoder` takes the copies a list growing makes.
+  pub fn commit_scene_shadows(
     &self,
     scene: &mut LevelScene,
     device: &wgpu::Device,
     encoder: &mut FrameEncoder,
     textures: &TextureCache,
+    scheduler: &PeriodicScheduler,
   ) {
     let LevelScene { statics, lights, .. } = scene;
     let frame: ShadowFrame<'_> = ShadowFrame {
@@ -587,7 +635,7 @@ impl SceneView {
       textures,
     };
 
-    lights.finish_shadows(device, encoder, &frame);
+    lights.commit_shadows(device, encoder, &frame, scheduler);
   }
 
   /// Declares the lighting: the lights binned into the view's clusters, the contact shadows marched, the sun then every
@@ -1371,11 +1419,24 @@ impl SceneView {
     self.features.lights.request_report();
   }
 
-  /// Drops what a frame that was never submitted copied out for reading back: its counts and its pick.
-  pub fn abandon_frame(&self) {
+  /// Drops what a frame that was never submitted copied out for reading back, its counts and its pick, and forgets the
+  /// periodic work it drew, which draws again.
+  pub fn abandon_frame(&mut self) {
     self.features.statics.abandon_stats();
     self.features.lights.abandon_report();
     self.features.pick.abandon();
+    // What the frame drew of the periodic work was never drawn.
+    self.features.shadows.abandon_frame();
+    self.features.surroundings.abandon_frame();
+    self.features.sky.abandon_frame();
+
+    if let Some(rain_cover) = &mut self.features.rain_cover {
+      rain_cover.abandon_frame();
+    }
+
+    if let Some(level_surface) = &mut self.features.level_surface {
+      level_surface.abandon_frame();
+    }
   }
 
   /// What its frames are drawn with, as resolved from what `options` asked; the weather's light is the viewport's to add.

@@ -7,6 +7,9 @@ use xrf_renderer_core::{
 use crate::contract::render_rect::RenderRect;
 use crate::contract::render_shadow_settings::RENDER_MAX_SHADOW_CASCADES;
 use crate::frame::frame_encoder::FrameEncoder;
+use crate::frame::periodic_job::PeriodicJob;
+use crate::frame::periodic_scheduler::PeriodicScheduler;
+use crate::frame::periodic_ticket::PeriodicTicket;
 use crate::frame::static_scene_handles::StaticSceneHandles;
 use crate::frame::sun_shadow_maps::SunShadowMaps;
 use crate::lighting::sun_view_rays::SunViewRays;
@@ -19,27 +22,30 @@ use crate::pass::static_cull_params::StaticCullParams;
 use crate::pass::static_draw_parameters::StaticDrawParameters;
 use crate::pass::static_draws::StaticDraws;
 use crate::scene::level::feature::view_feature::ViewFeature;
-use crate::scene::level::frame_load::FrameLoad;
 use crate::scene::level::shadow_cascade_view::ShadowCascadeView;
 use crate::scene::level::shadow_frame::ShadowFrame;
 use crate::scene::static_scene::static_layout::StaticLayout;
 
 /// Each cascade's draw, as the frame's timings name it.
-const CASCADE_PASSES: [&str; RENDER_MAX_SHADOW_CASCADES] =
+static CASCADE_PASSES: [&str; RENDER_MAX_SHADOW_CASCADES] =
   ["sun shadow 0", "sun shadow 1", "sun shadow 2", "sun shadow 3"];
 
+/// Milliseconds each cascade's draw costs before the timer measured one, the farther covering more.
+const CASCADE_SEEDS: [f32; RENDER_MAX_SHADOW_CASCADES] = [0.35, 0.45, 0.7, 1.0];
+
 /// A level's sun shadow: its cascades fitted along the camera's view every frame, each culled and drawn into its map
-/// only when its box moved or the scene grew, and then at most as often as its stagger allows, unless its box strayed
-/// too far from its map to wait.
+/// only when its box moved, the scene changed under it or its trees' sway shows. The nearest draws at once, and so does
+/// one never drawn or whose box strayed too far from its map to wait; a farther one is offered to the frame's
+/// scheduler, waiting at most its stagger (two, four, eight frames).
 #[derive(Default)]
 pub struct LevelShadows {
   /// The maps, while any cascade is drawn.
   maps: Option<SunShadowMaps>,
   values: ShadowUniform,
   cascades: Vec<ShadowCascadeView>,
-  /// Frames the shadow has been in, which a cascade's stagger is counted by.
-  frames: u64,
-  /// The cascades this frame draws, as `prepare_cascades` decided.
+  /// The cascades offered this frame, by their index, ticket and the version and contents a draw marks them with.
+  offers: Vec<(usize, PeriodicTicket, (u64, usize))>,
+  /// The cascades this frame draws, as `commit_cascades` took them.
   due: Vec<usize>,
 }
 
@@ -50,12 +56,6 @@ impl LevelShadows {
   }
 
   /// What the passes lit by the sun sample its cascades by, as this frame fitted them.
-  /// The frame's load as the cascades it draws leave it, as `prepare_cascades` decided: heavy where one past the
-  /// second draws, on its staggered turn or out of it.
-  pub fn get_load(&self) -> FrameLoad {
-    FrameLoad::new(self.due.iter().any(|index| *index >= 2))
-  }
-
   pub fn get_values(&self) -> &ShadowUniform {
     &self.values
   }
@@ -73,24 +73,23 @@ impl LevelShadows {
     }
   }
 
-  /// Fits the cascades, decides which are due and readies what culls and draws them, and writes what the sun samples
-  /// them by; `encoder` takes the copies a list growing makes.
+  /// Fits the cascades, offers those wanting a draw to `scheduler`, and takes what the sun samples them by.
   pub fn prepare_cascades(
     &mut self,
     device: &wgpu::Device,
-    encoder: &mut FrameEncoder,
     view_layout: &wgpu::BindGroupLayout,
     frame: &ShadowFrame<'_>,
+    scheduler: &mut PeriodicScheduler,
   ) {
     let settings = frame.settings;
     let count: usize = settings.get_cascade_count();
 
     self.values.count = count as u32;
+    self.offers.clear();
     self.due.clear();
 
     if count > 0 {
-      self.frames += 1;
-      self.ready_cascades(device, encoder, view_layout, frame, count);
+      self.offer_cascades(device, view_layout, frame, count, scheduler);
     }
 
     let look: Vec3 = -frame.camera.view.inverse().z_axis.truncate();
@@ -168,17 +167,71 @@ impl LevelShadows {
     }
   }
 
-  fn ready_cascades(
+  /// Readies the cascades `scheduler` granted to be culled and drawn, marking each drawn; one not granted waits a
+  /// frame more. `encoder` takes the copies a list growing makes.
+  pub fn commit_cascades(
     &mut self,
     device: &wgpu::Device,
     encoder: &mut FrameEncoder,
-    view_layout: &wgpu::BindGroupLayout,
     frame: &ShadowFrame<'_>,
-    count: usize,
+    scheduler: &PeriodicScheduler,
   ) {
     let scene = frame.scene;
     let resolution: u32 = self.maps.as_ref().map_or(1, |maps| maps.resolution);
     let list_bytes: u64 = (scene.cull.get_list_capacity().max(1) as u64) * 8;
+
+    for (index, ticket, state) in std::mem::take(&mut self.offers) {
+      let cascade: &mut ShadowCascadeView = &mut self.cascades[index];
+
+      if !scheduler.is_granted(ticket) {
+        cascade.waited += 1;
+
+        continue;
+      }
+
+      cascade.lists.reserve(device, encoder, list_bytes);
+      scene.cull.reset_args(encoder, &cascade.args);
+      cascade.view.write(
+        encoder,
+        &CameraUniform::new(
+          &cascade.cascade.view,
+          RenderRect {
+            x: 0,
+            y: 0,
+            width: resolution,
+            height: resolution,
+          },
+          Vec4::ZERO,
+        ),
+      );
+
+      self.due.push(index);
+      cascade.drawn = Some(state);
+      cascade.drawn_at = frame.sway.time;
+      cascade.drawn_fit = cascade.cascade;
+      cascade.waited = 0;
+      self.values.matrices[index] = cascade.cascade.view.get_view_projection();
+      self.values.texels[index] = cascade.cascade.texel;
+    }
+  }
+
+  /// Forgets that the cascades this frame drew were drawn, where its frame was not submitted: each draws again.
+  pub fn abandon_frame(&mut self) {
+    for index in std::mem::take(&mut self.due) {
+      self.cascades[index].drawn = None;
+    }
+  }
+
+  fn offer_cascades(
+    &mut self,
+    device: &wgpu::Device,
+    view_layout: &wgpu::BindGroupLayout,
+    frame: &ShadowFrame<'_>,
+    count: usize,
+    scheduler: &mut PeriodicScheduler,
+  ) {
+    let scene = frame.scene;
+    let resolution: u32 = self.maps.as_ref().map_or(1, |maps| maps.resolution);
     let mut rays: SunViewRays = SunViewRays::new(frame.camera);
 
     while self.cascades.len() < count.min(RENDER_MAX_SHADOW_CASCADES) {
@@ -206,52 +259,32 @@ impl LevelShadows {
         version != cascade.cascade.version
           || scene.is_changed_since(contents, |sphere| cascade.cascade.view.reaches(sphere))
       });
-      let is_due: bool = cascade.drawn.is_none()
-        || !frame.settings.is_staggered
-        || is_cascade_due(index, self.frames)
-        || !cascade.cascade.is_held_by(&cascade.drawn_fit);
 
-      if !is_due
-        || !(is_changed
-          || frame
-            .sway
-            .is_redrawn(frame.sway.reach, cascade.cascade.texel, cascade.drawn_at))
+      if !(is_changed
+        || frame
+          .sway
+          .is_redrawn(frame.sway.reach, cascade.cascade.texel, cascade.drawn_at))
       {
+        cascade.waited = 0;
+
         continue;
       }
 
-      cascade.lists.reserve(device, encoder, list_bytes);
-      scene.cull.reset_args(encoder, &cascade.args);
-      cascade.view.write(
-        encoder,
-        &CameraUniform::new(
-          &cascade.cascade.view,
-          RenderRect {
-            x: 0,
-            y: 0,
-            width: resolution,
-            height: resolution,
-          },
-          Vec4::ZERO,
-        ),
-      );
+      let passes: &'static [&'static str] = &CASCADE_PASSES[index..=index];
+      // The nearest is seen closest, and a cascade never drawn or strayed past its map shows wrong until drawn.
+      let is_now: bool = index == 0
+        || cascade.drawn.is_none()
+        || !frame.settings.is_staggered
+        || !cascade.cascade.is_held_by(&cascade.drawn_fit);
+      let job: PeriodicJob = if is_now {
+        PeriodicJob::new_now(passes, CASCADE_SEEDS[index], 1.0)
+      } else {
+        PeriodicJob::new_waiting(passes, CASCADE_SEEDS[index], 1.0, (cascade.waited, 1 << index))
+      };
 
-      self.due.push(index);
-      cascade.drawn = Some(state);
-      cascade.drawn_at = frame.sway.time;
-      cascade.drawn_fit = cascade.cascade;
-      self.values.matrices[index] = cascade.cascade.view.get_view_projection();
-      self.values.texels[index] = cascade.cascade.texel;
+      self.offers.push((index, scheduler.offer(job), state));
     }
   }
-}
-
-/// Whether a cascade may draw on a frame counted from one: the nearest every frame, the second every other, the third
-/// every fourth, each on frames the ones before it leave, so at most two draw in one frame of a steady view.
-fn is_cascade_due(cascade: usize, frame: u64) -> bool {
-  let rate: u64 = 1 << cascade;
-
-  cascade == 0 || frame % rate == (1 << (cascade - 1)) % rate
 }
 
 impl ViewFeature for LevelShadows {

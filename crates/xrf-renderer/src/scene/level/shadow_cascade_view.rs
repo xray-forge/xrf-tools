@@ -15,6 +15,8 @@ pub struct ShadowCascadeView {
   pub drawn_at: f32,
   /// The fit its map was last drawn at, which a fit strayed too far from draws again whatever its stagger.
   pub drawn_fit: SunCascade,
+  /// Frames it has waited for a draw it wants.
+  pub waited: u32,
 }
 
 impl ShadowCascadeView {
@@ -32,6 +34,7 @@ impl ShadowCascadeView {
       drawn: None,
       drawn_at: 0.0,
       drawn_fit: SunCascade::default(),
+      waited: 0,
     }
   }
 }

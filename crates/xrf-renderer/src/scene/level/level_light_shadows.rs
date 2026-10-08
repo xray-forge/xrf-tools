@@ -12,6 +12,9 @@ use crate::camera::camera_view::CameraView;
 use crate::contract::render_pool_use::RenderPoolUse;
 use crate::contract::render_rect::RenderRect;
 use crate::frame::frame_encoder::FrameEncoder;
+use crate::frame::periodic_job::PeriodicJob;
+use crate::frame::periodic_scheduler::PeriodicScheduler;
+use crate::frame::periodic_ticket::PeriodicTicket;
 use crate::frame::static_scene_handles::StaticSceneHandles;
 use crate::lighting::light_basis::{LightBasis, to_light_intensity};
 use crate::lighting::light_shadow_size::{
@@ -40,8 +43,20 @@ use crate::scene::static_scene::static_scene::StaticScene;
 /// Texels the light shadow atlas is across.
 pub const LIGHT_SHADOW_ATLAS_SIZE: u32 = 4096;
 
-/// Shadow faces drawn at most in one frame, so a level opening fills the atlas over a few frames rather than in one.
+/// Shadow faces offered at most in one frame, each with a slot of its own in the lists and the draw arguments.
 const FACE_BUDGET: usize = 8;
+
+/// The passes that draw a frame's faces, as the timer names them.
+static FACE_PASSES: [&str; 3] = ["light shadow arguments", "light shadow cull", "light shadows"];
+
+/// Milliseconds a texel of a face costs before the timer measured one.
+const FACE_SEED: f32 = 7.6e-7;
+
+/// Frames a face waits at most where it holds nothing yet or the scene changed under it, which leaves its light unlit
+/// or wrong; and where it is drawn again only for what sways in it. A face whose light moved waits none: its shadow
+/// would trail the light.
+const STALE_WAIT_MOST: u32 = 2;
+const SWAY_WAIT_MOST: u32 = 8;
 
 /// How far a light's wanted size may stray from the square it was asked at before it is asked at another.
 const GROW: f32 = 1.5;
@@ -51,12 +66,13 @@ const SHRINK: f32 = 0.66;
 const DEFAULT_NEAR: f32 = 0.1;
 
 /// A face wanting a draw: what orders it (stale, then how near or how long ago drawn), its light, whether of the light's
-/// next set, and which face.
-type FaceCandidate = ((bool, f32), ProxyHandle<LightDescription>, bool, usize);
+/// next set, which face, and the frames it may wait, none where it draws at once.
+type FaceCandidate = ((bool, f32), ProxyHandle<LightDescription>, bool, usize, u32);
 
 /// The local lights' shadows: a square of an atlas a face, sized as the engine sizes its maps, drawn once and kept
-/// while the scene it casts from stays, a few faces a frame, the nearest lights first; a face over swaying trees is
-/// drawn again once a sway interval, where the lean shows at its texels. A light lights only once its
+/// while the scene it casts from stays, a few faces a frame as the frame's scheduler grants them by their texels, the
+/// nearest lights first; a face over swaying trees is drawn again once a sway interval, where the lean shows at its
+/// texels. A light lights only once its
 /// faces are drawn; one asked at another size keeps its old faces until its new ones are. Room is made from the lights
 /// out of view longest, and where there is still none, a light is asked at smaller squares. Each face drawn in a frame
 /// has a slot of its own in the lists and the draw arguments, so every face is culled before any is drawn, and all are
@@ -69,10 +85,12 @@ pub struct LevelLightShadows {
   /// The faces wanting a draw this frame, as their light, set and face, behind what orders them: stale ones first,
   /// nearest lights first, then the ones over what sways, drawn longest ago first.
   candidates: Vec<FaceCandidate>,
-  /// The faces drawn this frame, a camera each from the pool.
-  queue: Vec<(ProxyHandle<LightDescription>, bool, usize)>,
+  /// The faces offered this frame, by their light, set and face, with their ticket.
+  queue: Vec<(ProxyHandle<LightDescription>, bool, usize, PeriodicTicket)>,
   /// The faces this frame draws, by their slot and their square, as `prepare` readied them.
   due: Vec<(usize, ShadowTile)>,
+  /// The lights whose faces this frame draws, by their light and square.
+  drawn: Vec<(ProxyHandle<LightDescription>, ShadowTile)>,
   /// A face's camera, a slot each.
   views: Vec<ViewBinding>,
   /// Every slot's visible list, `region` bytes apart.
@@ -115,6 +133,7 @@ impl LevelLightShadows {
       candidates: Vec::new(),
       queue: Vec::new(),
       due: Vec::new(),
+      drawn: Vec::new(),
       views: (0..FACE_BUDGET)
         .map(|_| ViewBinding::new(device, view_layout))
         .collect(),
@@ -244,30 +263,52 @@ impl LevelLightShadows {
           }
 
           if state.drawn.is_none_or(|drawn| statics.is_changed_since(drawn, touches)) {
-            self.candidates.push(((false, distance), handle, is_next, face));
-          } else if is_moved || sway.is_redrawn(swaying, spread / state.tile.size as f32, state.drawn_at) {
-            self.candidates.push(((true, state.drawn_at), handle, is_next, face));
+            self
+              .candidates
+              .push(((false, distance), handle, is_next, face, STALE_WAIT_MOST));
+          } else if is_moved {
+            self.candidates.push(((true, state.drawn_at), handle, is_next, face, 0));
+          } else if sway.is_redrawn(swaying, spread / state.tile.size as f32, state.drawn_at) {
+            self
+              .candidates
+              .push(((true, state.drawn_at), handle, is_next, face, SWAY_WAIT_MOST));
           }
         }
       }
     }
   }
 
-  /// Queues the faces drawn this frame, the nearest lights' first, each once however many views asked for it, and takes
-  /// a light's new faces in place of its old ones once all are drawn.
-  pub fn finish(&mut self) {
+  /// Offers `scheduler` the faces wanting a draw this frame, the nearest lights' first, each once however many views
+  /// asked for it, by their texels: one holding nothing yet or changed under within `STALE_WAIT_MOST` frames, one
+  /// swaying within `SWAY_WAIT_MOST`, one its light carried at once.
+  pub fn finish(&mut self, scheduler: &mut PeriodicScheduler) {
     self
       .candidates
       .sort_by(|a, b| a.0.0.cmp(&b.0.0).then(a.0.1.total_cmp(&b.0.1)));
     let mut queued: HashSet<(ProxyHandle<LightDescription>, bool, usize)> = HashSet::new();
-
-    self.queue = self
+    let faces: Vec<(ProxyHandle<LightDescription>, bool, usize, u32)> = self
       .candidates
       .iter()
-      .map(|(_, index, is_next, face)| (*index, *is_next, *face))
-      .filter(|face| queued.insert(*face))
+      .filter(|(_, index, is_next, face, _)| queued.insert((*index, *is_next, *face)))
       .take(FACE_BUDGET)
+      .map(|(_, index, is_next, face, wait_most)| (*index, *is_next, *face, *wait_most))
       .collect();
+
+    self.queue.clear();
+
+    for (index, is_next, face, wait_most) in faces {
+      let Some(state) = self.get_face(index, is_next, face) else {
+        continue;
+      };
+      let texels: f32 = (state.tile.size as f32).powi(2);
+      let job: PeriodicJob = if wait_most == 0 {
+        PeriodicJob::new_now(&FACE_PASSES, FACE_SEED, texels)
+      } else {
+        PeriodicJob::new_waiting(&FACE_PASSES, FACE_SEED, texels, (state.waited, wait_most))
+      };
+
+      self.queue.push((index, is_next, face, scheduler.offer(job)));
+    }
   }
 
   /// The faces a light lights with this frame, every one drawn, or none where it has none whole.
@@ -275,14 +316,21 @@ impl LevelLightShadows {
     self.entries.get(&handle)?.shown.as_ref().filter(|set| set.is_drawn())
   }
 
-  /// Readies the faces queued this frame to be culled into their slots and drawn into their squares of the atlas, and
-  /// lets a light's new faces take the place of its old once all are drawn; `encoder` takes the copies a list growing
-  /// makes.
-  pub fn prepare(&mut self, device: &wgpu::Device, encoder: &mut FrameEncoder, frame: &ShadowFrame<'_>) {
+  /// Readies the faces `scheduler` granted this frame to be culled into their slots and drawn into their squares of the
+  /// atlas, one not granted waiting a frame more, and lets a light's new faces take the place of its old once all are
+  /// drawn; `encoder` takes the copies a list growing makes.
+  pub fn prepare(
+    &mut self,
+    device: &wgpu::Device,
+    encoder: &mut FrameEncoder,
+    frame: &ShadowFrame<'_>,
+    scheduler: &PeriodicScheduler,
+  ) {
     let scene = frame.scene;
     let contents: usize = scene.get_contents();
 
     self.due.clear();
+    self.drawn.clear();
 
     if self.queue.is_empty() {
       return;
@@ -291,21 +339,32 @@ impl LevelLightShadows {
     self.region = ((scene.cull.get_list_capacity().max(1) as u64) * 8).next_multiple_of(self.alignment);
     self.lists.reserve(device, encoder, self.region * FACE_BUDGET as u64);
 
-    for (slot, (index, is_next, face)) in self.queue.iter().enumerate() {
+    for (index, is_next, face, ticket) in std::mem::take(&mut self.queue) {
+      let slot: usize = self.due.len();
+      let is_granted: bool = scheduler.is_granted(ticket);
       let Some(state) = self
         .entries
-        .get_mut(index)
+        .get_mut(&index)
         .and_then(|entry| {
-          if *is_next {
+          if is_next {
             entry.next.as_mut()
           } else {
             entry.shown.as_mut()
           }
         })
-        .and_then(|set| set.faces.get_mut(*face))
+        .and_then(|set| set.faces.get_mut(face))
       else {
         continue;
       };
+
+      if !is_granted {
+        state.waited += 1;
+
+        continue;
+      }
+
+      state.waited = 0;
+
       let view: &ViewBinding = &self.views[slot];
 
       view.write(
@@ -321,9 +380,10 @@ impl LevelLightShadows {
           Vec4::ZERO,
         ),
       );
-      self.due.push((slot, state.tile));
       state.drawn = Some(contents);
       state.drawn_at = frame.sway.time;
+      self.due.push((slot, state.tile));
+      self.drawn.push((index, state.tile));
     }
 
     // A light's new faces, all drawn, take the place of its old.
@@ -380,7 +440,7 @@ impl LevelLightShadows {
       .collect();
 
     graph
-      .add_encoder_pass("light shadow arguments")
+      .add_encoder_pass(FACE_PASSES[0])
       .buffer(template, GraphBufferAccess::CopySource)
       .buffer(args, GraphBufferAccess::CopyDestination)
       .record(move |context| {
@@ -398,10 +458,9 @@ impl LevelLightShadows {
       });
     slots
       .iter()
-      .fold(
-        graph.add_compute_pass("light shadow cull"),
-        |builder, (_, _, cull, _)| builder.parameters(cull),
-      )
+      .fold(graph.add_compute_pass(FACE_PASSES[1]), |builder, (_, _, cull, _)| {
+        builder.parameters(cull)
+      })
       .record({
         let culls: Vec<(usize, StaticCullParameters)> = slots.iter().map(|(slot, _, cull, _)| (*slot, *cull)).collect();
 
@@ -417,7 +476,7 @@ impl LevelLightShadows {
       .iter()
       .fold(
         graph
-          .add_raster_pass("light shadows")
+          .add_raster_pass(FACE_PASSES[2])
           .depth(GraphDepthAttachment::new(atlas, wgpu::LoadOp::Load))
           .buffer(args, GraphBufferAccess::Indirect),
         |builder, (.., layouts)| StaticDraws::declare_layouts(builder, layouts),
@@ -434,6 +493,36 @@ impl LevelLightShadows {
           );
         }
       });
+  }
+
+  /// Forgets that the faces this frame drew were drawn, where its frame was not submitted: each draws again, and its
+  /// light waits for it.
+  pub fn abandon_frame(&mut self) {
+    for (index, tile) in std::mem::take(&mut self.drawn) {
+      let Some(entry) = self.entries.get_mut(&index) else {
+        continue;
+      };
+
+      for set in entry.shown.iter_mut().chain(entry.next.iter_mut()) {
+        for face in set.faces.iter_mut().filter(|face| face.tile == tile) {
+          face.drawn = None;
+        }
+      }
+    }
+
+    self.due.clear();
+  }
+
+  /// A face of a light's shown set or its next.
+  fn get_face(&self, index: ProxyHandle<LightDescription>, is_next: bool, face: usize) -> Option<&LightShadowFace> {
+    let entry: &LightShadowEntry = self.entries.get(&index)?;
+    let set: &LightShadowSet = if is_next {
+      entry.next.as_ref()
+    } else {
+      entry.shown.as_ref()
+    }?;
+
+    set.faces.get(face)
   }
 
   /// A light's faces at a size, room made from the lights out of view longest, and at smaller squares where there is
@@ -455,6 +544,7 @@ impl LevelLightShadows {
             view: to_face_view(light, basis, face, near, far),
             drawn: None,
             drawn_at: 0.0,
+            waited: 0,
           })
           .collect();
 
