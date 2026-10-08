@@ -1,5 +1,5 @@
 use glam::Mat4;
-use xrf_renderer_core::{FrameGraph, GraphColorAttachment, GraphRuntime, UniformBinding};
+use xrf_renderer_core::{FrameGraph, GraphBindings, GraphColorAttachment, GraphRuntime, GraphTexture, UniformBinding};
 
 use crate::contract::render_ambient_occlusion_quality::RenderAmbientOcclusionQuality;
 use crate::contract::render_ambient_occlusion_settings::RenderAmbientOcclusionSettings;
@@ -43,7 +43,7 @@ impl AmbientOcclusionFeature {
   /// nothing where it is not drawn or VBAO searches in its place.
   pub fn add_passes<'a>(
     &self,
-    (graph, runtime): (&mut FrameGraph<'a>, &mut GraphRuntime),
+    (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
     passes: LevelPasses<'a>,
     view: &'a ViewBinding,
     targets: ViewTargetHandles,
@@ -54,18 +54,25 @@ impl AmbientOcclusionFeature {
 
     let quality: RenderAmbientOcclusionQuality = self.settings.quality;
     let occlusion: UniformBinding<AmbientOcclusionUniform> = runtime.push_uniform(&self.uniform);
+    // The search reads no source, but binds one: a texel of nothing, as neither target is written yet.
+    let unsearched: GraphTexture =
+      bindings.import_view(&mut *graph, "ambient occlusion unsearched", passes.vbao.get_dark());
 
     for (stage, (name, (read, written))) in ["ambient occlusion", "occlusion denoise", "occlusion denoise back"]
       .into_iter()
       .zip(AmbientOcclusionPass::STAGES)
       .enumerate()
     {
-      // Each stage reads the other target than it draws into, with the normals and the depth.
+      // Each denoise reads the other target than it draws into, with the normals and the depth.
       let parameters: AmbientOcclusionParameters = AmbientOcclusionParameters {
         normal_target: targets.normal,
         depth_target: targets.depth,
         occlusion,
-        source: targets.occlusion[1 - read],
+        source: if stage == 0 {
+          unsearched
+        } else {
+          targets.occlusion[1 - read]
+        },
       };
 
       graph

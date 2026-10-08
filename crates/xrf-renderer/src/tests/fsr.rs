@@ -7,6 +7,7 @@ use crate::contract::render_backend::RenderBackend;
 use crate::frame::fsr_targets::FsrTargets;
 use crate::frame::temporal_jitter::TemporalJitter;
 use crate::frame::view_target_handles::ViewTargetHandles;
+use crate::frame::view_target_uses::ViewTargetUses;
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::fsr_accumulate_parameters::FsrAccumulateParameters;
 use crate::pass::fsr_depth_clip_parameters::FsrDepthClipParameters;
@@ -59,7 +60,11 @@ fn upscales_two_frames_without_a_validation_error() {
     {
       let mut graph: FrameGraph<'_> = FrameGraph::new();
       let mut bindings: GraphBindings<'_> = GraphBindings::new();
-      let handles: ViewTargetHandles = ViewTargetHandles::import(&mut graph, &mut bindings, &targets);
+      let handles: ViewTargetHandles = ViewTargetHandles::import(
+        &mut graph,
+        &mut bindings,
+        (&targets, ViewTargetUses::default(), &targets.light),
+      );
 
       pass.add_passes((&mut graph, &mut bindings, &mut runtime), handles, (&fsr, &constants));
 

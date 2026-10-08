@@ -4,8 +4,8 @@ use std::time::Instant;
 use glam::{Mat4, Vec2, Vec3, Vec4};
 use xrf_error::XrfResult;
 use xrf_renderer_core::{
-  FrameGraph, GraphBindings, GraphBuffer, GraphColorAttachment, GraphRuntime, GraphTexture, GraphTextureDescriptor,
-  StorageArray, StorageArrayMut, StorageValue, UniformBinding,
+  FrameGraph, GraphBindings, GraphBuffer, GraphColorAttachment, GraphRuntime, GraphTexture, StorageArray,
+  StorageArrayMut, StorageValue, UniformBinding,
 };
 
 use crate::camera::camera_view::CameraView;
@@ -30,6 +30,7 @@ use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::static_scene_handles::StaticSceneHandles;
 use crate::frame::texture_copy::add_texture_copy;
 use crate::frame::view_target_handles::ViewTargetHandles;
+use crate::frame::view_target_uses::ViewTargetUses;
 use crate::frame::view_targets::ViewTargets;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::host::render_level_weather::RenderLevelWeather;
@@ -49,8 +50,6 @@ use crate::pass::reflection_trace::ReflectionTrace;
 use crate::pass::sky_parameters::SkyParameters;
 use crate::pass::static_draw_parameters::StaticDrawParameters;
 use crate::pass::sun_parameters::SunParameters;
-use crate::pass::sun_shafts_parameters::SunShaftsParameters;
-use crate::pass::sun_shafts_pass::SunShaftsPass;
 use crate::pass::trace_parameters::TraceParameters;
 use crate::pass::view_binding::ViewBinding;
 use crate::pass::water_draw::WaterDraw;
@@ -72,6 +71,7 @@ use crate::scene::level::level_scene::LevelScene;
 use crate::scene::level::level_surface::{LevelSurface, PuddleKeepInputs};
 use crate::scene::level::lighting_handles::LightingHandles;
 use crate::scene::level::lights_frame::LightsFrame;
+use crate::scene::level::rain_cover::RainCover;
 use crate::scene::level::scene_output::SceneOutput;
 use crate::scene::level::shadow_frame::ShadowFrame;
 use crate::scene::level::shadow_sway::ShadowSway;
@@ -227,10 +227,11 @@ impl SceneView {
 
     self.features.overlays.follow_skeletons((scene, device));
 
-    self
-      .features
-      .shadows
-      .prepare(device, options.features.shadows.resolution);
+    self.features.shadows.prepare(
+      device,
+      options.features.shadows.resolution,
+      options.features.shadows.get_cascade_count() > 0,
+    );
 
     self
       .features
@@ -333,10 +334,7 @@ impl SceneView {
         .map_or(Vec4::ZERO, |(_, sprite)| *sprite),
     };
 
-    self.shared.is_shafted = options.mode.is_lit
-      && options.show.is_sun_shafted
-      && lighting.get_sun_shafts(&options.features.sun_shafts) > 0.0
-      && options.features.shadows.get_cascade_count() > 0;
+    self.features.sun_shafts.prepare(options, lighting);
     self.features.bloom.prepare(
       passes,
       options,
@@ -368,9 +366,17 @@ impl SceneView {
       self.features.wind.get_values(),
       // Where the puddles stood last frame, which no tuft is planted in: the wet readies after the grass.
       (
-        &self.features.level_surface.puddles,
+        self
+          .features
+          .level_surface
+          .as_ref()
+          .map_or(passes.wet.get_dry()[1], |surface| &surface.puddles),
         GrassPuddlesUniform::new(
-          self.features.level_surface.get_window(),
+          self
+            .features
+            .level_surface
+            .as_ref()
+            .map_or(LevelSurface::get_unmade().0, LevelSurface::get_window),
           self.features.wet.has_puddles(),
         ),
       ),
@@ -471,14 +477,25 @@ impl SceneView {
 
   /// Where the rain cover and the level's surface stand now.
   fn get_overhead_windows(&self) -> OverheadWindows {
-    let (surface, surface_shape): (Vec4, Vec4) = self.features.level_surface.get_window();
+    let (cover, cover_shape): (Vec4, (f32, f32)) = self
+      .features
+      .rain_cover
+      .as_ref()
+      .map_or(RainCover::get_unmade(), |cover| (cover.get_window(), cover.get_shape()));
+    let ((surface, surface_shape), water): ((Vec4, Vec4), Vec4) = self
+      .features
+      .level_surface
+      .as_ref()
+      .map_or(LevelSurface::get_unmade(), |surface| {
+        (surface.get_window(), surface.get_water_window())
+      });
 
     OverheadWindows {
-      cover: self.features.rain_cover.get_window(),
-      cover_shape: self.features.rain_cover.get_shape(),
+      cover,
+      cover_shape,
       surface,
       surface_shape,
-      water: self.features.level_surface.get_water_window(),
+      water,
     }
   }
 
@@ -496,6 +513,7 @@ impl SceneView {
       shadows,
       rain_cover,
       level_surface,
+      overhead_layout: (overhead_view_layout, args_size),
       surroundings,
       reflections,
       rain,
@@ -531,14 +549,20 @@ impl SceneView {
     if rain.is_raining() || wet.is_wet() {
       let reach: Option<f32> = wet.get_reach();
 
-      rain_cover.prepare(device, encoder, &frame, (reach, &mut load));
+      rain_cover
+        .get_or_insert_with(|| RainCover::new(device, overhead_view_layout, *args_size))
+        .prepare(device, encoder, &frame, (reach, &mut load));
     } else {
-      rain_cover.rest();
+      *rain_cover = None;
     }
 
     // The puddles seat on it.
     if wet.is_enhanced() {
-      level_surface.prepare(device, encoder, &frame, (scene.lights.get_fires(), &mut load));
+      level_surface
+        .get_or_insert_with(|| LevelSurface::new(device, overhead_view_layout, *args_size))
+        .prepare(device, encoder, &frame, (scene.lights.get_fires(), &mut load));
+    } else {
+      *level_surface = None;
     }
   }
 
@@ -618,7 +642,7 @@ impl SceneView {
     self
       .features
       .ambient_occlusion
-      .add_passes((&mut *graph, &mut *runtime), passes, view, targets);
+      .add_passes((&mut *graph, &mut *bindings, &mut *runtime), passes, view, targets);
 
     self
       .features
@@ -720,7 +744,6 @@ impl SceneView {
     let has_sky: bool = self.features.sky.get_views().is_some();
     let is_composited: bool = is_drawn && has_sky;
     let has_particles: bool = is_drawn && self.features.particles.is_drawing();
-    let is_shafted: bool = self.shared.is_shafted && !is_froxeled;
     let particle_surfaces: &wgpu::Buffer = scene.particles.get_surfaces();
     let texture_group: &wgpu::BindGroup = textures.get_bind_group();
     let scene_view: &'a SceneView = self;
@@ -732,7 +755,13 @@ impl SceneView {
       bindings.import_view(&mut *graph, "reflections none", passes.reflections.get_untraced());
     let no_ends: GraphTexture =
       bindings.import_view(&mut *graph, "reflection ends none", passes.reflections.get_no_ends());
-    let handles: ViewTargetHandles = ViewTargetHandles::import(&mut *graph, &mut *bindings, targets);
+    let uses: ViewTargetUses = ViewTargetUses {
+      is_occluded: scene_view.features.ambient_occlusion.is_drawn(),
+      is_hazed: scene_view.features.sky.is_hazing(),
+      is_engine_bloomed: scene_view.features.bloom.is_engine_drawn(),
+    };
+    let handles: ViewTargetHandles =
+      ViewTargetHandles::import(&mut *graph, &mut *bindings, (targets, uses, passes.vbao.get_dark()));
     let statics: StaticSceneHandles = scene_view.features.statics.import(
       (&mut *graph, &mut *bindings, runtime),
       &scene.statics,
@@ -747,7 +776,11 @@ impl SceneView {
       shadow_maps: bindings.import_view(
         &mut *graph,
         "sun shadow maps",
-        &scene_view.features.shadows.get_maps().view,
+        scene_view
+          .features
+          .shadows
+          .get_maps()
+          .map_or(passes.sun.get_unshadowed(), |maps| &maps.view),
       ),
       shadows: runtime.push_uniform(scene_view.features.shadows.get_values()),
     };
@@ -824,21 +857,26 @@ impl SceneView {
     );
 
     // The rain's cover, which its passes draw and reduce and the rain and the wet surfaces read.
-    let covers: Option<CoverTextures> = (is_raining || is_wet).then(|| {
-      scene_view.features.rain_cover.add_passes(
-        (&mut *graph, &mut *bindings),
-        passes,
-        &statics,
-        (scene_view.features.statics.get_cull(), texture_group),
-      )
-    });
+    let covers: Option<CoverTextures> = scene_view
+      .features
+      .rain_cover
+      .as_ref()
+      .filter(|_| is_raining || is_wet)
+      .map(|rain_cover| {
+        rain_cover.add_passes(
+          (&mut *graph, &mut *bindings),
+          passes,
+          &statics,
+          (scene_view.features.statics.get_cull(), texture_group),
+        )
+      });
     let cover: Option<GraphTexture> = covers.map(|covers| covers.depth);
     let wet: Option<UniformBinding<WetUniform>> = scene_view.features.wet.push_uniform(runtime);
 
     // The level's surface seen from overhead, its lowest heights, its puddle sites and its water, which the enhanced
     // wetting places its puddles by.
-    let [surface_lowest, puddles, surface_water]: [GraphTexture; 3] = match wet {
-      Some(wet) if scene_view.features.wet.is_enhanced() => {
+    let [surface_lowest, puddles, surface_water]: [GraphTexture; 3] = match (wet, &scene_view.features.level_surface) {
+      (Some(wet), Some(level_surface)) if scene_view.features.wet.is_enhanced() => {
         let water: UniformBinding<WaterUniform> = runtime.push_uniform(scene_view.features.water.get_uniform());
         let keep: PuddleKeepInputs = PuddleKeepInputs {
           wet,
@@ -846,7 +884,7 @@ impl SceneView {
           sampler: passes.wet.get_sampler(),
         };
 
-        scene_view.features.level_surface.add_passes(
+        level_surface.add_passes(
           (&mut *graph, &mut *bindings, runtime),
           passes,
           &statics,
@@ -855,12 +893,12 @@ impl SceneView {
         )
       }
       _ => {
-        let surface: &LevelSurface = &scene_view.features.level_surface;
+        let [lowest, puddles, water]: [&'a wgpu::TextureView; 3] = passes.wet.get_dry();
 
         [
-          bindings.import_view(&mut *graph, "level surface lowest", &surface.lowest),
-          bindings.import_view(&mut *graph, "puddles", &surface.puddles),
-          bindings.import_view(&mut *graph, "level water", &surface.water.depth),
+          bindings.import_view(&mut *graph, "level surface lowest", lowest),
+          bindings.import_view(&mut *graph, "puddles", puddles),
+          bindings.import_view(&mut *graph, "level water", water),
         ]
       }
     };
@@ -1079,56 +1117,14 @@ impl SceneView {
           (lit, light_atlas, &scene_view.features.lights),
         );
 
-      if is_shafted || light_volumes.is_some() || froxels.is_some() {
-        let (width, height) = handles.size;
-        let empty: GraphTexture = bindings.import_view(&mut *graph, "sun shafts none", passes.reflections.get_empty());
-        let no_froxels: GraphTexture = bindings.import_view(&mut *graph, "froxels none", passes.froxels.get_empty());
-        let (froxel_uniform, froxel_integrated) =
-          froxels.unwrap_or_else(|| (runtime.push_uniform(&FroxelUniform::default()), no_froxels));
-        let march: SunShaftsParameters = SunShaftsParameters {
-          depth_target: handles.depth,
-          shadow_maps: lit.shadow_maps,
-          shadows: lit.shadows,
-          lighting: lit.lighting,
-          exposure: StorageValue::new(lit.exposure),
-          shafts: empty,
-          light_volumes: empty,
-          froxels: froxel_uniform,
-          froxel_integrated: no_froxels,
-          froxel_sampler: passes.froxels.get_sampler(),
-        };
-        let mut parameters: SunShaftsParameters = SunShaftsParameters {
-          light_volumes: light_volumes.unwrap_or(empty),
-          froxel_integrated,
-          ..march
-        };
-
-        if is_shafted {
-          let marched: GraphTexture = graph.create_texture(GraphTextureDescriptor::new_2d(
-            "sun shafts marched",
-            width.div_ceil(2),
-            height.div_ceil(2),
-            SunShaftsPass::MARCHED,
-          ));
-
-          parameters.shafts = marched;
-          graph
-            .add_raster_pass("sun shafts march")
-            .parameters(&march)
-            .color(GraphColorAttachment::new(
-              marched,
-              wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-            ))
-            .record(move |context| passes.sun_shafts.record(context, view, &march, true));
-        }
-
-        graph
-          .add_raster_pass("sun shafts")
-          .parameters(&parameters)
-          .color(GraphColorAttachment::new(handles.scene, wgpu::LoadOp::Load))
-          .color(GraphColorAttachment::new(handles.high, wgpu::LoadOp::Load))
-          .record(move |context| passes.sun_shafts.record(context, view, &parameters, false));
-      }
+      scene_view.features.sun_shafts.add_passes(
+        (&mut *graph, &mut *bindings, runtime),
+        passes,
+        view,
+        (handles, lit),
+        (light_volumes, is_froxeled),
+        froxels,
+      );
 
       scene_view
         .features
@@ -1397,7 +1393,7 @@ impl SceneView {
       render_scale: self.features.resolve.get_upscaling().scale,
       shadows: (cascades > 0).then(|| RenderAppliedShadows {
         cascades: self.shared.shadow_settings.cascades[..cascades].to_vec(),
-        resolution: self.features.shadows.get_maps().resolution,
+        resolution: self.features.shadows.get_maps().map_or(0, |maps| maps.resolution),
         filter: self.shared.shadow_settings.filter,
       }),
       ambient_occlusion: self

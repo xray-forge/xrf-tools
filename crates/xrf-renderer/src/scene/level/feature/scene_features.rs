@@ -17,6 +17,7 @@ use crate::scene::level::feature::resolve_feature::ResolveFeature;
 use crate::scene::level::feature::sky_feature::SkyFeature;
 use crate::scene::level::feature::smoothing_feature::SmoothingFeature;
 use crate::scene::level::feature::statics_feature::StaticsFeature;
+use crate::scene::level::feature::sun_shafts_feature::SunShaftsFeature;
 use crate::scene::level::feature::thunder_feature::ThunderFeature;
 use crate::scene::level::feature::view_feature::ViewFeature;
 use crate::scene::level::feature::volumetric_feature::VolumetricFeature;
@@ -35,9 +36,14 @@ use crate::scene::level::surroundings_cube::SurroundingsCube;
 /// level around the camera as a cube.
 pub struct SceneFeatures {
   pub shadows: LevelShadows,
-  pub rain_cover: RainCover,
-  /// The level's surface around the camera without its trees, which the puddles are seated on.
-  pub level_surface: LevelSurface,
+  /// The rain cover, while it rains or the surfaces are wet.
+  pub rain_cover: Option<RainCover>,
+  /// The level's surface around the camera without its trees, which the puddles are seated on, while the enhanced
+  /// wetting draws them.
+  pub level_surface: Option<LevelSurface>,
+  /// What the overhead maps and their views are made with when they are wanted again: the views' layout and the
+  /// scene's cull arguments' bytes.
+  pub overhead_layout: (wgpu::BindGroupLayout, u64),
   /// The level around the camera as a cube, a face a frame, which a reflection meeting nothing on the screen reads.
   pub surroundings: SurroundingsCube,
   /// The level's local lights as the view lights its frame with them.
@@ -70,6 +76,7 @@ pub struct SceneFeatures {
   pub statics: StaticsFeature,
   pub present: PresentFeature,
   pub combine: CombineFeature,
+  pub sun_shafts: SunShaftsFeature,
 }
 
 impl SceneFeatures {
@@ -80,9 +87,10 @@ impl SceneFeatures {
     args_size: u64,
   ) -> Self {
     Self {
-      shadows: LevelShadows::new(device),
-      rain_cover: RainCover::new(device, view_layout, args_size),
-      level_surface: LevelSurface::new(device, view_layout, args_size),
+      shadows: LevelShadows::default(),
+      rain_cover: None,
+      level_surface: None,
+      overhead_layout: (view_layout.clone(), args_size),
       surroundings: SurroundingsCube::new(device, view_layout, args_size),
       lights: LightsFeature::new(device),
       overlays: OverlaysFeature::default(),
@@ -110,11 +118,12 @@ impl SceneFeatures {
       statics: StaticsFeature::new(device),
       present: PresentFeature::default(),
       combine: CombineFeature,
+      sun_shafts: SunShaftsFeature::default(),
     }
   }
 
   /// Every unit, as what each answers alike.
-  pub fn list(&self) -> [&dyn ViewFeature; 21] {
+  pub fn list(&self) -> [&dyn ViewFeature; 23] {
     [
       &self.fog,
       &self.bloom,
@@ -137,10 +146,12 @@ impl SceneFeatures {
       &self.statics,
       &self.present,
       &self.combine,
+      &self.shadows,
+      &self.sun_shafts,
     ]
   }
 
-  pub fn list_mut(&mut self) -> [&mut dyn ViewFeature; 21] {
+  pub fn list_mut(&mut self) -> [&mut dyn ViewFeature; 23] {
     [
       &mut self.fog,
       &mut self.bloom,
@@ -163,11 +174,27 @@ impl SceneFeatures {
       &mut self.statics,
       &mut self.present,
       &mut self.combine,
+      &mut self.shadows,
+      &mut self.sun_shafts,
     ]
   }
 
-  /// Bytes the units hold on the GPU between frames.
+  /// Bytes the units hold on the GPU between frames, with the overhead maps.
   pub fn get_memory(&self) -> u64 {
-    self.list().iter().map(|feature| feature.get_memory()).sum()
+    let units: u64 = self.list().iter().map(|feature| feature.get_memory()).sum();
+
+    units
+      + self.rain_cover.as_ref().map_or(0, RainCover::get_memory)
+      + self.level_surface.as_ref().map_or(0, LevelSurface::get_memory)
+  }
+
+  /// Lets go of every unit's GPU state, the overhead maps with them.
+  pub fn release(&mut self) {
+    for feature in self.list_mut() {
+      feature.release();
+    }
+
+    self.rain_cover = None;
+    self.level_surface = None;
   }
 }

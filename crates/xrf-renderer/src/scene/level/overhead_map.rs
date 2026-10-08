@@ -111,8 +111,13 @@ impl OverheadMap {
   pub fn get_window(&self) -> Vec4 {
     match self.drawn {
       Some((center, _)) => Vec4::new(center.x, center.z, self.shape.width / 2.0, center.y),
-      None => Vec4::new(0.0, 0.0, self.shape.width / 2.0, -1e9),
+      None => Self::get_unmade_window(self.shape),
     }
+  }
+
+  /// The window of a map of `shape` not drawn yet: centred nowhere, seen from far below.
+  pub fn get_unmade_window(shape: OverheadShape) -> Vec4 {
+    Vec4::new(0.0, 0.0, shape.width / 2.0, -1e9)
   }
 
   /// Centres it over the camera, a whole step at a time, and readies it to be drawn where it moved or the scene grew,
