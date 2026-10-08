@@ -20,6 +20,7 @@ use crate::pass::flare_pass::{FlarePass, GRADIENT_INSTANCE};
 use crate::pass::flare_texture_parameters::FlareTextureParameters;
 use crate::pass::flare_uniform::{FLARE_SLOTS, FlareUniform};
 use crate::pass::view_binding::ViewBinding;
+use crate::scene::level::feature::view_feature::ViewFeature;
 use crate::scene::level::lens_flare_fade::LensFlareFade;
 use crate::scene::level::lighting_handles::LightingHandles;
 use crate::scene::texture::weather_texture_cache::WeatherTextureCache;
@@ -27,12 +28,12 @@ use crate::scene::texture::weather_texture_kind::WeatherTextureKind;
 
 /// The sun a level's viewport draws as `CLensFlare` does: the lens flare its keyframes name, faded between them, its
 /// sprite in the sky and its flares and gradient over the frame, each shown as much as the sun is.
-pub struct LevelFlares {
+pub struct FlaresFeature {
   fade: LensFlareFade,
   /// What the flares draw this frame by.
   values: FlareUniform,
-  /// How much of the sun shows, eased on the GPU from frame to frame.
-  state: wgpu::Buffer,
+  /// How much of the sun shows, eased on the GPU from frame to frame while the flares draw.
+  state: Option<wgpu::Buffer>,
   /// Each flare's instance and texture as the weather textures hold it this frame, the gradient's last.
   textures: Vec<(u32, wgpu::TextureView)>,
   is_drawn: bool,
@@ -41,17 +42,12 @@ pub struct LevelFlares {
   last: Option<Instant>,
 }
 
-impl LevelFlares {
-  pub fn new(device: &wgpu::Device) -> Self {
+impl FlaresFeature {
+  pub fn new() -> Self {
     Self {
       fade: LensFlareFade::new(),
       values: FlareUniform::default(),
-      state: device.create_buffer(&wgpu::BufferDescriptor {
-        label: Some("flare visibility"),
-        size: 16,
-        usage: wgpu::BufferUsages::STORAGE,
-        mapped_at_creation: false,
-      }),
+      state: None,
       textures: Vec::new(),
       is_drawn: false,
       is_flared: true,
@@ -85,9 +81,41 @@ impl LevelFlares {
     }
   }
 
-  /// Steps the fade and notes what the flares draw by and with; answers the sun's sprite as the sky draws it, its
-  /// texture and its colour and radius, none where no sprite is drawn.
+  /// Steps the fade and notes what the flares draw by and with, their visibility made while they draw and let go of
+  /// while they do not; answers the sun's sprite as the sky draws it, its texture and its colour and radius, none where
+  /// no sprite is drawn.
   pub fn prepare(
+    &mut self,
+    device: &wgpu::Device,
+    (lighting, weather): (&RenderLighting, Option<&Arc<RenderLevelWeather>>),
+    options: &RenderViewOptions,
+    weather_textures: &WeatherTextureCache,
+    (view, rate): (&CameraView, f32),
+    has_targets: bool,
+  ) -> Option<(String, Vec4)> {
+    let sprite: Option<(String, Vec4)> = self.prepare_drawn(
+      (lighting, weather),
+      options,
+      weather_textures,
+      (view, rate),
+      has_targets,
+    );
+
+    if !self.is_drawn {
+      self.state = None;
+    } else if self.state.is_none() {
+      self.state = Some(device.create_buffer(&wgpu::BufferDescriptor {
+        label: Some("flare visibility"),
+        size: 16,
+        usage: wgpu::BufferUsages::STORAGE,
+        mapped_at_creation: false,
+      }));
+    }
+
+    sprite
+  }
+
+  fn prepare_drawn(
     &mut self,
     (lighting, weather): (&RenderLighting, Option<&Arc<RenderLevelWeather>>),
     options: &RenderViewOptions,
@@ -150,12 +178,11 @@ impl LevelFlares {
     (targets, lit): (ViewTargetHandles, LightingHandles<'a>),
     view: &'a ViewBinding,
   ) {
-    if !self.is_drawn {
+    let (true, Some(state)) = (self.is_drawn, &self.state) else {
       return;
-    }
-
+    };
     let flares: UniformBinding<FlareUniform> = runtime.push_uniform(&self.values);
-    let state: GraphBuffer = bindings.import_buffer(&mut *graph, "flare visibility", &self.state);
+    let state: GraphBuffer = bindings.import_buffer(&mut *graph, "flare visibility", state);
     let measure: FlareMeasureParameters = FlareMeasureParameters {
       flares,
       state: StorageValueMut::new(state),
@@ -213,5 +240,17 @@ impl LevelFlares {
     let gradient = flare.gradient.iter().map(|it| (GRADIENT_INSTANCE, view(&it.texture)));
 
     self.textures = flares.chain(gradient).collect();
+  }
+}
+
+impl ViewFeature for FlaresFeature {
+  /// The sun's visibility, eased from frame to frame while the flares draw; the textures are the weather's.
+  fn get_memory(&self) -> u64 {
+    self.state.as_ref().map_or(0, wgpu::Buffer::size)
+  }
+
+  fn release(&mut self) {
+    self.state = None;
+    self.is_drawn = false;
   }
 }

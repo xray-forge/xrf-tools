@@ -1,9 +1,9 @@
 use xrf_error::XrfResult;
 use xrf_renderer_core::{ComputeContext, PassParameters};
 
-use crate::frame::view_exposure::EXPOSURE_CELLS;
 use crate::pass::exposure_parameters::ExposureParameters;
 use crate::pass::shader_pipelines::{create_checked, create_module};
+use crate::scene::level::feature::exposure_feature::EXPOSURE_CELLS;
 use crate::shader::shader_library::ShaderLibrary;
 
 /// Invocations a measuring workgroup runs, as `shaders/frame/exposure.wgsl` declares them.
