@@ -7,8 +7,12 @@
 
 // How far along the view the frame's surface may lie and still be one a ray meets: nearer is the camera's own.
 const RAY_NEAREST: f32 = 1.3;
-// How far along the view a ray's depth may lie from the frame's after a halving and still have met it.
+// How far along the view a ray's depth may lie from the frame's after its halvings and still have met it: at least
+// `RAY_REFINED`, more with the distance, so a ray passing behind a thin thing, a blade of grass, goes on past it.
 const RAY_REFINED: f32 = 1.25;
+const RAY_THICKNESS: f32 = 0.02;
+// How many times a refined ray's step is halved back and forth to where it crossed a surface.
+const RAY_HALVINGS: u32 = 4u;
 // How much nearer than where a ray left the last surface it passed in front of may lie and still stand for a hit.
 const RAY_PASSED: f32 = 2.0;
 // How much of a reflection grass and leaves take.
@@ -71,11 +75,12 @@ fn reflection_intersect(depth_target: texture_depth_2d, ray: ReflectionRay) -> v
   return vec2<f32>(ray_depth - scene, scene);
 }
 
-// A ray marched until it lies behind a surface by no more than `limit`, once halved back where `is_refined` asks;
-// where it never does, the last surface it passed in front of no nearer than where it left, or nothing.
+// A ray, its first step `offset` steps out, marched until it lies behind a surface: by no more than `limit`, or where
+// `is_refined` asks, by no more than its thickness once halved back to where it crossed; where it never does, the last
+// surface it passed in front of no nearer than where it left, or nothing.
 fn reflection_march(depth_target: texture_depth_2d, start: vec3<f32>, direction: vec3<f32>, distance: f32,
-  steps: u32, limit: f32, is_refined: bool) -> ReflectionHit {
-  var ray: ReflectionRay = reflection_ray(start, direction, distance, steps, 2.0);
+  steps: u32, limit: f32, is_refined: bool, offset: f32) -> ReflectionHit {
+  var ray: ReflectionRay = reflection_ray(start, direction, distance, steps, offset);
   let depth_start: f32 = reflection_scene_depth(depth_target, ray.start);
   var check: vec2<f32> = vec2<f32>(0.0);
   var passed: vec2<f32> = vec2<f32>(0.0);
@@ -99,24 +104,24 @@ fn reflection_march(depth_target: texture_depth_2d, start: vec3<f32>, direction:
     let behind: f32 = select(0.0, check.x, is_surface);
 
     if (behind > 0.0) {
-      if (behind <= limit) {
-        return ReflectionHit(ray.position, check.y, 0.0);
-      }
-
       if (is_refined) {
         let held: vec4<f32> = vec4<f32>(ray.position, ray.step);
+        var refined: vec2<f32> = check;
 
-        ray.step *= -0.5;
-        ray.position += ray.step;
+        for (var halving: u32 = 0u; halving < RAY_HALVINGS; halving++) {
+          ray.step *= 0.5;
+          ray.position += select(ray.step, -ray.step, refined.x > 0.0);
+          refined = reflection_intersect(depth_target, ray);
+        }
 
-        let refined: vec2<f32> = reflection_intersect(depth_target, ray);
-
-        if (abs(refined.x) <= RAY_REFINED) {
+        if (refined.y > RAY_NEAREST && abs(refined.x) <= max(RAY_REFINED, refined.y * RAY_THICKNESS)) {
           return ReflectionHit(ray.position, refined.y, 0.0);
         }
 
         ray.position = held.xy;
         ray.step = held.zw;
+      } else if (behind <= limit) {
+        return ReflectionHit(ray.position, check.y, 0.0);
       }
     } else {
       if (check.y <= 0.0) {

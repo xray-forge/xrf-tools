@@ -41,7 +41,7 @@ fn ships_the_engines_bloom_with_the_enhanced_strengths() {
       defaults.vibrance,
       defaults.sky
     ),
-    (3.5, 3.0, 3.0, 1.5, 0.6)
+    (5.0, 3.0, 3.0, 1.5, 0.6)
   );
   assert!(!defaults.is_enhanced());
 }
@@ -89,7 +89,7 @@ fn writes_each_stages_sizes_way_and_strengths() {
 
   assert_eq!(stage.size, Vec4::new(500.0, 250.0, 1000.0, 500.0));
   assert_eq!(stage.spread, Vec4::new(0.0, 0.0, 3.0, 0.0));
-  assert_eq!(stage.strengths, Vec4::new(3.5, 3.0, 0.6, 1.5));
+  assert_eq!(stage.strengths, Vec4::new(5.0, 3.0, 0.6, 1.5));
   assert_eq!(stage.along(true).spread, Vec4::new(1.0 / 500.0, 0.0, 3.0, 0.0));
   assert_eq!(stage.along(false).spread, Vec4::new(0.0, 1.0 / 250.0, 3.0, 0.0));
 }

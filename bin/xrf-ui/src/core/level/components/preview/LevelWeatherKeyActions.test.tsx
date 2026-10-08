@@ -363,7 +363,7 @@ describe("level weather key actions", () => {
 
     expect(getByRole("slider", { name: "Height" })).toHaveAttribute("aria-valuetext", "8.0 m");
     expect(getByRole("slider", { name: "Density" })).toHaveAttribute("aria-valuetext", "+130%");
-    expect(getByRole("slider", { name: "Scattering" })).toHaveAttribute("aria-valuetext", "70%");
+    expect(getByRole("slider", { name: "Scattering" })).toHaveAttribute("aria-valuetext", "0%");
 
     await userEvent.click(getByRole("button", { name: "Back to the settings for the fog" }));
 

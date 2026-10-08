@@ -110,7 +110,7 @@ describe("LevelLookAction", () => {
 
     expect(enhanced.queryByRole("checkbox", { name: "Bloom" })).toBeNull();
     expect(enhanced.queryByRole("slider", { name: "Radius" })).toBeNull();
-    expect(enhanced.getByRole("slider", { name: "Threshold" })).toHaveAttribute("aria-valuetext", "3.5");
+    expect(enhanced.getByRole("slider", { name: "Threshold" })).toHaveAttribute("aria-valuetext", "5.0");
     expect(enhanced.getByRole("slider", { name: "Vibrance" })).toHaveAttribute("aria-valuetext", "1.5");
   });
 });

@@ -21,11 +21,11 @@ pub struct RenderEnhancedBloomSettings {
 }
 
 impl Default for RenderEnhancedBloomSettings {
-  /// The engine's bloom, with the enhanced bloom's shipped strengths.
+  /// The engine's bloom, with the enhanced bloom's shipped strengths but a threshold of five.
   fn default() -> Self {
     Self {
       mode: RenderBloomMode::Engine,
-      threshold: 3.5,
+      threshold: 5.0,
       exposure: 3.0,
       blur: 3.0,
       vibrance: 1.5,

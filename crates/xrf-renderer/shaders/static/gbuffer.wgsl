@@ -43,8 +43,9 @@ struct GBufferVarying {
   // Where the point stands in the world, and how far it stood from there the frame before, which its motion is read by.
   @location(11) world: vec3<f32>,
   @location(12) moved: vec3<f32>,
-  // Whether a tree's leaves are lit as foliage, and the wetness, which bends their normal up harder.
-  @location(13) @interpolate(flat) flora: vec2<f32>,
+  // Whether a tree's leaves are lit as foliage, the wetness, which bends their normal up harder, and whether these are
+  // leaves at all.
+  @location(13) @interpolate(flat) flora: vec3<f32>,
 };
 
 struct GBufferOutput {
@@ -84,7 +85,7 @@ fn place_vertex(pulled: PulledVertex, position: vec3<f32>, normal: vec4<f32>, ta
   out.light = vec3<f32>(0.0);
   out.barycentric = vec3<f32>(0.0);
   out.world = world.xyz;
-  out.flora = vec2<f32>(0.0);
+  out.flora = vec3<f32>(0.0);
   out.moved = swayed_before(placed, place.transform[3].y, rigidity, foliage) - world.xyz;
 
   // A script declaring no shadow element leaves the surface out of every shadow map (`_lua_Compile`'s `E[2]`).
@@ -145,9 +146,10 @@ fn vs_tree(@builtin(vertex_index) vertex_index: u32, @builtin(instance_index) in
     out.tangent = view * (linear * t);
     out.binormal = view * (linear * normalize(cross(n, t)));
     out.hemi = clamp(out.hemi, 0.3, 1.0);
+    out.flora.z = 1.0;
 
     if (wind.foliage_flora.w > 0.5) {
-      out.flora = vec2<f32>(1.0, wind.foliage_flora.z);
+      out.flora = vec3<f32>(1.0, wind.foliage_flora.z, 1.0);
     }
   }
 
@@ -460,7 +462,8 @@ fn shade(in: GBufferVarying, base: vec4<f32>, at: Footprint) -> GBufferOutput {
   out.normal = octahedral_encode(normal);
   // Its alpha holds the marks: what is selected, which the present pass outlines, what is self-lit, foliage and terrain.
   out.material = vec4<f32>(hemi, sun, surface.slice,
-    encode_marks(is_selected(in.entry), (surface.flags & SURFACE_IS_EMISSIVE) != 0u, is_flora, is_terrain));
+    encode_marks(is_selected(in.entry), (surface.flags & SURFACE_IS_EMISSIVE) != 0u, is_flora, is_terrain,
+      in.flora.z > 0.5));
   out.motion = camera_motion(in.world, in.world + in.moved);
 
   return out;

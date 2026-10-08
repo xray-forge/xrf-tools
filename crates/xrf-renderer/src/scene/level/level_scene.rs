@@ -51,6 +51,8 @@ pub struct LevelScene {
   /// The wind the ambient effects blow, and how much of each campfire's idle light shows.
   pub gust: AmbientGust,
   pub campfire_shares: HashMap<u16, f32>,
+  /// The driving camera's smoothed hemi, none where it is not estimated.
+  pub camera_hemi: Option<f32>,
   /// The sectors it could not take in since the world was last told.
   failures: Vec<RenderSectorFailure>,
 }
@@ -80,6 +82,7 @@ impl LevelScene {
       skeleton_segments: Vec::new(),
       gust: AmbientGust::default(),
       campfire_shares: HashMap::new(),
+      camera_hemi: None,
       failures: Vec::new(),
       source,
     }
@@ -123,6 +126,7 @@ impl LevelScene {
       gust,
       campfire_shares,
       motions,
+      camera_hemi,
       ..
     } = frame;
     let failures: Vec<RenderSectorFailure> = self.apply((device, queue, encoder), (&mut *textures, &assets), updates);
@@ -135,6 +139,7 @@ impl LevelScene {
     self.skeleton_segments = skeleton_segments;
     self.gust = gust;
     self.campfire_shares = campfire_shares;
+    self.camera_hemi = camera_hemi;
     self.lights.begin_frame(&motions);
     self.statics.prepare_draws(device, queue, encoder);
   }

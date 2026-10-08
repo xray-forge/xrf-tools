@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 /// How hard the screen-space reflections trace: the size traced at, the steps a ray takes at most, how far behind a
-/// surface a step may land and still have met it, and whether a step that lands further is halved back once.
+/// surface a step may land and still have met it, and whether a step behind one is halved back to where it crossed.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Copy, Debug, Default, Deserialize, Eq, Hash, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -31,7 +31,7 @@ impl RenderReflectionQuality {
     }
   }
 
-  /// Metres behind a surface a step may land and still have met it: the longer the steps, the further.
+  /// Metres behind a surface an unrefined step may land and still have met it: the longer the steps, the further.
   pub const fn get_limit(self) -> f32 {
     match self {
       Self::Low => 36.0,
@@ -41,7 +41,7 @@ impl RenderReflectionQuality {
     }
   }
 
-  /// Whether a step landing further behind a surface is halved back once.
+  /// Whether a step behind a surface is halved back to where it crossed, which then holds it to a thin surface.
   pub const fn is_refined(self) -> bool {
     matches!(self, Self::High | Self::Ultra)
   }

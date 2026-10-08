@@ -253,6 +253,7 @@ impl RenderWorld for World {
           gust: effects.gust,
           campfire_shares: effects.campfire_shares,
           motions: effects.motions,
+          camera_hemi: effects.camera_hemi,
         },
       );
     }

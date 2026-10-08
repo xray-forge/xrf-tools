@@ -49,9 +49,11 @@ fn fs_wet_gloss(in: FullscreenVarying) -> @location(0) vec4<f32> {
   return vec4<f32>(vec3<f32>(wet_darkening(gloss)), gloss * select(0.8, 1.0, wet.is_extended > 0.5));
 }
 
-// How a puddle tints what it covers, and how much more terrain glosses at full wetness.
+// How a puddle tints what it covers, how much more terrain glosses at full wetness, and the up of its normal from
+// which that gloss starts and at which it is whole: water films level ground, and runs off a slope.
 const PUDDLE_TINT: vec3<f32> = vec3<f32>(0.66, 0.63, 0.6);
 const TERRAIN_WETNESS: f32 = 0.15;
+const TERRAIN_WETNESS_LEVEL: vec2<f32> = vec2<f32>(0.9, 0.98);
 
 @fragment
 fn fs_wet_normal_enhanced(in: FullscreenVarying) -> @location(0) vec2<f32> {
@@ -76,7 +78,10 @@ fn fs_wet_gloss_enhanced(in: FullscreenVarying) -> @location(0) vec4<f32> {
 
   let wetted: vec4<f32> = textureLoad(patched, texel, 0);
   let is_terrain: bool = has_mark(textureLoad(material_target, texel, 0).a, MARK_TERRAIN);
-  let puddle: f32 = min(wetted.w, wet.puddles.z) + saturate(wet.puddles.x * 2.0) * TERRAIN_WETNESS;
+  let normal: vec3<f32> = octahedral_decode(wetted.xy);
+  let up: f32 = dot(normal, camera.view[1].xyz);
+  let level: f32 = smoothstep(TERRAIN_WETNESS_LEVEL.x, TERRAIN_WETNESS_LEVEL.y, up);
+  let puddle: f32 = min(wetted.w, wet.puddles.z) + saturate(wet.puddles.x * 2.0) * TERRAIN_WETNESS * level;
   let tint: vec3<f32> = mix(vec3<f32>(1.0), PUDDLE_TINT, wetted.w);
   let rain: f32 = wetted.z * select(0.8, 1.0, wet.is_extended > 0.5);
 

@@ -74,12 +74,12 @@ export const DEFAULT_RENDER_EXPOSURE_SETTINGS: TRenderExposureSettings = {
   middleGray: 1,
 };
 
-/** The engine's own fog, with the enhanced fog's shipped strengths for when it is drawn. */
+/** The engine's own fog, with the enhanced fog's shipped strengths but no scattering for when it is drawn. */
 export const DEFAULT_RENDER_FOG_SETTINGS: TRenderFogSettings = {
   density: 1.3,
   height: 8,
   mode: ERenderFogMode.ENGINE,
-  scattering: 0.7,
+  scattering: 0,
   sunColor: 0.1,
 };
 
@@ -96,7 +96,7 @@ export const DEFAULT_RENDER_ENHANCED_BLOOM_SETTINGS: TRenderEnhancedBloomSetting
   exposure: 3,
   mode: ERenderBloomMode.ENGINE,
   sky: 0.6,
-  threshold: 3.5,
+  threshold: 5,
   vibrance: 1.5,
 };
 
@@ -131,7 +131,7 @@ export const DEFAULT_RENDER_INDIRECT_LIGHT_SETTINGS: TRenderIndirectLightSetting
   radius: 3,
 };
 
-/** The engine's own wetting, and for when it is enhanced, puddles over most of flat terrain, taking up to 40% reflection. */
+/** The engine's own wetting; enhanced, puddles over most of level terrain, taking up to 40% reflection. */
 export const DEFAULT_RENDER_RAIN_SETTINGS: TRenderRainSettings = {
   mode: ERenderRainMode.ENGINE,
   puddles: 0.8,
