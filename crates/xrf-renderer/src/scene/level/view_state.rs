@@ -4,12 +4,10 @@ use crate::contract::render_overlay::RenderOverlay;
 use crate::contract::render_selection_target::RenderSelectionTarget;
 use crate::frame::depth_pyramid::DepthPyramid;
 use crate::frame::froxel_volume::FroxelVolume;
-use crate::frame::indirect_light_history::IndirectLightHistory;
 use crate::frame::pick_target::PickTarget;
 use crate::frame::reflection_history::ReflectionHistory;
 use crate::frame::sky_prefilter::SkyPrefilter;
 use crate::frame::stats_readback::StatsReadback;
-use crate::frame::vbao_history::VbaoHistory;
 use crate::frame::view_targets::ViewTargets;
 use crate::lighting::foliage_wind::FoliageWind;
 use crate::pass::foliage_wind_values::FoliageWindValues;
@@ -39,10 +37,6 @@ pub struct ViewState {
   pub sky_prefilter: Option<SkyPrefilter>,
   /// Frames a temporal resolve gathered, which the screen-space effects turn their noise by.
   pub noise_frame: u32,
-  /// The visibility-bitmask search's accumulations, while it accumulates.
-  pub occlusion: Option<VbaoHistory>,
-  /// The indirect light's accumulations, while it is gathered and accumulates.
-  pub indirect: Option<IndirectLightHistory>,
   /// The reflections' blends over frames, while they are traced.
   pub reflections: Option<ReflectionHistory>,
   /// The enhanced volumetric lighting's froxels, while it draws.
@@ -89,8 +83,6 @@ impl ViewState {
       view_projection_previous: None,
       sky_prefilter: None,
       noise_frame: 0,
-      occlusion: None,
-      indirect: None,
       froxels: None,
       reflections: None,
       water: LevelWater::default(),
