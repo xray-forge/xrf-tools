@@ -36,7 +36,6 @@ use crate::host::render_level_weather::RenderLevelWeather;
 use crate::lighting::ambient_gust::AmbientGust;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::pass::camera_uniform::CameraUniform;
-use crate::pass::combine_parameters::CombineParameters;
 use crate::pass::composited_parameters::CompositedParameters;
 use crate::pass::contact_shadow_uniform::ContactShadowUniform;
 use crate::pass::froxel_uniform::FroxelUniform;
@@ -45,7 +44,6 @@ use crate::pass::grass_puddles_uniform::GrassPuddlesUniform;
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::lighting_frame::LightingFrame;
 use crate::pass::lighting_uniform::LightingUniform;
-use crate::pass::present_uniform::PresentUniform;
 use crate::pass::rain_uniform::RainUniform;
 use crate::pass::reflection_trace::ReflectionTrace;
 use crate::pass::sky_parameters::SkyParameters;
@@ -63,6 +61,7 @@ use crate::scene::level::feature::composited_draw::CompositedDraw;
 use crate::scene::level::feature::light_buffers::LightBuffers;
 use crate::scene::level::feature::lights_feature::LightsFeature;
 use crate::scene::level::feature::overhead_windows::OverheadWindows;
+use crate::scene::level::feature::present_inputs::PresentInputs;
 use crate::scene::level::feature::scene_features::SceneFeatures;
 use crate::scene::level::feature::water_frame::WaterFrame;
 use crate::scene::level::frame_load::FrameLoad;
@@ -352,7 +351,6 @@ impl SceneView {
         .map(|targets| (targets.width, targets.height)),
       scene.started.elapsed().as_secs_f32(),
     );
-    self.info.debanding = PresentUniform::get_debanding(options);
 
     self
       .features
@@ -404,10 +402,7 @@ impl SceneView {
       0.0,
     );
     self.info.shadow_settings = options.features.shadows.clone();
-    self.info.output = output;
-    self.info.debug_view = options.mode.debug_view;
     self.info.is_wireframe = options.mode.is_wireframe;
-    self.info.corrections = options.features.corrections;
     self.features.resolve.prepare(
       device,
       view,
@@ -425,7 +420,7 @@ impl SceneView {
       passes,
       options.features.antialiasing,
       (
-        self.state.targets.is_some() && self.info.debug_view == RenderDebugView::Final,
+        self.state.targets.is_some() && options.mode.debug_view == RenderDebugView::Final,
         options.is_scene_linear(),
       ),
     );
@@ -468,7 +463,7 @@ impl SceneView {
 
     self.features.particles.upload((device, &mut *encoder));
 
-    self.write_present(options, scene.started.elapsed().as_secs_f32());
+    self.prepare_present(options, output, scene.started.elapsed().as_secs_f32());
     self.features.volumetric.prepare(device, options);
     self.prepare_shadows(scene, device, encoder, (view_layout, textures));
     self.follow_overhead_maps();
@@ -658,47 +653,33 @@ impl SceneView {
     self.features.resolve.end_frame();
   }
 
-  /// Notes what the present pass reads, once the frame knows what draws into the distortion target: `def_distort`
-  /// while the water, a particle or a distorting surface of the scene does, nothing otherwise; which bloom it lays
-  /// over the frame, and the sky debanding, its noise turning with `time`.
-  fn write_present(&mut self, options: &RenderViewOptions, time: f32) {
-    let is_glass_distorting: bool = self.features.composited.is_distorting();
-
-    let Some(targets) = &self.state.targets else {
+  /// Notes what the window pass reads, once every other unit knows what it draws: whether the water, a particle or a
+  /// distorting surface of the scene moves what is seen through it, which bloom it lays over the frame, and the sky
+  /// debanding, its noise turning with `time`.
+  fn prepare_present(&mut self, options: &RenderViewOptions, output: RenderRect, time: f32) {
+    let Some(render) = self
+      .state
+      .targets
+      .as_ref()
+      .map(|targets| (targets.width, targets.height))
+    else {
       return;
     };
     let water: &RenderWaterSettings = &options.features.water;
     let is_water_distorting: bool = water.is_enabled && water.is_distorted && options.mode.is_lit;
-    let is_distorting: bool = !options.mode.is_wireframe
-      && (is_water_distorting || self.features.particles.is_distorting() || is_glass_distorting);
-
-    let present: PresentUniform = PresentUniform::new(
-      self.info.debug_view,
-      (
-        self.features.ambient_occlusion.is_drawn(),
-        self.features.bitmask.get_search().is_some_and(|search| search.is_lit),
-        self.features.reflections.get_trace().map(ReflectionTrace::get_ratio),
-      ),
-      !targets.is_sized(self.info.output.width, self.info.output.height),
-      if is_distorting { water.distortion } else { 0.0 },
-      self.info.output,
-      &self.info.corrections,
-      (
-        self.features.overlays.get_selection_color(),
-        self.features.bloom.is_engine_drawn(),
-      ),
-    );
-    let present: PresentUniform = if self.features.bloom.is_enhanced_drawn() {
-      present.with_enhanced_bloom()
-    } else {
-      present
-    }
-    .with_linear_scene(options.is_scene_linear());
-
-    self.info.present = match self.info.debanding {
-      Some(quality) => present.with_debanding(quality.get_passes(), options.features.debanding.radius, time),
-      None => present,
+    let features: &SceneFeatures = &self.features;
+    let inputs: PresentInputs = PresentInputs {
+      is_occluded: features.ambient_occlusion.is_drawn(),
+      is_indirect: features.bitmask.get_search().is_some_and(|search| search.is_lit),
+      reflection_ratio: features.reflections.get_trace().map(ReflectionTrace::get_ratio),
+      is_distorting: !options.mode.is_wireframe
+        && (is_water_distorting || features.particles.is_distorting() || features.composited.is_distorting()),
+      selection_color: features.overlays.get_selection_color(),
+      is_engine_bloomed: features.bloom.is_engine_drawn(),
+      is_enhanced_bloomed: features.bloom.is_enhanced_drawn(),
     };
+
+    self.features.present.prepare(options, (render, output), inputs, time);
   }
 
   /// Readies a frame for its graph, none before the view's targets are made: a pick's camera narrowed to the texel
@@ -995,37 +976,18 @@ impl SceneView {
           reflection_ends = Some(ends);
         }
 
-        let parameters: CombineParameters = CombineParameters {
-          albedo_target: handles.albedo,
-          normal_target: handles.normal,
-          material_target: handles.material,
-          depth_target: handles.depth,
-          light_target: handles.light,
-          material_lut: lit.material_lut,
-          lut_sampler: lit.lut_sampler,
-          lighting: lit.lighting,
-          exposure: StorageValue::new(lit.exposure),
-          occlusion_target: handles.occlusion[0],
-          haze_map: handles.haze,
-          indirect_light: indirect_light.unwrap_or(unlit),
-          reflections: reflections.unwrap_or(untraced),
-          wet_surface,
-          wet_reach,
-        };
-
-        graph
-          .add_raster_pass("combine")
-          .parameters(&parameters)
-          .parameters(&sky)
-          .color(GraphColorAttachment::new(
-            handles.scene,
-            wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-          ))
-          .color(GraphColorAttachment::new(
-            handles.high,
-            wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-          ))
-          .record(move |context| passes.combine.record(context, view, &parameters, &sky));
+        scene_view.features.combine.add_passes(
+          &mut *graph,
+          passes,
+          view,
+          (handles, lit, sky),
+          [
+            indirect_light.unwrap_or(unlit),
+            reflections.unwrap_or(untraced),
+            wet_surface,
+            wet_reach,
+          ],
+        );
       }
 
       let scene: GraphTexture = handles.scene;
@@ -1258,7 +1220,7 @@ impl SceneView {
       targets: handles,
       scene: frame,
       shown: shown.unwrap_or(frame),
-      present: runtime.push_uniform(&scene_view.info.present),
+      present: runtime.push_uniform(scene_view.features.present.get_uniform()),
       lighting: lit.lighting,
       indirect_light: indirect_light.unwrap_or(unlit),
       reflections: reflections.unwrap_or(untraced),
@@ -1475,7 +1437,7 @@ impl SceneView {
           quality: trace.quality,
         }),
       height_fog: self.features.fog.get_applied(),
-      debanding: self.info.debanding,
+      debanding: self.features.present.get_debanding(),
       bloom: if self.features.bloom.is_enhanced_drawn() {
         Some(RenderBloomMode::Enhanced)
       } else {
