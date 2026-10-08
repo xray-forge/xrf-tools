@@ -15,8 +15,6 @@ use crate::scene::level::grass_view::GrassView;
 use crate::scene::level::level_overlays::LevelOverlays;
 use crate::scene::level::lights_view::LightsView;
 use crate::scene::level::particles_view::ParticlesView;
-use crate::scene::level::puddle_fill::PuddleFill;
-use crate::scene::level::rain_wetness::RainWetness;
 use crate::scene::static_scene::static_selection::StaticSelection;
 
 /// What one view keeps from one frame to the next: its targets and depth history, what was asked of it (picks, the selection, overlays) and what it reads back.
@@ -38,9 +36,6 @@ pub struct ViewState {
   pub last_wind: Option<WindUniform>,
   /// How far the enhanced foliage motion's flow fields have drifted.
   pub foliage: FoliageWind,
-  /// How wet the level has become, built up by the rain and dried after.
-  pub wetness: RainWetness,
-  pub puddle_fill: PuddleFill,
   /// What the foliage motion read this frame, which the grass takes as the trees do.
   pub foliage_values: FoliageWindValues,
   /// What it draws over its frame.
@@ -74,8 +69,6 @@ impl ViewState {
       noise_frame: 0,
       last_wind: None,
       foliage: FoliageWind::default(),
-      wetness: RainWetness::default(),
-      puddle_fill: PuddleFill::default(),
       foliage_values: FoliageWindValues::default(),
       overlays: None,
       overlays_box: None,
