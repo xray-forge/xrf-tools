@@ -9,6 +9,7 @@ use crate::scene::level::feature::resolve_feature::ResolveFeature;
 use crate::scene::level::feature::smoothing_feature::SmoothingFeature;
 use crate::scene::level::feature::thunder_feature::ThunderFeature;
 use crate::scene::level::feature::view_feature::ViewFeature;
+use crate::scene::level::feature::water_feature::WaterFeature;
 
 /// A view's feature units, each reading its own settings, keeping its own state and adding its own passes.
 pub struct SceneFeatures {
@@ -22,6 +23,7 @@ pub struct SceneFeatures {
   pub resolve: ResolveFeature,
   pub bitmask: BitmaskFeature,
   pub reflections: ReflectionFeature,
+  pub water: WaterFeature,
 }
 
 impl SceneFeatures {
@@ -37,11 +39,12 @@ impl SceneFeatures {
       resolve: ResolveFeature::default(),
       bitmask: BitmaskFeature::default(),
       reflections: ReflectionFeature::default(),
+      water: WaterFeature::default(),
     }
   }
 
   /// Every unit, as what each answers alike.
-  pub fn list(&self) -> [&dyn ViewFeature; 10] {
+  pub fn list(&self) -> [&dyn ViewFeature; 11] {
     [
       &self.fog,
       &self.bloom,
@@ -53,10 +56,11 @@ impl SceneFeatures {
       &self.resolve,
       &self.bitmask,
       &self.reflections,
+      &self.water,
     ]
   }
 
-  pub fn list_mut(&mut self) -> [&mut dyn ViewFeature; 10] {
+  pub fn list_mut(&mut self) -> [&mut dyn ViewFeature; 11] {
     [
       &mut self.fog,
       &mut self.bloom,
@@ -68,6 +72,7 @@ impl SceneFeatures {
       &mut self.resolve,
       &mut self.bitmask,
       &mut self.reflections,
+      &mut self.water,
     ]
   }
 

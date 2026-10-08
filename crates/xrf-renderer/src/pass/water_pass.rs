@@ -26,7 +26,7 @@ use crate::pass::water_draw::WaterDraw;
 use crate::pass::water_reflection_parameters::WaterReflectionParameters;
 use crate::pass::water_surface_parameters::WaterSurfaceParameters;
 use crate::pass::water_uniform::WaterUniform;
-use crate::scene::level::level_water::LevelWater;
+use crate::scene::level::feature::water_feature::WaterFeature;
 use crate::scene::static_scene::static_batch::StaticBatch;
 use crate::scene::static_scene::static_layout::StaticLayout;
 use crate::shader::shader_library::ShaderLibrary;
@@ -213,7 +213,7 @@ impl WaterPass {
     draw: &WaterDraw<'a>,
     frame: &WaterFrameHandles<'a>,
   ) {
-    let water: &LevelWater = draw.water;
+    let water: &WaterFeature = draw.water;
     let (width, height) = draw.targets.size;
     let enhanced: UniformBinding<EnhancedWaterUniform> = runtime.push_uniform(water.get_enhanced_uniform());
     let mut import = |label: &'static str, view: &'a wgpu::TextureView| bindings.import_view(graph, label, view);
@@ -230,10 +230,10 @@ impl WaterPass {
       water.get_reflection().map(|reflection| {
         (
           reflection,
-          [
-            import("water reflection 0", &reflection.histories[0]),
-            import("water reflection 1", &reflection.histories[1]),
-          ],
+          reflection
+            .histories
+            .get_sides()
+            .map(|side| import("water reflection", &side.view)),
           import("water blue noise", &self.maps.blue_noise),
         )
       });
@@ -241,7 +241,7 @@ impl WaterPass {
 
     let (blurred, clear): (GraphTexture, GraphTexture) = match reflection {
       Some((reflection, histories, blue_noise)) => {
-        let index: usize = reflection.index;
+        let [written, read]: [GraphTexture; 2] = histories;
         let current: GraphTexture = graph.create_texture(GraphTextureDescriptor::new_2d(
           "water reflection current",
           width,
@@ -263,7 +263,7 @@ impl WaterPass {
           sky_clamp: draw.sky_sampler,
           nearest_water: frame.nearest,
           water_scene: scene,
-          reflection_history: histories[1 - index],
+          reflection_history: read,
           blue_noise,
           water_current: nothing,
         };
@@ -312,7 +312,7 @@ impl WaterPass {
           graph
             .add_raster_pass("water reflection resolve")
             .color(GraphColorAttachment::new(
-              histories[index],
+              written,
               // Transparent where no water draws, so the next frame keeps no history there.
               wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
             ))
@@ -332,7 +332,7 @@ impl WaterPass {
         let across: GraphTexture = self.blur.add(
           graph,
           runtime,
-          ("water blur across", histories[index], half, WaterBlurUniform::ACROSS),
+          ("water blur across", written, half, WaterBlurUniform::ACROSS),
           enhanced,
         );
         let down: GraphTexture = self.blur.add(
@@ -342,7 +342,7 @@ impl WaterPass {
           enhanced,
         );
 
-        (down, histories[index])
+        (down, written)
       }
       None => (nothing, nothing),
     };

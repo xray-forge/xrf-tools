@@ -13,3 +13,5 @@ pub(crate) mod smoothing_feature;
 pub(crate) mod temporal_resolve;
 pub(crate) mod thunder_feature;
 pub(crate) mod view_feature;
+pub(crate) mod water_feature;
+pub(crate) mod water_frame;

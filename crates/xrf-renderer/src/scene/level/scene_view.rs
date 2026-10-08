@@ -105,13 +105,13 @@ use crate::pass::wind_uniform::WindUniform;
 use crate::scene::level::cover_textures::CoverTextures;
 use crate::scene::level::feature::over_scene::add_over_scene;
 use crate::scene::level::feature::scene_features::SceneFeatures;
+use crate::scene::level::feature::water_frame::WaterFrame;
 use crate::scene::level::frame_load::FrameLoad;
 use crate::scene::level::grass_level::GrassLevel;
 use crate::scene::level::level_frame::LevelFrame;
 use crate::scene::level::level_overlays::LevelOverlays;
 use crate::scene::level::level_scene::LevelScene;
 use crate::scene::level::level_surface::{LevelSurface, PuddleKeepInputs};
-use crate::scene::level::level_water::WaterFrame;
 use crate::scene::level::lighting_handles::LightingHandles;
 use crate::scene::level::lights_frame::LightsFrame;
 use crate::scene::level::lights_view::LightsView;
@@ -328,7 +328,7 @@ impl SceneView {
     // runs for what is out of sight.
     let sight: StaticSight = scene.statics.get_sight(&view.get_planes());
 
-    self.state.water.prepare(
+    self.features.water.prepare(
       device,
       options,
       WaterFrame {
@@ -1117,7 +1117,7 @@ impl SceneView {
   /// resolve's history it wrote become the ones the next frame keeps.
   pub fn end_frame(&mut self, frame: &LevelFrame) {
     if frame.is_lit {
-      self.state.water.finish_frame();
+      self.features.water.finish_frame();
 
       self.features.bitmask.end_frame();
 
@@ -1499,7 +1499,7 @@ impl SceneView {
     // wetting places its puddles by.
     let [surface_lowest, puddles, surface_water]: [GraphTexture; 3] = match wet {
       Some(wet) if scene_view.info.wet.is_enhanced > 0.5 => {
-        let water: UniformBinding<WaterUniform> = runtime.push_uniform(scene_view.state.water.get_uniform());
+        let water: UniformBinding<WaterUniform> = runtime.push_uniform(scene_view.features.water.get_uniform());
         let keep: PuddleKeepInputs = PuddleKeepInputs {
           wet,
           noise: &passes.water.get_maps().perlin,
@@ -1759,7 +1759,7 @@ impl SceneView {
         .resolve
         .add_reactive_passes((&mut *graph, &mut *bindings), (scene, handles.size));
 
-      if let (true, Some(sky)) = (scene_view.state.water.is_drawn(), scene_view.info.sky.as_ref()) {
+      if let (true, Some(sky)) = (scene_view.features.water.is_drawn(), scene_view.info.sky.as_ref()) {
         let draw: WaterDraw<'_> = WaterDraw {
           targets: handles,
           view,
@@ -1769,7 +1769,7 @@ impl SceneView {
           lit,
           skies: [&sky.cubes[0], &sky.cubes[1]],
           sky_sampler: passes.sky.get_clamp(),
-          water: &scene_view.state.water,
+          water: &scene_view.features.water,
           scene_trace: passes.scene_trace,
           traced: sky_parameters
             .zip(traced)
