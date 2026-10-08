@@ -6,8 +6,7 @@ use xrf_error::XrfResult;
 use xrf_math::EPS_S;
 use xrf_renderer_core::{
   FrameGraph, GraphBindings, GraphBuffer, GraphBufferAccess, GraphColorAttachment, GraphDepthAttachment, GraphRuntime,
-  GraphTexture, GraphTextureAccess, GraphTextureDescriptor, StorageArray, StorageArrayMut, StorageValue,
-  UniformBinding,
+  GraphTexture, GraphTextureDescriptor, StorageArray, StorageArrayMut, StorageValue, UniformBinding,
 };
 
 use crate::camera::camera_view::CameraView;
@@ -26,13 +25,11 @@ use crate::contract::render_particles_report::RenderParticlesReport;
 use crate::contract::render_pool_use::RenderPoolUse;
 use crate::contract::render_rect::RenderRect;
 use crate::contract::render_selection::RenderSelection;
-use crate::contract::render_selection_target::RenderSelectionTarget;
 use crate::contract::render_static_report::RenderStaticReport;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::contract::render_water_settings::RenderWaterSettings;
 use crate::frame::depth_pyramid::DepthPyramid;
 use crate::frame::frame_encoder::FrameEncoder;
-use crate::frame::pick_target::PickTarget;
 use crate::frame::static_scene_handles::StaticSceneHandles;
 use crate::frame::texture_copy::add_texture_copy;
 use crate::frame::view_target_handles::ViewTargetHandles;
@@ -62,7 +59,6 @@ use crate::pass::static_cull_parameters::StaticCullParameters;
 use crate::pass::static_cull_params::StaticCullParams;
 use crate::pass::static_draw_parameters::StaticDrawParameters;
 use crate::pass::static_draws::StaticDraws;
-use crate::pass::static_gbuffer_pass::StaticGBufferPass;
 use crate::pass::static_occlusion_uniform::StaticOcclusionUniform;
 use crate::pass::sun_parameters::SunParameters;
 use crate::pass::sun_shafts_parameters::SunShaftsParameters;
@@ -244,9 +240,7 @@ impl SceneView {
       self.state.history = None;
     }
 
-    if let Some(overlays) = self.state.overlays.as_mut().filter(|it| it.skeleton.is_some()) {
-      overlays.set_skeleton(device, &scene.skeleton_segments);
-    }
+    self.features.overlays.follow_skeletons((scene, device));
 
     self
       .features
@@ -860,7 +854,10 @@ impl SceneView {
       if is_distorting { water.distortion } else { 0.0 },
       self.info.output,
       &self.info.corrections,
-      (self.info.selection_color, self.features.bloom.is_engine_drawn()),
+      (
+        self.features.overlays.get_selection_color(),
+        self.features.bloom.is_engine_drawn(),
+      ),
     );
     let present: PresentUniform = if self.features.bloom.is_enhanced_drawn() {
       present.with_enhanced_bloom()
@@ -887,7 +884,7 @@ impl SceneView {
     }
 
     let pick_slot: Option<usize> =
-      pick.and_then(|(camera, view_layout, _)| self.ready_pick(device, encoder, camera, view_layout));
+      pick.and_then(|(camera, view_layout, _)| self.features.pick.ready((device, encoder), camera, view_layout));
 
     if self.info.cull.is_occluding != 0 {
       self.state.history = Some(self.info.matrices);
@@ -1419,7 +1416,7 @@ impl SceneView {
 
       // A selected composited surface, glass, marked where the present outlines the selection, once the enhanced
       // bloom has read the marks.
-      if let (Some((draw, _)), Some(_)) = (&composited_draw, scene_view.info.selection_color) {
+      if let (Some((draw, _)), Some(_)) = (&composited_draw, scene_view.features.overlays.get_selection_color()) {
         scene_view
           .features
           .composited
@@ -1452,14 +1449,12 @@ impl SceneView {
         .add_passes((&mut *graph, runtime), passes, (handles.high, lit.exposure));
     }
 
-    if let (Some(slot), Some(target), Some(pick_view)) =
-      (pick_slot, &scene_view.state.pick_target, &scene_view.state.pick_view)
-    {
-      scene_view.add_pick_passes(
+    if let Some(slot) = pick_slot {
+      scene_view.features.pick.add_passes(
         (&mut *graph, &mut *bindings),
         passes.gbuffer,
-        (pick_view, texture_group, &statics),
-        (target, slot, is_pick_through),
+        (texture_group, &statics),
+        (slot, is_pick_through),
       );
     }
 
@@ -1577,82 +1572,14 @@ impl SceneView {
     }
   }
 
-  /// Readies a pick's camera and target, and answers the readback it will be copied into; none while every readback is
-  /// on its way.
-  fn ready_pick(
-    &mut self,
-    device: &wgpu::Device,
-    encoder: &mut FrameEncoder,
-    camera: &CameraUniform,
-    view_layout: &wgpu::BindGroupLayout,
-  ) -> Option<usize> {
-    let slot: usize = self
-      .state
-      .pick_target
-      .get_or_insert_with(|| PickTarget::new(device))
-      .find_free_readback()?;
-
-    self
-      .state
-      .pick_view
-      .get_or_insert_with(|| ViewBinding::new(device, view_layout))
-      .write(encoder, camera);
-
-    Some(slot)
-  }
-
-  /// Declares a pick: the frame's visible clusters drawn again into its texel, through its narrowed camera, after every
-  /// cull of the frame, and the texel copied out into its readback.
-  fn add_pick_passes<'a>(
-    &'a self,
-    (graph, bindings): (&mut FrameGraph<'a>, &mut GraphBindings<'a>),
-    gbuffer: &'a StaticGBufferPass,
-    (view, textures, scene): (&'a ViewBinding, &'a wgpu::BindGroup, &StaticSceneHandles),
-    (target, slot, is_through): (&'a PickTarget, usize, bool),
-  ) {
-    let color: GraphTexture = bindings.import_view(graph, "pick", &target.color);
-    let depth: GraphTexture = bindings.import_view(graph, "pick depth", &target.depth);
-    let draws: StaticDraws = scene.get_camera_draws();
-    let args: [GraphBuffer; 2] = [scene.args, scene.late];
-
-    draws
-      .declare(
-        graph
-          .add_raster_pass("static pick")
-          .color(GraphColorAttachment::new(
-            color,
-            wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-          ))
-          .depth(GraphDepthAttachment::new(depth, wgpu::LoadOp::Clear(0.0)))
-          .buffer(args[0], GraphBufferAccess::Indirect)
-          .buffer(args[1], GraphBufferAccess::Indirect),
-        true,
-      )
-      .record(move |context| {
-        let args: [&wgpu::Buffer; 2] = args.map(|args| context.get_buffer(args));
-
-        gbuffer.pick(context, (view, &draws, textures), &args, is_through);
-      });
-    graph
-      .add_encoder_pass("pick copy")
-      .texture(color, GraphTextureAccess::CopySource)
-      .keep()
-      .record(move |context| target.copy_out(context.get_encoder(), slot));
-  }
-
   /// Asks for a pick's texel back, its frame just submitted.
   pub fn request_pick(&self, slot: usize) {
-    if let Some(target) = &self.state.pick_target {
-      target.request(slot);
-    }
+    self.features.pick.request(slot);
   }
 
   /// A pick's texel once it is back; a view made since the pick has no readback for it, and it met nothing still drawn.
   pub fn take_pick(&self, slot: usize) -> Option<XrfResult<[u32; 4]>> {
-    match &self.state.pick_target {
-      Some(target) => target.take(slot),
-      None => Some(Ok([0; 4])),
-    }
+    self.features.pick.take(slot)
   }
 
   /// Names what a pick's texel met.
@@ -1717,10 +1644,7 @@ impl SceneView {
   pub fn abandon_frame(&self) {
     self.state.stats.abandon();
     self.features.lights.abandon_report();
-
-    if let Some(target) = &self.state.pick_target {
-      target.abandon();
-    }
+    self.features.pick.abandon();
   }
 
   /// What its frames are drawn with, as resolved from what `options` asked; the weather's light is the viewport's to add.
@@ -1821,20 +1745,10 @@ impl SceneView {
     version: u64,
     selection: Option<&RenderSelection>,
   ) {
-    let boxed: Option<RenderOverlay> = selection.and_then(|selection| match selection.target {
-      RenderSelectionTarget::Spawn { object } => scene
-        .statics
-        .get_object_box(object)
-        .map(|(transform, corners)| to_box_lines(transform, corners, selection.color)),
-      RenderSelectionTarget::Surface { .. } => None,
-    });
-
-    if self.state.overlays.as_ref().is_none_or(|it| it.version != version) || self.state.overlays_box != boxed {
-      let all: Vec<RenderOverlay> = overlays.iter().cloned().chain(boxed.clone()).collect();
-
-      self.state.overlays = Some(LevelOverlays::new(device, &all, version));
-      self.state.overlays_box = boxed;
-    }
+    self
+      .features
+      .overlays
+      .set((scene, device), (overlays, version), selection);
   }
 
   /// What a selection marks in the scene now, resolved again only once the target or the scene changed; none where
@@ -1844,34 +1758,12 @@ impl SceneView {
     scene: &LevelScene,
     selection: Option<&RenderSelection>,
   ) -> Option<&StaticSelection> {
-    self.info.selection_color = None;
-
-    let selection: &RenderSelection = selection?;
-    let contents: usize = scene.statics.get_contents();
-
-    if self
-      .state
-      .selection
-      .as_ref()
-      .is_none_or(|(target, at, _)| *target != selection.target || *at != contents)
-    {
-      self.state.selection = Some((
-        selection.target,
-        contents,
-        scene.statics.resolve_selection(&selection.target),
-      ));
-    }
-
-    let resolved: &StaticSelection = self.state.selection.as_ref()?.2.as_ref()?;
-
-    self.info.selection_color = Some(selection.color);
-
-    Some(resolved)
+    self.features.overlays.resolve_selection(scene, selection)
   }
 
   /// What it draws over its frame, once made.
   pub fn get_overlays(&self) -> Option<&LevelOverlays> {
-    self.state.overlays.as_ref()
+    self.features.overlays.get_overlays()
   }
 }
 
@@ -1882,41 +1774,5 @@ fn to_sway(scene: &StaticScene, (amplitude, time): (f32, f32)) -> ShadowSway<'_>
     reach: scene.get_sway_reach(),
     time,
     places: scene.list_swaying(),
-  }
-}
-
-/// A box's twelve edges as lines, its corners where `transform` stands them, in one colour seen through what is in front.
-fn to_box_lines(transform: Mat4, [min, max]: [Vec3; 2], color: [f32; 3]) -> RenderOverlay {
-  let corner = |index: usize| -> Vec3 {
-    transform.transform_point3(Vec3::new(
-      if index & 1 == 0 { min.x } else { max.x },
-      if index & 2 == 0 { min.y } else { max.y },
-      if index & 4 == 0 { min.z } else { max.z },
-    ))
-  };
-  let edges: [(usize, usize); 12] = [
-    (0, 1),
-    (2, 3),
-    (4, 5),
-    (6, 7),
-    (0, 2),
-    (1, 3),
-    (4, 6),
-    (5, 7),
-    (0, 4),
-    (1, 5),
-    (2, 6),
-    (3, 7),
-  ];
-  let positions: Vec<f32> = edges
-    .iter()
-    .flat_map(|(from, to)| [corner(*from), corner(*to)])
-    .flat_map(|point| point.to_array())
-    .collect();
-
-  RenderOverlay::Lines {
-    colors: color.repeat(positions.len() / 3),
-    positions,
-    is_depth_tested: false,
   }
 }

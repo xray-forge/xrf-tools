@@ -50,8 +50,6 @@ pub struct ViewInfo {
   pub debanding: Option<RenderDebandingQuality>,
   /// The lighting the passes read, as the frame's weather and options make it.
   pub lighting: LightingUniform,
-  /// The colour the selection is outlined in, or none while nothing it names is drawn.
-  pub selection_color: Option<[f32; 3]>,
 }
 
 impl Default for ViewInfo {
@@ -79,7 +77,6 @@ impl Default for ViewInfo {
       is_shafted: false,
       debanding: None,
       lighting: bytemuck::Zeroable::zeroed(),
-      selection_color: None,
     }
   }
 }

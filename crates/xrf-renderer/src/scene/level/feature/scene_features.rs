@@ -8,6 +8,8 @@ use crate::scene::level::feature::falling_rain_feature::FallingRainFeature;
 use crate::scene::level::feature::flares_feature::FlaresFeature;
 use crate::scene::level::feature::fog_feature::FogFeature;
 use crate::scene::level::feature::lights_feature::LightsFeature;
+use crate::scene::level::feature::overlays_feature::OverlaysFeature;
+use crate::scene::level::feature::pick_feature::PickFeature;
 use crate::scene::level::feature::reflection_feature::ReflectionFeature;
 use crate::scene::level::feature::resolve_feature::ResolveFeature;
 use crate::scene::level::feature::sky_feature::SkyFeature;
@@ -34,6 +36,9 @@ pub struct SceneFeatures {
   pub surroundings: SurroundingsCube,
   /// The level's local lights as the view lights its frame with them.
   pub lights: LightsFeature,
+  /// What it draws over its frame and marks in it: the page's overlays and the selection.
+  pub overlays: OverlaysFeature,
+  pub pick: PickFeature,
   pub fog: FogFeature,
   pub bloom: BloomFeature,
   pub smoothing: SmoothingFeature,
@@ -66,6 +71,7 @@ impl SceneFeatures {
       level_surface: LevelSurface::new(device, view_layout, args_size),
       surroundings: SurroundingsCube::new(device, view_layout, args_size),
       lights: LightsFeature::new(device),
+      overlays: OverlaysFeature::default(),
       fog: FogFeature::default(),
       bloom: BloomFeature::default(),
       smoothing: SmoothingFeature::default(),
@@ -83,11 +89,12 @@ impl SceneFeatures {
       contact_shadows: ContactShadowFeature::default(),
       wet: WetFeature::default(),
       sky: SkyFeature::default(),
+      pick: PickFeature::default(),
     }
   }
 
   /// Every unit, as what each answers alike.
-  pub fn list(&self) -> [&dyn ViewFeature; 17] {
+  pub fn list(&self) -> [&dyn ViewFeature; 18] {
     [
       &self.fog,
       &self.bloom,
@@ -106,10 +113,11 @@ impl SceneFeatures {
       &self.contact_shadows,
       &self.wet,
       &self.sky,
+      &self.pick,
     ]
   }
 
-  pub fn list_mut(&mut self) -> [&mut dyn ViewFeature; 17] {
+  pub fn list_mut(&mut self) -> [&mut dyn ViewFeature; 18] {
     [
       &mut self.fog,
       &mut self.bloom,
@@ -128,6 +136,7 @@ impl SceneFeatures {
       &mut self.contact_shadows,
       &mut self.wet,
       &mut self.sky,
+      &mut self.pick,
     ]
   }
 

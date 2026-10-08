@@ -1,19 +1,13 @@
 use glam::Mat4;
 
-use crate::contract::render_overlay::RenderOverlay;
-use crate::contract::render_selection_target::RenderSelectionTarget;
 use crate::frame::depth_pyramid::DepthPyramid;
-use crate::frame::pick_target::PickTarget;
 use crate::frame::stats_readback::StatsReadback;
 use crate::frame::view_targets::ViewTargets;
 use crate::lighting::foliage_wind::FoliageWind;
 use crate::pass::foliage_wind_values::FoliageWindValues;
-use crate::pass::view_binding::ViewBinding;
 use crate::pass::wind_uniform::WindUniform;
 use crate::scene::level::grass_view::GrassView;
-use crate::scene::level::level_overlays::LevelOverlays;
 use crate::scene::level::particles_view::ParticlesView;
-use crate::scene::static_scene::static_selection::StaticSelection;
 
 /// What one view keeps from one frame to the next: its targets and depth history, what was asked of it (picks, the selection, overlays) and what it reads back.
 pub struct ViewState {
@@ -34,17 +28,8 @@ pub struct ViewState {
   pub foliage: FoliageWind,
   /// What the foliage motion read this frame, which the grass takes as the trees do.
   pub foliage_values: FoliageWindValues,
-  /// What it draws over its frame.
-  pub overlays: Option<LevelOverlays>,
-  /// The selection box the overlays were made with, so a box that moved or came into the scene makes them again.
-  pub overlays_box: Option<RenderOverlay>,
-  /// What the selection marks, for the target it was resolved for and the scene's contents it was resolved with.
-  pub selection: Option<(RenderSelectionTarget, usize, Option<StaticSelection>)>,
   /// What the cull kept, read back without waiting.
   pub stats: StatsReadback,
-  /// The texel a pick is drawn into, and the camera narrowed to it.
-  pub pick_target: Option<PickTarget>,
-  pub pick_view: Option<ViewBinding>,
   /// The grass as it plants around its camera.
   pub grass: GrassView,
   /// The particles in its camera, as their quads.
@@ -63,12 +48,7 @@ impl ViewState {
       last_wind: None,
       foliage: FoliageWind::default(),
       foliage_values: FoliageWindValues::default(),
-      overlays: None,
-      overlays_box: None,
-      selection: None,
       stats: StatsReadback::new(device),
-      pick_target: None,
-      pick_view: None,
       grass: GrassView::new(device),
       particles: ParticlesView::new(device),
     }

@@ -12,6 +12,8 @@ pub(crate) mod light_buffers;
 pub(crate) mod lights_feature;
 pub(crate) mod over_scene;
 pub(crate) mod overhead_windows;
+pub(crate) mod overlays_feature;
+pub(crate) mod pick_feature;
 pub(crate) mod reflection_feature;
 pub(crate) mod resolve;
 pub(crate) mod resolve_feature;
