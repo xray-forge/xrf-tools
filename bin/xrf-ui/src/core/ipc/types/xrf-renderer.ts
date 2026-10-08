@@ -1473,6 +1473,20 @@ export type RenderTextureState =
   /** Its file could not be read or laid out, and why. */
   | { kind: "failed"; reason: string };
 
+/** Where a view's frame is tonemapped. */
+export enum ERenderTonemapMode {
+  /** The engine's own: combine tonemaps the lit scene, and every forward pass after it draws tonemapped colour. */
+  ENGINE = "engine",
+  /**
+   * The scene held as linear light at its exposure through every pass and the resolve, the engine's curve applied
+   * once by the window pass at the viewport's size, as an upscaler wants its input.
+   */
+  ENHANCED = "enhanced",
+}
+
+/** Every `ERenderTonemapMode` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type RenderTonemapMode = `${ERenderTonemapMode}`;
+
 /** What the scene is drawn at, a share of the viewport upscaled to it, and how sharply the upscaled frame is finished. */
 export type RenderUpscalingSettings = {
   scale: RenderScale;
@@ -1483,6 +1497,8 @@ export type RenderUpscalingSettings = {
 /** Each of the renderer's features as a view sets it, a full set a view: one struct a feature, owned by its module. */
 export type RenderViewFeatures = {
   exposure: RenderExposureSettings;
+  /** Where the frame is tonemapped: in combine and each forward pass, or once by the window pass over linear light. */
+  tonemap: RenderTonemapMode;
   bloom: RenderBloomSettings;
   /** Which bloom is drawn, and the enhanced bloom's strengths. */
   enhancedBloom: RenderEnhancedBloomSettings;

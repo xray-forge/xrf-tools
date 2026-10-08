@@ -166,7 +166,7 @@ impl BloomFeature {
       EnhancedBloomPass::BLUR,
       (targets.scene, empty),
       across,
-      stage(half_size).along(true),
+      stage(half_size).along(true).reading_scene(),
     );
     add(
       EnhancedBloomPass::BLUR_PASSES[1],

@@ -1,4 +1,5 @@
 #import "common/camera"
+#import "common/scene_light"
 #import "common/flares"
 
 // The lens flares and the gradient as `dxLensFlareRender` draws them over the finished frame: quads on a plane ahead of
@@ -99,5 +100,7 @@ fn vs_flare(@builtin(vertex_index) vertex_index: u32, @builtin(instance_index) i
 
 @fragment
 fn fs_flare(in: FlareVarying) -> @location(0) vec4<f32> {
-  return textureSample(flare_texture, flare_sampler, in.uv) * in.color;
+  let drawn: vec4<f32> = textureSample(flare_texture, flare_sampler, in.uv) * in.color;
+
+  return vec4<f32>(scene_from_shown(drawn.rgb), drawn.a);
 }

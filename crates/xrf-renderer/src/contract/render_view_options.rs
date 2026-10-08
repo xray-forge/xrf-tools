@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::contract::render_asset_preview::RenderAssetPreview;
 use crate::contract::render_show_flags::RenderShowFlags;
+use crate::contract::render_tonemap_mode::RenderTonemapMode;
 use crate::contract::render_view_features::RenderViewFeatures;
 use crate::contract::render_view_mode::RenderViewMode;
 use crate::contract::render_view_output::RenderViewOutput;
@@ -18,4 +19,12 @@ pub struct RenderViewOptions {
   pub features: RenderViewFeatures,
   pub output: RenderViewOutput,
   pub asset: RenderAssetPreview,
+}
+
+impl RenderViewOptions {
+  /// Whether the scene holds linear light at its exposure, which the window pass tonemaps: the enhanced tonemap over a
+  /// lit, solid view.
+  pub fn is_scene_linear(&self) -> bool {
+    self.features.tonemap == RenderTonemapMode::Enhanced && self.mode.is_lit && !self.mode.is_wireframe
+  }
 }

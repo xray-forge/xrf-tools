@@ -65,6 +65,7 @@ use crate::pass::sky_parameters::SkyParameters;
 use crate::pass::sky_prefilter_parameters::SkyPrefilterParameters;
 use crate::pass::sky_prefilter_uniform::SkyPrefilterUniform;
 use crate::pass::smaa_parameters::SmaaParameters;
+use crate::pass::smoothing_uniform::SmoothingUniform;
 use crate::pass::static_cull_parameters::StaticCullParameters;
 use crate::pass::static_draw_parameters::StaticDrawParameters;
 use crate::pass::static_impostor_parameters::StaticImpostorParameters;
@@ -157,6 +158,7 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
   structs
     .declare::<LightingUniform>()
     .declare::<GlassUniform>()
+    .declare::<SmoothingUniform>()
     .declare::<FroxelUniform>()
     .declare::<GrassModelRecord>()
     .declare::<TraceGrassUniform>()

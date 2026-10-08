@@ -1,6 +1,7 @@
 enable wgpu_binding_array;
 
 #import "common/camera"
+#import "common/scene_light"
 #import "common/lighting"
 
 // The particle sprites `CParticleEffect::Render` draws forward over the finished scene: each quad's corners as the
@@ -108,7 +109,7 @@ fn fs_particle(in: ParticleVarying) -> @location(0) vec4<f32> {
 
   result.a = fogged(result.a, in.view_position);
 
-  return result;
+  return vec4<f32>(scene_from_shown(result.rgb), result.a);
 }
 
 // `particle_distort.ps`: the distortion map's colour, blended in by its alpha times the particle's mean colour; neither

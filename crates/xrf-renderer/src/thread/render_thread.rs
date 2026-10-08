@@ -1344,6 +1344,7 @@ impl RenderThread {
         .with_selection(selected.as_ref())
         .with_wireframe(options.mode.is_wireframe)
         .with_surface_color(options.mode.surface_color)
+        .with_linear_scene(options.is_scene_linear())
         .with_motion(motion)
         .with_previous(previous)
         .with_asset_view(&options, drawn_rect.height as f32 / rect.height.max(1) as f32),

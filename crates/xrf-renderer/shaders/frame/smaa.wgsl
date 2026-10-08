@@ -20,6 +20,14 @@ fn sample_source(at: vec2<f32>) -> vec4<f32> {
   return textureSampleLevel(source, linear_sampler, at, 0.0);
 }
 
+// The frame as its edges are found: as it is, or, where it holds linear light, through its reversible tonemap,
+// `c / (1 + max(c))`, so a bright edge counts as it is shown.
+fn sample_shown(at: vec2<f32>) -> vec3<f32> {
+  let color: vec3<f32> = sample_source(at).rgb;
+
+  return select(color, color / (1.0 + max3(color)), smoothing.linear > 0.5);
+}
+
 fn sample_edges(at: vec2<f32>) -> vec2<f32> {
   return textureSampleLevel(edges_texture, linear_sampler, at, 0.0).rg;
 }
@@ -35,12 +43,12 @@ fn fs_smaa_edges(in: FullscreenVarying) -> @location(0) vec4<f32> {
   let offset0: vec4<f32> = uv.xyxy + size.xyxy * vec4<f32>(-1.0, 0.0, 0.0, -1.0);
   let offset1: vec4<f32> = uv.xyxy + size.xyxy * vec4<f32>(1.0, 0.0, 0.0, 1.0);
   let offset2: vec4<f32> = uv.xyxy + size.xyxy * vec4<f32>(-2.0, 0.0, 0.0, -2.0);
-  let c: vec3<f32> = sample_source(uv).rgb;
+  let c: vec3<f32> = sample_shown(uv);
   var delta: vec4<f32> = vec4<f32>(0.0);
 
   // The left and top deltas, against the threshold; nothing more where there is no edge.
-  delta.x = max3(abs(c - sample_source(offset0.xy).rgb));
-  delta.y = max3(abs(c - sample_source(offset0.zw).rgb));
+  delta.x = max3(abs(c - sample_shown(offset0.xy)));
+  delta.y = max3(abs(c - sample_shown(offset0.zw)));
 
   var edges: vec2<f32> = step(vec2<f32>(THRESHOLD), delta.xy);
 
@@ -49,13 +57,13 @@ fn fs_smaa_edges(in: FullscreenVarying) -> @location(0) vec4<f32> {
   }
 
   // The right and bottom, then the left-left and top-top deltas, for the local contrast adaptation.
-  delta.z = max3(abs(c - sample_source(offset1.xy).rgb));
-  delta.w = max3(abs(c - sample_source(offset1.zw).rgb));
+  delta.z = max3(abs(c - sample_shown(offset1.xy)));
+  delta.w = max3(abs(c - sample_shown(offset1.zw)));
 
   var max_delta: f32 = max(max(delta.x, delta.y), max(delta.z, delta.w));
 
-  delta.z = max3(abs(c - sample_source(offset2.xy).rgb));
-  delta.w = max3(abs(c - sample_source(offset2.zw).rgb));
+  delta.z = max3(abs(c - sample_shown(offset2.xy)));
+  delta.w = max3(abs(c - sample_shown(offset2.zw)));
   max_delta = max(max_delta, max(delta.z, delta.w));
   edges *= step(vec2<f32>(0.5 * max_delta), delta.xy);
 

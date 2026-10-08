@@ -7,5 +7,6 @@
 @group(0) @binding(2) var weights_texture: texture_2d<f32>;
 @group(0) @binding(3) var area_texture: texture_2d<f32>;
 @group(0) @binding(4) var search_texture: texture_2d<f32>;
-@group(0) @binding(5) var linear_sampler: sampler;
-@group(0) @binding(6) var point_sampler: sampler;
+@group(0) @binding(5) var<uniform> smoothing: Smoothing;
+@group(0) @binding(6) var linear_sampler: sampler;
+@group(0) @binding(7) var point_sampler: sampler;

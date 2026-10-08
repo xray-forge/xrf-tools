@@ -1,4 +1,5 @@
 #import "common/camera"
+#import "common/scene_light"
 #import "common/octahedral"
 #import "common/lighting"
 #import "common/hmodel"
@@ -124,20 +125,20 @@ fn fs_combine(in: FullscreenVarying) -> CombineOutput {
     if (is_sky_drawn) {
       let sky: vec3<f32> = sky_drawn(direction, toward, scale);
 
-      return combined(sky, sky / DEF_HDR);
+      return combined(scene_from_shown(sky), sky / DEF_HDR);
     }
 
     if (is_fogged) {
-      return combined(tonemap(lighting.fog_color.rgb, scale), tonemap_high(lighting.fog_color.rgb, scale));
+      return combined(scene_from_light(lighting.fog_color.rgb, scale), tonemap_high(lighting.fog_color.rgb, scale));
     }
 
-    return combined(backdrop_at(in.clip.xy), vec3<f32>(0.0));
+    return combined(scene_from_shown(backdrop_at(in.clip.xy)), vec3<f32>(0.0));
   }
 
   let albedo: vec4<f32> = textureLoad(albedo_target, texel, 0);
 
   if (!is_lit) {
-    return combined(albedo.rgb, vec3<f32>(0.0));
+    return combined(scene_from_shown(albedo.rgb), vec3<f32>(0.0));
   }
 
   let material: vec4<f32> = textureLoad(material_target, texel, 0);
@@ -201,7 +202,7 @@ fn fs_combine(in: FullscreenVarying) -> CombineOutput {
   let thickened: f32 = select(0.0, fog_amount_at(lighting, position, height), is_fogged);
   let fogged: vec3<f32> = mix(shaded, fog_color_at(lighting, position, height), thickened);
 
-  let finished: vec3<f32> = tonemap(fogged, scale);
+  let finished: vec3<f32> = scene_from_light(fogged, scale);
   let high: vec3<f32> = tonemap_high(fogged, scale);
 
   if (!is_sky_drawn) {
@@ -210,5 +211,5 @@ fn fs_combine(in: FullscreenVarying) -> CombineOutput {
 
   let sky: vec3<f32> = sky_behind(direction, toward, scale, is_hazed);
 
-  return combined(mix(finished, sky, fog * fog), mix(high, sky / DEF_HDR, fog * fog));
+  return combined(mix(finished, scene_from_shown(sky), fog * fog), mix(high, sky / DEF_HDR, fog * fog));
 }

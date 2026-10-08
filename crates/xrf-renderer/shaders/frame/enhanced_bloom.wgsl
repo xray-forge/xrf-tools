@@ -1,4 +1,5 @@
 #import "common/camera"
+#import "common/scene_light"
 #import "common/fullscreen"
 
 // The enhanced bloom, from the finished scene rather than the engine's high part: the scene blurred to half its size by
@@ -27,7 +28,9 @@ fn read_nearest(at: vec2<f32>) -> vec3<f32> {
   let size: vec2<i32> = vec2<i32>(textureDimensions(source));
   let texel: vec2<i32> = clamp(vec2<i32>(floor(at * vec2<f32>(size))), vec2<i32>(0), size - 1);
 
-  return textureLoad(source, texel, 0).rgb;
+  let held: vec3<f32> = textureLoad(source, texel, 0).rgb;
+
+  return select(held, scene_shown(held), bloom.spread.w > 0.5);
 }
 
 fn sample_at(image: texture_2d<f32>, at: vec2<f32>) -> vec4<f32> {

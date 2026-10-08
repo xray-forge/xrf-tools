@@ -116,6 +116,7 @@ pub use crate::contract::render_surface_color::RenderSurfaceColor;
 pub use crate::contract::render_texture_filtering::RenderTextureFiltering;
 pub use crate::contract::render_texture_report::RenderTextureReport;
 pub use crate::contract::render_texture_state::RenderTextureState;
+pub use crate::contract::render_tonemap_mode::RenderTonemapMode;
 pub use crate::contract::render_upscaling_settings::RenderUpscalingSettings;
 pub use crate::contract::render_view_features::RenderViewFeatures;
 pub use crate::contract::render_view_mode::RenderViewMode;

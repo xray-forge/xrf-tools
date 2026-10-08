@@ -15,8 +15,12 @@ const SUBPIX: f32 = 0.75;
 const SEARCH_STEPS: u32 = 12u;
 var<private> STEPS: array<f32, 12> = array<f32, 12>(1.0, 1.0, 1.0, 1.0, 1.0, 1.5, 2.0, 2.0, 2.0, 2.0, 4.0, 8.0);
 
+// The luma edges are found by: of the colour itself, or, where the frame holds linear light, of its reversible
+// tonemap, `c / (1 + max(c))`, so a bright edge counts as it is shown.
 fn luma(color: vec3<f32>) -> f32 {
-  return dot(color, vec3<f32>(0.299, 0.587, 0.114));
+  let shown: vec3<f32> = select(color, color / (1.0 + max(color.r, max(color.g, color.b))), smoothing.linear > 0.5);
+
+  return dot(shown, vec3<f32>(0.299, 0.587, 0.114));
 }
 
 fn luma_at(uv: vec2<f32>) -> f32 {

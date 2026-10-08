@@ -45,6 +45,7 @@ export type TRenderViewFeatureKey =
   | "shadows"
   | "textureFiltering"
   | "textureLod"
+  | "tonemap"
   | "volumetric"
   | "water";
 

@@ -20,6 +20,7 @@ use crate::contract::render_reflection_settings::RenderReflectionSettings;
 use crate::contract::render_shadow_settings::RenderShadowSettings;
 use crate::contract::render_sun_shafts::RenderSunShafts;
 use crate::contract::render_texture_filtering::RenderTextureFiltering;
+use crate::contract::render_tonemap_mode::RenderTonemapMode;
 use crate::contract::render_volumetric_settings::RenderVolumetricSettings;
 use crate::contract::render_water_settings::RenderWaterSettings;
 
@@ -29,6 +30,8 @@ use crate::contract::render_water_settings::RenderWaterSettings;
 #[serde(rename_all = "camelCase")]
 pub struct RenderViewFeatures {
   pub exposure: RenderExposureSettings,
+  /// Where the frame is tonemapped: in combine and each forward pass, or once by the window pass over linear light.
+  pub tonemap: RenderTonemapMode,
   pub bloom: RenderBloomSettings,
   /// Which bloom is drawn, and the enhanced bloom's strengths.
   pub enhanced_bloom: RenderEnhancedBloomSettings,
@@ -77,6 +80,7 @@ impl Default for RenderViewFeatures {
   fn default() -> Self {
     Self {
       exposure: RenderExposureSettings::default(),
+      tonemap: RenderTonemapMode::Engine,
       bloom: RenderBloomSettings::default(),
       enhanced_bloom: RenderEnhancedBloomSettings::default(),
       fog: RenderFogSettings::default(),

@@ -86,14 +86,16 @@ impl ResolveFeature {
     device: &wgpu::Device,
     view: &CameraView,
     (render, output): (Option<(u32, u32)>, RenderRect),
-    upscaling: RenderUpscalingSettings,
+    (upscaling, is_linear): (RenderUpscalingSettings, bool),
   ) {
     self.upscaling = upscaling;
 
     let display: (u32, u32) = (output.width.max(1), output.height.max(1));
 
     match (render, self.temporal) {
-      (Some(render), Some(RenderAntialiasing::Fsr2)) => self.prepare_fsr(device, view, (render, display)),
+      (Some(render), Some(RenderAntialiasing::Fsr2)) => {
+        self.prepare_fsr(device, view, (render, display), is_linear);
+      }
       (Some(render), Some(_)) => self.prepare_temporal(device, view, (render, display)),
       _ => self.resolve = None,
     }
@@ -123,7 +125,7 @@ impl ResolveFeature {
     self.upscale = UpscaleUniform {
       output_size: Vec2::new(output.width as f32, output.height as f32),
       sharpness: upscaling.get_sharpness(),
-      _pad: 0.0,
+      linear: f32::from(u8::from(is_linear)),
     };
   }
 
@@ -180,8 +182,14 @@ impl ResolveFeature {
     *previous = Some((current, view.view));
   }
 
-  /// FSR 2's targets, kept while they still fit, and its constants.
-  fn prepare_fsr(&mut self, device: &wgpu::Device, view: &CameraView, (render, display): ((u32, u32), (u32, u32))) {
+  /// FSR 2's targets, kept while they still fit, and its constants, over colour of linear light where `is_hdr`.
+  fn prepare_fsr(
+    &mut self,
+    device: &wgpu::Device,
+    view: &CameraView,
+    (render, display): ((u32, u32), (u32, u32)),
+    is_hdr: bool,
+  ) {
     if !matches!(&self.resolve, Some(Resolve::Fsr { targets, .. }) if targets.is_sized(render, display)) {
       self.resolve = Some(Resolve::Fsr {
         targets: Box::new(FsrTargets::new(device, render, display, ViewTargets::SCENE)),
@@ -199,7 +207,8 @@ impl ResolveFeature {
       view,
       (FsrTargets::get_luma_mip_size(render), self.phases),
       targets.frames.get_frame(),
-    );
+    )
+    .with_hdr(is_hdr);
   }
 
   /// Whether a temporal resolve gathers this frame's samples, which the screen-space effects turn their noise by.

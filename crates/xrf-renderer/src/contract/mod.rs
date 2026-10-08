@@ -89,6 +89,7 @@ pub(crate) mod render_surface_color;
 pub(crate) mod render_texture_filtering;
 pub(crate) mod render_texture_report;
 pub(crate) mod render_texture_state;
+pub(crate) mod render_tonemap_mode;
 pub(crate) mod render_upscaling_settings;
 pub(crate) mod render_view_features;
 pub(crate) mod render_view_mode;

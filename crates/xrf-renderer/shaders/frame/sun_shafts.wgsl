@@ -1,4 +1,5 @@
 #import "common/camera"
+#import "common/scene_light"
 #import "common/lighting"
 #import "common/sun_shadow"
 #import "common/fullscreen"
@@ -137,5 +138,5 @@ fn fs_sun_shafts(in: FullscreenVarying) -> ShaftsOutput {
 
   let scale: f32 = frame_scale(lighting, exposure);
 
-  return ShaftsOutput(vec4<f32>(tonemap(light, scale), 0.0), vec4<f32>(tonemap_high(light, scale), 0.0));
+  return ShaftsOutput(vec4<f32>(scene_from_light(light, scale), 0.0), vec4<f32>(tonemap_high(light, scale), 0.0));
 }

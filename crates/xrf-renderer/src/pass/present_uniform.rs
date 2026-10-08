@@ -39,6 +39,8 @@ pub struct PresentUniform {
   /// The sky debanding's passes, the pixels it reads out to at most and the clock its noise turns with; no passes where
   /// the sky is drawn as it is.
   pub deband: Vec4,
+  /// One where the scene holds linear light, which the window pass tonemaps by the engine's curve before the rest.
+  pub tonemap: Vec4,
 }
 
 impl PresentUniform {
@@ -68,6 +70,7 @@ impl PresentUniform {
       is_reflected: u32::from(reflection_ratio.is_some()),
       reflection_ratio: reflection_ratio.unwrap_or(1) as f32,
       deband: Vec4::ZERO,
+      tonemap: Vec4::ZERO,
     }
   }
 
@@ -77,6 +80,14 @@ impl PresentUniform {
     let is_shown: bool = options.mode.is_lit && !options.mode.is_wireframe && options.show.is_sky_visible;
 
     (is_shown && debanding.is_drawn()).then_some(debanding.quality)
+  }
+
+  /// The same over a scene holding linear light (`is_linear`), which it tonemaps, or tonemapped colour.
+  pub fn with_linear_scene(self, is_linear: bool) -> Self {
+    Self {
+      tonemap: Vec4::new(f32::from(u8::from(is_linear)), 0.0, 0.0, 0.0),
+      ..self
+    }
   }
 
   /// The same, the enhanced bloom screened over the frame in place of the engine's.

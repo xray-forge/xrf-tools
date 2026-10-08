@@ -1,10 +1,17 @@
 import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
-import { formatExposure, formatLowLuminance, RENDER_EXPOSURE_LIMITS } from "@/core/render/lib/features";
+import { RenderTonemapMode } from "@/core/ipc/types/xrf-renderer";
+import {
+  formatExposure,
+  formatLowLuminance,
+  RENDER_EXPOSURE_LIMITS,
+  RENDER_TONEMAP_MODE_OPTIONS,
+} from "@/core/render/lib/features";
 import { TRenderExposureSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { SettingsService } from "@/core/settings/services/settings";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
+import { ChoiceFormRow } from "@/core/ui/form/ChoiceFormRow";
 import { SliderFormRow } from "@/core/ui/form/SliderFormRow";
 import { DetailSection } from "@/core/ui/layout/DetailSection";
 
@@ -21,6 +28,17 @@ export function SettingsRendererExposure(): ReactElement {
   return (
     <DetailSection title={"Exposure"} description={"Automatic exposure, as the engine's tonemapper applies it."}>
       <div className={"mt-4 flex flex-col gap-6"}>
+        <ChoiceFormRow
+          label={"Tonemap"}
+          description={
+            "Engine: each pass tonemaps what it draws, as the game does. Enhanced: the frame stays linear light until " +
+            "it is shown, so blended surfaces mix as light does and an upscaler gets the input it is made for."
+          }
+          options={RENDER_TONEMAP_MODE_OPTIONS}
+          value={settingsService.rendererFeatures.tonemap}
+          onChange={(tonemap: RenderTonemapMode) => settingsService.setRendererOverrides({ tonemap })}
+        />
+
         <CheckboxFormRow
           label={"Auto exposure"}
           description={

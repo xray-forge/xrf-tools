@@ -1,4 +1,5 @@
 #import "common/camera"
+#import "common/scene_light"
 #import "common/octahedral"
 #import "common/fullscreen"
 #import "common/lighting"
@@ -311,7 +312,7 @@ fn remembered_radiance(texel: vec2<i32>, hit: vec3<f32>) -> vec4<f32> {
   }
 
   let scale: f32 = select(1.0, exposure.used, lighting.params.z > 0.5);
-  let shown: vec3<f32> = untonemapped(textureSampleLevel(source_scene, history_sampler, kept_uv, 0.0).rgb, scale);
+  let shown: vec3<f32> = scene_light(textureSampleLevel(source_scene, history_sampler, kept_uv, 0.0).rgb, scale);
   let lit: vec3<f32> = (shown - fog_color_at(lighting, hit, world.y) * fog) / (1.0 - fog);
 
   return vec4<f32>(max(lit, vec3<f32>(0.0)), 1.0);
@@ -347,7 +348,7 @@ fn remembered_sky(direction: vec3<f32>) -> vec4<f32> {
 
   let scale: f32 = select(1.0, exposure.used, lighting.params.z > 0.5);
 
-  return vec4<f32>(sky_as_light(textureSampleLevel(source_scene, history_sampler, kept_uv, 0.0).rgb, scale,
+  return vec4<f32>(sky_as_light(scene_shown(textureSampleLevel(source_scene, history_sampler, kept_uv, 0.0).rgb), scale,
     lighting.reflections.w), 1.0);
 }
 

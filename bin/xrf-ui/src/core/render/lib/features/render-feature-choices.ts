@@ -16,6 +16,7 @@ import {
   ERenderReflectionTraceQuality,
   ERenderScale,
   ERenderTextureFiltering,
+  ERenderTonemapMode,
   ERenderVolumetricMode,
   RenderAmbientOcclusionMethod,
   RenderAmbientOcclusionQuality,
@@ -34,6 +35,7 @@ import {
   RenderReflectionTraceQuality,
   RenderScale,
   RenderTextureFiltering,
+  RenderTonemapMode,
   RenderVolumetricMode,
 } from "@/core/ipc/types/xrf-renderer";
 import {
@@ -708,6 +710,12 @@ const RENDER_VOLUMETRIC_MODE_DESCRIPTIONS: Readonly<Record<RenderVolumetricMode,
 export function explainRenderVolumetricMode(mode: RenderVolumetricMode): string {
   return RENDER_VOLUMETRIC_MODE_DESCRIPTIONS[mode];
 }
+
+/** The tonemap's places, in the order they are offered. */
+export const RENDER_TONEMAP_MODE_OPTIONS: ReadonlyArray<IRenderChoiceOption<RenderTonemapMode>> = [
+  { label: "Engine", value: ERenderTonemapMode.ENGINE },
+  { label: "Enhanced", value: ERenderTonemapMode.ENHANCED },
+];
 
 /** The volumetric lighting modes, in the order they are offered. */
 export const RENDER_VOLUMETRIC_MODE_OPTIONS: ReadonlyArray<IRenderChoiceOption<RenderVolumetricMode>> = [
