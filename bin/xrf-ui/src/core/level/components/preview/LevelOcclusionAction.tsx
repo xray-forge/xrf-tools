@@ -4,10 +4,12 @@ import { ReactElement, useCallback } from "react";
 
 import {
   ERenderAmbientOcclusionMethod,
+  ERenderIndirectLightMode,
   RenderAmbientOcclusionMethod,
   RenderAmbientOcclusionQuality,
 } from "@/core/ipc/types/xrf-renderer";
 import { ILevelFeatureActionProps } from "@/core/level/components/preview/level-feature-action-props";
+import { LevelIndirectLightSection } from "@/core/level/components/preview/LevelIndirectLightSection";
 import { useLevelFeatureOverride } from "@/core/level/components/preview/use-level-feature-override";
 import { DEFAULT_LEVEL_HEMI_STRENGTH, ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
@@ -29,6 +31,7 @@ import {
 import {
   TRenderAmbientOcclusionSettings,
   TRenderAmbientOcclusionVbaoSettings,
+  TRenderIndirectLightSettings,
 } from "@/core/render/lib/settings/render-feature-settings";
 import { EditorPopoverGroup, EditorPopoverGroupSection } from "@/core/shell/editor/EditorPopoverGroup";
 import { formatPercent } from "@/lib/format/number";
@@ -37,13 +40,16 @@ interface ILevelOcclusionActionProps extends Omit<ILevelFeatureActionProps<"ambi
   options: ILevelViewOptions;
   /** How much the baked hemisphere darkens the ambient. */
   hemiStrength: number;
+  /** The indirect light as the view draws it, which the occlusion's search gathers. */
+  indirectLight: TRenderIndirectLightSettings;
   onToggle: (option: keyof ILevelViewOptions) => void;
   onChangeHemiStrength: (hemiStrength: number) => void;
 }
 
 /**
- * What darkens creases and corners: the screen's ambient occlusion, GTAO (XeGTAO) or VBAO, whose visibility bitmask
- * lets light through behind thin things, and the hemisphere occlusion xrLC baked.
+ * What darkens creases and corners and what lights them back: the screen's ambient occlusion, GTAO (XeGTAO) or VBAO,
+ * whose visibility bitmask lets light through behind thin things, the indirect light the same search gathers, and the
+ * hemisphere occlusion xrLC baked.
  */
 export function LevelOcclusionAction({
   "data-testid": dataTestId = "level-occlusion-action",
@@ -53,6 +59,7 @@ export function LevelOcclusionAction({
   state,
   features,
   hemiStrength,
+  indirectLight,
   onToggle,
   onChange,
   onChangeHemiStrength,
@@ -62,6 +69,7 @@ export function LevelOcclusionAction({
   const vbao: TRenderAmbientOcclusionVbaoSettings = occlusion.vbao;
   const isScreen: boolean = options.isOccluded && state.isAvailable;
   const isVbao: boolean = occlusion.method === ERenderAmbientOcclusionMethod.VBAO;
+  const isIndirect: boolean = indirectLight.mode === ERenderIndirectLightMode.ENHANCED;
 
   const setVbao = useCallback(
     (part: Partial<TRenderAmbientOcclusionVbaoSettings>): void => {
@@ -82,10 +90,13 @@ export function LevelOcclusionAction({
             `${formatOcclusionRadius(occlusion.radius)}, ` +
             `${describeRenderAmbientOcclusionQuality(occlusion.quality).toLowerCase()} quality`
           : "Ambient occlusion off",
+        isIndirect ? "indirect light" : null,
         options.isBaked ? `baked at ${formatPercent(hemiStrength)}` : "baked off",
-      ].join(", ")}
+      ]
+        .filter((it): it is string => it !== null)
+        .join(", ")}
       icon={<GradientIcon />}
-      isActive={isScreen || options.isBaked}
+      isActive={isScreen || isIndirect || options.isBaked}
     >
       <EditorPopoverGroupSection
         label={"Ambient occlusion"}
@@ -158,6 +169,8 @@ export function LevelOcclusionAction({
           Back to the settings
         </Button>
       </EditorPopoverGroupSection>
+
+      <LevelIndirectLightSection value={indirectLight} features={features} onChange={onChange} />
 
       <EditorPopoverGroupSection label={"Baked light"} isOn={options.isBaked} onToggle={() => onToggle("isBaked")}>
         <RenderValueSlider

@@ -2,11 +2,13 @@ import {
   ERenderAmbientOcclusionMethod,
   ERenderAmbientOcclusionQuality,
   ERenderAntialiasing,
+  ERenderIndirectLightMode,
   ERenderLightShadowFilter,
   ERenderScale,
   RenderAmbientOcclusionMethod,
   RenderAmbientOcclusionQuality,
   RenderAntialiasing,
+  RenderIndirectLightMode,
   RenderLightShadowFilter,
   RenderScale,
 } from "@/core/ipc/types/xrf-renderer";
@@ -264,6 +266,37 @@ export function formatOcclusionAccumulation(accumulation: number): string {
 /** @returns An occlusion radius, in metres. */
 export function formatOcclusionRadius(radius: number): string {
   return `${formatNumber(radius, 2)} m`;
+}
+
+/** The bounds each indirect light value is offered between. */
+export const RENDER_INDIRECT_LIGHT_LIMITS = {
+  intensity: toRenderLimits(RENDER_FEATURE_SCHEMA.indirectLight.intensity, 0.05),
+  radius: toRenderLimits(RENDER_FEATURE_SCHEMA.indirectLight.radius, 0.25),
+} as const;
+
+const RENDER_INDIRECT_LIGHT_MODE_DESCRIPTIONS: Readonly<Record<RenderIndirectLightMode, string>> = {
+  [ERenderIndirectLightMode.ENGINE]: "The game's own: the hemisphere and the ambient alone stand for bounced light.",
+  [ERenderIndirectLightMode.ENHANCED]:
+    "Sunlight and lamplight on what the frame shows, bounced once onto what faces it, gathered by the occlusion's search.",
+};
+
+/**
+ * @param mode - An indirect light mode.
+ * @returns What it does, in a sentence.
+ */
+export function explainRenderIndirectLightMode(mode: RenderIndirectLightMode): string {
+  return RENDER_INDIRECT_LIGHT_MODE_DESCRIPTIONS[mode];
+}
+
+/** The indirect light modes, in the order they are offered. */
+export const RENDER_INDIRECT_LIGHT_MODE_OPTIONS: ReadonlyArray<IRenderChoiceOption<RenderIndirectLightMode>> = [
+  { label: "Engine", value: ERenderIndirectLightMode.ENGINE },
+  { label: "Enhanced", value: ERenderIndirectLightMode.ENHANCED },
+];
+
+/** @returns How much of the bounced light is added. */
+export function formatIndirectLightIntensity(intensity: number): string {
+  return formatPercent(intensity);
 }
 
 /** The bounds each exposure value is offered between: the console's own. */

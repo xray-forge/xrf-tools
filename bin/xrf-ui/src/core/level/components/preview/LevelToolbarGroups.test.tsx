@@ -2,7 +2,11 @@ import { describe, expect, it, jest } from "@jest/globals";
 import { userEvent } from "@testing-library/user-event";
 import { ReactElement } from "react";
 
-import { ERenderAmbientOcclusionMethod, RenderGraphSettings } from "@/core/ipc/types/xrf-renderer";
+import {
+  ERenderAmbientOcclusionMethod,
+  ERenderIndirectLightMode,
+  RenderGraphSettings,
+} from "@/core/ipc/types/xrf-renderer";
 import { LevelCullingAction } from "@/core/level/components/preview/LevelCullingAction";
 import { LevelOcclusionAction } from "@/core/level/components/preview/LevelOcclusionAction";
 import { LevelOverlaysAction } from "@/core/level/components/preview/LevelOverlaysAction";
@@ -12,8 +16,14 @@ import { ILevelFeatureOptions } from "@/core/level/lib/features";
 import { DEFAULT_LEVEL_LOD_OPTIONS } from "@/core/level/lib/lod/level-lod-options";
 import { ELevelShading } from "@/core/level/lib/view/level-shading";
 import { DEFAULT_LEVEL_VIEW_OPTIONS, ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
-import { DEFAULT_RENDER_AMBIENT_OCCLUSION_SETTINGS } from "@/core/render/lib/settings/render-feature-defaults";
-import { TRenderAmbientOcclusionSettings } from "@/core/render/lib/settings/render-feature-settings";
+import {
+  DEFAULT_RENDER_AMBIENT_OCCLUSION_SETTINGS,
+  DEFAULT_RENDER_INDIRECT_LIGHT_SETTINGS,
+} from "@/core/render/lib/settings/render-feature-defaults";
+import {
+  TRenderAmbientOcclusionSettings,
+  TRenderIndirectLightSettings,
+} from "@/core/render/lib/settings/render-feature-settings";
 import {
   DEFAULT_RENDER_GRAPH_SETTINGS,
   SERIAL_RENDER_GRAPH_SETTINGS,
@@ -122,6 +132,7 @@ describe("level toolbar groups", () => {
         state={{ isAvailable: true, value: DEFAULT_RENDER_AMBIENT_OCCLUSION_SETTINGS }}
         features={{ ...mockLevelFeatureOptions(), ambientOcclusion: { radius: 2 } }}
         hemiStrength={0.5}
+        indirectLight={DEFAULT_RENDER_INDIRECT_LIGHT_SETTINGS}
         onToggle={() => {}}
         onChange={onChange}
         onChangeHemiStrength={onChangeHemiStrength}
@@ -151,6 +162,7 @@ describe("level toolbar groups", () => {
           state={{ isAvailable: true, value }}
           features={mockLevelFeatureOptions()}
           hemiStrength={1}
+          indirectLight={DEFAULT_RENDER_INDIRECT_LIGHT_SETTINGS}
           onToggle={() => {}}
           onChange={onChange}
           onChangeHemiStrength={() => {}}
@@ -181,6 +193,58 @@ describe("level toolbar groups", () => {
     expect(getByRole("button", { hidden: true, name: "Occlusion" })).toHaveAccessibleDescription(
       "VBAO occlusion over 1.00 m, high quality, baked at 100%"
     );
+  });
+
+  it("turns the view's indirect light to enhanced, offering its intensity only then, and back to the settings", async () => {
+    const onChange = jest.fn<(features: ILevelFeatureOptions) => void>();
+    const enhanced: TRenderIndirectLightSettings = {
+      ...DEFAULT_RENDER_INDIRECT_LIGHT_SETTINGS,
+      mode: ERenderIndirectLightMode.ENHANCED,
+    };
+
+    function render(indirectLight: TRenderIndirectLightSettings): ReactElement {
+      return (
+        <LevelOcclusionAction
+          options={DEFAULT_LEVEL_VIEW_OPTIONS}
+          state={{ isAvailable: true, value: DEFAULT_RENDER_AMBIENT_OCCLUSION_SETTINGS }}
+          features={mockLevelFeatureOptions()}
+          hemiStrength={1}
+          indirectLight={indirectLight}
+          onToggle={() => {}}
+          onChange={onChange}
+          onChangeHemiStrength={() => {}}
+        />
+      );
+    }
+
+    const { getByRole, findByRole, queryByRole, rerender } = renderWithProviders(
+      render(DEFAULT_RENDER_INDIRECT_LIGHT_SETTINGS)
+    );
+
+    await userEvent.click(getByRole("button", { name: "Occlusion" }));
+    await findByRole("dialog", { name: "Occlusion" });
+
+    expect(getByRole("checkbox", { name: "Indirect light" })).not.toBeChecked();
+    expect(queryByRole("slider", { name: "Intensity" })).toBeNull();
+
+    await userEvent.click(getByRole("checkbox", { name: "Indirect light" }));
+
+    expect(onChange).toHaveBeenLastCalledWith({
+      ...mockLevelFeatureOptions(),
+      indirectLight: { mode: ERenderIndirectLightMode.ENHANCED },
+    });
+
+    rerender(render(enhanced));
+
+    expect(getByRole("checkbox", { name: "Indirect light" })).toBeChecked();
+    expect(getByRole("slider", { name: "Intensity" })).toHaveAttribute("aria-valuetext", "100%");
+    expect(getByRole("button", { hidden: true, name: "Occlusion" })).toHaveAccessibleDescription(
+      "GTAO occlusion over 1.00 m, high quality, indirect light, baked at 100%"
+    );
+
+    await userEvent.click(getByRole("button", { name: "Back to the settings for the indirect light" }));
+
+    expect(onChange).toHaveBeenLastCalledWith({ ...mockLevelFeatureOptions(), indirectLight: {} });
   });
 
   it("names the overlays shown, and times the passes from the readouts", async () => {

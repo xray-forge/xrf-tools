@@ -6,6 +6,7 @@ use crate::contract::render_bloom_settings::RenderBloomSettings;
 use crate::contract::render_exposure_settings::RenderExposureSettings;
 use crate::contract::render_grass_settings::RenderGrassSettings;
 use crate::contract::render_image_corrections::RenderImageCorrections;
+use crate::contract::render_indirect_light_settings::RenderIndirectLightSettings;
 use crate::contract::render_light_scales::RenderLightScales;
 use crate::contract::render_lights_settings::RenderLightsSettings;
 use crate::contract::render_lod_settings::RenderLodSettings;
@@ -22,6 +23,8 @@ pub struct RenderViewFeatures {
   pub bloom: RenderBloomSettings,
   pub shadows: RenderShadowSettings,
   pub ambient_occlusion: RenderAmbientOcclusionSettings,
+  /// The light the frame's surfaces bounce onto each other, searched as the ambient occlusion's settings describe.
+  pub indirect_light: RenderIndirectLightSettings,
   pub lights: RenderLightsSettings,
   pub water: RenderWaterSettings,
   pub grass: RenderGrassSettings,
@@ -48,6 +51,7 @@ impl Default for RenderViewFeatures {
       bloom: RenderBloomSettings::default(),
       shadows: RenderShadowSettings::default(),
       ambient_occlusion: RenderAmbientOcclusionSettings::default(),
+      indirect_light: RenderIndirectLightSettings::default(),
       lights: RenderLightsSettings::default(),
       water: RenderWaterSettings::default(),
       grass: RenderGrassSettings::default(),

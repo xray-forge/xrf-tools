@@ -33,4 +33,6 @@ pub struct PresentParameters<'a> {
   pub bloom_target: GraphTexture,
   #[sampler(filtering)]
   pub bloom_sampler: &'a wgpu::Sampler,
+  #[texture(d2, unfilterable)]
+  pub indirect_light: GraphTexture,
 }

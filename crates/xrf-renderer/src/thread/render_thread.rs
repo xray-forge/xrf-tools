@@ -887,6 +887,7 @@ impl RenderThread {
                 motion_target: output.targets.motion,
                 bloom_target: output.targets.bloom[0],
                 bloom_sampler: gpu.present.get_bloom_sampler(),
+                indirect_light: output.indirect_light,
               }),
               overlays: output
                 .zip(level.and_then(SceneView::get_overlays))

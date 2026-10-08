@@ -147,5 +147,14 @@ export function mockLevelTextureReport(entries: Record<string, IMockLevelTexture
  * @returns The view's feature options.
  */
 export function mockLevelFeatureOptions(overrides: Partial<ILevelFeatureOptions> = {}): ILevelFeatureOptions {
-  return { ambientOcclusion: {}, antialiasing: null, grass: {}, lights: {}, shadows: {}, water: {}, ...overrides };
+  return {
+    ambientOcclusion: {},
+    antialiasing: null,
+    grass: {},
+    indirectLight: {},
+    lights: {},
+    shadows: {},
+    water: {},
+    ...overrides,
+  };
 }

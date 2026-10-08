@@ -37,17 +37,25 @@ pub struct VbaoUniform {
   pub slice_noise: f32,
   /// What this frame moves the steps' noise by, from zero to one.
   pub step_noise: f32,
+  /// How much of the gathered indirect light the filter passes on; zero where none is gathered.
+  pub intensity: f32,
+  /// One where the last frame's indirect light is there to carry.
+  pub has_light_history: f32,
+  /// Metres around a point the indirect light is gathered from, never under the occlusion's radius.
+  pub light_radius: f32,
 }
 
 impl VbaoUniform {
   /// The settings over a search target of a size, through the camera's projection, on the noise's `frame`, with or
-  /// without a history to carry.
+  /// without the occlusion's and the indirect light's histories to carry; an `intensity` of zero gathers no light,
+  /// and the light is gathered from `light_radius` metres around.
   pub fn new(
     settings: &RenderAmbientOcclusionSettings,
+    (intensity, light_radius): (f32, f32),
     projection: Mat4,
     (width, height): (u32, u32),
     frame: u32,
-    has_history: bool,
+    (has_history, has_light_history): (bool, bool),
   ) -> Self {
     let frames: u32 = settings.vbao.get_accumulation();
     // A noise held still where nothing gathers it, so it never crawls.
@@ -64,6 +72,9 @@ impl VbaoUniform {
       has_history: f32::from(u8::from(has_history && frames > 1)),
       slice_noise: (turn * NOISE_STEPS.0).fract(),
       step_noise: (turn * NOISE_STEPS.1).fract(),
+      intensity: intensity.max(0.0),
+      has_light_history: f32::from(u8::from(has_light_history && has_history && frames > 1)),
+      light_radius: light_radius.max(settings.radius),
     }
   }
 }

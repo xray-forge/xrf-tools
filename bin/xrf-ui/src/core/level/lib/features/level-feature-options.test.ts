@@ -4,6 +4,7 @@ import {
   ERenderAmbientOcclusionQuality,
   ERenderAntialiasing,
   ERenderContactShadowMode,
+  ERenderIndirectLightMode,
   ERenderLightShadowFilter,
   ERenderWaterMode,
 } from "@/core/ipc/types/xrf-renderer";
@@ -14,6 +15,7 @@ import {
   TLevelFeatureKey,
   toLevelFeatureOptions,
   toLevelFeatureView,
+  toLevelIndirectLight,
   toLevelRendererAntialiasing,
   toLevelRendererFeature,
 } from "@/core/level/lib/features/level-feature-options";
@@ -138,5 +140,20 @@ describe("level feature options", () => {
       length: 4,
       mode: ERenderContactShadowMode.ENGINE,
     });
+  });
+
+  it("keeps the indirect light's own mode and intensity, held to their bounds, over the settings'", () => {
+    const view: ILevelFeatureOptions = toLevelFeatureOptions({
+      indirectLight: { intensity: 9, mode: ERenderIndirectLightMode.ENGINE, steps: 3 },
+    });
+
+    expect(view.indirectLight).toEqual({ intensity: 4, mode: ERenderIndirectLightMode.ENGINE });
+    expect(toLevelIndirectLight(SETTINGS, mockLevelFeatureOptions())).toEqual(SETTINGS.indirectLight);
+    expect(toLevelIndirectLight(SETTINGS, view)).toEqual({
+      ...SETTINGS.indirectLight,
+      intensity: 4,
+      mode: ERenderIndirectLightMode.ENGINE,
+    });
+    expect(toLevelFeatureOptions({ indirectLight: { mode: "radiosity" } }).indirectLight).toEqual({});
   });
 });

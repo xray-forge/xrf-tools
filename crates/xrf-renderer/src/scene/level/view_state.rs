@@ -4,6 +4,7 @@ use crate::contract::render_overlay::RenderOverlay;
 use crate::contract::render_selection_target::RenderSelectionTarget;
 use crate::frame::depth_pyramid::DepthPyramid;
 use crate::frame::fsr_targets::FsrTargets;
+use crate::frame::indirect_light_history::IndirectLightHistory;
 use crate::frame::pick_target::PickTarget;
 use crate::frame::stats_readback::StatsReadback;
 use crate::frame::temporal_history::TemporalHistory;
@@ -43,8 +44,10 @@ pub struct ViewState {
   pub motion_previous: Option<Mat4>,
   /// Frames a temporal resolve gathered, which the screen-space effects turn their noise by.
   pub noise_frame: u32,
-  /// VBAO's accumulations, while it accumulates.
+  /// The visibility-bitmask search's accumulations, while it accumulates.
   pub occlusion: Option<VbaoHistory>,
+  /// The indirect light's accumulations, while it is gathered and accumulates.
+  pub indirect: Option<IndirectLightHistory>,
   /// The water's settings and flow, and the enhanced water's reflection histories.
   pub water: LevelWater,
   /// The trees' sway the last frame drew with.
@@ -91,6 +94,7 @@ impl ViewState {
       motion_previous: None,
       noise_frame: 0,
       occlusion: None,
+      indirect: None,
       water: LevelWater::default(),
       last_wind: None,
       foliage: FoliageWind::default(),

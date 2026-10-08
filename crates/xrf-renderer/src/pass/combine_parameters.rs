@@ -4,7 +4,7 @@ use crate::pass::exposure_head::ExposureHead;
 use crate::pass::lighting_uniform::LightingUniform;
 
 /// What the combine reads: the G-buffer and the light gathered over it, the material table, the frame's lighting and
-/// exposure, the ambient occlusion and the haze map.
+/// exposure, the ambient occlusion, the haze map and the indirect light.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 1)]
 pub struct CombineParameters<'a> {
@@ -30,4 +30,6 @@ pub struct CombineParameters<'a> {
   pub occlusion_target: GraphTexture,
   #[texture(d2, float)]
   pub haze_map: GraphTexture,
+  #[texture(d2, unfilterable)]
+  pub indirect_light: GraphTexture,
 }

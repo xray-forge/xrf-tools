@@ -15,3 +15,4 @@
 @group(1) @binding(10) var motion_target: texture_2d<f32>;
 @group(1) @binding(11) var bloom_target: texture_2d<f32>;
 @group(1) @binding(12) var bloom_sampler: sampler;
+@group(1) @binding(13) var indirect_light: texture_2d<f32>;

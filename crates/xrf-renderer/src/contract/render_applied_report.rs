@@ -4,6 +4,7 @@ use crate::contract::render_ambient_occlusion_quality::RenderAmbientOcclusionQua
 use crate::contract::render_antialiasing::RenderAntialiasing;
 use crate::contract::render_applied_environment::RenderAppliedEnvironment;
 use crate::contract::render_applied_grass::RenderAppliedGrass;
+use crate::contract::render_applied_indirect_light::RenderAppliedIndirectLight;
 use crate::contract::render_applied_shadows::RenderAppliedShadows;
 use crate::contract::render_lights_settings::RenderLightsSettings;
 use crate::contract::render_scale::RenderScale;
@@ -21,6 +22,8 @@ pub struct RenderAppliedReport {
   pub shadows: Option<RenderAppliedShadows>,
   /// The screen's ambient occlusion, or none where it is off or the scene is unlit.
   pub ambient_occlusion: Option<RenderAmbientOcclusionQuality>,
+  /// The screen-space indirect light, or none where it is not gathered.
+  pub indirect_light: Option<RenderAppliedIndirectLight>,
   /// The local lights, or none where they are off.
   pub lights: Option<RenderLightsSettings>,
   /// The grass planted, or none where none is.
