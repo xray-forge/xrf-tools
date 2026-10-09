@@ -204,8 +204,13 @@ impl RenderViewport {
     self.is_gone
   }
 
-  pub fn record_frame(&mut self, interval: Duration, cpu: Duration, phases: &FramePhases, groups: &[ExecutedGroup]) {
-    self.statistics.record(interval, cpu, phases, groups);
+  pub fn record_frame(
+    &mut self,
+    times: (Duration, Duration, Option<f32>),
+    phases: &FramePhases,
+    groups: &[ExecutedGroup],
+  ) {
+    self.statistics.record(times, phases, groups);
   }
 
   /// Reports the frames since the last report, once one is due: `texture_bytes` is what every viewport's textures hold
@@ -266,6 +271,8 @@ impl RenderViewport {
       frame_times,
       cpu_time,
       cpu_times,
+      gpu_time,
+      gpu_times,
       phases,
       groups,
     } = summary;
@@ -293,6 +300,8 @@ impl RenderViewport {
       frame_times,
       cpu_time,
       cpu_times,
+      gpu_time,
+      gpu_times,
       phases,
       groups,
       width: rect.width,

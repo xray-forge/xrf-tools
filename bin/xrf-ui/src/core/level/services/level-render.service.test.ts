@@ -61,6 +61,8 @@ const REPORT: RenderFrameReport = {
   frameTime: 6.25,
   frameTimeMax: 9,
   frameTimes: [6, 6.5, 9],
+  gpuTime: 5.5,
+  gpuTimes: [5, 5.5, 6],
   graph: null,
   groups: [{ finish: 0.4, name: "scene", record: 0.1 }],
   framesPerSecond: 160,

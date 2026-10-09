@@ -28,14 +28,12 @@ fn reports_only_once_due_and_drawn() {
   };
 
   statistics.record(
-    Duration::from_millis(10),
-    Duration::from_millis(1),
+    (Duration::from_millis(10), Duration::from_millis(1), Some(4.0)),
     &phases(2, 4),
     &groups(1, 2),
   );
   statistics.record(
-    Duration::from_millis(30),
-    Duration::from_millis(3),
+    (Duration::from_millis(30), Duration::from_millis(3), None),
     &phases(4, 8),
     &groups(3, 4),
   );
@@ -50,6 +48,9 @@ fn reports_only_once_due_and_drawn() {
   assert_eq!(summary.frame_times, vec![10.0, 30.0]);
   assert!((summary.cpu_time - 2.0).abs() < 1e-3);
   assert_eq!(summary.cpu_times, vec![1.0, 3.0]);
+  // A frame whose GPU time did not come back counts none.
+  assert_eq!(summary.gpu_time, Some(4.0));
+  assert_eq!(summary.gpu_times, vec![4.0]);
   // Each group is averaged over the frames, by name.
   assert_eq!(summary.groups.len(), 1);
   assert!((summary.groups[0].record - 2.0).abs() < 1e-3);
