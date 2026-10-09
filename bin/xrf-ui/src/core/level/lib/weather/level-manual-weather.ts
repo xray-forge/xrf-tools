@@ -1,4 +1,4 @@
-import { saturate, toDegrees, toDirection, toHeadingPitch, toRadians, TVector3 } from "@xrf/math";
+import { IPoint3, saturate, toDegrees, toDirection, toHeadingPitch, toPoint3, toRadians, TVector3 } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 
 import { WeatherDescriptor } from "@/core/ipc/types/xrf-environment";
@@ -247,9 +247,7 @@ export function readLevelManualWeather(stored: unknown): Nullable<ILevelManualWe
 export function toLevelManualSun(
   direction: Nullable<Vector3d>
 ): Nullable<Pick<ILevelManualWeather, "sunAltitude" | "sunLongitude">> {
-  const x: number = direction?.x ?? 0;
-  const y: number = direction?.y ?? 0;
-  const z: number = direction?.z ?? 0;
+  const { x, y, z }: IPoint3 = toPoint3(direction);
   const length: number = Math.hypot(x, y, z);
 
   if (!length) {

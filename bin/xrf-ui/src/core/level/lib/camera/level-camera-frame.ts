@@ -1,4 +1,4 @@
-import { IPoint3, toDegrees, toDirection, toRadians, toXraySpace } from "@xrf/math";
+import { IPoint3, toDegrees, toDirection, toRadians, toSphereFitDistance, toXraySpace } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 
 import { ILevelCamera } from "@/core/level/lib/camera/level-camera";
@@ -34,7 +34,7 @@ export function toLevelFramedGoTo(
   const centre: IPoint3 = toXraySpace(sphere.center);
   const distance: number = Math.max(
     FRAME_NEAREST,
-    (sphere.radius * FRAME_MARGIN) / Math.sin(toRadians(fieldOfView) / 2)
+    toSphereFitDistance(sphere.radius, toRadians(fieldOfView), FRAME_MARGIN)
   );
 
   return {

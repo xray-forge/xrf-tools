@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "description": "Numeric helpers every xrf-tools TypeScript member shares: clamp, saturate, wrap and mix, three-component vectors, rigid transforms, angles, series, and the engine's epsilons and its vector angles.",
+  "description": "Numeric helpers: clamp, saturate, wrap and mix, three-component vectors and named-axis points, rigid transforms, angles, series, the engine's epsilons and its vector angles, render space, sphere-fit distance, raw colours, a 2D pan-zoom camera and waveform peaks.",
   "exports": {
     ".": "./src/index.ts"
   },
@@ -15,6 +15,9 @@
     "test": "jest",
     "lint": "eslint . --max-warnings 0 --cache --cache-location target/eslint/cache.json --cache-strategy content",
     "format": "prettier --write --ignore-path ../../.prettierignore \"**/*.(js|cjs|mjs|ts|md)\" && pnpm run lint --fix"
+  },
+  "dependencies": {
+    "@xrf/types": "workspace:*"
   },
   "devDependencies": {
     "@jest/globals": "catalog:",

@@ -1,3 +1,4 @@
+import { toRawColor } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 
 import { ERenderOverlay, RenderOverlay } from "@/core/ipc/types/xrf-renderer";
@@ -5,7 +6,6 @@ import { ILevelBox, toBoxFloor, toBoxReach, toOriginReach } from "@/core/level/l
 import { ILevelRenderConfig } from "@/core/level/lib/render/level-render-config";
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { toNativeLines } from "@/core/render/lib/native/native-overlay";
-import { toRawColor } from "@/core/render/lib/scene/render-color";
 import { toRenderAxesLines, toRenderBoxLines, toRenderGridLines } from "@/core/render/lib/scene/render-grid-lines";
 import { toRenderGridStep } from "@/core/render/lib/scene/render-grid-step";
 

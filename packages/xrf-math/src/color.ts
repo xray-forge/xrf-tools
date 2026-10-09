@@ -8,3 +8,11 @@ export type TRawColor = [number, number, number];
 export function toRawColor(hex: number): TRawColor {
   return [((hex >> 16) & 0xff) / 255, ((hex >> 8) & 0xff) / 255, (hex & 0xff) / 255];
 }
+
+/**
+ * @param color - A colour as css writes it, `#rrggbb`.
+ * @returns The same as one number.
+ */
+export function parseHexColor(color: string): number {
+  return Number.parseInt(color.slice(1), 16);
+}
