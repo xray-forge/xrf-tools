@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 
+use crate::contract::render_backend::RenderBackend;
 use crate::contract::render_frame_phases::RenderFramePhases;
 use crate::contract::render_graph_report::RenderGraphReport;
 use crate::contract::render_lights_report::RenderLightsReport;
@@ -32,7 +33,7 @@ pub struct RenderFrameReport {
   /// And its height.
   pub render_height: u32,
   /// The graphics API drawn with.
-  pub backend: String,
+  pub backend: RenderBackend,
   /// The GPU drawn on.
   pub adapter: String,
   /// Whether its passes were timed on the GPU over the span.

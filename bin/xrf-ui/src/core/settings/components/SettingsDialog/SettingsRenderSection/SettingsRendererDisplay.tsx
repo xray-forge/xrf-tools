@@ -1,18 +1,32 @@
 import { useInjection } from "@wirestate/react";
-import { ReactElement } from "react";
+import { ReactElement, useEffect } from "react";
 
+import { RenderBackendFormRow } from "@/core/render/components/controls/RenderBackendFormRow";
 import { RenderPassTimingFormRow } from "@/core/render/components/controls/RenderPassTimingFormRow";
 import { RENDER_FRAME_RATE_OPTIONS, RENDER_RESOLUTION_OPTIONS } from "@/core/render/lib/features";
 import { SettingsService } from "@/core/settings/services/settings";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { ChoiceFormRow } from "@/core/ui/form/ChoiceFormRow";
 
-/** How often and how large every viewport draws, and whether its passes are timed: nothing a preset sets. */
+/**
+ * On which graphics API, how often and how large every viewport draws, and whether its passes are timed: nothing a
+ * preset sets.
+ */
 export function SettingsRendererDisplay(): ReactElement {
   const settingsService: SettingsService = useInjection(SettingsService);
 
+  useEffect(() => {
+    void settingsService.refreshRenderBackends();
+  }, [settingsService]);
+
   return (
     <div className={"flex flex-col gap-6"}>
+      <RenderBackendFormRow
+        value={settingsService.renderBackend}
+        availability={settingsService.renderBackends}
+        onChange={settingsService.setRenderBackend}
+      />
+
       <ChoiceFormRow
         label={"Frame rate limit"}
         description={

@@ -233,6 +233,24 @@ export type RenderBackdropSquares = {
   size: number | null;
 };
 
+/** The graphics API the renderer draws with. */
+export enum ERenderBackend {
+  D3D12 = "d3d12",
+  VULKAN = "vulkan",
+}
+
+/** Every `ERenderBackend` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type RenderBackend = `${ERenderBackend}`;
+
+/** Whether the renderer can draw with a backend on this machine: the GPU it would draw on, or why it cannot. */
+export type RenderBackendAvailability = {
+  backend: RenderBackend;
+  /** The adapter it would draw on, none where it cannot draw. */
+  adapter: string | null;
+  /** Why it cannot draw, none where it can. */
+  problem: string | null;
+};
+
 /** Which bloom glows over the frame's bright parts: the engine's, as the look sets it, or the enhanced one. */
 export enum ERenderBloomMode {
   /** The engine's own (`phase_bloom`), drawn as the look's bloom settings say. */
@@ -558,7 +576,7 @@ export type RenderFrameReport = {
   /** And its height. */
   renderHeight: number;
   /** The graphics API drawn with. */
-  backend: string;
+  backend: RenderBackend;
   /** The GPU drawn on. */
   adapter: string;
   /** Whether its passes were timed on the GPU over the span. */
@@ -1094,6 +1112,11 @@ export type RenderSettings = {
   isGpuTimed: boolean;
   /** Which of the frame graph's mechanisms the frames compile with. */
   graph: RenderGraphSettings;
+  /**
+   * The graphics API to draw with, none for the first that starts; one that cannot start falls back to the first that
+   * does, and `XRF_RENDER_BACKEND` overrides it.
+   */
+  backend: RenderBackend | null;
 };
 
 /**

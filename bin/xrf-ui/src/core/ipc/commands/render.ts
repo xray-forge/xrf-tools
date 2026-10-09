@@ -5,6 +5,8 @@ import { Channel } from "@tauri-apps/api/core";
 import { invoke as __TAURI_INVOKE } from "@/core/ipc/invoke";
 import { ETextureSurfaceAlpha, ETextureSurfaceShape, TextureSource, ViewportEvent } from "@/core/ipc/types/xrf-app";
 import {
+  RenderBackend,
+  RenderBackendAvailability,
   RenderFramePhases,
   RenderGraphReport,
   RenderLightsReport,
@@ -73,7 +75,7 @@ export const renderCommands = {
       /** And its height. */
       renderHeight: number;
       /** The graphics API drawn with. */
-      backend: string;
+      backend: RenderBackend;
       /** The GPU drawn on. */
       adapter: string;
       /** Whether its passes were timed on the GPU over the span. */
@@ -125,6 +127,11 @@ export const renderCommands = {
     __TAURI_INVOKE<Array<RenderTextureReport>>("plugin:render|describe_textures", { viewport }),
   /** Stop drawing a viewport; the GPU goes a few seconds after the last one. */
   detachViewport: (viewport: RenderViewportId) => __TAURI_INVOKE<void>("plugin:render|detach_viewport", { viewport }),
+  /**
+   * Say which graphics backends the renderer can draw with on this machine, and on which GPU, for the settings to offer
+   * only those; each is probed off the render thread.
+   */
+  listBackends: () => __TAURI_INVOKE<Array<RenderBackendAvailability>>("plugin:render|list_backends"),
   /**
    * Find a spawned object's bounding sphere in a viewport's level, centre then radius in renderer space; none until
    * its model is drawn.

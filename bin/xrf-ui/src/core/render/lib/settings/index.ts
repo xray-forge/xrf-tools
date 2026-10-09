@@ -1,3 +1,4 @@
+export * from "./render-backend-choice";
 export * from "./render-feature-choice";
 export * from "./render-feature-defaults";
 export * from "./render-feature-overrides";

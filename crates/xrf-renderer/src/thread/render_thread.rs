@@ -12,7 +12,7 @@ use xrf_renderer_core::{
 
 use crate::camera::camera_view::CameraView;
 use crate::context::gpu_context::GpuContext;
-use crate::context::render_backend::RenderBackend;
+use crate::contract::render_backend::RenderBackend;
 use crate::contract::render_frame_report::RenderFrameReport;
 use crate::contract::render_load_report::RenderLoadReport;
 use crate::contract::render_pick::RenderPick;
@@ -241,7 +241,23 @@ impl RenderThread {
           viewport.layout = Some(layout);
         }
       }
-      RenderCommand::Settings { settings } => self.settings = settings,
+      RenderCommand::Settings { settings } => {
+        // A changed choice of backend starts the GPU on it at once: a running one again unless it already runs on the
+        // one the choice prefers, a failed one without waiting out its retry; one that cannot start falls back as at
+        // any start.
+        if settings.backend != self.settings.backend {
+          let preferred: RenderBackend = RenderBackend::get_preferred(RenderBackend::get_asked(settings.backend));
+
+          if self.gpu.as_ref().is_some_and(|gpu| gpu.context.backend != preferred) {
+            log::info!("Restarting the renderer on {}", preferred.get_label());
+            self.release_gpu();
+          }
+
+          self.failure = None;
+        }
+
+        self.settings = settings;
+      }
       RenderCommand::Options { id, options } => {
         if let Some(viewport) = self.viewports.get_mut(&id) {
           viewport.options = *options;
@@ -380,28 +396,39 @@ impl RenderThread {
     self.scenes.get(&self.viewports.get(&viewport)?.shown.as_ref()?.0)
   }
 
-  /// Starts the GPU when there is none, or again after it was lost.
+  /// Lets the GPU go, with everything made on its device, for `ensure_gpu` to start it again.
+  fn release_gpu(&mut self) {
+    self.gpu = None;
+    // Its pool, bind groups and timer belong to the device let go.
+    self.runtime = None;
+
+    // Its scenes went with it; the world streams each in again, from the start, into scenes made again.
+    self.scenes.clear();
+    self
+      .world
+      .lock()
+      .unwrap_or_else(PoisonError::into_inner)
+      .restart_scenes();
+
+    for viewport in self.viewports.values_mut() {
+      viewport.binding = None;
+      viewport.shown = None;
+    }
+  }
+
+  /// Starts the GPU when there is none, or again after it was lost, on the backend asked for, else the first that
+  /// starts.
   fn ensure_gpu(&mut self) {
     if self.gpu.as_ref().is_some_and(|gpu| gpu.context.is_lost()) {
       log::warn!("Restarting the renderer after its GPU was lost");
-      self.gpu = None;
-      // Its pool, bind groups and timer belong to the device that was lost.
-      self.runtime = None;
-
-      // Its scenes went with it; the world's next posts go to scenes made again.
-      self.scenes.clear();
-
-      for viewport in self.viewports.values_mut() {
-        viewport.binding = None;
-        viewport.shown = None;
-      }
+      self.release_gpu();
     }
 
     if self.gpu.is_some() || self.failure.as_ref().is_some_and(|(_, when)| when.elapsed() < RETRY) {
       return;
     }
 
-    match GpuContext::create(RenderBackend::from_environment())
+    match GpuContext::create_preferred(RenderBackend::get_asked(self.settings.backend))
       .and_then(|context| GpuState::new(context, &self.shaders, &self.workers, self.bundle.as_ref()))
     {
       Ok(gpu) => {
@@ -467,12 +494,19 @@ impl RenderThread {
       );
     }
 
-    let feedback: HashMap<RenderSceneId, RenderSceneFeedback> = self
-      .scenes
-      .iter_mut()
-      .map(|(id, scene)| (*id, scene.take_feedback()))
-      .collect();
-    let scene_frames: HashMap<RenderSceneId, RenderSceneFrame> = world.advance_scenes(feedback);
+    // Without a GPU no scene could take in what the world posts, so the scenes wait for one rather than stream into
+    // nothing.
+    let scene_frames: HashMap<RenderSceneId, RenderSceneFrame> = if self.gpu.is_some() {
+      let feedback: HashMap<RenderSceneId, RenderSceneFeedback> = self
+        .scenes
+        .iter_mut()
+        .map(|(id, scene)| (*id, scene.take_feedback()))
+        .collect();
+
+      world.advance_scenes(feedback)
+    } else {
+      HashMap::new()
+    };
 
     drop(world);
 
@@ -574,7 +608,7 @@ impl RenderThread {
     };
     // Delivers what earlier frames' reads asked for, without waiting on this frame's work.
     let _ = gpu.context.device.poll(wgpu::PollType::Poll);
-    let (backend, adapter) = (gpu.context.backend.get_label(), gpu.context.adapter_name.as_str());
+    let (backend, adapter) = (gpu.context.backend, gpu.context.adapter_name.as_str());
 
     for viewport in self.viewports.values_mut() {
       viewport.answer_readbacks(&self.scenes);

@@ -2,6 +2,7 @@ import { Fragment, ReactElement, ReactNode } from "react";
 
 import { RenderFrameReport, RenderPassCost } from "@/core/ipc/types/xrf-renderer";
 import { RenderViewportOverlay, TRenderOverlayCorner } from "@/core/render/components/overlay/RenderViewportOverlay";
+import { abbreviateRenderBackend } from "@/core/render/lib/settings/render-backend-choice";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatMilliseconds } from "@/lib/format/duration";
 import { formatCount } from "@/lib/format/number";
@@ -13,6 +14,13 @@ function toSizeLine(report: RenderFrameReport): string {
     report.renderWidth > 0 && (report.renderWidth !== report.width || report.renderHeight !== report.height);
 
   return isUpscaled ? `${drawn} from ${report.renderWidth} × ${report.renderHeight}` : drawn;
+}
+
+/** The triangles drawn, after the graphics API's tag once a frame names the GPU it was drawn on. */
+function toDrawnLine(report: RenderFrameReport): string {
+  const triangles: string = `${formatCount(report.staticDraws.keptTriangles)} tris`;
+
+  return report.adapter ? `${abbreviateRenderBackend(report.backend)} · ${triangles}` : triangles;
 }
 
 /** What every pass cost together. */
@@ -42,7 +50,7 @@ export function RenderFrameReadout({
   return (
     <RenderViewportOverlay data-testid={dataTestId} id={id} className={className} corner={corner}>
       <div>{`${(report.framesPerSecond ?? 0).toFixed(0)} fps · ${formatMilliseconds(report.frameTime ?? 0)}`}</div>
-      <div>{`${formatCount(report.staticDraws.commands)} draws · ${formatCount(report.staticDraws.keptTriangles)} tris`}</div>
+      <div>{toDrawnLine(report)}</div>
       <div>{toSizeLine(report)}</div>
 
       {children}

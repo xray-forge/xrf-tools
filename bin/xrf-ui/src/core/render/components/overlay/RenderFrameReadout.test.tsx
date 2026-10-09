@@ -1,12 +1,13 @@
 import { describe, expect, it } from "@jest/globals";
 import { render } from "@testing-library/react";
 
-import { RenderFrameReport } from "@/core/ipc/types/xrf-renderer";
+import { ERenderBackend, RenderFrameReport } from "@/core/ipc/types/xrf-renderer";
 import { RenderFrameReadout } from "@/core/render/components/overlay/RenderFrameReadout";
 import { EMPTY_RENDER_FRAME_REPORT, EMPTY_RENDER_STATIC_REPORT } from "@/core/render/lib/native/native-frame-report";
 
 const REPORT: RenderFrameReport = {
   ...EMPTY_RENDER_FRAME_REPORT,
+  adapter: "Test GPU",
   frameTime: 6.25,
   framesPerSecond: 160,
   height: 1930,
@@ -21,7 +22,19 @@ describe("RenderFrameReadout", () => {
     const { getByText } = render(<RenderFrameReadout report={REPORT} />);
 
     expect(getByText("160 fps · 6.3 ms")).toBeInTheDocument();
-    expect(getByText("886 draws · 6,445,460 tris")).toBeInTheDocument();
+    expect(getByText("dx · 6,445,460 tris")).toBeInTheDocument();
+  });
+
+  it("tags the graphics API the frame was drawn with", () => {
+    const { getByText } = render(<RenderFrameReadout report={{ ...REPORT, backend: ERenderBackend.VULKAN }} />);
+
+    expect(getByText("vk · 6,445,460 tris")).toBeInTheDocument();
+  });
+
+  it("names no graphics API before a frame says which GPU it was drawn on", () => {
+    const { getByText } = render(<RenderFrameReadout report={{ ...REPORT, adapter: "" }} />);
+
+    expect(getByText("6,445,460 tris")).toBeInTheDocument();
   });
 
   it("says the size the frame was drawn at, and what it was upscaled from", () => {

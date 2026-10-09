@@ -6,7 +6,7 @@ use xrf_renderer_core::{ProxyAllocator, ProxyHandle};
 use xrf_visual::SectorSurface;
 
 use crate::context::gpu_context::GpuContext;
-use crate::context::render_backend::RenderBackend;
+use crate::contract::render_backend::RenderBackend;
 use crate::contract::render_selection_target::RenderSelectionTarget;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::scene::static_scene::static_layout::StaticLayout;

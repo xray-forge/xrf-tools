@@ -23,4 +23,7 @@ pub trait RenderWorld: Send {
     &mut self,
     feedback: HashMap<RenderSceneId, RenderSceneFeedback>,
   ) -> HashMap<RenderSceneId, RenderSceneFrame>;
+
+  /// Streams every scene in again from the start: the renderer let what it held of them go with its GPU.
+  fn restart_scenes(&mut self);
 }

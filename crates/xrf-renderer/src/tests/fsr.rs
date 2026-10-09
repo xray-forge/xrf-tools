@@ -3,7 +3,7 @@ use xrf_renderer_core::{FrameGraph, GraphBindings, GraphCompileOptions, GraphRun
 
 use crate::camera::camera_view::CameraView;
 use crate::context::gpu_context::GpuContext;
-use crate::context::render_backend::RenderBackend;
+use crate::contract::render_backend::RenderBackend;
 use crate::frame::fsr_targets::FsrTargets;
 use crate::frame::temporal_jitter::TemporalJitter;
 use crate::frame::view_target_handles::ViewTargetHandles;

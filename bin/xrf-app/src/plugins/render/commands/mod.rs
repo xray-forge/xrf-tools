@@ -6,6 +6,7 @@ pub mod describe_load;
 pub mod describe_problems;
 pub mod describe_textures;
 pub mod detach_viewport;
+pub mod list_backends;
 pub mod locate_spawn_object;
 pub mod measure_surfaces;
 pub mod pick;

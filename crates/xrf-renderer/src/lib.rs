@@ -23,6 +23,7 @@ pub use raw_window_handle;
 
 pub use crate::camera::camera_frame::CameraFrame;
 pub use crate::camera::camera_view::CameraView;
+pub use crate::context::backend_probe::probe_render_backends;
 pub use crate::contract::render_ambient_occlusion_method::RenderAmbientOcclusionMethod;
 pub use crate::contract::render_ambient_occlusion_quality::RenderAmbientOcclusionQuality;
 pub use crate::contract::render_ambient_occlusion_settings::RenderAmbientOcclusionSettings;
@@ -39,6 +40,8 @@ pub use crate::contract::render_applied_shadows::RenderAppliedShadows;
 pub use crate::contract::render_asset_lighting::RenderAssetLighting;
 pub use crate::contract::render_asset_preview::RenderAssetPreview;
 pub use crate::contract::render_backdrop_squares::RenderBackdropSquares;
+pub use crate::contract::render_backend::RenderBackend;
+pub use crate::contract::render_backend_availability::RenderBackendAvailability;
 pub use crate::contract::render_bloom_mode::RenderBloomMode;
 pub use crate::contract::render_bloom_settings::RenderBloomSettings;
 pub use crate::contract::render_capture::RenderCapture;

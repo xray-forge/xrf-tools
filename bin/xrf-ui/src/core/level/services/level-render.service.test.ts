@@ -53,7 +53,7 @@ const SPAN: WorldSurfaceSpan = { uMax: 2, uMin: 0, vMax: 1, vMin: -1 };
 
 const REPORT: RenderFrameReport = {
   adapter: "Test GPU",
-  backend: "D3D12",
+  backend: "d3d12",
   cpuTime: 0.8,
   frameTime: 6.25,
   frameTimeMax: 9,
@@ -162,6 +162,7 @@ describe("LevelRenderService", () => {
     expect(sent("configure")).toEqual([
       {
         settings: {
+          backend: null,
           frameRate: { isVsync: true, limit: null },
           graph: DEFAULT_RENDER_GRAPH_SETTINGS,
           isGpuTimed: false,

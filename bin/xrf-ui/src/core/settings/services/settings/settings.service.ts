@@ -2,7 +2,13 @@ import { Injectable, OnDeprovision, OnProvision, ProvisionId } from "@wirestate/
 import { BoundAction, Computed, Observable, RefObservable } from "@wirestate/mobx";
 import { Nullable } from "@xrf/types";
 
-import { RenderGraphSettings, RenderSettings } from "@/core/ipc/types/xrf-renderer";
+import { renderCommands } from "@/core/ipc/commands/render";
+import { RenderBackendAvailability, RenderGraphSettings, RenderSettings } from "@/core/ipc/types/xrf-renderer";
+import {
+  toRenderBackend,
+  toRenderBackendChoice,
+  TRenderBackendChoice,
+} from "@/core/render/lib/settings/render-backend-choice";
 import {
   IRenderFeatureChoice,
   mergeRenderFeatureOverrides,
@@ -25,6 +31,7 @@ import {
   DEV_MODE_STORAGE_KEY,
   FRAME_RATE_LIMIT_STORAGE_KEY,
   GPU_TIMED_STORAGE_KEY,
+  RENDER_BACKEND_STORAGE_KEY,
   RENDER_RESOLUTION_STORAGE_KEY,
   RENDERER_FEATURES_STORAGE_KEY,
   VSYNC_STORAGE_KEY,
@@ -74,6 +81,14 @@ export class SettingsService {
   @Observable()
   public isVsync: boolean = getLocalStorageValue(VSYNC_STORAGE_KEY) !== String(false);
 
+  /** Which graphics API every viewport asks the renderer for, by name or whichever works first. */
+  @Observable()
+  public renderBackend: TRenderBackendChoice = toRenderBackendChoice(getLocalStorageValue(RENDER_BACKEND_STORAGE_KEY));
+
+  /** What each graphics API can do on this machine, as the renderer last probed it; none before it was. */
+  @RefObservable()
+  public renderBackends: Nullable<ReadonlyArray<RenderBackendAvailability>> = null;
+
   @Observable()
   public renderResolution: ERenderResolution = toRenderResolution(getLocalStorageValue(RENDER_RESOLUTION_STORAGE_KEY));
 
@@ -87,10 +102,14 @@ export class SettingsService {
     return resolveRenderFeatures(this.rendererChoice);
   }
 
-  /** What the renderer draws every viewport with: how often, whether its passes are timed, and how its graph compiles. */
+  /**
+   * What the renderer draws every viewport with: how often, whether its passes are timed, how its graph compiles, and on
+   * which graphics API, the renderer falling back to the first that works where the one asked for does not.
+   */
   @Computed()
   public get renderSettings(): RenderSettings {
     return {
+      backend: toRenderBackend(this.renderBackend),
       frameRate: toRenderFrameRate(this.frameRateLimit, this.isVsync),
       graph: { ...this.graph },
       isGpuTimed: this.isGpuTimed,
@@ -160,6 +179,31 @@ export class SettingsService {
     this.log.info("Set frame graph:", graph);
 
     this.graph = { ...graph };
+  }
+
+  @BoundAction()
+  public setRenderBackend(choice: TRenderBackendChoice): void {
+    this.log.info("Set render backend:", choice);
+
+    this.renderBackend = choice;
+    setLocalStorageValue(RENDER_BACKEND_STORAGE_KEY, choice);
+  }
+
+  /** Asks the renderer which graphics APIs it can draw with here, for the settings to offer only those. */
+  @BoundAction()
+  public async refreshRenderBackends(): Promise<void> {
+    try {
+      const backends: Array<RenderBackendAvailability> = await renderCommands.listBackends();
+
+      this.setRenderBackends(backends);
+    } catch (error) {
+      this.log.warn("Failed to probe the graphics backends:", error);
+    }
+  }
+
+  @BoundAction()
+  private setRenderBackends(backends: ReadonlyArray<RenderBackendAvailability>): void {
+    this.renderBackends = backends;
   }
 
   @BoundAction()
