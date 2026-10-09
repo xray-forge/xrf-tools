@@ -120,9 +120,9 @@ export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings>
     radius: toNumber(0.5, 8),
   },
   isOcclusionCulled: FLAG,
-  // The renderer's own: a surface's share of reflection is its gloss by a Fresnel term by the intensity, held to one,
-  // and the shipped glosses lie under about 0.15, so four still leaves the most matte surfaces matte; past two hundred
-  // metres a ray leaves the frame long before its steps reach.
+  // The renderer's own: a surface's specular share of what it reflects is its material's by the intensity, one as a
+  // dielectric reflects, so four shows a wet road's trees four times as strong; past two hundred metres a ray leaves
+  // the frame long before its steps reach.
   // The renderer's own: puddles from none to most of flat terrain, a puddle's reflection at most a mirror's, the rain's
   // ripples up to twice their designed strength, and puddles drawn out to the widest grass's radius, which the level
   // surface they are placed on reaches past.

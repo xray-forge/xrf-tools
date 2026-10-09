@@ -6,7 +6,6 @@
 #import "common/occlusion"
 #import "common/reflection_trace"
 #import "common/reflection_end"
-#import "common/water_enhanced"
 
 // Stochastic screen-space reflections on the frame's surfaces, at the size the quality traces at, a pixel per `ratio`
 // by `ratio` of the frame. Each reflecting pixel's ray leaves in a direction drawn from its surface's GGX lobe (a
@@ -26,14 +25,13 @@
 // The sky's cubes, which a ray meeting nothing reflects.
 #import "generated/common/sky"
 
-// What a pixel reflects at most, of the environment or as the water over it, below which it is not traced; and the
-// roughness past which it reflects the environment alone.
+// The share of what it reflects a pixel's specular shows at most, below which it is not traced.
 const TRACE_FLOOR: f32 = 0.02;
-const ROUGHNESS_LIMIT: f32 = 0.6;
-// The baked hemisphere over which a mirror sees the sky its missed rays reflect: none indoors, all of it outdoors; and
-// the roughness over which they reflect the environment's blur instead.
-const SKY_SEEN: vec2<f32> = vec2<f32>(0.05, 0.35);
-const MIRROR_ROUGHNESS: vec2<f32> = vec2<f32>(0.02, 0.15);
+// The roughness under which a surface is a mirror, whose ray is the same every frame and holds no history.
+const MIRROR_ROUGHNESS: f32 = 0.02;
+// The share of the roughness's mip a missed ray reads the prefiltered sky at: its lobe spreads the rays already, and
+// the denoiser gathers them, so the cube supplies the other half of the blur.
+const MISS_BLUR: f32 = 0.5;
 // The luminance what a ray meets is held to, so a lamp's glass or a sunlit highlight does not flare what reflects it.
 const RADIANCE_LIMIT: f32 = 6.0;
 // Metres behind a surface a ray may lie, and what of its distance more, and still have met it: thin, so a leaf stays a
@@ -307,33 +305,33 @@ fn fs_trace(in: FullscreenVarying) -> TraceTargets {
 
   let albedo: vec4<f32> = textureLoad(albedo_target, texel, 0);
   let wet: vec4<f32> = textureLoad(wet_surface, texel, 0);
+  let roughness: f32 = traced_roughness(albedo.a, wet.g);
+
+  // Past the limit the surface reflects the prefiltered sky alone, which combine reads for it.
+  if (roughness > TRACED_ROUGHNESS_LIMIT) {
+    return trace_targets(UNTRACED, END_ROUGH);
+  }
+
   let normal: vec3<f32> = octahedral_decode(textureLoad(normal_target, texel, 0).xy);
   let position: vec3<f32> = camera_view_position(vec2<f32>(texel) + 0.5, depth);
   let toward: vec3<f32> = normalize(position);
   let facing: f32 = dot(normal, -toward);
-  let weight: f32 = hmodel_environment_weight(lighting, material_lut, lut_sampler, albedo.a,
-    mix(1.0, material.x, camera.switches.z), world_direction(reflect(toward, normal)), world_direction(toward),
-    material.z);
-  let slice: f32 = reflection_slice(vec3<f32>(weight), facing, albedo.a, wet.g, reflection.intensity).x;
+  let brdf: vec3<f32> = environment_brdf(reflectance_head_on(albedo.rgb, albedo.a, wet.r), roughness, facing) *
+    reflection.intensity;
 
   // Traced only where combine would show enough of it.
-  if (max(slice, coat_share(wet.r, facing, reflection.intensity)) <= TRACE_FLOOR) {
+  if (max(max(brdf.r, brdf.g), brdf.b) <= TRACE_FLOOR) {
     return trace_targets(UNTRACED, END_UNTRACED);
   }
 
-  let roughness: f32 = traced_roughness(albedo.a, wet.g);
   let direction: vec3<f32> = reflected_direction(toward, normal, roughness, pixel_numbers(pixel));
-  // What a ray meeting nothing reflects: the environment `hmodel` reflects, blurred; for a mirror, the sky as drawn,
-  // clouds and all, where the surface sees it.
-  let blurred: vec3<f32> = hmodel_reflected_environment(lighting, sky_environment_0, sky_environment_1, sky_clamp,
-    world_direction(direction));
-  let drawn: vec3<f32> = enhanced_sky(world_direction(direction), lighting, sky_cube_0, sky_cube_1, sky_clamp) *
-    smoothstep(SKY_SEEN.x, SKY_SEEN.y, material.x);
-  let sky: vec3<f32> = mix(drawn, blurred, smoothstep(MIRROR_ROUGHNESS.x, MIRROR_ROUGHNESS.y, roughness));
-
-  if (roughness > ROUGHNESS_LIMIT) {
-    return trace_targets(vec4<f32>(sky, MISSED_LENGTH), END_ROUGH);
-  }
+  // What a ray meeting nothing reflects: the sky prefiltered part way to the surface's roughness along the ray's own
+  // direction, seen as the surface's hemisphere lets it.
+  let searched: vec2<i32> = min(texel / 2, vec2<i32>(textureDimensions(occlusion_target)) - 1);
+  let visible: f32 = select(1.0, textureLoad(occlusion_target, searched, 0).x, lighting.params.w > 0.5);
+  let occlusion: f32 = mix(1.0, material.x, camera.switches.z) * visible;
+  let sky: vec3<f32> = prefiltered_sky(sky_prefiltered, sky_clamp, world_direction(direction), roughness * MISS_BLUR) *
+    specular_occlusion(facing, occlusion, roughness);
 
   // The ray's end, the distance traced out, or short of the near plane where it comes back towards the camera: its
   // line across the screen is as long as its reach, so a reach as short as the surface is near cut a puddle's
@@ -480,7 +478,7 @@ fn fs_reproject(in: FullscreenVarying) -> ReprojectedTargets {
     mix(0.1, 1.0, smoothstep(BLURRED_ROUGHNESS.x, BLURRED_ROUGHNESS.y, surface.roughness)));
 
   // A mirror's ray is the same every frame, so its history would only lag behind it.
-  if (reflection.has_history < 0.5 || surface.roughness < MIRROR_ROUGHNESS.x) {
+  if (reflection.has_history < 0.5 || surface.roughness < MIRROR_ROUGHNESS) {
     return dropped;
   }
 
@@ -616,7 +614,7 @@ fn fs_prefilter(in: FullscreenVarying) -> @location(0) vec4<f32> {
   let spread: f32 = textureLoad(variance, vec2<i32>(pixel), 0).x;
   let surface: TracedSurface = traced_surface(pixel);
 
-  if (spread <= 0.0 || surface.roughness < 1e-4 || surface.roughness > ROUGHNESS_LIMIT) {
+  if (spread <= 0.0 || surface.roughness < 1e-4 || surface.roughness > TRACED_ROUGHNESS_LIMIT) {
     return vec4<f32>(centre.rgb, max(spread, 0.0));
   }
 

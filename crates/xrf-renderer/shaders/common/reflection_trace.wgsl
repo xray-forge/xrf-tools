@@ -4,9 +4,9 @@
 // Screen-space reflection rays: a reflected direction drawn from a surface's GGX lobe, walked across the screen up and
 // down a pyramid of the frame's nearest depth, skipping whole cells it passes over and stepping down where it meets a
 // surface, until it stands behind one texel's surface at the finest level, met within a thin thickness or uncertain
-// beyond it; and how much of what a surface reflects a traced reflection shows, of its own reflection's slice and as a
-// puddle's clear coat of water, which combine blends and the trace gates by alike. The pyramid is passed in, so each
-// pass binds it where it likes.
+// beyond it; and the specular a surface shows of what it reflects on Enhanced, the split-sum environment BRDF over
+// its reflectance head on and roughness, which combine weighs the reflection by and the trace gates by alike, with the
+// prefiltered sky it reads where a ray meets nothing. The pyramid is passed in, so each pass binds it where it likes.
 
 // Water's reflectance head on, from its index of refraction of 1.33, and a dry dielectric's.
 const COAT_F0: f32 = 0.02;
@@ -192,14 +192,13 @@ fn ray_walk(pyramid: texture_2d<f32>, origin: vec3<f32>, direction: vec3<f32>, c
   return RayWalk(position, false, END_SPENT, 0.0);
 }
 
-// The roughness over which a surface's own reflection is no longer sharpened by a traced one: rough wet ground keeps
-// the engine's blurred sheen, steady as the camera moves, and only near-mirrors reflect what stands about them.
-const SHARP_ROUGHNESS: vec2<f32> = vec2<f32>(0.06, 0.2);
-
-// How much of a surface's own reflection a traced one sharpens, by its roughness.
-fn sharpened(roughness: f32) -> f32 {
-  return 1.0 - smoothstep(SHARP_ROUGHNESS.x, SHARP_ROUGHNESS.y, roughness);
-}
+// The gloss past which a surface's reflectance head on rises from a dielectric's towards its own colour: X-Ray's
+// glossiest surfaces are its metals and glass, and its data holds no metalness.
+const METAL_GLOSS: vec2<f32> = vec2<f32>(0.6, 0.9);
+// The roughness past which a surface is not traced and reflects the prefiltered sky alone.
+const TRACED_ROUGHNESS_LIMIT: f32 = 0.5;
+// Mips of the prefiltered sky cube past its first, the last at roughness one.
+const SKY_PREFILTER_MIPS: f32 = 5.0;
 
 // How a surface's lobe is traced: a mirror wherever a puddle stands, its water traced along one ray and kept unblurred
 // by the denoiser, its rim fading by how much of it there is rather than roughening; its own roughness elsewhere.
@@ -207,29 +206,36 @@ fn traced_roughness(gloss: f32, puddle: f32) -> f32 {
   return select(reflection_roughness(gloss), 0.0, puddle > PUDDLE_LEAST);
 }
 
-// How much a dielectric reflects at a cosine of the view to its normal: Schlick's Fresnel from its reflectance head
-// on, its grazing peak lowered by the roughness (Fdez-Agüera's), so a rough surface never turns to a mirror.
-fn dielectric_fresnel(facing: f32, roughness: f32, head_on: f32) -> f32 {
-  let away: f32 = 1.0 - saturate(facing);
-  let away_squared: f32 = away * away;
+// A surface's reflectance head on: a dielectric's, lifted towards its own colour as its gloss passes the metals', and
+// water's over the share of it a puddle's clear coat covers.
+fn reflectance_head_on(albedo: vec3<f32>, gloss: f32, coat: f32) -> vec3<f32> {
+  let metal: f32 = smoothstep(METAL_GLOSS.x, METAL_GLOSS.y, gloss);
 
-  return head_on + (max(1.0 - roughness, head_on) - head_on) * away_squared * away_squared * away;
+  return mix(mix(vec3<f32>(DIELECTRIC_F0), albedo, metal), vec3<f32>(COAT_F0), saturate(coat));
 }
 
-// How much a surface's own reflection a traced one replaces, of its weight: no more than a dielectric of its roughness
-// reflects at that cosine of the view to its normal, by the intensity, faded out as it roughens and none under a puddle,
-// whose coat reflects instead. The rest keeps the environment the surface reflects.
-fn reflection_slice(weight: vec3<f32>, facing: f32, gloss: f32, puddle: f32, intensity: f32) -> vec3<f32> {
-  let roughness: f32 = reflection_roughness(gloss);
+// What share of the light arriving along a surface's reflection it sends to the eye, at a cosine of the view to its
+// normal: the split-sum environment BRDF, Karis's fit of the DFG term over its reflectance head on and its roughness,
+// which holds the Fresnel's rise at grazing angles and its fall with roughness both.
+fn environment_brdf(head_on: vec3<f32>, roughness: f32, facing: f32) -> vec3<f32> {
+  let r: vec4<f32> = roughness * vec4<f32>(-1.0, -0.0275, -0.572, 0.022) + vec4<f32>(1.0, 0.0425, 1.04, -0.04);
+  let a004: f32 = min(r.x * r.x, exp2(-9.28 * saturate(facing))) * r.x + r.y;
+  let ab: vec2<f32> = vec2<f32>(-1.04, 1.04) * a004 + r.zw;
 
-  return min(weight, vec3<f32>(dielectric_fresnel(facing, roughness, DIELECTRIC_F0) * intensity)) *
-    (1.0 - saturate(puddle)) * sharpened(roughness);
+  return head_on * ab.x + ab.y;
 }
 
-// How much of what a puddle's clear coat of water covers reflects, at a cosine of the view to its normal: the coat's
-// coverage by water's Fresnel, a mirror's, by the intensity.
-fn coat_share(coverage: f32, facing: f32, intensity: f32) -> f32 {
-  return saturate(coverage * dielectric_fresnel(facing, 0.0, COAT_F0) * intensity);
+// How much of the sky a surface's reflection sees past what stands about it, from how much of the hemisphere lights the
+// surface (its baked and its screen occlusion together) at its roughness and facing: Lagarde and de Rousiers', a rough
+// surface's wide lobe occluded as its hemisphere is, a mirror's only where the view grazes.
+fn specular_occlusion(facing: f32, occlusion: f32, roughness: f32) -> f32 {
+  return saturate(pow(saturate(facing) + occlusion, exp2(-16.0 * roughness - 1.0)) - 1.0 + occlusion);
+}
+
+// The sky a reflection reads where it meets nothing, along a renderer-space direction at a roughness: the prefiltered
+// cube at the mip the roughness names.
+fn prefiltered_sky(cube: texture_cube<f32>, cube_sampler: sampler, direction: vec3<f32>, roughness: f32) -> vec3<f32> {
+  return textureSampleLevel(cube, cube_sampler, direction, saturate(roughness) * SKY_PREFILTER_MIPS).rgb;
 }
 
 // A surface's roughness for its reflection's lobe, from the engine's gloss: a puddle's 0.6 is nearly a mirror, rain's

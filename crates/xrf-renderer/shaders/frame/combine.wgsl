@@ -72,12 +72,6 @@ fn shaded_terms(albedo: vec4<f32>, light: vec4<f32>, normal: vec3<f32>, position
     light, world_direction(normal), world_direction(normalize(position)), slice, occlusion, visible);
 }
 
-// The most a surface's reflection of the environment outshines the light it shows of its own, with the enhanced
-// reflections: Anomaly's rain sheen rides on the lit albedo by thirty times the rain, and wet metal under a lamp at
-// night turns into one.
-const SHEEN_LIMIT: f32 = 4.0;
-const SHEEN_LUMINANCE: vec3<f32> = vec3<f32>(0.2126, 0.7152, 0.0722);
-
 // Metres the rain's ripples shift what the wet ground reflects, as the game's water shifts its own; the most pixels
 // they shift it, and the metres over which the shift fades out, so a far puddle's reflection does not crawl.
 const RIPPLE_SHIFT: f32 = 0.12;
@@ -173,34 +167,38 @@ fn fs_combine(in: FullscreenVarying) -> CombineOutput {
     shaded += albedo.rgb * upsampled_light(indirect_light, floor(in.clip.xy), -position.z);
   }
 
-  // What the surface reflects: the traced reflection where there is one, shifted by the rain's ripples, the
-  // environment `hmodel` reflects otherwise. The engine's reflection keeps its whole weight, the wet look as the engine
-  // tuned it; the traced one only sharpens the slice of it a dielectric would reflect, never under a puddle, so where
-  // nothing is traced the frame is the engine's. A puddle's clear coat of water reflects it over all of that by water's
-  // Fresnel. All before the fog, which lies between the camera and both alike.
+  // What the surface reflects, before the fog, which lies between the camera and it alike. Engine: the environment
+  // `hmodel` reflects by the engine's own weight. Enhanced: a physically based specular in its place, the split-sum
+  // environment BRDF over the surface's reflectance head on (a dielectric's, a metal's by its gloss, water's under a
+  // puddle's coat) and roughness, times the intensity, over the traced reflection where there is one (shifted by the
+  // rain's ripples) and the prefiltered sky, seen as the hemisphere lets it, where there is none.
   let wet: vec4<f32> = textureLoad(wet_surface, texel, 0);
-  var reflected: vec3<f32> = terms.environment;
 
   if (lighting.reflections.x > 0.5) {
+    // The puddle's ripple tilts what its water reflects across it a little, so it is never one even plate.
+    let facing: f32 = saturate(dot(normal, -normalize(position)) +
+      dot(wet.ba, world_direction(normalize(position)).xz) * 0.1);
+    let roughness: f32 = traced_roughness(albedo.a, wet.g);
+    let head_on: vec3<f32> = reflectance_head_on(albedo.rgb, albedo.a, wet.r);
+    let brdf: vec3<f32> = environment_brdf(head_on, roughness, facing) * lighting.reflections.z;
     let at: vec2<f32> = rippled_pixel(floor(in.clip.xy), position, wet.ba);
     let traced: vec4<f32> = upsampled_reflection(reflections, depth_target, material_target, at, -position.z,
       lighting.reflections.y);
+    var radiance: vec3<f32>;
 
-    reflected = select(reflected, max(traced.rgb, vec3<f32>(0.0)), traced.a >= 0.0);
+    if (traced.a >= 0.0) {
+      radiance = max(traced.rgb, vec3<f32>(0.0));
+    } else {
+      let reflected: vec3<f32> = world_direction(reflect(normalize(position), normal));
+
+      radiance = prefiltered_sky(sky_prefiltered, sky_clamp, reflected, roughness) *
+        specular_occlusion(facing, occlusion * visible, roughness);
+    }
+
+    shaded += radiance * brdf;
+  } else {
+    shaded += terms.environment * terms.weight;
   }
-
-  // The traced reflections' intensity scales the coat too; without them, water reflects as it is.
-  let intensity: f32 = select(1.0, lighting.reflections.z, lighting.reflections.x > 0.5);
-  // The puddle's ripple tilts what its water reflects across it a little, so it is never one even plate.
-  let facing: f32 = saturate(dot(normal, -normalize(position)) +
-    dot(wet.ba, world_direction(normalize(position)).xz) * 0.1);
-  let sheen: f32 = dot(terms.environment * terms.weight, SHEEN_LUMINANCE);
-  let weight: vec3<f32> = select(terms.weight, terms.weight * min(1.0, SHEEN_LIMIT * dot(terms.lit, SHEEN_LUMINANCE) /
-    max(sheen, 1e-4)), lighting.reflections.x > 0.5);
-  let slice: vec3<f32> = reflection_slice(weight, facing, albedo.a, wet.g, intensity);
-
-  shaded += terms.environment * weight + (reflected - terms.environment) * slice;
-  shaded = mix(shaded, reflected, coat_share(wet.r, facing, intensity));
 
   // The engine fogs towards `fog_color` before the tonemap, then fades into the sky itself by the fog squared, both
   // parts alike (`skyblend` in either's alpha). The enhanced fog thickens the first and tints it below its height;
