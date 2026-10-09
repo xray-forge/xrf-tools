@@ -7881,6 +7881,7 @@ dependencies = [
  "image",
  "log",
  "naga",
+ "notify",
  "pollster",
  "profiling",
  "raw-window-handle",

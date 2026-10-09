@@ -60,6 +60,7 @@ use crate::scene::level::scene_view::SceneView;
 use crate::scene::static_scene::static_selection::StaticSelection;
 use crate::scene::texture::sky_texture_requests::SkyTextureRequests;
 use crate::shader::shader_library::ShaderLibrary;
+use crate::shader::shader_watcher::ShaderWatcher;
 use crate::thread::gpu_state::GpuState;
 use crate::thread::render_command::RenderCommand;
 use crate::thread::render_link::RenderLink;
@@ -88,9 +89,6 @@ const RETRY: Duration = Duration::from_secs(2);
 
 /// How often the textures no scene samples any more are freed.
 const TEXTURE_SWEEP: Duration = Duration::from_secs(2);
-
-/// How often a debug build looks for edited shader files.
-const SHADER_RELOAD: Duration = Duration::from_millis(500);
 
 /// How often the GPU allocator is asked what it holds, for the viewports' memory reports.
 const ALLOCATOR_REPORT_EVERY: Duration = Duration::from_millis(500);
@@ -153,7 +151,8 @@ pub struct RenderThread {
   frame_due: Option<Instant>,
   /// When each window last presented, which is what a frame's interval is measured from.
   last_present: HashMap<u64, Instant>,
-  shaders_checked: Instant,
+  /// Tells a debug build when a shader file was written, which it reads the shaders again for.
+  shader_watcher: ShaderWatcher,
   /// When the textures no scene samples were last freed.
   textures_swept: Instant,
 }
@@ -194,7 +193,7 @@ impl RenderThread {
       last_frame: now,
       frame_due: None,
       last_present: HashMap::new(),
-      shaders_checked: now,
+      shader_watcher: ShaderWatcher::new(&ShaderLibrary::get_source_root()),
       textures_swept: now,
     }
   }
@@ -610,14 +609,11 @@ impl RenderThread {
 
     drop(world);
 
-    if cfg!(debug_assertions) && now.duration_since(self.shaders_checked) >= SHADER_RELOAD {
-      self.shaders_checked = now;
-
-      if self.shaders.reload()
-        && let Some(gpu) = &mut self.gpu
-      {
-        gpu.refresh(&self.shaders);
-      }
+    if self.shader_watcher.take_changed()
+      && self.shaders.reload()
+      && let Some(gpu) = &mut self.gpu
+    {
+      gpu.refresh(&self.shaders);
     }
 
     // The scenes take in what the world posted, whether or not any window can be drawn this frame, so no post is lost.
