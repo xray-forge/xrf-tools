@@ -2,6 +2,7 @@ use std::path::Path;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
+use xrf_dlss::{Dlss, DlssInstance};
 use xrf_error::{XrfError, XrfResult};
 
 use crate::context::gpu_requirements::{
@@ -21,6 +22,8 @@ pub struct GpuContext {
   pub adapter_name: String,
   /// The compiler D3D12 turns shaders into DXIL with: DXC where its library loaded, FXC otherwise; none on Vulkan.
   pub shader_compiler: Option<&'static str>,
+  /// DLSS where the build, the backend and the GPU all have it: Vulkan on an RTX GPU.
+  pub dlss: Option<Dlss>,
   lost: Arc<AtomicBool>,
 }
 
@@ -28,19 +31,22 @@ impl GpuContext {
   /// Where the renderer's bundle keeps DXC's library, which D3D12 compiles shaders with for shader model 6 (ray
   /// queries among what it brings); FXC, which Windows carries, stops at 5.1.
   pub const DXC_LIBRARY: &'static str = "dxc/dxcompiler.dll";
+  /// Where the renderer's bundle keeps DLSS's runtime library, where a build with DLSS ships it.
+  pub const DLSS_DIRECTORY: &'static str = "dlss";
   /// Bytes of each memory block the allocator places resources in, a larger resource taking a block of its own: small,
   /// so the holes textures streaming in and out leave in the blocks hold little.
   pub const MEMORY_BLOCK: u64 = 16 * 1024 * 1024;
 
-  /// Starts the GPU on a hardware adapter of the backend asked for, D3D12 compiling with the DXC library at `dxc` where
-  /// it loads.
+  /// Starts the GPU on a hardware adapter of the backend asked for, D3D12 compiling with the DXC library at the first of
+  /// `libraries` where it loads, and Vulkan loading DLSS's runtime library from the directory at the second where the
+  /// build has DLSS.
   ///
   /// # Errors
   ///
   /// Returns an error when no adapter of that backend exists, when it lacks a required feature, or when its device
   /// cannot be created.
-  pub fn create(backend: RenderBackend, dxc: Option<&Path>) -> XrfResult<Self> {
-    Self::create_with(backend, false, dxc)
+  pub fn create(backend: RenderBackend, libraries: (Option<&Path>, Option<&Path>)) -> XrfResult<Self> {
+    Self::create_with(backend, false, libraries)
   }
 
   /// Starts the GPU on the first backend of `RenderBackend::list_tried` that starts: the one asked for, else the first
@@ -49,11 +55,11 @@ impl GpuContext {
   /// # Errors
   ///
   /// Returns an error, every backend's reason in it, when none starts.
-  pub fn create_preferred(asked: Option<RenderBackend>, dxc: Option<&Path>) -> XrfResult<Self> {
+  pub fn create_preferred(asked: Option<RenderBackend>, libraries: (Option<&Path>, Option<&Path>)) -> XrfResult<Self> {
     let mut problems: Vec<String> = Vec::new();
 
     for backend in RenderBackend::list_tried(asked) {
-      match Self::create(backend, dxc) {
+      match Self::create(backend, libraries) {
         Ok(context) => {
           if !problems.is_empty() {
             log::warn!("Renderer fell back to {}: {}", backend.get_label(), problems.join("; "));
@@ -74,7 +80,9 @@ impl GpuContext {
   /// Whether the renderer can draw with a backend here: a hardware adapter of it with every feature it needs, without
   /// starting a device on it.
   pub fn probe(backend: RenderBackend) -> RenderBackendAvailability {
-    match Self::request_adapter(backend, false, None).and_then(|(_, adapter)| Self::check_adapter(&adapter)) {
+    match Self::request_adapter(backend, (false, false), (None, None))
+      .and_then(|(_, adapter)| Self::check_adapter(&adapter))
+    {
       Ok(info) => RenderBackendAvailability {
         backend,
         adapter: Some(info.name),
@@ -95,7 +103,7 @@ impl GpuContext {
   ///
   /// Returns an error when neither a hardware nor a software adapter can be had with the required features.
   pub fn create_headless(backend: RenderBackend, dxc: Option<&Path>) -> XrfResult<Self> {
-    Self::create_with(backend, false, dxc).or_else(|_| Self::create_with(backend, true, dxc))
+    Self::create_with(backend, false, (dxc, None)).or_else(|_| Self::create_with(backend, true, (dxc, None)))
   }
 
   /// Whether the device was lost, after which nothing it made draws again.
@@ -104,12 +112,13 @@ impl GpuContext {
   }
 
   /// An instance of a backend and its high-performance adapter, a software one where `is_fallback`; D3D12 compiling
-  /// with the DXC library at `dxc`, or FXC where none is given.
+  /// with the DXC library at `dxc`, or FXC where none is given; ready for DLSS where `is_upscaled`, loading its runtime
+  /// library from `dlss` where the application ships one.
   fn request_adapter(
     backend: RenderBackend,
-    is_fallback: bool,
-    dxc: Option<&Path>,
-  ) -> XrfResult<(wgpu::Instance, wgpu::Adapter)> {
+    (is_fallback, is_upscaled): (bool, bool),
+    (dxc, dlss): (Option<&Path>, Option<&Path>),
+  ) -> XrfResult<(DlssInstance, wgpu::Adapter)> {
     let mut descriptor: wgpu::InstanceDescriptor = wgpu::InstanceDescriptor::new_without_display_handle();
 
     descriptor.backends = backend.to_backends();
@@ -123,8 +132,8 @@ impl GpuContext {
     // rest of wgpu's switches override it either way.
     descriptor.flags = wgpu::InstanceFlags::from_build_config().with_env();
 
-    let instance: wgpu::Instance = wgpu::Instance::new(descriptor);
-    let adapter: wgpu::Adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
+    let instance: DlssInstance = DlssInstance::new(descriptor, is_upscaled, dlss);
+    let adapter: wgpu::Adapter = pollster::block_on(instance.instance.request_adapter(&wgpu::RequestAdapterOptions {
       power_preference: wgpu::PowerPreference::HighPerformance,
       compatible_surface: None,
       force_fallback_adapter: is_fallback,
@@ -150,15 +159,20 @@ impl GpuContext {
     }
   }
 
-  fn create_with(backend: RenderBackend, is_fallback: bool, dxc: Option<&Path>) -> XrfResult<Self> {
+  fn create_with(
+    backend: RenderBackend,
+    is_fallback: bool,
+    (dxc, dlss): (Option<&Path>, Option<&Path>),
+  ) -> XrfResult<Self> {
     let dxc: Option<&Path> = dxc.filter(|_| backend == RenderBackend::D3d12);
     // A DXC library that does not load fails the instance's D3D12 backend, so FXC is tried in its place.
-    let (instance, adapter, shader_compiler) = match Self::request_adapter(backend, is_fallback, dxc) {
+    let upscaled: (bool, bool) = (is_fallback, !is_fallback);
+    let (instance, adapter, shader_compiler) = match Self::request_adapter(backend, upscaled, (dxc, dlss)) {
       Ok((instance, adapter)) => (instance, adapter, dxc.map_or("FXC", |_| "DXC")),
       Err(error) if dxc.is_some() => {
         log::warn!("D3D12 compiles with FXC, the DXC library not loading: {error}");
 
-        let (instance, adapter) = Self::request_adapter(backend, is_fallback, None)?;
+        let (instance, adapter) = Self::request_adapter(backend, upscaled, (None, dlss))?;
 
         (instance, adapter, "FXC")
       }
@@ -168,23 +182,27 @@ impl GpuContext {
     let info: wgpu::AdapterInfo = Self::check_adapter(&adapter)?;
 
     let ray_query: wgpu::Features = get_ray_query_features(adapter.features());
-    let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
-      label: Some("xrf-renderer"),
-      required_features: REQUIRED_FEATURES | (OPTIONAL_FEATURES & adapter.features()) | ray_query,
-      required_limits: adapter.limits(),
-      // SAFETY: only ray queries are asked for of the experimental features, and only where the adapter has them;
-      // wgpu's own validation stands between them and the driver as for any other feature.
-      experimental_features: if ray_query.is_empty() {
-        wgpu::ExperimentalFeatures::disabled()
-      } else {
-        unsafe { wgpu::ExperimentalFeatures::enabled() }
-      },
-      memory_hints: wgpu::MemoryHints::Manual {
-        suballocated_device_memory_block_size: Self::MEMORY_BLOCK..Self::MEMORY_BLOCK,
-      },
-      ..Default::default()
-    }))
-    .map_err(|error| XrfError::new_unexpected_error(format!("Failed to start the GPU '{}': {error}", info.name)))?;
+    let (device, queue, dlss) = instance
+      .request_device(
+        &adapter,
+        &wgpu::DeviceDescriptor {
+          label: Some("xrf-renderer"),
+          required_features: REQUIRED_FEATURES | (OPTIONAL_FEATURES & adapter.features()) | ray_query,
+          required_limits: adapter.limits(),
+          // SAFETY: only ray queries are asked for of the experimental features, and only where the adapter has them;
+          // wgpu's own validation stands between them and the driver as for any other feature.
+          experimental_features: if ray_query.is_empty() {
+            wgpu::ExperimentalFeatures::disabled()
+          } else {
+            unsafe { wgpu::ExperimentalFeatures::enabled() }
+          },
+          memory_hints: wgpu::MemoryHints::Manual {
+            suballocated_device_memory_block_size: Self::MEMORY_BLOCK..Self::MEMORY_BLOCK,
+          },
+          ..Default::default()
+        },
+      )
+      .map_err(|error| XrfError::new_unexpected_error(format!("Failed to start the GPU '{}': {error}", info.name)))?;
 
     let lost: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
     let lost_flag: Arc<AtomicBool> = Arc::clone(&lost);
@@ -198,7 +216,7 @@ impl GpuContext {
     }));
 
     log::info!(
-      "Renderer started on '{}' ({}{}, {:?}, driver {} {}), {}",
+      "Renderer started on '{}' ({}{}, {:?}, driver {} {}), {}{}",
       info.name,
       backend.get_label(),
       shader_compiler.map(|it| format!(" with {it}")).unwrap_or_default(),
@@ -209,17 +227,19 @@ impl GpuContext {
         "tracing rays"
       } else {
         "without ray queries"
-      }
+      },
+      if dlss.is_some() { ", with DLSS" } else { "" }
     );
 
     Ok(Self {
       adapter_name: info.name,
-      instance,
+      instance: instance.instance,
       adapter,
       device,
       queue,
       backend,
       shader_compiler,
+      dlss,
       lost,
     })
   }

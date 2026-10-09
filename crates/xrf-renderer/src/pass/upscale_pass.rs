@@ -9,7 +9,7 @@ use crate::pass::upscale_parameters::UpscaleParameters;
 pub struct UpscalePass {
   layout: wgpu::BindGroupLayout,
   /// EASU's, then RCAS's.
-  pipelines: [wgpu::RenderPipeline; 2],
+  pipelines: [wgpu::RenderPipeline; 3],
   generation: u64,
 }
 
@@ -41,7 +41,14 @@ impl UpscalePass {
     }
   }
 
-  /// Draws EASU's upscale (`stage` 0) or RCAS's sharpening (1) into the target the pass draws into.
+  /// EASU's upscale, of a frame smaller than the viewport.
+  pub const EASU: usize = 0;
+  /// RCAS's sharpening of an upscaled frame.
+  pub const RCAS: usize = 1;
+  /// The area-averaged downscale of a frame larger than the viewport.
+  pub const DOWNSAMPLE: usize = 2;
+
+  /// Draws a stage (`EASU`, `RCAS` or `DOWNSAMPLE`) into the target the pass draws into.
   pub fn record(&self, context: &mut RasterContext<'_>, stage: usize, parameters: &UpscaleParameters) {
     context.get_pass().set_pipeline(&self.pipelines[stage]);
     context.bind(parameters);
@@ -52,11 +59,11 @@ impl UpscalePass {
     device: &wgpu::Device,
     source: PipelineSource<'_>,
     layout: &wgpu::BindGroupLayout,
-  ) -> XrfResult<[wgpu::RenderPipeline; 2]> {
+  ) -> XrfResult<[wgpu::RenderPipeline; 3]> {
     let create = |fragment: &str| {
       create_fullscreen_pipeline(device, source, "frame/upscale", fragment, &[Some(layout)], Self::FORMAT)
     };
 
-    Ok([create("fs_easu")?, create("fs_rcas")?])
+    Ok([create("fs_easu")?, create("fs_rcas")?, create("fs_downsample")?])
   }
 }

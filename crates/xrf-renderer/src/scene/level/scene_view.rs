@@ -2,6 +2,7 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use glam::{Mat4, Vec2, Vec3, Vec4};
+use xrf_dlss::Dlss;
 use xrf_error::XrfResult;
 use xrf_renderer_core::{
   FrameGraph, GraphBindings, GraphBuffer, GraphColorAttachment, GraphRuntime, GraphTexture, GraphTextureDescriptor,
@@ -121,6 +122,21 @@ impl SceneView {
     self.targets.as_ref().map(|it| (it.width, it.height))
   }
 
+  /// What smooths its frame as drawn: the temporal resolve, else the smoothing, none where neither runs.
+  pub fn get_antialiasing(&self) -> RenderAntialiasing {
+    self
+      .features
+      .resolve
+      .get_temporal()
+      .or(self.features.smoothing.get_mode())
+      .unwrap_or(RenderAntialiasing::None)
+  }
+
+  /// The size its frame is resolved at, none before its targets are made.
+  pub fn get_output_size(&self) -> Option<(u32, u32)> {
+    self.targets.as_ref().map(|_| self.features.resolve.get_resolved())
+  }
+
   /// This frame's unjittered view projection and the last one's, which the surfaces' motion is measured between.
   pub fn next_motion(&mut self, current: Mat4) -> (Mat4, Mat4) {
     self.features.resolve.next_motion(current)
@@ -206,12 +222,11 @@ impl SceneView {
   pub fn prepare(
     &mut self,
     scene: &mut LevelScene,
-    device: &wgpu::Device,
-    queue: &wgpu::Queue,
+    (device, queue, dlss): (&wgpu::Device, &wgpu::Queue, Option<&Dlss>),
     encoder: &mut FrameEncoder,
     passes: LevelPasses<'_>,
     view: &CameraView,
-    ((width, height), output): ((u32, u32), RenderRect),
+    ((width, height), resolved, output): ((u32, u32), (u32, u32), RenderRect),
     field_of_view: f32,
     options: &RenderViewOptions,
     (lighting, weather): (&RenderLighting, Option<&Arc<RenderLevelWeather>>),
@@ -409,10 +424,11 @@ impl SceneView {
     self.shared.shadow_settings = options.features.shadows.clone();
     self.shared.is_wireframe = options.mode.is_wireframe;
     self.features.resolve.prepare(
-      device,
+      (device, dlss),
       view,
       (
         self.targets.as_ref().map(|targets| (targets.width, targets.height)),
+        resolved,
         output,
       ),
       (options.output.upscaling, options.is_scene_linear()),
@@ -726,9 +742,10 @@ impl SceneView {
   /// distorting surface of the scene moves what is seen through it, which bloom it lays over the frame, and the sky
   /// debanding, its noise turning with `time`.
   fn prepare_present(&mut self, options: &RenderViewOptions, output: RenderRect, time: f32) {
-    let Some(render) = self.targets.as_ref().map(|targets| (targets.width, targets.height)) else {
+    if self.targets.is_none() {
       return;
-    };
+    }
+
     let water: &RenderWaterSettings = &options.features.water;
     let is_water_distorting: bool = water.is_enabled && water.is_distorted && options.mode.is_lit;
     let features: &SceneFeatures = &self.features;
@@ -743,7 +760,10 @@ impl SceneView {
       is_enhanced_bloomed: features.bloom.is_enhanced_drawn(),
     };
 
-    self.features.present.prepare(options, (render, output), inputs, time);
+    self
+      .features
+      .present
+      .prepare(options, (self.features.resolve.is_rescaled(), output), inputs, time);
   }
 
   /// Readies a frame for its graph, none before the view's targets are made: a pick's camera narrowed to the texel
@@ -1449,10 +1469,10 @@ impl SceneView {
     })
   }
 
-  /// Where the next frame's samples sit within their pixels, in drawn pixels, `y` down: jittered while it resolves
-  /// frames temporally and shows the finished frame, still otherwise.
-  pub fn next_jitter(&mut self, options: &RenderViewOptions, ratio: f32) -> Vec2 {
-    self.features.resolve.next_jitter(options, ratio)
+  /// Where the next frame's samples sit within their pixels, in drawn pixels, `y` down, on a GPU that has DLSS where
+  /// `has_dlss`: jittered while it resolves frames temporally and shows the finished frame, still otherwise.
+  pub fn next_jitter(&mut self, options: &RenderViewOptions, ratio: f32, has_dlss: bool) -> Vec2 {
+    self.features.resolve.next_jitter(options, ratio, has_dlss)
   }
 
   /// Asks for the counts recorded with the frame just submitted.
@@ -1483,12 +1503,7 @@ impl SceneView {
 
   /// What its frames are drawn with, as resolved from what `options` asked; the weather's light is the viewport's to add.
   pub fn describe_applied(&self, options: &RenderViewOptions) -> RenderAppliedReport {
-    let antialiasing: RenderAntialiasing = self
-      .features
-      .resolve
-      .get_temporal()
-      .or(self.features.smoothing.get_mode())
-      .unwrap_or(RenderAntialiasing::None);
+    let antialiasing: RenderAntialiasing = self.get_antialiasing();
     let cascades: usize = self.shared.shadow_settings.get_cascade_count();
 
     RenderAppliedReport {

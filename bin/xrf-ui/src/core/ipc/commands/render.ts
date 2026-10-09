@@ -5,6 +5,7 @@ import { Channel } from "@tauri-apps/api/core";
 import { invoke as __TAURI_INVOKE } from "@/core/ipc/invoke";
 import { ETextureSurfaceAlpha, ETextureSurfaceShape, TextureSource, ViewportEvent } from "@/core/ipc/types/xrf-app";
 import {
+  RenderAntialiasing,
   RenderBackend,
   RenderBackendAvailability,
   RenderFramePhases,
@@ -88,6 +89,12 @@ export const renderCommands = {
       renderWidth: number;
       /** And its height. */
       renderHeight: number;
+      /** The width the frame is resolved at before it is rescaled to the drawn one. */
+      outputWidth: number;
+      /** And its height. */
+      outputHeight: number;
+      /** What smooths the frame, and upscales it where it resolves temporally. */
+      antialiasing: RenderAntialiasing;
       /** The graphics API drawn with. */
       backend: RenderBackend;
       /** The GPU drawn on. */
@@ -97,6 +104,8 @@ export const renderCommands = {
        * misses needs.
        */
       hasRayQueries: boolean;
+      /** Whether it upscales with DLSS: the build, the backend and the GPU all have it. */
+      hasDlss: boolean;
       /** Whether its passes were timed on the GPU over the span. */
       isGpuTimed: boolean;
       /** What each pass cost on the GPU, in frame order; none while untimed. */

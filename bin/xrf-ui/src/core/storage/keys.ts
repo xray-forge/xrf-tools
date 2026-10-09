@@ -35,6 +35,11 @@ export const RENDERER_FEATURES_STORAGE_KEY: string = buildStorageKey(EStorageNam
 /** How many pixels every viewport draws, whatever size it is shown at. */
 export const RENDER_BACKEND_STORAGE_KEY: string = buildStorageKey(EStorageNamespace.PREFERENCE, "render-backend");
 export const RENDER_RESOLUTION_STORAGE_KEY: string = buildStorageKey(EStorageNamespace.PREFERENCE, "render-resolution");
+/** The share of the viewport's sides an automatic resolution resolves at. */
+export const RENDER_OUTPUT_SCALE_STORAGE_KEY: string = buildStorageKey(
+  EStorageNamespace.PREFERENCE,
+  "render-output-scale"
+);
 /** How the level viewer's camera sees and answers input, as JSON. */
 export const LEVEL_CAMERA_STORAGE_KEY: string = buildStorageKey(EStorageNamespace.PREFERENCE, "level-camera");
 /** What the level viewer sets over the renderer's features for itself, as JSON. */

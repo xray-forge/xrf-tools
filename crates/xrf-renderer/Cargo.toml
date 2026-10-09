@@ -22,6 +22,7 @@ specta = { workspace = true, optional = true }
 wgpu = { workspace = true }
 xrf-anm = { workspace = true }
 xrf-dds = { workspace = true }
+xrf-dlss = { workspace = true }
 xrf-engine-target = { workspace = true }
 xrf-environment = { workspace = true }
 xrf-error = { workspace = true }
@@ -47,6 +48,8 @@ typescript-bindings = [
 ]
 # Zones, GPU zones and frame marks for a Tracy capture.
 tracy = ["xrf-renderer-core/tracy"]
+# Upscales with NVIDIA DLSS on Vulkan, built against its SDK as DEVELOPMENT.md sets it up.
+dlss = ["xrf-dlss/sdk"]
 
 [lints]
 workspace = true

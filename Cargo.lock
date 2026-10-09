@@ -7899,6 +7899,7 @@ dependencies = [
  "xrf-animation-envelope",
  "xrf-anm",
  "xrf-dds",
+ "xrf-dlss",
  "xrf-engine-target",
  "xrf-environment",
  "xrf-error",

@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 
+use crate::contract::render_antialiasing::RenderAntialiasing;
 use crate::contract::render_backend::RenderBackend;
 use crate::contract::render_frame_phases::RenderFramePhases;
 use crate::contract::render_graph_report::RenderGraphReport;
@@ -44,6 +45,12 @@ pub struct RenderFrameReport {
   pub render_width: u32,
   /// And its height.
   pub render_height: u32,
+  /// The width the frame is resolved at before it is rescaled to the drawn one.
+  pub output_width: u32,
+  /// And its height.
+  pub output_height: u32,
+  /// What smooths the frame, and upscales it where it resolves temporally.
+  pub antialiasing: RenderAntialiasing,
   /// The graphics API drawn with.
   pub backend: RenderBackend,
   /// The GPU drawn on.
@@ -51,6 +58,8 @@ pub struct RenderFrameReport {
   /// Whether it traces rays, by hardware ray query: what the reflections' and the water's tracing of what the screen
   /// misses needs.
   pub has_ray_queries: bool,
+  /// Whether it upscales with DLSS: the build, the backend and the GPU all have it.
+  pub has_dlss: bool,
   /// Whether its passes were timed on the GPU over the span.
   pub is_gpu_timed: bool,
   /// What each pass cost on the GPU, in frame order; none while untimed.

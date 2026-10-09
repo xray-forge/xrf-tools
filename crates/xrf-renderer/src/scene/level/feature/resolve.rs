@@ -1,5 +1,6 @@
 use crate::frame::fsr_targets::FsrTargets;
 use crate::pass::fsr_uniform::FsrUniform;
+use crate::scene::level::feature::dlss_resolve::DlssResolve;
 use crate::scene::level::feature::temporal_resolve::TemporalResolve;
 
 /// The temporal resolve gathering a view's samples, and what it keeps from frame to frame.
@@ -11,6 +12,8 @@ pub enum Resolve {
     targets: Box<FsrTargets>,
     uniform: FsrUniform,
   },
+  /// DLSS.
+  Dlss(Box<DlssResolve>),
 }
 
 impl Resolve {
@@ -18,6 +21,7 @@ impl Resolve {
     match self {
       Self::Temporal(temporal) => temporal.history.get_sides().iter().map(|side| side.get_memory()).sum(),
       Self::Fsr { targets, .. } => targets.get_memory(),
+      Self::Dlss(resolve) => resolve.output.get_memory(),
     }
   }
 
@@ -26,6 +30,7 @@ impl Resolve {
     match self {
       Self::Temporal(temporal) => temporal.history.swap(),
       Self::Fsr { targets, .. } => targets.frames.swap(),
+      Self::Dlss(resolve) => resolve.is_reset = false,
     }
   }
 }

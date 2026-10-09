@@ -1,6 +1,11 @@
 import { Nullable } from "@xrf/types";
 
-import { ERenderAntialiasing, RenderAntialiasing, RenderTextureFiltering } from "@/core/ipc/types/xrf-renderer";
+import {
+  ERenderAntialiasing,
+  RenderAntialiasing,
+  RenderTextureFiltering,
+  RenderUpscalingSettings,
+} from "@/core/ipc/types/xrf-renderer";
 import { toRenderFeatureChoice } from "@/core/render/lib/settings/render-feature-choice";
 import { IRenderFeatureOverrides } from "@/core/render/lib/settings/render-feature-overrides";
 import {
@@ -20,6 +25,11 @@ import {
   TRenderVolumetricSettings,
   TRenderWaterSettings,
 } from "@/core/render/lib/settings/render-feature-settings";
+import {
+  ERenderResolution,
+  RENDER_OUTPUT_SCALES,
+  RENDER_RESOLUTIONS,
+} from "@/core/render/lib/settings/render-resolution";
 
 /** The shadow settings a level view may set for itself. */
 export type TLevelShadowOptions = Pick<
@@ -104,8 +114,33 @@ export interface ILevelFeatureOptions {
   antialiasing: Nullable<RenderAntialiasing>;
   /** How the view's surfaces sample their textures, or null for the settings' own. */
   textureFiltering: Nullable<RenderTextureFiltering>;
+  /** How much smaller than the viewport the view is drawn, where it sets its own. */
+  upscaling: Partial<Pick<RenderUpscalingSettings, "scale">>;
+  /** What the view resolves its frame at, where it sets its own: a resolution, and the scale an automatic one takes. */
+  output: TLevelOutputOptions;
   shadows: Partial<TLevelShadowOptions>;
   water: Partial<TLevelWaterOptions>;
+}
+
+/** What a view resolves its frame at where it sets its own, over the settings' resolution and scale. */
+export type TLevelOutputOptions = Partial<{ resolution: ERenderResolution; scale: number }>;
+
+/**
+ * @param stored - What was stored for a view's features.
+ * @returns The output it set, each part dropped where it is not one the settings offer.
+ */
+function toLevelOutputOptions(stored: unknown): TLevelOutputOptions {
+  const output: Record<string, unknown> =
+    (stored as { output?: Record<string, unknown> } | null | undefined)?.output ?? {};
+  const resolution: ERenderResolution | undefined = RENDER_RESOLUTIONS.find((it) => it === output.resolution);
+  const scale: unknown = output.scale;
+  const isScale: boolean =
+    typeof scale === "number" && scale >= RENDER_OUTPUT_SCALES.min && scale <= RENDER_OUTPUT_SCALES.max;
+
+  return {
+    ...(resolution ? { resolution } : {}),
+    ...(isScale ? { scale: scale as number } : {}),
+  };
 }
 
 /** The modes a view picks from, which smooth something: turning it off is the toggle's. */
@@ -205,6 +240,8 @@ export function toLevelFeatureOptions(stored: unknown): ILevelFeatureOptions {
     reflections: pickModeFeature("reflections"),
     shadows: pick("shadows"),
     textureFiltering: overrides.textureFiltering ?? null,
+    upscaling: overrides.upscaling?.scale ? { scale: overrides.upscaling.scale } : {},
+    output: toLevelOutputOptions(stored),
     volumetric: pickModeFeature("volumetric"),
     water: pick("water"),
   };

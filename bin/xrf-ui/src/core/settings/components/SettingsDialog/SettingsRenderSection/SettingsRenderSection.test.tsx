@@ -26,17 +26,29 @@ beforeEach(() => {
 });
 
 describe("SettingsRenderSection", () => {
-  it("opens on Display, which sets the frame rate and the resolution with no preset over them", async () => {
+  it("opens on Display, which sets the frame rate with no preset over it", async () => {
     const { settings, view } = renderSection();
 
     expect(view.getByRole("tab", { name: "Display" })).toHaveAttribute("aria-selected", "true");
     expect(view.queryByRole("group", { name: "Preset" })).not.toBeInTheDocument();
 
     await userEvent.click(view.getByRole("button", { name: "30 fps" }));
-    await userEvent.click(view.getByRole("button", { name: "1080p" }));
 
     expect(settings.frameRateLimit).toBe("30");
+  });
+
+  // The output resolution sits beside the upscaling quality; only Auto has a scale to set.
+  it("sets the output resolution on Image, with the scale offered while it follows the viewport", async () => {
+    const { settings, view } = renderSection();
+
+    await userEvent.click(view.getByRole("tab", { name: "Image" }));
+
+    expect(view.getByRole("slider", { name: "Output scale" })).toBeInTheDocument();
+
+    await userEvent.click(view.getByRole("button", { name: "1080p" }));
+
     expect(settings.renderResolution).toBe(ERenderResolution.HEIGHT_1080);
+    expect(view.queryByRole("slider", { name: "Output scale" })).not.toBeInTheDocument();
   });
 
   // Timing changes nothing drawn, so it leaves the preset as it was and marks no tab.

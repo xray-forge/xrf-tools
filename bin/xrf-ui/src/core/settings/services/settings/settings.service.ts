@@ -25,7 +25,12 @@ import {
 import { DEFAULT_RENDER_GRAPH_SETTINGS } from "@/core/render/lib/settings/render-graph-settings";
 import { DEFAULT_PERIODIC_BUDGET } from "@/core/render/lib/settings/render-periodic-budget";
 import { ERenderPreset } from "@/core/render/lib/settings/render-preset";
-import { ERenderResolution, toRenderResolution } from "@/core/render/lib/settings/render-resolution";
+import {
+  ERenderResolution,
+  RENDER_OUTPUT_SCALES,
+  toRenderOutputScale,
+  toRenderResolution,
+} from "@/core/render/lib/settings/render-resolution";
 import { TCatalogView, toCatalogView } from "@/core/settings/lib/catalog-view";
 import {
   CATALOG_VIEW_STORAGE_KEY,
@@ -33,6 +38,7 @@ import {
   FRAME_RATE_LIMIT_STORAGE_KEY,
   GPU_TIMED_STORAGE_KEY,
   RENDER_BACKEND_STORAGE_KEY,
+  RENDER_OUTPUT_SCALE_STORAGE_KEY,
   RENDER_RESOLUTION_STORAGE_KEY,
   RENDERER_FEATURES_STORAGE_KEY,
   VSYNC_STORAGE_KEY,
@@ -99,6 +105,9 @@ export class SettingsService {
 
   @Observable()
   public renderResolution: ERenderResolution = toRenderResolution(getLocalStorageValue(RENDER_RESOLUTION_STORAGE_KEY));
+  /** The share of the viewport's sides the automatic resolution resolves at. */
+  @Observable()
+  public renderOutputScale: number = toRenderOutputScale(getLocalStorageValue(RENDER_OUTPUT_SCALE_STORAGE_KEY));
 
   /** The renderer's preset and what was changed on top of it, the same for every viewport. */
   @RefObservable()
@@ -228,6 +237,16 @@ export class SettingsService {
 
     this.renderResolution = resolution;
     setLocalStorageValue(RENDER_RESOLUTION_STORAGE_KEY, resolution);
+  }
+
+  @BoundAction()
+  public setRenderOutputScale(scale: number): void {
+    const kept: number = Math.min(Math.max(scale, RENDER_OUTPUT_SCALES.min), RENDER_OUTPUT_SCALES.max);
+
+    this.log.info("Set render output scale:", kept);
+
+    this.renderOutputScale = kept;
+    setLocalStorageValue(RENDER_OUTPUT_SCALE_STORAGE_KEY, String(kept));
   }
 
   /**

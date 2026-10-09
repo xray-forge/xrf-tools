@@ -53,6 +53,7 @@ pub use crate::contract::render_debanding_mode::RenderDebandingMode;
 pub use crate::contract::render_debanding_quality::RenderDebandingQuality;
 pub use crate::contract::render_debanding_settings::RenderDebandingSettings;
 pub use crate::contract::render_debug_view::RenderDebugView;
+pub use crate::contract::render_dlss_preset::RenderDlssPreset;
 pub use crate::contract::render_enhanced_bloom_settings::RenderEnhancedBloomSettings;
 pub use crate::contract::render_enhanced_water_settings::RenderEnhancedWaterSettings;
 pub use crate::contract::render_exposure_settings::RenderExposureSettings;

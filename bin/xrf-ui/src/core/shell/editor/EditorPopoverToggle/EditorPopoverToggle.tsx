@@ -16,6 +16,8 @@ export interface IEditorPopoverToggleProps extends BaseComponentProps {
   /** Names the checkbox at the head of the popover, which is the toggle for a keyboard. */
   toggleLabel: string;
   isDisabled?: boolean;
+  /** Whether its settings take a wider popover, for rows of several named choices. */
+  isWide?: boolean;
   /** Why the settings behind it do nothing now, said in their place; the toggle still turns over. */
   lockedReason?: Nullable<string>;
   onToggle: () => void;
@@ -36,6 +38,7 @@ export function EditorPopoverToggle({
   isOn,
   toggleLabel,
   isDisabled = false,
+  isWide = false,
   lockedReason = null,
   onToggle,
   children,
@@ -54,7 +57,7 @@ export function EditorPopoverToggle({
       isDisabled={isDisabled}
       onClick={onClick}
     >
-      <div className={"flex w-60 flex-col gap-2 px-4 py-2"}>
+      <div className={`flex ${isWide ? "w-80" : "w-60"} flex-col gap-2 px-4 py-2`}>
         <Typography className={"text-text-secondary"} variant={"overline"}>
           {label}
         </Typography>

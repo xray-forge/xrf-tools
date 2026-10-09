@@ -4,6 +4,7 @@ use std::time::{Duration, Instant};
 use glam::Vec3;
 use xrf_renderer_core::{ExecutedGroup, FrameGraph, GraphPassTime, GraphReport, GraphTimer};
 
+use crate::contract::render_antialiasing::RenderAntialiasing;
 use crate::contract::render_applied_environment::RenderAppliedEnvironment;
 use crate::contract::render_applied_fog::RenderAppliedFog;
 use crate::contract::render_applied_report::RenderAppliedReport;
@@ -219,7 +220,7 @@ impl RenderViewport {
   pub fn report(
     &mut self,
     now: Instant,
-    (backend, adapter, has_ray_queries): (RenderBackend, &str, bool),
+    (backend, adapter, has_ray_queries, has_dlss): (RenderBackend, &str, bool, bool),
     (texture_bytes, allocator, scenes): (u64, Option<(u64, u64)>, &mut HashMap<RenderSceneId, LevelScene>),
     (timer, graph): (Option<&mut GraphTimer>, Option<&GraphReport>),
   ) {
@@ -277,11 +278,14 @@ impl RenderViewport {
       groups,
     } = summary;
     let rect: RenderRect = self.layout.map(|layout| layout.rect).unwrap_or_default();
-    let (render_width, render_height): (u32, u32) = self
-      .shown
-      .as_ref()
-      .and_then(|(_, view)| view.get_render_size())
+    let shown: Option<&SceneView> = self.shown.as_ref().map(|(_, view)| view);
+    let (render_width, render_height): (u32, u32) = shown
+      .and_then(SceneView::get_render_size)
       .unwrap_or((rect.width, rect.height));
+    let (output_width, output_height): (u32, u32) = shown
+      .and_then(SceneView::get_output_size)
+      .unwrap_or((rect.width, rect.height));
+    let antialiasing: RenderAntialiasing = shown.map_or(RenderAntialiasing::None, SceneView::get_antialiasing);
     // The scene it shows, and the one it asks for while that comes in.
     let mut held: Vec<RenderSceneId> = self.shown.iter().map(|(id, _)| *id).chain(self.world.scene).collect();
 
@@ -308,9 +312,13 @@ impl RenderViewport {
       height: rect.height,
       render_width,
       render_height,
+      output_width,
+      output_height,
+      antialiasing,
       backend,
       adapter: adapter.to_string(),
       has_ray_queries,
+      has_dlss,
       is_gpu_timed,
       passes,
       static_draws,

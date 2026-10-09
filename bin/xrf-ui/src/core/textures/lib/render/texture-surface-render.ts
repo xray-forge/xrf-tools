@@ -8,6 +8,7 @@ import { toNativeAssetViewOptions } from "@/core/render/lib/native/native-view-o
 import { TNativeTextureRequest } from "@/core/render/lib/native/native-viewport";
 import { toRawColor } from "@/core/render/lib/scene/render-color";
 import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-feature-settings";
+import { NATIVE_RENDER_OUTPUT, TRenderOutput } from "@/core/render/lib/settings/render-resolution";
 import { ITextureSurfaceOptions, toTextureAspect } from "@/core/textures/lib/texture-surface";
 import { VIEWPORT } from "@/core/theme/tokens";
 
@@ -58,7 +59,7 @@ export function toTextureSurfaceRequest(
  * @param lighting - The light the body is shaded by.
  * @param features - What the application sets every viewport's features to.
  * @param pixelRatio - Device pixels a css pixel, which the backdrop's squares are measured in.
- * @param renderHeight - How many rows the body is drawn with at most; null for as many as the viewport covers.
+ * @param output - What the body's frame is resolved at before the viewport.
  * @returns What a native viewport draws the body with: against the alpha checkerboard every picture is judged on.
  */
 export function toTextureViewOptions(
@@ -66,12 +67,12 @@ export function toTextureViewOptions(
   lighting: IRenderLighting,
   features: IRenderFeatureSettings,
   pixelRatio: number,
-  renderHeight: Nullable<number> = null
+  output: TRenderOutput = NATIVE_RENDER_OUTPUT
 ): RenderViewOptions {
   const view: RenderViewOptions = toNativeAssetViewOptions(
     { isBumped: options.isBumped, isLit: options.isLit, isWireframe: false },
     features,
-    renderHeight
+    output
   );
 
   return {

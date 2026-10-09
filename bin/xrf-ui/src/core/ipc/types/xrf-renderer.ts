@@ -67,6 +67,8 @@ export enum ERenderAntialiasing {
   TAA = "taa",
   /** FSR 2: temporal as TAA, with each surface's motion, disocclusion, reactivity and thin-feature locks. */
   FSR2 = "fsr2",
+  /** DLSS: NVIDIA's learned temporal upscaler, on Vulkan with an RTX GPU; FSR 2 where the GPU has none. */
+  DLSS = "dlss",
 }
 
 /** Every `ERenderAntialiasing` as the spelling it crosses IPC as, for a value no member has narrowed. */
@@ -403,6 +405,26 @@ export enum ERenderDebugView {
 /** Every `ERenderDebugView` as the spelling it crosses IPC as, for a value no member has narrowed. */
 export type RenderDebugView = `${ERenderDebugView}`;
 
+/** Which of DLSS's models upscales: NVIDIA's pick for each quality, or one for every quality. */
+export enum ERenderDlssPreset {
+  /**
+   * NVIDIA's pick, which a driver update may change: K for DLAA, Quality and Balanced, M for Performance, L for Ultra
+   * Performance.
+   */
+  DEFAULT = "default",
+  /** Transformer, like K, with slightly less ghosting and more flicker. */
+  J = "j",
+  /** Transformer: the best image, at the highest cost. */
+  K = "k",
+  /** NVIDIA's model for Ultra Performance. */
+  L = "l",
+  /** NVIDIA's model for Performance. */
+  M = "m",
+}
+
+/** Every `ERenderDlssPreset` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type RenderDlssPreset = `${ERenderDlssPreset}`;
+
 /** Which bloom the frame draws, and the enhanced bloom's strengths; the engine bloom's own come with the look. */
 export type RenderEnhancedBloomSettings = {
   mode: RenderBloomMode;
@@ -608,6 +630,12 @@ export type RenderFrameReport = {
   renderWidth: number;
   /** And its height. */
   renderHeight: number;
+  /** The width the frame is resolved at before it is rescaled to the drawn one. */
+  outputWidth: number;
+  /** And its height. */
+  outputHeight: number;
+  /** What smooths the frame, and upscales it where it resolves temporally. */
+  antialiasing: RenderAntialiasing;
   /** The graphics API drawn with. */
   backend: RenderBackend;
   /** The GPU drawn on. */
@@ -617,6 +645,8 @@ export type RenderFrameReport = {
    * misses needs.
    */
   hasRayQueries: boolean;
+  /** Whether it upscales with DLSS: the build, the backend and the GPU all have it. */
+  hasDlss: boolean;
   /** Whether its passes were timed on the GPU over the span. */
   isGpuTimed: boolean;
   /** What each pass cost on the GPU, in frame order; none while untimed. */
@@ -1253,8 +1283,8 @@ export enum ERenderReflectionTraceQuality {
 export type RenderReflectionTraceQuality = `${ERenderReflectionTraceQuality}`;
 
 /**
- * How much smaller than the viewport the scene is drawn and then upscaled: FSR's quality modes, by the ratio of the
- * viewport's side to the drawing's.
+ * How much smaller than the viewport the scene is drawn and then upscaled: the upscalers' quality modes, by the ratio of
+ * the viewport's side to the drawing's.
  */
 export enum ERenderScale {
   NATIVE = "native",
@@ -1264,6 +1294,8 @@ export enum ERenderScale {
   BALANCED = "balanced",
   /** 2: half of each side. */
   PERFORMANCE = "performance",
+  /** 3: a third of each side. */
+  ULTRA_PERFORMANCE = "ultraPerformance",
 }
 
 /** Every `ERenderScale` as the spelling it crosses IPC as, for a value no member has narrowed. */
@@ -1503,11 +1535,15 @@ export enum ERenderTonemapMode {
 /** Every `ERenderTonemapMode` as the spelling it crosses IPC as, for a value no member has narrowed. */
 export type RenderTonemapMode = `${ERenderTonemapMode}`;
 
-/** What the scene is drawn at, a share of the viewport upscaled to it, and how sharply the upscaled frame is finished. */
+/**
+ * What the scene is drawn at, a share of the viewport upscaled to it, how sharply the upscaled frame is finished, and
+ * which model DLSS upscales with.
+ */
 export type RenderUpscalingSettings = {
   scale: RenderScale;
   /** RCAS's sharpness while upscaled, from none to its most. */
   sharpening: number | null;
+  dlssPreset: RenderDlssPreset;
 };
 
 /** Each of the renderer's features as a view sets it, a full set a view: one struct a feature, owned by its module. */
@@ -1589,15 +1625,17 @@ export type RenderViewOptions = {
   asset: RenderAssetPreview;
 };
 
-/** What a view's frame is drawn at before it is put into its rectangle, and how it is upscaled. */
+/** What a view's frame is resolved at before it is put into its rectangle, and how it is upscaled to it. */
 export type RenderViewOutput = {
-  /** What the scene is drawn at, and how its upscaled frame is sharpened. */
+  /** What the scene is drawn at, a share of the output, and how its upscaled frame is sharpened. */
   upscaling: RenderUpscalingSettings;
   /**
-   * Device pixels the scene is drawn tall before its render scale, or `None` for the viewport's own; one taller than
-   * the viewport draws at the viewport's.
+   * Device pixels the frame is resolved tall at, as wide as the viewport's shape, or `None` for the viewport's own
+   * sides times `output_scale`.
    */
-  renderHeight: number | null;
+  outputHeight: number | null;
+  /** The share of the viewport's sides the frame is resolved at while no height is asked. */
+  outputScale: number | null;
 };
 
 /** Every `kind` the `RenderViewportEvent` union is told apart by, so a switch or a comparison names one. */

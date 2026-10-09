@@ -3,6 +3,7 @@ import { describe, expect, it } from "@jest/globals";
 import {
   ERenderAntialiasing,
   ERenderDebugView,
+  ERenderScale,
   ERenderSunShaftsQuality,
   ERenderSurfaceColor,
   RenderViewOptions,
@@ -13,6 +14,7 @@ import { ILevelViewOptionsInputs, toLevelViewOptions } from "@/core/level/lib/re
 import { ELevelShading } from "@/core/level/lib/view/level-shading";
 import { DEFAULT_LEVEL_VIEW_OPTIONS } from "@/core/level/lib/view/level-view-options";
 import { DEFAULT_LEVEL_SUN_SHAFTS_OPTIONS } from "@/core/level/lib/weather/level-sun-shafts-options";
+import { NATIVE_RENDER_OUTPUT } from "@/core/render/lib/settings/render-resolution";
 import { mockLevelFeatureOptions } from "@/fixtures/mocks/level.mocks";
 import { mockRenderFeatures } from "@/fixtures/mocks/render.mocks";
 
@@ -24,7 +26,7 @@ function toInputs(overrides: Partial<ILevelViewOptionsInputs> = {}): ILevelViewO
     lod: DEFAULT_LEVEL_LOD_OPTIONS,
     look: OPENXRAY_LEVEL_LOOK,
     options: DEFAULT_LEVEL_VIEW_OPTIONS,
-    renderHeight: null,
+    output: NATIVE_RENDER_OUTPUT,
     sunShafts: DEFAULT_LEVEL_SUN_SHAFTS_OPTIONS,
     view: mockLevelFeatureOptions(),
     ...overrides,
@@ -66,10 +68,20 @@ describe("toLevelViewOptions", () => {
     expect(options.features.shadows.isEnabled).toBe(false);
   });
 
-  it("draws at the height the settings ask, and at the look's exposure", () => {
-    const options: RenderViewOptions = toLevelViewOptions(toInputs({ renderHeight: 1080 }));
+  it("draws at the view's own render scale, keeping the settings' sharpening", () => {
+    const features = mockRenderFeatures();
+    const options: RenderViewOptions = toLevelViewOptions(
+      toInputs({ features, view: mockLevelFeatureOptions({ upscaling: { scale: ERenderScale.ULTRA_PERFORMANCE } }) })
+    );
 
-    expect(options.output.renderHeight).toBe(1080);
+    expect(options.output.upscaling).toEqual({ ...features.upscaling, scale: ERenderScale.ULTRA_PERFORMANCE });
+    expect(toLevelViewOptions(toInputs({ features })).output.upscaling).toEqual(features.upscaling);
+  });
+
+  it("draws at the height the settings ask, and at the look's exposure", () => {
+    const options: RenderViewOptions = toLevelViewOptions(toInputs({ output: { outputHeight: 1080, outputScale: 1 } }));
+
+    expect(options.output.outputHeight).toBe(1080);
     expect(options.features.exposure).toEqual(OPENXRAY_LEVEL_LOOK.exposure);
   });
 

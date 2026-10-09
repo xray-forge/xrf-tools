@@ -21,7 +21,7 @@ impl PresentFeature {
   pub fn prepare(
     &mut self,
     options: &RenderViewOptions,
-    (render, output): ((u32, u32), RenderRect),
+    (is_upscaled, output): (bool, RenderRect),
     inputs: PresentInputs,
     time: f32,
   ) {
@@ -32,7 +32,7 @@ impl PresentFeature {
     let present: PresentUniform = PresentUniform::new(
       options.mode.debug_view,
       (inputs.is_occluded, inputs.is_indirect, inputs.reflection_ratio),
-      render != (output.width, output.height),
+      is_upscaled,
       if inputs.is_distorting { water.distortion } else { 0.0 },
       output,
       &options.features.corrections,
