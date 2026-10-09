@@ -1,0 +1,20 @@
+//! NVIDIA DLSS super resolution for the renderer's views, through NGX on wgpu's Vulkan backend.
+//!
+//! Built without the `sdk` feature it offers the same types, and no device has DLSS. The NGX glue is derived from
+//! dlss_wgpu (MIT OR Apache-2.0, `LICENSE-dlss_wgpu-*`).
+
+mod dlss;
+mod dlss_inputs;
+mod dlss_instance;
+mod dlss_preset;
+mod dlss_quality;
+mod dlss_upscaler;
+#[cfg(feature = "sdk")]
+mod ngx;
+
+pub use crate::dlss::Dlss;
+pub use crate::dlss_inputs::DlssInputs;
+pub use crate::dlss_instance::DlssInstance;
+pub use crate::dlss_preset::DlssPreset;
+pub use crate::dlss_quality::DlssQuality;
+pub use crate::dlss_upscaler::DlssUpscaler;

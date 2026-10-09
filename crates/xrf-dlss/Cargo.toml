@@ -1,0 +1,28 @@
+[package]
+name = "xrf-dlss"
+version = "0.1.0"
+publish = false
+edition.workspace = true
+rust-version.workspace = true
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+ash = { workspace = true, optional = true }
+log = { workspace = true }
+pollster = { workspace = true }
+wgpu = { workspace = true }
+xrf-error = { workspace = true }
+
+[build-dependencies]
+bindgen = { workspace = true, optional = true }
+cc = { workspace = true, optional = true }
+
+[features]
+# Builds against NVIDIA's DLSS SDK (`DLSS_SDK`, `VULKAN_SDK` and libclang, as DEVELOPMENT.md sets them up); without it
+# no device has DLSS.
+sdk = ["dep:ash", "dep:bindgen", "dep:cc"]
+
+[lints]
+workspace = true
