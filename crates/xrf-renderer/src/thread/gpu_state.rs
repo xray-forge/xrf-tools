@@ -37,6 +37,7 @@ use crate::pass::puddle_sites_pass::PuddleSitesPass;
 use crate::pass::rain_pass::RainPass;
 use crate::pass::reflection_pass::ReflectionPass;
 use crate::pass::scene_trace_pass::SceneTracePass;
+use crate::pass::sky_behind_pass::SkyBehindPass;
 use crate::pass::sky_bindings::SkyBindings;
 use crate::pass::sky_haze_pass::SkyHazePass;
 use crate::pass::sky_prefilter_pass::SkyPrefilterPass;
@@ -112,6 +113,7 @@ pub struct GpuState {
   pub scene_trace: SceneTracePass,
   pub lights: LightsPass,
   pub combine: CombinePass,
+  pub sky_behind: SkyBehindPass,
   pub exposure: ExposurePass,
   pub present: PresentPass,
   /// The page's backdrop under every window's viewports.
@@ -195,6 +197,7 @@ impl GpuState {
       let scene_trace = threads.spawn(move || SceneTracePass::new(device, source, view, sky_layout, texture));
       let lights = threads.spawn(move || LightsPass::new(device, source, view, texture));
       let combine = threads.spawn(move || CombinePass::new(device, source, view, sky_layout));
+      let sky_behind = threads.spawn(move || SkyBehindPass::new(device, source, view, sky_layout));
       let sky_haze = threads.spawn(move || SkyHazePass::new(device, source, sky_layout));
       let sky_prefilter = threads.spawn(move || SkyPrefilterPass::new(device, queue, source));
       let surroundings = threads.spawn(move || SurroundingsPass::new(device, source, view));
@@ -237,6 +240,7 @@ impl GpuState {
         scene_trace: join(scene_trace)?,
         lights: join(lights)?,
         combine: join(combine)?,
+        sky_behind: join(sky_behind)?,
         sky_haze: join(sky_haze)?,
         sky_prefilter: join(sky_prefilter)?,
         surroundings: join(surroundings)?,
@@ -315,6 +319,7 @@ impl GpuState {
       grass_colours: &self.grass_colours,
       lights: &self.lights,
       combine: &self.combine,
+      sky_behind: &self.sky_behind,
       sky_haze: &self.sky_haze,
       sky_prefilter: &self.sky_prefilter,
       surroundings: &self.surroundings,
@@ -377,6 +382,7 @@ impl GpuState {
     self.grass_colours.refresh(device, source);
     self.lights.refresh(device, source);
     self.combine.refresh(device, source);
+    self.sky_behind.refresh(device, source);
     self.sky_haze.refresh(device, source);
     self.water.refresh(device, source);
     self.composited.refresh(device, source);

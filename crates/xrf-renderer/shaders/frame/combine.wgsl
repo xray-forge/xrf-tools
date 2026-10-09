@@ -13,8 +13,8 @@
 // built from. Unlit, a surface is its raw albedo.
 
 // The G-buffer and its light, the material table, the lighting and exposure, the ambient occlusion (visibility, then
-// distance along the view, at half the frame's size), the haze map (the sky as drawn, clouds and all, blurred by
-// bearing and height), the indirect light (colour, then distance along the view, at half the frame's size) and the
+// distance along the view, at half the frame's size), the sky behind the fog (at half the frame's size), the indirect
+// light (colour, then distance along the view, at half the frame's size) and the
 // reflections (what each surface reflects, then one, at the size they are traced at).
 #import "generated/frame/combine"
 
@@ -37,41 +37,6 @@ fn world_direction(toward: vec3<f32>) -> vec3<f32> {
 // A view space point's offset from the camera in the world's frame, metres.
 fn world_offset(position: vec3<f32>) -> vec3<f32> {
   return (transpose(camera.view) * vec4<f32>(position, 0.0)).xyz;
-}
-
-// The sky as the frame draws it behind a pixel: the sky, the sun's sprite on it, and the clouds over both.
-fn sky_drawn(direction: vec3<f32>, toward: vec3<f32>, scale: f32) -> vec3<f32> {
-  let below: vec3<f32> = sky_color(lighting, direction, scale) + sky_sun_sprite(lighting, toward);
-
-  return sky_with_clouds(lighting, direction, below, scale);
-}
-
-// The sky's haze along a world direction: the sky as drawn there, clouds and all, blurred past any shape; below the
-// horizon, the horizon's own, since nothing stands behind the ground.
-fn sky_haze(direction: vec3<f32>) -> vec3<f32> {
-  let lifted: vec3<f32> = normalize(vec3<f32>(direction.x, max(direction.y, 0.0), direction.z));
-  let coordinates: vec2<f32> = sky_haze_coordinates(lifted);
-  // Around the compass the map wraps; up it does not, so the zenith's row never blends with the nadir's.
-  let rows: f32 = f32(textureDimensions(haze_map).y);
-
-  return textureSampleLevel(
-    haze_map,
-    sky_repeat,
-    vec2<f32>(coordinates.x, clamp(coordinates.y, 0.5 / rows, 1.0 - 0.5 / rows)),
-    0.0,
-  ).rgb;
-}
-
-// What the distance fades into: the sky as drawn behind it; with the haze, its haze where the cubes stand above the
-// fold, so no cloud's shape lies over a far hill, and the rim as drawn under it, so the fade meets the sky exactly there.
-fn sky_behind(direction: vec3<f32>, toward: vec3<f32>, scale: f32, is_hazed: bool) -> vec3<f32> {
-  let shown: vec3<f32> = sky_drawn(direction, toward, scale);
-
-  if (!is_hazed) {
-    return shown;
-  }
-
-  return mix(shown, sky_haze(direction), sky_above_fold(lighting, direction));
 }
 
 // `hmodel` over the G-buffer's view space normal and point, its reflection of the environment apart.
@@ -121,12 +86,11 @@ fn fs_combine(in: FullscreenVarying) -> CombineOutput {
   let fog: f32 = select(0.0, fog_amount(lighting, position), is_fogged);
   // The far plane ends where fog is total: past it is what anything there would have come to, the sky or the fog.
   let is_empty: bool = depth <= 0.0 || fog >= 1.0;
-  let is_hazed: bool = is_sky_drawn && lighting.fog.z > 0.5;
 
   if (is_empty) {
     // `sky2.ps`: the sky's high part is the sky as drawn, within `def_hdr`.
     if (is_sky_drawn) {
-      let sky: vec3<f32> = sky_drawn(direction, toward, scale);
+      let sky: vec3<f32> = sky_drawn(lighting, direction, toward, scale);
 
       return combined(scene_from_shown(sky), sky / DEF_HDR);
     }
@@ -214,7 +178,10 @@ fn fs_combine(in: FullscreenVarying) -> CombineOutput {
     return combined(finished, high);
   }
 
-  let sky: vec3<f32> = sky_behind(direction, toward, scale, is_hazed);
+  // At half the frame's size and read across it, its texels weighed by whether they were drawn: the sky behind is
+  // soft, and only the fog's square shows it.
+  let behind: vec4<f32> = textureSampleLevel(sky_behind_map, sky_clamp, in.clip.xy / camera.viewport.xy, 0.0);
+  let sky: vec3<f32> = behind.rgb / max(behind.a, 1e-4);
 
   return combined(mix(finished, scene_from_shown(sky), fog * fog), mix(high, sky / DEF_HDR, fog * fog));
 }

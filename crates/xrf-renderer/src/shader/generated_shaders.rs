@@ -67,6 +67,7 @@ use crate::pass::reflection_scene_parameters::ReflectionSceneParameters;
 use crate::pass::reflection_uniform::ReflectionUniform;
 use crate::pass::shadow_tile_restore_parameters::ShadowTileRestoreParameters;
 use crate::pass::shadow_uniform::ShadowUniform;
+use crate::pass::sky_behind_parameters::SkyBehindParameters;
 use crate::pass::sky_haze_parameters::SkyHazeParameters;
 use crate::pass::sky_parameters::SkyParameters;
 use crate::pass::sky_prefilter_parameters::SkyPrefilterParameters;
@@ -131,6 +132,7 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
   let mut contact_shadows: ShaderBindings = ShaderBindings::new();
   let mut sun: ShaderBindings = ShaderBindings::new();
   let mut light_binning: ShaderBindings = ShaderBindings::new();
+  let mut sky_behind: ShaderBindings = ShaderBindings::new();
   let mut grass_occlusion: ShaderBindings = ShaderBindings::new();
   let mut lights: ShaderBindings = ShaderBindings::new();
   let mut light_contact: ShaderBindings = ShaderBindings::new();
@@ -232,6 +234,7 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
   contact_shadows.add::<ContactShadowParameters>()?;
   sun.add::<SunParameters<'_>>()?;
   light_binning.add::<LightBinningParameters>()?;
+  sky_behind.add::<SkyBehindParameters>()?;
   grass_occlusion.add::<GrassOcclusionParameters>()?;
   lights.add::<LightsParameters<'_>>()?;
   light_contact.add::<LightContactParameters>()?;
@@ -329,6 +332,10 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
     (
       "generated/grass/occlusion",
       format!("{STRUCTS_IMPORT}{}", grass_occlusion.to_wgsl()),
+    ),
+    (
+      "generated/frame/sky_behind",
+      format!("{STRUCTS_IMPORT}{}", sky_behind.to_wgsl()),
     ),
     (
       "generated/frame/light_binning",

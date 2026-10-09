@@ -117,7 +117,7 @@ impl SceneFeatures {
       pick: PickFeature::default(),
       statics: StaticsFeature::new(device),
       present: PresentFeature::default(),
-      combine: CombineFeature,
+      combine: CombineFeature::default(),
       sun_shafts: SunShaftsFeature::default(),
     }
   }
