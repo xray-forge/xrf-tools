@@ -32,6 +32,7 @@ use crate::contract::render_view_options::RenderViewOptions;
 use crate::contract::render_viewport_id::RenderViewportId;
 use crate::frame::frame_capture::{CaptureReply, FrameCapture};
 use crate::frame::frame_encoder::FrameEncoder;
+use crate::frame::frame_pacer::FramePacer;
 use crate::frame::frame_phases::FramePhases;
 use crate::frame::frame_span_timer::FrameSpanTimer;
 use crate::frame::frame_statistics::REPORT_INTERVAL;
@@ -147,9 +148,9 @@ pub struct RenderThread {
   /// When the last viewport detached, while none is attached.
   idle_since: Option<Instant>,
   last_frame: Instant,
-  /// When the next frame is due under a limited rate: the last one's due time and an interval, so frames keep step.
-  frame_due: Option<Instant>,
-  /// When each window last presented, which is what a frame's interval is measured from.
+  /// When a limited rate's frames start and present: each presented at its due, the next started a lead ahead of it.
+  pacer: FramePacer,
+  /// When each window last called present, which is what a frame's interval is measured from.
   last_present: HashMap<u64, Instant>,
   /// Tells a debug build when a shader file was written, which it reads the shaders again for.
   shader_watcher: ShaderWatcher,
@@ -191,7 +192,7 @@ impl RenderThread {
       reopening: ReopeningScenes::default(),
       idle_since: Some(now),
       last_frame: now,
-      frame_due: None,
+      pacer: FramePacer::default(),
       last_present: HashMap::new(),
       shader_watcher: ShaderWatcher::new(&ShaderLibrary::get_source_root()),
       textures_swept: now,
@@ -203,7 +204,7 @@ impl RenderThread {
 
     loop {
       if self.is_drawing() {
-        // A limited rate waits out what is left of a frame's interval, hearing commands meanwhile.
+        // A limited rate waits until the next frame starts, a lead ahead of its due, hearing commands meanwhile.
         loop {
           match self.receiver.try_recv() {
             Ok(command) => {
@@ -216,13 +217,15 @@ impl RenderThread {
           }
 
           let left: Duration = self
-            .frame_due
-            .map_or(Duration::ZERO, |due| due.saturating_duration_since(Instant::now()));
+            .pacer
+            .get_start(self.settings.frame_rate.get_interval())
+            .map_or(Duration::ZERO, |start| start.saturating_duration_since(Instant::now()));
 
           if left.is_zero() {
             break;
           }
 
+          // Slept: the start need not be exact, the lead's margin taking in a late wake, as the present's wait is.
           std::thread::sleep(left.min(PACING_POLL));
         }
       } else {
@@ -558,13 +561,7 @@ impl RenderThread {
     let delta: f32 = now.duration_since(self.last_frame).as_secs_f32();
 
     self.last_frame = now;
-    // Kept in step from the last due time, so a frame woken a little late does not push every later one; one drawn
-    // later than its interval is followed by the next at once.
-    self.frame_due = self
-      .settings
-      .frame_rate
-      .get_interval()
-      .map(|interval| (self.frame_due.unwrap_or(now) + interval).max(now));
+    self.pacer.begin(now, self.settings.frame_rate.get_interval());
 
     // The world runs inline before the frame: it moves each viewport's camera and weather, then streams each scene and
     // plays what lives in it, and answers all of it.
@@ -1360,6 +1357,11 @@ impl RenderThread {
 
     let cpu: Duration = started.elapsed().saturating_sub(waited);
 
+    // A limited rate presents at the frame's due however long its work took, so frames are shown evenly; how long this
+    // one took from its start sets how far ahead of its due the next starts.
+    self.pacer.note_ready(self.last_frame.elapsed());
+    self.pacer.wait_for_due();
+
     // Each window presents, and its viewports note the frame with its own acquire, present and interval.
     for window in windows {
       let Some(image) = window.image else {
@@ -1379,10 +1381,12 @@ impl RenderThread {
         present: presented.duration_since(presenting),
         ..phases
       };
+      // Between present calls, as PresentMon and the overlays built on it measure a frame, so how long a call blocks
+      // does not read as uneven pacing.
       let interval: Duration = self
         .last_present
-        .insert(window.key, presented)
-        .map_or(Duration::ZERO, |last| presented.duration_since(last));
+        .insert(window.key, presenting)
+        .map_or(Duration::ZERO, |last| presenting.duration_since(last));
 
       for (id, _, _) in &window.drawn {
         if let Some(viewport) = self.viewports.get_mut(id) {

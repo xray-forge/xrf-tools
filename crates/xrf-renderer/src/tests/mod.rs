@@ -6,6 +6,7 @@ mod contact_shadows;
 mod debanding;
 mod enhanced_bloom;
 mod fog_scattering;
+mod frame_pacer;
 mod frame_rate;
 mod frame_statistics;
 mod fsr;
