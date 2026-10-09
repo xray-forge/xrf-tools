@@ -96,7 +96,7 @@ impl OrbitCameraController {
         Some(OrbitDrag::Pan) => self.pan(*dx, *dy),
         None => {}
       },
-      WorldInputEvent::DragEnd { .. } | WorldInputEvent::Blur => self.dragged = None,
+      WorldInputEvent::DragEnd { .. } | WorldInputEvent::ReleaseAll => self.dragged = None,
       WorldInputEvent::Wheel {
         delta_y, delta_mode, ..
       } => {

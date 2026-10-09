@@ -105,8 +105,8 @@ impl FlyCameraController {
           self.held.remove(&key);
         }
       }
-      // A viewport that loses focus holds no key, which would otherwise fly the camera away unattended.
-      WorldInputEvent::Blur => {
+      // A key whose release will never arrive would otherwise fly the camera away unattended.
+      WorldInputEvent::ReleaseAll => {
         self.held.clear();
         self.is_looking = false;
       }

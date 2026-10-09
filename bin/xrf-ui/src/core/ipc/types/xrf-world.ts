@@ -121,8 +121,8 @@ export enum EWorldInputEvent {
   KEY_UP = "keyUp",
   /** The secondary button asked for a menu, which the page withholds. */
   CONTEXT_MENU = "contextMenu",
-  /** The viewport lost focus, so no key it heard go down is still held. */
-  BLUR = "blur",
+  /** Nothing heard held is held now: the viewport lost focus, or lost the pointer lock and the key-ups with it. */
+  RELEASE_ALL = "releaseAll",
 }
 
 /** What the person does over a viewport: the drags its page told from clicks, the hover, the wheel and the keys. */
@@ -143,8 +143,8 @@ export type WorldInputEvent =
   | { kind: "keyUp"; code: string }
   /** The secondary button asked for a menu, which the page withholds. */
   | { kind: "contextMenu" }
-  /** The viewport lost focus, so no key it heard go down is still held. */
-  | { kind: "blur" };
+  /** Nothing heard held is held now: the viewport lost focus, or lost the pointer lock and the key-ups with it. */
+  | { kind: "releaseAll" };
 
 /** The modifier keys held as a drag's press went down. */
 export type WorldInputModifiers = {

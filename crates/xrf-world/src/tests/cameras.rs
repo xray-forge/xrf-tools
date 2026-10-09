@@ -80,12 +80,12 @@ fn fly_walks_where_it_faces_and_faster_boosted() {
 }
 
 #[test]
-fn fly_lets_go_of_every_key_on_blur() {
+fn fly_lets_go_of_every_key_and_drag_on_release_all() {
   let mut camera: FlyCameraController = FlyCameraController::new(fly([0.0, 0.0, 0.0], [0.0, 0.0, -1.0]));
 
   camera.input(&key_down("KeyW"));
   camera.input(&drag_start(0));
-  camera.input(&WorldInputEvent::Blur);
+  camera.input(&WorldInputEvent::ReleaseAll);
   camera.update(0.1);
 
   assert_near(camera.get_pose().position, [0.0, 0.0, 0.0]);

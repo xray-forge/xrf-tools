@@ -319,7 +319,10 @@ export class NativeViewportTarget {
     }
   }
 
-  /** Hears the lock taken away mid-drag, by Escape or another window, which ends the drag rather than going on. */
+  /**
+   * Hears the lock taken away mid-drag, by Escape or another window, which ends the drag rather than going on, and lets
+   * go of every key: WebView2 drops the key-ups of keys released around the Escape that ends a lock.
+   */
   private readonly onPointerLockChange = (): void => {
     const press: Nullable<IPress> = this.press;
 
@@ -331,13 +334,15 @@ export class NativeViewportTarget {
       press.lock = EPressLock.LOCKED;
     } else if (press.lock === EPressLock.LOCKED) {
       this.cancel();
+      this.send({ kind: EWorldInputEvent.RELEASE_ALL });
     }
   };
 
   private readonly listeners: Readonly<Record<string, (event: Event) => void>> = {
+    // A viewport that loses focus hears no key-ups, so nothing it heard held is held any more.
     blur: (): void => {
       this.cancel();
-      this.send({ kind: EWorldInputEvent.BLUR });
+      this.send({ kind: EWorldInputEvent.RELEASE_ALL });
     },
     contextmenu: (event: Event): void => {
       event.preventDefault();
@@ -415,8 +420,8 @@ export class NativeViewportTarget {
         return;
       }
 
-      // A move with no button held ends a press whose release never arrived. Not while locked: a raw lock's moves report
-      // no buttons in WebView2, and a locked pointer's release always reaches the lock.
+      // A move with no button held ends a press whose release never arrived. Not while locked: a raw lock's moves
+      // report no buttons in WebView2, and a locked pointer's release always reaches the lock.
       if (pointer.buttons === 0 && press.lock === EPressLock.NONE) {
         this.endDrag(press, EWorldDragEndReason.RELEASED);
         this.press = null;

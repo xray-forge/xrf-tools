@@ -31,6 +31,6 @@ pub enum WorldInputEvent {
   KeyUp { code: String },
   /// The secondary button asked for a menu, which the page withholds.
   ContextMenu,
-  /// The viewport lost focus, so no key it heard go down is still held.
-  Blur,
+  /// Nothing heard held is held now: the viewport lost focus, or lost the pointer lock and the key-ups with it.
+  ReleaseAll,
 }
