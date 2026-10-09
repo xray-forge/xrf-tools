@@ -216,6 +216,13 @@ impl LevelScene {
     self.load.is_ready((self.grass.is_loaded(), &slots), textures)
   }
 
+  /// What the level still waits for before it is ready, said for a log.
+  pub fn describe_pending(&self, textures: &TextureCache) -> String {
+    let slots: Vec<u32> = self.list_texture_slots().collect();
+
+    self.load.describe_pending((self.grass.is_loaded(), &slots), textures)
+  }
+
   /// Takes in the sectors waiting as `scheduler` grants them, in a round of their own: every one while the level opens,
   /// so it opens as fast as it streams; once it stands, the first `SECTORS_OFFERED` by their bytes, each waiting at
   /// most `SECTOR_WAIT_MOST` frames. Answers those it could not take in.

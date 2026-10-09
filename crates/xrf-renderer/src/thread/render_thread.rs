@@ -65,6 +65,7 @@ use crate::thread::gpu_state::GpuState;
 use crate::thread::render_command::RenderCommand;
 use crate::thread::render_link::RenderLink;
 use crate::thread::render_workers::RenderWorkers;
+use crate::thread::reopening_scenes::ReopeningScenes;
 use crate::viewport::pending_pick::PendingPick;
 use crate::viewport::pick_in_flight::PickInFlight;
 use crate::viewport::render_viewport::RenderViewport;
@@ -141,9 +142,8 @@ pub struct RenderThread {
   /// The scenes the world streams, each drawn by every viewport showing it; one the world let go is kept while a
   /// viewport still shows it.
   scenes: HashMap<RenderSceneId, LevelScene>,
-  /// The scenes viewports showed when the GPU was let go, each shown again only once it is whole, so a restart never
-  /// shows a level streaming back in.
-  reopening: HashSet<RenderSceneId>,
+  /// The scenes viewports showed when the GPU was let go, held back until they are whole again.
+  reopening: ReopeningScenes,
   /// When the last viewport detached, while none is attached.
   idle_since: Option<Instant>,
   last_frame: Instant,
@@ -188,7 +188,7 @@ impl RenderThread {
       hosts: HashMap::new(),
       viewports: BTreeMap::new(),
       scenes: HashMap::new(),
-      reopening: HashSet::new(),
+      reopening: ReopeningScenes::default(),
       idle_since: Some(now),
       last_frame: now,
       frame_due: None,
@@ -474,7 +474,7 @@ impl RenderThread {
     // Its scenes went with it; the world streams each in again, from the start, into scenes made again, which the
     // viewports showing them wait for whole.
     self.scenes.clear();
-    self.reopening.extend(
+    self.reopening.hold(
       self
         .viewports
         .values()
@@ -699,10 +699,12 @@ impl RenderThread {
         continue;
       };
 
-      let is_reopening: bool = self.reopening.contains(&asked);
+      let is_shown: bool = match self.reopening.is_held(asked) {
+        true => self.reopening.release(asked, scene, &gpu.textures),
+        false => shown.is_none() || scene.source.get_sector_count() > 0 || scene.is_ready(&gpu.textures),
+      };
 
-      if (!is_reopening && (shown.is_none() || scene.source.get_sector_count() > 0)) || scene.is_ready(&gpu.textures) {
-        self.reopening.remove(&asked);
+      if is_shown {
         viewport.show(Some((
           asked,
           SceneView::new(&gpu.context.device, &gpu.context.queue, &gpu.view_layout, scene),
@@ -718,7 +720,7 @@ impl RenderThread {
       .collect();
 
     self.scenes.retain(|id, _| live.contains(id) || shown.contains(id));
-    self.reopening.retain(|id| live.contains(id));
+    self.reopening.retain(&live);
 
     if now.duration_since(self.textures_swept) >= TEXTURE_SWEEP {
       self.textures_swept = now;

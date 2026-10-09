@@ -11,6 +11,10 @@ use crate::window::window_backdrop::WindowBackdrop;
 /// composition.
 const FRAME_LATENCY: u32 = 2;
 
+/// How many frames in a row a window may skip between the warnings that it does, so one stuck surface is reported
+/// without a line every frame.
+const SKIPS_REPORTED_EVERY: u32 = 600;
+
 /// One native window's swapchain, covering its whole client area; its viewports are rectangles drawn into it.
 pub struct RenderWindow {
   host: Arc<dyn RenderWindowHost>,
@@ -23,6 +27,8 @@ pub struct RenderWindow {
   configured: Cell<Option<(u32, u32, bool)>>,
   /// Whether the surface was lost, which only a new one recovers from.
   is_lost: Cell<bool>,
+  /// Frames in a row the surface gave no image for, and why the last one gave none.
+  skipped: Cell<(u32, &'static str)>,
   /// What its page's backdrop is painted with, once it is.
   backdrop: Option<WindowBackdrop>,
 }
@@ -52,11 +58,18 @@ impl RenderWindow {
       .or_else(|| capabilities.formats.first().copied())
       .ok_or_else(|| XrfError::new_unexpected_error("The window offers no swapchain format"))?;
 
+    log::info!(
+      "Window swapchain on {}: {format:?}, present modes {:?}",
+      context.backend.get_label(),
+      capabilities.present_modes
+    );
+
     Ok(Self {
       present_modes: capabilities.present_modes,
       usages: capabilities.usages,
       configured: Cell::new(None),
       is_lost: Cell::new(false),
+      skipped: Cell::new((0, "")),
       backdrop: None,
       host,
       surface,
@@ -97,34 +110,60 @@ impl RenderWindow {
     Some((width, height))
   }
 
-  /// The next image to draw into, of the size `ready` configured; `None` where the surface gives none this time.
+  /// The next image to draw into, of the size `ready` configured; `None` where the surface gives none this time, which
+  /// is logged as a run of skipped frames rather than frame by frame.
   pub fn acquire(&self) -> Option<wgpu::SurfaceTexture> {
+    let frame: Result<wgpu::SurfaceTexture, &'static str> = self.take_image();
+    let (count, reason) = self.skipped.get();
+
+    match &frame {
+      Ok(_) if count > 0 => {
+        log::info!("Window presents again after {count} skipped frames, the last for {reason}");
+        self.skipped.set((0, ""));
+      }
+      Ok(_) => {}
+      Err(reason) => {
+        let count: u32 = count + 1;
+
+        if count == 1 || count.is_multiple_of(SKIPS_REPORTED_EVERY) {
+          log::warn!("Window frame skipped for {reason}, {count} in a row");
+        }
+
+        self.skipped.set((count, reason));
+      }
+    }
+
+    frame.ok()
+  }
+
+  /// The next image, or why the surface gave none, as a log line names it.
+  fn take_image(&self) -> Result<wgpu::SurfaceTexture, &'static str> {
     match self.surface.get_current_texture() {
-      wgpu::CurrentSurfaceTexture::Success(frame) => Some(frame),
+      wgpu::CurrentSurfaceTexture::Success(frame) => Ok(frame),
       // Drawn, then configured again for what the surface has become.
       wgpu::CurrentSurfaceTexture::Suboptimal(frame) => {
         self.configured.set(None);
 
-        Some(frame)
+        Ok(frame)
       }
       // Nothing to draw into this time; the swapchain itself is fine.
-      wgpu::CurrentSurfaceTexture::Timeout | wgpu::CurrentSurfaceTexture::Occluded => None,
+      wgpu::CurrentSurfaceTexture::Timeout => Err("a timeout"),
+      wgpu::CurrentSurfaceTexture::Occluded => Err("an occluded window"),
       wgpu::CurrentSurfaceTexture::Outdated => {
         self.configured.set(None);
 
-        None
+        Err("an outdated swapchain")
       }
+      // Made again through a new surface.
       wgpu::CurrentSurfaceTexture::Lost => {
-        log::warn!("Window surface lost, recreating it");
         self.is_lost.set(true);
 
-        None
+        Err("a lost surface")
       }
       wgpu::CurrentSurfaceTexture::Validation => {
-        log::warn!("Window frame skipped on a validation error");
         self.configured.set(None);
 
-        None
+        Err("a validation error")
       }
     }
   }
