@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { getFileExtension, getFoldedFileExtension } from "@/lib/path/extension";
+import { getFileExtension, getFoldedFileExtension } from "#/extension";
 
 describe("getFileExtension", () => {
   it("reads whatever follows the last dot of the last segment", () => {

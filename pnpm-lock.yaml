@@ -223,6 +223,9 @@ importers:
       '@xrf/math':
         specifier: workspace:*
         version: link:../../packages/xrf-math
+      '@xrf/path':
+        specifier: workspace:*
+        version: link:../../packages/xrf-path
       '@xrf/types':
         specifier: workspace:*
         version: link:../../packages/xrf-types
@@ -432,6 +435,34 @@ importers:
         version: '@typescript/typescript6@6.0.2'
 
   packages/xrf-math:
+    devDependencies:
+      '@jest/globals':
+        specifier: 'catalog:'
+        version: 30.5.1(supports-color@8.1.1)
+      '@typescript/native':
+        specifier: 'catalog:'
+        version: typescript@7.0.2
+      '@xrf/toolchain':
+        specifier: workspace:*
+        version: link:../../cli
+      eslint:
+        specifier: 'catalog:'
+        version: 10.10.0(jiti@2.7.0)(supports-color@8.1.1)
+      jest:
+        specifier: 'catalog:'
+        version: 30.5.1(@types/node@25.9.2)(babel-plugin-macros@3.1.0)(supports-color@8.1.1)
+      prettier:
+        specifier: 'catalog:'
+        version: 3.9.6
+      typescript:
+        specifier: 'catalog:'
+        version: '@typescript/typescript6@6.0.2'
+
+  packages/xrf-path:
+    dependencies:
+      '@xrf/types':
+        specifier: workspace:*
+        version: link:../xrf-types
     devDependencies:
       '@jest/globals':
         specifier: 'catalog:'

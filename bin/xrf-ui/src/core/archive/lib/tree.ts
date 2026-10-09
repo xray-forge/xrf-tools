@@ -1,3 +1,4 @@
+import { isUnderPathPrefix } from "@xrf/path";
 import { Nullable } from "@xrf/types";
 
 import { EPathEntryKind } from "@/core/path/entry-kind";
@@ -19,18 +20,7 @@ import { TArchiveSelection } from "./selection";
  * @returns Whether extraction would write the file under the directory.
  */
 export function isUnderArchiveDirectory(descriptor: IArchiveEntry, prefix: string): boolean {
-  if (descriptor.isDirectory) {
-    return false;
-  }
-
-  if (!prefix) {
-    return true;
-  }
-
-  const name: string = descriptor.name.toLowerCase();
-  const normalized: string = prefix.replace(/[\\/]+$/, "").toLowerCase();
-
-  return name.length > normalized.length && name.startsWith(normalized) && /[\\/]/.test(name[normalized.length]);
+  return !descriptor.isDirectory && isUnderPathPrefix(descriptor.name, prefix);
 }
 
 export type IArchiveTreeItem = IPathTreeItem<IArchiveEntry>;

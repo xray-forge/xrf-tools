@@ -5,12 +5,14 @@ import {
   getPathDirectory,
   getPathName,
   isSamePath,
+  isUnderPathPrefix,
   LOGICAL_PATH_SEPARATOR,
   splitAfterSeparators,
   splitLogicalPath,
   toComparablePath,
+  toLogicalKey,
   truncatePathHead,
-} from "@/lib/path/separator";
+} from "#/separator";
 
 describe("findLastSeparator", () => {
   it("finds either style, which is what a path from the host may be written in", () => {
@@ -147,5 +149,31 @@ describe("splitLogicalPath", () => {
 
   it("splits an empty path into nothing rather than failing", () => {
     expect(splitLogicalPath("")).toEqual({ directory: null, name: "" });
+  });
+});
+
+describe("toLogicalKey", () => {
+  it("folds case and separators the way the engine compares a reference", () => {
+    expect(toLogicalKey("textures/Act/Act_Stalker")).toBe("textures\\act\\act_stalker");
+    expect(toLogicalKey("textures\\act\\act_stalker")).toBe("textures\\act\\act_stalker");
+  });
+});
+
+describe("isUnderPathPrefix", () => {
+  it("matches below the directory in either separator style and any case", () => {
+    expect(isUnderPathPrefix("Configs\\system.ltx", "configs")).toBe(true);
+    expect(isUnderPathPrefix("configs/weathers/w_clear.ltx", "CONFIGS\\")).toBe(true);
+  });
+
+  it("matches only at a segment boundary", () => {
+    expect(isUnderPathPrefix("configs_backup\\system.ltx", "configs")).toBe(false);
+  });
+
+  it("does not count the directory itself as under it", () => {
+    expect(isUnderPathPrefix("configs", "configs")).toBe(false);
+  });
+
+  it("holds every path under an empty directory", () => {
+    expect(isUnderPathPrefix("system.ltx", "")).toBe(true);
   });
 });

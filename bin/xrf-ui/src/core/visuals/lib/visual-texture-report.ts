@@ -1,3 +1,4 @@
+import { toLogicalKey } from "@xrf/path";
 import { assertExhaustive, Nullable, Optional } from "@xrf/types";
 
 import { getLocatedAsset } from "@/core/assets/lib/resolution";
@@ -17,14 +18,6 @@ interface IVisualTextureOutcome {
 const PENDING: IVisualTextureOutcome = { reason: null, state: EVisualTextureState.LOADING };
 
 /**
- * @param reference - A texture reference as a shader or a material names it.
- * @returns The same, as two spellings of one name compare.
- */
-function toReferenceKey(reference: string): string {
-  return reference.replaceAll("/", "\\").toLowerCase();
-}
-
-/**
  * @param reports - What the renderer said of every texture its scene samples.
  * @returns Each reference's outcome, by its compared spelling.
  */
@@ -36,19 +29,19 @@ function toOutcomes(reports: Array<RenderTextureReport>): Map<string, IVisualTex
       switch (state.kind) {
         case ERenderTextureState.LOADING:
         case ERenderTextureState.DEFERRED:
-          return [toReferenceKey(report.reference), PENDING];
+          return [toLogicalKey(report.reference), PENDING];
 
         case ERenderTextureState.LOADED:
           return [
-            toReferenceKey(report.reference),
+            toLogicalKey(report.reference),
             { reason: null, state: state.isExpanded ? EVisualTextureState.DECODED : EVisualTextureState.APPLIED },
           ];
 
         case ERenderTextureState.MISSING:
-          return [toReferenceKey(report.reference), { reason: null, state: EVisualTextureState.UNRESOLVED }];
+          return [toLogicalKey(report.reference), { reason: null, state: EVisualTextureState.UNRESOLVED }];
 
         case ERenderTextureState.FAILED:
-          return [toReferenceKey(report.reference), { reason: state.reason, state: EVisualTextureState.FAILED }];
+          return [toLogicalKey(report.reference), { reason: state.reason, state: EVisualTextureState.FAILED }];
 
         default:
           return assertExhaustive(state);
@@ -66,7 +59,7 @@ function toHalfOutcome(
   outcomes: Map<string, IVisualTextureOutcome>,
   input: XrayMaterialBumpInput
 ): IVisualTextureOutcome {
-  return outcomes.get(toReferenceKey(input.reference)) ?? PENDING;
+  return outcomes.get(toLogicalKey(input.reference)) ?? PENDING;
 }
 
 /**
@@ -87,7 +80,7 @@ export function toVisualTextureStatuses(
       const initial: EVisualTextureState = toInitialTextureState(texture.resolution);
       const outcome: IVisualTextureOutcome =
         initial === EVisualTextureState.LOADING
-          ? (outcomes.get(toReferenceKey(texture.reference)) ?? PENDING)
+          ? (outcomes.get(toLogicalKey(texture.reference)) ?? PENDING)
           : { reason: null, state: initial };
 
       return [texture.submeshIndex, { ...outcome, submeshIndex: texture.submeshIndex }];

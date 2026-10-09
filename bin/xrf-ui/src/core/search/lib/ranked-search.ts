@@ -1,4 +1,4 @@
-import { findLastSeparator } from "@/lib/path/separator";
+import { findLastSeparator } from "@xrf/path";
 
 /**
  * Rank buckets, best first. The numbers are only compared to each other.

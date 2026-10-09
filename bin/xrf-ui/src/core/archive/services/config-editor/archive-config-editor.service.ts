@@ -1,5 +1,6 @@
 import { BoundAction, Computed, Observable } from "@wirestate/mobx";
 import { formatDuration } from "@xrf/format";
+import { getPathName } from "@xrf/path";
 import { Nullable, Optional } from "@xrf/types";
 
 import { IResolvedArchiveVolumeSize, resolveArchiveVolumeSize } from "@/core/archive/lib/volume-size";
@@ -10,7 +11,6 @@ import { JobOperation } from "@/core/jobs/lib/job-operation";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { Logger, Timer } from "@/lib/logging";
 import { call, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
-import { getPathName } from "@/lib/path/separator";
 
 /** What every archive configuration carries that this editor reads: the packer's own volume ceiling. */
 export interface IArchiveEditedConfig {

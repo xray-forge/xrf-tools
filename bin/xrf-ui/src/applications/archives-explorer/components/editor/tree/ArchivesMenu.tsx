@@ -1,4 +1,5 @@
 import { useInjection } from "@wirestate/react";
+import { LOGICAL_PATH_SEPARATOR } from "@xrf/path";
 import { Nullable, Optional } from "@xrf/types";
 import { ReactElement, useCallback, useEffect, useMemo } from "react";
 
@@ -15,7 +16,6 @@ import { ARCHIVED_CAPTION, TreeRowLabel } from "@/core/ui/tree/TreeRowLabel";
 import { IUseTreeState, useTreeState } from "@/core/ui/tree/use-tree-state";
 import { VirtualizedTree } from "@/core/ui/tree/VirtualizedTree";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { LOGICAL_PATH_SEPARATOR } from "@/lib/path/separator";
 
 import { ARCHIVE_TREE_ICONS, toSearchText } from "./ArchivesMenu.utils";
 

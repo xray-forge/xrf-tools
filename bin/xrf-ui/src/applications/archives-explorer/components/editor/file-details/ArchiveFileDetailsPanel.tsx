@@ -1,5 +1,6 @@
 import { useInjection } from "@wirestate/react";
 import { formatBytes, formatHex } from "@xrf/format";
+import { getFileExtension } from "@xrf/path";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback } from "react";
 
@@ -14,7 +15,6 @@ import {
   EditorPanelSection,
 } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { getFileExtension } from "@/lib/path/extension";
 
 import { ArchiveOriginDetail } from "./ArchiveOriginDetail";
 import { ArchiveSharedPayloadDetail } from "./ArchiveSharedPayloadDetail";

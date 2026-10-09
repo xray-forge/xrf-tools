@@ -1,6 +1,7 @@
 import { describe, expect, it, jest } from "@jest/globals";
 import { RenderResult } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
+import { LOGICAL_PATH_SEPARATOR } from "@xrf/path";
 import { ReactElement } from "react";
 
 import { TREE } from "@/core/theme/tokens";
@@ -9,7 +10,6 @@ import { ITreeNode } from "@/core/ui/tree/tree-node";
 import { IUseTreeState, useTreeState } from "@/core/ui/tree/use-tree-state";
 import { VirtualizedTree } from "@/core/ui/tree/VirtualizedTree/VirtualizedTree";
 import { renderWithProviders } from "@/fixtures/utils/render";
-import { LOGICAL_PATH_SEPARATOR } from "@/lib/path/separator";
 
 const ICONS = { collapsed: <span>+</span>, expanded: <span>-</span>, leaf: <span>.</span> };
 
