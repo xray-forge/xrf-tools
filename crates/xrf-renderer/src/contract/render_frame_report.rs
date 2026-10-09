@@ -5,6 +5,7 @@ use crate::contract::render_backend::RenderBackend;
 use crate::contract::render_dlss_availability::RenderDlssAvailability;
 use crate::contract::render_frame_phases::RenderFramePhases;
 use crate::contract::render_graph_report::RenderGraphReport;
+use crate::contract::render_grass_report::RenderGrassReport;
 use crate::contract::render_group_cost::RenderGroupCost;
 use crate::contract::render_lights_report::RenderLightsReport;
 use crate::contract::render_memory_report::RenderMemoryReport;
@@ -71,6 +72,8 @@ pub struct RenderFrameReport {
   pub lights: RenderLightsReport,
   /// The level's particle systems, empty without a level.
   pub particles: RenderParticlesReport,
+  /// The view's grass, empty without a level or grass.
+  pub grass: RenderGrassReport,
   /// Milliseconds the last sector taken in took to put into the scene, on the render thread.
   pub sector_time: f32,
   /// What the renderer holds on the GPU.

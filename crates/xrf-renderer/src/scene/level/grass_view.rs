@@ -5,8 +5,10 @@ use xrf_renderer_core::{
 
 use crate::camera::camera_view::CameraView;
 use crate::contract::render_applied_grass::RenderAppliedGrass;
+use crate::contract::render_grass_report::RenderGrassReport;
 use crate::contract::render_grass_settings::RenderGrassSettings;
 use crate::frame::frame_encoder::FrameEncoder;
+use crate::frame::stats_readback::StatsReadback;
 use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::lighting::grass_wind::GrassWind;
 use crate::pass::foliage_wind_values::FoliageWindValues;
@@ -44,6 +46,8 @@ pub struct GrassView {
   is_drawn: bool,
   /// The planting as a traced hit reads it, no models while none is drawn.
   trace: TraceGrassUniform,
+  /// The cull's total, read back without waiting on the GPU.
+  stats: StatsReadback,
 }
 
 impl GrassView {
@@ -71,6 +75,7 @@ impl GrassView {
       planted: None,
       is_drawn: false,
       trace: TraceGrassUniform::default(),
+      stats: StatsReadback::new(device),
     }
   }
 
@@ -192,6 +197,30 @@ impl GrassView {
     })
   }
 
+  /// Asks for the cull's total copied out with the frame just submitted.
+  pub fn request_stats(&self) {
+    self.stats.request();
+  }
+
+  /// Drops the copy made with a frame that was never submitted.
+  pub fn abandon_stats(&self) {
+    self.stats.abandon();
+  }
+
+  /// What a recent frame drew: the cull's latest total read back, and the most the lists hold.
+  pub fn take_report(&mut self) -> RenderGrassReport {
+    let [drawn, ..] = self.stats.take();
+
+    RenderGrassReport {
+      drawn,
+      capacity: self
+        .build
+        .as_ref()
+        .filter(|_| self.is_drawn)
+        .map_or(0, |build| build.size.capacity),
+    }
+  }
+
   /// Plants the frame's grass of `level` where it is drawn: the ring's stale cells, ahead of the frame's depth.
   pub fn add_planting<'a>(
     &'a self,
@@ -221,10 +250,10 @@ impl GrassView {
   }
 
   /// Culls what the ring holds by the view and the frame's depth `occlusion`, into the draw arguments `args` the
-  /// planting answered.
+  /// planting answered, then copies its total out for reading back: an effect the graph cannot see.
   pub fn add_cull<'a>(
     &'a self,
-    graph: &mut FrameGraph<'a>,
+    (graph, bindings): (&mut FrameGraph<'a>, &mut GraphBindings<'a>),
     (pass, level): (&'a GrassPass, Option<&'a GrassLevel>),
     (args, occlusion): (GraphBuffer, GrassOcclusionParameters),
   ) {
@@ -232,13 +261,35 @@ impl GrassView {
       return;
     };
     let dispatch: GrassDispatch = self.get_dispatch(level, build);
+    let counts: GraphBuffer = bindings.import_buffer(graph, "grass counts", &level.counts);
 
     graph
       .add_compute_pass("grass cull")
       .buffer(args, GraphBufferAccess::StorageReadWrite)
+      .buffer(counts, GraphBufferAccess::StorageReadWrite)
       .parameters(&occlusion)
       .record(move |context| {
-        pass.record_cull(context, (&level.bind_group, &build.bind_group), &occlusion, dispatch);
+        pass.record_cull(
+          context,
+          (
+            &level.bind_group,
+            &build.bind_group,
+            (&build.sort_group, &build.sort_dispatch),
+          ),
+          &occlusion,
+          dispatch,
+        );
+      });
+    graph
+      .add_encoder_pass("grass stats")
+      .buffer(counts, GraphBufferAccess::CopySource)
+      .keep()
+      .record(move |context| {
+        let counts: &wgpu::Buffer = context.get_buffer(counts);
+
+        self
+          .stats
+          .record(context.get_encoder(), counts, u64::from(level.model_count) * 4);
       });
   }
 

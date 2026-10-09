@@ -34,6 +34,8 @@ pub struct GrassLevel {
   pub positions: wgpu::Buffer,
   pub uvs: wgpu::Buffer,
   pub indices: wgpu::Buffer,
+  /// What the cull counted, each model's tufts then their total, padded so a copy of four words starts at the total.
+  pub counts: wgpu::Buffer,
   pub args: wgpu::Buffer,
   pub bind_group: wgpu::BindGroup,
 }
@@ -109,7 +111,11 @@ impl GrassLevel {
     let triangles: wgpu::Buffer = storage("grass triangles", section(&description.triangles), read);
     let dither: wgpu::Buffer = storage("grass dither", bytemuck::cast_slice(&create_grass_dither()), read);
     let counted = wgpu::BufferUsages::STORAGE;
-    let counts: wgpu::Buffer = storage("grass counts", &vec![0; (model_count as usize + 1) * 4], counted);
+    let counts: wgpu::Buffer = storage(
+      "grass counts",
+      &vec![0; (model_count as usize + 4) * 4],
+      counted | wgpu::BufferUsages::COPY_SRC,
+    );
     let cursors: wgpu::Buffer = storage("grass cursors", &vec![0; model_count.max(1) as usize * 4], counted);
     let args: wgpu::Buffer = storage(
       "grass draw arguments",
@@ -162,6 +168,7 @@ impl GrassLevel {
         usage: wgpu::BufferUsages::STORAGE,
         mapped_at_creation: false,
       }),
+      counts,
       args,
       bind_group,
     }

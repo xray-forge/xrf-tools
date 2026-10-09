@@ -62,6 +62,7 @@ pub(crate) mod glass_pass;
 pub(crate) mod glass_uniform;
 pub(crate) mod grass_colour_parameters;
 pub(crate) mod grass_colour_pass;
+pub(crate) mod grass_compute_pipelines;
 pub(crate) mod grass_dispatch;
 pub(crate) mod grass_draws;
 pub(crate) mod grass_model_record;

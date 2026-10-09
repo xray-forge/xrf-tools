@@ -21,6 +21,13 @@
 // One indexed draw a model.
 @group(0) @binding(8) var<storage, read_write> args: array<u32>;
 
+// The sort's indirect dispatch, sized by what the cull kept: bound to `arrange` alone, since the sort reads it as its
+// arguments while the rest stay bound.
+@group(3) @binding(0) var<storage, read_write> sort_dispatch: array<u32, 3>;
+
+// Workgroups a row of the sort's dispatch holds at most: D3D12's limit, the least Vulkan guarantees.
+const SORT_ROW: u32 = 65535u;
+
 // The ring: a key a cell, a vector a cell (its ground's middle height and half its height, its hemisphere and sun), and
 // two vectors a cached tuft (its place and turn, then its size, model and wave).
 @group(1) @binding(0) var<storage, read_write> keys: array<u32>;
@@ -573,7 +580,8 @@ fn cull(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workgroups) g
   }
 }
 
-// Lays each model's items out after the last's and writes its indexed draw, the range's start as its first instance.
+// Lays each model's items out after the last's and writes its indexed draw, the range's start as its first instance;
+// then sizes the sort's dispatch by the items kept, over rows as `ComputeGrid` lays them.
 @compute @workgroup_size(1)
 fn arrange() {
   var first: u32 = 0u;
@@ -590,6 +598,12 @@ fn arrange() {
     atomicStore(&cursors[model], first);
     first += count;
   }
+
+  let groups: u32 = (min(atomicLoad(&counts[params.model_count]), params.capacity) + 63u) / 64u;
+
+  sort_dispatch[0] = min(groups, SORT_ROW);
+  sort_dispatch[1] = (groups + SORT_ROW - 1u) / SORT_ROW;
+  sort_dispatch[2] = 1u;
 }
 
 // Sorts the items into each model's range, a thread an item.

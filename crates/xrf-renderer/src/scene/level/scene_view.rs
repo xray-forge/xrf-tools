@@ -17,6 +17,7 @@ use crate::contract::render_applied_report::RenderAppliedReport;
 use crate::contract::render_applied_shadows::RenderAppliedShadows;
 use crate::contract::render_bloom_mode::RenderBloomMode;
 use crate::contract::render_debug_view::RenderDebugView;
+use crate::contract::render_grass_report::RenderGrassReport;
 use crate::contract::render_level_hit::RenderLevelHit;
 use crate::contract::render_lights_report::RenderLightsReport;
 use crate::contract::render_overlay::RenderOverlay;
@@ -112,6 +113,11 @@ pub struct SceneView {
 
 impl SceneView {
   /// What the scene's particles came to since the last report, as this view draws them.
+  /// What the grass came to on a recent frame.
+  pub fn take_grass_report(&mut self) -> RenderGrassReport {
+    self.features.grass.take_report()
+  }
+
   pub fn take_particles_report(&self, scene: &mut LevelScene) -> RenderParticlesReport {
     scene.particles.take_report(self.features.particles.drawn)
   }
@@ -892,10 +898,11 @@ impl SceneView {
         occlusion: runtime.push_uniform(&scene_view.features.statics.get_frame_occlusion()),
       };
 
-      scene_view
-        .features
-        .grass
-        .add_cull(&mut *graph, (passes.grass, grass_level), (grass_args, occlusion));
+      scene_view.features.grass.add_cull(
+        (&mut *graph, &mut *bindings),
+        (passes.grass, grass_level),
+        (grass_args, occlusion),
+      );
     }
 
     // The depth the reflections walk their rays over, kept before the grass draws, or after it where the grass is
@@ -1478,6 +1485,7 @@ impl SceneView {
   /// Asks for the counts recorded with the frame just submitted.
   pub fn request_stats(&self) {
     self.features.statics.request_stats();
+    self.features.grass.request_stats();
     self.features.lights.request_report();
   }
 
@@ -1485,6 +1493,7 @@ impl SceneView {
   /// periodic work it drew, which draws again.
   pub fn abandon_frame(&mut self) {
     self.features.statics.abandon_stats();
+    self.features.grass.abandon_stats();
     self.features.lights.abandon_report();
     self.features.pick.abandon();
     // What the frame drew of the periodic work was never drawn.

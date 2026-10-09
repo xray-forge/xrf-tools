@@ -91,6 +91,7 @@ const REPORT: RenderFrameReport = {
     volumetric: 2,
   },
   particles: { drawn: 9, effects: 14, particles: 210, simulated: 11, simulationTime: 0.3 },
+  grass: { capacity: 4096, drawn: 1200 },
   renderHeight: 400,
   renderWidth: 534,
   sectorTime: 1.5,

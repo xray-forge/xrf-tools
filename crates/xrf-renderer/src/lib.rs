@@ -72,6 +72,7 @@ pub use crate::contract::render_graph_pass_kind::RenderGraphPassKind;
 pub use crate::contract::render_graph_report::RenderGraphReport;
 pub use crate::contract::render_graph_settings::RenderGraphSettings;
 pub use crate::contract::render_graph_transient::RenderGraphTransient;
+pub use crate::contract::render_grass_report::RenderGrassReport;
 pub use crate::contract::render_grass_settings::RenderGrassSettings;
 pub use crate::contract::render_group_cost::RenderGroupCost;
 pub use crate::contract::render_image_corrections::RenderImageCorrections;

@@ -11,6 +11,9 @@ pub struct GrassBuild {
   /// The items sorted by model, which the draws read.
   pub sorted: wgpu::Buffer,
   pub bind_group: wgpu::BindGroup,
+  /// The sort's indirect dispatch, and the group `arrange` writes it through.
+  pub sort_dispatch: wgpu::Buffer,
+  pub sort_group: wgpu::BindGroup,
 }
 
 impl GrassBuild {
@@ -70,10 +73,27 @@ impl GrassBuild {
     });
     let [_, _, _, _, _, _, _, sorted] = buffers;
 
+    let sort_dispatch: wgpu::Buffer = device.create_buffer(&wgpu::BufferDescriptor {
+      label: Some("grass sort dispatch"),
+      size: 12,
+      usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::INDIRECT,
+      mapped_at_creation: false,
+    });
+    let sort_group: wgpu::BindGroup = device.create_bind_group(&wgpu::BindGroupDescriptor {
+      label: Some("grass sort"),
+      layout: pass.get_sort_layout(),
+      entries: &[wgpu::BindGroupEntry {
+        binding: 0,
+        resource: sort_dispatch.as_entire_binding(),
+      }],
+    });
+
     Self {
       size,
       sorted,
       bind_group,
+      sort_dispatch,
+      sort_group,
     }
   }
 }

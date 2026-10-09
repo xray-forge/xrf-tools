@@ -12,6 +12,7 @@ use crate::contract::render_backend::RenderBackend;
 use crate::contract::render_dlss_availability::RenderDlssAvailability;
 use crate::contract::render_frame_report::RenderFrameReport;
 use crate::contract::render_graph_report::RenderGraphReport;
+use crate::contract::render_grass_report::RenderGrassReport;
 use crate::contract::render_level_hit::RenderLevelHit;
 use crate::contract::render_light_scales::RenderLightScales;
 use crate::contract::render_lights_report::RenderLightsReport;
@@ -232,10 +233,11 @@ impl RenderViewport {
       .shown
       .as_mut()
       .and_then(|(id, view)| Some((scenes.get_mut(id)?, view)));
-    let (static_draws, lights, particles, sector_time): (
+    let (static_draws, lights, particles, grass, sector_time): (
       RenderStaticReport,
       RenderLightsReport,
       RenderParticlesReport,
+      RenderGrassReport,
       f32,
     ) = match shown {
       Some((scene, view)) => {
@@ -245,6 +247,7 @@ impl RenderViewport {
           static_draws,
           lights,
           view.take_particles_report(scene),
+          view.take_grass_report(),
           scene.sector_time,
         )
       }
@@ -325,6 +328,7 @@ impl RenderViewport {
       static_draws,
       lights,
       particles,
+      grass,
       sector_time,
       graph: graph.map(|graph| Box::new(RenderGraphReport::of(graph, self.id.0, FrameGraph::FRAME_OWNER))),
       memory: RenderMemoryReport {

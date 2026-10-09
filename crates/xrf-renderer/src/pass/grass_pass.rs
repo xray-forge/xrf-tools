@@ -4,6 +4,7 @@ use xrf_renderer_core::{ComputeContext, PassParameters};
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::compute_grid::ComputeGrid;
 use crate::pass::fullscreen_pipeline::buffer_binding;
+use crate::pass::grass_compute_pipelines::GrassComputePipelines;
 use crate::pass::grass_dispatch::GrassDispatch;
 use crate::pass::grass_draws::GrassDraws;
 use crate::pass::grass_occlusion_parameters::GrassOcclusionParameters;
@@ -15,10 +16,15 @@ use crate::pass::view_binding::ViewBinding;
 /// The planting's entry points, in the order a frame dispatches them: the ring's stale cells ranked and the nearest
 /// planted, before the frame's depth; then, against that depth, every current cell culled and what it keeps sorted.
 const PLANTING_ENTRIES: [&str; 4] = ["clear_schedule", "rank", "select_band", "decompress"];
-const CULLING_ENTRIES: [&str; 4] = ["clear_counts", "cull", "arrange", "scatter"];
+const CULLING_ENTRIES: [&str; 2] = ["clear_counts", "cull"];
 
 /// Threads a planting workgroup runs.
 const WORKGROUP: u32 = 64;
+
+/// Items the lists hold past which the sort is dispatched over the items kept, read off the GPU, rather than over every
+/// item the lists hold. The indirect dispatch costs ~0.02 ms on D3D12, which patches its arguments in a pass of its own;
+/// dispatching over the lists costs ~0.035 ms a million items (RTX 5080), so the indirect one wins only past ~1M.
+const SORT_INDIRECT_ABOVE: u32 = 1 << 21;
 
 /// Bytes one indexed indirect draw takes.
 pub const GRASS_DRAW_BYTES: u64 = 20;
@@ -30,10 +36,15 @@ pub struct GrassPass {
   build_layout: wgpu::BindGroupLayout,
   draw_layout: wgpu::BindGroupLayout,
   occlusion_layout: wgpu::BindGroupLayout,
+  /// The sort's indirect dispatch, which `arrange` alone writes.
+  sort_layout: wgpu::BindGroupLayout,
   view_layout: wgpu::BindGroupLayout,
   texture_layout: wgpu::BindGroupLayout,
   planting: Vec<wgpu::ComputePipeline>,
+  /// Clearing the counts and culling, then arranging the draws and sorting the items into them.
   culling: Vec<wgpu::ComputePipeline>,
+  arrange: wgpu::ComputePipeline,
+  sort: wgpu::ComputePipeline,
   draw: wgpu::RenderPipeline,
   grid: ComputeGrid,
   generation: u64,
@@ -91,12 +102,27 @@ impl GrassPass {
       ],
     });
     let occlusion_layout: wgpu::BindGroupLayout = GrassOcclusionParameters::create_layout(device);
+    let sort_layout: wgpu::BindGroupLayout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+      label: Some("grass sort"),
+      entries: &[storage_entry(0, compute, true)],
+    });
     let layouts = [&level_layout, &build_layout, &draw_layout, view_layout, texture_layout];
-    let (planting, culling) = Self::create_planting(device, source, [layouts[0], layouts[1], &occlusion_layout])?;
+    let GrassComputePipelines {
+      planting,
+      culling,
+      arrange,
+      sort,
+    } = Self::create_planting(
+      device,
+      source,
+      [layouts[0], layouts[1], &occlusion_layout, &sort_layout],
+    )?;
 
     Ok(Self {
       planting,
       culling,
+      arrange,
+      sort,
       draw: Self::create_draw(device, source, [layouts[3], layouts[2], layouts[4]])?,
       grid: ComputeGrid::new(device),
       generation: source.get_generation(),
@@ -106,6 +132,7 @@ impl GrassPass {
       build_layout,
       draw_layout,
       occlusion_layout,
+      sort_layout,
     })
   }
 
@@ -119,7 +146,12 @@ impl GrassPass {
     let planting = Self::create_planting(
       device,
       source,
-      [&self.level_layout, &self.build_layout, &self.occlusion_layout],
+      [
+        &self.level_layout,
+        &self.build_layout,
+        &self.occlusion_layout,
+        &self.sort_layout,
+      ],
     );
     let draw = Self::create_draw(
       device,
@@ -128,9 +160,11 @@ impl GrassPass {
     );
 
     match (planting, draw) {
-      (Ok((planting, culling)), Ok(draw)) => {
-        self.planting = planting;
-        self.culling = culling;
+      (Ok(pipelines), Ok(draw)) => {
+        self.planting = pipelines.planting;
+        self.culling = pipelines.culling;
+        self.arrange = pipelines.arrange;
+        self.sort = pipelines.sort;
         self.draw = draw;
       }
       (Err(error), _) | (_, Err(error)) => log::error!("Grass rejected, drawing with the last: {error}"),
@@ -143,6 +177,10 @@ impl GrassPass {
 
   pub fn get_build_layout(&self) -> &wgpu::BindGroupLayout {
     &self.build_layout
+  }
+
+  pub fn get_sort_layout(&self) -> &wgpu::BindGroupLayout {
+    &self.sort_layout
   }
 
   /// Binds what the draws read: the sorted items, the models and the sway.
@@ -193,17 +231,12 @@ impl GrassPass {
   pub fn record_cull(
     &self,
     context: &mut ComputeContext<'_>,
-    (level, build): (&wgpu::BindGroup, &wgpu::BindGroup),
+    (level, build, (sort, sort_dispatch)): (&wgpu::BindGroup, &wgpu::BindGroup, (&wgpu::BindGroup, &wgpu::Buffer)),
     occlusion: &GrassOcclusionParameters,
     dispatch: GrassDispatch,
   ) {
     let groups = |count: u32| count.max(1).div_ceil(WORKGROUP);
-    let sizes: [u32; 4] = [
-      groups(dispatch.models + 1),
-      groups(dispatch.cells),
-      1,
-      groups(dispatch.capacity),
-    ];
+    let sizes: [u32; 2] = [groups(dispatch.models + 1), groups(dispatch.cells)];
 
     context.bind(occlusion);
 
@@ -215,6 +248,18 @@ impl GrassPass {
     for (pipeline, size) in self.culling.iter().zip(sizes) {
       pass.set_pipeline(pipeline);
       self.grid.dispatch(pass, size);
+    }
+
+    pass.set_pipeline(&self.arrange);
+    pass.set_bind_group(3, sort, &[]);
+    pass.dispatch_workgroups(1, 1, 1);
+    pass.set_pipeline(&self.sort);
+
+    // Wide lists sort over the items kept, at a wide radius a hundredth of what they hold; narrow ones over all of them.
+    if dispatch.capacity > SORT_INDIRECT_ABOVE {
+      pass.dispatch_workgroups_indirect(sort_dispatch, 0);
+    } else {
+      self.grid.dispatch(pass, groups(dispatch.capacity));
     }
   }
 
@@ -244,8 +289,8 @@ impl GrassPass {
   fn create_planting(
     device: &wgpu::Device,
     source: PipelineSource<'_>,
-    [level_layout, build_layout, occlusion_layout]: [&wgpu::BindGroupLayout; 3],
-  ) -> XrfResult<(Vec<wgpu::ComputePipeline>, Vec<wgpu::ComputePipeline>)> {
+    [level_layout, build_layout, occlusion_layout, sort_layout]: [&wgpu::BindGroupLayout; 4],
+  ) -> XrfResult<GrassComputePipelines> {
     let module: wgpu::ShaderModule = source.get_module("grass/planting")?;
     let planting_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
       label: Some("grass planting"),
@@ -257,28 +302,34 @@ impl GrassPass {
       bind_group_layouts: &[Some(level_layout), Some(build_layout), Some(occlusion_layout)],
       ..Default::default()
     });
-    let create = |entries: &[&'static str], layout: &wgpu::PipelineLayout| -> XrfResult<Vec<wgpu::ComputePipeline>> {
-      entries
-        .iter()
-        .map(|entry| {
-          create_checked(device, entry, || {
-            device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-              label: Some(entry),
-              layout: Some(layout),
-              module: &module,
-              entry_point: Some(entry),
-              compilation_options: Default::default(),
-              cache: source.get_driver_cache(),
-            })
-          })
+    let arrange_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+      label: Some("grass arrange"),
+      bind_group_layouts: &[Some(level_layout), Some(build_layout), None, Some(sort_layout)],
+      ..Default::default()
+    });
+    let create = |entry: &'static str, layout: &wgpu::PipelineLayout| -> XrfResult<wgpu::ComputePipeline> {
+      create_checked(device, entry, || {
+        device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+          label: Some(entry),
+          layout: Some(layout),
+          module: &module,
+          entry_point: Some(entry),
+          compilation_options: Default::default(),
+          cache: source.get_driver_cache(),
         })
-        .collect()
+      })
     };
+    let create_all =
+      |entries: &[&'static str], layout: &wgpu::PipelineLayout| -> XrfResult<Vec<wgpu::ComputePipeline>> {
+        entries.iter().map(|entry| create(entry, layout)).collect()
+      };
 
-    Ok((
-      create(&PLANTING_ENTRIES, &planting_layout)?,
-      create(&CULLING_ENTRIES, &culling_layout)?,
-    ))
+    Ok(GrassComputePipelines {
+      planting: create_all(&PLANTING_ENTRIES, &planting_layout)?,
+      culling: create_all(&CULLING_ENTRIES, &culling_layout)?,
+      arrange: create("arrange", &arrange_layout)?,
+      sort: create("scatter", &culling_layout)?,
+    })
   }
 
   fn create_draw(

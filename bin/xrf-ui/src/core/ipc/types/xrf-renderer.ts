@@ -669,6 +669,8 @@ export type RenderFrameReport = {
   lights: RenderLightsReport;
   /** The level's particle systems, empty without a level. */
   particles: RenderParticlesReport;
+  /** The view's grass, empty without a level or grass. */
+  grass: RenderGrassReport;
   /** Milliseconds the last sector taken in took to put into the scene, on the render thread. */
   sectorTime: number | null;
   /** What the renderer holds on the GPU. */
@@ -766,6 +768,14 @@ export type RenderGraphTransient = {
   first: number;
   last: number;
   bytes: number;
+};
+
+/** What a view's grass came to on a recent frame: the tufts its cull kept and the most its lists hold. */
+export type RenderGrassReport = {
+  /** Tufts the cull kept, read back a frame or more late; past `capacity` the rest went undrawn. */
+  drawn: number;
+  /** Tufts the lists hold at most, none while no grass is drawn. */
+  capacity: number;
 };
 
 /**
