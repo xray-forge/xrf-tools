@@ -16,17 +16,21 @@ pub struct RenderFogSettings {
   pub sun_color: f32,
   /// How readily the bright parts of the frame are blurred into the fog: none blurs nothing.
   pub scattering: f32,
+  /// The fog's share past which fogged surfaces fade into the sky behind them, whole where the fog is: none fades them
+  /// by the fog's square from the first, as the engine does, which shows the sky through the middle distance.
+  pub sky_fade: f32,
 }
 
 impl Default for RenderFogSettings {
-  /// The engine's own fog, with the enhanced fog's shipped strengths but no scattering, which haloes what stands in fog.
+  /// The engine's own fog, with the enhanced fog's strengths but no scattering, which haloes what stands in fog.
   fn default() -> Self {
     Self {
       mode: RenderFogMode::Engine,
       height: 8.0,
-      density: 1.3,
+      density: 1.56,
       sun_color: 0.1,
       scattering: 0.0,
+      sky_fade: 0.75,
     }
   }
 }

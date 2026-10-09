@@ -88,9 +88,14 @@ fn fs_combine(in: FullscreenVarying) -> CombineOutput {
   let is_empty: bool = depth <= 0.0 || fog >= 1.0;
 
   if (is_empty) {
-    // `sky2.ps`: the sky's high part is the sky as drawn, within `def_hdr`.
+    // `sky2.ps`: the sky's high part is the sky as drawn, within `def_hdr`; where the enhanced fog fades only past a
+    // share, the sky the far ground fades into, so where the fog ends it meets the faded ground.
     if (is_sky_drawn) {
-      let sky: vec3<f32> = sky_drawn(lighting, direction, toward, scale);
+      var sky: vec3<f32> = sky_drawn(lighting, direction, toward, scale);
+
+      if (lighting.sky_fade.w > 0.5) {
+        sky = sky_over_ground(lighting, haze_map, direction, toward, scale, lighting.fog.z > 0.5);
+      }
 
       return combined(scene_from_shown(sky), sky / DEF_HDR);
     }
@@ -164,7 +169,8 @@ fn fs_combine(in: FullscreenVarying) -> CombineOutput {
 
   // The engine fogs towards `fog_color` before the tonemap, then fades into the sky itself by the fog squared, both
   // parts alike (`skyblend` in either's alpha). The enhanced fog thickens the first and tints it below its height;
-  // the sky's fade stays the distance fog's.
+  // the sky's fade stays the distance fog's, by its square or, where the enhanced fog asks, only past a share of it, so
+  // the middle distance is veiled rather than shown through to the sky.
   let height: f32 = camera.position.y + (transpose(camera.view) * vec4<f32>(position, 0.0)).y;
   let thickened: f32 = select(0.0, fog_amount_at(lighting, position, height), is_fogged);
   let fogged: vec3<f32> = mix(shaded, fog_color_at(lighting, position, height), thickened);
@@ -172,9 +178,11 @@ fn fs_combine(in: FullscreenVarying) -> CombineOutput {
   let finished: vec3<f32> = scene_from_light(fogged, scale);
   let high: vec3<f32> = tonemap_high(fogged, scale);
 
-  // Where the fog is too thin for the sky behind, mixed in by its square, to move a pixel by half an eight-bit step
+  let behind_share: f32 = select(fog * fog, smoothstep(lighting.sky_fade.x, 1.0, fog), lighting.sky_fade.w > 0.5);
+
+  // Where the fog is too thin for the sky behind, mixed in by its share, to move a pixel by half an eight-bit step
   // whatever the two are, the sky is not built at all.
-  if (!is_sky_drawn || fog * fog < UNSEEN_SKY) {
+  if (!is_sky_drawn || behind_share < UNSEEN_SKY) {
     return combined(finished, high);
   }
 
@@ -183,5 +191,5 @@ fn fs_combine(in: FullscreenVarying) -> CombineOutput {
   let behind: vec4<f32> = textureSampleLevel(sky_behind_map, sky_clamp, in.clip.xy / camera.viewport.xy, 0.0);
   let sky: vec3<f32> = behind.rgb / max(behind.a, 1e-4);
 
-  return combined(mix(finished, scene_from_shown(sky), fog * fog), mix(high, sky / DEF_HDR, fog * fog));
+  return combined(mix(finished, scene_from_shown(sky), behind_share), mix(high, sky / DEF_HDR, behind_share));
 }

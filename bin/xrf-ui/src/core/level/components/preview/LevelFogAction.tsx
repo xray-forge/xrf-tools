@@ -154,6 +154,14 @@ export function LevelFogAction({
             format={formatFogShare}
             onChange={(scattering: number) => set({ scattering })}
           />
+
+          <RenderValueSlider
+            label={"Sky fade from"}
+            value={value.skyFade}
+            {...RENDER_FOG_LIMITS.skyFade}
+            format={(share: number) => (share > 0 ? `${Math.round(share * 100)}% fog` : "Engine")}
+            onChange={(skyFade: number) => set({ skyFade })}
+          />
         </>
       ) : null}
 

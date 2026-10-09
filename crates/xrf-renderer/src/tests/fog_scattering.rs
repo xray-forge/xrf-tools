@@ -70,7 +70,7 @@ fn ships_the_engines_fog_with_the_enhanced_strengths() {
       defaults.sun_color,
       defaults.scattering
     ),
-    (8.0, 1.3, 0.1, 0.0)
+    (8.0, 1.56, 0.1, 0.0)
   );
   assert!(!defaults.is_enhanced() && !defaults.is_scattered());
   assert!(
@@ -95,7 +95,7 @@ fn ships_the_engines_fog_with_the_enhanced_strengths() {
 fn writes_the_height_fog_only_where_it_is_drawn() {
   assert_eq!(
     height_fog(&options_with(enhanced()), &fogged()),
-    Vec4::new(8.0, 1.3, 0.1, 1.0)
+    Vec4::new(8.0, 1.56, 0.1, 1.0)
   );
   assert_eq!(
     height_fog(&options_with(RenderFogSettings::default()), &fogged()),

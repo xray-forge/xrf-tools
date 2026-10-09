@@ -60,6 +60,9 @@ pub struct LightingUniform {
   pub reflections: Vec4,
   /// The enhanced fog's height, density and sun colour, then one where it is drawn; nothing where the engine's alone is.
   pub height_fog: Vec4,
+  /// The fog's share past which the enhanced fog fades fogged surfaces into the sky behind them, then one where it does;
+  /// nothing where they fade by the fog's square, as the engine fades them.
+  pub sky_fade: Vec4,
 }
 
 impl LightingUniform {
@@ -155,6 +158,11 @@ impl LightingUniform {
           height_fog.sun_color,
           1.0,
         )
+      } else {
+        Vec4::ZERO
+      },
+      sky_fade: if fog.is_some() && options.mode.is_lit && height_fog.is_enhanced() && height_fog.sky_fade > 0.0 {
+        Vec4::new(height_fog.sky_fade.min(0.99), 0.0, 0.0, 1.0)
       } else {
         Vec4::ZERO
       },

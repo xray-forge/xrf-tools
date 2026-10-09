@@ -88,11 +88,36 @@ fn sky_haze(haze: texture_2d<f32>, direction: vec3<f32>) -> vec3<f32> {
   ).rgb;
 }
 
+// The sky the far ground stands against along a world direction where the enhanced fog fades it only past a share:
+// as drawn, but for the horizon over the fold in place of the rim under it (`sky_box_horizon_lit`), the clouds fading
+// out at the horizon as they do; with the haze (`is_hazed`), the horizon's haze under the fold.
+fn sky_over_ground(state: Lighting, haze: texture_2d<f32>, direction: vec3<f32>, toward: vec3<f32>, scale: f32,
+  is_hazed: bool) -> vec3<f32> {
+  let lit: vec3<f32> = sky_box_horizon_lit(direction, state, sky_cube_0, sky_cube_1, sky_clamp);
+  let below: vec3<f32> = sky_box_scaled(lit, state, scale) + sky_sun_sprite(state, toward);
+  let shown: vec3<f32> = sky_with_clouds(state, direction, below, scale);
+
+  if (!is_hazed) {
+    return shown;
+  }
+
+  return mix(sky_haze(haze, direction), shown, sky_above_fold(state, direction));
+}
+
 // What the distance fades into: the sky as drawn behind it; with the haze (`is_hazed`), its haze where the cubes stand
 // above the fold, so no cloud's shape lies over a far hill, and the rim as drawn under it, so the fade meets the sky
-// exactly there.
+// exactly there. Where the enhanced fog fades only past a share, the sky the far ground stands against, or the haze all
+// round with the haze.
 fn sky_behind(state: Lighting, haze: texture_2d<f32>, direction: vec3<f32>, toward: vec3<f32>, scale: f32,
   is_hazed: bool) -> vec3<f32> {
+  if (state.sky_fade.w > 0.5) {
+    if (is_hazed) {
+      return sky_haze(haze, direction);
+    }
+
+    return sky_over_ground(state, haze, direction, toward, scale, false);
+  }
+
   let shown: vec3<f32> = sky_drawn(state, direction, toward, scale);
 
   if (!is_hazed) {

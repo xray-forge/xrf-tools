@@ -1264,7 +1264,7 @@ impl SceneView {
         (&mut *graph, &mut *bindings, runtime),
         passes,
         view,
-        (handles, (targets.width, targets.height)),
+        (handles, (targets.width, targets.height), lit.lighting),
       );
 
       // A selected composited surface, glass, marked where the present outlines the selection, once the enhanced
