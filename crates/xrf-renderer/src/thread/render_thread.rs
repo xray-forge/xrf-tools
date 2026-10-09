@@ -143,6 +143,9 @@ pub struct RenderThread {
   /// The scenes the world streams, each drawn by every viewport showing it; one the world let go is kept while a
   /// viewport still shows it.
   scenes: HashMap<RenderSceneId, LevelScene>,
+  /// The scenes viewports showed when the GPU was let go, each shown again only once it is whole, so a restart never
+  /// shows a level streaming back in.
+  reopening: HashSet<RenderSceneId>,
   /// When the last viewport detached, while none is attached.
   idle_since: Option<Instant>,
   last_frame: Instant,
@@ -186,6 +189,7 @@ impl RenderThread {
       hosts: HashMap::new(),
       viewports: BTreeMap::new(),
       scenes: HashMap::new(),
+      reopening: HashSet::new(),
       idle_since: Some(now),
       last_frame: now,
       frame_due: None,
@@ -468,8 +472,15 @@ impl RenderThread {
     self.frame_span = None;
     self.belt = None;
 
-    // Its scenes went with it; the world streams each in again, from the start, into scenes made again.
+    // Its scenes went with it; the world streams each in again, from the start, into scenes made again, which the
+    // viewports showing them wait for whole.
     self.scenes.clear();
+    self.reopening.extend(
+      self
+        .viewports
+        .values()
+        .filter_map(|viewport| viewport.shown.as_ref().map(|(id, _)| *id)),
+    );
     self
       .world
       .lock()
@@ -672,8 +683,9 @@ impl RenderThread {
       );
     }
 
-    // Each viewport shows the scene it asks for: a level at once; a scene of models alone once it can be drawn whole,
-    // the one before drawn until then, so a model swapped never leaves the viewport empty.
+    // Each viewport shows the scene it asks for: a level at once, unless it is made again after a restart; a scene of
+    // models alone, or a level made again, once it can be drawn whole, the one before drawn until then, so a model
+    // swapped never leaves the viewport empty.
     for viewport in self.viewports.values_mut() {
       let asked: Option<RenderSceneId> = viewport.world.scene;
       let shown: Option<RenderSceneId> = viewport.shown.as_ref().map(|(id, _)| *id);
@@ -691,7 +703,10 @@ impl RenderThread {
         continue;
       };
 
-      if shown.is_none() || scene.source.get_sector_count() > 0 || scene.is_ready(&gpu.textures) {
+      let is_reopening: bool = self.reopening.contains(&asked);
+
+      if (!is_reopening && (shown.is_none() || scene.source.get_sector_count() > 0)) || scene.is_ready(&gpu.textures) {
+        self.reopening.remove(&asked);
         viewport.show(Some((
           asked,
           SceneView::new(&gpu.context.device, &gpu.context.queue, &gpu.view_layout, scene),
@@ -707,6 +722,7 @@ impl RenderThread {
       .collect();
 
     self.scenes.retain(|id, _| live.contains(id) || shown.contains(id));
+    self.reopening.retain(|id| live.contains(id));
 
     if now.duration_since(self.textures_swept) >= TEXTURE_SWEEP {
       self.textures_swept = now;
