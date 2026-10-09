@@ -472,3 +472,94 @@ fn times_each_encode_group_in_a_range_of_its_own() {
     assert_eq!(names, ["clear + over", "copy"], "owner {owner}");
   }
 }
+
+#[test]
+fn submits_handed_over_commands_between_the_passes_around_them() {
+  let Some((device, queue)) = create_device() else {
+    return;
+  };
+  let create = |label: &'static str, usage: wgpu::BufferUsages| -> wgpu::Buffer {
+    device.create_buffer(&wgpu::BufferDescriptor {
+      label: Some(label),
+      size: 4,
+      usage,
+      mapped_at_creation: false,
+    })
+  };
+  let copied: wgpu::BufferUsages = wgpu::BufferUsages::COPY_SRC | wgpu::BufferUsages::COPY_DST;
+  let read: wgpu::BufferUsages = wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ;
+  let ones: wgpu::Buffer = create("ones", copied);
+  let twos: wgpu::Buffer = create("twos", copied);
+  let target: wgpu::Buffer = create("target", copied);
+  let snapshot: wgpu::Buffer = create("snapshot", read);
+  let last: wgpu::Buffer = create("last", read);
+
+  queue.write_buffer(&ones, 0, &[1; 4]);
+  queue.write_buffer(&twos, 0, &[2; 4]);
+
+  // Recorded before the graph, and copying the target between the pass filling it and the pass overwriting it.
+  let mut external: wgpu::CommandEncoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
+
+  external.copy_buffer_to_buffer(&target, 0, &snapshot, 0, Some(4));
+
+  let external: wgpu::CommandBuffer = external.finish();
+  let mut runtime: GraphRuntime = GraphRuntime::new(&device, &queue);
+  let mut graph: FrameGraph<'_> = FrameGraph::new();
+  let first = graph.import_buffer(GraphBufferDescriptor::new("ones", 4));
+  let second = graph.import_buffer(GraphBufferDescriptor::new("twos", 4));
+  let written = graph.import_buffer(GraphBufferDescriptor::new("target", 4));
+  let snapped = graph.import_buffer(GraphBufferDescriptor::new("snapshot", 4));
+  let copy = |source, destination| {
+    move |context: &mut crate::graph::EncoderContext<'_>| {
+      let (source, destination) = (context.get_buffer(source), context.get_buffer(destination));
+
+      context
+        .get_encoder()
+        .copy_buffer_to_buffer(source, 0, destination, 0, Some(4));
+    }
+  };
+
+  graph
+    .add_encoder_pass("fill")
+    .buffer(first, GraphBufferAccess::CopySource)
+    .buffer(written, GraphBufferAccess::CopyDestination)
+    .record(copy(first, written));
+  graph
+    .add_encoder_pass("hand over")
+    .buffer(written, GraphBufferAccess::CopySource)
+    .buffer(snapped, GraphBufferAccess::CopyDestination)
+    .record(move |context| context.hand_over(external));
+  graph
+    .add_encoder_pass("overwrite")
+    .buffer(second, GraphBufferAccess::CopySource)
+    .buffer(written, GraphBufferAccess::CopyDestination)
+    .record(copy(second, written));
+
+  let compiled = graph.compile(&GraphCompileOptions::default()).unwrap();
+  let mut bindings: GraphBindings<'_> = GraphBindings::new();
+
+  bindings
+    .bind_buffer(first, &ones)
+    .bind_buffer(second, &twos)
+    .bind_buffer(written, &target)
+    .bind_buffer(snapped, &snapshot);
+
+  let executed = compiled.execute((&device, &queue), &mut runtime, &bindings).unwrap();
+
+  assert_eq!(executed.commands.len(), 3);
+  queue.submit(executed.commands);
+
+  let mut encoder: wgpu::CommandEncoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
+
+  encoder.copy_buffer_to_buffer(&target, 0, &last, 0, Some(4));
+  queue.submit([encoder.finish()]);
+
+  for buffer in [&snapshot, &last] {
+    buffer.slice(..).map_async(wgpu::MapMode::Read, |_| {});
+  }
+
+  device.poll(wgpu::PollType::wait_indefinitely()).unwrap();
+
+  assert_eq!(snapshot.slice(..).get_mapped_range().unwrap().to_vec(), [1; 4]);
+  assert_eq!(last.slice(..).get_mapped_range().unwrap().to_vec(), [2; 4]);
+}
