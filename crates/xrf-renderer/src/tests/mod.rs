@@ -20,6 +20,7 @@ mod light_geometry;
 mod lighting;
 mod overhead_map;
 mod overlays;
+mod periodic_budget;
 mod periodic_scheduler;
 mod puddle_fill;
 mod rain_wetness;

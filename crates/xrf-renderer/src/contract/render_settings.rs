@@ -18,8 +18,9 @@ pub struct RenderSettings {
   /// The graphics API to draw with, none for the first that starts; one that cannot start falls back to the first that
   /// does, and `XRF_RENDER_BACKEND` overrides it.
   pub backend: Option<RenderBackend>,
-  /// Milliseconds of GPU time each frame gives the work drawn once in so many frames that may wait: the shadows'
-  /// cascades and faces, the overhead maps, the surroundings' faces, the sky's refill.
+  /// Milliseconds of GPU time each frame gives at least the work drawn once in so many frames that may wait: the
+  /// shadows' cascades and faces, the overhead maps, the surroundings' faces, the sky's refill. A frame held to a cap or
+  /// the display's refresh gives it what headroom it leaves, up to `PeriodicBudget::CEILING`.
   pub periodic_budget: f32,
 }
 
