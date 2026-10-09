@@ -5,6 +5,7 @@
 #import "common/octahedral"
 #import "common/present"
 #import "common/debanding"
+#import "common/reflection_end"
 
 // The viewport's finished scene put into its rectangle of the window, moved where the water and the particles distort
 // it; or, for a debug view, one of the targets the scene was built from.
@@ -12,7 +13,7 @@
 // The scene, what the water and the particles move what is seen through them by, the targets a debug view shows, what
 // the frame shows, the frame upscaled or the scene again (filtered for the debanding's reads), the bloom, finished in
 // the engine's 256-square target or at half the frame's size for the enhanced bloom, the indirect light at half the
-// frame's size, and the reflections at the size they are traced at.
+// frame's size, and the reflections and how their rays ended, at the size they are traced at.
 #import "generated/frame/present"
 
 const VIEW_ALBEDO: u32 = 1u;
@@ -26,6 +27,7 @@ const VIEW_LIGHT: u32 = 8u;
 const VIEW_MOTION: u32 = 10u;
 const VIEW_INDIRECT_LIGHT: u32 = 11u;
 const VIEW_REFLECTIONS: u32 = 12u;
+const VIEW_REFLECTION_ENDS: u32 = 13u;
 // What the reflections view shows where a ray met nothing and the cube stands.
 const REFLECTION_MISS: vec3<f32> = vec3<f32>(0.05, 0.1, 0.45);
 // What the reflections view multiplies what was met by before its shoulder.
@@ -126,6 +128,16 @@ fn shown_target(texel: vec2<i32>) -> vec3<f32> {
       let met: vec3<f32> = traced.rgb / max(traced.a, 1e-4) * REFLECTION_VIEW_GAIN;
 
       return mix(REFLECTION_MISS, met / (1.0 + met), saturate(traced.a));
+    }
+    case VIEW_REFLECTION_ENDS: {
+      if (present.is_reflected == 0u || stored <= 0.0) {
+        return vec3<f32>(0.0);
+      }
+
+      let last: vec2<i32> = vec2<i32>(textureDimensions(reflection_ends)) - 1;
+      let traced: vec2<i32> = clamp(vec2<i32>(vec2<f32>(texel) / present.reflection_ratio), vec2<i32>(0), last);
+
+      return reflection_end_colour(reflection_end_code(textureLoad(reflection_ends, traced, 0).x));
     }
     default: {
       let is_searched: bool = present.is_occluded != 0u && stored > 0.0;

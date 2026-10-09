@@ -33,6 +33,8 @@ pub enum RenderDebugView {
   /// The screen-space reflections as traced: what a ray met in its colour, deep blue where it met nothing and the cube
   /// stands, black where nothing is traced.
   Reflections,
+  /// How each reflection ray ended, one colour a reason (`common/reflection_end.wgsl`); black where nothing is traced.
+  ReflectionEnds,
 }
 
 impl RenderDebugView {

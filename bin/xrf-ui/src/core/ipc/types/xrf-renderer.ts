@@ -380,6 +380,8 @@ export enum ERenderDebugView {
    * stands, black where nothing is traced.
    */
   REFLECTIONS = "reflections",
+  /** How each reflection ray ended, one colour a reason (`common/reflection_end.wgsl`); black where nothing is traced. */
+  REFLECTION_ENDS = "reflectionEnds",
 }
 
 /** Every `ERenderDebugView` as the spelling it crosses IPC as, for a value no member has narrowed. */

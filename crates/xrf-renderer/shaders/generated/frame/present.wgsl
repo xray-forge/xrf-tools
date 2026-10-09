@@ -17,3 +17,4 @@
 @group(1) @binding(12) var bloom_sampler: sampler;
 @group(1) @binding(13) var indirect_light: texture_2d<f32>;
 @group(1) @binding(14) var reflections: texture_2d<f32>;
+@group(1) @binding(15) var reflection_ends: texture_2d<f32>;

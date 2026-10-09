@@ -1091,7 +1091,7 @@ impl SceneView {
     view: &'a ViewBinding,
     (targets, lit, wet_surface): (ViewTargetHandles, LightingHandles<'a>, GraphTexture),
     sky: &SkyParameters<'a>,
-  ) -> Option<GraphTexture> {
+  ) -> Option<(GraphTexture, GraphTexture)> {
     self.info.reflection?;
 
     let history: &'a ReflectionHistory = self.state.reflections.as_ref()?;
@@ -1133,6 +1133,7 @@ impl SceneView {
       graph.create_texture(GraphTextureDescriptor::new_2d(label, width, height, format))
     };
     let traced: GraphTexture = create("reflections traced", (width, height), ReflectionPass::TRACED);
+    let ends: GraphTexture = create("reflections ends", (width, height), ReflectionPass::ENDS);
     let reprojected: GraphTexture = create("reflections reprojected", (width, height), ReflectionPass::REPROJECTED);
     let variance: GraphTexture = create("reflections variance", (width, height), ReflectionPass::VARIANCE);
     let average: GraphTexture = create(
@@ -1179,6 +1180,7 @@ impl SceneView {
       .parameters(&parameters)
       .parameters(&sky)
       .color(clear(traced))
+      .color(clear(ends))
       .record(move |context| passes.reflections.record_trace(context, view, &parameters, &sky));
 
     // Each stage, what it reads beside the G-buffer and the history, and what it writes.
@@ -1235,7 +1237,7 @@ impl SceneView {
         .record(move |context| passes.reflections.record_stage(context, view, &stage_parameters, stage));
     }
 
-    Some(written)
+    Some((written, ends))
   }
 
   /// Makes the history at the size the reflections trace at, and the pyramid over the frame's depth, while they are
@@ -1862,6 +1864,8 @@ impl SceneView {
     let unlit: GraphTexture = bindings.import_view(&mut *graph, "indirect light none", passes.vbao.get_dark());
     let untraced: GraphTexture =
       bindings.import_view(&mut *graph, "reflections none", passes.reflections.get_untraced());
+    let no_ends: GraphTexture =
+      bindings.import_view(&mut *graph, "reflection ends none", passes.reflections.get_no_ends());
     let handles: ViewTargetHandles = ViewTargetHandles::import(&mut *graph, &mut *bindings, targets);
     // The resolved frame goes where the present pass reads it: the upscaled frame, or the scene drawn at its size.
     let upscaled: Option<[GraphTexture; 2]> = scene_view.state.upscale.as_ref().map(|upscale| {
@@ -2104,9 +2108,11 @@ impl SceneView {
       }
     }
 
-    // The indirect light combine adds and a debug view shows, or a texel of none; and the reflections traced.
+    // The indirect light combine adds and a debug view shows, or a texel of none; the reflections traced, and how
+    // their rays ended.
     let mut indirect_light: Option<GraphTexture> = None;
     let mut reflections: Option<GraphTexture> = None;
+    let mut reflection_ends: Option<GraphTexture> = None;
     let mut enhanced_bloom: Option<GraphTexture> = None;
 
     if is_lit {
@@ -2142,13 +2148,16 @@ impl SceneView {
       }
 
       if let Some(sky) = sky {
-        reflections = scene_view.add_reflection_passes(
+        if let Some((history, ends)) = scene_view.add_reflection_passes(
           (&mut *graph, &mut *bindings, runtime),
           passes,
           view,
           (handles, lit, wet_surface),
           &sky,
-        );
+        ) {
+          reflections = Some(history);
+          reflection_ends = Some(ends);
+        }
 
         let parameters: CombineParameters = CombineParameters {
           albedo_target: handles.albedo,
@@ -2584,6 +2593,7 @@ impl SceneView {
       lighting: lit.lighting,
       indirect_light: indirect_light.unwrap_or(unlit),
       reflections: reflections.unwrap_or(untraced),
+      reflection_ends: reflection_ends.unwrap_or(no_ends),
       bloom: enhanced_bloom.unwrap_or(handles.bloom[0]),
     })
   }

@@ -1,4 +1,5 @@
 #import "common/camera"
+#import "common/reflection_end"
 
 // Screen-space reflection rays: a reflected direction drawn from a surface's GGX lobe, walked across the screen up and
 // down a pyramid of the frame's nearest depth, skipping whole cells it passes over and stepping down where it meets a
@@ -101,6 +102,8 @@ fn ray_cell_depth(pyramid: texture_2d<f32>, cell: vec2<i32>, level: i32) -> f32 
 struct RayWalk {
   position: vec3<f32>,
   is_met: bool,
+  // How it ended (`common/reflection_end`).
+  end: u32,
 };
 
 fn ray_walk(pyramid: texture_2d<f32>, material: texture_2d<f32>, wet: texture_2d<f32>, origin: vec3<f32>,
@@ -115,13 +118,17 @@ fn ray_walk(pyramid: texture_2d<f32>, material: texture_2d<f32>, wet: texture_2d
   var along: f32 = ray_first_cell(origin, direction, inverse, cells, floor_offset, nudge);
   var position: vec3<f32> = origin + along * direction;
   var count: u32 = 0u;
+  // Whether the last crossing passed behind a surface.
+  var was_passed: bool = false;
   // Ray parameter a frame pixel spans along the ray, for the pixel it came from.
   let pixel_along: f32 = 1.0 / max(max(abs(direction.x) * screen.x, abs(direction.y) * screen.y), 1e-6);
 
   while (count < crossings && level >= 0) {
-    // Off the screen, or past the far plane, there is nothing left to meet.
+    // Off the screen, or past the far plane, there is nothing left to meet; past its reach, nothing is looked for.
     if (any(position.xy < vec2<f32>(0.0)) || any(position.xy > vec2<f32>(1.0)) || position.z <= 0.0) {
-      return RayWalk(position, false);
+      let is_far: bool = position.z <= 0.0 || along >= 1.0;
+
+      return RayWalk(position, false, select(END_OFF_SCREEN, END_FAR, is_far));
     }
 
     let at: vec2<f32> = cells * position.xy;
@@ -156,7 +163,7 @@ fn ray_walk(pyramid: texture_2d<f32>, material: texture_2d<f32>, wet: texture_2d
         let is_connected: bool = abs(came_surface.z - shown.z) <= abs(ray.z - came_ray.z) + reach;
 
         if (was_in_front && is_connected) {
-          return RayWalk(vec3<f32>(position.xy, surface), true);
+          return RayWalk(vec3<f32>(position.xy, surface), true, END_MET_CROSSED);
         }
 
         is_passed = true;
@@ -166,6 +173,7 @@ fn ray_walk(pyramid: texture_2d<f32>, material: texture_2d<f32>, wet: texture_2d
         along = min(crossing.x, crossing.y);
         position = origin + along * direction;
         count++;
+        was_passed = true;
 
         continue;
       }
@@ -173,6 +181,7 @@ fn ray_walk(pyramid: texture_2d<f32>, material: texture_2d<f32>, wet: texture_2d
 
     along = select(along, nearest, is_above);
     position = origin + along * direction;
+    was_passed = false;
 
     if (!(is_skipped && level >= RAY_TOP_LEVEL)) {
       level += select(-1, 1, is_skipped);
@@ -182,7 +191,10 @@ fn ray_walk(pyramid: texture_2d<f32>, material: texture_2d<f32>, wet: texture_2d
     count++;
   }
 
-  return RayWalk(position, level < 0);
+  let is_met: bool = level < 0;
+  let spent: u32 = select(select(END_SPENT, END_SPENT_BEHIND, was_passed), END_FAR, along >= 1.0);
+
+  return RayWalk(position, is_met, select(spent, END_MET_THICK, is_met));
 }
 
 // The roughness over which a surface's own reflection is no longer sharpened by a traced one: rough wet ground keeps
