@@ -175,6 +175,8 @@ opt-level = 1
 
 [profile.dev-optimized.package."*"]
 opt-level = 3
+# Line tables keep dependency backtraces readable without the full debug information every link would otherwise merge.
+debug = "line-tables-only"
 
 # Release code with line tables, in its own target folder, so a profiler names the code that ships.
 [profile.profiling]
