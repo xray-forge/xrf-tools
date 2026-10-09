@@ -4,7 +4,7 @@ import { ReactElement } from "react";
 
 import { IDialogGraphNodeData } from "@/applications/dialogs-editor/lib";
 import { GRAPH_LAYOUT_DEFAULTS } from "@/core/graph/lib";
-import { cn } from "@/lib/dom/dom-name";
+import { cn } from "@/core/theme/class-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 export interface IDialogGraphNodeFrameProps extends BaseComponentProps {

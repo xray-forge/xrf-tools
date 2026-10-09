@@ -4,7 +4,7 @@ import { ReactElement } from "react";
 
 import { TextureEncodingReport } from "@/core/ipc/types/xrf-app";
 import { EditorPanelProperty } from "@/core/shell/editor/EditorPanel";
-import { cn } from "@/lib/dom/dom-name";
+import { cn } from "@/core/theme/class-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface ITextureFormatRowProps extends BaseComponentProps {

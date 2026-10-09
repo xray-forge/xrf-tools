@@ -6,8 +6,8 @@ import { ReactElement } from "react";
 import { ICatalogSection } from "@/core/launcher/lib";
 import { IApplicationDescriptor } from "@/core/routing/application";
 import { TCatalogView } from "@/core/settings/lib/catalog-view";
+import { cn } from "@/core/theme/class-name";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
-import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { ApplicationLauncherCardGrid } from "./ApplicationLauncherCardGrid";

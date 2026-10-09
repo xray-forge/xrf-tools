@@ -3,7 +3,7 @@ import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
 import { ArchiveDescribeScope, ArchiveLevelSndStaticSound } from "@/core/ipc/types/xrf-app";
-import { cn } from "@/lib/dom/dom-name";
+import { cn } from "@/core/theme/class-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { describeReferenceStatus } from "../ArchiveDescriptionPreview.utils";

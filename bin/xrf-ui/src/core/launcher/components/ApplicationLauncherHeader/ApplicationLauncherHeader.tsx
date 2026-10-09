@@ -5,7 +5,7 @@ import { KeyboardEvent, ReactElement, RefObject } from "react";
 import { ICatalogGroupFilter } from "@/core/launcher/lib";
 import { EApplicationGroupId } from "@/core/routing/application";
 import { TCatalogView } from "@/core/settings/lib/catalog-view";
-import { cn } from "@/lib/dom/dom-name";
+import { cn } from "@/core/theme/class-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { ApplicationLauncherGroupFilters } from "./ApplicationLauncherGroupFilters";

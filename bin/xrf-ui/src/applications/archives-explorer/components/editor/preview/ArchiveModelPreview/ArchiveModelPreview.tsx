@@ -6,11 +6,11 @@ import { ReactElement, useEffect } from "react";
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { getSubjectRoots } from "@/core/archive/lib";
 import { ArchiveSubject } from "@/core/ipc/types/xrf-app";
+import { cn } from "@/core/theme/class-name";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { VisualPreviewViewport } from "@/core/visuals/components/preview";
 import { IOpenVisual, VisualLoadService } from "@/core/visuals/services";
-import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IArchiveModelPreviewProps extends BaseComponentProps {

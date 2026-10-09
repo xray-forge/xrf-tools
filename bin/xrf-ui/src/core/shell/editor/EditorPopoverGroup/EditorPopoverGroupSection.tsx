@@ -1,7 +1,7 @@
 import { ReactElement, ReactNode } from "react";
 
+import { cn } from "@/core/theme/class-name";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
-import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 export interface IEditorPopoverGroupSectionProps extends BaseComponentProps {

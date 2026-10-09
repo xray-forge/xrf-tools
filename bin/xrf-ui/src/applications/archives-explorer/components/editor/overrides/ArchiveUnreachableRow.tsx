@@ -2,7 +2,7 @@ import { Typography } from "@mui/material";
 import { ReactElement } from "react";
 
 import { XrayPathCollision } from "@/core/ipc/types/xrf-vfs";
-import { cn } from "@/lib/dom/dom-name";
+import { cn } from "@/core/theme/class-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { ARCHIVE_OVERRIDE_ROW_HEIGHT } from "./archive-override-rows";

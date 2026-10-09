@@ -24,12 +24,12 @@ import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { LevelLoadService, LevelRenderService, LevelViewportService, LevelViewService } from "@/core/level/services";
 import { EditorPanelEmpty } from "@/core/shell/editor/EditorPanel";
 import { EditorSearchHeader } from "@/core/shell/editor/EditorSearchHeader";
+import { cn } from "@/core/theme/class-name";
 import { EmptyListing } from "@/core/ui/layout";
 import { ITreeNode } from "@/core/ui/tree/tree-node";
 import { TreeRowLabel } from "@/core/ui/tree/TreeRowLabel";
 import { IUseTreeState, useTreeState } from "@/core/ui/tree/use-tree-state";
 import { VirtualizedTree } from "@/core/ui/tree/VirtualizedTree";
-import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /**

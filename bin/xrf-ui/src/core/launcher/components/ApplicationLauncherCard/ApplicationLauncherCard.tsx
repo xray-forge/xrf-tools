@@ -6,7 +6,7 @@ import { ApplicationLauncherGroupLabel } from "@/core/launcher/components/Applic
 import { ApplicationLauncherPlannedBadge } from "@/core/launcher/components/ApplicationLauncherPlannedBadge";
 import { toAccentColor, useApplicationLauncherActions } from "@/core/launcher/lib";
 import { EApplicationStatus, IApplicationDescriptor, IApplicationGroup } from "@/core/routing/application";
-import { cn } from "@/lib/dom/dom-name";
+import { cn } from "@/core/theme/class-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IApplicationLauncherCardProps extends BaseComponentProps {

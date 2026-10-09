@@ -16,7 +16,7 @@ import {
 import { ReactElement, ReactNode } from "react";
 
 import { TGraphEdge, TGraphNode } from "@/core/graph/lib/graph.types";
-import { cn } from "@/lib/dom/dom-name";
+import { cn } from "@/core/theme/class-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import "@xyflow/react/dist/style.css";

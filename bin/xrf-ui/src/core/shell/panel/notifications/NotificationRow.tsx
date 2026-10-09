@@ -15,7 +15,7 @@ import { APPLICATION_CATALOG } from "@/ApplicationCatalog";
 import { ENotificationSeverity } from "@/core/notifications/lib";
 import { IApplicationDescriptor, IApplicationGroup } from "@/core/routing/application";
 import { INotificationEntry, isAttentionSeverity } from "@/core/shell/panel/notifications/notification-list";
-import { cn } from "@/lib/dom/dom-name";
+import { cn } from "@/core/theme/class-name";
 import { Logger, useLogger } from "@/lib/logging";
 import { ICopiedText, useCopiedText } from "@/lib/react/use-copied-text";
 

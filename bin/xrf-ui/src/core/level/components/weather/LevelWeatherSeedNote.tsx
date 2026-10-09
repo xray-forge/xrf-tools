@@ -4,7 +4,7 @@ import { ReactElement } from "react";
 
 import { ILevelWeatherSeed } from "@/core/level/lib/weather/level-weather-seed";
 import { formatLevelWeatherTime } from "@/core/level/lib/weather/level-weather-time";
-import { cn } from "@/lib/dom/dom-name";
+import { cn } from "@/core/theme/class-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface ILevelWeatherSeedNoteProps extends BaseComponentProps {

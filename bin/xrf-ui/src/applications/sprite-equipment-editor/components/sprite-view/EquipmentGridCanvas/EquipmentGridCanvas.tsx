@@ -10,8 +10,8 @@ import {
   toEquipmentGridPalette,
 } from "@/applications/sprite-equipment-editor/lib/scene";
 import { IEquipmentLayout, TEquipmentCell } from "@/core/sprite-equipment/lib";
+import { cn } from "@/core/theme/class-name";
 import { IImageViewportView } from "@/core/ui/media/ImageViewport";
-import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IEquipmentGridCanvasProps extends BaseComponentProps {

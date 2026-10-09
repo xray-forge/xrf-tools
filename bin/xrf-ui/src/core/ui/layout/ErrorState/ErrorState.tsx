@@ -2,8 +2,8 @@ import { default as ErrorOutlineIcon } from "@mui/icons-material/ErrorOutlineOut
 import { Button } from "@mui/material";
 import { ReactElement } from "react";
 
+import { cn } from "@/core/theme/class-name";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
-import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IErrorStateProps extends BaseComponentProps {

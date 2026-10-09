@@ -4,11 +4,11 @@ import { clamp } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 import { KeyboardEvent, ReactElement, ReactNode, useCallback, useEffect, useId, useMemo, useRef } from "react";
 
+import { cn } from "@/core/theme/class-name";
 import { TREE } from "@/core/theme/tokens";
 import { flattenTree, IFlatTreeRow } from "@/core/ui/tree/flatten";
 import { ITreeNode } from "@/core/ui/tree/tree-node";
 import { VirtualizedTreeRow } from "@/core/ui/tree/VirtualizedTree/VirtualizedTreeRow";
-import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /**

@@ -6,8 +6,8 @@ import { RenderLoadReport } from "@/core/ipc/types/xrf-renderer";
 import { describeLevelLoad } from "@/core/level/lib/load/level-load-progress";
 import { LevelRenderService, LevelViewportService } from "@/core/level/services";
 import { RenderFailureNotice } from "@/core/render/components/overlay/RenderFailureNotice";
+import { cn } from "@/core/theme/class-name";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
-import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface ILevelPreviewCoverProps extends BaseComponentProps {

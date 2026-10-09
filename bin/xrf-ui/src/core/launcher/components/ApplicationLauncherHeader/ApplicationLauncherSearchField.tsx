@@ -8,7 +8,7 @@ import { ChangeEvent, KeyboardEvent, ReactElement, RefObject, useCallback } from
 import { formatChord, parseChord } from "@/core/keybinds";
 import { KeymapService } from "@/core/keybinds/services/keymap";
 import { FOCUS_SEARCH_KEYBIND_COMMAND } from "@/core/search/commands";
-import { cn } from "@/lib/dom/dom-name";
+import { cn } from "@/core/theme/class-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IApplicationLauncherSearchFieldProps extends BaseComponentProps {

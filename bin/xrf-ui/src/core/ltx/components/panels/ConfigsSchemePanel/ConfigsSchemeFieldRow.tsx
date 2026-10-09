@@ -3,7 +3,7 @@ import { ReactElement } from "react";
 
 import { LtxSchemeFieldReport } from "@/core/ipc/types/xrf-ltx-inspect";
 import { describeResolvedFieldOrigin } from "@/core/ltx/lib/resolved";
-import { cn } from "@/lib/dom/dom-name";
+import { cn } from "@/core/theme/class-name";
 
 interface IConfigsSchemeFieldRowProps {
   field: LtxSchemeFieldReport;

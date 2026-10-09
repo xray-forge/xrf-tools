@@ -4,7 +4,7 @@ import { Fragment, ReactElement } from "react";
 import { ApplicationLauncherRow } from "@/core/launcher/components/ApplicationLauncherRow";
 import { ICatalogEntry, ICatalogSection } from "@/core/launcher/lib";
 import { IApplicationDescriptor } from "@/core/routing/application";
-import { cn } from "@/lib/dom/dom-name";
+import { cn } from "@/core/theme/class-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { ApplicationLauncherGroupHeading } from "./ApplicationLauncherGroupHeading";

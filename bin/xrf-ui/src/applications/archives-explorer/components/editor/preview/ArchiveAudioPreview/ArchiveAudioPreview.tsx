@@ -10,11 +10,11 @@ import { TArchiveBytes, TArchiveContent, useLastContent } from "@/core/archive/l
 import { useAssetUrl } from "@/core/assets/lib/use-asset-url";
 import { AudioDescriptor } from "@/core/ipc/types/xrf-app";
 import { EditorPanelProperty } from "@/core/shell/editor/EditorPanel";
+import { cn } from "@/core/theme/class-name";
 import { CenteredColumn } from "@/core/ui/layout/CenteredColumn";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { AudioPlayer } from "@/core/ui/media/AudioPlayer";
-import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { formatAudioChannels } from "./ArchiveAudioPreview.utils";

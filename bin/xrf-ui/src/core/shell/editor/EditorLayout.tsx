@@ -3,7 +3,7 @@ import { ReactElement, ReactNode } from "react";
 import { createPortal } from "react-dom";
 
 import { useEditorToolbarHost } from "@/core/shell/header/editor-toolbar-host";
-import { cn } from "@/lib/dom/dom-name";
+import { cn } from "@/core/theme/class-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IEditorLayoutProps extends BaseComponentProps {

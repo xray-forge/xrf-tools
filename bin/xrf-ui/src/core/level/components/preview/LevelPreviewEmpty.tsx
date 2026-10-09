@@ -1,8 +1,8 @@
 import { ReactElement } from "react";
 
+import { cn } from "@/core/theme/class-name";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { ErrorState } from "@/core/ui/layout/ErrorState";
-import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface ILevelPreviewEmptyProps extends BaseComponentProps {

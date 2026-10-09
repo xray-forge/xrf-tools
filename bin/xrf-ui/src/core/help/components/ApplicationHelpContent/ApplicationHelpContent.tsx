@@ -3,7 +3,7 @@ import { ReactElement, ReactNode } from "react";
 
 import { renderHelpText } from "@/core/help/lib/help-text";
 import { IApplicationHelp } from "@/core/routing/application";
-import { cn } from "@/lib/dom/dom-name";
+import { cn } from "@/core/theme/class-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { ApplicationHelpRelated } from "./ApplicationHelpRelated";

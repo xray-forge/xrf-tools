@@ -3,7 +3,7 @@ import { ReactElement } from "react";
 
 import { toAccentColor } from "@/core/launcher/lib";
 import { IApplicationGroup } from "@/core/routing/application";
-import { cn } from "@/lib/dom/dom-name";
+import { cn } from "@/core/theme/class-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IApplicationLauncherGroupHeadingProps extends BaseComponentProps {

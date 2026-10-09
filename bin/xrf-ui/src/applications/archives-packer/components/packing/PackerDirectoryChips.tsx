@@ -2,7 +2,7 @@ import { Chip, Stack } from "@mui/material";
 import { ReactElement } from "react";
 
 import { ArchivePackDirectory } from "@/core/ipc/types/xrf-pack";
-import { cn } from "@/lib/dom/dom-name";
+import { cn } from "@/core/theme/class-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IPackerDirectoryChipsProps extends BaseComponentProps {

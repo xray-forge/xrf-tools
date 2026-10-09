@@ -1,7 +1,7 @@
 import { ReactElement, useEffect, useRef } from "react";
 
 import { IRenderSurfaceHost } from "@/core/render/lib/surface/render-surface-host";
-import { cn } from "@/lib/dom/dom-name";
+import { cn } from "@/core/theme/class-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 export interface IRenderSurfaceProps extends BaseComponentProps {

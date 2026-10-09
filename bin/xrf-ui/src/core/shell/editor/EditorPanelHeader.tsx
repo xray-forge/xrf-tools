@@ -2,7 +2,7 @@ import { Typography } from "@mui/material";
 import { ReactElement, ReactNode } from "react";
 
 import { PanelCloseAction } from "@/core/shell/panel/PanelCloseAction";
-import { cn } from "@/lib/dom/dom-name";
+import { cn } from "@/core/theme/class-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IEditorPanelHeaderProps extends BaseComponentProps {

@@ -1,10 +1,10 @@
 import { IconButton, svgIconClasses, Tooltip } from "@mui/material";
 import { AriaAttributes, MouseEventHandler, ReactElement, ReactNode } from "react";
 
+import { cn } from "@/core/theme/class-name";
 import { getControlStateSx } from "@/core/theme/control-state";
 import { mergeSx } from "@/core/theme/merge-sx";
 import { CONTROL } from "@/core/theme/tokens";
-import { cn } from "@/lib/dom/dom-name";
 import { StyledComponentProps } from "@/lib/dom/element-types";
 
 interface IEditorIconActionProps

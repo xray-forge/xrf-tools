@@ -1,7 +1,7 @@
 import { Divider, Typography } from "@mui/material";
 import { ReactElement, ReactNode } from "react";
 
-import { cn } from "@/lib/dom/dom-name";
+import { cn } from "@/core/theme/class-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 export interface IExportSectionProps extends BaseComponentProps {

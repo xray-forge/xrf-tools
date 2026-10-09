@@ -4,7 +4,7 @@ import { Typography } from "@mui/material";
 import { ReactElement, ReactNode } from "react";
 
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
-import { cn } from "@/lib/dom/dom-name";
+import { cn } from "@/core/theme/class-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IEditorFileHeaderProps extends BaseComponentProps {

@@ -9,8 +9,8 @@ import { EditorToolbarCrumb } from "@/core/shell/editor/EditorToolbarCrumb";
 import { EditorToolbarPathSeparator } from "@/core/shell/editor/EditorToolbarPathSeparator";
 import { EditorToolbarSeparator } from "@/core/shell/editor/EditorToolbarSeparator";
 import { useIsEditorBusy, useRequestLeave } from "@/core/shell/editor-lifecycle";
+import { cn } from "@/core/theme/class-name";
 import { CONTROL } from "@/core/theme/tokens";
-import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IEditorToolbarProps extends BaseComponentProps {
