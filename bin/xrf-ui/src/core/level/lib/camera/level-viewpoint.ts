@@ -1,18 +1,18 @@
+import { IPoint3 } from "@xrf/math";
 import { Maybe, Nullable } from "@xrf/types";
 
 import { LevelStart } from "@/core/ipc/types/xrf-app";
 import { Vector3d } from "@/core/ipc/types/xrf-math";
 import { VisualBounds } from "@/core/ipc/types/xrf-visual";
-import { ILevelPoint } from "@/core/level/lib/camera/level-point";
 
 /** Where the camera stands and what it looks at, both in renderer space. */
 export interface ILevelViewpoint {
-  position: ILevelPoint;
-  target: ILevelPoint;
+  position: IPoint3;
+  target: IPoint3;
 }
 
 /** Where a level with no usable extent opens, which is the only place that is certainly meaningful. */
-const ORIGIN: ILevelPoint = { x: 0, y: 0, z: 0 };
+const ORIGIN: IPoint3 = { x: 0, y: 0, z: 0 };
 
 /** How far along the axis it faces the camera looks, as a fraction of that axis; anything positive aims it level. */
 const LOOK_AHEAD: number = 0.25;
@@ -33,8 +33,8 @@ export function toLevelStartViewpoint(
   start: Nullable<LevelStart> = null
 ): ILevelViewpoint {
   if (start) {
-    const position: ILevelPoint = toPoint(start.position);
-    const direction: ILevelPoint = toPoint(start.direction);
+    const position: IPoint3 = toPoint(start.position);
+    const direction: IPoint3 = toPoint(start.direction);
 
     return {
       position,
@@ -42,10 +42,10 @@ export function toLevelStartViewpoint(
     };
   }
 
-  const minimum: ILevelPoint = toPoint(bounds?.boundingBox.min);
-  const maximum: ILevelPoint = toPoint(bounds?.boundingBox.max);
+  const minimum: IPoint3 = toPoint(bounds?.boundingBox.min);
+  const maximum: IPoint3 = toPoint(bounds?.boundingBox.max);
 
-  const position: ILevelPoint = {
+  const position: IPoint3 = {
     x: (minimum.x + maximum.x) / 2,
     y: (minimum.y + maximum.y) / 2,
     z: (minimum.z + maximum.z) / 2,
@@ -65,7 +65,7 @@ export function toLevelStartViewpoint(
 }
 
 /** A point from the wire, where every field is optional because a float may not be one. */
-function toPoint(corner: Maybe<Vector3d>): ILevelPoint {
+function toPoint(corner: Maybe<Vector3d>): IPoint3 {
   return {
     x: corner?.x ?? ORIGIN.x,
     y: corner?.y ?? ORIGIN.y,

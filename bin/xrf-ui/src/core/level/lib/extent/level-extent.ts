@@ -1,15 +1,15 @@
+import { IPoint3 } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 
 import { VisualBounds } from "@/core/ipc/types/xrf-visual";
-import { ILevelPoint } from "@/core/level/lib/camera/level-point";
 
 /** What an empty box answers for a reach, so a grid built from one is still a grid rather than a point. */
 const EMPTY_REACH: number = 1;
 
 /** The extent a level claims, or none. */
 export interface ILevelBox {
-  min: ILevelPoint;
-  max: ILevelPoint;
+  min: IPoint3;
+  max: IPoint3;
   /** Whether nothing was measured, which draws no extent at all rather than a dot at the origin. */
   isEmpty: boolean;
 }
@@ -75,7 +75,7 @@ export function toOriginReach(box: ILevelBox): number {
  * @param box - The extent.
  * @returns The point, the origin for an empty box.
  */
-export function toBoxFloor(box: ILevelBox): ILevelPoint {
+export function toBoxFloor(box: ILevelBox): IPoint3 {
   if (box.isEmpty) {
     return { x: 0, y: 0, z: 0 };
   }

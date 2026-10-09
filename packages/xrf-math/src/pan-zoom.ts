@@ -1,4 +1,5 @@
-import { clamp, mix } from "@xrf/math";
+import { clamp } from "#/clamp";
+import { mix } from "#/mix";
 
 /** A point, in whichever space the function taking it names. */
 export interface IPanZoomPoint {

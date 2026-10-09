@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
+import { EPanZoomMode, IPanZoomState, PAN_ZOOM_FIT, toManualPanZoom } from "@xrf/math";
 
-import { EPanZoomMode, IPanZoomState, PAN_ZOOM_FIT, toManualPanZoom } from "@/lib/media/pan-zoom";
 import { PanZoomController } from "@/lib/media/pan-zoom-controller";
 
 const PLACED: IPanZoomState = toManualPanZoom({ center: { x: 128, y: 64 }, scale: 2 });

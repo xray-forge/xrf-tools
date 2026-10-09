@@ -1,9 +1,8 @@
-import { saturate, toDegrees, toDirection, toHeadingPitch, toRadians } from "@xrf/math";
+import { saturate, toDegrees, toDirection, toHeadingPitch, toRadians, TVector3 } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 
 import { WeatherDescriptor } from "@/core/ipc/types/xrf-environment";
 import { Vector3d } from "@/core/ipc/types/xrf-math";
-import { TRenderVector } from "@/core/render/lib/scene/render-space";
 
 /** What names a sky's irradiance cube after the sky's own reference. */
 const ENVIRONMENT_SUFFIX: string = "#small";
@@ -14,7 +13,7 @@ const ENVIRONMENT_SUFFIX: string = "#small";
  */
 export interface ILevelManualWeather {
   skyTexture: string;
-  skyColor: TRenderVector;
+  skyColor: TVector3;
   /** Degrees. */
   skyRotation: number;
   /** Empty for none. */
@@ -24,11 +23,11 @@ export interface ILevelManualWeather {
   /** Degrees. */
   cloudsRotation: number;
   farPlane: number;
-  fogColor: TRenderVector;
+  fogColor: TVector3;
   fogDistance: number;
   fogDensity: number;
   hemisphereColor: readonly [number, number, number, number];
-  sunColor: TRenderVector;
+  sunColor: TVector3;
   /** Degrees; `setHP` turns the heading by it. */
   sunAltitude: number;
   /** Degrees; `setHP` tilts the pitch by it. */
@@ -37,17 +36,17 @@ export interface ILevelManualWeather {
   sun: string;
   /** How dense the light shafts through the sun's shadow are. */
   sunShaftsIntensity: number;
-  ambientColor: TRenderVector;
+  ambientColor: TVector3;
   waterIntensity: number;
   rainDensity: number;
-  rainColor: TRenderVector;
+  rainColor: TVector3;
   windVelocity: number;
   /** Degrees. */
   windDirection: number;
   treesAmplitude: number;
   treesSpeed: number;
   treesRotation: number;
-  treesWave: TRenderVector;
+  treesWave: TVector3;
   /** The `thunderbolt_collections.ltx` section struck with, empty for none. */
   thunderboltCollection: string;
   /** Seconds between strikes. */
@@ -261,13 +260,13 @@ export function toLevelManualSun(
 }
 
 /** `getHP` of the sun's direction, in degrees: `sun_altitude` is its heading and `sun_longitude` its pitch. */
-function toSunAngles(direction: TRenderVector): Pick<ILevelManualWeather, "sunAltitude" | "sunLongitude"> {
+function toSunAngles(direction: TVector3): Pick<ILevelManualWeather, "sunAltitude" | "sunLongitude"> {
   const { heading, pitch } = toHeadingPitch(direction);
 
   return { sunAltitude: toDegrees(heading), sunLongitude: toDegrees(pitch) };
 }
 
-function toTriple(value: readonly [Nullable<number>, Nullable<number>, Nullable<number>]): TRenderVector {
+function toTriple(value: readonly [Nullable<number>, Nullable<number>, Nullable<number>]): TVector3 {
   return [value[0] ?? 0, value[1] ?? 0, value[2] ?? 0];
 }
 

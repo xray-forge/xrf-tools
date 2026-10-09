@@ -1,3 +1,5 @@
+import { IPoint3 } from "@xrf/math";
+
 import { toRawColor, TRawColor } from "@/core/render/lib/scene/render-color";
 import { toRenderGridStep } from "@/core/render/lib/scene/render-grid-step";
 
@@ -17,16 +19,9 @@ export interface IRenderGridLinesOptions {
   /** Hex colour of the two lines through the origin. */
   originColor: number;
   /** Where its middle stands, the origin when left out. */
-  center?: IRenderGridCenter;
+  center?: IPoint3;
   /** Times each round cell is split, reaching as far with that many more lines; one when left out. */
   subdivision?: number;
-}
-
-/** A point a grid is laid around. */
-export interface IRenderGridCenter {
-  x: number;
-  y: number;
-  z: number;
 }
 
 /** Three's `AxesHelper` colours at each end, as the canvas shows them: x red, y green, z blue, fading as they go. */
@@ -55,7 +50,7 @@ const AXES_COLORS: ReadonlyArray<[TRawColor, TRawColor]> = [
  */
 export function toRenderGridLines(extent: number, options: IRenderGridLinesOptions): IRenderLines {
   const { color, originColor } = options;
-  const { x, y, z }: IRenderGridCenter = options.center ?? { x: 0, y: 0, z: 0 };
+  const { x, y, z }: IPoint3 = options.center ?? { x: 0, y: 0, z: 0 };
   const subdivision: number = Math.max(1, Math.round(options.subdivision ?? 1));
   const cells: number = options.cells * subdivision;
   const step: number = toRenderGridStep(extent * 2, options.cells) / subdivision;
@@ -82,7 +77,7 @@ export function toRenderGridLines(extent: number, options: IRenderGridLinesOptio
  * @param color - Hex colour of the edges.
  * @returns The box's lines.
  */
-export function toRenderBoxLines(min: IRenderGridCenter, max: IRenderGridCenter, color: number): IRenderLines {
+export function toRenderBoxLines(min: IPoint3, max: IPoint3, color: number): IRenderLines {
   const corners: Array<[number, number, number]> = [0, 1, 2, 3, 4, 5, 6, 7].map((bits: number) => [
     bits & 1 ? max.x : min.x,
     bits & 2 ? max.y : min.y,

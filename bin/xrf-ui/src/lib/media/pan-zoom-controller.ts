@@ -1,4 +1,4 @@
-import { IPanZoomState, PAN_ZOOM_FIT } from "./pan-zoom";
+import { IPanZoomState, PAN_ZOOM_FIT } from "@xrf/math";
 
 /** What a viewport does when the camera it is looking through moves. */
 export type TPanZoomListener = () => void;

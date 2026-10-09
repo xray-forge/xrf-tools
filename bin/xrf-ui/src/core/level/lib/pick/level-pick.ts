@@ -1,7 +1,7 @@
+import { IPoint3 } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 
 import { LevelSpawnObject } from "@/core/ipc/types/xrf-app";
-import { ILevelPoint } from "@/core/level/lib/camera/level-point";
 
 /** What a click in the viewport picked. */
 export enum ELevelPick {
@@ -27,12 +27,12 @@ export type TLevelPick =
       place: Nullable<number>;
       /** Whether it is a clump of trees drawn as its impostor. */
       isImpostor: boolean;
-      point: ILevelPoint;
+      point: IPoint3;
     }
   | {
       kind: ELevelPick.SPAWN;
       object: LevelSpawnObject;
       /** The visual it stands as, as its spawn names it. */
       visual: string;
-      point: ILevelPoint;
+      point: IPoint3;
     };

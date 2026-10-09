@@ -1,4 +1,4 @@
-import { clamp } from "@xrf/math";
+import { clamp } from "#/clamp";
 
 /**
  * Reduces raw samples to one peak per horizontal pixel.

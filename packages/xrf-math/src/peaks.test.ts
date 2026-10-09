@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { extractPeaks } from "@/lib/media/waveform";
+import { extractPeaks } from "#/peaks";
 
 describe("extractPeaks", () => {
   it("keeps the loudest magnitude in each bucket", () => {

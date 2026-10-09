@@ -1,9 +1,8 @@
-import { clamp, toDegrees, toRadians } from "@xrf/math";
+import { clamp, IPoint3, toDegrees, toRadians, toRendererFacing, toRendererSpace } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 
 import { ILevelCamera } from "@/core/level/lib/camera/level-camera";
 import { ILevelViewpoint } from "@/core/level/lib/camera/level-viewpoint";
-import { IRenderPoint, toRendererFacing, toRendererSpace } from "@/core/render/lib/scene/render-space";
 
 /** Where a person asks the camera to stand, as the readout states it: metres, and degrees. */
 export interface ILevelGoTo {
@@ -76,9 +75,9 @@ export function parseLevelGoTo(text: string, current: ILevelGoTo): Nullable<ILev
  * @returns Where the camera stands and what it looks at, in renderer space: a metre along the way it faces.
  */
 export function toLevelGoToViewpoint(goTo: ILevelGoTo): ILevelViewpoint {
-  const position: IRenderPoint = toRendererSpace({ x: goTo.x, y: goTo.y, z: goTo.z });
+  const position: IPoint3 = toRendererSpace({ x: goTo.x, y: goTo.y, z: goTo.z });
   const pitch: number = clamp(goTo.pitch, -MAX_PITCH, MAX_PITCH);
-  const facing: IRenderPoint = toRendererFacing({ heading: toRadians(goTo.heading), pitch: toRadians(pitch) });
+  const facing: IPoint3 = toRendererFacing({ heading: toRadians(goTo.heading), pitch: toRadians(pitch) });
 
   return {
     position,

@@ -1,4 +1,5 @@
 import { useInjection } from "@wirestate/react";
+import { PAN_ZOOM_FIT } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useEffect, useState } from "react";
 
@@ -19,7 +20,6 @@ import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { ErrorState } from "@/core/ui/layout/ErrorState";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { PAN_ZOOM_FIT } from "@/lib/media/pan-zoom";
 import { PanZoomController } from "@/lib/media/pan-zoom-controller";
 
 import { TextureImagePane } from "./TextureImagePane";
