@@ -63,6 +63,24 @@ describe("RenderFrameReadout", () => {
     expect(getByText("DLSS 1200 × 720 → 2400 × 1440")).toBeInTheDocument();
   });
 
+  it("leaves the target out where the temporal resolve upscales to the viewport's own size", () => {
+    const { getByText, queryByText } = render(
+      <RenderFrameReadout
+        report={{
+          ...REPORT,
+          antialiasing: ERenderAntialiasing.DLSS,
+          outputHeight: 1930,
+          outputWidth: 3217,
+          renderHeight: 1286,
+          renderWidth: 2144,
+        }}
+      />
+    );
+
+    expect(getByText("DLSS 2144 × 1286")).toBeInTheDocument();
+    expect(queryByText(/→/)).toBeNull();
+  });
+
   it("says a temporal resolve drawing at the output's size, larger than the viewport, by its size alone", () => {
     const { getByText } = render(
       <RenderFrameReadout
@@ -80,14 +98,14 @@ describe("RenderFrameReadout", () => {
     expect(getByText("TAA 6434 × 3860")).toBeInTheDocument();
   });
 
-  it("names FSR 1 where no temporal resolve upscales the scene to the viewport", () => {
+  it("names FSR 1 where no temporal resolve upscales the scene, to the viewport it leaves unsaid", () => {
     const { getByText } = render(
       <RenderFrameReadout
         report={{ ...REPORT, antialiasing: ERenderAntialiasing.SMAA, renderHeight: 965, renderWidth: 1609 }}
       />
     );
 
-    expect(getByText("FSR 1 1609 × 965 → 3217 × 1930")).toBeInTheDocument();
+    expect(getByText("FSR 1 1609 × 965")).toBeInTheDocument();
   });
 
   it("carries what only the scene can say, under the rest", () => {
