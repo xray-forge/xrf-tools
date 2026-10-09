@@ -10,12 +10,12 @@ use crate::shader::shader_library::ShaderLibrary;
 /// Invocations a reduction workgroup runs a side, as `shaders/frame/pyramid.wgsl` declares them.
 const WORKGROUP: u32 = 8;
 
-/// Reduces a viewport's depth into its pyramid, a dispatch a level.
+/// Reduces a viewport's depth into a pyramid, a dispatch a level: to the farthest under each texel, or the nearest.
 pub struct DepthPyramidPass {
   depth_layout: wgpu::BindGroupLayout,
   level_layout: wgpu::BindGroupLayout,
-  /// Reducing the depth into the first level, then a level into the next.
-  pipelines: [wgpu::ComputePipeline; 2],
+  /// Reducing the depth into the first level, then a level into the next: the farthest's pair, then the nearest's.
+  pipelines: [wgpu::ComputePipeline; 4],
   generation: u64,
 }
 
@@ -43,12 +43,14 @@ impl DepthPyramidPass {
     }
   }
 
-  /// Reduces the depth into the first level, then each level into the next, a dispatch each.
+  /// Reduces the depth into the first level, then each level into the next, a dispatch each: to the nearest where
+  /// `is_nearest`, the farthest otherwise.
   pub fn record(
     &self,
     context: &mut ComputeContext<'_>,
     pyramid: &DepthPyramid,
     (first, levels): (&PyramidDepthParameters, &[PyramidLevelParameters]),
+    is_nearest: bool,
   ) {
     for level in 0..pyramid.levels as usize {
       let (width, height): (u32, u32) = pyramid.get_level_size(level as u32);
@@ -60,7 +62,7 @@ impl DepthPyramidPass {
 
       let pass: &mut wgpu::ComputePass<'static> = context.get_pass();
 
-      pass.set_pipeline(&self.pipelines[(level > 0) as usize]);
+      pass.set_pipeline(&self.pipelines[usize::from(is_nearest) * 2 + usize::from(level > 0)]);
       pass.dispatch_workgroups(width.div_ceil(WORKGROUP), height.div_ceil(WORKGROUP), 1);
     }
   }
@@ -70,7 +72,7 @@ impl DepthPyramidPass {
     shaders: &ShaderLibrary,
     depth_layout: &wgpu::BindGroupLayout,
     level_layout: &wgpu::BindGroupLayout,
-  ) -> XrfResult<[wgpu::ComputePipeline; 2]> {
+  ) -> XrfResult<[wgpu::ComputePipeline; 4]> {
     let module: wgpu::ShaderModule = create_module(device, shaders, "frame/pyramid")?;
     let create = |entry: &str, layout: &wgpu::BindGroupLayout| -> XrfResult<wgpu::ComputePipeline> {
       let pipeline_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -94,6 +96,8 @@ impl DepthPyramidPass {
     Ok([
       create("reduce_depth", depth_layout)?,
       create("reduce_level", level_layout)?,
+      create("copy_nearest", depth_layout)?,
+      create("reduce_nearest", level_layout)?,
     ])
   }
 }

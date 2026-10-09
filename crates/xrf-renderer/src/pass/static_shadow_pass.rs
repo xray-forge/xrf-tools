@@ -75,7 +75,22 @@ impl StaticShadowPass {
     ),
     args: &wgpu::Buffer,
   ) {
-    self.record_casters(context, draw, (args, 0));
+    self.record_casters(context, draw, (args, 0), true);
+  }
+
+  /// Draws the casters a list holds, leaving the trees out where `is_tree_drawn` is not set.
+  pub fn record_layered(
+    &self,
+    context: &mut RasterContext<'_>,
+    draw: (
+      &ViewBinding,
+      &[StaticDrawParameters; StaticLayout::COUNT],
+      &wgpu::BindGroup,
+    ),
+    args: &wgpu::Buffer,
+    is_tree_drawn: bool,
+  ) {
+    self.record_casters(context, draw, (args, 0), is_tree_drawn);
   }
 
   /// Clears one tile of the atlas the pass draws into and draws the casters a light face's list holds into it, the
@@ -104,10 +119,10 @@ impl StaticShadowPass {
     pass.set_scissor_rect(tile.x, tile.y, tile.size, tile.size);
     pass.set_pipeline(&self.clear);
     pass.draw(0..3, 0..1);
-    self.record_casters(context, draw, args);
+    self.record_casters(context, draw, args, true);
   }
 
-  /// Draws the casters a list holds, each batch's arguments from `args_offset`.
+  /// Draws the casters a list holds, each batch's arguments from `args_offset`, the trees only where `is_tree_drawn`.
   fn record_casters(
     &self,
     context: &mut RasterContext<'_>,
@@ -117,11 +132,16 @@ impl StaticShadowPass {
       &wgpu::BindGroup,
     ),
     (args, args_offset): (&wgpu::Buffer, u64),
+    is_tree_drawn: bool,
   ) {
     context.get_pass().set_bind_group(0, &view.bind_group, &[]);
     context.get_pass().set_bind_group(1, textures, &[]);
 
     for (batch, pipeline) in StaticBatch::list_deferred().zip(&self.pipelines) {
+      if !is_tree_drawn && batch.layout == StaticLayout::Tree {
+        continue;
+      }
+
       context.bind(&layouts[batch.layout.get_index()]);
       context.get_pass().set_pipeline(pipeline);
       context

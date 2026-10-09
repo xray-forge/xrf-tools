@@ -2,7 +2,7 @@ use xrf_error::XrfResult;
 use xrf_renderer_core::{PassParameters, RasterContext};
 
 use crate::frame::view_targets::ViewTargets;
-use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline;
+use crate::pass::fullscreen_pipeline::{create_fullscreen_pipeline, create_fullscreen_pipeline_into};
 use crate::pass::view_binding::ViewBinding;
 use crate::pass::wet_apply_parameters::WetApplyParameters;
 use crate::pass::wet_patch_parameters::WetPatchParameters;
@@ -23,6 +23,10 @@ pub struct WetPass {
 }
 
 impl WetPass {
+  /// What the enhanced patch writes beside the light target, for the reflections and combine to read: how much of the
+  /// surface the wet film covers, how much a puddle, and the rain's ripple across the ground in `x` and `z`.
+  pub const SURFACE: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
+
   /// # Errors
   ///
   /// Returns an error when a shader does not compose or compile.
@@ -104,13 +108,18 @@ impl WetPass {
     [patch, apply]: &[wgpu::BindGroupLayout; 2],
     suffix: &str,
   ) -> XrfResult<[wgpu::RenderPipeline; 3]> {
-    let patched: wgpu::RenderPipeline = create_fullscreen_pipeline(
+    // The enhanced patch writes the wet surface beside the light target.
+    let targets: Vec<Option<wgpu::ColorTargetState>> = std::iter::once(ViewTargets::LIGHT)
+      .chain((!suffix.is_empty()).then_some(Self::SURFACE))
+      .map(|format| Some(format.into()))
+      .collect();
+    let patched: wgpu::RenderPipeline = create_fullscreen_pipeline_into(
       device,
       shaders,
       "frame/wet_patch",
       &format!("fs_wet_patch{suffix}"),
       &[Some(view_layout), Some(patch)],
-      ViewTargets::LIGHT,
+      &targets,
     )?;
     let normal: wgpu::RenderPipeline = create_fullscreen_pipeline(
       device,

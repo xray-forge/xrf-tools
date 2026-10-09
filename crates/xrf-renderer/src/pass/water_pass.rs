@@ -102,6 +102,23 @@ impl WaterPass {
   }
 
   /// The bundled maps, which the enhanced rain's puddles and ripples read too.
+  /// Draws the water a view's list holds into the depth the pass draws into, its waves lifted as the frame's: an
+  /// overhead map's view, its own lists and arguments.
+  pub fn record_depth(
+    &self,
+    context: &mut RasterContext<'_>,
+    groups: (
+      &ViewBinding,
+      &wgpu::BindGroup,
+      [StaticDrawParameters; StaticLayout::COUNT],
+    ),
+    args: &wgpu::Buffer,
+    parameters: &WaterDepthParameters,
+  ) {
+    context.bind(parameters);
+    self.draw_batches(context, groups, &[args], |it| &it.depth);
+  }
+
   pub fn get_maps(&self) -> &EnhancedWaterMaps {
     &self.maps
   }

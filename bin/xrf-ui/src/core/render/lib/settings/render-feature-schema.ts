@@ -110,7 +110,7 @@ export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings>
     },
     height: toNumber(0.5, 2),
     isEnabled: FLAG,
-    radius: toNumber(49, 300, true),
+    radius: toNumber(49, 450, true),
   },
   // The renderer's own: up to four times what the frame shows, for the light a screen-space search cannot see; past
   // eight metres its steps lie too far apart to follow a surface.
@@ -124,8 +124,10 @@ export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings>
   // and the shipped glosses lie under about 0.15, so four still leaves the most matte surfaces matte; past two hundred
   // metres a ray leaves the frame long before its steps reach.
   // The renderer's own: puddles from none to most of flat terrain, a puddle's reflection at most a mirror's, the rain's
-  // ripples up to twice their designed strength.
+  // ripples up to twice their designed strength, and puddles drawn out to the widest grass's radius, which the level
+  // surface they are placed on reaches past.
   rain: {
+    distance: toNumber(30, 450, true),
     mode: toChoice(ERenderRainMode),
     puddles: toNumber(0, 1),
     reflectivity: toNumber(0, 1),

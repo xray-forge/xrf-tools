@@ -981,6 +981,8 @@ export type RenderRainSettings = {
   reflectivity: number | null;
   /** How strongly rain ripples wet surfaces and puddles. */
   ripples: number | null;
+  /** Metres out to which puddles are drawn, fading over the last sixth. */
+  distance: number | null;
 };
 
 /** A rectangle of a window's client area, in device pixels from its top left corner. */
@@ -1006,17 +1008,17 @@ export enum ERenderReflectionMode {
 export type RenderReflectionMode = `${ERenderReflectionMode}`;
 
 /**
- * How hard the screen-space reflections trace: the size traced at, the steps a ray takes at most, how far behind a
- * surface a step may land and still have met it, and whether a step that lands further is halved back once.
+ * How hard the screen-space reflections trace: the size traced at and how many cells of the depth pyramid a ray may
+ * cross before it gives up.
  */
 export enum ERenderReflectionQuality {
-  /** Half size, 16 steps. */
+  /** Half size, 24 crossings. */
   LOW = "low",
-  /** Half size, 24 steps. */
+  /** Half size, 48 crossings. */
   MEDIUM = "medium",
-  /** Half size, 32 steps, refined. */
+  /** Half size, 96 crossings. */
   HIGH = "high",
-  /** The frame's own size, 64 steps, refined. */
+  /** The frame's own size, 128 crossings. */
   ULTRA = "ultra",
 }
 

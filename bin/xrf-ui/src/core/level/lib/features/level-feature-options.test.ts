@@ -121,7 +121,7 @@ describe("level feature options", () => {
         lights: { shadowFilter: "anomaly" },
         lod: { ssaA: 20 },
       })
-    ).toEqual({ ...mockLevelFeatureOptions(), grass: { radius: 300 } });
+    ).toEqual({ ...mockLevelFeatureOptions(), grass: { radius: 450 } });
     expect(toLevelFeatureOptions(null)).toEqual(mockLevelFeatureOptions());
   });
 

@@ -14,6 +14,8 @@ pub struct RenderRainSettings {
   pub reflectivity: f32,
   /// How strongly rain ripples wet surfaces and puddles.
   pub ripples: f32,
+  /// Metres out to which puddles are drawn, fading over the last sixth.
+  pub distance: f32,
 }
 
 impl Default for RenderRainSettings {
@@ -24,6 +26,7 @@ impl Default for RenderRainSettings {
       puddles: 0.8,
       reflectivity: 0.4,
       ripples: 1.0,
+      distance: 120.0,
     }
   }
 }

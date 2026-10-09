@@ -19,6 +19,9 @@ override IS_SHADOW: bool = false;
 // and nothing too small for the camera is dropped, so no move of the camera is drawn into it.
 override IS_FINEST: bool = false;
 
+// Whether the shadow is an overhead map of the level's water, which keeps its water alone.
+override IS_WATER: bool = false;
+
 // `EPS_S`, the least a fade's range is taken as.
 const RANGE_EPSILON: f32 = 1e-6;
 
@@ -134,8 +137,10 @@ fn is_hidden_early(sphere: vec4<f32>) -> bool {
 
 // Appends a cluster the frustum keeps, or sets it aside for the late phase where last frame's depth hid it.
 fn keep(batch: u32, cluster: u32, place: u32, sphere: vec4<f32>) {
-  // Water, composited surfaces and wall marks cast no shadow.
-  if (IS_SHADOW && batch % CLASS_COUNT >= WATER_CLASS) {
+  // Water, composited surfaces and wall marks cast no shadow; a map of the water keeps its water alone.
+  let kind: u32 = batch % CLASS_COUNT;
+
+  if (IS_SHADOW && select(kind >= WATER_CLASS, kind != WATER_CLASS, IS_WATER)) {
     return;
   }
 

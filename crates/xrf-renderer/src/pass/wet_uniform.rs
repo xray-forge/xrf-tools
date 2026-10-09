@@ -17,7 +17,13 @@ pub struct WetUniform {
   pub is_enhanced: f32,
   /// The cover's centre in `x` and `z`, its half width, and the height it is seen from.
   pub window: Vec4,
+  /// The level's surface map's centre in `x` and `z`, its half width, and the height it is seen from; then its texels
+  /// across and the metres it reaches down.
+  pub surface: Vec4,
+  pub surface_shape: Vec4,
   /// The level's wetness, how much of flat terrain puddles may cover, how much of a reflection a puddle takes at most,
   /// and how strongly rain ripples.
   pub puddles: Vec4,
+  /// Metres out to which puddles are drawn, how full they are, and how stormy the rain has been.
+  pub puddle_state: Vec4,
 }

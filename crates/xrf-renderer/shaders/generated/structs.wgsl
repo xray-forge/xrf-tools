@@ -101,6 +101,11 @@ struct FogScattering {
   time: f32,
 }
 
+struct SurfaceMask {
+  window: vec4<f32>,
+  shape: vec4<f32>,
+}
+
 struct ParticleVertex {
   position: vec3<f32>,
   color: u32,
@@ -179,9 +184,8 @@ struct Vbao {
 }
 
 struct Reflections {
-  steps: u32,
-  limit: f32,
-  is_refined: f32,
+  crossings: u32,
+  frame: u32,
   intensity: f32,
   distance: f32,
   has_history: f32,
@@ -230,7 +234,10 @@ struct Wet {
   is_extended: f32,
   is_enhanced: f32,
   window: vec4<f32>,
+  surface: vec4<f32>,
+  surface_shape: vec4<f32>,
   puddles: vec4<f32>,
+  puddle_state: vec4<f32>,
 }
 
 struct Thunder {

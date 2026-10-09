@@ -3,6 +3,7 @@ use xrf_renderer_core::{ComputeContext, PassParameters};
 
 use crate::pass::compute_grid::ComputeGrid;
 use crate::pass::shader_pipelines::{create_checked, create_module};
+use crate::pass::shadow_cull::ShadowCull;
 use crate::pass::static_cull_parameters::StaticCullParameters;
 use crate::pass::static_cull_params::StaticCullParams;
 use crate::pass::view_binding::ViewBinding;
@@ -23,10 +24,6 @@ const ENTRIES: [&str; 6] = [
   "clamp_late",
 ];
 
-/// The override constants a sun cascade's cull is built with, and a light face's.
-const CASCADE: &[(&str, f64)] = &[("IS_SHADOW", 1.0)];
-const LIGHT_FACE: &[(&str, f64)] = &[("IS_SHADOW", 1.0), ("IS_FINEST", 1.0)];
-
 /// Decides each frame which clusters are drawn, into every batch's run of the visible list: an early phase before the
 /// first draw, and a late one testing what the early phase set aside against the depth that draw left.
 pub struct StaticCullPass {
@@ -34,7 +31,7 @@ pub struct StaticCullPass {
   view_layout: wgpu::BindGroupLayout,
   pipelines: [wgpu::ComputePipeline; 6],
   /// The singles, the rows and the clamp again, for a sun cascade's view, then for a light face's.
-  shadow_pipelines: [[wgpu::ComputePipeline; 3]; 2],
+  shadow_pipelines: [[wgpu::ComputePipeline; 3]; 3],
   grid: ComputeGrid,
   generation: u64,
 }
@@ -104,9 +101,9 @@ impl StaticCullPass {
     view: &ViewBinding,
     parameters: &StaticCullParameters,
     params: &StaticCullParams,
-    is_light_face: bool,
+    kind: ShadowCull,
   ) {
-    let pipelines: &[wgpu::ComputePipeline; 3] = &self.shadow_pipelines[is_light_face as usize];
+    let pipelines: &[wgpu::ComputePipeline; 3] = &self.shadow_pipelines[kind.get_index()];
 
     context.bind(parameters);
 
@@ -156,7 +153,7 @@ impl StaticCullPass {
     shaders: &ShaderLibrary,
     view_layout: &wgpu::BindGroupLayout,
     layout: &wgpu::BindGroupLayout,
-  ) -> XrfResult<([wgpu::ComputePipeline; 6], [[wgpu::ComputePipeline; 3]; 2])> {
+  ) -> XrfResult<([wgpu::ComputePipeline; 6], [[wgpu::ComputePipeline; 3]; 3])> {
     let module: wgpu::ShaderModule = create_module(device, shaders, "static/cull")?;
     let pipeline_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
       label: Some("static cull"),
@@ -180,6 +177,15 @@ impl StaticCullPass {
     };
 
     let [impostors, singles, rows, clamp, late, clamp_late] = ENTRIES;
+    let create_shadow = |kind: ShadowCull| -> XrfResult<[wgpu::ComputePipeline; 3]> {
+      let constants: &[(&str, f64)] = kind.get_constants();
+
+      Ok([
+        create(singles, constants)?,
+        create(rows, constants)?,
+        create(clamp, constants)?,
+      ])
+    };
 
     Ok((
       [
@@ -191,16 +197,9 @@ impl StaticCullPass {
         create(clamp_late, &[])?,
       ],
       [
-        [
-          create(singles, CASCADE)?,
-          create(rows, CASCADE)?,
-          create(clamp, CASCADE)?,
-        ],
-        [
-          create(singles, LIGHT_FACE)?,
-          create(rows, LIGHT_FACE)?,
-          create(clamp, LIGHT_FACE)?,
-        ],
+        create_shadow(ShadowCull::Cascade)?,
+        create_shadow(ShadowCull::LightFace)?,
+        create_shadow(ShadowCull::Water)?,
       ],
     ))
   }

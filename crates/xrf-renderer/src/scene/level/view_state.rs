@@ -23,6 +23,7 @@ use crate::scene::level::level_overlays::LevelOverlays;
 use crate::scene::level::level_water::LevelWater;
 use crate::scene::level::lights_view::LightsView;
 use crate::scene::level::particles_view::ParticlesView;
+use crate::scene::level::puddle_fill::PuddleFill;
 use crate::scene::level::rain_wetness::RainWetness;
 use crate::scene::static_scene::static_selection::StaticSelection;
 
@@ -60,6 +61,7 @@ pub struct ViewState {
   pub foliage: FoliageWind,
   /// How wet the level has become, built up by the rain and dried after.
   pub wetness: RainWetness,
+  pub puddle_fill: PuddleFill,
   /// What the foliage motion read this frame, which the grass takes as the trees do.
   pub foliage_values: FoliageWindValues,
   /// The frame at the viewport's size while it is drawn smaller: EASU's upscale, then RCAS's sharpening.
@@ -106,6 +108,7 @@ impl ViewState {
       last_wind: None,
       foliage: FoliageWind::default(),
       wetness: RainWetness::default(),
+      puddle_fill: PuddleFill::default(),
       foliage_values: FoliageWindValues::default(),
       upscale: None,
       overlays: None,

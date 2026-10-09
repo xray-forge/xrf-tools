@@ -1,4 +1,5 @@
-/// A viewport's depth reduced to the farthest depth under each texel, level by level, for occlusion tests to read.
+/// A viewport's depth reduced level by level: to the farthest depth under each texel for occlusion tests, or to the
+/// nearest for reflected rays to skip empty space by.
 pub struct DepthPyramid {
   pub width: u32,
   pub height: u32,
@@ -12,13 +13,31 @@ pub struct DepthPyramid {
 impl DepthPyramid {
   pub const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::R32Float;
 
-  /// A pyramid over a depth of this size: its first level the largest power of two within it each way.
+  /// The farthest depth's pyramid over a depth of this size: its first level the largest power of two within it each
+  /// way, down to a texel.
   pub fn new(device: &wgpu::Device, depth_width: u32, depth_height: u32) -> Self {
     let width: u32 = previous_power_of_two(depth_width);
     let height: u32 = previous_power_of_two(depth_height);
-    let levels: u32 = width.max(height).ilog2() + 1;
+
+    Self::create(device, "depth pyramid", (width, height), width.max(height).ilog2() + 1)
+  }
+
+  /// The nearest depth's pyramid over a depth of this size: its first level the depth itself, each next half the last
+  /// rounded down, at most `levels` of them.
+  pub fn new_nearest(device: &wgpu::Device, depth_width: u32, depth_height: u32, levels: u32) -> Self {
+    let (width, height): (u32, u32) = (depth_width.max(1), depth_height.max(1));
+
+    Self::create(
+      device,
+      "nearest depth pyramid",
+      (width, height),
+      levels.min(width.max(height).ilog2() + 1),
+    )
+  }
+
+  fn create(device: &wgpu::Device, label: &str, (width, height): (u32, u32), levels: u32) -> Self {
     let texture: wgpu::Texture = device.create_texture(&wgpu::TextureDescriptor {
-      label: Some("depth pyramid"),
+      label: Some(label),
       size: wgpu::Extent3d {
         width,
         height,

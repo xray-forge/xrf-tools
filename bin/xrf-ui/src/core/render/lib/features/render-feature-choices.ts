@@ -315,6 +315,7 @@ export function formatIndirectLightIntensity(intensity: number): string {
 
 /** The bounds each rain value is offered between. */
 export const RENDER_RAIN_LIMITS = {
+  distance: toRenderLimits(RENDER_FEATURE_SCHEMA.rain.distance, 10),
   puddles: toRenderLimits(RENDER_FEATURE_SCHEMA.rain.puddles, 0.05),
   reflectivity: toRenderLimits(RENDER_FEATURE_SCHEMA.rain.reflectivity, 0.05),
   ripples: toRenderLimits(RENDER_FEATURE_SCHEMA.rain.ripples, 0.05),

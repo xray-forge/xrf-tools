@@ -11,6 +11,7 @@ use crate::frame::sun_shadow_maps::SunShadowMaps;
 use crate::lighting::sun_view_rays::SunViewRays;
 use crate::pass::camera_uniform::CameraUniform;
 use crate::pass::level_passes::LevelPasses;
+use crate::pass::shadow_cull::ShadowCull;
 use crate::pass::shadow_uniform::ShadowUniform;
 use crate::pass::static_cull_parameters::StaticCullParameters;
 use crate::pass::static_cull_params::StaticCullParams;
@@ -139,7 +140,9 @@ impl LevelShadows {
 
         move |context| {
           for (cascade, cull) in &culls {
-            passes.cull.record_shadow(context, &cascade.view, cull, params, false);
+            passes
+              .cull
+              .record_shadow(context, &cascade.view, cull, params, ShadowCull::Cascade);
           }
         }
       });
