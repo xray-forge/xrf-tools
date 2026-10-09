@@ -18,6 +18,8 @@ export interface IEditorPopoverToggleProps extends BaseComponentProps {
   isDisabled?: boolean;
   /** Whether its settings take a wider popover, for rows of several named choices. */
   isWide?: boolean;
+  /** What the popover sets ahead of the toggle, whether the toggle is on or not. */
+  header?: ReactNode;
   /** Why the settings behind it do nothing now, said in their place; the toggle still turns over. */
   lockedReason?: Nullable<string>;
   onToggle: () => void;
@@ -39,6 +41,7 @@ export function EditorPopoverToggle({
   toggleLabel,
   isDisabled = false,
   isWide = false,
+  header = null,
   lockedReason = null,
   onToggle,
   children,
@@ -61,6 +64,8 @@ export function EditorPopoverToggle({
         <Typography className={"text-text-secondary"} variant={"overline"}>
           {label}
         </Typography>
+
+        {header}
 
         <CheckboxFormRow label={toggleLabel} isChecked={isOn} onChange={onToggle} />
 

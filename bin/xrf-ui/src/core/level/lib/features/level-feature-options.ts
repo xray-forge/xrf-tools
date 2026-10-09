@@ -1,11 +1,6 @@
 import { Nullable } from "@xrf/types";
 
-import {
-  ERenderAntialiasing,
-  RenderAntialiasing,
-  RenderTextureFiltering,
-  RenderUpscalingSettings,
-} from "@/core/ipc/types/xrf-renderer";
+import { ERenderAntialiasing, RenderAntialiasing, RenderTextureFiltering } from "@/core/ipc/types/xrf-renderer";
 import { toRenderFeatureChoice } from "@/core/render/lib/settings/render-feature-choice";
 import { IRenderFeatureOverrides } from "@/core/render/lib/settings/render-feature-overrides";
 import {
@@ -22,6 +17,7 @@ import {
   TRenderRainSettings,
   TRenderReflectionSettings,
   TRenderShadowSettings,
+  TRenderUpscalingSettings,
   TRenderVolumetricSettings,
   TRenderWaterSettings,
 } from "@/core/render/lib/settings/render-feature-settings";
@@ -115,7 +111,7 @@ export interface ILevelFeatureOptions {
   /** How the view's surfaces sample their textures, or null for the settings' own. */
   textureFiltering: Nullable<RenderTextureFiltering>;
   /** How much smaller than the viewport the view is drawn, where it sets its own. */
-  upscaling: Partial<Pick<RenderUpscalingSettings, "scale">>;
+  upscaling: Partial<TRenderUpscalingSettings>;
   /** What the view resolves its frame at, where it sets its own: a resolution, and the scale an automatic one takes. */
   output: TLevelOutputOptions;
   shadows: Partial<TLevelShadowOptions>;
@@ -240,7 +236,11 @@ export function toLevelFeatureOptions(stored: unknown): ILevelFeatureOptions {
     reflections: pickModeFeature("reflections"),
     shadows: pick("shadows"),
     textureFiltering: overrides.textureFiltering ?? null,
-    upscaling: overrides.upscaling?.scale ? { scale: overrides.upscaling.scale } : {},
+    upscaling: Object.fromEntries(
+      (["scale", "sharpening", "dlssPreset"] as const)
+        .filter((key) => overrides.upscaling?.[key] !== undefined && overrides.upscaling?.[key] !== null)
+        .map((key) => [key, overrides.upscaling?.[key]])
+    ),
     output: toLevelOutputOptions(stored),
     volumetric: pickModeFeature("volumetric"),
     water: pick("water"),
