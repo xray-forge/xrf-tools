@@ -6,7 +6,7 @@ edition.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-jsonc-parser = { version = "0.33.1", default-features = false, features = ["serde"] }
+jsonc-parser = { version = "0.34.0", default-features = false, features = ["serde"] }
 log = { workspace = true }
 serde = { workspace = true }
 swc_common = "26.0.0"
