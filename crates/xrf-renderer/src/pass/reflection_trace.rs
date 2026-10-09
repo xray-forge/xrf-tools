@@ -5,7 +5,7 @@ use crate::contract::render_view_options::RenderViewOptions;
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ReflectionTrace {
   pub quality: RenderReflectionQuality,
-  /// What a surface's gloss and Fresnel term are scaled by into its share of reflection.
+  /// What scales how much of a surface's reflection a traced one replaces, and how much a puddle's coat reflects.
   pub intensity: f32,
 }
 

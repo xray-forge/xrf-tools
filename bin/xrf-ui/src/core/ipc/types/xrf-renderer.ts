@@ -136,7 +136,7 @@ export type RenderAppliedIndirectLight = {
 
 /** The screen-space reflections as traced. */
 export type RenderAppliedReflections = {
-  /** What a surface's gloss and Fresnel term are scaled by into its share of reflection. */
+  /** What scales how much of a surface's reflection a traced one replaces, and how much a puddle's coat reflects. */
   intensity: number | null;
   quality: RenderReflectionQuality;
 };
@@ -1026,12 +1026,13 @@ export enum ERenderReflectionQuality {
 export type RenderReflectionQuality = `${ERenderReflectionQuality}`;
 
 /**
- * Screen-space reflections on the frame's surfaces: each glossy surface blended towards what its reflected ray meets,
- * or the sky's cube where it meets nothing, by its share of reflection.
+ * Screen-space reflections on the frame's surfaces: what each glossy surface's reflected rays meet, or the sky where
+ * they meet nothing, sharpening the slice of its own reflection a dielectric would show, and reflected by a puddle's
+ * clear coat of water.
  */
 export type RenderReflectionSettings = {
   mode: RenderReflectionMode;
-  /** What a surface's gloss and Fresnel term are scaled by into its share of reflection; the share is at most one. */
+  /** What scales how much of a surface's reflection a traced one replaces, and how much a puddle's coat reflects. */
   intensity: number | null;
   /** Metres a ray is traced at most. */
   distance: number | null;

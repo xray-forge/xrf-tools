@@ -8,7 +8,8 @@
 
 // The depth, the material marks, the patches (the light target, borrowed before any light is drawn: the engine's the
 // patched normal in colour and the wetness in alpha, the enhanced the normal packed into `xy`, the gloss the rain adds
-// into `z` and how much of a puddle the point is into `w`), and the settings.
+// into `z` and how deep into a puddle the point is into `w`), the enhanced wetting's wet surface, how much of a puddle
+// in `g`, and the settings.
 #import "generated/frame/wet_apply"
 
 // Whether anything was drawn at a pixel, reversed: nought where nothing was.
@@ -77,8 +78,8 @@ fn fs_wet_gloss_enhanced(in: FullscreenVarying) -> @location(0) vec4<f32> {
   }
 
   let wetted: vec4<f32> = textureLoad(patched, texel, 0);
-  let tint: vec3<f32> = mix(vec3<f32>(1.0), PUDDLE_TINT, saturate(wetted.w * 100.0)) *
-    exp(-PUDDLE_ABSORPTION * 2.0 * PUDDLE_DEEPEST * wetted.w);
+  let puddle: f32 = textureLoad(wet_surface, texel, 0).g;
+  let tint: vec3<f32> = mix(vec3<f32>(1.0), PUDDLE_TINT, puddle) * exp(-PUDDLE_ABSORPTION * 2.0 * PUDDLE_DEEPEST * wetted.w);
 
   return vec4<f32>(tint * wet_darkening(wetted.z), wetted.z * select(0.8, 1.0, wet.is_extended > 0.5));
 }

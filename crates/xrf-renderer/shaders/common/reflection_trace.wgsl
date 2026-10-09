@@ -2,16 +2,13 @@
 
 // Screen-space reflection rays: a reflected direction drawn from a surface's GGX lobe, walked across the screen up and
 // down a pyramid of the frame's nearest depth, skipping whole cells it passes over and stepping down where it meets a
-// surface, until it stands on one at the finest level; and the wet film's clear coat of water over a surface. The
-// pyramid is passed in, so each pass binds it where it likes.
+// surface, until it stands on one at the finest level; and how much of what a surface reflects a traced reflection
+// shows, of its own reflection's slice and as a puddle's clear coat of water, which combine blends and the trace gates
+// by alike. The pyramid is passed in, so each pass binds it where it likes.
 
 // Water's reflectance head on, from its index of refraction of 1.33, and a dry dielectric's.
 const COAT_F0: f32 = 0.02;
 const DIELECTRIC_F0: f32 = 0.04;
-// The coat's roughness: a wet film's, and standing water's, a mirror; and the least a film's is, which keeps its lobe
-// from narrowing to one noisy sample.
-const COAT_ROUGHNESS: vec2<f32> = vec2<f32>(0.35, 0.0);
-const COAT_LEAST_ROUGHNESS: f32 = 0.02;
 // The least of a puddle a point is for its water to be traced as a mirror.
 const PUDDLE_LEAST: f32 = 0.01;
 // The pyramid's coarsest level a ray climbs to.
@@ -89,21 +86,21 @@ fn ray_cell_depth(pyramid: texture_2d<f32>, cell: vec2<i32>, level: i32) -> f32 
 }
 
 // Where a ray from a screen point along a screen direction meets the frame's nearest depth, walked over at most
-// `crossings` cells; its second part is whether it ended on a surface at the finest level within them, never where it
-// left the screen or ran out. A surface the ray lies behind by more than `thickness` (metres, then a share of the
-// distance) it met all the same, `is_behind`, where it crossed into it from the pixel it left: in front of the surface
-// there, and that surface running on into this one (their depths no further apart than the ray moved), as ground
-// rising or a wall going up from its foot. Otherwise the surface stands nearer than the ray, unconnected to what the
-// ray came over, a twig, a wire, a tree's crown before the sky: the ray passes behind it and walks on.
-// plane it was reflected off stops it either (`mirror`: that plane's view space normal and its own point's distance
-// along it; `slack`: metres over it a surface may stand and still lie beneath it, a little for anything, more for what
-// stands in a puddle, `wet`'s `g`, or a plant there): a mirror's ray cannot meet what lies beneath it, as the ground
-// under a puddle's level water or a bush's foot in it, which the depth shows a little above the water; the ground
-// rising beyond the puddle stops it, as it would the real reflection.
+// `crossings` cells; its second part is whether it ended on a surface, never where it left the screen or ran out.
+//
+// A surface the ray lies behind by no more than `thickness` (metres, then a share of the distance) it met. Further
+// behind, it met it only where it crossed into it from the pixel it left: in front of the surface there, and that
+// surface running on into this one (their depths no further apart than the ray moved), as ground rising or a wall going
+// up from its foot. Otherwise the surface stands nearer than the ray, unconnected to what the ray came over, a twig, a
+// wire, a tree's crown before the sky: the ray passes behind it and walks on.
+//
+// Nothing under the plane it was reflected off stops it (`mirror`: that plane's view space normal and its own point's
+// distance along it; `slack`: metres over it a surface may stand and still lie beneath it, a little for anything, more
+// for what stands in a puddle, `wet`'s `g`, or a plant there): a mirror's ray cannot meet what lies beneath it, as the
+// ground under a puddle's level water or a bush's foot in it, which the depth shows a little above the water.
 struct RayWalk {
   position: vec3<f32>,
   is_met: bool,
-  is_behind: bool,
 };
 
 fn ray_walk(pyramid: texture_2d<f32>, material: texture_2d<f32>, wet: texture_2d<f32>, origin: vec3<f32>,
@@ -124,7 +121,7 @@ fn ray_walk(pyramid: texture_2d<f32>, material: texture_2d<f32>, wet: texture_2d
   while (count < crossings && level >= 0) {
     // Off the screen, or past the far plane, there is nothing left to meet.
     if (any(position.xy < vec2<f32>(0.0)) || any(position.xy > vec2<f32>(1.0)) || position.z <= 0.0) {
-      return RayWalk(position, false, false);
+      return RayWalk(position, false);
     }
 
     let at: vec2<f32> = cells * position.xy;
@@ -139,36 +136,33 @@ fn ray_walk(pyramid: texture_2d<f32>, material: texture_2d<f32>, wet: texture_2d
     let is_above: bool = surface < position.z;
     let is_skipped: bool = bitcast<u32>(nearest) != bitcast<u32>(crossing.z) && is_above;
 
-    let texel: vec2<i32> = vec2<i32>(at);
-    let is_in_puddle: bool = textureLoad(wet, texel, 0).g > 0.5 || has_mark(textureLoad(material, texel, 0).a, MARK_PLANT);
-    let beneath: f32 = mirror.w + select(slack.x, slack.y, is_in_puddle);
-
-    if (!is_above && level == 0 && dot(mirror.xyz, ray_view_point(vec3<f32>(position.xy, surface))) < beneath) {
-      along = min(crossing.x, crossing.y);
-      position = origin + along * direction;
-      count++;
-
-      continue;
-    }
-
+    // Behind a frame pixel's surface: met, beneath the mirror, or passed behind.
     if (!is_above && level == 0) {
+      let texel: vec2<i32> = vec2<i32>(at);
       let shown: vec3<f32> = ray_view_point(vec3<f32>(position.xy, surface));
-
       let ray: vec3<f32> = ray_view_point(position);
       let reach: f32 = thickness.x - shown.z * thickness.y;
+      let is_in_puddle: bool = textureLoad(wet, texel, 0).g > 0.5 ||
+        has_mark(textureLoad(material, texel, 0).a, MARK_PLANT);
+      let is_beneath: bool = dot(mirror.xyz, shown) < mirror.w + select(slack.x, slack.y, is_in_puddle);
+      var is_passed: bool = is_beneath;
 
-      if (length(shown - ray) > reach) {
+      if (!is_beneath && length(shown - ray) > reach) {
         let came: vec3<f32> = origin + max(along - pixel_along, 0.0) * direction;
-        let came_texel: vec2<i32> = vec2<i32>(came.xy * screen);
         let came_ray: vec3<f32> = ray_view_point(came);
-        let came_surface: vec3<f32> = ray_view_point(vec3<f32>(came.xy, ray_cell_depth(pyramid, came_texel, 0)));
+        let came_surface: vec3<f32> = ray_view_point(vec3<f32>(came.xy,
+          ray_cell_depth(pyramid, vec2<i32>(came.xy * screen), 0)));
         let was_in_front: bool = -came_ray.z <= -came_surface.z + reach;
         let is_connected: bool = abs(came_surface.z - shown.z) <= abs(ray.z - came_ray.z) + reach;
 
         if (was_in_front && is_connected) {
-          return RayWalk(vec3<f32>(position.xy, surface), true, true);
+          return RayWalk(vec3<f32>(position.xy, surface), true);
         }
 
+        is_passed = true;
+      }
+
+      if (is_passed) {
         along = min(crossing.x, crossing.y);
         position = origin + along * direction;
         count++;
@@ -188,7 +182,7 @@ fn ray_walk(pyramid: texture_2d<f32>, material: texture_2d<f32>, wet: texture_2d
     count++;
   }
 
-  return RayWalk(position, level < 0, false);
+  return RayWalk(position, level < 0);
 }
 
 // The roughness over which a surface's own reflection is no longer sharpened by a traced one: rough wet ground keeps
@@ -200,15 +194,10 @@ fn sharpened(roughness: f32) -> f32 {
   return 1.0 - smoothstep(SHARP_ROUGHNESS.x, SHARP_ROUGHNESS.y, roughness);
 }
 
-// The roughness of the water over a surface: standing water's wherever there is any, a mirror traced along one ray and
-// kept unblurred by the denoiser, its rim fading by how much of it there is rather than roughening; a film's else.
-fn coat_roughness(puddle: f32) -> f32 {
-  return select(max(COAT_LEAST_ROUGHNESS, COAT_ROUGHNESS.x), COAT_ROUGHNESS.y, puddle > PUDDLE_LEAST);
-}
-
-// How a surface's lobe is traced: a mirror wherever a puddle stands, its own roughness from its gloss elsewhere.
+// How a surface's lobe is traced: a mirror wherever a puddle stands, its water traced along one ray and kept unblurred
+// by the denoiser, its rim fading by how much of it there is rather than roughening; its own roughness elsewhere.
 fn traced_roughness(gloss: f32, puddle: f32) -> f32 {
-  return select(reflection_roughness(gloss), COAT_ROUGHNESS.y, puddle > PUDDLE_LEAST);
+  return select(reflection_roughness(gloss), 0.0, puddle > PUDDLE_LEAST);
 }
 
 // How much a dielectric reflects at a cosine of the view to its normal: Schlick's Fresnel from its reflectance head
@@ -220,9 +209,20 @@ fn dielectric_fresnel(facing: f32, roughness: f32, head_on: f32) -> f32 {
   return head_on + (max(1.0 - roughness, head_on) - head_on) * away_squared * away_squared * away;
 }
 
-// How much the water over a surface reflects.
-fn coat_fresnel(facing: f32, roughness: f32) -> f32 {
-  return dielectric_fresnel(facing, roughness, COAT_F0);
+// How much a surface's own reflection a traced one replaces, of its weight: no more than a dielectric of its roughness
+// reflects at that cosine of the view to its normal, by the intensity, faded out as it roughens and none under a puddle,
+// whose coat reflects instead. The rest keeps the environment the surface reflects.
+fn reflection_slice(weight: vec3<f32>, facing: f32, gloss: f32, puddle: f32, intensity: f32) -> vec3<f32> {
+  let roughness: f32 = reflection_roughness(gloss);
+
+  return min(weight, vec3<f32>(dielectric_fresnel(facing, roughness, DIELECTRIC_F0) * intensity)) *
+    (1.0 - saturate(puddle)) * sharpened(roughness);
+}
+
+// How much of what a puddle's clear coat of water covers reflects, at a cosine of the view to its normal: the coat's
+// coverage by water's Fresnel, a mirror's, by the intensity.
+fn coat_share(coverage: f32, facing: f32, intensity: f32) -> f32 {
+  return saturate(coverage * dielectric_fresnel(facing, 0.0, COAT_F0) * intensity);
 }
 
 // A surface's roughness for its reflection's lobe, from the engine's gloss: a puddle's 0.6 is nearly a mirror, rain's

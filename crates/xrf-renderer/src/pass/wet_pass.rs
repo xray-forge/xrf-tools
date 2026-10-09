@@ -24,7 +24,8 @@ pub struct WetPass {
 
 impl WetPass {
   /// What the enhanced patch writes beside the light target, for the reflections and combine to read: how much of the
-  /// surface the wet film covers, how much a puddle, and the rain's ripple across the ground in `x` and `z`.
+  /// surface a puddle's clear coat of water covers, how much a puddle, and the puddle's ripple across the ground in `x`
+  /// and `z`.
   pub const SURFACE: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
 
   /// # Errors

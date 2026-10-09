@@ -131,7 +131,7 @@ use crate::scene::level::grass_level::GrassLevel;
 use crate::scene::level::level_frame::LevelFrame;
 use crate::scene::level::level_overlays::LevelOverlays;
 use crate::scene::level::level_scene::LevelScene;
-use crate::scene::level::level_surface::LevelSurface;
+use crate::scene::level::level_surface::{LevelSurface, PuddleKeepInputs};
 use crate::scene::level::level_water::WaterFrame;
 use crate::scene::level::lighting_handles::LightingHandles;
 use crate::scene::level::lights_frame::LightsFrame;
@@ -1991,26 +1991,33 @@ impl SceneView {
 
     // The level's surface seen from overhead, its lowest heights, its puddle sites and its water, which the enhanced
     // wetting places its puddles by.
-    let [surface_lowest, puddle_sites, surface_water]: [GraphTexture; 3] =
-      if is_wet && scene_view.info.wet.is_enhanced > 0.5 {
+    let [surface_lowest, puddles, surface_water]: [GraphTexture; 3] = match wet {
+      Some(wet) if scene_view.info.wet.is_enhanced > 0.5 => {
         let water: UniformBinding<WaterUniform> = runtime.push_uniform(scene_view.state.water.get_uniform());
+        let keep: PuddleKeepInputs = PuddleKeepInputs {
+          wet,
+          noise: &passes.water.get_maps().perlin,
+          sampler: passes.wet.get_sampler(),
+        };
 
         scene_view.renderer.level_surface.add_passes(
           (&mut *graph, &mut *bindings, runtime),
           passes,
           &statics,
           (&scene_view.info.cull, texture_group),
-          water,
+          (water, keep),
         )
-      } else {
+      }
+      _ => {
         let surface: &LevelSurface = &scene_view.renderer.level_surface;
 
         [
           bindings.import_view(&mut *graph, "level surface lowest", &surface.lowest),
-          bindings.import_view(&mut *graph, "puddle sites", &surface.sites),
+          bindings.import_view(&mut *graph, "puddles", &surface.puddles),
           bindings.import_view(&mut *graph, "level water", &surface.water.depth),
         ]
-      };
+      }
+    };
 
     if frame.is_scene_first {
       scene.lights.add_shadow_passes(
@@ -2031,6 +2038,18 @@ impl SceneView {
     if let (Some(cover), Some(wet), Some([splash, flow])) = (cover, wet, &scene_view.info.weather_views.wet) {
       let is_enhanced: bool = scene_view.info.wet.is_enhanced > 0.5;
       let maps: &EnhancedWaterMaps = passes.water.get_maps();
+
+      if is_enhanced {
+        let (width, height) = handles.size;
+
+        wet_surface = graph.create_texture(GraphTextureDescriptor::new_2d(
+          "wet surface",
+          width,
+          height,
+          WetPass::SURFACE,
+        ));
+      }
+
       let patch: WetPatchParameters = WetPatchParameters {
         depth_target: handles.depth,
         albedo_target: handles.albedo,
@@ -2038,7 +2057,7 @@ impl SceneView {
         material_target: handles.material,
         cover,
         surface_lowest,
-        puddle_sites,
+        puddles,
         surface_water,
         splash: bindings.import_view(&mut *graph, "wet splash", splash),
         flow: bindings.import_view(&mut *graph, "wet flow", flow),
@@ -2052,22 +2071,12 @@ impl SceneView {
         depth_target: handles.depth,
         material_target: handles.material,
         patched: handles.light,
+        wet_surface,
         wet,
       };
 
       // The patches go into the light, which the wet look over the normals and the albedo then reads; the enhanced
       // patch's wet surface beside them.
-      if is_enhanced {
-        let (width, height) = handles.size;
-
-        wet_surface = graph.create_texture(GraphTextureDescriptor::new_2d(
-          "wet surface",
-          width,
-          height,
-          WetPass::SURFACE,
-        ));
-      }
-
       let builder = graph
         .add_raster_pass("wet patch")
         .parameters(&patch)

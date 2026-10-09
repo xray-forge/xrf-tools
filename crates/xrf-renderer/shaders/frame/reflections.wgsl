@@ -8,13 +8,13 @@
 #import "common/water_enhanced"
 
 // Stochastic screen-space reflections on the frame's surfaces, at the size the quality traces at, a pixel per `ratio`
-// by `ratio` of the frame. Each reflecting pixel's ray leaves in a direction drawn from its surface's GGX lobe (the wet
-// film's where it is wet) by blue noise that turns every frame, and walks the frame's nearest depth pyramid
-// (`common/reflection_trace`); what it met is lit as the frame shows it, weighed by how sure the hit is, the
-// environment `hmodel` reflects otherwise, so a ray meeting nothing changes nothing. Then the
-// denoiser: the last frame's reflection reprojected, from where the reflected point or the surface stood; an
-// eighth-size average; the trace filtered across the surface, stopping at edges; and the two resolved over time, the
-// history held to the neighbourhood, into this frame's history, which combine blends each surface towards by its share.
+// by `ratio` of the frame. Each reflecting pixel's ray leaves in a direction drawn from its surface's GGX lobe (a
+// mirror's under a puddle) by blue noise that turns every frame, and walks the frame's nearest depth pyramid
+// (`common/reflection_trace`); what it met is lit as the frame shows it, faded towards the screen's edges and the
+// distance traced, the sky or the environment `hmodel` reflects otherwise. Then the denoiser: the last frame's
+// reflection reprojected, from where the reflected point or the surface stood; an eighth-size average; the trace
+// filtered across the surface, stopping at edges; and the two resolved over time, the history held to the
+// neighbourhood, into this frame's history, which combine blends by `reflection_slice` and `coat_share`.
 //
 // Each stage marks a pixel nothing is traced at with an alpha below none.
 
@@ -35,8 +35,8 @@ const SKY_SEEN: vec2<f32> = vec2<f32>(0.05, 0.35);
 const MIRROR_ROUGHNESS: vec2<f32> = vec2<f32>(0.02, 0.15);
 // The luminance what a ray meets is held to, so a lamp's glass or a sunlit highlight does not flare what reflects it.
 const RADIANCE_LIMIT: f32 = 6.0;
-// Metres behind a surface a ray may lie, and what of its distance more, and still have met it; further, it passes
-// behind it.
+// Metres behind a surface a ray may lie, and what of its distance more, and still have met it; further, only where it
+// crossed into it.
 const HIT_THICKNESS: vec2<f32> = vec2<f32>(0.2, 0.008);
 // Metres over the plane a ray was reflected off a surface must stand to stop it: a little, and for what stands in a
 // puddle, whose level water lies under the bumps of the ground the depth shows, as far as the placing let it rise.
@@ -133,12 +133,11 @@ fn met_radiance(texel: vec2<i32>) -> vec3<f32> {
   return fogged * min(1.0, RADIANCE_LIMIT / luminance(fogged));
 }
 
-// How sure a ray's end is a surface it met: none off the screen, on the sky, or further behind the surface the depth
-// shows there than its thickness, where it passed behind something nearer, whose colour smeared down would show as
-// slabs, unless the walk found that something solid (`is_behind`), which it then meets; faded towards the screen's edges and out to the distance traced. A ray ending on a surface's back or right
-// where it left still counts: a grazing ray off a puddle meets the ground rising just past it, which the puddle's level
-// normal shows as a back.
-fn hit_confidence(hit: vec3<f32>, origin: vec3<f32>, is_behind: bool) -> f32 {
+// How sure a ray's end is a surface it met: none off the screen or on the sky; faded towards the screen's edges and out
+// to the distance traced. The walk has already judged what it met; a surface's back or a hit right where it left still
+// counts, as a grazing ray off a puddle meets the ground rising just past it, which the puddle's level normal shows as
+// a back.
+fn hit_confidence(hit: vec3<f32>, origin: vec3<f32>) -> f32 {
   let size: vec2<f32> = camera.viewport.xy;
 
   if (any(hit.xy < vec2<f32>(0.0)) || any(hit.xy > vec2<f32>(1.0))) {
@@ -152,17 +151,12 @@ fn hit_confidence(hit: vec3<f32>, origin: vec3<f32>, is_behind: bool) -> f32 {
     return 0.0;
   }
 
-  let shown: vec3<f32> = ray_view_point(vec3<f32>(hit.xy, surface));
-  let thickness: f32 = HIT_THICKNESS.x - shown.z * HIT_THICKNESS.y;
-  let sure: f32 = select(1.0 - smoothstep(thickness * 0.5, thickness, length(shown - ray_view_point(hit))), 1.0,
-    is_behind);
-
   let met: vec3<f32> = ray_view_point(hit);
   let edges: vec2<f32> = smoothstep(vec2<f32>(0.0), vec2<f32>(EDGE_FADE * size.y / size.x, EDGE_FADE), hit.xy) *
     (1.0 - smoothstep(1.0 - vec2<f32>(EDGE_FADE * size.y / size.x, EDGE_FADE), vec2<f32>(1.0), hit.xy));
   let reach: f32 = 1.0 - smoothstep(reflection.distance * 0.75, reflection.distance, length(met - origin));
 
-  return sure * edges.x * edges.y * reach;
+  return edges.x * edges.y * reach;
 }
 
 @fragment
@@ -187,16 +181,14 @@ fn fs_trace(in: FullscreenVarying) -> @location(0) vec4<f32> {
   let normal: vec3<f32> = octahedral_decode(textureLoad(normal_target, texel, 0).xy);
   let position: vec3<f32> = camera_view_position(vec2<f32>(texel) + 0.5, depth);
   let toward: vec3<f32> = normalize(position);
-  let coat: f32 = coat_roughness(wet.g);
-  let water: f32 = wet.r * coat_fresnel(dot(normal, -toward), coat) * reflection.intensity;
-  let dry: f32 = hmodel_environment_weight(lighting, material_lut, lut_sampler, albedo.a,
+  let facing: f32 = dot(normal, -toward);
+  let weight: f32 = hmodel_environment_weight(lighting, material_lut, lut_sampler, albedo.a,
     mix(1.0, material.x, camera.switches.z), world_direction(reflect(toward, normal)), world_direction(toward),
     material.z);
+  let slice: f32 = reflection_slice(vec3<f32>(weight), facing, albedo.a, wet.g, reflection.intensity).x;
 
-  let sharp: f32 = min(dry, dielectric_fresnel(dot(normal, -toward), reflection_roughness(albedo.a), DIELECTRIC_F0)) *
-    sharpened(reflection_roughness(albedo.a));
-
-  if (max(sharp * reflection.intensity, water) <= TRACE_FLOOR) {
+  // Traced only where combine would show enough of it.
+  if (max(slice, coat_share(wet.r, facing, reflection.intensity)) <= TRACE_FLOOR) {
     return UNTRACED;
   }
 
@@ -229,7 +221,7 @@ fn fs_trace(in: FullscreenVarying) -> @location(0) vec4<f32> {
   let walk: RayWalk = ray_walk(nearest_depth, material_target, wet_surface, origin, toward_screen,
     reflection.crossings, HIT_THICKNESS, vec4<f32>(normal, dot(normal, position)), slack);
 
-  let confidence: f32 = select(0.0, hit_confidence(walk.position, position, walk.is_behind), walk.is_met);
+  let confidence: f32 = select(0.0, hit_confidence(walk.position, position), walk.is_met);
 
   if (confidence <= 0.0) {
     return vec4<f32>(sky, MISSED_LENGTH);
@@ -247,7 +239,6 @@ struct TracedSurface {
   roughness: f32,
   distance: f32,
   world: vec3<f32>,
-  uv: vec2<f32>,
 };
 
 fn traced_surface(pixel: vec2<f32>) -> TracedSurface {
@@ -257,12 +248,11 @@ fn traced_surface(pixel: vec2<f32>) -> TracedSurface {
   let is_level: bool = has_mark(textureLoad(material_target, texel, 0).a, MARK_TERRAIN) && normal.y > LEVEL_UP;
   let uv: vec2<f32> = (vec2<f32>(texel) + 0.5) / camera.viewport.xy;
   let world: vec3<f32> = camera_unproject(vec2<f32>(uv.x * 2.0 - 1.0, 1.0 - uv.y * 2.0), depth);
-
   let wet: vec4<f32> = textureLoad(wet_surface, texel, 0);
   let roughness: f32 = traced_roughness(textureLoad(albedo_target, texel, 0).a, wet.g);
 
   return TracedSurface(select(normal, vec3<f32>(0.0, 1.0, 0.0), is_level), roughness,
-    -camera_view_position(vec2<f32>(texel) + 0.5, depth).z, world, uv);
+    -camera_view_position(vec2<f32>(texel) + 0.5, depth).z, world);
 }
 
 // Where a world point stood on the last frame's screen, in texture coordinates; off it where it stood behind it.
@@ -345,8 +335,8 @@ struct ReprojectedTargets {
 
 // The last frame's reflection at a traced pixel: read where the reflected point stood (the view's ray carried on through
 // the surface by the hit's length) where the normals there match as a mirror's would, else where the surface stood if
-// it keeps near the neighbourhood; searched about where the history disagrees, dropped where it still does. Holds more
-// frames the rougher the surface.
+// it keeps near the neighbourhood; searched about where the history disagrees, dropped where it still does, and for a
+// mirror. Holds more frames the rougher the surface.
 @fragment
 fn fs_reproject(in: FullscreenVarying) -> ReprojectedTargets {
   let pixel: vec2<f32> = floor(in.clip.xy);
@@ -360,7 +350,8 @@ fn fs_reproject(in: FullscreenVarying) -> ReprojectedTargets {
   let dropped: ReprojectedTargets = ReprojectedTargets(vec4<f32>(0.0, 0.0, 0.0, 1.0),
     mix(0.1, 1.0, smoothstep(BLURRED_ROUGHNESS.x, BLURRED_ROUGHNESS.y, surface.roughness)));
 
-  if (reflection.has_history < 0.5) {
+  // A mirror's ray is the same every frame, so its history would only lag behind it.
+  if (reflection.has_history < 0.5 || surface.roughness < MIRROR_ROUGHNESS.x) {
     return dropped;
   }
 
@@ -428,9 +419,8 @@ fn fs_reproject(in: FullscreenVarying) -> ReprojectedTargets {
     return dropped;
   }
 
-  // A mirror's ray is the same every frame, so its history would only lag behind; a rough one's is noise, held long.
-  let most: f32 = select(max(8.0, MOST_SAMPLES * (1.0 - exp(-surface.roughness * 100.0))), 1.0,
-    surface.roughness < MIRROR_ROUGHNESS.x);
+  // A rough reflection is noise, held long.
+  let most: f32 = max(8.0, MOST_SAMPLES * (1.0 - exp(-surface.roughness * 100.0)));
   let samples: f32 = min(most, held_at(uv).y * trust + 1.0);
   let variance: f32 = mix(temporal_variance(fresh.rgb, reprojection), max(history_radiance_at(uv).a, 0.0), 1.0 /
     samples);

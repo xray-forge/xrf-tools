@@ -2,8 +2,8 @@ use xrf_renderer_core::{GraphTexture, PassParameters, UniformBinding};
 
 use crate::pass::wet_uniform::WetUniform;
 
-/// What laying the wet look over the normals and the albedo reads: the depth, the material marks, the patches, and the
-/// settings.
+/// What laying the wet look over the normals and the albedo reads: the depth, the material marks, the patches, the
+/// enhanced wetting's wet surface (a texel of nothing for the engine's), and the settings.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 1)]
 pub struct WetApplyParameters {
@@ -13,6 +13,8 @@ pub struct WetApplyParameters {
   pub material_target: GraphTexture,
   #[texture(d2, unfilterable)]
   pub patched: GraphTexture,
+  #[texture(d2, unfilterable)]
+  pub wet_surface: GraphTexture,
   #[uniform]
   pub wet: UniformBinding<WetUniform>,
 }

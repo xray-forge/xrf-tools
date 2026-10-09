@@ -55,7 +55,7 @@ struct HmodelTerms {
   base: vec3<f32>,
   environment: vec3<f32>,
   weight: vec3<f32>,
-  /// The lit albedo alone, what the surface shows of the light that reaches it.
+  // The lit albedo alone, what the surface shows of the light that reaches it.
   lit: vec3<f32>,
 };
 

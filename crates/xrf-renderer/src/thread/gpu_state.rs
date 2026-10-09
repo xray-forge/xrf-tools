@@ -26,6 +26,7 @@ use crate::pass::material_table::MaterialTable;
 use crate::pass::overlay_pass::OverlayPass;
 use crate::pass::particle_pass::ParticlePass;
 use crate::pass::present_pass::PresentPass;
+use crate::pass::puddle_sites_pass::PuddleSitesPass;
 use crate::pass::rain_pass::RainPass;
 use crate::pass::reflection_pass::ReflectionPass;
 use crate::pass::sky_bindings::SkyBindings;
@@ -37,7 +38,6 @@ use crate::pass::static_gbuffer_pass::StaticGBufferPass;
 use crate::pass::static_shadow_pass::StaticShadowPass;
 use crate::pass::sun_pass::SunPass;
 use crate::pass::sun_shafts_pass::SunShaftsPass;
-use crate::pass::surface_mask_pass::SurfaceMaskPass;
 use crate::pass::temporal_pass::TemporalPass;
 use crate::pass::thunder_pass::ThunderPass;
 use crate::pass::upscale_pass::UpscalePass;
@@ -85,7 +85,7 @@ pub struct GpuState {
   pub static_gbuffer: StaticGBufferPass,
   pub static_shadow: StaticShadowPass,
   pub pyramid: DepthPyramidPass,
-  pub surface_mask: SurfaceMaskPass,
+  pub puddle_sites: PuddleSitesPass,
   pub contact_shadows: ContactShadowPass,
   pub sun: SunPass,
   pub ambient_occlusion: AmbientOcclusionPass,
@@ -164,7 +164,7 @@ impl GpuState {
       static_gbuffer,
       static_shadow,
       pyramid: DepthPyramidPass::new(device, shaders)?,
-      surface_mask: SurfaceMaskPass::new(device, shaders)?,
+      puddle_sites: PuddleSitesPass::new(device, shaders)?,
       contact_shadows: ContactShadowPass::new(device, &context.queue, shaders, &view_layout)?,
       sun: SunPass::new(device, shaders, &view_layout)?,
       ambient_occlusion: AmbientOcclusionPass::new(device, shaders, &view_layout)?,
@@ -214,7 +214,7 @@ impl GpuState {
       gbuffer: &self.static_gbuffer,
       shadow: &self.static_shadow,
       pyramid: &self.pyramid,
-      surface_mask: &self.surface_mask,
+      puddle_sites: &self.puddle_sites,
       contact_shadows: &self.contact_shadows,
       sun: &self.sun,
       ambient_occlusion: &self.ambient_occlusion,
@@ -260,7 +260,7 @@ impl GpuState {
     self.static_gbuffer.refresh(device, shaders);
     self.static_shadow.refresh(device, shaders);
     self.pyramid.refresh(device, shaders);
-    self.surface_mask.refresh(device, shaders);
+    self.puddle_sites.refresh(device, shaders);
     self.contact_shadows.refresh(device, shaders);
     self.sun.refresh(device, shaders);
     self.ambient_occlusion.refresh(device, shaders);

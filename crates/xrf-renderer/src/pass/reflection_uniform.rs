@@ -11,7 +11,7 @@ pub struct ReflectionUniform {
   pub crossings: u32,
   /// The frame's count, which turns each pixel's noise from one frame to the next.
   pub frame: u32,
-  /// What a surface's gloss and Fresnel term are scaled by into its share of reflection.
+  /// What scales how much of a surface's reflection a traced one replaces, and how much a puddle's coat reflects.
   pub intensity: f32,
   /// Metres a ray is traced at most.
   pub distance: f32,

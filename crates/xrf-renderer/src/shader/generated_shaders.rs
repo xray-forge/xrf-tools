@@ -30,12 +30,16 @@ use crate::pass::light_record::LightRecord;
 use crate::pass::lighting_uniform::LightingUniform;
 use crate::pass::lights_parameters::LightsParameters;
 use crate::pass::lights_uniform::LightsUniform;
+use crate::pass::lowest_heights_parameters::LowestHeightsParameters;
 use crate::pass::overlay_parameters::OverlayParameters;
 use crate::pass::particle_parameters::ParticleParameters;
 use crate::pass::particle_surface_record::ParticleSurfaceRecord;
 use crate::pass::particle_vertex::ParticleVertex;
 use crate::pass::present_parameters::PresentParameters;
 use crate::pass::present_uniform::PresentUniform;
+use crate::pass::puddle_keep_parameters::PuddleKeepParameters;
+use crate::pass::puddle_sites_parameters::PuddleSitesParameters;
+use crate::pass::puddle_sites_uniform::PuddleSitesUniform;
 use crate::pass::pyramid_depth_parameters::PyramidDepthParameters;
 use crate::pass::pyramid_level_parameters::PyramidLevelParameters;
 use crate::pass::rain_parameters::RainParameters;
@@ -51,9 +55,6 @@ use crate::pass::static_draw_parameters::StaticDrawParameters;
 use crate::pass::static_impostor_parameters::StaticImpostorParameters;
 use crate::pass::sun_parameters::SunParameters;
 use crate::pass::sun_shafts_parameters::SunShaftsParameters;
-use crate::pass::surface_heights_parameters::SurfaceHeightsParameters;
-use crate::pass::surface_mask_uniform::SurfaceMaskUniform;
-use crate::pass::surface_sites_parameters::SurfaceSitesParameters;
 use crate::pass::temporal_parameters::TemporalParameters;
 use crate::pass::temporal_uniform::TemporalUniform;
 use crate::pass::thunder_parameters::ThunderParameters;
@@ -117,7 +118,7 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
   let mut thunder: ShaderBindings = ShaderBindings::new();
   let mut temporal: ShaderBindings = ShaderBindings::new();
   let mut pyramid: ShaderBindings = ShaderBindings::new();
-  let mut surface_mask: ShaderBindings = ShaderBindings::new();
+  let mut puddle_sites: ShaderBindings = ShaderBindings::new();
   let mut static_cull: ShaderBindings = ShaderBindings::new();
   let mut static_draw: ShaderBindings = ShaderBindings::new();
   let mut static_impostor: ShaderBindings = ShaderBindings::new();
@@ -132,7 +133,7 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
     .declare::<BloomUniform>()
     .declare::<EnhancedBloomUniform>()
     .declare::<FogScatteringUniform>()
-    .declare::<SurfaceMaskUniform>()
+    .declare::<PuddleSitesUniform>()
     .declare::<ParticleVertex>()
     .declare::<ParticleSurfaceRecord>()
     .declare::<ShadowUniform>()
@@ -194,9 +195,10 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
   pyramid
     .add::<PyramidDepthParameters>()?
     .add::<PyramidLevelParameters>()?;
-  surface_mask
-    .add::<SurfaceHeightsParameters>()?
-    .add::<SurfaceSitesParameters>()?;
+  puddle_sites
+    .add::<LowestHeightsParameters>()?
+    .add::<PuddleSitesParameters>()?
+    .add::<PuddleKeepParameters<'_>>()?;
   static_cull.add::<StaticCullParameters>()?;
   static_draw.add::<StaticDrawParameters>()?;
   static_impostor.add::<StaticImpostorParameters>()?;
@@ -309,8 +311,8 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
       format!("{STRUCTS_IMPORT}{}", pyramid.to_wgsl()),
     ),
     (
-      "generated/frame/surface_mask",
-      format!("{STRUCTS_IMPORT}{}", surface_mask.to_wgsl()),
+      "generated/frame/puddle_sites",
+      format!("{STRUCTS_IMPORT}{}", puddle_sites.to_wgsl()),
     ),
     (
       "generated/static/cull",

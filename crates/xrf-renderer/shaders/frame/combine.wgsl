@@ -94,7 +94,6 @@ fn rippled_pixel(pixel: vec2<f32>, position: vec3<f32>, ripple: vec2<f32>) -> ve
   return clamp(pixel + shift, vec2<f32>(0.0), camera.viewport.xy - 1.0);
 }
 
-
 // What shows at a pixel where nothing was drawn: the backdrop, or its checkerboard with a second colour.
 fn backdrop_at(pixel: vec2<f32>) -> vec3<f32> {
   let backdrop: vec3<f32> = select(BACKDROP, camera.backdrop.rgb, camera.backdrop.w > 0.5);
@@ -183,8 +182,9 @@ fn fs_combine(in: FullscreenVarying) -> CombineOutput {
   var reflected: vec3<f32> = terms.environment;
 
   if (lighting.reflections.x > 0.5) {
-    let traced: vec4<f32> = upsampled_reflection(reflections, depth_target, material_target, rippled_pixel(floor(in.clip.xy), position,
-      wet.ba), -position.z, lighting.reflections.y);
+    let at: vec2<f32> = rippled_pixel(floor(in.clip.xy), position, wet.ba);
+    let traced: vec4<f32> = upsampled_reflection(reflections, depth_target, material_target, at, -position.z,
+      lighting.reflections.y);
 
     reflected = select(reflected, max(traced.rgb, vec3<f32>(0.0)), traced.a >= 0.0);
   }
@@ -194,17 +194,13 @@ fn fs_combine(in: FullscreenVarying) -> CombineOutput {
   // The puddle's ripple tilts what its water reflects across it a little, so it is never one even plate.
   let facing: f32 = saturate(dot(normal, -normalize(position)) +
     dot(wet.ba, world_direction(normalize(position)).xz) * 0.1);
-  let puddle: f32 = saturate(wet.g);
-  let roughness: f32 = reflection_roughness(albedo.a);
   let sheen: f32 = dot(terms.environment * terms.weight, SHEEN_LUMINANCE);
   let weight: vec3<f32> = select(terms.weight, terms.weight * min(1.0, SHEEN_LIMIT * dot(terms.lit, SHEEN_LUMINANCE) /
     max(sheen, 1e-4)), lighting.reflections.x > 0.5);
-  let sharp: vec3<f32> = min(weight, vec3<f32>(dielectric_fresnel(facing, roughness, DIELECTRIC_F0) * intensity)) *
-    (1.0 - puddle) * sharpened(roughness);
-  let coat: f32 = saturate(wet.r * coat_fresnel(facing, coat_roughness(puddle)) * intensity);
+  let slice: vec3<f32> = reflection_slice(weight, facing, albedo.a, wet.g, intensity);
 
-  shaded += terms.environment * weight + (reflected - terms.environment) * sharp;
-  shaded = mix(shaded, reflected, coat);
+  shaded += terms.environment * weight + (reflected - terms.environment) * slice;
+  shaded = mix(shaded, reflected, coat_share(wet.r, facing, intensity));
 
   // The engine fogs towards `fog_color` before the tonemap, then fades into the sky itself by the fog squared, both
   // parts alike (`skyblend` in either's alpha). The enhanced fog thickens the first and tints it below its height;

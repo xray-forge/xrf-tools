@@ -16,6 +16,7 @@ use crate::pass::material_table::MaterialTable;
 use crate::pass::overlay_pass::OverlayPass;
 use crate::pass::particle_pass::ParticlePass;
 use crate::pass::present_pass::PresentPass;
+use crate::pass::puddle_sites_pass::PuddleSitesPass;
 use crate::pass::rain_pass::RainPass;
 use crate::pass::reflection_pass::ReflectionPass;
 use crate::pass::sky_bindings::SkyBindings;
@@ -26,7 +27,6 @@ use crate::pass::static_gbuffer_pass::StaticGBufferPass;
 use crate::pass::static_shadow_pass::StaticShadowPass;
 use crate::pass::sun_pass::SunPass;
 use crate::pass::sun_shafts_pass::SunShaftsPass;
-use crate::pass::surface_mask_pass::SurfaceMaskPass;
 use crate::pass::temporal_pass::TemporalPass;
 use crate::pass::thunder_pass::ThunderPass;
 use crate::pass::upscale_pass::UpscalePass;
@@ -41,7 +41,7 @@ pub struct LevelPasses<'a> {
   pub gbuffer: &'a StaticGBufferPass,
   pub shadow: &'a StaticShadowPass,
   pub pyramid: &'a DepthPyramidPass,
-  pub surface_mask: &'a SurfaceMaskPass,
+  pub puddle_sites: &'a PuddleSitesPass,
   pub contact_shadows: &'a ContactShadowPass,
   pub sun: &'a SunPass,
   pub ambient_occlusion: &'a AmbientOcclusionPass,
