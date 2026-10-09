@@ -166,24 +166,15 @@ export function TextureChannelsPanel({
           <EditorPanelSection
             data-testid={"texture-channels-readout"}
             title={"Texel"}
-            caption={texels ? "Under the pointer, as stored and as reconstructed" : undefined}
+            caption={"Under the pointer, as stored and as reconstructed"}
             isFirst
           >
-            {texels ? (
-              <>
-                <EditorPanelProperty label={"At"} value={readout?.position ?? ABSENT_VALUE} />
-                <EditorPanelProperty label={"Bump"} value={readout?.bump ?? ABSENT_VALUE} />
-                <EditorPanelProperty label={"Bump#"} value={readout?.companion ?? ABSENT_VALUE} />
-                <EditorPanelProperty label={"Normal"} value={readout?.normal ?? ABSENT_VALUE} />
-                <EditorPanelProperty label={"Gloss"} value={readout?.gloss ?? ABSENT_VALUE} />
-                <EditorPanelProperty label={"Height"} value={readout?.height ?? ABSENT_VALUE} />
-              </>
-            ) : (
-              <EditorPanelProperty
-                label={"Readout"}
-                value={"Unavailable: this pair is stored as blocks rather than as plain texels"}
-              />
-            )}
+            <EditorPanelProperty label={"At"} value={readout?.position ?? ABSENT_VALUE} />
+            <EditorPanelProperty label={"Bump"} value={readout?.bump ?? ABSENT_VALUE} />
+            <EditorPanelProperty label={"Bump#"} value={readout?.companion ?? ABSENT_VALUE} />
+            <EditorPanelProperty label={"Normal"} value={readout?.normal ?? ABSENT_VALUE} />
+            <EditorPanelProperty label={"Gloss"} value={readout?.gloss ?? ABSENT_VALUE} />
+            <EditorPanelProperty label={"Height"} value={readout?.height ?? ABSENT_VALUE} />
           </EditorPanelSection>
 
           {TEXTURE_CHANNEL_TILES.map((tile: ITextureChannelTile) => (

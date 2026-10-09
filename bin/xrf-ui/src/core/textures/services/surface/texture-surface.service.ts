@@ -1,6 +1,5 @@
 import { Injectable, OnDeactivation } from "@wirestate/core";
 import { Observable, RefObservable, runInAction } from "@wirestate/mobx";
-import { IDdsTexels } from "@xrf/dds";
 import { Nullable } from "@xrf/types";
 
 import { transformError } from "@/core/error/lib";
@@ -15,7 +14,7 @@ import {
   selectTextureBumpAssets,
   toTextureAspect,
 } from "@/core/textures/lib/texture-surface";
-import { readTextureTexels } from "@/core/textures/lib/texture-texels";
+import { ITextureTexels, readTextureTexels } from "@/core/textures/lib/texture-texels";
 import { AsyncState } from "@/lib/async-state";
 import { formatDuration } from "@/lib/format/duration";
 import { Logger, Timer } from "@/lib/logging";
@@ -56,8 +55,10 @@ export class TextureSurfaceService {
     try {
       const { roots } = description;
       const assets: Nullable<ITextureBumpAssets> = selectTextureBumpAssets(description);
-      const bump: Nullable<IDdsTexels> = assets ? yield* call(this.readTexels(roots, assets.bump.logicalPath)) : null;
-      const companion: Nullable<IDdsTexels> =
+      const bump: Nullable<ITextureTexels> = assets
+        ? yield* call(this.readTexels(roots, assets.bump.logicalPath))
+        : null;
+      const companion: Nullable<ITextureTexels> =
         bump && assets ? yield* call(this.readTexels(roots, assets.companion.logicalPath)) : null;
 
       this.files = this.files.asReady({
@@ -106,7 +107,7 @@ export class TextureSurfaceService {
    * @param logicalPath - Engine identity of the file.
    * @returns Its texels, or nothing for a read that failed.
    */
-  private async readTexels(roots: XrayRoots, logicalPath: string): Promise<Nullable<IDdsTexels>> {
+  private async readTexels(roots: XrayRoots, logicalPath: string): Promise<Nullable<ITextureTexels>> {
     try {
       return readTextureTexels(await fetchBulk(texturesBulkRoutes.readTexels(roots, logicalPath)));
     } catch (error: unknown) {

@@ -1,8 +1,8 @@
-import { readDdsTexel } from "@xrf/dds";
 import { clamp } from "@xrf/math";
 
 import { decodeXrayBumpTexel, IMaterialBumpTexel } from "@/core/materials/lib/material-bump-texel";
 import { ITextureBumpTexels } from "@/core/textures/lib/texture-surface";
+import { readTextureTexel } from "@/core/textures/lib/texture-texels";
 
 /** How many digits a reconstructed value is shown to, which is enough to see a quantisation step. */
 const DECIMALS: number = 3;
@@ -40,8 +40,8 @@ export function describeTextureTexel(
   texels: ITextureBumpTexels,
   position: ITextureTexelPosition
 ): ITextureTexelReadout {
-  const bump: [number, number, number, number] = readDdsTexel(texels.bump, position.x, position.y);
-  const companion: [number, number, number, number] = readDdsTexel(texels.companion, position.x, position.y);
+  const bump: [number, number, number, number] = readTextureTexel(texels.bump, position.x, position.y);
+  const companion: [number, number, number, number] = readTextureTexel(texels.companion, position.x, position.y);
   const decoded: IMaterialBumpTexel = decodeXrayBumpTexel(bump, companion);
 
   return {
