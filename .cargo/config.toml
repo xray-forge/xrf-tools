@@ -4,3 +4,10 @@
 # x86_64-unknown-linux-gnu since Rust 1.90) keeps `.eh_frame` live and reports it as an error.
 [target.'cfg(all(target_os = "linux", target_env = "gnu"))']
 rustflags = ["-Clink-arg=-lstdc++"]
+
+# The SDKs `cargo make fetch-sdks` checks out, which the `dlss` feature builds against, and on Windows the libclang
+# bindgen generates its bindings with; any set in the environment wins.
+[env]
+DLSS_SDK = { value = ".sdks/dlss", relative = true }
+VULKAN_SDK = { value = ".sdks/vulkan-headers", relative = true }
+LIBCLANG_PATH = { value = ".sdks/libclang", relative = true }

@@ -43,6 +43,7 @@ names the code that ships.
 | `build-cli-release` | Builds the CLI in release mode.                                                           |
 | `build-app`         | Builds the desktop application in debug mode.                                             |
 | `build-app-release` | Builds the desktop application in release mode and installs locked UI dependencies first. |
+| `fetch-sdks`        | Fetches the SDKs the optional native features build against into `.sdks/`.                |
 
 ### Verification
 
@@ -77,3 +78,18 @@ names the code that ships.
 
 See the [build requirements](./README.md#build-from-source). The desktop app needs the Rust toolchain, Node.js, pnpm,
 and the Tauri CLI. The CLI-only tasks need Rust and Cargo Make.
+
+### DLSS
+
+The desktop app upscales with NVIDIA DLSS when built with the `dlss` feature (`cargo build -p xrf-app --features dlss`),
+on the Vulkan backend of an RTX GPU. Development builds leave it off and need nothing below; `cargo make
+build-app-release` builds with it.
+
+- `cargo make fetch-sdks` checks the DLSS SDK and Vulkan's C headers out into `.sdks/`, each pinned to a commit, only
+  the files the build reads, and on Windows places LLVM's libclang there for bindgen. Whatever is already there at the
+  pinned commit or hash is left alone, so it fetches nothing on a second run; `build-app-release` runs it first.
+  `.cargo/config.toml` points `DLSS_SDK`, `VULKAN_SDK` and `LIBCLANG_PATH` there; any set in the environment wins.
+- Elsewhere than Windows, libclang comes from the system (libclang-dev or LLVM), or `LIBCLANG_PATH`.
+- A build with the feature copies `nvngx_dlss.dll` into its profile's `resources/renderer/dlss/`
+  (`bin/xrf-app/tauri.dlss.conf.json`), which the release installer carries too. NVIDIA's licence lets it ship only
+  inside the application, so it is never committed.
