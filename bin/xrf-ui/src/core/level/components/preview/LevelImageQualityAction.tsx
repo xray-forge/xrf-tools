@@ -1,10 +1,12 @@
 import { default as HighQualityIcon } from "@mui/icons-material/HighQuality";
-import { Button } from "@mui/material";
+import { Button, Typography } from "@mui/material";
+import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
 import {
   ERenderAntialiasing,
   RenderAntialiasing,
+  RenderDlssAvailability,
   RenderScale,
   RenderTextureFiltering,
 } from "@/core/ipc/types/xrf-renderer";
@@ -12,6 +14,7 @@ import { describeLevelFeatureToggle, ILevelFeatureOptions, LEVEL_ANTIALIASING_MO
 import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 import {
+  describeDlssUnavailability,
   describeRenderAntialiasing,
   formatOutputScale,
   IRenderChoiceOption,
@@ -28,9 +31,10 @@ const MODE_OPTIONS: ReadonlyArray<IRenderChoiceOption<RenderAntialiasing>> = LEV
   (value: RenderAntialiasing) => ({ label: describeRenderAntialiasing(value), value })
 );
 
-/** The modes offered without DLSS, which FSR 2 stands in for. */
-const MODE_OPTIONS_WITHOUT_DLSS: ReadonlyArray<IRenderChoiceOption<RenderAntialiasing>> = MODE_OPTIONS.filter(
-  (option: IRenderChoiceOption<RenderAntialiasing>) => option.value !== ERenderAntialiasing.DLSS
+/** The modes offered where the GPU has no DLSS: DLSS greyed out, FSR 2 standing in for it. */
+const MODE_OPTIONS_WITHOUT_DLSS: ReadonlyArray<IRenderChoiceOption<RenderAntialiasing>> = MODE_OPTIONS.map(
+  (option: IRenderChoiceOption<RenderAntialiasing>) =>
+    option.value === ERenderAntialiasing.DLSS ? { ...option, isDisabled: true } : option
 );
 
 interface ILevelImageQualityActionProps extends BaseComponentProps {
@@ -46,7 +50,7 @@ interface ILevelImageQualityActionProps extends BaseComponentProps {
   /** The share of the viewport the settings resolve at while automatic, which this view may set over. */
   settingsOutputScale: number;
   /** Whether the GPU drawing the view upscales with DLSS; FSR 2 smooths in its place where it does not. */
-  hasDlss: boolean;
+  dlss: RenderDlssAvailability;
   features: ILevelFeatureOptions;
   onToggle: () => void;
   onChange: (features: ILevelFeatureOptions) => void;
@@ -66,14 +70,15 @@ export function LevelImageQualityAction({
   settingsScale,
   settingsResolution,
   settingsOutputScale,
-  hasDlss,
+  dlss,
   features,
   onToggle,
   onChange,
 }: ILevelImageQualityActionProps): ReactElement {
   const isAvailable: boolean = settingsMode !== ERenderAntialiasing.NONE;
   const asked: RenderAntialiasing = features.antialiasing ?? settingsMode;
-  const mode: RenderAntialiasing = asked === ERenderAntialiasing.DLSS && !hasDlss ? ERenderAntialiasing.FSR2 : asked;
+  const dlssProblem: Nullable<string> = describeDlssUnavailability(dlss);
+  const mode: RenderAntialiasing = asked === ERenderAntialiasing.DLSS && dlssProblem ? ERenderAntialiasing.FSR2 : asked;
   const textureFiltering: RenderTextureFiltering = features.textureFiltering ?? settingsTextureFiltering;
   const scale: RenderScale = features.upscaling.scale ?? settingsScale;
   const resolution: ERenderResolution = features.output.resolution ?? settingsResolution;
@@ -101,10 +106,16 @@ export function LevelImageQualityAction({
     >
       <RenderValueChoice
         label={"Antialiasing"}
-        options={hasDlss ? MODE_OPTIONS : MODE_OPTIONS_WITHOUT_DLSS}
+        options={dlssProblem ? MODE_OPTIONS_WITHOUT_DLSS : MODE_OPTIONS}
         value={mode}
         onChange={(antialiasing: RenderAntialiasing) => onChange({ ...features, antialiasing })}
       />
+
+      {dlssProblem ? (
+        <Typography className={"text-text-secondary"} variant={"caption"}>
+          {dlssProblem}
+        </Typography>
+      ) : null}
 
       <RenderValueChoice
         label={"Upscaling quality"}

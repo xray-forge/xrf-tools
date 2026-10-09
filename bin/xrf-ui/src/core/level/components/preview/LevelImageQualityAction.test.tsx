@@ -1,7 +1,12 @@
 import { describe, expect, it, jest } from "@jest/globals";
 import { userEvent } from "@testing-library/user-event";
 
-import { ERenderAntialiasing, ERenderScale, ERenderTextureFiltering } from "@/core/ipc/types/xrf-renderer";
+import {
+  ERenderAntialiasing,
+  ERenderDlssAvailability,
+  ERenderScale,
+  ERenderTextureFiltering,
+} from "@/core/ipc/types/xrf-renderer";
 import { LevelImageQualityAction } from "@/core/level/components/preview/LevelImageQualityAction";
 import { ILevelFeatureOptions } from "@/core/level/lib/features/level-feature-options";
 import { ERenderResolution } from "@/core/render/lib/settings/render-resolution";
@@ -19,7 +24,7 @@ describe("LevelImageQualityAction", () => {
         settingsScale={ERenderScale.NATIVE}
         settingsResolution={ERenderResolution.AUTO}
         settingsOutputScale={1}
-        hasDlss
+        dlss={ERenderDlssAvailability.AVAILABLE}
         features={mockLevelFeatureOptions()}
         onToggle={() => {}}
         onChange={onChange}
@@ -50,7 +55,7 @@ describe("LevelImageQualityAction", () => {
         settingsScale={ERenderScale.NATIVE}
         settingsResolution={ERenderResolution.AUTO}
         settingsOutputScale={1}
-        hasDlss
+        dlss={ERenderDlssAvailability.AVAILABLE}
         features={mockLevelFeatureOptions()}
         onToggle={() => {}}
         onChange={onChange}
@@ -77,7 +82,7 @@ describe("LevelImageQualityAction", () => {
         settingsScale={ERenderScale.QUALITY}
         settingsResolution={ERenderResolution.AUTO}
         settingsOutputScale={1}
-        hasDlss
+        dlss={ERenderDlssAvailability.AVAILABLE}
         features={mockLevelFeatureOptions()}
         onToggle={() => {}}
         onChange={onChange}
@@ -97,8 +102,8 @@ describe("LevelImageQualityAction", () => {
     });
   });
 
-  it("shows FSR 2 standing in for DLSS where the GPU has none, and offers no DLSS", async () => {
-    const { getByRole, findByRole, queryByRole } = renderWithProviders(
+  it("shows FSR 2 standing in for DLSS where the GPU has none, DLSS greyed out with what it needs", async () => {
+    const { getByRole, findByRole, getByText } = renderWithProviders(
       <LevelImageQualityAction
         isOn
         settingsMode={ERenderAntialiasing.DLSS}
@@ -106,7 +111,7 @@ describe("LevelImageQualityAction", () => {
         settingsScale={ERenderScale.NATIVE}
         settingsResolution={ERenderResolution.AUTO}
         settingsOutputScale={1}
-        hasDlss={false}
+        dlss={ERenderDlssAvailability.NEEDS_VULKAN}
         features={mockLevelFeatureOptions()}
         onToggle={() => {}}
         onChange={() => {}}
@@ -117,7 +122,8 @@ describe("LevelImageQualityAction", () => {
     await findByRole("dialog", { name: "Image quality" });
 
     expect(getByRole("button", { name: "FSR 2" })).toHaveAttribute("aria-pressed", "true");
-    expect(queryByRole("button", { name: "DLSS" })).toBeNull();
+    expect(getByRole("button", { name: "DLSS" })).toBeDisabled();
+    expect(getByText("DLSS needs the Vulkan graphics API (Settings, Display).")).toBeInTheDocument();
   });
 
   it("sets the view's own output resolution, with its scale offered while automatic", async () => {
@@ -130,7 +136,7 @@ describe("LevelImageQualityAction", () => {
         settingsScale={ERenderScale.NATIVE}
         settingsResolution={ERenderResolution.AUTO}
         settingsOutputScale={1}
-        hasDlss
+        dlss={ERenderDlssAvailability.AVAILABLE}
         features={mockLevelFeatureOptions()}
         onToggle={() => {}}
         onChange={onChange}
@@ -157,7 +163,7 @@ describe("LevelImageQualityAction", () => {
         settingsScale={ERenderScale.NATIVE}
         settingsResolution={ERenderResolution.AUTO}
         settingsOutputScale={1}
-        hasDlss
+        dlss={ERenderDlssAvailability.AVAILABLE}
         features={mockLevelFeatureOptions({ output: { resolution: ERenderResolution.HEIGHT_1440 } })}
         onToggle={() => {}}
         onChange={onChange}
@@ -176,7 +182,7 @@ describe("LevelImageQualityAction", () => {
         settingsScale={ERenderScale.NATIVE}
         settingsResolution={ERenderResolution.AUTO}
         settingsOutputScale={1}
-        hasDlss
+        dlss={ERenderDlssAvailability.AVAILABLE}
         features={mockLevelFeatureOptions()}
         onToggle={() => {}}
         onChange={() => {}}

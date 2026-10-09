@@ -6,6 +6,7 @@ import { ViewportEvent } from "@/core/ipc/types/xrf-app";
 import {
   ERenderAntialiasing,
   ERenderDebugView,
+  ERenderDlssAvailability,
   ERenderLevelHit,
   ERenderOverlay,
   ERenderSurfaceColor,
@@ -69,7 +70,7 @@ const REPORT: RenderFrameReport = {
   framesPerSecond: 160,
   height: 600,
   hasRayQueries: true,
-  hasDlss: false,
+  dlss: ERenderDlssAvailability.UNBUILT,
   outputWidth: 534,
   outputHeight: 400,
   antialiasing: ERenderAntialiasing.TAA,

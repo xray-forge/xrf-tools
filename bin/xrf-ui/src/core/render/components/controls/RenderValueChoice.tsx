@@ -47,7 +47,7 @@ export function RenderValueChoice<T extends string>({
         }}
       >
         {options.map((option: IRenderChoiceOption<T>) => (
-          <ToggleButton key={option.value} value={option.value}>
+          <ToggleButton key={option.value} value={option.value} disabled={option.isDisabled}>
             {option.label}
           </ToggleButton>
         ))}

@@ -3,7 +3,7 @@ import { ReactElement, ReactNode, useCallback } from "react";
 
 import { LevelSunDescription, LevelWeatherTexture } from "@/core/ipc/types/xrf-app";
 import { ThunderboltCollection } from "@/core/ipc/types/xrf-environment";
-import { RenderGraphSettings } from "@/core/ipc/types/xrf-renderer";
+import { RenderDlssAvailability, RenderGraphSettings } from "@/core/ipc/types/xrf-renderer";
 import { LevelCullingAction } from "@/core/level/components/preview/LevelCullingAction";
 import { LevelFogAction } from "@/core/level/components/preview/LevelFogAction";
 import { LevelGrassAction } from "@/core/level/components/preview/LevelGrassAction";
@@ -75,8 +75,8 @@ interface ILevelPreviewToolbarProps extends BaseComponentProps {
   isGpuTimed: boolean;
   /** Whether the GPU drawing the view traces rays. */
   isTraceable: boolean;
-  /** Whether the GPU drawing the view upscales with DLSS. */
-  hasDlss: boolean;
+  /** Whether the GPU drawing the view upscales with DLSS, and what it lacks where it does not. */
+  dlss: RenderDlssAvailability;
   /** What the settings resolve every viewport at, which the image quality popover may set over for the view. */
   resolution: ERenderResolution;
   /** The share of the viewport the settings resolve at while automatic. */
@@ -126,7 +126,7 @@ export function LevelPreviewToolbar({
   settings,
   isGpuTimed,
   isTraceable,
-  hasDlss,
+  dlss,
   resolution,
   outputScale,
   graph,
@@ -191,7 +191,7 @@ export function LevelPreviewToolbar({
             settingsScale={settings.upscaling.scale}
             settingsResolution={resolution}
             settingsOutputScale={outputScale}
-            hasDlss={hasDlss}
+            dlss={dlss}
             features={features}
             onToggle={() => onToggle("isAntialiased")}
             onChange={onChangeFeatures}

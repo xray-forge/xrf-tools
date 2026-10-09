@@ -10,6 +10,7 @@ import { ReactElement, ReactNode, useCallback, useMemo } from "react";
 
 import { LevelWeatherTexture } from "@/core/ipc/types/xrf-app";
 import { ThunderboltCollection } from "@/core/ipc/types/xrf-environment";
+import { ERenderDlssAvailability } from "@/core/ipc/types/xrf-renderer";
 import { LevelHeaderPanel } from "@/core/level/components/panels/LevelHeaderPanel";
 import { LevelProblemsPanel } from "@/core/level/components/panels/LevelProblemsPanel";
 import { LevelRendererPanel } from "@/core/level/components/panels/LevelRendererPanel";
@@ -185,7 +186,7 @@ export function LevelPreviewLayout({
           settings={settings}
           isGpuTimed={settingsService.isGpuTimed}
           isTraceable={!renderService.frame.adapter || renderService.frame.hasRayQueries}
-          hasDlss={!renderService.frame.adapter || renderService.frame.hasDlss}
+          dlss={renderService.frame.adapter ? renderService.frame.dlss : ERenderDlssAvailability.AVAILABLE}
           resolution={settingsService.renderResolution}
           outputScale={settingsService.renderOutputScale}
           graph={settingsService.graph}

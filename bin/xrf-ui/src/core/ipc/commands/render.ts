@@ -8,6 +8,7 @@ import {
   RenderAntialiasing,
   RenderBackend,
   RenderBackendAvailability,
+  RenderDlssAvailability,
   RenderFramePhases,
   RenderGraphReport,
   RenderGroupCost,
@@ -104,8 +105,8 @@ export const renderCommands = {
        * misses needs.
        */
       hasRayQueries: boolean;
-      /** Whether it upscales with DLSS: the build, the backend and the GPU all have it. */
-      hasDlss: boolean;
+      /** Whether it upscales with DLSS, and what it lacks where it does not. */
+      dlss: RenderDlssAvailability;
       /** Whether its passes were timed on the GPU over the span. */
       isGpuTimed: boolean;
       /** What each pass cost on the GPU, in frame order; none while untimed. */

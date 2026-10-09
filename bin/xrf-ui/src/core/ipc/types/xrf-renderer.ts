@@ -405,6 +405,20 @@ export enum ERenderDebugView {
 /** Every `ERenderDebugView` as the spelling it crosses IPC as, for a value no member has narrowed. */
 export type RenderDebugView = `${ERenderDebugView}`;
 
+/** Whether a viewport's GPU upscales with DLSS, and where it does not, what it lacks. */
+export enum ERenderDlssAvailability {
+  AVAILABLE = "available",
+  /** The build has no DLSS: it was built without the `dlss` feature. */
+  UNBUILT = "unbuilt",
+  /** The renderer draws with a graphics API DLSS does not run on here: D3D12. */
+  NEEDS_VULKAN = "needsVulkan",
+  /** The GPU or its driver has no DLSS. */
+  UNSUPPORTED = "unsupported",
+}
+
+/** Every `ERenderDlssAvailability` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type RenderDlssAvailability = `${ERenderDlssAvailability}`;
+
 /** Which of DLSS's models upscales: NVIDIA's pick for each quality, or one for every quality. */
 export enum ERenderDlssPreset {
   /**
@@ -645,8 +659,8 @@ export type RenderFrameReport = {
    * misses needs.
    */
   hasRayQueries: boolean;
-  /** Whether it upscales with DLSS: the build, the backend and the GPU all have it. */
-  hasDlss: boolean;
+  /** Whether it upscales with DLSS, and what it lacks where it does not. */
+  dlss: RenderDlssAvailability;
   /** Whether its passes were timed on the GPU over the span. */
   isGpuTimed: boolean;
   /** What each pass cost on the GPU, in frame order; none while untimed. */

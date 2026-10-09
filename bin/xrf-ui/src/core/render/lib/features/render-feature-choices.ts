@@ -1,3 +1,5 @@
+import { Nullable } from "@xrf/types";
+
 import {
   ERenderAmbientOcclusionMethod,
   ERenderAmbientOcclusionQuality,
@@ -5,6 +7,7 @@ import {
   ERenderBloomMode,
   ERenderDebandingMode,
   ERenderDebandingQuality,
+  ERenderDlssAvailability,
   ERenderDlssPreset,
   ERenderFogMode,
   ERenderGlassMode,
@@ -25,6 +28,7 @@ import {
   RenderBloomMode,
   RenderDebandingMode,
   RenderDebandingQuality,
+  RenderDlssAvailability,
   RenderDlssPreset,
   RenderFogMode,
   RenderGlassMode,
@@ -58,6 +62,8 @@ import { formatNumber, formatPercent } from "@/lib/format/number";
 export interface IRenderChoiceOption<T extends string> {
   label: string;
   value: T;
+  /** Whether it is offered but cannot be picked here. */
+  isDisabled?: boolean;
 }
 
 /** The bounds a value is offered between, and the step it moves by. */
@@ -764,6 +770,21 @@ export function describeRenderScale(scale: RenderScale): string {
 export const RENDER_SCALE_OPTIONS: ReadonlyArray<IRenderChoiceOption<RenderScale>> = Object.values(ERenderScale).map(
   (value: RenderScale) => ({ label: describeRenderScale(value), value })
 );
+
+const DLSS_UNAVAILABILITY: Readonly<Record<RenderDlssAvailability, Nullable<string>>> = {
+  [ERenderDlssAvailability.AVAILABLE]: null,
+  [ERenderDlssAvailability.UNBUILT]: "DLSS is not in this build: build with the dlss feature.",
+  [ERenderDlssAvailability.NEEDS_VULKAN]: "DLSS needs the Vulkan graphics API (Settings, Display).",
+  [ERenderDlssAvailability.UNSUPPORTED]: "DLSS needs an NVIDIA RTX GPU and a current driver.",
+};
+
+/**
+ * @param availability - Whether the GPU drawing a view upscales with DLSS.
+ * @returns Why DLSS cannot be picked there, said so the reader knows what would let it; none where it can.
+ */
+export function describeDlssUnavailability(availability: RenderDlssAvailability): Nullable<string> {
+  return DLSS_UNAVAILABILITY[availability];
+}
 
 const RENDER_DLSS_PRESET_NAMES: Readonly<Record<RenderDlssPreset, string>> = {
   [ERenderDlssPreset.DEFAULT]: "Default",
