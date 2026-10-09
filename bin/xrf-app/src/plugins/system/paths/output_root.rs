@@ -1,6 +1,6 @@
-use std::path::{Path, PathBuf};
-use std::{env, fs};
+use std::path::PathBuf;
 
+use crate::core::directories::{get_executable_directory, is_writable};
 use crate::core::types::TauriResult;
 
 /// Directory name held beside the application, or in its data directory, for everything tools write.
@@ -9,7 +9,7 @@ const OUTPUT_DIRECTORY: &str = "target";
 /// Where tools write when no output directory has been configured.
 pub fn default_output_root(local_data: Option<PathBuf>) -> TauriResult<String> {
   select_default_output_root(
-    executable_directory().filter(|directory| is_writable(directory)),
+    get_executable_directory().filter(|directory| is_writable(directory)),
     local_data,
   )
 }
@@ -24,26 +24,6 @@ fn select_default_output_root(executable: Option<PathBuf>, local_data: Option<Pa
 
 fn to_wire_output_root(root: PathBuf) -> Option<String> {
   root.join(OUTPUT_DIRECTORY).into_os_string().into_string().ok()
-}
-
-fn executable_directory() -> Option<PathBuf> {
-  env::current_exe()
-    .ok()
-    .and_then(|executable| executable.parent().map(Path::to_path_buf))
-}
-
-/// Whether a directory accepts a file, tested by writing one and removing it again.
-fn is_writable(directory: &Path) -> bool {
-  let probe: PathBuf = directory.join(".xrf-write-probe");
-
-  match fs::write(&probe, []) {
-    Ok(()) => {
-      let _ = fs::remove_file(&probe);
-
-      true
-    }
-    Err(_) => false,
-  }
 }
 
 #[cfg(test)]

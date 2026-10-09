@@ -6,13 +6,11 @@ mod core;
 mod ipc;
 mod plugins;
 
-use crate::core::logging::setup_logger;
 use crate::core::process::setup_process_start;
 
 fn main() {
   xrf_renderer::start_profiler();
   setup_process_start();
-  setup_logger();
 
   application::run();
 }
