@@ -82,7 +82,10 @@ impl TransientPool {
         usage: key.usage,
         view_formats: &[],
       });
-      let view: wgpu::TextureView = texture.create_view(&wgpu::TextureViewDescriptor::default());
+      let view: wgpu::TextureView = texture.create_view(&wgpu::TextureViewDescriptor {
+        dimension: Some(key.view_dimension),
+        ..Default::default()
+      });
 
       entries.push(PooledTexture {
         texture,

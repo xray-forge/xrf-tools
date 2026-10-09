@@ -1,4 +1,5 @@
-/// What a graph texture is: its shape and format. Its usage is not stated; the graph gathers it from the accesses.
+/// What a graph texture is: its shape, its format and how its passes view it whole. Its usage is not stated; the graph
+/// gathers it from the accesses.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct GraphTextureDescriptor {
   pub label: &'static str,
@@ -7,6 +8,7 @@ pub struct GraphTextureDescriptor {
   pub sample_count: u32,
   pub dimension: wgpu::TextureDimension,
   pub format: wgpu::TextureFormat,
+  pub view_dimension: wgpu::TextureViewDimension,
 }
 
 impl GraphTextureDescriptor {
@@ -23,6 +25,7 @@ impl GraphTextureDescriptor {
       sample_count: 1,
       dimension: wgpu::TextureDimension::D2,
       format,
+      view_dimension: wgpu::TextureViewDimension::D2,
     }
   }
 
@@ -35,6 +38,12 @@ impl GraphTextureDescriptor {
       sample_count: texture.sample_count(),
       dimension: texture.dimension(),
       format: texture.format(),
+      view_dimension: match texture.dimension() {
+        wgpu::TextureDimension::D1 => wgpu::TextureViewDimension::D1,
+        wgpu::TextureDimension::D2 if texture.depth_or_array_layers() > 1 => wgpu::TextureViewDimension::D2Array,
+        wgpu::TextureDimension::D2 => wgpu::TextureViewDimension::D2,
+        wgpu::TextureDimension::D3 => wgpu::TextureViewDimension::D3,
+      },
     }
   }
 
@@ -43,8 +52,10 @@ impl GraphTextureDescriptor {
     self
   }
 
+  /// A two-dimensional array of `count` layers, viewed as an array however few it holds.
   pub fn with_array_layer_count(mut self, count: u32) -> Self {
     self.size.depth_or_array_layers = count;
+    self.view_dimension = wgpu::TextureViewDimension::D2Array;
     self
   }
 

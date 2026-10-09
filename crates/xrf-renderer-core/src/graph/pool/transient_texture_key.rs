@@ -8,6 +8,7 @@ pub struct TransientTextureKey {
   pub sample_count: u32,
   pub dimension: wgpu::TextureDimension,
   pub format: wgpu::TextureFormat,
+  pub view_dimension: wgpu::TextureViewDimension,
   pub usage: wgpu::TextureUsages,
 }
 
@@ -19,6 +20,7 @@ impl TransientTextureKey {
       sample_count: descriptor.sample_count,
       dimension: descriptor.dimension,
       format: descriptor.format,
+      view_dimension: descriptor.view_dimension,
       usage,
     }
   }
