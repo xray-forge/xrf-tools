@@ -1,8 +1,9 @@
+import { ESyntaxLanguage } from "@xrf/syntax";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useMemo, useState } from "react";
 
 import { ArchiveReadResult } from "@/core/ipc/types/xrf-archive";
-import { ESyntaxLanguage, getSyntaxLanguage } from "@/core/syntax/lib";
+import { getSyntaxLanguage } from "@/core/syntax/lib/syntax-language";
 import { ICodeLine, ICodeLineSource } from "@/core/ui/code/code-line";
 import { toTextLineSource } from "@/core/ui/code/text-line-source";
 import { VirtualizedLines } from "@/core/ui/code/VirtualizedLines";

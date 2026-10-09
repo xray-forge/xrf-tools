@@ -1,6 +1,6 @@
+import { ESyntaxLanguage, ESyntaxToken, highlightSyntax, isLineLocalSyntax, ISyntaxSpan } from "@xrf/syntax";
 import { Nullable } from "@xrf/types";
 
-import { ESyntaxLanguage, ESyntaxToken, highlightSyntax, isLineLocalSyntax, ISyntaxSpan } from "@/core/syntax/lib";
 import { ICodeLine, ICodeLineSource } from "@/core/ui/code/code-line";
 import { EMPTY_ARRAY } from "@/lib/types/array";
 

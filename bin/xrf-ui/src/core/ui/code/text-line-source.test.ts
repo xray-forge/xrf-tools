@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
+import { ESyntaxLanguage, ESyntaxToken, ISyntaxSpan } from "@xrf/syntax";
 
-import { ESyntaxLanguage, ESyntaxToken, ISyntaxSpan } from "@/core/syntax/lib";
 import { ICodeLineSource } from "@/core/ui/code/code-line";
 import { MAXIMUM_SCANNED_LENGTH, toTextLineSource } from "@/core/ui/code/text-line-source";
 

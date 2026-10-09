@@ -1,8 +1,8 @@
+import { ESyntaxLanguage } from "@xrf/syntax";
 import { Nullable } from "@xrf/types";
 
 import { EXrayExtension } from "@/core/ipc/types/xrf-extension";
 import { getXrayExtension } from "@/core/path/extension";
-import { ESyntaxLanguage } from "@/core/syntax/lib/syntax.types";
 
 /**
  * Extension to grammar, for the file kinds a game archive holds.

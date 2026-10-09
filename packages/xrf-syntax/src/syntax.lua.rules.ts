@@ -1,4 +1,4 @@
-import { ESyntaxToken, ISyntaxRule } from "@/core/syntax/lib/syntax.types";
+import { ESyntaxToken, ISyntaxRule } from "#/syntax.types";
 
 const LUA_KEYWORDS: string =
   "and|break|do|elseif|else|end|false|for|class|function|goto|if|in|local|nil|not|or|" +

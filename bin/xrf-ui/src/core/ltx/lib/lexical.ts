@@ -1,4 +1,4 @@
-import { ESyntaxLanguage, highlightSyntax, ISyntaxSpan } from "@/core/syntax/lib";
+import { ESyntaxLanguage, highlightSyntax, ISyntaxSpan } from "@xrf/syntax";
 
 /**
  * Colours one line of LTX text.

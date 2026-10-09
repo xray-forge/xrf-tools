@@ -1,4 +1,5 @@
 import { describe, expect, it, jest } from "@jest/globals";
+import { ESyntaxToken, ISyntaxSpan } from "@xrf/syntax";
 
 import {
   ELtxResolvedFieldOrigin,
@@ -8,7 +9,6 @@ import {
   LtxResolvedSection,
 } from "@/core/ipc/types/xrf-ltx-inspect";
 import { describeResolvedFieldOrigin, IResolvedLayout, toResolvedLayout } from "@/core/ltx/lib/resolved";
-import { ESyntaxToken, ISyntaxSpan } from "@/core/syntax/lib";
 import { ICodeLineSource } from "@/core/ui/code/code-line";
 
 const ENTRY: string = "configs\\system.ltx";

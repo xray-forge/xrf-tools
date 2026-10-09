@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
+import { ESyntaxLanguage } from "@xrf/syntax";
 
 import { getSyntaxLanguage } from "@/core/syntax/lib/syntax-language";
-import { ESyntaxLanguage } from "@/core/syntax/lib/syntax.types";
 
 describe("getSyntaxLanguage", () => {
   it("maps the file kinds an archive holds", () => {

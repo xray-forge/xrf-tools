@@ -1,8 +1,8 @@
+import { ESyntaxToken, ISyntaxSpan } from "@xrf/syntax";
 import { Maybe } from "@xrf/types";
 
 import { LtxFileStructure, LtxStructureInclude, LtxStructureSection } from "@/core/ipc/types/xrf-ltx-inspect";
 import { toLexicalLine } from "@/core/ltx/lib/lexical";
-import { ESyntaxToken, ISyntaxSpan } from "@/core/syntax/lib";
 import { ECodeLineMark, ICodeLine, ICodeLineSource } from "@/core/ui/code/code-line";
 import { EMPTY_ARRAY } from "@/lib/types/array";
 

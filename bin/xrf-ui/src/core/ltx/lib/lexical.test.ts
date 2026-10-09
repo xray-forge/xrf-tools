@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
+import { ESyntaxToken, ISyntaxSpan } from "@xrf/syntax";
 
 import { toLexicalLine } from "@/core/ltx/lib/lexical";
-import { ESyntaxToken, ISyntaxSpan } from "@/core/syntax/lib";
 
 /**
  * Text of every span carrying a token, which is how these tests ask "was this coloured".
