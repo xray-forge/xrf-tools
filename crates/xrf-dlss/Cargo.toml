@@ -15,6 +15,9 @@ pollster = { workspace = true }
 wgpu = { workspace = true }
 xrf-error = { workspace = true }
 
+[target.'cfg(windows)'.dependencies]
+windows-core = { workspace = true, optional = true }
+
 [build-dependencies]
 bindgen = { workspace = true, optional = true }
 cc = { workspace = true, optional = true }
@@ -22,7 +25,7 @@ cc = { workspace = true, optional = true }
 [features]
 # Builds against NVIDIA's DLSS SDK (`DLSS_SDK`, `VULKAN_SDK` and libclang, as DEVELOPMENT.md sets them up); without it
 # no device has DLSS.
-sdk = ["dep:ash", "dep:bindgen", "dep:cc"]
+sdk = ["dep:ash", "dep:bindgen", "dep:cc", "dep:windows-core"]
 
 [lints]
 workspace = true

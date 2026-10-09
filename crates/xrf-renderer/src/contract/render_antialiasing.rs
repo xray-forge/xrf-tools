@@ -16,7 +16,7 @@ pub enum RenderAntialiasing {
   Taa,
   /// FSR 2: temporal as TAA, with each surface's motion, disocclusion, reactivity and thin-feature locks.
   Fsr2,
-  /// DLSS: NVIDIA's learned temporal upscaler, on Vulkan with an RTX GPU; FSR 2 where the GPU has none.
+  /// DLSS: NVIDIA's learned temporal upscaler, on an RTX GPU; FSR 2 where the GPU has none.
   Dlss,
 }
 

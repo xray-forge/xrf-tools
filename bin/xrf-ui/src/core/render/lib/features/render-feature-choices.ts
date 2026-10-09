@@ -774,7 +774,6 @@ export const RENDER_SCALE_OPTIONS: ReadonlyArray<IRenderChoiceOption<RenderScale
 const DLSS_UNAVAILABILITY: Readonly<Record<RenderDlssAvailability, Nullable<string>>> = {
   [ERenderDlssAvailability.AVAILABLE]: null,
   [ERenderDlssAvailability.UNBUILT]: "DLSS is not in this build: build with the dlss feature.",
-  [ERenderDlssAvailability.NEEDS_VULKAN]: "DLSS needs the Vulkan graphics API (Settings, Display).",
   [ERenderDlssAvailability.UNSUPPORTED]: "DLSS needs an NVIDIA RTX GPU and a current driver.",
 };
 

@@ -82,7 +82,7 @@ and the Tauri CLI. The CLI-only tasks need Rust and Cargo Make.
 ### DLSS
 
 The desktop app upscales with NVIDIA DLSS when built with the `dlss` feature (`cargo build -p xrf-app --features dlss`),
-on the Vulkan backend of an RTX GPU. Development builds leave it off and need nothing below; `cargo make
+on an RTX GPU, with either graphics API. Development builds leave it off and need nothing below; `cargo make
 build-app-release` builds with it.
 
 - `cargo make fetch-sdks` checks the DLSS SDK and Vulkan's C headers out into `.sdks/`, each pinned to a commit, only
@@ -93,3 +93,6 @@ build-app-release` builds with it.
 - A build with the feature copies `nvngx_dlss.dll` into its profile's `resources/renderer/dlss/`
   (`bin/xrf-app/tauri.dlss.conf.json`), which the release installer carries too. NVIDIA's licence lets it ship only
   inside the application, so it is never committed.
+- wgpu and naga come from the `xray-forge/xrf-wgpu` fork (`[patch.crates-io]` in `Cargo.toml`): a wgpu release with
+  one commit on top that exposes the D3D12 command list a HAL encoder records into, which NGX records DLSS into. Moving
+  to a newer wgpu means rebasing that commit onto its tag in the fork and pinning the new commit.

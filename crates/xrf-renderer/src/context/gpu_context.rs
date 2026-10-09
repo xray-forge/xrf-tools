@@ -22,7 +22,7 @@ pub struct GpuContext {
   pub adapter_name: String,
   /// The compiler D3D12 turns shaders into DXIL with: DXC where its library loaded, FXC otherwise; none on Vulkan.
   pub shader_compiler: Option<&'static str>,
-  /// DLSS where the build, the backend and the GPU all have it: Vulkan on an RTX GPU.
+  /// DLSS where the build and the GPU both have it: an RTX GPU, on Vulkan or D3D12.
   pub dlss: Option<Dlss>,
   lost: Arc<AtomicBool>,
 }

@@ -90,8 +90,8 @@ export function SettingsRendererAntialiasing(): ReactElement {
           label={"Antialiasing"}
           description={
             "SMAA: sharp and stable. FXAA: cheaper, softer. TAA: temporal, also smooths foliage and thin geometry. " +
-            "FSR 2: AMD's temporal upscaler, steadiest on fine detail. DLSS: NVIDIA's learned upscaler, on Vulkan " +
-            "with an RTX GPU; FSR 2 stands in for it elsewhere."
+            "FSR 2: AMD's temporal upscaler, steadiest on fine detail. DLSS: NVIDIA's learned upscaler, on an RTX " +
+            "GPU; FSR 2 stands in for it elsewhere."
           }
           options={RENDER_ANTIALIASING_OPTIONS}
           value={features.antialiasing}

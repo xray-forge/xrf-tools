@@ -9,8 +9,6 @@ pub enum RenderDlssAvailability {
   /// The build has no DLSS: it was built without the `dlss` feature.
   #[default]
   Unbuilt,
-  /// The renderer draws with a graphics API DLSS does not run on here: D3D12.
-  NeedsVulkan,
   /// The GPU or its driver has no DLSS.
   Unsupported,
 }
