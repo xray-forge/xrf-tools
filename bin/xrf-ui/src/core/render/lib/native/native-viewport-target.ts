@@ -14,6 +14,7 @@ import { requestNativePointerLock } from "@/core/render/lib/native/native-pointe
 import { NativeViewport } from "@/core/render/lib/native/native-viewport";
 import { ENativeViewportAffordance } from "@/core/render/lib/native/native-viewport-affordance";
 import { NativeViewportHole } from "@/core/render/lib/native/native-viewport-hole";
+import { canFocusViewportOnHover } from "@/core/render/lib/native/native-viewport-hover-focus";
 import { clearWindowTextSelection } from "@/lib/dom/selection";
 
 /** What the pointer shows while it drags a scene, until a lock hides it. */
@@ -393,6 +394,12 @@ export class NativeViewportTarget {
         phase: EPressPhase.PENDING,
         pointerId: pointer.pointerId,
       };
+    },
+    // The viewport under the pointer hears its keys without a click first; leaving it keeps the focus where it is.
+    pointerenter: (event: Event): void => {
+      if (!this.press && canFocusViewportOnHover(event as PointerEvent)) {
+        this.element.focus({ preventScroll: true });
+      }
     },
     pointermove: (event: Event): void => {
       const pointer: PointerEvent = event as PointerEvent;
