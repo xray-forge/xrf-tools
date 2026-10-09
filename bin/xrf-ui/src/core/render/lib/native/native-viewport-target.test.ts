@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
 
 import { RenderViewportLayout } from "@/core/ipc/types/xrf-renderer";
-import { EWorldInputKind, WorldInputEvent } from "@/core/ipc/types/xrf-world";
+import { EWorldCamera, EWorldDragEndReason, EWorldInputEvent, WorldInputEvent } from "@/core/ipc/types/xrf-world";
 import { NativeViewport } from "@/core/render/lib/native/native-viewport";
 import { NativeViewportTarget } from "@/core/render/lib/native/native-viewport-target";
 
@@ -15,6 +15,7 @@ function mockViewport(): IViewportSpy {
   const layouts: Array<RenderViewportLayout> = [];
   const inputs: Array<WorldInputEvent> = [];
   const viewport = {
+    getCameraKind: () => EWorldCamera.FLY,
     sendInput: (event: WorldInputEvent) => inputs.push(event),
     setLayout: (layout: RenderViewportLayout) => layouts.push(layout),
   } as unknown as NativeViewport;
@@ -89,27 +90,52 @@ describe("NativeViewportTarget", () => {
     target.dispose();
   });
 
-  it("merges pointer moves into one a frame, sent before the release after them", () => {
+  it("clicks on a press let go within the slop, telling the world nothing", () => {
     const { element } = mockTree();
     const { inputs, viewport } = mockViewport();
-    const target: NativeViewportTarget = new NativeViewportTarget(element, viewport);
+    const onClick = jest.fn();
+    const target: NativeViewportTarget = new NativeViewportTarget(element, viewport, onClick);
 
-    element.dispatchEvent(pointer("pointerdown", { button: 0, clientX: 20, clientY: 30 }));
-    element.dispatchEvent(pointer("pointermove", { clientX: 25, clientY: 30 }));
-    element.dispatchEvent(pointer("pointermove", { clientX: 40, clientY: 35 }));
+    element.dispatchEvent(pointer("pointerdown", { button: 0, buttons: 1, clientX: 20, clientY: 30 }));
+    element.dispatchEvent(pointer("pointermove", { buttons: 1, clientX: 22, clientY: 31 }));
+    element.dispatchEvent(pointer("pointerup", { button: 0, clientX: 22, clientY: 31 }));
+    // The second click of a double click picks nothing again.
+    element.dispatchEvent(pointer("pointerdown", { button: 0, buttons: 1, clientX: 22, clientY: 31 }));
+    element.dispatchEvent(pointer("pointerup", { button: 0, clientX: 22, clientY: 31 }));
 
-    expect(inputs.map((it) => it.kind)).toEqual([EWorldInputKind.POINTER_DOWN]);
+    // In css pixels from the element's own corner.
+    expect(onClick).toHaveBeenCalledTimes(1);
+    expect(onClick).toHaveBeenCalledWith({ x: 12, y: 11 }, false);
+    expect(inputs).toEqual([]);
+
+    target.dispose();
+  });
+
+  it("drags a press past the slop, its motion merged and sent before its end, and never clicks", () => {
+    const { element } = mockTree();
+    const { inputs, viewport } = mockViewport();
+    const onClick = jest.fn();
+    const target: NativeViewportTarget = new NativeViewportTarget(element, viewport, onClick);
+
+    element.dispatchEvent(pointer("pointerdown", { button: 0, buttons: 1, clientX: 20, clientY: 30 }));
+    element.dispatchEvent(pointer("pointermove", { buttons: 1, clientX: 25, clientY: 30 }));
+    element.dispatchEvent(pointer("pointermove", { buttons: 1, clientX: 40, clientY: 35 }));
+
     expect(element.style.cursor).toBe("grabbing");
 
     element.dispatchEvent(pointer("pointerup", { button: 0, clientX: 40, clientY: 35 }));
 
-    expect(inputs.map((it) => it.kind)).toEqual([
-      EWorldInputKind.POINTER_DOWN,
-      EWorldInputKind.POINTER_MOVE,
-      EWorldInputKind.POINTER_UP,
+    expect(inputs).toEqual([
+      {
+        button: 0,
+        kind: EWorldInputEvent.DRAG_START,
+        modifiers: { altKey: false, ctrlKey: false, metaKey: false, shiftKey: false },
+      },
+      // The travel before it became a drag included, so the view does not jump.
+      { dx: 20, dy: 5, kind: EWorldInputEvent.DRAG_MOVE },
+      { kind: EWorldInputEvent.DRAG_END, reason: EWorldDragEndReason.RELEASED },
     ]);
-    // In css pixels from the element's own corner.
-    expect([inputs[1].x, inputs[1].y]).toEqual([30, 15]);
+    expect(onClick).not.toHaveBeenCalled();
     expect(element.style.cursor).toBe("");
 
     target.dispose();
@@ -124,9 +150,9 @@ describe("NativeViewportTarget", () => {
     element.dispatchEvent(new KeyboardEvent("keydown", { code: "KeyW", repeat: true }));
     element.dispatchEvent(new KeyboardEvent("keyup", { code: "KeyW" }));
 
-    expect(inputs.map((it) => [it.kind, it.code])).toEqual([
-      [EWorldInputKind.KEY_DOWN, "KeyW"],
-      [EWorldInputKind.KEY_UP, "KeyW"],
+    expect(inputs).toEqual([
+      { code: "KeyW", kind: EWorldInputEvent.KEY_DOWN },
+      { code: "KeyW", kind: EWorldInputEvent.KEY_UP },
     ]);
 
     target.dispose();

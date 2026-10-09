@@ -9,7 +9,6 @@ use crate::contract::world_camera::WorldCamera;
 use crate::contract::world_camera_command::WorldCameraCommand;
 use crate::contract::world_camera_pose::WorldCameraPose;
 use crate::contract::world_input_event::WorldInputEvent;
-use crate::contract::world_input_kind::WorldInputKind;
 
 /// Just short of straight up, so looking at the sky never flips the horizon over.
 const MAX_PITCH: f32 = FRAC_PI_2 - 0.001;
@@ -31,8 +30,8 @@ pub struct FlyCameraController {
   held: HashSet<FlyKey>,
   /// Pointer movement gathered since the last frame, which is what applies it.
   look: (f32, f32),
-  /// The pointer dragging and where it last was, while one drags.
-  dragged: Option<(i32, f32, f32)>,
+  /// Whether a drag of the main button is turning the camera.
+  is_looking: bool,
 }
 
 impl Default for FlyCameraController {
@@ -59,7 +58,7 @@ impl FlyCameraController {
       pitch: 0.0,
       held: HashSet::new(),
       look: (0.0, 0.0),
-      dragged: None,
+      is_looking: false,
     };
 
     controller.reset();
@@ -86,43 +85,32 @@ impl FlyCameraController {
   }
 
   pub fn input(&mut self, event: &WorldInputEvent) {
-    match event.kind {
-      // The main button of the first pointer down alone: a second finger or another button would fight it.
-      WorldInputKind::PointerDown if event.is_primary && event.button == 0 => {
-        self.dragged = Some((event.pointer_id, event.x, event.y));
-      }
-      // A move with no button held ends a drag whose release never arrived, rather than turning on a plain hover.
-      WorldInputKind::PointerMove if event.buttons == 0 => self.dragged = None,
-      WorldInputKind::PointerMove => {
-        if let Some((id, x, y)) = self.dragged
-          && id == event.pointer_id
-        {
-          self.look.0 += event.x - x;
-          self.look.1 += event.y - y;
-          self.dragged = Some((id, event.x, event.y));
+    match event {
+      // The main button alone: another one would fight it.
+      WorldInputEvent::DragStart { button, .. } => self.is_looking = *button == 0,
+      WorldInputEvent::DragMove { dx, dy } => {
+        if self.is_looking {
+          self.look.0 += *dx;
+          self.look.1 += *dy;
         }
       }
-      WorldInputKind::PointerUp | WorldInputKind::PointerCancel => {
-        if self.dragged.is_some_and(|(id, _, _)| id == event.pointer_id) {
-          self.dragged = None;
-        }
-      }
-      WorldInputKind::KeyDown => {
-        if let Some(key) = FlyKey::from_code(&event.code) {
+      WorldInputEvent::DragEnd { .. } => self.is_looking = false,
+      WorldInputEvent::KeyDown { code } => {
+        if let Some(key) = FlyKey::from_code(code) {
           self.held.insert(key);
         }
       }
-      WorldInputKind::KeyUp => {
-        if let Some(key) = FlyKey::from_code(&event.code) {
+      WorldInputEvent::KeyUp { code } => {
+        if let Some(key) = FlyKey::from_code(code) {
           self.held.remove(&key);
         }
       }
       // A viewport that loses focus holds no key, which would otherwise fly the camera away unattended.
-      WorldInputKind::Blur => {
+      WorldInputEvent::Blur => {
         self.held.clear();
-        self.dragged = None;
+        self.is_looking = false;
       }
-      _ => {}
+      WorldInputEvent::Hover { .. } | WorldInputEvent::Wheel { .. } | WorldInputEvent::ContextMenu => {}
     }
   }
 
@@ -165,7 +153,7 @@ impl FlyCameraController {
 
   /// Whether a key or a drag is moving the camera.
   pub fn is_moving(&self) -> bool {
-    !self.held.is_empty() || self.dragged.is_some()
+    !self.held.is_empty() || self.is_looking
   }
 
   pub fn get_description(&self) -> WorldCamera {

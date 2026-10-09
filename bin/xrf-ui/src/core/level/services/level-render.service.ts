@@ -50,7 +50,6 @@ import { LevelLookService } from "@/core/level/services/level-look.service";
 import { LevelViewService } from "@/core/level/services/level-view.service";
 import { LevelViewportService } from "@/core/level/services/level-viewport.service";
 import { LevelWeatherService } from "@/core/level/services/level-weather.service";
-import { listenRenderClicks } from "@/core/render/lib/frame/render-clicks";
 import { IRenderViewPoint } from "@/core/render/lib/frame/render-view-point";
 import { NativeRenderSurfaceService } from "@/core/render/lib/native/native-render-surface-service";
 import { toNativeRenderHeight, toNativeWorldToggles } from "@/core/render/lib/native/native-view-options";
@@ -187,7 +186,7 @@ export class LevelRenderService extends NativeRenderSurfaceService {
   private scene: Nullable<number> = null;
   /** The last load report, of whichever scene the viewport drew. */
   private loaded: Nullable<RenderLoadReport> = null;
-  /** Stops hearing clicks on the viewport and its focus, while one is attached. */
+  /** Stops hearing the viewport's focus, while one is attached. */
   private unlisten: Nullable<() => void> = null;
 
   public constructor(
@@ -375,10 +374,6 @@ export class LevelRenderService extends NativeRenderSurfaceService {
   }
 
   protected onAttached(container: HTMLElement): void {
-    const unlistenClicks: () => void = listenRenderClicks(
-      container,
-      (point: IRenderViewPoint, isThrough: boolean) => void this.pick(point, isThrough)
-    );
     const onFocus = (): void => this.viewportService.noteSceneFocused(true);
     const onBlur = (): void => this.viewportService.noteSceneFocused(false);
 
@@ -386,11 +381,14 @@ export class LevelRenderService extends NativeRenderSurfaceService {
     container.addEventListener("blur", onBlur);
 
     this.unlisten = () => {
-      unlistenClicks();
       container.removeEventListener("focus", onFocus);
       container.removeEventListener("blur", onBlur);
       this.viewportService.noteSceneFocused(false);
     };
+  }
+
+  protected onClick(point: IRenderViewPoint, isThrough: boolean): void {
+    void this.pick(point, isThrough);
   }
 
   protected onDetached(): void {

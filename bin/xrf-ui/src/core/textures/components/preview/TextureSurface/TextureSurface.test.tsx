@@ -1,6 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { fireEvent } from "@testing-library/react";
 
+import { EWorldInputEvent, WorldInputEvent } from "@/core/ipc/types/xrf-world";
 import { TextureRenderService } from "@/core/textures/services/render";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { TextureSurfaceService } from "@/core/textures/services/surface";
@@ -25,7 +26,8 @@ beforeEach(() => {
 function sendPointer(target: HTMLElement, type: string, options: MouseEventInit = {}): void {
   const event: MouseEvent = new MouseEvent(type, { bubbles: true, ...options });
 
-  Object.defineProperty(event, "pointerId", { value: 1 });
+  // jsdom has no pointer events: the two fields a mouse event lacks are put on it.
+  Object.defineProperties(event, { isPrimary: { value: true }, pointerId: { value: 1 } });
   fireEvent(target, event);
 }
 
@@ -88,13 +90,20 @@ describe("TextureSurface", () => {
   it("keeps a shift drag from the viewport's camera", async () => {
     const surface: HTMLElement = startDrag();
 
-    // A plain press over the same viewport does reach it, once the viewport has attached.
-    sendPointer(surface.firstElementChild as HTMLElement, "pointerdown", { clientX: 10, clientY: 10 });
+    // A plain drag over the same viewport does reach it, once the viewport has attached.
+    sendPointer(surface.firstElementChild as HTMLElement, "pointerdown", { buttons: 1, clientX: 10, clientY: 10 });
+    sendPointer(surface.firstElementChild as HTMLElement, "pointermove", { buttons: 1, clientX: 30, clientY: 10 });
 
     for (let index: number = 0; index < 10; index += 1) {
       await Promise.resolve();
     }
 
-    expect(mockInvoke.mock.calls.filter(([name]) => name === "plugin:render|send_input")).toHaveLength(1);
+    expect(
+      mockInvoke.mock.calls.filter(
+        ([name, args]) =>
+          name === "plugin:render|send_input" &&
+          (args as { event: WorldInputEvent }).event.kind === EWorldInputEvent.DRAG_START
+      )
+    ).toHaveLength(1);
   });
 });

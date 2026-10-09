@@ -10,6 +10,7 @@ import {
   RenderSettings,
 } from "@/core/ipc/types/xrf-renderer";
 import { WorldCameraPose, WorldWeatherReport } from "@/core/ipc/types/xrf-world";
+import { IRenderViewPoint } from "@/core/render/lib/frame/render-view-point";
 import { EMPTY_RENDER_FRAME_REPORT } from "@/core/render/lib/native/native-frame-report";
 import { NativeViewport } from "@/core/render/lib/native/native-viewport";
 import { NativeViewportTarget } from "@/core/render/lib/native/native-viewport-target";
@@ -74,7 +75,9 @@ export abstract class NativeRenderSurfaceService implements IRenderSurfaceHost {
     });
 
     this.viewport = viewport;
-    this.target = new NativeViewportTarget(container, viewport);
+    this.target = new NativeViewportTarget(container, viewport, (point: IRenderViewPoint, isThrough: boolean) =>
+      this.onClick(point, isThrough)
+    );
     this.onAttached(container);
     this.reactions.push(
       reaction(
@@ -144,6 +147,14 @@ export abstract class NativeRenderSurfaceService implements IRenderSurfaceHost {
    * @param _container - The element it draws under.
    */
   protected onAttached(_container: HTMLElement): void {}
+
+  /**
+   * Called for a click on the viewport, the second of a double click aside.
+   *
+   * @param _point - Where, in css pixels from the viewport's top left corner.
+   * @param _isThrough - Whether Alt was held, which picks through glass.
+   */
+  protected onClick(_point: IRenderViewPoint, _isThrough: boolean): void {}
 
   /** Called before the viewport goes. */
   protected onDetached(): void {}

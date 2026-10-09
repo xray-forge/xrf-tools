@@ -1,28 +1,36 @@
 use serde::{Deserialize, Serialize};
 
-use crate::contract::world_input_kind::WorldInputKind;
+use crate::contract::world_drag_end_reason::WorldDragEndReason;
+use crate::contract::world_input_modifiers::WorldInputModifiers;
 
-/// One gesture over a viewport, as much of the browser's event as crosses.
+/// What the person does over a viewport: the drags its page told from clicks, the hover, the wheel and the keys.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct WorldInputEvent {
-  pub kind: WorldInputKind,
-  pub pointer_id: i32,
-  pub is_primary: bool,
-  pub button: i32,
-  pub buttons: u32,
-  /// CSS pixels from the viewport element's left edge.
-  pub x: f32,
-  /// CSS pixels from the viewport element's top edge.
-  pub y: f32,
-  pub delta_x: f32,
-  pub delta_y: f32,
-  pub delta_mode: u32,
-  pub alt_key: bool,
-  pub ctrl_key: bool,
-  pub meta_key: bool,
-  pub shift_key: bool,
-  /// `KeyboardEvent.code` for a key, empty for anything else: the key's place, so `W` is `W` on azerty too.
-  pub code: String,
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[serde(tag = "kind", rename_all = "camelCase", rename_all_fields = "camelCase")]
+pub enum WorldInputEvent {
+  /// A press travelled far enough to be a drag; `button` is the `PointerEvent.button` pressed, `0` the main one.
+  DragStart {
+    button: i32,
+    modifiers: WorldInputModifiers,
+  },
+  /// How far the drag moved since its last move: CSS pixels, or the mouse's own counts while the pointer is locked.
+  DragMove { dx: f32, dy: f32 },
+  /// The drag is over.
+  DragEnd { reason: WorldDragEndReason },
+  /// Where the pointer rests while nothing drags, in CSS pixels from the viewport element's top left corner.
+  Hover { x: f32, y: f32 },
+  /// The wheel turned, as `WheelEvent` measures it.
+  Wheel {
+    delta_x: f32,
+    delta_y: f32,
+    delta_mode: u32,
+  },
+  /// A key went down; `code` is `KeyboardEvent.code`, the key's place, so `W` is `W` on azerty too.
+  KeyDown { code: String },
+  /// A key went up.
+  KeyUp { code: String },
+  /// The secondary button asked for a menu, which the page withholds.
+  ContextMenu,
+  /// The viewport lost focus, so no key it heard go down is still held.
+  Blur,
 }
