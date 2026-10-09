@@ -6,8 +6,9 @@ const END_UNTRACED: u32 = 0u;
 const END_MET_CROSSED: u32 = 1u;
 // Met a surface it lay behind within the thickness, without crossing it.
 const END_MET_THICK: u32 = 2u;
-// Spent its crossings behind a surface, passing it a pixel at a time.
-const END_SPENT_BEHIND: u32 = 3u;
+// Ended behind the finest surface by more than the thickness: nothing on the screen says what it met, so the miss
+// chain answers.
+const END_UNCERTAIN: u32 = 3u;
 // Spent its crossings in the clear.
 const END_SPENT: u32 = 4u;
 // Left the screen.
@@ -29,9 +30,9 @@ fn reflection_end_code(value: f32) -> u32 {
   return u32(round(value * 255.0));
 }
 
-// The ends view's colour for a reason: green met by crossing, yellow met by thickness, red spent behind a surface,
-// orange spent in the clear, blue off the screen, cyan at the distance, grey too rough, magenta untrusted, black
-// untraced.
+// The ends view's colour for a reason: green met by crossing, yellow met by thickness, red uncertain behind a
+// surface, orange spent in the clear, blue off the screen, cyan at the distance, grey too rough, magenta untrusted,
+// black untraced.
 fn reflection_end_colour(end: u32) -> vec3<f32> {
   switch (end) {
     case END_MET_CROSSED: {
@@ -40,7 +41,7 @@ fn reflection_end_colour(end: u32) -> vec3<f32> {
     case END_MET_THICK: {
       return vec3<f32>(0.95, 0.85, 0.1);
     }
-    case END_SPENT_BEHIND: {
+    case END_UNCERTAIN: {
       return vec3<f32>(0.9, 0.1, 0.1);
     }
     case END_SPENT: {
