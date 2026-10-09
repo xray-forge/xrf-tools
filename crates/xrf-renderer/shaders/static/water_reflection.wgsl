@@ -271,8 +271,11 @@ fn march_reflection(start: vec3<f32>, direction: vec3<f32>, noise: f32, uv: vec2
 fn fs_water_reflection(in: WaterVarying) -> @location(0) vec4<f32> {
   let position: vec3<f32> = (camera.view * vec4<f32>(in.world, 1.0)).xyz;
   let fog: f32 = select(0.0, fog_amount(lighting, position), lighting.params.y > 0.5);
+  let texel: vec2<i32> = vec2<i32>(in.clip.xy);
 
-  if (fog >= 1.0 || in.clip.z < textureLoad(nearest_water, vec2<i32>(in.clip.xy), 0)) {
+  // A fragment listing rays writes storage, which holds the depth test back until after it shades: one behind the
+  // scene is left out here instead, before it marches or lists anything.
+  if (fog >= 1.0 || in.clip.z < textureLoad(nearest_water, texel, 0) || in.clip.z <= textureLoad(depth_target, texel, 0)) {
     discard;
   }
 
