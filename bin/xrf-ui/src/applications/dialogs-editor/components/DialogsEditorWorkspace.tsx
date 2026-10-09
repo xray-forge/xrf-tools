@@ -1,4 +1,5 @@
 import { useInjection } from "@wirestate/react";
+import { AsyncState } from "@xrf/async";
 import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
@@ -8,7 +9,6 @@ import { EditorFileHeader } from "@/core/shell/editor/EditorFileHeader";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { ErrorState } from "@/core/ui/layout/ErrorState";
-import { AsyncState } from "@/lib/async-state";
 import { inline } from "@/lib/callbacks/inline";
 
 import { DialogGraph } from "./editor/DialogGraph";

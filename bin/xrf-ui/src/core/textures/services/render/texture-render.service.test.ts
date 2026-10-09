@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { Container } from "@wirestate/core";
 import { runInAction } from "@wirestate/mobx";
+import { AsyncState } from "@xrf/async";
 
 import { ETextureSurfaceAlpha, ETextureSurfaceShape, ViewportEvent } from "@/core/ipc/types/xrf-app";
 import { ERenderTextureState, ERenderViewportEvent, RenderViewOptions } from "@/core/ipc/types/xrf-renderer";
@@ -20,7 +21,6 @@ import {
 } from "@/fixtures/mocks/tauri.mocks";
 import { MOCK_TEXTURE, mockTextureDescription } from "@/fixtures/mocks/texture.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
-import { AsyncState } from "@/lib/async-state";
 
 /** What a render command was sent, in order. */
 function sent(command: string): Array<Record<string, unknown>> {

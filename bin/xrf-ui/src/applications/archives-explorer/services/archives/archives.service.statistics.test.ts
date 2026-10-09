@@ -1,5 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 import { flowResult } from "@wirestate/mobx";
+import { AsyncState } from "@xrf/async";
 import { Nullable } from "@xrf/types";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives/index";
@@ -8,7 +9,6 @@ import { mockArchiveStatistics, mockArchivesVolumes } from "@/fixtures/mocks/arc
 import { mockRestoredSession, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
-import { AsyncState } from "@/lib/async-state";
 
 function getStatisticsCallsCount(): number {
   return mockInvoke.mock.calls.filter((call: Array<unknown>) => call[0] === "plugin:archives|describe_statistics")

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { EventBus, WireEvent } from "@wirestate/core";
+import { AsyncState } from "@xrf/async";
 
 import { ArchiveFileDescriptor } from "@/core/ipc/types/xrf-archive";
 import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity, INotificationPayload } from "@/core/notifications/lib";
@@ -7,7 +8,6 @@ import { mockArchiveFileDescriptor, mockArchivesVolumes } from "@/fixtures/mocks
 import { mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { IInjectedServiceMockDescriptor, mockInjectedService } from "@/fixtures/utils/container";
-import { AsyncState } from "@/lib/async-state";
 
 import { ArchivesService } from "./archives.service";
 

@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, jest } from "@jest/globals";
 import { reaction } from "@wirestate/mobx";
+import { AsyncState } from "@xrf/async";
 
 import { visualsCommands } from "@/core/ipc/commands/visuals";
 import { SessionSnapshot } from "@/core/ipc/types/xrf-app";
@@ -8,7 +9,6 @@ import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockSelectedVisual, mockVisualModelViews, mockVisualMotionBake } from "@/fixtures/mocks/visual.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
-import { AsyncState } from "@/lib/async-state";
 import { noop } from "@/lib/callbacks/noop";
 
 import { ESequenceMotionState, SequenceMotionCache } from "./sequence-motion-cache";

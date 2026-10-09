@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
+import { AsyncState } from "@xrf/async";
 
 import { createRoot } from "@/core/assets/lib";
 import { AssetTextureDescriptor } from "@/core/ipc/types/xrf-app";
@@ -9,7 +10,6 @@ import { listMockBulkCalls, setMockBulkResponses } from "@/fixtures/mocks/bulk.m
 import { mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
-import { AsyncState } from "@/lib/async-state";
 
 import { ArchivesService } from "./archives.service";
 

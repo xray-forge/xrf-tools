@@ -1,5 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 import { flowResult, isComputedProp } from "@wirestate/mobx";
+import { AsyncState } from "@xrf/async";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives/index";
 import { ArchiveFileDescription } from "@/core/ipc/types/xrf-app";
@@ -9,7 +10,6 @@ import { mockArchiveFileDescriptor, mockArchivesVolumes, mockPathCollision } fro
 import { mockRestoredSession, mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
-import { AsyncState } from "@/lib/async-state";
 
 function ignoreReadResult(): void {}
 

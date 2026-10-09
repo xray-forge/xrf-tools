@@ -1,10 +1,10 @@
+import { AsyncState } from "@xrf/async";
 import { Nullable } from "@xrf/types";
 import { useEffect, useState } from "react";
 
 import { transformError } from "@/core/error/lib";
 import { levelsCommands } from "@/core/ipc/commands/levels";
 import { LevelSpawnObjectDetails } from "@/core/ipc/types/xrf-app";
-import { AsyncState } from "@/lib/async-state";
 
 /**
  * What the backend says of one spawned object beyond what the tree holds, read when it is chosen.

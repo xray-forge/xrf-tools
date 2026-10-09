@@ -42,6 +42,7 @@
     "@wirestate/mobx": "1.0.0",
     "@wirestate/react": "1.0.0",
     "@wirestate/react-mobx": "1.0.0",
+    "@xrf/async": "workspace:*",
     "@xrf/format": "workspace:*",
     "@xrf/math": "workspace:*",
     "@xrf/path": "workspace:*",

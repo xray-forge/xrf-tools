@@ -1,4 +1,5 @@
 import { useInjection } from "@wirestate/react";
+import { AsyncState } from "@xrf/async";
 import { formatBytes } from "@xrf/format";
 import { assertExhaustive, Nullable } from "@xrf/types";
 import { ReactElement, useCallback } from "react";
@@ -13,7 +14,6 @@ import {
 } from "@/core/ipc/types/xrf-app";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
-import { AsyncState } from "@/lib/async-state";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { ArchivePreviewError } from "../ArchivePreviewError";

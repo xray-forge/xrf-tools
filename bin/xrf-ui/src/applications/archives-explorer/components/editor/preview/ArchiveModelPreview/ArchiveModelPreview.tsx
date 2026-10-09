@@ -1,4 +1,5 @@
 import { useInjection } from "@wirestate/react";
+import { AsyncState } from "@xrf/async";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useEffect } from "react";
 
@@ -9,7 +10,6 @@ import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { VisualPreviewViewport } from "@/core/visuals/components/preview";
 import { IOpenVisual, VisualLoadService } from "@/core/visuals/services";
-import { AsyncState } from "@/lib/async-state";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
