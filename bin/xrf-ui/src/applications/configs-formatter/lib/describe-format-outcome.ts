@@ -1,7 +1,8 @@
+import { formatCount } from "@xrf/format";
+
 import { LtxProjectFormatResult } from "@/core/ipc/types/xrf-ltx";
 import { describeJobFailure, IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { ENotificationSeverity } from "@/core/notifications/lib";
-import { formatCount } from "@/lib/format/number";
 
 /**
  * What the notification centre says when a configs formatting run ends.

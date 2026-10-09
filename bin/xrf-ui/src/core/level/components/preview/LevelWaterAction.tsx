@@ -1,5 +1,6 @@
 import { default as WaterIcon } from "@mui/icons-material/Water";
 import { Button } from "@mui/material";
+import { formatPercent } from "@xrf/format";
 import { ReactElement, useCallback } from "react";
 
 import { ERenderWaterMode, RenderWaterMode } from "@/core/ipc/types/xrf-renderer";
@@ -24,7 +25,6 @@ import {
 import { TRenderEnhancedWaterSettings, TRenderWaterSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { EditorPopoverToggle } from "@/core/shell/editor/EditorPopoverToggle";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
-import { formatPercent } from "@/lib/format/number";
 
 const MODE_OPTIONS: ReadonlyArray<IRenderChoiceOption<RenderWaterMode>> = [
   { label: "Engine", value: ERenderWaterMode.ENGINE },

@@ -1,10 +1,10 @@
 import { Typography } from "@mui/material";
+import { formatBytes } from "@xrf/format";
 import { Fragment, ReactElement } from "react";
 
 import { ArchiveChunkNode } from "@/core/ipc/types/xrf-app";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { formatBytes } from "@/lib/memory/format";
 
 import { formatChunkId } from "../ArchiveDescriptionPreview.utils";
 

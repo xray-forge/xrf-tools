@@ -1,10 +1,9 @@
+import { formatNumber, formatSeconds } from "@xrf/format";
 import { ReactElement } from "react";
 
 import { ArchiveAnmDescription } from "@/core/ipc/types/xrf-app";
 import { EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { formatSeconds } from "@/lib/format/duration";
-import { formatNumber } from "@/lib/format/number";
 
 import { NOT_DECLARED } from "../ArchiveDescriptionPreview.utils";
 import { ArchiveDescriptionRow } from "../ArchiveDescriptionRow";

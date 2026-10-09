@@ -1,6 +1,7 @@
 import { default as ExposureIcon } from "@mui/icons-material/Exposure";
 import { Button, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
+import { formatNumber } from "@xrf/format";
 import { ReactElement, useCallback } from "react";
 
 import { ERenderBloomMode, RenderBloomMode } from "@/core/ipc/types/xrf-renderer";
@@ -20,7 +21,6 @@ import { EditorPopoverAction } from "@/core/shell/editor/EditorPopoverAction";
 import { ChoiceListFormRow, IChoiceFormRowOption } from "@/core/ui/form";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { formatNumber } from "@/lib/format/number";
 
 /** What the list's option for values edited by hand stands for. */
 const EDITED: string = "edited";

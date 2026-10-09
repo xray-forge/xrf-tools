@@ -1,3 +1,4 @@
+import { formatBytes, formatCount } from "@xrf/format";
 import { ReactElement, useMemo } from "react";
 
 import { IArchiveStatisticsView } from "@/applications/archives-explorer/components/editor/statistics/archive-statistics-section";
@@ -6,8 +7,6 @@ import { ArchiveOrigins, ArchiveSourceUsage } from "@/core/ipc/types/xrf-archive
 import { IStatBreakdownRow } from "@/core/ui/stats/StatBreakdownTable";
 import { StatFigure } from "@/core/ui/stats/StatFigure";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { formatCount } from "@/lib/format/number";
-import { formatBytes } from "@/lib/memory/format";
 
 export interface IArchiveOriginsSectionProps extends BaseComponentProps {
   origins: ArchiveOrigins;

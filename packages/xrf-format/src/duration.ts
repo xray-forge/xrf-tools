@@ -1,6 +1,6 @@
 import { Nullable } from "@xrf/types";
 
-import { formatNumber } from "@/lib/format/number";
+import { formatNumber } from "#/number";
 
 /**
  * Formats a measurement already taken in seconds, keeping an absent one visibly absent.
@@ -51,4 +51,20 @@ export function formatDuration(durationMs: number): string {
  */
 export function formatMilliseconds(durationMs: number): string {
   return `${durationMs.toFixed(1)} ms`;
+}
+
+/**
+ * Formats a playback position as `mm:ss`.
+ *
+ * @param seconds - Position or duration in seconds, as a media element reports it.
+ * @returns Zero padded `mm:ss`, falling back to `00:00` for the `NaN` an unloaded element reports.
+ */
+export function formatPlaybackTime(seconds: number): string {
+  if (!Number.isFinite(seconds) || seconds < 0) {
+    return "00:00";
+  }
+
+  const whole: number = Math.floor(seconds);
+
+  return `${String(Math.floor(whole / 60)).padStart(2, "0")}:${String(whole % 60).padStart(2, "0")}`;
 }

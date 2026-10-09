@@ -1,9 +1,9 @@
+import { formatSeconds } from "@xrf/format";
 import { ReactElement } from "react";
 
 import { ArchiveDescribeScope, ArchivePpeDescription } from "@/core/ipc/types/xrf-app";
 import { EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { formatSeconds } from "@/lib/format/duration";
 
 import { ArchiveDescriptionReference } from "../ArchiveDescriptionReference";
 import { ArchiveDescriptionRow } from "../ArchiveDescriptionRow";

@@ -1,9 +1,9 @@
+import { formatPercent } from "@xrf/format";
 import { ReactElement } from "react";
 
 import { RenderLightsReport } from "@/core/ipc/types/xrf-renderer";
 import { EditorPanelProperty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { formatPercent } from "@/lib/format/number";
 
 interface ILevelRendererLightsSectionProps extends BaseComponentProps {
   lights: RenderLightsReport;

@@ -1,4 +1,5 @@
 import { useInjection } from "@wirestate/react";
+import { formatNumber } from "@xrf/format";
 import { ReactElement } from "react";
 
 import { RENDER_FEATURE_SCHEMA } from "@/core/render/lib/settings/render-feature-schema";
@@ -7,7 +8,6 @@ import { SettingsService } from "@/core/settings/services/settings";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { SliderFormRow } from "@/core/ui/form/SliderFormRow";
 import { DetailSection } from "@/core/ui/layout/DetailSection";
-import { formatNumber } from "@/lib/format/number";
 
 /** One threshold, and the console variable it is. */
 interface ILodThreshold {

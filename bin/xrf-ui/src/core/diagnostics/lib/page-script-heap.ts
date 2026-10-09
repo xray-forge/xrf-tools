@@ -1,7 +1,7 @@
+import { formatBytes } from "@xrf/format";
 import { Nullable } from "@xrf/types";
 
 import { IEditorStatusDetail } from "@/core/shell/editor-shell/editor-status-detail";
-import { formatBytes } from "@/lib/memory/format";
 
 /** What the page's JavaScript heap holds, as a Chromium-based webview reports it. */
 export interface IPageScriptHeap {

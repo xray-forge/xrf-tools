@@ -1,10 +1,10 @@
+import { formatBytes } from "@xrf/format";
 import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
 import { RenderGraphReport } from "@/core/ipc/types/xrf-renderer";
 import { EditorPanelProperty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { formatBytes } from "@/lib/memory/format";
 
 interface ILevelRendererGraphSectionProps extends BaseComponentProps {
   /** What the frame graph made of the latest described frame, null before the first. */

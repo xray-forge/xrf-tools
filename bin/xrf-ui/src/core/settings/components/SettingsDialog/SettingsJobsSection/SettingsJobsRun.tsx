@@ -1,4 +1,5 @@
 import { Collapse, Divider, Typography } from "@mui/material";
+import { ABSENT_VALUE, formatDuration } from "@xrf/format";
 import { Nullable } from "@xrf/types";
 import { format } from "date-fns";
 import { ReactElement, useState } from "react";
@@ -9,8 +10,6 @@ import { formatProgressRate, formatProgressUnits } from "@/core/jobs/lib/progres
 import { IJobPhase, IJobProfile } from "@/core/jobs/metrics";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { formatDuration } from "@/lib/format/duration";
-import { ABSENT_VALUE } from "@/lib/format/number";
 
 import { toPhaseShare } from "./SettingsJobsSection.utils";
 

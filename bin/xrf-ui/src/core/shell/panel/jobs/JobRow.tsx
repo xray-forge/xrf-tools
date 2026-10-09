@@ -1,4 +1,5 @@
 import { Button, Chip, LinearProgress, Typography } from "@mui/material";
+import { formatDuration } from "@xrf/format";
 import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
@@ -7,7 +8,6 @@ import { ProgressLevel } from "@/core/ipc/types/xrf-job";
 import { findJobKind, IJobKindDescriptor } from "@/core/jobs/lib";
 import { describeJobStatus, IJobStatus } from "@/core/jobs/lib/job-status";
 import { formatProgressCounts, toProgressPercent } from "@/core/jobs/lib/progress-format";
-import { formatDuration } from "@/lib/format/duration";
 
 export interface IJobRowProps {
   job: JobDescription;

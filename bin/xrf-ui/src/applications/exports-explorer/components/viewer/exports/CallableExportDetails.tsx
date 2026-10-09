@@ -1,10 +1,10 @@
 import { Table, TableBody, TableCell, TableHead, TableRow, Typography } from "@mui/material";
+import { ABSENT_VALUE } from "@xrf/format";
 import { ReactElement } from "react";
 
 import { TCallableExportDescriptor } from "@/core/exports";
 import { ExportParameterDescriptor } from "@/core/ipc/types/xrf-export";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { ABSENT_VALUE } from "@/lib/format/number";
 
 import { ExportSection } from "./ExportSection";
 

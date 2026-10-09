@@ -1,4 +1,5 @@
 import { Button } from "@mui/material";
+import { formatNumber, formatPercent } from "@xrf/format";
 import { ReactElement, useCallback } from "react";
 
 import { ERenderParallaxMode, RenderParallaxMode } from "@/core/ipc/types/xrf-renderer";
@@ -9,7 +10,6 @@ import { IRenderChoiceOption } from "@/core/render/lib/features";
 import { TRenderParallaxSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { formatNumber, formatPercent } from "@/lib/format/number";
 
 const MODE_OPTIONS: ReadonlyArray<IRenderChoiceOption<RenderParallaxMode>> = [
   { label: "Engine", value: ERenderParallaxMode.ENGINE },

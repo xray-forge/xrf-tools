@@ -1,4 +1,5 @@
 import { Alert, Checkbox, FormControlLabel, Stack, Typography } from "@mui/material";
+import { bytesToWholeMegabytes } from "@xrf/format";
 import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
@@ -8,7 +9,6 @@ import { ArchiveSummaryRow } from "@/core/archive/components/ArchiveSummaryRow";
 import { ARCHIVE_VOLUME_SUFFIX, HEADER_ENTRY_POINT, readHeaderValue } from "@/core/archive/lib";
 import { ArchivePackConfig, EArchivePackMode, EArchiveVolumeExtension } from "@/core/ipc/types/xrf-pack";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { bytesToWholeMegabytes } from "@/lib/memory/size";
 
 import { PackerDirectoryChips } from "./PackerDirectoryChips";
 

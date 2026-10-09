@@ -125,6 +125,9 @@ catalogs:
     '@typescript/native':
       specifier: npm:typescript@^7.0.2
       version: 7.0.2
+    date-fns:
+      specifier: ^4.4.0
+      version: 4.4.0
     eslint:
       specifier: ^10.10.0
       version: 10.10.0
@@ -214,6 +217,9 @@ importers:
       '@wirestate/react-mobx':
         specifier: 1.0.0
         version: 1.0.0(mobx-react-lite@4.1.1(mobx@6.16.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(mobx@6.16.0)(react@19.3.0)
+      '@xrf/format':
+        specifier: workspace:*
+        version: link:../../packages/xrf-format
       '@xrf/math':
         specifier: workspace:*
         version: link:../../packages/xrf-math
@@ -227,7 +233,7 @@ importers:
         specifier: 2.1.1
         version: 2.1.1
       date-fns:
-        specifier: ^4.4.0
+        specifier: 'catalog:'
         version: 4.4.0
       react:
         specifier: ^19.3.0
@@ -393,6 +399,37 @@ importers:
       prettier:
         specifier: 'catalog:'
         version: 3.9.6
+
+  packages/xrf-format:
+    dependencies:
+      '@xrf/types':
+        specifier: workspace:*
+        version: link:../xrf-types
+      date-fns:
+        specifier: 'catalog:'
+        version: 4.4.0
+    devDependencies:
+      '@jest/globals':
+        specifier: 'catalog:'
+        version: 30.5.1(supports-color@8.1.1)
+      '@typescript/native':
+        specifier: 'catalog:'
+        version: typescript@7.0.2
+      '@xrf/toolchain':
+        specifier: workspace:*
+        version: link:../../cli
+      eslint:
+        specifier: 'catalog:'
+        version: 10.10.0(jiti@2.7.0)(supports-color@8.1.1)
+      jest:
+        specifier: 'catalog:'
+        version: 30.5.1(@types/node@25.9.2)(babel-plugin-macros@3.1.0)(supports-color@8.1.1)
+      prettier:
+        specifier: 'catalog:'
+        version: 3.9.6
+      typescript:
+        specifier: 'catalog:'
+        version: '@typescript/typescript6@6.0.2'
 
   packages/xrf-math:
     devDependencies:

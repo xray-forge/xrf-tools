@@ -1,4 +1,5 @@
 import { BoundAction, Computed, Observable } from "@wirestate/mobx";
+import { formatDuration } from "@xrf/format";
 import { Nullable, Optional } from "@xrf/types";
 
 import { IResolvedArchiveVolumeSize, resolveArchiveVolumeSize } from "@/core/archive/lib/volume-size";
@@ -7,7 +8,6 @@ import { EJobKind } from "@/core/ipc/types/xrf-app";
 import { IJobSettledPayload } from "@/core/jobs/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";
 import { JobsService } from "@/core/jobs/services/jobs";
-import { formatDuration } from "@/lib/format/duration";
 import { Logger, Timer } from "@/lib/logging";
 import { call, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 import { getPathName } from "@/lib/path/separator";

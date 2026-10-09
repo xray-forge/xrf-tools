@@ -3,9 +3,8 @@ import { default as PlayArrowIcon } from "@mui/icons-material/PlayArrow";
 import { default as RepeatIcon } from "@mui/icons-material/Repeat";
 import { default as VolumeUpIcon } from "@mui/icons-material/VolumeUp";
 import { IconButton, Slider, Tooltip, Typography } from "@mui/material";
+import { formatPlaybackTime } from "@xrf/format";
 import { ReactElement } from "react";
-
-import { formatPlaybackTime } from "@/lib/media/waveform";
 
 interface IAudioPlayerControlsProps {
   isPlaying: boolean;

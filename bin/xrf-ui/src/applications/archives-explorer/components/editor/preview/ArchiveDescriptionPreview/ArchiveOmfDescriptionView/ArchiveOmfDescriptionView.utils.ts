@@ -1,3 +1,4 @@
+import { formatHex, formatNumber, formatSeconds } from "@xrf/format";
 import { assertExhaustive, Nullable } from "@xrf/types";
 
 import {
@@ -9,9 +10,6 @@ import {
   EArchiveOmfTarget,
 } from "@/core/ipc/types/xrf-app";
 import { MOTION_DEFAULT_SPEED } from "@/core/visuals/lib/visual-motion";
-import { formatSeconds } from "@/lib/format/duration";
-import { formatHex } from "@/lib/format/hex";
-import { formatNumber } from "@/lib/format/number";
 
 /** Decimals a mark's own interval keeps, matching what `formatSeconds` gives the durations beside it. */
 const SECOND_DIGITS: number = 2;

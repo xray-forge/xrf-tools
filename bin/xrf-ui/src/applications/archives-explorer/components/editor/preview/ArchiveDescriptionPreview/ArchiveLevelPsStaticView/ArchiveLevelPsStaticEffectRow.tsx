@@ -1,10 +1,10 @@
 import { Typography } from "@mui/material";
+import { formatCount } from "@xrf/format";
 import { ReactElement } from "react";
 
 import { ArchiveLevelPsStaticEffect } from "@/core/ipc/types/xrf-app";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { formatCount } from "@/lib/format/number";
 
 interface IArchiveLevelPsStaticEffectRowProps extends BaseComponentProps {
   effect: ArchiveLevelPsStaticEffect;

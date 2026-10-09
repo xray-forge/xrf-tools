@@ -1,3 +1,4 @@
+import { formatBytes } from "@xrf/format";
 import { ReactElement, useMemo } from "react";
 
 import { IArchiveStatisticsView } from "@/applications/archives-explorer/components/editor/statistics/archive-statistics-section";
@@ -6,7 +7,6 @@ import { ArchiveSizeBand } from "@/core/ipc/types/xrf-archive-stats";
 import { IStatBreakdownRow } from "@/core/ui/stats/StatBreakdownTable";
 import { inline } from "@/lib/callbacks/inline";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { formatBytes } from "@/lib/memory/format";
 
 export interface IArchiveSizesSectionProps extends BaseComponentProps {
   sizes: Array<ArchiveSizeBand>;

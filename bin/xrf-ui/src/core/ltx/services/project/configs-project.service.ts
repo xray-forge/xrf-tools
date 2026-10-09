@@ -1,5 +1,6 @@
 import { Injectable, OnDeactivation, OnProvision } from "@wirestate/core";
 import { Computed, flowResult, Observable, runInAction } from "@wirestate/mobx";
+import { formatDuration } from "@xrf/format";
 import { Nullable } from "@xrf/types";
 
 import { createRoots } from "@/core/assets/lib";
@@ -9,7 +10,6 @@ import { Session } from "@/core/ipc/session";
 import { ConfigsProjectDescriptor } from "@/core/ipc/types/xrf-app";
 import { LtxInventoryFile } from "@/core/ipc/types/xrf-ltx-inspect";
 import { AsyncState } from "@/lib/async-state";
-import { formatDuration } from "@/lib/format/duration";
 import { Logger, Timer } from "@/lib/logging";
 import { call, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 

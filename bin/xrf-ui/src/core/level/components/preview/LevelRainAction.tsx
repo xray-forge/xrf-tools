@@ -1,5 +1,6 @@
 import { default as WaterDropIcon } from "@mui/icons-material/WaterDrop";
 import { Button } from "@mui/material";
+import { formatPercent, formatSeconds } from "@xrf/format";
 import { ReactElement, useCallback } from "react";
 
 import { ThunderboltCollection } from "@/core/ipc/types/xrf-environment";
@@ -21,8 +22,6 @@ import {
 import { TRenderRainSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { EditorPopoverGroup, EditorPopoverGroupSection } from "@/core/shell/editor/EditorPopoverGroup";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { formatSeconds } from "@/lib/format/duration";
-import { formatPercent } from "@/lib/format/number";
 
 /** The keys the popover sets. */
 const RAIN_KEYS: ReadonlyArray<keyof ILevelManualWeather> = [

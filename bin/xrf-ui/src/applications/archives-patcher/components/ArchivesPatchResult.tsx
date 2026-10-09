@@ -1,4 +1,5 @@
 import { GridColDef, GridRenderCellParams } from "@mui/x-data-grid";
+import { formatBytes, formatDuration } from "@xrf/format";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useMemo } from "react";
 
@@ -12,8 +13,6 @@ import { RevealPathButton } from "@/core/ui/reveal/RevealPathButton";
 import { pathColumn } from "@/core/ui/table/columns";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { formatDuration } from "@/lib/format/duration";
-import { formatBytes } from "@/lib/memory/format";
 
 const CHANGE_LABELS: Record<ArchivePatchClass, string> = {
   added: "Added",

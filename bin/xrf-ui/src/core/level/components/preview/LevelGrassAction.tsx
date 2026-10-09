@@ -1,5 +1,6 @@
 import { default as GrassIcon } from "@mui/icons-material/Grass";
 import { Button } from "@mui/material";
+import { formatPercent } from "@xrf/format";
 import { ReactElement, useCallback } from "react";
 
 import { ERenderFoliageMode, RenderFoliageMode } from "@/core/ipc/types/xrf-renderer";
@@ -22,7 +23,6 @@ import {
 import { TRenderFoliageSettings, TRenderGrassSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { EditorPopoverToggle } from "@/core/shell/editor/EditorPopoverToggle";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
-import { formatPercent } from "@/lib/format/number";
 
 const FOLIAGE_MODE_OPTIONS: ReadonlyArray<IRenderChoiceOption<RenderFoliageMode>> = [
   { label: "Engine", value: ERenderFoliageMode.ENGINE },

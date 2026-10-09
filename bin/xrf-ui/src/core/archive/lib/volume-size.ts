@@ -1,6 +1,5 @@
+import { bytesToWholeMegabytes, megabytesToBytes } from "@xrf/format";
 import { Nullable } from "@xrf/types";
-
-import { bytesToWholeMegabytes, megabytesToBytes } from "@/lib/memory/size";
 
 export interface IResolvedArchiveVolumeSize {
   bytes: number;

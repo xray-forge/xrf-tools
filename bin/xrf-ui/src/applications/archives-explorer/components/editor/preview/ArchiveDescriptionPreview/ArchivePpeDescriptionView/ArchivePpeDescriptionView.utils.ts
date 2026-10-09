@@ -1,6 +1,6 @@
+import { formatNumber, formatSeconds } from "@xrf/format";
+
 import { ArchiveAnimationChannel, ArchivePpeColor, ArchivePpeDescription } from "@/core/ipc/types/xrf-app";
-import { formatSeconds } from "@/lib/format/duration";
-import { formatNumber } from "@/lib/format/number";
 
 /**
  * How many of the effect's parameters carry a key at all.

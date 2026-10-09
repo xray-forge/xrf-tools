@@ -1,5 +1,6 @@
 import { Button, Divider, Stack, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
+import { formatBytes } from "@xrf/format";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useState } from "react";
 
@@ -7,7 +8,6 @@ import { SettingsService } from "@/core/settings/services/settings";
 import { ConfirmDialog } from "@/core/ui/dialog/ConfirmDialog";
 import { DetailSection } from "@/core/ui/layout/DetailSection";
 import { useLocalStorageRevision } from "@/lib/local-storage";
-import { formatBytes } from "@/lib/memory/format";
 
 import { SettingsStorageKeys } from "./SettingsStorageKeys";
 import {

@@ -1,3 +1,5 @@
+import { BYTES_PER_MEGABYTE } from "@xrf/format";
+
 import { DEFAULT_ENTRY_POINT } from "@/core/archive/lib";
 import {
   ArchivePackConfig,
@@ -5,7 +7,6 @@ import {
   EArchivePackMode,
   EArchiveVolumeExtension,
 } from "@/core/ipc/types/xrf-pack";
-import { BYTES_PER_MEGABYTE } from "@/lib/memory/size";
 
 /**
  * What the editor opens on before the packer answers with its own defaults.

@@ -1,4 +1,5 @@
 import { GridColDef } from "@mui/x-data-grid";
+import { formatDuration } from "@xrf/format";
 import { ReactElement, useMemo } from "react";
 
 import { LtxProjectVerifyResult } from "@/core/ipc/types/xrf-ltx";
@@ -7,7 +8,6 @@ import { CommandResult, ICommandResultStat } from "@/core/ui/command-result/Comm
 import { CommandResultFindings } from "@/core/ui/command-result/CommandResultFindings";
 import { identifierColumn } from "@/core/ui/table/columns";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { formatDuration } from "@/lib/format/duration";
 
 interface IConfigsVerifyResultProps extends BaseComponentProps {
   result: LtxProjectVerifyResult;

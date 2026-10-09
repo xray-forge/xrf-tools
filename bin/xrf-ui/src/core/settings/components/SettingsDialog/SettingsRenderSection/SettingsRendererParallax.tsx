@@ -1,4 +1,5 @@
 import { useInjection } from "@wirestate/react";
+import { formatNumber, formatPercent } from "@xrf/format";
 import { ReactElement } from "react";
 
 import { ERenderParallaxMode, RenderParallaxMode } from "@/core/ipc/types/xrf-renderer";
@@ -8,7 +9,6 @@ import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { ChoiceFormRow, IChoiceFormRowOption } from "@/core/ui/form/ChoiceFormRow";
 import { SliderFormRow } from "@/core/ui/form/SliderFormRow";
 import { DetailSection } from "@/core/ui/layout/DetailSection";
-import { formatNumber, formatPercent } from "@/lib/format/number";
 
 import { useRendererOverride } from "./use-renderer-override";
 

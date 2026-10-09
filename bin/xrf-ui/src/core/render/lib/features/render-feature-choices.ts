@@ -1,3 +1,4 @@
+import { formatNumber, formatPercent } from "@xrf/format";
 import { Nullable } from "@xrf/types";
 
 import {
@@ -56,7 +57,6 @@ import {
   RENDER_RESOLUTIONS,
 } from "@/core/render/lib/settings/render-resolution";
 import { IRenderNumberField } from "@/core/render/lib/settings/render-setting-field";
-import { formatNumber, formatPercent } from "@/lib/format/number";
 
 /** One value a choice offers, in display order: what Settings and the toolbar popovers both list. */
 export interface IRenderChoiceOption<T extends string> {

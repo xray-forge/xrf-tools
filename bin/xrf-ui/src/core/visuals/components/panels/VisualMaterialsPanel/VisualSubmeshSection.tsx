@@ -1,4 +1,5 @@
 import { Chip } from "@mui/material";
+import { ABSENT_VALUE } from "@xrf/format";
 import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
@@ -9,7 +10,6 @@ import { EditorPanelProperty, EditorPanelSection } from "@/core/shell/editor/Edi
 import { IVisualBumpStatus } from "@/core/visuals/lib/visual-bump";
 import { IVisualTextureStatus } from "@/core/visuals/lib/visual-texture";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { ABSENT_VALUE } from "@/lib/format/number";
 
 import { VisualSubmeshMaterial } from "./VisualSubmeshMaterial";
 import { VisualSubmeshSurface } from "./VisualSubmeshSurface";

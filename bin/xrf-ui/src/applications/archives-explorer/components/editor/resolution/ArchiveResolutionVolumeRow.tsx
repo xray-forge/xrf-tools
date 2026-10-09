@@ -1,11 +1,10 @@
 import { Typography } from "@mui/material";
+import { formatBytes, formatCount } from "@xrf/format";
 import { ReactElement } from "react";
 
 import { ArchiveResolutionVolume } from "@/core/ipc/types/xrf-app";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { formatCount } from "@/lib/format/number";
-import { formatBytes } from "@/lib/memory/format";
 
 export interface IArchiveResolutionVolumeRowProps extends BaseComponentProps {
   volume: ArchiveResolutionVolume;

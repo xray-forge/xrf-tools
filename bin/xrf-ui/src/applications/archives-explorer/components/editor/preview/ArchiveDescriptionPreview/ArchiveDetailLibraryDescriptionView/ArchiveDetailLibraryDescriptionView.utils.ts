@@ -1,5 +1,6 @@
+import { formatCount, formatNumber } from "@xrf/format";
+
 import { ArchiveDetailEntry, ArchiveDetailLibraryDescription } from "@/core/ipc/types/xrf-app";
-import { formatCount, formatNumber } from "@/lib/format/number";
 
 /** Metres one slot of the grid covers, `DETAIL_SLOT_SIZE`, which is fixed by the format. */
 export const DETAIL_SLOT_METERS: number = 2;

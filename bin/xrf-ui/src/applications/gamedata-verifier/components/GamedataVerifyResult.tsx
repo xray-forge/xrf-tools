@@ -1,4 +1,5 @@
 import { GridColDef, GridRenderCellParams } from "@mui/x-data-grid";
+import { formatDuration } from "@xrf/format";
 import { ReactElement, useMemo } from "react";
 
 import { selectFailedChecks } from "@/applications/gamedata-verifier/lib/describe-gamedata-verify-outcome";
@@ -8,7 +9,6 @@ import { CommandResultFindings } from "@/core/ui/command-result/CommandResultFin
 import { identifierColumn } from "@/core/ui/table/columns";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { formatDuration } from "@/lib/format/duration";
 
 /**
  * How each verdict reads in the tone system.

@@ -1,3 +1,4 @@
+import { formatNumber } from "@xrf/format";
 import { assertExhaustive, Nullable } from "@xrf/types";
 
 import { describeResolution, getLocatedAsset } from "@/core/assets/lib/resolution";
@@ -15,7 +16,6 @@ import {
   XrayMaterialDetail,
 } from "@/core/ipc/types/xrf-material";
 import { XrayAsset } from "@/core/ipc/types/xrf-vfs";
-import { formatNumber } from "@/lib/format/number";
 
 /** How a material state reads, and how loudly. */
 export interface IMaterialStateDescriptor {

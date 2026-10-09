@@ -1,11 +1,11 @@
 import { useInjection } from "@wirestate/react";
+import { formatBytes } from "@xrf/format";
 import { ReactElement } from "react";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { IArchiveEntry } from "@/core/archive/lib";
 import { EditorFileHeader } from "@/core/shell/editor/EditorFileHeader";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { formatBytes } from "@/lib/memory/format";
 
 import { ArchiveFileExtractAction } from "./ArchiveFileExtractAction";
 

@@ -1,3 +1,4 @@
+import { formatHex, formatNumber } from "@xrf/format";
 import { assertExhaustive, Nullable } from "@xrf/types";
 
 import {
@@ -7,8 +8,6 @@ import {
   EArchiveDescribeScope,
   EArchiveReferenceStatus,
 } from "@/core/ipc/types/xrf-app";
-import { formatHex } from "@/lib/format/hex";
-import { formatNumber } from "@/lib/format/number";
 
 /** Shown where a file declares no value at all, which is not the same as declaring a default one. */
 export const NOT_DECLARED: string = "Not declared";
