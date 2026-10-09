@@ -19,11 +19,14 @@ pub struct ReflectionUniform {
   pub has_history: f32,
   /// The frame's pixels a traced pixel stands for each way.
   pub ratio: f32,
+  /// One where the last frame's scene and depth are kept for a hit to read its colour from.
+  pub has_source: f32,
+  pub pad0: f32,
 }
 
 impl ReflectionUniform {
-  /// The settings, at a frame's count, with or without the last frame's reflections to carry.
-  pub fn new(settings: &RenderReflectionSettings, frame: u32, has_history: bool) -> Self {
+  /// The settings, at a frame's count, with or without the last frame's reflections to carry and its scene to read.
+  pub fn new(settings: &RenderReflectionSettings, frame: u32, (has_history, has_source): (bool, bool)) -> Self {
     let quality = settings.quality;
 
     Self {
@@ -33,6 +36,8 @@ impl ReflectionUniform {
       distance: settings.distance.max(0.0),
       has_history: f32::from(u8::from(has_history)),
       ratio: quality.get_ratio() as f32,
+      has_source: f32::from(u8::from(has_source)),
+      pad0: 0.0,
     }
   }
 }

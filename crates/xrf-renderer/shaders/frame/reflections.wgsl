@@ -114,9 +114,9 @@ fn pixel_numbers(pixel: vec2<f32>) -> vec2<f32> {
   return fract(noise + f32(reflection.frame) * NOISE_TURN);
 }
 
-// What a ray met looks like as combine shows it before the tonemap: `hmodel` over its G-buffer, its occlusion where it
-// is searched, fogged by its own distance, its luminance held to `RADIANCE_LIMIT`.
-fn met_radiance(texel: vec2<i32>) -> vec3<f32> {
+// What a ray met lit as combine lights it this frame: `hmodel` over its G-buffer, its occlusion where it is searched.
+// The fallback where the last frame did not show the point: no water, glass or particle stands in the G-buffer.
+fn relit_radiance(texel: vec2<i32>) -> vec3<f32> {
   let depth: f32 = textureLoad(depth_target, texel, 0);
   let albedo: vec4<f32> = textureLoad(albedo_target, texel, 0);
   let light: vec4<f32> = textureLoad(light_target, texel, 0);
@@ -127,11 +127,104 @@ fn met_radiance(texel: vec2<i32>) -> vec3<f32> {
   let visible: f32 = select(1.0, textureLoad(occlusion_target, searched, 0).x, lighting.params.w > 0.5);
   let bounced: vec3<f32> = bounced_occlusion(visible, albedo.rgb, lighting.params.x);
   let occlusion: f32 = mix(1.0, material.x, camera.switches.z);
-  let shaded: vec3<f32> = hmodel(lighting, material_lut, lut_sampler, sky_environment_0, sky_environment_1, sky_clamp,
-    albedo, light, world_direction(normal), world_direction(normalize(position)), material.z, occlusion, bounced);
-  let fogged: vec3<f32> = mix(shaded, lighting.fog_color.rgb, fog_amount(lighting, position));
 
-  return fogged * min(1.0, RADIANCE_LIMIT / luminance(fogged));
+  return hmodel(lighting, material_lut, lut_sampler, sky_environment_0, sky_environment_1, sky_clamp, albedo, light,
+    world_direction(normal), world_direction(normalize(position)), material.z, occlusion, bounced);
+}
+
+// The tonemap undone: from the colour a frame showed back to the light it was given at the scale it used, each
+// channel `y = x (1 + x / W²) / (1 + x)` solved for `x`.
+fn untonemapped(colour: vec3<f32>, scale: f32) -> vec3<f32> {
+  let white: f32 = WHITE_INTENSITY_SQUARED;
+  let shown: vec3<f32> = max(colour, vec3<f32>(0.0));
+  let lit: vec3<f32> = 0.5 * white * ((shown - 1.0) + sqrt((shown - 1.0) * (shown - 1.0) + 4.0 * shown / white));
+
+  return lit / max(scale, 1e-4);
+}
+
+// Fog along a path of `length` metres between two points seen, none of the camera's own offset: what a reflection
+// gathers on its way from what it reflects to the surface, which combine then fogs from the camera as it fogs the
+// surface.
+fn path_fog(length: f32) -> f32 {
+  return saturate(length * lighting.fog.y) * lighting.fog_color.w;
+}
+
+// The share of its distance the depth kept may stand off a point for the last frame to have shown it.
+const SOURCE_DEPTH_TOLERANCE: f32 = 0.03;
+// The fog past which a frame's colour holds too little of the point to take the fog off.
+const SOURCE_FOG_LIMIT: f32 = 0.98;
+
+// What the last frame showed where a hit's point stood, as light, and in `w` one where it did: the point taken through
+// that frame's jittered camera, moved back by the sway the motion target holds over the camera's own motion, read
+// where the depth kept agrees within a share of the distance, the tonemap undone at the scale that frame used and
+// that frame's fog to the point taken off. None where the point was off that screen, in front of or behind what it
+// showed, lost in its fog, or where no frame is kept yet.
+fn remembered_radiance(texel: vec2<i32>, hit: vec3<f32>) -> vec4<f32> {
+  if (reflection.has_source < 0.5) {
+    return vec4<f32>(0.0);
+  }
+
+  let size: vec2<f32> = camera.viewport.xy;
+  let uv: vec2<f32> = (vec2<f32>(texel) + 0.5) / size;
+  let depth: f32 = textureLoad(depth_target, texel, 0);
+  let world: vec3<f32> = camera_unproject(vec2<f32>(uv.x * 2.0 - 1.0, 1.0 - uv.y * 2.0), depth);
+  let previous: vec4<f32> = camera.view_projection_previous * vec4<f32>(world, 1.0);
+
+  if (previous.w <= 0.0) {
+    return vec4<f32>(0.0);
+  }
+
+  let sway: vec2<f32> = textureLoad(motion_target, texel, 0).xy - camera_motion(world, world);
+  let kept_uv: vec2<f32> = (previous.xy / previous.w) * vec2<f32>(0.5, -0.5) + 0.5 - sway;
+
+  if (any(kept_uv < vec2<f32>(0.0)) || any(kept_uv > vec2<f32>(1.0))) {
+    return vec4<f32>(0.0);
+  }
+
+  let kept_texel: vec2<i32> = clamp(vec2<i32>(kept_uv * size), vec2<i32>(0), vec2<i32>(size) - 1);
+  let kept: f32 = textureLoad(source_depth, kept_texel, 0);
+
+  if (kept <= 0.0) {
+    return vec4<f32>(0.0);
+  }
+
+  // The depth kept as a distance, through the perspective's depth terms, which the jitter leaves alone.
+  let kept_distance: f32 = camera.projection[3][2] / (kept + camera.projection[2][2]);
+
+  if (abs(kept_distance - previous.w) > SOURCE_DEPTH_TOLERANCE * previous.w) {
+    return vec4<f32>(0.0);
+  }
+
+  let fog: f32 = fog_amount_at(lighting, hit, world.y);
+
+  if (fog > SOURCE_FOG_LIMIT) {
+    return vec4<f32>(0.0);
+  }
+
+  let scale: f32 = select(1.0, exposure.used, lighting.params.z > 0.5);
+  let shown: vec3<f32> = untonemapped(textureSampleLevel(source_scene, history_sampler, kept_uv, 0.0).rgb, scale);
+  let lit: vec3<f32> = (shown - fog_color_at(lighting, hit, world.y) * fog) / (1.0 - fog);
+
+  return vec4<f32>(max(lit, vec3<f32>(0.0)), 1.0);
+}
+
+// What a ray met looks like as light from the surface it was reflected off: what the last frame showed there, or where
+// that is not kept, its G-buffer relit this frame, and in `w` one where it was the last frame's; fogged along the ray
+// from the surface, its luminance held to `RADIANCE_LIMIT` so a lamp's glass or a sunlit highlight does not flare what
+// reflects it.
+fn met_radiance(texel: vec2<i32>, hit: vec3<f32>, origin: vec3<f32>) -> vec4<f32> {
+  let remembered: vec4<f32> = remembered_radiance(texel, hit);
+  var lit: vec3<f32>;
+
+  if (remembered.w > 0.5) {
+    lit = remembered.rgb;
+  } else {
+    lit = relit_radiance(texel);
+  }
+
+  let fogged: vec3<f32> = mix(lit, lighting.fog_color.rgb, path_fog(length(hit - origin)));
+
+  return vec4<f32>(fogged * min(1.0, RADIANCE_LIMIT / luminance(fogged)), remembered.w);
 }
 
 // The view space point the depth shows at a frame texel, held to the frame.
@@ -259,12 +352,13 @@ fn fs_trace(in: FullscreenVarying) -> TraceTargets {
     return trace_targets(vec4<f32>(sky, MISSED_LENGTH), select(walk.end, END_UNTRUSTED, walk.is_met));
   }
 
-  let met: vec3<f32> = met_radiance(vec2<i32>(walk.position.xy * camera.viewport.xy));
-  let length_met: f32 = length(ray_view_point(walk.position) - position);
+  let hit: vec3<f32> = ray_view_point(walk.position);
+  let met: vec4<f32> = met_radiance(vec2<i32>(walk.position.xy * camera.viewport.xy), hit, position);
+  let length_met: f32 = length(hit - position);
 
   return trace_targets(
-    vec4<f32>(mix(sky, met, confidence), select(MISSED_LENGTH, length_met, confidence > 0.5)),
-    walk.end,
+    vec4<f32>(mix(sky, met.rgb, confidence), select(MISSED_LENGTH, length_met, confidence > 0.5)),
+    walk.end | select(END_RELIT, 0u, met.w > 0.5),
   );
 }
 

@@ -1098,11 +1098,13 @@ impl SceneView {
     passes: LevelPasses<'a>,
     view: &'a ViewBinding,
     (targets, lit, wet_surface): (ViewTargetHandles, LightingHandles<'a>, GraphTexture),
+    source: Option<(GraphTexture, GraphTexture)>,
     sky: &SkyParameters<'a>,
   ) -> Option<(GraphTexture, GraphTexture)> {
     self.info.reflection?;
 
     let history: &'a ReflectionHistory = self.state.reflections.as_ref()?;
+    let (source_scene, source_depth): (GraphTexture, GraphTexture) = source?;
     let sky: SkyParameters<'a> = *sky;
     let reflection: UniformBinding<ReflectionUniform> = runtime.push_uniform(&self.info.reflections);
     let empty: GraphTexture = bindings.import_view(graph, "reflections empty", passes.reflections.get_empty());
@@ -1169,6 +1171,10 @@ impl SceneView {
       lut_sampler: lit.lut_sampler,
       lighting: lit.lighting,
       reflection,
+      exposure: StorageValue::new(lit.exposure),
+      motion_target: targets.motion,
+      source_scene,
+      source_depth,
       nearest_depth,
       blue_noise,
       traced: empty,
@@ -1308,13 +1314,13 @@ impl SceneView {
       self.state.reflections = Some(ReflectionHistory::new(device, traced, (width, height)));
     }
 
-    let (frame, has_history): (u32, bool) = self
+    let (frame, has_history, has_source): (u32, bool, bool) = self
       .state
       .reflections
       .as_ref()
-      .map_or((0, false), |it| (it.frame, it.is_valid));
+      .map_or((0, false, false), |it| (it.frame, it.is_valid, it.is_source_valid));
 
-    self.info.reflections = ReflectionUniform::new(&self.info.reflection_settings, frame, has_history);
+    self.info.reflections = ReflectionUniform::new(&self.info.reflection_settings, frame, (has_history, has_source));
   }
 
   /// Adds the enhanced fog's scattering over the scene: the blurs to a quarter and to half its size, the scattering
@@ -2206,12 +2212,22 @@ impl SceneView {
           .record(move |context| passes.sky_haze.record(context, &parameters, &sky));
       }
 
+      // The last frame's scene and depth the reflections keep: read by this frame's hits, written again after the
+      // particles draw.
+      let source: Option<(GraphTexture, GraphTexture)> = scene_view.state.reflections.as_ref().map(|history| {
+        (
+          bindings.import_view(&mut *graph, "reflection source scene", &history.scene_view),
+          bindings.import_view(&mut *graph, "reflection source depth", &history.depth_view),
+        )
+      });
+
       if let Some(sky) = sky {
         if let Some((history, ends)) = scene_view.add_reflection_passes(
           (&mut *graph, &mut *bindings, runtime),
           passes,
           view,
           (handles, lit, wet_surface),
+          source,
           &sky,
         ) {
           reflections = Some(history);
@@ -2349,10 +2365,7 @@ impl SceneView {
 
       // What a reflection reads a frame later: the scene with the water and the particles drawn, before the sun shafts,
       // the rain and the flares, which belong to this camera and not to what it reflects; and the depth it stood on.
-      if let Some(history) = scene_view.state.reflections.as_ref() {
-        let scene: GraphTexture = bindings.import_view(&mut *graph, "reflection source scene", &history.scene_view);
-        let depth: GraphTexture = bindings.import_view(&mut *graph, "reflection source depth", &history.depth_view);
-
+      if let Some((scene, depth)) = source {
         Self::add_copy(&mut *graph, "reflection source scene", handles.scene, scene);
         Self::add_copy(&mut *graph, "reflection source depth", handles.depth, depth);
       }
