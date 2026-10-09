@@ -1,11 +1,5 @@
+import { buildSearchIndex, IRankedSearchOutcome, ISearchIndexEntry, rankedSearch } from "@xrf/search";
 import { KeyboardEvent, useCallback, useDeferredValue, useMemo, useState } from "react";
-
-import {
-  buildSearchIndex,
-  IRankedSearchOutcome,
-  ISearchIndexEntry,
-  rankedSearch,
-} from "@/core/search/lib/ranked-search";
 
 /** Past a couple of screens nobody reads results, and the renderer pays for every one of them. */
 export const DEFAULT_SEARCH_LIMIT: number = 200;

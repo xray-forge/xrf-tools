@@ -46,6 +46,7 @@
     "@xrf/format": "workspace:*",
     "@xrf/math": "workspace:*",
     "@xrf/path": "workspace:*",
+    "@xrf/search": "workspace:*",
     "@xrf/syntax": "workspace:*",
     "@xrf/types": "workspace:*",
     "@xyflow/react": "^12.11.6",

@@ -1,6 +1,7 @@
 import { default as PlayArrowIcon } from "@mui/icons-material/PlayArrow";
 import { Tooltip } from "@mui/material";
 import { useInjection } from "@wirestate/react";
+import { filterByName } from "@xrf/search";
 import { Nullable } from "@xrf/types";
 import { ReactElement, ReactNode, useCallback, useEffect, useMemo } from "react";
 
@@ -11,7 +12,6 @@ import { VirtualizedTree } from "@/core/ui/tree/VirtualizedTree";
 import { VisualMotionService } from "@/core/visuals/services/visual-motion.service";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { filterByName } from "@/lib/search/filter-by-name";
 
 import { getMotionNodeName, groupMotionNames, listMotionGroupIds } from "./motion-groups";
 

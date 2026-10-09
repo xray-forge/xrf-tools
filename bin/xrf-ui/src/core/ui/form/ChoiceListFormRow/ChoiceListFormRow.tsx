@@ -1,10 +1,10 @@
 import { List, ListItemButton, TextField } from "@mui/material";
+import { filterByName } from "@xrf/search";
 import { ChangeEvent, ReactElement, useMemo, useState } from "react";
 
 import { IChoiceFormRowOption } from "@/core/ui/form/ChoiceFormRow";
 import { FormRow } from "@/core/ui/form/FormRow";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { filterByName } from "@/lib/search/filter-by-name";
 
 export interface IChoiceListFormRowProps<T extends string> extends BaseComponentProps {
   label: string;

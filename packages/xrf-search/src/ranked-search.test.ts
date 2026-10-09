@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { buildSearchIndex, ISearchIndexEntry, rankedSearch } from "@/core/search/lib/ranked-search";
+import { buildSearchIndex, ISearchIndexEntry, rankedSearch } from "#/ranked-search";
 
 interface IFile {
   name: string;
