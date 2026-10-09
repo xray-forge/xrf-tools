@@ -1,8 +1,7 @@
 import { BYTES_PER_MEGABYTE } from "@xrf/format";
 import { Optional } from "@xrf/types";
 
-import { EStorageNamespace, isInStorageNamespace } from "@/core/storage";
-import { setLocalStorageValue } from "@/lib/local-storage";
+import { EStorageNamespace, isInStorageNamespace, setLocalStorageValue } from "@/core/storage";
 
 /**
  * What the application allows itself.

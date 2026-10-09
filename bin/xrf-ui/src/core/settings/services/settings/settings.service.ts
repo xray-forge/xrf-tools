@@ -37,20 +37,18 @@ import {
   CATALOG_VIEW_STORAGE_KEY,
   DEV_MODE_STORAGE_KEY,
   FRAME_RATE_LIMIT_STORAGE_KEY,
+  getLocalStorageValue,
   GPU_TIMED_STORAGE_KEY,
+  parseLocalStorageValueSafe,
   RENDER_BACKEND_STORAGE_KEY,
   RENDER_OUTPUT_SCALE_STORAGE_KEY,
   RENDER_RESOLUTION_STORAGE_KEY,
   RENDERER_FEATURES_STORAGE_KEY,
+  setLocalStorageValue,
+  setLocalStorageValueSafe,
   VSYNC_STORAGE_KEY,
 } from "@/core/storage";
 import { isDevelopmentBuild } from "@/lib/env";
-import {
-  getLocalStorageValue,
-  parseLocalStorageValueSafe,
-  setLocalStorageValue,
-  setLocalStorageValueSafe,
-} from "@/lib/local-storage";
 import { Logger } from "@/lib/logging";
 
 /**

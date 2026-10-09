@@ -12,8 +12,7 @@ import {
 import { ILevelWeatherSeed } from "@/core/level/lib/weather/level-weather-seed";
 import { ELevelWeatherSource } from "@/core/level/lib/weather/level-weather-source";
 import { WEATHER_DAY_LENGTH } from "@/core/level/lib/weather/weather-day";
-import { LEVEL_WEATHER_STORAGE_KEY } from "@/core/storage";
-import { parseLocalStorageValueSafe, setLocalStorageValueSafe } from "@/lib/local-storage";
+import { LEVEL_WEATHER_STORAGE_KEY, parseLocalStorageValueSafe, setLocalStorageValueSafe } from "@/core/storage";
 
 /** Levels remembered at most, the least recently played let go first. */
 const REMEMBERED_LEVELS: number = 32;

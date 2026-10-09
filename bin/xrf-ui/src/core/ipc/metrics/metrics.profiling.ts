@@ -1,5 +1,4 @@
-import { IPC_PROFILING_STORAGE_KEY } from "@/core/storage";
-import { getLocalStorageValue, setLocalStorageValue } from "@/lib/local-storage";
+import { getLocalStorageValue, IPC_PROFILING_STORAGE_KEY, setLocalStorageValue } from "@/core/storage";
 
 /** Read once, here, rather than when a container provisions something. */
 let isProfiling: boolean = getLocalStorageValue(IPC_PROFILING_STORAGE_KEY) === String(true);

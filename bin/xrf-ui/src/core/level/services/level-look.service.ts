@@ -15,8 +15,7 @@ import {
 } from "@/core/level/lib/look";
 import { TRenderExposureSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { SettingsService } from "@/core/settings/services/settings";
-import { LEVEL_LOOK_STORAGE_KEY } from "@/core/storage";
-import { parseLocalStorageValueSafe, setLocalStorageValueSafe } from "@/lib/local-storage";
+import { LEVEL_LOOK_STORAGE_KEY, parseLocalStorageValueSafe, setLocalStorageValueSafe } from "@/core/storage";
 import { Logger } from "@/lib/logging";
 
 /**

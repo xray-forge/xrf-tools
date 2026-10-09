@@ -5,9 +5,9 @@ import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useState } from "react";
 
 import { SettingsService } from "@/core/settings/services/settings";
+import { useLocalStorageRevision } from "@/core/storage";
 import { ConfirmDialog } from "@/core/ui/dialog/ConfirmDialog";
 import { DetailSection } from "@/core/ui/layout/DetailSection";
-import { useLocalStorageRevision } from "@/lib/local-storage";
 
 import { SettingsStorageKeys } from "./SettingsStorageKeys";
 import {

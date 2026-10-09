@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 
-import { setLocalStorageValue, setLocalStorageValueSafe } from "@/lib/local-storage/read-write";
-import { getLocalStorageRevision, subscribeToLocalStorage } from "@/lib/local-storage/revision";
+import { setLocalStorageValue, setLocalStorageValueSafe } from "@/core/storage/read-write";
+import { getLocalStorageRevision, subscribeToLocalStorage } from "@/core/storage/revision";
 
 describe("local storage revision", () => {
   beforeEach(() => {

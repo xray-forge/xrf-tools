@@ -1,6 +1,6 @@
 import { Nullable } from "@xrf/types";
 
-import { bumpLocalStorageRevision } from "@/lib/local-storage/revision";
+import { bumpLocalStorageRevision } from "@/core/storage/revision";
 import { Logger } from "@/lib/logging";
 
 /**
