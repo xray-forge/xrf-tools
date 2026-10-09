@@ -16,6 +16,20 @@ const MAX_CONTACT_LIGHTS: u32 = 8u;
 const VISIBILITY_SLOTS: u32 = 8u;
 const VISIBILITY_LAYER_SLOTS: u32 = 4u;
 
+// A slot of the lights' contact shadows no light was marched into.
+const NO_CONTACT: u32 = 0xffffffffu;
+
+// The frame's texel a texel of the lights' contact shadows, at half the frame's size, was marched from: the first of
+// its two by two.
+fn contact_texel(marched: vec2<i32>) -> vec2<i32> {
+  return min(marched * 2, vec2<i32>(camera.viewport.xy) - 1);
+}
+
+// A slot of the lights' contact shadows: the light's record in the high half, the share of it kept in the low.
+fn contact_slot(item: u32, lit: f32) -> u32 {
+  return (item << 16u) | u32(round(saturate(lit) * 65535.0));
+}
+
 // A drawn pixel as its lights are found: where it stands in view space and its normal, its point moved off the surface
 // as a spot or a shadowed light reads it, its cluster, the lights its contact shadows march towards at most, and the
 // weight a light must reach to be among them.
@@ -38,19 +52,31 @@ struct ReachingLight {
 }
 
 // The pixel at a point of the frame with a depth drawn there, its contact shadows marched towards `contact_lights`
-// lights at most.
+// lights at most, the strongest there.
 fn lit_pixel(clip: vec2<f32>, texel: vec2<i32>, depth: f32, contact_lights: u32) -> LitPixel {
+  var pixel: LitPixel = lit_pixel_by(clip, texel, depth, contact_lights, 0.0);
+
+  if (pixel.contact_count > 0u) {
+    pixel.threshold = contact_threshold(pixel.cluster, pixel.contact_count, pixel.position, pixel.normal);
+  }
+
+  return pixel;
+}
+
+// The pixel at a point of the frame with a depth drawn there, its contact shadows marched towards `contact_lights`
+// lights at most, each reaching the weight `threshold` the light contact pass found beside it.
+fn lit_pixel_by(clip: vec2<f32>, texel: vec2<i32>, depth: f32, contact_lights: u32, threshold: f32) -> LitPixel {
   let position: vec3<f32> = camera_view_position(clip, depth);
   let normal: vec3<f32> = octahedral_decode(textureLoad(normal_target, texel, 0).xy);
   let cluster: u32 = light_cluster(lights, clip / camera.viewport.xy, -position.z);
-  let count: u32 = min(contact_lights, MAX_CONTACT_LIGHTS);
-  var threshold: f32 = 0.0;
 
-  if (count > 0u) {
-    threshold = contact_threshold(cluster, count, position, normal);
-  }
+  return LitPixel(position, normal, position + normal * VIRTUAL_OFFSET, cluster,
+    min(contact_lights, MAX_CONTACT_LIGHTS), threshold);
+}
 
-  return LitPixel(position, normal, position + normal * VIRTUAL_OFFSET, cluster, count, threshold);
+// The texel of the lights' contact shadows, at half the frame's size, whose weight a frame's texel takes.
+fn threshold_texel(texel: vec2<i32>, size: vec2<u32>) -> vec2<i32> {
+  return min(texel / 2, vec2<i32>(size) - 1);
 }
 
 // A light of a pixel's cluster as it reaches the pixel.

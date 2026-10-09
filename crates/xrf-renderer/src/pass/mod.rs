@@ -73,6 +73,7 @@ pub(crate) mod grid_pass;
 pub(crate) mod layout_entries;
 pub(crate) mod level_passes;
 pub(crate) mod light_binning_parameters;
+pub(crate) mod light_contact_parameters;
 pub(crate) mod light_record;
 pub(crate) mod light_shadowing_parameters;
 pub(crate) mod light_visibility_parameters;

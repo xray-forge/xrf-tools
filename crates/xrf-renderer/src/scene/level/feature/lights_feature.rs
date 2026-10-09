@@ -13,6 +13,7 @@ use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::pass::contact_shadow_uniform::ContactShadowUniform;
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::light_binning_parameters::LightBinningParameters;
+use crate::pass::light_contact_parameters::LightContactParameters;
 use crate::pass::light_record::LightRecord;
 use crate::pass::light_shadowing_parameters::LightShadowingParameters;
 use crate::pass::light_visibility_parameters::LightVisibilityParameters;
@@ -186,16 +187,17 @@ impl LightsFeature {
     buffers
   }
 
-  /// Adds every light in view drawn into the light target over the sun: first how much of each shadowed light every
-  /// pixel sees, through the scene's shadow `atlas` and by the contact shadows marched by `contact` where they are
-  /// (`is_contact`), unless no light in view is shadowed; then the lights. Nothing while none stands in view.
+  /// Adds every light in view drawn into the light target over the sun: first the contact shadows marched by `contact`
+  /// towards each texel's `contact_lights` strongest at half the frame's size, where they are; then how much of each
+  /// shadowed light every pixel sees, through the scene's shadow `atlas` and those contact shadows, unless no light in
+  /// view is shadowed; then the lights. Nothing while none stands in view.
   pub fn add_draw_passes<'a>(
     &self,
     (graph, bindings): (&mut FrameGraph<'a>, &mut GraphBindings<'a>),
     passes: LevelPasses<'a>,
     (view, textures, atlas): (&'a ViewBinding, &'a wgpu::BindGroup, LightShadowAtlas<'a>),
     (targets, lit, buffers): (ViewTargetHandles, LightingHandles<'a>, LightBuffers),
-    (contact, is_contact): (UniformBinding<ContactShadowUniform>, bool),
+    (contact, contact_lights): (UniformBinding<ContactShadowUniform>, u32),
   ) {
     if self.count == 0 {
       return;
@@ -213,9 +215,46 @@ impl LightsFeature {
       lights: buffers.uniform,
       contact,
     };
+    let is_contact: bool = contact_lights > 0;
     let is_shadowed: bool = is_contact || self.is_any_shadowed();
+    let (width, height) = targets.size;
+    let (light_contact, light_threshold): (Option<GraphTexture>, GraphTexture) = if is_contact {
+      let size: (u32, u32) = (width.div_ceil(2), height.div_ceil(2));
+      let marched: GraphTexture = graph.create_texture(
+        GraphTextureDescriptor::new_2d("light contact", size.0, size.1, LightsPass::CONTACT_FORMAT)
+          .with_array_layer_count(contact_lights.div_ceil(LightsPass::CONTACT_LAYER_SLOTS)),
+      );
+      let threshold: GraphTexture = graph.create_texture(GraphTextureDescriptor::new_2d(
+        "light threshold",
+        size.0,
+        size.1,
+        LightsPass::THRESHOLD_FORMAT,
+      ));
+      let marching: LightContactParameters = LightContactParameters {
+        light_contact_out: marched,
+        light_threshold_out: threshold,
+      };
+
+      graph
+        .add_compute_pass("light contact")
+        .parameters(&parameters)
+        .parameters(&marching)
+        .record(move |context| {
+          passes
+            .lights
+            .record_contact(context, view, (&parameters, &marching), size)
+        });
+
+      (Some(marched), threshold)
+    } else {
+      (
+        None,
+        bindings.import_view(graph, "light threshold none", passes.lights.get_unthresholded()),
+      )
+    };
     let visibility: GraphTexture = if is_shadowed {
-      let (width, height) = targets.size;
+      let light_contact: GraphTexture = light_contact
+        .unwrap_or_else(|| bindings.import_view(graph, "light contact none", passes.lights.get_uncontacted()));
       let visibility: GraphTexture = graph.create_texture(
         GraphTextureDescriptor::new_2d("light visibility", width, height, LightsPass::VISIBILITY_FORMAT)
           .with_array_layer_count(LightsPass::VISIBILITY_LAYERS),
@@ -223,6 +262,8 @@ impl LightsFeature {
       let shadowing: LightShadowingParameters = LightShadowingParameters {
         shadow_atlas: bindings.import_view(graph, "light shadow atlas", atlas.view),
         shadow_sampler: atlas.sampler,
+        light_contact,
+        light_threshold,
         light_visibility_out: visibility,
       };
 
@@ -242,6 +283,7 @@ impl LightsFeature {
     };
     let visibility: LightVisibilityParameters = LightVisibilityParameters {
       light_visibility: visibility,
+      light_threshold,
     };
 
     graph

@@ -158,6 +158,10 @@ const EMBEDDED: &[(&str, &str)] = &[
   ("frame/fxaa", include_str!("../../shaders/frame/fxaa.wgsl")),
   ("frame/lights", include_str!("../../shaders/frame/lights.wgsl")),
   (
+    "frame/light_contact",
+    include_str!("../../shaders/frame/light_contact.wgsl"),
+  ),
+  (
     "frame/light_selection",
     include_str!("../../shaders/frame/light_selection.wgsl"),
   ),
@@ -250,6 +254,10 @@ const EMBEDDED: &[(&str, &str)] = &[
   (
     "generated/frame/lights",
     include_str!("../../shaders/generated/frame/lights.wgsl"),
+  ),
+  (
+    "generated/frame/light_contact",
+    include_str!("../../shaders/generated/frame/light_contact.wgsl"),
   ),
   (
     "generated/frame/light_shadowing",

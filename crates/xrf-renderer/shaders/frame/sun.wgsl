@@ -3,6 +3,7 @@
 #import "common/lighting"
 #import "common/fullscreen"
 #import "common/sun_shadow"
+#import "common/occlusion"
 
 // `accum_sun`: the sun at every drawn pixel, `Ldynamic_color * plight_infinity(m, P, N, L)`, times how much of it
 // reaches the pixel through the cascades' maps and past what its contact shadows found. Diffuse in colour, specular in
@@ -43,8 +44,8 @@ fn fs_sun(in: FullscreenVarying) -> @location(0) vec4<f32> {
   );
   let world: vec3<f32> = (transpose(camera.view) * vec4<f32>(position, 0.0)).xyz + camera.position.xyz;
   let world_normal: vec3<f32> = normalize((transpose(camera.view) * vec4<f32>(normal, 0.0)).xyz);
-  // A single lit texel stands in where no contact shadows are drawn.
-  let contact: f32 = textureLoad(contact_shadows, min(texel, vec2<i32>(textureDimensions(contact_shadows)) - 1), 0).r;
+  // Marched at half the size and brought up by depth; a single lit texel stands in where none are drawn.
+  let contact: f32 = upsampled_occlusion(contact_shadows, floor(in.clip.xy), -position.z);
   // Terrain's and a marched steep surface's own sun term is what the enhanced parallax keeps from its hollows, one
   // where none marches it.
   let relief: f32 = select(1.0, material.y, has_mark(material.a, MARK_TERRAIN) || has_mark(material.a, MARK_RELIEF));

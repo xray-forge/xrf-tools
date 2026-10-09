@@ -683,7 +683,7 @@ impl SceneView {
       passes,
       (view, textures, scene.lights.get_shadow_atlas()),
       (targets, lit, buffers),
-      (contact, self.features.contact_shadows.is_lit()),
+      (contact, self.features.contact_shadows.get_light_count()),
     );
     lights.add_overflow_pass(&mut *graph, buffers);
 
