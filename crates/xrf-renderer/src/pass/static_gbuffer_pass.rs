@@ -14,19 +14,15 @@ use crate::scene::static_scene::static_batch::StaticBatch;
 use crate::scene::static_scene::static_class::StaticClass;
 use crate::scene::static_scene::static_cull_scratch::StaticCullScratch;
 
-/// Draws the static scene into a viewport's G-buffer: one indirect draw a batch, its visible clusters as instances, then
-/// one for the impostors standing in for distant trees.
+/// Draws the static scene into a viewport's G-buffer: the cut-out batches' depth alone first, then one indirect draw a
+/// batch, its visible clusters as instances, a cut-out batch shaded only where its depth is the one drawn, then one for
+/// the impostors standing in for distant trees.
 pub struct StaticGBufferPass {
   layout: wgpu::BindGroupLayout,
   impostor_layout: wgpu::BindGroupLayout,
   view_layout: wgpu::BindGroupLayout,
   texture_layout: wgpu::BindGroupLayout,
-  /// One a batch, by its index.
-  pipelines: Vec<wgpu::RenderPipeline>,
-  /// One a batch, writing what is drawn rather than how it looks.
-  pick_pipelines: Vec<wgpu::RenderPipeline>,
-  /// One a composited batch, in `StaticGBufferPass::list_composited_picks` order, picking what of them shows.
-  composited_pick_pipelines: Vec<wgpu::RenderPipeline>,
+  pipelines: GBufferPipelines,
   /// The impostors' draw, then their pick.
   impostor_pipelines: [wgpu::RenderPipeline; 2],
   generation: u64,
@@ -41,15 +37,12 @@ impl StaticGBufferPass {
   ) -> XrfResult<Self> {
     let layout: wgpu::BindGroupLayout = StaticDrawParameters::create_layout(device);
     let impostor_layout: wgpu::BindGroupLayout = StaticImpostorParameters::create_layout(device);
-    let (pipelines, pick_pipelines, composited_pick_pipelines) =
-      Self::create_pipelines(device, source, view_layout, &layout, texture_layout)?;
+    let pipelines: GBufferPipelines = Self::create_pipelines(device, source, view_layout, &layout, texture_layout)?;
     let impostor_pipelines =
       Self::create_impostor_pipelines(device, source, view_layout, &impostor_layout, texture_layout)?;
 
     Ok(Self {
       pipelines,
-      pick_pipelines,
-      composited_pick_pipelines,
       impostor_pipelines,
       impostor_layout,
       view_layout: view_layout.clone(),
@@ -76,10 +69,8 @@ impl StaticGBufferPass {
           Ok((pipelines, impostors))
         },
       ) {
-        Ok(((pipelines, pick_pipelines, composited_pick_pipelines), impostor_pipelines)) => {
+        Ok((pipelines, impostor_pipelines)) => {
           self.pipelines = pipelines;
-          self.pick_pipelines = pick_pipelines;
-          self.composited_pick_pipelines = composited_pick_pipelines;
           self.impostor_pipelines = impostor_pipelines;
         }
         Err(error) => log::error!("Static G-buffer rejected, drawing with the last one: {error}"),
@@ -99,7 +90,15 @@ impl StaticGBufferPass {
     context.get_pass().set_bind_group(0, &view.bind_group, &[]);
     context.get_pass().set_bind_group(1, textures, &[]);
 
-    for (batch, pipeline) in StaticBatch::list_deferred().zip(&self.pipelines) {
+    for (batch, prepass) in StaticBatch::list_deferred().zip(&self.pipelines.prepasses) {
+      if let Some(prepass) = prepass {
+        context.bind(&draws.layouts[batch.layout.get_index()]);
+        context.get_pass().set_pipeline(prepass);
+        context.get_pass().draw_indirect(args, batch.get_index() as u64 * 16);
+      }
+    }
+
+    for (batch, pipeline) in StaticBatch::list_deferred().zip(&self.pipelines.draws) {
       context.bind(&draws.layouts[batch.layout.get_index()]);
       context.get_pass().set_pipeline(pipeline);
       context.get_pass().draw_indirect(args, batch.get_index() as u64 * 16);
@@ -130,9 +129,9 @@ impl StaticGBufferPass {
     let composited: &[wgpu::RenderPipeline] = if is_through {
       &[]
     } else {
-      &self.composited_pick_pipelines
+      &self.pipelines.composited_picks
     };
-    let deferred = StaticBatch::list_deferred().zip(&self.pick_pipelines);
+    let deferred = StaticBatch::list_deferred().zip(&self.pipelines.picks);
 
     for (batch, pipeline) in deferred.chain(Self::list_composited_picks().zip(composited)) {
       context.bind(&draws.layouts[batch.layout.get_index()]);
@@ -222,11 +221,7 @@ impl StaticGBufferPass {
     view_layout: &wgpu::BindGroupLayout,
     layout: &wgpu::BindGroupLayout,
     texture_layout: &wgpu::BindGroupLayout,
-  ) -> XrfResult<(
-    Vec<wgpu::RenderPipeline>,
-    Vec<wgpu::RenderPipeline>,
-    Vec<wgpu::RenderPipeline>,
-  )> {
+  ) -> XrfResult<GBufferPipelines> {
     let module: wgpu::ShaderModule = source.get_module("static/gbuffer")?;
     let pipeline_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
       label: Some("static g-buffer"),
@@ -252,11 +247,12 @@ impl StaticGBufferPass {
             (_, false) => "fs_opaque",
             (_, true) => "fs_pick_opaque",
           };
-          // A composited surface is picked as it is drawn, pulled towards the eye, so glass laid on a wall wins.
-          let (depth_compare, bias) = if batch.class.is_composited() {
-            (wgpu::CompareFunction::GreaterEqual, COMPOSITED_DEPTH_BIAS)
-          } else {
-            (wgpu::CompareFunction::Greater, wgpu::DepthBiasState::default())
+          // A composited surface is picked as it is drawn, pulled towards the eye, so glass laid on a wall wins. A cut-out
+          // is shaded where its depth-only draw left its depth, and writes none of its own.
+          let (depth_compare, bias, is_written) = match batch.class {
+            class if class.is_composited() => (wgpu::CompareFunction::GreaterEqual, COMPOSITED_DEPTH_BIAS, true),
+            StaticClass::CutOut if !is_pick => (wgpu::CompareFunction::Equal, wgpu::DepthBiasState::default(), false),
+            _ => (wgpu::CompareFunction::Greater, wgpu::DepthBiasState::default(), true),
           };
 
           create_checked(device, "static g-buffer", || {
@@ -283,7 +279,7 @@ impl StaticGBufferPass {
               },
               depth_stencil: Some(wgpu::DepthStencilState {
                 format: ViewTargets::DEPTH,
-                depth_write_enabled: Some(true),
+                depth_write_enabled: Some(is_written),
                 depth_compare: Some(depth_compare),
                 stencil: Default::default(),
                 bias,
@@ -298,11 +294,76 @@ impl StaticGBufferPass {
     };
 
     let deferred: Vec<StaticBatch> = StaticBatch::list_deferred().collect();
+    // The G-buffer's targets left as they are: the depth-only draw writes none of them.
+    let untouched: Vec<Option<wgpu::ColorTargetState>> = targets
+      .iter()
+      .map(|target| {
+        target.clone().map(|target| wgpu::ColorTargetState {
+          write_mask: wgpu::ColorWrites::empty(),
+          ..target
+        })
+      })
+      .collect();
+    let prepasses: Vec<Option<wgpu::RenderPipeline>> = deferred
+      .iter()
+      .map(|batch| {
+        (batch.class == StaticClass::CutOut)
+          .then(|| {
+            create_checked(device, "static g-buffer depth", || {
+              device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                label: Some("static g-buffer depth"),
+                layout: Some(&pipeline_layout),
+                vertex: wgpu::VertexState {
+                  module: &module,
+                  entry_point: Some(batch.layout.get_vertex_entry()),
+                  compilation_options: Default::default(),
+                  buffers: &[],
+                },
+                fragment: Some(wgpu::FragmentState {
+                  module: &module,
+                  entry_point: Some("fs_depth_cut_out"),
+                  compilation_options: Default::default(),
+                  targets: &untouched,
+                }),
+                primitive: wgpu::PrimitiveState {
+                  front_face: wgpu::FrontFace::Ccw,
+                  cull_mode: Some(wgpu::Face::Back),
+                  ..Default::default()
+                },
+                depth_stencil: Some(wgpu::DepthStencilState {
+                  format: ViewTargets::DEPTH,
+                  depth_write_enabled: Some(true),
+                  depth_compare: Some(wgpu::CompareFunction::Greater),
+                  stencil: Default::default(),
+                  bias: Default::default(),
+                }),
+                multisample: Default::default(),
+                multiview_mask: None,
+                cache: source.get_driver_cache(),
+              })
+            })
+          })
+          .transpose()
+      })
+      .collect::<XrfResult<_>>()?;
 
-    Ok((
-      create(deferred.clone(), false)?,
-      create(deferred, true)?,
-      create(Self::list_composited_picks().collect(), true)?,
-    ))
+    Ok(GBufferPipelines {
+      draws: create(deferred.clone(), false)?,
+      prepasses,
+      picks: create(deferred, true)?,
+      composited_picks: create(Self::list_composited_picks().collect(), true)?,
+    })
   }
+}
+
+/// The static G-buffer's pipelines, by batch.
+struct GBufferPipelines {
+  /// One a batch, by its index.
+  draws: Vec<wgpu::RenderPipeline>,
+  /// One a batch: a cut-out batch's depth-only draw ahead of its shading, none for an opaque one.
+  prepasses: Vec<Option<wgpu::RenderPipeline>>,
+  /// One a batch, writing what is drawn rather than how it looks.
+  picks: Vec<wgpu::RenderPipeline>,
+  /// One a composited batch, in `StaticGBufferPass::list_composited_picks` order, picking what of them shows.
+  composited_picks: Vec<wgpu::RenderPipeline>,
 }
