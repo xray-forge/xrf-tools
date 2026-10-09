@@ -1,5 +1,7 @@
+#import "generated/structs"
+
 // The half box `RenderSky` draws a sky cube through, which every pass reading a sky turns a direction by, and the
-// direction every other cube is looked up by.
+// direction every other cube is looked up by; and the sky as the enhanced effects reflect it.
 
 // Where `hbox_verts` puts the ring the box's sides fold at, just under the horizon, and how far below the bottom face
 // the box's lower half samples, so all of it reads the cube's bottom rim.
@@ -38,4 +40,26 @@ fn sky_box_lookup(box: vec3<f32>) -> vec3<f32> {
   let on_bottom: vec3<f32> = vec3<f32>(box.x / -box.y, BOX_BOTTOM, box.z / -box.y);
 
   return select(select(on_side, on_bottom, -box.y > side), box, box.y > side);
+}
+
+// The sky as the enhanced effects reflect it along a renderer-space direction: turned as its box is, raised to fill a
+// reflection's perspective, both keyframes' cubes blended and tinted by the sky's colour.
+fn enhanced_sky(
+  direction: vec3<f32>,
+  lighting: Lighting,
+  sky_cube_0: texture_cube<f32>,
+  sky_cube_1: texture_cube<f32>,
+  sky_clamp: sampler,
+) -> vec3<f32> {
+  var turned: vec3<f32> = sky_box_direction(direction, lighting.sky_params.x);
+
+  turned.y = (turned.y - max(cos(turned.x) * 0.65, cos(turned.z) * 0.65)) * 2.1 + 0.35;
+
+  let cubes: vec3<f32> = mix(
+    textureSampleLevel(sky_cube_0, sky_clamp, turned, 0.0).rgb,
+    textureSampleLevel(sky_cube_1, sky_clamp, turned, 0.0).rgb,
+    lighting.sky.w,
+  );
+
+  return saturate(lighting.sky.rgb) * cubes;
 }

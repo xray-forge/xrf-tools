@@ -7,6 +7,7 @@ use crate::frame::fsr_targets::FsrTargets;
 use crate::frame::indirect_light_history::IndirectLightHistory;
 use crate::frame::pick_target::PickTarget;
 use crate::frame::reflection_history::ReflectionHistory;
+use crate::frame::sky_prefilter::SkyPrefilter;
 use crate::frame::stats_readback::StatsReadback;
 use crate::frame::temporal_history::TemporalHistory;
 use crate::frame::temporal_jitter::TemporalJitter;
@@ -45,6 +46,10 @@ pub struct ViewState {
   pub fsr: Option<FsrTargets>,
   /// The last frame's unjittered view projection, which every surface's motion is measured from.
   pub motion_previous: Option<Mat4>,
+  /// The last frame's jittered view projection, which a read of its targets reprojects through.
+  pub view_projection_previous: Option<Mat4>,
+  /// The sky as drawn, prefiltered by roughness into a cube's mips for the reflections' misses, while a sky is drawn.
+  pub sky_prefilter: Option<SkyPrefilter>,
   /// Frames a temporal resolve gathered, which the screen-space effects turn their noise by.
   pub noise_frame: u32,
   /// The visibility-bitmask search's accumulations, while it accumulates.
@@ -100,6 +105,8 @@ impl ViewState {
       temporal_previous: None,
       fsr: None,
       motion_previous: None,
+      view_projection_previous: None,
+      sky_prefilter: None,
       noise_frame: 0,
       occlusion: None,
       indirect: None,
@@ -129,6 +136,11 @@ impl ViewState {
   /// same twice for a first frame.
   pub fn next_motion(&mut self, current: Mat4) -> (Mat4, Mat4) {
     (current, self.motion_previous.replace(current).unwrap_or(current))
+  }
+
+  /// The last frame's jittered view projection, this frame's taking its place; this frame's own on the first.
+  pub fn next_jittered(&mut self, current: Mat4) -> Mat4 {
+    self.view_projection_previous.replace(current).unwrap_or(current)
   }
 
   /// The size its scene is rendered at, once its targets are made.

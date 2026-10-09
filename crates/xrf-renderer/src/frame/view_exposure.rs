@@ -72,6 +72,6 @@ impl ViewExposure {
   }
 
   fn reset(&self, queue: &wgpu::Queue) {
-    queue.write_buffer(&self.state, 0, bytemuck::bytes_of(&[1.0f32, 0.0, 0.0, 0.0]));
+    queue.write_buffer(&self.state, 0, bytemuck::bytes_of(&[1.0f32, 1.0, 0.0, 0.0]));
   }
 }

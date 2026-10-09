@@ -21,6 +21,7 @@ use crate::pass::rain_pass::RainPass;
 use crate::pass::reflection_pass::ReflectionPass;
 use crate::pass::sky_bindings::SkyBindings;
 use crate::pass::sky_haze_pass::SkyHazePass;
+use crate::pass::sky_prefilter_pass::SkyPrefilterPass;
 use crate::pass::smaa_pass::SmaaPass;
 use crate::pass::static_cull_pass::StaticCullPass;
 use crate::pass::static_gbuffer_pass::StaticGBufferPass;
@@ -50,6 +51,7 @@ pub struct LevelPasses<'a> {
   pub lights: &'a LightsPass,
   pub combine: &'a CombinePass,
   pub sky_haze: &'a SkyHazePass,
+  pub sky_prefilter: &'a SkyPrefilterPass,
   pub sky: &'a SkyBindings,
   pub water: &'a WaterPass,
   pub composited: &'a CompositedPass,

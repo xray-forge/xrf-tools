@@ -20,6 +20,8 @@ struct Camera {
   // World to clip without the jitter, this frame and the last, which a surface's motion is measured by.
   motion_current: mat4x4<f32>,
   motion_previous: mat4x4<f32>,
+  // World to clip with the jitter the last frame drew by, which a read of that frame's targets reprojects through.
+  view_projection_previous: mat4x4<f32>,
   // What shows where nothing was drawn and neither the sky nor the fog is; `w` one where it is set.
   backdrop: vec4<f32>,
   // What a surface naming no base texture is drawn; `w` one where it is set, white where it is not.

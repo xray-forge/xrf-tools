@@ -7,6 +7,8 @@ pub(crate) mod gpu_readback;
 pub(crate) mod indirect_light_history;
 pub(crate) mod pick_target;
 pub(crate) mod reflection_history;
+pub(crate) mod sky_prefilter;
+pub(crate) mod sky_prefilter_level;
 pub(crate) mod static_scene_handles;
 pub(crate) mod stats_readback;
 pub(crate) mod sun_shadow_maps;

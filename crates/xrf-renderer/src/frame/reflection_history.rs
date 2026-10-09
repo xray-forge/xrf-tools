@@ -1,9 +1,12 @@
 use crate::frame::depth_pyramid::DepthPyramid;
+use crate::frame::view_targets::ViewTargets;
 
 /// What the screen-space reflections keep from one frame to the next, at the size they trace at: the reflection and
 /// its variance, the surface's world normal and roughness, and the distance along the view of the point, how many
-/// frames its reflection holds and the distance through it to what it reflects; one set read while the other is written, swapped every frame. Beside them, the frame's
-/// depth reduced to its nearest, which each frame rebuilds.
+/// frames its reflection holds and the distance through it to what it reflects; one set read while the other is
+/// written, swapped every frame. Beside them, at the frame's size: the frame's depth reduced to its nearest, which
+/// each frame rebuilds, and the last frame's scene as it stood before the sun shafts and the flares, with the depth it
+/// was drawn over, which a hit reads its colour from.
 pub struct ReflectionHistory {
   pub radiances: [wgpu::Texture; 2],
   pub radiance_views: [wgpu::TextureView; 2],
@@ -12,10 +15,16 @@ pub struct ReflectionHistory {
   pub helds: [wgpu::Texture; 2],
   pub held_views: [wgpu::TextureView; 2],
   pub pyramid: DepthPyramid,
+  pub scene: wgpu::Texture,
+  pub scene_view: wgpu::TextureView,
+  pub depth: wgpu::Texture,
+  pub depth_view: wgpu::TextureView,
   /// The set this frame writes.
   pub index: usize,
   /// Whether the set this frame reads holds a frame.
   pub is_valid: bool,
+  /// Whether the scene and depth kept hold the last frame.
+  pub is_source_valid: bool,
   /// Frames traced since it was made, which turns each pixel's noise.
   pub frame: u32,
 }
@@ -27,7 +36,7 @@ impl ReflectionHistory {
   /// Levels of the nearest depth's pyramid a ray climbs through: the depth itself and six halvings.
   pub const PYRAMID_LEVELS: u32 = 7;
 
-  /// The history at the size traced at, and the pyramid over the frame's depth.
+  /// The history at the size traced at, and the pyramid and the kept scene over the frame's size.
   pub fn new(device: &wgpu::Device, (width, height): (u32, u32), (frame_width, frame_height): (u32, u32)) -> Self {
     let create = |label: &str, format: wgpu::TextureFormat| -> (wgpu::Texture, wgpu::TextureView) {
       let texture: wgpu::Texture = device.create_texture(&wgpu::TextureDescriptor {
@@ -48,6 +57,28 @@ impl ReflectionHistory {
 
       (texture, view)
     };
+    // What the frame's targets are copied into, at their size.
+    let keep = |label: &str, format: wgpu::TextureFormat| -> (wgpu::Texture, wgpu::TextureView) {
+      let texture: wgpu::Texture = device.create_texture(&wgpu::TextureDescriptor {
+        label: Some(label),
+        size: wgpu::Extent3d {
+          width: frame_width,
+          height: frame_height,
+          depth_or_array_layers: 1,
+        },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format,
+        usage: wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::TEXTURE_BINDING,
+        view_formats: &[],
+      });
+      let view: wgpu::TextureView = texture.create_view(&Default::default());
+
+      (texture, view)
+    };
+    let (scene, scene_view) = keep("reflection source scene", ViewTargets::SCENE);
+    let (depth, depth_view) = keep("reflection source depth", ViewTargets::DEPTH);
     let pair = |labels: [&str; 2], format: wgpu::TextureFormat| {
       let [(first, first_view), (second, second_view)] = labels.map(|label| create(label, format));
 
@@ -71,8 +102,13 @@ impl ReflectionHistory {
       helds,
       held_views,
       pyramid: DepthPyramid::new_nearest(device, frame_width, frame_height, Self::PYRAMID_LEVELS),
+      scene,
+      scene_view,
+      depth,
+      depth_view,
       index: 0,
       is_valid: false,
+      is_source_valid: false,
       frame: 0,
     }
   }
@@ -89,10 +125,11 @@ impl ReflectionHistory {
     (size.width, size.height)
   }
 
-  /// The written set becomes the one read.
+  /// The written set becomes the one read, and the scene copied this frame the one the next reads.
   pub fn swap(&mut self) {
     self.index = 1 - self.index;
     self.is_valid = true;
+    self.is_source_valid = true;
     self.frame = self.frame.wrapping_add(1);
   }
 }

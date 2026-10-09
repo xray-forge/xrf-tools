@@ -18,10 +18,13 @@ impl SkyBindings {
   pub fn new(device: &wgpu::Device) -> Self {
     Self {
       layout: SkyParameters::create_layout(device),
+      // Its mips blend for the prefiltered cube, read at the mip a roughness names; every other cube is read at its
+      // first.
       clamp: device.create_sampler(&wgpu::SamplerDescriptor {
         label: Some("sky clamp"),
         mag_filter: wgpu::FilterMode::Linear,
         min_filter: wgpu::FilterMode::Linear,
+        mipmap_filter: wgpu::MipmapFilterMode::Linear,
         ..Default::default()
       }),
       repeat: device.create_sampler(&wgpu::SamplerDescriptor {
@@ -74,10 +77,11 @@ impl SkyBindings {
     }
   }
 
-  /// Imports a frame's sky views into its graph, as the parameters every pass drawing the sky binds.
+  /// Imports a frame's sky views and its prefiltered sky cube into its graph, as the parameters every pass drawing
+  /// the sky binds.
   pub fn import<'r>(
     &'r self,
-    views: &'r SkyViews,
+    (views, prefiltered): (&'r SkyViews, &'r wgpu::TextureView),
     graph: &mut FrameGraph<'_>,
     bindings: &mut GraphBindings<'r>,
   ) -> SkyParameters<'r> {
@@ -92,6 +96,7 @@ impl SkyBindings {
     let [sky_clouds_0, sky_clouds_1] =
       [("sky clouds 0", &views.clouds[0]), ("sky clouds 1", &views.clouds[1])].map(|(label, view)| import(label, view));
     let sky_sun: GraphTexture = import("sky sun", &views.sun);
+    let sky_prefiltered: GraphTexture = import("sky prefiltered", prefiltered);
     let environments: [GraphTexture; _] =
       std::array::from_fn(|slot| import("environment cube", &views.environments[slot]));
 
@@ -106,6 +111,7 @@ impl SkyBindings {
       sky_repeat: &self.repeat,
       environments,
       sky_sun,
+      sky_prefiltered,
     }
   }
 }

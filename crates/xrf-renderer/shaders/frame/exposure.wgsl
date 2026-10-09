@@ -41,7 +41,8 @@ fn measure(@builtin(global_invocation_id) id: vec3<u32>) {
 }
 
 // `bloom_luminance_3`: the cells averaged, and the adapted scale moved towards what brings them to the middle gray.
-// Held between a 128th and twenty, as the engine's own clamp meant to.
+// Held between a 128th and twenty, as the engine's own clamp meant to. The scale this frame's tonemap used is kept
+// beside it, for a read of this frame's colour next frame to invert by.
 @compute @workgroup_size(256)
 fn adapt(@builtin(local_invocation_index) index: u32) {
   var total: f32 = 0.0;
@@ -65,6 +66,7 @@ fn adapt(@builtin(local_invocation_index) index: u32) {
     let luminance: f32 = partial[0] / f32(CELLS * CELLS);
     let scale: f32 = params.target_gray / (luminance * params.weight + params.floor_luminance);
 
+    state.used = state.adapted;
     state.adapted = clamp(mix(state.adapted, scale, params.blend), 1.0 / 128.0, 20.0);
   }
 }

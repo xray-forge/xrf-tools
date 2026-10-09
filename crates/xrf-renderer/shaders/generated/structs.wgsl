@@ -106,6 +106,11 @@ struct PuddleSites {
   shape: vec4<f32>,
 }
 
+struct SkyPrefilter {
+  level: vec4<f32>,
+  shape: vec4<f32>,
+}
+
 struct ParticleVertex {
   position: vec3<f32>,
   color: u32,
@@ -201,7 +206,7 @@ struct ExposureParams {
 
 struct ExposureState {
   adapted: f32,
-  pad0: f32,
+  used: f32,
   pad1: f32,
   pad2: f32,
   cells: array<f32, 4096>,
@@ -209,6 +214,7 @@ struct ExposureState {
 
 struct Exposure {
   adapted: f32,
+  used: f32,
 }
 
 struct Flares {
