@@ -6,7 +6,7 @@ edition.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-full_moon = { version = "2.2.0", features = ["luajit"] }
+full_moon = { version = "3.0.0", features = ["luajit"] }
 xrf-error = { workspace = true }
 xrf-utils = { workspace = true }
 
