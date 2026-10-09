@@ -1,8 +1,7 @@
 use xrf_error::XrfResult;
 use xrf_renderer_core::{
   FrameGraph, GraphBindings, GraphBuffer, GraphBufferAccess, GraphColorAttachment, GraphDepthAttachment, GraphRuntime,
-  GraphTexture, GraphTextureAccess, GraphTextureDescriptor, PassParameters, RasterContext, RasterPassBuilder,
-  StorageValue, UniformBinding,
+  GraphTexture, GraphTextureDescriptor, PassParameters, RasterContext, RasterPassBuilder, StorageValue, UniformBinding,
 };
 
 use crate::frame::view_targets::ViewTargets;
@@ -203,8 +202,8 @@ impl WaterPass {
     }
   }
 
-  /// Declares the enhanced water: the scene copied for it to refract, its reflection and the reflection's blur while it
-  /// reflects, then its surface.
+  /// Declares the enhanced water over the frame's copy before it, which it refracts: its reflection and the reflection's
+  /// blur while it reflects, then its surface; nothing without the copy.
   fn add_enhanced_passes<'a>(
     &'a self,
     graph: &mut FrameGraph<'a>,
@@ -237,7 +236,9 @@ impl WaterPass {
           import("water blue noise", &self.maps.blue_noise),
         )
       });
-    let scene: GraphTexture = Self::add_scene_copy(graph, draw.targets.scene, (width, height));
+    let Some(scene) = draw.before_water else {
+      return;
+    };
 
     let (blurred, clear): (GraphTexture, GraphTexture) = match reflection {
       Some((reflection, histories, blue_noise)) => {
@@ -374,32 +375,6 @@ impl WaterPass {
       (&frame.args, frame.groups),
       |it| &it.enhanced,
     );
-  }
-
-  /// Declares the copy of the scene as it stands before the water, which the enhanced water refracts and reflects.
-  fn add_scene_copy(graph: &mut FrameGraph<'_>, source: GraphTexture, (width, height): (u32, u32)) -> GraphTexture {
-    let copy: GraphTexture = graph.create_texture(GraphTextureDescriptor::new_2d(
-      "water scene",
-      width,
-      height,
-      ViewTargets::SCENE,
-    ));
-
-    graph
-      .add_encoder_pass("water copy")
-      .texture(source, GraphTextureAccess::CopySource)
-      .texture(copy, GraphTextureAccess::CopyDestination)
-      .record(move |context| {
-        let (source, copy) = (context.get_texture(source), context.get_texture(copy));
-
-        context.get_encoder().copy_texture_to_texture(
-          source.texture.as_image_copy(),
-          copy.texture.as_image_copy(),
-          copy.texture.size(),
-        );
-      });
-
-    copy
   }
 
   /// Begins the surface's pass: over the scene and the distortion target, against the read-only depth it also samples.

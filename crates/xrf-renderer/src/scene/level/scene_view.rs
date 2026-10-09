@@ -4,8 +4,8 @@ use std::time::Instant;
 use glam::{Mat4, Vec2, Vec3, Vec4};
 use xrf_error::XrfResult;
 use xrf_renderer_core::{
-  FrameGraph, GraphBindings, GraphBuffer, GraphColorAttachment, GraphRuntime, GraphTexture, StorageArray,
-  StorageArrayMut, StorageValue, UniformBinding,
+  FrameGraph, GraphBindings, GraphBuffer, GraphColorAttachment, GraphRuntime, GraphTexture, GraphTextureDescriptor,
+  StorageArray, StorageArrayMut, StorageValue, UniformBinding,
 };
 
 use crate::camera::camera_view::CameraView;
@@ -1065,20 +1065,38 @@ impl SceneView {
       }
 
       let scene: GraphTexture = handles.scene;
+      let water_sky = scene_view
+        .features
+        .sky
+        .get_views()
+        .filter(|_| scene_view.features.water.is_drawn());
+      // The frame as it stands before the water, the composited surfaces and the particles draw, copied once for all
+      // that read it: the enhanced water refracts and reflects it, and the temporal resolve's reactive weight is what
+      // the rest change of it.
+      let before_water: Option<GraphTexture> = (scene_view.features.resolve.is_reading_scene_before_water()
+        || (water_sky.is_some() && scene_view.features.water.is_enhanced()))
+      .then(|| {
+        let (width, height) = handles.size;
+        let copy: GraphTexture = graph.create_texture(GraphTextureDescriptor::new_2d(
+          "scene before water",
+          width,
+          height,
+          ViewTargets::SCENE,
+        ));
 
-      // The temporal resolve's reactive weight is what the water, the composited surfaces and the particles change of
-      // the frame drawn so far.
+        add_texture_copy(&mut *graph, "scene before water", scene, copy);
+
+        copy
+      });
       let opaque: Option<GraphTexture> = scene_view
         .features
         .resolve
-        .add_reactive_passes((&mut *graph, &mut *bindings), (scene, handles.size));
+        .add_reactive_passes((&mut *graph, &mut *bindings), (scene, before_water));
 
-      if let (true, Some(sky)) = (
-        scene_view.features.water.is_drawn(),
-        scene_view.features.sky.get_views(),
-      ) {
+      if let Some(sky) = water_sky {
         let draw: WaterDraw<'_> = WaterDraw {
           targets: handles,
+          before_water: before_water.filter(|_| scene_view.features.water.is_enhanced()),
           view,
           textures: texture_group,
           layouts,

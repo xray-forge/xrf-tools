@@ -18,6 +18,9 @@
 // reflections (what each surface reflects, then one, at the size they are traced at).
 #import "generated/frame/combine"
 
+// The fog's square below which the sky behind changes no pixel by half an eight-bit step: 1 / 512.
+const UNSEEN_SKY: f32 = 0.001953125;
+
 // What shows where nothing was drawn and neither the sky nor the fog is: the level viewer's backdrop, #202428.
 const BACKDROP: vec3<f32> = vec3<f32>(32.0, 36.0, 40.0) / 255.0;
 
@@ -205,7 +208,9 @@ fn fs_combine(in: FullscreenVarying) -> CombineOutput {
   let finished: vec3<f32> = scene_from_light(fogged, scale);
   let high: vec3<f32> = tonemap_high(fogged, scale);
 
-  if (!is_sky_drawn) {
+  // Where the fog is too thin for the sky behind, mixed in by its square, to move a pixel by half an eight-bit step
+  // whatever the two are, the sky is not built at all.
+  if (!is_sky_drawn || fog * fog < UNSEEN_SKY) {
     return combined(finished, high);
   }
 
