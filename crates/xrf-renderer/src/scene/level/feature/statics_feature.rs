@@ -118,6 +118,17 @@ impl StaticsFeature {
     &self.cull
   }
 
+  /// What this frame's depth pyramid holds, for a cull after the G-buffer to test against: this frame's view, the
+  /// pyramid's shape, and whether it was reduced this frame at all, which only an occlusion cull does.
+  pub fn get_frame_occlusion(&self) -> StaticOcclusionUniform {
+    StaticOcclusionUniform {
+      view: self.matrices.0,
+      projection: self.matrices.1,
+      ..self.occlusion
+    }
+    .with_history(self.cull.is_occluding != 0)
+  }
+
   /// Whether a frame can be drawn: the pyramid is made with the targets.
   pub fn is_ready(&self) -> bool {
     self.pyramid.is_some()

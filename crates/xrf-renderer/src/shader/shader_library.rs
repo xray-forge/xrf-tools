@@ -44,6 +44,10 @@ const EMBEDDED: &[(&str, &str)] = &[
     include_str!("../../shaders/common/scene_light.wgsl"),
   ),
   ("common/occlusion", include_str!("../../shaders/common/occlusion.wgsl")),
+  (
+    "common/pyramid_occlusion",
+    include_str!("../../shaders/common/pyramid_occlusion.wgsl"),
+  ),
   ("common/present", include_str!("../../shaders/common/present.wgsl")),
   (
     "common/reflection_trace",
@@ -254,6 +258,10 @@ const EMBEDDED: &[(&str, &str)] = &[
   (
     "generated/frame/lights",
     include_str!("../../shaders/generated/frame/lights.wgsl"),
+  ),
+  (
+    "generated/grass/occlusion",
+    include_str!("../../shaders/generated/grass/occlusion.wgsl"),
   ),
   (
     "generated/frame/light_contact",

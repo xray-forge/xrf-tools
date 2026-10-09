@@ -34,6 +34,7 @@ use crate::pass::glass_parameters::GlassParameters;
 use crate::pass::glass_uniform::GlassUniform;
 use crate::pass::grass_colour_parameters::GrassColourParameters;
 use crate::pass::grass_model_record::GrassModelRecord;
+use crate::pass::grass_occlusion_parameters::GrassOcclusionParameters;
 use crate::pass::light_binning_parameters::LightBinningParameters;
 use crate::pass::light_contact_parameters::LightContactParameters;
 use crate::pass::light_record::LightRecord;
@@ -130,6 +131,7 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
   let mut contact_shadows: ShaderBindings = ShaderBindings::new();
   let mut sun: ShaderBindings = ShaderBindings::new();
   let mut light_binning: ShaderBindings = ShaderBindings::new();
+  let mut grass_occlusion: ShaderBindings = ShaderBindings::new();
   let mut lights: ShaderBindings = ShaderBindings::new();
   let mut light_contact: ShaderBindings = ShaderBindings::new();
   let mut light_shadowing: ShaderBindings = ShaderBindings::new();
@@ -230,6 +232,7 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
   contact_shadows.add::<ContactShadowParameters>()?;
   sun.add::<SunParameters<'_>>()?;
   light_binning.add::<LightBinningParameters>()?;
+  grass_occlusion.add::<GrassOcclusionParameters>()?;
   lights.add::<LightsParameters<'_>>()?;
   light_contact.add::<LightContactParameters>()?;
   light_shadowing.add::<LightShadowingParameters<'_>>()?;
@@ -323,6 +326,10 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
       format!("{STRUCTS_IMPORT}{}", contact_shadows.to_wgsl()),
     ),
     ("generated/frame/sun", format!("{STRUCTS_IMPORT}{}", sun.to_wgsl())),
+    (
+      "generated/grass/occlusion",
+      format!("{STRUCTS_IMPORT}{}", grass_occlusion.to_wgsl()),
+    ),
     (
       "generated/frame/light_binning",
       format!("{STRUCTS_IMPORT}{}", light_binning.to_wgsl()),
