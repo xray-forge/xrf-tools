@@ -713,7 +713,11 @@ impl SceneView {
       passes,
       view,
       (targets, lit),
-      (contact_shadows, sun_traced),
+      (
+        contact_shadows,
+        sun_traced,
+        self.features.shadows.get_values().filter_reach,
+      ),
     );
 
     // The shadowed lights traced where DLSS ray reconstruction denoises them, their atlas faces otherwise.

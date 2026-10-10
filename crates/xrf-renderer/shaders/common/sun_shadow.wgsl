@@ -17,12 +17,17 @@ const PLANT_OFFSET_MOST: f32 = 0.04;
 // What `sun_shadow_by` takes as no limit on how far a point is moved.
 const OFFSET_ANY: f32 = 1e9;
 
+// The texels the filter reaches each way where a pipeline fixes it, which compiles the filter's loops to their count;
+// below nought, the shadows' uniform says. Bounded by the uniform, the sun's pass ran eight times slower on Vulkan, the
+// same taps reading the same texels.
+override SUN_FILTER_REACH: i32 = -1;
+
 // The sun's share at a point by one cascade alone, compared over the square of texels the filter reaches; the last
 // cascade fades out towards its far edge, on the side the camera looks towards, as `accum_sun_far` does.
 fn cascade_lit(maps: texture_depth_2d_array, shadows: Shadows, view: u32, clip: vec4<f32>, uv: vec2<f32>) -> f32 {
   let size: i32 = i32(shadows.resolution);
   let center: vec2<i32> = vec2<i32>(uv * shadows.resolution);
-  let reach: i32 = i32(shadows.filter_reach);
+  let reach: i32 = select(i32(shadows.filter_reach), SUN_FILTER_REACH, SUN_FILTER_REACH >= 0);
   var total: f32 = 0.0;
   var taps: f32 = 0.0;
 

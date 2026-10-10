@@ -15,14 +15,14 @@ pub struct SunFeature;
 
 impl SunFeature {
   /// Draws the sun shadowed by the `contact_shadows` and what its trace saw (`sun_traced`), its cascades where none is
-  /// traced. Answers how much of the sun each pixel sees.
+  /// traced, filtered `filter_reach` texels each way. Answers how much of the sun each pixel sees.
   pub fn add_passes<'a>(
     &self,
     (graph, bindings): (&mut FrameGraph<'a>, &mut GraphBindings<'a>),
     passes: LevelPasses<'a>,
     view: &'a ViewBinding,
     (targets, lit): (ViewTargetHandles, LightingHandles<'a>),
-    (contact_shadows, sun_traced): (GraphTexture, Option<GraphTexture>),
+    (contact_shadows, sun_traced, filter_reach): (GraphTexture, Option<GraphTexture>, u32),
   ) -> GraphTexture {
     let is_traced: bool = sun_traced.is_some();
     let sun: SunParameters = SunParameters {
@@ -57,7 +57,7 @@ impl SunFeature {
         seen,
         wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
       ))
-      .record(move |context| passes.sun.record(context, view, &sun, is_traced));
+      .record(move |context| passes.sun.record(context, view, &sun, (is_traced, filter_reach)));
 
     seen
   }
