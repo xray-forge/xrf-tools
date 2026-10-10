@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use glam::{Mat4, Vec2};
 use xrf_dlss::{Dlss, DlssInputs, DlssPreset, DlssQuality, DlssRayInputs};
 use xrf_renderer_core::{
@@ -48,7 +50,7 @@ type RayKey = ((u32, u32), DlssQuality);
 /// (TAA, or FSR 2 or DLSS upscaling as they resolve, DLSS reconstructing rays where asked) with the jitter its samples
 /// are moved by. Then, to the viewport's
 /// size where what was resolved, or the frame where nothing was, is of another: EASU's upscale or the box downscale; and
-/// RCAS's sharpening where the frame was drawn smaller than the viewport.
+/// RCAS's sharpening where the frame was drawn smaller than the viewport or a temporal resolve gathered it.
 pub struct ResolveFeature {
   jitter: TemporalJitter,
   /// Where this frame's samples sit within their pixels, and the phases the jitter's sequence repeats over.
@@ -65,7 +67,8 @@ pub struct ResolveFeature {
   upscaled: Option<[FrameTexture; 2]>,
   /// The stage rescaling what was resolved, or the frame, to the viewport's size where it is of another.
   rescale: Option<usize>,
-  /// Whether the frame shown is sharpened: drawn smaller than the viewport, with a sharpness asked.
+  /// Whether the frame shown is sharpened: drawn smaller than the viewport or resolved temporally, with a sharpness
+  /// asked.
   is_sharpened: bool,
   upscale: UpscaleUniform,
   /// The last frame's unjittered view projection, which every surface's motion is measured from.
@@ -74,6 +77,9 @@ pub struct ResolveFeature {
   view_projection_previous: Option<Mat4>,
   /// Frames a temporal resolve gathered, which the screen-space effects turn their noise by.
   noise_frame: u32,
+  /// When the view was last prepared, and the milliseconds since the one before, which DLSS weighs its history by.
+  prepared_at: Option<Instant>,
+  frame_time: f32,
   /// The output, quality, preset and range DLSS last refused, which FSR 2 resolves in its place until they change.
   refused: Option<DlssKey>,
   /// The output and quality ray reconstruction last refused, which super resolution upscales in its place until they
@@ -98,6 +104,8 @@ impl Default for ResolveFeature {
       motion_previous: None,
       view_projection_previous: None,
       noise_frame: 0,
+      prepared_at: None,
+      frame_time: 0.0,
       refused: None,
       refused_rays: None,
     }
@@ -135,6 +143,13 @@ impl ResolveFeature {
     (upscaling, is_linear): (RenderUpscalingSettings, bool),
   ) {
     self.upscaling = upscaling;
+
+    let now: Instant = Instant::now();
+
+    self.frame_time = self
+      .prepared_at
+      .map_or(0.0, |before| now.duration_since(before).as_secs_f32() * 1000.0);
+    self.prepared_at = Some(now);
 
     if self.temporal.is_some() {
       self.noise_frame = self.noise_frame.wrapping_add(1);
@@ -175,9 +190,11 @@ impl ResolveFeature {
     } else {
       UpscalePass::DOWNSAMPLE
     });
-    self.is_sharpened = upscaling.sharpening > 0.0 && render.0 < viewport.0;
+    // Sharpened where upscaled, and where a temporal resolve gathers frames at the viewport's size, whose filtering and
+    // resampled history soften what moves as an upscale does.
+    self.is_sharpened = upscaling.sharpening > 0.0 && (render.0 < viewport.0 || self.resolve.is_some());
 
-    if render == viewport && self.rescale.is_none() {
+    if render == viewport && self.rescale.is_none() && !self.is_sharpened {
       self.upscaled = None;
     } else if self
       .upscaled
@@ -721,6 +738,7 @@ impl ResolveFeature {
     // FSR 2's sense of the jitter, which DLSS shares: a drawn texel `m` stands at `m + 0.5 - jitter`.
     let jitter: [f32; 2] = (-self.offset).to_array();
     let is_reset: bool = resolve.is_reset;
+    let frame_time: f32 = self.frame_time;
 
     let mut pass = graph
       .add_encoder_pass("dlss")
@@ -748,6 +766,7 @@ impl ResolveFeature {
         render,
         output: context.get_texture(output).view,
         is_reset,
+        frame_time,
       };
 
       match resolve.upscaler.record(context.get_encoder(), &inputs) {

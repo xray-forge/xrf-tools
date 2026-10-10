@@ -23,6 +23,7 @@ import {
   formatOutputScale,
   formatSharpening,
   IRenderChoiceOption,
+  isTemporalAntialiasing,
   RENDER_DLSS_PRESET_SHORT_OPTIONS,
   RENDER_OUTPUT_SCALE_LIMITS,
   RENDER_RESOLUTION_OPTIONS,
@@ -94,7 +95,10 @@ interface ILevelImageQualityActionProps extends BaseComponentProps {
   backend: TRenderBackendChoice;
   /** What each graphics API can do on this machine, none until the renderer was asked. */
   backends: Nullable<ReadonlyArray<RenderBackendAvailability>>;
-  /** Whether the view's frame is drawn smaller than the viewport, which sharpening needs to have any effect. */
+  /**
+   * Whether the view's frame is drawn smaller than the viewport, which sharpening applies to besides a temporal
+   * resolve.
+   */
   isUpscaled: boolean;
   /** Whether the GPU drawing the view upscales with DLSS; FSR 2 smooths in its place where it does not. */
   dlss: RenderDlssAvailability;
@@ -149,6 +153,7 @@ export function LevelImageQualityAction({
     !rayProblem && (features.upscaling.isRayReconstructed ?? settingsRayReconstruction);
   const resolution: ERenderResolution = features.output.resolution ?? settingsResolution;
   const outputScale: number = features.output.scale ?? settingsOutputScale;
+  const isSharpenable: boolean = isUpscaled || (isOn && isTemporalAntialiasing(mode));
 
   return (
     <EditorPopoverToggle
@@ -241,13 +246,13 @@ export function LevelImageQualityAction({
         value={sharpening}
         {...RENDER_SHARPENING_LIMITS}
         format={formatSharpening}
-        isDisabled={!isUpscaled}
+        isDisabled={!isSharpenable}
         onChange={(next: number) => onChange({ ...features, upscaling: { ...features.upscaling, sharpening: next } })}
       />
 
-      {isUpscaled ? null : (
+      {isSharpenable ? null : (
         <Typography className={"text-text-secondary"} variant={"caption"}>
-          Sharpens only a frame drawn smaller than the viewport.
+          Sharpens only a frame drawn smaller than the viewport or resolved temporally.
         </Typography>
       )}
 

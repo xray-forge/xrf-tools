@@ -10,7 +10,7 @@ use crate::contract::render_scale::RenderScale;
 #[serde(rename_all = "camelCase")]
 pub struct RenderUpscalingSettings {
   pub scale: RenderScale,
-  /// RCAS's sharpness while upscaled, from none to its most.
+  /// RCAS's sharpness while upscaled or resolved temporally, from none to its most.
   pub sharpening: f32,
   pub dlss_preset: RenderDlssPreset,
   /// DLSS ray reconstruction in super resolution's place: one network denoising and upscaling the frame over its

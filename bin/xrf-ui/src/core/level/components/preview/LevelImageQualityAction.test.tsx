@@ -359,7 +359,7 @@ describe("LevelImageQualityAction", () => {
     const { getByRole, findByRole, getByText } = renderWithProviders(
       <LevelImageQualityAction
         isOn
-        settingsMode={ERenderAntialiasing.TAA}
+        settingsMode={ERenderAntialiasing.FXAA}
         settingsTextureFiltering={ERenderTextureFiltering.ANISOTROPIC8}
         settingsScale={ERenderScale.NATIVE}
         settingsSharpening={0.5}
@@ -388,7 +388,9 @@ describe("LevelImageQualityAction", () => {
 
     expect(getByRole("button", { name: "Vulkan" })).toBeDisabled();
     expect(getByRole("slider", { name: "Sharpening" })).toBeDisabled();
-    expect(getByText("Sharpens only a frame drawn smaller than the viewport.")).toBeInTheDocument();
+    expect(
+      getByText("Sharpens only a frame drawn smaller than the viewport or resolved temporally.")
+    ).toBeInTheDocument();
 
     await userEvent.click(getByRole("button", { name: "Direct3D 12" }));
 
