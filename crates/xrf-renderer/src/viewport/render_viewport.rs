@@ -61,7 +61,8 @@ pub struct RenderViewport {
   pub shown: Option<(RenderSceneId, SceneView)>,
   /// The scene it asks to show, where its camera stands and what lights it this frame, as its world answered.
   pub world: RenderViewFrame,
-  /// Captures asked for, copied out of the next frame presented, and those copied, answered once they are back.
+  /// Captures asked for, copied out of the next frames presented, one a frame in the order asked, and those copied,
+  /// answered once they are back.
   pub captures: Vec<CaptureReply>,
   pub captures_in_flight: Vec<(FrameCapture, CaptureReply)>,
   /// Picks asked for, drawn one a frame while a readback is free, and those drawn, answered once they are back.
