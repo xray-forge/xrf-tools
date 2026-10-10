@@ -42,6 +42,9 @@ pub struct SurroundingsCube {
   /// Texels a side the cube's faces are, as the settings ask.
   size: u32,
   is_due: bool,
+  /// Whether it stands in the prefiltered cube's first mip this frame, drawn or kept: none while it rests, when the
+  /// prefilter fills that mip with the sky.
+  is_active: bool,
   /// Where each face was last drawn from: the camera, the sun's direction, what the scene held, its size and the
   /// frame it was drawn on; none before it was.
   drawn: [Option<FaceDrawn>; 6],
@@ -87,6 +90,7 @@ impl SurroundingsCube {
       to_sun: Vec3::Y,
       size: RenderReflectionProbe::Fine.get_size(),
       is_due: false,
+      is_active: false,
       drawn: [None; 6],
       frame: 0,
     }
@@ -97,9 +101,17 @@ impl SurroundingsCube {
     self.is_due
   }
 
-  /// Draws no face this frame: the reflections are not traced, so nothing reads the cube.
+  /// Whether it stands in the prefiltered cube's first mip this frame, a face drawn or all kept as they were.
+  pub fn is_active(&self) -> bool {
+    self.is_active
+  }
+
+  /// Draws no face this frame: the reflections are not traced, so nothing reads the cube. Its faces are forgotten,
+  /// since the prefilter fills their mip with the sky meanwhile.
   pub fn rest(&mut self) {
     self.is_due = false;
+    self.is_active = false;
+    self.drawn = [None; 6];
   }
 
   /// Readies the next face's camera from where the viewport's stands, looking down its axis with the up a cube
@@ -120,6 +132,7 @@ impl SurroundingsCube {
 
     self.frame = self.frame.wrapping_add(1);
     self.face = face;
+    self.is_active = true;
 
     let is_stale: bool = self.drawn[face as usize].is_none_or(|it: FaceDrawn| {
       it.position.distance(position) > Self::MOVED
