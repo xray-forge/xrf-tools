@@ -346,6 +346,7 @@ struct Wet {
   gust: vec4<f32>,
   water: vec4<f32>,
   relief: vec4<f32>,
+  drying: vec4<f32>,
 }
 
 struct Thunder {

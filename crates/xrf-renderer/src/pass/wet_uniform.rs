@@ -41,6 +41,9 @@ pub struct WetUniform {
   pub water: Vec4,
   /// One where the puddles fill the relief the enhanced parallax marches; the rest unused.
   pub relief: Vec4,
+  /// The wet spell's peak wetness, which the surfaces the rain reaches wet to, and the share of it the level still
+  /// holds as it dries; the rest unused.
+  pub drying: Vec4,
 }
 
 impl WetUniform {

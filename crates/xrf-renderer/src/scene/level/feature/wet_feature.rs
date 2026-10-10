@@ -110,6 +110,7 @@ impl WetFeature {
       ),
       gust: WetUniform::get_gust(lighting.wind.direction, lighting.wind.velocity),
       relief: Vec4::new(f32::from(u8::from(settings.is_relief_flooded)), 0.0, 0.0, 0.0),
+      drying: Vec4::new(self.wetness.get_peak(), self.wetness.get_left(), 0.0, 0.0),
     };
     self.views = Some([
       weather_textures

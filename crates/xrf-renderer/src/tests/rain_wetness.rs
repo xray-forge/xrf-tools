@@ -53,3 +53,30 @@ fn wets_twice_as_fast_enhanced() {
 
   assert!((wetted(RainWetness::ENHANCED_BUILD_UP) - wetted(RainWetness::ENGINE_BUILD_UP) * 2.0).abs() < 1e-6);
 }
+
+// A rain wets every surface it reaches alike, to the wet spell's peak; once it stops the peak holds and the share left
+// falls as the level dries, to none and no peak when it is dry; a new rain closes the peak on the wetness again.
+#[test]
+fn keeps_the_wet_spells_peak_to_dry_from() {
+  let mut wetness: RainWetness = RainWetness::default();
+  let build_up: f32 = RainWetness::ENGINE_BUILD_UP;
+
+  wetness.advance(0.0, 0.8, 1.0, build_up);
+  wetness.advance(1_000.0, 0.8, 1.0, build_up);
+
+  assert_eq!((wetness.get_peak(), wetness.get_left()), (0.8, 1.0));
+
+  wetness.advance(1_100.0, 0.0, 1.0, build_up);
+
+  assert_eq!(wetness.get_peak(), 0.8);
+  assert!(wetness.get_left() < 1.0 && wetness.get_left() > 0.0);
+
+  wetness.advance(1_120.0, 0.8, 1.0, build_up);
+
+  assert!(wetness.get_peak() < 0.8);
+  assert!(wetness.get_left() > (wetness.get() / 0.8));
+
+  wetness.advance(2_000.0, 0.0, 1.0, build_up);
+
+  assert_eq!((wetness.get(), wetness.get_peak(), wetness.get_left()), (0.0, 0.0, 1.0));
+}
