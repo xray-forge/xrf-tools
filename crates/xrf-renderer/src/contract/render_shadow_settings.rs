@@ -33,13 +33,14 @@ pub struct RenderShadowSettings {
 }
 
 impl Default for RenderShadowSettings {
-  /// The engine's three cascades and a fourth reaching three times as far, with a filter a texel wide.
+  /// The engine's three cascades and a fourth reaching three times as far, with a filter two texels wide: a texel wide,
+  /// the grass's blades shimmered in the nearest cascades as they swayed across its texels.
   fn default() -> Self {
     Self {
       is_enabled: true,
       cascades: vec![20.0, 40.0, 160.0, 480.0],
       resolution: 2048,
-      filter: 1,
+      filter: 2,
       bias: 1.5,
       reach: 400.0,
       blend: 0.1,

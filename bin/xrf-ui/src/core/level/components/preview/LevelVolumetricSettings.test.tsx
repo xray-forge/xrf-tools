@@ -31,8 +31,8 @@ describe("LevelVolumetricSettings", () => {
 
     rerender(render({ ...DEFAULT_RENDER_VOLUMETRIC_SETTINGS, mode: ERenderVolumetricMode.ENHANCED }));
 
-    expect(getByRole("slider", { name: "Intensity" })).toHaveAttribute("aria-valuetext", "0.50");
-    expect(getByRole("slider", { name: "Anisotropy" })).toHaveAttribute("aria-valuetext", "0.15");
+    expect(getByRole("slider", { name: "Intensity" })).toHaveAttribute("aria-valuetext", "0.20");
+    expect(getByRole("slider", { name: "Anisotropy" })).toHaveAttribute("aria-valuetext", "0.25");
     expect(getByRole("slider", { name: "Distance" })).toHaveAttribute("aria-valuetext", "120 m");
 
     await userEvent.click(getByRole("button", { name: "Back to the settings for the volumetric lighting" }));
