@@ -56,6 +56,8 @@ pub struct GrassView {
   trace: TraceGrassUniform,
   /// The cull's total, read back without waiting on the GPU.
   stats: StatsReadback,
+  /// How many triangles the cards' tufts asked for, read back a frame or more late, which their room is sized to.
+  card_demand: StatsReadback,
 }
 
 impl GrassView {
@@ -87,6 +89,7 @@ impl GrassView {
       is_card_cascaded: false,
       trace: TraceGrassUniform::default(),
       stats: StatsReadback::new(device),
+      card_demand: StatsReadback::new(device),
     }
   }
 
@@ -126,8 +129,12 @@ impl GrassView {
     self.is_card_traced = is_traced;
     self.is_card_cascaded = is_cascaded;
 
-    // Made again where the radius wants them to hold another number of triangles.
-    let capacity: u32 = GrassCards::get_capacity(GrassCards::get_reach(settings).0);
+    // Made again where the radius or what their tufts ask wants them to hold another number of triangles.
+    let capacity: u32 = GrassCards::get_capacity(
+      GrassCards::get_reach(settings).0,
+      self.cards.as_ref().map_or(0, |cards| cards.capacity),
+      self.card_demand.take()[0],
+    );
 
     if !(is_traced || is_cascaded) || !settings.is_shadowed {
       self.cards = None;
@@ -277,6 +284,20 @@ impl GrassView {
         );
       });
 
+    let count: GraphBuffer = bindings.import_buffer(graph, "grass card count", &cards.count);
+
+    // How many triangles the tufts asked for, past the room too, read back for the cards' room.
+    graph
+      .add_encoder_pass("grass card demand")
+      .buffer(draw, GraphBufferAccess::StorageRead)
+      .buffer(count, GraphBufferAccess::CopySource)
+      .keep()
+      .record(move |context| {
+        let count: &wgpu::Buffer = context.get_buffer(count);
+
+        self.card_demand.record(context.get_encoder(), count, 0);
+      });
+
     let handles: GrassCardHandles = GrassCardHandles {
       vertices,
       triangles,
@@ -337,14 +358,16 @@ impl GrassView {
     })
   }
 
-  /// Asks for the cull's total copied out with the frame just submitted.
+  /// Asks for the cull's total and the cards' demand copied out with the frame just submitted.
   pub fn request_stats(&self) {
     self.stats.request();
+    self.card_demand.request();
   }
 
-  /// Drops the copy made with a frame that was never submitted.
+  /// Drops the copies made with a frame that was never submitted.
   pub fn abandon_stats(&self) {
     self.stats.abandon();
+    self.card_demand.abandon();
   }
 
   /// What a recent frame drew: the cull's latest total read back, and the most the lists hold.
