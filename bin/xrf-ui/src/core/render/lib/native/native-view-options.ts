@@ -119,6 +119,7 @@ export function toNativeViewOptions(
       lod: features.lod,
       shadows: { ...shadows, cascades: [...shadows.cascades] },
       sunShafts: { ...switches.sunShafts },
+      textureFiltering: features.textureFiltering,
       water: { ...water, isEnabled: water.isEnabled && switches.isWaterVisible },
     },
     mode: {

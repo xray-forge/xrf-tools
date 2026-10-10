@@ -38,6 +38,7 @@ export type TRenderViewFeatureKey =
   | "rain"
   | "reflections"
   | "shadows"
+  | "textureFiltering"
   | "water";
 
 /** The view options every viewport takes from the application's settings: those features, and how it upscales. */

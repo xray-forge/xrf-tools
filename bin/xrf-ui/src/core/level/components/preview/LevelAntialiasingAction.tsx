@@ -2,10 +2,14 @@ import { default as DeblurIcon } from "@mui/icons-material/Deblur";
 import { Button } from "@mui/material";
 import { ReactElement } from "react";
 
-import { ERenderAntialiasing, RenderAntialiasing } from "@/core/ipc/types/xrf-renderer";
+import { ERenderAntialiasing, RenderAntialiasing, RenderTextureFiltering } from "@/core/ipc/types/xrf-renderer";
 import { describeLevelFeatureToggle, ILevelFeatureOptions, LEVEL_ANTIALIASING_MODES } from "@/core/level/lib/features";
 import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
-import { describeRenderAntialiasing, IRenderChoiceOption } from "@/core/render/lib/features";
+import {
+  describeRenderAntialiasing,
+  IRenderChoiceOption,
+  RENDER_TEXTURE_FILTERING_SHORT_OPTIONS,
+} from "@/core/render/lib/features";
 import { EditorPopoverToggle } from "@/core/shell/editor/EditorPopoverToggle";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
@@ -17,6 +21,8 @@ interface ILevelAntialiasingActionProps extends BaseComponentProps {
   isOn: boolean;
   /** The mode the settings smooth with, which this view can only narrow to none. */
   settingsMode: RenderAntialiasing;
+  /** How the settings filter textures, which this view may set over. */
+  settingsTextureFiltering: RenderTextureFiltering;
   features: ILevelFeatureOptions;
   onToggle: () => void;
   onChange: (features: ILevelFeatureOptions) => void;
@@ -31,12 +37,14 @@ export function LevelAntialiasingAction({
   className,
   isOn,
   settingsMode,
+  settingsTextureFiltering,
   features,
   onToggle,
   onChange,
 }: ILevelAntialiasingActionProps): ReactElement {
   const isAvailable: boolean = settingsMode !== ERenderAntialiasing.NONE;
   const mode: RenderAntialiasing = features.antialiasing ?? settingsMode;
+  const textureFiltering: RenderTextureFiltering = features.textureFiltering ?? settingsTextureFiltering;
 
   return (
     <EditorPopoverToggle
@@ -64,7 +72,14 @@ export function LevelAntialiasingAction({
         onChange={(antialiasing: RenderAntialiasing) => onChange({ ...features, antialiasing })}
       />
 
-      <Button size={"small"} onClick={() => onChange({ ...features, antialiasing: null })}>
+      <RenderValueChoice
+        label={"Texture filtering"}
+        options={RENDER_TEXTURE_FILTERING_SHORT_OPTIONS}
+        value={textureFiltering}
+        onChange={(filtering: RenderTextureFiltering) => onChange({ ...features, textureFiltering: filtering })}
+      />
+
+      <Button size={"small"} onClick={() => onChange({ ...features, antialiasing: null, textureFiltering: null })}>
         Back to the settings
       </Button>
     </EditorPopoverToggle>

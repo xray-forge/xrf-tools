@@ -2085,14 +2085,19 @@ impl SceneView {
       is_occluding,
     );
 
-    // The depth before the grass draws, kept for the reflections to walk their rays over.
-    let traced_depth: Option<GraphTexture> = scene_view.state.reflections.as_ref().map(|history| {
-      let kept: GraphTexture = bindings.import_view(&mut *graph, "reflection traced depth", &history.traced_depth_view);
+    // The depth the reflections walk their rays over, kept before the grass draws, or after it where the grass is
+    // reflected.
+    let is_grass_reflected: bool = scene_view.info.reflection_settings.is_grass_reflected;
+    let traced_depth: Option<GraphTexture> = scene_view
+      .state
+      .reflections
+      .as_ref()
+      .map(|history| bindings.import_view(&mut *graph, "reflection traced depth", &history.traced_depth_view));
 
+    if let Some(kept) = traced_depth.filter(|_| !is_grass_reflected) {
       Self::add_copy(&mut *graph, "reflection traced depth", handles.depth, kept);
+    }
 
-      kept
-    });
     let stats_args: GraphBuffer = statics.args;
 
     // The cull's counts, read back for a report a frame or more later: an effect the graph cannot see.
@@ -2116,6 +2121,10 @@ impl SceneView {
         (handles, grass_args),
         (view, texture_group),
       );
+    }
+
+    if let Some(kept) = traced_depth.filter(|_| is_grass_reflected) {
+      Self::add_copy(&mut *graph, "reflection traced depth", handles.depth, kept);
     }
 
     if is_wallmarked {

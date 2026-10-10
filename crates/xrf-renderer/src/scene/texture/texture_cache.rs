@@ -38,6 +38,8 @@ type TextureLoad = (u32, u32, Result<Option<DecodedTexture>, String>);
 pub struct TextureCache {
   layout: wgpu::BindGroupLayout,
   sampler: wgpu::Sampler,
+  /// The sampler's anisotropy clamp, one for trilinear.
+  anisotropy: u16,
   bind_group: wgpu::BindGroup,
   /// Each slot's view; a slot not loaded holds the missing texture's.
   views: Vec<wgpu::TextureView>,
@@ -104,18 +106,8 @@ impl TextureCache {
         },
       ],
     });
-    // Trilinear with eight times anisotropy, repeating, as the engine samples a level's surfaces.
-    let sampler: wgpu::Sampler = device.create_sampler(&wgpu::SamplerDescriptor {
-      label: Some("textures"),
-      address_mode_u: wgpu::AddressMode::Repeat,
-      address_mode_v: wgpu::AddressMode::Repeat,
-      address_mode_w: wgpu::AddressMode::Repeat,
-      mag_filter: wgpu::FilterMode::Linear,
-      min_filter: wgpu::FilterMode::Linear,
-      mipmap_filter: wgpu::MipmapFilterMode::Linear,
-      anisotropy_clamp: 8,
-      ..Default::default()
-    });
+    let anisotropy: u16 = 8;
+    let sampler: wgpu::Sampler = Self::create_sampler(device, anisotropy);
     let missing: wgpu::TextureView = Self::create_solid(device, queue, [128, 128, 128, 255]);
     let neutral: Vec<wgpu::TextureView> = TextureRole::ALL
       .into_iter()
@@ -129,6 +121,7 @@ impl TextureCache {
     Self {
       layout,
       sampler,
+      anisotropy,
       bind_group,
       views,
       states: vec![RenderTextureState::Missing],
@@ -459,6 +452,32 @@ impl TextureCache {
   }
 
   /// Binds every slot, the ones never filled to the missing texture, since an array is bound whole.
+  /// Samples the textures with an anisotropy clamp, one for trilinear, made again where it changed.
+  pub fn set_anisotropy(&mut self, device: &wgpu::Device, anisotropy: u16) {
+    if anisotropy == self.anisotropy {
+      return;
+    }
+
+    self.anisotropy = anisotropy;
+    self.sampler = Self::create_sampler(device, anisotropy);
+    self.bind_group = Self::create_bind_group(device, &self.layout, &self.sampler, &self.views);
+  }
+
+  /// Trilinear, anisotropic up to `anisotropy`, repeating, as the engine samples a level's surfaces.
+  fn create_sampler(device: &wgpu::Device, anisotropy: u16) -> wgpu::Sampler {
+    device.create_sampler(&wgpu::SamplerDescriptor {
+      label: Some("textures"),
+      address_mode_u: wgpu::AddressMode::Repeat,
+      address_mode_v: wgpu::AddressMode::Repeat,
+      address_mode_w: wgpu::AddressMode::Repeat,
+      mag_filter: wgpu::FilterMode::Linear,
+      min_filter: wgpu::FilterMode::Linear,
+      mipmap_filter: wgpu::MipmapFilterMode::Linear,
+      anisotropy_clamp: anisotropy.max(1),
+      ..Default::default()
+    })
+  }
+
   fn create_bind_group(
     device: &wgpu::Device,
     layout: &wgpu::BindGroupLayout,

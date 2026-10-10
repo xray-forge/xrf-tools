@@ -1089,6 +1089,11 @@ export type RenderReflectionSettings = {
    * picture shows them.
    */
   skyGain: number | null;
+  /**
+   * Whether the rays meet the grass: walked over the depth as the grass left it, rather than as it stood before the
+   * grass drew, so blades and tufts stand in the reflections as solid as they draw, and stop rays behind them.
+   */
+  isGrassReflected: boolean;
 };
 
 /**
@@ -1269,6 +1274,21 @@ export enum ERenderSurfaceColor {
 /** Every `ERenderSurfaceColor` as the spelling it crosses IPC as, for a value no member has narrowed. */
 export type RenderSurfaceColor = `${ERenderSurfaceColor}`;
 
+/**
+ * How a level's surfaces sample their textures: trilinear, or anisotropic at up to a number of samples along the
+ * direction a texture is seen squashed, which keeps ground and walls seen at grazing angles sharp.
+ */
+export enum ERenderTextureFiltering {
+  TRILINEAR = "trilinear",
+  ANISOTROPIC2 = "anisotropic2",
+  ANISOTROPIC4 = "anisotropic4",
+  ANISOTROPIC8 = "anisotropic8",
+  ANISOTROPIC16 = "anisotropic16",
+}
+
+/** Every `ERenderTextureFiltering` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type RenderTextureFiltering = `${ERenderTextureFiltering}`;
+
 /** What became of one texture reference a viewport's scene samples. */
 export type RenderTextureReport = {
   reference: string;
@@ -1337,6 +1357,8 @@ export type RenderViewFeatures = {
   lod: RenderLodSettings;
   /** How the frame's edges are smoothed. */
   antialiasing: RenderAntialiasing;
+  /** How the level's surfaces sample their textures. */
+  textureFiltering: RenderTextureFiltering;
   /** What the finished frame is corrected by. */
   corrections: RenderImageCorrections;
   /** How the game's console scales the sun, the hemisphere and the ambient. */

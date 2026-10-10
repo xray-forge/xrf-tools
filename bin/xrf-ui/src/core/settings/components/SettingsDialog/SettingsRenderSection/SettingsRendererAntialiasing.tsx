@@ -1,12 +1,13 @@
 import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
-import { ERenderScale, RenderAntialiasing, RenderScale } from "@/core/ipc/types/xrf-renderer";
+import { ERenderScale, RenderAntialiasing, RenderScale, RenderTextureFiltering } from "@/core/ipc/types/xrf-renderer";
 import {
   formatSharpening,
   RENDER_ANTIALIASING_OPTIONS,
   RENDER_SCALE_OPTIONS,
   RENDER_SHARPENING_LIMITS,
+  RENDER_TEXTURE_FILTERING_OPTIONS,
 } from "@/core/render/lib/features";
 import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { SettingsService } from "@/core/settings/services/settings";
@@ -32,6 +33,19 @@ export function SettingsRendererAntialiasing(): ReactElement {
           options={RENDER_ANTIALIASING_OPTIONS}
           value={features.antialiasing}
           onChange={(antialiasing: RenderAntialiasing) => settingsService.setRendererOverrides({ antialiasing })}
+        />
+
+        <ChoiceFormRow
+          label={"Texture filtering"}
+          description={
+            "How surfaces sample their textures. Anisotropic keeps ground and walls seen at grazing angles sharp; " +
+            "trilinear blurs them, at a little less cost."
+          }
+          options={RENDER_TEXTURE_FILTERING_OPTIONS}
+          value={features.textureFiltering}
+          onChange={(textureFiltering: RenderTextureFiltering) =>
+            settingsService.setRendererOverrides({ textureFiltering })
+          }
         />
 
         <ChoiceFormRow

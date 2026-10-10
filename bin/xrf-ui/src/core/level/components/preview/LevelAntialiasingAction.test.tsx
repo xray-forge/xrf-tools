@@ -1,7 +1,7 @@
 import { describe, expect, it, jest } from "@jest/globals";
 import { userEvent } from "@testing-library/user-event";
 
-import { ERenderAntialiasing } from "@/core/ipc/types/xrf-renderer";
+import { ERenderAntialiasing, ERenderTextureFiltering } from "@/core/ipc/types/xrf-renderer";
 import { LevelAntialiasingAction } from "@/core/level/components/preview/LevelAntialiasingAction";
 import { ILevelFeatureOptions } from "@/core/level/lib/features/level-feature-options";
 import { mockLevelFeatureOptions } from "@/fixtures/mocks/level.mocks";
@@ -14,6 +14,7 @@ describe("LevelAntialiasingAction", () => {
       <LevelAntialiasingAction
         isOn
         settingsMode={ERenderAntialiasing.SMAA}
+        settingsTextureFiltering={ERenderTextureFiltering.ANISOTROPIC8}
         features={mockLevelFeatureOptions()}
         onToggle={() => {}}
         onChange={onChange}
@@ -34,11 +35,35 @@ describe("LevelAntialiasingAction", () => {
     expect(onChange).toHaveBeenLastCalledWith(mockLevelFeatureOptions());
   });
 
+  it("picks the view's own texture filtering", async () => {
+    const onChange = jest.fn<(features: ILevelFeatureOptions) => void>();
+    const { getByRole, findByRole } = renderWithProviders(
+      <LevelAntialiasingAction
+        isOn
+        settingsMode={ERenderAntialiasing.SMAA}
+        settingsTextureFiltering={ERenderTextureFiltering.ANISOTROPIC8}
+        features={mockLevelFeatureOptions()}
+        onToggle={() => {}}
+        onChange={onChange}
+      />
+    );
+
+    await userEvent.pointer({ keys: "[MouseRight]", target: getByRole("button", { name: "Antialiasing" }) });
+    await findByRole("dialog", { name: "Antialiasing" });
+    await userEvent.click(getByRole("button", { name: "16×" }));
+
+    expect(onChange).toHaveBeenLastCalledWith({
+      ...mockLevelFeatureOptions(),
+      textureFiltering: ERenderTextureFiltering.ANISOTROPIC16,
+    });
+  });
+
   it("is disabled while the settings smooth nothing", () => {
     const { getByRole } = renderWithProviders(
       <LevelAntialiasingAction
         isOn
         settingsMode={ERenderAntialiasing.NONE}
+        settingsTextureFiltering={ERenderTextureFiltering.ANISOTROPIC8}
         features={mockLevelFeatureOptions()}
         onToggle={() => {}}
         onChange={() => {}}

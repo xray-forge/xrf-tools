@@ -43,7 +43,7 @@ export const RENDER_SETTINGS_TABS: ReadonlyArray<IRenderSettingsTab> = [
     sections: [SettingsRendererDisplay],
   },
   {
-    features: ["antialiasing", "upscaling", "exposure", "enhancedBloom", "debanding"],
+    features: ["antialiasing", "textureFiltering", "upscaling", "exposure", "enhancedBloom", "debanding"],
     id: ERenderSettingsTab.IMAGE,
     label: "Image",
     sections: [SettingsRendererAntialiasing, SettingsRendererExposure],

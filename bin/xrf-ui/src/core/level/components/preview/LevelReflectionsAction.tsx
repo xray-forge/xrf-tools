@@ -18,6 +18,7 @@ import {
 } from "@/core/render/lib/features";
 import { TRenderReflectionSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { EditorPopoverToggle } from "@/core/shell/editor/EditorPopoverToggle";
+import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface ILevelReflectionsActionProps extends BaseComponentProps {
@@ -114,6 +115,12 @@ export function LevelReflectionsAction({
             {...RENDER_REFLECTION_LIMITS.skyGain}
             format={formatReflectionSkyGain}
             onChange={(skyGain: number) => set({ skyGain })}
+          />
+
+          <CheckboxFormRow
+            label={"Reflect grass"}
+            isChecked={value.isGrassReflected}
+            onChange={(isGrassReflected: boolean) => set({ isGrassReflected })}
           />
         </>
       ) : null}

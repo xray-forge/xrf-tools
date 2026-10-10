@@ -1,6 +1,6 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="build: clean dev-optimised app" type="CargoCommandRunConfiguration" factoryName="Cargo Command" folderName="build">
-    <option name="command" value="cargo clean -p xrf-app --profile dev-optimized" />
+    <option name="command" value="clean -p xrf-app --profile dev-optimized" />
     <option name="workingDirectory" value="file://$PROJECT_DIR$" />
     <envs />
     <option name="emulateTerminal" value="true" />

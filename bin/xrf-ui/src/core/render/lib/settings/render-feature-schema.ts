@@ -15,6 +15,7 @@ import {
   ERenderReflectionProbe,
   ERenderReflectionQuality,
   ERenderScale,
+  ERenderTextureFiltering,
   ERenderWaterMode,
 } from "@/core/ipc/types/xrf-renderer";
 import {
@@ -142,6 +143,7 @@ export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings>
     quality: toChoice(ERenderReflectionQuality),
     reach: toNumber(25, 1000, true),
     skyGain: toNumber(0.5, 3),
+    isGrassReflected: FLAG,
   },
   lights: {
     isEnabled: FLAG,
@@ -178,6 +180,7 @@ export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings>
     reach: toNumber(0, 2000),
     resolution: toNumber(256, 8192, true),
   },
+  textureFiltering: toChoice(ERenderTextureFiltering),
   upscaling: {
     scale: toChoice(ERenderScale),
     sharpening: toNumber(0, 1),

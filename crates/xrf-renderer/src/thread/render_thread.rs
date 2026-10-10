@@ -1238,6 +1238,9 @@ impl RenderThread {
 
     view_state.set_overlays(scene, device, overlays, *overlays_version, selection.as_ref());
     view_state.request_textures(scene, &mut gpu.weather_textures, (lighting, weather), &options);
+    gpu
+      .textures
+      .set_anisotropy(device, options.features.texture_filtering.get_anisotropy());
     *load += loading.elapsed();
 
     let preparing: Instant = Instant::now();

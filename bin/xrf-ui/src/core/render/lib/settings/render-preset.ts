@@ -8,6 +8,7 @@ import {
   ERenderIndirectLightMode,
   ERenderRainMode,
   ERenderReflectionMode,
+  ERenderTextureFiltering,
   ERenderWaterMode,
 } from "@/core/ipc/types/xrf-renderer";
 import {
@@ -81,6 +82,7 @@ export const RENDER_PRESETS: Readonly<Record<ERenderPreset, IRenderFeatureSettin
       ...DEFAULT_RENDER_SHADOW_SETTINGS,
       contact: { ...DEFAULT_RENDER_CONTACT_SHADOW_SETTINGS, mode: ERenderContactShadowMode.ENHANCED },
     },
+    textureFiltering: ERenderTextureFiltering.ANISOTROPIC8,
     upscaling: DEFAULT_RENDER_UPSCALING_SETTINGS,
     // The application's own choice over the engine's, as the antialiasing is: the enhanced water.
     water: { ...DEFAULT_RENDER_WATER_SETTINGS, mode: ERenderWaterMode.ENHANCED },
@@ -101,6 +103,7 @@ export const RENDER_PRESETS: Readonly<Record<ERenderPreset, IRenderFeatureSettin
     rain: DEFAULT_RENDER_RAIN_SETTINGS,
     reflections: DEFAULT_RENDER_REFLECTION_SETTINGS,
     shadows: { ...DEFAULT_RENDER_SHADOW_SETTINGS, isEnabled: false },
+    textureFiltering: ERenderTextureFiltering.ANISOTROPIC8,
     upscaling: DEFAULT_RENDER_UPSCALING_SETTINGS,
     water: DEFAULT_RENDER_WATER_SETTINGS,
   },

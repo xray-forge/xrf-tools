@@ -1,6 +1,6 @@
 import { Nullable } from "@xrf/types";
 
-import { ERenderAntialiasing, RenderAntialiasing } from "@/core/ipc/types/xrf-renderer";
+import { ERenderAntialiasing, RenderAntialiasing, RenderTextureFiltering } from "@/core/ipc/types/xrf-renderer";
 import { toRenderFeatureChoice } from "@/core/render/lib/settings/render-feature-choice";
 import { IRenderFeatureOverrides } from "@/core/render/lib/settings/render-feature-overrides";
 import {
@@ -78,6 +78,8 @@ export interface ILevelFeatureOptions {
   enhancedBloom: Partial<TLevelEnhancedBloomOptions>;
   /** The mode edges are smoothed with while the settings smooth them at all, or null for the settings' own. */
   antialiasing: Nullable<RenderAntialiasing>;
+  /** How the view's surfaces sample their textures, or null for the settings' own. */
+  textureFiltering: Nullable<RenderTextureFiltering>;
   shadows: Partial<TLevelShadowOptions>;
   water: Partial<TLevelWaterOptions>;
 }
@@ -152,6 +154,7 @@ export function toLevelFeatureOptions(stored: unknown): ILevelFeatureOptions {
     rain: pickModeFeature("rain"),
     reflections: pickModeFeature("reflections"),
     shadows: pick("shadows"),
+    textureFiltering: overrides.textureFiltering ?? null,
     water: pick("water"),
   };
 }
