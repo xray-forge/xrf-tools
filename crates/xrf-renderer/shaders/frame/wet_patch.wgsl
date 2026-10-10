@@ -24,7 +24,7 @@ fn engine_value(vanilla: f32, extended: f32) -> f32 {
 // How much of the rain reaches a point facing `world_normal`, from none to one, by the cover as `cover_reached` reads
 // it, the wetness creeping in under a cover by the level's soak; `pixel` turns the creep's taps.
 fn rain_reached(world: vec3<f32>, world_normal: vec3<f32>, pixel: vec2<f32>) -> f32 {
-  let noise: f32 = cover_noise(pixel + wet.cover_state.w);
+  let noise: f32 = gradient_noise(pixel + wet.cover_state.w);
 
   return cover_reached(cover, cover_pyramid, wet.cover, wet.cover_state.xy, world, world_normal, wet.cover_state.z,
     noise);

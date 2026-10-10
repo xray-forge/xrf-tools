@@ -2,6 +2,8 @@
 #import "common/fullscreen"
 #import "common/octahedral"
 #import "common/scene_trace"
+#import "common/noise"
+#import "common/axis_frame"
 
 // The sun's shadow traced at the frame's size: from each drawn pixel one ray towards a point of the sun's disc, drawn
 // anew each frame, traced against the level's static geometry and its spawned models, cut-out leaves by their alpha;
@@ -20,12 +22,6 @@ const LIFT_PER_METRE: f32 = 0.002;
 // Metres a plant's ray starts towards the sun past it: a leaf's or a blade's card faces any way and stands among
 // others, which would shadow it at random.
 const PLANT_LIFT: f32 = 0.3;
-
-// Jimenez's interleaved gradient noise: neighbours far apart in value, so the rays of a small footprint spread over
-// the disc.
-fn gradient_noise(pixel: vec2<f32>) -> f32 {
-  return fract(52.9829189 * fract(dot(pixel, vec2<f32>(0.06711056, 0.00583715))));
-}
 
 @fragment
 fn fs_sun_trace(in: FullscreenVarying) -> @location(0) vec4<f32> {
@@ -54,11 +50,11 @@ fn fs_sun_trace(in: FullscreenVarying) -> @location(0) vec4<f32> {
     to_sun * PLANT_LIFT, is_plant);
   // A point of the sun's disc, turned every frame.
   let pixel: vec2<f32> = floor(in.clip.xy);
-  let drawn: vec2<f32> = fract(vec2<f32>(gradient_noise(pixel), gradient_noise(pixel.yx + vec2<f32>(17.0, 59.0))) +
+  let drawn: vec2<f32> = fract(gradient_noise_2(pixel) +
     vec2<f32>(sun_trace.noise_x, sun_trace.noise_y));
-  let axis: vec3<f32> = select(vec3<f32>(0.0, 1.0, 0.0), vec3<f32>(1.0, 0.0, 0.0), abs(to_sun.y) > 0.9);
-  let across: vec3<f32> = normalize(cross(to_sun, axis));
-  let along: vec3<f32> = cross(to_sun, across);
+  let frame: AxisFrame = axis_frame(to_sun);
+  let across: vec3<f32> = frame.across;
+  let along: vec3<f32> = frame.along;
   let radius: f32 = sqrt(drawn.x) * sun_trace.spread;
   let angle: f32 = drawn.y * TAU;
   let direction: vec3<f32> = normalize(to_sun + (across * cos(angle) + along * sin(angle)) * radius);

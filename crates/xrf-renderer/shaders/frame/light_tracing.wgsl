@@ -1,5 +1,7 @@
 #import "frame/light_selection"
 #import "common/scene_trace"
+#import "common/noise"
+#import "common/axis_frame"
 #import "generated/frame/light_tracing"
 
 // How much of each of its shadowed lights a pixel sees, traced, in the visibility pass's place where DLSS ray
@@ -19,12 +21,6 @@ const LIFT_PER_METRE: f32 = 0.002;
 // Metres a plant's ray starts towards its light past it, clear of its own leaf's card and its neighbours'.
 const PLANT_LIFT: f32 = 0.3;
 
-// Jimenez's interleaved gradient noise: neighbours far apart in value, so the rays of a small footprint spread over a
-// bulb.
-fn gradient_noise(pixel: vec2<f32>) -> f32 {
-  return fract(52.9829189 * fract(dot(pixel, vec2<f32>(0.06711056, 0.00583715))));
-}
-
 // Whether a ray from a pixel reaches a point of its light's bulb, `drawn` placing the point: none where something
 // solid stands between them.
 fn traced_seen(pixel: LitPixel, record: LightRecord, is_plant: bool, drawn: vec2<f32>) -> f32 {
@@ -40,9 +36,9 @@ fn traced_seen(pixel: LitPixel, record: LightRecord, is_plant: bool, drawn: vec2
   );
   let origin: vec3<f32> = point + lift;
   // A point of the bulb, on the disc it shows the pixel.
-  let axis: vec3<f32> = select(vec3<f32>(0.0, 1.0, 0.0), vec3<f32>(1.0, 0.0, 0.0), abs(to_light.y) > 0.9);
-  let across: vec3<f32> = normalize(cross(to_light, axis));
-  let along: vec3<f32> = cross(to_light, across);
+  let frame: AxisFrame = axis_frame(to_light);
+  let across: vec3<f32> = frame.across;
+  let along: vec3<f32> = frame.along;
   let radius: f32 = sqrt(drawn.x) * light_trace.radius;
   let angle: f32 = drawn.y * TAU;
   let target_point: vec3<f32> = light + (across * cos(angle) + along * sin(angle)) * radius;
@@ -79,7 +75,7 @@ fn cs_visibility_traced(@builtin(global_invocation_id) id: vec3<u32>) {
   let pixel: LitPixel = lit_pixel_by(clip, texel, depth, 0u, 0.0);
   let marks: f32 = textureLoad(material_target, texel, 0).a;
   let is_plant: bool = has_mark(marks, MARK_PLANT) || has_mark(marks, MARK_FLORA);
-  let start: vec2<f32> = fract(vec2<f32>(gradient_noise(clip), gradient_noise(clip.yx + vec2<f32>(17.0, 59.0))) +
+  let start: vec2<f32> = fract(gradient_noise_2(clip) +
     light_trace.noise.xy);
   var seen: array<f32, VISIBILITY_SLOTS> = array<f32, VISIBILITY_SLOTS>(1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0);
   var slot: u32 = 0u;

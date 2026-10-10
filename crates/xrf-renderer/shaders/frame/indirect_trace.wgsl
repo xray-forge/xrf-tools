@@ -2,6 +2,8 @@
 #import "common/fullscreen"
 #import "common/octahedral"
 #import "common/scene_trace"
+#import "common/noise"
+#import "common/axis_frame"
 #import "generated/common/sky"
 #import "generated/frame/indirect_trace"
 
@@ -22,11 +24,6 @@ const LIFT_PER_METRE: f32 = 0.002;
 const PLANT_LIFT: f32 = 0.3;
 // The most a hit's light carries back, by its luminance, so a lamp's hot spot is no firefly.
 const RADIANCE_MOST: f32 = 8.0;
-
-// Jimenez's interleaved gradient noise.
-fn gradient_noise(pixel: vec2<f32>) -> f32 {
-  return fract(52.9829189 * fract(dot(pixel, vec2<f32>(0.06711056, 0.00583715))));
-}
 
 fn brightness(colour: vec3<f32>) -> f32 {
   return dot(colour, vec3<f32>(0.2126, 0.7152, 0.0722));
@@ -58,10 +55,10 @@ fn fs_indirect_trace(in: FullscreenVarying) -> IndirectTargets {
   let normal: vec3<f32> = select(bumped, vec3<f32>(0.0, 1.0, 0.0), is_plant);
   let lift: f32 = select(LIFT, PLANT_LIFT, is_plant) + distance * LIFT_PER_METRE;
   let origin: vec3<f32> = camera.position.xyz + (to_world * vec4<f32>(position, 0.0)).xyz + normal * lift;
-  let axis: vec3<f32> = select(vec3<f32>(0.0, 1.0, 0.0), vec3<f32>(1.0, 0.0, 0.0), abs(normal.y) > 0.9);
-  let across: vec3<f32> = normalize(cross(normal, axis));
-  let along: vec3<f32> = cross(normal, across);
-  let sample: vec2<f32> = fract(vec2<f32>(gradient_noise(pixel), gradient_noise(pixel.yx + vec2<f32>(17.0, 59.0))) +
+  let frame: AxisFrame = axis_frame(normal);
+  let across: vec3<f32> = frame.across;
+  let along: vec3<f32> = frame.along;
+  let sample: vec2<f32> = fract(gradient_noise_2(pixel) +
     indirect.noise.xy);
   let radius: f32 = sqrt(sample.x);
   let angle: f32 = sample.y * TAU;

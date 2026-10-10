@@ -1,6 +1,9 @@
 #import "common/camera"
 #import "common/fullscreen"
 #import "common/scene_trace"
+#import "common/noise"
+#import "common/axis_frame"
+#import "common/depth_plane"
 
 // RTAO at half the frame's size: from each point under a search pixel, a few short rays cosine-weighted about its
 // surface, traced against the level's static geometry and its spawned models, cut-out leaves by their alpha; the share
@@ -23,28 +26,12 @@ const LIFT_PER_METRE: f32 = 0.002;
 // Metres a plant's rays start over it, past the ground's bumps about its foot, which its sway would move it among.
 const PLANT_LIFT: f32 = 0.3;
 
-// Jimenez's interleaved gradient noise: neighbours far apart in value, so a few rays a pixel average out over a small
-// footprint.
-fn gradient_noise(pixel: vec2<f32>) -> f32 {
-  return fract(52.9829189 * fract(dot(pixel, vec2<f32>(0.06711056, 0.00583715))));
-}
-
 // The view space point the frame shows at a texel, held to the frame; none where nothing is drawn.
 fn shown_point(texel: vec2<i32>) -> vec4<f32> {
   let at: vec2<i32> = clamp(texel, vec2<i32>(0), vec2<i32>(textureDimensions(depth_target)) - 1);
   let depth: f32 = textureLoad(depth_target, at, 0);
 
   return vec4<f32>(camera_view_position(vec2<f32>(at) + 0.5, max(depth, 1e-7)), select(0.0, 1.0, depth > 0.0));
-}
-
-// Of the steps to a point's two neighbours along an axis, the one along its own surface: the nearer in depth, a drawn
-// one before none.
-fn surface_step(center: vec3<f32>, before: vec4<f32>, after: vec4<f32>) -> vec3<f32> {
-  let behind: vec3<f32> = center - before.xyz;
-  let ahead: vec3<f32> = after.xyz - center;
-  let is_ahead: bool = after.w > 0.5 && (before.w < 0.5 || abs(ahead.z) < abs(behind.z));
-
-  return select(behind, ahead, is_ahead);
 }
 
 // The occlusion traced at a search pixel: its visibility and its distance along the view.
@@ -62,12 +49,13 @@ fn trace_occlusion(clip: vec2<f32>) -> vec4<f32> {
   let distance: f32 = -position.z;
   // The surface's own normal from the depth, facing the camera: a bumped normal casts rays into the flat surface under
   // its bumps and darkens them, and a two-sided card's may face away.
-  let across_screen: vec3<f32> =
-    surface_step(position, shown_point(texel - vec2<i32>(1, 0)), shown_point(texel + vec2<i32>(1, 0)));
-  let down_screen: vec3<f32> =
-    surface_step(position, shown_point(texel - vec2<i32>(0, 1)), shown_point(texel + vec2<i32>(0, 1)));
-  let crossed: vec3<f32> = normalize(cross(down_screen, across_screen));
-  let surface: vec3<f32> = select(crossed, -crossed, dot(crossed, position) > 0.0);
+  let surface: vec3<f32> = surface_normal(
+    position,
+    shown_point(texel - vec2<i32>(1, 0)),
+    shown_point(texel + vec2<i32>(1, 0)),
+    shown_point(texel - vec2<i32>(0, 1)),
+    shown_point(texel + vec2<i32>(0, 1)),
+  );
   let to_world: mat4x4<f32> = transpose(camera.view);
   // A plant's rays go about the world's up: from a blade's own normal, which its depth gives at random as it sways,
   // they met the ground it grows from and whole tufts flickered between dark and lit; about the up only what stands
@@ -77,13 +65,13 @@ fn trace_occlusion(clip: vec2<f32>) -> vec4<f32> {
   let lift: f32 = select(LIFT, PLANT_LIFT, is_plant) + distance * LIFT_PER_METRE;
   let origin: vec3<f32> = camera.position.xyz + (to_world * vec4<f32>(position, 0.0)).xyz + normal * lift;
   // A frame about the normal.
-  let axis: vec3<f32> = select(vec3<f32>(0.0, 1.0, 0.0), vec3<f32>(1.0, 0.0, 0.0), abs(normal.y) > 0.9);
-  let across: vec3<f32> = normalize(cross(normal, axis));
-  let along: vec3<f32> = cross(normal, across);
+  let frame: AxisFrame = axis_frame(normal);
+  let across: vec3<f32> = frame.across;
+  let along: vec3<f32> = frame.along;
   // What a ray's cone covers where it starts: a search pixel's footprint there.
   let cone: SceneCone = SceneCone(distance * occlusion.spread, 0.0);
   // Turned every frame by the occlusion's noise, which its accumulation gathers.
-  let start: vec2<f32> = fract(vec2<f32>(gradient_noise(pixel), gradient_noise(pixel.yx + vec2<f32>(17.0, 59.0))) +
+  let start: vec2<f32> = fract(gradient_noise_2(pixel) +
     vec2<f32>(occlusion.slice_noise, occlusion.step_noise));
   var open: f32 = 0.0;
 

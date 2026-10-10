@@ -1,3 +1,5 @@
+#import "common/noise"
+
 // Overhead maps of the level around the camera, as `scene/level/overhead_map.rs` draws them straight down: for each
 // column, how high the first thing over it stands. The rain's cover is one; the level's surface without its trees is
 // another.
@@ -73,11 +75,6 @@ fn overhead_open(
   }
 
   return mix(mix(open.x, open.y, weight.x), mix(open.z, open.w, weight.x), weight.y);
-}
-
-// Interleaved gradient noise: one value a pixel, from zero to one, which turns the creep's taps.
-fn cover_noise(pixel: vec2<f32>) -> f32 {
-  return fract(52.9829189 * fract(dot(pixel, vec2<f32>(0.06711056, 0.00583715))));
 }
 
 // How much reaches a point of what falls straight down, from none to one, by an overhead map and its pyramid

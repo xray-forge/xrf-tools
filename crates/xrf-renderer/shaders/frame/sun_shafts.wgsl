@@ -1,3 +1,4 @@
+#import "common/noise"
 #import "common/camera"
 #import "common/scene_light"
 #import "common/lighting"
@@ -16,11 +17,6 @@
 
 // Closer than this along the view, metres, the air adds nothing: `depth > 0.3`.
 const NEAR: f32 = 0.3;
-
-// The engine's 64 texel jitter, stood in for by interleaved gradient noise: one value a pixel, from zero to one.
-fn jitter(pixel: vec2<f32>) -> f32 {
-  return fract(52.9829189 * fract(dot(pixel, vec2<f32>(0.06711056, 0.00583715))));
-}
 
 // The light added to the scene, tonemapped, and to its high part, as `combine_volumetric.ps` adds to both.
 struct ShaftsOutput {
@@ -69,7 +65,7 @@ fn fs_sun_shafts_march(in: FullscreenVarying) -> @location(0) vec4<f32> {
     return vec4<f32>(0.0);
   }
 
-  return vec4<f32>(shafts_gathered(texel, depth, density, steps, jitter(in.clip.xy)), 0.0, 0.0, 0.0);
+  return vec4<f32>(shafts_gathered(texel, depth, density, steps, gradient_noise(in.clip.xy)), 0.0, 0.0, 0.0);
 }
 
 // A half-size target brought up to a frame pixel, the march's or the light volumes': the four half-size texels about it

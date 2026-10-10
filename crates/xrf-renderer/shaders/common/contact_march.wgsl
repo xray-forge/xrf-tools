@@ -1,3 +1,5 @@
+#import "common/depth_plane"
+#import "common/noise"
 #import "common/camera"
 #import "generated/structs"
 
@@ -22,16 +24,6 @@ const CONTACT_NEAR_SHARE: f32 = 0.9;
 // The plane's distance where a view ray runs along it or away from it.
 const CONTACT_NO_PLANE: f32 = 1e9;
 
-// Interleaved gradient noise: one value a pixel, from zero to one.
-fn contact_noise(pixel: vec2<f32>) -> f32 {
-  return fract(52.9829189 * fract(dot(pixel, vec2<f32>(0.06711056, 0.00583715))));
-}
-
-// The distance along the view of the point a depth shows, from the perspective's depth terms.
-fn contact_view_distance(depth: f32) -> f32 {
-  return camera.projection[3][2] / (depth + camera.projection[2][2]);
-}
-
 // A view space point as the drawn pixels place it, `y` down, with its distance along the view.
 fn contact_to_screen(position: vec3<f32>) -> vec3<f32> {
   let clip: vec4<f32> = camera.projection * vec4<f32>(position, 1.0);
@@ -52,11 +44,11 @@ fn contact_view_ray(pixel: vec2<f32>) -> vec3<f32> {
   );
 }
 
-// The view space point a neighbouring texel shows, or one far behind where nothing is drawn.
-fn contact_neighbour(depth_target: texture_depth_2d, texel: vec2<i32>, pixel: vec2<f32>) -> vec3<f32> {
+// The view space point a neighbouring texel shows, one in `w` where something is drawn there.
+fn contact_neighbour(depth_target: texture_depth_2d, texel: vec2<i32>, pixel: vec2<f32>) -> vec4<f32> {
   let depth: f32 = textureLoad(depth_target, texel, 0);
 
-  return select(vec3<f32>(0.0, 0.0, -CONTACT_NO_PLANE), camera_view_position(pixel, depth), depth > 0.0);
+  return vec4<f32>(camera_view_position(pixel, max(depth, 1e-7)), select(0.0, 1.0, depth > 0.0));
 }
 
 // The normal of the plane a pixel's depth lies in, facing the eye: across and down, each to whichever neighbour lies
@@ -70,17 +62,13 @@ fn contact_plane_normal(
   let last: vec2<i32> = vec2<i32>(camera.viewport.xy) - 1;
   let x: vec2<i32> = vec2<i32>(1, 0);
   let y: vec2<i32> = vec2<i32>(0, 1);
-  let left: vec3<f32> = contact_neighbour(depth_target, max(texel - x, vec2<i32>(0)), pixel - vec2<f32>(x));
-  let right: vec3<f32> = contact_neighbour(depth_target, min(texel + x, last), pixel + vec2<f32>(x));
-  let up: vec3<f32> = contact_neighbour(depth_target, max(texel - y, vec2<i32>(0)), pixel - vec2<f32>(y));
-  let down: vec3<f32> = contact_neighbour(depth_target, min(texel + y, last), pixel + vec2<f32>(y));
-  let is_right: bool = abs(right.z - position.z) < abs(position.z - left.z);
-  let is_down: bool = abs(down.z - position.z) < abs(position.z - up.z);
-  let across: vec3<f32> = select(position - left, right - position, is_right);
-  let downward: vec3<f32> = select(position - up, down - position, is_down);
-  let normal: vec3<f32> = normalize(cross(downward, across));
-
-  return select(-normal, normal, dot(normal, position) < 0.0);
+  return surface_normal(
+    position,
+    contact_neighbour(depth_target, max(texel - x, vec2<i32>(0)), pixel - vec2<f32>(x)),
+    contact_neighbour(depth_target, min(texel + x, last), pixel + vec2<f32>(x)),
+    contact_neighbour(depth_target, max(texel - y, vec2<i32>(0)), pixel - vec2<f32>(y)),
+    contact_neighbour(depth_target, min(texel + y, last), pixel + vec2<f32>(y)),
+  );
 }
 
 // How much of a light the point a pixel shows keeps past what stands within `ray_length` metres of it along
@@ -130,7 +118,7 @@ fn contact_lit(
   let plane: f32 = dot(position, plane_normal);
   let first_facing: f32 = dot(contact_view_ray(start.xy), plane_normal);
   let last_facing: f32 = dot(contact_view_ray(last), plane_normal);
-  let jitter: f32 = contact_noise(pixel + contact.noise);
+  let jitter: f32 = gradient_noise(pixel + contact.noise);
   let spaced: u32 = u32(ceil(span * held / max(step_pixels, 1e-3)));
   let steps: u32 = select(contact.steps, clamp(spaced, 2u, contact.steps), step_pixels > 0.0);
   var occlusion: f32 = 0.0;
@@ -150,7 +138,7 @@ fn contact_lit(
       continue;
     }
 
-    let scene: f32 = contact_view_distance(read);
+    let scene: f32 = camera_view_distance(read);
     let facing: f32 = mix(first_facing, last_facing, along);
     let surface: f32 = select(CONTACT_NO_PLANE, plane / facing, facing < -1e-4);
 

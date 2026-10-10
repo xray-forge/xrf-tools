@@ -9,5 +9,5 @@ fn scene_distance(uv: vec2<f32>, depth_target: texture_depth_2d) -> f32 {
   let pixel: vec2<f32> = clamp(floor(uv * size), vec2<f32>(0.0), size - 1.0);
   let stored: f32 = textureLoad(depth_target, vec2<i32>(pixel), 0);
 
-  return select(camera.projection[3][2] / (stored + camera.projection[2][2]), 0.0, stored <= 0.0);
+  return select(camera_view_distance(stored), 0.0, stored <= 0.0);
 }

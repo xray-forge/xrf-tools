@@ -10,6 +10,15 @@ use crate::shader::shader_composer::compose_shader;
 /// extension.
 const EMBEDDED: &[(&str, &str)] = &[
   ("common/camera", include_str!("../../shaders/common/camera.wgsl")),
+  (
+    "common/axis_frame",
+    include_str!("../../shaders/common/axis_frame.wgsl"),
+  ),
+  (
+    "common/depth_plane",
+    include_str!("../../shaders/common/depth_plane.wgsl"),
+  ),
+  ("common/noise", include_str!("../../shaders/common/noise.wgsl")),
   ("common/froxel", include_str!("../../shaders/common/froxel.wgsl")),
   (
     "common/compute_grid",
