@@ -113,7 +113,7 @@ fn skips_every_pass_where_nothing_is_traced() {
 }
 
 // Combine blends the reflections in only where they are traced, reads them at the quality's size and scales the share
-// by the intensity, on either engine, wet or dry.
+// by the intensity, on either engine, wet or dry, with the sky's highlights expanded by half again as light.
 #[test]
 fn blends_reflections_in_only_where_traced() {
   let vanilla: RenderLighting = lighting_of(XrayEngine::Vanilla);
@@ -125,15 +125,15 @@ fn blends_reflections_in_only_where_traced() {
 
   assert_eq!(
     lighting_uniform(&options_with(enhanced()), &vanilla).reflections,
-    Vec4::new(1.0, 2.0, 1.0, 0.0)
+    Vec4::new(1.0, 2.0, 1.0, 1.5)
   );
   assert_eq!(
     lighting_uniform(&ultra, &vanilla).reflections,
-    Vec4::new(1.0, 1.0, 1.0, 0.0)
+    Vec4::new(1.0, 1.0, 1.0, 1.5)
   );
   assert_eq!(
     lighting_uniform(&options_with(enhanced()), &lighting_of(XrayEngine::Extended)).reflections,
-    Vec4::new(1.0, 2.0, 1.0, 0.0)
+    Vec4::new(1.0, 2.0, 1.0, 1.5)
   );
   assert_eq!(
     lighting_uniform(
@@ -144,7 +144,7 @@ fn blends_reflections_in_only_where_traced() {
       &vanilla
     )
     .reflections,
-    Vec4::new(1.0, 2.0, 2.5, 0.0)
+    Vec4::new(1.0, 2.0, 2.5, 1.5)
   );
   assert_eq!(
     lighting_uniform(&options_with(RenderReflectionSettings::default()), &vanilla).reflections,

@@ -246,7 +246,8 @@ fn remembered_sky(direction: vec3<f32>) -> vec4<f32> {
 
   let scale: f32 = select(1.0, exposure.used, lighting.params.z > 0.5);
 
-  return vec4<f32>(untonemapped(textureSampleLevel(source_scene, history_sampler, kept_uv, 0.0).rgb, scale), 1.0);
+  return vec4<f32>(sky_as_light(textureSampleLevel(source_scene, history_sampler, kept_uv, 0.0).rgb, scale,
+    lighting.reflections.w), 1.0);
 }
 
 // What a ray met looks like as light from the surface it was reflected off: what the last frame showed there, or where
@@ -384,7 +385,7 @@ fn fs_trace(in: FullscreenVarying) -> TraceTargets {
   let position: vec3<f32> = camera_view_position(vec2<f32>(texel) + 0.5, depth) + normal * wet.b;
   let toward: vec3<f32> = normalize(position);
   let facing: f32 = dot(normal, -toward);
-  let brdf: vec3<f32> = environment_brdf(reflectance_head_on(albedo.rgb, albedo.a, wet.r), roughness, facing) *
+  let brdf: vec3<f32> = environment_brdf(reflectance_head_on(albedo.rgb, albedo.a, wet.r, material.z), roughness, facing) *
     reflection.intensity;
 
   // Traced only where combine would show enough of it.

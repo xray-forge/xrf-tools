@@ -74,5 +74,6 @@ fn sky_light(direction: vec3<f32>, state: Lighting, cube_0: texture_cube<f32>, c
   cube_sampler: sampler, clouds_0: texture_2d<f32>, clouds_1: texture_2d<f32>, repeat: sampler, scale: f32) -> vec3<f32> {
   let below: vec3<f32> = sky_box_shown(direction, state, cube_0, cube_1, cube_sampler, scale);
 
-  return untonemapped(sky_clouds_over(state, direction, below, clouds_0, clouds_1, repeat, scale), scale);
+  return sky_as_light(sky_clouds_over(state, direction, below, clouds_0, clouds_1, repeat, scale), scale,
+    state.reflections.w);
 }

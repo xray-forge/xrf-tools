@@ -35,6 +35,15 @@ fn untonemapped(colour: vec3<f32>, scale: f32) -> vec3<f32> {
   return lit / max(scale, 1e-4);
 }
 
+// The sky as light for the reflections: its picture taken back through the tonemap, as `untonemapped` takes it, its
+// highlights expanded by `gain` at its white (an inverse tone mapping operator, Banterle 2006), since X-Ray's sky is a
+// low-dynamic-range picture capped at the tonemap's white where a real overcast sky is far brighter than the ground.
+fn sky_as_light(shown: vec3<f32>, scale: f32, gain: f32) -> vec3<f32> {
+  let bright: f32 = smoothstep(0.5, 1.0, dot(max(shown, vec3<f32>(0.0)), vec3<f32>(0.2126, 0.7152, 0.0722)));
+
+  return untonemapped(shown, scale) * mix(1.0, max(gain, 1.0), bright);
+}
+
 // How much fog lies between the camera and a view space point: none without fog, one where it is total.
 fn fog_amount(state: Lighting, position: vec3<f32>) -> f32 {
   return saturate(length(position) * state.fog.y + state.fog.x) * state.fog_color.w;

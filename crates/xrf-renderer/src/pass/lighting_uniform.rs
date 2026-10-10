@@ -10,6 +10,9 @@ use crate::pass::bitmask_search::BitmaskSearch;
 use crate::pass::lighting_frame::LightingFrame;
 use crate::pass::reflection_trace::ReflectionTrace;
 
+/// How far the sky's highlights are expanded at its white as light for the reflections (`sky_as_light`).
+const SKY_LIGHT_GAIN: f32 = 1.5;
+
 /// The lighting the shaders read as their `Lighting`: one viewport's, since the sun is given in its view space.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
@@ -54,8 +57,8 @@ pub struct LightingUniform {
   pub flora: Vec4,
   /// One where the indirect light is gathered and added.
   pub indirect: Vec4,
-  /// One where the reflections are traced and blended in, the frame's pixels a traced pixel stands for each way, and
-  /// their intensity.
+  /// One where the reflections are traced and blended in, the frame's pixels a traced pixel stands for each way, their
+  /// intensity, and how far the sky's highlights are expanded as their light (`sky_as_light`).
   pub reflections: Vec4,
   /// The enhanced fog's height, density and sun colour, then one where it is drawn; nothing where the engine's alone is.
   pub height_fog: Vec4,
@@ -145,7 +148,7 @@ impl LightingUniform {
         0.0,
       ),
       reflections: ReflectionTrace::new(options).map_or(Vec4::ZERO, |trace| {
-        Vec4::new(1.0, trace.get_ratio() as f32, trace.intensity, 0.0)
+        Vec4::new(1.0, trace.get_ratio() as f32, trace.intensity, SKY_LIGHT_GAIN)
       }),
       height_fog: if fog.is_some() && options.mode.is_lit && height_fog.is_enhanced() {
         Vec4::new(

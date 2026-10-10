@@ -34,14 +34,27 @@ pub struct WetUniform {
   /// trace, rather than over the metres the engine fades its splashes over; then the metres it reaches; the rest
   /// unused.
   pub reach: Vec4,
+  /// The way and speed gusts drift across the puddles, metres a second in renderer `x` and `z`; the rest unused.
+  pub gust: Vec4,
 }
 
 impl WetUniform {
+  /// Metres a second gusts drift at for a keyframe's `wind_velocity`, a hundredth of it, and the least and most.
+  const GUST_SPEED: (f32, f32, f32) = (0.01, 1.0, 12.0);
+
   /// Metres the wetness creeps under a cover from its wet edges once a long rain has soaked the level through.
   pub const CREEP_MOST: f32 = 1.5;
   /// Interleaved gradient noise's step between frames, Jimenez's, in pixels, and the frames it cycles through.
   const NOISE_STEP: f32 = 5.588_238;
   const NOISE_FRAMES: u32 = 64;
+
+  /// The way and speed gusts drift for a wind: downwind, as the rain leans, in renderer space.
+  pub fn get_gust(direction: f32, velocity: f32) -> Vec4 {
+    let (scale, least, most): (f32, f32, f32) = Self::GUST_SPEED;
+    let speed: f32 = (velocity * scale).clamp(least, most);
+
+    Vec4::new(-direction.sin() * speed, -direction.cos() * speed, 0.0, 0.0)
+  }
 
   /// The pixels the cover's noise is moved by on the noise's `frame`.
   pub fn get_cover_noise(frame: u32) -> f32 {
