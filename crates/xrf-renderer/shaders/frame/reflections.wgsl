@@ -62,6 +62,10 @@ const MISSED_LENGTH: f32 = 1e4;
 const NOISE_TURN: vec2<f32> = vec2<f32>(0.7548776662, 0.5698402910);
 const LUMINANCE: vec3<f32> = vec3<f32>(0.299, 0.587, 0.114);
 const UNTRACED: vec4<f32> = vec4<f32>(0.0, 0.0, 0.0, -1.0);
+// The roughness over which a ray's crossings fall to `ROUGH_CROSSINGS` of the quality's, its blurred reflection needing
+// no finer walk.
+const ROUGH_BUDGET: vec2<f32> = vec2<f32>(0.15, 0.45);
+const ROUGH_CROSSINGS: f32 = 0.5;
 
 // The denoiser's weights: the neighbourhood's radius and falloff; how much of the average's luminance weighs a pixel;
 // how the radiance, variance, normal and depth stop the filter; the disocclusion's normal and depth weights and the
@@ -413,7 +417,10 @@ fn fs_trace(in: FullscreenVarying) -> TraceTargets {
     direction.z > 0.0);
   let origin: vec3<f32> = ray_screen_point(position);
   let toward_screen: vec3<f32> = ray_screen_point(position + direction * max(reach, 1e-3)) - origin;
-  let walk: RayWalk = ray_walk(nearest_depth, origin, toward_screen, reflection.crossings, HIT_THICKNESS);
+  // A rough surface's reflection is blurred over its lobe: half the crossings find what it shows.
+  let budget: u32 = u32(f32(reflection.crossings) * mix(1.0, ROUGH_CROSSINGS, smoothstep(ROUGH_BUDGET.x, ROUGH_BUDGET.y,
+    roughness)));
+  let walk: RayWalk = ray_walk(nearest_depth, origin, toward_screen, max(budget, 8u), HIT_THICKNESS);
   let distance_met: f32 = -ray_view_point(walk.position).z;
   let thickness: f32 = HIT_THICKNESS.x + distance_met * HIT_THICKNESS.y;
   let confidence: f32 = select(0.0, hit_confidence(walk, position, thickness), walk.is_met);
@@ -479,17 +486,26 @@ struct TracedSurface {
 
 fn traced_surface(pixel: vec2<f32>) -> TracedSurface {
   let texel: vec2<i32> = traced_texel(pixel);
-  let depth: f32 = max(textureLoad(depth_target, texel, 0), 1e-7);
-  let normal: vec3<f32> = world_direction(octahedral_decode(textureLoad(normal_target, texel, 0).xy));
+  var surface: TracedSurface = traced_geometry(texel);
   let wet: vec4<f32> = textureLoad(wet_surface, texel, 0);
-  let is_level: bool = has_mark(textureLoad(material_target, texel, 0).a, MARK_TERRAIN) &&
-    (normal.y > LEVEL_UP || wet.g > PUDDLE_LEAST);
-  let uv: vec2<f32> = (vec2<f32>(texel) + 0.5) / camera.viewport.xy;
-  let world: vec3<f32> = camera_unproject(vec2<f32>(uv.x * 2.0 - 1.0, 1.0 - uv.y * 2.0), depth);
-  let roughness: f32 = traced_roughness(textureLoad(albedo_target, texel, 0).a,
+
+  surface.roughness = traced_roughness(textureLoad(albedo_target, texel, 0).a,
     wet.a + surface_variance(normal_target, depth_target, texel, wet.g));
 
-  return TracedSurface(select(normal, vec3<f32>(0.0, 1.0, 0.0), is_level), roughness,
+  return surface;
+}
+
+// The surface at the frame's texel a traced pixel stands for, its roughness left at none: its normal, distance and
+// place alone, all a prefilter tap is weighed by, so the fifteen taps a pixel read nothing more.
+fn traced_geometry(texel: vec2<i32>) -> TracedSurface {
+  let depth: f32 = max(textureLoad(depth_target, texel, 0), 1e-7);
+  let normal: vec3<f32> = world_direction(octahedral_decode(textureLoad(normal_target, texel, 0).xy));
+  let is_level: bool = has_mark(textureLoad(material_target, texel, 0).a, MARK_TERRAIN) &&
+    (normal.y > LEVEL_UP || textureLoad(wet_surface, texel, 0).g > PUDDLE_LEAST);
+  let uv: vec2<f32> = (vec2<f32>(texel) + 0.5) / camera.viewport.xy;
+  let world: vec3<f32> = camera_unproject(vec2<f32>(uv.x * 2.0 - 1.0, 1.0 - uv.y * 2.0), depth);
+
+  return TracedSurface(select(normal, vec3<f32>(0.0, 1.0, 0.0), is_level), 0.0,
     -camera_view_position(vec2<f32>(texel) + 0.5, depth).z, world);
 }
 
@@ -739,7 +755,10 @@ fn fs_prefilter(in: FullscreenVarying) -> @location(0) vec4<f32> {
   var sum: vec3<f32> = centre.rgb * weights;
   var variances: f32 = spread * weights * weights;
 
-  for (var tap: u32 = 0u; tap < 15u; tap++) {
+  // At the frame's own size its pixels lie four times as dense as at half: the first eight taps span as much.
+  let taps: u32 = select(15u, 8u, reflection.ratio <= 1.0);
+
+  for (var tap: u32 = 0u; tap < taps; tap++) {
     let at: vec2<i32> = clamp(vec2<i32>(pixel) + PREFILTER_TAPS[tap], vec2<i32>(0), last);
     let neighbour: vec4<f32> = textureLoad(traced, at, 0);
 
@@ -747,7 +766,7 @@ fn fs_prefilter(in: FullscreenVarying) -> @location(0) vec4<f32> {
       continue;
     }
 
-    let other: TracedSurface = traced_surface(vec2<f32>(at));
+    let other: TracedSurface = traced_geometry(traced_texel(vec2<f32>(at)));
     let off_plane: f32 = abs(dot(surface.normal, other.world - surface.world));
     let weight: f32 = pow(max(dot(surface.normal, other.normal), 0.0), PREFILTER_NORMAL_SIGMA) *
       exp(-off_plane / max(surface.distance * PREFILTER_PLANE, 1e-3)) *
@@ -841,8 +860,15 @@ fn fs_upscale(in: FullscreenVarying) -> @location(0) vec4<f32> {
   let wet: vec4<f32> = textureLoad(wet_surface, texel, 0);
   let roughness: f32 = traced_roughness(textureLoad(albedo_target, texel, 0).a,
     wet.a + surface_variance(normal_target, depth_target, texel, wet.g));
-  let current: vec4<f32> = upsampled_reflection(resolved, depth_target, material_target, normal_target, albedo_target,
-    pixel, vec4<f32>(normal, distance), roughness, reflection.ratio, reflection.frame);
+  // At the frame's own size the resolve already holds the pixel: read, not upsampled.
+  var current: vec4<f32>;
+
+  if (reflection.ratio <= 1.0) {
+    current = textureLoad(resolved, min(texel, vec2<i32>(textureDimensions(resolved)) - 1), 0);
+  } else {
+    current = upsampled_reflection(resolved, depth_target, material_target, normal_target, albedo_target, pixel,
+      vec4<f32>(normal, distance), roughness, reflection.ratio, reflection.frame);
+  }
 
   if (current.a < 0.0) {
     return UNTRACED;
