@@ -25,6 +25,13 @@ const NEIGHBOURS: f32 = 9.0;
 const REACTIVE_GAIN: f32 = 2.0;
 const REACTIVE_WEIGHT: f32 = 0.5;
 const REACTIVE_CLIP: f32 = 0.5;
+// How fast a pixel's flicker, its frame's jump against its history relative to their brightness, follows; how much
+// flicker counts as all of it; and how far a pixel flickering in place widens its clip box and narrows this frame's
+// share, so the history settles where the jittered samples swing (a swaying blade's edge) rather than following them.
+const FLICKER_RATE: f32 = 0.2;
+const FLICKER_GAIN: f32 = 8.0;
+const FLICKER_CLIP: f32 = 3.0;
+const FLICKER_WEIGHT: f32 = 0.25;
 
 // How far what was drawn over the opaque frame changed a drawn texel, from none to one.
 fn reactive_at(at: vec2<f32>, size: vec2<f32>) -> f32 {
@@ -103,6 +110,12 @@ fn catmull_rom(at: vec2<f32>, size: vec2<f32>) -> vec3<f32> {
   return max(total.rgb / max(total.w, 1e-5), vec3<f32>(0.0));
 }
 
+// The resolved frame, which is the next history, and how much the pixel flickers.
+struct TemporalTargets {
+  @location(0) resolved: vec4<f32>,
+  @location(1) flicker: f32,
+};
+
 // This frame and the history blended, each weighed down by its brightness so a bright sample does not flicker.
 fn blended(current: vec3<f32>, previous: vec3<f32>, weight: f32) -> vec3<f32> {
   let current_weight: f32 = weight / (luminance(current) + 1.0);
@@ -112,7 +125,7 @@ fn blended(current: vec3<f32>, previous: vec3<f32>, weight: f32) -> vec3<f32> {
 }
 
 @fragment
-fn fs_temporal(in: FullscreenVarying) -> @location(0) vec4<f32> {
+fn fs_temporal(in: FullscreenVarying) -> TemporalTargets {
   let input_size: vec2<f32> = vec2<f32>(textureDimensions(frame));
   let output_size: vec2<f32> = vec2<f32>(textureDimensions(history));
   // Output pixels a drawn one spans across; one unscaled.
@@ -183,16 +196,22 @@ fn fs_temporal(in: FullscreenVarying) -> @location(0) vec4<f32> {
   // Wider while still, so a sub-pixel edge keeps its history; tighter while moving, so nothing trails.
   let still: f32 = (1.0 - motion_share) * (1.0 - motion_share);
   let reactive: f32 = reactive_at(nearest, input_size);
+  // How much the pixel flickers: its frame's jump against the history this frame, folded into the last frame's.
+  let jump: f32 = abs(luminance(current) - luminance(history_color)) /
+    (luminance(current) + luminance(history_color) + 0.05);
+  let flicker: f32 = select(0.0, mix(textureLoad(flicker_history, history_texel, 0).r, jump, FLICKER_RATE), is_valid);
+  // Flickering where its surface stands still, which only the samples' swing changes.
+  let calm: f32 = saturate(flicker * FLICKER_GAIN) * still;
   let spread: vec3<f32> = sqrt(max(moment_squared / NEIGHBOURS - mean * mean, vec3<f32>(0.0))) * mix(0.5, 1.0, still) *
-    mix(1.0, REACTIVE_CLIP, reactive);
+    mix(1.0, FLICKER_CLIP, calm) * mix(1.0, REACTIVE_CLIP, reactive);
   let previous: vec3<f32> = clipped(history_color, mean, mean - spread, mean + spread);
   // The nearest sample's distance from this pixel's centre, in output pixels, weighs this frame; unscaled, as is.
   let landed: vec2<f32> = (position - (nearest + 0.5 + jitter)) * upscale;
   let confidence: f32 = select(1.0, exp(dot(landed, landed) * WINDOW) * upscale * upscale, upscale > 1.001);
-  let resolved_weight: f32 = saturate(temporal.params.w * confidence + motion_share);
+  let resolved_weight: f32 = saturate(temporal.params.w * mix(1.0, FLICKER_WEIGHT, calm) * confidence + motion_share);
   let weight: f32 = select(1.0, mix(resolved_weight, max(resolved_weight, REACTIVE_WEIGHT), reactive), is_valid);
 
   let resolved: vec3<f32> = select(current, blended(current, previous, weight), is_valid);
 
-  return vec4<f32>(resolved, select(0.0, distance, is_drawn));
+  return TemporalTargets(vec4<f32>(resolved, select(0.0, distance, is_drawn)), flicker);
 }

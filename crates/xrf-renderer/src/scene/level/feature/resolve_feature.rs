@@ -244,6 +244,15 @@ impl ResolveFeature {
             wgpu::TextureUsages::COPY_SRC,
           )
         }),
+        flicker: History::new(|side| {
+          FrameTexture::new(
+            device,
+            ["temporal flicker 0", "temporal flicker 1"][side],
+            display,
+            TemporalPass::FLICKER,
+            wgpu::TextureUsages::empty(),
+          )
+        }),
         render,
         previous: None,
         uniform: TemporalUniform::default(),
@@ -631,8 +640,15 @@ impl ResolveFeature {
         self.add_ray_reconstruction_pass((&mut *graph, &mut *bindings), (resolve, handles, frame, guides))
       }),
       Some(Resolve::Temporal(temporal)) => {
-        let TemporalResolve { history, uniform, .. } = &**temporal;
+        let TemporalResolve {
+          history,
+          flicker,
+          uniform,
+          ..
+        } = &**temporal;
         let target: GraphTexture = bindings.import_view(&mut *graph, "temporal history", &history.get_written().view);
+        let flickered: GraphTexture =
+          bindings.import_view(&mut *graph, "temporal flicker", &flicker.get_written().view);
         let parameters: TemporalParameters = TemporalParameters {
           frame,
           depth_target: handles.depth,
@@ -641,6 +657,7 @@ impl ResolveFeature {
           temporal: runtime.push_uniform(uniform),
           motion_target: handles.motion,
           opaque: opaque.unwrap_or(handles.scene),
+          flicker_history: bindings.import_view(&mut *graph, "temporal flicker", &flicker.get_read().view),
         };
 
         graph
@@ -648,6 +665,10 @@ impl ResolveFeature {
           .parameters(&parameters)
           .color(GraphColorAttachment::new(
             target,
+            wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+          ))
+          .color(GraphColorAttachment::new(
+            flickered,
             wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
           ))
           .record(move |context| passes.temporal.record(context, view, &parameters));
