@@ -15,6 +15,9 @@ pub struct ShadowCascadeView {
   pub drawn_fit: SunCascade,
   /// Frames it has waited for a draw it wants.
   pub waited: u32,
+  /// Whether its map holds the grass's cards, which stand where they stood when it was drawn: it draws again once the
+  /// grass no longer casts into it, so none of them stay behind.
+  pub has_drawn_grass: bool,
   /// The layer of the static layers it shows, and the version and contents its static layer was drawn at, none before
   /// it was or since it went stale; and the fit it was drawn at.
   pub static_layer: u32,
@@ -36,6 +39,7 @@ impl ShadowCascadeView {
       drawn_at: 0.0,
       drawn_fit: SunCascade::default(),
       waited: 0,
+      has_drawn_grass: false,
       static_layer: index as u32,
       drawn_static: None,
       static_fit: SunCascade::default(),

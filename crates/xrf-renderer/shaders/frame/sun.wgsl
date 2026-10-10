@@ -70,6 +70,8 @@ fn light_sun(in: FullscreenVarying, is_traced: bool) -> SunTargets {
 
   if (is_traced) {
     seen = textureLoad(sun_traced, texel, 0).x;
+  } else if (has_mark(material.a, MARK_PLANT)) {
+    seen = plant_sun_shadow(shadow_maps, shadows, world, world_normal, dot(normal, to_light));
   } else {
     seen = sun_shadow(shadow_maps, shadows, world, world_normal, dot(normal, to_light));
   }

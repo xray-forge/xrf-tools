@@ -19,6 +19,7 @@ mod height_field;
 mod history;
 mod indirect_light;
 mod lens_flares;
+mod level_shadows;
 mod light_geometry;
 mod lighting;
 mod overhead_map;
