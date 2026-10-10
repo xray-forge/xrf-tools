@@ -170,12 +170,8 @@ impl StaticGBufferPass {
       bind_group_layouts: &[Some(view_layout), Some(texture_layout), Some(layout)],
       ..Default::default()
     });
-    let targets: [Option<wgpu::ColorTargetState>; 4] = [
-      Some(ViewTargets::ALBEDO.into()),
-      Some(ViewTargets::NORMAL.into()),
-      Some(ViewTargets::MATERIAL.into()),
-      Some(ViewTargets::MOTION.into()),
-    ];
+    // An impostor marches no relief.
+    let targets: [Option<wgpu::ColorTargetState>; 5] = ViewTargets::get_gbuffer_targets(false);
     let pick_targets: [Option<wgpu::ColorTargetState>; 1] = [Some(PickTarget::FORMAT.into())];
     let create = |fragment: &str, targets: &[Option<wgpu::ColorTargetState>]| -> XrfResult<wgpu::RenderPipeline> {
       create_checked(device, "static impostors", || {
@@ -228,12 +224,7 @@ impl StaticGBufferPass {
       bind_group_layouts: &[Some(view_layout), Some(texture_layout), Some(layout)],
       ..Default::default()
     });
-    let targets: [Option<wgpu::ColorTargetState>; 4] = [
-      Some(ViewTargets::ALBEDO.into()),
-      Some(ViewTargets::NORMAL.into()),
-      Some(ViewTargets::MATERIAL.into()),
-      Some(ViewTargets::MOTION.into()),
-    ];
+    let targets: [Option<wgpu::ColorTargetState>; 5] = ViewTargets::get_gbuffer_targets(true);
     let pick_targets: [Option<wgpu::ColorTargetState>; 1] = [Some(PickTarget::FORMAT.into())];
     let create = |batches: Vec<StaticBatch>, is_pick: bool| -> XrfResult<Vec<wgpu::RenderPipeline>> {
       batches

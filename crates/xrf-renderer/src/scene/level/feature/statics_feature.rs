@@ -183,7 +183,7 @@ impl StaticsFeature {
     let params: &'a StaticCullParams = &self.cull;
     let cull: StaticCullParameters = scene.get_camera_cull();
     let draws: StaticDraws = scene.get_camera_draws();
-    let gbuffer: [GraphTexture; 4] = targets.get_gbuffer();
+    let gbuffer: [GraphTexture; 5] = targets.get_gbuffer();
     let depth: GraphTexture = targets.depth;
     let add_draw = |graph: &mut FrameGraph<'a>, name: &'static str, draw_args: GraphBuffer, is_first: bool| {
       let color_load: wgpu::LoadOp<wgpu::Color> = if is_first {

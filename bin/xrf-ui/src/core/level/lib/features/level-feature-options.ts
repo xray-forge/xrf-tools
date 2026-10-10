@@ -189,7 +189,7 @@ const LEVEL_MODE_FEATURE_KEYS: {
     "surfaceHeight",
     "surfaceRange",
   ],
-  rain: ["mode", "puddles", "reflectivity", "ripples"],
+  rain: ["distance", "isReliefFlooded", "mode", "puddles", "reflectivity", "ripples"],
   reflections: ["distance", "intensity", "mode", "quality"],
   volumetric: ["mode", "intensity", "anisotropy", "distance"],
 };

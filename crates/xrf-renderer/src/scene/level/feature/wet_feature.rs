@@ -109,6 +109,7 @@ impl WetFeature {
         0.0,
       ),
       gust: WetUniform::get_gust(lighting.wind.direction, lighting.wind.velocity),
+      relief: Vec4::new(f32::from(u8::from(settings.is_relief_flooded)), 0.0, 0.0, 0.0),
     };
     self.views = Some([
       weather_textures
@@ -199,6 +200,7 @@ impl WetFeature {
       albedo_target: handles.albedo,
       normal_target: handles.normal,
       material_target: handles.material,
+      relief_target: handles.relief,
       cover: covers.depth,
       cover_pyramid: covers.pyramid,
       surface_lowest,

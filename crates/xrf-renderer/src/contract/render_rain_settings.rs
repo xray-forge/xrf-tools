@@ -17,6 +17,9 @@ pub struct RenderRainSettings {
   pub ripples: f32,
   /// Metres out to which puddles are drawn, fading over the last sixth.
   pub distance: f32,
+  /// Whether the puddles fill the relief where the enhanced parallax marches the ground: water in its hollows first,
+  /// and the puddles' shores along them.
+  pub is_relief_flooded: bool,
 }
 
 impl Default for RenderRainSettings {
@@ -28,6 +31,7 @@ impl Default for RenderRainSettings {
       reflectivity: 0.4,
       ripples: 1.0,
       distance: 300.0,
+      is_relief_flooded: true,
     }
   }
 }

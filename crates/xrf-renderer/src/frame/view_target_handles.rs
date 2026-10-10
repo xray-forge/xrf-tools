@@ -14,6 +14,7 @@ pub struct ViewTargetHandles {
   pub normal: GraphTexture,
   pub material: GraphTexture,
   pub motion: GraphTexture,
+  pub relief: GraphTexture,
   pub depth: GraphTexture,
   pub light: GraphTexture,
   pub scene: GraphTexture,
@@ -42,6 +43,7 @@ impl ViewTargetHandles {
     let normal: GraphTexture = import("normal", &targets.normal);
     let material: GraphTexture = import("material", &targets.material);
     let motion: GraphTexture = import("motion", &targets.motion);
+    let relief: GraphTexture = import("relief", &targets.relief);
     let depth: GraphTexture = import("depth", &targets.depth);
     let light: GraphTexture = import("light", &targets.light);
     let scene: GraphTexture = import("scene", &targets.scene);
@@ -57,6 +59,7 @@ impl ViewTargetHandles {
       normal,
       material,
       motion,
+      relief,
       depth,
       light,
       scene,
@@ -87,7 +90,7 @@ impl ViewTargetHandles {
   }
 
   /// The G-buffer's colour targets, in the order its draws attach them.
-  pub fn get_gbuffer(&self) -> [GraphTexture; 4] {
-    [self.albedo, self.normal, self.material, self.motion]
+  pub fn get_gbuffer(&self) -> [GraphTexture; 5] {
+    [self.albedo, self.normal, self.material, self.motion, self.relief]
   }
 }

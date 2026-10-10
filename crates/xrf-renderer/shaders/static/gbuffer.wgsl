@@ -1,6 +1,7 @@
 enable wgpu_binding_array;
 
 #import "common/camera"
+#import "common/relief"
 #import "common/cut_out"
 #import "common/octahedral"
 #import "static/pulling"
@@ -58,6 +59,8 @@ struct GBufferOutput {
   @location(2) material: vec4<f32>,
   // How far the point moved on the screen since the last frame, as `camera_motion` measures it.
   @location(3) motion: vec2<f32>,
+  // How far the surface sinks below its relief's top where the enhanced parallax marches it (`ViewTargets::RELIEF`).
+  @location(4) sink: f32,
 };
 
 // A vertex placed in the world, swayed by as much of the wind as its rigidity takes, or by the enhanced motion as its
@@ -537,27 +540,23 @@ struct TerrainTexel {
   gloss: f32,
   cavity: f32,
   relief: f32,
+  // How far its blended layers sink below the relief's top where they march, nought where they do not.
+  sink: f32,
 };
 
 // The enhanced parallax, a terrain's and a steep surface's: the steps a march takes looking straight down, at least;
 // what is added to the eye's rise over the surface, so a grazing look reaches a bounded way along it rather than without
-// end; the share of the range it fades out over, ending there; the halvings a refined march settles by; how far the
+// end; the halvings a refined march settles by; how far the
 // lowest ground darkens at most; and the steps a shadow ray takes towards the sun and how sharply one passing under the
 // relief is shadowed. Then the band of height within which a terrain's layers blending by height share a texel.
 const RELIEF_STEPS_LEAST: f32 = 3.0;
 const RELIEF_GRAZING: f32 = 0.41;
-const RELIEF_FADE_SHARE: f32 = 0.2;
 const RELIEF_REFINES: u32 = 3u;
 const RELIEF_CAVITY: f32 = 0.125;
 const RELIEF_SHADOW_STEPS: u32 = 8u;
 const RELIEF_SHADOW_SHARPNESS: f32 = 8.0;
 const TERRAIN_BLEND_BAND: f32 = 0.25;
 
-// How much of the enhanced parallax stands at `distance`: whole short of the last of `range`, none at it. Its depth,
-// hollows and height blending all fade by it, so nothing it changes ends at a line.
-fn relief_fade(range: f32, distance: f32) -> f32 {
-  return 1.0 - smoothstep(range * (1.0 - RELIEF_FADE_SHARE), range, distance);
-}
 // Where a terrain's drawn surface stands in its relief, a share of its depth: at its heights' mean, which their solve
 // sets at a half, so its bumps rise above the ground as far as its hollows sink below it and the ground meets a wall's
 // foot where it is drawn, rather than all of it sunk under the top and the wall seen standing over it.
@@ -662,7 +661,7 @@ fn terrain_texel(
 ) -> TerrainTexel {
   let mask: vec4<f32> = sample_slot(surface.terrain.mask, at.uv, at.dx, at.dy);
   let weights: vec4<f32> = mask / max(dot(mask, vec4<f32>(1.0)), 1e-4);
-  var out: TerrainTexel = TerrainTexel(vec3<f32>(0.0), vec3<f32>(0.0), 0.0, 0.0, 1.0);
+  var out: TerrainTexel = TerrainTexel(vec3<f32>(0.0), vec3<f32>(0.0), 0.0, 0.0, 1.0, 0.0);
   let position: vec3<f32> = (camera.view * vec4<f32>(in.world, 1.0)).xyz;
   let range: f32 = camera.parallax.y;
   let is_marched: bool = has_surfaces_bit(SURFACES_ENHANCED) && -position.z < range;
@@ -747,6 +746,7 @@ fn terrain_texel(
     out.bump += (bump.xyz - 0.5) * weight;
     out.gloss += bump.w * weight;
     out.cavity += (1.0 - heights[layer] * heights[layer]) * weight;
+    out.sink += (1.0 - heights[layer]) * weight;
     terrain_moved += (coords[layer] - uv) * weight;
   }
 
@@ -757,6 +757,7 @@ fn terrain_texel(
 
   out.bump.z *= 0.5;
   out.cavity = select(0.0, out.cavity * RELIEF_CAVITY * camera.parallax_mix.y * fade, is_marched);
+  out.sink = select(0.0, out.sink, is_marched);
 
   if (is_lit) {
     let slot: u32 = surface.terrain.heights[dominant];
@@ -784,6 +785,7 @@ fn shade(in: GBufferVarying, base: vec4<f32>, at: Footprint) -> GBufferOutput {
 
   let is_terrain: bool = (surface.flags & SURFACE_IS_TERRAIN) != 0u;
   var relief: f32 = at.relief;
+  var sink: f32 = 0.0;
 
   diffuse *= 1.0 - at.cavity;
 
@@ -793,6 +795,7 @@ fn shade(in: GBufferVarying, base: vec4<f32>, at: Footprint) -> GBufferOutput {
 
     diffuse *= terrain.detail * 2.0 * (1.0 - terrain.cavity);
     relief = terrain.relief;
+    sink = terrain.sink;
     normal = normalize(mix(normal, normalize(in.tangent * terrain.bump.x + in.binormal * terrain.bump.y +
       in.normal * terrain.bump.z), weight));
     gloss = mix(DEFAULT_GLOSS, terrain.gloss, weight);
@@ -865,6 +868,7 @@ fn shade(in: GBufferVarying, base: vec4<f32>, at: Footprint) -> GBufferOutput {
     encode_marks(is_selected(in.entry), (surface.flags & SURFACE_IS_EMISSIVE) != 0u, is_flora, is_terrain, at.is_relief,
       in.flora.z > 0.5));
   out.motion = camera_motion(in.world, in.world + in.moved);
+  out.sink = sink;
 
   return out;
 }
