@@ -140,7 +140,7 @@ export const DEFAULT_RENDER_GRASS_SETTINGS: TRenderGrassSettings = {
   isEnabled: true,
   isShadowed: false,
   radius: 49,
-  shadowRadius: 25,
+  shadowRadius: 50,
   slopeLimit: 90,
 };
 

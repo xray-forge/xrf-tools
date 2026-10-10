@@ -42,7 +42,7 @@ impl Default for RenderGrassSettings {
       slope_limit: 90.0,
       is_aligned: false,
       is_shadowed: false,
-      shadow_radius: 25.0,
+      shadow_radius: 50.0,
     }
   }
 }
