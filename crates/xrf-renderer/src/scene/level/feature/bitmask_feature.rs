@@ -117,20 +117,27 @@ impl BitmaskFeature {
   /// searched for the light alone; accumulated with the last frame's into its histories while it accumulates, and
   /// filtered (into the second occlusion target, which combine reads). Answers the indirect light filtered while lit;
   /// nothing where it does not run. RTAO asked for before the scene's trace is built searches as VBAO does meanwhile.
+  /// Where the indirect light is traced in its place (`is_light_traced`), it searches for the occlusion alone.
   pub fn add_passes<'a>(
     &'a self,
     (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
     passes: LevelPasses<'a>,
     view: &'a ViewBinding,
     targets: ViewTargetHandles,
-    (traced, is_reconstructed): (Option<(TraceParameters<'a>, &'a wgpu::BindGroup)>, bool),
+    (traced, is_reconstructed, is_light_traced): (Option<(TraceParameters<'a>, &'a wgpu::BindGroup)>, bool, bool),
   ) -> Option<GraphTexture> {
     let asked: BitmaskSearch = self.search?;
     let trace: Option<(TraceParameters<'a>, &'a wgpu::BindGroup)> = traced.filter(|_| asked.is_traced);
     let search: BitmaskSearch = BitmaskSearch {
       is_traced: trace.is_some(),
+      is_lit: asked.is_lit && !is_light_traced,
       ..asked
     };
+
+    if !(search.is_occluding || search.is_lit) {
+      return None;
+    }
+
     // Raw: DLSS ray reconstruction denoises the traced occlusion in the frame, so combine reads it as traced.
     let is_raw: bool = trace.is_some() && is_reconstructed;
     let quality: RenderAmbientOcclusionQuality = self.quality;

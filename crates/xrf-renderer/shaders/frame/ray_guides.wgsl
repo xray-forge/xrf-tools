@@ -6,7 +6,8 @@
 
 // The guides DLSS ray reconstruction reads beside the frame, at the frame's size: each surface's specular albedo, the
 // environment BRDF over its reflectance as combine weighs its reflection; its world normal, its roughness in the fourth
-// channel; how far its reflection ray went before it met what it reflects; and how far it is reconstructed from this
+// channel; how far its reflection ray went before it met what it reflects, and its indirect light ray where that is
+// traced; and how far it is reconstructed from this
 // frame rather than its history, `BIAS_WATER` over a puddle's water, whose ripples and rain move its reflection in
 // place every frame, which the history would hold behind them.
 
@@ -23,6 +24,7 @@ struct RayGuides {
   @location(1) normals: vec4<f32>,
   @location(2) hit_distance: f32,
   @location(3) bias: f32,
+  @location(4) diffuse_hit_distance: f32,
 };
 
 @fragment
@@ -31,7 +33,7 @@ fn fs_ray_guides(in: FullscreenVarying) -> RayGuides {
   let depth: f32 = textureLoad(depth_target, texel, 0);
 
   if (depth <= 0.0) {
-    return RayGuides(vec4<f32>(0.0), vec4<f32>(0.0, 0.0, 0.0, 1.0), FAR_HIT, 0.0);
+    return RayGuides(vec4<f32>(0.0), vec4<f32>(0.0, 0.0, 0.0, 1.0), FAR_HIT, 0.0, FAR_HIT);
   }
 
   let albedo: vec4<f32> = textureLoad(albedo_target, texel, 0);
@@ -49,7 +51,9 @@ fn fs_ray_guides(in: FullscreenVarying) -> RayGuides {
   let size: vec2<i32> = vec2<i32>(textureDimensions(traced));
   let at: vec2<i32> = min(vec2<i32>(in.clip.xy * vec2<f32>(size) / camera.viewport.xy), size - 1);
   let met: f32 = textureLoad(traced, at, 0).a;
+  // The indirect light's texel over the pixel, traced at half size: none where its ray met nothing.
+  let bounced: f32 = textureLoad(diffuse_hits, min(texel / 2, vec2<i32>(textureDimensions(diffuse_hits)) - 1), 0).r;
 
   return RayGuides(vec4<f32>(specular, 1.0), vec4<f32>(world_normal, roughness), select(FAR_HIT, met, met >= 0.0),
-    BIAS_WATER * saturate(wet.g));
+    BIAS_WATER * saturate(wet.g), select(FAR_HIT, bounced, bounced > 0.0));
 }

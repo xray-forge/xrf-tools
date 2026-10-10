@@ -15,6 +15,7 @@ use crate::pass::fxaa_pass::FxaaPass;
 use crate::pass::glass_pass::GlassPass;
 use crate::pass::grass_colour_pass::GrassColourPass;
 use crate::pass::grass_pass::GrassPass;
+use crate::pass::indirect_trace_pass::IndirectTracePass;
 use crate::pass::light_volume_pass::LightVolumePass;
 use crate::pass::lights_pass::LightsPass;
 use crate::pass::material_table::MaterialTable;
@@ -65,6 +66,7 @@ pub struct LevelPasses<'a> {
   pub ambient_occlusion: &'a AmbientOcclusionPass,
   pub vbao: &'a VbaoPass,
   pub rtao: &'a RtaoPass,
+  pub indirect_trace: &'a IndirectTracePass,
   pub reflections: &'a ReflectionPass,
   pub scene_trace: &'a SceneTracePass,
   pub trace_sway: &'a TraceSwayPass,

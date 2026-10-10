@@ -224,6 +224,10 @@ const EMBEDDED: &[(&str, &str)] = &[
     "frame/reflection_scene",
     include_str!("../../shaders/frame/reflection_scene.wgsl"),
   ),
+  (
+    "frame/indirect_trace",
+    include_str!("../../shaders/frame/indirect_trace.wgsl"),
+  ),
   ("frame/particles", include_str!("../../shaders/frame/particles.wgsl")),
   ("frame/rain", include_str!("../../shaders/frame/rain.wgsl")),
   ("frame/sky_haze", include_str!("../../shaders/frame/sky_haze.wgsl")),
@@ -336,6 +340,10 @@ const EMBEDDED: &[(&str, &str)] = &[
   (
     "generated/frame/reflection_scene",
     include_str!("../../shaders/generated/frame/reflection_scene.wgsl"),
+  ),
+  (
+    "generated/frame/indirect_trace",
+    include_str!("../../shaders/generated/frame/indirect_trace.wgsl"),
   ),
   (
     "generated/frame/combine",

@@ -48,6 +48,9 @@ use crate::pass::froxel_uniform::FroxelUniform;
 use crate::pass::grass_colour_parameters::GrassColourParameters;
 use crate::pass::grass_occlusion_parameters::GrassOcclusionParameters;
 use crate::pass::grass_puddles_uniform::GrassPuddlesUniform;
+use crate::pass::indirect_trace_parameters::IndirectTraceParameters;
+use crate::pass::indirect_trace_pass::IndirectTracePass;
+use crate::pass::indirect_trace_uniform::IndirectTraceUniform;
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::light_trace_uniform::LightTraceUniform;
 use crate::pass::lighting_frame::LightingFrame;
@@ -60,6 +63,7 @@ use crate::pass::static_draw_parameters::StaticDrawParameters;
 use crate::pass::sun_parameters::SunParameters;
 use crate::pass::sun_pass::SunPass;
 use crate::pass::trace_parameters::TraceParameters;
+use crate::pass::vbao_pass::VbaoPass;
 use crate::pass::view_binding::ViewBinding;
 use crate::pass::water_draw::WaterDraw;
 use crate::pass::water_uniform::WaterUniform;
@@ -713,6 +717,75 @@ impl SceneView {
   /// light drawn into the light target, the binning's overflow read back, and the ambient occlusion and the indirect
   /// light searched and filtered. Answers the indirect light filtered, none where it is not gathered, and how much of
   /// the sun reaches each pixel.
+  /// Whether the indirect light is traced this frame in the screen-space bounce's place: asked for, where DLSS ray
+  /// reconstruction denoises the frame and the scene's trace is built (`is_scene_traced`).
+  fn is_indirect_traced(&self, passes: LevelPasses<'_>, is_scene_traced: bool) -> bool {
+    is_scene_traced
+      && passes.indirect_trace.is_traced()
+      && self.features.resolve.is_ray_reconstructed()
+      && self.features.bitmask.get_search().is_some_and(|search| search.is_lit)
+  }
+
+  /// Traces the indirect light at half the frame's size (`IndirectTracePass`): one ray a point, lit where it meets
+  /// something as the reflections light a hit, written as the bounce's filter writes its light. Answers the light and
+  /// how far each ray went.
+  fn add_indirect_trace<'a>(
+    &'a self,
+    (graph, runtime): (&mut FrameGraph<'a>, &mut GraphRuntime),
+    passes: LevelPasses<'a>,
+    view: &'a ViewBinding,
+    (targets, lit, sky): (ViewTargetHandles, LightingHandles<'a>, SkyParameters<'a>),
+    (trace, textures): (TraceParameters<'a>, &'a wgpu::BindGroup),
+  ) -> (GraphTexture, GraphTexture) {
+    let (width, height) = (targets.size.0.div_ceil(2), targets.size.1.div_ceil(2));
+    let light: GraphTexture = graph.create_texture(GraphTextureDescriptor::new_2d(
+      "indirect traced",
+      width,
+      height,
+      VbaoPass::LIGHT,
+    ));
+    let hits: GraphTexture = graph.create_texture(GraphTextureDescriptor::new_2d(
+      "indirect traced hits",
+      width,
+      height,
+      IndirectTracePass::HITS,
+    ));
+    let uniform: IndirectTraceUniform = IndirectTraceUniform::new(
+      self.features.resolve.get_noise_frame(),
+      self.features.bitmask.get_indirect_light().intensity,
+    );
+    let parameters: IndirectTraceParameters<'a> = IndirectTraceParameters {
+      normal_target: targets.normal,
+      depth_target: targets.depth,
+      material_target: targets.material,
+      lighting: lit.lighting,
+      material_lut: lit.material_lut,
+      lut_sampler: lit.lut_sampler,
+      indirect: runtime.push_uniform(&uniform),
+    };
+
+    graph
+      .add_raster_pass("indirect trace")
+      .parameters(&parameters)
+      .parameters(&sky)
+      .parameters(&trace)
+      .color(GraphColorAttachment::new(
+        light,
+        wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+      ))
+      .color(GraphColorAttachment::new(
+        hits,
+        wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+      ))
+      .record(move |context| {
+        passes
+          .indirect_trace
+          .record(context, view, (&parameters, &sky), (&trace, textures))
+      });
+
+    (light, hits)
+  }
+
   fn add_lighting_passes<'a>(
     &'a self,
     (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
@@ -807,7 +880,11 @@ impl SceneView {
       passes,
       view,
       targets,
-      (traced, self.features.resolve.is_ray_reconstructed()),
+      (
+        traced,
+        self.features.resolve.is_ray_reconstructed(),
+        self.is_indirect_traced(passes, traced.is_some()),
+      ),
     );
 
     (indirect_light, sun_seen)
@@ -1197,6 +1274,16 @@ impl SceneView {
 
       if let Some(sky) = sky {
         let mut traced_rays: Option<GraphTexture> = None;
+        // How far the traced indirect light's rays went, where it is traced.
+        let mut indirect_hits: Option<GraphTexture> = None;
+
+        if let Some(trace) = traced.filter(|_| scene_view.is_indirect_traced(passes, true)) {
+          let (light, hits) =
+            scene_view.add_indirect_trace((&mut *graph, &mut *runtime), passes, view, (handles, lit, sky), trace);
+
+          indirect_light = Some(light);
+          indirect_hits = Some(hits);
+        }
 
         if let Some((history, ends, traced)) = scene_view.features.reflections.add_passes(
           (&mut *graph, &mut *bindings, runtime),
@@ -1229,6 +1316,7 @@ impl SceneView {
           passes,
           view,
           (handles, lit.lighting, wet_surface, traced_rays.unwrap_or(untraced)),
+          (indirect_hits, unlit),
         );
       }
 
