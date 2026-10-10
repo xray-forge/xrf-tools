@@ -2,7 +2,7 @@ import { default as FlipIcon } from "@mui/icons-material/Flip";
 import { Button } from "@mui/material";
 import { ReactElement, useCallback } from "react";
 
-import { ERenderReflectionMode, RenderReflectionQuality } from "@/core/ipc/types/xrf-renderer";
+import { ERenderReflectionMode, RenderReflectionProbe, RenderReflectionQuality } from "@/core/ipc/types/xrf-renderer";
 import { ILevelFeatureOptions, TLevelReflectionOptions } from "@/core/level/lib/features";
 import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
@@ -12,6 +12,7 @@ import {
   formatReflectionDistance,
   formatReflectionIntensity,
   RENDER_REFLECTION_LIMITS,
+  RENDER_REFLECTION_PROBE_OPTIONS,
   RENDER_REFLECTION_QUALITY_OPTIONS,
 } from "@/core/render/lib/features";
 import { TRenderReflectionSettings } from "@/core/render/lib/settings/render-feature-settings";
@@ -28,7 +29,8 @@ interface ILevelReflectionsActionProps extends BaseComponentProps {
 
 /**
  * What glossy and wet surfaces reflect: the engine's sky cube alone, or screen-space reflections of what the frame
- * shows where a traced ray meets it; how hard they trace, how strongly surfaces reflect and how far a ray goes.
+ * shows where a traced ray meets it; how hard they trace, how strongly surfaces reflect, how far a ray goes and how
+ * fine the cube of the surroundings a ray meeting nothing reads is.
  */
 export function LevelReflectionsAction({
   "data-testid": dataTestId = "level-reflections-action",
@@ -74,6 +76,13 @@ export function LevelReflectionsAction({
             onChange={(quality: RenderReflectionQuality) => set({ quality })}
           />
 
+          <RenderValueChoice
+            label={"Surroundings"}
+            options={RENDER_REFLECTION_PROBE_OPTIONS}
+            value={value.probe}
+            onChange={(probe: RenderReflectionProbe) => set({ probe })}
+          />
+
           <RenderValueSlider
             label={"Intensity"}
             value={value.intensity}
@@ -88,6 +97,14 @@ export function LevelReflectionsAction({
             {...RENDER_REFLECTION_LIMITS.distance}
             format={formatReflectionDistance}
             onChange={(distance: number) => set({ distance })}
+          />
+
+          <RenderValueSlider
+            label={"Wet reach"}
+            value={value.reach}
+            {...RENDER_REFLECTION_LIMITS.reach}
+            format={formatReflectionDistance}
+            onChange={(reach: number) => set({ reach })}
           />
         </>
       ) : null}

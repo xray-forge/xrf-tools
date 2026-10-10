@@ -11,6 +11,7 @@ import {
   ERenderLightShadowFilter,
   ERenderRainMode,
   ERenderReflectionMode,
+  ERenderReflectionProbe,
   ERenderReflectionQuality,
   ERenderScale,
   ERenderWaterMode,
@@ -131,20 +132,25 @@ export const DEFAULT_RENDER_INDIRECT_LIGHT_SETTINGS: TRenderIndirectLightSetting
   radius: 3,
 };
 
-/** The engine's own wetting; enhanced, puddles over most of level terrain to 120 m, taking up to 40% reflection. */
+/** The engine's own wetting; enhanced, half the puddle sites filled to 120 m, each taking up to 40% reflection. */
 export const DEFAULT_RENDER_RAIN_SETTINGS: TRenderRainSettings = {
   distance: 120,
   mode: ERenderRainMode.ENGINE,
-  puddles: 0.8,
+  puddles: 1,
   reflectivity: 0.4,
   ripples: 1,
 };
 
-/** The engine's own: the cube alone, and for when it is traced, rays of 150 metres at high quality at full strength. */
+/**
+ * The engine's own: the cube alone, and for when it is traced, rays of 150 metres at high quality at full strength over
+ * ground wet to 250 metres.
+ */
 export const DEFAULT_RENDER_REFLECTION_SETTINGS: TRenderReflectionSettings = {
   distance: 150,
+  reach: 250,
   intensity: 1,
   mode: ERenderReflectionMode.ENGINE,
+  probe: ERenderReflectionProbe.FINE,
   quality: ERenderReflectionQuality.HIGH,
 };
 

@@ -19,6 +19,10 @@ pub struct ReflectionHistory {
   pub scene_view: wgpu::TextureView,
   pub depth: wgpu::Texture,
   pub depth_view: wgpu::TextureView,
+  /// This frame's depth as it stood before the grass drew: what the rays are walked over, so a bush's billboards
+  /// stand in for the volume they are and never stop a ray going for what lies behind them.
+  pub traced_depth: wgpu::Texture,
+  pub traced_depth_view: wgpu::TextureView,
   /// The set this frame writes.
   pub index: usize,
   /// Whether the set this frame reads holds a frame.
@@ -79,6 +83,7 @@ impl ReflectionHistory {
     };
     let (scene, scene_view) = keep("reflection source scene", ViewTargets::SCENE);
     let (depth, depth_view) = keep("reflection source depth", ViewTargets::DEPTH);
+    let (traced_depth, traced_depth_view) = keep("reflection traced depth", ViewTargets::DEPTH);
     let pair = |labels: [&str; 2], format: wgpu::TextureFormat| {
       let [(first, first_view), (second, second_view)] = labels.map(|label| create(label, format));
 
@@ -106,6 +111,8 @@ impl ReflectionHistory {
       scene_view,
       depth,
       depth_view,
+      traced_depth,
+      traced_depth_view,
       index: 0,
       is_valid: false,
       is_source_valid: false,

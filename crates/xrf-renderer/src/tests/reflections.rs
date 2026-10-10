@@ -5,6 +5,7 @@ use crate::contract::render_debug_view::RenderDebugView;
 use crate::contract::render_image_corrections::RenderImageCorrections;
 use crate::contract::render_rect::RenderRect;
 use crate::contract::render_reflection_mode::RenderReflectionMode;
+use crate::contract::render_reflection_probe::RenderReflectionProbe;
 use crate::contract::render_reflection_quality::RenderReflectionQuality;
 use crate::contract::render_reflection_settings::RenderReflectionSettings;
 use crate::contract::render_view_options::RenderViewOptions;
@@ -61,6 +62,7 @@ fn traces_only_enhanced_with_an_intensity_and_a_distance() {
   assert_eq!(defaults.intensity, 1.0);
   assert_eq!(defaults.distance, 150.0);
   assert_eq!(defaults.quality, RenderReflectionQuality::High);
+  assert_eq!(defaults.reach, 250.0);
   assert!(!defaults.is_drawn());
   assert!(enhanced().is_drawn());
   assert!(
@@ -117,6 +119,7 @@ fn blends_reflections_in_only_where_traced() {
   let vanilla: RenderLighting = lighting_of(XrayEngine::Vanilla);
   let ultra: RenderViewOptions = options_with(RenderReflectionSettings {
     quality: RenderReflectionQuality::Ultra,
+    probe: RenderReflectionProbe::Fine,
     ..enhanced()
   });
 
@@ -196,6 +199,7 @@ fn writes_the_settings_the_trace_reads() {
     &RenderReflectionSettings {
       intensity: 3.0,
       quality: RenderReflectionQuality::Ultra,
+      probe: RenderReflectionProbe::Fine,
       ..enhanced()
     },
     0,

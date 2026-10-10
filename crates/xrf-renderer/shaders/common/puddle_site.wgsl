@@ -4,6 +4,8 @@
 // How far the surface may rise and fall across a site and still hold water: a little, and a share of its radius, a
 // gentle slope of some four degrees, which a puddle's water still lies on.
 const SITE_LEVEL: vec2<f32> = vec2<f32>(0.15, 0.07);
+// A puddle's shape about its site: as long as wide at most by this, turned and stretched by the site's hash.
+const PUDDLE_STRETCH: f32 = 1.6;
 
 // A hash of a world cell, from nothing to one each way, three ways: `x` ranks the site's keep, `y` and `z` turn and
 // stretch its puddle.
@@ -24,8 +26,9 @@ fn site_jitter(cell: vec2<f32>) -> vec2<f32> {
   return fract((stirred.xx + stirred.yz) * stirred.zy);
 }
 
-// The world cell, whole metres over the cell size, of the first cell of a map whose corner is `corner`: the hashes
-// are of world cells, so a site keeps its puddle as the map moves.
+// The world cell, whole metres over the cell size, of the first cell of a map whose corner is `corner`: the hashes,
+// the spots and the lookups are all of world cells, so a site keeps its place and its puddle as the map moves, by a
+// step that need be no whole number of cells.
 fn site_origin(corner: vec2<f32>, cell: f32) -> vec2<f32> {
   return floor(corner / cell + 0.5);
 }

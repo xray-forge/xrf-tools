@@ -1,4 +1,5 @@
 #import "common/compute_grid"
+#import "common/puddle_site"
 #import "grass/records"
 
 // The passes planting the grass, as `CDetailManager` does. A ring of slots around the camera is its cache: a slot
@@ -32,6 +33,65 @@
 @group(1) @binding(7) var<storage, read_write> sorted: array<vec4<f32>>;
 // What the view plants with: its camera, its ring's reach and steps, and the settings.
 @group(1) @binding(8) var<uniform> params: GrassParams;
+// This frame's puddle sites (`LevelSurface::puddles`: a site's spot in `xy`, its height, its radius or none) and
+// where they stand (`pass/grass_puddles_uniform.rs`), which no tuft is planted in: grass does not grow under water.
+@group(1) @binding(9) var puddles: texture_2d<f32>;
+struct GrassPuddles {
+  surface: vec4<f32>,
+  shape: vec4<f32>,
+  state: vec4<f32>,
+};
+@group(1) @binding(10) var<uniform> puddle_window: GrassPuddles;
+
+// The share of a puddle's radius within which no tuft stands: short of its soft rim, where the ground is only damp.
+const PUDDLE_BARE: f32 = 0.85;
+
+// Whether a tuft's foot in the engine's space stands in a puddle's water this frame: the puddles in its cell and
+// those about it, each the stretched, turned blob the wetting draws about its site (`site_puddle` in
+// `frame/wet_patch.wgsl`, without the noise that moves its border), within `PUDDLE_BARE` of its radius.
+fn is_in_puddle(foot: vec3<f32>) -> bool {
+  if (puddle_window.state.x < 0.5) {
+    return false;
+  }
+
+  // Renderer space: the engine's with `z` negated.
+  let world: vec3<f32> = vec3<f32>(foot.x, foot.y, -foot.z);
+  let cell: f32 = puddle_window.shape.z;
+  let cells: f32 = floor(puddle_window.surface.z * 2.0 / cell);
+  let corner: vec2<f32> = puddle_window.surface.xy - puddle_window.surface.z;
+  let origin: vec2<f32> = site_origin(corner, cell);
+  let at: vec2<f32> = floor(world.xz / cell) - origin;
+
+  for (var y: i32 = -1; y <= 1; y++) {
+    for (var x: i32 = -1; x <= 1; x++) {
+      let near: vec2<f32> = at + vec2<f32>(f32(x), f32(y));
+
+      if (any(near < vec2<f32>(0.0)) || any(near >= vec2<f32>(cells))) {
+        continue;
+      }
+
+      let site: vec4<f32> = textureLoad(puddles, vec2<i32>(near), 0);
+
+      if (site.w <= 0.0 || length(world.xz - site.xy) > site.w * 2.0) {
+        continue;
+      }
+
+      let hash: vec3<f32> = site_hash(origin + near);
+      let turn: f32 = hash.y * 6.2831853;
+      let across: vec2<f32> = vec2<f32>(cos(turn), sin(turn));
+      let offset: vec2<f32> = world.xz - site.xy;
+      let stretched: vec2<f32> = vec2<f32>(dot(offset, across), dot(offset, vec2<f32>(-across.y, across.x))) /
+        vec2<f32>(1.0, mix(1.0, 1.0 / PUDDLE_STRETCH, hash.z));
+      let band: f32 = SITE_LEVEL.x + SITE_LEVEL.y * site.w + 0.15;
+
+      if (length(stretched) < site.w * PUDDLE_BARE && abs(world.y - site.z) < band) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
 
 // Slots a frame plants at most: `dm_max_decompress`, the engine's own seven on the CPU, grown for a GPU that plants
 // them side by side. A step of the camera stales a row of the ring, well within it; a jump stales the whole ring, which
@@ -459,6 +519,11 @@ fn cull(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workgroups) g
     let is_waving: bool = models[model].is_waving > 0.5 && area > params.discard_below * 16.0;
 
     if (is_outside(placed.xyz + vec3<f32>(0.0, shape.w * shrunk * 0.5, 0.0), shape.z * shrunk)) {
+      continue;
+    }
+
+    // Nothing grows under a puddle's water.
+    if (is_in_puddle(placed.xyz)) {
       continue;
     }
 

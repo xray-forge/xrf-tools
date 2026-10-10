@@ -10,6 +10,7 @@ import {
   ERenderLightShadowFilter,
   ERenderRainMode,
   ERenderReflectionMode,
+  ERenderReflectionProbe,
   ERenderReflectionQuality,
   ERenderScale,
   RenderAmbientOcclusionMethod,
@@ -23,6 +24,7 @@ import {
   RenderLightShadowFilter,
   RenderRainMode,
   RenderReflectionMode,
+  RenderReflectionProbe,
   RenderReflectionQuality,
   RenderScale,
 } from "@/core/ipc/types/xrf-renderer";
@@ -322,9 +324,9 @@ export const RENDER_RAIN_LIMITS = {
 } as const;
 
 const RENDER_RAIN_MODE_DESCRIPTIONS: Readonly<Record<RenderRainMode, string>> = {
-  [ERenderRainMode.ENGINE]: "The game's own: splashes and running water near the camera, wet only while it rains.",
+  [ERenderRainMode.ENGINE]: "The game's own wetting alone: splashes and running water near the camera.",
   [ERenderRainMode.ENHANCED]:
-    "Surfaces wet up and dry over time, rippling and running with water, and puddles gather on flat, low ground.",
+    "Puddles gather on flat, low ground over the game's own wetting, filling with the rain and draining after.",
 };
 
 /**
@@ -344,6 +346,7 @@ export function formatRainShare(share: number): string {
 export const RENDER_REFLECTION_LIMITS = {
   distance: toRenderLimits(RENDER_FEATURE_SCHEMA.reflections.distance, 5),
   intensity: toRenderLimits(RENDER_FEATURE_SCHEMA.reflections.intensity, 0.05),
+  reach: toRenderLimits(RENDER_FEATURE_SCHEMA.reflections.reach, 25),
 } as const;
 
 const RENDER_REFLECTION_MODE_DESCRIPTIONS: Readonly<Record<RenderReflectionMode, string>> = {
@@ -380,6 +383,28 @@ const RENDER_REFLECTION_QUALITY_NAMES: Readonly<Record<RenderReflectionQuality, 
 export function describeRenderReflectionQuality(quality: RenderReflectionQuality): string {
   return RENDER_REFLECTION_QUALITY_NAMES[quality];
 }
+
+const RENDER_REFLECTION_PROBE_NAMES: Readonly<Record<RenderReflectionProbe, string>> = {
+  [ERenderReflectionProbe.COARSE]: "256 texels",
+  [ERenderReflectionProbe.FINE]: "512 texels",
+  [ERenderReflectionProbe.FINEST]: "1024 texels",
+};
+
+/**
+ * @param probe - A surroundings cube size.
+ * @returns Its name as the settings say it: texels a side of a face.
+ */
+export function describeRenderReflectionProbe(probe: RenderReflectionProbe): string {
+  return RENDER_REFLECTION_PROBE_NAMES[probe];
+}
+
+/** The surroundings cube sizes, coarsest first. */
+export const RENDER_REFLECTION_PROBE_OPTIONS: ReadonlyArray<IRenderChoiceOption<RenderReflectionProbe>> = Object.values(
+  ERenderReflectionProbe
+).map((value: RenderReflectionProbe) => ({
+  label: describeRenderReflectionProbe(value),
+  value,
+}));
 
 /** The reflection qualities, in the order they are offered. */
 export const RENDER_REFLECTION_QUALITY_OPTIONS: ReadonlyArray<IRenderChoiceOption<RenderReflectionQuality>> =

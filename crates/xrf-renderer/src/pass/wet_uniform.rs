@@ -27,4 +27,8 @@ pub struct WetUniform {
   /// Metres out to which puddles are drawn, how full they are, how stormy the rain has been, and how soaked a long
   /// rain has left the level.
   pub puddle_state: Vec4,
+  /// One where the reflections are traced, so the wetness wets the gloss as far as the rain reaches for them to
+  /// trace, rather than over the metres the engine fades its splashes over; then the metres it reaches; the rest
+  /// unused.
+  pub reach: Vec4,
 }

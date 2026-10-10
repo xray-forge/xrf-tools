@@ -111,6 +111,11 @@ struct SkyPrefilter {
   shape: vec4<f32>,
 }
 
+struct Surroundings {
+  to_sun: vec4<f32>,
+  face: vec4<f32>,
+}
+
 struct ParticleVertex {
   position: vec3<f32>,
   color: u32,
@@ -246,6 +251,7 @@ struct Wet {
   surface_shape: vec4<f32>,
   puddles: vec4<f32>,
   puddle_state: vec4<f32>,
+  reach: vec4<f32>,
 }
 
 struct Thunder {

@@ -1,4 +1,4 @@
-use glam::Vec3;
+use glam::{Vec3, Vec4};
 
 use crate::camera::camera_view::CameraView;
 use crate::contract::render_shadow_settings::RenderShadowSettings;
@@ -15,6 +15,8 @@ pub struct ShadowFrame<'a> {
   pub settings: &'a RenderShadowSettings,
   /// Where the sun's light travels.
   pub sun_direction: Vec3,
+  /// What a camera off the viewport draws the static scene with: textured, bumped, the hemisphere's strength.
+  pub switches: Vec4,
   /// How the trees sway, which has a still map drawn again where it shows.
   pub sway: ShadowSway<'a>,
   pub params: &'a StaticCullParams,

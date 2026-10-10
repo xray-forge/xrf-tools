@@ -34,6 +34,7 @@ use crate::contract::render_particles_report::RenderParticlesReport;
 use crate::contract::render_pool_use::RenderPoolUse;
 use crate::contract::render_rain_settings::RenderRainSettings;
 use crate::contract::render_rect::RenderRect;
+use crate::contract::render_reflection_probe::RenderReflectionProbe;
 use crate::contract::render_selection::RenderSelection;
 use crate::contract::render_selection_target::RenderSelectionTarget;
 use crate::contract::render_shadow_settings::RenderShadowSettings;
@@ -84,6 +85,7 @@ use crate::pass::fog_scattering_uniform::FogScatteringUniform;
 use crate::pass::foliage_wind_values::FoliageWindValues;
 use crate::pass::fsr_uniform::FsrUniform;
 use crate::pass::fxaa_parameters::FxaaParameters;
+use crate::pass::grass_puddles_uniform::GrassPuddlesUniform;
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::light_binning_parameters::LightBinningParameters;
 use crate::pass::lighting_frame::LightingFrame;
@@ -144,6 +146,7 @@ use crate::scene::level::scene_output::SceneOutput;
 use crate::scene::level::scene_renderer::SceneRenderer;
 use crate::scene::level::shadow_frame::ShadowFrame;
 use crate::scene::level::shadow_sway::ShadowSway;
+use crate::scene::level::surroundings_cube::SurroundingsCube;
 use crate::scene::level::view_info::ViewInfo;
 use crate::scene::level::view_state::ViewState;
 use crate::scene::level::weather_model_buffers::WeatherModelBuffers;
@@ -326,10 +329,17 @@ impl SceneView {
       (sky, self.info.sun_sprite.as_ref().map(|(texture, _)| texture.as_str())),
       &scene.environments.1,
     ));
+    // The surroundings cube at the size the settings ask, made again where that changed.
+    let probe: RenderReflectionProbe = options.features.reflections.probe;
+
+    if self.state.sky_prefilter.as_ref().is_some_and(|it| it.probe != probe) {
+      self.state.sky_prefilter = None;
+    }
+
     self
       .state
       .sky_prefilter
-      .get_or_insert_with(|| SkyPrefilter::new(device));
+      .get_or_insert_with(|| SkyPrefilter::new(device, probe));
 
     // The ambient effects blow the wind the grass, the rain and the campfires read this frame.
     let gust: AmbientGust = scene.gust;
@@ -460,6 +470,14 @@ impl SceneView {
         gust.strength,
       ),
       &self.state.foliage_values,
+      // Where the puddles stood last frame, which no tuft is planted in: the wet readies after the grass.
+      (
+        &self.renderer.level_surface.puddles,
+        GrassPuddlesUniform::new(
+          self.renderer.level_surface.get_window(),
+          self.info.is_wet && self.info.wet.is_enhanced > 0.5 && self.info.wet.puddle_state.y > 0.0,
+        ),
+      ),
     );
     scene.lights.prepare(
       queue,
@@ -475,6 +493,12 @@ impl SceneView {
     );
     self.info.camera = *view;
     self.info.sun_direction = lighting.get_sun_direction();
+    self.info.switches = Vec4::new(
+      1.0,
+      options.mode.is_bumped as u32 as f32,
+      options.features.hemi_strength,
+      0.0,
+    );
     self.info.shadow_settings = options.features.shadows.clone();
     self.info.ambient_occlusion = options.features.ambient_occlusion;
     self.info.indirect_light = options.features.indirect_light;
@@ -577,6 +601,7 @@ impl SceneView {
       shadows,
       rain_cover,
       level_surface,
+      surroundings,
       ..
     } = renderer;
     let statics: &StaticScene = &scene.statics;
@@ -585,18 +610,26 @@ impl SceneView {
       camera: &info.camera,
       settings: &info.shadow_settings,
       sun_direction: info.sun_direction,
+      switches: info.switches,
       sway: to_sway(statics, info.sway),
       params: &info.cull,
       textures,
     };
 
     shadows.prepare_cascades(device, queue, encoder, view_layout, &frame);
+    // The cube is for the traced reflections alone; the engine's reflect its own.
+    if info.reflection_settings.is_drawn() {
+      surroundings.prepare(device, queue, encoder, &frame, info.reflection_settings.probe);
+    } else {
+      surroundings.rest();
+    }
 
     if info.rain_draw.is_some() || info.is_wet {
       rain_cover.prepare(device, queue, encoder, &frame);
     }
 
-    if info.is_wet && info.wet.is_enhanced > 0.5 {
+    // The puddles seat on it, and the far wetting asks it what stands over a point.
+    if info.is_wet && (info.wet.is_enhanced > 0.5 || info.wet.reach.x > 0.5) {
       level_surface.prepare(device, queue, encoder, &frame);
     }
   }
@@ -616,6 +649,7 @@ impl SceneView {
       camera: &self.info.camera,
       settings: &self.info.shadow_settings,
       sun_direction: self.info.sun_direction,
+      switches: self.info.switches,
       sway: to_sway(statics, self.info.sway),
       params: &self.info.cull,
       textures,
@@ -1098,13 +1132,13 @@ impl SceneView {
     passes: LevelPasses<'a>,
     view: &'a ViewBinding,
     (targets, lit, wet_surface): (ViewTargetHandles, LightingHandles<'a>, GraphTexture),
-    source: Option<(GraphTexture, GraphTexture)>,
+    source: Option<((GraphTexture, GraphTexture), GraphTexture)>,
     sky: &SkyParameters<'a>,
   ) -> Option<(GraphTexture, GraphTexture)> {
     self.info.reflection?;
 
     let history: &'a ReflectionHistory = self.state.reflections.as_ref()?;
-    let (source_scene, source_depth): (GraphTexture, GraphTexture) = source?;
+    let ((source_scene, source_depth), traced_depth): ((GraphTexture, GraphTexture), GraphTexture) = source?;
     let sky: SkyParameters<'a> = *sky;
     let reflection: UniformBinding<ReflectionUniform> = runtime.push_uniform(&self.info.reflections);
     let empty: GraphTexture = bindings.import_view(graph, "reflections empty", passes.reflections.get_empty());
@@ -1118,7 +1152,7 @@ impl SceneView {
       .collect();
     let nearest_depth: GraphTexture = bindings.import_view(graph, "nearest depth pyramid", &pyramid.view);
     let first: PyramidDepthParameters = PyramidDepthParameters {
-      source_depth: targets.depth,
+      source_depth: traced_depth,
       target_level: level_views[0],
     };
     let levels: Vec<PyramidLevelParameters> = level_views
@@ -1164,6 +1198,7 @@ impl SceneView {
       normal_target: targets.normal,
       material_target: targets.material,
       depth_target: targets.depth,
+      traced_depth,
       light_target: targets.light,
       occlusion_target: targets.occlusion[0],
       wet_surface,
@@ -1254,15 +1289,23 @@ impl SceneView {
     Some((written, ends))
   }
 
-  /// Adds the passes filling the prefiltered sky cube this frame, a mip each: the first from the sky's cubes as the
-  /// sky is drawn, each after it from the mips before it over its roughness's lobe.
+  /// Adds the passes filling the prefiltered sky cube this frame, a mip each: the first the surroundings cube's face
+  /// drawn this frame, the level around the camera lit with the sky behind, or the sky's cubes alone as the sky is
+  /// drawn where none is; each after it from the mips before it over its roughness's lobe.
+  #[allow(clippy::too_many_arguments)]
   fn add_sky_prefilter_passes<'a>(
     (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
     passes: LevelPasses<'a>,
     sky: &SkyParameters<'a>,
     prefilter: &'a SkyPrefilter,
-    lighting: UniformBinding<LightingUniform>,
+    lit: &LightingHandles<'a>,
+    surroundings: Option<(
+      &'a SurroundingsCube,
+      &StaticSceneHandles,
+      (&'a StaticCullParams, &'a wgpu::BindGroup),
+    )>,
   ) {
+    let (lighting, exposure): (UniformBinding<LightingUniform>, GraphBuffer) = (lit.lighting, lit.exposure);
     let empty: GraphTexture = bindings.import_view(&mut *graph, "sky prefilter none", passes.sky_prefilter.get_empty());
 
     for (index, level) in prefilter.levels.iter().enumerate() {
@@ -1270,18 +1313,35 @@ impl SceneView {
         bindings.import_view(&mut *graph, "sky prefilter before", before)
       });
       let faces: GraphTexture = bindings.import_view(&mut *graph, "sky prefilter level", &level.target);
+
+      if let (0, Some((cube, scene, cull))) = (index, surroundings) {
+        cube.add_passes(
+          (&mut *graph, &mut *bindings, runtime),
+          passes,
+          scene,
+          cull,
+          (lit, sky),
+          faces,
+        );
+
+        continue;
+      }
       let settings: UniformBinding<SkyPrefilterUniform> = runtime.push_uniform(&SkyPrefilterUniform::new(
         index as u32,
-        SkyPrefilter::LEVELS,
-        (level.size, SkyPrefilter::SIZE),
+        prefilter.levels.len() as u32,
+        (level.size, prefilter.probe.get_size()),
         SkyPrefilterPass::SAMPLES,
       ));
       let parameters: SkyPrefilterParameters = SkyPrefilterParameters {
         sky_cube_0: sky.sky_cube_0,
         sky_cube_1: sky.sky_cube_1,
+        sky_clouds_0: sky.sky_clouds_0,
+        sky_clouds_1: sky.sky_clouds_1,
         sky_clamp: sky.sky_clamp,
+        sky_repeat: sky.sky_repeat,
         source,
         lighting,
+        exposure: StorageValue::new(exposure),
         settings,
         faces,
       };
@@ -1740,6 +1800,8 @@ impl SceneView {
   ) {
     let settings: RenderRainSettings = options.features.rain;
     let is_enhanced: bool = settings.is_enhanced();
+    // The traced reflections want the wet gloss as far as the rain reaches, whatever the rain's mode.
+    let is_far: bool = options.features.reflections.is_drawn();
 
     if !options.mode.is_lit || (falling.is_none() && !(is_enhanced && wetness.max(fill) > 0.0)) {
       return;
@@ -1759,6 +1821,12 @@ impl SceneView {
       surface_shape: self.renderer.level_surface.get_window().1,
       puddles: Vec4::new(wetness, settings.puddles, settings.reflectivity, settings.ripples),
       puddle_state: Vec4::new(settings.distance.max(0.0), fill, storm, soak),
+      reach: Vec4::new(
+        f32::from(u8::from(is_far)),
+        options.features.reflections.reach.max(0.0),
+        0.0,
+        0.0,
+      ),
     };
     self.info.weather_views.wet = Some([
       weather_textures
@@ -1976,6 +2044,14 @@ impl SceneView {
       is_occluding,
     );
 
+    // The depth before the grass draws, kept for the reflections to walk their rays over.
+    let traced_depth: Option<GraphTexture> = scene_view.state.reflections.as_ref().map(|history| {
+      let kept: GraphTexture = bindings.import_view(&mut *graph, "reflection traced depth", &history.traced_depth_view);
+
+      Self::add_copy(&mut *graph, "reflection traced depth", handles.depth, kept);
+
+      kept
+    });
     let stats_args: GraphBuffer = statics.args;
 
     // The cull's counts, read back for a report a frame or more later: an effect the graph cannot see.
@@ -2050,7 +2126,7 @@ impl SceneView {
     // The level's surface seen from overhead, its lowest heights, its puddle sites and its water, which the enhanced
     // wetting places its puddles by.
     let [surface_lowest, puddles, surface_water]: [GraphTexture; 3] = match wet {
-      Some(wet) if scene_view.info.wet.is_enhanced > 0.5 => {
+      Some(wet) if scene_view.info.wet.is_enhanced > 0.5 || scene_view.info.wet.reach.x > 0.5 => {
         let water: UniformBinding<WaterUniform> = runtime.push_uniform(scene_view.state.water.get_uniform());
         let keep: PuddleKeepInputs = PuddleKeepInputs {
           wet,
@@ -2182,12 +2258,17 @@ impl SceneView {
         (Some(views), Some(prefilter)) => {
           let sky: SkyParameters = passes.sky.import((views, &prefilter.cube), &mut *graph, &mut *bindings);
 
+          let surroundings: &SurroundingsCube = &scene_view.renderer.surroundings;
+
           Self::add_sky_prefilter_passes(
             (&mut *graph, &mut *bindings, runtime),
             passes,
             &sky,
             prefilter,
-            lit.lighting,
+            &lit,
+            surroundings
+              .is_due()
+              .then_some((surroundings, &statics, (&scene_view.info.cull, texture_group))),
           );
 
           Some(sky)
@@ -2227,7 +2308,7 @@ impl SceneView {
           passes,
           view,
           (handles, lit, wet_surface),
-          source,
+          source.zip(traced_depth),
           &sky,
         ) {
           reflections = Some(history);

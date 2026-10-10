@@ -66,6 +66,7 @@ pub(crate) mod render_rain_mode;
 pub(crate) mod render_rain_settings;
 pub(crate) mod render_rect;
 pub(crate) mod render_reflection_mode;
+pub(crate) mod render_reflection_probe;
 pub(crate) mod render_reflection_quality;
 pub(crate) mod render_reflection_settings;
 pub(crate) mod render_scale;

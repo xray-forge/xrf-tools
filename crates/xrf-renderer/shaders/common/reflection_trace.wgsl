@@ -1,4 +1,5 @@
 #import "common/camera"
+#import "common/octahedral"
 #import "common/reflection_end"
 
 // Screen-space reflection rays: a reflected direction drawn from a surface's GGX lobe, walked across the screen up and
@@ -11,10 +12,14 @@
 // Water's reflectance head on, from its index of refraction of 1.33, and a dry dielectric's.
 const COAT_F0: f32 = 0.02;
 const DIELECTRIC_F0: f32 = 0.04;
-// The least of a puddle a point is for its water to be traced as a mirror.
+// The least of a puddle a point is for its water to be the surface a reflection leaves: level under its rings for the
+// denoiser, its normal the trace's block's.
 const PUDDLE_LEAST: f32 = 0.01;
 // The pyramid's coarsest level a ray climbs to.
 const RAY_TOP_LEVEL: i32 = 6;
+// Finest cells a ray may stand behind a surface in a row and still be passing behind something thin: a wire or a
+// lattice bar is a cell or two across at the traced size, a twig a few; a trunk or a wall is many.
+const PASS_CELLS: u32 = 4u;
 const RAY_FAR: f32 = 3.402823466e+38;
 const PI: f32 = 3.14159265358979;
 
@@ -51,7 +56,7 @@ fn ggx_visible_normal(view: vec3<f32>, alpha: f32, numbers: vec2<f32>) -> vec3<f
 }
 
 // The direction a ray from a surface leaves in, in view space: the view's reflection about a microfacet normal drawn
-// from the surface's lobe, or about its own normal where it is a mirror.
+// from the surface's lobe at `alpha` (`lobe_alpha` of its roughness), or about its own normal where it is a mirror.
 fn reflected_direction(toward: vec3<f32>, normal: vec3<f32>, alpha: f32, numbers: vec2<f32>) -> vec3<f32> {
   if (alpha < 1e-4) {
     return reflect(toward, normal);
@@ -92,10 +97,13 @@ fn ray_cell_depth(pyramid: texture_2d<f32>, cell: vec2<i32>, level: i32) -> f32 
 // level; in front of the cell's nearest depth it moves to the cell's far edge and climbs a level, so empty space is
 // crossed in few steps; behind it, it descends a level without moving, until at the finest level it stands behind one
 // texel's surface. There it has met the surface where it lies behind it by no more than `thickness` (metres, then a
-// share of the distance); further behind, nothing on the screen can say what it met, a twig, a wire or a bush's crown
-// standing nearer than what the ray went for, and the walk ends uncertain: the miss chain answers, never a guess from
-// the pixels about it. Its second part is whether it met a surface, never where it left the screen, ran out of
-// crossings or ended uncertain.
+// share of the distance). Further behind, it has passed behind something nearer than what it went for: a wire, a
+// lattice bar or a twig, which the ray goes on past, out from behind it within `PASS_CELLS` finest cells; or a wall,
+// a hill or a bush's crown it stays behind, where nothing on the screen can say what it met, and the walk ends
+// uncertain where it first went behind: the miss chain answers, never a guess from the pixels about it. Without the
+// passing, every ray climbing to the sky over a power line ended uncertain at the wire and the cube answered for the
+// whole puddle under the lines. Its second part is whether it met a surface, never where it left the screen, ran out
+// of crossings or ended uncertain.
 struct RayWalk {
   position: vec3<f32>,
   is_met: bool,
@@ -120,6 +128,9 @@ fn ray_walk(pyramid: texture_2d<f32>, origin: vec3<f32>, direction: vec3<f32>, c
   // Whether the last step landed on a cell's depth plane: the ray crossed into the surface rather than entering the
   // cell already behind it.
   var was_depth_crossed: bool = false;
+  // Finest cells the ray has stood behind a surface in a row, and where it first went behind.
+  var passed: u32 = 0u;
+  var uncertain: RayWalk = RayWalk(position, false, END_UNCERTAIN, 0.0);
 
   while (count < crossings && level >= 0) {
     // Past its reach or the far plane, nothing is looked for; off the screen, there is nothing left to meet.
@@ -149,23 +160,34 @@ fn ray_walk(pyramid: texture_2d<f32>, origin: vec3<f32>, direction: vec3<f32>, c
             max(behind, 0.0));
         }
 
-        return RayWalk(position, false, END_UNCERTAIN, behind);
+        // Further behind: on past a thin surface to the cell's far edge, or uncertain where the ray stays behind.
+        if (passed == 0u) {
+          uncertain = RayWalk(position, false, END_UNCERTAIN, behind);
+        }
+
+        passed++;
+
+        if (passed > PASS_CELLS) {
+          return uncertain;
+        }
+      } else {
+        level -= 1;
+        cells *= 2.0;
+        count++;
+
+        continue;
       }
-
-      level -= 1;
-      cells *= 2.0;
-      count++;
-
-      continue;
+    } else {
+      passed = 0u;
     }
 
-    // In front of the cell's nearest: to its far edge, or onto its depth plane where the ray reaches that first (a
-    // reversed depth: the plane stops only a ray going away from the camera), and up a level, since the cells about
-    // this one are likelier empty too.
+    // In front of the cell's nearest, or passing behind a thin one: to its far edge, or onto its depth plane where the
+    // ray in front reaches that first (a reversed depth: the plane stops only a ray going away from the camera), and
+    // up a level, since the cells about this one are likelier empty too.
     let plane: vec2<f32> = (floor(at) + floor_offset) / cells + nudge;
     var crossing: vec3<f32> = vec3<f32>(plane, surface) * inverse - origin * inverse;
 
-    crossing.z = select(RAY_FAR, crossing.z, direction.z < 0.0);
+    crossing.z = select(RAY_FAR, crossing.z, direction.z < 0.0 && is_above);
 
     let nearest: f32 = min(min(crossing.x, crossing.y), crossing.z);
 
@@ -197,13 +219,39 @@ fn ray_walk(pyramid: texture_2d<f32>, origin: vec3<f32>, direction: vec3<f32>, c
 const METAL_GLOSS: vec2<f32> = vec2<f32>(0.6, 0.9);
 // The roughness past which a surface is not traced and reflects the prefiltered sky alone.
 const TRACED_ROUGHNESS_LIMIT: f32 = 0.5;
-// Mips of the prefiltered sky cube past its first, the last at roughness one.
-const SKY_PREFILTER_MIPS: f32 = 5.0;
 
-// How a surface's lobe is traced: a mirror wherever a puddle stands, its water traced along one ray and kept unblurred
-// by the denoiser, its rim fading by how much of it there is rather than roughening; its own roughness elsewhere.
-fn traced_roughness(gloss: f32, puddle: f32) -> f32 {
-  return select(reflection_roughness(gloss), 0.0, puddle > PUDDLE_LEAST);
+// The variance a G-buffer normal has across a pixel, as a slope's: its differences to the next texel each way,
+// scaled by one over pi (an independent take on Kaplanyan's 2016 stable specular highlights, his two sigma squared)
+// and held to `GEOMETRIC_MOST` of the lobe's alpha squared, under which the roughness stays traceable, so the lobe
+// widens over a bumpy normal map seen at grazing instead of the sky sparkling in each bump as foil, and a wet road's
+// reflection blurs rather than goes.
+const GEOMETRIC_SCALE: f32 = 0.318;
+const GEOMETRIC_MOST: f32 = 0.04;
+
+fn geometric_variance(normals: texture_2d<f32>, texel: vec2<i32>) -> f32 {
+  let last: vec2<i32> = vec2<i32>(textureDimensions(normals)) - 1;
+  let here: vec3<f32> = octahedral_decode(textureLoad(normals, texel, 0).xy);
+  let across: vec3<f32> = octahedral_decode(textureLoad(normals, min(texel + vec2<i32>(1, 0), last), 0).xy) - here;
+  let down: vec3<f32> = octahedral_decode(textureLoad(normals, min(texel + vec2<i32>(0, 1), last), 0).xy) - here;
+
+  return min(GEOMETRIC_SCALE * (dot(across, across) + dot(down, down)), GEOMETRIC_MOST);
+}
+
+// A surface's roughness for its reflection's lobe: the engine's gloss as `reflection_roughness` reads it, the engine's
+// wetness and a puddle's water's written into the gloss by the wet patch, widened by the variance of the ripples the
+// patch's filtering folded away (Toksvig), so a far puddle's rings soften its reflection instead of vanishing. The
+// variance is a slope's, which adds to the lobe's alpha squared, and what comes back is the roughness that alpha is
+// the square of.
+fn traced_roughness(gloss: f32, variance: f32) -> f32 {
+  let alpha: f32 = lobe_alpha(reflection_roughness(gloss));
+
+  return sqrt(sqrt(alpha * alpha + max(variance, 0.0)));
+}
+
+// The GGX lobe's alpha for a roughness: its square, as the Disney and Unreal convention has it, so a roughness of
+// 0.02 is a lobe a fiftieth of a degree wide and not a degree, which read as the whole puddle jittering.
+fn lobe_alpha(roughness: f32) -> f32 {
+  return roughness * roughness;
 }
 
 // A surface's reflectance head on: a dielectric's, lifted towards its own colour as its gloss passes the metals', and
@@ -232,14 +280,51 @@ fn specular_occlusion(facing: f32, occlusion: f32, roughness: f32) -> f32 {
   return saturate(pow(saturate(facing) + occlusion, exp2(-16.0 * roughness - 1.0)) - 1.0 + occlusion);
 }
 
-// The sky a reflection reads where it meets nothing, along a renderer-space direction at a roughness: the prefiltered
-// cube at the mip the roughness names.
-fn prefiltered_sky(cube: texture_cube<f32>, cube_sampler: sampler, direction: vec3<f32>, roughness: f32) -> vec3<f32> {
-  return textureSampleLevel(cube, cube_sampler, direction, saturate(roughness) * SKY_PREFILTER_MIPS).rgb;
+// Times a reflection re-aims through the surroundings cube's depth; and the metres past which a texel of it is as far
+// as the sky, re-aimed by nothing.
+const PARALLAX_STEPS: u32 = 3u;
+const PARALLAX_FAR: f32 = 1000.0;
+
+// The direction a reflection reads the surroundings cube along: not its own from the camera, which pasted every
+// surrounding tree at infinity, so a puddle's tree swung across it as the camera moved, but from the cube's centre
+// through the point the ray would meet. `origin` is the reflecting point's offset from the camera
+// in renderer space, `direction` the ray's; the cube's first mip holds each texel's metres from the camera (none for
+// the sky), and the point is found by a few re-aims: the ray's length to the depth read along the last aim, projected
+// onto the ray. Over the sky, or where the cube holds no depth, the direction is the ray's own.
+fn surroundings_direction(cube: texture_cube<f32>, cube_sampler: sampler, origin: vec3<f32>, direction: vec3<f32>) -> vec3<f32> {
+  var aim: vec3<f32> = direction;
+  var along: f32 = textureSampleLevel(cube, cube_sampler, aim, 0.0).a;
+
+  if (along <= 0.0 || along >= PARALLAX_FAR) {
+    return direction;
+  }
+
+  for (var step: u32 = 0u; step < PARALLAX_STEPS; step++) {
+    aim = normalize(origin + direction * along);
+
+    let depth: f32 = textureSampleLevel(cube, cube_sampler, aim, 0.0).a;
+
+    if (depth <= 0.0 || depth >= PARALLAX_FAR) {
+      return aim;
+    }
+
+    along = max(dot(aim * depth - origin, direction), 0.0);
+  }
+
+  return normalize(origin + direction * along);
 }
 
-// A surface's roughness for its reflection's lobe, from the engine's gloss: a puddle's 0.6 is nearly a mirror, rain's
-// 0.2 a soft blur, a dry surface's 0.1 rough.
+// The sky a reflection reads where it meets nothing, along a renderer-space direction at a roughness: the prefiltered
+// cube at the mip the roughness names, its last mip at roughness one whatever its size.
+fn prefiltered_sky(cube: texture_cube<f32>, cube_sampler: sampler, direction: vec3<f32>, roughness: f32) -> vec3<f32> {
+  let last: f32 = f32(textureNumLevels(cube) - 1u);
+
+  return textureSampleLevel(cube, cube_sampler, direction, saturate(roughness) * last).rgb;
+}
+
+// A surface's roughness for its reflection's lobe, from the engine's gloss: X-Ray's terrain runs from none on bare
+// ground to about 0.37 on asphalt (roughness 0.15); the wet film's 0.43 is a roughness of 0.12, a puddle's water's
+// 0.74 one of 0.02.
 fn reflection_roughness(gloss: f32) -> f32 {
   let rough: f32 = 1.0 - sqrt(saturate(gloss));
 

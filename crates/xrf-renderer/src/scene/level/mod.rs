@@ -41,6 +41,7 @@ pub(crate) mod shadow_sway;
 pub(crate) mod shadow_tile;
 pub(crate) mod shadow_tile_allocator;
 pub(crate) mod sky_views;
+pub(crate) mod surroundings_cube;
 pub(crate) mod view_info;
 pub(crate) mod view_state;
 pub(crate) mod water_flow;

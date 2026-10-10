@@ -9,7 +9,10 @@
 
 // Stochastic screen-space reflections on the frame's surfaces, at the size the quality traces at, a pixel per `ratio`
 // by `ratio` of the frame. Each reflecting pixel's ray leaves in a direction drawn from its surface's GGX lobe (a
-// mirror's under a puddle) by blue noise that turns every frame, and walks the frame's nearest depth pyramid
+// puddle's water's, from the water's own height over the ground) by blue noise that turns every frame, and walks the
+// nearest depth pyramid of the frame as it stood before the grass drew (`traced_depth`): a bush's or a tuft's
+// billboards stand in for a volume a reflection sees through, so they never stop a ray, and what lies behind them
+// answers; the trees' leaves are the static scene's and stand
 // (`common/reflection_trace`); what it met is lit as the frame shows it, faded towards the screen's edges and the
 // distance traced, the sky or the environment `hmodel` reflects otherwise. Then the denoiser: the last frame's
 // reflection reprojected, from where the reflected point or the surface stood; an eighth-size average; the trace
@@ -27,16 +30,27 @@
 
 // The share of what it reflects a pixel's specular shows at most, below which it is not traced.
 const TRACE_FLOOR: f32 = 0.02;
-// The roughness under which a surface is a mirror, whose ray is the same every frame and holds no history.
-const MIRROR_ROUGHNESS: f32 = 0.02;
+// The roughness under which a surface is a mirror, whose ray is the same every frame and holds no history: under a
+// puddle's water at rest, which holds a few.
+const MIRROR_ROUGHNESS: f32 = 0.01;
+// The frames a near-mirror's reflection holds: its ray hardly moves, and its hit point reprojects, so a few steady it
+// without lagging a moving camera.
+const MIRROR_FRAMES: f32 = 4.0;
 // The share of the roughness's mip a missed ray reads the prefiltered sky at: its lobe spreads the rays already, and
 // the denoiser gathers them, so the cube supplies the other half of the blur.
 const MISS_BLUR: f32 = 0.5;
 // The luminance what a ray meets is held to, so a lamp's glass or a sunlit highlight does not flare what reflects it.
 const RADIANCE_LIMIT: f32 = 6.0;
 // Metres behind a surface a ray may lie, and what of its distance more, and still have met it: thin, so a leaf stays a
-// leaf and a ray aimed past its edge goes past it; further behind, the walk ends uncertain and the miss chain answers.
+// leaf and a ray aimed past its edge goes past it; further behind, the walk ends uncertain. Within `PROBABLE_BEHIND`
+// more (metres, then a share of the distance: a wall met at a glancing step) the surface it stands behind is the
+// probable answer, and its colour is taken with a confidence fading over that depth; beyond it the ray has passed
+// something standing between, and the miss chain answers. Behind a plant the band is a bush's depth
+// (`PROBABLE_BEHIND_PLANT`): its blades are billboards standing in for a volume, a ray from the ground under a bush
+// leaves a metre behind its front, and behind a blade is mostly more bush.
 const HIT_THICKNESS: vec2<f32> = vec2<f32>(0.05, 0.005);
+const PROBABLE_BEHIND: vec2<f32> = vec2<f32>(0.5, 0.03);
+const PROBABLE_BEHIND_PLANT: vec2<f32> = vec2<f32>(1.5, 0.05);
 // How far along the ray the met surface's own normal may point before the hit is a back face: faded out from none to
 // this, since the depth's normal at an edge leans.
 const BACK_FACING: f32 = 0.2;
@@ -75,7 +89,8 @@ const MOST_SAMPLES: f32 = 32.0;
 const HISTORY_CLIP: f32 = 1.1;
 // The roughness over which a reflection blurs towards the average while it holds few frames: a mirror keeps its own.
 const BLURRED_ROUGHNESS: vec2<f32> = vec2<f32>(0.02, 0.2);
-// The up from which flat terrain's normal is taken as level for the denoiser, so the rain's ripples do not reject it.
+// The up from which flat terrain's normal is taken as level for the denoiser, so its bumps do not reject the history;
+// a puddle's always is, whatever its rings bend its normal to.
 const LEVEL_UP: f32 = 0.98;
 const RADIANCE_THRESHOLD: f32 = 0.0001;
 
@@ -94,6 +109,11 @@ fn traced_texel(pixel: vec2<f32>) -> vec2<i32> {
 // The world's direction for one in view space.
 fn world_direction(direction: vec3<f32>) -> vec3<f32> {
   return normalize((transpose(camera.view) * vec4<f32>(direction, 0.0)).xyz);
+}
+
+// A view space point's offset from the camera in the world's frame, metres.
+fn world_offset(position: vec3<f32>) -> vec3<f32> {
+  return (transpose(camera.view) * vec4<f32>(position, 0.0)).xyz;
 }
 
 fn luminance(colour: vec3<f32>) -> f32 {
@@ -130,16 +150,6 @@ fn relit_radiance(texel: vec2<i32>) -> vec3<f32> {
     world_direction(normal), world_direction(normalize(position)), material.z, occlusion, bounced);
 }
 
-// The tonemap undone: from the colour a frame showed back to the light it was given at the scale it used, each
-// channel `y = x (1 + x / W²) / (1 + x)` solved for `x`.
-fn untonemapped(colour: vec3<f32>, scale: f32) -> vec3<f32> {
-  let white: f32 = WHITE_INTENSITY_SQUARED;
-  let shown: vec3<f32> = max(colour, vec3<f32>(0.0));
-  let lit: vec3<f32> = 0.5 * white * ((shown - 1.0) + sqrt((shown - 1.0) * (shown - 1.0) + 4.0 * shown / white));
-
-  return lit / max(scale, 1e-4);
-}
-
 // Fog along a path of `length` metres between two points seen, none of the camera's own offset: what a reflection
 // gathers on its way from what it reflects to the surface, which combine then fogs from the camera as it fogs the
 // surface.
@@ -164,7 +174,7 @@ fn remembered_radiance(texel: vec2<i32>, hit: vec3<f32>) -> vec4<f32> {
 
   let size: vec2<f32> = camera.viewport.xy;
   let uv: vec2<f32> = (vec2<f32>(texel) + 0.5) / size;
-  let depth: f32 = textureLoad(depth_target, texel, 0);
+  let depth: f32 = textureLoad(traced_depth, texel, 0);
   let world: vec3<f32> = camera_unproject(vec2<f32>(uv.x * 2.0 - 1.0, 1.0 - uv.y * 2.0), depth);
   let previous: vec4<f32> = camera.view_projection_previous * vec4<f32>(world, 1.0);
 
@@ -206,6 +216,39 @@ fn remembered_radiance(texel: vec2<i32>, hit: vec3<f32>) -> vec4<f32> {
   return vec4<f32>(max(lit, vec3<f32>(0.0)), 1.0);
 }
 
+// What the last frame showed of the sky in a world direction, as light, and in `w` one where it did: the direction
+// through that frame's camera, read where that frame's depth shows sky or ground lost in its fog, the tonemap undone
+// at the scale that frame used. None off that screen, where it showed something nearer, or where no frame is kept.
+fn remembered_sky(direction: vec3<f32>) -> vec4<f32> {
+  if (reflection.has_source < 0.5) {
+    return vec4<f32>(0.0);
+  }
+
+  let previous: vec4<f32> = camera.view_projection_previous * vec4<f32>(direction, 0.0);
+
+  if (previous.w <= 0.0) {
+    return vec4<f32>(0.0);
+  }
+
+  let kept_uv: vec2<f32> = (previous.xy / previous.w) * vec2<f32>(0.5, -0.5) + 0.5;
+
+  if (any(kept_uv < vec2<f32>(0.0)) || any(kept_uv > vec2<f32>(1.0))) {
+    return vec4<f32>(0.0);
+  }
+
+  let size: vec2<f32> = camera.viewport.xy;
+  let kept_texel: vec2<i32> = clamp(vec2<i32>(kept_uv * size), vec2<i32>(0), vec2<i32>(size) - 1);
+  let kept: f32 = textureLoad(source_depth, kept_texel, 0);
+
+  if (kept > 0.0 && path_fog(camera.projection[3][2] / (kept + camera.projection[2][2])) < SOURCE_FOG_LIMIT) {
+    return vec4<f32>(0.0);
+  }
+
+  let scale: f32 = select(1.0, exposure.used, lighting.params.z > 0.5);
+
+  return vec4<f32>(untonemapped(textureSampleLevel(source_scene, history_sampler, kept_uv, 0.0).rgb, scale), 1.0);
+}
+
 // What a ray met looks like as light from the surface it was reflected off: what the last frame showed there, or where
 // that is not kept, its G-buffer relit this frame, and in `w` one where it was the last frame's; fogged along the ray
 // from the surface, its luminance held to `RADIANCE_LIMIT` so a lamp's glass or a sunlit highlight does not flare what
@@ -225,11 +268,11 @@ fn met_radiance(texel: vec2<i32>, hit: vec3<f32>, origin: vec3<f32>) -> vec4<f32
   return vec4<f32>(fogged * min(1.0, RADIANCE_LIMIT / luminance(fogged)), remembered.w);
 }
 
-// The view space point the depth shows at a frame texel, held to the frame.
+// The view space point the walked depth shows at a frame texel, held to the frame.
 fn shown_point(texel: vec2<i32>) -> vec3<f32> {
   let held: vec2<i32> = clamp(texel, vec2<i32>(0), vec2<i32>(camera.viewport.xy) - 1);
 
-  return camera_view_position(vec2<f32>(held) + 0.5, max(textureLoad(depth_target, held, 0), 1e-7));
+  return camera_view_position(vec2<f32>(held) + 0.5, max(textureLoad(traced_depth, held, 0), 1e-7));
 }
 
 // The view space normal of the surface the depth shows at a texel, from the points about it, the nearer neighbour
@@ -259,7 +302,7 @@ fn hit_confidence(walk: RayWalk, origin: vec3<f32>, reach: f32) -> f32 {
   }
 
   let texel: vec2<i32> = vec2<i32>(hit.xy * size);
-  let surface: f32 = textureLoad(depth_target, texel, 0);
+  let surface: f32 = textureLoad(traced_depth, texel, 0);
 
   if (surface <= 0.0) {
     return 0.0;
@@ -274,6 +317,23 @@ fn hit_confidence(walk: RayWalk, origin: vec3<f32>, reach: f32) -> f32 {
   let far: f32 = 1.0 - smoothstep(reflection.distance * 0.75, reflection.distance, length(met - origin));
 
   return thick * thick * (1.0 - smoothstep(0.0, BACK_FACING, facing)) * edges.x * edges.y * far;
+}
+
+// The normal of a traced pixel's whole block, averaged: a puddle's rain rings are finer than the trace's blocks, and
+// one texel's normal aliases them where the block's mean follows the water.
+fn block_normal(pixel: vec2<f32>) -> vec3<f32> {
+  let last: vec2<i32> = vec2<i32>(camera.viewport.xy) - 1;
+  let first: vec2<i32> = min(vec2<i32>(pixel * reflection.ratio), last);
+  let side: i32 = i32(reflection.ratio);
+  var sum: vec3<f32> = vec3<f32>(0.0);
+
+  for (var y: i32 = 0; y < side; y++) {
+    for (var x: i32 = 0; x < side; x++) {
+      sum += octahedral_decode(textureLoad(normal_target, min(first + vec2<i32>(x, y), last), 0).xy);
+    }
+  }
+
+  return normalize(sum);
 }
 
 // What the trace writes: what is reflected, then the ray's length; and how the ray ended.
@@ -305,15 +365,23 @@ fn fs_trace(in: FullscreenVarying) -> TraceTargets {
 
   let albedo: vec4<f32> = textureLoad(albedo_target, texel, 0);
   let wet: vec4<f32> = textureLoad(wet_surface, texel, 0);
-  let roughness: f32 = traced_roughness(albedo.a, wet.g);
+  let roughness: f32 = traced_roughness(albedo.a, wet.a + geometric_variance(normal_target, texel));
 
   // Past the limit the surface reflects the prefiltered sky alone, which combine reads for it.
   if (roughness > TRACED_ROUGHNESS_LIMIT) {
     return trace_targets(UNTRACED, END_ROUGH);
   }
 
-  let normal: vec3<f32> = octahedral_decode(textureLoad(normal_target, texel, 0).xy);
-  let position: vec3<f32> = camera_view_position(vec2<f32>(texel) + 0.5, depth);
+  var normal: vec3<f32>;
+
+  if (wet.g > PUDDLE_LEAST && reflection.ratio > 1.0) {
+    normal = block_normal(pixel);
+  } else {
+    normal = octahedral_decode(textureLoad(normal_target, texel, 0).xy);
+  }
+
+  // A puddle's ray leaves its water, which stands over the ground the depth shows by the water's height there.
+  let position: vec3<f32> = camera_view_position(vec2<f32>(texel) + 0.5, depth) + normal * wet.b;
   let toward: vec3<f32> = normalize(position);
   let facing: f32 = dot(normal, -toward);
   let brdf: vec3<f32> = environment_brdf(reflectance_head_on(albedo.rgb, albedo.a, wet.r), roughness, facing) *
@@ -324,14 +392,16 @@ fn fs_trace(in: FullscreenVarying) -> TraceTargets {
     return trace_targets(UNTRACED, END_UNTRACED);
   }
 
-  let direction: vec3<f32> = reflected_direction(toward, normal, roughness, pixel_numbers(pixel));
+  let direction: vec3<f32> = reflected_direction(toward, normal, lobe_alpha(roughness), pixel_numbers(pixel));
   // What a ray meeting nothing reflects: the sky prefiltered part way to the surface's roughness along the ray's own
-  // direction, seen as the surface's hemisphere lets it.
+  // direction, occluded only as the screen's occlusion sees the surface's surroundings: the ray itself went clear to
+  // the screen's edge or its distance, and the baked hemisphere, an ambient term over half the sky on an open road,
+  // is the rough fallback's in combine.
   let searched: vec2<i32> = min(texel / 2, vec2<i32>(textureDimensions(occlusion_target)) - 1);
   let visible: f32 = select(1.0, textureLoad(occlusion_target, searched, 0).x, lighting.params.w > 0.5);
-  let occlusion: f32 = mix(1.0, material.x, camera.switches.z) * visible;
-  let sky: vec3<f32> = prefiltered_sky(sky_prefiltered, sky_clamp, world_direction(direction), roughness * MISS_BLUR) *
-    specular_occlusion(facing, occlusion, roughness);
+  let aimed: vec3<f32> = surroundings_direction(sky_prefiltered, sky_clamp, world_offset(position), world_direction(direction));
+  var sky: vec3<f32> = prefiltered_sky(sky_prefiltered, sky_clamp, aimed, roughness * MISS_BLUR) *
+    specular_occlusion(facing, visible, roughness);
 
   // The ray's end, the distance traced out, or short of the near plane where it comes back towards the camera: its
   // line across the screen is as long as its reach, so a reach as short as the surface is near cut a puddle's
@@ -339,15 +409,52 @@ fn fs_trace(in: FullscreenVarying) -> TraceTargets {
   let near: f32 = camera.projection[3][2] / (1.0 + camera.projection[2][2]);
   let reach: f32 = select(reflection.distance, min(reflection.distance, (-position.z - near * 1.05) / direction.z),
     direction.z > 0.0);
-  let start: vec2<f32> = (vec2<f32>(texel) + 0.5) / camera.viewport.xy;
-  let origin: vec3<f32> = vec3<f32>(start, depth);
+  let origin: vec3<f32> = ray_screen_point(position);
   let toward_screen: vec3<f32> = ray_screen_point(position + direction * max(reach, 1e-3)) - origin;
   let walk: RayWalk = ray_walk(nearest_depth, origin, toward_screen, reflection.crossings, HIT_THICKNESS);
-  let thickness: f32 = HIT_THICKNESS.x - ray_view_point(walk.position).z * HIT_THICKNESS.y;
+  let distance_met: f32 = -ray_view_point(walk.position).z;
+  let thickness: f32 = HIT_THICKNESS.x + distance_met * HIT_THICKNESS.y;
   let confidence: f32 = select(0.0, hit_confidence(walk, position, thickness), walk.is_met);
+  var end: u32 = walk.end;
+
+  // A ray that ran its reach over the screen's own sky, or ground so far the fog has it, reflects the sky as the
+  // screen shows it, exact in colour and fog, in place of the cube's, whose texel is coarser and whose sky is the
+  // frame's sky at best.
+  if (walk.end == END_FAR && all(walk.position.xy >= vec2<f32>(0.0)) && all(walk.position.xy <= vec2<f32>(1.0))) {
+    let size: vec2<i32> = vec2<i32>(camera.viewport.xy);
+    let end_texel: vec2<i32> = clamp(vec2<i32>(walk.position.xy * camera.viewport.xy), vec2<i32>(0), size - 1);
+    let end_depth: f32 = textureLoad(depth_target, end_texel, 0);
+
+    if (end_depth <= 0.0 || path_fog(camera.projection[3][2] / (end_depth + camera.projection[2][2])) >= SOURCE_FOG_LIMIT) {
+      let seen: vec4<f32> = remembered_sky(world_direction(direction));
+
+      if (seen.w > 0.5) {
+        sky = seen.rgb * specular_occlusion(facing, visible, roughness);
+        end = END_SKY;
+      }
+    }
+  }
+
+  // Uncertain a little behind a surface: that surface's colour is the probable answer, the sky's the further behind.
+  if (walk.end == END_UNCERTAIN) {
+    let behind_texel: vec2<i32> = vec2<i32>(walk.position.xy * camera.viewport.xy);
+    let is_plant: bool = has_mark(textureLoad(material_target, behind_texel, 0).a, MARK_PLANT);
+    let band: vec2<f32> = select(PROBABLE_BEHIND, PROBABLE_BEHIND_PLANT, is_plant);
+    let probable: f32 = 1.0 - smoothstep(thickness, thickness + band.x + distance_met * band.y, walk.behind);
+
+    if (probable > 0.0) {
+      let shown: vec3<f32> = shown_point(behind_texel);
+      let taken: vec4<f32> = met_radiance(behind_texel, shown, position);
+
+      return trace_targets(
+        vec4<f32>(mix(sky, taken.rgb, probable), select(MISSED_LENGTH, length(shown - position), probable > 0.5)),
+        select(END_UNCERTAIN, END_PROBABLE, probable > 0.5) | select(END_RELIT, 0u, taken.w > 0.5),
+      );
+    }
+  }
 
   if (confidence <= 0.0) {
-    return trace_targets(vec4<f32>(sky, MISSED_LENGTH), select(walk.end, END_UNTRUSTED, walk.is_met));
+    return trace_targets(vec4<f32>(sky, MISSED_LENGTH), select(end, END_UNTRUSTED, walk.is_met));
   }
 
   let hit: vec3<f32> = ray_view_point(walk.position);
@@ -372,11 +479,12 @@ fn traced_surface(pixel: vec2<f32>) -> TracedSurface {
   let texel: vec2<i32> = traced_texel(pixel);
   let depth: f32 = max(textureLoad(depth_target, texel, 0), 1e-7);
   let normal: vec3<f32> = world_direction(octahedral_decode(textureLoad(normal_target, texel, 0).xy));
-  let is_level: bool = has_mark(textureLoad(material_target, texel, 0).a, MARK_TERRAIN) && normal.y > LEVEL_UP;
+  let wet: vec4<f32> = textureLoad(wet_surface, texel, 0);
+  let is_level: bool = has_mark(textureLoad(material_target, texel, 0).a, MARK_TERRAIN) &&
+    (normal.y > LEVEL_UP || wet.g > PUDDLE_LEAST);
   let uv: vec2<f32> = (vec2<f32>(texel) + 0.5) / camera.viewport.xy;
   let world: vec3<f32> = camera_unproject(vec2<f32>(uv.x * 2.0 - 1.0, 1.0 - uv.y * 2.0), depth);
-  let wet: vec4<f32> = textureLoad(wet_surface, texel, 0);
-  let roughness: f32 = traced_roughness(textureLoad(albedo_target, texel, 0).a, wet.g);
+  let roughness: f32 = traced_roughness(textureLoad(albedo_target, texel, 0).a, wet.a);
 
   return TracedSurface(select(normal, vec3<f32>(0.0, 1.0, 0.0), is_level), roughness,
     -camera_view_position(vec2<f32>(texel) + 0.5, depth).z, world);
@@ -546,8 +654,9 @@ fn fs_reproject(in: FullscreenVarying) -> ReprojectedTargets {
     return dropped;
   }
 
-  // A rough reflection is noise, held long.
-  let most: f32 = max(8.0, MOST_SAMPLES * (1.0 - exp(-surface.roughness * 100.0)));
+  // A rough reflection is noise, held long; a near-mirror's a few frames.
+  let most: f32 = mix(MIRROR_FRAMES, max(8.0, MOST_SAMPLES * (1.0 - exp(-surface.roughness * 100.0))),
+    smoothstep(BLURRED_ROUGHNESS.x, BLURRED_ROUGHNESS.y, surface.roughness));
   let samples: f32 = min(most, held_at(uv).y * trust + 1.0);
   let variance: f32 = mix(temporal_variance(fresh.rgb, reprojection), max(history_radiance_at(uv).a, 0.0), 1.0 /
     samples);

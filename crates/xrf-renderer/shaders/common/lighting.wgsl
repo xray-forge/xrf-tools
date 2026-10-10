@@ -25,6 +25,16 @@ fn tonemap_high(color: vec3<f32>, scale: f32) -> vec3<f32> {
   return color * scale / DEF_HDR;
 }
 
+// The tonemap undone: from the colour a frame showed back to the light it was given at the scale it used, each
+// channel `y = x (1 + x / W²) / (1 + x)` solved for `x`.
+fn untonemapped(colour: vec3<f32>, scale: f32) -> vec3<f32> {
+  let white: f32 = WHITE_INTENSITY_SQUARED;
+  let shown: vec3<f32> = max(colour, vec3<f32>(0.0));
+  let lit: vec3<f32> = 0.5 * white * ((shown - 1.0) + sqrt((shown - 1.0) * (shown - 1.0) + 4.0 * shown / white));
+
+  return lit / max(scale, 1e-4);
+}
+
 // How much fog lies between the camera and a view space point: none without fog, one where it is total.
 fn fog_amount(state: Lighting, position: vec3<f32>) -> f32 {
   return saturate(length(position) * state.fog.y + state.fog.x) * state.fog_color.w;

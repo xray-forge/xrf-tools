@@ -37,8 +37,9 @@ pub struct PuddleKeepInputs<'a> {
 impl LevelSurface {
   pub const HEIGHT_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::R32Float;
   pub const SITES_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba32Float;
-  /// Metres a cell of sites is across: a whole number of them to the map's step, so cells stay put in the world.
-  pub const SITE_CELL: f32 = 8.0;
+  /// Metres a cell of sites is across; the cells are the world's, not the map's, so a site stays put as the map moves
+  /// by its step, which is no whole number of them.
+  pub const SITE_CELL: f32 = 6.0;
 
   pub fn new(device: &wgpu::Device, view_layout: &wgpu::BindGroupLayout, args_size: u64) -> Self {
     let shape: OverheadShape = OverheadShape::LEVEL_SURFACE;

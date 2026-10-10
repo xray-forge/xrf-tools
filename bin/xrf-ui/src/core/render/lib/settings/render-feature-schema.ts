@@ -12,6 +12,7 @@ import {
   ERenderLightShadowFilter,
   ERenderRainMode,
   ERenderReflectionMode,
+  ERenderReflectionProbe,
   ERenderReflectionQuality,
   ERenderScale,
   ERenderWaterMode,
@@ -122,14 +123,14 @@ export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings>
   isOcclusionCulled: FLAG,
   // The renderer's own: a surface's specular share of what it reflects is its material's by the intensity, one as a
   // dielectric reflects, so four shows a wet road's trees four times as strong; past two hundred metres a ray leaves
-  // the frame long before its steps reach.
-  // The renderer's own: puddles from none to most of flat terrain, a puddle's reflection at most a mirror's, the rain's
+  // the frame long before its steps reach; the rain wets the ground for them out to the reach, a kilometre at most.
+  // The renderer's own: puddles from none to nearly every site at two, a puddle's reflection at most a mirror's, the rain's
   // ripples up to twice their designed strength, and puddles drawn out to the widest grass's radius, which the level
   // surface they are placed on reaches past.
   rain: {
     distance: toNumber(30, 450, true),
     mode: toChoice(ERenderRainMode),
-    puddles: toNumber(0, 1),
+    puddles: toNumber(0, 2),
     reflectivity: toNumber(0, 1),
     ripples: toNumber(0, 2),
   },
@@ -137,7 +138,9 @@ export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings>
     distance: toNumber(5, 200),
     intensity: toNumber(0, 4),
     mode: toChoice(ERenderReflectionMode),
+    probe: toChoice(ERenderReflectionProbe),
     quality: toChoice(ERenderReflectionQuality),
+    reach: toNumber(25, 1000, true),
   },
   lights: {
     isEnabled: FLAG,

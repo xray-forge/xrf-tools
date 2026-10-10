@@ -19,6 +19,11 @@ const END_FAR: u32 = 6u;
 const END_ROUGH: u32 = 7u;
 // Met what it could not trust: the sky, or a hit faded out at the screen's edge or the distance.
 const END_UNTRUSTED: u32 = 8u;
+// Ended uncertain a little behind a surface, within a bush's or a wall's depth, and took that surface's colour as the
+// probable answer rather than the sky's.
+const END_PROBABLE: u32 = 9u;
+// The ray ran its reach over the screen's own sky, or ground lost in its fog, which answered in the cube's place.
+const END_SKY: u32 = 10u;
 // Set over a met reason where the hit's colour was relit from the G-buffer, the last frame not having shown the point;
 // the view draws such a hit darker.
 const END_RELIT: u32 = 16u;
@@ -34,8 +39,8 @@ fn reflection_end_code(value: f32) -> u32 {
 }
 
 // The ends view's colour for a reason: green met by crossing, yellow met by thickness, red uncertain behind a
-// surface, orange spent in the clear, blue off the screen, cyan at the distance, grey too rough, magenta untrusted,
-// black untraced; a met reason darkened where the hit was relit rather than read from the last frame.
+// surface, orange spent in the clear, blue off the screen, cyan at the distance, pale blue at the distance over the
+// screen's sky, grey too rough, magenta untrusted, black untraced; a met reason darkened where the hit was relit rather than read from the last frame.
 fn reflection_end_colour(end: u32) -> vec3<f32> {
   let colour: vec3<f32> = reason_colour(end & (END_RELIT - 1u));
 
@@ -67,6 +72,12 @@ fn reason_colour(end: u32) -> vec3<f32> {
     }
     case END_UNTRUSTED: {
       return vec3<f32>(0.85, 0.2, 0.85);
+    }
+    case END_PROBABLE: {
+      return vec3<f32>(0.55, 0.08, 0.08);
+    }
+    case END_SKY: {
+      return vec3<f32>(0.6, 0.85, 1.0);
     }
     default: {
       return vec3<f32>(0.0);

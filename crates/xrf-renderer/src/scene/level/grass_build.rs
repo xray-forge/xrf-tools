@@ -15,7 +15,14 @@ pub struct GrassBuild {
 
 impl GrassBuild {
   /// A ring of `size`, planted with the view's parameters in `uniform`.
-  pub fn new(device: &wgpu::Device, pass: &GrassPass, size: GrassBuildSize, uniform: &wgpu::Buffer) -> Self {
+  /// `puddles` are this frame's puddle sites and where they stand, which the planting plants no tuft in.
+  pub fn new(
+    device: &wgpu::Device,
+    pass: &GrassPass,
+    size: GrassBuildSize,
+    uniform: &wgpu::Buffer,
+    puddles: (&wgpu::TextureView, &wgpu::Buffer),
+  ) -> Self {
     let buffer = |label: &str, bytes: u64| -> wgpu::Buffer {
       device.create_buffer(&wgpu::BufferDescriptor {
         label: Some(label),
@@ -49,6 +56,16 @@ impl GrassBuild {
           binding: binding as u32,
           resource: buffer.as_entire_binding(),
         })
+        .chain([
+          wgpu::BindGroupEntry {
+            binding: 9,
+            resource: wgpu::BindingResource::TextureView(puddles.0),
+          },
+          wgpu::BindGroupEntry {
+            binding: 10,
+            resource: puddles.1.as_entire_binding(),
+          },
+        ])
         .collect::<Vec<_>>(),
     });
     let [_, _, _, _, _, _, _, sorted] = buffers;

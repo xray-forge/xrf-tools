@@ -39,6 +39,7 @@ use crate::pass::static_gbuffer_pass::StaticGBufferPass;
 use crate::pass::static_shadow_pass::StaticShadowPass;
 use crate::pass::sun_pass::SunPass;
 use crate::pass::sun_shafts_pass::SunShaftsPass;
+use crate::pass::surroundings_pass::SurroundingsPass;
 use crate::pass::temporal_pass::TemporalPass;
 use crate::pass::thunder_pass::ThunderPass;
 use crate::pass::upscale_pass::UpscalePass;
@@ -65,6 +66,7 @@ pub struct GpuState {
   pub sky: SkyBindings,
   pub sky_haze: SkyHazePass,
   pub sky_prefilter: SkyPrefilterPass,
+  pub surroundings: SurroundingsPass,
   pub water: WaterPass,
   pub composited: CompositedPass,
   pub grass: GrassPass,
@@ -176,6 +178,7 @@ impl GpuState {
       combine: CombinePass::new(device, shaders, &view_layout, sky.get_layout())?,
       sky_haze: SkyHazePass::new(device, shaders, sky.get_layout())?,
       sky_prefilter: SkyPrefilterPass::new(device, &context.queue, shaders)?,
+      surroundings: SurroundingsPass::new(device, shaders, &view_layout)?,
       weather_textures: WeatherTextureCache::new(device, &context.queue, workers),
       sky,
       exposure: ExposurePass::new(device, shaders)?,
@@ -227,6 +230,7 @@ impl GpuState {
       combine: &self.combine,
       sky_haze: &self.sky_haze,
       sky_prefilter: &self.sky_prefilter,
+      surroundings: &self.surroundings,
       sky: &self.sky,
       water: &self.water,
       composited: &self.composited,
@@ -266,6 +270,7 @@ impl GpuState {
     self.pyramid.refresh(device, shaders);
     self.puddle_sites.refresh(device, shaders);
     self.sky_prefilter.refresh(device, shaders);
+    self.surroundings.refresh(device, shaders);
     self.contact_shadows.refresh(device, shaders);
     self.sun.refresh(device, shaders);
     self.ambient_occlusion.refresh(device, shaders);
