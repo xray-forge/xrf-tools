@@ -90,7 +90,8 @@ fn fall_of(streak: u32) -> Fall {
   let direction: vec3<f32> = normalize(axis * lean + (across * cos(turn) + along * sin(turn)) * sqrt(1.0 - lean * lean));
   // It starts `source_offset` over the camera, set back along its way so it falls through its column.
   let start: f32 = SOURCE_OFFSET / -direction.y;
-  let reach: f32 = (rain_cover_height(cover, rain.window, column) - column.y) / direction.y;
+  let reach: f32 = (overhead_height(cover, rain.window, rain.cover_shape.x, rain.cover_shape.y, column) - column.y) /
+    direction.y;
   let landing: f32 = (reach + start) / speed;
   var fall: Fall;
 

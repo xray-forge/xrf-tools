@@ -1,15 +1,12 @@
 /// How full the level's puddles are, how stormy the rain has been and how soaked a long rain has left the level: puddles
 /// fill slower than surfaces wet, and the harder the rain the faster, and drain three times slower than surfaces dry,
 /// so they outlast the sheen; the storm follows how far the rain is past a light one, slowly, so a gust does not pop
-/// puddles in; the soak builds over a long rain, the harder the faster, and dries slower still. Both on the weather's
-/// clock; the first time a view sees it rain, the puddles are full, as it has rained a while, so a light rain shows
-/// them whole and a storm only adds to them, however long it was dry before or paused.
+/// puddles in; the soak builds over a long rain, the harder the faster, and dries slower still. All on the weather's
+/// clock, from empty and dry before any rain, as every rain starts on dry ground.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct PuddleFill {
   /// How full, how stormy, how soaked, and the clock they were last moved on at.
   state: Option<(f32, f32, f32, f32)>,
-  /// Whether the view has seen it rain.
-  has_rained: bool,
 }
 
 impl PuddleFill {
@@ -29,10 +26,8 @@ impl PuddleFill {
   pub fn advance(&mut self, time: f32, density: f32, pace: f32) -> (f32, f32, f32) {
     let density: f32 = density.clamp(0.0, 1.0);
     let storminess: f32 = Self::get_storminess(density);
-    let is_first_rain: bool = density > 0.0 && !self.has_rained;
     let (fill, storm, soak): (f32, f32, f32) = match self.state {
-      None => (if is_first_rain { 1.0 } else { 0.0 }, storminess, 0.0),
-      Some((_, _, soak, _)) if is_first_rain => (1.0, storminess, soak),
+      None => (0.0, 0.0, 0.0),
       Some((fill, storm, soak, clock)) => {
         let elapsed: f32 = (time - clock).max(0.0) * pace.max(0.0);
         let change: f32 = if density > 0.0 {
@@ -56,7 +51,6 @@ impl PuddleFill {
     };
 
     self.state = Some((fill, storm, soak, time));
-    self.has_rained |= density > 0.0;
 
     (fill, storm, soak)
   }

@@ -1,6 +1,6 @@
 // Reduces a viewport's depth to a pyramid of the farthest depth under each texel, which occlusion tests read, or of the
 // nearest, which reflected rays skip empty space by: with reversed depth the farthest is the smallest, the nearest the
-// largest.
+// largest; and a rain cover to a pyramid of both, the lowest and the highest under each texel.
 
 #import "generated/frame/pyramid"
 
@@ -85,4 +85,51 @@ fn reduce_nearest(@builtin(global_invocation_id) id: vec3<u32>) {
   }
 
   textureStore(target_level, id.xy, vec4<f32>(nearest, 0.0, 0.0, 0.0));
+}
+
+// A rain cover's first level, half its size: each texel the lowest and the highest depth of the two by two under it.
+@compute @workgroup_size(8, 8)
+fn reduce_cover(@builtin(global_invocation_id) id: vec3<u32>) {
+  let size: vec2<u32> = textureDimensions(cover_level);
+
+  if (id.x >= size.x || id.y >= size.y) {
+    return;
+  }
+
+  let at: vec2<u32> = id.xy * 2u;
+  let first: f32 = textureLoad(source_depth, at, 0);
+  let second: f32 = textureLoad(source_depth, at + vec2<u32>(1u, 0u), 0);
+  let third: f32 = textureLoad(source_depth, at + vec2<u32>(0u, 1u), 0);
+  let fourth: f32 = textureLoad(source_depth, at + 1u, 0);
+
+  textureStore(cover_level, id.xy, vec4<f32>(
+    min(min(first, second), min(third, fourth)),
+    max(max(first, second), max(third, fourth)),
+    0.0,
+    0.0,
+  ));
+}
+
+// A level of a rain cover's pyramid into the next, half its size: the lowest and the highest of the two by two under
+// each texel.
+@compute @workgroup_size(8, 8)
+fn reduce_cover_level(@builtin(global_invocation_id) id: vec3<u32>) {
+  let size: vec2<u32> = textureDimensions(cover_level);
+
+  if (id.x >= size.x || id.y >= size.y) {
+    return;
+  }
+
+  let at: vec2<u32> = id.xy * 2u;
+  let first: vec2<f32> = textureLoad(cover_source, at, 0).xy;
+  let second: vec2<f32> = textureLoad(cover_source, at + vec2<u32>(1u, 0u), 0).xy;
+  let third: vec2<f32> = textureLoad(cover_source, at + vec2<u32>(0u, 1u), 0).xy;
+  let fourth: vec2<f32> = textureLoad(cover_source, at + 1u, 0).xy;
+
+  textureStore(cover_level, id.xy, vec4<f32>(
+    min(min(first.x, second.x), min(third.x, fourth.x)),
+    max(max(first.y, second.y), max(third.y, fourth.y)),
+    0.0,
+    0.0,
+  ));
 }

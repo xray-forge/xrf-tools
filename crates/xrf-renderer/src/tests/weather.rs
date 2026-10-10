@@ -41,7 +41,7 @@ fn rains_as_many_streaks_as_the_engine_and_leans_them_with_the_wind() {
         },
         0.5,
       ),
-      Vec4::ZERO,
+      (Vec4::ZERO, Vec4::ZERO),
       0.0,
       0,
     )

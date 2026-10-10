@@ -14,29 +14,18 @@
 // normals, and the settings.
 #import "generated/frame/wet_patch"
 
-// Metres a point may stand under its cover's texel and still take the rain, as a slope spans one.
-const COVER_BIAS: f32 = 0.2;
-
 // The engines' values: metres past which the rain wets nothing, how fast the splashes' volume runs, how far the water
 // tilts the normal up, how strongly and how fast the flow bends and runs.
 fn engine_value(vanilla: f32, extended: f32) -> f32 {
   return select(vanilla, extended, wet.is_extended > 0.5);
 }
 
-// Whether the rain reaches a point: four taps of the cover about it, as `shadow_rain` jitters four, each open where
-// the point stands at or above the first thing over its column.
-fn rain_open(world: vec3<f32>) -> f32 {
-  let texel: f32 = wet.window.z * 2.0 / RAIN_COVER_RESOLUTION;
-  var open: f32 = 0.0;
+// How much of the rain reaches a point, from none to one, by the cover as `cover_reached` reads it, the wetness
+// creeping in under a cover by the level's soak; `pixel` turns the creep's taps.
+fn rain_reached(world: vec3<f32>, pixel: vec2<f32>) -> f32 {
+  let noise: f32 = cover_noise(pixel + wet.cover_state.w);
 
-  for (var tap: u32 = 0u; tap < 4u; tap++) {
-    let offset: vec2<f32> = vec2<f32>(f32(tap & 1u), f32(tap >> 1u)) - 0.5;
-    let column: vec3<f32> = world + vec3<f32>(texel * offset.x, 0.0, texel * offset.y);
-
-    open += select(0.0, 1.0, world.y + COVER_BIAS >= rain_cover_height(cover, wet.window, column));
-  }
-
-  return open * 0.25;
+  return cover_reached(cover, cover_pyramid, wet.cover, wet.cover_state.xy, world, wet.cover_state.z, noise);
 }
 
 /// `GetNVNMap`: the splashes' volume at a place and a moment, repeating every way and blended between its slices, its
@@ -64,21 +53,29 @@ fn flow_normal(at: vec2<f32>) -> vec3<f32> {
 }
 
 // The engine's wetting of a surface (`rain_patch_normal`): how its normal is bent by the splashes on what faces up and
-// the water running down what stands near the camera, in view space, and how wet it is, from the G-buffer's normal
-// and point in view space and the world they stand in.
+// the water running down what stands near the camera, in view space, by the falling rain's density, and how wet it is,
+// by the level's wetness, which settles at that density under a steady rain and dries after it, from the G-buffer's
+// normal and point in view space, the world they stand in and how much of the rain reaches it.
 struct EngineWetting {
   bent: vec3<f32>,
   wetness: f32,
 };
 
-fn engine_wetting(normal: vec3<f32>, position: vec3<f32>, world: vec3<f32>, world_normal: vec3<f32>) -> EngineWetting {
+fn engine_wetting(
+  normal: vec3<f32>,
+  position: vec3<f32>,
+  world: vec3<f32>,
+  world_normal: vec3<f32>,
+  reached: f32,
+) -> EngineWetting {
   // The engine's axes: `z` negated.
   let place: vec3<f32> = vec3<f32>(world.x, world.y, -world.z);
   let facing: vec3<f32> = vec3<f32>(world_normal.x, world_normal.y, -world_normal.z);
   let fade: f32 = 1.0 - smoothstep(5.0, engine_value(20.0, 25.0), -position.z);
   // `-dot(Ldynamic_dir, N)`, the rain falling straight down.
   let up: f32 = facing.y;
-  let wetness: f32 = rain_open(world) * fade * fade * wet.density * saturate(up * 10.0 + 10.0 * 0.5 + 0.5);
+  let near: f32 = reached * fade * fade * saturate(up * 10.0 + 10.0 * 0.5 + 0.5);
+  let wetness: f32 = near * wet.puddles.x;
   let upward: f32 = max(up, 0.0);
   let splashed: vec3<f32> = splash_normal(place.xz, wet.time * engine_value(3.0, 1.0));
   let along: vec3<f32> = place / 2.0;
@@ -86,18 +83,15 @@ fn engine_wetting(normal: vec3<f32>, position: vec3<f32>, world: vec3<f32>, worl
   let fall_x: vec3<f32> = flow_normal(vec2<f32>(along.z, along.y + wet.time * slide));
   let fall_z: vec3<f32> = flow_normal(vec2<f32>(along.x, along.y + wet.time * slide));
   // Nothing on the weapon in hand, which the viewer has none of.
-  let applied: f32 = wetness * smoothstep(0.8, 0.9, length(position));
+  let applied: f32 = near * wet.density * smoothstep(0.8, 0.9, length(position));
   let water: vec3<f32> = splashed * (upward * applied) + fall_x.yxz * (abs(facing.x) * applied) +
     fall_z.zxy * (abs(facing.z) * applied);
 
   return EngineWetting((camera.view * vec4<f32>(water.x, water.y, -water.z, 0.0)).xyz, wetness);
 }
 
-// The share of the reflections' reach (`wet.reach.y`, metres) over which the wetness fades out at its end; and the
-// share of the cover's half width over which the cover gives way to the level surface's say, so its square's edge
-// never shows.
+// The share of the reflections' reach (`wet.reach.y`, metres) over which the wetness fades out at its end.
 const REACH_FADE: f32 = 0.8;
-const COVER_FADE: vec2<f32> = vec2<f32>(0.6, 0.95);
 // The gloss a wet surface is brought up to at most where the reflections trace: the engine's gain of up to 0.8 over
 // a bright surface's own gloss made a mirror of it, and the sky sparkled in every bump of its normal map as foil;
 // below a puddle's water, so wet ground never reads as water.
@@ -105,19 +99,16 @@ const WET_GLOSS_MOST: f32 = 0.6;
 
 // How wet a surface reads, from none to one: the engine's, by its splashes' fade over 5 to 25 m, or where the
 // reflections trace (`wet.reach.x`) as far as the rain reaches, so they have wet gloss to trace over the whole ground
-// and not a ring about the camera: within the cover as the cover says, beyond it where the level surface makes the
-// point the topmost (a tunnel's vault, a bridge or a roof keeps what is under it dry), fading out to the reach.
-fn surface_wetness(wetting: EngineWetting, world: vec3<f32>, world_normal: vec3<f32>, position: vec3<f32>) -> f32 {
+// and not a ring about the camera, as much as the rain `reached` it (a tunnel's vault, a bridge, a roof or a tree's
+// crown keeps what is under it dry), fading out to the reach.
+fn surface_wetness(wetting: EngineWetting, reached: f32, world_normal: vec3<f32>, position: vec3<f32>) -> f32 {
   if (wet.reach.x < 0.5) {
     return wetting.wetness;
   }
 
-  let edge: f32 = max(abs(world.x - wet.window.x), abs(world.z - wet.window.y)) / wet.window.z;
-  let beyond: f32 = smoothstep(COVER_FADE.x, COVER_FADE.y, edge);
-  let open: f32 = mix(rain_open(world), select(0.0, 1.0, is_topmost(world)), beyond);
   let facing_up: f32 = saturate(world_normal.y * 10.0 + 10.0 * 0.5 + 0.5);
 
-  return open * wet.density * facing_up * smoothstep(wet.reach.y, wet.reach.y * REACH_FADE, length(position));
+  return reached * wet.puddles.x * facing_up * smoothstep(wet.reach.y, wet.reach.y * REACH_FADE, length(position));
 }
 
 // The gloss the wetness gains over the surface's own, from how wet it reads and the engine's gain a unit of wetness
@@ -147,8 +138,9 @@ fn fs_wet_patch(in: FullscreenVarying) -> @location(0) vec4<f32> {
   let world: vec3<f32> = camera_unproject(ndc, depth);
   let rotation: mat3x3<f32> = transpose(mat3x3<f32>(camera.view[0].xyz, camera.view[1].xyz, camera.view[2].xyz));
   let world_normal: vec3<f32> = normalize(rotation * normal);
-  let wetting: EngineWetting = engine_wetting(normal, position, world, world_normal);
-  let wetness: f32 = surface_wetness(wetting, world, world_normal, position);
+  let reached: f32 = rain_reached(world, in.clip.xy);
+  let wetting: EngineWetting = engine_wetting(normal, position, world, world_normal, reached);
+  let wetness: f32 = surface_wetness(wetting, reached, world_normal, position);
 
   // The bent normal packed as the enhanced patch packs it; how wet the engine reads the surface, by the albedo's
   // brightness, which the apply pass darkens by; and the gloss that gains, the engine's own factor folded in.
@@ -354,10 +346,10 @@ fn site_puddle(world: vec3<f32>, border: f32, footprint: f32) -> SitePuddle {
         // The water's plane: along the ground's own up at the site's spot, through the ground there.
         let up: vec3<f32> = ground_up(vec3<f32>(site.x, site.z, site.y));
         let under: f32 = (LOWEST_REACH + 0.5) * texel * (abs(up.x) + abs(up.z)) / up.y;
-        let lift: f32 = site.z + under + PUDDLE_LEVEL - dot(up.xz, offset) / up.y - world.y;
+        let lift: f32 = site.z + under + PUDDLE_LEVEL * wet.puddle_state.y - dot(up.xz, offset) / up.y - world.y;
 
         puddle.inside = inside;
-        puddle.depth = clamp(lift, 0.0, PUDDLE_DEEPEST);
+        puddle.depth = clamp(lift, 0.0, PUDDLE_DEEPEST * wet.puddle_state.y);
         puddle.up = up;
       }
     }
@@ -406,9 +398,10 @@ fn fs_wet_patch_enhanced(in: FullscreenVarying) -> WetPatchTargets {
   let distance: f32 = -position.z;
   let gradients: PlaceGradients = PlaceGradients(dpdx(place.xz), dpdy(place.xz));
   let footprint: f32 = max(length(gradients.across), length(gradients.down));
-  let wetting: EngineWetting = engine_wetting(normal, position, world, world_normal);
+  let reached: f32 = rain_reached(world, in.clip.xy);
+  let wetting: EngineWetting = engine_wetting(normal, position, world, world_normal, reached);
   // How wet the engine reads the surface, by the albedo's brightness, as far as the reflections want it.
-  var wetness: f32 = surface_wetness(wetting, world, world_normal, position) * dot(albedo.rgb, vec3<f32>(0.33));
+  var wetness: f32 = surface_wetness(wetting, reached, world_normal, position) * dot(albedo.rgb, vec3<f32>(0.33));
   var water: vec3<f32> = wetting.bent;
   var variance: f32 = 0.0;
 

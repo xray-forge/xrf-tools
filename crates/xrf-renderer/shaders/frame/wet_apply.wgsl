@@ -32,7 +32,7 @@ fn fs_wet_normal(in: FullscreenVarying) -> @location(0) vec2<f32> {
 fn wet_darkening(gloss: f32) -> f32 {
   let darker: f32 = 1.0 - sqrt(gloss);
 
-  return select(max(darker, 0.5), darker + wet.density * 0.5, wet.is_extended > 0.5);
+  return select(max(darker, 0.5), darker + wet.puddles.x * 0.5, wet.is_extended > 0.5);
 }
 
 // What the albedo is multiplied by, darker the wetter, and the gloss the wetness adds, which the blend adds, as the

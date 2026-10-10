@@ -17,6 +17,8 @@ pub(crate) mod compute_grid;
 pub(crate) mod contact_shadow_parameters;
 pub(crate) mod contact_shadow_pass;
 pub(crate) mod contact_shadow_uniform;
+pub(crate) mod cover_pyramid_depth_parameters;
+pub(crate) mod cover_pyramid_level_parameters;
 pub(crate) mod depth_pyramid_pass;
 pub(crate) mod enhanced_bloom_parameters;
 pub(crate) mod enhanced_bloom_pass;

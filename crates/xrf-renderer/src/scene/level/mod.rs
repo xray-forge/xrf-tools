@@ -1,3 +1,5 @@
+pub(crate) mod cover_pyramid;
+pub(crate) mod cover_textures;
 pub(crate) mod grass_build;
 pub(crate) mod grass_build_size;
 pub(crate) mod grass_dither;
@@ -31,6 +33,7 @@ pub(crate) mod particles_view;
 pub(crate) mod placed_effect;
 pub(crate) mod placed_objects;
 pub(crate) mod puddle_fill;
+pub(crate) mod rain_cover;
 pub(crate) mod rain_wetness;
 pub(crate) mod scene_output;
 pub(crate) mod scene_renderer;
