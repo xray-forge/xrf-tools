@@ -32,6 +32,11 @@ use crate::scene::level::zone_fast_mode::ZONE_FAST_DISTANCE;
 use crate::scene::texture::texture_cache::{MISSING_SLOT, TextureCache};
 use crate::scene::texture::texture_role::TextureRole;
 
+/// Metres from the eye to a shadowed light's reach within which, out of view, its faces are kept ready for a turn, and
+/// how many such lights are.
+const WARM_REACH: f32 = 3.0;
+const WARM_MOST: usize = 8;
+
 /// What a light's falloff reaches zero at, a share of its range: `L_R` (`r3_rendertarget_accum_point.cpp`).
 const FALLOFF_RANGE: f32 = 0.95;
 
@@ -201,15 +206,19 @@ impl LevelLights {
             .iter()
             .all(|plane| plane.truncate().dot(bound.truncate()) + plane.w >= -bound.w);
 
-          if !is_visible {
+          let distance: f32 = (eye.distance(bound.truncate()) - bound.w).max(0.0);
+
+          // Out of view, only a shadowed light the eye stands near is kept, its faces ready for a turn.
+          if !is_visible && !(is_shadowing && light.is_shadowed && distance <= WARM_REACH) {
             return None;
           }
 
           let fades: Fades = to_fades(light, &basis, eye, lod, is_shadowing && light.is_shadowed);
 
           // `light::get_LOD`: a shadowed light is drawn at all only past `EPS_L`.
-          (fades.shown > EPS_L).then(|| InView {
-            distance: (eye.distance(bound.truncate()) - bound.w).max(0.0),
+          (fades.shown > EPS_L).then_some(InView {
+            distance,
+            is_seen: is_visible,
             handle,
             basis,
             bound,
@@ -220,12 +229,20 @@ impl LevelLights {
         .collect();
 
       in_view.sort_by(|a, b| a.distance.total_cmp(&b.distance));
+
+      let (mut in_view, mut ready): (Vec<InView>, Vec<InView>) = in_view.into_iter().partition(|it| it.is_seen);
+
       into.report.excess = in_view.len().saturating_sub(MAX_LIGHTS) as u32;
       in_view.truncate(MAX_LIGHTS);
+      ready.truncate(WARM_MOST);
 
       if is_shadowing {
-        // Only the nearest the records could hold ask for faces.
-        for it in in_view.iter() {
+        // Only the nearest the records could hold ask for faces, then the nearest kept ready out of view.
+        for (it, is_in_view) in in_view
+          .iter()
+          .map(|it| (it, true))
+          .chain(ready.iter().map(|it| (it, false)))
+        {
           let Some(light) = lights.get(it.handle).filter(|light| light.is_shadowed) else {
             continue;
           };
@@ -239,6 +256,7 @@ impl LevelLights {
             Vec3::from(light.color),
             statics,
             sway,
+            is_in_view,
           );
         }
       }
@@ -375,6 +393,8 @@ impl LevelLights {
 struct InView {
   /// Metres from the eye to its bound's edge, which the nearest are kept by.
   distance: f32,
+  /// Whether the view sees its bound; a shadowed light out of view near the eye is only kept ready.
+  is_seen: bool,
   handle: ProxyHandle<LightDescription>,
   basis: LightBasis,
   bound: Vec4,

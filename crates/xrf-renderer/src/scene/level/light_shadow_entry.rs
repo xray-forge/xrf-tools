@@ -8,6 +8,8 @@ pub struct LightShadowEntry {
   pub next: Option<LightShadowSet>,
   /// The frame the light was last in view, which room is made from the oldest of.
   pub seen: u64,
+  /// The frame the light was last kept ready out of view, standing near the camera.
+  pub warmed: u64,
   /// What the scene held when the swaying places in its range were last looked for, and the most any of them reaches
   /// for each metre it stands from the light: zero where none stands in range.
   pub swaying: Option<(usize, f32)>,
