@@ -16,9 +16,24 @@
 // where the screen held less than half, and the reason the trace gave it; a miss leaves the sky. A water's request
 // (`TRACE_REQUEST_WATER`) is answered into the water's reflection (`answer_water`), with the grass its ray passes.
 
+// The wait the list's pixels stretch their turns by the next frame: as many times as the rays they asked this frame,
+// counted back to their turns unstretched, overrun the list's room. Past its room the list drops the pixels drawn last,
+// as a block of the screen holding what it reflected the frame before; stretched, each pixel waits a turn or two more.
+fn keep_trace_wait() {
+  let wait: u32 = clamp(trace_request_head[TRACE_REQUEST_WAIT], 1u, TRACE_REQUEST_WAIT_MOST);
+  let asked: f32 = f32(trace_request_head[0]) * f32(wait);
+  let room: f32 = f32(arrayLength(&trace_requests)) * TRACE_REQUEST_FILL;
+
+  trace_request_head[TRACE_REQUEST_WAIT] = clamp(u32(ceil(asked / room)), 1u, TRACE_REQUEST_WAIT_MOST);
+}
+
 @compute @workgroup_size(64)
 fn cs_scene(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workgroups) groups: vec3<u32>) {
   let index: u32 = compute_index(id, groups, TRACE_REQUEST_WORKGROUP);
+
+  if (index == 0u) {
+    keep_trace_wait();
+  }
 
   if (index >= min(trace_request_head[0], arrayLength(&trace_requests))) {
     return;

@@ -23,7 +23,7 @@ pub struct SceneTracePass {
   /// The pass's own, the trace's and the texture cache's layouts, on a device with ray queries.
   layouts: Option<[wgpu::BindGroupLayout; 3]>,
   pipeline: Option<wgpu::ComputePipeline>,
-  /// What a list's head is set back to before the pass filling it: `TraceRequest::HEAD`.
+  /// What a list's head is set back to before the pass filling it, its wait kept: `TraceRequest::HEAD`.
   head_reset: wgpu::Buffer,
   /// What a list keeping no ends binds for them, which nothing writes.
   no_ends: wgpu::TextureView,

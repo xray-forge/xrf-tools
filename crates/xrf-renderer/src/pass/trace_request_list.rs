@@ -1,8 +1,8 @@
 use crate::pass::trace_request::TraceRequest;
 
 /// The rays a pass leaves to the scene pass each frame: the requests, as many as `capacity` and one workgroup's at the
-/// least; their head (the count made and the scene pass's dispatch, `TraceRequest::HEAD`); and the dispatch copied out
-/// of it.
+/// least; their head (the count made, the scene pass's dispatch and the wait, `TraceRequest::HEAD_WORDS`); and the
+/// dispatch copied out of it.
 pub struct TraceRequestList {
   label: String,
   capacity: u32,
@@ -33,7 +33,7 @@ impl TraceRequestList {
       requests: Self::create_requests(device, label, capacity),
       head: buffer(
         "request head",
-        size_of_val(&TraceRequest::HEAD) as u64,
+        (TraceRequest::HEAD_WORDS * size_of::<u32>()) as u64,
         wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC | wgpu::BufferUsages::COPY_DST,
       ),
       dispatch: buffer(

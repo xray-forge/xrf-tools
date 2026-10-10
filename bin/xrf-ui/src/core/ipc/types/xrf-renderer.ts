@@ -1325,7 +1325,7 @@ export type RenderReflectionSettings = {
 
 /**
  * How often a pixel the screen leaves unanswered is traced against the level's geometry: every frame, or on its turn
- * once in a few, the last frame's answer reprojected in between.
+ * once in a few, the last frame's answer reprojected in between; stretched where the rays asked overrun the list.
  */
 export enum ERenderReflectionTraceQuality {
   /** Once in eight frames. */

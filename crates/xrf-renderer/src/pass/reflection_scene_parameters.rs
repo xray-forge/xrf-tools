@@ -1,13 +1,13 @@
-use xrf_renderer_core::{GraphTexture, PassParameters, StorageArray, StorageValue, UniformBinding};
+use xrf_renderer_core::{GraphTexture, PassParameters, StorageArray, StorageArrayMut, StorageValue, UniformBinding};
 
 use crate::pass::exposure_head::ExposureHead;
 use crate::pass::lighting_uniform::LightingUniform;
 use crate::pass::trace_request::TraceRequest;
 
 /// What the reflections' scene pass reads and writes: the lighting and the material table a hit is lit by, and the
-/// exposure a water's is tonemapped at; the rays a pass left to it and their head; and the target and the ends into
-/// which each ray that meets the level's geometry writes its answer, the surfaces' traced reflection and its ends or
-/// the water's reflection and no ends.
+/// exposure a water's is tonemapped at; the rays a pass left to it and their head, whose wait it keeps; and the target
+/// and the ends into which each ray that meets the level's geometry writes its answer, the surfaces' traced reflection
+/// and its ends or the water's reflection and no ends.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 1)]
 pub struct ReflectionSceneParameters<'a> {
@@ -22,7 +22,7 @@ pub struct ReflectionSceneParameters<'a> {
   #[storage]
   pub trace_requests: StorageArray<TraceRequest>,
   #[storage]
-  pub trace_request_head: StorageArray<u32>,
+  pub trace_request_head: StorageArrayMut<u32>,
   #[storage_texture(d2, rgba16float, write)]
   pub traced_out: GraphTexture,
   #[storage_texture(d2, r32float, write)]
