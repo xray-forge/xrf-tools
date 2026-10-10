@@ -23,6 +23,7 @@ use crate::pass::light_volume_record::LightVolumeRecord;
 use crate::pass::light_volumes_uniform::LightVolumesUniform;
 use crate::pass::static_cull_params::StaticCullParams;
 use crate::scene::level::feature::lights_feature::{LightsFeature, MAX_LIGHTS};
+use crate::scene::level::grass_shadow_casters::GrassShadowCasters;
 use crate::scene::level::level_light_shadows::{LIGHT_SHADOW_ATLAS_SIZE, LevelLightShadows};
 use crate::scene::level::light_shadow_atlas::LightShadowAtlas;
 use crate::scene::level::light_shadow_set::LightShadowSet;
@@ -153,6 +154,7 @@ impl LevelLights {
       lod,
       statics,
       sway,
+      grass_reach,
       campfire_shares,
     } = frame;
 
@@ -255,7 +257,7 @@ impl LevelLights {
             forward,
             Vec3::from(light.color),
             statics,
-            sway,
+            (sway, grass_reach),
             is_in_view,
           );
         }
@@ -368,15 +370,17 @@ impl LevelLights {
     self.shadows.abandon_frame();
   }
 
-  /// Declares the culls and draws of the shadow faces this frame's `prepare_shadows` readied.
+  /// Declares the culls and draws of the shadow faces this frame's `prepare_shadows` readied, the `grass` over those
+  /// casting from it.
   pub fn add_shadow_passes<'a>(
     &'a self,
     graph: (&mut FrameGraph<'a>, &mut GraphBindings<'a>),
     passes: LevelPasses<'a>,
     scene: &StaticSceneHandles,
     frame: (&'a StaticCullParams, &'a wgpu::BindGroup),
+    grass: Option<GrassShadowCasters<'a>>,
   ) {
-    self.shadows.add_passes(graph, passes, scene, frame);
+    self.shadows.add_passes(graph, passes, scene, frame, grass);
   }
 
   pub fn get_shadow_atlas(&self) -> LightShadowAtlas<'_> {

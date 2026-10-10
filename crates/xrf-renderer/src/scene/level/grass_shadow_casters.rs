@@ -1,4 +1,6 @@
-use xrf_renderer_core::{FrameGraph, GraphBuffer, GraphBufferAccess, GraphDepthAttachment, GraphTexture};
+use xrf_renderer_core::{
+  FrameGraph, GraphBuffer, GraphBufferAccess, GraphDepthAttachment, GraphTexture, RasterContext, RasterPassBuilder,
+};
 
 use crate::frame::grass_card_handles::GrassCardHandles;
 use crate::pass::grass_pass::GrassPass;
@@ -15,6 +17,23 @@ pub struct GrassShadowCasters<'a> {
 }
 
 impl<'a> GrassShadowCasters<'a> {
+  /// Declares on `builder` what the cards' draw reads: its indirect arguments, their corners and their records.
+  pub fn declare<'g>(&self, builder: RasterPassBuilder<'g, 'a>) -> RasterPassBuilder<'g, 'a> {
+    builder
+      .buffer(self.cards.draw, GraphBufferAccess::Indirect)
+      .buffer(self.cards.vertices, GraphBufferAccess::StorageRead)
+      .buffer(self.cards.triangles, GraphBufferAccess::StorageRead)
+  }
+
+  /// Draws the cards into the map `context`'s pass draws into, seen by `view`, within the region already set.
+  pub fn record(&self, context: &mut RasterContext<'_>, view: &ViewBinding) {
+    let draw: &wgpu::Buffer = context.get_buffer(self.cards.draw);
+
+    self
+      .pass
+      .record_card_shadow(context.get_pass(), view, (self.group, self.textures), draw);
+  }
+
   /// Declares the cards' draw named `name` into layer `layer` of the cascades' `maps`, over what they hold, seen by a
   /// cascade's `view`.
   pub fn add_pass(

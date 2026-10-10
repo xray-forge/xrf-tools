@@ -13,4 +13,7 @@ pub struct LightShadowEntry {
   /// What the scene held when the swaying places in its range were last looked for, and the most any of them reaches
   /// for each metre it stands from the light: zero where none stands in range.
   pub swaying: Option<(usize, f32)>,
+  /// Whether its light casts the grass's shadow this frame: the cards stand within its reach and it stands near the
+  /// eye.
+  pub is_grassed: bool,
 }

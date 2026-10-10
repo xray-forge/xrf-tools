@@ -31,6 +31,7 @@ use crate::pass::static_cull_params::StaticCullParams;
 use crate::pass::static_draw_parameters::StaticDrawParameters;
 use crate::pass::static_draws::StaticDraws;
 use crate::pass::view_binding::ViewBinding;
+use crate::scene::level::grass_shadow_casters::GrassShadowCasters;
 use crate::scene::level::light_shadow_atlas::LightShadowAtlas;
 use crate::scene::level::light_shadow_entry::LightShadowEntry;
 use crate::scene::level::light_shadow_face::LightShadowFace;
@@ -60,7 +61,7 @@ static FACE_PASSES: [&str; 4] = [
 /// A face due this frame as its passes take it: its slot, its square and how it is drawn, its cull and its draws.
 type FaceSlot = (
   usize,
-  (ShadowTile, FaceDraw),
+  (ShadowTile, FaceDraw, bool),
   StaticCullParameters,
   [StaticDrawParameters; StaticLayout::COUNT],
 );
@@ -91,6 +92,15 @@ const SHRINK: f32 = 0.66;
 
 /// Where a face's projection starts where the light gives none: `light::virtual_size`'s default.
 const DEFAULT_NEAR: f32 = 0.1;
+
+/// Metres from the eye within which a light casts the grass's shadow, as Screen Space Shaders' grass shadows for
+/// non-directional lights default to: each of its faces draws the cards again as often as the trees' sway, so a few
+/// nearest lights pay it.
+const GRASS_LIGHT_DISTANCE: f32 = 30.0;
+
+/// How far a tuft's tip leans for the wind's amplitude, in metres, which a grassed face is drawn again for as a tree
+/// is.
+const GRASS_LEAN: f32 = 0.3;
 
 /// A face wanting a draw: what orders it (out of view, then not stale, then how near or how long ago drawn), its light,
 /// whether of the light's next set, which face, and the frames it may wait, none where it draws at once.
@@ -128,8 +138,9 @@ pub struct LevelLightShadows {
   candidates: Vec<FaceCandidate>,
   /// The faces offered this frame, by their light, set and face, with their ticket.
   queue: Vec<(ProxyHandle<LightDescription>, bool, usize, PeriodicTicket)>,
-  /// The faces this frame draws, by their slot, their square and how, as `prepare` readied them.
-  due: Vec<(usize, ShadowTile, FaceDraw)>,
+  /// The faces this frame draws, by their slot, their square and how, and whether the grass's cards are drawn over,
+  /// as `prepare` readied them.
+  due: Vec<(usize, ShadowTile, FaceDraw, bool)>,
   /// The lights whose faces this frame draws, by their light and square.
   drawn: Vec<(ProxyHandle<LightDescription>, ShadowTile)>,
   /// A face's camera, a slot each.
@@ -229,7 +240,7 @@ impl LevelLightShadows {
     forward: Vec3,
     color: Vec3,
     statics: &StaticScene,
-    sway: &ShadowSway<'_>,
+    (sway, grass_reach): (&ShadowSway<'_>, Option<f32>),
     is_in_view: bool,
   ) {
     let is_spot: bool = matches!(light.kind, LightKind::Spot);
@@ -307,7 +318,16 @@ impl LevelLightShadows {
       entry.swaying = Some((contents, measure_swaying(basis.position, spatial, near, sway.places)));
     }
 
-    let swaying: f32 = entry.swaying.map_or(0.0, |(_, swaying)| swaying);
+    // The cards stand about the eye: a light near it whose reach meets them casts their shadow.
+    let is_grassed: bool = distance < GRASS_LIGHT_DISTANCE
+      && grass_reach.is_some_and(|reach| eye.distance(spatial.truncate()) < spatial.w + reach);
+    let swaying: f32 =
+      entry
+        .swaying
+        .map_or(0.0, |(_, swaying)| swaying)
+        .max(if is_grassed { GRASS_LEAN / near } else { 0.0 });
+
+    entry.is_grassed = is_grassed;
 
     self.is_swaying |= sway.amplitude * swaying > 0.0;
     // How wide a face's texels are, for each metre from the light, times the square's side.
@@ -332,7 +352,8 @@ impl LevelLightShadows {
             (true, SWAY_WAIT_MOST, SWAY_WAIT_MOST)
           };
 
-          if state.drawn.is_none_or(|drawn| statics.is_changed_since(drawn, touches)) {
+          if state.drawn.is_none_or(|drawn| statics.is_changed_since(drawn, touches)) || state.is_grassed != is_grassed
+          {
             state.drawn_static = None;
             self
               .candidates
@@ -423,6 +444,7 @@ impl LevelLightShadows {
           .get(&index)
           .and_then(|entry| entry.swaying)
           .is_some_and(|(_, swaying)| swaying > 0.0);
+      let is_grassed: bool = self.entries.get(&index).is_some_and(|entry| entry.is_grassed);
       let Some(state) = self
         .entries
         .get_mut(&index)
@@ -469,12 +491,13 @@ impl LevelLightShadows {
 
       state.drawn = Some(contents);
       state.drawn_at = frame.sway.time;
+      state.is_grassed = is_grassed;
 
       if draw == FaceDraw::Static {
         state.drawn_static = Some(contents);
       }
 
-      self.due.push((slot, state.tile, draw));
+      self.due.push((slot, state.tile, draw, is_grassed));
       self.drawn.push((index, state.tile));
     }
 
@@ -491,13 +514,15 @@ impl LevelLightShadows {
   }
 
   /// Declares the faces this frame's `prepare` readied: each slot's arguments started from those a cull starts with,
-  /// every face culled into its slot in one compute pass, then every face drawn into its square in one render pass.
+  /// every face culled into its slot in one compute pass, then every face drawn into its square in one render pass, the
+  /// `grass`'s cards over those whose light casts from it.
   pub fn add_passes<'a>(
     &'a self,
     (graph, bindings): (&mut FrameGraph<'a>, &mut GraphBindings<'a>),
     passes: LevelPasses<'a>,
     scene: &StaticSceneHandles,
     (params, textures): (&'a StaticCullParams, &'a wgpu::BindGroup),
+    grass: Option<GrassShadowCasters<'a>>,
   ) {
     if self.due.is_empty() {
       return;
@@ -514,12 +539,12 @@ impl LevelLightShadows {
     let slots: Vec<FaceSlot> = self
       .due
       .iter()
-      .map(|(slot, tile, draw)| {
+      .map(|(slot, tile, draw, is_grassed)| {
         let (list_offset, args_offset): (u64, u64) = (*slot as u64 * self.region, *slot as u64 * self.args_stride);
 
         (
           *slot,
-          (*tile, *draw),
+          (*tile, *draw, *is_grassed && grass.is_some()),
           scene.get_cull_parameters(
             StorageArrayMut::new_range(lists, list_offset, self.region),
             StorageArrayMut::new_range(args, args_offset, self.args_size),
@@ -569,8 +594,8 @@ impl LevelLightShadows {
       });
     let statics: Vec<(usize, ShadowTile, [StaticDrawParameters; StaticLayout::COUNT])> = slots
       .iter()
-      .filter(|(_, (_, draw), ..)| *draw == FaceDraw::Static)
-      .map(|(slot, (tile, _), _, layouts)| (*slot, *tile, *layouts))
+      .filter(|(_, (_, draw, _), ..)| *draw == FaceDraw::Static)
+      .map(|(slot, (tile, ..), _, layouts)| (*slot, *tile, *layouts))
       .collect();
 
     if let (Some(restore), false) = (restore, statics.is_empty()) {
@@ -598,7 +623,9 @@ impl LevelLightShadows {
         });
     }
 
-    let is_restored: bool = slots.iter().any(|(_, (_, draw), ..)| *draw != FaceDraw::Whole);
+    let is_restored: bool = slots.iter().any(|(_, (_, draw, _), ..)| *draw != FaceDraw::Whole);
+    let grass: Option<GrassShadowCasters<'a>> =
+      grass.filter(|_| slots.iter().any(|(_, (.., is_grassed), ..)| *is_grassed));
     let builder = slots.iter().fold(
       graph
         .add_raster_pass(FACE_PASSES[2])
@@ -610,11 +637,15 @@ impl LevelLightShadows {
       Some(restore) => builder.parameters(&restore),
       None => builder,
     };
+    let builder = match grass {
+      Some(grass) => grass.declare(builder),
+      None => builder,
+    };
 
     builder.record(move |context| {
       let args: &wgpu::Buffer = context.get_buffer(args);
 
-      for (slot, (tile, draw), _, layouts) in &slots {
+      for (slot, (tile, draw, is_grassed), _, layouts) in &slots {
         // A swaying light's face over what stands still, as kept; any other drawn whole.
         let (restored, casters): (Option<&ShadowTileRestoreParameters>, ShadowCasters) = match (draw, &restore) {
           (FaceDraw::Static | FaceDraw::Swaying, Some(restore)) => (Some(restore), ShadowCasters::Swaying),
@@ -628,6 +659,10 @@ impl LevelLightShadows {
           (args, *slot as u64 * self.args_stride),
           casters,
         );
+
+        if let Some(grass) = grass.filter(|_| *is_grassed) {
+          grass.record(context, &self.views[*slot]);
+        }
       }
     });
   }
@@ -732,6 +767,7 @@ impl LevelLightShadows {
             drawn_static: None,
             drawn_at: 0.0,
             waited: 0,
+            is_grassed: false,
           })
           .collect();
 
