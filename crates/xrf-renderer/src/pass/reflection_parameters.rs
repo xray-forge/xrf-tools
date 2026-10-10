@@ -64,6 +64,11 @@ pub struct ReflectionParameters<'a> {
   pub history_surface: GraphTexture,
   #[texture(d2, unfilterable)]
   pub history_held: GraphTexture,
+  /// This frame's resolve, which the upscale brings to the frame's size, and the last frame's full-size history.
+  #[texture(d2, unfilterable)]
+  pub resolved: GraphTexture,
+  #[texture(d2, float)]
+  pub history_full: GraphTexture,
   #[sampler(filtering)]
   pub history_sampler: &'a wgpu::Sampler,
 }

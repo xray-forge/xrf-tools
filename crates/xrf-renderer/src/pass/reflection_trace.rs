@@ -18,6 +18,7 @@ impl ReflectionTrace {
   pub const AVERAGE_PASS: &'static str = "reflection average";
   pub const PREFILTER_PASS: &'static str = "reflection prefilter";
   pub const RESOLVE_PASS: &'static str = "reflection resolve";
+  pub const UPSCALE_PASS: &'static str = "reflection upscale";
   /// The least and the most the sky's highlights are scaled by as light.
   pub const SKY_GAIN_LEAST: f32 = 0.5;
   pub const SKY_GAIN_MOST: f32 = 3.0;

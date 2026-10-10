@@ -6,7 +6,8 @@ use crate::frame::view_targets::ViewTargets;
 /// frames its reflection holds and the distance through it to what it reflects; one set read while the other is
 /// written, swapped every frame. Beside them, at the frame's size: the frame's depth reduced to its nearest, which
 /// each frame rebuilds, and the last frame's scene as it stood before the sun shafts and the flares, with the depth it
-/// was drawn over, which a hit reads its colour from.
+/// was drawn over, which a hit reads its colour from; and the reflection resolved again at the frame's size, a pair
+/// read and written in turn as the others are, which combine reads.
 pub struct ReflectionHistory {
   pub radiances: [wgpu::Texture; 2],
   pub radiance_views: [wgpu::TextureView; 2],
@@ -14,6 +15,8 @@ pub struct ReflectionHistory {
   pub surface_views: [wgpu::TextureView; 2],
   pub helds: [wgpu::Texture; 2],
   pub held_views: [wgpu::TextureView; 2],
+  pub fulls: [wgpu::Texture; 2],
+  pub full_views: [wgpu::TextureView; 2],
   pub pyramid: DepthPyramid,
   pub scene: wgpu::Texture,
   pub scene_view: wgpu::TextureView,
@@ -98,6 +101,27 @@ impl ReflectionHistory {
       ["reflection history held 0", "reflection history held 1"],
       Self::HELD_FORMAT,
     );
+    let full = |label: &str| -> (wgpu::Texture, wgpu::TextureView) {
+      let texture: wgpu::Texture = device.create_texture(&wgpu::TextureDescriptor {
+        label: Some(label),
+        size: wgpu::Extent3d {
+          width: frame_width,
+          height: frame_height,
+          depth_or_array_layers: 1,
+        },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: Self::RADIANCE_FORMAT,
+        usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+        view_formats: &[],
+      });
+      let view: wgpu::TextureView = texture.create_view(&Default::default());
+
+      (texture, view)
+    };
+    let [(full_first, full_first_view), (full_second, full_second_view)] =
+      ["reflection history full 0", "reflection history full 1"].map(full);
 
     Self {
       radiances,
@@ -106,6 +130,8 @@ impl ReflectionHistory {
       surface_views,
       helds,
       held_views,
+      fulls: [full_first, full_second],
+      full_views: [full_first_view, full_second_view],
       pyramid: DepthPyramid::new_nearest(device, frame_width, frame_height, Self::PYRAMID_LEVELS),
       scene,
       scene_view,
