@@ -116,6 +116,7 @@ use crate::pass::static_gbuffer_pass::StaticGBufferPass;
 use crate::pass::static_occlusion_uniform::StaticOcclusionUniform;
 use crate::pass::sun_parameters::SunParameters;
 use crate::pass::sun_shafts_parameters::SunShaftsParameters;
+use crate::pass::sun_shafts_pass::SunShaftsPass;
 use crate::pass::temporal_parameters::TemporalParameters;
 use crate::pass::temporal_uniform::TemporalUniform;
 use crate::pass::thunder_parameters::ThunderParameters;
@@ -2500,20 +2501,40 @@ impl SceneView {
       }
 
       if is_shafted {
-        let parameters: SunShaftsParameters = SunShaftsParameters {
+        let (width, height) = handles.size;
+        let marched: GraphTexture = graph.create_texture(GraphTextureDescriptor::new_2d(
+          "sun shafts marched",
+          width.div_ceil(2),
+          height.div_ceil(2),
+          SunShaftsPass::MARCHED,
+        ));
+        let march: SunShaftsParameters = SunShaftsParameters {
           depth_target: handles.depth,
           shadow_maps: lit.shadow_maps,
           shadows: lit.shadows,
           lighting: lit.lighting,
           exposure: StorageValue::new(lit.exposure),
+          shafts: bindings.import_view(&mut *graph, "sun shafts none", passes.reflections.get_empty()),
+        };
+        let parameters: SunShaftsParameters = SunShaftsParameters {
+          shafts: marched,
+          ..march
         };
 
+        graph
+          .add_raster_pass("sun shafts march")
+          .parameters(&march)
+          .color(GraphColorAttachment::new(
+            marched,
+            wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+          ))
+          .record(move |context| passes.sun_shafts.record(context, view, &march, true));
         graph
           .add_raster_pass("sun shafts")
           .parameters(&parameters)
           .color(GraphColorAttachment::new(handles.scene, wgpu::LoadOp::Load))
           .color(GraphColorAttachment::new(handles.high, wgpu::LoadOp::Load))
-          .record(move |context| passes.sun_shafts.record(context, view, &parameters));
+          .record(move |context| passes.sun_shafts.record(context, view, &parameters, false));
       }
 
       if let (true, Some(counts), Some(cover), Some([streak, splash]), Some((_, model))) = (

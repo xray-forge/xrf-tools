@@ -7,3 +7,4 @@
 @group(1) @binding(2) var<uniform> shadows: Shadows;
 @group(1) @binding(3) var<uniform> lighting: Lighting;
 @group(1) @binding(4) var<storage, read> exposure: Exposure;
+@group(1) @binding(5) var shafts: texture_2d<f32>;

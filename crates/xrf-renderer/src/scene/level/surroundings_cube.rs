@@ -29,7 +29,9 @@ use crate::scene::static_scene::static_layout::StaticLayout;
 /// The level around the camera as a cube, a face a frame: the static scene culled and drawn into a small G-buffer by
 /// a camera looking down one axis from where the viewport's stands, then lit into the prefiltered sky cube's first
 /// mip, so a reflection that meets nothing on the screen reads the trees and the hills around it rather than the sky
-/// alone. Camera-centred, so it is drawn again continually; its faces lag the camera by up to five frames.
+/// alone. Camera-centred: a face at most a frame, each in turn, drawn again only where the camera moved from where it
+/// was drawn, the sun turned, the scene's contents or the probe changed, or it has stood `REFRESH_FRAMES`, so a still
+/// view draws a face every so often rather than every frame.
 pub struct SurroundingsCube {
   lists: GrowableBuffer,
   args: wgpu::Buffer,
@@ -40,6 +42,21 @@ pub struct SurroundingsCube {
   /// Texels a side the cube's faces are, as the settings ask.
   size: u32,
   is_due: bool,
+  /// Where each face was last drawn from: the camera, the sun's direction, what the scene held, its size and the
+  /// frame it was drawn on; none before it was.
+  drawn: [Option<FaceDrawn>; 6],
+  /// Frames prepared since it was made.
+  frame: u32,
+}
+
+/// Where a face was drawn from.
+#[derive(Clone, Copy)]
+struct FaceDrawn {
+  position: Vec3,
+  to_sun: Vec3,
+  contents: usize,
+  size: u32,
+  frame: u32,
 }
 
 impl SurroundingsCube {
@@ -50,6 +67,11 @@ impl SurroundingsCube {
   /// into a cube, showed in every far-ended reflection wherever the camera stood, to the whole of a level.
   const NEAR: f32 = 15.0;
   const FAR: f32 = 1200.0;
+  /// Metres the camera moves, and the cosine of the angle the sun turns, before a face is drawn again; and the frames
+  /// after which it is drawn again whatever moved, so the weather's light comes through.
+  const MOVED: f32 = 1.0;
+  const SUN_TURNED: f32 = 0.9994;
+  const REFRESH_FRAMES: u32 = 30;
 
   pub fn new(device: &wgpu::Device, view_layout: &wgpu::BindGroupLayout, args_size: u64) -> Self {
     Self {
@@ -65,6 +87,8 @@ impl SurroundingsCube {
       to_sun: Vec3::Y,
       size: RenderReflectionProbe::Fine.get_size(),
       is_due: false,
+      drawn: [None; 6],
+      frame: 0,
     }
   }
 
@@ -91,6 +115,26 @@ impl SurroundingsCube {
     let face: u32 = (self.face + 1) % 6;
     let drawn: u32 = probe.get_size() * Self::DRAWN_OVER;
     let position: Vec3 = frame.camera.position;
+    let to_sun: Vec3 = -frame.sun_direction;
+    let contents: usize = frame.scene.get_contents();
+
+    self.frame = self.frame.wrapping_add(1);
+    self.face = face;
+
+    let is_stale: bool = self.drawn[face as usize].is_none_or(|it: FaceDrawn| {
+      it.position.distance(position) > Self::MOVED
+        || it.to_sun.dot(to_sun) < Self::SUN_TURNED
+        || it.contents != contents
+        || it.size != probe.get_size()
+        || self.frame.wrapping_sub(it.frame) >= Self::REFRESH_FRAMES
+    });
+
+    if !is_stale {
+      self.is_due = false;
+
+      return;
+    }
+
     let (forward, up): (Vec3, Vec3) = match face {
       0 => (Vec3::X, Vec3::Y),
       1 => (Vec3::NEG_X, Vec3::Y),
@@ -121,10 +165,16 @@ impl SurroundingsCube {
       ),
     );
 
-    self.face = face;
-    self.to_sun = -frame.sun_direction;
+    self.to_sun = to_sun;
     self.size = probe.get_size();
     self.is_due = true;
+    self.drawn[face as usize] = Some(FaceDrawn {
+      position,
+      to_sun,
+      contents,
+      size: self.size,
+      frame: self.frame,
+    });
   }
 
   /// Declares the face's cull, its draw into a G-buffer of its own and its resolve into `faces`, the prefiltered
