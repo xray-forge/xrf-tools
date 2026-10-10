@@ -141,3 +141,13 @@ impl GrassCards {
     }
   }
 }
+
+impl GrassCards {
+  /// Bytes its corners, records, count and draw take, its structure apart.
+  pub fn get_memory(&self) -> u64 {
+    [&self.vertices, &self.triangles, &self.count, &self.draw]
+      .into_iter()
+      .map(wgpu::Buffer::size)
+      .sum()
+  }
+}

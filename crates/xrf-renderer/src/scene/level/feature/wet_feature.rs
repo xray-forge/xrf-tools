@@ -161,7 +161,8 @@ impl WetFeature {
 
   /// Adds the wetting of the G-buffer before any light is drawn over it, through the rain's `covers` and the level's
   /// surface (its lowest heights, its puddle sites and its water); answers the wet surface the enhanced patch writes
-  /// and the gloss the reflections' wet reach adds, which the reflections and combine read, none while dry.
+  /// and the gloss the reflections' wet reach adds, which the reflections and combine read, a texel of nothing for each
+  /// while dry.
   pub fn add_passes<'a>(
     &'a self,
     (graph, bindings): (&mut FrameGraph<'a>, &mut GraphBindings<'a>),
@@ -173,9 +174,14 @@ impl WetFeature {
       Option<UniformBinding<WetUniform>>,
     ),
     [surface_lowest, puddles, surface_water]: [GraphTexture; 3],
-  ) -> Option<(GraphTexture, GraphTexture)> {
+  ) -> (GraphTexture, GraphTexture) {
     let (Some(covers), Some(wet), Some([splash, flow])) = (covers, wet, &self.views) else {
-      return None;
+      let none: &'a wgpu::TextureView = passes.reflections.get_empty();
+
+      return (
+        bindings.import_view(&mut *graph, "wet surface none", none),
+        bindings.import_view(&mut *graph, "wet reach none", none),
+      );
     };
     let is_enhanced: bool = self.uniform.is_enhanced > 0.5;
     let maps: &EnhancedWaterMaps = passes.water.get_maps();
@@ -256,7 +262,7 @@ impl WetFeature {
         .record(move |context| passes.wet.record(context, (stage + 1, is_enhanced), view, &apply));
     }
 
-    Some((wet_surface, wet_reach))
+    (wet_surface, wet_reach)
   }
 }
 

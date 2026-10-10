@@ -27,6 +27,7 @@ use crate::pass::trace_request_handles::TraceRequestHandles;
 use crate::pass::trace_request_parameters::TraceRequestParameters;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::feature::view_feature::ViewFeature;
+use crate::scene::level::feature::view_frame_end::ViewFrameEnd;
 use crate::scene::level::lighting_handles::LightingHandles;
 
 /// The screen-space reflections, while they are traced: their settings and trace this frame, what their passes read,
@@ -415,14 +416,6 @@ impl ReflectionFeature {
       demand.abandon();
     }
   }
-
-  /// What this frame wrote becomes what the next reads, while they are traced: the view's depth target this frame drew
-  /// into (`depth`) kept, and the one kept handed back for the view to draw into next.
-  pub fn end_frame(&mut self, depth: &mut wgpu::TextureView) {
-    if let (Some(_), Some(history)) = (self.trace, &mut self.history) {
-      history.swap(depth);
-    }
-  }
 }
 
 impl ViewFeature for ReflectionFeature {
@@ -433,5 +426,15 @@ impl ViewFeature for ReflectionFeature {
 
   fn release(&mut self) {
     self.history = None;
+  }
+
+  /// What this frame wrote becomes what the next reads, while they are traced: the view's depth target this frame drew
+  /// into kept, and the one kept handed back for the view to draw into next.
+  fn end_frame(&mut self, end: &mut ViewFrameEnd<'_>) {
+    if let (true, Some(_), Some(history), Some(depth)) =
+      (end.is_lit, self.trace, &mut self.history, end.depth.as_deref_mut())
+    {
+      history.swap(depth);
+    }
   }
 }

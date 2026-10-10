@@ -17,6 +17,7 @@ use crate::frame::frame_texture::FrameTexture;
 use crate::frame::fsr_targets::FsrTargets;
 use crate::frame::history::History;
 use crate::frame::temporal_jitter::TemporalJitter;
+use crate::frame::texture_copy::add_texture_copy;
 use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::dlss_reactive_parameters::DlssReactiveParameters;
@@ -39,6 +40,7 @@ use crate::scene::level::feature::ray_reconstruction_resolve::RayReconstructionR
 use crate::scene::level::feature::resolve::Resolve;
 use crate::scene::level::feature::temporal_resolve::TemporalResolve;
 use crate::scene::level::feature::view_feature::ViewFeature;
+use crate::scene::level::feature::view_frame_end::ViewFrameEnd;
 
 /// What a DLSS upscaler is made for: its output, quality and preset, and whether the colour is linear light.
 type DlssKey = ((u32, u32), (DlssQuality, DlssPreset), bool);
@@ -506,6 +508,53 @@ impl ResolveFeature {
     matches!(self.resolve, Some(Resolve::Temporal(_) | Resolve::Dlss(_)))
   }
 
+  /// Copies the frame as it stands before the water, the composited surfaces and the particles draw, once for all that
+  /// read it: the temporal resolve's reactive weight is what the rest change of it, ray reconstruction tells the
+  /// transparent layers apart by it where it reads its guides (`is_guided`), and the enhanced water refracts and
+  /// reflects it (`is_water_reading`). None where nothing reads it.
+  pub fn add_before_water(
+    &self,
+    graph: &mut FrameGraph<'_>,
+    handles: ViewTargetHandles,
+    (is_guided, is_water_reading): (bool, bool),
+  ) -> Option<GraphTexture> {
+    (self.is_reading_scene_before_water() || is_guided || is_water_reading).then(|| {
+      let (width, height) = handles.size;
+      let copy: GraphTexture = graph.create_texture(GraphTextureDescriptor::new_2d(
+        "scene before water",
+        width,
+        height,
+        ViewTargets::SCENE,
+      ));
+
+      add_texture_copy(&mut *graph, "scene before water", handles.scene, copy);
+
+      copy
+    })
+  }
+
+  /// Copies the frame once its transparent layers, the rain last, drew, before the flares, the fog and the bloom, into
+  /// the `guides` ray reconstruction reads it by against the frame before them (`before_water`).
+  pub fn add_transparency_guide(
+    graph: &mut FrameGraph<'_>,
+    handles: ViewTargetHandles,
+    (guides, before_water): (&mut Option<RayGuides>, Option<GraphTexture>),
+  ) {
+    let (Some(guides), Some(before)) = (guides, before_water) else {
+      return;
+    };
+    let (width, height) = handles.size;
+    let after: GraphTexture = graph.create_texture(GraphTextureDescriptor::new_2d(
+      "scene after transparency",
+      width,
+      height,
+      ViewTargets::SCENE,
+    ));
+
+    add_texture_copy(&mut *graph, "scene after transparency", handles.scene, after);
+    guides.transparency = Some([before, after]);
+  }
+
   /// What the temporal resolve's reactive weight compares the finished frame with, the frame as it stood before the
   /// water and the blended surfaces drew: TAA and DLSS read the frame's copy `before_water`, answered; FSR 2 copies it
   /// into its own target, which its passes read.
@@ -869,13 +918,6 @@ impl ResolveFeature {
 
     output
   }
-
-  /// The history this frame wrote becomes the one the next reads.
-  pub fn end_frame(&mut self) {
-    if let Some(resolve) = &mut self.resolve {
-      resolve.swap();
-    }
-  }
 }
 
 impl ViewFeature for ResolveFeature {
@@ -889,5 +931,12 @@ impl ViewFeature for ResolveFeature {
   fn release(&mut self) {
     self.resolve = None;
     self.upscaled = None;
+  }
+
+  /// The resolve's history this frame wrote becomes the one the next reads.
+  fn end_frame(&mut self, _end: &mut ViewFrameEnd<'_>) {
+    if let Some(resolve) = &mut self.resolve {
+      resolve.swap();
+    }
   }
 }

@@ -25,7 +25,6 @@ use crate::contract::render_pick::RenderPick;
 use crate::contract::render_rect::RenderRect;
 use crate::contract::render_scale::RenderScale;
 use crate::contract::render_settings::RenderSettings;
-use crate::contract::render_surface_color::RenderSurfaceColor;
 use crate::contract::render_texture_report::RenderTextureReport;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::contract::render_viewport_id::RenderViewportId;
@@ -58,6 +57,7 @@ use crate::scene::level::level_frame::LevelFrame;
 use crate::scene::level::level_scene::LevelScene;
 use crate::scene::level::scene_output::SceneOutput;
 use crate::scene::level::scene_view::SceneView;
+use crate::scene::level::view_prepare::ViewPrepare;
 use crate::scene::static_scene::static_selection::StaticSelection;
 use crate::scene::texture::sky_texture_requests::SkyTextureRequests;
 use crate::shader::shader_library::ShaderLibrary;
@@ -1436,18 +1436,7 @@ impl RenderThread {
       .to_view(rect.width as f32 / rect.height as f32, far_limit);
 
     let options: RenderViewOptions = viewport.options.clone();
-    let switches: Vec4 = Vec4::new(
-      f32::from(u8::from(options.mode.surface_color == RenderSurfaceColor::Textured)),
-      options.mode.is_bumped as u32 as f32,
-      options.features.hemi_strength,
-      f32::from(
-        u8::from(options.features.parallax.is_steep)
-          | u8::from(options.mode.debug_view == RenderDebugView::Parallax) << 1
-          | u8::from(options.mode.debug_view == RenderDebugView::Bumps) << 2
-          | u8::from(options.mode.debug_view == RenderDebugView::Heights) << 3
-          | u8::from(options.features.parallax.is_enhanced()) << 4,
-      ),
-    );
+    let switches: Vec4 = CameraUniform::get_switches(&options);
     let is_scened: bool = scene.is_some();
 
     // A level is drawn at a share of the viewport and upscaled to it; nothing else is drawn but at its size.
@@ -1558,16 +1547,23 @@ impl RenderThread {
 
       view_state.prepare(
         scene,
-        (device, queue, gpu.context.dlss.as_ref()),
         encoder,
-        gpu.get_level_passes(shaders),
-        &view,
-        ((drawn_rect.width, drawn_rect.height), resolved, *rect),
-        world.camera.field_of_view,
-        &options,
-        (lighting, weather),
-        &gpu.weather_textures,
-        world.clock_rate,
+        &ViewPrepare {
+          device,
+          queue,
+          dlss: gpu.context.dlss.as_ref(),
+          passes: gpu.get_level_passes(shaders),
+          view: &view,
+          drawn: (drawn_rect.width, drawn_rect.height),
+          resolved,
+          output: *rect,
+          field_of_view: world.camera.field_of_view,
+          options: &options,
+          lighting,
+          weather,
+          weather_textures: &gpu.weather_textures,
+          weather_rate: world.clock_rate,
+        },
       );
       view_state.offer_periodic(scene, device, periodic, (&gpu.view_layout, &gpu.textures));
     }

@@ -1,3 +1,7 @@
+use xrf_renderer_core::{FrameGraph, GraphColorAttachment};
+
+use crate::frame::view_target_handles::ViewTargetHandles;
+
 /// One viewport's G-buffer, depth, light and scene, sized to its rectangle and made again when that changes; the targets
 /// each frame writes afresh (the ambient occlusion, the haze, the distortion, the high part and the bloom) are its
 /// graph's, their formats and sizes here.
@@ -56,6 +60,17 @@ impl ViewTargets {
   };
   /// Texels the haze map holds across, one a bearing, and down, one a height, as `shaders/frame/sky_haze.wgsl` says.
   pub const HAZE_SIZE: (u32, u32) = (64, 32);
+
+  /// Clears the frame's distortion target to nothing distorting, before anything draws into it.
+  pub fn add_distortion_clear(graph: &mut FrameGraph<'_>, handles: ViewTargetHandles) {
+    graph
+      .add_raster_pass("distortion clear")
+      .color(GraphColorAttachment::new(
+        handles.distortion,
+        wgpu::LoadOp::Clear(Self::DISTORTION_CLEAR),
+      ))
+      .record(|_| {});
+  }
 
   /// The G-buffer's colour targets in the order a G-buffer pass holds them and its draws write them: albedo, normal,
   /// material, motion and relief, the relief written only by draws that march it (`is_relief_written`).

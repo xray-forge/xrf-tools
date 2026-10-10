@@ -4,6 +4,7 @@ use crate::lighting::foliage_wind::FoliageWind;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::pass::foliage_wind_values::FoliageWindValues;
 use crate::pass::wind_uniform::WindUniform;
+use crate::scene::level::feature::view_feature::ViewFeature;
 
 /// The sway amplitude the shadows are redrawn at while the enhanced foliage motion blows: its largest move a metre of
 /// reach, a tall crown's trunk swing over its height.
@@ -65,4 +66,13 @@ impl WindFeature {
   pub fn get_sway(&self) -> (f32, f32) {
     self.sway
   }
+}
+
+impl ViewFeature for WindFeature {
+  /// Nothing: the wind is values a frame.
+  fn get_memory(&self) -> u64 {
+    0
+  }
+
+  fn release(&mut self) {}
 }

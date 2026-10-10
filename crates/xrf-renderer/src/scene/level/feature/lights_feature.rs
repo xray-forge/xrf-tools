@@ -27,6 +27,7 @@ use crate::pass::lights_uniform::LightsUniform;
 use crate::pass::trace_parameters::TraceParameters;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::feature::light_buffers::LightBuffers;
+use crate::scene::level::feature::view_feature::ViewFeature;
 use crate::scene::level::light_shadow_atlas::LightShadowAtlas;
 use crate::scene::level::lighting_handles::LightingHandles;
 
@@ -347,5 +348,22 @@ impl LightsFeature {
       .buffer(buffers.counts, GraphBufferAccess::CopySource)
       .keep()
       .record(move |context| self.record_overflow(context.get_encoder()));
+  }
+}
+
+impl ViewFeature for LightsFeature {
+  /// Its records, shafts and clusters, sized for the most lights a view takes whatever the settings.
+  fn get_memory(&self) -> u64 {
+    [&self.record_buffer, &self.volume_buffer, &self.counts, &self.items]
+      .into_iter()
+      .map(wgpu::Buffer::size)
+      .sum()
+  }
+
+  fn release(&mut self) {
+    self.records.clear();
+    self.volumes.clear();
+    self.volume_slices.clear();
+    self.count = 0;
   }
 }

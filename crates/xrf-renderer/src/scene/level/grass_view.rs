@@ -22,6 +22,7 @@ use crate::pass::grass_uniform::GrassUniform;
 use crate::pass::grass_wind_uniform::GrassWindUniform;
 use crate::pass::trace_grass_uniform::TraceGrassUniform;
 use crate::pass::view_binding::ViewBinding;
+use crate::scene::level::feature::view_feature::ViewFeature;
 use crate::scene::level::grass_build::GrassBuild;
 use crate::scene::level::grass_build_size::GrassBuildSize;
 use crate::scene::level::grass_cards::GrassCards;
@@ -502,5 +503,26 @@ impl GrassView {
           },
         );
       });
+  }
+}
+
+impl ViewFeature for GrassView {
+  /// Its uniforms, and the ring, lists and cards while it plants.
+  fn get_memory(&self) -> u64 {
+    let uniforms: u64 = [&self.uniform, &self.wind_buffer, &self.puddles_buffer]
+      .into_iter()
+      .map(wgpu::Buffer::size)
+      .sum();
+
+    uniforms
+      + self.build.as_ref().map_or(0, GrassBuild::get_memory)
+      + self.cards.as_ref().map_or(0, GrassCards::get_memory)
+  }
+
+  fn release(&mut self) {
+    self.build = None;
+    self.draw_group = None;
+    self.planted = None;
+    self.cards = None;
   }
 }

@@ -158,6 +158,7 @@ impl LevelLights {
       campfire_shares,
     } = frame;
 
+    into.settings = *settings;
     into.records.clear();
     into.volumes.clear();
     into.volume_slices.clear();

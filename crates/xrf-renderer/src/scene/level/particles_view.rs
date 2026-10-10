@@ -12,6 +12,7 @@ use crate::pass::particle_parameters::ParticleParameters;
 use crate::pass::particle_pass::ParticlePass;
 use crate::pass::particle_vertex::ParticleVertex;
 use crate::pass::view_binding::ViewBinding;
+use crate::scene::level::feature::view_feature::ViewFeature;
 
 /// Quads the vertex buffer holds at first; it doubles past them.
 const INITIAL_QUADS: u64 = 4096;
@@ -117,5 +118,16 @@ impl ParticlesView {
       usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
       mapped_at_creation: false,
     })
+  }
+}
+
+impl ViewFeature for ParticlesView {
+  /// Its quads' buffer.
+  fn get_memory(&self) -> u64 {
+    self.vertex_buffer.size()
+  }
+
+  fn release(&mut self) {
+    self.clear();
   }
 }

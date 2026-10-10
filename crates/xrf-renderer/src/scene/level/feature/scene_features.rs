@@ -8,6 +8,7 @@ use crate::scene::level::feature::exposure_feature::ExposureFeature;
 use crate::scene::level::feature::falling_rain_feature::FallingRainFeature;
 use crate::scene::level::feature::flares_feature::FlaresFeature;
 use crate::scene::level::feature::fog_feature::FogFeature;
+use crate::scene::level::feature::indirect_trace_feature::IndirectTraceFeature;
 use crate::scene::level::feature::lights_feature::LightsFeature;
 use crate::scene::level::feature::overlays_feature::OverlaysFeature;
 use crate::scene::level::feature::pick_feature::PickFeature;
@@ -17,6 +18,7 @@ use crate::scene::level::feature::resolve_feature::ResolveFeature;
 use crate::scene::level::feature::sky_feature::SkyFeature;
 use crate::scene::level::feature::smoothing_feature::SmoothingFeature;
 use crate::scene::level::feature::statics_feature::StaticsFeature;
+use crate::scene::level::feature::sun_feature::SunFeature;
 use crate::scene::level::feature::sun_shafts_feature::SunShaftsFeature;
 use crate::scene::level::feature::sun_trace_feature::SunTraceFeature;
 use crate::scene::level::feature::thunder_feature::ThunderFeature;
@@ -73,7 +75,9 @@ pub struct SceneFeatures {
   pub composited: CompositedFeature,
   pub ambient_occlusion: AmbientOcclusionFeature,
   pub contact_shadows: ContactShadowFeature,
+  pub sun: SunFeature,
   pub sun_trace: SunTraceFeature,
+  pub indirect_trace: IndirectTraceFeature,
   pub view_trace: ViewTraceFeature,
   pub wet: WetFeature,
   pub sky: SkyFeature,
@@ -116,7 +120,9 @@ impl SceneFeatures {
       composited: CompositedFeature::default(),
       ambient_occlusion: AmbientOcclusionFeature::default(),
       contact_shadows: ContactShadowFeature::default(),
+      sun: SunFeature,
       sun_trace: SunTraceFeature::default(),
+      indirect_trace: IndirectTraceFeature::default(),
       view_trace: ViewTraceFeature::default(),
       wet: WetFeature::default(),
       sky: SkyFeature::default(),
@@ -129,8 +135,13 @@ impl SceneFeatures {
   }
 
   /// Every unit, as what each answers alike.
-  pub fn list(&self) -> [&dyn ViewFeature; 26] {
+  pub fn list(&self) -> [&dyn ViewFeature; 33] {
     [
+      &self.lights,
+      &self.overlays,
+      &self.wind,
+      &self.grass,
+      &self.particles,
       &self.fog,
       &self.bloom,
       &self.smoothing,
@@ -146,7 +157,9 @@ impl SceneFeatures {
       &self.composited,
       &self.ambient_occlusion,
       &self.contact_shadows,
+      &self.sun,
       &self.sun_trace,
+      &self.indirect_trace,
       &self.view_trace,
       &self.wet,
       &self.sky,
@@ -160,8 +173,13 @@ impl SceneFeatures {
     ]
   }
 
-  pub fn list_mut(&mut self) -> [&mut dyn ViewFeature; 26] {
+  pub fn list_mut(&mut self) -> [&mut dyn ViewFeature; 33] {
     [
+      &mut self.lights,
+      &mut self.overlays,
+      &mut self.wind,
+      &mut self.grass,
+      &mut self.particles,
       &mut self.fog,
       &mut self.bloom,
       &mut self.smoothing,
@@ -177,7 +195,9 @@ impl SceneFeatures {
       &mut self.composited,
       &mut self.ambient_occlusion,
       &mut self.contact_shadows,
+      &mut self.sun,
       &mut self.sun_trace,
+      &mut self.indirect_trace,
       &mut self.view_trace,
       &mut self.wet,
       &mut self.sky,

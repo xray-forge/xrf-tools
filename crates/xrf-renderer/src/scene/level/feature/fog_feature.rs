@@ -17,6 +17,10 @@ use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::feature::view_feature::ViewFeature;
 use crate::scene::level::lighting_handles::LightingHandles;
 
+/// The camera hemi under which the enhanced fog's height fog is gone and over which it is whole, about the engine's
+/// indoors at `0.05` (`CGamePersistent::WeathersUpdate`).
+const INDOOR_HEMI_FADE: (f32, f32) = (0.03, 0.1);
+
 /// The enhanced fog: its height fog as applied this frame, and the scattering's three stages over the scene.
 #[derive(Default)]
 pub struct FogFeature {
@@ -25,6 +29,16 @@ pub struct FogFeature {
 }
 
 impl FogFeature {
+  /// The share of the enhanced fog's height fog a camera standing at a hemi (`camera_hemi`, none where the level gives
+  /// none) sees: none indoors, rising smoothly to whole outdoors, by its hemi as the engine tells indoors.
+  pub fn get_indoor_share(camera_hemi: Option<f32>) -> f32 {
+    camera_hemi.map_or(1.0, |hemi| {
+      let share: f32 = ((hemi - INDOOR_HEMI_FADE.0) / (INDOOR_HEMI_FADE.1 - INDOOR_HEMI_FADE.0)).clamp(0.0, 1.0);
+
+      share * share * (3.0 - 2.0 * share)
+    })
+  }
+
   /// Takes this frame's fog: the enhanced height fog where the view draws the weather's fog, and the scattering's
   /// stages for a frame `size` texels across.
   pub fn prepare(
