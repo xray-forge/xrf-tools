@@ -4,3 +4,4 @@ pub(crate) mod thm_extra_chunk;
 pub(crate) mod thm_material_chunk;
 pub(crate) mod thm_texture_param_chunk;
 pub(crate) mod thm_thumbnail_chunk;
+pub(crate) mod thm_trailing_bytes;

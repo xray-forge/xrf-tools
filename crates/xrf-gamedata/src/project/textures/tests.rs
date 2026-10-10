@@ -3,7 +3,7 @@
 use std::fs;
 
 use xrf_material::fixtures::{FixtureTree, ThmFixture};
-use xrf_thm::{ThmBumpMode, ThmTextureType};
+use xrf_thm::{ThmBumpMode, ThmFile, ThmTextureType};
 
 use crate::project::textures::verify_textures_result::GamedataTexturesVerificationResult;
 use crate::{
@@ -195,5 +195,41 @@ fn an_unreadable_descriptor_is_reported_under_the_read_rule() {
       .iter()
       .map(|finding| (finding.rule_id().to_string(), finding.subject().map(str::to_owned)))
       .collect::<Vec<_>>()
+  );
+}
+
+#[test]
+fn a_descriptor_with_bytes_past_its_fields_is_warned_about_and_still_read() {
+  let tree: FixtureTree = FixtureTree::new("gamedata_trailing")
+    .with_texture(BASE)
+    .with_texture(BUMP)
+    .with_texture(COMPANION)
+    .with_descriptor(
+      BASE,
+      &ThmFixture::image()
+        .with_bump(ThmBumpMode::Use, BUMP)
+        .with_trailing(ThmFile::THUMBNAIL_TYPE_CHUNK_ID, &[0]),
+    );
+  let result: GamedataTexturesVerificationResult = verify(&tree);
+
+  assert_eq!(
+    result.texture_bumps.checked_bumps_count, 1,
+    "the declaration still reads"
+  );
+  assert_eq!(result.texture_bumps.trailing_descriptors_count, 1);
+
+  let finding: &Finding = result
+    .get_findings()
+    .iter()
+    .find(|finding| finding.rule_id().to_string() == "textures.chunk-residue")
+    .expect("chunk residue finding");
+
+  assert_eq!(finding.subject(), Some("textures/act/act_stalker.thm"));
+  assert!(
+    finding
+      .message()
+      .contains("1 byte the engine never reads, past the fields of chunks 0x0813"),
+    "{}",
+    finding.message()
   );
 }

@@ -1,7 +1,7 @@
 use xrf_chunk::XRayByteOrder;
 use xrf_thm::{
   ThmBumpChunk, ThmBumpMode, ThmDetailChunk, ThmFile, ThmMaterial, ThmMaterialChunk, ThmTextureFlag,
-  ThmTextureParamChunk, ThmTextureType,
+  ThmTextureParamChunk, ThmTextureType, ThmTrailingBytes,
 };
 
 /// A descriptor file, built by changing one thing at a time about the one the SDK writes for a plain image.
@@ -63,6 +63,15 @@ impl ThmFixture {
 
   pub fn without_bump(mut self) -> Self {
     self.file.bump = None;
+    self
+  }
+
+  /// Bytes past a chunk's fields, as some texture packs write their type chunk.
+  pub fn with_trailing(mut self, id: u32, data: &[u8]) -> Self {
+    self.file.trailing.push(ThmTrailingBytes {
+      id,
+      data: data.to_vec(),
+    });
     self
   }
 

@@ -3,11 +3,9 @@ use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 
-use byteorder::{ByteOrder, WriteBytesExt};
+use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{
-  ChunkDataSource, ChunkReader, ChunkWriter, read_u8_chunk, read_u16_chunk, read_u32_chunk, read_w1251_string_chunk,
-};
+use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::{format_path, open_export_file};
 
@@ -17,6 +15,7 @@ use crate::chunks::thm_extra_chunk::ThmExtraChunk;
 use crate::chunks::thm_material_chunk::ThmMaterialChunk;
 use crate::chunks::thm_texture_param_chunk::ThmTextureParamChunk;
 use crate::chunks::thm_thumbnail_chunk::ThmThumbnailChunk;
+use crate::chunks::thm_trailing_bytes::ThmTrailingBytes;
 use crate::thm_detail_usage::ThmDetailUsage;
 use crate::thm_texture_flag::ThmTextureFlag;
 use crate::thm_texture_type::ThmTextureType;
@@ -40,6 +39,8 @@ pub struct ThmFile {
   pub fade_delay: Option<u8>,
   /// What the reader could not fold into a field; see [`ThmExtraChunk`].
   pub extra: Vec<ThmExtraChunk>,
+  /// What folded chunks hold past their fields; see [`ThmTrailingBytes`].
+  pub trailing: Vec<ThmTrailingBytes>,
 }
 
 impl ThmFile {
@@ -74,6 +75,7 @@ impl ThmFile {
       ext_normal_map_name: Some(String::new()),
       fade_delay: Some(0),
       extra: Vec::new(),
+      trailing: Vec::new(),
     }
   }
 }
@@ -98,14 +100,14 @@ impl ThmFile {
     Self::read_from_chunk::<T, _>(&mut ChunkReader::from_vec(bytes)?)
   }
 
-  /// Reads a descriptor from a chunk reader over any data source.
+  /// Reads a descriptor from a chunk reader over any data source, keeping what a chunk holds past its fields.
   pub fn read_from_chunk<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let mut file: Self = Self::default();
 
     for mut chunk in reader.read_children_including_compressed()? {
       let is_folded: bool = match chunk.id {
         Self::VERSION_CHUNK_ID if file.version.is_none() => {
-          file.version = Some(read_u16_chunk::<T, _>(&mut chunk)?);
+          file.version = Some(chunk.read_u16::<T>()?);
           true
         }
         id if ThmThumbnailChunk::matches(id) && file.thumbnail.is_none() => {
@@ -113,7 +115,7 @@ impl ThmFile {
           true
         }
         Self::THUMBNAIL_TYPE_CHUNK_ID if file.thumbnail_type.is_none() => {
-          file.thumbnail_type = Some(read_u32_chunk::<T, _>(&mut chunk)?);
+          file.thumbnail_type = Some(chunk.read_u32::<T>()?);
           true
         }
         ThmTextureParamChunk::CHUNK_ID if file.texture_param.is_none() => {
@@ -121,7 +123,7 @@ impl ThmFile {
           true
         }
         Self::TEXTURE_TYPE_CHUNK_ID if file.texture_type.is_none() => {
-          file.texture_type = Some(ThmTextureType::from(read_u32_chunk::<T, _>(&mut chunk)?));
+          file.texture_type = Some(ThmTextureType::from(chunk.read_u32::<T>()?));
           true
         }
         ThmDetailChunk::CHUNK_ID if file.detail.is_none() => {
@@ -137,20 +139,29 @@ impl ThmFile {
           true
         }
         Self::EXT_NORMAL_MAP_CHUNK_ID if file.ext_normal_map_name.is_none() => {
-          file.ext_normal_map_name = Some(read_w1251_string_chunk(&mut chunk)?);
+          file.ext_normal_map_name = Some(chunk.read_w1251_string()?);
           true
         }
         Self::FADE_DELAY_CHUNK_ID if file.fade_delay.is_none() => {
-          file.fade_delay = Some(read_u8_chunk(&mut chunk)?);
+          file.fade_delay = Some(chunk.read_u8()?);
           true
         }
         _ => false,
       };
 
+      // The engine's `ETextureParams::Load` reads a chunk's fields and nothing past them, which some texture packs
+      // write: a type chunk a byte longer.
+      let rest: Vec<u8> = chunk.read_remaining()?;
+
       if !is_folded {
         file.extra.push(ThmExtraChunk {
           id: chunk.id,
-          data: chunk.read_remaining()?,
+          data: rest,
+        });
+      } else if !rest.is_empty() {
+        file.trailing.push(ThmTrailingBytes {
+          id: chunk.id,
+          data: rest,
         });
       }
     }
@@ -181,53 +192,53 @@ impl ThmFile {
   /// Writes the descriptor into the writer.
   pub fn write_to<T: ByteOrder>(&self, destination: &mut dyn Write) -> XrfResult {
     if let Some(version) = self.version {
-      Self::write_chunk::<T>(destination, Self::VERSION_CHUNK_ID, |writer| {
+      self.write_chunk::<T>(destination, Self::VERSION_CHUNK_ID, |writer| {
         Ok(writer.write_u16::<T>(version)?)
       })?;
     }
 
     if let Some(thumbnail) = &self.thumbnail {
-      Self::write_chunk::<T>(destination, thumbnail.to_chunk_id(), |writer| thumbnail.write(writer))?;
+      self.write_chunk::<T>(destination, thumbnail.to_chunk_id(), |writer| thumbnail.write(writer))?;
     }
 
     if let Some(thumbnail_type) = self.thumbnail_type {
-      Self::write_chunk::<T>(destination, Self::THUMBNAIL_TYPE_CHUNK_ID, |writer| {
+      self.write_chunk::<T>(destination, Self::THUMBNAIL_TYPE_CHUNK_ID, |writer| {
         Ok(writer.write_u32::<T>(thumbnail_type)?)
       })?;
     }
 
     if let Some(texture_param) = &self.texture_param {
-      Self::write_chunk::<T>(destination, ThmTextureParamChunk::CHUNK_ID, |writer| {
+      self.write_chunk::<T>(destination, ThmTextureParamChunk::CHUNK_ID, |writer| {
         writer.write_xr::<T, _>(texture_param)
       })?;
     }
 
     if let Some(texture_type) = self.texture_type {
-      Self::write_chunk::<T>(destination, Self::TEXTURE_TYPE_CHUNK_ID, |writer| {
+      self.write_chunk::<T>(destination, Self::TEXTURE_TYPE_CHUNK_ID, |writer| {
         Ok(writer.write_u32::<T>(texture_type.into())?)
       })?;
     }
 
     if let Some(detail) = &self.detail {
-      Self::write_chunk::<T>(destination, ThmDetailChunk::CHUNK_ID, |writer| {
+      self.write_chunk::<T>(destination, ThmDetailChunk::CHUNK_ID, |writer| {
         writer.write_xr::<T, _>(detail)
       })?;
     }
 
     if let Some(material) = &self.material {
-      Self::write_chunk::<T>(destination, ThmMaterialChunk::CHUNK_ID, |writer| {
+      self.write_chunk::<T>(destination, ThmMaterialChunk::CHUNK_ID, |writer| {
         writer.write_xr::<T, _>(material)
       })?;
     }
 
     if let Some(bump) = &self.bump {
-      Self::write_chunk::<T>(destination, ThmBumpChunk::CHUNK_ID, |writer| {
+      self.write_chunk::<T>(destination, ThmBumpChunk::CHUNK_ID, |writer| {
         writer.write_xr::<T, _>(bump)
       })?;
     }
 
     if let Some(name) = &self.ext_normal_map_name {
-      Self::write_chunk::<T>(destination, Self::EXT_NORMAL_MAP_CHUNK_ID, |writer| {
+      self.write_chunk::<T>(destination, Self::EXT_NORMAL_MAP_CHUNK_ID, |writer| {
         writer.write_w1251_string(name)?;
 
         Ok(())
@@ -235,20 +246,39 @@ impl ThmFile {
     }
 
     if let Some(fade_delay) = self.fade_delay {
-      Self::write_chunk::<T>(destination, Self::FADE_DELAY_CHUNK_ID, |writer| {
+      self.write_chunk::<T>(destination, Self::FADE_DELAY_CHUNK_ID, |writer| {
         Ok(writer.write_u8(fade_delay)?)
       })?;
     }
 
     for extra in &self.extra {
-      Self::write_chunk::<T>(destination, extra.id, |writer| extra.write(writer))?;
+      Self::write_payload::<T>(destination, extra.id, |writer| extra.write(writer))?;
     }
 
     Ok(())
   }
 
-  /// Frames one payload as a chunk of `id`, so that the order above reads as the order on disk.
+  /// Frames a folded chunk's fields as a chunk of `id`, the bytes read past them after, so that the order above reads
+  /// as the order on disk.
   fn write_chunk<T: ByteOrder>(
+    &self,
+    destination: &mut dyn Write,
+    id: u32,
+    fill: impl FnOnce(&mut ChunkWriter) -> XrfResult,
+  ) -> XrfResult {
+    Self::write_payload::<T>(destination, id, |writer| {
+      fill(writer)?;
+
+      for trailing in self.trailing.iter().filter(|trailing| trailing.id == id) {
+        writer.write_all(&trailing.data)?;
+      }
+
+      Ok(())
+    })
+  }
+
+  /// Frames one payload as a chunk of `id`.
+  fn write_payload<T: ByteOrder>(
     destination: &mut dyn Write,
     id: u32,
     fill: impl FnOnce(&mut ChunkWriter) -> XrfResult,

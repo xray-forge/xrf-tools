@@ -45,7 +45,7 @@ impl ChunkReadWrite for ThmBumpChunk {
       name: reader.read_w1251_string()?,
     };
 
-    reader.assert_read("Expect all data to be read from thm bump chunk")?;
+    // Bytes past the fields are the descriptor's to keep, as `ThmFile::trailing`.
 
     Ok(bump)
   }

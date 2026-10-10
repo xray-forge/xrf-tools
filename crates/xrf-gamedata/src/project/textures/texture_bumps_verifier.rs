@@ -1,11 +1,15 @@
+use std::sync::Arc;
+
 use rayon::prelude::*;
+use xrf_error::XrfResult;
 use xrf_material::{XrayMaterialBumpInput, XrayMaterialDeclaration, XrayMaterialDescriptor, XrayMaterialResolver};
 use xrf_output::{OutputOptions, OutputSequence, OutputSlot};
+use xrf_thm::{ThmFile, ThmTrailingBytes};
 use xrf_vfs::{XrayAsset, XrayAssetType as AssetType, XrayProbe, XrayResolution};
 
 use crate::project::textures::texture_bump_verification::{TextureBumpVerdict, TextureBumpVerification};
 use crate::project::textures::texture_bumps_verification_result::GamedataTextureBumpsVerificationResult;
-use crate::{GamedataFindingFactory, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule};
+use crate::{Finding, GamedataFindingFactory, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule};
 
 /// Every bump a texture descriptor asks for is the bump the engine will bind.
 ///
@@ -21,6 +25,9 @@ use crate::{GamedataFindingFactory, GamedataProject, GamedataProjectVerifyOption
 /// A missing companion is counted apart from a missing bump because it costs less: the engine binds
 /// `ed\ed_dummy_bump#`, whose flat alpha removes parallax relief and whose constant error term leaves the DXT normal
 /// uncorrected, while the surface still reads as bumped. Vanilla ships one such pair, so it fails only under strict.
+///
+/// A descriptor holding bytes past a chunk's fields is `textures.chunk-residue`: the engine reads each chunk's fields
+/// and nothing after them, so it renders right, and only strict fails on it.
 pub(crate) struct TextureBumpsVerifier<'a> {
   options: &'a GamedataProjectVerifyOptions,
   project: &'a GamedataProject,
@@ -51,11 +58,20 @@ impl<'a> TextureBumpsVerifier<'a> {
         let output: &OutputOptions = slot.get_output();
         let path: &str = descriptor.get_logical_path().as_str();
 
-        Self::verify_descriptor(
+        // Read once for both: what the material comes to, and what the file holds past its chunks' fields.
+        let file: XrfResult<Arc<ThmFile>> = XrayMaterialResolver::read_descriptor(&probe, descriptor);
+        let verification: TextureBumpVerification = Self::verify_descriptor(
           output,
           path,
-          &XrayMaterialResolver::describe_descriptor(&probe, descriptor),
-        )
+          &XrayMaterialResolver::describe_read_descriptor(&probe, descriptor, &file),
+        );
+
+        match &file {
+          Ok(file) if !file.trailing.is_empty() => {
+            verification.with_trailing_bytes(Self::describe_trailing(output, path, &file.trailing))
+          }
+          _ => verification,
+        }
       })
       .collect();
 
@@ -82,6 +98,7 @@ impl<'a> TextureBumpsVerifier<'a> {
         TextureBumpVerdict::InvalidDeclaration => result.invalid_bump_declarations_count += 1,
       }
 
+      result.trailing_descriptors_count += u32::from(verification.has_trailing_bytes);
       result.findings.extend(verification.findings);
     }
 
@@ -182,6 +199,30 @@ impl<'a> TextureBumpsVerifier<'a> {
         verification
       }
     }
+  }
+
+  /// The warning for a descriptor holding bytes past its chunks' fields, naming how many and after which chunks.
+  fn describe_trailing(output: &OutputOptions, path: &str, trailing: &[ThmTrailingBytes]) -> Finding {
+    let ignored: usize = trailing.iter().map(|trailing| trailing.data.len()).sum();
+    let chunks: String = trailing
+      .iter()
+      .map(|trailing| format!("0x{:04X}", trailing.id))
+      .collect::<Vec<_>>()
+      .join(", ");
+    let bytes: &str = if ignored == 1 { "byte" } else { "bytes" };
+
+    xrf_output::warning!(
+      output,
+      "Texture descriptor carries bytes the engine never reads: {path} - {chunks}"
+    );
+
+    GamedataFindingFactory::for_asset(
+      GamedataVerificationRule::TexturesChunkResidue,
+      path,
+      format!(
+        "Texture descriptor carries {ignored} {bytes} the engine never reads, past the fields of chunks {chunks}"
+      ),
+    )
   }
 
   /// What the renderer puts on the surface for an input that did not resolve, or `None` for one that did.

@@ -51,6 +51,21 @@ pub(crate) fn descriptor_with_thumbnail(payload: &[u8]) -> Vec<u8> {
   file
 }
 
+/// What [`descriptor_padded`] puts after every chunk's fields.
+pub(crate) const PADDING: u8 = 0xa5;
+
+/// The same descriptor with a byte more after every chunk's fields, as some texture packs write their type chunk.
+pub(crate) fn descriptor_padded() -> Vec<u8> {
+  chunks()
+    .into_iter()
+    .flat_map(|(id, mut payload)| {
+      payload.push(PADDING);
+
+      raw_chunk(id, &payload)
+    })
+    .collect()
+}
+
 /// The sample descriptor's chunks, in the order they sit in the file.
 fn chunks() -> Vec<(u32, Vec<u8>)> {
   vec![

@@ -1153,6 +1153,8 @@ export type ArchiveThmFile = {
   thumbnail: ArchiveThmThumbnail | null;
   /** Chunk ids the reader could not fold into a field, in the order it read them. */
   extraChunks: Array<number>;
+  /** Chunk ids holding bytes past their fields, which no engine reads, in the order the reader met them. */
+  trailingChunks: Array<number>;
 };
 
 /** One bit of the texture param flag word. */

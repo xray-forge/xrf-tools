@@ -6,6 +6,7 @@ use crate::chunks::thm_bump_chunk::ThmBumpChunk;
 use crate::chunks::thm_detail_chunk::ThmDetailChunk;
 use crate::chunks::thm_material_chunk::ThmMaterialChunk;
 use crate::chunks::thm_texture_param_chunk::ThmTextureParamChunk;
+use crate::chunks::thm_trailing_bytes::ThmTrailingBytes;
 use crate::tests::fixtures;
 use crate::thm_bump_mode::ThmBumpMode;
 use crate::thm_detail_usage::ThmDetailUsage;
@@ -66,6 +67,35 @@ fn reads_every_field_the_format_defines() -> XrfResult {
   assert_eq!(file.ext_normal_map_name, Some(String::new()));
   assert_eq!(file.fade_delay, Some(0));
   assert!(file.extra.is_empty());
+
+  Ok(())
+}
+
+#[test]
+fn reads_a_chunk_longer_than_its_fields_as_the_engine_does_and_keeps_the_rest() -> XrfResult {
+  let padded: ThmFile = ThmFile::read_from_bytes::<XRayByteOrder>(fixtures::descriptor_padded())?;
+  let whole: ThmFile = ThmFile::read_from_bytes::<XRayByteOrder>(fixtures::descriptor())?;
+
+  assert_eq!(
+    ThmFile {
+      trailing: Vec::new(),
+      ..padded.clone()
+    },
+    whole,
+    "Expect the fields to read as they do without the bytes past them"
+  );
+  assert_eq!(padded.used_bump_name(), Some(fixtures::BUMP_NAME));
+  assert_eq!(
+    padded.trailing,
+    fixtures::WHOLE_FILE_ORDER
+      .iter()
+      .map(|id| ThmTrailingBytes {
+        id: *id,
+        data: vec![fixtures::PADDING]
+      })
+      .collect::<Vec<_>>(),
+    "Expect every chunk's byte past its fields to be kept under its id"
+  );
 
   Ok(())
 }

@@ -548,7 +548,14 @@ export function mockArchiveThmDescription(overrides: Partial<ArchiveThmDescripti
       unnamedFlags: 0,
     },
     fadeDelay: 0,
-    file: { version: 0x0012, isSupportedVersion: true, thumbnailType: 1, thumbnail: null, extraChunks: [] },
+    file: {
+      version: 0x0012,
+      isSupportedVersion: true,
+      thumbnailType: 1,
+      thumbnail: null,
+      extraChunks: [],
+      trailingChunks: [],
+    },
     ...overrides,
   };
 }

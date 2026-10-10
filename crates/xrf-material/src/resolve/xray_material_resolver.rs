@@ -57,6 +57,15 @@ impl XrayMaterialResolver {
     Self::describe_within(probe, &XrayTextureScope::shared(), descriptor)
   }
 
+  /// Describes the material a located descriptor declares, outside any level, from the read a caller already made.
+  pub fn describe_read_descriptor(
+    probe: &XrayProbe,
+    descriptor: &XrayAsset,
+    file: &XrfResult<Arc<ThmFile>>,
+  ) -> XrayMaterialDescriptor {
+    Self::describe_read(probe, &XrayTextureScope::shared(), descriptor, file)
+  }
+
   /// What `LoadTHM` leaves for one name once a level's descriptor is read over the shared one: one the type gate skips
   /// changes nothing, and one it reads replaces the bump and the material whole and the detail only where it names a
   /// live one.
@@ -77,7 +86,17 @@ impl XrayMaterialResolver {
 
   /// Describes a located descriptor, resolving what it declares within `scope`.
   fn describe_within(probe: &XrayProbe, scope: &XrayTextureScope, descriptor: &XrayAsset) -> XrayMaterialDescriptor {
-    let file: Arc<ThmFile> = match Self::read(probe, descriptor) {
+    Self::describe_read(probe, scope, descriptor, &Self::read_descriptor(probe, descriptor))
+  }
+
+  /// Describes a located descriptor from its read, resolving what it declares within `scope`.
+  fn describe_read(
+    probe: &XrayProbe,
+    scope: &XrayTextureScope,
+    descriptor: &XrayAsset,
+    file: &XrfResult<Arc<ThmFile>>,
+  ) -> XrayMaterialDescriptor {
+    let file: &ThmFile = match file {
       Ok(file) => file,
       Err(error) => {
         return XrayMaterialDescriptor::flat(
@@ -112,7 +131,7 @@ impl XrayMaterialResolver {
       declaration,
       bump,
       outcome,
-      detail: Self::describe_detail(&file),
+      detail: Self::describe_detail(file),
       material: Self::describe_material(file.material.unwrap_or_default()),
     }
   }
@@ -122,7 +141,8 @@ impl XrayMaterialResolver {
     u32::from(chunk.material) as f32 + chunk.weight
   }
 
-  fn read(probe: &XrayProbe, descriptor: &XrayAsset) -> XrfResult<Arc<ThmFile>> {
+  /// A located descriptor as the engine's reader parses it, through the probe's cache.
+  pub fn read_descriptor(probe: &XrayProbe, descriptor: &XrayAsset) -> XrfResult<Arc<ThmFile>> {
     probe.read_asset_parsed(descriptor, |bytes| {
       ThmFile::read_from_chunk::<XRayByteOrder, _>(&mut ChunkReader::from_vec(bytes)?)
     })

@@ -45,6 +45,16 @@ fn writes_the_chunks_in_whole_file_order() -> XrfResult {
 }
 
 #[test]
+fn rewrites_a_descriptor_with_bytes_past_its_fields_byte_for_byte() -> XrfResult {
+  let original: Vec<u8> = fixtures::descriptor_padded();
+  let (_, written) = rewrite(&original)?;
+
+  assert_eq!(written, original);
+
+  Ok(())
+}
+
+#[test]
 fn rewrites_a_descriptor_carrying_a_thumbnail_byte_for_byte() -> XrfResult {
   // The payload is the engine's own compressed stream, which nothing here can rebuild, so the only correct rewrite is
   // the one that copies it. Its id carries `CFS_CompressMark`, which has to survive too.
