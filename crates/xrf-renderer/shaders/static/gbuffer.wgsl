@@ -131,14 +131,14 @@ fn vs_tree(@builtin(vertex_index) vertex_index: u32, @builtin(instance_index) in
   let uv: vec2<f32> = unpack_shorts(words[at + VERTEX_UV]) / 2048.0;
   // The enhanced motion swings a trunk and tosses a cut-out branch or leaf, as `tree_branch` draws those.
   let is_branch: bool = (surfaces[pulled.surface].flags & SURFACE_IS_CUT_OUT) != 0u;
-  let kind: f32 = select(select(FOLIAGE_TRUNK, FOLIAGE_BRANCH, is_branch), FOLIAGE_NONE, is_still);
+  let kind: f32 = tree_foliage_kind(is_still, is_branch);
   var out: GBufferVarying = place_vertex(pulled, position, unpack4x8unorm(words[at + VERTEX_NORMAL]),
     unpack4x8unorm(words[at + VERTEX_TANGENT]), unpack4x8unorm(words[at + VERTEX_BINORMAL]), rigidity,
     vec2<f32>(kind, uv.y));
 
   // Under the enhanced motion a crown's leaves are lit as a sphere about its foot rather than by their cards, and never
   // darker than three tenths of the sky.
-  if (kind == FOLIAGE_BRANCH && is_foliage_enhanced(vec2<f32>(kind, uv.y))) {
+  if (kind == FOLIAGE_BRANCH && is_foliage_enhanced(wind, vec2<f32>(kind, uv.y))) {
     let place: Place = pulled.place;
     let linear: mat3x3<f32> = mat3x3<f32>(place.transform[0].xyz, place.transform[1].xyz, place.transform[2].xyz);
     let view: mat3x3<f32> = mat3x3<f32>(camera.view[0].xyz, camera.view[1].xyz, camera.view[2].xyz);

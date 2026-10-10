@@ -16,7 +16,6 @@ use wgpu::util::StagingBelt;
 use crate::camera::camera_view::CameraView;
 use crate::context::gpu_context::GpuContext;
 use crate::context::gpu_requirements::can_trace;
-use crate::contract::render_ambient_occlusion_settings::RenderAmbientOcclusionSettings;
 use crate::contract::render_backend::RenderBackend;
 use crate::contract::render_debug_view::RenderDebugView;
 use crate::contract::render_dlss_availability::RenderDlssAvailability;
@@ -24,7 +23,6 @@ use crate::contract::render_frame_report::RenderFrameReport;
 use crate::contract::render_load_report::RenderLoadReport;
 use crate::contract::render_pick::RenderPick;
 use crate::contract::render_rect::RenderRect;
-use crate::contract::render_reflection_settings::RenderReflectionSettings;
 use crate::contract::render_scale::RenderScale;
 use crate::contract::render_settings::RenderSettings;
 use crate::contract::render_surface_color::RenderSurfaceColor;
@@ -646,17 +644,12 @@ impl RenderThread {
 
     let mut scene_frames: HashMap<RenderSceneId, RenderSceneFrame> = scene_frames;
     let live: HashSet<RenderSceneId> = scene_frames.keys().copied().collect();
-    // The scenes a viewport traces rays in, its reflections or its occlusion, which alone keep their acceleration
+    // The scenes a viewport traces rays in (`RenderViewOptions::is_scene_traced`), which alone keep their acceleration
     // structures.
     let traced: HashSet<RenderSceneId> = self
       .viewports
       .values()
-      .filter(|viewport| {
-        let reflections: &RenderReflectionSettings = &viewport.options.features.reflections;
-        let occlusion: &RenderAmbientOcclusionSettings = &viewport.options.features.ambient_occlusion;
-
-        (reflections.is_traced && reflections.is_drawn()) || (occlusion.is_enabled && occlusion.is_traced())
-      })
+      .filter(|viewport| viewport.options.is_scene_traced())
       .filter_map(|viewport| viewport.world.scene)
       .collect();
 

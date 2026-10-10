@@ -25,6 +25,14 @@ struct Lighting {
   sky_fade: vec4<f32>,
 }
 
+struct TraceSwaySlot {
+  vertex_start: u32,
+  vertex_count: u32,
+  place: u32,
+  surface: u32,
+  first_out: u32,
+}
+
 struct Glass {
   refraction: f32,
 }

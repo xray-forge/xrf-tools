@@ -81,6 +81,10 @@ fn scene_grass_passed(origin: vec3<f32>, toward: vec3<f32>, length: f32, is_met:
   return SceneGrassPassed(0.0, vec3<f32>(0.0), 0.0, -1.0);
 }
 
+fn scene_grass_through(origin: vec3<f32>, toward: vec3<f32>, reach: f32, offset: f32, ground: f32) -> f32 {
+  return 1.0;
+}
+
 fn shade_scene_grass(
   grass: SceneGrassPassed,
   origin: vec3<f32>,

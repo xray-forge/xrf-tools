@@ -6,7 +6,8 @@
 // surface, traced against the level's static geometry and its spawned models, cut-out leaves by their alpha; the share
 // that meets nothing within the radius is its visibility, written as the bitmask search writes its own (visibility,
 // distance along the view), for the same accumulation over frames and filter. Grass, planted on the GPU each frame,
-// is not in the trace and occludes nothing here; a plant's own rays go about the world's up.
+// has no geometry in the trace: a ray clear of the trace passes the grass's layers instead, which darkens the ground
+// under thick grass and its own lower half; a plant's own rays go about the world's up.
 
 // The normals, the depth and the frame's points at half size, and the occlusion's radius, spread and noise.
 #import "generated/frame/vbao"
@@ -75,7 +76,8 @@ fn trace_occlusion(clip: vec2<f32>) -> vec4<f32> {
   let is_plant: bool = has_mark(textureLoad(material_target, texel, 0).a, MARK_PLANT);
   let normal: vec3<f32> = select(normalize((to_world * vec4<f32>(surface, 0.0)).xyz), vec3<f32>(0.0, 1.0, 0.0), is_plant);
   let lift: f32 = select(LIFT, PLANT_LIFT, is_plant) + distance * LIFT_PER_METRE;
-  let origin: vec3<f32> = camera.position.xyz + (to_world * vec4<f32>(position, 0.0)).xyz + normal * lift;
+  let point: vec3<f32> = camera.position.xyz + (to_world * vec4<f32>(position, 0.0)).xyz;
+  let origin: vec3<f32> = point + normal * lift;
   // A frame about the normal.
   let axis: vec3<f32> = select(vec3<f32>(0.0, 1.0, 0.0), vec3<f32>(1.0, 0.0, 0.0), abs(normal.y) > 0.9);
   let across: vec3<f32> = normalize(cross(normal, axis));
@@ -95,7 +97,9 @@ fn trace_occlusion(clip: vec2<f32>) -> vec4<f32> {
     let direction: vec3<f32> = normalize(across * (radius * cos(angle)) + along * (radius * sin(angle)) +
       normal * sqrt(max(1.0 - sample.x, 0.0)));
 
-    open += select(1.0, 0.0, trace_scene_blocked(origin, direction, occlusion.radius, cone, SCENE_NO_PLACE));
+    if (!trace_scene_blocked(origin, direction, occlusion.radius, cone, SCENE_NO_PLACE)) {
+      open += scene_grass_through(origin, direction, occlusion.radius, fract(sample.x + sample.y), point.y);
+    }
   }
 
   return vec4<f32>(open / f32(RAYS), distance, 0.0, 1.0);
