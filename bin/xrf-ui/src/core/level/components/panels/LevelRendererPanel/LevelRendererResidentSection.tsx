@@ -32,8 +32,41 @@ function formatAllocated(memory: RenderMemoryReport): string {
 }
 
 /**
- * What the level holds now: its sectors and textures, the geometry read for them, and what the GPU holds, of it and
- * of everything the renderer made.
+ * @param memory - What the renderer holds on the GPU.
+ * @returns The most the GPU allocator held allocated since the renderer started, or that it reports none.
+ */
+function formatPeak(memory: RenderMemoryReport): string {
+  const peak: unknown = memory.peakAllocated;
+
+  return typeof peak === "number" && Number.isFinite(peak) ? formatBytes(peak) : "Not reported";
+}
+
+/**
+ * @param bytes - A count of bytes the report may leave out.
+ * @returns Whether it holds one.
+ */
+function isReported(bytes: unknown): bytes is number {
+  return typeof bytes === "number" && Number.isFinite(bytes);
+}
+
+/**
+ * @param memory - What the renderer holds on the GPU.
+ * @returns What the process holds in the GPU's own memory, DLSS's and the driver's counted, of what the system lets it
+ *   hold now; or that the driver says none.
+ */
+function formatVideoMemory(memory: RenderMemoryReport): string {
+  if (!isReported(memory.used)) {
+    return "Not reported";
+  }
+
+  return isReported(memory.budget)
+    ? `${formatBytes(memory.used)} used of ${formatBytes(memory.budget)} budget`
+    : `${formatBytes(memory.used)} used`;
+}
+
+/**
+ * What the level holds now, its sectors and textures, and what the GPU holds: the allocator's for everything the
+ * renderer made and its peak, and the GPU's own memory as its driver tells it, all of it and what this process uses.
  */
 export function LevelRendererResidentSection({
   "data-testid": dataTestId = "level-renderer-resident-section",
@@ -52,10 +85,13 @@ export function LevelRendererResidentSection({
         label={"Textures"}
         value={`${formatCount(load?.textures ?? 0)} of ${formatCount(load?.texturesTotal ?? 0)}`}
       />
-      <EditorPanelProperty label={"Geometry read"} value={formatBytes(load?.bytes ?? 0)} />
-      <EditorPanelProperty label={"GPU scene buffers"} value={formatBytes(memory.scene)} />
-      <EditorPanelProperty label={"GPU textures"} value={formatBytes(memory.textures)} />
       <EditorPanelProperty label={"GPU memory"} value={formatAllocated(memory)} />
+      <EditorPanelProperty label={"GPU memory peak"} value={formatPeak(memory)} />
+      <EditorPanelProperty label={"Video memory"} value={formatVideoMemory(memory)} />
+      <EditorPanelProperty
+        label={"Video memory total"}
+        value={isReported(memory.total) ? formatBytes(memory.total) : "Not reported"}
+      />
     </EditorPanelSection>
   );
 }

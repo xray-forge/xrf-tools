@@ -106,6 +106,7 @@ tracy-client-sys = "=0.29.0"
 tokio = { version = "1.53.1", features = ["net", "rt"] }
 uuid = "1.26.1"
 walkdir = "2.5.0"
+windows = "0.62.2"
 windows-core = "0.62.2"
 wgpu = { version = "30.0.1", default-features = false, features = ["std", "parking_lot", "dx12", "vulkan", "wgsl"] }
 xrf-animation-envelope = { path = "crates/xrf-animation-envelope" }

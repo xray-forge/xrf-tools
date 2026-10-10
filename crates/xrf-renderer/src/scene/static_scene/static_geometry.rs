@@ -164,11 +164,6 @@ impl StaticGeometry {
     self.is_traced
   }
 
-  /// Bytes its buffers hold on the GPU.
-  pub fn get_bytes(&self) -> u64 {
-    self.list_spans().iter().map(|buffer| buffer.get_bytes()).sum::<u64>() + self.rows.get_bytes()
-  }
-
   /// Uploads what was added, changed and removed since the last frame.
   pub fn flush(&mut self, device: &wgpu::Device, queue: &wgpu::Queue) {
     for buffer in self.list_spans_mut() {

@@ -32,6 +32,7 @@ use crate::contract::render_viewport_layout::RenderViewportLayout;
 use crate::frame::frame_capture::{CaptureReply, FrameCapture};
 use crate::frame::frame_phases::FramePhases;
 use crate::frame::frame_statistics::{FrameStatistics, FrameSummary};
+use crate::frame::gpu_memory::GpuMemory;
 use crate::host::render_event_sink::RenderEventSink;
 use crate::host::render_scene_id::RenderSceneId;
 use crate::host::render_view_frame::RenderViewFrame;
@@ -216,9 +217,9 @@ impl RenderViewport {
     self.statistics.record(times, phases, groups);
   }
 
-  /// Reports the frames since the last report, once one is due: `texture_bytes` is what every viewport's textures hold
-  /// on the GPU together, `allocator` what the GPU allocator holds allocated and reserved, `scenes` every scene, its own among them, `timer` what the frames' passes cost, its own and
-  /// its window's taken from it, and `graph` what the frame graph made of the latest described frame.
+  /// Reports the frames since the last report, once one is due: `allocator` what the GPU allocator and the GPU's own
+  /// memory hold, `scenes` every scene, its own among them, `timer` what the frames' passes cost, its own and its
+  /// window's taken from it, and `graph` what the frame graph made of the latest described frame.
   pub fn report(
     &mut self,
     now: Instant,
@@ -228,7 +229,7 @@ impl RenderViewport {
       bool,
       [RenderDlssAvailability; 2],
     ),
-    (texture_bytes, allocator, scenes): (u64, Option<(u64, u64)>, &mut HashMap<RenderSceneId, LevelScene>),
+    (allocator, scenes): (Option<&GpuMemory>, &mut HashMap<RenderSceneId, LevelScene>),
     (timer, graph): (Option<&mut GraphTimer>, Option<&GraphReport>),
   ) {
     let Some(summary) = self.statistics.take(now) else {
@@ -296,17 +297,6 @@ impl RenderViewport {
       .unwrap_or((rect.width, rect.height));
     let antialiasing: RenderAntialiasing = shown.map_or(RenderAntialiasing::None, SceneView::get_antialiasing);
     let is_ray_reconstructed: bool = shown.is_some_and(SceneView::is_ray_reconstructed);
-    // The scene it shows, and the one it asks for while that comes in.
-    let mut held: Vec<RenderSceneId> = self.shown.iter().map(|(id, _)| *id).chain(self.world.scene).collect();
-
-    held.dedup();
-
-    let scene: u64 = held
-      .iter()
-      .filter_map(|id| scenes.get(id))
-      .map(LevelScene::get_buffer_bytes)
-      .sum();
-
     let report: RenderFrameReport = RenderFrameReport {
       frames_per_second,
       frame_time,
@@ -340,10 +330,13 @@ impl RenderViewport {
       sector_time,
       graph: graph.map(|graph| Box::new(RenderGraphReport::of(graph, self.id.0, FrameGraph::FRAME_OWNER))),
       memory: RenderMemoryReport {
-        textures: texture_bytes,
-        scene,
-        allocated: allocator.map(|(allocated, _)| allocated),
-        reserved: allocator.map(|(_, reserved)| reserved),
+        total: allocator.and_then(|memory| memory.budget).map(|budget| budget.total),
+        budget: allocator.and_then(|memory| memory.budget).map(|budget| budget.budget),
+        used: allocator.and_then(|memory| memory.budget).map(|budget| budget.used),
+        allocated: allocator.map(|memory| memory.allocated),
+        reserved: allocator.map(|memory| memory.reserved),
+        peak_allocated: allocator.map(|memory| memory.peak),
+        sections: allocator.map(|memory| memory.sections.clone()).unwrap_or_default(),
       },
     };
 

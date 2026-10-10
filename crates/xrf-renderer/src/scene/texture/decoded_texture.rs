@@ -152,7 +152,7 @@ impl DecodedTexture {
       depth_or_array_layers: 1,
     };
     let gpu: wgpu::Texture = device.create_texture(&wgpu::TextureDescriptor {
-      label: None,
+      label: Some("level texture"),
       size,
       mip_level_count: self.levels.len() as u32,
       sample_count: 1,

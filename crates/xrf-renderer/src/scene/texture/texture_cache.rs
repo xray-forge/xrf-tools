@@ -80,8 +80,6 @@ pub struct TextureCache {
   lod: u32,
   /// Whether a terrain's heights are loaded: held deferred, their neutral standing in, until a view first reads them.
   is_heights_wanted: bool,
-  /// Bytes each slot's upload holds on the GPU.
-  sizes: Vec<u64>,
   /// The stamp of the file each slot was last read from, none where it has none.
   stamps: Vec<Option<u64>>,
   /// Slots freed, taken again before the array grows.
@@ -161,7 +159,6 @@ impl TextureCache {
       sources: vec![None],
       lod: 0,
       is_heights_wanted: false,
-      sizes: vec![0],
       stamps: vec![None],
       free: Vec::new(),
       sender,
@@ -229,7 +226,6 @@ impl TextureCache {
         self.keys.push(Some(key.clone()));
         self.generations.push(0);
         self.sources.push(Some(Arc::clone(source)));
-        self.sizes.push(0);
         self.stamps.push(None);
 
         self.views.len() as u32 - 1
@@ -501,11 +497,6 @@ impl TextureCache {
       .collect()
   }
 
-  /// Bytes every texture uploaded holds on the GPU.
-  pub fn get_bytes(&self) -> u64 {
-    self.sizes.iter().sum()
-  }
-
   /// Frees every slot but the missing texture's and those some scene still samples, so the next textures asked for
   /// take their places; a load still on its way to a freed slot is dropped when it lands.
   pub fn retain(&mut self, sampled: &HashSet<u32>) {
@@ -523,7 +514,6 @@ impl TextureCache {
       self.views[slot] = self.views[MISSING_SLOT as usize].clone();
       self.states[slot] = RenderTextureState::Missing;
       self.references[slot].clear();
-      self.sizes[slot] = 0;
       self.generations[slot] = self.generations[slot].wrapping_add(1);
       self.free.push(slot as u32);
       self.is_dirty = true;
@@ -614,7 +604,6 @@ impl TextureCache {
 
   /// Uploads a loaded texture into its slot.
   fn upload(&mut self, (device, queue): (&wgpu::Device, &wgpu::Queue), slot: u32, texture: &DecodedTexture) {
-    self.sizes[slot as usize] = texture.get_size();
     self.views[slot as usize] = texture.upload(device, queue);
     self.states[slot as usize] = RenderTextureState::Loaded {
       width: texture.width,

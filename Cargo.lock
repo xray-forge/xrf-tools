@@ -7878,6 +7878,7 @@ dependencies = [
 name = "xrf-renderer"
 version = "0.1.0"
 dependencies = [
+ "ash",
  "bytemuck",
  "glam",
  "image",
@@ -7892,6 +7893,7 @@ dependencies = [
  "serde_json",
  "specta",
  "wgpu",
+ "windows",
  "xrf-animation-envelope",
  "xrf-anm",
  "xrf-dds",

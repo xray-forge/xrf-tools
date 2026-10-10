@@ -253,11 +253,6 @@ impl StaticScene {
     self.sectors.as_slice().iter().map(|sector| sector.bytes).sum()
   }
 
-  /// Bytes the scene's growing buffers hold on the GPU, which is what grows with a level or a model.
-  pub fn get_buffer_bytes(&self) -> u64 {
-    self.geometry.get_bytes() + self.surfaces.buffer.get_capacity() + self.cull.get_bytes()
-  }
-
   /// Puts one packed sector into the scene at the handle its poster allocated: its baked sections as single draws, its
   /// tree groups as rows.
   ///

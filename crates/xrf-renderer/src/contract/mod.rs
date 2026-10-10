@@ -61,6 +61,7 @@ pub(crate) mod render_load_failure;
 pub(crate) mod render_load_report;
 pub(crate) mod render_lod_settings;
 pub(crate) mod render_memory_report;
+pub(crate) mod render_memory_section;
 pub(crate) mod render_overlay;
 pub(crate) mod render_page_backdrop;
 pub(crate) mod render_page_wash;

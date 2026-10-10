@@ -7,6 +7,7 @@ import { LevelRendererFrameSection } from "@/core/level/components/panels/LevelR
 import { LevelRendererGraphSection } from "@/core/level/components/panels/LevelRendererPanel/LevelRendererGraphSection";
 import { LevelRendererGrassSection } from "@/core/level/components/panels/LevelRendererPanel/LevelRendererGrassSection";
 import { LevelRendererLightsSection } from "@/core/level/components/panels/LevelRendererPanel/LevelRendererLightsSection";
+import { LevelRendererMemorySection } from "@/core/level/components/panels/LevelRendererPanel/LevelRendererMemorySection";
 import { LevelRendererParticlesSection } from "@/core/level/components/panels/LevelRendererPanel/LevelRendererParticlesSection";
 import { LevelRendererResidentSection } from "@/core/level/components/panels/LevelRendererPanel/LevelRendererResidentSection";
 import { LevelRendererStaticDrawsSection } from "@/core/level/components/panels/LevelRendererPanel/LevelRendererStaticDrawsSection";
@@ -42,6 +43,7 @@ export function LevelRendererPanel({
   return (
     <EditorPanel data-testid={dataTestId} id={id} className={className} title={"Renderer"}>
       <LevelRendererResidentSection load={viewportService.load} memory={frame.memory} />
+      <LevelRendererMemorySection memory={frame.memory} />
       <LevelRendererAppliedSection applied={renderService.applied} requested={renderService.viewOptions} />
 
       <LevelRendererFrameSection frame={frame} />

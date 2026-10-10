@@ -410,11 +410,6 @@ impl LevelScene {
       .chain(self.particles.get_texture_slots().iter().copied())
   }
 
-  /// Bytes its scene's growing buffers hold on the GPU.
-  pub fn get_buffer_bytes(&self) -> u64 {
-    self.statics.get_buffer_bytes() + self.lights.get_memory()
-  }
-
   /// Whether it draws this source.
   pub fn is_showing(&self, source: &Arc<dyn RenderLevelSource>) -> bool {
     Arc::ptr_eq(&self.source, source)

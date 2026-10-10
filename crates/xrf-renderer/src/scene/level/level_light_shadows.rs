@@ -207,17 +207,6 @@ impl LevelLightShadows {
     self.is_cast = true;
   }
 
-  /// Bytes the atlas and the static atlas take, while held.
-  pub fn get_memory(&self) -> u64 {
-    let atlas: u64 = u64::from(LIGHT_SHADOW_ATLAS_SIZE).pow(2) * 4;
-
-    [self.atlas.is_some(), self.statics.is_some()]
-      .into_iter()
-      .filter(|is_held| *is_held)
-      .count() as u64
-      * atlas
-  }
-
   /// Starts a frame's asks.
   pub fn begin(&mut self) {
     self.frame += 1;

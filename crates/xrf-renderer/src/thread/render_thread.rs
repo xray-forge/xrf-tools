@@ -35,6 +35,7 @@ use crate::frame::frame_pacer::FramePacer;
 use crate::frame::frame_phases::FramePhases;
 use crate::frame::frame_span_timer::FrameSpanTimer;
 use crate::frame::frame_statistics::REPORT_INTERVAL;
+use crate::frame::gpu_memory::GpuMemory;
 use crate::frame::periodic_budget::PeriodicBudget;
 use crate::frame::periodic_scheduler::PeriodicScheduler;
 use crate::host::render_asset_source::RenderAssetSource;
@@ -125,9 +126,9 @@ pub struct RenderThread {
   frame_span: Option<FrameSpanTimer>,
   /// What the last described frame's graph came to, and when it was described: as often as the viewports report.
   graph_report: Option<(Instant, GraphReport)>,
-  /// What the GPU allocator held, allocated and reserved, when it was last asked: a report lists every allocation, so it
-  /// is asked at most every `ALLOCATOR_REPORT_EVERY`.
-  allocator_report: Option<(Instant, Option<(u64, u64)>)>,
+  /// What the GPU allocator held when it was last asked: a report lists every allocation, so it is asked at most every
+  /// `ALLOCATOR_REPORT_EVERY`.
+  allocator_report: Option<(Instant, Option<GpuMemory>)>,
   /// The staging belt the frames' own writes go through, kept between frames; made with the GPU.
   belt: Option<StagingBelt>,
   /// What every view and scene draws once in so many frames, granted once a frame within the budget the frames'
@@ -766,25 +767,23 @@ impl RenderThread {
 
     if self
       .allocator_report
-      .is_none_or(|(asked, _)| now.duration_since(asked) >= ALLOCATOR_REPORT_EVERY)
+      .as_ref()
+      .is_none_or(|(asked, _)| now.duration_since(*asked) >= ALLOCATOR_REPORT_EVERY)
     {
-      let held: Option<(u64, u64)> = gpu
-        .context
-        .device
-        .generate_allocator_report()
-        .map(|report| (report.total_allocated_bytes, report.total_reserved_bytes));
+      let last: Option<&GpuMemory> = self.allocator_report.as_ref().and_then(|(_, held)| held.as_ref());
+      let held: Option<GpuMemory> = GpuMemory::read((&gpu.context.adapter, &gpu.context.device), last);
 
       self.allocator_report = Some((now, held));
     }
 
-    let allocator: Option<(u64, u64)> = self.allocator_report.and_then(|(_, held)| held);
+    let allocator: Option<&GpuMemory> = self.allocator_report.as_ref().and_then(|(_, held)| held.as_ref());
 
     for viewport in self.viewports.values_mut() {
       viewport.answer_readbacks(&self.scenes);
       viewport.report(
         now,
         device,
-        (gpu.textures.get_bytes(), allocator, &mut self.scenes),
+        (allocator, &mut self.scenes),
         (
           self.runtime.as_mut().map(|runtime| &mut runtime.timer),
           self.graph_report.as_ref().map(|(_, report)| report),
