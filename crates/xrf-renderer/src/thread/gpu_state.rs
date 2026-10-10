@@ -14,6 +14,7 @@ use crate::pass::combine_pass::CombinePass;
 use crate::pass::composited_pass::CompositedPass;
 use crate::pass::contact_shadow_pass::ContactShadowPass;
 use crate::pass::depth_pyramid_pass::DepthPyramidPass;
+use crate::pass::dlss_reactive_pass::DlssReactivePass;
 use crate::pass::enhanced_bloom_pass::EnhancedBloomPass;
 use crate::pass::exposure_pass::ExposurePass;
 use crate::pass::flare_pass::FlarePass;
@@ -124,6 +125,7 @@ pub struct GpuState {
   pub combine: CombinePass,
   pub sky_behind: SkyBehindPass,
   pub ray_guides: RayGuidesPass,
+  pub dlss_reactive: DlssReactivePass,
   pub exposure: ExposurePass,
   pub present: PresentPass,
   /// The page's backdrop under every window's viewports.
@@ -212,6 +214,7 @@ impl GpuState {
       let combine = threads.spawn(move || CombinePass::new(device, source, view, sky_layout));
       let sky_behind = threads.spawn(move || SkyBehindPass::new(device, source, view, sky_layout));
       let ray_guides = threads.spawn(move || RayGuidesPass::new(device, source, view));
+      let dlss_reactive = threads.spawn(move || DlssReactivePass::new(device, source, view));
       let sky_haze = threads.spawn(move || SkyHazePass::new(device, source, sky_layout));
       let sky_motion = threads.spawn(move || SkyMotionPass::new(device, source, view));
       let sky_prefilter = threads.spawn(move || SkyPrefilterPass::new(device, queue, source));
@@ -260,6 +263,7 @@ impl GpuState {
         combine: join(combine)?,
         sky_behind: join(sky_behind)?,
         ray_guides: join(ray_guides)?,
+        dlss_reactive: join(dlss_reactive)?,
         sky_haze: join(sky_haze)?,
         sky_motion: join(sky_motion)?,
         sky_prefilter: join(sky_prefilter)?,
@@ -344,6 +348,7 @@ impl GpuState {
       combine: &self.combine,
       sky_behind: &self.sky_behind,
       ray_guides: &self.ray_guides,
+      dlss_reactive: &self.dlss_reactive,
       sky_haze: &self.sky_haze,
       sky_motion: &self.sky_motion,
       sky_prefilter: &self.sky_prefilter,
@@ -412,6 +417,7 @@ impl GpuState {
     self.combine.refresh(device, source);
     self.sky_behind.refresh(device, source);
     self.ray_guides.refresh(device, source);
+    self.dlss_reactive.refresh(device, source);
     self.sky_haze.refresh(device, source);
     self.sky_motion.refresh(device, source);
     self.water.refresh(device, source);

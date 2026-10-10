@@ -17,6 +17,8 @@ use crate::frame::history::History;
 use crate::frame::temporal_jitter::TemporalJitter;
 use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::frame::view_targets::ViewTargets;
+use crate::pass::dlss_reactive_parameters::DlssReactiveParameters;
+use crate::pass::dlss_reactive_pass::DlssReactivePass;
 use crate::pass::fsr_uniform::FsrUniform;
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::lighting_uniform::LightingUniform;
@@ -472,22 +474,23 @@ impl ResolveFeature {
     self.upscaled.is_some()
   }
 
-  /// Whether the temporal resolve's reactive weight reads the frame's copy as it stood before the water.
+  /// Whether the temporal resolve's reactive weight, or DLSS's mask of what to upscale from this frame alone, reads the
+  /// frame's copy as it stood before the water.
   pub fn is_reading_scene_before_water(&self) -> bool {
-    matches!(self.resolve, Some(Resolve::Temporal(_)))
+    matches!(self.resolve, Some(Resolve::Temporal(_) | Resolve::Dlss(_)))
   }
 
   /// What the temporal resolve's reactive weight compares the finished frame with, the frame as it stood before the
-  /// water and the blended surfaces drew: TAA reads the frame's copy `before_water`, answered; FSR 2 copies it into its
-  /// own target, which its passes read.
+  /// water and the blended surfaces drew: TAA and DLSS read the frame's copy `before_water`, answered; FSR 2 copies it
+  /// into its own target, which its passes read.
   pub fn add_reactive_passes<'a>(
     &'a self,
     (graph, bindings): (&mut FrameGraph<'a>, &mut GraphBindings<'a>),
     (scene, before_water): (GraphTexture, Option<GraphTexture>),
   ) -> Option<GraphTexture> {
     match &self.resolve {
-      Some(Resolve::Temporal(_)) => before_water,
-      Some(Resolve::Dlss(_) | Resolve::RayReconstruction(_)) => None,
+      Some(Resolve::Temporal(_) | Resolve::Dlss(_)) => before_water,
+      Some(Resolve::RayReconstruction(_)) => None,
       Some(Resolve::Fsr { targets, .. }) => {
         let opaque: GraphTexture = bindings.import_view(&mut *graph, "fsr2 opaque", &targets.opaque.view);
 
@@ -593,9 +596,11 @@ impl ResolveFeature {
 
         Some(history)
       }
-      Some(Resolve::Dlss(resolve)) => {
-        Some(self.add_dlss_pass((&mut *graph, &mut *bindings), (resolve, handles, frame)))
-      }
+      Some(Resolve::Dlss(resolve)) => Some(self.add_dlss_pass(
+        (&mut *graph, &mut *bindings),
+        (passes, view),
+        (resolve, handles, frame, opaque),
+      )),
       Some(Resolve::RayReconstruction(resolve)) => guides.map(|guides| {
         self.add_ray_reconstruction_pass((&mut *graph, &mut *bindings), (resolve, handles, frame, guides))
       }),
@@ -677,40 +682,70 @@ impl ResolveFeature {
   fn add_dlss_pass<'a>(
     &'a self,
     (graph, bindings): (&mut FrameGraph<'a>, &mut GraphBindings<'a>),
-    (resolve, handles, frame): (&'a DlssResolve, ViewTargetHandles, GraphTexture),
+    (passes, view): (LevelPasses<'a>, &'a ViewBinding),
+    (resolve, handles, frame, opaque): (&'a DlssResolve, ViewTargetHandles, GraphTexture, Option<GraphTexture>),
   ) -> GraphTexture {
     let output: GraphTexture = bindings.import_view(&mut *graph, "dlss output", &resolve.output.view);
+    // Where what drew over the surfaces changed the frame, upscaled from this frame rather than the history, which
+    // moves it with the surface behind it.
+    let reactive: Option<GraphTexture> = opaque.map(|opaque| {
+      let (width, height) = handles.size;
+      let mask: GraphTexture = graph.create_texture(GraphTextureDescriptor::new_2d(
+        "dlss reactive",
+        width,
+        height,
+        DlssReactivePass::FORMAT,
+      ));
+      let parameters: DlssReactiveParameters = DlssReactiveParameters { frame, opaque };
+
+      graph
+        .add_raster_pass("dlss reactive")
+        .parameters(&parameters)
+        .color(GraphColorAttachment::new(
+          mask,
+          wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+        ))
+        .record(move |context| passes.dlss_reactive.record(context, view, &parameters));
+
+      mask
+    });
     // FSR 2's sense of the jitter, which DLSS shares: a drawn texel `m` stands at `m + 0.5 - jitter`.
     let jitter: [f32; 2] = (-self.offset).to_array();
     let is_reset: bool = resolve.is_reset;
 
-    graph
+    let mut pass = graph
       .add_encoder_pass("dlss")
       .texture(frame, GraphTextureAccess::Sampled)
       .texture(handles.depth, GraphTextureAccess::Sampled)
       .texture(handles.motion, GraphTextureAccess::Sampled)
-      .texture(output, GraphTextureAccess::StorageReadWrite)
-      .record(move |context| {
-        let color = context.get_texture(frame);
-        let render: (u32, u32) = (color.texture.width(), color.texture.height());
-        let inputs: DlssInputs<'_> = DlssInputs {
-          color: color.view,
-          depth: context.get_texture(handles.depth).view,
-          motion: context.get_texture(handles.motion).view,
-          // The motion is kept in texture coordinates, from where a point stood to where it stands; DLSS reads render
-          // pixels back to where it stood.
-          motion_scale: [-(render.0 as f32), -(render.1 as f32)],
-          jitter,
-          render,
-          output: context.get_texture(output).view,
-          is_reset,
-        };
+      .texture(output, GraphTextureAccess::StorageReadWrite);
 
-        match resolve.upscaler.record(context.get_encoder(), &inputs) {
-          Ok(commands) => context.hand_over(commands),
-          Err(error) => log::error!("{error}"),
-        }
-      });
+    if let Some(reactive) = reactive {
+      pass = pass.texture(reactive, GraphTextureAccess::Sampled);
+    }
+
+    pass.record(move |context| {
+      let color = context.get_texture(frame);
+      let render: (u32, u32) = (color.texture.width(), color.texture.height());
+      let inputs: DlssInputs<'_> = DlssInputs {
+        color: color.view,
+        depth: context.get_texture(handles.depth).view,
+        motion: context.get_texture(handles.motion).view,
+        // The motion is kept in texture coordinates, from where a point stood to where it stands; DLSS reads render
+        // pixels back to where it stood.
+        motion_scale: [-(render.0 as f32), -(render.1 as f32)],
+        bias_current_color: reactive.map(|reactive| context.get_texture(reactive).view),
+        jitter,
+        render,
+        output: context.get_texture(output).view,
+        is_reset,
+      };
+
+      match resolve.upscaler.record(context.get_encoder(), &inputs) {
+        Ok(commands) => context.hand_over(commands),
+        Err(error) => log::error!("{error}"),
+      }
+    });
 
     output
   }
