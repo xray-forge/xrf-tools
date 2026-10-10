@@ -17,6 +17,11 @@ const COVER_OUT_TEXELS: f32 = 1.5;
 // map cannot tell from a roof's edge, nor from a river or the ground outside a hull below it.
 const COVER_CREEP_DROP: f32 = 0.5;
 const COVER_CREEP_UP: vec2<f32> = vec2<f32>(0.5, 0.8);
+// Rain's slant off the vertical at most, as its tangent (about 15 degrees), and the metres a cover must stand over a
+// point before it lets slanted rain in (`slanted_reached`).
+const COVER_SLANT: f32 = 0.27;
+const COVER_SLANT_FROM: f32 = 6.0;
+const SLANT_TAPS: u32 = 24u;
 // Taps the open sky about a covered point is counted by, laid out as a golden-angle spiral over the creep's disc.
 const COVER_TAPS: u32 = 12u;
 const COVER_GOLDEN_ANGLE: f32 = 2.3999632;
@@ -101,8 +106,10 @@ fn cover_reached(
   let own: f32 = overhead_open(map, window, shape.x, shape.y, point, bias);
   let spread: f32 = creep * smoothstep(COVER_CREEP_UP.x, COVER_CREEP_UP.y, normal.y);
 
+  let slanted: f32 = select(slanted_reached(map, window, shape, point), 0.0, own >= 1.0);
+
   if (own >= 1.0 || spread <= texel) {
-    return own;
+    return max(own, slanted);
   }
 
   let limit: f32 = point.y + bias;
@@ -149,5 +156,32 @@ fn cover_reached(
     open += select(0.0, 1.0, landing <= limit && landing >= deepest);
   }
 
-  return max(own, saturate(2.0 * open / f32(COVER_TAPS)));
+  return max(max(own, slanted), saturate(2.0 * open / f32(COVER_TAPS)));
+}
+
+// How much slanted rain reaches a covered point under a high cover, from none to one: rain falls up to `COVER_SLANT`
+// off the vertical, so a cover more than `COVER_SLANT_FROM` metres over the point lets it in from the open sky within
+// as far again, a share of its height past that. Twice the share of points within that reach with nothing standing
+// over them higher than `COVER_SLANT_FROM` over the point, at most all, over `SLANT_TAPS` points laid alike for every pixel, so
+// the share steps finely rather than grains. Only past a height no room's ceiling reaches, as the map sees no walls:
+// the ground under a bridge's deck took the deck's outline sharp and dry, however high it stood.
+fn slanted_reached(map: texture_depth_2d, window: vec4<f32>, shape: vec2<f32>, point: vec3<f32>) -> f32 {
+  let cover: f32 = overhead_height(map, window, shape.x, shape.y, point);
+  let reach: f32 = (cover - point.y - COVER_SLANT_FROM) * COVER_SLANT;
+
+  if (reach <= 0.0) {
+    return 0.0;
+  }
+
+  var open: f32 = 0.0;
+
+  for (var tap: u32 = 0u; tap < SLANT_TAPS; tap++) {
+    let along: f32 = sqrt((f32(tap) + 0.5) / f32(SLANT_TAPS)) * reach;
+    let turn: f32 = f32(tap) * COVER_GOLDEN_ANGLE;
+    let column: vec3<f32> = point + vec3<f32>(cos(turn) * along, 0.0, sin(turn) * along);
+
+    open += select(0.0, 1.0, overhead_height(map, window, shape.x, shape.y, column) < point.y + COVER_SLANT_FROM);
+  }
+
+  return saturate(2.0 * open / f32(SLANT_TAPS));
 }
