@@ -71,6 +71,35 @@ fn combined(low: vec3<f32>, high: vec3<f32>) -> CombineOutput {
   return CombineOutput(vec4<f32>(low, 1.0), vec4<f32>(high, 1.0));
 }
 
+// How far the ground seen through a puddle's water shifts, metres a unit of its ripples' tilt, and the puddle over which
+// the shift comes in.
+const REFRACTION_SHIFT: f32 = 0.25;
+const REFRACTION_FROM: vec2<f32> = vec2<f32>(0.6, 0.8);
+
+// The ground seen through a puddle's water, its colour read where the ripples bend the view to: the ripples' tilt off
+// the level up, `REFRACTION_SHIFT` metres a unit of it on the ground, faded in as the puddle deepens into water as
+// Screen Space Shaders' refraction does; the pixel's own where the bent texel is no water.
+fn refracted_albedo(texel: vec2<i32>, albedo: vec4<f32>, normal: vec3<f32>, distance: f32) -> vec3<f32> {
+  let puddle: f32 = textureLoad(wet_surface, texel, 0).g;
+  let strength: f32 = smoothstep(REFRACTION_FROM.x, REFRACTION_FROM.y, puddle);
+
+  if (strength <= 0.0) {
+    return albedo.rgb;
+  }
+
+  let tilt: vec3<f32> = normal - (camera.view * vec4<f32>(0.0, 1.0, 0.0, 0.0)).xyz;
+  let pixels: f32 = REFRACTION_SHIFT * camera.projection[1][1] * camera.viewport.y / (2.0 * max(distance, 0.1));
+  let size: vec2<i32> = vec2<i32>(textureDimensions(albedo_target));
+  let at: vec2<i32> = clamp(texel + vec2<i32>(round(vec2<f32>(tilt.x, -tilt.y) * pixels * strength)), vec2<i32>(0),
+    size - 1);
+
+  if (textureLoad(wet_surface, at, 0).g < REFRACTION_FROM.x) {
+    return albedo.rgb;
+  }
+
+  return textureLoad(albedo_target, at, 0).rgb;
+}
+
 @fragment
 fn fs_combine(in: FullscreenVarying) -> CombineOutput {
   let texel: vec2<i32> = vec2<i32>(in.clip.xy);
@@ -107,7 +136,7 @@ fn fs_combine(in: FullscreenVarying) -> CombineOutput {
     return combined(scene_from_shown(backdrop_at(in.clip.xy)), vec3<f32>(0.0));
   }
 
-  let albedo: vec4<f32> = textureLoad(albedo_target, texel, 0);
+  var albedo: vec4<f32> = textureLoad(albedo_target, texel, 0);
 
   if (!is_lit) {
     return combined(scene_from_shown(albedo.rgb), vec3<f32>(0.0));
@@ -116,6 +145,9 @@ fn fs_combine(in: FullscreenVarying) -> CombineOutput {
   let material: vec4<f32> = textureLoad(material_target, texel, 0);
   let light: vec4<f32> = textureLoad(light_target, texel, 0);
   let normal: vec3<f32> = octahedral_decode(textureLoad(normal_target, texel, 0).xy);
+
+  albedo = vec4<f32>(refracted_albedo(texel, albedo, normal, -position.z), albedo.a);
+
   // How much of the hemisphere and ambient light reaches the point, as `combine_1` multiplies them by `occ`.
   let visible: f32 = select(1.0, upsampled_occlusion(occlusion_target, floor(in.clip.xy), -position.z),
     lighting.params.w > 0.5);

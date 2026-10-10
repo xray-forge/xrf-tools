@@ -27,7 +27,7 @@ impl Default for RenderRainSettings {
   fn default() -> Self {
     Self {
       mode: RenderRainMode::Engine,
-      puddles: 1.0,
+      puddles: 0.5,
       reflectivity: 0.4,
       ripples: 1.0,
       distance: 300.0,
