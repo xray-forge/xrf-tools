@@ -30,7 +30,8 @@ pub struct ContactShadowUniform {
   pub noise: f32,
   /// Local lights each pixel marches towards at most: none for the sun's alone.
   pub lights: u32,
-  pub _pad: f32,
+  /// Frame texels across each texel of the sun's target stands for: one at the frame's size, two at half of it.
+  pub stride: u32,
 }
 
 impl ContactShadowUniform {
@@ -46,7 +47,7 @@ impl ContactShadowUniform {
       reach: (height as f32 * MAX_REACH).max(1.0),
       noise: (frame % NOISE_FRAMES) as f32 * NOISE_STEP,
       lights: settings.get_light_count(),
-      _pad: 0.0,
+      stride: if settings.is_full_resolution { 1 } else { 2 },
     }
   }
 }

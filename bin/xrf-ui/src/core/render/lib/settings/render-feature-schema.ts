@@ -191,6 +191,7 @@ export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings>
     // The renderer's own: past a few metres a ray leaves what screen space can see.
     contact: {
       intensity: toNumber(0, 1),
+      isFullResolution: FLAG,
       length: toNumber(0, 4),
       lights: toNumber(0, RENDER_MAX_CONTACT_SHADOW_LIGHTS, true),
       mode: toChoice(ERenderContactShadowMode),

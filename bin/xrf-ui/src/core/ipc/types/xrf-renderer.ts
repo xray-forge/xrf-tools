@@ -325,6 +325,11 @@ export type RenderContactShadowSettings = {
   thickness: number | null;
   /** Depth reads along each ray. */
   steps: number;
+  /**
+   * Whether the sun's are marched at the frame's size rather than half of it: at half, a temporal resolve's jitter
+   * moves a thin blade on and off the one texel each two by two is marched from, which flickers.
+   */
+  isFullResolution: boolean;
   /** Local lights each pixel marches towards at most, the strongest there: none for the sun's alone. */
   lights: number;
 };

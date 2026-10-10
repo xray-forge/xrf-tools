@@ -26,6 +26,7 @@ import {
 import { RENDER_SHADOW_CASCADE_WIDTHS } from "@/core/render/lib/settings/render-feature-defaults";
 import { TRenderShadowSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { EditorPopoverToggle } from "@/core/shell/editor/EditorPopoverToggle";
+import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 
 const CONTACT_MODE_OPTIONS: ReadonlyArray<IRenderChoiceOption<RenderContactShadowMode>> = [
   { label: "Engine", value: ERenderContactShadowMode.ENGINE },
@@ -155,6 +156,15 @@ export function LevelShadowAction({
             {...RENDER_CONTACT_SHADOW_LIMITS.steps}
             format={formatContactShadowSteps}
             onChange={(steps: number) => setContact({ steps })}
+          />
+
+          <CheckboxFormRow
+            label={"Full resolution contact"}
+            description={
+              "Marched at every pixel rather than one in four: thin foliage stops flickering, at four times the cost."
+            }
+            isChecked={contact.isFullResolution}
+            onChange={(isFullResolution: boolean) => setContact({ isFullResolution })}
           />
 
           <RenderValueSlider
