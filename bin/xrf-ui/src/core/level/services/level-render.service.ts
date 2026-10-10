@@ -1,30 +1,14 @@
 import { inject, Injectable } from "@wirestate/core";
 import { BoundAction, comparer, Computed, reaction } from "@wirestate/mobx";
-import { IPoint3, toXraySpace } from "@xrf/math";
 import { Maybe, Nullable } from "@xrf/types";
 
-import {
-  LevelSpawnObject,
-  LevelSpawnObjectsDescription,
-  SelectedLevelDescription,
-  SessionSnapshot,
-} from "@/core/ipc/types/xrf-app";
-import {
-  ERenderLevelHit,
-  ERenderTextureState,
-  RenderLevelHit,
-  RenderLoadReport,
-  RenderTextureReport,
-  RenderTextureState,
-  RenderViewOptions,
-} from "@/core/ipc/types/xrf-renderer";
+import { SelectedLevelDescription, SessionSnapshot } from "@/core/ipc/types/xrf-app";
+import { RenderLevelHit, RenderLoadReport, RenderViewOptions } from "@/core/ipc/types/xrf-renderer";
 import {
   EWorldCameraCommand,
   EWorldWeatherPlay,
   WorldCamera,
   WorldCameraPose,
-  WorldSurfaceGeometry,
-  WorldSurfaceSpan,
   WorldToggles,
   WorldWeatherControl,
   WorldWeatherPlay,
@@ -35,14 +19,13 @@ import { ILevelCameraOptions } from "@/core/level/lib/camera/level-camera-option
 import { toLevelCameraReading } from "@/core/level/lib/camera/level-camera-reading";
 import { ILevelViewpoint, toLevelStartViewpoint } from "@/core/level/lib/camera/level-viewpoint";
 import { ILevelBox, toLevelBox } from "@/core/level/lib/extent/level-extent";
-import { ELevelPick, TLevelPick } from "@/core/level/lib/pick/level-pick";
+import { TLevelPick, toLevelPick } from "@/core/level/lib/pick/level-pick";
 import { toLevelPickSelection } from "@/core/level/lib/pick/level-pick-selection";
 import { DEFAULT_LEVEL_RENDER_CONFIG, ILevelRenderConfig } from "@/core/level/lib/render/level-render-config";
 import { toLevelFrameOverlays } from "@/core/level/lib/render/level-render-frame";
 import { toLevelCameraAt, toLevelViewOptions } from "@/core/level/lib/render/level-render-view";
-import { ELevelSurfaceDressing, ILevelSurfaceDressing } from "@/core/level/lib/surface/level-surface-dressing";
-import { ILevelSurfaceGeometry, ILevelSurfaceSpan } from "@/core/level/lib/surface/level-surface-geometry";
-import { ILevelTextureProblem, ILevelTextureReport } from "@/core/level/lib/texture/level-texture-report";
+import { toLevelSurfaceGeometry } from "@/core/level/lib/surface/level-surface-geometry";
+import { toLevelTextureReport } from "@/core/level/lib/texture/level-texture-report";
 import { ILevelWeatherEffectRequest } from "@/core/level/lib/weather/level-weather-effect-request";
 import { ILevelWeatherSeek } from "@/core/level/lib/weather/level-weather-seek";
 import { LevelLoadService } from "@/core/level/services/level-load.service";
@@ -57,112 +40,6 @@ import { NativeViewport } from "@/core/render/lib/native/native-viewport";
 import { toRenderOutput } from "@/core/render/lib/settings/render-resolution";
 import { SettingsService } from "@/core/settings/services/settings";
 import { Logger } from "@/lib/logging";
-
-/**
- * @param hit - What a native viewport named under a point.
- * @param spawn - The level's spawned objects as held, which a picked object is found among.
- * @returns It as the level names what is picked, in the level's own coordinates; null for an object not held.
- */
-export function toLevelPick(hit: RenderLevelHit, spawn: Nullable<LevelSpawnObjectsDescription>): Nullable<TLevelPick> {
-  const [x, y, z] = hit.point;
-  const point: IPoint3 = toXraySpace({ x: x ?? 0, y: y ?? 0, z: z ?? 0 });
-
-  if (hit.kind === ERenderLevelHit.SPAWN) {
-    const object: Maybe<LevelSpawnObject> = spawn?.objects.find((it: LevelSpawnObject) => it.index === hit.object);
-
-    return object ? { kind: ELevelPick.SPAWN, object, point, visual: spawn?.visuals[object.visual] ?? "" } : null;
-  }
-
-  return {
-    isImpostor: hit.isImpostor,
-    kind: ELevelPick.SURFACE,
-    mesh: hit.mesh,
-    place: hit.place,
-    point,
-    sector: hit.sector,
-    shaderId: hit.shaderId,
-  };
-}
-
-/**
- * @param measured - What a native viewport counted each shader table entry of its level drawing.
- * @returns The same, keyed by shader id.
- */
-export function toLevelSurfaceGeometry(measured: Array<WorldSurfaceGeometry>): Map<number, ILevelSurfaceGeometry> {
-  return new Map(
-    measured.map(({ shaderId, drawables, triangles, span, narrowest }: WorldSurfaceGeometry) => [
-      shaderId,
-      { drawables, narrowest: toLevelSurfaceSpan(narrowest), span: toLevelSurfaceSpan(span), triangles },
-    ])
-  );
-}
-
-function toLevelSurfaceSpan(span: Nullable<WorldSurfaceSpan>): Nullable<ILevelSurfaceSpan> {
-  return span ? { uMax: span.uMax ?? 0, uMin: span.uMin ?? 0, vMax: span.vMax ?? 0, vMin: span.vMin ?? 0 } : null;
-}
-
-/**
- * @param described - What a native viewport said became of each texture its level samples.
- * @returns The same, as the level's panels read it.
- */
-export function toLevelTextureReport(described: Array<RenderTextureReport>): ILevelTextureReport {
-  const dressing: Map<string, ILevelSurfaceDressing> = new Map(
-    described.map(({ reference, state }: RenderTextureReport) => [reference, toLevelSurfaceDressing(reference, state)])
-  );
-  const problems: Array<ILevelTextureProblem> = [];
-  let uploaded: number = 0;
-
-  dressing.forEach(({ reason, reference, state }: ILevelSurfaceDressing) => {
-    if (reason) {
-      problems.push({ reason, reference });
-    }
-
-    // A stand-in is uploaded as much as a file is; a load on its way is neither yet.
-    if (state !== ELevelSurfaceDressing.FETCHING) {
-      uploaded += 1;
-    }
-  });
-
-  return { dressing, problems, uploaded };
-}
-
-function toLevelSurfaceDressing(reference: string, state: RenderTextureState): ILevelSurfaceDressing {
-  switch (state.kind) {
-    case ERenderTextureState.LOADING:
-      return { reason: null, reference, state: ELevelSurfaceDressing.FETCHING, upload: null };
-
-    case ERenderTextureState.LOADED: {
-      const levels: string = `${state.levels} ${state.levels === 1 ? "level" : "levels"}`;
-      const expanded: string = state.isExpanded ? " · expanded" : "";
-
-      return {
-        reason: null,
-        reference,
-        state: ELevelSurfaceDressing.UPLOADED,
-        upload: `${state.width}×${state.height} · ${state.layout} · ${levels}${expanded}`,
-      };
-    }
-
-    case ERenderTextureState.DEFERRED:
-      return {
-        reason: "Held unread until an enhanced parallax or the heights view reads it",
-        reference,
-        state: ELevelSurfaceDressing.STOOD_IN,
-        upload: null,
-      };
-
-    case ERenderTextureState.MISSING:
-      return {
-        reason: "Nothing in the mounted roots answers to it",
-        reference,
-        state: ELevelSurfaceDressing.STOOD_IN,
-        upload: null,
-      };
-
-    default:
-      return { reason: state.reason, reference, state: ELevelSurfaceDressing.STOOD_IN, upload: null };
-  }
-}
 
 /**
  * Owns the native viewport the open level is drawn in, and everything said to it.
@@ -281,13 +158,8 @@ export class LevelRenderService extends NativeRenderSurfaceService {
 
   protected start(viewport: NativeViewport): Array<() => void> {
     return [
-      reaction(() => this.loadService.level.value?.selected ?? null, this.openLevel, { fireImmediately: true }),
+      this.loadService.followLevel(this.openLevel),
       reaction(() => this.viewService.camera, this.applyCamera),
-      reaction(
-        () => this.loadService.level.value?.selected ?? null,
-        (selected) => void this.lookService.open(selected),
-        { fireImmediately: true }
-      ),
       reaction(
         () => this.viewOptions,
         (options: RenderViewOptions) => viewport.setViewOptions(options),
@@ -320,7 +192,7 @@ export class LevelRenderService extends NativeRenderSurfaceService {
   }
 
   /**
-   * The level's weather, read once it opens and played by the viewport, and how it plays, as either changes.
+   * The level's weather played by the viewport, and how it plays, as either changes.
    *
    * @param viewport - The viewport it plays in.
    * @returns What stops watching.
@@ -329,11 +201,6 @@ export class LevelRenderService extends NativeRenderSurfaceService {
     const { weatherService } = this;
 
     return [
-      reaction(
-        () => this.loadService.level.value?.selected ?? null,
-        (selected) => void weatherService.open(selected),
-        { fireImmediately: true }
-      ),
       reaction(
         () => weatherService.weather,
         (play: Nullable<WorldWeatherPlay>) =>

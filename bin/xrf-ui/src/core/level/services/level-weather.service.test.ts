@@ -1,4 +1,6 @@
 import { afterEach, describe, expect, it } from "@jest/globals";
+import { waitFor } from "@testing-library/react";
+import { Container } from "@wirestate/core";
 import { autorun } from "@wirestate/mobx";
 import { Nullable } from "@xrf/types";
 
@@ -18,6 +20,7 @@ import {
   writeLevelWeatherMemory,
 } from "@/core/level/lib/weather/level-weather-memory";
 import { ELevelWeatherSource } from "@/core/level/lib/weather/level-weather-source";
+import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { LevelWeatherService } from "@/core/level/services/level-weather.service";
 import { mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
@@ -35,7 +38,7 @@ const SELECTED: SessionSnapshot<SelectedLevelDescription> = {
 };
 
 function createService(): LevelWeatherService {
-  return mockContainer([LevelWeatherService]).get(LevelWeatherService);
+  return mockContainer([LevelLoadService, LevelWeatherService]).get(LevelWeatherService);
 }
 
 /** The keyframe set by hand a play hands over, or null for a play of anything else. */
@@ -388,5 +391,23 @@ describe("LevelWeatherService", () => {
     expect(toKeyframe(service.weather)?.rainDensity).toBe(0.3);
     expect(service.transition).toBe(EWorldWeatherTransition.CUT);
     expect(service.time).toBe(600);
+  });
+
+  it("opens the weather of a level as the level opens, with no viewport to play it, and forgets it as it closes", async () => {
+    setMockInvokeResponses({
+      ["plugin:levels|get_level"]: mockSessionResponse(mockSelectedLevelDescription()),
+      ["plugin:levels|read_level_weather"]: mockSessionResponse(mockLevelWeatherDescription()),
+    });
+
+    const container: Container = mockContainer([LevelLoadService, LevelWeatherService]).provision();
+    const service: LevelWeatherService = container.get(LevelWeatherService);
+
+    await waitFor(() => expect(service.cycle?.name).toBe("default_clear"));
+
+    container.get(LevelLoadService).clear();
+
+    expect(service.cycle).toBeNull();
+
+    container.deprovision();
   });
 });

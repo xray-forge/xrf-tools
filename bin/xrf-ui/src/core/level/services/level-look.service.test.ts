@@ -1,15 +1,18 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
+import { waitFor } from "@testing-library/react";
+import { Container } from "@wirestate/core";
 
 import { LevelConsoleDefaults } from "@/core/ipc/types/xrf-app";
 import { EXrayEngine, EXrayEngineEvidence } from "@/core/ipc/types/xrf-engine-target";
 import { ELevelLookSource, MONOLITH_LEVEL_BLOOM, OPENXRAY_LEVEL_BLOOM } from "@/core/level/lib/look";
+import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { LevelLookService } from "@/core/level/services/level-look.service";
 import { DEFAULT_RENDER_EXPOSURE_SETTINGS } from "@/core/render/lib/settings/render-feature-defaults";
 import { LEVEL_LOOK_STORAGE_KEY } from "@/core/storage";
 import { mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
-import { mockInjectedService } from "@/fixtures/utils/container";
+import { mockContainer, mockInjectedService } from "@/fixtures/utils/container";
 
 /** A game that leaves its bloom to the engine, as Call of Pripyat ships no console defaults at all. */
 const UNSET: LevelConsoleDefaults = {
@@ -56,7 +59,7 @@ describe("LevelLookService", () => {
       }),
     });
 
-    const { service } = mockInjectedService(LevelLookService);
+    const { service } = mockInjectedService(LevelLookService, [LevelLoadService]);
 
     expect(service.look.exposure).toEqual(DEFAULT_RENDER_EXPOSURE_SETTINGS);
 
@@ -77,7 +80,7 @@ describe("LevelLookService", () => {
   it("blooms as the engine the open level was read as", async () => {
     setMockInvokeResponses({ ["plugin:levels|describe_console_defaults"]: mockSessionResponse(UNSET) });
 
-    const { service } = mockInjectedService(LevelLookService);
+    const { service } = mockInjectedService(LevelLookService, [LevelLoadService]);
 
     await service.open({
       sessionId: "extended",
@@ -98,7 +101,7 @@ describe("LevelLookService", () => {
   it("holds no engine with no level open", async () => {
     setMockInvokeResponses({ ["plugin:levels|describe_console_defaults"]: mockSessionResponse(UNSET) });
 
-    const { service } = mockInjectedService(LevelLookService);
+    const { service } = mockInjectedService(LevelLookService, [LevelLoadService]);
 
     await service.open({ sessionId: "level", value: mockSelectedLevelDescription() });
     await service.open(null);
@@ -108,13 +111,33 @@ describe("LevelLookService", () => {
   });
 
   it("keeps a look edited by hand over runs", () => {
-    const { service } = mockInjectedService(LevelLookService);
+    const { service } = mockInjectedService(LevelLookService, [LevelLoadService]);
 
     service.edit({ ...service.look, lightScales: { ...service.look.lightScales, sun: 3 } });
 
     expect(JSON.parse(window.localStorage.getItem(LEVEL_LOOK_STORAGE_KEY) ?? "{}").source).toBe(
       ELevelLookSource.CUSTOM
     );
-    expect(mockInjectedService(LevelLookService).service.look.lightScales.sun).toBe(3);
+    expect(mockInjectedService(LevelLookService, [LevelLoadService]).service.look.lightScales.sun).toBe(3);
+  });
+
+  it("reads the defaults of a level as the level opens, with no viewport to draw it, and drops them as it closes", async () => {
+    setMockInvokeResponses({
+      ["plugin:levels|get_level"]: mockSessionResponse(mockSelectedLevelDescription()),
+      ["plugin:levels|describe_console_defaults"]: mockSessionResponse(UNSET),
+    });
+
+    const container: Container = mockContainer([LevelLoadService, LevelLookService]).provision();
+    const service: LevelLookService = container.get(LevelLookService);
+
+    await waitFor(() => expect(service.defaults).toEqual(UNSET));
+    expect(service.engine).toBe(EXrayEngine.VANILLA);
+
+    container.get(LevelLoadService).clear();
+
+    expect(service.defaults).toBeNull();
+    expect(service.engine).toBeNull();
+
+    container.deprovision();
   });
 });

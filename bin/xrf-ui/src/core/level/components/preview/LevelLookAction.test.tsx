@@ -8,6 +8,7 @@ import { LevelLookAction } from "@/core/level/components/preview/LevelLookAction
 import { ILevelFeatureOptions } from "@/core/level/lib/features";
 import { ELevelLookSource } from "@/core/level/lib/look";
 import { LevelLookService } from "@/core/level/services";
+import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { DEFAULT_RENDER_ENHANCED_BLOOM_SETTINGS } from "@/core/render/lib/settings/render-feature-defaults";
 import { TRenderEnhancedBloomSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { mockLevelFeatureOptions } from "@/fixtures/mocks/level.mocks";
@@ -18,7 +19,7 @@ function renderAction(
   bloom: TRenderEnhancedBloomSettings = DEFAULT_RENDER_ENHANCED_BLOOM_SETTINGS,
   onChangeFeatures: (features: ILevelFeatureOptions) => void = () => {}
 ): { look: LevelLookService } & ReturnType<typeof renderWithProviders> {
-  const container: Container = mockContainer([LevelLookService]);
+  const container: Container = mockContainer([LevelLoadService, LevelLookService]);
 
   return {
     ...renderWithProviders(

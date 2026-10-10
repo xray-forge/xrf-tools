@@ -1,5 +1,7 @@
 import { Nullable } from "@xrf/types";
 
+import { WorldSurfaceGeometry, WorldSurfaceSpan } from "@/core/ipc/types/xrf-world";
+
 /** The range a coordinate covers over one entry's geometry, or null where its geometry carries none. */
 export interface ILevelSurfaceSpan {
   uMin: number;
@@ -56,4 +58,21 @@ export function describeLevelSurfaceSpan(span: Nullable<ILevelSurfaceSpan>): str
   }
 
   return `u ${span.uMin.toFixed(2)}..${span.uMax.toFixed(2)} · ` + `v ${span.vMin.toFixed(2)}..${span.vMax.toFixed(2)}`;
+}
+
+/**
+ * @param measured - What a native viewport counted each shader table entry of its level drawing.
+ * @returns The same, keyed by shader id.
+ */
+export function toLevelSurfaceGeometry(measured: Array<WorldSurfaceGeometry>): Map<number, ILevelSurfaceGeometry> {
+  return new Map(
+    measured.map(({ shaderId, drawables, triangles, span, narrowest }: WorldSurfaceGeometry) => [
+      shaderId,
+      { drawables, narrowest: toLevelSurfaceSpan(narrowest), span: toLevelSurfaceSpan(span), triangles },
+    ])
+  );
+}
+
+function toLevelSurfaceSpan(span: Nullable<WorldSurfaceSpan>): Nullable<ILevelSurfaceSpan> {
+  return span ? { uMax: span.uMax ?? 0, uMin: span.uMin ?? 0, vMax: span.vMax ?? 0, vMin: span.vMin ?? 0 } : null;
 }
