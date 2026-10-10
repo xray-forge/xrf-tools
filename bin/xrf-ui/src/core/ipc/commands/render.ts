@@ -97,6 +97,8 @@ export const renderCommands = {
       outputHeight: number;
       /** What smooths the frame, and upscales it where it resolves temporally. */
       antialiasing: RenderAntialiasing;
+      /** Whether DLSS reconstructs rays as it upscales the frame. */
+      isRayReconstructed: boolean;
       /** The graphics API drawn with. */
       backend: RenderBackend;
       /** The GPU drawn on. */
@@ -108,6 +110,8 @@ export const renderCommands = {
       hasRayQueries: boolean;
       /** Whether it upscales with DLSS, and what it lacks where it does not. */
       dlss: RenderDlssAvailability;
+      /** Whether it reconstructs rays with DLSS, and what it lacks where it does not. */
+      rayReconstruction: RenderDlssAvailability;
       /** Whether its passes were timed on the GPU over the span. */
       isGpuTimed: boolean;
       /** What each pass cost on the GPU, in frame order; none while untimed. */

@@ -147,8 +147,9 @@ impl ReflectionFeature {
 
   /// Declares the screen-space reflections while they are traced: every glossy pixel's ray walked over the nearest
   /// depth's pyramid, then the last frame's reflection reprojected, an eighth-size average, the
-  /// trace filtered across the surface and resolved over time into the view's history. Answers the history written,
-  /// none where they are not traced.
+  /// trace filtered across the surface and resolved over time into the view's history. Answers the history written, the
+  /// ends' reasons and the trace (what each traced pixel met, the ray's length in alpha), none where they are not
+  /// traced.
   pub fn add_passes<'a>(
     &'a self,
     (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
@@ -157,7 +158,7 @@ impl ReflectionFeature {
     (targets, lit, wet_surface): (ViewTargetHandles, LightingHandles<'a>, GraphTexture),
     source: Option<(GraphTexture, GraphTexture)>,
     (sky, scene_trace): (&SkyParameters<'a>, Option<(TraceParameters<'a>, &'a wgpu::BindGroup)>),
-  ) -> Option<(GraphTexture, GraphTexture)> {
+  ) -> Option<(GraphTexture, GraphTexture, GraphTexture)> {
     self.trace?;
 
     let history: &'a ReflectionHistory = self.history.as_ref()?;
@@ -347,7 +348,7 @@ impl ReflectionFeature {
         .record(move |context| passes.reflections.record_stage(context, view, &stage_parameters, stage));
     }
 
-    Some((written_full, ends))
+    Some((written_full, ends, traced))
   }
 
   /// What this frame wrote becomes what the next reads, while they are traced: the view's depth target this frame drew

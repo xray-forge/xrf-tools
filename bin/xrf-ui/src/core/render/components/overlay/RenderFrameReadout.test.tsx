@@ -63,6 +63,24 @@ describe("RenderFrameReadout", () => {
     expect(getByText("DLSS 1200 × 720 → 2400 × 1440")).toBeInTheDocument();
   });
 
+  it("names DLSS ray reconstruction where it upscaled the scene", () => {
+    const { getByText } = render(
+      <RenderFrameReadout
+        report={{
+          ...REPORT,
+          antialiasing: ERenderAntialiasing.DLSS,
+          isRayReconstructed: true,
+          outputHeight: 1440,
+          outputWidth: 2400,
+          renderHeight: 720,
+          renderWidth: 1200,
+        }}
+      />
+    );
+
+    expect(getByText("DLSS RR 1200 × 720 → 2400 × 1440")).toBeInTheDocument();
+  });
+
   it("leaves the target out where the temporal resolve upscales to the viewport's own size", () => {
     const { getByText, queryByText } = render(
       <RenderFrameReadout

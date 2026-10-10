@@ -67,7 +67,7 @@ fn gathers_only_enhanced_with_an_intensity() {
 #[test]
 fn searches_once_for_whatever_the_bitmask_yields() {
   let engine: RenderIndirectLightSettings = RenderIndirectLightSettings::default();
-  let search = |options: &RenderViewOptions| BitmaskSearch::new(options);
+  let search = |options: &RenderViewOptions| BitmaskSearch::new(options, true);
   let shared: RenderViewOptions = options_with(RenderAmbientOcclusionMethod::Vbao, enhanced());
 
   assert_eq!(search(&options_with(RenderAmbientOcclusionMethod::Gtao, engine)), None);
@@ -75,21 +75,24 @@ fn searches_once_for_whatever_the_bitmask_yields() {
     search(&options_with(RenderAmbientOcclusionMethod::Vbao, engine)),
     Some(BitmaskSearch {
       is_occluding: true,
-      is_lit: false
+      is_lit: false,
+      is_traced: false
     })
   );
   assert_eq!(
     search(&options_with(RenderAmbientOcclusionMethod::Gtao, enhanced())),
     Some(BitmaskSearch {
       is_occluding: false,
-      is_lit: true
+      is_lit: true,
+      is_traced: false
     })
   );
   assert_eq!(
     search(&shared),
     Some(BitmaskSearch {
       is_occluding: true,
-      is_lit: true
+      is_lit: true,
+      is_traced: false
     })
   );
   assert_eq!(search(&shared).map(|it| it.get_names().search), Some("vbao + indirect"));
@@ -114,7 +117,8 @@ fn searches_once_for_whatever_the_bitmask_yields() {
     search(&unoccluded),
     Some(BitmaskSearch {
       is_occluding: false,
-      is_lit: true
+      is_lit: true,
+      is_traced: false
     })
   );
   assert_eq!(
@@ -127,6 +131,31 @@ fn searches_once_for_whatever_the_bitmask_yields() {
   unlit.mode.is_lit = false;
 
   assert_eq!(search(&unlit), None);
+
+  // RTAO traces the occlusion where the GPU traces rays, the search gathering the light beside it; VBAO's search finds
+  // it where the GPU does not.
+  let traced: RenderViewOptions = options_with(RenderAmbientOcclusionMethod::Rtao, enhanced());
+
+  assert_eq!(
+    search(&traced),
+    Some(BitmaskSearch {
+      is_occluding: true,
+      is_lit: true,
+      is_traced: true
+    })
+  );
+  assert_eq!(
+    search(&traced).map(|it| it.get_names().accumulate),
+    Some("rtao + indirect accumulate")
+  );
+  assert_eq!(
+    BitmaskSearch::new(&traced, false),
+    Some(BitmaskSearch {
+      is_occluding: true,
+      is_lit: true,
+      is_traced: false
+    })
+  );
 
   let mut wireframe: RenderViewOptions = shared;
 

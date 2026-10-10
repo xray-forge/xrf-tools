@@ -4,6 +4,7 @@ import { ReactElement } from "react";
 import {
   ERenderAntialiasing,
   ERenderScale,
+  ERenderTonemapMode,
   RenderAntialiasing,
   RenderDlssPreset,
   RenderScale,
@@ -23,6 +24,7 @@ import {
 import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { ERenderResolution } from "@/core/render/lib/settings/render-resolution";
 import { SettingsService } from "@/core/settings/services/settings";
+import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { ChoiceFormRow, IChoiceFormRowOption } from "@/core/ui/form/ChoiceFormRow";
 import { SliderFormRow } from "@/core/ui/form/SliderFormRow";
 import { DetailSection } from "@/core/ui/layout/DetailSection";
@@ -131,9 +133,25 @@ export function SettingsRendererAntialiasing(): ReactElement {
           }
           options={RENDER_DLSS_PRESET_OPTIONS}
           value={features.upscaling.dlssPreset}
-          isDisabled={features.antialiasing !== ERenderAntialiasing.DLSS}
+          isDisabled={features.antialiasing !== ERenderAntialiasing.DLSS || features.upscaling.isRayReconstructed}
           onChange={(dlssPreset: RenderDlssPreset) =>
             settingsService.setRendererOverrides({ upscaling: { dlssPreset } })
+          }
+        />
+
+        <CheckboxFormRow
+          label={"DLSS ray reconstruction"}
+          description={
+            "DLSS denoises and upscales in one network over each surface's albedo, normal and roughness, in its " +
+            "model's place. Needs DLSS, the Enhanced tonemap and an RTX GPU whose driver has it; DLSS upscales " +
+            "alone elsewhere."
+          }
+          isChecked={features.upscaling.isRayReconstructed}
+          isDisabled={
+            features.antialiasing !== ERenderAntialiasing.DLSS || features.tonemap !== ERenderTonemapMode.ENHANCED
+          }
+          onChange={(isRayReconstructed: boolean) =>
+            settingsService.setRendererOverrides({ upscaling: { isRayReconstructed } })
           }
         />
 

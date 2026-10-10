@@ -3,7 +3,12 @@ import { ReactElement, ReactNode, useCallback } from "react";
 
 import { LevelSunDescription, LevelWeatherTexture } from "@/core/ipc/types/xrf-app";
 import { ThunderboltCollection } from "@/core/ipc/types/xrf-environment";
-import { RenderBackendAvailability, RenderDlssAvailability, RenderGraphSettings } from "@/core/ipc/types/xrf-renderer";
+import {
+  ERenderTonemapMode,
+  RenderBackendAvailability,
+  RenderDlssAvailability,
+  RenderGraphSettings,
+} from "@/core/ipc/types/xrf-renderer";
 import { LevelCullingAction } from "@/core/level/components/preview/LevelCullingAction";
 import { LevelFogAction } from "@/core/level/components/preview/LevelFogAction";
 import { LevelGrassAction } from "@/core/level/components/preview/LevelGrassAction";
@@ -84,6 +89,8 @@ interface ILevelPreviewToolbarProps extends BaseComponentProps {
   isUpscaled: boolean;
   /** Whether the GPU drawing the view upscales with DLSS, and what it lacks where it does not. */
   dlss: RenderDlssAvailability;
+  /** Whether the GPU drawing the view reconstructs rays with DLSS. */
+  rayReconstruction: RenderDlssAvailability;
   /** What the settings resolve every viewport at, which the image quality popover may set over for the view. */
   resolution: ERenderResolution;
   /** The share of the viewport the settings resolve at while automatic. */
@@ -139,6 +146,7 @@ export function LevelPreviewToolbar({
   backends,
   isUpscaled,
   dlss,
+  rayReconstruction,
   resolution,
   outputScale,
   graph,
@@ -204,12 +212,15 @@ export function LevelPreviewToolbar({
             settingsScale={settings.upscaling.scale}
             settingsSharpening={settings.upscaling.sharpening}
             settingsDlssPreset={settings.upscaling.dlssPreset}
+            settingsRayReconstruction={settings.upscaling.isRayReconstructed}
+            isSceneLinear={settings.tonemap === ERenderTonemapMode.ENHANCED}
             settingsResolution={resolution}
             settingsOutputScale={outputScale}
             backend={backend}
             backends={backends}
             isUpscaled={isUpscaled}
             dlss={dlss}
+            rayReconstruction={rayReconstruction}
             onChangeBackend={onChangeBackend}
             features={features}
             onToggle={() => onToggle("isAntialiased")}
@@ -255,6 +266,7 @@ export function LevelPreviewToolbar({
             features={features}
             hemiStrength={hemiStrength}
             indirectLight={toLevelIndirectLight(settings, features)}
+            isTraceable={isTraceable}
             onToggle={onToggle}
             onChange={onChangeFeatures}
             onChangeHemiStrength={onChangeHemiStrength}

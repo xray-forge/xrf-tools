@@ -29,6 +29,7 @@ struct SceneCone {
 }
 
 const IS_SCENE_TRACED: bool = false;
+const SCENE_NO_PLACE: u32 = 0xffffffffu;
 
 fn trace_scene_ray(origin: vec3<f32>, direction: vec3<f32>, near: f32, far: f32, cone: SceneCone) -> SceneHit {
   return SceneHit(-1.0, 0u, 0u, vec2<f32>(0.0), 0u, vec3<f32>(0.0), mat3x3<f32>());

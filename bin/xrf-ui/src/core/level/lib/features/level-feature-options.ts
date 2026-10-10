@@ -237,7 +237,7 @@ export function toLevelFeatureOptions(stored: unknown): ILevelFeatureOptions {
     shadows: pick("shadows"),
     textureFiltering: overrides.textureFiltering ?? null,
     upscaling: Object.fromEntries(
-      (["scale", "sharpening", "dlssPreset"] as const)
+      (["scale", "sharpening", "dlssPreset", "isRayReconstructed"] as const)
         .filter((key) => overrides.upscaling?.[key] !== undefined && overrides.upscaling?.[key] !== null)
         .map((key) => [key, overrides.upscaling?.[key]])
     ),

@@ -5,11 +5,12 @@ use xrf_error::XrfResult;
 
 use crate::dlss_preset::DlssPreset;
 use crate::dlss_quality::DlssQuality;
+use crate::dlss_ray_reconstructor::DlssRayReconstructor;
 use crate::dlss_upscaler::DlssUpscaler;
 #[cfg(feature = "sdk")]
 use crate::ngx::{ngx_application::NgxApplication, ngx_sdk::NgxSdk};
 
-/// DLSS started on a device: NGX, which each view makes its upscaler from.
+/// DLSS started on a device: NGX, which each view makes its upscaler or ray reconstructor from.
 #[derive(Clone)]
 pub struct Dlss {
   #[cfg(feature = "sdk")]
@@ -28,7 +29,8 @@ impl Dlss {
   /// Whether the build has DLSS, built against its SDK.
   pub const IS_BUILT: bool = cfg!(feature = "sdk");
 
-  /// The file name of the runtime library NGX loads super resolution from, which an application ships.
+  /// The file name of the runtime library NGX loads super resolution from, which an application ships, ray
+  /// reconstruction's beside it.
   pub const RUNTIME_LIBRARY: &'static str = if cfg!(target_os = "windows") {
     "nvngx_dlss.dll"
   } else {
@@ -55,6 +57,44 @@ impl Dlss {
 
         None
       }
+    }
+  }
+
+  /// Whether the GPU and its driver reconstruct rays as well as they upscale.
+  pub fn has_ray_reconstruction(&self) -> bool {
+    #[cfg(feature = "sdk")]
+    {
+      self
+        .sdk
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .has_ray_reconstruction
+    }
+
+    #[cfg(not(feature = "sdk"))]
+    match self.never {}
+  }
+
+  /// A ray reconstructor of one view into `output` pixels at a quality, over colour of linear light already exposed.
+  ///
+  /// # Errors
+  ///
+  /// Returns NGX's error where the reconstructor cannot be made.
+  pub fn create_ray_reconstructor(&self, output: (u32, u32), quality: DlssQuality) -> XrfResult<DlssRayReconstructor> {
+    #[cfg(feature = "sdk")]
+    {
+      DlssRayReconstructor::new(
+        (&self.sdk, &self.adapter),
+        (&self.device, &self.queue),
+        (output, quality),
+      )
+    }
+
+    #[cfg(not(feature = "sdk"))]
+    {
+      let _ = (output, quality);
+
+      match self.never {}
     }
   }
 

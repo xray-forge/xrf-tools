@@ -10,6 +10,7 @@ use xrf_renderer_core::{
 };
 
 use crate::camera::camera_view::CameraView;
+use crate::contract::render_ambient_occlusion_method::RenderAmbientOcclusionMethod;
 use crate::contract::render_antialiasing::RenderAntialiasing;
 use crate::contract::render_applied_indirect_light::RenderAppliedIndirectLight;
 use crate::contract::render_applied_reflections::RenderAppliedReflections;
@@ -65,6 +66,7 @@ use crate::scene::level::feature::light_buffers::LightBuffers;
 use crate::scene::level::feature::lights_feature::LightsFeature;
 use crate::scene::level::feature::overhead_windows::OverheadWindows;
 use crate::scene::level::feature::present_inputs::PresentInputs;
+use crate::scene::level::feature::ray_guides::RayGuides;
 use crate::scene::level::feature::scene_features::SceneFeatures;
 use crate::scene::level::feature::water_frame::WaterFrame;
 use crate::scene::level::grass_level::GrassLevel;
@@ -136,6 +138,11 @@ impl SceneView {
       .get_temporal()
       .or(self.features.smoothing.get_mode())
       .unwrap_or(RenderAntialiasing::None)
+  }
+
+  /// Whether DLSS reconstructs rays as it resolves its frame.
+  pub fn is_ray_reconstructed(&self) -> bool {
+    self.features.resolve.is_ray_reconstructed()
   }
 
   /// The size its frame is resolved at, none before its targets are made.
@@ -674,7 +681,11 @@ impl SceneView {
     (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
     passes: LevelPasses<'a>,
     (view, textures, scene): (&'a ViewBinding, &'a wgpu::BindGroup, &'a LevelScene),
-    (targets, lit): (ViewTargetHandles, LightingHandles<'a>),
+    (targets, lit, traced): (
+      ViewTargetHandles,
+      LightingHandles<'a>,
+      Option<(TraceParameters<'a>, &'a wgpu::BindGroup)>,
+    ),
   ) -> Option<GraphTexture> {
     let lights: &'a LightsFeature = &self.features.lights;
     let buffers: LightBuffers = lights.add_binning_passes((&mut *graph, &mut *bindings, &mut *runtime), passes);
@@ -720,10 +731,13 @@ impl SceneView {
       .ambient_occlusion
       .add_passes((&mut *graph, &mut *bindings, &mut *runtime), passes, view, targets);
 
-    self
-      .features
-      .bitmask
-      .add_passes((graph, bindings, runtime), passes, view, targets)
+    self.features.bitmask.add_passes(
+      (graph, bindings, runtime),
+      passes,
+      view,
+      targets,
+      (traced, self.features.resolve.is_ray_reconstructed()),
+    )
   }
 
   /// Ends a frame its graph recorded: the water's reflection, the bitmask search's accumulations and the temporal
@@ -1035,6 +1049,8 @@ impl SceneView {
     let mut indirect_light: Option<GraphTexture> = None;
     let mut reflections: Option<GraphTexture> = None;
     let mut reflection_ends: Option<GraphTexture> = None;
+    // The guides DLSS ray reconstruction reads, where it resolves the frame.
+    let mut ray_guides: Option<RayGuides> = None;
     let mut enhanced_bloom: Option<GraphTexture> = None;
 
     // The finished frame at the drawn size, and the image the window shows where that differs: each stage of the chain
@@ -1043,11 +1059,20 @@ impl SceneView {
     let mut shown: Option<GraphTexture> = None;
 
     if is_lit {
+      // The scene's trace, which RTAO, the reflections and the water trace their rays through.
+      let traced: Option<(TraceParameters, &wgpu::BindGroup)> = scene_view.add_scene_trace(
+        scene,
+        (&mut *graph, &mut *bindings, runtime),
+        passes,
+        (&statics, grass_level, texture_group),
+        &lit,
+      );
+
       indirect_light = scene_view.add_lighting_passes(
         (&mut *graph, &mut *bindings, runtime),
         passes,
         (view, texture_group, scene),
-        (handles, lit),
+        (handles, lit, traced),
       );
 
       let surroundings: &SurroundingsCube = &scene_view.features.surroundings;
@@ -1074,16 +1099,10 @@ impl SceneView {
         .reflections
         .import_source((&mut *graph, &mut *bindings));
 
-      let traced: Option<(TraceParameters, &wgpu::BindGroup)> = scene_view.add_scene_trace(
-        scene,
-        (&mut *graph, &mut *bindings, runtime),
-        passes,
-        (&statics, grass_level, texture_group),
-        &lit,
-      );
-
       if let Some(sky) = sky {
-        if let Some((history, ends)) = scene_view.features.reflections.add_passes(
+        let mut traced_rays: Option<GraphTexture> = None;
+
+        if let Some((history, ends, traced)) = scene_view.features.reflections.add_passes(
           (&mut *graph, &mut *bindings, runtime),
           passes,
           view,
@@ -1093,6 +1112,7 @@ impl SceneView {
         ) {
           reflections = Some(history);
           reflection_ends = Some(ends);
+          traced_rays = Some(traced);
         }
 
         scene_view.features.combine.add_passes(
@@ -1106,6 +1126,12 @@ impl SceneView {
             wet_surface,
             wet_reach,
           ],
+        );
+        ray_guides = scene_view.features.resolve.add_guide_passes(
+          &mut *graph,
+          passes,
+          view,
+          (handles, lit.lighting, wet_surface, traced_rays.unwrap_or(untraced)),
         );
       }
 
@@ -1291,7 +1317,7 @@ impl SceneView {
         (&mut *graph, &mut *bindings, runtime),
         passes,
         view,
-        (handles, frame, opaque),
+        (handles, frame, opaque, ray_guides),
       );
 
       (frame, shown) = (resolved.0, Some(resolved.1));
@@ -1517,6 +1543,7 @@ impl SceneView {
 
     RenderAppliedReport {
       antialiasing,
+      is_ray_reconstructed: self.is_ray_reconstructed(),
       render_scale: self.features.resolve.get_upscaling().scale,
       shadows: (cascades > 0).then(|| RenderAppliedShadows {
         cascades: self.shared.shadow_settings.cascades[..cascades].to_vec(),
@@ -1528,6 +1555,13 @@ impl SceneView {
         .ambient_occlusion
         .is_drawn()
         .then_some(self.features.ambient_occlusion.get_quality()),
+      ambient_occlusion_method: self.features.ambient_occlusion.is_drawn().then(|| {
+        match self.features.bitmask.get_search() {
+          Some(search) if search.is_occluding && search.is_traced => RenderAmbientOcclusionMethod::Rtao,
+          Some(search) if search.is_occluding => RenderAmbientOcclusionMethod::Vbao,
+          _ => RenderAmbientOcclusionMethod::Gtao,
+        }
+      }),
       indirect_light: self
         .features
         .bitmask

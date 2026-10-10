@@ -16,6 +16,7 @@ use wgpu::util::StagingBelt;
 use crate::camera::camera_view::CameraView;
 use crate::context::gpu_context::GpuContext;
 use crate::context::gpu_requirements::can_trace;
+use crate::contract::render_ambient_occlusion_settings::RenderAmbientOcclusionSettings;
 use crate::contract::render_backend::RenderBackend;
 use crate::contract::render_debug_view::RenderDebugView;
 use crate::contract::render_dlss_availability::RenderDlssAvailability;
@@ -645,14 +646,16 @@ impl RenderThread {
 
     let mut scene_frames: HashMap<RenderSceneId, RenderSceneFrame> = scene_frames;
     let live: HashSet<RenderSceneId> = scene_frames.keys().copied().collect();
-    // The scenes a viewport traces rays in, which alone keep their acceleration structures.
+    // The scenes a viewport traces rays in, its reflections or its occlusion, which alone keep their acceleration
+    // structures.
     let traced: HashSet<RenderSceneId> = self
       .viewports
       .values()
       .filter(|viewport| {
         let reflections: &RenderReflectionSettings = &viewport.options.features.reflections;
+        let occlusion: &RenderAmbientOcclusionSettings = &viewport.options.features.ambient_occlusion;
 
-        reflections.is_traced && reflections.is_drawn()
+        (reflections.is_traced && reflections.is_drawn()) || (occlusion.is_enabled && occlusion.is_traced())
       })
       .filter_map(|viewport| viewport.world.scene)
       .collect();
@@ -749,12 +752,19 @@ impl RenderThread {
     };
     // Delivers what earlier frames' reads asked for, without waiting on this frame's work.
     let _ = gpu.context.device.poll(wgpu::PollType::Poll);
-    let dlss: RenderDlssAvailability = match (Dlss::IS_BUILT, gpu.context.backend, &gpu.context.dlss) {
-      (false, ..) => RenderDlssAvailability::Unbuilt,
-      (true, _, Some(_)) => RenderDlssAvailability::Available,
-      (true, _, None) => RenderDlssAvailability::Unsupported,
+    let dlss: [RenderDlssAvailability; 2] = match (Dlss::IS_BUILT, &gpu.context.dlss) {
+      (false, _) => [RenderDlssAvailability::Unbuilt; 2],
+      (true, Some(dlss)) => [
+        RenderDlssAvailability::Available,
+        if dlss.has_ray_reconstruction() {
+          RenderDlssAvailability::Available
+        } else {
+          RenderDlssAvailability::Unsupported
+        },
+      ],
+      (true, None) => [RenderDlssAvailability::Unsupported; 2],
     };
-    let device: (RenderBackend, &str, bool, RenderDlssAvailability) = (
+    let device: (RenderBackend, &str, bool, [RenderDlssAvailability; 2]) = (
       gpu.context.backend,
       gpu.context.adapter_name.as_str(),
       can_trace(&gpu.context.device),

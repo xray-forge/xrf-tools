@@ -53,6 +53,8 @@ pub struct RenderFrameReport {
   pub output_height: u32,
   /// What smooths the frame, and upscales it where it resolves temporally.
   pub antialiasing: RenderAntialiasing,
+  /// Whether DLSS reconstructs rays as it upscales the frame.
+  pub is_ray_reconstructed: bool,
   /// The graphics API drawn with.
   pub backend: RenderBackend,
   /// The GPU drawn on.
@@ -62,6 +64,8 @@ pub struct RenderFrameReport {
   pub has_ray_queries: bool,
   /// Whether it upscales with DLSS, and what it lacks where it does not.
   pub dlss: RenderDlssAvailability,
+  /// Whether it reconstructs rays with DLSS, and what it lacks where it does not.
+  pub ray_reconstruction: RenderDlssAvailability,
   /// Whether its passes were timed on the GPU over the span.
   pub is_gpu_timed: bool,
   /// What each pass cost on the GPU, in frame order; none while untimed.

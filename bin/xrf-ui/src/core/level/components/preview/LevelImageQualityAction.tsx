@@ -18,6 +18,7 @@ import { RenderValueSlider } from "@/core/render/components/controls/RenderValue
 import {
   describeDlssPreset,
   describeDlssUnavailability,
+  describeRayReconstructionUnavailability,
   describeRenderAntialiasing,
   formatOutputScale,
   formatSharpening,
@@ -38,6 +39,7 @@ import {
 } from "@/core/render/lib/settings/render-backend-choice";
 import { ERenderResolution } from "@/core/render/lib/settings/render-resolution";
 import { EditorPopoverToggle } from "@/core/shell/editor/EditorPopoverToggle";
+import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 const MODE_OPTIONS: ReadonlyArray<IRenderChoiceOption<RenderAntialiasing>> = LEVEL_ANTIALIASING_MODES.map(
@@ -80,6 +82,10 @@ interface ILevelImageQualityActionProps extends BaseComponentProps {
   settingsSharpening: number;
   /** Which model the settings upscale DLSS with, which this view may set over. */
   settingsDlssPreset: RenderDlssPreset;
+  /** Whether the settings reconstruct rays with DLSS, which this view may set over. */
+  settingsRayReconstruction: boolean;
+  /** Whether the scene holds linear light, the Enhanced tonemap, which ray reconstruction needs. */
+  isSceneLinear: boolean;
   /** What the settings resolve every viewport at, which this view may set over. */
   settingsResolution: ERenderResolution;
   /** The share of the viewport the settings resolve at while automatic, which this view may set over. */
@@ -92,6 +98,8 @@ interface ILevelImageQualityActionProps extends BaseComponentProps {
   isUpscaled: boolean;
   /** Whether the GPU drawing the view upscales with DLSS; FSR 2 smooths in its place where it does not. */
   dlss: RenderDlssAvailability;
+  /** Whether the GPU drawing the view reconstructs rays with DLSS; DLSS upscales alone where it does not. */
+  rayReconstruction: RenderDlssAvailability;
   features: ILevelFeatureOptions;
   onToggle: () => void;
   onChange: (features: ILevelFeatureOptions) => void;
@@ -100,8 +108,9 @@ interface ILevelImageQualityActionProps extends BaseComponentProps {
 }
 
 /**
- * How this view's frame is made into the image it shows: whether its edges are smoothed and by which pass, how much
- * smaller it is drawn, what it is resolved at, and how its textures are sampled.
+ * How this view's frame is made into the image it shows: whether its edges are smoothed and by which pass, whether DLSS
+ * reconstructs rays as it upscales, how much smaller it is drawn, what it is resolved at, and how its textures are
+ * sampled.
  */
 export function LevelImageQualityAction({
   "data-testid": dataTestId = "level-image-quality-action",
@@ -113,12 +122,15 @@ export function LevelImageQualityAction({
   settingsScale,
   settingsSharpening,
   settingsDlssPreset,
+  settingsRayReconstruction,
+  isSceneLinear,
   settingsResolution,
   settingsOutputScale,
   backend,
   backends,
   isUpscaled,
   dlss,
+  rayReconstruction,
   features,
   onToggle,
   onChange,
@@ -132,6 +144,9 @@ export function LevelImageQualityAction({
   const scale: RenderScale = features.upscaling.scale ?? settingsScale;
   const sharpening: number = features.upscaling.sharpening ?? settingsSharpening;
   const dlssPreset: RenderDlssPreset = features.upscaling.dlssPreset ?? settingsDlssPreset;
+  const rayProblem: Nullable<string> = describeRayReconstructionUnavailability(rayReconstruction, isSceneLinear);
+  const isRayReconstructed: boolean =
+    !rayProblem && (features.upscaling.isRayReconstructed ?? settingsRayReconstruction);
   const resolution: ERenderResolution = features.output.resolution ?? settingsResolution;
   const outputScale: number = features.output.scale ?? settingsOutputScale;
 
@@ -192,18 +207,32 @@ export function LevelImageQualityAction({
 
       {mode === ERenderAntialiasing.DLSS ? (
         <>
-          <RenderValueChoice
-            label={"DLSS model"}
-            options={RENDER_DLSS_PRESET_SHORT_OPTIONS}
-            value={dlssPreset}
-            onChange={(next: RenderDlssPreset) =>
-              onChange({ ...features, upscaling: { ...features.upscaling, dlssPreset: next } })
+          <CheckboxFormRow
+            label={"Ray reconstruction"}
+            description={rayProblem ?? "Denoises and upscales in one network, over each surface's albedo and normal."}
+            isChecked={isRayReconstructed}
+            isDisabled={Boolean(rayProblem)}
+            onChange={(next: boolean) =>
+              onChange({ ...features, upscaling: { ...features.upscaling, isRayReconstructed: next } })
             }
           />
 
-          <Typography className={"text-text-secondary"} variant={"caption"}>
-            {describeDlssPreset(dlssPreset)}
-          </Typography>
+          {isRayReconstructed ? null : (
+            <>
+              <RenderValueChoice
+                label={"DLSS model"}
+                options={RENDER_DLSS_PRESET_SHORT_OPTIONS}
+                value={dlssPreset}
+                onChange={(next: RenderDlssPreset) =>
+                  onChange({ ...features, upscaling: { ...features.upscaling, dlssPreset: next } })
+                }
+              />
+
+              <Typography className={"text-text-secondary"} variant={"caption"}>
+                {describeDlssPreset(dlssPreset)}
+              </Typography>
+            </>
+          )}
         </>
       ) : null}
 

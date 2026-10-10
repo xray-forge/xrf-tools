@@ -1,5 +1,5 @@
 #[cfg(feature = "sdk")]
-use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
+use std::sync::{Arc, Mutex};
 
 use xrf_error::XrfResult;
 
@@ -17,7 +17,7 @@ pub struct DlssUpscaler {
   preset: DlssPreset,
   is_hdr: bool,
   #[cfg(feature = "sdk")]
-  feature: Mutex<NgxSuperResolution>,
+  feature: NgxSuperResolution,
   #[cfg(feature = "sdk")]
   adapter: wgpu::Adapter,
   #[cfg(not(feature = "sdk"))]
@@ -35,7 +35,7 @@ impl DlssUpscaler {
   pub fn get_render_range(&self) -> ((u32, u32), (u32, u32)) {
     #[cfg(feature = "sdk")]
     {
-      self.lock().render_range
+      self.feature.render_range
     }
 
     #[cfg(not(feature = "sdk"))]
@@ -51,7 +51,7 @@ impl DlssUpscaler {
   pub fn record(&self, encoder: &mut wgpu::CommandEncoder, inputs: &DlssInputs<'_>) -> XrfResult<wgpu::CommandBuffer> {
     #[cfg(feature = "sdk")]
     {
-      self.lock().record(encoder, &self.adapter, inputs)
+      self.feature.record(encoder, &self.adapter, inputs)
     }
 
     #[cfg(not(feature = "sdk"))]
@@ -88,13 +88,8 @@ impl DlssUpscaler {
       quality,
       preset,
       is_hdr,
-      feature: Mutex::new(feature),
+      feature,
       adapter: adapter.clone(),
     })
-  }
-
-  #[cfg(feature = "sdk")]
-  fn lock(&self) -> MutexGuard<'_, NgxSuperResolution> {
-    self.feature.lock().unwrap_or_else(PoisonError::into_inner)
   }
 }

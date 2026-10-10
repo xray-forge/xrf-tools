@@ -18,6 +18,8 @@ pub(crate) mod overlays_feature;
 pub(crate) mod pick_feature;
 pub(crate) mod present_feature;
 pub(crate) mod present_inputs;
+pub(crate) mod ray_guides;
+pub(crate) mod ray_reconstruction_resolve;
 pub(crate) mod reflection_feature;
 pub(crate) mod resolve;
 pub(crate) mod resolve_feature;

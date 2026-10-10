@@ -140,6 +140,7 @@ describe("level toolbar groups", () => {
         features={{ ...mockLevelFeatureOptions(), ambientOcclusion: { radius: 2 } }}
         hemiStrength={0.5}
         indirectLight={DEFAULT_RENDER_INDIRECT_LIGHT_SETTINGS}
+        isTraceable
         onToggle={() => {}}
         onChange={onChange}
         onChangeHemiStrength={onChangeHemiStrength}
@@ -170,6 +171,7 @@ describe("level toolbar groups", () => {
           features={mockLevelFeatureOptions()}
           hemiStrength={1}
           indirectLight={DEFAULT_RENDER_INDIRECT_LIGHT_SETTINGS}
+          isTraceable
           onToggle={() => {}}
           onChange={onChange}
           onChangeHemiStrength={() => {}}
@@ -202,6 +204,43 @@ describe("level toolbar groups", () => {
     );
   });
 
+  it("offers RTAO only on a GPU that traces rays, saying VBAO searches in its place elsewhere", async () => {
+    const rtao: TRenderAmbientOcclusionSettings = {
+      ...DEFAULT_RENDER_AMBIENT_OCCLUSION_SETTINGS,
+      method: ERenderAmbientOcclusionMethod.RTAO,
+    };
+
+    function render(isTraceable: boolean): ReactElement {
+      return (
+        <LevelOcclusionAction
+          options={DEFAULT_LEVEL_VIEW_OPTIONS}
+          state={{ isAvailable: true, value: rtao }}
+          features={mockLevelFeatureOptions()}
+          hemiStrength={1}
+          indirectLight={DEFAULT_RENDER_INDIRECT_LIGHT_SETTINGS}
+          isTraceable={isTraceable}
+          onToggle={() => {}}
+          onChange={() => {}}
+          onChangeHemiStrength={() => {}}
+        />
+      );
+    }
+
+    const { getByRole, findByRole, getByText, queryByRole, rerender } = renderWithProviders(render(true));
+
+    await userEvent.click(getByRole("button", { name: "Occlusion" }));
+    await findByRole("dialog", { name: "Occlusion" });
+
+    expect(getByRole("button", { name: "RTAO" })).toBeEnabled();
+    expect(getByRole("slider", { name: "Accumulation" })).toBeInTheDocument();
+    expect(queryByRole("slider", { name: "Thickness" })).toBeNull();
+
+    rerender(render(false));
+
+    expect(getByRole("button", { name: "RTAO" })).toBeDisabled();
+    expect(getByText("RTAO needs a GPU that traces rays: VBAO searches in its place.")).toBeInTheDocument();
+  });
+
   it("turns the view's indirect light to enhanced, offering its intensity only then, and back to the settings", async () => {
     const onChange = jest.fn<(features: ILevelFeatureOptions) => void>();
     const enhanced: TRenderIndirectLightSettings = {
@@ -217,6 +256,7 @@ describe("level toolbar groups", () => {
           features={mockLevelFeatureOptions()}
           hemiStrength={1}
           indirectLight={indirectLight}
+          isTraceable
           onToggle={() => {}}
           onChange={onChange}
           onChangeHemiStrength={() => {}}

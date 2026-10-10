@@ -2,8 +2,14 @@ import { formatCount, formatNumber } from "@xrf/format";
 import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
-import { ERenderBloomMode, RenderAppliedReport, RenderViewOptions } from "@/core/ipc/types/xrf-renderer";
 import {
+  ERenderAntialiasing,
+  ERenderBloomMode,
+  RenderAppliedReport,
+  RenderViewOptions,
+} from "@/core/ipc/types/xrf-renderer";
+import {
+  describeRenderAmbientOcclusionMethod,
   describeRenderAmbientOcclusionQuality,
   describeRenderAntialiasing,
   describeRenderDebandingQuality,
@@ -70,6 +76,15 @@ export function LevelRendererAppliedSection({
             describeRenderAntialiasing(requested.features.antialiasing)
           )}
         />
+        {applied.antialiasing === ERenderAntialiasing.DLSS ? (
+          <EditorPanelProperty
+            label={"Ray reconstruction"}
+            value={toChanged(
+              applied.isRayReconstructed ? "On" : "Off",
+              requested.output.upscaling.isRayReconstructed ? "On" : "Off"
+            )}
+          />
+        ) : null}
         <EditorPanelProperty
           label={"Render scale"}
           value={toChanged(
@@ -92,7 +107,18 @@ export function LevelRendererAppliedSection({
       <EditorPanelSection title={"Applied lighting"}>
         <EditorPanelProperty
           label={"Ambient occlusion"}
-          value={applied.ambientOcclusion ? describeRenderAmbientOcclusionQuality(applied.ambientOcclusion) : "Off"}
+          value={
+            applied.ambientOcclusion
+              ? [
+                  applied.ambientOcclusionMethod
+                    ? describeRenderAmbientOcclusionMethod(applied.ambientOcclusionMethod)
+                    : null,
+                  describeRenderAmbientOcclusionQuality(applied.ambientOcclusion),
+                ]
+                  .filter((it): it is string => it !== null)
+                  .join(", ")
+              : "Off"
+          }
         />
         <EditorPanelProperty
           label={"Indirect light"}

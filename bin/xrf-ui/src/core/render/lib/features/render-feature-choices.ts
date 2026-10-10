@@ -247,6 +247,7 @@ export const RENDER_AMBIENT_OCCLUSION_LIMITS = {
 const RENDER_AMBIENT_OCCLUSION_METHOD_NAMES: Readonly<Record<RenderAmbientOcclusionMethod, string>> = {
   [ERenderAmbientOcclusionMethod.GTAO]: "GTAO",
   [ERenderAmbientOcclusionMethod.VBAO]: "VBAO",
+  [ERenderAmbientOcclusionMethod.RTAO]: "RTAO",
 };
 
 const RENDER_AMBIENT_OCCLUSION_METHOD_DESCRIPTIONS: Readonly<Record<RenderAmbientOcclusionMethod, string>> = {
@@ -254,6 +255,9 @@ const RENDER_AMBIENT_OCCLUSION_METHOD_DESCRIPTIONS: Readonly<Record<RenderAmbien
     "XeGTAO's horizons: whatever stands in front darkens all that lies behind it, however thin.",
   [ERenderAmbientOcclusionMethod.VBAO]:
     "A visibility bitmask: every occluder a thickness deep, so light passes behind grass, fences and branches.",
+  [ERenderAmbientOcclusionMethod.RTAO]:
+    "Rays traced against the level's geometry: what is off screen or behind a nearer surface occludes too. Grass " +
+    "is not traced and occludes nothing.",
 };
 
 /**
@@ -278,6 +282,13 @@ export const RENDER_AMBIENT_OCCLUSION_METHOD_OPTIONS: ReadonlyArray<IRenderChoic
     label: describeRenderAmbientOcclusionMethod(value),
     value,
   }));
+
+/** The same where the GPU traces no rays: RTAO greyed out, VBAO searching in its place. */
+export const RENDER_AMBIENT_OCCLUSION_METHOD_UNTRACED_OPTIONS: ReadonlyArray<
+  IRenderChoiceOption<RenderAmbientOcclusionMethod>
+> = RENDER_AMBIENT_OCCLUSION_METHOD_OPTIONS.map((option: IRenderChoiceOption<RenderAmbientOcclusionMethod>) =>
+  option.value === ERenderAmbientOcclusionMethod.RTAO ? { ...option, isDisabled: true } : option
+);
 
 /** The bounds each VBAO value is offered between. */
 export const RENDER_AMBIENT_OCCLUSION_VBAO_LIMITS = {
@@ -784,6 +795,28 @@ const DLSS_UNAVAILABILITY: Readonly<Record<RenderDlssAvailability, Nullable<stri
  */
 export function describeDlssUnavailability(availability: RenderDlssAvailability): Nullable<string> {
   return DLSS_UNAVAILABILITY[availability];
+}
+
+const RAY_RECONSTRUCTION_UNAVAILABILITY: Readonly<Record<RenderDlssAvailability, Nullable<string>>> = {
+  [ERenderDlssAvailability.AVAILABLE]: null,
+  [ERenderDlssAvailability.UNBUILT]: "DLSS is not in this build: build with the dlss feature.",
+  [ERenderDlssAvailability.UNSUPPORTED]: "Needs an NVIDIA RTX GPU and a driver with DLSS ray reconstruction.",
+};
+
+/**
+ * @param availability - Whether the GPU drawing a view reconstructs rays with DLSS.
+ * @param isLinear - Whether the scene holds linear light, as the Enhanced tonemap keeps it.
+ * @returns Why ray reconstruction cannot be turned on there, said so the reader knows what would let it; none where
+ *   it can.
+ */
+export function describeRayReconstructionUnavailability(
+  availability: RenderDlssAvailability,
+  isLinear: boolean
+): Nullable<string> {
+  return (
+    RAY_RECONSTRUCTION_UNAVAILABILITY[availability] ??
+    (isLinear ? null : "Needs the Enhanced tonemap: ray reconstruction works on linear light.")
+  );
 }
 
 const RENDER_DLSS_PRESET_NAMES: Readonly<Record<RenderDlssPreset, string>> = {

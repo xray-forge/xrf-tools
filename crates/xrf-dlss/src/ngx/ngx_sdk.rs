@@ -12,11 +12,13 @@ use crate::ngx::ngx_api::NgxApi;
 use crate::ngx::ngx_application::NgxApplication;
 use crate::ngx::ngx_result::check_ngx;
 
-/// NGX started on a device, the API it runs on, and the parameters its features are made with.
+/// NGX started on a device, the API it runs on, the parameters its features are made with, and whether it reconstructs
+/// rays as well as it upscales.
 pub(crate) struct NgxSdk {
   pub(crate) parameters: *mut NVSDK_NGX_Parameter,
   pub(crate) device: wgpu::Device,
   pub(crate) api: NgxApi,
+  pub(crate) has_ray_reconstruction: bool,
 }
 
 // SAFETY: NGX's parameters are only touched under the mutex `Dlss` keeps the SDK in.
@@ -43,6 +45,7 @@ impl NgxSdk {
       parameters: ptr::null_mut(),
       device: device.clone(),
       api,
+      has_ray_reconstruction: false,
     };
     let mut is_available: i32 = 0;
 
@@ -72,6 +75,21 @@ impl NgxSdk {
       return Err(XrfError::new_unexpected_error(
         "NGX offers no super resolution on this GPU or driver",
       ));
+    }
+
+    let mut is_reconstructing: i32 = 0;
+    let asked: NVSDK_NGX_Result = unsafe {
+      NVSDK_NGX_Parameter_GetI(
+        sdk.parameters,
+        NVSDK_NGX_Parameter_SuperSamplingDenoising_Available.as_ptr().cast(),
+        &mut is_reconstructing,
+      )
+    };
+
+    sdk.has_ray_reconstruction = asked == NVSDK_NGX_Result_NVSDK_NGX_Result_Success && is_reconstructing != 0;
+
+    if !sdk.has_ray_reconstruction {
+      log::info!("DLSS ray reconstruction is unavailable on this GPU or driver");
     }
 
     Ok(sdk)
@@ -134,14 +152,20 @@ impl NgxSdk {
     }
   }
 
-  /// Asks the driver, on a thread of its own, to fetch a newer super resolution library where NVIDIA offers one.
+  /// Asks the driver, on a thread of its own, to fetch newer super resolution and ray reconstruction libraries where
+  /// NVIDIA offers them.
   fn update(application: &NgxApplication) {
     let application: NgxApplication = application.clone();
 
     std::thread::spawn(move || {
-      application.with_feature_info(NVSDK_NGX_Feature_NVSDK_NGX_Feature_SuperSampling, |info| unsafe {
-        NVSDK_NGX_UpdateFeature(&info.Identifier, info.FeatureID);
-      });
+      for feature in [
+        NVSDK_NGX_Feature_NVSDK_NGX_Feature_SuperSampling,
+        NVSDK_NGX_Feature_NVSDK_NGX_Feature_RayReconstruction,
+      ] {
+        application.with_feature_info(feature, |info| unsafe {
+          NVSDK_NGX_UpdateFeature(&info.Identifier, info.FeatureID);
+        });
+      }
     });
   }
 

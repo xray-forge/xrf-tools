@@ -26,6 +26,7 @@ import {
   formatOcclusionThickness,
   RENDER_AMBIENT_OCCLUSION_LIMITS,
   RENDER_AMBIENT_OCCLUSION_METHOD_OPTIONS,
+  RENDER_AMBIENT_OCCLUSION_METHOD_UNTRACED_OPTIONS,
   RENDER_AMBIENT_OCCLUSION_QUALITY_OPTIONS,
   RENDER_AMBIENT_OCCLUSION_VBAO_LIMITS,
 } from "@/core/render/lib/features";
@@ -42,14 +43,16 @@ interface ILevelOcclusionActionProps extends Omit<ILevelFeatureActionProps<"ambi
   hemiStrength: number;
   /** The indirect light as the view draws it, which the occlusion's search gathers. */
   indirectLight: TRenderIndirectLightSettings;
+  /** Whether the GPU drawing the view traces rays, which RTAO needs; VBAO searches in its place where it does not. */
+  isTraceable: boolean;
   onToggle: (option: keyof ILevelViewOptions) => void;
   onChangeHemiStrength: (hemiStrength: number) => void;
 }
 
 /**
- * What darkens creases and corners and what lights them back: the screen's ambient occlusion, GTAO (XeGTAO) or VBAO,
- * whose visibility bitmask lets light through behind thin things, the indirect light the same search gathers, and the
- * hemisphere occlusion xrLC baked.
+ * What darkens creases and corners and what lights them back: the ambient occlusion, GTAO (XeGTAO), VBAO, whose
+ * visibility bitmask lets light through behind thin things, or RTAO, traced against the level's geometry; the indirect
+ * light the bitmask search gathers; and the hemisphere occlusion xrLC baked.
  */
 export function LevelOcclusionAction({
   "data-testid": dataTestId = "level-occlusion-action",
@@ -60,6 +63,7 @@ export function LevelOcclusionAction({
   features,
   hemiStrength,
   indirectLight,
+  isTraceable,
   onToggle,
   onChange,
   onChangeHemiStrength,
@@ -69,6 +73,9 @@ export function LevelOcclusionAction({
   const vbao: TRenderAmbientOcclusionVbaoSettings = occlusion.vbao;
   const isScreen: boolean = options.isOccluded && state.isAvailable;
   const isVbao: boolean = occlusion.method === ERenderAmbientOcclusionMethod.VBAO;
+  // VBAO and RTAO both gather over frames and bounce light back from their creases.
+  const isGathered: boolean = occlusion.method !== ERenderAmbientOcclusionMethod.GTAO;
+  const isUntraced: boolean = occlusion.method === ERenderAmbientOcclusionMethod.RTAO && !isTraceable;
   const isIndirect: boolean = indirectLight.mode === ERenderIndirectLightMode.ENHANCED;
 
   const setVbao = useCallback(
@@ -107,12 +114,18 @@ export function LevelOcclusionAction({
       >
         <RenderValueChoice
           label={"Method"}
-          options={RENDER_AMBIENT_OCCLUSION_METHOD_OPTIONS}
+          options={
+            isTraceable ? RENDER_AMBIENT_OCCLUSION_METHOD_OPTIONS : RENDER_AMBIENT_OCCLUSION_METHOD_UNTRACED_OPTIONS
+          }
           value={occlusion.method}
           onChange={(method: RenderAmbientOcclusionMethod) => set({ method })}
         />
 
-        <p className={"text-xs text-text-secondary"}>{explainRenderAmbientOcclusionMethod(occlusion.method)}</p>
+        <p className={"text-xs text-text-secondary"}>
+          {isUntraced
+            ? "RTAO needs a GPU that traces rays: VBAO searches in its place."
+            : explainRenderAmbientOcclusionMethod(occlusion.method)}
+        </p>
 
         <RenderValueChoice
           label={"Quality"}
@@ -138,15 +151,17 @@ export function LevelOcclusionAction({
         />
 
         {isVbao ? (
-          <>
-            <RenderValueSlider
-              label={"Thickness"}
-              value={vbao.thickness}
-              {...RENDER_AMBIENT_OCCLUSION_VBAO_LIMITS.thickness}
-              format={formatOcclusionThickness}
-              onChange={(thickness: number) => setVbao({ thickness })}
-            />
+          <RenderValueSlider
+            label={"Thickness"}
+            value={vbao.thickness}
+            {...RENDER_AMBIENT_OCCLUSION_VBAO_LIMITS.thickness}
+            format={formatOcclusionThickness}
+            onChange={(thickness: number) => setVbao({ thickness })}
+          />
+        ) : null}
 
+        {isGathered ? (
+          <>
             <RenderValueSlider
               label={"Bounce"}
               value={vbao.bounce}

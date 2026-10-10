@@ -6,20 +6,25 @@ export enum ERenderAmbientOcclusionMethod {
   GTAO = "gtao",
   /** VBAO, visibility-bitmask ambient occlusion: every occluder a thickness deep, so light passes behind thin things. */
   VBAO = "vbao",
+  /**
+   * RTAO: short rays from each point traced against the level's geometry by hardware ray query, so what is off screen
+   * or hidden behind something nearer occludes too; VBAO searches in its place on a GPU that traces no rays.
+   */
+  RTAO = "rtao",
 }
 
 /** Every `ERenderAmbientOcclusionMethod` as the spelling it crosses IPC as, for a value no member has narrowed. */
 export type RenderAmbientOcclusionMethod = `${ERenderAmbientOcclusionMethod}`;
 
-/** How hard the ambient occlusion searches: XeGTAO's presets, and VBAO's own. */
+/** How hard the ambient occlusion searches: XeGTAO's presets, VBAO's own, and RTAO's rays. */
 export enum ERenderAmbientOcclusionQuality {
-  /** GTAO one direction, two steps each way; VBAO three steps. */
+  /** GTAO one direction, two steps each way; VBAO three steps; RTAO one ray. */
   LOW = "low",
-  /** GTAO two directions, two steps; VBAO five steps. */
+  /** GTAO two directions, two steps; VBAO five steps; RTAO two rays. */
   MEDIUM = "medium",
-  /** GTAO three directions, three steps; VBAO eight steps. `Base`'s choice. */
+  /** GTAO three directions, three steps; VBAO eight steps; RTAO four rays. `Base`'s choice. */
   HIGH = "high",
-  /** GTAO six directions, three steps; VBAO two directions, eight steps. */
+  /** GTAO six directions, three steps; VBAO two directions, eight steps; RTAO eight rays. */
   ULTRA = "ultra",
 }
 
@@ -32,7 +37,10 @@ export type RenderAmbientOcclusionQuality = `${ERenderAmbientOcclusionQuality}`;
  */
 export type RenderAmbientOcclusionSettings = {
   isEnabled: boolean;
-  /** GTAO's horizons, or VBAO's visibility bitmask, which `vbao` shapes. */
+  /**
+   * GTAO's horizons, VBAO's visibility bitmask, which `vbao` shapes, or RTAO's traced rays, accumulated and filtered
+   * as VBAO's search is.
+   */
   method: RenderAmbientOcclusionMethod;
   /** Metres around a point that what stands there occludes it from. */
   radius: number | null;
@@ -147,12 +155,19 @@ export type RenderAppliedReflections = {
 export type RenderAppliedReport = {
   /** What smooths the finished frame: none where a target other than the frame is shown. */
   antialiasing: RenderAntialiasing;
+  /** Whether DLSS reconstructs rays as it upscales the frame. */
+  isRayReconstructed: boolean;
   /** How much smaller the scene is drawn than the viewport, native for anything but a level. */
   renderScale: RenderScale;
   /** The sun's shadow, or none where no cascade is drawn. */
   shadows: RenderAppliedShadows | null;
   /** The screen's ambient occlusion, or none where it is off or the scene is unlit. */
   ambientOcclusion: RenderAmbientOcclusionQuality | null;
+  /**
+   * How the ambient occlusion is found, or none where it is not: RTAO asked for is VBAO's search on a GPU that traces
+   * no rays.
+   */
+  ambientOcclusionMethod: RenderAmbientOcclusionMethod | null;
   /** The screen-space indirect light, or none where it is not gathered. */
   indirectLight: RenderAppliedIndirectLight | null;
   /** The screen-space reflections, or none where they are not traced. */
@@ -405,12 +420,12 @@ export enum ERenderDebugView {
 /** Every `ERenderDebugView` as the spelling it crosses IPC as, for a value no member has narrowed. */
 export type RenderDebugView = `${ERenderDebugView}`;
 
-/** Whether a viewport's GPU upscales with DLSS, and where it does not, what it lacks. */
+/** Whether a viewport's GPU upscales with DLSS, or reconstructs rays with it, and where it does not, what it lacks. */
 export enum ERenderDlssAvailability {
   AVAILABLE = "available",
   /** The build has no DLSS: it was built without the `dlss` feature. */
   UNBUILT = "unbuilt",
-  /** The GPU or its driver has no DLSS. */
+  /** The GPU or its driver has no DLSS, or none of the feature. */
   UNSUPPORTED = "unsupported",
 }
 
@@ -653,6 +668,8 @@ export type RenderFrameReport = {
   outputHeight: number;
   /** What smooths the frame, and upscales it where it resolves temporally. */
   antialiasing: RenderAntialiasing;
+  /** Whether DLSS reconstructs rays as it upscales the frame. */
+  isRayReconstructed: boolean;
   /** The graphics API drawn with. */
   backend: RenderBackend;
   /** The GPU drawn on. */
@@ -664,6 +681,8 @@ export type RenderFrameReport = {
   hasRayQueries: boolean;
   /** Whether it upscales with DLSS, and what it lacks where it does not. */
   dlss: RenderDlssAvailability;
+  /** Whether it reconstructs rays with DLSS, and what it lacks where it does not. */
+  rayReconstruction: RenderDlssAvailability;
   /** Whether its passes were timed on the GPU over the span. */
   isGpuTimed: boolean;
   /** What each pass cost on the GPU, in frame order; none while untimed. */
@@ -1563,14 +1582,19 @@ export enum ERenderTonemapMode {
 export type RenderTonemapMode = `${ERenderTonemapMode}`;
 
 /**
- * What the scene is drawn at, a share of the viewport upscaled to it, how sharply the upscaled frame is finished, and
- * which model DLSS upscales with.
+ * What the scene is drawn at, a share of the viewport upscaled to it, how sharply the upscaled frame is finished, which
+ * model DLSS upscales with, and whether DLSS reconstructs rays as it upscales.
  */
 export type RenderUpscalingSettings = {
   scale: RenderScale;
   /** RCAS's sharpness while upscaled, from none to its most. */
   sharpening: number | null;
   dlssPreset: RenderDlssPreset;
+  /**
+   * DLSS ray reconstruction in super resolution's place: one network denoising and upscaling the frame over its
+   * surfaces' guides, where the GPU has it and the scene holds linear light.
+   */
+  isRayReconstructed: boolean;
 };
 
 /** Each of the renderer's features as a view sets it, a full set a view: one struct a feature, owned by its module. */

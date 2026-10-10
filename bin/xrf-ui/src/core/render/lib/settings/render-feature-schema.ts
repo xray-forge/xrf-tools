@@ -218,6 +218,7 @@ export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings>
   tonemap: toChoice(ERenderTonemapMode),
   upscaling: {
     dlssPreset: toChoice(ERenderDlssPreset),
+    isRayReconstructed: FLAG,
     scale: toChoice(ERenderScale),
     sharpening: toNumber(0, 1),
   },

@@ -10,4 +10,7 @@ pub enum RenderAmbientOcclusionMethod {
   Gtao,
   /// VBAO, visibility-bitmask ambient occlusion: every occluder a thickness deep, so light passes behind thin things.
   Vbao,
+  /// RTAO: short rays from each point traced against the level's geometry by hardware ray query, so what is off screen
+  /// or hidden behind something nearer occludes too; VBAO searches in its place on a GPU that traces no rays.
+  Rtao,
 }
