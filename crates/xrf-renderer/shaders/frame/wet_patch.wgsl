@@ -20,12 +20,13 @@ fn engine_value(vanilla: f32, extended: f32) -> f32 {
   return select(vanilla, extended, wet.is_extended > 0.5);
 }
 
-// How much of the rain reaches a point, from none to one, by the cover as `cover_reached` reads it, the wetness
-// creeping in under a cover by the level's soak; `pixel` turns the creep's taps.
-fn rain_reached(world: vec3<f32>, pixel: vec2<f32>) -> f32 {
+// How much of the rain reaches a point facing `world_normal`, from none to one, by the cover as `cover_reached` reads
+// it, the wetness creeping in under a cover by the level's soak; `pixel` turns the creep's taps.
+fn rain_reached(world: vec3<f32>, world_normal: vec3<f32>, pixel: vec2<f32>) -> f32 {
   let noise: f32 = cover_noise(pixel + wet.cover_state.w);
 
-  return cover_reached(cover, cover_pyramid, wet.cover, wet.cover_state.xy, world, wet.cover_state.z, noise);
+  return cover_reached(cover, cover_pyramid, wet.cover, wet.cover_state.xy, world, world_normal, wet.cover_state.z,
+    noise);
 }
 
 /// `GetNVNMap`: the splashes' volume at a place and a moment, repeating every way and blended between its slices, its
@@ -138,7 +139,7 @@ fn fs_wet_patch(in: FullscreenVarying) -> @location(0) vec4<f32> {
   let world: vec3<f32> = camera_unproject(ndc, depth);
   let rotation: mat3x3<f32> = transpose(mat3x3<f32>(camera.view[0].xyz, camera.view[1].xyz, camera.view[2].xyz));
   let world_normal: vec3<f32> = normalize(rotation * normal);
-  let reached: f32 = rain_reached(world, in.clip.xy);
+  let reached: f32 = rain_reached(world, world_normal, in.clip.xy);
   let wetting: EngineWetting = engine_wetting(normal, position, world, world_normal, reached);
   let wetness: f32 = surface_wetness(wetting, reached, world_normal, position);
 
@@ -180,8 +181,20 @@ const PUDDLE_HALO: f32 = 0.4;
 const PUDDLE_HALO_WET: f32 = 0.25;
 // How much the coat's coverage varies with the puddles' own noise, for floating film and debris.
 const PUDDLE_FILM: f32 = 0.15;
-// The gloss of water's roughness of 0.02, a puddle's at rest.
-const WATER_GLOSS: f32 = 0.737;
+// How the level's puddles differ from stretch to stretch, smoothly over tens of metres so a joined puddle never shows a
+// seam: their water's roughness, from a still mirror's to a scummed one's; how murky, scaling the depth the floor is
+// seen through; and their waves' phase, in tiles, and strength. Metres the variation repeats over, its three readings
+// turned and offset off one another.
+const WATER_ROUGHNESS: vec2<f32> = vec2<f32>(0.02, 0.06);
+const PUDDLE_MURK: vec2<f32> = vec2<f32>(0.6, 1.3);
+const WAVE_PHASE: f32 = 0.5;
+const WAVE_STRENGTH: vec2<f32> = vec2<f32>(0.6, 1.4);
+const VARIATION_TILES: vec3<f32> = vec3<f32>(37.0, 53.0, 43.0);
+// A puddle's rim: the share of its radius from which its water roughens to a wet film's, the roughness it reaches at
+// its edge, and how much of its clear coat the rim gives up, so a puddle's reflection fades in from a damp edge.
+const RIM_START: f32 = 0.55;
+const RIM_ROUGHNESS: f32 = 0.12;
+const RIM_COAT: f32 = 0.5;
 // How far the ripples bend a puddle's normal at most, as a slope: at full strength the water looked like foil.
 const RIPPLE_BEND_MOST: f32 = 0.08;
 // The lean built into the water's wave map by its generator, which the water shader expects and a puddle takes off:
@@ -286,12 +299,14 @@ fn is_topmost(world: vec3<f32>) -> bool {
 }
 
 // What a point has of the puddles about it: how much of one it is, how deep its water stands there in metres, how
-// much of the damp halo around one, and the water's up, the plane's.
+// much of the damp halo around one, the water's up, the plane's, and how far out towards its rim it stands, a share of
+// its radius.
 struct SitePuddle {
   inside: f32,
   depth: f32,
   halo: f32,
   up: vec3<f32>,
+  rim: f32,
 };
 
 // How much of a puddle a point is: this frame's puddles in its cell and those about it, each a whole stretched blob
@@ -311,7 +326,7 @@ fn site_puddle(world: vec3<f32>, border: f32, footprint: f32) -> SitePuddle {
   // The point's cell of the sites' map: its world cell past the map's first.
   let at: vec2<f32> = floor(world.xz / cell) - origin;
   let texel: f32 = wet.surface.z * 2.0 / wet.surface_shape.x;
-  var puddle: SitePuddle = SitePuddle(0.0, 0.0, 0.0, vec3<f32>(0.0, 1.0, 0.0));
+  var puddle: SitePuddle = SitePuddle(0.0, 0.0, 0.0, vec3<f32>(0.0, 1.0, 0.0), 1.0);
 
   for (var y: i32 = -1; y <= 1; y++) {
     for (var x: i32 = -1; x <= 1; x++) {
@@ -351,11 +366,29 @@ fn site_puddle(world: vec3<f32>, border: f32, footprint: f32) -> SitePuddle {
         puddle.inside = inside;
         puddle.depth = clamp(lift, 0.0, PUDDLE_DEEPEST * wet.puddle_state.y);
         puddle.up = up;
+        puddle.rim = distance;
       }
     }
   }
 
   return puddle;
+}
+
+// How the puddles differ at a place in the engine's axes: in `x` their water's roughness, in `y` their murk, in `z`
+// their waves' phase and strength, each from nothing to one.
+fn puddle_variation(place: vec2<f32>) -> vec3<f32> {
+  return vec3<f32>(
+    textureSampleLevel(puddle_noise, wet_sampler, place / VARIATION_TILES.x + vec2<f32>(0.13, 0.71), 0.0).r,
+    textureSampleLevel(puddle_noise, wet_sampler, place.yx / VARIATION_TILES.y + vec2<f32>(0.59, 0.27), 0.0).r,
+    textureSampleLevel(puddle_noise, wet_sampler, vec2<f32>(place.x, -place.y) / VARIATION_TILES.z + 0.43, 0.0).r,
+  );
+}
+
+// The gloss a puddle's water of a roughness has, as `reflection_roughness` reads gloss back.
+fn water_gloss(roughness: f32) -> f32 {
+  let glassy: f32 = 1.0 - sqrt(roughness);
+
+  return glassy * glassy;
 }
 
 // What the enhanced wetting writes: into the light target, as the engine's wetting does, the normal packed into `xy`
@@ -398,7 +431,7 @@ fn fs_wet_patch_enhanced(in: FullscreenVarying) -> WetPatchTargets {
   let distance: f32 = -position.z;
   let gradients: PlaceGradients = PlaceGradients(dpdx(place.xz), dpdy(place.xz));
   let footprint: f32 = max(length(gradients.across), length(gradients.down));
-  let reached: f32 = rain_reached(world, in.clip.xy);
+  let reached: f32 = rain_reached(world, world_normal, in.clip.xy);
   let wetting: EngineWetting = engine_wetting(normal, position, world, world_normal, reached);
   // How wet the engine reads the surface, by the albedo's brightness, as far as the reflections want it.
   var wetness: f32 = surface_wetness(wetting, reached, world_normal, position) * dot(albedo.rgb, vec3<f32>(0.33));
@@ -410,6 +443,7 @@ fn fs_wet_patch_enhanced(in: FullscreenVarying) -> WetPatchTargets {
   var puddle: f32 = 0.0;
   var floating: f32 = 1.0;
   var lift: f32 = 0.0;
+  var water_roughness: f32 = WATER_ROUGHNESS.x;
 
   // On the ground alone, terrain facing up and the topmost surface there: never a roof, a deck or a ceiling.
   let is_ground: bool = is_terrain && world_normal.y > PUDDLE_UP && is_topmost(world);
@@ -424,24 +458,30 @@ fn fs_wet_patch_enhanced(in: FullscreenVarying) -> WetPatchTargets {
     // The cover only reaches some tens of metres; a site is on open ground already, so a puddle does not wait for it.
     let found: SitePuddle = site_puddle(world, border, footprint);
 
+    let variation: vec3<f32> = puddle_variation(place.xz);
+    let rim: f32 = smoothstep(RIM_START, 1.0, found.rim);
+
     puddle = found.inside * fade;
-    lift = found.depth;
-    floating = 1.0 - PUDDLE_FILM * noise;
+    lift = min(found.depth * mix(PUDDLE_MURK.x, PUDDLE_MURK.y, variation.y), PUDDLE_DEEPEST * wet.puddle_state.y);
+    floating = (1.0 - PUDDLE_FILM * noise) * (1.0 - RIM_COAT * rim);
+    water_roughness = mix(mix(WATER_ROUGHNESS.x, WATER_ROUGHNESS.y, variation.x), RIM_ROUGHNESS, rim);
     wetness = max(wetness, PUDDLE_HALO_WET * found.halo * fade * (1.0 - found.inside));
 
     if (puddle > 0.0) {
       let pace: f32 = wet.time * (0.01 + saturate(wet.density * 1.5) * 0.008);
       let uv: vec2<f32> = place.xz / PUDDLE_RIPPLE_TILE;
+      let waves: vec2<f32> = uv + (variation.z - 0.5) * WAVE_PHASE;
       let across: vec2<f32> = gradients.across / PUDDLE_RIPPLE_TILE;
       let down: vec2<f32> = gradients.down / PUDDLE_RIPPLE_TILE;
       // The water's calm waves, two scrolls of the map read filtered, its lean taken off; what the filtering left of
       // their normals' length is the tilt they lost, kept as variance.
-      let first: vec3<f32> = textureSampleGrad(puddle_normal, wet_sampler, uv + vec2<f32>(0.0, pace), across, down).xyz *
-        2.0 - 1.0 - vec3<f32>(WAVE_TILT, 0.0);
-      let second: vec3<f32> = textureSampleGrad(puddle_normal, wet_sampler, uv - vec2<f32>(0.33, pace), across, down).xyz *
-        2.0 - 1.0 - vec3<f32>(WAVE_TILT, 0.0);
+      let first: vec3<f32> = textureSampleGrad(puddle_normal, wet_sampler, waves + vec2<f32>(0.0, pace), across, down)
+        .xyz * 2.0 - 1.0 - vec3<f32>(WAVE_TILT, 0.0);
+      let second: vec3<f32> = textureSampleGrad(puddle_normal, wet_sampler, waves - vec2<f32>(0.33, pace), across, down)
+        .xyz * 2.0 - 1.0 - vec3<f32>(WAVE_TILT, 0.0);
       let kept_length: f32 = 0.5 * (length(first) + length(second));
-      let calm_scale: f32 = saturate(0.05 + saturate(wet.density * 1.5) * 0.1) * 0.666;
+      let calm_scale: f32 = saturate(0.05 + saturate(wet.density * 1.5) * 0.1) * 0.666 *
+        mix(WAVE_STRENGTH.x, WAVE_STRENGTH.y, variation.z);
       let drop_scale: f32 = wet.density * 3.0 * wet.puddles.w * PUDDLE_RIPPLE_SHARE * 0.15;
       let drops: vec3<f32> = rain_ripples(uv * 1.3, PlaceGradients(across * 1.3, down * 1.3), vec3<f32>(0.85, 1.0, 10.0),
         distance);
@@ -460,7 +500,7 @@ fn fs_wet_patch_enhanced(in: FullscreenVarying) -> WetPatchTargets {
 
   // What the gloss gains: the engine's wet gloss over its own, capped below a mirror, a puddle's water's.
   let glossed: f32 = mix(min(wetness * select(0.8, 1.0, wet.is_extended > 0.5), max(WET_GLOSS_MOST - gloss, 0.0)),
-    WATER_GLOSS - gloss, puddle);
+    water_gloss(water_roughness) - gloss, puddle);
 
   return WetPatchTargets(
     vec4<f32>(octahedral_encode(normalize(normal + water)), glossed, wetness),

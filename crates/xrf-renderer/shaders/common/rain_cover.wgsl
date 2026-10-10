@@ -2,10 +2,21 @@
 // column, how high the first thing over it stands. The rain's cover is one; the level's surface without its trees is
 // another.
 
-// Metres a point may stand under the first thing over its column and still take the rain, at least; and as far again
-// as a slope of one rises over a texel and a half, the farthest the texels a point is weighed between stand from it.
-const COVER_BIAS: f32 = 0.2;
+// Metres a point may stand under the first thing over its column and still take the rain: the depth's own error, never
+// an overhang's height, as the engine's comparison has a few millimetres, so a pipe or a wall's top just under a
+// ceiling stays dry. A point is read `COVER_OUT_TEXELS` out along its surface's lean, so a wall asks what stands over
+// the air before it, a ceiling inside or the sky outside, and a slope reads down its fall; what that leaves of its own
+// surface rising within the texel and a half its four texels reach is allowed as far as it rises, by its slope, at most
+// `COVER_SLOPE_MOST`.
+const COVER_BIAS: f32 = 0.03;
 const COVER_SLOPE_TEXELS: f32 = 1.5;
+const COVER_SLOPE_MOST: f32 = 2.0;
+const COVER_OUT_TEXELS: f32 = 1.5;
+// Metres under a point the rain may land and still creep to it, and how far the point's surface faces up for it to
+// creep at all, none to all: water runs and splashes along the ground it lands on, never up a wall, which an overhead
+// map cannot tell from a roof's edge, nor from a river or the ground outside a hull below it.
+const COVER_CREEP_DROP: f32 = 0.5;
+const COVER_CREEP_UP: vec2<f32> = vec2<f32>(0.5, 0.8);
 // Taps the open sky about a covered point is counted by, laid out as a golden-angle spiral over the creep's disc.
 const COVER_TAPS: u32 = 12u;
 const COVER_GOLDEN_ANGLE: f32 = 2.3999632;
@@ -65,36 +76,42 @@ fn cover_noise(pixel: vec2<f32>) -> f32 {
 }
 
 // How much reaches a point of what falls straight down, from none to one, by an overhead map and its pyramid
-// (`scene/level/cover_pyramid.rs`), `shape` its texels across and the metres it reaches down. Where the point stands
-// open, all of it, weighed over the four texels about it as `overhead_open` weighs them. Where something stands over
-// it, twice the share of the open sky within `creep` metres of it, at most all: under a cover's edge as wet as the open
-// ground beside it, dry `creep` under it, and wet throughout under a cover narrower than twice `creep`, as a long rain
-// runs and splashes in under what is small. The pyramid tells first whether anything, or everything, stands over the
-// point's surroundings, so only a point within `creep` of a cover's edge counts taps; `noise`, from nothing to one,
-// turns them.
+// (`scene/level/cover_pyramid.rs`), `shape` its texels across and the metres it reaches down, the point's surface
+// facing `normal`. Where the point stands open, all of it, weighed over the four texels about it as `overhead_open`
+// weighs them. Where something stands over a surface facing up, twice the share of the sky within `creep` metres of it
+// open down to no more than `COVER_CREEP_DROP` under it, at most all: under a cover's edge as wet as the open ground beside it, dry
+// `creep` under it, and wet throughout under a cover narrower than twice `creep`, as a long rain runs and splashes in
+// under what is small. The pyramid tells first whether anything, or everything, stands over the point's surroundings,
+// so only a point within `creep` of a cover's edge counts taps; `noise`, from nothing to one, turns them.
 fn cover_reached(
   map: texture_depth_2d,
   pyramid: texture_2d<f32>,
   window: vec4<f32>,
   shape: vec2<f32>,
-  point: vec3<f32>,
+  surface: vec3<f32>,
+  normal: vec3<f32>,
   creep: f32,
   noise: f32,
 ) -> f32 {
   let texel: f32 = window.z * 2.0 / shape.x;
-  let bias: f32 = COVER_BIAS + texel * COVER_SLOPE_TEXELS;
+  let across: f32 = length(normal.xz);
+  let slope: f32 = select(COVER_SLOPE_MOST, min(across / max(normal.y, 1e-3), COVER_SLOPE_MOST), normal.y > 0.0);
+  let point: vec3<f32> = surface + vec3<f32>(normal.x, 0.0, normal.z) * (texel * COVER_OUT_TEXELS);
+  let bias: f32 = COVER_BIAS + texel * slope * max(COVER_SLOPE_TEXELS - COVER_OUT_TEXELS * across, 0.0);
   let own: f32 = overhead_open(map, window, shape.x, shape.y, point, bias);
+  let spread: f32 = creep * smoothstep(COVER_CREEP_UP.x, COVER_CREEP_UP.y, normal.y);
 
-  if (own >= 1.0 || creep <= texel) {
+  if (own >= 1.0 || spread <= texel) {
     return own;
   }
 
   let limit: f32 = point.y + bias;
+  let deepest: f32 = point.y - COVER_CREEP_DROP;
   // The level whose texels span the creep's diameter, so two by two of them hold every column within it.
   let levels: i32 = i32(textureNumLevels(pyramid));
-  let level: i32 = clamp(i32(ceil(log2(2.0 * creep / texel))) - 1, 0, levels - 1);
+  let level: i32 = clamp(i32(ceil(log2(2.0 * spread / texel))) - 1, 0, levels - 1);
   let span: f32 = texel * exp2(f32(level + 1));
-  let first: vec2<i32> = vec2<i32>(floor((point.xz - window.xy + window.z - creep) / span));
+  let first: vec2<i32> = vec2<i32>(floor((point.xz - window.xy + window.z - spread) / span));
   let last: vec2<i32> = vec2<i32>(textureDimensions(pyramid, level)) - 1;
   var lowest: f32 = 1.0;
   var highest: f32 = 0.0;
@@ -107,23 +124,29 @@ fn cover_reached(
     highest = max(highest, range.y);
   }
 
-  // Reversed: the highest thing stands at the largest depth.
-  if (window.w - (1.0 - highest) * shape.y <= limit) {
+  // Reversed: the highest thing stands at the largest depth. Open everywhere about it within the drop, or covered
+  // everywhere, or open only far under it.
+  let top: f32 = window.w - (1.0 - highest) * shape.y;
+  let bottom: f32 = window.w - (1.0 - lowest) * shape.y;
+
+  if (top <= limit && bottom >= deepest) {
     return 1.0;
   }
 
-  if (window.w - (1.0 - lowest) * shape.y > limit) {
+  if (bottom > limit || top < deepest) {
     return own;
   }
 
   var open: f32 = 0.0;
 
   for (var tap: u32 = 0u; tap < COVER_TAPS; tap++) {
-    let along: f32 = sqrt((f32(tap) + 0.5) / f32(COVER_TAPS)) * creep;
+    let along: f32 = sqrt((f32(tap) + 0.5) / f32(COVER_TAPS)) * spread;
     let turn: f32 = f32(tap) * COVER_GOLDEN_ANGLE + noise * 6.2831853;
     let column: vec3<f32> = point + vec3<f32>(cos(turn) * along, 0.0, sin(turn) * along);
 
-    open += select(0.0, 1.0, limit >= overhead_height(map, window, shape.x, shape.y, column));
+    let landing: f32 = overhead_height(map, window, shape.x, shape.y, column);
+
+    open += select(0.0, 1.0, landing <= limit && landing >= deepest);
   }
 
   return max(own, saturate(2.0 * open / f32(COVER_TAPS)));

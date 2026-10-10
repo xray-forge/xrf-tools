@@ -215,8 +215,9 @@ fn ray_walk(pyramid: texture_2d<f32>, origin: vec3<f32>, direction: vec3<f32>, c
 }
 
 // The gloss past which a surface's reflectance head on rises from a dielectric's towards its own colour: X-Ray's
-// glossiest surfaces are its metals and glass, and its data holds no metalness.
-const METAL_GLOSS: vec2<f32> = vec2<f32>(0.6, 0.9);
+// glossiest surfaces are its metals, and its data holds no metalness. Glass, polished paint and a puddle's water stand
+// below it (Skadovsk's television screen at 0.64 reflected as a metal and read as wet from 0.6).
+const METAL_GLOSS: vec2<f32> = vec2<f32>(0.8, 0.95);
 // The roughness past which a surface is not traced and reflects the prefiltered sky alone.
 const TRACED_ROUGHNESS_LIMIT: f32 = 0.5;
 
