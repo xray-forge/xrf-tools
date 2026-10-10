@@ -1,7 +1,8 @@
 /// How full the level's puddles are, how stormy the rain has been and how soaked a long rain has left the level: puddles
 /// fill slower than surfaces wet, and the harder the rain the faster, and drain three times slower than surfaces dry,
 /// so they outlast the sheen; the storm follows how far the rain is past a light one, slowly, so a gust does not pop
-/// puddles in; the soak builds over a long rain, the harder the faster, and dries slower still. All on the weather's
+/// puddles in, and eases no faster than puddles drain, so the puddles a downpour made outlast it rather than vanish the
+/// moment the rain lightens; the soak builds over a long rain, the harder the faster, and dries slower still. All on the weather's
 /// clock, from empty and dry before any rain, as every rain starts on dry ground.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct PuddleFill {
@@ -14,8 +15,10 @@ impl PuddleFill {
   const FILLING: f32 = 0.012;
   /// What a dry game second drains.
   const DRAINING: f32 = 0.0006;
-  /// Game seconds the storm takes to follow the rain by two thirds.
+  /// Game seconds the storm takes to follow the rain by two thirds as it rises, and what a game second takes off it at
+  /// most as it eases: the puddles' own draining.
   const STORM_LAG: f32 = 60.0;
+  const STORM_EASING: f32 = Self::DRAINING;
   /// What a game second of rain of density one soaks, and what a dry one dries: some hour and a half of a moderate
   /// rain's game time to soak through, twice that to dry.
   const SOAKING: f32 = 0.0004;
@@ -44,7 +47,11 @@ impl PuddleFill {
 
         (
           (fill + change * elapsed).clamp(0.0, 1.0),
-          storm + (storminess - storm) * followed,
+          if storminess > storm {
+            storm + (storminess - storm) * followed
+          } else {
+            (storm - Self::STORM_EASING * elapsed).max(storminess)
+          },
           (soak + soaking * elapsed).clamp(0.0, 1.0),
         )
       }

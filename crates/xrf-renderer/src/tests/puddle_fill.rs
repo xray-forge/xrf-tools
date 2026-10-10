@@ -35,6 +35,20 @@ fn follows_a_storm_slowly() {
   assert!(fill.advance(2_000.0, 1.0, 1.0).1 > 0.99);
 }
 
+// The storm eases as the puddles drain, so the puddles a downpour made outlast it once the rain lightens.
+#[test]
+fn eases_off_a_storm_as_puddles_drain() {
+  let mut fill: PuddleFill = PuddleFill::default();
+
+  fill.advance(0.0, 1.0, 1.0);
+  fill.advance(2_000.0, 1.0, 1.0);
+
+  let eased: f32 = fill.advance(2_100.0, 0.4, 1.0).1;
+
+  assert!(eased > 0.9 && eased < 1.0);
+  assert_eq!(fill.advance(10_000.0, 0.4, 1.0).1, 0.0);
+}
+
 // A long rain soaks the level slowly, the harder the faster, and it dries slower still.
 #[test]
 fn soaks_over_a_long_rain() {
