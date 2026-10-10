@@ -21,6 +21,7 @@ use crate::pass::surroundings_parameters::SurroundingsParameters;
 use crate::pass::surroundings_pass::SurroundingsPass;
 use crate::pass::surroundings_uniform::SurroundingsUniform;
 use crate::pass::view_binding::ViewBinding;
+use crate::scene::level::frame_load::FrameLoad;
 use crate::scene::level::lighting_handles::LightingHandles;
 use crate::scene::level::shadow_frame::ShadowFrame;
 use crate::scene::static_scene::growable_buffer::GrowableBuffer;
@@ -29,15 +30,15 @@ use crate::scene::static_scene::static_layout::StaticLayout;
 /// The level around the camera as a cube, a face a frame: the static scene culled and drawn into a small G-buffer by
 /// a camera looking down one axis from where the viewport's stands, then lit into the prefiltered sky cube's first
 /// mip, so a reflection that meets nothing on the screen reads the trees and the hills around it rather than the sky
-/// alone. Camera-centred: a face at most a frame, each in turn, drawn again only where the camera moved from where it
-/// was drawn, the sun turned, the scene's contents or the probe changed, or it has stood `REFRESH_FRAMES`, so a still
-/// view draws a face every so often rather than every frame; a face due by age alone waits for a frame light on other
-/// work, so its cost never lands on a frame already heavy with the sun's far cascades.
+/// alone. Camera-centred: a face at most a frame, drawn again only where the camera moved from where it was drawn, the
+/// sun turned, the scene's contents changed, or it has stood `REFRESH_FRAMES`, so a still view draws a face every so
+/// often rather than every frame. A face never drawn at the probe's size draws at once; any other waits for a frame
+/// light on other work (`FrameLoad`), so its cost never lands on a frame already heavy with the sun's far cascades.
 pub struct SurroundingsCube {
   lists: GrowableBuffer,
   args: wgpu::Buffer,
   view: ViewBinding,
-  /// The face this frame draws, and the sun's direction for it.
+  /// The face last drawn, which this frame draws where it is due, and the sun's direction for it.
   face: u32,
   to_sun: Vec3,
   /// Texels a side the cube's faces are, as the settings ask.
@@ -51,6 +52,8 @@ pub struct SurroundingsCube {
   drawn: [Option<FaceDrawn>; 6],
   /// Frames prepared since it was made.
   frame: u32,
+  /// Frames a face has waited, due, for a frame light on other work.
+  waited: u32,
 }
 
 /// Where a face was drawn from.
@@ -94,6 +97,7 @@ impl SurroundingsCube {
       is_active: false,
       drawn: [None; 6],
       frame: 0,
+      waited: 0,
     }
   }
 
@@ -115,39 +119,62 @@ impl SurroundingsCube {
     self.drawn = [None; 6];
   }
 
-  /// Readies the next face's camera from where the viewport's stands, looking down its axis with the up a cube
-  /// texture's face lays its texels by; `encoder` takes the copies a list growing makes.
+  /// Readies the camera of the face due, if one is, from where the viewport's stands, looking down its axis with the up
+  /// a cube texture's face lays its texels by: one never drawn at this size first, then one the camera, the sun or the
+  /// scene left behind, each after the last drawn in turn, then the one stood longest past `REFRESH_FRAMES`; `encoder`
+  /// takes the copies a list growing makes.
   pub fn prepare(
     &mut self,
     device: &wgpu::Device,
     queue: &wgpu::Queue,
     encoder: &mut wgpu::CommandEncoder,
     frame: &ShadowFrame<'_>,
-    (probe, is_light): (RenderReflectionProbe, bool),
+    (probe, load): (RenderReflectionProbe, &mut FrameLoad),
   ) {
-    let face: u32 = (self.face + 1) % 6;
-    let drawn: u32 = probe.get_size() * Self::DRAWN_OVER;
+    let size: u32 = probe.get_size();
+    let drawn: u32 = size * Self::DRAWN_OVER;
     let position: Vec3 = frame.camera.position;
     let to_sun: Vec3 = -frame.sun_direction;
     let contents: usize = frame.scene.get_contents();
 
     self.frame = self.frame.wrapping_add(1);
-    self.face = face;
     self.is_active = true;
+    self.is_due = false;
 
-    let is_stale: bool = self.drawn[face as usize].is_none_or(|it: FaceDrawn| {
-      it.position.distance(position) > Self::MOVED
-        || it.to_sun.dot(to_sun) < Self::SUN_TURNED
-        || it.contents != contents
-        || it.size != probe.get_size()
-        || (is_light && self.frame.wrapping_sub(it.frame) >= Self::REFRESH_FRAMES)
-    });
+    let order = || (1..=6).map(|step| (self.face + step) % 6);
+    let unready: Option<u32> = order().find(|face| self.drawn[*face as usize].is_none_or(|it| it.size != size));
+    let face: u32 = match unready {
+      Some(face) => face,
+      None => {
+        let age = |face: u32| self.drawn[face as usize].map_or(0, |it| self.frame.wrapping_sub(it.frame));
+        let stale: Option<u32> = order().find(|face| {
+          self.drawn[*face as usize].is_some_and(|it: FaceDrawn| {
+            it.position.distance(position) > Self::MOVED
+              || it.to_sun.dot(to_sun) < Self::SUN_TURNED
+              || it.contents != contents
+          })
+        });
+        let aged: Option<u32> = (0..6)
+          .filter(|face| age(*face) >= Self::REFRESH_FRAMES)
+          .max_by_key(|face| age(*face));
+        let Some(face) = stale.or(aged) else {
+          self.waited = 0;
 
-    if !is_stale {
-      self.is_due = false;
+          return;
+        };
 
-      return;
-    }
+        if !load.take(self.waited) {
+          self.waited += 1;
+
+          return;
+        }
+
+        face
+      }
+    };
+
+    self.face = face;
+    self.waited = 0;
 
     let (forward, up): (Vec3, Vec3) = match face {
       0 => (Vec3::X, Vec3::Y),

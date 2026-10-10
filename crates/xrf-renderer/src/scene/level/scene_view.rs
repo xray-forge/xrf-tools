@@ -135,6 +135,7 @@ use crate::pass::wet_patch_parameters::WetPatchParameters;
 use crate::pass::wet_uniform::WetUniform;
 use crate::pass::wind_uniform::WindUniform;
 use crate::scene::level::cover_textures::CoverTextures;
+use crate::scene::level::frame_load::FrameLoad;
 use crate::scene::level::grass_level::GrassLevel;
 use crate::scene::level::level_frame::LevelFrame;
 use crate::scene::level::level_overlays::LevelOverlays;
@@ -623,17 +624,18 @@ impl SceneView {
     };
 
     shadows.prepare_cascades(device, queue, encoder, view_layout, &frame);
+
+    // What may wait a few frames draws on one the cascades leave light, one job a frame.
+    let mut load: FrameLoad = shadows.get_load();
+
     // The cube is for the traced reflections alone; the engine's reflect its own.
     if info.reflection_settings.is_drawn() {
-      // A frame drawing no more than the nearest cascade is light enough for a face refreshed by age alone.
-      let is_light: bool = shadows.get_due_count() <= 1;
-
       surroundings.prepare(
         device,
         queue,
         encoder,
         &frame,
-        (info.reflection_settings.probe, is_light),
+        (info.reflection_settings.probe, &mut load),
       );
     } else {
       surroundings.rest();
@@ -643,14 +645,14 @@ impl SceneView {
     if info.rain_draw.is_some() || info.is_wet {
       let reach: Option<f32> = (info.is_wet && info.wet.reach.x > 0.5).then_some(info.wet.reach.y);
 
-      rain_cover.prepare(device, queue, encoder, &frame, reach);
+      rain_cover.prepare(device, queue, encoder, &frame, (reach, &mut load));
     } else {
       rain_cover.rest();
     }
 
     // The puddles seat on it.
     if info.is_wet && info.wet.is_enhanced > 0.5 {
-      level_surface.prepare(device, queue, encoder, &frame);
+      level_surface.prepare(device, queue, encoder, &frame, &mut load);
     }
   }
 

@@ -18,6 +18,7 @@ use crate::pass::static_draws::StaticDraws;
 use crate::pass::view_binding::ViewBinding;
 use crate::pass::water_depth_parameters::WaterDepthParameters;
 use crate::pass::water_uniform::WaterUniform;
+use crate::scene::level::frame_load::FrameLoad;
 use crate::scene::level::overhead_shape::OverheadShape;
 use crate::scene::level::shadow_frame::ShadowFrame;
 use crate::scene::static_scene::growable_buffer::GrowableBuffer;
@@ -38,6 +39,8 @@ pub struct OverheadMap {
   is_due: bool,
   /// Frames since it was last drawn, which a change of what the scene holds alone waits out.
   since: u32,
+  /// Frames it has waited, due, for a frame light on other work.
+  waited: u32,
   shape: OverheadShape,
 }
 
@@ -71,6 +74,7 @@ impl OverheadMap {
       drawn: None,
       is_due: false,
       since: 0,
+      waited: 0,
       shape,
     }
   }
@@ -110,14 +114,15 @@ impl OverheadMap {
     }
   }
 
-  /// Centres it over the camera, a whole step at a time, and readies it to be drawn where it moved or the scene grew;
-  /// `encoder` takes the copies a list growing makes.
+  /// Centres it over the camera, a whole step at a time, and readies it to be drawn where it moved or the scene grew,
+  /// on a frame `load` leaves light unless it was never drawn; `encoder` takes the copies a list growing makes.
   pub fn prepare(
     &mut self,
     device: &wgpu::Device,
     queue: &wgpu::Queue,
     encoder: &mut wgpu::CommandEncoder,
     frame: &ShadowFrame<'_>,
+    load: &mut FrameLoad,
   ) {
     let position: Vec3 = frame.camera.position;
     let step: f32 = self.shape.step;
@@ -135,8 +140,19 @@ impl OverheadMap {
     let is_moved: bool = self.drawn.is_none_or(|(drawn, _)| drawn != center);
 
     if self.drawn == Some(state) || (!is_moved && self.since < self.shape.content_delay) {
+      self.waited = 0;
+
       return;
     }
+
+    // Drawn before, it holds what it covers by a margin past a step, so it waits a few frames for a light one.
+    if self.drawn.is_some() && !load.take(self.waited) {
+      self.waited += 1;
+
+      return;
+    }
+
+    self.waited = 0;
 
     let half: f32 = self.shape.width / 2.0;
     let view: CameraView = CameraView {
