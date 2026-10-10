@@ -10,6 +10,7 @@ use crate::contract::render_reflection_quality::RenderReflectionQuality;
 use crate::contract::render_reflection_settings::RenderReflectionSettings;
 use crate::contract::render_reflection_trace_quality::RenderReflectionTraceQuality;
 use crate::contract::render_view_options::RenderViewOptions;
+use crate::frame::reflection_history::ReflectionHistory;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::pass::lighting_frame::LightingFrame;
 use crate::pass::lighting_uniform::LightingUniform;
@@ -251,4 +252,22 @@ fn traces_every_pixel_every_frame_taken_raw() {
   assert_eq!(uniform.crossings, RenderReflectionQuality::High.get_crossings());
   assert_eq!(uniform.distance, 150.0);
   assert_eq!(trace_of(settings).with_raw(false), trace_of(settings));
+}
+
+// A raw trace's list holds half its pixels at the least and grows at once past what its frames asked, in whole steps,
+// to a ray a pixel at most; it shrinks only once what they ask falls to half its room.
+#[test]
+fn sizes_a_raw_lists_room_to_what_its_frames_ask() {
+  let traced: u32 = 2869 * 1484;
+  let least: u32 = traced.div_ceil(ReflectionHistory::RAW_REQUEST_SHARE);
+
+  assert_eq!(ReflectionHistory::get_raw_capacity(traced, least, 0), least);
+
+  let grown: u32 = ReflectionHistory::get_raw_capacity(traced, least, traced * 2 / 3);
+
+  assert!((grown > traced * 2 / 3 && grown.is_multiple_of(65_536)) || grown == traced);
+  assert!(grown <= traced);
+  assert_eq!(ReflectionHistory::get_raw_capacity(traced, grown, traced / 2), grown);
+  assert_eq!(ReflectionHistory::get_raw_capacity(traced, grown, traced * 2), traced);
+  assert_eq!(ReflectionHistory::get_raw_capacity(traced, traced, 1000), least);
 }

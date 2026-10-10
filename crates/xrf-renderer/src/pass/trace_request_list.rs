@@ -44,6 +44,11 @@ impl TraceRequestList {
     }
   }
 
+  /// Requests it holds at most.
+  pub fn get_capacity(&self) -> u32 {
+    self.capacity
+  }
+
   /// Makes the requests anew where they hold another number: the full share while the pass traces, none while it does
   /// not, so a list takes no memory until tracing is asked for.
   pub fn fit(&mut self, device: &wgpu::Device, capacity: u32) {

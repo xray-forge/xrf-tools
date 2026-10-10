@@ -476,7 +476,10 @@ struct SitePuddle {
 // with the map's texels; how far that plane stands over the ground is the depth the water's tint sees, at most a
 // puddle's, and it never cuts the puddle, since the placing already found the disc level. `border` moves each blob's
 // edge in and out, a share of its radius; `footprint` is the metres a pixel spans there, over which a border is
-// softened at least, so a far one does not shimmer. Nothing outside the level surface's map.
+// softened at least, so a far one does not shimmer. Overlapping puddles are one water: the most of either's cover and
+// depth, the rim of the one the point stands deepest in, so neither's shore cuts into the other, and their ups blended
+// by how far in each it stands; one taken whole drew a dry strip along where the other's rim crossed it. Nothing
+// outside the level surface's map.
 fn site_puddle(world: vec3<f32>, border: f32, footprint: f32) -> SitePuddle {
   let cell: f32 = wet.surface_shape.z;
   let cells: f32 = floor(wet.surface.z * 2.0 / cell);
@@ -486,6 +489,7 @@ fn site_puddle(world: vec3<f32>, border: f32, footprint: f32) -> SitePuddle {
   let at: vec2<f32> = floor(world.xz / cell) - origin;
   let texel: f32 = wet.surface.z * 2.0 / wet.surface_shape.x;
   var puddle: SitePuddle = SitePuddle(0.0, 0.0, 0.0, vec3<f32>(0.0, 1.0, 0.0), 1.0);
+  var ups: vec3<f32> = vec3<f32>(0.0);
 
   for (var y: i32 = -1; y <= 1; y++) {
     for (var x: i32 = -1; x <= 1; x++) {
@@ -516,18 +520,22 @@ fn site_puddle(world: vec3<f32>, border: f32, footprint: f32) -> SitePuddle {
 
       puddle.halo = max(puddle.halo, halo);
 
-      if (inside > puddle.inside) {
+      if (inside > 0.0) {
         // The water's plane: along the ground's own up at the site's spot, through the ground there.
         let up: vec3<f32> = ground_up(vec3<f32>(site.x, site.z, site.y));
         let under: f32 = (LOWEST_REACH + 0.5) * texel * (abs(up.x) + abs(up.z)) / up.y;
         let lift: f32 = site.z + under + PUDDLE_LEVEL * wet.puddle_state.y - dot(up.xz, offset) / up.y - world.y;
 
-        puddle.inside = inside;
-        puddle.depth = clamp(lift, 0.0, PUDDLE_DEEPEST * wet.puddle_state.y);
-        puddle.up = up;
-        puddle.rim = distance;
+        puddle.inside = max(puddle.inside, inside);
+        puddle.depth = max(puddle.depth, clamp(lift, 0.0, PUDDLE_DEEPEST * wet.puddle_state.y) * inside);
+        puddle.rim = min(puddle.rim, distance);
+        ups += up * inside * max(1.0 - distance, 0.05);
       }
     }
+  }
+
+  if (puddle.inside > 0.0) {
+    puddle.up = normalize(ups);
   }
 
   return puddle;
