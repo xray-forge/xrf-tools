@@ -51,6 +51,32 @@ fn cs_clear_cards(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_wor
   }
 }
 
+// Past `CARD_THIN_FROM` metres from the eye a tuft stands as a card only by chance, the share kept falling with the square
+// of the distance down to `CARD_THIN_LEAST`, each at its own size: every far tuft drawn into four cascades a frame made
+// 150 m of grass shadow cost three milliseconds and stutter. A tuft whose chance nears the share shrinks to its foot over
+// `CARD_THIN_SOFT` of it, so one leaving or joining as the eye moves never pops. Widened to cover as much as the tufts
+// left out, a far tuft's shadow stood two or three times its size and shrank as the eye came nearer.
+const CARD_THIN_FROM: f32 = 40.0;
+const CARD_THIN_LEAST: f32 = 0.11;
+const CARD_THIN_SOFT: f32 = 0.25;
+
+// The share of the tufts `from_eye` metres from the eye that stand as cards.
+fn card_kept(from_eye: f32) -> f32 {
+  let near: f32 = CARD_THIN_FROM / max(from_eye, CARD_THIN_FROM);
+
+  return max(near * near, CARD_THIN_LEAST);
+}
+
+// A tuft's own chance, from nothing to one, by where it stands, alike every frame.
+fn card_chance(place: vec3<f32>) -> f32 {
+  var bits: u32 = bitcast<u32>(place.x) * 0x9e3779b1u ^ bitcast<u32>(place.z) * 0x85ebca77u;
+
+  bits = (bits ^ (bits >> 15u)) * 0x2c1b3c6du;
+  bits = (bits ^ (bits >> 12u)) * 0x297a2d39u;
+
+  return f32(bits >> 8u) / 16777216.0;
+}
+
 // The share of its size a tuft stands as a card at `from_eye` metres from the eye: whole short of the fade, nothing
 // past the reach.
 fn card_share(from_eye: f32) -> f32 {
@@ -105,13 +131,16 @@ fn cs_grass_cards(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_wor
   let place: vec4<f32> = cached[source];
   let kept: vec4<f32> = cached[source + 1u];
   let kept_look: vec4<f32> = ring_tuft_look(ring, kept);
-  let shrink: f32 = card_share(distance(place.xyz, vec3<f32>(params.eye.x, params.eye.y, -params.eye.z)));
+  let from_eye: f32 = distance(place.xyz, vec3<f32>(params.eye.x, params.eye.y, -params.eye.z));
+  let shrink: f32 = card_share(from_eye);
+  let kept_share: f32 = card_kept(from_eye);
+  let thinned: f32 = saturate((kept_share - card_chance(place.xyz)) / (kept_share * CARD_THIN_SOFT));
 
-  if (kept_look.x <= 0.0 || shrink <= 0.0 || is_in_puddle(place.xyz)) {
+  if (kept_look.x <= 0.0 || shrink <= 0.0 || thinned <= 0.0 || is_in_puddle(place.xyz)) {
     return;
   }
 
-  let look: vec4<f32> = vec4<f32>(kept_look.x * shrink, kept_look.yzw);
+  let look: vec4<f32> = vec4<f32>(kept_look.x * shrink * thinned, kept_look.yzw);
   let model_index: u32 = u32(kept.y);
   let model: GrassModel = models[model_index];
   let count: u32 = model.index_count / 3u;

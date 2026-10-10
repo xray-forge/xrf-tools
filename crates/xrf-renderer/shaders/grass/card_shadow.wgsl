@@ -1,7 +1,6 @@
 enable wgpu_binding_array;
 
 #import "common/camera"
-#import "common/cut_out"
 #import "grass/records"
 
 // The grass's cards drawn into a sun cascade's map, where the cascades shadow the frame: the triangles
@@ -48,17 +47,22 @@ fn vs_card_shadow(@builtin(vertex_index) index: u32) -> CardVarying {
   return out;
 }
 
+// The finest the cut is read at past the texture's own: a cascade's texel spans many of the texture's, and read at the
+// level that would match it, the alpha blurred and raised, cut out as blobs two or three times the tuft that shrank as
+// the tuft came into a finer cascade. Read fine and cut as it stands, a texel is shadowed where a blade crosses it,
+// which the sun pass's filter softens.
+const CARD_SHADOW_LEVEL_MOST: f32 = 1.0;
+
 @fragment
 fn fs_card_shadow(in: CardVarying) {
   let model: GrassModel = models[in.model];
-  let dx: vec2<f32> = dpdx(in.uv);
-  let dy: vec2<f32> = dpdy(in.uv);
   let size: vec2<f32> = vec2<f32>(textureDimensions(textures[model.texture]));
-  let extent: f32 = max(dot(dx * size, dx * size), dot(dy * size, dy * size));
-  let base: vec4<f32> =
-    textureSampleLevel(textures[model.texture], texture_sampler, in.uv, 0.5 * log2(max(extent, 1e-8)));
+  let dx: vec2<f32> = dpdx(in.uv) * size;
+  let dy: vec2<f32> = dpdy(in.uv) * size;
+  let level: f32 = min(0.5 * log2(max(max(dot(dx, dx), dot(dy, dy)), 1e-8)), CARD_SHADOW_LEVEL_MOST);
+  let base: vec4<f32> = textureSampleLevel(textures[model.texture], texture_sampler, in.uv, level);
 
-  if (is_alpha_cut(base.a, size, dx, dy, model.alpha_reference)) {
+  if (base.a < model.alpha_reference) {
     discard;
   }
 }
