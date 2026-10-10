@@ -61,7 +61,7 @@ describe("LevelWeatherService", () => {
 
     await service.open(SELECTED);
 
-    expect(service.cycle?.name).toBe("default_clear");
+    expect(service.cycle.value?.name).toBe("default_clear");
     expect(service.weather).toEqual({ kind: EWorldWeatherPlay.CYCLE, name: "default_clear" });
     expect(service.transition).toBe(EWorldWeatherTransition.CUT);
     expect(service.failure).toBeNull();
@@ -117,7 +117,7 @@ describe("LevelWeatherService", () => {
 
     await service.open(SELECTED);
 
-    expect(service.cycle?.name).toBe("w_clear");
+    expect(service.cycle.value?.name).toBe("w_clear");
     expect(service.isManual).toBe(false);
     expect(service.unfollowed).toBe("dynamic");
   });
@@ -143,7 +143,7 @@ describe("LevelWeatherService", () => {
 
     await service.open(SELECTED);
 
-    expect(service.cycle?.name).toBe("w_clear");
+    expect(service.cycle.value?.name).toBe("w_clear");
     expect(service.weather).toEqual({ kind: EWorldWeatherPlay.CYCLE, name: "w_clear" });
     expect(service.isManual).toBe(false);
     expect(service.failure).toBeNull();
@@ -183,7 +183,8 @@ describe("LevelWeatherService", () => {
     await service.open(null);
 
     expect(service.weather).toBeNull();
-    expect(service.description).toBeNull();
+    expect(service.description.isIdle).toBe(true);
+    expect(service.description.value).toBeNull();
   });
 
   it("fades into the keyframe set by hand, seeded from what is shown, and back into the cycle kept", async () => {
@@ -270,7 +271,7 @@ describe("LevelWeatherService", () => {
     expect(shown).toHaveLength(seen);
   });
 
-  it("hears the clock from the renderer, and seeks anew every time", () => {
+  it("hears the clock from the renderer, and stands where it was sent", () => {
     const service: LevelWeatherService = createService();
 
     service.noteReport(mockWorldWeatherReport({ time: 50_000 }));
@@ -279,12 +280,7 @@ describe("LevelWeatherService", () => {
 
     service.seekTo(3_600);
 
-    const seek = service.seek;
-
-    service.seekTo(3_600);
-
     expect(service.time).toBe(3_600);
-    expect(service.seek).not.toBe(seek);
   });
 
   it("plays another cycle of the game, read for the level, and remembers it with the clock per level", async () => {
@@ -303,7 +299,7 @@ describe("LevelWeatherService", () => {
     service.setPlaying(true);
     service.seekTo(7_200);
 
-    expect(service.cycle?.name).toBe("default_rain");
+    expect(service.cycle.value?.name).toBe("default_rain");
     expect(service.weather).toEqual({ kind: EWorldWeatherPlay.CYCLE, name: "default_rain" });
     expect(service.transition).toBe(EWorldWeatherTransition.FADE);
     expect(service.control).toEqual({ factor: 1000, isDynamicSun: false, isPaused: false });
@@ -326,7 +322,7 @@ describe("LevelWeatherService", () => {
 
     await service.open(SELECTED);
 
-    expect(service.cycle?.name).toBe("default_rain");
+    expect(service.cycle.value?.name).toBe("default_rain");
     expect(service.time).toBe(9_000);
     expect(service.control.factor).toBe(1000);
   });
@@ -382,7 +378,7 @@ describe("LevelWeatherService", () => {
 
     await service.open(SELECTED);
 
-    expect(service.cycle?.name).toBe("default_clear");
+    expect(service.cycle.value?.name).toBe("default_clear");
     expect(service.failure).toBeNull();
     // The remembered cycle that did not read is no longer said to be reading.
     expect(service.reading).toBeNull();
@@ -402,11 +398,11 @@ describe("LevelWeatherService", () => {
     const container: Container = mockContainer([LevelLoadService, LevelWeatherService]).provision();
     const service: LevelWeatherService = container.get(LevelWeatherService);
 
-    await waitFor(() => expect(service.cycle?.name).toBe("default_clear"));
+    await waitFor(() => expect(service.cycle.value?.name).toBe("default_clear"));
 
     container.get(LevelLoadService).clear();
 
-    expect(service.cycle).toBeNull();
+    expect(service.cycle.value).toBeNull();
 
     container.deprovision();
   });

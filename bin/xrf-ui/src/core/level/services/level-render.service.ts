@@ -26,8 +26,6 @@ import { toLevelFrameOverlays } from "@/core/level/lib/render/level-render-frame
 import { toLevelCameraAt, toLevelViewOptions } from "@/core/level/lib/render/level-render-view";
 import { toLevelSurfaceGeometry } from "@/core/level/lib/surface/level-surface-geometry";
 import { toLevelTextureReport } from "@/core/level/lib/texture/level-texture-report";
-import { ILevelWeatherEffectRequest } from "@/core/level/lib/weather/level-weather-effect-request";
-import { ILevelWeatherSeek } from "@/core/level/lib/weather/level-weather-seek";
 import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { LevelLookService } from "@/core/level/services/level-look.service";
 import { LevelViewService } from "@/core/level/services/level-view.service";
@@ -156,6 +154,31 @@ export class LevelRenderService extends NativeRenderSurfaceService {
     return this.viewport ? this.viewport.locateSpawnObject(object) : null;
   }
 
+  /**
+   * Plays the level's weather on from a time of day, which is where its clock stands from then on.
+   *
+   * @param time - Seconds since midnight.
+   */
+  @BoundAction()
+  public seekWeather(time: number): void {
+    this.weatherService.seekTo(time);
+    this.viewport?.seekWeather(time);
+  }
+
+  /**
+   * @param name - The weather effect to play over the cycle from the clock's time, or null to end the one playing.
+   */
+  @BoundAction()
+  public playWeatherEffect(name: Nullable<string>): void {
+    this.viewport?.playWeatherEffect(name);
+  }
+
+  /** Plays a weather ambient effect near the camera at once, ending the one playing; none plays indoors. */
+  @BoundAction()
+  public playAmbientEffect(): void {
+    this.viewport?.playAmbientEffect();
+  }
+
   protected start(viewport: NativeViewport): Array<() => void> {
     return [
       this.loadService.followLevel(this.openLevel),
@@ -215,30 +238,6 @@ export class LevelRenderService extends NativeRenderSurfaceService {
         }),
         (control: WorldWeatherControl) => viewport.setWeatherControl(control),
         { equals: comparer.structural, fireImmediately: true }
-      ),
-      reaction(
-        () => weatherService.seek,
-        (seek: Nullable<ILevelWeatherSeek>) => {
-          if (seek) {
-            viewport.seekWeather(seek.time);
-          }
-        }
-      ),
-      reaction(
-        () => weatherService.effect,
-        (effect: Nullable<ILevelWeatherEffectRequest>) => {
-          if (effect) {
-            viewport.playWeatherEffect(effect.name);
-          }
-        }
-      ),
-      reaction(
-        () => weatherService.ambientPlays,
-        (plays: number) => {
-          if (plays > 0) {
-            viewport.playAmbientEffect();
-          }
-        }
       ),
     ];
   }

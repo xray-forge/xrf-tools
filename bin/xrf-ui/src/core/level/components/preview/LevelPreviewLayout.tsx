@@ -181,12 +181,12 @@ export function LevelPreviewLayout({
           options={viewService.options}
           hemiStrength={viewService.hemiStrength}
           manual={weatherService.shown}
-          skies={weatherService.description?.skies ?? EMPTY_TEXTURES}
-          clouds={weatherService.description?.clouds ?? EMPTY_TEXTURES}
-          collections={weatherService.description?.thunderboltCollections ?? EMPTY_COLLECTIONS}
+          skies={weatherService.description.value?.skies ?? EMPTY_TEXTURES}
+          clouds={weatherService.description.value?.clouds ?? EMPTY_TEXTURES}
+          collections={weatherService.description.value?.thunderboltCollections ?? EMPTY_COLLECTIONS}
           sun={loadService.level.value?.selected.value.sun ?? null}
           drawnSun={renderService.drawnSun}
-          suns={weatherService.description?.suns ?? EMPTY_SUNS}
+          suns={weatherService.description.value?.suns ?? EMPTY_SUNS}
           sunShafts={weatherService.sunShafts}
           lod={viewService.lod}
           features={features}

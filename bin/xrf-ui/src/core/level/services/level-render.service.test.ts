@@ -416,7 +416,7 @@ describe("LevelRenderService", () => {
   });
 
   it("plays the level's weather in its viewport, runs its clock as asked, and hears where it stands", async () => {
-    const { container } = await mockAttached();
+    const { container, service } = await mockAttached();
     const weather: LevelWeatherService = container.get(LevelWeatherService);
 
     await waitFor(() =>
@@ -433,16 +433,22 @@ describe("LevelRenderService", () => {
 
     mockInvoke.mockClear();
     weather.setPlaying(true);
-    weather.seekTo(3_600);
-    weather.playEffect("fx_storm");
-    weather.playAmbientEffect();
-    weather.playAmbientEffect();
+    service.seekWeather(3_600);
+    // The same time again seeks again: the clock has run on since.
+    service.seekWeather(3_600);
+    service.playWeatherEffect("fx_storm");
+    service.playAmbientEffect();
+    service.playAmbientEffect();
     await flush();
 
     expect(sent("set_weather_control")).toEqual([
       { control: { factor: 12, isDynamicSun: false, isPaused: false }, viewport: VIEWPORT },
     ]);
-    expect(sent("seek_weather")).toEqual([{ time: 3_600, viewport: VIEWPORT }]);
+    expect(sent("seek_weather")).toEqual([
+      { time: 3_600, viewport: VIEWPORT },
+      { time: 3_600, viewport: VIEWPORT },
+    ]);
+    expect(weather.time).toBe(3_600);
     expect(sent("play_weather_effect")).toEqual([{ name: "fx_storm", viewport: VIEWPORT }]);
     expect(sent("play_ambient_effect")).toEqual([{ viewport: VIEWPORT }, { viewport: VIEWPORT }]);
 

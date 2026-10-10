@@ -10,7 +10,7 @@ import { LevelWeatherFindingsSection } from "@/core/level/components/panels/Leve
 import { LevelWeatherModifiersSection } from "@/core/level/components/panels/LevelWeatherPanel/LevelWeatherModifiersSection";
 import { LevelWeatherPlaySection } from "@/core/level/components/panels/LevelWeatherPanel/LevelWeatherPlaySection";
 import { ILevelWeatherCycleChoice, listLevelWeatherCycles } from "@/core/level/lib/weather/level-weather-cycle-choice";
-import { LevelLoadService, LevelViewService, LevelWeatherService } from "@/core/level/services";
+import { LevelLoadService, LevelRenderService, LevelViewService, LevelWeatherService } from "@/core/level/services";
 import { EditorPanel, EditorPanelEmpty } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
@@ -26,9 +26,10 @@ export function LevelWeatherPanel({
   const loadService: LevelLoadService = useInjection(LevelLoadService);
   const weatherService: LevelWeatherService = useInjection(LevelWeatherService);
   const viewService: LevelViewService = useInjection(LevelViewService);
+  const renderService: LevelRenderService = useInjection(LevelRenderService);
 
-  const description: Nullable<LevelWeatherDescription> = weatherService.description;
-  const cycle: Nullable<LevelWeatherCycle> = weatherService.cycle;
+  const description: Nullable<LevelWeatherDescription> = weatherService.description.value;
+  const cycle: Nullable<LevelWeatherCycle> = weatherService.cycle.value;
   const isWeather: boolean = weatherService.weather !== null;
   const isManual: boolean = weatherService.isManual;
 
@@ -52,7 +53,7 @@ export function LevelWeatherPanel({
     <EditorPanel data-testid={dataTestId} id={id} className={className} title={"Weather"}>
       <LevelWeatherPlaySection
         source={weatherService.source}
-        isPlayable={weatherService.cycle !== null}
+        isPlayable={cycle !== null}
         isManual={isManual}
         seed={weatherService.seed}
         failure={weatherService.failure}
@@ -64,7 +65,7 @@ export function LevelWeatherPanel({
         effect={isWeather ? (weatherService.report?.effect ?? null) : null}
         onSource={weatherService.setSource}
         onCycle={onSelectCycle}
-        onEffect={weatherService.playEffect}
+        onEffect={renderService.playWeatherEffect}
       />
 
       {description ? (
@@ -76,7 +77,7 @@ export function LevelWeatherPanel({
             control={weatherService.control}
             isSunTabled={description.engine === EXrayEngine.EXTENDED && description.sunTable !== null}
             isManual={isManual}
-            onSeek={weatherService.seekTo}
+            onSeek={renderService.seekWeather}
             onPlaying={weatherService.setPlaying}
             onFactor={weatherService.setFactor}
             onDynamicSun={weatherService.setDynamicSun}
@@ -90,7 +91,7 @@ export function LevelWeatherPanel({
           <LevelWeatherAmbientSection
             ambient={isWeather ? (weatherService.report?.ambient ?? null) : null}
             isPlayed={viewService.options.isAmbientPlayed}
-            onPlay={weatherService.playAmbientEffect}
+            onPlay={renderService.playAmbientEffect}
           />
 
           {cycle ? <LevelWeatherFindingsSection file={cycle.file} findings={cycle.findings} /> : null}

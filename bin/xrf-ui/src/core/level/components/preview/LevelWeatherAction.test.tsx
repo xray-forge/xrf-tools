@@ -4,7 +4,14 @@ import { Container } from "@wirestate/core";
 
 import { LevelWeatherAction } from "@/core/level/components/preview/LevelWeatherAction";
 import { ELevelWeatherSource } from "@/core/level/lib/weather/level-weather-source";
-import { LevelLoadService, LevelWeatherService } from "@/core/level/services";
+import {
+  LevelLoadService,
+  LevelLookService,
+  LevelRenderService,
+  LevelViewportService,
+  LevelViewService,
+  LevelWeatherService,
+} from "@/core/level/services";
 import { mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
@@ -18,7 +25,14 @@ async function renderAction(): Promise<{ weather: LevelWeatherService } & Return
     ["plugin:levels|read_level_weather"]: mockSessionResponse(mockLevelWeatherDescription()),
   });
 
-  const container: Container = mockContainer([LevelLoadService, LevelWeatherService]);
+  const container: Container = mockContainer([
+    LevelLoadService,
+    LevelLookService,
+    LevelViewService,
+    LevelViewportService,
+    LevelWeatherService,
+    LevelRenderService,
+  ]);
   const load: LevelLoadService = container.get(LevelLoadService);
   const weather: LevelWeatherService = container.get(LevelWeatherService);
 
