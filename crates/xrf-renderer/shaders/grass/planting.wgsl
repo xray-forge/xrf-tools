@@ -1,6 +1,7 @@
 #import "common/compute_grid"
-#import "common/puddle_site"
-#import "grass/records"
+#import "grass/planting_bindings"
+#import "grass/puddles"
+#import "grass/ring"
 #import "common/pyramid_occlusion"
 #import "generated/grass/occlusion"
 
@@ -8,99 +9,12 @@
 // coming into it is planted once, the nearest first within a budget a frame, and every frame culls what the ring holds,
 // then sorts what it keeps into a draw a model.
 
-@group(0) @binding(0) var<storage, read> grid: array<u32>;
-@group(0) @binding(1) var<storage, read> slot_records: array<u32>;
-@group(0) @binding(2) var<storage, read> bins: array<u32>;
-@group(0) @binding(3) var<storage, read> triangles: array<f32>;
-@group(0) @binding(4) var<storage, read> dither: array<u32, 256>;
-@group(0) @binding(5) var<storage, read> models: array<GrassModel>;
-// Items planted a model, then the whole frame's in the last.
-@group(0) @binding(6) var<storage, read_write> counts: array<atomic<u32>>;
-// Where each model's range goes on filling, as the items are sorted into it.
-@group(0) @binding(7) var<storage, read_write> cursors: array<atomic<u32>>;
-// One indexed draw a model.
-@group(0) @binding(8) var<storage, read_write> args: array<u32>;
-
 // The sort's indirect dispatch, sized by what the cull kept: bound to `arrange` alone, since the sort reads it as its
 // arguments while the rest stay bound.
 @group(3) @binding(0) var<storage, read_write> sort_dispatch: array<u32, 3>;
 
 // Workgroups a row of the sort's dispatch holds at most: D3D12's limit, the least Vulkan guarantees.
 const SORT_ROW: u32 = 65535u;
-
-// The ring: a key a cell, a vector a cell (its ground's middle height and half its height, its hemisphere and sun), and
-// two vectors a cached tuft (its place and turn, then its size, model and wave).
-@group(1) @binding(0) var<storage, read_write> keys: array<u32>;
-@group(1) @binding(1) var<storage, read_write> shapes: array<vec4<f32>>;
-@group(1) @binding(2) var<storage, read_write> cached: array<vec4<f32>>;
-// Stale cells a band counts, then the schedule: the band the frame's planting stops in, what it plants there, tickets.
-@group(1) @binding(3) var<storage, read_write> band_counts: array<atomic<u32>>;
-@group(1) @binding(4) var<storage, read_write> schedule: array<atomic<u32>, 3>;
-// The frame's items as planted, each one's model, and the same sorted by model, which the draws read.
-@group(1) @binding(5) var<storage, read_write> planted: array<vec4<f32>>;
-@group(1) @binding(6) var<storage, read_write> planted_models: array<u32>;
-@group(1) @binding(7) var<storage, read_write> sorted: array<vec4<f32>>;
-// What the view plants with: its camera, its ring's reach and steps, and the settings.
-@group(1) @binding(8) var<uniform> params: GrassParams;
-// This frame's puddle sites (`LevelSurface::puddles`: a site's spot in `xy`, its height, its radius or none) and
-// where they stand (`pass/grass_puddles_uniform.rs`), which no tuft is planted in: grass does not grow under water.
-@group(1) @binding(9) var puddles: texture_2d<f32>;
-struct GrassPuddles {
-  surface: vec4<f32>,
-  shape: vec4<f32>,
-  state: vec4<f32>,
-};
-@group(1) @binding(10) var<uniform> puddle_window: GrassPuddles;
-
-// The share of a puddle's radius within which no tuft stands: short of its soft rim, where the ground is only damp.
-const PUDDLE_BARE: f32 = 0.85;
-
-// Whether a tuft's foot in the engine's space stands in a puddle's water this frame: the puddles in its cell and
-// those about it, each the stretched, turned blob the wetting draws about its site (`site_puddle` in
-// `frame/wet_patch.wgsl`, without the noise that moves its border), within `PUDDLE_BARE` of its radius.
-fn is_in_puddle(foot: vec3<f32>) -> bool {
-  if (puddle_window.state.x < 0.5) {
-    return false;
-  }
-
-  // Renderer space: the engine's with `z` negated.
-  let world: vec3<f32> = vec3<f32>(foot.x, foot.y, -foot.z);
-  let cell: f32 = puddle_window.shape.z;
-  let cells: f32 = floor(puddle_window.surface.z * 2.0 / cell);
-  let corner: vec2<f32> = puddle_window.surface.xy - puddle_window.surface.z;
-  let origin: vec2<f32> = site_origin(corner, cell);
-  let at: vec2<f32> = floor(world.xz / cell) - origin;
-
-  for (var y: i32 = -1; y <= 1; y++) {
-    for (var x: i32 = -1; x <= 1; x++) {
-      let near: vec2<f32> = at + vec2<f32>(f32(x), f32(y));
-
-      if (any(near < vec2<f32>(0.0)) || any(near >= vec2<f32>(cells))) {
-        continue;
-      }
-
-      let site: vec4<f32> = textureLoad(puddles, vec2<i32>(near), 0);
-
-      if (site.w <= 0.0 || length(world.xz - site.xy) > site.w * 2.0) {
-        continue;
-      }
-
-      let hash: vec3<f32> = site_hash(origin + near);
-      let turn: f32 = hash.y * 6.2831853;
-      let across: vec2<f32> = vec2<f32>(cos(turn), sin(turn));
-      let offset: vec2<f32> = world.xz - site.xy;
-      let stretched: vec2<f32> = vec2<f32>(dot(offset, across), dot(offset, vec2<f32>(-across.y, across.x))) /
-        vec2<f32>(1.0, mix(1.0, 1.0 / PUDDLE_STRETCH, hash.z));
-      let band: f32 = SITE_LEVEL.x + SITE_LEVEL.y * site.w + 0.15;
-
-      if (length(stretched) < site.w * PUDDLE_BARE && abs(world.y - site.z) < band) {
-        return true;
-      }
-    }
-  }
-
-  return false;
-}
 
 // A share from nought to one drawn of a foot's place alone, apart from the planting's generators.
 fn place_share(x: f32, z: f32) -> f32 {
@@ -133,45 +47,6 @@ const RAY_EPSILON: f32 = 0.0000100;
 const BOX_GROWTH: f32 = 0.0010000;
 
 const TURN: f32 = 6.2831853;
-
-// The world slot a cell of the ring holds while the camera stands where it does, and how many rings out it is.
-struct RingSlot {
-  x: i32,
-  z: i32,
-  band: i32,
-};
-
-// Cells the ring holds now: `dm_cache_line` squared.
-fn ring_cells() -> u32 {
-  let line: u32 = u32(params.reach) * 2u + 1u;
-
-  return line * line;
-}
-
-// One axis of the ring: the slot `first + ((cell - first) mod line)`, wrapped for a negative `first`.
-fn ring_axis(center: i32, line: i32, cell: i32) -> i32 {
-  let first: i32 = center - params.reach;
-
-  return first + (((cell - first) % line) + line) % line;
-}
-
-// `cache_Update`'s ring: of the slots within reach of the camera's, the one a cell holds is the one whose place in the
-// ring, taken round, is the cell's, so a step of the camera changes only the row or column it steps into.
-fn ring_slot(cell: u32) -> RingSlot {
-  let line: i32 = params.reach * 2 + 1;
-  let x: i32 = ring_axis(params.center.x, line, i32(cell) % line);
-  let z: i32 = ring_axis(params.center.y, line, i32(cell) / line);
-
-  return RingSlot(x, z, max(abs(x - params.center.x), abs(z - params.center.y)));
-}
-
-// Whether a cell was planted with the slot it holds now under this generation, so what it holds stands.
-fn is_current(cell: u32, slot: RingSlot) -> bool {
-  let key: u32 = cell * GRASS_KEY_WORDS;
-
-  return keys[key] == bitcast<u32>(slot.x) && keys[key + 1u] == bitcast<u32>(slot.z)
-    && keys[key + 2u] == params.generation;
-}
 
 // `CRandom::randI()`: the state advanced, and bits 16 to 30 of it.
 fn random(state: ptr<function, u32>) -> u32 {
@@ -513,19 +388,15 @@ fn cull(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workgroups) g
     return;
   }
 
-  let ground: vec4<f32> = shapes[cell];
-  // The slot's distance from the eye fades every tuft in it, by squared metres from one to `dm_fade`.
-  let center: vec3<f32> = vec3<f32>(f32(slot.x) * 2.0 + 1.0, ground.x, f32(slot.z) * 2.0 + 1.0);
-  let offset: vec3<f32> = params.eye.xyz - center;
-  let distance: f32 = dot(offset, offset);
-  let fade_limit: f32 = params.fade * params.fade;
+  let ring: RingCell = ring_cell(cell, slot);
+  let center: vec3<f32> = ring.center;
 
-  if (distance > fade_limit) {
+  if (ring.distance > params.fade * params.fade) {
     return;
   }
 
   // `testSAABB`: a slot outside the view passes over whole, its sphere grown by the largest tuft.
-  let bound: f32 = sqrt(2.0 + ground.y * ground.y) + BOX_GROWTH + params.height * params.tuft_reach;
+  let bound: f32 = sqrt(2.0 + ring.ground.y * ring.ground.y) + BOX_GROWTH + params.height * params.tuft_reach;
 
   if (is_outside(vec3<f32>(center.x, center.y, -center.z), bound)) {
     return;
@@ -537,7 +408,6 @@ fn cull(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workgroups) g
     return;
   }
 
-  let shrink: f32 = 1.0 - select((distance - 1.0) / (fade_limit - 1.0), 0.0, distance < 1.0);
   let first: u32 = cell * params.per_cell;
 
   for (var tuft: u32 = 0u; tuft < min(held, params.per_cell); tuft++) {
@@ -546,17 +416,9 @@ fn cull(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workgroups) g
     let kept: vec4<f32> = cached[source + 1u];
     let model: u32 = u32(kept.y);
     let shape: vec4<f32> = models[model].shape;
-    // A tuft's screen area by its slot's distance, against the engine's thresholds.
-    let shrunk: f32 = kept.x * params.height * shrink;
-    let area: f32 = shrunk * shrunk * shape.z * shape.z / max(distance, 0.0001);
+    let look: vec4<f32> = ring_tuft_look(ring, kept);
 
-    if (area < params.discard_below) {
-      continue;
-    }
-
-    let is_waving: bool = models[model].is_waving > 0.5 && area > params.discard_below * 16.0;
-
-    if (is_outside(placed.xyz + vec3<f32>(0.0, shape.w * shrunk * 0.5, 0.0), shape.z * shrunk)) {
+    if (look.x <= 0.0 || is_outside(placed.xyz + vec3<f32>(0.0, shape.w * look.x * 0.5, 0.0), shape.z * look.x)) {
       continue;
     }
 
@@ -572,9 +434,7 @@ fn cull(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workgroups) g
     }
 
     planted[at * 2u] = placed;
-    // The wave, nought to two, and the ground's normal, a whole number of `GROUND_NORMAL_STEPS` squared, in one float
-    // it holds exactly.
-    planted[at * 2u + 1u] = vec4<f32>(shrunk, ground.z, ground.w, select(0.0, kept.z, is_waving) + 4.0 * kept.w);
+    planted[at * 2u + 1u] = look;
     planted_models[at] = model;
     atomicAdd(&counts[model], 1u);
   }

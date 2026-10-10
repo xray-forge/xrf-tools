@@ -29,16 +29,19 @@ impl RenderViewOptions {
     self.features.tonemap == RenderTonemapMode::Enhanced && self.mode.is_lit && !self.mode.is_wireframe
   }
 
-  /// Whether the view traces rays through its scene: its reflections or its occlusion traced, or DLSS ray
-  /// reconstruction asked for over linear light, which traces the sun's and the lamps' shadows.
+  /// Whether the view traces rays through its scene: its reflections or its light's occlusion traced.
   pub fn is_scene_traced(&self) -> bool {
+    (self.features.reflections.is_traced && self.features.reflections.is_drawn()) || self.is_light_traced()
+  }
+
+  /// Whether the view traces what occludes its light: its ambient occlusion traced, or DLSS ray reconstruction asked
+  /// for over linear light, which traces the sun's and the lamps' shadows.
+  pub fn is_light_traced(&self) -> bool {
     let features: &RenderViewFeatures = &self.features;
     let is_reconstruction_asked: bool = features.antialiasing == RenderAntialiasing::Dlss
       && self.output.upscaling.is_ray_reconstructed
       && self.is_scene_linear();
 
-    (features.reflections.is_traced && features.reflections.is_drawn())
-      || (features.ambient_occlusion.is_enabled && features.ambient_occlusion.is_traced())
-      || is_reconstruction_asked
+    (features.ambient_occlusion.is_enabled && features.ambient_occlusion.is_traced()) || is_reconstruction_asked
   }
 }

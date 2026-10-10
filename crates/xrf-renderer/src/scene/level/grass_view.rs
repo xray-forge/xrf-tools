@@ -8,6 +8,7 @@ use crate::contract::render_applied_grass::RenderAppliedGrass;
 use crate::contract::render_grass_report::RenderGrassReport;
 use crate::contract::render_grass_settings::RenderGrassSettings;
 use crate::frame::frame_encoder::FrameEncoder;
+use crate::frame::grass_card_handles::GrassCardHandles;
 use crate::frame::stats_readback::StatsReadback;
 use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::lighting::grass_wind::GrassWind;
@@ -23,7 +24,9 @@ use crate::pass::trace_grass_uniform::TraceGrassUniform;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::grass_build::GrassBuild;
 use crate::scene::level::grass_build_size::GrassBuildSize;
+use crate::scene::level::grass_cards::GrassCards;
 use crate::scene::level::grass_level::GrassLevel;
+use crate::scene::level::grass_shadow_casters::GrassShadowCasters;
 
 /// Metres a detail slot spans, `dm_slot_size`.
 const SLOT_METERS: f32 = 2.0;
@@ -44,6 +47,11 @@ pub struct GrassView {
   planted: Option<(i32, u32, u32)>,
   /// Whether this frame plants and draws.
   is_drawn: bool,
+  /// The cards casting the grass's shadows, while it casts them, and whether the view traces them and whether its sun
+  /// cascades draw them this frame.
+  cards: Option<GrassCards>,
+  is_card_traced: bool,
+  is_card_cascaded: bool,
   /// The planting as a traced hit reads it, no models while none is drawn.
   trace: TraceGrassUniform,
   /// The cull's total, read back without waiting on the GPU.
@@ -74,14 +82,19 @@ impl GrassView {
       draw_group: None,
       planted: None,
       is_drawn: false,
+      cards: None,
+      is_card_traced: false,
+      is_card_cascaded: false,
       trace: TraceGrassUniform::default(),
       stats: StatsReadback::new(device),
     }
   }
 
   /// Fits the planting to the settings and the camera, building the ring and lists again where the settings outgrow
-  /// them; `discard_below` is `r_ssaDISCARD` as the static cull compares it, `time` the seconds the wind blows by,
-  /// and `strength` the wind's, `wind_strength_factor`.
+  /// them, and the cards where the grass casts shadows, traced where the view traces its light (`is_traced`) and drawn
+  /// into the sun's cascades where they shadow the frame (`is_cascaded`); `discard_below` is `r_ssaDISCARD` as the
+  /// static cull compares it, `time` the seconds the wind blows by, and `strength` the wind's,
+  /// `wind_strength_factor`.
   #[allow(clippy::too_many_arguments)]
   pub fn prepare(
     &mut self,
@@ -93,6 +106,7 @@ impl GrassView {
     (time, is_windy, strength): (f32, bool, f32),
     foliage: &FoliageWindValues,
     puddles: (&wgpu::TextureView, GrassPuddlesUniform),
+    (is_traced, is_cascaded): (bool, bool),
   ) {
     let wind: GrassWindUniform = self
       .wind
@@ -104,8 +118,20 @@ impl GrassView {
     self.trace = TraceGrassUniform::default();
 
     let Some(level) = level.filter(|level| settings.is_enabled && level.model_count > 0) else {
+      self.cards = None;
+
       return;
     };
+
+    self.is_card_traced = is_traced;
+    self.is_card_cascaded = is_cascaded;
+
+    if !(is_traced || is_cascaded) || !settings.is_shadowed {
+      self.cards = None;
+    } else if self.cards.is_none() {
+      self.cards = Some(GrassCards::new(device, pass, level, &self.wind_buffer));
+    }
+
     // `dm_current_size`, `dm_current_fade` and `d_size`, from `r__detail_radius` and `r__detail_density`.
     let density: f32 = settings.density.clamp(0.1, 0.99);
     let steps: i32 = (SLOT_METERS / density).ceil() as i32;
@@ -120,10 +146,14 @@ impl GrassView {
     if self.build.as_ref().is_none_or(|build| !build.size.is_fitting(&wanted)) {
       let build: GrassBuild = GrassBuild::new(device, pass, wanted, &self.uniform, (puddles.0, &self.puddles_buffer));
 
-      self.draw_group = Some(pass.create_draw_group(device, &build.sorted, &level.models, &self.wind_buffer));
+      self.draw_group = Some(pass.create_draw_group(device, build.get_sorted(), &level.models, &self.wind_buffer));
       self.build = Some(build);
       // A ring made anew holds nothing, so every slot is planted into it.
       self.planted = None;
+    }
+
+    if let Some(build) = self.build.as_mut() {
+      build.bind_puddles(device, pass, &self.uniform, (puddles.0, &self.puddles_buffer));
     }
 
     // A slope's limit decides which tufts stand, so a change of it plants every slot again too.
@@ -138,6 +168,7 @@ impl GrassView {
       return;
     };
     let eye: Vec3 = Vec3::new(camera.position.x, camera.position.y, -camera.position.z);
+    let (card_reach, card_fade): (f32, f32) = GrassCards::get_reach(settings);
 
     self.values = GrassUniform {
       eye: eye.extend(1.0),
@@ -159,6 +190,9 @@ impl GrassView {
       model_count: level.model_count,
       tuft_reach: level.tuft_reach,
       slope_limit,
+      card_reach,
+      card_fade,
+      card_slots: GrassCards::get_slots(card_reach) as i32,
       ..self.values
     };
     encoder.write_buffer(&self.uniform, 0, bytemuck::bytes_of(&self.values));
@@ -174,6 +208,109 @@ impl GrassView {
       slope_limit,
       _pad: [0.0; 3],
     };
+  }
+
+  /// The cards' structure where the view traces the grass's shadows this frame.
+  pub fn get_cards_blas(&self) -> Option<&wgpu::Blas> {
+    self
+      .cards
+      .as_ref()
+      .filter(|_| self.is_drawn && self.is_card_traced)
+      .map(|cards| &cards.blas)
+  }
+
+  /// Metres from the camera the grass casts the sun's shadow to through its cascades this frame, none where it does
+  /// not.
+  pub fn get_cascade_reach(&self) -> Option<f32> {
+    (self.cards.is_some() && self.is_drawn && self.is_card_cascaded).then_some(self.values.card_reach)
+  }
+
+  /// The cards as the cascades draw them, stood this frame (`cards`), where they do.
+  pub fn get_shadow_casters<'a>(
+    &'a self,
+    (pass, textures): (&'a GrassPass, &'a wgpu::BindGroup),
+    cards: Option<GrassCardHandles>,
+  ) -> Option<GrassShadowCasters<'a>> {
+    let group: &'a wgpu::BindGroup = &self.cards.as_ref().filter(|_| self.is_card_cascaded)?.shadow_group;
+
+    Some(GrassShadowCasters {
+      pass,
+      group,
+      textures,
+      cards: cards?,
+    })
+  }
+
+  /// Stands the cards of `level` about the eye, sizes the cascades' draw of them, and builds their structure where the
+  /// view traces them; none where the grass casts no shadow.
+  pub fn add_cards<'a>(
+    &'a self,
+    (graph, bindings): (&mut FrameGraph<'a>, &mut GraphBindings<'a>),
+    (pass, level): (&'a GrassPass, Option<&'a GrassLevel>),
+  ) -> Option<GrassCardHandles> {
+    let (Some(level), Some(build), Some(cards)) = (level, &self.build, self.cards.as_ref()) else {
+      return None;
+    };
+
+    if !self.is_drawn {
+      return None;
+    }
+
+    let vertices: GraphBuffer = bindings.import_buffer(graph, "grass card vertices", &cards.vertices);
+    let triangles: GraphBuffer = bindings.import_buffer(graph, "grass card triangles", &cards.triangles);
+    let draw: GraphBuffer = bindings.import_buffer(graph, "grass card draw", &cards.draw);
+    let tufts: u32 = GrassCards::get_window_cells(self.values.card_slots as u32) * build.size.per_cell;
+
+    graph
+      .add_compute_pass("grass cards")
+      .buffer(vertices, GraphBufferAccess::StorageReadWrite)
+      .buffer(triangles, GraphBufferAccess::StorageReadWrite)
+      .buffer(draw, GraphBufferAccess::StorageReadWrite)
+      .record(move |context| {
+        pass.record_cards(
+          context.get_pass(),
+          (&level.bind_group, &build.bind_group, &cards.group),
+          (GrassCards::CAPACITY, tufts),
+        );
+      });
+
+    let handles: GrassCardHandles = GrassCardHandles {
+      vertices,
+      triangles,
+      draw,
+    };
+
+    if !self.is_card_traced {
+      return Some(handles);
+    }
+
+    graph
+      .add_encoder_pass("grass cards build")
+      .buffer(vertices, GraphBufferAccess::StorageRead)
+      .keep()
+      .record(move |context| {
+        let size: wgpu::BlasTriangleGeometrySizeDescriptor = GrassCards::get_size();
+        let geometry: wgpu::BlasTriangleGeometry<'_> = wgpu::BlasTriangleGeometry {
+          size: &size,
+          vertex_buffer: context.get_buffer(vertices),
+          first_vertex: 0,
+          vertex_stride: 12,
+          index_buffer: None,
+          first_index: None,
+          transform_buffer: None,
+          transform_buffer_offset: None,
+        };
+        let entry: wgpu::BlasBuildEntry<'_> = wgpu::BlasBuildEntry {
+          blas: &cards.blas,
+          geometry: wgpu::BlasGeometries::TriangleGeometries(vec![geometry]),
+        };
+
+        context
+          .get_encoder()
+          .build_acceleration_structures(std::iter::once(&entry), std::iter::empty());
+      });
+
+    Some(handles)
   }
 
   /// The planting as a traced hit reads it this frame.

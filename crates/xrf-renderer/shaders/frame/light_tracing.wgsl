@@ -6,8 +6,8 @@
 // reconstruction denoises the frame: per light one ray towards a point of its bulb, drawn anew each frame, traced
 // against the level's static geometry and its spawned models, cut-out leaves by their alpha, stopping its light's near
 // plane short of it as the atlas's faces do, so its own fitting does not shadow it. Each shadowed light takes the slot
-// `frame/light_selection` gives it, the contact shadows not marched. Grass, planted on the GPU each frame, has no
-// geometry in the trace: a ray clear of it passes the grass's layers instead.
+// `frame/light_selection` gives it, the contact shadows not marched. The grass near the eye stands in the trace as the
+// view's cards where it is shadowed (`GrassCards`).
 
 const TAU: f32 = 6.2831853;
 // The R2 sequence's steps, which spread a pixel's lights' rays apart.
@@ -58,13 +58,7 @@ fn traced_seen(pixel: LitPixel, record: LightRecord, is_plant: bool, drawn: vec2
   let cone: SceneCone = SceneCone(distance * 2.0 / (camera.projection[1][1] * camera.viewport.y),
     light_trace.radius / max(length_to, 1e-3));
 
-  let direction: vec3<f32> = toward / length_to;
-
-  if (trace_scene_blocked(origin, direction, reach, cone, SCENE_NO_PLACE)) {
-    return 0.0;
-  }
-
-  return scene_grass_through(origin, direction, reach, fract(drawn.x + drawn.y), point.y);
+  return select(1.0, 0.0, trace_scene_blocked(origin, toward / length_to, reach, cone, SCENE_NO_PLACE));
 }
 
 @compute @workgroup_size(8, 8)

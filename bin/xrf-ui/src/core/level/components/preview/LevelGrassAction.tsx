@@ -126,6 +126,22 @@ export function LevelGrassAction({
         onChange={(isAligned: boolean) => set({ isAligned })}
       />
 
+      <CheckboxFormRow
+        label={"Shadows"}
+        isChecked={grass.isShadowed}
+        onChange={(isShadowed: boolean) => set({ isShadowed })}
+      />
+
+      {grass.isShadowed ? (
+        <RenderValueSlider
+          label={"Shadow radius"}
+          value={grass.shadowRadius}
+          {...RENDER_GRASS_LIMITS.shadowRadius}
+          format={formatGrassRadius}
+          onChange={(shadowRadius: number) => set({ shadowRadius })}
+        />
+      ) : null}
+
       <RenderValueChoice
         label={"Foliage motion"}
         options={FOLIAGE_MODE_OPTIONS}

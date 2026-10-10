@@ -20,8 +20,8 @@ use crate::scene::level::feature::statics_feature::StaticsFeature;
 use crate::scene::level::feature::sun_shafts_feature::SunShaftsFeature;
 use crate::scene::level::feature::sun_trace_feature::SunTraceFeature;
 use crate::scene::level::feature::thunder_feature::ThunderFeature;
-use crate::scene::level::feature::trace_sway_feature::TraceSwayFeature;
 use crate::scene::level::feature::view_feature::ViewFeature;
+use crate::scene::level::feature::view_trace_feature::ViewTraceFeature;
 use crate::scene::level::feature::volumetric_feature::VolumetricFeature;
 use crate::scene::level::feature::water_feature::WaterFeature;
 use crate::scene::level::feature::wet_feature::WetFeature;
@@ -74,7 +74,7 @@ pub struct SceneFeatures {
   pub ambient_occlusion: AmbientOcclusionFeature,
   pub contact_shadows: ContactShadowFeature,
   pub sun_trace: SunTraceFeature,
-  pub trace_sway: TraceSwayFeature,
+  pub view_trace: ViewTraceFeature,
   pub wet: WetFeature,
   pub sky: SkyFeature,
   pub statics: StaticsFeature,
@@ -117,7 +117,7 @@ impl SceneFeatures {
       ambient_occlusion: AmbientOcclusionFeature::default(),
       contact_shadows: ContactShadowFeature::default(),
       sun_trace: SunTraceFeature::default(),
-      trace_sway: TraceSwayFeature::default(),
+      view_trace: ViewTraceFeature::default(),
       wet: WetFeature::default(),
       sky: SkyFeature::default(),
       pick: PickFeature::default(),
@@ -147,7 +147,7 @@ impl SceneFeatures {
       &self.ambient_occlusion,
       &self.contact_shadows,
       &self.sun_trace,
-      &self.trace_sway,
+      &self.view_trace,
       &self.wet,
       &self.sky,
       &self.pick,
@@ -178,7 +178,7 @@ impl SceneFeatures {
       &mut self.ambient_occlusion,
       &mut self.contact_shadows,
       &mut self.sun_trace,
-      &mut self.trace_sway,
+      &mut self.view_trace,
       &mut self.wet,
       &mut self.sky,
       &mut self.pick,

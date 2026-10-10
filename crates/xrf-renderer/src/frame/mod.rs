@@ -10,6 +10,7 @@ pub(crate) mod froxel_volume;
 pub(crate) mod fsr_frame;
 pub(crate) mod fsr_targets;
 pub(crate) mod gpu_readback;
+pub(crate) mod grass_card_handles;
 pub(crate) mod history;
 pub(crate) mod periodic_budget;
 pub(crate) mod periodic_job;

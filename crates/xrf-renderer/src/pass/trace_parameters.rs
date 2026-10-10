@@ -14,10 +14,10 @@ use crate::scene::static_scene::static_trace_record::StaticTraceRecord;
 /// What a pass tracing rays against the level's static geometry binds (`StaticTrace`): the top-level structure; each
 /// instance's first record and place, and each geometry's record naming its indices, vertices and surface; the places,
 /// whose hemisphere lights an instance; each layout's vertices and the indices a hit's corners are read from; and the
-/// surfaces; the view's local lights, how many and how their shadows compare, and the shadow atlas, which light a
-/// hit; the sun's cascades and what they were drawn with, which shadow a hit they cover; and the level's grass as the
-/// view plants it, its slot grid, slots, models and their colours, which covers a terrain hit. The bindless textures a
-/// hit is shaded from are the texture cache's own group.
+/// surfaces; the view's local lights, how many and how their shadows compare, and the shadow atlas, which light a hit;
+/// the sun's cascades and what they were drawn with, which shadow a hit they cover; and the level's grass as the view
+/// plants it, its slot grid, slots, models and their colours, which covers a terrain hit, and the cards it stands near
+/// its eye, whose holes a ray passes. The bindless textures a hit is shaded from are the texture cache's own group.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 3)]
 pub struct TraceParameters<'a> {
@@ -61,4 +61,8 @@ pub struct TraceParameters<'a> {
   pub trace_grass_colours: StorageArray<Vec4>,
   #[uniform]
   pub trace_grass: UniformBinding<TraceGrassUniform>,
+  /// The grass the view stands near its eye as cards, four words a triangle: its model with how many of its texture's
+  /// widths a metre of it spans, then each corner's coordinate (`shaders/grass/cards.wgsl`).
+  #[storage]
+  pub trace_grass_cards: StorageArray<u32>,
 }

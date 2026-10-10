@@ -11,27 +11,30 @@ use crate::pass::level_passes::LevelPasses;
 use crate::pass::trace_sway_parameters::TraceSwayParameters;
 use crate::pass::trace_sway_slot::TraceSwaySlot;
 use crate::scene::level::feature::view_feature::ViewFeature;
+use crate::scene::level::grass_cards::GrassCards;
 use crate::scene::static_scene::static_layout::StaticLayout;
 use crate::scene::static_scene::static_trace::StaticTrace;
 use crate::scene::static_scene::static_trace_geometry::StaticTraceGeometry;
 use crate::scene::static_scene::static_trace_swaying::StaticTraceSwaying;
 
-/// The trees a view's trace stands swayed: the nearest instances of trees' geometry within `REACH` metres, `MOST` of
-/// them and `MOST_VERTICES` vertices at most, their vertices swayed by the view's wind each frame and their structures
-/// built over them again, standing in the view's own top level in their unswayed instances' place; the scene's top
-/// level where none sway.
+/// A view's own top level, where what its trace meets moves with the view: the nearest instances of trees' geometry
+/// within `REACH` metres, `MOST` of them and `MOST_VERTICES` vertices at most, swayed by the view's wind each frame and
+/// their structures built over them again, standing in their unswayed instances' place; and the grass's cards the view
+/// stands (`GrassCards`), one more instance after the scene's. The scene's top level where neither stands.
 #[derive(Default)]
-pub struct TraceSwayFeature {
-  sway: Option<TraceSway>,
+pub struct ViewTraceFeature {
+  trace: Option<ViewTrace>,
 }
 
-/// What a view keeps to sway its trace's trees: its top level and the key it is bound by, each swaying instance with its
-/// structure, their slots for the sway pass, and the vertices it writes.
-struct TraceSway {
+/// What a view keeps for its own top level: the top level and the key it is bound by, each swaying instance with its
+/// structure, their slots for the sway pass and how many, and the vertices it writes; both buffers are kept as they
+/// shrink, so a frame's own part of them is bound alone.
+struct ViewTrace {
   tlas: wgpu::Tlas,
   key: u64,
   swayed: Vec<SwayedInstance>,
   slots: wgpu::Buffer,
+  slot_count: u32,
   vertices: wgpu::Buffer,
   vertex_count: u32,
 }
@@ -43,7 +46,7 @@ struct SwayedInstance {
   blas: wgpu::Blas,
 }
 
-impl TraceSwayFeature {
+impl ViewTraceFeature {
   /// Metres from the camera within which a tree's instance sways: past it a sway moves a shadow by less than its
   /// penumbra.
   const REACH: f32 = 60.0;
@@ -53,31 +56,31 @@ impl TraceSwayFeature {
 
   /// Takes this frame's swaying trees about the camera at `camera`, where the scene's trace stands (`trace`) and the
   /// view traces (`is_traced`): the nearest chosen, a structure made for each newly chosen, the sway pass's slots
-  /// written and the view's top level filled.
+  /// written and the view's top level filled, with the grass's `cards` where the view stands them.
   pub fn prepare(
     &mut self,
     (device, queue): (&wgpu::Device, &wgpu::Queue),
-    trace: Option<&StaticTrace>,
+    (trace, cards): (Option<&StaticTrace>, Option<&wgpu::Blas>),
     camera: Vec3,
     is_traced: bool,
   ) {
     let Some(trace) = trace.filter(|_| is_traced) else {
-      self.sway = None;
+      self.trace = None;
 
       return;
     };
     let chosen: Vec<StaticTraceSwaying> = Self::choose(trace.get_swaying(), camera);
 
-    if chosen.is_empty() {
-      self.sway = None;
+    if chosen.is_empty() && cards.is_none() {
+      self.trace = None;
 
       return;
     }
 
-    let previous: Option<TraceSway> = self.sway.take();
+    let previous: Option<ViewTrace> = self.trace.take();
     let mut kept: HashMap<(u32, u32), wgpu::Blas> = previous
       .iter()
-      .flat_map(|sway| &sway.swayed)
+      .flat_map(|trace| &trace.swayed)
       .map(|swayed| ((swayed.index, swayed.geometry.first_index), swayed.blas.clone()))
       .collect();
     let swayed: Vec<SwayedInstance> = chosen
@@ -107,14 +110,15 @@ impl TraceSwayFeature {
         slot
       })
       .collect();
-    let instances: usize = trace.get_instance_count();
+    // The scene's instances, then the grass's.
+    let instances: usize = trace.get_instance_count() + 1;
     let (mut tlas, key, slot_buffer, vertices) = match previous {
-      Some(sway) if sway.tlas.get().len() >= instances => (sway.tlas, sway.key, sway.slots, sway.vertices),
-      Some(sway) => (
+      Some(trace) if trace.tlas.get().len() >= instances => (trace.tlas, trace.key, trace.slots, trace.vertices),
+      Some(trace) => (
         Self::create_tlas(device, instances),
         AccelerationStructureBinding::next_key(),
-        sway.slots,
-        sway.vertices,
+        trace.slots,
+        trace.vertices,
       ),
       None => (
         Self::create_tlas(device, instances),
@@ -146,43 +150,54 @@ impl TraceSwayFeature {
     let replaced: HashMap<u32, &wgpu::Blas> = swayed.iter().map(|it| (it.index, &it.blas)).collect();
 
     trace.fill_view_tlas(&mut tlas, &replaced);
+    tlas[instances - 1] =
+      cards.map(|blas| wgpu::TlasInstance::new(blas, StaticTrace::IDENTITY, GrassCards::INSTANCE, GrassCards::MASK));
 
-    self.sway = Some(TraceSway {
+    self.trace = Some(ViewTrace {
       tlas,
       key,
       swayed,
       slots: slot_buffer,
+      slot_count: slots.len() as u32,
       vertices,
       vertex_count: first_out,
     });
   }
 
-  /// Sways the chosen trees' vertices and builds their structures and the view's top level over them, answering the
-  /// top level the view's trace binds; none where none sway, the scene's standing.
+  /// Sways the chosen trees' vertices and builds their structures and the view's top level over them and the grass's
+  /// cards, built before it, answering the top level the view's trace binds; none where neither stands, the scene's
+  /// standing.
   pub fn add_passes<'a>(
     &'a self,
     (graph, bindings): (&mut FrameGraph<'a>, &mut GraphBindings<'a>),
     passes: LevelPasses<'a>,
     statics: &StaticSceneHandles,
   ) -> Option<AccelerationStructureBinding<'a>> {
-    let sway: &'a TraceSway = self.sway.as_ref()?;
-    let vertices: GraphBuffer = bindings.import_buffer(graph, "trace swayed vertices", &sway.vertices);
-    let slots: GraphBuffer = bindings.import_buffer(graph, "trace sway slots", &sway.slots);
+    let trace: &'a ViewTrace = self.trace.as_ref()?;
+    let vertices: GraphBuffer = bindings.import_buffer(graph, "trace swayed vertices", &trace.vertices);
+    let slots: GraphBuffer = bindings.import_buffer(graph, "trace sway slots", &trace.slots);
     let indices: GraphBuffer = statics.indices;
     let parameters: TraceSwayParameters = TraceSwayParameters {
       words: StorageArray::new(statics.words[StaticLayout::Tree.get_index()]),
       places: StorageArray::new(statics.places),
       surfaces: StorageArray::new(statics.surfaces),
       wind: statics.wind,
-      sway_slots: StorageArray::new(slots),
-      swayed_vertices: StorageArrayMut::new(vertices),
+      // The frame's slots alone: the sway finds a vertex's slot by searching all it binds.
+      sway_slots: StorageArray::new_range(
+        slots,
+        0,
+        u64::from(trace.slot_count) * size_of::<TraceSwaySlot>() as u64,
+      ),
+      swayed_vertices: StorageArrayMut::new_range(vertices, 0, u64::from(trace.vertex_count) * 12),
     };
-    let count: u32 = sway.vertex_count;
+    let count: u32 = trace.vertex_count;
 
-    graph
-      .add_compute_pass("trace sway")
-      .parameters(&parameters)
-      .record(move |context| passes.trace_sway.record(context, &parameters, count));
+    if count > 0 {
+      graph
+        .add_compute_pass("trace sway")
+        .parameters(&parameters)
+        .record(move |context| passes.trace_sway.record(context, &parameters, count));
+    }
     graph
       .add_encoder_pass("trace sway build")
       .buffer(vertices, GraphBufferAccess::StorageRead)
@@ -192,8 +207,8 @@ impl TraceSwayFeature {
         let (vertices, indices) = (context.get_buffer(vertices), context.get_buffer(indices));
         let mut first_vertex: u32 = 0;
         let sizes: Vec<wgpu::BlasTriangleGeometrySizeDescriptor> =
-          sway.swayed.iter().map(|it| Self::get_size(&it.geometry)).collect();
-        let entries: Vec<wgpu::BlasBuildEntry<'_>> = sway
+          trace.swayed.iter().map(|it| Self::get_size(&it.geometry)).collect();
+        let entries: Vec<wgpu::BlasBuildEntry<'_>> = trace
           .swayed
           .iter()
           .zip(&sizes)
@@ -220,10 +235,10 @@ impl TraceSwayFeature {
 
         context
           .get_encoder()
-          .build_acceleration_structures(entries.iter(), std::iter::once(&sway.tlas));
+          .build_acceleration_structures(entries.iter(), std::iter::once(&trace.tlas));
       });
 
-    Some(AccelerationStructureBinding::new(&sway.tlas, sway.key))
+    Some(AccelerationStructureBinding::new(&trace.tlas, trace.key))
   }
 
   /// The nearest instances within reach, as many as the limits let in.
@@ -296,16 +311,16 @@ impl TraceSwayFeature {
   }
 }
 
-impl ViewFeature for TraceSwayFeature {
+impl ViewFeature for ViewTraceFeature {
   /// Its swayed vertices, slots and structures.
   fn get_memory(&self) -> u64 {
     self
-      .sway
+      .trace
       .as_ref()
-      .map_or(0, |sway| sway.vertices.size() + sway.slots.size())
+      .map_or(0, |trace| trace.vertices.size() + trace.slots.size())
   }
 
   fn release(&mut self) {
-    self.sway = None;
+    self.trace = None;
   }
 }

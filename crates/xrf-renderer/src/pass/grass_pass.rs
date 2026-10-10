@@ -1,6 +1,7 @@
 use xrf_error::XrfResult;
 use xrf_renderer_core::{ComputeContext, PassParameters};
 
+use crate::frame::sun_shadow_maps::SunShadowMaps;
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::compute_grid::ComputeGrid;
 use crate::pass::fullscreen_pipeline::buffer_binding;
@@ -17,6 +18,8 @@ use crate::pass::view_binding::ViewBinding;
 /// planted, before the frame's depth; then, against that depth, every current cell culled and what it keeps sorted.
 const PLANTING_ENTRIES: [&str; 4] = ["clear_schedule", "rank", "select_band", "decompress"];
 const CULLING_ENTRIES: [&str; 2] = ["clear_counts", "cull"];
+/// The cards' entry points: every card cleared, the near tufts' stood, then the cascades' draw of them sized.
+const CARDS_ENTRIES: [&str; 3] = ["cs_clear_cards", "cs_grass_cards", "cs_card_draw"];
 
 /// Threads a planting workgroup runs.
 const WORKGROUP: u32 = 64;
@@ -38,6 +41,10 @@ pub struct GrassPass {
   occlusion_layout: wgpu::BindGroupLayout,
   /// The sort's indirect dispatch, which `arrange` alone writes.
   sort_layout: wgpu::BindGroupLayout,
+  /// The models' arenas, the wind and the cards, which standing them reads and writes.
+  cards_layout: wgpu::BindGroupLayout,
+  /// The cards' corners and triangles and the models, which their draw into a sun cascade reads.
+  card_shadow_layout: wgpu::BindGroupLayout,
   view_layout: wgpu::BindGroupLayout,
   texture_layout: wgpu::BindGroupLayout,
   planting: Vec<wgpu::ComputePipeline>,
@@ -45,7 +52,9 @@ pub struct GrassPass {
   culling: Vec<wgpu::ComputePipeline>,
   arrange: wgpu::ComputePipeline,
   sort: wgpu::ComputePipeline,
+  cards: Vec<wgpu::ComputePipeline>,
   draw: wgpu::RenderPipeline,
+  card_shadow: wgpu::RenderPipeline,
   grid: ComputeGrid,
   generation: u64,
 }
@@ -106,16 +115,38 @@ impl GrassPass {
       label: Some("grass sort"),
       entries: &[storage_entry(0, compute, true)],
     });
+    let cards_layout: wgpu::BindGroupLayout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+      label: Some("grass cards"),
+      entries: &[
+        storage_entry(0, compute, false),
+        storage_entry(1, compute, false),
+        storage_entry(2, compute, false),
+        uniform_entry(3, compute),
+        storage_entry(4, compute, true),
+        storage_entry(5, compute, true),
+        storage_entry(6, compute, true),
+        storage_entry(7, compute, true),
+      ],
+    });
+    let card_shadow_layout: wgpu::BindGroupLayout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+      label: Some("grass card shadow"),
+      entries: &[
+        storage_entry(0, vertex, false),
+        storage_entry(1, wgpu::ShaderStages::VERTEX_FRAGMENT, false),
+        storage_entry(2, wgpu::ShaderStages::FRAGMENT, false),
+      ],
+    });
     let layouts = [&level_layout, &build_layout, &draw_layout, view_layout, texture_layout];
     let GrassComputePipelines {
       planting,
       culling,
       arrange,
       sort,
+      cards,
     } = Self::create_planting(
       device,
       source,
-      [layouts[0], layouts[1], &occlusion_layout, &sort_layout],
+      [layouts[0], layouts[1], &occlusion_layout, &sort_layout, &cards_layout],
     )?;
 
     Ok(Self {
@@ -123,7 +154,9 @@ impl GrassPass {
       culling,
       arrange,
       sort,
+      cards,
       draw: Self::create_draw(device, source, [layouts[3], layouts[2], layouts[4]])?,
+      card_shadow: Self::create_card_shadow(device, source, [layouts[3], &card_shadow_layout, layouts[4]])?,
       grid: ComputeGrid::new(device),
       generation: source.get_generation(),
       view_layout: view_layout.clone(),
@@ -133,6 +166,8 @@ impl GrassPass {
       draw_layout,
       occlusion_layout,
       sort_layout,
+      cards_layout,
+      card_shadow_layout,
     })
   }
 
@@ -151,6 +186,7 @@ impl GrassPass {
         &self.build_layout,
         &self.occlusion_layout,
         &self.sort_layout,
+        &self.cards_layout,
       ],
     );
     let draw = Self::create_draw(
@@ -158,14 +194,21 @@ impl GrassPass {
       source,
       [&self.view_layout, &self.draw_layout, &self.texture_layout],
     );
+    let card_shadow = Self::create_card_shadow(
+      device,
+      source,
+      [&self.view_layout, &self.card_shadow_layout, &self.texture_layout],
+    );
 
-    match (planting, draw) {
-      (Ok(pipelines), Ok(draw)) => {
+    match (planting, draw.and_then(|draw| Ok((draw, card_shadow?)))) {
+      (Ok(pipelines), Ok((draw, card_shadow))) => {
         self.planting = pipelines.planting;
         self.culling = pipelines.culling;
         self.arrange = pipelines.arrange;
         self.sort = pipelines.sort;
+        self.cards = pipelines.cards;
         self.draw = draw;
+        self.card_shadow = card_shadow;
       }
       (Err(error), _) | (_, Err(error)) => log::error!("Grass rejected, drawing with the last: {error}"),
     }
@@ -200,6 +243,85 @@ impl GrassPass {
         buffer_binding(2, wind),
       ],
     })
+  }
+
+  /// Binds what standing the cards reads and writes: the models' arenas (`positions`, `uvs`, `indices`), the sway, and
+  /// the cards' corners, triangles, count and the cascades' draw of them.
+  pub fn create_cards_group(
+    &self,
+    device: &wgpu::Device,
+    (positions, uvs, indices): (&wgpu::Buffer, &wgpu::Buffer, &wgpu::Buffer),
+    wind: &wgpu::Buffer,
+    (vertices, triangles, count, draw): (&wgpu::Buffer, &wgpu::Buffer, &wgpu::Buffer, &wgpu::Buffer),
+  ) -> wgpu::BindGroup {
+    device.create_bind_group(&wgpu::BindGroupDescriptor {
+      label: Some("grass cards"),
+      layout: &self.cards_layout,
+      entries: &[
+        buffer_binding(0, positions),
+        buffer_binding(1, uvs),
+        buffer_binding(2, indices),
+        buffer_binding(3, wind),
+        buffer_binding(4, vertices),
+        buffer_binding(5, triangles),
+        buffer_binding(6, count),
+        buffer_binding(7, draw),
+      ],
+    })
+  }
+
+  /// Binds what the cards' draw into a sun cascade reads: their `vertices` and `triangles`, and the `models`.
+  pub fn create_card_shadow_group(
+    &self,
+    device: &wgpu::Device,
+    (vertices, triangles): (&wgpu::Buffer, &wgpu::Buffer),
+    models: &wgpu::Buffer,
+  ) -> wgpu::BindGroup {
+    device.create_bind_group(&wgpu::BindGroupDescriptor {
+      label: Some("grass card shadow"),
+      layout: &self.card_shadow_layout,
+      entries: &[
+        buffer_binding(0, vertices),
+        buffer_binding(1, triangles),
+        buffer_binding(2, models),
+      ],
+    })
+  }
+
+  /// Draws the cards that stand into a sun cascade's map the pass draws into, seen by its `view`, as many corners as
+  /// `draw` holds.
+  pub fn record_card_shadow(
+    &self,
+    pass: &mut wgpu::RenderPass<'_>,
+    view: &ViewBinding,
+    (group, textures): (&wgpu::BindGroup, &wgpu::BindGroup),
+    draw: &wgpu::Buffer,
+  ) {
+    pass.set_pipeline(&self.card_shadow);
+    pass.set_bind_group(0, &view.bind_group, &[]);
+    pass.set_bind_group(1, group, &[]);
+    pass.set_bind_group(2, textures, &[]);
+    pass.draw_indirect(draw, 0);
+  }
+
+  /// Stands the cards: all `triangles` cleared, each of the `tufts` invocations' tuft stood where it is near the eye,
+  /// then the cascades' draw of them sized.
+  pub fn record_cards(
+    &self,
+    pass: &mut wgpu::ComputePass<'_>,
+    (level, build, cards): (&wgpu::BindGroup, &wgpu::BindGroup, &wgpu::BindGroup),
+    (triangles, tufts): (u32, u32),
+  ) {
+    let groups = |count: u32| count.max(1).div_ceil(WORKGROUP);
+
+    pass.set_bind_group(0, level, &[]);
+    pass.set_bind_group(1, build, &[]);
+    pass.set_bind_group(2, cards, &[]);
+
+    for (pipeline, size) in self.cards.iter().zip([groups(triangles), groups(tufts), 1]) {
+      pass.set_pipeline(pipeline);
+      self.grid.dispatch(pass, size);
+    }
   }
 
   /// Plants the frame's grass: the ring's stale cells ranked and the nearest planted.
@@ -289,9 +411,10 @@ impl GrassPass {
   fn create_planting(
     device: &wgpu::Device,
     source: PipelineSource<'_>,
-    [level_layout, build_layout, occlusion_layout, sort_layout]: [&wgpu::BindGroupLayout; 4],
+    [level_layout, build_layout, occlusion_layout, sort_layout, cards_layout]: [&wgpu::BindGroupLayout; 5],
   ) -> XrfResult<GrassComputePipelines> {
     let module: wgpu::ShaderModule = source.get_module("grass/planting")?;
+    let cards_module: wgpu::ShaderModule = source.get_module("grass/cards")?;
     let planting_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
       label: Some("grass planting"),
       bind_group_layouts: &[Some(level_layout), Some(build_layout)],
@@ -307,18 +430,27 @@ impl GrassPass {
       bind_group_layouts: &[Some(level_layout), Some(build_layout), None, Some(sort_layout)],
       ..Default::default()
     });
-    let create = |entry: &'static str, layout: &wgpu::PipelineLayout| -> XrfResult<wgpu::ComputePipeline> {
+    let cards_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+      label: Some("grass cards"),
+      bind_group_layouts: &[Some(level_layout), Some(build_layout), Some(cards_layout)],
+      ..Default::default()
+    });
+    let create_in = |module: &wgpu::ShaderModule,
+                     entry: &'static str,
+                     layout: &wgpu::PipelineLayout|
+     -> XrfResult<wgpu::ComputePipeline> {
       create_checked(device, entry, || {
         device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
           label: Some(entry),
           layout: Some(layout),
-          module: &module,
+          module,
           entry_point: Some(entry),
           compilation_options: Default::default(),
           cache: source.get_driver_cache(),
         })
       })
     };
+    let create = |entry: &'static str, layout: &wgpu::PipelineLayout| create_in(&module, entry, layout);
     let create_all =
       |entries: &[&'static str], layout: &wgpu::PipelineLayout| -> XrfResult<Vec<wgpu::ComputePipeline>> {
         entries.iter().map(|entry| create(entry, layout)).collect()
@@ -329,6 +461,55 @@ impl GrassPass {
       culling: create_all(&CULLING_ENTRIES, &culling_layout)?,
       arrange: create("arrange", &arrange_layout)?,
       sort: create("scatter", &culling_layout)?,
+      cards: CARDS_ENTRIES
+        .iter()
+        .map(|entry| create_in(&cards_module, entry, &cards_layout))
+        .collect::<XrfResult<_>>()?,
+    })
+  }
+
+  /// The cards' depth into a sun cascade, cut out by their models' textures from both sides, as the shadows' casters
+  /// draw.
+  fn create_card_shadow(
+    device: &wgpu::Device,
+    source: PipelineSource<'_>,
+    layouts: [&wgpu::BindGroupLayout; 3],
+  ) -> XrfResult<wgpu::RenderPipeline> {
+    let module: wgpu::ShaderModule = source.get_module("grass/card_shadow")?;
+    let layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+      label: Some("grass card shadow"),
+      bind_group_layouts: &[Some(layouts[0]), Some(layouts[1]), Some(layouts[2])],
+      ..Default::default()
+    });
+
+    create_checked(device, "grass card shadow", || {
+      device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        label: Some("grass card shadow"),
+        layout: Some(&layout),
+        vertex: wgpu::VertexState {
+          module: &module,
+          entry_point: Some("vs_card_shadow"),
+          compilation_options: Default::default(),
+          buffers: &[],
+        },
+        fragment: Some(wgpu::FragmentState {
+          module: &module,
+          entry_point: Some("fs_card_shadow"),
+          compilation_options: Default::default(),
+          targets: &[],
+        }),
+        primitive: wgpu::PrimitiveState::default(),
+        depth_stencil: Some(wgpu::DepthStencilState {
+          format: SunShadowMaps::FORMAT,
+          depth_write_enabled: Some(true),
+          depth_compare: Some(wgpu::CompareFunction::Greater),
+          stencil: Default::default(),
+          bias: Default::default(),
+        }),
+        multisample: Default::default(),
+        multiview_mask: None,
+        cache: source.get_driver_cache(),
+      })
     })
   }
 

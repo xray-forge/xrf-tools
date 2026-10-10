@@ -74,6 +74,11 @@ const TRACE_RECORD_TREE: u32 = 2u;
 const TRACE_RECORD_MODEL: u32 = 4u;
 // No place, which a ray passes none of.
 const SCENE_NO_PLACE: u32 = 0xffffffffu;
+// The grass cards' top-level instance's custom index (`GrassCards::INSTANCE`), past any of the scene's; the scene's
+// instances' mask (`StaticTrace::MASK`), which a ray meeting no grass asks for, and every instance's.
+const SCENE_GRASS_CARDS: u32 = 0xffffffu;
+const SCENE_MASK_SCENE: u32 = 0x01u;
+const SCENE_MASK_ALL: u32 = 0xffu;
 
 // Radians a ray's cone widens by past which its cut-out cards are met whole: a reflection that rough blurs any leaf's
 // outline away.
@@ -86,14 +91,15 @@ fn trace_scene_ray(origin: vec3<f32>, direction: vec3<f32>, near: f32, far: f32,
   // hardware, without asking each one's alpha.
   let flags: u32 = select(RAY_FLAG_NONE, RAY_FLAG_FORCE_OPAQUE, cone.spread > SCENE_OPAQUE_SPREAD);
 
-  return traverse_solid(RayDesc(flags, 0xffu, near, far, origin, direction), cone, SCENE_NO_PLACE);
+  return traverse_solid(RayDesc(flags, SCENE_MASK_SCENE, near, far, origin, direction), cone, SCENE_NO_PLACE);
 }
 
-// Whether anything solid of the level's static geometry stands along a ray within `far` metres, the cut-out geometry
-// at `passed` (a place, or `SCENE_NO_PLACE`) aside.
+// Whether anything solid of the level's static geometry or the grass's cards the view stands near its eye stands along
+// a ray within `far` metres, the cut-out geometry at `passed` (a place, or `SCENE_NO_PLACE`) aside.
 fn trace_scene_blocked(origin: vec3<f32>, direction: vec3<f32>, far: f32, cone: SceneCone, passed: u32) -> bool {
-  return traverse_solid(RayDesc(RAY_FLAG_TERMINATE_ON_FIRST_HIT, 0xffu, 0.0, far, origin, direction), cone, passed)
-    .distance >= 0.0;
+  let ray: RayDesc = RayDesc(RAY_FLAG_TERMINATE_ON_FIRST_HIT, SCENE_MASK_ALL, 0.0, far, origin, direction);
+
+  return traverse_solid(ray, cone, passed).distance >= 0.0;
 }
 
 // Traces a ray, taking each cut-out triangle it passes where its texel there is solid, but those at the place `passed`,
@@ -105,11 +111,25 @@ fn traverse_solid(ray: RayDesc, cone: SceneCone, passed: u32) -> SceneHit {
 
   while (rayQueryProceed(&query)) {
     let candidate: RayIntersection = rayQueryGetCandidateIntersection(&query);
-    let instance: TraceInstance = trace_instances[candidate.instance_custom_data];
-    let record: u32 = instance.first_record + candidate.geometry_index;
+    let width: f32 = cone.width + cone.spread * candidate.t;
 
-    if (candidate.kind == RAY_QUERY_INTERSECTION_TRIANGLE && instance.place != passed &&
-      is_scene_solid(record, candidate.primitive_index, candidate.barycentrics, cone.width + cone.spread * candidate.t)) {
+    if (candidate.kind != RAY_QUERY_INTERSECTION_TRIANGLE) {
+      continue;
+    }
+
+    if (candidate.instance_custom_data == SCENE_GRASS_CARDS) {
+      if (is_grass_card_solid(candidate.primitive_index, candidate.barycentrics, width)) {
+        rayQueryConfirmIntersection(&query);
+      }
+
+      continue;
+    }
+
+    let instance: TraceInstance = trace_instances[candidate.instance_custom_data];
+
+    if (instance.place != passed &&
+      is_scene_solid(instance.first_record + candidate.geometry_index, candidate.primitive_index,
+        candidate.barycentrics, width)) {
       rayQueryConfirmIntersection(&query);
     }
   }
@@ -118,6 +138,11 @@ fn traverse_solid(ray: RayDesc, cone: SceneCone, passed: u32) -> SceneHit {
 
   if (hit.kind == RAY_QUERY_INTERSECTION_NONE) {
     return SceneHit(-1.0, 0u, 0u, vec2<f32>(0.0), 0u, vec3<f32>(0.0), mat3x3<f32>());
+  }
+
+  // A card met, by a ray asking for every instance, answers its distance alone: such a ray asks only whether it met.
+  if (hit.instance_custom_data == SCENE_GRASS_CARDS) {
+    return SceneHit(hit.t, 0u, 0u, hit.barycentrics, SCENE_NO_PLACE, ray.origin + ray.dir * hit.t, mat3x3<f32>());
   }
 
   let instance: TraceInstance = trace_instances[hit.instance_custom_data];
@@ -147,6 +172,24 @@ fn is_scene_solid(index: u32, primitive: u32, barycentrics: vec2<f32>, width: f3
   let alpha: f32 = textureSampleLevel(trace_textures[slot], trace_sampler, uv, lod).a;
 
   return alpha * (1.0 + 0.25 * lod) > trace_surfaces[record.surface].alpha_reference;
+}
+
+// Whether a grass card is solid at a point of its triangle `primitive`: its model's texture's alpha at the level of
+// detail the cone's `width` there reads, raised as minification thins it, over the model's reference, as
+// `is_scene_solid` tests a cut-out section's.
+fn is_grass_card_solid(primitive: u32, barycentrics: vec2<f32>, width: f32) -> bool {
+  let at: u32 = primitive * 4u;
+  let head: u32 = trace_grass_cards[at];
+  let model: GrassModel = trace_grass_models[head & 0xffffu];
+  let density: f32 = unpack2x16float(head >> 16u).x;
+  let weights: vec3<f32> = barycentric_weights(barycentrics);
+  let uv: vec2<f32> = unpack2x16float(trace_grass_cards[at + 1u]) * weights.x +
+    unpack2x16float(trace_grass_cards[at + 2u]) * weights.y + unpack2x16float(trace_grass_cards[at + 3u]) * weights.z;
+  let size: vec2<f32> = vec2<f32>(textureDimensions(trace_textures[model.texture]));
+  let lod: f32 = log2(max(width * density * max(size.x, size.y), 1.0));
+  let alpha: f32 = textureSampleLevel(trace_textures[model.texture], trace_sampler, uv, lod).a;
+
+  return alpha * (1.0 + 0.25 * lod) > model.alpha_reference;
 }
 
 // A hit's surface: its corners read from its layout's arena, interpolated, its normal turned into renderer space and
@@ -586,8 +629,8 @@ const SCENE_GRASS_RISE: f32 = 3.0;
 // `is_met` false), each slot's tufts a layer as tall as they stand over its ground's middle height, stopping a ray
 // crossing it as their sideways extinction says. Only a slot whose ground spans less than its tufts stand is walked,
 // where that middle is the ground: on a bank the layer would float over one side and sink into the other, and the
-// bank's own grass covers it where the ray meets it. Grass is planted on the GPU each frame and has no geometry to
-// trace, so tall reeds stood in a reflection as the sky behind them.
+// bank's own grass covers it where the ray meets it. A reflection's ray leaves the view's grass cards out, which stand
+// only near the eye, so tall reeds stood in a reflection as the sky behind them.
 fn scene_grass_passed(origin: vec3<f32>, toward: vec3<f32>, length: f32, is_met: bool) -> SceneGrassPassed {
   var out: SceneGrassPassed = SceneGrassPassed(0.0, vec3<f32>(0.0), 0.0, -1.0);
 
@@ -640,59 +683,6 @@ fn scene_grass_passed(origin: vec3<f32>, toward: vec3<f32>, length: f32, is_met:
   out.hemi /= max(out.opacity, 1e-4);
 
   return out;
-}
-
-// Metres over its start a shadow ray is walked through the grass to, the tallest tufts' height, and a step of its
-// walk.
-const SCENE_GRASS_SHADOW_RISE: f32 = 1.5;
-const SCENE_GRASS_SHADOW_STEP: f32 = 0.25;
-
-// How much of a shadow ray's light passes the grass it crosses from `origin` along `toward` within `reach` metres, its
-// steps shifted by `offset` (a share of a step, drawn anew each frame), each slot's tufts a layer stopping it as their
-// sideways extinction says, as `scene_grass_passed` walks them: grass has no geometry in the trace, so thick grass
-// shades its own lower half and the ground under it this way. The layer stands on the lower of `ground`, the height
-// the ray leaves the ground at, and the slot's middle, every slot walked: a shadow ray knows where its ground is, which
-// a slot's middle on uneven ground does not.
-fn scene_grass_through(origin: vec3<f32>, toward: vec3<f32>, reach: f32, offset: f32, ground: f32) -> f32 {
-  if (trace_grass.model_count == 0u) {
-    return 1.0;
-  }
-
-  let risen: f32 = select(SCENE_GRASS_WALK, SCENE_GRASS_SHADOW_RISE / toward.y, toward.y > 0.0);
-  let end: f32 = min(min(reach, SCENE_GRASS_WALK), risen);
-  var through: f32 = 1.0;
-  var last: vec2<i32> = vec2<i32>(-2147483647);
-  var grass: SceneGrassSlot;
-
-  for (var along: f32 = SCENE_GRASS_SHADOW_STEP * offset; along < end; along += SCENE_GRASS_SHADOW_STEP) {
-    let point: vec3<f32> = origin + toward * along;
-    let fade: f32 = scene_grass_fade(point);
-
-    if (fade <= 0.0) {
-      continue;
-    }
-
-    let slot: vec2<i32> = vec2<i32>(floor(vec2<f32>(point.x, -point.z) / GRASS_SLOT_METERS));
-
-    if (any(slot != last)) {
-      last = slot;
-      grass = scene_grass_slot(slot, vec2<f32>(0.5), 1.0);
-    }
-
-    let above: f32 = point.y - min(ground, (grass.base + grass.top) * 0.5);
-
-    if (!grass.is_planted || above < 0.0 || above > grass.height) {
-      continue;
-    }
-
-    through *= exp(-grass.extinction * fade * fade * SCENE_GRASS_SHADOW_STEP);
-
-    if (through < 0.02) {
-      return 0.0;
-    }
-  }
-
-  return through;
 }
 
 // A triangle's corners, read from its layout's arena through its record: its outline, then each corner's normal and,

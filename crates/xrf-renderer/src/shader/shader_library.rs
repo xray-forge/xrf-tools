@@ -492,10 +492,22 @@ const EMBEDDED: &[(&str, &str)] = &[
     "generated/structs",
     include_str!("../../shaders/generated/structs.wgsl"),
   ),
+  (
+    "grass/card_shadow",
+    include_str!("../../shaders/grass/card_shadow.wgsl"),
+  ),
+  ("grass/cards", include_str!("../../shaders/grass/cards.wgsl")),
   ("grass/colours", include_str!("../../shaders/grass/colours.wgsl")),
   ("grass/grass", include_str!("../../shaders/grass/grass.wgsl")),
   ("grass/planting", include_str!("../../shaders/grass/planting.wgsl")),
+  (
+    "grass/planting_bindings",
+    include_str!("../../shaders/grass/planting_bindings.wgsl"),
+  ),
+  ("grass/puddles", include_str!("../../shaders/grass/puddles.wgsl")),
   ("grass/records", include_str!("../../shaders/grass/records.wgsl")),
+  ("grass/ring", include_str!("../../shaders/grass/ring.wgsl")),
+  ("grass/tuft", include_str!("../../shaders/grass/tuft.wgsl")),
   ("grid/grid", include_str!("../../shaders/grid/grid.wgsl")),
   (
     "static/composited",
