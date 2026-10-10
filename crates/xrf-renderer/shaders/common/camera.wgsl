@@ -11,7 +11,8 @@ struct Camera {
   viewport: vec4<f32>,
   // The frustum's six planes in renderer space, pointing inward.
   planes: array<vec4<f32>, 6>,
-  // x: textured, y: bumped, z: the baked hemisphere's strength; w unused.
+  // x: textured, y: bumped, z: the baked hemisphere's strength, w: the surfaces' bits, `SURFACES_STEEP`,
+  // `SURFACES_PARALLAX_SHOWN` and `SURFACES_BUMPS_SHOWN`.
   switches: vec4<f32>,
   // x: one where every static surface draws as its triangles' edges; y: times a uv checker repeats in place of every
   // surface's textures, zero for none; z: one where surfaces draw solid, their alpha ignored; w: one where an
@@ -87,6 +88,16 @@ fn selection_run(index: u32) -> vec2<u32> {
   let row: vec4<u32> = camera.selection_runs[index / 2u];
 
   return select(row.xy, row.zw, index % 2u == 1u);
+}
+
+// The surfaces' bits in `switches.w`: the engines' steep parallax drawn, and the parallax or the bumps drawn in place
+// of the albedo for their debug views.
+const SURFACES_STEEP: u32 = 1u;
+const SURFACES_PARALLAX_SHOWN: u32 = 2u;
+const SURFACES_BUMPS_SHOWN: u32 = 4u;
+
+fn has_surfaces_bit(bit: u32) -> bool {
+  return (u32(camera.switches.w) & bit) != 0u;
 }
 
 // The albedo every surface shares as clay: a mid grey, light enough to read the shading on.

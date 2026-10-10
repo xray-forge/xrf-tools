@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use glam::{UVec4, Vec3};
-use xrf_material::{XraySurfaceDeclaration, XraySurfaceDescriptor, XraySurfaceDraw};
+use xrf_material::{XrayBumpMode, XraySurfaceDeclaration, XraySurfaceDescriptor, XraySurfaceDraw};
 use xrf_visual::SectorSurface;
 
 use crate::host::render_asset_source::RenderAssetSource;
@@ -17,6 +17,9 @@ const DEFAULT_MATERIAL: f32 = 1.0;
 
 /// The environment-mapped model class's tag.
 const ENVIRONMENT_MAPPED_CLASS: &str = "MODELEbB";
+/// The level's flat and alpha-tested classes, the only ones the engines compile steep parallax for: `B_DEFAULT`,
+/// `B_DEFAULT_AREF`, `B_VERT` and `B_VERT_AREF` (`r2_blenders.cpp`).
+const STEEP_CLASSES: [&str; 4] = ["LM", "LM_AREF", "V", "V_AREF"];
 
 /// Turns of the golden angle between consecutive shader ids, which spreads their colours rather than grouping them.
 const HUE_STEP: f32 = 137.508;
@@ -138,6 +141,10 @@ pub fn build_static_surface(
     flags |= StaticSurface::IS_SHADOWLESS;
   }
 
+  if flags & StaticSurface::HAS_BUMP != 0 && descriptor.is_some_and(is_steep) {
+    flags |= StaticSurface::IS_STEEP;
+  }
+
   let terrain: StaticTerrainSlots = match descriptor.and_then(|it| it.terrain.as_ref()) {
     Some(terrain) if flags & StaticSurface::HAS_BASE != 0 => {
       flags |= StaticSurface::IS_TERRAIN;
@@ -233,6 +240,15 @@ fn is_wallmark(descriptor: &XraySurfaceDescriptor) -> bool {
     descriptor.declaration,
     XraySurfaceDeclaration::Scripted { is_wallmark: true, .. }
   )
+}
+
+/// A level class's surface whose base's descriptor asks for parallax, `bUseSteepParallax`.
+fn is_steep(descriptor: &XraySurfaceDescriptor) -> bool {
+  descriptor
+    .bump
+    .as_ref()
+    .is_some_and(|it| it.mode == XrayBumpMode::Parallax)
+    && matches!(&descriptor.declaration, XraySurfaceDeclaration::Described { class, .. } if STEEP_CLASSES.contains(&class.as_str()))
 }
 
 /// `B_MODEL_EbB`'s, which blends toward an environment map where its base is thin.

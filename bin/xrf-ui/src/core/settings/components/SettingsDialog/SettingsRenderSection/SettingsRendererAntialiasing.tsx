@@ -11,9 +11,18 @@ import {
 } from "@/core/render/lib/features";
 import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { SettingsService } from "@/core/settings/services/settings";
-import { ChoiceFormRow } from "@/core/ui/form/ChoiceFormRow";
+import { ChoiceFormRow, IChoiceFormRowOption } from "@/core/ui/form/ChoiceFormRow";
 import { SliderFormRow } from "@/core/ui/form/SliderFormRow";
 import { DetailSection } from "@/core/ui/layout/DetailSection";
+
+/** The game's texture qualities, `texture_lod`, by the Anomaly preset that sets each. */
+const TEXTURE_LOD_OPTIONS: ReadonlyArray<IChoiceFormRowOption<string>> = [
+  { label: "Full (extreme)", value: "0" },
+  { label: "High", value: "1" },
+  { label: "Medium (default)", value: "2" },
+  { label: "Low", value: "3" },
+  { label: "Lowest", value: "4" },
+];
 
 /** How the frame's edges are smoothed, and how much of it is drawn before it is upscaled to the view. */
 export function SettingsRendererAntialiasing(): ReactElement {
@@ -46,6 +55,17 @@ export function SettingsRendererAntialiasing(): ReactElement {
           onChange={(textureFiltering: RenderTextureFiltering) =>
             settingsService.setRendererOverrides({ textureFiltering })
           }
+        />
+
+        <ChoiceFormRow
+          label={"Texture quality"}
+          description={
+            "The game's `texture_lod`: how much coarser than stored the textures load. Each step past full drops " +
+            "their largest levels as the engine does; changing it loads every texture again."
+          }
+          options={TEXTURE_LOD_OPTIONS}
+          value={String(features.textureLod)}
+          onChange={(value: string) => settingsService.setRendererOverrides({ textureLod: Number(value) })}
         />
 
         <ChoiceFormRow

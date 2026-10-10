@@ -185,13 +185,13 @@ impl RenderViewport {
   }
 
   /// Reports the frames since the last report, once one is due: `texture_bytes` is what every viewport's textures hold
-  /// on the GPU together, `scenes` every scene, its own among them, `timer` what the frames' passes cost, its own and
+  /// on the GPU together, `allocator` what the GPU allocator holds allocated and reserved, `scenes` every scene, its own among them, `timer` what the frames' passes cost, its own and
   /// its window's taken from it, and `graph` what the frame graph made of the latest described frame.
   pub fn report(
     &mut self,
     now: Instant,
     (backend, adapter): (RenderBackend, &str),
-    (texture_bytes, scenes): (u64, &mut HashMap<RenderSceneId, LevelScene>),
+    (texture_bytes, allocator, scenes): (u64, Option<(u64, u64)>, &mut HashMap<RenderSceneId, LevelScene>),
     (timer, graph): (Option<&mut GraphTimer>, Option<&GraphReport>),
   ) {
     let Some(summary) = self.statistics.take(now) else {
@@ -281,6 +281,8 @@ impl RenderViewport {
       memory: RenderMemoryReport {
         textures: texture_bytes,
         scene,
+        allocated: allocator.map(|(allocated, _)| allocated),
+        reserved: allocator.map(|(_, reserved)| reserved),
       },
     };
 

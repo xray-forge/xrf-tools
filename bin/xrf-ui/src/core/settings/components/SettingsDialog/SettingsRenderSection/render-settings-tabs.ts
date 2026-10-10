@@ -11,6 +11,7 @@ import { SettingsRendererExposure } from "./SettingsRendererExposure";
 import { SettingsRendererGrass } from "./SettingsRendererGrass";
 import { SettingsRendererLights } from "./SettingsRendererLights";
 import { SettingsRendererLod } from "./SettingsRendererLod";
+import { SettingsRendererParallax } from "./SettingsRendererParallax";
 import { SettingsRendererShadows } from "./SettingsRendererShadows";
 import { SettingsRendererWater } from "./SettingsRendererWater";
 
@@ -43,7 +44,7 @@ export const RENDER_SETTINGS_TABS: ReadonlyArray<IRenderSettingsTab> = [
     sections: [SettingsRendererDisplay],
   },
   {
-    features: ["antialiasing", "textureFiltering", "upscaling", "exposure", "enhancedBloom", "debanding"],
+    features: ["antialiasing", "textureFiltering", "textureLod", "upscaling", "exposure", "enhancedBloom", "debanding"],
     id: ERenderSettingsTab.IMAGE,
     label: "Image",
     sections: [SettingsRendererAntialiasing, SettingsRendererExposure],
@@ -61,10 +62,10 @@ export const RENDER_SETTINGS_TABS: ReadonlyArray<IRenderSettingsTab> = [
     sections: [SettingsRendererShadows],
   },
   {
-    features: ["water", "grass", "fog"],
+    features: ["water", "grass", "fog", "parallax"],
     id: ERenderSettingsTab.WORLD,
     label: "World",
-    sections: [SettingsRendererWater, SettingsRendererGrass],
+    sections: [SettingsRendererWater, SettingsRendererGrass, SettingsRendererParallax],
   },
   {
     features: ["lod", "isOcclusionCulled"],

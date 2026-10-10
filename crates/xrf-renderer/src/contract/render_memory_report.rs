@@ -9,4 +9,8 @@ pub struct RenderMemoryReport {
   pub textures: u64,
   /// Bytes of this viewport's scene buffers: geometry, clusters, places and the rest that grow with what it shows.
   pub scene: u64,
+  /// Bytes the GPU allocator holds allocated for everything the renderer made, textures, buffers and targets of every
+  /// viewport, and those it reserved in its blocks; none where the backend reports none.
+  pub allocated: Option<u64>,
+  pub reserved: Option<u64>,
 }

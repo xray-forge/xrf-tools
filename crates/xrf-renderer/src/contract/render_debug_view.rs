@@ -35,6 +35,13 @@ pub enum RenderDebugView {
   Reflections,
   /// How each reflection ray ended, one colour a reason (`common/reflection_end.wgsl`); black where nothing is traced.
   ReflectionEnds,
+  /// How far parallax moved each surface's texture: across in red and down in green about a half, out to the march's
+  /// reach, over full blue; a half in both where a surface takes parallax but stands past its reach; every other
+  /// surface a dim grey of its own brightness.
+  Parallax,
+  /// Which surfaces are bumped: a bumped one's normal in its own tangent space as a normal map colours it, lavender
+  /// where flat, a terrain's by its four details' bumps; a surface without a bump red by its brightness.
+  Bumps,
 }
 
 impl RenderDebugView {

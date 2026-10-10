@@ -84,6 +84,7 @@ pub use crate::contract::render_memory_report::RenderMemoryReport;
 pub use crate::contract::render_overlay::RenderOverlay;
 pub use crate::contract::render_page_backdrop::RenderPageBackdrop;
 pub use crate::contract::render_page_wash::RenderPageWash;
+pub use crate::contract::render_parallax_settings::RenderParallaxSettings;
 pub use crate::contract::render_particles_report::RenderParticlesReport;
 pub use crate::contract::render_pass_cost::RenderPassCost;
 pub use crate::contract::render_pick::RenderPick;

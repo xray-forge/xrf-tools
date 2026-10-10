@@ -30,6 +30,7 @@ import {
   TRenderIndirectLightSettings,
   TRenderLightsSettings,
   TRenderLodSettings,
+  TRenderParallaxSettings,
   TRenderRainSettings,
   TRenderReflectionSettings,
   TRenderShadowSettings,
@@ -173,6 +174,11 @@ export const DEFAULT_RENDER_LOD_SETTINGS: TRenderLodSettings = {
   ssaDiscard: 3.5,
   ssaGlodEnd: 64,
   ssaGlodStart: 256,
+};
+
+/** Steep, as Anomaly's high and extreme presets set `r2_steep_parallax`. */
+export const DEFAULT_RENDER_PARALLAX_SETTINGS: TRenderParallaxSettings = {
+  isSteep: true,
 };
 
 /** The engine's own: no contact shadows, and their strengths for when they are drawn, towards four lights a pixel. */

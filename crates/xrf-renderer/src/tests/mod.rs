@@ -34,6 +34,7 @@ mod temporal;
 pub(crate) mod test_bundle;
 pub(crate) mod test_workers;
 mod texture_cache;
+mod texture_lod;
 mod texture_role;
 mod vbao;
 mod water_flow;

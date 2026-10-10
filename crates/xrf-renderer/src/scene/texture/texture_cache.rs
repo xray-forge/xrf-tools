@@ -56,8 +56,13 @@ pub struct TextureCache {
   by_reference: HashMap<(String, String), u32>,
   /// Each slot's key in `by_reference`, `None` for the missing texture's and for a freed slot.
   keys: Vec<Option<(String, String)>>,
-  /// Bumped each time a slot is freed, so a load asked for its last texture is not uploaded into its next.
+  /// Bumped each time a slot is freed or loaded again, so a load asked for its last texture is not uploaded into its
+  /// next.
   generations: Vec<u32>,
+  /// Where each slot's texture is read from, `None` for the missing texture's and for a freed slot.
+  sources: Vec<Option<Arc<dyn RenderAssetSource>>>,
+  /// `texture_lod`: how much coarser than stored the textures load, the engine's rule deciding each one's levels.
+  lod: u32,
   /// Bytes each slot's upload holds on the GPU.
   sizes: Vec<u64>,
   /// Slots freed, taken again before the array grows.
@@ -132,6 +137,8 @@ impl TextureCache {
       by_reference: HashMap::new(),
       keys: vec![None],
       generations: vec![0],
+      sources: vec![None],
+      lod: 0,
       sizes: vec![0],
       free: Vec::new(),
       sender,
@@ -176,6 +183,7 @@ impl TextureCache {
         self.references[index] = reference.to_owned();
         self.roles[index] = role;
         self.keys[index] = Some(key.clone());
+        self.sources[index] = Some(Arc::clone(source));
 
         slot
       }
@@ -186,6 +194,7 @@ impl TextureCache {
         self.roles.push(role);
         self.keys.push(Some(key.clone()));
         self.generations.push(0);
+        self.sources.push(Some(Arc::clone(source)));
         self.sizes.push(0);
 
         self.views.len() as u32 - 1
@@ -202,14 +211,50 @@ impl TextureCache {
 
     self.is_dirty = true;
     self.by_reference.insert(key, slot);
+    self.load(slot);
 
-    let generation: u32 = self.generations[slot as usize];
-    let (sender, source, reference) = (self.sender.clone(), Arc::clone(source), reference.to_string());
+    slot
+  }
+
+  /// Loads every texture again at `texture_lod`, where it changed: each keeps what it shows until its new levels land.
+  pub fn set_lod(&mut self, lod: u32) {
+    if lod == self.lod {
+      return;
+    }
+
+    self.lod = lod;
+
+    for slot in 1..self.views.len() {
+      if self.keys[slot].is_some() {
+        self.generations[slot] = self.generations[slot].wrapping_add(1);
+        self.load(slot as u32);
+      }
+    }
+  }
+
+  /// Reads and decodes a slot's texture on a loader thread, its levels cut as the engine cuts them at `texture_lod`.
+  fn load(&self, slot: u32) {
+    let index: usize = slot as usize;
+    let Some(source) = self.sources[index].clone() else {
+      return;
+    };
+    let (sender, generation, reference, lod) = (
+      self.sender.clone(),
+      self.generations[index],
+      self.references[index].clone(),
+      self.lod,
+    );
 
     self.workers.spawn(move || {
+      // At full quality the listed textures load whole too, so the list is never read.
+      let dropped: u32 = get_dropped_levels(lod, lod > 0 && source.is_texture_reduced(&reference));
       let load: Result<Option<DecodedTexture>, String> = source
         .read_texture(&reference)
-        .and_then(|bytes| bytes.map(|bytes| DecodedTexture::from_dds(&bytes)).transpose())
+        .and_then(|bytes| {
+          bytes
+            .map(|bytes| DecodedTexture::from_dds(&bytes).map(|texture| texture.without_levels(dropped)))
+            .transpose()
+        })
         .map_err(|error| error.to_string());
 
       if let Err(error) = &load {
@@ -218,8 +263,6 @@ impl TextureCache {
 
       let _ = sender.send((slot, generation, load));
     });
-
-    slot
   }
 
   /// The environment slot a cube reference is sampled from, `0` for none or for one past the slots there are.
@@ -319,6 +362,8 @@ impl TextureCache {
       if let Some(key) = self.keys[slot].take() {
         self.by_reference.remove(&key);
       }
+
+      self.sources[slot] = None;
 
       self.views[slot] = self.views[MISSING_SLOT as usize].clone();
       self.states[slot] = RenderTextureState::Missing;
@@ -501,5 +546,15 @@ impl TextureCache {
         },
       ],
     })
+  }
+}
+
+/// Levels the engine drops off a texture's top at `texture_lod` (`get_texture_load_lod`): none to one, one to three, two
+/// at four; a texture its `reduce_lod_texture_list` names a step sooner, none at nought (the address space allowing).
+pub(crate) fn get_dropped_levels(lod: u32, is_reduced: bool) -> u32 {
+  match (is_reduced, lod) {
+    (true, 0) | (false, 0..=1) => 0,
+    (true, 1..=2) | (false, 2..=3) => 1,
+    _ => 2,
   }
 }

@@ -41,6 +41,8 @@ export interface INativeViewSwitches
     Pick<RenderViewFeatures, "sunShafts"> {
   /** Whether the grass the features plant is drawn in this view. */
   isGrassy: boolean;
+  /** Whether the parallax the features draw displaces this view's surfaces. */
+  isParallaxed: boolean;
   /** Whether the water the features draw is drawn in this view. */
   isWaterVisible: boolean;
 }
@@ -54,6 +56,7 @@ export const NO_NATIVE_VIEW_SWITCHES: INativeViewSwitches = {
   isFogged: false,
   isGrassy: false,
   isLensFlared: false,
+  isParallaxed: false,
   isParticled: false,
   isSkyHazed: false,
   isSkyVisible: false,
@@ -117,9 +120,11 @@ export function toNativeViewOptions(
       rain: features.rain,
       reflections: features.reflections,
       lod: features.lod,
+      parallax: { ...features.parallax, isSteep: features.parallax.isSteep && switches.isParallaxed },
       shadows: { ...shadows, cascades: [...shadows.cascades] },
       sunShafts: { ...switches.sunShafts },
       textureFiltering: features.textureFiltering,
+      textureLod: features.textureLod,
       water: { ...water, isEnabled: water.isEnabled && switches.isWaterVisible },
     },
     mode: {

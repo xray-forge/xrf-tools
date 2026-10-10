@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::sync::{Arc, PoisonError, RwLock};
+use std::sync::{Arc, OnceLock, PoisonError, RwLock};
 use std::time::Instant;
 
 use xrf_anm::AnmFile;
@@ -22,7 +22,7 @@ use crate::core::assets::{AssetMountState, read_located_asset};
 use crate::core::session::SessionSnapshot;
 use crate::plugins::levels::ambients::{to_render_ambient_effects, to_render_ambients};
 use crate::plugins::levels::collision::get_level_collision;
-use crate::plugins::levels::configs::get_level_sections;
+use crate::plugins::levels::configs::{REDUCED_TEXTURES_SECTION, get_level_sections};
 use crate::plugins::levels::details::{PackedLevelDetails, pack_details};
 use crate::plugins::levels::drawn_attributes::DRAWN_ATTRIBUTES;
 use crate::plugins::levels::hemi::{estimate_visuals_hemi, get_level_hemi};
@@ -53,6 +53,9 @@ pub struct LevelRenderSource {
   /// Where each texture reference the level's surfaces bind resolved to at open, each projector its lights name once
   /// they are read, and anything else once asked for, as the weather's skies are; `None` for one resolving to nothing.
   textures: RwLock<HashMap<String, Option<String>>>,
+  /// The parts of a reference the game loads a step coarser at the same texture quality, read the first time a
+  /// texture quality above full asks.
+  reduced: OnceLock<Vec<String>>,
 }
 
 impl LevelRenderSource {
@@ -67,6 +70,7 @@ impl LevelRenderSource {
       level,
       assets,
       textures: RwLock::new(textures),
+      reduced: OnceLock::new(),
     }
   }
 }
@@ -130,6 +134,24 @@ impl RenderAssetSource for LevelRenderSource {
       .with_probe(&self.level.roots, |probe| read_located_asset(probe, &logical_path))
       .map_err(XrfError::new_asset_error)?
       .map(Some)
+  }
+
+  fn is_texture_reduced(&self, reference: &str) -> bool {
+    let reduced: &Vec<String> = self.reduced.get_or_init(|| {
+      self
+        .read_sections()
+        .ok()
+        .flatten()
+        .and_then(|sections| {
+          sections
+            .section(REDUCED_TEXTURES_SECTION)
+            .map(|section| section.iter().map(|(key, _)| key.to_lowercase()).collect())
+        })
+        .unwrap_or_default()
+    });
+    let reference: String = reference.to_lowercase();
+
+    reduced.iter().any(|part| reference.contains(part.as_str()))
   }
 }
 

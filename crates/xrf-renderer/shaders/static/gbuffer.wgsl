@@ -311,6 +311,8 @@ fn cube_hemi(cube: vec4<u32>, normal: vec3<f32>) -> f32 {
 // textures are sampled under its own flags, where no implicit derivative may be taken.
 struct Footprint {
   uv: vec2<f32>,
+  // The base coordinate before any parallax moved it, which the detail is read at, as the engines leave it.
+  origin: vec2<f32>,
   dx: vec2<f32>,
   dy: vec2<f32>,
   lightmap: vec2<f32>,
@@ -321,7 +323,95 @@ struct Footprint {
 fn take_footprint(in: GBufferVarying) -> Footprint {
   let uv: vec2<f32> = in.uv * surfaces[in.surface].tiling;
 
-  return Footprint(uv, dpdx(uv), dpdy(uv), in.lightmap_uv, dpdx(in.lightmap_uv), dpdy(in.lightmap_uv));
+  return Footprint(uv, uv, dpdx(uv), dpdy(uv), in.lightmap_uv, dpdx(in.lightmap_uv), dpdy(in.lightmap_uv));
+}
+
+// The engines' steep parallax (`UpdateTC` under `USE_STEEPPARALLAX`): within `STEEP_FADE.y` metres, the base coordinate
+// marched along the eye's lean in tangent space over the height in the bump pair's second's alpha, `STEEP_STEPS` from
+// grazing to head on, settled between its last two steps by their heights, and faded out over `STEEP_FADE`.
+const STEEP_FADE: vec2<f32> = vec2<f32>(8.0, 12.0);
+const STEEP_STEPS: vec2<f32> = vec2<f32>(25.0, 5.0);
+// `fParallaxOffset * 1.2`: the coordinate the march reaches at most.
+const STEEP_REACH: f32 = -0.0156;
+
+fn steep_footprint(in: GBufferVarying, at: Footprint) -> Footprint {
+  let surface: Surface = surfaces[in.surface];
+  let position: vec3<f32> = (camera.view * vec4<f32>(in.world, 1.0)).xyz;
+  let distance: f32 = -position.z;
+
+  if (!has_surfaces_bit(SURFACES_STEEP) || (surface.flags & SURFACE_IS_STEEP) == 0u || distance >= STEEP_FADE.y) {
+    return at;
+  }
+
+  let eye: vec3<f32> = normalize(vec3<f32>(dot(normalize(in.tangent), -position), dot(normalize(in.binormal), -position),
+    dot(normalize(in.normal), -position)));
+  let steps: f32 = mix(STEEP_STEPS.x, STEEP_STEPS.y, eye.z);
+  let step_size: f32 = 1.0 / steps;
+  let reach: vec2<f32> = eye.xy * STEEP_REACH;
+  let per_step: vec2<f32> = reach * step_size;
+  let slot: u32 = surface.textures[SLOT_BUMP_COMPANION];
+  var offset: vec2<f32> = at.uv;
+  var height: f32 = 0.0;
+  var bound: f32 = 1.0;
+
+  for (var step: f32 = 0.0; step < steps; step += 1.0) {
+    if (height < bound) {
+      offset += per_step;
+      height = textureSampleLevel(textures[slot], texture_sampler, offset, 0.0).a;
+      bound -= step_size;
+    }
+  }
+
+  // Between the step the march stopped at and the one before it, where the heights cross the bound.
+  offset -= per_step;
+
+  let previous: f32 = textureSampleGrad(textures[slot], texture_sampler, offset, at.dx, at.dy).a;
+  let before: f32 = bound + step_size - previous;
+  let after: f32 = bound - height;
+  let amount: f32 = select(bound, (bound * before - (bound + step_size) * after) / (before - after),
+    abs(before - after) > 1e-6);
+  var out: Footprint = at;
+
+  out.uv = at.uv + reach * ((1.0 - amount) * smoothstep(STEEP_FADE.y, STEEP_FADE.x, distance));
+
+  return out;
+}
+
+// What a surfaces debug view draws in place of a surface's albedo, the shading otherwise as it was. The parallax view:
+// how far the coordinate moved, across in red and down in green about a half, out to the march's reach, over full
+// blue; a half in both where the surface takes parallax and stood past its reach; every other surface a dim grey of its
+// own brightness. The bumps view: a bumped surface's normal in its own tangent space as a normal map colours it,
+// lavender where flat, a terrain's by its four details' bumps; a surface without a bump red by its brightness.
+fn surfaces_shown(in: GBufferVarying, at: Footprint, shaded: GBufferOutput) -> GBufferOutput {
+  let is_parallax: bool = has_surfaces_bit(SURFACES_PARALLAX_SHOWN);
+
+  if (!is_parallax && !has_surfaces_bit(SURFACES_BUMPS_SHOWN)) {
+    return shaded;
+  }
+
+  var out: GBufferOutput = shaded;
+  let flags: u32 = surfaces[in.surface].flags;
+  let brightness: f32 = dot(shaded.albedo.rgb, vec3<f32>(0.2126, 0.7152, 0.0722));
+
+  if (is_parallax) {
+    let is_steep: bool = has_surfaces_bit(SURFACES_STEEP) && (flags & SURFACE_IS_STEEP) != 0u;
+    let moved: vec2<f32> = clamp((at.uv - at.origin) / abs(STEEP_REACH), vec2<f32>(-1.0), vec2<f32>(1.0));
+
+    out.albedo = vec4<f32>(select(vec3<f32>(0.08 + 0.25 * brightness), vec3<f32>(moved * 0.5 + 0.5, 1.0), is_steep),
+      shaded.albedo.a);
+
+    return out;
+  }
+
+  let is_bumped: bool = (flags & (SURFACE_HAS_BUMP | SURFACE_IS_TERRAIN)) != 0u;
+  let normal: vec3<f32> = octahedral_decode(shaded.normal);
+  let tangent: vec3<f32> = vec3<f32>(dot(normal, normalize(in.tangent)), dot(normal, normalize(in.binormal)),
+    dot(normal, normalize(in.normal)));
+  let missing: vec3<f32> = vec3<f32>(0.3 + 0.5 * brightness, 0.04, 0.04);
+
+  out.albedo = vec4<f32>(select(missing, tangent * 0.5 + 0.5, is_bumped), shaded.albedo.a);
+
+  return out;
 }
 
 fn sample_slot(slot: u32, uv: vec2<f32>, dx: vec2<f32>, dy: vec2<f32>) -> vec4<f32> {
@@ -391,7 +481,7 @@ fn terrain_texel(surface: Surface, at: Footprint, uv: vec2<f32>, dx: vec2<f32>, 
 fn shade(in: GBufferVarying, base: vec4<f32>, at: Footprint) -> GBufferOutput {
   let surface: Surface = surfaces[in.surface];
   let scale: f32 = surface.detail_scale;
-  let detail_uv: vec2<f32> = at.uv * scale;
+  let detail_uv: vec2<f32> = at.origin * scale;
   let detail_dx: vec2<f32> = at.dx * scale;
   let detail_dy: vec2<f32> = at.dy * scale;
   let is_textured: f32 = camera.switches.x;
@@ -480,13 +570,13 @@ fn shade(in: GBufferVarying, base: vec4<f32>, at: Footprint) -> GBufferOutput {
 
 @fragment
 fn fs_opaque(in: GBufferVarying) -> GBufferOutput {
-  let at: Footprint = take_footprint(in);
+  let at: Footprint = steep_footprint(in, take_footprint(in));
 
   if (is_off_wire(in)) {
     discard;
   }
 
-  return wired(shade(in, base_texel(in, at), at));
+  return wired(surfaces_shown(in, at, shade(in, base_texel(in, at), at)));
 }
 
 // Whether a cut-out texel is cut, as `common/cut_out` cuts one.
@@ -499,7 +589,7 @@ fn is_cut(in: GBufferVarying, base: vec4<f32>, at: Footprint) -> bool {
 
 @fragment
 fn fs_cut_out(in: GBufferVarying) -> GBufferOutput {
-  let at: Footprint = take_footprint(in);
+  let at: Footprint = steep_footprint(in, take_footprint(in));
   let base: vec4<f32> = base_texel(in, at);
   let is_off: bool = is_off_wire(in);
 
@@ -508,7 +598,7 @@ fn fs_cut_out(in: GBufferVarying) -> GBufferOutput {
     discard;
   }
 
-  return wired(shade(in, base, at));
+  return wired(surfaces_shown(in, at, shade(in, base, at)));
 }
 
 // A pick's texel: what was drawn, by its cluster and place, and its depth's bits.

@@ -15,7 +15,26 @@ interface ILevelRendererResidentSectionProps extends BaseComponentProps {
 }
 
 /**
- * What the level holds now: its sectors and textures, the geometry read for them, and what the GPU holds.
+ * @param memory - What the renderer holds on the GPU.
+ * @returns What the GPU allocator holds allocated of what it reserved, or that it reports none, as a build or a backend
+ *   reporting no allocator leaves it.
+ */
+function formatAllocated(memory: RenderMemoryReport): string {
+  const allocated: unknown = memory.allocated;
+  const reserved: unknown = memory.reserved;
+
+  if (typeof allocated !== "number" || !Number.isFinite(allocated)) {
+    return "Not reported";
+  }
+
+  return typeof reserved === "number" && Number.isFinite(reserved)
+    ? `${formatBytes(allocated)} of ${formatBytes(reserved)} reserved`
+    : formatBytes(allocated);
+}
+
+/**
+ * What the level holds now: its sectors and textures, the geometry read for them, and what the GPU holds, of it and
+ * of everything the renderer made.
  */
 export function LevelRendererResidentSection({
   "data-testid": dataTestId = "level-renderer-resident-section",
@@ -37,6 +56,7 @@ export function LevelRendererResidentSection({
       <EditorPanelProperty label={"Geometry read"} value={formatBytes(load?.bytes ?? 0)} />
       <EditorPanelProperty label={"GPU scene buffers"} value={formatBytes(memory.scene)} />
       <EditorPanelProperty label={"GPU textures"} value={formatBytes(memory.textures)} />
+      <EditorPanelProperty label={"GPU memory"} value={formatAllocated(memory)} />
     </EditorPanelSection>
   );
 }
