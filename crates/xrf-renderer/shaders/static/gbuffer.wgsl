@@ -17,6 +17,10 @@ const DEFAULT_GLOSS: f32 = 2.0 / 255.0;
 
 // Whether this pipeline draws a shadow map, whose surfaces casting none are collapsed to nothing.
 override IS_SHADOW_DRAW: bool = false;
+// Whether the frame may inspect its surfaces (a wireframe, the asset checker, alpha hidden, the parallax, bumps or
+// heights drawn for their debug views); a frame doing none of them drops their code, which the frame's registers
+// carry otherwise.
+override IS_INSPECTED: bool = true;
 
 // The untextured grey a wireframe draws every edge with, lit as a surface is.
 const WIRE_COLOR: vec3<f32> = vec3<f32>(0.75);
@@ -192,14 +196,14 @@ fn is_off_wire(in: GBufferVarying) -> bool {
   let width: vec3<f32> = max(fwidth(in.barycentric), vec3<f32>(1e-6));
   let reach: vec3<f32> = in.barycentric / width;
 
-  return camera.modes.x > 0.5 && min(reach.x, min(reach.y, reach.z)) > 1.0;
+  return IS_INSPECTED && camera.modes.x > 0.5 && min(reach.x, min(reach.y, reach.z)) > 1.0;
 }
 
 // A surface as a wireframe draws it: its edges in one untextured grey, lit as it is.
 fn wired(shaded: GBufferOutput) -> GBufferOutput {
   var out: GBufferOutput = shaded;
 
-  if (camera.modes.x > 0.5) {
+  if (IS_INSPECTED && camera.modes.x > 0.5) {
     out.albedo = vec4<f32>(WIRE_COLOR, DEFAULT_GLOSS);
   }
 
@@ -464,10 +468,10 @@ fn surface_relief(in: GBufferVarying, at: Footprint, position: vec3<f32>, plane:
 // heights view: a terrain's details' heights weighed by its mask, and a steep surface's height, grey from black low to
 // white high; every other surface a dim blue of its own brightness.
 fn surfaces_shown(in: GBufferVarying, at: Footprint, shaded: GBufferOutput) -> GBufferOutput {
-  let is_parallax: bool = has_surfaces_bit(SURFACES_PARALLAX_SHOWN);
-  let is_heights: bool = has_surfaces_bit(SURFACES_HEIGHTS_SHOWN);
+  let is_parallax: bool = IS_INSPECTED && has_surfaces_bit(SURFACES_PARALLAX_SHOWN);
+  let is_heights: bool = IS_INSPECTED && has_surfaces_bit(SURFACES_HEIGHTS_SHOWN);
 
-  if (!is_parallax && !is_heights && !has_surfaces_bit(SURFACES_BUMPS_SHOWN)) {
+  if (!is_parallax && !is_heights && !(IS_INSPECTED && has_surfaces_bit(SURFACES_BUMPS_SHOWN))) {
     return shaded;
   }
 
@@ -541,7 +545,7 @@ fn checker_texel(uv: vec2<f32>) -> vec4<f32> {
 fn base_texel(in: GBufferVarying, at: Footprint) -> vec4<f32> {
   let surface: Surface = surfaces[in.surface];
 
-  if (camera.modes.y > 0.0) {
+  if (IS_INSPECTED && camera.modes.y > 0.0) {
     return checker_texel(in.uv);
   }
 
@@ -948,7 +952,7 @@ fn fs_depth_cut_out(in: GBufferVarying) {
   let at: Footprint = steep_footprint(in, take_footprint(in));
   let base: vec4<f32> = base_texel(in, at);
 
-  if (is_off_wire(in) || (camera.modes.x < 0.5 && camera.modes.z < 0.5 && is_cut(in, base, at))) {
+  if (is_off_wire(in) || ((!IS_INSPECTED || (camera.modes.x < 0.5 && camera.modes.z < 0.5)) && is_cut(in, base, at))) {
     discard;
   }
 }
@@ -960,7 +964,7 @@ fn fs_cut_out(in: GBufferVarying) -> GBufferOutput {
   let is_off: bool = is_off_wire(in);
 
   // A wireframe draws a cut-out surface's every edge, whatever its alpha; so does a view drawing every surface solid.
-  if (is_off || (camera.modes.x < 0.5 && camera.modes.z < 0.5 && is_cut(in, base, at))) {
+  if (is_off || ((!IS_INSPECTED || (camera.modes.x < 0.5 && camera.modes.z < 0.5)) && is_cut(in, base, at))) {
     discard;
   }
 
