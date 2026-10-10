@@ -279,9 +279,10 @@ fn fs_lights(in: FullscreenVarying) -> @location(0) vec4<f32> {
   let texel: vec2<i32> = vec2<i32>(in.clip.xy);
   let depth: f32 = textureLoad(depth_target, texel, 0);
 
-  // Nothing drawn there, nothing to light: its depth rebuilds no point.
+  // Nothing drawn there, nothing to light: its depth rebuilds no point. A pixel no light adds to is left out rather
+  // than added nought to, sparing the blend reading and writing the light it already holds.
   if (depth <= 0.0 || lights.count == 0u) {
-    return vec4<f32>(0.0);
+    discard;
   }
 
   let position: vec3<f32> = camera_view_position(in.clip.xy, depth);
@@ -385,6 +386,10 @@ fn fs_lights(in: FullscreenVarying) -> @location(0) vec4<f32> {
     }
 
     total += record.color * light;
+  }
+
+  if (all(total == vec4<f32>(0.0))) {
+    discard;
   }
 
   return total;
