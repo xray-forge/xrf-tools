@@ -5,7 +5,6 @@ import {
   formatCascadeBlend,
   formatShadowBias,
   formatShadowFilter,
-  formatShadowReach,
   RENDER_SHADOW_CASCADE_OPTIONS,
   RENDER_SHADOW_LIMITS,
   RENDER_SHADOW_RESOLUTION_OPTIONS,
@@ -84,15 +83,6 @@ export function SettingsRendererShadows(): ReactElement {
           {...RENDER_SHADOW_LIMITS.blend}
           format={formatCascadeBlend}
           onChange={(blend: number) => onSet({ blend })}
-        />
-
-        <SliderFormRow
-          label={"Caster reach"}
-          description={"Distance toward the sun beyond a cascade that still casts into it, in metres."}
-          value={shadows.reach}
-          {...RENDER_SHADOW_LIMITS.reach}
-          format={formatShadowReach}
-          onChange={(reach: number) => onSet({ reach })}
         />
 
         <CheckboxFormRow

@@ -1443,8 +1443,6 @@ export type RenderShadowSettings = {
   filter: number;
   /** How far a point is moved along its normal before it is compared, in texels of its cascade. */
   bias: number | null;
-  /** Metres towards the sun past a cascade that its casters may stand. */
-  reach: number | null;
   /** How far in from a cascade's edge, as a share of its width, the next cascade is mixed in. */
   blend: number | null;
   /** Whether cascade `n` is drawn at most every `2^n` frames, the far ones sharing frames the near one does not. */

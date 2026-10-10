@@ -6,6 +6,9 @@ use crate::lighting::sun_view_rays::SunViewRays;
 
 const DOWN: Vec3 = Vec3::new(0.0, -1.0, 0.0);
 
+/// A level standing four hundred metres either way along the light from the origin.
+const SPAN: Option<(f32, f32)> = Some((-400.0, 400.0));
+
 /// A camera at a point looking at another, the up axis taken as `y` unless it looks along it.
 fn create_camera(position: Vec3, target: Vec3) -> CameraView {
   let direction: Vec3 = (target - position).normalize();
@@ -47,7 +50,7 @@ fn fit_chain(camera: &CameraView, light: Vec3) -> Vec<SunCascade> {
     .map(|width| {
       let mut cascade: SunCascade = SunCascade::default();
 
-      cascade.fit(camera, &mut rays, light, *width, 2048, 400.0);
+      cascade.fit(camera, &mut rays, light, *width, 2048, SPAN);
 
       cascade
     })
@@ -58,7 +61,7 @@ fn fit_first(camera: &CameraView, light: Vec3, width: f32) -> SunCascade {
   let mut rays: SunViewRays = SunViewRays::new(camera);
   let mut cascade: SunCascade = SunCascade::default();
 
-  cascade.fit(camera, &mut rays, light, width, 2048, 400.0);
+  cascade.fit(camera, &mut rays, light, width, 2048, SPAN);
 
   cascade
 }
@@ -107,12 +110,12 @@ fn sun_cascade_holds_the_ground_nearest_the_camera_in_every_cascade() {
 }
 
 #[test]
-fn sun_cascade_takes_casters_from_its_reach_and_receivers_as_far_away() {
+fn sun_cascade_takes_casters_and_receivers_from_as_far_as_the_level_stands() {
   let cascade: SunCascade = fit_first(&create_forward_camera(Vec3::new(0.0, 1.7, 0.0)), DOWN, 20.0);
 
-  assert!(is_inside(&cascade, Vec3::new(0.0, 400.0, 10.0)));
+  assert!(is_inside(&cascade, Vec3::new(0.0, 399.0, 10.0)));
   assert!(!is_inside(&cascade, Vec3::new(0.0, 420.0, 10.0)));
-  assert!(is_inside(&cascade, Vec3::new(0.0, -380.0, 10.0)));
+  assert!(is_inside(&cascade, Vec3::new(0.0, -399.0, 10.0)));
   assert!(!is_inside(&cascade, Vec3::new(0.0, -440.0, 10.0)));
 }
 
@@ -124,7 +127,7 @@ fn sun_cascade_moves_a_whole_texel_at_a_time_and_says_so_only_when_it_does() {
     let camera: CameraView = create_forward_camera(Vec3::new(x, 1.7, 0.0));
     let mut rays: SunViewRays = SunViewRays::new(&camera);
 
-    cascade.fit(&camera, &mut rays, DOWN, 20.0, 2048, 400.0);
+    cascade.fit(&camera, &mut rays, DOWN, 20.0, 2048, SPAN);
   };
 
   fit(0.0, &mut cascade);
@@ -152,7 +155,7 @@ fn sun_cascade_keeps_its_place_along_an_oblique_light_to_a_step() {
     let camera: CameraView = create_forward_camera(light * along);
     let mut rays: SunViewRays = SunViewRays::new(&camera);
 
-    cascade.fit(&camera, &mut rays, light, 20.0, 2048, 400.0);
+    cascade.fit(&camera, &mut rays, light, 20.0, 2048, SPAN);
   };
 
   fit(0.0, &mut cascade);
@@ -205,12 +208,44 @@ fn sun_cascade_is_held_by_its_map_through_a_clocks_turn_but_not_a_seek() {
   let light: Vec3 = Vec3::new(0.3, -1.0, 0.2).normalize();
   let turned = |angle: f32| glam::Quat::from_rotation_z(angle) * light;
   let drawn: SunCascade = fit_first(&camera, light, 160.0);
-  // Half a texel of 160 m at 2048 across, over the reach of 400 m.
+  // Half a texel of 160 m at 2048 across, over the level's four hundred metres towards the sun.
   let limit: f32 = 0.5 * 160.0 / 2048.0 / 400.0;
 
   assert!(fit_first(&camera, turned(limit * 0.5), 160.0).is_held_by(&drawn));
   assert!(!fit_first(&camera, turned(limit * 2.0), 160.0).is_held_by(&drawn));
   assert!(!fit_first(&camera, turned(0.01), 160.0).is_held_by(&drawn));
+}
+
+// A low sun's caster far across the level shadows the ground the camera looks at, however far off it stands.
+#[test]
+fn sun_cascade_holds_every_caster_the_level_stands_towards_the_sun() {
+  let light: Vec3 = Vec3::new(1.0, -0.08, 0.3).normalize();
+  let ground: Vec3 = Vec3::new(0.0, 0.0, 10.0);
+  let caster: Vec3 = ground - light * 1200.0;
+  let span: Option<(f32, f32)> = Some((caster.dot(light) - 1.0, ground.dot(light) + 50.0));
+
+  for height in [1.7, 30.0] {
+    let camera: CameraView = create_forward_camera(Vec3::new(0.0, height, 0.0));
+    let mut rays: SunViewRays = SunViewRays::new(&camera);
+    let mut cascade: SunCascade = SunCascade::default();
+
+    cascade.fit(&camera, &mut rays, light, 160.0, 2048, span);
+
+    assert!(is_inside(&cascade, ground));
+    assert!(is_inside(&cascade, caster));
+  }
+}
+
+#[test]
+fn sun_cascade_is_not_held_by_a_map_drawn_over_another_level() {
+  let camera: CameraView = create_forward_camera(Vec3::new(0.0, 1.7, 0.0));
+  let drawn: SunCascade = fit_first(&camera, DOWN, 160.0);
+  let mut rays: SunViewRays = SunViewRays::new(&camera);
+  let mut wider: SunCascade = SunCascade::default();
+
+  wider.fit(&camera, &mut rays, DOWN, 160.0, 2048, Some((-600.0, 400.0)));
+
+  assert!(!wider.is_held_by(&drawn));
 }
 
 #[test]
@@ -220,7 +255,7 @@ fn sun_cascade_is_not_held_by_a_map_drawn_at_other_settings() {
   let mut rays: SunViewRays = SunViewRays::new(&camera);
   let mut finer: SunCascade = SunCascade::default();
 
-  finer.fit(&camera, &mut rays, DOWN, 160.0, 4096, 400.0);
+  finer.fit(&camera, &mut rays, DOWN, 160.0, 4096, SPAN);
 
   assert!(fit_first(&camera, DOWN, 160.0).is_held_by(&drawn));
   assert!(!finer.is_held_by(&drawn));
