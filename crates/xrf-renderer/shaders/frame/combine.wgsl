@@ -148,7 +148,11 @@ fn fs_combine(in: FullscreenVarying) -> CombineOutput {
     lighting.params.w > 0.5);
   let bounced: vec3<f32> = bounced_occlusion(visible, albedo.rgb, lighting.params.x);
   let occlusion: f32 = mix(1.0, material.x, camera.switches.z);
-  let terms: HmodelTerms = shaded_terms(albedo, light, normal, position, material.z, occlusion, bounced);
+  // The lights' specular, the engine's model, sees the gloss the engine's own wetting gave, not what the reflections'
+  // wet reach added for the trace.
+  let reach: f32 = textureLoad(wet_reach, min(texel, vec2<i32>(textureDimensions(wet_reach)) - 1), 0).r;
+  let terms: HmodelTerms = shaded_terms(vec4<f32>(albedo.rgb, max(albedo.a - reach, 0.0)), light, normal, position,
+    material.z, occlusion, bounced);
   var shaded: vec3<f32> = terms.base;
 
   // The light the frame's surfaces bounce onto this one, lighting its albedo as the hemisphere does.

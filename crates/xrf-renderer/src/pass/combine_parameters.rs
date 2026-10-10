@@ -36,4 +36,7 @@ pub struct CombineParameters<'a> {
   pub reflections: GraphTexture,
   #[texture(d2, unfilterable)]
   pub wet_surface: GraphTexture,
+  /// The gloss the reflections' wet reach added beyond the engine's own wetting, which the lights' specular leaves out.
+  #[texture(d2, unfilterable)]
+  pub wet_reach: GraphTexture,
 }

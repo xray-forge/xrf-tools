@@ -27,6 +27,9 @@ impl WetPass {
   /// much of the surface a puddle's clear coat of water covers, how much a puddle, the water's height over the ground in
   /// metres, and the variance of the ripples' tilt the patch's filtering folded away.
   pub const SURFACE: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
+  /// What both patches write beside the light target for combine: the gloss the reflections' wet reach added beyond
+  /// the engine's own wetting, which the lights' specular leaves out.
+  pub const REACH: wgpu::TextureFormat = wgpu::TextureFormat::R8Unorm;
 
   /// # Errors
   ///
@@ -109,9 +112,10 @@ impl WetPass {
     [patch, apply]: &[wgpu::BindGroupLayout; 2],
     suffix: &str,
   ) -> XrfResult<[wgpu::RenderPipeline; 3]> {
-    // The enhanced patch writes the wet surface beside the light target.
+    // The enhanced patch writes the wet surface beside the light target; both, the wet reach's gloss last.
     let targets: Vec<Option<wgpu::ColorTargetState>> = std::iter::once(ViewTargets::LIGHT)
       .chain((!suffix.is_empty()).then_some(Self::SURFACE))
+      .chain(std::iter::once(Self::REACH))
       .map(|format| Some(format.into()))
       .collect();
     let patched: wgpu::RenderPipeline = create_fullscreen_pipeline_into(
