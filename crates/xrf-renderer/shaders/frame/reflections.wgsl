@@ -484,8 +484,8 @@ struct TracedSurface {
   world: vec3<f32>,
 };
 
-fn traced_surface(pixel: vec2<f32>) -> TracedSurface {
-  let texel: vec2<i32> = traced_texel(pixel);
+// The surface at the frame's texel a traced pixel stands for, its roughness with it, which the guide keeps.
+fn traced_surface_at(texel: vec2<i32>) -> TracedSurface {
   var surface: TracedSurface = traced_geometry(texel);
   let wet: vec4<f32> = textureLoad(wet_surface, texel, 0);
 
@@ -507,6 +507,32 @@ fn traced_geometry(texel: vec2<i32>) -> TracedSurface {
 
   return TracedSurface(select(normal, vec3<f32>(0.0, 1.0, 0.0), is_level), 0.0,
     -camera_view_position(vec2<f32>(texel) + 0.5, depth).z, world);
+}
+
+// The guide a traced pixel's surface is read from by the stages after the trace, worked out once a frame: the frame's
+// texel it stands for, packed in `w`; its world normal, terrain's levelled, packed in `x`; its roughness; its depth.
+// What every stage and tap would otherwise find again from the G-buffer, its block's search included.
+@fragment
+fn fs_guide(in: FullscreenVarying) -> @location(0) vec4<f32> {
+  let texel: vec2<i32> = traced_texel(floor(in.clip.xy));
+  let surface: TracedSurface = traced_surface_at(texel);
+
+  return vec4<f32>(bitcast<f32>(pack2x16snorm(octahedral_encode(surface.normal))), surface.roughness,
+    textureLoad(depth_target, texel, 0), bitcast<f32>(u32(texel.x) | (u32(texel.y) << 16u)));
+}
+
+// The surface a traced pixel stands for, read from this frame's guide.
+fn guided_surface(pixel: vec2<f32>) -> TracedSurface {
+  let last: vec2<i32> = vec2<i32>(textureDimensions(guide)) - 1;
+  let read: vec4<f32> = textureLoad(guide, clamp(vec2<i32>(pixel), vec2<i32>(0), last), 0);
+  let packed: u32 = bitcast<u32>(read.w);
+  let texel: vec2<f32> = vec2<f32>(f32(packed & 0xffffu), f32(packed >> 16u)) + 0.5;
+  let depth: f32 = max(read.z, 1e-7);
+  let uv: vec2<f32> = texel / camera.viewport.xy;
+  let world: vec3<f32> = camera_unproject(vec2<f32>(uv.x * 2.0 - 1.0, 1.0 - uv.y * 2.0), depth);
+
+  return TracedSurface(normalize(octahedral_decode(unpack2x16snorm(bitcast<u32>(read.x)))), read.y,
+    -camera_view_position(texel, depth).z, world);
 }
 
 // Where a world point stood on the last frame's screen, in texture coordinates; off it where it stood behind it.
@@ -599,7 +625,7 @@ fn fs_reproject(in: FullscreenVarying) -> ReprojectedTargets {
     return ReprojectedTargets(vec4<f32>(0.0), 0.0);
   }
 
-  let surface: TracedSurface = traced_surface(pixel);
+  let surface: TracedSurface = guided_surface(pixel);
   // Without history a rough reflection is all noise, a mirror's little.
   let dropped: ReprojectedTargets = ReprojectedTargets(vec4<f32>(0.0, 0.0, 0.0, 1.0),
     mix(0.1, 1.0, smoothstep(BLURRED_ROUGHNESS.x, BLURRED_ROUGHNESS.y, surface.roughness)));
@@ -740,7 +766,7 @@ fn fs_prefilter(in: FullscreenVarying) -> @location(0) vec4<f32> {
   }
 
   let spread: f32 = textureLoad(variance, vec2<i32>(pixel), 0).x;
-  let surface: TracedSurface = traced_surface(pixel);
+  let surface: TracedSurface = guided_surface(pixel);
 
   if (spread <= 0.0 || surface.roughness < 1e-4 || surface.roughness > TRACED_ROUGHNESS_LIMIT) {
     return vec4<f32>(centre.rgb, max(spread, 0.0));
@@ -766,7 +792,7 @@ fn fs_prefilter(in: FullscreenVarying) -> @location(0) vec4<f32> {
       continue;
     }
 
-    let other: TracedSurface = traced_geometry(traced_texel(vec2<f32>(at)));
+    let other: TracedSurface = guided_surface(vec2<f32>(at));
     let off_plane: f32 = abs(dot(surface.normal, other.world - surface.world));
     let weight: f32 = pow(max(dot(surface.normal, other.normal), 0.0), PREFILTER_NORMAL_SIGMA) *
       exp(-off_plane / max(surface.distance * PREFILTER_PLANE, 1e-3)) *
@@ -800,7 +826,7 @@ fn fs_resolve(in: FullscreenVarying) -> ResolvedTargets {
     return ResolvedTargets(UNTRACED, vec4<f32>(0.0), vec4<f32>(0.0));
   }
 
-  let surface: TracedSurface = traced_surface(pixel);
+  let surface: TracedSurface = guided_surface(pixel);
   let held: vec4<f32> = textureLoad(reprojected, vec2<i32>(pixel), 0);
   let length_met: f32 = max(textureLoad(traced, vec2<i32>(pixel), 0).a, 0.0);
   let kept: ResolvedTargets = ResolvedTargets(vec4<f32>(0.0), vec4<f32>(surface.normal, surface.roughness),
@@ -831,6 +857,45 @@ fn fs_resolve(in: FullscreenVarying) -> ResolvedTargets {
   }
 
   return ResolvedTargets(vec4<f32>(resolved, variance), kept.surface, kept.held);
+}
+
+// The resolve brought up to a frame pixel by the guide: the four traced pixels about it by their bilinear share, how
+// near the distance each one's surface stands to the pixel's, how alike its world normal (terrain's levelled, as the
+// guide keeps it) faces to `normal`, and how near its roughness stands to `roughness`, as `upsampled_reflection` weighs
+// them from the G-buffer, read from the guide in one load each. Untraced, alpha below none, where none speaks for it.
+fn guided_upsample(pixel: vec2<f32>, normal: vec3<f32>, distance: f32, roughness: f32) -> vec4<f32> {
+  let ratio: f32 = reflection.ratio;
+  let last: vec2<f32> = vec2<f32>(textureDimensions(resolved)) - 1.0;
+  let base: vec2<f32> = floor(pixel / ratio);
+  let fraction: vec2<f32> = (pixel - base * ratio) / ratio;
+  var sum: vec4<f32> = vec4<f32>(0.0);
+  var weights: f32 = 0.0;
+
+  for (var corner: u32 = 0u; corner < 4u; corner++) {
+    let offset: vec2<f32> = vec2<f32>(f32(corner & 1u), f32(corner >> 1u));
+    let at: vec2<i32> = vec2<i32>(clamp(base + offset, vec2<f32>(0.0), last));
+    let texel: vec4<f32> = textureLoad(resolved, at, 0);
+    let read: vec4<f32> = textureLoad(guide, at, 0);
+    let packed: u32 = bitcast<u32>(read.w);
+    let shown: vec2<f32> = vec2<f32>(f32(packed & 0xffffu), f32(packed >> 16u)) + 0.5;
+    let there: f32 = -camera_view_position(shown, max(read.z, 1e-7)).z;
+    let facing: f32 = pow(saturate(dot(octahedral_decode(unpack2x16snorm(bitcast<u32>(read.x))), normal)),
+      UPSAMPLE_NORMAL_POWER);
+    let alike: f32 = 1.0 / (1.0 + UPSAMPLE_ROUGHNESS_SCALE * abs(read.y - roughness));
+    let bilinear: f32 = mix(1.0 - fraction.x, fraction.x, offset.x) * mix(1.0 - fraction.y, fraction.y, offset.y);
+    let difference: f32 = abs(there - distance) / max(distance, 1e-3);
+    let weight: f32 = select(0.0, bilinear * facing * alike / (difference * difference + 1e-3),
+      texel.a >= 0.0 && read.z > 0.0);
+
+    sum += texel * weight;
+    weights += weight;
+  }
+
+  if (weights <= 1e-6) {
+    return UNTRACED;
+  }
+
+  return sum / weights;
 }
 
 // The full-size history's share of this frame's reflection a frame where it holds, and how far, a share of the
@@ -866,8 +931,7 @@ fn fs_upscale(in: FullscreenVarying) -> @location(0) vec4<f32> {
   if (reflection.ratio <= 1.0) {
     current = textureLoad(resolved, min(texel, vec2<i32>(textureDimensions(resolved)) - 1), 0);
   } else {
-    current = upsampled_reflection(resolved, depth_target, material_target, normal_target, albedo_target, pixel,
-      vec4<f32>(normal, distance), roughness, reflection.ratio, reflection.frame);
+    current = guided_upsample(pixel, traced_geometry(texel).normal, distance, roughness);
   }
 
   if (current.a < 0.0) {

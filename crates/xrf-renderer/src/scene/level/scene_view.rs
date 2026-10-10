@@ -1206,6 +1206,7 @@ impl SceneView {
       ReflectionPass::AVERAGE,
     );
     let prefiltered: GraphTexture = create("reflections prefiltered", (width, height), ReflectionPass::PREFILTERED);
+    let guide: GraphTexture = create("reflections guide", (width, height), ReflectionPass::GUIDED);
     let index: usize = history.index;
     let mut import_pair = |label: &'static str, views: &'a [wgpu::TextureView; 2]| -> [GraphTexture; 2] {
       [1 - index, index].map(|at| bindings.import_view(&mut *graph, label, &views[at]))
@@ -1243,6 +1244,7 @@ impl SceneView {
       history_held: previous_held,
       resolved: empty,
       history_full: empty,
+      guide: empty,
       history_sampler: passes.reflections.get_sampler(),
     };
     let clear = |target: GraphTexture| GraphColorAttachment::new(target, wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT));
@@ -1255,6 +1257,18 @@ impl SceneView {
       .color(clear(ends))
       .record(move |context| passes.reflections.record_trace(context, view, &parameters, &sky));
 
+    // Each traced pixel's surface for the stages after the trace, worked out once.
+    graph
+      .add_raster_pass(ReflectionTrace::GUIDE_PASS)
+      .parameters(&parameters)
+      .color(clear(guide))
+      .record(move |context| {
+        passes
+          .reflections
+          .record_stage(context, view, &parameters, ReflectionPass::GUIDE)
+      });
+
+    let parameters: ReflectionParameters<'a> = ReflectionParameters { guide, ..parameters };
     // Each stage, what it reads beside the G-buffer and the history, and what it writes.
     let stages: [(&'static str, &'static str, ReflectionParameters<'a>, Vec<GraphTexture>); 5] = [
       (
