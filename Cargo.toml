@@ -163,17 +163,18 @@ xrf-visual = { path = "crates/xrf-visual" }
 xrf-world = { path = "crates/xrf-world" }
 xrf-xml = { path = "crates/xrf-xml" }
 
-# wgpu's release with D3D12's command list reachable from a HAL command encoder, which DLSS records into on D3D12; the
-# whole family comes from the fork so one copy of each crate is built.
+# wgpu's release with D3D12's command list reachable from a HAL command encoder, which DLSS records into on D3D12, and
+# bottom-level acceleration structures refit in place where they allow and ask for it; the whole family comes from the
+# fork so one copy of each crate is built.
 [patch.crates-io]
-naga = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "bbdbde790c72c9154a619487bd14f9e80bac5f34" }
-naga-types = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "bbdbde790c72c9154a619487bd14f9e80bac5f34" }
-wgpu = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "bbdbde790c72c9154a619487bd14f9e80bac5f34" }
-wgpu-core = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "bbdbde790c72c9154a619487bd14f9e80bac5f34" }
-wgpu-core-deps-windows-linux-android = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "bbdbde790c72c9154a619487bd14f9e80bac5f34" }
-wgpu-hal = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "bbdbde790c72c9154a619487bd14f9e80bac5f34" }
-wgpu-naga-bridge = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "bbdbde790c72c9154a619487bd14f9e80bac5f34" }
-wgpu-types = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "bbdbde790c72c9154a619487bd14f9e80bac5f34" }
+naga = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "c64da79978429b535b435e9340010290b7107a17" }
+naga-types = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "c64da79978429b535b435e9340010290b7107a17" }
+wgpu = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "c64da79978429b535b435e9340010290b7107a17" }
+wgpu-core = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "c64da79978429b535b435e9340010290b7107a17" }
+wgpu-core-deps-windows-linux-android = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "c64da79978429b535b435e9340010290b7107a17" }
+wgpu-hal = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "c64da79978429b535b435e9340010290b7107a17" }
+wgpu-naga-bridge = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "c64da79978429b535b435e9340010290b7107a17" }
+wgpu-types = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "c64da79978429b535b435e9340010290b7107a17" }
 
 # Size-optimised: level 3 measured 3.7% faster for 36-40% larger binaries.
 [profile.release]
