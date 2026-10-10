@@ -1084,6 +1084,11 @@ export type RenderReflectionSettings = {
   quality: RenderReflectionQuality;
   /** How fine the surroundings cube a ray meeting nothing on the screen reads is. */
   probe: RenderReflectionProbe;
+  /**
+   * How far the sky's highlights are scaled at its white as light for the traced reflections, one as the engine's sky
+   * picture shows them.
+   */
+  skyGain: number | null;
 };
 
 /**

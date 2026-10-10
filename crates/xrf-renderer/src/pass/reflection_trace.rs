@@ -7,6 +7,8 @@ pub struct ReflectionTrace {
   pub quality: RenderReflectionQuality,
   /// What scales how much of a surface's reflection a traced one replaces, and how much a puddle's coat reflects.
   pub intensity: f32,
+  /// How far the sky's highlights are scaled as their light, from `SKY_GAIN_LEAST` to `SKY_GAIN_MOST`.
+  pub sky_gain: f32,
 }
 
 impl ReflectionTrace {
@@ -16,6 +18,9 @@ impl ReflectionTrace {
   pub const AVERAGE_PASS: &'static str = "reflection average";
   pub const PREFILTER_PASS: &'static str = "reflection prefilter";
   pub const RESOLVE_PASS: &'static str = "reflection resolve";
+  /// The least and the most the sky's highlights are scaled by as light.
+  pub const SKY_GAIN_LEAST: f32 = 0.5;
+  pub const SKY_GAIN_MOST: f32 = 3.0;
 
   /// What the view traces, or none: unlit, wireframe, or the engine's own reflections asked for.
   pub fn new(options: &RenderViewOptions) -> Option<Self> {
@@ -28,6 +33,7 @@ impl ReflectionTrace {
     Some(Self {
       quality: settings.quality,
       intensity: settings.intensity,
+      sky_gain: settings.sky_gain.clamp(Self::SKY_GAIN_LEAST, Self::SKY_GAIN_MOST),
     })
   }
 

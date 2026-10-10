@@ -62,7 +62,7 @@ fn traces_only_enhanced_with_an_intensity_and_a_distance() {
   assert_eq!(defaults.intensity, 1.0);
   assert_eq!(defaults.distance, 150.0);
   assert_eq!(defaults.quality, RenderReflectionQuality::High);
-  assert_eq!(defaults.reach, 250.0);
+  assert_eq!(defaults.reach, 300.0);
   assert!(!defaults.is_drawn());
   assert!(enhanced().is_drawn());
   assert!(
@@ -96,6 +96,7 @@ fn skips_every_pass_where_nothing_is_traced() {
     Some(ReflectionTrace {
       quality: RenderReflectionQuality::High,
       intensity: 1.0,
+      sky_gain: 1.25,
     })
   );
 
@@ -113,7 +114,7 @@ fn skips_every_pass_where_nothing_is_traced() {
 }
 
 // Combine blends the reflections in only where they are traced, reads them at the quality's size and scales the share
-// by the intensity, on either engine, wet or dry, with the sky's highlights expanded by half again as light.
+// by the intensity, on either engine, wet or dry, with the sky's highlights expanded as light by the settings' gain.
 #[test]
 fn blends_reflections_in_only_where_traced() {
   let vanilla: RenderLighting = lighting_of(XrayEngine::Vanilla);
@@ -125,15 +126,15 @@ fn blends_reflections_in_only_where_traced() {
 
   assert_eq!(
     lighting_uniform(&options_with(enhanced()), &vanilla).reflections,
-    Vec4::new(1.0, 2.0, 1.0, 1.5)
+    Vec4::new(1.0, 2.0, 1.0, 1.25)
   );
   assert_eq!(
     lighting_uniform(&ultra, &vanilla).reflections,
-    Vec4::new(1.0, 1.0, 1.0, 1.5)
+    Vec4::new(1.0, 1.0, 1.0, 1.25)
   );
   assert_eq!(
     lighting_uniform(&options_with(enhanced()), &lighting_of(XrayEngine::Extended)).reflections,
-    Vec4::new(1.0, 2.0, 1.0, 1.5)
+    Vec4::new(1.0, 2.0, 1.0, 1.25)
   );
   assert_eq!(
     lighting_uniform(
@@ -144,7 +145,7 @@ fn blends_reflections_in_only_where_traced() {
       &vanilla
     )
     .reflections,
-    Vec4::new(1.0, 2.0, 2.5, 1.5)
+    Vec4::new(1.0, 2.0, 2.5, 1.25)
   );
   assert_eq!(
     lighting_uniform(&options_with(RenderReflectionSettings::default()), &vanilla).reflections,

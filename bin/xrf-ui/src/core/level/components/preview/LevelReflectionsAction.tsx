@@ -11,6 +11,7 @@ import {
   explainRenderReflectionMode,
   formatReflectionDistance,
   formatReflectionIntensity,
+  formatReflectionSkyGain,
   RENDER_REFLECTION_LIMITS,
   RENDER_REFLECTION_PROBE_OPTIONS,
   RENDER_REFLECTION_QUALITY_OPTIONS,
@@ -105,6 +106,14 @@ export function LevelReflectionsAction({
             {...RENDER_REFLECTION_LIMITS.reach}
             format={formatReflectionDistance}
             onChange={(reach: number) => set({ reach })}
+          />
+
+          <RenderValueSlider
+            label={"Sky light"}
+            value={value.skyGain}
+            {...RENDER_REFLECTION_LIMITS.skyGain}
+            format={formatReflectionSkyGain}
+            onChange={(skyGain: number) => set({ skyGain })}
           />
         </>
       ) : null}

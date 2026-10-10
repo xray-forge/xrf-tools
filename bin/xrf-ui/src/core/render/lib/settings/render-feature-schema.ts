@@ -141,6 +141,7 @@ export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings>
     probe: toChoice(ERenderReflectionProbe),
     quality: toChoice(ERenderReflectionQuality),
     reach: toNumber(25, 1000, true),
+    skyGain: toNumber(0.5, 3),
   },
   lights: {
     isEnabled: FLAG,

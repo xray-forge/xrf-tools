@@ -347,6 +347,7 @@ export const RENDER_REFLECTION_LIMITS = {
   distance: toRenderLimits(RENDER_FEATURE_SCHEMA.reflections.distance, 5),
   intensity: toRenderLimits(RENDER_FEATURE_SCHEMA.reflections.intensity, 0.05),
   reach: toRenderLimits(RENDER_FEATURE_SCHEMA.reflections.reach, 25),
+  skyGain: toRenderLimits(RENDER_FEATURE_SCHEMA.reflections.skyGain, 0.05),
 } as const;
 
 const RENDER_REFLECTION_MODE_DESCRIPTIONS: Readonly<Record<RenderReflectionMode, string>> = {
@@ -421,6 +422,11 @@ export function formatReflectionIntensity(intensity: number): string {
 /** @returns How far a ray is traced. */
 export function formatReflectionDistance(distance: number): string {
   return `${formatNumber(distance, 0)} m`;
+}
+
+/** @returns How far the sky's highlights are expanded as their light. */
+export function formatReflectionSkyGain(gain: number): string {
+  return `${formatNumber(gain, 2)}×`;
 }
 
 /** The bounds each enhanced fog value is offered between. */

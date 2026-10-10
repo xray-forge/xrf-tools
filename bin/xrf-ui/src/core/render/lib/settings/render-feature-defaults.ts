@@ -143,15 +143,16 @@ export const DEFAULT_RENDER_RAIN_SETTINGS: TRenderRainSettings = {
 
 /**
  * The engine's own: the cube alone, and for when it is traced, rays of 150 metres at high quality at full strength over
- * ground wet to 250 metres.
+ * ground wet to 300 metres, the sky's highlights a quarter brighter as their light.
  */
 export const DEFAULT_RENDER_REFLECTION_SETTINGS: TRenderReflectionSettings = {
   distance: 150,
-  reach: 250,
+  reach: 300,
   intensity: 1,
   mode: ERenderReflectionMode.ENGINE,
   probe: ERenderReflectionProbe.FINE,
   quality: ERenderReflectionQuality.HIGH,
+  skyGain: 1.25,
 };
 
 /** The engine's own: every spawned light, and none of the level file's. */
