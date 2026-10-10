@@ -89,6 +89,8 @@ const SURFACE_HAS_LIGHTMAP: u32 = 67108864u;
 const SURFACE_IS_DISTORTING: u32 = 134217728u;
 // Glass, which the enhanced glass draws.
 const SURFACE_IS_GLASS: u32 = 268435456u;
+// A level surface the engines leave flat, its bump pair's second's alpha a height the enhanced parallax marches.
+const SURFACE_IS_RELIEF_BUMPED: u32 = 536870912u;
 
 // Vertices one cluster's draw spans: 128 triangles, those past its own collapsed.
 const CLUSTER_VERTICES: u32 = 384u;

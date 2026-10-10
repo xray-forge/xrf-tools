@@ -22,6 +22,9 @@ const ENVIRONMENT_MAPPED_CLASS: &str = "MODELEbB";
 /// `B_DEFAULT_AREF`, `B_VERT` and `B_VERT_AREF` (`r2_blenders.cpp`).
 const STEEP_CLASSES: [&str; 4] = ["LM", "LM_AREF", "V", "V_AREF"];
 
+/// The level's opaque classes, whose bumped surfaces the enhanced parallax marches where the engines leave them flat.
+const RELIEF_CLASSES: [&str; 2] = ["LM", "V"];
+
 /// The engines' glass shaders: the level's blended panes (`def_trans`, `def_trans_v`, `def_refl_trans`) and the models'
 /// windows (`models\window`, `models\xwindows`), as their shader table names them. The level's blended fences and
 /// wire share them, so a pane is told apart by its base too (`GLASS_TEXTURES`).
@@ -158,6 +161,10 @@ pub fn build_static_surface(
 
   if flags & StaticSurface::HAS_BUMP != 0 && descriptor.is_some_and(is_steep) {
     flags |= StaticSurface::IS_STEEP;
+  } else if flags & StaticSurface::HAS_BUMP != 0
+    && descriptor.is_some_and(|it| it.terrain.is_none() && is_relief_class(it))
+  {
+    flags |= StaticSurface::IS_RELIEF_BUMPED;
   }
 
   let terrain: StaticTerrainSlots = match descriptor.and_then(|it| it.terrain.as_ref()) {
@@ -340,6 +347,14 @@ fn is_steep(descriptor: &XraySurfaceDescriptor) -> bool {
     .as_ref()
     .is_some_and(|it| it.mode == XrayBumpMode::Parallax)
     && matches!(&descriptor.declaration, XraySurfaceDeclaration::Described { class, .. } if STEEP_CLASSES.contains(&class.as_str()))
+}
+
+/// A level surface of an opaque class (`RELIEF_CLASSES`).
+fn is_relief_class(descriptor: &XraySurfaceDescriptor) -> bool {
+  match &descriptor.declaration {
+    XraySurfaceDeclaration::Described { class, .. } => RELIEF_CLASSES.contains(&class.as_str()),
+    _ => false,
+  }
 }
 
 /// `B_MODEL_EbB`'s, which blends toward an environment map where its base is thin.

@@ -348,17 +348,31 @@ const STEEP_REACH: f32 = -0.0156;
 var<private> terrain_moved: vec2<f32> = vec2<f32>(0.0);
 var<private> is_terrain_marched: bool = false;
 
+// Where an enhanced march stands a surface the engines leave flat under its relief's top: at the middle, so a height
+// that barely varies, about a half throughout, leaves the coordinate where it was.
+const BUMPED_PLANE: f32 = 0.5;
+
+// Whether the enhanced parallax marches a surface the engines leave flat (`SURFACE_IS_RELIEF_BUMPED`).
+fn is_relief_bumped(flags: u32) -> bool {
+  return has_surfaces_bit(SURFACES_STEEP) && has_surfaces_bit(SURFACES_ENHANCED) &&
+    (flags & SURFACE_IS_RELIEF_BUMPED) != 0u;
+}
+
 fn steep_footprint(in: GBufferVarying, at: Footprint) -> Footprint {
   let surface: Surface = surfaces[in.surface];
   let position: vec3<f32> = (camera.view * vec4<f32>(in.world, 1.0)).xyz;
   let distance: f32 = -position.z;
+
+  if (is_relief_bumped(surface.flags)) {
+    return surface_relief(in, at, position, BUMPED_PLANE);
+  }
 
   if (!has_surfaces_bit(SURFACES_STEEP) || (surface.flags & SURFACE_IS_STEEP) == 0u) {
     return at;
   }
 
   if (has_surfaces_bit(SURFACES_ENHANCED)) {
-    return surface_relief(in, at, position);
+    return surface_relief(in, at, position, 0.0);
   }
 
   if (distance >= STEEP_FADE.y) {
@@ -399,10 +413,11 @@ fn steep_footprint(in: GBufferVarying, at: Footprint) -> Footprint {
   return out;
 }
 
-// The enhanced parallax on a steep surface, in place of the engines': its bump pair's second's alpha marched as a
-// terrain's layer is, within `parallax_mix.w` metres and `parallax_mix.z` of its coordinate deep, its hollows darkened
-// and shadowed towards the sun.
-fn surface_relief(in: GBufferVarying, at: Footprint, position: vec3<f32>) -> Footprint {
+// The enhanced parallax on a steep surface, in place of the engines', or on a bumped one they leave flat: its bump
+// pair's second's alpha marched as a terrain's layer is, the surface drawn standing `plane` under the relief's top,
+// within `parallax_mix.w` metres and `parallax_mix.z` of its coordinate deep, its hollows darkened and shadowed towards
+// the sun.
+fn surface_relief(in: GBufferVarying, at: Footprint, position: vec3<f32>, plane: f32) -> Footprint {
   let range: f32 = camera.parallax_mix.w;
   let distance: f32 = -position.z;
 
@@ -422,7 +437,7 @@ fn surface_relief(in: GBufferVarying, at: Footprint, position: vec3<f32>) -> Foo
   let steps: f32 = mix(camera.parallax.x, RELIEF_STEPS_LEAST, saturate(abs(eye.z)));
   let slot: u32 = surfaces[in.surface].textures[SLOT_BUMP_COMPANION];
   let lod: f32 = relief_lod(slot, at.dx, at.dy);
-  let hit: vec3<f32> = relief_march(slot, at.uv, lod, 1.0, reach, steps, 3u, 0.0);
+  let hit: vec3<f32> = relief_march(slot, at.uv, lod, 1.0, reach, steps, 3u, plane);
   let height: f32 = 1.0 - hit.z;
   var out: Footprint = at;
 
@@ -461,7 +476,8 @@ fn surfaces_shown(in: GBufferVarying, at: Footprint, shaded: GBufferOutput) -> G
   let brightness: f32 = dot(shaded.albedo.rgb, vec3<f32>(0.2126, 0.7152, 0.0722));
 
   if (is_parallax) {
-    let is_steep: bool = has_surfaces_bit(SURFACES_STEEP) && (flags & SURFACE_IS_STEEP) != 0u;
+    let is_steep: bool = (has_surfaces_bit(SURFACES_STEEP) && (flags & SURFACE_IS_STEEP) != 0u) ||
+      is_relief_bumped(flags);
     // The most a march reaches: the engines' fixed one, or an enhanced surface's depth over the grazing bias.
     let reach: f32 = select(abs(STEEP_REACH), max(camera.parallax_mix.z / RELIEF_GRAZING, 1e-4),
       has_surfaces_bit(SURFACES_ENHANCED));
@@ -490,7 +506,7 @@ fn surfaces_shown(in: GBufferVarying, at: Footprint, shaded: GBufferOutput) -> G
       }
 
       out.albedo = vec4<f32>(vec3<f32>(height), shaded.albedo.a);
-    } else if ((flags & SURFACE_IS_STEEP) != 0u) {
+    } else if ((flags & (SURFACE_IS_STEEP | SURFACE_IS_RELIEF_BUMPED)) != 0u) {
       let height: f32 = sample_slot(surfaces[in.surface].textures[SLOT_BUMP_COMPANION], at.uv, at.dx, at.dy).a;
 
       out.albedo = vec4<f32>(vec3<f32>(height), shaded.albedo.a);
