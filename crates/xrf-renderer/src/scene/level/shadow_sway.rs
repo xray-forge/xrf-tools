@@ -29,11 +29,6 @@ impl ShadowSway<'_> {
   /// reaching `reach` leans across enough of a texel `texel` wide to show. Both are metres, or both are per metre of
   /// distance from a light.
   pub fn is_redrawn(&self, reach: f32, texel: f32, drawn_at: f32) -> bool {
-    self.amplitude * reach > texel * SWAY_TEXELS && self.is_due(drawn_at)
-  }
-
-  /// Whether a map drawn at `drawn_at` is due a draw for what moves: once its interval passed.
-  pub fn is_due(&self, drawn_at: f32) -> bool {
-    self.time - drawn_at >= SHADOW_SWAY_INTERVAL * (1.0 - SWAY_SLACK)
+    self.amplitude * reach > texel * SWAY_TEXELS && self.time - drawn_at >= SHADOW_SWAY_INTERVAL * (1.0 - SWAY_SLACK)
   }
 }

@@ -129,7 +129,7 @@ export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings>
     // The renderer's own: past the near field a tuft's shadow is a few pixels across.
     isShadowed: FLAG,
     radius: toNumber(49, 450, true),
-    shadowRadius: toNumber(5, 40),
+    shadowRadius: toNumber(5, 150),
     // The renderer's own: degrees of slope, ninety for none.
     slopeLimit: toNumber(10, 90),
   },
