@@ -33,6 +33,8 @@ impl MaterialTable {
       .create_view(&Default::default());
     let sampler: wgpu::Sampler = device.create_sampler(&wgpu::SamplerDescriptor {
       label: Some("material table"),
+      // `smp_material`: a slice past the last wraps to the first, as a texture's material can pass it.
+      address_mode_w: wgpu::AddressMode::Repeat,
       mag_filter: wgpu::FilterMode::Linear,
       min_filter: wgpu::FilterMode::Linear,
       ..Default::default()

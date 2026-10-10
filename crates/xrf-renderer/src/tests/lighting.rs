@@ -2,6 +2,7 @@ use glam::Vec3;
 
 use crate::contract::render_light_scales::RenderLightScales;
 use crate::lighting::material_lut::{MATERIAL_LUT_DEPTH, MATERIAL_LUT_HEIGHT, MATERIAL_LUT_WIDTH, create_material_lut};
+use crate::lighting::material_slice::material_slice;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::lighting::sun_direction::to_renderer_sun_direction;
 
@@ -144,4 +145,15 @@ fn sun_direction_takes_heading_then_pitch_with_z_negated() {
   assert_near(to_renderer_sun_direction(90.0, 0.0), [-1.0, 0.0, 0.0]);
   assert_near(to_renderer_sun_direction(0.0, -90.0), [0.0, -1.0, 0.0]);
   assert_near(to_renderer_sun_direction(45.0, -45.0), [-0.5, -0.707_106_77, -0.5]);
+}
+
+#[test]
+fn material_slice_is_what_the_g_buffer_keeps_of_a_texture_material() {
+  // Blinn, the default, packed down from 0.375 to 8 of 31 steps over four thirds.
+  assert!((material_slice(1.0) - 32.0 / 93.0).abs() < 1e-6);
+  assert!((material_slice(0.0) - 8.0 / 93.0).abs() < 1e-6);
+  // A tree's `MAT_FLORA` six passes as it stands and wraps in the packing to between Blinn and Phong.
+  assert!((material_slice(6.0) - 44.0 / 93.0).abs() < 1e-6);
+  // Metal with a heavy weight passes the last slice, which the table's sampler wraps.
+  assert!(material_slice(3.8) > 1.0);
 }
