@@ -72,6 +72,7 @@ use crate::pass::shadow_tile_restore_parameters::ShadowTileRestoreParameters;
 use crate::pass::shadow_uniform::ShadowUniform;
 use crate::pass::sky_behind_parameters::SkyBehindParameters;
 use crate::pass::sky_haze_parameters::SkyHazeParameters;
+use crate::pass::sky_motion_parameters::SkyMotionParameters;
 use crate::pass::sky_parameters::SkyParameters;
 use crate::pass::sky_prefilter_parameters::SkyPrefilterParameters;
 use crate::pass::sky_prefilter_uniform::SkyPrefilterUniform;
@@ -137,6 +138,7 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
   let mut contact_shadows: ShaderBindings = ShaderBindings::new();
   let mut sun: ShaderBindings = ShaderBindings::new();
   let mut sun_trace: ShaderBindings = ShaderBindings::new();
+  let mut sky_motion: ShaderBindings = ShaderBindings::new();
   let mut light_binning: ShaderBindings = ShaderBindings::new();
   let mut sky_behind: ShaderBindings = ShaderBindings::new();
   let mut ray_guides: ShaderBindings = ShaderBindings::new();
@@ -244,6 +246,7 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
   contact_shadows.add::<ContactShadowParameters>()?;
   sun.add::<SunParameters<'_>>()?;
   sun_trace.add::<SunTraceParameters>()?;
+  sky_motion.add::<SkyMotionParameters>()?;
   light_binning.add::<LightBinningParameters>()?;
   sky_behind.add::<SkyBehindParameters>()?;
   ray_guides.add::<RayGuidesParameters>()?;
@@ -342,6 +345,10 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
       format!("{STRUCTS_IMPORT}{}", contact_shadows.to_wgsl()),
     ),
     ("generated/frame/sun", format!("{STRUCTS_IMPORT}{}", sun.to_wgsl())),
+    (
+      "generated/frame/sky_motion",
+      format!("{STRUCTS_IMPORT}{}", sky_motion.to_wgsl()),
+    ),
     (
       "generated/frame/sun_trace",
       format!("{STRUCTS_IMPORT}{}", sun_trace.to_wgsl()),

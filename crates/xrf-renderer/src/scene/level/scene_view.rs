@@ -53,6 +53,7 @@ use crate::pass::lighting_frame::LightingFrame;
 use crate::pass::lighting_uniform::LightingUniform;
 use crate::pass::rain_uniform::RainUniform;
 use crate::pass::reflection_trace::ReflectionTrace;
+use crate::pass::sky_motion_parameters::SkyMotionParameters;
 use crate::pass::sky_parameters::SkyParameters;
 use crate::pass::static_draw_parameters::StaticDrawParameters;
 use crate::pass::sun_parameters::SunParameters;
@@ -1003,6 +1004,17 @@ impl SceneView {
         .features
         .statics
         .add_wallmark_passes(&mut *graph, passes, (view, texture_group, &statics), handles);
+
+      // Where nothing was drawn, the sky's motion, which the resolves carry its history by.
+      let sky_motion: SkyMotionParameters = SkyMotionParameters {
+        depth_target: handles.depth,
+      };
+
+      graph
+        .add_raster_pass("sky motion")
+        .parameters(&sky_motion)
+        .color(GraphColorAttachment::new(handles.motion, wgpu::LoadOp::Load))
+        .record(move |context| passes.sky_motion.record(context, view, &sky_motion));
     }
 
     graph.begin_group("shadows");
