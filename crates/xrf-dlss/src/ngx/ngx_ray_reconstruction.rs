@@ -173,6 +173,10 @@ impl NgxRayReconstruction {
     let mut specular_albedo = resource(inputs.specular_albedo);
     let mut normals = resource(inputs.normals);
     let mut hit_distance = resource(inputs.specular_hit_distance);
+    let mut bias = inputs.bias_current_color.map(resource);
+    let mut transparency = inputs
+      .transparency
+      .map(|(before, after)| (resource(before), resource(after)));
     let mut parameters: NVSDK_NGX_VK_DLSSD_Eval_Params = unsafe { std::mem::zeroed() };
 
     parameters.pInColor = &mut color;
@@ -183,6 +187,16 @@ impl NgxRayReconstruction {
     parameters.pInSpecularAlbedo = &mut specular_albedo;
     parameters.pInNormals = &mut normals;
     parameters.pInSpecularHitDistance = &mut hit_distance;
+
+    if let Some(bias) = &mut bias {
+      parameters.pInBiasCurrentColorMask = bias;
+    }
+
+    if let Some((before, after)) = &mut transparency {
+      parameters.pInColorBeforeTransparency = before;
+      parameters.pInColorAfterTransparency = after;
+    }
+
     parameters.pInWorldToViewMatrix = world_to_view;
     parameters.pInViewToClipMatrix = view_to_clip;
     parameters.InJitterOffsetX = inputs.jitter[0];
@@ -220,6 +234,16 @@ impl NgxRayReconstruction {
       parameters.pInSpecularAlbedo = to_d3d12_resource(inputs.specular_albedo);
       parameters.pInNormals = to_d3d12_resource(inputs.normals);
       parameters.pInSpecularHitDistance = to_d3d12_resource(inputs.specular_hit_distance);
+
+      if let Some(bias) = inputs.bias_current_color {
+        parameters.pInBiasCurrentColorMask = to_d3d12_resource(bias);
+      }
+
+      if let Some((before, after)) = inputs.transparency {
+        parameters.pInColorBeforeTransparency = to_d3d12_resource(before);
+        parameters.pInColorAfterTransparency = to_d3d12_resource(after);
+      }
+
       parameters.pInWorldToViewMatrix = world_to_view;
       parameters.pInViewToClipMatrix = view_to_clip;
       parameters.InJitterOffsetX = inputs.jitter[0];

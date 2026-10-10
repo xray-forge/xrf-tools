@@ -6,7 +6,9 @@
 
 // The guides DLSS ray reconstruction reads beside the frame, at the frame's size: each surface's specular albedo, the
 // environment BRDF over its reflectance as combine weighs its reflection; its world normal, its roughness in the fourth
-// channel; and how far its reflection ray went before it met what it reflects.
+// channel; how far its reflection ray went before it met what it reflects; and how far it is reconstructed from this
+// frame rather than its history, `BIAS_WATER` over a puddle's water, whose ripples and rain move its reflection in
+// place every frame, which the history would hold behind them.
 
 // The G-buffer, the wet surface, the lighting, and the reflections' trace: what each traced pixel met, the ray's length
 // in alpha, at the size they are traced at, below none where untraced.
@@ -14,11 +16,13 @@
 
 // Metres a reflection stands away where no ray was traced or met anything: the sky's, the prefiltered surroundings'.
 const FAR_HIT: f32 = 1000.0;
+const BIAS_WATER: f32 = 0.8;
 
 struct RayGuides {
   @location(0) specular_albedo: vec4<f32>,
   @location(1) normals: vec4<f32>,
   @location(2) hit_distance: f32,
+  @location(3) bias: f32,
 };
 
 @fragment
@@ -27,7 +31,7 @@ fn fs_ray_guides(in: FullscreenVarying) -> RayGuides {
   let depth: f32 = textureLoad(depth_target, texel, 0);
 
   if (depth <= 0.0) {
-    return RayGuides(vec4<f32>(0.0), vec4<f32>(0.0, 0.0, 0.0, 1.0), FAR_HIT);
+    return RayGuides(vec4<f32>(0.0), vec4<f32>(0.0, 0.0, 0.0, 1.0), FAR_HIT, 0.0);
   }
 
   let albedo: vec4<f32> = textureLoad(albedo_target, texel, 0);
@@ -46,5 +50,6 @@ fn fs_ray_guides(in: FullscreenVarying) -> RayGuides {
   let at: vec2<i32> = min(vec2<i32>(in.clip.xy * vec2<f32>(size) / camera.viewport.xy), size - 1);
   let met: f32 = textureLoad(traced, at, 0).a;
 
-  return RayGuides(vec4<f32>(specular, 1.0), vec4<f32>(world_normal, roughness), select(FAR_HIT, met, met >= 0.0));
+  return RayGuides(vec4<f32>(specular, 1.0), vec4<f32>(world_normal, roughness), select(FAR_HIT, met, met >= 0.0),
+    BIAS_WATER * saturate(wet.g));
 }

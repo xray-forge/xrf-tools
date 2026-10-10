@@ -1241,7 +1241,9 @@ impl SceneView {
       // The frame as it stands before the water, the composited surfaces and the particles draw, copied once for all
       // that read it: the enhanced water refracts and reflects it, and the temporal resolve's reactive weight is what
       // the rest change of it.
+      // Ray reconstruction reads it too, against the frame after the rain, to tell the transparent layers apart.
       let before_water: Option<GraphTexture> = (scene_view.features.resolve.is_reading_scene_before_water()
+        || ray_guides.is_some()
         || (water_sky.is_some() && scene_view.features.water.is_enhanced()))
       .then(|| {
         let (width, height) = handles.size;
@@ -1370,6 +1372,21 @@ impl SceneView {
         .features
         .thunder
         .add_passes((&mut *graph, &mut *bindings, runtime), passes, view, handles);
+
+      // The frame once its transparent layers, the rain last, drew, before the flares, the fog and the bloom, which
+      // ray reconstruction reads against the frame before them.
+      if let (Some(guides), Some(before)) = (&mut ray_guides, before_water) {
+        let (width, height) = handles.size;
+        let after: GraphTexture = graph.create_texture(GraphTextureDescriptor::new_2d(
+          "scene after transparency",
+          width,
+          height,
+          ViewTargets::SCENE,
+        ));
+
+        add_texture_copy(&mut *graph, "scene after transparency", scene, after);
+        guides.transparency = Some([before, after]);
+      }
 
       scene_view.features.flares.add_passes(
         (&mut *graph, &mut *bindings, runtime),
