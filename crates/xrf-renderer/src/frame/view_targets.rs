@@ -14,7 +14,8 @@ pub struct ViewTargets {
   /// down; zero where nothing was drawn.
   pub motion: wgpu::TextureView,
   /// How far the surface drawn sinks below its relief's top where the enhanced parallax marches it, from nought at the
-  /// top to one at its deepest; nought where nothing marches, which the wet pass fills with water first.
+  /// top to one at its deepest, nought where nothing marches, which the wet pass fills with water first; and how far
+  /// below the top water must stand for its reflection to meet the relief, from one, nought where nothing marches.
   pub relief: wgpu::TextureView,
   /// Reversed: one at the near plane, zero where nothing was drawn.
   pub depth: wgpu::TextureView,
@@ -32,7 +33,7 @@ impl ViewTargets {
   pub const NORMAL: wgpu::TextureFormat = wgpu::TextureFormat::Rg16Float;
   pub const MATERIAL: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
   pub const MOTION: wgpu::TextureFormat = wgpu::TextureFormat::Rg16Float;
-  pub const RELIEF: wgpu::TextureFormat = wgpu::TextureFormat::R8Unorm;
+  pub const RELIEF: wgpu::TextureFormat = wgpu::TextureFormat::Rg8Unorm;
   pub const DEPTH: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
   pub const LIGHT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
   pub const SCENE: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;

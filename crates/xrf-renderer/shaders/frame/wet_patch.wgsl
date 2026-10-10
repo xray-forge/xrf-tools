@@ -355,16 +355,19 @@ const RELIEF_DRY_REGIONS: f32 = 0.35;
 const RELIEF_SHORE: f32 = 0.06;
 const RELIEF_WATER_DEPTH: f32 = 0.03;
 const SITE_RELIEF_SHORE: f32 = 0.35;
+// How much of its water a hollow's reflection cut by the relief gives up, and over how much of the relief's depth below
+// its clearance it does.
+const HOLLOW_HIDDEN: f32 = 0.85;
+const HOLLOW_SOFT: f32 = 0.08;
 const PUDDLE_TOP: f32 = 0.25;
 // Where something stands over the ground: how far out the open sky about it is looked for, and over how many points,
 // so the rain under a pipe or a beam narrower than twice as far still pools, and under a bridge's deck does not.
 const OPEN_REACH: f32 = 2.5;
 const OPEN_TAPS: u32 = 8u;
-// The least a surface faces up to hold a puddle.
-const PUDDLE_UP: f32 = 0.85;
-// How far either side of `PUDDLE_UP` a face's rise softens the relief's water over, so terrain's triangles, each its
-// own face, draw no line where the slope stands about the limit.
-const FACE_SOFT: f32 = 0.04;
+// How level a face must lie for its relief to hold water, from none to all: water stays in a hollow only on nearly level
+// ground, and on a pitch, a tiled roof's or a bank's, its channels drain down it. About 14 to 6 degrees, softened so
+// terrain's triangles, each its own face, draw no line about the limit.
+const RELIEF_LEVEL: vec2<f32> = vec2<f32>(0.97, 0.995);
 
 // One layer of rain rings: each texel a ring arriving on its own clock (arrival, direction x, direction y, clock),
 // spreading and fading; `setup` is its speed, strength and how many rings a ripple spreads. The tilt in `xy`, and in
@@ -645,8 +648,11 @@ fn fs_wet_patch_enhanced(in: FullscreenVarying) -> WetPatchTargets {
 
   let marks: f32 = textureLoad(material_target, texel, 0).a;
   let is_terrain: bool = has_mark(marks, MARK_TERRAIN);
-  // How far the relief the enhanced parallax marched sinks here, nought where it marched none.
-  let sink: f32 = textureLoad(relief_target, texel, 0).r;
+  // How far the relief the enhanced parallax marched sinks here, nought where it marched none, and how shallow water
+  // over it must stand for its reflection to clear the relief, one where it marched none.
+  let relief: vec2<f32> = textureLoad(relief_target, texel, 0).rg;
+  let sink: f32 = relief.r;
+  let clearance: f32 = 1.0 - relief.g;
   let albedo: vec4<f32> = textureLoad(albedo_target, texel, 0);
   let gloss: f32 = albedo.a;
   var normal: vec3<f32> = normalize(octahedral_decode(textureLoad(normal_target, texel, 0).xy));
@@ -680,14 +686,14 @@ fn fs_wet_patch_enhanced(in: FullscreenVarying) -> WetPatchTargets {
   // On the ground alone, terrain, as open to the rain as the sky about it lets it (`sky_open`): never under a deck or a
   // bridge, but under a pipe or a beam. A site puddle stands wherever its site holds it, the site placed level and its
   // water seated within a band of its height; gated by the ground's slope too, it was cut along a straight line where a
-  // road's edge falls away. The relief fills only where the face drawn, as its depth slopes and not its bumps, looks up:
-  // the level surface's map holds what stands over the ground, and read from it, an embankment under a bridge's deck
-  // read level and filled. A steep surface the enhanced parallax marched (asphalt, a slab, a floor) takes water in its
-  // relief alone, where its face looks up and the rain reaches it.
+  // road's edge falls away. The relief fills only as far as the face drawn, as its depth slopes and not its bumps, lies
+  // level (`RELIEF_LEVEL`): the level surface's map holds what stands over the ground, and read from it, an embankment
+  // under a bridge's deck read level and filled. A steep surface the enhanced parallax marched (asphalt, a slab, a
+  // floor) takes water in its relief alone, as far as its face lies level and the rain reaches it.
   let face: vec3<f32> = facing_normal(world);
   let ground: vec3<f32> = ground_up(world);
   let is_ground: bool = is_terrain;
-  let is_relief_face: bool = !is_terrain && has_mark(marks, MARK_RELIEF) && face.y > PUDDLE_UP && reached > 0.0;
+  let is_relief_face: bool = !is_terrain && has_mark(marks, MARK_RELIEF) && face.y > RELIEF_LEVEL.x && reached > 0.0;
   let up: vec3<f32> = select(face, ground, is_ground);
 
   if ((is_ground || is_relief_face) && wet.puddle_state.y > 0.0 && length(position) < wet.puddle_state.x) {
@@ -712,7 +718,7 @@ fn fs_wet_patch_enhanced(in: FullscreenVarying) -> WetPatchTargets {
     let flood: f32 = RELIEF_FLOODED * wet.puddle_state.y * mix(RELIEF_DRY_REGIONS, 1.0, smoothstep(0.25, 0.75, noise));
     let level: f32 = 1.0 - flood;
     let relief_water: f32 = smoothstep(level, level + RELIEF_SHORE, sink) * marched *
-      select(reached, smoothstep(PUDDLE_UP - FACE_SOFT, PUDDLE_UP + FACE_SOFT, face.y), is_ground);
+      smoothstep(RELIEF_LEVEL.x, RELIEF_LEVEL.y, face.y) * select(reached, 1.0, is_ground);
     let shore: f32 = saturate((1.0 - found.rim) / SITE_RELIEF_SHORE);
     let site_water: f32 = found.inside * mix(1.0, smoothstep(1.0 - shore - RELIEF_SHORE, 1.0 - shore, sink), marched);
     let is_relief: bool = relief_water > site_water;
@@ -721,6 +727,13 @@ fn fs_wet_patch_enhanced(in: FullscreenVarying) -> WetPatchTargets {
     let depth: f32 = max(found.depth, saturate(sink - level) * RELIEF_WATER_DEPTH * marched);
 
     puddle = max(site_water, relief_water) * fade * select(1.0, sky_open(world, ground), is_ground);
+
+    // Water whose level stands below the relief's clearance mirrors the hollow's far side rather than the sky: as far
+    // as it does, it shades as the wet ground it lies in. The marched relief is not in the scene the reflections trace,
+    // so each fleck in a hollow reflected the open sky, a white spot at a grazing look.
+    let water_level: f32 = select(1.0 - shore, level, is_relief);
+
+    puddle *= 1.0 - HOLLOW_HIDDEN * smoothstep(0.0, HOLLOW_SOFT, water_level - clearance) * marched;
     lift = min(depth * mix(PUDDLE_MURK.x, PUDDLE_MURK.y, variation.y), PUDDLE_DEEPEST * wet.puddle_state.y);
     floating = (1.0 - PUDDLE_FILM * noise) * (1.0 - RIM_COAT * rim);
     water_roughness = mix(mix(WATER_ROUGHNESS.x, WATER_ROUGHNESS.y, variation.x), RIM_ROUGHNESS, rim);

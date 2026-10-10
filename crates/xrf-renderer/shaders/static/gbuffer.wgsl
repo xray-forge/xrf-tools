@@ -59,8 +59,9 @@ struct GBufferOutput {
   @location(2) material: vec4<f32>,
   // How far the point moved on the screen since the last frame, as `camera_motion` measures it.
   @location(3) motion: vec2<f32>,
-  // How far the surface sinks below its relief's top where the enhanced parallax marches it (`ViewTargets::RELIEF`).
-  @location(4) sink: f32,
+  // How far the surface sinks below its relief's top where the enhanced parallax marches it, and how far below the top
+  // water there must stand for its reflection to be cut by the relief, from one (`ViewTargets::RELIEF`).
+  @location(4) relief: vec2<f32>,
 };
 
 // A vertex placed in the world, swayed by as much of the wind as its rigidity takes, or by the enhanced motion as its
@@ -318,6 +319,7 @@ struct Footprint {
   cavity: f32,
   relief: f32,
   sink: f32,
+  clearance: f32,
   is_relief: bool,
   dx: vec2<f32>,
   dy: vec2<f32>,
@@ -329,7 +331,7 @@ struct Footprint {
 fn take_footprint(in: GBufferVarying) -> Footprint {
   let uv: vec2<f32> = in.uv * surfaces[in.surface].tiling;
 
-  return Footprint(uv, uv, 0.0, 1.0, 0.0, false, dpdx(uv), dpdy(uv), in.lightmap_uv, dpdx(in.lightmap_uv),
+  return Footprint(uv, uv, 0.0, 1.0, 0.0, 1.0, false, dpdx(uv), dpdy(uv), in.lightmap_uv, dpdx(in.lightmap_uv),
     dpdy(in.lightmap_uv));
 }
 
@@ -427,6 +429,7 @@ fn surface_relief(in: GBufferVarying, at: Footprint, position: vec3<f32>) -> Foo
   out.uv = hit.xy;
   out.cavity = (1.0 - height * height) * RELIEF_CAVITY * camera.parallax_mix.y * fade;
   out.sink = hit.z;
+  out.clearance = relief_clearance(slot, hit.xy, lod, 1.0, reach, 3u);
   out.is_relief = true;
 
   if (light.z > 0.0 && camera.parallax_light.w > 0.0) {
@@ -543,8 +546,10 @@ struct TerrainTexel {
   gloss: f32,
   cavity: f32,
   relief: f32,
-  // How far its blended layers sink below the relief's top where they march, nought where they do not.
+  // How far its blended layers sink below the relief's top where they march, nought where they do not; and the
+  // shallowest water whose reflection clears the relief (`relief_clearance`), one where nothing marches.
   sink: f32,
+  clearance: f32,
 };
 
 // The enhanced parallax, a terrain's and a steep surface's: the steps a march takes looking straight down, at least;
@@ -637,6 +642,23 @@ fn relief_march(
   return vec3<f32>(entry + reach * hit, hit);
 }
 
+// How shallow water over a relief's point at `uv` must stand for its reflection, leaving the water's level towards
+// `to`, the coordinate it moves by a unit of depth risen, to pass over the relief rather than meet a hollow's far side:
+// the least, over a ray's steps rising a unit of depth, of the relief's depth there and the rise. The reflected ray
+// on a flat relief leaves along the view's own march, mirrored up, so `to` is the march's `reach`. Water above it
+// mirrors the sky; below it, the hollow's side.
+fn relief_clearance(slot: u32, uv: vec2<f32>, lod: f32, weight: f32, to: vec2<f32>, channel: u32) -> f32 {
+  var clearance: f32 = 1.0;
+
+  for (var index: u32 = 1u; index <= RELIEF_SHADOW_STEPS; index++) {
+    let rise: f32 = f32(index) / f32(RELIEF_SHADOW_STEPS);
+
+    clearance = min(clearance, relief_depth(slot, uv + to * rise, lod, weight, channel) + rise);
+  }
+
+  return clearance;
+}
+
 // How much of the sun reaches a relief's point at `hit`, its coordinate and depth: a ray rising from it towards the sun
 // along `to_sun`, the coordinate it moves by a unit of depth, shadowed softly where it passes under the relief and the
 // more the nearer the point.
@@ -664,7 +686,7 @@ fn terrain_texel(
 ) -> TerrainTexel {
   let mask: vec4<f32> = sample_slot(surface.terrain.mask, at.uv, at.dx, at.dy);
   let weights: vec4<f32> = mask / max(dot(mask, vec4<f32>(1.0)), 1e-4);
-  var out: TerrainTexel = TerrainTexel(vec3<f32>(0.0), vec3<f32>(0.0), 0.0, 0.0, 1.0, 0.0);
+  var out: TerrainTexel = TerrainTexel(vec3<f32>(0.0), vec3<f32>(0.0), 0.0, 0.0, 1.0, 0.0, 1.0);
   let position: vec3<f32> = (camera.view * vec4<f32>(in.world, 1.0)).xyz;
   let range: f32 = camera.parallax.y;
   let is_marched: bool = has_surfaces_bit(SURFACES_ENHANCED) && -position.z < range;
@@ -762,6 +784,11 @@ fn terrain_texel(
   out.cavity = select(0.0, out.cavity * RELIEF_CAVITY * camera.parallax_mix.y * fade, is_marched);
   out.sink = select(0.0, out.sink, is_marched);
 
+  if (is_marched) {
+    out.clearance = relief_clearance(surface.terrain.heights[dominant], coords[dominant], lods[dominant],
+      weights[dominant], reach, 0u);
+  }
+
   if (is_lit) {
     let slot: u32 = surface.terrain.heights[dominant];
     let shadow: f32 = relief_shadow(slot, vec3<f32>(coords[dominant], depths[dominant]), lods[dominant],
@@ -789,6 +816,7 @@ fn shade(in: GBufferVarying, base: vec4<f32>, at: Footprint) -> GBufferOutput {
   let is_terrain: bool = (surface.flags & SURFACE_IS_TERRAIN) != 0u;
   var relief: f32 = at.relief;
   var sink: f32 = at.sink;
+  var clearance: f32 = at.clearance;
 
   diffuse *= 1.0 - at.cavity;
 
@@ -799,6 +827,7 @@ fn shade(in: GBufferVarying, base: vec4<f32>, at: Footprint) -> GBufferOutput {
     diffuse *= terrain.detail * 2.0 * (1.0 - terrain.cavity);
     relief = terrain.relief;
     sink = terrain.sink;
+    clearance = terrain.clearance;
     normal = normalize(mix(normal, normalize(in.tangent * terrain.bump.x + in.binormal * terrain.bump.y +
       in.normal * terrain.bump.z), weight));
     gloss = mix(DEFAULT_GLOSS, terrain.gloss, weight);
@@ -871,7 +900,8 @@ fn shade(in: GBufferVarying, base: vec4<f32>, at: Footprint) -> GBufferOutput {
     encode_marks(is_selected(in.entry), (surface.flags & SURFACE_IS_EMISSIVE) != 0u, is_flora, is_terrain, at.is_relief,
       in.flora.z > 0.5));
   out.motion = camera_motion(in.world, in.world + in.moved);
-  out.sink = sink;
+  // The clearance stored from one down, so a target cleared to none reads as clear.
+  out.relief = vec2<f32>(sink, 1.0 - clearance);
 
   return out;
 }
