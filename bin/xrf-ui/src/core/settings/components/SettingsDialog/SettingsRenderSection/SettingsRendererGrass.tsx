@@ -10,7 +10,7 @@ import {
   toGrassDensityScale,
 } from "@/core/render/lib/features";
 import { TRenderGrassSettings } from "@/core/render/lib/settings/render-feature-settings";
-import { SettingsService } from "@/core/settings/services/settings";
+import { RenderSettingsService } from "@/core/render/services/render-settings";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { SliderFormRow } from "@/core/ui/form/SliderFormRow";
 import { DetailSection } from "@/core/ui/layout/DetailSection";
@@ -19,9 +19,9 @@ import { useRendererOverride } from "./use-renderer-override";
 
 /** The level's grass: whether it is planted, how densely, how far round the camera, and how tall. */
 export function SettingsRendererGrass(): ReactElement {
-  const settingsService: SettingsService = useInjection(SettingsService);
+  const renderSettingsService: RenderSettingsService = useInjection(RenderSettingsService);
 
-  const grass: TRenderGrassSettings = settingsService.rendererFeatures.grass;
+  const grass: TRenderGrassSettings = renderSettingsService.rendererFeatures.grass;
 
   const onSet = useRendererOverride("grass");
 

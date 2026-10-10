@@ -7,7 +7,7 @@ import { EWorldCameraCommand, WorldModelPose } from "@/core/ipc/types/xrf-world"
 import { NativeRenderSurfaceService } from "@/core/render/lib/native/native-render-surface-service";
 import { NativeViewport } from "@/core/render/lib/native/native-viewport";
 import { toRenderOutput } from "@/core/render/lib/settings/render-resolution";
-import { SettingsService } from "@/core/settings/services/settings";
+import { RenderSettingsService } from "@/core/render/services/render-settings";
 import { BIND_POSE, IVisualRenderSource, NO_HIDDEN_BONES, VISUAL_RENDER_SOURCE } from "@/core/visuals/lib/render";
 import { toVisualCamera, toVisualOverlays, toVisualViewOptions } from "@/core/visuals/lib/render/visual-render";
 import { DEFAULT_VISUAL_PREVIEW_SCENE_CONFIG, IVisualPreviewSceneConfig } from "@/core/visuals/lib/scene/scene-config";
@@ -34,9 +34,9 @@ export class VisualRenderService extends NativeRenderSurfaceService {
     private readonly source: IVisualRenderSource = inject(VISUAL_RENDER_SOURCE),
     private readonly loadService: VisualLoadService = inject(VisualLoadService),
     private readonly viewService: VisualViewService = inject(VisualViewService),
-    settingsService: SettingsService = inject(SettingsService)
+    renderSettingsService: RenderSettingsService = inject(RenderSettingsService)
   ) {
-    super(settingsService);
+    super(renderSettingsService);
   }
 
   /**
@@ -67,8 +67,8 @@ export class VisualRenderService extends NativeRenderSurfaceService {
             this.viewService.options,
             this.viewService.lighting,
             this.config,
-            this.settingsService.rendererFeatures,
-            toRenderOutput(this.settingsService.renderResolution, this.settingsService.renderOutputScale)
+            this.renderSettingsService.rendererFeatures,
+            toRenderOutput(this.renderSettingsService.renderResolution, this.renderSettingsService.renderOutputScale)
           ),
         (options: RenderViewOptions) => viewport.setViewOptions(options),
         { equals: comparer.structural, fireImmediately: true }

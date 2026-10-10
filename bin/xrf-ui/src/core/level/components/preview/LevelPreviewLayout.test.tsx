@@ -18,8 +18,8 @@ import {
   LevelWeatherService,
 } from "@/core/level/services";
 import { EMPTY_RENDER_FRAME_REPORT } from "@/core/render/lib/native/native-frame-report";
+import { RenderSettingsService } from "@/core/render/services/render-settings";
 import { SettingsRendererDisplay } from "@/core/settings/components/SettingsDialog/SettingsRenderSection/SettingsRendererDisplay";
-import { SettingsService } from "@/core/settings/services/settings";
 import { ApplicationStatusBar } from "@/core/shell/footer/ApplicationStatusBar";
 import { mockRenderLoadReport } from "@/fixtures/mocks/render.mocks";
 import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
@@ -321,7 +321,7 @@ describe("LevelPreviewLayout", () => {
       LevelWeatherService,
       LevelLookService,
     ]);
-    const settings: SettingsService = container.get(SettingsService);
+    const settings: RenderSettingsService = container.get(RenderSettingsService);
     const view: RenderResult = renderWithProviders(
       <>
         <LevelPreviewLayout name={"levels\\zaton"} renderViewport={() => <div data-testid={"stub-viewport"} />} />

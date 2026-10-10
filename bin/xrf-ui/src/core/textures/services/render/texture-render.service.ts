@@ -12,7 +12,7 @@ import { EWorldCameraCommand } from "@/core/ipc/types/xrf-world";
 import { NativeRenderSurfaceService } from "@/core/render/lib/native/native-render-surface-service";
 import { NativeViewport, TNativeTextureRequest } from "@/core/render/lib/native/native-viewport";
 import { toRenderOutput } from "@/core/render/lib/settings/render-resolution";
-import { SettingsService } from "@/core/settings/services/settings";
+import { RenderSettingsService } from "@/core/render/services/render-settings";
 import {
   TEXTURE_SURFACE_CAMERA,
   toTextureSurfaceRequest,
@@ -44,9 +44,9 @@ export class TextureRenderService extends NativeRenderSurfaceService {
   public constructor(
     private readonly selectionService: TextureSelectionService = inject(TextureSelectionService),
     private readonly viewService: TextureViewService = inject(TextureViewService),
-    settingsService: SettingsService = inject(SettingsService)
+    renderSettingsService: RenderSettingsService = inject(RenderSettingsService)
   ) {
-    super(settingsService);
+    super(renderSettingsService);
   }
 
   /**
@@ -96,9 +96,9 @@ export class TextureRenderService extends NativeRenderSurfaceService {
           toTextureViewOptions(
             this.viewService.options,
             this.viewService.lighting,
-            this.settingsService.rendererFeatures,
+            this.renderSettingsService.rendererFeatures,
             window.devicePixelRatio,
-            toRenderOutput(this.settingsService.renderResolution, this.settingsService.renderOutputScale)
+            toRenderOutput(this.renderSettingsService.renderResolution, this.renderSettingsService.renderOutputScale)
           ),
         (options: RenderViewOptions) => viewport.setViewOptions(options),
         { equals: comparer.structural, fireImmediately: true }

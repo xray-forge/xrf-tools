@@ -24,7 +24,7 @@ import {
 } from "@/core/render/lib/features";
 import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { ERenderResolution } from "@/core/render/lib/settings/render-resolution";
-import { SettingsService } from "@/core/settings/services/settings";
+import { RenderSettingsService } from "@/core/render/services/render-settings";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { ChoiceFormRow, IChoiceFormRowOption } from "@/core/ui/form/ChoiceFormRow";
 import { SliderFormRow } from "@/core/ui/form/SliderFormRow";
@@ -44,9 +44,9 @@ const TEXTURE_LOD_OPTIONS: ReadonlyArray<IChoiceFormRowOption<string>> = [
  * side by side, then how the frame's edges are smoothed and its textures sampled.
  */
 export function SettingsRendererAntialiasing(): ReactElement {
-  const settingsService: SettingsService = useInjection(SettingsService);
+  const renderSettingsService: RenderSettingsService = useInjection(RenderSettingsService);
 
-  const features: IRenderFeatureSettings = settingsService.rendererFeatures;
+  const features: IRenderFeatureSettings = renderSettingsService.rendererFeatures;
 
   return (
     <DetailSection
@@ -61,20 +61,20 @@ export function SettingsRendererAntialiasing(): ReactElement {
             "viewport's own size, scaled below."
           }
           options={RENDER_RESOLUTION_OPTIONS}
-          value={settingsService.renderResolution}
-          onChange={settingsService.setRenderResolution}
+          value={renderSettingsService.renderResolution}
+          onChange={renderSettingsService.setRenderResolution}
         />
 
-        {settingsService.renderResolution === ERenderResolution.AUTO ? (
+        {renderSettingsService.renderResolution === ERenderResolution.AUTO ? (
           <SliderFormRow
             label={"Output scale"}
             description={
               "Share of the viewport's size the frame is resolved at: below 100% upscales, above supersamples."
             }
-            value={settingsService.renderOutputScale}
+            value={renderSettingsService.renderOutputScale}
             {...RENDER_OUTPUT_SCALE_LIMITS}
             format={formatOutputScale}
-            onChange={settingsService.setRenderOutputScale}
+            onChange={renderSettingsService.setRenderOutputScale}
           />
         ) : null}
 
@@ -86,7 +86,7 @@ export function SettingsRendererAntialiasing(): ReactElement {
           }
           options={RENDER_SCALE_OPTIONS}
           value={features.upscaling.scale}
-          onChange={(scale: RenderScale) => settingsService.setRendererOverrides({ upscaling: { scale } })}
+          onChange={(scale: RenderScale) => renderSettingsService.setRendererOverrides({ upscaling: { scale } })}
         />
 
         <ChoiceFormRow
@@ -98,7 +98,7 @@ export function SettingsRendererAntialiasing(): ReactElement {
           }
           options={RENDER_ANTIALIASING_OPTIONS}
           value={features.antialiasing}
-          onChange={(antialiasing: RenderAntialiasing) => settingsService.setRendererOverrides({ antialiasing })}
+          onChange={(antialiasing: RenderAntialiasing) => renderSettingsService.setRendererOverrides({ antialiasing })}
         />
 
         <ChoiceFormRow
@@ -110,7 +110,7 @@ export function SettingsRendererAntialiasing(): ReactElement {
           options={RENDER_TEXTURE_FILTERING_OPTIONS}
           value={features.textureFiltering}
           onChange={(textureFiltering: RenderTextureFiltering) =>
-            settingsService.setRendererOverrides({ textureFiltering })
+            renderSettingsService.setRendererOverrides({ textureFiltering })
           }
         />
 
@@ -122,7 +122,7 @@ export function SettingsRendererAntialiasing(): ReactElement {
           }
           options={TEXTURE_LOD_OPTIONS}
           value={String(features.textureLod)}
-          onChange={(value: string) => settingsService.setRendererOverrides({ textureLod: Number(value) })}
+          onChange={(value: string) => renderSettingsService.setRendererOverrides({ textureLod: Number(value) })}
         />
 
         <ChoiceFormRow
@@ -136,7 +136,7 @@ export function SettingsRendererAntialiasing(): ReactElement {
           value={features.upscaling.dlssPreset}
           isDisabled={features.antialiasing !== ERenderAntialiasing.DLSS || features.upscaling.isRayReconstructed}
           onChange={(dlssPreset: RenderDlssPreset) =>
-            settingsService.setRendererOverrides({ upscaling: { dlssPreset } })
+            renderSettingsService.setRendererOverrides({ upscaling: { dlssPreset } })
           }
         />
 
@@ -152,7 +152,7 @@ export function SettingsRendererAntialiasing(): ReactElement {
             features.antialiasing !== ERenderAntialiasing.DLSS || features.tonemap !== ERenderTonemapMode.ENHANCED
           }
           onChange={(isRayReconstructed: boolean) =>
-            settingsService.setRendererOverrides({ upscaling: { isRayReconstructed } })
+            renderSettingsService.setRendererOverrides({ upscaling: { isRayReconstructed } })
           }
         />
 
@@ -167,11 +167,11 @@ export function SettingsRendererAntialiasing(): ReactElement {
           isDisabled={
             !isTemporalAntialiasing(features.antialiasing) &&
             features.upscaling.scale === ERenderScale.NATIVE &&
-            settingsService.renderResolution === ERenderResolution.AUTO &&
-            settingsService.renderOutputScale >= 1
+            renderSettingsService.renderResolution === ERenderResolution.AUTO &&
+            renderSettingsService.renderOutputScale >= 1
           }
           format={formatSharpening}
-          onChange={(sharpening: number) => settingsService.setRendererOverrides({ upscaling: { sharpening } })}
+          onChange={(sharpening: number) => renderSettingsService.setRendererOverrides({ upscaling: { sharpening } })}
         />
       </div>
     </DetailSection>

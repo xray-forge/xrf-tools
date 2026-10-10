@@ -9,7 +9,7 @@ import {
   RENDER_AMBIENT_OCCLUSION_QUALITY_OPTIONS,
 } from "@/core/render/lib/features";
 import { TRenderAmbientOcclusionSettings } from "@/core/render/lib/settings/render-feature-settings";
-import { SettingsService } from "@/core/settings/services/settings";
+import { RenderSettingsService } from "@/core/render/services/render-settings";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { ChoiceFormRow } from "@/core/ui/form/ChoiceFormRow";
 import { SliderFormRow } from "@/core/ui/form/SliderFormRow";
@@ -19,9 +19,9 @@ import { useRendererOverride } from "./use-renderer-override";
 
 /** The screen's ambient occlusion: whether it is drawn, how far it reaches, how dark and how fine. */
 export function SettingsRendererAmbientOcclusion(): ReactElement {
-  const settingsService: SettingsService = useInjection(SettingsService);
+  const renderSettingsService: RenderSettingsService = useInjection(RenderSettingsService);
 
-  const occlusion: TRenderAmbientOcclusionSettings = settingsService.rendererFeatures.ambientOcclusion;
+  const occlusion: TRenderAmbientOcclusionSettings = renderSettingsService.rendererFeatures.ambientOcclusion;
 
   const onSet = useRendererOverride("ambientOcclusion");
 

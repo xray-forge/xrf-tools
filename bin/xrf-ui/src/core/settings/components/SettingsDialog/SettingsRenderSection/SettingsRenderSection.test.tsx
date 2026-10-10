@@ -5,18 +5,18 @@ import { Container } from "@wirestate/core";
 
 import { ERenderPreset } from "@/core/render/lib/settings/render-preset";
 import { ERenderResolution } from "@/core/render/lib/settings/render-resolution";
-import { SettingsService } from "@/core/settings/services/settings";
+import { RenderSettingsService } from "@/core/render/services/render-settings";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 import { SettingsRenderSection } from "./SettingsRenderSection";
 
-function renderSection(): { container: Container; settings: SettingsService; view: RenderResult } {
+function renderSection(): { container: Container; settings: RenderSettingsService; view: RenderResult } {
   const container: Container = mockContainer();
 
   return {
     container,
-    settings: container.get(SettingsService),
+    settings: container.get(RenderSettingsService),
     view: renderWithProviders(<SettingsRenderSection />, { container }),
   };
 }

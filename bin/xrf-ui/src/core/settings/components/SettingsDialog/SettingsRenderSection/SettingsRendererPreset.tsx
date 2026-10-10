@@ -5,7 +5,7 @@ import { ReactElement } from "react";
 
 import { isRenderFeatureChoiceCustom } from "@/core/render/lib/settings/render-feature-choice";
 import { ERenderPreset } from "@/core/render/lib/settings/render-preset";
-import { SettingsService } from "@/core/settings/services/settings";
+import { RenderSettingsService } from "@/core/render/services/render-settings";
 import { DetailSection } from "@/core/ui/layout/DetailSection";
 
 const PRESET_LABELS: Record<ERenderPreset, string> = {
@@ -15,10 +15,10 @@ const PRESET_LABELS: Record<ERenderPreset, string> = {
 
 /** Which preset the renderer's features follow, whether anything is changed on top of it, and the way back. */
 export function SettingsRendererPreset(): ReactElement {
-  const settingsService: SettingsService = useInjection(SettingsService);
+  const renderSettingsService: RenderSettingsService = useInjection(RenderSettingsService);
 
-  const { preset } = settingsService.rendererChoice;
-  const isCustom: boolean = isRenderFeatureChoiceCustom(settingsService.rendererChoice);
+  const { preset } = renderSettingsService.rendererChoice;
+  const isCustom: boolean = isRenderFeatureChoiceCustom(renderSettingsService.rendererChoice);
 
   return (
     <DetailSection
@@ -29,7 +29,7 @@ export function SettingsRendererPreset(): ReactElement {
       fact={isCustom ? `Custom, from ${PRESET_LABELS[preset]}` : PRESET_LABELS[preset]}
       action={
         isCustom ? (
-          <Button size={"small"} onClick={() => settingsService.setRendererPreset(preset)}>
+          <Button size={"small"} onClick={() => renderSettingsService.setRendererPreset(preset)}>
             Back to {PRESET_LABELS[preset]}
           </Button>
         ) : null
@@ -43,7 +43,7 @@ export function SettingsRendererPreset(): ReactElement {
         value={preset}
         onChange={(_, next: Nullable<ERenderPreset>) => {
           if (next !== null) {
-            settingsService.setRendererPreset(next);
+            renderSettingsService.setRendererPreset(next);
           }
         }}
       >

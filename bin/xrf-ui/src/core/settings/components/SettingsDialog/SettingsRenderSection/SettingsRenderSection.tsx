@@ -3,7 +3,7 @@ import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
 import { ComponentType, ReactElement, RefObject, useRef, useState } from "react";
 
-import { SettingsService } from "@/core/settings/services/settings";
+import { RenderSettingsService } from "@/core/render/services/render-settings";
 
 import {
   ERenderSettingsTab,
@@ -19,7 +19,7 @@ import { SettingsRendererPreset } from "./SettingsRendererPreset";
  * setting changes, the preset over every tab it sets, and a mark on each tab where something differs from it.
  */
 export function SettingsRenderSection(): ReactElement {
-  const settingsService: SettingsService = useInjection(SettingsService);
+  const renderSettingsService: RenderSettingsService = useInjection(RenderSettingsService);
 
   const rootRef: RefObject<Nullable<HTMLDivElement>> = useRef<Nullable<HTMLDivElement>>(null);
   const [tabId, setTabId] = useState<ERenderSettingsTab>(ERenderSettingsTab.DISPLAY);
@@ -45,7 +45,7 @@ export function SettingsRenderSection(): ReactElement {
             label={
               <span className={"flex items-center gap-1.5"}>
                 {it.label}
-                {isCustomRenderSettingsTab(it, settingsService.rendererChoice) ? (
+                {isCustomRenderSettingsTab(it, renderSettingsService.rendererChoice) ? (
                   <span
                     aria-label={"changed from the preset"}
                     className={"size-1.5 rounded-full bg-primary"}

@@ -1,0 +1,124 @@
+import { beforeEach, describe, expect, it } from "@jest/globals";
+
+import { ERenderAntialiasing, ERenderScale } from "@/core/ipc/types/xrf-renderer";
+import { DEFAULT_RENDER_FEATURE_CHOICE } from "@/core/render/lib/settings/render-feature-choice";
+import { DEFAULT_PERIODIC_BUDGET } from "@/core/render/lib/settings/render-periodic-budget";
+import { ERenderPreset, RENDER_PRESETS } from "@/core/render/lib/settings/render-preset";
+import { RenderSettingsService } from "@/core/render/services/render-settings/render-settings.service";
+import { mockInjectedService } from "@/fixtures/utils/container";
+
+describe("RenderSettingsService", () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+  });
+
+  it("caps viewports at sixty until something says otherwise", () => {
+    const { service } = mockInjectedService(RenderSettingsService);
+
+    expect(service.frameRateLimit).toBe("none");
+  });
+
+  it("gives back the frame rate limit it was told to keep", () => {
+    const { service } = mockInjectedService(RenderSettingsService);
+
+    service.setFrameRateLimit("30");
+
+    expect(service.frameRateLimit).toBe("30");
+    expect(window.localStorage.getItem("xrf.preference.frame-rate-limit")).toBe("30");
+    expect(mockInjectedService(RenderSettingsService).service.frameRateLimit).toBe("30");
+  });
+
+  // No cap under vsync is the display's own refresh rate, whatever it is, with nothing to detect.
+  it("draws every viewport at the display's refresh until told otherwise, and keeps what it was told", () => {
+    const { service } = mockInjectedService(RenderSettingsService);
+
+    expect(service.renderSettings.frameRate).toEqual({ isVsync: true, limit: null });
+
+    service.setFrameRateLimit("120");
+    service.setVsync(false);
+
+    expect(window.localStorage.getItem("xrf.preference.vsync")).toBe("false");
+    expect(mockInjectedService(RenderSettingsService).service.renderSettings.frameRate).toEqual({
+      isVsync: false,
+      limit: 120,
+    });
+  });
+
+  it("reads a frame rate limit it does not offer as no cap", () => {
+    window.localStorage.setItem("xrf.preference.frame-rate-limit", "unlimited");
+
+    expect(mockInjectedService(RenderSettingsService).service.frameRateLimit).toBe("none");
+  });
+
+  // Timing is asked for, never a preset's: turning it on leaves the settings as the preset draws them.
+  it("times no passes until told to, and keeps it apart from the preset", () => {
+    const { service } = mockInjectedService(RenderSettingsService);
+
+    expect(service.renderSettings.isGpuTimed).toBe(false);
+
+    service.setGpuTimed(true);
+
+    expect(service.rendererChoice).toEqual(DEFAULT_RENDER_FEATURE_CHOICE);
+    expect(window.localStorage.getItem("xrf.preference.gpu-timed")).toBe("true");
+    expect(mockInjectedService(RenderSettingsService).service.renderSettings.isGpuTimed).toBe(true);
+  });
+
+  // The budget is the renderer's own unless set for a session's measurement.
+  it("gives periodic work the renderer's budget until set, for the session only", () => {
+    const { service } = mockInjectedService(RenderSettingsService);
+
+    expect(service.renderSettings.periodicBudget).toBe(DEFAULT_PERIODIC_BUDGET);
+
+    service.setPeriodicBudget(0.8);
+
+    expect(service.renderSettings.periodicBudget).toBe(0.8);
+    expect(mockInjectedService(RenderSettingsService).service.renderSettings.periodicBudget).toBe(
+      DEFAULT_PERIODIC_BUDGET
+    );
+  });
+
+  it("draws with Base until another preset is chosen, and keeps what was changed on top of it", () => {
+    const { service } = mockInjectedService(RenderSettingsService);
+
+    expect(service.rendererFeatures).toEqual(RENDER_PRESETS[ERenderPreset.BASE]);
+
+    service.setRendererOverrides({ antialiasing: ERenderAntialiasing.FXAA });
+    service.setRendererOverrides({ lod: { ssaA: 80 } });
+    service.setRendererOverrides({ lod: { ssaB: 40 } });
+
+    const reloaded = mockInjectedService(RenderSettingsService).service;
+
+    expect(reloaded.rendererFeatures.antialiasing).toBe(ERenderAntialiasing.FXAA);
+    expect([reloaded.rendererFeatures.lod.ssaA, reloaded.rendererFeatures.lod.ssaB]).toEqual([80, 40]);
+
+    // A preset chosen again is the preset whole: whatever was changed on the last one goes.
+    reloaded.setRendererPreset(ERenderPreset.EDITING);
+
+    expect(reloaded.rendererFeatures).toEqual(RENDER_PRESETS[ERenderPreset.EDITING]);
+    expect(mockInjectedService(RenderSettingsService).service.rendererChoice.preset).toBe(ERenderPreset.EDITING);
+  });
+
+  // Two writes to one group keep both, whichever group: a group forgotten used to be replaced whole.
+  it("keeps every group's earlier changes when another of its settings changes", () => {
+    const { service } = mockInjectedService(RenderSettingsService);
+
+    service.setRendererOverrides({ grass: { radius: 80 }, shadows: { bias: 2 }, upscaling: { sharpening: 0.2 } });
+    service.setRendererOverrides({
+      grass: { height: 1.5 },
+      shadows: { filter: 2 },
+      upscaling: { scale: ERenderScale.QUALITY },
+    });
+
+    expect(service.rendererChoice.overrides).toEqual({
+      grass: { height: 1.5, radius: 80 },
+      shadows: { bias: 2, filter: 2 },
+      upscaling: { scale: ERenderScale.QUALITY, sharpening: 0.2 },
+    });
+  });
+
+  it("falls back to Base for a stored choice that does not parse", () => {
+    window.localStorage.setItem("xrf.preference.renderer-features", "{not json");
+
+    expect(mockInjectedService(RenderSettingsService).service.rendererChoice.preset).toBe(ERenderPreset.BASE);
+  });
+});

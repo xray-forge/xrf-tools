@@ -35,7 +35,7 @@ import { EMPTY_RENDER_FRAME_PHASES } from "@/core/render/lib/native/native-frame
 import { DEFAULT_RENDER_GRAPH_SETTINGS } from "@/core/render/lib/settings/render-graph-settings";
 import { DEFAULT_PERIODIC_BUDGET } from "@/core/render/lib/settings/render-periodic-budget";
 import { ERenderResolution } from "@/core/render/lib/settings/render-resolution";
-import { SettingsService } from "@/core/settings/services/settings";
+import { RenderSettingsService } from "@/core/render/services/render-settings";
 import { mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
 import { mockRenderLoadReport } from "@/fixtures/mocks/render.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
@@ -369,7 +369,7 @@ describe("LevelRenderService", () => {
     });
 
     view.setOptions({ ...view.options, isWireframe: true });
-    container.get(SettingsService).setRenderResolution(ERenderResolution.HEIGHT_720);
+    container.get(RenderSettingsService).setRenderResolution(ERenderResolution.HEIGHT_720);
     await flush();
 
     expect(sent("set_view_options").at(-1)).toEqual({
@@ -384,7 +384,7 @@ describe("LevelRenderService", () => {
   it("resolves at the share of the viewport the settings' scale asks while the resolution is automatic", async () => {
     const { container } = await mockAttached();
 
-    container.get(SettingsService).setRenderOutputScale(1.5);
+    container.get(RenderSettingsService).setRenderOutputScale(1.5);
     await flush();
 
     expect(sent("set_view_options").at(-1)).toEqual({

@@ -15,7 +15,7 @@ import {
 } from "@/core/level/lib/look";
 import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { TRenderExposureSettings } from "@/core/render/lib/settings/render-feature-settings";
-import { SettingsService } from "@/core/settings/services/settings";
+import { RenderSettingsService } from "@/core/render/services/render-settings";
 import { LEVEL_LOOK_STORAGE_KEY, parseLocalStorageValueSafe, setLocalStorageValueSafe } from "@/core/storage";
 import { Logger } from "@/lib/logging";
 
@@ -46,7 +46,7 @@ export class LevelLookService {
 
   public constructor(
     private readonly loadService: LevelLoadService = inject(LevelLoadService),
-    private readonly settingsService: SettingsService = inject(SettingsService)
+    private readonly renderSettingsService: RenderSettingsService = inject(RenderSettingsService)
   ) {
     this.choice = toLevelLookChoice(parseLocalStorageValueSafe(LEVEL_LOOK_STORAGE_KEY), this.exposure);
   }
@@ -135,7 +135,7 @@ export class LevelLookService {
   }
 
   private get exposure(): TRenderExposureSettings {
-    return this.settingsService.rendererFeatures.exposure;
+    return this.renderSettingsService.rendererFeatures.exposure;
   }
 
   private store(choice: ILevelLookChoice): void {

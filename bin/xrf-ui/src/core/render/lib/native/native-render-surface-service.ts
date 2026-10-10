@@ -15,7 +15,7 @@ import { EMPTY_RENDER_FRAME_REPORT } from "@/core/render/lib/native/native-frame
 import { NativeViewport } from "@/core/render/lib/native/native-viewport";
 import { NativeViewportTarget } from "@/core/render/lib/native/native-viewport-target";
 import { IRenderSurfaceHost } from "@/core/render/lib/surface/render-surface-host";
-import { SettingsService } from "@/core/settings/services/settings";
+import { RenderSettingsService } from "@/core/render/services/render-settings";
 import { Logger } from "@/lib/logging";
 
 /**
@@ -42,7 +42,7 @@ export abstract class NativeRenderSurfaceService implements IRenderSurfaceHost {
   private target: Nullable<NativeViewportTarget> = null;
   private readonly reactions: Array<() => void> = [];
 
-  protected constructor(protected readonly settingsService: SettingsService) {}
+  protected constructor(protected readonly renderSettingsService: RenderSettingsService) {}
 
   /**
    * Draws a native viewport under an element.
@@ -81,7 +81,7 @@ export abstract class NativeRenderSurfaceService implements IRenderSurfaceHost {
     this.onAttached(container);
     this.reactions.push(
       reaction(
-        () => this.settingsService.renderSettings,
+        () => this.renderSettingsService.renderSettings,
         (settings: RenderSettings) => void renderCommands.configure(settings).catch(() => {}),
         { equals: comparer.structural, fireImmediately: true }
       ),

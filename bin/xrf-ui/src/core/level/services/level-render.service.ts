@@ -36,7 +36,7 @@ import { NativeRenderSurfaceService } from "@/core/render/lib/native/native-rend
 import { toNativeWorldToggles } from "@/core/render/lib/native/native-view-options";
 import { NativeViewport } from "@/core/render/lib/native/native-viewport";
 import { toRenderOutput } from "@/core/render/lib/settings/render-resolution";
-import { SettingsService } from "@/core/settings/services/settings";
+import { RenderSettingsService } from "@/core/render/services/render-settings";
 import { Logger } from "@/lib/logging";
 
 /**
@@ -70,9 +70,9 @@ export class LevelRenderService extends NativeRenderSurfaceService {
     private readonly viewportService: LevelViewportService = inject(LevelViewportService),
     private readonly weatherService: LevelWeatherService = inject(LevelWeatherService),
     private readonly lookService: LevelLookService = inject(LevelLookService),
-    settingsService: SettingsService = inject(SettingsService)
+    renderSettingsService: RenderSettingsService = inject(RenderSettingsService)
   ) {
-    super(settingsService);
+    super(renderSettingsService);
   }
 
   /**
@@ -88,14 +88,14 @@ export class LevelRenderService extends NativeRenderSurfaceService {
   @Computed()
   public get viewOptions(): RenderViewOptions {
     return toLevelViewOptions({
-      features: this.settingsService.rendererFeatures,
+      features: this.renderSettingsService.rendererFeatures,
       hemiStrength: this.viewService.hemiStrength,
       lod: this.viewService.lod,
       look: this.lookService.look,
       options: this.viewService.options,
       output: toRenderOutput(
-        this.viewService.features.output.resolution ?? this.settingsService.renderResolution,
-        this.viewService.features.output.scale ?? this.settingsService.renderOutputScale
+        this.viewService.features.output.resolution ?? this.renderSettingsService.renderResolution,
+        this.viewService.features.output.scale ?? this.renderSettingsService.renderOutputScale
       ),
       shading: this.viewService.shading,
       sunShafts: this.weatherService.sunShafts,
