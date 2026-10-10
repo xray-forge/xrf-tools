@@ -1347,6 +1347,8 @@ export type RenderReflectionTraceQuality = `${ERenderReflectionTraceQuality}`;
  */
 export enum ERenderScale {
   NATIVE = "native",
+  /** 1.3: about three quarters of each side, between drawing whole and Quality. */
+  ULTRA_QUALITY = "ultraQuality",
   /** 1.5: two thirds of each side. */
   QUALITY = "quality",
   /** 1.7. */

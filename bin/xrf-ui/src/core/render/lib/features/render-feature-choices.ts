@@ -765,6 +765,7 @@ export function formatOcclusionStrength(strength: number): string {
 
 const RENDER_SCALE_NAMES: Readonly<Record<RenderScale, string>> = {
   [ERenderScale.NATIVE]: "Native",
+  [ERenderScale.ULTRA_QUALITY]: "Ultra quality",
   [ERenderScale.QUALITY]: "Quality",
   [ERenderScale.BALANCED]: "Balanced",
   [ERenderScale.PERFORMANCE]: "Performance",
