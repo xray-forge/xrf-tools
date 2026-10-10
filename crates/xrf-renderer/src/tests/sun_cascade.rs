@@ -197,6 +197,22 @@ fn sun_cascade_is_held_by_its_map_through_a_walk_but_not_a_sharp_turn() {
   assert!(!fit_first(&create_camera(position, position - Vec3::Z), DOWN, 160.0).is_held_by(&drawn));
 }
 
+// A running clock turns the sun a little every frame: a map waits for its turn through a turn moving a caster at the
+// reach half a texel, and draws at once past it.
+#[test]
+fn sun_cascade_is_held_by_its_map_through_a_clocks_turn_but_not_a_seek() {
+  let camera: CameraView = create_forward_camera(Vec3::new(0.0, 1.7, 0.0));
+  let light: Vec3 = Vec3::new(0.3, -1.0, 0.2).normalize();
+  let turned = |angle: f32| glam::Quat::from_rotation_z(angle) * light;
+  let drawn: SunCascade = fit_first(&camera, light, 160.0);
+  // Half a texel of 160 m at 2048 across, over the reach of 400 m.
+  let limit: f32 = 0.5 * 160.0 / 2048.0 / 400.0;
+
+  assert!(fit_first(&camera, turned(limit * 0.5), 160.0).is_held_by(&drawn));
+  assert!(!fit_first(&camera, turned(limit * 2.0), 160.0).is_held_by(&drawn));
+  assert!(!fit_first(&camera, turned(0.01), 160.0).is_held_by(&drawn));
+}
+
 #[test]
 fn sun_cascade_is_not_held_by_a_map_drawn_at_other_settings() {
   let camera: CameraView = create_forward_camera(Vec3::new(0.0, 1.7, 0.0));
