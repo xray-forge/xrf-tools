@@ -32,4 +32,7 @@ pub struct VbaoParameters {
   pub gathered: GraphTexture,
   #[texture(d2, unfilterable)]
   pub light_history: GraphTexture,
+  /// The frame's points under the search's pixels: their view depth.
+  #[texture(d2, unfilterable)]
+  pub points: GraphTexture,
 }

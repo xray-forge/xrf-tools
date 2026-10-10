@@ -44,11 +44,15 @@ struct VbaoPipelines {
   lit_filter: wgpu::RenderPipeline,
   light_filter: wgpu::RenderPipeline,
   light_source: wgpu::RenderPipeline,
+  points: wgpu::RenderPipeline,
 }
 
 impl VbaoPass {
   /// The light copied for the search, gathered and filtered: colour, then distance along the view where it says.
   pub const LIGHT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
+  /// The frame's points under the search's pixels: their view depth.
+  pub const POINTS: wgpu::TextureFormat = wgpu::TextureFormat::R32Float;
+  pub const POINTS_PASS: &'static str = "vbao points";
 
   /// # Errors
   ///
@@ -113,6 +117,11 @@ impl VbaoPass {
   /// The texel read in place of light where none is gathered.
   pub fn get_dark(&self) -> &wgpu::TextureView {
     &self.dark
+  }
+
+  /// Lays out the frame's points under the search's pixels, once for every sample that reads them.
+  pub fn record_points(&self, context: &mut RasterContext<'_>, view: &ViewBinding, parameters: &VbaoParameters) {
+    Self::draw(context, &self.pipelines.points, view, parameters);
   }
 
   /// Copies the light the frame's surfaces leave, at the search's size.
@@ -261,6 +270,7 @@ impl VbaoPass {
       lit_filter: create("fs_filter_lit", &[], lit)?,
       light_filter: create("fs_filter_light", &[], &[Self::LIGHT])?,
       light_source: create("fs_light_source", &[], &[Self::LIGHT])?,
+      points: create("fs_points", &[], &[Self::POINTS])?,
     })
   }
 }
