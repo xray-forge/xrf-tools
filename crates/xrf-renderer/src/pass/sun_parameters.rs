@@ -4,7 +4,8 @@ use crate::pass::lighting_uniform::LightingUniform;
 use crate::pass::shadow_uniform::ShadowUniform;
 
 /// What the sun's pass reads: the G-buffer's normals, material and depth, the material table, the frame's lighting, the
-/// sun's shadow cascades and what they were drawn with, and the contact shadows under them.
+/// sun's shadow cascades and what they were drawn with, the contact shadows under them, and what the sun's traced shadow
+/// saw, a lit texel where it is not traced.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 1)]
 pub struct SunParameters<'a> {
@@ -26,4 +27,6 @@ pub struct SunParameters<'a> {
   pub shadows: UniformBinding<ShadowUniform>,
   #[texture(d2, unfilterable)]
   pub contact_shadows: GraphTexture,
+  #[texture(d2, unfilterable)]
+  pub sun_traced: GraphTexture,
 }

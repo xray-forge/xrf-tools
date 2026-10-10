@@ -48,6 +48,7 @@ use crate::pass::grass_colour_parameters::GrassColourParameters;
 use crate::pass::grass_occlusion_parameters::GrassOcclusionParameters;
 use crate::pass::grass_puddles_uniform::GrassPuddlesUniform;
 use crate::pass::level_passes::LevelPasses;
+use crate::pass::light_trace_uniform::LightTraceUniform;
 use crate::pass::lighting_frame::LightingFrame;
 use crate::pass::lighting_uniform::LightingUniform;
 use crate::pass::rain_uniform::RainUniform;
@@ -55,6 +56,7 @@ use crate::pass::reflection_trace::ReflectionTrace;
 use crate::pass::sky_parameters::SkyParameters;
 use crate::pass::static_draw_parameters::StaticDrawParameters;
 use crate::pass::sun_parameters::SunParameters;
+use crate::pass::sun_pass::SunPass;
 use crate::pass::trace_parameters::TraceParameters;
 use crate::pass::view_binding::ViewBinding;
 use crate::pass::water_draw::WaterDraw;
@@ -466,7 +468,12 @@ impl SceneView {
       view.projection,
       (width.div_ceil(2), height.div_ceil(2)),
     );
-    self.features.reflections.prepare(device, options, (width, height));
+    self.features.reflections.prepare(
+      device,
+      options,
+      (width, height),
+      self.features.resolve.is_ray_reconstructed(),
+    );
     self
       .features
       .composited
@@ -488,6 +495,12 @@ impl SceneView {
       options,
       self.shared.lighting.to_sun,
       (height, self.features.resolve.get_noise_frame()),
+    );
+    self.features.sun_trace.prepare(
+      options,
+      self.shared.lighting.to_sun,
+      self.features.resolve.get_noise_frame(),
+      self.features.resolve.is_ray_reconstructed(),
     );
 
     scene.particles.fill(view, options, &mut self.features.particles);
@@ -675,7 +688,8 @@ impl SceneView {
 
   /// Declares the lighting: the lights binned into the view's clusters, the contact shadows marched, the sun then every
   /// light drawn into the light target, the binning's overflow read back, and the ambient occlusion and the indirect
-  /// light searched and filtered. Answers the indirect light filtered, none where it is not gathered.
+  /// light searched and filtered. Answers the indirect light filtered, none where it is not gathered, and how much of
+  /// the sun reaches each pixel.
   fn add_lighting_passes<'a>(
     &'a self,
     (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
@@ -686,7 +700,7 @@ impl SceneView {
       LightingHandles<'a>,
       Option<(TraceParameters<'a>, &'a wgpu::BindGroup)>,
     ),
-  ) -> Option<GraphTexture> {
+  ) -> (Option<GraphTexture>, GraphTexture) {
     let lights: &'a LightsFeature = &self.features.lights;
     let buffers: LightBuffers = lights.add_binning_passes((&mut *graph, &mut *bindings, &mut *runtime), passes);
 
@@ -695,6 +709,12 @@ impl SceneView {
       .features
       .contact_shadows
       .add_passes((&mut *graph, &mut *bindings, &mut *runtime), passes, view, targets);
+    // What the sun sees, traced where DLSS ray reconstruction denoises it; the cascades shadow it otherwise.
+    let sun_traced: Option<GraphTexture> =
+      self
+        .features
+        .sun_trace
+        .add_passes((&mut *graph, &mut *runtime), passes, view, targets, traced);
     let sun: SunParameters = SunParameters {
       normal_target: targets.normal,
       material_target: targets.material,
@@ -705,7 +725,17 @@ impl SceneView {
       shadow_maps: lit.shadow_maps,
       shadows: lit.shadows,
       contact_shadows,
+      sun_traced: sun_traced
+        .unwrap_or_else(|| bindings.import_view(&mut *graph, "sun untraced", passes.sun.get_untraced())),
     };
+    let is_sun_traced: bool = sun_traced.is_some();
+    let (width, height) = targets.size;
+    let sun_seen: GraphTexture = graph.create_texture(GraphTextureDescriptor::new_2d(
+      "sun seen",
+      width,
+      height,
+      SunPass::SEEN_FORMAT,
+    ));
 
     graph
       .add_raster_pass("sun")
@@ -714,7 +744,24 @@ impl SceneView {
         targets.light,
         wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
       ))
-      .record(move |context| passes.sun.record(context, view, &sun));
+      .color(GraphColorAttachment::new(
+        sun_seen,
+        wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+      ))
+      .record(move |context| passes.sun.record(context, view, &sun, is_sun_traced));
+
+    // The shadowed lights traced where DLSS ray reconstruction denoises them, their atlas faces otherwise.
+    let traced_lights: Option<(
+      TraceParameters<'a>,
+      &'a wgpu::BindGroup,
+      UniformBinding<LightTraceUniform>,
+    )> = traced
+      .filter(|_| self.features.resolve.is_ray_reconstructed())
+      .map(|(trace, textures)| {
+        let light_trace: LightTraceUniform = LightTraceUniform::new(self.features.resolve.get_noise_frame());
+
+        (trace, textures, runtime.push_uniform(&light_trace))
+      });
 
     lights.add_draw_passes(
       (&mut *graph, &mut *bindings),
@@ -722,6 +769,7 @@ impl SceneView {
       (view, textures, scene.lights.get_shadow_atlas()),
       (targets, lit, buffers),
       (contact, self.features.contact_shadows.get_light_count()),
+      traced_lights,
     );
     lights.add_overflow_pass(&mut *graph, buffers);
 
@@ -731,13 +779,15 @@ impl SceneView {
       .ambient_occlusion
       .add_passes((&mut *graph, &mut *bindings, &mut *runtime), passes, view, targets);
 
-    self.features.bitmask.add_passes(
+    let indirect_light: Option<GraphTexture> = self.features.bitmask.add_passes(
       (graph, bindings, runtime),
       passes,
       view,
       targets,
       (traced, self.features.resolve.is_ray_reconstructed()),
-    )
+    );
+
+    (indirect_light, sun_seen)
   }
 
   /// Ends a frame its graph recorded: the water's reflection, the bitmask search's accumulations and the temporal
@@ -1068,12 +1118,14 @@ impl SceneView {
         &lit,
       );
 
-      indirect_light = scene_view.add_lighting_passes(
+      let (lit_indirect, sun_seen): (Option<GraphTexture>, GraphTexture) = scene_view.add_lighting_passes(
         (&mut *graph, &mut *bindings, runtime),
         passes,
         (view, texture_group, scene),
         (handles, lit, traced),
       );
+
+      indirect_light = lit_indirect;
 
       let surroundings: &SurroundingsCube = &scene_view.features.surroundings;
       let sky: Option<SkyParameters> = scene_view.features.sky.add_passes(
@@ -1125,6 +1177,7 @@ impl SceneView {
             reflections.unwrap_or(untraced),
             wet_surface,
             wet_reach,
+            sun_seen,
           ],
         );
         ray_guides = scene_view.features.resolve.add_guide_passes(

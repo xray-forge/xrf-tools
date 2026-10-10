@@ -6,21 +6,38 @@
 #import "common/occlusion"
 
 // `accum_sun`: the sun at every drawn pixel, `Ldynamic_color * plight_infinity(m, P, N, L)`, times how much of it
-// reaches the pixel through the cascades' maps and past what its contact shadows found. Diffuse in colour, specular in
-// alpha, into the light the frame accumulates.
+// reaches the pixel through the cascades' maps, or, traced, what the sun's traced shadow saw there, and past what its
+// contact shadows found. Diffuse in colour, specular in alpha, into the light the frame accumulates; and beside it how
+// much of the sun reaches the pixel, which combine's glint on a wet surface's water film is shadowed by.
 
 #import "generated/frame/sun"
 
 // What `accum_emissive.ps` writes into a self-lit surface's light.
 const EMISSIVE_LIGHT: f32 = 16.0;
 
+// The sun's light at a pixel, and how much of the sun reaches it.
+struct SunTargets {
+  @location(0) light: vec4<f32>,
+  @location(1) seen: vec4<f32>,
+};
+
 @fragment
-fn fs_sun(in: FullscreenVarying) -> @location(0) vec4<f32> {
+fn fs_sun(in: FullscreenVarying) -> SunTargets {
+  return light_sun(in, false);
+}
+
+@fragment
+fn fs_sun_traced(in: FullscreenVarying) -> SunTargets {
+  return light_sun(in, true);
+}
+
+// The sun's light at a pixel, its shadow the cascades' or, `is_traced`, the traced shadow's.
+fn light_sun(in: FullscreenVarying, is_traced: bool) -> SunTargets {
   let texel: vec2<i32> = vec2<i32>(in.clip.xy);
   let depth: f32 = textureLoad(depth_target, texel, 0);
 
   if (depth <= 0.0) {
-    return vec4<f32>(0.0);
+    return SunTargets(vec4<f32>(0.0), vec4<f32>(0.0));
   }
 
   let position: vec3<f32> = camera_view_position(in.clip.xy, depth);
@@ -29,7 +46,7 @@ fn fs_sun(in: FullscreenVarying) -> @location(0) vec4<f32> {
 
   // `accum_emissive`: a self-lit surface's light is filled with sixteen, which the local lights then add to.
   if (has_mark(material.a, MARK_EMISSIVE)) {
-    return vec4<f32>(EMISSIVE_LIGHT);
+    return SunTargets(vec4<f32>(EMISSIVE_LIGHT), vec4<f32>(0.0));
   }
 
   let slice: f32 = material.z;
@@ -49,7 +66,15 @@ fn fs_sun(in: FullscreenVarying) -> @location(0) vec4<f32> {
   // Terrain's and a marched steep surface's own sun term is what the enhanced parallax keeps from its hollows, one
   // where none marches it.
   let relief: f32 = select(1.0, material.y, has_mark(material.a, MARK_TERRAIN) || has_mark(material.a, MARK_RELIEF));
-  let shadow: f32 = sun_shadow(shadow_maps, shadows, world, world_normal, dot(normal, to_light)) * contact * relief;
+  var seen: f32;
+
+  if (is_traced) {
+    seen = textureLoad(sun_traced, texel, 0).x;
+  } else {
+    seen = sun_shadow(shadow_maps, shadows, world, world_normal, dot(normal, to_light));
+  }
+
+  let shadow: f32 = seen * contact * relief;
 
   // Foliage passes the sun through from behind: by how directly the eye looks into it past the leaf, tinted by the
   // sun's colour as far as the flora's colour share says.
@@ -62,5 +87,5 @@ fn fs_sun(in: FullscreenVarying) -> @location(0) vec4<f32> {
     through = amount * mix(vec3<f32>(1.0), lighting.sun.rgb, lighting.flora.z);
   }
 
-  return vec4<f32>(lighting.sun.rgb * lit.x + through, lighting.sun.w * lit.y) * shadow;
+  return SunTargets(vec4<f32>(lighting.sun.rgb * lit.x + through, lighting.sun.w * lit.y) * shadow, vec4<f32>(shadow));
 }

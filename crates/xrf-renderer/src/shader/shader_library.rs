@@ -164,6 +164,7 @@ const EMBEDDED: &[(&str, &str)] = &[
   ("frame/sky_behind", include_str!("../../shaders/frame/sky_behind.wgsl")),
   ("frame/ray_guides", include_str!("../../shaders/frame/ray_guides.wgsl")),
   ("frame/rtao", include_str!("../../shaders/frame/rtao.wgsl")),
+  ("frame/sun_trace", include_str!("../../shaders/frame/sun_trace.wgsl")),
   (
     "frame/light_contact",
     include_str!("../../shaders/frame/light_contact.wgsl"),
@@ -171,6 +172,10 @@ const EMBEDDED: &[(&str, &str)] = &[
   (
     "frame/light_selection",
     include_str!("../../shaders/frame/light_selection.wgsl"),
+  ),
+  (
+    "frame/light_tracing",
+    include_str!("../../shaders/frame/light_tracing.wgsl"),
   ),
   (
     "frame/light_visibility",
@@ -275,12 +280,20 @@ const EMBEDDED: &[(&str, &str)] = &[
     include_str!("../../shaders/generated/frame/ray_guides.wgsl"),
   ),
   (
+    "generated/frame/sun_trace",
+    include_str!("../../shaders/generated/frame/sun_trace.wgsl"),
+  ),
+  (
     "generated/frame/light_contact",
     include_str!("../../shaders/generated/frame/light_contact.wgsl"),
   ),
   (
     "generated/frame/light_shadowing",
     include_str!("../../shaders/generated/frame/light_shadowing.wgsl"),
+  ),
+  (
+    "generated/frame/light_tracing",
+    include_str!("../../shaders/generated/frame/light_tracing.wgsl"),
   ),
   (
     "generated/frame/light_visibility",

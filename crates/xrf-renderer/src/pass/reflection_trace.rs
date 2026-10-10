@@ -9,6 +9,9 @@ pub struct ReflectionTrace {
   pub intensity: f32,
   /// How far the sky's highlights are scaled as their light, from `SKY_GAIN_LEAST` to `SKY_GAIN_MOST`.
   pub sky_gain: f32,
+  /// Whether DLSS ray reconstruction takes the trace raw: every pixel traced every frame and none of the denoiser's
+  /// stages run.
+  pub is_raw: bool,
 }
 
 impl ReflectionTrace {
@@ -37,11 +40,20 @@ impl ReflectionTrace {
       quality: settings.quality,
       intensity: settings.intensity,
       sky_gain: settings.sky_gain.clamp(Self::SKY_GAIN_LEAST, Self::SKY_GAIN_MOST),
+      is_raw: false,
     })
   }
 
-  /// The frame's pixels a traced pixel stands for each way.
+  /// The same trace, taken raw where DLSS ray reconstruction resolves the frame (`is_reconstructed`).
+  pub fn with_raw(self, is_reconstructed: bool) -> Self {
+    Self {
+      is_raw: is_reconstructed,
+      ..self
+    }
+  }
+
+  /// The frame's pixels a traced pixel stands for each way: one taken raw, whatever the quality.
   pub fn get_ratio(self) -> u32 {
-    self.quality.get_ratio()
+    if self.is_raw { 1 } else { self.quality.get_ratio() }
   }
 }

@@ -324,6 +324,36 @@ fn environment_brdf(head_on: vec3<f32>, roughness: f32, facing: f32) -> vec3<f32
   return head_on * ab.x + ab.y;
 }
 
+    // The sun's angular radius, which its glint's lobe is widened by, so a mirror shows the disc rather than a point; and
+// the most of the sun's light, by its luminance, a glint sends the eye, a fifth of the half float's range, so a mirror's
+// peak blooms rather than overflowing the frame's light.
+const SUN_ANGULAR_RADIUS: f32 = 0.00465;
+const SUN_GLINT_MOST: f32 = 4096.0;
+
+// The share of the sun's light a surface reflects to the eye: GGX's lobe over its reflectance head on and roughness,
+// widened by the sun's disc, Smith's height-correlated visibility and Schlick's Fresnel, by the cosine the sun lights it
+// at. `normal`, `to_eye` and `to_sun` share a space.
+fn sun_glint(normal: vec3<f32>, to_eye: vec3<f32>, to_sun: vec3<f32>, roughness: f32, head_on: vec3<f32>) -> vec3<f32> {
+  let lit: f32 = dot(normal, to_sun);
+  let facing: f32 = dot(normal, to_eye);
+
+  if (lit <= 0.0 || facing <= 0.0) {
+    return vec3<f32>(0.0);
+  }
+
+  let half_way: vec3<f32> = normalize(to_sun + to_eye);
+  let alpha: f32 = min(lobe_alpha(roughness) + SUN_ANGULAR_RADIUS, 1.0);
+  let alpha_squared: f32 = alpha * alpha;
+  let along: f32 = saturate(dot(normal, half_way));
+  let spread: f32 = along * along * (alpha_squared - 1.0) + 1.0;
+  let lobe: f32 = alpha_squared / (PI * spread * spread);
+  let visibility: f32 = 0.5 / (lit * sqrt(facing * facing * (1.0 - alpha_squared) + alpha_squared) +
+    facing * sqrt(lit * lit * (1.0 - alpha_squared) + alpha_squared));
+  let fresnel: vec3<f32> = head_on + (1.0 - head_on) * pow(1.0 - saturate(dot(to_eye, half_way)), 5.0);
+
+  return min(vec3<f32>(lobe * visibility * lit), vec3<f32>(SUN_GLINT_MOST)) * fresnel;
+}
+
 // How much of the sky a surface's reflection sees past what stands about it, from how much of the hemisphere lights the
 // surface (its baked and its screen occlusion together) at its roughness and facing: Lagarde and de Rousiers', a rough
 // surface's wide lobe occluded as its hemisphere is, a mirror's only where the view grazes.

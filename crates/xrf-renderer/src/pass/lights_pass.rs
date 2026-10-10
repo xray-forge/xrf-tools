@@ -1,14 +1,17 @@
 use xrf_error::XrfResult;
 use xrf_renderer_core::{ComputeContext, PassParameters, RasterContext};
 
+use crate::context::gpu_requirements::can_trace;
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::light_binning_parameters::LightBinningParameters;
 use crate::pass::light_contact_parameters::LightContactParameters;
 use crate::pass::light_shadowing_parameters::LightShadowingParameters;
+use crate::pass::light_tracing_parameters::LightTracingParameters;
 use crate::pass::light_visibility_parameters::LightVisibilityParameters;
 use crate::pass::lights_parameters::LightsParameters;
 use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::shader_pipelines::create_checked;
+use crate::pass::trace_parameters::TraceParameters;
 use crate::pass::view_binding::ViewBinding;
 
 /// Clusters the view is cut into, and invocations a binning workgroup runs, as the source declare them.
@@ -19,14 +22,17 @@ const BINNING_WORKGROUP: u32 = 64;
 const VISIBILITY_WORKGROUP: u32 = 8;
 
 /// Bins the local lights in view into clusters of the view, marches the contact shadows towards the strongest at half
-/// the frame's size, finds how much of each shadowed light every pixel sees, then adds every light reaching each pixel
-/// to the light its frame accumulated after the sun.
+/// the frame's size, finds how much of each shadowed light every pixel sees, from the shadow atlas or traced, then adds
+/// every light reaching each pixel to the light its frame accumulated after the sun.
 pub struct LightsPass {
   binning_layout: wgpu::BindGroupLayout,
   layout: wgpu::BindGroupLayout,
   contact_layout: wgpu::BindGroupLayout,
   shadowing_layout: wgpu::BindGroupLayout,
   visibility_layout: wgpu::BindGroupLayout,
+  tracing_layout: wgpu::BindGroupLayout,
+  /// The scene trace's layout, on a device with ray queries.
+  trace_layout: Option<wgpu::BindGroupLayout>,
   view_layout: wgpu::BindGroupLayout,
   texture_layout: wgpu::BindGroupLayout,
   pipelines: LightsPipelines,
@@ -41,15 +47,19 @@ pub struct LightsPass {
 }
 
 /// The binning, the contact shadows' march, then the visibility and the lights each without contact shadows and with
-/// them, which find the slots by them.
+/// them, which find the slots by them, and the visibility traced, on a device with ray queries.
 struct LightsPipelines {
   binning: wgpu::ComputePipeline,
   contact: wgpu::ComputePipeline,
   visibility: [wgpu::ComputePipeline; 2],
+  traced: Option<wgpu::ComputePipeline>,
   draws: [wgpu::RenderPipeline; 2],
 }
 
 impl LightsPass {
+  /// Where the traced visibility binds the texture cache's group, after the scene trace's.
+  const TEXTURE_GROUP: u32 = 4;
+
   /// What the visibility is held in: a share a light, four lights a layer.
   pub const VISIBILITY_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 
@@ -79,12 +89,15 @@ impl LightsPass {
     let contact_layout: wgpu::BindGroupLayout = LightContactParameters::create_layout(device);
     let shadowing_layout: wgpu::BindGroupLayout = LightShadowingParameters::create_layout(device);
     let visibility_layout: wgpu::BindGroupLayout = LightVisibilityParameters::create_layout(device);
+    let tracing_layout: wgpu::BindGroupLayout = LightTracingParameters::create_layout(device);
+    let trace_layout: Option<wgpu::BindGroupLayout> = can_trace(device).then(|| TraceParameters::create_layout(device));
     let pipelines: LightsPipelines = Self::create_pipelines(
       device,
       source,
       &binning_layout,
       [view_layout, &layout, texture_layout],
       [&contact_layout, &shadowing_layout, &visibility_layout],
+      (&tracing_layout, trace_layout.as_ref()),
     )?;
     let stand_in = |label: &str, format: wgpu::TextureFormat, layers: Option<u32>| -> wgpu::TextureView {
       device
@@ -119,6 +132,8 @@ impl LightsPass {
       contact_layout,
       shadowing_layout,
       visibility_layout,
+      tracing_layout,
+      trace_layout,
       view_layout: view_layout.clone(),
       texture_layout: texture_layout.clone(),
       unshadowed: stand_in(
@@ -142,6 +157,7 @@ impl LightsPass {
         &self.binning_layout,
         [&self.view_layout, &self.layout, &self.texture_layout],
         [&self.contact_layout, &self.shadowing_layout, &self.visibility_layout],
+        (&self.tracing_layout, self.trace_layout.as_ref()),
       ) {
         Ok(pipelines) => self.pipelines = pipelines,
         Err(error) => log::error!("Lights rejected, lighting with the last one: {error}"),
@@ -219,6 +235,36 @@ impl LightsPass {
     );
   }
 
+  /// Traces how much of each shadowed light every pixel of a `size` view sees, the contact shadows not marched; nothing
+  /// on a device without ray queries.
+  pub fn record_tracing(
+    &self,
+    context: &mut ComputeContext<'_>,
+    view: &ViewBinding,
+    (parameters, tracing): (&LightsParameters<'_>, &LightTracingParameters),
+    (trace, textures): (&TraceParameters<'_>, &wgpu::BindGroup),
+    size: (u32, u32),
+  ) {
+    let Some(pipeline) = &self.pipelines.traced else {
+      return;
+    };
+
+    context.bind(parameters);
+    context.bind(tracing);
+    context.bind(trace);
+
+    let pass: &mut wgpu::ComputePass<'static> = context.get_pass();
+
+    pass.set_pipeline(pipeline);
+    pass.set_bind_group(0, &view.bind_group, &[]);
+    pass.set_bind_group(Self::TEXTURE_GROUP, textures, &[]);
+    pass.dispatch_workgroups(
+      size.0.div_ceil(VISIBILITY_WORKGROUP),
+      size.1.div_ceil(VISIBILITY_WORKGROUP),
+      1,
+    );
+  }
+
   pub fn record_draw(
     &self,
     context: &mut RasterContext<'_>,
@@ -243,6 +289,7 @@ impl LightsPass {
     binning_layout: &wgpu::BindGroupLayout,
     [view_layout, layout, texture_layout]: [&wgpu::BindGroupLayout; 3],
     [contact_layout, shadowing_layout, visibility_layout]: [&wgpu::BindGroupLayout; 3],
+    (tracing_layout, trace_layout): (&wgpu::BindGroupLayout, Option<&wgpu::BindGroupLayout>),
   ) -> XrfResult<LightsPipelines> {
     let binning_module: wgpu::ShaderModule = source.get_module("frame/light_binning")?;
     let contact_module: wgpu::ShaderModule = source.get_module("frame/light_contact")?;
@@ -312,6 +359,34 @@ impl LightsPass {
         })
       })
     };
+    let traced: Option<wgpu::ComputePipeline> = trace_layout
+      .map(|trace_layout| -> XrfResult<wgpu::ComputePipeline> {
+        let tracing_module: wgpu::ShaderModule = source.get_module("frame/light_tracing")?;
+        let tracing_pipeline_layout: wgpu::PipelineLayout =
+          device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("light tracing"),
+            bind_group_layouts: &[
+              Some(view_layout),
+              Some(layout),
+              Some(tracing_layout),
+              Some(trace_layout),
+              Some(texture_layout),
+            ],
+            ..Default::default()
+          });
+
+        create_checked(device, "light tracing", || {
+          device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some("light tracing"),
+            layout: Some(&tracing_pipeline_layout),
+            module: &tracing_module,
+            entry_point: Some("cs_visibility_traced"),
+            compilation_options: Default::default(),
+            cache: source.get_driver_cache(),
+          })
+        })
+      })
+      .transpose()?;
     let additive: wgpu::BlendComponent = wgpu::BlendComponent {
       src_factor: wgpu::BlendFactor::One,
       dst_factor: wgpu::BlendFactor::One,
@@ -357,6 +432,7 @@ impl LightsPass {
       binning,
       contact,
       visibility: [create_visibility(false)?, create_visibility(true)?],
+      traced,
       draws: [create_draw(false)?, create_draw(true)?],
     })
   }

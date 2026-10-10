@@ -16,12 +16,15 @@ use crate::pass::light_binning_parameters::LightBinningParameters;
 use crate::pass::light_contact_parameters::LightContactParameters;
 use crate::pass::light_record::LightRecord;
 use crate::pass::light_shadowing_parameters::LightShadowingParameters;
+use crate::pass::light_trace_uniform::LightTraceUniform;
+use crate::pass::light_tracing_parameters::LightTracingParameters;
 use crate::pass::light_visibility_parameters::LightVisibilityParameters;
 use crate::pass::light_volume_record::LightVolumeRecord;
 use crate::pass::light_volumes_uniform::LightVolumesUniform;
 use crate::pass::lights_parameters::LightsParameters;
 use crate::pass::lights_pass::LightsPass;
 use crate::pass::lights_uniform::LightsUniform;
+use crate::pass::trace_parameters::TraceParameters;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::feature::light_buffers::LightBuffers;
 use crate::scene::level::light_shadow_atlas::LightShadowAtlas;
@@ -198,10 +201,18 @@ impl LightsFeature {
     (view, textures, atlas): (&'a ViewBinding, &'a wgpu::BindGroup, LightShadowAtlas<'a>),
     (targets, lit, buffers): (ViewTargetHandles, LightingHandles<'a>, LightBuffers),
     (contact, contact_lights): (UniformBinding<ContactShadowUniform>, u32),
+    traced: Option<(
+      TraceParameters<'a>,
+      &'a wgpu::BindGroup,
+      UniformBinding<LightTraceUniform>,
+    )>,
   ) {
     if self.count == 0 {
       return;
     }
+
+    // Traced, the shadowed lights' rays find what the contact shadows would, so none are marched.
+    let contact_lights: u32 = if traced.is_some() { 0 } else { contact_lights };
 
     let parameters: LightsParameters = LightsParameters {
       normal_target: targets.normal,
@@ -252,7 +263,29 @@ impl LightsFeature {
         bindings.import_view(graph, "light threshold none", passes.lights.get_unthresholded()),
       )
     };
-    let visibility: GraphTexture = if is_shadowed {
+    let visibility: GraphTexture = if let (Some((trace, textures, light_trace)), true) = (traced, is_shadowed) {
+      let visibility: GraphTexture = graph.create_texture(
+        GraphTextureDescriptor::new_2d("light visibility", width, height, LightsPass::VISIBILITY_FORMAT)
+          .with_array_layer_count(LightsPass::VISIBILITY_LAYERS),
+      );
+      let tracing: LightTracingParameters = LightTracingParameters {
+        light_trace,
+        light_visibility_out: visibility,
+      };
+
+      graph
+        .add_compute_pass("light tracing")
+        .parameters(&parameters)
+        .parameters(&tracing)
+        .parameters(&trace)
+        .record(move |context| {
+          passes
+            .lights
+            .record_tracing(context, view, (&parameters, &tracing), (&trace, textures), targets.size)
+        });
+
+      visibility
+    } else if is_shadowed {
       let light_contact: GraphTexture = light_contact
         .unwrap_or_else(|| bindings.import_view(graph, "light contact none", passes.lights.get_uncontacted()));
       let visibility: GraphTexture = graph.create_texture(

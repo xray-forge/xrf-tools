@@ -4,7 +4,8 @@ use crate::pass::exposure_head::ExposureHead;
 use crate::pass::lighting_uniform::LightingUniform;
 
 /// What the combine reads: the G-buffer and the light gathered over it, the material table, the frame's lighting and
-/// exposure, the ambient occlusion, the sky behind the fog, the indirect light and the reflections traced.
+/// exposure, the ambient occlusion, the sky behind the fog, the indirect light, the reflections traced and how much of
+/// the sun reaches each pixel.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 1)]
 pub struct CombineParameters<'a> {
@@ -43,4 +44,7 @@ pub struct CombineParameters<'a> {
   /// The gloss the reflections' wet reach added beyond the engine's own wetting, which the lights' specular leaves out.
   #[texture(d2, unfilterable)]
   pub wet_reach: GraphTexture,
+  /// How much of the sun reaches each pixel, which the sun's glint on a wet surface's water film is shadowed by.
+  #[texture(d2, unfilterable)]
+  pub sun_seen: GraphTexture,
 }

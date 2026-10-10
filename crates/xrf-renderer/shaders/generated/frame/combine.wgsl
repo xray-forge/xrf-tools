@@ -18,3 +18,4 @@
 @group(1) @binding(13) var reflections: texture_2d<f32>;
 @group(1) @binding(14) var wet_surface: texture_2d<f32>;
 @group(1) @binding(15) var wet_reach: texture_2d<f32>;
+@group(1) @binding(16) var sun_seen: texture_2d<f32>;

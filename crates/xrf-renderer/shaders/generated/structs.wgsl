@@ -208,6 +208,18 @@ struct ContactShadows {
   lights: u32,
 }
 
+struct SunTrace {
+  to_sun: vec4<f32>,
+  spread: f32,
+  noise_x: f32,
+  noise_y: f32,
+}
+
+struct LightTrace {
+  noise: vec4<f32>,
+  radius: f32,
+}
+
 struct Lights {
   count: u32,
   near: f32,
