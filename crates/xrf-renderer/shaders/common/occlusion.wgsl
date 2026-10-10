@@ -1,4 +1,5 @@
 #import "common/camera"
+#import "common/octahedral"
 
 // The screen's occlusion, searched at half resolution as visibility then distance along the view, and the indirect
 // light gathered beside it as colour then distance; and the reflections traced at a size of their own.
@@ -79,11 +80,30 @@ fn reflection_texel(material: texture_2d<f32>, depth: texture_depth_2d, pixel: v
   return first;
 }
 
+// How far apart two surfaces' normals may face and their roughnesses stand before a traced pixel stops speaking for a
+// frame's pixel: the normals' cosine raised to `UPSAMPLE_NORMAL_POWER`, the roughness by `UPSAMPLE_ROUGHNESS_SCALE` a
+// unit of difference.
+const UPSAMPLE_NORMAL_POWER: f32 = 8.0;
+const UPSAMPLE_ROUGHNESS_SCALE: f32 = 20.0;
+
 // The reflections traced brought up to the frame's pixel: the traced pixels around it, each standing for `ratio` of the
-// frame's pixels a side, by how near each lies and how near the distance its pixel shows lies to the pixel's. What is
-// reflected, then one; alpha below none where no pixel around it was traced.
-fn upsampled_reflection(traced: texture_2d<f32>, depth: texture_depth_2d, material: texture_2d<f32>,
-  pixel: vec2<f32>, distance: f32, ratio: f32) -> vec4<f32> {
+// frame's pixels a side, by how near each lies, how near the distance its pixel shows lies to the pixel's (`surface`'s
+// `w`), how alike its normal faces to the pixel's (`surface`'s `xyz`, view space) and its roughness stands to
+// `roughness`, its own read from `normals` and from the gloss in `albedo`'s alpha as the reflections read gloss, so a
+// traced texel neither bleeds onto a rougher neighbour nor across an edge. What is reflected, then one; alpha below none where no pixel around it was
+// traced.
+fn upsampled_reflection(
+  traced: texture_2d<f32>,
+  depth: texture_depth_2d,
+  material: texture_2d<f32>,
+  normals: texture_2d<f32>,
+  albedo: texture_2d<f32>,
+  pixel: vec2<f32>,
+  surface: vec4<f32>,
+  roughness: f32,
+  ratio: f32,
+) -> vec4<f32> {
+  let distance: f32 = surface.w;
   let last: vec2<f32> = vec2<f32>(textureDimensions(traced)) - 1.0;
   let base: vec2<f32> = floor(pixel / ratio);
   let fraction: vec2<f32> = (pixel - base * ratio) / ratio;
@@ -99,13 +119,18 @@ fn upsampled_reflection(traced: texture_2d<f32>, depth: texture_depth_2d, materi
     let there: f32 = -camera_view_position(vec2<f32>(shown) + 0.5, max(stored, 1e-7)).z;
     let bilinear: f32 = mix(1.0 - fraction.x, fraction.x, offset.x) * mix(1.0 - fraction.y, fraction.y, offset.y);
     let difference: f32 = abs(there - distance) / max(distance, 1e-3);
-    let weight: f32 = select(0.0, bilinear / (difference * difference + 1e-3), texel.a >= 0.0 && stored > 0.0);
+    let facing: f32 = pow(saturate(dot(octahedral_decode(textureLoad(normals, shown, 0).xy), surface.xyz)),
+      UPSAMPLE_NORMAL_POWER);
+    let glossy: f32 = 1.0 - sqrt(saturate(textureLoad(albedo, shown, 0).a));
+    let alike: f32 = 1.0 / (1.0 + UPSAMPLE_ROUGHNESS_SCALE * abs(glossy * glossy - roughness));
+    let weight: f32 = select(0.0, bilinear * facing * alike / (difference * difference + 1e-3),
+      texel.a >= 0.0 && stored > 0.0);
 
     sum += texel * weight;
     weights += weight;
   }
 
-  if (weights <= 0.0) {
+  if (weights <= 1e-6) {
     return vec4<f32>(0.0, 0.0, 0.0, -1.0);
   }
 
