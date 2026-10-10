@@ -54,6 +54,11 @@ impl LevelShadows {
   }
 
   /// What the passes lit by the sun sample its cascades by, as this frame fitted them.
+  /// How many cascades this frame draws, as `prepare_cascades` decided.
+  pub fn get_due_count(&self) -> usize {
+    self.due.len()
+  }
+
   pub fn get_values(&self) -> &ShadowUniform {
     &self.values
   }

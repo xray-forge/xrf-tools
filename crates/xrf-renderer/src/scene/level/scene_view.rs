@@ -625,7 +625,16 @@ impl SceneView {
     shadows.prepare_cascades(device, queue, encoder, view_layout, &frame);
     // The cube is for the traced reflections alone; the engine's reflect its own.
     if info.reflection_settings.is_drawn() {
-      surroundings.prepare(device, queue, encoder, &frame, info.reflection_settings.probe);
+      // A frame drawing no more than the nearest cascade is light enough for a face refreshed by age alone.
+      let is_light: bool = shadows.get_due_count() <= 1;
+
+      surroundings.prepare(
+        device,
+        queue,
+        encoder,
+        &frame,
+        (info.reflection_settings.probe, is_light),
+      );
     } else {
       surroundings.rest();
     }
