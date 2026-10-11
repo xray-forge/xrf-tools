@@ -67,3 +67,28 @@ fn scene_surface(hit: SceneHit, spread: f32) -> SceneSurface {
   return SceneSurface(vec3<f32>(0.0), vec3<f32>(0.0, 1.0, 0.0), vec3<f32>(0.0), 0.0, 0.0, 0.0, false,
     vec3<f32>(0.0, 1.0, 0.0));
 }
+
+struct SceneGrassPassed {
+  opacity: f32,
+  albedo: vec3<f32>,
+  hemi: f32,
+  entry: f32,
+}
+
+fn scene_grass_passed(origin: vec3<f32>, toward: vec3<f32>, length: f32, is_met: bool) -> SceneGrassPassed {
+  return SceneGrassPassed(0.0, vec3<f32>(0.0), 0.0, -1.0);
+}
+
+fn shade_scene_grass(
+  grass: SceneGrassPassed,
+  origin: vec3<f32>,
+  toward: vec3<f32>,
+  state: Lighting,
+  lut: texture_3d<f32>,
+  lut_sampler: sampler,
+  environment_0: texture_cube<f32>,
+  environment_1: texture_cube<f32>,
+  cube_sampler: sampler,
+) -> vec3<f32> {
+  return vec3<f32>(0.0);
+}

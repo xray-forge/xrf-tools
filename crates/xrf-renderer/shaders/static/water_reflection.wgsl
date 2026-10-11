@@ -111,7 +111,7 @@ fn request_water_trace(pixel: vec2<f32>, world: vec3<f32>, normal: vec3<f32>, to
   request.pixel = u32(pixel.x) | (u32(pixel.y) << 16u);
   request.screen = trace_request_screen(answer.rgb, share);
   request.screen_length = answer.w;
-  request.hit_end = TRACE_REQUEST_WATER;
+  request.hit_end = TRACE_REQUEST_WATER | (pack2x16float(vec2<f32>(water.reflection, 0.0)) & 0xffffu);
 
   return list_trace_request(request);
 }

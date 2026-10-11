@@ -240,7 +240,7 @@ const SHALLOW_COLOUR: f32 = 0.3;
 const SHORE_FADE: f32 = 40.0;
 
 // How much of its colour the reflection keeps, and the luminance it greys towards.
-const ENHANCED_VIBRANCE: f32 = 0.6;
+const ENHANCED_VIBRANCE: f32 = 1.0;
 const LUMINANCE: vec3<f32> = vec3<f32>(0.3, 0.38, 0.22);
 
 @vertex
