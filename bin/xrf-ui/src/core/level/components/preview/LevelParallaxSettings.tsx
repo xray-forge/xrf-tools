@@ -100,7 +100,7 @@ export function LevelParallaxSettings({
             label={"Surface range"}
             value={value.surfaceRange}
             min={4}
-            max={30}
+            max={100}
             step={1}
             format={(surfaceRange: number) => `${formatNumber(surfaceRange, 0)} m`}
             onChange={(surfaceRange: number) => set({ surfaceRange })}

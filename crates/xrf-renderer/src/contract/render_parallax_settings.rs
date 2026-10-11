@@ -45,7 +45,7 @@ impl Default for RenderParallaxSettings {
       blending: 0.5,
       cavity: 1.0,
       surface_height: 0.02,
-      surface_range: 12.0,
+      surface_range: 60.0,
     }
   }
 }

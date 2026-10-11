@@ -136,9 +136,9 @@ export const DEFAULT_RENDER_INDIRECT_LIGHT_SETTINGS: TRenderIndirectLightSetting
   radius: 3,
 };
 
-/** The engine's own wetting; enhanced, half the puddle sites filled to 120 m, each taking up to 40% reflection. */
+/** The engine's own wetting; enhanced, half the puddle sites filled to 300 m, each taking up to 40% reflection. */
 export const DEFAULT_RENDER_RAIN_SETTINGS: TRenderRainSettings = {
-  distance: 120,
+  distance: 300,
   mode: ERenderRainMode.ENGINE,
   puddles: 1,
   reflectivity: 0.4,
@@ -196,7 +196,7 @@ export const DEFAULT_RENDER_PARALLAX_SETTINGS: TRenderParallaxSettings = {
   shadow: 1,
   steps: 16,
   surfaceHeight: 0.02,
-  surfaceRange: 12,
+  surfaceRange: 60,
 };
 
 /** The engine's own: no contact shadows, and their strengths for when they are drawn, towards four lights a pixel. */

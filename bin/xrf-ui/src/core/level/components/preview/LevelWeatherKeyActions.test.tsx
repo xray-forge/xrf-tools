@@ -296,7 +296,7 @@ describe("level weather key actions", () => {
     expect(getByRole("checkbox", { name: "Puddles" })).toBeChecked();
     expect(getByRole("slider", { name: "Puddles" })).toHaveAttribute("aria-valuetext", "100%");
     expect(getByRole("slider", { name: "Reflectivity" })).toHaveAttribute("aria-valuetext", "40%");
-    expect(getByRole("slider", { name: "Distance" })).toHaveAttribute("aria-valuetext", "120 m");
+    expect(getByRole("slider", { name: "Distance" })).toHaveAttribute("aria-valuetext", "300 m");
     expect(getByRole("button", { hidden: true, name: "Rain" })).toHaveAccessibleDescription(
       "No rain, no thunder, puddles at 100% of the sites"
     );
