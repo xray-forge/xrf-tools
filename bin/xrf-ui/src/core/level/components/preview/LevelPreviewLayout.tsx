@@ -6,19 +6,14 @@ import { default as WarningIcon } from "@mui/icons-material/WarningAmber";
 import { default as WbCloudyIcon } from "@mui/icons-material/WbCloudy";
 import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
-import { ReactElement, ReactNode, useCallback, useEffect, useMemo } from "react";
+import { ReactElement, ReactNode } from "react";
 
-import { LevelWeatherTexture } from "@/core/ipc/types/xrf-app";
-import { ThunderboltCollection } from "@/core/ipc/types/xrf-environment";
-import { ERenderDlssAvailability } from "@/core/ipc/types/xrf-renderer";
 import { LevelHeaderPanel } from "@/core/level/components/panels/LevelHeaderPanel";
 import { LevelProblemsPanel } from "@/core/level/components/panels/LevelProblemsPanel";
 import { LevelRendererPanel } from "@/core/level/components/panels/LevelRendererPanel";
 import { LevelSpawnPanel } from "@/core/level/components/panels/LevelSpawnPanel";
 import { LevelSurfacesPanel } from "@/core/level/components/panels/LevelSurfacesPanel";
 import { LevelWeatherPanel } from "@/core/level/components/panels/LevelWeatherPanel";
-import { LevelCameraAction } from "@/core/level/components/preview/LevelCameraAction";
-import { LevelGoToAction } from "@/core/level/components/preview/LevelGoToAction";
 import { LevelPreviewCoordinates } from "@/core/level/components/preview/LevelPreviewCoordinates";
 import { LevelPreviewCover } from "@/core/level/components/preview/LevelPreviewCover";
 import { LevelPreviewEmpty } from "@/core/level/components/preview/LevelPreviewEmpty";
@@ -26,36 +21,16 @@ import { LevelPreviewMetrics } from "@/core/level/components/preview/LevelPrevie
 import { LevelPreviewPick } from "@/core/level/components/preview/LevelPreviewPick";
 import { LevelPreviewToolbar } from "@/core/level/components/preview/LevelPreviewToolbar";
 import { ILevelPreviewViewportProps, LevelPreviewViewport } from "@/core/level/components/preview/LevelPreviewViewport";
-import { ILevelCamera } from "@/core/level/lib/camera/level-camera";
-import { ILevelGoTo } from "@/core/level/lib/camera/level-camera-goto";
-import { ILevelFeatureOptions, TLevelFeatureView, toLevelFeatureView } from "@/core/level/lib/features";
 import { ELevelPanelId } from "@/core/level/lib/panels/level-panel-id";
-import {
-  LevelLoadService,
-  LevelRenderService,
-  LevelViewportService,
-  LevelViewService,
-  LevelWeatherService,
-} from "@/core/level/services";
-import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-feature-settings";
-import { RenderSettingsService } from "@/core/render/services/render-settings";
+import { LevelViewService } from "@/core/level/services";
 import { EditorFileHeader } from "@/core/shell/editor/EditorFileHeader";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { IEditorPanel, useEditorPanels } from "@/core/shell/editor-shell";
 import { cn } from "@/core/theme/class-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
-/** What the sky and clouds popovers offer before the level's weather is read. */
-const EMPTY_TEXTURES: ReadonlyArray<LevelWeatherTexture> = [];
-
-/** What the thunder's popover offers before it is read. */
-const EMPTY_COLLECTIONS: ReadonlyArray<ThunderboltCollection> = [];
-
-/** Lens flares while the weather is not read yet. */
-const EMPTY_SUNS: ReadonlyArray<string> = [];
-
 interface ILevelPreviewLayoutProps extends BaseComponentProps {
-  /** What the open level is called, which heads the viewport. Its presence is what offers go-to, stats and picks. */
+  /** What the open level is called, which heads the viewport. Its presence is what offers stats and picks. */
   name?: Nullable<string>;
   /**
    * What the level being opened is called, which heads the viewport until it is open: the header comes in with the open
@@ -90,34 +65,10 @@ export function LevelPreviewLayout({
   onBack,
   onDeselect = null,
 }: ILevelPreviewLayoutProps): ReactElement {
-  const loadService: LevelLoadService = useInjection(LevelLoadService);
   const viewService: LevelViewService = useInjection(LevelViewService);
-  const renderSettingsService: RenderSettingsService = useInjection(RenderSettingsService);
-  const viewportService: LevelViewportService = useInjection(LevelViewportService);
-  const renderService: LevelRenderService = useInjection(LevelRenderService);
-  const weatherService: LevelWeatherService = useInjection(LevelWeatherService);
 
   const isOpen: boolean = Boolean(name);
   const heading: Nullable<string> = name ?? pending;
-  const settings: IRenderFeatureSettings = renderSettingsService.rendererFeatures;
-
-  const features: ILevelFeatureOptions = viewService.features;
-
-  // Stable between changes of their own, so the toolbar redraws for a toggle and for nothing else.
-  const featureView: TLevelFeatureView = useMemo(() => toLevelFeatureView(settings, features), [settings, features]);
-
-  const readCamera = useCallback((): Nullable<ILevelCamera> => viewportService.camera, [viewportService]);
-  const onGoTo = useCallback((goTo: ILevelGoTo) => renderService.goTo(goTo), [renderService]);
-
-  const actions: ReactElement = useMemo(
-    () => (
-      <>
-        <LevelCameraAction camera={viewService.camera} onChange={viewService.setCamera} />
-        <LevelGoToAction isDisabled={!isOpen} readCamera={readCamera} onGoTo={onGoTo} />
-      </>
-    ),
-    [viewService.camera, viewService.setCamera, isOpen, readCamera, onGoTo]
-  );
 
   useEditorPanels(
     (): Array<IEditorPanel> => [
@@ -166,62 +117,8 @@ export function LevelPreviewLayout({
     []
   );
 
-  // What each graphics API can do here, which the image quality popover greys its choices out by.
-  useEffect(() => {
-    if (renderSettingsService.renderBackends === null) {
-      void renderSettingsService.refreshRenderBackends();
-    }
-  }, [renderSettingsService]);
-
   return (
-    <EditorLayout
-      toolbar={
-        <LevelPreviewToolbar
-          subtitle={subtitle}
-          options={viewService.options}
-          hemiStrength={viewService.hemiStrength}
-          manual={weatherService.shown}
-          skies={weatherService.description.value?.skies ?? EMPTY_TEXTURES}
-          clouds={weatherService.description.value?.clouds ?? EMPTY_TEXTURES}
-          collections={weatherService.description.value?.thunderboltCollections ?? EMPTY_COLLECTIONS}
-          sun={loadService.level.value?.selected.value.sun ?? null}
-          drawnSun={renderService.drawnSun}
-          suns={weatherService.description.value?.suns ?? EMPTY_SUNS}
-          sunShafts={weatherService.sunShafts}
-          lod={viewService.lod}
-          features={features}
-          featureView={featureView}
-          settings={settings}
-          isGpuTimed={renderSettingsService.isGpuTimed}
-          isTraceable={!renderService.frame.adapter || renderService.frame.hasRayQueries}
-          dlss={renderService.frame.adapter ? renderService.frame.dlss : ERenderDlssAvailability.AVAILABLE}
-          rayReconstruction={
-            renderService.frame.adapter ? renderService.frame.rayReconstruction : ERenderDlssAvailability.AVAILABLE
-          }
-          backend={renderSettingsService.renderBackend}
-          backends={renderSettingsService.renderBackends}
-          isUpscaled={
-            renderService.frame.renderWidth > 0 && renderService.frame.renderWidth < renderService.frame.width
-          }
-          onChangeBackend={renderSettingsService.setRenderBackend}
-          resolution={renderSettingsService.renderResolution}
-          outputScale={renderSettingsService.renderOutputScale}
-          graph={renderSettingsService.graph}
-          shading={viewService.shading}
-          actions={actions}
-          onChangeOptions={viewService.setOptions}
-          onChangeHemiStrength={viewService.setHemiStrength}
-          onChangeSunShafts={weatherService.setSunShafts}
-          onEditManual={weatherService.editManual}
-          onChangeLod={viewService.setLod}
-          onChangeFeatures={viewService.setFeatures}
-          onChangeGpuTimed={renderSettingsService.setGpuTimed}
-          onChangeGraph={renderSettingsService.setGraph}
-          onChangeShading={viewService.setShading}
-          onBack={onBack}
-        />
-      }
-    >
+    <EditorLayout toolbar={<LevelPreviewToolbar subtitle={subtitle} onBack={onBack} />}>
       <div className={"flex min-h-0 min-w-0 grow flex-col"}>
         {heading ? (
           <EditorFileHeader

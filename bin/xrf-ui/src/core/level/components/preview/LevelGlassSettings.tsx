@@ -1,8 +1,10 @@
 import { Button } from "@mui/material";
-import { ReactElement, useCallback } from "react";
+import { ReactElement } from "react";
 
 import { ERenderGlassMode, RenderGlassMode } from "@/core/ipc/types/xrf-renderer";
-import { ILevelFeatureOptions, TLevelGlassOptions } from "@/core/level/lib/features";
+import { useLevelFeatureOverride } from "@/core/level/components/preview/use-level-feature-override";
+import { useLevelRenderFeatures } from "@/core/level/components/preview/use-level-render-features";
+import { toLevelModeFeature } from "@/core/level/lib/features/level-feature-options";
 import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 import {
@@ -14,14 +16,6 @@ import {
 import { TRenderGlassSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
-interface ILevelGlassSettingsProps extends BaseComponentProps {
-  /** The glass as the view draws it. */
-  value: TRenderGlassSettings;
-  /** What the view sets over the settings, of which the glass's part is changed. */
-  features: ILevelFeatureOptions;
-  onChange: (features: ILevelFeatureOptions) => void;
-}
-
 /**
  * How glass is drawn: the engine's, blended over what is behind it, or the enhanced glass refracting it; and how far
  * the enhanced glass bends it.
@@ -30,14 +24,11 @@ export function LevelGlassSettings({
   "data-testid": dataTestId = "level-glass-settings",
   id,
   className,
-  value,
-  features,
-  onChange,
-}: ILevelGlassSettingsProps): ReactElement {
-  const set = useCallback(
-    (part: Partial<TLevelGlassOptions>): void => onChange({ ...features, glass: { ...features.glass, ...part } }),
-    [features, onChange]
-  );
+}: BaseComponentProps): ReactElement {
+  const { settings, features } = useLevelRenderFeatures();
+  const { set, reset } = useLevelFeatureOverride("glass");
+
+  const value: TRenderGlassSettings = toLevelModeFeature("glass", settings, features);
 
   return (
     <div data-testid={dataTestId} id={id} className={className}>
@@ -60,7 +51,7 @@ export function LevelGlassSettings({
         />
       ) : null}
 
-      <Button size={"small"} onClick={() => onChange({ ...features, glass: {} })}>
+      <Button size={"small"} onClick={reset}>
         Back to the settings for the glass
       </Button>
     </div>

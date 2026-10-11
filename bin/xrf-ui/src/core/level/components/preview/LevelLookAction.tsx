@@ -2,10 +2,12 @@ import { default as ExposureIcon } from "@mui/icons-material/Exposure";
 import { Button, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { formatNumber } from "@xrf/format";
-import { ReactElement, useCallback } from "react";
+import { ReactElement } from "react";
 
 import { ERenderBloomMode, RenderBloomMode } from "@/core/ipc/types/xrf-renderer";
-import { ILevelFeatureOptions, TLevelEnhancedBloomOptions } from "@/core/level/lib/features";
+import { useLevelFeatureOverride } from "@/core/level/components/preview/use-level-feature-override";
+import { useLevelRenderFeatures } from "@/core/level/components/preview/use-level-render-features";
+import { toLevelModeFeature } from "@/core/level/lib/features/level-feature-options";
 import { ELevelLookSource, ILevelLook } from "@/core/level/lib/look";
 import { LevelLookService } from "@/core/level/services/level-look.service";
 import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
@@ -70,14 +72,6 @@ const ENHANCED_BLOOM_FIELDS: ReadonlyArray<IEnhancedBloomField> = [
   { key: "vibrance", label: "Vibrance" },
   { key: "sky", label: "Sky" },
 ];
-
-interface ILevelLookActionProps extends BaseComponentProps {
-  /** Which bloom the view draws, and the enhanced bloom's strengths. */
-  bloom: TRenderEnhancedBloomSettings;
-  /** What the view sets over the settings, of which the bloom's part is changed. */
-  features: ILevelFeatureOptions;
-  onChangeFeatures: (features: ILevelFeatureOptions) => void;
-}
 
 /** The sliders, by the group they sit under. */
 const FIELD_GROUPS: ReadonlyArray<{ title: string; fields: ReadonlyArray<ILookField> }> = [
@@ -231,18 +225,14 @@ export function LevelLookAction({
   "data-testid": dataTestId = "level-look-action",
   id,
   className,
-  bloom,
-  features,
-  onChangeFeatures,
-}: ILevelLookActionProps): ReactElement {
+}: BaseComponentProps): ReactElement {
   const lookService: LevelLookService = useInjection(LevelLookService);
-  const isEnhancedBloom: boolean = bloom.mode === ERenderBloomMode.ENHANCED;
+  const { settings, features } = useLevelRenderFeatures();
+  const { set: setBloom, reset: resetBloom } = useLevelFeatureOverride("enhancedBloom");
 
-  const setBloom = useCallback(
-    (part: Partial<TLevelEnhancedBloomOptions>): void =>
-      onChangeFeatures({ ...features, enhancedBloom: { ...features.enhancedBloom, ...part } }),
-    [features, onChangeFeatures]
-  );
+  // Which bloom the view draws, and the enhanced bloom's strengths.
+  const bloom: TRenderEnhancedBloomSettings = toLevelModeFeature("enhancedBloom", settings, features);
+  const isEnhancedBloom: boolean = bloom.mode === ERenderBloomMode.ENHANCED;
 
   const { choice, look, defaults } = lookService;
   const picked: string = choice.source === ELevelLookSource.CUSTOM ? EDITED : choice.source;
@@ -333,7 +323,7 @@ export function LevelLookAction({
           />
         )}
 
-        <Button size={"small"} onClick={() => onChangeFeatures({ ...features, enhancedBloom: {} })}>
+        <Button size={"small"} onClick={resetBloom}>
           Back to the settings for the bloom
         </Button>
 

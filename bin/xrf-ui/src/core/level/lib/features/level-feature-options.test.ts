@@ -21,7 +21,7 @@ import {
   LEVEL_ANTIALIASING_MODES,
   TLevelFeatureKey,
   toLevelFeatureOptions,
-  toLevelFeatureView,
+  toLevelFeatureState,
   toLevelIndirectLight,
   toLevelModeFeature,
   toLevelReflections,
@@ -94,11 +94,14 @@ describe("level feature options", () => {
   });
 
   it("resolves each group as the toolbar shows it: drawn as on, available as the settings allow", () => {
-    const view = toLevelFeatureView({ ...SETTINGS, grass: { ...SETTINGS.grass, isEnabled: false } }, VIEW);
+    const settings: IRenderFeatureSettings = { ...SETTINGS, grass: { ...SETTINGS.grass, isEnabled: false } };
 
-    expect(view.grass).toEqual({ isAvailable: false, value: { ...SETTINGS.grass, isEnabled: false, radius: 80 } });
-    expect(view.shadows.isAvailable).toBe(true);
-    expect(view.shadows.value.cascades).toEqual([20]);
+    expect(toLevelFeatureState("grass", settings, VIEW)).toEqual({
+      isAvailable: false,
+      value: { ...SETTINGS.grass, isEnabled: false, radius: 80 },
+    });
+    expect(toLevelFeatureState("shadows", settings, VIEW).isAvailable).toBe(true);
+    expect(toLevelFeatureState("shadows", settings, VIEW).value.cascades).toEqual([20]);
   });
 
   it("says a toggle's state, and the settings' own where they keep it off", () => {

@@ -1,14 +1,16 @@
 import { default as WaterIcon } from "@mui/icons-material/Water";
 import { Button } from "@mui/material";
+import { useInjection } from "@wirestate/react";
 import { formatPercent } from "@xrf/format";
 import { ReactElement, useCallback } from "react";
 
 import { ERenderWaterMode, RenderWaterMode } from "@/core/ipc/types/xrf-renderer";
-import { ILevelFeatureActionProps } from "@/core/level/components/preview/level-feature-action-props";
-import { useLevelFeatureOverride } from "@/core/level/components/preview/use-level-feature-override";
+import { useLevelFeature } from "@/core/level/components/preview/use-level-feature";
+import { useLevelViewToggle } from "@/core/level/components/preview/use-level-view-toggle";
 import { LevelManualWeatherSlider } from "@/core/level/components/weather/LevelManualWeatherSlider";
 import { describeLevelFeatureToggle } from "@/core/level/lib/features";
 import { ILevelManualWeather } from "@/core/level/lib/weather/level-manual-weather";
+import { LevelWeatherService } from "@/core/level/services/level-weather.service";
 import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 import { IRenderChoiceOption } from "@/core/render/lib/features/render-choice-option";
@@ -25,17 +27,12 @@ import {
 import { TRenderEnhancedWaterSettings, TRenderWaterSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { EditorPopoverToggle } from "@/core/shell/editor/EditorPopoverToggle";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 
 const MODE_OPTIONS: ReadonlyArray<IRenderChoiceOption<RenderWaterMode>> = [
   { label: "Engine", value: ERenderWaterMode.ENGINE },
   { label: "Enhanced", value: ERenderWaterMode.ENHANCED },
 ];
-
-interface ILevelWaterActionProps extends ILevelFeatureActionProps<"water"> {
-  /** The keyframe on screen, whose `water_intensity` scales what the water reflects. */
-  manual: ILevelManualWeather;
-  onEdit: (patch: Partial<ILevelManualWeather>) => void;
-}
 
 /**
  * Whether this view draws the water, how strongly the weather has it reflect, and how it moves, reflects and
@@ -45,15 +42,12 @@ export function LevelWaterAction({
   "data-testid": dataTestId = "level-water-action",
   id,
   className,
-  isOn,
-  state,
-  features,
-  manual,
-  onToggle,
-  onChange,
-  onEdit,
-}: ILevelWaterActionProps): ReactElement {
-  const { set, reset } = useLevelFeatureOverride("water", features, onChange);
+}: BaseComponentProps): ReactElement {
+  const weatherService: LevelWeatherService = useInjection(LevelWeatherService);
+  const { isOn, toggle } = useLevelViewToggle("isWaterVisible");
+  const { state, set, reset } = useLevelFeature("water");
+  // The keyframe on screen, whose `water_intensity` scales what the water reflects.
+  const manual: ILevelManualWeather = weatherService.shown;
   const water: TRenderWaterSettings = state.value;
   const enhanced: TRenderEnhancedWaterSettings = water.enhanced;
 
@@ -84,9 +78,14 @@ export function LevelWaterAction({
       isOn={isOn && state.isAvailable}
       isDisabled={!state.isAvailable}
       toggleLabel={"Draw the water"}
-      onToggle={onToggle}
+      onToggle={toggle}
     >
-      <LevelManualWeatherSlider field={"waterIntensity"} manual={manual} format={formatPercent} onEdit={onEdit} />
+      <LevelManualWeatherSlider
+        field={"waterIntensity"}
+        manual={manual}
+        format={formatPercent}
+        onEdit={weatherService.editManual}
+      />
 
       <RenderValueChoice
         label={"Mode"}

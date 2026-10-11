@@ -54,6 +54,23 @@ export class LevelViewService {
     this.options = options;
   }
 
+  /**
+   * @param option - One of the toolbar's switches.
+   * @param isOn - Whether it is on from now on.
+   */
+  @BoundAction()
+  public setOption(option: keyof ILevelViewOptions, isOn: boolean): void {
+    this.options = { ...this.options, [option]: isOn };
+  }
+
+  /**
+   * @param option - One of the toolbar's switches, turned over.
+   */
+  @BoundAction()
+  public toggleOption(option: keyof ILevelViewOptions): void {
+    this.setOption(option, !this.options[option]);
+  }
+
   @BoundAction()
   public setHemiStrength(hemiStrength: number): void {
     this.hemiStrength = hemiStrength;

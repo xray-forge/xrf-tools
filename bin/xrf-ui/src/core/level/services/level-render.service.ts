@@ -3,7 +3,13 @@ import { BoundAction, comparer, Computed, reaction } from "@wirestate/mobx";
 import { Maybe, Nullable } from "@xrf/types";
 
 import { SelectedLevelDescription, SessionSnapshot } from "@/core/ipc/types/xrf-app";
-import { RenderLevelHit, RenderLoadReport, RenderViewOptions } from "@/core/ipc/types/xrf-renderer";
+import {
+  ERenderDlssAvailability,
+  RenderDlssAvailability,
+  RenderLevelHit,
+  RenderLoadReport,
+  RenderViewOptions,
+} from "@/core/ipc/types/xrf-renderer";
 import {
   EWorldCameraCommand,
   EWorldWeatherPlay,
@@ -82,6 +88,30 @@ export class LevelRenderService extends NativeRenderSurfaceService {
   @Computed()
   public get drawnSun(): Nullable<string> {
     return this.applied?.sun ?? null;
+  }
+
+  /** Whether the GPU drawing the view traces rays, taken as yes until a frame names the GPU. */
+  @Computed()
+  public get isTraceable(): boolean {
+    return !this.frame.adapter || this.frame.hasRayQueries;
+  }
+
+  /** Whether the view's frame is drawn smaller than the viewport. */
+  @Computed()
+  public get isUpscaled(): boolean {
+    return this.frame.renderWidth > 0 && this.frame.renderWidth < this.frame.width;
+  }
+
+  /** Whether the GPU drawing the view upscales with DLSS, and what it lacks where not: available until a frame says. */
+  @Computed()
+  public get dlss(): RenderDlssAvailability {
+    return this.frame.adapter ? this.frame.dlss : ERenderDlssAvailability.AVAILABLE;
+  }
+
+  /** Whether the GPU drawing the view reconstructs rays with DLSS: available until a frame says otherwise. */
+  @Computed()
+  public get rayReconstruction(): RenderDlssAvailability {
+    return this.frame.adapter ? this.frame.rayReconstruction : ERenderDlssAvailability.AVAILABLE;
   }
 
   /** What the level is asked to be drawn with: the toolbar, the look and the settings together. */

@@ -256,9 +256,6 @@ export interface ILevelFeatureState<T> {
   isAvailable: boolean;
 }
 
-/** Every feature group a view sets, resolved as its toolbar shows them. */
-export type TLevelFeatureView = { readonly [K in TLevelFeatureKey]: ILevelFeatureState<IRenderFeatureSettings[K]> };
-
 /**
  * @param key - A feature group.
  * @param settings - What the renderer's settings set, for every viewport.
@@ -340,22 +337,17 @@ function isNestedGroup(value: unknown): value is Record<string, unknown> {
 }
 
 /**
+ * @param key - A feature group.
  * @param settings - What the renderer's settings set, for every viewport.
  * @param view - What the view sets over them.
- * @returns Each group as the toolbar shows it: its values as they draw while on, and whether the settings allow it.
+ * @returns The group as the toolbar shows it: its values as they draw while on, and whether the settings allow it.
  */
-export function toLevelFeatureView(settings: IRenderFeatureSettings, view: ILevelFeatureOptions): TLevelFeatureView {
-  function toState<K extends TLevelFeatureKey>(key: K): ILevelFeatureState<IRenderFeatureSettings[K]> {
-    return { isAvailable: settings[key].isEnabled, value: toLevelRendererFeature(key, settings, view, true) };
-  }
-
-  return {
-    ambientOcclusion: toState("ambientOcclusion"),
-    grass: toState("grass"),
-    lights: toState("lights"),
-    shadows: toState("shadows"),
-    water: toState("water"),
-  };
+export function toLevelFeatureState<K extends TLevelFeatureKey>(
+  key: K,
+  settings: IRenderFeatureSettings,
+  view: ILevelFeatureOptions
+): ILevelFeatureState<IRenderFeatureSettings[K]> {
+  return { isAvailable: settings[key].isEnabled, value: toLevelRendererFeature(key, settings, view, true) };
 }
 
 /**

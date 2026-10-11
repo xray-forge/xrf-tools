@@ -1,13 +1,16 @@
 import { default as AirIcon } from "@mui/icons-material/Air";
+import { useInjection } from "@wirestate/react";
 import { formatDegrees, formatNumber } from "@xrf/format";
 import { ReactElement } from "react";
 
-import { ILevelManualWeatherActionProps } from "@/core/level/components/weather/level-manual-weather-action-props";
+import { useLevelViewToggle } from "@/core/level/components/preview/use-level-view-toggle";
 import { LevelManualWeatherSlider } from "@/core/level/components/weather/LevelManualWeatherSlider";
 import { LevelManualWeatherVectorField } from "@/core/level/components/weather/LevelManualWeatherVectorField";
 import { LevelWeatherResetButton } from "@/core/level/components/weather/LevelWeatherResetButton";
 import { ILevelManualWeather } from "@/core/level/lib/weather/level-manual-weather";
+import { LevelWeatherService } from "@/core/level/services/level-weather.service";
 import { EditorPopoverToggle } from "@/core/shell/editor/EditorPopoverToggle";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /** The keys the popover sets. */
 const WIND_KEYS: ReadonlyArray<keyof ILevelManualWeather> = [
@@ -26,11 +29,11 @@ export function LevelWindAction({
   "data-testid": dataTestId = "level-wind-action",
   id,
   className,
-  isOn,
-  manual,
-  onToggle,
-  onEdit,
-}: ILevelManualWeatherActionProps): ReactElement {
+}: BaseComponentProps): ReactElement {
+  const weatherService: LevelWeatherService = useInjection(LevelWeatherService);
+  const { isOn, toggle } = useLevelViewToggle("isWindy");
+  const manual: ILevelManualWeather = weatherService.shown;
+
   return (
     <EditorPopoverToggle
       data-testid={dataTestId}
@@ -45,36 +48,46 @@ export function LevelWindAction({
       icon={<AirIcon />}
       isOn={isOn}
       toggleLabel={"Sway the trees"}
-      onToggle={onToggle}
+      onToggle={toggle}
     >
       <LevelManualWeatherSlider
         field={"windVelocity"}
         manual={manual}
         format={(value: number) => `${formatNumber(value, 1)} m/s`}
-        onEdit={onEdit}
+        onEdit={weatherService.editManual}
       />
 
-      <LevelManualWeatherSlider field={"windDirection"} manual={manual} format={formatDegrees} onEdit={onEdit} />
+      <LevelManualWeatherSlider
+        field={"windDirection"}
+        manual={manual}
+        format={formatDegrees}
+        onEdit={weatherService.editManual}
+      />
 
       <LevelManualWeatherSlider
         field={"treesAmplitude"}
         manual={manual}
         format={(value: number) => formatNumber(value, 3)}
-        onEdit={onEdit}
+        onEdit={weatherService.editManual}
       />
 
       <LevelManualWeatherSlider
         field={"treesSpeed"}
         manual={manual}
         format={(value: number) => formatNumber(value, 2)}
-        onEdit={onEdit}
+        onEdit={weatherService.editManual}
       />
 
-      <LevelManualWeatherSlider field={"treesRotation"} manual={manual} format={formatDegrees} onEdit={onEdit} />
+      <LevelManualWeatherSlider
+        field={"treesRotation"}
+        manual={manual}
+        format={formatDegrees}
+        onEdit={weatherService.editManual}
+      />
 
-      <LevelManualWeatherVectorField field={"treesWave"} manual={manual} onEdit={onEdit} />
+      <LevelManualWeatherVectorField field={"treesWave"} manual={manual} onEdit={weatherService.editManual} />
 
-      <LevelWeatherResetButton keys={WIND_KEYS} onEdit={onEdit} />
+      <LevelWeatherResetButton keys={WIND_KEYS} onEdit={weatherService.editManual} />
     </EditorPopoverToggle>
   );
 }

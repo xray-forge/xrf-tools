@@ -1,8 +1,10 @@
 import { Button } from "@mui/material";
-import { ReactElement, useCallback } from "react";
+import { ReactElement } from "react";
 
 import { ERenderIndirectLightMode } from "@/core/ipc/types/xrf-renderer";
-import { ILevelFeatureOptions, TLevelIndirectLightOptions } from "@/core/level/lib/features";
+import { useLevelFeatureOverride } from "@/core/level/components/preview/use-level-feature-override";
+import { useLevelRenderFeatures } from "@/core/level/components/preview/use-level-render-features";
+import { toLevelModeFeature } from "@/core/level/lib/features/level-feature-options";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 import { formatOcclusionRadius } from "@/core/render/lib/features/render-ambient-occlusion-choices";
 import {
@@ -14,14 +16,6 @@ import { TRenderIndirectLightSettings } from "@/core/render/lib/settings/render-
 import { EditorPopoverGroupSection } from "@/core/shell/editor/EditorPopoverGroup";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
-interface ILevelIndirectLightSectionProps extends BaseComponentProps {
-  /** The indirect light as the view draws it. */
-  value: TRenderIndirectLightSettings;
-  /** What the view sets over the settings, of which the indirect light's part is changed. */
-  features: ILevelFeatureOptions;
-  onChange: (features: ILevelFeatureOptions) => void;
-}
-
 /**
  * The occlusion popover's indirect light: the engine's own, or the light the frame's surfaces bounce onto each other,
  * gathered by the occlusion's visibility bitmask, and how much of it is added.
@@ -30,17 +24,12 @@ export function LevelIndirectLightSection({
   "data-testid": dataTestId = "level-indirect-light-section",
   id,
   className,
-  value,
-  features,
-  onChange,
-}: ILevelIndirectLightSectionProps): ReactElement {
-  const isEnhanced: boolean = value.mode === ERenderIndirectLightMode.ENHANCED;
+}: BaseComponentProps): ReactElement {
+  const { settings, features } = useLevelRenderFeatures();
+  const { set, reset } = useLevelFeatureOverride("indirectLight");
 
-  const set = useCallback(
-    (part: Partial<TLevelIndirectLightOptions>): void =>
-      onChange({ ...features, indirectLight: { ...features.indirectLight, ...part } }),
-    [features, onChange]
-  );
+  const value: TRenderIndirectLightSettings = toLevelModeFeature("indirectLight", settings, features);
+  const isEnhanced: boolean = value.mode === ERenderIndirectLightMode.ENHANCED;
 
   return (
     <EditorPopoverGroupSection
@@ -72,7 +61,7 @@ export function LevelIndirectLightSection({
         </>
       ) : null}
 
-      <Button size={"small"} onClick={() => onChange({ ...features, indirectLight: {} })}>
+      <Button size={"small"} onClick={reset}>
         Back to the settings for the indirect light
       </Button>
     </EditorPopoverGroupSection>

@@ -1,7 +1,9 @@
-import { describe, expect, it, jest } from "@jest/globals";
+import { afterEach, beforeEach, describe, expect, it } from "@jest/globals";
+import { act, waitFor } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { ReactElement } from "react";
 
+import { LevelWeatherDescription, SelectedLevelDescription } from "@/core/ipc/types/xrf-app";
 import {
   ERenderDebandingMode,
   ERenderDebandingQuality,
@@ -14,45 +16,89 @@ import { LevelFogAction } from "@/core/level/components/preview/LevelFogAction";
 import { LevelRainAction } from "@/core/level/components/preview/LevelRainAction";
 import { LevelSkyAction } from "@/core/level/components/preview/LevelSkyAction";
 import { LevelSunAction } from "@/core/level/components/preview/LevelSunAction";
-import { ILevelFeatureOptions } from "@/core/level/lib/features";
 import { DEFAULT_LEVEL_VIEW_OPTIONS } from "@/core/level/lib/view/level-view-options";
 import { DEFAULT_LEVEL_MANUAL_WEATHER, ILevelManualWeather } from "@/core/level/lib/weather/level-manual-weather";
-import {
-  DEFAULT_LEVEL_SUN_SHAFTS_OPTIONS,
-  ILevelSunShaftsOptions,
-} from "@/core/level/lib/weather/level-sun-shafts-options";
 import {
   DEFAULT_RENDER_DEBANDING_SETTINGS,
   DEFAULT_RENDER_FOG_SETTINGS,
   DEFAULT_RENDER_RAIN_SETTINGS,
   DEFAULT_RENDER_VOLUMETRIC_SETTINGS,
 } from "@/core/render/lib/settings/render-feature-defaults";
-import { TRenderRainSettings } from "@/core/render/lib/settings/render-feature-settings";
-import { mockLevelFeatureOptions, mockLevelTextureReference } from "@/fixtures/mocks/level.mocks";
-import { renderWithProviders } from "@/fixtures/utils/render";
+import { mockLevelTextureReference, mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
+import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
+import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
+import { mockLevelWeatherDescription } from "@/fixtures/mocks/weather.mocks";
+import {
+  ILevelViewContainerDescriptor,
+  mockLevelViewContainer,
+  noteLevelApplied,
+  renderLevelView,
+  TLevelViewRenderResult,
+} from "@/fixtures/utils/level-container";
 
-type TEdit = (patch: Partial<ILevelManualWeather>) => void;
+/** What a case opens: a level, the weather its game names, and keys of the keyframe set by hand already set. */
+interface IWeatherSetup {
+  level?: Partial<SelectedLevelDescription>;
+  weather?: Partial<LevelWeatherDescription>;
+  manual?: Partial<ILevelManualWeather>;
+}
+
+/**
+ * @param action - The weather popover to draw.
+ * @param setup - What the case opens; no level unless a level or its weather is asked for.
+ * @returns The rendered action and the services behind it, once the level asked for is open and its weather read.
+ */
+async function renderAction(action: ReactElement, setup: IWeatherSetup = {}): Promise<TLevelViewRenderResult> {
+  const isOpen: boolean = Boolean(setup.level || setup.weather);
+
+  if (isOpen) {
+    setMockInvokeResponses({
+      ["plugin:levels|get_level"]: mockSessionResponse(mockSelectedLevelDescription(setup.level)),
+      ["plugin:levels|read_level_weather"]: mockSessionResponse(mockLevelWeatherDescription(setup.weather)),
+    });
+  }
+
+  const descriptor: ILevelViewContainerDescriptor = mockLevelViewContainer();
+
+  // Each feature the popovers set starts from its default, whatever the preset draws it with.
+  descriptor.renderSettings.setRendererOverrides({
+    debanding: DEFAULT_RENDER_DEBANDING_SETTINGS,
+    fog: DEFAULT_RENDER_FOG_SETTINGS,
+    rain: DEFAULT_RENDER_RAIN_SETTINGS,
+    volumetric: DEFAULT_RENDER_VOLUMETRIC_SETTINGS,
+  });
+
+  const rendered: TLevelViewRenderResult = renderLevelView(action, descriptor);
+
+  if (isOpen) {
+    await waitFor(() => expect(descriptor.weather.description.isReady).toBe(true));
+    await waitFor(() => expect(descriptor.weather.cycle.isLoading).toBe(false));
+  }
+
+  const manual: Partial<ILevelManualWeather> | undefined = setup.manual;
+
+  if (manual) {
+    act(() => descriptor.weather.editManual(manual));
+  }
+
+  return rendered;
+}
 
 async function open(getByRole: (role: string, options: { name: string }) => HTMLElement, label: string): Promise<void> {
   await userEvent.pointer({ keys: "[MouseRight]", target: getByRole("button", { name: label }) });
 }
 
+beforeEach(() => {
+  window.localStorage.clear();
+});
+
+afterEach(() => {
+  resetMockInvoke();
+});
+
 describe("level weather key actions", () => {
   it("edits a colour component as typed, once it is let go, leaving the others as held", async () => {
-    const onEdit = jest.fn<TEdit>();
-    const { getByRole, findByRole } = renderWithProviders(
-      <LevelFogAction
-        isOn
-        manual={DEFAULT_LEVEL_MANUAL_WEATHER}
-        isHazed={false}
-        value={DEFAULT_RENDER_FOG_SETTINGS}
-        features={mockLevelFeatureOptions()}
-        onChangeFeatures={() => {}}
-        onToggle={() => {}}
-        onEdit={onEdit}
-        onHazed={() => {}}
-      />
-    );
+    const { getByRole, findByRole, weather } = await renderAction(<LevelFogAction />);
 
     await open(getByRole, "Fog");
     await findByRole("dialog", { name: "Fog" });
@@ -62,28 +108,15 @@ describe("level weather key actions", () => {
     await userEvent.clear(green);
     await userEvent.type(green, "1.5");
 
-    expect(onEdit).not.toHaveBeenCalled();
+    expect(weather.manual).toBeNull();
 
     await userEvent.type(green, "{Enter}");
 
-    expect(onEdit).toHaveBeenCalledWith({ fogColor: [0.304609, 1.5, 0.367354] });
+    expect(weather.manual?.fogColor).toEqual([0.304609, 1.5, 0.367354]);
   });
 
   it("drops a component typed as no number", async () => {
-    const onEdit = jest.fn<TEdit>();
-    const { getByRole, findByRole } = renderWithProviders(
-      <LevelFogAction
-        isOn
-        manual={DEFAULT_LEVEL_MANUAL_WEATHER}
-        isHazed={false}
-        value={DEFAULT_RENDER_FOG_SETTINGS}
-        features={mockLevelFeatureOptions()}
-        onChangeFeatures={() => {}}
-        onToggle={() => {}}
-        onEdit={onEdit}
-        onHazed={() => {}}
-      />
-    );
+    const { getByRole, findByRole, weather } = await renderAction(<LevelFogAction />);
 
     await open(getByRole, "Fog");
     await findByRole("dialog", { name: "Fog" });
@@ -93,26 +126,14 @@ describe("level weather key actions", () => {
     await userEvent.clear(red);
     await userEvent.type(red, "-{Enter}");
 
-    expect(onEdit).not.toHaveBeenCalled();
+    expect(weather.manual).toBeNull();
     expect(red).toHaveValue("0.304609");
   });
 
-  it("fades the distance into the sky's haze on asking, the engine's sky by default", async () => {
-    const onHazed = jest.fn<(isHazed: boolean) => void>();
-    const { getByRole, findByRole } = renderWithProviders(
-      <LevelFogAction
-        isOn
-        manual={DEFAULT_LEVEL_MANUAL_WEATHER}
-        isHazed={false}
-        value={DEFAULT_RENDER_FOG_SETTINGS}
-        features={mockLevelFeatureOptions()}
-        onChangeFeatures={() => {}}
-        onToggle={() => {}}
-        onEdit={() => {}}
-        onHazed={onHazed}
-      />
-    );
+  it("fades the distance into the sky's haze on asking, the engine's sky while off", async () => {
+    const { getByRole, findByRole, view } = await renderAction(<LevelFogAction />);
 
+    act(() => view.setOption("isSkyHazed", false));
     await open(getByRole, "Fog");
     await findByRole("dialog", { name: "Fog" });
 
@@ -120,27 +141,14 @@ describe("level weather key actions", () => {
 
     await userEvent.click(getByRole("button", { name: "Sky haze" }));
 
-    expect(onHazed).toHaveBeenCalledWith(true);
+    expect(view.options.isSkyHazed).toBe(true);
   });
 
   it("stands the sun where the level was compiled against, and sets its keys back to default_clear's noon", async () => {
-    const onEdit = jest.fn<TEdit>();
-    const { getByRole, findByRole } = renderWithProviders(
-      <LevelSunAction
-        manual={{ ...DEFAULT_LEVEL_MANUAL_WEATHER, sunAltitude: 10, sunLongitude: -80 }}
-        sun={{ color: [1, 1, 1], direction: { x: 0, y: -1, z: 1 } }}
-        drawnSun={null}
-        suns={[]}
-        options={DEFAULT_LEVEL_VIEW_OPTIONS}
-        sunShafts={DEFAULT_LEVEL_SUN_SHAFTS_OPTIONS}
-        volumetric={DEFAULT_RENDER_VOLUMETRIC_SETTINGS}
-        features={mockLevelFeatureOptions()}
-        onToggle={() => {}}
-        onChangeSunShafts={() => {}}
-        onChangeFeatures={() => {}}
-        onEdit={onEdit}
-      />
-    );
+    const { getByRole, findByRole, weather } = await renderAction(<LevelSunAction />, {
+      level: { sun: { color: [1, 1, 1], direction: { x: 0, y: -1, z: 1 } } },
+      manual: { sunAltitude: 10, sunLongitude: -80 },
+    });
 
     // No toggle sits on it, so a click opens its settings.
     await userEvent.click(getByRole("button", { name: "Sun" }));
@@ -150,42 +158,31 @@ describe("level weather key actions", () => {
 
     await userEvent.click(getByRole("button", { name: "Use the level's compiled sun" }));
 
-    const [patch] = onEdit.mock.calls[0] ?? [];
-
-    expect(patch?.sunAltitude).toBeCloseTo(0);
-    expect(patch?.sunLongitude).toBeCloseTo(-45);
+    expect(weather.manual?.sunAltitude).toBeCloseTo(0);
+    expect(weather.manual?.sunLongitude).toBeCloseTo(-45);
 
     await userEvent.click(getByRole("button", { name: "Back to default_clear's noon" }));
 
-    expect(onEdit).toHaveBeenLastCalledWith({
+    expect(weather.manual).toMatchObject({
       ambientColor: DEFAULT_LEVEL_MANUAL_WEATHER.ambientColor,
       hemisphereColor: DEFAULT_LEVEL_MANUAL_WEATHER.hemisphereColor,
+      sun: DEFAULT_LEVEL_MANUAL_WEATHER.sun,
       sunAltitude: DEFAULT_LEVEL_MANUAL_WEATHER.sunAltitude,
       sunColor: DEFAULT_LEVEL_MANUAL_WEATHER.sunColor,
       sunLongitude: DEFAULT_LEVEL_MANUAL_WEATHER.sunLongitude,
-      sun: DEFAULT_LEVEL_MANUAL_WEATHER.sun,
       sunShaftsIntensity: DEFAULT_LEVEL_MANUAL_WEATHER.sunShaftsIntensity,
     });
   });
 
   it("offers the skies the game's weather names, with how many keyframes use each and which are missing", async () => {
-    const onEdit = jest.fn<TEdit>();
-    const { getByRole, findByRole } = renderWithProviders(
-      <LevelSkyAction
-        options={DEFAULT_LEVEL_VIEW_OPTIONS}
-        manual={DEFAULT_LEVEL_MANUAL_WEATHER}
-        skies={[
+    const { getByRole, findByRole, weather } = await renderAction(<LevelSkyAction />, {
+      weather: {
+        skies: [
           { texture: mockLevelTextureReference("sky\\sky_night"), uses: 7 },
           { texture: mockLevelTextureReference("sky\\gone", false), uses: 1 },
-        ]}
-        clouds={[]}
-        debanding={DEFAULT_RENDER_DEBANDING_SETTINGS}
-        features={mockLevelFeatureOptions()}
-        onToggle={() => {}}
-        onChangeFeatures={() => {}}
-        onEdit={onEdit}
-      />
-    );
+        ],
+      },
+    });
 
     await userEvent.click(getByRole("button", { name: "Sky" }));
     await findByRole("dialog", { name: "Sky" });
@@ -195,24 +192,11 @@ describe("level weather key actions", () => {
 
     await userEvent.click(getByRole("option", { name: /sky_night/ }));
 
-    expect(onEdit).toHaveBeenCalledWith({ skyTexture: "sky\\sky_night" });
+    expect(weather.manual?.skyTexture).toBe("sky\\sky_night");
   });
 
   it("takes a clouds reference typed in, and none for an empty one", async () => {
-    const onEdit = jest.fn<TEdit>();
-    const { getByRole, findByRole } = renderWithProviders(
-      <LevelSkyAction
-        options={DEFAULT_LEVEL_VIEW_OPTIONS}
-        manual={DEFAULT_LEVEL_MANUAL_WEATHER}
-        skies={[]}
-        clouds={[]}
-        debanding={DEFAULT_RENDER_DEBANDING_SETTINGS}
-        features={mockLevelFeatureOptions()}
-        onToggle={() => {}}
-        onChangeFeatures={() => {}}
-        onEdit={onEdit}
-      />
-    );
+    const { getByRole, findByRole, weather } = await renderAction(<LevelSkyAction />);
 
     await userEvent.click(getByRole("button", { name: "Sky" }));
     await findByRole("dialog", { name: "Sky" });
@@ -222,32 +206,24 @@ describe("level weather key actions", () => {
     await userEvent.clear(field);
     await userEvent.type(field, "sky\\clouds_storm{Enter}");
 
-    expect(onEdit).toHaveBeenLastCalledWith({ cloudsTexture: "sky\\clouds_storm" });
+    expect(weather.manual?.cloudsTexture).toBe("sky\\clouds_storm");
   });
 
   it("strikes with a collection the game has, or none, and switches the thunder apart from the rain", async () => {
-    const onEdit = jest.fn<TEdit>();
-    const onToggle = jest.fn<(option: string) => void>();
-    const { getByRole, findByRole } = renderWithProviders(
-      <LevelRainAction
-        options={DEFAULT_LEVEL_VIEW_OPTIONS}
-        manual={{ ...DEFAULT_LEVEL_MANUAL_WEATHER, thunderboltCollection: "collection_stancia" }}
-        collections={[
+    const { getByRole, findByRole, view, weather } = await renderAction(<LevelRainAction />, {
+      manual: { thunderboltCollection: "collection_stancia" },
+      weather: {
+        thunderboltCollections: [
           { file: "environment\\thunderbolt_collections.ltx", name: "collection_default", thunderbolts: ["a", "b"] },
-        ]}
-        puddles={DEFAULT_RENDER_RAIN_SETTINGS}
-        features={mockLevelFeatureOptions()}
-        onToggle={onToggle}
-        onEdit={onEdit}
-        onChangeFeatures={() => {}}
-      />
-    );
+        ],
+      },
+    });
 
     await userEvent.click(getByRole("button", { name: "Rain" }));
     await findByRole("dialog", { name: "Rain" });
     await userEvent.click(getByRole("checkbox", { name: "Thunder" }));
 
-    expect(onToggle).toHaveBeenCalledWith("isThundering");
+    expect(view.options.isThundering).toBe(!DEFAULT_LEVEL_VIEW_OPTIONS.isThundering);
 
     await userEvent.click(getByRole("combobox", { name: "thunderbolt_collection" }));
 
@@ -258,29 +234,11 @@ describe("level weather key actions", () => {
 
     await userEvent.click(getByRole("option", { name: /collection_default/ }));
 
-    expect(onEdit).toHaveBeenCalledWith({ thunderboltCollection: "collection_default" });
+    expect(weather.manual?.thunderboltCollection).toBe("collection_default");
   });
 
   it("gathers puddles on the ground as the rain's third section, offering their strengths only then", async () => {
-    const onChangeFeatures = jest.fn<(features: ILevelFeatureOptions) => void>();
-    const enhanced: TRenderRainSettings = { ...DEFAULT_RENDER_RAIN_SETTINGS, mode: ERenderRainMode.ENHANCED };
-
-    function render(puddles: TRenderRainSettings): ReactElement {
-      return (
-        <LevelRainAction
-          options={DEFAULT_LEVEL_VIEW_OPTIONS}
-          manual={DEFAULT_LEVEL_MANUAL_WEATHER}
-          collections={[]}
-          puddles={puddles}
-          features={mockLevelFeatureOptions()}
-          onToggle={() => {}}
-          onEdit={() => {}}
-          onChangeFeatures={onChangeFeatures}
-        />
-      );
-    }
-
-    const { getByRole, findByRole, queryByRole, rerender } = renderWithProviders(render(DEFAULT_RENDER_RAIN_SETTINGS));
+    const { getByRole, findByRole, queryByRole, view } = await renderAction(<LevelRainAction />);
 
     expect(getByRole("button", { name: "Rain" })).toHaveAccessibleDescription("No rain, no thunder, no puddles");
 
@@ -291,13 +249,7 @@ describe("level weather key actions", () => {
 
     await userEvent.click(getByRole("checkbox", { name: "Puddles" }));
 
-    expect(onChangeFeatures).toHaveBeenLastCalledWith({
-      ...mockLevelFeatureOptions(),
-      rain: { mode: ERenderRainMode.ENHANCED },
-    });
-
-    rerender(render(enhanced));
-
+    expect(view.features.rain).toEqual({ mode: ERenderRainMode.ENHANCED });
     expect(getByRole("checkbox", { name: "Puddles" })).toBeChecked();
     expect(getByRole("slider", { name: "Puddles" })).toHaveAttribute("aria-valuetext", "50%");
     expect(getByRole("slider", { name: "Reflectivity" })).toHaveAttribute("aria-valuetext", "40%");
@@ -308,144 +260,66 @@ describe("level weather key actions", () => {
 
     await userEvent.click(getByRole("button", { name: "Back to the settings for the puddles" }));
 
-    expect(onChangeFeatures).toHaveBeenLastCalledWith({ ...mockLevelFeatureOptions(), rain: {} });
+    expect(view.features.rain).toEqual({});
   });
 
   // The sky draws the weather's sun or moon as the game does; the button says whether one shows now.
-  it("says whether the sky draws a sun or a moon, naming it", () => {
-    const props = {
-      manual: DEFAULT_LEVEL_MANUAL_WEATHER,
-      sun: null,
-      suns: [],
-      options: DEFAULT_LEVEL_VIEW_OPTIONS,
-      sunShafts: DEFAULT_LEVEL_SUN_SHAFTS_OPTIONS,
-      volumetric: DEFAULT_RENDER_VOLUMETRIC_SETTINGS,
-      features: mockLevelFeatureOptions(),
-      onToggle: () => {},
-      onChangeSunShafts: () => {},
-      onChangeFeatures: () => {},
-      onEdit: () => {},
-    };
-    const { getByRole, rerender } = renderWithProviders(<LevelSunAction {...props} drawnSun={"moon_halo_full"} />);
+  it("says whether the sky draws a sun or a moon, naming it", async () => {
+    const { getByRole, render } = await renderAction(<LevelSunAction />);
+
+    noteLevelApplied(render, { sun: "moon_halo_full" });
 
     expect(getByRole("button", { name: "Sun" })).toHaveAccessibleDescription(/moon_halo_full in the sky$/);
 
-    rerender(<LevelSunAction {...props} drawnSun={null} />);
+    noteLevelApplied(render, { sun: null });
 
     expect(getByRole("button", { name: "Sun" })).toHaveAccessibleDescription(/none in the sky$/);
   });
 
   // The lens flare and the shafts are the sun's: their switches and the keys a keyframe draws them by sit together.
   it("switches the lens flares and the sunshafts, and edits the sun and the shafts' density", async () => {
-    const onEdit = jest.fn<TEdit>();
-    const onToggle = jest.fn<(option: "isLensFlared" | "isSunShafted") => void>();
-    const { getByRole, findByRole } = renderWithProviders(
-      <LevelSunAction
-        manual={DEFAULT_LEVEL_MANUAL_WEATHER}
-        sun={null}
-        drawnSun={"gradient1"}
-        suns={["gradient1", "moon_halo_full"]}
-        options={DEFAULT_LEVEL_VIEW_OPTIONS}
-        sunShafts={DEFAULT_LEVEL_SUN_SHAFTS_OPTIONS}
-        volumetric={DEFAULT_RENDER_VOLUMETRIC_SETTINGS}
-        features={mockLevelFeatureOptions()}
-        onToggle={onToggle}
-        onChangeSunShafts={() => {}}
-        onChangeFeatures={() => {}}
-        onEdit={onEdit}
-      />
-    );
+    const { getByRole, findByRole, view, weather } = await renderAction(<LevelSunAction />, {
+      weather: { suns: ["gradient1", "moon_halo_full"] },
+    });
 
     await userEvent.click(getByRole("button", { name: "Sun" }));
     await findByRole("dialog", { name: "Sun" });
     await userEvent.click(getByRole("checkbox", { name: "Lens flares" }));
     await userEvent.click(getByRole("checkbox", { name: "Sunshafts" }));
 
-    expect(onToggle.mock.calls).toEqual([["isLensFlared"], ["isSunShafted"]]);
+    expect(view.options.isLensFlared).toBe(!DEFAULT_LEVEL_VIEW_OPTIONS.isLensFlared);
+    expect(view.options.isSunShafted).toBe(!DEFAULT_LEVEL_VIEW_OPTIONS.isSunShafted);
 
     await userEvent.click(getByRole("combobox", { name: "sun" }));
     await userEvent.click(await findByRole("option", { name: "moon_halo_full" }));
 
-    expect(onEdit).toHaveBeenCalledWith({ sun: "moon_halo_full" });
+    expect(weather.manual?.sun).toBe("moon_halo_full");
   });
 
   it("sets the level's sun shafts' quality and the floor under their density", async () => {
-    const onChangeSunShafts = jest.fn<(sunShafts: ILevelSunShaftsOptions) => void>();
-    const { getByRole, findByRole } = renderWithProviders(
-      <LevelSunAction
-        manual={DEFAULT_LEVEL_MANUAL_WEATHER}
-        sun={null}
-        drawnSun={null}
-        suns={[]}
-        options={DEFAULT_LEVEL_VIEW_OPTIONS}
-        sunShafts={DEFAULT_LEVEL_SUN_SHAFTS_OPTIONS}
-        volumetric={DEFAULT_RENDER_VOLUMETRIC_SETTINGS}
-        features={mockLevelFeatureOptions()}
-        onToggle={() => {}}
-        onChangeSunShafts={onChangeSunShafts}
-        onChangeFeatures={() => {}}
-        onEdit={() => {}}
-      />
-    );
+    const { getByRole, findByRole, weather } = await renderAction(<LevelSunAction />);
 
     await userEvent.click(getByRole("button", { name: "Sun" }));
     await findByRole("dialog", { name: "Sun" });
     await userEvent.click(getByRole("button", { name: "Low" }));
 
-    expect(onChangeSunShafts).toHaveBeenCalledWith({ minimum: 0, quality: ERenderSunShaftsQuality.LOW });
+    expect(weather.sunShafts).toEqual({ minimum: 0, quality: ERenderSunShaftsQuality.LOW });
     expect(getByRole("slider", { name: "Minimum" })).toHaveAttribute("aria-valuemax", "0.5");
   });
 
   // The froxel volume replaces the sun's shafts while enhanced, so its settings sit beside them.
   it("sets the view's volumetric lighting from the sun's settings", async () => {
-    const onChangeFeatures = jest.fn<(features: ILevelFeatureOptions) => void>();
-    const { getByRole, findByRole } = renderWithProviders(
-      <LevelSunAction
-        manual={DEFAULT_LEVEL_MANUAL_WEATHER}
-        sun={null}
-        drawnSun={null}
-        suns={[]}
-        options={DEFAULT_LEVEL_VIEW_OPTIONS}
-        sunShafts={DEFAULT_LEVEL_SUN_SHAFTS_OPTIONS}
-        volumetric={DEFAULT_RENDER_VOLUMETRIC_SETTINGS}
-        features={mockLevelFeatureOptions()}
-        onToggle={() => {}}
-        onChangeSunShafts={() => {}}
-        onChangeFeatures={onChangeFeatures}
-        onEdit={() => {}}
-      />
-    );
+    const { getByRole, findByRole, view } = await renderAction(<LevelSunAction />);
 
     await userEvent.click(getByRole("button", { name: "Sun" }));
     await findByRole("dialog", { name: "Sun" });
     await userEvent.click(getByRole("button", { name: "Enhanced" }));
 
-    expect(onChangeFeatures).toHaveBeenLastCalledWith({
-      ...mockLevelFeatureOptions(),
-      volumetric: { mode: ERenderVolumetricMode.ENHANCED },
-    });
+    expect(view.features.volumetric).toEqual({ mode: ERenderVolumetricMode.ENHANCED });
   });
 
   it("draws the fog enhanced on asking, offering its strengths only then, and back to the settings", async () => {
-    const onChangeFeatures = jest.fn<(features: ILevelFeatureOptions) => void>();
-
-    function render(mode: ERenderFogMode): ReactElement {
-      return (
-        <LevelFogAction
-          isOn
-          manual={DEFAULT_LEVEL_MANUAL_WEATHER}
-          isHazed={false}
-          value={{ ...DEFAULT_RENDER_FOG_SETTINGS, mode }}
-          features={mockLevelFeatureOptions()}
-          onToggle={() => {}}
-          onEdit={() => {}}
-          onHazed={() => {}}
-          onChangeFeatures={onChangeFeatures}
-        />
-      );
-    }
-
-    const { getByRole, findByRole, queryByRole, rerender } = renderWithProviders(render(ERenderFogMode.ENGINE));
+    const { getByRole, findByRole, queryByRole, view } = await renderAction(<LevelFogAction />);
 
     await open(getByRole, "Fog");
     await findByRole("dialog", { name: "Fog" });
@@ -454,42 +328,18 @@ describe("level weather key actions", () => {
 
     await userEvent.click(getByRole("button", { name: "Enhanced" }));
 
-    expect(onChangeFeatures).toHaveBeenLastCalledWith({
-      ...mockLevelFeatureOptions(),
-      fog: { mode: ERenderFogMode.ENHANCED },
-    });
-
-    rerender(render(ERenderFogMode.ENHANCED));
-
+    expect(view.features.fog).toEqual({ mode: ERenderFogMode.ENHANCED });
     expect(getByRole("slider", { name: "Height" })).toHaveAttribute("aria-valuetext", "8.0 m");
     expect(getByRole("slider", { name: "Density" })).toHaveAttribute("aria-valuetext", "+40%");
     expect(getByRole("slider", { name: "Scattering" })).toHaveAttribute("aria-valuetext", "0%");
 
     await userEvent.click(getByRole("button", { name: "Back to the settings for the fog" }));
 
-    expect(onChangeFeatures).toHaveBeenLastCalledWith({ ...mockLevelFeatureOptions(), fog: {} });
+    expect(view.features.fog).toEqual({});
   });
 
   it("debands the sky on asking, offering its quality and radius only then", async () => {
-    const onChangeFeatures = jest.fn<(features: ILevelFeatureOptions) => void>();
-
-    function render(mode: ERenderDebandingMode): ReactElement {
-      return (
-        <LevelSkyAction
-          options={DEFAULT_LEVEL_VIEW_OPTIONS}
-          manual={DEFAULT_LEVEL_MANUAL_WEATHER}
-          skies={[]}
-          clouds={[]}
-          debanding={{ ...DEFAULT_RENDER_DEBANDING_SETTINGS, mode }}
-          features={mockLevelFeatureOptions()}
-          onToggle={() => {}}
-          onEdit={() => {}}
-          onChangeFeatures={onChangeFeatures}
-        />
-      );
-    }
-
-    const { getByRole, findByRole, queryByRole, rerender } = renderWithProviders(render(ERenderDebandingMode.ENGINE));
+    const { getByRole, findByRole, queryByRole, view } = await renderAction(<LevelSkyAction />);
 
     await userEvent.click(getByRole("button", { name: "Sky" }));
     await findByRole("dialog", { name: "Sky" });
@@ -498,20 +348,14 @@ describe("level weather key actions", () => {
 
     await userEvent.click(getByRole("checkbox", { name: "Debanding" }));
 
-    expect(onChangeFeatures).toHaveBeenLastCalledWith({
-      ...mockLevelFeatureOptions(),
-      debanding: { mode: ERenderDebandingMode.ENHANCED },
-    });
-
-    rerender(render(ERenderDebandingMode.ENHANCED));
-
+    expect(view.features.debanding).toEqual({ mode: ERenderDebandingMode.ENHANCED });
     expect(getByRole("slider", { name: "Radius" })).toHaveAttribute("aria-valuetext", "48 px");
 
     await userEvent.click(getByRole("button", { name: "Ultra" }));
 
-    expect(onChangeFeatures).toHaveBeenLastCalledWith({
-      ...mockLevelFeatureOptions(),
-      debanding: { quality: ERenderDebandingQuality.ULTRA },
+    expect(view.features.debanding).toEqual({
+      mode: ERenderDebandingMode.ENHANCED,
+      quality: ERenderDebandingQuality.ULTRA,
     });
   });
 });

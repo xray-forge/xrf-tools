@@ -1,17 +1,21 @@
 import { default as NightsStayIcon } from "@mui/icons-material/NightsStay";
 import { Button } from "@mui/material";
+import { useInjection } from "@wirestate/react";
 import { formatDegrees, formatPercent } from "@xrf/format";
-import { ReactElement, useCallback } from "react";
+import { ReactElement } from "react";
 
 import { LevelWeatherTexture } from "@/core/ipc/types/xrf-app";
 import { ERenderDebandingMode, RenderDebandingQuality } from "@/core/ipc/types/xrf-renderer";
+import { useLevelFeatureOverride } from "@/core/level/components/preview/use-level-feature-override";
+import { useLevelRenderFeatures } from "@/core/level/components/preview/use-level-render-features";
 import { LevelManualWeatherSlider } from "@/core/level/components/weather/LevelManualWeatherSlider";
 import { LevelManualWeatherVectorField } from "@/core/level/components/weather/LevelManualWeatherVectorField";
 import { LevelWeatherResetButton } from "@/core/level/components/weather/LevelWeatherResetButton";
 import { LevelWeatherTextureField } from "@/core/level/components/weather/LevelWeatherTextureField";
-import { ILevelFeatureOptions, TLevelDebandingOptions } from "@/core/level/lib/features";
-import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
+import { toLevelModeFeature } from "@/core/level/lib/features/level-feature-options";
 import { ILevelManualWeather } from "@/core/level/lib/weather/level-manual-weather";
+import { LevelViewService } from "@/core/level/services/level-view.service";
+import { LevelWeatherService } from "@/core/level/services/level-weather.service";
 import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 import {
@@ -35,22 +39,8 @@ const SKY_KEYS: ReadonlyArray<keyof ILevelManualWeather> = [
   "cloudsRotation",
 ];
 
-interface ILevelSkyActionProps extends BaseComponentProps {
-  options: ILevelViewOptions;
-  /** The keyframe on screen: the one set by hand, or the weather's mix, which the first edit seeds it from. */
-  manual: ILevelManualWeather;
-  /** Every sky the game's weather names. */
-  skies: ReadonlyArray<LevelWeatherTexture>;
-  /** Every clouds texture it names. */
-  clouds: ReadonlyArray<LevelWeatherTexture>;
-  /** Whether and how the view smooths the sky's colour bands. */
-  debanding: TRenderDebandingSettings;
-  /** What the view sets over the settings, of which the debanding's part is changed. */
-  features: ILevelFeatureOptions;
-  onToggle: (option: keyof ILevelViewOptions) => void;
-  onEdit: (patch: Partial<ILevelManualWeather>) => void;
-  onChangeFeatures: (features: ILevelFeatureOptions) => void;
-}
+/** What the sky and clouds lists offer before the level's weather is read. */
+const NO_TEXTURES: ReadonlyArray<LevelWeatherTexture> = [];
 
 /**
  * The sky cube, its tint and turn, which its `#small` twin follows, the clouds over it with their cover, and whether
@@ -60,25 +50,20 @@ export function LevelSkyAction({
   "data-testid": dataTestId = "level-sky-action",
   id,
   className,
-  options,
-  manual,
-  skies,
-  clouds,
-  debanding,
-  features,
-  onToggle,
-  onEdit,
-  onChangeFeatures,
-}: ILevelSkyActionProps): ReactElement {
-  const { isSkyVisible, isClouded } = options;
+}: BaseComponentProps): ReactElement {
+  const viewService: LevelViewService = useInjection(LevelViewService);
+  const weatherService: LevelWeatherService = useInjection(LevelWeatherService);
+  const { settings, features } = useLevelRenderFeatures();
+  const { set: setDebanding, reset: resetDebanding } = useLevelFeatureOverride("debanding");
+  const { isSkyVisible, isClouded } = viewService.options;
+  // The keyframe on screen: the one set by hand, or the weather's mix, which the first edit seeds it from.
+  const manual: ILevelManualWeather = weatherService.shown;
+  const skies: ReadonlyArray<LevelWeatherTexture> = weatherService.description.value?.skies ?? NO_TEXTURES;
+  const clouds: ReadonlyArray<LevelWeatherTexture> = weatherService.description.value?.clouds ?? NO_TEXTURES;
+  // Whether and how the view smooths the sky's colour bands.
+  const debanding: TRenderDebandingSettings = toLevelModeFeature("debanding", settings, features);
   const isCloudy: boolean = isClouded && manual.cloudsTexture !== "";
   const isDebanded: boolean = debanding.mode === ERenderDebandingMode.ENHANCED;
-
-  const setDebanding = useCallback(
-    (part: Partial<TLevelDebandingOptions>): void =>
-      onChangeFeatures({ ...features, debanding: { ...features.debanding, ...part } }),
-    [features, onChangeFeatures]
-  );
 
   return (
     <EditorPopoverGroup
@@ -96,33 +81,56 @@ export function LevelSkyAction({
       icon={<NightsStayIcon />}
       isActive={isSkyVisible || isCloudy}
     >
-      <EditorPopoverGroupSection label={"Sky"} isOn={isSkyVisible} onToggle={() => onToggle("isSkyVisible")}>
+      <EditorPopoverGroupSection
+        label={"Sky"}
+        isOn={isSkyVisible}
+        onToggle={() => viewService.toggleOption("isSkyVisible")}
+      >
         <LevelWeatherTextureField
           label={"sky_texture"}
           value={manual.skyTexture}
           textures={skies}
-          onChange={(skyTexture: string) => onEdit({ skyTexture })}
+          onChange={(skyTexture: string) => weatherService.editManual({ skyTexture })}
         />
 
-        <LevelManualWeatherVectorField field={"skyColor"} isColor manual={manual} onEdit={onEdit} />
+        <LevelManualWeatherVectorField field={"skyColor"} isColor manual={manual} onEdit={weatherService.editManual} />
 
-        <LevelManualWeatherSlider field={"skyRotation"} manual={manual} format={formatDegrees} onEdit={onEdit} />
+        <LevelManualWeatherSlider
+          field={"skyRotation"}
+          manual={manual}
+          format={formatDegrees}
+          onEdit={weatherService.editManual}
+        />
       </EditorPopoverGroupSection>
 
-      <EditorPopoverGroupSection label={"Clouds"} isOn={isClouded} onToggle={() => onToggle("isClouded")}>
+      <EditorPopoverGroupSection
+        label={"Clouds"}
+        isOn={isClouded}
+        onToggle={() => viewService.toggleOption("isClouded")}
+      >
         <LevelWeatherTextureField
           label={"clouds_texture"}
           value={manual.cloudsTexture}
           textures={clouds}
-          onChange={(cloudsTexture: string) => onEdit({ cloudsTexture })}
+          onChange={(cloudsTexture: string) => weatherService.editManual({ cloudsTexture })}
         />
 
-        <LevelManualWeatherVectorField field={"cloudsColor"} isColor manual={manual} onEdit={onEdit} />
+        <LevelManualWeatherVectorField
+          field={"cloudsColor"}
+          isColor
+          manual={manual}
+          onEdit={weatherService.editManual}
+        />
 
-        <LevelManualWeatherSlider field={"cloudsRotation"} manual={manual} format={formatDegrees} onEdit={onEdit} />
+        <LevelManualWeatherSlider
+          field={"cloudsRotation"}
+          manual={manual}
+          format={formatDegrees}
+          onEdit={weatherService.editManual}
+        />
       </EditorPopoverGroupSection>
 
-      <LevelWeatherResetButton keys={SKY_KEYS} onEdit={onEdit} />
+      <LevelWeatherResetButton keys={SKY_KEYS} onEdit={weatherService.editManual} />
 
       <EditorPopoverGroupSection
         label={"Debanding"}
@@ -151,7 +159,7 @@ export function LevelSkyAction({
           </>
         ) : null}
 
-        <Button size={"small"} onClick={() => onChangeFeatures({ ...features, debanding: {} })}>
+        <Button size={"small"} onClick={resetDebanding}>
           Back to the settings for the debanding
         </Button>
       </EditorPopoverGroupSection>

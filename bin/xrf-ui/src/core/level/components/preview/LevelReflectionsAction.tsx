@@ -1,6 +1,7 @@
 import { default as FlipIcon } from "@mui/icons-material/Flip";
 import { Button } from "@mui/material";
-import { ReactElement, useCallback } from "react";
+import { useInjection } from "@wirestate/react";
+import { ReactElement } from "react";
 
 import {
   ERenderReflectionMode,
@@ -9,7 +10,10 @@ import {
   RenderReflectionTraceQuality,
 } from "@/core/ipc/types/xrf-renderer";
 import { LevelGlassSettings } from "@/core/level/components/preview/LevelGlassSettings";
-import { ILevelFeatureOptions, TLevelReflectionOptions } from "@/core/level/lib/features";
+import { useLevelFeatureOverride } from "@/core/level/components/preview/use-level-feature-override";
+import { useLevelRenderFeatures } from "@/core/level/components/preview/use-level-render-features";
+import { toLevelModeFeature } from "@/core/level/lib/features/level-feature-options";
+import { LevelRenderService } from "@/core/level/services/level-render.service";
 import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 import {
@@ -23,45 +27,29 @@ import {
   RENDER_REFLECTION_QUALITY_OPTIONS,
   RENDER_REFLECTION_TRACE_QUALITY_OPTIONS,
 } from "@/core/render/lib/features/render-reflection-choices";
-import { TRenderGlassSettings, TRenderReflectionSettings } from "@/core/render/lib/settings/render-feature-settings";
+import { TRenderReflectionSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { EditorPopoverToggle } from "@/core/shell/editor/EditorPopoverToggle";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
-interface ILevelReflectionsActionProps extends BaseComponentProps {
-  /** The reflections as the view draws them. */
-  value: TRenderReflectionSettings;
-  /** The glass as the view draws it, set here beside what reflects. */
-  glass: TRenderGlassSettings;
-  /** What the view sets over the settings, of which the reflections' part is changed. */
-  features: ILevelFeatureOptions;
-  /** Whether the GPU drawing the view traces rays, which tracing what the screen misses needs. */
-  isTraceable: boolean;
-  onChange: (features: ILevelFeatureOptions) => void;
-}
-
 /**
  * What glossy and wet surfaces reflect: the engine's sky cube alone, or screen-space reflections of what the frame
- * shows where a traced ray meets it; how hard they trace, how strongly surfaces reflect, how far a ray goes and how
- * fine the cube of the surroundings a ray meeting nothing reads is; and how glass is drawn.
+ * shows where a traced ray meets it, tracing what the screen misses on a GPU that traces rays; how hard they trace, how
+ * strongly surfaces reflect, how far a ray goes and how fine the cube of the surroundings a ray meeting nothing reads
+ * is; and how glass is drawn.
  */
 export function LevelReflectionsAction({
   "data-testid": dataTestId = "level-reflections-action",
   id,
   className,
-  value,
-  glass,
-  features,
-  isTraceable,
-  onChange,
-}: ILevelReflectionsActionProps): ReactElement {
-  const isEnhanced: boolean = value.mode === ERenderReflectionMode.ENHANCED;
+}: BaseComponentProps): ReactElement {
+  const renderService: LevelRenderService = useInjection(LevelRenderService);
+  const { settings, features } = useLevelRenderFeatures();
+  const { set, reset } = useLevelFeatureOverride("reflections");
 
-  const set = useCallback(
-    (part: Partial<TLevelReflectionOptions>): void =>
-      onChange({ ...features, reflections: { ...features.reflections, ...part } }),
-    [features, onChange]
-  );
+  const value: TRenderReflectionSettings = toLevelModeFeature("reflections", settings, features);
+  const isTraceable: boolean = renderService.isTraceable;
+  const isEnhanced: boolean = value.mode === ERenderReflectionMode.ENHANCED;
 
   return (
     <EditorPopoverToggle
@@ -155,11 +143,11 @@ export function LevelReflectionsAction({
         </>
       ) : null}
 
-      <Button size={"small"} onClick={() => onChange({ ...features, reflections: {} })}>
+      <Button size={"small"} onClick={reset}>
         Back to the settings for the reflections
       </Button>
 
-      <LevelGlassSettings value={glass} features={features} onChange={onChange} />
+      <LevelGlassSettings />
     </EditorPopoverToggle>
   );
 }
