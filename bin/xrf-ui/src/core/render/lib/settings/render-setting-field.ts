@@ -32,8 +32,11 @@ export interface IRenderChoiceField<T extends string> {
 /** A run of positive widths, each between bounds, as many as the most given. */
 export interface IRenderWidthsField {
   readonly kind: ERenderSettingKind.WIDTHS;
+  /** The least each width may be. */
   readonly min: number;
+  /** The most each width may be. */
   readonly max: number;
+  /** The most widths the run holds. */
   readonly most: number;
 }
 

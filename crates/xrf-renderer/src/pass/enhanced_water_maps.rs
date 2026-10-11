@@ -1,6 +1,9 @@
 use crate::host::render_bundle::RenderBundle;
 use crate::scene::texture::decoded_texture::DecodedTexture;
 
+/// The enhanced water's maps from the renderer's bundle (`water/`), uploaded once: the reflection's blue noise, the
+/// perlin noise over the level, the waves' normal map, the wind layer, the caustics, the heights the parallax marches
+/// and the rain's ripples.
 pub struct EnhancedWaterMaps {
   pub blue_noise: wgpu::TextureView,
   pub perlin: wgpu::TextureView,

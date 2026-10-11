@@ -4,6 +4,7 @@
 export interface ILevelRenderConfig {
   /** Where the camera starts seeing, `VIEWPORT_NEAR` (`xrEngine/device.h`). */
   cameraNear: number;
+  /** Metres to where the camera stops seeing, before a fog draws it nearer. */
   cameraFar: number;
   /** Colour of the ground grid's ordinary lines. */
   gridColor: number;

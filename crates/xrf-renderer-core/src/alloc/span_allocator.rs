@@ -81,6 +81,7 @@ impl SpanAllocator {
     self.capacity = capacity;
   }
 
+  /// Gives a span's elements back for a later allocation; the span must not be written after.
   pub fn free(&mut self, span: Span) {
     self.regions[span.region as usize].allocator.free(span.allocation);
   }

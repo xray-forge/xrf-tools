@@ -209,6 +209,7 @@ impl RenderViewport {
     self.is_gone
   }
 
+  /// Notes a frame for the next report: its times (interval, render thread, GPU span), phases and encode groups.
   pub fn record_frame(
     &mut self,
     times: (Duration, Duration, Option<f32>),
@@ -386,6 +387,7 @@ impl RenderViewport {
     }
   }
 
+  /// Lets a later failure be told again, once the renderer draws again.
   pub fn recover(&mut self) {
     self.is_failed = false;
   }

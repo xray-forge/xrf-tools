@@ -68,6 +68,7 @@ impl GraphTimer {
     self.is_enabled && self.queries.is_some()
   }
 
+  /// Turns the timing on or off, a change dropping every sum gathered so far.
   pub fn set_enabled(&mut self, is_enabled: bool) {
     if self.is_enabled != is_enabled {
       self.is_enabled = is_enabled;

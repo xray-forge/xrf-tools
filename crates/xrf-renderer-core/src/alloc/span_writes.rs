@@ -13,6 +13,7 @@ impl SpanWrites {
     self.entries.is_empty()
   }
 
+  /// Queues `bytes` for the buffer at `offset` bytes; a later write to the same bytes wins.
   pub fn push(&mut self, offset: u64, bytes: &[u8]) {
     let start: usize = self.data.len();
 

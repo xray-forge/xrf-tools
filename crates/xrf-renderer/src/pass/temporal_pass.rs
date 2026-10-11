@@ -43,6 +43,8 @@ impl TemporalPass {
     })
   }
 
+  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSource::get_generation`), keeping
+  /// the last ones where a reload is refused.
   pub fn refresh(&mut self, source: PipelineSource<'_>) {
     if source.get_generation() != self.generation {
       self.generation = source.get_generation();
@@ -60,6 +62,7 @@ impl TemporalPass {
     &self.sampler
   }
 
+  /// Resolves this frame against its history into the history written, keeping each pixel's flicker beside it.
   pub fn record(&self, context: &mut RasterContext<'_>, view: &ViewBinding, parameters: &TemporalParameters<'_>) {
     context.bind(parameters);
 

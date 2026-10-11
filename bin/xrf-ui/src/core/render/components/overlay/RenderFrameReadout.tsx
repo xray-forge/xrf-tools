@@ -63,6 +63,7 @@ export interface IRenderFrameReadoutProps extends BaseComponentProps {
    * run of a family's passes summed into one row.
    */
   report: RenderFrameReport;
+  /** The viewport's corner it is laid in, the top left by default. */
   corner?: TRenderOverlayCorner;
   /** Anything the scene can say that a viewport cannot, drawn under the rest. */
   children?: ReactNode;

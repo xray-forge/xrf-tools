@@ -32,6 +32,8 @@ impl ExposurePass {
     })
   }
 
+  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSource::get_generation`), keeping
+  /// the last ones where a reload is refused.
   pub fn refresh(&mut self, source: PipelineSource<'_>) {
     if source.get_generation() != self.generation {
       self.generation = source.get_generation();
@@ -43,6 +45,7 @@ impl ExposurePass {
     }
   }
 
+  /// Measures the high part in cells, then adapts the exposure's scale towards what they read.
   pub fn record(&self, context: &mut ComputeContext<'_>, parameters: &ExposureParameters) {
     context.bind(parameters);
 

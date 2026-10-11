@@ -10,6 +10,9 @@ use crate::plugins::render::disk_cache_store::DiskCacheStore;
 use crate::plugins::render::packaged_bundle::PackagedBundle;
 use crate::plugins::render::state::RenderState;
 
+/// The `render` plugin: the native renderer's state (`RenderState`, its loaders on the application's pool, its bundle and
+/// the driver's pipeline cache on disk), every `render|*` command, and the hook that detaches a window's viewports as a
+/// page starts loading over them.
 pub struct RenderPlugin {}
 
 impl RenderPlugin {

@@ -33,6 +33,8 @@ impl SkyHazePass {
     })
   }
 
+  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSource::get_generation`), keeping
+  /// the last ones where a reload is refused.
   pub fn refresh(&mut self, source: PipelineSource<'_>) {
     if source.get_generation() != self.generation {
       self.generation = source.get_generation();
@@ -44,6 +46,7 @@ impl SkyHazePass {
     }
   }
 
+  /// Blurs the sky into the haze map the fog's horizon and the sky behind read.
   pub fn record(&self, context: &mut RasterContext<'_>, parameters: &SkyHazeParameters, sky: &SkyParameters<'_>) {
     context.bind(parameters);
     context.bind(sky);

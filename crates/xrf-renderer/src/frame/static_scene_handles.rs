@@ -49,6 +49,8 @@ pub struct StaticSceneHandles {
 }
 
 impl StaticSceneHandles {
+  /// Imports the static scene into a frame's graph once: its buffers, the camera's lists, arguments and candidates, the
+  /// occlusion pyramid, and the cull's, occlusion's and wind's uniforms pushed, for every cull and static draw to bind.
   pub fn import<'r>(
     (graph, bindings, runtime): (&mut FrameGraph<'_>, &mut GraphBindings<'r>, &mut GraphRuntime),
     scene: &'r StaticScene,

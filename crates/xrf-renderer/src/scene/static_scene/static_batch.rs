@@ -34,6 +34,7 @@ impl StaticBatch {
     )
   }
 
+  /// Every batch, each layout with each class, in the order their draw lists are kept.
   pub fn list() -> impl Iterator<Item = StaticBatch> {
     StaticLayout::ALL.into_iter().flat_map(|layout| {
       StaticClass::ALL

@@ -200,6 +200,8 @@ impl RenderThread {
     }
   }
 
+  /// Runs the thread until its queue goes: draws a frame while any viewport draws, paced to the settings' rate, and
+  /// handles the commands sent between frames.
   pub fn run(mut self) {
     log::info!("Render thread started");
 

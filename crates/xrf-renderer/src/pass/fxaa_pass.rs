@@ -36,6 +36,8 @@ impl FxaaPass {
     })
   }
 
+  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSource::get_generation`), keeping
+  /// the last ones where a reload is refused.
   pub fn refresh(&mut self, source: PipelineSource<'_>) {
     if source.get_generation() != self.generation {
       self.generation = source.get_generation();
@@ -52,6 +54,7 @@ impl FxaaPass {
     &self.sampler
   }
 
+  /// Smooths the frame's edges into the smoothed target.
   pub fn record(&self, context: &mut RasterContext<'_>, parameters: &FxaaParameters<'_>) {
     context.get_pass().set_pipeline(&self.pipeline);
     context.bind(parameters);

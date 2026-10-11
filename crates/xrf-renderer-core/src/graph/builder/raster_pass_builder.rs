@@ -24,21 +24,25 @@ impl<'g, 'a> RasterPassBuilder<'g, 'a> {
     }
   }
 
+  /// Adds a colour attachment, in attachment order, which the pass writes.
   pub fn color(mut self, attachment: GraphColorAttachment) -> Self {
     self.colors.push(attachment);
     self
   }
 
+  /// Sets the depth attachment, written or read-only as its access says.
   pub fn depth(mut self, attachment: GraphDepthAttachment) -> Self {
     self.depth = Some(attachment);
     self
   }
 
+  /// Declares that the pass touches `texture` as `access` says, which orders it against the texture's other passes.
   pub fn texture(mut self, texture: GraphTexture, access: GraphTextureAccess) -> Self {
     self.declaration.textures.push((texture, access));
     self
   }
 
+  /// Declares that the pass touches `buffer` as `access` says, which orders it against the buffer's other passes.
   pub fn buffer(mut self, buffer: GraphBuffer, access: GraphBufferAccess) -> Self {
     self.declaration.buffers.push((buffer, access));
     self

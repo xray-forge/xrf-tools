@@ -18,6 +18,11 @@ use crate::graph::resource::{GraphBuffer, GraphTexture};
 pub(crate) struct GraphCompiler;
 
 impl GraphCompiler {
+  /// Compiles `graph` by `options`, consuming it: the work behind `FrameGraph::compile`.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error for a graph that cannot run, as `FrameGraph::compile` lists.
   pub fn compile<'a>(graph: FrameGraph<'a>, options: &GraphCompileOptions) -> XrfResult<CompiledGraph<'a>> {
     let FrameGraph {
       textures,

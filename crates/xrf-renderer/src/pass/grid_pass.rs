@@ -44,6 +44,7 @@ impl GridPass {
     }
   }
 
+  /// Draws the ground grid over a viewport that shows no scene, into the window's image.
   pub fn draw(&self, pass: &mut wgpu::RenderPass<'_>, view: &ViewBinding) {
     pass.set_pipeline(&self.pipeline);
     pass.set_bind_group(0, &view.bind_group, &[]);

@@ -48,6 +48,7 @@ impl RenderBackend {
       .collect()
   }
 
+  /// The backends a wgpu instance is made for to start on this one alone.
   pub fn to_backends(self) -> wgpu::Backends {
     match self {
       RenderBackend::D3d12 => wgpu::Backends::DX12,

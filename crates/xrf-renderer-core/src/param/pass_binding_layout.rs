@@ -22,6 +22,8 @@ impl PassBindingLayout {
     }
   }
 
+  /// A storage buffer at `binding`: read-only, visible to every stage; writable, to the fragment and compute stages
+  /// alone, as WebGPU allows.
   pub fn storage(binding: u32, is_writable: bool) -> wgpu::BindGroupLayoutEntry {
     wgpu::BindGroupLayoutEntry {
       binding,
@@ -37,6 +39,7 @@ impl PassBindingLayout {
     }
   }
 
+  /// A sampled texture at `binding`, visible to every stage.
   pub fn texture(
     binding: u32,
     sample_type: wgpu::TextureSampleType,
@@ -67,6 +70,8 @@ impl PassBindingLayout {
     }
   }
 
+  /// A storage texture at `binding`: read-only, visible to every stage; writable, to the fragment and compute stages
+  /// alone, as WebGPU allows.
   pub fn storage_texture(
     binding: u32,
     access: wgpu::StorageTextureAccess,
@@ -86,6 +91,7 @@ impl PassBindingLayout {
     }
   }
 
+  /// A sampler at `binding`, visible to every stage.
   pub fn sampler(binding: u32, ty: wgpu::SamplerBindingType) -> wgpu::BindGroupLayoutEntry {
     wgpu::BindGroupLayoutEntry {
       binding,

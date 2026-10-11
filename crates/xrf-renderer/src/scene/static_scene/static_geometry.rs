@@ -173,10 +173,12 @@ impl StaticGeometry {
     self.rows.sync(device, queue, &mut self.row_records, |row| *row);
   }
 
+  /// Puts a row (a place and a progressive band) among the dense rows the row cull walks.
   pub fn add_row(&mut self, row: StaticRow) -> ProxyHandle<StaticRow> {
     self.row_records.add(row)
   }
 
+  /// Takes a row out of the dense rows, the last moving into its place.
   pub fn remove_row(&mut self, row: ProxyHandle<StaticRow>) {
     self.row_records.remove(row);
   }
