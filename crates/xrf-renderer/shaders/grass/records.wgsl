@@ -51,6 +51,11 @@ const GRASS_SLOT_WORDS: u32 = 6u;
 // Floats a collision triangle takes: its three corners.
 const GRASS_TRIANGLE_FLOATS: u32 = 9u;
 
+// A slope's limit standing for none, a right angle; the share of it a tuft's limit is drawn down by at most, so the
+// grass thins up a bank.
+const SLOPE_NONE: f32 = 1.5707;
+const SLOPE_THINNING: f32 = 0.2;
+
 // `DetailSlot::ID_Empty`: a slot's mark for a model it does not plant.
 const GRASS_EMPTY_ID: u32 = 0x3fu;
 

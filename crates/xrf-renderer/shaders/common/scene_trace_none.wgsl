@@ -19,6 +19,8 @@ struct SceneSurface {
   hemi: f32,
   sun: f32,
   slice: f32,
+  is_leaf: bool,
+  crown: vec3<f32>,
 }
 
 struct SceneCone {
@@ -32,7 +34,7 @@ fn trace_scene_ray(origin: vec3<f32>, direction: vec3<f32>, near: f32, far: f32,
   return SceneHit(-1.0, 0u, 0u, vec2<f32>(0.0), 0u, vec3<f32>(0.0), mat3x3<f32>());
 }
 
-fn trace_scene_blocked(origin: vec3<f32>, direction: vec3<f32>, far: f32, cone: SceneCone) -> bool {
+fn trace_scene_blocked(origin: vec3<f32>, direction: vec3<f32>, far: f32, cone: SceneCone, passed: u32) -> bool {
   return false;
 }
 
@@ -62,5 +64,6 @@ fn scene_lamps(
 }
 
 fn scene_surface(hit: SceneHit, spread: f32) -> SceneSurface {
-  return SceneSurface(vec3<f32>(0.0), vec3<f32>(0.0, 1.0, 0.0), vec3<f32>(0.0), 0.0, 0.0, 0.0);
+  return SceneSurface(vec3<f32>(0.0), vec3<f32>(0.0, 1.0, 0.0), vec3<f32>(0.0), 0.0, 0.0, 0.0, false,
+    vec3<f32>(0.0, 1.0, 0.0));
 }

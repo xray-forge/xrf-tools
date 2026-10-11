@@ -79,7 +79,15 @@ impl GrassLevel {
         _ => XraySurfaceDraw::DEFERRED_ALPHA_REFERENCE,
       };
 
-      positions.extend(read_pods::<f32>(buffer, &model.positions));
+      let model_positions: Vec<f32> = read_pods(buffer, &model.positions);
+      let spread: f32 = model_positions
+        .as_chunks::<3>()
+        .0
+        .iter()
+        .map(|[x, _, z]| x.hypot(*z))
+        .fold(0.0, f32::max);
+
+      positions.extend(model_positions);
       uvs.extend(read_pods::<f32>(buffer, &model.uvs));
       indices.extend(model_indices.iter().map(|it| u32::from(*it) + base));
       texture_slots.push(texture);
@@ -87,8 +95,8 @@ impl GrassLevel {
         model,
         texture,
         reference,
-        first_index,
-        model_indices.len() as u32,
+        (first_index, model_indices.len() as u32),
+        spread,
       ));
     }
 
@@ -164,8 +172,8 @@ fn to_record(
   model: &DetailsModel,
   texture: u32,
   reference: u8,
-  first_index: u32,
-  index_count: u32,
+  (first_index, index_count): (u32, u32),
+  spread: f32,
 ) -> GrassModelRecord {
   GrassModelRecord {
     shape: Vec4::new(model.min_scale, model.max_scale, model.radius, model.height),
@@ -174,6 +182,7 @@ fn to_record(
     alpha_reference: f32::from(reference) / 255.0,
     index_count,
     first_index,
-    pad: [0; 3],
+    spread,
+    pad: [0; 2],
   }
 }
