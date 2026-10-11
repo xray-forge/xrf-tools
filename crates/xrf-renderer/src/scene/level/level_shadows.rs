@@ -70,6 +70,9 @@ const SWAY_SEEDS: [f32; RENDER_MAX_SHADOW_CASCADES] = [0.12, 0.15, 0.25, 0.35];
 
 /// Metres the grass stands at most over the ground, which the cards' reach is sampled past.
 const GRASS_STANDING: f32 = 3.0;
+/// Cascades the grass's cards are drawn into, the nearest first: past them a tuft is a few texels at most, and its
+/// shadow fades out over the last one's blend into the next.
+const GRASS_CASCADES: usize = 2;
 /// The share of a map's edge the sun's pass keeps a point off (`EDGE` in `common/sun_shadow.wgsl`).
 const SUN_SHADOW_EDGE: f32 = 0.02;
 /// Where the cards' reach is sampled for the cascades it lands in: rays a side of the screen's grid, and the shares of
@@ -527,14 +530,15 @@ impl LevelShadows {
       let projection: Mat4 = cascade.cascade.view.get_view_projection();
       let has_next: bool = index + 1 < count;
       let mut has_grass: bool = false;
+      let is_grass_drawn: bool = index < GRASS_CASCADES;
 
       for (point, shaded) in &mut points {
         match (*shaded, Self::get_cascade_inset(projection, *point)) {
           (None, Some(inset)) => {
-            has_grass = true;
+            has_grass = is_grass_drawn;
             *shaded = Some((index, has_next && inset < blends[index]));
           }
-          (Some((at, true)), Some(_)) if at + 1 == index => has_grass = true,
+          (Some((at, true)), Some(_)) if at + 1 == index => has_grass = is_grass_drawn,
           _ => {}
         }
       }

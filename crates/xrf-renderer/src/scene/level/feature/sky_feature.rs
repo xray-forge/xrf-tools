@@ -33,8 +33,8 @@ use crate::scene::texture::weather_texture_kind::WeatherTextureKind;
 
 /// The sky a view draws and reflects: its textures as the weather holds them this frame, with the sun's sprite, the
 /// prefiltered cube the reflections and the enhanced specular read, filled again as the frame's scheduler grants it
-/// (at once when new, else within `REFILL_WAIT_MOST` frames, as the sky and its light move slowly), and the haze map the
-/// distance fades into.
+/// (at once when new, else after `REFILL_WAIT_LEAST` frames and within `REFILL_WAIT_MOST` more, as the sky and its light
+/// move slowly), and the haze map the distance fades into.
 #[derive(Default)]
 pub struct SkyFeature {
   views: Option<SkyViews>,
@@ -48,14 +48,18 @@ pub struct SkyFeature {
   is_hazing: bool,
   /// Whether the prefiltered cube was filled since it was made.
   is_filled: bool,
-  /// The refill offered this frame, whether this frame fills the cube, and frames a refill has waited.
+  /// The refill offered this frame, whether this frame fills the cube, frames a refill has waited, and frames since
+  /// the last fill before the next is offered.
   refill: Option<PeriodicTicket>,
   is_refilled: bool,
   waited: u32,
+  rested: u32,
 }
 
 impl SkyFeature {
-  /// Frames a refill of the prefiltered cube waits at most.
+  /// Frames a filled cube waits before a refill is offered, so spare budget does not refill a slow sky every frame.
+  const REFILL_WAIT_LEAST: u32 = 4;
+  /// Frames an offered refill of the prefiltered cube waits at most.
   const REFILL_WAIT_MOST: u32 = 4;
   /// Milliseconds a refill costs before the timer measured one.
   const REFILL_SEED: f32 = 0.2;
@@ -107,6 +111,12 @@ impl SkyFeature {
       return;
     }
 
+    if self.is_filled && self.rested < Self::REFILL_WAIT_LEAST {
+      self.rested += 1;
+
+      return;
+    }
+
     let job: PeriodicJob = if self.is_filled {
       PeriodicJob::new_waiting(
         &SkyPrefilterPass::PASSES,
@@ -132,6 +142,7 @@ impl SkyFeature {
     if self.is_refilled {
       self.is_filled = true;
       self.waited = 0;
+      self.rested = 0;
     } else {
       self.waited += 1;
     }
