@@ -79,10 +79,7 @@ impl LightsFeature {
     Self {
       settings: RenderLightsSettings::default(),
       records: Vec::with_capacity(Self::MAX_LIGHTS),
-      record_buffer: storage(
-        "light records",
-        (Self::MAX_LIGHTS * size_of::<LightRecord>()) as u64,
-      ),
+      record_buffer: storage("light records", (Self::MAX_LIGHTS * size_of::<LightRecord>()) as u64),
       volumes: Vec::with_capacity(Self::MAX_LIGHTS),
       volume_slices: Vec::with_capacity(Self::MAX_LIGHTS),
       volume_buffer: storage(
