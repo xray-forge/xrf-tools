@@ -63,6 +63,8 @@ pub struct ResolveFeature {
   temporal: Option<RenderAntialiasing>,
   /// The FSR debug view shown, which FSR draws in place of the frame it resolved.
   fsr_view: Option<RenderDebugView>,
+  /// The mip bias the surfaces' textures are read at this frame (`get_texture_bias`).
+  texture_bias: f32,
   resolve: Option<Resolve>,
   upscaling: RenderUpscalingSettings,
   /// The size the frame is resolved at, which a temporal resolve resolves into.
@@ -100,6 +102,7 @@ impl Default for ResolveFeature {
       phases: 1,
       temporal: None,
       fsr_view: None,
+      texture_bias: 0.0,
       resolve: None,
       upscaling: RenderUpscalingSettings::default(),
       resolved: (1, 1),
@@ -134,6 +137,7 @@ impl ResolveFeature {
       (antialiasing.is_temporal() && view == RenderDebugView::Final).then_some(antialiasing)
     };
     self.phases = TemporalJitter::get_phases(ratio);
+    self.texture_bias = Self::get_bias(self.temporal, ratio);
     self.offset = if self.temporal.is_some() {
       self.jitter.next(ratio)
     } else {
@@ -141,6 +145,22 @@ impl ResolveFeature {
     };
 
     self.offset
+  }
+
+  /// The mip bias textures are read at while `temporal` resolves a frame `ratio` times smaller than its output a side.
+  pub fn get_bias(temporal: Option<RenderAntialiasing>, ratio: f32) -> f32 {
+    let lost: f32 = -ratio.max(1.0).log2();
+
+    match temporal {
+      Some(RenderAntialiasing::Fsr | RenderAntialiasing::Dlss) => lost - 1.0,
+      Some(_) => lost,
+      None => 0.0,
+    }
+  }
+
+  /// The mip bias the surfaces' textures are read at this frame, as the last jitter decided it.
+  pub fn get_texture_bias(&self) -> f32 {
+    self.texture_bias
   }
 
   /// Takes this frame's resolve for targets `render` texels across, none before they are made, resolved at `resolved`

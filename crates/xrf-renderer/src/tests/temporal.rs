@@ -1,7 +1,9 @@
 use glam::{Mat4, Vec2, Vec3, Vec4};
 
 use crate::camera::camera_view::CameraView;
+use crate::contract::render_antialiasing::RenderAntialiasing;
 use crate::frame::temporal_jitter::TemporalJitter;
+use crate::scene::level::feature::resolve_feature::ResolveFeature;
 
 #[test]
 fn halton_places_samples_as_the_radical_inverse_of_their_index() {
@@ -54,4 +56,17 @@ fn a_jittered_view_samples_each_pixel_the_jitter_from_its_centre() {
     assert!((shift.x + 0.25).abs() < 1e-3, "{shift}");
     assert!((shift.y - 0.5).abs() < 1e-3, "{shift}");
   }
+}
+
+// FSR and DLSS read textures at AMD's `log2(render / display) - 1`, TAA at the size lost alone, nothing else biased.
+#[test]
+fn reads_textures_sharper_by_what_the_upscale_loses() {
+  let fsr: f32 = ResolveFeature::get_bias(Some(RenderAntialiasing::Fsr), 1.5);
+
+  assert!((fsr - (1.5f32.recip().log2() - 1.0)).abs() < 1e-6);
+  assert_eq!(ResolveFeature::get_bias(Some(RenderAntialiasing::Dlss), 2.0), -2.0);
+  assert_eq!(ResolveFeature::get_bias(Some(RenderAntialiasing::Taa), 2.0), -1.0);
+  assert_eq!(ResolveFeature::get_bias(Some(RenderAntialiasing::Taa), 1.0), 0.0);
+  assert_eq!(ResolveFeature::get_bias(Some(RenderAntialiasing::Fsr), 1.0), -1.0);
+  assert_eq!(ResolveFeature::get_bias(None, 2.0), 0.0);
 }
