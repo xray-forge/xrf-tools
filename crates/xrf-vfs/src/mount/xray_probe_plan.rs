@@ -31,7 +31,7 @@ impl XrayProbePlan {
   ///
   /// # Errors
   ///
-  /// Returns an error when an installation is found but its `fsgame.ltx` cannot be read, decoded, or parsed.
+  /// Returns an error when an installation is found but its fsgame file cannot be read, decoded, or parsed.
   pub fn with_asset(mut self, asset: impl AsRef<Path>) -> XrfResult<Self> {
     let asset: &Path = asset.as_ref();
 

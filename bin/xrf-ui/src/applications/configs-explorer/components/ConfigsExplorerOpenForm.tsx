@@ -59,7 +59,9 @@ export function ConfigsExplorerOpenForm({
     >
       <PathFormRow
         label={"Configs root"}
-        description={"A configs directory, or a game installation holding fsgame.ltx"}
+        description={
+          "A configs directory, or a game installation holding fsgame.ltx (fsgame_<game>.ltx in an Enhanced Edition)"
+        }
         field={root}
       />
 

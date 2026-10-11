@@ -17,13 +17,13 @@ pub enum XrayMountMode {
   /// holds volumes, and as a complete root otherwise.
   #[default]
   Auto,
-  /// Treat the path as a complete X-Ray root, ignoring any `fsgame.ltx` beside it.
+  /// Treat the path as a complete X-Ray root, ignoring any fsgame file beside it.
   Directory,
   /// Treat the path as one archive volume, or as every volume beneath a directory, and mount each on its own.
   Volumes,
   /// Require the path to declare an installation, and mount everything it declares.
   Installation,
-  /// Mount the nearest installation containing the path, searching upwards for `fsgame.ltx`.
+  /// Mount the nearest installation containing the path, searching upwards for an fsgame file.
   ContainingInstallation,
 }
 
@@ -33,7 +33,7 @@ impl XrayMountMode {
   /// # Errors
   ///
   /// Returns an error when [`Self::Installation`] is asked for a path that declares none, or when a declared
-  /// `fsgame.ltx` cannot be read, decoded, or parsed.
+  /// fsgame file cannot be read, decoded, or parsed.
   pub fn plan(&self, path: impl AsRef<Path>) -> XrfResult<XrayMountPlan> {
     let path: &Path = path.as_ref();
 
@@ -61,7 +61,7 @@ impl XrayMountMode {
 
   /// Whether a path itself declares an installation.
   pub fn declares_installation(path: impl AsRef<Path>) -> bool {
-    path.as_ref().join(FsgameFile::FILE_NAME).is_file()
+    FsgameFile::find(path).is_some()
   }
 }
 

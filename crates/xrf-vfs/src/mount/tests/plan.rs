@@ -29,6 +29,16 @@ $arch_dir$  = true | false | $fs_root$ | db\\
 $game_data$ = true | true  | $fs_root$ | gamedata\\
 ";
 
+/// Call of Prypiat Enhanced Edition's `fsgame_cop.ltx`, trimmed: its engine declares `$fs_root$` and `$app_data_root$`.
+const ENHANCED_EDITION_FSGAME: &str = "\
+$arch_dir$              = false| false| $fs_root$
+$arch_dir_levels$       = false| false| $arch_dir$|         levels\\
+$arch_dir_resources$    = false| false| $arch_dir$|         resources\\
+$game_data$   \t\t= false|\ttrue|\t$fs_root$|\t\t\tgamedata\\
+$game_textures$    \t= true|\t\ttrue|\t$game_data$|\t\ttextures\\
+$logs$      \t\t= true|\t\tfalse|\t$app_data_root$|\tlogs\\
+";
+
 /// Builds an installation on disk, since a plan is decided by what is actually there.
 ///
 /// `files` are paths relative to the installation, so a caller writes `db\\textures\\textures.db0` to place a volume.
@@ -37,12 +47,17 @@ fn install(name: &str, files: &[&str]) -> PathBuf {
 }
 
 fn install_with(name: &str, fsgame: &str, files: &[&str]) -> PathBuf {
+  install_named(name, "fsgame.ltx", fsgame, files)
+}
+
+/// An installation declaring its layout under `file_name`, as an Enhanced Edition does under its game's own name.
+fn install_named(name: &str, file_name: &str, fsgame: &str, files: &[&str]) -> PathBuf {
   let root: PathBuf = build_absolute_generated_test_resource_path(&format!("xray_mount_plan/{name}"));
 
   let _ = fs::remove_dir_all(&root);
 
   fs::create_dir_all(&root).expect("install root");
-  fs::write(root.join("fsgame.ltx"), fsgame).expect("fsgame written");
+  fs::write(root.join(file_name), fsgame).expect("fsgame written");
 
   for file in files {
     let path: PathBuf = root.join(file.replace('\\', "/"));
@@ -252,6 +267,37 @@ fn reports_an_installation_with_no_fsgame_as_an_error_rather_than_an_empty_plan(
   fs::create_dir_all(&root).expect("root");
 
   assert!(XrayMountPlan::from_fsgame(&root).is_err());
+}
+
+#[test]
+fn plans_an_enhanced_edition_from_the_fsgame_named_for_its_game() {
+  let root: PathBuf = install_named(
+    "enhanced_edition",
+    "fsgame_cop.ltx",
+    ENHANCED_EDITION_FSGAME,
+    &[
+      "levels\\levels.db0",
+      "resources\\configs.db",
+      "gamedata\\textures\\act\\act_arm_1.dds",
+    ],
+  );
+
+  for mode in [XrayMountMode::Auto, XrayMountMode::Installation] {
+    let plan: XrayMountPlan = mode.plan(&root).expect("installation plans");
+    let origins: Vec<&str> = plan.get_mounts().iter().map(|it| it.origin.as_str()).collect();
+
+    assert_eq!(
+      origins,
+      vec!["$game_data$", "$arch_dir_resources$", "$arch_dir_levels$"],
+      "{mode} plans from fsgame_cop.ltx"
+    );
+  }
+
+  let containing: XrayMountPlan = XrayMountMode::ContainingInstallation
+    .plan(root.join("gamedata").join("textures"))
+    .expect("containing installation plans");
+
+  assert_eq!(containing.get_mounts()[0].path, root.join("gamedata"));
 }
 
 #[test]

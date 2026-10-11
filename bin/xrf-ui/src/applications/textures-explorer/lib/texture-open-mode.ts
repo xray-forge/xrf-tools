@@ -76,7 +76,10 @@ export const TEXTURE_OPEN_MODES: ReadonlyArray<ITextureOpenModeDescriptor> = [
     description:
       "Lists every texture the game mounts: its archive volumes, and the loose gamedata tree standing in front of " +
       "them. Files outside the textures directory are counted rather than listed. Nothing is written.",
-    field: { description: "Folder holding fsgame.ltx", label: "Game folder" },
+    field: {
+      description: "Folder holding fsgame.ltx (fsgame_<game>.ltx in an Enhanced Edition)",
+      label: "Game folder",
+    },
     id: ETextureOpenMode.GAME,
     isRootProbed: true,
     label: "Game",

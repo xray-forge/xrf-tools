@@ -60,13 +60,14 @@ fn find_partial_asset_root(path: &Path) -> Option<PathBuf> {
 
 /// Finds the nearest installation containing a physical asset path.
 ///
-/// An installation is an ancestor containing `fsgame.ltx`. Unlike [`find_implied_asset_root`], this also finds installations
-/// whose `gamedata/` has no loose `meshes/` and `textures/` directories. Returns `None` when no ancestor declares one.
+/// An installation is an ancestor holding an fsgame file. Unlike [`find_implied_asset_root`], this also finds
+/// installations whose `gamedata/` has no loose `meshes/` and `textures/` directories. Returns `None` when no ancestor
+/// declares one.
 pub(crate) fn implied_install_root(path: &Path) -> Option<PathBuf> {
   path
     .ancestors()
     .skip(1)
-    .find(|candidate| candidate.join(crate::FsgameFile::FILE_NAME).is_file())
+    .find(|candidate| crate::FsgameFile::find(candidate).is_some())
     .map(Path::to_path_buf)
 }
 

@@ -129,12 +129,12 @@ impl XrayMountPlan {
 
   /// Plans the nearest installation containing an asset.
   ///
-  /// Unlike [`Self::implied`], this uses an ancestor `fsgame.ltx`, so it also finds installations with an empty
+  /// Unlike [`Self::implied`], this uses an ancestor's fsgame file, so it also finds installations with an empty
   /// `gamedata/`. Returns an empty plan when no installation is found.
   ///
   /// # Errors
   ///
-  /// Returns an error when an installation is found but its `fsgame.ltx` cannot be read, decoded, or parsed.
+  /// Returns an error when an installation is found but its fsgame file cannot be read, decoded, or parsed.
   pub fn implied_install(asset: impl AsRef<Path>) -> XrfResult<Self> {
     match implied_install_root(asset.as_ref()) {
       Some(install) => Self::from_fsgame(install),
@@ -186,7 +186,7 @@ impl XrayMountPlan {
     Ok(plan)
   }
 
-  /// Plans a whole installation from its `fsgame.ltx`.
+  /// Plans a whole installation from its fsgame file.
   ///
   /// The plan includes the existing `$game_data$` directory and existing declared directories that directly contain a
   /// file whose extension starts with `db`. Other declared directories are omitted. A declaration's `recurs` column
@@ -194,12 +194,12 @@ impl XrayMountPlan {
   ///
   /// # Errors
   ///
-  /// Returns an error when `fsgame.ltx` cannot be read, decoded, or parsed.
+  /// Returns an error when the installation holds no fsgame file, or it cannot be read, decoded, or parsed.
   pub fn from_fsgame(install: impl AsRef<Path>) -> XrfResult<Self> {
     Self::from_fsgame_file(&FsgameFile::read(install)?)
   }
 
-  /// Plans mounts from a parsed `fsgame.ltx` and the current filesystem contents.
+  /// Plans mounts from a parsed fsgame file and the current filesystem contents.
   pub fn from_fsgame_file(fsgame: &FsgameFile) -> XrfResult<Self> {
     let mut plan: Self = Self::new();
 

@@ -73,13 +73,13 @@ export enum EXrayMountMode {
    * holds volumes, and as a complete root otherwise.
    */
   AUTO = "auto",
-  /** Treat the path as a complete X-Ray root, ignoring any `fsgame.ltx` beside it. */
+  /** Treat the path as a complete X-Ray root, ignoring any fsgame file beside it. */
   DIRECTORY = "directory",
   /** Treat the path as one archive volume, or as every volume beneath a directory, and mount each on its own. */
   VOLUMES = "volumes",
   /** Require the path to declare an installation, and mount everything it declares. */
   INSTALLATION = "installation",
-  /** Mount the nearest installation containing the path, searching upwards for `fsgame.ltx`. */
+  /** Mount the nearest installation containing the path, searching upwards for an fsgame file. */
   CONTAINING_INSTALLATION = "containingInstallation",
 }
 
@@ -133,7 +133,7 @@ export type XrayRoot = {
 
 /** The kind a probed path belongs to. */
 export enum EXrayRootKind {
-  /** The path declares an installation with `fsgame.ltx`. */
+  /** The path declares an installation with an fsgame file. */
   INSTALLATION = "installation",
   /** The path is one archive volume, or a directory of them. */
   VOLUMES = "volumes",

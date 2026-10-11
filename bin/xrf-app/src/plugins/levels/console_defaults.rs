@@ -39,6 +39,8 @@ pub fn read_level_console(probe: &XrayProbe, roots: &XrayRoots) -> XrfResult<Lev
 /// The `user.ltx` of the first installation the roots sit in, found where its `fsgame.ltx` puts the user data folder;
 /// none for a bare data folder or one never run.
 fn read_user_console(roots: &XrayRoots) -> Option<(PathBuf, String)> {
+  // todo: Read an Enhanced Edition's `user.ltx`, which sits at its installation root while its fsgame file leaves
+  // `$app_data_root$` for the engine to declare.
   roots
     .list_installations()
     .into_iter()

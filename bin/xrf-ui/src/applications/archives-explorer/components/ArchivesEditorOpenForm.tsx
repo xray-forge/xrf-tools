@@ -124,7 +124,9 @@ export function ArchivesEditorOpenForm(): ReactElement {
               <PathFormRow
                 isDisabled={isLoading}
                 label={"Game folder"}
-                description={"Folder holding fsgame.ltx, or a game data tree on its own"}
+                description={
+                  "Folder holding fsgame.ltx (fsgame_<game>.ltx in an Enhanced Edition), or a game data tree on its own"
+                }
                 fact={gameFact}
                 field={game}
               />

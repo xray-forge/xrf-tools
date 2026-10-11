@@ -35,7 +35,7 @@ pub struct XrayRootProbe {
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum XrayRootKind {
-  /// The path declares an installation with `fsgame.ltx`.
+  /// The path declares an installation with an fsgame file.
   Installation,
   /// The path is one archive volume, or a directory of them.
   Volumes,
@@ -50,7 +50,7 @@ pub enum XrayRootKind {
 impl XrayRootKind {
   /// What a path is, before anything is opened or judged by its contents.
   pub(crate) fn of(path: &Path) -> Self {
-    if path.join(FsgameFile::FILE_NAME).is_file() {
+    if FsgameFile::find(path).is_some() {
       Self::Installation
     } else if XrayMountPlan::is_volume(path) || XrayMountPlan::holds_volumes(path) {
       Self::Volumes
@@ -63,7 +63,7 @@ impl XrayRootKind {
   ///
   /// # Errors
   ///
-  /// Returns an error when a declared `fsgame.ltx` cannot be read, decoded, or parsed.
+  /// Returns an error when a declared fsgame file cannot be read, decoded, or parsed.
   pub(crate) fn plan(self, path: &Path) -> XrfResult<XrayMountPlan> {
     match self {
       Self::Installation => XrayMountPlan::from_fsgame(path),
@@ -174,6 +174,25 @@ mod tests {
 
     assert_eq!(probe.kind, XrayRootKind::Installation);
     assert!(probe.mounts > 0);
+  }
+
+  #[test]
+  fn reports_an_enhanced_edition_installation_by_its_game_named_fsgame() {
+    // Nothing at the root of an Enhanced Edition looks like game data; only the fsgame file identifies it.
+    let root: PathBuf = tree(
+      "enhanced_edition",
+      &["gamedata/textures", "resources"],
+      &[(
+        "fsgame_soc.ltx",
+        "$arch_dir$ = false| false| $fs_root$\n$game_data$ = false| true| $fs_root$| gamedata\\\n",
+      )],
+    );
+
+    let probe: XrayRootProbe = XrayRootProbe::describe(&root);
+
+    assert_eq!(probe.kind, XrayRootKind::Installation);
+    assert!(probe.evidence.is_empty());
+    assert_eq!(probe.mounts, 1);
   }
 
   #[test]

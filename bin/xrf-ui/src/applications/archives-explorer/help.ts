@@ -13,8 +13,9 @@ export const ARCHIVES_EXPLORER_HELP: IApplicationHelp = {
   nuances: [
     "`Gamedata` opens the selected directory as a loose file tree, with paths relative to that directory. " +
       "It does not follow `fsgame.ltx` or load files from packed archives.",
-    "`Game` reads `fsgame.ltx` when present; otherwise it treats the folder as a gamedata tree. The tree, previews " +
-      "and extraction use the copy the engine would load, including loose files that override archives.",
+    "`Game` reads `fsgame.ltx`, or an Enhanced Edition's `fsgame_<game>.ltx`, when present; otherwise it treats the " +
+      "folder as a gamedata tree. The tree, previews and extraction use the copy the engine would load, including " +
+      "loose files that override archives.",
     "`Directory` and `Archive` show archives only, ignoring loose files. `Directory` loads volumes in path order; " +
       "later volumes replace earlier copies. Use `Game` for the installation's declared source priority.",
     "`Resolution` shows sources in search order: the first source containing a path wins. Check `Unread sources` " +

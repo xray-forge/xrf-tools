@@ -230,3 +230,14 @@ fn lists_each_installation_its_roots_sit_in_once_asset_first() {
 
   assert_eq!(roots.list_installations(), vec![second, first]);
 }
+
+#[test]
+fn lists_an_enhanced_edition_installation_by_its_game_named_fsgame() {
+  let installation: PathBuf = root("installations/enhanced_edition", "fsgame_cs.ltx");
+
+  fs::create_dir_all(installation.join("gamedata/textures")).expect("gamedata");
+
+  let roots: XrayRoots = XrayRoots::one(installation.join("gamedata/textures"), XrayMountMode::Auto);
+
+  assert_eq!(roots.list_installations(), vec![installation]);
+}

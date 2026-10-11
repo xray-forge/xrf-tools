@@ -11,6 +11,7 @@ use xrf_utils::format_path;
 use xrf_vfs::XrayLogicalPath;
 
 use super::report::LtxInspectReport;
+use crate::commands::ltx::ltx_installation::INSTALLATION_PATH_HELP;
 use crate::commands::ltx::ltx_project_open::open_ltx_project;
 use crate::core::command_context::CommandContext;
 use crate::core::generic_command::{CommandResult, GenericCommand};
@@ -35,7 +36,7 @@ impl GenericCommand for InspectCommand {
       .about("Explain one resolved section: its fields, and where each value is written")
       .arg(
         Arg::new("path")
-          .help("Path to a folder with ltx files, or to a game installation root holding fsgame.ltx")
+          .help(INSTALLATION_PATH_HELP)
           .short('p')
           .long("path")
           .required(true)
