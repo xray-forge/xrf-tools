@@ -5,7 +5,7 @@ use xrf_math::Vector3d;
 use xrf_visual::{LightAnimatorDescription, LightAnimatorKey, LightDescription, LightKind};
 
 use crate::lighting::light_animation::{to_animated_color, to_interpolated_color};
-use crate::lighting::light_basis::{LightBasis, to_light_intensity, to_light_lod};
+use crate::lighting::light_basis::LightBasis;
 use crate::lighting::light_shadow_size::to_light_shadow_tile_size;
 
 fn point() -> LightDescription {
@@ -130,17 +130,20 @@ fn light_fades_by_get_lod_between_the_thresholds() {
   let area: f32 = 0.5 * 2.0 / 100.0;
 
   assert!(near(
-    to_light_lod(sphere, Vec3::ZERO, 0.02, 0.001),
+    LightBasis::to_light_lod(sphere, Vec3::ZERO, 0.02, 0.001),
     ((area - 0.001) / (0.02 - 0.001)).sqrt()
   ));
-  assert_eq!(to_light_lod(sphere, Vec3::ZERO, 0.002, 0.001), 1.0);
-  assert_eq!(to_light_lod(sphere, Vec3::ZERO, 0.5, 0.1), 0.0);
+  assert_eq!(LightBasis::to_light_lod(sphere, Vec3::ZERO, 0.002, 0.001), 1.0);
+  assert_eq!(LightBasis::to_light_lod(sphere, Vec3::ZERO, 0.5, 0.1), 0.0);
 }
 
 #[test]
 fn light_intensity_averages_the_colours_mean_and_luminance() {
-  assert!(near(to_light_intensity(Vec3::ONE), 1.0));
-  assert!(near(to_light_intensity(Vec3::Y), (1.0 / 3.0 + 0.7154) / 2.0));
+  assert!(near(LightBasis::to_light_intensity(Vec3::ONE), 1.0));
+  assert!(near(
+    LightBasis::to_light_intensity(Vec3::Y),
+    (1.0 / 3.0 + 0.7154) / 2.0
+  ));
 }
 
 #[test]

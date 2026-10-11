@@ -1,6 +1,6 @@
 use crate::lighting::grass_wind::GrassWind;
 use crate::scene::level::grass_build_size::GrassBuildSize;
-use crate::scene::level::grass_dither::create_grass_dither;
+use crate::scene::level::grass_level::GrassLevel;
 
 /// What one storage binding holds at least on every adapter the renderer starts on: 128 MiB.
 const BINDING_LIMIT: u64 = 128 << 20;
@@ -9,7 +9,7 @@ const BINDING_LIMIT: u64 = 128 << 20;
 // fine one's by a sixteenth of that.
 #[test]
 fn lays_out_the_engines_dither_column_by_row() {
-  let dither: [u32; 256] = create_grass_dither();
+  let dither: [u32; 256] = GrassLevel::create_dither();
 
   assert_eq!(dither[0], 0);
   // `magic4x4[0][1]`, 14, over a coarse cell of 15.875.

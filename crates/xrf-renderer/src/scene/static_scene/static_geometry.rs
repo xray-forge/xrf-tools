@@ -127,14 +127,14 @@ impl StaticGeometry {
   /// How full its pools are, as a report of the static draws has them.
   pub fn get_pools(&self) -> RenderStaticReport {
     RenderStaticReport {
-      slots: to_pool_use(&self.slots),
-      places: to_pool_use(&self.places),
+      slots: Self::to_pool_use(&self.slots),
+      places: Self::to_pool_use(&self.places),
       rows: RenderPoolUse {
         used: self.row_records.len() as u32,
         capacity: self.rows.get_capacity(),
       },
-      lods: to_pool_use(&self.impostors),
-      clusters: to_pool_use(&self.clusters),
+      lods: Self::to_pool_use(&self.impostors),
+      clusters: Self::to_pool_use(&self.clusters),
       ..Default::default()
     }
   }
@@ -202,7 +202,7 @@ impl StaticGeometry {
 
     for (layout, words) in writer.words.iter().enumerate() {
       if result.is_ok() {
-        result = allocate_span(
+        result = Self::allocate_span(
           &mut self.words[layout],
           (device, queue),
           words.len() / StaticLayout::STRIDE as usize,
@@ -222,7 +222,7 @@ impl StaticGeometry {
 
     for ((buffer, held), count) in buffers.into_iter().zip(counts) {
       if result.is_ok() {
-        result = allocate_span(buffer, (device, queue), count).map(|span| *held = span);
+        result = Self::allocate_span(buffer, (device, queue), count).map(|span| *held = span);
       }
     }
 
@@ -331,25 +331,25 @@ impl StaticGeometry {
       &mut self.bones,
     ]
   }
-}
 
-/// A range of `count` elements of a buffer, none for no elements.
-fn allocate_span(
-  buffer: &mut SpanBuffer,
-  (device, queue): (&wgpu::Device, &wgpu::Queue),
-  count: usize,
-) -> XrfResult<Option<Span>> {
-  if count == 0 {
-    return Ok(None);
+  /// A range of `count` elements of a buffer, none for no elements.
+  fn allocate_span(
+    buffer: &mut SpanBuffer,
+    (device, queue): (&wgpu::Device, &wgpu::Queue),
+    count: usize,
+  ) -> XrfResult<Option<Span>> {
+    if count == 0 {
+      return Ok(None);
+    }
+
+    buffer.allocate(device, queue, count as u32).map(Some)
   }
 
-  buffer.allocate(device, queue, count as u32).map(Some)
-}
-
-/// How full a span buffer is: its elements held, and its capacity.
-fn to_pool_use(buffer: &SpanBuffer) -> RenderPoolUse {
-  RenderPoolUse {
-    used: buffer.get_capacity() - buffer.get_free(),
-    capacity: buffer.get_capacity(),
+  /// How full a span buffer is: its elements held, and its capacity.
+  fn to_pool_use(buffer: &SpanBuffer) -> RenderPoolUse {
+    RenderPoolUse {
+      used: buffer.get_capacity() - buffer.get_free(),
+      capacity: buffer.get_capacity(),
+    }
   }
 }

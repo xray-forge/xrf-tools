@@ -8,11 +8,11 @@ use crate::host::render_asset_source::RenderAssetSource;
 use crate::scene::static_scene::growable_buffer::GrowableBuffer;
 use crate::scene::static_scene::static_scene_writer::StaticSceneWriter;
 use crate::scene::static_scene::static_surface::StaticSurface;
-use crate::scene::static_scene::static_surface_build::{build_impostor_surface, build_static_surface};
+use crate::scene::static_scene::static_surface_build::StaticSurfaceBuilder;
 use crate::scene::static_scene::static_surface_key::StaticSurfaceKey;
 use crate::scene::static_scene::static_surface_pass::StaticSurfacePass;
 use crate::scene::static_scene::static_surface_use::StaticSurfaceUse;
-use crate::scene::texture::texture_cache::{MISSING_SLOT, TextureCache};
+use crate::scene::texture::texture_cache::TextureCache;
 
 /// The surfaces every item of a static scene shares: a row each in one buffer, asked for once by key and kept, and the
 /// texture and environment slots they sample.
@@ -81,7 +81,7 @@ impl StaticSurfaces {
     }
 
     let is_model: bool = matches!(key, StaticSurfaceKey::Model { .. });
-    let built = build_static_surface(surface, descriptor, textures, source);
+    let built = StaticSurfaceBuilder::build(surface, descriptor, textures, source);
     let resolved: Option<StaticSurfaceUse> = built.map(|(mut row, class)| {
       if is_model {
         row.flags |= StaticSurface::IS_MODEL;
@@ -113,7 +113,7 @@ impl StaticSurfaces {
       return *row;
     }
 
-    let row: u32 = self.push(writer, build_impostor_surface(surface, textures, source));
+    let row: u32 = self.push(writer, StaticSurfaceBuilder::build_impostor(surface, textures, source));
 
     self.impostor_rows.insert(surface.shader_id, row);
 
@@ -136,15 +136,18 @@ impl StaticSurfaces {
         if *slot != 0 {
           self.environment_slots.insert(*slot);
         }
-      } else if *slot != MISSING_SLOT {
+      } else if *slot != TextureCache::MISSING_SLOT {
         self.texture_slots.insert(*slot);
       }
     }
 
     // A terrain's details, bumps and mask are sampled as surely as its base.
-    self
-      .texture_slots
-      .extend(surface.terrain.iter_slots().filter(|slot| *slot != MISSING_SLOT));
+    self.texture_slots.extend(
+      surface
+        .terrain
+        .iter_slots()
+        .filter(|slot| *slot != TextureCache::MISSING_SLOT),
+    );
 
     if surface.flags & StaticSurface::IS_DISTORTING != 0 {
       self.texture_slots.insert(surface.distortion);

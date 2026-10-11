@@ -41,7 +41,7 @@ use crate::scene::static_scene::static_surface_use::StaticSurfaceUse;
 use crate::scene::static_scene::static_surfaces::StaticSurfaces;
 use crate::scene::static_scene::static_trace_geometry::StaticTraceGeometry;
 use crate::scene::static_scene::static_trace_group::StaticTraceGroup;
-use crate::scene::static_scene::static_vertex_words::{measure_sway_reach, pack_vertex_words};
+use crate::scene::static_scene::static_vertex_words::StaticVertexWords;
 use crate::scene::texture::texture_cache::TextureCache;
 
 /// Clusters a spawned model's row holds at most: the row cull walks a row's clusters on one thread.
@@ -263,12 +263,13 @@ impl StaticScene {
     let buffer: &[u8] = &package.buffer;
 
     if !description.sections.is_empty() && description.geometry.index_count > 0 {
-      let base: StaticGeometryBase = put_geometry(&mut writer, StaticLayout::Baked, &description.geometry, buffer);
+      let base: StaticGeometryBase =
+        Self::put_geometry(&mut writer, StaticLayout::Baked, &description.geometry, buffer);
 
       for section in &description.sections {
         let Some(StaticSurfaceUse { surface, class, passes }) = self.surfaces.resolve(
           &mut writer,
-          level_surface(&section.surface, descriptors),
+          Self::level_surface(&section.surface, descriptors),
           textures,
           source,
         ) else {
@@ -279,8 +280,8 @@ impl StaticScene {
           class,
         };
         let cut: Vec<(u32, u32, Vec4)> =
-          cut_clusters(&description.geometry, buffer, section.draw.start, section.draw.count);
-        let sphere: Vec4 = bound_spheres(&cut.iter().map(|(_, _, sphere)| *sphere).collect::<Vec<Vec4>>());
+          Self::cut_clusters(&description.geometry, buffer, section.draw.start, section.draw.count);
+        let sphere: Vec4 = Self::bound_spheres(&cut.iter().map(|(_, _, sphere)| *sphere).collect::<Vec<Vec4>>());
 
         sections.push(sphere);
         let (slot, clusters): (u32, u32) = writer.put_slot(
@@ -353,7 +354,7 @@ impl StaticScene {
 
     let rows: Vec<ProxyHandle<StaticRow>> = writer.rows.iter().map(|row| self.geometry.add_row(*row)).collect();
 
-    let sphere: Vec4 = bound_spheres(
+    let sphere: Vec4 = Self::bound_spheres(
       &sections
         .into_iter()
         .chain(writer.rows.iter().map(|row| row.sphere))
@@ -624,7 +625,7 @@ impl StaticScene {
     let slots: Vec<(u32, u32, StaticBatch, u32)> = proxy.slots.clone();
     let (sphere, vertex_start, skin): (Vec4, u32, Option<(u32, u32)>) = (proxy.sphere, proxy.vertex_start, proxy.skin);
     let matrix: Mat4 = place.transform;
-    let scale: f32 = to_scale(&matrix);
+    let scale: f32 = Self::to_scale(&matrix);
     let placed: Vec4 = matrix.transform_point3(sphere.truncate()).extend(sphere.w * scale);
     let span: Span = self.geometry.places.allocate(device, queue, 1)?;
     let bones: Option<(Span, u32)> = match skin {
@@ -657,7 +658,7 @@ impl StaticScene {
       bytemuck::bytes_of(&StaticPlace {
         transform: matrix,
         info: Vec4::new(1.0, 0.0, -1.0, scale),
-        cube: place.lighting.map_or(UVec4::ZERO, pack_cube),
+        cube: place.lighting.map_or(UVec4::ZERO, Self::pack_cube),
         skin: match (&bones, skin) {
           (Some((rows, bones)), Some((links, _))) => UVec4::new(rows.get_offset(), links, vertex_start, *bones),
           _ => UVec4::ZERO,
@@ -879,11 +880,12 @@ impl StaticScene {
       return;
     }
 
-    let Some(StaticSurfaceUse { surface, class, passes }) =
-      self
-        .surfaces
-        .resolve(writer, level_surface(&group.surface, descriptors), textures, source)
-    else {
+    let Some(StaticSurfaceUse { surface, class, passes }) = self.surfaces.resolve(
+      writer,
+      Self::level_surface(&group.surface, descriptors),
+      textures,
+      source,
+    ) else {
       return;
     };
     let layout: StaticLayout = if geometry.uv_components >= 4 {
@@ -893,7 +895,7 @@ impl StaticScene {
     };
     let batch: StaticBatch = StaticBatch { layout, class };
     let sight: StaticSight = StaticSight::of(class, passes);
-    let base: StaticGeometryBase = put_geometry(writer, layout, geometry, buffer);
+    let base: StaticGeometryBase = Self::put_geometry(writer, layout, geometry, buffer);
     let info: StaticSlotInfo = StaticSlotInfo {
       sector,
       shader_id: group.surface.shader_id,
@@ -907,7 +909,7 @@ impl StaticScene {
       ),
       _ => (vec![(0, geometry.index_count)], 1),
     };
-    let (band_slots, local): (Vec<(u32, u32)>, Vec4) = put_bands(
+    let (band_slots, local): (Vec<(u32, u32)>, Vec4) = Self::put_bands(
       writer,
       (&base, geometry, buffer),
       &bands,
@@ -938,14 +940,14 @@ impl StaticScene {
       transforms: Vec::with_capacity(instances),
     });
     let sway_reach: f32 = if layout == StaticLayout::Tree {
-      measure_sway_reach(geometry, buffer)
+      StaticVertexWords::measure_sway_reach(geometry, buffer)
     } else {
       0.0
     };
 
     for instance in 0..instances {
       let matrix: Mat4 = Mat4::from_cols_slice(&transforms[instance * 16..][..16]);
-      let scale: f32 = to_scale(&matrix);
+      let scale: f32 = Self::to_scale(&matrix);
       let (hemi_scale, hemi_bias): (f32, f32) = (
         hemi.get(instance * 2).copied().unwrap_or(1.0),
         hemi.get(instance * 2 + 1).copied().unwrap_or(0.0),
@@ -1073,148 +1075,149 @@ impl StaticScene {
       writer.impostor_shaders.push(dressing.map_or(0, |it| it.1));
     }
   }
-}
 
-/// The largest scale a matrix stands anything at, which a sphere it moves grows by.
-fn to_scale(matrix: &Mat4) -> f32 {
-  [matrix.x_axis, matrix.y_axis, matrix.z_axis]
-    .iter()
-    .map(|axis| axis.truncate().length())
-    .fold(0.0, f32::max)
-}
-
-fn put_geometry(
-  writer: &mut StaticSceneWriter,
-  layout: StaticLayout,
-  geometry: &SectorGeometry,
-  buffer: &[u8],
-) -> StaticGeometryBase {
-  writer.put_words(
-    layout,
-    &pack_vertex_words(layout, geometry, buffer),
-    &read_pods::<u32>(buffer, &geometry.indices),
-  )
-}
-
-/// A spawned object's lighting as a place holds it: each cube face a byte, `+x +y +z -x` in `x`, `-y -z` in `y`, the
-/// sky share's bits in `z`, and `w` marking it.
-fn pack_cube((faces, sky): ([f32; 6], f32)) -> UVec4 {
-  let bytes: [u32; 6] = faces.map(|face| (face.clamp(0.0, 1.0) * 255.0).round() as u32);
-
-  UVec4::new(
-    bytes[0] | (bytes[1] << 8) | (bytes[2] << 16) | (bytes[3] << 24),
-    bytes[4] | (bytes[5] << 8),
-    sky.to_bits(),
-    1,
-  )
-}
-
-/// A level's surface as `resolve_surface` takes one: its shader table entry, dressed by that entry's descriptor.
-fn level_surface<'a>(
-  surface: &'a SectorSurface,
-  descriptors: &'a [XraySurfaceDescriptor],
-) -> (StaticSurfaceKey, &'a SectorSurface, Option<&'a XraySurfaceDescriptor>) {
-  (
-    StaticSurfaceKey::Level(surface.shader_id),
-    surface,
-    descriptors.get(surface.shader_id as usize),
-  )
-}
-
-/// The clusters covering an index range, as `(first index, triangles, sphere)`: the packer's own where they tile it
-/// exactly, else the range cut in runs of `CLUSTER_TRIANGLES` with spheres taken from their vertices.
-/// Puts a slot per band (`bands`, each a first index and a count) of an instanced group's geometry. Answers the band
-/// slots with their clusters, and the bands' bounding sphere in the mesh's own space.
-fn put_bands(
-  writer: &mut StaticSceneWriter,
-  (base, geometry, buffer): (&StaticGeometryBase, &SectorGeometry, &[u8]),
-  bands: &[(u32, u32)],
-  (batch, surface, passes): (StaticBatch, u32, u32),
-  info: StaticSlotInfo,
-) -> (Vec<(u32, u32)>, Vec4) {
-  let band_slots: Vec<(u32, u32)> = bands
-    .iter()
-    .map(|range| {
-      writer.put_slot(
-        base,
-        cut_clusters(geometry, buffer, range.0, range.1),
-        (StaticSlot::LISTED, batch, surface, passes),
-        info,
-      )
-    })
-    .collect();
-  let local: Vec4 =
-    bound_spheres(&writer.spheres[writer.spheres.len() - band_slots.iter().map(|it| it.1 as usize).sum::<usize>()..]);
-
-  (band_slots, local)
-}
-
-fn cut_clusters(geometry: &SectorGeometry, buffer: &[u8], start: u32, count: u32) -> Vec<(u32, u32, Vec4)> {
-  let ranges: Vec<[u32; 4]> = read_pods(buffer, &geometry.clusters.ranges);
-  let spheres: Vec<Vec4> = read_pods(buffer, &geometry.clusters.spheres);
-  let end: u32 = start + count;
-  let packed: Vec<(u32, u32, Vec4)> = ranges
-    .iter()
-    .zip(&spheres)
-    .filter(|(range, _)| range[0] >= start && range[0] < end)
-    .map(|(range, sphere)| (range[0], range[1], *sphere))
-    .collect();
-
-  if packed.iter().map(|(_, triangles, _)| triangles * 3).sum::<u32>() == count {
-    return packed;
+  /// The largest scale a matrix stands anything at, which a sphere it moves grows by.
+  fn to_scale(matrix: &Mat4) -> f32 {
+    [matrix.x_axis, matrix.y_axis, matrix.z_axis]
+      .iter()
+      .map(|axis| axis.truncate().length())
+      .fold(0.0, f32::max)
   }
 
-  let indices: Vec<u32> = read_pods(buffer, &geometry.indices);
-  let positions: Vec<[f32; 3]> = read_pods(buffer, &geometry.positions);
-
-  (start..end)
-    .step_by(StaticGeometry::CLUSTER_VERTICES as usize)
-    .map(|first| {
-      let triangles: u32 = ((end - first) / 3).min(StaticGeometry::CLUSTER_TRIANGLES);
-      let points: Vec<Vec3> = indices
-        .iter()
-        .skip(first as usize)
-        .take((triangles * 3) as usize)
-        .filter_map(|index| positions.get(*index as usize).copied().map(Vec3::from_array))
-        .collect();
-
-      (first, triangles, bound_points(&points))
-    })
-    .collect()
-}
-
-/// A sphere holding every point: centred on their box, as far out as the farthest.
-fn bound_points(points: &[Vec3]) -> Vec4 {
-  let (low, high): (Vec3, Vec3) = points.iter().fold((Vec3::MAX, Vec3::MIN), |(low, high), point| {
-    (low.min(*point), high.max(*point))
-  });
-  let center: Vec3 = (low + high) * 0.5;
-  let radius: f32 = points.iter().map(|point| point.distance(center)).fold(0.0, f32::max);
-
-  if points.is_empty() {
-    Vec4::new(0.0, 0.0, 0.0, -1.0)
-  } else {
-    center.extend(radius)
-  }
-}
-
-/// A sphere holding every sphere: centred on their box, as far out as the farthest edge.
-fn bound_spheres(spheres: &[Vec4]) -> Vec4 {
-  let (low, high): (Vec3, Vec3) = spheres.iter().fold((Vec3::MAX, Vec3::MIN), |(low, high), sphere| {
-    (
-      low.min(sphere.truncate() - sphere.w),
-      high.max(sphere.truncate() + sphere.w),
+  fn put_geometry(
+    writer: &mut StaticSceneWriter,
+    layout: StaticLayout,
+    geometry: &SectorGeometry,
+    buffer: &[u8],
+  ) -> StaticGeometryBase {
+    writer.put_words(
+      layout,
+      &StaticVertexWords::pack_vertex_words(layout, geometry, buffer),
+      &read_pods::<u32>(buffer, &geometry.indices),
     )
-  });
-  let center: Vec3 = (low + high) * 0.5;
-  let radius: f32 = spheres
-    .iter()
-    .map(|sphere| sphere.truncate().distance(center) + sphere.w)
-    .fold(0.0, f32::max);
+  }
 
-  if spheres.is_empty() {
-    Vec4::new(0.0, 0.0, 0.0, -1.0)
-  } else {
-    center.extend(radius)
+  /// A spawned object's lighting as a place holds it: each cube face a byte, `+x +y +z -x` in `x`, `-y -z` in `y`, the
+  /// sky share's bits in `z`, and `w` marking it.
+  fn pack_cube((faces, sky): ([f32; 6], f32)) -> UVec4 {
+    let bytes: [u32; 6] = faces.map(|face| (face.clamp(0.0, 1.0) * 255.0).round() as u32);
+
+    UVec4::new(
+      bytes[0] | (bytes[1] << 8) | (bytes[2] << 16) | (bytes[3] << 24),
+      bytes[4] | (bytes[5] << 8),
+      sky.to_bits(),
+      1,
+    )
+  }
+
+  /// A level's surface as `resolve_surface` takes one: its shader table entry, dressed by that entry's descriptor.
+  fn level_surface<'a>(
+    surface: &'a SectorSurface,
+    descriptors: &'a [XraySurfaceDescriptor],
+  ) -> (StaticSurfaceKey, &'a SectorSurface, Option<&'a XraySurfaceDescriptor>) {
+    (
+      StaticSurfaceKey::Level(surface.shader_id),
+      surface,
+      descriptors.get(surface.shader_id as usize),
+    )
+  }
+
+  /// The clusters covering an index range, as `(first index, triangles, sphere)`: the packer's own where they tile it
+  /// exactly, else the range cut in runs of `CLUSTER_TRIANGLES` with spheres taken from their vertices.
+  /// Puts a slot per band (`bands`, each a first index and a count) of an instanced group's geometry. Answers the band
+  /// slots with their clusters, and the bands' bounding sphere in the mesh's own space.
+  fn put_bands(
+    writer: &mut StaticSceneWriter,
+    (base, geometry, buffer): (&StaticGeometryBase, &SectorGeometry, &[u8]),
+    bands: &[(u32, u32)],
+    (batch, surface, passes): (StaticBatch, u32, u32),
+    info: StaticSlotInfo,
+  ) -> (Vec<(u32, u32)>, Vec4) {
+    let band_slots: Vec<(u32, u32)> = bands
+      .iter()
+      .map(|range| {
+        writer.put_slot(
+          base,
+          Self::cut_clusters(geometry, buffer, range.0, range.1),
+          (StaticSlot::LISTED, batch, surface, passes),
+          info,
+        )
+      })
+      .collect();
+    let local: Vec4 = Self::bound_spheres(
+      &writer.spheres[writer.spheres.len() - band_slots.iter().map(|it| it.1 as usize).sum::<usize>()..],
+    );
+
+    (band_slots, local)
+  }
+
+  fn cut_clusters(geometry: &SectorGeometry, buffer: &[u8], start: u32, count: u32) -> Vec<(u32, u32, Vec4)> {
+    let ranges: Vec<[u32; 4]> = read_pods(buffer, &geometry.clusters.ranges);
+    let spheres: Vec<Vec4> = read_pods(buffer, &geometry.clusters.spheres);
+    let end: u32 = start + count;
+    let packed: Vec<(u32, u32, Vec4)> = ranges
+      .iter()
+      .zip(&spheres)
+      .filter(|(range, _)| range[0] >= start && range[0] < end)
+      .map(|(range, sphere)| (range[0], range[1], *sphere))
+      .collect();
+
+    if packed.iter().map(|(_, triangles, _)| triangles * 3).sum::<u32>() == count {
+      return packed;
+    }
+
+    let indices: Vec<u32> = read_pods(buffer, &geometry.indices);
+    let positions: Vec<[f32; 3]> = read_pods(buffer, &geometry.positions);
+
+    (start..end)
+      .step_by(StaticGeometry::CLUSTER_VERTICES as usize)
+      .map(|first| {
+        let triangles: u32 = ((end - first) / 3).min(StaticGeometry::CLUSTER_TRIANGLES);
+        let points: Vec<Vec3> = indices
+          .iter()
+          .skip(first as usize)
+          .take((triangles * 3) as usize)
+          .filter_map(|index| positions.get(*index as usize).copied().map(Vec3::from_array))
+          .collect();
+
+        (first, triangles, Self::bound_points(&points))
+      })
+      .collect()
+  }
+
+  /// A sphere holding every point: centred on their box, as far out as the farthest.
+  fn bound_points(points: &[Vec3]) -> Vec4 {
+    let (low, high): (Vec3, Vec3) = points.iter().fold((Vec3::MAX, Vec3::MIN), |(low, high), point| {
+      (low.min(*point), high.max(*point))
+    });
+    let center: Vec3 = (low + high) * 0.5;
+    let radius: f32 = points.iter().map(|point| point.distance(center)).fold(0.0, f32::max);
+
+    if points.is_empty() {
+      Vec4::new(0.0, 0.0, 0.0, -1.0)
+    } else {
+      center.extend(radius)
+    }
+  }
+
+  /// A sphere holding every sphere: centred on their box, as far out as the farthest edge.
+  fn bound_spheres(spheres: &[Vec4]) -> Vec4 {
+    let (low, high): (Vec3, Vec3) = spheres.iter().fold((Vec3::MAX, Vec3::MIN), |(low, high), sphere| {
+      (
+        low.min(sphere.truncate() - sphere.w),
+        high.max(sphere.truncate() + sphere.w),
+      )
+    });
+    let center: Vec3 = (low + high) * 0.5;
+    let radius: f32 = spheres
+      .iter()
+      .map(|sphere| sphere.truncate().distance(center) + sphere.w)
+      .fold(0.0, f32::max);
+
+    if spheres.is_empty() {
+      Vec4::new(0.0, 0.0, 0.0, -1.0)
+    } else {
+      center.extend(radius)
+    }
   }
 }

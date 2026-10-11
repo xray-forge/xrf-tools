@@ -16,23 +16,23 @@ use crate::frame::periodic_scheduler::PeriodicScheduler;
 use crate::frame::static_scene_handles::StaticSceneHandles;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::lighting::light_animation::to_animated_color;
-use crate::lighting::light_basis::{LightBasis, to_light_lod};
+use crate::lighting::light_basis::LightBasis;
 use crate::lighting::light_shadow_size::{LIGHT_SHADOW_POINT_FACES, to_light_shadow_scale};
 use crate::lighting::light_specular::to_light_specular;
 use crate::pass::level_passes::LevelPasses;
-use crate::pass::light_record::{LIGHT_NO_CONE, LIGHT_NO_PROJECTOR, LightRecord};
+use crate::pass::light_record::LightRecord;
 use crate::pass::light_volume_record::LightVolumeRecord;
 use crate::pass::light_volumes_uniform::LightVolumesUniform;
 use crate::pass::static_cull_params::StaticCullParams;
-use crate::scene::level::feature::lights_feature::{LightsFeature, MAX_LIGHTS};
+use crate::scene::level::feature::lights_feature::LightsFeature;
 use crate::scene::level::grass_shadow_casters::GrassShadowCasters;
-use crate::scene::level::level_light_shadows::{LIGHT_SHADOW_ATLAS_SIZE, LevelLightShadows};
+use crate::scene::level::level_light_shadows::LevelLightShadows;
 use crate::scene::level::light_shadow_atlas::LightShadowAtlas;
 use crate::scene::level::light_shadow_set::LightShadowSet;
 use crate::scene::level::lights_frame::LightsFrame;
 use crate::scene::level::shadow_frame::ShadowFrame;
 use crate::scene::level::zone_fast_mode::ZONE_FAST_DISTANCE;
-use crate::scene::texture::texture_cache::{MISSING_SLOT, TextureCache};
+use crate::scene::texture::texture_cache::TextureCache;
 use crate::scene::texture::texture_role::TextureRole;
 
 /// Metres from the eye to a shadowed light's reach within which, out of view, its faces are kept ready for a turn, and
@@ -95,7 +95,7 @@ impl LevelLights {
       moving: Vec::new(),
       animators: Vec::new(),
       projectors: Vec::new(),
-      volume_textures: (MISSING_SLOT, MISSING_SLOT),
+      volume_textures: (TextureCache::MISSING_SLOT, TextureCache::MISSING_SLOT),
       fires: Vec::new(),
       shadows: LevelLightShadows::new(device, view_layout, args_size),
       started: Instant::now(),
@@ -188,8 +188,8 @@ impl LevelLights {
 
       let (mut in_view, mut ready): (Vec<InView>, Vec<InView>) = in_view.into_iter().partition(|it| it.is_seen);
 
-      into.report.excess = in_view.len().saturating_sub(MAX_LIGHTS) as u32;
-      in_view.truncate(MAX_LIGHTS);
+      into.report.excess = in_view.len().saturating_sub(LightsFeature::MAX_LIGHTS) as u32;
+      in_view.truncate(LightsFeature::MAX_LIGHTS);
       ready.truncate(WARM_MOST);
 
       if is_shadowing {
@@ -230,13 +230,13 @@ impl LevelLights {
         } else {
           None
         };
-        let color: Vec3 = to_color(&self.animators, light, seconds) * it.fades.whole * it.share;
-        let range: f32 = to_frame_range(light, &mut into.random) * it.share * FALLOFF_RANGE;
+        let color: Vec3 = Self::to_color(&self.animators, light, seconds) * it.fades.whole * it.share;
+        let range: f32 = Self::to_frame_range(light, &mut into.random) * it.share * FALLOFF_RANGE;
         let mut record: LightRecord =
-          to_record(&self.projectors, light, &it.basis, it.bound, color, range, camera.view);
+          Self::to_record(&self.projectors, light, &it.basis, it.bound, color, range, camera.view);
 
         if let Some(set) = set {
-          let atlas: f32 = LIGHT_SHADOW_ATLAS_SIZE as f32;
+          let atlas: f32 = LevelLightShadows::ATLAS_SIZE as f32;
 
           into.report.shadowed += 1;
 
@@ -255,7 +255,7 @@ impl LevelLights {
         if set.is_some() && settings.is_volumetric {
           let index: u32 = into.records.len() as u32;
 
-          if let Some((volume, slices)) = to_volume(
+          if let Some((volume, slices)) = Self::to_volume(
             light,
             &it.basis,
             &record,
@@ -326,7 +326,7 @@ impl LevelLights {
           return None;
         }
 
-        let fades: Fades = to_fades(light, &basis, eye, lod, is_shadowing && light.is_shadowed);
+        let fades: Fades = Self::to_fades(light, &basis, eye, lod, is_shadowing && light.is_shadowed);
 
         // `light::get_LOD`: a shadowed light is drawn at all only past `EPS_L`.
         (fades.shown > EPS_L).then_some(InView {
@@ -405,6 +405,208 @@ impl LevelLights {
   pub fn get_shadow_atlas(&self) -> LightShadowAtlas<'_> {
     self.shadows.get_atlas()
   }
+
+  fn to_fades(
+    light: &LightDescription,
+    basis: &LightBasis,
+    eye: Vec3,
+    (start, end): (f32, f32),
+    is_shadowed: bool,
+  ) -> Fades {
+    if !is_shadowed {
+      return Fades {
+        whole: 1.0,
+        faces: [1.0; 6],
+        shown: 1.0,
+      };
+    }
+
+    if matches!(light.kind, LightKind::Spot) {
+      let fade: f32 = LightBasis::to_light_lod(basis.get_spatial_sphere(light), eye, start, end);
+
+      return Fades {
+        whole: fade,
+        faces: [1.0; 6],
+        shown: fade,
+      };
+    }
+
+    let faces: [f32; 6] = LIGHT_SHADOW_POINT_FACES
+      .map(|(direction, _)| LightBasis::to_light_lod(basis.get_face_sphere(light, direction), eye, start, end));
+
+    Fades {
+      whole: 1.0,
+      faces,
+      shown: faces.into_iter().fold(0.0, f32::max),
+    }
+  }
+
+  /// A light's record, in view space.
+  fn to_record(
+    projectors: &[u32],
+    light: &LightDescription,
+    basis: &LightBasis,
+    bound: Vec4,
+    color: Vec3,
+    range: f32,
+    view: Mat4,
+  ) -> LightRecord {
+    let is_spot: bool = matches!(light.kind, LightKind::Spot);
+    let projector: f32 = light
+      .projector
+      .and_then(|projector| projectors.get(projector as usize))
+      .filter(|slot| **slot != TextureCache::MISSING_SLOT)
+      .map_or(LightRecord::NO_PROJECTOR, |slot| *slot as f32);
+
+    LightRecord {
+      position: view
+        .transform_point3(basis.position)
+        .extend(if range > 0.0 { 1.0 / (range * range) } else { 0.0 }),
+      color: color.extend(to_light_specular(color)),
+      axis: view.transform_vector3(basis.direction).extend(if is_spot {
+        (light.cone / 2.0).cos()
+      } else {
+        LightRecord::NO_CONE
+      }),
+      right: view.transform_vector3(basis.right).extend(if is_spot {
+        to_light_shadow_scale(light.cone)
+      } else {
+        0.0
+      }),
+      up: view
+        .transform_vector3(basis.up)
+        .extend(if is_spot { projector } else { LightRecord::NO_PROJECTOR }),
+      sphere: view.transform_point3(bound.truncate()).extend(bound.w),
+      shadow: Vec4::ZERO,
+      faces: [Vec4::ZERO; 6],
+    }
+  }
+
+  /// Its colour this frame: animated where it names an animation.
+  fn to_color(animators: &[LightAnimatorDescription], light: &LightDescription, seconds: f32) -> Vec3 {
+    match light.animator.and_then(|animator| animators.get(animator as usize)) {
+      Some(animator) => to_animated_color(animator, seconds) * light.animator_scale,
+      None => Vec3::from(light.color),
+    }
+  }
+
+  /// `UpdateIdleLight`: a light's range this frame, strayed at random by its jitter.
+  fn to_frame_range(light: &LightDescription, random: &mut u64) -> f32 {
+    if light.range_jitter == 0.0 {
+      return light.range;
+    }
+
+    // xorshift64, which needs nothing seeded but a state that is never zero.
+    *random ^= *random << 13;
+    *random ^= *random >> 7;
+    *random ^= *random << 17;
+
+    let unit: f32 = (*random >> 40) as f32 / (1u64 << 24) as f32;
+
+    light.range + light.range_jitter * (unit * 2.0 - 1.0)
+  }
+
+  /// A shadowed light's shafts this frame, and the slices they draw, as the view's engine gives them out
+  /// (`r3_rendertarget_accum_spot.cpp`, `accum_volumetric`): OpenXRay only for a light whose owner asks, by its own
+  /// quality, intensity and distance, drawing the whole buffer however few slices its quality asks; Monolith, as
+  /// `ps_ssfx_volumetric` ships, for every light whose owner sets them, by its own constants, a fifth for an omni part,
+  /// fading from 20 m to none at 120. A shadowed point is one volume over its sphere where the engine draws six omni
+  /// parts, each over the box of its own sphere, `1 / sqrt(2)` of the range: as many slices a metre take root two times
+  /// as many over the whole sphere's box.
+  fn to_volume(
+    light: &LightDescription,
+    basis: &LightBasis,
+    record: &LightRecord,
+    index: u32,
+    (eye, view): (Vec3, Mat4),
+    engine: XrayEngine,
+    projector: u32,
+  ) -> Option<(LightVolumeRecord, u32)> {
+    let volumetric = light.volumetric.as_ref()?;
+    let is_spot: bool = matches!(light.kind, LightKind::Spot);
+    // The slices drawn, the share of the buffer the volume's depth is stretched over, the colour's scale and the
+    // distance.
+    let (slices, quality, intensity, distance): (u32, f32, f32, f32) = match engine {
+      XrayEngine::Vanilla => {
+        if !volumetric.is_asked {
+          return None;
+        }
+
+        let asked: u32 = ((VOLUME_SLICES as f32 * volumetric.quality) as u32).max(VOLUME_FEWEST_SLICES);
+        let quality: f32 = asked as f32 / VOLUME_SLICES as f32;
+
+        (
+          VOLUME_SLICES,
+          quality,
+          volumetric.intensity / quality,
+          volumetric.distance,
+        )
+      }
+      XrayEngine::Extended => {
+        let fade: f32 = MONOLITH_INTENSITY
+          - ((eye.distance(basis.position) - MONOLITH_FADE_START) * MONOLITH_FADE_RATE).clamp(0.0, 1.0)
+            * MONOLITH_INTENSITY;
+
+        if fade <= 0.0 {
+          return None;
+        }
+
+        let part: f32 = if is_spot { 1.0 } else { MONOLITH_PART_INTENSITY };
+        let slices: f32 = (MONOLITH_SLICES_PER_QUALITY * MONOLITH_QUALITY).floor();
+
+        (
+          slices as u32,
+          slices / MONOLITH_MOST_SLICES,
+          fade * part / MONOLITH_QUALITY,
+          1.0,
+        )
+      }
+    };
+    let slices: u32 = if is_spot {
+      slices
+    } else {
+      (slices as f32 * std::f32::consts::SQRT_2).round() as u32
+    };
+    // The light's sphere pulled towards it by its distance, in view space: the box the slices fill.
+    let sphere: Vec4 = if is_spot {
+      basis.get_spatial_sphere(light)
+    } else {
+      basis.position.extend(light.range)
+    };
+    let centre: Vec3 = view.transform_point3(basis.position + (sphere.truncate() - basis.position) * distance);
+    let radius: f32 = sphere.w * distance;
+    let near: f32 = centre.z + radius;
+    let shadow: Vec4 = record.shadow;
+    let slot: f32 = match engine {
+      XrayEngine::Vanilla if is_spot && record.up.w >= 0.0 => record.up.w,
+      _ if projector != TextureCache::MISSING_SLOT => projector as f32,
+      _ => LightRecord::NO_PROJECTOR,
+    };
+
+    if slot < 0.0 {
+      return None;
+    }
+
+    Some((
+      LightVolumeRecord {
+        near: Vec4::new(centre.x - radius, centre.y - radius, near, slices as f32),
+        far: Vec4::new(
+          centre.x + radius,
+          centre.y + radius,
+          near - 2.0 * radius / quality,
+          index as f32,
+        ),
+        color: (record.color.truncate() * distance * intensity).extend(record.position.w / (distance * distance)),
+        frustum: Vec4::new(
+          shadow.x + (shadow.y - shadow.x) * distance,
+          slot,
+          if is_spot { 1.0 } else { 0.0 },
+          0.0,
+        ),
+      },
+      slices,
+    ))
+  }
 }
 
 /// A light standing in view this frame.
@@ -427,206 +629,4 @@ struct Fades {
   whole: f32,
   faces: [f32; 6],
   shown: f32,
-}
-
-fn to_fades(
-  light: &LightDescription,
-  basis: &LightBasis,
-  eye: Vec3,
-  (start, end): (f32, f32),
-  is_shadowed: bool,
-) -> Fades {
-  if !is_shadowed {
-    return Fades {
-      whole: 1.0,
-      faces: [1.0; 6],
-      shown: 1.0,
-    };
-  }
-
-  if matches!(light.kind, LightKind::Spot) {
-    let fade: f32 = to_light_lod(basis.get_spatial_sphere(light), eye, start, end);
-
-    return Fades {
-      whole: fade,
-      faces: [1.0; 6],
-      shown: fade,
-    };
-  }
-
-  let faces: [f32; 6] = LIGHT_SHADOW_POINT_FACES
-    .map(|(direction, _)| to_light_lod(basis.get_face_sphere(light, direction), eye, start, end));
-
-  Fades {
-    whole: 1.0,
-    faces,
-    shown: faces.into_iter().fold(0.0, f32::max),
-  }
-}
-
-/// A light's record, in view space.
-fn to_record(
-  projectors: &[u32],
-  light: &LightDescription,
-  basis: &LightBasis,
-  bound: Vec4,
-  color: Vec3,
-  range: f32,
-  view: Mat4,
-) -> LightRecord {
-  let is_spot: bool = matches!(light.kind, LightKind::Spot);
-  let projector: f32 = light
-    .projector
-    .and_then(|projector| projectors.get(projector as usize))
-    .filter(|slot| **slot != MISSING_SLOT)
-    .map_or(LIGHT_NO_PROJECTOR, |slot| *slot as f32);
-
-  LightRecord {
-    position: view
-      .transform_point3(basis.position)
-      .extend(if range > 0.0 { 1.0 / (range * range) } else { 0.0 }),
-    color: color.extend(to_light_specular(color)),
-    axis: view.transform_vector3(basis.direction).extend(if is_spot {
-      (light.cone / 2.0).cos()
-    } else {
-      LIGHT_NO_CONE
-    }),
-    right: view.transform_vector3(basis.right).extend(if is_spot {
-      to_light_shadow_scale(light.cone)
-    } else {
-      0.0
-    }),
-    up: view
-      .transform_vector3(basis.up)
-      .extend(if is_spot { projector } else { LIGHT_NO_PROJECTOR }),
-    sphere: view.transform_point3(bound.truncate()).extend(bound.w),
-    shadow: Vec4::ZERO,
-    faces: [Vec4::ZERO; 6],
-  }
-}
-
-/// Its colour this frame: animated where it names an animation.
-fn to_color(animators: &[LightAnimatorDescription], light: &LightDescription, seconds: f32) -> Vec3 {
-  match light.animator.and_then(|animator| animators.get(animator as usize)) {
-    Some(animator) => to_animated_color(animator, seconds) * light.animator_scale,
-    None => Vec3::from(light.color),
-  }
-}
-
-/// `UpdateIdleLight`: a light's range this frame, strayed at random by its jitter.
-fn to_frame_range(light: &LightDescription, random: &mut u64) -> f32 {
-  if light.range_jitter == 0.0 {
-    return light.range;
-  }
-
-  // xorshift64, which needs nothing seeded but a state that is never zero.
-  *random ^= *random << 13;
-  *random ^= *random >> 7;
-  *random ^= *random << 17;
-
-  let unit: f32 = (*random >> 40) as f32 / (1u64 << 24) as f32;
-
-  light.range + light.range_jitter * (unit * 2.0 - 1.0)
-}
-
-/// A shadowed light's shafts this frame, and the slices they draw, as the view's engine gives them out
-/// (`r3_rendertarget_accum_spot.cpp`, `accum_volumetric`): OpenXRay only for a light whose owner asks, by its own
-/// quality, intensity and distance, drawing the whole buffer however few slices its quality asks; Monolith, as
-/// `ps_ssfx_volumetric` ships, for every light whose owner sets them, by its own constants, a fifth for an omni part,
-/// fading from 20 m to none at 120. A shadowed point is one volume over its sphere where the engine draws six omni
-/// parts, each over the box of its own sphere, `1 / sqrt(2)` of the range: as many slices a metre take root two times
-/// as many over the whole sphere's box.
-fn to_volume(
-  light: &LightDescription,
-  basis: &LightBasis,
-  record: &LightRecord,
-  index: u32,
-  (eye, view): (Vec3, Mat4),
-  engine: XrayEngine,
-  projector: u32,
-) -> Option<(LightVolumeRecord, u32)> {
-  let volumetric = light.volumetric.as_ref()?;
-  let is_spot: bool = matches!(light.kind, LightKind::Spot);
-  // The slices drawn, the share of the buffer the volume's depth is stretched over, the colour's scale and the
-  // distance.
-  let (slices, quality, intensity, distance): (u32, f32, f32, f32) = match engine {
-    XrayEngine::Vanilla => {
-      if !volumetric.is_asked {
-        return None;
-      }
-
-      let asked: u32 = ((VOLUME_SLICES as f32 * volumetric.quality) as u32).max(VOLUME_FEWEST_SLICES);
-      let quality: f32 = asked as f32 / VOLUME_SLICES as f32;
-
-      (
-        VOLUME_SLICES,
-        quality,
-        volumetric.intensity / quality,
-        volumetric.distance,
-      )
-    }
-    XrayEngine::Extended => {
-      let fade: f32 = MONOLITH_INTENSITY
-        - ((eye.distance(basis.position) - MONOLITH_FADE_START) * MONOLITH_FADE_RATE).clamp(0.0, 1.0)
-          * MONOLITH_INTENSITY;
-
-      if fade <= 0.0 {
-        return None;
-      }
-
-      let part: f32 = if is_spot { 1.0 } else { MONOLITH_PART_INTENSITY };
-      let slices: f32 = (MONOLITH_SLICES_PER_QUALITY * MONOLITH_QUALITY).floor();
-
-      (
-        slices as u32,
-        slices / MONOLITH_MOST_SLICES,
-        fade * part / MONOLITH_QUALITY,
-        1.0,
-      )
-    }
-  };
-  let slices: u32 = if is_spot {
-    slices
-  } else {
-    (slices as f32 * std::f32::consts::SQRT_2).round() as u32
-  };
-  // The light's sphere pulled towards it by its distance, in view space: the box the slices fill.
-  let sphere: Vec4 = if is_spot {
-    basis.get_spatial_sphere(light)
-  } else {
-    basis.position.extend(light.range)
-  };
-  let centre: Vec3 = view.transform_point3(basis.position + (sphere.truncate() - basis.position) * distance);
-  let radius: f32 = sphere.w * distance;
-  let near: f32 = centre.z + radius;
-  let shadow: Vec4 = record.shadow;
-  let slot: f32 = match engine {
-    XrayEngine::Vanilla if is_spot && record.up.w >= 0.0 => record.up.w,
-    _ if projector != MISSING_SLOT => projector as f32,
-    _ => LIGHT_NO_PROJECTOR,
-  };
-
-  if slot < 0.0 {
-    return None;
-  }
-
-  Some((
-    LightVolumeRecord {
-      near: Vec4::new(centre.x - radius, centre.y - radius, near, slices as f32),
-      far: Vec4::new(
-        centre.x + radius,
-        centre.y + radius,
-        near - 2.0 * radius / quality,
-        index as f32,
-      ),
-      color: (record.color.truncate() * distance * intensity).extend(record.position.w / (distance * distance)),
-      frustum: Vec4::new(
-        shadow.x + (shadow.y - shadow.x) * distance,
-        slot,
-        if is_spot { 1.0 } else { 0.0 },
-        0.0,
-      ),
-    },
-    slices,
-  ))
 }

@@ -1,13 +1,13 @@
 use glam::Vec3;
 
 use crate::contract::render_light_scales::RenderLightScales;
-use crate::lighting::material_lut::{MATERIAL_LUT_DEPTH, MATERIAL_LUT_HEIGHT, MATERIAL_LUT_WIDTH, create_material_lut};
 use crate::lighting::material_slice::material_slice;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::lighting::sun_direction::to_renderer_sun_direction;
+use crate::pass::material_table::MaterialTable;
 
 fn texel(data: &[u8], slice: u32, y: u32, x: u32) -> [u8; 2] {
-  let at: usize = (((slice * MATERIAL_LUT_HEIGHT + y) * MATERIAL_LUT_WIDTH + x) * 2) as usize;
+  let at: usize = (((slice * MaterialTable::LUT_HEIGHT + y) * MaterialTable::LUT_WIDTH + x) * 2) as usize;
 
   [data[at], data[at + 1]]
 }
@@ -27,23 +27,23 @@ fn assert_near(actual: Vec3, expected: [f32; 3]) {
 
 #[test]
 fn material_lut_holds_two_channels_a_texel() {
-  let data: Vec<u8> = create_material_lut();
+  let data: Vec<u8> = MaterialTable::create_lut();
 
   assert_eq!(
     data.len(),
-    (MATERIAL_LUT_WIDTH * MATERIAL_LUT_HEIGHT * MATERIAL_LUT_DEPTH * 2) as usize
+    (MaterialTable::LUT_WIDTH * MaterialTable::LUT_HEIGHT * MaterialTable::LUT_DEPTH * 2) as usize
   );
   assert_eq!(data.len(), 262_144);
 }
 
 #[test]
 fn material_lut_matches_the_web_viewer_byte_for_byte() {
-  assert_eq!(fnv1a(&create_material_lut()), 0xd9aa_6130);
+  assert_eq!(fnv1a(&MaterialTable::create_lut()), 0xd9aa_6130);
 }
 
 #[test]
 fn material_lut_samples_every_lighting_model() {
-  let data: Vec<u8> = create_material_lut();
+  let data: Vec<u8> = MaterialTable::create_lut();
   let expected: [(u32, u32, u32, [u8; 2]); 19] = [
     (0, 0, 0, [0, 0]),
     (0, 128, 64, [152, 0]),

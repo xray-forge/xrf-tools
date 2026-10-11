@@ -2,12 +2,12 @@ use std::collections::BTreeMap;
 
 use xrf_error::{XrfError, XrfResult};
 
-use crate::shader::shader_composer::compose_shader;
+use crate::shader::shader_composer::ShaderComposer;
 
 fn compose(modules: &[(&'static str, &'static str)], entry: &str) -> XrfResult<String> {
   let modules: BTreeMap<&str, &'static str> = modules.iter().copied().collect();
 
-  compose_shader(entry, &|name: &str| {
+  ShaderComposer::compose(entry, &|name: &str| {
     modules
       .get(name)
       .copied()

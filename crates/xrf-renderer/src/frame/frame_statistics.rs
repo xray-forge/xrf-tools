@@ -6,9 +6,6 @@ use crate::contract::render_frame_phases::RenderFramePhases;
 use crate::contract::render_group_cost::RenderGroupCost;
 use crate::frame::frame_phases::FramePhases;
 
-/// How often a viewport reports what its frames cost.
-pub const REPORT_INTERVAL: Duration = Duration::from_millis(250);
-
 /// A viewport's frames since its last report.
 #[derive(Clone, Debug)]
 pub struct FrameStatistics {
@@ -21,13 +18,10 @@ pub struct FrameStatistics {
   cpu_times: Vec<f32>,
   /// The GPU's milliseconds on each frame read back, a few frames after it was drawn.
   gpu_times: Vec<f32>,
-  phase_sums: [f32; PHASES],
+  phase_sums: [f32; FrameStatistics::PHASES],
   /// Each encode group's record and finish milliseconds summed, by name in the order first seen.
   group_sums: Vec<(&'static str, f32, f32)>,
 }
-
-/// The phases a frame's render thread time is told apart in, as [`RenderFramePhases`] lists them.
-pub(crate) const PHASES: usize = 9;
 
 /// What a span of frames cost, in milliseconds.
 #[derive(Clone, Debug, PartialEq)]
@@ -45,6 +39,12 @@ pub struct FrameSummary {
 }
 
 impl FrameStatistics {
+  /// The phases a frame's render thread time is told apart in, as [`RenderFramePhases`] lists them.
+  pub(crate) const PHASES: usize = 9;
+
+  /// How often a viewport reports what its frames cost.
+  pub const REPORT_INTERVAL: Duration = Duration::from_millis(250);
+
   pub fn new(now: Instant) -> Self {
     Self {
       since: now,
@@ -55,7 +55,7 @@ impl FrameStatistics {
       cpu_sum: 0.0,
       cpu_times: Vec::new(),
       gpu_times: Vec::new(),
-      phase_sums: [0.0; PHASES],
+      phase_sums: [0.0; Self::PHASES],
       group_sums: Vec::new(),
     }
   }
@@ -101,7 +101,7 @@ impl FrameStatistics {
   pub fn take(&mut self, now: Instant) -> Option<FrameSummary> {
     let elapsed: Duration = now.duration_since(self.since);
 
-    if elapsed < REPORT_INTERVAL || self.frames == 0 {
+    if elapsed < Self::REPORT_INTERVAL || self.frames == 0 {
       return None;
     }
 
@@ -115,7 +115,7 @@ impl FrameStatistics {
       cpu_times: std::mem::take(&mut self.cpu_times),
       gpu_time: (!self.gpu_times.is_empty()).then(|| self.gpu_times.iter().sum::<f32>() / self.gpu_times.len() as f32),
       gpu_times: std::mem::take(&mut self.gpu_times),
-      phases: to_phases(self.phase_sums.map(|sum| sum / frames)),
+      phases: Self::to_phases(self.phase_sums.map(|sum| sum / frames)),
       groups: self
         .group_sums
         .iter()
@@ -131,20 +131,20 @@ impl FrameStatistics {
 
     Some(summary)
   }
-}
 
-fn to_phases(
-  [update, acquire, load, prepare, record, compose, encode, submit, present]: [f32; PHASES],
-) -> RenderFramePhases {
-  RenderFramePhases {
-    update,
-    acquire,
-    load,
-    prepare,
-    record,
-    compose,
-    encode,
-    submit,
-    present,
+  fn to_phases(
+    [update, acquire, load, prepare, record, compose, encode, submit, present]: [f32; Self::PHASES],
+  ) -> RenderFramePhases {
+    RenderFramePhases {
+      update,
+      acquire,
+      load,
+      prepare,
+      record,
+      compose,
+      encode,
+      submit,
+      present,
+    }
   }
 }

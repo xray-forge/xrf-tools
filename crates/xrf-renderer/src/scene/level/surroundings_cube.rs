@@ -21,7 +21,7 @@ use crate::pass::static_cull_parameters::StaticCullParameters;
 use crate::pass::static_cull_params::StaticCullParams;
 use crate::pass::static_draw_parameters::StaticDrawParameters;
 use crate::pass::static_draws::StaticDraws;
-use crate::pass::static_shadow_pass::set_region;
+use crate::pass::static_shadow_pass::StaticShadowPass;
 use crate::pass::surroundings_parameters::SurroundingsParameters;
 use crate::pass::surroundings_pass::SurroundingsPass;
 use crate::pass::surroundings_uniform::SurroundingsUniform;
@@ -476,7 +476,7 @@ impl SurroundingsCube {
     let size: u32 = self.size;
     let drawn: u32 = kept.drawn;
     if let Some(band) = self.band_due {
-      let targets: [GraphTexture; 4] = import_layer((&mut *graph, &mut *bindings), kept.get_spare());
+      let targets: [GraphTexture; 4] = Self::import_layer((&mut *graph, &mut *bindings), kept.get_spare());
 
       self.add_draw_passes(
         (&mut *graph, &mut *bindings),
@@ -493,7 +493,7 @@ impl SurroundingsCube {
     }
 
     let [albedo, normal, material, depth]: [GraphTexture; 4] =
-      import_layer((&mut *graph, &mut *bindings), kept.get_face(self.face));
+      Self::import_layer((&mut *graph, &mut *bindings), kept.get_face(self.face));
 
     if self.is_redrawn {
       self.add_draw_passes(
@@ -606,20 +606,22 @@ impl SurroundingsCube {
     StaticDraws::declare_layouts(builder, &layouts).record(move |context| {
       let args: &wgpu::Buffer = context.get_buffer(args);
 
-      set_region(context, region);
+      StaticShadowPass::set_region(context, region);
       passes
         .gbuffer
         .record(context, (&cut.view, &draws, textures), args, (false, false));
     });
   }
-}
 
-/// A layer of the faces' G-buffers as the frame's graph knows it: its albedo, normal, material and depth.
-fn import_layer<'a>(
-  (graph, bindings): (&mut FrameGraph<'a>, &mut GraphBindings<'a>),
-  layer: &'a [wgpu::TextureView; 4],
-) -> [GraphTexture; 4] {
-  std::array::from_fn(|target| bindings.import_view(&mut *graph, SurroundingsFaces::FORMATS[target].0, &layer[target]))
+  /// A layer of the faces' G-buffers as the frame's graph knows it: its albedo, normal, material and depth.
+  fn import_layer<'a>(
+    (graph, bindings): (&mut FrameGraph<'a>, &mut GraphBindings<'a>),
+    layer: &'a [wgpu::TextureView; 4],
+  ) -> [GraphTexture; 4] {
+    std::array::from_fn(|target| {
+      bindings.import_view(&mut *graph, SurroundingsFaces::FORMATS[target].0, &layer[target])
+    })
+  }
 }
 
 impl ViewFeature for SurroundingsCube {

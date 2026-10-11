@@ -160,7 +160,7 @@ impl CameraUniform {
     let Some(selection) = selection.filter(|it| !it.runs.is_empty()) else {
       return self;
     };
-    let runs: Vec<[u32; 2]> = join_nearest(&selection.runs, SELECTION_ROWS * 2);
+    let runs: Vec<[u32; 2]> = Self::join_nearest(&selection.runs, SELECTION_ROWS * 2);
 
     self.selection = [1, selection.place.unwrap_or(u32::MAX), runs.len() as u32, 0];
 
@@ -189,20 +189,20 @@ impl CameraUniform {
     self.modes.x = f32::from(u8::from(is_wireframe));
     self
   }
-}
 
-/// Runs in order joined across their narrowest gaps until at most `most` remain.
-fn join_nearest(runs: &[[u32; 2]], most: usize) -> Vec<[u32; 2]> {
-  let mut joined: Vec<[u32; 2]> = runs.to_vec();
+  /// Runs in order joined across their narrowest gaps until at most `most` remain.
+  fn join_nearest(runs: &[[u32; 2]], most: usize) -> Vec<[u32; 2]> {
+    let mut joined: Vec<[u32; 2]> = runs.to_vec();
 
-  while joined.len() > most {
-    let narrowest: usize = (1..joined.len())
-      .min_by_key(|index| joined[*index][0].saturating_sub(joined[index - 1][1]))
-      .unwrap_or(1);
+    while joined.len() > most {
+      let narrowest: usize = (1..joined.len())
+        .min_by_key(|index| joined[*index][0].saturating_sub(joined[index - 1][1]))
+        .unwrap_or(1);
 
-    joined[narrowest - 1][1] = joined[narrowest][1];
-    joined.remove(narrowest);
+      joined[narrowest - 1][1] = joined[narrowest][1];
+      joined.remove(narrowest);
+    }
+
+    joined
   }
-
-  joined
 }

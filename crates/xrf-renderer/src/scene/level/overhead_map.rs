@@ -23,7 +23,7 @@ use crate::pass::static_cull_parameters::StaticCullParameters;
 use crate::pass::static_cull_params::StaticCullParams;
 use crate::pass::static_draw_parameters::StaticDrawParameters;
 use crate::pass::static_draws::StaticDraws;
-use crate::pass::static_shadow_pass::set_region;
+use crate::pass::static_shadow_pass::StaticShadowPass;
 use crate::pass::water_depth_parameters::WaterDepthParameters;
 use crate::pass::water_uniform::WaterUniform;
 use crate::scene::level::overhead_shape::OverheadShape;
@@ -415,7 +415,7 @@ impl OverheadMap {
           Some(water) => {
             let parameters: WaterDepthParameters = WaterDepthParameters { water };
 
-            set_region(context, *region);
+            StaticShadowPass::set_region(context, *region);
             passes
               .water
               .record_depth(context, (&cut.view, textures, *layouts), args, &parameters);

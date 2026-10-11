@@ -1,6 +1,6 @@
 use xrf_renderer_core::{GraphTexture, PassParameters};
 
-use crate::scene::texture::texture_cache::ENVIRONMENT_SLOTS;
+use crate::scene::texture::texture_cache::TextureCache;
 
 /// What every pass drawing the weather's sky binds: both keyframes' sky cubes, their irradiance cubes and their clouds,
 /// the two samplers they are read through, the cubes environment-mapped models mix toward, the sun's sprite, and the
@@ -25,7 +25,7 @@ pub struct SkyParameters<'a> {
   #[sampler(filtering)]
   pub sky_repeat: &'a wgpu::Sampler,
   #[texture(cube, float)]
-  pub environments: [GraphTexture; ENVIRONMENT_SLOTS as usize],
+  pub environments: [GraphTexture; TextureCache::ENVIRONMENT_SLOTS as usize],
   #[texture(d2, float)]
   pub sky_sun: GraphTexture,
   #[texture(cube, float)]

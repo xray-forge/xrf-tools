@@ -16,8 +16,8 @@ impl DepthPyramid {
   /// The farthest depth's pyramid over a depth of this size: its first level the largest power of two within it each
   /// way, down to a texel.
   pub fn new(device: &wgpu::Device, depth_width: u32, depth_height: u32) -> Self {
-    let width: u32 = previous_power_of_two(depth_width);
-    let height: u32 = previous_power_of_two(depth_height);
+    let width: u32 = Self::previous_power_of_two(depth_width);
+    let height: u32 = Self::previous_power_of_two(depth_height);
 
     Self::create(device, "depth pyramid", (width, height), width.max(height).ilog2() + 1)
   }
@@ -84,8 +84,8 @@ impl DepthPyramid {
   pub fn get_level_size(&self, level: u32) -> (u32, u32) {
     ((self.width >> level).max(1), (self.height >> level).max(1))
   }
-}
 
-fn previous_power_of_two(value: u32) -> u32 {
-  if value <= 1 { 1 } else { 1 << value.ilog2() }
+  fn previous_power_of_two(value: u32) -> u32 {
+    if value <= 1 { 1 } else { 1 << value.ilog2() }
+  }
 }

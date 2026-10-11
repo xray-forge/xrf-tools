@@ -1,5 +1,5 @@
 use crate::pass::grass_pass::GrassPass;
-use crate::scene::level::grass_build_size::{GRASS_ITEM_BYTES, GrassBuildSize};
+use crate::scene::level::grass_build_size::GrassBuildSize;
 
 /// Words a cached slot's key takes.
 const KEY_WORDS: u64 = 4;
@@ -42,13 +42,13 @@ impl GrassBuild {
       buffer("grass cell shapes", cells * 16),
       buffer(
         "grass cached tufts",
-        cells * u64::from(size.per_cell) * GRASS_ITEM_BYTES,
+        cells * u64::from(size.per_cell) * GrassBuildSize::ITEM_BYTES,
       ),
       buffer("grass band counts", u64::from(size.bands) * 4),
       buffer("grass schedule", 12),
-      buffer("grass planted", u64::from(size.capacity) * GRASS_ITEM_BYTES),
+      buffer("grass planted", u64::from(size.capacity) * GrassBuildSize::ITEM_BYTES),
       buffer("grass planted models", u64::from(size.capacity) * 4),
-      buffer("grass sorted", u64::from(size.capacity) * GRASS_ITEM_BYTES),
+      buffer("grass sorted", u64::from(size.capacity) * GrassBuildSize::ITEM_BYTES),
     ];
     let bind_group: wgpu::BindGroup = Self::create_group(device, pass, &buffers, uniform, puddles);
     let sort_dispatch: wgpu::Buffer = device.create_buffer(&wgpu::BufferDescriptor {

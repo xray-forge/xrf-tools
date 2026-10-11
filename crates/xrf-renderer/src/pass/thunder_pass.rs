@@ -92,7 +92,7 @@ impl ThunderPass {
       context.bind(parameters);
       context
         .get_pass()
-        .set_pipeline(&self.pipelines[entry * BLENDS.len() + to_blend(draw)]);
+        .set_pipeline(&self.pipelines[entry * BLENDS.len() + Self::to_blend(draw)]);
       context.get_pass().draw(0..vertices, 0..1);
     }
   }
@@ -162,16 +162,16 @@ impl ThunderPass {
       })
       .collect()
   }
-}
 
-/// A shader's blend among `BLENDS`; one that composites nothing still lights the air, as the engine's lightning is
-/// added.
-fn to_blend(draw: XraySurfaceDraw) -> usize {
-  match draw {
-    XraySurfaceDraw::Blended { .. } => 0,
-    XraySurfaceDraw::Added { is_weighted: true, .. } => 2,
-    XraySurfaceDraw::Multiplied { is_doubled: false } => 3,
-    XraySurfaceDraw::Multiplied { is_doubled: true } => 4,
-    _ => 1,
+  /// A shader's blend among `BLENDS`; one that composites nothing still lights the air, as the engine's lightning is
+  /// added.
+  fn to_blend(draw: XraySurfaceDraw) -> usize {
+    match draw {
+      XraySurfaceDraw::Blended { .. } => 0,
+      XraySurfaceDraw::Added { is_weighted: true, .. } => 2,
+      XraySurfaceDraw::Multiplied { is_doubled: false } => 3,
+      XraySurfaceDraw::Multiplied { is_doubled: true } => 4,
+      _ => 1,
+    }
   }
 }

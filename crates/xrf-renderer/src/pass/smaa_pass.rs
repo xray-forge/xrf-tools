@@ -50,21 +50,21 @@ impl SmaaPass {
 
     Ok(Self {
       pipelines: Self::create_pipelines(source, &layout)?,
-      area: create_lookup(
+      area: Self::create_lookup(
         device,
         queue,
         (area.width(), area.height()),
         wgpu::TextureFormat::Rg8Unorm,
         &area_texels,
       ),
-      search: create_lookup(
+      search: Self::create_lookup(
         device,
         queue,
         (search.width(), search.height()),
         wgpu::TextureFormat::R8Unorm,
         search.as_raw(),
       ),
-      empty: create_lookup(device, queue, (1, 1), wgpu::TextureFormat::Rgba8Unorm, &[0; 4]),
+      empty: Self::create_lookup(device, queue, (1, 1), wgpu::TextureFormat::Rgba8Unorm, &[0; 4]),
       linear: device.create_sampler(&wgpu::SamplerDescriptor {
         label: Some("smaa linear"),
         mag_filter: wgpu::FilterMode::Linear,
@@ -122,36 +122,36 @@ impl SmaaPass {
       create("fs_smaa_blend", ViewTargets::SCENE)?,
     ])
   }
-}
 
-fn create_lookup(
-  device: &wgpu::Device,
-  queue: &wgpu::Queue,
-  (width, height): (u32, u32),
-  format: wgpu::TextureFormat,
-  texels: &[u8],
-) -> wgpu::TextureView {
-  use wgpu::util::DeviceExt;
+  fn create_lookup(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    (width, height): (u32, u32),
+    format: wgpu::TextureFormat,
+    texels: &[u8],
+  ) -> wgpu::TextureView {
+    use wgpu::util::DeviceExt;
 
-  device
-    .create_texture_with_data(
-      queue,
-      &wgpu::TextureDescriptor {
-        label: Some("smaa lookup"),
-        size: wgpu::Extent3d {
-          width,
-          height,
-          depth_or_array_layers: 1,
+    device
+      .create_texture_with_data(
+        queue,
+        &wgpu::TextureDescriptor {
+          label: Some("smaa lookup"),
+          size: wgpu::Extent3d {
+            width,
+            height,
+            depth_or_array_layers: 1,
+          },
+          mip_level_count: 1,
+          sample_count: 1,
+          dimension: wgpu::TextureDimension::D2,
+          format,
+          usage: wgpu::TextureUsages::TEXTURE_BINDING,
+          view_formats: &[],
         },
-        mip_level_count: 1,
-        sample_count: 1,
-        dimension: wgpu::TextureDimension::D2,
-        format,
-        usage: wgpu::TextureUsages::TEXTURE_BINDING,
-        view_formats: &[],
-      },
-      Default::default(),
-      texels,
-    )
-    .create_view(&Default::default())
+        Default::default(),
+        texels,
+      )
+      .create_view(&Default::default())
+  }
 }

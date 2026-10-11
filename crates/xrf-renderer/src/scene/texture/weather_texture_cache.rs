@@ -4,7 +4,7 @@ use std::sync::mpsc::Sender;
 
 use crate::host::render_asset_source::{RenderAssetSource, get_texture_name};
 use crate::lighting::render_sky::RenderSky;
-use crate::scene::texture::decoded_texture::{CUBE_FACES, DecodedTexture};
+use crate::scene::texture::decoded_texture::DecodedTexture;
 use crate::scene::texture::weather_texture_kind::WeatherTextureKind;
 use crate::thread::loader_receiver::LoaderReceiver;
 use crate::thread::render_workers::RenderWorkers;
@@ -55,15 +55,15 @@ impl WeatherTextureCache {
       entries: HashMap::new(),
       sender,
       receiver,
-      placeholder_cube: create_solid(
+      placeholder_cube: Self::create_solid(
         device,
         queue,
         PLACEHOLDER_SKY,
-        CUBE_FACES,
+        DecodedTexture::CUBE_FACES,
         wgpu::TextureViewDimension::Cube,
       ),
-      placeholder_flat: create_solid(device, queue, [0, 0, 0, 0], 1, wgpu::TextureViewDimension::D2),
-      placeholder_volume: create_solid(
+      placeholder_flat: Self::create_solid(device, queue, [0, 0, 0, 0], 1, wgpu::TextureViewDimension::D2),
+      placeholder_volume: Self::create_solid(
         device,
         queue,
         PLACEHOLDER_VOLUME,
@@ -184,8 +184,8 @@ impl WeatherTextureCache {
       entry.is_settled = true;
 
       match load {
-        Ok(Some(texture)) if is_kind(&texture, entry.kind) => {
-          entry.view = Some(upload(device, queue, &texture, &reference));
+        Ok(Some(texture)) if Self::is_kind(&texture, entry.kind) => {
+          entry.view = Some(Self::upload(device, queue, &texture, &reference));
           self.generation += 1;
         }
         Ok(Some(_)) => log::warn!("Weather texture '{reference}' is not the kind it is drawn as"),
@@ -204,107 +204,107 @@ impl WeatherTextureCache {
       self.generation += 1;
     }
   }
-}
 
-fn upload(device: &wgpu::Device, queue: &wgpu::Queue, texture: &DecodedTexture, label: &str) -> wgpu::TextureView {
-  let size: wgpu::Extent3d = wgpu::Extent3d {
-    width: texture.width,
-    height: texture.height,
-    depth_or_array_layers: texture.layers,
-  };
-  let gpu: wgpu::Texture = device.create_texture(&wgpu::TextureDescriptor {
-    label: Some(label),
-    size,
-    mip_level_count: texture.levels.len() as u32,
-    sample_count: 1,
-    dimension: wgpu::TextureDimension::D2,
-    format: texture.format,
-    usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-    view_formats: &[],
-  });
-  let (block_width, block_height) = texture.format.block_dimensions();
-  let block_bytes: u32 = texture.format.block_copy_size(None).unwrap_or(4);
+  fn upload(device: &wgpu::Device, queue: &wgpu::Queue, texture: &DecodedTexture, label: &str) -> wgpu::TextureView {
+    let size: wgpu::Extent3d = wgpu::Extent3d {
+      width: texture.width,
+      height: texture.height,
+      depth_or_array_layers: texture.layers,
+    };
+    let gpu: wgpu::Texture = device.create_texture(&wgpu::TextureDescriptor {
+      label: Some(label),
+      size,
+      mip_level_count: texture.levels.len() as u32,
+      sample_count: 1,
+      dimension: wgpu::TextureDimension::D2,
+      format: texture.format,
+      usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+      view_formats: &[],
+    });
+    let (block_width, block_height) = texture.format.block_dimensions();
+    let block_bytes: u32 = texture.format.block_copy_size(None).unwrap_or(4);
 
-  for (level, bytes) in texture.levels.iter().enumerate() {
-    let physical: wgpu::Extent3d = size
-      .mip_level_size(level as u32, wgpu::TextureDimension::D2)
-      .physical_size(texture.format);
+    for (level, bytes) in texture.levels.iter().enumerate() {
+      let physical: wgpu::Extent3d = size
+        .mip_level_size(level as u32, wgpu::TextureDimension::D2)
+        .physical_size(texture.format);
 
-    queue.write_texture(
-      wgpu::TexelCopyTextureInfo {
-        texture: &gpu,
-        mip_level: level as u32,
-        origin: wgpu::Origin3d::ZERO,
-        aspect: wgpu::TextureAspect::All,
-      },
-      bytes,
-      wgpu::TexelCopyBufferLayout {
-        offset: 0,
-        bytes_per_row: Some(physical.width / block_width * block_bytes),
-        rows_per_image: Some(physical.height / block_height),
-      },
-      wgpu::Extent3d {
-        depth_or_array_layers: texture.layers,
-        ..physical
-      },
-    );
-  }
-
-  gpu.create_view(&wgpu::TextureViewDescriptor {
-    dimension: Some(if texture.is_volume {
-      wgpu::TextureViewDimension::D2Array
-    } else if texture.layers == CUBE_FACES {
-      wgpu::TextureViewDimension::Cube
-    } else {
-      wgpu::TextureViewDimension::D2
-    }),
-    ..Default::default()
-  })
-}
-
-/// Whether a texture read is the kind it is drawn as.
-fn is_kind(texture: &DecodedTexture, kind: WeatherTextureKind) -> bool {
-  match kind {
-    WeatherTextureKind::Cube => !texture.is_volume && texture.layers == CUBE_FACES,
-    WeatherTextureKind::Flat => texture.layers == 1,
-    WeatherTextureKind::Volume => texture.is_volume,
-  }
-}
-
-/// One texel of a colour on every layer, viewed as asked.
-fn create_solid(
-  device: &wgpu::Device,
-  queue: &wgpu::Queue,
-  color: [u8; 4],
-  layers: u32,
-  dimension: wgpu::TextureViewDimension,
-) -> wgpu::TextureView {
-  use wgpu::util::DeviceExt;
-
-  let texels: Vec<u8> = (0..layers).flat_map(|_| color).collect();
-
-  device
-    .create_texture_with_data(
-      queue,
-      &wgpu::TextureDescriptor {
-        label: Some("sky placeholder"),
-        size: wgpu::Extent3d {
-          width: 1,
-          height: 1,
-          depth_or_array_layers: layers,
+      queue.write_texture(
+        wgpu::TexelCopyTextureInfo {
+          texture: &gpu,
+          mip_level: level as u32,
+          origin: wgpu::Origin3d::ZERO,
+          aspect: wgpu::TextureAspect::All,
         },
-        mip_level_count: 1,
-        sample_count: 1,
-        dimension: wgpu::TextureDimension::D2,
-        format: wgpu::TextureFormat::Rgba8Unorm,
-        usage: wgpu::TextureUsages::TEXTURE_BINDING,
-        view_formats: &[],
-      },
-      Default::default(),
-      &texels,
-    )
-    .create_view(&wgpu::TextureViewDescriptor {
-      dimension: Some(dimension),
+        bytes,
+        wgpu::TexelCopyBufferLayout {
+          offset: 0,
+          bytes_per_row: Some(physical.width / block_width * block_bytes),
+          rows_per_image: Some(physical.height / block_height),
+        },
+        wgpu::Extent3d {
+          depth_or_array_layers: texture.layers,
+          ..physical
+        },
+      );
+    }
+
+    gpu.create_view(&wgpu::TextureViewDescriptor {
+      dimension: Some(if texture.is_volume {
+        wgpu::TextureViewDimension::D2Array
+      } else if texture.layers == DecodedTexture::CUBE_FACES {
+        wgpu::TextureViewDimension::Cube
+      } else {
+        wgpu::TextureViewDimension::D2
+      }),
       ..Default::default()
     })
+  }
+
+  /// Whether a texture read is the kind it is drawn as.
+  fn is_kind(texture: &DecodedTexture, kind: WeatherTextureKind) -> bool {
+    match kind {
+      WeatherTextureKind::Cube => !texture.is_volume && texture.layers == DecodedTexture::CUBE_FACES,
+      WeatherTextureKind::Flat => texture.layers == 1,
+      WeatherTextureKind::Volume => texture.is_volume,
+    }
+  }
+
+  /// One texel of a colour on every layer, viewed as asked.
+  fn create_solid(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    color: [u8; 4],
+    layers: u32,
+    dimension: wgpu::TextureViewDimension,
+  ) -> wgpu::TextureView {
+    use wgpu::util::DeviceExt;
+
+    let texels: Vec<u8> = (0..layers).flat_map(|_| color).collect();
+
+    device
+      .create_texture_with_data(
+        queue,
+        &wgpu::TextureDescriptor {
+          label: Some("sky placeholder"),
+          size: wgpu::Extent3d {
+            width: 1,
+            height: 1,
+            depth_or_array_layers: layers,
+          },
+          mip_level_count: 1,
+          sample_count: 1,
+          dimension: wgpu::TextureDimension::D2,
+          format: wgpu::TextureFormat::Rgba8Unorm,
+          usage: wgpu::TextureUsages::TEXTURE_BINDING,
+          view_formats: &[],
+        },
+        Default::default(),
+        &texels,
+      )
+      .create_view(&wgpu::TextureViewDescriptor {
+        dimension: Some(dimension),
+        ..Default::default()
+      })
+  }
 }

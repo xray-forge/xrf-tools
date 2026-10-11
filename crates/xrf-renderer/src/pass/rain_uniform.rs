@@ -6,9 +6,6 @@ use xrf_renderer_core::ShaderStruct;
 use crate::lighting::render_rainfall::RenderRainfall;
 use crate::lighting::render_wind::RenderWind;
 
-/// `max_desired_items`: streaks at the heaviest rain; half as many at the lightest.
-pub const RAIN_STREAKS: u32 = 2500;
-
 /// `drop_max_angle`: how far the strongest wind leans the streaks from the vertical, ten degrees.
 const MAX_LEAN: f32 = 10.0 * std::f32::consts::PI / 180.0;
 
@@ -38,6 +35,9 @@ pub struct RainUniform {
 }
 
 impl RainUniform {
+  /// `max_desired_items`: streaks at the heaviest rain; half as many at the lightest.
+  pub const STREAKS: u32 = 2500;
+
   /// `strength` is `wind_strength_factor`, a tenth of which leans the streaks with the wind (`CEffect_Rain::Born`).
   pub fn new(
     rain: &RenderRainfall,
@@ -72,6 +72,6 @@ impl RainUniform {
 
   /// Streaks drawn at a density, `0.5 * (1 + factor) * max_desired_items`.
   pub fn get_count(density: f32) -> u32 {
-    (0.5 * (1.0 + density.clamp(0.0, 1.0)) * RAIN_STREAKS as f32) as u32
+    (0.5 * (1.0 + density.clamp(0.0, 1.0)) * Self::STREAKS as f32) as u32
   }
 }

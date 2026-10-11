@@ -33,7 +33,7 @@ use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::frame_pacer::FramePacer;
 use crate::frame::frame_phases::FramePhases;
 use crate::frame::frame_span_timer::FrameSpanTimer;
-use crate::frame::frame_statistics::REPORT_INTERVAL;
+use crate::frame::frame_statistics::FrameStatistics;
 use crate::frame::gpu_memory::GpuMemory;
 use crate::frame::periodic_budget::PeriodicBudget;
 use crate::frame::periodic_scheduler::PeriodicScheduler;
@@ -1324,7 +1324,7 @@ impl RenderThread {
     graph.compile(&self.settings.graph.to_options()).and_then(|compiled| {
       if graph_report
         .as_ref()
-        .is_none_or(|(described, _)| started.duration_since(*described) >= REPORT_INTERVAL)
+        .is_none_or(|(described, _)| started.duration_since(*described) >= FrameStatistics::REPORT_INTERVAL)
       {
         *graph_report = Some((started, compiled.describe()));
       }

@@ -3,7 +3,7 @@ use xrf_renderer_core::{PassParameters, RasterContext, RenderPipelineDescription
 
 use crate::frame::pick_target::PickTarget;
 use crate::frame::view_targets::ViewTargets;
-use crate::pass::composited_pass::COMPOSITED_DEPTH_BIAS;
+use crate::pass::composited_pass::CompositedPass;
 use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::shader_pipelines::create_checked;
 use crate::pass::static_draw_parameters::StaticDrawParameters;
@@ -261,7 +261,7 @@ impl StaticGBufferPass {
             // A composited surface is picked as it is drawn, pulled towards the eye, so glass laid on a wall wins. A
             // cut-out is shaded where its depth-only draw left its depth, and writes none of its own.
             let depth: (bool, wgpu::CompareFunction, wgpu::DepthBiasState) = match batch.class {
-              class if class.is_composited() => (true, wgpu::CompareFunction::GreaterEqual, COMPOSITED_DEPTH_BIAS),
+              class if class.is_composited() => (true, wgpu::CompareFunction::GreaterEqual, CompositedPass::DEPTH_BIAS),
               StaticClass::CutOut if !is_pick => (false, wgpu::CompareFunction::Equal, wgpu::DepthBiasState::default()),
               _ => (true, wgpu::CompareFunction::Greater, wgpu::DepthBiasState::default()),
             };

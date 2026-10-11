@@ -18,26 +18,29 @@ impl TemporalJitter {
 
     self.phase = (self.phase + 1) % phases;
 
-    Vec2::new(halton(self.phase + 1, 2) - 0.5, halton(self.phase + 1, 3) - 0.5)
+    Vec2::new(
+      Self::halton(self.phase + 1, 2) - 0.5,
+      Self::halton(self.phase + 1, 3) - 0.5,
+    )
   }
 
   /// How many places the samples cycle through for a viewport `ratio` times the drawing's side.
   pub fn get_phases(ratio: f32) -> u32 {
     ((BASE_PHASES * ratio * ratio) as u32).max(1)
   }
-}
 
-/// The Halton sequence's value at an index in a base, in `[0, 1)`.
-pub fn halton(index: u32, base: u32) -> f32 {
-  let mut fraction: f32 = 1.0;
-  let mut result: f32 = 0.0;
-  let mut rest: u32 = index;
+  /// The Halton sequence's value at an index in a base, in `[0, 1)`.
+  pub fn halton(index: u32, base: u32) -> f32 {
+    let mut fraction: f32 = 1.0;
+    let mut result: f32 = 0.0;
+    let mut rest: u32 = index;
 
-  while rest > 0 {
-    fraction /= base as f32;
-    result += fraction * (rest % base) as f32;
-    rest /= base;
+    while rest > 0 {
+      fraction /= base as f32;
+      result += fraction * (rest % base) as f32;
+      rest /= base;
+    }
+
+    result
   }
-
-  result
 }

@@ -383,7 +383,7 @@ impl SceneView {
           self.features.statics.get_cull().glod_end,
         ),
         statics: &scene.statics,
-        sway: &to_sway(&scene.statics, self.features.wind.get_sway()),
+        sway: &Self::to_sway(&scene.statics, self.features.wind.get_sway()),
         grass_reach: self.features.grass.get_cascade_reach(),
         campfire_shares: &scene.campfire_shares,
       },
@@ -564,7 +564,7 @@ impl SceneView {
       settings: &shared.shadow_settings,
       sun_direction: shared.sun_direction,
       switches: shared.switches,
-      sway: to_sway(statics, features.wind.get_sway()),
+      sway: Self::to_sway(statics, features.wind.get_sway()),
       grass_reach: features.grass.get_cascade_reach(),
     };
 
@@ -624,7 +624,7 @@ impl SceneView {
       settings: &shared.shadow_settings,
       sun_direction: shared.sun_direction,
       switches: shared.switches,
-      sway: to_sway(statics, features.wind.get_sway()),
+      sway: Self::to_sway(statics, features.wind.get_sway()),
       grass_reach: features.grass.get_cascade_reach(),
     };
 
@@ -662,7 +662,7 @@ impl SceneView {
       settings: &self.shared.shadow_settings,
       sun_direction: self.shared.sun_direction,
       switches: self.shared.switches,
-      sway: to_sway(statics, self.features.wind.get_sway()),
+      sway: Self::to_sway(statics, self.features.wind.get_sway()),
       grass_reach: self.features.grass.get_cascade_reach(),
     };
 
@@ -1629,14 +1629,14 @@ impl SceneView {
   pub fn get_overlays(&self) -> Option<&LevelOverlays> {
     self.features.overlays.get_overlays()
   }
-}
 
-/// The sway the shadows see this frame: the wind, the trees' reach, and where they stand.
-fn to_sway(scene: &StaticScene, (amplitude, time): (f32, f32)) -> ShadowSway<'_> {
-  ShadowSway {
-    amplitude,
-    reach: scene.get_sway_reach(),
-    time,
-    places: scene.list_swaying(),
+  /// The sway the shadows see this frame: the wind, the trees' reach, and where they stand.
+  fn to_sway(scene: &StaticScene, (amplitude, time): (f32, f32)) -> ShadowSway<'_> {
+    ShadowSway {
+      amplitude,
+      reach: scene.get_sway_reach(),
+      time,
+      places: scene.list_swaying(),
+    }
   }
 }

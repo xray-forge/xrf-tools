@@ -9,9 +9,6 @@ use crate::pass::exposure_uniform::ExposureUniform;
 use crate::pass::level_passes::LevelPasses;
 use crate::scene::level::feature::view_feature::ViewFeature;
 
-/// Cells a side the frame's luminance is measured over, as `rt_LUM_64` is.
-pub const EXPOSURE_CELLS: u32 = 64;
-
 /// The longest step between frames the adaptation takes, so a stall does not snap it to what one frame measured.
 const LONGEST_STEP: Duration = Duration::from_millis(250);
 
@@ -29,6 +26,9 @@ pub struct ExposureFeature {
 }
 
 impl ExposureFeature {
+  /// Cells a side the frame's luminance is measured over, as `rt_LUM_64` is.
+  pub const CELLS: u32 = 64;
+
   pub fn new(device: &wgpu::Device, queue: &wgpu::Queue) -> Self {
     let state: wgpu::Buffer = device.create_buffer(&wgpu::BufferDescriptor {
       label: Some("exposure"),

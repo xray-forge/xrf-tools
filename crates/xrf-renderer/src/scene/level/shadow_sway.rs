@@ -1,9 +1,5 @@
 use glam::Vec4;
 
-/// Seconds between a shadow's draws for what sways alone, at most sixty a second: the sway is slow, and each draw over
-/// the trees costs a light face's or a cascade's cull and draw.
-pub const SHADOW_SWAY_INTERVAL: f32 = 1.0 / 60.0;
-
 /// What of the interval a frame may come early by and still draw for the sway, so a 60 Hz display a hair short of an
 /// interval does not halve the sway to every other frame.
 const SWAY_SLACK: f32 = 0.1;
@@ -25,10 +21,14 @@ pub struct ShadowSway<'a> {
 }
 
 impl ShadowSway<'_> {
+  /// Seconds between a shadow's draws for what sways alone, at most sixty a second: the sway is slow, and each draw over
+  /// the trees costs a light face's or a cascade's cull and draw.
+  pub const INTERVAL: f32 = 1.0 / 60.0;
+
   /// Whether a map drawn at `drawn_at` draws again for the sway alone: once its interval passed, and only where a tree
   /// reaching `reach` leans across enough of a texel `texel` wide to show. Both are metres, or both are per metre of
   /// distance from a light.
   pub fn is_redrawn(&self, reach: f32, texel: f32, drawn_at: f32) -> bool {
-    self.amplitude * reach > texel * SWAY_TEXELS && self.time - drawn_at >= SHADOW_SWAY_INTERVAL * (1.0 - SWAY_SLACK)
+    self.amplitude * reach > texel * SWAY_TEXELS && self.time - drawn_at >= Self::INTERVAL * (1.0 - SWAY_SLACK)
   }
 }

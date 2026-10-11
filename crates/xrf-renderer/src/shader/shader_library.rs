@@ -4,7 +4,7 @@ use std::time::SystemTime;
 
 use xrf_error::{XrfError, XrfResult};
 
-use crate::shader::shader_composer::compose_shader;
+use crate::shader::shader_composer::ShaderComposer;
 
 /// Every WGSL module the renderer has, by the name an `#import` gives it: its path under `shaders/`, without the
 /// extension.
@@ -622,7 +622,7 @@ impl ShaderLibrary {
   ///
   /// Returns an error for an unknown module or import.
   pub fn compose_for(&self, entry: &str, features: wgpu::Features) -> XrfResult<String> {
-    compose_shader(entry, &|name: &str| {
+    ShaderComposer::compose(entry, &|name: &str| {
       let name: &str = FALLBACKS
         .iter()
         .find(|(module, needed, _)| *module == name && !features.contains(*needed))

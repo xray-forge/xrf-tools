@@ -16,9 +16,9 @@ use crate::host::render_level_weather::RenderLevelWeather;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::pass::flare_draw_parameters::FlareDrawParameters;
 use crate::pass::flare_measure_parameters::FlareMeasureParameters;
-use crate::pass::flare_pass::{FlarePass, GRADIENT_INSTANCE};
+use crate::pass::flare_pass::FlarePass;
 use crate::pass::flare_texture_parameters::FlareTextureParameters;
-use crate::pass::flare_uniform::{FLARE_SLOTS, FlareUniform};
+use crate::pass::flare_uniform::FlareUniform;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::feature::view_feature::ViewFeature;
 use crate::scene::level::lens_flare_fade::LensFlareFade;
@@ -198,7 +198,7 @@ impl FlaresFeature {
     let draws: Vec<(u32, FlareTextureParameters)> = self
       .textures
       .iter()
-      .filter(|(instance, _)| self.is_flared || *instance == GRADIENT_INSTANCE)
+      .filter(|(instance, _)| self.is_flared || *instance == FlarePass::GRADIENT_INSTANCE)
       .map(|(instance, texture)| {
         let flare_texture: GraphTexture = bindings.import_view(&mut *graph, "flare texture", texture);
 
@@ -234,10 +234,13 @@ impl FlaresFeature {
     let flares = flare
       .flares
       .iter()
-      .take(FLARE_SLOTS)
+      .take(FlareUniform::SLOTS)
       .enumerate()
       .map(|(index, it)| (index as u32, view(&it.texture)));
-    let gradient = flare.gradient.iter().map(|it| (GRADIENT_INSTANCE, view(&it.texture)));
+    let gradient = flare
+      .gradient
+      .iter()
+      .map(|it| (FlarePass::GRADIENT_INSTANCE, view(&it.texture)));
 
     self.textures = flares.chain(gradient).collect();
   }

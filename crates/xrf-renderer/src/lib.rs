@@ -178,7 +178,6 @@ pub use crate::host::render_window_host::RenderWindowHost;
 pub use crate::host::render_world::RenderWorld;
 pub use crate::lighting::ambient_gust::AmbientGust;
 pub use crate::lighting::light_animation::to_interpolated_color;
-pub use crate::lighting::light_basis::to_vec3;
 pub use crate::lighting::render_ambients::RenderAmbients;
 pub use crate::lighting::render_clouds::RenderClouds;
 pub use crate::lighting::render_fog::RenderFog;

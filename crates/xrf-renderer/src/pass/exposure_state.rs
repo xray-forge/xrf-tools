@@ -1,6 +1,6 @@
 use xrf_renderer_core::ShaderStruct;
 
-use crate::scene::level::feature::exposure_feature::EXPOSURE_CELLS;
+use crate::scene::level::feature::exposure_feature::ExposureFeature;
 
 /// The exposure's state as its pass adapts it: the scale the tonemap multiplies by, the scale the last frame's used,
 /// then each cell's luminance.
@@ -11,5 +11,5 @@ pub struct ExposureState {
   pub used: f32,
   pub pad1: f32,
   pub pad2: f32,
-  pub cells: [f32; (EXPOSURE_CELLS * EXPOSURE_CELLS) as usize],
+  pub cells: [f32; (ExposureFeature::CELLS * ExposureFeature::CELLS) as usize],
 }

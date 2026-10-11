@@ -193,7 +193,7 @@ impl LevelShadows {
     self.bands.clear();
 
     self.grass_cascades = [false; RENDER_MAX_SHADOW_CASCADES];
-    self.values.blends = get_cascade_blends(settings.blend);
+    self.values.blends = Self::get_cascade_blends(settings.blend);
 
     // The static layers pay only while the trees sway or the grass casts: still, a cascade draws again only where its
     // static layer would.
@@ -320,7 +320,7 @@ impl LevelShadows {
             );
           }
 
-          add_layer_copy(&mut *graph, copy_pass, (statics, maps), (static_layer, layer));
+          Self::add_layer_copy(&mut *graph, copy_pass, (statics, maps), (static_layer, layer));
           draw_casters(
             &mut *graph,
             sway_pass,
@@ -358,7 +358,7 @@ impl LevelShadows {
 
         passes.shadow.record_tile(
           context,
-          (get_band_region(band, resolution), None),
+          (Self::get_band_region(band, resolution), None),
           (&cut.view, &layouts, textures),
           (args, 0),
           ShadowCasters::Fixed,
@@ -436,7 +436,7 @@ impl LevelShadows {
         continue;
       }
 
-      let [x, y, width, height] = get_band_region(prefetch.bands, resolution);
+      let [x, y, width, height] = Self::get_band_region(prefetch.bands, resolution);
 
       ready(
         cut,
@@ -450,9 +450,11 @@ impl LevelShadows {
         },
       );
 
-      self
-        .bands
-        .push((index, prefetch.bands, get_hidden_layer(index, cascade.static_layer)));
+      self.bands.push((
+        index,
+        prefetch.bands,
+        Self::get_hidden_layer(index, cascade.static_layer),
+      ));
       prefetch.bands += 1;
       prefetch.waited = 0;
     }
@@ -503,7 +505,7 @@ impl LevelShadows {
     let mut points: Vec<(Vec3, Option<(usize, bool)>)> = frame
       .grass_reach
       .map_or_else(Vec::new, |reach| {
-        sample_seen_grass(frame.camera, reach + GRASS_STANDING)
+        Self::sample_seen_grass(frame.camera, reach + GRASS_STANDING)
       })
       .into_iter()
       .map(|point| (point, None))
@@ -517,7 +519,7 @@ impl LevelShadows {
         .fit(frame.camera, &mut rays, frame.sun_direction, width, resolution, span);
 
       if !is_split {
-        self.offers.extend(offer_whole(index, cascade, frame, scheduler));
+        self.offers.extend(Self::offer_whole(index, cascade, frame, scheduler));
 
         continue;
       }
@@ -527,7 +529,7 @@ impl LevelShadows {
       let mut has_grass: bool = false;
 
       for (point, shaded) in &mut points {
-        match (*shaded, get_cascade_inset(projection, *point)) {
+        match (*shaded, Self::get_cascade_inset(projection, *point)) {
           (None, Some(inset)) => {
             has_grass = true;
             *shaded = Some((index, has_next && inset < blends[index]));
@@ -538,20 +540,291 @@ impl LevelShadows {
       }
 
       self.grass_cascades[index] = has_grass;
-      swap_prefetched(index, cascade);
+      Self::swap_prefetched(index, cascade);
       self
         .offers
-        .extend(offer_split(index, cascade, frame, has_grass, scheduler));
+        .extend(Self::offer_split(index, cascade, frame, has_grass, scheduler));
 
       if index >= BANDED_FROM {
         cascade
           .band
           .get_or_insert_with(|| ShadowCut::new(device, view_layout, "sun shadow band", scene.cull.args.size()));
 
-        let ticket: Option<PeriodicTicket> = offer_band(index, cascade, frame, scheduler);
+        let ticket: Option<PeriodicTicket> = Self::offer_band(index, cascade, frame, scheduler);
 
         self.band_offers.extend(ticket.map(|ticket| (index, ticket)));
       }
+    }
+  }
+
+  /// Offers the draw a cascade drawn whole wants this frame, while the trees stand still: where its box moved, the scene
+  /// changed under it or the sway shows.
+  fn offer_whole(
+    index: usize,
+    cascade: &mut ShadowCascadeView,
+    frame: &ShadowFrame<'_>,
+    scheduler: &mut PeriodicScheduler,
+  ) -> Option<CascadeOffer> {
+    let scene = frame.scene;
+    let fit: SunCascade = cascade.cascade;
+    // A map holds depth in the world, sampled with the matrix it was drawn with, so a still one is still exact; only an
+    // item coming or going within what it covers changes it.
+    let is_changed: bool = cascade.has_drawn_grass
+      || cascade.drawn.is_none_or(|(version, contents)| {
+        version != fit.version || scene.is_changed_since(contents, |sphere| fit.view.reaches(sphere))
+      });
+
+    if !(is_changed || frame.sway.is_redrawn(frame.sway.reach, fit.texel, cascade.drawn_at)) {
+      cascade.waited = 0;
+
+      return None;
+    }
+
+    Some(Self::offer(
+      index,
+      cascade,
+      frame,
+      scheduler,
+      (CascadeDraw::Whole, fit),
+      cascade.has_drawn_grass,
+    ))
+  }
+
+  /// Offers the draw a cascade keeping a static layer wants this frame, while the trees sway or the grass casts: over its
+  /// static layer, at the fit that layer was drawn at, while the cascade's fit holds by it and nothing changed under it
+  /// (the nearest cascade's only while its fit is the same); else a new static layer at the cascade's fit. One the grass
+  /// casts into (`has_grass`) draws every frame, at once: the grass sways every frame, and a shadow drawn at the sway's
+  /// interval would trail the blades drawn over it wherever the frame rate passes it.
+  fn offer_split(
+    index: usize,
+    cascade: &mut ShadowCascadeView,
+    frame: &ShadowFrame<'_>,
+    has_grass: bool,
+    scheduler: &mut PeriodicScheduler,
+  ) -> Option<CascadeOffer> {
+    let scene = frame.scene;
+    let current: SunCascade = cascade.cascade;
+    let static_fit: SunCascade = cascade.static_fit;
+    let is_held: bool = cascade.drawn_static.is_some_and(|(version, contents)| {
+      let is_fit: bool = if index == 0 {
+        version == current.version
+      } else {
+        current.is_held_by(&static_fit)
+      };
+
+      is_fit && !scene.is_changed_since(contents, |sphere| static_fit.view.reaches(sphere))
+    });
+    let is_wanted: bool = cascade.drawn.is_none()
+      || !is_held
+      || cascade.is_swapped
+      || frame.sway.is_redrawn(frame.sway.reach, current.texel, cascade.drawn_at)
+      || has_grass
+      || cascade.has_drawn_grass;
+
+    if !is_wanted {
+      cascade.waited = 0;
+
+      return None;
+    }
+
+    let draw: (CascadeDraw, SunCascade) = if is_held {
+      (CascadeDraw::Swaying, static_fit)
+    } else {
+      (CascadeDraw::Static, current)
+    };
+
+    Some(Self::offer(
+      index,
+      cascade,
+      frame,
+      scheduler,
+      draw,
+      has_grass || cascade.has_drawn_grass,
+    ))
+  }
+
+  /// Offers a cascade's draw `draw` at a fit: at once for the nearest, one never drawn, staggering off, one whose box
+  /// strayed past its map, or one the grass casts into (`is_urgent`); else within its stagger.
+  fn offer(
+    index: usize,
+    cascade: &ShadowCascadeView,
+    frame: &ShadowFrame<'_>,
+    scheduler: &mut PeriodicScheduler,
+    (draw, fit): (CascadeDraw, SunCascade),
+    is_urgent: bool,
+  ) -> CascadeOffer {
+    let (passes, seed): (&'static [&'static str], f32) = match draw {
+      CascadeDraw::Whole => (&WHOLE_PASSES[index], WHOLE_SEEDS[index]),
+      CascadeDraw::Static => (&STATIC_PASSES[index], WHOLE_SEEDS[index]),
+      CascadeDraw::Swaying => (&SWAY_PASSES[index], SWAY_SEEDS[index]),
+    };
+    // The nearest is seen closest, and a cascade never drawn or strayed past its map shows wrong until drawn.
+    let is_now: bool = index == 0
+      || is_urgent
+      || cascade.drawn.is_none()
+      || !frame.settings.is_staggered
+      || !cascade.cascade.is_held_by(&cascade.drawn_fit);
+    let job: PeriodicJob = if is_now {
+      PeriodicJob::new_now(passes, seed, 1.0)
+    } else {
+      PeriodicJob::new_waiting(passes, seed, 1.0, (cascade.waited, 1 << index))
+    };
+
+    CascadeOffer {
+      index,
+      ticket: scheduler.offer(job),
+      draw,
+      fit,
+      contents: frame.scene.get_contents(),
+    }
+  }
+
+  /// How far in from its map's edge a cascade drawn by `projection` holds a point, past the edge the sun's pass keeps
+  /// off (`EDGE` in `common/sun_shadow.wgsl`), as a share of the map; none where it does not hold it.
+  fn get_cascade_inset(projection: Mat4, point: Vec3) -> Option<f32> {
+    let clip: Vec4 = projection * point.extend(1.0);
+    let (u, v): (f32, f32) = (clip.x * 0.5 + 0.5, clip.y * -0.5 + 0.5);
+    let inset: f32 = u.min(v).min(1.0 - u).min(1.0 - v) - SUN_SHADOW_EDGE;
+
+    (inset > 0.0 && clip.z > 0.0 && clip.z < 1.0).then_some(inset)
+  }
+
+  /// Each cascade's blend band, the settings' `blend` widened to `NEAR_BLEND` for the nearest.
+  pub(crate) fn get_cascade_blends(blend: f32) -> Vec4 {
+    Vec4::from_array(std::array::from_fn(|index| {
+      if index < NEAR_BLENDED {
+        blend.max(NEAR_BLEND)
+      } else {
+        blend
+      }
+    }))
+  }
+
+  /// Points of the sphere `reach` metres about the `camera` that it sees, where the grass's shadows land: along rays
+  /// through a grid over the screen, its edges included, at shares of the reach, so a view of any width samples it.
+  /// What the camera does not see casts onto nothing it shows, and no cascade's box reaches behind it.
+  pub(crate) fn sample_seen_grass(camera: &CameraView, reach: f32) -> Vec<Vec3> {
+    let inverse: Mat4 = camera.get_view_projection().inverse();
+    let last: f32 = (GRASS_GRID - 1) as f32;
+
+    (0..GRASS_GRID * GRASS_GRID)
+      .filter_map(|cell| {
+        let x: f32 = (cell % GRASS_GRID) as f32 / last * 2.0 - 1.0;
+        let y: f32 = (cell / GRASS_GRID) as f32 / last * 2.0 - 1.0;
+
+        (inverse.project_point3(Vec3::new(x, y, 0.5)) - camera.position).try_normalize()
+      })
+      .flat_map(|ray| GRASS_SHARES.map(|share| camera.position + ray * reach * share))
+      .collect()
+  }
+
+  /// Shows a cascade's static layer drawn ahead in place of the one shown, once every band of it is drawn.
+  fn swap_prefetched(index: usize, cascade: &mut ShadowCascadeView) {
+    let Some(prefetch) = cascade.prefetch.filter(|prefetch| prefetch.bands == BANDS) else {
+      return;
+    };
+
+    cascade.static_layer = Self::get_hidden_layer(index, cascade.static_layer);
+    cascade.static_fit = prefetch.fit;
+    cascade.drawn_static = Some((prefetch.fit.version, prefetch.contents));
+    cascade.prefetch = None;
+    cascade.is_swapped = true;
+  }
+
+  /// Offers a band of a far cascade's next static layer, drawn ahead once its fit strayed past `PREFETCH_HOLD` of what its
+  /// static layer holds, at the fit it strayed to; started again where the fit strays as far from that or the scene
+  /// changes under it. None while its static layer holds well, or is drawn again whole this frame.
+  fn offer_band(
+    index: usize,
+    cascade: &mut ShadowCascadeView,
+    frame: &ShadowFrame<'_>,
+    scheduler: &mut PeriodicScheduler,
+  ) -> Option<PeriodicTicket> {
+    let scene = frame.scene;
+    let current: SunCascade = cascade.cascade;
+    let is_static_drawn: bool = cascade.drawn_static.is_some() && current.is_held_by(&cascade.static_fit);
+
+    if !is_static_drawn || current.is_held_within(&cascade.static_fit, PREFETCH_HOLD) {
+      cascade.prefetch = None;
+
+      return None;
+    }
+
+    let started: ShadowPrefetch = ShadowPrefetch {
+      fit: current,
+      contents: scene.get_contents(),
+      bands: 0,
+      waited: 0,
+    };
+    let prefetch: &mut ShadowPrefetch = cascade.prefetch.get_or_insert(started);
+
+    if !current.is_held_within(&prefetch.fit, PREFETCH_HOLD)
+      || scene.is_changed_since(prefetch.contents, |sphere| prefetch.fit.view.reaches(sphere))
+    {
+      *prefetch = ShadowPrefetch {
+        waited: prefetch.waited,
+        ..started
+      };
+    }
+
+    let job: PeriodicJob = PeriodicJob::new_waiting(
+      &BAND_PASSES[index],
+      WHOLE_SEEDS[index] / BANDS as f32,
+      1.0,
+      (prefetch.waited, BAND_WAIT_MOST),
+    );
+
+    Some(scheduler.offer(job))
+  }
+
+  /// The static layer a far cascade draws ahead into, the one of its two it does not show.
+  fn get_hidden_layer(index: usize, shown: u32) -> u32 {
+    let second: u32 = (RENDER_MAX_SHADOW_CASCADES + index - BANDED_FROM) as u32;
+
+    if shown == index as u32 { second } else { index as u32 }
+  }
+
+  /// A band's region of a static layer `resolution` texels across: every column of its rows, the bands together
+  /// covering every row.
+  fn get_band_region(band: u32, resolution: u32) -> [u32; 4] {
+    let (first, last): (u32, u32) = (band * resolution / BANDS, (band + 1) * resolution / BANDS);
+
+    [0, first, resolution, last - first]
+  }
+
+  /// Adds a pass copying one layer of a cascade's static layers into its layer of the maps.
+  fn add_layer_copy(
+    graph: &mut FrameGraph<'_>,
+    name: &'static str,
+    (statics, maps): (GraphTexture, GraphTexture),
+    (source, destination): (u32, u32),
+  ) {
+    graph
+      .add_encoder_pass(name)
+      .texture(statics, GraphTextureAccess::CopySource)
+      .texture(maps, GraphTextureAccess::CopyDestination)
+      .record(move |context| {
+        let (from, into) = (context.get_texture(statics), context.get_texture(maps));
+        let size: wgpu::Extent3d = wgpu::Extent3d {
+          depth_or_array_layers: 1,
+          ..into.texture.size()
+        };
+
+        context.get_encoder().copy_texture_to_texture(
+          Self::to_layer(from.texture, source),
+          Self::to_layer(into.texture, destination),
+          size,
+        );
+      });
+  }
+
+  /// One layer of a texture, whole, as a copy reads or writes it.
+  fn to_layer(texture: &wgpu::Texture, layer: u32) -> wgpu::TexelCopyTextureInfo<'_> {
+    wgpu::TexelCopyTextureInfo {
+      texture,
+      mip_level: 0,
+      origin: wgpu::Origin3d { x: 0, y: 0, z: layer },
+      aspect: wgpu::TextureAspect::All,
     }
   }
 }
@@ -561,241 +834,6 @@ type CutHandles<'a> = (&'a ShadowCut, GraphBuffer, StaticCullParameters, StaticL
 
 /// What a cut draws, layout by layout.
 type StaticLayouts = [StaticDrawParameters; StaticLayout::COUNT];
-
-/// Offers the draw a cascade drawn whole wants this frame, while the trees stand still: where its box moved, the scene
-/// changed under it or the sway shows.
-fn offer_whole(
-  index: usize,
-  cascade: &mut ShadowCascadeView,
-  frame: &ShadowFrame<'_>,
-  scheduler: &mut PeriodicScheduler,
-) -> Option<CascadeOffer> {
-  let scene = frame.scene;
-  let fit: SunCascade = cascade.cascade;
-  // A map holds depth in the world, sampled with the matrix it was drawn with, so a still one is still exact; only an
-  // item coming or going within what it covers changes it.
-  let is_changed: bool = cascade.has_drawn_grass
-    || cascade.drawn.is_none_or(|(version, contents)| {
-      version != fit.version || scene.is_changed_since(contents, |sphere| fit.view.reaches(sphere))
-    });
-
-  if !(is_changed || frame.sway.is_redrawn(frame.sway.reach, fit.texel, cascade.drawn_at)) {
-    cascade.waited = 0;
-
-    return None;
-  }
-
-  Some(offer(
-    index,
-    cascade,
-    frame,
-    scheduler,
-    (CascadeDraw::Whole, fit),
-    cascade.has_drawn_grass,
-  ))
-}
-
-/// Offers the draw a cascade keeping a static layer wants this frame, while the trees sway or the grass casts: over its
-/// static layer, at the fit that layer was drawn at, while the cascade's fit holds by it and nothing changed under it
-/// (the nearest cascade's only while its fit is the same); else a new static layer at the cascade's fit. One the grass
-/// casts into (`has_grass`) draws every frame, at once: the grass sways every frame, and a shadow drawn at the sway's
-/// interval would trail the blades drawn over it wherever the frame rate passes it.
-fn offer_split(
-  index: usize,
-  cascade: &mut ShadowCascadeView,
-  frame: &ShadowFrame<'_>,
-  has_grass: bool,
-  scheduler: &mut PeriodicScheduler,
-) -> Option<CascadeOffer> {
-  let scene = frame.scene;
-  let current: SunCascade = cascade.cascade;
-  let static_fit: SunCascade = cascade.static_fit;
-  let is_held: bool = cascade.drawn_static.is_some_and(|(version, contents)| {
-    let is_fit: bool = if index == 0 {
-      version == current.version
-    } else {
-      current.is_held_by(&static_fit)
-    };
-
-    is_fit && !scene.is_changed_since(contents, |sphere| static_fit.view.reaches(sphere))
-  });
-  let is_wanted: bool = cascade.drawn.is_none()
-    || !is_held
-    || cascade.is_swapped
-    || frame.sway.is_redrawn(frame.sway.reach, current.texel, cascade.drawn_at)
-    || has_grass
-    || cascade.has_drawn_grass;
-
-  if !is_wanted {
-    cascade.waited = 0;
-
-    return None;
-  }
-
-  let draw: (CascadeDraw, SunCascade) = if is_held {
-    (CascadeDraw::Swaying, static_fit)
-  } else {
-    (CascadeDraw::Static, current)
-  };
-
-  Some(offer(
-    index,
-    cascade,
-    frame,
-    scheduler,
-    draw,
-    has_grass || cascade.has_drawn_grass,
-  ))
-}
-
-/// Offers a cascade's draw `draw` at a fit: at once for the nearest, one never drawn, staggering off, one whose box
-/// strayed past its map, or one the grass casts into (`is_urgent`); else within its stagger.
-fn offer(
-  index: usize,
-  cascade: &ShadowCascadeView,
-  frame: &ShadowFrame<'_>,
-  scheduler: &mut PeriodicScheduler,
-  (draw, fit): (CascadeDraw, SunCascade),
-  is_urgent: bool,
-) -> CascadeOffer {
-  let (passes, seed): (&'static [&'static str], f32) = match draw {
-    CascadeDraw::Whole => (&WHOLE_PASSES[index], WHOLE_SEEDS[index]),
-    CascadeDraw::Static => (&STATIC_PASSES[index], WHOLE_SEEDS[index]),
-    CascadeDraw::Swaying => (&SWAY_PASSES[index], SWAY_SEEDS[index]),
-  };
-  // The nearest is seen closest, and a cascade never drawn or strayed past its map shows wrong until drawn.
-  let is_now: bool = index == 0
-    || is_urgent
-    || cascade.drawn.is_none()
-    || !frame.settings.is_staggered
-    || !cascade.cascade.is_held_by(&cascade.drawn_fit);
-  let job: PeriodicJob = if is_now {
-    PeriodicJob::new_now(passes, seed, 1.0)
-  } else {
-    PeriodicJob::new_waiting(passes, seed, 1.0, (cascade.waited, 1 << index))
-  };
-
-  CascadeOffer {
-    index,
-    ticket: scheduler.offer(job),
-    draw,
-    fit,
-    contents: frame.scene.get_contents(),
-  }
-}
-
-/// How far in from its map's edge a cascade drawn by `projection` holds a point, past the edge the sun's pass keeps
-/// off (`EDGE` in `common/sun_shadow.wgsl`), as a share of the map; none where it does not hold it.
-fn get_cascade_inset(projection: Mat4, point: Vec3) -> Option<f32> {
-  let clip: Vec4 = projection * point.extend(1.0);
-  let (u, v): (f32, f32) = (clip.x * 0.5 + 0.5, clip.y * -0.5 + 0.5);
-  let inset: f32 = u.min(v).min(1.0 - u).min(1.0 - v) - SUN_SHADOW_EDGE;
-
-  (inset > 0.0 && clip.z > 0.0 && clip.z < 1.0).then_some(inset)
-}
-
-/// Each cascade's blend band, the settings' `blend` widened to `NEAR_BLEND` for the nearest.
-pub(crate) fn get_cascade_blends(blend: f32) -> Vec4 {
-  Vec4::from_array(std::array::from_fn(|index| {
-    if index < NEAR_BLENDED {
-      blend.max(NEAR_BLEND)
-    } else {
-      blend
-    }
-  }))
-}
-
-/// Points of the sphere `reach` metres about the `camera` that it sees, where the grass's shadows land: along rays
-/// through a grid over the screen, its edges included, at shares of the reach, so a view of any width samples it.
-/// What the camera does not see casts onto nothing it shows, and no cascade's box reaches behind it.
-pub(crate) fn sample_seen_grass(camera: &CameraView, reach: f32) -> Vec<Vec3> {
-  let inverse: Mat4 = camera.get_view_projection().inverse();
-  let last: f32 = (GRASS_GRID - 1) as f32;
-
-  (0..GRASS_GRID * GRASS_GRID)
-    .filter_map(|cell| {
-      let x: f32 = (cell % GRASS_GRID) as f32 / last * 2.0 - 1.0;
-      let y: f32 = (cell / GRASS_GRID) as f32 / last * 2.0 - 1.0;
-
-      (inverse.project_point3(Vec3::new(x, y, 0.5)) - camera.position).try_normalize()
-    })
-    .flat_map(|ray| GRASS_SHARES.map(|share| camera.position + ray * reach * share))
-    .collect()
-}
-
-/// Shows a cascade's static layer drawn ahead in place of the one shown, once every band of it is drawn.
-fn swap_prefetched(index: usize, cascade: &mut ShadowCascadeView) {
-  let Some(prefetch) = cascade.prefetch.filter(|prefetch| prefetch.bands == BANDS) else {
-    return;
-  };
-
-  cascade.static_layer = get_hidden_layer(index, cascade.static_layer);
-  cascade.static_fit = prefetch.fit;
-  cascade.drawn_static = Some((prefetch.fit.version, prefetch.contents));
-  cascade.prefetch = None;
-  cascade.is_swapped = true;
-}
-
-/// Offers a band of a far cascade's next static layer, drawn ahead once its fit strayed past `PREFETCH_HOLD` of what its
-/// static layer holds, at the fit it strayed to; started again where the fit strays as far from that or the scene
-/// changes under it. None while its static layer holds well, or is drawn again whole this frame.
-fn offer_band(
-  index: usize,
-  cascade: &mut ShadowCascadeView,
-  frame: &ShadowFrame<'_>,
-  scheduler: &mut PeriodicScheduler,
-) -> Option<PeriodicTicket> {
-  let scene = frame.scene;
-  let current: SunCascade = cascade.cascade;
-  let is_static_drawn: bool = cascade.drawn_static.is_some() && current.is_held_by(&cascade.static_fit);
-
-  if !is_static_drawn || current.is_held_within(&cascade.static_fit, PREFETCH_HOLD) {
-    cascade.prefetch = None;
-
-    return None;
-  }
-
-  let started: ShadowPrefetch = ShadowPrefetch {
-    fit: current,
-    contents: scene.get_contents(),
-    bands: 0,
-    waited: 0,
-  };
-  let prefetch: &mut ShadowPrefetch = cascade.prefetch.get_or_insert(started);
-
-  if !current.is_held_within(&prefetch.fit, PREFETCH_HOLD)
-    || scene.is_changed_since(prefetch.contents, |sphere| prefetch.fit.view.reaches(sphere))
-  {
-    *prefetch = ShadowPrefetch {
-      waited: prefetch.waited,
-      ..started
-    };
-  }
-
-  let job: PeriodicJob = PeriodicJob::new_waiting(
-    &BAND_PASSES[index],
-    WHOLE_SEEDS[index] / BANDS as f32,
-    1.0,
-    (prefetch.waited, BAND_WAIT_MOST),
-  );
-
-  Some(scheduler.offer(job))
-}
-
-/// The static layer a far cascade draws ahead into, the one of its two it does not show.
-fn get_hidden_layer(index: usize, shown: u32) -> u32 {
-  let second: u32 = (RENDER_MAX_SHADOW_CASCADES + index - BANDED_FROM) as u32;
-
-  if shown == index as u32 { second } else { index as u32 }
-}
-
-/// A band's region of a static layer `resolution` texels across: every column of its rows, the bands together
-/// covering every row.
-fn get_band_region(band: u32, resolution: u32) -> [u32; 4] {
-  let (first, last): (u32, u32) = (band * resolution / BANDS, (band + 1) * resolution / BANDS);
-
-  [0, first, resolution, last - first]
-}
 
 impl ViewFeature for LevelShadows {
   /// The maps and the static layers, while held.
@@ -815,41 +853,5 @@ impl ViewFeature for LevelShadows {
       cascade.drawn = None;
       cascade.forget_static(index);
     }
-  }
-}
-
-/// Adds a pass copying one layer of a cascade's static layers into its layer of the maps.
-fn add_layer_copy(
-  graph: &mut FrameGraph<'_>,
-  name: &'static str,
-  (statics, maps): (GraphTexture, GraphTexture),
-  (source, destination): (u32, u32),
-) {
-  graph
-    .add_encoder_pass(name)
-    .texture(statics, GraphTextureAccess::CopySource)
-    .texture(maps, GraphTextureAccess::CopyDestination)
-    .record(move |context| {
-      let (from, into) = (context.get_texture(statics), context.get_texture(maps));
-      let size: wgpu::Extent3d = wgpu::Extent3d {
-        depth_or_array_layers: 1,
-        ..into.texture.size()
-      };
-
-      context.get_encoder().copy_texture_to_texture(
-        to_layer(from.texture, source),
-        to_layer(into.texture, destination),
-        size,
-      );
-    });
-}
-
-/// One layer of a texture, whole, as a copy reads or writes it.
-fn to_layer(texture: &wgpu::Texture, layer: u32) -> wgpu::TexelCopyTextureInfo<'_> {
-  wgpu::TexelCopyTextureInfo {
-    texture,
-    mip_level: 0,
-    origin: wgpu::Origin3d { x: 0, y: 0, z: layer },
-    aspect: wgpu::TextureAspect::All,
   }
 }
