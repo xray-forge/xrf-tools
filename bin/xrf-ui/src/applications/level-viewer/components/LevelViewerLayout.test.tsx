@@ -6,8 +6,8 @@ import { runInAction } from "@wirestate/mobx";
 import { IPoint3 } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 
+import { LevelViewerLayout } from "@/applications/level-viewer/components/LevelViewerLayout";
 import { RenderLoadReport } from "@/core/ipc/types/xrf-renderer";
-import { LevelPreviewLayout } from "@/core/level/components/preview/LevelPreviewLayout";
 import { ILevelCamera } from "@/core/level/lib/camera/level-camera";
 import {
   LevelLoadService,
@@ -53,7 +53,7 @@ function renderReporting(onRender: () => void = () => undefined): {
 
   const view: RenderResult = renderWithProviders(
     <>
-      <LevelPreviewLayout
+      <LevelViewerLayout
         name={"levels\\zaton"}
         renderViewport={() => {
           onRender();
@@ -75,7 +75,7 @@ function renderReporting(onRender: () => void = () => undefined): {
 }
 
 function renderLayout(
-  overrides: Partial<Parameters<typeof LevelPreviewLayout>[0]> = {},
+  overrides: Partial<Parameters<typeof LevelViewerLayout>[0]> = {},
   load: Nullable<RenderLoadReport> = null
 ): RenderResult {
   const container: Container = mockContainer([
@@ -90,7 +90,7 @@ function renderLayout(
   container.get(LevelViewportService).noteLoad(load);
 
   return renderWithProviders(
-    <LevelPreviewLayout
+    <LevelViewerLayout
       name={"levels\\zaton"}
       renderViewport={() => <div data-testid={"stub-viewport"} />}
       {...overrides}
@@ -116,7 +116,7 @@ async function closeOverlays(view: RenderResult): Promise<void> {
   await waitFor(() => expect(view.queryByRole("dialog", { name: "Overlays" })).not.toBeInTheDocument());
 }
 
-describe("LevelPreviewLayout", () => {
+describe("LevelViewerLayout", () => {
   it("draws the level and names it", () => {
     const view: RenderResult = renderLayout();
 
@@ -172,7 +172,7 @@ describe("LevelPreviewLayout", () => {
     });
 
     const view: RenderResult = renderWithProviders(
-      <LevelPreviewLayout name={"levels\\zaton"} renderViewport={() => <div data-testid={"stub-viewport"} />} />,
+      <LevelViewerLayout name={"levels\\zaton"} renderViewport={() => <div data-testid={"stub-viewport"} />} />,
       { container, route: "/level-viewer" }
     );
 
@@ -325,7 +325,7 @@ describe("LevelPreviewLayout", () => {
     const settings: RenderSettingsService = container.get(RenderSettingsService);
     const view: RenderResult = renderWithProviders(
       <>
-        <LevelPreviewLayout name={"levels\\zaton"} renderViewport={() => <div data-testid={"stub-viewport"} />} />
+        <LevelViewerLayout name={"levels\\zaton"} renderViewport={() => <div data-testid={"stub-viewport"} />} />
         <SettingsRendererDisplay />
       </>,
       { container, route: "/level-viewer" }
