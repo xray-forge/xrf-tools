@@ -54,7 +54,7 @@ export function toLevelFrameOverlays(
  * @param config - The grid's cells and colours.
  * @returns The overlay.
  */
-export function toLevelGridOverlay(box: ILevelBox, config: ILevelRenderConfig): RenderOverlay {
+function toLevelGridOverlay(box: ILevelBox, config: ILevelRenderConfig): RenderOverlay {
   return toNativeLines(
     toRenderGridLines(toOriginReach(box), {
       cells: config.gridCells,
@@ -73,7 +73,7 @@ export function toLevelGridOverlay(box: ILevelBox, config: ILevelRenderConfig): 
  * @param config - The grid's cells and the extent's colour.
  * @returns The overlay.
  */
-export function toLevelExtentGridOverlay(box: ILevelBox, config: ILevelRenderConfig): RenderOverlay {
+function toLevelExtentGridOverlay(box: ILevelBox, config: ILevelRenderConfig): RenderOverlay {
   return toNativeLines(
     toRenderGridLines(toBoxReach(box), {
       cells: config.gridCells,
@@ -94,7 +94,7 @@ export function toLevelExtentGridOverlay(box: ILevelBox, config: ILevelRenderCon
  * @param config - The extent's colour.
  * @returns The overlay.
  */
-export function toLevelExtentBoxOverlay(box: ILevelBox, config: ILevelRenderConfig): RenderOverlay {
+function toLevelExtentBoxOverlay(box: ILevelBox, config: ILevelRenderConfig): RenderOverlay {
   return toNativeLines(toRenderBoxLines(box.min, box.max, config.boundsColor), true);
 }
 
@@ -106,7 +106,7 @@ export function toLevelExtentBoxOverlay(box: ILevelBox, config: ILevelRenderConf
  * @param config - The grid's cells.
  * @returns The overlay.
  */
-export function toLevelAxesOverlay(box: ILevelBox, config: ILevelRenderConfig): RenderOverlay {
+function toLevelAxesOverlay(box: ILevelBox, config: ILevelRenderConfig): RenderOverlay {
   const step: number = toRenderGridStep(toOriginReach(box) * 2, config.gridCells);
 
   return toNativeLines(toRenderAxesLines(step * AXES_CELLS), false);
@@ -118,6 +118,6 @@ export function toLevelAxesOverlay(box: ILevelBox, config: ILevelRenderConfig): 
  * @param config - Its colour and size.
  * @returns The overlay.
  */
-export function toLevelSunOverlay(config: ILevelRenderConfig): RenderOverlay {
+function toLevelSunOverlay(config: ILevelRenderConfig): RenderOverlay {
   return { color: toRawColor(config.sunColor), kind: ERenderOverlay.SUN, size: config.sunSize };
 }

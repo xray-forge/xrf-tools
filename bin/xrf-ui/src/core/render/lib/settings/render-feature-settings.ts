@@ -49,9 +49,6 @@ export type TRenderViewFeatureKey =
   | "volumetric"
   | "water";
 
-/** The view options every viewport takes from the application's settings: those features, and how it upscales. */
-export type TRenderFeatureKey = TRenderViewFeatureKey | "upscaling";
-
 /**
  * What the renderer's features are set to: the same for every viewport, chosen as a preset and whatever was changed
  * on top of it. A feature that is off costs nothing: its passes leave the frame and its targets are freed.

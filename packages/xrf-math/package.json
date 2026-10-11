@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "description": "Numeric helpers: clamp, saturate, wrap and mix, three-component vectors and named-axis points, rigid transforms, angles, series, the engine's epsilons and its vector angles, render space, sphere-fit distance, raw colours, a 2D pan-zoom camera and waveform peaks.",
+  "description": "Numeric helpers: clamp, saturate, wrap and mix, three-component vectors and named-axis points, angles, the engine's epsilons and its vector angles, render space, sphere-fit distance, raw colours, a 2D pan-zoom camera and waveform peaks.",
   "exports": {
     ".": "./src/index.ts"
   },

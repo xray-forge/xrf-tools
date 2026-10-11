@@ -29,7 +29,7 @@ export const EMPTY_RENDER_STATIC_REPORT: RenderStaticReport = {
 };
 
 /** A frame with no level's local lights. */
-export const EMPTY_RENDER_LIGHTS_REPORT: RenderLightsReport = {
+const EMPTY_RENDER_LIGHTS_REPORT: RenderLightsReport = {
   atlas: EMPTY_POOL,
   dropped: 0,
   excess: 0,
@@ -40,7 +40,7 @@ export const EMPTY_RENDER_LIGHTS_REPORT: RenderLightsReport = {
 };
 
 /** A frame with no level's particle systems. */
-export const EMPTY_RENDER_PARTICLES_REPORT: RenderParticlesReport = {
+const EMPTY_RENDER_PARTICLES_REPORT: RenderParticlesReport = {
   drawn: 0,
   effects: 0,
   particles: 0,
@@ -49,7 +49,7 @@ export const EMPTY_RENDER_PARTICLES_REPORT: RenderParticlesReport = {
 };
 
 /** A frame with no grass drawn. */
-export const EMPTY_RENDER_GRASS_REPORT: RenderGrassReport = {
+const EMPTY_RENDER_GRASS_REPORT: RenderGrassReport = {
   capacity: 0,
   drawn: 0,
 };

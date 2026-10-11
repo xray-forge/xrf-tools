@@ -8,8 +8,6 @@ export * from "#/pan-zoom";
 export * from "#/peaks";
 export * from "#/point";
 export * from "#/render-space";
-export * from "#/rigid-transform";
-export * from "#/series";
 export * from "#/sphere-fit";
 export * from "#/vector";
 export * from "#/wrap";

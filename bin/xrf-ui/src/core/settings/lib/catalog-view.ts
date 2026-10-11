@@ -3,12 +3,12 @@ import { Nullable } from "@xrf/types";
 /**
  * Layouts the root catalog offers, in the order its switch presents them.
  */
-export const CATALOG_VIEWS = ["rows", "grid"] as const;
+const CATALOG_VIEWS = ["rows", "grid"] as const;
 
 export type TCatalogView = (typeof CATALOG_VIEWS)[number];
 
 /** A first run reads the whole catalog at once, which only the dense rows fit; cards are asked for. */
-export const DEFAULT_CATALOG_VIEW: TCatalogView = "rows";
+const DEFAULT_CATALOG_VIEW: TCatalogView = "rows";
 
 /**
  * Narrows a stored value to a view the launcher can render.

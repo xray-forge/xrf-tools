@@ -18,7 +18,7 @@ export const RENDER_FRAME_RATE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<TFram
  * @param resolution - A resolution every viewport may draw at.
  * @returns Its name as the settings say it.
  */
-export function describeRenderResolution(resolution: ERenderResolution): string {
+function describeRenderResolution(resolution: ERenderResolution): string {
   switch (resolution) {
     case ERenderResolution.AUTO:
       return "Auto";

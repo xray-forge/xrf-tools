@@ -21,7 +21,7 @@ const REMEMBERED_LEVELS: number = 32;
 const REMEMBERED_LENGTH: number = 64 * 1024;
 
 /** The shape a memory is written in: one of any other is let go rather than read, and nothing is migrated. */
-export const LEVEL_WEATHER_MEMORY_VERSION: number = 3;
+const LEVEL_WEATHER_MEMORY_VERSION: number = 3;
 
 /**
  * How a level's weather was last played, which it plays again when it opens.
