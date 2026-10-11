@@ -14,14 +14,14 @@ tauri-build = { version = "2.6.3", features = [
 ] }
 
 [dependencies]
-bytes = { workspace = true }
-dirs = { workspace = true }
+bytes = "1.12.1"
+dirs = "7.0.0"
 env_logger = { workspace = true }
-getrandom = { workspace = true }
+getrandom = "0.4.3"
 glam = { workspace = true }
-http-body-util = { workspace = true }
-hyper = { workspace = true }
-hyper-util = { workspace = true }
+http-body-util = "0.1.5"
+hyper = { version = "1.11.1", features = ["http1", "server"] }
+hyper-util = { version = "0.1.20", features = ["tokio"] }
 image = { workspace = true, features = ["png"] }
 indexmap = { workspace = true }
 log = { workspace = true }
@@ -35,13 +35,13 @@ specta-serde = { workspace = true, optional = true }
 specta-typescript = { workspace = true, optional = true }
 specta-util = { workspace = true, optional = true }
 sysinfo = { workspace = true }
-tauri = { version = "2.12.0", features = [] }
+tauri = { workspace = true }
 tauri-plugin-dialog = "2.7.3"
 tauri-plugin-fs = "2.5.2"
 tauri-plugin-shell = "2.3.6"
 tauri-plugin-store = "2.4.5"
 tauri-specta = { workspace = true, optional = true }
-tokio = { workspace = true }
+tokio = { version = "1.53.1", features = ["net", "rt"] }
 uuid = { workspace = true, features = ["serde", "v4"] }
 xrf-animation-envelope = { workspace = true }
 xrf-anm = { workspace = true }
@@ -91,7 +91,7 @@ xrf-world = { workspace = true }
 # Both already in the tree through wry, at the versions it resolves: the memory reading asks WebView2 for its processes.
 [target.'cfg(windows)'.dependencies]
 webview2-com = "0.39.1"
-windows = { version = "0.62.2", features = [
+windows = { workspace = true, features = [
   "Win32_Foundation",
   "Win32_System_ProcessStatus",
   "Win32_System_Threading",
@@ -100,7 +100,7 @@ windows = { version = "0.62.2", features = [
 
 [dev-dependencies]
 # The mock runtime, which dispatches a command the way a webview would without one.
-tauri = { version = "2.12.0", features = ["test"] }
+tauri = { workspace = true, features = ["test"] }
 xrf-material = { workspace = true, features = ["fixtures"] }
 xrf-test-utils = { workspace = true }
 

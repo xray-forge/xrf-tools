@@ -6,9 +6,9 @@ edition.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-ddsfile = { workspace = true }
+ddsfile = "0.5.2"
 image = { workspace = true, features = ["png"] }
-image_dds = { workspace = true }
+image_dds = "0.7.2"
 xrf-error = { workspace = true }
 xrf-utils = { workspace = true }
 

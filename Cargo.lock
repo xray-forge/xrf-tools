@@ -7894,7 +7894,6 @@ dependencies = [
  "specta",
  "wgpu",
  "windows",
- "xrf-animation-envelope",
  "xrf-anm",
  "xrf-dds",
  "xrf-dlss",
