@@ -15,6 +15,7 @@ import {
   ERenderReflectionMode,
   ERenderReflectionProbe,
   ERenderReflectionQuality,
+  ERenderReflectionTraceQuality,
   ERenderScale,
   ERenderTextureFiltering,
   ERenderWaterMode,
@@ -149,6 +150,7 @@ export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings>
     skyGain: toNumber(0.5, 3),
     isGrassReflected: FLAG,
     isTraced: FLAG,
+    traceQuality: toChoice(ERenderReflectionTraceQuality),
   },
   lights: {
     isEnabled: FLAG,

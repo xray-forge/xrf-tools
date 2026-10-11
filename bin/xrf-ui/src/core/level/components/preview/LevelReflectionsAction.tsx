@@ -2,7 +2,12 @@ import { default as FlipIcon } from "@mui/icons-material/Flip";
 import { Button } from "@mui/material";
 import { ReactElement, useCallback } from "react";
 
-import { ERenderReflectionMode, RenderReflectionProbe, RenderReflectionQuality } from "@/core/ipc/types/xrf-renderer";
+import {
+  ERenderReflectionMode,
+  RenderReflectionProbe,
+  RenderReflectionQuality,
+  RenderReflectionTraceQuality,
+} from "@/core/ipc/types/xrf-renderer";
 import { ILevelFeatureOptions, TLevelReflectionOptions } from "@/core/level/lib/features";
 import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
@@ -15,6 +20,7 @@ import {
   RENDER_REFLECTION_LIMITS,
   RENDER_REFLECTION_PROBE_OPTIONS,
   RENDER_REFLECTION_QUALITY_OPTIONS,
+  RENDER_REFLECTION_TRACE_QUALITY_OPTIONS,
 } from "@/core/render/lib/features";
 import { TRenderReflectionSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { EditorPopoverToggle } from "@/core/shell/editor/EditorPopoverToggle";
@@ -26,6 +32,8 @@ interface ILevelReflectionsActionProps extends BaseComponentProps {
   value: TRenderReflectionSettings;
   /** What the view sets over the settings, of which the reflections' part is changed. */
   features: ILevelFeatureOptions;
+  /** Whether the GPU drawing the view traces rays, which tracing what the screen misses needs. */
+  isTraceable: boolean;
   onChange: (features: ILevelFeatureOptions) => void;
 }
 
@@ -40,6 +48,7 @@ export function LevelReflectionsAction({
   className,
   value,
   features,
+  isTraceable,
   onChange,
 }: ILevelReflectionsActionProps): ReactElement {
   const isEnhanced: boolean = value.mode === ERenderReflectionMode.ENHANCED;
@@ -125,9 +134,20 @@ export function LevelReflectionsAction({
 
           <CheckboxFormRow
             label={"Trace what the screen misses"}
-            isChecked={value.isTraced}
+            description={isTraceable ? undefined : "Needs a GPU that traces rays"}
+            isChecked={isTraceable && value.isTraced}
+            isDisabled={!isTraceable}
             onChange={(isTraced: boolean) => set({ isTraced })}
           />
+
+          {isTraceable && value.isTraced ? (
+            <RenderValueChoice
+              label={"Trace quality"}
+              options={RENDER_REFLECTION_TRACE_QUALITY_OPTIONS}
+              value={value.traceQuality}
+              onChange={(traceQuality: RenderReflectionTraceQuality) => set({ traceQuality })}
+            />
+          ) : null}
         </>
       ) : null}
 

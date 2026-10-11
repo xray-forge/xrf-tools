@@ -25,6 +25,9 @@ pub struct GrassLevel {
   /// The texture slots its models sample.
   pub texture_slots: Vec<u32>,
   pub models: wgpu::Buffer,
+  /// Each grid cell's planted slot, one past its index, none for an empty cell; and the planted slots' records.
+  pub cells: wgpu::Buffer,
+  pub slots: wgpu::Buffer,
   pub positions: wgpu::Buffer,
   pub uvs: wgpu::Buffer,
   pub indices: wgpu::Buffer,
@@ -140,6 +143,8 @@ impl GrassLevel {
         wgpu::BufferUsages::INDEX,
       ),
       models,
+      cells: grid,
+      slots,
       args,
       bind_group,
     }

@@ -597,6 +597,11 @@ export type RenderFrameReport = {
   backend: RenderBackend;
   /** The GPU drawn on. */
   adapter: string;
+  /**
+   * Whether it traces rays, by hardware ray query: what the reflections' and the water's tracing of what the screen
+   * misses needs.
+   */
+  hasRayQueries: boolean;
   /** Whether its passes were timed on the GPU over the span. */
   isGpuTimed: boolean;
   /** What each pass cost on the GPU, in frame order; none while untimed. */
@@ -1169,7 +1174,26 @@ export type RenderReflectionSettings = {
    * its hit lit, in place of the sky; on a device without ray queries it falls back to the sky as before.
    */
   isTraced: boolean;
+  traceQuality: RenderReflectionTraceQuality;
 };
+
+/**
+ * How often a pixel the screen leaves unanswered is traced against the level's geometry: every frame, or on its turn
+ * once in a few, the last frame's answer reprojected in between.
+ */
+export enum ERenderReflectionTraceQuality {
+  /** Once in eight frames. */
+  LOW = "low",
+  /** Once in four frames. */
+  MEDIUM = "medium",
+  /** Once in two frames. */
+  HIGH = "high",
+  /** Every frame. */
+  ULTRA = "ultra",
+}
+
+/** Every `ERenderReflectionTraceQuality` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type RenderReflectionTraceQuality = `${ERenderReflectionTraceQuality}`;
 
 /**
  * How much smaller than the viewport the scene is drawn and then upscaled: FSR's quality modes, by the ratio of the

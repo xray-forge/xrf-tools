@@ -70,6 +70,11 @@ impl LevelWater {
         .reflection
         .as_ref()
         .map_or((false, false), |reflection| (true, reflection.is_valid)),
+      if options.features.reflections.is_traced {
+        options.features.reflections.distance
+      } else {
+        0.0
+      },
     );
   }
 

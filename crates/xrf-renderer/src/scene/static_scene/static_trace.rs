@@ -1,8 +1,10 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
-use xrf_renderer_core::AccelerationStructureBinding;
+use glam::Mat4;
+use xrf_renderer_core::{AccelerationStructureBinding, ProxyHandle};
 
 use crate::scene::static_scene::static_layout::StaticLayout;
+use crate::scene::static_scene::static_model_proxy::StaticModelProxy;
 use crate::scene::static_scene::static_scene::StaticScene;
 use crate::scene::static_scene::static_trace_geometry::StaticTraceGeometry;
 use crate::scene::static_scene::static_trace_group::StaticTraceGroup;
@@ -10,9 +12,9 @@ use crate::scene::static_scene::static_trace_instance::StaticTraceInstance;
 use crate::scene::static_scene::static_trace_record::StaticTraceRecord;
 
 /// The level's static geometry as rays are traced against it by hardware ray query: bottom-level acceleration
-/// structures read in place from the scene's vertex and index arenas, a sector's deferred baked sections in one and
-/// each of its instanced meshes in one of its own; and one top-level structure, an instance for each sector's baked
-/// geometry and for each place an instanced mesh stands at. Each instance names an entry of the instance table, its
+/// structures read in place from the scene's vertex and index arenas, a sector's deferred baked sections in one, each
+/// of its instanced meshes and each rigid spawned model in one of its own; and one top-level structure, an instance for
+/// each sector's baked geometry, for each place an instanced mesh stands at and for each object a model stands as. Each instance names an entry of the instance table, its
 /// first record and its place, so a hit finds its geometry, its triangle's corners, its surface and its hemisphere
 /// (`TraceParameters`). Built again as sectors come and go, whole when an arena it reads grows.
 pub struct StaticTrace {
@@ -21,8 +23,12 @@ pub struct StaticTrace {
   key: u64,
   instances: wgpu::Buffer,
   records: wgpu::Buffer,
+  /// What a trace binding with nothing to hold is given: a few records of nothing.
+  empty: wgpu::Buffer,
   /// Each sector's structures, by its index in the level.
   sectors: HashMap<u32, SectorStructures>,
+  /// Each traced model's structure, of those objects stand as.
+  models: HashMap<ProxyHandle<StaticModelProxy>, wgpu::Blas>,
   /// The scene's contents and the generations of the arenas read, as last built over.
   built: Option<(usize, [u64; StaticLayout::COUNT + 1])>,
 }
@@ -35,11 +41,19 @@ struct SectorStructures {
   first_index: u32,
 }
 
+/// What a bottom-level structure is built over.
+#[derive(Clone, Copy, Debug)]
+enum Structure {
+  /// A sector's baked sections, by the sector's index.
+  Baked(u32),
+  /// One of a sector's instanced meshes, by the sector's index and the mesh's.
+  Group(u32, usize),
+  Model(ProxyHandle<StaticModelProxy>),
+}
+
 /// A bottom-level structure waiting to be built over its geometries.
 struct PendingBuild<'s> {
-  sector: u32,
-  /// None for the sector's baked sections, else the instanced mesh's index.
-  group: Option<usize>,
+  structure: Structure,
   geometries: &'s [StaticTraceGeometry],
   sizes: Vec<wgpu::BlasTriangleGeometrySizeDescriptor>,
 }
@@ -72,7 +86,9 @@ impl StaticTrace {
       key: AccelerationStructureBinding::next_key(),
       instances: Self::create_table::<StaticTraceInstance>(device, "static trace instances", Self::RECORDS),
       records: Self::create_table::<StaticTraceRecord>(device, "static trace records", Self::RECORDS),
+      empty: Self::create_table::<[u32; 16]>(device, "static trace empty", 1),
       sectors: HashMap::new(),
+      models: HashMap::new(),
       built: None,
     }
   }
@@ -87,13 +103,18 @@ impl StaticTrace {
     &self.instances
   }
 
+  /// What a trace binding with nothing to hold is given, such as the grass of a level without any.
+  pub fn get_empty(&self) -> &wgpu::Buffer {
+    &self.empty
+  }
+
   /// Each geometry's record, an instance's in a run its table entry names the first of.
   pub fn get_records(&self) -> &wgpu::Buffer {
     &self.records
   }
 
   /// Builds what changed in the scene since the last call into `encoder`: the structures of each sector come in or
-  /// moved, every one where an arena grew, and the top level over them all.
+  /// moved and each model come in, every one where an arena grew, and the top level over them all.
   pub fn update(
     &mut self,
     device: &wgpu::Device,
@@ -111,6 +132,7 @@ impl StaticTrace {
 
     if self.built.is_some_and(|(_, held)| held != generations) {
       self.sectors.clear();
+      self.models.clear();
     }
 
     if self.built != Some(built) {
@@ -130,13 +152,21 @@ impl StaticTrace {
       .list_trace_sectors()
       .filter(|(_, sections, groups)| !sections.is_empty() || !groups.is_empty())
       .collect();
+    let objects: Vec<(ProxyHandle<StaticModelProxy>, u32, &Mat4)> = statics.list_trace_objects().collect();
+    let standing: HashSet<ProxyHandle<StaticModelProxy>> = objects.iter().map(|(model, ..)| *model).collect();
+    // Only the models an object stands as: one whose objects all left the scene takes no memory.
+    let models: Vec<(ProxyHandle<StaticModelProxy>, &[StaticTraceGeometry])> = statics
+      .list_trace_models()
+      .filter(|(model, _)| standing.contains(model))
+      .collect();
 
     self
       .sectors
       .retain(|sector, _| sectors.iter().any(|(present, ..)| present == sector));
+    self.models.retain(|model, _| standing.contains(model));
 
-    let pending: Vec<PendingBuild<'_>> = self.create_structures(device, &sectors);
-    let (table, records, instances) = self.list_instances(&sectors);
+    let pending: Vec<PendingBuild<'_>> = self.create_structures(device, &sectors, &models);
+    let (table, records, instances) = Self::list_instances(&sectors, &models, &objects);
 
     self.write_tables(device, queue, &table, &records);
 
@@ -147,42 +177,32 @@ impl StaticTrace {
 
     let entries: Vec<wgpu::BlasBuildEntry<'_>> = pending
       .iter()
-      .map(|build| {
-        let structures: &SectorStructures = &self.sectors[&build.sector];
-
-        wgpu::BlasBuildEntry {
-          blas: match build.group {
-            None => structures.baked.as_ref().expect("a sector with baked sections has their structure"),
-            Some(group) => &structures.groups[group],
-          },
-          geometry: wgpu::BlasGeometries::TriangleGeometries(
-            build
-              .geometries
-              .iter()
-              .zip(&build.sizes)
-              .map(|(geometry, size)| wgpu::BlasTriangleGeometry {
-                size,
-                // Each vertex's position is its first three words, so the arena is read in place.
-                vertex_buffer: statics.words[geometry.layout.get_index()].get_buffer(),
-                first_vertex: geometry.vertex_start,
-                vertex_stride: u64::from(StaticLayout::STRIDE) * 4,
-                index_buffer: Some(statics.indices.get_buffer()),
-                first_index: Some(geometry.first_index),
-                transform_buffer: None,
-                transform_buffer_offset: None,
-              })
-              .collect(),
-          ),
-        }
+      .map(|build| wgpu::BlasBuildEntry {
+        blas: Self::find_blas(&self.sectors, &self.models, build.structure),
+        geometry: wgpu::BlasGeometries::TriangleGeometries(
+          build
+            .geometries
+            .iter()
+            .zip(&build.sizes)
+            .map(|(geometry, size)| wgpu::BlasTriangleGeometry {
+              size,
+              // Each vertex's position is its first three words, so the arena is read in place.
+              vertex_buffer: statics.words[geometry.layout.get_index()].get_buffer(),
+              first_vertex: geometry.vertex_start,
+              vertex_stride: u64::from(StaticLayout::STRIDE) * 4,
+              index_buffer: Some(statics.indices.get_buffer()),
+              first_index: Some(geometry.first_index),
+              transform_buffer: None,
+              transform_buffer_offset: None,
+            })
+            .collect(),
+        ),
       })
       .collect();
+
     for index in 0..self.tlas.get().len() {
-      self.tlas[index] = instances.get(index).map(|(sector, group, transform)| {
-        let structures: &SectorStructures = &self.sectors[sector];
-        let blas: &wgpu::Blas = match group {
-          None => structures.baked.as_ref().expect("a sector with baked sections has their structure"),
-          Some(group) => &structures.groups[*group],
-        };
+      self.tlas[index] = instances.get(index).map(|(structure, transform)| {
+        let blas: &wgpu::Blas = Self::find_blas(&self.sectors, &self.models, *structure);
 
         wgpu::TlasInstance::new(blas, *transform, index as u32, 0xff)
       });
@@ -191,21 +211,61 @@ impl StaticTrace {
     encoder.build_acceleration_structures(entries.iter(), std::iter::once(&self.tlas));
 
     log::info!(
-      "Static trace: {} structures built; {} sectors, {} instances, {} records",
+      "Static trace: {} structures built; {} sectors, {} models, {} instances, {} records",
       entries.len(),
       sectors.len(),
+      models.len(),
       instances.len(),
       records.len()
     );
   }
 
-  /// Makes the structures of each sector new or moved since the last build, and lists what each is built over.
+  /// A built bottom-level structure, of the sectors' or the models'.
+  fn find_blas<'b>(
+    sectors: &'b HashMap<u32, SectorStructures>,
+    models: &'b HashMap<ProxyHandle<StaticModelProxy>, wgpu::Blas>,
+    structure: Structure,
+  ) -> &'b wgpu::Blas {
+    match structure {
+      Structure::Baked(sector) => sectors[&sector]
+        .baked
+        .as_ref()
+        .expect("a sector with baked sections has their structure"),
+      Structure::Group(sector, group) => &sectors[&sector].groups[group],
+      Structure::Model(model) => &models[&model],
+    }
+  }
+
+  /// Makes the structures of each sector new or moved and each model new since the last build, and lists what each is
+  /// built over.
   fn create_structures<'s>(
     &mut self,
     device: &wgpu::Device,
     sectors: &[(u32, &'s [StaticTraceGeometry], &'s [StaticTraceGroup])],
+    models: &[(ProxyHandle<StaticModelProxy>, &'s [StaticTraceGeometry])],
   ) -> Vec<PendingBuild<'s>> {
     let mut pending: Vec<PendingBuild<'s>> = Vec::new();
+    let mut create = |structure: Structure, geometries: &'s [StaticTraceGeometry]| -> wgpu::Blas {
+      let sizes: Vec<wgpu::BlasTriangleGeometrySizeDescriptor> = geometries.iter().map(Self::get_size).collect();
+      let blas: wgpu::Blas = device.create_blas(
+        &wgpu::CreateBlasDescriptor {
+          label: Some("static trace geometry"),
+          flags: wgpu::AccelerationStructureFlags::PREFER_FAST_TRACE,
+          update_mode: wgpu::AccelerationStructureUpdateMode::Build,
+        },
+        wgpu::BlasGeometrySizeDescriptors::Triangles {
+          descriptors: sizes.clone(),
+        },
+      );
+
+      pending.push(PendingBuild {
+        structure,
+        geometries,
+        sizes,
+      });
+
+      blas
+    };
 
     for (sector, sections, groups) in sectors {
       let first_index: u32 = sections
@@ -221,33 +281,11 @@ impl StaticTrace {
         continue;
       }
 
-      let mut create = |group: Option<usize>, geometries: &'s [StaticTraceGeometry]| -> wgpu::Blas {
-        let sizes: Vec<wgpu::BlasTriangleGeometrySizeDescriptor> = geometries.iter().map(Self::get_size).collect();
-        let blas: wgpu::Blas = device.create_blas(
-          &wgpu::CreateBlasDescriptor {
-            label: Some("static trace geometry"),
-            flags: wgpu::AccelerationStructureFlags::PREFER_FAST_TRACE,
-            update_mode: wgpu::AccelerationStructureUpdateMode::Build,
-          },
-          wgpu::BlasGeometrySizeDescriptors::Triangles {
-            descriptors: sizes.clone(),
-          },
-        );
-
-        pending.push(PendingBuild {
-          sector: *sector,
-          group,
-          geometries,
-          sizes,
-        });
-
-        blas
-      };
-      let baked: Option<wgpu::Blas> = (!sections.is_empty()).then(|| create(None, sections));
+      let baked: Option<wgpu::Blas> = (!sections.is_empty()).then(|| create(Structure::Baked(*sector), sections));
       let groups: Vec<wgpu::Blas> = groups
         .iter()
         .enumerate()
-        .map(|(index, group)| create(Some(index), std::slice::from_ref(&group.geometry)))
+        .map(|(index, group)| create(Structure::Group(*sector, index), std::slice::from_ref(&group.geometry)))
         .collect();
 
       self.sectors.insert(
@@ -260,19 +298,34 @@ impl StaticTrace {
       );
     }
 
+    // A model's geometry never moves in its arena while it stays in the scene: one put in again comes by a new handle.
+    for (model, geometries) in models {
+      if !self.models.contains_key(model) {
+        let blas: wgpu::Blas = create(Structure::Model(*model), geometries);
+
+        self.models.insert(*model, blas);
+      }
+    }
+
     pending
   }
 
-  /// The instance table, the records and every top-level instance (its sector, its instanced mesh or none for the
-  /// baked sections, its transform), in one order: an instance's custom index is its place in the table.
+  /// The instance table, the records and every top-level instance (its structure and its transform), in one order: an
+  /// instance's custom index is its place in the table. A model's records are listed once, its objects' instances
+  /// sharing them.
   #[allow(clippy::type_complexity)]
   fn list_instances(
-    &self,
     sectors: &[(u32, &[StaticTraceGeometry], &[StaticTraceGroup])],
-  ) -> (Vec<StaticTraceInstance>, Vec<StaticTraceRecord>, Vec<(u32, Option<usize>, [f32; 12])>) {
+    models: &[(ProxyHandle<StaticModelProxy>, &[StaticTraceGeometry])],
+    objects: &[(ProxyHandle<StaticModelProxy>, u32, &Mat4)],
+  ) -> (
+    Vec<StaticTraceInstance>,
+    Vec<StaticTraceRecord>,
+    Vec<(Structure, [f32; 12])>,
+  ) {
     let mut table: Vec<StaticTraceInstance> = Vec::new();
     let mut records: Vec<StaticTraceRecord> = Vec::new();
-    let mut instances: Vec<(u32, Option<usize>, [f32; 12])> = Vec::new();
+    let mut instances: Vec<(Structure, [f32; 12])> = Vec::new();
 
     for (sector, sections, groups) in sectors {
       if !sections.is_empty() {
@@ -281,7 +334,7 @@ impl StaticTrace {
           place: Self::ORIGIN_PLACE,
           pad: [0; 2],
         });
-        instances.push((*sector, None, Self::IDENTITY));
+        instances.push((Structure::Baked(*sector), Self::IDENTITY));
         records.extend(sections.iter().map(StaticTraceRecord::from));
       }
 
@@ -296,9 +349,25 @@ impl StaticTrace {
             place: group.first_place + offset as u32,
             pad: [0; 2],
           });
-          instances.push((*sector, Some(index), *transform));
+          instances.push((Structure::Group(*sector, index), *transform));
         }
       }
+    }
+
+    let mut first_records: HashMap<ProxyHandle<StaticModelProxy>, u32> = HashMap::with_capacity(models.len());
+
+    for (model, geometries) in models {
+      first_records.insert(*model, records.len() as u32);
+      records.extend(geometries.iter().map(StaticTraceRecord::from));
+    }
+
+    for (model, place, transform) in objects {
+      table.push(StaticTraceInstance {
+        first_record: first_records[model],
+        place: *place,
+        pad: [0; 2],
+      });
+      instances.push((Structure::Model(*model), StaticTraceGroup::to_transform(transform)));
     }
 
     (table, records, instances)
@@ -321,8 +390,11 @@ impl StaticTrace {
     }
 
     if size_of_val(records) as u64 > self.records.size() {
-      self.records =
-        Self::create_table::<StaticTraceRecord>(device, "static trace records", (records.len() as u64).next_power_of_two());
+      self.records = Self::create_table::<StaticTraceRecord>(
+        device,
+        "static trace records",
+        (records.len() as u64).next_power_of_two(),
+      );
     }
 
     if !table.is_empty() {

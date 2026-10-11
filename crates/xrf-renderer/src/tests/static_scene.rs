@@ -40,6 +40,7 @@ fn create_model(parts: usize) -> StaticModel {
     indices: vec![0, 1, 2],
     parts: (0..parts)
       .map(|index| StaticModelPart {
+        indices: (0, 3),
         clusters: vec![(0, 1, Vec4::new(0.0, 0.0, 0.0, 1.0))],
         surface: SectorSurface {
           shader_id: 0,

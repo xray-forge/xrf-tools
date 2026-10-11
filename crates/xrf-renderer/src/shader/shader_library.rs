@@ -23,6 +23,10 @@ const EMBEDDED: &[(&str, &str)] = &[
     include_str!("../../shaders/common/light_clusters.wgsl"),
   ),
   (
+    "common/local_lights",
+    include_str!("../../shaders/common/local_lights.wgsl"),
+  ),
+  (
     "common/contact_march",
     include_str!("../../shaders/common/contact_march.wgsl"),
   ),
@@ -169,6 +173,10 @@ const EMBEDDED: &[(&str, &str)] = &[
     "frame/reflections",
     include_str!("../../shaders/frame/reflections.wgsl"),
   ),
+  (
+    "frame/reflection_scene",
+    include_str!("../../shaders/frame/reflection_scene.wgsl"),
+  ),
   ("frame/particles", include_str!("../../shaders/frame/particles.wgsl")),
   ("frame/rain", include_str!("../../shaders/frame/rain.wgsl")),
   ("frame/sky_haze", include_str!("../../shaders/frame/sky_haze.wgsl")),
@@ -217,6 +225,10 @@ const EMBEDDED: &[(&str, &str)] = &[
   (
     "generated/frame/reflections",
     include_str!("../../shaders/generated/frame/reflections.wgsl"),
+  ),
+  (
+    "generated/frame/reflection_scene",
+    include_str!("../../shaders/generated/frame/reflection_scene.wgsl"),
   ),
   (
     "generated/frame/combine",

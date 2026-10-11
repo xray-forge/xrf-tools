@@ -7,6 +7,7 @@ use crate::contract::render_rect::RenderRect;
 use crate::contract::render_reflection_mode::RenderReflectionMode;
 use crate::contract::render_reflection_probe::RenderReflectionProbe;
 use crate::contract::render_reflection_quality::RenderReflectionQuality;
+use crate::contract::render_reflection_trace_quality::RenderReflectionTraceQuality;
 use crate::contract::render_reflection_settings::RenderReflectionSettings;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::lighting::render_lighting::RenderLighting;
@@ -187,7 +188,7 @@ fn climbs_the_quality_ladder() {
 
 #[test]
 fn writes_the_settings_the_trace_reads() {
-  let high: ReflectionUniform = ReflectionUniform::new(&enhanced(), 7, (true, true));
+  let high: ReflectionUniform = ReflectionUniform::new(&enhanced(), 7, (true, true), true);
 
   assert_eq!(high.crossings, RenderReflectionQuality::High.get_crossings());
   assert_eq!(high.frame, 7);
@@ -195,20 +196,37 @@ fn writes_the_settings_the_trace_reads() {
   assert_eq!(high.has_history, 1.0);
   assert_eq!(high.has_source, 1.0);
   assert_eq!(high.distance, 150.0);
+  assert_eq!(high.is_traced, 0.0, "tracing is opted into");
+  assert_eq!(high.trace_turns, 2);
 
   let ultra: ReflectionUniform = ReflectionUniform::new(
     &RenderReflectionSettings {
       intensity: 3.0,
       quality: RenderReflectionQuality::Ultra,
       probe: RenderReflectionProbe::Fine,
+      is_traced: true,
+      trace_quality: RenderReflectionTraceQuality::Ultra,
       ..enhanced()
     },
     0,
     (false, false),
+    true,
   );
 
   assert_eq!(ultra.intensity, 3.0);
   assert_eq!(ultra.ratio, 1.0);
   assert_eq!(ultra.has_history, 0.0);
   assert_eq!(ultra.has_source, 0.0);
+  assert_eq!((ultra.is_traced, ultra.trace_turns), (1.0, 1));
+
+  let asked: RenderReflectionSettings = RenderReflectionSettings {
+    is_traced: true,
+    ..enhanced()
+  };
+
+  assert_eq!(
+    ReflectionUniform::new(&asked, 0, (false, false), false).is_traced,
+    0.0,
+    "a device without ray queries traces nothing, asked or not"
+  );
 }

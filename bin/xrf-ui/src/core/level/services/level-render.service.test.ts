@@ -60,6 +60,7 @@ const REPORT: RenderFrameReport = {
   graph: null,
   framesPerSecond: 160,
   height: 600,
+  hasRayQueries: true,
   isGpuTimed: true,
   phases: EMPTY_RENDER_FRAME_PHASES,
   passes: [

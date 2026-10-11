@@ -5,7 +5,7 @@ use crate::lighting::render_wind::RenderWind;
 use crate::scene::level::water_flow::WaterFlow;
 
 /// What the enhanced water's programs read as their `EnhancedWater`: its strengths, the weather's wind and rain, how
-/// far its maps have scrolled, and whether its reflection drew.
+/// far its maps have scrolled, whether its reflection drew, and how far its reflection's misses are traced.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "EnhancedWater")]
@@ -38,15 +38,20 @@ pub struct EnhancedWaterUniform {
   pub gusts_y: f32,
   /// How far the maps' repeat is broken.
   pub variation: f32,
+  /// Metres a reflected ray the screen does not answer is traced against the level, the surfaces' reflections' distance
+  /// where they trace what the screen misses; none where they do not.
+  pub trace_distance: f32,
 }
 
 impl EnhancedWaterUniform {
-  /// `reflection` says whether its reflection draws this frame, and whether its history holds a frame.
+  /// `reflection` says whether its reflection draws this frame, and whether its history holds a frame; `trace_distance`
+  /// how far its misses are traced, none for not.
   pub fn new(
     settings: &RenderEnhancedWaterSettings,
     (wind, rain): (RenderWind, f32),
     flow: WaterFlow,
     (reflected, history): (bool, bool),
+    trace_distance: f32,
   ) -> Self {
     Self {
       refraction: settings.refraction,
@@ -69,6 +74,7 @@ impl EnhancedWaterUniform {
       gusts_x: flow.gusts[0],
       gusts_y: flow.gusts[1],
       variation: settings.variation,
+      trace_distance,
     }
   }
 }

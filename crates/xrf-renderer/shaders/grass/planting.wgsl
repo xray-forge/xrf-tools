@@ -122,9 +122,6 @@ const TICKET_WORD: u32 = 2u;
 // The seed `cache_Decompress` starts every one of a slot's four generators from, before its slot is mixed in.
 const SEED: u32 = 0x12071980u;
 
-// `DetailSlot::ID_Empty`: a corner planting nothing.
-const EMPTY_ID: u32 = 0x3fu;
-
 // `EPS`: the determinant below which a ray is taken to lie in a triangle's plane.
 const RAY_EPSILON: f32 = 0.0000100;
 
@@ -391,7 +388,7 @@ fn decompress(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workgro
       var selected: u32 = 0u;
 
       for (var object: u32 = 0u; object < 4u; object++) {
-        if (ids[object] != EMPTY_ID && density(palettes[object], column, row) > threshold) {
+        if (ids[object] != GRASS_EMPTY_ID && density(palettes[object], column, row) > threshold) {
           mask |= 1u << object;
           selected += 1u;
         }

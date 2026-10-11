@@ -1,5 +1,6 @@
 #import "common/water_surface"
 #import "common/water_enhanced"
+#import "common/scene_trace"
 #import "generated/static/water_reflection"
 
 // The reflection's march: its steps, its refinements of a hit, how thick
@@ -20,6 +21,34 @@ const REFLECTION_SKY_HISTORY: f32 = 0.2;
 // Pixels of motion over which the history gives way entirely: a fast turn draws the reflection afresh rather than drag
 // the last frames behind it.
 const HISTORY_MOTION: f32 = 40.0;
+
+// Metres a traced ray starts off the water, so its own surface's triangles beneath do not meet it.
+const TRACED_LIFT: f32 = 0.05;
+
+// What a ray the screen does not answer meets of the level traced from the water's point along its reflection, lit
+// as combine lights it, fogged and tonemapped as the scene the march reads was; in `w` the hit's distance along the
+// view, below none for nothing met or where nothing is traced.
+fn traced_reflection(world: vec3<f32>, normal: vec3<f32>, toward: vec3<f32>, distance: f32) -> vec4<f32> {
+  if (!IS_SCENE_TRACED || enhanced.trace_distance <= 0.0) {
+    return vec4<f32>(0.0, 0.0, 0.0, -1.0);
+  }
+
+  // A pixel's width where the ray leaves the water, widening by the pixel's angle.
+  let pixel_angle: f32 = 2.0 / (camera.projection[1][1] * camera.viewport.y);
+  let cone: SceneCone = SceneCone(distance * pixel_angle, pixel_angle);
+  let hit: SceneHit = trace_scene_ray(world + normal * TRACED_LIFT, toward, 0.0, enhanced.trace_distance, cone);
+
+  if (hit.distance < 0.0) {
+    return vec4<f32>(0.0, 0.0, 0.0, -1.0);
+  }
+
+  let shown: vec3<f32> = shade_scene_hit(hit, toward, cone, lighting, material_lut, lut_sampler, sky_environment_0,
+    sky_environment_1, sky_clamp);
+  let fog: f32 = saturate(hit.distance * lighting.fog.y) * lighting.fog_color.w;
+  let along: f32 = -(camera.view * vec4<f32>(hit.position, 1.0)).z;
+
+  return vec4<f32>(tonemap(mix(shown, lighting.fog_color.rgb, fog), frame_scale(lighting, exposure)), along);
+}
 
 @vertex
 fn vs_water(@builtin(vertex_index) vertex_index: u32, @builtin(instance_index) instance_index: u32) -> WaterVarying {
@@ -169,18 +198,30 @@ fn fs_water_reflection(in: WaterVarying) -> @location(0) vec4<f32> {
     hit = march_reflection(position, reflected, noise, uv);
   }
   let sky: vec3<f32> = enhanced_sky(flat_reflected, lighting, sky_cube_0, sky_cube_1, sky_clamp) * water.reflection;
-  var reflection: vec3<f32> = sky;
+  let screen_share: f32 = select(0.0, saturate(hit.y * 5.0 * f32(is_away)), all(hit.xy != vec2<f32>(0.0)));
+  // Where the screen answers the ray only in part or not at all, what the level holds along it rather than the sky;
+  // the sky where the trace meets nothing too.
+  var traced: vec4<f32> = vec4<f32>(0.0, 0.0, 0.0, -1.0);
 
-  if (all(hit.xy != vec2<f32>(0.0))) {
+  if (is_away && screen_share < 1.0) {
+    traced = traced_reflection(in.world, normal, flat_reflected, -position.z);
+  }
+
+  let behind: vec3<f32> = select(sky, traced.rgb, traced.w >= 0.0);
+  var reflection: vec3<f32> = behind;
+
+  if (screen_share > 0.0) {
     let scene: vec3<f32> = textureLoad(water_scene, vec2<i32>(clamp(floor(hit.xy * size), vec2<f32>(0.0), size - 1.0)), 0)
       .rgb;
     let fogged: f32 = saturate((length(vec3<f32>(position.xy, hit.z)) * lighting.fog.y + lighting.fog.x) * 1.4);
 
-    reflection = mix(sky, scene, saturate(hit.y * 5.0 * f32(is_away) * (1.0 - fogged)));
+    reflection = mix(behind, scene, screen_share * (1.0 - fogged));
   }
 
-  // The point the frames before are read at: along this pixel's view as far as what the ray met, or far off at the sky.
-  let hit_distance: f32 = select(hit.z, 1e5, hit.z <= 0.0);
+  // The point the frames before are read at: along this pixel's view as far as what the ray met on the screen or
+  // traced, or far off at the sky.
+  let met_distance: f32 = select(traced.w, hit.z, screen_share > 0.0);
+  let hit_distance: f32 = select(met_distance, 1e5, met_distance <= 0.0);
   let along: vec3<f32> = eye * (hit_distance / max(-eye.z, 1e-4));
   let rotation: mat3x3<f32> = transpose(mat3x3<f32>(camera.view[0].xyz, camera.view[1].xyz, camera.view[2].xyz));
   let world_hit: vec4<f32> = vec4<f32>(camera.position.xyz + rotation * along, 1.0);
@@ -189,7 +230,7 @@ fn fs_water_reflection(in: WaterVarying) -> @location(0) vec4<f32> {
   let moved: vec2<f32> = (now.xy / now.w - before.xy / before.w) * vec2<f32>(0.5, -0.5);
   let previous: vec2<f32> = uv - moved;
   let is_off: bool = any(previous < vec2<f32>(0.0)) || any(previous > vec2<f32>(1.0));
-  let kept: f32 = saturate(REFLECTION_HISTORY - select(0.0, REFLECTION_SKY_HISTORY, hit.z <= 0.0) - f32(is_off)) *
+  let kept: f32 = saturate(REFLECTION_HISTORY - select(0.0, REFLECTION_SKY_HISTORY, met_distance <= 0.0) - f32(is_off)) *
     enhanced.history;
   let jitter: vec2<f32> = (hash22(uv * 100.0 + water.time * 100.0) * 2.0 - 1.0) / size * 0.25;
   // The history's alpha says whether the last frame drew water there: newly seen water keeps none of it.

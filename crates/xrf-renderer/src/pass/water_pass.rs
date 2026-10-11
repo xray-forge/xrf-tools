@@ -2,9 +2,10 @@ use xrf_error::XrfResult;
 use xrf_renderer_core::{
   FrameGraph, GraphBindings, GraphBuffer, GraphBufferAccess, GraphColorAttachment, GraphDepthAttachment, GraphRuntime,
   GraphTexture, GraphTextureAccess, GraphTextureDescriptor, PassParameters, RasterContext, RasterPassBuilder,
-  UniformBinding,
+  StorageValue, UniformBinding,
 };
 
+use crate::context::gpu_requirements::RAY_QUERY_FEATURES;
 use crate::frame::view_targets::ViewTargets;
 use crate::frame::water_reflection::WaterReflection;
 use crate::host::render_bundle::RenderBundle;
@@ -14,6 +15,7 @@ use crate::pass::enhanced_water_uniform::EnhancedWaterUniform;
 use crate::pass::shader_pipelines::{create_checked, create_module};
 use crate::pass::static_draw_parameters::StaticDrawParameters;
 use crate::pass::static_draws::StaticDraws;
+use crate::pass::trace_parameters::TraceParameters;
 use crate::pass::view_binding::ViewBinding;
 use crate::pass::water_batch_pipelines::WaterBatchPipelines;
 use crate::pass::water_blur_pass::WaterBlurPass;
@@ -40,6 +42,7 @@ type WaterGroups<'a> = (
 struct WaterFrameHandles<'a> {
   uniform: UniformBinding<WaterUniform>,
   skies: [GraphTexture; 2],
+  environments: [GraphTexture; 2],
   nearest: GraphTexture,
   args: Vec<GraphBuffer>,
   groups: WaterGroups<'a>,
@@ -53,6 +56,9 @@ struct WaterFrameHandles<'a> {
 pub struct WaterPass {
   /// The view's, the bindless textures' and the static draws' layouts, which every water pipeline binds below its own.
   layouts: [wgpu::BindGroupLayout; 3],
+  /// The level's trace, which the reflection binds at group 3 with the bindless textures again at 4, where the device
+  /// traces rays.
+  trace_layout: Option<wgpu::BindGroupLayout>,
   /// One a water batch, in `StaticBatch::list_water` order.
   pipelines: Vec<WaterBatchPipelines>,
   blur: WaterBlurPass,
@@ -63,6 +69,9 @@ pub struct WaterPass {
 }
 
 impl WaterPass {
+  /// Where the reflection binds the bindless textures a traced hit is shaded from, past the trace's group.
+  const TRACE_TEXTURE_GROUP: u32 = 4;
+
   /// # Errors
   ///
   /// Returns an error when the shader does not compose or compile.
@@ -74,6 +83,10 @@ impl WaterPass {
     bundle: &dyn RenderBundle,
   ) -> XrfResult<Self> {
     let layouts: [wgpu::BindGroupLayout; 3] = [view_layout.clone(), texture_layout.clone(), scene_layout.clone()];
+    let trace_layout: Option<wgpu::BindGroupLayout> = device
+      .features()
+      .contains(RAY_QUERY_FEATURES)
+      .then(|| TraceParameters::create_layout(device));
     let nothing: wgpu::TextureView = device
       .create_texture(&wgpu::TextureDescriptor {
         label: Some("water nothing"),
@@ -92,11 +105,12 @@ impl WaterPass {
       .create_view(&Default::default());
 
     Ok(Self {
-      pipelines: Self::create_pipelines(device, shaders, &layouts)?,
+      pipelines: Self::create_pipelines(device, shaders, &layouts, trace_layout.as_ref())?,
       blur: WaterBlurPass::new(device, shaders)?,
       maps: EnhancedWaterMaps::new(device, queue, bundle, &nothing),
       nothing,
       layouts,
+      trace_layout,
       generation: shaders.get_generation(),
     })
   }
@@ -127,7 +141,7 @@ impl WaterPass {
     if shaders.get_generation() != self.generation {
       self.generation = shaders.get_generation();
 
-      match Self::create_pipelines(device, shaders, &self.layouts) {
+      match Self::create_pipelines(device, shaders, &self.layouts, self.trace_layout.as_ref()) {
         Ok(pipelines) => self.pipelines = pipelines,
         Err(error) => log::error!("Water rejected, drawing with the last one: {error}"),
       }
@@ -154,6 +168,10 @@ impl WaterPass {
         bindings.import_view(graph, "sky cube 0", draw.skies[0]),
         bindings.import_view(graph, "sky cube 1", draw.skies[1]),
       ],
+      environments: [
+        bindings.import_view(graph, "sky environment 0", draw.environments[0]),
+        bindings.import_view(graph, "sky environment 1", draw.environments[1]),
+      ],
       nearest: graph.create_texture(GraphTextureDescriptor::new_2d(
         "water depth",
         width,
@@ -169,7 +187,7 @@ impl WaterPass {
         .add_raster_pass("water depth")
         // Reversed, so nothing is zero and the nearest water is the greatest.
         .depth(GraphDepthAttachment::new(frame.nearest, wgpu::LoadOp::Clear(0.0))),
-      WaterDepthParameters { water: frame.uniform },
+      (WaterDepthParameters { water: frame.uniform }, None),
       (&frame.args, frame.groups),
       |it| &it.depth,
     );
@@ -178,7 +196,7 @@ impl WaterPass {
       self.add_enhanced_passes(graph, bindings, runtime, &draw, &frame);
     } else {
       let parameters: WaterSurfaceParameters<'a> = WaterSurfaceParameters {
-        lighting: draw.lighting,
+        lighting: draw.lit.lighting,
         water: frame.uniform,
         depth_target: draw.targets.depth,
         sky_cube_0: frame.skies[0],
@@ -189,7 +207,7 @@ impl WaterPass {
 
       self.add_batch_pass(
         Self::begin_surface_pass(graph, &draw),
-        parameters,
+        (parameters, None),
         (&frame.args, frame.groups),
         |it| &it.engine,
       );
@@ -236,7 +254,7 @@ impl WaterPass {
       Some((reflection, histories, blue_noise)) => {
         let index: usize = reflection.index;
         let parameters: WaterReflectionParameters<'a> = WaterReflectionParameters {
-          lighting: draw.lighting,
+          lighting: draw.lit.lighting,
           water: frame.uniform,
           enhanced,
           depth_target: draw.targets.depth,
@@ -247,6 +265,11 @@ impl WaterPass {
           water_scene: scene,
           reflection_history: histories[1 - index],
           blue_noise,
+          material_lut: draw.lit.material_lut,
+          lut_sampler: draw.lit.lut_sampler,
+          sky_environment_0: frame.environments[0],
+          sky_environment_1: frame.environments[1],
+          exposure: StorageValue::new(draw.lit.exposure),
         };
 
         self.add_batch_pass(
@@ -258,7 +281,7 @@ impl WaterPass {
               wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
             ))
             .depth(GraphDepthAttachment::new_read_only(draw.targets.depth)),
-          parameters,
+          (parameters, draw.traced),
           (&frame.args, frame.groups),
           |it| &it.reflection,
         );
@@ -283,7 +306,7 @@ impl WaterPass {
     };
 
     let parameters: EnhancedWaterParameters<'a> = EnhancedWaterParameters {
-      lighting: draw.lighting,
+      lighting: draw.lit.lighting,
       water: frame.uniform,
       enhanced,
       depth_target: draw.targets.depth,
@@ -305,7 +328,7 @@ impl WaterPass {
 
     self.add_batch_pass(
       Self::begin_surface_pass(graph, draw),
-      parameters,
+      (parameters, None),
       (&frame.args, frame.groups),
       |it| &it.enhanced,
     );
@@ -346,27 +369,38 @@ impl WaterPass {
       .depth(GraphDepthAttachment::new_read_only(draw.targets.depth))
   }
 
-  /// Adds a pass drawing every water batch from the cull's argument buffers, with its parameters bound and the pipeline
-  /// `pick` chooses.
+  /// Adds a pass drawing every water batch from the cull's argument buffers, with its parameters bound, the level's
+  /// trace and the texture group its hits read where `traced` gives them, and the pipeline `pick` chooses.
   fn add_batch_pass<'a, P: PassParameters + Send + 'a>(
     &'a self,
     builder: RasterPassBuilder<'_, 'a>,
-    parameters: P,
+    (parameters, traced): (P, Option<(TraceParameters<'a>, &'a wgpu::BindGroup)>),
     (args, groups): (&[GraphBuffer], WaterGroups<'a>),
     pick: impl Fn(&WaterBatchPipelines) -> &wgpu::RenderPipeline + Send + 'a,
   ) {
     let args: Vec<GraphBuffer> = args.to_vec();
+    let builder: RasterPassBuilder<'_, 'a> = match &traced {
+      Some((trace, _)) => builder.parameters(&parameters).parameters(trace),
+      None => builder.parameters(&parameters),
+    };
 
     args
       .iter()
-      .fold(
-        StaticDraws::declare_layouts(builder.parameters(&parameters), &groups.2),
-        |builder, args| builder.buffer(*args, GraphBufferAccess::Indirect),
-      )
+      .fold(StaticDraws::declare_layouts(builder, &groups.2), |builder, args| {
+        builder.buffer(*args, GraphBufferAccess::Indirect)
+      })
       .record(move |context| {
         let args: Vec<&wgpu::Buffer> = args.iter().map(|args| context.get_buffer(*args)).collect();
 
         context.bind(&parameters);
+
+        if let Some((trace, textures)) = &traced {
+          context.bind(trace);
+          context
+            .get_pass()
+            .set_bind_group(Self::TRACE_TEXTURE_GROUP, *textures, &[]);
+        }
+
         self.draw_batches(context, groups, &args, pick);
       });
   }
@@ -393,11 +427,13 @@ impl WaterPass {
   }
 
   /// Every batch's pipelines: the depth and the engine's surface from `static/water`, the enhanced surface from
-  /// `static/water_enhanced`, its reflection from `static/water_reflection`, each module with its own group 3.
+  /// `static/water_enhanced`, each module with its own group 3; its reflection from `static/water_reflection`, with
+  /// its own group 5 past the trace's two where the device traces rays.
   fn create_pipelines(
     device: &wgpu::Device,
     shaders: &ShaderLibrary,
     [view_layout, texture_layout, scene_layout]: &[wgpu::BindGroupLayout; 3],
+    trace_layout: Option<&wgpu::BindGroupLayout>,
   ) -> XrfResult<Vec<WaterBatchPipelines>> {
     let engine_module: wgpu::ShaderModule = create_module(device, shaders, "static/water")?;
     let enhanced_module: wgpu::ShaderModule = create_module(device, shaders, "static/water_enhanced")?;
@@ -413,8 +449,18 @@ impl WaterPass {
     let enhanced_layout: wgpu::PipelineLayout =
       create_layout("water enhanced", &EnhancedWaterParameters::create_layout(device));
     let depth_layout: wgpu::PipelineLayout = create_layout("water depth", &WaterDepthParameters::create_layout(device));
-    let reflection_layout: wgpu::PipelineLayout =
-      create_layout("water reflection", &WaterReflectionParameters::create_layout(device));
+    let reflection_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+      label: Some("water reflection"),
+      bind_group_layouts: &[
+        Some(view_layout),
+        Some(texture_layout),
+        Some(scene_layout),
+        trace_layout,
+        trace_layout.map(|_| texture_layout),
+        Some(&WaterReflectionParameters::create_layout(device)),
+      ],
+      ..Default::default()
+    });
     let blended = |format: wgpu::TextureFormat| {
       Some(wgpu::ColorTargetState {
         format,

@@ -78,6 +78,11 @@ export const renderCommands = {
       backend: RenderBackend;
       /** The GPU drawn on. */
       adapter: string;
+      /**
+       * Whether it traces rays, by hardware ray query: what the reflections' and the water's tracing of what the screen
+       * misses needs.
+       */
+      hasRayQueries: boolean;
       /** Whether its passes were timed on the GPU over the span. */
       isGpuTimed: boolean;
       /** What each pass cost on the GPU, in frame order; none while untimed. */

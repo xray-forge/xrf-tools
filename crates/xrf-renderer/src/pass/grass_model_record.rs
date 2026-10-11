@@ -1,9 +1,11 @@
 use glam::Vec4;
+use xrf_renderer_core::ShaderStruct;
 
 /// One detail model as the grass's passes read it: its least and most scale, radius and height, whether it waves, its
 /// base texture's slot, its alpha reference, and where its indices start in the grass's index arena.
 #[repr(C)]
-#[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
+#[shader(name = "GrassModel")]
 pub struct GrassModelRecord {
   pub shape: Vec4,
   pub is_waving: f32,

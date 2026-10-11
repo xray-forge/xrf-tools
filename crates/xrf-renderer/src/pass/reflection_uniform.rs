@@ -21,13 +21,21 @@ pub struct ReflectionUniform {
   pub ratio: f32,
   /// One where the last frame's scene and depth are kept for a hit to read its colour from.
   pub has_source: f32,
-  /// One where a ray the screen does not answer is traced against the level's geometry, on a device that can.
+  /// One where a ray the screen does not answer is traced against the level's geometry: asked for, on a device that can.
   pub is_traced: f32,
+  /// Frames such a pixel waits between its rays, the last answer reprojected in between.
+  pub trace_turns: u32,
 }
 
 impl ReflectionUniform {
-  /// The settings, at a frame's count, with or without the last frame's reflections to carry and its scene to read.
-  pub fn new(settings: &RenderReflectionSettings, frame: u32, (has_history, has_source): (bool, bool)) -> Self {
+  /// The settings, at a frame's count, with or without the last frame's reflections to carry and its scene to read, on a
+  /// device that traces rays or not.
+  pub fn new(
+    settings: &RenderReflectionSettings,
+    frame: u32,
+    (has_history, has_source): (bool, bool),
+    can_trace: bool,
+  ) -> Self {
     let quality = settings.quality;
 
     Self {
@@ -38,7 +46,8 @@ impl ReflectionUniform {
       has_history: f32::from(u8::from(has_history)),
       ratio: quality.get_ratio() as f32,
       has_source: f32::from(u8::from(has_source)),
-      is_traced: f32::from(u8::from(settings.is_traced)),
+      is_traced: f32::from(u8::from(settings.is_traced && can_trace)),
+      trace_turns: settings.trace_quality.get_turns(),
     }
   }
 }

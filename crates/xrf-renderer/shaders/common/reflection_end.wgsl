@@ -26,6 +26,9 @@ const END_PROBABLE: u32 = 9u;
 const END_SKY: u32 = 10u;
 // Left without a sure answer on the screen and traced against the level's geometry, which met something.
 const END_TRACED: u32 = 11u;
+// Left without a sure answer off its turn to trace: what was reflected there the frame before, reprojected through the
+// distance it held.
+const END_HELD: u32 = 12u;
 // Set over a met reason where the hit's colour was relit from the G-buffer, the last frame not having shown the point;
 // the view draws such a hit darker.
 const END_RELIT: u32 = 16u;
@@ -42,7 +45,8 @@ fn reflection_end_code(value: f32) -> u32 {
 
 // The ends view's colour for a reason: green met by crossing, yellow met by thickness, red uncertain behind a
 // surface, orange spent in the clear, blue off the screen, cyan at the distance, pale blue at the distance over the
-// screen's sky, white traced against the level's geometry, grey too rough, magenta untrusted, black untraced; a met reason darkened where the hit was relit rather than read from the last frame.
+// screen's sky, white traced against the level's geometry, pink held from the frame before off its turn to trace,
+// grey too rough, magenta untrusted, black untraced; a met reason darkened where the hit was relit rather than read from the last frame.
 fn reflection_end_colour(end: u32) -> vec3<f32> {
   let colour: vec3<f32> = reason_colour(end & (END_RELIT - 1u));
 
@@ -83,6 +87,9 @@ fn reason_colour(end: u32) -> vec3<f32> {
     }
     case END_TRACED: {
       return vec3<f32>(1.0, 1.0, 1.0);
+    }
+    case END_HELD: {
+      return vec3<f32>(1.0, 0.6, 0.75);
     }
     default: {
       return vec3<f32>(0.0);

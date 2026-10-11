@@ -1,5 +1,9 @@
-use xrf_renderer_core::{AccelerationStructureBinding, PassParameters, StorageArray};
+use xrf_renderer_core::{AccelerationStructureBinding, GraphTexture, PassParameters, StorageArray, UniformBinding};
 
+use crate::pass::grass_model_record::GrassModelRecord;
+use crate::pass::light_record::LightRecord;
+use crate::pass::lights_uniform::LightsUniform;
+use crate::pass::trace_grass_uniform::TraceGrassUniform;
 use crate::scene::static_scene::static_place::StaticPlace;
 use crate::scene::static_scene::static_surface::StaticSurface;
 use crate::scene::static_scene::static_trace_instance::StaticTraceInstance;
@@ -8,7 +12,9 @@ use crate::scene::static_scene::static_trace_record::StaticTraceRecord;
 /// What a pass tracing rays against the level's static geometry binds (`StaticTrace`): the top-level structure; each
 /// instance's first record and place, and each geometry's record naming its indices, vertices and surface; the places,
 /// whose hemisphere lights an instance; each layout's vertices and the indices a hit's corners are read from; and the
-/// surfaces. The bindless textures a hit is shaded from are the texture cache's own group.
+/// surfaces; the view's local lights, how many and how their shadows compare, and the shadow atlas, which light a
+/// hit; and the level's grass as the view plants it, its slot grid, slots and models, which covers a terrain hit. The
+/// bindless textures a hit is shaded from are the texture cache's own group.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 3)]
 pub struct TraceParameters<'a> {
@@ -30,4 +36,18 @@ pub struct TraceParameters<'a> {
   pub trace_indices: StorageArray<u32>,
   #[storage]
   pub trace_surfaces: StorageArray<StaticSurface>,
+  #[storage]
+  pub trace_lights: StorageArray<LightRecord>,
+  #[uniform]
+  pub trace_light_view: UniformBinding<LightsUniform>,
+  #[texture(d2, depth)]
+  pub trace_shadow_atlas: GraphTexture,
+  #[storage]
+  pub trace_grass_grid: StorageArray<u32>,
+  #[storage]
+  pub trace_grass_slots: StorageArray<u32>,
+  #[storage]
+  pub trace_grass_models: StorageArray<GrassModelRecord>,
+  #[uniform]
+  pub trace_grass: UniformBinding<TraceGrassUniform>,
 }

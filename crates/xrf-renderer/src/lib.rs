@@ -96,6 +96,7 @@ pub use crate::contract::render_rect::RenderRect;
 pub use crate::contract::render_reflection_mode::RenderReflectionMode;
 pub use crate::contract::render_reflection_probe::RenderReflectionProbe;
 pub use crate::contract::render_reflection_quality::RenderReflectionQuality;
+pub use crate::contract::render_reflection_trace_quality::RenderReflectionTraceQuality;
 pub use crate::contract::render_reflection_settings::RenderReflectionSettings;
 pub use crate::contract::render_scale::RenderScale;
 pub use crate::contract::render_selection::RenderSelection;
