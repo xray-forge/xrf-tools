@@ -179,7 +179,7 @@ describe("LevelImageQualityAction", () => {
     );
   });
 
-  it("shows FSR 2 standing in for DLSS where the GPU has none, DLSS greyed out with what it needs", async () => {
+  it("shows FSR standing in for DLSS where the GPU has none, DLSS greyed out with what it needs", async () => {
     const rendered = renderAction({
       dlss: ERenderDlssAvailability.UNSUPPORTED,
       mode: ERenderAntialiasing.DLSS,
@@ -188,7 +188,7 @@ describe("LevelImageQualityAction", () => {
 
     await openSettings(rendered);
 
-    expect(rendered.getByRole("button", { name: "FSR 2" })).toHaveAttribute("aria-pressed", "true");
+    expect(rendered.getByRole("button", { name: "FSR 3.1" })).toHaveAttribute("aria-pressed", "true");
     expect(rendered.getByRole("button", { name: "DLSS" })).toBeDisabled();
     expect(rendered.getByText("DLSS needs an NVIDIA RTX GPU and a current driver.")).toBeInTheDocument();
   });

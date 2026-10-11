@@ -49,7 +49,7 @@ type DlssKey = ((u32, u32), (DlssQuality, DlssPreset), bool);
 type RayKey = ((u32, u32), DlssQuality);
 
 /// How a view's frame becomes the image its viewport shows. From the drawn size to the output's: the temporal resolve
-/// (TAA, or FSR 2 or DLSS upscaling as they resolve, DLSS reconstructing rays where asked) with the jitter its samples
+/// (TAA, or FSR or DLSS upscaling as they resolve, DLSS reconstructing rays where asked) with the jitter its samples
 /// are moved by. Then, to the viewport's
 /// size where what was resolved, or the frame where nothing was, is of another: EASU's upscale or the box downscale; and
 /// RCAS's sharpening where the frame was drawn smaller than the viewport or a temporal resolve gathered it.
@@ -82,7 +82,7 @@ pub struct ResolveFeature {
   /// When the view was last prepared, and the milliseconds since the one before, which DLSS weighs its history by.
   prepared_at: Option<Instant>,
   frame_time: f32,
-  /// The output, quality, preset and range DLSS last refused, which FSR 2 resolves in its place until they change.
+  /// The output, quality, preset and range DLSS last refused, which FSR resolves in its place until they change.
   refused: Option<DlssKey>,
   /// The output and quality ray reconstruction last refused, which super resolution upscales in its place until they
   /// change.
@@ -163,7 +163,7 @@ impl ResolveFeature {
     self.resolved = display;
 
     match (render, self.temporal) {
-      (Some(render), Some(RenderAntialiasing::Fsr2)) => {
+      (Some(render), Some(RenderAntialiasing::Fsr)) => {
         self.prepare_fsr(device, view, (render, display), is_linear);
       }
       (Some(render), Some(RenderAntialiasing::Dlss)) => {
@@ -173,7 +173,7 @@ impl ResolveFeature {
         if !(is_reconstructing && self.prepare_ray_reconstruction((device, dlss), view, (render, display)))
           && !self.prepare_dlss((device, dlss), (render, display), is_linear)
         {
-          self.temporal = Some(RenderAntialiasing::Fsr2);
+          self.temporal = Some(RenderAntialiasing::Fsr);
           self.prepare_fsr(device, view, (render, display), is_linear);
         }
       }
@@ -283,7 +283,7 @@ impl ResolveFeature {
     *previous = Some((current, view.view));
   }
 
-  /// FSR 2's targets, kept while they still fit, and its constants, over colour of linear light where `is_hdr`.
+  /// FSR's targets, kept while they still fit, and its constants, over colour of linear light where `is_hdr`.
   fn prepare_fsr(
     &mut self,
     device: &wgpu::Device,
@@ -302,18 +302,20 @@ impl ResolveFeature {
       return;
     };
 
+    // The frame before's jitter, turned back from FSR's sense; none read on a fresh frame.
+    let previous_offset: Vec2 = -uniform.jitter;
+
     *uniform = FsrUniform::new(
       (render, display),
-      self.offset,
+      (self.offset, previous_offset),
       view,
-      (FsrTargets::get_luma_mip_size(render), self.phases),
-      targets.frames.get_frame(),
+      (self.phases, targets.frames.get_frame()),
     )
     .with_hdr(is_hdr);
   }
 
   /// DLSS's upscaler, kept while it still fits, upscaling targets `render` texels across into `display` pixels over
-  /// colour of linear light where `is_hdr`; whether it resolves this frame, which FSR 2 does where DLSS refuses them.
+  /// colour of linear light where `is_hdr`; whether it resolves this frame, which FSR does where DLSS refuses them.
   fn prepare_dlss(
     &mut self,
     (device, dlss): (&wgpu::Device, Option<&Dlss>),
@@ -353,7 +355,7 @@ impl ResolveFeature {
           })));
         }
         Err(error) => {
-          log::warn!("FSR 2 resolves in DLSS's place: {error}");
+          log::warn!("FSR resolves in DLSS's place: {error}");
           self.refused = Some(key);
 
           return false;
@@ -368,7 +370,7 @@ impl ResolveFeature {
 
     if !((min.0..=max.0).contains(&render.0) && (min.1..=max.1).contains(&render.1)) {
       log::warn!(
-        "FSR 2 resolves in DLSS's place: DLSS upscales from {min:?} to {max:?} into {display:?}, not from {render:?}"
+        "FSR resolves in DLSS's place: DLSS upscales from {min:?} to {max:?} into {display:?}, not from {render:?}"
       );
       self.refused = Some(key);
 
@@ -551,7 +553,7 @@ impl ResolveFeature {
   }
 
   /// What the temporal resolve's reactive weight compares the finished frame with, the frame as it stood before the
-  /// water and the blended surfaces drew: TAA and DLSS read the frame's copy `before_water`, answered; FSR 2 copies it
+  /// water and the blended surfaces drew: TAA and DLSS read the frame's copy `before_water`, answered; FSR copies it
   /// into its own target, which its passes read.
   pub fn add_reactive_passes<'a>(
     &'a self,
@@ -562,10 +564,10 @@ impl ResolveFeature {
       Some(Resolve::Temporal(_) | Resolve::Dlss(_)) => before_water,
       Some(Resolve::RayReconstruction(_)) => None,
       Some(Resolve::Fsr { targets, .. }) => {
-        let opaque: GraphTexture = bindings.import_view(&mut *graph, "fsr2 opaque", &targets.opaque.view);
+        let opaque: GraphTexture = bindings.import_view(&mut *graph, "fsr opaque", &targets.opaque.view);
 
         graph
-          .add_encoder_pass("fsr2 opaque")
+          .add_encoder_pass("fsr opaque")
           .texture(scene, GraphTextureAccess::CopySource)
           .texture(opaque, GraphTextureAccess::CopyDestination)
           .record(move |context| {
@@ -667,7 +669,7 @@ impl ResolveFeature {
     let resolved: Option<GraphTexture> = match &self.resolve {
       Some(Resolve::Fsr { targets, uniform }) => {
         let history: GraphTexture =
-          bindings.import_view(&mut *graph, "fsr2 history", &targets.frames.get_written().history.view);
+          bindings.import_view(&mut *graph, "fsr history", &targets.frames.get_written().history.view);
 
         passes
           .fsr
@@ -800,7 +802,7 @@ impl ResolveFeature {
 
       mask
     });
-    // FSR 2's sense of the jitter, which DLSS shares: a drawn texel `m` stands at `m + 0.5 - jitter`.
+    // FSR's sense of the jitter, which DLSS shares: a drawn texel `m` stands at `m + 0.5 - jitter`.
     let jitter: [f32; 2] = (-self.offset).to_array();
     let is_reset: bool = resolve.is_reset;
     let frame_time: f32 = self.frame_time;
@@ -851,7 +853,7 @@ impl ResolveFeature {
     (resolve, handles, frame, guides): (&'a RayReconstructionResolve, ViewTargetHandles, GraphTexture, RayGuides),
   ) -> GraphTexture {
     let output: GraphTexture = bindings.import_view(&mut *graph, "ray reconstruction output", &resolve.output.view);
-    // FSR 2's sense of the jitter, which DLSS shares: a drawn texel `m` stands at `m + 0.5 - jitter`.
+    // FSR's sense of the jitter, which DLSS shares: a drawn texel `m` stands at `m + 0.5 - jitter`.
     let jitter: [f32; 2] = (-self.offset).to_array();
     let is_reset: bool = resolve.is_reset;
 
@@ -916,7 +918,7 @@ impl ResolveFeature {
 }
 
 impl ViewFeature for ResolveFeature {
-  /// The temporal resolve's histories and FSR 2's targets, and the frame at the viewport's size.
+  /// The temporal resolve's histories and FSR's targets, and the frame at the viewport's size.
   fn get_memory(&self) -> u64 {
     let upscaled: u64 = self.upscaled.iter().flatten().map(|texture| texture.get_memory()).sum();
 

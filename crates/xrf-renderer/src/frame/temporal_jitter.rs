@@ -1,10 +1,10 @@
 use glam::Vec2;
 
-/// Places a pixel's sample cycles through while unscaled: `ffxFsr2GetJitterPhaseCount`'s base.
+/// Places a pixel's sample cycles through while unscaled: `ffxFsr3UpscalerGetJitterPhaseCount`'s base.
 const BASE_PHASES: f32 = 8.0;
 
 /// Where each frame's samples sit within their pixels while a temporal mode resolves them: Halton (2, 3), as
-/// `ffxFsr2GetJitterOffset` places them.
+/// `ffxFsr3UpscalerGetJitterOffset` places them.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct TemporalJitter {
   phase: u32,
@@ -12,7 +12,7 @@ pub struct TemporalJitter {
 
 impl TemporalJitter {
   /// The next frame's offset, in drawn pixels about each pixel's centre, `y` down, cycling through
-  /// `ffxFsr2GetJitterPhaseCount`'s places for a viewport `ratio` times the drawing's side: eight times its square.
+  /// `ffxFsr3UpscalerGetJitterPhaseCount`'s places for a viewport `ratio` times the drawing's side: eight times its square.
   pub fn next(&mut self, ratio: f32) -> Vec2 {
     let phases: u32 = Self::get_phases(ratio);
 

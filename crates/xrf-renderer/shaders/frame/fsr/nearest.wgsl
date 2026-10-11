@@ -1,6 +1,6 @@
 #import "frame/fsr/common"
 
-// What the reconstruction and the dilation read of the frame as drawn: its depth and its motion.
+// What the reconstruction and the input preparation read of the frame as drawn: its depth and its motion.
 
 @group(0) @binding(1) var depth_target: texture_depth_2d;
 @group(0) @binding(2) var motion_target: texture_2d<f32>;
@@ -14,24 +14,27 @@ fn load_depth(position: vec2<f32>) -> f32 {
   return textureLoad(depth_target, clamped_texel(position, fsr.render_size), 0);
 }
 
-// The nearest depth about a texel, and the texel it stands at.
-struct Nearest {
-  depth: f32,
+// The nearest depth about a texel, the texel it stands at, and the farthest of those nearer than the centre.
+struct DepthExtents {
+  nearest: f32,
   at: vec2<f32>,
+  farthest: f32,
 };
 
-// `FindNearestDepth`, reversed: the nearest of the nine on the screen is the greatest.
-fn find_nearest(position: vec2<f32>) -> Nearest {
-  var nearest: Nearest = Nearest(load_depth(position), position);
+// `FindDepthExtents`, reversed: the nearest of the nine on the screen is the greatest. The farthest only moves while a
+// nearer one is found, as AMD's does.
+fn find_depth_extents(position: vec2<f32>) -> DepthExtents {
+  let centre: f32 = load_depth(position);
+  var extents: DepthExtents = DepthExtents(centre, position, centre);
 
   for (var index: i32 = 1; index < 9; index++) {
     let sample: vec2<f32> = position + NEAREST_ORDER[index];
     let sampled: f32 = load_depth(sample);
 
-    if (is_on_screen(sample, fsr.render_size) && sampled > nearest.depth) {
-      nearest = Nearest(sampled, sample);
+    if (is_on_screen(sample, fsr.render_size) && sampled > extents.nearest) {
+      extents = DepthExtents(sampled, sample, min(extents.farthest, sampled));
     }
   }
 
-  return nearest;
+  return extents;
 }

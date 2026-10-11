@@ -46,7 +46,7 @@ impl RenderScale {
     }
   }
 
-  /// A viewport side's pixels as drawn, never none: the side over the ratio, truncated as FSR 2's and DLSS's own
+  /// A viewport side's pixels as drawn, never none: the side over the ratio, truncated as FSR's and DLSS's own
   /// render sizes are, which DLSS's fixed ranges (Ultra Performance's one size) hold to.
   pub fn get_drawn(self, side: u32) -> u32 {
     ((side as f32 / self.get_ratio()) as u32).clamp(1, side.max(1))

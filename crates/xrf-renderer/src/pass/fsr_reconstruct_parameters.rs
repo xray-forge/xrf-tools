@@ -2,7 +2,7 @@ use xrf_renderer_core::{GraphTexture, PassParameters, ShaderAtomicU32, StorageAr
 
 use crate::pass::fsr_uniform::FsrUniform;
 
-/// FSR 2's depth reconstruction: the depth and motion drawn, and the previous depth it scatters into.
+/// FSR's depth reconstruction: the depth and motion drawn, and the previous depth it scatters into.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 0)]
 pub struct FsrReconstructParameters {

@@ -12,7 +12,7 @@ import { BaseComponentProps } from "@/lib/dom/element-types";
 /** The antialiasing modes that resolve the frame temporally, upscaling it to the output as they do. */
 const TEMPORAL_ANTIALIASING: ReadonlySet<string> = new Set<string>([
   ERenderAntialiasing.TAA,
-  ERenderAntialiasing.FSR2,
+  ERenderAntialiasing.FSR,
   ERenderAntialiasing.DLSS,
 ]);
 

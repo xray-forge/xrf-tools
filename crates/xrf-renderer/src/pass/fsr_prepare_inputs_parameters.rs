@@ -2,14 +2,16 @@ use xrf_renderer_core::{GraphTexture, PassParameters, UniformBinding};
 
 use crate::pass::fsr_uniform::FsrUniform;
 
-/// FSR 2's first luma step: the frame as drawn, filtered.
+/// FSR's input preparation: the depth, motion and colour drawn.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 0)]
-pub struct FsrLumaFirstParameters<'a> {
+pub struct FsrPrepareInputsParameters {
   #[uniform]
   pub fsr: UniformBinding<FsrUniform>,
-  #[texture(d2, float)]
+  #[texture(d2, depth)]
+  pub depth_target: GraphTexture,
+  #[texture(d2, unfilterable)]
+  pub motion_target: GraphTexture,
+  #[texture(d2, unfilterable)]
   pub color: GraphTexture,
-  #[sampler(filtering)]
-  pub linear_sampler: &'a wgpu::Sampler,
 }

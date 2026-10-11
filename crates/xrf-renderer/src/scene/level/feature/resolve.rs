@@ -8,7 +8,7 @@ use crate::scene::level::feature::temporal_resolve::TemporalResolve;
 pub enum Resolve {
   /// TAA.
   Temporal(Box<TemporalResolve>),
-  /// FSR 2: its targets and its constants this frame.
+  /// FSR: its targets and its constants this frame.
   Fsr {
     targets: Box<FsrTargets>,
     uniform: FsrUniform,

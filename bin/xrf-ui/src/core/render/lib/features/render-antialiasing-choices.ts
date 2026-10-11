@@ -11,7 +11,7 @@ const RENDER_ANTIALIASING_NAMES: Readonly<Record<RenderAntialiasing, string>> = 
   [ERenderAntialiasing.FXAA]: "FXAA",
   [ERenderAntialiasing.SMAA]: "SMAA",
   [ERenderAntialiasing.TAA]: "TAA",
-  [ERenderAntialiasing.FSR2]: "FSR 2",
+  [ERenderAntialiasing.FSR]: "FSR 3.1",
   [ERenderAntialiasing.DLSS]: "DLSS",
 };
 
@@ -25,10 +25,10 @@ export function describeRenderAntialiasing(mode: RenderAntialiasing): string {
 
 /**
  * @param mode - An antialiasing mode.
- * @returns Whether it resolves frames temporally (TAA, FSR 2, DLSS), which RCAS then sharpens at any size.
+ * @returns Whether it resolves frames temporally (TAA, FSR, DLSS), which RCAS then sharpens at any size.
  */
 export function isTemporalAntialiasing(mode: RenderAntialiasing): boolean {
-  return mode === ERenderAntialiasing.TAA || mode === ERenderAntialiasing.FSR2 || mode === ERenderAntialiasing.DLSS;
+  return mode === ERenderAntialiasing.TAA || mode === ERenderAntialiasing.FSR || mode === ERenderAntialiasing.DLSS;
 }
 
 /** Every antialiasing mode, in the order they are offered. */

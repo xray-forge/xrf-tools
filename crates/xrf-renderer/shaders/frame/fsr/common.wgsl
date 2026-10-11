@@ -1,33 +1,41 @@
-// FidelityFX FSR 2.2 (`ffx_fsr2_common.h`, `ffx_fsr2_sample.h`, AMD, MIT): what its passes share, for reversed depth,
-// colour in the display's range with an exposure of one, and motion drawn at the render size.
+// AMD FSR 3.1.5's upscaler (FidelityFX, `ffx_fsr3upscaler_common.h` and `ffx_fsr3upscaler_sample.h`; AMD, MIT): what
+// its passes share, for reversed depth, colour with an exposure of one, and motion drawn at the render size. Every
+// target is exactly its size, so `ClampUv` against a larger resource is clamping within the size itself.
 
 #import "generated/structs"
 
-// `cbFSR2`'s fields the passes read, declared in Rust.
+// `cbFSR3Upscaler`'s fields the passes read, declared in Rust.
 @group(0) @binding(0) var<uniform> fsr: Fsr;
 
-const FSR2_EPSILON: f32 = 1e-3;
-const FSR2_FP16_MAX: f32 = 65504.0;
+const FSR_FP16_MIN: f32 = 6.10e-5;
+const FSR_FP16_MAX: f32 = 65504.0;
+const FSR_FP32_MIN: f32 = 1.175494351e-38;
+const FSR_FP32_MAX: f32 = 3.402823466e38;
+const FSR_EPSILON: f32 = FSR_FP16_MIN;
 // `fReconstructedDepthBilinearWeightThreshold`.
-const RECONSTRUCTED_DEPTH_WEIGHT_THRESHOLD: f32 = 0.01;
-// `fUpsampleLanczosWeightScale`.
-const UPSAMPLE_LANCZOS_WEIGHT_SCALE: f32 = 1.0 / 12.0;
-// `fMaxAccumulationLanczosWeight`.
-const MAX_ACCUMULATION_LANCZOS_WEIGHT: f32 = 1.0;
-// `fAverageLanczosWeightPerFrame`.
-const AVERAGE_LANCZOS_WEIGHT_PER_FRAME: f32 = 0.74 / 12.0;
+const RECONSTRUCTED_DEPTH_WEIGHT_THRESHOLD: f32 = FSR_EPSILON * 10.0;
+// `fAverageLanczosWeightPerFrame`: the share of a frame a jittered sample's Lanczos weight averages.
+const AVERAGE_LANCZOS_WEIGHT_PER_FRAME: f32 = 0.74 / 16.0;
+// `fLockThreshold` and `fLockMax`: a lock counts past the threshold, and lives no longer than the maximum.
+const LOCK_THRESHOLD: f32 = 1.0;
+const LOCK_MAX: f32 = 2.0;
+// `fAccumulationAddedPerFrame` and `fMinDisocclusionAccumulation`, AMD's defaults: a third of a frame's trust regained
+// each frame, and a disoccluded texel starting a third below none.
+const ACCUMULATION_ADDED_PER_FRAME: f32 = 1.0 / 3.0;
+const MIN_DISOCCLUSION_ACCUMULATION: f32 = -1.0 / 3.0;
 const PI: f32 = 3.14159265;
 
-// The nine texels around the centre, the centre first: `FindNearestDepth`'s order.
+// The channels of the dilated reactive masks: `REACTIVE`, `DISOCCLUSION`, `SHADING_CHANGE` and `ACCUMULAION`.
+const MASK_REACTIVE: i32 = 0;
+const MASK_DISOCCLUSION: i32 = 1;
+const MASK_SHADING_CHANGE: i32 = 2;
+const MASK_ACCUMULATION: i32 = 3;
+
+// The nine texels around the centre, the centre first: `FindDepthExtents`'s order.
 const NEAREST_ORDER: array<vec2<f32>, 9> = array<vec2<f32>, 9>(
   vec2<f32>(0.0, 0.0), vec2<f32>(1.0, 0.0), vec2<f32>(0.0, 1.0), vec2<f32>(0.0, -1.0), vec2<f32>(-1.0, 0.0),
   vec2<f32>(-1.0, 1.0), vec2<f32>(1.0, 1.0), vec2<f32>(-1.0, -1.0), vec2<f32>(1.0, -1.0),
 );
-
-// The nine texels around the centre, row by row.
-fn neighbour(index: i32) -> vec2<f32> {
-  return vec2<f32>(f32(index % 3 - 1), f32(index / 3 - 1));
-}
 
 fn to_ycocg(rgb: vec3<f32>) -> vec3<f32> {
   return vec3<f32>(rgb.x * 0.25 + rgb.y * 0.5 + rgb.z * 0.25, rgb.x * 0.5 - rgb.z * 0.5,
@@ -44,32 +52,31 @@ fn tonemapped(rgb: vec3<f32>) -> vec3<f32> {
 }
 
 fn inverse_tonemapped(rgb: vec3<f32>) -> vec3<f32> {
-  return rgb / max(FSR2_EPSILON, 1.0 - max(rgb.x, max(rgb.y, rgb.z)));
+  return rgb / max(FSR_EPSILON, 1.0 - max(rgb.x, max(rgb.y, rgb.z)));
 }
 
-// Whether the colour is linear light past the display's range: `FFX_FSR2_OPTION_HDR_COLOR_INPUT`.
+// Whether the colour is linear light past the display's range: `FFX_FSR3UPSCALER_OPTION_HDR_COLOR_INPUT`.
 fn is_hdr() -> bool {
-  return fsr.hdr.x > 0.5;
+  return fsr.hdr > 0.5;
 }
 
+// `RGBToLuma`.
 fn to_luma(rgb: vec3<f32>) -> f32 {
   return dot(rgb, vec3<f32>(0.2126, 0.7152, 0.0722));
 }
 
-// `RGBToPerceivedLuma`: CIE lightness over a hundred.
-fn to_perceived_luma(rgb: vec3<f32>) -> f32 {
-  let luminance: f32 = to_luma(rgb);
-
-  return select(pow(max(luminance, 0.0), 1.0 / 3.0) * 116.0 - 16.0, luminance * (24389.0 / 27.0),
-    luminance <= 216.0 / 24389.0) * 0.01;
+// `Get4KVelocity`: a motion's length in pixels of a 4K view, whatever the view's own size.
+fn to_4k_velocity(motion: vec2<f32>) -> f32 {
+  return length(motion * vec2<f32>(3840.0, 2160.0));
 }
 
-// The natural log of a luma kept off zero, as the luminance pyramid takes it.
-fn to_log_luma(rgb: vec3<f32>) -> f32 {
-  return log(max(to_luma(rgb), FSR2_EPSILON));
+// `ReconstructedDepthMvPxThreshold`: the 4K pixels of motion under which a surface counts as still, more the farther
+// it stands.
+fn still_threshold(depth_in_meters: f32) -> f32 {
+  return mix(0.25, 0.75, saturate(depth_in_meters / 100.0));
 }
 
-// `GetViewSpaceDepth`: a device depth as a distance along the view.
+// `GetViewSpaceDepth`: a device depth as a distance along the view, in metres as X-Ray's units are.
 fn to_view_depth(depth: f32) -> f32 {
   return fsr.device_to_view.y / (depth - fsr.device_to_view.x);
 }
@@ -79,12 +86,17 @@ fn is_on_screen(position: vec2<f32>, size: vec2<f32>) -> bool {
   return all(position >= vec2<f32>(0.0)) && all(position < size);
 }
 
+// `IsUvInside`.
+fn is_uv_inside(uv: vec2<f32>) -> bool {
+  return all(uv >= vec2<f32>(0.0)) && all(uv <= vec2<f32>(1.0));
+}
+
 // `ClampUv`: a coordinate kept half a texel inside a texture of a size.
 fn clamped_uv(uv: vec2<f32>, size: vec2<f32>) -> vec2<f32> {
   return clamp(uv * size, vec2<f32>(0.5), size - 0.5) / size;
 }
 
-// A texel held as floats, the nearest on a texture of a size where it lies off it.
+// `ClampLoad`: a texel held as floats, the nearest on a texture of a size where it lies off it.
 fn clamped_texel(position: vec2<f32>, size: vec2<f32>) -> vec2<i32> {
   return vec2<i32>(clamp(position, vec2<f32>(0.0), size - 1.0));
 }
@@ -98,7 +110,7 @@ fn to_display_position(render_position: vec2<f32>) -> vec2<f32> {
 fn lanczos2(x: f32) -> f32 {
   let at: f32 = min(abs(x), 2.0);
 
-  if (at < FSR2_EPSILON) {
+  if (at < FSR_EPSILON) {
     return 1.0;
   }
 
@@ -114,11 +126,15 @@ fn lanczos2_approx_sq(x2: f32) -> f32 {
   return (a * a * (25.0 / 16.0) - (25.0 / 16.0 - 1.0)) * (b * b);
 }
 
-// `MinDividedByMax`.
-fn min_over_max(a: f32, b: f32) -> f32 {
+// `MinDividedByMax`, with what it gives where both are zero.
+fn min_over_max_or(a: f32, b: f32, on_zero: f32) -> f32 {
   let most: f32 = max(a, b);
 
-  return select(0.0, min(a, b) / max(most, 1e-20), most != 0.0);
+  return select(on_zero, min(a, b) / max(most, FSR_FP32_MIN), most != 0.0);
+}
+
+fn min_over_max(a: f32, b: f32) -> f32 {
+  return min_over_max_or(a, b, 0.0);
 }
 
 // The four texels a bilinear read of a point takes: the first, held as floats, and each one's weight.
@@ -127,6 +143,7 @@ struct BilinearFootprint {
   weights: vec4<f32>,
 };
 
+// `GetBilinearSamplingData`.
 fn bilinear_footprint(uv: vec2<f32>, size: vec2<f32>) -> BilinearFootprint {
   let position: vec2<f32> = uv * size - 0.5;
   let base: vec2<f32> = floor(position);

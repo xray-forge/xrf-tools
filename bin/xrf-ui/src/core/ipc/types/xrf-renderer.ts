@@ -73,9 +73,12 @@ export enum ERenderAntialiasing {
   SMAA = "smaa",
   /** Temporal: every frame's samples jittered within the pixel and resolved with the frames before. */
   TAA = "taa",
-  /** FSR 2: temporal as TAA, with each surface's motion, disocclusion, reactivity and thin-feature locks. */
-  FSR2 = "fsr2",
-  /** DLSS: NVIDIA's learned temporal upscaler, on an RTX GPU; FSR 2 where the GPU has none. */
+  /**
+   * FSR 3.1: AMD's temporal upscaler, temporal as TAA with each surface's motion, disocclusion, shading change,
+   * reactivity and thin-feature locks.
+   */
+  FSR = "fsr",
+  /** DLSS: NVIDIA's learned temporal upscaler, on an RTX GPU; FSR where the GPU has none. */
   DLSS = "dlss",
 }
 

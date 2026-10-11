@@ -85,7 +85,7 @@ export function SettingsRendererAntialiasing(): ReactElement {
         <ChoiceFormRow
           label={"Upscaling quality"}
           description={
-            "Share of the output resolution the scene is drawn at. TAA, FSR 2 and DLSS upscale temporally; other " +
+            "Share of the output resolution the scene is drawn at. TAA, FSR and DLSS upscale temporally; other " +
             "modes use FSR 1."
           }
           options={RENDER_SCALE_OPTIONS}
@@ -97,8 +97,8 @@ export function SettingsRendererAntialiasing(): ReactElement {
           label={"Antialiasing"}
           description={
             "SMAA: sharp and stable. FXAA: cheaper, softer. TAA: temporal, also smooths foliage and thin geometry. " +
-            "FSR 2: AMD's temporal upscaler, steadiest on fine detail. DLSS: NVIDIA's learned upscaler, on an RTX " +
-            "GPU; FSR 2 stands in for it elsewhere."
+            "FSR 3.1: AMD's temporal upscaler, steadiest on fine detail. DLSS: NVIDIA's learned upscaler, on an RTX " +
+            "GPU; FSR stands in for it elsewhere."
           }
           options={RENDER_ANTIALIASING_OPTIONS}
           value={features.antialiasing}
@@ -163,7 +163,7 @@ export function SettingsRendererAntialiasing(): ReactElement {
         <SliderFormRow
           label={"Sharpening"}
           description={
-            "RCAS sharpening of a frame drawn smaller than the viewport or resolved temporally (TAA, FSR 2, DLSS). " +
+            "RCAS sharpening of a frame drawn smaller than the viewport or resolved temporally (TAA, FSR, DLSS). " +
             "Inactive otherwise."
           }
           value={features.upscaling.sharpening}

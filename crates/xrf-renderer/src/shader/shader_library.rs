@@ -10,6 +10,7 @@ use crate::shader::shader_composer::ShaderComposer;
 /// extension.
 const EMBEDDED: &[(&str, &str)] = &[
   ("common/camera", include_str!("../../shaders/common/camera.wgsl")),
+  ("common/marks", include_str!("../../shaders/common/marks.wgsl")),
   (
     "common/axis_frame",
     include_str!("../../shaders/common/axis_frame.wgsl"),
@@ -144,22 +145,24 @@ const EMBEDDED: &[(&str, &str)] = &[
   ),
   ("frame/fsr/common", include_str!("../../shaders/frame/fsr/common.wgsl")),
   (
-    "frame/fsr/depth_clip",
-    include_str!("../../shaders/frame/fsr/depth_clip.wgsl"),
-  ),
-  ("frame/fsr/dilate", include_str!("../../shaders/frame/fsr/dilate.wgsl")),
-  ("frame/fsr/lock", include_str!("../../shaders/frame/fsr/lock.wgsl")),
-  (
-    "frame/fsr/luma_first",
-    include_str!("../../shaders/frame/fsr/luma_first.wgsl"),
+    "frame/fsr/downsample",
+    include_str!("../../shaders/frame/fsr/downsample.wgsl"),
   ),
   (
-    "frame/fsr/luma_shading",
-    include_str!("../../shaders/frame/fsr/luma_shading.wgsl"),
+    "frame/fsr/luma_instability",
+    include_str!("../../shaders/frame/fsr/luma_instability.wgsl"),
   ),
   (
     "frame/fsr/nearest",
     include_str!("../../shaders/frame/fsr/nearest.wgsl"),
+  ),
+  (
+    "frame/fsr/prepare_inputs",
+    include_str!("../../shaders/frame/fsr/prepare_inputs.wgsl"),
+  ),
+  (
+    "frame/fsr/prepare_reactivity",
+    include_str!("../../shaders/frame/fsr/prepare_reactivity.wgsl"),
   ),
   (
     "frame/fsr/reactive",
@@ -168,6 +171,14 @@ const EMBEDDED: &[(&str, &str)] = &[
   (
     "frame/fsr/reconstruct",
     include_str!("../../shaders/frame/fsr/reconstruct.wgsl"),
+  ),
+  (
+    "frame/fsr/shading_change",
+    include_str!("../../shaders/frame/fsr/shading_change.wgsl"),
+  ),
+  (
+    "frame/fsr/shading_pyramid",
+    include_str!("../../shaders/frame/fsr/shading_pyramid.wgsl"),
   ),
   ("frame/fxaa", include_str!("../../shaders/frame/fxaa.wgsl")),
   ("frame/lights", include_str!("../../shaders/frame/lights.wgsl")),

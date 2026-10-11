@@ -10,20 +10,21 @@ use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::frame::view_target_uses::ViewTargetUses;
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::fsr_accumulate_parameters::FsrAccumulateParameters;
-use crate::pass::fsr_depth_clip_parameters::FsrDepthClipParameters;
-use crate::pass::fsr_dilate_parameters::FsrDilateParameters;
-use crate::pass::fsr_lock_parameters::FsrLockParameters;
-use crate::pass::fsr_luma_first_parameters::FsrLumaFirstParameters;
-use crate::pass::fsr_luma_shading_parameters::FsrLumaShadingParameters;
+use crate::pass::fsr_downsample_parameters::FsrDownsampleParameters;
+use crate::pass::fsr_luma_instability_parameters::FsrLumaInstabilityParameters;
 use crate::pass::fsr_pass::FsrPass;
+use crate::pass::fsr_prepare_inputs_parameters::FsrPrepareInputsParameters;
+use crate::pass::fsr_prepare_reactivity_parameters::FsrPrepareReactivityParameters;
 use crate::pass::fsr_reactive_parameters::FsrReactiveParameters;
 use crate::pass::fsr_reconstruct_parameters::FsrReconstructParameters;
+use crate::pass::fsr_shading_change_parameters::FsrShadingChangeParameters;
+use crate::pass::fsr_shading_pyramid_parameters::FsrShadingPyramidParameters;
 use crate::pass::fsr_uniform::FsrUniform;
 use crate::pass::pipeline_source::PipelineSource;
 use crate::shader::shader_library::ShaderLibrary;
 use crate::tests::test_bundle::checkout_dxc;
 
-/// Builds FSR 2 for a drawing upscaled half again, binds it to real targets and runs two frames, the second reading
+/// Builds FSR for a drawing upscaled half again, binds it to real targets and runs two frames, the second reading
 /// the first's history, without a validation error. Skipped, and says so, on a machine with no adapter at all.
 #[test]
 fn upscales_two_frames_without_a_validation_error() {
@@ -54,15 +55,18 @@ fn upscales_two_frames_without_a_validation_error() {
   let mut jitter: TemporalJitter = TemporalJitter::default();
   let mut runtime: GraphRuntime = GraphRuntime::new(device, &context.queue);
 
+  let mut previous: Vec2 = Vec2::ZERO;
+
   for _ in 0..2 {
     let offset: Vec2 = jitter.next(1.5);
     let constants: FsrUniform = FsrUniform::new(
       (render, display),
-      offset,
+      (offset, previous),
       &view,
-      (FsrTargets::get_luma_mip_size(render), TemporalJitter::get_phases(1.5)),
-      fsr.frames.get_frame(),
+      (TemporalJitter::get_phases(1.5), fsr.frames.get_frame()),
     );
+
+    previous = offset;
 
     {
       let mut graph: FrameGraph<'_> = FrameGraph::new();
@@ -92,36 +96,62 @@ fn upscales_two_frames_without_a_validation_error() {
 
   assert!(pollster::block_on(scope.pop()).is_none());
   assert_eq!(fsr.frames.get_frame(), 2);
-  assert_eq!(FsrTargets::get_luma_mip_size(render), (2, 1));
+  assert_eq!(
+    fsr.shading_pyramid.each_ref().map(|level| level.get_size()),
+    [(32, 24), (16, 12), (8, 6)]
+  );
 }
 
-/// The constants FSR 2 reads, for a lens with reversed depth: device depth to view depth by `y / (d - x)`.
+/// The constants FSR reads, for a lens with reversed depth: device depth to view depth by `y / (d - x)`.
 #[test]
 fn reads_view_depth_back_from_reversed_device_depth() {
   let view: CameraView = CameraView::new(Vec3::ZERO, Mat4::IDENTITY, 60.0, 1.0, 0.5, 100.0);
-  let constants: FsrUniform = FsrUniform::new(((50, 50), (100, 100)), Vec2::new(0.25, -0.25), &view, ((1, 1), 32), 3);
+  let constants: FsrUniform = FsrUniform::new(
+    ((51, 50), (100, 100)),
+    (Vec2::new(0.25, -0.25), Vec2::new(-0.5, 0.5)),
+    &view,
+    (32, 3),
+  );
   let to_view = |depth: f32| constants.device_to_view.y / (depth - constants.device_to_view.x);
 
   assert!((to_view(1.0) - 0.5).abs() < 1e-3);
   assert!((to_view(0.0) - 100.0).abs() < 1e-2);
   assert_eq!(constants.jitter, Vec2::new(-0.25, 0.25));
-  assert_eq!(constants.downscale, Vec2::new(0.5, 0.5));
+  assert_eq!(constants.previous_jitter, Vec2::new(0.5, -0.5));
+  assert_eq!(constants.downscale, Vec2::new(0.51, 0.5));
+  assert_eq!(constants.shading_size, Vec2::new(25.0, 25.0));
   assert_eq!(constants.frame_index, 3.0);
 }
 
-/// FSR 2's stages share their modules' declarations (`common` binds the uniform, `nearest` the depth and motion), so
+/// FSR's stages share their modules' declarations (`common` binds the uniform, `nearest` the depth and motion), so
 /// their WGSL keeps its own bindings: each stage's parameters must declare every binding as its module does.
 #[test]
 fn every_stage_declares_its_parameters_as_its_module_does() {
   let shaders: ShaderLibrary = ShaderLibrary::default();
-  let stages: [(&str, String); 8] = [
-    ("frame/fsr/luma_first", FsrLumaFirstParameters::get_wgsl_bindings()),
-    ("frame/fsr/luma_shading", FsrLumaShadingParameters::get_wgsl_bindings()),
+  let stages: [(&str, String); 9] = [
     ("frame/fsr/reconstruct", FsrReconstructParameters::get_wgsl_bindings()),
-    ("frame/fsr/dilate", FsrDilateParameters::get_wgsl_bindings()),
+    (
+      "frame/fsr/prepare_inputs",
+      FsrPrepareInputsParameters::get_wgsl_bindings(),
+    ),
+    ("frame/fsr/downsample", FsrDownsampleParameters::get_wgsl_bindings()),
+    (
+      "frame/fsr/shading_pyramid",
+      FsrShadingPyramidParameters::get_wgsl_bindings(),
+    ),
+    (
+      "frame/fsr/shading_change",
+      FsrShadingChangeParameters::get_wgsl_bindings(),
+    ),
     ("frame/fsr/reactive", FsrReactiveParameters::get_wgsl_bindings()),
-    ("frame/fsr/depth_clip", FsrDepthClipParameters::get_wgsl_bindings()),
-    ("frame/fsr/lock", FsrLockParameters::get_wgsl_bindings()),
+    (
+      "frame/fsr/prepare_reactivity",
+      FsrPrepareReactivityParameters::get_wgsl_bindings(),
+    ),
+    (
+      "frame/fsr/luma_instability",
+      FsrLumaInstabilityParameters::get_wgsl_bindings(),
+    ),
     ("frame/fsr/accumulate", FsrAccumulateParameters::get_wgsl_bindings()),
   ];
 

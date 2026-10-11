@@ -58,7 +58,7 @@ const MODE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<RenderAntialiasing>> = LE
   (value: RenderAntialiasing) => ({ label: describeRenderAntialiasing(value), value })
 );
 
-/** The modes offered where the GPU has no DLSS: DLSS greyed out, FSR 2 standing in for it. */
+/** The modes offered where the GPU has no DLSS: DLSS greyed out, FSR standing in for it. */
 const MODE_OPTIONS_WITHOUT_DLSS: ReadonlyArray<IChoiceFormRowOption<RenderAntialiasing>> = MODE_OPTIONS.map(
   (option: IChoiceFormRowOption<RenderAntialiasing>) =>
     option.value === ERenderAntialiasing.DLSS ? { ...option, isDisabled: true } : option
@@ -113,14 +113,14 @@ export function LevelImageQualityAction({
   const backends: Nullable<ReadonlyArray<RenderBackendAvailability>> = renderSettingsService.renderBackends;
   // Whether the frame is drawn smaller than the viewport, which sharpening applies to besides a temporal resolve.
   const isUpscaled: boolean = renderService.isUpscaled;
-  // What the GPU can do: FSR 2 smooths in place of DLSS, and DLSS upscales alone, where it lacks them.
+  // What the GPU can do: FSR smooths in place of DLSS, and DLSS upscales alone, where it lacks them.
   const dlss: RenderDlssAvailability = renderService.dlss;
   const rayReconstruction: RenderDlssAvailability = renderService.rayReconstruction;
 
   const isAvailable: boolean = settingsMode !== ERenderAntialiasing.NONE;
   const asked: RenderAntialiasing = features.antialiasing ?? settingsMode;
   const dlssProblem: Nullable<string> = describeDlssUnavailability(dlss);
-  const mode: RenderAntialiasing = asked === ERenderAntialiasing.DLSS && dlssProblem ? ERenderAntialiasing.FSR2 : asked;
+  const mode: RenderAntialiasing = asked === ERenderAntialiasing.DLSS && dlssProblem ? ERenderAntialiasing.FSR : asked;
   const textureFiltering: RenderTextureFiltering = features.textureFiltering ?? settingsTextureFiltering;
   const scale: RenderScale = features.upscaling.scale ?? settingsScale;
   const sharpening: number = features.upscaling.sharpening ?? settingsSharpening;
