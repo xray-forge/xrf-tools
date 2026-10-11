@@ -829,10 +829,7 @@ export type RenderLightsSettings = {
   /** Whether a light the engine shadows casts its shadows. */
   isShadowed: boolean;
   shadowFilter: RenderLightShadowFilter;
-  /**
-   * Whether shadowed lights draw their shafts (`r2_volumetric_lights`), as the view's engine gives them out; off by
-   * default for their cost, though both engines draw them.
-   */
+  /** Whether shadowed lights draw their shafts (`r2_volumetric_lights`), as the view's engine gives them out. */
   isVolumetric: boolean;
 };
 

@@ -187,7 +187,10 @@ const EMBEDDED: &[(&str, &str)] = &[
   ("frame/smaa", include_str!("../../shaders/frame/smaa.wgsl")),
   ("frame/sun", include_str!("../../shaders/frame/sun.wgsl")),
   ("frame/sun_shafts", include_str!("../../shaders/frame/sun_shafts.wgsl")),
-  ("frame/light_volumes", include_str!("../../shaders/frame/light_volumes.wgsl")),
+  (
+    "frame/light_volumes",
+    include_str!("../../shaders/frame/light_volumes.wgsl"),
+  ),
   ("frame/temporal", include_str!("../../shaders/frame/temporal.wgsl")),
   ("frame/flare", include_str!("../../shaders/frame/flare.wgsl")),
   (

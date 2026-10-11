@@ -90,6 +90,8 @@ use crate::pass::grass_colour_parameters::GrassColourParameters;
 use crate::pass::grass_puddles_uniform::GrassPuddlesUniform;
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::light_binning_parameters::LightBinningParameters;
+use crate::pass::light_volume_parameters::LightVolumeParameters;
+use crate::pass::light_volume_pass::LightVolumePass;
 use crate::pass::lighting_frame::LightingFrame;
 use crate::pass::lighting_uniform::LightingUniform;
 use crate::pass::lights_parameters::LightsParameters;
@@ -120,8 +122,6 @@ use crate::pass::static_occlusion_uniform::StaticOcclusionUniform;
 use crate::pass::sun_parameters::SunParameters;
 use crate::pass::sun_shafts_parameters::SunShaftsParameters;
 use crate::pass::sun_shafts_pass::SunShaftsPass;
-use crate::pass::light_volume_parameters::LightVolumeParameters;
-use crate::pass::light_volume_pass::LightVolumePass;
 use crate::pass::temporal_parameters::TemporalParameters;
 use crate::pass::temporal_uniform::TemporalUniform;
 use crate::pass::thunder_parameters::ThunderParameters;
@@ -2757,6 +2757,7 @@ impl SceneView {
           light_volumes: StorageArray::new(bindings.import_buffer(&mut *graph, "light volumes", &lights.volume_buffer)),
           records: StorageArray::new(bindings.import_buffer(&mut *graph, "light records", &lights.record_buffer)),
           shadow_atlas: bindings.import_view(&mut *graph, "light shadow atlas", light_atlas),
+          shadow_sampler: passes.light_volumes.get_shadow_sampler(),
           volumes: runtime.push_uniform(&lights.volumes_uniform),
           depth_target: handles.depth,
         };
@@ -2766,7 +2767,11 @@ impl SceneView {
           .add_raster_pass("light volumes depth")
           .parameters(&parameters)
           .depth(GraphDepthAttachment::new(depth, wgpu::LoadOp::Clear(0.0)))
-          .record(move |context| passes.light_volumes.record_depth(context, view, &parameters, texture_group));
+          .record(move |context| {
+            passes
+              .light_volumes
+              .record_depth(context, view, &parameters, texture_group)
+          });
         graph
           .add_raster_pass("light volumes")
           .parameters(&parameters)

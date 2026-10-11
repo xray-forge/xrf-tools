@@ -13,20 +13,19 @@ pub struct RenderLightsSettings {
   /// Whether a light the engine shadows casts its shadows.
   pub is_shadowed: bool,
   pub shadow_filter: RenderLightShadowFilter,
-  /// Whether shadowed lights draw their shafts (`r2_volumetric_lights`), as the view's engine gives them out; off by
-  /// default for their cost, though both engines draw them.
+  /// Whether shadowed lights draw their shafts (`r2_volumetric_lights`), as the view's engine gives them out.
   pub is_volumetric: bool,
 }
 
 impl Default for RenderLightsSettings {
-  /// The engine's own: every spawned light, and none of the level file's; no shafts until they cost less.
+  /// The engine's own: every spawned light with its shafts, and none of the level file's.
   fn default() -> Self {
     Self {
       is_enabled: true,
       is_level_lights: false,
       is_shadowed: true,
       shadow_filter: RenderLightShadowFilter::Engine,
-      is_volumetric: false,
+      is_volumetric: true,
     }
   }
 }

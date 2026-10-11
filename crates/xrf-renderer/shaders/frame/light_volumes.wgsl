@@ -116,7 +116,11 @@ fn fs_light_volume(in: VolumeVarying) -> @location(0) vec4<f32> {
     scale = POINT_SCALE;
   }
 
-  let shadow: f32 = light_shadow(shadow_atlas, record, to_point, vec3<f32>(0.0), is_spot, false);
+  // One comparison at the point, filtered between its four texels by the sampler: at the shafts' half size and under
+  // their noise, `shadow_hw`'s four taps look the same at four times the cost.
+  let place: ShadowPlace = shadow_place(record, to_point, vec3<f32>(0.0), is_spot, false);
+  let shadow: f32 = textureSampleCompareLevel(shadow_atlas, shadow_sampler, place.centre * ATLAS_TEXEL,
+    1.0 - place.moved) * place.fade;
   // The projector's coordinates (`m_lmap`), which the noise reads a third of, scrolling two ways.
   let uv: vec2<f32> = face_uv(across, along, scale);
   let projected: vec3<f32> = textureSampleLevel(textures[u32(volume.frustum.y)], texture_sampler, uv, 0.0).rgb;

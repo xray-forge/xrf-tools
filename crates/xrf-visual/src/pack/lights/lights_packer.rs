@@ -262,7 +262,7 @@ impl<'a> LightsPacker<'a> {
     // OpenXRay sets no values on a zone's shafts, which keep the light's own; Monolith reads the section's, which its
     // forcing then overrides.
     let volumetric: Option<LightVolumetric> =
-      (section.get_bool("idle_light_volumetric") == Some(true)).then(|| LightVolumetric {
+      (section.get_bool("idle_light_volumetric") == Some(true)).then_some(LightVolumetric {
         is_asked: true,
         quality: Self::VOLUMETRIC_DEFAULT,
         intensity: Self::VOLUMETRIC_DEFAULT,
