@@ -38,6 +38,7 @@ use crate::scene::static_scene::static_surface::StaticSurface;
 use crate::scene::static_scene::static_surface_build::{build_impostor_surface, build_static_surface};
 use crate::scene::static_scene::static_surface_key::StaticSurfaceKey;
 use crate::scene::static_scene::static_trace_geometry::StaticTraceGeometry;
+use crate::scene::static_scene::static_trace_group::StaticTraceGroup;
 use crate::scene::static_scene::static_vertex_words::{measure_sway_reach, pack_vertex_words};
 use crate::scene::texture::texture_cache::{MISSING_SLOT, TextureCache};
 
@@ -512,6 +513,7 @@ impl StaticScene {
 
         if class.is_deferred() {
           writer.trace_geometries.push(StaticTraceGeometry {
+            layout: StaticLayout::Baked,
             first_index: base.index_start + section.draw.start,
             index_count: section.draw.count,
             vertex_start: base.vertex_start,
@@ -565,6 +567,7 @@ impl StaticScene {
         cluster_slots: writer.cluster_slots,
         impostor_shaders: writer.impostor_shaders,
         trace_geometries: writer.trace_geometries,
+        trace_groups: writer.trace_groups,
         swaying,
       },
     );
@@ -577,12 +580,16 @@ impl StaticScene {
     self.is_traced
   }
 
-  /// Every sector in the scene with its deferred baked sections, which the level's acceleration structure takes.
-  pub fn list_trace_geometries(&self) -> impl Iterator<Item = (u32, &[StaticTraceGeometry])> {
-    self
-      .sectors
-      .iter()
-      .map(|(_, sector)| (sector.sector, sector.trace_geometries.as_slice()))
+  /// Every sector in the scene with its deferred baked sections and instanced meshes, which the level's acceleration
+  /// structures take.
+  pub fn list_trace_sectors(&self) -> impl Iterator<Item = (u32, &[StaticTraceGeometry], &[StaticTraceGroup])> {
+    self.sectors.iter().map(|(_, sector)| {
+      (
+        sector.sector,
+        sector.trace_geometries.as_slice(),
+        sector.trace_groups.as_slice(),
+      )
+    })
   }
 
   /// Takes a sector out of the scene, its ranges cleared and freed; false for one already gone.
@@ -1266,6 +1273,20 @@ impl StaticScene {
       .map_or_else(Vec::new, |it| read_pods(buffer, it));
     let impostors: u32 = writer.impostors.len() as u32;
     let instances: usize = (group.instance_count as usize).min(transforms.len() / 16);
+    // Traced at its whole detail, unswayed: a reflection shows neither the coarser bands nor the sway's centimetres.
+    let mut traced: Option<StaticTraceGroup> = class.is_deferred().then(|| StaticTraceGroup {
+      geometry: StaticTraceGeometry {
+        layout,
+        first_index: base.index_start + bands[0].0,
+        index_count: bands[0].1,
+        vertex_start: base.vertex_start,
+        vertex_count: geometry.vertex_count,
+        surface,
+        is_cut_out: class == StaticClass::CutOut,
+      },
+      first_place: writer.places.len() as u32,
+      transforms: Vec::with_capacity(instances),
+    });
     let sway_reach: f32 = if layout == StaticLayout::Tree {
       measure_sway_reach(geometry, buffer)
     } else {
@@ -1292,6 +1313,10 @@ impl StaticScene {
         .filter(|it| *it < impostors)
         .unwrap_or(StaticRow::NO_LOD);
 
+      if let Some(traced) = &mut traced {
+        traced.transforms.push(StaticTraceGroup::to_transform(&matrix));
+      }
+
       writer.places.push(StaticPlace {
         transform: matrix,
         info: Vec4::new(
@@ -1315,6 +1340,8 @@ impl StaticScene {
         writer.capacities[batch.get_index() as usize] += clusters;
       }
     }
+
+    writer.trace_groups.extend(traced.filter(|group| !group.transforms.is_empty()));
   }
 
   /// Puts a sector's impostors in its own order, each with its run's surface; one no run dresses is never drawn.

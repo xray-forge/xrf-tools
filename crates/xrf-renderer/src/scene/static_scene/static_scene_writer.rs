@@ -12,6 +12,7 @@ use crate::scene::static_scene::static_slot_info::StaticSlotInfo;
 use crate::scene::static_scene::static_spans::StaticSpans;
 use crate::scene::static_scene::static_surface::StaticSurface;
 use crate::scene::static_scene::static_trace_geometry::StaticTraceGeometry;
+use crate::scene::static_scene::static_trace_group::StaticTraceGroup;
 
 /// What one scene item adds, gathered before its ranges are taken: its records name each other by their indices in
 /// here, and `relocate` moves them to where its ranges put them, so each buffer gets one range an item.
@@ -36,8 +37,9 @@ pub struct StaticSceneWriter {
   pub slot_infos: Vec<StaticSlotInfo>,
   pub cluster_slots: Vec<u32>,
   pub impostor_shaders: Vec<u16>,
-  /// Its deferred baked sections, which the level's acceleration structure takes.
+  /// Its deferred baked sections and instanced meshes, which the level's acceleration structures take.
   pub trace_geometries: Vec<StaticTraceGeometry>,
+  pub trace_groups: Vec<StaticTraceGroup>,
   pub capacities: [u32; StaticBatch::COUNT],
 }
 
@@ -134,9 +136,17 @@ impl StaticSceneWriter {
       info.first_place += places;
     }
 
-    for geometry in &mut self.trace_geometries {
+    for geometry in self
+      .trace_geometries
+      .iter_mut()
+      .chain(self.trace_groups.iter_mut().map(|group| &mut group.geometry))
+    {
       geometry.first_index += indices;
-      geometry.vertex_start += words[StaticLayout::Baked.get_index()];
+      geometry.vertex_start += words[geometry.layout.get_index()];
+    }
+
+    for group in &mut self.trace_groups {
+      group.first_place += places;
     }
   }
 }

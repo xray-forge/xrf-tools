@@ -5,6 +5,9 @@ struct SceneHit {
   record: u32,
   primitive: u32,
   barycentrics: vec2<f32>,
+  place: u32,
+  position: vec3<f32>,
+  to_world: mat3x3<f32>,
 }
 
 struct SceneSurface {
@@ -16,13 +19,18 @@ struct SceneSurface {
   slice: f32,
 }
 
-const IS_SCENE_TRACED: bool = false;
-
-fn trace_scene_ray(origin: vec3<f32>, direction: vec3<f32>, near: f32, far: f32) -> SceneHit {
-  return SceneHit(-1.0, 0u, 0u, vec2<f32>(0.0));
+struct SceneCone {
+  width: f32,
+  spread: f32,
 }
 
-fn trace_scene_blocked(origin: vec3<f32>, direction: vec3<f32>, far: f32) -> bool {
+const IS_SCENE_TRACED: bool = false;
+
+fn trace_scene_ray(origin: vec3<f32>, direction: vec3<f32>, near: f32, far: f32, cone: SceneCone) -> SceneHit {
+  return SceneHit(-1.0, 0u, 0u, vec2<f32>(0.0), 0u, vec3<f32>(0.0), mat3x3<f32>());
+}
+
+fn trace_scene_blocked(origin: vec3<f32>, direction: vec3<f32>, far: f32, cone: SceneCone) -> bool {
   return false;
 }
 

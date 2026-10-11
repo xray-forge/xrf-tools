@@ -2434,12 +2434,20 @@ impl SceneView {
           (
             TraceParameters {
               trace_scene: trace.get_structure(),
+              trace_instances: StorageArray::new(bindings.import_buffer(
+                &mut *graph,
+                "static trace instances",
+                trace.get_instances(),
+              )),
               trace_records: StorageArray::new(bindings.import_buffer(
                 &mut *graph,
                 "static trace records",
                 trace.get_records(),
               )),
-              trace_words: StorageArray::new(statics.words[StaticLayout::Baked.get_index()]),
+              trace_places: StorageArray::new(statics.places),
+              trace_baked_words: StorageArray::new(statics.words[StaticLayout::Baked.get_index()]),
+              trace_tree_words: StorageArray::new(statics.words[StaticLayout::Tree.get_index()]),
+              trace_model_words: StorageArray::new(statics.words[StaticLayout::Model.get_index()]),
               trace_indices: StorageArray::new(statics.indices),
               trace_surfaces: StorageArray::new(statics.surfaces),
             },
