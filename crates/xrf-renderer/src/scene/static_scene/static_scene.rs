@@ -909,6 +909,12 @@ impl StaticScene {
     let batch: StaticBatch = StaticBatch { layout, class };
     let sight: StaticSight = StaticSight::of(class, passes);
     let base: StaticGeometryBase = put_geometry(writer, layout, geometry, buffer);
+    let info: StaticSlotInfo = StaticSlotInfo {
+      sector,
+      shader_id: group.surface.shader_id,
+      mesh: Some(mesh),
+      first_place: writer.places.len() as u32,
+    };
     let (bands, windows): (Vec<(u32, u32)>, u32) = match &group.progressive {
       Some(progressive) if !progressive.bands.is_empty() => (
         progressive.bands.iter().map(|band| (band.start, band.count)).collect(),
@@ -916,25 +922,13 @@ impl StaticScene {
       ),
       _ => (vec![(0, geometry.index_count)], 1),
     };
-    let info: StaticSlotInfo = StaticSlotInfo {
-      sector,
-      shader_id: group.surface.shader_id,
-      mesh: Some(mesh),
-      first_place: writer.places.len() as u32,
-    };
-    let band_slots: Vec<(u32, u32)> = bands
-      .iter()
-      .map(|range| {
-        writer.put_slot(
-          &base,
-          cut_clusters(geometry, buffer, range.0, range.1),
-          (StaticSlot::LISTED, batch, surface, passes),
-          info,
-        )
-      })
-      .collect();
-    let local: Vec4 =
-      bound_spheres(&writer.spheres[writer.spheres.len() - band_slots.iter().map(|it| it.1 as usize).sum::<usize>()..]);
+    let (band_slots, local): (Vec<(u32, u32)>, Vec4) = put_bands(
+      writer,
+      (&base, geometry, buffer),
+      &bands,
+      (batch, surface, passes),
+      info,
+    );
     let transforms: Vec<f32> = read_pods(buffer, &group.transforms);
     let hemi: Vec<f32> = read_pods(buffer, &group.hemi);
     // Each place's impostor, in the sector's own numbering; a tree no impostor stands for has none.
@@ -1144,6 +1138,32 @@ fn level_surface<'a>(
 
 /// The clusters covering an index range, as `(first index, triangles, sphere)`: the packer's own where they tile it
 /// exactly, else the range cut in runs of `CLUSTER_TRIANGLES` with spheres taken from their vertices.
+/// Puts a slot per band (`bands`, each a first index and a count) of an instanced group's geometry. Answers the band
+/// slots with their clusters, and the bands' bounding sphere in the mesh's own space.
+fn put_bands(
+  writer: &mut StaticSceneWriter,
+  (base, geometry, buffer): (&StaticGeometryBase, &SectorGeometry, &[u8]),
+  bands: &[(u32, u32)],
+  (batch, surface, passes): (StaticBatch, u32, u32),
+  info: StaticSlotInfo,
+) -> (Vec<(u32, u32)>, Vec4) {
+  let band_slots: Vec<(u32, u32)> = bands
+    .iter()
+    .map(|range| {
+      writer.put_slot(
+        base,
+        cut_clusters(geometry, buffer, range.0, range.1),
+        (StaticSlot::LISTED, batch, surface, passes),
+        info,
+      )
+    })
+    .collect();
+  let local: Vec4 =
+    bound_spheres(&writer.spheres[writer.spheres.len() - band_slots.iter().map(|it| it.1 as usize).sum::<usize>()..]);
+
+  (band_slots, local)
+}
+
 fn cut_clusters(geometry: &SectorGeometry, buffer: &[u8], start: u32, count: u32) -> Vec<(u32, u32, Vec4)> {
   let ranges: Vec<[u32; 4]> = read_pods(buffer, &geometry.clusters.ranges);
   let spheres: Vec<Vec4> = read_pods(buffer, &geometry.clusters.spheres);

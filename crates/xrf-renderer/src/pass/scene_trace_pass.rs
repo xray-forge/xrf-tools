@@ -1,11 +1,12 @@
 use wgpu::util::DeviceExt;
 use xrf_error::XrfResult;
-use xrf_renderer_core::{ComputeContext, FrameGraph, GraphBindings, GraphBufferAccess, PassParameters};
+use xrf_renderer_core::{
+  ComputeContext, ComputePipelineDescription, FrameGraph, GraphBindings, GraphBufferAccess, PassParameters,
+};
 
 use crate::context::gpu_requirements::can_trace;
 use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::reflection_scene_parameters::ReflectionSceneParameters;
-use crate::pass::shader_pipelines::create_checked;
 use crate::pass::sky_parameters::SkyParameters;
 use crate::pass::trace_parameters::TraceParameters;
 use crate::pass::trace_request::TraceRequest;
@@ -53,7 +54,7 @@ impl SceneTracePass {
     });
 
     Ok(Self {
-      pipeline: Self::create_pipeline(device, source, (view_layout, sky_layout), layouts.as_ref())?,
+      pipeline: Self::create_pipeline(source, (view_layout, sky_layout), layouts.as_ref())?,
       view_layout: view_layout.clone(),
       sky_layout: sky_layout.clone(),
       layouts,
@@ -82,16 +83,11 @@ impl SceneTracePass {
     })
   }
 
-  pub fn refresh(&mut self, device: &wgpu::Device, source: PipelineSource<'_>) {
+  pub fn refresh(&mut self, source: PipelineSource<'_>) {
     if source.get_generation() != self.generation {
       self.generation = source.get_generation();
 
-      match Self::create_pipeline(
-        device,
-        source,
-        (&self.view_layout, &self.sky_layout),
-        self.layouts.as_ref(),
-      ) {
+      match Self::create_pipeline(source, (&self.view_layout, &self.sky_layout), self.layouts.as_ref()) {
         Ok(pipeline) => self.pipeline = pipeline,
         Err(error) => log::error!("Scene trace rejected, tracing with the last one: {error}"),
       }
@@ -197,7 +193,6 @@ impl SceneTracePass {
   }
 
   fn create_pipeline(
-    device: &wgpu::Device,
     source: PipelineSource<'_>,
     (view_layout, sky_layout): (&wgpu::BindGroupLayout, &wgpu::BindGroupLayout),
     layouts: Option<&[wgpu::BindGroupLayout; 3]>,
@@ -205,29 +200,18 @@ impl SceneTracePass {
     let Some([scene_layout, trace_layout, texture_layout]) = layouts else {
       return Ok(None);
     };
-    let module: wgpu::ShaderModule = source.get_module("frame/reflection_scene")?;
-    let pipeline_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-      label: Some("scene trace"),
-      bind_group_layouts: &[
-        Some(view_layout),
-        Some(scene_layout),
-        Some(sky_layout),
-        Some(trace_layout),
-        Some(texture_layout),
-      ],
-      ..Default::default()
-    });
-
-    create_checked(device, "cs_scene", || {
-      device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-        label: Some("scene trace"),
-        layout: Some(&pipeline_layout),
-        module: &module,
-        entry_point: Some("cs_scene"),
-        compilation_options: Default::default(),
-        cache: source.get_driver_cache(),
-      })
-    })
-    .map(Some)
+    source
+      .get_compute_pipeline(
+        &ComputePipelineDescription::new("scene trace", "frame/reflection_scene", "cs_scene").with_bind_group_layouts(
+          &[
+            Some(view_layout),
+            Some(scene_layout),
+            Some(sky_layout),
+            Some(trace_layout),
+            Some(texture_layout),
+          ],
+        ),
+      )
+      .map(Some)
   }
 }

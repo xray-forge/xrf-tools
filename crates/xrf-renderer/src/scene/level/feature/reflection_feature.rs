@@ -162,10 +162,10 @@ impl ReflectionFeature {
   }
 
   /// Declares the screen-space reflections while they are traced: every glossy pixel's ray walked over the nearest
-  /// depth's pyramid, then, denoised, the last frame's reflection reprojected, an eighth-size average, the trace filtered
-  /// across the surface and resolved over time into the view's history. Answers what combine reads (the history written,
-  /// or the trace itself where DLSS ray reconstruction takes it raw), the ends' reasons and the trace (what each traced
-  /// pixel met, the ray's length in alpha), none where they are not traced.
+  /// depth's pyramid, then, denoised, the last frame's reflection reprojected, an eighth-size average, the trace
+  /// filtered across the surface and resolved over time into the view's history. Answers what combine reads (the
+  /// history written, or the trace itself where DLSS ray reconstruction takes it raw), the ends' reasons and the trace
+  /// (what each traced pixel met, the ray's length in alpha), none where they are not traced.
   pub fn add_passes<'a>(
     &'a self,
     (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
@@ -192,21 +192,7 @@ impl ReflectionFeature {
     };
     let traced: GraphTexture = create("reflections traced", (width, height), ReflectionPass::TRACED);
     let ends: GraphTexture = create("reflections ends", (width, height), ReflectionPass::ENDS);
-    // The denoiser's history, the side read and the side written of each, while it is denoised.
-    let frames: Option<ReflectionFrameHandles> = history.frames.as_ref().map(|frames| {
-      let [written_frame, read_frame]: [&'a ReflectionFrame; 2] = frames.get_sides();
-      let mut import_pair =
-        |label: &'static str, texture: fn(&'a ReflectionFrame) -> &'a FrameTexture| -> [GraphTexture; 2] {
-          [read_frame, written_frame].map(|frame| bindings.import_view(&mut *graph, label, &texture(frame).view))
-        };
-
-      ReflectionFrameHandles {
-        radiance: import_pair("reflection history", |frame| &frame.radiance),
-        surface: import_pair("reflection history surface", |frame| &frame.surface),
-        held: import_pair("reflection history held", |frame| &frame.held),
-        full: import_pair("reflection history full", |frame| &frame.full),
-      }
-    });
+    let frames: Option<ReflectionFrameHandles> = Self::import_frames((&mut *graph, &mut *bindings), history);
     let read: [GraphTexture; 3] = frames.as_ref().map_or([empty; 3], |frames| {
       [frames.radiance[0], frames.surface[0], frames.held[0]]
     });
@@ -241,6 +227,42 @@ impl ReflectionFeature {
       guide: empty,
       history_sampler: passes.reflections.get_sampler(),
     };
+    self.add_trace_passes(
+      (&mut *graph, &mut *bindings),
+      passes,
+      view,
+      (&parameters, sky, lit),
+      (traced, ends),
+      (history, scene_trace),
+    );
+
+    // Raw, DLSS ray reconstruction denoises the trace in the frame, so combine reads it as traced.
+    let Some(frames) = frames else {
+      return Some((traced, ends, traced));
+    };
+
+    let written_full: GraphTexture =
+      Self::add_denoise_passes(graph, passes, view, parameters, (traced, frames), history.size);
+
+    Some((written_full, ends, traced))
+  }
+
+  /// Walks every glossy pixel's ray over the nearest depth's pyramid into `traced` and `ends`, then the rays the screen
+  /// left against the level's geometry where the scene is traced (`scene_trace`); raw, how many rays the trace asked
+  /// for read back for its list's room.
+  fn add_trace_passes<'a>(
+    &'a self,
+    (graph, bindings): (&mut FrameGraph<'a>, &mut GraphBindings<'a>),
+    passes: LevelPasses<'a>,
+    view: &'a ViewBinding,
+    (parameters, sky, lit): (&ReflectionParameters<'a>, SkyParameters<'a>, LightingHandles<'a>),
+    (traced, ends): (GraphTexture, GraphTexture),
+    (history, scene_trace): (
+      &'a ReflectionHistory,
+      Option<(TraceParameters<'a>, &'a wgpu::BindGroup)>,
+    ),
+  ) {
+    let parameters: ReflectionParameters<'a> = *parameters;
     let clear = |target: GraphTexture| GraphColorAttachment::new(target, wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT));
 
     let listed: TraceRequestHandles =
@@ -300,12 +322,20 @@ impl ReflectionFeature {
           });
       }
     }
+  }
 
-    // Raw, DLSS ray reconstruction denoises the trace in the frame, so combine reads it as traced.
-    let Some(frames) = frames else {
-      return Some((traced, ends, traced));
-    };
-
+  /// The trace denoised: each traced pixel's surface worked out once, then the last frame's reflection reprojected, an
+  /// eighth-size average, the trace filtered across the surface, resolved over time into the history's `frames`, and
+  /// brought up to the frame's size. Answers the history written at the frame's size.
+  fn add_denoise_passes<'a>(
+    graph: &mut FrameGraph<'a>,
+    passes: LevelPasses<'a>,
+    view: &'a ViewBinding,
+    parameters: ReflectionParameters<'a>,
+    (traced, frames): (GraphTexture, ReflectionFrameHandles),
+    (width, height): (u32, u32),
+  ) -> GraphTexture {
+    let clear = |target: GraphTexture| GraphColorAttachment::new(target, wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT));
     let ratio: u32 = ReflectionPass::AVERAGE_RATIO;
     let mut create = |label: &'static str, (width, height): (u32, u32), format: wgpu::TextureFormat| -> GraphTexture {
       graph.create_texture(GraphTextureDescriptor::new_2d(label, width, height, format))
@@ -400,7 +430,29 @@ impl ReflectionFeature {
         .record(move |context| passes.reflections.record_stage(context, view, &stage_parameters, stage));
     }
 
-    Some((written_full, ends, traced))
+    written_full
+  }
+
+  /// The denoiser's history as the frame's graph holds it, the side read and the side written of each, while it is
+  /// denoised.
+  fn import_frames<'a>(
+    (graph, bindings): (&mut FrameGraph<'a>, &mut GraphBindings<'a>),
+    history: &'a ReflectionHistory,
+  ) -> Option<ReflectionFrameHandles> {
+    history.frames.as_ref().map(|frames| {
+      let [written_frame, read_frame]: [&'a ReflectionFrame; 2] = frames.get_sides();
+      let mut import_pair =
+        |label: &'static str, texture: fn(&'a ReflectionFrame) -> &'a FrameTexture| -> [GraphTexture; 2] {
+          [read_frame, written_frame].map(|frame| bindings.import_view(&mut *graph, label, &texture(frame).view))
+        };
+
+      ReflectionFrameHandles {
+        radiance: import_pair("reflection history", |frame| &frame.radiance),
+        surface: import_pair("reflection history surface", |frame| &frame.surface),
+        held: import_pair("reflection history held", |frame| &frame.held),
+        full: import_pair("reflection history full", |frame| &frame.full),
+      }
+    })
   }
 
   /// Asks for the rays asked recorded with the frame just submitted.

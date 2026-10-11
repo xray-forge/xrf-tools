@@ -58,7 +58,7 @@ impl ContactShadowPass {
       .create_view(&Default::default());
 
     Ok(Self {
-      pipeline: Self::create_pipeline(device, source, view_layout, &layout)?,
+      pipeline: Self::create_pipeline(source, view_layout, &layout)?,
       view_layout: view_layout.clone(),
       lit,
       generation: source.get_generation(),
@@ -66,11 +66,11 @@ impl ContactShadowPass {
     })
   }
 
-  pub fn refresh(&mut self, device: &wgpu::Device, source: PipelineSource<'_>) {
+  pub fn refresh(&mut self, source: PipelineSource<'_>) {
     if source.get_generation() != self.generation {
       self.generation = source.get_generation();
 
-      match Self::create_pipeline(device, source, &self.view_layout, &self.layout) {
+      match Self::create_pipeline(source, &self.view_layout, &self.layout) {
         Ok(pipeline) => self.pipeline = pipeline,
         Err(error) => log::error!("Contact shadows rejected, marching with the last ones: {error}"),
       }
@@ -94,13 +94,11 @@ impl ContactShadowPass {
   }
 
   fn create_pipeline(
-    device: &wgpu::Device,
     source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<wgpu::RenderPipeline> {
     create_fullscreen_pipeline(
-      device,
       source,
       "frame/contact_shadows",
       "fs_contact_shadows",

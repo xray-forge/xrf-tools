@@ -80,7 +80,6 @@ impl WaterBlurPass {
 
   fn create_pipeline(device: &wgpu::Device, source: PipelineSource<'_>) -> XrfResult<wgpu::RenderPipeline> {
     create_fullscreen_pipeline(
-      device,
       source,
       "frame/water_blur",
       "fs_water_blur",

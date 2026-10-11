@@ -70,7 +70,7 @@ impl EnhancedBloomPass {
     let describe = |label: &'static str, fragment: &'static str, format: wgpu::TextureFormat| {
       RenderPipelineDescription::new(label, Self::MODULE, "vs_fullscreen")
         .with_fragment(fragment)
-        .with_bind_group_layouts(vec![self.view_layout.clone(), self.layout.clone()])
+        .with_bind_group_layouts(&[Some(&self.view_layout), Some(&self.layout)])
         .with_target(wgpu::ColorTargetState::from(format))
     };
 

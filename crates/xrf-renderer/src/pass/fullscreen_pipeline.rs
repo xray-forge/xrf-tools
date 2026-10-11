@@ -1,74 +1,45 @@
 use xrf_error::XrfResult;
+use xrf_renderer_core::RenderPipelineDescription;
 
 use crate::pass::pipeline_source::PipelineSource;
-use crate::pass::shader_pipelines::create_checked;
 
 /// A pass drawing one triangle over its whole target, its vertices from `common/fullscreen`, into one target: a format,
 /// or a format with a blend.
 pub fn create_fullscreen_pipeline(
-  device: &wgpu::Device,
   source: PipelineSource<'_>,
   module: &'static str,
-  fragment: &str,
+  fragment: &'static str,
   layouts: &[Option<&wgpu::BindGroupLayout>],
   target: impl Into<wgpu::ColorTargetState>,
 ) -> XrfResult<wgpu::RenderPipeline> {
-  create_fullscreen_pipeline_into(device, source, module, fragment, layouts, &[Some(target.into())])
+  create_fullscreen_pipeline_into(source, module, fragment, layouts, &[Some(target.into())])
 }
 
 /// The same, drawing into several targets at once.
 pub fn create_fullscreen_pipeline_into(
-  device: &wgpu::Device,
   source: PipelineSource<'_>,
   module: &'static str,
-  fragment: &str,
+  fragment: &'static str,
   layouts: &[Option<&wgpu::BindGroupLayout>],
   targets: &[Option<wgpu::ColorTargetState>],
 ) -> XrfResult<wgpu::RenderPipeline> {
-  create_fullscreen_pipeline_with(device, source, (module, fragment, &[]), layouts, targets)
+  create_fullscreen_pipeline_with(source, (module, fragment, &[]), layouts, targets)
 }
 
 /// `create_fullscreen_pipeline_into` with the fragment's override constants named and valued (`constants`).
 pub fn create_fullscreen_pipeline_with(
-  device: &wgpu::Device,
   source: PipelineSource<'_>,
-  (module, fragment, constants): (&'static str, &str, &[(&str, f64)]),
+  (module, fragment, constants): (&'static str, &'static str, &[(&'static str, f64)]),
   layouts: &[Option<&wgpu::BindGroupLayout>],
   targets: &[Option<wgpu::ColorTargetState>],
 ) -> XrfResult<wgpu::RenderPipeline> {
-  let shader: wgpu::ShaderModule = source.get_module(module)?;
-  let pipeline_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-    label: Some(module),
-    bind_group_layouts: layouts,
-    ..Default::default()
-  });
-
-  create_checked(device, module, || {
-    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-      label: Some(module),
-      layout: Some(&pipeline_layout),
-      vertex: wgpu::VertexState {
-        module: &shader,
-        entry_point: Some("vs_fullscreen"),
-        compilation_options: Default::default(),
-        buffers: &[],
-      },
-      fragment: Some(wgpu::FragmentState {
-        module: &shader,
-        entry_point: Some(fragment),
-        compilation_options: wgpu::PipelineCompilationOptions {
-          constants,
-          ..Default::default()
-        },
-        targets,
-      }),
-      primitive: Default::default(),
-      depth_stencil: None,
-      multisample: Default::default(),
-      multiview_mask: None,
-      cache: source.get_driver_cache(),
-    })
-  })
+  source.get_render_pipeline(
+    &RenderPipelineDescription::new(module, module, "vs_fullscreen")
+      .with_fragment(fragment)
+      .with_constants(constants)
+      .with_bind_group_layouts(layouts)
+      .with_targets(targets.to_vec()),
+  )
 }
 
 /// One texture view bound at a binding.

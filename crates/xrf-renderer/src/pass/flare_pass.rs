@@ -1,5 +1,5 @@
 use xrf_error::XrfResult;
-use xrf_renderer_core::{ComputeContext, PassParameters, RasterContext};
+use xrf_renderer_core::{ComputeContext, ComputePipelineDescription, PassParameters, RasterContext};
 
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::flare_draw_parameters::FlareDrawParameters;
@@ -124,14 +124,7 @@ impl FlarePass {
     view_layout: &wgpu::BindGroupLayout,
     [measure_layout, draw_layout, texture_layout]: [&wgpu::BindGroupLayout; 3],
   ) -> XrfResult<(wgpu::ComputePipeline, wgpu::RenderPipeline)> {
-    let measure_module: wgpu::ShaderModule = source.get_module("frame/flare_visibility")?;
     let draw_module: wgpu::ShaderModule = source.get_module("frame/flare")?;
-    let measure_pipeline_layout: wgpu::PipelineLayout =
-      device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-        label: Some("flare visibility"),
-        bind_group_layouts: &[Some(view_layout), Some(measure_layout)],
-        ..Default::default()
-      });
     let draw_pipeline_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
       label: Some("flare"),
       bind_group_layouts: &[Some(view_layout), Some(draw_layout), Some(texture_layout)],
@@ -150,16 +143,10 @@ impl FlarePass {
       }),
       write_mask: wgpu::ColorWrites::COLOR,
     })];
-    let measure: wgpu::ComputePipeline = create_checked(device, "flare visibility", || {
-      device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-        label: Some("flare visibility"),
-        layout: Some(&measure_pipeline_layout),
-        module: &measure_module,
-        entry_point: Some("cs_visibility"),
-        compilation_options: Default::default(),
-        cache: source.get_driver_cache(),
-      })
-    })?;
+    let measure: wgpu::ComputePipeline = source.get_compute_pipeline(
+      &ComputePipelineDescription::new("flare visibility", "frame/flare_visibility", "cs_visibility")
+        .with_bind_group_layouts(&[Some(view_layout), Some(measure_layout)]),
+    )?;
     let draw: wgpu::RenderPipeline = create_checked(device, "flare", || {
       device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
         label: Some("flare"),

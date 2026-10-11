@@ -151,28 +151,24 @@ impl BitmaskFeature {
     let mut create = |label: &'static str, format: wgpu::TextureFormat| -> GraphTexture {
       graph.create_texture(GraphTextureDescriptor::new_2d(label, width, height, format))
     };
-    // What a stage reads: the occlusion before it and its history, the light copied, and the light before it and its
-    // history.
     let points: GraphTexture = create("vbao points", VbaoPass::POINTS);
-    let parameters =
-      |(source, history): (GraphTexture, GraphTexture),
-       (light_source, gathered, light_history): (GraphTexture, GraphTexture, GraphTexture)| {
-        VbaoParameters {
-          normal_target: targets.normal,
-          depth_target: targets.depth,
-          motion_target: targets.motion,
-          occlusion,
-          source,
-          history,
-          albedo_target: targets.albedo,
-          material_target: targets.material,
-          light_target: targets.light,
-          light_source,
-          gathered,
-          light_history,
-          points,
-        }
-      };
+    // What every stage reads, with nothing before it: each stage names the occlusion before it and its history, the
+    // light copied, and the light before it and its history.
+    let base: VbaoParameters = VbaoParameters {
+      normal_target: targets.normal,
+      depth_target: targets.depth,
+      motion_target: targets.motion,
+      occlusion,
+      source: empty,
+      history: empty,
+      albedo_target: targets.albedo,
+      material_target: targets.material,
+      light_target: targets.light,
+      light_source: dark,
+      gathered: dark,
+      light_history: dark,
+      points,
+    };
     let clear = |target: GraphTexture| GraphColorAttachment::new(target, wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT));
     // The occlusion targets while it occludes; a search of the light alone has its own, its visibility unused.
     let [searched, filtered] = if search.is_occluding {
@@ -200,10 +196,7 @@ impl BitmaskFeature {
       filtered
     };
 
-    let laying: VbaoParameters = VbaoParameters {
-      points: empty,
-      ..parameters((empty, empty), (dark, dark, dark))
-    };
+    let laying: VbaoParameters = VbaoParameters { points: empty, ..base };
 
     graph
       .add_raster_pass(VbaoPass::POINTS_PASS)
@@ -212,7 +205,7 @@ impl BitmaskFeature {
       .record(move |context| passes.vbao.record_points(context, view, &laying));
 
     if is_lit {
-      let copy: VbaoParameters = parameters((empty, empty), (dark, dark, dark));
+      let copy: VbaoParameters = base;
 
       graph
         .add_raster_pass(BitmaskSearch::SOURCE_PASS)
@@ -221,7 +214,7 @@ impl BitmaskFeature {
         .record(move |context| passes.vbao.record_light_source(context, view, &copy));
     }
 
-    let searching: VbaoParameters = parameters((empty, empty), (light_source, dark, dark));
+    let searching: VbaoParameters = VbaoParameters { light_source, ..base };
 
     if trace.is_none() || is_lit {
       lit_searched
@@ -236,26 +229,14 @@ impl BitmaskFeature {
         .record(move |context| passes.vbao.record_search(context, (quality, is_lit), view, &searching));
     }
 
-    if let Some((trace, textures)) = trace {
-      let tracing: VbaoParameters = parameters((empty, empty), (dark, dark, dark));
-
-      // Raw, the trace writes what combine reads beside what the light's accumulation measures its history by.
-      is_raw
-        .then_some(filtered)
-        .into_iter()
-        .fold(
-          graph
-            .add_raster_pass(BitmaskSearch::TRACE_PASS)
-            .parameters(&tracing)
-            .parameters(&trace)
-            .color(clear(searched)),
-          |builder, shown| builder.color(clear(shown)),
-        )
-        .record(move |context| {
-          passes
-            .rtao
-            .record(context, (quality, is_raw), view, (&tracing, &trace, textures))
-        });
+    if let Some(trace) = trace {
+      Self::add_trace_pass(
+        graph,
+        passes,
+        view,
+        (base, trace, quality),
+        (searched, filtered, is_raw),
+      );
     }
 
     // Raw and gathering no light, nothing is left to accumulate or filter.
@@ -263,6 +244,70 @@ impl BitmaskFeature {
       return None;
     }
 
+    self.add_gather_passes(
+      (graph, bindings),
+      passes,
+      view,
+      (base, search, names),
+      (searched, filtered_occlusion, lit_searched, lit_filtered),
+    );
+
+    lit_filtered
+  }
+
+  /// Traces the occlusion through the scene's trace (`trace`, its textures bound beside) into `searched`; raw, beside
+  /// it into `filtered`, which combine reads.
+  fn add_trace_pass<'a>(
+    graph: &mut FrameGraph<'a>,
+    passes: LevelPasses<'a>,
+    view: &'a ViewBinding,
+    (base, (trace, textures), quality): (
+      VbaoParameters,
+      (TraceParameters<'a>, &'a wgpu::BindGroup),
+      RenderAmbientOcclusionQuality,
+    ),
+    (searched, filtered, is_raw): (GraphTexture, GraphTexture, bool),
+  ) {
+    let clear = |target: GraphTexture| GraphColorAttachment::new(target, wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT));
+    let tracing: VbaoParameters = base;
+
+    // Raw, the trace writes what combine reads beside what the light's accumulation measures its history by.
+    is_raw
+      .then_some(filtered)
+      .into_iter()
+      .fold(
+        graph
+          .add_raster_pass(BitmaskSearch::TRACE_PASS)
+          .parameters(&tracing)
+          .parameters(&trace)
+          .color(clear(searched)),
+        |builder, shown| builder.color(clear(shown)),
+      )
+      .record(move |context| {
+        passes
+          .rtao
+          .record(context, (quality, is_raw), view, (&tracing, &trace, textures))
+      });
+  }
+
+  /// Accumulates the search with the last frame's into its histories while it accumulates, then filters it into the
+  /// occlusion target combine reads (`filtered`) and the indirect light (`lit_filtered`) while lit; `base` the stages'
+  /// parameters with nothing read, `searched` and `lit_searched` what the search wrote.
+  fn add_gather_passes<'a>(
+    &'a self,
+    (graph, bindings): (&mut FrameGraph<'a>, &mut GraphBindings<'a>),
+    passes: LevelPasses<'a>,
+    view: &'a ViewBinding,
+    (base, search, names): (VbaoParameters, BitmaskSearch, BitmaskPassNames),
+    (searched, filtered_occlusion, lit_searched, lit_filtered): (
+      GraphTexture,
+      GraphTexture,
+      Option<GraphTexture>,
+      Option<GraphTexture>,
+    ),
+  ) {
+    let (dark, is_lit): (GraphTexture, bool) = (base.light_source, search.is_lit);
+    let clear = |target: GraphTexture| GraphColorAttachment::new(target, wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT));
     // The last frame's accumulations and this frame's, while it accumulates.
     let mut import = |label: &'static str, history: &'a History<FrameTexture>| {
       [
@@ -280,10 +325,13 @@ impl BitmaskFeature {
       Some([previous, written]) => {
         let [previous_light, written_light] = light_histories.unwrap_or([dark, dark]);
         let written_light: Option<GraphTexture> = light_histories.map(|_| written_light);
-        let accumulate: VbaoParameters = parameters(
-          (searched, previous),
-          (dark, lit_searched.unwrap_or(dark), previous_light),
-        );
+        let accumulate: VbaoParameters = VbaoParameters {
+          source: searched,
+          history: previous,
+          gathered: lit_searched.unwrap_or(dark),
+          light_history: previous_light,
+          ..base
+        };
         let is_lit_accumulated: bool = written_light.is_some();
 
         written_light
@@ -305,7 +353,11 @@ impl BitmaskFeature {
       }
       None => (searched, lit_searched),
     };
-    let filtering: VbaoParameters = parameters((gathered, empty), (dark, gathered_light.unwrap_or(dark), dark));
+    let filtering: VbaoParameters = VbaoParameters {
+      source: gathered,
+      gathered: gathered_light.unwrap_or(dark),
+      ..base
+    };
 
     search
       .is_occluding
@@ -317,8 +369,6 @@ impl BitmaskFeature {
         |builder, target| builder.color(clear(target)),
       )
       .record(move |context| passes.vbao.record_filter(context, search, view, &filtering));
-
-    lit_filtered
   }
 }
 

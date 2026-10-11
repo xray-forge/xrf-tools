@@ -1,5 +1,5 @@
 use xrf_error::XrfResult;
-use xrf_renderer_core::{ComputeContext, PassParameters};
+use xrf_renderer_core::{ComputeContext, ComputePipelineDescription, PassParameters};
 
 use crate::frame::depth_pyramid::DepthPyramid;
 use crate::pass::cover_pyramid_depth_parameters::CoverPyramidDepthParameters;
@@ -7,7 +7,6 @@ use crate::pass::cover_pyramid_level_parameters::CoverPyramidLevelParameters;
 use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::pyramid_depth_parameters::PyramidDepthParameters;
 use crate::pass::pyramid_level_parameters::PyramidLevelParameters;
-use crate::pass::shader_pipelines::create_checked;
 use crate::scene::level::cover_pyramid::CoverPyramid;
 
 /// Invocations a reduction workgroup runs a side, as `shaders/frame/pyramid.wgsl` declares them.
@@ -34,17 +33,17 @@ impl DepthPyramidPass {
     ];
 
     Ok(Self {
-      pipelines: Self::create_pipelines(device, source, &layouts)?,
+      pipelines: Self::create_pipelines(source, &layouts)?,
       generation: source.get_generation(),
       layouts,
     })
   }
 
-  pub fn refresh(&mut self, device: &wgpu::Device, source: PipelineSource<'_>) {
+  pub fn refresh(&mut self, source: PipelineSource<'_>) {
     if source.get_generation() != self.generation {
       self.generation = source.get_generation();
 
-      match Self::create_pipelines(device, source, &self.layouts) {
+      match Self::create_pipelines(source, &self.layouts) {
         Ok(pipelines) => self.pipelines = pipelines,
         Err(error) => log::error!("Depth pyramid rejected, reducing with the last one: {error}"),
       }
@@ -98,28 +97,13 @@ impl DepthPyramidPass {
   }
 
   fn create_pipelines(
-    device: &wgpu::Device,
     source: PipelineSource<'_>,
     [depth_layout, level_layout, cover_layout, cover_level_layout]: &[wgpu::BindGroupLayout; 4],
   ) -> XrfResult<[wgpu::ComputePipeline; 6]> {
-    let module: wgpu::ShaderModule = source.get_module("frame/pyramid")?;
-    let create = |entry: &str, layout: &wgpu::BindGroupLayout| -> XrfResult<wgpu::ComputePipeline> {
-      let pipeline_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-        label: Some(entry),
-        bind_group_layouts: &[Some(layout)],
-        ..Default::default()
-      });
-
-      create_checked(device, entry, || {
-        device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-          label: Some(entry),
-          layout: Some(&pipeline_layout),
-          module: &module,
-          entry_point: Some(entry),
-          compilation_options: Default::default(),
-          cache: source.get_driver_cache(),
-        })
-      })
+    let create = |entry: &'static str, layout: &wgpu::BindGroupLayout| -> XrfResult<wgpu::ComputePipeline> {
+      source.get_compute_pipeline(
+        &ComputePipelineDescription::new(entry, "frame/pyramid", entry).with_bind_group_layouts(&[Some(layout)]),
+      )
     };
 
     Ok([

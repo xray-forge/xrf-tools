@@ -1,9 +1,8 @@
 use xrf_error::XrfResult;
-use xrf_renderer_core::{ComputeContext, PassParameters};
+use xrf_renderer_core::{ComputeContext, ComputePipelineDescription, PassParameters};
 
 use crate::pass::grass_colour_parameters::GrassColourParameters;
 use crate::pass::pipeline_source::PipelineSource;
-use crate::pass::shader_pipelines::create_checked;
 
 /// Averages each detail model's texture over its solid texels into the colour a traced hit on grassed ground blends
 /// towards (`grass/colours`), a workgroup a model, each frame the scene is traced: a few thousand reads a model, and
@@ -27,18 +26,18 @@ impl GrassColourPass {
     let layout: wgpu::BindGroupLayout = GrassColourParameters::create_layout(device);
 
     Ok(Self {
-      pipeline: Self::create_pipeline(device, source, (&layout, texture_layout))?,
+      pipeline: Self::create_pipeline(source, (&layout, texture_layout))?,
       layout,
       texture_layout: texture_layout.clone(),
       generation: source.get_generation(),
     })
   }
 
-  pub fn refresh(&mut self, device: &wgpu::Device, source: PipelineSource<'_>) {
+  pub fn refresh(&mut self, source: PipelineSource<'_>) {
     if source.get_generation() != self.generation {
       self.generation = source.get_generation();
 
-      match Self::create_pipeline(device, source, (&self.layout, &self.texture_layout)) {
+      match Self::create_pipeline(source, (&self.layout, &self.texture_layout)) {
         Ok(pipeline) => self.pipeline = pipeline,
         Err(error) => log::error!("Grass colours rejected, averaging with the last: {error}"),
       }
@@ -63,26 +62,12 @@ impl GrassColourPass {
   }
 
   fn create_pipeline(
-    device: &wgpu::Device,
     source: PipelineSource<'_>,
     (layout, texture_layout): (&wgpu::BindGroupLayout, &wgpu::BindGroupLayout),
   ) -> XrfResult<wgpu::ComputePipeline> {
-    let module: wgpu::ShaderModule = source.get_module("grass/colours")?;
-    let pipeline_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-      label: Some("grass colours"),
-      bind_group_layouts: &[Some(layout), Some(texture_layout)],
-      ..Default::default()
-    });
-
-    create_checked(device, "cs_grass_colours", || {
-      device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-        label: Some("grass colours"),
-        layout: Some(&pipeline_layout),
-        module: &module,
-        entry_point: Some("cs_grass_colours"),
-        compilation_options: Default::default(),
-        cache: source.get_driver_cache(),
-      })
-    })
+    source.get_compute_pipeline(
+      &ComputePipelineDescription::new("grass colours", "grass/colours", "cs_grass_colours")
+        .with_bind_group_layouts(&[Some(layout), Some(texture_layout)]),
+    )
   }
 }

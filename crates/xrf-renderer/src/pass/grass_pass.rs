@@ -1,5 +1,5 @@
 use xrf_error::XrfResult;
-use xrf_renderer_core::{ComputeContext, PassParameters};
+use xrf_renderer_core::{ComputeContext, ComputePipelineDescription, PassParameters};
 
 use crate::frame::sun_shadow_maps::SunShadowMaps;
 use crate::frame::view_targets::ViewTargets;
@@ -25,15 +25,15 @@ const CARDS_ENTRIES: [&str; 3] = ["cs_clear_cards", "cs_grass_cards", "cs_card_d
 const WORKGROUP: u32 = 64;
 
 /// Items the lists hold past which the sort is dispatched over the items kept, read off the GPU, rather than over every
-/// item the lists hold. The indirect dispatch costs ~0.02 ms on D3D12, which patches its arguments in a pass of its own;
-/// dispatching over the lists costs ~0.035 ms a million items (RTX 5080), so the indirect one wins only past ~1M.
+/// item the lists hold. The indirect dispatch costs ~0.02 ms on D3D12, which patches its arguments in a pass of its
+/// own; dispatching over the lists costs ~0.035 ms a million items (RTX 5080), so the indirect one wins only past ~1M.
 const SORT_INDIRECT_ABOVE: u32 = 1 << 21;
 
 /// Bytes one indexed indirect draw takes.
 pub const GRASS_DRAW_BYTES: u64 = 20;
 
-/// Plants the grass around the camera as `CDetailManager` does, on the GPU, and draws a model's tufts at a time into the
-/// G-buffer.
+/// Plants the grass around the camera as `CDetailManager` does, on the GPU, and draws a model's tufts at a time into
+/// the G-buffer.
 pub struct GrassPass {
   level_layout: wgpu::BindGroupLayout,
   build_layout: wgpu::BindGroupLayout,
@@ -144,7 +144,6 @@ impl GrassPass {
       sort,
       cards,
     } = Self::create_planting(
-      device,
       source,
       [layouts[0], layouts[1], &occlusion_layout, &sort_layout, &cards_layout],
     )?;
@@ -179,7 +178,6 @@ impl GrassPass {
     self.generation = source.get_generation();
 
     let planting = Self::create_planting(
-      device,
       source,
       [
         &self.level_layout,
@@ -378,7 +376,8 @@ impl GrassPass {
     pass.dispatch_workgroups(1, 1, 1);
     pass.set_pipeline(&self.sort);
 
-    // Wide lists sort over the items kept, at a wide radius a hundredth of what they hold; narrow ones over all of them.
+    // Wide lists sort over the items kept, at a wide radius a hundredth of what they hold; narrow ones over all of
+    // them.
     if dispatch.capacity > SORT_INDIRECT_ABOVE {
       pass.dispatch_workgroups_indirect(sort_dispatch, 0);
     } else {
@@ -410,61 +409,39 @@ impl GrassPass {
   }
 
   fn create_planting(
-    device: &wgpu::Device,
     source: PipelineSource<'_>,
     [level_layout, build_layout, occlusion_layout, sort_layout, cards_layout]: [&wgpu::BindGroupLayout; 5],
   ) -> XrfResult<GrassComputePipelines> {
-    let module: wgpu::ShaderModule = source.get_module("grass/planting")?;
-    let cards_module: wgpu::ShaderModule = source.get_module("grass/cards")?;
-    let planting_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-      label: Some("grass planting"),
-      bind_group_layouts: &[Some(level_layout), Some(build_layout)],
-      ..Default::default()
-    });
-    let culling_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-      label: Some("grass cull"),
-      bind_group_layouts: &[Some(level_layout), Some(build_layout), Some(occlusion_layout)],
-      ..Default::default()
-    });
-    let arrange_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-      label: Some("grass arrange"),
-      bind_group_layouts: &[Some(level_layout), Some(build_layout), None, Some(sort_layout)],
-      ..Default::default()
-    });
-    let cards_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-      label: Some("grass cards"),
-      bind_group_layouts: &[Some(level_layout), Some(build_layout), Some(cards_layout)],
-      ..Default::default()
-    });
-    let create_in = |module: &wgpu::ShaderModule,
-                     entry: &'static str,
-                     layout: &wgpu::PipelineLayout|
-     -> XrfResult<wgpu::ComputePipeline> {
-      create_checked(device, entry, || {
-        device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-          label: Some(entry),
-          layout: Some(layout),
-          module,
-          entry_point: Some(entry),
-          compilation_options: Default::default(),
-          cache: source.get_driver_cache(),
-        })
-      })
+    let planting: [Option<&wgpu::BindGroupLayout>; 2] = [Some(level_layout), Some(build_layout)];
+    let culling: [Option<&wgpu::BindGroupLayout>; 3] = [Some(level_layout), Some(build_layout), Some(occlusion_layout)];
+    let create_in = |module: &'static str, entry: &'static str, layouts: &[Option<&wgpu::BindGroupLayout>]| {
+      source
+        .get_compute_pipeline(&ComputePipelineDescription::new(entry, module, entry).with_bind_group_layouts(layouts))
     };
-    let create = |entry: &'static str, layout: &wgpu::PipelineLayout| create_in(&module, entry, layout);
+    let create =
+      |entry: &'static str, layouts: &[Option<&wgpu::BindGroupLayout>]| create_in("grass/planting", entry, layouts);
     let create_all =
-      |entries: &[&'static str], layout: &wgpu::PipelineLayout| -> XrfResult<Vec<wgpu::ComputePipeline>> {
-        entries.iter().map(|entry| create(entry, layout)).collect()
+      |entries: &[&'static str], layouts: &[Option<&wgpu::BindGroupLayout>]| -> XrfResult<Vec<wgpu::ComputePipeline>> {
+        entries.iter().map(|entry| create(entry, layouts)).collect()
       };
 
     Ok(GrassComputePipelines {
-      planting: create_all(&PLANTING_ENTRIES, &planting_layout)?,
-      culling: create_all(&CULLING_ENTRIES, &culling_layout)?,
-      arrange: create("arrange", &arrange_layout)?,
-      sort: create("scatter", &culling_layout)?,
+      planting: create_all(&PLANTING_ENTRIES, &planting)?,
+      culling: create_all(&CULLING_ENTRIES, &culling)?,
+      arrange: create(
+        "arrange",
+        &[Some(level_layout), Some(build_layout), None, Some(sort_layout)],
+      )?,
+      sort: create("scatter", &culling)?,
       cards: CARDS_ENTRIES
         .iter()
-        .map(|entry| create_in(&cards_module, entry, &cards_layout))
+        .map(|entry| {
+          create_in(
+            "grass/cards",
+            entry,
+            &[Some(level_layout), Some(build_layout), Some(cards_layout)],
+          )
+        })
         .collect::<XrfResult<_>>()?,
     })
   }

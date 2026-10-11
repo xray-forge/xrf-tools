@@ -1,7 +1,9 @@
 use std::sync::Arc;
 
 use glam::{UVec4, Vec3};
-use xrf_material::{XrayBumpMode, XraySurfaceDeclaration, XraySurfaceDescriptor, XraySurfaceDraw, XraySurfaceSampler};
+use xrf_material::{
+  XrayBumpMode, XraySurfaceDeclaration, XraySurfaceDescriptor, XraySurfaceDraw, XraySurfaceSampler, XraySurfaceTerrain,
+};
 use xrf_visual::SectorSurface;
 
 use crate::host::render_asset_source::RenderAssetSource;
@@ -113,87 +115,13 @@ pub fn build_static_surface(
     ),
     request(surface.hemi.as_deref(), TextureRole::Hemi),
   ];
-  let mut flags: u32 = 0;
-
-  for (slot, flag) in [
-    (StaticSurface::BASE, StaticSurface::HAS_BASE),
-    (StaticSurface::DETAIL, StaticSurface::HAS_DETAIL),
-    (StaticSurface::BUMP, StaticSurface::HAS_BUMP),
-    (StaticSurface::DETAIL_BUMP, StaticSurface::HAS_DETAIL_BUMP),
-    (StaticSurface::HEMI, StaticSurface::HAS_HEMI),
-  ] {
-    if slots[slot].is_some() {
-      flags |= flag;
-    }
-  }
-
-  // A bump binds as a pair, and a detail's bump adds only to the surface's own.
-  if slots[StaticSurface::BUMP_COMPANION].is_none() {
-    flags &= !(StaticSurface::HAS_BUMP | StaticSurface::HAS_DETAIL_BUMP);
-  }
-
-  if slots[StaticSurface::DETAIL_BUMP_COMPANION].is_none() {
-    flags &= !StaticSurface::HAS_DETAIL_BUMP;
-  }
-
-  // A composited surface tests its own reference where it has one.
-  if class == StaticClass::CutOut || (class.is_composited() && reference > 0) {
-    flags |= StaticSurface::IS_CUT_OUT;
-  }
-
-  flags |= blend;
-
-  if descriptor.is_some_and(is_environment_mapped) {
-    flags |= StaticSurface::IS_ENVIRONMENT_MAPPED;
-  }
-
-  if descriptor.is_some_and(|it| it.is_object_lod) {
-    flags |= StaticSurface::IS_STILL;
-  }
-
-  if descriptor.is_some_and(|it| it.is_emissive) {
-    flags |= StaticSurface::IS_EMISSIVE;
-  }
-
-  if descriptor.is_some_and(|it| it.is_shadowless) {
-    flags |= StaticSurface::IS_SHADOWLESS;
-  }
-
-  if flags & StaticSurface::HAS_BUMP != 0 && descriptor.is_some_and(is_steep) {
-    flags |= StaticSurface::IS_STEEP;
-  } else if flags & StaticSurface::HAS_BUMP != 0
-    && descriptor.is_some_and(|it| it.terrain.is_none() && is_relief_class(it))
-  {
-    flags |= StaticSurface::IS_RELIEF_BUMPED;
-  }
+  let mut flags: u32 = to_flags(descriptor, &slots, (class, reference, blend));
 
   let terrain: StaticTerrainSlots = match descriptor.and_then(|it| it.terrain.as_ref()) {
     Some(terrain) if flags & StaticSurface::HAS_BASE != 0 => {
       flags |= StaticSurface::IS_TERRAIN;
 
-      StaticTerrainSlots {
-        details: UVec4::from_array(
-          terrain
-            .layers
-            .each_ref()
-            .map(|layer| textures.request(&layer.reference, TextureRole::Detail, source)),
-        ),
-        bumps: UVec4::from_array(
-          terrain
-            .layers
-            .each_ref()
-            .map(|layer| textures.request(&layer.bump, TextureRole::Bump, source)),
-        ),
-        heights: UVec4::from_array(terrain.layers.each_ref().map(|layer| {
-          textures.request(
-            &format!("{}{}", layer.reference, TextureRole::HEIGHT_SUFFIX),
-            TextureRole::TerrainHeight,
-            source,
-          )
-        })),
-        mask: textures.request(&terrain.mask, TextureRole::TerrainMask, source),
-        _pad: [0; 3],
-      }
+      request_terrain(terrain, textures, source)
     }
     _ => StaticTerrainSlots::default(),
   };
@@ -255,6 +183,101 @@ pub fn build_static_surface(
     },
     class,
   ))
+}
+
+/// A surface's flags by what its shader entry (`descriptor`) asks for and what its textures bind (`slots`): its class
+/// and alpha `reference` deciding its test, and its `blend`.
+fn to_flags(
+  descriptor: Option<&XraySurfaceDescriptor>,
+  slots: &[Option<u32>; 7],
+  (class, reference, blend): (StaticClass, u8, u32),
+) -> u32 {
+  let mut flags: u32 = 0;
+
+  for (slot, flag) in [
+    (StaticSurface::BASE, StaticSurface::HAS_BASE),
+    (StaticSurface::DETAIL, StaticSurface::HAS_DETAIL),
+    (StaticSurface::BUMP, StaticSurface::HAS_BUMP),
+    (StaticSurface::DETAIL_BUMP, StaticSurface::HAS_DETAIL_BUMP),
+    (StaticSurface::HEMI, StaticSurface::HAS_HEMI),
+  ] {
+    if slots[slot].is_some() {
+      flags |= flag;
+    }
+  }
+
+  // A bump binds as a pair, and a detail's bump adds only to the surface's own.
+  if slots[StaticSurface::BUMP_COMPANION].is_none() {
+    flags &= !(StaticSurface::HAS_BUMP | StaticSurface::HAS_DETAIL_BUMP);
+  }
+
+  if slots[StaticSurface::DETAIL_BUMP_COMPANION].is_none() {
+    flags &= !StaticSurface::HAS_DETAIL_BUMP;
+  }
+
+  // A composited surface tests its own reference where it has one.
+  if class == StaticClass::CutOut || (class.is_composited() && reference > 0) {
+    flags |= StaticSurface::IS_CUT_OUT;
+  }
+
+  flags |= blend;
+
+  if descriptor.is_some_and(is_environment_mapped) {
+    flags |= StaticSurface::IS_ENVIRONMENT_MAPPED;
+  }
+
+  if descriptor.is_some_and(|it| it.is_object_lod) {
+    flags |= StaticSurface::IS_STILL;
+  }
+
+  if descriptor.is_some_and(|it| it.is_emissive) {
+    flags |= StaticSurface::IS_EMISSIVE;
+  }
+
+  if descriptor.is_some_and(|it| it.is_shadowless) {
+    flags |= StaticSurface::IS_SHADOWLESS;
+  }
+
+  if flags & StaticSurface::HAS_BUMP != 0 && descriptor.is_some_and(is_steep) {
+    flags |= StaticSurface::IS_STEEP;
+  } else if flags & StaticSurface::HAS_BUMP != 0
+    && descriptor.is_some_and(|it| it.terrain.is_none() && is_relief_class(it))
+  {
+    flags |= StaticSurface::IS_RELIEF_BUMPED;
+  }
+
+  flags
+}
+
+/// A terrain's four details, bumps and heights and its mask, as the texture cache asks for them.
+fn request_terrain(
+  terrain: &XraySurfaceTerrain,
+  textures: &mut TextureCache,
+  source: &Arc<dyn RenderAssetSource>,
+) -> StaticTerrainSlots {
+  StaticTerrainSlots {
+    details: UVec4::from_array(
+      terrain
+        .layers
+        .each_ref()
+        .map(|layer| textures.request(&layer.reference, TextureRole::Detail, source)),
+    ),
+    bumps: UVec4::from_array(
+      terrain
+        .layers
+        .each_ref()
+        .map(|layer| textures.request(&layer.bump, TextureRole::Bump, source)),
+    ),
+    heights: UVec4::from_array(terrain.layers.each_ref().map(|layer| {
+      textures.request(
+        &format!("{}{}", layer.reference, TextureRole::HEIGHT_SUFFIX),
+        TextureRole::TerrainHeight,
+        source,
+      )
+    })),
+    mask: textures.request(&terrain.mask, TextureRole::TerrainMask, source),
+    _pad: [0; 3],
+  }
 }
 
 /// Whether a shader entry's blender is strictly sorted, which the engine draws in `mapSorted`, back to front.

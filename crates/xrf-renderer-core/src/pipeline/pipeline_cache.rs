@@ -267,8 +267,12 @@ impl PipelineCache {
     Ok(compiled)
   }
 
-  fn create_layout(device: &wgpu::Device, label: &str, layouts: &[wgpu::BindGroupLayout]) -> wgpu::PipelineLayout {
-    let layouts: Vec<Option<&wgpu::BindGroupLayout>> = layouts.iter().map(Some).collect();
+  fn create_layout(
+    device: &wgpu::Device,
+    label: &str,
+    layouts: &[Option<wgpu::BindGroupLayout>],
+  ) -> wgpu::PipelineLayout {
+    let layouts: Vec<Option<&wgpu::BindGroupLayout>> = layouts.iter().map(Option::as_ref).collect();
 
     device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
       label: Some(label),

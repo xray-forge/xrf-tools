@@ -202,8 +202,8 @@ impl WaterPass {
     }
   }
 
-  /// Declares the enhanced water over the frame's copy before it, which it refracts: its reflection and the reflection's
-  /// blur while it reflects, then its surface; nothing without the copy.
+  /// Declares the enhanced water over the frame's copy before it, which it refracts: its reflection and the
+  /// reflection's blur while it reflects, then its surface; nothing without the copy.
   fn add_enhanced_passes<'a>(
     &'a self,
     graph: &mut FrameGraph<'a>,
@@ -213,7 +213,6 @@ impl WaterPass {
     frame: &WaterFrameHandles<'a>,
   ) {
     let water: &WaterFeature = draw.water;
-    let (width, height) = draw.targets.size;
     let enhanced: UniformBinding<EnhancedWaterUniform> = runtime.push_uniform(water.get_enhanced_uniform());
     let mut import = |label: &'static str, view: &'a wgpu::TextureView| bindings.import_view(graph, label, view);
     let nothing: GraphTexture = import("water nothing", &self.nothing);
@@ -241,110 +240,12 @@ impl WaterPass {
     };
 
     let (blurred, clear): (GraphTexture, GraphTexture) = match reflection {
-      Some((reflection, histories, blue_noise)) => {
-        let [written, read]: [GraphTexture; 2] = histories;
-        let current: GraphTexture = graph.create_texture(GraphTextureDescriptor::new_2d(
-          "water reflection current",
-          width,
-          height,
-          WaterReflection::CURRENT_FORMAT,
-        ));
-        let listed: TraceRequestHandles = draw.scene_trace.add_reset(
-          graph,
-          bindings,
-          ("water reflection requests clear", &reflection.requests),
-        );
-        let parameters: WaterReflectionParameters<'a> = WaterReflectionParameters {
-          lighting: draw.lit.lighting,
-          water: frame.uniform,
-          enhanced,
-          depth_target: draw.targets.depth,
-          sky_cube_0: frame.skies[0],
-          sky_cube_1: frame.skies[1],
-          sky_clamp: draw.sky_sampler,
-          nearest_water: frame.nearest,
-          water_scene: scene,
-          reflection_history: read,
-          blue_noise,
-          water_current: nothing,
-        };
-
-        self.add_batch_pass(
-          graph
-            .add_raster_pass("water reflection")
-            .color(GraphColorAttachment::new(
-              current,
-              wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-            ))
-            .depth(GraphDepthAttachment::new_read_only(draw.targets.depth)),
-          (parameters, Some(listed.to_listed())),
-          (&frame.args, frame.groups),
-          |it| &it.reflection,
-        );
-
-        // The rays the screen left, traced against the level's geometry, their hits written into the reflection.
-        if let Some((sky, trace, textures)) = draw.traced {
-          let (trace_requests, trace_request_head) = listed.to_read();
-          let no_ends: GraphTexture =
-            bindings.import_view(graph, "scene trace no ends", draw.scene_trace.get_no_ends());
-
-          draw.scene_trace.add_trace(
-            graph,
-            (("water scene dispatch", "water scene"), listed),
-            draw.view,
-            (
-              ReflectionSceneParameters {
-                lighting: draw.lit.lighting,
-                material_lut: draw.lit.material_lut,
-                lut_sampler: draw.lit.lut_sampler,
-                exposure: StorageValue::new(draw.lit.exposure),
-                trace_requests,
-                trace_request_head,
-                traced_out: current,
-                ends_out: no_ends,
-              },
-              sky,
-            ),
-            (trace, textures),
-          );
-        }
-
-        self.add_batch_pass(
-          graph
-            .add_raster_pass("water reflection resolve")
-            .color(GraphColorAttachment::new(
-              written,
-              // Transparent where no water draws, so the next frame keeps no history there.
-              wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-            ))
-            .depth(GraphDepthAttachment::new_read_only(draw.targets.depth)),
-          (
-            WaterReflectionParameters {
-              water_current: current,
-              ..parameters
-            },
-            None,
-          ),
-          (&frame.args, frame.groups),
-          |it| &it.reflection_resolve,
-        );
-
-        let half: (u32, u32) = (width.div_ceil(2), height.div_ceil(2));
-        let across: GraphTexture = self.blur.add(
-          graph,
-          runtime,
-          ("water blur across", written, half, WaterBlurUniform::ACROSS),
-          enhanced,
-        );
-        let down: GraphTexture = self.blur.add(
-          graph,
-          runtime,
-          ("water blur down", across, half, WaterBlurUniform::DOWN),
-          enhanced,
-        );
-
-        (down, written)
-      }
+      Some(reflection) => self.add_reflection_passes(
+        (graph, bindings, runtime),
+        (draw, frame),
+        (enhanced, scene, nothing),
+        reflection,
+      ),
       None => (nothing, nothing),
     };
 
@@ -377,6 +278,120 @@ impl WaterPass {
     );
   }
 
+  /// Declares the water's reflection over the frame's copy before it (`scene`): traced on the screen into the current
+  /// reflection, the rays the screen left traced against the level's geometry, resolved over time into its history and
+  /// blurred. Answers the reflection blurred and the history written.
+  fn add_reflection_passes<'a>(
+    &'a self,
+    (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
+    (draw, frame): (&WaterDraw<'a>, &WaterFrameHandles<'a>),
+    (enhanced, scene, nothing): (UniformBinding<EnhancedWaterUniform>, GraphTexture, GraphTexture),
+    (reflection, histories, blue_noise): (&'a WaterReflection, [GraphTexture; 2], GraphTexture),
+  ) -> (GraphTexture, GraphTexture) {
+    let (width, height) = draw.targets.size;
+    let [written, read]: [GraphTexture; 2] = histories;
+    let current: GraphTexture = graph.create_texture(GraphTextureDescriptor::new_2d(
+      "water reflection current",
+      width,
+      height,
+      WaterReflection::CURRENT_FORMAT,
+    ));
+    let listed: TraceRequestHandles = draw.scene_trace.add_reset(
+      graph,
+      bindings,
+      ("water reflection requests clear", &reflection.requests),
+    );
+    let parameters: WaterReflectionParameters<'a> = WaterReflectionParameters {
+      lighting: draw.lit.lighting,
+      water: frame.uniform,
+      enhanced,
+      depth_target: draw.targets.depth,
+      sky_cube_0: frame.skies[0],
+      sky_cube_1: frame.skies[1],
+      sky_clamp: draw.sky_sampler,
+      nearest_water: frame.nearest,
+      water_scene: scene,
+      reflection_history: read,
+      blue_noise,
+      water_current: nothing,
+    };
+
+    self.add_batch_pass(
+      graph
+        .add_raster_pass("water reflection")
+        .color(GraphColorAttachment::new(
+          current,
+          wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+        ))
+        .depth(GraphDepthAttachment::new_read_only(draw.targets.depth)),
+      (parameters, Some(listed.to_listed())),
+      (&frame.args, frame.groups),
+      |it| &it.reflection,
+    );
+
+    // The rays the screen left, traced against the level's geometry, their hits written into the reflection.
+    if let Some((sky, trace, textures)) = draw.traced {
+      let (trace_requests, trace_request_head) = listed.to_read();
+      let no_ends: GraphTexture = bindings.import_view(graph, "scene trace no ends", draw.scene_trace.get_no_ends());
+
+      draw.scene_trace.add_trace(
+        graph,
+        (("water scene dispatch", "water scene"), listed),
+        draw.view,
+        (
+          ReflectionSceneParameters {
+            lighting: draw.lit.lighting,
+            material_lut: draw.lit.material_lut,
+            lut_sampler: draw.lit.lut_sampler,
+            exposure: StorageValue::new(draw.lit.exposure),
+            trace_requests,
+            trace_request_head,
+            traced_out: current,
+            ends_out: no_ends,
+          },
+          sky,
+        ),
+        (trace, textures),
+      );
+    }
+
+    self.add_batch_pass(
+      graph
+        .add_raster_pass("water reflection resolve")
+        .color(GraphColorAttachment::new(
+          written,
+          // Transparent where no water draws, so the next frame keeps no history there.
+          wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+        ))
+        .depth(GraphDepthAttachment::new_read_only(draw.targets.depth)),
+      (
+        WaterReflectionParameters {
+          water_current: current,
+          ..parameters
+        },
+        None,
+      ),
+      (&frame.args, frame.groups),
+      |it| &it.reflection_resolve,
+    );
+
+    let half: (u32, u32) = (width.div_ceil(2), height.div_ceil(2));
+    let across: GraphTexture = self.blur.add(
+      graph,
+      runtime,
+      ("water blur across", written, half, WaterBlurUniform::ACROSS),
+      enhanced,
+    );
+    let down: GraphTexture = self.blur.add(
+      graph,
+      runtime,
+      ("water blur down", across, half, WaterBlurUniform::DOWN),
+      enhanced,
+    );
+
+    (down, written)
+  }
+
   /// Begins the surface's pass: over the scene and the distortion target, against the read-only depth it also samples.
   fn begin_surface_pass<'g, 'a>(graph: &'g mut FrameGraph<'a>, draw: &WaterDraw<'a>) -> RasterPassBuilder<'g, 'a> {
     graph
@@ -386,8 +401,8 @@ impl WaterPass {
       .depth(GraphDepthAttachment::new_read_only(draw.targets.depth))
   }
 
-  /// Adds a pass drawing every water batch from the cull's argument buffers, with its parameters bound, the request list
-  /// its rays are left in where `listed` gives one, and the pipeline `pick` chooses.
+  /// Adds a pass drawing every water batch from the cull's argument buffers, with its parameters bound, the request
+  /// list its rays are left in where `listed` gives one, and the pipeline `pick` chooses.
   fn add_batch_pass<'a, P: PassParameters + Send + 'a>(
     &'a self,
     builder: RasterPassBuilder<'_, 'a>,

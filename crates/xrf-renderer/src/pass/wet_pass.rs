@@ -77,7 +77,7 @@ impl WetPass {
         texel("puddles none", LevelSurface::SITES_FORMAT),
         texel("level water none", SunShadowMaps::FORMAT),
       ],
-      pipelines: Self::create_pipelines(device, source, view_layout, &layouts)?,
+      pipelines: Self::create_pipelines(source, view_layout, &layouts)?,
       sampler: device.create_sampler(&wgpu::SamplerDescriptor {
         label: Some("wet"),
         address_mode_u: wgpu::AddressMode::Repeat,
@@ -93,11 +93,11 @@ impl WetPass {
     })
   }
 
-  pub fn refresh(&mut self, device: &wgpu::Device, source: PipelineSource<'_>) {
+  pub fn refresh(&mut self, source: PipelineSource<'_>) {
     if source.get_generation() != self.generation {
       self.generation = source.get_generation();
 
-      match Self::create_pipelines(device, source, &self.view_layout, &self.layouts) {
+      match Self::create_pipelines(source, &self.view_layout, &self.layouts) {
         Ok(pipelines) => self.pipelines = pipelines,
         Err(error) => log::error!("Wet surfaces rejected, wetting with the last ones: {error}"),
       }
@@ -130,53 +130,66 @@ impl WetPass {
   }
 
   fn create_pipelines(
-    device: &wgpu::Device,
     source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     layouts: &[wgpu::BindGroupLayout; 2],
   ) -> XrfResult<[[wgpu::RenderPipeline; 3]; 2]> {
     Ok([
-      Self::create_stages(device, source, view_layout, layouts, "")?,
-      Self::create_stages(device, source, view_layout, layouts, "_enhanced")?,
+      Self::create_stages(
+        source,
+        view_layout,
+        layouts,
+        (["fs_wet_patch", "fs_wet_normal", "fs_wet_gloss"], false),
+      )?,
+      Self::create_stages(
+        source,
+        view_layout,
+        layouts,
+        (
+          [
+            "fs_wet_patch_enhanced",
+            "fs_wet_normal_enhanced",
+            "fs_wet_gloss_enhanced",
+          ],
+          true,
+        ),
+      )?,
     ])
   }
 
-  /// The three stages whose entry points end in `suffix`.
+  /// The three stages by their entry points (`entries`: the patch, the normals and the gloss), the enhanced patch's
+  /// beside it.
   fn create_stages(
-    device: &wgpu::Device,
     source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     [patch, apply]: &[wgpu::BindGroupLayout; 2],
-    suffix: &str,
+    ([patch_entry, normal_entry, gloss_entry], is_enhanced): ([&'static str; 3], bool),
   ) -> XrfResult<[wgpu::RenderPipeline; 3]> {
     // The enhanced patch writes the wet surface beside the light target; both, the wet reach's gloss last.
     let targets: Vec<Option<wgpu::ColorTargetState>> = std::iter::once(ViewTargets::LIGHT)
-      .chain((!suffix.is_empty()).then_some(Self::SURFACE))
+      .chain(is_enhanced.then_some(Self::SURFACE))
       .chain(std::iter::once(Self::REACH))
       .map(|format| Some(format.into()))
       .collect();
     let patched: wgpu::RenderPipeline = create_fullscreen_pipeline_into(
-      device,
       source,
       "frame/wet_patch",
-      &format!("fs_wet_patch{suffix}"),
+      patch_entry,
       &[Some(view_layout), Some(patch)],
       &targets,
     )?;
     let normal: wgpu::RenderPipeline = create_fullscreen_pipeline(
-      device,
       source,
       "frame/wet_apply",
-      &format!("fs_wet_normal{suffix}"),
+      normal_entry,
       &[Some(view_layout), Some(apply)],
       ViewTargets::NORMAL,
     )?;
     // `blend(zero, srccolor)` on colour and `(one, one)` on alpha: the albedo multiplied, the gloss added.
     let gloss: wgpu::RenderPipeline = create_fullscreen_pipeline(
-      device,
       source,
       "frame/wet_apply",
-      &format!("fs_wet_gloss{suffix}"),
+      gloss_entry,
       &[Some(view_layout), Some(apply)],
       wgpu::ColorTargetState {
         format: ViewTargets::ALBEDO,

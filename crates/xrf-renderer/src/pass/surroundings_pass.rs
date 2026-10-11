@@ -1,8 +1,7 @@
 use xrf_error::XrfResult;
-use xrf_renderer_core::{ComputeContext, PassParameters};
+use xrf_renderer_core::{ComputeContext, ComputePipelineDescription, PassParameters};
 
 use crate::pass::pipeline_source::PipelineSource;
-use crate::pass::shader_pipelines::create_checked;
 use crate::pass::surroundings_parameters::SurroundingsParameters;
 use crate::pass::view_binding::ViewBinding;
 
@@ -34,18 +33,18 @@ impl SurroundingsPass {
     let layout: wgpu::BindGroupLayout = SurroundingsParameters::create_layout(device);
 
     Ok(Self {
-      pipeline: Self::create_pipeline(device, source, view_layout, &layout)?,
+      pipeline: Self::create_pipeline(source, view_layout, &layout)?,
       view_layout: view_layout.clone(),
       generation: source.get_generation(),
       layout,
     })
   }
 
-  pub fn refresh(&mut self, device: &wgpu::Device, source: PipelineSource<'_>) {
+  pub fn refresh(&mut self, source: PipelineSource<'_>) {
     if source.get_generation() != self.generation {
       self.generation = source.get_generation();
 
-      match Self::create_pipeline(device, source, &self.view_layout, &self.layout) {
+      match Self::create_pipeline(source, &self.view_layout, &self.layout) {
         Ok(pipeline) => self.pipeline = pipeline,
         Err(error) => log::error!("Surroundings rejected, resolving with the last one: {error}"),
       }
@@ -70,27 +69,13 @@ impl SurroundingsPass {
   }
 
   fn create_pipeline(
-    device: &wgpu::Device,
     source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<wgpu::ComputePipeline> {
-    let module: wgpu::ShaderModule = source.get_module("frame/surroundings")?;
-    let pipeline_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-      label: Some("surroundings"),
-      bind_group_layouts: &[Some(view_layout), Some(layout)],
-      ..Default::default()
-    });
-
-    create_checked(device, "surroundings", || {
-      device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-        label: Some("surroundings"),
-        layout: Some(&pipeline_layout),
-        module: &module,
-        entry_point: Some("resolve"),
-        compilation_options: Default::default(),
-        cache: source.get_driver_cache(),
-      })
-    })
+    source.get_compute_pipeline(
+      &ComputePipelineDescription::new("surroundings", "frame/surroundings", "resolve")
+        .with_bind_group_layouts(&[Some(view_layout), Some(layout)]),
+    )
   }
 }

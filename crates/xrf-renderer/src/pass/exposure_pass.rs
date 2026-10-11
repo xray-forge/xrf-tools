@@ -1,9 +1,8 @@
 use xrf_error::XrfResult;
-use xrf_renderer_core::{ComputeContext, PassParameters};
+use xrf_renderer_core::{ComputeContext, ComputePipelineDescription, PassParameters};
 
 use crate::pass::exposure_parameters::ExposureParameters;
 use crate::pass::pipeline_source::PipelineSource;
-use crate::pass::shader_pipelines::create_checked;
 use crate::scene::level::feature::exposure_feature::EXPOSURE_CELLS;
 
 /// Invocations a measuring workgroup runs, as `shaders/frame/exposure.wgsl` declares them.
@@ -25,17 +24,17 @@ impl ExposurePass {
     let layout: wgpu::BindGroupLayout = ExposureParameters::create_layout(device);
 
     Ok(Self {
-      pipelines: Self::create_pipelines(device, source, &layout)?,
+      pipelines: Self::create_pipelines(source, &layout)?,
       generation: source.get_generation(),
       layout,
     })
   }
 
-  pub fn refresh(&mut self, device: &wgpu::Device, source: PipelineSource<'_>) {
+  pub fn refresh(&mut self, source: PipelineSource<'_>) {
     if source.get_generation() != self.generation {
       self.generation = source.get_generation();
 
-      match Self::create_pipelines(device, source, &self.layout) {
+      match Self::create_pipelines(source, &self.layout) {
         Ok(pipelines) => self.pipelines = pipelines,
         Err(error) => log::error!("Exposure rejected, adapting with the last one: {error}"),
       }
@@ -54,27 +53,13 @@ impl ExposurePass {
   }
 
   fn create_pipelines(
-    device: &wgpu::Device,
     source: PipelineSource<'_>,
     layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<[wgpu::ComputePipeline; 2]> {
-    let module: wgpu::ShaderModule = source.get_module("frame/exposure")?;
-    let pipeline_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-      label: Some("exposure"),
-      bind_group_layouts: &[Some(layout)],
-      ..Default::default()
-    });
-    let create = |entry: &str| -> XrfResult<wgpu::ComputePipeline> {
-      create_checked(device, entry, || {
-        device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-          label: Some(entry),
-          layout: Some(&pipeline_layout),
-          module: &module,
-          entry_point: Some(entry),
-          compilation_options: Default::default(),
-          cache: source.get_driver_cache(),
-        })
-      })
+    let create = |entry: &'static str| -> XrfResult<wgpu::ComputePipeline> {
+      source.get_compute_pipeline(
+        &ComputePipelineDescription::new(entry, "frame/exposure", entry).with_bind_group_layouts(&[Some(layout)]),
+      )
     };
 
     Ok([create("measure")?, create("adapt")?])
