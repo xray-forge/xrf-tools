@@ -44,7 +44,9 @@ describe("CommandResultFindings", () => {
   it("narrows the findings as you filter, and says how many are left", async () => {
     const { getByPlaceholderText, getByText } = renderFindings(ROWS);
 
-    await userEvent.type(getByPlaceholderText("Filter findings"), "wpn");
+    await userEvent.click(getByPlaceholderText("Filter findings"));
+
+    await userEvent.paste("wpn");
 
     expect(getByText("1 of 3 finding(s)")).toBeInTheDocument();
   });
@@ -52,7 +54,9 @@ describe("CommandResultFindings", () => {
   it("matches case insensitively, since paths are not typed exactly", async () => {
     const { getByPlaceholderText, getByText } = renderFindings(ROWS);
 
-    await userEvent.type(getByPlaceholderText("Filter findings"), "WPN_AK74");
+    await userEvent.click(getByPlaceholderText("Filter findings"));
+
+    await userEvent.paste("WPN_AK74");
 
     expect(getByText("1 of 3 finding(s)")).toBeInTheDocument();
   });
@@ -60,7 +64,9 @@ describe("CommandResultFindings", () => {
   it("reports an empty filter result rather than looking broken", async () => {
     const { getByPlaceholderText, getByText } = renderFindings(ROWS);
 
-    await userEvent.type(getByPlaceholderText("Filter findings"), "nothing matches this");
+    await userEvent.click(getByPlaceholderText("Filter findings"));
+
+    await userEvent.paste("nothing matches this");
 
     expect(getByText("0 of 3 finding(s)")).toBeInTheDocument();
   });

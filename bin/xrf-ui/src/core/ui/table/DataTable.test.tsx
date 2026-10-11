@@ -52,7 +52,8 @@ describe("DataTable", () => {
   it("narrows as you filter and says how many are left", async () => {
     const { getByPlaceholderText, getByText } = renderTable();
 
-    await userEvent.type(getByPlaceholderText("Filter"), "dog");
+    await userEvent.click(getByPlaceholderText("Filter"));
+    await userEvent.paste("dog");
 
     expect(getByText("1 of 3 object(s)")).toBeInTheDocument();
   });
@@ -60,7 +61,8 @@ describe("DataTable", () => {
   it("matches case insensitively, since identifiers are not typed exactly", async () => {
     const { getByPlaceholderText, getByText } = renderTable();
 
-    await userEvent.type(getByPlaceholderText("Filter"), "STALKER_VETERAN");
+    await userEvent.click(getByPlaceholderText("Filter"));
+    await userEvent.paste("STALKER_VETERAN");
 
     expect(getByText("1 of 3 object(s)")).toBeInTheDocument();
   });
@@ -87,7 +89,8 @@ describe("DataTable", () => {
 
     const { getByRole, getByText } = renderWithProviders(<SearchableTable />);
 
-    await userEvent.type(getByRole("textbox", { name: "Filter rows" }), "veteran");
+    await userEvent.click(getByRole("textbox", { name: "Filter rows" }));
+    await userEvent.paste("veteran");
 
     expect(getByText("0 of 3 row(s)")).toBeInTheDocument();
 
@@ -101,7 +104,8 @@ describe("DataTable", () => {
     const { getByRole, getByText } = renderTable();
     const filter = getByRole("textbox", { name: "Filter rows" });
 
-    await userEvent.type(filter, "dog");
+    await userEvent.click(filter);
+    await userEvent.paste("dog");
 
     expect(getByText("1 of 3 object(s)")).toBeInTheDocument();
 
@@ -115,7 +119,8 @@ describe("DataTable", () => {
   it("reports an empty filter result rather than looking broken", async () => {
     const { getByPlaceholderText, getByText } = renderTable();
 
-    await userEvent.type(getByPlaceholderText("Filter"), "nothing matches");
+    await userEvent.click(getByPlaceholderText("Filter"));
+    await userEvent.paste("nothing matches");
 
     expect(getByText("0 of 3 object(s)")).toBeInTheDocument();
   });
