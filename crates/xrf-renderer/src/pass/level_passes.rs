@@ -19,6 +19,7 @@ use crate::pass::present_pass::PresentPass;
 use crate::pass::puddle_sites_pass::PuddleSitesPass;
 use crate::pass::rain_pass::RainPass;
 use crate::pass::reflection_pass::ReflectionPass;
+use crate::pass::scene_trace_pass::SceneTracePass;
 use crate::pass::sky_bindings::SkyBindings;
 use crate::pass::sky_haze_pass::SkyHazePass;
 use crate::pass::sky_prefilter_pass::SkyPrefilterPass;
@@ -49,6 +50,7 @@ pub struct LevelPasses<'a> {
   pub ambient_occlusion: &'a AmbientOcclusionPass,
   pub vbao: &'a VbaoPass,
   pub reflections: &'a ReflectionPass,
+  pub scene_trace: &'a SceneTracePass,
   pub lights: &'a LightsPass,
   pub combine: &'a CombinePass,
   pub sky_haze: &'a SkyHazePass,

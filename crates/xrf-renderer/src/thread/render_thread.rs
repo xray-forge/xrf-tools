@@ -20,6 +20,7 @@ use crate::contract::render_frame_report::RenderFrameReport;
 use crate::contract::render_load_report::RenderLoadReport;
 use crate::contract::render_pick::RenderPick;
 use crate::contract::render_rect::RenderRect;
+use crate::contract::render_reflection_settings::RenderReflectionSettings;
 use crate::contract::render_scale::RenderScale;
 use crate::contract::render_settings::RenderSettings;
 use crate::contract::render_surface_color::RenderSurfaceColor;
@@ -540,6 +541,17 @@ impl RenderThread {
 
     let mut scene_frames: HashMap<RenderSceneId, RenderSceneFrame> = scene_frames;
     let live: HashSet<RenderSceneId> = scene_frames.keys().copied().collect();
+    // The scenes a viewport traces rays in, which alone keep their acceleration structures.
+    let traced: HashSet<RenderSceneId> = self
+      .viewports
+      .values()
+      .filter(|viewport| {
+        let reflections: &RenderReflectionSettings = &viewport.options.features.reflections;
+
+        reflections.is_traced && reflections.is_drawn()
+      })
+      .filter_map(|viewport| viewport.world.scene)
+      .collect();
 
     for (id, frame) in scene_frames.drain() {
       let scene: &mut LevelScene = self.scenes.entry(id).or_insert_with(|| {
@@ -556,7 +568,7 @@ impl RenderThread {
         (&gpu.context.device, &gpu.context.queue, &mut encoder),
         (&mut gpu.textures, &mut gpu.weather_textures),
         &gpu.grass,
-        frame,
+        (frame, traced.contains(&id)),
       );
     }
 

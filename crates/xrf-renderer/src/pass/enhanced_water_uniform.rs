@@ -41,17 +41,20 @@ pub struct EnhancedWaterUniform {
   /// Metres a reflected ray the screen does not answer is traced against the level, the surfaces' reflections' distance
   /// where they trace what the screen misses; none where they do not.
   pub trace_distance: f32,
+  /// Frames a pixel the screen does not answer waits between its rays, the history held between, and the frame's count.
+  pub trace_turns: u32,
+  pub trace_frame: u32,
 }
 
 impl EnhancedWaterUniform {
-  /// `reflection` says whether its reflection draws this frame, and whether its history holds a frame; `trace_distance`
-  /// how far its misses are traced, none for not.
+  /// `reflection` says whether its reflection draws this frame, and whether its history holds a frame; `trace` how far
+  /// its misses are traced, none for not, how many frames a pixel waits between its rays, and the frame's count.
   pub fn new(
     settings: &RenderEnhancedWaterSettings,
     (wind, rain): (RenderWind, f32),
     flow: WaterFlow,
     (reflected, history): (bool, bool),
-    trace_distance: f32,
+    (trace_distance, trace_turns, trace_frame): (f32, u32, u32),
   ) -> Self {
     Self {
       refraction: settings.refraction,
@@ -75,6 +78,8 @@ impl EnhancedWaterUniform {
       gusts_y: flow.gusts[1],
       variation: settings.variation,
       trace_distance,
+      trace_turns,
+      trace_frame,
     }
   }
 }

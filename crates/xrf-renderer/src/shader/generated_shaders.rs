@@ -119,6 +119,7 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
   let mut vbao: ShaderBindings = ShaderBindings::new();
   let mut reflections: ShaderBindings = ShaderBindings::new();
   let mut reflection_scene: ShaderBindings = ShaderBindings::new();
+  let mut trace_requests: ShaderBindings = ShaderBindings::new();
   let mut combine: ShaderBindings = ShaderBindings::new();
   let mut composited: ShaderBindings = ShaderBindings::new();
   let mut sky_haze: ShaderBindings = ShaderBindings::new();
@@ -200,9 +201,8 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
   lights.add::<LightsParameters<'_>>()?;
   ambient_occlusion.add::<AmbientOcclusionParameters>()?;
   vbao.add::<VbaoParameters>()?;
-  reflections
-    .add::<ReflectionParameters<'_>>()?
-    .add::<TraceRequestParameters>()?;
+  reflections.add::<ReflectionParameters<'_>>()?;
+  trace_requests.add::<TraceRequestParameters>()?;
   reflection_scene.add::<ReflectionSceneParameters<'_>>()?;
   combine.add::<CombineParameters<'_>>()?;
   composited.add::<CompositedParameters<'_>>()?;
@@ -301,6 +301,10 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
     (
       "generated/frame/reflection_scene",
       format!("{STRUCTS_IMPORT}{}", reflection_scene.to_wgsl()),
+    ),
+    (
+      "generated/common/trace_requests",
+      format!("{STRUCTS_IMPORT}{}", trace_requests.to_wgsl()),
     ),
     (
       "generated/frame/combine",

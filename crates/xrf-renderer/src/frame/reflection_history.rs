@@ -1,6 +1,6 @@
 use crate::frame::depth_pyramid::DepthPyramid;
 use crate::frame::view_targets::ViewTargets;
-use crate::pass::trace_request::TraceRequest;
+use crate::pass::trace_request_list::TraceRequestList;
 
 /// What the screen-space reflections keep from one frame to the next, at the size they trace at: the reflection and
 /// its variance, the surface's world normal and roughness, and the distance along the view of the point, how many
@@ -35,11 +35,9 @@ pub struct ReflectionHistory {
   pub is_source_valid: bool,
   /// Frames traced since it was made, which turns each pixel's noise.
   pub frame: u32,
-  /// The rays the trace leaves to the scene pass each frame, a quarter of the traced pixels at most; their head (the
-  /// count made and the scene pass's dispatch, `TraceRequest::HEAD`); and the dispatch copied out of it.
-  pub requests: wgpu::Buffer,
-  pub request_head: wgpu::Buffer,
-  pub request_dispatch: wgpu::Buffer,
+  /// The rays the trace leaves to the scene pass each frame, a quarter of the traced pixels at most while it traces, a
+  /// stub otherwise.
+  pub requests: TraceRequestList,
 }
 
 impl ReflectionHistory {
@@ -151,25 +149,7 @@ impl ReflectionHistory {
       is_valid: false,
       is_source_valid: false,
       frame: 0,
-      requests: device.create_buffer(&wgpu::BufferDescriptor {
-        label: Some("reflection trace requests"),
-        size: u64::from((width * height).div_ceil(Self::REQUEST_SHARE).max(TraceRequest::WORKGROUP)) *
-          size_of::<TraceRequest>() as u64,
-        usage: wgpu::BufferUsages::STORAGE,
-        mapped_at_creation: false,
-      }),
-      request_head: device.create_buffer(&wgpu::BufferDescriptor {
-        label: Some("reflection trace request head"),
-        size: size_of_val(&TraceRequest::HEAD) as u64,
-        usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC | wgpu::BufferUsages::COPY_DST,
-        mapped_at_creation: false,
-      }),
-      request_dispatch: device.create_buffer(&wgpu::BufferDescriptor {
-        label: Some("reflection trace request dispatch"),
-        size: 12,
-        usage: wgpu::BufferUsages::INDIRECT | wgpu::BufferUsages::COPY_DST,
-        mapped_at_creation: false,
-      }),
+      requests: TraceRequestList::new(device, "reflection trace", 0),
     }
   }
 

@@ -34,7 +34,8 @@ pub struct LevelScene {
   pub source: Arc<dyn RenderLevelSource>,
   pub grass: LevelGrass,
   pub statics: StaticScene,
-  /// The static geometry's acceleration structures, where the device traces rays.
+  /// The static geometry's acceleration structures, while a view of it traces rays on a device that can: tracing is
+  /// opted into, and the structures take some 150 MB on Zaton.
   pub trace: Option<StaticTrace>,
   /// The cubes the scene's environment-mapped models mix toward, by environment slot from the second, as of the cache's
   /// generation of them.
@@ -71,14 +72,13 @@ impl LevelScene {
     // Taken before anything is made, so the load is timed from the moment the level began opening.
     let started: Instant = Instant::now();
     let statics: StaticScene = StaticScene::new(device, queue);
-    let trace: Option<StaticTrace> = statics.is_traced().then(|| StaticTrace::new(device, queue));
 
     Self {
       grass: LevelGrass::new(&source, workers),
       lights: LevelLights::new(device, view_layout, statics.args.size()),
       particles: LevelParticles::new(device, workers),
       statics,
-      trace,
+      trace: None,
       environments: (0, Vec::new()),
       started,
       sector_time: 0.0,
@@ -94,14 +94,15 @@ impl LevelScene {
   }
 
   /// Takes a frame the world gave it: applies what it posted, takes the grass its loader read, keeps what its effects
-  /// and motions do, moves the lights its motions carry, readies the static draws, and asks for the cubes its surfaces
-  /// mix toward; the sectors it could not take in are told back with its feedback.
+  /// and motions do, moves the lights its motions carry, readies the static draws and, while a view of it traces rays
+  /// (`is_traced`), their acceleration structures, and asks for the cubes its surfaces mix toward; the sectors it could
+  /// not take in are told back with its feedback.
   pub fn advance(
     &mut self,
     (device, queue, encoder): (&wgpu::Device, &wgpu::Queue, &mut wgpu::CommandEncoder),
     (textures, weather_textures): (&mut TextureCache, &mut WeatherTextureCache),
     grass_pass: &GrassPass,
-    frame: RenderSceneFrame,
+    (frame, is_traced): (RenderSceneFrame, bool),
   ) {
     let assets: Arc<dyn RenderAssetSource> = Arc::clone(&self.source) as Arc<dyn RenderAssetSource>;
 
@@ -147,6 +148,13 @@ impl LevelScene {
     self.camera_hemi = camera_hemi;
     self.lights.begin_frame(&motions);
     self.statics.prepare_draws(device, queue, encoder);
+
+    // Made when a view starts tracing, let go when none does.
+    if !(is_traced && self.statics.is_traced()) {
+      self.trace = None;
+    } else if self.trace.is_none() {
+      self.trace = Some(StaticTrace::new(device, queue));
+    }
 
     if let Some(trace) = &mut self.trace {
       trace.update(device, queue, encoder, &self.statics);
