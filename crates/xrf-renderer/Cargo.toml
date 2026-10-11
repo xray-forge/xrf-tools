@@ -41,6 +41,7 @@ windows = { workspace = true, features = ["Win32_Graphics_Dxgi"] }
 [dev-dependencies]
 naga = { workspace = true }
 serde_json = { workspace = true }
+xrf-vfs = { workspace = true }
 
 [features]
 # Emits TypeScript mirrors of the serialized types. Nothing in a normal build turns this on.
