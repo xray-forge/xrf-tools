@@ -113,9 +113,12 @@ impl GrassCards {
     }
   }
 
-  /// Metres from the eye within which the cards stand a tuft for `settings`, and the last of them over which they fade.
-  pub fn get_reach(settings: &RenderGrassSettings) -> (f32, f32) {
-    let reach: f32 = settings.shadow_radius.clamp(1.0, Self::MOST_REACH);
+  /// Metres from the eye within which the cards stand a tuft for `settings`, no further than `most` where it is given,
+  /// and the last of them over which they fade.
+  pub fn get_reach(settings: &RenderGrassSettings, most: Option<f32>) -> (f32, f32) {
+    let reach: f32 = most
+      .map_or(settings.shadow_radius, |most| settings.shadow_radius.min(most))
+      .clamp(1.0, Self::MOST_REACH);
 
     (reach, reach * Self::FADE_SHARE)
   }
