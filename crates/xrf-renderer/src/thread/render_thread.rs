@@ -1116,6 +1116,25 @@ impl RenderThread {
         .is_some_and(|scene| scene.driver == Some(*id))
     });
 
+    // Each scene's effects step once a frame by the camera of its first view, which stands for the actor, on the
+    // workers while the views are readied; the first fill of them waits for the step.
+    let mut simulated: Vec<RenderSceneId> = Vec::new();
+
+    for (id, rect, scene_id) in &drawn {
+      let (Some(scene_id), Some(viewport)) = (*scene_id, self.viewports.get(id)) else {
+        continue;
+      };
+
+      if !simulated.contains(&scene_id)
+        && let Some(scene) = self.scenes.get_mut(&scene_id)
+      {
+        scene
+          .particles
+          .start_simulation(&Self::get_camera_view(viewport, rect), &viewport.options);
+        simulated.push(scene_id);
+      }
+    }
+
     let mut firsts: Vec<(RenderSceneId, RenderViewportId)> = Vec::new();
 
     for (id, rect, scene_id) in &drawn {
@@ -1134,7 +1153,6 @@ impl RenderThread {
         rect,
         (&mut *encoder, &mut self.periodic),
         (&mut phases.load, &mut phases.prepare),
-        is_first,
       ) {
         Some(mut frame) => {
           if let (true, Some(scene)) = (is_first, scene_id) {
@@ -1670,36 +1688,40 @@ impl RenderThread {
     }
   }
 
-  /// Readies one viewport's frame of the scene it shows: writes its camera, asks for the textures its weather draws
-  /// with, steps the scene's particles where it simulates for the scene (`is_simulating`), prepares its frame, and
-  /// readies its graph's frame with a pick when one waits; none where it shows no scene. `rect` is its whole rectangle;
-  /// what loading and preparing take is added to `load` and `prepare`.
-  fn ready_view(
-    (gpu, shaders): (&mut GpuState, &ShaderLibrary),
-    (viewport, scene): (&mut RenderViewport, Option<&mut LevelScene>),
-    rect: &RenderRect,
-    (encoder, periodic): (&mut FrameEncoder, &mut PeriodicScheduler),
-    (load, prepare): (&mut Duration, &mut Duration),
-    is_simulating: bool,
-  ) -> Option<ViewFrame> {
-    let id: RenderViewportId = viewport.id;
-    let device: &wgpu::Device = &gpu.context.device;
-    let queue: &wgpu::Queue = &gpu.context.queue;
-    let scale: f32 = viewport.get_scale();
-    let binding: &ViewBinding = viewport
-      .binding
-      .get_or_insert_with(|| ViewBinding::new(device, &gpu.view_layout));
-    // A lit and fogged level ends where its fog is total, or at the weather's far plane, as the engine's does.
+  /// What a viewport's camera sees over `rect`, its whole rectangle: a lit and fogged level ends where its fog is total,
+  /// or at the weather's far plane, as the engine's does.
+  fn get_camera_view(viewport: &RenderViewport, rect: &RenderRect) -> CameraView {
     let far_limit: f32 = viewport
       .world
       .lighting
       .fog
       .filter(|_| viewport.options.mode.is_lit && viewport.options.show.is_fogged)
       .map_or(f32::INFINITY, |fog| fog.get_total_distance());
-    let view: CameraView = viewport
+
+    viewport
       .world
       .camera
-      .to_view(rect.width as f32 / rect.height as f32, far_limit);
+      .to_view(rect.width as f32 / rect.height as f32, far_limit)
+  }
+
+  /// Readies one viewport's frame of the scene it shows: writes its camera, asks for the textures its weather draws
+  /// with, prepares its frame, and readies its graph's frame with a pick when one waits; none where it shows no scene.
+  /// `rect` is its whole rectangle; what loading and preparing take is added to `load` and `prepare`.
+  fn ready_view(
+    (gpu, shaders): (&mut GpuState, &ShaderLibrary),
+    (viewport, scene): (&mut RenderViewport, Option<&mut LevelScene>),
+    rect: &RenderRect,
+    (encoder, periodic): (&mut FrameEncoder, &mut PeriodicScheduler),
+    (load, prepare): (&mut Duration, &mut Duration),
+  ) -> Option<ViewFrame> {
+    let id: RenderViewportId = viewport.id;
+    let device: &wgpu::Device = &gpu.context.device;
+    let queue: &wgpu::Queue = &gpu.context.queue;
+    let scale: f32 = viewport.get_scale();
+    let view: CameraView = Self::get_camera_view(viewport, rect);
+    let binding: &ViewBinding = viewport
+      .binding
+      .get_or_insert_with(|| ViewBinding::new(device, &gpu.view_layout));
 
     let options: RenderViewOptions = viewport.options.clone();
     let switches: Vec4 = CameraUniform::get_switches(&options);
@@ -1779,13 +1801,6 @@ impl RenderThread {
 
     {
       profiling::scope!("prepare");
-
-      // The scene's effects step once a frame, by the camera standing for the actor.
-      if is_simulating {
-        profiling::scope!("particles");
-
-        scene.particles.simulate(&view, &options);
-      }
 
       view_state.prepare(
         scene,

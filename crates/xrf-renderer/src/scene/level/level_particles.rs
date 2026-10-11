@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::sync::mpsc::{self, Receiver};
 use std::time::Instant;
 
 use glam::{Mat4, Vec3, Vec4};
@@ -33,12 +34,15 @@ use crate::thread::render_workers::RenderWorkers;
 const DISTORTION_SAMPLER: &str = "s_distort";
 
 /// A level's particles: the effects and groups the world read and the emitters it placed, each frame stepped on the
-/// workers as the engine schedules them, and the effects each view sees filled into its quads far to near for the
-/// particle pass (`ParticlesView`), which draws their colour and then their distortion. The world says what plays
-/// where; this simulates it, and each view draws it.
+/// workers as the engine schedules them while the frame is prepared, and the effects each view sees filled into its
+/// quads far to near for the particle pass (`ParticlesView`), which draws their colour and then their distortion. The
+/// world says what plays where; this simulates it, and each view draws it.
 pub struct LevelParticles {
   systems: Option<LevelSystems>,
+  /// Empty while a step holds them: whatever reads or changes them settles the step first.
   emitters: ProxyStore<ParticleEmitterProxy>,
+  /// The step running on the workers, which answers the emitters it took.
+  step: Option<Receiver<ParticleStep>>,
   /// The effects that stopped playing this frame, told back to the world.
   finished: Vec<(ProxyHandle<ParticleEmitterProxy>, PlacedEffect)>,
   workers: RenderWorkers,
@@ -66,6 +70,13 @@ struct ParticleSurface {
   record: ParticleSurfaceRecord,
 }
 
+/// A step's outcome: the emitters it stepped, how many of their objects it simulated and what it took.
+struct ParticleStep {
+  emitters: ProxyStore<ParticleEmitterProxy>,
+  simulated: u32,
+  time: f32,
+}
+
 /// What the frames since the last report came to.
 #[derive(Default)]
 struct ParticlesTally {
@@ -79,6 +90,7 @@ impl LevelParticles {
     Self {
       systems: None,
       emitters: ProxyStore::new(),
+      step: None,
       finished: Vec::new(),
       workers: workers.clone(),
       started: Instant::now(),
@@ -173,6 +185,7 @@ impl LevelParticles {
 
   /// Places an emitter at the handle the world allocated, nothing playing at it yet.
   pub fn add_emitter(&mut self, handle: ProxyHandle<ParticleEmitterProxy>, transform: Mat4, seed: i32) {
+    self.settle();
     self.emitters.insert(
       handle,
       ParticleEmitterProxy {
@@ -185,11 +198,14 @@ impl LevelParticles {
 
   /// Takes an emitter out with whatever plays at it.
   pub fn remove_emitter(&mut self, handle: ProxyHandle<ParticleEmitterProxy>) {
+    self.settle();
     self.emitters.remove(handle);
   }
 
   /// Plays an effect at an emitter unless it already plays there; nothing before the definitions are in.
   pub fn play(&mut self, handle: ProxyHandle<ParticleEmitterProxy>, effect: PlacedEffect, name: &str) {
+    self.settle();
+
     let now: u64 = self.started.elapsed().as_millis() as u64;
     let (Some(systems), Some(emitter)) = (&self.systems, self.emitters.get_mut(handle)) else {
       return;
@@ -207,6 +223,8 @@ impl LevelParticles {
 
   /// Stops an effect playing at an emitter: at once, or letting its particles live out their lives (`is_deferred`).
   pub fn stop(&mut self, handle: ProxyHandle<ParticleEmitterProxy>, effect: PlacedEffect, is_deferred: bool) {
+    self.settle();
+
     if let Some(emitter) = self.emitters.get_mut(handle) {
       emitter.objects.stop(effect, is_deferred);
     }
@@ -214,6 +232,8 @@ impl LevelParticles {
 
   /// Moves an emitter and every effect playing at it, their sources taking on its velocity.
   pub fn move_emitter(&mut self, handle: ProxyHandle<ParticleEmitterProxy>, transform: Mat4, velocity: Vec3) {
+    self.settle();
+
     if let Some(emitter) = self.emitters.get_mut(handle) {
       emitter.transform = transform;
       emitter.objects.move_to(&transform, velocity);
@@ -222,6 +242,8 @@ impl LevelParticles {
 
   /// Moves one effect's sources at a velocity where its emitter stands.
   pub fn carry(&mut self, handle: ProxyHandle<ParticleEmitterProxy>, effect: PlacedEffect, velocity: Vec3) {
+    self.settle();
+
     if let Some(emitter) = self.emitters.get_mut(handle) {
       emitter.objects.carry(effect, &emitter.transform, velocity);
     }
@@ -229,12 +251,16 @@ impl LevelParticles {
 
   /// The effects that stopped playing since the last call, for the world.
   pub fn take_finished(&mut self) -> Vec<(ProxyHandle<ParticleEmitterProxy>, PlacedEffect)> {
+    self.settle();
+
     std::mem::take(&mut self.finished)
   }
 
-  /// Steps every effect playing as the engine schedules them, as `view` sees them (the scene's first view, which stands
-  /// for the actor), and notes the ones that stopped; nothing while particles are not drawn.
-  pub fn simulate(&mut self, view: &CameraView, options: &RenderViewOptions) {
+  /// Starts stepping every effect playing as the engine schedules them on the workers, as `view` sees them (the scene's
+  /// first view, which stands for the actor); nothing while particles are not drawn.
+  pub fn start_simulation(&mut self, view: &CameraView, options: &RenderViewOptions) {
+    self.settle();
+
     let Some(level) = self.systems.as_ref() else {
       return;
     };
@@ -248,15 +274,22 @@ impl LevelParticles {
     let now: u64 = self.started.elapsed().as_millis() as u64;
     let eye: Vec3 = ParticleSprite::mirror(view.position);
     let planes: [Vec4; 6] = view.get_planes();
-    let started: Instant = Instant::now();
-    let context: ParticleUpdateContext = ParticleUpdateContext {
-      library: &level.library,
-      rules: &level.rules,
-      collider: level.collider.as_deref(),
-    };
-    let emitters: &mut [ParticleEmitterProxy] = self.emitters.as_mut_slice();
-    let simulated: u32 = self.workers.install(|| {
-      emitters
+    let (library, rules, collider) = (Arc::clone(&level.library), level.rules, level.collider.clone());
+    let mut emitters: ProxyStore<ParticleEmitterProxy> = std::mem::take(&mut self.emitters);
+    let (sender, receiver) = mpsc::channel();
+
+    self.step = Some(receiver);
+    self.workers.spawn(move || {
+      profiling::scope!("particles");
+
+      let started: Instant = Instant::now();
+      let context: ParticleUpdateContext = ParticleUpdateContext {
+        library: &library,
+        rules: &rules,
+        collider: collider.as_deref(),
+      };
+      let simulated: u32 = emitters
+        .as_mut_slice()
         .par_iter_mut()
         .flat_map_iter(|emitter| emitter.objects.iter_mut())
         .map(|object| {
@@ -264,8 +297,38 @@ impl LevelParticles {
 
           u32::from(object.advance(now, eye, is_in_view, &context))
         })
-        .sum()
+        .sum();
+
+      // The receiver is gone only with the level.
+      let _ = sender.send(ParticleStep {
+        emitters,
+        simulated,
+        time: started.elapsed().as_secs_f32() * 1000.0,
+      });
     });
+  }
+
+  /// Waits for the step running on the workers, if one runs, and takes back its emitters, noting the effects that
+  /// stopped.
+  fn settle(&mut self) {
+    let Some(receiver) = self.step.take() else {
+      return;
+    };
+
+    profiling::scope!("particles wait");
+
+    let Ok(ParticleStep {
+      emitters,
+      simulated,
+      time,
+    }) = receiver.recv()
+    else {
+      log::error!("A particle step ended without answering; its effects are gone");
+
+      return;
+    };
+
+    self.emitters = emitters;
 
     for (handle, emitter) in self.emitters.iter_mut() {
       self.finished.extend(
@@ -294,13 +357,15 @@ impl LevelParticles {
     }
 
     self.report.last = report;
-    self.report.simulation_time += started.elapsed().as_secs_f32() * 1000.0;
+    self.report.simulation_time += time;
     self.report.frames += 1;
   }
 
-  /// Fills a view's quads with the effects in its camera, far to near; none while particles are not drawn in it.
-  pub fn fill(&self, view: &CameraView, options: &RenderViewOptions, into: &mut ParticlesView) {
+  /// Fills a view's quads with the effects in its camera, far to near, once the frame's step is in; none while
+  /// particles are not drawn in it.
+  pub fn fill(&mut self, view: &CameraView, options: &RenderViewOptions, into: &mut ParticlesView) {
     into.clear();
+    self.settle();
 
     let Some(level) = self.systems.as_ref() else {
       return;
@@ -387,6 +452,8 @@ impl LevelParticles {
   /// What the last frame's simulation came to, with its mean cost since the last report; `drawn` is what a view drew
   /// of it.
   pub fn take_report(&mut self, drawn: u32) -> RenderParticlesReport {
+    self.settle();
+
     let report: RenderParticlesReport = RenderParticlesReport {
       simulation_time: self.report.simulation_time / self.report.frames.max(1) as f32,
       drawn,
