@@ -281,41 +281,7 @@ export function toLevelRendererFeature<K extends TLevelFeatureKey>(
 }
 
 /**
- * @param settings - What the renderer's settings set, for every viewport.
- * @param view - What the view sets over them.
- * @returns The indirect light the view is drawn with: the settings', the view's own values over them.
- */
-export function toLevelIndirectLight(
-  settings: IRenderFeatureSettings,
-  view: ILevelFeatureOptions
-): TRenderIndirectLightSettings {
-  return toLevelModeFeature("indirectLight", settings, view);
-}
-
-/**
- * @param settings - What the renderer's settings set, for every viewport.
- * @param view - What the view sets over them.
- * @returns The rain's wetting the view is drawn with: the settings', the view's own values over them.
- */
-export function toLevelRain(settings: IRenderFeatureSettings, view: ILevelFeatureOptions): TRenderRainSettings {
-  return toLevelModeFeature("rain", settings, view);
-}
-
-/**
- * @param settings - What the renderer's settings set, for every viewport.
- * @param view - What the view sets over them.
- * @returns The reflections the view is drawn with: the settings', the view's own values over them.
- */
-export function toLevelReflections(
-  settings: IRenderFeatureSettings,
-  view: ILevelFeatureOptions
-): TRenderReflectionSettings {
-  return toLevelModeFeature("reflections", settings, view);
-}
-
-/**
- * @param key - A group no toolbar toggle turns off: the fog's, the sky debanding's, the bloom's, the indirect light's
- *   or the reflections'.
+ * @param key - A group no toolbar toggle turns off, one of `TLevelModeFeatureKey`.
  * @param settings - What the renderer's settings set, for every viewport.
  * @param view - What the view sets over them.
  * @returns The group the view is drawn with: the settings', the view's own values over them.
