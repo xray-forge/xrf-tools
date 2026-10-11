@@ -32,5 +32,7 @@ pub struct GrassUniform {
   pub model_count: u32,
   /// Metres the largest tuft reaches past its ground at a height of one.
   pub tuft_reach: f32,
-  pub pad: [u32; 2],
+  /// Radians of slope past which a tuft is not planted, thinning over the last fifth; a right angle for none.
+  pub slope_limit: f32,
+  pub pad: u32,
 }

@@ -30,6 +30,8 @@ struct GrassWind {
   foliage_anim: vec4<f32>,
   foliage_previous_anim: vec4<f32>,
   foliage_flora: vec4<f32>,
+  // x: one where a tuft stands along its ground's normal rather than straight up.
+  alignment: vec4<f32>,
 };
 
 @group(1) @binding(0) var<storage, read> sorted: array<vec4<f32>>;
@@ -110,6 +112,28 @@ fn swayed(standing: vec3<f32>, foot: f32, wave: f32, share: f32, is_previous: bo
   return standing + vec3<f32>(lean_wind.x * lean, 0.0, -lean_wind.z * lean);
 }
 
+// A ground normal facing up from the whole number its `x` and `z` were kept as, `y` following.
+fn unpack_ground_normal(packed: u32) -> vec3<f32> {
+  let across: vec2<f32> = vec2<f32>(vec2<u32>(packed / GROUND_NORMAL_STEPS, packed % GROUND_NORMAL_STEPS)) /
+    f32(GROUND_NORMAL_STEPS - 1u) * 2.0 - 1.0;
+
+  return vec3<f32>(across.x, sqrt(max(1.0 - dot(across, across), 0.0)), across.y);
+}
+
+// A tuft's point turned from standing straight up to standing along `ground`, about the axis across both (Rodrigues).
+fn stand_along(point: vec3<f32>, ground: vec3<f32>) -> vec3<f32> {
+  let axis: vec3<f32> = vec3<f32>(ground.z, 0.0, -ground.x);
+  let sine: f32 = length(axis);
+
+  if (sine < 1e-4) {
+    return point;
+  }
+
+  let unit: vec3<f32> = axis / sine;
+
+  return point * ground.y + cross(unit, point) * sine + unit * dot(unit, point) * (1.0 - ground.y);
+}
+
 @vertex
 fn vs_grass(@location(0) position: vec3<f32>, @location(1) uv: vec2<f32>,
   @builtin(instance_index) instance_index: u32) -> GrassVarying {
@@ -117,24 +141,29 @@ fn vs_grass(@location(0) position: vec3<f32>, @location(1) uv: vec2<f32>,
   let look: vec4<f32> = sorted[instance_index * 2u + 1u];
   let model: GrassModel = models[draw.model];
   let local: vec3<f32> = position * look.x;
-  // Turned about the tuft's up by its yaw, `Fmatrix::rotateY` carried into renderer space.
+  // The wave, and the ground's normal, as the planting packed them.
+  let packed: f32 = floor(look.w / 4.0);
+  let waving: f32 = look.w - packed * 4.0;
+  let ground: vec3<f32> = select(vec3<f32>(0.0, 1.0, 0.0), unpack_ground_normal(u32(packed)), wind.alignment.x > 0.5);
+  // Turned about the tuft's up by its yaw, `Fmatrix::rotateY` carried into renderer space, then stood along its ground.
   let c: f32 = cos(place.w);
   let s: f32 = sin(place.w);
-  let standing: vec3<f32> = place.xyz + vec3<f32>(c * local.x - s * local.z, local.y, s * local.x + c * local.z);
+  let turned: vec3<f32> = vec3<f32>(c * local.x - s * local.z, local.y, s * local.x + c * local.z);
+  let standing: vec3<f32> = place.xyz + stand_along(turned, ground);
   let share: f32 = position.y / max(model.shape.w, 0.0001);
-  let current: vec3<f32> = swayed(standing, place.y, look.w, share, false);
+  let current: vec3<f32> = swayed(standing, place.y, waving, share, false);
   let view: mat3x3<f32> = mat3x3<f32>(camera.view[0].xyz, camera.view[1].xyz, camera.view[2].xyz);
   var out: GrassVarying;
 
   out.clip = camera.view_projection * vec4<f32>(current, 1.0);
   // From a point below the foot to the vertex: a tuft reads lit from above and a little outward, as the engine lights
   // it.
-  out.normal = view * normalize(current - (place.xyz - vec3<f32>(0.0, NORMAL_DROP, 0.0)));
+  out.normal = view * normalize(current - (place.xyz - ground * NORMAL_DROP));
   out.uv = uv;
   out.hemi = look.y;
   out.sun = look.z;
   out.world = current;
-  out.moved = swayed(standing, place.y, look.w, share, true) - current;
+  out.moved = swayed(standing, place.y, waving, share, true) - current;
   out.flora = select(0.0, 1.0, wind.foliage_flora.w > 0.5);
 
   return out;

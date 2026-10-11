@@ -123,8 +123,10 @@ export const DEFAULT_RENDER_GRASS_SETTINGS: TRenderGrassSettings = {
   density: 0.6,
   foliage: DEFAULT_RENDER_FOLIAGE_SETTINGS,
   height: 1,
+  isAligned: false,
   isEnabled: true,
   radius: 49,
+  slopeLimit: 90,
 };
 
 /** The engine's own: no bounced light, and all of it from three metres around for when it is gathered. */

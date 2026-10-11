@@ -17,6 +17,11 @@ pub struct RenderGrassSettings {
   pub height: f32,
   /// How the trees and the grass move in the wind.
   pub foliage: RenderFoliageSettings,
+  /// Degrees of slope past which a tuft is not planted, thinning over the last fifth: ninety for none, as the engine
+  /// plants on any ground.
+  pub slope_limit: f32,
+  /// Whether a tuft stands along its ground's normal rather than straight up.
+  pub is_aligned: bool,
 }
 
 impl Default for RenderGrassSettings {
@@ -28,6 +33,8 @@ impl Default for RenderGrassSettings {
       radius: 49.0,
       height: 1.0,
       foliage: RenderFoliageSettings::default(),
+      slope_limit: 90.0,
+      is_aligned: false,
     }
   }
 }

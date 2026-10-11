@@ -35,8 +35,8 @@ pub struct GrassView {
   /// Where the puddles stand, which no tuft is planted in.
   puddles_buffer: wgpu::Buffer,
   draw_group: Option<wgpu::BindGroup>,
-  /// The steps and jitter the planting last ran with, which a change of plants every slot again.
-  planted: Option<(i32, u32)>,
+  /// The steps, jitter and slope limit the planting last ran with, which a change of plants every slot again.
+  planted: Option<(i32, u32, u32)>,
   /// Whether this frame plants and draws.
   is_drawn: bool,
 }
@@ -83,7 +83,11 @@ impl GrassView {
     foliage: &FoliageWindValues,
     puddles: (&wgpu::TextureView, GrassPuddlesUniform),
   ) {
-    let wind: GrassWindUniform = self.wind.advance(time, is_windy, strength).with_foliage(foliage);
+    let wind: GrassWindUniform = self
+      .wind
+      .advance(time, is_windy, strength)
+      .with_foliage(foliage)
+      .with_alignment(settings.is_aligned);
 
     self.is_drawn = false;
 
@@ -110,8 +114,11 @@ impl GrassView {
       self.planted = None;
     }
 
-    if self.planted != Some((steps, jitter.to_bits())) {
-      self.planted = Some((steps, jitter.to_bits()));
+    // A slope's limit decides which tufts stand, so a change of it plants every slot again too.
+    let slope_limit: f32 = settings.slope_limit.clamp(0.0, 90.0).to_radians();
+
+    if self.planted != Some((steps, jitter.to_bits(), slope_limit.to_bits())) {
+      self.planted = Some((steps, jitter.to_bits(), slope_limit.to_bits()));
       self.values.generation += 1;
     }
 
@@ -139,6 +146,7 @@ impl GrassView {
       capacity: build.size.capacity,
       model_count: level.model_count,
       tuft_reach: level.tuft_reach,
+      slope_limit,
       ..self.values
     };
     queue.write_buffer(&self.uniform, 0, bytemuck::bytes_of(&self.values));

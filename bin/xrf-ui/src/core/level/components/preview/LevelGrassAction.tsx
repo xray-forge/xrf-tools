@@ -21,6 +21,7 @@ import {
 } from "@/core/render/lib/features";
 import { TRenderFoliageSettings, TRenderGrassSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { EditorPopoverToggle } from "@/core/shell/editor/EditorPopoverToggle";
+import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { formatPercent } from "@/lib/format/number";
 
 const FOLIAGE_MODE_OPTIONS: ReadonlyArray<IRenderChoiceOption<RenderFoliageMode>> = [
@@ -107,6 +108,22 @@ export function LevelGrassAction({
         {...RENDER_GRASS_LIMITS.height}
         format={formatGrassHeight}
         onChange={(height: number) => set({ height })}
+      />
+
+      <RenderValueSlider
+        label={"Slope limit"}
+        value={grass.slopeLimit}
+        min={10}
+        max={90}
+        step={1}
+        format={(value: number) => `${value.toFixed(0)}°`}
+        onChange={(slopeLimit: number) => set({ slopeLimit })}
+      />
+
+      <CheckboxFormRow
+        label={"Aligned to the ground"}
+        isChecked={grass.isAligned}
+        onChange={(isAligned: boolean) => set({ isAligned })}
       />
 
       <RenderValueChoice

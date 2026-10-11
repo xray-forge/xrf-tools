@@ -93,6 +93,23 @@ fn is_in_puddle(foot: vec3<f32>) -> bool {
   return false;
 }
 
+// A slope's limit standing for none, a right angle; the share of it a tuft's limit is drawn down by at most, so the
+// grass thins up a bank.
+const SLOPE_NONE: f32 = 1.5707;
+const SLOPE_THINNING: f32 = 0.2;
+
+// A share from nought to one drawn of a foot's place alone, apart from the planting's generators.
+fn place_share(x: f32, z: f32) -> f32 {
+  return fract(sin(dot(vec2<f32>(x, z), vec2<f32>(12.9898, 78.233))) * 43758.547);
+}
+
+// A ground normal facing up as a whole number: its `x` and `z` on `GROUND_NORMAL_STEPS` steps each, `y` following.
+fn pack_ground_normal(normal: vec3<f32>) -> u32 {
+  let steps: vec2<u32> = vec2<u32>(round((normal.xz * 0.5 + 0.5) * f32(GROUND_NORMAL_STEPS - 1u)));
+
+  return steps.x * GROUND_NORMAL_STEPS + steps.y;
+}
+
 // Slots a frame plants at most: `dm_max_decompress`, the engine's own seven on the CPU, grown for a GPU that plants
 // them side by side. A step of the camera stales a row of the ring, well within it; a jump stales the whole ring, which
 // then fills over some frames, the nearest first.
@@ -415,6 +432,7 @@ fn decompress(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workgro
       let px: f32 = f32(x) / f32(steps) * GRASS_SLOT_METERS + min_x + jitter_x;
       let pz: f32 = f32(z) / f32(steps) * GRASS_SLOT_METERS + min_z + jitter_z;
       var y: f32 = min_y - 5.0;
+      var ground: u32 = 0u;
       // The slot is walked in the engine's space and its triangles are in the renderer's, whose z runs the other way.
       let origin: vec3<f32> = vec3<f32>(px, max_y, -pz);
 
@@ -423,12 +441,25 @@ fn decompress(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workgro
         let range: f32 = ray_range(origin, triangle_corner(triangle, 0u), triangle_corner(triangle, 1u),
           triangle_corner(triangle, 2u));
 
-        if (range >= 0.0) {
-          y = max(y, max_y - range);
+        if (range >= 0.0 && max_y - range > y) {
+          y = max_y - range;
+          ground = triangle;
         }
       }
 
       if (y < min_y) {
+        continue;
+      }
+
+      // The ground's normal under the foot, facing up, which a slope's limit reads and an aligned tuft stands along.
+      let corner: vec3<f32> = triangle_corner(ground, 0u);
+      let face: vec3<f32> = cross(triangle_corner(ground, 1u) - corner, triangle_corner(ground, 2u) - corner);
+      let normal: vec3<f32> = normalize(face) * select(1.0, -1.0, face.y < 0.0);
+
+      // Past the limit a tuft stands nowhere, short of it by a fifth by a share drawn of the place, so the grass thins
+      // out up a bank rather than ending at a line; its own draw, so a limit at none leaves every tuft where it was.
+      if (params.slope_limit < SLOPE_NONE
+        && acos(clamp(normal.y, -1.0, 1.0)) > params.slope_limit * mix(1.0 - SLOPE_THINNING, 1.0, place_share(px, pz))) {
         continue;
       }
 
@@ -444,7 +475,7 @@ fn decompress(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workgro
         let to: u32 = (first + held) * 2u;
 
         cached[to] = vec4<f32>(px, y, -pz, turn);
-        cached[to + 1u] = vec4<f32>(size, f32(model), wave, 0.0);
+        cached[to + 1u] = vec4<f32>(size, f32(model), wave, f32(pack_ground_normal(normal)));
         held += 1u;
       }
     }
@@ -534,7 +565,9 @@ fn cull(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workgroups) g
     }
 
     planted[at * 2u] = placed;
-    planted[at * 2u + 1u] = vec4<f32>(shrunk, ground.z, ground.w, select(0.0, kept.z, is_waving));
+    // The wave, nought to two, and the ground's normal, a whole number of `GROUND_NORMAL_STEPS` squared, in one float
+    // it holds exactly.
+    planted[at * 2u + 1u] = vec4<f32>(shrunk, ground.z, ground.w, select(0.0, kept.z, is_waving) + 4.0 * kept.w);
     planted_models[at] = model;
     atomicAdd(&counts[model], 1u);
   }

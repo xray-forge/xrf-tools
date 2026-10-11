@@ -24,6 +24,8 @@ pub struct GrassWindUniform {
   pub foliage_anim: Vec4,
   pub foliage_previous_anim: Vec4,
   pub foliage_flora: Vec4,
+  /// One in `x` where a tuft stands along its ground's normal rather than straight up.
+  pub alignment: Vec4,
 }
 
 impl GrassWindUniform {
@@ -46,6 +48,12 @@ impl GrassWindUniform {
     self.foliage_anim = foliage.anim;
     self.foliage_previous_anim = foliage.previous_anim;
     self.foliage_flora = foliage.flora;
+    self
+  }
+
+  /// The same wind, the tufts standing along their ground's normal where `is_aligned`.
+  pub fn with_alignment(mut self, is_aligned: bool) -> Self {
+    self.alignment = Vec4::new(f32::from(u8::from(is_aligned)), 0.0, 0.0, 0.0);
     self
   }
 }

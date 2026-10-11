@@ -112,8 +112,11 @@ export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings>
       treesTrunk: toNumber(0, 5),
     },
     height: toNumber(0.5, 2),
+    isAligned: FLAG,
     isEnabled: FLAG,
     radius: toNumber(49, 450, true),
+    // The renderer's own: degrees of slope, ninety for none.
+    slopeLimit: toNumber(10, 90),
   },
   // The renderer's own: up to four times what the frame shows, for the light a screen-space search cannot see; past
   // eight metres its steps lie too far apart to follow a surface.

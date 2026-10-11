@@ -61,6 +61,24 @@ export function SettingsRendererGrass(): ReactElement {
           format={formatGrassHeight}
           onChange={(height: number) => onSet({ height })}
         />
+
+        <SliderFormRow
+          label={"Slope limit"}
+          description={"Degrees of slope past which no grass grows, thinning out over the last fifth; 90 for none."}
+          value={grass.slopeLimit}
+          min={10}
+          max={90}
+          step={1}
+          format={(value: number) => `${value.toFixed(0)}°`}
+          onChange={(slopeLimit: number) => onSet({ slopeLimit })}
+        />
+
+        <CheckboxFormRow
+          label={"Aligned to the ground"}
+          description={"Stands each tuft along its ground's slope rather than straight up."}
+          isChecked={grass.isAligned}
+          onChange={(isAligned: boolean) => onSet({ isAligned })}
+        />
       </div>
     </DetailSection>
   );
