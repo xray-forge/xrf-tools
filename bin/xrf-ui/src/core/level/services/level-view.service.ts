@@ -32,7 +32,9 @@ export class LevelViewService {
 
   /** What the camera sees and how it answers input: a preference, kept over runs. */
   @RefObservable()
-  public camera: ILevelCameraOptions = toLevelCameraOptions(parseLocalStorageValueSafe(LEVEL_CAMERA_STORAGE_KEY));
+  public cameraOptions: ILevelCameraOptions = toLevelCameraOptions(
+    parseLocalStorageValueSafe(LEVEL_CAMERA_STORAGE_KEY)
+  );
 
   /** How far trees are drawn in full before their impostors take over. */
   @RefObservable()
@@ -77,9 +79,9 @@ export class LevelViewService {
   }
 
   @BoundAction()
-  public setCamera(camera: ILevelCameraOptions): void {
-    this.camera = camera;
-    setLocalStorageValueSafe(LEVEL_CAMERA_STORAGE_KEY, JSON.stringify(camera));
+  public setCameraOptions(cameraOptions: ILevelCameraOptions): void {
+    this.cameraOptions = cameraOptions;
+    setLocalStorageValueSafe(LEVEL_CAMERA_STORAGE_KEY, JSON.stringify(cameraOptions));
   }
 
   @BoundAction()

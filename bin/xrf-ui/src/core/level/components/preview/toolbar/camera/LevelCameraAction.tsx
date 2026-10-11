@@ -24,9 +24,9 @@ export function LevelCameraAction({
   className,
 }: BaseComponentProps): ReactElement {
   const viewService: LevelViewService = useInjection(LevelViewService);
-  const camera: ILevelCameraOptions = viewService.camera;
+  const camera: ILevelCameraOptions = viewService.cameraOptions;
 
-  const onSet = usePartialChange(camera, viewService.setCamera);
+  const onSet = usePartialChange(camera, viewService.setCameraOptions);
 
   return (
     <EditorPopoverAction
@@ -74,7 +74,7 @@ export function LevelCameraAction({
           onChange={(sensitivity) => onSet({ sensitivity })}
         />
 
-        <Button size={"small"} onClick={() => viewService.setCamera(DEFAULT_LEVEL_CAMERA_OPTIONS)}>
+        <Button size={"small"} onClick={() => viewService.setCameraOptions(DEFAULT_LEVEL_CAMERA_OPTIONS)}>
           Back to the default camera
         </Button>
       </div>

@@ -212,7 +212,7 @@ export class LevelRenderService extends NativeRenderSurfaceService {
   protected start(viewport: NativeViewport): Array<() => void> {
     return [
       this.loadService.followLevel(this.openLevel),
-      reaction(() => this.viewService.camera, this.applyCamera),
+      reaction(() => this.viewService.cameraOptions, this.applyCamera),
       reaction(
         () => this.viewOptions,
         (options: RenderViewOptions) => viewport.setViewOptions(options),
@@ -396,7 +396,7 @@ export class LevelRenderService extends NativeRenderSurfaceService {
     const viewport: Nullable<NativeViewport> = this.viewport;
 
     this.viewpoint = viewpoint;
-    viewport?.setCamera(this.toCamera(viewpoint, this.viewService.camera));
+    viewport?.setCamera(this.toCamera(viewpoint, this.viewService.cameraOptions));
     viewport?.commandCamera({ kind: EWorldCameraCommand.RESET });
   }
 
