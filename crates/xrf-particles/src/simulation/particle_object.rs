@@ -71,6 +71,11 @@ impl ParticleObject {
     self.is_stopping = true;
   }
 
+  /// Whether `advance` would update it: in view, or due for the scheduler.
+  pub fn is_due(&self, now: u64, is_in_view: bool) -> bool {
+    is_in_view || now >= self.next_scheduled
+  }
+
   /// The scheduler's update when due, then the drawn update when in view (`shedule_Update`, `renderable_Render`);
   /// whether either took any time.
   pub fn advance(&mut self, now: u64, view: Vec3, is_in_view: bool, context: &ParticleUpdateContext) -> bool {

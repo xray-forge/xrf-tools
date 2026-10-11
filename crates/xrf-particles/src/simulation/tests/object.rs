@@ -50,3 +50,19 @@ fn updates_a_far_hidden_object_only_when_the_scheduler_comes_round() {
   object.advance(1_400, Vec3::ZERO, true, &context(&library, &rules));
   assert_eq!(age_of(&object), after_schedule + 0.033 + 0.033 + 0.033);
 }
+
+#[test]
+fn is_due_in_view_or_when_the_scheduler_comes_round_as_it_advances() {
+  let rules: ParticleEngineRules = ParticleEngineRules::default();
+  let library: ParticleLibrary = library(vec![effect("smoke", 1, vec![source(1_000.0), moving()])], vec![]);
+  let mut object: ParticleObject = placed(&library, &rules, 1_000);
+
+  assert!(object.is_due(1_100, false));
+
+  // Scheduled 525 ms on, 400 m away: hidden, nothing is due until then; drawn, it always is.
+  object.advance(1_100, Vec3::ZERO, false, &context(&library, &rules));
+  assert!(!object.is_due(1_400, false));
+  assert!(!object.advance(1_400, Vec3::ZERO, false, &context(&library, &rules)));
+  assert!(object.is_due(1_400, true));
+  assert!(object.is_due(1_625, false));
+}
