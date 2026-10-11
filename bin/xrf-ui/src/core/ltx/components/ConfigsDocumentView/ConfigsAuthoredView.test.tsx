@@ -53,19 +53,23 @@ describe("ConfigsAuthoredView", () => {
   it("says a config is empty rather than drawing a listing of nothing", () => {
     // A mod that empties a vanilla file ships it empty rather than deleting it, so this is a real file to open - and
     // an empty listing is indistinguishable from one that failed to render.
-    const { render: render_ } = renderAuthored(documentOf([]));
+    const {
+      render: { getByText, queryAllByRole },
+    } = renderAuthored(documentOf([]));
 
-    expect(render_.getByText("This config is empty")).toBeInTheDocument();
-    expect(render_.getByText(new RegExp(PATH.replace(/\\/g, "\\\\")))).toBeInTheDocument();
-    expect(render_.queryAllByRole("option")).toHaveLength(0);
+    expect(getByText("This config is empty")).toBeInTheDocument();
+    expect(getByText(new RegExp(PATH.replace(/\\/g, "\\\\")))).toBeInTheDocument();
+    expect(queryAllByRole("option")).toHaveLength(0);
   });
 
   it("draws the file when it has one, including the empty line its last newline starts", () => {
-    const { render: render_ } = renderAuthored(documentOf(["[wpn_base]", "cost = 100", ""]));
+    const {
+      render: { getAllByRole, getAllByTestId, queryByText },
+    } = renderAuthored(documentOf(["[wpn_base]", "cost = 100", ""]));
 
-    expect(render_.queryByText("This config is empty")).not.toBeInTheDocument();
-    expect(render_.getAllByRole("option")).toHaveLength(3);
-    expect(render_.getAllByTestId("virtualized-lines-gutter").map((it: HTMLElement) => it.textContent)).toEqual([
+    expect(queryByText("This config is empty")).not.toBeInTheDocument();
+    expect(getAllByRole("option")).toHaveLength(3);
+    expect(getAllByTestId("virtualized-lines-gutter").map((it: HTMLElement) => it.textContent)).toEqual([
       "1",
       "2",
       "3",
@@ -75,13 +79,16 @@ describe("ConfigsAuthoredView", () => {
   it("marks the gutter when the root's findings arrive after the config did", () => {
     // The order a reader actually produces: a config opens, and the Problems panel verifies the root afterwards. A
     // view that only read the findings it had at open would leave the file it is showing unmarked.
-    const { render: render_, container } = renderAuthored(documentOf(["[wpn_base]", "cost = expensive"]));
+    const {
+      render: { getAllByTestId, getByTitle, queryByTitle },
+      container,
+    } = renderAuthored(documentOf(["[wpn_base]", "cost = expensive"]));
     const findingsService: ConfigsFindingsService = container.get(ConfigsFindingsService);
 
-    expect(render_.queryByTitle("Error")).not.toBeInTheDocument();
+    expect(queryByTitle("Error")).not.toBeInTheDocument();
 
     act(() => runInAction(() => (findingsService.findings = findingsService.findings.asReady([FINDING]))));
 
-    expect(render_.getAllByTestId("virtualized-lines-gutter")[1]).toContainElement(render_.getByTitle("Error"));
+    expect(getAllByTestId("virtualized-lines-gutter")[1]).toContainElement(getByTitle("Error"));
   });
 });

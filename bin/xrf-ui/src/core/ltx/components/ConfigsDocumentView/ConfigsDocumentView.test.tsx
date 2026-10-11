@@ -33,27 +33,35 @@ function renderView(onDeselect: () => void = jest.fn()): { render: RenderResult;
 
 describe("ConfigsDocumentView", () => {
   it("says nothing is open until a config is selected", () => {
-    const { render: render_ } = renderView();
+    const {
+      render: { getByText, queryByTestId },
+    } = renderView();
 
-    expect(render_.getByText("No config open")).toBeInTheDocument();
-    expect(render_.queryByTestId("configs-document-header")).not.toBeInTheDocument();
+    expect(getByText("No config open")).toBeInTheDocument();
+    expect(queryByTestId("configs-document-header")).not.toBeInTheDocument();
   });
 
   it("names the selected config before its text has arrived", () => {
-    const { render: render_, service } = renderView();
+    const {
+      render: { getByTestId },
+      service,
+    } = renderView();
 
     act(() => runInAction(() => (service.selected = PATH)));
 
-    expect(render_.getByTestId("configs-document-header")).toHaveTextContent(PATH);
+    expect(getByTestId("configs-document-header")).toHaveTextContent(PATH);
   });
 
   it("hands the close action back to the caller, which owns what a selection holds", async () => {
     const onDeselect = jest.fn();
-    const { render: render_, service } = renderView(onDeselect);
+    const {
+      render: { getByRole },
+      service,
+    } = renderView(onDeselect);
 
     act(() => runInAction(() => (service.selected = PATH)));
 
-    await userEvent.click(render_.getByRole("button", { name: "Close config" }));
+    await userEvent.click(getByRole("button", { name: "Close config" }));
 
     expect(onDeselect).toHaveBeenCalledTimes(1);
   });

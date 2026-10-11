@@ -37,31 +37,31 @@ function render(texture: VisualTextureDependency): RenderResult {
 
 describe("VisualSubmeshTexture", () => {
   it("names the file a reference resolved to, and the root it came from", () => {
-    const render_: RenderResult = render({
+    const { getByText } = render({
       submeshIndex: 0,
       reference: "wpn\\wpn_ak74",
       resolution: { kind: "resolved", step: "asset", assets: [LOOSE] },
     });
 
-    expect(render_.getByText("textures\\wpn\\wpn_ak74.dds")).toBeInTheDocument();
-    expect(render_.getByText("C:\\gamedata")).toBeInTheDocument();
+    expect(getByText("textures\\wpn\\wpn_ak74.dds")).toBeInTheDocument();
+    expect(getByText("C:\\gamedata")).toBeInTheDocument();
   });
 
   it("names the archived entry as well as the volume set it sits in", () => {
     // The volume alone was all the panel used to show, which said where to look but never what was found there.
-    const render_: RenderResult = render({
+    const { getByText } = render({
       submeshIndex: 0,
       reference: "wpn\\wpn_ak74",
       resolution: { kind: "resolved", step: "installation", assets: [ARCHIVED] },
     });
 
-    expect(render_.getByText("textures\\wpn\\wpn_ak74.dds")).toBeInTheDocument();
-    expect(render_.getByText("C:\\game\\db")).toBeInTheDocument();
+    expect(getByText("textures\\wpn\\wpn_ak74.dds")).toBeInTheDocument();
+    expect(getByText("C:\\game\\db")).toBeInTheDocument();
   });
 
   it("shows the placeholder path when the reference was substituted", () => {
     // The point of the row: what is on screen is not what the model asked for, and the path is what says so.
-    const render_: RenderResult = render({
+    const { getByText } = render({
       submeshIndex: 0,
       reference: "wpn\\wpn_missing",
       resolution: {
@@ -72,13 +72,13 @@ describe("VisualSubmeshTexture", () => {
       },
     });
 
-    expect(render_.getByText("textures\\ed\\ed_not_existing_texture.dds")).toBeInTheDocument();
+    expect(getByText("textures\\ed\\ed_not_existing_texture.dds")).toBeInTheDocument();
   });
 
   it("states what the located file is, and says no mips when there is no chain", () => {
     // A single level means no chain at all, which is why the loader has to drop to a linear filter - saying "1 mip"
     // would read as if it had one.
-    const render_: RenderResult = renderWithProviders(
+    const { getByText } = renderWithProviders(
       <VisualSubmeshTexture
         texture={{
           submeshIndex: 0,
@@ -90,33 +90,33 @@ describe("VisualSubmeshTexture", () => {
       />
     );
 
-    expect(render_.getByText("2 KB")).toBeInTheDocument();
-    expect(render_.getByText("1024 × 1024")).toBeInTheDocument();
-    expect(render_.getByText("BC7_UNorm")).toBeInTheDocument();
-    expect(render_.getByText("no mips")).toBeInTheDocument();
+    expect(getByText("2 KB")).toBeInTheDocument();
+    expect(getByText("1024 × 1024")).toBeInTheDocument();
+    expect(getByText("BC7_UNorm")).toBeInTheDocument();
+    expect(getByText("no mips")).toBeInTheDocument();
   });
 
   it("shows no size for a located file the backend could not describe", () => {
     // Unreachable is not empty, so the row is absent rather than reporting zero bytes.
-    const render_: RenderResult = render({
+    const { queryByText } = render({
       submeshIndex: 0,
       reference: "wpn\\wpn_ak74",
       resolution: { kind: "resolved", step: "asset", assets: [LOOSE] },
     });
 
-    expect(render_.queryByText("Size")).not.toBeInTheDocument();
-    expect(render_.queryByText("0 B")).not.toBeInTheDocument();
+    expect(queryByText("Size")).not.toBeInTheDocument();
+    expect(queryByText("0 B")).not.toBeInTheDocument();
   });
 
   it("lists the roots it searched when nothing answered", () => {
-    const render_: RenderResult = render({
+    const { getByText, queryByText } = render({
       submeshIndex: 0,
       reference: "wpn\\wpn_ak74",
       resolution: { kind: "missing", roots: ["C:\\gamedata"] },
     });
 
-    expect(render_.getByText("C:\\gamedata")).toBeInTheDocument();
-    expect(render_.queryByText("Path")).not.toBeInTheDocument();
+    expect(getByText("C:\\gamedata")).toBeInTheDocument();
+    expect(queryByText("Path")).not.toBeInTheDocument();
   });
 });
 
@@ -142,17 +142,17 @@ describe("VisualSubmeshTexture decoded textures", () => {
   it("says a texture was decoded rather than uploaded, and what that costs", () => {
     // The file's own mip count is still reported beside it, and for a decoded texture the two disagree on purpose: the
     // upload is one png. Without this line the panel would claim twelve mips for a texture that has none.
-    const render_: RenderResult = renderWithState(EVisualTextureState.DECODED);
+    const { getByText } = renderWithState(EVisualTextureState.DECODED);
 
-    expect(render_.getByText("Decoded")).toBeInTheDocument();
-    expect(render_.getByText(/uploaded without a mip chain/)).toBeInTheDocument();
-    expect(render_.getByText(/12 mips/)).toBeInTheDocument();
+    expect(getByText("Decoded")).toBeInTheDocument();
+    expect(getByText(/uploaded without a mip chain/)).toBeInTheDocument();
+    expect(getByText(/12 mips/)).toBeInTheDocument();
   });
 
   it("says nothing of the sort for a texture uploaded as it is stored", () => {
-    const render_: RenderResult = renderWithState(EVisualTextureState.APPLIED);
+    const { getByText, queryByText } = renderWithState(EVisualTextureState.APPLIED);
 
-    expect(render_.getByText("Applied")).toBeInTheDocument();
-    expect(render_.queryByText(/uploaded without a mip chain/)).not.toBeInTheDocument();
+    expect(getByText("Applied")).toBeInTheDocument();
+    expect(queryByText(/uploaded without a mip chain/)).not.toBeInTheDocument();
   });
 });

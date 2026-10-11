@@ -52,7 +52,7 @@ function renderScheme(report: LtxSectionSchemeReport): RenderResult {
 
 describe("ConfigsSchemePanel", () => {
   it("names the rule, where the binding is written, and what each field is asked for", async () => {
-    const render_: RenderResult = renderScheme({
+    const { getByText } = renderScheme({
       entry: ENTRY,
       fields: [
         fieldOf("cost", { dataType: "u32", isAny: false, isArray: false, isOptional: false }, "4000"),
@@ -65,21 +65,21 @@ describe("ConfigsSchemePanel", () => {
       section: "wpn_child",
     });
 
-    await waitFor(() => expect(render_.getByText("$weapon")).toBeInTheDocument());
+    await waitFor(() => expect(getByText("$weapon")).toBeInTheDocument());
 
     // The answer nothing in the text of `[wpn_child]:wpn_base` gives.
-    expect(render_.getByText("inherited from wpn_base")).toBeInTheDocument();
-    expect(render_.getByText("strict")).toBeInTheDocument();
-    expect(render_.getByText("u32")).toBeInTheDocument();
-    expect(render_.getByText("4000")).toBeInTheDocument();
+    expect(getByText("inherited from wpn_base")).toBeInTheDocument();
+    expect(getByText("strict")).toBeInTheDocument();
+    expect(getByText("u32")).toBeInTheDocument();
+    expect(getByText("4000")).toBeInTheDocument();
     // Declared, optional, and never supplied - which under a strict scheme is still not a finding.
-    expect(render_.getByText("string?")).toBeInTheDocument();
-    expect(render_.getByText("not supplied")).toBeInTheDocument();
+    expect(getByText("string?")).toBeInTheDocument();
+    expect(getByText("not supplied")).toBeInTheDocument();
   });
 
   it("draws plain rows for a section no scheme judges", async () => {
     // Most of a game tree: section schemes are an XRF convention, so nothing is undeclared against nothing.
-    const render_: RenderResult = renderScheme({
+    const { getByText, queryByText } = renderScheme({
       entry: ENTRY,
       fields: [fieldOf("cost", null, "100")],
       inheritedFrom: null,
@@ -89,14 +89,14 @@ describe("ConfigsSchemePanel", () => {
       section: "wpn_plain",
     });
 
-    await waitFor(() => expect(render_.getByText("no scheme")).toBeInTheDocument());
+    await waitFor(() => expect(getByText("no scheme")).toBeInTheDocument());
 
-    expect(render_.getByText("100")).toBeInTheDocument();
-    expect(render_.queryByText("undeclared")).not.toBeInTheDocument();
+    expect(getByText("100")).toBeInTheDocument();
+    expect(queryByText("undeclared")).not.toBeInTheDocument();
   });
 
   it("marks a field the scheme never named, once a scheme is judging the section", async () => {
-    const render_: RenderResult = renderScheme({
+    const { getByText } = renderScheme({
       entry: ENTRY,
       fields: [fieldOf("unexpected_field", null, "1")],
       inheritedFrom: null,
@@ -106,6 +106,6 @@ describe("ConfigsSchemePanel", () => {
       section: "wpn_broken",
     });
 
-    await waitFor(() => expect(render_.getByText("undeclared")).toBeInTheDocument());
+    await waitFor(() => expect(getByText("undeclared")).toBeInTheDocument());
   });
 });
