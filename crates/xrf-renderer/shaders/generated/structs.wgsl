@@ -138,6 +138,7 @@ struct PuddleSites {
   window: vec4<f32>,
   shape: vec4<f32>,
   water_window: vec4<f32>,
+  fires: array<vec4<f32>, 32>,
 }
 
 struct SkyPrefilter {

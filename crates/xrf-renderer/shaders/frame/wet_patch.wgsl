@@ -103,7 +103,11 @@ const WET_GLOSS_MOST: f32 = 0.6;
 // line up from above, shifted by a third reading a level's stretch across (`PATCH_BIAS` either way), so one stretch wets
 // before another; and hollows in the level surface first where it is drawn (`PATCH_HOLLOW` a metre of depth under the ground about,
 // at most `PATCH_HOLLOW_MOST`, read `PATCH_HOLLOW_SPAN` metres out); the level's wetness at which every spot is wet,
-// a share of a full one, and the share of readiness a patch's edge softens over. The gloss a fully wet spot gains is
+// a share of a full one, and the share of readiness a patch's edge softens over. A wall reads the two on the upright
+// planes along the world's axes, mixed by how far it faces each (the bumped normal only moving the mix, where a plane
+// of its own would move with every bump), its height counting `PATCH_RUNOFF` of a metre so its patches run down it as
+// the rain does; read from above, every patch went through a wall top to bottom as a hard stripe. The gloss a fully
+// wet spot gains is
 // the engine's gain times `WET_GLOSS_SHARE`, about the albedo brightness the engine weighed it by, the same over every
 // texel so no texel crosses the trace's cut alone.
 const PATCH_TILES: vec3<f32> = vec3<f32>(9.0, 31.0, 173.0);
@@ -116,6 +120,7 @@ const PATCH_TURN_REGION: mat2x2<f32> = mat2x2<f32>(0.0707, -0.9975, 0.9975, 0.07
 const PATCH_HOLLOW: f32 = 4.0;
 const PATCH_HOLLOW_MOST: f32 = 0.4;
 const PATCH_HOLLOW_SPAN: f32 = 2.0;
+const PATCH_RUNOFF: f32 = 0.3;
 const PATCH_FULL: f32 = 0.66;
 const PATCH_SOFT: f32 = 0.25;
 const WET_GLOSS_SHARE: f32 = 0.45;
@@ -132,34 +137,63 @@ fn under_water(world: vec3<f32>) -> f32 {
   return smoothstep(0.0, UNDER_WATER_BAND, surface - world.y);
 }
 
-// How readily a point in the world wets, from nothing to one.
-fn wet_readiness(world: vec3<f32>) -> f32 {
-  let broad_place: vec2<f32> = PATCH_TURN_BROAD * world.xz / PATCH_TILES.y + 0.53;
+// How readily a place on a surface's plane wets by its patches alone, from the broad and the fine readings.
+fn patch_readiness(place: vec2<f32>) -> f32 {
+  let broad_place: vec2<f32> = PATCH_TURN_BROAD * place / PATCH_TILES.y + 0.53;
   let broad: f32 = textureSampleLevel(puddle_noise, wet_sampler, broad_place, 0.0).r;
   let warp: vec2<f32> =
     vec2<f32>(broad, textureSampleLevel(puddle_noise, wet_sampler, broad_place.yx + 0.29, 0.0).r) - 0.5;
   let fine: f32 = textureSampleLevel(puddle_noise, wet_sampler,
-    PATCH_TURN_FINE * world.xz / PATCH_TILES.x + 0.11 + warp * PATCH_WARP, 0.0).r;
+    PATCH_TURN_FINE * place / PATCH_TILES.x + 0.11 + warp * PATCH_WARP, 0.0).r;
+
+  return mix(broad, fine, PATCH_FINE);
+}
+
+// How readily a point in the world wets, from nothing to one: from above where its surface faces up, on the upright
+// planes where it stands as a wall, mixed between.
+fn wet_readiness(world: vec3<f32>, world_normal: vec3<f32>) -> f32 {
+  let wall: f32 = smoothstep(0.5, 0.85, length(world_normal.xz));
   let region: f32 =
     textureSampleLevel(puddle_noise, wet_sampler, PATCH_TURN_REGION * world.xz / PATCH_TILES.z + 0.77, 0.0).r;
-  var ready: f32 = mix(broad, fine, PATCH_FINE) + (region - 0.5) * 2.0 * PATCH_BIAS;
+  var patches: f32 = 0.0;
 
-  if (wet.is_enhanced > 0.5) {
+  if (wall < 1.0) {
+    patches += patch_readiness(world.xz) * (1.0 - wall);
+  }
+
+  if (wall > 0.0) {
+    let facing: vec2<f32> = world_normal.xz * world_normal.xz;
+    let facing_x: f32 = smoothstep(0.2, 0.8, facing.x / max(facing.x + facing.y, 1e-6));
+    let down: f32 = world.y * PATCH_RUNOFF;
+
+    if (facing_x > 0.0) {
+      patches += patch_readiness(vec2<f32>(world.z, down)) * wall * facing_x;
+    }
+
+    if (facing_x < 1.0) {
+      patches += patch_readiness(vec2<f32>(world.x + 0.37, down)) * wall * (1.0 - facing_x);
+    }
+  }
+
+  var ready: f32 = patches + (region - 0.5) * 2.0 * PATCH_BIAS;
+
+  if (wet.is_enhanced > 0.5 && wall < 1.0) {
     let span: f32 = PATCH_HOLLOW_SPAN;
     let around: f32 = 0.25 * (lowest_at(world.xz + vec2<f32>(span, 0.0)) + lowest_at(world.xz - vec2<f32>(span, 0.0)) +
       lowest_at(world.xz + vec2<f32>(0.0, span)) + lowest_at(world.xz - vec2<f32>(0.0, span)));
 
-    ready += min(max(around - lowest_at(world.xz), 0.0) * PATCH_HOLLOW, PATCH_HOLLOW_MOST);
+    ready += min(max(around - lowest_at(world.xz), 0.0) * PATCH_HOLLOW, PATCH_HOLLOW_MOST) * (1.0 - wall);
   }
 
   return saturate(ready);
 }
 
 // How much of a point's patch is wet at the level's wetness, from none to all, softened at its edge.
-fn patch_wetness(world: vec3<f32>) -> f32 {
+fn patch_wetness(world: vec3<f32>, world_normal: vec3<f32>) -> f32 {
   let drive: f32 = saturate(wet.puddles.x / PATCH_FULL);
+  let ready: f32 = wet_readiness(world, world_normal);
 
-  return smoothstep(0.0, 1.0, saturate((drive * (1.0 + PATCH_SOFT) - (1.0 - wet_readiness(world))) / PATCH_SOFT));
+  return smoothstep(0.0, 1.0, saturate((drive * (1.0 + PATCH_SOFT) - (1.0 - ready)) / PATCH_SOFT));
 }
 
 // How wet a surface reads, from none to one: the engine's, by its splashes' fade over 5 to 25 m, or where the
@@ -180,7 +214,7 @@ fn surface_wetness(
 
   let facing_up: f32 = saturate(world_normal.y * 10.0 + 10.0 * 0.5 + 0.5);
 
-  return reached * patch_wetness(world) * facing_up *
+  return reached * patch_wetness(world, world_normal) * facing_up *
     smoothstep(wet.reach.y, wet.reach.y * REACH_FADE, length(position));
 }
 

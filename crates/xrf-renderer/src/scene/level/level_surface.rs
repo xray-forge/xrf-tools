@@ -1,4 +1,4 @@
-use glam::Vec4;
+use glam::{Vec2, Vec4};
 use xrf_renderer_core::{FrameGraph, GraphBindings, GraphRuntime, GraphTexture, UniformBinding};
 
 use crate::frame::static_scene_handles::StaticSceneHandles;
@@ -17,14 +17,18 @@ use crate::scene::level::shadow_frame::ShadowFrame;
 
 /// The level's surface around the camera, which the enhanced rain places its puddles on: its overhead map without its
 /// trees, its water over the same square, and what is placed from them each time they are drawn, kept until they are
-/// drawn again: the surface's lowest heights, and a puddle site a cell where a puddle may stand whole; and each frame,
-/// the puddle each site holds, which the wetting draws.
+/// drawn again: the surface's lowest heights, and a puddle site a cell where a puddle may stand whole, clear of the
+/// level's fires; and each frame, the puddle each site holds, which the wetting draws.
 pub struct LevelSurface {
   pub map: OverheadMap,
   pub water: OverheadMap,
   pub lowest: wgpu::TextureView,
   sites: wgpu::TextureView,
   pub puddles: wgpu::TextureView,
+  /// The level's fires, by `x` and `z`, which the sites keep clear of.
+  fires: Vec<Vec2>,
+  /// Whether the fires changed this frame, which places the sites again.
+  is_fire_due: bool,
 }
 
 /// What deciding the puddles reads beside the sites: the wet surfaces' settings and state, and the puddles' regional
@@ -70,6 +74,8 @@ impl LevelSurface {
       lowest: create("level surface lowest", shape.resolution, Self::HEIGHT_FORMAT),
       sites: create("puddle sites", cells, Self::SITES_FORMAT),
       puddles: create("puddles", cells, Self::SITES_FORMAT),
+      fires: Vec::new(),
+      is_fire_due: false,
     }
   }
 
@@ -80,16 +86,23 @@ impl LevelSurface {
 
   /// Centres it and its water over the camera, readying them to be drawn and derived where they moved or the scene
   /// grew, each on a frame `load` leaves light; both alike, as the sites read the water through the surface's window.
+  /// Takes the level's `fires`, placing the sites again where they changed: a level's lights may stream in after its
+  /// surface was drawn.
   pub fn prepare(
     &mut self,
     device: &wgpu::Device,
     queue: &wgpu::Queue,
     encoder: &mut wgpu::CommandEncoder,
     frame: &ShadowFrame<'_>,
-    load: &mut FrameLoad,
+    (fires, load): (&[Vec2], &mut FrameLoad),
   ) {
     self.map.prepare(device, queue, encoder, frame, load);
     self.water.prepare(device, queue, encoder, frame, load);
+    self.is_fire_due = self.fires != fires;
+
+    if self.is_fire_due {
+      self.fires = fires.to_vec();
+    }
   }
 
   /// Its centre in `x` and `z`, its half width and the height it is seen from; then its texels across, the metres it
@@ -134,7 +147,7 @@ impl LevelSurface {
 
     // Sites are placed again whenever either map is drawn: the two are drawn on frames of their own, and sites placed
     // over a water map not yet drawn where the level's water has streamed in would stand under it.
-    if self.map.is_due() || self.water.is_due() {
+    if self.map.is_due() || self.water.is_due() || self.is_fire_due {
       self.add_placing_passes(
         (&mut *graph, &mut *bindings, runtime),
         passes,
@@ -186,6 +199,7 @@ impl LevelSurface {
       window,
       shape,
       water_window: self.get_water_window(),
+      fires: self.get_nearest_fires(Vec2::new(window.x, window.y)),
     });
     let heights: LowestHeightsParameters = LowestHeightsParameters {
       surface,
@@ -206,5 +220,26 @@ impl LevelSurface {
       .parameters(&heights)
       .parameters(&placing)
       .record(move |context| passes.puddle_sites.record(context, size, (&heights, &placing)));
+  }
+
+  /// The fires nearest a centre, as many as the sites' uniform holds, two a vector, far off where there are fewer.
+  fn get_nearest_fires(&self, centre: Vec2) -> [Vec4; PuddleSitesUniform::FIRE_PAIRS] {
+    let mut nearest: Vec<Vec2> = self.fires.clone();
+    let mut pairs: [Vec4; PuddleSitesUniform::FIRE_PAIRS] =
+      [Vec4::splat(PuddleSitesUniform::NO_FIRE); PuddleSitesUniform::FIRE_PAIRS];
+
+    nearest.sort_by(|a, b| a.distance_squared(centre).total_cmp(&b.distance_squared(centre)));
+
+    for (index, fire) in nearest.iter().take(PuddleSitesUniform::FIRE_PAIRS * 2).enumerate() {
+      let pair: &mut Vec4 = &mut pairs[index / 2];
+
+      if index % 2 == 0 {
+        (pair.x, pair.y) = (fire.x, fire.y);
+      } else {
+        (pair.z, pair.w) = (fire.x, fire.y);
+      }
+    }
+
+    pairs
   }
 }

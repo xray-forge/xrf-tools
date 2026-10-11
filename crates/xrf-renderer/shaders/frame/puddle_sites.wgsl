@@ -16,6 +16,11 @@ const SITE_RADII: vec4<f32> = vec4<f32>(3.5, 2.5, 1.8, 1.2);
 const SITE_MARGIN: f32 = 1.25;
 // Metres past a site's edge no water may lie within, and how far below the site it must be at most.
 const SITE_SHORE: vec2<f32> = vec2<f32>(3.0, 1.0);
+// Metres past a site's edge no fire may burn within. A fire dries the ground about it and a camp is pitched on dry
+// ground, so a puddle under a campfire reads as a mistake; the engines place no puddles of their own to follow.
+const FIRE_CLEARANCE: f32 = 2.5;
+// Vectors of fires `PuddleSites` holds, two a vector, as `PuddleSitesUniform::FIRE_PAIRS`.
+const FIRE_PAIRS: u32 = 32u;
 const GOLDEN_ANGLE: f32 = 2.39996323;
 const NOTHING: f32 = -1e8;
 
@@ -99,6 +104,21 @@ fn is_near_water(centre: vec2<f32>, height: f32, radius: f32) -> bool {
   return false;
 }
 
+// Whether a fire burns within `FIRE_CLEARANCE` of a disc's edge.
+fn is_near_fire(centre: vec2<f32>, radius: f32) -> bool {
+  let reach: f32 = radius + FIRE_CLEARANCE;
+
+  for (var index: u32 = 0u; index < FIRE_PAIRS; index++) {
+    let pair: vec4<f32> = shape.fires[index];
+
+    if (min(distance(centre, pair.xy), distance(centre, pair.zw)) < reach) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 // A cell's site: the world place of its spot in `xy`, its height in `z`, and the largest radius it holds whole in
 // `w`, none where none fits.
 @compute @workgroup_size(8, 8)
@@ -123,7 +143,7 @@ fn surface_sites(@builtin(global_invocation_id) id: vec3<u32>) {
     for (var index: u32 = first; index < 4u; index++) {
       let radius: f32 = SITE_RADII[index];
 
-      if (is_level(centre, height, radius) && !is_near_water(centre, height, radius)) {
+      if (is_level(centre, height, radius) && !is_near_water(centre, height, radius) && !is_near_fire(centre, radius)) {
         site.w = radius;
 
         break;
