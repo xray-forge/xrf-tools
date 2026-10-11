@@ -74,7 +74,8 @@ impl FsrPass {
   /// # Errors
   ///
   /// Returns an error when a shader does not compose or compile.
-  pub fn new(device: &wgpu::Device, source: PipelineSource<'_>) -> XrfResult<Self> {
+  pub fn new(source: PipelineSource<'_>) -> XrfResult<Self> {
+    let device: &wgpu::Device = source.device;
     let layouts: FsrLayouts = FsrLayouts::new(device);
 
     Ok(Self {

@@ -37,12 +37,13 @@ impl IndirectTracePass {
   ///
   /// Returns an error when the shader does not compose or compile.
   pub fn new(
-    device: &wgpu::Device,
     source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     sky_layout: &wgpu::BindGroupLayout,
     texture_layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<Self> {
+    let device: &wgpu::Device = source.device;
+
     let layouts: Option<[wgpu::BindGroupLayout; 3]> = can_trace(device).then(|| {
       [
         IndirectTraceParameters::create_layout(device),
@@ -52,7 +53,7 @@ impl IndirectTracePass {
     });
 
     Ok(Self {
-      pipeline: Self::create_pipeline(device, source, (view_layout, sky_layout), layouts.as_ref())?,
+      pipeline: Self::create_pipeline(source, (view_layout, sky_layout), layouts.as_ref())?,
       view_layout: view_layout.clone(),
       sky_layout: sky_layout.clone(),
       layouts,
@@ -60,16 +61,11 @@ impl IndirectTracePass {
     })
   }
 
-  pub fn refresh(&mut self, device: &wgpu::Device, source: PipelineSource<'_>) {
+  pub fn refresh(&mut self, source: PipelineSource<'_>) {
     if source.get_generation() != self.generation {
       self.generation = source.get_generation();
 
-      match Self::create_pipeline(
-        device,
-        source,
-        (&self.view_layout, &self.sky_layout),
-        self.layouts.as_ref(),
-      ) {
+      match Self::create_pipeline(source, (&self.view_layout, &self.sky_layout), self.layouts.as_ref()) {
         Ok(pipeline) => self.pipeline = pipeline,
         Err(error) => log::error!("Indirect trace rejected, tracing with the last one: {error}"),
       }
@@ -106,11 +102,12 @@ impl IndirectTracePass {
   }
 
   fn create_pipeline(
-    device: &wgpu::Device,
     source: PipelineSource<'_>,
     (view_layout, sky_layout): (&wgpu::BindGroupLayout, &wgpu::BindGroupLayout),
     layouts: Option<&[wgpu::BindGroupLayout; 3]>,
   ) -> XrfResult<Option<wgpu::RenderPipeline>> {
+    let device: &wgpu::Device = source.device;
+
     let Some([own_layout, trace_layout, texture_layout]) = layouts else {
       return Ok(None);
     };

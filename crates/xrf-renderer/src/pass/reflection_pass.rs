@@ -70,12 +70,13 @@ impl ReflectionPass {
   ///
   /// Returns an error when a shader does not compose or compile.
   pub fn new(
-    device: &wgpu::Device,
     queue: &wgpu::Queue,
     source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     sky_layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<Self> {
+    let device: &wgpu::Device = source.device;
+
     let layout: wgpu::BindGroupLayout = ReflectionParameters::create_layout(device);
     let request_layout: wgpu::BindGroupLayout = TraceRequestParameters::create_layout(device);
     let texel = |label: &str, format: wgpu::TextureFormat, bytes: &[u8]| -> wgpu::TextureView {
@@ -103,7 +104,7 @@ impl ReflectionPass {
     };
 
     Ok(Self {
-      pipelines: Self::create_pipelines(device, source, (view_layout, &layout, sky_layout), &request_layout)?,
+      pipelines: Self::create_pipelines(source, (view_layout, &layout, sky_layout), &request_layout)?,
       view_layout: view_layout.clone(),
       sky_layout: sky_layout.clone(),
       request_layout,
@@ -126,12 +127,11 @@ impl ReflectionPass {
     })
   }
 
-  pub fn refresh(&mut self, device: &wgpu::Device, source: PipelineSource<'_>) {
+  pub fn refresh(&mut self, source: PipelineSource<'_>) {
     if source.get_generation() != self.generation {
       self.generation = source.get_generation();
 
       match Self::create_pipelines(
-        device,
         source,
         (&self.view_layout, &self.layout, &self.sky_layout),
         &self.request_layout,
@@ -218,11 +218,12 @@ impl ReflectionPass {
   }
 
   fn create_pipelines(
-    device: &wgpu::Device,
     source: PipelineSource<'_>,
     (view_layout, layout, sky_layout): (&wgpu::BindGroupLayout, &wgpu::BindGroupLayout, &wgpu::BindGroupLayout),
     request_layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<ReflectionPipelines> {
+    let device: &wgpu::Device = source.device;
+
     let module: wgpu::ShaderModule = source.get_module("frame/reflections")?;
     let traced_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
       label: Some("reflection trace"),

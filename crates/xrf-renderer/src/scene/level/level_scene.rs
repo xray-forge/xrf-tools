@@ -195,13 +195,6 @@ impl LevelScene {
     }
   }
 
-  /// How far the level, the scene `id`, has loaded, when that changed since it was last asked.
-  pub fn take_load_report(&mut self, id: RenderSceneId, textures: &TextureCache) -> Option<RenderLoadReport> {
-    let slots: Vec<u32> = self.list_texture_slots().collect();
-
-    self.load.take_report(id, (self.grass.is_loaded(), &slots), textures)
-  }
-
   /// How far the level, the scene `id`, has loaded.
   pub fn describe_load(&self, id: RenderSceneId, textures: &TextureCache) -> RenderLoadReport {
     let slots: Vec<u32> = self.list_texture_slots().collect();
@@ -408,10 +401,5 @@ impl LevelScene {
       .copied()
       .chain(self.lights.get_projectors().iter().copied())
       .chain(self.particles.get_texture_slots().iter().copied())
-  }
-
-  /// Whether it draws this source.
-  pub fn is_showing(&self, source: &Arc<dyn RenderLevelSource>) -> bool {
-    Arc::ptr_eq(&self.source, source)
   }
 }

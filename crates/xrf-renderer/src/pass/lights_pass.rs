@@ -80,11 +80,12 @@ impl LightsPass {
   ///
   /// Returns an error when a shader does not compose or compile.
   pub fn new(
-    device: &wgpu::Device,
     source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     texture_layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<Self> {
+    let device: &wgpu::Device = source.device;
+
     let binning_layout: wgpu::BindGroupLayout = LightBinningParameters::create_layout(device);
     let layout: wgpu::BindGroupLayout = LightsParameters::create_layout(device);
     let contact_layout: wgpu::BindGroupLayout = LightContactParameters::create_layout(device);

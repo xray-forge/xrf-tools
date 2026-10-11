@@ -76,10 +76,6 @@ impl WeatherTextureCache {
     }
   }
 
-  pub fn get_generation(&self) -> u64 {
-    self.generation
-  }
-
   /// Asks for a texture, loading it on a loader thread the first time; answers whether it is up or given up on.
   pub fn request(&mut self, reference: &str, kind: WeatherTextureKind, source: &Arc<dyn RenderAssetSource>) -> bool {
     if let Some(entry) = self.entries.get_mut(reference) {

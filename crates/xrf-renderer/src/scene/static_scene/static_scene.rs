@@ -103,11 +103,6 @@ impl StaticScene {
     }
   }
 
-  /// Sectors in the scene.
-  pub fn get_sector_count(&self) -> usize {
-    self.sectors.len()
-  }
-
   /// The sector and shader table entry of a picked impostor.
   pub fn resolve_impostor_pick(&self, impostor: u32) -> Option<(u32, u16)> {
     self
@@ -169,11 +164,6 @@ impl StaticScene {
     let object: &StaticObjectProxy = self.objects.find(object)?;
 
     Some((object.transform, self.models.get(object.model)?.bounds))
-  }
-
-  /// Where a spawned object stands, while it stands in the scene.
-  pub fn get_object_transform(&self, object: u32) -> Option<Mat4> {
-    self.objects.find(object).map(|object| object.transform)
   }
 
   /// What a selection marks, once what it names is in the scene: a spawned object's place; a mesh's place; or the
@@ -246,11 +236,6 @@ impl StaticScene {
     }
 
     self.geometry.bones.write(span, 0, bytemuck::cast_slice(&rows));
-  }
-
-  /// Bytes of every pack put into the scene.
-  pub fn get_bytes(&self) -> u64 {
-    self.sectors.as_slice().iter().map(|sector| sector.bytes).sum()
   }
 
   /// Puts one packed sector into the scene at the handle its poster allocated: its baked sections as single draws, its

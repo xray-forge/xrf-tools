@@ -288,8 +288,8 @@ fn fs_water_reflection(in: WaterVarying) -> @location(0) vec4<f32> {
   let flat_reflected: vec3<f32> = reflect(to_point, normal);
   // Rays towards the eye are not marched: the screen holds nothing they reach, and looking down they only mess the
   // reflection; the screen's answer fades out towards them. The trace takes every ray, however little the flat surface
-  // shows of it: until 2026-10-12 those towards the eye took the sky, a circle of one viewing angle about the eye that
-  // cut a bridge's reflection off short (owner's report), and until 2026-10-11 so did those under a fresnel of 0.002.
+  // shows of it: rays towards the eye left to the sky make a circle of one viewing angle about the eye that cuts a
+  // bridge's reflection off short.
   let away: f32 = smoothstep(-0.1, -0.4, dot(-eye, reflected));
   let is_away: bool = away > 0.0;
   let noise_uv: vec2<f32> = (uv * 1.33 + water.time * 0.02) * vec2<f32>(size.x / size.y, 1.0);
@@ -303,8 +303,8 @@ fn fs_water_reflection(in: WaterVarying) -> @location(0) vec4<f32> {
   }
   let sky: vec3<f32> = enhanced_sky(flat_reflected, lighting, sky_cube_0, sky_cube_1, sky_clamp) * water.reflection;
   // Where the trace answers, a surface the screen met facing away from the ray is left to it, and so is the last surface
-  // a ray that ran out of steps passed in front of: under a pipe and its cables that put them in the water as dark wedges
-  // where the trace meets nothing but the sky (owner's report, 2026-10-11).
+  // a ray that ran out of steps passed in front of: kept, they put a pipe and its cables in the water as dark wedges
+  // where the trace meets nothing but the sky.
   let is_met: bool = all(hit.xy != vec2<f32>(0.0)) &&
     !(is_traced && is_away && (hit.w < 0.5 || is_facing_away(hit.xy, reflected)));
   let screen_share: f32 = select(0.0, saturate(hit.y * 5.0) * away, is_met);

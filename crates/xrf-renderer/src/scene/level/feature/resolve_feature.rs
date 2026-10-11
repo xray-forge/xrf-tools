@@ -473,11 +473,6 @@ impl ResolveFeature {
     self.noise_frame
   }
 
-  /// Whether a temporal resolve gathers this frame's samples, which the screen-space effects turn their noise by.
-  pub fn is_temporal(&self) -> bool {
-    self.temporal.is_some()
-  }
-
   /// The antialiasing asked for where it resolves temporally.
   pub fn get_temporal(&self) -> Option<RenderAntialiasing> {
     self.temporal

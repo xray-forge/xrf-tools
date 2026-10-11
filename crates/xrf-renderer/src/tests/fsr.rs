@@ -46,7 +46,7 @@ fn upscales_two_frames_without_a_validation_error() {
     device,
     shaders: &shaders,
   };
-  let pass: FsrPass = FsrPass::new(device, source).unwrap();
+  let pass: FsrPass = FsrPass::new(source).unwrap();
   let (render, display): ((u32, u32), (u32, u32)) = ((64, 48), (96, 72));
   let targets: ViewTargets = ViewTargets::new(device, render.0, render.1);
   let mut fsr: FsrTargets = FsrTargets::new(device, render, display, ViewTargets::SCENE);

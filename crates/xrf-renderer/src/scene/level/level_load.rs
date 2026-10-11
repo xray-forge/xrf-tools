@@ -13,7 +13,6 @@ pub struct LevelLoad {
   started: Instant,
   progress: RenderStreamingProgress,
   durations: RenderLoadDurations,
-  reported: Option<RenderLoadReport>,
 }
 
 impl LevelLoad {
@@ -22,7 +21,6 @@ impl LevelLoad {
       started,
       progress: RenderStreamingProgress::default(),
       durations: RenderLoadDurations::default(),
-      reported: None,
     }
   }
 
@@ -129,23 +127,5 @@ impl LevelLoad {
       ("particles", progress.is_particles_done),
       ("grass", is_grass_read),
     ]
-  }
-
-  /// How far the level has loaded, when that changed since it was last asked.
-  pub fn take_report(
-    &mut self,
-    id: RenderSceneId,
-    scene: (bool, &[u32]),
-    textures: &TextureCache,
-  ) -> Option<RenderLoadReport> {
-    let report: RenderLoadReport = self.describe(id, scene, textures);
-
-    if self.reported == Some(report) {
-      return None;
-    }
-
-    self.reported = Some(report);
-
-    Some(report)
   }
 }

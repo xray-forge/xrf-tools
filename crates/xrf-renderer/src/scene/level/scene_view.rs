@@ -542,7 +542,7 @@ impl SceneView {
     scene: &LevelScene,
     device: &wgpu::Device,
     scheduler: &mut PeriodicScheduler,
-    (view_layout, textures): (&wgpu::BindGroupLayout, &TextureCache),
+    view_layout: &wgpu::BindGroupLayout,
   ) {
     let SceneView { shared, features, .. } = self;
     let SceneFeatures {
@@ -555,7 +555,6 @@ impl SceneView {
       rain,
       wet,
       sky,
-      statics: statics_feature,
       ..
     } = features;
     let statics: &StaticScene = &scene.statics;
@@ -567,8 +566,6 @@ impl SceneView {
       switches: shared.switches,
       sway: to_sway(statics, features.wind.get_sway()),
       grass_reach: features.grass.get_cascade_reach(),
-      params: statics_feature.get_cull(),
-      textures,
     };
 
     shadows.prepare_cascades(device, view_layout, &frame, scheduler);
@@ -609,7 +606,6 @@ impl SceneView {
     device: &wgpu::Device,
     encoder: &mut FrameEncoder,
     scheduler: &PeriodicScheduler,
-    textures: &TextureCache,
   ) {
     let SceneView { shared, features, .. } = self;
     let SceneFeatures {
@@ -619,7 +615,6 @@ impl SceneView {
       surroundings,
       reflections,
       sky,
-      statics: statics_feature,
       ..
     } = features;
     let statics: &StaticScene = &scene.statics;
@@ -631,8 +626,6 @@ impl SceneView {
       switches: shared.switches,
       sway: to_sway(statics, features.wind.get_sway()),
       grass_reach: features.grass.get_cascade_reach(),
-      params: statics_feature.get_cull(),
-      textures,
     };
 
     shadows.commit_cascades(device, encoder, &frame, scheduler);
@@ -660,7 +653,6 @@ impl SceneView {
     scene: &mut LevelScene,
     device: &wgpu::Device,
     encoder: &mut FrameEncoder,
-    textures: &TextureCache,
     scheduler: &PeriodicScheduler,
   ) {
     let LevelScene { statics, lights, .. } = scene;
@@ -672,8 +664,6 @@ impl SceneView {
       switches: self.shared.switches,
       sway: to_sway(statics, self.features.wind.get_sway()),
       grass_reach: self.features.grass.get_cascade_reach(),
-      params: self.features.statics.get_cull(),
-      textures,
     };
 
     lights.commit_shadows(device, encoder, &frame, scheduler);

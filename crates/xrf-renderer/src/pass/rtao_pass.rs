@@ -43,11 +43,12 @@ impl RtaoPass {
   ///
   /// Returns an error when the shader does not compose or compile.
   pub fn new(
-    device: &wgpu::Device,
     source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     texture_layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<Self> {
+    let device: &wgpu::Device = source.device;
+
     let layouts: Option<[wgpu::BindGroupLayout; 3]> = can_trace(device).then(|| {
       [
         VbaoParameters::create_layout(device),
@@ -57,18 +58,18 @@ impl RtaoPass {
     });
 
     Ok(Self {
-      pipelines: Self::create_pipelines(device, source, view_layout, layouts.as_ref())?,
+      pipelines: Self::create_pipelines(source, view_layout, layouts.as_ref())?,
       view_layout: view_layout.clone(),
       layouts,
       generation: source.get_generation(),
     })
   }
 
-  pub fn refresh(&mut self, device: &wgpu::Device, source: PipelineSource<'_>) {
+  pub fn refresh(&mut self, source: PipelineSource<'_>) {
     if source.get_generation() != self.generation {
       self.generation = source.get_generation();
 
-      match Self::create_pipelines(device, source, &self.view_layout, self.layouts.as_ref()) {
+      match Self::create_pipelines(source, &self.view_layout, self.layouts.as_ref()) {
         Ok(pipelines) => self.pipelines = pipelines,
         Err(error) => log::error!("RTAO rejected, tracing with the last one: {error}"),
       }
@@ -105,11 +106,12 @@ impl RtaoPass {
   }
 
   fn create_pipelines(
-    device: &wgpu::Device,
     source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     layouts: Option<&[wgpu::BindGroupLayout; 3]>,
   ) -> XrfResult<Vec<wgpu::RenderPipeline>> {
+    let device: &wgpu::Device = source.device;
+
     let Some([search_layout, trace_layout, texture_layout]) = layouts else {
       return Ok(Vec::new());
     };

@@ -38,18 +38,19 @@ impl StaticShadowPass {
   ///
   /// Returns an error when the shader does not compose or compile.
   pub fn new(
-    device: &wgpu::Device,
     source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     layout: &wgpu::BindGroupLayout,
     texture_layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<Self> {
+    let device: &wgpu::Device = source.device;
+
     let writer_layouts: [wgpu::BindGroupLayout; 2] = [
       ShadowTileRestoreParameters::create_layout(device),
       OverheadShiftParameters::create_layout(device),
     ];
     let (pipelines, clear, writers) =
-      Self::create_pipelines(device, source, (view_layout, layout, texture_layout), &writer_layouts)?;
+      Self::create_pipelines(source, (view_layout, layout, texture_layout), &writer_layouts)?;
 
     Ok(Self {
       pipelines,
@@ -63,12 +64,11 @@ impl StaticShadowPass {
     })
   }
 
-  pub fn refresh(&mut self, device: &wgpu::Device, source: PipelineSource<'_>) {
+  pub fn refresh(&mut self, source: PipelineSource<'_>) {
     if source.get_generation() != self.generation {
       self.generation = source.get_generation();
 
       match Self::create_pipelines(
-        device,
         source,
         (&self.view_layout, &self.layout, &self.texture_layout),
         &self.writer_layouts,
@@ -81,20 +81,6 @@ impl StaticShadowPass {
         Err(error) => log::error!("Static shadow rejected, casting with the last one: {error}"),
       }
     }
-  }
-
-  /// Draws the casters a shadow's own list holds into the map the pass draws into, cleared to the far plane.
-  pub fn record(
-    &self,
-    context: &mut RasterContext<'_>,
-    draw: (
-      &ViewBinding,
-      &[StaticDrawParameters; StaticLayout::COUNT],
-      &wgpu::BindGroup,
-    ),
-    args: &wgpu::Buffer,
-  ) {
-    self.record_casters(context, draw, (args, 0), ShadowCasters::All);
   }
 
   /// Draws the `casters` a list holds of the kinds asked for.
@@ -195,7 +181,6 @@ impl StaticShadowPass {
   }
 
   fn create_pipelines(
-    device: &wgpu::Device,
     source: PipelineSource<'_>,
     (view_layout, layout, texture_layout): (&wgpu::BindGroupLayout, &wgpu::BindGroupLayout, &wgpu::BindGroupLayout),
     writer_layouts: &[wgpu::BindGroupLayout; 2],
@@ -204,6 +189,8 @@ impl StaticShadowPass {
     wgpu::RenderPipeline,
     [wgpu::RenderPipeline; 2],
   )> {
+    let device: &wgpu::Device = source.device;
+
     let module: wgpu::ShaderModule = source.get_module("static/gbuffer")?;
     let pipeline_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
       label: Some("static shadow"),
@@ -281,14 +268,12 @@ impl StaticShadowPass {
 
     let writers: [wgpu::RenderPipeline; 2] = [
       create_depth_writer(
-        device,
         source,
         ("frame/shadow_tile_restore", "shadow tile restore"),
         ("vs_restore", "fs_restore"),
         &writer_layouts[0],
       )?,
       create_depth_writer(
-        device,
         source,
         ("frame/overhead_shift", "overhead shift"),
         ("vs_shift", "fs_shift"),
@@ -310,12 +295,13 @@ pub fn set_region(context: &mut RasterContext<'_>, [x, y, width, height]: [u32; 
 
 /// A pipeline writing a shadow map's depth over its viewport from what its bind group reads, whatever stood there.
 fn create_depth_writer(
-  device: &wgpu::Device,
   source: PipelineSource<'_>,
   (module, label): (&'static str, &'static str),
   (vertex, fragment): (&str, &str),
   layout: &wgpu::BindGroupLayout,
 ) -> XrfResult<wgpu::RenderPipeline> {
+  let device: &wgpu::Device = source.device;
+
   let module: wgpu::ShaderModule = source.get_module(module)?;
   let pipeline_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
     label: Some(label),

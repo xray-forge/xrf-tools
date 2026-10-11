@@ -315,22 +315,6 @@ impl StaticGeometry {
     }
   }
 
-  /// Every span buffer, in the order their bytes and generations are summed.
-  fn list_spans(&self) -> [&SpanBuffer; 10] {
-    [
-      &self.words[0],
-      &self.words[1],
-      &self.words[2],
-      &self.indices,
-      &self.clusters,
-      &self.slots,
-      &self.places,
-      &self.impostors,
-      &self.skins,
-      &self.bones,
-    ]
-  }
-
   fn list_spans_mut(&mut self) -> [&mut SpanBuffer; 10] {
     let [baked, tree, model] = &mut self.words;
 

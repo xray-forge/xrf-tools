@@ -8,9 +8,6 @@ pub enum ShadowCull {
 }
 
 impl ShadowCull {
-  /// Every cull, in the order their pipelines are kept.
-  pub const ALL: [Self; 3] = [Self::Cascade, Self::LightFace, Self::Water];
-
   pub const fn get_index(self) -> usize {
     self as usize
   }

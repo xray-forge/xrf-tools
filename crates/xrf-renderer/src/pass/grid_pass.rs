@@ -18,13 +18,12 @@ impl GridPass {
   ///
   /// Returns an error when the shader does not compose.
   pub fn new(
-    device: &wgpu::Device,
     source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     format: wgpu::TextureFormat,
   ) -> XrfResult<Self> {
     Ok(Self {
-      pipeline: Self::create_pipeline(device, source, view_layout, format)?,
+      pipeline: Self::create_pipeline(source, view_layout, format)?,
       view_layout: view_layout.clone(),
       generation: source.get_generation(),
       format,
@@ -32,14 +31,14 @@ impl GridPass {
   }
 
   /// Builds the pipeline again from a library reloaded since it was built; a broken edit keeps the last good one.
-  pub fn refresh(&mut self, device: &wgpu::Device, source: PipelineSource<'_>) {
+  pub fn refresh(&mut self, source: PipelineSource<'_>) {
     if source.get_generation() == self.generation {
       return;
     }
 
     self.generation = source.get_generation();
 
-    match Self::create_pipeline(device, source, &self.view_layout, self.format) {
+    match Self::create_pipeline(source, &self.view_layout, self.format) {
       Ok(pipeline) => self.pipeline = pipeline,
       Err(error) => log::error!("Grid shader rejected, drawing with the last one: {error}"),
     }
@@ -52,11 +51,12 @@ impl GridPass {
   }
 
   fn create_pipeline(
-    device: &wgpu::Device,
     source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     format: wgpu::TextureFormat,
   ) -> XrfResult<wgpu::RenderPipeline> {
+    let device: &wgpu::Device = source.device;
+
     let module: wgpu::ShaderModule = source.get_module("grid/grid")?;
     let layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
       label: Some("grid"),

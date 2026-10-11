@@ -1,6 +1,6 @@
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
-use std::sync::mpsc::{Receiver, channel};
+use std::sync::mpsc::{Receiver, Sender, channel};
 
 use xrf_error::XrfResult;
 use xrf_renderer::{
@@ -44,66 +44,42 @@ impl Renderer {
   /// What a viewport's level draws under a point, css pixels from its corner, answered after its next frame; the
   /// answer never comes for a viewport the renderer does not draw. `is_through` passes glass by.
   pub fn pick(&self, id: RenderViewportId, x: f32, y: f32, is_through: bool) -> Receiver<XrfResult<RenderPick>> {
-    let (reply, answer) = channel();
-
-    self.queue.send(RenderCommand::Pick {
+    self.ask(|reply| RenderCommand::Pick {
       id,
       x,
       y,
       is_through,
       reply,
-    });
-
-    answer
+    })
   }
 
   /// What became of every texture a viewport's level samples, answered at once.
   pub fn describe_textures(&self, id: RenderViewportId) -> Receiver<Vec<RenderTextureReport>> {
-    let (reply, answer) = channel();
-
-    self.queue.send(RenderCommand::DescribeTextures { id, reply });
-
-    answer
+    self.ask(|reply| RenderCommand::DescribeTextures { id, reply })
   }
 
   /// How far the level a viewport was last asked to show has loaded, answered at once, for a caller polling rather than
   /// listening: its `Load` events report the level drawn, which is still the one before while another loads. None
   /// before that level's view is made, or where it shows no level.
   pub fn describe_load(&self, id: RenderViewportId) -> Receiver<Option<RenderLoadReport>> {
-    let (reply, answer) = channel();
-
-    self.queue.send(RenderCommand::DescribeLoad { id, reply });
-
-    answer
+    self.ask(|reply| RenderCommand::DescribeLoad { id, reply })
   }
 
   /// What a viewport's frames cost when it last reported them, answered at once: what its `Frame` events report, for a
   /// caller polling rather than listening. None before its first report.
   pub fn describe_frame(&self, id: RenderViewportId) -> Receiver<Option<RenderFrameReport>> {
-    let (reply, answer) = channel();
-
-    self.queue.send(RenderCommand::DescribeFrame { id, reply });
-
-    answer
+    self.ask(|reply| RenderCommand::DescribeFrame { id, reply })
   }
 
   /// A spawned object's bounding sphere in renderer space, centre then radius, answered at once; none until its model
   /// is in the scene.
   pub fn locate_spawn_object(&self, id: RenderViewportId, object: u32) -> Receiver<Option<[f32; 4]>> {
-    let (reply, answer) = channel();
-
-    self.queue.send(RenderCommand::LocateSpawnObject { id, object, reply });
-
-    answer
+    self.ask(|reply| RenderCommand::LocateSpawnObject { id, object, reply })
   }
 
   /// A viewport's next presented frame, read back; the answer never comes for a viewport the renderer does not draw.
   pub fn capture_viewport(&self, id: RenderViewportId) -> Receiver<XrfResult<RenderCapture>> {
-    let (reply, answer) = channel();
-
-    self.queue.send(RenderCommand::Capture { id, reply });
-
-    answer
+    self.ask(|reply| RenderCommand::Capture { id, reply })
   }
 
   pub fn set_view_options(&self, id: RenderViewportId, options: RenderViewOptions) {
@@ -139,5 +115,14 @@ impl Renderer {
   /// Applies settings to every viewport, now and in every thread started later.
   pub fn configure(&self, settings: RenderSettings) {
     self.queue.send(RenderCommand::Settings { settings });
+  }
+
+  /// Sends the command `ask` makes around a reply channel, answering the channel's other end.
+  fn ask<T>(&self, ask: impl FnOnce(Sender<T>) -> RenderCommand) -> Receiver<T> {
+    let (reply, answer) = channel();
+
+    self.queue.send(ask(reply));
+
+    answer
   }
 }

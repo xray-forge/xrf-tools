@@ -41,7 +41,7 @@ fn draws_sky_over_ground_offscreen() {
     shaders: &shaders,
   };
   let layout: wgpu::BindGroupLayout = ViewBinding::create_layout(device);
-  let grid: GridPass = GridPass::new(device, source, &layout, format).unwrap();
+  let grid: GridPass = GridPass::new(source, &layout, format).unwrap();
   let binding: ViewBinding = ViewBinding::new(device, &layout);
   let position: glam::Vec3 = glam::Vec3::new(0.5, 2.0, 0.5);
   let camera: CameraFrame = CameraFrame {

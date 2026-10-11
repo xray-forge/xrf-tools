@@ -19,7 +19,9 @@ pub struct PuddleSitesPass {
 }
 
 impl PuddleSitesPass {
-  pub fn new(device: &wgpu::Device, source: PipelineSource<'_>) -> XrfResult<Self> {
+  pub fn new(source: PipelineSource<'_>) -> XrfResult<Self> {
+    let device: &wgpu::Device = source.device;
+
     let layouts: [wgpu::BindGroupLayout; 3] = [
       LowestHeightsParameters::create_layout(device),
       PuddleSitesParameters::create_layout(device),

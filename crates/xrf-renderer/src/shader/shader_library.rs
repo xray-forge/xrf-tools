@@ -606,10 +606,6 @@ impl ShaderLibrary {
     self.modules.keys().copied()
   }
 
-  pub fn get_generation(&self) -> u64 {
-    self.generation
-  }
-
   /// A module with its imports inlined, every feature taken as there.
   ///
   /// # Errors

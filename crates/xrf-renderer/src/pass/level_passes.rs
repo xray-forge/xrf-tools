@@ -19,10 +19,8 @@ use crate::pass::indirect_trace_pass::IndirectTracePass;
 use crate::pass::light_volume_pass::LightVolumePass;
 use crate::pass::lights_pass::LightsPass;
 use crate::pass::material_table::MaterialTable;
-use crate::pass::overlay_pass::OverlayPass;
 use crate::pass::particle_pass::ParticlePass;
 use crate::pass::pipeline_source::PipelineSource;
-use crate::pass::present_pass::PresentPass;
 use crate::pass::puddle_sites_pass::PuddleSitesPass;
 use crate::pass::rain_pass::RainPass;
 use crate::pass::ray_guides_pass::RayGuidesPass;
@@ -103,7 +101,5 @@ pub struct LevelPasses<'a> {
   pub smaa: Option<&'a SmaaPass>,
   pub upscale: &'a UpscalePass,
   pub exposure: &'a ExposurePass,
-  pub present: &'a PresentPass,
-  pub overlay: &'a OverlayPass,
   pub table: &'a MaterialTable,
 }

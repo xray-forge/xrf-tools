@@ -34,13 +34,14 @@ impl GlassPass {
   ///
   /// Returns an error when the shader does not compose or compile.
   pub fn new(
-    device: &wgpu::Device,
     source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     scene_layout: &wgpu::BindGroupLayout,
     texture_layout: &wgpu::BindGroupLayout,
     sky_layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<Self> {
+    let device: &wgpu::Device = source.device;
+
     let layout: wgpu::BindGroupLayout = GlassParameters::create_layout(device);
     let layouts: [wgpu::BindGroupLayout; 4] = [
       view_layout.clone(),
@@ -50,7 +51,7 @@ impl GlassPass {
     ];
 
     Ok(Self {
-      pipelines: Self::create_pipelines(device, source, &layouts, &layout)?,
+      pipelines: Self::create_pipelines(source, &layouts, &layout)?,
       layouts,
       scene_sampler: device.create_sampler(&wgpu::SamplerDescriptor {
         label: Some("glass scene"),
@@ -67,11 +68,11 @@ impl GlassPass {
     &self.scene_sampler
   }
 
-  pub fn refresh(&mut self, device: &wgpu::Device, source: PipelineSource<'_>) {
+  pub fn refresh(&mut self, source: PipelineSource<'_>) {
     if source.get_generation() != self.generation {
       self.generation = source.get_generation();
 
-      match Self::create_pipelines(device, source, &self.layouts, &self.layout) {
+      match Self::create_pipelines(source, &self.layouts, &self.layout) {
         Ok(pipelines) => self.pipelines = pipelines,
         Err(error) => log::error!("Glass rejected, drawing with the last one: {error}"),
       }
@@ -109,11 +110,12 @@ impl GlassPass {
   }
 
   fn create_pipelines(
-    device: &wgpu::Device,
     source: PipelineSource<'_>,
     [view_layout, scene_layout, texture_layout, sky_layout]: &[wgpu::BindGroupLayout; 4],
     layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<Vec<wgpu::RenderPipeline>> {
+    let device: &wgpu::Device = source.device;
+
     let module: wgpu::ShaderModule = source.get_module("static/glass")?;
     let pipeline_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
       label: Some("glass"),

@@ -28,11 +28,9 @@ impl RayGuidesPass {
   /// # Errors
   ///
   /// Returns an error when the shader does not compose or compile.
-  pub fn new(
-    device: &wgpu::Device,
-    source: PipelineSource<'_>,
-    view_layout: &wgpu::BindGroupLayout,
-  ) -> XrfResult<Self> {
+  pub fn new(source: PipelineSource<'_>, view_layout: &wgpu::BindGroupLayout) -> XrfResult<Self> {
+    let device: &wgpu::Device = source.device;
+
     let layout: wgpu::BindGroupLayout = RayGuidesParameters::create_layout(device);
 
     Ok(Self {

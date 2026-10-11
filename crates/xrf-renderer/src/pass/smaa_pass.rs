@@ -34,12 +34,9 @@ impl SmaaPass {
   /// # Errors
   ///
   /// Returns an error when the shader does not compose or compile, or a lookup texture cannot be read or decoded.
-  pub fn new(
-    device: &wgpu::Device,
-    queue: &wgpu::Queue,
-    source: PipelineSource<'_>,
-    bundle: &dyn RenderBundle,
-  ) -> XrfResult<Self> {
+  pub fn new(queue: &wgpu::Queue, source: PipelineSource<'_>, bundle: &dyn RenderBundle) -> XrfResult<Self> {
+    let device: &wgpu::Device = source.device;
+
     let layout: wgpu::BindGroupLayout = SmaaParameters::create_layout(device);
     let area: image::RgbImage =
       image::load_from_memory_with_format(&bundle.read_bundled(AREA_TEXTURE)?, image::ImageFormat::Png)

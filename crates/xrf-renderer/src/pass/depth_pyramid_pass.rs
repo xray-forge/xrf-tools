@@ -24,7 +24,9 @@ pub struct DepthPyramidPass {
 }
 
 impl DepthPyramidPass {
-  pub fn new(device: &wgpu::Device, source: PipelineSource<'_>) -> XrfResult<Self> {
+  pub fn new(source: PipelineSource<'_>) -> XrfResult<Self> {
+    let device: &wgpu::Device = source.device;
+
     let layouts: [wgpu::BindGroupLayout; 4] = [
       PyramidDepthParameters::create_layout(device),
       PyramidLevelParameters::create_layout(device),

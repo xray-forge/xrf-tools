@@ -36,11 +36,9 @@ pub struct StaticCullPass {
 }
 
 impl StaticCullPass {
-  pub fn new(
-    device: &wgpu::Device,
-    source: PipelineSource<'_>,
-    view_layout: &wgpu::BindGroupLayout,
-  ) -> XrfResult<Self> {
+  pub fn new(source: PipelineSource<'_>, view_layout: &wgpu::BindGroupLayout) -> XrfResult<Self> {
+    let device: &wgpu::Device = source.device;
+
     let layout: wgpu::BindGroupLayout = StaticCullParameters::create_layout(device);
     let (pipelines, shadow_pipelines) = Self::create_pipelines(source, view_layout, &layout)?;
 

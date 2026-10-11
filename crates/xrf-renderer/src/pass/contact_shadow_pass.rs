@@ -28,12 +28,9 @@ impl ContactShadowPass {
   /// # Errors
   ///
   /// Returns an error when the shader does not compose or compile.
-  pub fn new(
-    device: &wgpu::Device,
-    queue: &wgpu::Queue,
-    source: PipelineSource<'_>,
-    view_layout: &wgpu::BindGroupLayout,
-  ) -> XrfResult<Self> {
+  pub fn new(queue: &wgpu::Queue, source: PipelineSource<'_>, view_layout: &wgpu::BindGroupLayout) -> XrfResult<Self> {
+    let device: &wgpu::Device = source.device;
+
     let layout: wgpu::BindGroupLayout = ContactShadowParameters::create_layout(device);
     let lit: wgpu::TextureView = device
       .create_texture_with_data(

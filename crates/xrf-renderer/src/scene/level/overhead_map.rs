@@ -142,12 +142,6 @@ impl OverheadMap {
     self.drawn = None;
   }
 
-  /// Draws nothing this frame.
-  pub fn rest(&mut self) {
-    self.is_due = false;
-    self.offer = None;
-  }
-
   /// Whether this frame draws it, as `commit` took it.
   pub fn is_due(&self) -> bool {
     self.is_due

@@ -42,14 +42,6 @@ pub fn create_fullscreen_pipeline_with(
   )
 }
 
-/// One texture view bound at a binding.
-pub fn texture_binding(binding: u32, view: &wgpu::TextureView) -> wgpu::BindGroupEntry<'_> {
-  wgpu::BindGroupEntry {
-    binding,
-    resource: wgpu::BindingResource::TextureView(view),
-  }
-}
-
 /// One buffer bound whole at a binding.
 pub fn buffer_binding(binding: u32, buffer: &wgpu::Buffer) -> wgpu::BindGroupEntry<'_> {
   wgpu::BindGroupEntry {
