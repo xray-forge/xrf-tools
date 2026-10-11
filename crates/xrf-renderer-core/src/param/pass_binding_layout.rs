@@ -95,6 +95,16 @@ impl PassBindingLayout {
     }
   }
 
+  /// A top-level acceleration structure rays are traced against, which a vertex shader may not hold.
+  pub fn acceleration_structure(binding: u32) -> wgpu::BindGroupLayoutEntry {
+    wgpu::BindGroupLayoutEntry {
+      binding,
+      visibility: Self::WRITABLE_STAGES,
+      ty: wgpu::BindingType::AccelerationStructure { vertex_return: false },
+      count: None,
+    }
+  }
+
   fn get_visibility(is_writable: bool) -> wgpu::ShaderStages {
     if is_writable {
       Self::WRITABLE_STAGES

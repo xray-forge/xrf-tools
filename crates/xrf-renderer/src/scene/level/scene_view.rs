@@ -103,6 +103,7 @@ use crate::pass::reflection_trace::ReflectionTrace;
 use crate::pass::reflection_uniform::ReflectionUniform;
 use crate::pass::sky_haze_parameters::SkyHazeParameters;
 use crate::pass::sky_parameters::SkyParameters;
+use crate::pass::trace_parameters::TraceParameters;
 use crate::pass::sky_prefilter_parameters::SkyPrefilterParameters;
 use crate::pass::sky_prefilter_pass::SkyPrefilterPass;
 use crate::pass::sky_prefilter_uniform::SkyPrefilterUniform;
@@ -1168,7 +1169,7 @@ impl SceneView {
     view: &'a ViewBinding,
     (targets, lit, wet_surface): (ViewTargetHandles, LightingHandles<'a>, GraphTexture),
     source: Option<((GraphTexture, GraphTexture), GraphTexture)>,
-    sky: &SkyParameters<'a>,
+    (sky, scene_trace): (&SkyParameters<'a>, Option<(TraceParameters<'a>, &'a wgpu::BindGroup)>),
   ) -> Option<(GraphTexture, GraphTexture)> {
     self.info.reflection?;
 
@@ -1264,13 +1265,24 @@ impl SceneView {
     };
     let clear = |target: GraphTexture| GraphColorAttachment::new(target, wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT));
 
-    graph
+    let mut trace_pass: RasterPassBuilder<'_, 'a> = graph
       .add_raster_pass(ReflectionTrace::TRACE_PASS)
       .parameters(&parameters)
-      .parameters(&sky)
+      .parameters(&sky);
+
+    // The level's geometry it traces against, declared so the graph orders its buffers' writes before it.
+    if let Some((trace, _)) = &scene_trace {
+      trace_pass = trace_pass.parameters(trace);
+    }
+
+    trace_pass
       .color(clear(traced))
       .color(clear(ends))
-      .record(move |context| passes.reflections.record_trace(context, view, &parameters, &sky));
+      .record(move |context| {
+        let scene_trace = scene_trace.as_ref().map(|(trace, textures)| (trace, *textures));
+
+        passes.reflections.record_trace(context, view, (&parameters, &sky), scene_trace);
+      });
 
     // Each traced pixel's surface for the stages after the trace, worked out once.
     graph
@@ -2403,6 +2415,24 @@ impl SceneView {
         )
       });
 
+      // The level's geometry a ray the screen does not answer is traced against, where the device traces rays.
+      let traced: Option<(TraceParameters, &wgpu::BindGroup)> = scene
+        .trace
+        .as_ref()
+        .filter(|_| passes.reflections.is_traced())
+        .map(|trace| {
+          (
+            TraceParameters {
+              trace_scene: trace.get_structure(),
+              trace_records: StorageArray::new(bindings.import_buffer(&mut *graph, "static trace records", trace.get_records())),
+              trace_words: StorageArray::new(statics.words[StaticLayout::Baked.get_index()]),
+              trace_indices: StorageArray::new(statics.indices),
+              trace_surfaces: StorageArray::new(statics.surfaces),
+            },
+            texture_group,
+          )
+        });
+
       if let Some(sky) = sky {
         if let Some((history, ends)) = scene_view.add_reflection_passes(
           (&mut *graph, &mut *bindings, runtime),
@@ -2410,7 +2440,7 @@ impl SceneView {
           view,
           (handles, lit, wet_surface),
           source.zip(traced_depth),
-          &sky,
+          (&sky, traced),
         ) {
           reflections = Some(history);
           reflection_ends = Some(ends);

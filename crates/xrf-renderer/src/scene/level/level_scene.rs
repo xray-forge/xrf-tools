@@ -21,6 +21,7 @@ use crate::scene::level::level_lights::LevelLights;
 use crate::scene::level::level_load::LevelLoad;
 use crate::scene::level::level_particles::LevelParticles;
 use crate::scene::static_scene::static_scene::StaticScene;
+use crate::scene::static_scene::static_trace::StaticTrace;
 use crate::scene::texture::texture_cache::TextureCache;
 use crate::scene::texture::weather_texture_cache::WeatherTextureCache;
 use crate::scene::texture::weather_texture_kind::WeatherTextureKind;
@@ -33,6 +34,8 @@ pub struct LevelScene {
   pub source: Arc<dyn RenderLevelSource>,
   pub grass: LevelGrass,
   pub statics: StaticScene,
+  /// The static geometry's acceleration structures, where the device traces rays.
+  pub trace: Option<StaticTrace>,
   /// The cubes the scene's environment-mapped models mix toward, by environment slot from the second, as of the cache's
   /// generation of them.
   pub environments: (u64, Vec<String>),
@@ -68,12 +71,14 @@ impl LevelScene {
     // Taken before anything is made, so the load is timed from the moment the level began opening.
     let started: Instant = Instant::now();
     let statics: StaticScene = StaticScene::new(device, queue);
+    let trace: Option<StaticTrace> = statics.is_traced().then(|| StaticTrace::new(device, queue));
 
     Self {
       grass: LevelGrass::new(&source, workers),
       lights: LevelLights::new(device, view_layout, statics.args.size()),
       particles: LevelParticles::new(device, workers),
       statics,
+      trace,
       environments: (0, Vec::new()),
       started,
       sector_time: 0.0,
@@ -142,6 +147,10 @@ impl LevelScene {
     self.camera_hemi = camera_hemi;
     self.lights.begin_frame(&motions);
     self.statics.prepare_draws(device, queue, encoder);
+
+    if let Some(trace) = &mut self.trace {
+      trace.update(device, queue, encoder, &self.statics);
+    }
   }
 
   /// What it tells the world of the frames since the last: the sectors it could not take in, and the effects whose

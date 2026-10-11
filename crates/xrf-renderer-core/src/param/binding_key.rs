@@ -6,4 +6,6 @@ pub(crate) enum BindingKey {
   TextureView(wgpu::TextureView),
   TextureViewArray(Vec<wgpu::TextureView>),
   Sampler(wgpu::Sampler),
+  /// An acceleration structure, by the key it was made with.
+  AccelerationStructure(u64),
 }

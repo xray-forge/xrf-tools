@@ -80,6 +80,7 @@ impl BindGroupCache {
             BindingKey::TextureViewArray(views.iter().map(|view| (*view).clone()).collect())
           }
           PassBinding::Sampler(sampler) => BindingKey::Sampler((*sampler).clone()),
+          PassBinding::AccelerationStructure(structure) => BindingKey::AccelerationStructure(structure.key),
         })
         .collect(),
     };
@@ -101,6 +102,7 @@ impl BindGroupCache {
             PassBinding::TextureView(view) => wgpu::BindingResource::TextureView(view),
             PassBinding::TextureViewArray(views) => wgpu::BindingResource::TextureViewArray(views),
             PassBinding::Sampler(sampler) => wgpu::BindingResource::Sampler(sampler),
+            PassBinding::AccelerationStructure(structure) => structure.tlas.as_binding(),
           },
         })
         .collect();

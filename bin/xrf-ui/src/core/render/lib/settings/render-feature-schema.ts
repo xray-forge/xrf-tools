@@ -148,6 +148,7 @@ export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings>
     reach: toNumber(25, 1000, true),
     skyGain: toNumber(0.5, 3),
     isGrassReflected: FLAG,
+    isTraced: FLAG,
   },
   lights: {
     isEnabled: FLAG,

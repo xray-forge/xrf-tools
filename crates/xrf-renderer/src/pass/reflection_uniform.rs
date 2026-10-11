@@ -21,7 +21,8 @@ pub struct ReflectionUniform {
   pub ratio: f32,
   /// One where the last frame's scene and depth are kept for a hit to read its colour from.
   pub has_source: f32,
-  pub pad0: f32,
+  /// One where a ray the screen does not answer is traced against the level's geometry, on a device that can.
+  pub is_traced: f32,
 }
 
 impl ReflectionUniform {
@@ -37,7 +38,7 @@ impl ReflectionUniform {
       has_history: f32::from(u8::from(has_history)),
       ratio: quality.get_ratio() as f32,
       has_source: f32::from(u8::from(has_source)),
-      pad0: 0.0,
+      is_traced: f32::from(u8::from(settings.is_traced)),
     }
   }
 }

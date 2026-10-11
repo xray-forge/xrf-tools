@@ -7,6 +7,7 @@ use xrf_material::XraySurfaceDescriptor;
 use xrf_renderer_core::{ProxyHandle, ProxyStore, Span, SpanBuffer, SpanLane, StoreMirror};
 use xrf_visual::{SectorGeometry, SectorImpostors, SectorInstanceGroup, SectorPackage, SectorSurface, VisualClusters};
 
+use crate::context::gpu_requirements::RAY_QUERY_FEATURES;
 use crate::contract::render_pool_use::RenderPoolUse;
 use crate::contract::render_selection_target::RenderSelectionTarget;
 use crate::contract::render_static_report::RenderStaticReport;
@@ -36,6 +37,7 @@ use crate::scene::static_scene::static_spans::StaticSpans;
 use crate::scene::static_scene::static_surface::StaticSurface;
 use crate::scene::static_scene::static_surface_build::{build_impostor_surface, build_static_surface};
 use crate::scene::static_scene::static_surface_key::StaticSurfaceKey;
+use crate::scene::static_scene::static_trace_geometry::StaticTraceGeometry;
 use crate::scene::static_scene::static_vertex_words::{measure_sway_reach, pack_vertex_words};
 use crate::scene::texture::texture_cache::{MISSING_SLOT, TextureCache};
 
@@ -50,6 +52,7 @@ const CLUSTER_TRIANGLES: u32 = VisualClusters::MAX_TRIANGLES;
 /// the rows a store keeps dense for the cull to walk, and the surfaces every item shares. A cull walks the clusters and
 /// impostors whole, so a range is cleared as it is freed and reads as nothing.
 pub struct StaticScene {
+  /// Each layout's vertices, which an acceleration structure reads in place where rays are traced.
   pub words: [SpanBuffer; StaticLayout::COUNT],
   pub indices: SpanBuffer,
   /// The clusters, and their spheres in the `CLUSTER_SPHERES` lane.
@@ -107,6 +110,8 @@ pub struct StaticScene {
   sway_reach: f32,
   /// Items added and removed, which a view drawn with another count is drawn again for.
   contents: usize,
+  /// Whether the device traces rays, so the vertices and indices are acceleration structures' input.
+  is_traced: bool,
 }
 
 impl StaticScene {
@@ -136,6 +141,13 @@ impl StaticScene {
   pub fn new(device: &wgpu::Device, queue: &wgpu::Queue) -> Self {
     let storage: wgpu::BufferUsages = wgpu::BufferUsages::STORAGE;
     let words: u64 = u64::from(StaticLayout::STRIDE) * 4;
+    let is_traced: bool = device.features().contains(RAY_QUERY_FEATURES);
+    let traced: wgpu::BufferUsages = if is_traced {
+      storage | wgpu::BufferUsages::BLAS_INPUT
+    } else {
+      storage
+    };
+
     let mut places: SpanBuffer = SpanBuffer::new(
       device,
       "static places",
@@ -152,11 +164,11 @@ impl StaticScene {
 
     let mut scene: Self = Self {
       words: [
-        SpanBuffer::new(device, "static baked vertices", words, storage, 1 << 14),
-        SpanBuffer::new(device, "static tree vertices", words, storage, 1 << 14),
-        SpanBuffer::new(device, "static model vertices", words, storage, 1 << 14),
+        SpanBuffer::new(device, "static baked vertices", words, traced, 1 << 14),
+        SpanBuffer::new(device, "static tree vertices", words, traced, 1 << 14),
+        SpanBuffer::new(device, "static model vertices", words, traced, 1 << 14),
       ],
-      indices: SpanBuffer::new(device, "static indices", 4, storage, 1 << 16),
+      indices: SpanBuffer::new(device, "static indices", 4, traced, 1 << 16),
       clusters: SpanBuffer::with_lanes(
         device,
         &[
@@ -236,6 +248,7 @@ impl StaticScene {
       swaying: Vec::new(),
       sway_reach: 0.0,
       contents: 0,
+      is_traced,
     };
     let mut encoder: wgpu::CommandEncoder = device.create_command_encoder(&Default::default());
 
@@ -496,6 +509,17 @@ impl StaticScene {
         );
 
         writer.capacities[batch.get_index() as usize] += clusters;
+
+        if class.is_deferred() {
+          writer.trace_geometries.push(StaticTraceGeometry {
+            first_index: base.index_start + section.draw.start,
+            index_count: section.draw.count,
+            vertex_start: base.vertex_start,
+            vertex_count: description.geometry.vertex_count,
+            surface,
+            is_cut_out: class == StaticClass::CutOut,
+          });
+        }
       }
     }
 
@@ -540,11 +564,25 @@ impl StaticScene {
         slot_infos: writer.slot_infos,
         cluster_slots: writer.cluster_slots,
         impostor_shaders: writer.impostor_shaders,
+        trace_geometries: writer.trace_geometries,
         swaying,
       },
     );
 
     Ok(())
+  }
+
+  /// Whether the device traces rays, so the vertices and indices are acceleration structures' input.
+  pub fn is_traced(&self) -> bool {
+    self.is_traced
+  }
+
+  /// Every sector in the scene with its deferred baked sections, which the level's acceleration structure takes.
+  pub fn list_trace_geometries(&self) -> impl Iterator<Item = (u32, &[StaticTraceGeometry])> {
+    self
+      .sectors
+      .iter()
+      .map(|(_, sector)| (sector.sector, sector.trace_geometries.as_slice()))
   }
 
   /// Takes a sector out of the scene, its ranges cleared and freed; false for one already gone.

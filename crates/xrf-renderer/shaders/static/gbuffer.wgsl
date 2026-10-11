@@ -100,16 +100,14 @@ fn place_vertex(pulled: PulledVertex, position: vec3<f32>, normal: vec4<f32>, ta
 fn vs_baked(@builtin(vertex_index) vertex_index: u32, @builtin(instance_index) instance_index: u32) -> GBufferVarying {
   let pulled: PulledVertex = pull(vertex_index, instance_index);
   let at: u32 = pulled.word;
-  let binormal: vec4<f32> = unpack4x8unorm(words[at]);
-  let tangent: vec4<f32> = unpack4x8unorm(words[at + 2u]);
-  let position: vec3<f32> = vec3<f32>(bitcast<f32>(words[at + 5u]), bitcast<f32>(words[at + 6u]),
-    bitcast<f32>(words[at + 7u]));
-  var out: GBufferVarying = place_vertex(pulled, position, unpack4x8unorm(words[at + 1u]), tangent, binormal, 0.0,
-    vec2<f32>(FOLIAGE_NONE, 0.0));
+  let binormal: vec4<f32> = unpack4x8unorm(words[at + VERTEX_BINORMAL]);
+  let tangent: vec4<f32> = unpack4x8unorm(words[at + VERTEX_TANGENT]);
+  let position: vec3<f32> = static_position(at);
+  var out: GBufferVarying = place_vertex(pulled, position, unpack4x8unorm(words[at + VERTEX_NORMAL]), tangent, binormal,
+    0.0, vec2<f32>(FOLIAGE_NONE, 0.0));
 
-  // The base coordinate's fraction rides in the tangent's and binormal's fourth bytes.
-  out.uv = (unpack_shorts(words[at + 3u]) + vec2<f32>(tangent.w, binormal.w)) / 1024.0;
-  out.lightmap_uv = unpack_shorts(words[at + 4u]) / 32768.0;
+  out.uv = baked_uv(words[at + VERTEX_UV], tangent, binormal);
+  out.lightmap_uv = baked_lightmap_uv(words[at + VERTEX_EXTRA]);
   out.barycentric = corner_barycentric(vertex_index);
 
   return out;
@@ -119,18 +117,18 @@ fn vs_baked(@builtin(vertex_index) vertex_index: u32, @builtin(instance_index) i
 fn vs_tree(@builtin(vertex_index) vertex_index: u32, @builtin(instance_index) instance_index: u32) -> GBufferVarying {
   let pulled: PulledVertex = pull(vertex_index, instance_index);
   let at: u32 = pulled.word;
-  let position: vec3<f32> = vec3<f32>(bitcast<f32>(words[at + 5u]), bitcast<f32>(words[at + 6u]),
-    bitcast<f32>(words[at + 7u]));
+  let position: vec3<f32> = static_position(at);
   // The coordinate's second pair carries the rigidity, scaled as `consts.x` scales it; an object stored as a tree
   // stands still, as `tree_s` draws it.
   let is_still: bool = (surfaces[pulled.surface].flags & SURFACE_IS_STILL) != 0u;
-  let rigidity: f32 = select(unpack_shorts(words[at + 4u]).x / 2048.0, 0.0, is_still);
-  let uv: vec2<f32> = unpack_shorts(words[at + 3u]) / 2048.0;
+  let rigidity: f32 = select(unpack_shorts(words[at + VERTEX_EXTRA]).x / 2048.0, 0.0, is_still);
+  let uv: vec2<f32> = unpack_shorts(words[at + VERTEX_UV]) / 2048.0;
   // The enhanced motion swings a trunk and tosses a cut-out branch or leaf, as `tree_branch` draws those.
   let is_branch: bool = (surfaces[pulled.surface].flags & SURFACE_IS_CUT_OUT) != 0u;
   let kind: f32 = select(select(FOLIAGE_TRUNK, FOLIAGE_BRANCH, is_branch), FOLIAGE_NONE, is_still);
-  var out: GBufferVarying = place_vertex(pulled, position, unpack4x8unorm(words[at + 1u]),
-    unpack4x8unorm(words[at + 2u]), unpack4x8unorm(words[at]), rigidity, vec2<f32>(kind, uv.y));
+  var out: GBufferVarying = place_vertex(pulled, position, unpack4x8unorm(words[at + VERTEX_NORMAL]),
+    unpack4x8unorm(words[at + VERTEX_TANGENT]), unpack4x8unorm(words[at + VERTEX_BINORMAL]), rigidity,
+    vec2<f32>(kind, uv.y));
 
   // Under the enhanced motion a crown's leaves are lit as a sphere about its foot rather than by their cards, and never
   // darker than three tenths of the sky.
@@ -198,11 +196,14 @@ fn wired(shaded: GBufferOutput) -> GBufferOutput {
   return out;
 }
 
+// A vertex's position as its arena holds it, at its first word.
+fn static_position(at: u32) -> vec3<f32> {
+  return vertex_position(words[at + VERTEX_POSITION], words[at + VERTEX_POSITION + 1u], words[at + VERTEX_POSITION + 2u]);
+}
+
 // A spawned model's vertex as it stands in its object's place, unswayed.
 fn model_position(pulled: PulledVertex) -> vec3<f32> {
-  let at: u32 = pulled.word;
-
-  return vec3<f32>(bitcast<f32>(words[at + 5u]), bitcast<f32>(words[at + 6u]), bitcast<f32>(words[at + 7u]));
+  return static_position(pulled.word);
 }
 
 // A model's vertex as its bones stand it, this frame's or the last's: each linked bone's matrix applied, weighted.
@@ -236,8 +237,8 @@ fn skin_direction(packed: vec4<f32>, ids: vec4<u32>, weights: vec4<f32>, base: u
 // vertex hanging from nothing, stands as stored.
 fn skin_vertex(pulled: PulledVertex, is_previous: bool) -> SkinnedVertex {
   let at: u32 = pulled.word;
-  let stored: SkinnedVertex = SkinnedVertex(model_position(pulled), unpack4x8unorm(words[at + 1u]),
-    unpack4x8unorm(words[at + 2u]), unpack4x8unorm(words[at]));
+  let stored: SkinnedVertex = SkinnedVertex(model_position(pulled), unpack4x8unorm(words[at + VERTEX_NORMAL]),
+    unpack4x8unorm(words[at + VERTEX_TANGENT]), unpack4x8unorm(words[at + VERTEX_BINORMAL]));
   let skin: vec4<u32> = pulled.place.skin;
 
   if (skin.w == 0u) {
@@ -283,7 +284,7 @@ fn model_vertex(pulled: PulledVertex) -> GBufferVarying {
     out.moved = previous - out.world;
   }
 
-  out.uv = vec2<f32>(bitcast<f32>(words[at + 3u]), bitcast<f32>(words[at + 4u]));
+  out.uv = vec2<f32>(bitcast<f32>(words[at + VERTEX_UV]), bitcast<f32>(words[at + VERTEX_EXTRA]));
   out.lightmap_uv = vec2<f32>(0.0);
 
   if (place.cube.w != 0u) {

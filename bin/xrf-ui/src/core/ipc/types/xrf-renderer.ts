@@ -1164,6 +1164,11 @@ export type RenderReflectionSettings = {
    * grass drew, so blades and tufts stand in the reflections as solid as they draw, and stop rays behind them.
    */
   isGrassReflected: boolean;
+  /**
+   * Whether a ray the screen does not answer is traced against the level's static geometry by hardware ray query,
+   * its hit lit, in place of the sky; on a device without ray queries it falls back to the sky as before.
+   */
+  isTraced: boolean;
 };
 
 /**

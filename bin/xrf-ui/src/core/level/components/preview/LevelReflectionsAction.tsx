@@ -122,6 +122,12 @@ export function LevelReflectionsAction({
             isChecked={value.isGrassReflected}
             onChange={(isGrassReflected: boolean) => set({ isGrassReflected })}
           />
+
+          <CheckboxFormRow
+            label={"Trace what the screen misses"}
+            isChecked={value.isTraced}
+            onChange={(isTraced: boolean) => set({ isTraced })}
+          />
         </>
       ) : null}
 

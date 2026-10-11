@@ -1,5 +1,6 @@
 #import "common/foliage_wind"
 #import "static/records"
+#import "static/vertex"
 #import "generated/static/draw"
 
 // A batch's visible clusters as its static draws pull them: every cluster one instance of `CLUSTER_VERTICES` vertices,
@@ -66,16 +67,6 @@ fn swayed_by(world: vec3<f32>, foot: f32, rigidity: f32, lean_wind: vec4<f32>, w
   return world + vec3<f32>(lean.x, 0.0, lean.y);
 }
 
-// Two shorts from a word, the low half first, sign extended.
-fn unpack_shorts(word: u32) -> vec2<f32> {
-  return vec2<f32>(f32(bitcast<i32>(word << 16u) >> 16u), f32(bitcast<i32>(word) >> 16u));
-}
-
-// A direction packed as a `D3DCOLOR`: blue, green, red bytes as z, y, x.
-fn unpack_direction(packed: vec4<f32>) -> vec3<f32> {
-  return packed.zyx * 2.0 - 1.0;
-}
-
 struct PulledVertex {
   word: u32,
   place: Place,
@@ -90,5 +81,5 @@ fn pull(vertex_index: u32, instance_index: u32) -> PulledVertex {
   let corner: u32 = min(vertex_index, cluster.triangles * 3u - 1u);
   let vertex: u32 = cluster.vertex_start + indices[cluster.first_index + corner];
 
-  return PulledVertex(vertex * 8u, places[entry.y], slots[cluster.slot].surface, entry);
+  return PulledVertex(vertex * VERTEX_WORDS, places[entry.y], slots[cluster.slot].surface, entry);
 }

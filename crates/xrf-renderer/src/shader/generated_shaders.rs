@@ -51,6 +51,7 @@ use crate::pass::reflection_uniform::ReflectionUniform;
 use crate::pass::shadow_uniform::ShadowUniform;
 use crate::pass::sky_haze_parameters::SkyHazeParameters;
 use crate::pass::sky_parameters::SkyParameters;
+use crate::pass::trace_parameters::TraceParameters;
 use crate::pass::sky_prefilter_parameters::SkyPrefilterParameters;
 use crate::pass::sky_prefilter_uniform::SkyPrefilterUniform;
 use crate::pass::smaa_parameters::SmaaParameters;
@@ -103,6 +104,7 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
   let mut fxaa: ShaderBindings = ShaderBindings::new();
   let mut smaa: ShaderBindings = ShaderBindings::new();
   let mut sky: ShaderBindings = ShaderBindings::new();
+  let mut scene_trace: ShaderBindings = ShaderBindings::new();
   let mut particles: ShaderBindings = ShaderBindings::new();
   let mut contact_shadows: ShaderBindings = ShaderBindings::new();
   let mut sun: ShaderBindings = ShaderBindings::new();
@@ -165,6 +167,7 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
   StaticCullParameters::declare(&mut structs);
   StaticDrawParameters::declare(&mut structs);
   StaticImpostorParameters::declare(&mut structs);
+  TraceParameters::declare(&mut structs);
   water
     .add::<WaterDepthParameters>()?
     .add::<WaterSurfaceParameters<'_>>()?;
@@ -180,6 +183,7 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
   fxaa.add::<FxaaParameters<'_>>()?;
   smaa.add::<SmaaParameters<'_>>()?;
   sky.add::<SkyParameters<'_>>()?;
+  scene_trace.add::<TraceParameters<'_>>()?;
   particles.add::<ParticleParameters<'_>>()?;
   contact_shadows.add::<ContactShadowParameters>()?;
   sun.add::<SunParameters<'_>>()?;
@@ -252,6 +256,10 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
     ("generated/frame/fxaa", format!("{STRUCTS_IMPORT}{}", fxaa.to_wgsl())),
     ("generated/frame/smaa", format!("{STRUCTS_IMPORT}{}", smaa.to_wgsl())),
     ("generated/common/sky", format!("{STRUCTS_IMPORT}{}", sky.to_wgsl())),
+    (
+      "generated/common/scene_trace",
+      format!("{STRUCTS_IMPORT}{}", scene_trace.to_wgsl()),
+    ),
     (
       "generated/frame/particles",
       format!("{STRUCTS_IMPORT}{}", particles.to_wgsl()),

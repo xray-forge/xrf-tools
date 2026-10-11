@@ -3,7 +3,9 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use xrf_error::{XrfError, XrfResult};
 
-use crate::context::gpu_requirements::{OPTIONAL_FEATURES, REQUIRED_FEATURES, get_missing_features};
+use crate::context::gpu_requirements::{
+  OPTIONAL_FEATURES, REQUIRED_FEATURES, get_missing_features, get_ray_query_features,
+};
 use crate::contract::render_backend::RenderBackend;
 use crate::contract::render_backend_availability::RenderBackendAvailability;
 
@@ -130,10 +132,18 @@ impl GpuContext {
     let (instance, adapter) = Self::request_adapter(backend, is_fallback)?;
     let info: wgpu::AdapterInfo = Self::check_adapter(&adapter)?;
 
+    let ray_query: wgpu::Features = get_ray_query_features(adapter.features());
     let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
       label: Some("xrf-renderer"),
-      required_features: REQUIRED_FEATURES | (OPTIONAL_FEATURES & adapter.features()),
+      required_features: REQUIRED_FEATURES | (OPTIONAL_FEATURES & adapter.features()) | ray_query,
       required_limits: adapter.limits(),
+      // SAFETY: only ray queries are asked for of the experimental features, and only where the adapter has them;
+      // wgpu's own validation stands between them and the driver as for any other feature.
+      experimental_features: if ray_query.is_empty() {
+        wgpu::ExperimentalFeatures::disabled()
+      } else {
+        unsafe { wgpu::ExperimentalFeatures::enabled() }
+      },
       ..Default::default()
     }))
     .map_err(|error| XrfError::new_unexpected_error(format!("Failed to start the GPU '{}': {error}", info.name)))?;

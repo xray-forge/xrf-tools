@@ -27,6 +27,10 @@ pub fn pack_vertex_words(layout: StaticLayout, geometry: &SectorGeometry, buffer
   let mut packed: Vec<u32> = Vec::with_capacity(count * StaticLayout::STRIDE as usize);
 
   for vertex in 0..count {
+    for axis in 0..3 {
+      packed.push(read_word(Some(positions), vertex, 3, axis).unwrap_or(0));
+    }
+
     packed.push(read_word(binormals, vertex, 1, 0).unwrap_or(NEUTRAL_DIRECTION));
     packed.push(read_word(normals, vertex, 1, 0).unwrap_or(NEUTRAL_DIRECTION));
     packed.push(read_word(tangents, vertex, 1, 0).unwrap_or(NEUTRAL_DIRECTION));
@@ -43,18 +47,14 @@ pub fn pack_vertex_words(layout: StaticLayout, geometry: &SectorGeometry, buffer
           .unwrap_or(0),
       );
     }
-
-    for axis in 0..3 {
-      packed.push(read_word(Some(positions), vertex, 3, axis).unwrap_or(0));
-    }
   }
 
   packed
 }
 
 /// A spawned model's posed vertices as the model arena holds them: binormal, normal and tangent packed as a sector's
-/// are, `z` then `y` then `x` a byte each with nothing in the fourth, the base coordinate as two floats, then the
-/// position. Its attributes are already in renderer space.
+/// are, `z` then `y` then `x` a byte each with nothing in the fourth, after the position, then the base coordinate as
+/// two floats. Its attributes are already in renderer space.
 pub fn pack_model_words(geometry: &VisualGeometry, buffer: &[u8]) -> Vec<u32> {
   let floats = |section: &VisualSection| -> Vec<f32> { read_pods(buffer, section) };
   let (positions, normals, tangents, binormals, uvs) = (
@@ -73,12 +73,12 @@ pub fn pack_model_words(geometry: &VisualGeometry, buffer: &[u8]) -> Vec<u32> {
   let mut packed: Vec<u32> = Vec::with_capacity(count * StaticLayout::STRIDE as usize);
 
   for vertex in 0..count {
+    packed.extend(positions[vertex * 3..vertex * 3 + 3].iter().map(|it| it.to_bits()));
     packed.push(direction(&binormals, vertex));
     packed.push(direction(&normals, vertex));
     packed.push(direction(&tangents, vertex));
     packed.push(uvs.get(vertex * 2).copied().unwrap_or(0.0).to_bits());
     packed.push(uvs.get(vertex * 2 + 1).copied().unwrap_or(0.0).to_bits());
-    packed.extend(positions[vertex * 3..vertex * 3 + 3].iter().map(|it| it.to_bits()));
   }
 
   packed

@@ -5,6 +5,7 @@ use crate::scene::static_scene::static_batch::StaticBatch;
 use crate::scene::static_scene::static_row::StaticRow;
 use crate::scene::static_scene::static_slot_info::StaticSlotInfo;
 use crate::scene::static_scene::static_spans::StaticSpans;
+use crate::scene::static_scene::static_trace_geometry::StaticTraceGeometry;
 
 /// One sector as the scene holds it: the ranges its geometry, clusters, slots, places and impostors take, its rows, and
 /// on the CPU what turns a pick of it back into names.
@@ -23,6 +24,8 @@ pub struct StaticSectorProxy {
   pub cluster_slots: Vec<u32>,
   /// Each of its impostors' shader table entry, from its own first.
   pub impostor_shaders: Vec<u16>,
+  /// Its deferred baked sections, which the level's acceleration structure takes.
+  pub trace_geometries: Vec<StaticTraceGeometry>,
   /// The bounding sphere of each of its places that sways, and its reach.
   pub swaying: Vec<(Vec4, f32)>,
 }

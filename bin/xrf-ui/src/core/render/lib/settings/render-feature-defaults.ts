@@ -158,6 +158,7 @@ export const DEFAULT_RENDER_REFLECTION_SETTINGS: TRenderReflectionSettings = {
   quality: ERenderReflectionQuality.HIGH,
   skyGain: 1.25,
   isGrassReflected: false,
+  isTraced: true,
 };
 
 /** The engine's own: every spawned light, and none of the level file's. */

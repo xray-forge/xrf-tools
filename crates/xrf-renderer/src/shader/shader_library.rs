@@ -59,6 +59,14 @@ const EMBEDDED: &[(&str, &str)] = &[
   ("common/flares", include_str!("../../shaders/common/flares.wgsl")),
   ("common/sky", include_str!("../../shaders/common/sky.wgsl")),
   (
+    "common/scene_trace",
+    include_str!("../../shaders/common/scene_trace.wgsl"),
+  ),
+  (
+    "common/scene_trace_none",
+    include_str!("../../shaders/common/scene_trace_none.wgsl"),
+  ),
+  (
     "common/sun_shadow",
     include_str!("../../shaders/common/sun_shadow.wgsl"),
   ),
@@ -181,6 +189,10 @@ const EMBEDDED: &[(&str, &str)] = &[
   (
     "generated/common/sky",
     include_str!("../../shaders/generated/common/sky.wgsl"),
+  ),
+  (
+    "generated/common/scene_trace",
+    include_str!("../../shaders/generated/common/scene_trace.wgsl"),
   ),
   (
     "generated/frame/sun",
@@ -355,6 +367,7 @@ const EMBEDDED: &[(&str, &str)] = &[
   ("static/impostor", include_str!("../../shaders/static/impostor.wgsl")),
   ("static/pulling", include_str!("../../shaders/static/pulling.wgsl")),
   ("static/records", include_str!("../../shaders/static/records.wgsl")),
+  ("static/vertex", include_str!("../../shaders/static/vertex.wgsl")),
   ("static/water", include_str!("../../shaders/static/water.wgsl")),
   (
     "static/water_enhanced",
@@ -365,6 +378,14 @@ const EMBEDDED: &[(&str, &str)] = &[
     include_str!("../../shaders/static/water_reflection.wgsl"),
   ),
 ];
+
+/// Modules that need a device feature, each with the module a device without it composes in its place: the same
+/// functions over nothing, so a pass importing one draws on every device and does more where the feature is.
+const FALLBACKS: &[(&str, wgpu::Features, &str)] = &[(
+  "common/scene_trace",
+  wgpu::Features::EXPERIMENTAL_RAY_QUERY,
+  "common/scene_trace_none",
+)];
 
 /// The renderer's WGSL modules: embedded in a release build, read from the crate's `shaders/` directory in a debug
 /// one so an edited file is drawn with on the next reload.
@@ -406,13 +427,28 @@ impl ShaderLibrary {
     self.generation
   }
 
-  /// A module with its imports inlined.
+  /// A module with its imports inlined, every feature taken as there.
   ///
   /// # Errors
   ///
   /// Returns an error for an unknown module or import.
   pub fn compose(&self, entry: &str) -> XrfResult<String> {
+    self.compose_for(entry, wgpu::Features::all())
+  }
+
+  /// A module with its imports inlined for a device with `features`: an import needing one it lacks composed as its
+  /// fallback.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error for an unknown module or import.
+  pub fn compose_for(&self, entry: &str, features: wgpu::Features) -> XrfResult<String> {
     compose_shader(entry, &|name: &str| {
+      let name: &str = FALLBACKS
+        .iter()
+        .find(|(module, needed, _)| *module == name && !features.contains(*needed))
+        .map_or(name, |(_, _, fallback)| fallback);
+
       self
         .modules
         .get(name)
