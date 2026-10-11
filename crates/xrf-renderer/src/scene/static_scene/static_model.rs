@@ -74,8 +74,14 @@ impl StaticModel {
       );
       parts.push(StaticModelPart {
         indices: (index_base, level.count),
-        clusters: if geometry.clusters.is_some() && !is_skinned {
-          Self::to_clusters(geometry, &package.buffer, (level.start, level.count), index_base)
+        clusters: if !is_skinned {
+          Self::to_clusters(
+            geometry,
+            &package.buffer,
+            (level.start, level.count),
+            index_base,
+            sphere,
+          )
         } else {
           Self::to_reaching_clusters(level.count, index_base, sphere)
         },
@@ -144,25 +150,29 @@ impl StaticModel {
       .collect()
   }
 
-  /// The clusters a geometry drawn as stored was cut into within its level, their first index moved to where the
-  /// level's indices now start.
+  /// The clusters a geometry drawn as stored was cut into for its level, their first index moved to where the level's
+  /// indices now start; the level cut anew where its own are not found.
   fn to_clusters(
     geometry: &VisualGeometry,
     buffer: &[u8],
     (start, count): (u32, u32),
     base: u32,
+    sphere: Vec4,
   ) -> Vec<(u32, u32, Vec4)> {
     let Some(clusters) = &geometry.clusters else {
-      return Vec::new();
+      return Self::to_reaching_clusters(count, base, sphere);
     };
     let ranges: Vec<[u32; 4]> = read_pods(buffer, &clusters.ranges);
     let spheres: Vec<Vec4> = read_pods(buffer, &clusters.spheres);
 
-    ranges
+    let Some(run) = VisualClusters::find_run(&ranges, start, count) else {
+      return Self::to_reaching_clusters(count, base, sphere);
+    };
+
+    ranges[run.clone()]
       .iter()
-      .zip(spheres)
-      .filter(|(range, _)| range[0] >= start && range[0] < start + count)
-      .map(|(range, sphere)| (range[0] - start + base, range[1], sphere))
+      .zip(&spheres[run])
+      .map(|(range, sphere)| (range[0] - start + base, range[1], *sphere))
       .collect()
   }
 

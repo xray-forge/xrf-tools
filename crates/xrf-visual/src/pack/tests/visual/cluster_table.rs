@@ -94,3 +94,26 @@ fn numbers_the_clusters_of_later_runs_after_earlier_ones() {
 
   assert_eq!(table.get_count(), 2, "an empty run has none");
 }
+
+#[test]
+fn finds_a_level_by_its_own_clusters_among_the_overlapping_levels_of_a_progressive_geometry() {
+  // As a progressive mesh's sliding windows: each coarser level starts a triangle earlier and holds three fewer, so all
+  // but its first cluster lie within the finest level's indices.
+  let (indices, positions) = new_strip(200);
+  let mut table: VisualClusterTable = VisualClusterTable::default();
+  let levels: Vec<(u32, u32)> = (0..4).map(|level| (30 - level * 3, (300 - level * 3) * 3)).collect();
+
+  for (start, count) in &levels {
+    table.push_run(&indices, &positions, *start, *count, VisualClusters::NO_DRAWABLE);
+  }
+
+  let (words, _) = new_read(&table);
+  let ranges: Vec<[u32; 4]> = words.as_chunks::<4>().0.to_vec();
+
+  // Three clusters a level: 128, 128 and what is left.
+  assert_eq!(VisualClusters::find_run(&ranges, levels[0].0, levels[0].1), Some(0..3));
+  assert_eq!(VisualClusters::find_run(&ranges, levels[2].0, levels[2].1), Some(6..9));
+  // A run cut nowhere, and one ending inside a cluster, find nothing.
+  assert_eq!(VisualClusters::find_run(&ranges, 3, 30), None);
+  assert_eq!(VisualClusters::find_run(&ranges, levels[0].0, levels[0].1 - 3), None);
+}

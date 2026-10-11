@@ -5,7 +5,7 @@ use glam::{Mat4, UVec4, Vec3, Vec4};
 use xrf_error::{XrfError, XrfResult};
 use xrf_material::XraySurfaceDescriptor;
 use xrf_renderer_core::{ProxyHandle, ProxyStore, Span};
-use xrf_visual::{SectorGeometry, SectorImpostors, SectorInstanceGroup, SectorPackage, SectorSurface};
+use xrf_visual::{SectorGeometry, SectorImpostors, SectorInstanceGroup, SectorPackage, SectorSurface, VisualClusters};
 
 use crate::contract::render_pool_use::RenderPoolUse;
 use crate::contract::render_selection_target::RenderSelectionTarget;
@@ -1155,15 +1155,13 @@ impl StaticScene {
     let ranges: Vec<[u32; 4]> = read_pods(buffer, &geometry.clusters.ranges);
     let spheres: Vec<Vec4> = read_pods(buffer, &geometry.clusters.spheres);
     let end: u32 = start + count;
-    let packed: Vec<(u32, u32, Vec4)> = ranges
-      .iter()
-      .zip(&spheres)
-      .filter(|(range, _)| range[0] >= start && range[0] < end)
-      .map(|(range, sphere)| (range[0], range[1], *sphere))
-      .collect();
 
-    if packed.iter().map(|(_, triangles, _)| triangles * 3).sum::<u32>() == count {
-      return packed;
+    if let Some(run) = VisualClusters::find_run(&ranges, start, count) {
+      return ranges[run.clone()]
+        .iter()
+        .zip(&spheres[run])
+        .map(|(range, sphere)| (range[0], range[1], *sphere))
+        .collect();
     }
 
     let indices: Vec<u32> = read_pods(buffer, &geometry.indices);

@@ -1,3 +1,5 @@
+use std::ops::Range;
+
 use serde::Serialize;
 
 use crate::data::visual::geometry::visual_section::VisualSection;
@@ -25,4 +27,37 @@ impl VisualClusters {
   pub const SPHERE_FLOATS: usize = 4;
   /// What a cluster names for its drawable where it is cut from a mesh many drawables stand in.
   pub const NO_DRAWABLE: u32 = u32::MAX;
+
+  /// The clusters, by their place in `ranges`, cut from the run of `count` indices at `start`; `None` where none was.
+  pub fn find_run(ranges: &[[u32; 4]], start: u32, count: u32) -> Option<Range<usize>> {
+    let end: u32 = start + count;
+
+    // A progressive geometry's levels overlap, so a cluster within a run's indices may be another level's: the run is
+    // the cluster starting at its start and those after it each starting where the one before ends.
+    ranges
+      .iter()
+      .enumerate()
+      .filter(|(_, range)| range[0] == start)
+      .find_map(|(first, _)| {
+        let mut at: u32 = start;
+
+        for (index, range) in ranges.iter().enumerate().skip(first) {
+          if range[0] != at {
+            return None;
+          }
+
+          at += range[1] * 3;
+
+          if at == end {
+            return Some(first..index + 1);
+          }
+
+          if at > end {
+            return None;
+          }
+        }
+
+        None
+      })
+  }
 }
