@@ -10,6 +10,18 @@ fn trace_request_screen(answer: vec3<f32>, share: f32) -> vec2<u32> {
   return vec2<u32>(pack2x16float(answer.rg * share), pack2x16float(vec2<f32>(answer.b * share, share)));
 }
 
+// The turn of `turns` a pixel (or a tile of them) traces on: its place in an 8 × 8 ordered dither, so each turn takes
+// exactly one in `turns` of them, every one within a 4 × 2 block. Blue noise read from the compressed map bunched them,
+// a turn taking up to a quarter, past the list's room, and the pixels drawn last never traced.
+fn trace_turn_of(cell: vec2<u32>, turns: u32) -> u32 {
+  let x: u32 = cell.x & 7u;
+  let mixed: u32 = x ^ (cell.y & 7u);
+  let place: u32 = ((mixed & 1u) << 5u) | ((x & 1u) << 4u) | ((mixed & 2u) << 2u) | ((x & 2u) << 1u) |
+    ((mixed & 4u) >> 1u) | ((x & 4u) >> 2u);
+
+  return place * turns / 64u;
+}
+
 // Lists a request, counting the scene pass's dispatch a workgroup at a time; whether it was listed. A request past the
 // list's room is not, and its pass holds what it reflected the frame before: the list fills in the order pixels are
 // drawn, so a pixel dropped to the sky drew a straight edge along a triangle.

@@ -1,3 +1,4 @@
+use glam::Vec4;
 use xrf_renderer_core::{AccelerationStructureBinding, GraphTexture, PassParameters, StorageArray, UniformBinding};
 
 use crate::pass::grass_model_record::GrassModelRecord;
@@ -13,7 +14,8 @@ use crate::scene::static_scene::static_trace_record::StaticTraceRecord;
 /// instance's first record and place, and each geometry's record naming its indices, vertices and surface; the places,
 /// whose hemisphere lights an instance; each layout's vertices and the indices a hit's corners are read from; and the
 /// surfaces; the view's local lights, how many and how their shadows compare, and the shadow atlas, which light a
-/// hit; and the level's grass as the view plants it, its slot grid, slots and models, which covers a terrain hit. The
+/// hit; and the level's grass as the view plants it, its slot grid, slots, models and their colours, which covers a
+/// terrain hit. The
 /// bindless textures a hit is shaded from are the texture cache's own group.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 3)]
@@ -48,6 +50,8 @@ pub struct TraceParameters<'a> {
   pub trace_grass_slots: StorageArray<u32>,
   #[storage]
   pub trace_grass_models: StorageArray<GrassModelRecord>,
+  #[storage]
+  pub trace_grass_colours: StorageArray<Vec4>,
   #[uniform]
   pub trace_grass: UniformBinding<TraceGrassUniform>,
 }

@@ -28,6 +28,9 @@ pub struct GrassLevel {
   /// Each grid cell's planted slot, one past its index, none for an empty cell; and the planted slots' records.
   pub cells: wgpu::Buffer,
   pub slots: wgpu::Buffer,
+  /// Each model's colour where its tufts stand and the share of its texture they cover, which the colour pass writes
+  /// while the scene is traced.
+  pub colours: wgpu::Buffer,
   pub positions: wgpu::Buffer,
   pub uvs: wgpu::Buffer,
   pub indices: wgpu::Buffer,
@@ -145,6 +148,12 @@ impl GrassLevel {
       models,
       cells: grid,
       slots,
+      colours: device.create_buffer(&wgpu::BufferDescriptor {
+        label: Some("grass colours"),
+        size: u64::from(model_count.max(1)) * 16,
+        usage: wgpu::BufferUsages::STORAGE,
+        mapped_at_creation: false,
+      }),
       args,
       bind_group,
     }

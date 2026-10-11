@@ -15,6 +15,12 @@ const WAVES_WINDY: vec2<f32> = vec2<f32>(0.1, 0.2);
 const PARALLAX_STEPS: f32 = 16.0;
 const PARALLAX_DISTANCE: f32 = 25.0;
 
+// The waves' coordinates a metre of the level spans, before the tiling: read off the level's own place, the engine's
+// `x` and `-z`, not the water mesh's UVs, which the levels map piece by piece, so the waves jumped along a line where
+// two triangles' UVs did not meet (the engine's and the shader pack's water both read UVs; IXRay's D3D11 water reads
+// the place at 0.3).
+const WAVE_WORLD_SCALE: f32 = 0.3;
+
 // How many times the enhanced water tiles the base coordinate.
 const ENHANCED_TILING: f32 = 1.5;
 
@@ -131,7 +137,11 @@ fn rain_ripples(coordinates: vec2<f32>, dx: vec2<f32>, dy: vec2<f32>, rain: f32,
 // says, must not decide.
 fn enhanced_waves(in: WaterVarying, bottom_distance: f32) -> EnhancedWaves {
   let wind: f32 = saturate(enhanced.wind_velocity * 0.001);
-  let base: vec2<f32> = in.uv * ENHANCED_TILING;
+  let base: vec2<f32> = vec2<f32>(in.world.x, -in.world.z) * WAVE_WORLD_SCALE * ENHANCED_TILING;
+  // The axes the coordinates run along, laid onto the surface: the world's `x` and `-z`.
+  let surface_normal: vec3<f32> = normalize(in.normal);
+  let across: vec3<f32> = normalize(vec3<f32>(1.0, 0.0, 0.0) - surface_normal * surface_normal.x);
+  let along: vec3<f32> = normalize(vec3<f32>(0.0, 0.0, -1.0) + surface_normal * surface_normal.z);
   let dx: vec2<f32> = dpdx(base);
   let dy: vec2<f32> = dpdy(base);
   var coordinates: vec2<f32> = base + enhanced.waves * vec2<f32>(0.065, 0.445);
@@ -143,9 +153,9 @@ fn enhanced_waves(in: WaterVarying, bottom_distance: f32) -> EnhancedWaves {
   if (enhanced.parallax_height > 0.0) {
     let to_eye: vec3<f32> = normalize(camera.position.xyz - in.world);
     let eye: vec3<f32> = normalize(vec3<f32>(
-      dot(to_eye, normalize(in.tangent)),
-      dot(to_eye, normalize(in.binormal)),
-      dot(to_eye, normalize(in.normal)),
+      dot(to_eye, across),
+      dot(to_eye, along),
+      dot(to_eye, surface_normal),
     ));
     let is_near: bool = distance < PARALLAX_DISTANCE;
     let share: f32 = select(1.0, 1.0 / mix(PARALLAX_STEPS, 1.0, abs(eye.z)), is_near);
@@ -204,7 +214,7 @@ fn enhanced_waves(in: WaterVarying, bottom_distance: f32) -> EnhancedWaves {
   let strength: vec2<f32> = clamp(WAVES_WINDY * wind, WAVES_CALM, WAVES_WINDY);
 
   out.screen = normalize(vec3<f32>(screen.xy * strength * enhanced.refraction, screen.z)).xy + ripples;
-  out.normal = normalize(in.tangent * average.x + in.binormal * average.y + normalize(in.normal) * average.z);
+  out.normal = normalize(across * average.x + along * average.y + surface_normal * average.z);
   out.height = height;
   out.tilt = screen.xy;
   out.far = far;

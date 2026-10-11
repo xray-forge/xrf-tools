@@ -53,6 +53,8 @@ pub(crate) mod fsr_uniform;
 pub(crate) mod fullscreen_pipeline;
 pub(crate) mod fxaa_parameters;
 pub(crate) mod fxaa_pass;
+pub(crate) mod grass_colour_parameters;
+pub(crate) mod grass_colour_pass;
 pub(crate) mod grass_dispatch;
 pub(crate) mod grass_draws;
 pub(crate) mod grass_model_record;

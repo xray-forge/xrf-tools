@@ -18,6 +18,7 @@ use crate::pass::flare_pass::FlarePass;
 use crate::pass::fog_scattering_pass::FogScatteringPass;
 use crate::pass::fsr_pass::FsrPass;
 use crate::pass::fxaa_pass::FxaaPass;
+use crate::pass::grass_colour_pass::GrassColourPass;
 use crate::pass::grass_pass::GrassPass;
 use crate::pass::grid_pass::GridPass;
 use crate::pass::level_passes::LevelPasses;
@@ -71,6 +72,7 @@ pub struct GpuState {
   pub water: WaterPass,
   pub composited: CompositedPass,
   pub grass: GrassPass,
+  pub grass_colours: GrassColourPass,
   pub rain: RainPass,
   pub particles: ParticlePass,
   pub wet: WetPass,
@@ -150,6 +152,7 @@ impl GpuState {
       water,
       composited,
       grass: GrassPass::new(device, shaders, &view_layout, textures.get_layout())?,
+      grass_colours: GrassColourPass::new(device, shaders, textures.get_layout())?,
       rain: RainPass::new(device, shaders, &view_layout)?,
       particles: ParticlePass::new(device, shaders, &view_layout, textures.get_layout())?,
       wet: WetPass::new(device, shaders, &view_layout)?,
@@ -230,6 +233,7 @@ impl GpuState {
       vbao: &self.vbao,
       reflections: &self.reflections,
       scene_trace: &self.scene_trace,
+      grass_colours: &self.grass_colours,
       lights: &self.lights,
       combine: &self.combine,
       sky_haze: &self.sky_haze,
@@ -281,6 +285,7 @@ impl GpuState {
     self.vbao.refresh(device, shaders);
     self.reflections.refresh(device, shaders);
     self.scene_trace.refresh(device, shaders);
+    self.grass_colours.refresh(device, shaders);
     self.lights.refresh(device, shaders);
     self.combine.refresh(device, shaders);
     self.sky_haze.refresh(device, shaders);
