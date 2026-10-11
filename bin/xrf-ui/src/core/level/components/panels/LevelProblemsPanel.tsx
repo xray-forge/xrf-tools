@@ -4,8 +4,8 @@ import { ReactElement, useMemo } from "react";
 
 import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import { WorldLevelProblems } from "@/core/ipc/types/xrf-world";
-import { listLevelProblems } from "@/core/level/lib/problems";
-import { ILevelSpawnReport } from "@/core/level/lib/spawn";
+import { listLevelProblems } from "@/core/level/lib/problems/level-problems";
+import { ILevelSpawnReport } from "@/core/level/lib/spawn/level-spawn-report";
 import { ILevelTextureReport } from "@/core/level/lib/texture/level-texture-report";
 import { LevelLoadService, LevelViewportService } from "@/core/level/services";
 import { EditorPanel, EditorPanelEmpty } from "@/core/shell/editor/EditorPanel";

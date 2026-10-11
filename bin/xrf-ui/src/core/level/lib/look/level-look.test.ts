@@ -3,19 +3,21 @@ import { describe, expect, it } from "@jest/globals";
 import { LevelConsoleDefaults } from "@/core/ipc/types/xrf-app";
 import { EXrayEngine } from "@/core/ipc/types/xrf-engine-target";
 import {
-  DEFAULT_LEVEL_LOOK_CHOICE,
-  ELevelLookSource,
   ILevelLook,
   MONOLITH_LEVEL_BLOOM,
   NEUTRAL_LEVEL_IMAGE_CORRECTIONS,
   NEUTRAL_LEVEL_LIGHT_SCALES,
   NO_LEVEL_BLOOM,
   OPENXRAY_LEVEL_BLOOM,
-  resolveLevelLook,
   toGameLevelLook,
-  toLevelLookChoice,
   toSettingsLevelLook,
-} from "@/core/level/lib/look";
+} from "@/core/level/lib/look/level-look";
+import {
+  DEFAULT_LEVEL_LOOK_CHOICE,
+  ELevelLookSource,
+  resolveLevelLook,
+  toLevelLookChoice,
+} from "@/core/level/lib/look/level-look-choice";
 import { DEFAULT_RENDER_EXPOSURE_SETTINGS } from "@/core/render/lib/settings/render-feature-defaults";
 
 /** What Anomaly's `default_controls.ltx` sets. */

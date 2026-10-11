@@ -8,7 +8,8 @@ import { ERenderBloomMode, RenderBloomMode } from "@/core/ipc/types/xrf-renderer
 import { useLevelFeatureOverride } from "@/core/level/components/preview/toolbar/use-level-feature-override";
 import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
 import { toLevelModeFeature } from "@/core/level/lib/features/level-feature-options";
-import { ELevelLookSource, ILevelLook } from "@/core/level/lib/look";
+import { ILevelLook } from "@/core/level/lib/look/level-look";
+import { ELevelLookSource } from "@/core/level/lib/look/level-look-choice";
 import { LevelLookService } from "@/core/level/services/level-look.service";
 import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";

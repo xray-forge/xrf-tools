@@ -15,8 +15,8 @@ import {
   SessionRestore,
   SessionSnapshot,
 } from "@/core/ipc/types/xrf-app";
-import { describeLevelSource } from "@/core/level/lib/source";
-import { EMPTY_LEVEL_SPAWN_REPORT, ILevelSpawnReport } from "@/core/level/lib/spawn";
+import { describeLevelSource } from "@/core/level/lib/source/level-source";
+import { EMPTY_LEVEL_SPAWN_REPORT, ILevelSpawnReport } from "@/core/level/lib/spawn/level-spawn-report";
 import { Logger, Timer } from "@/lib/logging";
 import { call, cancelFlow, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 

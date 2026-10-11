@@ -6,7 +6,7 @@ import { ReactElement, useCallback } from "react";
 import { ERenderFoliageMode, RenderFoliageMode } from "@/core/ipc/types/xrf-renderer";
 import { useLevelFeature } from "@/core/level/components/preview/toolbar/use-level-feature";
 import { useLevelViewToggle } from "@/core/level/components/preview/toolbar/use-level-view-toggle";
-import { describeLevelFeatureToggle } from "@/core/level/lib/features";
+import { describeLevelFeatureToggle } from "@/core/level/lib/features/level-feature-options";
 import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 import { IRenderChoiceOption } from "@/core/render/lib/features/render-choice-option";

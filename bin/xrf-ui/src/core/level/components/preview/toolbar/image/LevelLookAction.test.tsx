@@ -4,7 +4,7 @@ import { userEvent } from "@testing-library/user-event";
 
 import { ERenderBloomMode } from "@/core/ipc/types/xrf-renderer";
 import { LevelLookAction } from "@/core/level/components/preview/toolbar/image/LevelLookAction";
-import { ELevelLookSource } from "@/core/level/lib/look";
+import { ELevelLookSource } from "@/core/level/lib/look/level-look-choice";
 import { clearLocalStorage } from "@/core/storage";
 import {
   ILevelViewContainerDescriptor,
