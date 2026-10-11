@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use xrf_error::XrfResult;
 
 /// Where the renderer's bundle is kept in its checkout, which an application packages and a development build reads.
@@ -12,4 +14,8 @@ pub trait RenderBundle: Send + Sync + 'static {
   ///
   /// Returns an error naming the file when it cannot be read.
   fn read_bundled(&self, path: &str) -> XrfResult<Vec<u8>>;
+
+  /// Where a bundled file stands on disk, for one loaded by its path rather than read, such as a library; none where
+  /// the bundle does not hold it.
+  fn locate_bundled(&self, path: &str) -> Option<PathBuf>;
 }

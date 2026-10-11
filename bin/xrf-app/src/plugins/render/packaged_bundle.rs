@@ -36,4 +36,8 @@ impl RenderBundle for PackagedBundle {
       )
     })
   }
+
+  fn locate_bundled(&self, path: &str) -> Option<PathBuf> {
+    Some(self.root.join(path)).filter(|file| file.is_file())
+  }
 }

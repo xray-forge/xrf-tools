@@ -2,6 +2,7 @@ use crate::context::gpu_context::GpuContext;
 use crate::contract::render_backend::RenderBackend;
 use crate::contract::render_overlay::RenderOverlay;
 use crate::scene::level::level_overlays::LevelOverlays;
+use crate::tests::test_bundle::checkout_dxc;
 
 fn lines(vertices: usize, is_depth_tested: bool) -> RenderOverlay {
   RenderOverlay::Lines {
@@ -14,8 +15,8 @@ fn lines(vertices: usize, is_depth_tested: bool) -> RenderOverlay {
 /// Every set's segments whole, an odd end dropped with its own set, and the sun apart from them.
 #[test]
 fn packs_whole_segments_and_the_sun() {
-  let context: GpuContext = match GpuContext::create_headless(RenderBackend::D3d12)
-    .or_else(|_| GpuContext::create_headless(RenderBackend::Vulkan))
+  let context: GpuContext = match GpuContext::create_headless(RenderBackend::D3d12, checkout_dxc().as_deref())
+    .or_else(|_| GpuContext::create_headless(RenderBackend::Vulkan, None))
   {
     Ok(context) => context,
     Err(error) => {

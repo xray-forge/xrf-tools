@@ -7,6 +7,7 @@ use crate::pass::grid_pass::GridPass;
 use crate::pass::view_binding::ViewBinding;
 use crate::shader::shader_library::ShaderLibrary;
 use crate::tests::test_bundle::TestBundle;
+use crate::tests::test_bundle::checkout_dxc;
 use crate::tests::test_workers::create_workers;
 use crate::thread::gpu_state::GpuState;
 
@@ -16,8 +17,8 @@ const SIZE: u32 = 64;
 /// machine with no adapter at all; CI has WARP under D3D12.
 #[test]
 fn draws_sky_over_ground_offscreen() {
-  let context: GpuContext = match GpuContext::create_headless(RenderBackend::D3d12)
-    .or_else(|_| GpuContext::create_headless(RenderBackend::Vulkan))
+  let context: GpuContext = match GpuContext::create_headless(RenderBackend::D3d12, checkout_dxc().as_deref())
+    .or_else(|_| GpuContext::create_headless(RenderBackend::Vulkan, None))
   {
     Ok(context) => context,
     Err(error) => {
@@ -141,8 +142,8 @@ fn draws_sky_over_ground_offscreen() {
 /// that no longer matches its pass fails here rather than in the app.
 #[test]
 fn builds_every_pass() {
-  let context: GpuContext = match GpuContext::create_headless(RenderBackend::D3d12)
-    .or_else(|_| GpuContext::create_headless(RenderBackend::Vulkan))
+  let context: GpuContext = match GpuContext::create_headless(RenderBackend::D3d12, checkout_dxc().as_deref())
+    .or_else(|_| GpuContext::create_headless(RenderBackend::Vulkan, None))
   {
     Ok(context) => context,
     Err(error) => {
@@ -166,8 +167,8 @@ fn builds_every_pass() {
 /// GPU.
 #[test]
 fn builds_without_what_the_bundle_lacks() {
-  let Ok(context) =
-    GpuContext::create_headless(RenderBackend::D3d12).or_else(|_| GpuContext::create_headless(RenderBackend::Vulkan))
+  let Ok(context) = GpuContext::create_headless(RenderBackend::D3d12, checkout_dxc().as_deref())
+    .or_else(|_| GpuContext::create_headless(RenderBackend::Vulkan, None))
   else {
     eprintln!("Skipped: no GPU to draw with");
 

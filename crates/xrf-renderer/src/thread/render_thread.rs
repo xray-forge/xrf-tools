@@ -1,4 +1,5 @@
 use std::collections::{BTreeMap, HashMap, HashSet};
+use std::path::PathBuf;
 use std::sync::mpsc::{Receiver, RecvTimeoutError, TryRecvError};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::time::{Duration, Instant};
@@ -436,7 +437,9 @@ impl RenderThread {
       return;
     }
 
-    match GpuContext::create_preferred(RenderBackend::get_asked(self.settings.backend))
+    let dxc: Option<PathBuf> = self.bundle.locate_bundled(GpuContext::DXC_LIBRARY);
+
+    match GpuContext::create_preferred(RenderBackend::get_asked(self.settings.backend), dxc.as_deref())
       .and_then(|context| GpuState::new(context, &self.shaders, &self.workers, self.bundle.as_ref()))
     {
       Ok(gpu) => {

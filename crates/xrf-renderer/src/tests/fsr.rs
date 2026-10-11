@@ -19,13 +19,14 @@ use crate::pass::fsr_reactive_parameters::FsrReactiveParameters;
 use crate::pass::fsr_reconstruct_parameters::FsrReconstructParameters;
 use crate::pass::fsr_uniform::FsrUniform;
 use crate::shader::shader_library::ShaderLibrary;
+use crate::tests::test_bundle::checkout_dxc;
 
 /// Builds FSR 2 for a drawing upscaled half again, binds it to real targets and runs two frames, the second reading
 /// the first's history, without a validation error. Skipped, and says so, on a machine with no adapter at all.
 #[test]
 fn upscales_two_frames_without_a_validation_error() {
-  let context: GpuContext = match GpuContext::create_headless(RenderBackend::D3d12)
-    .or_else(|_| GpuContext::create_headless(RenderBackend::Vulkan))
+  let context: GpuContext = match GpuContext::create_headless(RenderBackend::D3d12, checkout_dxc().as_deref())
+    .or_else(|_| GpuContext::create_headless(RenderBackend::Vulkan, None))
   {
     Ok(context) => context,
     Err(error) => {
