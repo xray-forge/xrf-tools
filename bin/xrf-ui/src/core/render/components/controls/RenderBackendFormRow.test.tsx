@@ -49,7 +49,7 @@ describe("RenderBackendFormRow", () => {
     );
 
     expect(view.getByRole("group", { name: "Graphics API" })).toHaveAccessibleDescription(
-      /XRF_RENDER_BACKEND asks for Vulkan over this choice\. Drawing with Vulkan on Test GPU\./
+      /XRF_RENDER_BACKEND overrides this choice with Vulkan\. Drawing with Vulkan on Test GPU\./
     );
   });
 

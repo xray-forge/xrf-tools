@@ -7,7 +7,7 @@ use serde::Serialize;
 pub enum EnvFlagKind {
   /// Read by a running binary, set by whoever starts it.
   Runtime,
-  /// Another library's, which it reads itself and the application reports.
+  /// Read by a third-party library; the application only reports it.
   PassThrough,
   /// Read while the workspace builds, by a build script, `cargo make` or CI.
   Build,
@@ -16,7 +16,7 @@ pub enum EnvFlagKind {
 }
 
 impl EnvFlagKind {
-  /// Whether a running binary reads it, so a reading of it says something about this run.
+  /// Whether a running binary reads it, so its value matters for this run.
   pub fn is_read_at_run(self) -> bool {
     matches!(self, Self::Runtime | Self::PassThrough)
   }

@@ -1,4 +1,5 @@
-//! Every environment variable the workspace reads or honours: one table, one way of reading each, one document.
+//! Every environment variable the workspace reads, in one table that parses each the same way and generates its
+//! document.
 
 mod env_flag;
 mod env_flag_kind;

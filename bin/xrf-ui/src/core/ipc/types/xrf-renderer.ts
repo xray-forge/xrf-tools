@@ -259,16 +259,16 @@ export enum ERenderBackend {
 /** Every `ERenderBackend` as the spelling it crosses IPC as, for a value no member has narrowed. */
 export type RenderBackend = `${ERenderBackend}`;
 
-/** Whether the renderer can draw with a backend on this machine: the GPU it would draw on, or why it cannot. */
+/** Whether the renderer can draw with a backend on this machine: the GPU it would use, or why it cannot draw. */
 export type RenderBackendAvailability = {
   backend: RenderBackend;
-  /** The adapter it would draw on, none where it cannot draw. */
+  /** The adapter it would draw on; none if it cannot draw. */
   adapter: string | null;
-  /** The adapter's driver and its version, as the API names them, such as `NVIDIA 617.14`; none where it cannot draw. */
+  /** The adapter's driver and version as the API reports them, for example `NVIDIA 617.14`; none if it cannot draw. */
   driver: string | null;
-  /** Why it cannot draw, none where it can. */
+  /** Why it cannot draw; none if it can. */
   problem: string | null;
-  /** Whether `XRF_RENDER_BACKEND` names it, so the renderer starts on it over the settings' choice. */
+  /** Whether `XRF_RENDER_BACKEND` names it, so the renderer starts on it instead of the settings' choice. */
   isForced: boolean;
 };
 
@@ -924,11 +924,11 @@ export type RenderLevelHit =
       point: [number | null, number | null, number | null];
     };
 
-/** The graphics libraries the renderer ships beside the application: the DLSS runtime. */
+/** Graphics libraries shipped beside the application; currently only the DLSS runtime. */
 export type RenderLibraries = {
   /**
-   * The DLSS runtime's own file version, such as `310.9.1.0`; none where the build has no DLSS or its library is not
-   * in the bundle.
+   * The DLSS runtime's file version, for example `310.9.1.0`; none if the build has no DLSS or the library is missing
+   * from the bundle.
    */
   dlss: string | null;
 };

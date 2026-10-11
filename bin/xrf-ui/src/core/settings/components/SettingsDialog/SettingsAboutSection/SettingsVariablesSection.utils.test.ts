@@ -29,7 +29,7 @@ describe("describeVariables", () => {
 
   it("says which default applies where a variable does not take its value", () => {
     expect(describeVariables([mockReading({ value: "dx12" })])).toEqual([
-      { label: "XRF_RENDER_BACKEND", value: "dx12 (not taken; default: the settings' choice)" },
+      { label: "XRF_RENDER_BACKEND", value: "dx12 (not valid, the default applies: the settings' choice)" },
     ]);
   });
 });

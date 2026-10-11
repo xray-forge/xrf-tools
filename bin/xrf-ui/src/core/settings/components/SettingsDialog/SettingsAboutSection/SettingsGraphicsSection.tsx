@@ -15,8 +15,8 @@ import { SettingsAboutRow } from "./SettingsAboutRow";
 import { describeGraphics, DLSS_ATTRIBUTION } from "./SettingsGraphicsSection.utils";
 
 /**
- * The GPU each graphics API would draw on, the one drawn with, and NVIDIA DLSS's version, whose licence asks for its
- * attribution here.
+ * The GPU each graphics API would use, the API in use, and the DLSS version with the attribution NVIDIA's licence
+ * requires.
  */
 export function SettingsGraphicsSection(): ReactElement {
   const log: Logger = useLogger(__MODULE_NAME__);
@@ -24,7 +24,7 @@ export function SettingsGraphicsSection(): ReactElement {
 
   const [libraries, setLibraries] = useState<Nullable<RenderLibraries>>(null);
 
-  // The libraries are fixed while the application runs; the backends are probed again, as the Display settings do.
+  // The DLSS version cannot change while the application runs; the backends are probed again, as in Display.
   useMountEffect(() => {
     void renderSettingsService.refreshRenderBackends();
 
@@ -44,7 +44,7 @@ export function SettingsGraphicsSection(): ReactElement {
     <DetailSection
       data-testid={"settings-graphics-section"}
       title={"Graphics"}
-      description={"The GPU each graphics API would draw on, and the graphics libraries the renderer ships with."}
+      description={"The GPU and driver each graphics API would use, and the DLSS version."}
     >
       <Stack className={"mt-2"} spacing={0.5}>
         {rows.length === 0 ? (
