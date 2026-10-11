@@ -1,5 +1,4 @@
 import { Button } from "@mui/material";
-import { formatNumber, formatPercent } from "@xrf/format";
 import { ReactElement } from "react";
 
 import { ERenderParallaxMode, RenderParallaxMode } from "@/core/ipc/types/xrf-renderer";
@@ -8,7 +7,14 @@ import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/
 import { toLevelModeFeature } from "@/core/level/lib/features/level-feature-options";
 import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
-import { RENDER_PARALLAX_MODE_OPTIONS } from "@/core/render/lib/features/render-parallax-choices";
+import {
+  formatParallaxHeight,
+  formatParallaxRange,
+  formatParallaxSteps,
+  formatParallaxStrength,
+  RENDER_PARALLAX_LIMITS,
+  RENDER_PARALLAX_MODE_OPTIONS,
+} from "@/core/render/lib/features/render-parallax-choices";
 import { TRenderParallaxSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { BaseComponentProps } from "@/lib/dom/element-types";
@@ -45,50 +51,40 @@ export function LevelParallaxSettings({
           <RenderValueSlider
             label={"Steps"}
             value={value.steps}
-            min={4}
-            max={48}
-            step={1}
-            format={(steps: number) => formatNumber(steps, 0)}
+            {...RENDER_PARALLAX_LIMITS.steps}
+            format={formatParallaxSteps}
             onChange={(steps: number) => set({ steps })}
           />
 
           <RenderValueSlider
             label={"Range"}
             value={value.range}
-            min={5}
-            max={60}
-            step={1}
-            format={(range: number) => `${formatNumber(range, 0)} m`}
+            {...RENDER_PARALLAX_LIMITS.range}
+            format={formatParallaxRange}
             onChange={(range: number) => set({ range })}
           />
 
           <RenderValueSlider
             label={"Height"}
             value={value.height}
-            min={0.005}
-            max={0.12}
-            step={0.005}
-            format={(height: number) => formatNumber(height, 3)}
+            {...RENDER_PARALLAX_LIMITS.height}
+            format={formatParallaxHeight}
             onChange={(height: number) => set({ height })}
           />
 
           <RenderValueSlider
             label={"Surface height"}
             value={value.surfaceHeight}
-            min={0.005}
-            max={0.06}
-            step={0.005}
-            format={(surfaceHeight: number) => formatNumber(surfaceHeight, 3)}
+            {...RENDER_PARALLAX_LIMITS.surfaceHeight}
+            format={formatParallaxHeight}
             onChange={(surfaceHeight: number) => set({ surfaceHeight })}
           />
 
           <RenderValueSlider
             label={"Surface range"}
             value={value.surfaceRange}
-            min={4}
-            max={100}
-            step={1}
-            format={(surfaceRange: number) => `${formatNumber(surfaceRange, 0)} m`}
+            {...RENDER_PARALLAX_LIMITS.surfaceRange}
+            format={formatParallaxRange}
             onChange={(surfaceRange: number) => set({ surfaceRange })}
           />
 
@@ -101,30 +97,24 @@ export function LevelParallaxSettings({
           <RenderValueSlider
             label={"Self-shadowing"}
             value={value.shadow}
-            min={0}
-            max={1}
-            step={0.05}
-            format={formatPercent}
+            {...RENDER_PARALLAX_LIMITS.shadow}
+            format={formatParallaxStrength}
             onChange={(shadow: number) => set({ shadow })}
           />
 
           <RenderValueSlider
             label={"Height blending"}
             value={value.blending}
-            min={0}
-            max={1}
-            step={0.05}
-            format={formatPercent}
+            {...RENDER_PARALLAX_LIMITS.blending}
+            format={formatParallaxStrength}
             onChange={(blending: number) => set({ blending })}
           />
 
           <RenderValueSlider
             label={"Cavities"}
             value={value.cavity}
-            min={0}
-            max={2}
-            step={0.05}
-            format={formatPercent}
+            {...RENDER_PARALLAX_LIMITS.cavity}
+            format={formatParallaxStrength}
             onChange={(cavity: number) => set({ cavity })}
           />
         </>
