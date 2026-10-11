@@ -87,8 +87,7 @@ impl CompositedPass {
     }
   }
 
-  /// Draws the composited surfaces each argument buffer lists, in cluster order.
-  #[allow(clippy::too_many_arguments)]
+  /// Draws the unsorted composited surfaces each argument buffer lists, in cluster order.
   pub fn record(
     &self,
     context: &mut RasterContext<'_>,
@@ -99,30 +98,12 @@ impl CompositedPass {
     ),
     (composited, sky): (&CompositedParameters<'_>, &SkyParameters<'_>),
     args: &[&wgpu::Buffer],
-    (sorted, sorted_count): (Option<&StaticDrawParameters>, u32),
   ) {
-    // The sky's group sits above the composited surfaces' own here, past the bindless textures and the draws.
-    context.bind(composited);
-    context.bind_at(Self::SKY_GROUP, sky);
-
-    let pass: &mut wgpu::RenderPass<'static> = context.get_pass();
-
-    pass.set_bind_group(0, &view.bind_group, &[]);
-    pass.set_bind_group(1, textures, &[]);
+    Self::bind_common(context, (view, textures), (composited, sky));
 
     for (batch, pipeline) in StaticBatch::list_composited().zip(&self.pipelines.0) {
       // The models' are drawn back to front from the view's sorted list rather than as the cull listed them.
       if batch.layout == StaticLayout::Model {
-        if let Some(sorted) = sorted
-          && sorted_count > 0
-        {
-          context.bind(sorted);
-          context.get_pass().set_pipeline(pipeline);
-          context
-            .get_pass()
-            .draw(0..StaticScene::CLUSTER_VERTICES, 0..sorted_count);
-        }
-
         continue;
       }
 
@@ -133,6 +114,47 @@ impl CompositedPass {
         context.get_pass().draw_indirect(args, batch.get_index() as u64 * 16);
       }
     }
+  }
+
+  /// Draws the view's sorted composited clusters back to front: each run of them alike in layout, as `(layout, first
+  /// entry, count)`, by its layout's program over the sorted list `sorted` reads.
+  pub fn record_sorted(
+    &self,
+    context: &mut RasterContext<'_>,
+    (view, sorted, textures): (
+      &ViewBinding,
+      &[StaticDrawParameters; StaticLayout::COUNT],
+      &wgpu::BindGroup,
+    ),
+    (composited, sky): (&CompositedParameters<'_>, &SkyParameters<'_>),
+    runs: &[(StaticLayout, u32, u32)],
+  ) {
+    Self::bind_common(context, (view, textures), (composited, sky));
+
+    for (layout, first, count) in runs {
+      // The composited batches run in layout order, one a layout, so a layout's program is its batch's.
+      context.bind(&sorted[layout.get_index()]);
+      context.get_pass().set_pipeline(&self.pipelines.0[layout.get_index()]);
+      context
+        .get_pass()
+        .draw(0..StaticScene::CLUSTER_VERTICES, *first..first + count);
+    }
+  }
+
+  /// Binds what every composited draw reads: the view, the bindless textures, the lighting and the sky, whose group
+  /// sits above the composited surfaces' own, past the textures and the draws.
+  fn bind_common(
+    context: &mut RasterContext<'_>,
+    (view, textures): (&ViewBinding, &wgpu::BindGroup),
+    (composited, sky): (&CompositedParameters<'_>, &SkyParameters<'_>),
+  ) {
+    context.bind(composited);
+    context.bind_at(Self::SKY_GROUP, sky);
+
+    let pass: &mut wgpu::RenderPass<'static> = context.get_pass();
+
+    pass.set_bind_group(0, &view.bind_group, &[]);
+    pass.set_bind_group(1, textures, &[]);
   }
 
   /// Lays the wall marks each argument buffer lists into the G-buffer's albedo, before any light reads it.
@@ -215,9 +237,11 @@ impl CompositedPass {
 
     batches
       .map(|batch| {
-        // A model composited over the frame is lit by its vertices, as the engine's forward passes light it.
+        // A model and a vertex-lit level surface composited over the frame are lit by their vertices, as the engine's
+        // forward passes light them.
         let vertex: &str = match batch.layout {
           StaticLayout::Model if fragment == COMPOSITED_FRAGMENT => "vs_model_lit",
+          StaticLayout::Baked if fragment == COMPOSITED_FRAGMENT => "vs_baked_lit",
           layout => layout.get_vertex_entry(),
         };
 

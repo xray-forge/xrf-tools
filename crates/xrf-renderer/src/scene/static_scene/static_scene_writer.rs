@@ -9,6 +9,7 @@ use crate::scene::static_scene::static_place::StaticPlace;
 use crate::scene::static_scene::static_row::StaticRow;
 use crate::scene::static_scene::static_slot::StaticSlot;
 use crate::scene::static_scene::static_slot_info::StaticSlotInfo;
+use crate::scene::static_scene::static_sorted_run::StaticSortedRun;
 use crate::scene::static_scene::static_spans::StaticSpans;
 use crate::scene::static_scene::static_surface::StaticSurface;
 use crate::scene::static_scene::static_trace_geometry::StaticTraceGeometry;
@@ -40,6 +41,8 @@ pub struct StaticSceneWriter {
   /// Its deferred baked sections and instanced meshes, which the level's acceleration structures take.
   pub trace_geometries: Vec<StaticTraceGeometry>,
   pub trace_groups: Vec<StaticTraceGroup>,
+  /// Its strictly sorted composited runs, which a view draws back to front.
+  pub sorted_runs: Vec<StaticSortedRun>,
   pub capacities: [u32; StaticBatch::COUNT],
 }
 
@@ -147,6 +150,11 @@ impl StaticSceneWriter {
 
     for group in &mut self.trace_groups {
       group.first_place += places;
+    }
+
+    for run in &mut self.sorted_runs {
+      run.clusters.0 += clusters;
+      run.place = run.place.map(|place| place + places);
     }
   }
 }

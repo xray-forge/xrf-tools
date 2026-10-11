@@ -21,6 +21,7 @@ pub(crate) mod static_selection;
 pub(crate) mod static_slot;
 pub(crate) mod static_slot_info;
 pub(crate) mod static_sorted_place;
+pub(crate) mod static_sorted_run;
 pub(crate) mod static_spans;
 pub(crate) mod static_surface;
 pub(crate) mod static_surface_build;

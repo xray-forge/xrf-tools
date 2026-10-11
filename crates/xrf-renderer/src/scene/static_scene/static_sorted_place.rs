@@ -1,11 +1,16 @@
 use glam::{Vec3, Vec4};
 
-/// A spawned object whose model's surfaces are composited over the frame: drawn back to front by its distance, as the
-/// engine sorts its blended objects (`mapSorted`), rather than in the order a cull lists them.
+use crate::scene::static_scene::static_layout::StaticLayout;
+
+/// What a view draws back to front by its distance after the particles, as the engine sorts its blended objects
+/// (`mapSorted`), rather than in the order a cull lists them: a spawned object whose model's surfaces are composited
+/// over the frame, or a run of a level's strictly sorted composited clusters.
 pub struct StaticSortedPlace<'a> {
   /// Its bounding sphere in the world.
   pub sphere: Vec4,
   pub place: u32,
+  /// The layout its clusters' vertices are in, whose program draws them.
+  pub layout: StaticLayout,
   /// The runs of clusters its composited parts are cut into, as first cluster and count, in their parts' order.
   pub clusters: &'a [(u32, u32)],
 }

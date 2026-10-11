@@ -37,6 +37,7 @@ use crate::pass::wet_uniform::WetUniform;
 use crate::pass::wind_uniform::WindUniform;
 use crate::scene::level::sky_views::SkyViews;
 use crate::scene::level::weather_views::WeatherViews;
+use crate::scene::static_scene::static_layout::StaticLayout;
 
 /// One frame of a view as its preparation leaves it: the camera and sun it is drawn by, what its options and weather
 /// decided it draws, and what its passes read of that. Prepared before the frame graph is declared, and read by it.
@@ -138,8 +139,10 @@ pub struct ViewInfo {
   pub is_wet: bool,
   /// A strike: how its model and glows composite and the model's indices, none while none strikes.
   pub thunder_draw: Option<([XraySurfaceDraw; 3], u32)>,
-  /// Composited clusters sorted back to front.
+  /// Composited clusters sorted back to front, and the runs of them alike in layout, in their order: the layout,
+  /// the run's first entry in the sorted list and how many.
   pub sorted_count: u32,
+  pub sorted_runs: Vec<(StaticLayout, u32, u32)>,
   /// The colour the selection is outlined in, or none while nothing it names is drawn.
   pub selection_color: Option<[f32; 3]>,
 }
@@ -207,6 +210,7 @@ impl Default for ViewInfo {
       is_wet: false,
       thunder_draw: None,
       sorted_count: 0,
+      sorted_runs: Vec::new(),
       selection_color: None,
     }
   }

@@ -11,6 +11,8 @@ const SLOT_BUMP_COMPANION: u32 = 3u;
 const SLOT_DETAIL_BUMP: u32 = 4u;
 const SLOT_DETAIL_BUMP_COMPANION: u32 = 5u;
 const SLOT_HEMI: u32 = 6u;
+// A blended level surface's lightmap, in the detail slot its forward pass reads no detail from.
+const SLOT_LIGHTMAP: u32 = 1u;
 const SLOT_ENVIRONMENT: u32 = 7u;
 const SLOT_WATER_NORMAL: u32 = 1u;
 const SLOT_FOAM: u32 = 2u;
@@ -78,6 +80,7 @@ const SURFACE_IS_EMISSIVE: u32 = 8388608u;
 const SURFACE_IS_SHADOWLESS: u32 = 16777216u;
 // A level surface the engines' steep parallax reaches, its height in its bump pair's second's alpha.
 const SURFACE_IS_STEEP: u32 = 33554432u;
+const SURFACE_HAS_LIGHTMAP: u32 = 67108864u;
 
 // Vertices one cluster's draw spans: 128 triangles, those past its own collapsed.
 const CLUSTER_VERTICES: u32 = 384u;
