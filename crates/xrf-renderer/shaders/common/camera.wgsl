@@ -36,7 +36,8 @@ struct Camera {
   selection_runs: array<vec4<u32>, 32>,
   // The enhanced parallax: x its steps at most, y its range in metres, z its depth in detail coordinates, w one where
   // its march is refined; then xyz the sun's direction in view space, w how much of it the relief keeps from its
-  // hollows; then x how far a terrain's layers blend by height, y how much its low ground darkens.
+  // hollows; then x how far a terrain's layers blend by height, y how much its low ground darkens, z a steep surface's
+  // depth in its own coordinates and w its range in metres.
   parallax: vec4<f32>,
   parallax_light: vec4<f32>,
   parallax_mix: vec4<f32>,
@@ -53,10 +54,20 @@ const MARK_EMISSIVE: u32 = 64u;
 const MARK_FLORA: u32 = 32u;
 const MARK_TERRAIN: u32 = 16u;
 const MARK_PLANT: u32 = 8u;
+// A steep surface the enhanced parallax marched, whose sun term is its relief's shadow, which the sun pass takes.
+const MARK_RELIEF: u32 = 4u;
 
-fn encode_marks(is_selected: bool, is_emissive: bool, is_flora: bool, is_terrain: bool, is_plant: bool) -> f32 {
+fn encode_marks(
+  is_selected: bool,
+  is_emissive: bool,
+  is_flora: bool,
+  is_terrain: bool,
+  is_relief: bool,
+  is_plant: bool,
+) -> f32 {
   return f32(select(0u, MARK_SELECTED, is_selected) | select(0u, MARK_EMISSIVE, is_emissive) |
-    select(0u, MARK_FLORA, is_flora) | select(0u, MARK_TERRAIN, is_terrain) | select(0u, MARK_PLANT, is_plant)) /
+    select(0u, MARK_FLORA, is_flora) | select(0u, MARK_TERRAIN, is_terrain) | select(0u, MARK_RELIEF, is_relief) |
+    select(0u, MARK_PLANT, is_plant)) /
     255.0;
 }
 

@@ -86,6 +86,26 @@ export function LevelParallaxSettings({
             onChange={(height: number) => set({ height })}
           />
 
+          <RenderValueSlider
+            label={"Surface height"}
+            value={value.surfaceHeight}
+            min={0.005}
+            max={0.06}
+            step={0.005}
+            format={(surfaceHeight: number) => formatNumber(surfaceHeight, 3)}
+            onChange={(surfaceHeight: number) => set({ surfaceHeight })}
+          />
+
+          <RenderValueSlider
+            label={"Surface range"}
+            value={value.surfaceRange}
+            min={4}
+            max={30}
+            step={1}
+            format={(surfaceRange: number) => `${formatNumber(surfaceRange, 0)} m`}
+            onChange={(surfaceRange: number) => set({ surfaceRange })}
+          />
+
           <CheckboxFormRow
             label={"Refined"}
             isChecked={value.isRefined}

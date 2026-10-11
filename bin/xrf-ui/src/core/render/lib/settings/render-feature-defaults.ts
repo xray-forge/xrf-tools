@@ -192,6 +192,8 @@ export const DEFAULT_RENDER_PARALLAX_SETTINGS: TRenderParallaxSettings = {
   range: 20,
   shadow: 1,
   steps: 16,
+  surfaceHeight: 0.02,
+  surfaceRange: 12,
 };
 
 /** The engine's own: no contact shadows, and their strengths for when they are drawn, towards four lights a pixel. */

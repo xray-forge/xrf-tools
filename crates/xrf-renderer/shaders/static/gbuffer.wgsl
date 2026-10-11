@@ -313,6 +313,11 @@ struct Footprint {
   uv: vec2<f32>,
   // The base coordinate before any parallax moved it, which the detail is read at, as the engines leave it.
   origin: vec2<f32>,
+  // Where the enhanced parallax marched a steep surface: how far its low ground darkens, and how much of the sun its
+  // relief keeps from its hollows; none and all, and unmarked, where it did not.
+  cavity: f32,
+  relief: f32,
+  is_relief: bool,
   dx: vec2<f32>,
   dy: vec2<f32>,
   lightmap: vec2<f32>,
@@ -323,7 +328,8 @@ struct Footprint {
 fn take_footprint(in: GBufferVarying) -> Footprint {
   let uv: vec2<f32> = in.uv * surfaces[in.surface].tiling;
 
-  return Footprint(uv, uv, dpdx(uv), dpdy(uv), in.lightmap_uv, dpdx(in.lightmap_uv), dpdy(in.lightmap_uv));
+  return Footprint(uv, uv, 0.0, 1.0, false, dpdx(uv), dpdy(uv), in.lightmap_uv, dpdx(in.lightmap_uv),
+    dpdy(in.lightmap_uv));
 }
 
 // The engines' steep parallax (`UpdateTC` under `USE_STEEPPARALLAX`): within `STEEP_FADE.y` metres, the base coordinate
@@ -339,7 +345,15 @@ fn steep_footprint(in: GBufferVarying, at: Footprint) -> Footprint {
   let position: vec3<f32> = (camera.view * vec4<f32>(in.world, 1.0)).xyz;
   let distance: f32 = -position.z;
 
-  if (!has_surfaces_bit(SURFACES_STEEP) || (surface.flags & SURFACE_IS_STEEP) == 0u || distance >= STEEP_FADE.y) {
+  if (!has_surfaces_bit(SURFACES_STEEP) || (surface.flags & SURFACE_IS_STEEP) == 0u) {
+    return at;
+  }
+
+  if (has_surfaces_bit(SURFACES_ENHANCED)) {
+    return surface_relief(in, at, position);
+  }
+
+  if (distance >= STEEP_FADE.y) {
     return at;
   }
 
@@ -377,6 +391,45 @@ fn steep_footprint(in: GBufferVarying, at: Footprint) -> Footprint {
   return out;
 }
 
+// The enhanced parallax on a steep surface, in place of the engines': its bump pair's second's alpha marched as a
+// terrain's layer is, within `parallax_mix.w` metres and `parallax_mix.z` of its coordinate deep, its hollows darkened
+// and shadowed towards the sun.
+fn surface_relief(in: GBufferVarying, at: Footprint, position: vec3<f32>) -> Footprint {
+  let range: f32 = camera.parallax_mix.w;
+  let distance: f32 = -position.z;
+
+  if (distance >= range) {
+    return at;
+  }
+
+  let tangent: vec3<f32> = normalize(in.tangent);
+  let binormal: vec3<f32> = normalize(in.binormal);
+  let normal: vec3<f32> = normalize(in.normal);
+  let eye: vec3<f32> = normalize(vec3<f32>(dot(tangent, -position), dot(binormal, -position), dot(normal, -position)));
+  let sun: vec3<f32> = camera.parallax_light.xyz;
+  let light: vec3<f32> = vec3<f32>(dot(tangent, sun), dot(binormal, sun), dot(normal, sun));
+  let depth: f32 = camera.parallax_mix.z * (1.0 - smoothstep(range * (1.0 - RELIEF_FADE_SHARE), range, distance));
+  let reach: vec2<f32> = -eye.xy / (abs(eye.z) + RELIEF_GRAZING) * depth;
+  let steps: f32 = mix(camera.parallax.x, RELIEF_STEPS_LEAST, saturate(abs(eye.z)));
+  let slot: u32 = surfaces[in.surface].textures[SLOT_BUMP_COMPANION];
+  let lod: f32 = relief_lod(slot, at.dx, at.dy);
+  let hit: vec3<f32> = relief_march(slot, at.uv, lod, 1.0, reach, steps, 3u);
+  let height: f32 = 1.0 - hit.z;
+  var out: Footprint = at;
+
+  out.uv = hit.xy;
+  out.cavity = (1.0 - height * height) * RELIEF_CAVITY * camera.parallax_mix.y;
+  out.is_relief = true;
+
+  if (light.z > 0.0 && camera.parallax_light.w > 0.0) {
+    let to_sun: vec2<f32> = light.xy / (light.z + RELIEF_GRAZING) * depth;
+
+    out.relief = mix(1.0, relief_shadow(slot, hit, lod, 1.0, to_sun, 3u), camera.parallax_light.w);
+  }
+
+  return out;
+}
+
 // What a surfaces debug view draws in place of a surface's albedo, the shading otherwise as it was. The parallax view:
 // how far the coordinate moved, across in red and down in green about a half, out to the march's reach, over full
 // blue; a half in both where the surface takes parallax and stood past its reach; every other surface a dim grey of its
@@ -398,7 +451,8 @@ fn surfaces_shown(in: GBufferVarying, at: Footprint, shaded: GBufferOutput) -> G
 
   if (is_parallax) {
     let is_steep: bool = has_surfaces_bit(SURFACES_STEEP) && (flags & SURFACE_IS_STEEP) != 0u;
-    let moved: vec2<f32> = clamp((at.uv - at.origin) / abs(STEEP_REACH), vec2<f32>(-1.0), vec2<f32>(1.0));
+    let reach: f32 = select(abs(STEEP_REACH), max(camera.parallax_mix.z, 1e-4), has_surfaces_bit(SURFACES_ENHANCED));
+    let moved: vec2<f32> = clamp((at.uv - at.origin) / reach, vec2<f32>(-1.0), vec2<f32>(1.0));
 
     out.albedo = vec4<f32>(select(vec3<f32>(0.08 + 0.25 * brightness), vec3<f32>(moved * 0.5 + 0.5, 1.0), is_steep),
       shaded.albedo.a);
@@ -483,43 +537,51 @@ struct TerrainTexel {
 // The weight under which a terrain's layer is left unread: what it would add is below a channel's rounding, and a mask
 // mostly weighs one or two layers, so most texels skip most of the four.
 const TERRAIN_LAYER_LEAST: f32 = 0.004;
-// The enhanced terrain parallax: the steps a march takes looking straight down, at least; what is added to the eye's
-// rise over the surface, so a grazing look reaches a bounded way along it rather than without end; the share of the
-// range it fades out over, ending there; the halvings a refined march settles by; how far the lowest ground darkens at
-// most; the steps a shadow ray takes towards the sun and how sharply one passing under the relief is shadowed; and the
-// band of height within which layers blending by height share a texel.
-const TERRAIN_STEPS_LEAST: f32 = 3.0;
-const TERRAIN_GRAZING: f32 = 0.41;
-const TERRAIN_FADE_SHARE: f32 = 0.2;
-const TERRAIN_REFINES: u32 = 3u;
-const TERRAIN_CAVITY: f32 = 0.125;
-const TERRAIN_SHADOW_STEPS: u32 = 8u;
-const TERRAIN_SHADOW_SHARPNESS: f32 = 8.0;
+// The enhanced parallax, a terrain's and a steep surface's: the steps a march takes looking straight down, at least;
+// what is added to the eye's rise over the surface, so a grazing look reaches a bounded way along it rather than without
+// end; the share of the range it fades out over, ending there; the halvings a refined march settles by; how far the
+// lowest ground darkens at most; and the steps a shadow ray takes towards the sun and how sharply one passing under the
+// relief is shadowed. Then the band of height within which a terrain's layers blending by height share a texel.
+const RELIEF_STEPS_LEAST: f32 = 3.0;
+const RELIEF_GRAZING: f32 = 0.41;
+const RELIEF_FADE_SHARE: f32 = 0.2;
+const RELIEF_REFINES: u32 = 3u;
+const RELIEF_CAVITY: f32 = 0.125;
+const RELIEF_SHADOW_STEPS: u32 = 8u;
+const RELIEF_SHADOW_SHARPNESS: f32 = 8.0;
 const TERRAIN_BLEND_BAND: f32 = 0.25;
 
-// How deep a layer's surface lies under a coordinate, from nought at its top: its height's depth, by its weight, so a
-// layer weighing little lies nearly flat.
-fn terrain_depth(slot: u32, uv: vec2<f32>, lod: f32, weight: f32) -> f32 {
-  return (1.0 - textureSampleLevel(textures[slot], texture_sampler, uv, lod).r) * weight;
+// How deep a relief lies under a coordinate, from nought at its top: its height's depth, the height in `channel` of
+// its texture, by its weight, so a terrain's layer weighing little lies nearly flat.
+fn relief_depth(slot: u32, uv: vec2<f32>, lod: f32, weight: f32, channel: u32) -> f32 {
+  return (1.0 - textureSampleLevel(textures[slot], texture_sampler, uv, lod)[channel]) * weight;
 }
 
 // The level a height is read at for a footprint, as trilinear sampling would choose it: a march reads at a distance
 // what the eye sees there, never the full texture.
-fn terrain_lod(slot: u32, dx: vec2<f32>, dy: vec2<f32>) -> f32 {
+fn relief_lod(slot: u32, dx: vec2<f32>, dy: vec2<f32>) -> f32 {
   let size: vec2<f32> = vec2<f32>(textureDimensions(textures[slot]));
   let extent: f32 = max(dot(dx * size, dx * size), dot(dy * size, dy * size));
 
   return max(0.5 * log2(max(extent, 1e-8)), 0.0);
 }
 
-// Where a view ray into a layer meets its surface, marched from the top at `uv` along `reach`, the coordinate it moves
-// by down to the deepest, in `steps`: settled between its last two steps as straight lines, then by halving where
-// refined. The coordinate, and the depth.
-fn terrain_march(slot: u32, uv: vec2<f32>, lod: f32, weight: f32, reach: vec2<f32>, steps: f32) -> vec3<f32> {
+// Where a view ray into a relief meets it, marched from the top at `uv` along `reach`, the coordinate it moves by down
+// to the deepest, in `steps`: settled between its last two steps as straight lines, then by halving where refined. The
+// coordinate, and the depth.
+fn relief_march(
+  slot: u32,
+  uv: vec2<f32>,
+  lod: f32,
+  weight: f32,
+  reach: vec2<f32>,
+  steps: f32,
+  channel: u32,
+) -> vec3<f32> {
   let count: u32 = u32(ceil(steps));
   let step: f32 = 1.0 / f32(count);
   var depth: f32 = 0.0;
-  var surface: f32 = terrain_depth(slot, uv, lod, weight);
+  var surface: f32 = relief_depth(slot, uv, lod, weight, channel);
   var before_depth: f32 = 0.0;
   var before_surface: f32 = surface;
 
@@ -531,7 +593,7 @@ fn terrain_march(slot: u32, uv: vec2<f32>, lod: f32, weight: f32, reach: vec2<f3
     before_depth = depth;
     before_surface = surface;
     depth += step;
-    surface = terrain_depth(slot, uv + reach * depth, lod, weight);
+    surface = relief_depth(slot, uv + reach * depth, lod, weight, channel);
   }
 
   let above: f32 = before_surface - before_depth;
@@ -542,10 +604,10 @@ fn terrain_march(slot: u32, uv: vec2<f32>, lod: f32, weight: f32, reach: vec2<f3
     var low: f32 = before_depth;
     var high: f32 = depth;
 
-    for (var index: u32 = 0u; index < TERRAIN_REFINES; index++) {
+    for (var index: u32 = 0u; index < RELIEF_REFINES; index++) {
       let middle: f32 = (low + high) * 0.5;
 
-      if (terrain_depth(slot, uv + reach * middle, lod, weight) <= middle) {
+      if (relief_depth(slot, uv + reach * middle, lod, weight, channel) <= middle) {
         high = middle;
       } else {
         low = middle;
@@ -558,18 +620,18 @@ fn terrain_march(slot: u32, uv: vec2<f32>, lod: f32, weight: f32, reach: vec2<f3
   return vec3<f32>(uv + reach * hit, hit);
 }
 
-// How much of the sun reaches a layer's point at `hit`, its coordinate and depth: a ray rising from it towards the sun
+// How much of the sun reaches a relief's point at `hit`, its coordinate and depth: a ray rising from it towards the sun
 // along `to_sun`, the coordinate it moves by a unit of depth, shadowed softly where it passes under the relief and the
 // more the nearer the point.
-fn terrain_shadow(slot: u32, hit: vec3<f32>, lod: f32, weight: f32, to_sun: vec2<f32>) -> f32 {
+fn relief_shadow(slot: u32, hit: vec3<f32>, lod: f32, weight: f32, to_sun: vec2<f32>, channel: u32) -> f32 {
   var shadow: f32 = 0.0;
 
-  for (var index: u32 = 1u; index <= TERRAIN_SHADOW_STEPS; index++) {
-    let along: f32 = f32(index) / f32(TERRAIN_SHADOW_STEPS);
+  for (var index: u32 = 1u; index <= RELIEF_SHADOW_STEPS; index++) {
+    let along: f32 = f32(index) / f32(RELIEF_SHADOW_STEPS);
     let ray: f32 = hit.z * (1.0 - along);
-    let surface: f32 = terrain_depth(slot, hit.xy + to_sun * (hit.z * along), lod, weight);
+    let surface: f32 = relief_depth(slot, hit.xy + to_sun * (hit.z * along), lod, weight, channel);
 
-    shadow = max(shadow, (ray - surface) * TERRAIN_SHADOW_SHARPNESS * (1.0 - along));
+    shadow = max(shadow, (ray - surface) * RELIEF_SHADOW_SHARPNESS * (1.0 - along));
   }
 
   return 1.0 - saturate(shadow);
@@ -602,12 +664,12 @@ fn terrain_texel(
     let eye: vec3<f32> = normalize(vec3<f32>(dot(tangent, -position), dot(binormal, -position), dot(normal, -position)));
     let sun: vec3<f32> = camera.parallax_light.xyz;
     let light: vec3<f32> = vec3<f32>(dot(tangent, sun), dot(binormal, sun), dot(normal, sun));
-    let depth: f32 = camera.parallax.z * (1.0 - smoothstep(range * (1.0 - TERRAIN_FADE_SHARE), range, -position.z));
+    let depth: f32 = camera.parallax.z * (1.0 - smoothstep(range * (1.0 - RELIEF_FADE_SHARE), range, -position.z));
 
-    reach = -eye.xy / (abs(eye.z) + TERRAIN_GRAZING) * depth;
-    steps = mix(camera.parallax.x, TERRAIN_STEPS_LEAST, saturate(abs(eye.z)));
+    reach = -eye.xy / (abs(eye.z) + RELIEF_GRAZING) * depth;
+    steps = mix(camera.parallax.x, RELIEF_STEPS_LEAST, saturate(abs(eye.z)));
     is_lit = light.z > 0.0 && camera.parallax_light.w > 0.0;
-    to_sun = light.xy / (light.z + TERRAIN_GRAZING) * depth;
+    to_sun = light.xy / (light.z + RELIEF_GRAZING) * depth;
   }
 
   // Each layer's coordinate where its march met it, its height there and its depth; the plane where none marches.
@@ -630,8 +692,8 @@ fn terrain_texel(
 
     if (is_marched) {
       let slot: u32 = surface.terrain.heights[layer];
-      let lod: f32 = terrain_lod(slot, dx, dy);
-      let hit: vec3<f32> = terrain_march(slot, uv, lod, weight, reach, steps);
+      let lod: f32 = relief_lod(slot, dx, dy);
+      let hit: vec3<f32> = relief_march(slot, uv, lod, weight, reach, steps, 0u);
 
       coords[layer] = hit.xy;
       heights[layer] = textureSampleLevel(textures[slot], texture_sampler, hit.xy, lod).r;
@@ -670,12 +732,12 @@ fn terrain_texel(
   }
 
   out.bump.z *= 0.5;
-  out.cavity = select(0.0, out.cavity * TERRAIN_CAVITY * camera.parallax_mix.y, is_marched);
+  out.cavity = select(0.0, out.cavity * RELIEF_CAVITY * camera.parallax_mix.y, is_marched);
 
   if (is_lit) {
     let slot: u32 = surface.terrain.heights[dominant];
-    let shadow: f32 = terrain_shadow(slot, vec3<f32>(coords[dominant], depths[dominant]), lods[dominant],
-      weights[dominant], to_sun);
+    let shadow: f32 = relief_shadow(slot, vec3<f32>(coords[dominant], depths[dominant]), lods[dominant],
+      weights[dominant], to_sun, 0u);
 
     out.relief = mix(1.0, shadow, camera.parallax_light.w);
   }
@@ -697,7 +759,9 @@ fn shade(in: GBufferVarying, base: vec4<f32>, at: Footprint) -> GBufferOutput {
   var detail: vec4<f32> = vec4<f32>(0.5);
 
   let is_terrain: bool = (surface.flags & SURFACE_IS_TERRAIN) != 0u;
-  var relief: f32 = 1.0;
+  var relief: f32 = at.relief;
+
+  diffuse *= 1.0 - at.cavity;
 
   if (is_terrain) {
     let terrain: TerrainTexel = terrain_texel(in, surface, at, detail_uv, detail_dx, detail_dy);
@@ -762,9 +826,9 @@ fn shade(in: GBufferVarying, base: vec4<f32>, at: Footprint) -> GBufferOutput {
     sun = lightmap.g;
   }
 
-  // A terrain's sun term is what its enhanced parallax keeps of the sun, which the sun pass takes, its baked sun unread
-  // as the deferred engines leave it.
-  if (is_terrain) {
+  // A terrain's and a marched steep surface's sun term is what the enhanced parallax keeps of the sun, which the sun
+  // pass takes, the baked sun unread as the deferred engines leave it.
+  if (is_terrain || at.is_relief) {
     sun = relief;
   }
 
@@ -774,7 +838,7 @@ fn shade(in: GBufferVarying, base: vec4<f32>, at: Footprint) -> GBufferOutput {
   out.normal = octahedral_encode(normal);
   // Its alpha holds the marks: what is selected, which the present pass outlines, what is self-lit, foliage and terrain.
   out.material = vec4<f32>(hemi, sun, surface.slice,
-    encode_marks(is_selected(in.entry), (surface.flags & SURFACE_IS_EMISSIVE) != 0u, is_flora, is_terrain,
+    encode_marks(is_selected(in.entry), (surface.flags & SURFACE_IS_EMISSIVE) != 0u, is_flora, is_terrain, at.is_relief,
       in.flora.z > 0.5));
   out.motion = camera_motion(in.world, in.world + in.moved);
 

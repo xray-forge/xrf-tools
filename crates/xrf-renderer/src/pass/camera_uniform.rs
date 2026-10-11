@@ -45,7 +45,7 @@ pub struct CameraUniform {
   pub selection_runs: [[u32; 4]; SELECTION_ROWS],
   /// The enhanced parallax's steps at most, its range in metres, its depth in detail coordinates, and one where its
   /// march is refined; the sun's direction in view space and how much of it its relief keeps from its hollows; how far a
-  /// terrain's layers blend by height and how much its low ground darkens.
+  /// terrain's layers blend by height, how much its low ground darkens, and a steep surface's depth and range.
   pub parallax: Vec4,
   pub parallax_light: Vec4,
   pub parallax_mix: Vec4,
@@ -93,7 +93,12 @@ impl CameraUniform {
       f32::from(u8::from(settings.is_refined)),
     );
     self.parallax_light = to_sun.normalize_or_zero().extend(settings.shadow);
-    self.parallax_mix = Vec4::new(settings.blending, settings.cavity, 0.0, 0.0);
+    self.parallax_mix = Vec4::new(
+      settings.blending,
+      settings.cavity,
+      settings.surface_height,
+      settings.surface_range,
+    );
     self
   }
 

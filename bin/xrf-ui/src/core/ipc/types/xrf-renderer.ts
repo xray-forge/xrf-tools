@@ -1005,6 +1005,12 @@ export type RenderParallaxSettings = {
   blending: number | null;
   /** How much the enhanced parallax darkens the low ground of its relief: none to its whole share. */
   cavity: number | null;
+  /**
+   * How deep the enhanced parallax reaches on a level surface whose texture asks for parallax, in its own texture
+   * coordinates, and the metres within which it is marched there.
+   */
+  surfaceHeight: number | null;
+  surfaceRange: number | null;
 };
 
 /** What a level's particle systems came to over the span reported. */

@@ -24,11 +24,15 @@ pub struct RenderParallaxSettings {
   pub blending: f32,
   /// How much the enhanced parallax darkens the low ground of its relief: none to its whole share.
   pub cavity: f32,
+  /// How deep the enhanced parallax reaches on a level surface whose texture asks for parallax, in its own texture
+  /// coordinates, and the metres within which it is marched there.
+  pub surface_height: f32,
+  pub surface_range: f32,
 }
 
 impl Default for RenderParallaxSettings {
   /// The engines' own, steep as Anomaly's high and extreme presets set it, with the enhanced parallax's strengths for
-  /// when it is drawn.
+  /// when it is drawn: on surfaces within the engines' 12 m.
   fn default() -> Self {
     Self {
       mode: RenderParallaxMode::Engine,
@@ -40,6 +44,8 @@ impl Default for RenderParallaxSettings {
       shadow: 1.0,
       blending: 0.5,
       cavity: 1.0,
+      surface_height: 0.02,
+      surface_range: 12.0,
     }
   }
 }
