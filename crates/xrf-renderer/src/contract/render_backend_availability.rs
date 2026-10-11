@@ -10,6 +10,8 @@ pub struct RenderBackendAvailability {
   pub backend: RenderBackend,
   /// The adapter it would draw on, none where it cannot draw.
   pub adapter: Option<String>,
+  /// The adapter's driver and its version, as the API names them, such as `NVIDIA 617.14`; none where it cannot draw.
+  pub driver: Option<String>,
   /// Why it cannot draw, none where it can.
   pub problem: Option<String>,
   /// Whether `XRF_RENDER_BACKEND` names it, so the renderer starts on it over the settings' choice.

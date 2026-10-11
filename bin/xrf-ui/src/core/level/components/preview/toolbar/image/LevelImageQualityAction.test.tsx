@@ -226,8 +226,8 @@ describe("LevelImageQualityAction", () => {
   it("draws every viewport with the graphics API picked, greying out one this machine cannot draw with", async () => {
     const rendered = renderAction({
       backends: [
-        { adapter: "Test GPU", backend: ERenderBackend.D3D12, isForced: false, problem: null },
-        { adapter: null, backend: ERenderBackend.VULKAN, isForced: false, problem: "No Vulkan here" },
+        { adapter: "Test GPU", backend: ERenderBackend.D3D12, driver: "1.0", isForced: false, problem: null },
+        { adapter: null, backend: ERenderBackend.VULKAN, driver: null, isForced: false, problem: "No Vulkan here" },
       ],
       dlss: ERenderDlssAvailability.UNSUPPORTED,
       isUpscaled: false,

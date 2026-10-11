@@ -111,6 +111,7 @@ macro_rules! for_each_tauri_command_domain {
         command_camera => crate::plugins::render::commands::command_camera::render_command_camera,
         configure => crate::plugins::render::commands::configure::render_configure,
         describe_frame => crate::plugins::render::commands::describe_frame::render_describe_frame,
+        describe_libraries => crate::plugins::render::commands::describe_libraries::render_describe_libraries,
         describe_load => crate::plugins::render::commands::describe_load::render_describe_load,
         describe_problems => crate::plugins::render::commands::describe_problems::render_describe_problems,
         describe_textures => crate::plugins::render::commands::describe_textures::render_describe_textures,
