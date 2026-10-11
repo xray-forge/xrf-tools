@@ -3,6 +3,9 @@
 Run `cargo make <task>` from the repository root. The root tasks are the supported contributor entry points; they
 coordinate the CLI, desktop backend, and UI where necessary.
 
+Every environment variable the binaries and the build read is listed in [ENVIRONMENT.md](./ENVIRONMENT.md), which
+`crates/xrf-env-flags` generates: a new variable is added to its table, not read with `std::env` where it is needed.
+
 ## Common workflows
 
 | Goal                                        | Command                        |

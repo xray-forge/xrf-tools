@@ -26,6 +26,7 @@ xrf-anm = { workspace = true }
 xrf-dds = { workspace = true }
 xrf-dlss = { workspace = true }
 xrf-engine-target = { workspace = true }
+xrf-env-flags = { workspace = true }
 xrf-environment = { workspace = true }
 xrf-error = { workspace = true }
 xrf-material = { workspace = true }

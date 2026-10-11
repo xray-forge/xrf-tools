@@ -12,6 +12,7 @@ embed-resource = "3.0.11"
 
 [dependencies]
 xrf-build-info = { workspace = true }
+xrf-env-flags = { workspace = true }
 # `string` accepts owned values for the builder, which the version text is - it is composed at runtime.
 clap = { version = "4.6.6", features = ["derive", "default", "string"] }
 colored = "3.1.1"

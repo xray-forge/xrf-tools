@@ -1,13 +1,12 @@
-use std::env;
-
 use env_logger::Builder;
 use log::LevelFilter;
+use xrf_env_flags::EnvFlags;
 
 /// Configures logging from `RUST_LOG`, or falls back to warnings in debug builds and errors in release builds.
 pub fn setup_logger() {
   let mut logger: Builder = env_logger::builder();
 
-  if let Ok(rust_log) = env::var("RUST_LOG") {
+  if let Some(rust_log) = EnvFlags::RUST_LOG.read_text() {
     logger.parse_filters(&rust_log);
   } else {
     match cfg!(debug_assertions) {

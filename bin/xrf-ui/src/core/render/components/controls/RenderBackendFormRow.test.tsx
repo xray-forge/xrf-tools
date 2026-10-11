@@ -8,8 +8,8 @@ import { RENDER_BACKEND_AUTO, TRenderBackendChoice } from "@/core/render/lib/set
 import { RenderBackendFormRow } from "./RenderBackendFormRow";
 
 const VULKAN_ONLY: ReadonlyArray<RenderBackendAvailability> = [
-  { adapter: null, backend: ERenderBackend.D3D12, problem: "No D3D12 adapter" },
-  { adapter: "Test GPU", backend: ERenderBackend.VULKAN, problem: null },
+  { adapter: null, backend: ERenderBackend.D3D12, isForced: false, problem: "No D3D12 adapter" },
+  { adapter: "Test GPU", backend: ERenderBackend.VULKAN, isForced: false, problem: null },
 ];
 
 describe("RenderBackendFormRow", () => {
@@ -36,6 +36,20 @@ describe("RenderBackendFormRow", () => {
 
     expect(view.getByRole("group", { name: "Graphics API" })).toHaveAccessibleDescription(
       /Direct3D 12 is not available here, so the renderer fell back\. Drawing with Vulkan on Test GPU\./
+    );
+  });
+
+  it("says the environment asks for an API over the choice", () => {
+    const forced: ReadonlyArray<RenderBackendAvailability> = VULKAN_ONLY.map((it: RenderBackendAvailability) => ({
+      ...it,
+      isForced: it.backend === ERenderBackend.VULKAN,
+    }));
+    const view = render(
+      <RenderBackendFormRow value={ERenderBackend.D3D12} availability={forced} onChange={jest.fn()} />
+    );
+
+    expect(view.getByRole("group", { name: "Graphics API" })).toHaveAccessibleDescription(
+      /XRF_RENDER_BACKEND asks for Vulkan over this choice\. Drawing with Vulkan on Test GPU\./
     );
   });
 

@@ -14,6 +14,7 @@ use crate::core::transport::{TransportEndpoint, TransportOrigins, TransportServe
 use crate::core::window::{WindowHandles, build_main_window};
 use crate::ipc::registry::transport_routes;
 use crate::plugins::registry::domain_plugins;
+use crate::plugins::system::diagnostics::log_startup;
 
 /// Assemble the application from its plugins and hand control to Tauri, logging from the moment its configuration
 /// names where.
@@ -22,6 +23,7 @@ pub fn run() {
 
   setup_logger(&context.config().identifier);
   log::info!("Starting application");
+  log_startup();
 
   // One pool for the process, managed before any plugin's setup, since the renderer's loaders run on it too.
   let execution: ExecutionState = match ExecutionState::new(ExecutionRequest::Auto) {

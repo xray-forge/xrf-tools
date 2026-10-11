@@ -1,3 +1,5 @@
+use xrf_env_flags::EnvFlags;
+
 use crate::contract::render_backend::RenderBackend;
 
 // The backend asked for is tried first, then every other once in the fallback order; none asked tries them all in it.
@@ -33,7 +35,7 @@ fn prefers_the_asked_backend_else_the_first() {
     RenderBackend::Vulkan
   );
 
-  if std::env::var_os(RenderBackend::ENVIRONMENT).is_none() {
+  if EnvFlags::RENDER_BACKEND.get_raw().is_none() {
     assert_eq!(
       RenderBackend::get_asked(Some(RenderBackend::Vulkan)),
       Some(RenderBackend::Vulkan)

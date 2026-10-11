@@ -4,6 +4,7 @@ use std::time::{Duration, Instant};
 use clap::error::ErrorKind;
 use clap::{ArgMatches, Command};
 use xrf_build_info::{BuildInfo, build_info};
+use xrf_env_flags::{EnvFlag, EnvFlags};
 use xrf_job::{ExecutionPlan, ExecutionRequest};
 
 use crate::core::command_context::CommandContext;
@@ -29,6 +30,7 @@ pub fn run() -> ExitCode {
     .about("XRF forge CLI tools application")
     .version(get_short_version(&build))
     .long_version(build.to_string())
+    .after_help(get_environment_help())
     .arg_required_else_help(true)
     .with_reporting();
 
@@ -129,4 +131,19 @@ fn get_short_version(build: &BuildInfo) -> String {
     Some(commit) => format!("{} ({}, {commit})", build.version, build.kind.as_str()),
     None => format!("{} ({})", build.version, build.kind.as_str()),
   }
+}
+
+/// The environment variables the CLI reads, for the end of its help.
+fn get_environment_help() -> String {
+  let flags: Vec<&EnvFlag> = EnvFlags::list_read_by("xrf-cli");
+  let width: usize = flags.iter().map(|flag| flag.name.len()).max().unwrap_or_default();
+  let lines: Vec<String> = flags
+    .iter()
+    .map(|flag| format!("  {:width$}  {}", flag.name, flag.description.replace('`', "")))
+    .collect();
+
+  format!(
+    "Environment:\n{}\n\nEvery variable is described in ENVIRONMENT.md.",
+    lines.join("\n")
+  )
 }
