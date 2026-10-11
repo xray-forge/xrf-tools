@@ -47,6 +47,13 @@ export function SettingsRendererLights(): ReactElement {
         />
 
         <CheckboxFormRow
+          label={"Light shafts"}
+          description={"Shadowed lamps' shafts (r2_volumetric_lights)."}
+          isChecked={lights.isVolumetric}
+          onChange={(isVolumetric: boolean) => onSet({ isVolumetric })}
+        />
+
+        <CheckboxFormRow
           label={"Level lights"}
           description={
             "Static lights from the level file (r2_allow_r1_lights). Already in the lightmaps, so they add on top."

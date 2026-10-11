@@ -11,6 +11,8 @@ pub struct RenderLightsReport {
   pub in_view: u32,
   /// Of them, lights lit with their shadows.
   pub shadowed: u32,
+  /// Of those, lights drawing their shafts.
+  pub volumetric: u32,
   /// Lights in view past the most a frame holds, the farthest.
   pub excess: u32,
   /// Texels of the shadow atlas held, of its whole.

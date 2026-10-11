@@ -69,6 +69,11 @@ impl AlifeObjectHangingLamp {
   pub fn has_point_ambient(&self) -> bool {
     self.light_flags & Self::FLAG_POINT_AMBIENT != 0
   }
+
+  /// Whether its main light asks for shafts.
+  pub fn is_volumetric(&self) -> bool {
+    self.light_flags & Self::FLAG_VOLUMETRIC != 0
+  }
 }
 
 impl ChunkReadWrite for AlifeObjectHangingLamp {

@@ -4,8 +4,9 @@ use crate::pass::exposure_head::ExposureHead;
 use crate::pass::lighting_uniform::LightingUniform;
 use crate::pass::shadow_uniform::ShadowUniform;
 
-/// What the sun's shafts read: the depth, the sun's shadow cascades, the frame's lighting and exposure, and the
-/// half-size march the composite brings up, nothing while it is marched.
+/// What the sun's shafts read: the depth, the sun's shadow cascades, the frame's lighting and exposure, the half-size
+/// march the composite brings up, nothing while it is marched or where the sun's shafts are not drawn, and the local
+/// lights' shafts the composite adds with them, nothing where none draws any.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 1)]
 pub struct SunShaftsParameters {
@@ -21,4 +22,6 @@ pub struct SunShaftsParameters {
   pub exposure: StorageValue<ExposureHead>,
   #[texture(d2, unfilterable)]
   pub shafts: GraphTexture,
+  #[texture(d2, unfilterable)]
+  pub light_volumes: GraphTexture,
 }

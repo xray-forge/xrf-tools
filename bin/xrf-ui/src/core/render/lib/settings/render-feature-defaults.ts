@@ -163,12 +163,13 @@ export const DEFAULT_RENDER_REFLECTION_SETTINGS: TRenderReflectionSettings = {
   traceQuality: ERenderReflectionTraceQuality.HIGH,
 };
 
-/** The engine's own: every spawned light, and none of the level file's. */
+/** The engine's own: every spawned light, and none of the level file's; no shafts until they cost less. */
 export const DEFAULT_RENDER_LIGHTS_SETTINGS: TRenderLightsSettings = {
   isEnabled: true,
   isLevelLights: false,
   isShadowed: true,
   shadowFilter: ERenderLightShadowFilter.ENGINE,
+  isVolumetric: false,
 };
 
 /** The engine's own values (`xrRender_console.cpp`). */

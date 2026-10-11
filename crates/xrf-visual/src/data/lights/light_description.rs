@@ -3,6 +3,7 @@ use xrf_math::Vector3d;
 
 use crate::data::lights::light_kind::LightKind;
 use crate::data::lights::light_motion::LightMotion;
+use crate::data::lights::light_volumetric::LightVolumetric;
 use crate::data::lights::zone_sphere::ZoneSphere;
 
 /// One light of a level, in renderer space, as the engine would light with it.
@@ -43,4 +44,7 @@ pub struct LightDescription {
   /// Its zone's sphere in renderer space, offset from the light: a torrid zone's idle light, which goes out while the
   /// camera stands far from it (`o_switch_2_slow`, `CTorridZone::light_in_slow_mode`). None for one always on.
   pub zone_sphere: Option<ZoneSphere>,
+  /// What its owner sets of its shafts; None for a light whose owner never does (the level file's own lights, a zone's
+  /// idle light that does not ask for them), which even Monolith's forcing leaves without.
+  pub volumetric: Option<LightVolumetric>,
 }

@@ -810,6 +810,8 @@ export type RenderLightsReport = {
   inView: number;
   /** Of them, lights lit with their shadows. */
   shadowed: number;
+  /** Of those, lights drawing their shafts. */
+  volumetric: number;
   /** Lights in view past the most a frame holds, the farthest. */
   excess: number;
   /** Texels of the shadow atlas held, of its whole. */
@@ -827,6 +829,11 @@ export type RenderLightsSettings = {
   /** Whether a light the engine shadows casts its shadows. */
   isShadowed: boolean;
   shadowFilter: RenderLightShadowFilter;
+  /**
+   * Whether shadowed lights draw their shafts (`r2_volumetric_lights`), as the view's engine gives them out; off by
+   * default for their cost, though both engines draw them.
+   */
+  isVolumetric: boolean;
 };
 
 /**
