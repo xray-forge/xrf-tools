@@ -160,7 +160,7 @@ export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings>
     geometryLod: toNumber(0.1, 2),
     isImpostors: FLAG,
     ssaA: toNumber(16, 96),
-    ssaB: toNumber(32, 64),
+    ssaB: toNumber(16, 64),
     ssaDiscard: toNumber(1, 10),
     ssaGlodEnd: toNumber(16, 96),
     ssaGlodStart: toNumber(128, 512),

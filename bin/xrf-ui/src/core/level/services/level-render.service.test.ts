@@ -277,9 +277,9 @@ describe("LevelRenderService", () => {
 
     expect(sent("set_view_options").at(-1)).toEqual({
       options: expect.objectContaining({
-        // The settings' level of detail, the engine's own thresholds by default.
+        // The settings' level of detail: the impostors twice as far as the engine's by default, the rest its own.
         features: expect.objectContaining({
-          lod: expect.objectContaining({ isImpostors: true, ssaA: 64, ssaB: 48, ssaDiscard: 3.5 }),
+          lod: expect.objectContaining({ isImpostors: true, ssaA: 32, ssaB: 24, ssaDiscard: 3.5 }),
         }),
         mode: expect.objectContaining({ isBumped: true, surfaceColor: ERenderSurfaceColor.TEXTURED }),
       }),

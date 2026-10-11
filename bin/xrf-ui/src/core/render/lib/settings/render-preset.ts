@@ -1,11 +1,13 @@
 import {
   ERenderAmbientOcclusionMethod,
   ERenderAntialiasing,
+  ERenderBloomMode,
   ERenderContactShadowMode,
   ERenderDebandingMode,
   ERenderFogMode,
   ERenderFoliageMode,
   ERenderIndirectLightMode,
+  ERenderLightShadowFilter,
   ERenderParallaxMode,
   ERenderRainMode,
   ERenderReflectionMode,
@@ -56,23 +58,34 @@ export const RENDER_PRESETS: Readonly<Record<ERenderPreset, IRenderFeatureSettin
     // The application's own choice over the engine's, as the antialiasing is: the sky's bands smoothed, which reads
     // the sky's own pixels alone and leaves the rest of the frame as drawn.
     debanding: { ...DEFAULT_RENDER_DEBANDING_SETTINGS, mode: ERenderDebandingMode.ENHANCED },
-    // The engine's: the enhanced bloom would set aside the bloom the look reproduces from the game's console.
-    enhancedBloom: DEFAULT_RENDER_ENHANCED_BLOOM_SETTINGS,
+    // The application's own choice over the engine's (owner, 2026-10-11): the enhanced bloom.
+    enhancedBloom: { ...DEFAULT_RENDER_ENHANCED_BLOOM_SETTINGS, mode: ERenderBloomMode.ENHANCED },
     exposure: DEFAULT_RENDER_EXPOSURE_SETTINGS,
     // The application's own choice over the engine's, as the antialiasing is: the fog thickened low down and the
     // frame's bright parts scattered into it, at four small passes.
     fog: { ...DEFAULT_RENDER_FOG_SETTINGS, mode: ERenderFogMode.ENHANCED },
-    // The application's own choice over the engine's, as the antialiasing is: the enhanced foliage motion.
+    // The application's own choice over the engine's, as the antialiasing is: the enhanced foliage motion, each tuft
+    // stood along its ground's slope.
     grass: {
       ...DEFAULT_RENDER_GRASS_SETTINGS,
       foliage: { ...DEFAULT_RENDER_FOLIAGE_SETTINGS, mode: ERenderFoliageMode.ENHANCED },
+      isAligned: true,
+      // Planted out to 150 m rather than the engine's 49.
+      radius: 150,
     },
     // The application's own choice over the engine's, as the antialiasing is: the light bounced in the occlusion's
     // own search.
     indirectLight: { ...DEFAULT_RENDER_INDIRECT_LIGHT_SETTINGS, mode: ERenderIndirectLightMode.ENHANCED },
     isOcclusionCulled: true,
-    lights: DEFAULT_RENDER_LIGHTS_SETTINGS,
-    lod: DEFAULT_RENDER_LOD_SETTINGS,
+    // The application's own choice over the engine's, as the antialiasing is: Anomaly's soft shadows for the lamps.
+    lights: { ...DEFAULT_RENDER_LIGHTS_SETTINGS, shadowFilter: ERenderLightShadowFilter.SOFT },
+    // Trees stand in as impostors twice as far as the engine's: a clump's screen area falls with its distance
+    // squared and the thresholds are squared, so half the engine's `r_ssaLOD_A` and `r_ssaLOD_B`.
+    lod: {
+      ...DEFAULT_RENDER_LOD_SETTINGS,
+      ssaA: DEFAULT_RENDER_LOD_SETTINGS.ssaA / 2,
+      ssaB: DEFAULT_RENDER_LOD_SETTINGS.ssaB / 2,
+    },
     // The application's own choice over the engine's, as the antialiasing is: the terrain marched over its details'
     // heights.
     parallax: { ...DEFAULT_RENDER_PARALLAX_SETTINGS, mode: ERenderParallaxMode.ENHANCED },
@@ -87,7 +100,7 @@ export const RENDER_PRESETS: Readonly<Record<ERenderPreset, IRenderFeatureSettin
       ...DEFAULT_RENDER_SHADOW_SETTINGS,
       contact: { ...DEFAULT_RENDER_CONTACT_SHADOW_SETTINGS, mode: ERenderContactShadowMode.ENHANCED },
     },
-    textureFiltering: ERenderTextureFiltering.ANISOTROPIC8,
+    textureFiltering: ERenderTextureFiltering.ANISOTROPIC16,
     // The engine's full quality, `texture_lod 0`, as Anomaly's extreme preset sets it.
     textureLod: 0,
     upscaling: DEFAULT_RENDER_UPSCALING_SETTINGS,
@@ -111,7 +124,7 @@ export const RENDER_PRESETS: Readonly<Record<ERenderPreset, IRenderFeatureSettin
     rain: DEFAULT_RENDER_RAIN_SETTINGS,
     reflections: DEFAULT_RENDER_REFLECTION_SETTINGS,
     shadows: { ...DEFAULT_RENDER_SHADOW_SETTINGS, isEnabled: false },
-    textureFiltering: ERenderTextureFiltering.ANISOTROPIC8,
+    textureFiltering: ERenderTextureFiltering.ANISOTROPIC16,
     // The engine's full quality, `texture_lod 0`, as Anomaly's extreme preset sets it.
     textureLod: 0,
     upscaling: DEFAULT_RENDER_UPSCALING_SETTINGS,
