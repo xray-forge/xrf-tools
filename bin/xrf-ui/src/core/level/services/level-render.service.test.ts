@@ -66,7 +66,7 @@ const REPORT: RenderFrameReport = {
     { gpuTime: 1.25, name: "g-buffer" },
     { gpuTime: 0.5, name: "sun" },
   ],
-  memory: { scene: 4_194_304, textures: 67_108_864 },
+  memory: { allocated: null, reserved: null, scene: 4_194_304, textures: 67_108_864 },
   lights: {
     atlas: { capacity: 16_777_216, used: 4_194_304 },
     dropped: 3,

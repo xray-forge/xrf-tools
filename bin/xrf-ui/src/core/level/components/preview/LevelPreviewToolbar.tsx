@@ -148,7 +148,9 @@ export function LevelPreviewToolbar({
         <>
           <LevelShadingAction
             options={options}
-            isParallaxAvailable={settings.parallax.isSteep}
+            parallax={toLevelModeFeature("parallax", settings, features)}
+            features={features}
+            onChangeFeatures={onChangeFeatures}
             shading={shading}
             onToggle={onToggle}
             onChangeShading={onChangeShading}

@@ -69,7 +69,7 @@ export const EMPTY_RENDER_FRAME_REPORT: RenderFrameReport = {
   height: 0,
   isGpuTimed: false,
   lights: EMPTY_RENDER_LIGHTS_REPORT,
-  memory: { scene: 0, textures: 0 },
+  memory: { allocated: null, reserved: null, scene: 0, textures: 0 },
   particles: EMPTY_RENDER_PARTICLES_REPORT,
   passes: [],
   phases: EMPTY_RENDER_FRAME_PHASES,

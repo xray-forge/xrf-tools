@@ -6,6 +6,7 @@ import {
   ERenderFogMode,
   ERenderFoliageMode,
   ERenderIndirectLightMode,
+  ERenderParallaxMode,
   ERenderRainMode,
   ERenderReflectionMode,
   ERenderTextureFiltering,
@@ -72,7 +73,9 @@ export const RENDER_PRESETS: Readonly<Record<ERenderPreset, IRenderFeatureSettin
     isOcclusionCulled: true,
     lights: DEFAULT_RENDER_LIGHTS_SETTINGS,
     lod: DEFAULT_RENDER_LOD_SETTINGS,
-    parallax: DEFAULT_RENDER_PARALLAX_SETTINGS,
+    // The application's own choice over the engine's, as the antialiasing is: the terrain marched over its details'
+    // heights.
+    parallax: { ...DEFAULT_RENDER_PARALLAX_SETTINGS, mode: ERenderParallaxMode.ENHANCED },
     // The application's own choice over the engine's, as the antialiasing is: wet surfaces that build up and dry,
     // and puddles.
     rain: { ...DEFAULT_RENDER_RAIN_SETTINGS, mode: ERenderRainMode.ENHANCED },

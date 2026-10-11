@@ -43,7 +43,7 @@ fn get_largest_error(surface: &[f32], heights: &[f32]) -> f32 {
 #[test]
 fn height_field_gives_back_the_surface_its_normals_were_taken_from() {
   let surface: Vec<f32> = create_surface();
-  let heights: Vec<f32> = integrate_normals(SIZE, SIZE, &to_normals(&surface, 1.0), 0.0);
+  let heights: Vec<f32> = integrate_normals(SIZE, SIZE, &to_normals(&surface, 1.0), (0.0, 0.0));
 
   assert!(get_largest_error(&surface, &heights) < 1e-2);
 }
@@ -51,7 +51,7 @@ fn height_field_gives_back_the_surface_its_normals_were_taken_from() {
 #[test]
 fn height_field_reads_a_normal_map_whose_y_runs_up_the_texture() {
   let surface: Vec<f32> = create_surface();
-  let heights: Vec<f32> = integrate_normals(SIZE, SIZE, &to_normals(&surface, -1.0), 0.0);
+  let heights: Vec<f32> = integrate_normals(SIZE, SIZE, &to_normals(&surface, -1.0), (0.0, 0.0));
 
   assert!(get_largest_error(&surface, &heights) < 1e-2);
 }
@@ -73,7 +73,19 @@ fn height_field_fades_relief_broader_than_its_low_cut() {
   let fine = |index: usize| (TAU * 11.0 * (index / SIZE) as f32 / SIZE as f32).sin();
   let surface: Vec<f32> = (0..SIZE * SIZE).map(|index| broad(index) + fine(index)).collect();
   let only_fine: Vec<f32> = (0..SIZE * SIZE).map(fine).collect();
-  let heights: Vec<f32> = integrate_normals(SIZE, SIZE, &to_normals(&surface, 1.0), 8.0);
+  let heights: Vec<f32> = integrate_normals(SIZE, SIZE, &to_normals(&surface, 1.0), (8.0, 0.0));
 
   assert!(get_largest_error(&only_fine, &heights) < 0.25);
+}
+
+#[test]
+fn height_field_fades_relief_finer_than_its_high_cut() {
+  // Two waves across and twenty-four: the first all but kept, the second faded nearly whole.
+  let coarse = |index: usize| (TAU * 2.0 * (index % SIZE) as f32 / SIZE as f32).sin();
+  let grain = |index: usize| (TAU * 24.0 * (index / SIZE) as f32 / SIZE as f32).sin() * 0.5;
+  let surface: Vec<f32> = (0..SIZE * SIZE).map(|index| coarse(index) + grain(index)).collect();
+  let only_coarse: Vec<f32> = (0..SIZE * SIZE).map(coarse).collect();
+  let heights: Vec<f32> = integrate_normals(SIZE, SIZE, &to_normals(&surface, 1.0), (0.0, 8.0));
+
+  assert!(get_largest_error(&only_coarse, &heights) < 0.15);
 }

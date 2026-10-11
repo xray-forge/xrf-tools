@@ -144,6 +144,14 @@ function toLevelSurfaceDressing(reference: string, state: RenderTextureState): I
       };
     }
 
+    case ERenderTextureState.DEFERRED:
+      return {
+        reason: "Held unread until an enhanced parallax or the heights view reads it",
+        reference,
+        state: ELevelSurfaceDressing.STOOD_IN,
+        upload: null,
+      };
+
     case ERenderTextureState.MISSING:
       return {
         reason: "Nothing in the mounted roots answers to it",

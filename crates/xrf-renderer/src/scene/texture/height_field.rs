@@ -15,12 +15,20 @@ const OUTLIER_SHARE: f32 = 0.01;
 /// Waves across the texture below which relief is faded out of a bump's heights: a normal map's slight bias over its
 /// width, which no eye reads in its shading, integrates to swells across the whole tile that parallax would raise.
 pub const BUMP_LOW_CUT: f32 = 8.0;
+/// Texels a wave of relief spans at least before it is faded out of a bump's heights: the grain a normal map shades a
+/// texel at a time raises, under parallax, a fur of thin columns at a glance along the ground.
+pub const BUMP_GRAIN_TEXELS: f32 = 16.0;
 
 /// The heights under a tiling normal map `width` by `height` texels, both powers of two, each normal in tangent space
 /// (`x` along the texture's width, `y` along its height, `z` out of it): in texels, their mean at nought, relief of
-/// fewer than about `low_cut` waves across the texture faded out (none at nought). A normal map's `y` may run either way
-/// down the texture; the one whose slopes are integrable is taken.
-pub fn integrate_normals(width: usize, height: usize, normals: &[[f32; 3]], low_cut: f32) -> Vec<f32> {
+/// fewer than about `low_cut` waves across the texture and of more than about `high_cut` faded out (neither at nought).
+/// A normal map's `y` may run either way down the texture; the one whose slopes are integrable is taken.
+pub fn integrate_normals(
+  width: usize,
+  height: usize,
+  normals: &[[f32; 3]],
+  (low_cut, high_cut): (f32, f32),
+) -> Vec<f32> {
   let slopes: Vec<(f32, f32)> = normals
     .iter()
     .map(|&[x, y, z]| {
@@ -61,15 +69,21 @@ pub fn integrate_normals(width: usize, height: usize, normals: &[[f32; 3]], low_
         continue;
       }
 
-      // conj(d_x) P + conj(d_y) Q over |d_x|² + |d_y|², the broadest waves faded by a Gaussian high pass.
+      // conj(d_x) P + conj(d_y) Q over |d_x|² + |d_y|², the broadest and the finest waves faded by Gaussian passes.
       let (px, py) = (slope_x.0[index], slope_x.1[index]);
       let (qx, qy) = (slope_y.0[index], slope_y.1[index]);
       let waves: f32 = to_waves(column, width).hypot(waves_y);
-      let kept: f32 = if low_cut > 0.0 {
+      let broad: f32 = if low_cut > 0.0 {
         1.0 - (-(waves / low_cut).powi(2)).exp()
       } else {
         1.0
       };
+      let fine: f32 = if high_cut > 0.0 {
+        (-(waves / high_cut).powi(2)).exp()
+      } else {
+        1.0
+      };
+      let kept: f32 = broad * fine;
 
       surface.0[index] = (across_x * px + along_x * py + across_y * qx + along_y * qy) / weight * kept;
       surface.1[index] = (across_x * py - along_x * px + across_y * qy - along_y * qx) / weight * kept;

@@ -1,8 +1,12 @@
 import { default as TextureIcon } from "@mui/icons-material/Texture";
 import { ReactElement } from "react";
 
+import { ERenderParallaxMode } from "@/core/ipc/types/xrf-renderer";
+import { LevelParallaxSettings } from "@/core/level/components/preview/LevelParallaxSettings";
+import { ILevelFeatureOptions } from "@/core/level/lib/features/level-feature-options";
 import { ELevelShading, getLevelShading, LEVEL_SHADINGS } from "@/core/level/lib/view/level-shading";
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
+import { TRenderParallaxSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { EditorPopoverGroup, EditorPopoverGroupSection } from "@/core/shell/editor/EditorPopoverGroup";
 import { ChoiceListFormRow, IChoiceFormRowOption } from "@/core/ui/form";
 import { BaseComponentProps } from "@/lib/dom/element-types";
@@ -15,8 +19,11 @@ const SHADING_OPTIONS: ReadonlyArray<IChoiceFormRowOption<ELevelShading>> = LEVE
 
 interface ILevelShadingActionProps extends BaseComponentProps {
   options: ILevelViewOptions;
-  /** Whether the settings draw any parallax, without which this view has none to show. */
-  isParallaxAvailable: boolean;
+  /** The parallax this view draws with while its toggle is on: the settings' and what the view sets over them. */
+  parallax: TRenderParallaxSettings;
+  /** What the view sets over the settings, the parallax's among them. */
+  features: ILevelFeatureOptions;
+  onChangeFeatures: (features: ILevelFeatureOptions) => void;
   /** What the viewport shows of its surfaces. */
   shading: ELevelShading;
   onToggle: (option: keyof ILevelViewOptions) => void;
@@ -32,12 +39,15 @@ export function LevelShadingAction({
   id,
   className,
   options,
-  isParallaxAvailable,
+  parallax,
+  features,
   shading,
   onToggle,
   onChangeShading,
+  onChangeFeatures,
 }: ILevelShadingActionProps): ReactElement {
   const { isWireframe, isBumped, isWallmarked } = options;
+  const isParallaxAvailable: boolean = parallax.isSteep || parallax.mode === ERenderParallaxMode.ENHANCED;
   const isParallaxed: boolean = options.isParallaxed && isParallaxAvailable;
 
   return (
@@ -90,12 +100,14 @@ export function LevelShadingAction({
             ? isParallaxed
               ? "Surfaces displaced by the height their textures carry"
               : "Every surface flat, its height unread"
-            : "Parallax is off in the settings"
+            : "No parallax is drawn: neither the steep nor the enhanced"
         }
         isOn={isParallaxed}
         isDisabled={!isParallaxAvailable}
         onToggle={() => onToggle("isParallaxed")}
-      />
+      >
+        <LevelParallaxSettings value={parallax} features={features} onChange={onChangeFeatures} />
+      </EditorPopoverGroupSection>
 
       <EditorPopoverGroupSection
         label={"Wall marks"}

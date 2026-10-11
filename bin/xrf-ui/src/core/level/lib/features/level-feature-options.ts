@@ -12,6 +12,7 @@ import {
   TRenderGrassSettings,
   TRenderIndirectLightSettings,
   TRenderLightsSettings,
+  TRenderParallaxSettings,
   TRenderRainSettings,
   TRenderReflectionSettings,
   TRenderShadowSettings,
@@ -45,6 +46,9 @@ export type TLevelFogOptions = TRenderFogSettings;
 /** The sky debanding settings a level view may set for itself: all of them. */
 export type TLevelDebandingOptions = TRenderDebandingSettings;
 
+/** The parallax settings a level view may set for itself: all of them; turning it off is the shading's toggle. */
+export type TLevelParallaxOptions = TRenderParallaxSettings;
+
 /** The bloom's mode and the enhanced bloom's settings a level view may set for itself: all of them. */
 export type TLevelEnhancedBloomOptions = TRenderEnhancedBloomSettings;
 
@@ -74,6 +78,8 @@ export interface ILevelFeatureOptions {
   fog: Partial<TLevelFogOptions>;
   /** The sky debanding, which no toolbar toggle turns off: its own mode does. */
   debanding: Partial<TLevelDebandingOptions>;
+  /** How the surfaces are displaced by their height, which the shading's toggle turns off whole. */
+  parallax: Partial<TLevelParallaxOptions>;
   /** Which bloom draws and the enhanced bloom's strengths, which no toolbar toggle turns off: its own mode does. */
   enhancedBloom: Partial<TLevelEnhancedBloomOptions>;
   /** The mode edges are smoothed with while the settings smooth them at all, or null for the settings' own. */
@@ -101,7 +107,8 @@ const LEVEL_FEATURE_KEYS: {
 };
 
 /** The groups no toolbar toggle turns off, whose own mode does, of which a view may set every setting. */
-export type TLevelModeFeatureKey = "debanding" | "enhancedBloom" | "fog" | "indirectLight" | "rain" | "reflections";
+export type TLevelModeFeatureKey =
+  "debanding" | "enhancedBloom" | "fog" | "indirectLight" | "parallax" | "rain" | "reflections";
 
 /** Each such group's settings a view may set. */
 const LEVEL_MODE_FEATURE_KEYS: {
@@ -111,6 +118,7 @@ const LEVEL_MODE_FEATURE_KEYS: {
   enhancedBloom: ["blur", "exposure", "mode", "sky", "threshold", "vibrance"],
   fog: ["density", "height", "mode", "scattering", "sunColor"],
   indirectLight: ["intensity", "mode", "radius"],
+  parallax: ["blending", "cavity", "height", "isRefined", "isSteep", "mode", "range", "shadow", "steps"],
   rain: ["mode", "puddles", "reflectivity", "ripples"],
   reflections: ["distance", "intensity", "mode", "quality"],
 };
@@ -151,6 +159,7 @@ export function toLevelFeatureOptions(stored: unknown): ILevelFeatureOptions {
     grass: pick("grass"),
     indirectLight: pickModeFeature("indirectLight"),
     lights: pick("lights"),
+    parallax: pickModeFeature("parallax"),
     rain: pickModeFeature("rain"),
     reflections: pickModeFeature("reflections"),
     shadows: pick("shadows"),
