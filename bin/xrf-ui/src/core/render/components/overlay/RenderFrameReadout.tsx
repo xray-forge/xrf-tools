@@ -2,6 +2,7 @@ import { Fragment, ReactElement, ReactNode } from "react";
 
 import { RenderFrameReport, RenderPassCost } from "@/core/ipc/types/xrf-renderer";
 import { RenderViewportOverlay, TRenderOverlayCorner } from "@/core/render/components/overlay/RenderViewportOverlay";
+import { groupRenderPassCosts, IRenderPassGroup } from "@/core/render/lib/frame/render-pass-groups";
 import { abbreviateRenderBackend } from "@/core/render/lib/settings/render-backend-choice";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatMilliseconds } from "@/lib/format/duration";
@@ -29,7 +30,10 @@ function toGpuTotal(passes: ReadonlyArray<RenderPassCost>): number {
 }
 
 export interface IRenderFrameReadoutProps extends BaseComponentProps {
-  /** What the last reported frame cost, with each pass's GPU time listed under the rest while the renderer times them. */
+  /**
+   * What the last reported frame cost, with each pass's GPU time listed under the rest while the renderer times them, a
+   * run of a family's passes summed into one row.
+   */
   report: RenderFrameReport;
   corner?: TRenderOverlayCorner;
   /** Anything the scene can say that a viewport cannot, drawn under the rest. */
@@ -60,10 +64,10 @@ export function RenderFrameReadout({
           <div>GPU</div>
           <div className={"text-right tabular-nums"}>{`${toGpuTotal(report.passes).toFixed(2)} ms`}</div>
 
-          {report.passes.map((pass: RenderPassCost) => (
-            <Fragment key={pass.name}>
-              <div className={"opacity-70"}>{pass.name}</div>
-              <div className={"text-right tabular-nums opacity-70"}>{(pass.gpuTime ?? 0).toFixed(2)}</div>
+          {groupRenderPassCosts(report.passes).map((group: IRenderPassGroup, index: number) => (
+            <Fragment key={`${index}-${group.name}`}>
+              <div className={"opacity-70"}>{group.count > 1 ? `${group.name} ×${group.count}` : group.name}</div>
+              <div className={"text-right tabular-nums opacity-70"}>{group.gpuTime.toFixed(2)}</div>
             </Fragment>
           ))}
         </div>

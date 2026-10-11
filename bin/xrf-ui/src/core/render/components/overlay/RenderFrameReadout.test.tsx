@@ -77,4 +77,25 @@ describe("RenderFrameReadout", () => {
 
     expect(untimed.queryByTestId("render-frame-passes")).not.toBeInTheDocument();
   });
+
+  it("sums a run of a family's passes into one row under the words they share", () => {
+    const passes = [
+      { gpuTime: 0.5, name: "g-buffer" },
+      { gpuTime: 0.25, name: "reflection trace" },
+      { gpuTime: 0.25, name: "reflection scene" },
+      { gpuTime: 0.5, name: "reflection resolve" },
+      { gpuTime: 0.125, name: "sky prefilter 1" },
+      { gpuTime: 0.125, name: "sky prefilter 2" },
+      { gpuTime: 0.25, name: "sky prefilter 3" },
+      { gpuTime: 0.5, name: "sun shadow 0" },
+      { gpuTime: 0.25, name: "sun shadow 1" },
+    ];
+    const { getByTestId } = render(
+      <RenderFrameReadout report={{ ...EMPTY_RENDER_FRAME_REPORT, isGpuTimed: true, passes }} />
+    );
+
+    expect(getByTestId("render-frame-passes")).toHaveTextContent(
+      "GPU2.75 msg-buffer0.50reflection ×31.00sky prefilter ×30.50sun shadow 00.50sun shadow 10.25"
+    );
+  });
 });

@@ -28,7 +28,7 @@ impl Default for RenderEnhancedBloomSettings {
       threshold: 5.0,
       exposure: 3.0,
       blur: 3.0,
-      vibrance: 1.5,
+      vibrance: 1.0,
       sky: 0.6,
     }
   }

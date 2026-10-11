@@ -101,7 +101,7 @@ export const DEFAULT_RENDER_ENHANCED_BLOOM_SETTINGS: TRenderEnhancedBloomSetting
   mode: ERenderBloomMode.ENGINE,
   sky: 0.6,
   threshold: 5,
-  vibrance: 1.5,
+  vibrance: 1,
 };
 
 /** The engine's own foliage motion, with the enhanced motion's designed strengths. */
@@ -112,8 +112,8 @@ export const DEFAULT_RENDER_FOLIAGE_SETTINGS: TRenderFoliageSettings = {
   grassWave: 0.4,
   minSpeed: 0.1,
   mode: ERenderFoliageMode.ENGINE,
-  sssColor: 1,
-  sssIntensity: 2,
+  sssColor: 0.75,
+  sssIntensity: 1,
   treesBend: 0.5,
   treesSpeed: 11,
   treesTrunk: 0.15,
