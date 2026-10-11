@@ -124,8 +124,7 @@ impl StaticTrace {
         continue;
       }
 
-      let descriptors: Vec<wgpu::BlasTriangleGeometrySizeDescriptor> =
-        geometries.iter().map(Self::get_size).collect();
+      let descriptors: Vec<wgpu::BlasTriangleGeometrySizeDescriptor> = geometries.iter().map(Self::get_size).collect();
       let blas: wgpu::Blas = device.create_blas(
         &wgpu::CreateBlasDescriptor {
           label: Some("static trace sector"),
@@ -194,9 +193,9 @@ impl StaticTrace {
     }
 
     for index in 0..self.tlas.get().len() {
-      self.tlas[index] = instances.get(index).map(|(sector, first)| {
-        wgpu::TlasInstance::new(&self.sectors[sector].blas, Self::IDENTITY, *first, 0xff)
-      });
+      self.tlas[index] = instances
+        .get(index)
+        .map(|(sector, first)| wgpu::TlasInstance::new(&self.sectors[sector].blas, Self::IDENTITY, *first, 0xff));
     }
 
     encoder.build_acceleration_structures(entries.iter(), std::iter::once(&self.tlas));
