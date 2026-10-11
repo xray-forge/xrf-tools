@@ -51,23 +51,17 @@ jobs:
         shell: bash
         run: echo "XRF_BUILD_TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
 
-      - name: Install UI dependencies
-        run: pnpm.cmd install --frozen-lockfile
-
-      - name: Build UI
-        run: pnpm.cmd --dir bin/xrf-ui build
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-make@0.37.24
 
       # No CARGO_PROFILE_RELEASE_* overrides anywhere in this workflow: the committed profile is the
       # maximal build, so producing it means leaving it alone.
       - name: Build CLI
-        run: cargo build -p xrf-cli --release --locked
+        run: cargo make build-cli-release
 
-      - name: Build application
-        working-directory: bin/xrf-app
-        run: ..\xrf-ui\node_modules\.bin\tauri.cmd build --ci --no-bundle --features dlss --config tauri.ci.conf.json --config tauri.dlss.conf.json
-
-      - name: Package the application
-        run: node cli/package/app.mjs --name xrf-app-windows-x64
+      - name: Build and package the application
+        run: cargo make package-app
 
       - name: Upload the optimized Windows CLI
         uses: actions/upload-artifact@v7

@@ -1,7 +1,7 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="format: check" type="CargoCommandRunConfiguration" factoryName="Cargo Command"
                  folderName="format">
-    <option name="command" value="fmt --all -- --check"/>
+    <option name="command" value="make check-format"/>
     <option name="workingDirectory" value="file://$PROJECT_DIR$"/>
     <envs/>
     <option name="emulateTerminal" value="true"/>

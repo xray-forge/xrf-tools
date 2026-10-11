@@ -1,10 +1,14 @@
 # Development commands
 
-Run `cargo make <task>` from the repository root. The root tasks are the supported contributor entry points; they
-coordinate the CLI, desktop backend, and UI where necessary.
+Run every task with `cargo make <task>` from the repository root. The root `Makefile.toml` defines all tasks, and each
+task runs once for the whole workspace. List them with `cargo make --list-all-steps`.
 
-Every environment variable the binaries and the build read is listed in [ENVIRONMENT.md](./ENVIRONMENT.md), which
-`crates/xrf-env-flags` generates: a new variable is added to its table, not read with `std::env` where it is needed.
+CI's Windows jobs run the same tasks, so a passing `cargo make verify` means their checks pass too. The desktop tasks
+use the Tauri CLI version locked in `bin/xrf-ui`, so `cargo-make` is the only tool to install globally.
+
+[ENVIRONMENT.md](./ENVIRONMENT.md) lists every environment variable the binaries and the build read.
+`crates/xrf-env-flags` generates it. To add a variable, add it to that crate's table instead of reading it with
+`std::env`.
 
 ## Common workflows
 
@@ -30,44 +34,51 @@ names the code that ships.
 
 ### Development
 
-| Task                | What it does                                               |
-|---------------------|------------------------------------------------------------|
-| `dev-app`           | Runs the desktop backend and UI in watch mode.             |
-| `dev-app-optimized` | Runs the same watch mode with the `dev-optimized` profile. |
-| `dev-app-profiling` | Runs the same watch mode with the `profiling` profile.     |
-| `serve-backend`     | Runs the desktop backend without the UI dev server.        |
-| `serve-ui`          | Runs the Vite UI dev server without the backend.           |
+| Task                | What it does                                                        |
+|---------------------|---------------------------------------------------------------------|
+| `dev-app`           | Runs the desktop backend and UI in watch mode.                      |
+| `dev-app-optimized` | Runs the same watch mode with DLSS and the `dev-optimized` profile. |
+| `dev-app-profiling` | Runs the same watch mode with DLSS and the `profiling` profile.     |
+| `serve-backend`     | Runs the desktop backend without the UI dev server.                 |
+| `serve-ui`          | Runs the Vite UI dev server without the backend.                    |
 
 ### Build
 
-| Task                | What it does                                                                                          |
-|---------------------|-------------------------------------------------------------------------------------------------------|
-| `build-cli`         | Builds the CLI in debug mode.                                                                         |
-| `build-cli-release` | Builds the CLI in release mode.                                                                       |
-| `build-app`         | Builds the desktop application in debug mode.                                                         |
-| `build-app-release` | Builds the desktop application in release mode, with DLSS, and installs locked UI dependencies first. |
-| `package-app`       | Builds the release application and packages it as `target/package/xrf-app-windows-x64.zip`.           |
-| `fetch-sdks`        | Fetches the SDKs the optional native features build against into `.sdks/`.                            |
+| Task                | What it does                                                                                           |
+|---------------------|--------------------------------------------------------------------------------------------------------|
+| `build-cli`         | Builds the CLI in debug mode.                                                                          |
+| `build-cli-release` | Builds the CLI in release mode.                                                                        |
+| `build-app`         | Builds the desktop application in debug mode, without DLSS.                                            |
+| `build-app-release` | Builds the desktop application in release mode, with DLSS. Sets `XRF_BUILD_KIND=optimized` unless set. |
+| `package-app`       | Builds the release application and packs it into `target/package/<PACKAGE_NAME>.zip`.                  |
+| `fetch-sdks`        | Fetches the pinned DLSS SDK, Vulkan headers and libclang into `.sdks/`.                                |
+
+`package-app` names the archive `xrf-app-windows-x64` unless `PACKAGE_NAME` is set. `fetch-sdks` skips anything
+already at its pinned version, so repeated runs fetch nothing.
 
 ### Verification
 
 | Task                | What it does                                                                                          |
 |---------------------|-------------------------------------------------------------------------------------------------------|
 | `format`            | Formats the Rust codebase.                                                                            |
-| `format-check`      | Checks Rust formatting without writing files.                                                         |
-| `lint`              | Runs Clippy across the workspace and all targets.                                                     |
-| `test`              | Runs Cargo Make's workspace test flow.                                                                |
-| `test-workspace`    | Runs workspace library and binary tests and checks generated frontend bindings.                       |
+| `check-format`      | Checks Rust formatting without writing files.                                                         |
+| `lint`              | Runs Clippy on all workspace targets with DLSS. Fetches the SDKs first.                               |
+| `test`              | Runs workspace library and binary tests with DLSS and checks the generated frontend bindings.         |
 | `test-error-derive` | Runs the `xrf-error-derive` UI diagnostic snapshots.                                                  |
+| `install-ui`        | Installs the locked TypeScript dependencies.                                                          |
+| `test-ui`           | Runs the tests of every TypeScript workspace member.                                                  |
 | `verify-ui`         | Installs locked TypeScript dependencies, then typechecks, tests, and lints every workspace member.    |
 | `verify`            | Runs the full CI-gated suite: format check, lint, workspace tests, derive diagnostics, and UI checks. |
+
+`lint` and `test` enable the Cargo features listed in `CHECK_FEATURES` in `Makefile.toml`. Change the list there;
+CI follows because it runs the same tasks.
 
 ### Documentation and generated code
 
 | Task                           | What it does                                                                                  |
 |--------------------------------|-----------------------------------------------------------------------------------------------|
-| `doc`                          | Generates Rust documentation for workspace members.                                           |
-| `docs-cli`                     | Generates the CLI command reference from the Clap definitions into `target/doc-commands`.     |
+| `doc`                          | Generates Rust documentation for workspace members, without dependencies.                     |
+| `doc-cli`                      | Generates the CLI command reference from the Clap definitions into `target/doc-commands`.     |
 | `generate-typescript-bindings` | Emits the generated TypeScript mirrors and Tauri command bindings.                            |
 | `format-typescript-bindings`   | Formats and lints the generated TypeScript bindings.                                          |
 | `generate-typescript`          | Regenerates and formats the TypeScript bindings. Use it after changing IPC types or commands. |
@@ -86,13 +97,13 @@ and the Tauri CLI. The CLI-only tasks need Rust and Cargo Make.
 ### DLSS
 
 The desktop app upscales with NVIDIA DLSS when built with the `dlss` feature (`cargo build -p xrf-app --features dlss`),
-on an RTX GPU, with either graphics API. Development builds leave it off and need nothing below; `cargo make
-build-app-release` builds with it.
+on an RTX GPU, with either graphics API. `dev-app` and `build-app` build without it and need none of the setup below.
+`build-app-release`, `dev-app-optimized`, `dev-app-profiling`, `lint` and `test` build with it.
 
 - `cargo make fetch-sdks` checks the DLSS SDK and Vulkan's C headers out into `.sdks/`, each pinned to a commit, only
   the files the build reads, and on Windows places LLVM's libclang there for bindgen. Whatever is already there at the
-  pinned commit or hash is left alone, so it fetches nothing on a second run; `build-app-release` runs it first.
-  `.cargo/config.toml` points `DLSS_SDK`, `VULKAN_SDK` and `LIBCLANG_PATH` there; any set in the environment wins.
+  pinned commit or hash is left alone, so it fetches nothing on a second run. Every task that builds with DLSS runs it
+  first. `.cargo/config.toml` points `DLSS_SDK`, `VULKAN_SDK` and `LIBCLANG_PATH` there; any set in the environment wins.
 - Elsewhere than Windows, libclang comes from the system (libclang-dev or LLVM), or `LIBCLANG_PATH`.
 - A build with the feature copies `nvngx_dlss.dll`, `nvngx_dlssd.dll` and NVIDIA's `LICENSE.txt` into its profile's
   `resources/renderer/dlss/` (`bin/xrf-app/tauri.dlss.conf.json`). NVIDIA's licence lets them ship only inside the
