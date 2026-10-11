@@ -2,13 +2,14 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 import { userEvent } from "@testing-library/user-event";
 
 import { TranslationsBuilderService } from "@/applications/translations-builder/services/builder";
+import { clearLocalStorage } from "@/core/storage";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 import { TranslationsBuilderApplication } from "./TranslationsBuilderApplication";
 
 describe("TranslationsBuilderApplication", () => {
-  beforeEach(() => window.localStorage.clear());
+  beforeEach(() => clearLocalStorage());
 
   it("starts with all languages and lets the sort label toggle the explained input", async () => {
     const { container } = mockInjectedService(TranslationsBuilderService);

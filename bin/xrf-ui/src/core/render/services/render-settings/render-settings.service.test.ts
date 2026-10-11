@@ -5,11 +5,12 @@ import { DEFAULT_RENDER_FEATURE_CHOICE } from "@/core/render/lib/settings/render
 import { DEFAULT_PERIODIC_BUDGET } from "@/core/render/lib/settings/render-periodic-budget";
 import { ERenderPreset, RENDER_PRESETS } from "@/core/render/lib/settings/render-preset";
 import { RenderSettingsService } from "@/core/render/services/render-settings/render-settings.service";
+import { clearLocalStorage, getLocalStorageValue, setLocalStorageValue } from "@/core/storage";
 import { mockInjectedService } from "@/fixtures/utils/container";
 
 describe("RenderSettingsService", () => {
   beforeEach(() => {
-    window.localStorage.clear();
+    clearLocalStorage();
   });
 
   it("caps viewports at sixty until something says otherwise", () => {
@@ -24,7 +25,7 @@ describe("RenderSettingsService", () => {
     service.setFrameRateLimit("30");
 
     expect(service.frameRateLimit).toBe("30");
-    expect(window.localStorage.getItem("xrf.preference.frame-rate-limit")).toBe("30");
+    expect(getLocalStorageValue("xrf.preference.frame-rate-limit")).toBe("30");
     expect(mockInjectedService(RenderSettingsService).service.frameRateLimit).toBe("30");
   });
 
@@ -37,7 +38,7 @@ describe("RenderSettingsService", () => {
     service.setFrameRateLimit("120");
     service.setVsync(false);
 
-    expect(window.localStorage.getItem("xrf.preference.vsync")).toBe("false");
+    expect(getLocalStorageValue("xrf.preference.vsync")).toBe("false");
     expect(mockInjectedService(RenderSettingsService).service.renderSettings.frameRate).toEqual({
       isVsync: false,
       limit: 120,
@@ -45,7 +46,7 @@ describe("RenderSettingsService", () => {
   });
 
   it("reads a frame rate limit it does not offer as no cap", () => {
-    window.localStorage.setItem("xrf.preference.frame-rate-limit", "unlimited");
+    setLocalStorageValue("xrf.preference.frame-rate-limit", "unlimited");
 
     expect(mockInjectedService(RenderSettingsService).service.frameRateLimit).toBe("none");
   });
@@ -59,7 +60,7 @@ describe("RenderSettingsService", () => {
     service.setGpuTimed(true);
 
     expect(service.rendererChoice).toEqual(DEFAULT_RENDER_FEATURE_CHOICE);
-    expect(window.localStorage.getItem("xrf.preference.gpu-timed")).toBe("true");
+    expect(getLocalStorageValue("xrf.preference.gpu-timed")).toBe("true");
     expect(mockInjectedService(RenderSettingsService).service.renderSettings.isGpuTimed).toBe(true);
   });
 
@@ -117,7 +118,7 @@ describe("RenderSettingsService", () => {
   });
 
   it("falls back to Base for a stored choice that does not parse", () => {
-    window.localStorage.setItem("xrf.preference.renderer-features", "{not json");
+    setLocalStorageValue("xrf.preference.renderer-features", "{not json");
 
     expect(mockInjectedService(RenderSettingsService).service.rendererChoice.preset).toBe(ERenderPreset.BASE);
   });

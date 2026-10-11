@@ -7,6 +7,7 @@ import { LevelSunAction } from "@/core/level/components/preview/toolbar/lighting
 import { DEFAULT_LEVEL_VIEW_OPTIONS } from "@/core/level/lib/view/level-view-options";
 import { DEFAULT_LEVEL_MANUAL_WEATHER } from "@/core/level/lib/weather/level-manual-weather";
 import { DEFAULT_RENDER_VOLUMETRIC_SETTINGS } from "@/core/render/lib/settings/render-feature-defaults";
+import { clearLocalStorage } from "@/core/storage";
 import { resetMockInvoke } from "@/fixtures/mocks/tauri.mocks";
 import {
   ILevelViewContainerDescriptor,
@@ -39,7 +40,7 @@ async function openSettings(rendered: TLevelViewRenderResult): Promise<void> {
 }
 
 beforeEach(() => {
-  window.localStorage.clear();
+  clearLocalStorage();
 });
 
 afterEach(() => {

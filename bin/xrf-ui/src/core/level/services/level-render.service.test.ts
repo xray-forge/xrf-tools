@@ -36,6 +36,7 @@ import { DEFAULT_RENDER_GRAPH_SETTINGS } from "@/core/render/lib/settings/render
 import { DEFAULT_PERIODIC_BUDGET } from "@/core/render/lib/settings/render-periodic-budget";
 import { ERenderResolution } from "@/core/render/lib/settings/render-resolution";
 import { RenderSettingsService } from "@/core/render/services/render-settings";
+import { clearLocalStorage } from "@/core/storage";
 import { mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
 import { mockRenderLoadReport } from "@/fixtures/mocks/render.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
@@ -181,7 +182,7 @@ describe("LevelRenderService", () => {
     resetMockInvoke();
     resetMockChannels();
     mockInvoke.mockClear();
-    window.localStorage.clear();
+    clearLocalStorage();
   });
 
   it("attaches a native viewport to its window and stands the camera at the level's start", async () => {

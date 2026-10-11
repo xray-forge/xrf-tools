@@ -4,6 +4,7 @@ import { flowResult } from "@wirestate/mobx";
 
 import { FALLBACK_PACK_CONFIG } from "@/applications/archives-packer/lib/pack-config";
 import { PackerService } from "@/applications/archives-packer/services/packer";
+import { clearLocalStorage, setLocalStorageValue } from "@/core/storage";
 import { mockArchivePackResult } from "@/fixtures/mocks/archive.mocks";
 import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
@@ -13,9 +14,9 @@ import { ArchivesPackerApplication } from "./ArchivesPackerApplication";
 
 describe("Archives packer outcomes", () => {
   beforeEach(() => {
-    window.localStorage.clear();
-    window.localStorage.setItem("xrf.form.archives-packer.source", "C:\\in");
-    window.localStorage.setItem("xrf.form.archives-packer.destination", "C:\\out");
+    clearLocalStorage();
+    setLocalStorageValue("xrf.form.archives-packer.source", "C:\\in");
+    setLocalStorageValue("xrf.form.archives-packer.destination", "C:\\out");
   });
 
   describe.each(["Source", "Output"])("editing %s", (label) => {

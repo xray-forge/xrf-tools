@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { Optional } from "@xrf/types";
 
+import { clearLocalStorage, getLocalStorageValue, listLocalStorageKeys, setLocalStorageValue } from "@/core/storage";
+
 import {
   clearStorageGroup,
   describeKeyCount,
@@ -31,7 +33,7 @@ function keysOf(usage: IStorageGroupUsage): Array<string> {
 
 describe("measureLocalStorage", () => {
   beforeEach(() => {
-    window.localStorage.clear();
+    clearLocalStorage();
   });
 
   it("reads an empty store as nothing, still naming every group", () => {
@@ -42,35 +44,35 @@ describe("measureLocalStorage", () => {
   });
 
   it("counts the key as well as the value, two bytes per code unit", () => {
-    window.localStorage.setItem("ab", "cde");
+    setLocalStorageValue("ab", "cde");
 
     // Both are stored, so both are measured: five code units, ten bytes.
     expect(measureLocalStorage().total).toBe(10);
   });
 
   it("puts every key in exactly one group, so the parts sum to the whole", () => {
-    window.localStorage.setItem("xrf.form-recents.configs-verifier.directory", "[]");
-    window.localStorage.setItem("xrf.form.configs-verifier.directory", "C:\\gamedata\\configs");
-    window.localStorage.setItem("test-gamedata-path", "C:\\gamedata");
-    window.localStorage.setItem("xrf.panels.left.width", "320");
-    window.localStorage.setItem("xrf.preference.dev-mode", "true");
-    window.localStorage.setItem("xrf.preference.theme", "dark");
-    window.localStorage.setItem("something-nobody-grouped", "1");
+    setLocalStorageValue("xrf.form-recents.configs-verifier.directory", "[]");
+    setLocalStorageValue("xrf.form.configs-verifier.directory", "C:\\gamedata\\configs");
+    setLocalStorageValue("test-gamedata-path", "C:\\gamedata");
+    setLocalStorageValue("xrf.panels.left.width", "320");
+    setLocalStorageValue("xrf.preference.dev-mode", "true");
+    setLocalStorageValue("xrf.preference.theme", "dark");
+    setLocalStorageValue("something-nobody-grouped", "1");
 
     const usage: IStorageUsage = measureLocalStorage();
     const counted: number = usage.groups.reduce((total: number, it: IStorageGroupUsage) => total + it.size, 0);
     const keys: number = usage.groups.reduce((total: number, it: IStorageGroupUsage) => total + it.entries.length, 0);
 
     expect(counted).toBe(usage.total);
-    expect(keys).toBe(window.localStorage.length);
+    expect(keys).toBe(listLocalStorageKeys().length);
   });
 
   it("classifies each kind of key where it belongs", () => {
-    window.localStorage.setItem("xrf.form-recents.configs-verifier.directory", "[]");
-    window.localStorage.setItem("xrf.form.configs-verifier.directory", "C:\\gamedata\\configs");
-    window.localStorage.setItem("test-gamedata-path", "C:\\gamedata");
-    window.localStorage.setItem("xrf.panels.left.width", "320");
-    window.localStorage.setItem("xrf.preference.theme", "dark");
+    setLocalStorageValue("xrf.form-recents.configs-verifier.directory", "[]");
+    setLocalStorageValue("xrf.form.configs-verifier.directory", "C:\\gamedata\\configs");
+    setLocalStorageValue("test-gamedata-path", "C:\\gamedata");
+    setLocalStorageValue("xrf.panels.left.width", "320");
+    setLocalStorageValue("xrf.preference.theme", "dark");
 
     const usage: IStorageUsage = measureLocalStorage();
 
@@ -85,7 +87,7 @@ describe("measureLocalStorage", () => {
   });
 
   it("gives an unclaimed key to the catch-all rather than dropping it", () => {
-    window.localStorage.setItem("a-key-from-some-future-feature", "value");
+    setLocalStorageValue("a-key-from-some-future-feature", "value");
 
     const usage: IStorageUsage = measureLocalStorage();
 
@@ -94,8 +96,8 @@ describe("measureLocalStorage", () => {
   });
 
   it("lists the biggest key of a group first", () => {
-    window.localStorage.setItem("xrf.form.a.b", "short");
-    window.localStorage.setItem("xrf.form.c.d", "a much longer stored path than the other one");
+    setLocalStorageValue("xrf.form.a.b", "short");
+    setLocalStorageValue("xrf.form.c.d", "a much longer stored path than the other one");
 
     expect(keysOf(findGroup(measureLocalStorage(), EStorageGroup.FORM_VALUES))[0]).toBe("xrf.form.c.d");
   });
@@ -141,20 +143,20 @@ describe("describeKeyCount", () => {
 
 describe("clearStorageGroup", () => {
   beforeEach(() => {
-    window.localStorage.clear();
+    clearLocalStorage();
   });
 
   it("empties its own keys and leaves every other group alone", () => {
-    window.localStorage.setItem("xrf.form-recents.a.b", "[]");
-    window.localStorage.setItem("xrf.form.a.b", "C:\\gamedata");
-    window.localStorage.setItem("test-gamedata-path", "C:\\gamedata");
+    setLocalStorageValue("xrf.form-recents.a.b", "[]");
+    setLocalStorageValue("xrf.form.a.b", "C:\\gamedata");
+    setLocalStorageValue("test-gamedata-path", "C:\\gamedata");
 
     const usage: IStorageUsage = measureLocalStorage();
 
     clearStorageGroup(findGroup(usage, EStorageGroup.RECENT_PATHS));
 
-    expect(window.localStorage.getItem("xrf.form-recents.a.b")).toBeNull();
-    expect(window.localStorage.getItem("xrf.form.a.b")).toBe("C:\\gamedata");
-    expect(window.localStorage.getItem("test-gamedata-path")).toBe("C:\\gamedata");
+    expect(getLocalStorageValue("xrf.form-recents.a.b")).toBeNull();
+    expect(getLocalStorageValue("xrf.form.a.b")).toBe("C:\\gamedata");
+    expect(getLocalStorageValue("test-gamedata-path")).toBe("C:\\gamedata");
   });
 });

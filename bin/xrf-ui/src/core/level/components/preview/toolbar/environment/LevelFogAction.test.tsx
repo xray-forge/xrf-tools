@@ -5,6 +5,7 @@ import { userEvent } from "@testing-library/user-event";
 import { ERenderFogMode } from "@/core/ipc/types/xrf-renderer";
 import { LevelFogAction } from "@/core/level/components/preview/toolbar/environment/LevelFogAction";
 import { DEFAULT_RENDER_FOG_SETTINGS } from "@/core/render/lib/settings/render-feature-defaults";
+import { clearLocalStorage } from "@/core/storage";
 import {
   ILevelViewContainerDescriptor,
   mockLevelViewContainer,
@@ -29,7 +30,7 @@ async function renderOpenAction(): Promise<TLevelViewRenderResult> {
 }
 
 beforeEach(() => {
-  window.localStorage.clear();
+  clearLocalStorage();
 });
 
 describe("LevelFogAction", () => {

@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { act, renderHook } from "@testing-library/react";
 
-import { MEDIA_VOLUME_STORAGE_KEY } from "@/core/storage";
+import { clearLocalStorage, MEDIA_VOLUME_STORAGE_KEY, setLocalStorageValue } from "@/core/storage";
 import { IMediaVolume, useMediaVolume } from "@/core/ui/media/use-media-volume";
 
 describe("useMediaVolume", () => {
   beforeEach(() => {
-    window.localStorage.clear();
+    clearLocalStorage();
   });
 
   it("starts at full volume when nothing was ever chosen", () => {
@@ -44,7 +44,7 @@ describe("useMediaVolume", () => {
   it("falls back to full volume rather than silence when the stored value is unusable", () => {
     // Silence recovered from a corrupt value looks like broken playback, and sends the user hunting for a mute button.
     for (const stored of ["", "loud", "2", "-0.5", "NaN"]) {
-      window.localStorage.setItem("xrf.preference.media-volume", stored);
+      setLocalStorageValue("xrf.preference.media-volume", stored);
 
       const volume: IMediaVolume = renderHook(() => useMediaVolume()).result.current;
 
@@ -53,13 +53,13 @@ describe("useMediaVolume", () => {
   });
 
   it("rejects stored text with a numeric prefix and trailing garbage", () => {
-    window.localStorage.setItem(MEDIA_VOLUME_STORAGE_KEY, "0junk");
+    setLocalStorageValue(MEDIA_VOLUME_STORAGE_KEY, "0junk");
 
     expect(renderHook(() => useMediaVolume()).result.current.value).toBe(1);
   });
 
   it("treats whitespace-only storage as absent rather than zero", () => {
-    window.localStorage.setItem(MEDIA_VOLUME_STORAGE_KEY, " \t\n ");
+    setLocalStorageValue(MEDIA_VOLUME_STORAGE_KEY, " \t\n ");
 
     expect(renderHook(() => useMediaVolume()).result.current.value).toBe(1);
   });

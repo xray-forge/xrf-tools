@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 import { fireEvent, waitFor } from "@testing-library/react";
 
 import { SpawnConversionService } from "@/core/spawn/services/spawn-conversion.service";
+import { clearLocalStorage, setLocalStorageValue } from "@/core/storage";
 import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
@@ -9,9 +10,9 @@ import { SpawnEditorUnpackForm } from "./SpawnEditorUnpackForm";
 
 describe("SpawnEditorUnpackForm outcomes", () => {
   beforeEach(() => {
-    window.localStorage.clear();
-    window.localStorage.setItem("xrf.form.spawn-unpacker.source", "C:\\source");
-    window.localStorage.setItem("xrf.form.spawn-unpacker.destination", "C:\\destination");
+    clearLocalStorage();
+    setLocalStorageValue("xrf.form.spawn-unpacker.source", "C:\\source");
+    setLocalStorageValue("xrf.form.spawn-unpacker.destination", "C:\\destination");
   });
 
   describe.each(["Source", "Destination"])("editing %s", (label) => {

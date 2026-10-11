@@ -4,6 +4,7 @@ import { userEvent } from "@testing-library/user-event";
 
 import { LevelCameraAction } from "@/core/level/components/preview/toolbar/camera/LevelCameraAction";
 import { DEFAULT_LEVEL_CAMERA_OPTIONS } from "@/core/level/lib/camera/level-camera-options";
+import { clearLocalStorage } from "@/core/storage";
 import {
   ILevelViewContainerDescriptor,
   mockLevelViewContainer,
@@ -24,7 +25,7 @@ function renderAction(setup: (descriptor: ILevelViewContainerDescriptor) => void
 }
 
 beforeEach(() => {
-  window.localStorage.clear();
+  clearLocalStorage();
 });
 
 describe("LevelCameraAction", () => {

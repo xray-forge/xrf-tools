@@ -6,6 +6,7 @@ import { DialogsEditorApplication } from "@/applications/dialogs-editor/DialogsE
 import { DialogsService } from "@/applications/dialogs-editor/services/dialogs";
 import { DialogDescriptor, DialogProjectDescriptor } from "@/core/ipc/types/xrf-dialog";
 import { ApplicationStatusBar } from "@/core/shell/footer/ApplicationStatusBar";
+import { clearLocalStorage } from "@/core/storage";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
@@ -63,7 +64,7 @@ function renderEditor(): RenderResult {
 
 describe("opened dialogs editor", () => {
   beforeEach(() => {
-    window.localStorage.clear();
+    clearLocalStorage();
 
     setMockInvokeResponses({
       ["plugin:dialogs|get_project"]: mockSessionResponse(PROJECT),

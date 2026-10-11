@@ -8,6 +8,7 @@ import { NavigateFunction, Route, Routes, useLocation, useNavigate } from "react
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { ApplicationShell } from "@/core/shell/ApplicationShell";
 import { useEditorPanels, useEditorStatus } from "@/core/shell/editor-shell";
+import { clearLocalStorage } from "@/core/storage";
 import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
@@ -53,7 +54,7 @@ function ArchivesNavigationProbe({ onObserve }: { onObserve: (service: ArchivesS
 
 describe("panel handover between applications", () => {
   beforeEach(() => {
-    window.localStorage.clear();
+    clearLocalStorage();
     setMockInvokeResponses({});
   });
 

@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
 
+import { clearLocalStorage, getLocalStorageValue, setLocalStorageValue } from "@/core/storage";
 import {
   forgetRecentPath,
   IPathRecord,
@@ -63,7 +64,7 @@ describe("readRecentPaths", () => {
   const KEY: string = "xrf.form-recents.configs-verifier.directory";
 
   beforeEach(() => {
-    window.localStorage.clear();
+    clearLocalStorage();
   });
 
   it("reads back what was written", () => {
@@ -78,7 +79,7 @@ describe("readRecentPaths", () => {
 
   it("keeps the sound entries of a list holding one that is not a record", () => {
     // The whole point of the failsafe rule: one bad element must not cost the other nine.
-    window.localStorage.setItem(
+    setLocalStorageValue(
       KEY,
       JSON.stringify([
         { at: 1, path: "C:\\a" },
@@ -95,15 +96,15 @@ describe("readRecentPaths", () => {
   });
 
   it("reads content that is not a list at all as no history", () => {
-    window.localStorage.setItem(KEY, "not json");
+    setLocalStorageValue(KEY, "not json");
     expect(readRecentPaths(KEY)).toEqual([]);
 
-    window.localStorage.setItem(KEY, JSON.stringify({ path: "C:\\a" }));
+    setLocalStorageValue(KEY, JSON.stringify({ path: "C:\\a" }));
     expect(readRecentPaths(KEY)).toEqual([]);
   });
 
   it("collapses duplicates left by something else, so a caller never has to", () => {
-    window.localStorage.setItem(
+    setLocalStorageValue(
       KEY,
       JSON.stringify([
         { at: 2, path: "C:\\Gamedata" },
@@ -115,7 +116,7 @@ describe("readRecentPaths", () => {
   });
 
   it("reads at most the limit, however much was stored", () => {
-    window.localStorage.setItem(
+    setLocalStorageValue(
       KEY,
       JSON.stringify(
         Array.from({ length: RECENT_PATHS_LIMIT + 5 }, (_: unknown, index: number) => ({
@@ -134,15 +135,15 @@ describe("writeRecentPaths", () => {
 
   afterEach(() => {
     jest.restoreAllMocks();
-    window.localStorage.clear();
+    clearLocalStorage();
   });
 
   it("removes the key rather than storing an empty list", () => {
-    window.localStorage.setItem(KEY, JSON.stringify([{ at: 1, path: "C:\\a" }]));
+    setLocalStorageValue(KEY, JSON.stringify([{ at: 1, path: "C:\\a" }]));
 
     writeRecentPaths(KEY, []);
 
-    expect(window.localStorage.getItem(KEY)).toBeNull();
+    expect(getLocalStorageValue(KEY)).toBeNull();
   });
 
   it("does not raise when storage refuses the write", () => {

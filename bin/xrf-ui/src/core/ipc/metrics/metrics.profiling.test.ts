@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 
-import { IPC_PROFILING_STORAGE_KEY } from "@/core/storage";
+import { clearLocalStorage, getLocalStorageValue, IPC_PROFILING_STORAGE_KEY } from "@/core/storage";
 
 import { isIpcProfilingEnabled, setIpcProfilingEnabled } from "./metrics.profiling";
 
@@ -8,7 +8,7 @@ describe("ipc profiling", () => {
   beforeEach(() => {
     setIpcProfilingEnabled(false);
 
-    window.localStorage.clear();
+    clearLocalStorage();
   });
 
   it("starts off, because weighing costs something nobody asked for", () => {
@@ -19,6 +19,6 @@ describe("ipc profiling", () => {
     setIpcProfilingEnabled(true);
 
     expect(isIpcProfilingEnabled()).toBe(true);
-    expect(window.localStorage.getItem(IPC_PROFILING_STORAGE_KEY)).toBe("true");
+    expect(getLocalStorageValue(IPC_PROFILING_STORAGE_KEY)).toBe("true");
   });
 });

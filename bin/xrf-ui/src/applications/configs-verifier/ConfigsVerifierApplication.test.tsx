@@ -3,6 +3,7 @@ import { fireEvent, waitFor } from "@testing-library/react";
 
 import { VerifierService } from "@/applications/configs-verifier/services/verifier";
 import { LtxProjectVerifyResult } from "@/core/ipc/types/xrf-ltx";
+import { clearLocalStorage, setLocalStorageValue } from "@/core/storage";
 import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
@@ -25,8 +26,8 @@ const RESULT: LtxProjectVerifyResult = {
 
 describe("Configs verifier outcomes", () => {
   beforeEach(() => {
-    window.localStorage.clear();
-    window.localStorage.setItem("xrf.form.configs-verifier.directory", "C:\\configs");
+    clearLocalStorage();
+    setLocalStorageValue("xrf.form.configs-verifier.directory", "C:\\configs");
   });
 
   describe.each(["Configs directory", "DLTX"])("editing %s", (label) => {

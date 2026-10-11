@@ -7,6 +7,7 @@ import { ArchivesService } from "@/applications/archives-explorer/services/archi
 import { AssetService } from "@/core/assets/services";
 import { ArchiveSubject } from "@/core/ipc/types/xrf-app";
 import { ApplicationShellFrame } from "@/core/shell/ApplicationShellFrame";
+import { clearLocalStorage } from "@/core/storage";
 import {
   mockArchiveStatistics,
   mockArchivesVolumes,
@@ -38,7 +39,7 @@ function openVolumes(subject: ArchiveSubject = mockArchivesVolumes()): void {
 
 describe("archive statistics dialog", () => {
   beforeEach(() => {
-    window.localStorage.clear();
+    clearLocalStorage();
     openVolumes();
   });
 

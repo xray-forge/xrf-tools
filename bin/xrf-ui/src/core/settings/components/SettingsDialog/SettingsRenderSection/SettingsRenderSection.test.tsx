@@ -6,6 +6,7 @@ import { Container } from "@wirestate/core";
 import { ERenderPreset } from "@/core/render/lib/settings/render-preset";
 import { ERenderResolution } from "@/core/render/lib/settings/render-resolution";
 import { RenderSettingsService } from "@/core/render/services/render-settings";
+import { clearLocalStorage } from "@/core/storage";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
@@ -22,7 +23,7 @@ function renderSection(): { container: Container; settings: RenderSettingsServic
 }
 
 beforeEach(() => {
-  window.localStorage.clear();
+  clearLocalStorage();
 });
 
 describe("SettingsRenderSection", () => {

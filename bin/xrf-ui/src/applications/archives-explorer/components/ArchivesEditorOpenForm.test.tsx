@@ -7,6 +7,7 @@ import { Maybe } from "@xrf/types";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { AssetService } from "@/core/assets/services";
+import { clearLocalStorage } from "@/core/storage";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
@@ -23,7 +24,7 @@ describe("ArchivesEditorOpenForm", () => {
   const mockOpen = jest.mocked(open<{ multiple: false }>);
 
   beforeEach(() => {
-    window.localStorage.clear();
+    clearLocalStorage();
 
     setMockInvokeResponses({
       ["plugin:archives|get_subject"]: mockSessionResponse(null),

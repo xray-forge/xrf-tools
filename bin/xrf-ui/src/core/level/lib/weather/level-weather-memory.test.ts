@@ -10,7 +10,12 @@ import {
   writeLevelWeatherMemory,
 } from "@/core/level/lib/weather/level-weather-memory";
 import { ELevelWeatherSource } from "@/core/level/lib/weather/level-weather-source";
-import { LEVEL_WEATHER_STORAGE_KEY } from "@/core/storage";
+import {
+  clearLocalStorage,
+  getLocalStorageValue,
+  LEVEL_WEATHER_STORAGE_KEY,
+  setLocalStorageValue,
+} from "@/core/storage";
 import { mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
 
 const MEMORY: ILevelWeatherMemory = {
@@ -24,7 +29,7 @@ const MEMORY: ILevelWeatherMemory = {
 };
 
 afterEach(() => {
-  window.localStorage.clear();
+  clearLocalStorage();
 });
 
 describe("level weather memory", () => {
@@ -73,7 +78,7 @@ describe("level weather memory", () => {
       writeLevelWeatherMemory(`level-${index}`, { ...MEMORY, manual });
     }
 
-    expect((window.localStorage.getItem(LEVEL_WEATHER_STORAGE_KEY) ?? "").length).toBeLessThanOrEqual(64 * 1024);
+    expect((getLocalStorageValue(LEVEL_WEATHER_STORAGE_KEY) ?? "").length).toBeLessThanOrEqual(64 * 1024);
     expect(readLevelWeatherMemory("level-0")).toBeNull();
     expect(readLevelWeatherMemory("level-11")?.manual).toEqual(manual);
   });
@@ -91,7 +96,7 @@ describe("level weather memory", () => {
   });
 
   it("reads nothing out of what does not read as a memory, and keeps what it reads within bounds", () => {
-    window.localStorage.setItem(LEVEL_WEATHER_STORAGE_KEY, "not json");
+    setLocalStorageValue(LEVEL_WEATHER_STORAGE_KEY, "not json");
 
     expect(readLevelWeatherMemory("zaton")).toBeNull();
     expect(toLevelWeatherMemory({ ...MEMORY, source: "sky", version: 3 })).toBeNull();

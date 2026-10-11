@@ -1,4 +1,4 @@
-import { Nullable } from "@xrf/types";
+import { Nullable, Optional } from "@xrf/types";
 
 import { bumpLocalStorageRevision } from "@/core/storage/revision";
 import { Logger } from "@/lib/logging";
@@ -34,6 +34,46 @@ export function setLocalStorageValue(key: string, value: Nullable<string>): void
     window.localStorage.setItem(key, value);
   }
 
+  bumpLocalStorageRevision();
+}
+
+/**
+ * Lists every key local storage holds, the application's or not.
+ *
+ * @returns The keys, in whatever order storage lists them; none when it is unavailable.
+ */
+export function listLocalStorageKeys(): Array<string> {
+  const storage: Optional<Storage> = window.localStorage;
+
+  if (!storage) {
+    return [];
+  }
+
+  const keys: Array<string> = [];
+
+  for (let index = 0; index < storage.length; index += 1) {
+    const key: Nullable<string> = storage.key(index);
+
+    if (key !== null) {
+      keys.push(key);
+    }
+  }
+
+  return keys;
+}
+
+/**
+ * Removes every key local storage holds, the application's or not.
+ */
+export function clearLocalStorage(): void {
+  if (!window.localStorage) {
+    Logger.warn("Local storage is not available during clear");
+
+    return;
+  }
+
+  Logger.debug("Clear local storage");
+  window.localStorage.clear();
   bumpLocalStorageRevision();
 }
 

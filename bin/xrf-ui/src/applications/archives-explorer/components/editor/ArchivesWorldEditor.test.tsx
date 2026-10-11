@@ -8,6 +8,7 @@ import { AssetService } from "@/core/assets/services";
 import { ArchiveSubject } from "@/core/ipc/types/xrf-app";
 import { ApplicationShellFrame } from "@/core/shell/ApplicationShellFrame";
 import { ApplicationStatusBar } from "@/core/shell/footer/ApplicationStatusBar";
+import { clearLocalStorage } from "@/core/storage";
 import {
   mockArchivedContainer,
   mockArchiveShadowedCopy,
@@ -33,7 +34,7 @@ const WORLD: ArchiveSubject = mockArchivesWorldSubject([OVERRIDDEN, ARCHIVED]);
 
 describe("opened archives world", () => {
   beforeEach(() => {
-    window.localStorage.clear();
+    clearLocalStorage();
 
     setMockInvokeResponses({
       ["plugin:archives|get_subject"]: mockSessionResponse(WORLD),

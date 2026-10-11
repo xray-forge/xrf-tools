@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 import { act, renderHook } from "@testing-library/react";
 
 import { EApplicationId } from "@/core/routing/application";
+import { clearLocalStorage, getLocalStorageValue, setLocalStorageValue } from "@/core/storage";
 import { useRememberedValue } from "@/core/ui/form/use-remembered-value";
 
 describe("useRememberedValue", () => {
@@ -19,7 +20,7 @@ describe("useRememberedValue", () => {
   }
 
   beforeEach(() => {
-    window.localStorage.clear();
+    clearLocalStorage();
   });
 
   it("starts on the fallback when nothing was remembered", () => {
@@ -27,7 +28,7 @@ describe("useRememberedValue", () => {
   });
 
   it("restores what was remembered", () => {
-    window.localStorage.setItem(STORAGE_KEY, "ukr");
+    setLocalStorageValue(STORAGE_KEY, "ukr");
 
     expect(renderField().result.current[0]).toBe("ukr");
   });
@@ -38,13 +39,13 @@ describe("useRememberedValue", () => {
     act(() => result.current[1]("ukr"));
 
     expect(result.current[0]).toBe("ukr");
-    expect(window.localStorage.getItem(STORAGE_KEY)).toBe("ukr");
+    expect(getLocalStorageValue(STORAGE_KEY)).toBe("ukr");
   });
 
   // A value the form no longer offers must not come back from a machine that used it before, or the
   // field starts on something its own control cannot display.
   it("ignores a remembered value the field no longer accepts", () => {
-    window.localStorage.setItem(STORAGE_KEY, "rus");
+    setLocalStorageValue(STORAGE_KEY, "rus");
 
     expect(renderField().result.current[0]).toBe("eng");
   });

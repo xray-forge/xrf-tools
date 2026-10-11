@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 import { Optional } from "@xrf/types";
 
 import { IIpcCommandMetrics, IIpcMetricsSnapshot, IPC_METRICS, setIpcProfilingEnabled } from "@/core/ipc/metrics";
+import { clearLocalStorage } from "@/core/storage";
 
 function getEntryOf(command: string): IIpcCommandMetrics {
   const found: Optional<IIpcCommandMetrics> = IPC_METRICS.read().commands.find(
@@ -17,7 +18,7 @@ function getEntryOf(command: string): IIpcCommandMetrics {
 
 describe("ipc metrics", () => {
   beforeEach(() => {
-    window.localStorage.clear();
+    clearLocalStorage();
 
     setIpcProfilingEnabled(false);
     IPC_METRICS.reset();

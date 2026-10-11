@@ -5,6 +5,7 @@ import { GamedataVerifierService } from "@/applications/gamedata-verifier/servic
 import { GamedataVerifySummary } from "@/core/ipc/types/xrf-app";
 import { EXrayEngineChoice } from "@/core/ipc/types/xrf-engine-target";
 import { JobsService } from "@/core/jobs/services/jobs";
+import { clearLocalStorage, setLocalStorageValue } from "@/core/storage";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
@@ -14,8 +15,8 @@ import { GamedataVerifierApplication } from "./GamedataVerifierApplication";
 
 describe("GamedataVerifierApplication", () => {
   beforeEach(() => {
-    window.localStorage.clear();
-    window.localStorage.setItem("xrf.form.gamedata-verifier.gamedata", "C:\\gamedata");
+    clearLocalStorage();
+    setLocalStorageValue("xrf.form.gamedata-verifier.gamedata", "C:\\gamedata");
     setMockInvokeResponses({});
   });
 

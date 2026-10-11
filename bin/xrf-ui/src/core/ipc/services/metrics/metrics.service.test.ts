@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 
 import { IPC_METRICS, isIpcProfilingEnabled, setIpcProfilingEnabled } from "@/core/ipc/metrics";
-import { IPC_PROFILING_STORAGE_KEY } from "@/core/storage";
+import { clearLocalStorage, getLocalStorageValue, IPC_PROFILING_STORAGE_KEY } from "@/core/storage";
 import { mockInjectedService } from "@/fixtures/utils/container";
 
 import { IpcMetricsService } from "./metrics.service";
@@ -11,7 +11,7 @@ describe("IpcMetricsService", () => {
     setIpcProfilingEnabled(false);
     IPC_METRICS.reset();
 
-    window.localStorage.clear();
+    clearLocalStorage();
   });
 
   it("starts off, whatever build this is, because weighing costs something nobody asked for", () => {
@@ -37,7 +37,7 @@ describe("IpcMetricsService", () => {
 
     expect(service.isProfilingEnabled).toBe(true);
     expect(isIpcProfilingEnabled()).toBe(true);
-    expect(window.localStorage.getItem(IPC_PROFILING_STORAGE_KEY)).toBe("true");
+    expect(getLocalStorageValue(IPC_PROFILING_STORAGE_KEY)).toBe("true");
 
     service.setProfilingEnabled(false);
 

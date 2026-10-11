@@ -22,6 +22,7 @@ import {
 import { ELevelWeatherSource } from "@/core/level/lib/weather/level-weather-source";
 import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { LevelWeatherService } from "@/core/level/services/level-weather.service";
+import { clearLocalStorage } from "@/core/storage";
 import { mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
@@ -48,7 +49,7 @@ function toKeyframe(play: Nullable<WorldWeatherPlay>): Nullable<WeatherDescripto
 
 afterEach(() => {
   resetMockInvoke();
-  window.localStorage.clear();
+  clearLocalStorage();
 });
 
 describe("LevelWeatherService", () => {

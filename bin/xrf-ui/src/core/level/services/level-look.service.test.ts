@@ -8,7 +8,7 @@ import { ELevelLookSource, MONOLITH_LEVEL_BLOOM, OPENXRAY_LEVEL_BLOOM } from "@/
 import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { LevelLookService } from "@/core/level/services/level-look.service";
 import { DEFAULT_RENDER_EXPOSURE_SETTINGS } from "@/core/render/lib/settings/render-feature-defaults";
-import { LEVEL_LOOK_STORAGE_KEY } from "@/core/storage";
+import { clearLocalStorage, getLocalStorageValue, LEVEL_LOOK_STORAGE_KEY } from "@/core/storage";
 import { mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
@@ -36,7 +36,7 @@ const UNSET: LevelConsoleDefaults = {
 
 describe("LevelLookService", () => {
   beforeEach(() => {
-    window.localStorage.clear();
+    clearLocalStorage();
     resetMockInvoke();
   });
 
@@ -115,9 +115,7 @@ describe("LevelLookService", () => {
 
     service.edit({ ...service.look, lightScales: { ...service.look.lightScales, sun: 3 } });
 
-    expect(JSON.parse(window.localStorage.getItem(LEVEL_LOOK_STORAGE_KEY) ?? "{}").source).toBe(
-      ELevelLookSource.CUSTOM
-    );
+    expect(JSON.parse(getLocalStorageValue(LEVEL_LOOK_STORAGE_KEY) ?? "{}").source).toBe(ELevelLookSource.CUSTOM);
     expect(mockInjectedService(LevelLookService, [LevelLoadService]).service.look.lightScales.sun).toBe(3);
   });
 

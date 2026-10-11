@@ -1,13 +1,18 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 
 import { EXrayEngineChoice } from "@/core/ipc/types/xrf-engine-target";
-import { ENGINE_CHOICES_STORAGE_KEY } from "@/core/storage";
+import {
+  clearLocalStorage,
+  ENGINE_CHOICES_STORAGE_KEY,
+  getLocalStorageValue,
+  setLocalStorageValue,
+} from "@/core/storage";
 
 import { readEngineChoice, toEngineChoiceMemoryKey, writeEngineChoice } from "./engine-choice-memory";
 
 describe("engine choice memory", () => {
   beforeEach(() => {
-    window.localStorage.clear();
+    clearLocalStorage();
   });
 
   it("leaves a root it was never told about to detection", () => {
@@ -28,7 +33,7 @@ describe("engine choice memory", () => {
     writeEngineChoice("C:\\Games\\Anomaly", EXrayEngineChoice.AUTO);
 
     expect(readEngineChoice("C:\\Games\\Anomaly")).toBe(EXrayEngineChoice.AUTO);
-    expect(window.localStorage.getItem(ENGINE_CHOICES_STORAGE_KEY)).toBe("{}");
+    expect(getLocalStorageValue(ENGINE_CHOICES_STORAGE_KEY)).toBe("{}");
   });
 
   it("lets the least recently told root go past its limit", () => {
@@ -41,11 +46,11 @@ describe("engine choice memory", () => {
   });
 
   it("reads a memory it cannot parse as none", () => {
-    window.localStorage.setItem(ENGINE_CHOICES_STORAGE_KEY, "not json");
+    setLocalStorageValue(ENGINE_CHOICES_STORAGE_KEY, "not json");
 
     expect(readEngineChoice("C:\\Games\\Anomaly")).toBe(EXrayEngineChoice.AUTO);
 
-    window.localStorage.setItem(ENGINE_CHOICES_STORAGE_KEY, JSON.stringify({ "c:\\games\\anomaly": "anomaly" }));
+    setLocalStorageValue(ENGINE_CHOICES_STORAGE_KEY, JSON.stringify({ "c:\\games\\anomaly": "anomaly" }));
 
     expect(readEngineChoice("C:\\Games\\Anomaly")).toBe(EXrayEngineChoice.AUTO);
   });

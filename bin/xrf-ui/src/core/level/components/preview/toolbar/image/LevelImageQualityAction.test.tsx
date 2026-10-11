@@ -18,6 +18,7 @@ import {
 import { LevelImageQualityAction } from "@/core/level/components/preview/toolbar/image/LevelImageQualityAction";
 import { ILevelFeatureOptions } from "@/core/level/lib/features/level-feature-options";
 import { ERenderResolution } from "@/core/render/lib/settings/render-resolution";
+import { clearLocalStorage } from "@/core/storage";
 import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import {
   ILevelViewContainerDescriptor,
@@ -87,7 +88,7 @@ async function openSettings(rendered: TLevelViewRenderResult): Promise<void> {
 }
 
 beforeEach(() => {
-  window.localStorage.clear();
+  clearLocalStorage();
 });
 
 afterEach(() => {

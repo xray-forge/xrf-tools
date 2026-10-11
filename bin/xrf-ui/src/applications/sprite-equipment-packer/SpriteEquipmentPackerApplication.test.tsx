@@ -9,6 +9,7 @@ import { PackEquipmentResult } from "@/core/ipc/types/xrf-texture";
 import { IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { SpriteEquipmentPackerService } from "@/core/sprite-equipment/services/packer";
+import { clearLocalStorage, setLocalStorageValue } from "@/core/storage";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockContainer, mockInjectedService } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
@@ -67,10 +68,10 @@ function renderAdoptedPack() {
 
 describe("Sprite equipment packer reload", () => {
   beforeEach(() => {
-    window.localStorage.clear();
-    window.localStorage.setItem("xrf.form.sprite-equipment-packer.source", "C:\\icons");
-    window.localStorage.setItem("xrf.form.sprite-equipment-packer.output", "C:\\out\\equipment.dds");
-    window.localStorage.setItem("xrf.form.sprite-equipment-packer.system-ltx", "C:\\configs\\system.ltx");
+    clearLocalStorage();
+    setLocalStorageValue("xrf.form.sprite-equipment-packer.source", "C:\\icons");
+    setLocalStorageValue("xrf.form.sprite-equipment-packer.output", "C:\\out\\equipment.dds");
+    setLocalStorageValue("xrf.form.sprite-equipment-packer.system-ltx", "C:\\configs\\system.ltx");
     setMockInvokeResponses({});
   });
 

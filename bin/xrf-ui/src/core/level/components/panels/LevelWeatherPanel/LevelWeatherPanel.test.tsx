@@ -16,6 +16,7 @@ import {
   LevelViewService,
   LevelWeatherService,
 } from "@/core/level/services";
+import { clearLocalStorage } from "@/core/storage";
 import { mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { InvokeMap, resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
@@ -98,7 +99,7 @@ async function renderPanel(responses: InvokeMap = {}): Promise<RenderResult & { 
 afterEach(() => {
   asked.length = 0;
   resetMockInvoke();
-  window.localStorage.clear();
+  clearLocalStorage();
 });
 
 describe("LevelWeatherPanel", () => {
