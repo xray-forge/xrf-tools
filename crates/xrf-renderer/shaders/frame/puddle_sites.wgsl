@@ -57,9 +57,9 @@ fn lowest_at(place: vec2<f32>) -> f32 {
   return textureLoad(heights, vec2<i32>(uv * shape.shape.x), 0).x;
 }
 
-// The water's height at a world place, nothing where there is none.
+// The water's height at a world place, nothing where there is none: read through the water map's own window.
 fn water_at(place: vec2<f32>) -> f32 {
-  return overhead_height(water, shape.window, shape.shape.x, shape.shape.y, vec3<f32>(place.x, 0.0, place.y));
+  return overhead_height(water, shape.water_window, shape.shape.x, shape.shape.y, vec3<f32>(place.x, 0.0, place.y));
 }
 
 // Whether a disc about a centre at a height is one level surface, every sample of it within reach of the centre's

@@ -103,6 +103,11 @@ impl LevelSurface {
     )
   }
 
+  /// The water map's centre in `x` and `z`, its half width and the height it is seen from, its shape the surface's.
+  pub fn get_water_window(&self) -> Vec4 {
+    self.water.get_window()
+  }
+
   /// Declares its draws and, where they are drawn, what is placed from them, then this frame's puddles; answers its
   /// lowest heights, its puddles and its water as the graph knows them. `water` lifts the water's waves.
   pub fn add_passes<'a>(
@@ -127,7 +132,9 @@ impl LevelSurface {
       Some(water),
     );
 
-    if self.map.is_due() {
+    // Sites are placed again whenever either map is drawn: the two are drawn on frames of their own, and sites placed
+    // over a water map not yet drawn where the level's water has streamed in would stand under it.
+    if self.map.is_due() || self.water.is_due() {
       self.add_placing_passes(
         (&mut *graph, &mut *bindings, runtime),
         passes,
@@ -153,7 +160,7 @@ impl LevelSurface {
     [lowest, puddles, water_depth]
   }
 
-  /// Draws the surface and places its lowest heights and sites from it.
+  /// Draws the surface where it is due, and places its lowest heights and sites from it and the water.
   fn add_placing_passes<'a>(
     &'a self,
     (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
@@ -175,7 +182,11 @@ impl LevelSurface {
     );
 
     let (window, shape) = self.get_window();
-    let uniform: UniformBinding<PuddleSitesUniform> = runtime.push_uniform(&PuddleSitesUniform { window, shape });
+    let uniform: UniformBinding<PuddleSitesUniform> = runtime.push_uniform(&PuddleSitesUniform {
+      window,
+      shape,
+      water_window: self.get_water_window(),
+    });
     let heights: LowestHeightsParameters = LowestHeightsParameters {
       surface,
       lowest,
