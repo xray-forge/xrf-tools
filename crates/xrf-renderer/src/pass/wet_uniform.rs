@@ -36,6 +36,9 @@ pub struct WetUniform {
   pub reach: Vec4,
   /// The way and speed gusts drift across the puddles, metres a second in renderer `x` and `z`; the rest unused.
   pub gust: Vec4,
+  /// The level's water map's centre in `x` and `z`, its half width, and the height it is seen from, laid out as the
+  /// surface map's, which the ground under the water is told by.
+  pub water: Vec4,
 }
 
 impl WetUniform {
