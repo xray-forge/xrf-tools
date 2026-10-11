@@ -428,6 +428,22 @@ export enum ERenderDebugView {
    * bumps, and a steep surface's, grey from black low to white high; every other surface a dim blue.
    */
   HEIGHTS = "heights",
+  /**
+   * FSR's masks at each pixel's drawn texel: how reactive it is (moving apart from what it lands on, or a plant the
+   * wind moved) in red, how disoccluded in green, how far its shading changed in blue.
+   */
+  FSR_MASKS = "fsrMasks",
+  /** How far FSR trusts each pixel's history, from black for none to white; red where it starts afresh. */
+  FSR_HISTORY_TRUST = "fsrHistoryTrust",
+  /**
+   * FSR's thin-feature locks: each pixel's lock in green, full where it holds the history against clamping; red
+   * where a new lock was found this frame.
+   */
+  FSR_LOCKS = "fsrLocks",
+  /** How strongly FSR finds each pixel's luma flickering back to an earlier frame's, which lets its history hold. */
+  FSR_LUMA_INSTABILITY = "fsrLumaInstability",
+  /** How much of each pixel FSR takes from this frame rather than its history, from black for none to white for all. */
+  FSR_FRAME_SHARE = "fsrFrameShare",
 }
 
 /** Every `ERenderDebugView` as the spelling it crosses IPC as, for a value no member has narrowed. */

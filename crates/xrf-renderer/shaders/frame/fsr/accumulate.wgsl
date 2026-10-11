@@ -178,10 +178,13 @@ fn upsampled(position: vec2<f32>, reactive_masks: vec4<f32>, history_weight: f32
   return Upsampled(weighted, 0.0, box, history_weight);
 }
 
-@fragment
-fn fs_accumulate(in: FullscreenVarying) -> @location(0) vec4<f32> {
-  let position: vec2<f32> = floor(in.clip.xy);
+// A pixel's accumulation: the history it leaves, its colour and its lock, and how much of it this frame gave.
+struct Accumulated {
+  history: vec4<f32>,
+  frame_share: f32,
+};
 
+fn accumulate(position: vec2<f32>) -> Accumulated {
   // `InitPassData`.
   let uv: vec2<f32> = (position + 0.5) / fsr.display_size;
   let drawn_uv: vec2<f32> = uv + fsr.jitter / fsr.render_size;
@@ -261,5 +264,19 @@ fn fs_accumulate(in: FullscreenVarying) -> @location(0) vec4<f32> {
     resolved = to_rgb(mix(previous_color, gathered.color, blend));
   }
 
-  return vec4<f32>(max(resolved, vec3<f32>(0.0)), lock);
+  return Accumulated(vec4<f32>(max(resolved, vec3<f32>(0.0)), lock), blend);
+}
+
+@fragment
+fn fs_accumulate(in: FullscreenVarying) -> @location(0) vec4<f32> {
+  return accumulate(floor(in.clip.xy)).history;
+}
+
+// The FSR frame share view: the same accumulation, showing how much of each pixel this frame gave, as its square root
+// so a frame's usual twentieth reads as a fifth.
+@fragment
+fn fs_frame_share(in: FullscreenVarying) -> @location(0) vec4<f32> {
+  let share: f32 = sqrt(accumulate(floor(in.clip.xy)).frame_share);
+
+  return vec4<f32>(share, share, share, 1.0);
 }

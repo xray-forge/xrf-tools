@@ -41,6 +41,8 @@ impl FsrTargets {
   pub const MASK: wgpu::TextureFormat = wgpu::TextureFormat::R8Unorm;
   pub const MASKS: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
   pub const PYRAMID: wgpu::TextureFormat = wgpu::TextureFormat::Rg16Float;
+  /// What a debug view is drawn into, at the display's size, made by the frame graph while one is shown.
+  pub const DEBUG: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 
   pub fn new(
     device: &wgpu::Device,

@@ -29,6 +29,11 @@ export enum ELevelShading {
   REFLECTIONS = "reflections",
   REFLECTION_ENDS = "reflectionEnds",
   MOTION = "motion",
+  FSR_MASKS = "fsrMasks",
+  FSR_HISTORY_TRUST = "fsrHistoryTrust",
+  FSR_LOCKS = "fsrLocks",
+  FSR_LUMA_INSTABILITY = "fsrLumaInstability",
+  FSR_FRAME_SHARE = "fsrFrameShare",
 }
 
 /** One shading as the toolbar offers it. */
@@ -41,7 +46,10 @@ export interface ILevelShadingChoice {
   debugView: RenderDebugView;
 }
 
-/** Every shading, in the order offered: the frame's three looks, then the targets in the order they are built. */
+/**
+ * Every shading, in the order offered: the frame's three looks, the targets in the order they are built, then FSR's,
+ * which FSR resolves whatever the antialiasing.
+ */
 export const LEVEL_SHADINGS: ReadonlyArray<ILevelShadingChoice> = [
   { label: "Final frame", value: ELevelShading.FINAL, debugView: ERenderDebugView.FINAL },
   { label: "Clay", value: ELevelShading.CLAY, debugView: ERenderDebugView.FINAL },
@@ -62,6 +70,15 @@ export const LEVEL_SHADINGS: ReadonlyArray<ILevelShadingChoice> = [
   { label: "Reflections", value: ELevelShading.REFLECTIONS, debugView: ERenderDebugView.REFLECTIONS },
   { label: "Reflection rays", value: ELevelShading.REFLECTION_ENDS, debugView: ERenderDebugView.REFLECTION_ENDS },
   { label: "Motion", value: ELevelShading.MOTION, debugView: ERenderDebugView.MOTION },
+  { label: "FSR masks", value: ELevelShading.FSR_MASKS, debugView: ERenderDebugView.FSR_MASKS },
+  { label: "FSR history trust", value: ELevelShading.FSR_HISTORY_TRUST, debugView: ERenderDebugView.FSR_HISTORY_TRUST },
+  { label: "FSR locks", value: ELevelShading.FSR_LOCKS, debugView: ERenderDebugView.FSR_LOCKS },
+  {
+    label: "FSR luma instability",
+    value: ELevelShading.FSR_LUMA_INSTABILITY,
+    debugView: ERenderDebugView.FSR_LUMA_INSTABILITY,
+  },
+  { label: "FSR frame share", value: ELevelShading.FSR_FRAME_SHARE, debugView: ERenderDebugView.FSR_FRAME_SHARE },
 ].map((choice) => ({ ...choice, surfaceColor: toSurfaceColor(choice.value) }));
 
 /**

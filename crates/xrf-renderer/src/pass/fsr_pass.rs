@@ -4,10 +4,12 @@ use xrf_renderer_core::{
   GraphRuntime, GraphTexture, PassParameters, StorageArray, StorageArrayMut, UniformBinding,
 };
 
+use crate::contract::render_debug_view::RenderDebugView;
 use crate::frame::fsr_frame::FsrFrame;
 use crate::frame::fsr_targets::FsrTargets;
 use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::pass::fsr_accumulate_parameters::FsrAccumulateParameters;
+use crate::pass::fsr_debug_view_parameters::FsrDebugViewParameters;
 use crate::pass::fsr_downsample_parameters::FsrDownsampleParameters;
 use crate::pass::fsr_luma_instability_parameters::FsrLumaInstabilityParameters;
 use crate::pass::fsr_prepare_inputs_parameters::FsrPrepareInputsParameters;
@@ -34,6 +36,7 @@ struct FsrLayouts {
   prepare_reactivity: wgpu::BindGroupLayout,
   luma_instability: wgpu::BindGroupLayout,
   accumulate: wgpu::BindGroupLayout,
+  debug_view: wgpu::BindGroupLayout,
 }
 
 impl FsrLayouts {
@@ -48,6 +51,7 @@ impl FsrLayouts {
       prepare_reactivity: FsrPrepareReactivityParameters::create_layout(device),
       luma_instability: FsrLumaInstabilityParameters::create_layout(device),
       accumulate: FsrAccumulateParameters::create_layout(device),
+      debug_view: FsrDebugViewParameters::create_layout(device),
     }
   }
 }
@@ -64,6 +68,17 @@ struct FsrPipelines {
   prepare_reactivity: wgpu::RenderPipeline,
   luma_instability: wgpu::RenderPipeline,
   accumulate: wgpu::RenderPipeline,
+  debug_views: FsrDebugPipelines,
+}
+
+/// The pipelines of FSR's debug views, each drawing into a target of `FsrTargets::DEBUG`.
+struct FsrDebugPipelines {
+  masks: wgpu::RenderPipeline,
+  history_trust: wgpu::RenderPipeline,
+  locks: wgpu::RenderPipeline,
+  luma_instability: wgpu::RenderPipeline,
+  /// The accumulation again, showing how much of each pixel this frame gave.
+  frame_share: wgpu::RenderPipeline,
 }
 
 /// FSR 3.1.5's upscaler (AMD, MIT) over a viewport's frame, with an exposure of one and motion drawn at the render
@@ -112,12 +127,14 @@ impl FsrPass {
   /// Declares FSR's stages, which leave the upscaled frame in this frame's history: the reconstruction's buffer cleared
   /// to the far plane, zero reversed; the reconstruction and the inputs; the farthest depth at half size; the shading
   /// change pyramid and the shading change; the reactive mask; the reactivity; the luma instability; and the
-  /// accumulation, each full-screen stage into its targets cleared first.
+  /// accumulation, each full-screen stage into its targets cleared first. Where `debug` names one of FSR's debug
+  /// views (`RenderDebugView::is_fsr`), it is drawn last into the target beside it.
   pub fn add_passes<'a>(
     &'a self,
     (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
     targets: ViewTargetHandles,
     (fsr, uniform): (&'a FsrTargets, &FsrUniform),
+    debug: Option<(RenderDebugView, GraphTexture)>,
   ) {
     let pipelines: &'a FsrPipelines = &self.pipelines;
     let sampler: &'a wgpu::Sampler = &self.sampler;
@@ -278,21 +295,52 @@ impl FsrPass {
         linear_sampler: sampler,
       },
     );
-    Self::add_stage(
-      graph,
-      ("fsr accumulate", &[history], &pipelines.accumulate),
-      FsrAccumulateParameters {
-        fsr: uniform,
-        color: targets.scene,
-        dilated_motion,
-        masks,
-        luma_instability,
-        farthest_depth: half_farthest_depth,
-        new_locks,
-        history: previous_history,
-        linear_sampler: sampler,
-      },
-    );
+    let accumulate: FsrAccumulateParameters = FsrAccumulateParameters {
+      fsr: uniform,
+      color: targets.scene,
+      dilated_motion,
+      masks,
+      luma_instability,
+      farthest_depth: half_farthest_depth,
+      new_locks,
+      history: previous_history,
+      linear_sampler: sampler,
+    };
+
+    Self::add_stage(graph, ("fsr accumulate", &[history], &pipelines.accumulate), accumulate);
+
+    let Some((view, shown)) = debug else {
+      return;
+    };
+    let debug_views: &'a FsrDebugPipelines = &pipelines.debug_views;
+    let parameters: FsrDebugViewParameters = FsrDebugViewParameters {
+      fsr: uniform,
+      masks,
+      new_locks,
+      luma_instability,
+      history,
+    };
+
+    match view {
+      RenderDebugView::FsrMasks => Self::add_stage(graph, ("fsr debug view", &[shown], &debug_views.masks), parameters),
+      RenderDebugView::FsrHistoryTrust => Self::add_stage(
+        graph,
+        ("fsr debug view", &[shown], &debug_views.history_trust),
+        parameters,
+      ),
+      RenderDebugView::FsrLocks => Self::add_stage(graph, ("fsr debug view", &[shown], &debug_views.locks), parameters),
+      RenderDebugView::FsrLumaInstability => Self::add_stage(
+        graph,
+        ("fsr debug view", &[shown], &debug_views.luma_instability),
+        parameters,
+      ),
+      RenderDebugView::FsrFrameShare => Self::add_stage(
+        graph,
+        ("fsr debug view", &[shown], &debug_views.frame_share),
+        accumulate,
+      ),
+      _ => {}
+    }
   }
 
   /// A full-screen stage drawing into its targets, cleared first, with its parameters.
@@ -395,6 +443,38 @@ impl FsrPass {
         &layouts.accumulate,
         &[FsrTargets::HISTORY],
       )?,
+      debug_views: FsrDebugPipelines {
+        masks: draw(
+          "frame/fsr/debug_view",
+          "fs_masks",
+          &layouts.debug_view,
+          &[FsrTargets::DEBUG],
+        )?,
+        history_trust: draw(
+          "frame/fsr/debug_view",
+          "fs_history_trust",
+          &layouts.debug_view,
+          &[FsrTargets::DEBUG],
+        )?,
+        locks: draw(
+          "frame/fsr/debug_view",
+          "fs_locks",
+          &layouts.debug_view,
+          &[FsrTargets::DEBUG],
+        )?,
+        luma_instability: draw(
+          "frame/fsr/debug_view",
+          "fs_luma_instability",
+          &layouts.debug_view,
+          &[FsrTargets::DEBUG],
+        )?,
+        frame_share: draw(
+          "frame/fsr/accumulate",
+          "fs_frame_share",
+          &layouts.accumulate,
+          &[FsrTargets::DEBUG],
+        )?,
+      },
     })
   }
 }
