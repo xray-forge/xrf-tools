@@ -1,9 +1,9 @@
 import { formatNumber } from "@xrf/format";
 
 import { ERenderBloomMode, RenderBloomMode } from "@/core/ipc/types/xrf-renderer";
-import { IRenderChoiceOption } from "@/core/render/lib/features/render-choice-option";
 import { toRenderLimits } from "@/core/render/lib/features/render-limits";
 import { RENDER_FEATURE_SCHEMA } from "@/core/render/lib/settings/render-feature-schema";
+import { IChoiceFormRowOption } from "@/core/ui/form/ChoiceFormRow/choice-form-row-option";
 
 /** The bounds each enhanced bloom value is offered between. */
 export const RENDER_ENHANCED_BLOOM_LIMITS = {
@@ -29,7 +29,7 @@ export function explainRenderBloomMode(mode: RenderBloomMode): string {
 }
 
 /** The bloom modes, in the order they are offered. */
-export const RENDER_BLOOM_MODE_OPTIONS: ReadonlyArray<IRenderChoiceOption<RenderBloomMode>> = [
+export const RENDER_BLOOM_MODE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<RenderBloomMode>> = [
   { label: "Engine", value: ERenderBloomMode.ENGINE },
   { label: "Enhanced", value: ERenderBloomMode.ENHANCED },
 ];

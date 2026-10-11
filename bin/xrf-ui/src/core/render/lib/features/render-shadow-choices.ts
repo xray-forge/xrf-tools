@@ -1,19 +1,19 @@
 import { formatNumber, formatPercent } from "@xrf/format";
 
 import { ERenderLightShadowFilter, RenderLightShadowFilter } from "@/core/ipc/types/xrf-renderer";
-import { IRenderChoiceOption } from "@/core/render/lib/features/render-choice-option";
 import { toRenderLimits } from "@/core/render/lib/features/render-limits";
 import { RENDER_SHADOW_CASCADE_WIDTHS } from "@/core/render/lib/settings/render-feature-defaults";
 import { RENDER_FEATURE_SCHEMA } from "@/core/render/lib/settings/render-feature-schema";
+import { IChoiceFormRowOption } from "@/core/ui/form/ChoiceFormRow/choice-form-row-option";
 
 /** How many cascades are offered, as counts. */
-export const RENDER_SHADOW_CASCADE_OPTIONS: ReadonlyArray<IRenderChoiceOption<string>> =
+export const RENDER_SHADOW_CASCADE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<string>> =
   RENDER_SHADOW_CASCADE_WIDTHS.map((_, index: number) => ({ label: String(index + 1), value: String(index + 1) }));
 
 /** The map resolutions offered, in texels across. */
 const RENDER_SHADOW_RESOLUTIONS: ReadonlyArray<number> = [1024, 2048, 4096];
 
-export const RENDER_SHADOW_RESOLUTION_OPTIONS: ReadonlyArray<IRenderChoiceOption<string>> =
+export const RENDER_SHADOW_RESOLUTION_OPTIONS: ReadonlyArray<IChoiceFormRowOption<string>> =
   RENDER_SHADOW_RESOLUTIONS.map((value: number) => ({ label: String(value), value: String(value) }));
 
 /** The bounds each shadow value is offered between. */
@@ -58,7 +58,7 @@ export function describeRenderLightShadowFilter(filter: RenderLightShadowFilter)
 }
 
 /** The filters a light's shadow is offered in, in the order they are offered. */
-export const RENDER_LIGHT_SHADOW_FILTER_OPTIONS: ReadonlyArray<IRenderChoiceOption<RenderLightShadowFilter>> =
+export const RENDER_LIGHT_SHADOW_FILTER_OPTIONS: ReadonlyArray<IChoiceFormRowOption<RenderLightShadowFilter>> =
   Object.values(ERenderLightShadowFilter).map((value: RenderLightShadowFilter) => ({
     label: describeRenderLightShadowFilter(value),
     value,

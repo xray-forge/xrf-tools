@@ -8,7 +8,6 @@ import { useLevelViewToggle } from "@/core/level/components/preview/toolbar/use-
 import { describeLevelFeatureToggle } from "@/core/level/lib/features/level-feature-options";
 import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
-import { IRenderChoiceOption } from "@/core/render/lib/features/render-choice-option";
 import {
   formatContactShadowIntensity,
   formatContactShadowLength,
@@ -16,6 +15,7 @@ import {
   formatContactShadowSteps,
   formatContactShadowThickness,
   RENDER_CONTACT_SHADOW_LIMITS,
+  RENDER_CONTACT_SHADOW_MODE_OPTIONS,
 } from "@/core/render/lib/features/render-contact-shadow-choices";
 import {
   formatCascadeBlend,
@@ -30,11 +30,6 @@ import { TRenderShadowSettings } from "@/core/render/lib/settings/render-feature
 import { EditorPopoverToggle } from "@/core/shell/editor/EditorPopoverToggle";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-
-const CONTACT_MODE_OPTIONS: ReadonlyArray<IRenderChoiceOption<RenderContactShadowMode>> = [
-  { label: "Engine", value: ERenderContactShadowMode.ENGINE },
-  { label: "Enhanced", value: ERenderContactShadowMode.ENHANCED },
-];
 
 /**
  * Whether the sun casts shadows in this view, in how many cascades, how fine and how soft, and whether contact
@@ -121,7 +116,7 @@ export function LevelShadowAction({
 
       <RenderValueChoice
         label={"Contact shadows"}
-        options={CONTACT_MODE_OPTIONS}
+        options={RENDER_CONTACT_SHADOW_MODE_OPTIONS}
         value={contact.mode}
         onChange={(mode: RenderContactShadowMode) => onSetContact({ mode })}
       />

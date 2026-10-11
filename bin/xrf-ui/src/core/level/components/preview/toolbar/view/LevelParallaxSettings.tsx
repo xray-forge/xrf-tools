@@ -8,15 +8,10 @@ import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/
 import { toLevelModeFeature } from "@/core/level/lib/features/level-feature-options";
 import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
-import { IRenderChoiceOption } from "@/core/render/lib/features/render-choice-option";
+import { RENDER_PARALLAX_MODE_OPTIONS } from "@/core/render/lib/features/render-parallax-choices";
 import { TRenderParallaxSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-
-const MODE_OPTIONS: ReadonlyArray<IRenderChoiceOption<RenderParallaxMode>> = [
-  { label: "Engine", value: ERenderParallaxMode.ENGINE },
-  { label: "Enhanced", value: ERenderParallaxMode.ENHANCED },
-];
 
 /** How this view's surfaces are displaced by their height: the engine's steep parallax, or the enhanced terrain march. */
 export function LevelParallaxSettings({
@@ -33,7 +28,7 @@ export function LevelParallaxSettings({
     <div data-testid={dataTestId} id={id} className={className}>
       <RenderValueChoice
         label={"Mode"}
-        options={MODE_OPTIONS}
+        options={RENDER_PARALLAX_MODE_OPTIONS}
         value={value.mode}
         onChange={(mode: RenderParallaxMode) => set({ mode })}
       />

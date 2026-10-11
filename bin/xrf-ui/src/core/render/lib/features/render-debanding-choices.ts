@@ -6,9 +6,9 @@ import {
   RenderDebandingMode,
   RenderDebandingQuality,
 } from "@/core/ipc/types/xrf-renderer";
-import { IRenderChoiceOption } from "@/core/render/lib/features/render-choice-option";
 import { toRenderLimits } from "@/core/render/lib/features/render-limits";
 import { RENDER_FEATURE_SCHEMA } from "@/core/render/lib/settings/render-feature-schema";
+import { IChoiceFormRowOption } from "@/core/ui/form/ChoiceFormRow/choice-form-row-option";
 
 /** The bounds the sky debanding's radius is offered between. */
 export const RENDER_DEBANDING_LIMITS = {
@@ -45,7 +45,7 @@ export function describeRenderDebandingQuality(quality: RenderDebandingQuality):
 }
 
 /** The sky debanding qualities, in the order they are offered. */
-export const RENDER_DEBANDING_QUALITY_OPTIONS: ReadonlyArray<IRenderChoiceOption<RenderDebandingQuality>> =
+export const RENDER_DEBANDING_QUALITY_OPTIONS: ReadonlyArray<IChoiceFormRowOption<RenderDebandingQuality>> =
   Object.values(ERenderDebandingQuality).map((value: RenderDebandingQuality) => ({
     label: describeRenderDebandingQuality(value),
     value,

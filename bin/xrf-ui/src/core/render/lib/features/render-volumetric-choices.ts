@@ -1,9 +1,9 @@
 import { formatNumber } from "@xrf/format";
 
 import { ERenderVolumetricMode, RenderVolumetricMode } from "@/core/ipc/types/xrf-renderer";
-import { IRenderChoiceOption } from "@/core/render/lib/features/render-choice-option";
 import { toRenderLimits } from "@/core/render/lib/features/render-limits";
 import { RENDER_FEATURE_SCHEMA } from "@/core/render/lib/settings/render-feature-schema";
+import { IChoiceFormRowOption } from "@/core/ui/form/ChoiceFormRow/choice-form-row-option";
 
 /** The bounds each enhanced volumetric lighting value is offered between. */
 export const RENDER_VOLUMETRIC_LIMITS = {
@@ -28,7 +28,7 @@ export function explainRenderVolumetricMode(mode: RenderVolumetricMode): string 
 }
 
 /** The volumetric lighting modes, in the order they are offered. */
-export const RENDER_VOLUMETRIC_MODE_OPTIONS: ReadonlyArray<IRenderChoiceOption<RenderVolumetricMode>> = [
+export const RENDER_VOLUMETRIC_MODE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<RenderVolumetricMode>> = [
   { label: "Engine", value: ERenderVolumetricMode.ENGINE },
   { label: "Enhanced", value: ERenderVolumetricMode.ENHANCED },
 ];

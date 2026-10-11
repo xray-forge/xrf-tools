@@ -14,6 +14,7 @@ import { LevelWeatherResetButton } from "@/core/level/components/weather/LevelWe
 import { LevelWeatherTextureField } from "@/core/level/components/weather/LevelWeatherTextureField";
 import { toLevelModeFeature } from "@/core/level/lib/features/level-feature-options";
 import { ILevelManualWeather } from "@/core/level/lib/weather/level-manual-weather";
+import { LEVEL_MANUAL_WEATHER_SKY_KEYS } from "@/core/level/lib/weather/level-manual-weather-groups";
 import { LevelViewService } from "@/core/level/services/level-view.service";
 import { LevelWeatherService } from "@/core/level/services/level-weather.service";
 import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
@@ -28,16 +29,6 @@ import {
 import { TRenderDebandingSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { EditorPopoverGroup, EditorPopoverGroupSection } from "@/core/shell/editor/EditorPopoverGroup";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-
-/** The keys the popover sets. */
-const SKY_KEYS: ReadonlyArray<keyof ILevelManualWeather> = [
-  "skyTexture",
-  "skyColor",
-  "skyRotation",
-  "cloudsTexture",
-  "cloudsColor",
-  "cloudsRotation",
-];
 
 /** What the sky and clouds lists offer before the level's weather is read. */
 const NO_TEXTURES: ReadonlyArray<LevelWeatherTexture> = [];
@@ -131,7 +122,7 @@ export function LevelSkyAction({
         />
       </EditorPopoverGroupSection>
 
-      <LevelWeatherResetButton keys={SKY_KEYS} onEdit={weatherService.editManual} />
+      <LevelWeatherResetButton keys={LEVEL_MANUAL_WEATHER_SKY_KEYS} onEdit={weatherService.editManual} />
 
       <EditorPopoverGroupSection
         label={"Debanding"}

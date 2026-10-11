@@ -1,7 +1,9 @@
 import { formatNumber, formatPercent } from "@xrf/format";
 
+import { ERenderContactShadowMode, RenderContactShadowMode } from "@/core/ipc/types/xrf-renderer";
 import { toRenderLimits } from "@/core/render/lib/features/render-limits";
 import { RENDER_FEATURE_SCHEMA } from "@/core/render/lib/settings/render-feature-schema";
+import { IChoiceFormRowOption } from "@/core/ui/form/ChoiceFormRow/choice-form-row-option";
 
 /** The bounds each contact shadow value is offered between. */
 export const RENDER_CONTACT_SHADOW_LIMITS = {
@@ -39,3 +41,9 @@ export function formatContactShadowSteps(steps: number): string {
 export function formatContactShadowLights(lights: number): string {
   return lights ? `${lights} light${lights > 1 ? "s" : ""}` : "Sun only";
 }
+
+/** The contact shadow modes, in the order they are offered. */
+export const RENDER_CONTACT_SHADOW_MODE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<RenderContactShadowMode>> = [
+  { label: "Engine", value: ERenderContactShadowMode.ENGINE },
+  { label: "Enhanced", value: ERenderContactShadowMode.ENHANCED },
+];

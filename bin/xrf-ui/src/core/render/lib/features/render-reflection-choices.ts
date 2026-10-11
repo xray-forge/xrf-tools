@@ -10,9 +10,9 @@ import {
   RenderReflectionQuality,
   RenderReflectionTraceQuality,
 } from "@/core/ipc/types/xrf-renderer";
-import { IRenderChoiceOption } from "@/core/render/lib/features/render-choice-option";
 import { toRenderLimits } from "@/core/render/lib/features/render-limits";
 import { RENDER_FEATURE_SCHEMA } from "@/core/render/lib/settings/render-feature-schema";
+import { IChoiceFormRowOption } from "@/core/ui/form/ChoiceFormRow/choice-form-row-option";
 
 /** The bounds each reflection value is offered between. */
 export const RENDER_REFLECTION_LIMITS = {
@@ -37,7 +37,7 @@ export function explainRenderReflectionMode(mode: RenderReflectionMode): string 
 }
 
 /** The reflection modes, in the order they are offered. */
-export const RENDER_REFLECTION_MODE_OPTIONS: ReadonlyArray<IRenderChoiceOption<RenderReflectionMode>> = [
+export const RENDER_REFLECTION_MODE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<RenderReflectionMode>> = [
   { label: "Engine", value: ERenderReflectionMode.ENGINE },
   { label: "Enhanced", value: ERenderReflectionMode.ENHANCED },
 ];
@@ -72,15 +72,14 @@ export function describeRenderReflectionProbe(probe: RenderReflectionProbe): str
 }
 
 /** The surroundings cube sizes, coarsest first. */
-export const RENDER_REFLECTION_PROBE_OPTIONS: ReadonlyArray<IRenderChoiceOption<RenderReflectionProbe>> = Object.values(
-  ERenderReflectionProbe
-).map((value: RenderReflectionProbe) => ({
-  label: describeRenderReflectionProbe(value),
-  value,
-}));
+export const RENDER_REFLECTION_PROBE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<RenderReflectionProbe>> =
+  Object.values(ERenderReflectionProbe).map((value: RenderReflectionProbe) => ({
+    label: describeRenderReflectionProbe(value),
+    value,
+  }));
 
 /** The reflection qualities, in the order they are offered. */
-export const RENDER_REFLECTION_QUALITY_OPTIONS: ReadonlyArray<IRenderChoiceOption<RenderReflectionQuality>> =
+export const RENDER_REFLECTION_QUALITY_OPTIONS: ReadonlyArray<IChoiceFormRowOption<RenderReflectionQuality>> =
   Object.values(ERenderReflectionQuality).map((value: RenderReflectionQuality) => ({
     label: describeRenderReflectionQuality(value),
     value,
@@ -102,11 +101,12 @@ export function describeRenderReflectionTraceQuality(quality: RenderReflectionTr
 }
 
 /** How often a pixel the screen misses is traced, cheapest first: once in eight frames up to every frame. */
-export const RENDER_REFLECTION_TRACE_QUALITY_OPTIONS: ReadonlyArray<IRenderChoiceOption<RenderReflectionTraceQuality>> =
-  Object.values(ERenderReflectionTraceQuality).map((value: RenderReflectionTraceQuality) => ({
-    label: describeRenderReflectionTraceQuality(value),
-    value,
-  }));
+export const RENDER_REFLECTION_TRACE_QUALITY_OPTIONS: ReadonlyArray<
+  IChoiceFormRowOption<RenderReflectionTraceQuality>
+> = Object.values(ERenderReflectionTraceQuality).map((value: RenderReflectionTraceQuality) => ({
+  label: describeRenderReflectionTraceQuality(value),
+  value,
+}));
 
 /** @returns What a surface's share of reflection is scaled by. */
 export function formatReflectionIntensity(intensity: number): string {

@@ -4,7 +4,7 @@ import {
   RenderAntialiasing,
   RenderTextureFiltering,
 } from "@/core/ipc/types/xrf-renderer";
-import { IRenderChoiceOption } from "@/core/render/lib/features/render-choice-option";
+import { IChoiceFormRowOption } from "@/core/ui/form/ChoiceFormRow/choice-form-row-option";
 
 const RENDER_ANTIALIASING_NAMES: Readonly<Record<RenderAntialiasing, string>> = {
   [ERenderAntialiasing.NONE]: "None",
@@ -32,7 +32,7 @@ export function isTemporalAntialiasing(mode: RenderAntialiasing): boolean {
 }
 
 /** Every antialiasing mode, in the order they are offered. */
-export const RENDER_ANTIALIASING_OPTIONS: ReadonlyArray<IRenderChoiceOption<RenderAntialiasing>> = Object.values(
+export const RENDER_ANTIALIASING_OPTIONS: ReadonlyArray<IChoiceFormRowOption<RenderAntialiasing>> = Object.values(
   ERenderAntialiasing
 ).map((value: RenderAntialiasing) => ({ label: describeRenderAntialiasing(value), value }));
 
@@ -53,14 +53,14 @@ const RENDER_TEXTURE_FILTERING_SHORT_NAMES: Readonly<Record<RenderTextureFilteri
 };
 
 /** The same, named short enough for a toolbar popover's row: trilinear, then the anisotropy's samples. */
-export const RENDER_TEXTURE_FILTERING_SHORT_OPTIONS: ReadonlyArray<IRenderChoiceOption<RenderTextureFiltering>> =
+export const RENDER_TEXTURE_FILTERING_SHORT_OPTIONS: ReadonlyArray<IChoiceFormRowOption<RenderTextureFiltering>> =
   Object.values(ERenderTextureFiltering).map((value: RenderTextureFiltering) => ({
     label: RENDER_TEXTURE_FILTERING_SHORT_NAMES[value],
     value,
   }));
 
 /** How a level's surfaces may sample their textures, as the settings offer them. */
-export const RENDER_TEXTURE_FILTERING_OPTIONS: ReadonlyArray<IRenderChoiceOption<RenderTextureFiltering>> =
+export const RENDER_TEXTURE_FILTERING_OPTIONS: ReadonlyArray<IChoiceFormRowOption<RenderTextureFiltering>> =
   Object.values(ERenderTextureFiltering).map((value: RenderTextureFiltering) => ({
     label: RENDER_TEXTURE_FILTERING_NAMES[value],
     value,

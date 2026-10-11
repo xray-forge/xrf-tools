@@ -8,19 +8,10 @@ import { LevelManualWeatherSlider } from "@/core/level/components/weather/LevelM
 import { LevelManualWeatherVectorField } from "@/core/level/components/weather/LevelManualWeatherVectorField";
 import { LevelWeatherResetButton } from "@/core/level/components/weather/LevelWeatherResetButton";
 import { ILevelManualWeather } from "@/core/level/lib/weather/level-manual-weather";
+import { LEVEL_MANUAL_WEATHER_WIND_KEYS } from "@/core/level/lib/weather/level-manual-weather-groups";
 import { LevelWeatherService } from "@/core/level/services/level-weather.service";
 import { EditorPopoverToggle } from "@/core/shell/editor/EditorPopoverToggle";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-
-/** The keys the popover sets. */
-const WIND_KEYS: ReadonlyArray<keyof ILevelManualWeather> = [
-  "windVelocity",
-  "windDirection",
-  "treesAmplitude",
-  "treesSpeed",
-  "treesRotation",
-  "treesWave",
-];
 
 /**
  * The wind the rain drifts on and the trees' sway; whether the trees and the grass sway at all.
@@ -88,7 +79,7 @@ export function LevelWindAction({
 
       <LevelManualWeatherVectorField field={"treesWave"} manual={manual} onEdit={weatherService.editManual} />
 
-      <LevelWeatherResetButton keys={WIND_KEYS} onEdit={weatherService.editManual} />
+      <LevelWeatherResetButton keys={LEVEL_MANUAL_WEATHER_WIND_KEYS} onEdit={weatherService.editManual} />
     </EditorPopoverToggle>
   );
 }

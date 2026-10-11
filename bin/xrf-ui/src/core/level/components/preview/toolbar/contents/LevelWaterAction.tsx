@@ -13,7 +13,6 @@ import { ILevelManualWeather } from "@/core/level/lib/weather/level-manual-weath
 import { LevelWeatherService } from "@/core/level/services/level-weather.service";
 import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
-import { IRenderChoiceOption } from "@/core/render/lib/features/render-choice-option";
 import {
   formatWaterBorder,
   formatWaterDistortion,
@@ -23,16 +22,12 @@ import {
   formatWaveSpeed,
   RENDER_ENHANCED_WATER_LIMITS,
   RENDER_WATER_LIMITS,
+  RENDER_WATER_MODE_OPTIONS,
 } from "@/core/render/lib/features/render-water-choices";
 import { TRenderEnhancedWaterSettings, TRenderWaterSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { EditorPopoverToggle } from "@/core/shell/editor/EditorPopoverToggle";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-
-const MODE_OPTIONS: ReadonlyArray<IRenderChoiceOption<RenderWaterMode>> = [
-  { label: "Engine", value: ERenderWaterMode.ENGINE },
-  { label: "Enhanced", value: ERenderWaterMode.ENHANCED },
-];
 
 /**
  * Whether this view draws the water, how strongly the weather has it reflect, and how it moves, reflects and
@@ -89,7 +84,7 @@ export function LevelWaterAction({
 
       <RenderValueChoice
         label={"Mode"}
-        options={MODE_OPTIONS}
+        options={RENDER_WATER_MODE_OPTIONS}
         value={water.mode}
         onChange={(mode: RenderWaterMode) => set({ mode })}
       />

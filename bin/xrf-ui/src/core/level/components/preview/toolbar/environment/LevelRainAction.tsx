@@ -14,6 +14,7 @@ import { LevelWeatherCollectionSelect } from "@/core/level/components/weather/Le
 import { LevelWeatherResetButton } from "@/core/level/components/weather/LevelWeatherResetButton";
 import { toLevelModeFeature } from "@/core/level/lib/features/level-feature-options";
 import { ILevelManualWeather } from "@/core/level/lib/weather/level-manual-weather";
+import { LEVEL_MANUAL_WEATHER_RAIN_KEYS } from "@/core/level/lib/weather/level-manual-weather-groups";
 import { LevelViewService } from "@/core/level/services/level-view.service";
 import { LevelWeatherService } from "@/core/level/services/level-weather.service";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
@@ -27,15 +28,6 @@ import { TRenderRainSettings } from "@/core/render/lib/settings/render-feature-s
 import { EditorPopoverGroup, EditorPopoverGroupSection } from "@/core/shell/editor/EditorPopoverGroup";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-
-/** The keys the popover sets. */
-const RAIN_KEYS: ReadonlyArray<keyof ILevelManualWeather> = [
-  "rainDensity",
-  "rainColor",
-  "thunderboltCollection",
-  "thunderboltPeriod",
-  "thunderboltDuration",
-];
 
 /** What the thunder's list offers before the level's weather is read. */
 const NO_COLLECTIONS: ReadonlyArray<ThunderboltCollection> = [];
@@ -118,7 +110,7 @@ export function LevelRainAction({
         />
       </EditorPopoverGroupSection>
 
-      <LevelWeatherResetButton keys={RAIN_KEYS} onEdit={weatherService.editManual} />
+      <LevelWeatherResetButton keys={LEVEL_MANUAL_WEATHER_RAIN_KEYS} onEdit={weatherService.editManual} />
 
       <EditorPopoverGroupSection
         label={"Puddles"}

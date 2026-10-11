@@ -9,7 +9,6 @@ import { useLevelViewToggle } from "@/core/level/components/preview/toolbar/use-
 import { describeLevelFeatureToggle } from "@/core/level/lib/features/level-feature-options";
 import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
-import { IRenderChoiceOption } from "@/core/render/lib/features/render-choice-option";
 import {
   formatFoliageStrength,
   formatGrassDensity,
@@ -17,6 +16,7 @@ import {
   formatGrassRadius,
   fromGrassDensityScale,
   RENDER_FOLIAGE_LIMITS,
+  RENDER_FOLIAGE_MODE_OPTIONS,
   RENDER_GRASS_LIMITS,
   toGrassDensityScale,
 } from "@/core/render/lib/features/render-grass-choices";
@@ -24,11 +24,6 @@ import { TRenderFoliageSettings, TRenderGrassSettings } from "@/core/render/lib/
 import { EditorPopoverToggle } from "@/core/shell/editor/EditorPopoverToggle";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-
-const FOLIAGE_MODE_OPTIONS: ReadonlyArray<IRenderChoiceOption<RenderFoliageMode>> = [
-  { label: "Engine", value: ERenderFoliageMode.ENGINE },
-  { label: "Enhanced", value: ERenderFoliageMode.ENHANCED },
-];
 
 /** The enhanced foliage motion's strengths, each a slider. */
 const FOLIAGE_STRENGTHS: ReadonlyArray<[keyof typeof RENDER_FOLIAGE_LIMITS, string]> = [
@@ -142,7 +137,7 @@ export function LevelGrassAction({
 
       <RenderValueChoice
         label={"Foliage motion"}
-        options={FOLIAGE_MODE_OPTIONS}
+        options={RENDER_FOLIAGE_MODE_OPTIONS}
         value={foliage.mode}
         onChange={(mode: RenderFoliageMode) => setFoliage({ mode })}
       />

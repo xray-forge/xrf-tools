@@ -1,7 +1,7 @@
 import { clamp } from "@xrf/math";
 
 import { ERenderSunShaftsQuality, RenderSunShafts, RenderSunShaftsQuality } from "@/core/ipc/types/xrf-renderer";
-import { IRenderChoiceOption } from "@/core/render/lib/features/render-choice-option";
+import { IChoiceFormRowOption } from "@/core/ui/form/ChoiceFormRow/choice-form-row-option";
 
 /** How a level's sun shafts are drawn: how finely they step, and the floor under their density. */
 export interface ILevelSunShaftsOptions extends RenderSunShafts {
@@ -25,7 +25,7 @@ const LEVEL_SUN_SHAFTS_QUALITY_NAMES: Readonly<Record<RenderSunShaftsQuality, st
 };
 
 /** The sunshaft qualities, in the order they are offered. */
-export const LEVEL_SUN_SHAFTS_QUALITY_OPTIONS: ReadonlyArray<IRenderChoiceOption<RenderSunShaftsQuality>> =
+export const LEVEL_SUN_SHAFTS_QUALITY_OPTIONS: ReadonlyArray<IChoiceFormRowOption<RenderSunShaftsQuality>> =
   Object.values(ERenderSunShaftsQuality).map((value: RenderSunShaftsQuality) => ({
     label: LEVEL_SUN_SHAFTS_QUALITY_NAMES[value],
     value,

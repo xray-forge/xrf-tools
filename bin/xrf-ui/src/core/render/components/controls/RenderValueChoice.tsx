@@ -2,12 +2,12 @@ import { ToggleButton, ToggleButtonGroup } from "@mui/material";
 import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
-import { IRenderChoiceOption } from "@/core/render/lib/features/render-choice-option";
+import { IChoiceFormRowOption } from "@/core/ui/form/ChoiceFormRow/choice-form-row-option";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 export interface IRenderValueChoiceProps<T extends string> extends BaseComponentProps {
   label: string;
-  options: ReadonlyArray<IRenderChoiceOption<T>>;
+  options: ReadonlyArray<IChoiceFormRowOption<T>>;
   value: T;
   /** Whether the values stack one under another, for names too long to share a row. */
   isStacked?: boolean;
@@ -46,8 +46,13 @@ export function RenderValueChoice<T extends string>({
           }
         }}
       >
-        {options.map((option: IRenderChoiceOption<T>) => (
-          <ToggleButton key={option.value} value={option.value} disabled={option.isDisabled}>
+        {options.map((option: IChoiceFormRowOption<T>) => (
+          <ToggleButton
+            key={option.value}
+            aria-label={option["aria-label"]}
+            value={option.value}
+            disabled={option.isDisabled}
+          >
             {option.label}
           </ToggleButton>
         ))}

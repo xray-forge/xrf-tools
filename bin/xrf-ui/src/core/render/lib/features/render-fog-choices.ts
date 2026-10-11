@@ -1,9 +1,9 @@
 import { formatNumber, formatPercent } from "@xrf/format";
 
 import { ERenderFogMode, RenderFogMode } from "@/core/ipc/types/xrf-renderer";
-import { IRenderChoiceOption } from "@/core/render/lib/features/render-choice-option";
 import { toRenderLimits } from "@/core/render/lib/features/render-limits";
 import { RENDER_FEATURE_SCHEMA } from "@/core/render/lib/settings/render-feature-schema";
+import { IChoiceFormRowOption } from "@/core/ui/form/ChoiceFormRow/choice-form-row-option";
 
 /** The bounds each enhanced fog value is offered between. */
 export const RENDER_FOG_LIMITS = {
@@ -29,7 +29,7 @@ export function explainRenderFogMode(mode: RenderFogMode): string {
 }
 
 /** The fog modes, in the order they are offered. */
-export const RENDER_FOG_MODE_OPTIONS: ReadonlyArray<IRenderChoiceOption<RenderFogMode>> = [
+export const RENDER_FOG_MODE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<RenderFogMode>> = [
   { label: "Engine", value: ERenderFogMode.ENGINE },
   { label: "Enhanced", value: ERenderFogMode.ENHANCED },
 ];
