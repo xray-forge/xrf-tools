@@ -1,3 +1,4 @@
+use crate::scene::static_scene::static_class::StaticClass;
 use crate::scene::static_scene::static_surface::StaticSurface;
 use crate::shader::shader_library::ShaderLibrary;
 
@@ -43,6 +44,21 @@ fn every_module_composes_without_ray_queries() {
   assert!(fallen_back > 0, "No module imports a fallback");
 }
 
+/// The cull tells a batch's class by its index as Rust lays batches out, a layout's classes in `StaticClass` order.
+#[test]
+fn the_cull_counts_classes_as_rust_does() {
+  let library: ShaderLibrary = ShaderLibrary::default();
+
+  assert_eq!(
+    get_constant(&library, "static/cull", "CLASS_COUNT"),
+    StaticClass::ALL.len() as u32
+  );
+  assert_eq!(
+    get_constant(&library, "static/cull", "WATER_CLASS"),
+    StaticClass::Water.get_index() as u32
+  );
+}
+
 fn validate(name: &str, source: &str, capabilities: naga::valid::Capabilities) {
   let module: naga::Module = naga::front::wgsl::parse_str(source)
     .unwrap_or_else(|error| panic!("'{name}' does not parse:\n{}", error.emit_to_string(source)));
@@ -78,4 +94,20 @@ fn a_static_surface_is_as_large_as_its_shaders_read() {
     get_struct_size(&library, "static/gbuffer", "Surface"),
     size_of::<StaticSurface>() as u32
   );
+}
+
+/// A `u32` constant's value in a module.
+fn get_constant(library: &ShaderLibrary, name: &str, constant: &str) -> u32 {
+  let source: String = library.compose(name).expect("composes");
+  let module: naga::Module = naga::front::wgsl::parse_str(&source).expect("parses");
+  let (_, declared) = module
+    .constants
+    .iter()
+    .find(|(_, declared)| declared.name.as_deref() == Some(constant))
+    .unwrap_or_else(|| panic!("'{name}' declares no {constant}"));
+
+  match module.global_expressions[declared.init] {
+    naga::Expression::Literal(naga::Literal::U32(value)) => value,
+    ref other => panic!("'{name}' declares {constant} as {other:?}"),
+  }
 }

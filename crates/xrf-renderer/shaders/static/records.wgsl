@@ -42,8 +42,8 @@ fn row_windows(word: u32) -> u32 {
 }
 
 // The shading classes a layout's batches run through, as `StaticClass` orders them: the two the G-buffer draws and
-// shadows cast first, then water, composited surfaces and wall marks.
-const CLASS_COUNT: u32 = 5u;
+// shadows cast first, then water, composited surfaces, wall marks and strictly sorted composited surfaces.
+const CLASS_COUNT: u32 = 6u;
 const WATER_CLASS: u32 = 2u;
 
 const SLOT_SINGLE: u32 = 1u;
