@@ -13,6 +13,7 @@ mod fsr;
 mod generated_shaders;
 mod grass;
 mod headless;
+mod height_field;
 mod indirect_light;
 mod lens_flares;
 mod light_geometry;

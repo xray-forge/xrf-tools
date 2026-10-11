@@ -162,6 +162,13 @@ pub fn build_static_surface(
             .each_ref()
             .map(|layer| textures.request(&layer.bump, TextureRole::Bump, source)),
         ),
+        heights: UVec4::from_array(terrain.layers.each_ref().map(|layer| {
+          textures.request(
+            &format!("{}{}", layer.reference, TextureRole::HEIGHT_SUFFIX),
+            TextureRole::TerrainHeight,
+            source,
+          )
+        })),
         mask: textures.request(&terrain.mask, TextureRole::TerrainMask, source),
         _pad: [0; 3],
       }

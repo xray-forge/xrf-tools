@@ -17,11 +17,14 @@ pub enum TextureRole {
   Projector,
   /// A terrain's mask, neutral at white: its four details weighed alike.
   TerrainMask,
+  /// A terrain detail's height, neutral at a half, the plane: the installation's own (`<detail>_height`, red), or
+  /// derived from the detail's bump where it brings none.
+  TerrainHeight,
 }
 
 impl TextureRole {
   /// Every role, in declaration order, so `role as usize` indexes what is kept a role.
-  pub const ALL: [TextureRole; 8] = [
+  pub const ALL: [TextureRole; 9] = [
     TextureRole::Base,
     TextureRole::Detail,
     TextureRole::Bump,
@@ -30,13 +33,18 @@ impl TextureRole {
     TextureRole::ImpostorCompanion,
     TextureRole::Projector,
     TextureRole::TerrainMask,
+    TextureRole::TerrainHeight,
   ];
+
+  /// What a terrain detail's height is named by beside the detail, as the third-party pack names it, and its bump.
+  pub const HEIGHT_SUFFIX: &'static str = "_height";
+  pub const BUMP_SUFFIX: &'static str = "_bump";
 
   /// The colour it is drawn as while its texture loads.
   pub const fn get_neutral(self) -> [u8; 4] {
     match self {
       TextureRole::Base | TextureRole::Hemi | TextureRole::Projector | TextureRole::TerrainMask => [255, 255, 255, 255],
-      TextureRole::Detail => [128, 128, 128, 128],
+      TextureRole::Detail | TextureRole::TerrainHeight => [128, 128, 128, 128],
       TextureRole::Bump => [23, 255, 128, 128],
       TextureRole::BumpCompanion => [128, 128, 128, 0],
       TextureRole::ImpostorCompanion => [128, 128, 0, 255],

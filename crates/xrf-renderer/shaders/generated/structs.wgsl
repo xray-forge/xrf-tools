@@ -357,6 +357,7 @@ struct Impostor {
 struct TerrainSlots {
   details: vec4<u32>,
   bumps: vec4<u32>,
+  heights: vec4<u32>,
   mask: u32,
 }
 
