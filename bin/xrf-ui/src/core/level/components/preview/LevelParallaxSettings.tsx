@@ -6,7 +6,7 @@ import { ERenderParallaxMode, RenderParallaxMode } from "@/core/ipc/types/xrf-re
 import { ILevelFeatureOptions, TLevelParallaxOptions } from "@/core/level/lib/features/level-feature-options";
 import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
-import { IRenderChoiceOption } from "@/core/render/lib/features";
+import { IRenderChoiceOption } from "@/core/render/lib/features/render-choice-option";
 import { TRenderParallaxSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { BaseComponentProps } from "@/lib/dom/element-types";

@@ -11,6 +11,7 @@ import { describeLevelFeatureToggle } from "@/core/level/lib/features";
 import { ILevelManualWeather } from "@/core/level/lib/weather/level-manual-weather";
 import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
+import { IRenderChoiceOption } from "@/core/render/lib/features/render-choice-option";
 import {
   formatWaterBorder,
   formatWaterDistortion,
@@ -18,10 +19,9 @@ import {
   formatWaterStrength,
   formatWaveHeight,
   formatWaveSpeed,
-  IRenderChoiceOption,
   RENDER_ENHANCED_WATER_LIMITS,
   RENDER_WATER_LIMITS,
-} from "@/core/render/lib/features";
+} from "@/core/render/lib/features/render-water-choices";
 import { TRenderEnhancedWaterSettings, TRenderWaterSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { EditorPopoverToggle } from "@/core/shell/editor/EditorPopoverToggle";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";

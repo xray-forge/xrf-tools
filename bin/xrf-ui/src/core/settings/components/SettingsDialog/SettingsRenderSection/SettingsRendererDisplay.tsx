@@ -3,7 +3,7 @@ import { ReactElement, useEffect } from "react";
 
 import { RenderBackendFormRow } from "@/core/render/components/controls/RenderBackendFormRow";
 import { RenderPassTimingFormRow } from "@/core/render/components/controls/RenderPassTimingFormRow";
-import { RENDER_FRAME_RATE_OPTIONS } from "@/core/render/lib/features";
+import { RENDER_FRAME_RATE_OPTIONS } from "@/core/render/lib/features/render-display-choices";
 import { RenderSettingsService } from "@/core/render/services/render-settings";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { ChoiceFormRow } from "@/core/ui/form/ChoiceFormRow";

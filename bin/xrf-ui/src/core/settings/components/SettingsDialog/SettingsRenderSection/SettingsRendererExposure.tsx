@@ -7,7 +7,7 @@ import {
   formatLowLuminance,
   RENDER_EXPOSURE_LIMITS,
   RENDER_TONEMAP_MODE_OPTIONS,
-} from "@/core/render/lib/features";
+} from "@/core/render/lib/features/render-exposure-choices";
 import { TRenderExposureSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { RenderSettingsService } from "@/core/render/services/render-settings";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";

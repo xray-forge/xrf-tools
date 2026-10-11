@@ -11,17 +11,21 @@ import {
   RenderTextureFiltering,
 } from "@/core/ipc/types/xrf-renderer";
 import {
-  formatOutputScale,
-  formatSharpening,
   isTemporalAntialiasing,
   RENDER_ANTIALIASING_OPTIONS,
-  RENDER_DLSS_PRESET_OPTIONS,
+  RENDER_TEXTURE_FILTERING_OPTIONS,
+} from "@/core/render/lib/features/render-antialiasing-choices";
+import {
+  formatOutputScale,
   RENDER_OUTPUT_SCALE_LIMITS,
   RENDER_RESOLUTION_OPTIONS,
+} from "@/core/render/lib/features/render-display-choices";
+import {
+  formatSharpening,
+  RENDER_DLSS_PRESET_OPTIONS,
   RENDER_SCALE_OPTIONS,
   RENDER_SHARPENING_LIMITS,
-  RENDER_TEXTURE_FILTERING_OPTIONS,
-} from "@/core/render/lib/features";
+} from "@/core/render/lib/features/render-upscaling-choices";
 import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { ERenderResolution } from "@/core/render/lib/settings/render-resolution";
 import { RenderSettingsService } from "@/core/render/services/render-settings";

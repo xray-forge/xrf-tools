@@ -11,7 +11,7 @@ import {
   formatVolumetricStrength,
   RENDER_VOLUMETRIC_LIMITS,
   RENDER_VOLUMETRIC_MODE_OPTIONS,
-} from "@/core/render/lib/features";
+} from "@/core/render/lib/features/render-volumetric-choices";
 import { TRenderVolumetricSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 

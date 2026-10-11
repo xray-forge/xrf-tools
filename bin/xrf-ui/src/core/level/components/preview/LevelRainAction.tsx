@@ -13,12 +13,12 @@ import { ILevelFeatureOptions, TLevelRainOptions } from "@/core/level/lib/featur
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { ILevelManualWeather } from "@/core/level/lib/weather/level-manual-weather";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
+import { formatGrassRadius } from "@/core/render/lib/features/render-grass-choices";
 import {
   explainRenderRainMode,
-  formatGrassRadius,
   formatRainShare,
   RENDER_RAIN_LIMITS,
-} from "@/core/render/lib/features";
+} from "@/core/render/lib/features/render-rain-choices";
 import { TRenderRainSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { EditorPopoverGroup, EditorPopoverGroupSection } from "@/core/shell/editor/EditorPopoverGroup";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";

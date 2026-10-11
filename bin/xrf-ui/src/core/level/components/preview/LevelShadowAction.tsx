@@ -8,21 +8,23 @@ import { useLevelFeatureOverride } from "@/core/level/components/preview/use-lev
 import { describeLevelFeatureToggle } from "@/core/level/lib/features";
 import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
+import { IRenderChoiceOption } from "@/core/render/lib/features/render-choice-option";
 import {
-  formatCascadeBlend,
   formatContactShadowIntensity,
   formatContactShadowLength,
   formatContactShadowLights,
   formatContactShadowSteps,
   formatContactShadowThickness,
+  RENDER_CONTACT_SHADOW_LIMITS,
+} from "@/core/render/lib/features/render-contact-shadow-choices";
+import {
+  formatCascadeBlend,
   formatShadowBias,
   formatShadowFilter,
-  IRenderChoiceOption,
-  RENDER_CONTACT_SHADOW_LIMITS,
   RENDER_SHADOW_CASCADE_OPTIONS,
   RENDER_SHADOW_LIMITS,
   RENDER_SHADOW_RESOLUTION_OPTIONS,
-} from "@/core/render/lib/features";
+} from "@/core/render/lib/features/render-shadow-choices";
 import { RENDER_SHADOW_CASCADE_WIDTHS } from "@/core/render/lib/settings/render-feature-defaults";
 import { TRenderShadowSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { EditorPopoverToggle } from "@/core/shell/editor/EditorPopoverToggle";

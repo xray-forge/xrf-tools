@@ -7,7 +7,7 @@ import {
   formatOcclusionStrength,
   RENDER_AMBIENT_OCCLUSION_LIMITS,
   RENDER_AMBIENT_OCCLUSION_QUALITY_OPTIONS,
-} from "@/core/render/lib/features";
+} from "@/core/render/lib/features/render-ambient-occlusion-choices";
 import { TRenderAmbientOcclusionSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { RenderSettingsService } from "@/core/render/services/render-settings";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
