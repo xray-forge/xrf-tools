@@ -15,6 +15,7 @@ export interface IEditorPopoverToggleProps extends BaseComponentProps {
   isOn: boolean;
   /** Names the checkbox at the head of the popover, which is the toggle for a keyboard. */
   toggleLabel: string;
+  /** The toggle cannot turn over: a click opens its settings, where `description` says why in their place. */
   isDisabled?: boolean;
   /** Whether its settings take a wider popover, for rows of several named choices. */
   isWide?: boolean;
@@ -28,7 +29,8 @@ export interface IEditorPopoverToggleProps extends BaseComponentProps {
 }
 
 /**
- * A view toggle with settings behind it: a click turns it over, a right click opens them.
+ * A view toggle with settings behind it: a click turns it over, a right click opens them; a click opens them too while
+ * it cannot turn over.
  */
 export function EditorPopoverToggle({
   "data-testid": dataTestId = "editor-popover-toggle",
@@ -46,6 +48,8 @@ export function EditorPopoverToggle({
   onToggle,
   children,
 }: IEditorPopoverToggleProps): ReactElement {
+  const reason: Nullable<string> = isDisabled ? description : lockedReason;
+
   const onClick = useCallback(() => onToggle(), [onToggle]);
 
   return (
@@ -56,9 +60,8 @@ export function EditorPopoverToggle({
       label={label}
       description={isDisabled ? description : `${description}. Right-click for its settings`}
       icon={icon}
-      isActive={isOn}
-      isDisabled={isDisabled}
-      onClick={onClick}
+      isActive={isOn && !isDisabled}
+      onClick={isDisabled ? undefined : onClick}
     >
       <div className={`flex ${isWide ? "w-80" : "w-60"} flex-col gap-2 px-4 py-2`}>
         <Typography className={"text-text-secondary"} variant={"overline"}>
@@ -67,11 +70,16 @@ export function EditorPopoverToggle({
 
         {header}
 
-        <CheckboxFormRow label={toggleLabel} isChecked={isOn} onChange={onToggle} />
+        <CheckboxFormRow
+          label={toggleLabel}
+          isChecked={isOn && !isDisabled}
+          isDisabled={isDisabled}
+          onChange={onToggle}
+        />
 
-        {lockedReason ? (
+        {reason ? (
           <Typography className={"text-text-secondary"} variant={"caption"}>
-            {lockedReason}
+            {reason}
           </Typography>
         ) : (
           children

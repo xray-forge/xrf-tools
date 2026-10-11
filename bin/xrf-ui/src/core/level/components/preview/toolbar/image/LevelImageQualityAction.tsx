@@ -148,7 +148,7 @@ export function LevelImageQualityAction({
       description={describeLevelFeatureToggle({
         isAvailable,
         isOn,
-        label: "Image quality",
+        label: "Antialiasing",
         off: "Antialiasing off, every edge as drawn",
         on: `Edges smoothed by ${describeRenderAntialiasing(mode)}`,
       })}

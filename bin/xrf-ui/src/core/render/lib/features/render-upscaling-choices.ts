@@ -45,7 +45,7 @@ export const RENDER_SCALE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<RenderScal
 
 const DLSS_UNAVAILABILITY: Readonly<Record<RenderDlssAvailability, Nullable<string>>> = {
   [ERenderDlssAvailability.AVAILABLE]: null,
-  [ERenderDlssAvailability.UNBUILT]: "DLSS is not in this build: build with the dlss feature.",
+  [ERenderDlssAvailability.UNBUILT]: "This build has no DLSS.",
   [ERenderDlssAvailability.UNSUPPORTED]: "DLSS needs an NVIDIA RTX GPU and a current driver.",
 };
 
@@ -59,7 +59,7 @@ export function describeDlssUnavailability(availability: RenderDlssAvailability)
 
 const RAY_RECONSTRUCTION_UNAVAILABILITY: Readonly<Record<RenderDlssAvailability, Nullable<string>>> = {
   [ERenderDlssAvailability.AVAILABLE]: null,
-  [ERenderDlssAvailability.UNBUILT]: "DLSS is not in this build: build with the dlss feature.",
+  [ERenderDlssAvailability.UNBUILT]: "This build has no DLSS.",
   [ERenderDlssAvailability.UNSUPPORTED]: "Needs an NVIDIA RTX GPU and a driver with DLSS ray reconstruction.",
 };
 

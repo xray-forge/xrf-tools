@@ -14,14 +14,15 @@ describe("toLevelManualWeatherLtx", () => {
     const lines: Array<string> = text.split("\n");
 
     expect(lines[0]).toBe("[12:34:56]");
-    // Aligned to the longest key.
-    expect(text).toContain("sky_texture            = sky\\sky_7_cube\n");
-    expect(text).toContain("clouds_color           = 0.5, 0.5, 0.5, 0.8, 2\n");
-    expect(text).toContain("sun_altitude           = -68.999985\n");
-    expect(text).toContain("fog_color              = 0.304609, 0.328138, 0.367354\n");
-    expect(text).toContain("trees_wave             = 0.1, 0.01, 0.11\n");
-    expect(text).toContain("thunderbolt_collection = \n");
-    expect(text).toContain("thunderbolt_period     = 0\n");
+    // As the LTX formatter writes entries: nothing aligned, and no space after an empty value's separator.
+    expect(text).toContain("\nsky_texture = sky\\sky_7_cube\n");
+    expect(text).toContain("\nclouds_color = 0.5, 0.5, 0.5, 0.8, 2\n");
+    expect(text).toContain("\nsun_altitude = -68.999985\n");
+    expect(text).toContain("\nfog_color = 0.304609, 0.328138, 0.367354\n");
+    expect(text).toContain("\ntrees_wave = 0.1, 0.01, 0.11\n");
+    expect(text).toContain("\nthunderbolt_collection =\n");
+    expect(text).toContain("\nthunderbolt_period = 0\n");
+    expect(lines.filter((line: string) => /\s{2,}=|=\s{2,}|\s$/.test(line))).toEqual([]);
     expect(text).not.toContain("tree_amplitude_intensity");
   });
 

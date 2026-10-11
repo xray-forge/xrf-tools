@@ -30,15 +30,20 @@ describe("LevelGrassAction", () => {
     expect(view.features).toEqual({ ...before, grass: {} });
   });
 
-  it("is disabled, with the reason, while the settings keep the grass off", () => {
+  it("opens on a click, saying why, while the settings keep the grass off", async () => {
     const descriptor: ILevelViewContainerDescriptor = mockLevelViewContainer();
 
     descriptor.renderSettings.setRendererOverrides({ grass: { isEnabled: false } });
 
-    const { getByRole } = renderLevelView(<LevelGrassAction />, descriptor);
+    const { getByRole, findByRole } = renderLevelView(<LevelGrassAction />, descriptor);
 
-    expect(getByRole("button", { name: "Grass" })).toBeDisabled();
     expect(getByRole("button", { name: "Grass" })).toHaveAccessibleDescription(
+      "Grass is off in Settings, under Rendering"
+    );
+
+    await userEvent.click(getByRole("button", { name: "Grass" }));
+
+    expect(await findByRole("dialog", { name: "Grass" })).toHaveTextContent(
       "Grass is off in Settings, under Rendering"
     );
   });

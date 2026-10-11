@@ -59,11 +59,25 @@ describe("EditorPopoverToggle", () => {
     );
   });
 
-  // A disabled button opens nothing, so the hint would promise a right click that does nothing.
-  it("offers no right click while disabled", () => {
+  // A click opens it then, so the hint would name the wrong button.
+  it("offers no right click while it cannot turn over", () => {
     expect(renderToggle(true, () => {}, true).getByRole("button", { name: "Fog" })).toHaveAccessibleDescription(
       "Fog total at 350 m"
     );
+  });
+
+  it("opens on a click while it cannot turn over, saying why in place of its settings", async () => {
+    const onToggle = jest.fn();
+    const { getByRole, findByRole, queryByRole } = renderToggle(true, onToggle, true);
+
+    await userEvent.click(getByRole("button", { name: "Fog" }));
+
+    const dialog: HTMLElement = await findByRole("dialog", { name: "Fog" });
+
+    expect(dialog).toHaveTextContent("Fog total at 350 m");
+    expect(queryByRole("button", { name: "Distance" })).not.toBeInTheDocument();
+    expect(getByRole("checkbox", { name: "Draw the fog" })).toBeDisabled();
+    expect(onToggle).not.toHaveBeenCalled();
   });
 
   it("says why its settings do nothing in their place, and still turns over from its checkbox", async () => {
