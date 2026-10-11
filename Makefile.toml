@@ -131,6 +131,14 @@ dependencies = [
   { name = "build-release", path = "bin/xrf-app" },
 ]
 
+[tasks.package-app]
+description = "Build the application in release mode, with DLSS, and package it as the archive it ships as."
+category = "Build"
+workspace = false
+dependencies = ["build-app-release"]
+script_runner = "@shell"
+script = 'node cli/package/app.mjs'
+
 [tasks.dev-app]
 description = "Run UI application backend and frontend in watch mode."
 category = "Development"

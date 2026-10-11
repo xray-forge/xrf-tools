@@ -9,7 +9,7 @@ Every environment variable the binaries and the build read is listed in [ENVIRON
 ## Common workflows
 
 | Goal                                        | Command                        |
-| ------------------------------------------- | ------------------------------ |
+|---------------------------------------------|--------------------------------|
 | Develop the desktop app                     | `cargo make dev-app`           |
 | Develop the desktop app with optimized Rust | `cargo make dev-app-optimized` |
 | Build the CLI for local use                 | `cargo make build-cli`         |
@@ -31,7 +31,7 @@ names the code that ships.
 ### Development
 
 | Task                | What it does                                               |
-| ------------------- | ---------------------------------------------------------- |
+|---------------------|------------------------------------------------------------|
 | `dev-app`           | Runs the desktop backend and UI in watch mode.             |
 | `dev-app-optimized` | Runs the same watch mode with the `dev-optimized` profile. |
 | `dev-app-profiling` | Runs the same watch mode with the `profiling` profile.     |
@@ -40,18 +40,19 @@ names the code that ships.
 
 ### Build
 
-| Task                | What it does                                                                              |
-| ------------------- | ----------------------------------------------------------------------------------------- |
-| `build-cli`         | Builds the CLI in debug mode.                                                             |
-| `build-cli-release` | Builds the CLI in release mode.                                                           |
-| `build-app`         | Builds the desktop application in debug mode.                                             |
-| `build-app-release` | Builds the desktop application in release mode and installs locked UI dependencies first. |
-| `fetch-sdks`        | Fetches the SDKs the optional native features build against into `.sdks/`.                |
+| Task                | What it does                                                                                          |
+|---------------------|-------------------------------------------------------------------------------------------------------|
+| `build-cli`         | Builds the CLI in debug mode.                                                                         |
+| `build-cli-release` | Builds the CLI in release mode.                                                                       |
+| `build-app`         | Builds the desktop application in debug mode.                                                         |
+| `build-app-release` | Builds the desktop application in release mode, with DLSS, and installs locked UI dependencies first. |
+| `package-app`       | Builds the release application and packages it as `target/package/xrf-app-windows-x64.zip`.           |
+| `fetch-sdks`        | Fetches the SDKs the optional native features build against into `.sdks/`.                            |
 
 ### Verification
 
 | Task                | What it does                                                                                          |
-| ------------------- | ----------------------------------------------------------------------------------------------------- |
+|---------------------|-------------------------------------------------------------------------------------------------------|
 | `format`            | Formats the Rust codebase.                                                                            |
 | `format-check`      | Checks Rust formatting without writing files.                                                         |
 | `lint`              | Runs Clippy across the workspace and all targets.                                                     |
@@ -64,7 +65,7 @@ names the code that ships.
 ### Documentation and generated code
 
 | Task                           | What it does                                                                                  |
-| ------------------------------ | --------------------------------------------------------------------------------------------- |
+|--------------------------------|-----------------------------------------------------------------------------------------------|
 | `doc`                          | Generates Rust documentation for workspace members.                                           |
 | `docs-cli`                     | Generates the CLI command reference from the Clap definitions into `target/doc-commands`.     |
 | `generate-typescript-bindings` | Emits the generated TypeScript mirrors and Tauri command bindings.                            |
@@ -74,7 +75,7 @@ names the code that ships.
 ### Maintenance
 
 | Task    | What it does                       |
-| ------- | ---------------------------------- |
+|---------|------------------------------------|
 | `clean` | Removes workspace build artifacts. |
 
 ## Prerequisites
@@ -93,9 +94,9 @@ build-app-release` builds with it.
   pinned commit or hash is left alone, so it fetches nothing on a second run; `build-app-release` runs it first.
   `.cargo/config.toml` points `DLSS_SDK`, `VULKAN_SDK` and `LIBCLANG_PATH` there; any set in the environment wins.
 - Elsewhere than Windows, libclang comes from the system (libclang-dev or LLVM), or `LIBCLANG_PATH`.
-- A build with the feature copies `nvngx_dlss.dll` into its profile's `resources/renderer/dlss/`
-  (`bin/xrf-app/tauri.dlss.conf.json`), which the release installer carries too. NVIDIA's licence lets it ship only
-  inside the application, so it is never committed.
+- A build with the feature copies `nvngx_dlss.dll`, `nvngx_dlssd.dll` and NVIDIA's `LICENSE.txt` into its profile's
+  `resources/renderer/dlss/` (`bin/xrf-app/tauri.dlss.conf.json`). NVIDIA's licence lets them ship only inside the
+  application, under terms as protective as its own, so they are never committed.
 - wgpu and naga come from the `xray-forge/xrf-wgpu` fork (`[patch.crates-io]` in `Cargo.toml`): a wgpu release with
   one commit on top that exposes the D3D12 command list a HAL encoder records into, which NGX records DLSS into. Moving
   to a newer wgpu means rebasing that commit onto its tag in the fork and pinning the new commit.

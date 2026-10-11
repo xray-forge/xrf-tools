@@ -38,6 +38,8 @@ jobs:
 
       - uses: ./.github/actions/pinned-toolchain
 
+      - uses: ./.github/actions/native-sdks
+
       # Not sharing a cache with the routine jobs: their artifacts are built under relaxed
       # profile settings, so restoring them here would mean recompiling everything anyway.
       - uses: Swatinem/rust-cache@v2
@@ -62,16 +64,26 @@ jobs:
 
       - name: Build application
         working-directory: bin/xrf-app
-        run: ..\xrf-ui\node_modules\.bin\tauri.cmd build --ci --no-bundle --config tauri.ci.conf.json
+        run: ..\xrf-ui\node_modules\.bin\tauri.cmd build --ci --no-bundle --features dlss --config tauri.ci.conf.json --config tauri.dlss.conf.json
 
-      - name: Upload the optimized Windows binaries
+      - name: Package the application
+        run: node cli/package/app.mjs --name xrf-app-windows-x64
+
+      - name: Upload the optimized Windows CLI
         uses: actions/upload-artifact@v7
         with:
           if-no-files-found: error
           name: optimized-windows
-          path: |
-            target/release/xrf-cli.exe
-            target/release/xrf-app.exe
+          path: target/release/xrf-cli.exe
+          retention-days: 1
+
+      - name: Upload the optimized application archive
+        uses: actions/upload-artifact@v7
+        with:
+          if-no-files-found: error
+          name: optimized-windows-app
+          path: target/package/xrf-app-windows-x64.zip
+          compression-level: 0
           retention-days: 1
 
   build-cli-linux:
@@ -118,6 +130,10 @@ jobs:
 
       - uses: actions/download-artifact@v8
         with:
+          name: optimized-windows-app
+
+      - uses: actions/download-artifact@v8
+        with:
           name: optimized-linux
 
       # The nightly tag is left where the routine workflow put it. These binaries carry their own commit,
@@ -125,4 +141,4 @@ jobs:
       - name: Publish the optimized binaries to the nightly release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload --clobber nightly xrf-cli.exe xrf-app.exe xrf-cli
+        run: gh release upload --clobber nightly xrf-cli.exe xrf-app-windows-x64.zip xrf-cli
