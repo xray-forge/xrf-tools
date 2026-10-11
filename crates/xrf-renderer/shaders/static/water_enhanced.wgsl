@@ -239,8 +239,7 @@ const ENHANCED_FOG_DEPTH: f32 = 2.0;
 const SHALLOW_COLOUR: f32 = 0.3;
 const SHORE_FADE: f32 = 40.0;
 
-// How much of its colour the reflection keeps, and the luminance it greys towards.
-const ENHANCED_VIBRANCE: f32 = 1.0;
+// The luminance the reflection greys towards as its vibrance falls.
 const LUMINANCE: vec3<f32> = vec3<f32>(0.3, 0.38, 0.22);
 
 @vertex
@@ -356,5 +355,5 @@ fn enhanced_reflection(waves: EnhancedWaves, reflected: vec3<f32>, world: vec3<f
   let noise: f32 = textureSampleLevel(perlin_map, texture_sampler, level * 0.02, 0.0).r;
   let mixed: vec3<f32> = mix(blurred, clear, saturate(noise * enhanced.blur_noise));
 
-  return mix(vec3<f32>(dot(mixed, LUMINANCE)), mixed, ENHANCED_VIBRANCE);
+  return mix(vec3<f32>(dot(mixed, LUMINANCE)), mixed, enhanced.vibrance);
 }

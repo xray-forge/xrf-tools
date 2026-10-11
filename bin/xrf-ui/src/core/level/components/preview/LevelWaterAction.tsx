@@ -146,6 +146,14 @@ export function LevelWaterAction({
           />
 
           <RenderValueSlider
+            label={"Vibrance"}
+            value={enhanced.vibrance}
+            {...RENDER_ENHANCED_WATER_LIMITS.vibrance}
+            format={formatPercent}
+            onChange={(vibrance: number) => setEnhanced({ vibrance })}
+          />
+
+          <RenderValueSlider
             label={"Specular"}
             value={enhanced.specular}
             {...RENDER_ENHANCED_WATER_LIMITS.specular}

@@ -224,6 +224,7 @@ export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings>
       specular: toNumber(0, 10),
       turbidity: toNumber(0, 10),
       variation: toNumber(0, 1),
+      vibrance: toNumber(0, 1),
     },
     isDistorted: FLAG,
     isEnabled: FLAG,

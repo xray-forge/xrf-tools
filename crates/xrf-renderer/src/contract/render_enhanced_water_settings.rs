@@ -18,6 +18,8 @@ pub struct RenderEnhancedWaterSettings {
   pub reflection_blur: f32,
   /// How much noise mixes the clear reflection into the blurred one.
   pub blur_noise: f32,
+  /// How much of its colour the reflection keeps, one all of it, none grey.
+  pub vibrance: f32,
   /// How bright the sun's highlight on it is.
   pub specular: f32,
   /// How bright the light it gathers onto its bottom is.
@@ -37,8 +39,8 @@ pub struct RenderEnhancedWaterSettings {
 }
 
 impl Default for RenderEnhancedWaterSettings {
-  /// Its designed strengths, but for caustics a sixth as bright, calm water flowing a fifth as fast, and its maps'
-  /// repeat broken.
+  /// Its designed strengths, but for caustics a sixth as bright, calm water flowing a fifth as fast, its maps' repeat
+  /// broken, and its reflection at its full colour rather than the designed 0.6.
   fn default() -> Self {
     Self {
       refraction: 0.6,
@@ -47,6 +49,7 @@ impl Default for RenderEnhancedWaterSettings {
       reflectivity: 0.8,
       reflection_blur: 0.8,
       blur_noise: 1.0,
+      vibrance: 1.0,
       specular: 6.0,
       caustics: 0.05,
       parallax_height: 0.05,
