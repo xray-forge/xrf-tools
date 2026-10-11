@@ -3,6 +3,7 @@ use xrf_renderer_core::{PassParameters, RasterContext};
 
 use crate::frame::pick_target::PickTarget;
 use crate::frame::view_targets::ViewTargets;
+use crate::pass::composited_pass::COMPOSITED_DEPTH_BIAS;
 use crate::pass::shader_pipelines::{create_checked, create_module};
 use crate::pass::static_draw_parameters::StaticDrawParameters;
 use crate::pass::static_draws::StaticDraws;
@@ -24,6 +25,8 @@ pub struct StaticGBufferPass {
   pipelines: Vec<wgpu::RenderPipeline>,
   /// One a batch, writing what is drawn rather than how it looks.
   pick_pipelines: Vec<wgpu::RenderPipeline>,
+  /// One a composited batch, in `StaticGBufferPass::list_composited_picks` order, picking what of them shows.
+  composited_pick_pipelines: Vec<wgpu::RenderPipeline>,
   /// The impostors' draw, then their pick.
   impostor_pipelines: [wgpu::RenderPipeline; 2],
   generation: u64,
@@ -38,13 +41,15 @@ impl StaticGBufferPass {
   ) -> XrfResult<Self> {
     let layout: wgpu::BindGroupLayout = StaticDrawParameters::create_layout(device);
     let impostor_layout: wgpu::BindGroupLayout = StaticImpostorParameters::create_layout(device);
-    let (pipelines, pick_pipelines) = Self::create_pipelines(device, shaders, view_layout, &layout, texture_layout)?;
+    let (pipelines, pick_pipelines, composited_pick_pipelines) =
+      Self::create_pipelines(device, shaders, view_layout, &layout, texture_layout)?;
     let impostor_pipelines =
       Self::create_impostor_pipelines(device, shaders, view_layout, &impostor_layout, texture_layout)?;
 
     Ok(Self {
       pipelines,
       pick_pipelines,
+      composited_pick_pipelines,
       impostor_pipelines,
       impostor_layout,
       view_layout: view_layout.clone(),
@@ -71,9 +76,10 @@ impl StaticGBufferPass {
           Ok((pipelines, impostors))
         },
       ) {
-        Ok(((pipelines, pick_pipelines), impostor_pipelines)) => {
+        Ok(((pipelines, pick_pipelines, composited_pick_pipelines), impostor_pipelines)) => {
           self.pipelines = pipelines;
           self.pick_pipelines = pick_pipelines;
+          self.composited_pick_pipelines = composited_pick_pipelines;
           self.impostor_pipelines = impostor_pipelines;
         }
         Err(error) => log::error!("Static G-buffer rejected, drawing with the last one: {error}"),
@@ -109,17 +115,26 @@ impl StaticGBufferPass {
   }
 
   /// Draws the frame's visible clusters again into a pick's one texel, through a camera narrowed to it, in the render
-  /// pass the graph opened on the pick's target.
+  /// pass the graph opened on the pick's target: the composited ones too, glass the nearest a click meets, unless the
+  /// pick passes them by (`is_through`).
   pub fn pick(
     &self,
     context: &mut RasterContext<'_>,
     (view, draws, textures): (&ViewBinding, &StaticDraws, &wgpu::BindGroup),
     args: &[&wgpu::Buffer],
+    is_through: bool,
   ) {
     context.get_pass().set_bind_group(0, &view.bind_group, &[]);
     context.get_pass().set_bind_group(1, textures, &[]);
 
-    for (batch, pipeline) in StaticBatch::list_deferred().zip(&self.pick_pipelines) {
+    let composited: &[wgpu::RenderPipeline] = if is_through {
+      &[]
+    } else {
+      &self.composited_pick_pipelines
+    };
+    let deferred = StaticBatch::list_deferred().zip(&self.pick_pipelines);
+
+    for (batch, pipeline) in deferred.chain(Self::list_composited_picks().zip(composited)) {
       context.bind(&draws.layouts[batch.layout.get_index()]);
       context.get_pass().set_pipeline(pipeline);
 
@@ -135,6 +150,11 @@ impl StaticGBufferPass {
         .get_pass()
         .draw_indirect(args, StaticScene::IMPOSTOR_ARGS_OFFSET);
     }
+  }
+
+  /// The batches a pick meets composited surfaces in: either composited class, of every layout.
+  fn list_composited_picks() -> impl Iterator<Item = StaticBatch> {
+    StaticBatch::list().filter(|batch| batch.class.is_composited())
   }
 
   /// The impostors' draw and pick: a quad either way round, so neither culls a face.
@@ -202,7 +222,11 @@ impl StaticGBufferPass {
     view_layout: &wgpu::BindGroupLayout,
     layout: &wgpu::BindGroupLayout,
     texture_layout: &wgpu::BindGroupLayout,
-  ) -> XrfResult<(Vec<wgpu::RenderPipeline>, Vec<wgpu::RenderPipeline>)> {
+  ) -> XrfResult<(
+    Vec<wgpu::RenderPipeline>,
+    Vec<wgpu::RenderPipeline>,
+    Vec<wgpu::RenderPipeline>,
+  )> {
     let module: wgpu::ShaderModule = create_module(device, shaders, "static/gbuffer")?;
     let pipeline_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
       label: Some("static g-buffer"),
@@ -216,15 +240,23 @@ impl StaticGBufferPass {
       Some(ViewTargets::MOTION.into()),
     ];
     let pick_targets: [Option<wgpu::ColorTargetState>; 1] = [Some(PickTarget::FORMAT.into())];
-    let create = |is_pick: bool| -> XrfResult<Vec<wgpu::RenderPipeline>> {
-      StaticBatch::list_deferred()
+    let create = |batches: Vec<StaticBatch>, is_pick: bool| -> XrfResult<Vec<wgpu::RenderPipeline>> {
+      batches
+        .into_iter()
         .map(|batch| {
           let vertex: &str = batch.layout.get_vertex_entry();
           let fragment: &str = match (batch.class, is_pick) {
             (StaticClass::CutOut, false) => "fs_cut_out",
             (StaticClass::CutOut, true) => "fs_pick_cut_out",
+            (class, true) if class.is_composited() => "fs_pick_composited",
             (_, false) => "fs_opaque",
             (_, true) => "fs_pick_opaque",
+          };
+          // A composited surface is picked as it is drawn, pulled towards the eye, so glass laid on a wall wins.
+          let (depth_compare, bias) = if batch.class.is_composited() {
+            (wgpu::CompareFunction::GreaterEqual, COMPOSITED_DEPTH_BIAS)
+          } else {
+            (wgpu::CompareFunction::Greater, wgpu::DepthBiasState::default())
           };
 
           create_checked(device, "static g-buffer", || {
@@ -252,9 +284,9 @@ impl StaticGBufferPass {
               depth_stencil: Some(wgpu::DepthStencilState {
                 format: ViewTargets::DEPTH,
                 depth_write_enabled: Some(true),
-                depth_compare: Some(wgpu::CompareFunction::Greater),
+                depth_compare: Some(depth_compare),
                 stencil: Default::default(),
-                bias: Default::default(),
+                bias,
               }),
               multisample: Default::default(),
               multiview_mask: None,
@@ -265,6 +297,12 @@ impl StaticGBufferPass {
         .collect()
     };
 
-    Ok((create(false)?, create(true)?))
+    let deferred: Vec<StaticBatch> = StaticBatch::list_deferred().collect();
+
+    Ok((
+      create(deferred.clone(), false)?,
+      create(deferred, true)?,
+      create(Self::list_composited_picks().collect(), true)?,
+    ))
   }
 }

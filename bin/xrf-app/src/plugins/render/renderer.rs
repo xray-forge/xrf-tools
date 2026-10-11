@@ -42,11 +42,17 @@ impl Renderer {
   }
 
   /// What a viewport's level draws under a point, css pixels from its corner, answered after its next frame; the
-  /// answer never comes for a viewport the renderer does not draw.
-  pub fn pick(&self, id: RenderViewportId, x: f32, y: f32) -> Receiver<XrfResult<RenderPick>> {
+  /// answer never comes for a viewport the renderer does not draw. `is_through` passes glass by.
+  pub fn pick(&self, id: RenderViewportId, x: f32, y: f32, is_through: bool) -> Receiver<XrfResult<RenderPick>> {
     let (reply, answer) = channel();
 
-    self.queue.send(RenderCommand::Pick { id, x, y, reply });
+    self.queue.send(RenderCommand::Pick {
+      id,
+      x,
+      y,
+      is_through,
+      reply,
+    });
 
     answer
   }

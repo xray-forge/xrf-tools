@@ -419,6 +419,7 @@ struct Surface {
   flags: u32,
   textures: array<u32, 8>,
   terrain: TerrainSlots,
+  distortion: u32,
 }
 
 struct Wind {

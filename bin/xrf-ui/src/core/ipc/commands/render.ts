@@ -149,8 +149,11 @@ export const renderCommands = {
   /** Count what each shader table entry of a viewport's level draws across the sectors resident. */
   measureSurfaces: (viewport: RenderViewportId) =>
     __TAURI_INVOKE<Array<WorldSurfaceGeometry>>("plugin:render|measure_surfaces", { viewport }),
-  /** Name what a viewport's level draws under a point, css pixels from its corner, or nothing. */
-  pick: (viewport: RenderViewportId, x: number | null, y: number | null) =>
+  /**
+   * Name what a viewport's level draws under a point, css pixels from its corner, or nothing; glass is the nearest
+   * thing a click meets unless the pick passes it by (`is_through`).
+   */
+  pick: (viewport: RenderViewportId, x: number | null, y: number | null, isThrough: boolean) =>
     __TAURI_INVOKE<
       /** A surface the level compiled. */
       | {
@@ -174,7 +177,7 @@ export const renderCommands = {
           point: [number | null, number | null, number | null];
         }
       | null
-    >("plugin:render|pick", { viewport, x, y }),
+    >("plugin:render|pick", { viewport, x, y, isThrough }),
   /** Stand one viewport's skinned models in a pose. */
   poseModel: (viewport: RenderViewportId, pose: WorldModelPose) =>
     __TAURI_INVOKE<void>("plugin:render|pose_model", { viewport, pose }),

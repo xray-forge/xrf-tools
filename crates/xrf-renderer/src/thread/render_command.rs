@@ -49,11 +49,13 @@ pub enum RenderCommand {
     selection: Option<RenderSelection>,
   },
   /// Names what a viewport draws under one of its points, CSS pixels from its corner, answered after its next frame;
-  /// the answer never comes for a viewport the renderer does not draw.
+  /// the answer never comes for a viewport the renderer does not draw. `is_through` passes glass and every other
+  /// composited surface by, naming what stands behind it.
   Pick {
     id: RenderViewportId,
     x: f32,
     y: f32,
+    is_through: bool,
     reply: Sender<XrfResult<RenderPick>>,
   },
   /// Says what became of every texture a viewport's level samples; empty where it draws no level.

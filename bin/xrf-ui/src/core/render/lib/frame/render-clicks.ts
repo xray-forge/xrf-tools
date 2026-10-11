@@ -20,10 +20,14 @@ interface IRenderPress {
  * tells a click apart from a drag.
  *
  * @param element - What is clicked.
- * @param onClick - Told where, in css pixels from the element's top left corner.
+ * @param onClick - Told where, in css pixels from the element's top left corner, and whether Alt was held, which picks
+ *   through glass.
  * @returns What stops hearing.
  */
-export function listenRenderClicks(element: HTMLElement, onClick: (point: IRenderViewPoint) => void): () => void {
+export function listenRenderClicks(
+  element: HTMLElement,
+  onClick: (point: IRenderViewPoint, isThrough: boolean) => void
+): () => void {
   let press: Nullable<IRenderPress> = null;
   // The last click heard, so the second of a double click is not heard as another.
   let last: Nullable<{ time: number; x: number; y: number }> = null;
@@ -57,7 +61,7 @@ export function listenRenderClicks(element: HTMLElement, onClick: (point: IRende
 
       const { left, top } = element.getBoundingClientRect();
 
-      onClick({ x: event.clientX - left, y: event.clientY - top });
+      onClick({ x: event.clientX - left, y: event.clientY - top }, event.altKey);
     }
   }
 

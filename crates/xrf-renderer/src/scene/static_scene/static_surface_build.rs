@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use glam::{UVec4, Vec3};
-use xrf_material::{XrayBumpMode, XraySurfaceDeclaration, XraySurfaceDescriptor, XraySurfaceDraw};
+use xrf_material::{XrayBumpMode, XraySurfaceDeclaration, XraySurfaceDescriptor, XraySurfaceDraw, XraySurfaceSampler};
 use xrf_visual::SectorSurface;
 
 use crate::host::render_asset_source::RenderAssetSource;
@@ -201,6 +201,17 @@ pub fn build_static_surface(
     flags = (flags & !StaticSurface::HAS_DETAIL) | StaticSurface::HAS_LIGHTMAP;
   }
 
+  // A composited surface whose special pass distorts (`r__dsgraph_build` files it under `mapDistort`) draws that pass
+  // into the distortion target too, by the texture it binds there: a window's `pfx\pfx_dist_glass`.
+  let distortion: Option<u32> = descriptor
+    .filter(|it| class.is_composited() && it.is_distorting)
+    .and_then(|it| it.find_sampler(XraySurfaceSampler::DISTORTION_ELEMENT, "s_distort"))
+    .map(|reference| textures.request(reference, TextureRole::Detail, source));
+
+  if distortion.is_some() {
+    flags |= StaticSurface::IS_DISTORTING;
+  }
+
   let material: f32 = descriptor.map_or(DEFAULT_MATERIAL, |it| it.material);
 
   Some((
@@ -213,6 +224,8 @@ pub fn build_static_surface(
       flags,
       textures: texture_slots,
       terrain,
+      distortion: distortion.unwrap_or(0),
+      _pad: [0; 3],
     },
     class,
   ))
@@ -266,6 +279,8 @@ pub fn build_impostor_surface(
     flags,
     textures: texture_slots,
     terrain: StaticTerrainSlots::default(),
+    distortion: 0,
+    _pad: [0; 3],
   }
 }
 

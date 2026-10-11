@@ -143,6 +143,8 @@ pub struct ViewInfo {
   /// the run's first entry in the sorted list and how many.
   pub sorted_count: u32,
   pub sorted_runs: Vec<(StaticLayout, u32, u32)>,
+  /// Whether the scene's distorting surfaces are drawn into the distortion target this frame.
+  pub is_glass_distorting: bool,
   /// The colour the selection is outlined in, or none while nothing it names is drawn.
   pub selection_color: Option<[f32; 3]>,
 }
@@ -210,6 +212,7 @@ impl Default for ViewInfo {
       is_wet: false,
       thunder_draw: None,
       sorted_count: 0,
+      is_glass_distorting: false,
       sorted_runs: Vec::new(),
       selection_color: None,
     }

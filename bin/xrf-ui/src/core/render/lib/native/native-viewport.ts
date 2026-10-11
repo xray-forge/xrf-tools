@@ -185,9 +185,10 @@ export class NativeViewport {
    *
    * @param x - Css pixels from the viewport's left edge.
    * @param y - Css pixels from its top edge.
+   * @param isThrough - Whether glass is passed by, naming what stands behind it.
    * @returns What was hit, or null for nothing, a viewport not attached or a pick that failed.
    */
-  public async pick(x: number, y: number): Promise<Nullable<RenderLevelHit>> {
+  public async pick(x: number, y: number, isThrough: boolean): Promise<Nullable<RenderLevelHit>> {
     const id: Nullable<RenderViewportId> = await this.attached;
 
     if (id === null || this.isDisposed) {
@@ -195,7 +196,7 @@ export class NativeViewport {
     }
 
     try {
-      return await renderCommands.pick(id, x, y);
+      return await renderCommands.pick(id, x, y, isThrough);
     } catch {
       return null;
     }

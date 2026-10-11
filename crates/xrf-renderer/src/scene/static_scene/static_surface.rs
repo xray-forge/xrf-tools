@@ -23,6 +23,10 @@ pub struct StaticSurface {
   pub textures: [u32; 8],
   /// A terrain's details, bumps and mask, read where it is [`StaticSurface::IS_TERRAIN`].
   pub terrain: StaticTerrainSlots,
+  /// The texture a distorting surface's special pass draws into the distortion target, `s_distort`, read where it is
+  /// [`StaticSurface::IS_DISTORTING`].
+  pub distortion: u32,
+  pub _pad: [u32; 3],
 }
 
 impl StaticSurface {
@@ -71,6 +75,9 @@ impl StaticSurface {
   /// lights it by forward, bound in the detail slot a forward pass reads no detail from; a blended level surface
   /// without one is lit by its vertices, as `vert` lights it.
   pub const HAS_LIGHTMAP: u32 = 1 << 26;
+  /// A composited surface whose script's special pass distorts what is behind it (`models\xwindows`,
+  /// `models\xdistort*`), drawn into the distortion target too.
+  pub const IS_DISTORTING: u32 = 1 << 27;
 
   pub const BASE: usize = 0;
   pub const DETAIL: usize = 1;

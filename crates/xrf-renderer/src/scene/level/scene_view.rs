@@ -582,7 +582,11 @@ impl SceneView {
 
     self.state.particles.upload((device, queue));
 
-    self.write_present(options, scene.started.elapsed().as_secs_f32());
+    self.write_present(
+      options,
+      options.mode.is_lit && scene.statics.is_distorting(),
+      scene.started.elapsed().as_secs_f32(),
+    );
     self.prepare_shadows(scene, device, queue, encoder, (view_layout, textures));
     self.follow_overhead_maps();
   }
@@ -1756,16 +1760,18 @@ impl SceneView {
   }
 
   /// Notes what the present pass reads, once the frame knows what draws into the distortion target: `def_distort`
-  /// while the water or a particle does, nothing otherwise; which bloom it lays over the frame, and the sky debanding,
-  /// its noise turning with `time`.
-  fn write_present(&mut self, options: &RenderViewOptions, time: f32) {
+  /// while the water, a particle or a distorting surface of the scene (`is_glass_distorting`) does, nothing otherwise;
+  /// which bloom it lays over the frame, and the sky debanding, its noise turning with `time`.
+  fn write_present(&mut self, options: &RenderViewOptions, is_glass_distorting: bool, time: f32) {
+    self.info.is_glass_distorting = is_glass_distorting && !options.mode.is_wireframe;
+
     let Some(targets) = &self.state.targets else {
       return;
     };
     let water: &RenderWaterSettings = &options.features.water;
     let is_water_distorting: bool = water.is_enabled && water.is_distorted && options.mode.is_lit;
-    let is_distorting: bool =
-      !options.mode.is_wireframe && (is_water_distorting || self.state.particles.is_distorting());
+    let is_distorting: bool = !options.mode.is_wireframe
+      && (is_water_distorting || self.state.particles.is_distorting() || is_glass_distorting);
 
     let present: PresentUniform = PresentUniform::new(
       self.info.debug_view,
@@ -2066,14 +2072,14 @@ impl SceneView {
   pub fn begin_frame(
     &mut self,
     (device, queue): (&wgpu::Device, &wgpu::Queue),
-    pick: Option<(&CameraUniform, &wgpu::BindGroupLayout)>,
+    pick: Option<(&CameraUniform, &wgpu::BindGroupLayout, bool)>,
   ) -> Option<LevelFrame> {
     if self.state.targets.is_none() || self.state.pyramid.is_none() {
       return None;
     }
 
     let pick_slot: Option<usize> =
-      pick.and_then(|(camera, view_layout)| self.ready_pick(device, queue, camera, view_layout));
+      pick.and_then(|(camera, view_layout, _)| self.ready_pick(device, queue, camera, view_layout));
 
     if self.info.cull.is_occluding != 0 {
       self.state.history = Some(self.info.matrices);
@@ -2081,6 +2087,7 @@ impl SceneView {
 
     Some(LevelFrame {
       pick_slot,
+      is_pick_through: pick.is_some_and(|(_, _, is_through)| is_through),
       is_scene_first: false,
       is_lit: self.state.targets.is_some(),
       resolve: if self.state.fsr.is_some() {
@@ -2111,6 +2118,7 @@ impl SceneView {
   ) -> Option<SceneOutput> {
     let is_occluding: bool = self.info.cull.is_occluding != 0;
     let pick_slot: Option<usize> = frame.pick_slot;
+    let is_pick_through: bool = frame.is_pick_through;
     let resolve: Option<&'static str> = frame.resolve;
     let is_drawn: bool = !self.info.is_wireframe;
     let is_wallmarked: bool = self.info.is_wallmarked && is_drawn;
@@ -2730,6 +2738,29 @@ impl SceneView {
           });
       }
 
+      // The distorting surfaces' special pass, a window's glass bending what is behind it, into the distortion target
+      // the water and the particles wrote, as the engine draws `mapDistort` after every forward pass.
+      if let (true, Some(sky), true) = (is_composited, sky, scene_view.info.is_glass_distorting) {
+        let args: Vec<GraphBuffer> = Self::list_draw_args(&statics, &scene_view.info.cull);
+        let pass = graph
+          .add_raster_pass("composited distortion")
+          .color(GraphColorAttachment::new(handles.distortion, wgpu::LoadOp::Load))
+          .depth(GraphDepthAttachment::new_read_only(handles.depth));
+        let builder = args
+          .iter()
+          .fold(StaticDraws::declare_layouts(pass, &layouts), |builder, args| {
+            builder.buffer(*args, GraphBufferAccess::Indirect)
+          });
+
+        builder.parameters(&composited).parameters(&sky).record(move |context| {
+          let args: Vec<&wgpu::Buffer> = args.iter().map(|args| context.get_buffer(*args)).collect();
+
+          passes
+            .composited
+            .record_distortion(context, (view, &layouts, texture_group), (&composited, &sky), &args);
+        });
+      }
+
       // What a reflection reads a frame later: the scene with the water and the particles drawn, before the sun shafts,
       // the rain and the flares, which belong to this camera and not to what it reflects; and the depth it stood on.
       if let Some((scene, depth)) = source {
@@ -2914,6 +2945,29 @@ impl SceneView {
           (&settings, (targets.width, targets.height)),
         )
       });
+
+      // A selected composited surface, glass, marked where the present outlines the selection, once the enhanced
+      // bloom has read the marks.
+      if let (true, Some(_)) = (is_composited, scene_view.info.selection_color) {
+        let args: Vec<GraphBuffer> = Self::list_draw_args(&statics, &scene_view.info.cull);
+        let pass = graph
+          .add_raster_pass("composited selection")
+          .color(GraphColorAttachment::new(handles.material, wgpu::LoadOp::Load))
+          .depth(GraphDepthAttachment::new_read_only(handles.depth));
+        let builder = args
+          .iter()
+          .fold(StaticDraws::declare_layouts(pass, &layouts), |builder, args| {
+            builder.buffer(*args, GraphBufferAccess::Indirect)
+          });
+
+        builder.record(move |context| {
+          let args: Vec<&wgpu::Buffer> = args.iter().map(|args| context.get_buffer(*args)).collect();
+
+          passes
+            .composited
+            .record_selection(context, (view, &layouts, texture_group), &args);
+        });
+      }
 
       if is_bloomed {
         // Built from the high target into the first, blurred across into the second, then down into the first.
@@ -3106,7 +3160,7 @@ impl SceneView {
         (&mut *graph, &mut *bindings),
         passes.gbuffer,
         (pick_view, texture_group, &statics),
-        (target, slot),
+        (target, slot, is_pick_through),
       );
     }
 
@@ -3167,7 +3221,7 @@ impl SceneView {
     (graph, bindings): (&mut FrameGraph<'a>, &mut GraphBindings<'a>),
     gbuffer: &'a StaticGBufferPass,
     (view, textures, scene): (&'a ViewBinding, &'a wgpu::BindGroup, &StaticSceneHandles),
-    (target, slot): (&'a PickTarget, usize),
+    (target, slot, is_through): (&'a PickTarget, usize, bool),
   ) {
     let color: GraphTexture = bindings.import_view(graph, "pick", &target.color);
     let depth: GraphTexture = bindings.import_view(graph, "pick depth", &target.depth);
@@ -3190,7 +3244,7 @@ impl SceneView {
       .record(move |context| {
         let args: [&wgpu::Buffer; 2] = args.map(|args| context.get_buffer(args));
 
-        gbuffer.pick(context, (view, &draws, textures), &args);
+        gbuffer.pick(context, (view, &draws, textures), &args, is_through);
       });
     graph
       .add_encoder_pass("pick copy")

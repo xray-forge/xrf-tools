@@ -97,6 +97,8 @@ pub struct StaticScene {
   pub texture_slots: BTreeSet<u32>,
   /// Every environment slot its environment-mapped surfaces sample.
   pub environment_slots: BTreeSet<u32>,
+  /// Whether any of its surfaces draws into the distortion target.
+  is_distorting: bool,
   surface_count: u32,
   /// Entries of the visible list each batch may need: its clusters, each counted once per place drawing it.
   capacities: [u32; StaticBatch::COUNT],
@@ -240,6 +242,7 @@ impl StaticScene {
       surface_rows: HashMap::new(),
       texture_slots: BTreeSet::new(),
       environment_slots: BTreeSet::new(),
+      is_distorting: false,
       surface_count: 0,
       capacities: [0; StaticBatch::COUNT],
       sectors: ProxyStore::new(),
@@ -931,6 +934,11 @@ impl StaticScene {
     true
   }
 
+  /// Whether any of its composited surfaces draws into the distortion target.
+  pub fn is_distorting(&self) -> bool {
+    self.is_distorting
+  }
+
   /// Items added and removed so far, which a view drawn with another count is drawn again for.
   pub fn get_contents(&self) -> usize {
     self.contents
@@ -1242,6 +1250,11 @@ impl StaticScene {
     self
       .texture_slots
       .extend(surface.terrain.iter_slots().filter(|slot| *slot != MISSING_SLOT));
+
+    if surface.flags & StaticSurface::IS_DISTORTING != 0 {
+      self.texture_slots.insert(surface.distortion);
+      self.is_distorting = true;
+    }
   }
 
   fn resolve_surface(

@@ -32,19 +32,31 @@ function press(
 describe("listenRenderClicks", () => {
   it("hears a press let go where it went down, in the element's own pixels", () => {
     const element: HTMLElement = createElement();
-    const onClick = jest.fn<(point: IRenderViewPoint) => void>();
+    const onClick = jest.fn<(point: IRenderViewPoint, isThrough: boolean) => void>();
 
     listenRenderClicks(element, onClick);
     press(element, "pointerdown", 140, 90);
     press(element, "pointerup", 141, 91);
 
-    expect(onClick.mock.calls).toEqual([[{ x: 41, y: 41 }]]);
+    expect(onClick.mock.calls).toEqual([[{ x: 41, y: 41 }, false]]);
+  });
+
+  // Alt picks what stands behind glass.
+  it("says a click let go with Alt held picks through", () => {
+    const element: HTMLElement = createElement();
+    const onClick = jest.fn<(point: IRenderViewPoint, isThrough: boolean) => void>();
+
+    listenRenderClicks(element, onClick);
+    press(element, "pointerdown", 140, 90, { altKey: true });
+    press(element, "pointerup", 140, 90, { altKey: true });
+
+    expect(onClick.mock.calls).toEqual([[{ x: 40, y: 40 }, true]]);
   });
 
   // The fly camera looks around by dragging the main button, which must never pick what it ends over.
   it("hears nothing of a drag, another button or a cancelled press, nor anything once stopped", () => {
     const element: HTMLElement = createElement();
-    const onClick = jest.fn<(point: IRenderViewPoint) => void>();
+    const onClick = jest.fn<(point: IRenderViewPoint, isThrough: boolean) => void>();
     const stop: () => void = listenRenderClicks(element, onClick);
 
     press(element, "pointerdown", 140, 90);
@@ -64,7 +76,7 @@ describe("listenRenderClicks", () => {
   // Each pick opens a panel; a double click picking twice moved the viewport under a drag started right after it.
   it("hears a double click as one click, and a click after it as another", () => {
     const element: HTMLElement = createElement();
-    const onClick = jest.fn<(point: IRenderViewPoint) => void>();
+    const onClick = jest.fn<(point: IRenderViewPoint, isThrough: boolean) => void>();
 
     listenRenderClicks(element, onClick);
     press(element, "pointerdown", 140, 90, {}, 0);

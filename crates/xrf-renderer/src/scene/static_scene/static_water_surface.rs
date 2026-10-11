@@ -87,5 +87,7 @@ pub fn build_water_surface(
     flags,
     textures: texture_slots,
     terrain: StaticTerrainSlots::default(),
+    distortion: 0,
+    _pad: [0; 3],
   }
 }
