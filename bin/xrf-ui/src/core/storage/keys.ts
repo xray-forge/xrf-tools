@@ -32,8 +32,11 @@ export const GPU_TIMED_STORAGE_KEY: string = buildStorageKey(EStorageNamespace.P
 /** The renderer's preset and what was changed on top of it, as JSON. */
 export const RENDERER_FEATURES_STORAGE_KEY: string = buildStorageKey(EStorageNamespace.PREFERENCE, "renderer-features");
 
-/** How many pixels every viewport draws, whatever size it is shown at. */
+/** Which graphics API every viewport draws with. */
 export const RENDER_BACKEND_STORAGE_KEY: string = buildStorageKey(EStorageNamespace.PREFERENCE, "render-backend");
+/** Which GPU every viewport draws on, as JSON; absent for the automatic one. */
+export const RENDER_GPU_STORAGE_KEY: string = buildStorageKey(EStorageNamespace.PREFERENCE, "render-gpu");
+/** How many pixels every viewport draws, whatever size it is shown at. */
 export const RENDER_RESOLUTION_STORAGE_KEY: string = buildStorageKey(EStorageNamespace.PREFERENCE, "render-resolution");
 /** The share of the viewport's sides an automatic resolution resolves at. */
 export const RENDER_OUTPUT_SCALE_STORAGE_KEY: string = buildStorageKey(

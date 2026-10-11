@@ -54,7 +54,7 @@ export function isRenderBackendAvailable(
   backend: RenderBackend,
   availability: ReadonlyArray<RenderBackendAvailability>
 ): boolean {
-  return availability.some((it: RenderBackendAvailability) => it.backend === backend && it.adapter !== null);
+  return availability.some((it: RenderBackendAvailability) => it.backend === backend && it.gpus.length > 0);
 }
 
 /**
@@ -87,7 +87,7 @@ export function resolveRenderBackend(
   }
 
   const first: RenderBackendAvailability | undefined = availability.find(
-    (it: RenderBackendAvailability) => it.adapter !== null
+    (it: RenderBackendAvailability) => it.gpus.length > 0
   );
 
   return first ? first.backend : null;

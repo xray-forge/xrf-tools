@@ -10,12 +10,27 @@ import {
 } from "@/core/render/lib/settings/render-backend-choice";
 
 const BOTH: ReadonlyArray<RenderBackendAvailability> = [
-  { adapter: "GPU", backend: ERenderBackend.D3D12, driver: "1.0", isForced: false, problem: null },
-  { adapter: "GPU", backend: ERenderBackend.VULKAN, driver: "1.0", isForced: false, problem: null },
+  {
+    backend: ERenderBackend.D3D12,
+    gpus: [{ gpu: { vendor: 1, device: 1 }, name: "GPU", driver: "1.0" }],
+    isForced: false,
+    problem: null,
+  },
+  {
+    backend: ERenderBackend.VULKAN,
+    gpus: [{ gpu: { vendor: 1, device: 1 }, name: "GPU", driver: "1.0" }],
+    isForced: false,
+    problem: null,
+  },
 ];
 const VULKAN_ONLY: ReadonlyArray<RenderBackendAvailability> = [
-  { adapter: null, backend: ERenderBackend.D3D12, driver: null, isForced: false, problem: "No D3D12 adapter" },
-  { adapter: "GPU", backend: ERenderBackend.VULKAN, driver: "1.0", isForced: false, problem: null },
+  { backend: ERenderBackend.D3D12, gpus: [], isForced: false, problem: "No D3D12 adapter" },
+  {
+    backend: ERenderBackend.VULKAN,
+    gpus: [{ gpu: { vendor: 1, device: 1 }, name: "GPU", driver: "1.0" }],
+    isForced: false,
+    problem: null,
+  },
 ];
 
 describe("render backend choice", () => {

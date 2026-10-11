@@ -2,6 +2,7 @@ import { useInjection } from "@wirestate/react";
 import { ReactElement, useEffect } from "react";
 
 import { RenderBackendFormRow } from "@/core/render/components/controls/RenderBackendFormRow";
+import { RenderGpuFormRow } from "@/core/render/components/controls/RenderGpuFormRow";
 import { RenderPassTimingFormRow } from "@/core/render/components/controls/RenderPassTimingFormRow";
 import { RENDER_FRAME_RATE_OPTIONS } from "@/core/render/lib/features/render-display-choices";
 import { RenderSettingsService } from "@/core/render/services/render-settings";
@@ -22,8 +23,16 @@ export function SettingsRendererDisplay(): ReactElement {
     <div className={"flex flex-col gap-6"}>
       <RenderBackendFormRow
         value={renderSettingsService.renderBackend}
+        gpu={renderSettingsService.renderGpu}
         availability={renderSettingsService.renderBackends}
         onChange={renderSettingsService.setRenderBackend}
+      />
+
+      <RenderGpuFormRow
+        value={renderSettingsService.renderGpu}
+        backend={renderSettingsService.renderBackend}
+        availability={renderSettingsService.renderBackends}
+        onChange={renderSettingsService.setRenderGpu}
       />
 
       <ChoiceFormRow

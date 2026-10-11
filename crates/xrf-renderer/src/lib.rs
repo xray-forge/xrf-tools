@@ -67,6 +67,8 @@ pub use crate::contract::render_frame_rate::RenderFrameRate;
 pub use crate::contract::render_frame_report::RenderFrameReport;
 pub use crate::contract::render_glass_mode::RenderGlassMode;
 pub use crate::contract::render_glass_settings::RenderGlassSettings;
+pub use crate::contract::render_gpu::RenderGpu;
+pub use crate::contract::render_gpu_description::RenderGpuDescription;
 pub use crate::contract::render_graph_pass::RenderGraphPass;
 pub use crate::contract::render_graph_pass_kind::RenderGraphPassKind;
 pub use crate::contract::render_graph_report::RenderGraphReport;

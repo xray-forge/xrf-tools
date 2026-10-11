@@ -259,13 +259,14 @@ export enum ERenderBackend {
 /** Every `ERenderBackend` as the spelling it crosses IPC as, for a value no member has narrowed. */
 export type RenderBackend = `${ERenderBackend}`;
 
-/** Whether the renderer can draw with a backend on this machine: the GPU it would use, or why it cannot draw. */
+/** Whether the renderer can draw with a backend on this machine: the GPUs it can use, or why it cannot draw. */
 export type RenderBackendAvailability = {
   backend: RenderBackend;
-  /** The adapter it would draw on; none if it cannot draw. */
-  adapter: string | null;
-  /** The adapter's driver and version as the API reports them, for example `NVIDIA 617.14`; none if it cannot draw. */
-  driver: string | null;
+  /**
+   * Every hardware GPU of the backend with the features the renderer needs, the one chosen automatically first; empty
+   * if it cannot draw.
+   */
+  gpus: Array<RenderGpuDescription>;
   /** Why it cannot draw; none if it can. */
   problem: string | null;
   /** Whether `XRF_RENDER_BACKEND` names it, so the renderer starts on it instead of the settings' choice. */
@@ -731,6 +732,23 @@ export type RenderGlassSettings = {
   mode: RenderGlassMode;
   /** How far the enhanced glass bends what is behind it, one as designed; none draws it flat. */
   refraction: number | null;
+};
+
+/**
+ * A GPU identified by its PCI vendor and device IDs. D3D12 and Vulkan report the same IDs; two identical cards share
+ * one identity.
+ */
+export type RenderGpu = {
+  vendor: number;
+  device: number;
+};
+
+/** A GPU a backend can draw on: its identity, its name and its driver. */
+export type RenderGpuDescription = {
+  gpu: RenderGpu;
+  name: string;
+  /** The driver and its version as the API reports them, for example `NVIDIA 617.14`; none if it reports neither. */
+  driver: string | null;
 };
 
 /** One pass a viewport's frame ran, as the frame graph placed it. */
@@ -1438,6 +1456,11 @@ export type RenderSettings = {
    * does, and `XRF_RENDER_BACKEND` overrides it.
    */
   backend: RenderBackend | null;
+  /**
+   * The GPU to draw on, none for the one the backend picks automatically (its high-performance adapter); one the
+   * backend does not have falls back to automatic.
+   */
+  gpu: RenderGpu | null;
   /**
    * Milliseconds of GPU time each frame gives at least the work drawn once in so many frames that may wait: the
    * shadows' cascades and faces, the overhead maps, the surroundings' faces, the sky's refill. A frame held to a cap or

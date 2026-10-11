@@ -1,7 +1,12 @@
 import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
-import { RenderBackend, RenderBackendAvailability } from "@/core/ipc/types/xrf-renderer";
+import {
+  RenderBackend,
+  RenderBackendAvailability,
+  RenderGpu,
+  RenderGpuDescription,
+} from "@/core/ipc/types/xrf-renderer";
 import {
   describeRenderBackend,
   getForcedRenderBackend,
@@ -11,16 +16,19 @@ import {
   resolveRenderBackend,
   TRenderBackendChoice,
 } from "@/core/render/lib/settings/render-backend-choice";
+import { resolveRenderGpu } from "@/core/render/lib/settings/render-gpu-choice";
 import { ChoiceFormRow, IChoiceFormRowOption } from "@/core/ui/form/ChoiceFormRow";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /**
  * @param value - The graphics API the settings ask for.
+ * @param gpu - The GPU the settings ask for, or null for the automatic one.
  * @param availability - What each graphics API can do here, none until known.
  * @returns What the row says: which API draws, on which GPU, and why the one asked for does not where it does not.
  */
 function describeBackendChoice(
   value: TRenderBackendChoice,
+  gpu: Nullable<RenderGpu>,
   availability: Nullable<ReadonlyArray<RenderBackendAvailability>>
 ): string {
   const lead: string =
@@ -37,9 +45,11 @@ function describeBackendChoice(
     return `${lead} No graphics API works on this machine.`;
   }
 
-  const adapter: Nullable<string> =
-    availability.find((it: RenderBackendAvailability) => it.backend === drawn)?.adapter ?? null;
-  const drawnOn: string = `Drawing with ${describeRenderBackend(drawn)} on ${adapter ?? "the GPU"}.`;
+  const drawnGpu: Nullable<RenderGpuDescription> = resolveRenderGpu(
+    gpu,
+    availability.find((it: RenderBackendAvailability) => it.backend === drawn)
+  );
+  const drawnOn: string = `Drawing with ${describeRenderBackend(drawn)} on ${drawnGpu?.name ?? "the GPU"}.`;
   const forced: Nullable<RenderBackend> = getForcedRenderBackend(availability);
 
   if (forced !== null) {
@@ -59,6 +69,8 @@ function describeBackendChoice(
 export interface IRenderBackendFormRowProps extends BaseComponentProps {
   /** The graphics API the settings ask for. */
   value: TRenderBackendChoice;
+  /** The GPU the settings ask for, or null for the automatic one. */
+  gpu: Nullable<RenderGpu>;
   /** What each graphics API can do on this machine, none until the renderer was asked. */
   availability: Nullable<ReadonlyArray<RenderBackendAvailability>>;
   onChange: (choice: TRenderBackendChoice) => void;
@@ -73,6 +85,7 @@ export function RenderBackendFormRow({
   id,
   className,
   value,
+  gpu,
   availability,
   onChange,
 }: IRenderBackendFormRowProps): ReactElement {
@@ -93,7 +106,7 @@ export function RenderBackendFormRow({
       id={id}
       className={className}
       label={"Graphics API"}
-      description={describeBackendChoice(value, availability)}
+      description={describeBackendChoice(value, gpu, availability)}
       options={options}
       value={value}
       onChange={onChange}

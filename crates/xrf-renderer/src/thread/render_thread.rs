@@ -300,13 +300,20 @@ impl RenderThread {
         }
       }
       RenderCommand::Settings { settings } => {
-        // A changed choice of backend starts the GPU on it at once: a running one again unless it already runs on the
-        // one the choice prefers, a failed one without waiting out its retry; one that cannot start falls back as at
-        // any start.
-        if settings.backend != self.settings.backend {
-          let preferred: RenderBackend = RenderBackend::get_preferred(RenderBackend::get_asked(settings.backend));
+        // A changed backend or GPU takes effect at once: a running GPU restarts unless it already matches the choice,
+        // and a failed start retries without waiting. A change to the automatic GPU always restarts, since it may pick
+        // a different one. A choice that cannot start falls back as at any start.
+        let is_backend_changed: bool = settings.backend != self.settings.backend;
+        let is_gpu_changed: bool = settings.gpu != self.settings.gpu;
 
-          if self.gpu.as_ref().is_some_and(|gpu| gpu.context.backend != preferred) {
+        if is_backend_changed || is_gpu_changed {
+          let preferred: RenderBackend = RenderBackend::get_preferred(RenderBackend::get_asked(settings.backend));
+          let is_restarted: bool = self.gpu.as_ref().is_some_and(|gpu| {
+            (is_backend_changed && gpu.context.backend != preferred)
+              || (is_gpu_changed && settings.gpu.is_none_or(|asked| asked != gpu.context.gpu))
+          });
+
+          if is_restarted {
             log::info!("Restarting the renderer on {}", preferred.get_label());
             self.release_gpu();
           }
@@ -527,6 +534,7 @@ impl RenderThread {
 
     match GpuContext::create_preferred(
       RenderBackend::get_asked(self.settings.backend),
+      self.settings.gpu,
       (dxc.as_deref(), dlss.as_deref()),
     )
     .and_then(|context| {

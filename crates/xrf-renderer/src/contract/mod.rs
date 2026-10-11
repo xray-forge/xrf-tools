@@ -40,6 +40,8 @@ pub(crate) mod render_frame_rate;
 pub(crate) mod render_frame_report;
 pub(crate) mod render_glass_mode;
 pub(crate) mod render_glass_settings;
+pub(crate) mod render_gpu;
+pub(crate) mod render_gpu_description;
 pub(crate) mod render_graph_pass;
 pub(crate) mod render_graph_pass_kind;
 pub(crate) mod render_graph_report;

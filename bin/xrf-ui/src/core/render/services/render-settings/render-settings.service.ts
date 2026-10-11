@@ -4,7 +4,12 @@ import { clamp } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 
 import { renderCommands } from "@/core/ipc/commands/render";
-import { RenderBackendAvailability, RenderGraphSettings, RenderSettings } from "@/core/ipc/types/xrf-renderer";
+import {
+  RenderBackendAvailability,
+  RenderGpu,
+  RenderGraphSettings,
+  RenderSettings,
+} from "@/core/ipc/types/xrf-renderer";
 import {
   toRenderBackend,
   toRenderBackendChoice,
@@ -23,6 +28,7 @@ import {
   toFrameRateLimit,
   toRenderFrameRate,
 } from "@/core/render/lib/settings/render-frame-rate-limit";
+import { toRenderGpuChoice } from "@/core/render/lib/settings/render-gpu-choice";
 import { DEFAULT_RENDER_GRAPH_SETTINGS } from "@/core/render/lib/settings/render-graph-settings";
 import { DEFAULT_PERIODIC_BUDGET } from "@/core/render/lib/settings/render-periodic-budget";
 import { ERenderPreset } from "@/core/render/lib/settings/render-preset";
@@ -38,6 +44,7 @@ import {
   GPU_TIMED_STORAGE_KEY,
   parseLocalStorageValueSafe,
   RENDER_BACKEND_STORAGE_KEY,
+  RENDER_GPU_STORAGE_KEY,
   RENDER_OUTPUT_SCALE_STORAGE_KEY,
   RENDER_RESOLUTION_STORAGE_KEY,
   RENDERER_FEATURES_STORAGE_KEY,
@@ -86,6 +93,10 @@ export class RenderSettingsService {
   @Observable()
   public renderBackend: TRenderBackendChoice = toRenderBackendChoice(getLocalStorageValue(RENDER_BACKEND_STORAGE_KEY));
 
+  /** Which GPU every viewport asks the renderer for, or null for the one the backend picks automatically. */
+  @RefObservable()
+  public renderGpu: Nullable<RenderGpu> = toRenderGpuChoice(parseLocalStorageValueSafe(RENDER_GPU_STORAGE_KEY));
+
   /** What each graphics API can do on this machine, as the renderer last probed it; none before it was. */
   @RefObservable()
   public renderBackends: Nullable<ReadonlyArray<RenderBackendAvailability>> = null;
@@ -114,6 +125,7 @@ export class RenderSettingsService {
   public get renderSettings(): RenderSettings {
     return {
       backend: toRenderBackend(this.renderBackend),
+      gpu: this.renderGpu === null ? null : { ...this.renderGpu },
       frameRate: toRenderFrameRate(this.frameRateLimit, this.isVsync),
       graph: { ...this.graph },
       isGpuTimed: this.isGpuTimed,
@@ -172,6 +184,14 @@ export class RenderSettingsService {
 
     this.renderBackend = choice;
     setLocalStorageValue(RENDER_BACKEND_STORAGE_KEY, choice);
+  }
+
+  @BoundAction()
+  public setRenderGpu(gpu: Nullable<RenderGpu>): void {
+    this.log.info("Set render GPU:", gpu);
+
+    this.renderGpu = gpu;
+    setLocalStorageValueSafe(RENDER_GPU_STORAGE_KEY, gpu === null ? null : JSON.stringify(gpu));
   }
 
   /** Asks the renderer which graphics APIs it can draw with here, for the settings to offer only those. */

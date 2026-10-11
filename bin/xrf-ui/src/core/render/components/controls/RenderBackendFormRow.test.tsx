@@ -8,15 +8,20 @@ import { RENDER_BACKEND_AUTO, TRenderBackendChoice } from "@/core/render/lib/set
 import { RenderBackendFormRow } from "./RenderBackendFormRow";
 
 const VULKAN_ONLY: ReadonlyArray<RenderBackendAvailability> = [
-  { adapter: null, backend: ERenderBackend.D3D12, driver: null, isForced: false, problem: "No D3D12 adapter" },
-  { adapter: "Test GPU", backend: ERenderBackend.VULKAN, driver: "1.0", isForced: false, problem: null },
+  { backend: ERenderBackend.D3D12, gpus: [], isForced: false, problem: "No D3D12 adapter" },
+  {
+    backend: ERenderBackend.VULKAN,
+    gpus: [{ gpu: { vendor: 1, device: 1 }, name: "Test GPU", driver: "1.0" }],
+    isForced: false,
+    problem: null,
+  },
 ];
 
 describe("RenderBackendFormRow", () => {
   it("offers only the graphics APIs this machine can draw with, greying out the rest", async () => {
     const onChange = jest.fn<(choice: TRenderBackendChoice) => void>();
     const view = render(
-      <RenderBackendFormRow value={RENDER_BACKEND_AUTO} availability={VULKAN_ONLY} onChange={onChange} />
+      <RenderBackendFormRow gpu={null} value={RENDER_BACKEND_AUTO} availability={VULKAN_ONLY} onChange={onChange} />
     );
 
     expect(view.getByRole("button", { name: "Direct3D 12" })).toBeDisabled();
@@ -31,7 +36,7 @@ describe("RenderBackendFormRow", () => {
 
   it("says the renderer fell back where the remembered API is not available here", () => {
     const view = render(
-      <RenderBackendFormRow value={ERenderBackend.D3D12} availability={VULKAN_ONLY} onChange={jest.fn()} />
+      <RenderBackendFormRow gpu={null} value={ERenderBackend.D3D12} availability={VULKAN_ONLY} onChange={jest.fn()} />
     );
 
     expect(view.getByRole("group", { name: "Graphics API" })).toHaveAccessibleDescription(
@@ -45,7 +50,7 @@ describe("RenderBackendFormRow", () => {
       isForced: it.backend === ERenderBackend.VULKAN,
     }));
     const view = render(
-      <RenderBackendFormRow value={ERenderBackend.D3D12} availability={forced} onChange={jest.fn()} />
+      <RenderBackendFormRow gpu={null} value={ERenderBackend.D3D12} availability={forced} onChange={jest.fn()} />
     );
 
     expect(view.getByRole("group", { name: "Graphics API" })).toHaveAccessibleDescription(
@@ -54,7 +59,9 @@ describe("RenderBackendFormRow", () => {
   });
 
   it("offers every API before the renderer was asked which work", () => {
-    const view = render(<RenderBackendFormRow value={RENDER_BACKEND_AUTO} availability={null} onChange={jest.fn()} />);
+    const view = render(
+      <RenderBackendFormRow gpu={null} value={RENDER_BACKEND_AUTO} availability={null} onChange={jest.fn()} />
+    );
 
     expect(view.getByRole("button", { name: "Direct3D 12" })).toBeEnabled();
     expect(view.getByRole("button", { name: "Vulkan" })).toBeEnabled();

@@ -12,6 +12,7 @@ mod frame_statistics;
 mod fsr;
 mod generated_shaders;
 mod gpu_memory;
+mod gpu_selection;
 mod grass;
 mod grass_cards;
 mod headless;
