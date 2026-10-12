@@ -6,10 +6,7 @@ use std::time::{Duration, Instant};
 
 use glam::{Mat4, Vec2, Vec3, Vec4};
 use xrf_error::{XrfError, XrfResult};
-use xrf_renderer_core::{
-  ExecutedGraph, ExecutedGroup, FrameGraph, GraphBindings, GraphColorAttachment, GraphReport, GraphRuntime,
-  GraphTexture, GraphTextureAccess,
-};
+use xrf_renderer_core::{ExecutedGraph, ExecutedGroup, FrameGraph, GraphBindings, GraphReport, GraphRuntime};
 
 use wgpu::util::StagingBelt;
 
@@ -61,10 +58,10 @@ use crate::thread::render_workers::RenderWorkers;
 use crate::viewport::pending_pick::PendingPick;
 use crate::viewport::pick_in_flight::PickInFlight;
 use crate::viewport::render_viewport::RenderViewport;
-use crate::window::acquired_window::AcquiredWindow;
 use crate::window::composed_view::ComposedView;
 use crate::window::render_window::RenderWindow;
 use crate::window::window_backdrop::WindowBackdrop;
+use crate::window::window_frame::WindowFrame;
 
 /// How long a thread with nothing to draw waits for a command before looking again at its windows, which may have
 /// been restored from minimised meanwhile.
@@ -707,14 +704,21 @@ impl RenderThread {
   /// skipping a window that cannot give one (minimised, occluded, outdated, lost) rather than waiting for it; readies
   /// each of their viewports' frames; declares the viewports' frames, then each window's composition and captures;
   /// submits once; and presents every window. `update` is what the frame spent before any window.
-  fn draw_windows(&mut self, update: Duration, mut encoder: FrameEncoder) {
+  /// Readies each window this frame draws: its swapchain configured for its size now, made where it is new or was
+  /// lost, the viewports laid out in it with the part each shows, and its page's backdrop; its image is acquired later.
+  fn ready_windows(&mut self, encoder: &mut FrameEncoder) -> Vec<WindowFrame> {
     let Some(gpu) = &mut self.gpu else {
-      return;
+      return Vec::new();
     };
     let is_vsync: bool = self.settings.frame_rate.is_vsync;
-    let mut acquired: Vec<AcquiredWindow> = Vec::new();
+    let mut windows: Vec<WindowFrame> = Vec::new();
 
     for (key, host) in &self.hosts {
+      // A lost surface is let go, so this frame draws into a new one.
+      if gpu.windows.get(key).is_some_and(RenderWindow::is_lost) {
+        gpu.windows.remove(key);
+      }
+
       if !gpu.windows.contains_key(key) {
         match RenderWindow::new(&gpu.context, Arc::clone(host)) {
           Ok(created) => {
@@ -745,21 +749,9 @@ impl RenderThread {
       let Some(window) = gpu.windows.get_mut(key) else {
         continue;
       };
-      let acquiring: Instant = Instant::now();
-      let image = {
-        profiling::scope!("acquire");
-
-        window.acquire(&gpu.context, is_vsync)
-      };
-      let Some((image, width, height)) = image else {
-        // A lost surface is let go, so the next frame draws into a new one.
-        if window.is_lost() {
-          gpu.windows.remove(key);
-        }
-
+      let Some((width, height)) = window.ready(&gpu.context, is_vsync) else {
         continue;
       };
-      let acquire: Duration = acquiring.elapsed();
       // Each viewport's whole rectangle, which its camera and targets are sized by, and the part of it the window
       // shows, which its picture is cropped to.
       let drawn: Vec<(RenderViewportId, RenderRect, RenderRect)> = self
@@ -787,7 +779,7 @@ impl RenderThread {
         && gpu
           .backdrop
           .prepare(
-            (&gpu.context.device, &mut encoder),
+            (&gpu.context.device, &mut *encoder),
             &self.shaders,
             format,
             (window.get_backdrop_slot(), &backdrop),
@@ -795,9 +787,8 @@ impl RenderThread {
           .inspect_err(|error| log::error!("The page's wash cannot be drawn: {error}"))
           .is_ok();
 
-      acquired.push(AcquiredWindow {
+      windows.push(WindowFrame {
         key: *key,
-        image,
         format,
         drawn,
         clear: wgpu::Color {
@@ -807,12 +798,22 @@ impl RenderThread {
           a: 1.0,
         },
         is_washed,
-        acquire,
+        image: None,
+        acquire: Duration::ZERO,
       });
     }
 
+    windows
+  }
+
+  fn draw_windows(&mut self, update: Duration, mut encoder: FrameEncoder) {
+    let mut windows: Vec<WindowFrame> = self.ready_windows(&mut encoder);
+    let Some(gpu) = &mut self.gpu else {
+      return;
+    };
+
     // A viewport no window draws this frame, laid out nowhere or in a window with no image, has nothing to pick in.
-    let seen: HashSet<RenderViewportId> = acquired
+    let seen: HashSet<RenderViewportId> = windows
       .iter()
       .flat_map(|window| window.drawn.iter().map(|(id, _, _)| *id))
       .collect();
@@ -824,7 +825,7 @@ impl RenderThread {
     }
 
     // With nothing to draw into, what the scenes took in still goes up.
-    if acquired.is_empty() {
+    if windows.is_empty() {
       let (commands, belt): (wgpu::CommandBuffer, StagingBelt) = encoder.finish();
 
       gpu.context.queue.submit([commands]);
@@ -841,7 +842,7 @@ impl RenderThread {
     // Each viewport's readied frame, with the pick it draws and what unprojects that pick's depth; its scene's driving
     // viewport first, which simulates the scene and declares its work, or the first drawn where that one is not.
     let mut frames: Vec<ViewFrame> = Vec::new();
-    let mut drawn: Vec<(RenderViewportId, RenderRect, Option<RenderSceneId>)> = acquired
+    let mut drawn: Vec<(RenderViewportId, RenderRect, Option<RenderSceneId>)> = windows
       .iter()
       .flat_map(|window| window.drawn.iter())
       .map(|(id, rect, _)| {
@@ -902,7 +903,7 @@ impl RenderThread {
     let composing: Instant = Instant::now();
 
     if !frames.is_empty() {
-      for format in acquired.iter().map(|window| window.format).collect::<HashSet<_>>() {
+      for format in windows.iter().map(|window| window.format).collect::<HashSet<_>>() {
         if let Err(error) = gpu.present.prepare(&gpu.context.device, &self.shaders, format) {
           log::error!("Level viewport cannot be presented: {error}");
         }
@@ -923,7 +924,7 @@ impl RenderThread {
     // Copied out of their window's image after it is composed, before it is presented; read once each is back.
     let mut captures: Vec<(RenderViewportId, FrameCapture, CaptureReply)> = Vec::new();
 
-    for window in &acquired {
+    for window in &windows {
       for (id, _, shown) in &window.drawn {
         let Some(viewport) = self.viewports.get_mut(id) else {
           continue;
@@ -943,10 +944,8 @@ impl RenderThread {
     runtime.timer.set_enabled(self.settings.is_gpu_timed);
 
     let recording: Instant = Instant::now();
-    let targets: Vec<wgpu::TextureView> = acquired
-      .iter()
-      .map(|window| window.image.texture.create_view(&Default::default()))
-      .collect();
+    // Each window's image as the composition draws into it, once acquired.
+    let mut targets: Vec<Option<wgpu::TextureView>> = Vec::with_capacity(windows.len());
     let executed: XrfResult<ExecutedGraph> = {
       profiling::scope!("record");
 
@@ -981,11 +980,44 @@ impl RenderThread {
         outputs.extend(output.map(|output| (*id, output)));
       }
 
+      // Each window's image, acquired only now that every view's work is recorded: the wait for it, while the GPU
+      // still draws the last frame, comes after the frame's own work on the render thread. A capture of a window that
+      // gave no image is refused.
+      for window in &mut windows {
+        if let Some(surface) = gpu.windows.get(&window.key) {
+          window.acquire(surface);
+        }
+
+        targets.push(
+          window
+            .image
+            .as_ref()
+            .map(|image| image.texture.create_view(&Default::default())),
+        );
+      }
+
+      let (kept, refused): (Vec<_>, Vec<_>) = std::mem::take(&mut captures).into_iter().partition(|(id, ..)| {
+        windows
+          .iter()
+          .any(|window| window.image.is_some() && window.drawn.iter().any(|(drawn, ..)| drawn == id))
+      });
+
+      captures = kept;
+
+      for (_, _, reply) in refused {
+        let _ = reply.send(Err(XrfError::new_invalid_error(
+          "The window gave no image to capture this frame",
+        )));
+      }
+
       // Then each window: the page's backdrop, each viewport's picture or its grid cropped to what the window shows,
       // its overlays, and the captures copied out of it.
       graph.begin_owner(FrameGraph::FRAME_OWNER);
 
-      for (window, target) in acquired.iter().zip(&targets) {
+      for (window, target) in windows.iter().zip(&targets) {
+        let Some(target) = target else {
+          continue;
+        };
         let Some(grid) = gpu.get_grid(window.format) else {
           continue;
         };
@@ -1039,78 +1071,13 @@ impl RenderThread {
           .get(&window.key)
           .and_then(RenderWindow::get_backdrop)
           .filter(|_| window.is_washed);
-        let (backdrop_pass, present, overlay) = (&gpu.backdrop, &gpu.present, &gpu.overlay);
-        let format: wgpu::TextureFormat = window.format;
-
-        graph.begin_group("window");
-
-        let window_texture: GraphTexture = bindings.import_view(&mut graph, "window", target);
-
-        let declared = composed.iter().fold(
-          graph.add_raster_pass("window").color(GraphColorAttachment::new(
-            window_texture,
-            wgpu::LoadOp::Clear(window.clear),
-          )),
-          |builder, view| {
-            let builder = match &view.present {
-              Some(present) => builder.parameters(present),
-              None => builder,
-            };
-
-            match &view.overlays {
-              Some((overlay, _)) => builder.parameters(overlay),
-              None => builder,
-            }
-          },
+        window.declare(
+          (&mut graph, &mut bindings),
+          (target, backdrop),
+          composed,
+          (&gpu.backdrop, &gpu.present, &gpu.overlay, grid),
+          &captures,
         );
-
-        declared.record(move |context| {
-          if let Some(backdrop) = backdrop {
-            backdrop_pass.draw(context.get_pass(), format, backdrop);
-          }
-
-          for view in &composed {
-            let (rect, shown, binding): (RenderRect, RenderRect, &ViewBinding) = (view.rect, view.shown, view.binding);
-
-            let pass: &mut wgpu::RenderPass<'static> = context.get_pass();
-
-            // The whole viewport, past the window's edges where it reaches them, cropped to what the window shows.
-            pass.set_viewport(
-              rect.x as f32,
-              rect.y as f32,
-              rect.width as f32,
-              rect.height as f32,
-              0.0,
-              1.0,
-            );
-            pass.set_scissor_rect(shown.x as u32, shown.y as u32, shown.width, shown.height);
-
-            match &view.present {
-              Some(parameters) => present.draw(context, format, binding, parameters),
-              None => grid.draw(pass, binding),
-            }
-
-            if let Some((parameters, overlays)) = &view.overlays {
-              overlay.draw(context, format, (binding, parameters), overlays);
-            }
-          }
-        });
-
-        for (id, capture, _) in &captures {
-          if !window.drawn.iter().any(|(drawn, ..)| drawn == id) {
-            continue;
-          }
-
-          graph
-            .add_encoder_pass("capture")
-            .texture(window_texture, GraphTextureAccess::CopySource)
-            .keep()
-            .record(move |context| {
-              let texture: &wgpu::Texture = context.get_texture(window_texture).texture;
-
-              capture.encode(context.get_encoder(), texture);
-            });
-        }
       }
 
       let graph_report: &mut Option<(Instant, GraphReport)> = &mut self.graph_report;
@@ -1180,7 +1147,9 @@ impl RenderThread {
     };
     let encoded: Duration = finishing.elapsed() + executed.encode;
 
-    phases.record += recording.elapsed().saturating_sub(encoded);
+    let waited: Duration = windows.iter().map(|window| window.acquire).sum();
+
+    phases.record += recording.elapsed().saturating_sub(encoded + waited);
     phases.encode += encoded;
     commands.extend(executed.commands);
 
@@ -1226,16 +1195,19 @@ impl RenderThread {
       }
     }
 
-    let cpu: Duration = started.elapsed();
+    let cpu: Duration = started.elapsed().saturating_sub(waited);
 
     // Each window presents, and its viewports note the frame with its own acquire, present and interval.
-    for window in acquired {
+    for window in windows {
+      let Some(image) = window.image else {
+        continue;
+      };
       let presenting: Instant = Instant::now();
 
       {
         profiling::scope!("present");
 
-        queue.present(window.image);
+        queue.present(image);
       }
 
       let presented: Instant = Instant::now();

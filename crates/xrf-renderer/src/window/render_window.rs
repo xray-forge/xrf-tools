@@ -1,3 +1,4 @@
+use std::cell::Cell;
 use std::sync::Arc;
 
 use xrf_error::{XrfError, XrfResult};
@@ -17,10 +18,11 @@ pub struct RenderWindow {
   format: wgpu::TextureFormat,
   present_modes: Vec<wgpu::PresentMode>,
   usages: wgpu::TextureUsages,
-  /// What the swapchain was last configured as: its size and whether it waits for vsync.
-  configured: Option<(u32, u32, bool)>,
+  /// What the swapchain was last configured as: its size and whether it waits for vsync; none once an image asks for it
+  /// to be configured again.
+  configured: Cell<Option<(u32, u32, bool)>>,
   /// Whether the surface was lost, which only a new one recovers from.
-  is_lost: bool,
+  is_lost: Cell<bool>,
   /// What its page's backdrop is painted with, once it is.
   backdrop: Option<WindowBackdrop>,
 }
@@ -53,8 +55,8 @@ impl RenderWindow {
     Ok(Self {
       present_modes: capabilities.present_modes,
       usages: capabilities.usages,
-      configured: None,
-      is_lost: false,
+      configured: Cell::new(None),
+      is_lost: Cell::new(false),
       backdrop: None,
       host,
       surface,
@@ -77,45 +79,50 @@ impl RenderWindow {
 
   /// Whether the surface was lost: the window is then drawn into through a new one.
   pub fn is_lost(&self) -> bool {
-    self.is_lost
+    self.is_lost.get()
   }
 
-  /// The next frame to draw, configured for the window's size now, or `None` while the window shows nothing.
-  pub fn acquire(&mut self, context: &GpuContext, is_vsync: bool) -> Option<(wgpu::SurfaceTexture, u32, u32)> {
+  /// Configures the swapchain for the window's size now, answering the size; `None` while the window shows nothing.
+  pub fn ready(&mut self, context: &GpuContext, is_vsync: bool) -> Option<(u32, u32)> {
     let (width, height) = self.host.get_client_size();
 
     if width == 0 || height == 0 || self.host.is_minimized() {
       return None;
     }
 
-    if self.configured != Some((width, height, is_vsync)) {
+    if self.configured.get() != Some((width, height, is_vsync)) {
       self.configure(context, width, height, is_vsync);
     }
 
+    Some((width, height))
+  }
+
+  /// The next image to draw into, of the size `ready` configured; `None` where the surface gives none this time.
+  pub fn acquire(&self) -> Option<wgpu::SurfaceTexture> {
     match self.surface.get_current_texture() {
-      wgpu::CurrentSurfaceTexture::Success(frame) => Some((frame, width, height)),
+      wgpu::CurrentSurfaceTexture::Success(frame) => Some(frame),
       // Drawn, then configured again for what the surface has become.
       wgpu::CurrentSurfaceTexture::Suboptimal(frame) => {
-        self.configured = None;
+        self.configured.set(None);
 
-        Some((frame, width, height))
+        Some(frame)
       }
       // Nothing to draw into this time; the swapchain itself is fine.
       wgpu::CurrentSurfaceTexture::Timeout | wgpu::CurrentSurfaceTexture::Occluded => None,
       wgpu::CurrentSurfaceTexture::Outdated => {
-        self.configured = None;
+        self.configured.set(None);
 
         None
       }
       wgpu::CurrentSurfaceTexture::Lost => {
         log::warn!("Window surface lost, recreating it");
-        self.is_lost = true;
+        self.is_lost.set(true);
 
         None
       }
       wgpu::CurrentSurfaceTexture::Validation => {
         log::warn!("Window frame skipped on a validation error");
-        self.configured = None;
+        self.configured.set(None);
 
         None
       }
@@ -147,6 +154,6 @@ impl RenderWindow {
         color_space: wgpu::SurfaceColorSpace::Auto,
       },
     );
-    self.configured = Some((width, height, is_vsync));
+    self.configured.set(Some((width, height, is_vsync)));
   }
 }
