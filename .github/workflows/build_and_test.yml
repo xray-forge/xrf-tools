@@ -21,6 +21,9 @@ concurrency:
 jobs:
   check-rust-windows:
     runs-on: windows-latest
+    env:
+      # WARP under D3D12 is always there, so a GPU test that finds no device fails rather than skips.
+      XRF_TEST_REQUIRE_GPU: 1
 
     steps:
       - uses: actions/checkout@v7

@@ -42,6 +42,7 @@ windows = { workspace = true, features = ["Win32_Graphics_Dxgi", "Win32_Storage_
 [dev-dependencies]
 naga = { workspace = true }
 serde_json = { workspace = true }
+xrf-test-utils = { workspace = true }
 xrf-vfs = { workspace = true }
 
 [features]

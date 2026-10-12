@@ -3,6 +3,7 @@ use std::sync::Arc;
 use xrf_material::{
   XrayBumpMode, XrayMaterialBump, XrayMaterialBumpInput, XraySurfaceDeclaration, XraySurfaceDescriptor, XraySurfaceDraw,
 };
+use xrf_test_utils::gpu::skip_without_gpu;
 use xrf_vfs::XrayResolution;
 use xrf_visual::SectorSurface;
 
@@ -64,7 +65,7 @@ fn build(cases: &[(SectorSurface, XraySurfaceDescriptor)]) -> Option<Vec<(u32, S
   let Ok(context) = GpuContext::create_headless(RenderBackend::D3d12, checkout_dxc().as_deref())
     .or_else(|_| GpuContext::create_headless(RenderBackend::Vulkan, None))
   else {
-    eprintln!("Skipped: no GPU to hold textures");
+    skip_without_gpu("no GPU to hold textures");
 
     return None;
   };

@@ -1,3 +1,5 @@
+use xrf_test_utils::gpu::skip_without_gpu;
+
 use crate::context::gpu_context::GpuContext;
 use crate::contract::render_backend::RenderBackend;
 use crate::contract::render_overlay::RenderOverlay;
@@ -20,7 +22,7 @@ fn packs_whole_segments_and_the_sun() {
   {
     Ok(context) => context,
     Err(error) => {
-      eprintln!("Skipped: no GPU to draw with ({error})");
+      skip_without_gpu(format_args!("no GPU to draw with ({error})"));
 
       return;
     }

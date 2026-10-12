@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use glam::{Mat4, Vec3, Vec4};
 use xrf_renderer_core::{PassParameters, ProxyAllocator, ProxyHandle};
+use xrf_test_utils::gpu::skip_without_gpu;
 use xrf_visual::{
   SectorDescription, SectorGeometry, SectorPackage, SectorSection, SectorSurface, VisualClusters, VisualDrawRange,
   VisualSection,
@@ -214,7 +215,7 @@ fn create_tracing_context() -> Option<GpuContext> {
   let Ok(context) = GpuContext::create_headless(RenderBackend::D3d12, checkout_dxc().as_deref())
     .or_else(|_| GpuContext::create_headless(RenderBackend::Vulkan, None))
   else {
-    eprintln!("Skipped: no GPU to trace with");
+    skip_without_gpu("no GPU to trace with");
 
     return None;
   };

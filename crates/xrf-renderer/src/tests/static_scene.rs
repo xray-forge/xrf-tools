@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use glam::{Mat4, Vec3, Vec4};
 use xrf_renderer_core::{ProxyAllocator, ProxyHandle};
+use xrf_test_utils::gpu::skip_without_gpu;
 use xrf_visual::SectorSurface;
 
 use crate::context::gpu_context::GpuContext;
@@ -59,7 +60,7 @@ fn stands_objects_as_a_model_and_takes_them_out_again() {
   let Ok(context) = GpuContext::create_headless(RenderBackend::D3d12, checkout_dxc().as_deref())
     .or_else(|_| GpuContext::create_headless(RenderBackend::Vulkan, None))
   else {
-    eprintln!("Skipped: no GPU to hold a scene");
+    skip_without_gpu("no GPU to hold a scene");
 
     return;
   };
@@ -146,7 +147,7 @@ fn tells_a_cache_only_of_changes_within_what_it_covers() {
   let Ok(context) = GpuContext::create_headless(RenderBackend::D3d12, checkout_dxc().as_deref())
     .or_else(|_| GpuContext::create_headless(RenderBackend::Vulkan, None))
   else {
-    eprintln!("Skipped: no GPU to hold a scene");
+    skip_without_gpu("no GPU to hold a scene");
 
     return;
   };

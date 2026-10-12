@@ -1,4 +1,5 @@
 use xrf_renderer_core::PipelineCache;
+use xrf_test_utils::gpu::skip_without_gpu;
 
 use crate::camera::camera_frame::CameraFrame;
 use crate::context::gpu_context::GpuContext;
@@ -26,7 +27,7 @@ fn draws_sky_over_ground_offscreen() {
   {
     Ok(context) => context,
     Err(error) => {
-      eprintln!("Skipped: no GPU to draw with ({error})");
+      skip_without_gpu(format_args!("no GPU to draw with ({error})"));
 
       return;
     }
@@ -158,7 +159,7 @@ fn builds_every_pass() {
   {
     Ok(context) => context,
     Err(error) => {
-      eprintln!("Skipped: no GPU to draw with ({error})");
+      skip_without_gpu(format_args!("no GPU to draw with ({error})"));
 
       return;
     }
@@ -181,7 +182,7 @@ fn builds_without_what_the_bundle_lacks() {
   let Ok(context) = GpuContext::create_headless(RenderBackend::D3d12, checkout_dxc().as_deref())
     .or_else(|_| GpuContext::create_headless(RenderBackend::Vulkan, None))
   else {
-    eprintln!("Skipped: no GPU to draw with");
+    skip_without_gpu("no GPU to draw with");
 
     return;
   };

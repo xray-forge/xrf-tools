@@ -4,6 +4,7 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use xrf_error::{XrfError, XrfResult};
+use xrf_test_utils::gpu::skip_without_gpu;
 
 use crate::context::gpu_context::GpuContext;
 use crate::contract::render_backend::RenderBackend;
@@ -39,7 +40,7 @@ impl RenderAssetSource for GatedSource {
 fn create_context() -> Option<GpuContext> {
   GpuContext::create_headless(RenderBackend::D3d12, checkout_dxc().as_deref())
     .or_else(|_| GpuContext::create_headless(RenderBackend::Vulkan, None))
-    .map_err(|error| eprintln!("Skipped: no GPU to upload to ({error})"))
+    .map_err(|error| skip_without_gpu(format_args!("no GPU to upload to ({error})")))
     .ok()
 }
 

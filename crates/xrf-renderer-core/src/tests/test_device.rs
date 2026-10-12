@@ -1,3 +1,5 @@
+use xrf_test_utils::gpu::skip_without_gpu;
+
 /// A device to execute graphs on: hardware where there is one, the software adapter (WARP under D3D12) otherwise, or
 /// `None`, said aloud, on a machine with neither.
 pub fn create_device() -> Option<(wgpu::Device, wgpu::Queue)> {
@@ -31,7 +33,7 @@ pub fn create_device() -> Option<(wgpu::Device, wgpu::Queue)> {
     }
   }
 
-  eprintln!("Skipped: no GPU to execute the graph on");
+  skip_without_gpu("no GPU to execute the graph on");
 
   None
 }
