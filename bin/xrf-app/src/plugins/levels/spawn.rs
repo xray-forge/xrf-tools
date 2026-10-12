@@ -5,7 +5,7 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use xrf_chunk::{ChunkReader, InMemoryChunkDataSource, XRayByteOrder};
-use xrf_spawn::{AlifeObject, SpawnFile, SpawnLevelObjects};
+use xrf_spawn::{AlifeObject, ClsId, SpawnFile, SpawnLevelObjects};
 use xrf_vfs::{XrayLogicalPath, XrayProbe};
 
 use crate::core::assets::read_located_asset;
@@ -68,6 +68,8 @@ fn read_level_spawn(probe: &XrayProbe, level: &str) -> Result<LevelSpawn, String
     .iter()
     .enumerate()
     .filter_map(|(index, object)| released.get(&object.name).map(|release| (index, *release)))
+    // Anomaly's `game_setup.script` replaces no inventory box's item: a box only goes when it is removed outright.
+    .filter(|(index, release)| *release != LevelSpawnRelease::ReplaceItems || objects[*index].clsid != ClsId::SInvBox)
     .collect();
 
   report_new_game_releases(level, releases.len());

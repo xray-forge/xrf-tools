@@ -54,6 +54,7 @@ pub fn list_released(text: &str, section: &str) -> XrfResult<Vec<String>> {
   )
 }
 
+// todo: Resolve both configs under the level's dialect, as Anomaly's `ini_file` applies DLTX `mod_` files to them.
 fn read_released(probe: &XrayProbe, file: &str, section: &str) -> XrfResult<Vec<String>> {
   let resolution = probe.find(file)?;
   let Some(asset) = resolution.get_asset() else {
