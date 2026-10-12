@@ -1,6 +1,9 @@
 use std::time::{Duration, Instant};
 
+use xrf_renderer_core::ExecutedGroup;
+
 use crate::contract::render_frame_phases::RenderFramePhases;
+use crate::contract::render_group_cost::RenderGroupCost;
 use crate::frame::frame_phases::FramePhases;
 
 /// How often a viewport reports what its frames cost.
@@ -15,7 +18,10 @@ pub struct FrameStatistics {
   interval_sum: f32,
   interval_max: f32,
   cpu_sum: f32,
+  cpu_times: Vec<f32>,
   phase_sums: [f32; PHASES],
+  /// Each encode group's record and finish milliseconds summed, by name in the order first seen.
+  group_sums: Vec<(&'static str, f32, f32)>,
 }
 
 /// The phases a frame's render thread time is told apart in, as [`RenderFramePhases`] lists them.
@@ -29,7 +35,9 @@ pub struct FrameSummary {
   pub frame_time_max: f32,
   pub frame_times: Vec<f32>,
   pub cpu_time: f32,
+  pub cpu_times: Vec<f32>,
   pub phases: RenderFramePhases,
+  pub groups: Vec<RenderGroupCost>,
 }
 
 impl FrameStatistics {
@@ -41,23 +49,39 @@ impl FrameStatistics {
       interval_sum: 0.0,
       interval_max: 0.0,
       cpu_sum: 0.0,
+      cpu_times: Vec::new(),
       phase_sums: [0.0; PHASES],
+      group_sums: Vec::new(),
     }
   }
 
-  /// Notes one presented frame: its distance from the one before, the render thread's own work on it, and where the
-  /// render thread's time went.
-  pub fn record(&mut self, interval: Duration, cpu: Duration, phases: &FramePhases) {
+  /// Notes one presented frame: its distance from the one before, the render thread's own work on it, where the
+  /// render thread's time went, and what each encode group cost.
+  pub fn record(&mut self, interval: Duration, cpu: Duration, phases: &FramePhases, groups: &[ExecutedGroup]) {
     let interval: f32 = interval.as_secs_f32() * 1000.0;
+    let cpu: f32 = cpu.as_secs_f32() * 1000.0;
 
     self.frames += 1;
     self.intervals.push(interval);
     self.interval_sum += interval;
     self.interval_max = self.interval_max.max(interval);
-    self.cpu_sum += cpu.as_secs_f32() * 1000.0;
+    self.cpu_sum += cpu;
+    self.cpu_times.push(cpu);
 
     for (sum, phase) in self.phase_sums.iter_mut().zip(phases.to_array()) {
       *sum += phase.as_secs_f32() * 1000.0;
+    }
+
+    for group in groups {
+      let (record, finish): (f32, f32) = (group.record.as_secs_f32() * 1000.0, group.finish.as_secs_f32() * 1000.0);
+
+      match self.group_sums.iter_mut().find(|(name, ..)| *name == group.name) {
+        Some((_, records, finishes)) => {
+          *records += record;
+          *finishes += finish;
+        }
+        None => self.group_sums.push((group.name, record, finish)),
+      }
     }
   }
 
@@ -76,7 +100,17 @@ impl FrameStatistics {
       frame_time_max: self.interval_max,
       frame_times: std::mem::take(&mut self.intervals),
       cpu_time: self.cpu_sum / frames,
+      cpu_times: std::mem::take(&mut self.cpu_times),
       phases: to_phases(self.phase_sums.map(|sum| sum / frames)),
+      groups: self
+        .group_sums
+        .iter()
+        .map(|(name, record, finish)| RenderGroupCost {
+          name: (*name).to_string(),
+          record: record / frames,
+          finish: finish / frames,
+        })
+        .collect(),
     };
 
     *self = Self::new(now);
