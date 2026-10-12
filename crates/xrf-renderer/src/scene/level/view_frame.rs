@@ -5,9 +5,9 @@ use crate::contract::render_shadow_settings::RenderShadowSettings;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::pass::lighting_uniform::LightingUniform;
 
-/// One frame of a view as its preparation leaves it: the camera and sun it is drawn by, what its options and weather
-/// decided it draws, and what its passes read of that. Prepared before the frame graph is declared, and read by it.
-pub struct ViewInfo {
+/// The values every unit of a view reads this frame, prepared before them: the camera and the sun it is drawn by, the
+/// shading switches, the shadows asked for, whether it draws solid and shafted, and the lighting uniform.
+pub struct ViewFrame {
   pub camera: CameraView,
   /// Where the sunlight travels.
   pub sun_direction: Vec3,
@@ -23,7 +23,7 @@ pub struct ViewInfo {
   pub lighting: LightingUniform,
 }
 
-impl Default for ViewInfo {
+impl Default for ViewFrame {
   fn default() -> Self {
     Self {
       camera: CameraView {

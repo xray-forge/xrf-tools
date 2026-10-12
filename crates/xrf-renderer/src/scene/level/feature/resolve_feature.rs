@@ -45,6 +45,12 @@ pub struct ResolveFeature {
   /// The frame at the viewport's size while it is drawn smaller: upscaled into the first, sharpened into the second.
   upscaled: Option<[FrameTexture; 2]>,
   upscale: UpscaleUniform,
+  /// The last frame's unjittered view projection, which every surface's motion is measured from.
+  motion_previous: Option<Mat4>,
+  /// The last frame's jittered view projection, which a read of its targets reprojects through.
+  view_projection_previous: Option<Mat4>,
+  /// Frames a temporal resolve gathered, which the screen-space effects turn their noise by.
+  noise_frame: u32,
 }
 
 impl Default for ResolveFeature {
@@ -58,6 +64,9 @@ impl Default for ResolveFeature {
       upscaling: RenderUpscalingSettings::default(),
       upscaled: None,
       upscale: UpscaleUniform::default(),
+      motion_previous: None,
+      view_projection_previous: None,
+      noise_frame: 0,
     }
   }
 }
@@ -89,6 +98,10 @@ impl ResolveFeature {
     (upscaling, is_linear): (RenderUpscalingSettings, bool),
   ) {
     self.upscaling = upscaling;
+
+    if self.temporal.is_some() {
+      self.noise_frame = self.noise_frame.wrapping_add(1);
+    }
 
     let display: (u32, u32) = (output.width.max(1), output.height.max(1));
 
@@ -209,6 +222,22 @@ impl ResolveFeature {
       targets.frames.get_frame(),
     )
     .with_hdr(is_hdr);
+  }
+
+  /// This frame's unjittered view projection and the last one's, which the surfaces' motion is measured between; the
+  /// same twice for a first frame.
+  pub fn next_motion(&mut self, current: Mat4) -> (Mat4, Mat4) {
+    (current, self.motion_previous.replace(current).unwrap_or(current))
+  }
+
+  /// The last frame's jittered view projection, this frame's taking its place; this frame's own on the first.
+  pub fn next_jittered(&mut self, current: Mat4) -> Mat4 {
+    self.view_projection_previous.replace(current).unwrap_or(current)
+  }
+
+  /// Frames a temporal resolve gathered, which the screen-space effects turn their noise by.
+  pub fn get_noise_frame(&self) -> u32 {
+    self.noise_frame
   }
 
   /// Whether a temporal resolve gathers this frame's samples, which the screen-space effects turn their noise by.
