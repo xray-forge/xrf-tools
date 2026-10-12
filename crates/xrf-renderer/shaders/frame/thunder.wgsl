@@ -1,5 +1,6 @@
 #import "common/camera"
 #import "common/scene_light"
+#import "common/quad"
 
 // The bolt striking, as `dxThunderboltRender` draws it over the finished scene and tested against its depth: its model
 // placed by the strike, its coordinates shifted down by it, and its two glows facing the view, each composited as its
@@ -7,12 +8,6 @@
 
 // The strike, the draw's texture, and the bolt's model in renderer space (its position, then its coordinate, a vertex).
 #import "generated/frame/thunder"
-
-// A glow's quad: its corners as two triangles, each from minus one to one across and up.
-const GLOW_CORNERS: array<vec2<f32>, 6> = array<vec2<f32>, 6>(
-  vec2<f32>(-1.0, -1.0), vec2<f32>(1.0, -1.0), vec2<f32>(-1.0, 1.0),
-  vec2<f32>(-1.0, 1.0), vec2<f32>(1.0, -1.0), vec2<f32>(1.0, 1.0),
-);
 
 struct ThunderVarying {
   @builtin(position) clip: vec4<f32>,
@@ -39,7 +34,7 @@ fn vs_model(@builtin(vertex_index) vertex_index: u32) -> ThunderVarying {
 // A glow (`SFlare`): a quad about its point, facing the view along its right and its top; the corner to its right and
 // top has the first texel, as the engine lays the quad out.
 fn glow(vertex_index: u32, position: vec3<f32>, extent: vec4<f32>) -> ThunderVarying {
-  var corners: array<vec2<f32>, 6> = GLOW_CORNERS;
+  var corners: array<vec2<f32>, 6> = QUAD_CORNERS;
   let corner: vec2<f32> = corners[vertex_index % 6u];
   let right: vec3<f32> = vec3<f32>(camera.view[0].x, camera.view[1].x, camera.view[2].x);
   let up: vec3<f32> = vec3<f32>(camera.view[0].y, camera.view[1].y, camera.view[2].y);

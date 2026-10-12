@@ -1,6 +1,7 @@
 #import "common/camera"
 #import "common/scene_light"
 #import "common/flares"
+#import "common/quad"
 
 // The lens flares and the gradient as `dxLensFlareRender` draws them over the finished frame: quads on a plane ahead of
 // the camera, the flares along the line from the screen's centre through the sun and turned along it, the gradient
@@ -14,12 +15,6 @@ const GRADIENT_INSTANCE: u32 = 16u;
 // How far ahead of the camera the plane stands, in view space units; the quads' sizes are shares of it.
 const PLANE: f32 = 1.0;
 
-// A quad's corners as two triangles, each from minus one to one across and down.
-const CORNERS: array<vec2<f32>, 6> = array<vec2<f32>, 6>(
-  vec2<f32>(-1.0, -1.0), vec2<f32>(1.0, -1.0), vec2<f32>(-1.0, 1.0),
-  vec2<f32>(-1.0, 1.0), vec2<f32>(1.0, -1.0), vec2<f32>(1.0, 1.0),
-);
-
 struct FlareVarying {
   @builtin(position) clip: vec4<f32>,
   @location(0) uv: vec2<f32>,
@@ -29,7 +24,7 @@ struct FlareVarying {
 // A quad about a point of the plane, along one axis and down another; the corner along both has the texel at zero
 // across and one down, as the engine lays its four vertices.
 fn quad(vertex_index: u32, center: vec3<f32>, across: vec3<f32>, down: vec3<f32>, color: vec4<f32>) -> FlareVarying {
-  var corners: array<vec2<f32>, 6> = CORNERS;
+  var corners: array<vec2<f32>, 6> = QUAD_CORNERS;
   let corner: vec2<f32> = corners[vertex_index % 6u];
   let point: vec3<f32> = center + across * corner.x + down * corner.y;
   var out: FlareVarying;

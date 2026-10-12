@@ -13,8 +13,8 @@
 
 // The G-buffer's normals, material and depth, and the sun traced towards.
 #import "generated/frame/sun_trace"
+#import "common/math"
 
-const TAU: f32 = 6.2831853;
 // Metres a ray starts off its surface along its normal, and how much more each metre away, so it leaves the surface it
 // starts on.
 const LIFT: f32 = 0.03;

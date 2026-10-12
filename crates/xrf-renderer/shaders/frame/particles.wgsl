@@ -3,6 +3,7 @@ enable wgpu_binding_array;
 #import "common/camera"
 #import "common/scene_light"
 #import "common/lighting"
+#import "common/quad"
 
 // The particle sprites `CParticleEffect::Render` draws forward over the finished scene: each quad's corners as the
 // engine fills them, coloured by the particle and textured by its effect, faded where they meet the scene behind them
@@ -16,9 +17,6 @@ enable wgpu_binding_array;
 @group(2) @binding(1) var texture_sampler: sampler;
 
 const SURFACE_IS_CLAMPED: u32 = 1u;
-
-// `QuadIB`: a quad's four corners as two triangles.
-const QUAD_CORNERS: array<u32, 6> = array<u32, 6>(0u, 1u, 2u, 3u, 2u, 1u);
 
 // `DEPTH_EPSILON`: metres a particle stands in front of the scene before it is faded at all.
 const DEPTH_EPSILON: f32 = 0.1;
@@ -39,7 +37,7 @@ struct ParticleVarying {
 
 @vertex
 fn vs_particle(@builtin(vertex_index) index: u32) -> ParticleVarying {
-  let corner: ParticleVertex = vertices[index / 6u * 4u + QUAD_CORNERS[index % 6u]];
+  let corner: ParticleVertex = vertices[index / 6u * 4u + QUAD_INDICES[index % 6u]];
   let world: vec4<f32> = vec4<f32>(corner.position, 1.0);
   var out: ParticleVarying;
 

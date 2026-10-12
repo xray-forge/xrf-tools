@@ -2,6 +2,7 @@
 #import "common/octahedral"
 #import "common/reflection_end"
 #import "generated/structs"
+#import "common/math"
 
 // Screen-space reflection rays: a reflected direction drawn from a surface's GGX lobe, walked across the screen up and
 // down a pyramid of the frame's nearest depth, skipping whole cells it passes over and stepping down where it meets a
@@ -22,7 +23,6 @@ const RAY_TOP_LEVEL: i32 = 6;
 // lattice bar is a cell or two across at the traced size, a twig a few; a trunk or a wall is many.
 const PASS_CELLS: u32 = 4u;
 const RAY_FAR: f32 = 3.402823466e+38;
-const PI: f32 = 3.14159265358979;
 
 // A point on the screen: texture coordinates, then the stored depth, reversed.
 fn ray_screen_point(view: vec3<f32>) -> vec3<f32> {

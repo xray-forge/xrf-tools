@@ -1,3 +1,5 @@
+#import "common/math"
+
 // A slice's visibility as a mask of 32 bits, after Therrien, Levesque and Gilet's "Screen Space Indirect Lighting with
 // Visibility Bitmask" (2023): every sample an occluder of a thickness, covering the angles between the point the depth
 // shows and the point that far behind it, each bit set where an occluder covers it. The slice's set-up is GTAO's
@@ -7,8 +9,6 @@
 // and a caller gathering light weighs each sample by the bits it sets that were still clear.
 
 const BITMASK_BITS: u32 = 32u;
-const BITMASK_PI: f32 = 3.14159265;
-const BITMASK_HALF_PI: f32 = 1.57079633;
 
 // One slice through the view vector: where the normal lies in it, and how much its visible half-circle weighs.
 struct BitmaskSlice {
@@ -29,7 +29,7 @@ fn bitmask_acos(x: f32) -> f32 {
   let a: f32 = min(abs(x), 1.0);
   let r: f32 = sqrt(1.0 - a) * (1.5707288 + a * (-0.2121144 + a * (0.0742610 + a * -0.0187293)));
 
-  return select(r, BITMASK_PI - r, x < 0.0);
+  return select(r, PI - r, x < 0.0);
 }
 
 // The slice along a view space `direction` across the view, at a point seen along `to_camera` with a `normal`.
@@ -42,7 +42,7 @@ fn bitmask_slice(normal: vec3<f32>, to_camera: vec3<f32>, direction: vec3<f32>) 
   let angle: f32 = sign(dot(across, projected)) * bitmask_acos(facing);
   let normal_cos: f32 = cos(angle);
   let normal_sin: f32 = sin(angle);
-  let lower: f32 = (2.0 * normal_cos + (2.0 * angle - BITMASK_PI) * normal_sin) * 0.25;
+  let lower: f32 = (2.0 * normal_cos + (2.0 * angle - PI) * normal_sin) * 0.25;
   let measure: f32 = normal_cos + angle * normal_sin;
 
   return BitmaskSlice(angle, normal_cos, normal_sin, lower, measure, projected_length * measure);
@@ -52,7 +52,7 @@ fn bitmask_slice(normal: vec3<f32>, to_camera: vec3<f32>, direction: vec3<f32>) 
 // zero to one: `∫ cos(t - n) |sin t| dt`, which from the view vector is `(cos n + 2θ sin n - cos(2θ - n)) / 4`.
 fn bitmask_share(slice: BitmaskSlice, angle: f32) -> f32 {
   let n: f32 = slice.normal_angle;
-  let held: f32 = clamp(angle, n - BITMASK_HALF_PI, n + BITMASK_HALF_PI);
+  let held: f32 = clamp(angle, n - HALF_PI, n + HALF_PI);
   let from_view: f32 = (slice.normal_cos + 2.0 * held * slice.normal_sin - cos(2.0 * held - n)) * 0.25;
 
   return saturate((slice.lower + sign(held) * from_view) / slice.measure);

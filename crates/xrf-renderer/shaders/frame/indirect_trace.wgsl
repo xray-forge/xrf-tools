@@ -6,6 +6,7 @@
 #import "common/axis_frame"
 #import "generated/common/sky"
 #import "generated/frame/indirect_trace"
+#import "common/math"
 
 // The indirect light traced at half the frame's size, in the screen-space bounce's place where DLSS ray reconstruction
 // denoises the frame: from each point under a pixel one ray, cosine-weighted about its bumped normal and turned each
@@ -16,7 +17,6 @@
 // the view, for combine and the debug view to bring up to the frame alike; and how far the ray went, none where it met
 // nothing, which ray reconstruction's guides take as its diffuse hit distance.
 
-const TAU: f32 = 6.2831853;
 // Metres a ray starts off its surface, and how much more each metre away, so it leaves the surface it starts on.
 const LIFT: f32 = 0.05;
 const LIFT_PER_METRE: f32 = 0.002;

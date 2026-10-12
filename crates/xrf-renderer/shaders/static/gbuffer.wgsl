@@ -4,17 +4,14 @@ enable wgpu_binding_array;
 #import "common/relief"
 #import "common/cut_out"
 #import "common/octahedral"
+#import "common/gloss"
 #import "common/debug_colours"
 #import "static/pulling"
 
 // Static draws into the G-buffer, pulled as `static/pulling` reads them.
 
-
 @group(1) @binding(0) var textures: binding_array<texture_2d<f32>>;
 @group(1) @binding(1) var texture_sampler: sampler;
-
-// What `def_gloss` writes for a surface without a bump: 2 of 255.
-const DEFAULT_GLOSS: f32 = 2.0 / 255.0;
 
 // Whether this pipeline draws a shadow map, whose surfaces casting none are collapsed to nothing.
 override IS_SHADOW_DRAW: bool = false;

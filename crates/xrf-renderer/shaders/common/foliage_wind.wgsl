@@ -1,8 +1,8 @@
+#import "common/math"
+
 // The enhanced foliage motion: a tree's trunk swinging downwind by its height squared, its branches and every waving
 // tuft carried by a flow field drifting with the wind. Everything works in the engine's space, where the renderer's
 // `z` is negated; the setup is passed in, so the trees' and the grass's programs read it from their own uniforms.
-
-const FOLIAGE_TAU: f32 = 6.2831853;
 
 // The flow field's cells a unit of its coordinates, and its gust layer's, stretched along the wind's `x`.
 const FLOW_CELLS: f32 = 12.0;
@@ -20,7 +20,7 @@ struct FoliageSetup {
 
 // A unit gradient for a cell.
 fn foliage_gradient(cell: vec2<f32>) -> vec2<f32> {
-  let angle: f32 = fract(sin(dot(cell, vec2<f32>(127.1, 311.7))) * 43758.5453) * FOLIAGE_TAU;
+  let angle: f32 = fract(sin(dot(cell, vec2<f32>(127.1, 311.7))) * 43758.5453) * TAU;
 
   return vec2<f32>(cos(angle), sin(angle));
 }
