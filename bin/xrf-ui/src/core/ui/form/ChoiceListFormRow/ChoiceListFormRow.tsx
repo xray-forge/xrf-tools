@@ -69,7 +69,7 @@ export function ChoiceListFormRow<T extends string>({
             <TextField
               fullWidth
               size={"small"}
-              placeholder={"Filter levels"}
+              placeholder={"Filter by name"}
               value={query}
               disabled={isDisabled}
               slotProps={{ htmlInput: { "aria-label": `Filter ${label.toLowerCase()}` } }}

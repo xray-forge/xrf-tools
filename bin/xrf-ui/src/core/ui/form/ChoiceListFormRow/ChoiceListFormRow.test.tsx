@@ -35,6 +35,11 @@ describe("ChoiceListFormRow", () => {
     expect(renderRow(30).queryByLabelText("Filter level")).not.toBeNull();
   });
 
+  // The hint says how the filter matches, whatever the list holds.
+  it("hints that the filter matches the options' names", () => {
+    expect(renderRow(30).getByLabelText("Filter level")).toHaveAttribute("placeholder", "Filter by name");
+  });
+
   it("narrows to what the filter matches", async () => {
     const { getByLabelText, getAllByRole } = renderRow(30);
 
