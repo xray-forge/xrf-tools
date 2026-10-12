@@ -27,6 +27,7 @@ fn reports_only_once_due_and_drawn() {
   assert!((summary.frames_per_second - 4.0).abs() < 1e-3);
   assert!((summary.frame_time - 20.0).abs() < 1e-3);
   assert!((summary.frame_time_max - 30.0).abs() < 1e-3);
+  assert_eq!(summary.frame_times, vec![10.0, 30.0]);
   assert!((summary.cpu_time - 2.0).abs() < 1e-3);
   // Each phase is averaged over the frames, apart from the others.
   assert!((summary.phases.prepare - 3.0).abs() < 1e-3);

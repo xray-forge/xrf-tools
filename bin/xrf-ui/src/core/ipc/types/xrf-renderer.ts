@@ -583,6 +583,8 @@ export type RenderFrameReport = {
   frameTime: number | null;
   /** Longest milliseconds between two presented frames. */
   frameTimeMax: number | null;
+  /** Milliseconds between each two presented frames over the span, in order. */
+  frameTimes: Array<number | null>;
   /** Mean milliseconds of the render thread's own work a frame: recording and submitting, not waiting. */
   cpuTime: number | null;
   /** Where the render thread's time goes a frame, waiting for the window's image and presenting included. */

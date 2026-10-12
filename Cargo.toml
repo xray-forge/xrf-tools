@@ -83,6 +83,7 @@ naga = { version = "30.0.1", features = ["wgsl-in"] }
 offset-allocator = "0.2.0"
 lzokay = { version = "2.0.1", default-features = false, features = ["std", "compress", "decompress"] }
 pollster = "0.4.0"
+profiling = "1.0.18"
 raw-window-handle = "0.6.2"
 rayon = "1.12.0"
 regex = "1.13.1"
@@ -94,6 +95,9 @@ specta-serde = "0.0.12"
 specta-typescript = "0.0.12"
 specta-util = "0.0.12"
 tauri-specta = { version = "=2.0.0-rc.25", features = ["typescript"] }
+# Tracy 0.11.1's protocol, which the workspace's Tracy tools speak.
+tracy-client = "=0.18.0"
+tracy-client-sys = "=0.24.3"
 tokio = { version = "1.53.1", features = ["net", "rt"] }
 uuid = "1.26.1"
 walkdir = "2.5.0"
@@ -177,6 +181,10 @@ opt-level = 3
 inherits = "release"
 debug = "line-tables-only"
 strip = false
+
+# The profiling build with the `tracy` feature, in its own target folder, so switching never rebuilds the other.
+[profile.tracy]
+inherits = "profiling"
 
 [workspace.lints.rust]
 dead_code = "allow"

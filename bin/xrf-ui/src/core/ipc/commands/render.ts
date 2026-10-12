@@ -62,6 +62,8 @@ export const renderCommands = {
       frameTime: number | null;
       /** Longest milliseconds between two presented frames. */
       frameTimeMax: number | null;
+      /** Milliseconds between each two presented frames over the span, in order. */
+      frameTimes: Array<number | null>;
       /** Mean milliseconds of the render thread's own work a frame: recording and submitting, not waiting. */
       cpuTime: number | null;
       /** Where the render thread's time goes a frame, waiting for the window's image and presenting included. */
@@ -146,6 +148,8 @@ export const renderCommands = {
       "plugin:render|locate_spawn_object",
       { viewport, object }
     ),
+  /** Put a message on a Tracy capture's timeline, as a driver marks each measured scene; nothing in a build without Tracy. */
+  markProfile: (text: string) => __TAURI_INVOKE<void>("plugin:render|mark_profile", { text }),
   /** Count what each shader table entry of a viewport's level draws across the sectors resident. */
   measureSurfaces: (viewport: RenderViewportId) =>
     __TAURI_INVOKE<Array<WorldSurfaceGeometry>>("plugin:render|measure_surfaces", { viewport }),

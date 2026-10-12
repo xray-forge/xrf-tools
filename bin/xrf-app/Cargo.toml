@@ -105,6 +105,8 @@ xrf-test-utils = { workspace = true }
 [features]
 # This feature is used for production builds or when a dev server is not specified, DO NOT REMOVE!!
 custom-protocol = ["tauri/custom-protocol"]
+# Zones, GPU zones and frame marks for a Tracy capture; built with the `tracy` profile.
+tracy = ["xrf-renderer/tracy"]
 # Emits TypeScript mirrors and command bindings. Nothing in a normal build turns this on.
 typescript-bindings = [
   "specta",

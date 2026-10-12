@@ -20,6 +20,8 @@ pub struct RenderFrameReport {
   pub frame_time: f32,
   /// Longest milliseconds between two presented frames.
   pub frame_time_max: f32,
+  /// Milliseconds between each two presented frames over the span, in order.
+  pub frame_times: Vec<f32>,
   /// Mean milliseconds of the render thread's own work a frame: recording and submitting, not waiting.
   pub cpu_time: f32,
   /// Where the render thread's time goes a frame, waiting for the window's image and presenting included.

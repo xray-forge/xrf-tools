@@ -251,6 +251,8 @@ impl<'a> CompiledGraph<'a> {
     (device, cache, resources): (&wgpu::Device, &BindGroupCache, &GraphResources<'_>),
     mut timing: Option<(&mut GraphTimer, bool)>,
   ) -> RecordedGroup {
+    profiling::scope!("encode group", group.name);
+
     let recording: Instant = Instant::now();
     let out_of_memory: wgpu::ErrorScopeGuard = device.push_error_scope(wgpu::ErrorFilter::OutOfMemory);
     let validation: wgpu::ErrorScopeGuard = device.push_error_scope(wgpu::ErrorFilter::Validation);
@@ -278,11 +280,17 @@ impl<'a> CompiledGraph<'a> {
 
           let name: String = run.iter().map(|pass| pass.pass.name).collect::<Vec<_>>().join(" + ");
 
+          profiling::scope!("record", &name);
+
           Self::record_render_pass(&mut encoder, run, textures, (device, cache, resources));
+
           name
         }
         None => {
           let name: String = pass.pass.name.to_string();
+
+          profiling::scope!("record", &name);
+
           let is_marked: bool = Self::record_pass(
             &mut encoder,
             pass,
@@ -309,7 +317,11 @@ impl<'a> CompiledGraph<'a> {
     }
 
     let finishing: Instant = Instant::now();
-    let commands: wgpu::CommandBuffer = encoder.finish();
+    let commands: wgpu::CommandBuffer = {
+      profiling::scope!("finish", group.name);
+
+      encoder.finish()
+    };
     let finished: Duration = finishing.elapsed();
     let error: Option<wgpu::Error> = pollster::block_on(validation.pop()).or(pollster::block_on(out_of_memory.pop()));
 

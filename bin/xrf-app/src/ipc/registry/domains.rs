@@ -117,6 +117,7 @@ macro_rules! for_each_tauri_command_domain {
         detach_viewport => crate::plugins::render::commands::detach_viewport::render_detach_viewport,
         list_backends => crate::plugins::render::commands::list_backends::render_list_backends,
         locate_spawn_object => crate::plugins::render::commands::locate_spawn_object::render_locate_spawn_object,
+        mark_profile => crate::plugins::render::commands::mark_profile::render_mark_profile,
         measure_surfaces => crate::plugins::render::commands::measure_surfaces::render_measure_surfaces,
         pick => crate::plugins::render::commands::pick::render_pick,
         pose_model => crate::plugins::render::commands::pose_model::render_pose_model,

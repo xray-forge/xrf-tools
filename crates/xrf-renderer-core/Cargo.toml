@@ -11,8 +11,11 @@ glam = { workspace = true }
 naga = { workspace = true }
 offset-allocator = { workspace = true }
 pollster = { workspace = true }
+profiling = { workspace = true }
 rayon = { workspace = true }
 serde = { workspace = true }
+tracy-client = { workspace = true, optional = true }
+tracy-client-sys = { workspace = true, optional = true }
 wgpu = { workspace = true }
 xrf-error = { workspace = true }
 xrf-renderer-derive = { workspace = true }
@@ -20,6 +23,10 @@ xrf-renderer-derive = { workspace = true }
 [dev-dependencies]
 xrf-test-utils = { workspace = true }
 serde_json = { workspace = true }
+
+[features]
+# Zones, GPU zones and frame marks for a Tracy capture; only the `tracy` build profile turns it on.
+tracy = ["profiling/profile-with-tracy", "dep:tracy-client", "dep:tracy-client-sys"]
 
 [lints]
 workspace = true
