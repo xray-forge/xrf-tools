@@ -1,73 +1,21 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
-import { EventBus, WireEvent } from "@wirestate/core";
 
-import { EJobKind, JobDescription } from "@/core/ipc/types/xrf-app";
-import { IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
-import { EMIT_NOTIFICATION_EVENT, INotificationPayload } from "@/core/notifications/lib";
+import { EJobKind } from "@/core/ipc/types/xrf-app";
 import { EApplicationId } from "@/core/routing/application";
+import { mockJobDescription } from "@/fixtures/mocks/job.mocks";
 import {
   emitMockChannelMessage,
   resetMockChannels,
   resetMockInvoke,
   setMockInvokeResponses,
 } from "@/fixtures/mocks/tauri.mocks";
-import { IInjectedServiceMockDescriptor, mockInjectedService } from "@/fixtures/utils/container";
-
-import { JobsService } from "./jobs.service";
-
-const LIST_COMMAND: string = "plugin:jobs|list";
-const ATTACH_COMMAND: string = "plugin:jobs|attach";
-
-/** How long the service waits between asking an adopted job where it has got to. */
-const POLL_INTERVAL: number = 1000;
-
-/** A listing slow enough that a test can provision again while it is still in the air. */
-const SLOW_LISTING: number = 50;
-
-function described(patch: Partial<JobDescription> = {}): JobDescription {
-  return {
-    id: "b8f0",
-    kind: EJobKind.ARCHIVES_PACK,
-    leaseKeys: ["archives.pack:c:\\out|gamedata"],
-    isCancelRequested: false,
-    progress: null,
-    conclusion: null,
-    request: null,
-    error: null,
-    result: null,
-    duration: 1000,
-    ...patch,
-  } as JobDescription;
-}
-
-/**
- * A provisioned service, plus whatever it announced.
- *
- * @returns The service and the notifications it raised.
- */
-function watched(): {
-  service: JobsService;
-  raised: Array<INotificationPayload>;
-  settled: Array<IJobSettledPayload>;
-} {
-  const { service, container }: IInjectedServiceMockDescriptor<JobsService> = mockInjectedService(JobsService);
-  const raised: Array<INotificationPayload> = [];
-  const settled: Array<IJobSettledPayload> = [];
-
-  container
-    .get(EventBus)
-    .subscribe(EMIT_NOTIFICATION_EVENT, (event: WireEvent<INotificationPayload>) =>
-      raised.push(event.payload as INotificationPayload)
-    );
-
-  container
-    .get(EventBus)
-    .subscribe(JOB_SETTLED_EVENT, (event: WireEvent<IJobSettledPayload>) =>
-      settled.push(event.payload as IJobSettledPayload)
-    );
-
-  return { service, raised, settled };
-}
+import {
+  JOBS_ATTACH_COMMAND,
+  JOBS_LIST_COMMAND,
+  JOBS_POLL_INTERVAL,
+  JOBS_SLOW_LISTING,
+  mockWatchedJobsService,
+} from "@/fixtures/utils/jobs-service";
 
 describe("JobsService adoption", () => {
   beforeEach(() => {
@@ -83,9 +31,9 @@ describe("JobsService adoption", () => {
   it("takes over a job the backend was already running", async () => {
     // The reload case. The backend never stopped: its command future lives in the application runtime, so the run kept
     // writing while this window forgot everything it knew about it.
-    setMockInvokeResponses({ [LIST_COMMAND]: [described()] });
+    setMockInvokeResponses({ [JOBS_LIST_COMMAND]: [mockJobDescription()] });
 
-    const { service } = watched();
+    const { service } = mockWatchedJobsService();
 
     await service.onProvision(1);
 
@@ -97,9 +45,9 @@ describe("JobsService adoption", () => {
   it("watches an adopted job over a channel of its own", async () => {
     // The whole point of attaching: the run is still reporting to the channel of the page that reloaded, which is a
     // callback the webview can no longer find. A channel of this window's own replaces it and the bar moves again.
-    setMockInvokeResponses({ [LIST_COMMAND]: [described()], [ATTACH_COMMAND]: true });
+    setMockInvokeResponses({ [JOBS_LIST_COMMAND]: [mockJobDescription()], [JOBS_ATTACH_COMMAND]: true });
 
-    const { service } = watched();
+    const { service } = mockWatchedJobsService();
 
     await service.onProvision(1);
 
@@ -115,9 +63,9 @@ describe("JobsService adoption", () => {
   it("keeps the listing from overwriting what the channel is reporting", async () => {
     // A listing lags the channel by up to one emission interval, so applying both would let a running bar go backwards
     // — which reads as work being redone.
-    setMockInvokeResponses({ [LIST_COMMAND]: [described()], [ATTACH_COMMAND]: true });
+    setMockInvokeResponses({ [JOBS_LIST_COMMAND]: [mockJobDescription()], [JOBS_ATTACH_COMMAND]: true });
 
-    const { service } = watched();
+    const { service } = mockWatchedJobsService();
 
     await service.onProvision(1);
 
@@ -128,8 +76,8 @@ describe("JobsService adoption", () => {
     });
 
     setMockInvokeResponses({
-      [LIST_COMMAND]: [
-        described({
+      [JOBS_LIST_COMMAND]: [
+        mockJobDescription({
           progress: {
             levels: [{ id: "write", label: null, completed: 2, total: 10, unit: "items" }],
             duration: 1000,
@@ -137,25 +85,25 @@ describe("JobsService adoption", () => {
           },
         }),
       ],
-      [ATTACH_COMMAND]: true,
+      [JOBS_ATTACH_COMMAND]: true,
     });
 
-    await jest.advanceTimersByTimeAsync(POLL_INTERVAL);
+    await jest.advanceTimersByTimeAsync(JOBS_POLL_INTERVAL);
 
     expect(service.getJob("b8f0")?.progress?.levels[0].completed).toBe(9);
   });
 
   it("still follows a job by asking when it cannot be attached to", async () => {
     // The job finished between the listing and the attach, or the command failed. Polling is slower, not broken.
-    setMockInvokeResponses({ [LIST_COMMAND]: [described()], [ATTACH_COMMAND]: false });
+    setMockInvokeResponses({ [JOBS_LIST_COMMAND]: [mockJobDescription()], [JOBS_ATTACH_COMMAND]: false });
 
-    const { service } = watched();
+    const { service } = mockWatchedJobsService();
 
     await service.onProvision(1);
 
     setMockInvokeResponses({
-      [LIST_COMMAND]: [
-        described({
+      [JOBS_LIST_COMMAND]: [
+        mockJobDescription({
           progress: {
             levels: [{ id: "write", label: null, completed: 7, total: 10, unit: "items" }],
             duration: 2000,
@@ -163,69 +111,30 @@ describe("JobsService adoption", () => {
           },
         }),
       ],
-      [ATTACH_COMMAND]: false,
+      [JOBS_ATTACH_COMMAND]: false,
     });
 
-    await jest.advanceTimersByTimeAsync(POLL_INTERVAL);
+    await jest.advanceTimersByTimeAsync(JOBS_POLL_INTERVAL);
 
     expect(service.getJob("b8f0")?.progress?.levels[0].completed).toBe(7);
-  });
-
-  it("hands the answer of a settled adopted job to whoever owns that kind", async () => {
-    // Nothing here awaited this run: the command answered a page that no longer exists. The copy the backend retained
-    // is the only way the tool can render what the pack produced.
-    setMockInvokeResponses({ [LIST_COMMAND]: [described()], [ATTACH_COMMAND]: true });
-
-    const { service, settled } = watched();
-
-    await service.onProvision(1);
-
-    setMockInvokeResponses({
-      [LIST_COMMAND]: [described({ conclusion: "completed", result: { volumes: ["textures.db0"] } })],
-      [ATTACH_COMMAND]: true,
-    });
-
-    await jest.advanceTimersByTimeAsync(POLL_INTERVAL);
-
-    expect(settled).toHaveLength(1);
-    expect(settled[0].kind).toBe("archives.pack");
-    expect(settled[0].conclusion).toBe("completed");
-    expect(settled[0].result).toEqual({ volumes: ["textures.db0"] });
-  });
-
-  it("announces a settled adopted job that answered nothing", async () => {
-    setMockInvokeResponses({ [LIST_COMMAND]: [described()], [ATTACH_COMMAND]: true });
-
-    const { service, settled } = watched();
-
-    await service.onProvision(1);
-
-    setMockInvokeResponses({
-      [LIST_COMMAND]: [described({ conclusion: "failed", error: "volume cap refuses particles.xr" })],
-      [ATTACH_COMMAND]: true,
-    });
-
-    await jest.advanceTimersByTimeAsync(POLL_INTERVAL);
-
-    expect(settled[0].result).toBeNull();
-    expect(settled[0].error).toBe("volume cap refuses particles.xr");
   });
 
   it("drops an adoption the window that asked for it no longer wants", async () => {
     // Deprovisioning ends the provision that sent the listing. Letting the answer land would take jobs over on behalf
     // of a window that has gone, and start a timer nothing is left to stop.
     setMockInvokeResponses({
-      [LIST_COMMAND]: () => new Promise((resolve) => setTimeout(() => resolve([described()]), SLOW_LISTING)),
-      [ATTACH_COMMAND]: true,
+      [JOBS_LIST_COMMAND]: () =>
+        new Promise((resolve) => setTimeout(() => resolve([mockJobDescription()]), JOBS_SLOW_LISTING)),
+      [JOBS_ATTACH_COMMAND]: true,
     });
 
-    const { service } = watched();
+    const { service } = mockWatchedJobsService();
 
     void service.onProvision(1);
 
     service.onDeprovision(1);
 
-    await jest.advanceTimersByTimeAsync(SLOW_LISTING);
+    await jest.advanceTimersByTimeAsync(JOBS_SLOW_LISTING);
 
     expect(service.jobs).toHaveLength(0);
     expect(jest.getTimerCount()).toBe(0);
@@ -235,16 +144,17 @@ describe("JobsService adoption", () => {
     // Two listings in the air at once is what a reload during start-up produces, and what strict mode produces on
     // every mount. The older answer must not adopt behind the newer one.
     setMockInvokeResponses({
-      [LIST_COMMAND]: () => new Promise((resolve) => setTimeout(() => resolve([described()]), SLOW_LISTING)),
-      [ATTACH_COMMAND]: true,
+      [JOBS_LIST_COMMAND]: () =>
+        new Promise((resolve) => setTimeout(() => resolve([mockJobDescription()]), JOBS_SLOW_LISTING)),
+      [JOBS_ATTACH_COMMAND]: true,
     });
 
-    const { service } = watched();
+    const { service } = mockWatchedJobsService();
 
     void service.onProvision(1);
     void service.onProvision(2);
 
-    await jest.advanceTimersByTimeAsync(SLOW_LISTING);
+    await jest.advanceTimersByTimeAsync(JOBS_SLOW_LISTING);
 
     expect(service.jobs).toHaveLength(1);
     expect(service.getJob("b8f0")?.isAdopted).toBe(true);
@@ -253,9 +163,9 @@ describe("JobsService adoption", () => {
   it("adopts one job once when the same service is provisioned twice", async () => {
     // What React strict mode does on every mount in development: the provider deprovisions and provisions again, and
     // the container it retains hands back the same service. Two entries for one run would draw two bars over one pack.
-    setMockInvokeResponses({ [LIST_COMMAND]: [described()] });
+    setMockInvokeResponses({ [JOBS_LIST_COMMAND]: [mockJobDescription()] });
 
-    const { service } = watched();
+    const { service } = mockWatchedJobsService();
 
     await service.onProvision(1);
     service.onDeprovision(1);
@@ -265,9 +175,9 @@ describe("JobsService adoption", () => {
   });
 
   it("adopts nothing when the backend has already finished everything", async () => {
-    setMockInvokeResponses({ [LIST_COMMAND]: [described({ conclusion: "completed" })] });
+    setMockInvokeResponses({ [JOBS_LIST_COMMAND]: [mockJobDescription({ conclusion: "completed" })] });
 
-    const { service } = watched();
+    const { service } = mockWatchedJobsService();
 
     await service.onProvision(1);
 
@@ -278,11 +188,11 @@ describe("JobsService adoption", () => {
     // The arguments live nowhere else once the page that sent them is gone, and a bar with no subject cannot say which
     // of two packs the user is looking at.
     setMockInvokeResponses({
-      [LIST_COMMAND]: [described({ request: { source: "c:\\gamedata", destination: "c:\\out" } })],
-      [ATTACH_COMMAND]: true,
+      [JOBS_LIST_COMMAND]: [mockJobDescription({ request: { source: "c:\\gamedata", destination: "c:\\out" } })],
+      [JOBS_ATTACH_COMMAND]: true,
     });
 
-    const { service } = watched();
+    const { service } = mockWatchedJobsService();
 
     await service.onProvision(1);
 
@@ -292,148 +202,32 @@ describe("JobsService adoption", () => {
   it("lets a tool re-attach to an adopted job by kind", async () => {
     // What stops a tool showing an idle form over a pack that is still writing volumes, and stops the user starting a
     // second one that the lease would refuse by naming a job they cannot see.
-    setMockInvokeResponses({ [LIST_COMMAND]: [described()] });
+    setMockInvokeResponses({ [JOBS_LIST_COMMAND]: [mockJobDescription()] });
 
-    const { service } = watched();
+    const { service } = mockWatchedJobsService();
 
     await service.onProvision(1);
 
     expect(service.getJobOfKind(EJobKind.ARCHIVES_PACK)?.id).toBe("b8f0");
   });
 
-  it("follows an adopted job by asking, because its channel died with the page", async () => {
-    setMockInvokeResponses({ [LIST_COMMAND]: [described()] });
-
-    const { service } = watched();
-
-    await service.onProvision(1);
-
-    setMockInvokeResponses({
-      [LIST_COMMAND]: [
-        described({
-          progress: {
-            levels: [{ id: "write", label: null, completed: 7, total: 10, unit: "items" }],
-            duration: 2000,
-            detail: null,
-          },
-        }),
-      ],
-    });
-
-    await jest.advanceTimersByTimeAsync(POLL_INTERVAL);
-
-    expect(service.getJob("b8f0")?.progress?.levels[0].completed).toBe(7);
-  });
-
-  it("announces an adopted job that ended, and forgets it", async () => {
-    // Nobody is awaiting its answer, so the polled conclusion is the only way the user learns their pack finished.
-    setMockInvokeResponses({ [LIST_COMMAND]: [described()] });
-
-    const { service, raised } = watched();
-
-    await service.onProvision(1);
-
-    expect(raised).toHaveLength(0);
-
-    setMockInvokeResponses({ [LIST_COMMAND]: [described({ conclusion: "completed" })] });
-
-    await jest.advanceTimersByTimeAsync(POLL_INTERVAL);
-
-    expect(service.jobs).toHaveLength(0);
-    expect(raised).toHaveLength(1);
-    expect(raised[0].title).toContain("reloading");
-  });
-
-  it("stops asking once nothing is adopted", async () => {
-    setMockInvokeResponses({ [LIST_COMMAND]: [described()] });
-
-    const { service } = watched();
-
-    await service.onProvision(1);
-
-    setMockInvokeResponses({ [LIST_COMMAND]: [described({ conclusion: "completed" })] });
-
-    await jest.advanceTimersByTimeAsync(POLL_INTERVAL);
-
-    expect(jest.getTimerCount()).toBe(0);
-  });
-
   it("attributes an adopted job to the tool that owns its kind", async () => {
     // The notification panel resolves a record's source through the application catalog. Attributing it to the kind
     // string instead left the panel with nothing to look up, and the user with a row labelled `archives.pack`.
-    setMockInvokeResponses({ [LIST_COMMAND]: [described()], [ATTACH_COMMAND]: true });
+    setMockInvokeResponses({ [JOBS_LIST_COMMAND]: [mockJobDescription()], [JOBS_ATTACH_COMMAND]: true });
 
-    const { service, raised } = watched();
+    const { service, raised } = mockWatchedJobsService();
 
     await service.onProvision(1);
 
-    setMockInvokeResponses({ [LIST_COMMAND]: [described({ conclusion: "completed" })], [ATTACH_COMMAND]: true });
+    setMockInvokeResponses({
+      [JOBS_LIST_COMMAND]: [mockJobDescription({ conclusion: "completed" })],
+      [JOBS_ATTACH_COMMAND]: true,
+    });
 
-    await jest.advanceTimersByTimeAsync(POLL_INTERVAL);
+    await jest.advanceTimersByTimeAsync(JOBS_POLL_INTERVAL);
 
     expect(raised[0].source).toBe(EApplicationId.ARCHIVES_PACKER);
     expect(raised[0].details).toContain("Archive packing");
-  });
-
-  it("treats a job that left the listing as ended with an unrecorded outcome", async () => {
-    // Twenty finished jobs push it out of the retained ring. It ended; how is no longer knowable.
-    setMockInvokeResponses({ [LIST_COMMAND]: [described()] });
-
-    const { service, raised } = watched();
-
-    await service.onProvision(1);
-
-    setMockInvokeResponses({ [LIST_COMMAND]: [] });
-
-    await jest.advanceTimersByTimeAsync(POLL_INTERVAL);
-
-    expect(service.jobs).toHaveLength(0);
-    expect(raised[0].details).toContain("no longer recorded");
-  });
-
-  it("keeps working when the listing cannot be read", async () => {
-    // A start-up is a bad moment to fail loudly, and the lease still prevents a duplicate from doing any damage.
-    setMockInvokeResponses({
-      [LIST_COMMAND]: () => {
-        throw new Error("state unavailable");
-      },
-    });
-
-    const { service } = watched();
-
-    await expect(service.onProvision(1)).resolves.toBeUndefined();
-    expect(service.jobs).toHaveLength(0);
-  });
-
-  it("keeps watching through a failed poll and settles only after recovery", async () => {
-    setMockInvokeResponses({ [LIST_COMMAND]: [described()], [ATTACH_COMMAND]: true });
-
-    const { service, raised, settled } = watched();
-
-    await service.onProvision(1);
-
-    setMockInvokeResponses({
-      [LIST_COMMAND]: () => {
-        throw new Error("temporarily unavailable");
-      },
-    });
-
-    await jest.advanceTimersByTimeAsync(POLL_INTERVAL * 2);
-
-    expect(service.getJob("b8f0")?.isAdopted).toBe(true);
-    expect(raised).toHaveLength(0);
-    expect(settled).toHaveLength(0);
-
-    setMockInvokeResponses({
-      [LIST_COMMAND]: [described({ conclusion: "completed", result: { volumes: ["textures.db0"] } })],
-    });
-
-    await jest.advanceTimersByTimeAsync(POLL_INTERVAL);
-
-    expect(service.jobs).toHaveLength(0);
-    expect(settled).toHaveLength(1);
-    expect(settled[0].result).toEqual({ volumes: ["textures.db0"] });
-    expect(raised).toHaveLength(1);
-    expect(jest.getTimerCount()).toBe(0);
   });
 });
