@@ -4,12 +4,11 @@ use std::time::Instant;
 use glam::{Mat4, UVec4, Vec2, Vec3, Vec4};
 use xrf_engine_target::XrayEngine;
 use xrf_error::XrfResult;
-use xrf_material::XraySurfaceDraw;
 use xrf_math::EPS_S;
 use xrf_renderer_core::{
   FrameGraph, GraphBindings, GraphBuffer, GraphBufferAccess, GraphColorAttachment, GraphDepthAttachment, GraphRuntime,
-  GraphTexture, GraphTextureAccess, GraphTextureDescriptor, RasterPassBuilder, StorageArray, StorageArrayMut,
-  StorageValue, StorageValueMut, UniformBinding,
+  GraphTexture, GraphTextureAccess, GraphTextureDescriptor, StorageArray, StorageArrayMut, StorageValue,
+  UniformBinding,
 };
 
 use crate::camera::camera_view::CameraView;
@@ -17,16 +16,12 @@ use crate::context::gpu_requirements::RAY_QUERY_FEATURES;
 use crate::contract::render_ambient_occlusion_quality::RenderAmbientOcclusionQuality;
 use crate::contract::render_ambient_occlusion_settings::RenderAmbientOcclusionSettings;
 use crate::contract::render_antialiasing::RenderAntialiasing;
-use crate::contract::render_applied_height_fog::RenderAppliedHeightFog;
 use crate::contract::render_applied_indirect_light::RenderAppliedIndirectLight;
 use crate::contract::render_applied_reflections::RenderAppliedReflections;
 use crate::contract::render_applied_report::RenderAppliedReport;
 use crate::contract::render_applied_shadows::RenderAppliedShadows;
 use crate::contract::render_bloom_mode::RenderBloomMode;
-use crate::contract::render_bloom_settings::RenderBloomSettings;
 use crate::contract::render_debug_view::RenderDebugView;
-use crate::contract::render_enhanced_bloom_settings::RenderEnhancedBloomSettings;
-use crate::contract::render_fog_settings::RenderFogSettings;
 use crate::contract::render_foliage_settings::RenderFoliageSettings;
 use crate::contract::render_level_hit::RenderLevelHit;
 use crate::contract::render_lights_report::RenderLightsReport;
@@ -53,44 +48,32 @@ use crate::frame::sky_prefilter::SkyPrefilter;
 use crate::frame::static_scene_handles::StaticSceneHandles;
 use crate::frame::temporal_history::TemporalHistory;
 use crate::frame::temporal_jitter::TemporalJitter;
+use crate::frame::texture_copy::add_texture_copy;
 use crate::frame::upscale_targets::UpscaleTargets;
 use crate::frame::vbao_history::VbaoHistory;
 use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::frame::view_targets::ViewTargets;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::host::render_level_weather::RenderLevelWeather;
-use crate::host::render_rain::RenderRain;
 use crate::lighting::ambient_gust::AmbientGust;
 use crate::lighting::render_lighting::RenderLighting;
-use crate::lighting::render_rainfall::RenderRainfall;
 use crate::pass::ambient_occlusion_parameters::AmbientOcclusionParameters;
 use crate::pass::ambient_occlusion_pass::AmbientOcclusionPass;
 use crate::pass::ambient_occlusion_uniform::AmbientOcclusionUniform;
 use crate::pass::bitmask_pass_names::BitmaskPassNames;
 use crate::pass::bitmask_search::BitmaskSearch;
-use crate::pass::bloom_parameters::BloomParameters;
-use crate::pass::bloom_pass::BloomPass;
-use crate::pass::bloom_uniform::BloomUniform;
 use crate::pass::camera_uniform::CameraUniform;
 use crate::pass::combine_parameters::CombineParameters;
 use crate::pass::composited_parameters::CompositedParameters;
 use crate::pass::contact_shadow_parameters::ContactShadowParameters;
 use crate::pass::contact_shadow_pass::ContactShadowPass;
 use crate::pass::contact_shadow_uniform::ContactShadowUniform;
-use crate::pass::enhanced_bloom_parameters::EnhancedBloomParameters;
-use crate::pass::enhanced_bloom_pass::EnhancedBloomPass;
-use crate::pass::enhanced_bloom_uniform::EnhancedBloomUniform;
 use crate::pass::enhanced_water_maps::EnhancedWaterMaps;
-use crate::pass::exposure_parameters::ExposureParameters;
-use crate::pass::fog_scattering_parameters::FogScatteringParameters;
-use crate::pass::fog_scattering_pass::FogScatteringPass;
-use crate::pass::fog_scattering_uniform::FogScatteringUniform;
 use crate::pass::foliage_wind_values::FoliageWindValues;
 use crate::pass::froxel_inject_parameters::FroxelInjectParameters;
 use crate::pass::froxel_integrate_parameters::FroxelIntegrateParameters;
 use crate::pass::froxel_uniform::FroxelUniform;
 use crate::pass::fsr_uniform::FsrUniform;
-use crate::pass::fxaa_parameters::FxaaParameters;
 use crate::pass::glass_parameters::GlassParameters;
 use crate::pass::glass_uniform::GlassUniform;
 use crate::pass::grass_colour_parameters::GrassColourParameters;
@@ -106,7 +89,6 @@ use crate::pass::lights_uniform::LightsUniform;
 use crate::pass::present_uniform::PresentUniform;
 use crate::pass::pyramid_depth_parameters::PyramidDepthParameters;
 use crate::pass::pyramid_level_parameters::PyramidLevelParameters;
-use crate::pass::rain_parameters::RainParameters;
 use crate::pass::rain_uniform::RainUniform;
 use crate::pass::reflection_parameters::ReflectionParameters;
 use crate::pass::reflection_pass::ReflectionPass;
@@ -118,8 +100,6 @@ use crate::pass::sky_parameters::SkyParameters;
 use crate::pass::sky_prefilter_parameters::SkyPrefilterParameters;
 use crate::pass::sky_prefilter_pass::SkyPrefilterPass;
 use crate::pass::sky_prefilter_uniform::SkyPrefilterUniform;
-use crate::pass::smaa_parameters::SmaaParameters;
-use crate::pass::smaa_pass::SmaaPass;
 use crate::pass::static_cull_parameters::StaticCullParameters;
 use crate::pass::static_cull_params::StaticCullParams;
 use crate::pass::static_draw_parameters::StaticDrawParameters;
@@ -131,8 +111,6 @@ use crate::pass::sun_shafts_parameters::SunShaftsParameters;
 use crate::pass::sun_shafts_pass::SunShaftsPass;
 use crate::pass::temporal_parameters::TemporalParameters;
 use crate::pass::temporal_uniform::TemporalUniform;
-use crate::pass::thunder_parameters::ThunderParameters;
-use crate::pass::thunder_uniform::ThunderUniform;
 use crate::pass::trace_parameters::TraceParameters;
 use crate::pass::trace_request_handles::TraceRequestHandles;
 use crate::pass::trace_request_parameters::TraceRequestParameters;
@@ -150,6 +128,8 @@ use crate::pass::wet_patch_parameters::WetPatchParameters;
 use crate::pass::wet_uniform::WetUniform;
 use crate::pass::wind_uniform::WindUniform;
 use crate::scene::level::cover_textures::CoverTextures;
+use crate::scene::level::feature::over_scene::add_over_scene;
+use crate::scene::level::feature::scene_features::SceneFeatures;
 use crate::scene::level::frame_load::FrameLoad;
 use crate::scene::level::grass_level::GrassLevel;
 use crate::scene::level::level_frame::LevelFrame;
@@ -168,7 +148,6 @@ use crate::scene::level::shadow_sway::ShadowSway;
 use crate::scene::level::surroundings_cube::SurroundingsCube;
 use crate::scene::level::view_info::ViewInfo;
 use crate::scene::level::view_state::ViewState;
-use crate::scene::level::weather_model_buffers::WeatherModelBuffers;
 use crate::scene::static_scene::static_batch::StaticBatch;
 use crate::scene::static_scene::static_cull_scratch::StaticCullScratch;
 use crate::scene::static_scene::static_layout::StaticLayout;
@@ -205,6 +184,8 @@ pub struct SceneView {
   /// What draws it, and what that keeps between frames: the passes' buffers and bind groups, and the effects drawn from
   /// the view.
   renderer: SceneRenderer,
+  /// Its feature units.
+  features: SceneFeatures,
 }
 
 impl SceneView {
@@ -233,6 +214,7 @@ impl SceneView {
       info: ViewInfo::default(),
       state: ViewState::new(device, queue),
       renderer: SceneRenderer::new(device, view_layout, scene.statics.cull.args.size()),
+      features: SceneFeatures::new(device, queue),
     }
   }
 
@@ -280,7 +262,7 @@ impl SceneView {
 
     if options.mode.is_lit && options.show.is_sky_visible {
       self
-        .renderer
+        .features
         .flares
         .request((lighting, weather), weather_textures, &assets);
       weather_textures.request_sky(&lighting.sky, options.show.is_clouded, &assets);
@@ -334,11 +316,12 @@ impl SceneView {
       .prepare(device, options.features.shadows.resolution);
 
     self
-      .state
+      .features
       .exposure
       .prepare(queue, &options.features.exposure, Instant::now());
 
-    self.info.sun_sprite = self.renderer.flares.prepare(
+    self.info.sun_sprite = self.features.flares.prepare(
+      device,
       (lighting, weather),
       options,
       weather_textures,
@@ -417,7 +400,10 @@ impl SceneView {
       (options, gust, scene.started.elapsed().as_secs_f32(), weather_rate),
       weather_textures,
     );
-    self.prepare_thunder(device, queue, passes, (lighting, weather), options, weather_textures);
+    self
+      .features
+      .thunder
+      .prepare(device, (lighting, weather), options, weather_textures);
     self.info.wind = wind;
 
     // A keyframe whose textures are not all up is blended out, so a sky still going up shows the other one.
@@ -432,7 +418,7 @@ impl SceneView {
     };
     let (is_first_up, is_second_up) = (side(0), side(1));
     let frame: LightingFrame = LightingFrame {
-      is_adapting: self.state.exposure.is_adapting(),
+      is_adapting: self.features.exposure.is_adapting(),
       sky_blend: match (is_first_up, is_second_up) {
         (true, false) => 0.0,
         (false, true) => 1.0,
@@ -457,8 +443,25 @@ impl SceneView {
       && lighting.get_sun_shafts(&options.features.sun_shafts) > 0.0
       && options.features.shadows.get_cascade_count() > 0;
     self.info.is_wallmarked = options.show.is_wallmarked;
-    self.prepare_bloom(options, lighting.engine);
-    self.prepare_fog(options, lighting, scene.started.elapsed().as_secs_f32());
+    self.features.bloom.prepare(
+      options,
+      lighting.engine,
+      self
+        .state
+        .targets
+        .as_ref()
+        .map(|targets| (targets.width, targets.height)),
+    );
+    self.features.fog.prepare(
+      options,
+      lighting,
+      self
+        .state
+        .targets
+        .as_ref()
+        .map(|targets| (targets.width, targets.height)),
+      scene.started.elapsed().as_secs_f32(),
+    );
     self.info.debanding = PresentUniform::get_debanding(options);
 
     if !options.features.is_occlusion_culled {
@@ -543,7 +546,11 @@ impl SceneView {
     self.info.is_occlusion_drawn =
       options.mode.is_lit && !options.mode.is_wireframe && options.features.ambient_occlusion.is_enabled;
     self.prepare_temporal(device, view);
-    self.prepare_smoothing(passes, options.features.antialiasing);
+    self.features.smoothing.prepare(
+      passes,
+      options.features.antialiasing,
+      self.state.targets.is_some() && self.info.debug_view == RenderDebugView::Final,
+    );
     self.prepare_upscale(device);
     self.info.lights_settings = options.features.lights;
 
@@ -623,8 +630,7 @@ impl SceneView {
     let (texels, reach): (f32, f32) = self.renderer.rain_cover.get_shape();
     let (surface, surface_shape): (Vec4, Vec4) = self.renderer.level_surface.get_window();
 
-    self.info.rain.window = cover;
-    self.info.rain.cover_shape = Vec4::new(texels, reach, 0.0, 0.0);
+    self.features.rain.follow_cover(cover, (texels, reach));
     self.info.wet.cover = cover;
     self.info.wet.cover_state.x = texels;
     self.info.wet.cover_state.y = reach;
@@ -642,7 +648,12 @@ impl SceneView {
     encoder: &mut FrameEncoder,
     (view_layout, textures): (&wgpu::BindGroupLayout, &TextureCache),
   ) {
-    let SceneView { info, renderer, .. } = self;
+    let SceneView {
+      info,
+      renderer,
+      features,
+      ..
+    } = self;
     let SceneRenderer {
       shadows,
       rain_cover,
@@ -675,7 +686,7 @@ impl SceneView {
     }
 
     // Out to the wet reach where the wetting reaches past the engine's.
-    if info.rain_draw.is_some() || info.is_wet {
+    if features.rain.is_raining() || info.is_wet {
       let reach: Option<f32> = (info.is_wet && info.wet.reach.x > 0.5).then_some(info.wet.reach.y);
 
       rain_cover.prepare(device, encoder, &frame, (reach, &mut load));
@@ -1534,199 +1545,6 @@ impl SceneView {
     );
   }
 
-  /// Adds the enhanced fog's scattering over the scene: the blurs to a quarter and to half its size, the scattering
-  /// into a copy of it, and that copied back.
-  fn add_fog_scattering_passes<'a>(
-    (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
-    passes: LevelPasses<'a>,
-    view: &'a ViewBinding,
-    (targets, lit): (ViewTargetHandles, LightingHandles<'a>),
-    stages: [FogScatteringUniform; 3],
-  ) {
-    let empty: GraphTexture =
-      bindings.import_view(&mut *graph, "fog scattering empty", passes.fog_scattering.get_empty());
-    let mut create = |label: &'static str, stage: &FogScatteringUniform, format: wgpu::TextureFormat| {
-      graph.create_texture(GraphTextureDescriptor::new_2d(
-        label,
-        stage.size.x as u32,
-        stage.size.y as u32,
-        format,
-      ))
-    };
-    let quarter: GraphTexture = create("fog scattered quarter", &stages[0], FogScatteringPass::BLURRED);
-    let half: GraphTexture = create("fog scattered half", &stages[1], FogScatteringPass::BLURRED);
-    let scattered: GraphTexture = create("fog scattered", &stages[2], ViewTargets::SCENE);
-
-    for (stage, (source, blurred, written)) in [
-      (targets.scene, empty, quarter),
-      (quarter, empty, half),
-      (targets.scene, half, scattered),
-    ]
-    .into_iter()
-    .enumerate()
-    {
-      let parameters: FogScatteringParameters = FogScatteringParameters {
-        source,
-        blurred,
-        source_sampler: passes.fog_scattering.get_sampler(),
-        depth_target: targets.depth,
-        lighting: lit.lighting,
-        scattering: runtime.push_uniform(&stages[stage]),
-      };
-
-      graph
-        .add_raster_pass(FogScatteringPass::STAGES[stage])
-        .parameters(&parameters)
-        .color(GraphColorAttachment::new(
-          written,
-          wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-        ))
-        .record(move |context| passes.fog_scattering.record(context, view, &parameters, stage == 2));
-    }
-
-    Self::add_copy(&mut *graph, FogScatteringPass::STAGES[3], scattered, targets.scene);
-  }
-
-  /// Adds the enhanced bloom from the scene as it stands, answering what the present screens over the frame: the
-  /// half-size blur across and down, the build, six halvings, five doublings back to half size, and the finish.
-  fn add_enhanced_bloom_passes<'a>(
-    (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
-    passes: LevelPasses<'a>,
-    view: &'a ViewBinding,
-    targets: ViewTargetHandles,
-    (settings, frame): (&RenderEnhancedBloomSettings, (u32, u32)),
-  ) -> GraphTexture {
-    let pass: &'a EnhancedBloomPass = passes.enhanced_bloom;
-    let empty: GraphTexture =
-      bindings.import_view(&mut *graph, "enhanced bloom empty", passes.fog_scattering.get_empty());
-    let half_size: (u32, u32) = EnhancedBloomUniform::get_level_size(frame, 1);
-    let stage = |size: (u32, u32)| EnhancedBloomUniform::new(size, frame, settings);
-    let mut create = |label: &'static str, (width, height): (u32, u32), format: wgpu::TextureFormat| {
-      graph.create_texture(GraphTextureDescriptor::new_2d(label, width, height, format))
-    };
-    let across: GraphTexture = create("enhanced bloom across", half_size, EnhancedBloomPass::BLURRED);
-    let blurred: GraphTexture = create("enhanced bloom blurred", half_size, EnhancedBloomPass::BLURRED);
-    let built: GraphTexture = create("enhanced bloom built", half_size, EnhancedBloomPass::BLOOM);
-    // Each halving's target, the first at half the frame's size, then each doubling's, the last back at half size.
-    let halved: Vec<(GraphTexture, (u32, u32))> = (1..=EnhancedBloomUniform::LEVELS as u32)
-      .map(|level| {
-        let size: (u32, u32) = EnhancedBloomUniform::get_level_size(frame, level);
-
-        (create("enhanced bloom halved", size, EnhancedBloomPass::BLOOM), size)
-      })
-      .collect();
-    let doubled: Vec<(GraphTexture, (u32, u32))> = (1..EnhancedBloomUniform::LEVELS as u32)
-      .rev()
-      .map(|level| {
-        let size: (u32, u32) = EnhancedBloomUniform::get_level_size(frame, level);
-
-        (create("enhanced bloom doubled", size, EnhancedBloomPass::BLOOM), size)
-      })
-      .collect();
-    let finished: GraphTexture = create("enhanced bloom", half_size, EnhancedBloomPass::BLOOM);
-    // Adds one stage: its pass, its pipeline, what it reads and what it adds, what it writes, and its uniform.
-    let mut add = |name: &'static str,
-                   pipeline: usize,
-                   (source, coarser): (GraphTexture, GraphTexture),
-                   written: GraphTexture,
-                   uniform: EnhancedBloomUniform| {
-      let parameters: EnhancedBloomParameters = EnhancedBloomParameters {
-        source,
-        coarser,
-        source_sampler: pass.get_sampler(),
-        depth_target: targets.depth,
-        material_target: targets.material,
-        bloom: runtime.push_uniform(&uniform),
-      };
-
-      graph
-        .add_raster_pass(name)
-        .parameters(&parameters)
-        .color(GraphColorAttachment::new(
-          written,
-          wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-        ))
-        .record(move |context| pass.record(context, view, pipeline, &parameters));
-    };
-
-    add(
-      EnhancedBloomPass::BLUR_PASSES[0],
-      EnhancedBloomPass::BLUR,
-      (targets.scene, empty),
-      across,
-      stage(half_size).along(true),
-    );
-    add(
-      EnhancedBloomPass::BLUR_PASSES[1],
-      EnhancedBloomPass::BLUR,
-      (across, empty),
-      blurred,
-      stage(half_size).along(false),
-    );
-    add(
-      EnhancedBloomPass::BUILD_PASS,
-      EnhancedBloomPass::BUILD,
-      (blurred, empty),
-      built,
-      stage(half_size),
-    );
-
-    let mut source: GraphTexture = built;
-
-    for (index, (target, size)) in halved.iter().enumerate() {
-      add(
-        EnhancedBloomPass::HALVE_PASSES[index],
-        EnhancedBloomPass::HALVE,
-        (source, empty),
-        *target,
-        stage(*size),
-      );
-      source = *target;
-    }
-
-    // The first doubling reads the smallest halving twice over; each after reads the doubling before and adds the
-    // halving of that one's size.
-    for (index, (target, size)) in doubled.iter().enumerate() {
-      let coarser: GraphTexture = halved[halved.len() - 1 - index].0;
-
-      add(
-        EnhancedBloomPass::DOUBLE_PASSES[index],
-        EnhancedBloomPass::DOUBLE,
-        (source, coarser),
-        *target,
-        stage(*size),
-      );
-      source = *target;
-    }
-
-    add(
-      EnhancedBloomPass::FINISH_PASS,
-      EnhancedBloomPass::FINISH,
-      (source, empty),
-      finished,
-      stage(half_size),
-    );
-
-    finished
-  }
-
-  /// Adds a pass copying the whole of one texture into another of its size.
-  fn add_copy(graph: &mut FrameGraph<'_>, name: &'static str, source: GraphTexture, destination: GraphTexture) {
-    graph
-      .add_encoder_pass(name)
-      .texture(source, GraphTextureAccess::CopySource)
-      .texture(destination, GraphTextureAccess::CopyDestination)
-      .record(move |context| {
-        let (source, destination) = (context.get_texture(source), context.get_texture(destination));
-
-        context.get_encoder().copy_texture_to_texture(
-          source.texture.as_image_copy(),
-          destination.texture.as_image_copy(),
-          source.texture.size(),
-        );
-      });
-  }
-
   /// Notes this frame's enhanced volumetric lighting, readying its froxels where it draws and letting them go where it
   /// does not.
   fn prepare_froxels(&mut self, device: &wgpu::Device, options: &RenderViewOptions) {
@@ -1802,18 +1620,6 @@ impl SceneView {
     (froxels, integrated)
   }
 
-  /// Adds a raster pass blending over the scene, tested against its depth without writing it.
-  fn add_over_scene<'g, 'a>(
-    graph: &'g mut FrameGraph<'a>,
-    targets: ViewTargetHandles,
-    name: &'static str,
-  ) -> RasterPassBuilder<'g, 'a> {
-    graph
-      .add_raster_pass(name)
-      .color(GraphColorAttachment::new(targets.scene, wgpu::LoadOp::Load))
-      .depth(GraphDepthAttachment::new_read_only(targets.depth))
-  }
-
   /// Ends a frame its graph recorded: the water's reflection, the bitmask search's accumulations and the temporal
   /// resolve's history it wrote become the ones the next frame keeps.
   pub fn end_frame(&mut self, frame: &LevelFrame) {
@@ -1883,9 +1689,9 @@ impl SceneView {
       if is_distorting { water.distortion } else { 0.0 },
       self.info.output,
       &self.info.corrections,
-      (self.info.selection_color, self.info.is_bloomed),
+      (self.info.selection_color, self.features.bloom.is_engine_drawn()),
     );
-    let present: PresentUniform = if self.info.enhanced_bloom.is_some() {
+    let present: PresentUniform = if self.features.bloom.is_enhanced_drawn() {
       present.with_enhanced_bloom()
     } else {
       present
@@ -1895,52 +1701,6 @@ impl SceneView {
       Some(quality) => present.with_debanding(quality.get_passes(), options.features.debanding.radius, time),
       None => present,
     };
-  }
-
-  /// Notes this frame's bloom while the view blooms (`phase_bloom`): the build's threshold over the frame's size, and
-  /// the blur across and down, down by the frame's height over its width, one-sided on Monolith as Anomaly's
-  /// `bloom_filter.ps` reads it; or the enhanced bloom in its place, whatever the look's bloom.
-  fn prepare_bloom(&mut self, options: &RenderViewOptions, engine: XrayEngine) {
-    let bloom: &RenderBloomSettings = &options.features.bloom;
-    let is_drawn: bool = options.mode.is_lit && !options.mode.is_wireframe && self.state.targets.is_some();
-
-    self.info.enhanced_bloom = EnhancedBloomUniform::for_view(options).filter(|_| is_drawn);
-    self.info.is_bloomed = is_drawn && bloom.is_enabled && self.info.enhanced_bloom.is_none();
-
-    let Some(targets) = self.state.targets.as_ref().filter(|_| self.info.is_bloomed) else {
-      return;
-    };
-
-    let size: (u32, u32) = (targets.width, targets.height);
-    let aspect: f32 = size.1 as f32 / size.0 as f32;
-    let is_one_sided: bool = engine == XrayEngine::Extended;
-
-    self.info.bloom = [
-      BloomUniform::build(size, bloom.threshold),
-      BloomUniform::filter(true, (bloom.radius, bloom.strength), aspect, is_one_sided),
-      BloomUniform::filter(false, (bloom.radius, bloom.strength), aspect, is_one_sided),
-    ];
-  }
-
-  /// Notes the enhanced fog while the view draws the weather's fog lit, and its scattering's three stages while it
-  /// scatters and is solid, the noise turning with `time`.
-  fn prepare_fog(&mut self, options: &RenderViewOptions, lighting: &RenderLighting, time: f32) {
-    let fog: &RenderFogSettings = &options.features.fog;
-    let is_fogged: bool = options.mode.is_lit && options.show.is_fogged && lighting.fog.is_some();
-
-    self.info.height_fog = (is_fogged && fog.is_enhanced()).then_some(RenderAppliedHeightFog {
-      height: fog.height,
-      density: fog.density,
-      sun_color: fog.sun_color,
-      scattering: 0.0,
-    });
-    self.info.fog_scattering = self.state.targets.as_ref().and_then(|targets| {
-      FogScatteringUniform::for_view(options, lighting.fog.is_some(), (targets.width, targets.height), time)
-    });
-
-    if let (Some(applied), Some(stages)) = (&mut self.info.height_fog, &self.info.fog_scattering) {
-      applied.scattering = stages[0].intensity;
-    }
   }
 
   /// Writes this frame's rain and wet surfaces: the level's wetness moved on, the falling rain while the weather rains
@@ -1954,9 +1714,7 @@ impl SceneView {
     (options, gust, time, weather_rate): (&RenderViewOptions, AmbientGust, f32, f32),
     weather_textures: &WeatherTextureCache,
   ) {
-    self.info.rain_draw = None;
-    self.info.weather_views.rain = None;
-    self.info.weather_views.wet = None;
+    self.info.wet_views = None;
     self.info.is_wet = false;
 
     // The game's `time_factor`: Anomaly's `alife.ltx` runs its clock six times a real second, Call of Pripyat's ten.
@@ -1980,9 +1738,16 @@ impl SceneView {
     };
     let wetness: f32 = self.state.wetness.advance(time, density, pace, build_up);
     let puddles: (f32, f32, f32) = self.state.puddle_fill.advance(time, density, pace);
-    let falling: Option<RainUniform> = lighting.rain.filter(|_| options.mode.is_lit).and_then(|rainfall| {
-      self.prepare_falling_rain(device, (lighting, weather), (&rainfall, gust, time), weather_textures)
-    });
+    let falling: Option<RainUniform> = self.features.rain.prepare(
+      device,
+      (lighting, weather),
+      (lighting.rain.filter(|_| options.mode.is_lit), gust, time),
+      (
+        self.renderer.rain_cover.get_window(),
+        self.renderer.rain_cover.get_shape(),
+      ),
+      weather_textures,
+    );
 
     self.prepare_wet(
       (lighting, weather),
@@ -1990,50 +1755,6 @@ impl SceneView {
       (falling.as_ref(), time, wetness, puddles),
       weather_textures,
     );
-  }
-
-  /// Writes the falling rain: the splash's model built for the level's weather, the uniform at the cover last drawn,
-  /// and what the draw binds; none where the weather has no rain to draw.
-  fn prepare_falling_rain(
-    &mut self,
-    device: &wgpu::Device,
-    (lighting, weather): (&RenderLighting, Option<&Arc<RenderLevelWeather>>),
-    (rainfall, gust, time): (&RenderRainfall, AmbientGust, f32),
-    weather_textures: &WeatherTextureCache,
-  ) -> Option<RainUniform> {
-    let (key, rain): (usize, &RenderRain) = weather.and_then(|weather| {
-      weather
-        .rain
-        .as_ref()
-        .map(|rain: &RenderRain| (Arc::as_ptr(weather) as usize, rain))
-    })?;
-
-    if self.renderer.splash.as_ref().is_none_or(|(built, _)| *built != key) {
-      self.renderer.splash = Some((key, WeatherModelBuffers::new(device, rain.drop.as_ref())));
-    }
-
-    let (_, splash) = self.renderer.splash.as_ref()?;
-    let (texels, reach): (f32, f32) = self.renderer.rain_cover.get_shape();
-    let uniform: RainUniform = RainUniform::new(
-      rainfall,
-      (lighting.wind, gust.strength),
-      (
-        self.renderer.rain_cover.get_window(),
-        Vec4::new(texels, reach, 0.0, 0.0),
-      ),
-      time,
-      splash.index_count,
-    );
-    let flat = |reference: Option<&str>| weather_textures.get_view(reference, WeatherTextureKind::Flat).clone();
-
-    self.info.rain = uniform;
-    self.info.weather_views.rain = Some([
-      flat(Some(&rain.streak)),
-      flat(rain.drop.as_ref().map(|drop| drop.texture.as_str())),
-    ]);
-    self.info.rain_draw = Some((uniform.count, splash.index_count));
-
-    Some(uniform)
   }
 
   /// Writes the wet surfaces while the rain falls and while the level is still wet after it stops: the uniform, the
@@ -2086,7 +1807,7 @@ impl SceneView {
       ),
       gust: WetUniform::get_gust(lighting.wind.direction, lighting.wind.velocity),
     };
-    self.info.weather_views.wet = Some([
+    self.info.wet_views = Some([
       weather_textures
         .get_view(Some(&wet.splash), WeatherTextureKind::Volume)
         .clone(),
@@ -2095,75 +1816,6 @@ impl SceneView {
         .clone(),
     ]);
     self.info.is_wet = true;
-  }
-
-  /// Writes this frame's strike, while a bolt strikes and the view shows it: every bolt model built for the level's
-  /// weather, the uniform where the strike stands, and what its model and glows bind.
-  fn prepare_thunder(
-    &mut self,
-    device: &wgpu::Device,
-    _queue: &wgpu::Queue,
-    _passes: LevelPasses<'_>,
-    (lighting, weather): (&RenderLighting, Option<&Arc<RenderLevelWeather>>),
-    options: &RenderViewOptions,
-    weather_textures: &WeatherTextureCache,
-  ) {
-    self.info.thunder_draw = None;
-    self.info.weather_views.thunder = None;
-
-    let (Some(weather), Some(strike)) = (weather, &lighting.thunderbolt) else {
-      return;
-    };
-    let Some(thunder) = weather.thunder.as_ref().filter(|_| options.mode.is_lit) else {
-      return;
-    };
-    let Some(bolt) = thunder.bolts.get(&strike.bolt) else {
-      return;
-    };
-    let key: usize = Arc::as_ptr(weather) as usize;
-
-    if self
-      .renderer
-      .thunder_models
-      .as_ref()
-      .is_none_or(|(built, _)| *built != key)
-    {
-      let models: Vec<WeatherModelBuffers> = thunder
-        .models
-        .iter()
-        .map(|model| WeatherModelBuffers::new(device, Some(&model.mesh)))
-        .collect();
-
-      self.renderer.thunder_models = Some((key, models));
-    }
-
-    let Some((_, models)) = &self.renderer.thunder_models else {
-      return;
-    };
-    let model = bolt
-      .model
-      .and_then(|index| Some((models.get(index)?, thunder.models.get(index)?)));
-    let flat = |reference: &str| {
-      weather_textures
-        .get_view(Some(reference), WeatherTextureKind::Flat)
-        .clone()
-    };
-    let model_texture: &str = model.map_or("", |(_, model)| model.mesh.texture.as_str());
-
-    self.info.thunder = ThunderUniform::new(strike);
-    self.info.weather_views.thunder = Some((
-      [flat(model_texture), flat(&bolt.top.texture), flat(&bolt.center.texture)],
-      bolt.model.filter(|_| model.is_some()),
-    ));
-
-    self.info.thunder_draw = Some((
-      [
-        model.map_or(XraySurfaceDraw::Opaque, |(_, model)| model.draw),
-        bolt.top.draw,
-        bolt.center.draw,
-      ],
-      model.map_or(0, |(buffers, _)| buffers.index_count),
-    ));
   }
 
   /// Readies a frame for its graph, none before the view's targets are made: a pick's camera narrowed to the texel
@@ -2223,8 +1875,8 @@ impl SceneView {
     let resolve: Option<&'static str> = frame.resolve;
     let is_drawn: bool = !self.info.is_wireframe;
     let is_wallmarked: bool = self.info.is_wallmarked && is_drawn;
-    let is_raining: bool = self.info.rain_draw.is_some();
-    let is_wet: bool = self.info.is_wet && self.info.weather_views.wet.is_some();
+    let is_raining: bool = self.features.rain.is_raining();
+    let is_wet: bool = self.info.is_wet && self.info.wet_views.is_some();
     let is_lit: bool = frame.is_lit;
     let has_lights: bool = self.state.lights.get_count() > 0;
     // The shadowed lights' shafts, drawn into a target of their own for the sun shafts' composite to add.
@@ -2237,13 +1889,8 @@ impl SceneView {
     let is_composited: bool = is_drawn && has_sky;
     let has_particles: bool = is_drawn && self.state.particles.is_drawing();
     let is_shafted: bool = self.info.is_shafted && !is_froxeled;
-    let is_rain_drawn: bool = is_raining && self.info.weather_views.rain.is_some();
-    let is_thundering: bool = self.info.thunder_draw.is_some() && self.info.weather_views.thunder.is_some();
-    let is_bloomed: bool = self.info.is_bloomed;
     let particle_surfaces: &wgpu::Buffer = scene.particles.get_surfaces();
-    let smoothing: Option<RenderAntialiasing> = self.info.smoothing;
     let is_sharpened: bool = self.state.upscale.is_some() && self.info.upscaling.is_sharpened();
-    let is_adapting: bool = self.state.exposure.is_adapting();
     let texture_group: &wgpu::BindGroup = textures.get_bind_group();
     let scene_view: &'a SceneView = self;
     let (Some(targets), Some(pyramid)) = (&scene_view.state.targets, &scene_view.state.pyramid) else {
@@ -2272,7 +1919,7 @@ impl SceneView {
     let layouts: [StaticDrawParameters; StaticLayout::COUNT] = statics.get_camera_draws().layouts;
     let lit: LightingHandles = LightingHandles {
       lighting: runtime.push_uniform(&scene_view.info.lighting),
-      exposure: bindings.import_buffer(&mut *graph, "exposure", &scene_view.state.exposure.state),
+      exposure: bindings.import_buffer(&mut *graph, "exposure", &scene_view.features.exposure.state),
       material_lut: bindings.import_view(&mut *graph, "material table", &passes.table.view),
       lut_sampler: &passes.table.sampler,
       shadow_maps: bindings.import_view(
@@ -2320,7 +1967,7 @@ impl SceneView {
       .map(|history| bindings.import_view(&mut *graph, "reflection traced depth", &history.traced_depth_view));
 
     if let Some(kept) = traced_depth.filter(|_| !is_grass_reflected) {
-      Self::add_copy(&mut *graph, "reflection traced depth", handles.depth, kept);
+      add_texture_copy(&mut *graph, "reflection traced depth", handles.depth, kept);
     }
 
     let stats_args: GraphBuffer = statics.args;
@@ -2349,7 +1996,7 @@ impl SceneView {
     }
 
     if let Some(kept) = traced_depth.filter(|_| is_grass_reflected) {
-      Self::add_copy(&mut *graph, "reflection traced depth", handles.depth, kept);
+      add_texture_copy(&mut *graph, "reflection traced depth", handles.depth, kept);
     }
 
     if is_wallmarked {
@@ -2444,7 +2091,7 @@ impl SceneView {
       bindings.import_view(&mut *graph, "wet reach none", passes.reflections.get_empty());
 
     // The rain wets the G-buffer before any light is drawn over it.
-    if let (Some(covers), Some(wet), Some([splash, flow])) = (covers, wet, &scene_view.info.weather_views.wet) {
+    if let (Some(covers), Some(wet), Some([splash, flow])) = (covers, wet, &scene_view.info.wet_views) {
       let is_enhanced: bool = scene_view.info.wet.is_enhanced > 0.5;
       let maps: &EnhancedWaterMaps = passes.water.get_maps();
       let (width, height) = handles.size;
@@ -2742,7 +2389,7 @@ impl SceneView {
             ViewTargets::SCENE,
           ));
 
-          Self::add_copy(&mut *graph, "temporal opaque", scene, opaque);
+          add_texture_copy(&mut *graph, "temporal opaque", scene, opaque);
 
           opaque
         });
@@ -2800,7 +2447,7 @@ impl SceneView {
       if let (true, Some(sky)) = (is_composited, sky) {
         let args: Vec<GraphBuffer> = Self::list_draw_args(&statics, &scene_view.info.cull);
         let builder = args.iter().fold(
-          StaticDraws::declare_layouts(Self::add_over_scene(&mut *graph, handles, "composited"), &layouts),
+          StaticDraws::declare_layouts(add_over_scene(&mut *graph, handles, "composited"), &layouts),
           |builder, args| builder.buffer(*args, GraphBufferAccess::Indirect),
         );
         let builder = builder.parameters(&composited).parameters(&sky);
@@ -2838,7 +2485,7 @@ impl SceneView {
         let sorted: [StaticDrawParameters; StaticLayout::COUNT] = statics.get_layout_draws(StorageArray::new(list));
         let runs: &'a [(StaticLayout, u32, u32)] = &scene_view.info.sorted_runs;
 
-        StaticDraws::declare_layouts(Self::add_over_scene(&mut *graph, handles, "sorted composited"), &sorted)
+        StaticDraws::declare_layouts(add_over_scene(&mut *graph, handles, "sorted composited"), &sorted)
           .parameters(&composited)
           .parameters(&sky)
           .record(move |context| {
@@ -2859,7 +2506,7 @@ impl SceneView {
           ViewTargets::SCENE,
         ));
 
-        Self::add_copy(&mut *graph, "glass copy", handles.scene, copy);
+        add_texture_copy(&mut *graph, "glass copy", handles.scene, copy);
 
         let parameters: GlassParameters = GlassParameters {
           lighting: lit.lighting,
@@ -2875,7 +2522,7 @@ impl SceneView {
         };
         let args: Vec<GraphBuffer> = Self::list_draw_args(&statics, &scene_view.info.cull);
         let builder = args.iter().fold(
-          StaticDraws::declare_layouts(Self::add_over_scene(&mut *graph, handles, "glass"), &layouts),
+          StaticDraws::declare_layouts(add_over_scene(&mut *graph, handles, "glass"), &layouts),
           |builder, args| builder.buffer(*args, GraphBufferAccess::Indirect),
         );
 
@@ -2914,8 +2561,8 @@ impl SceneView {
       // What a reflection reads a frame later: the scene with the water and the particles drawn, before the sun shafts,
       // the rain and the flares, which belong to this camera and not to what it reflects; and the depth it stood on.
       if let Some((scene, depth)) = source {
-        Self::add_copy(&mut *graph, "reflection source scene", handles.scene, scene);
-        Self::add_copy(&mut *graph, "reflection source depth", handles.depth, depth);
+        add_texture_copy(&mut *graph, "reflection source scene", handles.scene, scene);
+        add_texture_copy(&mut *graph, "reflection source depth", handles.depth, depth);
       }
 
       // The shadowed lights' shafts (`accum_volumetric`), added up over the frame's depth for the composite below.
@@ -3038,87 +2685,33 @@ impl SceneView {
           .record(move |context| passes.sun_shafts.record(context, view, &parameters, false));
       }
 
-      if let (true, Some(counts), Some(cover), Some([streak, splash]), Some((_, model))) = (
-        is_rain_drawn,
-        scene_view.info.rain_draw,
-        cover,
-        &scene_view.info.weather_views.rain,
-        &scene_view.renderer.splash,
-      ) {
-        let parameters: RainParameters = RainParameters {
-          rain: runtime.push_uniform(&scene_view.info.rain),
-          cover,
-          streak_texture: bindings.import_view(&mut *graph, "rain streak", streak),
-          splash_texture: bindings.import_view(&mut *graph, "rain splash", splash),
-          rain_sampler: passes.rain.get_sampler(),
-          splash_vertices: StorageArray::new(bindings.import_buffer(&mut *graph, "splash vertices", &model.vertices)),
-          splash_indices: StorageArray::new(bindings.import_buffer(&mut *graph, "splash indices", &model.indices)),
-        };
+      scene_view
+        .features
+        .rain
+        .add_passes((&mut *graph, &mut *bindings, runtime), passes, view, (handles, cover));
+      scene_view
+        .features
+        .thunder
+        .add_passes((&mut *graph, &mut *bindings, runtime), passes, view, handles);
 
-        Self::add_over_scene(&mut *graph, handles, "rain")
-          .parameters(&parameters)
-          .record(move |context| passes.rain.record(context, view, &parameters, counts));
-      }
-
-      if let (true, Some(draws), Some((textures, model))) = (
-        is_thundering,
-        scene_view.info.thunder_draw,
-        &scene_view.info.weather_views.thunder,
-      ) {
-        let thunder: UniformBinding<ThunderUniform> = runtime.push_uniform(&scene_view.info.thunder);
-        let no_model: &WeatherModelBuffers = &scene_view.renderer.no_model;
-        let bolt: &WeatherModelBuffers = model
-          .and_then(|index| scene_view.renderer.thunder_models.as_ref()?.1.get(index))
-          .unwrap_or(no_model);
-        // The bolt's model with its texture, then each glow's quad with its own.
-        let entries: [ThunderParameters; 3] =
-          [(0, bolt), (1, no_model), (2, no_model)].map(|(entry, buffers)| ThunderParameters {
-            thunder,
-            thunder_texture: bindings.import_view(&mut *graph, "thunder texture", &textures[entry]),
-            thunder_sampler: passes.thunder.get_sampler(),
-            model_vertices: StorageArray::new(bindings.import_buffer(
-              &mut *graph,
-              "thunder vertices",
-              &buffers.vertices,
-            )),
-            model_indices: StorageArray::new(bindings.import_buffer(&mut *graph, "thunder indices", &buffers.indices)),
-          });
-
-        entries
-          .iter()
-          .fold(
-            Self::add_over_scene(&mut *graph, handles, "thunder"),
-            |builder, parameters| builder.parameters(parameters),
-          )
-          .record(move |context| passes.thunder.record(context, view, &entries, draws));
-      }
-
-      scene_view.renderer.flares.add_passes(
+      scene_view.features.flares.add_passes(
         (&mut *graph, &mut *bindings, runtime),
         passes.flares,
         (handles, lit),
         view,
       );
 
-      if let Some(stages) = scene_view.info.fog_scattering {
-        Self::add_fog_scattering_passes(
-          (&mut *graph, &mut *bindings, runtime),
-          passes,
-          view,
-          (handles, lit),
-          stages,
-        );
-      }
+      scene_view
+        .features
+        .fog
+        .add_passes((&mut *graph, &mut *bindings, runtime), passes, view, (handles, lit));
 
-      enhanced_bloom = scene_view.info.enhanced_bloom.map(|settings| {
-        Self::add_enhanced_bloom_passes(
-          (&mut *graph, &mut *bindings, runtime),
-          passes,
-          view,
-          handles,
-          (&settings, (targets.width, targets.height)),
-        )
-      });
+      enhanced_bloom = scene_view.features.bloom.add_enhanced_passes(
+        (&mut *graph, &mut *bindings, runtime),
+        passes,
+        view,
+        (handles, (targets.width, targets.height)),
+      );
 
       // A selected composited surface, glass, marked where the present outlines the selection, once the enhanced
       // bloom has read the marks.
@@ -3143,98 +2736,16 @@ impl SceneView {
         });
       }
 
-      if is_bloomed {
-        // Built from the high target into the first, blurred across into the second, then down into the first.
-        for (stage, (read, written)) in [
-          (handles.high, handles.bloom[0]),
-          (handles.bloom[0], handles.bloom[1]),
-          (handles.bloom[1], handles.bloom[0]),
-        ]
-        .into_iter()
-        .enumerate()
-        {
-          let parameters: BloomParameters = BloomParameters {
-            source: read,
-            source_sampler: passes.bloom.get_sampler(),
-            bloom: runtime.push_uniform(&scene_view.info.bloom[stage]),
-          };
+      scene_view
+        .features
+        .bloom
+        .add_engine_passes((&mut *graph, runtime), passes, handles);
 
-          graph
-            .add_raster_pass(BloomPass::STAGES[stage])
-            .parameters(&parameters)
-            .color(GraphColorAttachment::new(
-              written,
-              wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-            ))
-            .record(move |context| passes.bloom.record(context, stage, &parameters));
-        }
-      }
-
-      if let Some(mode) = smoothing {
-        let sized = |label: &'static str, format: wgpu::TextureFormat| {
-          GraphTextureDescriptor::new_2d(label, targets.width, targets.height, format)
-        };
-        let target: GraphTexture = graph.create_texture(sized("smoothed", ViewTargets::SCENE));
-
-        match (mode, passes.smaa) {
-          (RenderAntialiasing::Smaa, Some(pass)) => {
-            let edges: GraphTexture = graph.create_texture(sized("smaa edges", SmaaPass::TARGET_FORMAT));
-            let weights: GraphTexture = graph.create_texture(sized("smaa weights", SmaaPass::TARGET_FORMAT));
-            let [area, search, empty] = pass.get_lookups();
-            let [area, search] = [("smaa area", area), ("smaa search", search)]
-              .map(|(label, view)| bindings.import_view(&mut *graph, label, view));
-            // Each stage reads an empty texture where it would read what it writes or what comes after it.
-            let [no_edges, no_weights] =
-              ["smaa no edges", "smaa no weights"].map(|label| bindings.import_view(&mut *graph, label, empty));
-            let [linear_sampler, point_sampler] = pass.get_samplers();
-
-            for (stage, (name, (edges_texture, weights_texture), written)) in [
-              ("smaa edges", (no_edges, no_weights), edges),
-              ("smaa weights", (edges, no_weights), weights),
-              ("smaa", (edges, weights), target),
-            ]
-            .into_iter()
-            .enumerate()
-            {
-              let parameters: SmaaParameters = SmaaParameters {
-                source: frame,
-                edges_texture,
-                weights_texture,
-                area_texture: area,
-                search_texture: search,
-                linear_sampler,
-                point_sampler,
-              };
-
-              graph
-                .add_raster_pass(name)
-                .parameters(&parameters)
-                .color(GraphColorAttachment::new(
-                  written,
-                  wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-                ))
-                .record(move |context| pass.record(context, stage, &parameters));
-            }
-          }
-          _ => {
-            let parameters: FxaaParameters = FxaaParameters {
-              frame,
-              frame_sampler: passes.fxaa.get_sampler(),
-            };
-
-            graph
-              .add_raster_pass("fxaa")
-              .parameters(&parameters)
-              .color(GraphColorAttachment::new(
-                target,
-                wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-              ))
-              .record(move |context| passes.fxaa.record(context, &parameters));
-          }
-        }
-
-        frame = target;
-      }
+      frame = scene_view.features.smoothing.add_passes(
+        (&mut *graph, &mut *bindings),
+        passes,
+        (frame, (targets.width, targets.height)),
+      );
 
       match (
         resolve,
@@ -3316,18 +2827,10 @@ impl SceneView {
         shown = Some(sharpened);
       }
 
-      if is_adapting {
-        let parameters: ExposureParameters = ExposureParameters {
-          high: handles.high,
-          state: StorageValueMut::new(lit.exposure),
-          params: runtime.push_uniform(&scene_view.state.exposure.params),
-        };
-
-        graph
-          .add_compute_pass("exposure")
-          .parameters(&parameters)
-          .record(move |context| passes.exposure.record(context, &parameters));
-      }
+      scene_view
+        .features
+        .exposure
+        .add_passes((&mut *graph, runtime), passes, (handles.high, lit.exposure));
     }
 
     if let (Some(slot), Some(target), Some(pick_view)) =
@@ -3647,20 +3150,6 @@ impl SceneView {
     encoder.write_buffer(buffer, 0, bytes);
   }
 
-  /// Notes the smoothing pass while one smooths the frame as drawn.
-  fn prepare_smoothing(&mut self, passes: LevelPasses<'_>, mode: RenderAntialiasing) {
-    // SMAA whose lookup textures could not be read smooths as FXAA does, which needs none.
-    let mode: RenderAntialiasing = match (mode, passes.smaa) {
-      (RenderAntialiasing::Smaa, None) => RenderAntialiasing::Fxaa,
-      _ => mode,
-    };
-    let is_smoothed: bool = matches!(mode, RenderAntialiasing::Fxaa | RenderAntialiasing::Smaa)
-      && self.state.targets.is_some()
-      && self.info.debug_view == RenderDebugView::Final;
-
-    self.info.smoothing = is_smoothed.then_some(mode);
-  }
-
   /// Makes the frame at the viewport's size while the scene is drawn smaller, dropping it otherwise, and notes what the
   /// upscale passes read.
   fn prepare_upscale(&mut self, device: &wgpu::Device) {
@@ -3708,7 +3197,7 @@ impl SceneView {
     let antialiasing: RenderAntialiasing = if self.info.is_temporal {
       options.features.antialiasing
     } else {
-      self.info.smoothing.unwrap_or(RenderAntialiasing::None)
+      self.features.smoothing.get_mode().unwrap_or(RenderAntialiasing::None)
     };
     let cascades: usize = self.info.shadow_settings.get_cascade_count();
 
@@ -3736,12 +3225,12 @@ impl SceneView {
         intensity: trace.intensity,
         quality: trace.quality,
       }),
-      height_fog: self.info.height_fog,
+      height_fog: self.features.fog.get_applied(),
       debanding: self.info.debanding,
-      bloom: if self.info.enhanced_bloom.is_some() {
+      bloom: if self.features.bloom.is_enhanced_drawn() {
         Some(RenderBloomMode::Enhanced)
       } else {
-        self.info.is_bloomed.then_some(RenderBloomMode::Engine)
+        self.features.bloom.is_engine_drawn().then_some(RenderBloomMode::Engine)
       },
       lights: self
         .info
@@ -3755,7 +3244,7 @@ impl SceneView {
         .info
         .sun_sprite
         .as_ref()
-        .and_then(|_| self.renderer.flares.get_shown())
+        .and_then(|_| self.features.flares.get_shown())
         .map(str::to_owned),
     }
   }

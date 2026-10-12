@@ -1,8 +1,13 @@
 use std::time::{Duration, Instant};
 
+use xrf_renderer_core::{FrameGraph, GraphBuffer, GraphRuntime, GraphTexture, StorageValueMut};
+
 use crate::contract::render_exposure_settings::RenderExposureSettings;
+use crate::pass::exposure_parameters::ExposureParameters;
 use crate::pass::exposure_state::ExposureState;
 use crate::pass::exposure_uniform::ExposureUniform;
+use crate::pass::level_passes::LevelPasses;
+use crate::scene::level::feature::view_feature::ViewFeature;
 
 /// Cells a side the frame's luminance is measured over, as `rt_LUM_64` is.
 pub const EXPOSURE_CELLS: u32 = 64;
@@ -12,7 +17,7 @@ const LONGEST_STEP: Duration = Duration::from_millis(250);
 
 /// One viewport's exposure: the scale its tonemap multiplies by, adapted on the GPU, the cells it was measured from,
 /// and the adaptation's rate, which the CPU advances by the time between frames.
-pub struct ViewExposure {
+pub struct ExposureFeature {
   /// The adapted scale, then each cell's luminance.
   pub state: wgpu::Buffer,
   /// How it adapts this frame.
@@ -23,7 +28,7 @@ pub struct ViewExposure {
   is_adapting: bool,
 }
 
-impl ViewExposure {
+impl ExposureFeature {
   pub fn new(device: &wgpu::Device, queue: &wgpu::Queue) -> Self {
     let state: wgpu::Buffer = device.create_buffer(&wgpu::BufferDescriptor {
       label: Some("exposure"),
@@ -72,7 +77,41 @@ impl ViewExposure {
     self.is_adapting
   }
 
+  /// Adds the adaptation: the frame's luminance measured from the high target and the scale moved towards it, into
+  /// `state`, the imported `state` buffer; nothing while it does not adapt.
+  pub fn add_passes<'a>(
+    &self,
+    (graph, runtime): (&mut FrameGraph<'a>, &mut GraphRuntime),
+    passes: LevelPasses<'a>,
+    (high, state): (GraphTexture, GraphBuffer),
+  ) {
+    if !self.is_adapting {
+      return;
+    }
+
+    let parameters: ExposureParameters = ExposureParameters {
+      high,
+      state: StorageValueMut::new(state),
+      params: runtime.push_uniform(&self.params),
+    };
+
+    graph
+      .add_compute_pass("exposure")
+      .parameters(&parameters)
+      .record(move |context| passes.exposure.record(context, &parameters));
+  }
+
   fn reset(&self, queue: &wgpu::Queue) {
     queue.write_buffer(&self.state, 0, bytemuck::bytes_of(&[1.0f32, 1.0, 0.0, 0.0]));
   }
+}
+
+impl ViewFeature for ExposureFeature {
+  /// Its state, which every lit pass reads its scale from, one while it is off; so it is kept whatever the settings.
+  fn get_memory(&self) -> u64 {
+    self.state.size()
+  }
+
+  /// Nothing to let go of on its own: its state goes with it.
+  fn release(&mut self) {}
 }

@@ -1,13 +1,9 @@
 use glam::{Mat4, Vec2, Vec3, Vec4};
-use xrf_material::XraySurfaceDraw;
 
 use crate::camera::camera_view::CameraView;
 use crate::contract::render_ambient_occlusion_settings::RenderAmbientOcclusionSettings;
-use crate::contract::render_antialiasing::RenderAntialiasing;
-use crate::contract::render_applied_height_fog::RenderAppliedHeightFog;
 use crate::contract::render_debanding_quality::RenderDebandingQuality;
 use crate::contract::render_debug_view::RenderDebugView;
-use crate::contract::render_enhanced_bloom_settings::RenderEnhancedBloomSettings;
 use crate::contract::render_image_corrections::RenderImageCorrections;
 use crate::contract::render_indirect_light_settings::RenderIndirectLightSettings;
 use crate::contract::render_lights_settings::RenderLightsSettings;
@@ -18,27 +14,22 @@ use crate::contract::render_upscaling_settings::RenderUpscalingSettings;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::pass::ambient_occlusion_uniform::AmbientOcclusionUniform;
 use crate::pass::bitmask_search::BitmaskSearch;
-use crate::pass::bloom_uniform::BloomUniform;
 use crate::pass::contact_shadow_uniform::ContactShadowUniform;
-use crate::pass::fog_scattering_uniform::FogScatteringUniform;
 use crate::pass::froxel_uniform::FroxelUniform;
 use crate::pass::fsr_uniform::FsrUniform;
 use crate::pass::glass_uniform::GlassUniform;
 use crate::pass::lighting_uniform::LightingUniform;
 use crate::pass::present_uniform::PresentUniform;
-use crate::pass::rain_uniform::RainUniform;
 use crate::pass::reflection_trace::ReflectionTrace;
 use crate::pass::reflection_uniform::ReflectionUniform;
 use crate::pass::static_cull_params::StaticCullParams;
 use crate::pass::static_occlusion_uniform::StaticOcclusionUniform;
 use crate::pass::temporal_uniform::TemporalUniform;
-use crate::pass::thunder_uniform::ThunderUniform;
 use crate::pass::upscale_uniform::UpscaleUniform;
 use crate::pass::vbao_uniform::VbaoUniform;
 use crate::pass::wet_uniform::WetUniform;
 use crate::pass::wind_uniform::WindUniform;
 use crate::scene::level::sky_views::SkyViews;
-use crate::scene::level::weather_views::WeatherViews;
 use crate::scene::static_scene::static_layout::StaticLayout;
 
 /// One frame of a view as its preparation leaves it: the camera and sun it is drawn by, what its options and weather
@@ -47,8 +38,6 @@ pub struct ViewInfo {
   /// What the present pass shows and the upscale passes read this frame.
   pub present: PresentUniform,
   pub upscale: UpscaleUniform,
-  /// What the bloom's build and its two blurs read this frame.
-  pub bloom: [BloomUniform; 3],
   /// What the ambient occlusion searches by this frame.
   pub occlusion_settings: AmbientOcclusionUniform,
   /// What VBAO searches, accumulates and filters by this frame.
@@ -57,11 +46,10 @@ pub struct ViewInfo {
   pub contact_shadows: ContactShadowUniform,
   /// Whether the sun's contact shadows pass draws this frame.
   pub is_sun_contact: bool,
-  /// What the rain, the wet surfaces and a strike draw by this frame, and the weather textures they draw with.
-  pub rain: RainUniform,
+  /// What the wet surfaces draw by this frame, and their splash volume and flow as the weather texture cache holds
+  /// them when the frame is prepared, each its kind's placeholder until its file is up.
   pub wet: WetUniform,
-  pub thunder: ThunderUniform,
-  pub weather_views: WeatherViews,
+  pub wet_views: Option<[wgpu::TextureView; 2]>,
   /// What the temporal resolve, or FSR 2, moves its history by this frame.
   pub temporal: TemporalUniform,
   pub fsr: FsrUniform,
@@ -80,8 +68,6 @@ pub struct ViewInfo {
   pub jitter_phases: u32,
   /// Whether a temporal resolve gathers this frame's samples, and whether it is FSR 2's rather than TAA.
   pub is_temporal: bool,
-  /// The smoothing pass over the scene as drawn, FXAA or SMAA, while one smooths it.
-  pub smoothing: Option<RenderAntialiasing>,
   pub is_fsr: bool,
   /// The cull's parameters for this frame's view and options.
   pub cull: StaticCullParams,
@@ -120,13 +106,6 @@ pub struct ViewInfo {
   pub is_wallmarked: bool,
   /// Whether the sun's light shafts are added, drawn through its shadow's cascades.
   pub is_shafted: bool,
-  pub is_bloomed: bool,
-  /// What the enhanced bloom draws with in place of the engine's, none where it does not draw.
-  pub enhanced_bloom: Option<RenderEnhancedBloomSettings>,
-  /// The enhanced fog as drawn, none where the engine's alone is.
-  pub height_fog: Option<RenderAppliedHeightFog>,
-  /// What the fog scattering's blurs and scattering read this frame, none where it does not scatter.
-  pub fog_scattering: Option<[FogScatteringUniform; 3]>,
   /// How hard the sky is debanded, none where it is drawn as it is.
   pub debanding: Option<RenderDebandingQuality>,
   /// The lighting the passes read, as the frame's weather and options make it.
@@ -135,12 +114,8 @@ pub struct ViewInfo {
   pub sky: Option<SkyViews>,
   /// The sun's sprite as the sky draws it: its texture, and its colour and radius.
   pub sun_sprite: Option<(String, Vec4)>,
-  /// The rain: the streaks drawn and the splash's indices, none while it does not rain.
-  pub rain_draw: Option<(u32, u32)>,
   /// Whether the surfaces are wetted this frame: while it rains, or, enhanced, while the level is still wet after.
   pub is_wet: bool,
-  /// A strike: how its model and glows composite and the model's indices, none while none strikes.
-  pub thunder_draw: Option<([XraySurfaceDraw; 3], u32)>,
   /// Composited clusters sorted back to front, and the runs of them alike in layout, in their order: the layout,
   /// the run's first entry in the sorted list and how many.
   pub sorted_count: u32,
@@ -160,15 +135,12 @@ impl Default for ViewInfo {
     Self {
       present: PresentUniform::default(),
       upscale: UpscaleUniform::default(),
-      bloom: [BloomUniform::default(); 3],
       occlusion_settings: AmbientOcclusionUniform::default(),
       vbao: VbaoUniform::default(),
       contact_shadows: ContactShadowUniform::default(),
       is_sun_contact: false,
-      rain: RainUniform::default(),
       wet: WetUniform::default(),
-      thunder: ThunderUniform::default(),
-      weather_views: WeatherViews::default(),
+      wet_views: None,
       temporal: TemporalUniform::default(),
       fsr: FsrUniform::default(),
       camera: CameraView {
@@ -183,7 +155,6 @@ impl Default for ViewInfo {
       jitter: Vec2::ZERO,
       jitter_phases: 1,
       is_temporal: false,
-      smoothing: None,
       is_fsr: false,
       cull: StaticCullParams::default(),
       occlusion: bytemuck::Zeroable::zeroed(),
@@ -206,17 +177,11 @@ impl Default for ViewInfo {
       is_hazing: false,
       is_wallmarked: true,
       is_shafted: false,
-      is_bloomed: false,
-      enhanced_bloom: None,
-      height_fog: None,
-      fog_scattering: None,
       debanding: None,
       lighting: bytemuck::Zeroable::zeroed(),
       sky: None,
       sun_sprite: None,
-      rain_draw: None,
       is_wet: false,
-      thunder_draw: None,
       sorted_count: 0,
       is_glass_distorting: false,
       glass: None,

@@ -14,7 +14,6 @@ use crate::frame::temporal_history::TemporalHistory;
 use crate::frame::temporal_jitter::TemporalJitter;
 use crate::frame::upscale_targets::UpscaleTargets;
 use crate::frame::vbao_history::VbaoHistory;
-use crate::frame::view_exposure::ViewExposure;
 use crate::frame::view_targets::ViewTargets;
 use crate::lighting::foliage_wind::FoliageWind;
 use crate::pass::foliage_wind_values::FoliageWindValues;
@@ -82,8 +81,6 @@ pub struct ViewState {
   pub overlays_box: Option<RenderOverlay>,
   /// What the selection marks, for the target it was resolved for and the scene's contents it was resolved with.
   pub selection: Option<(RenderSelectionTarget, usize, Option<StaticSelection>)>,
-  /// The eye's adaptation, carried from frame to frame.
-  pub exposure: ViewExposure,
   /// What the cull kept, read back without waiting.
   pub stats: StatsReadback,
   /// The texel a pick is drawn into, and the camera narrowed to it.
@@ -98,7 +95,7 @@ pub struct ViewState {
 }
 
 impl ViewState {
-  pub fn new(device: &wgpu::Device, queue: &wgpu::Queue) -> Self {
+  pub fn new(device: &wgpu::Device, _queue: &wgpu::Queue) -> Self {
     Self {
       targets: None,
       pyramid: None,
@@ -126,7 +123,6 @@ impl ViewState {
       overlays_box: None,
       selection: None,
       sorted_list: None,
-      exposure: ViewExposure::new(device, queue),
       stats: StatsReadback::new(device),
       pick_target: None,
       pick_view: None,
