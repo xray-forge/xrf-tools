@@ -84,7 +84,7 @@ impl StaticCullPass {
       (&self.pipelines[0], params.impostor_count),
       (&self.pipelines[1], params.cluster_count),
       (&self.pipelines[2], params.row_count),
-      (&self.pipelines[3], StaticBatch::COUNT as u32),
+      (&self.pipelines[3], StaticBatch::LIST_COUNT as u32),
     ] {
       if count > 0 {
         pass.set_pipeline(pipeline);
@@ -114,7 +114,7 @@ impl StaticCullPass {
     for (pipeline, count) in [
       (&pipelines[0], params.cluster_count),
       (&pipelines[1], params.row_count),
-      (&pipelines[2], StaticBatch::COUNT as u32),
+      (&pipelines[2], StaticBatch::LIST_COUNT as u32),
     ] {
       if count > 0 {
         pass.set_pipeline(pipeline);
@@ -145,7 +145,7 @@ impl StaticCullPass {
     pass.set_pipeline(&self.pipelines[4]);
     pass.dispatch_workgroups_indirect(dispatch, 0);
     pass.set_pipeline(&self.pipelines[5]);
-    pass.dispatch_workgroups((StaticBatch::COUNT as u32).div_ceil(WORKGROUP), 1, 1);
+    pass.dispatch_workgroups((StaticBatch::LIST_COUNT as u32).div_ceil(WORKGROUP), 1, 1);
   }
 
   fn create_pipelines(

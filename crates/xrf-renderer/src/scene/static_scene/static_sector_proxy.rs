@@ -20,7 +20,7 @@ pub struct StaticSectorProxy {
   pub spans: StaticSpans,
   pub rows: Vec<ProxyHandle<StaticRow>>,
   /// Entries of the visible list it may need a batch.
-  pub capacities: [u32; StaticBatch::COUNT],
+  pub capacities: [u32; StaticBatch::LIST_COUNT],
   /// Each of its slots' part, and each of its clusters' slot, both counted from its own first.
   pub slot_infos: Vec<StaticSlotInfo>,
   pub cluster_slots: Vec<u32>,

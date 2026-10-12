@@ -74,7 +74,7 @@ fn fs_glass(in: GBufferVarying) -> @location(0) vec4<f32> {
   let at: Footprint = take_footprint(in);
   let base: vec4<f32> = base_texel(in, at);
 
-  if ((surface.flags & SURFACE_IS_GLASS) == 0u || base.a <= surface.alpha_reference) {
+  if (base.a <= surface.alpha_reference) {
     discard;
   }
 

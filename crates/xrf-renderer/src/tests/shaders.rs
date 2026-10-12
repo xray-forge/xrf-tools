@@ -1,5 +1,6 @@
 use crate::scene::static_scene::static_class::StaticClass;
 use crate::scene::static_scene::static_surface::StaticSurface;
+use crate::scene::static_scene::static_surface_pass::StaticSurfacePass;
 use crate::shader::shader_library::ShaderLibrary;
 
 /// Every module composes and validates, so a shader error fails a test on a machine without a GPU.
@@ -44,7 +45,8 @@ fn every_module_composes_without_ray_queries() {
   assert!(fallen_back > 0, "No module imports a fallback");
 }
 
-/// The cull tells a batch's class by its index as Rust lays batches out, a layout's classes in `StaticClass` order.
+/// The cull tells a batch's class by its index as Rust lays batches out, a layout's classes in `StaticClass` order,
+/// and finds a surface pass's draw list after them as Rust does.
 #[test]
 fn the_cull_counts_classes_as_rust_does() {
   let library: ShaderLibrary = ShaderLibrary::default();
@@ -56,6 +58,10 @@ fn the_cull_counts_classes_as_rust_does() {
   assert_eq!(
     get_constant(&library, "static/cull", "WATER_CLASS"),
     StaticClass::Water.get_index() as u32
+  );
+  assert_eq!(
+    get_constant(&library, "static/cull", "SURFACE_PASS_COUNT"),
+    StaticSurfacePass::COUNT as u32
   );
 }
 

@@ -13,8 +13,11 @@ pub struct StaticSlot {
   pub kind: u32,
   pub batch: u32,
   pub surface: u32,
+  /// The surface passes its surface takes part in, a bit each by the `StaticSurfacePass` index: the draw lists the
+  /// cull appends it to beside its batch's.
+  pub passes: u32,
   /// Keeps a slot 32 bytes in WGSL too, which pads it no further.
-  pub pad: [u32; 2],
+  pub pad: u32,
 }
 
 impl StaticSlot {

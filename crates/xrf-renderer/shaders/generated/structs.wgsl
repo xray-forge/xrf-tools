@@ -358,7 +358,8 @@ struct Slot {
   kind: u32,
   batch: u32,
   surface: u32,
-  pad: array<u32, 2>,
+  passes: u32,
+  pad: u32,
 }
 
 struct Place {

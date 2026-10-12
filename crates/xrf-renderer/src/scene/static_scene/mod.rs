@@ -26,6 +26,8 @@ pub(crate) mod static_spans;
 pub(crate) mod static_surface;
 pub(crate) mod static_surface_build;
 pub(crate) mod static_surface_key;
+pub(crate) mod static_surface_pass;
+pub(crate) mod static_surface_use;
 pub(crate) mod static_terrain_slots;
 pub(crate) mod static_trace;
 pub(crate) mod static_trace_geometry;

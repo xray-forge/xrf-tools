@@ -38,6 +38,8 @@ use crate::scene::static_scene::static_spans::StaticSpans;
 use crate::scene::static_scene::static_surface::StaticSurface;
 use crate::scene::static_scene::static_surface_build::{build_impostor_surface, build_static_surface};
 use crate::scene::static_scene::static_surface_key::StaticSurfaceKey;
+use crate::scene::static_scene::static_surface_pass::StaticSurfacePass;
+use crate::scene::static_scene::static_surface_use::StaticSurfaceUse;
 use crate::scene::static_scene::static_trace_geometry::StaticTraceGeometry;
 use crate::scene::static_scene::static_trace_group::StaticTraceGroup;
 use crate::scene::static_scene::static_vertex_words::{measure_sway_reach, pack_vertex_words};
@@ -92,7 +94,7 @@ pub struct StaticScene {
   /// Each impostor surface's row, by its shader table entry.
   impostor_rows: HashMap<u16, u32>,
   /// Each surface's row and class, once asked for; `None` for one no static draw draws.
-  surface_rows: HashMap<StaticSurfaceKey, Option<(u32, StaticClass)>>,
+  surface_rows: HashMap<StaticSurfaceKey, Option<StaticSurfaceUse>>,
   /// Every texture slot the scene's surfaces sample, in the order they were first asked for.
   pub texture_slots: BTreeSet<u32>,
   /// Every environment slot its environment-mapped surfaces sample.
@@ -102,7 +104,7 @@ pub struct StaticScene {
   is_glassed: bool,
   surface_count: u32,
   /// Entries of the visible list each batch may need: its clusters, each counted once per place drawing it.
-  capacities: [u32; StaticBatch::COUNT],
+  capacities: [u32; StaticBatch::LIST_COUNT],
   sectors: ProxyStore<StaticSectorProxy>,
   models: ProxyStore<StaticModelProxy>,
   objects: ProxyStore<StaticObjectProxy>,
@@ -123,14 +125,14 @@ impl StaticScene {
   /// Vertices one cluster's draw pulls: its triangles' corners, a short cluster's tail collapsed.
   pub const CLUSTER_VERTICES: u32 = CLUSTER_TRIANGLES * 3;
 
-  /// Where the cull's counts follow every batch's draw arguments in their buffer.
-  pub const STATS_OFFSET: u64 = (StaticBatch::COUNT * 16) as u64;
+  /// Where the cull's counts follow every draw list's arguments in their buffer.
+  pub const STATS_OFFSET: u64 = (StaticBatch::LIST_COUNT * 16) as u64;
 
   /// Where the impostors' draw arguments follow the cull's counts.
   pub const IMPOSTOR_ARGS_OFFSET: u64 = Self::STATS_OFFSET + 16;
 
-  /// Where the late phase's dispatch follows every batch's late draw arguments in theirs.
-  pub const LATE_DISPATCH_OFFSET: u64 = (StaticBatch::COUNT * 16) as u64;
+  /// Where the late phase's dispatch follows every draw list's late arguments in theirs.
+  pub const LATE_DISPATCH_OFFSET: u64 = (StaticBatch::LIST_COUNT * 16) as u64;
 
   /// The clusters' lane of their spheres.
   pub const CLUSTER_SPHERES: usize = 1;
@@ -207,7 +209,7 @@ impl StaticScene {
       bones: SpanBuffer::new(device, "static bones", size_of::<Vec4>() as u64, storage, 1 << 12),
       regions: device.create_buffer(&wgpu::BufferDescriptor {
         label: Some("static regions"),
-        size: (StaticBatch::COUNT * size_of::<StaticRegion>()) as u64,
+        size: (StaticBatch::LIST_COUNT * size_of::<StaticRegion>()) as u64,
         usage: storage | wgpu::BufferUsages::COPY_DST,
         mapped_at_creation: false,
       }),
@@ -246,7 +248,7 @@ impl StaticScene {
       is_distorting: false,
       is_glassed: false,
       surface_count: 0,
-      capacities: [0; StaticBatch::COUNT],
+      capacities: [0; StaticBatch::LIST_COUNT],
       sectors: ProxyStore::new(),
       models: ProxyStore::new(),
       objects: ProxyStore::new(),
@@ -491,7 +493,7 @@ impl StaticScene {
       let base: StaticGeometryBase = put_geometry(&mut writer, StaticLayout::Baked, &description.geometry, buffer);
 
       for section in &description.sections {
-        let Some((surface, class)) = self.resolve_surface(
+        let Some(StaticSurfaceUse { surface, class, passes }) = self.resolve_surface(
           &mut writer,
           level_surface(&section.surface, descriptors),
           textures,
@@ -509,7 +511,7 @@ impl StaticScene {
         let (slot, clusters): (u32, u32) = writer.put_slot(
           &base,
           cut,
-          (StaticSlot::SINGLE, batch, surface),
+          (StaticSlot::SINGLE, batch, surface, passes),
           StaticSlotInfo {
             sector: description.sector,
             shader_id: section.surface.shader_id,
@@ -518,7 +520,9 @@ impl StaticScene {
           },
         );
 
-        writer.capacities[batch.get_index() as usize] += clusters;
+        for list in batch.list_draw_lists(passes) {
+          writer.capacities[list] += clusters;
+        }
 
         if class == StaticClass::Sorted {
           writer.sorted_runs.push(StaticSortedRun {
@@ -676,7 +680,7 @@ impl StaticScene {
     let mut writer: StaticSceneWriter = StaticSceneWriter::default();
     let base: StaticGeometryBase = writer.put_words(StaticLayout::Model, &model.words, &model.indices);
     let vertex_count: u32 = (model.words.len() / StaticLayout::STRIDE as usize) as u32;
-    let mut slots: Vec<(u32, u32, StaticBatch)> = Vec::new();
+    let mut slots: Vec<(u32, u32, StaticBatch, u32)> = Vec::new();
     // The composited parts' clusters, which each object lists to be drawn sorted.
     let mut sorted: Vec<(u32, u32)> = Vec::new();
 
@@ -685,7 +689,7 @@ impl StaticScene {
         shader: part.surface.shader_name.clone(),
         texture: part.surface.texture_name.clone(),
       };
-      let Some((surface, class)) = self.resolve_surface(
+      let Some(StaticSurfaceUse { surface, class, passes }) = self.resolve_surface(
         &mut writer,
         (key, &part.surface, part.descriptor.as_ref()),
         textures,
@@ -716,7 +720,7 @@ impl StaticScene {
         let (slot, count): (u32, u32) = writer.put_slot(
           &base,
           clusters.to_vec(),
-          (StaticSlot::LISTED, batch, surface),
+          (StaticSlot::LISTED, batch, surface, passes),
           StaticSlotInfo {
             sector: StaticSlotInfo::NO_SECTOR,
             shader_id: part.surface.shader_id,
@@ -729,7 +733,7 @@ impl StaticScene {
           sorted.push((first_cluster, count));
         }
 
-        slots.push((slot, count, batch));
+        slots.push((slot, count, batch, passes));
       }
     }
 
@@ -752,7 +756,7 @@ impl StaticScene {
       StaticModelProxy {
         slots: slots
           .into_iter()
-          .map(|(slot, count, batch)| (first_slot + slot, count, batch))
+          .map(|(slot, count, batch, passes)| (first_slot + slot, count, batch, passes))
           .collect(),
         sorted: sorted
           .into_iter()
@@ -822,7 +826,7 @@ impl StaticScene {
         place.object
       )));
     };
-    let slots: Vec<(u32, u32, StaticBatch)> = proxy.slots.clone();
+    let slots: Vec<(u32, u32, StaticBatch, u32)> = proxy.slots.clone();
     let (sphere, vertex_start, skin): (Vec4, u32, Option<(u32, u32)>) = (proxy.sphere, proxy.vertex_start, proxy.skin);
     let matrix: Mat4 = place.transform;
     let scale: f32 = to_scale(&matrix);
@@ -866,11 +870,13 @@ impl StaticScene {
       }),
     );
 
-    let mut capacities: [u32; StaticBatch::COUNT] = [0; StaticBatch::COUNT];
+    let mut capacities: [u32; StaticBatch::LIST_COUNT] = [0; StaticBatch::LIST_COUNT];
     let rows: Vec<ProxyHandle<StaticRow>> = slots
       .iter()
-      .map(|(slot, clusters, batch)| {
-        capacities[batch.get_index() as usize] += clusters;
+      .map(|(slot, clusters, batch, passes)| {
+        for list in batch.list_draw_lists(*passes) {
+          capacities[list] += clusters;
+        }
 
         self.row_records.add(StaticRow {
           sphere: placed,
@@ -961,9 +967,9 @@ impl StaticScene {
     self.rows.sync(device, queue, &mut self.row_records, |row| *row);
 
     let mut base: u32 = 0;
-    let mut regions: Vec<StaticRegion> = Vec::with_capacity(StaticBatch::COUNT);
-    let mut args: Vec<u32> = Vec::with_capacity(StaticBatch::COUNT * 4 + 4);
-    let mut late: Vec<u32> = Vec::with_capacity(StaticBatch::COUNT * 4 + 4);
+    let mut regions: Vec<StaticRegion> = Vec::with_capacity(StaticBatch::LIST_COUNT);
+    let mut args: Vec<u32> = Vec::with_capacity(StaticBatch::LIST_COUNT * 4 + 4);
+    let mut late: Vec<u32> = Vec::with_capacity(StaticBatch::LIST_COUNT * 4 + 4);
 
     for capacity in self.capacities {
       regions.push(StaticRegion { base, capacity });
@@ -1082,13 +1088,13 @@ impl StaticScene {
     ]
   }
 
-  fn add_capacities(&mut self, capacities: &[u32; StaticBatch::COUNT]) {
+  fn add_capacities(&mut self, capacities: &[u32; StaticBatch::LIST_COUNT]) {
     for (total, added) in self.capacities.iter_mut().zip(capacities) {
       *total += added;
     }
   }
 
-  fn remove_capacities(&mut self, capacities: &[u32; StaticBatch::COUNT]) {
+  fn remove_capacities(&mut self, capacities: &[u32; StaticBatch::LIST_COUNT]) {
     for (total, removed) in self.capacities.iter_mut().zip(capacities) {
       *total -= removed;
     }
@@ -1272,14 +1278,14 @@ impl StaticScene {
     (key, surface, descriptor): (StaticSurfaceKey, &SectorSurface, Option<&XraySurfaceDescriptor>),
     textures: &mut TextureCache,
     source: &Arc<dyn RenderAssetSource>,
-  ) -> Option<(u32, StaticClass)> {
+  ) -> Option<StaticSurfaceUse> {
     if let Some(known) = self.surface_rows.get(&key) {
       return *known;
     }
 
     let is_model: bool = matches!(key, StaticSurfaceKey::Model { .. });
     let built = build_static_surface(surface, descriptor, textures, source);
-    let resolved: Option<(u32, StaticClass)> = built.map(|(mut row, class)| {
+    let resolved: Option<StaticSurfaceUse> = built.map(|(mut row, class)| {
       if is_model {
         row.flags |= StaticSurface::IS_MODEL;
       }
@@ -1288,7 +1294,11 @@ impl StaticScene {
       writer.surfaces.push(row);
       self.surface_count += 1;
 
-      (self.surface_count - 1, class)
+      StaticSurfaceUse {
+        surface: self.surface_count - 1,
+        class,
+        passes: StaticSurfacePass::mask_of(row.flags),
+      }
     });
 
     self.surface_rows.insert(key, resolved);
@@ -1315,7 +1325,7 @@ impl StaticScene {
       return;
     }
 
-    let Some((surface, class)) =
+    let Some(StaticSurfaceUse { surface, class, passes }) =
       self.resolve_surface(writer, level_surface(&group.surface, descriptors), textures, source)
     else {
       return;
@@ -1346,7 +1356,7 @@ impl StaticScene {
         writer.put_slot(
           &base,
           cut_clusters(geometry, buffer, range.0, range.1),
-          (StaticSlot::LISTED, batch, surface),
+          (StaticSlot::LISTED, batch, surface, passes),
           info,
         )
       })
@@ -1438,7 +1448,9 @@ impl StaticScene {
           lod,
           band: StaticRow::pack_band(band as u32, band_slots.len() as u32, windows),
         });
-        writer.capacities[batch.get_index() as usize] += clusters;
+        for list in batch.list_draw_lists(passes) {
+          writer.capacities[list] += clusters;
+        }
       }
     }
 

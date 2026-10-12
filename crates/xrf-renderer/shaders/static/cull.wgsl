@@ -4,7 +4,8 @@
 #import "generated/static/cull"
 
 // Decides which clusters a frame draws: each visible one is appended to its batch's run of the list, which the
-// batch's indirect draw then draws as instances.
+// batch's indirect draw then draws as instances, and to the run of each surface pass its surface takes part in, which
+// that pass draws alone.
 //
 // Occlusion is culled in two phases. The early phase keeps what last frame's depth pyramid, seen through last frame's
 // view, does not hide, and sets what it hides aside as candidates; once the kept clusters are drawn and this frame's
@@ -48,29 +49,59 @@ fn screen_area(sphere: vec4<f32>) -> f32 {
   return sphere.w / (dot(offset, offset) + 1e-7);
 }
 
-// The four words after the batches' draw arguments: clusters and triangles drawn, then occluded, for the readouts; the
+// The draw lists there are: one a batch, then one a layout and surface pass.
+fn list_count() -> u32 {
+  return params.batch_count + params.batch_count / CLASS_COUNT * SURFACE_PASS_COUNT;
+}
+
+// The draw list of a batch's layout's surfaces taking part in a surface pass.
+fn pass_list(batch: u32, surface_pass: u32) -> u32 {
+  return params.batch_count + batch / CLASS_COUNT * SURFACE_PASS_COUNT + surface_pass;
+}
+
+// The four words after the draw lists' arguments: clusters and triangles drawn, then occluded, for the readouts; the
 // impostors' draw arguments follow them, their instance count the sixth word.
 fn stats_at(word: u32) -> u32 {
-  return params.batch_count * 4u + word;
+  return list_count() * 4u + word;
 }
 
-// The word of the late buffer after the batches' late draw arguments: the dispatch's three, then the candidates'.
+// The word of the late buffer after the draw lists' late arguments: the dispatch's three, then the candidates'.
 fn late_at(word: u32) -> u32 {
-  return params.batch_count * 4u + word;
+  return list_count() * 4u + word;
 }
 
-fn put(batch: u32, index: u32, cluster: u32, place: u32) {
-  let region: Region = regions[batch];
+// Writes a cluster at an index of a draw list's run; a cluster is counted for the readouts once, by its batch's.
+fn put(list: u32, index: u32, cluster: u32, place: u32) {
+  let region: Region = regions[list];
 
   if (index < region.capacity) {
     lists[region.base + index] = vec2<u32>(cluster, place);
-    atomicAdd(&args[stats_at(0u)], 1u);
-    atomicAdd(&args[stats_at(1u)], clusters[cluster].triangles);
+
+    if (list < params.batch_count) {
+      atomicAdd(&args[stats_at(0u)], 1u);
+      atomicAdd(&args[stats_at(1u)], clusters[cluster].triangles);
+    }
   }
 }
 
-fn append(batch: u32, cluster: u32, place: u32) {
-  put(batch, atomicAdd(&args[batch * 4u + 1u], 1u), cluster, place);
+// Appends a cluster to a draw list's run: the early phase from its start, the late one after where the early ended.
+fn append(list: u32, cluster: u32, place: u32, is_late: bool) {
+  if (is_late) {
+    put(list, atomicLoad(&args[list * 4u + 1u]) + atomicAdd(&late[list * 4u + 1u], 1u), cluster, place);
+  } else {
+    put(list, atomicAdd(&args[list * 4u + 1u], 1u), cluster, place);
+  }
+}
+
+// Appends a cluster to its batch's list and to each surface pass's its slot takes part in.
+fn append_drawn(slot: Slot, cluster: u32, place: u32, is_late: bool) {
+  append(slot.batch, cluster, place, is_late);
+
+  for (var surface_pass: u32 = 0u; surface_pass < SURFACE_PASS_COUNT; surface_pass++) {
+    if ((slot.passes & (1u << surface_pass)) != 0u) {
+      append(pass_list(slot.batch, surface_pass), cluster, place, is_late);
+    }
+  }
 }
 
 fn set_aside(cluster: u32, place: u32) {
@@ -136,9 +167,9 @@ fn is_hidden_early(sphere: vec4<f32>) -> bool {
 }
 
 // Appends a cluster the frustum keeps, or sets it aside for the late phase where last frame's depth hid it.
-fn keep(batch: u32, cluster: u32, place: u32, sphere: vec4<f32>) {
+fn keep(slot: Slot, cluster: u32, place: u32, sphere: vec4<f32>) {
   // Water, composited surfaces and wall marks cast no shadow; a map of the water keeps its water alone.
-  let kind: u32 = batch % CLASS_COUNT;
+  let kind: u32 = slot.batch % CLASS_COUNT;
 
   if (IS_SHADOW && select(kind >= WATER_CLASS, kind != WATER_CLASS, IS_WATER)) {
     return;
@@ -147,7 +178,7 @@ fn keep(batch: u32, cluster: u32, place: u32, sphere: vec4<f32>) {
   if (!IS_SHADOW && is_hidden_early(sphere)) {
     set_aside(cluster, place);
   } else {
-    append(batch, cluster, place);
+    append_drawn(slot, cluster, place, false);
   }
 }
 
@@ -176,7 +207,7 @@ fn cull_singles(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workg
   let sphere: vec4<f32> = placed_sphere(spheres[index], places[slot.place]);
 
   if (is_in_frustum(sphere)) {
-    keep(slot.batch, index, slot.place, sphere);
+    keep(slot, index, slot.place, sphere);
   }
 }
 
@@ -294,42 +325,42 @@ fn cull_rows(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workgrou
     let sphere: vec4<f32> = placed_sphere(spheres[cluster], place);
 
     if (is_in_frustum(sphere)) {
-      keep(slot.batch, cluster, row.place, sphere);
+      keep(slot, cluster, row.place, sphere);
     }
   }
 }
 
-// Clamps each batch's instance count to its run once every cluster is appended, so an overflow draws what fits rather
-// than reading into the next batch's run; its late draw starts where the early one ends, and the late phase is sized to
-// the candidates.
+// Clamps each draw list's instance count to its run once every cluster is appended, so an overflow draws what fits
+// rather than reading into the next list's run; its late draw starts where the early one ends, and the late phase is
+// sized to the candidates.
 @compute @workgroup_size(64)
 fn clamp_counts(@builtin(global_invocation_id) id: vec3<u32>) {
-  let batch: u32 = id.x;
+  let list: u32 = id.x;
 
   if (IS_SHADOW) {
-    if (batch < params.batch_count) {
-      atomicStore(&args[batch * 4u + 1u], min(atomicLoad(&args[batch * 4u + 1u]), regions[batch].capacity));
+    if (list < list_count()) {
+      atomicStore(&args[list * 4u + 1u], min(atomicLoad(&args[list * 4u + 1u]), regions[list].capacity));
     }
 
     return;
   }
 
-  if (batch == 0u) {
+  if (list == 0u) {
     let candidates: u32 = min(atomicLoad(&late[late_at(3u)]), params.candidate_capacity);
 
     atomicStore(&late[late_at(0u)], (candidates + 63u) / 64u);
     atomicStore(&late[late_at(3u)], candidates);
   }
 
-  if (batch >= params.batch_count) {
+  if (list >= list_count()) {
     return;
   }
 
-  let region: Region = regions[batch];
-  let count: u32 = min(atomicLoad(&args[batch * 4u + 1u]), region.capacity);
+  let region: Region = regions[list];
+  let count: u32 = min(atomicLoad(&args[list * 4u + 1u]), region.capacity);
 
-  atomicStore(&args[batch * 4u + 1u], count);
-  atomicStore(&late[batch * 4u + 3u], region.base + count);
+  atomicStore(&args[list * 4u + 1u], count);
+  atomicStore(&late[list * 4u + 3u], region.base + count);
 }
 
 // Tests each candidate again against this frame's pyramid, through this frame's view.
@@ -343,30 +374,28 @@ fn cull_late(@builtin(global_invocation_id) id: vec3<u32>) {
 
   let candidate: vec2<u32> = candidates[index];
   let cluster: u32 = candidate.x;
-  let batch: u32 = slots[clusters[cluster].slot].batch;
+  let slot: Slot = slots[clusters[cluster].slot];
   let sphere: vec4<f32> = placed_sphere(spheres[cluster], places[candidate.y]);
 
   if (is_occluded(sphere, camera.view, camera.projection)) {
     atomicAdd(&args[stats_at(2u)], 1u);
     atomicAdd(&args[stats_at(3u)], clusters[cluster].triangles);
   } else {
-    let early: u32 = atomicLoad(&args[batch * 4u + 1u]);
-
-    put(batch, early + atomicAdd(&late[batch * 4u + 1u], 1u), cluster, candidate.y);
+    append_drawn(slot, cluster, candidate.y, true);
   }
 }
 
-// Clamps each batch's late count to what is left of its run after the early draw.
+// Clamps each draw list's late count to what is left of its run after the early draw.
 @compute @workgroup_size(64)
 fn clamp_late(@builtin(global_invocation_id) id: vec3<u32>) {
-  let batch: u32 = id.x;
+  let list: u32 = id.x;
 
-  if (batch >= params.batch_count) {
+  if (list >= list_count()) {
     return;
   }
 
-  let early: u32 = atomicLoad(&args[batch * 4u + 1u]);
-  let count: u32 = atomicLoad(&late[batch * 4u + 1u]);
+  let early: u32 = atomicLoad(&args[list * 4u + 1u]);
+  let count: u32 = atomicLoad(&late[list * 4u + 1u]);
 
-  atomicStore(&late[batch * 4u + 1u], min(count, regions[batch].capacity - min(early, regions[batch].capacity)));
+  atomicStore(&late[list * 4u + 1u], min(count, regions[list].capacity - min(early, regions[list].capacity)));
 }

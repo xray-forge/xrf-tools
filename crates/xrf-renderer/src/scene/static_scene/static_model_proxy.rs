@@ -10,8 +10,8 @@ use crate::scene::static_scene::static_trace_geometry::StaticTraceGeometry;
 #[derive(Debug)]
 pub struct StaticModelProxy {
   pub spans: StaticSpans,
-  /// Each slot it is cut into, its clusters and its batch: a row an object stands as each.
-  pub slots: Vec<(u32, u32, StaticBatch)>,
+  /// Each slot it is cut into, its clusters, its batch and its surface passes: a row an object stands as each.
+  pub slots: Vec<(u32, u32, StaticBatch, u32)>,
   /// The runs of clusters its composited parts are cut into, as first cluster and count, in their parts' order.
   pub sorted: Vec<(u32, u32)>,
   /// Each of its slots' part, and each of its clusters' slot, both counted from its own first.

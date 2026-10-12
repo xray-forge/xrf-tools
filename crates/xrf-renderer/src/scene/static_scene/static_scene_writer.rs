@@ -43,7 +43,7 @@ pub struct StaticSceneWriter {
   pub trace_groups: Vec<StaticTraceGroup>,
   /// Its strictly sorted composited runs, which a view draws back to front.
   pub sorted_runs: Vec<StaticSortedRun>,
-  pub capacities: [u32; StaticBatch::COUNT],
+  pub capacities: [u32; StaticBatch::LIST_COUNT],
 }
 
 impl StaticSceneWriter {
@@ -65,7 +65,7 @@ impl StaticSceneWriter {
     &mut self,
     base: &StaticGeometryBase,
     clusters: Vec<(u32, u32, Vec4)>,
-    (kind, batch, surface): (u32, StaticBatch, u32),
+    (kind, batch, surface, passes): (u32, StaticBatch, u32, u32),
     info: StaticSlotInfo,
   ) -> (u32, u32) {
     let slot: u32 = self.slots.len() as u32;
@@ -92,7 +92,8 @@ impl StaticSceneWriter {
       kind,
       batch: batch.get_index(),
       surface,
-      pad: [0; 2],
+      passes,
+      pad: 0,
     });
     self.slot_infos.push(info);
 

@@ -262,13 +262,7 @@ fn fs_composited(in: GBufferVarying) -> CompositedOutput {
 @fragment
 fn fs_composited_distort(in: GBufferVarying) -> @location(0) vec4<f32> {
   let surface: Surface = surfaces[in.surface];
-  // Taken before the branch: the texture's index varies across the frame.
   let at: Footprint = take_footprint(in);
-
-  if ((surface.flags & SURFACE_IS_DISTORTING) == 0u) {
-    discard;
-  }
-
   let position: vec3<f32> = camera_view_position(in.clip.xy, in.clip.z);
   let fade: f32 = 0.9 * abs(dot(normalize(position), normalize(in.normal)));
   let distort: vec4<f32> = sample_slot(surface.distortion, at.uv, at.dx, at.dy);
