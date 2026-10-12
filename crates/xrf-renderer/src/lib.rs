@@ -122,6 +122,8 @@ pub use crate::contract::render_view_output::RenderViewOutput;
 pub use crate::contract::render_viewport_event::RenderViewportEvent;
 pub use crate::contract::render_viewport_id::RenderViewportId;
 pub use crate::contract::render_viewport_layout::RenderViewportLayout;
+pub use crate::contract::render_volumetric_mode::RenderVolumetricMode;
+pub use crate::contract::render_volumetric_settings::RenderVolumetricSettings;
 pub use crate::contract::render_water_mode::RenderWaterMode;
 pub use crate::contract::render_water_settings::RenderWaterSettings;
 pub use crate::host::render_ambient::RenderAmbient;

@@ -5,11 +5,13 @@ import { ReactElement, useCallback, useMemo } from "react";
 
 import { LevelSunDescription } from "@/core/ipc/types/xrf-app";
 import { RenderSunShaftsQuality } from "@/core/ipc/types/xrf-renderer";
+import { LevelVolumetricSettings } from "@/core/level/components/preview/LevelVolumetricSettings";
 import { ILevelManualWeatherActionProps } from "@/core/level/components/weather/level-manual-weather-action-props";
 import { LevelManualWeatherSlider } from "@/core/level/components/weather/LevelManualWeatherSlider";
 import { LevelManualWeatherVectorField } from "@/core/level/components/weather/LevelManualWeatherVectorField";
 import { LevelWeatherResetButton } from "@/core/level/components/weather/LevelWeatherResetButton";
 import { LevelWeatherSunSelect } from "@/core/level/components/weather/LevelWeatherSunSelect";
+import { ILevelFeatureOptions } from "@/core/level/lib/features";
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { ILevelManualWeather, toLevelManualSun } from "@/core/level/lib/weather/level-manual-weather";
 import {
@@ -19,6 +21,7 @@ import {
 } from "@/core/level/lib/weather/level-sun-shafts-options";
 import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
+import { TRenderVolumetricSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { EditorPopoverAction } from "@/core/shell/editor/EditorPopoverAction";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { formatDegrees } from "@/lib/format/angle";
@@ -47,11 +50,17 @@ interface ILevelSunActionProps extends Omit<ILevelManualWeatherActionProps, "isO
   /** How the level's sun shafts step, and the floor under their density. */
   sunShafts: ILevelSunShaftsOptions;
   onChangeSunShafts: (sunShafts: ILevelSunShaftsOptions) => void;
+  /** The volumetric lighting as the view draws it, set here beside the sun's shafts it replaces while enhanced. */
+  volumetric: TRenderVolumetricSettings;
+  /** What the view sets over the settings, of which the volumetric lighting's part is changed. */
+  features: ILevelFeatureOptions;
+  onChangeFeatures: (features: ILevelFeatureOptions) => void;
 }
 
 /**
  * The sun, the ambient and the hemisphere, by the keys a weather writes them with; the lens flare the sun is drawn
- * with and the light shafts through its shadow, each with its switch. Its direction is marked among the overlays.
+ * with and the light shafts through its shadow, each with its switch; and how the light the air scatters is drawn. Its
+ * direction is marked among the overlays.
  */
 export function LevelSunAction({
   "data-testid": dataTestId = "level-sun-action",
@@ -63,8 +72,11 @@ export function LevelSunAction({
   suns,
   options,
   sunShafts,
+  volumetric,
+  features,
   onToggle,
   onChangeSunShafts,
+  onChangeFeatures,
   onEdit,
 }: ILevelSunActionProps): ReactElement {
   const compiled = useMemo(() => toLevelManualSun(sun?.direction ?? null), [sun]);
@@ -159,6 +171,13 @@ export function LevelSunAction({
         />
 
         <LevelWeatherResetButton keys={SUN_KEYS} onEdit={onEdit} />
+
+        <LevelVolumetricSettings
+          className={"flex flex-col gap-2"}
+          value={volumetric}
+          features={features}
+          onChange={onChangeFeatures}
+        />
       </div>
     </EditorPopoverAction>
   );

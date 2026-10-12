@@ -8,6 +8,7 @@ import {
   ERenderFogMode,
   ERenderRainMode,
   ERenderSunShaftsQuality,
+  ERenderVolumetricMode,
 } from "@/core/ipc/types/xrf-renderer";
 import { LevelFogAction } from "@/core/level/components/preview/LevelFogAction";
 import { LevelRainAction } from "@/core/level/components/preview/LevelRainAction";
@@ -24,6 +25,7 @@ import {
   DEFAULT_RENDER_DEBANDING_SETTINGS,
   DEFAULT_RENDER_FOG_SETTINGS,
   DEFAULT_RENDER_RAIN_SETTINGS,
+  DEFAULT_RENDER_VOLUMETRIC_SETTINGS,
 } from "@/core/render/lib/settings/render-feature-defaults";
 import { TRenderRainSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { mockLevelFeatureOptions, mockLevelTextureReference } from "@/fixtures/mocks/level.mocks";
@@ -131,8 +133,11 @@ describe("level weather key actions", () => {
         suns={[]}
         options={DEFAULT_LEVEL_VIEW_OPTIONS}
         sunShafts={DEFAULT_LEVEL_SUN_SHAFTS_OPTIONS}
+        volumetric={DEFAULT_RENDER_VOLUMETRIC_SETTINGS}
+        features={mockLevelFeatureOptions()}
         onToggle={() => {}}
         onChangeSunShafts={() => {}}
+        onChangeFeatures={() => {}}
         onEdit={onEdit}
       />
     );
@@ -314,8 +319,11 @@ describe("level weather key actions", () => {
       suns: [],
       options: DEFAULT_LEVEL_VIEW_OPTIONS,
       sunShafts: DEFAULT_LEVEL_SUN_SHAFTS_OPTIONS,
+      volumetric: DEFAULT_RENDER_VOLUMETRIC_SETTINGS,
+      features: mockLevelFeatureOptions(),
       onToggle: () => {},
       onChangeSunShafts: () => {},
+      onChangeFeatures: () => {},
       onEdit: () => {},
     };
     const { getByRole, rerender } = renderWithProviders(<LevelSunAction {...props} drawnSun={"moon_halo_full"} />);
@@ -339,8 +347,11 @@ describe("level weather key actions", () => {
         suns={["gradient1", "moon_halo_full"]}
         options={DEFAULT_LEVEL_VIEW_OPTIONS}
         sunShafts={DEFAULT_LEVEL_SUN_SHAFTS_OPTIONS}
+        volumetric={DEFAULT_RENDER_VOLUMETRIC_SETTINGS}
+        features={mockLevelFeatureOptions()}
         onToggle={onToggle}
         onChangeSunShafts={() => {}}
+        onChangeFeatures={() => {}}
         onEdit={onEdit}
       />
     );
@@ -368,8 +379,11 @@ describe("level weather key actions", () => {
         suns={[]}
         options={DEFAULT_LEVEL_VIEW_OPTIONS}
         sunShafts={DEFAULT_LEVEL_SUN_SHAFTS_OPTIONS}
+        volumetric={DEFAULT_RENDER_VOLUMETRIC_SETTINGS}
+        features={mockLevelFeatureOptions()}
         onToggle={() => {}}
         onChangeSunShafts={onChangeSunShafts}
+        onChangeFeatures={() => {}}
         onEdit={() => {}}
       />
     );
@@ -380,6 +394,36 @@ describe("level weather key actions", () => {
 
     expect(onChangeSunShafts).toHaveBeenCalledWith({ minimum: 0, quality: ERenderSunShaftsQuality.LOW });
     expect(getByRole("slider", { name: "Minimum" })).toHaveAttribute("aria-valuemax", "0.5");
+  });
+
+  // The froxel volume replaces the sun's shafts while enhanced, so its settings sit beside them.
+  it("sets the view's volumetric lighting from the sun's settings", async () => {
+    const onChangeFeatures = jest.fn<(features: ILevelFeatureOptions) => void>();
+    const { getByRole, findByRole } = renderWithProviders(
+      <LevelSunAction
+        manual={DEFAULT_LEVEL_MANUAL_WEATHER}
+        sun={null}
+        drawnSun={null}
+        suns={[]}
+        options={DEFAULT_LEVEL_VIEW_OPTIONS}
+        sunShafts={DEFAULT_LEVEL_SUN_SHAFTS_OPTIONS}
+        volumetric={DEFAULT_RENDER_VOLUMETRIC_SETTINGS}
+        features={mockLevelFeatureOptions()}
+        onToggle={() => {}}
+        onChangeSunShafts={() => {}}
+        onChangeFeatures={onChangeFeatures}
+        onEdit={() => {}}
+      />
+    );
+
+    await userEvent.click(getByRole("button", { name: "Sun" }));
+    await findByRole("dialog", { name: "Sun" });
+    await userEvent.click(getByRole("button", { name: "Enhanced" }));
+
+    expect(onChangeFeatures).toHaveBeenLastCalledWith({
+      ...mockLevelFeatureOptions(),
+      volumetric: { mode: ERenderVolumetricMode.ENHANCED },
+    });
   });
 
   it("draws the fog enhanced on asking, offering its strengths only then, and back to the settings", async () => {

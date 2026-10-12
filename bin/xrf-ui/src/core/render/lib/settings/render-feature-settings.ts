@@ -20,6 +20,7 @@ import {
   RenderUpscalingSettings,
   RenderViewFeatures,
   RenderViewOutput,
+  RenderVolumetricSettings,
   RenderWaterSettings,
 } from "@/core/ipc/types/xrf-renderer";
 import { TSettled } from "@/core/render/lib/settings/render-settled";
@@ -44,6 +45,7 @@ export type TRenderViewFeatureKey =
   | "shadows"
   | "textureFiltering"
   | "textureLod"
+  | "volumetric"
   | "water";
 
 /** The view options every viewport takes from the application's settings: those features, and how it upscales. */
@@ -94,5 +96,7 @@ export type TRenderReflectionSettings = TSettled<RenderReflectionSettings>;
 export type TRenderShadowSettings = TSettled<RenderShadowSettings>;
 
 export type TRenderUpscalingSettings = TSettled<RenderUpscalingSettings>;
+
+export type TRenderVolumetricSettings = TSettled<RenderVolumetricSettings>;
 
 export type TRenderWaterSettings = TSettled<RenderWaterSettings>;

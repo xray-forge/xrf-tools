@@ -17,6 +17,7 @@ import {
   TRenderRainSettings,
   TRenderReflectionSettings,
   TRenderShadowSettings,
+  TRenderVolumetricSettings,
   TRenderWaterSettings,
 } from "@/core/render/lib/settings/render-feature-settings";
 
@@ -49,6 +50,9 @@ export type TLevelDebandingOptions = TRenderDebandingSettings;
 
 /** The glass settings a level view may set for itself: all of them. */
 export type TLevelGlassOptions = TRenderGlassSettings;
+
+/** The volumetric lighting settings a level view may set for itself: all of them. */
+export type TLevelVolumetricOptions = TRenderVolumetricSettings;
 
 /** The parallax settings a level view may set for itself: all of them; turning it off is the shading's toggle. */
 export type TLevelParallaxOptions = TRenderParallaxSettings;
@@ -90,6 +94,8 @@ export interface ILevelFeatureOptions {
   debanding: Partial<TLevelDebandingOptions>;
   /** How glass is drawn, which no toolbar toggle turns off: its own mode does. */
   glass: Partial<TLevelGlassOptions>;
+  /** How the light the air scatters is drawn, which no toolbar toggle turns off: its own mode does. */
+  volumetric: Partial<TLevelVolumetricOptions>;
   /** How the surfaces are displaced by their height, which the shading's toggle turns off whole. */
   parallax: Partial<TLevelParallaxOptions>;
   /** Which bloom draws and the enhanced bloom's strengths, which no toolbar toggle turns off: its own mode does. */
@@ -120,7 +126,15 @@ const LEVEL_FEATURE_KEYS: {
 
 /** The groups no toolbar toggle turns off, whose own mode does, of which a view may set every setting. */
 export type TLevelModeFeatureKey =
-  "debanding" | "enhancedBloom" | "fog" | "glass" | "indirectLight" | "parallax" | "rain" | "reflections";
+  | "debanding"
+  | "enhancedBloom"
+  | "fog"
+  | "glass"
+  | "indirectLight"
+  | "parallax"
+  | "rain"
+  | "reflections"
+  | "volumetric";
 
 /** Each such group's settings a view may set. */
 const LEVEL_MODE_FEATURE_KEYS: {
@@ -146,6 +160,7 @@ const LEVEL_MODE_FEATURE_KEYS: {
   ],
   rain: ["mode", "puddles", "reflectivity", "ripples"],
   reflections: ["distance", "intensity", "mode", "quality"],
+  volumetric: ["mode", "intensity", "anisotropy", "distance"],
 };
 
 /**
@@ -190,6 +205,7 @@ export function toLevelFeatureOptions(stored: unknown): ILevelFeatureOptions {
     reflections: pickModeFeature("reflections"),
     shadows: pick("shadows"),
     textureFiltering: overrides.textureFiltering ?? null,
+    volumetric: pickModeFeature("volumetric"),
     water: pick("water"),
   };
 }

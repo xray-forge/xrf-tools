@@ -21,6 +21,7 @@ use crate::pass::bitmask_search::BitmaskSearch;
 use crate::pass::bloom_uniform::BloomUniform;
 use crate::pass::contact_shadow_uniform::ContactShadowUniform;
 use crate::pass::fog_scattering_uniform::FogScatteringUniform;
+use crate::pass::froxel_uniform::FroxelUniform;
 use crate::pass::fsr_uniform::FsrUniform;
 use crate::pass::glass_uniform::GlassUniform;
 use crate::pass::lighting_uniform::LightingUniform;
@@ -148,6 +149,8 @@ pub struct ViewInfo {
   pub is_glass_distorting: bool,
   /// The enhanced glass's strengths, where it draws the scene's glass this frame.
   pub glass: Option<GlassUniform>,
+  /// The enhanced volumetric lighting's grid and strengths, where it draws in place of the engine's shafts this frame.
+  pub froxels: Option<FroxelUniform>,
   /// The colour the selection is outlined in, or none while nothing it names is drawn.
   pub selection_color: Option<[f32; 3]>,
 }
@@ -217,6 +220,7 @@ impl Default for ViewInfo {
       sorted_count: 0,
       is_glass_distorting: false,
       glass: None,
+      froxels: None,
       sorted_runs: Vec::new(),
       selection_color: None,
     }

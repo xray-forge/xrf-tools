@@ -16,6 +16,7 @@ use crate::pass::enhanced_bloom_pass::EnhancedBloomPass;
 use crate::pass::exposure_pass::ExposurePass;
 use crate::pass::flare_pass::FlarePass;
 use crate::pass::fog_scattering_pass::FogScatteringPass;
+use crate::pass::froxel_pass::FroxelPass;
 use crate::pass::fsr_pass::FsrPass;
 use crate::pass::fxaa_pass::FxaaPass;
 use crate::pass::glass_pass::GlassPass;
@@ -83,6 +84,7 @@ pub struct GpuState {
   pub flares: FlarePass,
   pub sun_shafts: SunShaftsPass,
   pub light_volumes: LightVolumePass,
+  pub froxels: FroxelPass,
   pub bloom: BloomPass,
   pub enhanced_bloom: EnhancedBloomPass,
   pub fog_scattering: FogScatteringPass,
@@ -174,6 +176,7 @@ impl GpuState {
       flares: FlarePass::new(device, shaders, &view_layout)?,
       sun_shafts: SunShaftsPass::new(device, shaders, &view_layout)?,
       light_volumes: LightVolumePass::new(device, shaders, &view_layout, textures.get_layout())?,
+      froxels: FroxelPass::new(device, shaders, &view_layout)?,
       bloom: BloomPass::new(device, shaders)?,
       enhanced_bloom: EnhancedBloomPass::new(device, shaders, &view_layout)?,
       fog_scattering: FogScatteringPass::new(device, &context.queue, shaders, &view_layout)?,
@@ -266,6 +269,7 @@ impl GpuState {
       flares: &self.flares,
       sun_shafts: &self.sun_shafts,
       light_volumes: &self.light_volumes,
+      froxels: &self.froxels,
       bloom: &self.bloom,
       enhanced_bloom: &self.enhanced_bloom,
       fog_scattering: &self.fog_scattering,
@@ -317,6 +321,7 @@ impl GpuState {
     self.flares.refresh(device, shaders);
     self.sun_shafts.refresh(device, shaders);
     self.light_volumes.refresh(device, shaders);
+    self.froxels.refresh(device, shaders);
     self.bloom.refresh(device, shaders);
     self.enhanced_bloom.refresh(device, shaders);
     self.fog_scattering.refresh(device, shaders);

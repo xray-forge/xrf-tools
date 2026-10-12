@@ -1,15 +1,17 @@
 use xrf_renderer_core::{GraphTexture, PassParameters, StorageValue, UniformBinding};
 
 use crate::pass::exposure_head::ExposureHead;
+use crate::pass::froxel_uniform::FroxelUniform;
 use crate::pass::lighting_uniform::LightingUniform;
 use crate::pass::shadow_uniform::ShadowUniform;
 
 /// What the sun's shafts read: the depth, the sun's shadow cascades, the frame's lighting and exposure, the half-size
 /// march the composite brings up, nothing while it is marched or where the sun's shafts are not drawn, and the local
-/// lights' shafts the composite adds with them, nothing where none draws any.
+/// lights' shafts the composite adds with them, nothing where none draws any; or the enhanced volume's froxels in place of
+/// both, integrated along the view, a volume of one where none is drawn.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 1)]
-pub struct SunShaftsParameters {
+pub struct SunShaftsParameters<'a> {
   #[texture(d2, depth)]
   pub depth_target: GraphTexture,
   #[texture(d2_array, depth)]
@@ -24,4 +26,10 @@ pub struct SunShaftsParameters {
   pub shafts: GraphTexture,
   #[texture(d2, unfilterable)]
   pub light_volumes: GraphTexture,
+  #[uniform]
+  pub froxels: UniformBinding<FroxelUniform>,
+  #[texture(d3, float)]
+  pub froxel_integrated: GraphTexture,
+  #[sampler(filtering)]
+  pub froxel_sampler: &'a wgpu::Sampler,
 }

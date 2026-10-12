@@ -96,5 +96,7 @@ pub(crate) mod render_view_output;
 pub(crate) mod render_viewport_event;
 pub(crate) mod render_viewport_id;
 pub(crate) mod render_viewport_layout;
+pub(crate) mod render_volumetric_mode;
+pub(crate) mod render_volumetric_settings;
 pub(crate) mod render_water_mode;
 pub(crate) mod render_water_settings;

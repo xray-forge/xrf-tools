@@ -315,9 +315,13 @@ fn is_glass_texture(surface: &SectorSurface) -> bool {
   surface.texture_name.as_deref().is_some_and(|name| {
     let name: String = name.to_ascii_lowercase();
 
-    GLASS_TEXTURES
-      .iter()
-      .any(|glass| if glass.ends_with('\\') { name.starts_with(glass) } else { name.contains(glass) })
+    GLASS_TEXTURES.iter().any(|glass| {
+      if glass.ends_with('\\') {
+        name.starts_with(glass)
+      } else {
+        name.contains(glass)
+      }
+    })
   })
 }
 

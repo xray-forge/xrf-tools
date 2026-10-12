@@ -1485,6 +1485,8 @@ export type RenderViewFeatures = {
   grass: RenderGrassSettings;
   /** How finely the sun's shafts step, and Monolith's floor under their density. */
   sunShafts: RenderSunShafts;
+  /** How the light the air scatters is drawn: the engine's shafts, or a froxel volume. */
+  volumetric: RenderVolumetricSettings;
   /** How much of the static geometry draws at a distance. */
   lod: RenderLodSettings;
   /** How the frame's edges are smoothed. */
@@ -1583,6 +1585,31 @@ export type RenderViewportLayout = {
    * followed a layout change yet.
    */
   backdrop: RenderPageBackdrop;
+};
+
+/** How the light the air scatters towards the camera is drawn. */
+export enum ERenderVolumetricMode {
+  /** The engine's own: the sun's shafts marched along each pixel's ray and the shadowed lamps' slices. */
+  ENGINE = "engine",
+  /**
+   * A froxel volume: the sun and every local light scattered in one grid along the view, through their shadows, by a
+   * phase function, kept over frames.
+   */
+  ENHANCED = "enhanced",
+}
+
+/** Every `ERenderVolumetricMode` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type RenderVolumetricMode = `${ERenderVolumetricMode}`;
+
+/** How the light the air scatters is drawn, and the enhanced volume's strengths. */
+export type RenderVolumetricSettings = {
+  mode: RenderVolumetricMode;
+  /** How strongly the enhanced volume scatters, one as designed. */
+  intensity: number | null;
+  /** How far the scattered light leans towards where it was going, from none (every way alike) to nearly all. */
+  anisotropy: number | null;
+  /** Metres along the view the enhanced volume reaches. */
+  distance: number | null;
 };
 
 /** Which water a viewport draws. */

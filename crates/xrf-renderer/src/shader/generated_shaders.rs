@@ -25,6 +25,9 @@ use crate::pass::flare_texture_parameters::FlareTextureParameters;
 use crate::pass::flare_uniform::FlareUniform;
 use crate::pass::fog_scattering_parameters::FogScatteringParameters;
 use crate::pass::fog_scattering_uniform::FogScatteringUniform;
+use crate::pass::froxel_inject_parameters::FroxelInjectParameters;
+use crate::pass::froxel_integrate_parameters::FroxelIntegrateParameters;
+use crate::pass::froxel_uniform::FroxelUniform;
 use crate::pass::fsr_uniform::FsrUniform;
 use crate::pass::fxaa_parameters::FxaaParameters;
 use crate::pass::glass_parameters::GlassParameters;
@@ -133,6 +136,8 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
   let mut sky_haze: ShaderBindings = ShaderBindings::new();
   let mut sun_shafts: ShaderBindings = ShaderBindings::new();
   let mut light_volumes: ShaderBindings = ShaderBindings::new();
+  let mut froxel_inject: ShaderBindings = ShaderBindings::new();
+  let mut froxel_integrate: ShaderBindings = ShaderBindings::new();
   let mut exposure: ShaderBindings = ShaderBindings::new();
   let mut flare: ShaderBindings = ShaderBindings::new();
   let mut flare_visibility: ShaderBindings = ShaderBindings::new();
@@ -152,6 +157,7 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
   structs
     .declare::<LightingUniform>()
     .declare::<GlassUniform>()
+    .declare::<FroxelUniform>()
     .declare::<GrassModelRecord>()
     .declare::<TraceGrassUniform>()
     .declare::<TraceRequest>()
@@ -223,6 +229,8 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
   sky_haze.add::<SkyHazeParameters>()?;
   sun_shafts.add::<SunShaftsParameters>()?;
   light_volumes.add::<LightVolumeParameters>()?;
+  froxel_inject.add::<FroxelInjectParameters<'_>>()?;
+  froxel_integrate.add::<FroxelIntegrateParameters>()?;
   exposure.add::<ExposureParameters>()?;
   flare
     .add::<FlareDrawParameters<'_>>()?
@@ -345,6 +353,14 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
     (
       "generated/frame/light_volumes",
       format!("{STRUCTS_IMPORT}{}", light_volumes.to_wgsl()),
+    ),
+    (
+      "generated/frame/froxel_inject",
+      format!("{STRUCTS_IMPORT}{}", froxel_inject.to_wgsl()),
+    ),
+    (
+      "generated/frame/froxel_integrate",
+      format!("{STRUCTS_IMPORT}{}", froxel_integrate.to_wgsl()),
     ),
     (
       "generated/frame/exposure",

@@ -2,6 +2,7 @@ pub(crate) mod depth_pyramid;
 pub(crate) mod frame_capture;
 pub(crate) mod frame_phases;
 pub(crate) mod frame_statistics;
+pub(crate) mod froxel_volume;
 pub(crate) mod fsr_targets;
 pub(crate) mod gpu_readback;
 pub(crate) mod indirect_light_history;

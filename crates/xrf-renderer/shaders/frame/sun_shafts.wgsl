@@ -2,12 +2,14 @@
 #import "common/lighting"
 #import "common/sun_shadow"
 #import "common/fullscreen"
+#import "common/froxel"
 
 // `accum_volumetric_sun` and `combine_volumetric`: the light the air scatters towards the camera where the sun reaches
 // it, stepped along each ray from what it shows back to the camera through the sun's shadow, the steps jittered a pixel
 // apart, at half the frame's size and brought up by depth; the sky as dense as the whole ray. Weighted towards the sun,
 // in its colour, added to what the local lights' shafts gathered (`frame/light_volumes`), as both add up in
-// `rt_Generic_2`, tonemapped together and added to the frame.
+// `rt_Generic_2`, tonemapped together and added to the frame. Where the enhanced volume draws, neither: what its froxels
+// gathered along the view up to the pixel's depth, the sky's at its far end, added the same way.
 
 #import "generated/frame/sun_shafts"
 
@@ -123,6 +125,14 @@ fn fs_sun_shafts(in: FullscreenVarying) -> ShaftsOutput {
 
   if (textureDimensions(light_volumes).x > 1u) {
     light += half_upsampled(light_volumes, floor(in.clip.xy), distance).rgb;
+  }
+
+  // The froxels hold, at each, what was gathered up to its slice's far edge, so a depth reads half a slice short.
+  if (froxels.size.w > 0.0) {
+    let screen: vec2<f32> = in.clip.xy / camera.viewport.xy;
+    let along: f32 = froxel_share(froxels, distance) - 0.5 / froxels.size.z;
+
+    light += textureSampleLevel(froxel_integrated, froxel_sampler, vec3<f32>(screen, along), 0.0).rgb;
   }
 
   let scale: f32 = frame_scale(lighting, exposure);

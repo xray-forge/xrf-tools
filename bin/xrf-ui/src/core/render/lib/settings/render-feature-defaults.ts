@@ -17,6 +17,7 @@ import {
   ERenderReflectionQuality,
   ERenderReflectionTraceQuality,
   ERenderScale,
+  ERenderVolumetricMode,
   ERenderWaterMode,
 } from "@/core/ipc/types/xrf-renderer";
 import {
@@ -39,6 +40,7 @@ import {
   TRenderReflectionSettings,
   TRenderShadowSettings,
   TRenderUpscalingSettings,
+  TRenderVolumetricSettings,
   TRenderWaterSettings,
 } from "@/core/render/lib/settings/render-feature-settings";
 
@@ -237,6 +239,14 @@ export const DEFAULT_RENDER_SHADOW_SETTINGS: TRenderShadowSettings = {
 export const DEFAULT_RENDER_UPSCALING_SETTINGS: TRenderUpscalingSettings = {
   scale: ERenderScale.NATIVE,
   sharpening: 0.5,
+};
+
+/** The engine's own shafts, with the froxel volume at half its designed strength and a light lean, out to 120 m. */
+export const DEFAULT_RENDER_VOLUMETRIC_SETTINGS: TRenderVolumetricSettings = {
+  anisotropy: 0.15,
+  distance: 120,
+  intensity: 0.5,
+  mode: ERenderVolumetricMode.ENGINE,
 };
 
 /**
