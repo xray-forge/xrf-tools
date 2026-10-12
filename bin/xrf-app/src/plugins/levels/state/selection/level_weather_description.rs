@@ -3,7 +3,7 @@ use xrf_engine_target::XrayEngine;
 use xrf_environment::{LevelWeather, SunPosition, ThunderboltCollection};
 use xrf_level::EnvModifier;
 
-use crate::plugins::environment::description::environment_cycle_entry::EnvironmentCycleEntry;
+use crate::plugins::levels::state::selection::environment_cycle_entry::EnvironmentCycleEntry;
 use crate::plugins::levels::state::selection::level_weather_cycle::LevelWeatherCycle;
 use crate::plugins::levels::state::selection::level_weather_texture::LevelWeatherTexture;
 

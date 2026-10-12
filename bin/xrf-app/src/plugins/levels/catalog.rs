@@ -1,4 +1,4 @@
-//! Reading a game's environment configs, which the environment and levels domains both do.
+//! Reading a game's environment configs for a level's weather, suns, thunderbolts and ambients.
 
 use std::sync::Arc;
 

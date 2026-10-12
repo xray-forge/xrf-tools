@@ -8,9 +8,9 @@ use xrf_level::{EnvModifier, LevelEnvModFile};
 use xrf_ltx::LtxProject;
 use xrf_vfs::XrayProbe;
 
-use crate::plugins::environment::catalog::{open_configs, read_catalog};
-use crate::plugins::environment::description::environment_cycle_entry::EnvironmentCycleEntry;
+use crate::plugins::levels::catalog::{open_configs, read_catalog};
 use crate::plugins::levels::read::read_optional_file;
+use crate::plugins::levels::state::selection::environment_cycle_entry::EnvironmentCycleEntry;
 use crate::plugins::levels::state::selection::level_weather_cycle::LevelWeatherCycle;
 use crate::plugins::levels::state::selection::level_weather_description::LevelWeatherDescription;
 use crate::plugins::levels::state::selection::level_weather_source::LevelWeatherSource;

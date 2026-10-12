@@ -1,4 +1,5 @@
 pub mod ambients;
+pub mod catalog;
 pub mod collision;
 pub mod commands;
 pub mod configs;

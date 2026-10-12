@@ -73,10 +73,6 @@ macro_rules! for_each_tauri_command_domain {
         get_project => crate::plugins::dialogs::commands::get_project::dialogs_get_project,
         open_project => crate::plugins::dialogs::commands::open_project::dialogs_open_project,
       }
-      environment => "environment" {
-        read_catalog => crate::plugins::environment::commands::read_catalog::environment_read_catalog,
-        read_cycle => crate::plugins::environment::commands::read_cycle::environment_read_cycle,
-      }
       exports => "exports" {
         close_project => crate::plugins::exports::commands::close_project::exports_close_project,
         export_manifest => crate::plugins::exports::commands::export_manifest::exports_export_manifest,
