@@ -111,6 +111,10 @@ const EMBEDDED: &[(&str, &str)] = &[
     "frame/depth_clear",
     include_str!("../../shaders/frame/depth_clear.wgsl"),
   ),
+  (
+    "frame/shadow_tile_restore",
+    include_str!("../../shaders/frame/shadow_tile_restore.wgsl"),
+  ),
   ("frame/exposure", include_str!("../../shaders/frame/exposure.wgsl")),
   (
     "frame/light_binning",
@@ -330,6 +334,10 @@ const EMBEDDED: &[(&str, &str)] = &[
   (
     "generated/frame/pyramid",
     include_str!("../../shaders/generated/frame/pyramid.wgsl"),
+  ),
+  (
+    "generated/frame/shadow_tile_restore",
+    include_str!("../../shaders/generated/frame/shadow_tile_restore.wgsl"),
   ),
   (
     "generated/frame/puddle_sites",

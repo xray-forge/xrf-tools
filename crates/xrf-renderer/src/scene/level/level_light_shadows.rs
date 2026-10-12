@@ -23,7 +23,9 @@ use crate::lighting::light_shadow_size::{
 };
 use crate::pass::camera_uniform::CameraUniform;
 use crate::pass::level_passes::LevelPasses;
+use crate::pass::shadow_casters::ShadowCasters;
 use crate::pass::shadow_cull::ShadowCull;
+use crate::pass::shadow_tile_restore_parameters::ShadowTileRestoreParameters;
 use crate::pass::static_cull_parameters::StaticCullParameters;
 use crate::pass::static_cull_params::StaticCullParams;
 use crate::pass::static_draw_parameters::StaticDrawParameters;
@@ -47,7 +49,31 @@ pub const LIGHT_SHADOW_ATLAS_SIZE: u32 = 4096;
 const FACE_BUDGET: usize = 8;
 
 /// The passes that draw a frame's faces, as the timer names them.
-static FACE_PASSES: [&str; 3] = ["light shadow arguments", "light shadow cull", "light shadows"];
+static FACE_PASSES: [&str; 4] = [
+  "light shadow arguments",
+  "light shadow cull",
+  "light shadows",
+  "light shadow static",
+];
+
+/// A face due this frame as its passes take it: its slot, its square and how it is drawn, its cull and its draws.
+type FaceSlot = (
+  usize,
+  (ShadowTile, FaceDraw),
+  StaticCullParameters,
+  [StaticDrawParameters; StaticLayout::COUNT],
+);
+
+/// How a face due this frame is drawn.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum FaceDraw {
+  /// Every caster into its tile, cleared first: while nothing sways in its light.
+  Whole,
+  /// What stands still into its static tile, then the tile restored from it and the trees drawn over.
+  Static,
+  /// Its tile restored from its static tile and the trees drawn over.
+  Swaying,
+}
 
 /// Milliseconds a texel of a face costs before the timer measured one.
 const FACE_SEED: f32 = 7.6e-7;
@@ -73,12 +99,18 @@ type FaceCandidate = ((bool, f32), ProxyHandle<LightDescription>, bool, usize, u
 /// while the scene it casts from stays, a few faces a frame as the frame's scheduler grants them by their texels, the
 /// nearest lights first; a face over swaying trees is drawn again once a sway interval, where the lean shows at its
 /// texels. A light lights only once its
-/// faces are drawn; one asked at another size keeps its old faces until its new ones are. Room is made from the lights
+/// faces are drawn; one asked at another size keeps its old faces until its new ones are. While trees sway in a
+/// light's reach, each of its faces keeps what stands still in the same tile of a static atlas, drawn only when the
+/// scene changes under it or its light moves; a sway's draw restores the tile from it and draws the trees over. Room is made from the lights
 /// out of view longest, and where there is still none, a light is asked at smaller squares. Each face drawn in a frame
 /// has a slot of its own in the lists and the draw arguments, so every face is culled before any is drawn, and all are
 /// drawn in one render pass.
 pub struct LevelLightShadows {
   atlas: wgpu::TextureView,
+  /// What stands still of the swaying lights' faces, tile for tile as the atlas, while any light asked for sways.
+  statics: Option<wgpu::TextureView>,
+  /// Whether a light asked for this frame has trees swaying in its reach.
+  is_swaying: bool,
   allocator: ShadowTileAllocator,
   entries: HashMap<ProxyHandle<LightDescription>, LightShadowEntry>,
   frame: u64,
@@ -87,8 +119,8 @@ pub struct LevelLightShadows {
   candidates: Vec<FaceCandidate>,
   /// The faces offered this frame, by their light, set and face, with their ticket.
   queue: Vec<(ProxyHandle<LightDescription>, bool, usize, PeriodicTicket)>,
-  /// The faces this frame draws, by their slot and their square, as `prepare` readied them.
-  due: Vec<(usize, ShadowTile)>,
+  /// The faces this frame draws, by their slot, their square and how, as `prepare` readied them.
+  due: Vec<(usize, ShadowTile, FaceDraw)>,
   /// The lights whose faces this frame draws, by their light and square.
   drawn: Vec<(ProxyHandle<LightDescription>, ShadowTile)>,
   /// A face's camera, a slot each.
@@ -127,6 +159,8 @@ impl LevelLightShadows {
 
     Self {
       atlas,
+      statics: None,
+      is_swaying: false,
       allocator: ShadowTileAllocator::new(LIGHT_SHADOW_ATLAS_SIZE, LIGHT_SHADOW_MIN_SIZE),
       entries: HashMap::new(),
       frame: 0,
@@ -168,6 +202,7 @@ impl LevelLightShadows {
     self.frame += 1;
     self.candidates.clear();
     self.queue.clear();
+    self.is_swaying = false;
   }
 
   /// Takes a shadowed light in view this frame, nearest first: gives it faces where it has none at the size it wants,
@@ -248,6 +283,8 @@ impl LevelLightShadows {
     }
 
     let swaying: f32 = entry.swaying.map_or(0.0, |(_, swaying)| swaying);
+
+    self.is_swaying |= sway.amplitude * swaying > 0.0;
     // How wide a face's texels are, for each metre from the light, times the square's side.
     let spread: f32 = 2.0 * ((cone + LIGHT_SHADOW_WIDENING) * 0.5).tan();
 
@@ -260,9 +297,11 @@ impl LevelLightShadows {
 
           if is_moved {
             state.view = to_face_view(light, basis, face, set.near, set.far);
+            state.drawn_static = None;
           }
 
           if state.drawn.is_none_or(|drawn| statics.is_changed_since(drawn, touches)) {
+            state.drawn_static = None;
             self
               .candidates
               .push(((false, distance), handle, is_next, face, STALE_WAIT_MOST));
@@ -331,6 +370,7 @@ impl LevelLightShadows {
 
     self.due.clear();
     self.drawn.clear();
+    self.hold_statics(device);
 
     if self.queue.is_empty() {
       return;
@@ -342,6 +382,12 @@ impl LevelLightShadows {
     for (index, is_next, face, ticket) in std::mem::take(&mut self.queue) {
       let slot: usize = self.due.len();
       let is_granted: bool = scheduler.is_granted(ticket);
+      let is_split: bool = self.statics.is_some()
+        && self
+          .entries
+          .get(&index)
+          .and_then(|entry| entry.swaying)
+          .is_some_and(|(_, swaying)| swaying > 0.0);
       let Some(state) = self
         .entries
         .get_mut(&index)
@@ -380,9 +426,20 @@ impl LevelLightShadows {
           Vec4::ZERO,
         ),
       );
+      let draw: FaceDraw = match (is_split, state.drawn_static) {
+        (false, _) => FaceDraw::Whole,
+        (true, None) => FaceDraw::Static,
+        (true, Some(_)) => FaceDraw::Swaying,
+      };
+
       state.drawn = Some(contents);
       state.drawn_at = frame.sway.time;
-      self.due.push((slot, state.tile));
+
+      if draw == FaceDraw::Static {
+        state.drawn_static = Some(contents);
+      }
+
+      self.due.push((slot, state.tile, draw));
       self.drawn.push((index, state.tile));
     }
 
@@ -416,20 +473,15 @@ impl LevelLightShadows {
     let lists: GraphBuffer = bindings.import_buffer(graph, "light shadow lists", self.lists.get_buffer());
     let atlas: GraphTexture = bindings.import_view(graph, "light shadow atlas", &self.atlas);
     // Each slot's cull into its range of the lists and the arguments, and its draws of that range.
-    let slots: Vec<(
-      usize,
-      ShadowTile,
-      StaticCullParameters,
-      [StaticDrawParameters; StaticLayout::COUNT],
-    )> = self
+    let slots: Vec<FaceSlot> = self
       .due
       .iter()
-      .map(|(slot, tile)| {
+      .map(|(slot, tile, draw)| {
         let (list_offset, args_offset): (u64, u64) = (*slot as u64 * self.region, *slot as u64 * self.args_stride);
 
         (
           *slot,
-          *tile,
+          (*tile, *draw),
           scene.get_cull_parameters(
             StorageArrayMut::new_range(lists, list_offset, self.region),
             StorageArrayMut::new_range(args, args_offset, self.args_size),
@@ -446,7 +498,7 @@ impl LevelLightShadows {
       .record(move |context| {
         let (template, args) = (context.get_buffer(template), context.get_buffer(args));
 
-        for (slot, _) in &self.due {
+        for (slot, ..) in &self.due {
           context.get_encoder().copy_buffer_to_buffer(
             template,
             0,
@@ -472,27 +524,74 @@ impl LevelLightShadows {
           }
         }
       });
-    slots
-      .iter()
-      .fold(
-        graph
-          .add_raster_pass(FACE_PASSES[2])
-          .depth(GraphDepthAttachment::new(atlas, wgpu::LoadOp::Load))
-          .buffer(args, GraphBufferAccess::Indirect),
-        |builder, (.., layouts)| StaticDraws::declare_layouts(builder, layouts),
-      )
-      .record(move |context| {
-        let args: &wgpu::Buffer = context.get_buffer(args);
-
-        for (slot, tile, _, layouts) in &slots {
-          passes.shadow.record_tile(
-            context,
-            *tile,
-            (&self.views[*slot], layouts, textures),
-            (args, *slot as u64 * self.args_stride),
-          );
-        }
+    // What stands still of the faces whose static tiles are stale, into those tiles, before any tile is restored.
+    let restore: Option<ShadowTileRestoreParameters> =
+      self.statics.as_ref().map(|statics| ShadowTileRestoreParameters {
+        static_atlas: bindings.import_view(&mut *graph, "light shadow static atlas", statics),
       });
+    let statics: Vec<(usize, ShadowTile, [StaticDrawParameters; StaticLayout::COUNT])> = slots
+      .iter()
+      .filter(|(_, (_, draw), ..)| *draw == FaceDraw::Static)
+      .map(|(slot, (tile, _), _, layouts)| (*slot, *tile, *layouts))
+      .collect();
+
+    if let (Some(restore), false) = (restore, statics.is_empty()) {
+      statics
+        .iter()
+        .fold(
+          graph
+            .add_raster_pass(FACE_PASSES[3])
+            .depth(GraphDepthAttachment::new(restore.static_atlas, wgpu::LoadOp::Load))
+            .buffer(args, GraphBufferAccess::Indirect),
+          |builder, (.., layouts)| StaticDraws::declare_layouts(builder, layouts),
+        )
+        .record(move |context| {
+          let args: &wgpu::Buffer = context.get_buffer(args);
+
+          for (slot, tile, layouts) in &statics {
+            passes.shadow.record_tile(
+              context,
+              (*tile, None),
+              (&self.views[*slot], layouts, textures),
+              (args, *slot as u64 * self.args_stride),
+              ShadowCasters::Fixed,
+            );
+          }
+        });
+    }
+
+    let is_restored: bool = slots.iter().any(|(_, (_, draw), ..)| *draw != FaceDraw::Whole);
+    let builder = slots.iter().fold(
+      graph
+        .add_raster_pass(FACE_PASSES[2])
+        .depth(GraphDepthAttachment::new(atlas, wgpu::LoadOp::Load))
+        .buffer(args, GraphBufferAccess::Indirect),
+      |builder, (.., layouts)| StaticDraws::declare_layouts(builder, layouts),
+    );
+    let builder = match restore.filter(|_| is_restored) {
+      Some(restore) => builder.parameters(&restore),
+      None => builder,
+    };
+
+    builder.record(move |context| {
+      let args: &wgpu::Buffer = context.get_buffer(args);
+
+      for (slot, (tile, draw), _, layouts) in &slots {
+        // A swaying light's face over what stands still, as kept; any other drawn whole.
+        let (restored, casters): (Option<&ShadowTileRestoreParameters>, ShadowCasters) = match (draw, &restore) {
+          (FaceDraw::Static | FaceDraw::Swaying, Some(restore)) => (Some(restore), ShadowCasters::Swaying),
+          _ => (None, ShadowCasters::All),
+        };
+
+        passes.shadow.record_tile(
+          context,
+          (*tile, restored),
+          (&self.views[*slot], layouts, textures),
+          (args, *slot as u64 * self.args_stride),
+          casters,
+        );
+      }
+    });
   }
 
   /// Forgets that the faces this frame drew were drawn, where its frame was not submitted: each draws again, and its
@@ -506,11 +605,59 @@ impl LevelLightShadows {
       for set in entry.shown.iter_mut().chain(entry.next.iter_mut()) {
         for face in set.faces.iter_mut().filter(|face| face.tile == tile) {
           face.drawn = None;
+          face.drawn_static = None;
         }
       }
     }
 
     self.due.clear();
+  }
+
+  /// Makes the static atlas while a light asked for this frame sways, and lets it go, with every face's static tile,
+  /// once none does.
+  fn hold_statics(&mut self, device: &wgpu::Device) {
+    match (self.is_swaying, self.statics.is_some()) {
+      (true, false) => {
+        self.statics = Some(
+          device
+            .create_texture(&wgpu::TextureDescriptor {
+              label: Some("light shadow static atlas"),
+              size: wgpu::Extent3d {
+                width: LIGHT_SHADOW_ATLAS_SIZE,
+                height: LIGHT_SHADOW_ATLAS_SIZE,
+                depth_or_array_layers: 1,
+              },
+              mip_level_count: 1,
+              sample_count: 1,
+              dimension: wgpu::TextureDimension::D2,
+              format: wgpu::TextureFormat::Depth32Float,
+              usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+              view_formats: &[],
+            })
+            .create_view(&Default::default()),
+        );
+      }
+      (false, true) => {
+        self.statics = None;
+
+        for set in self
+          .entries
+          .values_mut()
+          .flat_map(|entry| entry.shown.iter_mut().chain(entry.next.iter_mut()))
+        {
+          set.faces.iter_mut().for_each(|face| face.drawn_static = None);
+        }
+      }
+      _ => {}
+    }
+  }
+
+  /// Bytes the static atlas takes, while held.
+  pub fn get_statics_memory(&self) -> u64 {
+    self
+      .statics
+      .as_ref()
+      .map_or(0, |_| u64::from(LIGHT_SHADOW_ATLAS_SIZE).pow(2) * 4)
   }
 
   /// A face of a light's shown set or its next.
@@ -543,6 +690,7 @@ impl LevelLightShadows {
             tile,
             view: to_face_view(light, basis, face, near, far),
             drawn: None,
+            drawn_static: None,
             drawn_at: 0.0,
             waited: 0,
           })

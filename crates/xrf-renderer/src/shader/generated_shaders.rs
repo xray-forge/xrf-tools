@@ -59,6 +59,7 @@ use crate::pass::rain_uniform::RainUniform;
 use crate::pass::reflection_parameters::ReflectionParameters;
 use crate::pass::reflection_scene_parameters::ReflectionSceneParameters;
 use crate::pass::reflection_uniform::ReflectionUniform;
+use crate::pass::shadow_tile_restore_parameters::ShadowTileRestoreParameters;
 use crate::pass::shadow_uniform::ShadowUniform;
 use crate::pass::sky_haze_parameters::SkyHazeParameters;
 use crate::pass::sky_parameters::SkyParameters;
@@ -148,6 +149,7 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
   let mut thunder: ShaderBindings = ShaderBindings::new();
   let mut temporal: ShaderBindings = ShaderBindings::new();
   let mut pyramid: ShaderBindings = ShaderBindings::new();
+  let mut shadow_tile_restore: ShaderBindings = ShaderBindings::new();
   let mut puddle_sites: ShaderBindings = ShaderBindings::new();
   let mut sky_prefilter: ShaderBindings = ShaderBindings::new();
   let mut surroundings: ShaderBindings = ShaderBindings::new();
@@ -243,6 +245,7 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
   wet_apply.add::<WetApplyParameters>()?;
   thunder.add::<ThunderParameters<'_>>()?;
   temporal.add::<TemporalParameters<'_>>()?;
+  shadow_tile_restore.add::<ShadowTileRestoreParameters>()?;
   pyramid
     .add::<PyramidDepthParameters>()?
     .add::<PyramidLevelParameters>()?
@@ -393,6 +396,10 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
     (
       "generated/frame/pyramid",
       format!("{STRUCTS_IMPORT}{}", pyramid.to_wgsl()),
+    ),
+    (
+      "generated/frame/shadow_tile_restore",
+      format!("{STRUCTS_IMPORT}{}", shadow_tile_restore.to_wgsl()),
     ),
     (
       "generated/frame/puddle_sites",

@@ -14,6 +14,7 @@ use crate::frame::static_scene_handles::StaticSceneHandles;
 use crate::frame::sun_shadow_maps::SunShadowMaps;
 use crate::pass::camera_uniform::CameraUniform;
 use crate::pass::level_passes::LevelPasses;
+use crate::pass::shadow_casters::ShadowCasters;
 use crate::pass::shadow_cull::ShadowCull;
 use crate::pass::static_cull_parameters::StaticCullParameters;
 use crate::pass::static_cull_params::StaticCullParams;
@@ -286,9 +287,16 @@ impl OverheadMap {
             .water
             .record_depth(context, (&self.view, textures, layouts), args, &parameters);
         }
-        None => passes
-          .shadow
-          .record_layered(context, (&self.view, &layouts, textures), args, shape.is_tree_drawn),
+        None => passes.shadow.record_some(
+          context,
+          (&self.view, &layouts, textures),
+          args,
+          if shape.is_tree_drawn {
+            ShadowCasters::All
+          } else {
+            ShadowCasters::Fixed
+          },
+        ),
       }
     });
   }
