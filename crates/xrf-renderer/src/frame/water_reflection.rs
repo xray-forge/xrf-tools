@@ -1,3 +1,5 @@
+use crate::frame::frame_texture::FrameTexture;
+use crate::frame::history::History;
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::trace_request_list::TraceRequestList;
 
@@ -5,12 +7,8 @@ use crate::pass::trace_request_list::TraceRequestList;
 /// and the list its rays the screen does not answer are left to the scene pass in, an eighth of the drawn pixels while
 /// it traces, a stub otherwise.
 pub struct WaterReflection {
-  pub histories: [wgpu::TextureView; 2],
+  pub histories: History<FrameTexture>,
   pub requests: TraceRequestList,
-  /// The history this frame writes.
-  pub index: usize,
-  /// Whether the history this frame reads holds a frame.
-  pub is_valid: bool,
   /// The size it was made at, the targets' drawn size.
   pub size: (u32, u32),
 }
@@ -26,42 +24,27 @@ impl WaterReflection {
   pub const TRACE_TURNS_LEAST: u32 = 8;
 
   pub fn new(device: &wgpu::Device, targets: &ViewTargets) -> Self {
-    let create = |label: &str| -> wgpu::TextureView {
-      device
-        .create_texture(&wgpu::TextureDescriptor {
-          label: Some(label),
-          size: wgpu::Extent3d {
-            width: targets.width,
-            height: targets.height,
-            depth_or_array_layers: 1,
-          },
-          mip_level_count: 1,
-          sample_count: 1,
-          dimension: wgpu::TextureDimension::D2,
-          format: Self::FORMAT,
-          usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
-          view_formats: &[],
-        })
-        .create_view(&Default::default())
-    };
+    let size: (u32, u32) = (targets.width, targets.height);
 
     Self {
-      histories: [create("water reflection 0"), create("water reflection 1")],
+      histories: History::new(|side| {
+        FrameTexture::new(
+          device,
+          ["water reflection 0", "water reflection 1"][side],
+          size,
+          Self::FORMAT,
+          wgpu::TextureUsages::empty(),
+        )
+      }),
       requests: TraceRequestList::new(device, "water reflection", 0),
-      index: 0,
-      is_valid: false,
-      size: (targets.width, targets.height),
+      size,
     }
   }
 
-  /// Leaves the next frame no history to read, after frames that drew no water.
-  pub fn invalidate(&mut self) {
-    self.is_valid = false;
-  }
+  /// Bytes its histories and its request list take.
+  pub fn get_memory(&self) -> u64 {
+    let histories: u64 = self.histories.get_sides().iter().map(|side| side.get_memory()).sum();
 
-  /// Makes the history just written the one the next frame reads.
-  pub fn swap(&mut self) {
-    self.index = 1 - self.index;
-    self.is_valid = true;
+    histories + self.requests.get_memory()
   }
 }

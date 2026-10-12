@@ -3,29 +3,17 @@ use crate::contract::render_reflection_settings::RenderReflectionSettings;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::contract::render_water_mode::RenderWaterMode;
 use crate::contract::render_water_settings::RenderWaterSettings;
-use crate::frame::view_targets::ViewTargets;
 use crate::frame::water_reflection::WaterReflection;
-use crate::lighting::render_wind::RenderWind;
 use crate::pass::enhanced_water_uniform::EnhancedWaterUniform;
 use crate::pass::water_uniform::WaterUniform;
+use crate::scene::level::feature::view_feature::ViewFeature;
+use crate::scene::level::feature::water_frame::WaterFrame;
 use crate::scene::level::water_flow::WaterFlow;
-
-/// What a level view's water reads of its frame beside its own state: the targets, the weather's
-/// `water_intensity`, wind and rain density, and the clock.
-pub struct WaterFrame<'a> {
-  pub targets: Option<&'a ViewTargets>,
-  /// Whether any of the level's water may be in sight.
-  pub is_in_view: bool,
-  pub intensity: f32,
-  pub wind: RenderWind,
-  pub rain: f32,
-  pub time: f32,
-}
 
 /// A view's water as it lasts between frames: its settings and what they make its uniforms this frame, how far the
 /// enhanced water's maps have scrolled, and its reflection histories, kept only while it reflects.
 #[derive(Default)]
-pub struct LevelWater {
+pub struct WaterFeature {
   settings: RenderWaterSettings,
   /// Whether this frame draws the water at all: it is on, some is in sight, and the view is not wireframe.
   is_drawn: bool,
@@ -38,7 +26,7 @@ pub struct LevelWater {
   frame: u32,
 }
 
-impl LevelWater {
+impl WaterFeature {
   /// Takes this frame's settings: makes or drops the reflection's histories, and works out the uniforms.
   pub fn prepare(&mut self, device: &wgpu::Device, options: &RenderViewOptions, frame: WaterFrame<'_>) {
     let settings: RenderWaterSettings = options.features.water;
@@ -93,7 +81,7 @@ impl LevelWater {
       self
         .reflection
         .as_ref()
-        .map_or((false, false), |reflection| (true, reflection.is_valid)),
+        .map_or((false, false), |reflection| (true, reflection.histories.is_valid())),
       (
         if is_traced { reflections.distance } else { 0.0 },
         reflections
@@ -132,10 +120,21 @@ impl LevelWater {
   pub fn finish_frame(&mut self) {
     if let Some(reflection) = self.reflection.as_mut() {
       if self.is_drawn {
-        reflection.swap();
+        reflection.histories.swap();
       } else {
-        reflection.invalidate();
+        reflection.histories.invalidate();
       }
     }
+  }
+}
+
+impl ViewFeature for WaterFeature {
+  /// The enhanced water's reflection histories and request list, while it reflects.
+  fn get_memory(&self) -> u64 {
+    self.reflection.as_ref().map_or(0, WaterReflection::get_memory)
+  }
+
+  fn release(&mut self) {
+    self.reflection = None;
   }
 }

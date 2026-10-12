@@ -12,6 +12,11 @@ pub struct TraceRequestList {
 }
 
 impl TraceRequestList {
+  /// Bytes its buffers take.
+  pub fn get_memory(&self) -> u64 {
+    self.requests.size() + self.head.size() + self.dispatch.size()
+  }
+
   pub fn new(device: &wgpu::Device, label: &str, capacity: u32) -> Self {
     let buffer = |suffix: &str, size: u64, usage: wgpu::BufferUsages| -> wgpu::Buffer {
       device.create_buffer(&wgpu::BufferDescriptor {

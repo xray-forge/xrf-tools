@@ -6,7 +6,7 @@ use crate::pass::sky_parameters::SkyParameters;
 use crate::pass::static_draw_parameters::StaticDrawParameters;
 use crate::pass::trace_parameters::TraceParameters;
 use crate::pass::view_binding::ViewBinding;
-use crate::scene::level::level_water::LevelWater;
+use crate::scene::level::feature::water_feature::WaterFeature;
 use crate::scene::level::lighting_handles::LightingHandles;
 use crate::scene::static_scene::static_layout::StaticLayout;
 
@@ -24,7 +24,7 @@ pub struct WaterDraw<'a> {
   pub lit: LightingHandles<'a>,
   pub skies: [&'a wgpu::TextureView; 2],
   pub sky_sampler: &'a wgpu::Sampler,
-  pub water: &'a LevelWater,
+  pub water: &'a WaterFeature,
   pub scene_trace: &'a SceneTracePass,
   pub traced: Option<(SkyParameters<'a>, TraceParameters<'a>, &'a wgpu::BindGroup)>,
 }

@@ -14,7 +14,6 @@ use crate::pass::view_binding::ViewBinding;
 use crate::pass::wind_uniform::WindUniform;
 use crate::scene::level::grass_view::GrassView;
 use crate::scene::level::level_overlays::LevelOverlays;
-use crate::scene::level::level_water::LevelWater;
 use crate::scene::level::lights_view::LightsView;
 use crate::scene::level::particles_view::ParticlesView;
 use crate::scene::level::puddle_fill::PuddleFill;
@@ -38,8 +37,6 @@ pub struct ViewState {
   pub noise_frame: u32,
   /// The enhanced volumetric lighting's froxels, while it draws.
   pub froxels: Option<FroxelVolume>,
-  /// The water's settings and flow, and the enhanced water's reflection histories.
-  pub water: LevelWater,
   /// The trees' sway the last frame drew with.
   pub last_wind: Option<WindUniform>,
   /// How far the enhanced foliage motion's flow fields have drifted.
@@ -81,7 +78,6 @@ impl ViewState {
       sky_prefilter: None,
       noise_frame: 0,
       froxels: None,
-      water: LevelWater::default(),
       last_wind: None,
       foliage: FoliageWind::default(),
       wetness: RainWetness::default(),
