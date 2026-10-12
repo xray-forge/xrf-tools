@@ -88,10 +88,12 @@ fn makes_a_pipeline_once_per_permutation_and_forgets_an_invalidated_module() {
   cache.get_compute_pipeline(&device, &source, &describe(true)).unwrap();
 
   assert_eq!(cache.get_pipeline_count(), 2, "one pipeline per permutation");
+  assert_eq!(cache.get_generation(), 0);
 
   cache.invalidate_module("count");
 
   assert_eq!(cache.get_pipeline_count(), 0);
+  assert_eq!(cache.get_generation(), 1, "an invalidation tells holders to ask again");
 
   cache.get_compute_pipeline(&device, &source, &describe(true)).unwrap();
 

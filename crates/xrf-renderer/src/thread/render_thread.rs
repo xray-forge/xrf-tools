@@ -872,7 +872,7 @@ impl RenderThread {
       let scene: Option<&mut LevelScene> = scene_id.and_then(|scene| self.scenes.get_mut(&scene));
 
       if let Some(mut frame) = Self::ready_view(
-        gpu,
+        (gpu, &self.shaders),
         (viewport, scene),
         rect,
         &mut encoder,
@@ -971,7 +971,7 @@ impl RenderThread {
         let output: Option<SceneOutput> = view.record(
           scene,
           (&mut graph, &mut bindings, &mut *runtime),
-          gpu.get_level_passes(),
+          gpu.get_level_passes(&self.shaders),
           binding,
           &gpu.textures,
           frame,
@@ -1237,7 +1237,7 @@ impl RenderThread {
   /// readies its graph's frame with a pick when one waits; none where it shows no scene. `rect` is its whole rectangle;
   /// what loading and preparing take is added to `load` and `prepare`.
   fn ready_view(
-    gpu: &mut GpuState,
+    (gpu, shaders): (&mut GpuState, &ShaderLibrary),
     (viewport, scene): (&mut RenderViewport, Option<&mut LevelScene>),
     rect: &RenderRect,
     encoder: &mut FrameEncoder,
@@ -1384,7 +1384,7 @@ impl RenderThread {
         device,
         queue,
         encoder,
-        gpu.get_level_passes(),
+        gpu.get_level_passes(shaders),
         &view,
         ((drawn_rect.width, drawn_rect.height), *rect),
         world.camera.field_of_view,

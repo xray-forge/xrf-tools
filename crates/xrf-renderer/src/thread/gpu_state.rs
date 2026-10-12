@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use xrf_error::XrfResult;
-use xrf_renderer_core::PassParameters;
+use xrf_renderer_core::{PassParameters, PipelineCache};
 
 use crate::context::gpu_context::GpuContext;
 use crate::host::render_bundle::RenderBundle;
@@ -29,6 +29,7 @@ use crate::pass::lights_pass::LightsPass;
 use crate::pass::material_table::MaterialTable;
 use crate::pass::overlay_pass::OverlayPass;
 use crate::pass::particle_pass::ParticlePass;
+use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::present_pass::PresentPass;
 use crate::pass::puddle_sites_pass::PuddleSitesPass;
 use crate::pass::rain_pass::RainPass;
@@ -87,6 +88,8 @@ pub struct GpuState {
   pub froxels: FroxelPass,
   pub bloom: BloomPass,
   pub enhanced_bloom: EnhancedBloomPass,
+  /// The pipelines the feature units ask for, made once and forgotten when a shader reloads.
+  pub pipelines: PipelineCache,
   pub fog_scattering: FogScatteringPass,
   pub temporal: TemporalPass,
   pub fsr: FsrPass,
@@ -163,7 +166,7 @@ impl GpuState {
       sky.get_layout(),
     )?;
 
-    Ok(Self {
+    let state: Self = Self {
       water,
       composited,
       glass,
@@ -178,7 +181,8 @@ impl GpuState {
       light_volumes: LightVolumePass::new(device, shaders, &view_layout, textures.get_layout())?,
       froxels: FroxelPass::new(device, shaders, &view_layout)?,
       bloom: BloomPass::new(device, shaders)?,
-      enhanced_bloom: EnhancedBloomPass::new(device, shaders, &view_layout)?,
+      enhanced_bloom: EnhancedBloomPass::new(device, &view_layout),
+      pipelines: PipelineCache::new(),
       fog_scattering: FogScatteringPass::new(device, &context.queue, shaders, &view_layout)?,
       temporal: TemporalPass::new(device, shaders, &view_layout)?,
       fsr: FsrPass::new(device, shaders)?,
@@ -215,7 +219,22 @@ impl GpuState {
       textures,
       view_layout,
       context,
-    })
+    };
+
+    state
+      .get_pipeline_source(shaders)
+      .warm(&state.enhanced_bloom.describe_pipelines())?;
+
+    Ok(state)
+  }
+
+  /// Where the feature units ask for their pipelines, made from `shaders`.
+  pub fn get_pipeline_source<'a>(&'a self, shaders: &'a ShaderLibrary) -> PipelineSource<'a> {
+    PipelineSource {
+      cache: &self.pipelines,
+      device: &self.context.device,
+      shaders,
+    }
   }
 
   /// Builds the grid pass drawing into a format, unless it is built.
@@ -238,8 +257,9 @@ impl GpuState {
     self.grids.get(&format)
   }
 
-  pub fn get_level_passes(&self) -> LevelPasses<'_> {
+  pub fn get_level_passes<'a>(&'a self, shaders: &'a ShaderLibrary) -> LevelPasses<'a> {
     LevelPasses {
+      pipelines: self.get_pipeline_source(shaders),
       cull: &self.static_cull,
       gbuffer: &self.static_gbuffer,
       shadow: &self.static_shadow,
@@ -289,6 +309,8 @@ impl GpuState {
   pub fn refresh(&mut self, shaders: &ShaderLibrary) {
     let device: &wgpu::Device = &self.context.device;
 
+    self.pipelines.invalidate_all();
+
     for grid in self.grids.values_mut() {
       grid.refresh(device, shaders);
     }
@@ -323,7 +345,6 @@ impl GpuState {
     self.light_volumes.refresh(device, shaders);
     self.froxels.refresh(device, shaders);
     self.bloom.refresh(device, shaders);
-    self.enhanced_bloom.refresh(device, shaders);
     self.fog_scattering.refresh(device, shaders);
     self.temporal.refresh(device, shaders);
     self.fsr.refresh(device, shaders);

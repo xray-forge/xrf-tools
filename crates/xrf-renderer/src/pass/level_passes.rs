@@ -19,6 +19,7 @@ use crate::pass::lights_pass::LightsPass;
 use crate::pass::material_table::MaterialTable;
 use crate::pass::overlay_pass::OverlayPass;
 use crate::pass::particle_pass::ParticlePass;
+use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::present_pass::PresentPass;
 use crate::pass::puddle_sites_pass::PuddleSitesPass;
 use crate::pass::rain_pass::RainPass;
@@ -44,6 +45,8 @@ use crate::pass::wet_pass::WetPass;
 /// The passes a level's frame runs, borrowed from the GPU state together.
 #[derive(Clone, Copy)]
 pub struct LevelPasses<'a> {
+  /// Where the feature units ask for their pipelines.
+  pub pipelines: PipelineSource<'a>,
   pub cull: &'a StaticCullPass,
   pub gbuffer: &'a StaticGBufferPass,
   pub shadow: &'a StaticShadowPass,
