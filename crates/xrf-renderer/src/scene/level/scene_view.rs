@@ -739,6 +739,8 @@ impl SceneView {
       traced_lights,
     );
     lights.add_overflow_pass(&mut *graph, buffers);
+    // The occlusion and the indirect light recorded beside the lights, so neither group bounds the frame's encoding.
+    graph.begin_group("occlusion");
 
     // GTAO searches on its own; VBAO, the indirect light or both share one bitmask search.
     self
@@ -1342,6 +1344,9 @@ impl SceneView {
       add_texture_copy(&mut *graph, "reflection source scene", handles.scene, source_scene);
     }
 
+    // The volumetrics, the flares and the bloom, then the resolve, recorded beside the forward passes.
+    graph.begin_group("effects");
+
     let (light_volumes, is_froxeled, froxels) = self.features.volumetric.add_passes(
       (&mut *graph, &mut *bindings, runtime),
       record,
@@ -1398,6 +1403,8 @@ impl SceneView {
       .features
       .bloom
       .add_engine_passes((&mut *graph, runtime), passes, handles);
+
+    graph.begin_group("resolve");
 
     let smoothed: GraphTexture =
       self
