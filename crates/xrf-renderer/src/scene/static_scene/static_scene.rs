@@ -11,6 +11,7 @@ use crate::context::gpu_requirements::RAY_QUERY_FEATURES;
 use crate::contract::render_pool_use::RenderPoolUse;
 use crate::contract::render_selection_target::RenderSelectionTarget;
 use crate::contract::render_static_report::RenderStaticReport;
+use crate::frame::frame_encoder::FrameEncoder;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::scene::section_bytes::read_pods;
 use crate::scene::static_scene::growable_buffer::GrowableBuffer;
@@ -91,7 +92,9 @@ pub struct StaticScene {
   /// Entries the visible list and the candidates hold this frame.
   list_capacity: u32,
   /// Every batch's draw arguments as a cull starts them, which a shadow's own arguments start from too.
-  initial_args: Vec<u32>,
+  late_template: wgpu::Buffer,
+  /// The capacities the regions and the templates were last written for.
+  written: Option<[u32; StaticBatch::LIST_COUNT]>,
   /// Each impostor surface's row, by its shader table entry.
   impostor_rows: HashMap<u16, u32>,
   /// Each surface's row and class, once asked for; `None` for one no static draw draws.
@@ -239,7 +242,13 @@ impl StaticScene {
       row_records: ProxyStore::new(),
       origin,
       list_capacity: 0,
-      initial_args: Vec::new(),
+      late_template: device.create_buffer(&wgpu::BufferDescriptor {
+        label: Some("static late draw arguments template"),
+        size: Self::LATE_DISPATCH_OFFSET + 16,
+        usage: wgpu::BufferUsages::COPY_SRC | wgpu::BufferUsages::COPY_DST,
+        mapped_at_creation: false,
+      }),
+      written: None,
       impostor_rows: HashMap::new(),
       surface_rows: HashMap::new(),
       texture_slots: BTreeSet::new(),
@@ -955,15 +964,31 @@ impl StaticScene {
     self.contents
   }
 
-  /// Uploads what was added, changed and removed since the last frame, and rewrites each batch's run of the visible
-  /// list and its draw arguments empty, for a frame's cull to fill.
-  pub fn prepare_draws(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, encoder: &mut wgpu::CommandEncoder) {
+  /// Uploads what was added, changed and removed since the last frame, and resets each batch's draw arguments empty
+  /// from their templates for a frame's cull to fill; the batches' runs of the visible list and the templates are
+  /// written again only when the capacities changed.
+  pub fn prepare_draws(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, encoder: &mut FrameEncoder) {
     for buffer in self.list_spans_mut() {
       buffer.flush(queue);
     }
 
     self.rows.sync(device, queue, &mut self.row_records, |row| *row);
 
+    if self.written != Some(self.capacities) {
+      self.write_draws(device, encoder);
+    }
+
+    self.reset_args(encoder, &self.args);
+    encoder.copy_buffer_to_buffer(&self.late_template, 0, &self.late, 0, Self::LATE_DISPATCH_OFFSET + 16);
+  }
+
+  /// Resets a cull's draw arguments empty, as every batch's start a frame.
+  pub fn reset_args(&self, encoder: &mut wgpu::CommandEncoder, args: &wgpu::Buffer) {
+    encoder.copy_buffer_to_buffer(&self.args_template, 0, args, 0, Self::IMPOSTOR_ARGS_OFFSET + 16);
+  }
+
+  /// Writes each batch's run of the visible list and the templates its draw arguments are reset from.
+  fn write_draws(&mut self, device: &wgpu::Device, encoder: &mut FrameEncoder) {
     let mut base: u32 = 0;
     let mut regions: Vec<StaticRegion> = Vec::with_capacity(StaticBatch::LIST_COUNT);
     let mut args: Vec<u32> = Vec::with_capacity(StaticBatch::LIST_COUNT * 4 + 4);
@@ -986,16 +1011,10 @@ impl StaticScene {
     self.list_capacity = base;
     self.lists.reserve(device, encoder, (base.max(1) as u64) * 8);
     self.candidates.reserve(device, encoder, (base.max(1) as u64) * 8);
-    queue.write_buffer(&self.regions, 0, bytemuck::cast_slice(&regions));
-    queue.write_buffer(&self.args, 0, bytemuck::cast_slice(&args));
-    queue.write_buffer(&self.args_template, 0, bytemuck::cast_slice(&args));
-    queue.write_buffer(&self.late, 0, bytemuck::cast_slice(&late));
-    self.initial_args = args;
-  }
-
-  /// Every batch's draw arguments as this frame's culls start them.
-  pub fn get_initial_args(&self) -> &[u32] {
-    &self.initial_args
+    encoder.write_buffer(&self.regions, 0, bytemuck::cast_slice(&regions));
+    encoder.write_buffer(&self.args_template, 0, bytemuck::cast_slice(&args));
+    encoder.write_buffer(&self.late_template, 0, bytemuck::cast_slice(&late));
+    self.written = Some(self.capacities);
   }
 
   /// Entries the visible list holds, and the candidates as many.

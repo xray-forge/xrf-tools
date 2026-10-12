@@ -9,6 +9,7 @@ use xrf_renderer_core::{FrameGraph, GraphBindings, ProxyHandle, ProxyStore};
 use xrf_visual::{LightAnimatorDescription, LightDescription, LightKind, LightsDescription};
 
 use crate::contract::render_lights_report::RenderLightsReport;
+use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::static_scene_handles::StaticSceneHandles;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::lighting::light_animation::to_animated_color;
@@ -137,7 +138,7 @@ impl LevelLights {
 
   /// Writes out the lights standing in a view this frame into its own, nearest first, animated and faded as the engine
   /// would, in the camera's view space; a shadowed one only once its faces are drawn, with their squares of the atlas.
-  pub fn prepare(&mut self, queue: &wgpu::Queue, into: &mut LightsView, frame: LightsFrame<'_>) {
+  pub fn prepare(&mut self, encoder: &mut FrameEncoder, into: &mut LightsView, frame: LightsFrame<'_>) {
     let LightsFrame {
       camera,
       settings,
@@ -293,7 +294,7 @@ impl LevelLights {
     }
 
     into.report.atlas = self.shadows.get_atlas_use();
-    into.write(queue, camera, settings.shadow_filter);
+    into.write(encoder, camera, settings.shadow_filter);
   }
 
   /// Starts a scene's frame: stands each light its motion carries.
@@ -323,15 +324,9 @@ impl LevelLights {
   /// Ends what every view of the scene asked of the shadows this frame: picks the faces to draw from all they asked,
   /// and readies them, which `add_shadow_passes` then draws before the lights read them; then opens the next frame's
   /// asking.
-  pub fn finish_shadows(
-    &mut self,
-    device: &wgpu::Device,
-    queue: &wgpu::Queue,
-    encoder: &mut wgpu::CommandEncoder,
-    frame: &ShadowFrame<'_>,
-  ) {
+  pub fn finish_shadows(&mut self, device: &wgpu::Device, encoder: &mut FrameEncoder, frame: &ShadowFrame<'_>) {
     self.shadows.finish();
-    self.shadows.prepare(device, queue, encoder, frame);
+    self.shadows.prepare(device, encoder, frame);
     self.shadows.begin();
   }
 

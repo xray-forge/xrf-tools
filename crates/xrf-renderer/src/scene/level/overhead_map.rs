@@ -6,6 +6,7 @@ use xrf_renderer_core::{
 
 use crate::camera::camera_view::CameraView;
 use crate::contract::render_rect::RenderRect;
+use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::static_scene_handles::StaticSceneHandles;
 use crate::frame::sun_shadow_maps::SunShadowMaps;
 use crate::pass::camera_uniform::CameraUniform;
@@ -119,8 +120,7 @@ impl OverheadMap {
   pub fn prepare(
     &mut self,
     device: &wgpu::Device,
-    queue: &wgpu::Queue,
-    encoder: &mut wgpu::CommandEncoder,
+    encoder: &mut FrameEncoder,
     frame: &ShadowFrame<'_>,
     load: &mut FrameLoad,
   ) {
@@ -164,9 +164,9 @@ impl OverheadMap {
     self
       .lists
       .reserve(device, encoder, (scene.get_list_capacity().max(1) as u64) * 8);
-    queue.write_buffer(&self.args, 0, bytemuck::cast_slice(scene.get_initial_args()));
+    scene.reset_args(encoder, &self.args);
     self.view.write(
-      queue,
+      encoder,
       &CameraUniform::new(
         &view,
         RenderRect {

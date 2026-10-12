@@ -1,6 +1,7 @@
 use glam::Vec4;
 use xrf_renderer_core::{FrameGraph, GraphBindings, GraphTexture};
 
+use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::static_scene_handles::StaticSceneHandles;
 use crate::pass::cover_pyramid_depth_parameters::CoverPyramidDepthParameters;
 use crate::pass::cover_pyramid_level_parameters::CoverPyramidLevelParameters;
@@ -37,8 +38,7 @@ impl RainCover {
   pub fn prepare(
     &mut self,
     device: &wgpu::Device,
-    queue: &wgpu::Queue,
-    encoder: &mut wgpu::CommandEncoder,
+    encoder: &mut FrameEncoder,
     frame: &ShadowFrame<'_>,
     (reach, load): (Option<f32>, &mut FrameLoad),
   ) {
@@ -49,7 +49,7 @@ impl RainCover {
     });
 
     self.map.fit_width(width);
-    self.map.prepare(device, queue, encoder, frame, load);
+    self.map.prepare(device, encoder, frame, load);
   }
 
   /// Draws nothing this frame.

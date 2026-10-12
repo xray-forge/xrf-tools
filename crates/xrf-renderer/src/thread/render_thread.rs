@@ -11,6 +11,8 @@ use xrf_renderer_core::{
   GraphTexture, GraphTextureAccess,
 };
 
+use wgpu::util::StagingBelt;
+
 use crate::camera::camera_view::CameraView;
 use crate::context::gpu_context::GpuContext;
 use crate::context::gpu_requirements::RAY_QUERY_FEATURES;
@@ -28,6 +30,7 @@ use crate::contract::render_texture_report::RenderTextureReport;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::contract::render_viewport_id::RenderViewportId;
 use crate::frame::frame_capture::{CaptureReply, FrameCapture};
+use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::frame_phases::FramePhases;
 use crate::frame::frame_statistics::REPORT_INTERVAL;
 use crate::host::render_asset_source::RenderAssetSource;
@@ -108,6 +111,8 @@ pub struct RenderThread {
   /// What the GPU allocator held, allocated and reserved, when it was last asked: a report lists every allocation, so it
   /// is asked at most every `ALLOCATOR_REPORT_EVERY`.
   allocator_report: Option<(Instant, Option<(u64, u64)>)>,
+  /// The staging belt the frames' own writes go through, kept between frames; made with the GPU.
+  belt: Option<StagingBelt>,
   /// Why the GPU last failed to start, and when.
   failure: Option<(String, Instant)>,
   /// The windows viewports are drawn into, by their key.
@@ -150,6 +155,7 @@ impl RenderThread {
       runtime: None,
       graph_report: None,
       allocator_report: None,
+      belt: None,
       failure: None,
       hosts: HashMap::new(),
       viewports: BTreeMap::new(),
@@ -427,6 +433,7 @@ impl RenderThread {
     self.gpu = None;
     // Its pool, bind groups and timer belong to the device let go.
     self.runtime = None;
+    self.belt = None;
 
     // Its scenes went with it; the world streams each in again, from the start, into scenes made again.
     self.scenes.clear();
@@ -554,7 +561,11 @@ impl RenderThread {
     let Some(gpu) = &mut self.gpu else {
       return;
     };
-    let mut encoder: wgpu::CommandEncoder = gpu.context.device.create_command_encoder(&Default::default());
+    let belt: StagingBelt = self
+      .belt
+      .take()
+      .unwrap_or_else(|| FrameEncoder::create_belt(&gpu.context.device));
+    let mut encoder: FrameEncoder = FrameEncoder::new(&gpu.context.device, belt);
 
     let mut scene_frames: HashMap<RenderSceneId, RenderSceneFrame> = scene_frames;
     let live: HashSet<RenderSceneId> = scene_frames.keys().copied().collect();
@@ -696,7 +707,7 @@ impl RenderThread {
   /// skipping a window that cannot give one (minimised, occluded, outdated, lost) rather than waiting for it; readies
   /// each of their viewports' frames; declares the viewports' frames, then each window's composition and captures;
   /// submits once; and presents every window. `update` is what the frame spent before any window.
-  fn draw_windows(&mut self, update: Duration, mut encoder: wgpu::CommandEncoder) {
+  fn draw_windows(&mut self, update: Duration, mut encoder: FrameEncoder) {
     let Some(gpu) = &mut self.gpu else {
       return;
     };
@@ -776,7 +787,7 @@ impl RenderThread {
         && gpu
           .backdrop
           .prepare(
-            (&gpu.context.device, &gpu.context.queue),
+            (&gpu.context.device, &mut encoder),
             &self.shaders,
             format,
             (window.get_backdrop_slot(), &backdrop),
@@ -814,7 +825,10 @@ impl RenderThread {
 
     // With nothing to draw into, what the scenes took in still goes up.
     if acquired.is_empty() {
-      gpu.context.queue.submit([encoder.finish()]);
+      let (commands, belt): (wgpu::CommandBuffer, StagingBelt) = encoder.finish();
+
+      gpu.context.queue.submit([commands]);
+      self.belt = Some(belt);
 
       return;
     }
@@ -882,12 +896,7 @@ impl RenderThread {
         continue;
       };
 
-      view.prepare_scene_shadows(
-        scene,
-        (&gpu.context.device, &gpu.context.queue),
-        &mut encoder,
-        &gpu.textures,
-      );
+      view.prepare_scene_shadows(scene, &gpu.context.device, &mut encoder, &gpu.textures);
     }
 
     let composing: Instant = Instant::now();
@@ -1125,8 +1134,10 @@ impl RenderThread {
         // What the frame's own encoder holds is not of the frame: the uploads and the acceleration structures the
         // scenes built, which they count as done.
         let scope: wgpu::ErrorScopeGuard = device.push_error_scope(wgpu::ErrorFilter::Validation);
+        let (commands, belt): (wgpu::CommandBuffer, StagingBelt) = encoder.finish();
 
-        queue.submit([encoder.finish()]);
+        queue.submit([commands]);
+        self.belt = Some(belt);
 
         if let Some(error) = pollster::block_on(scope.pop()) {
           log::error!("The frame's uploads cannot be submitted: {error}");
@@ -1161,7 +1172,11 @@ impl RenderThread {
     let mut commands: Vec<wgpu::CommandBuffer> = {
       profiling::scope!("finish", "frame");
 
-      vec![encoder.finish()]
+      let (commands, belt): (wgpu::CommandBuffer, StagingBelt) = encoder.finish();
+
+      self.belt = Some(belt);
+
+      vec![commands]
     };
     let encoded: Duration = finishing.elapsed() + executed.encode;
 
@@ -1253,7 +1268,7 @@ impl RenderThread {
     gpu: &mut GpuState,
     (viewport, scene): (&mut RenderViewport, Option<&mut LevelScene>),
     rect: &RenderRect,
-    encoder: &mut wgpu::CommandEncoder,
+    encoder: &mut FrameEncoder,
     (load, prepare): (&mut Duration, &mut Duration),
     is_simulating: bool,
   ) -> Option<ViewFrame> {
@@ -1323,7 +1338,7 @@ impl RenderThread {
       let unjittered: Mat4 = view.get_view_projection();
 
       binding.write(
-        queue,
+        encoder,
         &CameraUniform::new(&view, drawn_rect, switches)
           .with_wireframe(options.mode.is_wireframe)
           .with_surface_color(options.mode.surface_color)
@@ -1351,7 +1366,7 @@ impl RenderThread {
     let to_sun: Vec3 = drawn.view.transform_vector3(-lighting.get_sun_direction());
 
     binding.write(
-      queue,
+      encoder,
       &CameraUniform::new(&drawn, drawn_rect, switches)
         .with_parallax(&options.features.parallax, to_sun)
         .with_selection(selected.as_ref())
@@ -1428,7 +1443,7 @@ impl RenderThread {
       (pick, ndc, CameraUniform::new(&narrowed, pixel, switches))
     });
     let readied: Option<LevelFrame> = view_state.begin_frame(
-      (device, queue),
+      (device, &mut *encoder),
       pick
         .as_ref()
         .map(|(pick, _, camera)| (camera, &gpu.view_layout, pick.is_through)),

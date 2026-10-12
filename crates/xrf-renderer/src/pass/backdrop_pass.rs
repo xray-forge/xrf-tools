@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use xrf_error::XrfResult;
 
+use crate::frame::frame_encoder::FrameEncoder;
 use crate::pass::backdrop_uniform::BackdropUniform;
 use crate::pass::fullscreen_pipeline::{buffer_binding, create_fullscreen_pipeline};
 use crate::pass::layout_entries::uniform_entry;
@@ -47,7 +48,7 @@ impl BackdropPass {
   /// Returns an error when the shader does not compose or compile.
   pub fn prepare(
     &mut self,
-    (device, queue): (&wgpu::Device, &wgpu::Queue),
+    (device, encoder): (&wgpu::Device, &mut FrameEncoder),
     shaders: &ShaderLibrary,
     format: wgpu::TextureFormat,
     (window, backdrop): (&mut Option<WindowBackdrop>, &BackdropUniform),
@@ -73,7 +74,7 @@ impl BackdropPass {
     });
 
     if window.written.as_ref() != Some(backdrop) {
-      queue.write_buffer(&window.uniform, 0, bytemuck::bytes_of(backdrop));
+      encoder.write_buffer(&window.uniform, 0, bytemuck::bytes_of(backdrop));
       window.written = Some(*backdrop);
     }
 
