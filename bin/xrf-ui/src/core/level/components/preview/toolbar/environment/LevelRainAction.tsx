@@ -110,7 +110,7 @@ export function LevelRainAction({
         />
       </EditorPopoverGroupSection>
 
-      <LevelWeatherResetButton keys={LEVEL_MANUAL_WEATHER_RAIN_KEYS} onEdit={weatherService.editManual} />
+      <LevelWeatherResetButton keys={LEVEL_MANUAL_WEATHER_RAIN_KEYS} onReset={weatherService.resetManual} />
 
       <EditorPopoverGroupSection
         label={"Puddles"}
@@ -162,7 +162,7 @@ export function LevelRainAction({
         ) : null}
 
         <Button size={"small"} onClick={resetPuddles}>
-          Back to the settings for the puddles
+          Reset to the preset
         </Button>
       </EditorPopoverGroupSection>
     </EditorPopoverGroup>

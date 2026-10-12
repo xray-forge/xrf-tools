@@ -67,7 +67,7 @@ describe("LevelReflectionsAction", () => {
       quality: ERenderReflectionQuality.ULTRA,
     });
 
-    await userEvent.click(getByRole("button", { name: "Back to the settings for the reflections" }));
+    await userEvent.click(getByRole("button", { name: "Reset the reflections to the preset" }));
 
     expect(view.features.reflections).toEqual({});
   });

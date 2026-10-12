@@ -25,7 +25,7 @@ describe("LevelGrassAction", () => {
 
     await userEvent.pointer({ keys: "[MouseRight]", target: getByRole("button", { name: "Grass" }) });
     await findByRole("dialog", { name: "Grass" });
-    await userEvent.click(getByRole("button", { name: "Back to the settings" }));
+    await userEvent.click(getByRole("button", { name: "Reset to the preset" }));
 
     expect(view.features).toEqual({ ...before, grass: {} });
   });

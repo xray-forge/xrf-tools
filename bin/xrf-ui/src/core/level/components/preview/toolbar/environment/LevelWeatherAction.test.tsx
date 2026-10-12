@@ -59,7 +59,7 @@ describe("LevelWeatherAction", () => {
     await userEvent.click(getByRole("button", { name: "Manual" }));
 
     expect(weather.source).toBe(ELevelWeatherSource.MANUAL);
-    expect(getByRole("dialog", { name: "Weather" }).textContent).toContain("Back to weather");
+    expect(getByRole("dialog", { name: "Weather" }).textContent).toContain("Play the weather");
   });
 
   it("copies the keyframe on screen as a weather config section", async () => {

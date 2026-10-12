@@ -57,7 +57,7 @@ describe("LevelRainAction", () => {
 
     expect(view.options.isThundering).toBe(!DEFAULT_LEVEL_VIEW_OPTIONS.isThundering);
 
-    await userEvent.click(getByRole("combobox", { name: "thunderbolt_collection" }));
+    await userEvent.click(getByRole("combobox", { name: "Lightning bolts" }));
 
     // A collection the game no longer has is kept, so the keyframe still says what it names.
     expect(getByRole("listbox").textContent).toMatch(
@@ -90,7 +90,7 @@ describe("LevelRainAction", () => {
       "No rain, no thunder, puddles at 50% of the sites"
     );
 
-    await userEvent.click(getByRole("button", { name: "Back to the settings for the puddles" }));
+    await userEvent.click(getByRole("button", { name: "Reset to the preset" }));
 
     expect(view.features.rain).toEqual({});
   });

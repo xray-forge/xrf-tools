@@ -27,7 +27,7 @@ describe("LevelGlassSettings", () => {
     expect(view.features.glass).toEqual({ mode: ERenderGlassMode.ENHANCED });
     expect(getByRole("slider", { name: "Refraction" })).toHaveAttribute("aria-valuetext", "1.00");
 
-    await userEvent.click(getByRole("button", { name: "Back to the settings for the glass" }));
+    await userEvent.click(getByRole("button", { name: "Reset the glass to the preset" }));
 
     expect(view.features.glass).toEqual({});
     expect(queryByRole("slider", { name: "Refraction" })).toBeNull();

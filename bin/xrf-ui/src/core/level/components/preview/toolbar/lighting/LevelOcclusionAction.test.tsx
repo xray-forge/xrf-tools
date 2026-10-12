@@ -51,8 +51,8 @@ describe("LevelOcclusionAction", () => {
       view.setHemiStrength(0.5);
     });
 
-    await userEvent.click(getByRole("button", { name: "Back to the settings" }));
-    await userEvent.click(getByRole("button", { name: "Back to the whole occlusion" }));
+    await userEvent.click(getByRole("button", { name: "Reset the ambient occlusion to the preset" }));
+    await userEvent.click(getByRole("button", { name: "Reset to the game's" }));
 
     expect(view.features.ambientOcclusion).toEqual({});
     expect(view.hemiStrength).toBe(1);
@@ -103,7 +103,7 @@ describe("LevelOcclusionAction", () => {
       "GTAO occlusion over 1.00 m, high quality, indirect light, baked at 100%"
     );
 
-    await userEvent.click(getByRole("button", { name: "Back to the settings for the indirect light" }));
+    await userEvent.click(getByRole("button", { name: "Reset the indirect light to the preset" }));
 
     expect(view.features.indirectLight).toEqual({});
   });

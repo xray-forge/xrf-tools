@@ -2,6 +2,7 @@ import { Button, Typography } from "@mui/material";
 import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
+import { LEVEL_WEATHER_NOON } from "@/core/level/lib/weather/level-weather-control";
 import { ILevelWeatherSeed } from "@/core/level/lib/weather/level-weather-seed";
 import { formatLevelWeatherTime } from "@/core/level/lib/weather/level-weather-time";
 import { cn } from "@/core/theme/class-name";
@@ -31,12 +32,12 @@ export function LevelWeatherSeedNote({
       <Typography className={"min-w-0 wrap-anywhere text-text-secondary"} variant={"caption"}>
         {seed
           ? `Seeded from ${seed.cycle} at ${formatLevelWeatherTime(seed.time)}`
-          : "Seeded from default_clear's noon"}
+          : `Seeded from default_clear at ${formatLevelWeatherTime(LEVEL_WEATHER_NOON)}`}
       </Typography>
 
       {isPlayable ? (
         <Button size={"small"} onClick={onBack}>
-          Back to weather
+          Play the weather
         </Button>
       ) : null}
     </div>

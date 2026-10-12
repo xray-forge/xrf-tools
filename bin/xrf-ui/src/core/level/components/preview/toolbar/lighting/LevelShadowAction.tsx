@@ -175,7 +175,7 @@ export function LevelShadowAction({
       ) : null}
 
       <Button size={"small"} onClick={reset}>
-        Back to the settings
+        Reset to the preset
       </Button>
     </EditorPopoverToggle>
   );

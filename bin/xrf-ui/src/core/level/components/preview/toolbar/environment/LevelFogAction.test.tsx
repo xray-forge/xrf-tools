@@ -36,7 +36,7 @@ beforeEach(() => {
 describe("LevelFogAction", () => {
   it("edits a colour component as typed, once it is let go, leaving the others as held", async () => {
     const { getByRole, weather } = await renderOpenAction();
-    const green: HTMLElement = getByRole("textbox", { name: "fog_color green" });
+    const green: HTMLElement = getByRole("textbox", { name: "Fog colour green" });
 
     await userEvent.clear(green);
     await userEvent.type(green, "1.5");
@@ -50,7 +50,7 @@ describe("LevelFogAction", () => {
 
   it("drops a component typed as no number", async () => {
     const { getByRole, weather } = await renderOpenAction();
-    const red: HTMLElement = getByRole("textbox", { name: "fog_color red" });
+    const red: HTMLElement = getByRole("textbox", { name: "Fog colour red" });
 
     await userEvent.clear(red);
     await userEvent.type(red, "-{Enter}");
@@ -83,7 +83,7 @@ describe("LevelFogAction", () => {
     expect(getByRole("slider", { name: "Density" })).toHaveAttribute("aria-valuetext", "+40%");
     expect(getByRole("slider", { name: "Scattering" })).toHaveAttribute("aria-valuetext", "0%");
 
-    await userEvent.click(getByRole("button", { name: "Back to the settings for the fog" }));
+    await userEvent.click(getByRole("button", { name: "Reset to the preset" }));
 
     expect(view.features.fog).toEqual({});
   });

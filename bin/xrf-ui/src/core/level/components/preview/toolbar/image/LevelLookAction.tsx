@@ -328,7 +328,7 @@ export function LevelLookAction({
         )}
 
         <Button size={"small"} onClick={resetBloom}>
-          Back to the settings for the bloom
+          Reset to the preset
         </Button>
 
         {FIELD_GROUPS.filter((group) => !isEnhancedBloom || group.title !== BLOOM_GROUP).map((group) => (

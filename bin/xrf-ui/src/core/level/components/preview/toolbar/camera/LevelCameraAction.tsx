@@ -75,7 +75,7 @@ export function LevelCameraAction({
         />
 
         <Button size={"small"} onClick={() => viewService.setCameraOptions(DEFAULT_LEVEL_CAMERA_OPTIONS)}>
-          Back to the default camera
+          Reset the camera
         </Button>
       </div>
     </EditorPopoverAction>

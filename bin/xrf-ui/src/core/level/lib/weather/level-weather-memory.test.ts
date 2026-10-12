@@ -62,13 +62,23 @@ describe("level weather memory", () => {
     const memory: ILevelWeatherMemory = {
       ...MEMORY,
       manual: { ...DEFAULT_LEVEL_MANUAL_WEATHER, rainDensity: 0.4 },
-      seed: { cycle: "default_rain", time: 3_600 },
+      seed: { cycle: "default_rain", time: 3_600, weather: { ...DEFAULT_LEVEL_MANUAL_WEATHER, rainDensity: 0.8 } },
       source: ELevelWeatherSource.MANUAL,
     };
 
     writeLevelWeatherMemory("zaton", memory);
 
     expect(readLevelWeatherMemory("zaton")).toEqual(memory);
+  });
+
+  // A seed kept before it held its keyframe still says where it came from; a reset falls back to the default then.
+  it("reads a seed kept without its keyframe as one holding none", () => {
+    writeLevelWeatherMemory("zaton", {
+      ...MEMORY,
+      seed: { cycle: "default_rain", time: 3_600 } as unknown as ILevelWeatherMemory["seed"],
+    });
+
+    expect(readLevelWeatherMemory("zaton")?.seed).toEqual({ cycle: "default_rain", time: 3_600, weather: null });
   });
 
   it("forgets the least recently played levels past what storage is kept under", () => {

@@ -48,20 +48,24 @@ afterEach(() => {
 });
 
 describe("LevelSunAction", () => {
-  it("stands the sun where the level was compiled against, and sets its keys back to default_clear's noon", async () => {
+  it("stands the sun where the level was compiled against, and sets its keys back to the weather's", async () => {
     const rendered = await renderAction({ level: { sun: { color: [1, 1, 1], direction: { x: 0, y: -1, z: 1 } } } });
 
     act(() => rendered.weather.editManual({ sunAltitude: 10, sunLongitude: -80 }));
     await openSettings(rendered);
 
     expect(rendered.getByRole("dialog", { name: "Sun" }).textContent).toContain("80° up at a bearing of 10°");
+    // `sun_longitude` points the sun down as it grows: shown as an elevation, it reads negated.
+    expect(rendered.getByRole("slider", { name: "Elevation" })).toHaveAttribute("aria-valuetext", "80°");
+    expect(rendered.getByRole("slider", { name: "Bearing" })).toHaveAttribute("aria-valuetext", "10°");
+    expect(rendered.getByText("Elevation")).toHaveAttribute("title", "Weather key: sun_longitude");
 
     await userEvent.click(rendered.getByRole("button", { name: "Use the level's compiled sun" }));
 
     expect(rendered.weather.manual?.sunAltitude).toBeCloseTo(0);
     expect(rendered.weather.manual?.sunLongitude).toBeCloseTo(-45);
 
-    await userEvent.click(rendered.getByRole("button", { name: "Back to default_clear's noon" }));
+    await userEvent.click(rendered.getByRole("button", { name: "Reset to the weather" }));
 
     expect(rendered.weather.manual).toMatchObject({
       ambientColor: DEFAULT_LEVEL_MANUAL_WEATHER.ambientColor,
@@ -98,7 +102,7 @@ describe("LevelSunAction", () => {
     expect(rendered.view.options.isLensFlared).toBe(!DEFAULT_LEVEL_VIEW_OPTIONS.isLensFlared);
     expect(rendered.view.options.isSunShafted).toBe(!DEFAULT_LEVEL_VIEW_OPTIONS.isSunShafted);
 
-    await userEvent.click(rendered.getByRole("combobox", { name: "sun" }));
+    await userEvent.click(rendered.getByRole("combobox", { name: "Flare set" }));
     await userEvent.click(await rendered.findByRole("option", { name: "moon_halo_full" }));
 
     expect(rendered.weather.manual?.sun).toBe("moon_halo_full");

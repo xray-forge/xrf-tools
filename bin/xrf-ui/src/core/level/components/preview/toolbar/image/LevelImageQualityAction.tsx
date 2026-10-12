@@ -286,7 +286,7 @@ export function LevelImageQualityAction({
           })
         }
       >
-        Back to the settings
+        Reset to the preset
       </Button>
     </EditorPopoverToggle>
   );

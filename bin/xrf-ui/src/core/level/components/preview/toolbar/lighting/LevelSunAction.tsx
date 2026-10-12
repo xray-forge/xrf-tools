@@ -101,7 +101,7 @@ export function LevelSunAction({
         />
 
         <Typography className={"block text-text-secondary"} variant={"caption"}>
-          {`setHP stands it ${reading}.`}
+          {`The sun stands ${reading}.`}
         </Typography>
 
         <LevelManualWeatherVectorField
@@ -172,7 +172,7 @@ export function LevelSunAction({
           onChange={(minimum: number) => weatherService.setSunShafts({ ...sunShafts, minimum })}
         />
 
-        <LevelWeatherResetButton keys={LEVEL_MANUAL_WEATHER_SUN_KEYS} onEdit={weatherService.editManual} />
+        <LevelWeatherResetButton keys={LEVEL_MANUAL_WEATHER_SUN_KEYS} onReset={weatherService.resetManual} />
 
         <LevelVolumetricSettings className={"flex flex-col gap-2"} />
       </div>

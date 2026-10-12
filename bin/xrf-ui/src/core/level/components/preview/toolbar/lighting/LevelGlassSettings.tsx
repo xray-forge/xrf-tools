@@ -51,8 +51,8 @@ export function LevelGlassSettings({
         />
       ) : null}
 
-      <Button size={"small"} onClick={reset}>
-        Back to the settings for the glass
+      <Button size={"small"} aria-label={"Reset the glass to the preset"} onClick={reset}>
+        Reset to the preset
       </Button>
     </div>
   );

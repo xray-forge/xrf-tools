@@ -127,7 +127,7 @@ export function toLevelWeatherMemory(stored: unknown): Nullable<ILevelWeatherMem
 
 function toSeed(stored: unknown): Nullable<ILevelWeatherSeed> {
   return isRecord(stored) && typeof stored.cycle === "string" && typeof stored.time === "number"
-    ? { cycle: stored.cycle, time: stored.time }
+    ? { cycle: stored.cycle, time: stored.time, weather: readLevelManualWeather(stored.weather) }
     : null;
 }
 

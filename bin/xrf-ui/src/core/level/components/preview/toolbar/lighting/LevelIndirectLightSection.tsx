@@ -61,8 +61,8 @@ export function LevelIndirectLightSection({
         </>
       ) : null}
 
-      <Button size={"small"} onClick={reset}>
-        Back to the settings for the indirect light
+      <Button size={"small"} aria-label={"Reset the indirect light to the preset"} onClick={reset}>
+        Reset to the preset
       </Button>
     </EditorPopoverGroupSection>
   );

@@ -70,7 +70,7 @@ export function LevelVolumetricSettings({
       ) : null}
 
       <Button size={"small"} onClick={reset}>
-        Back to the settings for the volumetric lighting
+        Reset to the preset
       </Button>
     </div>
   );
