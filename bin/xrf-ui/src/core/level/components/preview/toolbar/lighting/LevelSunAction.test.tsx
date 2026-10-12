@@ -6,7 +6,6 @@ import { ERenderSunShaftsQuality } from "@/core/ipc/types/xrf-renderer";
 import { LevelSunAction } from "@/core/level/components/preview/toolbar/lighting/LevelSunAction";
 import { DEFAULT_LEVEL_VIEW_OPTIONS } from "@/core/level/lib/view/level-view-options";
 import { DEFAULT_LEVEL_MANUAL_WEATHER } from "@/core/level/lib/weather/level-manual-weather";
-import { DEFAULT_RENDER_VOLUMETRIC_SETTINGS } from "@/core/render/lib/settings/render-feature-defaults";
 import { clearLocalStorage } from "@/core/storage";
 import { resetMockInvoke } from "@/fixtures/mocks/tauri.mocks";
 import {
@@ -21,12 +20,10 @@ import {
 
 /**
  * @param opening - The level and weather to open; none unless given.
- * @returns The sun's action and the services behind it, no volumetric lighting drawn.
+ * @returns The sun's action and the services behind it.
  */
 async function renderAction(opening?: ILevelViewOpening): Promise<TLevelViewRenderResult> {
   const descriptor: ILevelViewContainerDescriptor = mockLevelViewContainer();
-
-  descriptor.renderSettings.setRendererOverrides({ volumetric: DEFAULT_RENDER_VOLUMETRIC_SETTINGS });
 
   return opening
     ? renderOpenLevelView(<LevelSunAction />, descriptor, opening)
@@ -117,6 +114,4 @@ describe("LevelSunAction", () => {
     expect(rendered.weather.sunShafts).toEqual({ minimum: 0, quality: ERenderSunShaftsQuality.LOW });
     expect(rendered.getByRole("slider", { name: "Minimum" })).toHaveAttribute("aria-valuemax", "0.5");
   });
-
-  // The froxel volume replaces the sun's shafts while enhanced, so its settings sit beside them.
 });
