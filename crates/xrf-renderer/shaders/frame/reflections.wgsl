@@ -1037,6 +1037,23 @@ fn guided_upsample(pixel: vec2<f32>, normal: vec3<f32>, distance: f32, roughness
   return sum / weights;
 }
 
+// Whether any of the four traced pixels about a frame pixel holds a reflection; over a dry frame none does, and the
+// pixel is untraced before anything else is read for it.
+fn is_any_traced(pixel: vec2<f32>) -> bool {
+  let last: vec2<f32> = vec2<f32>(textureDimensions(resolved)) - 1.0;
+  let base: vec2<f32> = floor(pixel / reflection.ratio);
+
+  for (var corner: u32 = 0u; corner < 4u; corner++) {
+    let offset: vec2<f32> = vec2<f32>(f32(corner & 1u), f32(corner >> 1u));
+
+    if (textureLoad(resolved, vec2<i32>(clamp(base + offset, vec2<f32>(0.0), last)), 0).a >= 0.0) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 // The full-size history's share of this frame's reflection a frame where it holds, and how far, a share of the
 // distance, the point it held may stand from where this frame shows it before it is dropped: four frames bring each
 // cell of a block its own ray, so the history keeps about as many.
@@ -1058,18 +1075,20 @@ fn fs_upscale(in: FullscreenVarying) -> @location(0) vec4<f32> {
     return UNTRACED;
   }
 
-  let normal: vec3<f32> = normalize(octahedral_decode(textureLoad(normal_target, texel, 0).xy));
   let position: vec3<f32> = camera_view_position(in.clip.xy, depth);
   let distance: f32 = -position.z;
-  let wet: vec4<f32> = textureLoad(wet_surface, texel, 0);
-  let roughness: f32 = traced_roughness(textureLoad(albedo_target, texel, 0).a,
-    wet.a + surface_variance(normal_target, depth_target, texel, wet.g));
   // At the frame's own size the resolve already holds the pixel: read, not upsampled.
   var current: vec4<f32>;
 
   if (reflection.ratio <= 1.0) {
     current = textureLoad(resolved, min(texel, vec2<i32>(textureDimensions(resolved)) - 1), 0);
+  } else if (!is_any_traced(pixel)) {
+    return UNTRACED;
   } else {
+    let wet: vec4<f32> = textureLoad(wet_surface, texel, 0);
+    let roughness: f32 = traced_roughness(textureLoad(albedo_target, texel, 0).a,
+      wet.a + surface_variance(normal_target, depth_target, texel, wet.g));
+
     current = guided_upsample(pixel, traced_geometry(texel).normal, distance, roughness);
   }
 

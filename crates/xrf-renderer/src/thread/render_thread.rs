@@ -971,7 +971,7 @@ impl RenderThread {
             Some(ComposedView {
               binding: viewport.binding.as_ref()?,
               present: output.map(|output| PresentParameters {
-                scene: output.targets.scene,
+                scene: output.scene,
                 distortion: output.targets.distortion,
                 depth_target: output.targets.depth,
                 albedo_target: output.targets.albedo,

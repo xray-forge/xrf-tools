@@ -226,12 +226,16 @@ fn fs_present(in: FullscreenVarying) -> @location(0) vec4<f32> {
   // a departure from the engine, whose water copies a railing standing in it into the water beside it.
   if (strength > 0.0) {
     let offset: vec2<f32> = (textureLoad(distortion, texel, 0).xy - NEUTRAL_DISTORTION) * strength;
-    let moved: vec2<f32> = clamp(pixel + offset * present.size, vec2<f32>(0.0), present.size - 1.0);
-    let here: f32 = view_distance(texel);
-    let there: f32 = view_distance(drawn_texel(moved));
 
-    if (there >= here - max(NEARER_MARGIN, here * NEARER_SHARE)) {
-      read = moved;
+    // A pixel nothing moves reads itself, with no depths to compare.
+    if (any(offset != vec2<f32>(0.0))) {
+      let moved: vec2<f32> = clamp(pixel + offset * present.size, vec2<f32>(0.0), present.size - 1.0);
+      let here: f32 = view_distance(texel);
+      let there: f32 = view_distance(drawn_texel(moved));
+
+      if (there >= here - max(NEARER_MARGIN, here * NEARER_SHARE)) {
+        read = moved;
+      }
     }
   }
 
