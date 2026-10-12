@@ -41,6 +41,9 @@ struct Camera {
   parallax: vec4<f32>,
   parallax_light: vec4<f32>,
   parallax_mix: vec4<f32>,
+  // x: one where the scene holds linear light at its exposure, which the window pass tonemaps; zero where every pass
+  // writes tonemapped colour, as the engine's do.
+  output: vec4<f32>,
 };
 
 @group(0) @binding(0) var<uniform> camera: Camera;

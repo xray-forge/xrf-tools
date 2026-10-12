@@ -1,6 +1,7 @@
 enable dual_source_blending;
 
 #import "static/gbuffer"
+#import "common/scene_light"
 #import "common/hmodel"
 #import "common/sky_box"
 #import "common/sun_shadow"
@@ -206,10 +207,10 @@ fn composite(flags: u32, texel: vec3<f32>, alpha: f32, laid: vec3<f32>, fog: f32
   } else if ((flags & SURFACE_IS_ADDED) != 0u) {
     let weight: f32 = select(1.0, alpha, (flags & SURFACE_IS_WEIGHTED) != 0u);
 
-    out.color = vec4<f32>(texel * weight * (1.0 - fog), 0.0);
+    out.color = vec4<f32>(scene_from_shown(texel * weight * (1.0 - fog)), 0.0);
     out.behind = vec4<f32>(1.0);
   } else {
-    out.color = vec4<f32>(laid * alpha, 0.0);
+    out.color = vec4<f32>(scene_from_shown(laid) * alpha, 0.0);
     out.behind = vec4<f32>(vec3<f32>(1.0 - alpha), 1.0);
   }
 

@@ -38,6 +38,20 @@ fn to_rgb(ycocg: vec3<f32>) -> vec3<f32> {
   return vec3<f32>(ycocg.x + ycocg.y - ycocg.z, ycocg.x + ycocg.z, ycocg.x - ycocg.y - ycocg.z);
 }
 
+// `Tonemap` and `InverseTonemap`: the reversible tonemap the HDR option accumulates through, by the largest channel.
+fn tonemapped(rgb: vec3<f32>) -> vec3<f32> {
+  return rgb / (max(max(rgb.x, max(rgb.y, rgb.z)), 0.0) + 1.0);
+}
+
+fn inverse_tonemapped(rgb: vec3<f32>) -> vec3<f32> {
+  return rgb / max(FSR2_EPSILON, 1.0 - max(rgb.x, max(rgb.y, rgb.z)));
+}
+
+// Whether the colour is linear light past the display's range: `FFX_FSR2_OPTION_HDR_COLOR_INPUT`.
+fn is_hdr() -> bool {
+  return fsr.hdr.x > 0.5;
+}
+
 fn to_luma(rgb: vec3<f32>) -> f32 {
   return dot(rgb, vec3<f32>(0.2126, 0.7152, 0.0722));
 }

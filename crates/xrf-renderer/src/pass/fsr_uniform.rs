@@ -19,6 +19,8 @@ pub struct FsrUniform {
   pub jitter_phase_count: f32,
   /// Zero on the first frame after a reset.
   pub frame_index: f32,
+  /// One where the colour is linear light past the display's range: `FFX_FSR2_OPTION_HDR_COLOR_INPUT`.
+  pub hdr: Vec4,
 }
 
 impl FsrUniform {
@@ -50,6 +52,15 @@ impl FsrUniform {
       luma_mip_size: Vec2::new(luma_mip.0 as f32, luma_mip.1 as f32),
       jitter_phase_count: phases as f32,
       frame_index: frame_index as f32,
+      hdr: Vec4::ZERO,
+    }
+  }
+
+  /// The same over colour of linear light (`is_hdr`), which it accumulates through its reversible tonemap.
+  pub fn with_hdr(self, is_hdr: bool) -> Self {
+    Self {
+      hdr: Vec4::new(f32::from(u8::from(is_hdr)), 0.0, 0.0, 0.0),
+      ..self
     }
   }
 }

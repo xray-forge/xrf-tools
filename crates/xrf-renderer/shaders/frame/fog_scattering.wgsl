@@ -1,4 +1,5 @@
 #import "common/camera"
+#import "common/scene_light"
 #import "common/fullscreen"
 #import "common/lighting"
 #import "common/debanding"
@@ -52,12 +53,13 @@ fn fs_scatter_blur(in: FullscreenVarying) -> @location(0) vec4<f32> {
 @fragment
 fn fs_scattering(in: FullscreenVarying) -> @location(0) vec4<f32> {
   let texel: vec2<i32> = vec2<i32>(in.clip.xy);
-  let image: vec3<f32> = textureLoad(source, texel, 0).rgb;
+  let held: vec3<f32> = textureLoad(source, texel, 0).rgb;
+  let image: vec3<f32> = scene_shown(held);
   let depth: f32 = textureLoad(depth_target, texel, 0);
 
   // Where nothing was drawn, the fog the engine measures lies at the eye: none.
   if (depth <= 0.0) {
-    return vec4<f32>(image, 1.0);
+    return vec4<f32>(held, 1.0);
   }
 
   let position: vec3<f32> = camera_view_position(in.clip.xy, depth);
@@ -65,12 +67,12 @@ fn fs_scattering(in: FullscreenVarying) -> @location(0) vec4<f32> {
   let fog: f32 = fog_amount_at(lighting, position, height);
   let uv: vec2<f32> = in.clip.xy / scattering.size;
   let read: vec3<f32> = textureSampleLevel(blurred, source_sampler, uv, 0.0).rgb;
-  let blur: vec3<f32> = debanded(blurred, source_sampler, read, uv, 1.0 / scattering.size, SCATTER_DEBAND_PASSES,
-    SCATTER_DEBAND_RADIUS, scattering.time);
+  let blur: vec3<f32> = scene_shown(debanded(blurred, source_sampler, read, uv, 1.0 / scattering.size,
+    SCATTER_DEBAND_PASSES, SCATTER_DEBAND_RADIUS, scattering.time));
   let alike: f32 = dot(blur, saturate(image));
   let share: f32 = fog * fog * alike * alike;
   let scattered: vec3<f32> = mix(image, max(image, blur),
     smoothstep(0.1, 1.0 - scattering.intensity * 0.8, share));
 
-  return vec4<f32>(scattered, 1.0);
+  return vec4<f32>(scene_from_shown(scattered), 1.0);
 }

@@ -1,4 +1,5 @@
 #import "common/camera"
+#import "common/scene_light"
 
 // The bolt striking, as `dxThunderboltRender` draws it over the finished scene and tested against its depth: its model
 // placed by the strike, its coordinates shifted down by it, and its two glows facing the view, each composited as its
@@ -64,5 +65,7 @@ fn vs_glow_center(@builtin(vertex_index) vertex_index: u32) -> ThunderVarying {
 
 @fragment
 fn fs_thunder(in: ThunderVarying) -> @location(0) vec4<f32> {
-  return textureSample(thunder_texture, thunder_sampler, in.uv) * in.opacity;
+  let drawn: vec4<f32> = textureSample(thunder_texture, thunder_sampler, in.uv) * in.opacity;
+
+  return vec4<f32>(scene_from_shown(drawn.rgb), drawn.a);
 }

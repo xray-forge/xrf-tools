@@ -1,4 +1,5 @@
 #import "common/water_surface"
+#import "common/scene_light"
 #import "common/water_enhanced"
 #import "generated/static/water_enhanced"
 
@@ -280,7 +281,7 @@ fn fs_water_enhanced(in: WaterVarying) -> WaterOutput {
   let moved_behind: f32 = select(-camera_view_position(moved, moved_stored).z, FAR_BEHIND, moved_stored <= 0.0);
   // A read nearer than the water would copy what stands over it into it, and the sky is refused as well.
   let refracted: vec2<f32> = select(pixel, moved, moved_stored > 0.0 && moved_behind > -fragment.position.z);
-  let screen: vec3<f32> = textureLoad(water_scene, vec2<i32>(refracted), 0).rgb;
+  let screen: vec3<f32> = scene_shown(textureLoad(water_scene, vec2<i32>(refracted), 0).rgb);
   // How deep the water stands over its bottom, straight down.
   let water_depth: f32 = in.world.y - bottom.y;
   // How much water the eye looks through to the bottom, never less than straight down: shallow water seen at a slant
@@ -319,7 +320,7 @@ fn fs_water_enhanced(in: WaterVarying) -> WaterOutput {
   var out: WaterOutput;
 
   out.color = vec4<f32>(
-    select(fragment.base.rgb, shown, lighting.params.y > 0.5),
+    scene_from_shown(select(fragment.base.rgb, shown, lighting.params.y > 0.5)),
     saturate(water_depth * SHORE_FADE),
   );
   out.distortion = write_distortion(fragment, water);

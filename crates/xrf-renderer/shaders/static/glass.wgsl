@@ -1,4 +1,5 @@
 #import "static/gbuffer"
+#import "common/scene_light"
 #import "common/hmodel"
 #import "common/sky_box"
 #import "common/sun_shadow"
@@ -58,7 +59,7 @@ fn behind(uv: vec2<f32>, fallback: vec2<f32>, pane: f32) -> vec3<f32> {
   // Depth is reversed: the larger stands nearer.
   let is_nearer: bool = textureLoad(depth_target, texel, 0) > pane;
 
-  return textureSampleLevel(glass_scene, scene_sampler, select(uv, fallback, is_nearer), 0.0).rgb;
+  return scene_shown(textureSampleLevel(glass_scene, scene_sampler, select(uv, fallback, is_nearer), 0.0).rgb);
 }
 
 // The light a pane's dirt is lit by, as the forward passes light a surface: the ambient, the hemisphere as open as the
@@ -138,5 +139,5 @@ fn fs_glass(in: GBufferVarying) -> @location(0) vec4<f32> {
   let laid: vec3<f32> = reflection * fresnel * (1.0 - dirt) + dirt_lit * dirt + highlight * (1.0 - dirt);
   let covered: f32 = 1.0 - through;
 
-  return vec4<f32>(transmitted * through + mix(laid, lighting.fog_color.rgb * covered, fog), 1.0);
+  return vec4<f32>(scene_from_shown(transmitted * through + mix(laid, lighting.fog_color.rgb * covered, fog)), 1.0);
 }

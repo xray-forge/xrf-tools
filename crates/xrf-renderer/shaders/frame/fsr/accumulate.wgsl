@@ -229,7 +229,8 @@ fn fs_accumulate(in: FullscreenVarying) -> AccumulateOutput {
   let weight: f32 = gathered.weight;
 
   // `ComputeLumaInstabilityFactor`.
-  let frame_luma: f32 = round(box.centre.x * 255.0) / 255.0;
+  let centre_luma: f32 = select(box.centre.x, box.centre.x / (1.0 + max(0.0, box.centre.x)), is_hdr());
+  let frame_luma: f32 = round(centre_luma * 255.0) / 255.0;
   let is_luma_sampled: bool = max(max(depth_clip, accumulation_mask), luminance_diff) < 0.1 && !is_new;
   let lumas: vec4<f32> = select(vec4<f32>(0.0), textureSampleLevel(luma_history, linear_sampler, reprojected, 0.0),
     is_luma_sampled);
@@ -275,10 +276,17 @@ fn fs_accumulate(in: FullscreenVarying) -> AccumulateOutput {
       accumulation = mix(min(accumulation, 0.1), accumulation, contribution);
     }
 
-    // `Accumulate`, for colour in the display's range: no tonemap around the blend.
+    // `Accumulate`: over linear light, both blended through the reversible tonemap and the result taken back out of it.
     let total: f32 = max(FSR2_EPSILON, accumulation + weight);
 
-    resolved = to_rgb(mix(previous_color, gathered.color, weight / total));
+    if (is_hdr()) {
+      let history: vec3<f32> = to_ycocg(tonemapped(to_rgb(previous_color)));
+      let current: vec3<f32> = to_ycocg(tonemapped(to_rgb(gathered.color)));
+
+      resolved = inverse_tonemapped(to_rgb(mix(history, current, weight / total)));
+    } else {
+      resolved = to_rgb(mix(previous_color, gathered.color, weight / total));
+    }
   }
 
   // `FinalizeLockStatus`: a lock whose surface leaves the screen next frame dies; else it wears down by this frame's

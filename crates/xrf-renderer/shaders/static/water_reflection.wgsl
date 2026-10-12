@@ -1,4 +1,5 @@
 #import "common/water_surface"
+#import "common/scene_light"
 #import "common/water_enhanced"
 #import "common/trace_requests"
 #import "generated/static/water_reflection"
@@ -309,7 +310,7 @@ fn fs_water_reflection(in: WaterVarying) -> @location(0) vec4<f32> {
   var share: f32 = 0.0;
 
   if (screen_share > 0.0) {
-    scene = textureLoad(water_scene, vec2<i32>(clamp(floor(hit.xy * size), vec2<f32>(0.0), size - 1.0)), 0).rgb;
+    scene = scene_shown(textureLoad(water_scene, vec2<i32>(clamp(floor(hit.xy * size), vec2<f32>(0.0), size - 1.0)), 0).rgb);
     share = screen_share *
       (1.0 - saturate((length(vec3<f32>(position.xy, hit.z)) * lighting.fog.y + lighting.fog.x) * 1.4));
   }

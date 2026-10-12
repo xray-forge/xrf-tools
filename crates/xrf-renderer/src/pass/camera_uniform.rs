@@ -49,6 +49,9 @@ pub struct CameraUniform {
   pub parallax: Vec4,
   pub parallax_light: Vec4,
   pub parallax_mix: Vec4,
+  /// One where the scene holds linear light at its exposure, which the window pass tonemaps; zero where every pass
+  /// writes tonemapped colour, as the engine's do.
+  pub output: Vec4,
 }
 
 /// Rows of the camera's selection runs, two runs each.
@@ -80,6 +83,7 @@ impl CameraUniform {
       parallax: Vec4::ZERO,
       parallax_light: Vec4::ZERO,
       parallax_mix: Vec4::ZERO,
+      output: Vec4::ZERO,
     }
   }
 
@@ -153,6 +157,12 @@ impl CameraUniform {
   /// The same camera drawing an untextured surface as clay, or as its shader's tint.
   pub fn with_surface_color(mut self, color: RenderSurfaceColor) -> Self {
     self.modes.w = f32::from(u8::from(color == RenderSurfaceColor::Clay));
+    self
+  }
+
+  /// The same camera over a scene holding linear light (`is_linear`), or tonemapped colour.
+  pub fn with_linear_scene(mut self, is_linear: bool) -> Self {
+    self.output.x = f32::from(u8::from(is_linear));
     self
   }
 

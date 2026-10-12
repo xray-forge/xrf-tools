@@ -124,6 +124,7 @@ pub(crate) mod sky_prefilter_pass;
 pub(crate) mod sky_prefilter_uniform;
 pub(crate) mod smaa_parameters;
 pub(crate) mod smaa_pass;
+pub(crate) mod smoothing_uniform;
 pub(crate) mod static_cull_parameters;
 pub(crate) mod static_cull_params;
 pub(crate) mod static_cull_pass;

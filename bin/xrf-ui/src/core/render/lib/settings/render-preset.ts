@@ -13,6 +13,7 @@ import {
   ERenderRainMode,
   ERenderReflectionMode,
   ERenderTextureFiltering,
+  ERenderTonemapMode,
   ERenderVolumetricMode,
   ERenderWaterMode,
 } from "@/core/ipc/types/xrf-renderer";
@@ -109,6 +110,9 @@ export const RENDER_PRESETS: Readonly<Record<ERenderPreset, IRenderFeatureSettin
     textureFiltering: ERenderTextureFiltering.ANISOTROPIC16,
     // The engine's full quality, `texture_lod 0`, as Anomaly's extreme preset sets it.
     textureLod: 0,
+    // The application's own choice over the engine's, as the antialiasing is: the scene held as linear light and
+    // tonemapped once at the viewport's size, as an upscaler wants it.
+    tonemap: ERenderTonemapMode.ENHANCED,
     upscaling: DEFAULT_RENDER_UPSCALING_SETTINGS,
     // The application's own choice over the engine's, as the antialiasing is: the sun and every lamp scattered in one
     // froxel volume, in the engine's shafts' place.
@@ -137,6 +141,7 @@ export const RENDER_PRESETS: Readonly<Record<ERenderPreset, IRenderFeatureSettin
     textureFiltering: ERenderTextureFiltering.ANISOTROPIC16,
     // The engine's full quality, `texture_lod 0`, as Anomaly's extreme preset sets it.
     textureLod: 0,
+    tonemap: ERenderTonemapMode.ENGINE,
     upscaling: DEFAULT_RENDER_UPSCALING_SETTINGS,
     volumetric: DEFAULT_RENDER_VOLUMETRIC_SETTINGS,
     water: DEFAULT_RENDER_WATER_SETTINGS,

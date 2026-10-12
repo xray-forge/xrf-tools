@@ -28,6 +28,10 @@ struct Glass {
   refraction: f32,
 }
 
+struct Smoothing {
+  linear: f32,
+}
+
 struct Froxels {
   size: vec4<f32>,
   params: vec4<f32>,
@@ -120,11 +124,13 @@ struct Present {
   is_reflected: u32,
   reflection_ratio: f32,
   deband: vec4<f32>,
+  tonemap: vec4<f32>,
 }
 
 struct Upscale {
   output_size: vec2<f32>,
   sharpness: f32,
+  linear: f32,
 }
 
 struct Bloom {
@@ -342,6 +348,7 @@ struct Fsr {
   luma_mip_size: vec2<f32>,
   jitter_phase_count: f32,
   frame_index: f32,
+  hdr: vec4<f32>,
 }
 
 struct Cluster {

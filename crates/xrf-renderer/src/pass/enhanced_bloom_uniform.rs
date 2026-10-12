@@ -12,7 +12,7 @@ pub struct EnhancedBloomUniform {
   /// The target the stage draws into, then the frame, in texels.
   pub size: Vec4,
   /// A blur's way, one target's texel along it; then how many target texels apart a halving's or a doubling's reads
-  /// spread.
+  /// spread; and one where the stage reads the scene as it is held, which it takes as the colour it is shown.
   pub spread: Vec4,
   /// The threshold, the exposure, the sky's share and the vibrance.
   pub strengths: Vec4,
@@ -42,6 +42,12 @@ impl EnhancedBloomUniform {
         settings.vibrance.max(0.0),
       ),
     }
+  }
+
+  /// The same, reading the scene as it is held.
+  pub fn reading_scene(mut self) -> Self {
+    self.spread.w = 1.0;
+    self
   }
 
   /// The same, blurring along `x` or `y` by a target's texel.

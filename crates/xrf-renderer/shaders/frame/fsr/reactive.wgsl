@@ -12,11 +12,6 @@ const REACTIVE_THRESHOLD: f32 = 0.2;
 // How reactive a texel past the threshold counts.
 const REACTIVE_VALUE: f32 = 0.9;
 
-// `Tonemap`.
-fn tonemapped(rgb: vec3<f32>) -> vec3<f32> {
-  return rgb / (max(max(rgb.x, max(rgb.y, rgb.z)), 0.0) + 1.0);
-}
-
 @fragment
 fn fs_reactive(in: FullscreenVarying) -> @location(0) vec4<f32> {
   let texel: vec2<i32> = clamped_texel(floor(in.clip.xy), fsr.render_size);

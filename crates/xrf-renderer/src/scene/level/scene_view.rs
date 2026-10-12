@@ -516,12 +516,15 @@ impl SceneView {
           .map(|targets| (targets.width, targets.height)),
         output,
       ),
-      options.output.upscaling,
+      (options.output.upscaling, options.is_scene_linear()),
     );
     self.features.smoothing.prepare(
       passes,
       options.features.antialiasing,
-      self.state.targets.is_some() && self.info.debug_view == RenderDebugView::Final,
+      (
+        self.state.targets.is_some() && self.info.debug_view == RenderDebugView::Final,
+        options.is_scene_linear(),
+      ),
     );
     self.info.lights_settings = options.features.lights;
 
@@ -1070,7 +1073,8 @@ impl SceneView {
       present.with_enhanced_bloom()
     } else {
       present
-    };
+    }
+    .with_linear_scene(options.is_scene_linear());
 
     self.info.present = match self.info.debanding {
       Some(quality) => present.with_debanding(quality.get_passes(), options.features.debanding.radius, time),
@@ -1847,7 +1851,7 @@ impl SceneView {
         .add_engine_passes((&mut *graph, runtime), passes, handles);
 
       frame = scene_view.features.smoothing.add_passes(
-        (&mut *graph, &mut *bindings),
+        (&mut *graph, &mut *bindings, runtime),
         passes,
         (frame, (targets.width, targets.height)),
       );

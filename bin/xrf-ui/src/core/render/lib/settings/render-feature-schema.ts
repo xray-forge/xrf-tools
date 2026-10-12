@@ -19,6 +19,7 @@ import {
   ERenderReflectionTraceQuality,
   ERenderScale,
   ERenderTextureFiltering,
+  ERenderTonemapMode,
   ERenderVolumetricMode,
   ERenderWaterMode,
 } from "@/core/ipc/types/xrf-renderer";
@@ -211,6 +212,7 @@ export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings>
   },
   textureFiltering: toChoice(ERenderTextureFiltering),
   textureLod: toNumber(0, 4, true),
+  tonemap: toChoice(ERenderTonemapMode),
   upscaling: {
     scale: toChoice(ERenderScale),
     sharpening: toNumber(0, 1),

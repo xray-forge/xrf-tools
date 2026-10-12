@@ -1,4 +1,5 @@
 #import "common/camera"
+#import "common/scene_light"
 #import "common/rain_cover"
 
 // The rain `dxRainRender` draws, over the finished scene and tested against its depth: every streak a quad and every
@@ -153,7 +154,7 @@ fn vs_splash(@builtin(vertex_index) vertex_index: u32) -> RainVarying {
 
 // `effects\rain` over `stub_default`: the texture times the rain's colour, by its alpha, unlit and past the tonemap.
 fn shade(texel: vec4<f32>) -> vec4<f32> {
-  return vec4<f32>(texel.rgb * rain.color.rgb, texel.a * rain.color.a);
+  return vec4<f32>(scene_from_shown(texel.rgb * rain.color.rgb), texel.a * rain.color.a);
 }
 
 @fragment

@@ -24,8 +24,19 @@ const O: u32 = 11u;
 // `FSR_RCAS_LIMIT`: the most negative lobe, so the sharpened pixel never rings past its neighbours.
 const RCAS_LIMIT: f32 = 0.25 - 1.0 / 16.0;
 
+// A texel of the frame as both stages work on it: as it is, or, where the frame holds linear light, its reversible
+// tonemap, `c / (1 + max(c))`, the range both are made for.
 fn load_clamped(at: vec2<f32>, size: vec2<f32>) -> vec3<f32> {
-  return textureLoad(source, vec2<i32>(clamp(at, vec2<f32>(0.0), size - 1.0)), 0).rgb;
+  let color: vec3<f32> = textureLoad(source, vec2<i32>(clamp(at, vec2<f32>(0.0), size - 1.0)), 0).rgb;
+
+  return select(color, color / (1.0 + max(color.r, max(color.g, color.b))), upscale.linear > 0.5);
+}
+
+// A result back from the reversible tonemap where the frame holds linear light: `c / (1 - max(c))`.
+fn stored(color: vec3<f32>) -> vec4<f32> {
+  let undone: vec3<f32> = color / max(1.0 - max(color.r, max(color.g, color.b)), 1e-4);
+
+  return vec4<f32>(select(color, undone, upscale.linear > 0.5), 1.0);
 }
 
 // Luma times two, in two multiply-adds.
@@ -123,7 +134,7 @@ fn fs_easu(in: FullscreenVarying) -> @location(0) vec4<f32> {
     weight += tap;
   }
 
-  return vec4<f32>(min(most, max(least, color / weight)), 1.0);
+  return stored(min(most, max(least, color / weight)));
 }
 
 // `FsrRcasF`: each pixel sharpened by a lobe over its four neighbours, as strong as its neighbourhood leaves room for
@@ -145,5 +156,5 @@ fn fs_rcas(in: FullscreenVarying) -> @location(0) vec4<f32> {
   let lobes: vec3<f32> = max(-hit_min, hit_max);
   let lobe: f32 = max(-RCAS_LIMIT, min(max(lobes.x, max(lobes.y, lobes.z)), 0.0)) * upscale.sharpness;
 
-  return vec4<f32>(((b + d + f + h) * lobe + e) / (lobe * 4.0 + 1.0), 1.0);
+  return stored(((b + d + f + h) * lobe + e) / (lobe * 4.0 + 1.0));
 }

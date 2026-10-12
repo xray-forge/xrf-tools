@@ -249,6 +249,12 @@ fn fs_present(in: FullscreenVarying) -> @location(0) vec4<f32> {
       u32(present.deband.x), present.deband.y, present.deband.z);
   }
 
+  // A scene of linear light at its exposure is tonemapped here, by the engine's curve, before everything the engine
+  // lays over its tonemapped frame.
+  if (present.tonemap.x > 0.5) {
+    color = tonemap(color, 1.0);
+  }
+
   // The enhanced bloom screened over the frame, `1 - (1 - img)(1 - bloom)`, before its corrections; where the
   // distortion blurs, the corrected frame then goes towards the bloom by the distortion's `z`, as the engine's does.
   if (present.is_bloomed == BLOOM_ENHANCED) {
