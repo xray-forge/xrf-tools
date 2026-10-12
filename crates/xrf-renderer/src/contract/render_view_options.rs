@@ -31,14 +31,14 @@ impl RenderViewOptions {
   }
 
   /// Whether the view inspects its surfaces rather than shows them: a wireframe, the asset checker, alpha hidden, or the
-  /// parallax, bumps or heights drawn for their debug views.
+  /// parallax, bumps, heights or sampled mip drawn for their debug views.
   pub fn is_inspecting_surfaces(&self) -> bool {
     self.mode.is_wireframe
       || self.asset.checker > 0.0
       || !self.show.is_alpha_visible
       || matches!(
         self.mode.debug_view,
-        RenderDebugView::Parallax | RenderDebugView::Bumps | RenderDebugView::Heights
+        RenderDebugView::Parallax | RenderDebugView::Bumps | RenderDebugView::Heights | RenderDebugView::SampledMip
       )
   }
 

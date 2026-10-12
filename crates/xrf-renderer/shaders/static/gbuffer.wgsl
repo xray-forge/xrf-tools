@@ -4,6 +4,7 @@ enable wgpu_binding_array;
 #import "common/relief"
 #import "common/cut_out"
 #import "common/octahedral"
+#import "common/debug_colours"
 #import "static/pulling"
 
 // Static draws into the G-buffer, pulled as `static/pulling` reads them.
@@ -467,18 +468,35 @@ fn surface_relief(in: GBufferVarying, at: Footprint, position: vec3<f32>, plane:
 // reach; every other surface a dim grey of its own brightness. The bumps view: a bumped surface's normal in its own tangent space as a normal map colours it,
 // lavender where flat, a terrain's by its four details' bumps; a surface without a bump red by its brightness. The
 // heights view: a terrain's details' heights weighed by its mask, and a steep surface's height, grey from black low to
-// white high; every other surface a dim blue of its own brightness.
+// white high; every other surface a dim blue of its own brightness. The sampled mip's view: the mip its base texture is
+// read at by its footprint, `mip_colour`'s, shaded by its own brightness; a surface without a base texture grey.
 fn surfaces_shown(in: GBufferVarying, at: Footprint, shaded: GBufferOutput) -> GBufferOutput {
   let is_parallax: bool = IS_INSPECTED && has_surfaces_bit(SURFACES_PARALLAX_SHOWN);
   let is_heights: bool = IS_INSPECTED && has_surfaces_bit(SURFACES_HEIGHTS_SHOWN);
+  let is_mip: bool = IS_INSPECTED && has_surfaces_bit(SURFACES_MIP_SHOWN);
 
-  if (!is_parallax && !is_heights && !(IS_INSPECTED && has_surfaces_bit(SURFACES_BUMPS_SHOWN))) {
+  if (!is_parallax && !is_heights && !is_mip && !(IS_INSPECTED && has_surfaces_bit(SURFACES_BUMPS_SHOWN))) {
     return shaded;
   }
 
   var out: GBufferOutput = shaded;
   let flags: u32 = surfaces[in.surface].flags;
   let brightness: f32 = dot(shaded.albedo.rgb, vec3<f32>(0.2126, 0.7152, 0.0722));
+
+  if (is_mip) {
+    var shown: vec3<f32> = vec3<f32>(0.25 + 0.25 * brightness);
+
+    if ((flags & SURFACE_HAS_BASE) != 0u) {
+      let size: vec2<f32> = vec2<f32>(textureDimensions(textures[surfaces[in.surface].textures[SLOT_BASE]], 0));
+      let texels: f32 = max(length(at.dx * size), length(at.dy * size));
+
+      shown = mip_colour(log2(max(texels, 1e-6))) * (0.6 + 0.4 * brightness);
+    }
+
+    out.albedo = vec4<f32>(shown, shaded.albedo.a);
+
+    return out;
+  }
 
   if (is_parallax) {
     let is_steep: bool = (has_surfaces_bit(SURFACES_STEEP) && (flags & SURFACE_IS_STEEP) != 0u) ||
@@ -973,6 +991,26 @@ fn fs_cut_out(in: GBufferVarying) -> GBufferOutput {
 }
 
 // A pick's texel: what was drawn, by its cluster and place, and its depth's bits.
+// What the overdraw's debug view adds into the light target for each surface drawn over a pixel.
+const OVERDRAW_LAYER: vec4<f32> = vec4<f32>(1.0, 0.0, 0.0, 0.0);
+
+@fragment
+fn fs_overdraw(in: GBufferVarying) -> @location(0) vec4<f32> {
+  return OVERDRAW_LAYER;
+}
+
+// A cut-out counts where its alpha keeps it, as it is drawn.
+@fragment
+fn fs_overdraw_cut_out(in: GBufferVarying) -> @location(0) vec4<f32> {
+  let at: Footprint = steep_footprint(in, take_footprint(in));
+
+  if (is_cut(in, base_texel(in, at), at)) {
+    discard;
+  }
+
+  return OVERDRAW_LAYER;
+}
+
 fn pick_texel(in: GBufferVarying) -> vec4<u32> {
   return vec4<u32>(1u, in.entry.x, in.entry.y, bitcast<u32>(in.clip.z));
 }

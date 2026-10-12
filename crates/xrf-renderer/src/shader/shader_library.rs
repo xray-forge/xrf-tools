@@ -47,6 +47,10 @@ const EMBEDDED: &[(&str, &str)] = &[
   ),
   ("common/cut_out", include_str!("../../shaders/common/cut_out.wgsl")),
   ("common/debanding", include_str!("../../shaders/common/debanding.wgsl")),
+  (
+    "common/debug_colours",
+    include_str!("../../shaders/common/debug_colours.wgsl"),
+  ),
   ("common/hmodel", include_str!("../../shaders/common/hmodel.wgsl")),
   ("common/lighting", include_str!("../../shaders/common/lighting.wgsl")),
   (

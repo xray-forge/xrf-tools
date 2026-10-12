@@ -21,6 +21,12 @@ export enum ELevelShading {
   BUMPS = "bumps",
   PARALLAX = "parallax",
   HEIGHTS = "heights",
+  SAMPLED_MIP = "sampledMip",
+  ALBEDO_RANGE = "albedoRange",
+  OVERDRAW = "overdraw",
+  CASCADES = "cascades",
+  LAMPS_PER_CLUSTER = "lampsPerCluster",
+  LUMINANCE = "luminance",
   HEMI = "hemi",
   SUN = "sun",
   MATERIAL = "material",
@@ -62,8 +68,8 @@ const FSR_SHADINGS: ReadonlySet<ELevelShading> = new Set([
 ]);
 
 /**
- * Every shading, in the order offered: the frame's three looks, the surfaces' targets, the light's, then what the
- * frame carries over from the last one.
+ * Every shading, in the order offered: the frame's three looks and its overdraw, the surfaces' targets, the light's,
+ * then what the frame carries over from the last one.
  */
 export const LEVEL_SHADINGS: ReadonlyArray<ILevelShadingChoice> = (
   [
@@ -89,11 +95,25 @@ export const LEVEL_SHADINGS: ReadonlyArray<ILevelShadingChoice> = (
       debugView: ERenderDebugView.FINAL,
     },
     {
+      section: "Frame",
+      label: "Overdraw",
+      description: "How many surfaces were drawn over each pixel, hidden or not: blue one, to red at eight.",
+      value: ELevelShading.OVERDRAW,
+      debugView: ERenderDebugView.OVERDRAW,
+    },
+    {
       section: "Surfaces",
       label: "Albedo",
       description: "Each surface's own colour, before any light.",
       value: ELevelShading.ALBEDO,
       debugView: ERenderDebugView.ALBEDO,
+    },
+    {
+      section: "Surfaces",
+      label: "Albedo range",
+      description: "Each surface's colour as linear albedo: grey within 3% to 90%, blue darker, red brighter.",
+      value: ELevelShading.ALBEDO_RANGE,
+      debugView: ERenderDebugView.ALBEDO_RANGE,
     },
     {
       section: "Surfaces",
@@ -132,6 +152,14 @@ export const LEVEL_SHADINGS: ReadonlyArray<ILevelShadingChoice> = (
     },
     {
       section: "Surfaces",
+      label: "Sampled mip",
+      description:
+        "The mip each surface's texture is read at: green its full size, blue magnified, yellow to red smaller.",
+      value: ELevelShading.SAMPLED_MIP,
+      debugView: ERenderDebugView.SAMPLED_MIP,
+    },
+    {
+      section: "Surfaces",
       label: "Material",
       description: "The lighting model each surface is shaded with, one grey a model.",
       value: ELevelShading.MATERIAL,
@@ -167,6 +195,21 @@ export const LEVEL_SHADINGS: ReadonlyArray<ILevelShadingChoice> = (
     },
     {
       section: "Light",
+      label: "Shadow cascades",
+      description:
+        "The sun shadow map shading each pixel, darker where shadowed; striped where the grass casts shadows.",
+      value: ELevelShading.CASCADES,
+      debugView: ERenderDebugView.CASCADES,
+    },
+    {
+      section: "Light",
+      label: "Lamps per cluster",
+      description: "How many lamps the cluster of each pixel lists: blue one, to red at sixteen.",
+      value: ELevelShading.LAMPS_PER_CLUSTER,
+      debugView: ERenderDebugView.LAMPS_PER_CLUSTER,
+    },
+    {
+      section: "Light",
       label: "Ambient occlusion",
       description: "How much ambient light the screen-space occlusion leaves; white where it is off.",
       value: ELevelShading.AMBIENT_OCCLUSION,
@@ -192,6 +235,13 @@ export const LEVEL_SHADINGS: ReadonlyArray<ILevelShadingChoice> = (
       description: "How each reflection ray ended, one colour a reason; black where none is traced.",
       value: ELevelShading.REFLECTION_ENDS,
       debugView: ERenderDebugView.REFLECTION_ENDS,
+    },
+    {
+      section: "Light",
+      label: "Luminance",
+      description: "The scene's brightness in stops from middle grey: grey at it, blue below, green to red above.",
+      value: ELevelShading.LUMINANCE,
+      debugView: ERenderDebugView.LUMINANCE,
     },
     {
       section: "Temporal",

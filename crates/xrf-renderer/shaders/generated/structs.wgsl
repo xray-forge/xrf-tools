@@ -134,6 +134,7 @@ struct Present {
   reflection_ratio: f32,
   deband: vec4<f32>,
   tonemap: vec4<f32>,
+  inspect: vec4<f32>,
 }
 
 struct Upscale {

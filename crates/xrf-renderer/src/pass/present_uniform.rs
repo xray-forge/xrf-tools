@@ -41,6 +41,9 @@ pub struct PresentUniform {
   pub deband: Vec4,
   /// One where the scene holds linear light, which the window pass tonemaps by the engine's curve before the rest.
   pub tonemap: Vec4,
+  /// What the cascades' debug view marks: the metres from the camera the grass's cards cast the sun's shadow to, none
+  /// where they cast none.
+  pub inspect: Vec4,
 }
 
 impl PresentUniform {
@@ -71,6 +74,7 @@ impl PresentUniform {
       reflection_ratio: reflection_ratio.unwrap_or(1) as f32,
       deband: Vec4::ZERO,
       tonemap: Vec4::ZERO,
+      inspect: Vec4::ZERO,
     }
   }
 
@@ -86,6 +90,15 @@ impl PresentUniform {
   pub fn with_linear_scene(self, is_linear: bool) -> Self {
     Self {
       tonemap: Vec4::new(f32::from(u8::from(is_linear)), 0.0, 0.0, 0.0),
+      ..self
+    }
+  }
+
+  /// The same, the cascades' view striping the grass's cards' reach of the sun's shadow (`reach` metres), none where
+  /// they cast none.
+  pub fn with_grass_reach(self, reach: Option<f32>) -> Self {
+    Self {
+      inspect: Vec4::new(reach.unwrap_or(0.0), 0.0, 0.0, 0.0),
       ..self
     }
   }

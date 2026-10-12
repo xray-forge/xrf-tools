@@ -26,15 +26,23 @@ fn fs_lights(in: FullscreenVarying) -> @location(0) vec4<f32> {
   let texel: vec2<i32> = vec2<i32>(in.clip.xy);
   let depth: f32 = textureLoad(depth_target, texel, 0);
 
+  let view: u32 = light_view();
+
   // Nothing drawn there, nothing to light: its depth rebuilds no point. A pixel no light adds to is left out rather
-  // than added nought to, sparing the blend reading and writing the light it already holds.
-  if (depth <= 0.0 || lights.count == 0u) {
+  // than added nought to, sparing the blend reading and writing the light it already holds; and the cascades' and the
+  // overdraw's views keep the lamps out of what they show.
+  if (depth <= 0.0 || lights.count == 0u || view == LIGHT_VIEW_CASCADES || view == LIGHT_VIEW_OVERDRAW) {
     discard;
   }
 
   let threshold: f32 = textureLoad(light_threshold, threshold_texel(texel, textureDimensions(light_threshold)), 0).r;
   let pixel: LitPixel = lit_pixel_by(in.clip.xy, texel, depth, select(0u, contact.lights, CONTACT_MARCHED),
     threshold);
+
+  // The lamps' view: how many lamps the pixel's cluster lists, which the sun left nought under.
+  if (view == LIGHT_VIEW_LAMPS) {
+    return vec4<f32>(f32(counts[pixel.cluster]), 0.0, 0.0, 0.0);
+  }
   let material_texel: vec4<f32> = textureLoad(material_target, texel, 0);
   let slice: f32 = material_texel.z;
   // Foliage is lit from each light's side, as the light passes through its leaves.

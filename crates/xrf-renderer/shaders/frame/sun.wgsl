@@ -36,13 +36,28 @@ fn light_sun(in: FullscreenVarying, is_traced: bool) -> SunTargets {
   let texel: vec2<i32> = vec2<i32>(in.clip.xy);
   let depth: f32 = textureLoad(depth_target, texel, 0);
 
-  if (depth <= 0.0) {
+  let view: u32 = light_view();
+
+  // The lamps' and the overdraw's views keep the sun out of what they count.
+  if (depth <= 0.0 || view == LIGHT_VIEW_LAMPS || view == LIGHT_VIEW_OVERDRAW) {
     return SunTargets(vec4<f32>(0.0), vec4<f32>(0.0));
   }
 
   let position: vec3<f32> = camera_view_position(in.clip.xy, depth);
   let normal: vec3<f32> = octahedral_decode(textureLoad(normal_target, texel, 0).xy);
   let material: vec4<f32> = textureLoad(material_target, texel, 0);
+
+  // The cascades' view: the cascade the pixel reads, from one, none past them all, and how much of the sun it lets
+  // through there, self-lit surfaces alike.
+  if (view == LIGHT_VIEW_CASCADES) {
+    let world: vec3<f32> = (transpose(camera.view) * vec4<f32>(position, 0.0)).xyz + camera.position.xyz;
+    let world_normal: vec3<f32> = normalize((transpose(camera.view) * vec4<f32>(normal, 0.0)).xyz);
+    let cascade: u32 = sun_cascade(shadows, world);
+    let order: f32 = select(0.0, f32(cascade) + 1.0, cascade < shadows.count);
+    let seen: f32 = sun_shadow(shadow_maps, shadows, world, world_normal, dot(normal, lighting.to_sun.xyz));
+
+    return SunTargets(vec4<f32>(order, seen, 0.0, 0.0), vec4<f32>(0.0));
+  }
 
   // `accum_emissive`: a self-lit surface's light is filled with sixteen, which the local lights then add to.
   if (has_mark(material.a, MARK_EMISSIVE)) {

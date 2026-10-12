@@ -6,6 +6,7 @@ use xrf_renderer_core::{
 };
 
 use crate::camera::camera_view::CameraView;
+use crate::contract::render_debug_view::RenderDebugView;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::frame::depth_pyramid::DepthPyramid;
 use crate::frame::static_scene_handles::StaticSceneHandles;
@@ -28,8 +29,8 @@ use crate::scene::static_scene::static_layout::StaticLayout;
 use crate::scene::static_scene::static_scene::StaticScene;
 
 /// The static scene as the view culls and draws it: the cull's parameters this frame, the depth pyramid the next
-/// frame's occlusion is tested against and the camera it was reduced through, the counts the cull read back, and
-/// whether the wall marks are drawn.
+/// frame's occlusion is tested against and the camera it was reduced through, the counts the cull read back, whether
+/// the wall marks are drawn, and whether its surfaces are counted for the overdraw's debug view.
 pub struct StaticsFeature {
   cull: StaticCullParams,
   occlusion: StaticOcclusionUniform,
@@ -43,6 +44,8 @@ pub struct StaticsFeature {
   is_wallmarked: bool,
   /// Whether the view inspects its surfaces, which draws them with the inspections' code.
   is_inspected: bool,
+  /// Whether the view shows its overdraw, which draws its surfaces again to count them.
+  is_overdrawn: bool,
 }
 
 impl StaticsFeature {
@@ -56,6 +59,7 @@ impl StaticsFeature {
       stats: StatsReadback::new(device),
       is_wallmarked: false,
       is_inspected: true,
+      is_overdrawn: false,
     }
   }
 
@@ -103,6 +107,7 @@ impl StaticsFeature {
     self.matrices = (view.view, view.projection);
     self.is_wallmarked = options.show.is_wallmarked;
     self.is_inspected = options.is_inspecting_surfaces();
+    self.is_overdrawn = options.mode.debug_view == RenderDebugView::Overdraw;
 
     if let Some(pyramid) = &self.pyramid {
       let (history_view, history_projection): (Mat4, Mat4) = self.history.unwrap_or(self.matrices);
@@ -170,6 +175,35 @@ impl StaticsFeature {
     } else {
       vec![scene.args]
     }
+  }
+
+  /// Declares the overdraw's count where the view shows it: the frame's draws replayed into `light`, which the sun and
+  /// the lamps left nought, each surface adding one over every pixel it covers.
+  pub fn add_overdraw_pass<'a>(
+    &'a self,
+    graph: &mut FrameGraph<'a>,
+    passes: LevelPasses<'a>,
+    (view, textures, scene): (&'a ViewBinding, &'a wgpu::BindGroup, &StaticSceneHandles),
+    light: GraphTexture,
+  ) {
+    if !self.is_overdrawn {
+      return;
+    }
+
+    let draws: StaticDraws = scene.get_camera_draws();
+    let draw_args: Vec<GraphBuffer> = self.list_draw_args(scene);
+    let builder = draw_args.iter().fold(
+      graph
+        .add_raster_pass("overdraw")
+        .color(GraphColorAttachment::new(light, wgpu::LoadOp::Load)),
+      |builder, args| builder.buffer(*args, GraphBufferAccess::Indirect),
+    );
+
+    draws.declare(builder, false).record(move |context| {
+      let args: Vec<&wgpu::Buffer> = draw_args.iter().map(|args| context.get_buffer(*args)).collect();
+
+      passes.gbuffer.record_overdraw(context, (view, &draws, textures), &args);
+    });
   }
 
   /// Declares the scene's culls and G-buffer draws: what last frame's depth does not hide, culled and drawn; then, while
