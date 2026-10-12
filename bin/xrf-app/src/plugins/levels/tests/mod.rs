@@ -2,6 +2,7 @@ mod ambients;
 mod console_defaults;
 mod level_start;
 mod new_game;
+mod read;
 mod spawn_lighting;
 mod spawn_objects;
 mod surfaces;
