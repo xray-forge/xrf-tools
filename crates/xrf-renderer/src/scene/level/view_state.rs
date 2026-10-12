@@ -3,7 +3,6 @@ use glam::Mat4;
 use crate::contract::render_overlay::RenderOverlay;
 use crate::contract::render_selection_target::RenderSelectionTarget;
 use crate::frame::depth_pyramid::DepthPyramid;
-use crate::frame::froxel_volume::FroxelVolume;
 use crate::frame::pick_target::PickTarget;
 use crate::frame::sky_prefilter::SkyPrefilter;
 use crate::frame::stats_readback::StatsReadback;
@@ -35,8 +34,6 @@ pub struct ViewState {
   pub sky_prefilter: Option<SkyPrefilter>,
   /// Frames a temporal resolve gathered, which the screen-space effects turn their noise by.
   pub noise_frame: u32,
-  /// The enhanced volumetric lighting's froxels, while it draws.
-  pub froxels: Option<FroxelVolume>,
   /// The trees' sway the last frame drew with.
   pub last_wind: Option<WindUniform>,
   /// How far the enhanced foliage motion's flow fields have drifted.
@@ -77,7 +74,6 @@ impl ViewState {
       view_projection_previous: None,
       sky_prefilter: None,
       noise_frame: 0,
-      froxels: None,
       last_wind: None,
       foliage: FoliageWind::default(),
       wetness: RainWetness::default(),
