@@ -134,8 +134,8 @@ impl FroxelPass {
       };
 
     Ok([
-      create("frame/froxel_inject", "froxel_inject", inject_layout)?,
-      create("frame/froxel_integrate", "froxel_integrate", integrate_layout)?,
+      create("frame/froxel_inject", "cs_froxel_inject", inject_layout)?,
+      create("frame/froxel_integrate", "cs_froxel_integrate", integrate_layout)?,
     ])
   }
 }

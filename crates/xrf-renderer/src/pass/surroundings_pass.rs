@@ -74,7 +74,7 @@ impl SurroundingsPass {
     layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<wgpu::ComputePipeline> {
     source.get_compute_pipeline(
-      &ComputePipelineDescription::new("surroundings", "frame/surroundings", "resolve")
+      &ComputePipelineDescription::new("surroundings", "frame/surroundings", "cs_resolve")
         .with_bind_group_layouts(&[Some(view_layout), Some(layout)]),
     )
   }

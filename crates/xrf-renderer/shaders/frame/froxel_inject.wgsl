@@ -24,7 +24,7 @@ const FROXEL_HAZE: f32 = 0.004;
 const FROXEL_HISTORY: f32 = 0.9;
 
 @compute @workgroup_size(8, 8, 1)
-fn froxel_inject(@builtin(global_invocation_id) id: vec3<u32>) {
+fn cs_froxel_inject(@builtin(global_invocation_id) id: vec3<u32>) {
   let size: vec3<u32> = vec3<u32>(froxels.size.xyz);
 
   if (any(id >= size)) {

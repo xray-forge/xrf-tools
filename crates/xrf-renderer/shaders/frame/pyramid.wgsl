@@ -7,7 +7,7 @@
 // The depth's first level: a power of two at most the depth's size, so each texel covers up to three depth texels a
 // side and is reduced over all of them.
 @compute @workgroup_size(8, 8)
-fn reduce_depth(@builtin(global_invocation_id) id: vec3<u32>) {
+fn cs_reduce_depth(@builtin(global_invocation_id) id: vec3<u32>) {
   let size: vec2<u32> = textureDimensions(target_level);
 
   if (id.x >= size.x || id.y >= size.y) {
@@ -29,7 +29,7 @@ fn reduce_depth(@builtin(global_invocation_id) id: vec3<u32>) {
 }
 
 @compute @workgroup_size(8, 8)
-fn reduce_level(@builtin(global_invocation_id) id: vec3<u32>) {
+fn cs_reduce_level(@builtin(global_invocation_id) id: vec3<u32>) {
   let size: vec2<u32> = textureDimensions(target_level);
 
   if (id.x >= size.x || id.y >= size.y) {
@@ -51,7 +51,7 @@ fn reduce_level(@builtin(global_invocation_id) id: vec3<u32>) {
 
 // The nearest's first level: the depth itself, texel for texel.
 @compute @workgroup_size(8, 8)
-fn copy_nearest(@builtin(global_invocation_id) id: vec3<u32>) {
+fn cs_copy_nearest(@builtin(global_invocation_id) id: vec3<u32>) {
   let size: vec2<u32> = textureDimensions(target_level);
 
   if (id.x >= size.x || id.y >= size.y) {
@@ -64,7 +64,7 @@ fn copy_nearest(@builtin(global_invocation_id) id: vec3<u32>) {
 // A level of the nearest's into the next, half its size rounded down: each texel the nearest of the two by two under it,
 // and of the third row or column where the level before is odd and it is the last.
 @compute @workgroup_size(8, 8)
-fn reduce_nearest(@builtin(global_invocation_id) id: vec3<u32>) {
+fn cs_reduce_nearest(@builtin(global_invocation_id) id: vec3<u32>) {
   let size: vec2<u32> = textureDimensions(target_level);
 
   if (id.x >= size.x || id.y >= size.y) {
@@ -89,7 +89,7 @@ fn reduce_nearest(@builtin(global_invocation_id) id: vec3<u32>) {
 
 // A rain cover's first level, half its size: each texel the lowest and the highest depth of the two by two under it.
 @compute @workgroup_size(8, 8)
-fn reduce_cover(@builtin(global_invocation_id) id: vec3<u32>) {
+fn cs_reduce_cover(@builtin(global_invocation_id) id: vec3<u32>) {
   let size: vec2<u32> = textureDimensions(cover_level);
 
   if (id.x >= size.x || id.y >= size.y) {
@@ -113,7 +113,7 @@ fn reduce_cover(@builtin(global_invocation_id) id: vec3<u32>) {
 // A level of a rain cover's pyramid into the next, half its size: the lowest and the highest of the two by two under
 // each texel.
 @compute @workgroup_size(8, 8)
-fn reduce_cover_level(@builtin(global_invocation_id) id: vec3<u32>) {
+fn cs_reduce_cover_level(@builtin(global_invocation_id) id: vec3<u32>) {
   let size: vec2<u32> = textureDimensions(cover_level);
 
   if (id.x >= size.x || id.y >= size.y) {

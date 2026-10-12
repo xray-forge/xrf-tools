@@ -18,7 +18,7 @@ var<workgroup> partial: array<f32, 256>;
 // `bloom_luminance_1`: each cell's luminance as the bloom build it reads holds it, which `phase_luminance` measures
 // before the blur: twice the high part, held to one by its eight bits, back over `def_hdr`.
 @compute @workgroup_size(64)
-fn measure(@builtin(global_invocation_id) id: vec3<u32>) {
+fn cs_measure(@builtin(global_invocation_id) id: vec3<u32>) {
   let index: u32 = id.x;
 
   if (index >= CELLS * CELLS) {
@@ -44,7 +44,7 @@ fn measure(@builtin(global_invocation_id) id: vec3<u32>) {
 // Held between a 128th and twenty, as the engine's own clamp meant to. The scale this frame's tonemap used is kept
 // beside it, for a read of this frame's colour next frame to invert by.
 @compute @workgroup_size(256)
-fn adapt(@builtin(local_invocation_index) index: u32) {
+fn cs_adapt(@builtin(local_invocation_index) index: u32) {
   var total: f32 = 0.0;
 
   for (var cell: u32 = index; cell < CELLS * CELLS; cell += REDUCE) {

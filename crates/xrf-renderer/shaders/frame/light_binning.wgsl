@@ -12,7 +12,7 @@ fn to_view(ndc: f32, offset: f32, scale: f32, depth: f32) -> f32 {
 }
 
 @compute @workgroup_size(64)
-fn bin(@builtin(global_invocation_id) id: vec3<u32>) {
+fn cs_bin(@builtin(global_invocation_id) id: vec3<u32>) {
   let cluster: u32 = id.x;
 
   if (cluster >= LIGHT_CLUSTERS) {

@@ -71,6 +71,6 @@ impl ExposurePass {
       )
     };
 
-    Ok([create("measure")?, create("adapt")?])
+    Ok([create("cs_measure")?, create("cs_adapt")?])
   }
 }

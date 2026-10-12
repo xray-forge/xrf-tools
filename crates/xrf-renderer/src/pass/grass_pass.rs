@@ -16,8 +16,8 @@ use crate::pass::view_binding::ViewBinding;
 
 /// The planting's entry points, in the order a frame dispatches them: the ring's stale cells ranked and the nearest
 /// planted, before the frame's depth; then, against that depth, every current cell culled and what it keeps sorted.
-const PLANTING_ENTRIES: [&str; 4] = ["clear_schedule", "rank", "select_band", "decompress"];
-const CULLING_ENTRIES: [&str; 2] = ["clear_counts", "cull"];
+const PLANTING_ENTRIES: [&str; 4] = ["cs_clear_schedule", "cs_rank", "cs_select_band", "cs_decompress"];
+const CULLING_ENTRIES: [&str; 2] = ["cs_clear_counts", "cs_cull"];
 /// The cards' entry points: every card cleared, the near tufts' stood, then the cascades' draw of them sized.
 const CARDS_ENTRIES: [&str; 3] = ["cs_clear_cards", "cs_grass_cards", "cs_card_draw"];
 
@@ -427,10 +427,10 @@ impl GrassPass {
       planting: create_all(&PLANTING_ENTRIES, &planting)?,
       culling: create_all(&CULLING_ENTRIES, &culling)?,
       arrange: create(
-        "arrange",
+        "cs_arrange",
         &[Some(level_layout), Some(build_layout), None, Some(sort_layout)],
       )?,
-      sort: create("scatter", &culling)?,
+      sort: create("cs_scatter", &culling)?,
       cards: CARDS_ENTRIES
         .iter()
         .map(|entry| {

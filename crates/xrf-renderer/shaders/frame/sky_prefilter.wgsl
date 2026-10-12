@@ -101,7 +101,7 @@ fn blurred_sky(direction: vec3<f32>, roughness: f32, samples: u32, mips_before: 
 }
 
 @compute @workgroup_size(8, 8, 1)
-fn prefilter(@builtin(global_invocation_id) id: vec3<u32>) {
+fn cs_prefilter(@builtin(global_invocation_id) id: vec3<u32>) {
   let size: u32 = u32(settings.level.w);
 
   if (any(id.xy >= vec2<u32>(size)) || id.z >= 6u) {
