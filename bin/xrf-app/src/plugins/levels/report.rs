@@ -3,13 +3,11 @@
 use std::fmt::Display;
 use std::time::{Duration, Instant};
 
-use xrf_level::{LevelSectorComposition, LevelShaderEntry};
+use xrf_level::LevelShaderEntry;
 use xrf_material::{XraySurfaceDeclaration, XraySurfaceDescriptor, XraySurfaceDraw};
 use xrf_particles::ParticleLibrary;
 use xrf_spawn::SpawnLevelObjects;
-use xrf_visual::{
-  DetailsDescription, LightsDescription, SectorDescription, SectorInstanceGroup, SectorOutline, SectorPackage,
-};
+use xrf_visual::{LightsDescription, SectorDescription, SectorInstanceGroup, SectorOutline, SectorPackage};
 
 use crate::plugins::levels::state::{
   LevelEntry, LevelSource, LevelSpawnObjectsDescription, LevelStart, LevelTextureReference, SelectedLevel,
@@ -146,15 +144,6 @@ fn report_surfaces(source: &LevelSource, surfaces: &[(&str, &XraySurfaceDescript
       name_a_few(&undescribed)
     );
   }
-}
-
-/// What one sector is about to be packed out of.
-pub fn report_packing_sector(sector: u32, root: u32, composition: &LevelSectorComposition) {
-  log::info!(
-    "Packing sector {sector} of root {root}: {} drawables, {} hierarchies",
-    composition.drawables.len(),
-    composition.hierarchies.len()
-  );
 }
 
 /// Where a level opens, and what that was taken from.
@@ -350,26 +339,6 @@ pub fn report_unreadable_lights(source: &LevelSource, error: &impl Display) {
 /// That the game material library could not be read, so every collision triangle is solid ground.
 pub fn report_unreadable_materials(file: &str, error: &impl Display) {
   log::warn!("Every collision triangle is taken as solid ground, as '{file}' is unreadable: {error}");
-}
-
-/// What a level's grass came to, or that it has none.
-pub fn report_details(source: &LevelSource, details: Option<&DetailsDescription>, started: Instant) {
-  let Some(details) = details else {
-    log::info!("Level {} has no detail library", source.get_label());
-
-    return;
-  };
-
-  log::info!(
-    "Packed grass of {} in {}: {} planted slots, {} triangles, {} bin entries, {} models, {}",
-    source.get_label(),
-    xrf_utils::format_duration(started.elapsed()),
-    details.slot_count,
-    details.get_triangle_count(),
-    details.get_bin_length(),
-    details.models.len(),
-    xrf_utils::format_bytes(u64::from(details.buffer_length))
-  );
 }
 
 /// Names the first few of a set and says how many more there are, for a log line that has to stay one line.
