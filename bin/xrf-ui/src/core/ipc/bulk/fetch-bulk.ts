@@ -2,9 +2,9 @@ import { Nullable } from "@xrf/types";
 
 import { transformError } from "@/core/error/lib";
 import { IBulkCall } from "@/core/ipc/bulk/bulk-call";
-import { IBulkRequest } from "@/core/ipc/bulk/bulk-request";
-import { requestBulk } from "@/core/ipc/bulk/request-bulk";
+import { BULK_ENDPOINT } from "@/core/ipc/bulk/bulk-endpoint";
 import { IPC_METRICS, IpcCallMeasurement, weighIpcPayload } from "@/core/ipc/metrics";
+import { TransportEndpoint } from "@/core/ipc/types/xrf-app";
 
 /**
  * Fetches a bulk route over the loopback transport, counting what it cost the way an IPC call is counted.
@@ -22,10 +22,10 @@ export async function fetchBulk(call: IBulkCall): Promise<ArrayBuffer> {
   let bytes: ArrayBuffer;
 
   try {
-    const request: IBulkRequest = await requestBulk(call);
-    const response: Response = await fetch(request.url, {
-      body: request.body,
-      headers: request.headers,
+    const { origin, token }: TransportEndpoint = await BULK_ENDPOINT.get();
+    const response: Response = await fetch(`${origin}/${call.route}`, {
+      body: JSON.stringify(call.args),
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
       method: "POST",
     }).catch((error: unknown) => {
       throw new Error(`The transport did not answer '${call.route}': ${transformError(error).message}`);
