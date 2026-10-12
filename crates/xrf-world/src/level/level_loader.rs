@@ -14,7 +14,6 @@ pub type SectorLoad = (u32, Result<(SectorPackage, SurfaceTally), String>);
 pub struct LevelLoader {
   receiver: LoaderReceiver<SectorLoad>,
   total: u32,
-  received: u32,
   is_cancelled: Arc<AtomicBool>,
 }
 
@@ -52,7 +51,6 @@ impl LevelLoader {
     Self {
       receiver,
       total,
-      received: 0,
       is_cancelled,
     }
   }
@@ -63,11 +61,7 @@ impl LevelLoader {
 
   /// The sectors finished since the last call, at most `limit` of them.
   pub fn take(&mut self, limit: usize) -> Vec<SectorLoad> {
-    let taken: Vec<SectorLoad> = self.receiver.try_iter().take(limit).collect();
-
-    self.received += taken.len() as u32;
-
-    taken
+    self.receiver.try_iter().take(limit).collect()
   }
 }
 
