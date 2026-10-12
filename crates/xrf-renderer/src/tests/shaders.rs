@@ -67,6 +67,31 @@ fn the_cull_counts_classes_as_rust_does() {
   );
 }
 
+/// A reload stales the modules that compose from what changed and no others; a changed fallback stales the modules
+/// that import the module it replaces.
+#[test]
+fn a_reload_stales_only_the_modules_composing_from_a_change() {
+  let library: ShaderLibrary = ShaderLibrary::default();
+  let quad: Vec<&str> = library.list_dependents(&["common/quad"]);
+
+  assert_eq!(
+    quad,
+    vec![
+      "common/quad",
+      "frame/flare",
+      "frame/particles",
+      "frame/thunder",
+      "static/impostor"
+    ]
+  );
+
+  let traced: Vec<&str> = library.list_dependents(&["common/scene_trace_none"]);
+
+  assert!(traced.contains(&"common/scene_trace"));
+  assert!(traced.contains(&"common/scene_trace_none"));
+  assert!(!traced.contains(&"frame/present"));
+}
+
 /// The present tells a debug view by its index as Rust numbers them, FSR's last and from the first it names on.
 #[test]
 fn the_present_numbers_debug_views_as_rust_does() {

@@ -384,9 +384,12 @@ impl GpuState {
     }
   }
 
-  /// Rebuilds pipelines from a shader library reloaded since they were built.
-  pub fn refresh(&mut self, shaders: &ShaderLibrary) {
-    self.pipelines.invalidate_all();
+  /// Rebuilds the pipelines made from the modules a reload `changed`, or from any module importing one; every other
+  /// pipeline stays as it was made.
+  pub fn refresh(&mut self, shaders: &ShaderLibrary, changed: &[&str]) {
+    for module in shaders.list_dependents(changed) {
+      self.pipelines.invalidate_module(module);
+    }
 
     let device: &wgpu::Device = &self.context.device;
     let source: PipelineSource<'_> = PipelineSource {

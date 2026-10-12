@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
 use std::time::SystemTime;
 
@@ -663,14 +663,47 @@ impl ShaderLibrary {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("shaders")
   }
 
-  /// Reads again every module whose file changed since it was last read, in a debug build; answers whether any did.
-  pub fn reload(&mut self) -> bool {
+  /// The modules that compose from any of `changed`, themselves included: those whose pipelines a reload of them
+  /// stales. A changed fallback stands for the module it replaces too; a module that no longer composes is taken as
+  /// stale, so its pipelines are asked again and report why.
+  pub fn list_dependents(&self, changed: &[&str]) -> Vec<&'static str> {
+    let changed: BTreeSet<&str> = changed
+      .iter()
+      .copied()
+      .chain(
+        FALLBACKS
+          .iter()
+          .filter(|(_, _, fallback)| changed.contains(fallback))
+          .map(|(module, _, _)| *module),
+      )
+      .collect();
+    let read = |module: &str| {
+      self
+        .modules
+        .get(module)
+        .map(String::as_str)
+        .ok_or_else(|| XrfError::new_not_found_error(format!("No shader module '{module}'")))
+    };
+
+    self
+      .modules
+      .keys()
+      .copied()
+      .filter(|name| {
+        ShaderComposer::list_modules(name, &read)
+          .map_or(true, |used| used.iter().any(|module| changed.contains(module.as_str())))
+      })
+      .collect()
+  }
+
+  /// Reads again every module whose file changed since it was last read, in a debug build; answers which did.
+  pub fn reload(&mut self) -> Vec<&'static str> {
     if !cfg!(debug_assertions) {
-      return false;
+      return Vec::new();
     }
 
     let root: PathBuf = Self::get_source_root();
-    let mut is_changed: bool = false;
+    let mut changed: Vec<&'static str> = Vec::new();
 
     for (name, _) in EMBEDDED {
       let path: PathBuf = root.join(format!("{name}.wgsl"));
@@ -690,14 +723,14 @@ impl ShaderLibrary {
       if self.modules.get(name) != Some(&source) {
         log::info!("Shader module '{name}' changed on disk");
         self.modules.insert(name, source);
-        is_changed = true;
+        changed.push(name);
       }
     }
 
-    if is_changed {
+    if !changed.is_empty() {
       self.generation += 1;
     }
 
-    is_changed
+    changed
   }
 }
