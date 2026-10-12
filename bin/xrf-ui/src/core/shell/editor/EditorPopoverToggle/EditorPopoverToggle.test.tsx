@@ -53,6 +53,19 @@ describe("EditorPopoverToggle", () => {
     expect(queryByRole("dialog")).not.toBeInTheDocument();
   });
 
+  // The corner cue tells a toggle from a trigger a click opens, as long as a click turns it over.
+  it("cues a click that turns it over, and one that opens it while it cannot", () => {
+    const active = renderToggle(true);
+
+    expect(active.getByRole("button", { name: "Fog" })).toHaveAttribute("data-cue", "toggle");
+    active.unmount();
+
+    expect(renderToggle(true, () => {}, true).getByRole("button", { name: "Fog" })).toHaveAttribute(
+      "data-cue",
+      "popover"
+    );
+  });
+
   it("says what its settings are at and what a right click does", () => {
     expect(renderToggle(true).getByRole("button", { name: "Fog" })).toHaveAccessibleDescription(
       "Fog total at 350 m. Right-click for its settings"
