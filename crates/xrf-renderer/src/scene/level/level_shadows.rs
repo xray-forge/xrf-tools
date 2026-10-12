@@ -186,7 +186,8 @@ impl LevelShadows {
     }
   }
 
-  /// Fits the cascades, offers those wanting a draw to `scheduler`, and takes what the sun samples them by.
+  /// Fits the cascades, offers those wanting a draw to `scheduler` while the sun lights anything, and takes what the sun
+  /// samples them by.
   pub fn prepare_cascades(
     &mut self,
     device: &wgpu::Device,
@@ -224,7 +225,8 @@ impl LevelShadows {
       _ => {}
     }
 
-    if count > 0 {
+    // A sun of no colour lights nothing its shadow could take away: no cascade is drawn, the maps keeping their last.
+    if count > 0 && frame.is_sunlit {
       self.offer_cascades(device, view_layout, frame, count, scheduler);
     }
 
