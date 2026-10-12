@@ -4,7 +4,6 @@ use xrf_env_flags::EnvFlags;
 /// texture arrays and dual-source blending. Every D3D12 feature level 12_0 GPU from about 2016 has them.
 pub const REQUIRED_FEATURES: wgpu::Features = wgpu::Features::TEXTURE_COMPRESSION_BC
   .union(wgpu::Features::INDIRECT_FIRST_INSTANCE)
-  .union(wgpu::Features::MULTI_DRAW_INDIRECT_COUNT)
   .union(wgpu::Features::TEXTURE_BINDING_ARRAY)
   .union(wgpu::Features::PARTIALLY_BOUND_BINDING_ARRAY)
   .union(wgpu::Features::SAMPLED_TEXTURE_AND_STORAGE_BUFFER_ARRAY_NON_UNIFORM_INDEXING)
