@@ -1,6 +1,8 @@
+use crate::scene::level::feature::ambient_occlusion_feature::AmbientOcclusionFeature;
 use crate::scene::level::feature::bitmask_feature::BitmaskFeature;
 use crate::scene::level::feature::bloom_feature::BloomFeature;
 use crate::scene::level::feature::composited_feature::CompositedFeature;
+use crate::scene::level::feature::contact_shadow_feature::ContactShadowFeature;
 use crate::scene::level::feature::exposure_feature::ExposureFeature;
 use crate::scene::level::feature::falling_rain_feature::FallingRainFeature;
 use crate::scene::level::feature::flares_feature::FlaresFeature;
@@ -28,6 +30,8 @@ pub struct SceneFeatures {
   pub water: WaterFeature,
   pub volumetric: VolumetricFeature,
   pub composited: CompositedFeature,
+  pub ambient_occlusion: AmbientOcclusionFeature,
+  pub contact_shadows: ContactShadowFeature,
 }
 
 impl SceneFeatures {
@@ -46,11 +50,13 @@ impl SceneFeatures {
       water: WaterFeature::default(),
       volumetric: VolumetricFeature::default(),
       composited: CompositedFeature::default(),
+      ambient_occlusion: AmbientOcclusionFeature::default(),
+      contact_shadows: ContactShadowFeature::default(),
     }
   }
 
   /// Every unit, as what each answers alike.
-  pub fn list(&self) -> [&dyn ViewFeature; 13] {
+  pub fn list(&self) -> [&dyn ViewFeature; 15] {
     [
       &self.fog,
       &self.bloom,
@@ -65,10 +71,12 @@ impl SceneFeatures {
       &self.water,
       &self.volumetric,
       &self.composited,
+      &self.ambient_occlusion,
+      &self.contact_shadows,
     ]
   }
 
-  pub fn list_mut(&mut self) -> [&mut dyn ViewFeature; 13] {
+  pub fn list_mut(&mut self) -> [&mut dyn ViewFeature; 15] {
     [
       &mut self.fog,
       &mut self.bloom,
@@ -83,6 +91,8 @@ impl SceneFeatures {
       &mut self.water,
       &mut self.volumetric,
       &mut self.composited,
+      &mut self.ambient_occlusion,
+      &mut self.contact_shadows,
     ]
   }
 

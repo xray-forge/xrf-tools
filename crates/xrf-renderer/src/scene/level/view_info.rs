@@ -1,7 +1,6 @@
 use glam::{Mat4, Vec3, Vec4};
 
 use crate::camera::camera_view::CameraView;
-use crate::contract::render_ambient_occlusion_settings::RenderAmbientOcclusionSettings;
 use crate::contract::render_debanding_quality::RenderDebandingQuality;
 use crate::contract::render_debug_view::RenderDebugView;
 use crate::contract::render_image_corrections::RenderImageCorrections;
@@ -9,8 +8,6 @@ use crate::contract::render_lights_settings::RenderLightsSettings;
 use crate::contract::render_rect::RenderRect;
 use crate::contract::render_shadow_settings::RenderShadowSettings;
 use crate::lighting::render_lighting::RenderLighting;
-use crate::pass::ambient_occlusion_uniform::AmbientOcclusionUniform;
-use crate::pass::contact_shadow_uniform::ContactShadowUniform;
 use crate::pass::lighting_uniform::LightingUniform;
 use crate::pass::present_uniform::PresentUniform;
 use crate::pass::static_cull_params::StaticCullParams;
@@ -24,12 +21,6 @@ use crate::scene::level::sky_views::SkyViews;
 pub struct ViewInfo {
   /// What the present pass shows this frame.
   pub present: PresentUniform,
-  /// What the ambient occlusion searches by this frame.
-  pub occlusion_settings: AmbientOcclusionUniform,
-  /// What the contact shadows march by this frame: towards no light where none are drawn.
-  pub contact_shadows: ContactShadowUniform,
-  /// Whether the sun's contact shadows pass draws this frame.
-  pub is_sun_contact: bool,
   /// What the wet surfaces draw by this frame, and their splash volume and flow as the weather texture cache holds
   /// them when the frame is prepared, each its kind's placeholder until its file is up.
   pub wet: WetUniform,
@@ -54,12 +45,9 @@ pub struct ViewInfo {
   pub output: RenderRect,
   pub shadow_settings: RenderShadowSettings,
   pub lights_settings: RenderLightsSettings,
-  pub ambient_occlusion: RenderAmbientOcclusionSettings,
   /// What corrects the finished image, and what the present shows.
   pub corrections: RenderImageCorrections,
   pub debug_view: RenderDebugView,
-  /// Whether its ambient occlusion is searched: on, and the view lit and solid.
-  pub is_occlusion_drawn: bool,
   /// Whether the static surfaces draw as their edges, which nothing composited or planted is drawn over.
   pub is_wireframe: bool,
   /// Whether the sky is blurred into the haze map the distance fades into.
@@ -86,9 +74,6 @@ impl Default for ViewInfo {
   fn default() -> Self {
     Self {
       present: PresentUniform::default(),
-      occlusion_settings: AmbientOcclusionUniform::default(),
-      contact_shadows: ContactShadowUniform::default(),
-      is_sun_contact: false,
       wet: WetUniform::default(),
       wet_views: None,
       camera: CameraView {
@@ -106,10 +91,8 @@ impl Default for ViewInfo {
       output: RenderRect::default(),
       shadow_settings: RenderShadowSettings::default(),
       lights_settings: RenderLightsSettings::default(),
-      ambient_occlusion: RenderAmbientOcclusionSettings::default(),
       corrections: RenderImageCorrections::default(),
       debug_view: RenderDebugView::Final,
-      is_occlusion_drawn: false,
       is_wireframe: false,
       is_hazing: false,
       is_wallmarked: true,

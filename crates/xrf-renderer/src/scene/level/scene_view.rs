@@ -12,7 +12,6 @@ use xrf_renderer_core::{
 };
 
 use crate::camera::camera_view::CameraView;
-use crate::contract::render_ambient_occlusion_quality::RenderAmbientOcclusionQuality;
 use crate::contract::render_antialiasing::RenderAntialiasing;
 use crate::contract::render_applied_indirect_light::RenderAppliedIndirectLight;
 use crate::contract::render_applied_reflections::RenderAppliedReflections;
@@ -31,7 +30,6 @@ use crate::contract::render_rect::RenderRect;
 use crate::contract::render_reflection_probe::RenderReflectionProbe;
 use crate::contract::render_selection::RenderSelection;
 use crate::contract::render_selection_target::RenderSelectionTarget;
-use crate::contract::render_shadow_settings::RenderShadowSettings;
 use crate::contract::render_static_report::RenderStaticReport;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::contract::render_water_settings::RenderWaterSettings;
@@ -47,14 +45,9 @@ use crate::host::render_asset_source::RenderAssetSource;
 use crate::host::render_level_weather::RenderLevelWeather;
 use crate::lighting::ambient_gust::AmbientGust;
 use crate::lighting::render_lighting::RenderLighting;
-use crate::pass::ambient_occlusion_parameters::AmbientOcclusionParameters;
-use crate::pass::ambient_occlusion_pass::AmbientOcclusionPass;
-use crate::pass::ambient_occlusion_uniform::AmbientOcclusionUniform;
 use crate::pass::camera_uniform::CameraUniform;
 use crate::pass::combine_parameters::CombineParameters;
 use crate::pass::composited_parameters::CompositedParameters;
-use crate::pass::contact_shadow_parameters::ContactShadowParameters;
-use crate::pass::contact_shadow_pass::ContactShadowPass;
 use crate::pass::contact_shadow_uniform::ContactShadowUniform;
 use crate::pass::enhanced_water_maps::EnhancedWaterMaps;
 use crate::pass::foliage_wind_values::FoliageWindValues;
@@ -498,13 +491,10 @@ impl SceneView {
       0.0,
     );
     self.info.shadow_settings = options.features.shadows.clone();
-    self.info.ambient_occlusion = options.features.ambient_occlusion;
     self.info.output = output;
     self.info.debug_view = options.mode.debug_view;
     self.info.is_wireframe = options.mode.is_wireframe;
     self.info.corrections = options.features.corrections;
-    self.info.is_occlusion_drawn =
-      options.mode.is_lit && !options.mode.is_wireframe && options.features.ambient_occlusion.is_enabled;
     self.features.resolve.prepare(
       device,
       view,
@@ -528,11 +518,10 @@ impl SceneView {
     );
     self.info.lights_settings = options.features.lights;
 
-    self.info.occlusion_settings = AmbientOcclusionUniform::new(
-      &options.features.ambient_occlusion,
-      view.projection,
-      (width.div_ceil(2), height.div_ceil(2)),
-    );
+    self
+      .features
+      .ambient_occlusion
+      .prepare(options, view.projection, (width.div_ceil(2), height.div_ceil(2)));
     self.features.bitmask.prepare(
       device,
       options,
@@ -568,21 +557,10 @@ impl SceneView {
       self.state.noise_frame = self.state.noise_frame.wrapping_add(1);
     }
 
-    // Marched only where the view is lit and solid: the sun's under its cascades, the lights' with or without them.
-    let shadows: &RenderShadowSettings = &options.features.shadows;
-    let is_marched: bool = options.mode.is_lit && !options.mode.is_wireframe;
-
-    self.info.is_sun_contact = is_marched && shadows.is_sun_contact_drawn();
-    self.info.contact_shadows = if is_marched {
-      ContactShadowUniform::new(
-        &shadows.contact,
-        self.info.lighting.to_sun,
-        height,
-        self.state.noise_frame,
-      )
-    } else {
-      ContactShadowUniform::default()
-    };
+    self
+      .features
+      .contact_shadows
+      .prepare(options, self.info.lighting.to_sun, (height, self.state.noise_frame));
 
     scene.particles.fill(view, options, &mut self.state.particles);
 
@@ -809,7 +787,7 @@ impl SceneView {
     passes: LevelPasses<'a>,
     (view, textures, scene): (&'a ViewBinding, &'a wgpu::BindGroup, &'a LevelScene),
     (targets, lit): (ViewTargetHandles, LightingHandles<'a>),
-    (has_lights, is_occlusion_ambient): (bool, bool),
+    has_lights: bool,
   ) -> Option<GraphTexture> {
     let lights: &'a LightsView = &self.state.lights;
     let counts: GraphBuffer = bindings.import_buffer(graph, "light cluster counts", &lights.counts);
@@ -836,35 +814,11 @@ impl SceneView {
         .record(move |context| passes.lights.record_binning(context, &parameters));
     }
 
-    let contact: UniformBinding<ContactShadowUniform> = runtime.push_uniform(&self.info.contact_shadows);
-    // The contact shadows the sun multiplies its own by, or a lit texel where none are drawn.
-    let contact_shadows: GraphTexture = if self.info.is_sun_contact {
-      let (width, height) = targets.size;
-      let marched: GraphTexture = graph.create_texture(GraphTextureDescriptor::new_2d(
-        "contact shadows",
-        width,
-        height,
-        ContactShadowPass::FORMAT,
-      ));
-      let parameters: ContactShadowParameters = ContactShadowParameters {
-        normal_target: targets.normal,
-        depth_target: targets.depth,
-        contact,
-      };
-
-      graph
-        .add_raster_pass("contact shadows")
-        .parameters(&parameters)
-        .color(GraphColorAttachment::new(
-          marched,
-          wgpu::LoadOp::Clear(wgpu::Color::WHITE),
-        ))
-        .record(move |context| passes.contact_shadows.record(context, view, &parameters));
-
-      marched
-    } else {
-      bindings.import_view(graph, "contact shadows lit", passes.contact_shadows.get_lit())
-    };
+    // The contact shadows the sun multiplies its own by, and the uniform the lights march theirs by.
+    let (contact_shadows, contact): (GraphTexture, UniformBinding<ContactShadowUniform>) = self
+      .features
+      .contact_shadows
+      .add_passes((&mut *graph, &mut *bindings, &mut *runtime), passes, view, targets);
     let sun: SunParameters = SunParameters {
       normal_target: targets.normal,
       material_target: targets.material,
@@ -900,7 +854,7 @@ impl SceneView {
         shadow_atlas: bindings.import_view(graph, "light shadow atlas", scene.lights.get_shadow_atlas()),
         contact,
       };
-      let is_contact: bool = self.info.contact_shadows.lights > 0;
+      let is_contact: bool = self.features.contact_shadows.is_lit();
 
       graph
         .add_raster_pass("lights")
@@ -921,37 +875,10 @@ impl SceneView {
       .record(move |context| lights.record_overflow(context.get_encoder()));
 
     // GTAO searches on its own; VBAO, the indirect light or both share one bitmask search.
-    if is_occlusion_ambient && !self.info.ambient_occlusion.is_vbao() {
-      let quality: RenderAmbientOcclusionQuality = self.info.ambient_occlusion.quality;
-      let occlusion: UniformBinding<AmbientOcclusionUniform> = runtime.push_uniform(&self.info.occlusion_settings);
-
-      for (stage, (name, (read, written))) in ["ambient occlusion", "occlusion denoise", "occlusion denoise back"]
-        .into_iter()
-        .zip(AmbientOcclusionPass::STAGES)
-        .enumerate()
-      {
-        // Each stage reads the other target than it draws into, with the normals and the depth.
-        let parameters: AmbientOcclusionParameters = AmbientOcclusionParameters {
-          normal_target: targets.normal,
-          depth_target: targets.depth,
-          occlusion,
-          source: targets.occlusion[1 - read],
-        };
-
-        graph
-          .add_raster_pass(name)
-          .parameters(&parameters)
-          .color(GraphColorAttachment::new(
-            targets.occlusion[written],
-            wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-          ))
-          .record(move |context| {
-            passes
-              .ambient_occlusion
-              .record(context, (stage, quality), view, &parameters)
-          });
-      }
-    }
+    self
+      .features
+      .ambient_occlusion
+      .add_passes((&mut *graph, &mut *runtime), passes, view, targets);
 
     self
       .features
@@ -1059,7 +986,7 @@ impl SceneView {
     let present: PresentUniform = PresentUniform::new(
       self.info.debug_view,
       (
-        self.info.is_occlusion_drawn,
+        self.features.ambient_occlusion.is_drawn(),
         self.features.bitmask.get_search().is_some_and(|search| search.is_lit),
         self.features.reflections.get_trace().map(ReflectionTrace::get_ratio),
       ),
@@ -1251,7 +1178,6 @@ impl SceneView {
     // The shadowed lights' shafts, drawn into a target of their own for the sun shafts' composite to add.
     let is_froxeled: bool = is_lit && self.features.volumetric.is_froxeled();
     let light_atlas: &'a wgpu::TextureView = scene.lights.get_shadow_atlas();
-    let is_occlusion_ambient: bool = self.info.is_occlusion_drawn;
     let has_sky: bool = self.info.sky.is_some();
     let is_hazing: bool = has_sky && self.info.is_hazing;
     let is_composited: bool = is_drawn && has_sky;
@@ -1550,7 +1476,7 @@ impl SceneView {
         passes,
         (view, texture_group, scene),
         (handles, lit),
-        (has_lights, is_occlusion_ambient),
+        has_lights,
       );
 
       let sky: Option<SkyParameters> = match (&scene_view.info.sky, &scene_view.state.sky_prefilter) {
@@ -2161,9 +2087,10 @@ impl SceneView {
         filter: self.info.shadow_settings.filter,
       }),
       ambient_occlusion: self
-        .info
-        .is_occlusion_drawn
-        .then_some(self.info.ambient_occlusion.quality),
+        .features
+        .ambient_occlusion
+        .is_drawn()
+        .then_some(self.features.ambient_occlusion.get_quality()),
       indirect_light: self
         .features
         .bitmask
