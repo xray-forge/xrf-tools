@@ -43,8 +43,6 @@ pub struct ViewState {
   pub puddle_fill: PuddleFill,
   /// What the foliage motion read this frame, which the grass takes as the trees do.
   pub foliage_values: FoliageWindValues,
-  /// The models' composited clusters this frame, back to front, as `(cluster, place)` entries.
-  pub sorted_list: Option<wgpu::Buffer>,
   /// What it draws over its frame.
   pub overlays: Option<LevelOverlays>,
   /// The selection box the overlays were made with, so a box that moved or came into the scene makes them again.
@@ -82,7 +80,6 @@ impl ViewState {
       overlays: None,
       overlays_box: None,
       selection: None,
-      sorted_list: None,
       stats: StatsReadback::new(device),
       pick_target: None,
       pick_view: None,

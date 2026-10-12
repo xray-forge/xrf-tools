@@ -59,8 +59,6 @@ use crate::pass::contact_shadow_uniform::ContactShadowUniform;
 use crate::pass::enhanced_water_maps::EnhancedWaterMaps;
 use crate::pass::foliage_wind_values::FoliageWindValues;
 use crate::pass::froxel_uniform::FroxelUniform;
-use crate::pass::glass_parameters::GlassParameters;
-use crate::pass::glass_uniform::GlassUniform;
 use crate::pass::grass_colour_parameters::GrassColourParameters;
 use crate::pass::grass_puddles_uniform::GrassPuddlesUniform;
 use crate::pass::level_passes::LevelPasses;
@@ -98,7 +96,7 @@ use crate::pass::wet_patch_parameters::WetPatchParameters;
 use crate::pass::wet_uniform::WetUniform;
 use crate::pass::wind_uniform::WindUniform;
 use crate::scene::level::cover_textures::CoverTextures;
-use crate::scene::level::feature::over_scene::add_over_scene;
+use crate::scene::level::feature::composited_draw::CompositedDraw;
 use crate::scene::level::feature::scene_features::SceneFeatures;
 use crate::scene::level::feature::water_frame::WaterFrame;
 use crate::scene::level::frame_load::FrameLoad;
@@ -125,8 +123,6 @@ use crate::scene::static_scene::static_scene::StaticScene;
 use crate::scene::static_scene::static_selection::StaticSelection;
 use crate::scene::static_scene::static_sight::StaticSight;
 use crate::scene::static_scene::static_slot_info::StaticSlotInfo;
-use crate::scene::static_scene::static_sorted_place::StaticSortedPlace;
-use crate::scene::static_scene::static_surface_pass::StaticSurfacePass;
 use crate::scene::texture::texture_cache::TextureCache;
 use crate::scene::texture::weather_texture_cache::WeatherTextureCache;
 use crate::scene::texture::weather_texture_kind::WeatherTextureKind;
@@ -541,7 +537,10 @@ impl SceneView {
       (width.div_ceil(2), height.div_ceil(2)),
     );
     self.features.reflections.prepare(device, options, (width, height));
-    self.prepare_sorted(scene, device, &mut *encoder, view);
+    self
+      .features
+      .composited
+      .prepare((scene, device, &mut *encoder), view, options, &sight);
 
     if let Some(pyramid) = &self.state.pyramid {
       let (history_view, history_projection): (Mat4, Mat4) = self.state.history.unwrap_or(self.info.matrices);
@@ -586,18 +585,7 @@ impl SceneView {
 
     self.state.particles.upload((device, &mut *encoder));
 
-    self.write_present(
-      options,
-      options.mode.is_lit && sight.has_pass(StaticSurfacePass::Distortion),
-      scene.started.elapsed().as_secs_f32(),
-    );
-    self.info.glass = (options.features.glass.is_enhanced()
-      && options.mode.is_lit
-      && !options.mode.is_wireframe
-      && sight.has_pass(StaticSurfacePass::Glass))
-    .then_some(GlassUniform {
-      refraction: options.features.glass.refraction,
-    });
+    self.write_present(options, scene.started.elapsed().as_secs_f32());
     self.features.volumetric.prepare(device, options);
     self.prepare_shadows(scene, device, encoder, (view_layout, textures));
     self.follow_overhead_maps();
@@ -1052,10 +1040,10 @@ impl SceneView {
   }
 
   /// Notes what the present pass reads, once the frame knows what draws into the distortion target: `def_distort`
-  /// while the water, a particle or a distorting surface of the scene (`is_glass_distorting`) does, nothing otherwise;
-  /// which bloom it lays over the frame, and the sky debanding, its noise turning with `time`.
-  fn write_present(&mut self, options: &RenderViewOptions, is_glass_distorting: bool, time: f32) {
-    self.info.is_glass_distorting = is_glass_distorting && !options.mode.is_wireframe;
+  /// while the water, a particle or a distorting surface of the scene does, nothing otherwise; which bloom it lays
+  /// over the frame, and the sky debanding, its noise turning with `time`.
+  fn write_present(&mut self, options: &RenderViewOptions, time: f32) {
+    let is_glass_distorting: bool = self.features.composited.is_distorting();
 
     let Some(targets) = &self.state.targets else {
       return;
@@ -1696,30 +1684,33 @@ impl SceneView {
 
       graph.begin_group("post");
 
-      let composited: CompositedParameters = CompositedParameters {
-        lighting: lit.lighting,
-        exposure: StorageValue::new(lit.exposure),
-        material_lut: lit.material_lut,
-        lut_sampler: lit.lut_sampler,
-        shadow_maps: lit.shadow_maps,
-        shadows: lit.shadows,
-      };
+      let composited_draw: Option<(CompositedDraw, SkyParameters)> = sky.filter(|_| is_composited).map(|sky| {
+        (
+          CompositedDraw {
+            view,
+            textures: texture_group,
+            handles,
+            statics,
+            layouts,
+            args: Self::list_draw_args(&statics, &scene_view.info.cull),
+            composited: CompositedParameters {
+              lighting: lit.lighting,
+              exposure: StorageValue::new(lit.exposure),
+              material_lut: lit.material_lut,
+              lut_sampler: lit.lut_sampler,
+              shadow_maps: lit.shadow_maps,
+              shadows: lit.shadows,
+            },
+          },
+          sky,
+        )
+      });
 
-      if let (true, Some(sky)) = (is_composited, sky) {
-        let args: Vec<GraphBuffer> = Self::list_draw_args(&statics, &scene_view.info.cull);
-        let builder = args.iter().fold(
-          StaticDraws::declare_layouts(add_over_scene(&mut *graph, handles, "composited"), &layouts),
-          |builder, args| builder.buffer(*args, GraphBufferAccess::Indirect),
-        );
-        let builder = builder.parameters(&composited).parameters(&sky);
-
-        builder.record(move |context| {
-          let args: Vec<&wgpu::Buffer> = args.iter().map(|args| context.get_buffer(*args)).collect();
-
-          passes
-            .composited
-            .record(context, (view, &layouts, texture_group), (&composited, &sky), &args);
-        });
+      if let Some((draw, sky)) = &composited_draw {
+        scene_view
+          .features
+          .composited
+          .add_passes(&mut *graph, passes, (draw, *sky));
       }
 
       if has_particles {
@@ -1731,92 +1722,12 @@ impl SceneView {
         );
       }
 
-      // The sorted composited surfaces, the models' and the level's strictly sorted ones, back to front after the
-      // particles, as the engine draws `mapSorted` after its unsorted forward passes.
-      if let (true, Some(sky), Some(list)) = (
-        is_composited,
-        sky,
-        scene_view
-          .state
-          .sorted_list
-          .as_ref()
-          .filter(|_| scene_view.info.sorted_count > 0),
-      ) {
-        let list: GraphBuffer = bindings.import_buffer(&mut *graph, "sorted composited", list);
-        let sorted: [StaticDrawParameters; StaticLayout::COUNT] = statics.get_layout_draws(StorageArray::new(list));
-        let runs: &'a [(StaticLayout, u32, u32)] = &scene_view.info.sorted_runs;
-
-        StaticDraws::declare_layouts(add_over_scene(&mut *graph, handles, "sorted composited"), &sorted)
-          .parameters(&composited)
-          .parameters(&sky)
-          .record(move |context| {
-            passes
-              .composited
-              .record_sorted(context, (view, &sorted, texture_group), (&composited, &sky), runs);
-          });
-      }
-
-      // The enhanced glass after every composited surface and particle, over the frame copied just before it, which it
-      // refracts.
-      if let (true, Some(sky), Some(glass)) = (is_composited, sky, scene_view.info.glass) {
-        let (width, height) = handles.size;
-        let copy: GraphTexture = graph.create_texture(GraphTextureDescriptor::new_2d(
-          "glass scene",
-          width,
-          height,
-          ViewTargets::SCENE,
-        ));
-
-        add_texture_copy(&mut *graph, "glass copy", handles.scene, copy);
-
-        let parameters: GlassParameters = GlassParameters {
-          lighting: lit.lighting,
-          exposure: StorageValue::new(lit.exposure),
-          material_lut: lit.material_lut,
-          lut_sampler: lit.lut_sampler,
-          shadow_maps: lit.shadow_maps,
-          shadows: lit.shadows,
-          glass: runtime.push_uniform(&glass),
-          glass_scene: copy,
-          scene_sampler: passes.glass.get_scene_sampler(),
-          depth_target: handles.depth,
-        };
-        let args: Vec<GraphBuffer> = Self::list_draw_args(&statics, &scene_view.info.cull);
-        let builder = args.iter().fold(
-          StaticDraws::declare_layouts(add_over_scene(&mut *graph, handles, "glass"), &layouts),
-          |builder, args| builder.buffer(*args, GraphBufferAccess::Indirect),
+      if let Some((draw, sky)) = &composited_draw {
+        scene_view.features.composited.add_after_particles(
+          (&mut *graph, &mut *bindings, runtime),
+          passes,
+          (draw, *sky, lit),
         );
-
-        builder.parameters(&parameters).parameters(&sky).record(move |context| {
-          let args: Vec<&wgpu::Buffer> = args.iter().map(|args| context.get_buffer(*args)).collect();
-
-          passes
-            .glass
-            .record(context, (view, &layouts, texture_group), (&parameters, &sky), &args);
-        });
-      }
-
-      // The distorting surfaces' special pass, a window's glass bending what is behind it, into the distortion target
-      // the water and the particles wrote, as the engine draws `mapDistort` after every forward pass.
-      if let (true, Some(sky), true) = (is_composited, sky, scene_view.info.is_glass_distorting) {
-        let args: Vec<GraphBuffer> = Self::list_draw_args(&statics, &scene_view.info.cull);
-        let pass = graph
-          .add_raster_pass("composited distortion")
-          .color(GraphColorAttachment::new(handles.distortion, wgpu::LoadOp::Load))
-          .depth(GraphDepthAttachment::new_read_only(handles.depth));
-        let builder = args
-          .iter()
-          .fold(StaticDraws::declare_layouts(pass, &layouts), |builder, args| {
-            builder.buffer(*args, GraphBufferAccess::Indirect)
-          });
-
-        builder.parameters(&composited).parameters(&sky).record(move |context| {
-          let args: Vec<&wgpu::Buffer> = args.iter().map(|args| context.get_buffer(*args)).collect();
-
-          passes
-            .composited
-            .record_distortion(context, (view, &layouts, texture_group), (&composited, &sky), &args);
-        });
       }
 
       // What a reflection reads a frame later: the scene with the water and the particles drawn, before the sun shafts,
@@ -1923,25 +1834,11 @@ impl SceneView {
 
       // A selected composited surface, glass, marked where the present outlines the selection, once the enhanced
       // bloom has read the marks.
-      if let (true, Some(_)) = (is_composited, scene_view.info.selection_color) {
-        let args: Vec<GraphBuffer> = Self::list_draw_args(&statics, &scene_view.info.cull);
-        let pass = graph
-          .add_raster_pass("composited selection")
-          .color(GraphColorAttachment::new(handles.material, wgpu::LoadOp::Load))
-          .depth(GraphDepthAttachment::new_read_only(handles.depth));
-        let builder = args
-          .iter()
-          .fold(StaticDraws::declare_layouts(pass, &layouts), |builder, args| {
-            builder.buffer(*args, GraphBufferAccess::Indirect)
-          });
-
-        builder.record(move |context| {
-          let args: Vec<&wgpu::Buffer> = args.iter().map(|args| context.get_buffer(*args)).collect();
-
-          passes
-            .composited
-            .record_selection(context, (view, &layouts, texture_group), &args);
-        });
+      if let (Some((draw, _)), Some(_)) = (&composited_draw, scene_view.info.selection_color) {
+        scene_view
+          .features
+          .composited
+          .add_selection_passes(&mut *graph, passes, draw);
       }
 
       scene_view
@@ -2223,77 +2120,6 @@ impl SceneView {
   /// frames temporally and shows the finished frame, still otherwise.
   pub fn next_jitter(&mut self, options: &RenderViewOptions, ratio: f32) -> Vec2 {
     self.features.resolve.next_jitter(options, ratio)
-  }
-
-  /// Lists the sorted composited clusters in view, the models' and the level's strictly sorted runs, back to front by
-  /// distance and each place's clusters in their parts' order, as the engine draws its sorted blended objects, and the
-  /// runs of them alike in layout, which each draw with their layout's program; binds the list for the sorted pass.
-  fn prepare_sorted(
-    &mut self,
-    scene: &LevelScene,
-    device: &wgpu::Device,
-    encoder: &mut FrameEncoder,
-    view: &CameraView,
-  ) {
-    let planes: [Vec4; 6] = view.get_planes();
-    let mut places: Vec<(f32, StaticSortedPlace<'_>)> = scene
-      .statics
-      .list_sorted_places()
-      .filter(|place| place.is_in_view(&planes))
-      .map(|place| (place.get_distance(view.position), place))
-      .collect();
-
-    places.sort_by(|a, b| b.0.total_cmp(&a.0));
-
-    let mut entries: Vec<[u32; 2]> = Vec::new();
-    let mut runs: Vec<(StaticLayout, u32, u32)> = Vec::new();
-
-    for (_, place) in &places {
-      let first: u32 = entries.len() as u32;
-
-      entries.extend(
-        place
-          .clusters
-          .iter()
-          .flat_map(|(first, count)| (*first..first + count).map(|cluster| [cluster, place.place])),
-      );
-
-      let count: u32 = entries.len() as u32 - first;
-
-      match runs.last_mut() {
-        Some((layout, _, run)) if *layout == place.layout => *run += count,
-        _ => runs.push((place.layout, first, count)),
-      }
-    }
-
-    let bytes: &[u8] = bytemuck::cast_slice(&entries);
-
-    self.info.sorted_count = entries.len() as u32;
-    self.info.sorted_runs = runs;
-
-    if bytes.is_empty() {
-      return;
-    }
-
-    if self
-      .state
-      .sorted_list
-      .as_ref()
-      .is_none_or(|buffer| buffer.size() < bytes.len() as u64)
-    {
-      self.state.sorted_list = Some(device.create_buffer(&wgpu::BufferDescriptor {
-        label: Some("sorted composited"),
-        size: (bytes.len() as u64).next_power_of_two(),
-        usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-        mapped_at_creation: false,
-      }));
-    }
-
-    let Some(buffer) = &self.state.sorted_list else {
-      return;
-    };
-
-    encoder.write_buffer(buffer, 0, bytes);
   }
 
   /// Asks for the counts recorded with the frame just submitted.
