@@ -18,6 +18,7 @@ use crate::pass::static_cull_parameters::StaticCullParameters;
 use crate::pass::static_cull_params::StaticCullParams;
 use crate::pass::static_draw_parameters::StaticDrawParameters;
 use crate::pass::static_draws::StaticDraws;
+use crate::scene::level::feature::view_feature::ViewFeature;
 use crate::scene::level::frame_load::FrameLoad;
 use crate::scene::level::shadow_cascade_view::ShadowCascadeView;
 use crate::scene::level::shadow_frame::ShadowFrame;
@@ -30,8 +31,10 @@ const CASCADE_PASSES: [&str; RENDER_MAX_SHADOW_CASCADES] =
 /// A level's sun shadow: its cascades fitted along the camera's view every frame, each culled and drawn into its map
 /// only when its box moved or the scene grew, and then at most as often as its stagger allows, unless its box strayed
 /// too far from its map to wait.
+#[derive(Default)]
 pub struct LevelShadows {
-  maps: SunShadowMaps,
+  /// The maps, while any cascade is drawn.
+  maps: Option<SunShadowMaps>,
   values: ShadowUniform,
   cascades: Vec<ShadowCascadeView>,
   /// Frames the shadow has been in, which a cascade's stagger is counted by.
@@ -41,18 +44,9 @@ pub struct LevelShadows {
 }
 
 impl LevelShadows {
-  pub fn new(device: &wgpu::Device) -> Self {
-    Self {
-      maps: SunShadowMaps::new(device, 1),
-      values: ShadowUniform::default(),
-      cascades: Vec::new(),
-      frames: 0,
-      due: Vec::new(),
-    }
-  }
-
-  pub fn get_maps(&self) -> &SunShadowMaps {
-    &self.maps
+  /// The maps, while any cascade is drawn.
+  pub fn get_maps(&self) -> Option<&SunShadowMaps> {
+    self.maps.as_ref()
   }
 
   /// What the passes lit by the sun sample its cascades by, as this frame fitted them.
@@ -66,13 +60,15 @@ impl LevelShadows {
     &self.values
   }
 
-  /// Makes the maps again at the resolution the settings ask for, when it changed, so the sun binds them before the
-  /// frame draws.
-  pub fn prepare(&mut self, device: &wgpu::Device, resolution: u32) {
+  /// Makes the maps at the resolution the settings ask for while any cascade is drawn (`is_cast`), again where it
+  /// changed, so the sun binds them before the frame draws; lets them go while none is.
+  pub fn prepare(&mut self, device: &wgpu::Device, resolution: u32, is_cast: bool) {
     let resolution: u32 = resolution.clamp(1, device.limits().max_texture_dimension_2d);
 
-    if resolution != self.maps.resolution {
-      self.maps = SunShadowMaps::new(device, resolution);
+    if !is_cast {
+      self.release();
+    } else if self.maps.as_ref().is_none_or(|maps| maps.resolution != resolution) {
+      self.maps = Some(SunShadowMaps::new(device, resolution));
       self.cascades.iter_mut().for_each(|cascade| cascade.drawn = None);
     }
   }
@@ -101,7 +97,7 @@ impl LevelShadows {
 
     self.values.forward = look.extend(0.0);
     self.values.filter_reach = settings.filter;
-    self.values.resolution = self.maps.resolution as f32;
+    self.values.resolution = self.maps.as_ref().map_or(1, |maps| maps.resolution) as f32;
     self.values.bias = settings.bias;
     self.values.blend = settings.blend;
   }
@@ -181,7 +177,7 @@ impl LevelShadows {
     count: usize,
   ) {
     let scene = frame.scene;
-    let resolution: u32 = self.maps.resolution;
+    let resolution: u32 = self.maps.as_ref().map_or(1, |maps| maps.resolution);
     let list_bytes: u64 = (scene.cull.get_list_capacity().max(1) as u64) * 8;
     let mut rays: SunViewRays = SunViewRays::new(frame.camera);
 
@@ -256,4 +252,18 @@ fn is_cascade_due(cascade: usize, frame: u64) -> bool {
   let rate: u64 = 1 << cascade;
 
   cascade == 0 || frame % rate == (1 << (cascade - 1)) % rate
+}
+
+impl ViewFeature for LevelShadows {
+  /// The maps, a layer for every cascade there may be, while any cascade is drawn.
+  fn get_memory(&self) -> u64 {
+    self.maps.as_ref().map_or(0, |maps| {
+      u64::from(maps.resolution).pow(2) * RENDER_MAX_SHADOW_CASCADES as u64 * 4
+    })
+  }
+
+  fn release(&mut self) {
+    self.maps = None;
+    self.cascades.iter_mut().for_each(|cascade| cascade.drawn = None);
+  }
 }

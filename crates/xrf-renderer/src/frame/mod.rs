@@ -20,5 +20,6 @@ pub(crate) mod sun_shadow_maps;
 pub(crate) mod temporal_jitter;
 pub(crate) mod texture_copy;
 pub(crate) mod view_target_handles;
+pub(crate) mod view_target_uses;
 pub(crate) mod view_targets;
 pub(crate) mod water_reflection;

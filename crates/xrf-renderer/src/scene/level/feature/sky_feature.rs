@@ -23,6 +23,7 @@ use crate::scene::level::lighting_handles::LightingHandles;
 use crate::scene::level::sky_views::SkyViews;
 use crate::scene::level::surroundings_cube::SurroundingsCube;
 use crate::scene::texture::weather_texture_cache::WeatherTextureCache;
+use crate::scene::texture::weather_texture_kind::WeatherTextureKind;
 
 /// The sky a view draws and reflects: its textures as the weather holds them this frame, with the sun's sprite, the
 /// prefiltered cube the reflections and the enhanced specular read, filled each frame, and the haze map the distance
@@ -32,7 +33,10 @@ pub struct SkyFeature {
   views: Option<SkyViews>,
   /// The sun's sprite as the sky draws it, its texture and its colour and radius, where one is drawn.
   sun_sprite: Option<(String, Vec4)>,
+  /// The prefiltered cube, while the enhanced reflections and specular read it.
   prefilter: Option<SkyPrefilter>,
+  /// What the sky group binds in the prefiltered cube's place while none is kept: the weather's placeholder cube.
+  unfiltered: Option<wgpu::TextureView>,
   /// Whether the haze map is drawn this frame.
   is_hazing: bool,
 }
@@ -56,6 +60,14 @@ impl SkyFeature {
     self.sun_sprite = sun_sprite;
     self.is_hazing = options.mode.is_lit && options.show.is_sky_visible && options.show.is_sky_hazed;
 
+    // The prefiltered cube is the enhanced reflections' and specular's alone.
+    if !options.features.reflections.is_drawn() {
+      self.prefilter = None;
+      self.unfiltered = Some(weather_textures.get_view(None, WeatherTextureKind::Cube).clone());
+
+      return;
+    }
+
     let probe: RenderReflectionProbe = options.features.reflections.probe;
 
     if self.prefilter.as_ref().is_some_and(|it| it.probe != probe) {
@@ -63,6 +75,7 @@ impl SkyFeature {
     }
 
     self.prefilter.get_or_insert_with(|| SkyPrefilter::new(device, probe));
+    self.unfiltered = None;
   }
 
   /// The sun's sprite as the sky draws it, where one is drawn.
@@ -94,17 +107,22 @@ impl SkyFeature {
       (&'a StaticCullParams, &'a wgpu::BindGroup),
     )>,
   ) -> Option<SkyParameters<'a>> {
-    let (Some(views), Some(prefilter)) = (&self.views, &self.prefilter) else {
-      return None;
+    let views: &'a SkyViews = self.views.as_ref()?;
+    let cube: &'a wgpu::TextureView = match (&self.prefilter, &self.unfiltered) {
+      (Some(prefilter), _) => &prefilter.cube,
+      (None, Some(unfiltered)) => unfiltered,
+      (None, None) => return None,
     };
-    let sky: SkyParameters = passes.sky.import((views, &prefilter.cube), &mut *graph, &mut *bindings);
+    let sky: SkyParameters = passes.sky.import((views, cube), &mut *graph, &mut *bindings);
 
-    self.add_prefilter_passes(
-      (&mut *graph, &mut *bindings, runtime),
-      passes,
-      (&sky, prefilter, &lit),
-      surroundings,
-    );
+    if let Some(prefilter) = &self.prefilter {
+      self.add_prefilter_passes(
+        (&mut *graph, &mut *bindings, runtime),
+        passes,
+        (&sky, prefilter, &lit),
+        surroundings,
+      );
+    }
 
     if self.is_hazing {
       let parameters: SkyHazeParameters = SkyHazeParameters {

@@ -1,11 +1,13 @@
 use xrf_error::XrfResult;
 use xrf_renderer_core::{PassParameters, RasterContext};
 
+use crate::frame::sun_shadow_maps::SunShadowMaps;
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::fullscreen_pipeline::{create_fullscreen_pipeline, create_fullscreen_pipeline_into};
 use crate::pass::view_binding::ViewBinding;
 use crate::pass::wet_apply_parameters::WetApplyParameters;
 use crate::pass::wet_patch_parameters::WetPatchParameters;
+use crate::scene::level::level_surface::LevelSurface;
 use crate::shader::shader_library::ShaderLibrary;
 
 /// Rain on the G-buffer before any light, as `draw_rain` wets it (`r3_rendertarget_draw_rain.cpp`): where the rain
@@ -17,6 +19,8 @@ pub struct WetPass {
   /// The patch's, then the write back's and the wetting's.
   layouts: [wgpu::BindGroupLayout; 2],
   sampler: wgpu::Sampler,
+  /// The level's surface where none is made: no lowest heights, no puddles and no water, a texel each.
+  dry: [wgpu::TextureView; 3],
   /// The patch, the normal written back, the albedo and gloss wetted; the engine's, then the enhanced.
   pipelines: [[wgpu::RenderPipeline; 3]; 2],
   generation: u64,
@@ -31,6 +35,11 @@ impl WetPass {
   /// the engine's own wetting, which the lights' specular leaves out.
   pub const REACH: wgpu::TextureFormat = wgpu::TextureFormat::R8Unorm;
 
+  /// The level's surface where none is made, its lowest heights, its puddles and its water, each of nothing.
+  pub fn get_dry(&self) -> [&wgpu::TextureView; 3] {
+    [&self.dry[0], &self.dry[1], &self.dry[2]]
+  }
+
   /// # Errors
   ///
   /// Returns an error when a shader does not compose or compile.
@@ -39,7 +48,31 @@ impl WetPass {
     let apply: wgpu::BindGroupLayout = WetApplyParameters::create_layout(device);
     let layouts: [wgpu::BindGroupLayout; 2] = [patch, apply];
 
+    let texel = |label: &str, format: wgpu::TextureFormat| -> wgpu::TextureView {
+      device
+        .create_texture(&wgpu::TextureDescriptor {
+          label: Some(label),
+          size: wgpu::Extent3d {
+            width: 1,
+            height: 1,
+            depth_or_array_layers: 1,
+          },
+          mip_level_count: 1,
+          sample_count: 1,
+          dimension: wgpu::TextureDimension::D2,
+          format,
+          usage: wgpu::TextureUsages::TEXTURE_BINDING,
+          view_formats: &[],
+        })
+        .create_view(&Default::default())
+    };
+
     Ok(Self {
+      dry: [
+        texel("level surface lowest none", LevelSurface::HEIGHT_FORMAT),
+        texel("puddles none", LevelSurface::SITES_FORMAT),
+        texel("level water none", SunShadowMaps::FORMAT),
+      ],
       pipelines: Self::create_pipelines(device, shaders, view_layout, &layouts)?,
       sampler: device.create_sampler(&wgpu::SamplerDescriptor {
         label: Some("wet"),

@@ -24,6 +24,7 @@ pub(crate) mod scene_features;
 pub(crate) mod sky_feature;
 pub(crate) mod smoothing_feature;
 pub(crate) mod statics_feature;
+pub(crate) mod sun_shafts_feature;
 pub(crate) mod temporal_resolve;
 pub(crate) mod thunder_feature;
 pub(crate) mod view_feature;

@@ -17,8 +17,6 @@ pub struct ViewFrame {
   pub shadow_settings: RenderShadowSettings,
   /// Whether the static surfaces draw as their edges, which nothing composited or planted is drawn over.
   pub is_wireframe: bool,
-  /// Whether the sun's light shafts are added, drawn through its shadow's cascades.
-  pub is_shafted: bool,
   /// The lighting the passes read, as the frame's weather and options make it.
   pub lighting: LightingUniform,
 }
@@ -35,7 +33,6 @@ impl Default for ViewFrame {
       switches: Vec4::new(1.0, 1.0, 1.0, 0.0),
       shadow_settings: RenderShadowSettings::default(),
       is_wireframe: false,
-      is_shafted: false,
       lighting: bytemuck::Zeroable::zeroed(),
     }
   }

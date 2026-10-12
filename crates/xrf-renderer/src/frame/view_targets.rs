@@ -1,4 +1,6 @@
-/// One viewport's G-buffer, sized to its rectangle and made again when that changes.
+/// One viewport's G-buffer, depth, light and scene, sized to its rectangle and made again when that changes; the targets
+/// each frame writes afresh (the ambient occlusion, the haze, the distortion, the high part and the bloom) are its
+/// graph's, their formats and sizes here.
 pub struct ViewTargets {
   pub width: u32,
   pub height: u32,
@@ -20,19 +22,6 @@ pub struct ViewTargets {
   /// The scene's texture, which a temporal resolve copies the frame it resolved back into, and FSR 2 copies out of
   /// before the blended surfaces draw.
   pub scene_texture: wgpu::Texture,
-  /// The ambient occlusion at half the size, searched into the first and denoised through the second back into it:
-  /// visibility, then distance along the view.
-  pub occlusion: [wgpu::TextureView; 2],
-  /// The sky as drawn, blurred into a map of bearing across and height up, which the distance fades into.
-  pub haze: wgpu::TextureView,
-  /// How far the water and the distorting particles move what is seen through them, around a half, which the present
-  /// reads the scene by; cleared at the frame's start.
-  pub distortion: wgpu::TextureView,
-  /// `rt_Generic_1`: what combine, the sky and the sun shafts leave of the scene's light past the tonemap, scaled down by
-  /// `def_hdr`, which the bloom is built from.
-  pub high: wgpu::TextureView,
-  /// `rt_Bloom_1` and `rt_Bloom_2`: the bloom built and blurred to and fro between them, the first holding it finished.
-  pub bloom: [wgpu::TextureView; 2],
 }
 
 impl ViewTargets {
@@ -122,7 +111,6 @@ impl ViewTargets {
         | wgpu::TextureUsages::COPY_DST,
       view_formats: &[],
     });
-    let half: (u32, u32) = (width.div_ceil(2), height.div_ceil(2));
 
     Self {
       width,
@@ -135,17 +123,6 @@ impl ViewTargets {
       light: create("light", Self::LIGHT),
       scene: scene_texture.create_view(&Default::default()),
       scene_texture,
-      occlusion: [
-        create_sized("ambient occlusion", Self::OCCLUSION, half),
-        create_sized("ambient occlusion denoised", Self::OCCLUSION, half),
-      ],
-      haze: create_sized("sky haze", Self::HAZE, Self::HAZE_SIZE),
-      distortion: create("distortion", Self::DISTORTION),
-      high: create("high", Self::HIGH),
-      bloom: [
-        create_sized("bloom", Self::BLOOM, Self::BLOOM_SIZE),
-        create_sized("bloom blurred", Self::BLOOM, Self::BLOOM_SIZE),
-      ],
     }
   }
 
