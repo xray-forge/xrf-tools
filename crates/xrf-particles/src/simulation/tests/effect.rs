@@ -102,6 +102,28 @@ fn advances_frames_only_when_framed_and_animated() {
 }
 
 #[test]
+fn starts_particles_on_the_first_frame_where_random_frames_count_none() {
+  let rules: ParticleEngineRules = ParticleEngineRules::default();
+  let library: ParticleLibrary = ParticleLibrary::default();
+  let mut definition: ParticleEffect = effect("no frames", 1, vec![source(1_000.0)]);
+
+  definition.flags |= ParticleEffectFlags::FRAMED | ParticleEffectFlags::RANDOM_FRAME;
+  definition.frame = Some(ParticleEffectFrame {
+    texture_size: (1.0, 1.0),
+    reserved: (0.0, 0.0),
+    frame_dimension_x: 1,
+    frame_count: 0,
+    frame_speed: 0.0,
+  });
+
+  let mut instance: ParticleEffectInstance = playing(definition);
+
+  instance.update(33, &context(&library, &rules));
+
+  assert_eq!(instance.get_pool().get_particles()[0].frame, 0);
+}
+
+#[test]
 fn places_its_actions_and_bounds_its_particles_grown_by_their_size() {
   let rules: ParticleEngineRules = ParticleEngineRules::default();
   let library: ParticleLibrary = ParticleLibrary::default();
