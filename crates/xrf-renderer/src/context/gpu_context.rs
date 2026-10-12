@@ -28,6 +28,9 @@ impl GpuContext {
   /// Where the renderer's bundle keeps DXC's library, which D3D12 compiles shaders with for shader model 6 (ray
   /// queries among what it brings); FXC, which Windows carries, stops at 5.1.
   pub const DXC_LIBRARY: &'static str = "dxc/dxcompiler.dll";
+  /// Bytes of each memory block the allocator places resources in, a larger resource taking a block of its own: small,
+  /// so the holes textures streaming in and out leave in the blocks hold little.
+  pub const MEMORY_BLOCK: u64 = 16 * 1024 * 1024;
 
   /// Starts the GPU on a hardware adapter of the backend asked for, D3D12 compiling with the DXC library at `dxc` where
   /// it loads.
@@ -175,6 +178,9 @@ impl GpuContext {
         wgpu::ExperimentalFeatures::disabled()
       } else {
         unsafe { wgpu::ExperimentalFeatures::enabled() }
+      },
+      memory_hints: wgpu::MemoryHints::Manual {
+        suballocated_device_memory_block_size: Self::MEMORY_BLOCK..Self::MEMORY_BLOCK,
       },
       ..Default::default()
     }))
