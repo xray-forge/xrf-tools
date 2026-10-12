@@ -1,12 +1,11 @@
 use std::sync::Arc;
 use std::time::Instant;
 
-use glam::{Mat4, UVec4, Vec2, Vec3, Vec4};
+use glam::{Vec2, Vec3, Vec4};
 use xrf_error::XrfResult;
-use xrf_math::EPS_S;
 use xrf_renderer_core::{
-  FrameGraph, GraphBindings, GraphBuffer, GraphBufferAccess, GraphColorAttachment, GraphDepthAttachment, GraphRuntime,
-  GraphTexture, GraphTextureDescriptor, StorageArray, StorageArrayMut, StorageValue, UniformBinding,
+  FrameGraph, GraphBindings, GraphBuffer, GraphColorAttachment, GraphRuntime, GraphTexture, GraphTextureDescriptor,
+  StorageArray, StorageArrayMut, StorageValue, UniformBinding,
 };
 
 use crate::camera::camera_view::CameraView;
@@ -27,7 +26,6 @@ use crate::contract::render_selection::RenderSelection;
 use crate::contract::render_static_report::RenderStaticReport;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::contract::render_water_settings::RenderWaterSettings;
-use crate::frame::depth_pyramid::DepthPyramid;
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::static_scene_handles::StaticSceneHandles;
 use crate::frame::texture_copy::add_texture_copy;
@@ -48,16 +46,10 @@ use crate::pass::level_passes::LevelPasses;
 use crate::pass::lighting_frame::LightingFrame;
 use crate::pass::lighting_uniform::LightingUniform;
 use crate::pass::present_uniform::PresentUniform;
-use crate::pass::pyramid_depth_parameters::PyramidDepthParameters;
-use crate::pass::pyramid_level_parameters::PyramidLevelParameters;
 use crate::pass::rain_uniform::RainUniform;
 use crate::pass::reflection_trace::ReflectionTrace;
 use crate::pass::sky_parameters::SkyParameters;
-use crate::pass::static_cull_parameters::StaticCullParameters;
-use crate::pass::static_cull_params::StaticCullParams;
 use crate::pass::static_draw_parameters::StaticDrawParameters;
-use crate::pass::static_draws::StaticDraws;
-use crate::pass::static_occlusion_uniform::StaticOcclusionUniform;
 use crate::pass::sun_parameters::SunParameters;
 use crate::pass::sun_shafts_parameters::SunShaftsParameters;
 use crate::pass::sun_shafts_pass::SunShaftsPass;
@@ -88,7 +80,6 @@ use crate::scene::level::surroundings_cube::SurroundingsCube;
 use crate::scene::level::view_info::ViewInfo;
 use crate::scene::level::view_state::ViewState;
 use crate::scene::static_scene::static_batch::StaticBatch;
-use crate::scene::static_scene::static_cull_scratch::StaticCullScratch;
 use crate::scene::static_scene::static_layout::StaticLayout;
 use crate::scene::static_scene::static_scene::StaticScene;
 use crate::scene::static_scene::static_selection::StaticSelection;
@@ -142,7 +133,7 @@ impl SceneView {
   ) -> Self {
     Self {
       info: ViewInfo::default(),
-      state: ViewState::new(device, queue),
+      state: ViewState::default(),
       features: SceneFeatures::new((device, queue), view_layout, scene.statics.cull.args.size()),
     }
   }
@@ -225,12 +216,8 @@ impl SceneView {
 
     if !self.state.targets.as_ref().is_some_and(|it| it.is_sized(width, height)) {
       let targets: ViewTargets = ViewTargets::new(device, width, height);
-      let pyramid: DepthPyramid = DepthPyramid::new(device, width, height);
-
       self.state.targets = Some(targets);
-      self.state.pyramid = Some(pyramid);
-      // A pyramid of another size holds no depth this frame can be tested against.
-      self.state.history = None;
+      self.features.statics.fit(device, (width, height));
     }
 
     self.features.overlays.follow_skeletons((scene, device));
@@ -345,7 +332,6 @@ impl SceneView {
       && options.show.is_sun_shafted
       && lighting.get_sun_shafts(&options.features.sun_shafts) > 0.0
       && options.features.shadows.get_cascade_count() > 0;
-    self.info.is_wallmarked = options.show.is_wallmarked;
     self.features.bloom.prepare(
       passes,
       options,
@@ -368,38 +354,16 @@ impl SceneView {
     );
     self.info.debanding = PresentUniform::get_debanding(options);
 
-    if !options.features.is_occlusion_culled {
-      self.state.history = None;
-    }
-
-    // The engine's screen: the viewport's pixels, widened for a lens narrower than its 90 degrees.
-    let screen: f32 =
-      (width * height) as f32 * (90.0 / field_of_view.max(1.0)).powi(2) * (EPS_S + options.features.lod.geometry_lod);
-    let threshold = |area: f32| -> f32 { (area / 3.0).powi(2) / screen };
-
-    self.info.cull = StaticCullParams {
-      cluster_count: scene.statics.geometry.get_cluster_count(),
-      row_count: scene.statics.geometry.get_row_count(),
-      batch_count: StaticBatch::COUNT as u32,
-      impostor_count: scene.statics.geometry.get_impostor_count(),
-      glod_start: threshold(options.features.lod.ssa_glod_start),
-      glod_end: threshold(options.features.lod.ssa_glod_end),
-      discard_below: options.features.lod.ssa_discard.powi(2) / screen,
-      candidate_capacity: scene.statics.cull.get_list_capacity(),
-      is_occluding: options.features.is_occlusion_culled as u32,
-      lod_a: threshold(options.features.lod.ssa_a),
-      lod_b: threshold(options.features.lod.ssa_b),
-      is_impostors: options.features.lod.is_impostors as u32,
-      pad: UVec4::ZERO,
-      lod_origin: view.position.extend(1.0),
-    };
-    self.info.matrices = (view.view, view.projection);
+    self
+      .features
+      .statics
+      .prepare(&scene.statics, options, (view, field_of_view), (width, height));
     self.features.grass.prepare(
       (device, &mut *encoder),
       (passes.grass, scene.grass.get_level()),
       &options.features.grass,
       view,
-      self.info.cull.discard_below,
+      self.features.statics.get_cull().discard_below,
       (
         scene.started.elapsed().as_secs_f32(),
         lighting.trees.is_some(),
@@ -422,7 +386,10 @@ impl SceneView {
         camera: view,
         settings: &options.features.lights,
         engine: lighting.engine,
-        lod: (self.info.cull.glod_start, self.info.cull.glod_end),
+        lod: (
+          self.features.statics.get_cull().glod_start,
+          self.features.statics.get_cull().glod_end,
+        ),
         statics: &scene.statics,
         sway: &to_sway(&scene.statics, self.features.wind.get_sway()),
         campfire_shares: &scene.campfire_shares,
@@ -480,17 +447,6 @@ impl SceneView {
       .composited
       .prepare((scene, device, &mut *encoder), view, options, &sight);
 
-    if let Some(pyramid) = &self.state.pyramid {
-      let (history_view, history_projection): (Mat4, Mat4) = self.state.history.unwrap_or(self.info.matrices);
-
-      self.info.occlusion = StaticOcclusionUniform {
-        view: history_view,
-        projection: history_projection,
-        size: Vec2::new(pyramid.width as f32, pyramid.height as f32),
-        levels: pyramid.levels,
-        has_history: self.state.history.is_some() as u32,
-      };
-    }
     self.info.lighting = LightingUniform::new(lighting, view.view, options, &frame);
     // The enhanced fog's height fog fades out as the camera goes indoors, by its hemi as the engine tells indoors.
     self.info.lighting.height_fog.w *= scene.camera_hemi.map_or(1.0, |hemi| {
@@ -558,6 +514,7 @@ impl SceneView {
       reflections,
       rain,
       wet,
+      statics: statics_feature,
       ..
     } = features;
     let statics: &StaticScene = &scene.statics;
@@ -568,7 +525,7 @@ impl SceneView {
       sun_direction: info.sun_direction,
       switches: info.switches,
       sway: to_sway(statics, features.wind.get_sway()),
-      params: &info.cull,
+      params: statics_feature.get_cull(),
       textures,
     };
 
@@ -616,111 +573,11 @@ impl SceneView {
       sun_direction: self.info.sun_direction,
       switches: self.info.switches,
       sway: to_sway(statics, self.features.wind.get_sway()),
-      params: &self.info.cull,
+      params: self.features.statics.get_cull(),
       textures,
     };
 
     lights.finish_shadows(device, encoder, &frame);
-  }
-
-  /// Declares the scene's culls and G-buffer draws: what last frame's depth does not hide, culled and drawn; then, while
-  /// it culls occlusion, this frame's depth reduced and what the first draw does not hide of the rest culled and drawn.
-  fn add_gbuffer_passes<'a>(
-    &'a self,
-    (graph, bindings): (&mut FrameGraph<'a>, &mut GraphBindings<'a>),
-    passes: LevelPasses<'a>,
-    (view, textures, scene): (&'a ViewBinding, &'a wgpu::BindGroup, &StaticSceneHandles),
-    (targets, pyramid): (ViewTargetHandles, &'a DepthPyramid),
-    is_occluding: bool,
-  ) {
-    let params: &'a StaticCullParams = &self.info.cull;
-    let cull: StaticCullParameters = scene.get_camera_cull();
-    let draws: StaticDraws = scene.get_camera_draws();
-    let gbuffer: [GraphTexture; 4] = targets.get_gbuffer();
-    let depth: GraphTexture = targets.depth;
-    let add_draw = |graph: &mut FrameGraph<'a>, name: &'static str, draw_args: GraphBuffer, is_first: bool| {
-      let color_load: wgpu::LoadOp<wgpu::Color> = if is_first {
-        wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT)
-      } else {
-        wgpu::LoadOp::Load
-      };
-      let depth_load: wgpu::LoadOp<f32> = if is_first {
-        wgpu::LoadOp::Clear(0.0)
-      } else {
-        wgpu::LoadOp::Load
-      };
-      let builder = gbuffer
-        .iter()
-        .fold(graph.add_raster_pass(name), |builder, texture| {
-          builder.color(GraphColorAttachment::new(*texture, color_load))
-        })
-        .depth(GraphDepthAttachment::new(depth, depth_load))
-        .buffer(draw_args, GraphBufferAccess::Indirect);
-
-      draws.declare(builder, is_first).record(move |context| {
-        let draw_args: &wgpu::Buffer = context.get_buffer(draw_args);
-
-        passes
-          .gbuffer
-          .record(context, (view, &draws, textures), draw_args, is_first);
-      });
-    };
-
-    graph
-      .add_compute_pass("cull")
-      .parameters(&cull)
-      .record(move |context| passes.cull.record_early(context, view, &cull, params));
-    add_draw(graph, "g-buffer", scene.args, true);
-
-    if !is_occluding {
-      return;
-    }
-
-    let (late, late_dispatch): (GraphBuffer, GraphBuffer) = (scene.late, scene.late_dispatch);
-    // Each level as its own resource, the depth reduced into the first and each into the next.
-    let level_views: Vec<GraphTexture> = pyramid
-      .level_views
-      .iter()
-      .map(|view| bindings.import_view(&mut *graph, "depth pyramid level", view))
-      .collect();
-    let first: PyramidDepthParameters = PyramidDepthParameters {
-      source_depth: depth,
-      target_level: level_views[0],
-    };
-    let levels: Vec<PyramidLevelParameters> = level_views
-      .windows(2)
-      .map(|pair| PyramidLevelParameters {
-        source_level: pair[0],
-        target_level: pair[1],
-      })
-      .collect();
-
-    levels
-      .iter()
-      .fold(
-        graph.add_compute_pass("depth pyramid").parameters(&first),
-        |builder, level| builder.parameters(level),
-      )
-      .record(move |context| passes.pyramid.record(context, pyramid, (&first, &levels), false));
-    graph
-      .add_encoder_pass("late cull dispatch")
-      .buffer(late, GraphBufferAccess::CopySource)
-      .buffer(late_dispatch, GraphBufferAccess::CopyDestination)
-      .record(move |context| {
-        let (late, dispatch) = (context.get_buffer(late), context.get_buffer(late_dispatch));
-
-        passes.cull.record_late_dispatch(context.get_encoder(), late, dispatch);
-      });
-    graph
-      .add_compute_pass("late cull")
-      .buffer(late_dispatch, GraphBufferAccess::Indirect)
-      .parameters(&cull)
-      .record(move |context| {
-        let dispatch: &wgpu::Buffer = context.get_buffer(late_dispatch);
-
-        passes.cull.record_late(context, view, &cull, dispatch);
-      });
-    add_draw(graph, "late g-buffer", late, false);
   }
 
   /// Declares the lighting: the lights binned into the view's clusters, the contact shadows marched, the sun then every
@@ -851,16 +708,14 @@ impl SceneView {
     (device, encoder): (&wgpu::Device, &mut FrameEncoder),
     pick: Option<(&CameraUniform, &wgpu::BindGroupLayout, bool)>,
   ) -> Option<LevelFrame> {
-    if self.state.targets.is_none() || self.state.pyramid.is_none() {
+    if self.state.targets.is_none() || !self.features.statics.is_ready() {
       return None;
     }
 
     let pick_slot: Option<usize> =
       pick.and_then(|(camera, view_layout, _)| self.features.pick.ready((device, encoder), camera, view_layout));
 
-    if self.info.cull.is_occluding != 0 {
-      self.state.history = Some(self.info.matrices);
-    }
+    self.features.statics.begin_frame();
 
     Some(LevelFrame {
       pick_slot,
@@ -886,11 +741,9 @@ impl SceneView {
   ) -> Option<SceneOutput> {
     profiling::scope!("declare");
 
-    let is_occluding: bool = self.info.cull.is_occluding != 0;
     let pick_slot: Option<usize> = frame.pick_slot;
     let is_pick_through: bool = frame.is_pick_through;
     let is_drawn: bool = !self.info.is_wireframe;
-    let is_wallmarked: bool = self.info.is_wallmarked && is_drawn;
     let is_raining: bool = self.features.rain.is_raining();
     let is_wet: bool = self.features.wet.is_wet();
     let is_lit: bool = frame.is_lit;
@@ -904,7 +757,7 @@ impl SceneView {
     let particle_surfaces: &wgpu::Buffer = scene.particles.get_surfaces();
     let texture_group: &wgpu::BindGroup = textures.get_bind_group();
     let scene_view: &'a SceneView = self;
-    let (Some(targets), Some(pyramid)) = (&scene_view.state.targets, &scene_view.state.pyramid) else {
+    let Some(targets) = &scene_view.state.targets else {
       return None;
     };
     let unlit: GraphTexture = bindings.import_view(&mut *graph, "indirect light none", passes.vbao.get_dark());
@@ -913,16 +766,11 @@ impl SceneView {
     let no_ends: GraphTexture =
       bindings.import_view(&mut *graph, "reflection ends none", passes.reflections.get_no_ends());
     let handles: ViewTargetHandles = ViewTargetHandles::import(&mut *graph, &mut *bindings, targets);
-    let statics: StaticSceneHandles = StaticSceneHandles::import(
+    let statics: StaticSceneHandles = scene_view.features.statics.import(
       (&mut *graph, &mut *bindings, runtime),
       &scene.statics,
-      &pyramid.view,
-      (
-        &scene_view.info.cull,
-        &scene_view.info.occlusion,
-        scene_view.features.wind.get_uniform(),
-      ),
-    );
+      scene_view.features.wind.get_uniform(),
+    )?;
     let layouts: [StaticDrawParameters; StaticLayout::COUNT] = statics.get_camera_draws().layouts;
     let lit: LightingHandles = LightingHandles {
       lighting: runtime.push_uniform(&scene_view.info.lighting),
@@ -956,12 +804,11 @@ impl SceneView {
         .grass
         .add_planting(&mut *graph, &mut *bindings, (passes.grass, grass_level));
 
-    scene_view.add_gbuffer_passes(
+    scene_view.features.statics.add_gbuffer_passes(
       (&mut *graph, &mut *bindings),
       passes,
       (view, texture_group, &statics),
-      (handles, pyramid),
-      is_occluding,
+      handles,
     );
 
     // The depth the reflections walk their rays over, kept before the grass draws, or after it where the grass is
@@ -975,21 +822,7 @@ impl SceneView {
         .add_pyramid_passes((&mut *graph, &mut *bindings), passes, handles.depth);
     }
 
-    let stats_args: GraphBuffer = statics.args;
-
-    // The cull's counts, read back for a report a frame or more later: an effect the graph cannot see.
-    graph
-      .add_encoder_pass("stats")
-      .buffer(stats_args, GraphBufferAccess::CopySource)
-      .keep()
-      .record(move |context| {
-        let args: &wgpu::Buffer = context.get_buffer(stats_args);
-
-        scene_view
-          .state
-          .stats
-          .record(context.get_encoder(), args, StaticCullScratch::STATS_OFFSET);
-      });
+    scene_view.features.statics.add_stats_pass(&mut *graph, &statics);
 
     if let (true, Some(grass_args)) = (is_drawn, grass_args) {
       scene_view.features.grass.add_draw(
@@ -1007,26 +840,11 @@ impl SceneView {
         .add_pyramid_passes((&mut *graph, &mut *bindings), passes, handles.depth);
     }
 
-    if is_wallmarked {
-      let args: Vec<GraphBuffer> = Self::list_draw_args(&statics, &scene_view.info.cull);
-
-      StaticDraws::declare_layouts(
-        args
-          .iter()
-          .fold(graph.add_raster_pass("wall marks"), |builder, args| {
-            builder.buffer(*args, GraphBufferAccess::Indirect)
-          })
-          .color(GraphColorAttachment::new(handles.albedo, wgpu::LoadOp::Load))
-          .depth(GraphDepthAttachment::new_read_only(handles.depth)),
-        &layouts,
-      )
-      .record(move |context| {
-        let args: Vec<&wgpu::Buffer> = args.iter().map(|args| context.get_buffer(*args)).collect();
-
-        passes
-          .composited
-          .record_wallmarks(context, (view, &layouts, texture_group), &args);
-      });
+    if is_drawn {
+      scene_view
+        .features
+        .statics
+        .add_wallmark_passes(&mut *graph, passes, (view, texture_group, &statics), handles);
     }
 
     graph.begin_group("shadows");
@@ -1035,7 +853,7 @@ impl SceneView {
       (&mut *graph, &mut *bindings),
       passes,
       (&statics, lit.shadow_maps),
-      (&scene_view.info.cull, texture_group),
+      (scene_view.features.statics.get_cull(), texture_group),
     );
 
     // The rain's cover, which its passes draw and reduce and the rain and the wet surfaces read.
@@ -1044,7 +862,7 @@ impl SceneView {
         (&mut *graph, &mut *bindings),
         passes,
         &statics,
-        (&scene_view.info.cull, texture_group),
+        (scene_view.features.statics.get_cull(), texture_group),
       )
     });
     let cover: Option<GraphTexture> = covers.map(|covers| covers.depth);
@@ -1065,7 +883,7 @@ impl SceneView {
           (&mut *graph, &mut *bindings, runtime),
           passes,
           &statics,
-          (&scene_view.info.cull, texture_group),
+          (scene_view.features.statics.get_cull(), texture_group),
           (water, keep),
         )
       }
@@ -1085,7 +903,7 @@ impl SceneView {
         (&mut *graph, &mut *bindings),
         passes,
         &statics,
-        (&scene_view.info.cull, texture_group),
+        (scene_view.features.statics.get_cull(), texture_group),
       );
     }
 
@@ -1138,9 +956,11 @@ impl SceneView {
         (&mut *graph, &mut *bindings, runtime),
         passes,
         (handles, lit),
-        surroundings
-          .is_active()
-          .then_some((surroundings, &statics, (&scene_view.info.cull, texture_group))),
+        surroundings.is_active().then_some((
+          surroundings,
+          &statics,
+          (scene_view.features.statics.get_cull(), texture_group),
+        )),
       );
       // The sky's group, which the water's scene pass reads too once the water's own sky views shadow the name.
       let sky_parameters: Option<SkyParameters> = sky;
@@ -1226,7 +1046,7 @@ impl SceneView {
           view,
           textures: texture_group,
           layouts,
-          args: Self::list_draw_args(&statics, &scene_view.info.cull),
+          args: scene_view.features.statics.list_draw_args(&statics),
           lit,
           skies: [&sky.cubes[0], &sky.cubes[1]],
           sky_sampler: passes.sky.get_clamp(),
@@ -1250,7 +1070,7 @@ impl SceneView {
             handles,
             statics,
             layouts,
-            args: Self::list_draw_args(&statics, &scene_view.info.cull),
+            args: scene_view.features.statics.list_draw_args(&statics),
             composited: CompositedParameters {
               lighting: lit.lighting,
               exposure: StorageValue::new(lit.exposure),
@@ -1539,15 +1359,6 @@ impl SceneView {
       })
   }
 
-  /// The draw arguments a forward pass replays: the early phase's, and the late phase's where occlusion culls.
-  fn list_draw_args(scene: &StaticSceneHandles, params: &StaticCullParams) -> Vec<GraphBuffer> {
-    if params.is_occluding != 0 {
-      vec![scene.args, scene.late]
-    } else {
-      vec![scene.args]
-    }
-  }
-
   /// Asks for a pick's texel back, its frame just submitted.
   pub fn request_pick(&self, slot: usize) {
     self.features.pick.request(slot);
@@ -1612,13 +1423,13 @@ impl SceneView {
 
   /// Asks for the counts recorded with the frame just submitted.
   pub fn request_stats(&self) {
-    self.state.stats.request();
+    self.features.statics.request_stats();
     self.features.lights.request_report();
   }
 
   /// Drops what a frame that was never submitted copied out for reading back: its counts and its pick.
   pub fn abandon_frame(&self) {
-    self.state.stats.abandon();
+    self.features.statics.abandon_stats();
     self.features.lights.abandon_report();
     self.features.pick.abandon();
   }
@@ -1690,9 +1501,13 @@ impl SceneView {
 
   /// The static draws' pools and what the latest counted frame's cull kept and hid, and its lights.
   pub fn take_stats(&mut self, scene: &LevelScene) -> (RenderStaticReport, RenderLightsReport) {
-    let [kept_clusters, kept_triangles, occluded_clusters, occluded_triangles] = self.state.stats.take();
+    let [kept_clusters, kept_triangles, occluded_clusters, occluded_triangles] = self.features.statics.take_stats();
     let pools: RenderStaticReport = scene.statics.get_pools();
-    let phases: u32 = if self.info.cull.is_occluding != 0 { 2 } else { 1 };
+    let phases: u32 = if self.features.statics.get_cull().is_occluding != 0 {
+      2
+    } else {
+      1
+    };
 
     (
       RenderStaticReport {
@@ -1700,7 +1515,8 @@ impl SceneView {
           used: kept_clusters,
           ..pools.surface_list
         },
-        commands: StaticBatch::list_deferred().count() as u32 * phases + u32::from(self.info.cull.is_impostors != 0),
+        commands: StaticBatch::list_deferred().count() as u32 * phases
+          + u32::from(self.features.statics.get_cull().is_impostors != 0),
         kept_clusters,
         kept_triangles,
         occluded_clusters,

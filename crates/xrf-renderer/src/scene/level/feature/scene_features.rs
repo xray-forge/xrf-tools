@@ -14,6 +14,7 @@ use crate::scene::level::feature::reflection_feature::ReflectionFeature;
 use crate::scene::level::feature::resolve_feature::ResolveFeature;
 use crate::scene::level::feature::sky_feature::SkyFeature;
 use crate::scene::level::feature::smoothing_feature::SmoothingFeature;
+use crate::scene::level::feature::statics_feature::StaticsFeature;
 use crate::scene::level::feature::thunder_feature::ThunderFeature;
 use crate::scene::level::feature::view_feature::ViewFeature;
 use crate::scene::level::feature::volumetric_feature::VolumetricFeature;
@@ -64,6 +65,7 @@ pub struct SceneFeatures {
   pub contact_shadows: ContactShadowFeature,
   pub wet: WetFeature,
   pub sky: SkyFeature,
+  pub statics: StaticsFeature,
 }
 
 impl SceneFeatures {
@@ -101,11 +103,12 @@ impl SceneFeatures {
       wet: WetFeature::default(),
       sky: SkyFeature::default(),
       pick: PickFeature::default(),
+      statics: StaticsFeature::new(device),
     }
   }
 
   /// Every unit, as what each answers alike.
-  pub fn list(&self) -> [&dyn ViewFeature; 18] {
+  pub fn list(&self) -> [&dyn ViewFeature; 19] {
     [
       &self.fog,
       &self.bloom,
@@ -125,10 +128,11 @@ impl SceneFeatures {
       &self.wet,
       &self.sky,
       &self.pick,
+      &self.statics,
     ]
   }
 
-  pub fn list_mut(&mut self) -> [&mut dyn ViewFeature; 18] {
+  pub fn list_mut(&mut self) -> [&mut dyn ViewFeature; 19] {
     [
       &mut self.fog,
       &mut self.bloom,
@@ -148,6 +152,7 @@ impl SceneFeatures {
       &mut self.wet,
       &mut self.sky,
       &mut self.pick,
+      &mut self.statics,
     ]
   }
 
