@@ -1,12 +1,8 @@
-use serde::Serialize;
-
 use crate::data::details::details_model::DetailsModel;
 use crate::data::visual::geometry::visual_section::VisualSection;
 
 /// Everything about a level's packed grass except the bytes themselves.
-#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Debug, PartialEq)]
 pub struct DetailsDescription {
   /// The grid's size in slots, and the world slot its first cell stands for, negated: cell `(x, z)` is world slot
   /// `(x - offset_x, z - offset_z)`.

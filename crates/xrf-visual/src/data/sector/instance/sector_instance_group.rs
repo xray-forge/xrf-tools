@@ -1,14 +1,10 @@
-use serde::Serialize;
-
 use crate::data::sector::instance::sector_progressive::SectorProgressive;
 use crate::data::sector::sector_geometry::SectorGeometry;
 use crate::data::sector::sector_surface::SectorSurface;
 use crate::data::visual::geometry::visual_section::VisualSection;
 
 /// One mesh a sector draws many times, packed once with the places it stands.
-#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Debug, PartialEq)]
 pub struct SectorInstanceGroup {
   pub surface: SectorSurface,
   /// The drawables this group stands in for, by their index in the visuals run.

@@ -1,4 +1,3 @@
-use serde::Serialize;
 use xrf_ltx::Ltx;
 use xrf_math::Vector3d;
 use xrf_spawn::Shape;
@@ -7,9 +6,7 @@ use crate::data::visual::skeleton::visual_transform::VisualTransform;
 
 /// The sphere a zone's distance from the camera is measured to (`CCustomZone::shedule_Update`, the sphere of its
 /// `CCF_Shape`): its centre as an offset from what stands with the zone, and its radius.
-#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Debug, PartialEq)]
 pub struct ZoneSphere {
   pub offset: Vector3d,
   pub radius: f32,

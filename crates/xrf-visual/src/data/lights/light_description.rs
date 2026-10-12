@@ -1,4 +1,3 @@
-use serde::Serialize;
 use xrf_math::Vector3d;
 
 use crate::data::lights::light_kind::LightKind;
@@ -7,9 +6,7 @@ use crate::data::lights::light_volumetric::LightVolumetric;
 use crate::data::lights::zone_sphere::ZoneSphere;
 
 /// One light of a level, in renderer space, as the engine would light with it.
-#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Debug, PartialEq)]
 pub struct LightDescription {
   pub kind: LightKind,
   pub position: Vector3d,
