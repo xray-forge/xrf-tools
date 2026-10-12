@@ -1,4 +1,4 @@
-use glam::{Mat4, Vec2, Vec3, Vec4};
+use glam::{Mat4, Vec3, Vec4};
 
 use crate::camera::camera_view::CameraView;
 use crate::contract::render_ambient_occlusion_settings::RenderAmbientOcclusionSettings;
@@ -10,13 +10,11 @@ use crate::contract::render_lights_settings::RenderLightsSettings;
 use crate::contract::render_rect::RenderRect;
 use crate::contract::render_reflection_settings::RenderReflectionSettings;
 use crate::contract::render_shadow_settings::RenderShadowSettings;
-use crate::contract::render_upscaling_settings::RenderUpscalingSettings;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::pass::ambient_occlusion_uniform::AmbientOcclusionUniform;
 use crate::pass::bitmask_search::BitmaskSearch;
 use crate::pass::contact_shadow_uniform::ContactShadowUniform;
 use crate::pass::froxel_uniform::FroxelUniform;
-use crate::pass::fsr_uniform::FsrUniform;
 use crate::pass::glass_uniform::GlassUniform;
 use crate::pass::lighting_uniform::LightingUniform;
 use crate::pass::present_uniform::PresentUniform;
@@ -24,8 +22,6 @@ use crate::pass::reflection_trace::ReflectionTrace;
 use crate::pass::reflection_uniform::ReflectionUniform;
 use crate::pass::static_cull_params::StaticCullParams;
 use crate::pass::static_occlusion_uniform::StaticOcclusionUniform;
-use crate::pass::temporal_uniform::TemporalUniform;
-use crate::pass::upscale_uniform::UpscaleUniform;
 use crate::pass::vbao_uniform::VbaoUniform;
 use crate::pass::wet_uniform::WetUniform;
 use crate::pass::wind_uniform::WindUniform;
@@ -35,9 +31,8 @@ use crate::scene::static_scene::static_layout::StaticLayout;
 /// One frame of a view as its preparation leaves it: the camera and sun it is drawn by, what its options and weather
 /// decided it draws, and what its passes read of that. Prepared before the frame graph is declared, and read by it.
 pub struct ViewInfo {
-  /// What the present pass shows and the upscale passes read this frame.
+  /// What the present pass shows this frame.
   pub present: PresentUniform,
-  pub upscale: UpscaleUniform,
   /// What the ambient occlusion searches by this frame.
   pub occlusion_settings: AmbientOcclusionUniform,
   /// What VBAO searches, accumulates and filters by this frame.
@@ -50,9 +45,6 @@ pub struct ViewInfo {
   /// them when the frame is prepared, each its kind's placeholder until its file is up.
   pub wet: WetUniform,
   pub wet_views: Option<[wgpu::TextureView; 2]>,
-  /// What the temporal resolve, or FSR 2, moves its history by this frame.
-  pub temporal: TemporalUniform,
-  pub fsr: FsrUniform,
   pub camera: CameraView,
   /// The camera's view and projection, which become the depth history once the pyramid is reduced.
   pub matrices: (Mat4, Mat4),
@@ -63,12 +55,6 @@ pub struct ViewInfo {
   pub switches: Vec4,
   /// The wind's amplitude and the time the trees sway by: what has still shadows drawn again.
   pub sway: (f32, f32),
-  /// Where this frame's samples sit within their pixels, and how many places the jitter cycles through.
-  pub jitter: Vec2,
-  pub jitter_phases: u32,
-  /// Whether a temporal resolve gathers this frame's samples, and whether it is FSR 2's rather than TAA.
-  pub is_temporal: bool,
-  pub is_fsr: bool,
   /// The cull's parameters for this frame's view and options.
   pub cull: StaticCullParams,
   /// The view the depth pyramid was reduced through, which the early cull tests against.
@@ -77,7 +63,6 @@ pub struct ViewInfo {
   pub wind: WindUniform,
   /// The viewport's rectangle in its window, which the frame is upscaled to where it is drawn smaller.
   pub output: RenderRect,
-  pub upscaling: RenderUpscalingSettings,
   pub shadow_settings: RenderShadowSettings,
   pub lights_settings: RenderLightsSettings,
   pub ambient_occlusion: RenderAmbientOcclusionSettings,
@@ -134,15 +119,12 @@ impl Default for ViewInfo {
   fn default() -> Self {
     Self {
       present: PresentUniform::default(),
-      upscale: UpscaleUniform::default(),
       occlusion_settings: AmbientOcclusionUniform::default(),
       vbao: VbaoUniform::default(),
       contact_shadows: ContactShadowUniform::default(),
       is_sun_contact: false,
       wet: WetUniform::default(),
       wet_views: None,
-      temporal: TemporalUniform::default(),
-      fsr: FsrUniform::default(),
       camera: CameraView {
         position: Vec3::ZERO,
         view: Mat4::IDENTITY,
@@ -152,15 +134,10 @@ impl Default for ViewInfo {
       sun_direction: RenderLighting::default().get_sun_direction(),
       switches: Vec4::new(1.0, 1.0, 1.0, 0.0),
       sway: (0.0, 0.0),
-      jitter: Vec2::ZERO,
-      jitter_phases: 1,
-      is_temporal: false,
-      is_fsr: false,
       cull: StaticCullParams::default(),
       occlusion: bytemuck::Zeroable::zeroed(),
       wind: WindUniform::default(),
       output: RenderRect::default(),
-      upscaling: RenderUpscalingSettings::default(),
       shadow_settings: RenderShadowSettings::default(),
       lights_settings: RenderLightsSettings::default(),
       ambient_occlusion: RenderAmbientOcclusionSettings::default(),

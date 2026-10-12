@@ -4,15 +4,11 @@ use crate::contract::render_overlay::RenderOverlay;
 use crate::contract::render_selection_target::RenderSelectionTarget;
 use crate::frame::depth_pyramid::DepthPyramid;
 use crate::frame::froxel_volume::FroxelVolume;
-use crate::frame::fsr_targets::FsrTargets;
 use crate::frame::indirect_light_history::IndirectLightHistory;
 use crate::frame::pick_target::PickTarget;
 use crate::frame::reflection_history::ReflectionHistory;
 use crate::frame::sky_prefilter::SkyPrefilter;
 use crate::frame::stats_readback::StatsReadback;
-use crate::frame::temporal_history::TemporalHistory;
-use crate::frame::temporal_jitter::TemporalJitter;
-use crate::frame::upscale_targets::UpscaleTargets;
 use crate::frame::vbao_history::VbaoHistory;
 use crate::frame::view_targets::ViewTargets;
 use crate::lighting::foliage_wind::FoliageWind;
@@ -28,22 +24,13 @@ use crate::scene::level::puddle_fill::PuddleFill;
 use crate::scene::level::rain_wetness::RainWetness;
 use crate::scene::static_scene::static_selection::StaticSelection;
 
-/// What one view keeps from one frame to the next: its targets and depth history, its temporal and upscaling state,
-/// its exposure, what was asked of it (picks, the selection, overlays) and what it reads back.
+/// What one view keeps from one frame to the next: its targets and depth history, what was asked of it (picks, the selection, overlays) and what it reads back.
 pub struct ViewState {
   pub targets: Option<ViewTargets>,
   /// The depth pyramid over the targets.
   pub pyramid: Option<DepthPyramid>,
   /// The view and projection the pyramid holds a frame's depth through, once one was reduced.
   pub history: Option<(Mat4, Mat4)>,
-  /// The sequence each frame's samples are moved within their pixels by, while a temporal resolve gathers them.
-  pub jitter: TemporalJitter,
-  /// The temporal resolve's histories, while it resolves.
-  pub temporal: Option<TemporalHistory>,
-  /// The last resolved frame's view projection without its jitter, and its view.
-  pub temporal_previous: Option<(Mat4, Mat4)>,
-  /// FSR 2's targets, while it upscales.
-  pub fsr: Option<FsrTargets>,
   /// The last frame's unjittered view projection, which every surface's motion is measured from.
   pub motion_previous: Option<Mat4>,
   /// The last frame's jittered view projection, which a read of its targets reprojects through.
@@ -71,8 +58,6 @@ pub struct ViewState {
   pub puddle_fill: PuddleFill,
   /// What the foliage motion read this frame, which the grass takes as the trees do.
   pub foliage_values: FoliageWindValues,
-  /// The frame at the viewport's size while it is drawn smaller: EASU's upscale, then RCAS's sharpening.
-  pub upscale: Option<UpscaleTargets>,
   /// The models' composited clusters this frame, back to front, as `(cluster, place)` entries.
   pub sorted_list: Option<wgpu::Buffer>,
   /// What it draws over its frame.
@@ -100,10 +85,6 @@ impl ViewState {
       targets: None,
       pyramid: None,
       history: None,
-      jitter: TemporalJitter::default(),
-      temporal: None,
-      temporal_previous: None,
-      fsr: None,
       motion_previous: None,
       view_projection_previous: None,
       sky_prefilter: None,
@@ -118,7 +99,6 @@ impl ViewState {
       wetness: RainWetness::default(),
       puddle_fill: PuddleFill::default(),
       foliage_values: FoliageWindValues::default(),
-      upscale: None,
       overlays: None,
       overlays_box: None,
       selection: None,

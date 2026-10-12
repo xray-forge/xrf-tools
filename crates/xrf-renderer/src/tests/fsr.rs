@@ -53,7 +53,7 @@ fn upscales_two_frames_without_a_validation_error() {
       offset,
       &view,
       (FsrTargets::get_luma_mip_size(render), TemporalJitter::get_phases(1.5)),
-      fsr.frame_index,
+      fsr.frames.get_frame(),
     );
 
     {
@@ -73,13 +73,13 @@ fn upscales_two_frames_without_a_validation_error() {
       context.queue.submit(commands);
     }
 
-    fsr.swap();
+    fsr.frames.swap();
   }
 
   device.poll(wgpu::PollType::wait_indefinitely()).unwrap();
 
   assert!(pollster::block_on(scope.pop()).is_none());
-  assert_eq!(fsr.frame_index, 2);
+  assert_eq!(fsr.frames.get_frame(), 2);
   assert_eq!(FsrTargets::get_luma_mip_size(render), (2, 1));
 }
 

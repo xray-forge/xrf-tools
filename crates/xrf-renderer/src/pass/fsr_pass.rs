@@ -4,6 +4,7 @@ use xrf_renderer_core::{
   PassParameters, StorageArray, StorageArrayMut, UniformBinding,
 };
 
+use crate::frame::fsr_frame::FsrFrame;
 use crate::frame::fsr_targets::FsrTargets;
 use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::pass::fsr_accumulate_parameters::FsrAccumulateParameters;
@@ -111,29 +112,28 @@ impl FsrPass {
     targets: ViewTargetHandles,
     (fsr, uniform): (&'a FsrTargets, &FsrUniform),
   ) {
-    let index: usize = fsr.index;
     let pipelines: &'a FsrPipelines = &self.pipelines;
     let sampler: &'a wgpu::Sampler = &self.sampler;
     let uniform: UniformBinding<FsrUniform> = runtime.push_uniform(uniform);
     let reconstructed: GraphBuffer = bindings.import_buffer(graph, "fsr2 reconstructed", &fsr.reconstructed);
     let mut import = |label: &'static str, view: &'a wgpu::TextureView| bindings.import_view(graph, label, view);
-    let luma_first: GraphTexture = import("fsr2 luma first", &fsr.luma_first);
-    let luma_shading: GraphTexture = import("fsr2 luma shading", &fsr.luma_shading);
-    let opaque: GraphTexture = import("fsr2 opaque", &fsr.opaque);
-    let reactive: GraphTexture = import("fsr2 reactive", &fsr.reactive);
-    let prepared: GraphTexture = import("fsr2 prepared", &fsr.prepared);
-    let masks: GraphTexture = import("fsr2 masks", &fsr.masks);
-    let locks: GraphTexture = import("fsr2 locks", &fsr.locks);
-    let dilated_depth: GraphTexture = import("fsr2 dilated depth", &fsr.dilated_depth[index]);
+    let luma_first: GraphTexture = import("fsr2 luma first", &fsr.luma_first.view);
+    let luma_shading: GraphTexture = import("fsr2 luma shading", &fsr.luma_shading.view);
+    let opaque: GraphTexture = import("fsr2 opaque", &fsr.opaque.view);
+    let reactive: GraphTexture = import("fsr2 reactive", &fsr.reactive.view);
+    let prepared: GraphTexture = import("fsr2 prepared", &fsr.prepared.view);
+    let masks: GraphTexture = import("fsr2 masks", &fsr.masks.view);
+    let locks: GraphTexture = import("fsr2 locks", &fsr.locks.view);
+    let sides: [&'a FsrFrame; 2] = fsr.frames.get_sides();
+    let dilated_depth: GraphTexture = import("fsr2 dilated depth", &sides[0].dilated_depth.view);
     let [dilated_motion, previous_dilated_motion] =
-      [index, 1 - index].map(|frame| import("fsr2 dilated motion", &fsr.dilated_motion[frame]));
-    let lock_luma: GraphTexture = import("fsr2 lock luma", &fsr.lock_luma[index]);
+      sides.map(|frame| import("fsr2 dilated motion", &frame.dilated_motion.view));
+    let lock_luma: GraphTexture = import("fsr2 lock luma", &sides[0].lock_luma.view);
     // This frame's histories, written, and the last frame's, read.
-    let [history, previous_history] = [index, 1 - index].map(|frame| import("fsr2 history", &fsr.history[frame]));
-    let [lock_status, previous_lock_status] =
-      [index, 1 - index].map(|frame| import("fsr2 lock status", &fsr.lock_status[frame]));
+    let [history, previous_history] = sides.map(|frame| import("fsr2 history", &frame.history.view));
+    let [lock_status, previous_lock_status] = sides.map(|frame| import("fsr2 lock status", &frame.lock_status.view));
     let [luma_history, previous_luma_history] =
-      [index, 1 - index].map(|frame| import("fsr2 luma history", &fsr.luma_history[frame]));
+      sides.map(|frame| import("fsr2 luma history", &frame.luma_history.view));
 
     graph
       .add_encoder_pass("fsr2 clear")

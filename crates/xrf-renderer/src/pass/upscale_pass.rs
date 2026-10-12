@@ -1,7 +1,6 @@
 use xrf_error::XrfResult;
 use xrf_renderer_core::{PassParameters, RasterContext};
 
-use crate::frame::upscale_targets::UpscaleTargets;
 use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline;
 use crate::pass::upscale_parameters::UpscaleParameters;
 use crate::shader::shader_library::ShaderLibrary;
@@ -15,6 +14,9 @@ pub struct UpscalePass {
 }
 
 impl UpscalePass {
+  /// The upscaled and the sharpened frame's format.
+  pub const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
+
   /// # Errors
   ///
   /// Returns an error when the shader does not compose or compile.
@@ -58,7 +60,7 @@ impl UpscalePass {
         "frame/upscale",
         fragment,
         &[Some(layout)],
-        UpscaleTargets::FORMAT,
+        Self::FORMAT,
       )
     };
 

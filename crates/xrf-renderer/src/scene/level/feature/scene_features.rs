@@ -3,6 +3,7 @@ use crate::scene::level::feature::exposure_feature::ExposureFeature;
 use crate::scene::level::feature::falling_rain_feature::FallingRainFeature;
 use crate::scene::level::feature::flares_feature::FlaresFeature;
 use crate::scene::level::feature::fog_feature::FogFeature;
+use crate::scene::level::feature::resolve_feature::ResolveFeature;
 use crate::scene::level::feature::smoothing_feature::SmoothingFeature;
 use crate::scene::level::feature::thunder_feature::ThunderFeature;
 use crate::scene::level::feature::view_feature::ViewFeature;
@@ -16,6 +17,7 @@ pub struct SceneFeatures {
   pub flares: FlaresFeature,
   pub rain: FallingRainFeature,
   pub thunder: ThunderFeature,
+  pub resolve: ResolveFeature,
 }
 
 impl SceneFeatures {
@@ -28,11 +30,12 @@ impl SceneFeatures {
       flares: FlaresFeature::new(),
       rain: FallingRainFeature::default(),
       thunder: ThunderFeature::default(),
+      resolve: ResolveFeature::default(),
     }
   }
 
   /// Every unit, as what each answers alike.
-  pub fn list(&self) -> [&dyn ViewFeature; 7] {
+  pub fn list(&self) -> [&dyn ViewFeature; 8] {
     [
       &self.fog,
       &self.bloom,
@@ -41,10 +44,11 @@ impl SceneFeatures {
       &self.flares,
       &self.rain,
       &self.thunder,
+      &self.resolve,
     ]
   }
 
-  pub fn list_mut(&mut self) -> [&mut dyn ViewFeature; 7] {
+  pub fn list_mut(&mut self) -> [&mut dyn ViewFeature; 8] {
     [
       &mut self.fog,
       &mut self.bloom,
@@ -53,6 +57,7 @@ impl SceneFeatures {
       &mut self.flares,
       &mut self.rain,
       &mut self.thunder,
+      &mut self.resolve,
     ]
   }
 

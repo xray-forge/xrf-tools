@@ -40,16 +40,12 @@ use crate::contract::render_water_settings::RenderWaterSettings;
 use crate::frame::depth_pyramid::DepthPyramid;
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::froxel_volume::FroxelVolume;
-use crate::frame::fsr_targets::FsrTargets;
 use crate::frame::indirect_light_history::IndirectLightHistory;
 use crate::frame::pick_target::PickTarget;
 use crate::frame::reflection_history::ReflectionHistory;
 use crate::frame::sky_prefilter::SkyPrefilter;
 use crate::frame::static_scene_handles::StaticSceneHandles;
-use crate::frame::temporal_history::TemporalHistory;
-use crate::frame::temporal_jitter::TemporalJitter;
 use crate::frame::texture_copy::add_texture_copy;
-use crate::frame::upscale_targets::UpscaleTargets;
 use crate::frame::vbao_history::VbaoHistory;
 use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::frame::view_targets::ViewTargets;
@@ -73,7 +69,6 @@ use crate::pass::foliage_wind_values::FoliageWindValues;
 use crate::pass::froxel_inject_parameters::FroxelInjectParameters;
 use crate::pass::froxel_integrate_parameters::FroxelIntegrateParameters;
 use crate::pass::froxel_uniform::FroxelUniform;
-use crate::pass::fsr_uniform::FsrUniform;
 use crate::pass::glass_parameters::GlassParameters;
 use crate::pass::glass_uniform::GlassUniform;
 use crate::pass::grass_colour_parameters::GrassColourParameters;
@@ -109,13 +104,9 @@ use crate::pass::static_occlusion_uniform::StaticOcclusionUniform;
 use crate::pass::sun_parameters::SunParameters;
 use crate::pass::sun_shafts_parameters::SunShaftsParameters;
 use crate::pass::sun_shafts_pass::SunShaftsPass;
-use crate::pass::temporal_parameters::TemporalParameters;
-use crate::pass::temporal_uniform::TemporalUniform;
 use crate::pass::trace_parameters::TraceParameters;
 use crate::pass::trace_request_handles::TraceRequestHandles;
 use crate::pass::trace_request_parameters::TraceRequestParameters;
-use crate::pass::upscale_parameters::UpscaleParameters;
-use crate::pass::upscale_uniform::UpscaleUniform;
 use crate::pass::vbao_parameters::VbaoParameters;
 use crate::pass::vbao_pass::VbaoPass;
 use crate::pass::vbao_uniform::VbaoUniform;
@@ -300,8 +291,6 @@ impl SceneView {
 
       self.state.targets = Some(targets);
       self.state.pyramid = Some(pyramid);
-      self.state.temporal = None;
-      self.state.fsr = None;
       // A pyramid of another size holds no depth this frame can be tested against.
       self.state.history = None;
     }
@@ -540,19 +529,29 @@ impl SceneView {
     self.info.reflection_settings = options.features.reflections;
     self.info.reflection = ReflectionTrace::new(options);
     self.info.output = output;
-    self.info.upscaling = options.output.upscaling;
     self.info.debug_view = options.mode.debug_view;
     self.info.is_wireframe = options.mode.is_wireframe;
     self.info.corrections = options.features.corrections;
     self.info.is_occlusion_drawn =
       options.mode.is_lit && !options.mode.is_wireframe && options.features.ambient_occlusion.is_enabled;
-    self.prepare_temporal(device, view);
+    self.features.resolve.prepare(
+      device,
+      view,
+      (
+        self
+          .state
+          .targets
+          .as_ref()
+          .map(|targets| (targets.width, targets.height)),
+        output,
+      ),
+      options.output.upscaling,
+    );
     self.features.smoothing.prepare(
       passes,
       options.features.antialiasing,
       self.state.targets.is_some() && self.info.debug_view == RenderDebugView::Final,
     );
-    self.prepare_upscale(device);
     self.info.lights_settings = options.features.lights;
 
     self.info.occlusion_settings = AmbientOcclusionUniform::new(
@@ -583,7 +582,7 @@ impl SceneView {
       share * share * (3.0 - 2.0 * share)
     });
 
-    if self.info.is_temporal {
+    if self.features.resolve.is_temporal() {
       self.state.noise_frame = self.state.noise_frame.wrapping_add(1);
     }
 
@@ -1650,19 +1649,7 @@ impl SceneView {
       }
     }
 
-    match frame.resolve {
-      Some("fsr2") => {
-        if let Some(fsr) = &mut self.state.fsr {
-          fsr.swap();
-        }
-      }
-      Some("temporal") => {
-        if let Some(history) = &mut self.state.temporal {
-          history.swap();
-        }
-      }
-      _ => {}
-    }
+    self.features.resolve.end_frame();
   }
 
   /// Notes what the present pass reads, once the frame knows what draws into the distortion target: `def_distort`
@@ -1842,15 +1829,6 @@ impl SceneView {
       is_pick_through: pick.is_some_and(|(_, _, is_through)| is_through),
       is_scene_first: false,
       is_lit: self.state.targets.is_some(),
-      resolve: if self.state.fsr.is_some() {
-        Some("fsr2")
-      } else if self.state.temporal.is_some() {
-        Some("temporal")
-      } else if self.state.upscale.is_some() {
-        Some("upscale")
-      } else {
-        None
-      },
     })
   }
 
@@ -1873,7 +1851,6 @@ impl SceneView {
     let is_occluding: bool = self.info.cull.is_occluding != 0;
     let pick_slot: Option<usize> = frame.pick_slot;
     let is_pick_through: bool = frame.is_pick_through;
-    let resolve: Option<&'static str> = frame.resolve;
     let is_drawn: bool = !self.info.is_wireframe;
     let is_wallmarked: bool = self.info.is_wallmarked && is_drawn;
     let is_raining: bool = self.features.rain.is_raining();
@@ -1891,7 +1868,6 @@ impl SceneView {
     let has_particles: bool = is_drawn && self.state.particles.is_drawing();
     let is_shafted: bool = self.info.is_shafted && !is_froxeled;
     let particle_surfaces: &wgpu::Buffer = scene.particles.get_surfaces();
-    let is_sharpened: bool = self.state.upscale.is_some() && self.info.upscaling.is_sharpened();
     let texture_group: &wgpu::BindGroup = textures.get_bind_group();
     let scene_view: &'a SceneView = self;
     let (Some(targets), Some(pyramid)) = (&scene_view.state.targets, &scene_view.state.pyramid) else {
@@ -1903,14 +1879,6 @@ impl SceneView {
     let no_ends: GraphTexture =
       bindings.import_view(&mut *graph, "reflection ends none", passes.reflections.get_no_ends());
     let handles: ViewTargetHandles = ViewTargetHandles::import(&mut *graph, &mut *bindings, targets);
-    // The resolved frame goes where the present pass reads it: the upscaled frame, or the scene drawn at its size.
-    let upscaled: Option<[GraphTexture; 2]> = scene_view.state.upscale.as_ref().map(|upscale| {
-      [
-        bindings.import_view(&mut *graph, "upscaled", &upscale.views[0]),
-        bindings.import_view(&mut *graph, "sharpened", &upscale.views[1]),
-      ]
-    });
-    let upscale: UniformBinding<UpscaleUniform> = runtime.push_uniform(&scene_view.info.upscale);
     let statics: StaticSceneHandles = StaticSceneHandles::import(
       (&mut *graph, &mut *bindings, runtime),
       &scene.statics,
@@ -2379,40 +2347,11 @@ impl SceneView {
       let scene: GraphTexture = handles.scene;
 
       // The temporal resolve's reactive weight is what the water, the composited surfaces and the particles change of
-      // the frame drawn so far, as FSR 2's mask below is.
-      let temporal_opaque: Option<GraphTexture> = (resolve == Some("temporal") && scene_view.state.temporal.is_some())
-        .then(|| {
-          let (width, height) = handles.size;
-          let opaque: GraphTexture = graph.create_texture(GraphTextureDescriptor::new_2d(
-            "temporal opaque",
-            width,
-            height,
-            ViewTargets::SCENE,
-          ));
-
-          add_texture_copy(&mut *graph, "temporal opaque", scene, opaque);
-
-          opaque
-        });
-
-      // FSR 2's reactive mask is what the water and the blended surfaces change of the frame drawn so far.
-      if let Some(fsr) = &scene_view.state.fsr {
-        let opaque: GraphTexture = bindings.import_view(&mut *graph, "fsr2 opaque", &fsr.opaque);
-
-        graph
-          .add_encoder_pass("fsr2 opaque")
-          .texture(scene, GraphTextureAccess::CopySource)
-          .texture(opaque, GraphTextureAccess::CopyDestination)
-          .record(move |context| {
-            let (scene, opaque) = (context.get_texture(scene), context.get_texture(opaque));
-
-            context.get_encoder().copy_texture_to_texture(
-              scene.texture.as_image_copy(),
-              opaque.texture.as_image_copy(),
-              opaque.texture.size(),
-            );
-          });
-      }
+      // the frame drawn so far.
+      let opaque: Option<GraphTexture> = scene_view
+        .features
+        .resolve
+        .add_reactive_passes((&mut *graph, &mut *bindings), (scene, handles.size));
 
       if let (true, Some(sky)) = (scene_view.state.water.is_drawn(), scene_view.info.sky.as_ref()) {
         let draw: WaterDraw<'_> = WaterDraw {
@@ -2748,85 +2687,14 @@ impl SceneView {
         (frame, (targets.width, targets.height)),
       );
 
-      match (
-        resolve,
-        &scene_view.state.fsr,
-        &scene_view.state.temporal,
-        &scene_view.state.upscale,
-      ) {
-        (Some("fsr2"), Some(fsr), _, _) => {
-          let history: GraphTexture = bindings.import_view(&mut *graph, "fsr2 history", &fsr.history[fsr.index]);
+      let resolved: (GraphTexture, GraphTexture) = scene_view.features.resolve.add_passes(
+        (&mut *graph, &mut *bindings, runtime),
+        passes,
+        view,
+        (handles, frame, opaque),
+      );
 
-          passes.fsr.add_passes(
-            (&mut *graph, &mut *bindings, runtime),
-            handles,
-            (fsr, &scene_view.info.fsr),
-          );
-          match upscaled {
-            Some(_) => shown = Some(history),
-            None => frame = history,
-          }
-        }
-        (Some("temporal"), _, Some(history), _) => {
-          let index: usize = history.index;
-          let target: GraphTexture = bindings.import_view(&mut *graph, "temporal history", &history.views[index]);
-          let parameters: TemporalParameters = TemporalParameters {
-            frame,
-            depth_target: handles.depth,
-            history: bindings.import_view(&mut *graph, "temporal history", &history.views[1 - index]),
-            history_sampler: passes.temporal.get_sampler(),
-            temporal: runtime.push_uniform(&scene_view.info.temporal),
-            motion_target: handles.motion,
-            opaque: temporal_opaque.unwrap_or(handles.scene),
-          };
-
-          graph
-            .add_raster_pass("temporal")
-            .parameters(&parameters)
-            .color(GraphColorAttachment::new(
-              target,
-              wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-            ))
-            .record(move |context| passes.temporal.record(context, view, &parameters));
-          match upscaled {
-            Some(_) => shown = Some(target),
-            None => frame = target,
-          }
-        }
-        (Some(_), _, _, Some(_)) => {
-          if let Some([upscaled, _]) = upscaled {
-            let parameters: UpscaleParameters = UpscaleParameters { source: frame, upscale };
-
-            graph
-              .add_raster_pass("upscale")
-              .parameters(&parameters)
-              .color(GraphColorAttachment::new(
-                upscaled,
-                wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-              ))
-              .record(move |context| passes.upscale.record(context, 0, &parameters));
-            shown = Some(upscaled);
-          }
-        }
-        _ => {}
-      }
-
-      if let (true, Some([upscaled, sharpened])) = (is_sharpened, upscaled) {
-        let parameters: UpscaleParameters = UpscaleParameters {
-          source: shown.unwrap_or(upscaled),
-          upscale,
-        };
-
-        graph
-          .add_raster_pass("sharpen")
-          .parameters(&parameters)
-          .color(GraphColorAttachment::new(
-            sharpened,
-            wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-          ))
-          .record(move |context| passes.upscale.record(context, 1, &parameters));
-        shown = Some(sharpened);
-      }
+      (frame, shown) = (resolved.0, Some(resolved.1));
 
       scene_view
         .features
@@ -2848,7 +2716,7 @@ impl SceneView {
     Some(SceneOutput {
       targets: handles,
       scene: frame,
-      shown: shown.or(upscaled.map(|[upscaled, _]| upscaled)).unwrap_or(frame),
+      shown: shown.unwrap_or(frame),
       present: runtime.push_uniform(&scene_view.info.present),
       lighting: lit.lighting,
       indirect_light: indirect_light.unwrap_or(unlit),
@@ -2994,90 +2862,7 @@ impl SceneView {
   /// Where the next frame's samples sit within their pixels, in drawn pixels, `y` down: jittered while it resolves
   /// frames temporally and shows the finished frame, still otherwise.
   pub fn next_jitter(&mut self, options: &RenderViewOptions, ratio: f32) -> Vec2 {
-    self.info.is_temporal =
-      options.features.antialiasing.is_temporal() && options.mode.debug_view == RenderDebugView::Final;
-    self.info.is_fsr = self.info.is_temporal && options.features.antialiasing == RenderAntialiasing::Fsr2;
-    self.info.jitter_phases = TemporalJitter::get_phases(ratio);
-    self.info.jitter = if self.info.is_temporal {
-      self.state.jitter.next(ratio)
-    } else {
-      Vec2::ZERO
-    };
-
-    self.info.jitter
-  }
-
-  /// Makes the temporal resolve's histories while it resolves, dropping them otherwise, and writes what it reads: this
-  /// frame's view projection, the last one's, and the jitter.
-  fn prepare_temporal(&mut self, device: &wgpu::Device, view: &CameraView) {
-    if self.state.targets.is_none() || !self.info.is_temporal || self.info.is_fsr {
-      self.state.temporal = None;
-      self.state.temporal_previous = None;
-      self.prepare_fsr(device, view);
-
-      return;
-    }
-
-    self.state.fsr = None;
-    let (width, height): (u32, u32) = (self.info.output.width.max(1), self.info.output.height.max(1));
-
-    if self
-      .state
-      .temporal
-      .as_ref()
-      .is_some_and(|history| !history.is_sized(width, height))
-    {
-      self.state.temporal = None;
-    }
-
-    let history: &TemporalHistory = self
-      .state
-      .temporal
-      .get_or_insert_with(|| TemporalHistory::new(device, width, height));
-    let current: Mat4 = view.get_view_projection();
-    let (previous, previous_view): (Mat4, Mat4) = self.state.temporal_previous.unwrap_or((current, view.view));
-
-    self.info.temporal = TemporalUniform::new(
-      current,
-      previous,
-      previous_view,
-      self.info.jitter,
-      history.is_valid && self.state.temporal_previous.is_some(),
-    );
-    self.state.temporal_previous = Some((current, view.view));
-  }
-
-  /// Makes FSR 2's targets while it resolves, dropping them otherwise, and writes its constants.
-  fn prepare_fsr(&mut self, device: &wgpu::Device, view: &CameraView) {
-    let Some(targets) = self.state.targets.as_ref().filter(|_| self.info.is_fsr) else {
-      self.state.fsr = None;
-
-      return;
-    };
-    let render: (u32, u32) = (targets.width, targets.height);
-    let display: (u32, u32) = (self.info.output.width.max(1), self.info.output.height.max(1));
-
-    if self
-      .state
-      .fsr
-      .as_ref()
-      .is_some_and(|fsr| !fsr.is_sized(render, display))
-    {
-      self.state.fsr = None;
-    }
-
-    let fsr: &FsrTargets = self
-      .state
-      .fsr
-      .get_or_insert_with(|| FsrTargets::new(device, render, display, ViewTargets::SCENE));
-
-    self.info.fsr = FsrUniform::new(
-      (render, display),
-      self.info.jitter,
-      view,
-      (FsrTargets::get_luma_mip_size(render), self.info.jitter_phases),
-      fsr.frame_index,
-    );
+    self.features.resolve.next_jitter(options, ratio)
   }
 
   /// Lists the sorted composited clusters in view, the models' and the level's strictly sorted runs, back to front by
@@ -3151,32 +2936,6 @@ impl SceneView {
     encoder.write_buffer(buffer, 0, bytes);
   }
 
-  /// Makes the frame at the viewport's size while the scene is drawn smaller, dropping it otherwise, and notes what the
-  /// upscale passes read.
-  fn prepare_upscale(&mut self, device: &wgpu::Device) {
-    let Some(targets) = &self.state.targets else {
-      return;
-    };
-    let output: RenderRect = self.info.output;
-
-    if targets.is_sized(output.width, output.height) {
-      self.state.upscale = None;
-    } else if self
-      .state
-      .upscale
-      .as_ref()
-      .is_none_or(|upscale| !upscale.is_sized(output.width, output.height))
-    {
-      self.state.upscale = Some(UpscaleTargets::new(device, output.width, output.height));
-    }
-
-    self.info.upscale = UpscaleUniform {
-      output_size: Vec2::new(output.width as f32, output.height as f32),
-      sharpness: self.info.upscaling.get_sharpness(),
-      _pad: 0.0,
-    };
-  }
-
   /// Asks for the counts recorded with the frame just submitted.
   pub fn request_stats(&self) {
     self.state.stats.request();
@@ -3195,16 +2954,17 @@ impl SceneView {
 
   /// What its frames are drawn with, as resolved from what `options` asked; the weather's light is the viewport's to add.
   pub fn describe_applied(&self, options: &RenderViewOptions) -> RenderAppliedReport {
-    let antialiasing: RenderAntialiasing = if self.info.is_temporal {
-      options.features.antialiasing
-    } else {
-      self.features.smoothing.get_mode().unwrap_or(RenderAntialiasing::None)
-    };
+    let antialiasing: RenderAntialiasing = self
+      .features
+      .resolve
+      .get_temporal()
+      .or(self.features.smoothing.get_mode())
+      .unwrap_or(RenderAntialiasing::None);
     let cascades: usize = self.info.shadow_settings.get_cascade_count();
 
     RenderAppliedReport {
       antialiasing,
-      render_scale: self.info.upscaling.scale,
+      render_scale: self.features.resolve.get_upscaling().scale,
       shadows: (cascades > 0).then(|| RenderAppliedShadows {
         cascades: self.info.shadow_settings.cascades[..cascades].to_vec(),
         resolution: self.renderer.shadows.get_maps().resolution,
