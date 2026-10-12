@@ -63,6 +63,11 @@ impl ShadowTileAllocator {
   pub fn release(&mut self, tile: ShadowTile) {
     let (mut x, mut y, mut side) = (tile.x, tile.y, tile.size);
 
+    debug_assert!(
+      !self.free[side.ilog2() as usize].contains(&(x, y)),
+      "{tile:?} released twice"
+    );
+
     self.used = self.used.saturating_sub((side as u64) * (side as u64));
 
     while side < self.size {
