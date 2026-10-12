@@ -5,7 +5,6 @@ use crate::contract::render_selection_target::RenderSelectionTarget;
 use crate::frame::depth_pyramid::DepthPyramid;
 use crate::frame::froxel_volume::FroxelVolume;
 use crate::frame::pick_target::PickTarget;
-use crate::frame::reflection_history::ReflectionHistory;
 use crate::frame::sky_prefilter::SkyPrefilter;
 use crate::frame::stats_readback::StatsReadback;
 use crate::frame::view_targets::ViewTargets;
@@ -37,8 +36,6 @@ pub struct ViewState {
   pub sky_prefilter: Option<SkyPrefilter>,
   /// Frames a temporal resolve gathered, which the screen-space effects turn their noise by.
   pub noise_frame: u32,
-  /// The reflections' blends over frames, while they are traced.
-  pub reflections: Option<ReflectionHistory>,
   /// The enhanced volumetric lighting's froxels, while it draws.
   pub froxels: Option<FroxelVolume>,
   /// The water's settings and flow, and the enhanced water's reflection histories.
@@ -84,7 +81,6 @@ impl ViewState {
       sky_prefilter: None,
       noise_frame: 0,
       froxels: None,
-      reflections: None,
       water: LevelWater::default(),
       last_wind: None,
       foliage: FoliageWind::default(),

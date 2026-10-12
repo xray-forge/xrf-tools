@@ -1,4 +1,4 @@
-use crate::context::gpu_requirements::RAY_QUERY_FEATURES;
+use crate::context::gpu_requirements::can_trace;
 use crate::contract::render_reflection_settings::RenderReflectionSettings;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::contract::render_water_mode::RenderWaterMode;
@@ -69,7 +69,7 @@ impl LevelWater {
     }
 
     let reflections: RenderReflectionSettings = options.features.reflections;
-    let is_traced: bool = reflections.is_traced && device.features().contains(RAY_QUERY_FEATURES);
+    let is_traced: bool = reflections.is_traced && can_trace(device);
 
     self.frame = self.frame.wrapping_add(1);
 

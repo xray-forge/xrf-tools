@@ -10,6 +10,7 @@ pub(crate) mod fsr_targets;
 pub(crate) mod gpu_readback;
 pub(crate) mod history;
 pub(crate) mod pick_target;
+pub(crate) mod reflection_frame;
 pub(crate) mod reflection_history;
 pub(crate) mod sky_prefilter;
 pub(crate) mod sky_prefilter_level;

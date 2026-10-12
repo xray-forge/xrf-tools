@@ -12,7 +12,6 @@ use xrf_renderer_core::{
 };
 
 use crate::camera::camera_view::CameraView;
-use crate::context::gpu_requirements::RAY_QUERY_FEATURES;
 use crate::contract::render_ambient_occlusion_quality::RenderAmbientOcclusionQuality;
 use crate::contract::render_antialiasing::RenderAntialiasing;
 use crate::contract::render_applied_indirect_light::RenderAppliedIndirectLight;
@@ -40,7 +39,6 @@ use crate::frame::depth_pyramid::DepthPyramid;
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::froxel_volume::FroxelVolume;
 use crate::frame::pick_target::PickTarget;
-use crate::frame::reflection_history::ReflectionHistory;
 use crate::frame::sky_prefilter::SkyPrefilter;
 use crate::frame::static_scene_handles::StaticSceneHandles;
 use crate::frame::texture_copy::add_texture_copy;
@@ -80,11 +78,7 @@ use crate::pass::present_uniform::PresentUniform;
 use crate::pass::pyramid_depth_parameters::PyramidDepthParameters;
 use crate::pass::pyramid_level_parameters::PyramidLevelParameters;
 use crate::pass::rain_uniform::RainUniform;
-use crate::pass::reflection_parameters::ReflectionParameters;
-use crate::pass::reflection_pass::ReflectionPass;
-use crate::pass::reflection_scene_parameters::ReflectionSceneParameters;
 use crate::pass::reflection_trace::ReflectionTrace;
-use crate::pass::reflection_uniform::ReflectionUniform;
 use crate::pass::sky_haze_parameters::SkyHazeParameters;
 use crate::pass::sky_parameters::SkyParameters;
 use crate::pass::sky_prefilter_parameters::SkyPrefilterParameters;
@@ -100,8 +94,6 @@ use crate::pass::sun_parameters::SunParameters;
 use crate::pass::sun_shafts_parameters::SunShaftsParameters;
 use crate::pass::sun_shafts_pass::SunShaftsPass;
 use crate::pass::trace_parameters::TraceParameters;
-use crate::pass::trace_request_handles::TraceRequestHandles;
-use crate::pass::trace_request_parameters::TraceRequestParameters;
 use crate::pass::view_binding::ViewBinding;
 use crate::pass::water_draw::WaterDraw;
 use crate::pass::water_uniform::WaterUniform;
@@ -516,8 +508,6 @@ impl SceneView {
     );
     self.info.shadow_settings = options.features.shadows.clone();
     self.info.ambient_occlusion = options.features.ambient_occlusion;
-    self.info.reflection_settings = options.features.reflections;
-    self.info.reflection = ReflectionTrace::new(options);
     self.info.output = output;
     self.info.debug_view = options.mode.debug_view;
     self.info.is_wireframe = options.mode.is_wireframe;
@@ -555,7 +545,7 @@ impl SceneView {
       view.projection,
       (width.div_ceil(2), height.div_ceil(2)),
     );
-    self.prepare_reflections(device, (width, height));
+    self.features.reflections.prepare(device, options, (width, height));
     self.prepare_sorted(scene, device, &mut *encoder, view);
 
     if let Some(pyramid) = &self.state.pyramid {
@@ -674,8 +664,13 @@ impl SceneView {
     let mut load: FrameLoad = shadows.get_load();
 
     // The cube is for the traced reflections alone; the engine's reflect its own.
-    if info.reflection_settings.is_drawn() {
-      surroundings.prepare(device, encoder, &frame, (info.reflection_settings.probe, &mut load));
+    if features.reflections.get_settings().is_drawn() {
+      surroundings.prepare(
+        device,
+        encoder,
+        &frame,
+        (features.reflections.get_settings().probe, &mut load),
+      );
     } else {
       surroundings.rest();
     }
@@ -978,236 +973,6 @@ impl SceneView {
       .add_passes((graph, bindings, runtime), passes, view, targets)
   }
 
-  /// Declares the screen-space reflections while they are traced: the depth reduced to its nearest level by level,
-  /// every glossy pixel's ray walked over it, then the last frame's reflection reprojected, an eighth-size average, the
-  /// trace filtered across the surface and resolved over time into the view's history. Answers the history written,
-  /// none where they are not traced.
-  fn add_reflection_passes<'a>(
-    &'a self,
-    (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
-    passes: LevelPasses<'a>,
-    view: &'a ViewBinding,
-    (targets, lit, wet_surface): (ViewTargetHandles, LightingHandles<'a>, GraphTexture),
-    source: Option<((GraphTexture, GraphTexture), GraphTexture)>,
-    (sky, scene_trace): (&SkyParameters<'a>, Option<(TraceParameters<'a>, &'a wgpu::BindGroup)>),
-  ) -> Option<(GraphTexture, GraphTexture)> {
-    self.info.reflection?;
-
-    let history: &'a ReflectionHistory = self.state.reflections.as_ref()?;
-    let ((source_scene, source_depth), traced_depth): ((GraphTexture, GraphTexture), GraphTexture) = source?;
-    let sky: SkyParameters<'a> = *sky;
-    let reflection: UniformBinding<ReflectionUniform> = runtime.push_uniform(&self.info.reflections);
-    let empty: GraphTexture = bindings.import_view(graph, "reflections empty", passes.reflections.get_empty());
-    let blue_noise: GraphTexture =
-      bindings.import_view(graph, "reflection blue noise", &passes.water.get_maps().blue_noise);
-    let pyramid: &'a DepthPyramid = &history.pyramid;
-    let level_views: Vec<GraphTexture> = pyramid
-      .level_views
-      .iter()
-      .map(|level| bindings.import_view(&mut *graph, "nearest depth level", level))
-      .collect();
-    let nearest_depth: GraphTexture = bindings.import_view(graph, "nearest depth pyramid", &pyramid.view);
-    let first: PyramidDepthParameters = PyramidDepthParameters {
-      source_depth: traced_depth,
-      target_level: level_views[0],
-    };
-    let levels: Vec<PyramidLevelParameters> = level_views
-      .windows(2)
-      .map(|pair| PyramidLevelParameters {
-        source_level: pair[0],
-        target_level: pair[1],
-      })
-      .collect();
-
-    levels
-      .iter()
-      .fold(
-        graph.add_compute_pass(ReflectionTrace::PYRAMID_PASS).parameters(&first),
-        |builder, level| builder.parameters(level),
-      )
-      .record(move |context| passes.pyramid.record(context, pyramid, (&first, &levels), true));
-
-    let (width, height) = history.get_size();
-    let ratio: u32 = ReflectionPass::AVERAGE_RATIO;
-    let mut create = |label: &'static str, (width, height): (u32, u32), format: wgpu::TextureFormat| -> GraphTexture {
-      graph.create_texture(GraphTextureDescriptor::new_2d(label, width, height, format))
-    };
-    let traced: GraphTexture = create("reflections traced", (width, height), ReflectionPass::TRACED);
-    let ends: GraphTexture = create("reflections ends", (width, height), ReflectionPass::ENDS);
-    let reprojected: GraphTexture = create("reflections reprojected", (width, height), ReflectionPass::REPROJECTED);
-    let variance: GraphTexture = create("reflections variance", (width, height), ReflectionPass::VARIANCE);
-    let average: GraphTexture = create(
-      "reflections average",
-      (width.div_ceil(ratio), height.div_ceil(ratio)),
-      ReflectionPass::AVERAGE,
-    );
-    let prefiltered: GraphTexture = create("reflections prefiltered", (width, height), ReflectionPass::PREFILTERED);
-    let guide: GraphTexture = create("reflections guide", (width, height), ReflectionPass::GUIDED);
-    let index: usize = history.index;
-    let mut import_pair = |label: &'static str, views: &'a [wgpu::TextureView; 2]| -> [GraphTexture; 2] {
-      [1 - index, index].map(|at| bindings.import_view(&mut *graph, label, &views[at]))
-    };
-    let [previous, written] = import_pair("reflection history", &history.radiance_views);
-    let [previous_surface, written_surface] = import_pair("reflection history surface", &history.surface_views);
-    let [previous_held, written_held] = import_pair("reflection history held", &history.held_views);
-    let [previous_full, written_full] = import_pair("reflection history full", &history.full_views);
-    let parameters: ReflectionParameters = ReflectionParameters {
-      albedo_target: targets.albedo,
-      normal_target: targets.normal,
-      material_target: targets.material,
-      depth_target: targets.depth,
-      traced_depth,
-      light_target: targets.light,
-      occlusion_target: targets.occlusion[0],
-      wet_surface,
-      material_lut: lit.material_lut,
-      lut_sampler: lit.lut_sampler,
-      lighting: lit.lighting,
-      reflection,
-      exposure: StorageValue::new(lit.exposure),
-      motion_target: targets.motion,
-      source_scene,
-      source_depth,
-      nearest_depth,
-      blue_noise,
-      traced: empty,
-      reprojected: empty,
-      variance: empty,
-      average: empty,
-      prefiltered: empty,
-      history_radiance: previous,
-      history_surface: previous_surface,
-      history_held: previous_held,
-      resolved: empty,
-      history_full: empty,
-      guide: empty,
-      history_sampler: passes.reflections.get_sampler(),
-    };
-    let clear = |target: GraphTexture| GraphColorAttachment::new(target, wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT));
-
-    let listed: TraceRequestHandles =
-      passes
-        .scene_trace
-        .add_reset(graph, bindings, ("reflection trace requests clear", &history.requests));
-    let requests: TraceRequestParameters = listed.to_listed();
-
-    graph
-      .add_raster_pass(ReflectionTrace::TRACE_PASS)
-      .parameters(&parameters)
-      .parameters(&sky)
-      .parameters(&requests)
-      .color(clear(traced))
-      .color(clear(ends))
-      .record(move |context| {
-        passes
-          .reflections
-          .record_trace(context, view, (&parameters, &sky), &requests)
-      });
-
-    // The rays the trace left, traced against the level's geometry.
-    if let Some(scene_trace) = scene_trace {
-      let (trace_requests, trace_request_head) = listed.to_read();
-
-      passes.scene_trace.add_trace(
-        graph,
-        (("reflection scene dispatch", ReflectionTrace::SCENE_PASS), listed),
-        view,
-        (
-          ReflectionSceneParameters {
-            lighting: lit.lighting,
-            material_lut: lit.material_lut,
-            lut_sampler: lit.lut_sampler,
-            exposure: StorageValue::new(lit.exposure),
-            trace_requests,
-            trace_request_head,
-            traced_out: traced,
-            ends_out: ends,
-          },
-          sky,
-        ),
-        scene_trace,
-      );
-    }
-
-    // Each traced pixel's surface for the stages after the trace, worked out once.
-    graph
-      .add_raster_pass(ReflectionTrace::GUIDE_PASS)
-      .parameters(&parameters)
-      .color(clear(guide))
-      .record(move |context| {
-        passes
-          .reflections
-          .record_stage(context, view, &parameters, ReflectionPass::GUIDE)
-      });
-
-    let parameters: ReflectionParameters<'a> = ReflectionParameters { guide, ..parameters };
-    // Each stage, what it reads beside the G-buffer and the history, and what it writes.
-    let stages: [(&'static str, &'static str, ReflectionParameters<'a>, Vec<GraphTexture>); 5] = [
-      (
-        ReflectionTrace::REPROJECT_PASS,
-        ReflectionPass::REPROJECT,
-        ReflectionParameters { traced, ..parameters },
-        vec![reprojected, variance],
-      ),
-      (
-        ReflectionTrace::AVERAGE_PASS,
-        ReflectionPass::AVERAGE_STAGE,
-        ReflectionParameters {
-          traced,
-          reprojected,
-          ..parameters
-        },
-        vec![average],
-      ),
-      (
-        ReflectionTrace::PREFILTER_PASS,
-        ReflectionPass::PREFILTER,
-        ReflectionParameters {
-          traced,
-          variance,
-          average,
-          ..parameters
-        },
-        vec![prefiltered],
-      ),
-      (
-        ReflectionTrace::RESOLVE_PASS,
-        ReflectionPass::RESOLVE,
-        ReflectionParameters {
-          traced,
-          reprojected,
-          variance,
-          average,
-          prefiltered,
-          ..parameters
-        },
-        vec![written, written_surface, written_held],
-      ),
-      (
-        ReflectionTrace::UPSCALE_PASS,
-        ReflectionPass::UPSCALE,
-        ReflectionParameters {
-          resolved: written,
-          history_full: previous_full,
-          ..parameters
-        },
-        vec![written_full],
-      ),
-    ];
-
-    for (name, stage, stage_parameters, outputs) in stages {
-      outputs
-        .into_iter()
-        .fold(
-          graph.add_raster_pass(name).parameters(&stage_parameters),
-          |builder, output| builder.color(clear(output)),
-        )
-        .record(move |context| passes.reflections.record_stage(context, view, &stage_parameters, stage));
-    }
-
-    Some((written_full, ends))
-  }
-
   /// Adds the passes filling the prefiltered sky cube this frame, a mip each: the first the surroundings cube's face
   /// drawn this frame, the level around the camera lit with the sky behind, or the sky's cubes alone as the sky is
   /// drawn where none is; each after it from the mips before it over its roughness's lobe.
@@ -1271,55 +1036,6 @@ impl SceneView {
         .parameters(&parameters)
         .record(move |context| passes.sky_prefilter.record(context, size, &parameters));
     }
-  }
-
-  /// Makes the history at the size the reflections trace at, and the pyramid over the frame's depth, while they are
-  /// traced, dropping them otherwise, and writes what their passes read.
-  fn prepare_reflections(&mut self, device: &wgpu::Device, (width, height): (u32, u32)) {
-    let Some(trace) = self.info.reflection else {
-      self.state.reflections = None;
-
-      return;
-    };
-    let ratio: u32 = trace.get_ratio();
-    let traced: (u32, u32) = (width.div_ceil(ratio), height.div_ceil(ratio));
-
-    if !self
-      .state
-      .reflections
-      .as_ref()
-      .is_some_and(|it| it.is_sized(traced, (width, height)))
-    {
-      self.state.reflections = Some(ReflectionHistory::new(device, traced, (width, height)));
-    }
-
-    let can_trace: bool = device.features().contains(RAY_QUERY_FEATURES);
-
-    if let Some(history) = &mut self.state.reflections {
-      let is_traced: bool = self.info.reflection_settings.is_traced && can_trace;
-
-      history.requests.fit(
-        device,
-        if is_traced {
-          (traced.0 * traced.1).div_ceil(ReflectionHistory::REQUEST_SHARE)
-        } else {
-          0
-        },
-      );
-    }
-
-    let (frame, has_history, has_source): (u32, bool, bool) = self
-      .state
-      .reflections
-      .as_ref()
-      .map_or((0, false, false), |it| (it.frame, it.is_valid, it.is_source_valid));
-
-    self.info.reflections = ReflectionUniform::new(
-      &self.info.reflection_settings,
-      frame,
-      (has_history, has_source),
-      can_trace,
-    );
   }
 
   /// Notes this frame's enhanced volumetric lighting, readying its froxels where it draws and letting them go where it
@@ -1405,10 +1121,8 @@ impl SceneView {
 
       self.features.bitmask.end_frame();
 
-      if self.info.reflection.is_some()
-        && let Some(history) = &mut self.state.reflections
-      {
-        history.swap();
+      if let Some(targets) = &mut self.state.targets {
+        self.features.reflections.end_frame(&mut targets.depth);
       }
 
       if self.info.froxels.is_some()
@@ -1440,7 +1154,7 @@ impl SceneView {
       (
         self.info.is_occlusion_drawn,
         self.features.bitmask.get_search().is_some_and(|search| search.is_lit),
-        self.info.reflection.map(ReflectionTrace::get_ratio),
+        self.features.reflections.get_trace().map(ReflectionTrace::get_ratio),
       ),
       !targets.is_sized(self.info.output.width, self.info.output.height),
       if is_distorting { water.distortion } else { 0.0 },
@@ -1697,15 +1411,13 @@ impl SceneView {
 
     // The depth the reflections walk their rays over, kept before the grass draws, or after it where the grass is
     // reflected.
-    let is_grass_reflected: bool = scene_view.info.reflection_settings.is_grass_reflected;
-    let traced_depth: Option<GraphTexture> = scene_view
-      .state
-      .reflections
-      .as_ref()
-      .map(|history| bindings.import_view(&mut *graph, "reflection traced depth", &history.traced_depth_view));
+    let is_grass_reflected: bool = scene_view.features.reflections.get_settings().is_grass_reflected;
 
-    if let Some(kept) = traced_depth.filter(|_| !is_grass_reflected) {
-      add_texture_copy(&mut *graph, "reflection traced depth", handles.depth, kept);
+    if !is_grass_reflected {
+      scene_view
+        .features
+        .reflections
+        .add_pyramid_passes((&mut *graph, &mut *bindings), passes, handles.depth);
     }
 
     let stats_args: GraphBuffer = statics.args;
@@ -1733,8 +1445,11 @@ impl SceneView {
       );
     }
 
-    if let Some(kept) = traced_depth.filter(|_| is_grass_reflected) {
-      add_texture_copy(&mut *graph, "reflection traced depth", handles.depth, kept);
+    if is_grass_reflected {
+      scene_view
+        .features
+        .reflections
+        .add_pyramid_passes((&mut *graph, &mut *bindings), passes, handles.depth);
     }
 
     if is_wallmarked {
@@ -1977,103 +1692,25 @@ impl SceneView {
 
       // The last frame's scene and depth the reflections keep: read by this frame's hits, written again after the
       // particles draw.
-      let source: Option<(GraphTexture, GraphTexture)> = scene_view.state.reflections.as_ref().map(|history| {
-        (
-          bindings.import_view(&mut *graph, "reflection source scene", &history.scene_view),
-          bindings.import_view(&mut *graph, "reflection source depth", &history.depth_view),
-        )
-      });
+      let source: Option<(GraphTexture, GraphTexture)> = scene_view
+        .features
+        .reflections
+        .import_source((&mut *graph, &mut *bindings));
 
-      // Each grass model's colour, which a traced hit on grassed ground blends towards, averaged while the scene traces.
-      let grass_colours: Option<GraphBuffer> = scene
-        .trace
-        .as_ref()
-        .filter(|_| passes.scene_trace.is_traced())
-        .zip(grass_level)
-        .map(|(_, grass)| {
-          let colours: GraphBuffer = bindings.import_buffer(&mut *graph, "grass colours", &grass.colours);
-          let parameters: GrassColourParameters = GrassColourParameters {
-            grass_models: StorageArray::new(bindings.import_buffer(&mut *graph, "grass models", &grass.models)),
-            grass_colours: StorageArrayMut::new(colours),
-          };
-          let models: u32 = grass.model_count;
-
-          graph
-            .add_compute_pass("grass colours")
-            .parameters(&parameters)
-            .record(move |context| passes.grass_colours.record(context, &parameters, texture_group, models));
-
-          colours
-        });
-
-      // The level's geometry a ray the screen does not answer is traced against, where the device traces rays.
-      let traced: Option<(TraceParameters, &wgpu::BindGroup)> = scene
-        .trace
-        .as_ref()
-        .filter(|_| passes.scene_trace.is_traced())
-        .map(|trace| {
-          (
-            TraceParameters {
-              trace_scene: trace.get_structure(),
-              trace_instances: StorageArray::new(bindings.import_buffer(
-                &mut *graph,
-                "static trace instances",
-                trace.get_instances(),
-              )),
-              trace_records: StorageArray::new(bindings.import_buffer(
-                &mut *graph,
-                "static trace records",
-                trace.get_records(),
-              )),
-              trace_places: StorageArray::new(statics.places),
-              trace_baked_words: StorageArray::new(statics.words[StaticLayout::Baked.get_index()]),
-              trace_tree_words: StorageArray::new(statics.words[StaticLayout::Tree.get_index()]),
-              trace_model_words: StorageArray::new(statics.words[StaticLayout::Model.get_index()]),
-              trace_indices: StorageArray::new(statics.indices),
-              trace_surfaces: StorageArray::new(statics.surfaces),
-              trace_lights: StorageArray::new(bindings.import_buffer(
-                &mut *graph,
-                "light records",
-                &scene_view.state.lights.record_buffer,
-              )),
-              trace_light_view: runtime.push_uniform(&scene_view.state.lights.uniform),
-              trace_shadow_atlas: bindings.import_view(
-                &mut *graph,
-                "light shadow atlas",
-                scene.lights.get_shadow_atlas(),
-              ),
-              trace_grass_grid: StorageArray::new(bindings.import_buffer(
-                &mut *graph,
-                "grass grid",
-                grass_level.map_or(trace.get_empty(), |grass| &grass.cells),
-              )),
-              trace_grass_slots: StorageArray::new(bindings.import_buffer(
-                &mut *graph,
-                "grass slots",
-                grass_level.map_or(trace.get_empty(), |grass| &grass.slots),
-              )),
-              trace_grass_models: StorageArray::new(bindings.import_buffer(
-                &mut *graph,
-                "grass models",
-                grass_level.map_or(trace.get_empty(), |grass| &grass.models),
-              )),
-              trace_grass_colours: StorageArray::new(
-                grass_colours
-                  .unwrap_or_else(|| bindings.import_buffer(&mut *graph, "grass colours", trace.get_empty())),
-              ),
-              trace_grass: runtime.push_uniform(scene_view.state.grass.get_trace_uniform()),
-            },
-            texture_group,
-          )
-        });
+      let traced: Option<(TraceParameters, &wgpu::BindGroup)> = scene_view.add_scene_trace(
+        scene,
+        (&mut *graph, &mut *bindings, runtime),
+        passes,
+        (&statics, grass_level, texture_group),
+      );
 
       if let Some(sky) = sky {
-        if let Some((history, ends)) = scene_view.add_reflection_passes(
+        if let Some((history, ends)) = scene_view.features.reflections.add_passes(
           (&mut *graph, &mut *bindings, runtime),
           passes,
           view,
           (handles, lit, wet_surface),
-          source.zip(traced_depth),
+          source,
           (&sky, traced),
         ) {
           reflections = Some(history);
@@ -2268,10 +1905,10 @@ impl SceneView {
       }
 
       // What a reflection reads a frame later: the scene with the water and the particles drawn, before the sun shafts,
-      // the rain and the flares, which belong to this camera and not to what it reflects; and the depth it stood on.
-      if let Some((scene, depth)) = source {
+      // the rain and the flares, which belong to this camera and not to what it reflects. The depth it stood on is the
+      // target itself, which the reflections keep at the frame's end.
+      if let Some((scene, _)) = source {
         add_texture_copy(&mut *graph, "reflection source scene", handles.scene, scene);
-        add_texture_copy(&mut *graph, "reflection source depth", handles.depth, depth);
       }
 
       // The shadowed lights' shafts (`accum_volumetric`), added up over the frame's depth for the composite below.
@@ -2493,6 +2130,98 @@ impl SceneView {
       reflection_ends: reflection_ends.unwrap_or(no_ends),
       bloom: enhanced_bloom.unwrap_or(handles.bloom[0]),
     })
+  }
+
+  /// The level's geometry a ray the screen does not answer is traced against, as one parameter set a frame which every
+  /// consumer binds (the reflections, the water), where the device traces rays; each grass model's colour averaged
+  /// first, which a traced hit on grassed ground blends towards.
+  fn add_scene_trace<'a>(
+    &'a self,
+    scene: &'a LevelScene,
+    (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
+    passes: LevelPasses<'a>,
+    (statics, grass_level, texture_group): (&StaticSceneHandles, Option<&'a GrassLevel>, &'a wgpu::BindGroup),
+  ) -> Option<(TraceParameters<'a>, &'a wgpu::BindGroup)> {
+    // Each grass model's colour, which a traced hit on grassed ground blends towards, averaged while the scene traces.
+    let grass_colours: Option<GraphBuffer> = scene
+      .trace
+      .as_ref()
+      .filter(|_| passes.scene_trace.is_traced())
+      .zip(grass_level)
+      .map(|(_, grass)| {
+        let colours: GraphBuffer = bindings.import_buffer(&mut *graph, "grass colours", &grass.colours);
+        let parameters: GrassColourParameters = GrassColourParameters {
+          grass_models: StorageArray::new(bindings.import_buffer(&mut *graph, "grass models", &grass.models)),
+          grass_colours: StorageArrayMut::new(colours),
+        };
+        let models: u32 = grass.model_count;
+
+        graph
+          .add_compute_pass("grass colours")
+          .parameters(&parameters)
+          .record(move |context| passes.grass_colours.record(context, &parameters, texture_group, models));
+
+        colours
+      });
+
+    scene
+      .trace
+      .as_ref()
+      .filter(|_| passes.scene_trace.is_traced())
+      .map(|trace| {
+        (
+          TraceParameters {
+            trace_scene: trace.get_structure(),
+            trace_instances: StorageArray::new(bindings.import_buffer(
+              &mut *graph,
+              "static trace instances",
+              trace.get_instances(),
+            )),
+            trace_records: StorageArray::new(bindings.import_buffer(
+              &mut *graph,
+              "static trace records",
+              trace.get_records(),
+            )),
+            trace_places: StorageArray::new(statics.places),
+            trace_baked_words: StorageArray::new(statics.words[StaticLayout::Baked.get_index()]),
+            trace_tree_words: StorageArray::new(statics.words[StaticLayout::Tree.get_index()]),
+            trace_model_words: StorageArray::new(statics.words[StaticLayout::Model.get_index()]),
+            trace_indices: StorageArray::new(statics.indices),
+            trace_surfaces: StorageArray::new(statics.surfaces),
+            trace_lights: StorageArray::new(bindings.import_buffer(
+              &mut *graph,
+              "light records",
+              &self.state.lights.record_buffer,
+            )),
+            trace_light_view: runtime.push_uniform(&self.state.lights.uniform),
+            trace_shadow_atlas: bindings.import_view(
+              &mut *graph,
+              "light shadow atlas",
+              scene.lights.get_shadow_atlas(),
+            ),
+            trace_grass_grid: StorageArray::new(bindings.import_buffer(
+              &mut *graph,
+              "grass grid",
+              grass_level.map_or(trace.get_empty(), |grass| &grass.cells),
+            )),
+            trace_grass_slots: StorageArray::new(bindings.import_buffer(
+              &mut *graph,
+              "grass slots",
+              grass_level.map_or(trace.get_empty(), |grass| &grass.slots),
+            )),
+            trace_grass_models: StorageArray::new(bindings.import_buffer(
+              &mut *graph,
+              "grass models",
+              grass_level.map_or(trace.get_empty(), |grass| &grass.models),
+            )),
+            trace_grass_colours: StorageArray::new(
+              grass_colours.unwrap_or_else(|| bindings.import_buffer(&mut *graph, "grass colours", trace.get_empty())),
+            ),
+            trace_grass: runtime.push_uniform(self.state.grass.get_trace_uniform()),
+          },
+          texture_group,
+        )
+      })
   }
 
   /// The draw arguments a forward pass replays: the early phase's, and the late phase's where occlusion culls.
@@ -2752,10 +2481,14 @@ impl SceneView {
           intensity: self.features.bitmask.get_indirect_light().intensity,
           is_shared: search.is_occluding,
         }),
-      reflections: self.info.reflection.map(|trace| RenderAppliedReflections {
-        intensity: trace.intensity,
-        quality: trace.quality,
-      }),
+      reflections: self
+        .features
+        .reflections
+        .get_trace()
+        .map(|trace| RenderAppliedReflections {
+          intensity: trace.intensity,
+          quality: trace.quality,
+        }),
       height_fog: self.features.fog.get_applied(),
       debanding: self.info.debanding,
       bloom: if self.features.bloom.is_enhanced_drawn() {

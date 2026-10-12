@@ -9,7 +9,7 @@ use xrf_visual::{
 };
 
 use crate::context::gpu_context::GpuContext;
-use crate::context::gpu_requirements::RAY_QUERY_FEATURES;
+use crate::context::gpu_requirements::can_trace;
 use crate::contract::render_backend::RenderBackend;
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::host::render_asset_source::RenderAssetSource;
@@ -231,7 +231,7 @@ fn create_tracing_context() -> Option<GpuContext> {
     return None;
   };
 
-  if !context.device.features().contains(RAY_QUERY_FEATURES) {
+  if !can_trace(&context.device) {
     eprintln!("Skipped: '{}' has no ray queries", context.adapter_name);
 
     return None;

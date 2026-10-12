@@ -5,6 +5,7 @@ pub(crate) mod falling_rain_feature;
 pub(crate) mod flares_feature;
 pub(crate) mod fog_feature;
 pub(crate) mod over_scene;
+pub(crate) mod reflection_feature;
 pub(crate) mod resolve;
 pub(crate) mod resolve_feature;
 pub(crate) mod scene_features;

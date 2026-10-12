@@ -2,7 +2,7 @@ use wgpu::util::DeviceExt;
 use xrf_error::XrfResult;
 use xrf_renderer_core::{ComputeContext, FrameGraph, GraphBindings, GraphBufferAccess, PassParameters};
 
-use crate::context::gpu_requirements::RAY_QUERY_FEATURES;
+use crate::context::gpu_requirements::can_trace;
 use crate::pass::reflection_scene_parameters::ReflectionSceneParameters;
 use crate::pass::shader_pipelines::{create_checked, create_module};
 use crate::pass::sky_parameters::SkyParameters;
@@ -44,7 +44,7 @@ impl SceneTracePass {
     sky_layout: &wgpu::BindGroupLayout,
     texture_layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<Self> {
-    let layouts: Option<[wgpu::BindGroupLayout; 3]> = device.features().contains(RAY_QUERY_FEATURES).then(|| {
+    let layouts: Option<[wgpu::BindGroupLayout; 3]> = can_trace(device).then(|| {
       [
         ReflectionSceneParameters::create_layout(device),
         TraceParameters::create_layout(device),

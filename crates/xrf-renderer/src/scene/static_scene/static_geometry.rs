@@ -3,7 +3,7 @@ use xrf_error::XrfResult;
 use xrf_renderer_core::{ProxyHandle, ProxyStore, Span, SpanBuffer, SpanLane, StoreMirror};
 use xrf_visual::VisualClusters;
 
-use crate::context::gpu_requirements::RAY_QUERY_FEATURES;
+use crate::context::gpu_requirements::can_trace;
 use crate::contract::render_pool_use::RenderPoolUse;
 use crate::contract::render_static_report::RenderStaticReport;
 use crate::scene::static_scene::static_cluster::StaticCluster;
@@ -63,7 +63,7 @@ impl StaticGeometry {
   pub fn new(device: &wgpu::Device, queue: &wgpu::Queue) -> Self {
     let storage: wgpu::BufferUsages = wgpu::BufferUsages::STORAGE;
     let words: u64 = u64::from(StaticLayout::STRIDE) * 4;
-    let is_traced: bool = device.features().contains(RAY_QUERY_FEATURES);
+    let is_traced: bool = can_trace(device);
     let traced: wgpu::BufferUsages = if is_traced {
       storage | wgpu::BufferUsages::BLAS_INPUT
     } else {

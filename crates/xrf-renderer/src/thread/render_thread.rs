@@ -12,7 +12,7 @@ use wgpu::util::StagingBelt;
 
 use crate::camera::camera_view::CameraView;
 use crate::context::gpu_context::GpuContext;
-use crate::context::gpu_requirements::RAY_QUERY_FEATURES;
+use crate::context::gpu_requirements::can_trace;
 use crate::contract::render_backend::RenderBackend;
 use crate::contract::render_debug_view::RenderDebugView;
 use crate::contract::render_frame_report::RenderFrameReport;
@@ -660,7 +660,7 @@ impl RenderThread {
     let device: (RenderBackend, &str, bool) = (
       gpu.context.backend,
       gpu.context.adapter_name.as_str(),
-      gpu.context.device.features().contains(RAY_QUERY_FEATURES),
+      can_trace(&gpu.context.device),
     );
 
     if self

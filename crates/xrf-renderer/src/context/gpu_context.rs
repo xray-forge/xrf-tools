@@ -5,7 +5,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use xrf_error::{XrfError, XrfResult};
 
 use crate::context::gpu_requirements::{
-  OPTIONAL_FEATURES, RAY_QUERY_FEATURES, REQUIRED_FEATURES, get_missing_features, get_ray_query_features,
+  OPTIONAL_FEATURES, REQUIRED_FEATURES, can_trace, get_missing_features, get_ray_query_features,
 };
 use crate::contract::render_backend::RenderBackend;
 use crate::contract::render_backend_availability::RenderBackendAvailability;
@@ -205,7 +205,7 @@ impl GpuContext {
       info.device_type,
       info.driver,
       info.driver_info,
-      if device.features().contains(RAY_QUERY_FEATURES) {
+      if can_trace(&device) {
         "tracing rays"
       } else {
         "without ray queries"

@@ -63,6 +63,26 @@ impl ViewTargets {
   /// Texels the haze map holds across, one a bearing, and down, one a height, as `shaders/frame/sky_haze.wgsl` says.
   pub const HAZE_SIZE: (u32, u32) = (64, 32);
 
+  /// A depth target of the view's, which the reflections keep a frame's of in turn.
+  pub fn create_depth(device: &wgpu::Device, (width, height): (u32, u32)) -> wgpu::TextureView {
+    device
+      .create_texture(&wgpu::TextureDescriptor {
+        label: Some("depth"),
+        size: wgpu::Extent3d {
+          width,
+          height,
+          depth_or_array_layers: 1,
+        },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: Self::DEPTH,
+        usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+        view_formats: &[],
+      })
+      .create_view(&Default::default())
+  }
+
   pub fn new(device: &wgpu::Device, width: u32, height: u32) -> Self {
     let create_sized = |label: &str, format: wgpu::TextureFormat, (width, height): (u32, u32)| -> wgpu::TextureView {
       device
@@ -84,25 +104,7 @@ impl ViewTargets {
     };
     let create =
       |label: &str, format: wgpu::TextureFormat| -> wgpu::TextureView { create_sized(label, format, (width, height)) };
-    // The depth is copied out for the reflections to read a frame later.
-    let depth: wgpu::TextureView = device
-      .create_texture(&wgpu::TextureDescriptor {
-        label: Some("depth"),
-        size: wgpu::Extent3d {
-          width,
-          height,
-          depth_or_array_layers: 1,
-        },
-        mip_level_count: 1,
-        sample_count: 1,
-        dimension: wgpu::TextureDimension::D2,
-        format: Self::DEPTH,
-        usage: wgpu::TextureUsages::RENDER_ATTACHMENT
-          | wgpu::TextureUsages::TEXTURE_BINDING
-          | wgpu::TextureUsages::COPY_SRC,
-        view_formats: &[],
-      })
-      .create_view(&Default::default());
+    let depth: wgpu::TextureView = Self::create_depth(device, (width, height));
     let scene_texture: wgpu::Texture = device.create_texture(&wgpu::TextureDescriptor {
       label: Some("scene"),
       size: wgpu::Extent3d {
