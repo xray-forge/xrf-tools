@@ -26,6 +26,7 @@ pub(crate) mod lights_frame;
 pub(crate) mod loader_answer;
 pub(crate) mod overhead_map;
 pub(crate) mod overhead_shape;
+pub(crate) mod overlay_box;
 pub(crate) mod particle_emitter_proxy;
 pub(crate) mod particle_sprite;
 pub(crate) mod particles_view;
