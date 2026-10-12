@@ -6,23 +6,24 @@ import { ERenderParallaxMode } from "@/core/ipc/types/xrf-renderer";
 import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
 import { LevelParallaxSettings } from "@/core/level/components/preview/toolbar/view/LevelParallaxSettings";
 import { toLevelModeFeature } from "@/core/level/lib/features/level-feature-options";
-import { ELevelShading, getLevelShading, LEVEL_SHADINGS } from "@/core/level/lib/view/level-shading";
+import {
+  ELevelShading,
+  getLevelShading,
+  getLevelShadings,
+  ILevelShadingChoice,
+} from "@/core/level/lib/view/level-shading";
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
+import { LevelRenderService } from "@/core/level/services/level-render.service";
 import { LevelViewService } from "@/core/level/services/level-view.service";
 import { TRenderParallaxSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { EditorPopoverGroup, EditorPopoverGroupSection } from "@/core/shell/editor/EditorPopoverGroup";
-import { ChoiceListFormRow, IChoiceFormRowOption } from "@/core/ui/form";
+import { ChoiceListFormRow } from "@/core/ui/form";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
-/** Every shading as the list offers it. */
-const SHADING_OPTIONS: ReadonlyArray<IChoiceFormRowOption<ELevelShading>> = LEVEL_SHADINGS.map(({ label, value }) => ({
-  label,
-  value,
-}));
-
 /**
- * How the level is shaded: the frame as dressed, as clay or by shader, or one of the targets it is built from; and the
- * surfaces as wireframe, with their bumps and parallax, under their wall marks, whichever of those is shown.
+ * How the level is shaded: the frame as dressed, as clay or by shader, or one of the targets it is built from, listed
+ * by what they show, FSR's only while FSR draws the frame; and the surfaces as wireframe, with their bumps and parallax,
+ * under their wall marks, whichever of those is shown.
  */
 export function LevelShadingAction({
   "data-testid": dataTestId = "level-shading-action",
@@ -30,10 +31,12 @@ export function LevelShadingAction({
   className,
 }: BaseComponentProps): ReactElement {
   const viewService: LevelViewService = useInjection(LevelViewService);
+  const renderService: LevelRenderService = useInjection(LevelRenderService);
   const { settings, features } = useLevelRenderFeatures();
 
   const options: ILevelViewOptions = viewService.options;
-  const shading: ELevelShading = viewService.shading;
+  const shading: ELevelShading = renderService.shading;
+  const shadings: ReadonlyArray<ILevelShadingChoice> = getLevelShadings(renderService.antialiasing);
   const parallax: TRenderParallaxSettings = toLevelModeFeature("parallax", settings, features);
   const { isWireframe, isBumped, isWallmarked } = options;
   const isParallaxAvailable: boolean = parallax.isSteep || parallax.mode === ERenderParallaxMode.ENHANCED;
@@ -66,10 +69,9 @@ export function LevelShadingAction({
       <ChoiceListFormRow
         data-testid={"level-shading"}
         label={"Show"}
-        description={"The frame as dressed, as clay, by shader, or one of the targets it is built from"}
-        options={SHADING_OPTIONS}
+        options={shadings}
         value={shading}
-        filterFrom={SHADING_OPTIONS.length + 1}
+        filterFrom={Infinity}
         onChange={viewService.setShading}
       />
 

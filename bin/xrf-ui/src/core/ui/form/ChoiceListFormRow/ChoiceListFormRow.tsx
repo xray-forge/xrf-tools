@@ -1,15 +1,20 @@
-import { List, ListItemButton, TextField } from "@mui/material";
+import { List, TextField } from "@mui/material";
 import { filterByName } from "@xrf/search";
-import { ChangeEvent, ReactElement, useMemo, useState } from "react";
+import { Optional } from "@xrf/types";
+import { ChangeEvent, ReactElement, useCallback, useMemo, useState } from "react";
 
-import { IChoiceFormRowOption } from "@/core/ui/form/ChoiceFormRow";
 import { FormRow } from "@/core/ui/form/FormRow";
 import { BaseComponentProps } from "@/lib/dom/element-types";
+
+import { IChoiceListFormRowOption } from "./choice-list-form-row-option";
+import { IChoiceListFormRowSection, toChoiceListFormRowSections } from "./ChoiceListFormRow.utils";
+import { ChoiceListFormRowItem } from "./ChoiceListFormRowItem";
+import { ChoiceListFormRowSection } from "./ChoiceListFormRowSection";
 
 export interface IChoiceListFormRowProps<T extends string> extends BaseComponentProps {
   label: string;
   description?: string;
-  options: ReadonlyArray<IChoiceFormRowOption<T>>;
+  options: ReadonlyArray<IChoiceListFormRowOption<T>>;
   value: T;
   /** Above this many options the row offers a filter; below it, one would be furniture. */
   filterFrom?: number;
@@ -22,7 +27,8 @@ export interface IChoiceListFormRowProps<T extends string> extends BaseComponent
 const DEFAULT_FILTER_FROM: number = 8;
 
 /**
- * A labelled choice among many, as a list that scrolls and filters.
+ * A labelled choice among many, as a list that scrolls and filters, its options under their sections' headings and
+ * the one chosen described under it.
  */
 export function ChoiceListFormRow<T extends string>({
   "data-testid": dataTestId = "choice-list-form-row",
@@ -40,13 +46,23 @@ export function ChoiceListFormRow<T extends string>({
   const [query, setQuery] = useState<string>("");
 
   const isFiltered: boolean = options.length >= filterFrom;
+  const chosen: Optional<IChoiceListFormRowOption<T>> = options.find((option) => option.value === value);
 
-  const shown: ReadonlyArray<IChoiceFormRowOption<T>> = useMemo(() => {
-    return filterByName(options, query, (it) => it.label);
+  const sections: ReadonlyArray<IChoiceListFormRowSection<T>> = useMemo(() => {
+    return toChoiceListFormRowSections(filterByName(options, query, (it) => it.label));
   }, [options, query]);
 
+  const onQueryChange = useCallback((event: ChangeEvent<HTMLInputElement>) => setQuery(event.target.value), []);
+
   return (
-    <FormRow label={label} description={description} controlId={id} isRequired={isRequired} isGroup>
+    <FormRow
+      label={label}
+      description={description}
+      fact={chosen?.description}
+      controlId={id}
+      isRequired={isRequired}
+      isGroup
+    >
       {({ id: controlId, "aria-labelledby": labelId, "aria-describedby": describedBy }) => (
         <div data-testid={dataTestId} id={controlId} className={className}>
           {isFiltered ? (
@@ -57,7 +73,7 @@ export function ChoiceListFormRow<T extends string>({
               value={query}
               disabled={isDisabled}
               slotProps={{ htmlInput: { "aria-label": `Filter ${label.toLowerCase()}` } }}
-              onChange={(event: ChangeEvent<HTMLInputElement>) => setQuery(event.target.value)}
+              onChange={onQueryChange}
             />
           ) : null}
 
@@ -69,23 +85,22 @@ export function ChoiceListFormRow<T extends string>({
             disablePadding={true}
             role={"listbox"}
           >
-            {shown.map((option: IChoiceFormRowOption<T>) => (
-              <ListItemButton
-                key={option.value}
-                aria-selected={option.value === value}
-                aria-label={option["aria-label"]}
-                role={"option"}
-                dense={true}
-                selected={option.value === value}
-                disabled={isDisabled}
-                onClick={() => onChange(option.value)}
-              >
-                <span className={"truncate font-mono text-xs"}>{option.label}</span>
-              </ListItemButton>
+            {sections.map((section: IChoiceListFormRowSection<T>) => (
+              <ChoiceListFormRowSection key={section.options[0].value} label={section.label}>
+                {section.options.map((option: IChoiceListFormRowOption<T>) => (
+                  <ChoiceListFormRowItem
+                    key={option.value}
+                    option={option}
+                    isSelected={option.value === value}
+                    isDisabled={isDisabled}
+                    onChange={onChange}
+                  />
+                ))}
+              </ChoiceListFormRowSection>
             ))}
           </List>
 
-          {shown.length ? null : (
+          {sections.length ? null : (
             <p className={"mt-1 text-xs text-text-secondary"}>{`Nothing here matches '${query.trim()}'`}</p>
           )}
         </div>

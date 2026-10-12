@@ -5,6 +5,7 @@ import { Maybe, Nullable } from "@xrf/types";
 import { SelectedLevelDescription, SessionSnapshot } from "@/core/ipc/types/xrf-app";
 import {
   ERenderDlssAvailability,
+  RenderAntialiasing,
   RenderDlssAvailability,
   RenderLevelHit,
   RenderLoadReport,
@@ -25,6 +26,7 @@ import { ILevelCameraOptions } from "@/core/level/lib/camera/level-camera-option
 import { toLevelCameraReading } from "@/core/level/lib/camera/level-camera-reading";
 import { ILevelViewpoint, toLevelStartViewpoint } from "@/core/level/lib/camera/level-viewpoint";
 import { ILevelBox, toLevelBox } from "@/core/level/lib/extent/level-extent";
+import { toLevelRendererAntialiasing } from "@/core/level/lib/features/level-feature-options";
 import { TLevelPick, toLevelPick } from "@/core/level/lib/pick/level-pick";
 import { toLevelPickSelection } from "@/core/level/lib/pick/level-pick-selection";
 import { DEFAULT_LEVEL_RENDER_CONFIG, ILevelRenderConfig } from "@/core/level/lib/render/level-render-config";
@@ -32,11 +34,13 @@ import { toLevelFrameOverlays } from "@/core/level/lib/render/level-render-frame
 import { toLevelCameraAt, toLevelViewOptions } from "@/core/level/lib/render/level-render-view";
 import { toLevelSurfaceGeometry } from "@/core/level/lib/surface/level-surface-geometry";
 import { toLevelTextureReport } from "@/core/level/lib/texture/level-texture-report";
+import { ELevelShading, toShownLevelShading } from "@/core/level/lib/view/level-shading";
 import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { LevelLookService } from "@/core/level/services/level-look.service";
 import { LevelViewService } from "@/core/level/services/level-view.service";
 import { LevelViewportService } from "@/core/level/services/level-viewport.service";
 import { LevelWeatherService } from "@/core/level/services/level-weather.service";
+import { toDrawnAntialiasing } from "@/core/render/lib/features/render-antialiasing-choices";
 import { IRenderViewPoint } from "@/core/render/lib/frame/render-view-point";
 import { NativeRenderSurfaceService } from "@/core/render/lib/native/native-render-surface-service";
 import { toNativeWorldToggles } from "@/core/render/lib/native/native-view-options";
@@ -114,6 +118,25 @@ export class LevelRenderService extends NativeRenderSurfaceService {
     return this.frame.adapter ? this.frame.rayReconstruction : ERenderDlssAvailability.AVAILABLE;
   }
 
+  /** What smooths the view's frame: the toolbar's antialiasing over the settings', FSR for DLSS on a GPU without it. */
+  @Computed()
+  public get antialiasing(): RenderAntialiasing {
+    return toDrawnAntialiasing(
+      toLevelRendererAntialiasing(
+        this.renderSettingsService.rendererFeatures.antialiasing,
+        this.viewService.features,
+        this.viewService.options.isAntialiased
+      ),
+      this.dlss
+    );
+  }
+
+  /** What the viewport shows of its surfaces: the view's shading, the final frame for FSR's while FSR is not drawing. */
+  @Computed()
+  public get shading(): ELevelShading {
+    return toShownLevelShading(this.viewService.shading, this.antialiasing);
+  }
+
   /** What the level is asked to be drawn with: the toolbar, the look and the settings together. */
   @Computed()
   public get viewOptions(): RenderViewOptions {
@@ -127,7 +150,7 @@ export class LevelRenderService extends NativeRenderSurfaceService {
         this.viewService.features.output.resolution ?? this.renderSettingsService.renderResolution,
         this.viewService.features.output.scale ?? this.renderSettingsService.renderOutputScale
       ),
-      shading: this.viewService.shading,
+      shading: this.shading,
       sunShafts: this.weatherService.sunShafts,
       view: this.viewService.features,
     });

@@ -54,6 +54,26 @@ describe("ChoiceListFormRow", () => {
     expect(getByText("Nothing here matches 'zaton'")).toBeTruthy();
   });
 
+  it("lists neighbours sharing a section under one heading, and says what the option chosen is", () => {
+    const { getByRole, getByText, queryByText } = renderWithProviders(
+      <ChoiceListFormRow
+        label={"Shading"}
+        options={[
+          { label: "Final", value: "final", section: "Frame", description: "The finished frame." },
+          { label: "Clay", value: "clay", section: "Frame", description: "One grey for everything." },
+          { label: "Depth", value: "depth", section: "Surfaces", description: "Near dark, far light." },
+        ]}
+        value={"clay"}
+        onChange={jest.fn()}
+      />
+    );
+
+    expect(getByRole("group", { name: "Frame" }).querySelectorAll("[role=option]")).toHaveLength(2);
+    expect(getByRole("group", { name: "Surfaces" }).querySelectorAll("[role=option]")).toHaveLength(1);
+    expect(getByText("One grey for everything.")).toBeTruthy();
+    expect(queryByText("The finished frame.")).toBeNull();
+  });
+
   it("answers with the value of the row chosen", async () => {
     const onChange = jest.fn();
     const { getAllByRole } = renderRow(4, onChange);
