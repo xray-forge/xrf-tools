@@ -1302,6 +1302,11 @@ export type RenderSettings = {
    * does, and `XRF_RENDER_BACKEND` overrides it.
    */
   backend: RenderBackend | null;
+  /**
+   * Milliseconds of GPU time each frame gives the work drawn once in so many frames that may wait: the shadows'
+   * cascades and faces, the overhead maps, the surroundings' faces, the sky's refill.
+   */
+  periodicBudget: number | null;
 };
 
 /**

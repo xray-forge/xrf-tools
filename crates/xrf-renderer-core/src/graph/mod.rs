@@ -25,4 +25,4 @@ pub use frame_graph::FrameGraph;
 pub use pool::{TransientBufferKey, TransientPool, TransientTextureKey};
 pub use report::{GraphPassKind, GraphPassReport, GraphReport, GraphTransientReport};
 pub use resource::{GraphBuffer, GraphBufferDescriptor, GraphTexture, GraphTextureDescriptor};
-pub use timing::{GraphPassTime, GraphTimer};
+pub use timing::{GraphPassTime, GraphTaggedTime, GraphTimer};

@@ -3,6 +3,7 @@ use std::sync::atomic::{AtomicU8, Ordering};
 
 use crate::graph::timing::gpu_zones::GpuZones;
 use crate::graph::timing::graph_pass_time::GraphPassTime;
+use crate::graph::timing::graph_tagged_time::GraphTaggedTime;
 use crate::graph::timing::group_stamps::GroupStamps;
 use crate::graph::timing::timer_slot::{TimedPass, TimerSlot};
 
@@ -27,6 +28,10 @@ pub struct GraphTimer {
   sums: Vec<(u32, String, f64)>,
   /// Frames read back per owner since its last `take`, which its passes' sums are averaged over.
   frames: Vec<(u32, u32)>,
+  /// The tag the frame timed next carries.
+  tag: u64,
+  /// Each pass of each frame read back since the last `take_tagged`, under its frame's tag, the latest `TAGGED_MOST`.
+  tagged: Vec<GraphTaggedTime>,
   zones: GpuZones,
 }
 
@@ -35,6 +40,8 @@ impl GraphTimer {
   pub const CAPACITY: u32 = 256;
   /// Frames of stamps on their way back at once.
   pub const SLOTS: usize = 3;
+  /// Passes' times kept for `take_tagged` at most, the oldest let go past it.
+  pub const TAGGED_MOST: usize = 4096;
 
   pub fn new(device: &wgpu::Device, queue: &wgpu::Queue) -> Self {
     let (queries, resolve, slots) = Self::create(device, Self::CAPACITY);
@@ -50,6 +57,8 @@ impl GraphTimer {
       frame: None,
       sums: Vec::new(),
       frames: Vec::new(),
+      tag: 0,
+      tagged: Vec::new(),
       zones: GpuZones::default(),
     }
   }
@@ -64,7 +73,21 @@ impl GraphTimer {
       self.is_enabled = is_enabled;
       self.sums.clear();
       self.frames.clear();
+      self.tagged.clear();
     }
+  }
+
+  /// Tags the frames timed from now on, which `take_tagged` answers their passes' times under.
+  pub fn set_tag(&mut self, tag: u64) {
+    self.tag = tag;
+  }
+
+  /// Every pass of every frame read back since the last call, each under the tag its frame was timed with, in the order
+  /// they were read back.
+  pub fn take_tagged(&mut self) -> Vec<GraphTaggedTime> {
+    self.collect();
+
+    std::mem::take(&mut self.tagged)
   }
 
   /// Asks for the stamps recorded with the frame just submitted; call after each submit.
@@ -197,6 +220,7 @@ impl GraphTimer {
     let slot: &mut TimerSlot = &mut self.slots[index];
 
     slot.names = names;
+    slot.tag = self.tag;
     slot.state.store(TimerSlot::RECORDED, Ordering::Release);
   }
 
@@ -236,6 +260,7 @@ impl GraphTimer {
         }),
         state: Arc::new(AtomicU8::new(TimerSlot::IDLE)),
         names: Vec::new(),
+        tag: 0,
       })
       .collect();
 
@@ -275,6 +300,12 @@ impl GraphTimer {
             None => self.sums.push((*owner, name.clone(), spent)),
           }
 
+          self.tagged.push(GraphTaggedTime {
+            tag: slot.tag,
+            name: name.clone(),
+            gpu_time: spent as f32,
+          });
+
           if !owners.contains(owner) {
             owners.push(*owner);
           }
@@ -292,5 +323,9 @@ impl GraphTimer {
       slot.buffer.unmap();
       slot.state.store(TimerSlot::IDLE, Ordering::Release);
     }
+
+    let excess: usize = self.tagged.len().saturating_sub(Self::TAGGED_MOST);
+
+    self.tagged.drain(..excess);
   }
 }

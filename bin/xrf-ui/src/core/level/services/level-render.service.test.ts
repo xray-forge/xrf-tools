@@ -31,6 +31,7 @@ import { LevelViewportService } from "@/core/level/services/level-viewport.servi
 import { LevelWeatherService } from "@/core/level/services/level-weather.service";
 import { EMPTY_RENDER_FRAME_PHASES } from "@/core/render/lib/native/native-frame-report";
 import { DEFAULT_RENDER_GRAPH_SETTINGS } from "@/core/render/lib/settings/render-graph-settings";
+import { DEFAULT_PERIODIC_BUDGET } from "@/core/render/lib/settings/render-periodic-budget";
 import { ERenderResolution } from "@/core/render/lib/settings/render-resolution";
 import { SettingsService } from "@/core/settings/services/settings";
 import { mockLevelSpawnObject, mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
@@ -173,6 +174,7 @@ describe("LevelRenderService", () => {
           frameRate: { isVsync: true, limit: null },
           graph: DEFAULT_RENDER_GRAPH_SETTINGS,
           isGpuTimed: false,
+          periodicBudget: DEFAULT_PERIODIC_BUDGET,
         },
       },
     ]);

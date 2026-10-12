@@ -6,6 +6,9 @@ use xrf_renderer_core::{
 
 use crate::contract::render_reflection_probe::RenderReflectionProbe;
 use crate::contract::render_view_options::RenderViewOptions;
+use crate::frame::periodic_job::PeriodicJob;
+use crate::frame::periodic_scheduler::PeriodicScheduler;
+use crate::frame::periodic_ticket::PeriodicTicket;
 use crate::frame::sky_prefilter::SkyPrefilter;
 use crate::frame::static_scene_handles::StaticSceneHandles;
 use crate::frame::view_target_handles::ViewTargetHandles;
@@ -26,8 +29,9 @@ use crate::scene::texture::weather_texture_cache::WeatherTextureCache;
 use crate::scene::texture::weather_texture_kind::WeatherTextureKind;
 
 /// The sky a view draws and reflects: its textures as the weather holds them this frame, with the sun's sprite, the
-/// prefiltered cube the reflections and the enhanced specular read, filled each frame, and the haze map the distance
-/// fades into.
+/// prefiltered cube the reflections and the enhanced specular read, filled again as the frame's scheduler grants it
+/// (at once when new, else within `REFILL_WAIT_MOST` frames, as the sky and its light move slowly), and the haze map the
+/// distance fades into.
 #[derive(Default)]
 pub struct SkyFeature {
   views: Option<SkyViews>,
@@ -39,9 +43,20 @@ pub struct SkyFeature {
   unfiltered: Option<wgpu::TextureView>,
   /// Whether the haze map is drawn this frame.
   is_hazing: bool,
+  /// Whether the prefiltered cube was filled since it was made.
+  is_filled: bool,
+  /// The refill offered this frame, whether this frame fills the cube, and frames a refill has waited.
+  refill: Option<PeriodicTicket>,
+  is_refilled: bool,
+  waited: u32,
 }
 
 impl SkyFeature {
+  /// Frames a refill of the prefiltered cube waits at most.
+  const REFILL_WAIT_MOST: u32 = 4;
+  /// Milliseconds a refill costs before the timer measured one.
+  const REFILL_SEED: f32 = 0.2;
+
   /// Takes this frame's sky: its textures and the sun's sprite (`sun_sprite`) as the weather textures hold them, the
   /// level's environment cubes beside them, and the prefiltered cube at the size the settings ask, made again where
   /// that changed.
@@ -61,8 +76,12 @@ impl SkyFeature {
     self.is_hazing = options.mode.is_lit && options.show.is_sky_visible && options.show.is_sky_hazed;
 
     // The prefiltered cube is the enhanced reflections' and specular's alone.
+    self.refill = None;
+    self.is_refilled = false;
+
     if !options.features.reflections.is_drawn() {
       self.prefilter = None;
+      self.is_filled = false;
       self.unfiltered = Some(weather_textures.get_view(None, WeatherTextureKind::Cube).clone());
 
       return;
@@ -72,10 +91,54 @@ impl SkyFeature {
 
     if self.prefilter.as_ref().is_some_and(|it| it.probe != probe) {
       self.prefilter = None;
+      self.is_filled = false;
     }
 
     self.prefilter.get_or_insert_with(|| SkyPrefilter::new(device, probe));
     self.unfiltered = None;
+  }
+
+  /// Offers `scheduler` a refill of the prefiltered cube, while one is kept.
+  pub fn offer_refill(&mut self, scheduler: &mut PeriodicScheduler) {
+    if self.prefilter.is_none() {
+      return;
+    }
+
+    let job: PeriodicJob = if self.is_filled {
+      PeriodicJob::new_waiting(
+        &SkyPrefilterPass::PASSES,
+        Self::REFILL_SEED,
+        1.0,
+        (self.waited, Self::REFILL_WAIT_MOST),
+      )
+    } else {
+      PeriodicJob::new_now(&SkyPrefilterPass::PASSES, Self::REFILL_SEED, 1.0)
+    };
+
+    self.refill = Some(scheduler.offer(job));
+  }
+
+  /// Takes the refill `scheduler` granted; one not granted waits a frame more.
+  pub fn commit_refill(&mut self, scheduler: &PeriodicScheduler) {
+    let Some(ticket) = self.refill.take() else {
+      return;
+    };
+
+    self.is_refilled = scheduler.is_granted(ticket);
+
+    if self.is_refilled {
+      self.is_filled = true;
+      self.waited = 0;
+    } else {
+      self.waited += 1;
+    }
+  }
+
+  /// Forgets a first fill this frame made, where its frame was not submitted: it fills again at once.
+  pub fn abandon_frame(&mut self) {
+    if self.is_refilled {
+      self.is_filled = false;
+    }
   }
 
   /// The sun's sprite as the sky draws it, where one is drawn.
@@ -93,9 +156,9 @@ impl SkyFeature {
     self.is_hazing && self.views.is_some()
   }
 
-  /// Adds the sky: its textures and the prefiltered cube imported, the cube filled (its first mip the surroundings'
-  /// face drawn this frame where `surroundings` draws one), and the haze map drawn; answers the sky's parameters, which
-  /// the combine, the water and the composited surfaces bind, none before it is prepared.
+  /// Adds the sky: its textures and the prefiltered cube imported, the surroundings' face drawn into its first mip
+  /// where `surroundings` draws one, the cube filled where this frame refills it, and the haze map drawn; answers the
+  /// sky's parameters, which the combine, the water and the composited surfaces bind, none before it is prepared.
   pub fn add_passes<'a>(
     &'a self,
     (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
@@ -177,6 +240,10 @@ impl SkyFeature {
           faces,
         );
 
+        continue;
+      }
+
+      if !self.is_refilled {
         continue;
       }
       let settings: UniformBinding<SkyPrefilterUniform> = runtime.push_uniform(&SkyPrefilterUniform::new(

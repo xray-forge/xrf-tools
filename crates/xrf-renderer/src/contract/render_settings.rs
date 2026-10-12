@@ -3,10 +3,11 @@ use serde::{Deserialize, Serialize};
 use crate::contract::render_backend::RenderBackend;
 use crate::contract::render_frame_rate::RenderFrameRate;
 use crate::contract::render_graph_settings::RenderGraphSettings;
+use crate::frame::periodic_scheduler::PeriodicScheduler;
 
 /// What every viewport of the renderer draws with.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Copy, Debug, Default, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RenderSettings {
   pub frame_rate: RenderFrameRate,
@@ -17,4 +18,19 @@ pub struct RenderSettings {
   /// The graphics API to draw with, none for the first that starts; one that cannot start falls back to the first that
   /// does, and `XRF_RENDER_BACKEND` overrides it.
   pub backend: Option<RenderBackend>,
+  /// Milliseconds of GPU time each frame gives the work drawn once in so many frames that may wait: the shadows'
+  /// cascades and faces, the overhead maps, the surroundings' faces, the sky's refill.
+  pub periodic_budget: f32,
+}
+
+impl Default for RenderSettings {
+  fn default() -> Self {
+    Self {
+      frame_rate: RenderFrameRate::default(),
+      is_gpu_timed: false,
+      graph: RenderGraphSettings::default(),
+      backend: None,
+      periodic_budget: PeriodicScheduler::DEFAULT_BUDGET,
+    }
+  }
 }

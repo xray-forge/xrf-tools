@@ -6,7 +6,9 @@ use std::time::{Duration, Instant};
 
 use glam::{Mat4, Vec2, Vec3, Vec4};
 use xrf_error::{XrfError, XrfResult};
-use xrf_renderer_core::{ExecutedGraph, ExecutedGroup, FrameGraph, GraphBindings, GraphReport, GraphRuntime};
+use xrf_renderer_core::{
+  ExecutedGraph, ExecutedGroup, FrameGraph, GraphBindings, GraphReport, GraphRuntime, GraphTaggedTime,
+};
 
 use wgpu::util::StagingBelt;
 
@@ -30,6 +32,7 @@ use crate::frame::frame_capture::{CaptureReply, FrameCapture};
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::frame_phases::FramePhases;
 use crate::frame::frame_statistics::REPORT_INTERVAL;
+use crate::frame::periodic_scheduler::PeriodicScheduler;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::host::render_bundle::RenderBundle;
 use crate::host::render_scene_feedback::RenderSceneFeedback;
@@ -110,6 +113,8 @@ pub struct RenderThread {
   allocator_report: Option<(Instant, Option<(u64, u64)>)>,
   /// The staging belt the frames' own writes go through, kept between frames; made with the GPU.
   belt: Option<StagingBelt>,
+  /// What every view and scene draws once in so many frames, granted once a frame within the settings' budget.
+  periodic: PeriodicScheduler,
   /// Why the GPU last failed to start, and when.
   failure: Option<(String, Instant)>,
   /// The windows viewports are drawn into, by their key.
@@ -153,6 +158,7 @@ impl RenderThread {
       graph_report: None,
       allocator_report: None,
       belt: None,
+      periodic: PeriodicScheduler::new(),
       failure: None,
       hosts: HashMap::new(),
       viewports: BTreeMap::new(),
@@ -839,6 +845,14 @@ impl RenderThread {
       update,
       ..FramePhases::default()
     };
+    let times: Vec<GraphTaggedTime> = self
+      .runtime
+      .as_mut()
+      .map(|runtime| runtime.timer.take_tagged())
+      .unwrap_or_default();
+
+    self.periodic.begin(self.settings.periodic_budget, &times);
+
     // Each viewport's readied frame, with the pick it draws and what unprojects that pick's depth; its scene's driving
     // viewport first, which simulates the scene and declares its work, or the first drawn where that one is not.
     let mut frames: Vec<ViewFrame> = Vec::new();
@@ -871,24 +885,51 @@ impl RenderThread {
       let is_first: bool = scene_id.is_some_and(|scene| firsts.iter().all(|(seen, _)| *seen != scene));
       let scene: Option<&mut LevelScene> = scene_id.and_then(|scene| self.scenes.get_mut(&scene));
 
-      if let Some(mut frame) = Self::ready_view(
+      self.periodic.set_owner(id.0);
+
+      match Self::ready_view(
         (gpu, &self.shaders),
         (viewport, scene),
         rect,
-        &mut encoder,
+        (&mut encoder, &mut self.periodic),
         (&mut phases.load, &mut phases.prepare),
         is_first,
       ) {
-        if let (true, Some(scene)) = (is_first, scene_id) {
-          frame.1.is_scene_first = true;
-          firsts.push((scene, *id));
-        }
+        Some(mut frame) => {
+          if let (true, Some(scene)) = (is_first, scene_id) {
+            frame.1.is_scene_first = true;
+            firsts.push((scene, *id));
+          }
 
-        frames.push(frame);
+          frames.push(frame);
+        }
+        // A view that draws nothing this frame draws none of what it offered.
+        None => self.periodic.withdraw(id.0),
       }
     }
 
-    // Each scene's light faces, as every view of it asked for them, readied from its first view's culling.
+    // Each scene's light faces, as every view of it asked for them.
+    for (scene_id, id) in &firsts {
+      if let Some(scene) = self.scenes.get_mut(scene_id) {
+        self.periodic.set_owner(id.0);
+        scene.lights.offer_shadows(&mut self.periodic);
+      }
+    }
+
+    self.periodic.grant();
+
+    // What was granted, readied by each view, and each scene's light faces from its first view's culling.
+    for (id, ..) in &frames {
+      let Some((scene_id, view)) = self.viewports.get_mut(id).and_then(|viewport| viewport.shown.as_mut()) else {
+        continue;
+      };
+      let Some(scene) = self.scenes.get(scene_id) else {
+        continue;
+      };
+
+      view.commit_periodic(scene, &gpu.context.device, &mut encoder, &self.periodic, &gpu.textures);
+    }
+
     for (scene_id, id) in &firsts {
       let (Some(scene), Some((_, view))) = (
         self.scenes.get_mut(scene_id),
@@ -897,7 +938,7 @@ impl RenderThread {
         continue;
       };
 
-      view.prepare_scene_shadows(scene, &gpu.context.device, &mut encoder, &gpu.textures);
+      view.commit_scene_shadows(scene, &gpu.context.device, &mut encoder, &gpu.textures, &self.periodic);
     }
 
     let composing: Instant = Instant::now();
@@ -942,6 +983,7 @@ impl RenderThread {
     }
 
     runtime.timer.set_enabled(self.settings.is_gpu_timed);
+    runtime.timer.set_tag(self.periodic.get_frame());
 
     let recording: Instant = Instant::now();
     // Each window's image as the composition draws into it, once acquired.
@@ -1117,12 +1159,18 @@ impl RenderThread {
             continue;
           };
 
-          if let Some((_, level)) = viewport.shown.as_ref() {
+          if let Some((_, level)) = viewport.shown.as_mut() {
             level.abandon_frame();
           }
 
           if let Some((pick, _)) = pick {
             viewport.picks.insert(0, pick);
+          }
+        }
+
+        for (scene_id, _) in &firsts {
+          if let Some(scene) = self.scenes.get_mut(scene_id) {
+            scene.lights.abandon_shadows();
           }
         }
 
@@ -1240,7 +1288,7 @@ impl RenderThread {
     (gpu, shaders): (&mut GpuState, &ShaderLibrary),
     (viewport, scene): (&mut RenderViewport, Option<&mut LevelScene>),
     rect: &RenderRect,
-    encoder: &mut FrameEncoder,
+    (encoder, periodic): (&mut FrameEncoder, &mut PeriodicScheduler),
     (load, prepare): (&mut Duration, &mut Duration),
     is_simulating: bool,
   ) -> Option<ViewFrame> {
@@ -1393,8 +1441,8 @@ impl RenderThread {
         (lighting, weather),
         &gpu.weather_textures,
         world.clock_rate,
-        (&gpu.view_layout, &gpu.textures),
       );
+      view_state.offer_periodic(scene, device, periodic, (&gpu.view_layout, &gpu.textures));
     }
     *prepare += preparing.elapsed();
 

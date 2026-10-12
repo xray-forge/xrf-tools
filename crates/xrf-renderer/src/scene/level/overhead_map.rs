@@ -7,6 +7,9 @@ use xrf_renderer_core::{
 use crate::camera::camera_view::CameraView;
 use crate::contract::render_rect::RenderRect;
 use crate::frame::frame_encoder::FrameEncoder;
+use crate::frame::periodic_job::PeriodicJob;
+use crate::frame::periodic_scheduler::PeriodicScheduler;
+use crate::frame::periodic_ticket::PeriodicTicket;
 use crate::frame::static_scene_handles::StaticSceneHandles;
 use crate::frame::sun_shadow_maps::SunShadowMaps;
 use crate::pass::camera_uniform::CameraUniform;
@@ -19,7 +22,6 @@ use crate::pass::static_draws::StaticDraws;
 use crate::pass::view_binding::ViewBinding;
 use crate::pass::water_depth_parameters::WaterDepthParameters;
 use crate::pass::water_uniform::WaterUniform;
-use crate::scene::level::frame_load::FrameLoad;
 use crate::scene::level::overhead_shape::OverheadShape;
 use crate::scene::level::shadow_frame::ShadowFrame;
 use crate::scene::static_scene::growable_buffer::GrowableBuffer;
@@ -36,16 +38,21 @@ pub struct OverheadMap {
   view: ViewBinding,
   /// Where it was drawn, centred and seen from, and what the scene held then, or none before it was.
   drawn: Option<(Vec3, usize)>,
-  /// Whether this frame draws it, as `prepare` decided.
+  /// Whether this frame draws it, as `commit` took it.
   is_due: bool,
+  /// The draw offered this frame, where it wants one, and where it is centred and what the scene holds for it.
+  offer: Option<(PeriodicTicket, (Vec3, usize))>,
   /// Frames since it was last drawn, which a change of what the scene holds alone waits out.
   since: u32,
-  /// Frames it has waited, due, for a frame light on other work.
+  /// Frames it has waited for a draw it wants.
   waited: u32,
   shape: OverheadShape,
 }
 
 impl OverheadMap {
+  /// Frames a map drawn before waits at most for a draw it wants.
+  pub const WAIT_MOST: u32 = 8;
+
   pub fn new(device: &wgpu::Device, view_layout: &wgpu::BindGroupLayout, args_size: u64, shape: OverheadShape) -> Self {
     Self {
       depth: device
@@ -74,6 +81,7 @@ impl OverheadMap {
       view: ViewBinding::new(device, view_layout),
       drawn: None,
       is_due: false,
+      offer: None,
       since: 0,
       waited: 0,
       shape,
@@ -99,9 +107,10 @@ impl OverheadMap {
   /// Draws nothing this frame.
   pub fn rest(&mut self) {
     self.is_due = false;
+    self.offer = None;
   }
 
-  /// Whether this frame draws it, as `prepare` decided.
+  /// Whether this frame draws it, as `commit` took it.
   pub fn is_due(&self) -> bool {
     self.is_due
   }
@@ -120,15 +129,10 @@ impl OverheadMap {
     Vec4::new(0.0, 0.0, shape.width / 2.0, -1e9)
   }
 
-  /// Centres it over the camera, a whole step at a time, and readies it to be drawn where it moved or the scene grew,
-  /// on a frame `load` leaves light unless it was never drawn; `encoder` takes the copies a list growing makes.
-  pub fn prepare(
-    &mut self,
-    device: &wgpu::Device,
-    encoder: &mut FrameEncoder,
-    frame: &ShadowFrame<'_>,
-    load: &mut FrameLoad,
-  ) {
+  /// Centres it over the camera, a whole step at a time, and offers a draw to `scheduler` where it moved or the scene
+  /// changed under it: at once where it was never drawn, else within `WAIT_MOST` frames, as it holds what it covers by
+  /// a margin past a step.
+  pub fn offer(&mut self, frame: &ShadowFrame<'_>, scheduler: &mut PeriodicScheduler) {
     let position: Vec3 = frame.camera.position;
     let step: f32 = self.shape.step;
     let center: Vec3 = Vec3::new(
@@ -141,6 +145,7 @@ impl OverheadMap {
     let half: f32 = self.shape.width / 2.0;
 
     self.is_due = false;
+    self.offer = None;
     self.since = self.since.saturating_add(1);
 
     let is_moved: bool = self.drawn.is_none_or(|(drawn, _)| drawn != center);
@@ -157,20 +162,47 @@ impl OverheadMap {
       return;
     }
 
-    // Drawn before, it holds what it covers by a margin past a step, so it waits a few frames for a light one.
-    if self.drawn.is_some() && !load.take(self.waited) {
+    let texels: f32 = (self.shape.resolution as f32).powi(2);
+    let job: PeriodicJob = if self.drawn.is_none() {
+      PeriodicJob::new_now(self.shape.passes, self.shape.seed, texels)
+    } else {
+      PeriodicJob::new_waiting(
+        self.shape.passes,
+        self.shape.seed,
+        texels,
+        (self.waited, Self::WAIT_MOST),
+      )
+    };
+
+    self.offer = Some((scheduler.offer(job), state));
+  }
+
+  /// Readies the draw `offer` offered, where `scheduler` granted it; one not granted waits a frame more. `encoder` takes
+  /// the copies a list growing makes.
+  pub fn commit(
+    &mut self,
+    device: &wgpu::Device,
+    encoder: &mut FrameEncoder,
+    frame: &ShadowFrame<'_>,
+    scheduler: &PeriodicScheduler,
+  ) {
+    let Some((ticket, (center, contents))) = self.offer.take() else {
+      return;
+    };
+
+    if !scheduler.is_granted(ticket) {
       self.waited += 1;
 
       return;
     }
 
-    self.waited = 0;
-
+    let half: f32 = self.shape.width / 2.0;
     let view: CameraView = CameraView {
       position: center,
       view: glam::camera::rh::view::look_at_mat4(center, center - Vec3::Y, -Vec3::Z),
       projection: glam::camera::rh::proj::directx::orthographic(-half, half, -half, half, self.shape.depth, 0.0),
     };
+    let scene = frame.scene;
 
     self
       .lists
@@ -191,8 +223,17 @@ impl OverheadMap {
     );
 
     self.is_due = true;
-    self.drawn = Some(state);
+    self.drawn = Some((center, contents));
     self.since = 0;
+    self.waited = 0;
+  }
+
+  /// Forgets that this frame drew it, where its frame was not submitted: it draws again.
+  pub fn abandon_frame(&mut self) {
+    if self.is_due {
+      self.is_due = false;
+      self.drawn = None;
+    }
   }
 
   /// Declares its cull and its draw, where this frame's `prepare` found it due: the level's shadow casters, or its

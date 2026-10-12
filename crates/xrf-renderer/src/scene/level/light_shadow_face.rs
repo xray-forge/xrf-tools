@@ -10,4 +10,6 @@ pub struct LightShadowFace {
   pub drawn: Option<usize>,
   /// The sway's time it was last drawn at.
   pub drawn_at: f32,
+  /// Frames it has waited for a draw it wants.
+  pub waited: u32,
 }
