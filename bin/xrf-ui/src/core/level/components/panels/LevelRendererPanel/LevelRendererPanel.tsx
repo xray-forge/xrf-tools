@@ -14,6 +14,7 @@ import { LevelRendererStaticDrawsSection } from "@/core/level/components/panels/
 import { LevelRendererTexturesSection } from "@/core/level/components/panels/LevelRendererPanel/LevelRendererTexturesSection";
 import { ILevelTextureReport } from "@/core/level/lib/texture/level-texture-report";
 import { LevelLoadService, LevelRenderService, LevelViewportService } from "@/core/level/services";
+import { RenderSettingsService } from "@/core/render/services/render-settings";
 import { EditorPanel, EditorPanelEmpty } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
@@ -28,6 +29,7 @@ export function LevelRendererPanel({
   const loadService: LevelLoadService = useInjection(LevelLoadService);
   const renderService: LevelRenderService = useInjection(LevelRenderService);
   const viewportService: LevelViewportService = useInjection(LevelViewportService);
+  const renderSettingsService: RenderSettingsService = useInjection(RenderSettingsService);
 
   const frame: RenderFrameReport = renderService.frame;
   const textures: ILevelTextureReport = viewportService.textureReport;
@@ -47,7 +49,11 @@ export function LevelRendererPanel({
       <LevelRendererAppliedSection applied={renderService.applied} requested={renderService.viewOptions} />
 
       <LevelRendererFrameSection frame={frame} />
-      <LevelRendererGraphSection graph={frame.graph} />
+      <LevelRendererGraphSection
+        graph={frame.graph}
+        settings={renderSettingsService.graph}
+        onChange={renderSettingsService.setGraph}
+      />
       <LevelRendererStaticDrawsSection staticDraws={frame.staticDraws} />
       <LevelRendererLightsSection lights={frame.lights} />
       <LevelRendererParticlesSection particles={frame.particles} />

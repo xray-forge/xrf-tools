@@ -3,6 +3,7 @@ import { Button } from "@mui/material";
 import { ReactElement } from "react";
 
 import { RenderLightShadowFilter } from "@/core/ipc/types/xrf-renderer";
+import { LevelVolumetricSettings } from "@/core/level/components/preview/toolbar/lighting/LevelVolumetricSettings";
 import { useLevelFeature } from "@/core/level/components/preview/toolbar/use-level-feature";
 import { useLevelViewToggle } from "@/core/level/components/preview/toolbar/use-level-view-toggle";
 import { describeLevelFeatureToggle } from "@/core/level/lib/features/level-feature-options";
@@ -14,7 +15,8 @@ import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /**
- * Whether this view lights the level with its lamps, and with the level file's own lights too.
+ * Whether this view lights the level with its lamps, and with the level file's own lights too; and how the light the
+ * air scatters is drawn.
  */
 export function LevelLightsAction({
   "data-testid": dataTestId = "level-lights-action",
@@ -80,6 +82,8 @@ export function LevelLightsAction({
       <Button size={"small"} onClick={reset}>
         Reset to the preset
       </Button>
+
+      <LevelVolumetricSettings className={"flex flex-col gap-2"} />
     </EditorPopoverToggle>
   );
 }

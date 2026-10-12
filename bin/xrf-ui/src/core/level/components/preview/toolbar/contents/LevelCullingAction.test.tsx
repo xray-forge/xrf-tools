@@ -2,10 +2,6 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 import { userEvent } from "@testing-library/user-event";
 
 import { LevelCullingAction } from "@/core/level/components/preview/toolbar/contents/LevelCullingAction";
-import {
-  DEFAULT_RENDER_GRAPH_SETTINGS,
-  SERIAL_RENDER_GRAPH_SETTINGS,
-} from "@/core/render/lib/settings/render-graph-settings";
 import { clearLocalStorage } from "@/core/storage";
 import {
   ILevelViewContainerDescriptor,
@@ -48,22 +44,5 @@ describe("LevelCullingAction", () => {
       "Off in Settings, under Rendering"
     );
     expect(getByRole("checkbox", { name: "Impostors" })).toBeChecked();
-  });
-
-  it("turns the frame graph's optimizations off one at a time or all at once, to bisect a capture", async () => {
-    const { getByRole, renderSettings } = await renderOpenAction();
-
-    await userEvent.click(getByRole("checkbox", { name: "Merge render passes" }));
-
-    expect(renderSettings.graph).toEqual({ ...DEFAULT_RENDER_GRAPH_SETTINGS, isMerging: false });
-
-    // With one off, the frame graph's own switch turns them all back on first.
-    await userEvent.click(getByRole("checkbox", { name: "Frame graph" }));
-
-    expect(renderSettings.graph).toEqual(DEFAULT_RENDER_GRAPH_SETTINGS);
-
-    await userEvent.click(getByRole("checkbox", { name: "Frame graph" }));
-
-    expect(renderSettings.graph).toEqual(SERIAL_RENDER_GRAPH_SETTINGS);
   });
 });

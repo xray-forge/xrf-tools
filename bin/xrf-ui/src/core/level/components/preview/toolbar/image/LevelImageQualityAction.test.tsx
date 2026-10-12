@@ -1,10 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it } from "@jest/globals";
-import { act, waitFor } from "@testing-library/react";
+import { act } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 
 import {
   ERenderAntialiasing,
-  ERenderBackend,
   ERenderDlssAvailability,
   ERenderDlssPreset,
   ERenderScale,
@@ -223,17 +222,9 @@ describe("LevelImageQualityAction", () => {
     expect(rendered.view.features.upscaling).toEqual({ dlssPreset: ERenderDlssPreset.K, scale: ERenderScale.BALANCED });
   });
 
-  it("draws every viewport with the graphics API picked, greying out one this machine cannot draw with", async () => {
+  // The graphics API is every viewport's, so only Settings sets it.
+  it("greys sharpening out where nothing is upscaled or resolved temporally, and offers no graphics API", async () => {
     const rendered = renderAction({
-      backends: [
-        {
-          backend: ERenderBackend.D3D12,
-          gpus: [{ gpu: { vendor: 1, device: 1 }, name: "Test GPU", driver: "1.0" }],
-          isForced: false,
-          problem: null,
-        },
-        { backend: ERenderBackend.VULKAN, gpus: [], isForced: false, problem: "No Vulkan here" },
-      ],
       dlss: ERenderDlssAvailability.UNSUPPORTED,
       isUpscaled: false,
       mode: ERenderAntialiasing.FXAA,
@@ -242,16 +233,11 @@ describe("LevelImageQualityAction", () => {
 
     await openSettings(rendered);
 
-    // The machine's graphics APIs are asked for as the action first draws.
-    await waitFor(() => expect(rendered.getByRole("button", { name: "Vulkan" })).toBeDisabled());
     expect(rendered.getByRole("slider", { name: "Sharpening" })).toBeDisabled();
     expect(
       rendered.getByText("Sharpens only a frame drawn smaller than the viewport or resolved temporally.")
     ).toBeInTheDocument();
-
-    await userEvent.click(rendered.getByRole("button", { name: "Direct3D 12" }));
-
-    expect(rendered.renderSettings.renderBackend).toBe(ERenderBackend.D3D12);
+    expect(rendered.queryByText("Graphics API")).not.toBeInTheDocument();
   });
 
   it("opens on a click, its settings still reached, while the settings smooth nothing", async () => {
@@ -265,6 +251,8 @@ describe("LevelImageQualityAction", () => {
     expect(await rendered.findByRole("dialog", { name: "Image quality" })).toHaveTextContent(
       "Antialiasing is off in Settings, under Rendering"
     );
-    expect(rendered.getByRole("button", { name: "Direct3D 12" })).toBeInTheDocument();
+    expect(rendered.getByRole("checkbox", { name: "Antialiasing" })).toBeDisabled();
+    expect(rendered.queryByRole("group", { name: "Mode" })).not.toBeInTheDocument();
+    expect(rendered.getByRole("group", { name: "Texture filtering" })).toBeInTheDocument();
   });
 });

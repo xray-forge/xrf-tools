@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "@jest/globals";
 import { act } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 
-import { ERenderSunShaftsQuality, ERenderVolumetricMode } from "@/core/ipc/types/xrf-renderer";
+import { ERenderSunShaftsQuality } from "@/core/ipc/types/xrf-renderer";
 import { LevelSunAction } from "@/core/level/components/preview/toolbar/lighting/LevelSunAction";
 import { DEFAULT_LEVEL_VIEW_OPTIONS } from "@/core/level/lib/view/level-view-options";
 import { DEFAULT_LEVEL_MANUAL_WEATHER } from "@/core/level/lib/weather/level-manual-weather";
@@ -119,12 +119,4 @@ describe("LevelSunAction", () => {
   });
 
   // The froxel volume replaces the sun's shafts while enhanced, so its settings sit beside them.
-  it("sets the view's volumetric lighting from the sun's settings", async () => {
-    const rendered = await renderAction();
-
-    await openSettings(rendered);
-    await userEvent.click(rendered.getByRole("button", { name: "Enhanced" }));
-
-    expect(rendered.view.features.volumetric).toEqual({ mode: ERenderVolumetricMode.ENHANCED });
-  });
 });
