@@ -133,6 +133,29 @@ fn reads_an_effects_life_and_wind_as_the_engine_does() {
 }
 
 #[test]
+fn reads_an_unbounded_wind_blast_ramp_as_an_hour() {
+  let mut catalog: EnvironmentCatalog = new_catalog();
+
+  catalog.ambient_effects.push(new_effect(
+    "endless",
+    "nature\\vortex_01",
+    &[
+      (AmbientEffectKey::WindBlastStrength, 1.0),
+      (AmbientEffectKey::WindBlastInTime, f32::INFINITY),
+      (AmbientEffectKey::WindBlastOutTime, f32::NAN),
+    ],
+  ));
+
+  let blast: RenderWindBlast = to_render_ambient_effects(&catalog)
+    .get("endless")
+    .map(|it| it.wind_blast)
+    .unwrap_or_default();
+
+  assert_eq!(blast.in_time, Duration::from_secs(3600));
+  assert_eq!(blast.out_time, Duration::ZERO);
+}
+
+#[test]
 fn lists_every_effects_particles() {
   let mut particles: Vec<String> = list_ambient_particles(&new_catalog());
 
