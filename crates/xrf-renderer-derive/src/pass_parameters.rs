@@ -275,7 +275,9 @@ pub fn expand(input: &DeriveInput) -> syn::Result<TokenStream> {
       }
       Binding::AccelerationStructure => {
         layout_entries.push(quote!(#core::PassBindingLayout::acceleration_structure(#index)));
-        wgsl.push(quote!(::std::format!("{} {}: acceleration_structure;\n", #prefix, #field_name)));
+        wgsl.push(quote!(
+          ::std::format!("{} {}: acceleration_structure;\n", #prefix, #field_name)
+        ));
         resources.push(quote!(#core::PassBinding::AccelerationStructure(self.#ident)));
       }
     }
