@@ -79,6 +79,11 @@ pub enum RenderCommand {
     object: u32,
     reply: Sender<Option<[f32; 4]>>,
   },
+  /// Loads again every texture of these file names (lowercase, without folder or extension), in every scene and
+  /// weather: their files changed.
+  ReloadTextures {
+    names: Vec<String>,
+  },
   /// Reads a viewport's next presented frame back; the answer never comes for a viewport the renderer does not draw.
   Capture {
     id: RenderViewportId,

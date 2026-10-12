@@ -3,10 +3,10 @@ use xrf_material::XraySurfaceDraw;
 use xrf_renderer_core::{PassParameters, RasterContext};
 
 use crate::frame::view_targets::ViewTargets;
-use crate::pass::shader_pipelines::{create_checked, create_module};
+use crate::pass::pipeline_source::PipelineSource;
+use crate::pass::shader_pipelines::create_checked;
 use crate::pass::thunder_parameters::ThunderParameters;
 use crate::pass::view_binding::ViewBinding;
-use crate::shader::shader_library::ShaderLibrary;
 
 /// What draws a strike: its model, then its top glow, then its middle one, as `shaders/frame/thunder.wgsl` names them.
 const ENTRIES: [&str; 3] = ["vs_model", "vs_glow_top", "vs_glow_center"];
@@ -36,11 +36,15 @@ impl ThunderPass {
   /// # Errors
   ///
   /// Returns an error when the shader does not compose or compile.
-  pub fn new(device: &wgpu::Device, shaders: &ShaderLibrary, view_layout: &wgpu::BindGroupLayout) -> XrfResult<Self> {
+  pub fn new(
+    device: &wgpu::Device,
+    source: PipelineSource<'_>,
+    view_layout: &wgpu::BindGroupLayout,
+  ) -> XrfResult<Self> {
     let layout: wgpu::BindGroupLayout = ThunderParameters::create_layout(device);
 
     Ok(Self {
-      pipelines: Self::create_pipelines(device, shaders, view_layout, &layout)?,
+      pipelines: Self::create_pipelines(device, source, view_layout, &layout)?,
       sampler: device.create_sampler(&wgpu::SamplerDescriptor {
         label: Some("thunder"),
         mag_filter: wgpu::FilterMode::Linear,
@@ -49,16 +53,16 @@ impl ThunderPass {
         ..Default::default()
       }),
       view_layout: view_layout.clone(),
-      generation: shaders.get_generation(),
+      generation: source.get_generation(),
       layout,
     })
   }
 
-  pub fn refresh(&mut self, device: &wgpu::Device, shaders: &ShaderLibrary) {
-    if shaders.get_generation() != self.generation {
-      self.generation = shaders.get_generation();
+  pub fn refresh(&mut self, device: &wgpu::Device, source: PipelineSource<'_>) {
+    if source.get_generation() != self.generation {
+      self.generation = source.get_generation();
 
-      match Self::create_pipelines(device, shaders, &self.view_layout, &self.layout) {
+      match Self::create_pipelines(device, source, &self.view_layout, &self.layout) {
         Ok(pipelines) => self.pipelines = pipelines,
         Err(error) => log::error!("Thunder rejected, striking with the last one: {error}"),
       }
@@ -97,11 +101,11 @@ impl ThunderPass {
 
   fn create_pipelines(
     device: &wgpu::Device,
-    shaders: &ShaderLibrary,
+    source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<Vec<wgpu::RenderPipeline>> {
-    let module: wgpu::ShaderModule = create_module(device, shaders, "frame/thunder")?;
+    let module: wgpu::ShaderModule = source.get_module("frame/thunder")?;
     let pipeline_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
       label: Some("thunder"),
       bind_group_layouts: &[Some(view_layout), Some(layout)],
@@ -111,9 +115,9 @@ impl ThunderPass {
     ENTRIES
       .iter()
       .flat_map(|entry| BLENDS.iter().map(move |blend| (*entry, *blend)))
-      .map(|(entry, (source, destination))| {
+      .map(|(entry, (from, destination))| {
         let component: wgpu::BlendComponent = wgpu::BlendComponent {
-          src_factor: source,
+          src_factor: from,
           dst_factor: destination,
           operation: wgpu::BlendOperation::Add,
         };
@@ -153,7 +157,7 @@ impl ThunderPass {
             }),
             multisample: Default::default(),
             multiview_mask: None,
-            cache: None,
+            cache: source.get_driver_cache(),
           })
         })
       })

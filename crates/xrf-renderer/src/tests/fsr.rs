@@ -1,5 +1,5 @@
 use glam::{Mat4, Vec2, Vec3};
-use xrf_renderer_core::{FrameGraph, GraphBindings, GraphCompileOptions, GraphRuntime, PassParameters};
+use xrf_renderer_core::{FrameGraph, GraphBindings, GraphCompileOptions, GraphRuntime, PassParameters, PipelineCache};
 
 use crate::camera::camera_view::CameraView;
 use crate::context::gpu_context::GpuContext;
@@ -19,6 +19,7 @@ use crate::pass::fsr_pass::FsrPass;
 use crate::pass::fsr_reactive_parameters::FsrReactiveParameters;
 use crate::pass::fsr_reconstruct_parameters::FsrReconstructParameters;
 use crate::pass::fsr_uniform::FsrUniform;
+use crate::pass::pipeline_source::PipelineSource;
 use crate::shader::shader_library::ShaderLibrary;
 use crate::tests::test_bundle::checkout_dxc;
 
@@ -39,7 +40,13 @@ fn upscales_two_frames_without_a_validation_error() {
   let device: &wgpu::Device = &context.device;
   let scope: wgpu::ErrorScopeGuard = device.push_error_scope(wgpu::ErrorFilter::Validation);
   let shaders: ShaderLibrary = ShaderLibrary::default();
-  let pass: FsrPass = FsrPass::new(device, &shaders).unwrap();
+  let cache: PipelineCache = PipelineCache::new();
+  let source: PipelineSource<'_> = PipelineSource {
+    cache: &cache,
+    device,
+    shaders: &shaders,
+  };
+  let pass: FsrPass = FsrPass::new(device, source).unwrap();
   let (render, display): ((u32, u32), (u32, u32)) = ((64, 48), (96, 72));
   let targets: ViewTargets = ViewTargets::new(device, render.0, render.1);
   let mut fsr: FsrTargets = FsrTargets::new(device, render, display, ViewTargets::SCENE);

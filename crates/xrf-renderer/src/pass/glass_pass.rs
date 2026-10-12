@@ -4,14 +4,14 @@ use xrf_renderer_core::{PassParameters, RasterContext};
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::composited_pass::COMPOSITED_DEPTH_BIAS;
 use crate::pass::glass_parameters::GlassParameters;
-use crate::pass::shader_pipelines::{create_checked, create_module};
+use crate::pass::pipeline_source::PipelineSource;
+use crate::pass::shader_pipelines::create_checked;
 use crate::pass::sky_parameters::SkyParameters;
 use crate::pass::static_draw_parameters::StaticDrawParameters;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::static_scene::static_batch::StaticBatch;
 use crate::scene::static_scene::static_layout::StaticLayout;
 use crate::scene::static_scene::static_surface_pass::StaticSurfacePass;
-use crate::shader::shader_library::ShaderLibrary;
 
 /// Draws a viewport's visible glass as the enhanced glass draws it, over the frame and its copy taken just before:
 /// what stands behind refracted, the sky reflected by the fresnel and the sun's highlight, written whole rather than
@@ -35,7 +35,7 @@ impl GlassPass {
   /// Returns an error when the shader does not compose or compile.
   pub fn new(
     device: &wgpu::Device,
-    shaders: &ShaderLibrary,
+    source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     scene_layout: &wgpu::BindGroupLayout,
     texture_layout: &wgpu::BindGroupLayout,
@@ -50,7 +50,7 @@ impl GlassPass {
     ];
 
     Ok(Self {
-      pipelines: Self::create_pipelines(device, shaders, &layouts, &layout)?,
+      pipelines: Self::create_pipelines(device, source, &layouts, &layout)?,
       layouts,
       scene_sampler: device.create_sampler(&wgpu::SamplerDescriptor {
         label: Some("glass scene"),
@@ -58,7 +58,7 @@ impl GlassPass {
         min_filter: wgpu::FilterMode::Linear,
         ..Default::default()
       }),
-      generation: shaders.get_generation(),
+      generation: source.get_generation(),
       layout,
     })
   }
@@ -67,11 +67,11 @@ impl GlassPass {
     &self.scene_sampler
   }
 
-  pub fn refresh(&mut self, device: &wgpu::Device, shaders: &ShaderLibrary) {
-    if shaders.get_generation() != self.generation {
-      self.generation = shaders.get_generation();
+  pub fn refresh(&mut self, device: &wgpu::Device, source: PipelineSource<'_>) {
+    if source.get_generation() != self.generation {
+      self.generation = source.get_generation();
 
-      match Self::create_pipelines(device, shaders, &self.layouts, &self.layout) {
+      match Self::create_pipelines(device, source, &self.layouts, &self.layout) {
         Ok(pipelines) => self.pipelines = pipelines,
         Err(error) => log::error!("Glass rejected, drawing with the last one: {error}"),
       }
@@ -110,11 +110,11 @@ impl GlassPass {
 
   fn create_pipelines(
     device: &wgpu::Device,
-    shaders: &ShaderLibrary,
+    source: PipelineSource<'_>,
     [view_layout, scene_layout, texture_layout, sky_layout]: &[wgpu::BindGroupLayout; 4],
     layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<Vec<wgpu::RenderPipeline>> {
-    let module: wgpu::ShaderModule = create_module(device, shaders, "static/glass")?;
+    let module: wgpu::ShaderModule = source.get_module("static/glass")?;
     let pipeline_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
       label: Some("glass"),
       bind_group_layouts: &[
@@ -161,7 +161,7 @@ impl GlassPass {
             }),
             multisample: Default::default(),
             multiview_mask: None,
-            cache: None,
+            cache: source.get_driver_cache(),
           })
         })
       })

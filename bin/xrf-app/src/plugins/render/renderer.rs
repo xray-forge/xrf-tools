@@ -123,6 +123,19 @@ impl Renderer {
     self.queue.send(RenderCommand::Selection { id, selection });
   }
 
+  /// Loads again every texture of these file names (lowercase, without folder or extension) wherever it is drawn: their
+  /// files changed.
+  pub fn reload_textures(&self, names: Vec<String>) {
+    if !names.is_empty() {
+      self.queue.send(RenderCommand::ReloadTextures { names });
+    }
+  }
+
+  /// The way to the render thread, for what tells it things from a thread of its own.
+  pub fn get_queue(&self) -> RenderQueue {
+    self.queue.clone()
+  }
+
   /// Applies settings to every viewport, now and in every thread started later.
   pub fn configure(&self, settings: RenderSettings) {
     self.queue.send(RenderCommand::Settings { settings });

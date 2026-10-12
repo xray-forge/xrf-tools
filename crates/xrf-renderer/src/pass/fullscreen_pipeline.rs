@@ -1,31 +1,31 @@
 use xrf_error::XrfResult;
 
-use crate::pass::shader_pipelines::{create_checked, create_module};
-use crate::shader::shader_library::ShaderLibrary;
+use crate::pass::pipeline_source::PipelineSource;
+use crate::pass::shader_pipelines::create_checked;
 
 /// A pass drawing one triangle over its whole target, its vertices from `common/fullscreen`, into one target: a format,
 /// or a format with a blend.
 pub fn create_fullscreen_pipeline(
   device: &wgpu::Device,
-  shaders: &ShaderLibrary,
-  module: &str,
+  source: PipelineSource<'_>,
+  module: &'static str,
   fragment: &str,
   layouts: &[Option<&wgpu::BindGroupLayout>],
   target: impl Into<wgpu::ColorTargetState>,
 ) -> XrfResult<wgpu::RenderPipeline> {
-  create_fullscreen_pipeline_into(device, shaders, module, fragment, layouts, &[Some(target.into())])
+  create_fullscreen_pipeline_into(device, source, module, fragment, layouts, &[Some(target.into())])
 }
 
 /// The same, drawing into several targets at once.
 pub fn create_fullscreen_pipeline_into(
   device: &wgpu::Device,
-  shaders: &ShaderLibrary,
-  module: &str,
+  source: PipelineSource<'_>,
+  module: &'static str,
   fragment: &str,
   layouts: &[Option<&wgpu::BindGroupLayout>],
   targets: &[Option<wgpu::ColorTargetState>],
 ) -> XrfResult<wgpu::RenderPipeline> {
-  let shader: wgpu::ShaderModule = create_module(device, shaders, module)?;
+  let shader: wgpu::ShaderModule = source.get_module(module)?;
   let pipeline_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
     label: Some(module),
     bind_group_layouts: layouts,
@@ -52,7 +52,7 @@ pub fn create_fullscreen_pipeline_into(
       depth_stencil: None,
       multisample: Default::default(),
       multiview_mask: None,
-      cache: None,
+      cache: source.get_driver_cache(),
     })
   })
 }

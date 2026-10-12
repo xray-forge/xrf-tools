@@ -1,10 +1,12 @@
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use xrf_error::XrfResult;
 use xrf_renderer_core::{PassParameters, PipelineCache};
 
 use crate::context::gpu_context::GpuContext;
 use crate::host::render_bundle::RenderBundle;
+use crate::host::render_cache_store::RenderCacheStore;
 use crate::pass::ambient_occlusion_pass::AmbientOcclusionPass;
 use crate::pass::backdrop_pass::BackdropPass;
 use crate::pass::bloom_pass::BloomPass;
@@ -89,7 +91,7 @@ pub struct GpuState {
   pub bloom: BloomPass,
   pub enhanced_bloom: EnhancedBloomPass,
   /// The pipelines the feature units ask for, made once and forgotten when a shader reloads.
-  pub pipelines: PipelineCache,
+  pub pipelines: Arc<PipelineCache>,
   pub fog_scattering: FogScatteringPass,
   pub temporal: TemporalPass,
   pub fsr: FsrPass,
@@ -128,102 +130,140 @@ impl GpuState {
     context: GpuContext,
     shaders: &ShaderLibrary,
     workers: &RenderWorkers,
-    bundle: &dyn RenderBundle,
+    (bundle, store): (&dyn RenderBundle, Option<&dyn RenderCacheStore>),
   ) -> XrfResult<Self> {
     let device: &wgpu::Device = &context.device;
+    // The driver's pipelines kept from the last run on this adapter and driver, where its backend keeps them.
+    let cache_key: Option<String> = store.and(wgpu::util::pipeline_cache_key(&context.adapter.get_info()));
+    let cached: Option<Vec<u8>> = store
+      .zip(cache_key.as_deref())
+      .and_then(|(store, key)| store.read_cached(key));
+    let pipelines: Arc<PipelineCache> = Arc::new(PipelineCache::with_driver_cache(device, cached.as_deref()));
     let view_layout: wgpu::BindGroupLayout = ViewBinding::create_layout(device);
     let textures: TextureCache = TextureCache::new(device, &context.queue, workers);
     let sky: SkyBindings = SkyBindings::new(device);
-    let static_gbuffer: StaticGBufferPass =
-      StaticGBufferPass::new(device, shaders, &view_layout, textures.get_layout())?;
     // What every static draw binds its clusters by, made from the same parameters the draws bind.
     let scene_layout: wgpu::BindGroupLayout = StaticDrawParameters::create_layout(device);
-    let static_shadow: StaticShadowPass =
-      StaticShadowPass::new(device, shaders, &view_layout, &scene_layout, textures.get_layout())?;
-
-    let water: WaterPass = WaterPass::new(
-      device,
-      &context.queue,
+    // The passes compile their pipelines at once, each on a thread of its own, from handles of their own: the state
+    // takes the device, the layouts and the caches whole once every pass is built.
+    let (device, queue): (wgpu::Device, wgpu::Queue) = (context.device.clone(), context.queue.clone());
+    let cache: Arc<PipelineCache> = Arc::clone(&pipelines);
+    let (view, scene, texture, sky_layout) = (
+      view_layout.clone(),
+      scene_layout.clone(),
+      textures.get_layout().clone(),
+      sky.get_layout().clone(),
+    );
+    let source: PipelineSource<'_> = PipelineSource {
+      cache: &cache,
+      device: &device,
       shaders,
-      [&view_layout, &scene_layout, textures.get_layout()],
-      bundle,
-    )?;
-    let composited: CompositedPass = CompositedPass::new(
-      device,
-      shaders,
-      &view_layout,
-      &scene_layout,
-      textures.get_layout(),
-      sky.get_layout(),
-    )?;
-
-    let glass: GlassPass = GlassPass::new(
-      device,
-      shaders,
-      &view_layout,
-      &scene_layout,
-      textures.get_layout(),
-      sky.get_layout(),
-    )?;
-
-    let state: Self = Self {
-      water,
-      composited,
-      glass,
-      grass: GrassPass::new(device, shaders, &view_layout, textures.get_layout())?,
-      grass_colours: GrassColourPass::new(device, shaders, textures.get_layout())?,
-      rain: RainPass::new(device, shaders, &view_layout)?,
-      particles: ParticlePass::new(device, shaders, &view_layout, textures.get_layout())?,
-      wet: WetPass::new(device, shaders, &view_layout)?,
-      thunder: ThunderPass::new(device, shaders, &view_layout)?,
-      flares: FlarePass::new(device, shaders, &view_layout)?,
-      sun_shafts: SunShaftsPass::new(device, shaders, &view_layout)?,
-      light_volumes: LightVolumePass::new(device, shaders, &view_layout, textures.get_layout())?,
-      froxels: FroxelPass::new(device, shaders, &view_layout)?,
-      bloom: BloomPass::new(device, shaders)?,
-      enhanced_bloom: EnhancedBloomPass::new(device, &view_layout),
-      pipelines: PipelineCache::new(),
-      fog_scattering: FogScatteringPass::new(device, &context.queue, shaders, &view_layout)?,
-      temporal: TemporalPass::new(device, shaders, &view_layout)?,
-      fsr: FsrPass::new(device, shaders)?,
-      fxaa: FxaaPass::new(device, shaders)?,
-      smaa: SmaaPass::new(device, &context.queue, shaders, bundle)
-        .inspect_err(|error| log::error!("SMAA cannot be built, smoothing as FXAA does instead: {error}"))
-        .ok(),
-      upscale: UpscalePass::new(device, shaders)?,
-      static_cull: StaticCullPass::new(device, shaders, &view_layout)?,
-      static_gbuffer,
-      static_shadow,
-      pyramid: DepthPyramidPass::new(device, shaders)?,
-      puddle_sites: PuddleSitesPass::new(device, shaders)?,
-      contact_shadows: ContactShadowPass::new(device, &context.queue, shaders, &view_layout)?,
-      sun: SunPass::new(device, shaders, &view_layout)?,
-      ambient_occlusion: AmbientOcclusionPass::new(device, shaders, &view_layout)?,
-      vbao: VbaoPass::new(device, &context.queue, shaders, &view_layout)?,
-      reflections: ReflectionPass::new(device, &context.queue, shaders, &view_layout, sky.get_layout())?,
-      scene_trace: SceneTracePass::new(device, shaders, &view_layout, sky.get_layout(), textures.get_layout())?,
-      lights: LightsPass::new(device, shaders, &view_layout, textures.get_layout())?,
-      combine: CombinePass::new(device, shaders, &view_layout, sky.get_layout())?,
-      sky_haze: SkyHazePass::new(device, shaders, sky.get_layout())?,
-      sky_prefilter: SkyPrefilterPass::new(device, &context.queue, shaders)?,
-      surroundings: SurroundingsPass::new(device, shaders, &view_layout)?,
-      weather_textures: WeatherTextureCache::new(device, &context.queue, workers),
-      sky,
-      exposure: ExposurePass::new(device, shaders)?,
-      present: PresentPass::new(device, shaders, &view_layout),
-      backdrop: BackdropPass::new(device, shaders),
-      overlay: OverlayPass::new(device, shaders, &view_layout),
-      table: MaterialTable::new(device, &context.queue),
-      windows: HashMap::new(),
-      grids: HashMap::new(),
-      textures,
-      view_layout,
-      context,
     };
+    let (device, queue, view, scene, texture, sky_layout) = (&device, &queue, &view, &scene, &texture, &sky_layout);
+
+    let state: Self = std::thread::scope(|threads| -> XrfResult<Self> {
+      let static_gbuffer = threads.spawn(move || StaticGBufferPass::new(device, source, view, texture));
+      let static_shadow = threads.spawn(move || StaticShadowPass::new(device, source, view, scene, texture));
+      let water = threads.spawn(move || WaterPass::new(device, queue, source, [view, scene, texture], bundle));
+      let composited = threads.spawn(move || CompositedPass::new(device, source, view, scene, texture, sky_layout));
+      let glass = threads.spawn(move || GlassPass::new(device, source, view, scene, texture, sky_layout));
+      let grass = threads.spawn(move || GrassPass::new(device, source, view, texture));
+      let grass_colours = threads.spawn(move || GrassColourPass::new(device, source, texture));
+      let rain = threads.spawn(move || RainPass::new(device, source, view));
+      let particles = threads.spawn(move || ParticlePass::new(device, source, view, texture));
+      let wet = threads.spawn(move || WetPass::new(device, source, view));
+      let thunder = threads.spawn(move || ThunderPass::new(device, source, view));
+      let flares = threads.spawn(move || FlarePass::new(device, source, view));
+      let sun_shafts = threads.spawn(move || SunShaftsPass::new(device, source, view));
+      let light_volumes = threads.spawn(move || LightVolumePass::new(device, source, view, texture));
+      let froxels = threads.spawn(move || FroxelPass::new(device, source, view));
+      let bloom = threads.spawn(move || BloomPass::new(device, source));
+      let fog_scattering = threads.spawn(move || FogScatteringPass::new(device, queue, source, view));
+      let temporal = threads.spawn(move || TemporalPass::new(device, source, view));
+      let fsr = threads.spawn(move || FsrPass::new(device, source));
+      let fxaa = threads.spawn(move || FxaaPass::new(device, source));
+      let smaa = threads.spawn(move || SmaaPass::new(device, queue, source, bundle));
+      let upscale = threads.spawn(move || UpscalePass::new(device, source));
+      let static_cull = threads.spawn(move || StaticCullPass::new(device, source, view));
+      let pyramid = threads.spawn(move || DepthPyramidPass::new(device, source));
+      let puddle_sites = threads.spawn(move || PuddleSitesPass::new(device, source));
+      let contact_shadows = threads.spawn(move || ContactShadowPass::new(device, queue, source, view));
+      let sun = threads.spawn(move || SunPass::new(device, source, view));
+      let ambient_occlusion = threads.spawn(move || AmbientOcclusionPass::new(device, source, view));
+      let vbao = threads.spawn(move || VbaoPass::new(device, queue, source, view));
+      let reflections = threads.spawn(move || ReflectionPass::new(device, queue, source, view, sky_layout));
+      let scene_trace = threads.spawn(move || SceneTracePass::new(device, source, view, sky_layout, texture));
+      let lights = threads.spawn(move || LightsPass::new(device, source, view, texture));
+      let combine = threads.spawn(move || CombinePass::new(device, source, view, sky_layout));
+      let sky_haze = threads.spawn(move || SkyHazePass::new(device, source, sky_layout));
+      let sky_prefilter = threads.spawn(move || SkyPrefilterPass::new(device, queue, source));
+      let surroundings = threads.spawn(move || SurroundingsPass::new(device, source, view));
+      let exposure = threads.spawn(move || ExposurePass::new(device, source));
+
+      Ok(Self {
+        water: join(water)?,
+        composited: join(composited)?,
+        glass: join(glass)?,
+        grass: join(grass)?,
+        grass_colours: join(grass_colours)?,
+        rain: join(rain)?,
+        particles: join(particles)?,
+        wet: join(wet)?,
+        thunder: join(thunder)?,
+        flares: join(flares)?,
+        sun_shafts: join(sun_shafts)?,
+        light_volumes: join(light_volumes)?,
+        froxels: join(froxels)?,
+        bloom: join(bloom)?,
+        enhanced_bloom: EnhancedBloomPass::new(device, view),
+        fog_scattering: join(fog_scattering)?,
+        temporal: join(temporal)?,
+        fsr: join(fsr)?,
+        fxaa: join(fxaa)?,
+        smaa: join(smaa)
+          .inspect_err(|error| log::error!("SMAA cannot be built, smoothing as FXAA does instead: {error}"))
+          .ok(),
+        upscale: join(upscale)?,
+        static_cull: join(static_cull)?,
+        static_gbuffer: join(static_gbuffer)?,
+        static_shadow: join(static_shadow)?,
+        pyramid: join(pyramid)?,
+        puddle_sites: join(puddle_sites)?,
+        contact_shadows: join(contact_shadows)?,
+        sun: join(sun)?,
+        ambient_occlusion: join(ambient_occlusion)?,
+        vbao: join(vbao)?,
+        reflections: join(reflections)?,
+        scene_trace: join(scene_trace)?,
+        lights: join(lights)?,
+        combine: join(combine)?,
+        sky_haze: join(sky_haze)?,
+        sky_prefilter: join(sky_prefilter)?,
+        surroundings: join(surroundings)?,
+        exposure: join(exposure)?,
+        present: PresentPass::new(device, source, view),
+        backdrop: BackdropPass::new(device, source),
+        overlay: OverlayPass::new(device, source, view),
+        table: MaterialTable::new(device, queue),
+        weather_textures: WeatherTextureCache::new(device, queue, workers),
+        windows: HashMap::new(),
+        grids: HashMap::new(),
+        pipelines,
+        sky,
+        textures,
+        view_layout,
+        context,
+      })
+    })?;
 
     state
       .get_pipeline_source(shaders)
       .warm(&state.enhanced_bloom.describe_pipelines())?;
+
+    // Every pipeline is made now: kept for the next start.
+    if let (Some(store), Some(key), Some(data)) = (store, cache_key, state.pipelines.get_driver_data()) {
+      store.write_cached(&key, &data);
+    }
 
     Ok(state)
   }
@@ -244,7 +284,8 @@ impl GpuState {
   /// Returns an error when its shader does not compose or compile.
   pub fn ensure_grid(&mut self, shaders: &ShaderLibrary, format: wgpu::TextureFormat) -> XrfResult {
     if !self.grids.contains_key(&format) {
-      let grid: GridPass = GridPass::new(&self.context.device, shaders, &self.view_layout, format)?;
+      let source: PipelineSource<'_> = self.get_pipeline_source(shaders);
+      let grid: GridPass = GridPass::new(&self.context.device, source, &self.view_layout, format)?;
 
       self.grids.insert(format, grid);
     }
@@ -307,55 +348,65 @@ impl GpuState {
 
   /// Rebuilds pipelines from a shader library reloaded since they were built.
   pub fn refresh(&mut self, shaders: &ShaderLibrary) {
-    let device: &wgpu::Device = &self.context.device;
-
     self.pipelines.invalidate_all();
 
+    let device: &wgpu::Device = &self.context.device;
+    let source: PipelineSource<'_> = PipelineSource {
+      cache: &self.pipelines,
+      device,
+      shaders,
+    };
+
     for grid in self.grids.values_mut() {
-      grid.refresh(device, shaders);
+      grid.refresh(device, source);
     }
 
-    self.static_cull.refresh(device, shaders);
-    self.static_gbuffer.refresh(device, shaders);
-    self.static_shadow.refresh(device, shaders);
-    self.pyramid.refresh(device, shaders);
-    self.puddle_sites.refresh(device, shaders);
-    self.sky_prefilter.refresh(device, shaders);
-    self.surroundings.refresh(device, shaders);
-    self.contact_shadows.refresh(device, shaders);
-    self.sun.refresh(device, shaders);
-    self.ambient_occlusion.refresh(device, shaders);
-    self.vbao.refresh(device, shaders);
-    self.reflections.refresh(device, shaders);
-    self.scene_trace.refresh(device, shaders);
-    self.grass_colours.refresh(device, shaders);
-    self.lights.refresh(device, shaders);
-    self.combine.refresh(device, shaders);
-    self.sky_haze.refresh(device, shaders);
-    self.water.refresh(device, shaders);
-    self.composited.refresh(device, shaders);
-    self.glass.refresh(device, shaders);
-    self.grass.refresh(device, shaders);
-    self.rain.refresh(device, shaders);
-    self.particles.refresh(device, shaders);
-    self.wet.refresh(device, shaders);
-    self.thunder.refresh(device, shaders);
-    self.flares.refresh(device, shaders);
-    self.sun_shafts.refresh(device, shaders);
-    self.light_volumes.refresh(device, shaders);
-    self.froxels.refresh(device, shaders);
-    self.bloom.refresh(device, shaders);
-    self.fog_scattering.refresh(device, shaders);
-    self.temporal.refresh(device, shaders);
-    self.fsr.refresh(device, shaders);
-    self.fxaa.refresh(device, shaders);
+    self.static_cull.refresh(device, source);
+    self.static_gbuffer.refresh(device, source);
+    self.static_shadow.refresh(device, source);
+    self.pyramid.refresh(device, source);
+    self.puddle_sites.refresh(device, source);
+    self.sky_prefilter.refresh(device, source);
+    self.surroundings.refresh(device, source);
+    self.contact_shadows.refresh(device, source);
+    self.sun.refresh(device, source);
+    self.ambient_occlusion.refresh(device, source);
+    self.vbao.refresh(device, source);
+    self.reflections.refresh(device, source);
+    self.scene_trace.refresh(device, source);
+    self.grass_colours.refresh(device, source);
+    self.lights.refresh(device, source);
+    self.combine.refresh(device, source);
+    self.sky_haze.refresh(device, source);
+    self.water.refresh(device, source);
+    self.composited.refresh(device, source);
+    self.glass.refresh(device, source);
+    self.grass.refresh(device, source);
+    self.rain.refresh(device, source);
+    self.particles.refresh(device, source);
+    self.wet.refresh(device, source);
+    self.thunder.refresh(device, source);
+    self.flares.refresh(device, source);
+    self.sun_shafts.refresh(device, source);
+    self.light_volumes.refresh(device, source);
+    self.froxels.refresh(device, source);
+    self.bloom.refresh(device, source);
+    self.fog_scattering.refresh(device, source);
+    self.temporal.refresh(device, source);
+    self.fsr.refresh(device, source);
+    self.fxaa.refresh(device, source);
     if let Some(smaa) = &mut self.smaa {
-      smaa.refresh(device, shaders);
+      smaa.refresh(device, source);
     }
-    self.upscale.refresh(device, shaders);
-    self.exposure.refresh(device, shaders);
-    self.present.refresh(shaders);
-    self.backdrop.refresh(shaders);
-    self.overlay.refresh(shaders);
+    self.upscale.refresh(device, source);
+    self.exposure.refresh(device, source);
+    self.present.refresh(source);
+    self.backdrop.refresh(source);
+    self.overlay.refresh(source);
   }
+}
+
+/// What a pass built on a thread of its own came to; a panic there goes on here.
+fn join<T>(handle: std::thread::ScopedJoinHandle<'_, T>) -> T {
+  handle.join().unwrap_or_else(|panic| std::panic::resume_unwind(panic))
 }

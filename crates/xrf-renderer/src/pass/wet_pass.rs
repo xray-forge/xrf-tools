@@ -4,11 +4,11 @@ use xrf_renderer_core::{PassParameters, RasterContext};
 use crate::frame::sun_shadow_maps::SunShadowMaps;
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::fullscreen_pipeline::{create_fullscreen_pipeline, create_fullscreen_pipeline_into};
+use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::view_binding::ViewBinding;
 use crate::pass::wet_apply_parameters::WetApplyParameters;
 use crate::pass::wet_patch_parameters::WetPatchParameters;
 use crate::scene::level::level_surface::LevelSurface;
-use crate::shader::shader_library::ShaderLibrary;
 
 /// Rain on the G-buffer before any light, as `draw_rain` wets it (`r3_rendertarget_draw_rain.cpp`): where the rain
 /// reaches near the camera its normals patched into the light target, borrowed before the sun clears it, then written
@@ -43,7 +43,11 @@ impl WetPass {
   /// # Errors
   ///
   /// Returns an error when a shader does not compose or compile.
-  pub fn new(device: &wgpu::Device, shaders: &ShaderLibrary, view_layout: &wgpu::BindGroupLayout) -> XrfResult<Self> {
+  pub fn new(
+    device: &wgpu::Device,
+    source: PipelineSource<'_>,
+    view_layout: &wgpu::BindGroupLayout,
+  ) -> XrfResult<Self> {
     let patch: wgpu::BindGroupLayout = WetPatchParameters::create_layout(device);
     let apply: wgpu::BindGroupLayout = WetApplyParameters::create_layout(device);
     let layouts: [wgpu::BindGroupLayout; 2] = [patch, apply];
@@ -73,7 +77,7 @@ impl WetPass {
         texel("puddles none", LevelSurface::SITES_FORMAT),
         texel("level water none", SunShadowMaps::FORMAT),
       ],
-      pipelines: Self::create_pipelines(device, shaders, view_layout, &layouts)?,
+      pipelines: Self::create_pipelines(device, source, view_layout, &layouts)?,
       sampler: device.create_sampler(&wgpu::SamplerDescriptor {
         label: Some("wet"),
         address_mode_u: wgpu::AddressMode::Repeat,
@@ -84,16 +88,16 @@ impl WetPass {
         ..Default::default()
       }),
       view_layout: view_layout.clone(),
-      generation: shaders.get_generation(),
+      generation: source.get_generation(),
       layouts,
     })
   }
 
-  pub fn refresh(&mut self, device: &wgpu::Device, shaders: &ShaderLibrary) {
-    if shaders.get_generation() != self.generation {
-      self.generation = shaders.get_generation();
+  pub fn refresh(&mut self, device: &wgpu::Device, source: PipelineSource<'_>) {
+    if source.get_generation() != self.generation {
+      self.generation = source.get_generation();
 
-      match Self::create_pipelines(device, shaders, &self.view_layout, &self.layouts) {
+      match Self::create_pipelines(device, source, &self.view_layout, &self.layouts) {
         Ok(pipelines) => self.pipelines = pipelines,
         Err(error) => log::error!("Wet surfaces rejected, wetting with the last ones: {error}"),
       }
@@ -127,20 +131,20 @@ impl WetPass {
 
   fn create_pipelines(
     device: &wgpu::Device,
-    shaders: &ShaderLibrary,
+    source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     layouts: &[wgpu::BindGroupLayout; 2],
   ) -> XrfResult<[[wgpu::RenderPipeline; 3]; 2]> {
     Ok([
-      Self::create_stages(device, shaders, view_layout, layouts, "")?,
-      Self::create_stages(device, shaders, view_layout, layouts, "_enhanced")?,
+      Self::create_stages(device, source, view_layout, layouts, "")?,
+      Self::create_stages(device, source, view_layout, layouts, "_enhanced")?,
     ])
   }
 
   /// The three stages whose entry points end in `suffix`.
   fn create_stages(
     device: &wgpu::Device,
-    shaders: &ShaderLibrary,
+    source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     [patch, apply]: &[wgpu::BindGroupLayout; 2],
     suffix: &str,
@@ -153,7 +157,7 @@ impl WetPass {
       .collect();
     let patched: wgpu::RenderPipeline = create_fullscreen_pipeline_into(
       device,
-      shaders,
+      source,
       "frame/wet_patch",
       &format!("fs_wet_patch{suffix}"),
       &[Some(view_layout), Some(patch)],
@@ -161,7 +165,7 @@ impl WetPass {
     )?;
     let normal: wgpu::RenderPipeline = create_fullscreen_pipeline(
       device,
-      shaders,
+      source,
       "frame/wet_apply",
       &format!("fs_wet_normal{suffix}"),
       &[Some(view_layout), Some(apply)],
@@ -170,7 +174,7 @@ impl WetPass {
     // `blend(zero, srccolor)` on colour and `(one, one)` on alpha: the albedo multiplied, the gloss added.
     let gloss: wgpu::RenderPipeline = create_fullscreen_pipeline(
       device,
-      shaders,
+      source,
       "frame/wet_apply",
       &format!("fs_wet_gloss{suffix}"),
       &[Some(view_layout), Some(apply)],

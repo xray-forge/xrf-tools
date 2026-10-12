@@ -3,6 +3,7 @@ use std::sync::{Arc, Mutex, MutexGuard};
 
 use crate::contract::render_settings::RenderSettings;
 use crate::host::render_bundle::RenderBundle;
+use crate::host::render_cache_store::RenderCacheStore;
 use crate::host::render_world::RenderWorld;
 use crate::thread::render_command::RenderCommand;
 use crate::thread::render_link::RenderLink;
@@ -12,7 +13,8 @@ use crate::thread::render_workers::RenderWorkers;
 /// The way to the render thread: cheap to make, and touching no GPU until a viewport is attached.
 ///
 /// Every command is a message to the thread, started by the first attach and stopped a few seconds after the last
-/// detach, so a tool that never draws never starts a GPU.
+/// detach, so a tool that never draws never starts a GPU. A clone reaches the same thread.
+#[derive(Clone)]
 pub struct RenderQueue {
   link: Arc<Mutex<RenderLink>>,
   /// The pool every thread it starts reads and decodes on.
@@ -21,6 +23,8 @@ pub struct RenderQueue {
   bundle: Arc<dyn RenderBundle>,
   /// The world it draws, run on its thread before each frame.
   world: Arc<Mutex<dyn RenderWorld>>,
+  /// Where the driver's compiled pipelines are kept between runs, none where nothing keeps them.
+  store: Option<Arc<dyn RenderCacheStore>>,
 }
 
 impl RenderQueue {
@@ -30,7 +34,14 @@ impl RenderQueue {
       workers,
       bundle,
       world,
+      store: None,
     }
+  }
+
+  /// The same, keeping the driver's compiled pipelines in `store` between runs.
+  pub fn with_cache_store(mut self, store: Arc<dyn RenderCacheStore>) -> Self {
+    self.store = Some(store);
+    self
   }
 
   /// Hands a command to the running thread, starting one for an attach; any other command has nothing to act on
@@ -73,10 +84,11 @@ impl RenderQueue {
     let workers: RenderWorkers = self.workers.clone();
     let bundle: Arc<dyn RenderBundle> = Arc::clone(&self.bundle);
     let world: Arc<Mutex<dyn RenderWorld>> = Arc::clone(&self.world);
+    let store: Option<Arc<dyn RenderCacheStore>> = self.store.clone();
 
     if let Err(error) = std::thread::Builder::new()
       .name("xrf-render".into())
-      .spawn(move || RenderThread::new(receiver, shared, settings, workers, (bundle, world)).run())
+      .spawn(move || RenderThread::new(receiver, shared, settings, workers, (bundle, world, store)).run())
     {
       log::error!("The render thread could not be started: {error}");
 

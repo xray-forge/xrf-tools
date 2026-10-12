@@ -4,9 +4,9 @@ use xrf_renderer_core::{PassParameters, RasterContext};
 use crate::contract::render_ambient_occlusion_quality::RenderAmbientOcclusionQuality;
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::ambient_occlusion_parameters::AmbientOcclusionParameters;
-use crate::pass::shader_pipelines::{create_checked, create_module};
+use crate::pass::pipeline_source::PipelineSource;
+use crate::pass::shader_pipelines::create_checked;
 use crate::pass::view_binding::ViewBinding;
-use crate::shader::shader_library::ShaderLibrary;
 
 /// Every quality, in the order their search pipelines are held.
 const QUALITIES: [RenderAmbientOcclusionQuality; 4] = [
@@ -32,24 +32,28 @@ impl AmbientOcclusionPass {
   /// # Errors
   ///
   /// Returns an error when the shader does not compose or compile.
-  pub fn new(device: &wgpu::Device, shaders: &ShaderLibrary, view_layout: &wgpu::BindGroupLayout) -> XrfResult<Self> {
+  pub fn new(
+    device: &wgpu::Device,
+    source: PipelineSource<'_>,
+    view_layout: &wgpu::BindGroupLayout,
+  ) -> XrfResult<Self> {
     let layout: wgpu::BindGroupLayout = AmbientOcclusionParameters::create_layout(device);
-    let (searches, denoises) = Self::create_pipelines(device, shaders, view_layout, &layout)?;
+    let (searches, denoises) = Self::create_pipelines(device, source, view_layout, &layout)?;
 
     Ok(Self {
       searches,
       denoises,
       view_layout: view_layout.clone(),
-      generation: shaders.get_generation(),
+      generation: source.get_generation(),
       layout,
     })
   }
 
-  pub fn refresh(&mut self, device: &wgpu::Device, shaders: &ShaderLibrary) {
-    if shaders.get_generation() != self.generation {
-      self.generation = shaders.get_generation();
+  pub fn refresh(&mut self, device: &wgpu::Device, source: PipelineSource<'_>) {
+    if source.get_generation() != self.generation {
+      self.generation = source.get_generation();
 
-      match Self::create_pipelines(device, shaders, &self.view_layout, &self.layout) {
+      match Self::create_pipelines(device, source, &self.view_layout, &self.layout) {
         Ok((searches, denoises)) => {
           self.searches = searches;
           self.denoises = denoises;
@@ -89,11 +93,11 @@ impl AmbientOcclusionPass {
   #[allow(clippy::type_complexity)]
   fn create_pipelines(
     device: &wgpu::Device,
-    shaders: &ShaderLibrary,
+    source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<(Vec<wgpu::RenderPipeline>, [wgpu::RenderPipeline; 2])> {
-    let module: wgpu::ShaderModule = create_module(device, shaders, "frame/ambient_occlusion")?;
+    let module: wgpu::ShaderModule = source.get_module("frame/ambient_occlusion")?;
     let pipeline_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
       label: Some("ambient occlusion"),
       bind_group_layouts: &[Some(view_layout), Some(layout)],
@@ -123,7 +127,7 @@ impl AmbientOcclusionPass {
           depth_stencil: None,
           multisample: Default::default(),
           multiview_mask: None,
-          cache: None,
+          cache: source.get_driver_cache(),
         })
       })
     };

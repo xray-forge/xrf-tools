@@ -1,7 +1,9 @@
 mod ambient_effects;
 mod ambient_wind;
 mod cameras;
+mod lens_flares;
 mod placed_emitter;
+mod reduced_textures;
 mod scenes;
 mod surface_tally;
 pub(crate) mod test_workers;

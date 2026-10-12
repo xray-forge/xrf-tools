@@ -1,10 +1,8 @@
 use std::sync::Arc;
 
 use xrf_chunk::XRayByteOrder;
-use xrf_engine_target::XrayEngine;
 use xrf_environment::{
-  EnvironmentCatalog, EnvironmentReadOptions, EnvironmentReader, LevelWeather, SunTable, WeatherCycle,
-  WeatherDescriptor, WeatherKey,
+  EnvironmentCatalog, EnvironmentReadOptions, EnvironmentReader, LevelWeather, SunTable, WeatherCycle, WeatherKey,
 };
 use xrf_level::{EnvModifier, LevelEnvModFile};
 use xrf_ltx::LtxProject;
@@ -122,16 +120,6 @@ impl LevelEnvironment {
     }
 
     offered
-  }
-
-  /// A cycle's keyframes as the engine loads them, sorted by time, a keyframe whose name the engine refuses left out.
-  pub fn list_keyframes(cycle: &WeatherCycle, engine: XrayEngine) -> Vec<WeatherDescriptor> {
-    cycle
-      .keyframes
-      .iter()
-      .filter(|keyframe| keyframe.time.is_some())
-      .map(|keyframe| WeatherDescriptor::new(keyframe, engine))
-      .collect()
   }
 
   /// The level's `level.env_mod`, none where it has none; one that will not read is said and left out, since the

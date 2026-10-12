@@ -6,9 +6,9 @@ use xrf_renderer_core::{
 use crate::frame::water_reflection::WaterReflection;
 use crate::pass::enhanced_water_uniform::EnhancedWaterUniform;
 use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline;
+use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::water_blur_parameters::WaterBlurParameters;
 use crate::pass::water_blur_uniform::WaterBlurUniform;
-use crate::shader::shader_library::ShaderLibrary;
 
 /// Blurs the enhanced water's reflection one way at a time into half-size targets.
 pub struct WaterBlurPass {
@@ -20,9 +20,9 @@ impl WaterBlurPass {
   /// # Errors
   ///
   /// Returns an error when the shader does not compose or compile.
-  pub fn new(device: &wgpu::Device, shaders: &ShaderLibrary) -> XrfResult<Self> {
+  pub fn new(device: &wgpu::Device, source: PipelineSource<'_>) -> XrfResult<Self> {
     Ok(Self {
-      pipeline: Self::create_pipeline(device, shaders)?,
+      pipeline: Self::create_pipeline(device, source)?,
       sampler: device.create_sampler(&wgpu::SamplerDescriptor {
         label: Some("water blur"),
         mag_filter: wgpu::FilterMode::Linear,
@@ -35,8 +35,8 @@ impl WaterBlurPass {
   /// # Errors
   ///
   /// Returns an error when the shader does not compose or compile, keeping the last pipeline.
-  pub fn refresh(&mut self, device: &wgpu::Device, shaders: &ShaderLibrary) -> XrfResult {
-    self.pipeline = Self::create_pipeline(device, shaders)?;
+  pub fn refresh(&mut self, device: &wgpu::Device, source: PipelineSource<'_>) -> XrfResult {
+    self.pipeline = Self::create_pipeline(device, source)?;
 
     Ok(())
   }
@@ -78,10 +78,10 @@ impl WaterBlurPass {
     target
   }
 
-  fn create_pipeline(device: &wgpu::Device, shaders: &ShaderLibrary) -> XrfResult<wgpu::RenderPipeline> {
+  fn create_pipeline(device: &wgpu::Device, source: PipelineSource<'_>) -> XrfResult<wgpu::RenderPipeline> {
     create_fullscreen_pipeline(
       device,
-      shaders,
+      source,
       "frame/water_blur",
       "fs_water_blur",
       &[Some(&WaterBlurParameters::create_layout(device))],

@@ -3,12 +3,12 @@ use xrf_error::XrfResult;
 use xrf_renderer_core::{PassParameters, RasterContext};
 
 use crate::frame::reflection_history::ReflectionHistory;
+use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::reflection_parameters::ReflectionParameters;
-use crate::pass::shader_pipelines::{create_checked, create_module};
+use crate::pass::shader_pipelines::create_checked;
 use crate::pass::sky_parameters::SkyParameters;
 use crate::pass::trace_request_parameters::TraceRequestParameters;
 use crate::pass::view_binding::ViewBinding;
-use crate::shader::shader_library::ShaderLibrary;
 
 /// Stochastic screen-space reflections at the size their quality traces at: each glossy pixel's ray scattered by its
 /// roughness and walked up and down the frame's nearest depth pyramid, what it met lit; then denoised, the last frame's
@@ -72,7 +72,7 @@ impl ReflectionPass {
   pub fn new(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
-    shaders: &ShaderLibrary,
+    source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     sky_layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<Self> {
@@ -103,7 +103,7 @@ impl ReflectionPass {
     };
 
     Ok(Self {
-      pipelines: Self::create_pipelines(device, shaders, (view_layout, &layout, sky_layout), &request_layout)?,
+      pipelines: Self::create_pipelines(device, source, (view_layout, &layout, sky_layout), &request_layout)?,
       view_layout: view_layout.clone(),
       sky_layout: sky_layout.clone(),
       request_layout,
@@ -121,18 +121,18 @@ impl ReflectionPass {
         min_filter: wgpu::FilterMode::Linear,
         ..Default::default()
       }),
-      generation: shaders.get_generation(),
+      generation: source.get_generation(),
       layout,
     })
   }
 
-  pub fn refresh(&mut self, device: &wgpu::Device, shaders: &ShaderLibrary) {
-    if shaders.get_generation() != self.generation {
-      self.generation = shaders.get_generation();
+  pub fn refresh(&mut self, device: &wgpu::Device, source: PipelineSource<'_>) {
+    if source.get_generation() != self.generation {
+      self.generation = source.get_generation();
 
       match Self::create_pipelines(
         device,
-        shaders,
+        source,
         (&self.view_layout, &self.layout, &self.sky_layout),
         &self.request_layout,
       ) {
@@ -219,11 +219,11 @@ impl ReflectionPass {
 
   fn create_pipelines(
     device: &wgpu::Device,
-    shaders: &ShaderLibrary,
+    source: PipelineSource<'_>,
     (view_layout, layout, sky_layout): (&wgpu::BindGroupLayout, &wgpu::BindGroupLayout, &wgpu::BindGroupLayout),
     request_layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<ReflectionPipelines> {
-    let module: wgpu::ShaderModule = create_module(device, shaders, "frame/reflections")?;
+    let module: wgpu::ShaderModule = source.get_module("frame/reflections")?;
     let traced_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
       label: Some("reflection trace"),
       bind_group_layouts: &[Some(view_layout), Some(layout), Some(sky_layout), Some(request_layout)],
@@ -260,7 +260,7 @@ impl ReflectionPass {
           depth_stencil: None,
           multisample: Default::default(),
           multiview_mask: None,
-          cache: None,
+          cache: source.get_driver_cache(),
         })
       })
     };

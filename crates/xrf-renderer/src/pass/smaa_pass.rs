@@ -4,8 +4,8 @@ use xrf_renderer_core::{PassParameters, RasterContext};
 use crate::frame::view_targets::ViewTargets;
 use crate::host::render_bundle::RenderBundle;
 use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline;
+use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::smaa_parameters::SmaaParameters;
-use crate::shader::shader_library::ShaderLibrary;
 
 /// `AreaTex` and `SearchTex` of SMAA v2.8 (MIT, Jorge Jimenez et al.), as three.js's `SMAANode` carries them, by their
 /// paths in the renderer's bundle.
@@ -37,7 +37,7 @@ impl SmaaPass {
   pub fn new(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
-    shaders: &ShaderLibrary,
+    source: PipelineSource<'_>,
     bundle: &dyn RenderBundle,
   ) -> XrfResult<Self> {
     let layout: wgpu::BindGroupLayout = SmaaParameters::create_layout(device);
@@ -52,7 +52,7 @@ impl SmaaPass {
     let area_texels: Vec<u8> = area.pixels().flat_map(|it| [it.0[0], it.0[1]]).collect();
 
     Ok(Self {
-      pipelines: Self::create_pipelines(device, shaders, &layout)?,
+      pipelines: Self::create_pipelines(device, source, &layout)?,
       area: create_lookup(
         device,
         queue,
@@ -78,16 +78,16 @@ impl SmaaPass {
         label: Some("smaa point"),
         ..Default::default()
       }),
-      generation: shaders.get_generation(),
+      generation: source.get_generation(),
       layout,
     })
   }
 
-  pub fn refresh(&mut self, device: &wgpu::Device, shaders: &ShaderLibrary) {
-    if shaders.get_generation() != self.generation {
-      self.generation = shaders.get_generation();
+  pub fn refresh(&mut self, device: &wgpu::Device, source: PipelineSource<'_>) {
+    if source.get_generation() != self.generation {
+      self.generation = source.get_generation();
 
-      match Self::create_pipelines(device, shaders, &self.layout) {
+      match Self::create_pipelines(device, source, &self.layout) {
         Ok(pipelines) => self.pipelines = pipelines,
         Err(error) => log::error!("SMAA rejected, smoothing with the last one: {error}"),
       }
@@ -113,11 +113,11 @@ impl SmaaPass {
 
   fn create_pipelines(
     device: &wgpu::Device,
-    shaders: &ShaderLibrary,
+    source: PipelineSource<'_>,
     layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<[wgpu::RenderPipeline; 3]> {
     let create = |fragment: &str, format: wgpu::TextureFormat| {
-      create_fullscreen_pipeline(device, shaders, "frame/smaa", fragment, &[Some(layout)], format)
+      create_fullscreen_pipeline(device, source, "frame/smaa", fragment, &[Some(layout)], format)
     };
 
     Ok([

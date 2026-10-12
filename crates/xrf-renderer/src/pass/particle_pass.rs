@@ -7,9 +7,9 @@ use crate::frame::view_targets::ViewTargets;
 use crate::pass::particle_batch::ParticleBatch;
 use crate::pass::particle_blend::ParticleBlend;
 use crate::pass::particle_parameters::ParticleParameters;
-use crate::pass::shader_pipelines::{create_checked, create_module};
+use crate::pass::pipeline_source::PipelineSource;
+use crate::pass::shader_pipelines::create_checked;
 use crate::pass::view_binding::ViewBinding;
-use crate::shader::shader_library::ShaderLibrary;
 
 /// Draws a level's particle sprites over its finished scene after the composited surfaces, as `render_forward` draws
 /// them after combine: each run of quads with its effect's equation, tested against the scene's depth without writing
@@ -24,7 +24,7 @@ pub struct ParticlePass {
   generation: u64,
 }
 
-/// The pass's pipelines, made again together whenever the shaders change.
+/// The pass's pipelines, made again together whenever the source change.
 struct ParticlePipelines {
   /// One a blend, in [`ParticleBlend::ALL`]'s order.
   colour: Vec<wgpu::RenderPipeline>,
@@ -38,14 +38,14 @@ impl ParticlePass {
   /// Returns an error when the shader does not compose or compile.
   pub fn new(
     device: &wgpu::Device,
-    shaders: &ShaderLibrary,
+    source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     texture_layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<Self> {
     let layout: wgpu::BindGroupLayout = ParticleParameters::create_layout(device);
 
     Ok(Self {
-      pipelines: Self::create_pipelines(device, shaders, view_layout, &layout, texture_layout)?,
+      pipelines: Self::create_pipelines(device, source, view_layout, &layout, texture_layout)?,
       // As the textures' own sampler, clamped to the edge as `Texture clamp` addresses a sprite.
       clamped_sampler: device.create_sampler(&wgpu::SamplerDescriptor {
         label: Some("particles clamped"),
@@ -60,16 +60,16 @@ impl ParticlePass {
       }),
       view_layout: view_layout.clone(),
       texture_layout: texture_layout.clone(),
-      generation: shaders.get_generation(),
+      generation: source.get_generation(),
       layout,
     })
   }
 
-  pub fn refresh(&mut self, device: &wgpu::Device, shaders: &ShaderLibrary) {
-    if shaders.get_generation() != self.generation {
-      self.generation = shaders.get_generation();
+  pub fn refresh(&mut self, device: &wgpu::Device, source: PipelineSource<'_>) {
+    if source.get_generation() != self.generation {
+      self.generation = source.get_generation();
 
-      match Self::create_pipelines(device, shaders, &self.view_layout, &self.layout, &self.texture_layout) {
+      match Self::create_pipelines(device, source, &self.view_layout, &self.layout, &self.texture_layout) {
         Ok(pipelines) => self.pipelines = pipelines,
         Err(error) => log::error!("Particles rejected, drawing with the last ones: {error}"),
       }
@@ -131,12 +131,12 @@ impl ParticlePass {
 
   fn create_pipelines(
     device: &wgpu::Device,
-    shaders: &ShaderLibrary,
+    source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     layout: &wgpu::BindGroupLayout,
     texture_layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<ParticlePipelines> {
-    let module: wgpu::ShaderModule = create_module(device, shaders, "frame/particles")?;
+    let module: wgpu::ShaderModule = source.get_module("frame/particles")?;
     let pipeline_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
       label: Some("particles"),
       bind_group_layouts: &[Some(view_layout), Some(layout), Some(texture_layout)],
@@ -176,7 +176,7 @@ impl ParticlePass {
           }),
           multisample: Default::default(),
           multiview_mask: None,
-          cache: None,
+          cache: source.get_driver_cache(),
         })
       })
     };

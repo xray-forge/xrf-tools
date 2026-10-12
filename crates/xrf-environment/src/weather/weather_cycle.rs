@@ -8,6 +8,7 @@ use crate::finding::EnvironmentRule;
 use crate::section::EnvironmentSectionReader;
 use crate::weather::weather_cycle_id::WeatherCycleId;
 use crate::weather::weather_cycle_kind::WeatherCycleKind;
+use crate::weather::weather_descriptor::WeatherDescriptor;
 use crate::weather::weather_key::WeatherKey;
 use crate::weather::weather_keyframe::WeatherKeyframe;
 use crate::weather::weather_time::WeatherTime;
@@ -48,6 +49,17 @@ impl WeatherCycle {
     cycle.judge(reader);
 
     cycle
+  }
+
+  /// Its keyframes as the engine loads them, by time, each read as the weather it describes; a keyframe whose name the
+  /// engine refuses is left out.
+  pub fn list_descriptors(&self, engine: XrayEngine) -> Vec<WeatherDescriptor> {
+    self
+      .keyframes
+      .iter()
+      .filter(|keyframe| keyframe.time.is_some())
+      .map(|keyframe| WeatherDescriptor::new(keyframe, engine))
+      .collect()
   }
 
   /// Every sky cube the cycle names, each once, in the order its keyframes first name them.

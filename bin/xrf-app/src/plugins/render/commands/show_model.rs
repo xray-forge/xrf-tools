@@ -26,6 +26,8 @@ pub fn render_show_model(
     Some(session_id) => {
       let visual: Arc<SessionSnapshot<SelectedVisual>> = visuals.selected.require(session_id)?;
 
+      state.watch_textures(&visual.roots);
+
       log::info!(
         "Showing model '{}' in native viewport {} at detail {detail}",
         visual.source.label(),

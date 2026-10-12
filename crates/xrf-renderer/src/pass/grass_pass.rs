@@ -6,9 +6,9 @@ use crate::pass::fullscreen_pipeline::buffer_binding;
 use crate::pass::grass_dispatch::GrassDispatch;
 use crate::pass::grass_draws::GrassDraws;
 use crate::pass::layout_entries::{storage_entry, texture_entry, uniform_entry};
-use crate::pass::shader_pipelines::{create_checked, create_module};
+use crate::pass::pipeline_source::PipelineSource;
+use crate::pass::shader_pipelines::create_checked;
 use crate::pass::view_binding::ViewBinding;
-use crate::shader::shader_library::ShaderLibrary;
 
 /// The planting's entry points, in the order a frame dispatches them.
 const PLANTING_ENTRIES: [&str; 8] = [
@@ -48,7 +48,7 @@ impl GrassPass {
   /// Returns an error when a shader does not compose or compile.
   pub fn new(
     device: &wgpu::Device,
-    shaders: &ShaderLibrary,
+    source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     texture_layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<Self> {
@@ -96,10 +96,10 @@ impl GrassPass {
     let layouts = [&level_layout, &build_layout, &draw_layout, view_layout, texture_layout];
 
     Ok(Self {
-      planting: Self::create_planting(device, shaders, [layouts[0], layouts[1]])?,
-      draw: Self::create_draw(device, shaders, [layouts[3], layouts[2], layouts[4]])?,
+      planting: Self::create_planting(device, source, [layouts[0], layouts[1]])?,
+      draw: Self::create_draw(device, source, [layouts[3], layouts[2], layouts[4]])?,
       grid: ComputeGrid::new(device),
-      generation: shaders.get_generation(),
+      generation: source.get_generation(),
       view_layout: view_layout.clone(),
       texture_layout: texture_layout.clone(),
       level_layout,
@@ -108,17 +108,17 @@ impl GrassPass {
     })
   }
 
-  pub fn refresh(&mut self, device: &wgpu::Device, shaders: &ShaderLibrary) {
-    if shaders.get_generation() == self.generation {
+  pub fn refresh(&mut self, device: &wgpu::Device, source: PipelineSource<'_>) {
+    if source.get_generation() == self.generation {
       return;
     }
 
-    self.generation = shaders.get_generation();
+    self.generation = source.get_generation();
 
-    let planting = Self::create_planting(device, shaders, [&self.level_layout, &self.build_layout]);
+    let planting = Self::create_planting(device, source, [&self.level_layout, &self.build_layout]);
     let draw = Self::create_draw(
       device,
-      shaders,
+      source,
       [&self.view_layout, &self.draw_layout, &self.texture_layout],
     );
 
@@ -211,10 +211,10 @@ impl GrassPass {
 
   fn create_planting(
     device: &wgpu::Device,
-    shaders: &ShaderLibrary,
+    source: PipelineSource<'_>,
     layouts: [&wgpu::BindGroupLayout; 2],
   ) -> XrfResult<Vec<wgpu::ComputePipeline>> {
-    let module: wgpu::ShaderModule = create_module(device, shaders, "grass/planting")?;
+    let module: wgpu::ShaderModule = source.get_module("grass/planting")?;
     let layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
       label: Some("grass planting"),
       bind_group_layouts: &[Some(layouts[0]), Some(layouts[1])],
@@ -231,7 +231,7 @@ impl GrassPass {
             module: &module,
             entry_point: Some(entry),
             compilation_options: Default::default(),
-            cache: None,
+            cache: source.get_driver_cache(),
           })
         })
       })
@@ -240,10 +240,10 @@ impl GrassPass {
 
   fn create_draw(
     device: &wgpu::Device,
-    shaders: &ShaderLibrary,
+    source: PipelineSource<'_>,
     layouts: [&wgpu::BindGroupLayout; 3],
   ) -> XrfResult<wgpu::RenderPipeline> {
-    let module: wgpu::ShaderModule = create_module(device, shaders, "grass/grass")?;
+    let module: wgpu::ShaderModule = source.get_module("grass/grass")?;
     let layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
       label: Some("grass"),
       bind_group_layouts: &[Some(layouts[0]), Some(layouts[1]), Some(layouts[2])],
@@ -294,7 +294,7 @@ impl GrassPass {
         }),
         multisample: Default::default(),
         multiview_mask: None,
-        cache: None,
+        cache: source.get_driver_cache(),
       })
     })
   }

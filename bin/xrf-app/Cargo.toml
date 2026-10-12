@@ -24,6 +24,7 @@ hyper-util = { workspace = true }
 image = { workspace = true, features = ["png"] }
 indexmap = { workspace = true }
 log = { workspace = true }
+notify = { workspace = true }
 percent-encoding = "2.3.2"
 rayon = { workspace = true }
 serde = { workspace = true }

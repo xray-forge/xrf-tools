@@ -18,6 +18,13 @@ impl PipelineConstants {
     }
   }
 
+  /// Constants named and valued as a pipeline is made with them.
+  pub fn new(values: &[(&'static str, f64)]) -> Self {
+    Self {
+      values: values.iter().map(|(name, value)| (*name, value.to_bits())).collect(),
+    }
+  }
+
   pub fn is_empty(&self) -> bool {
     self.values.is_empty()
   }

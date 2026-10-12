@@ -11,7 +11,7 @@ use crate::contract::render_texture_state::RenderTextureState;
 use crate::frame::periodic_job::PeriodicJob;
 use crate::frame::periodic_scheduler::PeriodicScheduler;
 use crate::frame::periodic_ticket::PeriodicTicket;
-use crate::host::render_asset_source::RenderAssetSource;
+use crate::host::render_asset_source::{RenderAssetSource, get_texture_name};
 use crate::scene::texture::decoded_texture::DecodedTexture;
 use crate::scene::texture::texture_role::TextureRole;
 use crate::thread::loader_receiver::LoaderReceiver;
@@ -45,7 +45,7 @@ pub const ENVIRONMENT_SLOTS: u32 = 16;
 
 /// What a texture load came to, sent from a loader thread: its slot, the slot's generation it was asked under, and the
 /// texture.
-type TextureLoad = (u32, u32, Result<Option<DecodedTexture>, String>);
+type TextureLoad = (u32, u32, Result<Option<DecodedTexture>, String>, Option<u64>);
 
 /// Every texture the renderer's scenes sample, once each by scope and reference, in one bindless array: a material
 /// names its texture by slot, so draws are never split by texture. A slot no scene samples any more is freed and given
@@ -82,6 +82,8 @@ pub struct TextureCache {
   is_heights_wanted: bool,
   /// Bytes each slot's upload holds on the GPU.
   sizes: Vec<u64>,
+  /// The stamp of the file each slot was last read from, none where it has none.
+  stamps: Vec<Option<u64>>,
   /// Slots freed, taken again before the array grows.
   free: Vec<u32>,
   sender: Sender<TextureLoad>,
@@ -160,6 +162,7 @@ impl TextureCache {
       lod: 0,
       is_heights_wanted: false,
       sizes: vec![0],
+      stamps: vec![None],
       free: Vec::new(),
       sender,
       receiver,
@@ -192,6 +195,15 @@ impl TextureCache {
     let key: (String, String) = (source.get_texture_scope(), reference.to_owned());
 
     if let Some(&slot) = self.by_reference.get(&key) {
+      // Asked again by a source opened since, as a level reopened: the file may have changed meanwhile.
+      if self.sources[slot as usize]
+        .as_ref()
+        .is_some_and(|known| !Arc::ptr_eq(known, source))
+      {
+        self.sources[slot as usize] = Some(Arc::clone(source));
+        self.recheck(slot);
+      }
+
       return slot;
     }
 
@@ -205,6 +217,7 @@ impl TextureCache {
         self.roles[index] = role;
         self.keys[index] = Some(key.clone());
         self.sources[index] = Some(Arc::clone(source));
+        self.stamps[index] = None;
 
         slot
       }
@@ -217,6 +230,7 @@ impl TextureCache {
         self.generations.push(0);
         self.sources.push(Some(Arc::clone(source)));
         self.sizes.push(0);
+        self.stamps.push(None);
 
         self.views.len() as u32 - 1
       }
@@ -275,6 +289,72 @@ impl TextureCache {
     }
   }
 
+  /// Loads again every texture of these file names (lowercase, without folder or extension), whatever its scope, and a
+  /// terrain's heights where its bump is among them, their sources first forgetting where they resolved: their files
+  /// changed. Each keeps what it shows until its new levels land.
+  pub fn reload(&mut self, names: &[String]) {
+    let mut forgotten: Vec<Arc<dyn RenderAssetSource>> = Vec::new();
+
+    for slot in 1..self.views.len() {
+      let (Some(_), Some(source)) = (&self.keys[slot], self.sources[slot].clone()) else {
+        continue;
+      };
+
+      if self.states[slot] == RenderTextureState::Deferred || !self.is_named(slot, names) {
+        continue;
+      }
+
+      if !forgotten.iter().any(|known| Arc::ptr_eq(known, &source)) {
+        source.forget_textures(names);
+        forgotten.push(source);
+      }
+
+      self.generations[slot] = self.generations[slot].wrapping_add(1);
+      self.load(slot as u32);
+    }
+  }
+
+  /// Whether a slot reads a file of one of these names: its own, or its bump where it is a terrain's heights.
+  fn is_named(&self, slot: usize, names: &[String]) -> bool {
+    let reference: &str = &self.references[slot];
+    let own: String = get_texture_name(reference);
+    let bump: Option<String> = (self.roles[slot] == TextureRole::TerrainHeight).then(|| {
+      get_texture_name(&format!(
+        "{}{}",
+        reference.strip_suffix(TextureRole::HEIGHT_SUFFIX).unwrap_or(reference),
+        TextureRole::BUMP_SUFFIX
+      ))
+    });
+
+    names.iter().any(|name| *name == own || bump.as_ref() == Some(name))
+  }
+
+  /// Loads a slot again on a loader thread where the stamp of its file no longer matches what it was read at.
+  fn recheck(&self, slot: u32) {
+    let index: usize = slot as usize;
+    let Some(source) = self.sources[index].clone() else {
+      return;
+    };
+    let (reference, recorded) = (self.references[index].clone(), self.stamps[index]);
+
+    if recorded.is_none() || self.states[index] == RenderTextureState::Deferred {
+      return;
+    }
+
+    let (sender, generation, role, lod) = (
+      self.sender.clone(),
+      self.generations[index],
+      self.roles[index],
+      self.lod,
+    );
+
+    self.workers.spawn(move || {
+      if source.get_texture_stamp(&reference) != recorded {
+        let _ = sender.send(Self::read_slot(&source, (slot, generation), (&reference, role), lod));
+      }
+    });
+  }
+
   /// Reads and decodes a slot's texture on a loader thread, its levels cut as the engine cuts them at `texture_lod`.
   fn load(&self, slot: u32) {
     let index: usize = slot as usize;
@@ -290,42 +370,54 @@ impl TextureCache {
     );
 
     self.workers.spawn(move || {
-      // At full quality the listed textures load whole too, so the list is never read.
-      let dropped: u32 = get_dropped_levels(lod, lod > 0 && source.is_texture_reduced(&reference));
-      let read = |reference: &str| -> XrfResult<Option<DecodedTexture>> {
-        source
-          .read_texture(reference)?
-          .map(|bytes| DecodedTexture::from_dds(&bytes).map(|texture| texture.without_levels(dropped)))
-          .transpose()
-      };
-      let load: Result<Option<DecodedTexture>, String> = match role {
-        // A detail's height where the installation brings one, else integrated from its bump.
-        TextureRole::TerrainHeight => read(&reference)
-          .and_then(|own| match own {
-            Some(own) => Ok(Some(own)),
-            None => {
-              let bump: String = format!(
-                "{}{}",
-                reference.strip_suffix(TextureRole::HEIGHT_SUFFIX).unwrap_or(&reference),
-                TextureRole::BUMP_SUFFIX
-              );
-
-              source
-                .read_texture(&bump)?
-                .map(|bytes| DecodedTexture::from_bump_heights(&bytes, dropped))
-                .transpose()
-            }
-          })
-          .map_err(|error| error.to_string()),
-        _ => read(&reference).map_err(|error| error.to_string()),
-      };
-
-      if let Err(error) = &load {
-        log::warn!("Texture '{reference}' cannot be drawn: {error}");
-      }
-
-      let _ = sender.send((slot, generation, load));
+      let _ = sender.send(Self::read_slot(&source, (slot, generation), (&reference, role), lod));
     });
+  }
+
+  /// What reading a slot's texture comes to, with the stamp of the file it was read from.
+  fn read_slot(
+    source: &Arc<dyn RenderAssetSource>,
+    (slot, generation): (u32, u32),
+    (reference, role): (&str, TextureRole),
+    lod: u32,
+  ) -> TextureLoad {
+    // Taken before the read, so a write landing during it is read again later rather than missed.
+    let stamp: Option<u64> = source.get_texture_stamp(reference);
+    // At full quality the listed textures load whole too, so the list is never read.
+    let dropped: u32 = get_dropped_levels(lod, lod > 0 && source.is_texture_reduced(reference));
+    let read = |reference: &str| -> XrfResult<Option<DecodedTexture>> {
+      source
+        .read_texture(reference)?
+        .map(|bytes| DecodedTexture::from_dds(&bytes).map(|texture| texture.without_levels(dropped)))
+        .transpose()
+    };
+    let load: Result<Option<DecodedTexture>, String> = match role {
+      // A detail's height where the installation brings one, else integrated from its bump.
+      TextureRole::TerrainHeight => read(reference)
+        .and_then(|own| match own {
+          Some(own) => Ok(Some(own)),
+          None => {
+            let bump: String = format!(
+              "{}{}",
+              reference.strip_suffix(TextureRole::HEIGHT_SUFFIX).unwrap_or(reference),
+              TextureRole::BUMP_SUFFIX
+            );
+
+            source
+              .read_texture(&bump)?
+              .map(|bytes| DecodedTexture::from_bump_heights(&bytes, dropped))
+              .transpose()
+          }
+        })
+        .map_err(|error| error.to_string()),
+      _ => read(reference).map_err(|error| error.to_string()),
+    };
+
+    if let Err(error) = &load {
+      log::warn!("Texture '{reference}' cannot be drawn: {error}");
+    }
+
+    (slot, generation, load, stamp)
   }
 
   /// The environment slot a cube reference is sampled from, `0` for none or for one past the slots there are.
@@ -447,10 +539,12 @@ impl TextureCache {
     scheduler: &mut PeriodicScheduler,
     is_opening: bool,
   ) {
-    while let Ok((slot, generation, load)) = self.receiver.try_recv() {
+    while let Ok((slot, generation, load, stamp)) = self.receiver.try_recv() {
       if self.generations.get(slot as usize) != Some(&generation) {
         continue;
       }
+
+      self.stamps[slot as usize] = stamp;
 
       match load {
         Ok(Some(texture)) => self.uploads.push_back((slot, generation, texture)),

@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::mpsc::Sender;
 
-use crate::host::render_asset_source::RenderAssetSource;
+use crate::host::render_asset_source::{RenderAssetSource, get_texture_name};
 use crate::lighting::render_sky::RenderSky;
 use crate::scene::texture::decoded_texture::{CUBE_FACES, DecodedTexture};
 use crate::scene::texture::weather_texture_kind::WeatherTextureKind;
@@ -21,9 +21,10 @@ const PLACEHOLDER_SKY: [u8; 4] = [128, 130, 140, 255];
 /// What a texture load came to, sent from a loader thread.
 type SkyTextureLoad = (String, Result<Option<DecodedTexture>, String>);
 
-/// One weather texture: its view once up, and whether its load settled.
+/// One weather texture: its view once up, whether its load settled, and the source it was read from.
 struct SkyTextureEntry {
   kind: WeatherTextureKind,
+  source: Arc<dyn RenderAssetSource>,
   view: Option<wgpu::TextureView>,
   /// Whether it is up, or given up on for good.
   is_settled: bool,
@@ -91,12 +92,35 @@ impl WeatherTextureCache {
       reference.to_owned(),
       SkyTextureEntry {
         kind,
+        source: Arc::clone(source),
         view: None,
         is_settled: false,
         used: self.frame,
       },
     );
+    self.load(reference, source);
 
+    false
+  }
+
+  /// Loads again every texture of these file names (lowercase, without folder or extension), its source first
+  /// forgetting where it resolved: its file changed. Each keeps what it shows until it lands again.
+  pub fn reload(&mut self, names: &[String]) {
+    let reloaded: Vec<(String, Arc<dyn RenderAssetSource>)> = self
+      .entries
+      .iter()
+      .filter(|(reference, _)| names.contains(&get_texture_name(reference)))
+      .map(|(reference, entry)| (reference.clone(), Arc::clone(&entry.source)))
+      .collect();
+
+    for (reference, source) in reloaded {
+      source.forget_textures(names);
+      self.load(&reference, &source);
+    }
+  }
+
+  /// Reads and decodes a texture on a loader thread.
+  fn load(&self, reference: &str, source: &Arc<dyn RenderAssetSource>) {
     let (sender, source, reference) = (self.sender.clone(), Arc::clone(source), reference.to_owned());
 
     self.workers.spawn(move || {
@@ -111,8 +135,6 @@ impl WeatherTextureCache {
 
       let _ = sender.send((reference, load));
     });
-
-    false
   }
 
   /// Asks for every texture a sky draws with; answers whether each is up or given up on, the clouds only where shown.

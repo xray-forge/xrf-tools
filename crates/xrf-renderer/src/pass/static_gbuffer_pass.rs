@@ -4,7 +4,8 @@ use xrf_renderer_core::{PassParameters, RasterContext};
 use crate::frame::pick_target::PickTarget;
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::composited_pass::COMPOSITED_DEPTH_BIAS;
-use crate::pass::shader_pipelines::{create_checked, create_module};
+use crate::pass::pipeline_source::PipelineSource;
+use crate::pass::shader_pipelines::create_checked;
 use crate::pass::static_draw_parameters::StaticDrawParameters;
 use crate::pass::static_draws::StaticDraws;
 use crate::pass::static_impostor_parameters::StaticImpostorParameters;
@@ -12,7 +13,6 @@ use crate::pass::view_binding::ViewBinding;
 use crate::scene::static_scene::static_batch::StaticBatch;
 use crate::scene::static_scene::static_class::StaticClass;
 use crate::scene::static_scene::static_cull_scratch::StaticCullScratch;
-use crate::shader::shader_library::ShaderLibrary;
 
 /// Draws the static scene into a viewport's G-buffer: one indirect draw a batch, its visible clusters as instances, then
 /// one for the impostors standing in for distant trees.
@@ -35,16 +35,16 @@ pub struct StaticGBufferPass {
 impl StaticGBufferPass {
   pub fn new(
     device: &wgpu::Device,
-    shaders: &ShaderLibrary,
+    source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     texture_layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<Self> {
     let layout: wgpu::BindGroupLayout = StaticDrawParameters::create_layout(device);
     let impostor_layout: wgpu::BindGroupLayout = StaticImpostorParameters::create_layout(device);
     let (pipelines, pick_pipelines, composited_pick_pipelines) =
-      Self::create_pipelines(device, shaders, view_layout, &layout, texture_layout)?;
+      Self::create_pipelines(device, source, view_layout, &layout, texture_layout)?;
     let impostor_pipelines =
-      Self::create_impostor_pipelines(device, shaders, view_layout, &impostor_layout, texture_layout)?;
+      Self::create_impostor_pipelines(device, source, view_layout, &impostor_layout, texture_layout)?;
 
     Ok(Self {
       pipelines,
@@ -54,20 +54,20 @@ impl StaticGBufferPass {
       impostor_layout,
       view_layout: view_layout.clone(),
       texture_layout: texture_layout.clone(),
-      generation: shaders.get_generation(),
+      generation: source.get_generation(),
       layout,
     })
   }
 
-  pub fn refresh(&mut self, device: &wgpu::Device, shaders: &ShaderLibrary) {
-    if shaders.get_generation() != self.generation {
-      self.generation = shaders.get_generation();
+  pub fn refresh(&mut self, device: &wgpu::Device, source: PipelineSource<'_>) {
+    if source.get_generation() != self.generation {
+      self.generation = source.get_generation();
 
-      match Self::create_pipelines(device, shaders, &self.view_layout, &self.layout, &self.texture_layout).and_then(
+      match Self::create_pipelines(device, source, &self.view_layout, &self.layout, &self.texture_layout).and_then(
         |pipelines| {
           let impostors = Self::create_impostor_pipelines(
             device,
-            shaders,
+            source,
             &self.view_layout,
             &self.impostor_layout,
             &self.texture_layout,
@@ -160,12 +160,12 @@ impl StaticGBufferPass {
   /// The impostors' draw and pick: a quad either way round, so neither culls a face.
   fn create_impostor_pipelines(
     device: &wgpu::Device,
-    shaders: &ShaderLibrary,
+    source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     layout: &wgpu::BindGroupLayout,
     texture_layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<[wgpu::RenderPipeline; 2]> {
-    let module: wgpu::ShaderModule = create_module(device, shaders, "static/impostor")?;
+    let module: wgpu::ShaderModule = source.get_module("static/impostor")?;
     let pipeline_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
       label: Some("static impostors"),
       bind_group_layouts: &[Some(view_layout), Some(texture_layout), Some(layout)],
@@ -205,7 +205,7 @@ impl StaticGBufferPass {
           }),
           multisample: Default::default(),
           multiview_mask: None,
-          cache: None,
+          cache: source.get_driver_cache(),
         })
       })
     };
@@ -218,7 +218,7 @@ impl StaticGBufferPass {
 
   fn create_pipelines(
     device: &wgpu::Device,
-    shaders: &ShaderLibrary,
+    source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     layout: &wgpu::BindGroupLayout,
     texture_layout: &wgpu::BindGroupLayout,
@@ -227,7 +227,7 @@ impl StaticGBufferPass {
     Vec<wgpu::RenderPipeline>,
     Vec<wgpu::RenderPipeline>,
   )> {
-    let module: wgpu::ShaderModule = create_module(device, shaders, "static/gbuffer")?;
+    let module: wgpu::ShaderModule = source.get_module("static/gbuffer")?;
     let pipeline_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
       label: Some("static g-buffer"),
       bind_group_layouts: &[Some(view_layout), Some(texture_layout), Some(layout)],
@@ -290,7 +290,7 @@ impl StaticGBufferPass {
               }),
               multisample: Default::default(),
               multiview_mask: None,
-              cache: None,
+              cache: source.get_driver_cache(),
             })
           })
         })

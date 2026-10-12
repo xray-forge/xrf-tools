@@ -3,7 +3,8 @@ use xrf_renderer_core::{PassParameters, RasterContext};
 
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::composited_parameters::CompositedParameters;
-use crate::pass::shader_pipelines::{create_checked, create_module};
+use crate::pass::pipeline_source::PipelineSource;
+use crate::pass::shader_pipelines::create_checked;
 use crate::pass::sky_parameters::SkyParameters;
 use crate::pass::static_draw_parameters::StaticDrawParameters;
 use crate::pass::view_binding::ViewBinding;
@@ -11,7 +12,6 @@ use crate::scene::static_scene::static_batch::StaticBatch;
 use crate::scene::static_scene::static_geometry::StaticGeometry;
 use crate::scene::static_scene::static_layout::StaticLayout;
 use crate::scene::static_scene::static_surface_pass::StaticSurfacePass;
-use crate::shader::shader_library::ShaderLibrary;
 
 /// The fragment entry compositing surfaces over the lit frame.
 const COMPOSITED_FRAGMENT: &str = "fs_composited";
@@ -67,7 +67,7 @@ impl CompositedPass {
   /// Returns an error when the shader does not compose or compile.
   pub fn new(
     device: &wgpu::Device,
-    shaders: &ShaderLibrary,
+    source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     scene_layout: &wgpu::BindGroupLayout,
     texture_layout: &wgpu::BindGroupLayout,
@@ -83,18 +83,18 @@ impl CompositedPass {
     ];
 
     Ok(Self {
-      pipelines: Self::create_pipelines(device, shaders, &layouts, &layout)?,
+      pipelines: Self::create_pipelines(device, source, &layouts, &layout)?,
       layouts,
-      generation: shaders.get_generation(),
+      generation: source.get_generation(),
       layout,
     })
   }
 
-  pub fn refresh(&mut self, device: &wgpu::Device, shaders: &ShaderLibrary) {
-    if shaders.get_generation() != self.generation {
-      self.generation = shaders.get_generation();
+  pub fn refresh(&mut self, device: &wgpu::Device, source: PipelineSource<'_>) {
+    if source.get_generation() != self.generation {
+      self.generation = source.get_generation();
 
-      match Self::create_pipelines(device, shaders, &self.layouts, &self.layout) {
+      match Self::create_pipelines(device, source, &self.layouts, &self.layout) {
         Ok(pipelines) => self.pipelines = pipelines,
         Err(error) => log::error!("Composited surfaces rejected, drawing with the last ones: {error}"),
       }
@@ -255,11 +255,11 @@ impl CompositedPass {
 
   fn create_pipelines(
     device: &wgpu::Device,
-    shaders: &ShaderLibrary,
+    source: PipelineSource<'_>,
     [view_layout, scene_layout, texture_layout, sky_layout]: &[wgpu::BindGroupLayout; 4],
     layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<CompositedPipelines> {
-    let module: wgpu::ShaderModule = create_module(device, shaders, "static/composited")?;
+    let module: wgpu::ShaderModule = source.get_module("static/composited")?;
     let composited_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
       label: Some("composited"),
       bind_group_layouts: &[
@@ -277,14 +277,14 @@ impl CompositedPass {
       ..Default::default()
     });
     let composited = Self::create_layout_pipelines(
-      device,
+      (device, source),
       &module,
       (&composited_layout, COMPOSITED_FRAGMENT),
       (ViewTargets::SCENE, Some(COMPOSITED_BLEND), wgpu::ColorWrites::ALL),
       StaticBatch::list_composited().map(|batch| batch.layout),
     )?;
     let wallmarks = Self::create_layout_pipelines(
-      device,
+      (device, source),
       &module,
       (&wallmark_layout, "fs_wallmark"),
       (ViewTargets::ALBEDO, Some(COMPOSITED_BLEND), wgpu::ColorWrites::ALL),
@@ -292,7 +292,7 @@ impl CompositedPass {
     )?;
     // Blended over what the water and the particles wrote, as `distort(true)` passes blend by their alpha.
     let distortion = Self::create_layout_pipelines(
-      device,
+      (device, source),
       &module,
       (&composited_layout, "fs_composited_distort"),
       (
@@ -304,7 +304,7 @@ impl CompositedPass {
     )?;
     // The mark alone, in the alpha, over whatever the surface behind it marked.
     let selection = Self::create_layout_pipelines(
-      device,
+      (device, source),
       &module,
       (&wallmark_layout, "fs_composited_selected"),
       (ViewTargets::MATERIAL, None, wgpu::ColorWrites::ALPHA),
@@ -315,7 +315,7 @@ impl CompositedPass {
   }
 
   fn create_layout_pipelines(
-    device: &wgpu::Device,
+    (device, source): (&wgpu::Device, PipelineSource<'_>),
     module: &wgpu::ShaderModule,
     (pipeline_layout, fragment): (&wgpu::PipelineLayout, &str),
     (format, blend, write_mask): (wgpu::TextureFormat, Option<wgpu::BlendState>, wgpu::ColorWrites),
@@ -367,7 +367,7 @@ impl CompositedPass {
             }),
             multisample: Default::default(),
             multiview_mask: None,
-            cache: None,
+            cache: source.get_driver_cache(),
           })
         })
       })

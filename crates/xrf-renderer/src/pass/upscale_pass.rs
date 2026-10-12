@@ -2,8 +2,8 @@ use xrf_error::XrfResult;
 use xrf_renderer_core::{PassParameters, RasterContext};
 
 use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline;
+use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::upscale_parameters::UpscaleParameters;
-use crate::shader::shader_library::ShaderLibrary;
 
 /// FSR 1 over a frame drawn smaller than its viewport: EASU upscales it, RCAS sharpens the upscaled frame.
 pub struct UpscalePass {
@@ -20,21 +20,21 @@ impl UpscalePass {
   /// # Errors
   ///
   /// Returns an error when the shader does not compose or compile.
-  pub fn new(device: &wgpu::Device, shaders: &ShaderLibrary) -> XrfResult<Self> {
+  pub fn new(device: &wgpu::Device, source: PipelineSource<'_>) -> XrfResult<Self> {
     let layout: wgpu::BindGroupLayout = UpscaleParameters::create_layout(device);
 
     Ok(Self {
-      pipelines: Self::create_pipelines(device, shaders, &layout)?,
-      generation: shaders.get_generation(),
+      pipelines: Self::create_pipelines(device, source, &layout)?,
+      generation: source.get_generation(),
       layout,
     })
   }
 
-  pub fn refresh(&mut self, device: &wgpu::Device, shaders: &ShaderLibrary) {
-    if shaders.get_generation() != self.generation {
-      self.generation = shaders.get_generation();
+  pub fn refresh(&mut self, device: &wgpu::Device, source: PipelineSource<'_>) {
+    if source.get_generation() != self.generation {
+      self.generation = source.get_generation();
 
-      match Self::create_pipelines(device, shaders, &self.layout) {
+      match Self::create_pipelines(device, source, &self.layout) {
         Ok(pipelines) => self.pipelines = pipelines,
         Err(error) => log::error!("Upscaling rejected, upscaling with the last one: {error}"),
       }
@@ -50,18 +50,11 @@ impl UpscalePass {
 
   fn create_pipelines(
     device: &wgpu::Device,
-    shaders: &ShaderLibrary,
+    source: PipelineSource<'_>,
     layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<[wgpu::RenderPipeline; 2]> {
     let create = |fragment: &str| {
-      create_fullscreen_pipeline(
-        device,
-        shaders,
-        "frame/upscale",
-        fragment,
-        &[Some(layout)],
-        Self::FORMAT,
-      )
+      create_fullscreen_pipeline(device, source, "frame/upscale", fragment, &[Some(layout)], Self::FORMAT)
     };
 
     Ok([create("fs_easu")?, create("fs_rcas")?])

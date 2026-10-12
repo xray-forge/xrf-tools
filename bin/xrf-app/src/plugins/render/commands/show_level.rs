@@ -25,6 +25,8 @@ pub fn render_show_level(
     Some(session_id) => {
       let level: Arc<SessionSnapshot<SelectedLevel>> = levels.selected.require(session_id)?;
 
+      state.watch_textures(&level.roots);
+
       log::info!(
         "Showing level '{}' in native viewport {}",
         level.source.get_label(),

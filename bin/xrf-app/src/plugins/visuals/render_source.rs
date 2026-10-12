@@ -1,5 +1,4 @@
-use std::collections::HashMap;
-use std::sync::{Arc, PoisonError, RwLock};
+use std::sync::Arc;
 
 use xrf_environment::WeatherDescriptor;
 use xrf_error::{XrfError, XrfResult};
@@ -14,9 +13,9 @@ use xrf_visual::{
   VisualTransform,
 };
 
-use crate::core::assets::{AssetMountState, read_located_asset};
+use crate::core::assets::AssetMountState;
 use crate::core::session::SessionSnapshot;
-use crate::plugins::levels::textures::resolve_reference;
+use crate::plugins::levels::texture_resolver::TextureResolver;
 use crate::plugins::visuals::pose::bake_named_motion;
 use crate::plugins::visuals::state::SelectedVisual;
 
@@ -35,61 +34,38 @@ pub struct VisualRenderSource {
   assets: AssetMountState,
   /// How far down each submesh's collapse chain to draw: zero its finest level, one its coarsest.
   detail: f32,
-  /// Where each texture reference resolved once asked for; `None` for one resolving to nothing.
-  textures: RwLock<HashMap<String, Option<String>>>,
+  /// Where each texture reference resolved once asked for, in the shared scope.
+  textures: TextureResolver,
 }
 
 impl VisualRenderSource {
   pub fn new(visual: Arc<SessionSnapshot<SelectedVisual>>, assets: AssetMountState, detail: f32) -> Self {
+    let textures: TextureResolver = TextureResolver::new(visual.roots.clone(), XrayTextureScope::shared(), []);
+
     Self {
       visual,
       assets,
       detail,
-      textures: RwLock::new(HashMap::new()),
+      textures,
     }
   }
 }
 
 impl RenderAssetSource for VisualRenderSource {
   fn get_texture_scope(&self) -> String {
-    format!("{:?} {:?}", self.visual.roots, XrayTextureScope::shared())
+    self.textures.get_scope_key()
   }
 
   fn read_texture(&self, reference: &str) -> XrfResult<Option<Vec<u8>>> {
-    let known: Option<Option<String>> = self
-      .textures
-      .read()
-      .unwrap_or_else(PoisonError::into_inner)
-      .get(reference)
-      .cloned();
-    let located: Option<String> = match known {
-      Some(located) => located,
-      None => {
-        let located: Option<String> = self
-          .assets
-          .with_probe(&self.visual.roots, |probe| {
-            resolve_reference(probe, &XrayTextureScope::shared(), reference)
-          })
-          .map_err(XrfError::new_asset_error)?;
+    self.textures.read(&self.assets, reference)
+  }
 
-        self
-          .textures
-          .write()
-          .unwrap_or_else(PoisonError::into_inner)
-          .insert(reference.to_owned(), located.clone());
+  fn forget_textures(&self, names: &[String]) {
+    self.textures.forget(names);
+  }
 
-        located
-      }
-    };
-    let Some(logical_path) = located else {
-      return Ok(None);
-    };
-
-    self
-      .assets
-      .with_probe(&self.visual.roots, |probe| read_located_asset(probe, &logical_path))
-      .map_err(XrfError::new_asset_error)?
-      .map(Some)
+  fn get_texture_stamp(&self, reference: &str) -> Option<u64> {
+    self.textures.get_stamp(&self.assets, reference)
   }
 }
 
