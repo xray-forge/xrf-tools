@@ -1,8 +1,7 @@
 import { afterEach, describe, expect, it } from "@jest/globals";
 import { ReactElement } from "react";
 
-import { TMemoryDetailSource } from "@/core/diagnostics/lib";
-import { useEditorStatus, usePublishedMemoryDetails } from "@/core/shell/editor-shell";
+import { useEditorStatus } from "@/core/shell/editor-shell";
 import { ApplicationStatusBar } from "@/core/shell/footer/ApplicationStatusBar";
 import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
@@ -11,11 +10,8 @@ const MB: number = 1024 * 1024;
 
 const STATUS: ReadonlyArray<string> = ["3 files"];
 
-const DETAILS: ReadonlyArray<TMemoryDetailSource> = [() => ({ label: "Renderer copies", value: "12 MB" })];
-
-function Tool({ isDetailed = false }: { isDetailed?: boolean }): ReactElement {
+function Tool(): ReactElement {
   useEditorStatus(STATUS);
-  usePublishedMemoryDetails(isDetailed ? DETAILS : []);
 
   return <></>;
 }
@@ -25,7 +21,7 @@ describe("ApplicationStatusBar", () => {
     resetMockInvoke();
   });
 
-  // Every tool shows what the process holds, whether or not it publishes anything of its own about memory.
+  // Every tool shows what the process holds.
   it("ends every application's status with what the backend and the webview hold, a letter each", async () => {
     setMockInvokeResponses({
       ["plugin:system|get_memory_usage"]: {
@@ -57,7 +53,7 @@ describe("ApplicationStatusBar", () => {
 
     const { findByText, getByTestId } = renderWithProviders(
       <>
-        <Tool isDetailed />
+        <Tool />
         <ApplicationStatusBar />
       </>,
       { route: "/level-viewer" }
