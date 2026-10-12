@@ -27,3 +27,4 @@ pub(crate) mod volumetric_feature;
 pub(crate) mod water_feature;
 pub(crate) mod water_frame;
 pub(crate) mod wet_feature;
+pub(crate) mod wind_feature;

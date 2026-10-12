@@ -3,11 +3,6 @@ use glam::Mat4;
 use crate::frame::depth_pyramid::DepthPyramid;
 use crate::frame::stats_readback::StatsReadback;
 use crate::frame::view_targets::ViewTargets;
-use crate::lighting::foliage_wind::FoliageWind;
-use crate::pass::foliage_wind_values::FoliageWindValues;
-use crate::pass::wind_uniform::WindUniform;
-use crate::scene::level::grass_view::GrassView;
-use crate::scene::level::particles_view::ParticlesView;
 
 /// What one view keeps from one frame to the next: its targets and depth history, what was asked of it (picks, the selection, overlays) and what it reads back.
 pub struct ViewState {
@@ -22,18 +17,8 @@ pub struct ViewState {
   pub view_projection_previous: Option<Mat4>,
   /// Frames a temporal resolve gathered, which the screen-space effects turn their noise by.
   pub noise_frame: u32,
-  /// The trees' sway the last frame drew with.
-  pub last_wind: Option<WindUniform>,
-  /// How far the enhanced foliage motion's flow fields have drifted.
-  pub foliage: FoliageWind,
-  /// What the foliage motion read this frame, which the grass takes as the trees do.
-  pub foliage_values: FoliageWindValues,
   /// What the cull kept, read back without waiting.
   pub stats: StatsReadback,
-  /// The grass as it plants around its camera.
-  pub grass: GrassView,
-  /// The particles in its camera, as their quads.
-  pub particles: ParticlesView,
 }
 
 impl ViewState {
@@ -45,12 +30,7 @@ impl ViewState {
       motion_previous: None,
       view_projection_previous: None,
       noise_frame: 0,
-      last_wind: None,
-      foliage: FoliageWind::default(),
-      foliage_values: FoliageWindValues::default(),
       stats: StatsReadback::new(device),
-      grass: GrassView::new(device),
-      particles: ParticlesView::new(device),
     }
   }
 

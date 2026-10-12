@@ -17,7 +17,6 @@ use crate::contract::render_applied_report::RenderAppliedReport;
 use crate::contract::render_applied_shadows::RenderAppliedShadows;
 use crate::contract::render_bloom_mode::RenderBloomMode;
 use crate::contract::render_debug_view::RenderDebugView;
-use crate::contract::render_foliage_settings::RenderFoliageSettings;
 use crate::contract::render_level_hit::RenderLevelHit;
 use crate::contract::render_lights_report::RenderLightsReport;
 use crate::contract::render_overlay::RenderOverlay;
@@ -42,7 +41,6 @@ use crate::pass::camera_uniform::CameraUniform;
 use crate::pass::combine_parameters::CombineParameters;
 use crate::pass::composited_parameters::CompositedParameters;
 use crate::pass::contact_shadow_uniform::ContactShadowUniform;
-use crate::pass::foliage_wind_values::FoliageWindValues;
 use crate::pass::froxel_uniform::FroxelUniform;
 use crate::pass::grass_colour_parameters::GrassColourParameters;
 use crate::pass::grass_puddles_uniform::GrassPuddlesUniform;
@@ -68,7 +66,6 @@ use crate::pass::view_binding::ViewBinding;
 use crate::pass::water_draw::WaterDraw;
 use crate::pass::water_uniform::WaterUniform;
 use crate::pass::wet_uniform::WetUniform;
-use crate::pass::wind_uniform::WindUniform;
 use crate::scene::level::cover_textures::CoverTextures;
 use crate::scene::level::feature::composited_draw::CompositedDraw;
 use crate::scene::level::feature::light_buffers::LightBuffers;
@@ -101,10 +98,6 @@ use crate::scene::texture::texture_cache::TextureCache;
 use crate::scene::texture::weather_texture_cache::WeatherTextureCache;
 use crate::scene::texture::weather_texture_kind::WeatherTextureKind;
 
-/// The sway amplitude the shadows are redrawn at while the enhanced foliage motion blows: its largest move a metre of
-/// reach, a tall crown's trunk swing over its height.
-const FOLIAGE_SHADOW_AMPLITUDE: f32 = 0.02;
-
 /// The camera hemi under which the enhanced fog's height fog is gone and over which it is whole, about the engine's
 /// indoors at `0.05` (`CGamePersistent::WeathersUpdate`).
 const INDOOR_HEMI_FADE: (f32, f32) = (0.03, 0.1);
@@ -128,7 +121,7 @@ pub struct SceneView {
 impl SceneView {
   /// What the scene's particles came to since the last report, as this view draws them.
   pub fn take_particles_report(&self, scene: &mut LevelScene) -> RenderParticlesReport {
-    scene.particles.take_report(self.state.particles.drawn)
+    scene.particles.take_report(self.features.particles.drawn)
   }
 
   /// What it keeps from one frame to the next.
@@ -290,30 +283,10 @@ impl SceneView {
       },
     );
 
-    let sway_time: f32 = scene.started.elapsed().as_secs_f32();
-    let foliage_settings: RenderFoliageSettings = options.features.grass.foliage;
-    let foliage: FoliageWindValues = self.state.foliage.advance(
-      sway_time,
-      &foliage_settings,
-      (lighting.wind, lighting.trees.is_some()),
-      lighting.rain.map_or(0.0, |rain| rain.density.clamp(0.0, 1.0)),
-    );
-    let wind: WindUniform = WindUniform::new(lighting.trees.as_ref(), sway_time)
-      .following(self.state.last_wind.as_ref())
-      .with_foliage(&foliage);
-
-    self.state.last_wind = Some(wind);
-    self.state.foliage_values = foliage;
-
-    // The enhanced motion moves a tree by more than the engine's lean for a given reach, so its shadows redraw at the
-    // enhanced reach whenever it blows.
-    let amplitude: f32 = if foliage_settings.is_enhanced() && foliage.wind.z > 0.0 {
-      FOLIAGE_SHADOW_AMPLITUDE
-    } else {
-      wind.get_amplitude()
-    };
-
-    self.info.sway = (amplitude, sway_time);
+    self
+      .features
+      .wind
+      .prepare(options, lighting, scene.started.elapsed().as_secs_f32());
     // The falling rain while the weather rains and the view shows it, then the wet surfaces, which follow it.
     let time: f32 = scene.started.elapsed().as_secs_f32();
     let windows: OverheadWindows = self.get_overhead_windows();
@@ -336,7 +309,6 @@ impl SceneView {
       .features
       .thunder
       .prepare(device, (lighting, weather), options, weather_textures);
-    self.info.wind = wind;
 
     // A keyframe whose textures are not all up is blended out, so a sky still going up shows the other one.
     let side = |index: usize| {
@@ -422,7 +394,7 @@ impl SceneView {
       lod_origin: view.position.extend(1.0),
     };
     self.info.matrices = (view.view, view.projection);
-    self.state.grass.prepare(
+    self.features.grass.prepare(
       (device, &mut *encoder),
       (passes.grass, scene.grass.get_level()),
       &options.features.grass,
@@ -433,7 +405,7 @@ impl SceneView {
         lighting.trees.is_some(),
         gust.strength,
       ),
-      &self.state.foliage_values,
+      self.features.wind.get_values(),
       // Where the puddles stood last frame, which no tuft is planted in: the wet readies after the grass.
       (
         &self.features.level_surface.puddles,
@@ -452,7 +424,7 @@ impl SceneView {
         engine: lighting.engine,
         lod: (self.info.cull.glod_start, self.info.cull.glod_end),
         statics: &scene.statics,
-        sway: &to_sway(&scene.statics, self.info.sway),
+        sway: &to_sway(&scene.statics, self.features.wind.get_sway()),
         campfire_shares: &scene.campfire_shares,
       },
     );
@@ -536,9 +508,9 @@ impl SceneView {
       .contact_shadows
       .prepare(options, self.info.lighting.to_sun, (height, self.state.noise_frame));
 
-    scene.particles.fill(view, options, &mut self.state.particles);
+    scene.particles.fill(view, options, &mut self.features.particles);
 
-    self.state.particles.upload((device, &mut *encoder));
+    self.features.particles.upload((device, &mut *encoder));
 
     self.write_present(options, scene.started.elapsed().as_secs_f32());
     self.features.volumetric.prepare(device, options);
@@ -595,7 +567,7 @@ impl SceneView {
       settings: &info.shadow_settings,
       sun_direction: info.sun_direction,
       switches: info.switches,
-      sway: to_sway(statics, info.sway),
+      sway: to_sway(statics, features.wind.get_sway()),
       params: &info.cull,
       textures,
     };
@@ -643,7 +615,7 @@ impl SceneView {
       settings: &self.info.shadow_settings,
       sun_direction: self.info.sun_direction,
       switches: self.info.switches,
-      sway: to_sway(statics, self.info.sway),
+      sway: to_sway(statics, self.features.wind.get_sway()),
       params: &self.info.cull,
       textures,
     };
@@ -841,7 +813,7 @@ impl SceneView {
     let water: &RenderWaterSettings = &options.features.water;
     let is_water_distorting: bool = water.is_enabled && water.is_distorted && options.mode.is_lit;
     let is_distorting: bool = !options.mode.is_wireframe
-      && (is_water_distorting || self.state.particles.is_distorting() || is_glass_distorting);
+      && (is_water_distorting || self.features.particles.is_distorting() || is_glass_distorting);
 
     let present: PresentUniform = PresentUniform::new(
       self.info.debug_view,
@@ -927,7 +899,7 @@ impl SceneView {
     let light_atlas: &'a wgpu::TextureView = scene.lights.get_shadow_atlas();
     let has_sky: bool = self.features.sky.get_views().is_some();
     let is_composited: bool = is_drawn && has_sky;
-    let has_particles: bool = is_drawn && self.state.particles.is_drawing();
+    let has_particles: bool = is_drawn && self.features.particles.is_drawing();
     let is_shafted: bool = self.info.is_shafted && !is_froxeled;
     let particle_surfaces: &wgpu::Buffer = scene.particles.get_surfaces();
     let texture_group: &wgpu::BindGroup = textures.get_bind_group();
@@ -945,7 +917,11 @@ impl SceneView {
       (&mut *graph, &mut *bindings, runtime),
       &scene.statics,
       &pyramid.view,
-      (&scene_view.info.cull, &scene_view.info.occlusion, &scene_view.info.wind),
+      (
+        &scene_view.info.cull,
+        &scene_view.info.occlusion,
+        scene_view.features.wind.get_uniform(),
+      ),
     );
     let layouts: [StaticDrawParameters; StaticLayout::COUNT] = statics.get_camera_draws().layouts;
     let lit: LightingHandles = LightingHandles {
@@ -976,7 +952,7 @@ impl SceneView {
     let grass_level: Option<&GrassLevel> = scene.grass.get_level();
     let grass_args: Option<GraphBuffer> =
       scene_view
-        .state
+        .features
         .grass
         .add_planting(&mut *graph, &mut *bindings, (passes.grass, grass_level));
 
@@ -1016,7 +992,7 @@ impl SceneView {
       });
 
     if let (true, Some(grass_args)) = (is_drawn, grass_args) {
-      scene_view.state.grass.add_draw(
+      scene_view.features.grass.add_draw(
         &mut *graph,
         (passes.grass, grass_level),
         (handles, grass_args),
@@ -1296,7 +1272,7 @@ impl SceneView {
       }
 
       if has_particles {
-        scene_view.state.particles.add_passes(
+        scene_view.features.particles.add_passes(
           (&mut *graph, &mut *bindings),
           passes.particles,
           (handles, lit.lighting, particle_surfaces),
@@ -1556,7 +1532,7 @@ impl SceneView {
             trace_grass_colours: StorageArray::new(
               grass_colours.unwrap_or_else(|| bindings.import_buffer(&mut *graph, "grass colours", trace.get_empty())),
             ),
-            trace_grass: runtime.push_uniform(self.state.grass.get_trace_uniform()),
+            trace_grass: runtime.push_uniform(self.features.grass.get_trace_uniform()),
           },
           texture_group,
         )
@@ -1700,7 +1676,7 @@ impl SceneView {
         .settings
         .is_enabled
         .then_some(self.features.lights.settings),
-      grass: self.state.grass.get_applied(&options.features.grass),
+      grass: self.features.grass.get_applied(&options.features.grass),
       is_water: options.features.water.is_enabled,
       environment: None,
       sun: self

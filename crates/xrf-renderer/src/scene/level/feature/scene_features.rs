@@ -19,8 +19,11 @@ use crate::scene::level::feature::view_feature::ViewFeature;
 use crate::scene::level::feature::volumetric_feature::VolumetricFeature;
 use crate::scene::level::feature::water_feature::WaterFeature;
 use crate::scene::level::feature::wet_feature::WetFeature;
+use crate::scene::level::feature::wind_feature::WindFeature;
+use crate::scene::level::grass_view::GrassView;
 use crate::scene::level::level_shadows::LevelShadows;
 use crate::scene::level::level_surface::LevelSurface;
+use crate::scene::level::particles_view::ParticlesView;
 use crate::scene::level::rain_cover::RainCover;
 use crate::scene::level::surroundings_cube::SurroundingsCube;
 
@@ -39,6 +42,11 @@ pub struct SceneFeatures {
   /// What it draws over its frame and marks in it: the page's overlays and the selection.
   pub overlays: OverlaysFeature,
   pub pick: PickFeature,
+  pub wind: WindFeature,
+  /// The level's grass as the view plants and draws it.
+  pub grass: GrassView,
+  /// The scene's particles as the view sorts and draws them.
+  pub particles: ParticlesView,
   pub fog: FogFeature,
   pub bloom: BloomFeature,
   pub smoothing: SmoothingFeature,
@@ -72,6 +80,9 @@ impl SceneFeatures {
       surroundings: SurroundingsCube::new(device, view_layout, args_size),
       lights: LightsFeature::new(device),
       overlays: OverlaysFeature::default(),
+      wind: WindFeature::default(),
+      grass: GrassView::new(device),
+      particles: ParticlesView::new(device),
       fog: FogFeature::default(),
       bloom: BloomFeature::default(),
       smoothing: SmoothingFeature::default(),
