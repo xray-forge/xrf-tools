@@ -32,7 +32,7 @@ function describeBackendChoice(
   availability: Nullable<ReadonlyArray<RenderBackendAvailability>>
 ): string {
   const lead: string =
-    "The API every viewport draws with. Automatic takes the first that works; moving to another API restarts the " +
+    "The API every viewport draws with. Auto takes the first that works; moving to another API restarts the " +
     "renderer and streams the level in again.";
 
   if (availability === null) {
@@ -92,7 +92,7 @@ export function RenderBackendFormRow({
   const options: ReadonlyArray<IChoiceFormRowOption<TRenderBackendChoice>> = RENDER_BACKEND_CHOICES.map(
     (choice: TRenderBackendChoice) =>
       choice === RENDER_BACKEND_AUTO
-        ? { label: "Automatic", value: choice }
+        ? { label: "Auto", value: choice }
         : {
             isDisabled: availability !== null && !isRenderBackendAvailable(choice, availability),
             label: describeRenderBackend(choice),

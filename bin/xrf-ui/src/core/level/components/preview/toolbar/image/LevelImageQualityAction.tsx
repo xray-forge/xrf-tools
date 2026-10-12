@@ -73,7 +73,7 @@ function toBackendOptions(
 ): ReadonlyArray<IChoiceFormRowOption<TRenderBackendChoice>> {
   return RENDER_BACKEND_CHOICES.map((choice: TRenderBackendChoice) =>
     choice === RENDER_BACKEND_AUTO
-      ? { label: "Automatic", value: choice }
+      ? { label: "Auto", value: choice }
       : {
           isDisabled: availability !== null && !isRenderBackendAvailable(choice, availability),
           label: describeRenderBackend(choice),

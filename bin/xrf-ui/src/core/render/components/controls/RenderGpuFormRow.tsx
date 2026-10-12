@@ -21,7 +21,7 @@ import { BaseComponentProps } from "@/lib/dom/element-types";
  */
 function describeGpuChoice(gpu: Nullable<RenderGpu>, backend: RenderBackendAvailability | undefined): string {
   const lead: string =
-    "The GPU every viewport draws on. Automatic takes the graphics API's high-performance GPU; changing it restarts " +
+    "The GPU every viewport draws on. Auto takes the graphics API's high-performance GPU; changing it restarts " +
     "the renderer and streams the level in again.";
   const drawn: Nullable<RenderGpuDescription> = resolveRenderGpu(gpu, backend);
 
@@ -67,7 +67,7 @@ export function RenderGpuFormRow({
         );
   const gpus: ReadonlyArray<RenderGpuDescription> = drawn?.gpus ?? [];
   const options: ReadonlyArray<IChoiceFormRowOption<TRenderGpuKey>> = [
-    { label: "Automatic", value: RENDER_GPU_AUTO },
+    { label: "Auto", value: RENDER_GPU_AUTO },
     ...gpus.map((it: RenderGpuDescription) => ({ label: it.name, value: toRenderGpuKey(it.gpu) })),
   ];
 
