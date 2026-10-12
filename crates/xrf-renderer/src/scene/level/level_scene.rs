@@ -77,7 +77,7 @@ impl LevelScene {
 
     Self {
       grass: LevelGrass::new(&source, workers),
-      lights: LevelLights::new(device, view_layout, statics.args.size()),
+      lights: LevelLights::new(device, view_layout, statics.cull.args.size()),
       particles: LevelParticles::new(device, workers),
       statics,
       trace: None,
@@ -116,14 +116,14 @@ impl LevelScene {
     }
 
     // Only the cubes this scene samples are kept loaded; another scene's are bound as placeholders here.
-    for slot in &self.statics.environment_slots {
+    for slot in &self.statics.surfaces.environment_slots {
       if let Some(reference) = textures.get_environment(*slot) {
         weather_textures.request(reference, WeatherTextureKind::Cube, &assets);
       }
     }
 
     if let Some(slots) = self.grass.poll(device, grass_pass, textures, &assets) {
-      self.statics.texture_slots.extend(slots);
+      self.statics.surfaces.texture_slots.extend(slots);
     }
 
     let RenderSceneFrame {
@@ -291,7 +291,7 @@ impl LevelScene {
 
   /// What became of every texture the level's surfaces sample.
   pub fn describe_textures(&self, textures: &TextureCache) -> Vec<RenderTextureReport> {
-    textures.describe(&self.statics.texture_slots)
+    textures.describe(&self.statics.surfaces.texture_slots)
   }
 
   /// A spawned object's bounding sphere in renderer space, once its model is in the scene.
@@ -301,13 +301,14 @@ impl LevelScene {
 
   /// Every environment slot it samples, so the cubes no scene samples can be freed.
   pub fn list_environment_slots(&self) -> impl Iterator<Item = u32> + '_ {
-    self.statics.environment_slots.iter().copied()
+    self.statics.surfaces.environment_slots.iter().copied()
   }
 
   /// Every texture slot it samples, so the slots no scene samples can be freed.
   pub fn list_texture_slots(&self) -> impl Iterator<Item = u32> + '_ {
     self
       .statics
+      .surfaces
       .texture_slots
       .iter()
       .copied()

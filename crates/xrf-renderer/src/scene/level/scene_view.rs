@@ -170,6 +170,7 @@ use crate::scene::level::view_info::ViewInfo;
 use crate::scene::level::view_state::ViewState;
 use crate::scene::level::weather_model_buffers::WeatherModelBuffers;
 use crate::scene::static_scene::static_batch::StaticBatch;
+use crate::scene::static_scene::static_cull_scratch::StaticCullScratch;
 use crate::scene::static_scene::static_layout::StaticLayout;
 use crate::scene::static_scene::static_scene::StaticScene;
 use crate::scene::static_scene::static_selection::StaticSelection;
@@ -231,7 +232,7 @@ impl SceneView {
     Self {
       info: ViewInfo::default(),
       state: ViewState::new(device, queue),
-      renderer: SceneRenderer::new(device, view_layout, scene.statics.args.size()),
+      renderer: SceneRenderer::new(device, view_layout, scene.statics.cull.args.size()),
     }
   }
 
@@ -470,14 +471,14 @@ impl SceneView {
     let threshold = |area: f32| -> f32 { (area / 3.0).powi(2) / screen };
 
     self.info.cull = StaticCullParams {
-      cluster_count: scene.statics.get_cluster_count(),
-      row_count: scene.statics.get_row_count(),
+      cluster_count: scene.statics.geometry.get_cluster_count(),
+      row_count: scene.statics.geometry.get_row_count(),
       batch_count: StaticBatch::COUNT as u32,
-      impostor_count: scene.statics.get_impostor_count(),
+      impostor_count: scene.statics.geometry.get_impostor_count(),
       glod_start: threshold(options.features.lod.ssa_glod_start),
       glod_end: threshold(options.features.lod.ssa_glod_end),
       discard_below: options.features.lod.ssa_discard.powi(2) / screen,
-      candidate_capacity: scene.statics.get_list_capacity(),
+      candidate_capacity: scene.statics.cull.get_list_capacity(),
       is_occluding: options.features.is_occlusion_culled as u32,
       lod_a: threshold(options.features.lod.ssa_a),
       lod_b: threshold(options.features.lod.ssa_b),
@@ -515,7 +516,7 @@ impl SceneView {
         settings: &options.features.lights,
         engine: lighting.engine,
         lod: (self.info.cull.glod_start, self.info.cull.glod_end),
-        contents: scene.statics.get_contents(),
+        statics: &scene.statics,
         sway: &to_sway(&scene.statics, self.info.sway),
         campfire_shares: &scene.campfire_shares,
       },
@@ -2335,7 +2336,7 @@ impl SceneView {
         scene_view
           .state
           .stats
-          .record(context.get_encoder(), args, StaticScene::STATS_OFFSET);
+          .record(context.get_encoder(), args, StaticCullScratch::STATS_OFFSET);
       });
 
     if let (true, Some(grass_args)) = (is_drawn, grass_args) {

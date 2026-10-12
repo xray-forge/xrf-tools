@@ -66,6 +66,14 @@ impl CameraView {
   }
 
   /// The view's six planes in renderer space, pointing in, each normalized so a sphere tests by its radius.
+  /// Whether any of a sphere in the world, its centre and radius, falls within the view's frustum.
+  pub fn reaches(&self, sphere: Vec4) -> bool {
+    self
+      .get_planes()
+      .iter()
+      .all(|plane| plane.truncate().dot(sphere.truncate()) + plane.w >= -sphere.w)
+  }
+
   pub fn get_planes(&self) -> [Vec4; 6] {
     let matrix: Mat4 = self.get_view_projection();
     let rows: [Vec4; 4] = [matrix.row(0), matrix.row(1), matrix.row(2), matrix.row(3)];

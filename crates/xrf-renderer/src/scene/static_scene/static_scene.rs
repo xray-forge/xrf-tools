@@ -1,23 +1,22 @@
-use std::collections::{BTreeSet, HashMap};
+use std::collections::VecDeque;
 use std::sync::Arc;
 
 use glam::{Mat4, UVec4, Vec3, Vec4};
 use xrf_error::{XrfError, XrfResult};
 use xrf_material::XraySurfaceDescriptor;
-use xrf_renderer_core::{ProxyHandle, ProxyStore, Span, SpanBuffer, SpanLane, StoreMirror};
-use xrf_visual::{SectorGeometry, SectorImpostors, SectorInstanceGroup, SectorPackage, SectorSurface, VisualClusters};
+use xrf_renderer_core::{ProxyHandle, ProxyStore, Span};
+use xrf_visual::{SectorGeometry, SectorImpostors, SectorInstanceGroup, SectorPackage, SectorSurface};
 
-use crate::context::gpu_requirements::RAY_QUERY_FEATURES;
 use crate::contract::render_pool_use::RenderPoolUse;
 use crate::contract::render_selection_target::RenderSelectionTarget;
 use crate::contract::render_static_report::RenderStaticReport;
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::scene::section_bytes::read_pods;
-use crate::scene::static_scene::growable_buffer::GrowableBuffer;
 use crate::scene::static_scene::static_batch::StaticBatch;
 use crate::scene::static_scene::static_class::StaticClass;
-use crate::scene::static_scene::static_cluster::StaticCluster;
+use crate::scene::static_scene::static_cull_scratch::StaticCullScratch;
+use crate::scene::static_scene::static_geometry::StaticGeometry;
 use crate::scene::static_scene::static_geometry_base::StaticGeometryBase;
 use crate::scene::static_scene::static_impostor::StaticImpostor;
 use crate::scene::static_scene::static_layout::StaticLayout;
@@ -25,8 +24,8 @@ use crate::scene::static_scene::static_model::StaticModel;
 use crate::scene::static_scene::static_model_place::StaticModelPlace;
 use crate::scene::static_scene::static_model_proxy::StaticModelProxy;
 use crate::scene::static_scene::static_object_proxy::StaticObjectProxy;
+use crate::scene::static_scene::static_objects::StaticObjects;
 use crate::scene::static_scene::static_place::StaticPlace;
-use crate::scene::static_scene::static_region::StaticRegion;
 use crate::scene::static_scene::static_row::StaticRow;
 use crate::scene::static_scene::static_scene_writer::StaticSceneWriter;
 use crate::scene::static_scene::static_sector_proxy::StaticSectorProxy;
@@ -37,281 +36,71 @@ use crate::scene::static_scene::static_slot_info::StaticSlotInfo;
 use crate::scene::static_scene::static_sorted_place::StaticSortedPlace;
 use crate::scene::static_scene::static_sorted_run::StaticSortedRun;
 use crate::scene::static_scene::static_spans::StaticSpans;
-use crate::scene::static_scene::static_surface::StaticSurface;
-use crate::scene::static_scene::static_surface_build::{build_impostor_surface, build_static_surface};
 use crate::scene::static_scene::static_surface_key::StaticSurfaceKey;
-use crate::scene::static_scene::static_surface_pass::StaticSurfacePass;
 use crate::scene::static_scene::static_surface_use::StaticSurfaceUse;
+use crate::scene::static_scene::static_surfaces::StaticSurfaces;
 use crate::scene::static_scene::static_trace_geometry::StaticTraceGeometry;
 use crate::scene::static_scene::static_trace_group::StaticTraceGroup;
 use crate::scene::static_scene::static_vertex_words::{measure_sway_reach, pack_vertex_words};
-use crate::scene::texture::texture_cache::{MISSING_SLOT, TextureCache};
+use crate::scene::texture::texture_cache::TextureCache;
 
 /// Clusters a spawned model's row holds at most: the row cull walks a row's clusters on one thread.
 const MODEL_ROW_CLUSTERS: usize = 32;
 
-/// Triangles a cluster holds at most.
-const CLUSTER_TRIANGLES: u32 = VisualClusters::MAX_TRIANGLES;
-
 /// A level's static geometry on the GPU, as sectors, spawned models and the objects standing as them are added and
-/// removed: span buffers of vertices, indices, clusters, slots, places, impostors and skins each item takes a range of,
-/// the rows a store keeps dense for the cull to walk, and the surfaces every item shares. A cull walks the clusters and
-/// impostors whole, so a range is cleared as it is freed and reads as nothing.
+/// removed: the geometry's buffers each item takes ranges of, the surfaces every item shares, what a frame's culls
+/// write into, and the items themselves, found by handle.
 pub struct StaticScene {
-  /// Each layout's vertices, which an acceleration structure reads in place where rays are traced.
-  pub words: [SpanBuffer; StaticLayout::COUNT],
-  pub indices: SpanBuffer,
-  /// The clusters, and their spheres in the `CLUSTER_SPHERES` lane.
-  pub clusters: SpanBuffer,
-  pub slots: SpanBuffer,
-  pub places: SpanBuffer,
-  /// Every place's rows, dense, for the row cull to walk.
-  pub rows: StoreMirror,
-  pub surfaces: GrowableBuffer,
-  pub lists: GrowableBuffer,
-  /// Clusters the early phase set aside, for the late phase to test again.
-  pub candidates: GrowableBuffer,
-  /// The impostors, and by lane their corners (two vectors a corner: its position and hemisphere term, then its atlas
-  /// coordinate and sun term), what each one's level of detail draws this frame as the cull decided it, and the list of
-  /// those drawn this frame.
-  pub impostors: SpanBuffer,
-  /// Skinned models' links, two words a vertex, and the objects' bone matrices, three rows a bone.
-  pub skins: SpanBuffer,
-  pub bones: SpanBuffer,
-  pub regions: wgpu::Buffer,
-  pub args: wgpu::Buffer,
-  /// Each batch's late draw arguments, then the late phase's dispatch and the candidates' count.
-  pub late: wgpu::Buffer,
-  /// The late phase's dispatch, copied out of `late` so the dispatch reads no buffer it binds.
-  pub late_dispatch: wgpu::Buffer,
-  /// Every batch's draw arguments as a cull starts them, copied into a view's own before each cull of it in a frame.
-  pub args_template: wgpu::Buffer,
-  row_records: ProxyStore<StaticRow>,
-  /// Place zero, where every single draw stands: its geometry is in renderer space already. Never freed.
-  origin: Span,
-  /// Entries the visible list and the candidates hold this frame.
-  list_capacity: u32,
-  /// Every batch's draw arguments as a cull starts them, which a shadow's own arguments start from too.
-  late_template: wgpu::Buffer,
-  /// The capacities the regions and the templates were last written for.
-  written: Option<[u32; StaticBatch::LIST_COUNT]>,
-  /// Each impostor surface's row, by its shader table entry.
-  impostor_rows: HashMap<u16, u32>,
-  /// Each surface's row and class, once asked for; `None` for one no static draw draws.
-  surface_rows: HashMap<StaticSurfaceKey, Option<StaticSurfaceUse>>,
-  /// Every texture slot the scene's surfaces sample, in the order they were first asked for.
-  pub texture_slots: BTreeSet<u32>,
-  /// Every environment slot its environment-mapped surfaces sample.
-  pub environment_slots: BTreeSet<u32>,
-  /// Whether any of its surfaces draws into the distortion target, and whether any is glass.
-  surface_count: u32,
-  /// Entries of the visible list each batch may need: its clusters, each counted once per place drawing it.
-  capacities: [u32; StaticBatch::LIST_COUNT],
+  pub geometry: StaticGeometry,
+  pub surfaces: StaticSurfaces,
+  pub cull: StaticCullScratch,
   sectors: ProxyStore<StaticSectorProxy>,
   models: ProxyStore<StaticModelProxy>,
-  objects: ProxyStore<StaticObjectProxy>,
-  /// Each spawned object in the scene, by its index, and by its place.
-  object_handles: HashMap<u32, ProxyHandle<StaticObjectProxy>>,
-  place_objects: HashMap<u32, ProxyHandle<StaticObjectProxy>>,
+  objects: StaticObjects,
   /// The bounding sphere of every place that sways and its reach, which a light's shadow looks for in its range.
   swaying: Vec<(Vec4, f32)>,
   /// The farthest any swaying vertex reaches from its tree's foot, weighted by its rigidity and scaled by its place.
   sway_reach: f32,
   /// Items added and removed, which a view drawn with another count is drawn again for.
   contents: usize,
-  /// Whether the device traces rays, so the vertices and indices are acceleration structures' input.
-  is_traced: bool,
+  /// The sphere in the world of each item added or removed lately, the first the change after `contents` was
+  /// `changes_from`; none (a negative radius) for an item standing nowhere, a model alone.
+  changes: VecDeque<Vec4>,
+  changes_from: usize,
 }
 
 impl StaticScene {
-  /// Vertices one cluster's draw pulls: its triangles' corners, a short cluster's tail collapsed.
-  pub const CLUSTER_VERTICES: u32 = CLUSTER_TRIANGLES * 3;
+  /// Changes the log keeps, past which a cache drawn before them all is drawn again whole.
+  const CHANGES_KEPT: usize = 1024;
 
-  /// Where the cull's counts follow every draw list's arguments in their buffer.
-  pub const STATS_OFFSET: u64 = (StaticBatch::LIST_COUNT * 16) as u64;
-
-  /// Where the impostors' draw arguments follow the cull's counts.
-  pub const IMPOSTOR_ARGS_OFFSET: u64 = Self::STATS_OFFSET + 16;
-
-  /// Where the late phase's dispatch follows every draw list's late arguments in theirs.
-  pub const LATE_DISPATCH_OFFSET: u64 = (StaticBatch::LIST_COUNT * 16) as u64;
-
-  /// The clusters' lane of their spheres.
-  pub const CLUSTER_SPHERES: usize = 1;
-
-  /// The impostors' lanes: their corners, their terms this frame, and the list of those drawn.
-  pub const IMPOSTOR_CORNERS: usize = 1;
-  pub const IMPOSTOR_TERMS: usize = 2;
-  pub const IMPOSTOR_LIST: usize = 3;
-
-  /// Vectors an impostor's corners take: two a corner.
-  pub const CORNER_VECTORS: usize = StaticImpostor::CORNERS * 2;
+  /// Where an item standing nowhere of its own changes the scene: no sphere reaches it.
+  const NOWHERE: Vec4 = Vec4::new(0.0, 0.0, 0.0, -1.0);
 
   pub fn new(device: &wgpu::Device, queue: &wgpu::Queue) -> Self {
-    let storage: wgpu::BufferUsages = wgpu::BufferUsages::STORAGE;
-    let words: u64 = u64::from(StaticLayout::STRIDE) * 4;
-    let is_traced: bool = device.features().contains(RAY_QUERY_FEATURES);
-    let traced: wgpu::BufferUsages = if is_traced {
-      storage | wgpu::BufferUsages::BLAS_INPUT
-    } else {
-      storage
-    };
-
-    let mut places: SpanBuffer = SpanBuffer::new(
-      device,
-      "static places",
-      size_of::<StaticPlace>() as u64,
-      storage,
-      1 << 10,
-    );
-    let origin: Span = places
-      .allocate(device, queue, 1)
-      .expect("A fresh span buffer holds its first element");
-
-    assert_eq!(origin.get_offset(), 0, "The origin place is the first");
-    places.write(&origin, 0, bytemuck::bytes_of(&StaticPlace::default()));
-
-    let mut scene: Self = Self {
-      words: [
-        SpanBuffer::new(device, "static baked vertices", words, traced, 1 << 14),
-        SpanBuffer::new(device, "static tree vertices", words, traced, 1 << 14),
-        SpanBuffer::new(device, "static model vertices", words, traced, 1 << 14),
-      ],
-      indices: SpanBuffer::new(device, "static indices", 4, traced, 1 << 16),
-      clusters: SpanBuffer::with_lanes(
-        device,
-        &[
-          SpanLane::new("static clusters", size_of::<StaticCluster>() as u64),
-          SpanLane::new("static spheres", size_of::<Vec4>() as u64),
-        ],
-        storage,
-        1 << 12,
-      ),
-      slots: SpanBuffer::new(device, "static slots", size_of::<StaticSlot>() as u64, storage, 1 << 10),
-      places,
-      rows: StoreMirror::new(device, "static rows", size_of::<StaticRow>() as u64, storage),
-      surfaces: GrowableBuffer::new(device, "static surfaces", storage),
-      lists: GrowableBuffer::new(device, "static lists", storage),
-      candidates: GrowableBuffer::new(device, "static candidates", storage),
-      impostors: SpanBuffer::with_lanes(
-        device,
-        &[
-          SpanLane::new("static impostors", size_of::<StaticImpostor>() as u64),
-          SpanLane::new(
-            "static impostor corners",
-            (Self::CORNER_VECTORS * size_of::<Vec4>()) as u64,
-          ),
-          SpanLane::new("static impostor terms", 16),
-          SpanLane::new("static impostor list", 4),
-        ],
-        storage,
-        1 << 8,
-      ),
-      skins: SpanBuffer::new(device, "static model skins", 8, storage, 1 << 14),
-      bones: SpanBuffer::new(device, "static bones", size_of::<Vec4>() as u64, storage, 1 << 12),
-      regions: device.create_buffer(&wgpu::BufferDescriptor {
-        label: Some("static regions"),
-        size: (StaticBatch::LIST_COUNT * size_of::<StaticRegion>()) as u64,
-        usage: storage | wgpu::BufferUsages::COPY_DST,
-        mapped_at_creation: false,
-      }),
-      args: device.create_buffer(&wgpu::BufferDescriptor {
-        label: Some("static draw arguments"),
-        size: Self::IMPOSTOR_ARGS_OFFSET + 16,
-        usage: storage | wgpu::BufferUsages::INDIRECT | wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::COPY_SRC,
-        mapped_at_creation: false,
-      }),
-      late: device.create_buffer(&wgpu::BufferDescriptor {
-        label: Some("static late draw arguments"),
-        size: Self::LATE_DISPATCH_OFFSET + 16,
-        usage: storage | wgpu::BufferUsages::INDIRECT | wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::COPY_SRC,
-        mapped_at_creation: false,
-      }),
-      args_template: device.create_buffer(&wgpu::BufferDescriptor {
-        label: Some("static draw arguments template"),
-        size: Self::IMPOSTOR_ARGS_OFFSET + 16,
-        usage: wgpu::BufferUsages::COPY_SRC | wgpu::BufferUsages::COPY_DST,
-        mapped_at_creation: false,
-      }),
-      late_dispatch: device.create_buffer(&wgpu::BufferDescriptor {
-        label: Some("static late dispatch"),
-        size: 12,
-        usage: wgpu::BufferUsages::INDIRECT | wgpu::BufferUsages::COPY_DST,
-        mapped_at_creation: false,
-      }),
-      row_records: ProxyStore::new(),
-      origin,
-      list_capacity: 0,
-      late_template: device.create_buffer(&wgpu::BufferDescriptor {
-        label: Some("static late draw arguments template"),
-        size: Self::LATE_DISPATCH_OFFSET + 16,
-        usage: wgpu::BufferUsages::COPY_SRC | wgpu::BufferUsages::COPY_DST,
-        mapped_at_creation: false,
-      }),
-      written: None,
-      impostor_rows: HashMap::new(),
-      surface_rows: HashMap::new(),
-      texture_slots: BTreeSet::new(),
-      environment_slots: BTreeSet::new(),
-      surface_count: 0,
-      capacities: [0; StaticBatch::LIST_COUNT],
+    Self {
+      geometry: StaticGeometry::new(device, queue),
+      surfaces: StaticSurfaces::new(device, queue),
+      cull: StaticCullScratch::new(device),
       sectors: ProxyStore::new(),
       models: ProxyStore::new(),
-      objects: ProxyStore::new(),
-      object_handles: HashMap::new(),
-      place_objects: HashMap::new(),
+      objects: StaticObjects::default(),
       swaying: Vec::new(),
       sway_reach: 0.0,
       contents: 0,
-      is_traced,
-    };
-    let mut encoder: wgpu::CommandEncoder = device.create_command_encoder(&Default::default());
-
-    // Surface row zero is never named, so a slot left at zero still reads a valid row.
-    scene.surfaces.append(
-      device,
-      queue,
-      &mut encoder,
-      bytemuck::bytes_of(&StaticSurface::default()),
-    );
-    scene.surface_count = 1;
-    queue.submit([encoder.finish()]);
-
-    scene
+      changes: VecDeque::new(),
+      changes_from: 0,
+    }
   }
 
   /// How full the scene's pools are: what a report of its static draws starts from.
   pub fn get_pools(&self) -> RenderStaticReport {
     RenderStaticReport {
-      slots: to_pool_use(&self.slots),
-      places: to_pool_use(&self.places),
-      rows: RenderPoolUse {
-        used: self.row_records.len() as u32,
-        capacity: self.rows.get_capacity(),
-      },
-      lods: to_pool_use(&self.impostors),
-      clusters: to_pool_use(&self.clusters),
       surface_list: RenderPoolUse {
         used: 0,
-        capacity: self.list_capacity,
+        capacity: self.cull.get_list_capacity(),
       },
-      ..Default::default()
+      ..self.geometry.get_pools()
     }
-  }
-
-  /// Clusters the cull walks: the whole buffer, a range nothing holds reading as an empty cluster.
-  pub fn get_cluster_count(&self) -> u32 {
-    self.clusters.get_capacity()
-  }
-
-  /// Rows the cull walks, as of the last `prepare_draws`.
-  pub fn get_row_count(&self) -> u32 {
-    self.rows.get_count()
-  }
-
-  /// Impostors the cull walks: the whole buffer, a range nothing holds reading as no impostor.
-  pub fn get_impostor_count(&self) -> u32 {
-    self.impostors.get_capacity()
   }
 
   /// Sectors in the scene.
@@ -362,29 +151,29 @@ impl StaticScene {
 
   /// The spawned object a picked place is, where it is one.
   pub fn resolve_spawn_pick(&self, place: u32) -> Option<u32> {
-    self.get_object_at(place).map(|object| object.object)
+    self.objects.find_at(place).map(|object| object.object)
   }
 
   /// Whether a spawned object stands in the scene.
   pub fn has_object(&self, object: u32) -> bool {
-    self.object_handles.contains_key(&object)
+    self.objects.contains(object)
   }
 
   /// A spawned object's bounding sphere in renderer space, while it stands in the scene.
   pub fn get_object_sphere(&self, object: u32) -> Option<Vec4> {
-    self.get_object(object).map(|object| object.sphere)
+    self.objects.find(object).map(|object| object.sphere)
   }
 
   /// A spawned object's box as it stands: its model's box in its own space, and where it stands it.
   pub fn get_object_box(&self, object: u32) -> Option<(Mat4, [Vec3; 2])> {
-    let object: &StaticObjectProxy = self.get_object(object)?;
+    let object: &StaticObjectProxy = self.objects.find(object)?;
 
     Some((object.transform, self.models.get(object.model)?.bounds))
   }
 
   /// Where a spawned object stands, while it stands in the scene.
   pub fn get_object_transform(&self, object: u32) -> Option<Mat4> {
-    self.get_object(object).map(|object| object.transform)
+    self.objects.find(object).map(|object| object.transform)
   }
 
   /// What a selection marks, once what it names is in the scene: a spawned object's place; a mesh's place; or the
@@ -392,7 +181,7 @@ impl StaticScene {
   pub fn resolve_selection(&self, target: &RenderSelectionTarget) -> Option<StaticSelection> {
     match *target {
       RenderSelectionTarget::Spawn { object } => Some(StaticSelection {
-        place: Some(self.get_object(object)?.place.get_offset()),
+        place: Some(self.objects.find(object)?.place.get_offset()),
         runs: vec![StaticSelection::ANY_CLUSTER],
       }),
       RenderSelectionTarget::Surface {
@@ -456,7 +245,7 @@ impl StaticScene {
       *to = *from;
     }
 
-    self.bones.write(span, 0, bytemuck::cast_slice(&rows));
+    self.geometry.bones.write(span, 0, bytemuck::cast_slice(&rows));
   }
 
   /// Bytes of every pack put into the scene.
@@ -466,11 +255,7 @@ impl StaticScene {
 
   /// Bytes the scene's growing buffers hold on the GPU, which is what grows with a level or a model.
   pub fn get_buffer_bytes(&self) -> u64 {
-    self.list_spans().iter().map(|buffer| buffer.get_bytes()).sum::<u64>()
-      + self.rows.get_bytes()
-      + self.surfaces.get_capacity()
-      + self.lists.get_capacity()
-      + self.candidates.get_capacity()
+    self.geometry.get_bytes() + self.surfaces.buffer.get_capacity() + self.cull.get_bytes()
   }
 
   /// Puts one packed sector into the scene at the handle its poster allocated: its baked sections as single draws, its
@@ -492,6 +277,8 @@ impl StaticScene {
   ) -> XrfResult {
     let mut writer: StaticSceneWriter = StaticSceneWriter::default();
     let mut swaying: Vec<(Vec4, f32)> = Vec::new();
+    // What its baked sections hold, in the world.
+    let mut sections: Vec<Vec4> = Vec::new();
     let description = &package.description;
     let buffer: &[u8] = &package.buffer;
 
@@ -499,7 +286,7 @@ impl StaticScene {
       let base: StaticGeometryBase = put_geometry(&mut writer, StaticLayout::Baked, &description.geometry, buffer);
 
       for section in &description.sections {
-        let Some(StaticSurfaceUse { surface, class, passes }) = self.resolve_surface(
+        let Some(StaticSurfaceUse { surface, class, passes }) = self.surfaces.resolve(
           &mut writer,
           level_surface(&section.surface, descriptors),
           textures,
@@ -514,6 +301,8 @@ impl StaticScene {
         let cut: Vec<(u32, u32, Vec4)> =
           cut_clusters(&description.geometry, buffer, section.draw.start, section.draw.count);
         let sphere: Vec4 = bound_spheres(&cut.iter().map(|(_, _, sphere)| *sphere).collect::<Vec<Vec4>>());
+
+        sections.push(sphere);
         let (slot, clusters): (u32, u32) = writer.put_slot(
           &base,
           cut,
@@ -575,23 +364,39 @@ impl StaticScene {
       );
     }
 
-    self.put_surfaces(device, queue, encoder, &writer);
+    self.surfaces.put(device, queue, encoder, &writer);
 
-    let spans: StaticSpans = self.allocate_spans(device, queue, &writer)?;
+    let spans: StaticSpans = self.geometry.allocate(device, queue, &writer)?;
 
     writer.relocate(&spans);
-    self.write_spans(&spans, &writer);
+    self.geometry.write(&spans, &writer);
 
-    let rows: Vec<ProxyHandle<StaticRow>> = writer.rows.iter().map(|row| self.row_records.add(*row)).collect();
+    let rows: Vec<ProxyHandle<StaticRow>> = writer.rows.iter().map(|row| self.geometry.add_row(*row)).collect();
 
-    self.add_capacities(&writer.capacities);
+    let sphere: Vec4 = bound_spheres(
+      &sections
+        .into_iter()
+        .chain(writer.rows.iter().map(|row| row.sphere))
+        .chain(
+          writer
+            .impostors
+            .iter()
+            .map(|impostor| impostor.sphere)
+            .filter(|it| it.w >= 0.0),
+        )
+        .filter(|it| it.w >= 0.0)
+        .collect::<Vec<Vec4>>(),
+    );
+
+    self.cull.add_capacities(&writer.capacities);
     self.sway_reach = swaying.iter().map(|(_, reach)| *reach).fold(self.sway_reach, f32::max);
     self.swaying.extend_from_slice(&swaying);
-    self.contents += 1;
+    self.note_change(sphere);
 
     self.sectors.insert(
       handle,
       StaticSectorProxy {
+        sphere,
         sector: description.sector,
         bytes: buffer.len() as u64,
         spans,
@@ -613,7 +418,7 @@ impl StaticScene {
 
   /// Whether the device traces rays, so the vertices and indices are acceleration structures' input.
   pub fn is_traced(&self) -> bool {
-    self.is_traced
+    self.geometry.is_traced()
   }
 
   /// Every sector in the scene with its deferred baked sections and instanced meshes, which the level's acceleration
@@ -659,11 +464,11 @@ impl StaticScene {
     };
 
     for row in sector.rows {
-      self.row_records.remove(row);
+      self.geometry.remove_row(row);
     }
 
-    self.remove_capacities(&sector.capacities);
-    self.release_spans(sector.spans);
+    self.cull.remove_capacities(&sector.capacities);
+    self.geometry.release(sector.spans);
     self.swaying = self
       .sectors
       .as_slice()
@@ -671,7 +476,7 @@ impl StaticScene {
       .flat_map(|sector| sector.swaying.iter().copied())
       .collect();
     self.sway_reach = self.swaying.iter().map(|(_, reach)| *reach).fold(0.0, f32::max);
-    self.contents += 1;
+    self.note_change(sector.sphere);
 
     true
   }
@@ -703,7 +508,7 @@ impl StaticScene {
         shader: part.surface.shader_name.clone(),
         texture: part.surface.texture_name.clone(),
       };
-      let Some(StaticSurfaceUse { surface, class, passes }) = self.resolve_surface(
+      let Some(StaticSurfaceUse { surface, class, passes }) = self.surfaces.resolve(
         &mut writer,
         (key, &part.surface, part.descriptor.as_ref()),
         textures,
@@ -757,15 +562,15 @@ impl StaticScene {
       writer.skins.extend_from_slice(&skin.links);
     }
 
-    self.put_surfaces(device, queue, encoder, &writer);
+    self.surfaces.put(device, queue, encoder, &writer);
 
-    let spans: StaticSpans = self.allocate_spans(device, queue, &writer)?;
+    let spans: StaticSpans = self.geometry.allocate(device, queue, &writer)?;
     let first_slot: u32 = StaticSpans::get_offset(&spans.slots);
     let first_cluster: u32 = StaticSpans::get_offset(&spans.clusters);
 
     writer.relocate(&spans);
-    self.write_spans(&spans, &writer);
-    self.contents += 1;
+    self.geometry.write(&spans, &writer);
+    self.note_change(Self::NOWHERE);
 
     self.models.insert(
       handle,
@@ -803,22 +608,15 @@ impl StaticScene {
       return false;
     }
 
-    let standing: Vec<ProxyHandle<StaticObjectProxy>> = self
-      .objects
-      .iter()
-      .filter(|(_, object)| object.model == handle)
-      .map(|(object, _)| object)
-      .collect();
-
-    for object in standing {
+    for object in self.objects.list_standing(handle) {
       self.remove_object(object);
     }
 
     if let Some(model) = self.models.remove(handle) {
-      self.release_spans(model.spans);
+      self.geometry.release(model.spans);
     }
 
-    self.contents += 1;
+    self.note_change(Self::NOWHERE);
 
     true
   }
@@ -848,22 +646,22 @@ impl StaticScene {
     let matrix: Mat4 = place.transform;
     let scale: f32 = to_scale(&matrix);
     let placed: Vec4 = matrix.transform_point3(sphere.truncate()).extend(sphere.w * scale);
-    let span: Span = self.places.allocate(device, queue, 1)?;
+    let span: Span = self.geometry.places.allocate(device, queue, 1)?;
     let bones: Option<(Span, u32)> = match skin {
       Some((_, bones)) => {
         let bones: u32 = bones.max(1);
 
-        match self.bones.allocate(device, queue, bones * 2 * 3) {
+        match self.geometry.bones.allocate(device, queue, bones * 2 * 3) {
           // This frame's matrices and the last's, both the bind pose until a pose is written.
           Ok(rows) => {
             let bind: Vec<[Vec4; 3]> = vec![[Vec4::X, Vec4::Y, Vec4::Z]; bones as usize * 2];
 
-            self.bones.write(&rows, 0, bytemuck::cast_slice(&bind));
+            self.geometry.bones.write(&rows, 0, bytemuck::cast_slice(&bind));
 
             Some((rows, bones))
           }
           Err(error) => {
-            self.places.free(span);
+            self.geometry.places.free(span);
 
             return Err(error);
           }
@@ -873,7 +671,7 @@ impl StaticScene {
     };
     let index: u32 = span.get_offset();
 
-    self.places.write(
+    self.geometry.places.write(
       &span,
       0,
       bytemuck::bytes_of(&StaticPlace {
@@ -895,7 +693,7 @@ impl StaticScene {
           capacities[list] += clusters;
         }
 
-        self.row_records.add(StaticRow {
+        self.geometry.add_row(StaticRow {
           sphere: placed,
           place: index,
           slot: *slot,
@@ -905,10 +703,10 @@ impl StaticScene {
       })
       .collect();
 
-    self.add_capacities(&capacities);
-    self.contents += 1;
+    self.cull.add_capacities(&capacities);
+    self.note_change(placed);
 
-    self.objects.insert(
+    let replaced: Option<ProxyHandle<StaticObjectProxy>> = self.objects.insert(
       handle,
       StaticObjectProxy {
         object: place.object,
@@ -923,11 +721,9 @@ impl StaticScene {
     );
 
     // An object stood again replaces where it stood.
-    if let Some(replaced) = self.object_handles.insert(place.object, handle) {
+    if let Some(replaced) = replaced {
       self.remove_object(replaced);
     }
-
-    self.place_objects.insert(index, handle);
 
     Ok(())
   }
@@ -939,87 +735,59 @@ impl StaticScene {
     };
 
     for row in object.rows {
-      self.row_records.remove(row);
+      self.geometry.remove_row(row);
     }
 
-    if self.object_handles.get(&object.object) == Some(&handle) {
-      self.object_handles.remove(&object.object);
-    }
-
-    self.place_objects.remove(&object.place.get_offset());
-    self.remove_capacities(&object.capacities);
-    self.places.free(object.place);
+    self.cull.remove_capacities(&object.capacities);
+    self.geometry.places.free(object.place);
 
     if let Some((bones, _)) = object.bones {
-      self.bones.free(bones);
+      self.geometry.bones.free(bones);
     }
 
-    self.contents += 1;
+    self.note_change(object.sphere);
 
     true
   }
 
-  /// Items added and removed so far, which a view drawn with another count is drawn again for.
+  /// Items added and removed so far: what a cache notes it was drawn with, and asks `is_changed_since` about.
   pub fn get_contents(&self) -> usize {
     self.contents
   }
 
-  /// Uploads what was added, changed and removed since the last frame, and resets each batch's draw arguments empty
-  /// from their templates for a frame's cull to fill; the batches' runs of the visible list and the templates are
-  /// written again only when the capacities changed.
+  /// Whether an item added or removed since the scene held `since` changes stands where `touches` says a sphere in the
+  /// world reaches what a cache holds; anything did where the log no longer reaches back that far.
+  pub fn is_changed_since(&self, since: usize, touches: impl Fn(Vec4) -> bool) -> bool {
+    if since >= self.contents {
+      return false;
+    }
+
+    if since < self.changes_from {
+      return true;
+    }
+
+    self
+      .changes
+      .iter()
+      .skip(since - self.changes_from)
+      .any(|sphere| sphere.w >= 0.0 && touches(*sphere))
+  }
+
+  /// Counts a change of what the scene holds, at the sphere of the item added or removed.
+  fn note_change(&mut self, sphere: Vec4) {
+    self.contents += 1;
+    self.changes.push_back(sphere);
+
+    if self.changes.len() > Self::CHANGES_KEPT {
+      self.changes.pop_front();
+      self.changes_from += 1;
+    }
+  }
+
+  /// Uploads what was added, changed and removed since the last frame, and readies the culls' buffers for the frame.
   pub fn prepare_draws(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, encoder: &mut FrameEncoder) {
-    for buffer in self.list_spans_mut() {
-      buffer.flush(queue);
-    }
-
-    self.rows.sync(device, queue, &mut self.row_records, |row| *row);
-
-    if self.written != Some(self.capacities) {
-      self.write_draws(device, encoder);
-    }
-
-    self.reset_args(encoder, &self.args);
-    encoder.copy_buffer_to_buffer(&self.late_template, 0, &self.late, 0, Self::LATE_DISPATCH_OFFSET + 16);
-  }
-
-  /// Resets a cull's draw arguments empty, as every batch's start a frame.
-  pub fn reset_args(&self, encoder: &mut wgpu::CommandEncoder, args: &wgpu::Buffer) {
-    encoder.copy_buffer_to_buffer(&self.args_template, 0, args, 0, Self::IMPOSTOR_ARGS_OFFSET + 16);
-  }
-
-  /// Writes each batch's run of the visible list and the templates its draw arguments are reset from.
-  fn write_draws(&mut self, device: &wgpu::Device, encoder: &mut FrameEncoder) {
-    let mut base: u32 = 0;
-    let mut regions: Vec<StaticRegion> = Vec::with_capacity(StaticBatch::LIST_COUNT);
-    let mut args: Vec<u32> = Vec::with_capacity(StaticBatch::LIST_COUNT * 4 + 4);
-    let mut late: Vec<u32> = Vec::with_capacity(StaticBatch::LIST_COUNT * 4 + 4);
-
-    for capacity in self.capacities {
-      regions.push(StaticRegion { base, capacity });
-      // Every visible cluster is an instance of one cluster's vertices, its entry found by its instance index; the
-      // late draw's first instance is set once the early phase has counted its own.
-      args.extend_from_slice(&[CLUSTER_TRIANGLES * 3, 0, 0, base]);
-      late.extend_from_slice(&[CLUSTER_TRIANGLES * 3, 0, 0, base]);
-      base += capacity;
-    }
-
-    // The cull's counts, then the impostors' draw: a quad an impostor.
-    args.extend_from_slice(&[0; 4]);
-    args.extend_from_slice(&[6, 0, 0, 0]);
-    late.extend_from_slice(&[0, 1, 1, 0]);
-
-    self.list_capacity = base;
-    self.lists.reserve(device, encoder, (base.max(1) as u64) * 8);
-    self.candidates.reserve(device, encoder, (base.max(1) as u64) * 8);
-    encoder.write_buffer(&self.regions, 0, bytemuck::cast_slice(&regions));
-    encoder.write_buffer(&self.args_template, 0, bytemuck::cast_slice(&args));
-    encoder.write_buffer(&self.late_template, 0, bytemuck::cast_slice(&late));
-    self.written = Some(self.capacities);
-  }
-
-  /// Entries the visible list holds, and the candidates as many.
-  pub fn get_list_capacity(&self) -> u32 {
-    self.list_capacity
+    self.geometry.flush(device, queue);
+    self.cull.prepare(device, encoder);
   }
 
   /// The bounding sphere of every place that sways, and how far it reaches from its foot, weighted by its rigidity.
@@ -1032,8 +800,6 @@ impl StaticScene {
     self.sway_reach
   }
 
-  /// The spawned objects with composited surfaces and the level's strictly sorted composited runs, which a view draws
-  /// back to front itself.
   /// What of the scene drawn by passes of its own may be seen through a view's frustum `planes`.
   pub fn get_sight(&self, planes: &[Vec4; 6]) -> StaticSight {
     let is_in_view = |sphere: &Vec4| {
@@ -1067,6 +833,8 @@ impl StaticScene {
     seen
   }
 
+  /// The spawned objects with composited surfaces and the level's strictly sorted composited runs, which a view draws
+  /// back to front itself.
   pub fn list_sorted_places(&self) -> impl Iterator<Item = StaticSortedPlace<'_>> {
     let objects = self.objects.as_slice().iter().filter_map(|object| {
       let model: &StaticModelProxy = self.models.get(object.model)?;
@@ -1085,7 +853,7 @@ impl StaticScene {
       .flat_map(|sector| sector.sorted_runs.iter())
       .map(|run| StaticSortedPlace {
         sphere: run.sphere,
-        place: run.place.unwrap_or(self.origin.get_offset()),
+        place: run.place.unwrap_or(self.geometry.get_origin()),
         layout: run.layout,
         clusters: std::slice::from_ref(&run.clusters),
       });
@@ -1093,264 +861,8 @@ impl StaticScene {
     objects.chain(runs)
   }
 
-  fn get_object(&self, object: u32) -> Option<&StaticObjectProxy> {
-    self.objects.get(*self.object_handles.get(&object)?)
-  }
-
-  fn get_object_at(&self, place: u32) -> Option<&StaticObjectProxy> {
-    self.objects.get(*self.place_objects.get(&place)?)
-  }
-
   fn find_sector(&self, sector: u32) -> Option<&StaticSectorProxy> {
     self.sectors.as_slice().iter().find(|it| it.sector == sector)
-  }
-
-  /// Every span buffer, in the order their bytes and generations are summed.
-  fn list_spans(&self) -> [&SpanBuffer; 10] {
-    [
-      &self.words[0],
-      &self.words[1],
-      &self.words[2],
-      &self.indices,
-      &self.clusters,
-      &self.slots,
-      &self.places,
-      &self.impostors,
-      &self.skins,
-      &self.bones,
-    ]
-  }
-
-  fn list_spans_mut(&mut self) -> [&mut SpanBuffer; 10] {
-    let [baked, tree, model] = &mut self.words;
-
-    [
-      baked,
-      tree,
-      model,
-      &mut self.indices,
-      &mut self.clusters,
-      &mut self.slots,
-      &mut self.places,
-      &mut self.impostors,
-      &mut self.skins,
-      &mut self.bones,
-    ]
-  }
-
-  fn add_capacities(&mut self, capacities: &[u32; StaticBatch::LIST_COUNT]) {
-    for (total, added) in self.capacities.iter_mut().zip(capacities) {
-      *total += added;
-    }
-  }
-
-  fn remove_capacities(&mut self, capacities: &[u32; StaticBatch::LIST_COUNT]) {
-    for (total, removed) in self.capacities.iter_mut().zip(capacities) {
-      *total -= removed;
-    }
-  }
-
-  /// Takes a range of each buffer for what a writer gathered, none where it gathered nothing; on an error, what was
-  /// taken is given back.
-  fn allocate_spans(
-    &mut self,
-    device: &wgpu::Device,
-    queue: &wgpu::Queue,
-    writer: &StaticSceneWriter,
-  ) -> XrfResult<StaticSpans> {
-    let mut spans: StaticSpans = StaticSpans::default();
-    let counts: [usize; 6] = [
-      writer.indices.len(),
-      writer.clusters.len(),
-      writer.slots.len(),
-      writer.places.len(),
-      writer.impostors.len(),
-      writer.skins.len() / 2,
-    ];
-    let mut result: XrfResult<()> = Ok(());
-
-    for (layout, words) in writer.words.iter().enumerate() {
-      if result.is_ok() {
-        result = allocate_span(
-          &mut self.words[layout],
-          (device, queue),
-          words.len() / StaticLayout::STRIDE as usize,
-        )
-        .map(|span| spans.words[layout] = span);
-      }
-    }
-
-    let buffers: [(&mut SpanBuffer, &mut Option<Span>); 6] = [
-      (&mut self.indices, &mut spans.indices),
-      (&mut self.clusters, &mut spans.clusters),
-      (&mut self.slots, &mut spans.slots),
-      (&mut self.places, &mut spans.places),
-      (&mut self.impostors, &mut spans.impostors),
-      (&mut self.skins, &mut spans.skins),
-    ];
-
-    for ((buffer, held), count) in buffers.into_iter().zip(counts) {
-      if result.is_ok() {
-        result = allocate_span(buffer, (device, queue), count).map(|span| *held = span);
-      }
-    }
-
-    match result {
-      Ok(()) => Ok(spans),
-      Err(error) => {
-        self.release_spans(spans);
-
-        Err(error)
-      }
-    }
-  }
-
-  /// Queues a writer's records for the ranges taken for them.
-  fn write_spans(&mut self, spans: &StaticSpans, writer: &StaticSceneWriter) {
-    for (layout, words) in writer.words.iter().enumerate() {
-      if let Some(span) = &spans.words[layout] {
-        self.words[layout].write(span, 0, bytemuck::cast_slice(words));
-      }
-    }
-
-    if let Some(span) = &spans.indices {
-      self.indices.write(span, 0, bytemuck::cast_slice(&writer.indices));
-    }
-
-    if let Some(span) = &spans.clusters {
-      self.clusters.write(span, 0, bytemuck::cast_slice(&writer.clusters));
-      self
-        .clusters
-        .write_lane(span, Self::CLUSTER_SPHERES, 0, bytemuck::cast_slice(&writer.spheres));
-    }
-
-    if let Some(span) = &spans.slots {
-      self.slots.write(span, 0, bytemuck::cast_slice(&writer.slots));
-    }
-
-    if let Some(span) = &spans.places {
-      self.places.write(span, 0, bytemuck::cast_slice(&writer.places));
-    }
-
-    if let Some(span) = &spans.impostors {
-      self.impostors.write(span, 0, bytemuck::cast_slice(&writer.impostors));
-      self
-        .impostors
-        .write_lane(span, Self::IMPOSTOR_CORNERS, 0, bytemuck::cast_slice(&writer.corners));
-    }
-
-    if let Some(span) = &spans.skins {
-      self.skins.write(span, 0, bytemuck::cast_slice(&writer.skins));
-    }
-  }
-
-  /// Gives an item's ranges back, the clusters and impostors cleared first, since the cull walks them whole.
-  fn release_spans(&mut self, spans: StaticSpans) {
-    let StaticSpans {
-      words,
-      indices,
-      clusters,
-      slots,
-      places,
-      impostors,
-      skins,
-    } = spans;
-
-    for (layout, span) in words.into_iter().enumerate() {
-      if let Some(span) = span {
-        self.words[layout].free(span);
-      }
-    }
-
-    if let Some(span) = clusters {
-      self.clusters.clear(&span);
-      self.clusters.free(span);
-    }
-
-    if let Some(span) = impostors {
-      self.impostors.clear(&span);
-      self.impostors.free(span);
-    }
-
-    for (buffer, span) in [
-      (&mut self.indices, indices),
-      (&mut self.slots, slots),
-      (&mut self.places, places),
-      (&mut self.skins, skins),
-    ] {
-      if let Some(span) = span {
-        buffer.free(span);
-      }
-    }
-  }
-
-  /// Appends the surfaces a writer asked for first, which every item shares from then on.
-  fn put_surfaces(
-    &mut self,
-    device: &wgpu::Device,
-    queue: &wgpu::Queue,
-    encoder: &mut wgpu::CommandEncoder,
-    writer: &StaticSceneWriter,
-  ) {
-    self
-      .surfaces
-      .append(device, queue, encoder, bytemuck::cast_slice(&writer.surfaces));
-  }
-
-  /// Notes the slots a surface samples: its textures, and apart from them its environment cube's.
-  fn note_slots(&mut self, surface: &StaticSurface) {
-    for (index, slot) in surface.textures.iter().enumerate() {
-      if index == StaticSurface::ENVIRONMENT {
-        if *slot != 0 {
-          self.environment_slots.insert(*slot);
-        }
-      } else if *slot != MISSING_SLOT {
-        self.texture_slots.insert(*slot);
-      }
-    }
-
-    // A terrain's details, bumps and mask are sampled as surely as its base.
-    self
-      .texture_slots
-      .extend(surface.terrain.iter_slots().filter(|slot| *slot != MISSING_SLOT));
-
-    if surface.flags & StaticSurface::IS_DISTORTING != 0 {
-      self.texture_slots.insert(surface.distortion);
-    }
-  }
-
-  fn resolve_surface(
-    &mut self,
-    writer: &mut StaticSceneWriter,
-    (key, surface, descriptor): (StaticSurfaceKey, &SectorSurface, Option<&XraySurfaceDescriptor>),
-    textures: &mut TextureCache,
-    source: &Arc<dyn RenderAssetSource>,
-  ) -> Option<StaticSurfaceUse> {
-    if let Some(known) = self.surface_rows.get(&key) {
-      return *known;
-    }
-
-    let is_model: bool = matches!(key, StaticSurfaceKey::Model { .. });
-    let built = build_static_surface(surface, descriptor, textures, source);
-    let resolved: Option<StaticSurfaceUse> = built.map(|(mut row, class)| {
-      if is_model {
-        row.flags |= StaticSurface::IS_MODEL;
-      }
-
-      self.note_slots(&row);
-      writer.surfaces.push(row);
-      self.surface_count += 1;
-
-      StaticSurfaceUse {
-        surface: self.surface_count - 1,
-        class,
-        passes: StaticSurfacePass::mask_of(row.flags),
-      }
-    });
-
-    self.surface_rows.insert(key, resolved);
-
-    resolved
   }
 
   /// Puts an instanced group: its geometry once, a slot per progressive band, a place per instance and a row per
@@ -1373,7 +885,9 @@ impl StaticScene {
     }
 
     let Some(StaticSurfaceUse { surface, class, passes }) =
-      self.resolve_surface(writer, level_surface(&group.surface, descriptors), textures, source)
+      self
+        .surfaces
+        .resolve(writer, level_surface(&group.surface, descriptors), textures, source)
     else {
       return;
     };
@@ -1532,21 +1046,7 @@ impl StaticScene {
     let mut dressed: Vec<Option<(u32, u16)>> = vec![None; count];
 
     for group in &impostors.groups {
-      let row: u32 = match self.impostor_rows.get(&group.surface.shader_id) {
-        Some(row) => *row,
-        None => {
-          let surface: StaticSurface = build_impostor_surface(&group.surface, textures, source);
-
-          self.note_slots(&surface);
-          writer.surfaces.push(surface);
-          self.surface_count += 1;
-          self
-            .impostor_rows
-            .insert(group.surface.shader_id, self.surface_count - 1);
-
-          self.surface_count - 1
-        }
-      };
+      let row: u32 = self.surfaces.resolve_impostor(writer, &group.surface, textures, source);
 
       for index in (group.start as usize..).take(group.count as usize) {
         if let Some(it) = dressed.get_mut(index) {
@@ -1583,27 +1083,6 @@ impl StaticScene {
 
       writer.impostor_shaders.push(dressing.map_or(0, |it| it.1));
     }
-  }
-}
-
-/// A range of `count` elements of a buffer, none for no elements.
-fn allocate_span(
-  buffer: &mut SpanBuffer,
-  (device, queue): (&wgpu::Device, &wgpu::Queue),
-  count: usize,
-) -> XrfResult<Option<Span>> {
-  if count == 0 {
-    return Ok(None);
-  }
-
-  buffer.allocate(device, queue, count as u32).map(Some)
-}
-
-/// How full a span buffer is: its elements held, and its capacity.
-fn to_pool_use(buffer: &SpanBuffer) -> RenderPoolUse {
-  RenderPoolUse {
-    used: buffer.get_capacity() - buffer.get_free(),
-    capacity: buffer.get_capacity(),
   }
 }
 
@@ -1674,9 +1153,9 @@ fn cut_clusters(geometry: &SectorGeometry, buffer: &[u8], start: u32, count: u32
   let positions: Vec<[f32; 3]> = read_pods(buffer, &geometry.positions);
 
   (start..end)
-    .step_by((CLUSTER_TRIANGLES * 3) as usize)
+    .step_by(StaticGeometry::CLUSTER_VERTICES as usize)
     .map(|first| {
-      let triangles: u32 = ((end - first) / 3).min(CLUSTER_TRIANGLES);
+      let triangles: u32 = ((end - first) / 3).min(StaticGeometry::CLUSTER_TRIANGLES);
       let points: Vec<Vec3> = indices
         .iter()
         .skip(first as usize)

@@ -11,7 +11,7 @@ use crate::pass::static_impostor_parameters::StaticImpostorParameters;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::static_scene::static_batch::StaticBatch;
 use crate::scene::static_scene::static_class::StaticClass;
-use crate::scene::static_scene::static_scene::StaticScene;
+use crate::scene::static_scene::static_cull_scratch::StaticCullScratch;
 use crate::shader::shader_library::ShaderLibrary;
 
 /// Draws the static scene into a viewport's G-buffer: one indirect draw a batch, its visible clusters as instances, then
@@ -110,7 +110,7 @@ impl StaticGBufferPass {
       context.get_pass().set_pipeline(&self.impostor_pipelines[0]);
       context
         .get_pass()
-        .draw_indirect(args, StaticScene::IMPOSTOR_ARGS_OFFSET);
+        .draw_indirect(args, StaticCullScratch::IMPOSTOR_ARGS_OFFSET);
     }
   }
 
@@ -148,7 +148,7 @@ impl StaticGBufferPass {
       context.get_pass().set_pipeline(&self.impostor_pipelines[1]);
       context
         .get_pass()
-        .draw_indirect(args, StaticScene::IMPOSTOR_ARGS_OFFSET);
+        .draw_indirect(args, StaticCullScratch::IMPOSTOR_ARGS_OFFSET);
     }
   }
 

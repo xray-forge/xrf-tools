@@ -35,6 +35,7 @@ use crate::scene::level::shadow_tile::ShadowTile;
 use crate::scene::level::shadow_tile_allocator::ShadowTileAllocator;
 use crate::scene::static_scene::growable_buffer::GrowableBuffer;
 use crate::scene::static_scene::static_layout::StaticLayout;
+use crate::scene::static_scene::static_scene::StaticScene;
 
 /// Texels the light shadow atlas is across.
 pub const LIGHT_SHADOW_ATLAS_SIZE: u32 = 4096;
@@ -161,7 +162,7 @@ impl LevelLightShadows {
     eye: Vec3,
     forward: Vec3,
     color: Vec3,
-    contents: usize,
+    statics: &StaticScene,
     sway: &ShadowSway<'_>,
   ) {
     let is_spot: bool = matches!(light.kind, LightKind::Spot);
@@ -216,7 +217,14 @@ impl LevelLightShadows {
       .or(entry.shown.as_ref())
       .map_or(DEFAULT_NEAR, |set| set.near);
 
-    if entry.swaying.is_none_or(|(at, _)| at != contents) {
+    // Only an item coming or going within the light's reach changes what its faces hold or what sways in it.
+    let contents: usize = statics.get_contents();
+    let touches = |sphere: Vec4| spatial.truncate().distance(sphere.truncate()) < spatial.w + sphere.w;
+
+    if entry
+      .swaying
+      .is_none_or(|(at, _)| statics.is_changed_since(at, touches))
+    {
       entry.swaying = Some((contents, measure_swaying(basis.position, spatial, near, sway.places)));
     }
 
@@ -235,7 +243,7 @@ impl LevelLightShadows {
             state.view = to_face_view(light, basis, face, set.near, set.far);
           }
 
-          if state.drawn != Some(contents) {
+          if state.drawn.is_none_or(|drawn| statics.is_changed_since(drawn, touches)) {
             self.candidates.push(((false, distance), handle, is_next, face));
           } else if is_moved || sway.is_redrawn(swaying, spread / state.tile.size as f32, state.drawn_at) {
             self.candidates.push(((true, state.drawn_at), handle, is_next, face));
@@ -280,7 +288,7 @@ impl LevelLightShadows {
       return;
     }
 
-    self.region = ((scene.get_list_capacity().max(1) as u64) * 8).next_multiple_of(self.alignment);
+    self.region = ((scene.cull.get_list_capacity().max(1) as u64) * 8).next_multiple_of(self.alignment);
     self.lists.reserve(device, encoder, self.region * FACE_BUDGET as u64);
 
     for (slot, (index, is_next, face)) in self.queue.iter().enumerate() {
