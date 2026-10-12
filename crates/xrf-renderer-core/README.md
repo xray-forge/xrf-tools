@@ -99,8 +99,8 @@ A scene's items are stores, one kind each: `ProxyStore<T>` keeps them as dense r
 element. An add appends and answers a `ProxyHandle<T>`; a remove moves the last record into the gap, so the records stay
 dense and the moved item keeps its handle. A handle is generational: once its item is gone it answers nothing, even after
 its slot is reused. Every record added, changed (`get_mut`) or moved is noted; `StoreMirror::sync` uploads those as
-contiguous runs into a buffer of the store's records, growing it by a GPU copy. The CPU records are the source of truth,
-so a lost device's mirrors are rebuilt with `mark_all_changed` and a sync.
+contiguous runs into a buffer of the store's records, growing it by a GPU copy. A lost device takes its scenes, stores
+and mirrors with it; the world streams each scene in again.
 
 ## Shared structs
 

@@ -1049,10 +1049,16 @@ fn fs_resolve(in: FullscreenVarying) -> ResolvedTargets {
   return ResolvedTargets(vec4<f32>(resolved, variance), kept.surface, kept.held);
 }
 
+// How far apart two surfaces' normals may face and their roughnesses stand before a traced pixel stops speaking for a
+// frame's pixel: the normals' cosine raised to `UPSAMPLE_NORMAL_POWER`, the roughness by `UPSAMPLE_ROUGHNESS_SCALE` a
+// unit of difference.
+const UPSAMPLE_NORMAL_POWER: f32 = 8.0;
+const UPSAMPLE_ROUGHNESS_SCALE: f32 = 20.0;
+
 // The resolve brought up to a frame pixel by the guide: the four traced pixels about it by their bilinear share, how
 // near the distance each one's surface stands to the pixel's, how alike its world normal (terrain's levelled, as the
-// guide keeps it) faces to `normal`, and how near its roughness stands to `roughness`, as `upsampled_reflection` weighs
-// them from the G-buffer, read from the guide in one load each. Untraced, alpha below none, where none speaks for it.
+// guide keeps it) faces to `normal`, and how near its roughness stands to `roughness`, each read from the guide in one
+// load. Untraced, alpha below none, where none speaks for it.
 fn guided_upsample(pixel: vec2<f32>, normal: vec3<f32>, distance: f32, roughness: f32) -> vec4<f32> {
   let ratio: f32 = reflection.ratio;
   let last: vec2<f32> = vec2<f32>(textureDimensions(resolved)) - 1.0;

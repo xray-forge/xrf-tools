@@ -1,4 +1,3 @@
-#import "common/noise"
 #import "common/camera"
 #import "common/scene_light"
 #import "common/fullscreen"
@@ -22,19 +21,16 @@ const SPIRAL_READS: i32 = 12;
 const SCATTER_DEBAND_PASSES: u32 = 2u;
 const SCATTER_DEBAND_RADIUS: f32 = 48.0;
 
-// Interleaved gradient noise over a point's own place within its texel.
-fn interleaved_noise(at: vec2<f32>) -> f32 {
-  return gradient_noise(fract(at));
-}
+// The spiral's start, the same at every pixel: interleaved gradient noise at a texel's centre, a quarter turn of it.
+const SPIRAL_START: f32 = 1.4640113;
 
 // A blur stage: twelve reads of the source spiralling out from the pixel, each a target's texel times its turn further.
-// The noise is read at the texel's centre, so every pixel starts the spiral alike.
 @fragment
 fn fs_scatter_blur(in: FullscreenVarying) -> @location(0) vec4<f32> {
   let size: vec2<f32> = scattering.size;
   let uv: vec2<f32> = in.clip.xy / size;
   let pixel: vec2<f32> = 1.0 / size;
-  var offset: vec2<f32> = vec2<f32>(0.25 * interleaved_noise(in.clip.xy) * 6.28);
+  var offset: vec2<f32> = vec2<f32>(SPIRAL_START);
   var reach: f32 = 0.9;
   var sum: vec3<f32> = vec3<f32>(0.0);
 

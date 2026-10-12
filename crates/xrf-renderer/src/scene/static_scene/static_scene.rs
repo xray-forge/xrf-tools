@@ -379,7 +379,6 @@ impl StaticScene {
       StaticSectorProxy {
         sphere,
         sector: description.sector,
-        bytes: buffer.len() as u64,
         spans,
         rows,
         capacities: writer.capacities,

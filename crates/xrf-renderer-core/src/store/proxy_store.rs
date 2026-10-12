@@ -195,12 +195,6 @@ impl<T> ProxyStore<T> {
     changed
   }
 
-  /// Notes every record as changed, for a mirror that lost what it held (a device made again).
-  pub fn mark_all_changed(&mut self) {
-    self.changed = (0..self.items.len() as u32).collect();
-    self.marked.fill(true);
-  }
-
   fn mark(&mut self, dense: u32) {
     if !self.marked[dense as usize] {
       self.marked[dense as usize] = true;
