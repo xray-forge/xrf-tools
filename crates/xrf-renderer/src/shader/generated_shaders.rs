@@ -31,6 +31,8 @@ use crate::pass::froxel_integrate_parameters::FroxelIntegrateParameters;
 use crate::pass::froxel_uniform::FroxelUniform;
 use crate::pass::fsr_uniform::FsrUniform;
 use crate::pass::fxaa_parameters::FxaaParameters;
+use crate::pass::glass_copy_dispatch_parameters::GlassCopyDispatchParameters;
+use crate::pass::glass_copy_parameters::GlassCopyParameters;
 use crate::pass::glass_parameters::GlassParameters;
 use crate::pass::glass_uniform::GlassUniform;
 use crate::pass::grass_colour_parameters::GrassColourParameters;
@@ -164,6 +166,8 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
   let mut combine: ShaderBindings = ShaderBindings::new();
   let mut composited: ShaderBindings = ShaderBindings::new();
   let mut glass: ShaderBindings = ShaderBindings::new();
+  let mut glass_copy_dispatch: ShaderBindings = ShaderBindings::new();
+  let mut glass_copy: ShaderBindings = ShaderBindings::new();
   let mut sky_haze: ShaderBindings = ShaderBindings::new();
   let mut sun_shafts: ShaderBindings = ShaderBindings::new();
   let mut light_volumes: ShaderBindings = ShaderBindings::new();
@@ -277,6 +281,8 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
   combine.add::<CombineParameters<'_>>()?;
   composited.add::<CompositedParameters<'_>>()?;
   glass.add::<GlassParameters<'_>>()?;
+  glass_copy_dispatch.add::<GlassCopyDispatchParameters>()?;
+  glass_copy.add::<GlassCopyParameters>()?;
   sky_haze.add::<SkyHazeParameters>()?;
   sun_shafts.add::<SunShaftsParameters>()?;
   light_volumes.add::<LightVolumeParameters>()?;
@@ -440,6 +446,14 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
       format!("{STRUCTS_IMPORT}{}", composited.to_wgsl()),
     ),
     ("generated/static/glass", format!("{STRUCTS_IMPORT}{}", glass.to_wgsl())),
+    (
+      "generated/frame/glass_copy_dispatch",
+      format!("{STRUCTS_IMPORT}{}", glass_copy_dispatch.to_wgsl()),
+    ),
+    (
+      "generated/frame/glass_copy",
+      format!("{STRUCTS_IMPORT}{}", glass_copy.to_wgsl()),
+    ),
     (
       "generated/frame/sky_haze",
       format!("{STRUCTS_IMPORT}{}", sky_haze.to_wgsl()),

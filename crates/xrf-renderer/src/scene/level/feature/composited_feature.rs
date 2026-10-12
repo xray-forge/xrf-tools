@@ -1,14 +1,16 @@
 use glam::Vec4;
 use xrf_renderer_core::{
-  FrameGraph, GraphBindings, GraphBuffer, GraphBufferAccess, GraphColorAttachment, GraphDepthAttachment, GraphRuntime,
-  GraphTexture, GraphTextureDescriptor, StorageArray, StorageValue,
+  FrameGraph, GraphBindings, GraphBuffer, GraphBufferAccess, GraphBufferDescriptor, GraphColorAttachment,
+  GraphDepthAttachment, GraphRuntime, GraphTexture, GraphTextureDescriptor, StorageArray, StorageArrayMut,
+  StorageValue,
 };
 
 use crate::camera::camera_view::CameraView;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::frame::frame_encoder::FrameEncoder;
-use crate::frame::texture_copy::add_texture_copy;
 use crate::frame::view_targets::ViewTargets;
+use crate::pass::glass_copy_dispatch_parameters::GlassCopyDispatchParameters;
+use crate::pass::glass_copy_parameters::GlassCopyParameters;
 use crate::pass::glass_parameters::GlassParameters;
 use crate::pass::glass_uniform::GlassUniform;
 use crate::pass::level_passes::LevelPasses;
@@ -210,7 +212,42 @@ impl CompositedFeature {
         ViewTargets::SCENE,
       ));
 
-      add_texture_copy(&mut *graph, "glass copy", handles.scene, copy);
+      // Taken only where the cull lists glass to draw, early or late: the dispatch is worked out on the GPU.
+      let args: Vec<GraphBuffer> = draw.args.clone();
+      let dispatch: GraphBuffer = graph.create_buffer(GraphBufferDescriptor::new("glass copy dispatch", 12));
+      let counted: GlassCopyDispatchParameters = GlassCopyDispatchParameters {
+        early: StorageArray::new(args[0]),
+        late: StorageArray::new(args.get(1).copied().unwrap_or(args[0])),
+        scene: handles.scene,
+        dispatch: StorageArrayMut::new(dispatch),
+      };
+      let copied: GlassCopyParameters = GlassCopyParameters {
+        scene: handles.scene,
+        copied: copy,
+      };
+
+      // Written whole by the dispatch's pass, cleared first so the graph sees it written before that pass reads it.
+      graph
+        .add_encoder_pass("glass copy dispatch clear")
+        .buffer(dispatch, GraphBufferAccess::CopyDestination)
+        .record(move |context| {
+          let dispatch: &wgpu::Buffer = context.get_buffer(dispatch);
+
+          context.get_encoder().clear_buffer(dispatch, 0, None);
+        });
+      graph
+        .add_compute_pass("glass copy dispatch")
+        .parameters(&counted)
+        .record(move |context| passes.glass.record_copy_dispatch(context, &counted));
+      graph
+        .add_compute_pass("glass copy")
+        .parameters(&copied)
+        .buffer(dispatch, GraphBufferAccess::Indirect)
+        .record(move |context| {
+          let dispatch: &wgpu::Buffer = context.get_buffer(dispatch);
+
+          passes.glass.record_copy(context, &copied, dispatch);
+        });
 
       let parameters: GlassParameters = GlassParameters {
         lighting: lit.lighting,
@@ -224,7 +261,6 @@ impl CompositedFeature {
         scene_sampler: passes.glass.get_scene_sampler(),
         depth_target: handles.depth,
       };
-      let args: Vec<GraphBuffer> = draw.args.clone();
       let builder = args.iter().fold(
         StaticDraws::declare_layouts(add_over_scene(&mut *graph, handles, "glass"), &layouts),
         |builder, args| builder.buffer(*args, GraphBufferAccess::Indirect),
