@@ -33,7 +33,7 @@ export function LevelVolumetricSettings({
   return (
     <div data-testid={dataTestId} id={id} className={className}>
       <RenderValueChoice
-        label={"Volumetric"}
+        label={"Volumetric light"}
         options={RENDER_VOLUMETRIC_MODE_OPTIONS}
         value={value.mode}
         onChange={(mode: RenderVolumetricMode) => set({ mode })}

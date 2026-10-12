@@ -74,6 +74,21 @@ export function formatGrassHeight(height: number): string {
   return `${formatNumber(height, 1)}×`;
 }
 
+const RENDER_FOLIAGE_MODE_DESCRIPTIONS: Readonly<Record<RenderFoliageMode, string>> = {
+  [ERenderFoliageMode.ENGINE]:
+    "The game's own: each tree leant by the weather's tree wind, each tuft waving on its own.",
+  [ERenderFoliageMode.ENHANCED]:
+    "Trunks swing downwind, and branches and grass ride a flow field drifting with the wind.",
+};
+
+/**
+ * @param mode - A foliage motion mode.
+ * @returns What it does, in a sentence.
+ */
+export function explainRenderFoliageMode(mode: RenderFoliageMode): string {
+  return RENDER_FOLIAGE_MODE_DESCRIPTIONS[mode];
+}
+
 /** The foliage motion modes, in the order they are offered. */
 export const RENDER_FOLIAGE_MODE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<RenderFoliageMode>> = [
   { label: "Engine", value: ERenderFoliageMode.ENGINE },

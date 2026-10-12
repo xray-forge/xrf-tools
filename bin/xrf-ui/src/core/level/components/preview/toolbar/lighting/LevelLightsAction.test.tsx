@@ -23,8 +23,8 @@ describe("LevelLightsAction", () => {
 
     const { getByRole, findByRole, view } = renderLevelView(<LevelLightsAction />, descriptor);
 
-    await userEvent.pointer({ keys: "[MouseRight]", target: getByRole("button", { name: "Lights" }) });
-    await findByRole("dialog", { name: "Lights" });
+    await userEvent.pointer({ keys: "[MouseRight]", target: getByRole("button", { name: "Lamps" }) });
+    await findByRole("dialog", { name: "Lamps" });
     await userEvent.click(getByRole("button", { name: "Reset to the preset" }));
 
     expect(view.features).toEqual({ ...before, lights: {} });
@@ -37,14 +37,14 @@ describe("LevelLightsAction", () => {
 
     const { getByRole, findByRole } = renderLevelView(<LevelLightsAction />, descriptor);
 
-    expect(getByRole("button", { name: "Lights" })).toHaveAccessibleDescription(
-      "Lights are off in Settings, under Rendering"
+    expect(getByRole("button", { name: "Lamps" })).toHaveAccessibleDescription(
+      "Lamps are off in Settings, under Rendering"
     );
 
-    await userEvent.click(getByRole("button", { name: "Lights" }));
+    await userEvent.click(getByRole("button", { name: "Lamps" }));
 
-    expect(await findByRole("dialog", { name: "Lights" })).toHaveTextContent(
-      "Lights are off in Settings, under Rendering"
+    expect(await findByRole("dialog", { name: "Lamps" })).toHaveTextContent(
+      "Lamps are off in Settings, under Rendering"
     );
   });
 });

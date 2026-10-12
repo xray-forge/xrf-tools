@@ -20,10 +20,10 @@ export function SettingsRendererLights(): ReactElement {
   const onSet = useRendererOverride("lights");
 
   return (
-    <DetailSection title={"Lights"} description={"Dynamic point and spot lights spawned on the level."}>
+    <DetailSection title={"Lamps"} description={"The level's point and spot lamps."}>
       <div className={"mt-4 flex flex-col gap-6"}>
         <CheckboxFormRow
-          label={"Dynamic lights"}
+          label={"Lamps"}
           description={"Off, only the sun and baked lighting remain."}
           isChecked={lights.isEnabled}
           onChange={(isEnabled: boolean) => onSet({ isEnabled })}
@@ -47,8 +47,8 @@ export function SettingsRendererLights(): ReactElement {
         />
 
         <CheckboxFormRow
-          label={"Light shafts"}
-          description={"Shadowed lamps' shafts (r2_volumetric_lights)."}
+          label={"Lamp shafts"}
+          description={"Shafts of light from the shadowed lamps. Game setting: r2_volumetric_lights."}
           isChecked={lights.isVolumetric}
           onChange={(isVolumetric: boolean) => onSet({ isVolumetric })}
         />
@@ -56,7 +56,7 @@ export function SettingsRendererLights(): ReactElement {
         <CheckboxFormRow
           label={"Level lights"}
           description={
-            "Static lights from the level file (r2_allow_r1_lights). Already in the lightmaps, so they add on top."
+            "The level file's static lights, already in its lightmaps, so they add on top. Game setting: r2_allow_r1_lights."
           }
           isChecked={lights.isLevelLights}
           onChange={(isLevelLights: boolean) => onSet({ isLevelLights })}

@@ -52,7 +52,7 @@ describe("LevelReflectionsAction", () => {
     await userEvent.pointer({ keys: "[MouseRight]", target: getByRole("button", { name: "Reflections" }) });
     await findByRole("dialog", { name: "Reflections" });
 
-    expect(getByRole("checkbox", { name: "Trace reflections" })).toBeChecked();
+    expect(getByRole("checkbox", { name: "Screen-space reflections" })).toBeChecked();
     expect(getByRole("slider", { name: "Intensity" })).toHaveAttribute("aria-valuetext", "100%");
     expect(getByRole("slider", { name: "Distance" })).toHaveAttribute("aria-valuetext", "150 m");
     expect(getByRole("slider", { name: "Wet reach" })).toHaveAttribute("aria-valuetext", "300 m");
@@ -98,7 +98,7 @@ describe("LevelReflectionsAction", () => {
     await userEvent.pointer({ keys: "[MouseRight]", target: descriptor.getByRole("button", { name: "Reflections" }) });
     await descriptor.findByRole("dialog", { name: "Reflections" });
 
-    const traced: HTMLElement = descriptor.getByRole("checkbox", { name: "Trace what the screen misses" });
+    const traced: HTMLElement = descriptor.getByRole("checkbox", { name: "Ray-traced fallback" });
 
     expect(traced).toBeDisabled();
     expect(traced).not.toBeChecked();

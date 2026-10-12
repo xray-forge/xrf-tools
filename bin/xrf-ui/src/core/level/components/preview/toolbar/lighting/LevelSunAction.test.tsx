@@ -97,7 +97,7 @@ describe("LevelSunAction", () => {
 
     await openSettings(rendered);
     await userEvent.click(rendered.getByRole("checkbox", { name: "Lens flares" }));
-    await userEvent.click(rendered.getByRole("checkbox", { name: "Sunshafts" }));
+    await userEvent.click(rendered.getByRole("checkbox", { name: "Sun shafts" }));
 
     expect(rendered.view.options.isLensFlared).toBe(!DEFAULT_LEVEL_VIEW_OPTIONS.isLensFlared);
     expect(rendered.view.options.isSunShafted).toBe(!DEFAULT_LEVEL_VIEW_OPTIONS.isSunShafted);

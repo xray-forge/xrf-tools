@@ -65,7 +65,7 @@ export function LevelReflectionsAction({
       }
       icon={<FlipIcon />}
       isOn={isEnhanced}
-      toggleLabel={"Trace reflections"}
+      toggleLabel={"Screen-space reflections"}
       onToggle={() => set({ mode: isEnhanced ? ERenderReflectionMode.ENGINE : ERenderReflectionMode.ENHANCED })}
     >
       <p className={"text-xs text-text-secondary"}>{explainRenderReflectionMode(value.mode)}</p>
@@ -125,7 +125,7 @@ export function LevelReflectionsAction({
           />
 
           <CheckboxFormRow
-            label={"Trace what the screen misses"}
+            label={"Ray-traced fallback"}
             description={isTraceable ? undefined : "Needs a GPU that traces rays"}
             isChecked={isTraceable && value.isTraced}
             isDisabled={!isTraceable}

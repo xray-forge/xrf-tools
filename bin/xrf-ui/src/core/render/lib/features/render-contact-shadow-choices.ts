@@ -42,6 +42,20 @@ export function formatContactShadowLights(lights: number): string {
   return lights ? `${lights} light${lights > 1 ? "s" : ""}` : "Sun only";
 }
 
+const RENDER_CONTACT_SHADOW_MODE_DESCRIPTIONS: Readonly<Record<RenderContactShadowMode, string>> = {
+  [ERenderContactShadowMode.ENGINE]: "The game's own: the sun's shadow maps alone.",
+  [ERenderContactShadowMode.ENHANCED]:
+    "The small shadows the shadow maps miss, found by marching each pixel towards the sun over the frame's depth.",
+};
+
+/**
+ * @param mode - A contact shadow mode.
+ * @returns What it does, in a sentence.
+ */
+export function explainRenderContactShadowMode(mode: RenderContactShadowMode): string {
+  return RENDER_CONTACT_SHADOW_MODE_DESCRIPTIONS[mode];
+}
+
 /** The contact shadow modes, in the order they are offered. */
 export const RENDER_CONTACT_SHADOW_MODE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<RenderContactShadowMode>> = [
   { label: "Engine", value: ERenderContactShadowMode.ENGINE },

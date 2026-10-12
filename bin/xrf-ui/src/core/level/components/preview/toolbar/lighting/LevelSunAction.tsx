@@ -144,7 +144,7 @@ export function LevelSunAction({
         </Typography>
 
         <CheckboxFormRow
-          label={"Sunshafts"}
+          label={"Sun shafts"}
           description={"The sun's light through the air, cut by its shadow"}
           isChecked={options.isSunShafted}
           onChange={() => viewService.toggleOption("isSunShafted")}
@@ -166,6 +166,7 @@ export function LevelSunAction({
 
         <RenderValueSlider
           label={"Minimum"}
+          hint={"Game setting: r2_sunshafts_min"}
           value={sunShafts.minimum}
           {...LEVEL_SUN_SHAFTS_MINIMUM_LIMITS}
           format={(value: number) => value.toFixed(2)}

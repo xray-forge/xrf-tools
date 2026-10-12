@@ -8,6 +8,7 @@ import { toLevelModeFeature } from "@/core/level/lib/features/level-feature-opti
 import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 import {
+  explainRenderParallaxMode,
   formatParallaxHeight,
   formatParallaxRange,
   formatParallaxSteps,
@@ -38,6 +39,8 @@ export function LevelParallaxSettings({
         value={value.mode}
         onChange={(mode: RenderParallaxMode) => set({ mode })}
       />
+
+      <p className={"text-xs text-text-secondary"}>{explainRenderParallaxMode(value.mode)}</p>
 
       <CheckboxFormRow
         label={"Steep parallax"}

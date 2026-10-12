@@ -79,7 +79,7 @@ const FIELD_GROUPS: ReadonlyArray<{ title: string; fields: ReadonlyArray<ILookFi
   {
     fields: [
       {
-        label: "Amount",
+        label: "Strength",
         max: 1,
         min: 0,
         read: (look) => look.exposure.amount,
@@ -95,7 +95,7 @@ const FIELD_GROUPS: ReadonlyArray<{ title: string; fields: ReadonlyArray<ILookFi
         write: (look, middleGray) => ({ ...look, exposure: { ...look.exposure, middleGray } }),
       },
       {
-        label: "Low luminance",
+        label: "Luminance floor",
         max: 1,
         min: 0.0001,
         read: (look) => look.exposure.lowLuminance,
@@ -103,7 +103,7 @@ const FIELD_GROUPS: ReadonlyArray<{ title: string; fields: ReadonlyArray<ILookFi
         write: (look, lowLuminance) => ({ ...look, exposure: { ...look.exposure, lowLuminance } }),
       },
       {
-        label: "Adaptation",
+        label: "Adaptation speed",
         max: 10,
         min: 0.01,
         read: (look) => look.exposure.adaptation,
@@ -286,14 +286,14 @@ export function LevelLookAction({
         />
 
         <CheckboxFormRow
-          label={"Adapt exposure"}
+          label={"Auto exposure"}
           description={"Adapts the exposure to how bright the frame is; off, a fixed scale. Game setting: r2_tonemap."}
           isChecked={look.exposure.isEnabled}
           onChange={(isEnabled: boolean) => lookService.edit({ ...look, exposure: { ...look.exposure, isEnabled } })}
         />
 
         <RenderValueChoice
-          label={"Bloom drawn as"}
+          label={"Bloom mode"}
           options={RENDER_BLOOM_MODE_OPTIONS}
           value={bloom.mode}
           onChange={(mode: RenderBloomMode) => setBloom({ mode })}

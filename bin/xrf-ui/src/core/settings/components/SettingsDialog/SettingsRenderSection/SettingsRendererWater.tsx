@@ -20,7 +20,7 @@ export function SettingsRendererWater(): ReactElement {
     <DetailSection title={"Water"} description={"Water surfaces as the engine renders them."}>
       <div className={"mt-4 flex flex-col gap-6"}>
         <CheckboxFormRow
-          label={"Water shading"}
+          label={"Water"}
           description={"Ripples and sky reflection."}
           isChecked={water.isEnabled}
           onChange={(isEnabled: boolean) => onSet({ isEnabled })}
@@ -28,7 +28,7 @@ export function SettingsRendererWater(): ReactElement {
 
         <CheckboxFormRow
           label={"Soft water"}
-          description={"Depth-based fade and shoreline foam (r2_soft_water)."}
+          description={"Fades the water by its depth and lays foam in the shallows. Game setting: r2_soft_water."}
           isChecked={water.isSoft}
           isDisabled={!water.isEnabled}
           onChange={(isSoft: boolean) => onSet({ isSoft })}
