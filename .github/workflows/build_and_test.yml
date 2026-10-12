@@ -25,6 +25,8 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      - uses: ./.github/actions/lfs-assets
+
       - uses: ./.github/actions/pinned-toolchain
 
       - uses: ./.github/actions/native-sdks
@@ -164,6 +166,8 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      - uses: ./.github/actions/lfs-assets
+
       - uses: pnpm/action-setup@v6
         with:
           package_json_file: package.json
@@ -218,6 +222,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v7
+
+      - uses: ./.github/actions/lfs-assets
 
       - uses: ./.github/actions/pinned-toolchain
 

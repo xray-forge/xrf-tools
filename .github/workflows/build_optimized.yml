@@ -24,6 +24,8 @@ jobs:
         with:
           ref: main
 
+      - uses: ./.github/actions/lfs-assets
+
       - uses: pnpm/action-setup@v6
         with:
           package_json_file: package.json

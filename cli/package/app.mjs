@@ -13,6 +13,8 @@ import { parseArgs } from "node:util";
  * Writes `target/package/<name>.zip`.
  */
 const REPOSITORY_ROOT = path.resolve(import.meta.dirname, "..", "..");
+// What a Git LFS pointer starts with: a checkout without `git lfs pull` leaves one in place of each binary.
+const LFS_POINTER = Buffer.from("version https://git-lfs.github.com/spec/v1");
 const EXECUTABLE = "xrf-app.exe";
 const FOLDER = "xrf-app";
 
@@ -35,6 +37,20 @@ for (const required of [executable, path.join(resources, "renderer")]) {
   if (!fs.existsSync(required)) {
     throw new Error(`'${path.relative(REPOSITORY_ROOT, required)}' is missing: build the application first`);
   }
+}
+
+const pointers = fs
+  .readdirSync(resources, { recursive: true, withFileTypes: true })
+  .filter((entry) => entry.isFile())
+  .map((entry) => path.join(entry.parentPath, entry.name))
+  .filter((file) => isLfsPointer(file));
+
+if (pointers.length > 0) {
+  throw new Error(
+    `Git LFS pointers stand in for resources, so run 'git lfs pull' and build again: ${pointers
+      .map((file) => path.relative(REPOSITORY_ROOT, file))
+      .join(", ")}`
+  );
 }
 
 const output = path.join(REPOSITORY_ROOT, "target", "package");
@@ -61,3 +77,18 @@ const megabytes = (fs.statSync(archive).size / (1024 * 1024)).toFixed(1);
 const isDlss = fs.existsSync(path.join(resources, "renderer", "dlss"));
 
 console.info(`${path.relative(REPOSITORY_ROOT, archive)}: ${megabytes} MB${isDlss ? ", with DLSS" : ", without DLSS"}`);
+
+/**
+ * @param {string} file - A packed resource.
+ * @returns {boolean} Whether it is a Git LFS pointer rather than the file it names.
+ */
+function isLfsPointer(file) {
+  const head = Buffer.alloc(LFS_POINTER.length);
+  const descriptor = fs.openSync(file, "r");
+
+  try {
+    return fs.readSync(descriptor, head, 0, head.length, 0) === head.length && head.equals(LFS_POINTER);
+  } finally {
+    fs.closeSync(descriptor);
+  }
+}
