@@ -1,6 +1,7 @@
 use crate::scene::level::feature::ambient_occlusion_feature::AmbientOcclusionFeature;
 use crate::scene::level::feature::bitmask_feature::BitmaskFeature;
 use crate::scene::level::feature::bloom_feature::BloomFeature;
+use crate::scene::level::feature::combine_feature::CombineFeature;
 use crate::scene::level::feature::composited_feature::CompositedFeature;
 use crate::scene::level::feature::contact_shadow_feature::ContactShadowFeature;
 use crate::scene::level::feature::exposure_feature::ExposureFeature;
@@ -10,6 +11,7 @@ use crate::scene::level::feature::fog_feature::FogFeature;
 use crate::scene::level::feature::lights_feature::LightsFeature;
 use crate::scene::level::feature::overlays_feature::OverlaysFeature;
 use crate::scene::level::feature::pick_feature::PickFeature;
+use crate::scene::level::feature::present_feature::PresentFeature;
 use crate::scene::level::feature::reflection_feature::ReflectionFeature;
 use crate::scene::level::feature::resolve_feature::ResolveFeature;
 use crate::scene::level::feature::sky_feature::SkyFeature;
@@ -66,6 +68,8 @@ pub struct SceneFeatures {
   pub wet: WetFeature,
   pub sky: SkyFeature,
   pub statics: StaticsFeature,
+  pub present: PresentFeature,
+  pub combine: CombineFeature,
 }
 
 impl SceneFeatures {
@@ -104,11 +108,13 @@ impl SceneFeatures {
       sky: SkyFeature::default(),
       pick: PickFeature::default(),
       statics: StaticsFeature::new(device),
+      present: PresentFeature::default(),
+      combine: CombineFeature,
     }
   }
 
   /// Every unit, as what each answers alike.
-  pub fn list(&self) -> [&dyn ViewFeature; 19] {
+  pub fn list(&self) -> [&dyn ViewFeature; 21] {
     [
       &self.fog,
       &self.bloom,
@@ -129,10 +135,12 @@ impl SceneFeatures {
       &self.sky,
       &self.pick,
       &self.statics,
+      &self.present,
+      &self.combine,
     ]
   }
 
-  pub fn list_mut(&mut self) -> [&mut dyn ViewFeature; 19] {
+  pub fn list_mut(&mut self) -> [&mut dyn ViewFeature; 21] {
     [
       &mut self.fog,
       &mut self.bloom,
@@ -153,6 +161,8 @@ impl SceneFeatures {
       &mut self.sky,
       &mut self.pick,
       &mut self.statics,
+      &mut self.present,
+      &mut self.combine,
     ]
   }
 

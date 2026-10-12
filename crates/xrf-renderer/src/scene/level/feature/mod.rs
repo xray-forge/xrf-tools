@@ -1,6 +1,7 @@
 pub(crate) mod ambient_occlusion_feature;
 pub(crate) mod bitmask_feature;
 pub(crate) mod bloom_feature;
+pub(crate) mod combine_feature;
 pub(crate) mod composited_draw;
 pub(crate) mod composited_feature;
 pub(crate) mod contact_shadow_feature;
@@ -14,6 +15,8 @@ pub(crate) mod over_scene;
 pub(crate) mod overhead_windows;
 pub(crate) mod overlays_feature;
 pub(crate) mod pick_feature;
+pub(crate) mod present_feature;
+pub(crate) mod present_inputs;
 pub(crate) mod reflection_feature;
 pub(crate) mod resolve;
 pub(crate) mod resolve_feature;
