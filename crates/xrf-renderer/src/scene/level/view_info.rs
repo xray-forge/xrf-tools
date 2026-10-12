@@ -12,7 +12,6 @@ use crate::pass::lighting_uniform::LightingUniform;
 use crate::pass::present_uniform::PresentUniform;
 use crate::pass::static_cull_params::StaticCullParams;
 use crate::pass::static_occlusion_uniform::StaticOcclusionUniform;
-use crate::pass::wet_uniform::WetUniform;
 use crate::pass::wind_uniform::WindUniform;
 use crate::scene::level::sky_views::SkyViews;
 
@@ -21,10 +20,6 @@ use crate::scene::level::sky_views::SkyViews;
 pub struct ViewInfo {
   /// What the present pass shows this frame.
   pub present: PresentUniform,
-  /// What the wet surfaces draw by this frame, and their splash volume and flow as the weather texture cache holds
-  /// them when the frame is prepared, each its kind's placeholder until its file is up.
-  pub wet: WetUniform,
-  pub wet_views: Option<[wgpu::TextureView; 2]>,
   pub camera: CameraView,
   /// The camera's view and projection, which become the depth history once the pyramid is reduced.
   pub matrices: (Mat4, Mat4),
@@ -64,8 +59,6 @@ pub struct ViewInfo {
   pub sky: Option<SkyViews>,
   /// The sun's sprite as the sky draws it: its texture, and its colour and radius.
   pub sun_sprite: Option<(String, Vec4)>,
-  /// Whether the surfaces are wetted this frame: while it rains, or, enhanced, while the level is still wet after.
-  pub is_wet: bool,
   /// The colour the selection is outlined in, or none while nothing it names is drawn.
   pub selection_color: Option<[f32; 3]>,
 }
@@ -74,8 +67,6 @@ impl Default for ViewInfo {
   fn default() -> Self {
     Self {
       present: PresentUniform::default(),
-      wet: WetUniform::default(),
-      wet_views: None,
       camera: CameraView {
         position: Vec3::ZERO,
         view: Mat4::IDENTITY,
@@ -101,7 +92,6 @@ impl Default for ViewInfo {
       lighting: bytemuck::Zeroable::zeroed(),
       sky: None,
       sun_sprite: None,
-      is_wet: false,
       selection_color: None,
     }
   }
