@@ -8,6 +8,7 @@ import {
   RenderReflectionQuality,
   RenderReflectionTraceQuality,
 } from "@/core/ipc/types/xrf-renderer";
+import { LevelGlassSettings } from "@/core/level/components/preview/LevelGlassSettings";
 import { ILevelFeatureOptions, TLevelReflectionOptions } from "@/core/level/lib/features";
 import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
@@ -22,7 +23,7 @@ import {
   RENDER_REFLECTION_QUALITY_OPTIONS,
   RENDER_REFLECTION_TRACE_QUALITY_OPTIONS,
 } from "@/core/render/lib/features";
-import { TRenderReflectionSettings } from "@/core/render/lib/settings/render-feature-settings";
+import { TRenderGlassSettings, TRenderReflectionSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { EditorPopoverToggle } from "@/core/shell/editor/EditorPopoverToggle";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { BaseComponentProps } from "@/lib/dom/element-types";
@@ -30,6 +31,8 @@ import { BaseComponentProps } from "@/lib/dom/element-types";
 interface ILevelReflectionsActionProps extends BaseComponentProps {
   /** The reflections as the view draws them. */
   value: TRenderReflectionSettings;
+  /** The glass as the view draws it, set here beside what reflects. */
+  glass: TRenderGlassSettings;
   /** What the view sets over the settings, of which the reflections' part is changed. */
   features: ILevelFeatureOptions;
   /** Whether the GPU drawing the view traces rays, which tracing what the screen misses needs. */
@@ -40,13 +43,14 @@ interface ILevelReflectionsActionProps extends BaseComponentProps {
 /**
  * What glossy and wet surfaces reflect: the engine's sky cube alone, or screen-space reflections of what the frame
  * shows where a traced ray meets it; how hard they trace, how strongly surfaces reflect, how far a ray goes and how
- * fine the cube of the surroundings a ray meeting nothing reads is.
+ * fine the cube of the surroundings a ray meeting nothing reads is; and how glass is drawn.
  */
 export function LevelReflectionsAction({
   "data-testid": dataTestId = "level-reflections-action",
   id,
   className,
   value,
+  glass,
   features,
   isTraceable,
   onChange,
@@ -154,6 +158,8 @@ export function LevelReflectionsAction({
       <Button size={"small"} onClick={() => onChange({ ...features, reflections: {} })}>
         Back to the settings for the reflections
       </Button>
+
+      <LevelGlassSettings value={glass} features={features} onChange={onChange} />
     </EditorPopoverToggle>
   );
 }

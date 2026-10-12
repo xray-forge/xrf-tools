@@ -27,6 +27,8 @@ use crate::pass::fog_scattering_parameters::FogScatteringParameters;
 use crate::pass::fog_scattering_uniform::FogScatteringUniform;
 use crate::pass::fsr_uniform::FsrUniform;
 use crate::pass::fxaa_parameters::FxaaParameters;
+use crate::pass::glass_parameters::GlassParameters;
+use crate::pass::glass_uniform::GlassUniform;
 use crate::pass::grass_colour_parameters::GrassColourParameters;
 use crate::pass::grass_model_record::GrassModelRecord;
 use crate::pass::light_binning_parameters::LightBinningParameters;
@@ -127,6 +129,7 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
   let mut grass_colours: ShaderBindings = ShaderBindings::new();
   let mut combine: ShaderBindings = ShaderBindings::new();
   let mut composited: ShaderBindings = ShaderBindings::new();
+  let mut glass: ShaderBindings = ShaderBindings::new();
   let mut sky_haze: ShaderBindings = ShaderBindings::new();
   let mut sun_shafts: ShaderBindings = ShaderBindings::new();
   let mut light_volumes: ShaderBindings = ShaderBindings::new();
@@ -148,6 +151,7 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
 
   structs
     .declare::<LightingUniform>()
+    .declare::<GlassUniform>()
     .declare::<GrassModelRecord>()
     .declare::<TraceGrassUniform>()
     .declare::<TraceRequest>()
@@ -215,6 +219,7 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
   reflection_scene.add::<ReflectionSceneParameters<'_>>()?;
   combine.add::<CombineParameters<'_>>()?;
   composited.add::<CompositedParameters<'_>>()?;
+  glass.add::<GlassParameters<'_>>()?;
   sky_haze.add::<SkyHazeParameters>()?;
   sun_shafts.add::<SunShaftsParameters>()?;
   light_volumes.add::<LightVolumeParameters>()?;
@@ -328,6 +333,7 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
       "generated/static/composited",
       format!("{STRUCTS_IMPORT}{}", composited.to_wgsl()),
     ),
+    ("generated/static/glass", format!("{STRUCTS_IMPORT}{}", glass.to_wgsl())),
     (
       "generated/frame/sky_haze",
       format!("{STRUCTS_IMPORT}{}", sky_haze.to_wgsl()),

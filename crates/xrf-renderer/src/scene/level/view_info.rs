@@ -22,6 +22,7 @@ use crate::pass::bloom_uniform::BloomUniform;
 use crate::pass::contact_shadow_uniform::ContactShadowUniform;
 use crate::pass::fog_scattering_uniform::FogScatteringUniform;
 use crate::pass::fsr_uniform::FsrUniform;
+use crate::pass::glass_uniform::GlassUniform;
 use crate::pass::lighting_uniform::LightingUniform;
 use crate::pass::present_uniform::PresentUniform;
 use crate::pass::rain_uniform::RainUniform;
@@ -145,6 +146,8 @@ pub struct ViewInfo {
   pub sorted_runs: Vec<(StaticLayout, u32, u32)>,
   /// Whether the scene's distorting surfaces are drawn into the distortion target this frame.
   pub is_glass_distorting: bool,
+  /// The enhanced glass's strengths, where it draws the scene's glass this frame.
+  pub glass: Option<GlassUniform>,
   /// The colour the selection is outlined in, or none while nothing it names is drawn.
   pub selection_color: Option<[f32; 3]>,
 }
@@ -213,6 +216,7 @@ impl Default for ViewInfo {
       thunder_draw: None,
       sorted_count: 0,
       is_glass_distorting: false,
+      glass: None,
       sorted_runs: Vec::new(),
       selection_color: None,
     }

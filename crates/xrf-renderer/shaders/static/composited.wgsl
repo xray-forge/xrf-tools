@@ -223,6 +223,11 @@ fn fs_composited(in: GBufferVarying) -> CompositedOutput {
   // A view drawing every surface solid takes its alpha as whole.
   let base: vec4<f32> = vec4<f32>(sampled.rgb, select(sampled.a, 1.0, camera.modes.z > 0.5));
   let surface: Surface = surfaces[in.surface];
+
+  // The enhanced glass draws its own after every composited surface.
+  if ((surface.flags & SURFACE_IS_GLASS) != 0u && lighting.engine.z > 0.5) {
+    discard;
+  }
   let is_lit: bool = lighting.params.y > 0.5;
   let is_blended: bool = (surface.flags & (SURFACE_IS_ADDED | SURFACE_IS_MULTIPLIED)) == 0u;
 

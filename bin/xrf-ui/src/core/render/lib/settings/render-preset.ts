@@ -6,6 +6,7 @@ import {
   ERenderDebandingMode,
   ERenderFogMode,
   ERenderFoliageMode,
+  ERenderGlassMode,
   ERenderIndirectLightMode,
   ERenderLightShadowFilter,
   ERenderParallaxMode,
@@ -22,6 +23,7 @@ import {
   DEFAULT_RENDER_EXPOSURE_SETTINGS,
   DEFAULT_RENDER_FOG_SETTINGS,
   DEFAULT_RENDER_FOLIAGE_SETTINGS,
+  DEFAULT_RENDER_GLASS_SETTINGS,
   DEFAULT_RENDER_GRASS_SETTINGS,
   DEFAULT_RENDER_INDIRECT_LIGHT_SETTINGS,
   DEFAULT_RENDER_LIGHTS_SETTINGS,
@@ -64,6 +66,8 @@ export const RENDER_PRESETS: Readonly<Record<ERenderPreset, IRenderFeatureSettin
     // The application's own choice over the engine's, as the antialiasing is: the fog thickened low down and the
     // frame's bright parts scattered into it, at four small passes.
     fog: { ...DEFAULT_RENDER_FOG_SETTINGS, mode: ERenderFogMode.ENHANCED },
+    // The application's own choice over the engine's, as the antialiasing is: glass refracting what is behind it.
+    glass: { ...DEFAULT_RENDER_GLASS_SETTINGS, mode: ERenderGlassMode.ENHANCED },
     // The application's own choice over the engine's, as the antialiasing is: the enhanced foliage motion, each tuft
     // stood along its ground's slope.
     grass: {
@@ -114,6 +118,7 @@ export const RENDER_PRESETS: Readonly<Record<ERenderPreset, IRenderFeatureSettin
     enhancedBloom: DEFAULT_RENDER_ENHANCED_BLOOM_SETTINGS,
     exposure: DEFAULT_RENDER_EXPOSURE_SETTINGS,
     fog: DEFAULT_RENDER_FOG_SETTINGS,
+    glass: DEFAULT_RENDER_GLASS_SETTINGS,
     grass: { ...DEFAULT_RENDER_GRASS_SETTINGS, isEnabled: false },
     indirectLight: DEFAULT_RENDER_INDIRECT_LIGHT_SETTINGS,
     isOcclusionCulled: true,

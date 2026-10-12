@@ -24,6 +24,10 @@ struct Lighting {
   height_fog: vec4<f32>,
 }
 
+struct Glass {
+  refraction: f32,
+}
+
 struct GrassModel {
   shape: vec4<f32>,
   is_waving: f32,

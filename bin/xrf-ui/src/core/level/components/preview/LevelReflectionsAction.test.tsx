@@ -10,7 +10,10 @@ import {
 } from "@/core/ipc/types/xrf-renderer";
 import { LevelReflectionsAction } from "@/core/level/components/preview/LevelReflectionsAction";
 import { ILevelFeatureOptions } from "@/core/level/lib/features";
-import { DEFAULT_RENDER_REFLECTION_SETTINGS } from "@/core/render/lib/settings/render-feature-defaults";
+import {
+  DEFAULT_RENDER_GLASS_SETTINGS,
+  DEFAULT_RENDER_REFLECTION_SETTINGS,
+} from "@/core/render/lib/settings/render-feature-defaults";
 import { TRenderReflectionSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { mockLevelFeatureOptions } from "@/fixtures/mocks/level.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
@@ -25,7 +28,13 @@ describe("LevelReflectionsAction", () => {
 
     function render(value: TRenderReflectionSettings): ReactElement {
       return (
-        <LevelReflectionsAction value={value} features={mockLevelFeatureOptions()} isTraceable onChange={onChange} />
+        <LevelReflectionsAction
+          value={value}
+          glass={DEFAULT_RENDER_GLASS_SETTINGS}
+          features={mockLevelFeatureOptions()}
+          isTraceable
+          onChange={onChange}
+        />
       );
     }
 
@@ -76,6 +85,7 @@ describe("LevelReflectionsAction", () => {
     const { getByRole, findByRole } = renderWithProviders(
       <LevelReflectionsAction
         value={{ ...DEFAULT_RENDER_REFLECTION_SETTINGS, mode: ERenderReflectionMode.ENHANCED, isTraced: true }}
+        glass={DEFAULT_RENDER_GLASS_SETTINGS}
         features={mockLevelFeatureOptions()}
         isTraceable
         onChange={onChange}
@@ -96,6 +106,7 @@ describe("LevelReflectionsAction", () => {
     const { getByRole, findByRole } = renderWithProviders(
       <LevelReflectionsAction
         value={{ ...DEFAULT_RENDER_REFLECTION_SETTINGS, mode: ERenderReflectionMode.ENHANCED, isTraced: true }}
+        glass={DEFAULT_RENDER_GLASS_SETTINGS}
         features={mockLevelFeatureOptions()}
         isTraceable={false}
         onChange={jest.fn()}

@@ -226,6 +226,7 @@ export function LevelPreviewToolbar({
 
           <LevelReflectionsAction
             value={toLevelReflections(settings, features)}
+            glass={toLevelModeFeature("glass", settings, features)}
             features={features}
             isTraceable={isTraceable}
             onChange={onChangeFeatures}

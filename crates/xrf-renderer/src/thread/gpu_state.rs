@@ -18,6 +18,7 @@ use crate::pass::flare_pass::FlarePass;
 use crate::pass::fog_scattering_pass::FogScatteringPass;
 use crate::pass::fsr_pass::FsrPass;
 use crate::pass::fxaa_pass::FxaaPass;
+use crate::pass::glass_pass::GlassPass;
 use crate::pass::grass_colour_pass::GrassColourPass;
 use crate::pass::grass_pass::GrassPass;
 use crate::pass::grid_pass::GridPass;
@@ -72,6 +73,7 @@ pub struct GpuState {
   pub surroundings: SurroundingsPass,
   pub water: WaterPass,
   pub composited: CompositedPass,
+  pub glass: GlassPass,
   pub grass: GrassPass,
   pub grass_colours: GrassColourPass,
   pub rain: RainPass,
@@ -150,9 +152,19 @@ impl GpuState {
       sky.get_layout(),
     )?;
 
+    let glass: GlassPass = GlassPass::new(
+      device,
+      shaders,
+      &view_layout,
+      &scene_layout,
+      textures.get_layout(),
+      sky.get_layout(),
+    )?;
+
     Ok(Self {
       water,
       composited,
+      glass,
       grass: GrassPass::new(device, shaders, &view_layout, textures.get_layout())?,
       grass_colours: GrassColourPass::new(device, shaders, textures.get_layout())?,
       rain: RainPass::new(device, shaders, &view_layout)?,
@@ -245,6 +257,7 @@ impl GpuState {
       sky: &self.sky,
       water: &self.water,
       composited: &self.composited,
+      glass: &self.glass,
       grass: &self.grass,
       rain: &self.rain,
       particles: &self.particles,
@@ -295,6 +308,7 @@ impl GpuState {
     self.sky_haze.refresh(device, shaders);
     self.water.refresh(device, shaders);
     self.composited.refresh(device, shaders);
+    self.glass.refresh(device, shaders);
     self.grass.refresh(device, shaders);
     self.rain.refresh(device, shaders);
     self.particles.refresh(device, shaders);
