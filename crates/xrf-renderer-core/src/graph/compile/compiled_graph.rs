@@ -177,7 +177,7 @@ impl<'a> CompiledGraph<'a> {
     let pool: &TransientPool = pool;
     let cache: &BindGroupCache = bind_groups;
     let resources: GraphResources<'_> = self.resolve(pool, bindings, uploads.get_buffer())?;
-    let is_timing: bool = timer.begin_frame();
+    let is_timing: bool = timer.begin_frame(device);
     let CompiledGraph {
       textures,
       passes,
@@ -216,8 +216,11 @@ impl<'a> CompiledGraph<'a> {
       .filter_map(|(_, group, error)| error.as_ref().map(|error| format!("group '{}': {error}", group.name)))
       .collect();
 
-    // A frame any group of which wgpu refused is dropped whole: what the others drew is of a frame never finished.
+    // A frame any group of which wgpu refused is dropped whole: what the others drew is of a frame never finished, and
+    // the stamps it recorded are never submitted.
     if !errors.is_empty() {
+      timer.abandon_frame();
+
       return Err(XrfError::new_invalid_error(format!(
         "The frame was dropped: {}",
         errors.join("; ")

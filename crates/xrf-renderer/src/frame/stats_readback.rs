@@ -28,6 +28,11 @@ impl StatsReadback {
     self.readback.request();
   }
 
+  /// Drops the copy recorded with a frame that was never submitted.
+  pub fn abandon(&self) {
+    self.readback.abandon();
+  }
+
   /// The latest counts read back, refreshed once a mapped copy is there.
   pub fn take(&mut self) -> [u32; 4] {
     if let Some(Ok(values)) = self

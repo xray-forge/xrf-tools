@@ -3689,6 +3689,16 @@ impl SceneView {
     self.state.lights.request_report();
   }
 
+  /// Drops what a frame that was never submitted copied out for reading back: its counts and its pick.
+  pub fn abandon_frame(&self) {
+    self.state.stats.abandon();
+    self.state.lights.abandon_report();
+
+    if let Some(target) = &self.state.pick_target {
+      target.abandon();
+    }
+  }
+
   /// What its frames are drawn with, as resolved from what `options` asked; the weather's light is the viewport's to add.
   pub fn describe_applied(&self, options: &RenderViewOptions) -> RenderAppliedReport {
     let antialiasing: RenderAntialiasing = if self.info.is_temporal {
