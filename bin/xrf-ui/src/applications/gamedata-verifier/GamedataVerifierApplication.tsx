@@ -3,8 +3,8 @@ import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 
 import { GamedataVerifierService } from "@/applications/gamedata-verifier/services/verifier";
-import { EngineChoiceFormRow } from "@/core/engine-target/components";
-import { IEngineChoice, useEngineChoice } from "@/core/engine-target/lib";
+import { EngineChoiceFormRow } from "@/core/engine-target/components/EngineChoiceFormRow";
+import { IEngineChoice, useEngineChoice } from "@/core/engine-target/lib/use-engine-choice";
 import { JobPickerForm } from "@/core/jobs/components/JobPickerForm";
 import { EApplicationId } from "@/core/routing/application";
 import { CheckboxFormRow, IPathField, PathFormRow, usePathField } from "@/core/ui/form";
