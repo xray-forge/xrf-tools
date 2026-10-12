@@ -4,7 +4,6 @@ use crate::contract::render_overlay::RenderOverlay;
 use crate::contract::render_selection_target::RenderSelectionTarget;
 use crate::frame::depth_pyramid::DepthPyramid;
 use crate::frame::pick_target::PickTarget;
-use crate::frame::sky_prefilter::SkyPrefilter;
 use crate::frame::stats_readback::StatsReadback;
 use crate::frame::view_targets::ViewTargets;
 use crate::lighting::foliage_wind::FoliageWind;
@@ -28,8 +27,6 @@ pub struct ViewState {
   pub motion_previous: Option<Mat4>,
   /// The last frame's jittered view projection, which a read of its targets reprojects through.
   pub view_projection_previous: Option<Mat4>,
-  /// The sky as drawn, prefiltered by roughness into a cube's mips for the reflections' misses, while a sky is drawn.
-  pub sky_prefilter: Option<SkyPrefilter>,
   /// Frames a temporal resolve gathered, which the screen-space effects turn their noise by.
   pub noise_frame: u32,
   /// The trees' sway the last frame drew with.
@@ -65,7 +62,6 @@ impl ViewState {
       history: None,
       motion_previous: None,
       view_projection_previous: None,
-      sky_prefilter: None,
       noise_frame: 0,
       last_wind: None,
       foliage: FoliageWind::default(),

@@ -25,7 +25,6 @@ use crate::contract::render_overlay::RenderOverlay;
 use crate::contract::render_particles_report::RenderParticlesReport;
 use crate::contract::render_pool_use::RenderPoolUse;
 use crate::contract::render_rect::RenderRect;
-use crate::contract::render_reflection_probe::RenderReflectionProbe;
 use crate::contract::render_selection::RenderSelection;
 use crate::contract::render_selection_target::RenderSelectionTarget;
 use crate::contract::render_static_report::RenderStaticReport;
@@ -34,7 +33,6 @@ use crate::contract::render_water_settings::RenderWaterSettings;
 use crate::frame::depth_pyramid::DepthPyramid;
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::pick_target::PickTarget;
-use crate::frame::sky_prefilter::SkyPrefilter;
 use crate::frame::static_scene_handles::StaticSceneHandles;
 use crate::frame::texture_copy::add_texture_copy;
 use crate::frame::view_target_handles::ViewTargetHandles;
@@ -62,11 +60,7 @@ use crate::pass::pyramid_depth_parameters::PyramidDepthParameters;
 use crate::pass::pyramid_level_parameters::PyramidLevelParameters;
 use crate::pass::rain_uniform::RainUniform;
 use crate::pass::reflection_trace::ReflectionTrace;
-use crate::pass::sky_haze_parameters::SkyHazeParameters;
 use crate::pass::sky_parameters::SkyParameters;
-use crate::pass::sky_prefilter_parameters::SkyPrefilterParameters;
-use crate::pass::sky_prefilter_pass::SkyPrefilterPass;
-use crate::pass::sky_prefilter_uniform::SkyPrefilterUniform;
 use crate::pass::static_cull_parameters::StaticCullParameters;
 use crate::pass::static_cull_params::StaticCullParams;
 use crate::pass::static_draw_parameters::StaticDrawParameters;
@@ -271,7 +265,7 @@ impl SceneView {
       .exposure
       .prepare(queue, &options.features.exposure, Instant::now());
 
-    self.info.sun_sprite = self.features.flares.prepare(
+    let sun_sprite: Option<(String, Vec4)> = self.features.flares.prepare(
       device,
       (lighting, weather),
       options,
@@ -282,22 +276,12 @@ impl SceneView {
 
     let sky = &lighting.sky;
 
-    self.info.sky = Some(passes.sky.collect(
+    self.features.sky.prepare(
+      device,
+      (passes, options),
+      (sky, sun_sprite, &scene.environments.1),
       weather_textures,
-      (sky, self.info.sun_sprite.as_ref().map(|(texture, _)| texture.as_str())),
-      &scene.environments.1,
-    ));
-    // The surroundings cube at the size the settings ask, made again where that changed.
-    let probe: RenderReflectionProbe = options.features.reflections.probe;
-
-    if self.state.sky_prefilter.as_ref().is_some_and(|it| it.probe != probe) {
-      self.state.sky_prefilter = None;
-    }
-
-    self
-      .state
-      .sky_prefilter
-      .get_or_insert_with(|| SkyPrefilter::new(device, probe));
+    );
 
     // The ambient effects blow the wind the grass, the rain and the campfires read this frame.
     let gust: AmbientGust = scene.gust;
@@ -391,14 +375,13 @@ impl SceneView {
         .all(|reference| reference.as_deref().is_some_and(|it| weather_textures.is_up(it))),
       clouds_time: scene.started.elapsed().as_secs_f32(),
       sun_sprite: self
-        .info
-        .sun_sprite
-        .as_ref()
+        .features
+        .sky
+        .get_sun_sprite()
         .filter(|(texture, _)| weather_textures.is_up(texture))
         .map_or(Vec4::ZERO, |(_, sprite)| *sprite),
     };
 
-    self.info.is_hazing = options.mode.is_lit && options.show.is_sky_visible && options.show.is_sky_hazed;
     self.info.is_shafted = options.mode.is_lit
       && options.show.is_sun_shafted
       && lighting.get_sun_shafts(&options.features.sun_shafts) > 0.0
@@ -896,71 +879,6 @@ impl SceneView {
       .add_passes((graph, bindings, runtime), passes, view, targets)
   }
 
-  /// Adds the passes filling the prefiltered sky cube this frame, a mip each: the first the surroundings cube's face
-  /// drawn this frame, the level around the camera lit with the sky behind, or the sky's cubes alone as the sky is
-  /// drawn where none is; each after it from the mips before it over its roughness's lobe.
-  #[allow(clippy::too_many_arguments)]
-  fn add_sky_prefilter_passes<'a>(
-    (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
-    passes: LevelPasses<'a>,
-    sky: &SkyParameters<'a>,
-    prefilter: &'a SkyPrefilter,
-    lit: &LightingHandles<'a>,
-    surroundings: Option<(
-      &'a SurroundingsCube,
-      &StaticSceneHandles,
-      (&'a StaticCullParams, &'a wgpu::BindGroup),
-    )>,
-  ) {
-    let (lighting, exposure): (UniformBinding<LightingUniform>, GraphBuffer) = (lit.lighting, lit.exposure);
-    let empty: GraphTexture = bindings.import_view(&mut *graph, "sky prefilter none", passes.sky_prefilter.get_empty());
-
-    for (index, level) in prefilter.levels.iter().enumerate() {
-      let source: GraphTexture = level.source.as_ref().map_or(empty, |before| {
-        bindings.import_view(&mut *graph, "sky prefilter before", before)
-      });
-      let faces: GraphTexture = bindings.import_view(&mut *graph, "sky prefilter level", &level.target);
-
-      if let (0, Some((cube, scene, cull))) = (index, surroundings) {
-        cube.add_passes(
-          (&mut *graph, &mut *bindings, runtime),
-          passes,
-          scene,
-          cull,
-          (lit, sky),
-          faces,
-        );
-
-        continue;
-      }
-      let settings: UniformBinding<SkyPrefilterUniform> = runtime.push_uniform(&SkyPrefilterUniform::new(
-        index as u32,
-        prefilter.levels.len() as u32,
-        (level.size, prefilter.probe.get_size()),
-        SkyPrefilterPass::SAMPLES,
-      ));
-      let parameters: SkyPrefilterParameters = SkyPrefilterParameters {
-        sky_cube_0: sky.sky_cube_0,
-        sky_cube_1: sky.sky_cube_1,
-        sky_clouds_0: sky.sky_clouds_0,
-        sky_clouds_1: sky.sky_clouds_1,
-        sky_clamp: sky.sky_clamp,
-        sky_repeat: sky.sky_repeat,
-        source,
-        lighting,
-        exposure: StorageValue::new(exposure),
-        settings,
-        faces,
-      };
-      let size: u32 = level.size;
-
-      graph
-        .add_compute_pass(SkyPrefilterPass::PASSES[index])
-        .parameters(&parameters)
-        .record(move |context| passes.sky_prefilter.record(context, size, &parameters));
-    }
-  }
-
   /// Ends a frame its graph recorded: the water's reflection, the bitmask search's accumulations and the temporal
   /// resolve's history it wrote become the ones the next frame keeps.
   pub fn end_frame(&mut self, frame: &LevelFrame) {
@@ -1073,8 +991,7 @@ impl SceneView {
     // The shadowed lights' shafts, drawn into a target of their own for the sun shafts' composite to add.
     let is_froxeled: bool = is_lit && self.features.volumetric.is_froxeled();
     let light_atlas: &'a wgpu::TextureView = scene.lights.get_shadow_atlas();
-    let has_sky: bool = self.info.sky.is_some();
-    let is_hazing: bool = has_sky && self.info.is_hazing;
+    let has_sky: bool = self.features.sky.get_views().is_some();
     let is_composited: bool = is_drawn && has_sky;
     let has_particles: bool = is_drawn && self.state.particles.is_drawing();
     let is_shafted: bool = self.info.is_shafted && !is_froxeled;
@@ -1307,46 +1224,17 @@ impl SceneView {
         has_lights,
       );
 
-      let sky: Option<SkyParameters> = match (&scene_view.info.sky, &scene_view.state.sky_prefilter) {
-        (Some(views), Some(prefilter)) => {
-          let sky: SkyParameters = passes.sky.import((views, &prefilter.cube), &mut *graph, &mut *bindings);
-
-          let surroundings: &SurroundingsCube = &scene_view.renderer.surroundings;
-
-          Self::add_sky_prefilter_passes(
-            (&mut *graph, &mut *bindings, runtime),
-            passes,
-            &sky,
-            prefilter,
-            &lit,
-            surroundings
-              .is_active()
-              .then_some((surroundings, &statics, (&scene_view.info.cull, texture_group))),
-          );
-
-          Some(sky)
-        }
-        _ => None,
-      };
+      let surroundings: &SurroundingsCube = &scene_view.renderer.surroundings;
+      let sky: Option<SkyParameters> = scene_view.features.sky.add_passes(
+        (&mut *graph, &mut *bindings, runtime),
+        passes,
+        (handles, lit),
+        surroundings
+          .is_active()
+          .then_some((surroundings, &statics, (&scene_view.info.cull, texture_group))),
+      );
       // The sky's group, which the water's scene pass reads too once the water's own sky views shadow the name.
       let sky_parameters: Option<SkyParameters> = sky;
-
-      if let (true, Some(sky)) = (is_hazing, sky) {
-        let parameters: SkyHazeParameters = SkyHazeParameters {
-          lighting: lit.lighting,
-          exposure: StorageValue::new(lit.exposure),
-        };
-
-        graph
-          .add_raster_pass("haze")
-          .parameters(&parameters)
-          .parameters(&sky)
-          .color(GraphColorAttachment::new(
-            handles.haze,
-            wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-          ))
-          .record(move |context| passes.sky_haze.record(context, &parameters, &sky));
-      }
 
       // The reflections and combine record in a group of their own, encoded beside the lights before them.
       graph.begin_group("reflections");
@@ -1420,7 +1308,10 @@ impl SceneView {
         .resolve
         .add_reactive_passes((&mut *graph, &mut *bindings), (scene, handles.size));
 
-      if let (true, Some(sky)) = (scene_view.features.water.is_drawn(), scene_view.info.sky.as_ref()) {
+      if let (true, Some(sky)) = (
+        scene_view.features.water.is_drawn(),
+        scene_view.features.sky.get_views(),
+      ) {
         let draw: WaterDraw<'_> = WaterDraw {
           targets: handles,
           view,
@@ -1952,9 +1843,9 @@ impl SceneView {
       is_water: options.features.water.is_enabled,
       environment: None,
       sun: self
-        .info
-        .sun_sprite
-        .as_ref()
+        .features
+        .sky
+        .get_sun_sprite()
         .and_then(|_| self.features.flares.get_shown())
         .map(str::to_owned),
     }

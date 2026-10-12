@@ -13,7 +13,6 @@ use crate::pass::present_uniform::PresentUniform;
 use crate::pass::static_cull_params::StaticCullParams;
 use crate::pass::static_occlusion_uniform::StaticOcclusionUniform;
 use crate::pass::wind_uniform::WindUniform;
-use crate::scene::level::sky_views::SkyViews;
 
 /// One frame of a view as its preparation leaves it: the camera and sun it is drawn by, what its options and weather
 /// decided it draws, and what its passes read of that. Prepared before the frame graph is declared, and read by it.
@@ -45,8 +44,6 @@ pub struct ViewInfo {
   pub debug_view: RenderDebugView,
   /// Whether the static surfaces draw as their edges, which nothing composited or planted is drawn over.
   pub is_wireframe: bool,
-  /// Whether the sky is blurred into the haze map the distance fades into.
-  pub is_hazing: bool,
   /// Whether the wall marks are laid into the albedo.
   pub is_wallmarked: bool,
   /// Whether the sun's light shafts are added, drawn through its shadow's cascades.
@@ -55,10 +52,6 @@ pub struct ViewInfo {
   pub debanding: Option<RenderDebandingQuality>,
   /// The lighting the passes read, as the frame's weather and options make it.
   pub lighting: LightingUniform,
-  /// The weather textures the sky draws with and the water reflects; none until the frame's sky is prepared.
-  pub sky: Option<SkyViews>,
-  /// The sun's sprite as the sky draws it: its texture, and its colour and radius.
-  pub sun_sprite: Option<(String, Vec4)>,
   /// The colour the selection is outlined in, or none while nothing it names is drawn.
   pub selection_color: Option<[f32; 3]>,
 }
@@ -85,13 +78,10 @@ impl Default for ViewInfo {
       corrections: RenderImageCorrections::default(),
       debug_view: RenderDebugView::Final,
       is_wireframe: false,
-      is_hazing: false,
       is_wallmarked: true,
       is_shafted: false,
       debanding: None,
       lighting: bytemuck::Zeroable::zeroed(),
-      sky: None,
-      sun_sprite: None,
       selection_color: None,
     }
   }
