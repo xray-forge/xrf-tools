@@ -36,7 +36,6 @@ pub(crate) mod puddle_fill;
 pub(crate) mod rain_cover;
 pub(crate) mod rain_wetness;
 pub(crate) mod scene_output;
-pub(crate) mod scene_renderer;
 pub(crate) mod scene_view;
 pub(crate) mod shadow_cascade_view;
 pub(crate) mod shadow_frame;

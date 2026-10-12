@@ -1,5 +1,6 @@
 use crate::context::gpu_context::GpuContext;
 use crate::contract::render_backend::RenderBackend;
+use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::feature::scene_features::SceneFeatures;
 use crate::scene::level::feature::view_feature::ViewFeature;
 use crate::tests::test_bundle::checkout_dxc;
@@ -19,7 +20,8 @@ fn holds_nothing_while_off() {
       return;
     }
   };
-  let mut features: SceneFeatures = SceneFeatures::new(&context.device, &context.queue);
+  let layout: wgpu::BindGroupLayout = ViewBinding::create_layout(&context.device);
+  let mut features: SceneFeatures = SceneFeatures::new((&context.device, &context.queue), &layout, 64);
   let kept: u64 = features.exposure.get_memory();
 
   assert!(kept > 0, "the exposure's state is made with the view");

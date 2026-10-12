@@ -16,9 +16,21 @@ use crate::scene::level::feature::view_feature::ViewFeature;
 use crate::scene::level::feature::volumetric_feature::VolumetricFeature;
 use crate::scene::level::feature::water_feature::WaterFeature;
 use crate::scene::level::feature::wet_feature::WetFeature;
+use crate::scene::level::level_shadows::LevelShadows;
+use crate::scene::level::level_surface::LevelSurface;
+use crate::scene::level::rain_cover::RainCover;
+use crate::scene::level::surroundings_cube::SurroundingsCube;
 
-/// A view's feature units, each reading its own settings, keeping its own state and adding its own passes.
+/// A view's feature units, each reading its own settings, keeping its own state and adding its own passes; and what it
+/// draws from views of its own: the sun's shadows, the rain cover and the level's surface seen from overhead, and the
+/// level around the camera as a cube.
 pub struct SceneFeatures {
+  pub shadows: LevelShadows,
+  pub rain_cover: RainCover,
+  /// The level's surface around the camera without its trees, which the puddles are seated on.
+  pub level_surface: LevelSurface,
+  /// The level around the camera as a cube, a face a frame, which a reflection meeting nothing on the screen reads.
+  pub surroundings: SurroundingsCube,
   pub fog: FogFeature,
   pub bloom: BloomFeature,
   pub smoothing: SmoothingFeature,
@@ -39,8 +51,17 @@ pub struct SceneFeatures {
 }
 
 impl SceneFeatures {
-  pub fn new(device: &wgpu::Device, queue: &wgpu::Queue) -> Self {
+  /// The units of a view whose views bind by `view_layout`, the scene's cull arguments `args_size` bytes.
+  pub fn new(
+    (device, queue): (&wgpu::Device, &wgpu::Queue),
+    view_layout: &wgpu::BindGroupLayout,
+    args_size: u64,
+  ) -> Self {
     Self {
+      shadows: LevelShadows::new(device),
+      rain_cover: RainCover::new(device, view_layout, args_size),
+      level_surface: LevelSurface::new(device, view_layout, args_size),
+      surroundings: SurroundingsCube::new(device, view_layout, args_size),
       fog: FogFeature::default(),
       bloom: BloomFeature::default(),
       smoothing: SmoothingFeature::default(),
