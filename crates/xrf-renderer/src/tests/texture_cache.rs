@@ -8,6 +8,7 @@ use xrf_error::{XrfError, XrfResult};
 use crate::context::gpu_context::GpuContext;
 use crate::contract::render_backend::RenderBackend;
 use crate::contract::render_texture_state::RenderTextureState;
+use crate::frame::periodic_scheduler::PeriodicScheduler;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::scene::texture::texture_cache::TextureCache;
 use crate::scene::texture::texture_role::TextureRole;
@@ -53,7 +54,7 @@ fn settle(cache: &mut TextureCache, context: &GpuContext, slot: u32) -> RenderTe
   let started: Instant = Instant::now();
 
   loop {
-    cache.update(&context.device, &context.queue);
+    cache.update((&context.device, &context.queue), &mut PeriodicScheduler::new(), true);
 
     let state: RenderTextureState = cache.describe(&[slot]).remove(0).state;
 
@@ -100,7 +101,7 @@ fn a_load_landing_after_its_slot_was_freed_is_not_drawn_in_the_slots_next_textur
 
   open.send(()).unwrap();
   std::thread::sleep(Duration::from_millis(50));
-  cache.update(&context.device, &context.queue);
+  cache.update((&context.device, &context.queue), &mut PeriodicScheduler::new(), true);
 
   assert_eq!(cache.describe(&[fast]).remove(0).state, RenderTextureState::Missing);
 }

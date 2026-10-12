@@ -8,6 +8,9 @@ use xrf_error::XrfResult;
 
 use crate::contract::render_texture_report::RenderTextureReport;
 use crate::contract::render_texture_state::RenderTextureState;
+use crate::frame::periodic_job::PeriodicJob;
+use crate::frame::periodic_scheduler::PeriodicScheduler;
+use crate::frame::periodic_ticket::PeriodicTicket;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::scene::texture::decoded_texture::DecodedTexture;
 use crate::scene::texture::texture_role::TextureRole;
@@ -21,8 +24,18 @@ pub const MISSING_SLOT: u32 = 0;
 const CHECKER_SIZE: u32 = 16;
 const CHECKER_SQUARE: u32 = 2;
 
-/// Bytes of texture uploaded at most each frame, so an open spreads its uploads rather than stalling a frame.
+/// Bytes of texture uploaded at most each frame while a level opens, so an open spreads its uploads rather than stalling
+/// a frame.
 const UPLOAD_BYTES: u64 = 64 * 1024 * 1024;
+
+/// Textures offered at most a frame once every level stands; milliseconds a byte of one costs to upload, and frames
+/// one waits at most.
+const UPLOADS_OFFERED: usize = 16;
+const UPLOAD_SEED: f32 = 3e-8;
+const UPLOAD_WAIT_MOST: u32 = 4;
+
+/// What uploading a texture is named as a job: nothing the timer measures, so its cost stays its seed.
+static UPLOAD_PASSES: [&str; 1] = ["texture upload"];
 
 /// Slots a bindless array holds at most, below what any adapter meeting the baseline offers.
 const MAX_SLOTS: u32 = 16_384;
@@ -76,6 +89,8 @@ pub struct TextureCache {
   receiver: LoaderReceiver<TextureLoad>,
   /// Loaded, waiting for a frame's upload budget, each beside the generation it was asked under.
   uploads: VecDeque<(u32, u32, DecodedTexture)>,
+  /// Frames the first upload waiting has waited.
+  waited: u32,
   capacity: u32,
   is_dirty: bool,
   /// The cubes surfaces named as their environment, each slot past the first in turn, empty where freed; loaded as
@@ -149,6 +164,7 @@ impl TextureCache {
       sender,
       receiver,
       uploads: VecDeque::new(),
+      waited: 0,
       capacity,
       is_dirty: false,
       environments: Vec::new(),
@@ -422,8 +438,15 @@ impl TextureCache {
     }
   }
 
-  /// Takes what the loaders finished and uploads it, within a frame's budget, then rebinds the array if a slot changed.
-  pub fn update(&mut self, device: &wgpu::Device, queue: &wgpu::Queue) {
+  /// Takes what the loaders finished and uploads it, then rebinds the array if a slot changed: up to `UPLOAD_BYTES` a
+  /// frame while a level opens (`is_opening`), and as `scheduler` grants them, in a round of their own, once every
+  /// level stands.
+  pub fn update(
+    &mut self,
+    (device, queue): (&wgpu::Device, &wgpu::Queue),
+    scheduler: &mut PeriodicScheduler,
+    is_opening: bool,
+  ) {
     while let Ok((slot, generation, load)) = self.receiver.try_recv() {
       if self.generations.get(slot as usize) != Some(&generation) {
         continue;
@@ -436,33 +459,77 @@ impl TextureCache {
       }
     }
 
-    let mut spent: u64 = 0;
+    // Those whose slot was asked for again since are dropped.
+    self
+      .uploads
+      .retain(|(slot, generation, _)| self.generations[*slot as usize] == *generation);
 
-    // The first upload of a frame always goes, so one texture larger than the budget is not held forever.
-    while spent < UPLOAD_BYTES
-      && let Some((slot, generation, texture)) = self.uploads.pop_front()
-    {
-      if self.generations[slot as usize] != generation {
-        continue;
+    if is_opening {
+      let mut spent: u64 = 0;
+
+      // The first upload of a frame always goes, so one texture larger than the budget is not held forever.
+      while spent < UPLOAD_BYTES
+        && let Some((slot, _, texture)) = self.uploads.pop_front()
+      {
+        spent += texture.get_size();
+        self.upload((device, queue), slot, &texture);
       }
 
-      spent += texture.get_size();
-      self.sizes[slot as usize] = texture.get_size();
-      self.views[slot as usize] = texture.upload(device, queue);
-      self.states[slot as usize] = RenderTextureState::Loaded {
-        width: texture.width,
-        height: texture.height,
-        levels: texture.levels.len() as u32,
-        layout: texture.layout.clone(),
-        is_expanded: texture.is_expanded,
-      };
-      self.is_dirty = true;
+      self.waited = 0;
+    } else if !self.uploads.is_empty() {
+      let count: usize = self.uploads.len().min(UPLOADS_OFFERED);
+      let tickets: Vec<PeriodicTicket> = self
+        .uploads
+        .iter()
+        .take(count)
+        .map(|(_, _, texture)| {
+          scheduler.offer(PeriodicJob::new_waiting(
+            &UPLOAD_PASSES,
+            UPLOAD_SEED,
+            texture.get_size() as f32,
+            (self.waited, UPLOAD_WAIT_MOST),
+          ))
+        })
+        .collect();
+
+      scheduler.grant();
+
+      let offered: Vec<(u32, u32, DecodedTexture)> = self.uploads.drain(..count).collect();
+      let mut kept: Vec<(u32, u32, DecodedTexture)> = Vec::new();
+
+      for ((slot, generation, texture), ticket) in offered.into_iter().zip(tickets) {
+        if scheduler.is_granted(ticket) {
+          self.upload((device, queue), slot, &texture);
+        } else {
+          kept.push((slot, generation, texture));
+        }
+      }
+
+      self.waited = if kept.is_empty() { 0 } else { self.waited + 1 };
+
+      for item in kept.into_iter().rev() {
+        self.uploads.push_front(item);
+      }
     }
 
     if self.is_dirty {
       self.is_dirty = false;
       self.bind_group = Self::create_bind_group(device, &self.layout, &self.sampler, &self.views);
     }
+  }
+
+  /// Uploads a loaded texture into its slot.
+  fn upload(&mut self, (device, queue): (&wgpu::Device, &wgpu::Queue), slot: u32, texture: &DecodedTexture) {
+    self.sizes[slot as usize] = texture.get_size();
+    self.views[slot as usize] = texture.upload(device, queue);
+    self.states[slot as usize] = RenderTextureState::Loaded {
+      width: texture.width,
+      height: texture.height,
+      levels: texture.levels.len() as u32,
+      layout: texture.layout.clone(),
+      is_expanded: texture.is_expanded,
+    };
+    self.is_dirty = true;
   }
 
   /// Stands something in for a texture that cannot be had: a checker for a base, so the gap is seen, else neutral.

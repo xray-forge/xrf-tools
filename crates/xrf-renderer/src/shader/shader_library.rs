@@ -115,6 +115,10 @@ const EMBEDDED: &[(&str, &str)] = &[
     "frame/shadow_tile_restore",
     include_str!("../../shaders/frame/shadow_tile_restore.wgsl"),
   ),
+  (
+    "frame/overhead_shift",
+    include_str!("../../shaders/frame/overhead_shift.wgsl"),
+  ),
   ("frame/exposure", include_str!("../../shaders/frame/exposure.wgsl")),
   (
     "frame/light_binning",
@@ -338,6 +342,10 @@ const EMBEDDED: &[(&str, &str)] = &[
   (
     "generated/frame/shadow_tile_restore",
     include_str!("../../shaders/generated/frame/shadow_tile_restore.wgsl"),
+  ),
+  (
+    "generated/frame/overhead_shift",
+    include_str!("../../shaders/generated/frame/overhead_shift.wgsl"),
   ),
   (
     "generated/frame/puddle_sites",

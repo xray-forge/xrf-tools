@@ -123,7 +123,7 @@ impl SceneFeatures {
   }
 
   /// Every unit, as what each answers alike.
-  pub fn list(&self) -> [&dyn ViewFeature; 23] {
+  pub fn list(&self) -> [&dyn ViewFeature; 24] {
     [
       &self.fog,
       &self.bloom,
@@ -148,10 +148,11 @@ impl SceneFeatures {
       &self.combine,
       &self.shadows,
       &self.sun_shafts,
+      &self.surroundings,
     ]
   }
 
-  pub fn list_mut(&mut self) -> [&mut dyn ViewFeature; 23] {
+  pub fn list_mut(&mut self) -> [&mut dyn ViewFeature; 24] {
     [
       &mut self.fog,
       &mut self.bloom,
@@ -176,6 +177,7 @@ impl SceneFeatures {
       &mut self.combine,
       &mut self.shadows,
       &mut self.sun_shafts,
+      &mut self.surroundings,
     ]
   }
 

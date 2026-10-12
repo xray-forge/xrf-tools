@@ -7,7 +7,8 @@ use serde::{Deserialize, Serialize};
 pub struct RenderMemoryReport {
   /// Bytes of every texture uploaded, shared by every viewport.
   pub textures: u64,
-  /// Bytes of this viewport's scene buffers: geometry, clusters, places and the rest that grow with what it shows.
+  /// Bytes of this viewport's scene buffers: geometry, clusters, places and the rest that grow with what it shows, and
+  /// its lights' shadow atlases while held.
   pub scene: u64,
   /// Bytes the GPU allocator holds allocated for everything the renderer made, textures, buffers and targets of every
   /// viewport, and those it reserved in its blocks; none where the backend reports none.

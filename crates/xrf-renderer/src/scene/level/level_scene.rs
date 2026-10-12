@@ -1,14 +1,19 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
 use std::time::Instant;
 
 use glam::{Vec3, Vec4};
 use xrf_error::XrfResult;
+use xrf_renderer_core::ProxyHandle;
+use xrf_visual::SectorPackage;
 
 use crate::contract::render_load_report::RenderLoadReport;
 use crate::contract::render_texture_report::RenderTextureReport;
 use crate::contract::render_viewport_id::RenderViewportId;
 use crate::frame::frame_encoder::FrameEncoder;
+use crate::frame::periodic_job::PeriodicJob;
+use crate::frame::periodic_scheduler::PeriodicScheduler;
+use crate::frame::periodic_ticket::PeriodicTicket;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::host::render_level_source::RenderLevelSource;
 use crate::host::render_scene_feedback::RenderSceneFeedback;
@@ -23,6 +28,7 @@ use crate::scene::level::level_lights::LevelLights;
 use crate::scene::level::level_load::LevelLoad;
 use crate::scene::level::level_particles::LevelParticles;
 use crate::scene::static_scene::static_scene::StaticScene;
+use crate::scene::static_scene::static_sector_proxy::StaticSectorProxy;
 use crate::scene::static_scene::static_trace::StaticTrace;
 use crate::scene::texture::texture_cache::TextureCache;
 use crate::scene::texture::weather_texture_cache::WeatherTextureCache;
@@ -61,7 +67,13 @@ pub struct LevelScene {
   pub camera_hemi: Option<f32>,
   /// The sectors it could not take in since the world was last told.
   failures: Vec<RenderSectorFailure>,
+  /// The sectors the world posted that wait to be taken in, in the order posted, and the frames the first has waited.
+  pending: VecDeque<(ProxyHandle<StaticSectorProxy>, SectorPackage)>,
+  waited: u32,
 }
+
+/// What taking a sector in is named as a job: nothing the timer measures, so its cost stays its seed.
+static SECTOR_PASSES: [&str; 1] = ["sector add"];
 
 impl LevelScene {
   pub fn new(
@@ -91,19 +103,27 @@ impl LevelScene {
       campfire_shares: HashMap::new(),
       camera_hemi: None,
       failures: Vec::new(),
+      pending: VecDeque::new(),
+      waited: 0,
       source,
     }
   }
 
-  /// Takes a frame the world gave it: applies what it posted, takes the grass its loader read, keeps what its effects
-  /// and motions do, moves the lights its motions carry, readies the static draws and, while a view of it traces rays
-  /// (`is_traced`), their acceleration structures, and asks for the cubes its surfaces mix toward; the sectors it could
-  /// not take in are told back with its feedback.
+  /// Sectors offered at most a frame once the level stands; milliseconds a byte of one costs to take in (its geometry
+  /// written and, traced, its acceleration structure built), and frames one waits at most.
+  const SECTORS_OFFERED: usize = 8;
+  const SECTOR_SEED: f32 = 1e-7;
+  const SECTOR_WAIT_MOST: u32 = 4;
+
+  /// Takes a frame the world gave it: applies what it posted, the sectors as `scheduler` grants them, takes the grass
+  /// its loader read, keeps what its effects and motions do, moves the lights its motions carry, readies the static
+  /// draws and, while a view of it traces rays (`is_traced`), their acceleration structures, and asks for the cubes its
+  /// surfaces mix toward; the sectors it could not take in are told back with its feedback.
   pub fn advance(
     &mut self,
     (device, queue, encoder): (&wgpu::Device, &wgpu::Queue, &mut FrameEncoder),
     (textures, weather_textures): (&mut TextureCache, &mut WeatherTextureCache),
-    grass_pass: &GrassPass,
+    (grass_pass, scheduler): (&GrassPass, &mut PeriodicScheduler),
     (frame, is_traced): (RenderSceneFrame, bool),
   ) {
     let assets: Arc<dyn RenderAssetSource> = Arc::clone(&self.source) as Arc<dyn RenderAssetSource>;
@@ -137,7 +157,10 @@ impl LevelScene {
       camera_hemi,
       ..
     } = frame;
-    let failures: Vec<RenderSectorFailure> = self.apply((device, queue, encoder), (&mut *textures, &assets), updates);
+    self.apply((device, queue, encoder), (&mut *textures, &assets), updates);
+
+    let failures: Vec<RenderSectorFailure> =
+      self.add_sectors((device, queue, encoder), (&mut *textures, &assets), scheduler);
 
     self.failures.extend(failures);
     let slots: Vec<u32> = self.list_texture_slots().collect();
@@ -193,41 +216,107 @@ impl LevelScene {
     self.load.is_ready((self.grass.is_loaded(), &slots), textures)
   }
 
-  /// Applies what the world posted this frame, in the order posted; answers the sectors it could not take in.
+  /// Takes in the sectors waiting as `scheduler` grants them, in a round of their own: every one while the level opens,
+  /// so it opens as fast as it streams; once it stands, the first `SECTORS_OFFERED` by their bytes, each waiting at
+  /// most `SECTOR_WAIT_MOST` frames. Answers those it could not take in.
+  fn add_sectors(
+    &mut self,
+    (device, queue, encoder): (&wgpu::Device, &wgpu::Queue, &mut wgpu::CommandEncoder),
+    (textures, assets): (&mut TextureCache, &Arc<dyn RenderAssetSource>),
+    scheduler: &mut PeriodicScheduler,
+  ) -> Vec<RenderSectorFailure> {
+    if self.pending.is_empty() {
+      return Vec::new();
+    }
+
+    let is_opening: bool = !self.is_ready(textures);
+    let count: usize = if is_opening {
+      self.pending.len()
+    } else {
+      self.pending.len().min(Self::SECTORS_OFFERED)
+    };
+    let tickets: Vec<PeriodicTicket> = self
+      .pending
+      .iter()
+      .take(count)
+      .map(|(_, package)| {
+        let bytes: f32 = package.buffer.len() as f32;
+
+        scheduler.offer(if is_opening {
+          PeriodicJob::new_now(&SECTOR_PASSES, Self::SECTOR_SEED, bytes)
+        } else {
+          PeriodicJob::new_waiting(
+            &SECTOR_PASSES,
+            Self::SECTOR_SEED,
+            bytes,
+            (self.waited, Self::SECTOR_WAIT_MOST),
+          )
+        })
+      })
+      .collect();
+
+    scheduler.grant();
+
+    let offered: Vec<(ProxyHandle<StaticSectorProxy>, SectorPackage)> = self.pending.drain(..count).collect();
+    let mut failures: Vec<RenderSectorFailure> = Vec::new();
+    let mut kept: Vec<(ProxyHandle<StaticSectorProxy>, SectorPackage)> = Vec::new();
+
+    for ((handle, package), ticket) in offered.into_iter().zip(tickets) {
+      if !scheduler.is_granted(ticket) {
+        kept.push((handle, package));
+
+        continue;
+      }
+
+      let started: Instant = Instant::now();
+      let added: XrfResult = self.statics.add_sector(
+        device,
+        queue,
+        encoder,
+        textures,
+        assets,
+        self.source.get_surfaces(),
+        (handle, &package),
+      );
+
+      self.sector_time = started.elapsed().as_secs_f32() * 1000.0;
+
+      if let Err(error) = added {
+        failures.push(RenderSectorFailure {
+          handle,
+          reason: error.to_string(),
+        });
+      }
+    }
+
+    self.waited = if kept.is_empty() { 0 } else { self.waited + 1 };
+
+    for item in kept.into_iter().rev() {
+      self.pending.push_front(item);
+    }
+
+    failures
+  }
+
+  /// Applies what the world posted this frame, in the order posted, the sectors queued to be taken in.
   fn apply(
     &mut self,
     (device, queue, encoder): (&wgpu::Device, &wgpu::Queue, &mut wgpu::CommandEncoder),
     (textures, assets): (&mut TextureCache, &Arc<dyn RenderAssetSource>),
     updates: Vec<RenderSceneUpdate>,
-  ) -> Vec<RenderSectorFailure> {
-    let mut failures: Vec<RenderSectorFailure> = Vec::new();
-
+  ) {
     for update in updates {
       match update {
-        RenderSceneUpdate::AddSector { handle, package } => {
-          let started: Instant = Instant::now();
-          let added: XrfResult = self.statics.add_sector(
-            device,
-            queue,
-            encoder,
-            textures,
-            assets,
-            self.source.get_surfaces(),
-            (handle, &package),
-          );
-
-          self.sector_time = started.elapsed().as_secs_f32() * 1000.0;
-
-          if let Err(error) = added {
-            failures.push(RenderSectorFailure {
-              handle,
-              reason: error.to_string(),
-            });
+        RenderSceneUpdate::AddSector { handle, package } => self.pending.push_back((handle, package)),
+        // One still waiting is never taken in.
+        RenderSceneUpdate::RemoveSector(handle) => match self.pending.iter().position(|(it, _)| *it == handle) {
+          Some(index) => {
+            self.pending.remove(index);
           }
-        }
-        RenderSceneUpdate::RemoveSector(handle) => {
-          self.statics.remove_sector(handle);
-        }
+          None => {
+            self.statics.remove_sector(handle);
+          }
+        },
         RenderSceneUpdate::AddModel { handle, model } => {
           if let Err(error) = self
             .statics
@@ -285,8 +374,6 @@ impl LevelScene {
         } => self.statics.write_pose(handle, &current, &previous),
       }
     }
-
-    failures
   }
 
   /// What became of every texture the level's surfaces sample.
@@ -318,7 +405,7 @@ impl LevelScene {
 
   /// Bytes its scene's growing buffers hold on the GPU.
   pub fn get_buffer_bytes(&self) -> u64 {
-    self.statics.get_buffer_bytes()
+    self.statics.get_buffer_bytes() + self.lights.get_memory()
   }
 
   /// Whether it draws this source.

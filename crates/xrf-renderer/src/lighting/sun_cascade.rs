@@ -29,6 +29,8 @@ pub struct SunCascade {
   pub texel: f32,
   /// Bumped whenever the map moved, so its casters are culled and drawn again.
   pub version: u64,
+  /// How far down the light its map reaches, from where it is seen.
+  far: f32,
   /// What it was last fitted by: its square's place, width, resolution, reach and the light.
   key: [f32; 9],
 }
@@ -43,6 +45,7 @@ impl Default for SunCascade {
       },
       texel: 0.0,
       version: 0,
+      far: 0.0,
       key: [f32::NAN; 9],
     }
   }
@@ -97,6 +100,7 @@ impl SunCascade {
     }
 
     self.texel = texel;
+    self.far = far;
     self.view = CameraView {
       position: eye,
       view: glam::camera::rh::view::look_at_mat4(eye, snapped, basis.up),
@@ -110,6 +114,12 @@ impl SunCascade {
   /// by no more than moves a caster as far as the reach `TURN_TEXELS` across. A sharp turn moves the square further,
   /// and its view would fall out of the map until the map's turn came.
   pub fn is_held_by(&self, drawn: &SunCascade) -> bool {
+    self.is_held_within(drawn, 1.0)
+  }
+
+  /// Whether a map drawn at `drawn` holds this fit within `share` of what `is_held_by` allows: a map about to stop
+  /// holding has its successor drawn ahead.
+  pub fn is_held_within(&self, drawn: &SunCascade, share: f32) -> bool {
     let [x, y, z, width, resolution, reach, light @ ..] = self.key;
     let [
       drawn_x,
@@ -120,7 +130,7 @@ impl SunCascade {
       drawn_reach,
       drawn_light @ ..,
     ] = drawn.key;
-    let slack: f32 = width * DRIFT;
+    let slack: f32 = width * DRIFT * share;
     // The turn's sine, as a cosine this near one rounds to it.
     let turn: f32 = Vec3::from(light).cross(Vec3::from(drawn_light)).length();
 
@@ -128,9 +138,29 @@ impl SunCascade {
       && resolution == drawn_resolution
       && reach == drawn_reach
       && Vec3::from(light).dot(Vec3::from(drawn_light)) > 0.0
-      && turn <= TURN_TEXELS * self.texel / reach.max(1.0)
+      && turn <= TURN_TEXELS * share * self.texel / reach.max(1.0)
       && [x - drawn_x, y - drawn_y, z - drawn_z]
         .iter()
         .all(|offset| offset.abs() <= slack)
+  }
+
+  /// The camera rows `first` to `last` (past the end) of its map `resolution` texels across are drawn by: its own, its
+  /// projection narrowed to those rows, so their texels land where the whole map's would.
+  pub fn get_rows_view(&self, (first, last): (u32, u32), resolution: u32) -> CameraView {
+    let width: f32 = self.key[3];
+    let half: f32 = width / 2.0;
+    let texel: f32 = width / resolution.max(1) as f32;
+
+    CameraView {
+      projection: glam::camera::rh::proj::directx::orthographic(
+        -half,
+        half,
+        half - last as f32 * texel,
+        half - first as f32 * texel,
+        self.far,
+        0.0,
+      ),
+      ..self.view
+    }
   }
 }

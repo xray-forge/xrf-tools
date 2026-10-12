@@ -951,7 +951,10 @@ export type RenderLodSettings = {
 export type RenderMemoryReport = {
   /** Bytes of every texture uploaded, shared by every viewport. */
   textures: number;
-  /** Bytes of this viewport's scene buffers: geometry, clusters, places and the rest that grow with what it shows. */
+  /**
+   * Bytes of this viewport's scene buffers: geometry, clusters, places and the rest that grow with what it shows, and
+   * its lights' shadow atlases while held.
+   */
   scene: number;
   /**
    * Bytes the GPU allocator holds allocated for everything the renderer made, textures, buffers and targets of every

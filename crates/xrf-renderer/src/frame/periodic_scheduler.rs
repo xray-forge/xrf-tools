@@ -8,11 +8,12 @@ use crate::frame::periodic_ticket::PeriodicTicket;
 /// What a frame was granted: each job's passes and the units it drew.
 type FrameGrants = Vec<(&'static [&'static str], f32)>;
 
-/// The work every view and scene draws once in so many frames, decided once a frame for all of them so the frame carries
-/// about the same share of it every time: each offers its due jobs while it prepares, the scheduler grants them, and
-/// each draws what it was granted. A job that must draw this frame is granted, outside the budget; then the one waited
-/// longest past its deadline, whatever the budget; then the rest by how near their deadline they stand, while they fit
-/// the budget.
+/// The work every view and scene draws once in so many frames, and what streams in, decided for all of them so the frame
+/// carries about the same share of it every time: each offers its due jobs, the scheduler grants them, and each does
+/// what it was granted. A frame decides in rounds sharing its budget: what streams in as the scenes take their updates,
+/// then what is drawn once every view prepared. A job that must be done this frame is granted, outside the budget; then
+/// the one waited longest past its deadline, whatever the budget, one a frame; then the rest by how near their deadline
+/// they stand, while they fit the budget.
 /// A job's cost is its units at the milliseconds a unit last cost as the timer measured its passes, its seed before.
 pub struct PeriodicScheduler {
   /// Milliseconds of GPU time a frame's work that may wait fills.
@@ -21,8 +22,12 @@ pub struct PeriodicScheduler {
   frame: u64,
   /// Who offers what is offered next.
   owner: u32,
-  /// This frame's offers, by their owner, whether withdrawn and whether granted.
+  /// This frame's offers, by their owner, whether withdrawn and whether granted; those before `decided` were decided by
+  /// an earlier round.
   offers: Vec<PeriodicOffer>,
+  decided: usize,
+  /// Whether this frame took a job past its deadline over the budget.
+  is_forced: bool,
   /// Milliseconds a unit costs, by a job's first pass, as measured.
   rates: HashMap<&'static str, f32>,
   /// What each recent frame was granted, by the jobs' passes and units, for the timer to measure.
@@ -53,6 +58,8 @@ impl PeriodicScheduler {
       frame: 0,
       owner: 0,
       offers: Vec::new(),
+      decided: 0,
+      is_forced: false,
       rates: HashMap::new(),
       granted: VecDeque::new(),
       spent: 0.0,
@@ -68,6 +75,8 @@ impl PeriodicScheduler {
     self.frame += 1;
     self.owner = 0;
     self.offers.clear();
+    self.decided = 0;
+    self.is_forced = false;
     self.spent = 0.0;
     self.now_spent = 0.0;
   }
@@ -111,11 +120,11 @@ impl PeriodicScheduler {
     }
   }
 
-  /// Decides this frame's offers: every one that must draw, then the one most overdue, then the rest most urgent first
-  /// while they fit what is left of the budget.
+  /// Decides the offers since the last round: every one that must be done, then the one most overdue unless the frame
+  /// took one already, then the rest most urgent first while they fit what is left of the budget.
   pub fn grant(&mut self) {
     let costs: Vec<f32> = self.offers.iter().map(|offer| self.get_cost(&offer.job)).collect();
-    let open: Vec<usize> = (0..self.offers.len())
+    let open: Vec<usize> = (self.decided..self.offers.len())
       .filter(|index| !self.offers[*index].is_withdrawn)
       .collect();
 
@@ -134,7 +143,7 @@ impl PeriodicScheduler {
     let overdue: Option<usize> = open
       .iter()
       .copied()
-      .filter(|index| self.offers[*index].job.is_overdue())
+      .filter(|index| !self.is_forced && self.offers[*index].job.is_overdue())
       .fold(None, |most: Option<usize>, index| {
         let past = |index: usize| {
           let job: &PeriodicJob = &self.offers[index].job;
@@ -151,6 +160,7 @@ impl PeriodicScheduler {
     if let Some(index) = overdue {
       self.offers[index].is_granted = true;
       self.spent += costs[index];
+      self.is_forced = true;
     }
 
     let mut waiting: Vec<usize> = open
@@ -172,14 +182,18 @@ impl PeriodicScheduler {
       }
     }
 
-    let granted: FrameGrants = self
-      .offers
+    let granted: FrameGrants = self.offers[self.decided..]
       .iter()
       .filter(|offer| offer.is_granted)
       .map(|offer| (offer.job.passes, offer.job.units))
       .collect();
 
-    self.granted.push_back((self.frame, granted));
+    self.decided = self.offers.len();
+
+    match self.granted.back_mut() {
+      Some((frame, grants)) if *frame == self.frame => grants.extend(granted),
+      _ => self.granted.push_back((self.frame, granted)),
+    }
 
     while self.granted.len() > Self::KEPT_FRAMES {
       self.granted.pop_front();

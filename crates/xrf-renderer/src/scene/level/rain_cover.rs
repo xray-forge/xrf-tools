@@ -1,5 +1,5 @@
 use glam::Vec4;
-use xrf_renderer_core::{FrameGraph, GraphBindings, GraphTexture};
+use xrf_renderer_core::{FrameGraph, GraphBindings, GraphRuntime, GraphTexture};
 
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::periodic_scheduler::PeriodicScheduler;
@@ -103,7 +103,7 @@ impl RainCover {
   /// and pyramid as the graph knows them.
   pub fn add_passes<'a>(
     &'a self,
-    (graph, bindings): (&mut FrameGraph<'a>, &mut GraphBindings<'a>),
+    (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
     passes: LevelPasses<'a>,
     scene: &StaticSceneHandles,
     (params, textures): (&'a StaticCullParams, &'a wgpu::BindGroup),
@@ -112,7 +112,7 @@ impl RainCover {
 
     if self.map.is_due() {
       self.map.add_passes(
-        (&mut *graph, &mut *bindings),
+        (&mut *graph, &mut *bindings, runtime),
         passes,
         (scene, depth),
         (params, textures),

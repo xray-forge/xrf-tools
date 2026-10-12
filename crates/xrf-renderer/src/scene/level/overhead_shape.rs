@@ -7,6 +7,9 @@ pub struct OverheadShape {
   pub draw_pass: &'static str,
   /// Every pass a draw of it runs, as the timer names them, which the frame's scheduler measures its cost by.
   pub passes: &'static [&'static str],
+  /// Every pass a shifted draw of it runs: its copy, its strips' cull, its shift with its strips over, and what
+  /// follows a draw.
+  pub shift_passes: &'static [&'static str],
   /// Milliseconds a texel of a draw costs before the timer measured one.
   pub seed: f32,
   pub width: f32,
@@ -34,6 +37,12 @@ impl OverheadShape {
     cull_pass: "rain cover cull",
     draw_pass: "rain cover",
     passes: &["rain cover cull", "rain cover", "rain cover pyramid"],
+    shift_passes: &[
+      "rain cover copy",
+      "rain cover strip cull",
+      "rain cover shifted",
+      "rain cover pyramid",
+    ],
     seed: 7.0e-8,
     width: 64.0,
     resolution: 2048,
@@ -54,6 +63,11 @@ impl OverheadShape {
     cull_pass: "level surface cull",
     draw_pass: "level surface",
     passes: &["level surface cull", "level surface"],
+    shift_passes: &[
+      "level surface copy",
+      "level surface strip cull",
+      "level surface shifted",
+    ],
     seed: 7.0e-8,
     width: 1024.0,
     resolution: 2048,
@@ -72,6 +86,7 @@ impl OverheadShape {
     cull_pass: "level water cull",
     draw_pass: "level water",
     passes: &["level water cull", "level water"],
+    shift_passes: &["level water copy", "level water strip cull", "level water shifted"],
     is_water: true,
     ..Self::LEVEL_SURFACE
   };

@@ -179,7 +179,7 @@ impl LevelSurface {
     let cells: u32 = Self::get_cells(self.map.get_shape());
 
     self.water.add_passes(
-      (&mut *graph, &mut *bindings),
+      (&mut *graph, &mut *bindings, &mut *runtime),
       passes,
       (scene, water_depth),
       (params, textures),
@@ -228,7 +228,7 @@ impl LevelSurface {
     let sites: GraphTexture = bindings.import_view(&mut *graph, "puddle sites", &self.sites);
 
     self.map.add_passes(
-      (&mut *graph, &mut *bindings),
+      (&mut *graph, &mut *bindings, &mut *runtime),
       passes,
       (scene, surface),
       (params, textures),
