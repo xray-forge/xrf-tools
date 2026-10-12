@@ -14,7 +14,8 @@ impl<'r> GraphResources<'r> {
   ///
   /// # Panics
   ///
-  /// When the handle names a texture no surviving pass declares, which a pass recording through its context cannot do.
+  /// When the handle names a texture no surviving pass declares. A pass's scope refuses an undeclared handle in debug
+  /// builds; a release build reaches this only for one no pass declares at all.
   pub fn get_texture(&self, texture: GraphTexture) -> GraphResolvedTexture<'r> {
     self.textures[texture.get_index()].unwrap_or_else(|| panic!("Graph texture {} is not resolved", texture.index))
   }
@@ -23,7 +24,8 @@ impl<'r> GraphResources<'r> {
   ///
   /// # Panics
   ///
-  /// When the handle names a buffer no surviving pass declares, which a pass recording through its context cannot do.
+  /// When the handle names a buffer no surviving pass declares. A pass's scope refuses an undeclared handle in debug
+  /// builds; a release build reaches this only for one no pass declares at all.
   pub fn get_buffer(&self, buffer: GraphBuffer) -> &'r wgpu::Buffer {
     self.buffers[buffer.get_index()].unwrap_or_else(|| panic!("Graph buffer {} is not resolved", buffer.index))
   }
