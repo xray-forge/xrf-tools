@@ -75,7 +75,7 @@ export function LevelWaterAction({
       icon={<WaterIcon />}
       isOn={isOn && state.isAvailable}
       isDisabled={!state.isAvailable}
-      toggleLabel={"Draw the water"}
+      toggleLabel={"Water"}
       onToggle={toggle}
     >
       <LevelManualWeatherSlider

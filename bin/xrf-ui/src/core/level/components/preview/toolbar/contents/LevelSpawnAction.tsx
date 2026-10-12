@@ -48,7 +48,7 @@ export function LevelSpawnAction({
 
       <EditorPopoverGroupSection
         label={"Released"}
-        description={"What a new game releases before the actor arrives, drawn with its group"}
+        description={"Draws what a new game releases before the player arrives, with its group"}
         isOn={options.isSpawnedReleased}
         onToggle={() => viewService.toggleOption("isSpawnedReleased")}
       />

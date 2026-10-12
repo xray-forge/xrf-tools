@@ -74,7 +74,7 @@ export function LevelShadowAction({
       icon={<TonalityIcon />}
       isOn={isOn && state.isAvailable}
       isDisabled={!state.isAvailable}
-      toggleLabel={"Cast the sun's shadows"}
+      toggleLabel={"Sun shadows"}
       onToggle={toggle}
     >
       <RenderValueChoice
@@ -85,7 +85,7 @@ export function LevelShadowAction({
       />
 
       <RenderValueChoice
-        label={"Map resolution"}
+        label={"Map resolution (texels)"}
         options={RENDER_SHADOW_RESOLUTION_OPTIONS}
         value={String(shadows.resolution)}
         onChange={(resolution: string) => set({ resolution: Number(resolution) })}
@@ -161,7 +161,7 @@ export function LevelShadowAction({
           <CheckboxFormRow
             label={"Full resolution contact"}
             description={
-              "Marched at every pixel rather than one in four: thin foliage stops flickering, at four times the cost."
+              "Marches every pixel rather than one in four: thin foliage stops flickering, at four times the cost."
             }
             isChecked={contact.isFullResolution}
             onChange={(isFullResolution: boolean) => onSetContact({ isFullResolution })}

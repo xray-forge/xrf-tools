@@ -49,7 +49,7 @@ export function SettingsRendererShadows(): ReactElement {
         />
 
         <ChoiceFormRow
-          label={"Map resolution"}
+          label={"Map resolution (texels)"}
           description={"Texels per cascade map. Higher is sharper and uses more memory."}
           options={RENDER_SHADOW_RESOLUTION_OPTIONS}
           value={String(shadows.resolution)}

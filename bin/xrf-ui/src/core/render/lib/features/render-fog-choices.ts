@@ -15,9 +15,9 @@ export const RENDER_FOG_LIMITS = {
 } as const;
 
 const RENDER_FOG_MODE_DESCRIPTIONS: Readonly<Record<RenderFogMode, string>> = {
-  [ERenderFogMode.ENGINE]: "The game's own: the weather's distance fog.",
+  [ERenderFogMode.ENGINE]: "Draws the weather's distance fog, as the game does.",
   [ERenderFogMode.ENHANCED]:
-    "The distance fog thickened low down and tinted towards the sun there, the frame's bright parts scattered into it.",
+    "Thickens the distance fog low down, tints it towards the sun and scatters the frame's bright parts into it.",
 };
 
 /**

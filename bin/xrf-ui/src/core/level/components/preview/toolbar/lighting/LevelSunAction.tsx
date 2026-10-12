@@ -126,7 +126,7 @@ export function LevelSunAction({
 
         <CheckboxFormRow
           label={"Lens flares"}
-          description={"The flares over the frame; the sun's sprite and glow are drawn either way"}
+          description={"Draws the flares over the frame; the sun's sprite and glow draw either way"}
           isChecked={options.isLensFlared}
           onChange={() => viewService.toggleOption("isLensFlared")}
         />
@@ -143,7 +143,7 @@ export function LevelSunAction({
 
         <CheckboxFormRow
           label={"Sun shafts"}
-          description={"The sun's light through the air, cut by its shadow"}
+          description={"Draws the sun's light through the air, cut by its shadow"}
           isChecked={options.isSunShafted}
           onChange={() => viewService.toggleOption("isSunShafted")}
         />

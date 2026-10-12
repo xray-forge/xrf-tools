@@ -29,8 +29,7 @@ export function SettingsRendererAmbientOcclusion(): ReactElement {
     <DetailSection
       title={"Ambient occlusion"}
       description={
-        "The counterpart of the game's SSAO: GTAO or VBAO from the screen, or RTAO traced on a GPU that traces " +
-        "rays, picked in a level's Occlusion popover."
+        "The game's SSAO, as GTAO or VBAO from the screen or RTAO traced, picked in a level's Ambient light popover."
       }
     >
       <div className={"mt-4 flex flex-col gap-6"}>

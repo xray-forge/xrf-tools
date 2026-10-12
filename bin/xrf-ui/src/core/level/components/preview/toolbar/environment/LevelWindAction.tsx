@@ -82,7 +82,7 @@ export function LevelWindAction({
       }
       icon={<AirIcon />}
       isOn={isOn}
-      toggleLabel={"Sway the trees"}
+      toggleLabel={"Wind"}
       onToggle={toggle}
     >
       <LevelManualWeatherSlider

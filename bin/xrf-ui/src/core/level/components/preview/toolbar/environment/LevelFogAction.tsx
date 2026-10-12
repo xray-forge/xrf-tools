@@ -73,7 +73,7 @@ export function LevelFogAction({
       }
       icon={<FoggyIcon />}
       isOn={isOn}
-      toggleLabel={"Draw the fog"}
+      toggleLabel={"Fog"}
       onToggle={toggle}
     >
       <LevelManualWeatherVectorField field={"fogColor"} isColor manual={manual} onEdit={weatherService.editManual} />

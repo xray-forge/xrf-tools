@@ -13,9 +13,9 @@ export const RENDER_RAIN_LIMITS = {
 } as const;
 
 const RENDER_RAIN_MODE_DESCRIPTIONS: Readonly<Record<RenderRainMode, string>> = {
-  [ERenderRainMode.ENGINE]: "The game's own wetting alone: splashes and running water near the camera.",
+  [ERenderRainMode.ENGINE]: "Wets surfaces as the game does: splashes and running water near the camera.",
   [ERenderRainMode.ENHANCED]:
-    "Puddles gather on flat, low ground over the game's own wetting, filling with the rain and draining after.",
+    "Gathers puddles on flat, low ground over the game's wetting, filling with the rain and draining after.",
 };
 
 /**

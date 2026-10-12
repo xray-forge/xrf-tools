@@ -56,8 +56,7 @@ export function LevelProblemsPanel({
       className={className}
       findings={problems}
       emptyDescription={
-        "Every texture this level names was read, every shader table entry was described, every drawable of the " +
-        "resident sectors was packed, and every visual its spawned objects name was read."
+        "Everything this level names was read: its textures, shader entries, sectors' drawables and spawned visuals."
       }
     />
   );

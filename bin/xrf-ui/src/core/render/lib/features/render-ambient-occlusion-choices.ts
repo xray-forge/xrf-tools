@@ -24,12 +24,11 @@ const RENDER_AMBIENT_OCCLUSION_METHOD_NAMES: Readonly<Record<RenderAmbientOcclus
 
 const RENDER_AMBIENT_OCCLUSION_METHOD_DESCRIPTIONS: Readonly<Record<RenderAmbientOcclusionMethod, string>> = {
   [ERenderAmbientOcclusionMethod.GTAO]:
-    "XeGTAO's horizons: whatever stands in front darkens all that lies behind it, however thin.",
+    "Darkens all that lies behind whatever stands in front, however thin: XeGTAO's horizons.",
   [ERenderAmbientOcclusionMethod.VBAO]:
-    "A visibility bitmask: every occluder a thickness deep, so light passes behind grass, fences and branches.",
+    "Takes every occluder as a thickness deep, so light passes behind grass, fences and branches.",
   [ERenderAmbientOcclusionMethod.RTAO]:
-    "Rays traced against the level's geometry: what is off screen or behind a nearer surface occludes too. Grass " +
-    "is not traced and occludes nothing.",
+    "Traces rays against the level's geometry, so what is off screen or hidden occludes too; grass occludes nothing.",
 };
 
 /**

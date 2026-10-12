@@ -41,7 +41,7 @@ export function formatCascadeBlend(blend: number): string {
 
 /** @returns A shadow's normal offset, in texels. */
 export function formatShadowBias(bias: number): string {
-  return formatNumber(bias, 2);
+  return `${formatNumber(bias, 2)} texels`;
 }
 
 const RENDER_LIGHT_SHADOW_FILTER_NAMES: Readonly<Record<RenderLightShadowFilter, string>> = {

@@ -14,9 +14,9 @@ export const RENDER_VOLUMETRIC_LIMITS = {
 
 const RENDER_VOLUMETRIC_MODE_DESCRIPTIONS: Readonly<Record<RenderVolumetricMode, string>> = {
   [ERenderVolumetricMode.ENGINE]:
-    "The game's own: the sun's shafts marched along each pixel's ray, and the shadowed lamps' shafts drawn apart.",
+    "Draws the game's shafts: the sun's marched along each pixel's ray, the shadowed lamps' apart.",
   [ERenderVolumetricMode.ENHANCED]:
-    "The sun and every lamp scattered in one volume along the view, through their shadows, kept over frames, in the shafts' place.",
+    "Scatters the sun and every lamp through their shadows in one volume along the view, in place of the shafts.",
 };
 
 /**

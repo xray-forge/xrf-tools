@@ -47,7 +47,7 @@ export function LevelLightsAction({
       icon={<LightIcon />}
       isOn={isOn && state.isAvailable}
       isDisabled={!state.isAvailable}
-      toggleLabel={"Light the lamps"}
+      toggleLabel={"Lamps"}
       onToggle={toggle}
     >
       <CheckboxFormRow

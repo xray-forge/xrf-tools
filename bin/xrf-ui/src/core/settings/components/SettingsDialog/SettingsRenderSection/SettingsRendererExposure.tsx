@@ -3,6 +3,7 @@ import { ReactElement } from "react";
 
 import { RenderTonemapMode } from "@/core/ipc/types/xrf-renderer";
 import {
+  explainRenderTonemapMode,
   formatExposure,
   formatLowLuminance,
   RENDER_EXPOSURE_LIMITS,
@@ -30,10 +31,7 @@ export function SettingsRendererExposure(): ReactElement {
       <div className={"mt-4 flex flex-col gap-6"}>
         <ChoiceFormRow
           label={"Tonemap"}
-          description={
-            "Engine: each pass tonemaps what it draws, as the game does. Enhanced: the frame stays linear light until " +
-            "it is shown, so blended surfaces mix as light does and an upscaler gets the input it is made for."
-          }
+          description={explainRenderTonemapMode(renderSettingsService.rendererFeatures.tonemap)}
           options={RENDER_TONEMAP_MODE_OPTIONS}
           value={renderSettingsService.rendererFeatures.tonemap}
           onChange={(tonemap: RenderTonemapMode) => renderSettingsService.setRendererOverrides({ tonemap })}
