@@ -1,4 +1,4 @@
-use glam::Vec4;
+use glam::{Vec3, Vec4};
 use xrf_renderer_core::{
   FrameGraph, GraphBindings, GraphColorAttachment, GraphRuntime, GraphTexture, GraphTextureDescriptor, UniformBinding,
 };
@@ -14,8 +14,8 @@ use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::feature::view_feature::ViewFeature;
 
 /// The contact shadows, marched over the frame's depth where the view is lit and solid: the sun's under its cascades, at
-/// the frame's size or half of it into a target the sun brings up and multiplies its own by, and the lights', which the
-/// lights march in their own pass.
+/// the frame's size or half of it into a target the sun brings up and multiplies its own by, none while the sun lights
+/// nothing (a weather's night); and the lights', which the lights march in their own pass.
 #[derive(Default)]
 pub struct ContactShadowFeature {
   /// Whether the sun's are marched this frame.
@@ -24,13 +24,20 @@ pub struct ContactShadowFeature {
 }
 
 impl ContactShadowFeature {
-  /// Takes this frame's contact shadows towards the sun's view space direction `to_sun`, for a frame `height` texels
-  /// tall, their noise turned by `noise_frame`.
-  pub fn prepare(&mut self, options: &RenderViewOptions, to_sun: Vec4, (height, noise_frame): (u32, u32)) {
+  /// Takes this frame's contact shadows towards the sun's view space direction `to_sun`, the sun lighting by `sun`, for
+  /// a frame `height` texels tall, their noise turned by `noise_frame`.
+  pub fn prepare(
+    &mut self,
+    options: &RenderViewOptions,
+    (to_sun, sun): (Vec4, Vec4),
+    (height, noise_frame): (u32, u32),
+  ) {
     let shadows: &RenderShadowSettings = &options.features.shadows;
     let is_marched: bool = options.mode.is_lit && !options.mode.is_wireframe;
+    // A sun of no colour adds nothing for its contact shadows to take away.
+    let is_sunlit: bool = sun.truncate() != Vec3::ZERO;
 
-    self.is_sun = is_marched && shadows.is_sun_contact_drawn();
+    self.is_sun = is_marched && is_sunlit && shadows.is_sun_contact_drawn();
     self.uniform = if is_marched {
       ContactShadowUniform::new(&shadows.contact, to_sun, height, noise_frame)
     } else {
