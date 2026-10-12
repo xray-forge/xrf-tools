@@ -7,6 +7,7 @@ use crate::scene::level::feature::exposure_feature::ExposureFeature;
 use crate::scene::level::feature::falling_rain_feature::FallingRainFeature;
 use crate::scene::level::feature::flares_feature::FlaresFeature;
 use crate::scene::level::feature::fog_feature::FogFeature;
+use crate::scene::level::feature::lights_feature::LightsFeature;
 use crate::scene::level::feature::reflection_feature::ReflectionFeature;
 use crate::scene::level::feature::resolve_feature::ResolveFeature;
 use crate::scene::level::feature::sky_feature::SkyFeature;
@@ -31,6 +32,8 @@ pub struct SceneFeatures {
   pub level_surface: LevelSurface,
   /// The level around the camera as a cube, a face a frame, which a reflection meeting nothing on the screen reads.
   pub surroundings: SurroundingsCube,
+  /// The level's local lights as the view lights its frame with them.
+  pub lights: LightsFeature,
   pub fog: FogFeature,
   pub bloom: BloomFeature,
   pub smoothing: SmoothingFeature,
@@ -62,6 +65,7 @@ impl SceneFeatures {
       rain_cover: RainCover::new(device, view_layout, args_size),
       level_surface: LevelSurface::new(device, view_layout, args_size),
       surroundings: SurroundingsCube::new(device, view_layout, args_size),
+      lights: LightsFeature::new(device),
       fog: FogFeature::default(),
       bloom: BloomFeature::default(),
       smoothing: SmoothingFeature::default(),

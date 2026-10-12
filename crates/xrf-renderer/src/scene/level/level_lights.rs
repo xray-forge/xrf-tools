@@ -21,10 +21,10 @@ use crate::pass::light_record::{LIGHT_NO_CONE, LIGHT_NO_PROJECTOR, LightRecord};
 use crate::pass::light_volume_record::LightVolumeRecord;
 use crate::pass::light_volumes_uniform::LightVolumesUniform;
 use crate::pass::static_cull_params::StaticCullParams;
+use crate::scene::level::feature::lights_feature::{LightsFeature, MAX_LIGHTS};
 use crate::scene::level::level_light_shadows::{LIGHT_SHADOW_ATLAS_SIZE, LevelLightShadows};
 use crate::scene::level::light_shadow_set::LightShadowSet;
 use crate::scene::level::lights_frame::LightsFrame;
-use crate::scene::level::lights_view::{LightsView, MAX_LIGHTS};
 use crate::scene::level::shadow_frame::ShadowFrame;
 use crate::scene::level::zone_fast_mode::ZONE_FAST_DISTANCE;
 use crate::scene::texture::texture_cache::{MISSING_SLOT, TextureCache};
@@ -59,7 +59,7 @@ const MONOLITH_FADE_RATE: f32 = 0.01;
 const MONOLITH_PART_INTENSITY: f32 = 0.2;
 
 /// A level's local lights: read once on a loader thread, moved by their motions, and each frame the nearest in a view
-/// written out into its `LightsView` in its view space, animated as the engine animates them, for the lights pass to
+/// written out into its `LightsFeature` in its view space, animated as the engine animates them, for the lights pass to
 /// bin and accumulate; and the shadow faces they cast, cached in an atlas.
 pub struct LevelLights {
   /// The level's lights, each reached by the handle it was added under.
@@ -138,7 +138,7 @@ impl LevelLights {
 
   /// Writes out the lights standing in a view this frame into its own, nearest first, animated and faded as the engine
   /// would, in the camera's view space; a shadowed one only once its faces are drawn, with their squares of the atlas.
-  pub fn prepare(&mut self, encoder: &mut FrameEncoder, into: &mut LightsView, frame: LightsFrame<'_>) {
+  pub fn prepare(&mut self, encoder: &mut FrameEncoder, into: &mut LightsFeature, frame: LightsFrame<'_>) {
     let LightsFrame {
       camera,
       settings,

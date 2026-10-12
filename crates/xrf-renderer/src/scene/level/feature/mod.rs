@@ -8,6 +8,8 @@ pub(crate) mod exposure_feature;
 pub(crate) mod falling_rain_feature;
 pub(crate) mod flares_feature;
 pub(crate) mod fog_feature;
+pub(crate) mod light_buffers;
+pub(crate) mod lights_feature;
 pub(crate) mod over_scene;
 pub(crate) mod overhead_windows;
 pub(crate) mod reflection_feature;

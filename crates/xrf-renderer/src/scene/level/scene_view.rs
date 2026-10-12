@@ -50,11 +50,8 @@ use crate::pass::froxel_uniform::FroxelUniform;
 use crate::pass::grass_colour_parameters::GrassColourParameters;
 use crate::pass::grass_puddles_uniform::GrassPuddlesUniform;
 use crate::pass::level_passes::LevelPasses;
-use crate::pass::light_binning_parameters::LightBinningParameters;
 use crate::pass::lighting_frame::LightingFrame;
 use crate::pass::lighting_uniform::LightingUniform;
-use crate::pass::lights_parameters::LightsParameters;
-use crate::pass::lights_uniform::LightsUniform;
 use crate::pass::present_uniform::PresentUniform;
 use crate::pass::pyramid_depth_parameters::PyramidDepthParameters;
 use crate::pass::pyramid_level_parameters::PyramidLevelParameters;
@@ -78,6 +75,8 @@ use crate::pass::wet_uniform::WetUniform;
 use crate::pass::wind_uniform::WindUniform;
 use crate::scene::level::cover_textures::CoverTextures;
 use crate::scene::level::feature::composited_draw::CompositedDraw;
+use crate::scene::level::feature::light_buffers::LightBuffers;
+use crate::scene::level::feature::lights_feature::LightsFeature;
 use crate::scene::level::feature::overhead_windows::OverheadWindows;
 use crate::scene::level::feature::scene_features::SceneFeatures;
 use crate::scene::level::feature::water_frame::WaterFrame;
@@ -89,7 +88,6 @@ use crate::scene::level::level_scene::LevelScene;
 use crate::scene::level::level_surface::{LevelSurface, PuddleKeepInputs};
 use crate::scene::level::lighting_handles::LightingHandles;
 use crate::scene::level::lights_frame::LightsFrame;
-use crate::scene::level::lights_view::LightsView;
 use crate::scene::level::scene_output::SceneOutput;
 use crate::scene::level::shadow_frame::ShadowFrame;
 use crate::scene::level::shadow_sway::ShadowSway;
@@ -453,7 +451,7 @@ impl SceneView {
     );
     scene.lights.prepare(
       &mut *encoder,
-      &mut self.state.lights,
+      &mut self.features.lights,
       LightsFrame {
         camera: view,
         settings: &options.features.lights,
@@ -498,7 +496,7 @@ impl SceneView {
         options.is_scene_linear(),
       ),
     );
-    self.info.lights_settings = options.features.lights;
+    self.features.lights.settings = options.features.lights;
 
     self
       .features
@@ -768,32 +766,9 @@ impl SceneView {
     passes: LevelPasses<'a>,
     (view, textures, scene): (&'a ViewBinding, &'a wgpu::BindGroup, &'a LevelScene),
     (targets, lit): (ViewTargetHandles, LightingHandles<'a>),
-    has_lights: bool,
   ) -> Option<GraphTexture> {
-    let lights: &'a LightsView = &self.state.lights;
-    let counts: GraphBuffer = bindings.import_buffer(graph, "light cluster counts", &lights.counts);
-    let records: GraphBuffer = bindings.import_buffer(graph, "light records", &lights.record_buffer);
-    let items: GraphBuffer = bindings.import_buffer(graph, "light cluster items", &lights.items);
-    let lights_uniform: UniformBinding<LightsUniform> = runtime.push_uniform(&lights.uniform);
-
-    graph
-      .add_encoder_pass("light counts clear")
-      .buffer(counts, GraphBufferAccess::CopyDestination)
-      .record(move |context| lights.clear_overflow(context.get_encoder()));
-
-    if has_lights {
-      let parameters: LightBinningParameters = LightBinningParameters {
-        records: StorageArray::new(records),
-        counts: StorageArrayMut::new(counts),
-        items: StorageArrayMut::new(items),
-        lights: lights_uniform,
-      };
-
-      graph
-        .add_compute_pass("light binning")
-        .parameters(&parameters)
-        .record(move |context| passes.lights.record_binning(context, &parameters));
-    }
+    let lights: &'a LightsFeature = &self.features.lights;
+    let buffers: LightBuffers = lights.add_binning_passes((&mut *graph, &mut *bindings, &mut *runtime), passes);
 
     // The contact shadows the sun multiplies its own by, and the uniform the lights march theirs by.
     let (contact_shadows, contact): (GraphTexture, UniformBinding<ContactShadowUniform>) = self
@@ -821,39 +796,14 @@ impl SceneView {
       ))
       .record(move |context| passes.sun.record(context, view, &sun));
 
-    if has_lights {
-      let parameters: LightsParameters = LightsParameters {
-        normal_target: targets.normal,
-        material_target: targets.material,
-        depth_target: targets.depth,
-        material_lut: lit.material_lut,
-        lut_sampler: lit.lut_sampler,
-        records: StorageArray::new(records),
-        counts: StorageArray::new(counts),
-        items: StorageArray::new(items),
-        lights: lights_uniform,
-        shadow_atlas: bindings.import_view(graph, "light shadow atlas", scene.lights.get_shadow_atlas()),
-        contact,
-      };
-      let is_contact: bool = self.features.contact_shadows.is_lit();
-
-      graph
-        .add_raster_pass("lights")
-        .parameters(&parameters)
-        .color(GraphColorAttachment::new(targets.light, wgpu::LoadOp::Load))
-        .record(move |context| {
-          passes
-            .lights
-            .record_draw(context, view, &parameters, (textures, is_contact))
-        });
-    }
-
-    // The overflow, read back for a report a frame or more later: an effect the graph cannot see.
-    graph
-      .add_encoder_pass("light overflow")
-      .buffer(counts, GraphBufferAccess::CopySource)
-      .keep()
-      .record(move |context| lights.record_overflow(context.get_encoder()));
+    lights.add_draw_passes(
+      (&mut *graph, &mut *bindings),
+      passes,
+      (view, textures, scene.lights.get_shadow_atlas()),
+      (targets, lit, buffers),
+      (contact, self.features.contact_shadows.is_lit()),
+    );
+    lights.add_overflow_pass(&mut *graph, buffers);
 
     // GTAO searches on its own; VBAO, the indirect light or both share one bitmask search.
     self
@@ -975,7 +925,6 @@ impl SceneView {
     let is_raining: bool = self.features.rain.is_raining();
     let is_wet: bool = self.features.wet.is_wet();
     let is_lit: bool = frame.is_lit;
-    let has_lights: bool = self.state.lights.get_count() > 0;
     // The shadowed lights' shafts, drawn into a target of their own for the sun shafts' composite to add.
     let is_froxeled: bool = is_lit && self.features.volumetric.is_froxeled();
     let light_atlas: &'a wgpu::TextureView = scene.lights.get_shadow_atlas();
@@ -1209,7 +1158,6 @@ impl SceneView {
         passes,
         (view, texture_group, scene),
         (handles, lit),
-        has_lights,
       );
 
       let surroundings: &SurroundingsCube = &scene_view.features.surroundings;
@@ -1380,14 +1328,14 @@ impl SceneView {
         (&mut *graph, &mut *bindings, runtime),
         passes,
         (view, texture_group),
-        (handles, &scene_view.state.lights, light_atlas),
+        (handles, &scene_view.features.lights, light_atlas),
       );
       let froxels: Option<(UniformBinding<FroxelUniform>, GraphTexture)> =
         scene_view.features.volumetric.add_froxel_passes(
           (&mut *graph, &mut *bindings, runtime),
           passes,
           view,
-          (lit, light_atlas, &scene_view.state.lights),
+          (lit, light_atlas, &scene_view.features.lights),
         );
 
       if is_shafted || light_volumes.is_some() || froxels.is_some() {
@@ -1587,9 +1535,9 @@ impl SceneView {
             trace_lights: StorageArray::new(bindings.import_buffer(
               &mut *graph,
               "light records",
-              &self.state.lights.record_buffer,
+              &self.features.lights.record_buffer,
             )),
-            trace_light_view: runtime.push_uniform(&self.state.lights.uniform),
+            trace_light_view: runtime.push_uniform(&self.features.lights.uniform),
             trace_shadow_atlas: bindings.import_view(
               &mut *graph,
               "light shadow atlas",
@@ -1762,13 +1710,13 @@ impl SceneView {
   /// Asks for the counts recorded with the frame just submitted.
   pub fn request_stats(&self) {
     self.state.stats.request();
-    self.state.lights.request_report();
+    self.features.lights.request_report();
   }
 
   /// Drops what a frame that was never submitted copied out for reading back: its counts and its pick.
   pub fn abandon_frame(&self) {
     self.state.stats.abandon();
-    self.state.lights.abandon_report();
+    self.features.lights.abandon_report();
 
     if let Some(target) = &self.state.pick_target {
       target.abandon();
@@ -1823,10 +1771,11 @@ impl SceneView {
         self.features.bloom.is_engine_drawn().then_some(RenderBloomMode::Engine)
       },
       lights: self
-        .info
-        .lights_settings
+        .features
+        .lights
+        .settings
         .is_enabled
-        .then_some(self.info.lights_settings),
+        .then_some(self.features.lights.settings),
       grass: self.state.grass.get_applied(&options.features.grass),
       is_water: options.features.water.is_enabled,
       environment: None,
@@ -1858,7 +1807,7 @@ impl SceneView {
         occluded_triangles,
         ..pools
       },
-      self.state.lights.take_report(),
+      self.features.lights.take_report(),
     )
   }
 

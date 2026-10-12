@@ -12,7 +12,6 @@ use crate::pass::view_binding::ViewBinding;
 use crate::pass::wind_uniform::WindUniform;
 use crate::scene::level::grass_view::GrassView;
 use crate::scene::level::level_overlays::LevelOverlays;
-use crate::scene::level::lights_view::LightsView;
 use crate::scene::level::particles_view::ParticlesView;
 use crate::scene::static_scene::static_selection::StaticSelection;
 
@@ -50,8 +49,6 @@ pub struct ViewState {
   pub grass: GrassView,
   /// The particles in its camera, as their quads.
   pub particles: ParticlesView,
-  /// The lights in its camera, and their clusters.
-  pub lights: LightsView,
 }
 
 impl ViewState {
@@ -74,7 +71,6 @@ impl ViewState {
       pick_view: None,
       grass: GrassView::new(device),
       particles: ParticlesView::new(device),
-      lights: LightsView::new(device),
     }
   }
 

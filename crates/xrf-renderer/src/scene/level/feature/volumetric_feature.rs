@@ -15,9 +15,9 @@ use crate::pass::level_passes::LevelPasses;
 use crate::pass::light_volume_parameters::LightVolumeParameters;
 use crate::pass::light_volume_pass::LightVolumePass;
 use crate::pass::view_binding::ViewBinding;
+use crate::scene::level::feature::lights_feature::LightsFeature;
 use crate::scene::level::feature::view_feature::ViewFeature;
 use crate::scene::level::lighting_handles::LightingHandles;
-use crate::scene::level::lights_view::LightsView;
 
 /// The volumetric lighting: the enhanced froxels, a grid along the view filled over its history and integrated, in
 /// place of the sun's and the lights' shafts; or the shadowed lights' shafts (`accum_volumetric`) the sun shafts'
@@ -70,7 +70,7 @@ impl VolumetricFeature {
     (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
     passes: LevelPasses<'a>,
     (view, textures): (&'a ViewBinding, &'a wgpu::BindGroup),
-    (handles, lights, atlas): (ViewTargetHandles, &'a LightsView, &'a wgpu::TextureView),
+    (handles, lights, atlas): (ViewTargetHandles, &'a LightsFeature, &'a wgpu::TextureView),
   ) -> Option<GraphTexture> {
     if self.is_froxeled() || lights.volumes.is_empty() {
       return None;
@@ -128,7 +128,7 @@ impl VolumetricFeature {
     (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
     passes: LevelPasses<'a>,
     view: &'a ViewBinding,
-    (lit, atlas, lights): (LightingHandles<'a>, &'a wgpu::TextureView, &'a LightsView),
+    (lit, atlas, lights): (LightingHandles<'a>, &'a wgpu::TextureView, &'a LightsFeature),
   ) -> Option<(UniformBinding<FroxelUniform>, GraphTexture)> {
     let (Some(uniform), Some(volume)) = (&self.uniform, &self.froxels) else {
       return None;
