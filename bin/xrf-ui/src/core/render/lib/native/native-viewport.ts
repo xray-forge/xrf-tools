@@ -283,9 +283,21 @@ export class NativeViewport {
    * Draws an open level, or none.
    *
    * @param sessionId - The level's open session, as the backend holds it, or null for no level.
+   * @returns The scene drawn, which the viewport's load reports name; null for no level, a viewport not attached or a
+   *   request that failed.
    */
-  public showLevel(sessionId: Nullable<string>): void {
-    this.call((id: RenderViewportId) => renderCommands.showLevel(id, sessionId).then(() => undefined));
+  public async showLevel(sessionId: Nullable<string>): Promise<Nullable<number>> {
+    const id: Nullable<RenderViewportId> = await this.attached;
+
+    if (id === null || this.isDisposed) {
+      return null;
+    }
+
+    try {
+      return (await renderCommands.showLevel(id, sessionId)) ?? null;
+    } catch {
+      return null;
+    }
   }
 
   /**

@@ -8,6 +8,8 @@ use crate::contract::render_load_durations::RenderLoadDurations;
 #[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RenderLoadReport {
+  /// The scene it reports on, as showing the level named it.
+  pub scene: u32,
   /// Sectors resident on the GPU.
   pub sectors: u32,
   /// Sectors the level has.

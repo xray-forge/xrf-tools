@@ -183,6 +183,10 @@ export class LevelRenderService extends NativeRenderSurfaceService {
   private viewpoint: Nullable<ILevelViewpoint> = null;
   /** Bumped by every level opened or closed, so a pick asked of one since replaced notes nothing. */
   private opening: number = 0;
+  /** The scene the level open is drawn as, once the renderer has named it: only its load reports reveal the level. */
+  private scene: Nullable<number> = null;
+  /** The last load report, of whichever scene the viewport drew. */
+  private loaded: Nullable<RenderLoadReport> = null;
   /** Stops hearing clicks on the viewport and its focus, while one is attached. */
   private unlisten: Nullable<() => void> = null;
 
@@ -398,6 +402,8 @@ export class LevelRenderService extends NativeRenderSurfaceService {
     this.opening += 1;
     this.level = null;
     this.viewpoint = null;
+    this.scene = null;
+    this.loaded = null;
   }
 
   protected onCamera(pose: WorldCameraPose): void {
@@ -410,9 +416,18 @@ export class LevelRenderService extends NativeRenderSurfaceService {
 
   protected onLoad(report: RenderLoadReport): void {
     this.viewportService.noteLoad(report);
+    this.loaded = report;
+    this.revealWhenReady();
+  }
 
-    // Revealed once everything it opens with is resident, so it is never seen half read.
-    if (report.isReady && this.level) {
+  /**
+   * Reveals the level once everything it opens with is resident, so it is never seen half read; a report of the level
+   * drawn before it, still loading when this one was asked for, reveals nothing.
+   */
+  private revealWhenReady(): void {
+    const report: Nullable<RenderLoadReport> = this.loaded;
+
+    if (report?.isReady && this.level && this.scene !== null && report.scene === this.scene) {
       this.viewportService.reveal();
       void this.describeResident();
     }
@@ -449,11 +464,20 @@ export class LevelRenderService extends NativeRenderSurfaceService {
 
     this.opening += 1;
     this.level = level;
+    this.scene = null;
     this.stand(toLevelStartViewpoint(level?.bounds ?? null, level?.start ?? null));
     // Another level's surfaces and objects are numbered afresh.
     this.viewportService.notePicked(null);
     this.viewportService.conceal();
-    this.viewport?.showLevel(selected?.sessionId ?? null);
+
+    const opening: number = this.opening;
+
+    void this.viewport?.showLevel(selected?.sessionId ?? null).then((scene: Nullable<number>) => {
+      if (opening === this.opening) {
+        this.scene = scene;
+        this.revealWhenReady();
+      }
+    });
   }
 
   /** The toolbar's speeds and lens, from the same place: the camera keeps where it has flown. */

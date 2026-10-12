@@ -10,7 +10,8 @@ use crate::plugins::levels::render_source::LevelRenderSource;
 use crate::plugins::levels::state::{LevelState, SelectedLevel};
 use crate::plugins::render::state::RenderState;
 
-/// Draw the open level in a viewport, its sectors and textures read by the renderer; no session draws none.
+/// Draw the open level in a viewport, its sectors and textures read by the renderer; no session draws none. Answers
+/// the scene drawn, which the viewport's load reports name, or none.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "show_level"))]
 #[tauri::command(rename = "show_level")]
 pub fn render_show_level(
@@ -19,7 +20,7 @@ pub fn render_show_level(
   assets: State<'_, AssetMountState>,
   viewport: RenderViewportId,
   session_id: Option<SessionId>,
-) -> TauriResult {
+) -> TauriResult<Option<u32>> {
   let source: Option<Arc<dyn RenderLevelSource>> = match session_id {
     Some(session_id) => {
       let level: Arc<SessionSnapshot<SelectedLevel>> = levels.selected.require(session_id)?;
@@ -37,7 +38,5 @@ pub fn render_show_level(
 
   let ticket: u64 = state.ask_show(viewport);
 
-  state.show(viewport, ticket, source);
-
-  Ok(())
+  Ok(state.show(viewport, ticket, source).map(|scene| scene.0))
 }

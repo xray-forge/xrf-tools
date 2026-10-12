@@ -891,6 +891,8 @@ export type RenderLoadFailure = {
  * and answered to a caller polling `describe_load` for the level last asked for.
  */
 export type RenderLoadReport = {
+  /** The scene it reports on, as showing the level named it. */
+  scene: number;
   /** Sectors resident on the GPU. */
   sectors: number;
   /** Sectors the level has. */

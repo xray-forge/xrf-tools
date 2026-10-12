@@ -327,8 +327,12 @@ impl RenderThread {
         let described: Option<RenderLoadReport> = self
           .gpu
           .as_ref()
-          .zip(self.get_asked_scene(id).and_then(|scene| self.scenes.get(&scene)))
-          .map(|(gpu, scene)| scene.describe_load(&gpu.textures));
+          .zip(
+            self
+              .get_asked_scene(id)
+              .and_then(|asked| Some((asked, self.scenes.get(&asked)?))),
+          )
+          .map(|(gpu, (asked, scene))| scene.describe_load(asked, &gpu.textures));
 
         let _ = reply.send(described);
       }
@@ -678,8 +682,12 @@ impl RenderThread {
         ),
       );
 
-      if let Some(scene) = viewport.shown.as_ref().and_then(|(id, _)| self.scenes.get(id)) {
-        viewport.report_load(scene.describe_load(&gpu.textures));
+      if let Some((id, scene)) = viewport
+        .shown
+        .as_ref()
+        .and_then(|(id, _)| Some((*id, self.scenes.get(id)?)))
+      {
+        viewport.report_load(scene.describe_load(id, &gpu.textures));
       }
     }
   }
