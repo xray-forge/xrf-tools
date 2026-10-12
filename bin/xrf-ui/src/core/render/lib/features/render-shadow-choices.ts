@@ -11,7 +11,7 @@ export const RENDER_SHADOW_CASCADE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<s
   RENDER_SHADOW_CASCADE_WIDTHS.map((_, index: number) => ({ label: String(index + 1), value: String(index + 1) }));
 
 /** The map resolutions offered, in texels across. */
-const RENDER_SHADOW_RESOLUTIONS: ReadonlyArray<number> = [1024, 2048, 4096];
+const RENDER_SHADOW_RESOLUTIONS: ReadonlyArray<number> = [1024, 1536, 2048, 4096];
 
 export const RENDER_SHADOW_RESOLUTION_OPTIONS: ReadonlyArray<IChoiceFormRowOption<string>> =
   RENDER_SHADOW_RESOLUTIONS.map((value: number) => ({ label: String(value), value: String(value) }));
