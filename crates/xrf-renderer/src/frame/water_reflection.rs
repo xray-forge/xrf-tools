@@ -54,6 +54,11 @@ impl WaterReflection {
     }
   }
 
+  /// Leaves the next frame no history to read, after frames that drew no water.
+  pub fn invalidate(&mut self) {
+    self.is_valid = false;
+  }
+
   /// Makes the history just written the one the next frame reads.
   pub fn swap(&mut self) {
     self.index = 1 - self.index;

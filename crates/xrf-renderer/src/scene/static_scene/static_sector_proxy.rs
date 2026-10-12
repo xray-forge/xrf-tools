@@ -3,6 +3,7 @@ use xrf_renderer_core::ProxyHandle;
 
 use crate::scene::static_scene::static_batch::StaticBatch;
 use crate::scene::static_scene::static_row::StaticRow;
+use crate::scene::static_scene::static_sight::StaticSight;
 use crate::scene::static_scene::static_slot_info::StaticSlotInfo;
 use crate::scene::static_scene::static_sorted_run::StaticSortedRun;
 use crate::scene::static_scene::static_spans::StaticSpans;
@@ -31,6 +32,9 @@ pub struct StaticSectorProxy {
   pub trace_groups: Vec<StaticTraceGroup>,
   /// Its strictly sorted composited runs, which a view draws back to front.
   pub sorted_runs: Vec<StaticSortedRun>,
+  /// The bounding sphere in the world of each of its sections and placed meshes drawn by a pass of its own, and what
+  /// of them it brings into sight, which a view tests its frustum against.
+  pub sights: Vec<(Vec4, StaticSight)>,
   /// The bounding sphere of each of its places that sways, and its reach.
   pub swaying: Vec<(Vec4, f32)>,
 }

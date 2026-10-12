@@ -172,8 +172,10 @@ use crate::scene::static_scene::static_batch::StaticBatch;
 use crate::scene::static_scene::static_layout::StaticLayout;
 use crate::scene::static_scene::static_scene::StaticScene;
 use crate::scene::static_scene::static_selection::StaticSelection;
+use crate::scene::static_scene::static_sight::StaticSight;
 use crate::scene::static_scene::static_slot_info::StaticSlotInfo;
 use crate::scene::static_scene::static_sorted_place::StaticSortedPlace;
+use crate::scene::static_scene::static_surface_pass::StaticSurfacePass;
 use crate::scene::texture::texture_cache::TextureCache;
 use crate::scene::texture::weather_texture_cache::WeatherTextureCache;
 use crate::scene::texture::weather_texture_kind::WeatherTextureKind;
@@ -364,11 +366,16 @@ impl SceneView {
     // The ambient effects blow the wind the grass, the rain and the campfires read this frame.
     let gust: AmbientGust = scene.gust;
 
+    // What of the scene drawn by passes of its own the view may see: none of the water's or the surface passes' work
+    // runs for what is out of sight.
+    let sight: StaticSight = scene.statics.get_sight(&view.get_planes());
+
     self.state.water.prepare(
       device,
       options,
       WaterFrame {
         targets: self.state.targets.as_ref(),
+        is_in_view: sight.is_water(),
         intensity: lighting.water_intensity,
         wind: lighting.wind,
         rain: lighting.rain.map_or(0.0, |rain| rain.density),
@@ -592,13 +599,13 @@ impl SceneView {
 
     self.write_present(
       options,
-      options.mode.is_lit && scene.statics.is_distorting(),
+      options.mode.is_lit && sight.has_pass(StaticSurfacePass::Distortion),
       scene.started.elapsed().as_secs_f32(),
     );
     self.info.glass = (options.features.glass.is_enhanced()
       && options.mode.is_lit
       && !options.mode.is_wireframe
-      && scene.statics.is_glassed())
+      && sight.has_pass(StaticSurfacePass::Glass))
     .then_some(GlassUniform {
       refraction: options.features.glass.refraction,
     });
