@@ -3,7 +3,7 @@ use xrf_renderer_core::{PassParameters, RasterContext};
 
 use crate::frame::sun_shadow_maps::SunShadowMaps;
 use crate::frame::view_targets::ViewTargets;
-use crate::pass::fullscreen_pipeline::{create_fullscreen_pipeline, create_fullscreen_pipeline_into};
+use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline_into;
 use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::view_binding::ViewBinding;
 use crate::pass::wet_apply_parameters::WetApplyParameters;
@@ -11,9 +11,9 @@ use crate::pass::wet_patch_parameters::WetPatchParameters;
 use crate::scene::level::level_surface::LevelSurface;
 
 /// Rain on the G-buffer before any light, as `draw_rain` wets it (`r3_rendertarget_draw_rain.cpp`): where the rain
-/// reaches near the camera its normals patched into the light target, borrowed before the sun clears it, then written
-/// back, then the albedo darkened and the gloss raised by how wet it is. Enhanced, the same three stages wet the
-/// surfaces out to the distance and gather puddles on terrain.
+/// reaches near the camera its normals patched into the light target, borrowed before the sun clears it, then in one
+/// pass written back with the albedo darkened and the gloss raised by how wet it is. Enhanced, the same two stages wet
+/// the surfaces out to the distance and gather puddles on terrain.
 pub struct WetPass {
   view_layout: wgpu::BindGroupLayout,
   /// The patch's, then the write back's and the wetting's.
@@ -21,8 +21,8 @@ pub struct WetPass {
   sampler: wgpu::Sampler,
   /// The level's surface where none is made: no lowest heights, no puddles and no water, a texel each.
   dry: [wgpu::TextureView; 3],
-  /// The patch, the normal written back, the albedo and gloss wetted; the engine's, then the enhanced.
-  pipelines: [[wgpu::RenderPipeline; 3]; 2],
+  /// The patch, then the normal written back with the albedo and gloss wetted; the engine's, then the enhanced.
+  pipelines: [[wgpu::RenderPipeline; 2]; 2],
   generation: u64,
 }
 
@@ -104,8 +104,6 @@ impl WetPass {
     }
   }
 
-  /// Draws one of its three stages into the target the pass draws into: the wet patches into the light, then the wet
-  /// look into the normals and the albedo, each from the group it reads.
   /// The sampler the splash volume and the flow are read through, which the patch's parameters bind.
   pub fn get_sampler(&self) -> &wgpu::Sampler {
     &self.sampler
@@ -133,38 +131,26 @@ impl WetPass {
     source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     layouts: &[wgpu::BindGroupLayout; 2],
-  ) -> XrfResult<[[wgpu::RenderPipeline; 3]; 2]> {
+  ) -> XrfResult<[[wgpu::RenderPipeline; 2]; 2]> {
     Ok([
+      Self::create_stages(source, view_layout, layouts, (["fs_wet_patch", "fs_wet_apply"], false))?,
       Self::create_stages(
         source,
         view_layout,
         layouts,
-        (["fs_wet_patch", "fs_wet_normal", "fs_wet_gloss"], false),
-      )?,
-      Self::create_stages(
-        source,
-        view_layout,
-        layouts,
-        (
-          [
-            "fs_wet_patch_enhanced",
-            "fs_wet_normal_enhanced",
-            "fs_wet_gloss_enhanced",
-          ],
-          true,
-        ),
+        (["fs_wet_patch_enhanced", "fs_wet_apply_enhanced"], true),
       )?,
     ])
   }
 
-  /// The three stages by their entry points (`entries`: the patch, the normals and the gloss), the enhanced patch's
-  /// beside it.
+  /// The two stages by their entry points (`entries`: the patch, and the normals with the albedo and gloss), the
+  /// enhanced patch's beside it.
   fn create_stages(
     source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     [patch, apply]: &[wgpu::BindGroupLayout; 2],
-    ([patch_entry, normal_entry, gloss_entry], is_enhanced): ([&'static str; 3], bool),
-  ) -> XrfResult<[wgpu::RenderPipeline; 3]> {
+    ([patch_entry, apply_entry], is_enhanced): ([&'static str; 2], bool),
+  ) -> XrfResult<[wgpu::RenderPipeline; 2]> {
     // The enhanced patch writes the wet surface beside the light target; both, the wet reach's gloss last.
     let targets: Vec<Option<wgpu::ColorTargetState>> = std::iter::once(ViewTargets::LIGHT)
       .chain(is_enhanced.then_some(Self::SURFACE))
@@ -178,37 +164,32 @@ impl WetPass {
       &[Some(view_layout), Some(patch)],
       &targets,
     )?;
-    let normal: wgpu::RenderPipeline = create_fullscreen_pipeline(
+    // The normal written over; on the albedo `blend(zero, srccolor)` on colour and `(one, one)` on alpha: the albedo
+    // multiplied, the gloss added.
+    let wetted: wgpu::ColorTargetState = wgpu::ColorTargetState {
+      format: ViewTargets::ALBEDO,
+      blend: Some(wgpu::BlendState {
+        color: wgpu::BlendComponent {
+          src_factor: wgpu::BlendFactor::Zero,
+          dst_factor: wgpu::BlendFactor::Src,
+          operation: wgpu::BlendOperation::Add,
+        },
+        alpha: wgpu::BlendComponent {
+          src_factor: wgpu::BlendFactor::One,
+          dst_factor: wgpu::BlendFactor::One,
+          operation: wgpu::BlendOperation::Add,
+        },
+      }),
+      write_mask: wgpu::ColorWrites::ALL,
+    };
+    let applied: wgpu::RenderPipeline = create_fullscreen_pipeline_into(
       source,
       "frame/wet_apply",
-      normal_entry,
+      apply_entry,
       &[Some(view_layout), Some(apply)],
-      ViewTargets::NORMAL,
-    )?;
-    // `blend(zero, srccolor)` on colour and `(one, one)` on alpha: the albedo multiplied, the gloss added.
-    let gloss: wgpu::RenderPipeline = create_fullscreen_pipeline(
-      source,
-      "frame/wet_apply",
-      gloss_entry,
-      &[Some(view_layout), Some(apply)],
-      wgpu::ColorTargetState {
-        format: ViewTargets::ALBEDO,
-        blend: Some(wgpu::BlendState {
-          color: wgpu::BlendComponent {
-            src_factor: wgpu::BlendFactor::Zero,
-            dst_factor: wgpu::BlendFactor::Src,
-            operation: wgpu::BlendOperation::Add,
-          },
-          alpha: wgpu::BlendComponent {
-            src_factor: wgpu::BlendFactor::One,
-            dst_factor: wgpu::BlendFactor::One,
-            operation: wgpu::BlendOperation::Add,
-          },
-        }),
-        write_mask: wgpu::ColorWrites::ALL,
-      },
+      &[Some(ViewTargets::NORMAL.into()), Some(wetted)],
     )?;
 
-    Ok([patched, normal, gloss])
+    Ok([patched, applied])
   }
 }

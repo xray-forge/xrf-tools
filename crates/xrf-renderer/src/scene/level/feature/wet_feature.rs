@@ -251,16 +251,12 @@ impl WetFeature {
       ))
       .record(move |context| passes.wet.record(context, (0, is_enhanced), view, &patch));
 
-    for (stage, (name, target)) in [("wet normal", handles.normal), ("wet albedo", handles.albedo)]
-      .into_iter()
-      .enumerate()
-    {
-      graph
-        .add_raster_pass(name)
-        .parameters(&apply)
-        .color(GraphColorAttachment::new(target, wgpu::LoadOp::Load))
-        .record(move |context| passes.wet.record(context, (stage + 1, is_enhanced), view, &apply));
-    }
+    graph
+      .add_raster_pass("wet apply")
+      .parameters(&apply)
+      .color(GraphColorAttachment::new(handles.normal, wgpu::LoadOp::Load))
+      .color(GraphColorAttachment::new(handles.albedo, wgpu::LoadOp::Load))
+      .record(move |context| passes.wet.record(context, (1, is_enhanced), view, &apply));
 
     (wet_surface, wet_reach)
   }
