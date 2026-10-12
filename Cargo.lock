@@ -7285,7 +7285,6 @@ dependencies = [
  "hyper",
  "hyper-util",
  "image",
- "indexmap 2.14.2",
  "log",
  "notify",
  "percent-encoding",

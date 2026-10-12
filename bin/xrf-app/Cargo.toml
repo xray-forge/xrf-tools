@@ -23,7 +23,6 @@ http-body-util = "0.1.5"
 hyper = { version = "1.11.1", features = ["http1", "server"] }
 hyper-util = { version = "0.1.20", features = ["tokio"] }
 image = { workspace = true, features = ["png"] }
-indexmap = { workspace = true }
 log = { workspace = true }
 notify = { workspace = true }
 percent-encoding = "2.3.2"
