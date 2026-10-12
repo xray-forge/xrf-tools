@@ -3,8 +3,6 @@ use xrf_error::XrfResult;
 use xrf_renderer_core::{PassParameters, RasterContext};
 
 use crate::contract::render_ambient_occlusion_quality::RenderAmbientOcclusionQuality;
-use crate::frame::indirect_light_history::IndirectLightHistory;
-use crate::frame::vbao_history::VbaoHistory;
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::bitmask_search::BitmaskSearch;
 use crate::pass::shader_pipelines::{create_checked, create_module};
@@ -48,6 +46,8 @@ struct VbaoPipelines {
 }
 
 impl VbaoPass {
+  /// The accumulations, the occlusion's and the light's: half floats.
+  pub const HISTORY: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
   /// The light copied for the search, gathered and filtered: colour, then distance along the view where it says.
   pub const LIGHT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
   /// The frame's points under the search's pixels: their view depth.
@@ -260,12 +260,8 @@ impl VbaoPass {
     Ok(VbaoPipelines {
       searches,
       lit_searches,
-      accumulate: create("fs_accumulate", &[], &[VbaoHistory::FORMAT])?,
-      lit_accumulate: create(
-        "fs_accumulate_lit",
-        &[],
-        &[VbaoHistory::FORMAT, IndirectLightHistory::FORMAT],
-      )?,
+      accumulate: create("fs_accumulate", &[], &[Self::HISTORY])?,
+      lit_accumulate: create("fs_accumulate_lit", &[], &[Self::HISTORY, Self::HISTORY])?,
       filter: create("fs_filter", &[], occluded)?,
       lit_filter: create("fs_filter_lit", &[], lit)?,
       light_filter: create("fs_filter_light", &[], &[Self::LIGHT])?,

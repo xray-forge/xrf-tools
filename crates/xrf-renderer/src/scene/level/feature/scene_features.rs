@@ -1,3 +1,4 @@
+use crate::scene::level::feature::bitmask_feature::BitmaskFeature;
 use crate::scene::level::feature::bloom_feature::BloomFeature;
 use crate::scene::level::feature::exposure_feature::ExposureFeature;
 use crate::scene::level::feature::falling_rain_feature::FallingRainFeature;
@@ -18,6 +19,7 @@ pub struct SceneFeatures {
   pub rain: FallingRainFeature,
   pub thunder: ThunderFeature,
   pub resolve: ResolveFeature,
+  pub bitmask: BitmaskFeature,
 }
 
 impl SceneFeatures {
@@ -31,11 +33,12 @@ impl SceneFeatures {
       rain: FallingRainFeature::default(),
       thunder: ThunderFeature::default(),
       resolve: ResolveFeature::default(),
+      bitmask: BitmaskFeature::default(),
     }
   }
 
   /// Every unit, as what each answers alike.
-  pub fn list(&self) -> [&dyn ViewFeature; 8] {
+  pub fn list(&self) -> [&dyn ViewFeature; 9] {
     [
       &self.fog,
       &self.bloom,
@@ -45,10 +48,11 @@ impl SceneFeatures {
       &self.rain,
       &self.thunder,
       &self.resolve,
+      &self.bitmask,
     ]
   }
 
-  pub fn list_mut(&mut self) -> [&mut dyn ViewFeature; 8] {
+  pub fn list_mut(&mut self) -> [&mut dyn ViewFeature; 9] {
     [
       &mut self.fog,
       &mut self.bloom,
@@ -58,6 +62,7 @@ impl SceneFeatures {
       &mut self.rain,
       &mut self.thunder,
       &mut self.resolve,
+      &mut self.bitmask,
     ]
   }
 

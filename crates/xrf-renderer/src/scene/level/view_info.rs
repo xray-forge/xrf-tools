@@ -5,14 +5,12 @@ use crate::contract::render_ambient_occlusion_settings::RenderAmbientOcclusionSe
 use crate::contract::render_debanding_quality::RenderDebandingQuality;
 use crate::contract::render_debug_view::RenderDebugView;
 use crate::contract::render_image_corrections::RenderImageCorrections;
-use crate::contract::render_indirect_light_settings::RenderIndirectLightSettings;
 use crate::contract::render_lights_settings::RenderLightsSettings;
 use crate::contract::render_rect::RenderRect;
 use crate::contract::render_reflection_settings::RenderReflectionSettings;
 use crate::contract::render_shadow_settings::RenderShadowSettings;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::pass::ambient_occlusion_uniform::AmbientOcclusionUniform;
-use crate::pass::bitmask_search::BitmaskSearch;
 use crate::pass::contact_shadow_uniform::ContactShadowUniform;
 use crate::pass::froxel_uniform::FroxelUniform;
 use crate::pass::glass_uniform::GlassUniform;
@@ -22,7 +20,6 @@ use crate::pass::reflection_trace::ReflectionTrace;
 use crate::pass::reflection_uniform::ReflectionUniform;
 use crate::pass::static_cull_params::StaticCullParams;
 use crate::pass::static_occlusion_uniform::StaticOcclusionUniform;
-use crate::pass::vbao_uniform::VbaoUniform;
 use crate::pass::wet_uniform::WetUniform;
 use crate::pass::wind_uniform::WindUniform;
 use crate::scene::level::sky_views::SkyViews;
@@ -35,8 +32,6 @@ pub struct ViewInfo {
   pub present: PresentUniform,
   /// What the ambient occlusion searches by this frame.
   pub occlusion_settings: AmbientOcclusionUniform,
-  /// What VBAO searches, accumulates and filters by this frame.
-  pub vbao: VbaoUniform,
   /// What the contact shadows march by this frame: towards no light where none are drawn.
   pub contact_shadows: ContactShadowUniform,
   /// Whether the sun's contact shadows pass draws this frame.
@@ -71,12 +66,6 @@ pub struct ViewInfo {
   pub debug_view: RenderDebugView,
   /// Whether its ambient occlusion is searched: on, and the view lit and solid.
   pub is_occlusion_drawn: bool,
-  /// What the visibility-bitmask search yields this frame, none where it does not run.
-  pub bitmask: Option<BitmaskSearch>,
-  /// Whether the bitmask search accumulates into its history this frame.
-  pub is_bitmask_accumulated: bool,
-  /// What the indirect light is gathered with, whether or not it is.
-  pub indirect_light: RenderIndirectLightSettings,
   /// What the reflections are traced with, whether or not they are.
   pub reflection_settings: RenderReflectionSettings,
   /// Whether and how the reflections are traced this frame, none where they are not.
@@ -120,7 +109,6 @@ impl Default for ViewInfo {
     Self {
       present: PresentUniform::default(),
       occlusion_settings: AmbientOcclusionUniform::default(),
-      vbao: VbaoUniform::default(),
       contact_shadows: ContactShadowUniform::default(),
       is_sun_contact: false,
       wet: WetUniform::default(),
@@ -144,9 +132,6 @@ impl Default for ViewInfo {
       corrections: RenderImageCorrections::default(),
       debug_view: RenderDebugView::Final,
       is_occlusion_drawn: false,
-      bitmask: None,
-      is_bitmask_accumulated: false,
-      indirect_light: RenderIndirectLightSettings::default(),
       reflection_settings: RenderReflectionSettings::default(),
       reflection: None,
       reflections: ReflectionUniform::default(),

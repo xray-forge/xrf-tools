@@ -1,3 +1,4 @@
+pub(crate) mod bitmask_feature;
 pub(crate) mod bloom_feature;
 pub(crate) mod exposure_feature;
 pub(crate) mod falling_rain_feature;
