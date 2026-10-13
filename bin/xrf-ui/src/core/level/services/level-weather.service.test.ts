@@ -392,6 +392,80 @@ describe("LevelWeatherService", () => {
     expect(service.sunShafts).toEqual(shafts);
   });
 
+  // Picking the held cycle again while another is read is the last word: the read landing later plays nothing.
+  it("keeps the held cycle picked again while another one is read", async () => {
+    let release!: () => void;
+
+    setMockInvokeResponses({
+      ["plugin:levels|read_level_weather"]: mockSessionResponse(mockLevelWeatherDescription()),
+      ["plugin:levels|read_level_cycle"]: mockSessionResponse(
+        ({ cycle }: { cycle: WeatherCycleId }) =>
+          new Promise((resolve) => {
+            release = () => resolve(mockLevelWeatherCycle({ name: cycle.name }));
+          })
+      ),
+    });
+
+    const service: LevelWeatherService = createService();
+
+    await service.open(SELECTED);
+
+    const rain: Promise<void> = service.selectCycle("default_rain");
+
+    expect(service.reading).toBe("default_rain");
+
+    await service.selectCycle("default_clear");
+
+    expect(service.reading).toBeNull();
+
+    release();
+    await rain;
+
+    expect(service.cycle.value?.name).toBe("default_clear");
+    expect(service.weather).toEqual({ kind: EWorldWeatherPlay.CYCLE, name: "default_clear" });
+  });
+
+  it("leaves a level opened during a cycle's read lit as it was", async () => {
+    const other: SessionSnapshot<SelectedLevelDescription> = {
+      sessionId: "other",
+      value: mockSelectedLevelDescription({ source: { kind: "directory", path: "C:/levels/jupiter" } }),
+    };
+    let release!: () => void;
+
+    writeLevelWeatherMemory(toLevelWeatherMemoryKey(other.value), {
+      control: { factor: 12, isDynamicSun: false, isPaused: true },
+      cycle: "",
+      manual: { ...DEFAULT_LEVEL_MANUAL_WEATHER, rainDensity: 0.3 },
+      seed: null,
+      source: ELevelWeatherSource.MANUAL,
+      sunShafts: DEFAULT_LEVEL_SUN_SHAFTS_OPTIONS,
+      time: 600,
+    });
+    setMockInvokeResponses({
+      ["plugin:levels|read_level_weather"]: mockSessionResponse(mockLevelWeatherDescription()),
+      ["plugin:levels|read_level_cycle"]: mockSessionResponse(
+        ({ cycle }: { cycle: WeatherCycleId }) =>
+          new Promise((resolve) => {
+            release = () => resolve(mockLevelWeatherCycle({ name: cycle.name }));
+          })
+      ),
+    });
+
+    const service: LevelWeatherService = createService();
+
+    await service.open(SELECTED);
+
+    const rain: Promise<void> = service.selectCycle("default_rain");
+
+    await service.open(other);
+    release();
+    await rain;
+
+    expect(service.source).toBe(ELevelWeatherSource.MANUAL);
+    expect(readLevelWeatherMemory(toLevelWeatherMemoryKey(other.value))?.source).toBe(ELevelWeatherSource.MANUAL);
+    expect(toKeyframe(service.weather)?.rainDensity).toBe(0.3);
+  });
+
   it("plays the level's own cycle where the remembered one no longer reads", async () => {
     writeLevelWeatherMemory(toLevelWeatherMemoryKey(SELECTED.value), {
       control: { factor: 12, isDynamicSun: false, isPaused: true },
