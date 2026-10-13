@@ -33,6 +33,7 @@ import {
   WorldWeatherPlay,
   WorldWeatherReport,
 } from "@/core/ipc/types/xrf-world";
+import { noop } from "@/lib/callbacks/noop";
 
 /** A texture laid on a body, as the renderer is asked to draw one, or null for none. */
 export type TNativeTextureRequest = Parameters<typeof renderCommands.showTexture>[1];
@@ -109,7 +110,7 @@ export class NativeViewport {
       (id: RenderViewportId) => {
         // Released before the renderer answered: what it attached goes at once.
         if (this.isDisposed) {
-          void renderCommands.detachViewport(id).catch(ignoreDropped);
+          void renderCommands.detachViewport(id).catch(noop);
 
           return null;
         }
@@ -354,7 +355,7 @@ export class NativeViewport {
     this.isDisposed = true;
     void this.attached.then((id: Nullable<RenderViewportId>) => {
       if (id !== null) {
-        return renderCommands.detachViewport(id).catch(ignoreDropped);
+        return renderCommands.detachViewport(id).catch(noop);
       }
     });
   }
@@ -407,6 +408,3 @@ export class NativeViewport {
     this.listener.onCommandFailed(command, error);
   }
 }
-
-/** A detach that failed changes nothing: the page has let the viewport go either way. */
-function ignoreDropped(): void {}
