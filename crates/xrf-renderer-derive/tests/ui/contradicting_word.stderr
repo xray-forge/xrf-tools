@@ -1,0 +1,5 @@
+error: `cube` repeats or contradicts a word before it
+ --> tests/ui/contradicting_word.rs:7:3
+  |
+7 |   #[texture(d2, float, cube)]
+  |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^

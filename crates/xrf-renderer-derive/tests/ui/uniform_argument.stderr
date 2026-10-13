@@ -1,0 +1,5 @@
+error: this binding kind takes no arguments
+ --> tests/ui/uniform_argument.rs:7:3
+  |
+7 |   #[uniform(dynamic)]
+  |   ^^^^^^^^^^^^^^^^^^^
