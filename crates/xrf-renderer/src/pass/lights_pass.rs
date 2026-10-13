@@ -3,6 +3,7 @@ use xrf_renderer_core::{ComputeContext, PassParameters, RasterContext};
 
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::light_binning_parameters::LightBinningParameters;
+use crate::pass::light_contact_parameters::LightContactParameters;
 use crate::pass::light_shadowing_parameters::LightShadowingParameters;
 use crate::pass::light_visibility_parameters::LightVisibilityParameters;
 use crate::pass::lights_parameters::LightsParameters;
@@ -17,11 +18,13 @@ const BINNING_WORKGROUP: u32 = 64;
 /// Pixels a side of the square a visibility workgroup covers, as the source declares it.
 const VISIBILITY_WORKGROUP: u32 = 8;
 
-/// Bins the local lights in view into clusters of the view, finds how much of each shadowed light every pixel sees,
-/// then adds every light reaching each pixel to the light its frame accumulated after the sun.
+/// Bins the local lights in view into clusters of the view, marches the contact shadows towards the strongest at half
+/// the frame's size, finds how much of each shadowed light every pixel sees, then adds every light reaching each pixel
+/// to the light its frame accumulated after the sun.
 pub struct LightsPass {
   binning_layout: wgpu::BindGroupLayout,
   layout: wgpu::BindGroupLayout,
+  contact_layout: wgpu::BindGroupLayout,
   shadowing_layout: wgpu::BindGroupLayout,
   visibility_layout: wgpu::BindGroupLayout,
   view_layout: wgpu::BindGroupLayout,
@@ -30,13 +33,18 @@ pub struct LightsPass {
   /// What the lights pass reads for the visibility while no light in view is shadowed: never read, as no light then
   /// takes a slot.
   unshadowed: wgpu::TextureView,
+  /// What the visibility reads for the contact shadows while none are marched: never read, as no light is then marched.
+  uncontacted: wgpu::TextureView,
+  /// What the visibility and the lights read for the marched lights' weight while none are marched: never read.
+  unthresholded: wgpu::TextureView,
   generation: u64,
 }
 
-/// The binning, then the visibility and the lights each without contact shadows and with them, which find the slots
-/// by them.
+/// The binning, the contact shadows' march, then the visibility and the lights each without contact shadows and with
+/// them, which find the slots by them.
 struct LightsPipelines {
   binning: wgpu::ComputePipeline,
+  contact: wgpu::ComputePipeline,
   visibility: [wgpu::ComputePipeline; 2],
   draws: [wgpu::RenderPipeline; 2],
 }
@@ -47,6 +55,15 @@ impl LightsPass {
 
   /// Layers of the visibility a pixel's slots fill.
   pub const VISIBILITY_LAYERS: u32 = 2;
+
+  /// What the lights' contact shadows are held in: a light's record and the share of it kept a slot, four a layer.
+  pub const CONTACT_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba32Uint;
+
+  /// Slots of the lights' contact shadows a layer holds.
+  pub const CONTACT_LAYER_SLOTS: u32 = 4;
+
+  /// What the weight a light must reach to be among those marched towards is held in.
+  pub const THRESHOLD_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::R32Float;
 
   /// # Errors
   ///
@@ -59,6 +76,7 @@ impl LightsPass {
   ) -> XrfResult<Self> {
     let binning_layout: wgpu::BindGroupLayout = LightBinningParameters::create_layout(device);
     let layout: wgpu::BindGroupLayout = LightsParameters::create_layout(device);
+    let contact_layout: wgpu::BindGroupLayout = LightContactParameters::create_layout(device);
     let shadowing_layout: wgpu::BindGroupLayout = LightShadowingParameters::create_layout(device);
     let visibility_layout: wgpu::BindGroupLayout = LightVisibilityParameters::create_layout(device);
     let pipelines: LightsPipelines = Self::create_pipelines(
@@ -66,36 +84,50 @@ impl LightsPass {
       source,
       &binning_layout,
       [view_layout, &layout, texture_layout],
-      [&shadowing_layout, &visibility_layout],
+      [&contact_layout, &shadowing_layout, &visibility_layout],
     )?;
+    let stand_in = |label: &str, format: wgpu::TextureFormat, layers: Option<u32>| -> wgpu::TextureView {
+      device
+        .create_texture(&wgpu::TextureDescriptor {
+          label: Some(label),
+          size: wgpu::Extent3d {
+            width: 1,
+            height: 1,
+            depth_or_array_layers: layers.unwrap_or(1),
+          },
+          mip_level_count: 1,
+          sample_count: 1,
+          dimension: wgpu::TextureDimension::D2,
+          format,
+          usage: wgpu::TextureUsages::TEXTURE_BINDING,
+          view_formats: &[],
+        })
+        .create_view(&wgpu::TextureViewDescriptor {
+          dimension: Some(if layers.is_some() {
+            wgpu::TextureViewDimension::D2Array
+          } else {
+            wgpu::TextureViewDimension::D2
+          }),
+          ..Default::default()
+        })
+    };
 
     Ok(Self {
       pipelines,
       binning_layout,
       layout,
+      contact_layout,
       shadowing_layout,
       visibility_layout,
       view_layout: view_layout.clone(),
       texture_layout: texture_layout.clone(),
-      unshadowed: device
-        .create_texture(&wgpu::TextureDescriptor {
-          label: Some("light visibility none"),
-          size: wgpu::Extent3d {
-            width: 1,
-            height: 1,
-            depth_or_array_layers: Self::VISIBILITY_LAYERS,
-          },
-          mip_level_count: 1,
-          sample_count: 1,
-          dimension: wgpu::TextureDimension::D2,
-          format: Self::VISIBILITY_FORMAT,
-          usage: wgpu::TextureUsages::TEXTURE_BINDING,
-          view_formats: &[],
-        })
-        .create_view(&wgpu::TextureViewDescriptor {
-          dimension: Some(wgpu::TextureViewDimension::D2Array),
-          ..Default::default()
-        }),
+      unshadowed: stand_in(
+        "light visibility none",
+        Self::VISIBILITY_FORMAT,
+        Some(Self::VISIBILITY_LAYERS),
+      ),
+      uncontacted: stand_in("light contact none", Self::CONTACT_FORMAT, Some(1)),
+      unthresholded: stand_in("light threshold none", Self::THRESHOLD_FORMAT, None),
       generation: source.get_generation(),
     })
   }
@@ -109,7 +141,7 @@ impl LightsPass {
         source,
         &self.binning_layout,
         [&self.view_layout, &self.layout, &self.texture_layout],
-        [&self.shadowing_layout, &self.visibility_layout],
+        [&self.contact_layout, &self.shadowing_layout, &self.visibility_layout],
       ) {
         Ok(pipelines) => self.pipelines = pipelines,
         Err(error) => log::error!("Lights rejected, lighting with the last one: {error}"),
@@ -122,6 +154,16 @@ impl LightsPass {
     &self.unshadowed
   }
 
+  /// What the visibility reads for the contact shadows while none are marched.
+  pub fn get_uncontacted(&self) -> &wgpu::TextureView {
+    &self.uncontacted
+  }
+
+  /// What the visibility and the lights read for the marched lights' weight while none are marched.
+  pub fn get_unthresholded(&self) -> &wgpu::TextureView {
+    &self.unthresholded
+  }
+
   pub fn record_binning(&self, context: &mut ComputeContext<'_>, parameters: &LightBinningParameters) {
     context.bind(parameters);
 
@@ -131,7 +173,30 @@ impl LightsPass {
     pass.dispatch_workgroups(LIGHT_CLUSTERS.div_ceil(BINNING_WORKGROUP), 1, 1);
   }
 
-  /// Finds how much of each shadowed light every pixel of a `size` view sees, marching contact shadows where
+  /// Marches the contact shadows towards each texel's strongest lights into a target `size` texels across, half the
+  /// frame's.
+  pub fn record_contact(
+    &self,
+    context: &mut ComputeContext<'_>,
+    view: &ViewBinding,
+    (parameters, contact): (&LightsParameters<'_>, &LightContactParameters),
+    size: (u32, u32),
+  ) {
+    context.bind(parameters);
+    context.bind(contact);
+
+    let pass: &mut wgpu::ComputePass<'static> = context.get_pass();
+
+    pass.set_pipeline(&self.pipelines.contact);
+    pass.set_bind_group(0, &view.bind_group, &[]);
+    pass.dispatch_workgroups(
+      size.0.div_ceil(VISIBILITY_WORKGROUP),
+      size.1.div_ceil(VISIBILITY_WORKGROUP),
+      1,
+    );
+  }
+
+  /// Finds how much of each shadowed light every pixel of a `size` view sees, reading the contact shadows marched where
   /// `is_contact`.
   pub fn record_visibility(
     &self,
@@ -177,15 +242,22 @@ impl LightsPass {
     source: PipelineSource<'_>,
     binning_layout: &wgpu::BindGroupLayout,
     [view_layout, layout, texture_layout]: [&wgpu::BindGroupLayout; 3],
-    [shadowing_layout, visibility_layout]: [&wgpu::BindGroupLayout; 2],
+    [contact_layout, shadowing_layout, visibility_layout]: [&wgpu::BindGroupLayout; 3],
   ) -> XrfResult<LightsPipelines> {
     let binning_module: wgpu::ShaderModule = source.get_module("frame/light_binning")?;
+    let contact_module: wgpu::ShaderModule = source.get_module("frame/light_contact")?;
     let visibility_module: wgpu::ShaderModule = source.get_module("frame/light_visibility")?;
     let module: wgpu::ShaderModule = source.get_module("frame/lights")?;
     let binning_pipeline_layout: wgpu::PipelineLayout =
       device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some("light binning"),
         bind_group_layouts: &[Some(binning_layout)],
+        ..Default::default()
+      });
+    let contact_pipeline_layout: wgpu::PipelineLayout =
+      device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+        label: Some("light contact"),
+        bind_group_layouts: &[Some(view_layout), Some(layout), None, Some(contact_layout)],
         ..Default::default()
       });
     let visibility_pipeline_layout: wgpu::PipelineLayout =
@@ -210,6 +282,16 @@ impl LightsPass {
         layout: Some(&binning_pipeline_layout),
         module: &binning_module,
         entry_point: Some("bin"),
+        compilation_options: Default::default(),
+        cache: source.get_driver_cache(),
+      })
+    })?;
+    let contact: wgpu::ComputePipeline = create_checked(device, "light contact", || {
+      device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+        label: Some("light contact"),
+        layout: Some(&contact_pipeline_layout),
+        module: &contact_module,
+        entry_point: Some("cs_light_contact"),
         compilation_options: Default::default(),
         cache: source.get_driver_cache(),
       })
@@ -273,6 +355,7 @@ impl LightsPass {
 
     Ok(LightsPipelines {
       binning,
+      contact,
       visibility: [create_visibility(false)?, create_visibility(true)?],
       draws: [create_draw(false)?, create_draw(true)?],
     })

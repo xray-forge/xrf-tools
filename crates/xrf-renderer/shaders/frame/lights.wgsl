@@ -32,7 +32,9 @@ fn fs_lights(in: FullscreenVarying) -> @location(0) vec4<f32> {
     discard;
   }
 
-  let pixel: LitPixel = lit_pixel(in.clip.xy, texel, depth, select(0u, contact.lights, CONTACT_MARCHED));
+  let threshold: f32 = textureLoad(light_threshold, threshold_texel(texel, textureDimensions(light_threshold)), 0).r;
+  let pixel: LitPixel = lit_pixel_by(in.clip.xy, texel, depth, select(0u, contact.lights, CONTACT_MARCHED),
+    threshold);
   let material_texel: vec4<f32> = textureLoad(material_target, texel, 0);
   let slice: f32 = material_texel.z;
   // Foliage is lit from each light's side, as the light passes through its leaves.

@@ -7,7 +7,8 @@ use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline;
 use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::view_binding::ViewBinding;
 
-/// Marches each drawn pixel's ray towards the sun over the frame's depth, into how much sunlight reaches it.
+/// Marches a ray towards the sun over the frame's depth from one drawn pixel of each two by two, into how much sunlight
+/// reaches it and how far along the view it stands, which the sun brings up to every pixel by depth.
 pub struct ContactShadowPass {
   layout: wgpu::BindGroupLayout,
   view_layout: wgpu::BindGroupLayout,
@@ -18,8 +19,11 @@ pub struct ContactShadowPass {
 }
 
 impl ContactShadowPass {
-  /// The sunlight each pixel keeps, from none to all.
-  pub const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::R8Unorm;
+  /// The sunlight each marched pixel keeps, from none to all, then its distance along the view.
+  pub const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rg16Float;
+
+  /// The stand-in's texel: all lit, as far as half floats reach.
+  const LIT: [u16; 2] = [0x3c00, 0x7bff];
 
   /// # Errors
   ///
@@ -49,7 +53,7 @@ impl ContactShadowPass {
           view_formats: &[],
         },
         Default::default(),
-        &[u8::MAX],
+        bytemuck::cast_slice(&Self::LIT),
       )
       .create_view(&Default::default());
 

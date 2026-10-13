@@ -13,8 +13,9 @@ use crate::pass::level_passes::LevelPasses;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::feature::view_feature::ViewFeature;
 
-/// The contact shadows, marched over the frame's depth where the view is lit and solid: the sun's under its cascades,
-/// into a target the sun multiplies its own by, and the lights', which the lights march in their own pass.
+/// The contact shadows, marched over the frame's depth where the view is lit and solid: the sun's under its cascades, at
+/// half the frame's size into a target the sun brings up and multiplies its own by, and the lights', which the lights
+/// march in their own pass.
 #[derive(Default)]
 pub struct ContactShadowFeature {
   /// Whether the sun's are marched this frame.
@@ -37,9 +38,9 @@ impl ContactShadowFeature {
     };
   }
 
-  /// Whether the lights march contact shadows of their own this frame.
-  pub fn is_lit(&self) -> bool {
-    self.uniform.lights > 0
+  /// Lights each texel marches contact shadows towards at most this frame: none while the lights march none.
+  pub fn get_light_count(&self) -> u32 {
+    self.uniform.lights
   }
 
   /// Adds the sun's contact shadows, answering what the sun multiplies its own by, a lit texel where none are marched,
@@ -63,8 +64,8 @@ impl ContactShadowFeature {
     let (width, height) = targets.size;
     let marched: GraphTexture = graph.create_texture(GraphTextureDescriptor::new_2d(
       "contact shadows",
-      width,
-      height,
+      width.div_ceil(2),
+      height.div_ceil(2),
       ContactShadowPass::FORMAT,
     ));
     let parameters: ContactShadowParameters = ContactShadowParameters {
