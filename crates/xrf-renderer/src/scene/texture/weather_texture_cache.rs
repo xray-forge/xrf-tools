@@ -181,6 +181,9 @@ impl WeatherTextureCache {
       entry.is_settled = true;
 
       match load {
+        Ok(Some(texture)) if !texture.is_within(&device.limits()) => {
+          log::warn!("Weather texture '{reference}' is larger than the device holds");
+        }
         Ok(Some(texture)) if Self::is_kind(&texture, entry.kind) => {
           entry.view = Some(Self::upload(device, queue, &texture, &reference));
         }

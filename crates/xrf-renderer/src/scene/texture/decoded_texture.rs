@@ -29,6 +29,16 @@ impl DecodedTexture {
   /// Faces a cube holds.
   pub const CUBE_FACES: u32 = 6;
 
+  /// Levels a texture of these sides can hold, down to one texel: a header claiming more is read for these.
+  pub fn get_chain_length(width: u32, height: u32) -> u32 {
+    u32::BITS - width.max(height).max(1).leading_zeros()
+  }
+
+  /// Whether a device can hold it, its sides within the largest two dimensional texture the device makes.
+  pub fn is_within(&self, limits: &wgpu::Limits) -> bool {
+    self.width <= limits.max_texture_dimension_2d && self.height <= limits.max_texture_dimension_2d
+  }
+
   /// Bytes the upload carries, which is what an upload budget spends.
   pub fn get_size(&self) -> u64 {
     self.levels.iter().map(|level| level.len() as u64).sum()
@@ -67,7 +77,9 @@ impl DecodedTexture {
   pub fn from_bump_heights(bytes: &[u8], dropped: u32) -> XrfResult<Self> {
     let file: DdsFile = DdsFile::read_from_bytes(bytes)?;
     let metadata: DdsMetadata = file.metadata();
-    let levels: u32 = metadata.mipmap_levels.max(1);
+    let levels: u32 = metadata
+      .mipmap_levels
+      .clamp(1, Self::get_chain_length(metadata.width, metadata.height));
     let largest: u32 = metadata.width.max(metadata.height);
     let within: u32 = largest.div_ceil(DERIVED_HEIGHT_MOST).max(1).ilog2();
     let level: u32 = (within + dropped).min(levels - 1);
@@ -202,7 +214,9 @@ impl DecodedTexture {
   pub fn from_dds(bytes: &[u8]) -> XrfResult<Self> {
     let file: DdsFile = DdsFile::read_from_bytes(bytes)?;
     let metadata: DdsMetadata = file.metadata();
-    let levels: u32 = metadata.mipmap_levels.max(1);
+    let levels: u32 = metadata
+      .mipmap_levels
+      .clamp(1, Self::get_chain_length(metadata.width, metadata.height));
 
     match Self::to_block_format(&metadata.format) {
       Some(format) if metadata.is_volume => Self::from_volume_blocks(&file, &metadata, format),
@@ -237,10 +251,11 @@ impl DecodedTexture {
     for level in 0..levels {
       let width: u32 = (metadata.width >> level).max(1);
       let height: u32 = (metadata.height >> level).max(1);
-      let length: usize = (width.div_ceil(block_width) * height.div_ceil(block_height) * block_bytes) as usize;
+      let length: usize =
+        width.div_ceil(block_width) as usize * height.div_ceil(block_height) as usize * block_bytes as usize;
 
       // A chain cut short in the file keeps the levels it has.
-      let Some(bytes) = data.get(offset..offset + length) else {
+      let Some(bytes) = offset.checked_add(length).and_then(|end| data.get(offset..end)) else {
         break;
       };
 
@@ -309,13 +324,16 @@ impl DecodedTexture {
         let width: u32 = (metadata.width >> level).max(1);
         let height: u32 = (metadata.height >> level).max(1);
 
-        (width.div_ceil(block_width) * height.div_ceil(block_height) * block_bytes) as usize
+        width.div_ceil(block_width) as usize * height.div_ceil(block_height) as usize * block_bytes as usize
       })
       .collect();
     let face: usize = lengths.iter().sum();
     let data: &[u8] = file.get_data();
 
-    if data.len() < face * Self::CUBE_FACES as usize {
+    if face
+      .checked_mul(Self::CUBE_FACES as usize)
+      .is_none_or(|length| data.len() < length)
+    {
       return Err(XrfError::new_texture_processing_error(
         "The cube stops before its sixth face ends",
       ));
