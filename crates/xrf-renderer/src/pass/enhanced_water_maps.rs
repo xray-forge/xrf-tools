@@ -37,7 +37,10 @@ impl EnhancedWaterMaps {
         .and_then(|bytes| DecodedTexture::from_dds(&bytes))
         .inspect_err(|error| log::error!("The enhanced water reads no map '{path}': {error}"))
         .ok()
-        .map_or_else(|| nothing.clone(), |texture| texture.upload(device, queue))
+        .map_or_else(
+          || nothing.clone(),
+          |texture| texture.upload_flat(device, queue, "level texture"),
+        )
     };
 
     Self {

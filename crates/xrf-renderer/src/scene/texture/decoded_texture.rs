@@ -159,15 +159,45 @@ impl DecodedTexture {
     }
   }
 
-  /// Makes a two dimensional texture of it on the GPU, every level written, and answers its view.
-  pub fn upload(&self, device: &wgpu::Device, queue: &wgpu::Queue) -> wgpu::TextureView {
+  /// Makes a texture of it on the GPU, every level of every layer written, and answers its view: a cube's, a volume's
+  /// slices as an array, or a two dimensional one.
+  pub fn upload(&self, device: &wgpu::Device, queue: &wgpu::Queue, label: &str) -> wgpu::TextureView {
+    self
+      .upload_layers(device, queue, label, self.layers)
+      .create_view(&wgpu::TextureViewDescriptor {
+        dimension: Some(self.get_view_dimension()),
+        ..Default::default()
+      })
+  }
+
+  /// Makes a two dimensional texture of its first layer alone on the GPU, every level written, and answers its view: a
+  /// cube's first face, a volume's first slice.
+  pub fn upload_flat(&self, device: &wgpu::Device, queue: &wgpu::Queue, label: &str) -> wgpu::TextureView {
+    self
+      .upload_layers(device, queue, label, 1)
+      .create_view(&Default::default())
+  }
+
+  /// How a shader reads it: a volume's slices as an array, a cube's faces as a cube, anything else flat.
+  pub fn get_view_dimension(&self) -> wgpu::TextureViewDimension {
+    if self.is_volume {
+      wgpu::TextureViewDimension::D2Array
+    } else if self.layers == Self::CUBE_FACES {
+      wgpu::TextureViewDimension::Cube
+    } else {
+      wgpu::TextureViewDimension::D2
+    }
+  }
+
+  /// A texture of its first `layers`, each level's read from the start of its bytes.
+  fn upload_layers(&self, device: &wgpu::Device, queue: &wgpu::Queue, label: &str, layers: u32) -> wgpu::Texture {
     let size: wgpu::Extent3d = wgpu::Extent3d {
       width: self.width,
       height: self.height,
-      depth_or_array_layers: 1,
+      depth_or_array_layers: layers,
     };
     let gpu: wgpu::Texture = device.create_texture(&wgpu::TextureDescriptor {
-      label: Some("level texture"),
+      label: Some(label),
       size,
       mip_level_count: self.levels.len() as u32,
       sample_count: 1,
@@ -197,11 +227,14 @@ impl DecodedTexture {
           bytes_per_row: Some(physical.width / block_width * block_bytes),
           rows_per_image: Some(physical.height / block_height),
         },
-        physical,
+        wgpu::Extent3d {
+          depth_or_array_layers: layers,
+          ..physical
+        },
       );
     }
 
-    gpu.create_view(&Default::default())
+    gpu
   }
 
   /// Lays a DDS file out for upload as the engine samples it: block compressed layouts as stored, raw and never

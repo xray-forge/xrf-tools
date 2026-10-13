@@ -621,7 +621,9 @@ impl TextureCache {
       return;
     }
 
-    self.views[slot as usize] = texture.upload(device, queue);
+    // The bindless array holds two dimensional textures alone.
+    // todo: refuse a cube or a volume named as a level texture as failed, rather than drawing its first face.
+    self.views[slot as usize] = texture.upload_flat(device, queue, "level texture");
     self.states[slot as usize] = RenderTextureState::Loaded {
       width: texture.width,
       height: texture.height,
