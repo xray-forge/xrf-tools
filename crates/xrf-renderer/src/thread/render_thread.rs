@@ -1075,8 +1075,19 @@ impl RenderThread {
     runtime.timer.set_tag(self.periodic.get_frame());
 
     let recording: Instant = Instant::now();
-    let executed: ExecutedGraph = match self.record_frame((gpu, runtime), &mut windows, &frames, &mut captures, started)
-    {
+    let mut retried: Vec<(RenderViewportId, CaptureReply)> = Vec::new();
+    let recorded: XrfResult<ExecutedGraph> = self.record_frame(
+      (gpu, runtime),
+      &mut windows,
+      &frames,
+      &mut captures,
+      &mut retried,
+      started,
+    );
+
+    self.retry_captures(retried);
+
+    let executed: ExecutedGraph = match recorded {
       Ok(executed) => executed,
       Err(error) => {
         self.abandon_frame(gpu, encoder, (frames, &firsts), captures, &error);
@@ -1280,16 +1291,33 @@ impl RenderThread {
     captures
   }
 
+  /// Puts captures a window gave no image for back at the front of their viewport's, for its next presented frame;
+  /// answers one whose viewport is gone.
+  fn retry_captures(&mut self, retried: Vec<(RenderViewportId, CaptureReply)>) {
+    for (id, reply) in retried.into_iter().rev() {
+      match self.viewports.get_mut(&id) {
+        Some(viewport) => viewport.captures.insert(0, reply),
+        None => {
+          let _ = reply.send(Err(XrfError::new_invalid_error(format!(
+            "Viewport {} is no longer drawn",
+            id.0
+          ))));
+        }
+      }
+    }
+  }
+
   /// Records the frame's graph and executes it: each viewport's frame, its passes timed as its own; each window's
   /// image, acquired only once every view's work is recorded (the wait for it, while the GPU still draws the last
-  /// frame, comes after the frame's own work on the render thread), a capture of a window that gave no image refused;
-  /// then each window composed and the captures copied out of it.
+  /// frame, comes after the frame's own work on the render thread), a capture of a window that gave no image put back
+  /// for the next frame; then each window composed and the captures copied out of it.
   fn record_frame(
     &mut self,
     (gpu, runtime): (&GpuState, &mut GraphRuntime),
     windows: &mut [WindowFrame],
     frames: &[ViewFrame],
     captures: &mut Vec<(RenderViewportId, FrameCapture, CaptureReply)>,
+    retried: &mut Vec<(RenderViewportId, CaptureReply)>,
     started: Instant,
   ) -> XrfResult<ExecutedGraph> {
     profiling::scope!("record");
@@ -1345,11 +1373,8 @@ impl RenderThread {
 
     *captures = kept;
 
-    for (_, _, reply) in refused {
-      let _ = reply.send(Err(XrfError::new_invalid_error(
-        "The window gave no image to capture this frame",
-      )));
-    }
+    // A window that gave no image this frame, minimised or out of time, is captured on the next frame it presents.
+    retried.extend(refused.into_iter().map(|(id, _, reply)| (id, reply)));
 
     graph.begin_owner(FrameGraph::FRAME_OWNER);
 
