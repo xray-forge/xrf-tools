@@ -3,6 +3,7 @@ import { Button } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
+import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
 import {
   DEFAULT_LEVEL_LOD_OPTIONS,
   formatLevelLodDistance,
@@ -12,7 +13,6 @@ import {
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { LevelViewService } from "@/core/level/services/level-view.service";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
-import { RenderSettingsService } from "@/core/render/services/render-settings";
 import { EditorPopoverGroup, EditorPopoverGroupSection } from "@/core/shell/editor/EditorPopoverGroup";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
@@ -25,13 +25,13 @@ export function LevelCullingAction({
   className,
 }: BaseComponentProps): ReactElement {
   const viewService: LevelViewService = useInjection(LevelViewService);
-  const renderSettingsService: RenderSettingsService = useInjection(RenderSettingsService);
+  const { settings } = useLevelRenderFeatures();
 
   const options: ILevelViewOptions = viewService.options;
   const lod: ILevelLodOptions = viewService.lod;
   // Whether the settings cull by occlusion and draw impostors at all, which this view can only narrow.
-  const isOcclusionAvailable: boolean = renderSettingsService.rendererFeatures.isOcclusionCulled;
-  const isImpostorsAvailable: boolean = renderSettingsService.rendererFeatures.lod.isImpostors;
+  const isOcclusionAvailable: boolean = settings.isOcclusionCulled;
+  const isImpostorsAvailable: boolean = settings.lod.isImpostors;
   const isOccluding: boolean = options.isOcclusionCulled && isOcclusionAvailable;
   const isImpostors: boolean = options.isImpostors && isImpostorsAvailable;
 

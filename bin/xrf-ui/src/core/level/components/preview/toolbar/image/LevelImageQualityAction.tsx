@@ -13,6 +13,7 @@ import {
   RenderScale,
   RenderTextureFiltering,
 } from "@/core/ipc/types/xrf-renderer";
+import { useLevelFeatureOverride } from "@/core/level/components/preview/toolbar/use-level-feature-override";
 import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
 import { useLevelViewToggle } from "@/core/level/components/preview/toolbar/use-level-view-toggle";
 import { describeLevelFeatureToggle, LEVEL_ANTIALIASING_MODES } from "@/core/level/lib/features/level-feature-options";
@@ -72,6 +73,8 @@ export function LevelImageQualityAction({
   const renderSettingsService: RenderSettingsService = useInjection(RenderSettingsService);
   const { settings, features } = useLevelRenderFeatures();
   const { isOn, toggle } = useLevelViewToggle("isAntialiased");
+  const { set: setUpscaling } = useLevelFeatureOverride("upscaling");
+  const { set: setOutput } = useLevelFeatureOverride("output");
   // What the settings draw every viewport with, which this view may set over, the mode only narrowed to none.
   const settingsMode: RenderAntialiasing = settings.antialiasing;
   const settingsTextureFiltering: RenderTextureFiltering = settings.textureFiltering;
@@ -155,9 +158,7 @@ export function LevelImageQualityAction({
           options={RENDER_SCALE_OPTIONS}
           value={scale}
           isStacked
-          onChange={(next: RenderScale) =>
-            viewService.setFeatures({ ...features, upscaling: { ...features.upscaling, scale: next } })
-          }
+          onChange={(next: RenderScale) => setUpscaling({ scale: next })}
         />
 
         {isAvailable && mode === ERenderAntialiasing.DLSS ? (
@@ -167,9 +168,7 @@ export function LevelImageQualityAction({
               description={rayProblem ?? "Denoises and upscales in one network, over each surface's albedo and normal."}
               isChecked={isRayReconstructed}
               isDisabled={Boolean(rayProblem)}
-              onChange={(next: boolean) =>
-                viewService.setFeatures({ ...features, upscaling: { ...features.upscaling, isRayReconstructed: next } })
-              }
+              onChange={(next: boolean) => setUpscaling({ isRayReconstructed: next })}
             />
 
             {isRayReconstructed ? null : (
@@ -178,9 +177,7 @@ export function LevelImageQualityAction({
                   label={"DLSS model"}
                   options={RENDER_DLSS_PRESET_SHORT_OPTIONS}
                   value={dlssPreset}
-                  onChange={(next: RenderDlssPreset) =>
-                    viewService.setFeatures({ ...features, upscaling: { ...features.upscaling, dlssPreset: next } })
-                  }
+                  onChange={(next: RenderDlssPreset) => setUpscaling({ dlssPreset: next })}
                 />
 
                 <Typography className={"text-text-secondary"} variant={"caption"}>
@@ -197,9 +194,7 @@ export function LevelImageQualityAction({
           {...RENDER_SHARPENING_LIMITS}
           format={formatSharpening}
           isDisabled={!isSharpenable}
-          onChange={(next: number) =>
-            viewService.setFeatures({ ...features, upscaling: { ...features.upscaling, sharpening: next } })
-          }
+          onChange={(next: number) => setUpscaling({ sharpening: next })}
         />
 
         {isSharpenable ? null : (
@@ -212,9 +207,7 @@ export function LevelImageQualityAction({
           label={"Output resolution"}
           options={RENDER_RESOLUTION_OPTIONS}
           value={resolution}
-          onChange={(next: ERenderResolution) =>
-            viewService.setFeatures({ ...features, output: { ...features.output, resolution: next } })
-          }
+          onChange={(next: ERenderResolution) => setOutput({ resolution: next })}
         />
 
         {resolution === ERenderResolution.AUTO ? (
@@ -223,9 +216,7 @@ export function LevelImageQualityAction({
             value={outputScale}
             {...RENDER_OUTPUT_SCALE_LIMITS}
             format={formatOutputScale}
-            onChange={(next: number) =>
-              viewService.setFeatures({ ...features, output: { ...features.output, scale: next } })
-            }
+            onChange={(next: number) => setOutput({ scale: next })}
           />
         ) : null}
 
