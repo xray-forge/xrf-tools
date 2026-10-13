@@ -21,25 +21,35 @@ impl ShaderBindings {
   ///
   /// # Errors
   ///
-  /// Returns an error when `P` declares a binding that parameters added before declare otherwise.
+  /// Returns an error when `P` declares a binding that parameters added before declare otherwise, or does not declare
+  /// one line a binding; nothing of `P` is added then.
   pub fn add<P: PassParameters>(&mut self) -> XrfResult<&mut Self> {
-    let wgsl: String = P::get_wgsl_bindings();
+    let lines: Vec<String> = P::list_wgsl_bindings();
+
+    if lines.len() != P::BINDINGS.len() {
+      return Err(XrfError::new_invalid_error(format!(
+        "'{}' declares {} WGSL bindings for {} bindings",
+        P::LAYOUT_KEY,
+        lines.len(),
+        P::BINDINGS.len()
+      )));
+    }
+
+    for (index, line) in P::BINDINGS.iter().zip(&lines) {
+      if let Some(declared) = self.declarations.get(&(P::GROUP, *index))
+        && declared != line
+      {
+        return Err(XrfError::new_invalid_error(format!(
+          "'{}' declares '{line}' where another pass declares '{declared}'",
+          P::LAYOUT_KEY
+        )));
+      }
+    }
 
     self.enables.extend(P::ENABLES);
 
-    for (index, line) in P::BINDINGS.iter().zip(wgsl.lines()) {
-      match self.declarations.get(&(P::GROUP, *index)) {
-        Some(declared) if declared != line => {
-          return Err(XrfError::new_invalid_error(format!(
-            "'{}' declares '{line}' where another pass declares '{declared}'",
-            P::LAYOUT_KEY
-          )));
-        }
-        Some(_) => {}
-        None => {
-          self.declarations.insert((P::GROUP, *index), line.to_string());
-        }
-      }
+    for (index, line) in P::BINDINGS.iter().zip(lines) {
+      self.declarations.entry((P::GROUP, *index)).or_insert(line);
     }
 
     Ok(self)

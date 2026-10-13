@@ -171,7 +171,7 @@ pub fn expand(input: &DeriveInput) -> syn::Result<TokenStream> {
           #core::PassBindingLayout::uniform::<<#ty as #core::UniformField>::Value>(#index)
         });
         wgsl.push(quote! {
-          ::std::format!("{}<uniform> {}: {};\n", #prefix, #field_name,
+          ::std::format!("{}<uniform> {}: {};", #prefix, #field_name,
             <<#ty as #core::UniformField>::Value as #core::ShaderType>::get_wgsl_name())
         });
         declares.push(quote!(<<#ty as #core::UniformField>::Value as #core::ShaderType>::declare(declarations);));
@@ -187,7 +187,7 @@ pub fn expand(input: &DeriveInput) -> syn::Result<TokenStream> {
             let element: ::std::string::String =
               <<#ty as #core::StorageField>::Element as #core::ShaderType>::get_wgsl_name();
 
-            ::std::format!("{}<storage, {}> {}: {};\n", #prefix,
+            ::std::format!("{}<storage, {}> {}: {};", #prefix,
               if <#ty as #core::StorageField>::IS_WRITABLE { "read_write" } else { "read" }, #field_name,
               if <#ty as #core::StorageField>::IS_ARRAY { ::std::format!("array<{element}>") } else { element })
           }
@@ -235,7 +235,7 @@ pub fn expand(input: &DeriveInput) -> syn::Result<TokenStream> {
               #core::PassBindingLayout::texture_array(#index, #sample_type, #view, (#length) as u32)
             });
             wgsl.push(quote! {
-              ::std::format!("{} {}: binding_array<{}, {}>;\n", #prefix, #field_name, #wgsl_type, #length)
+              ::std::format!("{} {}: binding_array<{}, {}>;", #prefix, #field_name, #wgsl_type, #length)
             });
             texture_accesses.push(quote! {
               accesses.extend(self.#ident.iter().map(|texture| (*texture, #core::GraphTextureAccess::Sampled)));
@@ -248,7 +248,7 @@ pub fn expand(input: &DeriveInput) -> syn::Result<TokenStream> {
           }
           None => {
             layout_entries.push(quote!(#core::PassBindingLayout::texture(#index, #sample_type, #view)));
-            wgsl.push(quote!(::std::format!("{} {}: {};\n", #prefix, #field_name, #wgsl_type)));
+            wgsl.push(quote!(::std::format!("{} {}: {};", #prefix, #field_name, #wgsl_type)));
             texture_accesses.push(quote!(accesses.push((self.#ident, #core::GraphTextureAccess::Sampled));));
             resources.push(quote!(#core::PassBinding::TextureView(resources.get_texture(self.#ident).view)));
           }
@@ -296,7 +296,7 @@ pub fn expand(input: &DeriveInput) -> syn::Result<TokenStream> {
         layout_entries.push(quote! {
           #core::PassBindingLayout::storage_texture(#index, #wgpu_access, #format, #view, #is_writable)
         });
-        wgsl.push(quote!(::std::format!("{} {}: {};\n", #prefix, #field_name, #wgsl_type)));
+        wgsl.push(quote!(::std::format!("{} {}: {};", #prefix, #field_name, #wgsl_type)));
         texture_accesses.push(quote!(accesses.push((self.#ident, #graph_access));));
         resources.push(quote!(#core::PassBinding::TextureView(resources.get_texture(self.#ident).view)));
       }
@@ -317,13 +317,13 @@ pub fn expand(input: &DeriveInput) -> syn::Result<TokenStream> {
         };
 
         layout_entries.push(quote!(#core::PassBindingLayout::sampler(#index, #binding_type)));
-        wgsl.push(quote!(::std::format!("{} {}: {};\n", #prefix, #field_name, #wgsl_type)));
+        wgsl.push(quote!(::std::format!("{} {}: {};", #prefix, #field_name, #wgsl_type)));
         resources.push(quote!(#core::PassBinding::Sampler(self.#ident)));
       }
       Binding::AccelerationStructure => {
         layout_entries.push(quote!(#core::PassBindingLayout::acceleration_structure(#index)));
         wgsl.push(quote!(
-          ::std::format!("{} {}: acceleration_structure;\n", #prefix, #field_name)
+          ::std::format!("{} {}: acceleration_structure;", #prefix, #field_name)
         ));
         resources.push(quote!(#core::PassBinding::AccelerationStructure(self.#ident)));
       }
@@ -343,11 +343,8 @@ pub fn expand(input: &DeriveInput) -> syn::Result<TokenStream> {
         ::std::vec![#(#layout_entries),*]
       }
 
-      fn get_wgsl_bindings() -> ::std::string::String {
-        let mut wgsl: ::std::string::String = ::std::string::String::new();
-
-        #(wgsl.push_str(&#wgsl);)*
-        wgsl
+      fn list_wgsl_bindings() -> ::std::vec::Vec<::std::string::String> {
+        ::std::vec![#(#wgsl),*]
       }
 
       fn declare(declarations: &mut #core::ShaderDeclarations) {

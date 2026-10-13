@@ -131,7 +131,8 @@ buffers) are bound on the context's render pass directly.
   once with it takes the bind groups any runtime's cache makes.
 - **`ShaderBindings`** gathers the WGSL bindings of every struct whose passes draw with one module, each once: passes
   sharing a module number their bindings apart (`#[binding(N)]`) or declare a shared one alike, and a clash is an
-  error.
+  error that adds nothing of the struct. It reads one declaration a binding (`list_wgsl_bindings`) and refuses a
+  struct whose count differs from its `BINDINGS`.
 
 - **`BindGroupCache`** makes each struct's layout once (keyed by its path, `PassParameters::LAYOUT_KEY`); a pipeline for
   that pass takes its layout from `get_layout`, so the bind groups match it. Bind groups are kept across frames by the

@@ -123,3 +123,15 @@ pub struct Clashing {
   #[texture(d2, float)]
   pub history: GraphTexture,
 }
+
+/// A pass declaring a binding of its own before one that clashes as `Clashing`'s does.
+#[derive(PassParameters)]
+#[parameters(group = 2)]
+pub struct ClashingLate {
+  #[binding(5)]
+  #[texture(d2, float)]
+  pub ripples: GraphTexture,
+  #[binding(1)]
+  #[texture(d2, float)]
+  pub history: GraphTexture,
+}
