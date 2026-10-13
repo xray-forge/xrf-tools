@@ -297,8 +297,8 @@ const SCENE_OCCLUSION_RAYS: u32 = 2u;
 
 // How much of the light about it reaches a traced hit, which its hemisphere and ambient are lit by as the frame's
 // occlusion lets them: the share of a few short rays from it, half way between its normal and the ground, turned by its
-// place, that meet nothing within `SCENE_OCCLUSION_REACH`, the cut-out geometry at `passed` aside. Without it the trace
-// read a quarter brighter than the screen's own reflection of the same bank, which the frame's occlusion darkens.
+// place, that meet nothing solid within `SCENE_OCCLUSION_REACH`. Without it the trace read a quarter brighter than the
+// screen's own reflection of the same bank, which the frame's occlusion darkens.
 fn scene_occlusion(position: vec3<f32>, normal: vec3<f32>, width: f32, passed: u32) -> f32 {
   let axis: vec3<f32> = select(vec3<f32>(0.0, 1.0, 0.0), vec3<f32>(1.0, 0.0, 0.0), abs(normal.y) > 0.9);
   let across: vec3<f32> = normalize(cross(normal, axis));
@@ -310,7 +310,12 @@ fn scene_occlusion(position: vec3<f32>, normal: vec3<f32>, width: f32, passed: u
     let angle: f32 = turn + f32(ray) * 6.2831853 / f32(SCENE_OCCLUSION_RAYS);
     let direction: vec3<f32> = normalize(normal + across * cos(angle) + along * sin(angle));
 
-    open += f32(!trace_scene_blocked(position, direction, SCENE_OCCLUSION_REACH, SceneCone(width, 0.0), passed));
+    // Solid geometry alone: a cut-out card's alpha, tested at each one the ray passes, cost a third of the occlusion,
+    // for leaves within a metre and a half that the hit's own hemisphere darkens already.
+    let probe: RayDesc = RayDesc(RAY_FLAG_TERMINATE_ON_FIRST_HIT | RAY_FLAG_CULL_NO_OPAQUE, 0xffu, 0.0,
+      SCENE_OCCLUSION_REACH, position, direction);
+
+    open += f32(traverse_solid(probe, SceneCone(width, 0.0), passed).distance < 0.0);
   }
 
   return open / f32(SCENE_OCCLUSION_RAYS);
