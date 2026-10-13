@@ -25,6 +25,14 @@ describe("formatDuration", () => {
     expect(formatDuration(3_599_000)).toBe("59 m 59 s");
   });
 
+  // Rounded to a unit before the unit is chosen: a value that rounds up carries into the next unit.
+  it("never reads a unit at its own carry", () => {
+    expect(formatDuration(999.6)).toBe("1.0 s");
+    expect(formatDuration(59_960)).toBe("1 m 0 s");
+    expect(formatDuration(119_700)).toBe("2 m 0 s");
+    expect(formatDuration(3_599_700)).toBe("1 h 0 m");
+  });
+
   it("drops the seconds once an hour is on the clock, which an uptime reaches and a run rarely does", () => {
     expect(formatDuration(3_600_000)).toBe("1 h 0 m");
     expect(formatDuration(9_000_000)).toBe("2 h 30 m");

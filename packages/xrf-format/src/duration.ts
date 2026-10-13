@@ -13,29 +13,31 @@ export function formatSeconds(seconds: Nullable<number>): string {
 }
 
 /**
- * Formats a millisecond duration for reports.
- *
- * The previous result components printed `duration / 1000` straight into the DOM, which produced
- * values like `0.123 sec` for a fast run and `98.4315 sec` for a slow one.
+ * Formats a millisecond duration for reports, in the largest unit its rounded value reaches: whole milliseconds, then
+ * tenths of a second, then minutes and whole seconds, then hours and minutes. A value is rounded to a unit's precision
+ * before the unit is chosen, so `59.96 s` reads `1 m 0 s`, never `60.0 s`.
  *
  * @param durationMs - Duration in milliseconds.
- * @returns The duration in milliseconds, seconds, or minutes and seconds.
+ * @returns The duration in milliseconds, seconds, minutes and seconds, or hours and minutes.
  */
 export function formatDuration(durationMs: number): string {
-  if (durationMs < 1000) {
-    return `${Math.round(durationMs)} ms`;
+  const milliseconds: number = Math.round(durationMs);
+
+  if (milliseconds < 1000) {
+    return `${milliseconds} ms`;
   }
 
-  const seconds: number = durationMs / 1000;
+  const tenths: number = Math.round(durationMs / 100);
 
-  if (seconds < 60) {
-    return `${seconds.toFixed(1)} s`;
+  if (tenths < 600) {
+    return `${(tenths / 10).toFixed(1)} s`;
   }
 
+  const seconds: number = Math.round(durationMs / 1000);
   const minutes: number = Math.floor(seconds / 60);
 
   if (minutes < 60) {
-    return `${minutes} m ${Math.round(seconds - minutes * 60)} s`;
+    return `${minutes} m ${seconds - minutes * 60} s`;
   }
 
   const hours: number = Math.floor(minutes / 60);
