@@ -65,6 +65,7 @@ pub(crate) mod grass_colour_pass;
 pub(crate) mod grass_dispatch;
 pub(crate) mod grass_draws;
 pub(crate) mod grass_model_record;
+pub(crate) mod grass_occlusion_parameters;
 pub(crate) mod grass_pass;
 pub(crate) mod grass_puddles_uniform;
 pub(crate) mod grass_uniform;

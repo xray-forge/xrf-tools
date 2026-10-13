@@ -1,6 +1,8 @@
 #import "common/compute_grid"
 #import "common/puddle_site"
 #import "grass/records"
+#import "common/pyramid_occlusion"
+#import "generated/grass/occlusion"
 
 // The passes planting the grass, as `CDetailManager` does. A ring of slots around the camera is its cache: a slot
 // coming into it is planted once, the nearest first within a budget a frame, and every frame culls what the ring holds,
@@ -519,6 +521,12 @@ fn cull(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workgroups) g
   let bound: f32 = sqrt(2.0 + ground.y * ground.y) + BOX_GROWTH + params.height * params.tuft_reach;
 
   if (is_outside(vec3<f32>(center.x, center.y, -center.z), bound)) {
+    return;
+  }
+
+  // A slot the static scene's depth hides whole passes over too, tested against this frame's pyramid where it holds one.
+  if (occlusion.has_history != 0u && is_sphere_occluded(pyramid, occlusion.size, occlusion.levels,
+    vec4<f32>(center.x, center.y, -center.z, bound), occlusion.view, occlusion.projection)) {
     return;
   }
 

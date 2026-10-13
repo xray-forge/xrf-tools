@@ -12,6 +12,7 @@ use crate::lighting::grass_wind::GrassWind;
 use crate::pass::foliage_wind_values::FoliageWindValues;
 use crate::pass::grass_dispatch::GrassDispatch;
 use crate::pass::grass_draws::GrassDraws;
+use crate::pass::grass_occlusion_parameters::GrassOcclusionParameters;
 use crate::pass::grass_pass::GrassPass;
 use crate::pass::grass_puddles_uniform::GrassPuddlesUniform;
 use crate::pass::grass_uniform::GrassUniform;
@@ -191,7 +192,7 @@ impl GrassView {
     })
   }
 
-  /// Plants the frame's grass of `level`, where it is drawn.
+  /// Plants the frame's grass of `level` where it is drawn: the ring's stale cells, ahead of the frame's depth.
   pub fn add_planting<'a>(
     &'a self,
     graph: &mut FrameGraph<'a>,
@@ -206,13 +207,7 @@ impl GrassView {
       return None;
     }
 
-    let line: u32 = self.values.reach as u32 * 2 + 1;
-    let dispatch: GrassDispatch = GrassDispatch {
-      cells: line * line,
-      bands: build.size.bands,
-      models: level.model_count,
-      capacity: build.size.capacity,
-    };
+    let dispatch: GrassDispatch = self.get_dispatch(level, build);
     let args: GraphBuffer = bindings.import_buffer(graph, "grass draw arguments", &level.args);
 
     graph
@@ -223,6 +218,40 @@ impl GrassView {
       });
 
     Some(args)
+  }
+
+  /// Culls what the ring holds by the view and the frame's depth `occlusion`, into the draw arguments `args` the
+  /// planting answered.
+  pub fn add_cull<'a>(
+    &'a self,
+    graph: &mut FrameGraph<'a>,
+    (pass, level): (&'a GrassPass, Option<&'a GrassLevel>),
+    (args, occlusion): (GraphBuffer, GrassOcclusionParameters),
+  ) {
+    let (Some(level), Some(build)) = (level, &self.build) else {
+      return;
+    };
+    let dispatch: GrassDispatch = self.get_dispatch(level, build);
+
+    graph
+      .add_compute_pass("grass cull")
+      .buffer(args, GraphBufferAccess::StorageReadWrite)
+      .parameters(&occlusion)
+      .record(move |context| {
+        pass.record_cull(context, (&level.bind_group, &build.bind_group), &occlusion, dispatch);
+      });
+  }
+
+  /// What the planting and the cull dispatch over: the ring's cells, its bands, the models and the items.
+  fn get_dispatch(&self, level: &GrassLevel, build: &GrassBuild) -> GrassDispatch {
+    let line: u32 = self.values.reach as u32 * 2 + 1;
+
+    GrassDispatch {
+      cells: line * line,
+      bands: build.size.bands,
+      models: level.model_count,
+      capacity: build.size.capacity,
+    }
   }
 
   /// Declares the draw of what the frame planted, its arguments `args`, into the G-buffer.

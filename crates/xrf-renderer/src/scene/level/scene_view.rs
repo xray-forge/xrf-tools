@@ -42,6 +42,7 @@ use crate::pass::composited_parameters::CompositedParameters;
 use crate::pass::contact_shadow_uniform::ContactShadowUniform;
 use crate::pass::froxel_uniform::FroxelUniform;
 use crate::pass::grass_colour_parameters::GrassColourParameters;
+use crate::pass::grass_occlusion_parameters::GrassOcclusionParameters;
 use crate::pass::grass_puddles_uniform::GrassPuddlesUniform;
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::lighting_frame::LightingFrame;
@@ -859,6 +860,19 @@ impl SceneView {
       (view, texture_group, &statics),
       handles,
     );
+
+    // The grass is culled once the static scene's depth is reduced, so a cell behind it plants nothing to draw.
+    if let Some(grass_args) = grass_args {
+      let occlusion: GrassOcclusionParameters = GrassOcclusionParameters {
+        pyramid: statics.pyramid,
+        occlusion: runtime.push_uniform(&scene_view.features.statics.get_frame_occlusion()),
+      };
+
+      scene_view
+        .features
+        .grass
+        .add_cull(&mut *graph, (passes.grass, grass_level), (grass_args, occlusion));
+    }
 
     // The depth the reflections walk their rays over, kept before the grass draws, or after it where the grass is
     // reflected.
