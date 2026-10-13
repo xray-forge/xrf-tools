@@ -20,8 +20,9 @@ use crate::graph::resource::{GraphBuffer, GraphTexture, GraphTextureDescriptor};
 use crate::graph::timing::GroupStamps;
 use crate::param::BindGroupCache;
 
-/// One encode group as recorded: its commands, what its encoding took, and what wgpu refused of it.
-type RecordedGroup = (wgpu::CommandBuffer, ExecutedGroup, Option<wgpu::Error>);
+/// One encode group as recorded: its command buffers in submit order, what its encoding took, and what wgpu refused of
+/// it.
+type RecordedGroup = (Vec<wgpu::CommandBuffer>, ExecutedGroup, Option<wgpu::Error>);
 
 /// A frame graph ready to execute: its surviving passes in order, the render passes they share, the encode groups they
 /// are recorded in, and the slot each transient takes in the pool.
@@ -140,8 +141,8 @@ impl<'a> CompiledGraph<'a> {
   }
 
   /// Records the frame: uploads what was pushed to the runtime's ring, draws the transients from its pool, resolves the
-  /// imports from their bindings, and records each encode group into a command buffer of its own, returned in order for
-  /// one submit, with what each group cost the CPU. While the runtime's timer is timing, it stamps the start of each
+  /// imports from their bindings, and records each encode group into command buffers of its own, returned in order for
+  /// one submit with those its passes handed over, with what each group cost the CPU. While the runtime's timer is timing, it stamps the start of each
   /// group and the end of each pass or render pass; call its `request` after the submit.
   ///
   /// # Errors
@@ -218,10 +219,11 @@ impl<'a> CompiledGraph<'a> {
       )));
     }
 
-    let (commands, executed_groups): (Vec<wgpu::CommandBuffer>, Vec<ExecutedGroup>) = recorded
+    let (commands, executed_groups): (Vec<Vec<wgpu::CommandBuffer>>, Vec<ExecutedGroup>) = recorded
       .into_iter()
       .map(|(commands, group, _)| (commands, group))
       .unzip();
+    let commands: Vec<wgpu::CommandBuffer> = commands.into_iter().flatten().collect();
     let encode: Duration = started.elapsed();
 
     if let Some(stamps) = stamps.into_iter().collect::<Option<Vec<GroupStamps>>>() {
@@ -250,7 +252,8 @@ impl<'a> CompiledGraph<'a> {
   }
 
   /// Records one encode group's passes into an encoder of its own, a run of passes sharing a render pass into one, and
-  /// finishes it; `timing` stamps each pass into the group's own range, and resolves the frame's stamps where the group
+  /// finishes it; where a pass hands over commands recorded apart, the encoder is finished there, they follow it, and a
+  /// new encoder takes the passes after. `timing` stamps each pass into the group's own range, and resolves the frame's stamps where the group
   /// is the last. What wgpu refused of it, recording or finishing, comes back beside it, caught on the thread recording
   /// it.
   fn record_group(
@@ -265,9 +268,14 @@ impl<'a> CompiledGraph<'a> {
     let recording: Instant = Instant::now();
     let out_of_memory: wgpu::ErrorScopeGuard = device.push_error_scope(wgpu::ErrorFilter::OutOfMemory);
     let validation: wgpu::ErrorScopeGuard = device.push_error_scope(wgpu::ErrorFilter::Validation);
-    let mut encoder: wgpu::CommandEncoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-      label: Some(group.name),
-    });
+    let begin = || {
+      device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+        label: Some(group.name),
+      })
+    };
+    let mut encoder: wgpu::CommandEncoder = begin();
+    let mut commands: Vec<wgpu::CommandBuffer> = Vec::new();
+    let mut finished: Duration = Duration::ZERO;
     let mut pending: VecDeque<CompiledPass<'a>> = passes.into();
 
     if let Some(stamps) = timing.as_mut() {
@@ -300,8 +308,16 @@ impl<'a> CompiledGraph<'a> {
 
           profiling::scope!("record", &name);
 
-          let is_marked: bool =
+          let (is_marked, handed): (bool, Vec<wgpu::CommandBuffer>) =
             Self::record_pass(&mut encoder, pass, (device, cache, resources), timing.as_deref_mut());
+
+          if !handed.is_empty() {
+            let finishing: Instant = Instant::now();
+
+            commands.push(std::mem::replace(&mut encoder, begin()).finish());
+            finished += finishing.elapsed();
+            commands.extend(handed);
+          }
 
           // A pass that marked its own stages is timed by them.
           if is_marked {
@@ -322,19 +338,25 @@ impl<'a> CompiledGraph<'a> {
     }
 
     let finishing: Instant = Instant::now();
-    let commands: wgpu::CommandBuffer = {
+
+    {
       profiling::scope!("finish", group.name);
 
-      encoder.finish()
-    };
-    let finished: Duration = finishing.elapsed();
+      commands.push(encoder.finish());
+    }
+
+    // The finishes of encoders a hand-over ended fall inside the recording's span, and count as encoding.
+    let recorded: Duration = finishing.duration_since(recording).saturating_sub(finished);
+
+    finished += finishing.elapsed();
+
     let error: Option<wgpu::Error> = pollster::block_on(validation.pop()).or(pollster::block_on(out_of_memory.pop()));
 
     (
       commands,
       ExecutedGroup {
         name: group.name,
-        record: finishing.duration_since(recording),
+        record: recorded,
         finish: finished,
       },
       error,
@@ -560,13 +582,14 @@ impl<'a> CompiledGraph<'a> {
     }
   }
 
-  /// Records a compute or encoder pass, answering whether it marked stages of its own.
+  /// Records a compute or encoder pass, answering whether it marked stages of its own and with the commands it handed
+  /// over.
   fn record_pass(
     encoder: &mut wgpu::CommandEncoder,
     pass: CompiledPass<'a>,
     (device, cache, resources): (&wgpu::Device, &BindGroupCache, &GraphResources<'_>),
     timer: Option<&mut GroupStamps>,
-  ) -> bool {
+  ) -> (bool, Vec<wgpu::CommandBuffer>) {
     let CompiledPass {
       pass,
       textures,
@@ -596,7 +619,7 @@ impl<'a> CompiledGraph<'a> {
           scope,
         });
 
-        false
+        (false, Vec::new())
       }
       GraphPassWork::Encoder { record, .. } => {
         let mut context: EncoderContext<'_> = EncoderContext {
@@ -607,10 +630,11 @@ impl<'a> CompiledGraph<'a> {
             owner: pass.owner,
             is_marked: false,
           },
+          handed: Vec::new(),
         };
 
         record(&mut context);
-        context.marker.is_marked
+        (context.marker.is_marked, context.handed)
       }
       GraphPassWork::Raster { .. } => unreachable!("a raster pass always has a render pass"),
     }

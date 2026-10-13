@@ -8,6 +8,7 @@ pub struct EncoderContext<'c> {
   pub(crate) encoder: &'c mut wgpu::CommandEncoder,
   pub(crate) scope: GraphPassScope<'c>,
   pub(crate) marker: PassMarker<'c>,
+  pub(crate) handed: Vec<wgpu::CommandBuffer>,
 }
 
 impl<'c> EncoderContext<'c> {
@@ -18,6 +19,12 @@ impl<'c> EncoderContext<'c> {
   /// The encoder and the marker timing the pass's own stages, together, as a bridge recording several passes needs.
   pub fn split(&mut self) -> (&mut wgpu::CommandEncoder, &mut PassMarker<'c>) {
     (self.encoder, &mut self.marker)
+  }
+
+  /// Commands recorded apart from the graph, submitted right after everything this pass and those before it recorded,
+  /// and before what the passes after it record.
+  pub fn hand_over(&mut self, commands: wgpu::CommandBuffer) {
+    self.handed.push(commands);
   }
 
   pub fn get_texture(&self, texture: GraphTexture) -> GraphResolvedTexture<'c> {
