@@ -190,3 +190,38 @@ impl Surface {
       .unwrap_or_else(|error| panic!("Failed to render a bindings declaration: {error}"))
   }
 }
+
+#[cfg(test)]
+mod tests {
+  use std::fs;
+  use std::path::PathBuf;
+
+  use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+
+  use crate::bindings_surface::{Surface, SurfaceDrift};
+  use crate::constants::{COMMANDS_DIRECTORY, TYPES_DIRECTORY};
+
+  /// The surface of a bindings tree whose one type module holds `source`.
+  fn read(name: &str, source: &str) -> Surface {
+    let root: PathBuf = build_absolute_generated_test_resource_path("bindings-surface").join(name);
+
+    for directory in [TYPES_DIRECTORY, COMMANDS_DIRECTORY] {
+      fs::create_dir_all(root.join(directory)).expect("directory to be created");
+    }
+
+    fs::write(root.join(TYPES_DIRECTORY).join("xrf-fixture.ts"), source).expect("module to be written");
+
+    Surface::read(&root)
+  }
+
+  #[test]
+  fn reads_an_exported_constant_and_breaks_on_its_value() {
+    let committed: Surface = read("committed", "export const LIMIT: number = 4;\n");
+    let documented: Surface = read("documented", "/** The most. */\nexport const LIMIT: number = 4;\n");
+    let changed: SurfaceDrift = committed.compare_to(&read("changed", "export const LIMIT: number = 8;\n"));
+
+    assert!(!committed.compare_to(&documented).is_breaking());
+    assert_eq!(changed.changed, ["types/xrf-fixture.ts::LIMIT"]);
+    assert!(changed.is_breaking());
+  }
+}

@@ -1,0 +1,15 @@
+[package]
+name = "xrf-ipc"
+version = "0.1.0"
+publish = false
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+inventory = "0.3.25"
+serde = { workspace = true }
+serde_json = { workspace = true }
+xrf-ipc-derive = { workspace = true }
+
+[lints]
+workspace = true

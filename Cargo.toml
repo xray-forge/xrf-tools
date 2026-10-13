@@ -23,6 +23,8 @@ members = [
   "crates/xrf-extension",
   "crates/xrf-gamedata",
   "crates/xrf-gamemtl",
+  "crates/xrf-ipc",
+  "crates/xrf-ipc-derive",
   "crates/xrf-ipc-typescript",
   "crates/xrf-job",
   "crates/xrf-level",
@@ -120,6 +122,8 @@ xrf-environment = { path = "crates/xrf-environment" }
 xrf-extension = { path = "crates/xrf-extension" }
 xrf-gamedata = { path = "crates/xrf-gamedata" }
 xrf-gamemtl = { path = "crates/xrf-gamemtl" }
+xrf-ipc = { path = "crates/xrf-ipc" }
+xrf-ipc-derive = { path = "crates/xrf-ipc-derive" }
 xrf-ipc-typescript = { path = "crates/xrf-ipc-typescript" }
 xrf-job = { path = "crates/xrf-job" }
 xrf-level = { path = "crates/xrf-level" }
