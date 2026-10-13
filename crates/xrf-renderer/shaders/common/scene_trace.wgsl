@@ -75,10 +75,18 @@ const TRACE_RECORD_MODEL: u32 = 4u;
 // No place, which a ray passes none of.
 const SCENE_NO_PLACE: u32 = 0xffffffffu;
 
+// Radians a ray's cone widens by past which its cut-out cards are met whole: a reflection that rough blurs any leaf's
+// outline away.
+const SCENE_OPAQUE_SPREAD: f32 = 0.1;
+
 // The nearest of the level's static geometry along a ray in renderer space between `near` and `far` metres, a
-// cut-out section's holes letting it through.
+// cut-out section's holes letting a narrow cone through.
 fn trace_scene_ray(origin: vec3<f32>, direction: vec3<f32>, near: f32, far: f32, cone: SceneCone) -> SceneHit {
-  return traverse_solid(RayDesc(RAY_FLAG_NONE, 0xffu, near, far, origin, direction), cone, SCENE_NO_PLACE);
+  // A wide cone's hit is blurred over its lobe past any leaf's outline: its cut-out cards are taken whole, by the
+  // hardware, without asking each one's alpha.
+  let flags: u32 = select(RAY_FLAG_NONE, RAY_FLAG_FORCE_OPAQUE, cone.spread > SCENE_OPAQUE_SPREAD);
+
+  return traverse_solid(RayDesc(flags, 0xffu, near, far, origin, direction), cone, SCENE_NO_PLACE);
 }
 
 // Whether anything solid of the level's static geometry stands along a ray within `far` metres, the cut-out geometry
