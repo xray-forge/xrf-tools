@@ -21,6 +21,7 @@ import {
 import { dragTextureLighting } from "@/core/textures/lib/texture-lighting";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { TextureViewService } from "@/core/textures/services/view";
+import { watchDevicePixelRatio } from "@/lib/dom/device-pixel-ratio";
 import { Logger } from "@/lib/logging";
 
 /**
@@ -40,6 +41,9 @@ export class TextureRenderService extends NativeRenderSurfaceService {
   private container: Nullable<HTMLElement> = null;
   /** Whether the shown texture's files were described since it was shown. */
   private hasDescribed: boolean = false;
+  /** The display's scale, which the backdrop's squares are sized by. */
+  @RefObservable()
+  private pixelRatio: number = window.devicePixelRatio;
 
   public constructor(
     private readonly selectionService: TextureSelectionService = inject(TextureSelectionService),
@@ -85,6 +89,11 @@ export class TextureRenderService extends NativeRenderSurfaceService {
     viewport.setCamera(TEXTURE_SURFACE_CAMERA);
 
     return [
+      watchDevicePixelRatio((ratio: number) => {
+        runInAction(() => {
+          this.pixelRatio = ratio;
+        });
+      }),
       reaction(
         (): TNativeTextureRequest =>
           toTextureSurfaceRequest(this.selectionService.selected.value ?? null, this.viewService.options),
@@ -97,7 +106,7 @@ export class TextureRenderService extends NativeRenderSurfaceService {
             this.viewService.options,
             this.viewService.lighting,
             this.renderSettingsService.rendererFeatures,
-            window.devicePixelRatio,
+            this.pixelRatio,
             toRenderOutput(this.renderSettingsService.renderResolution, this.renderSettingsService.renderOutputScale)
           ),
         (options: RenderViewOptions) => viewport.setViewOptions(options),
