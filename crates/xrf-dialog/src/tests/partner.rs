@@ -194,6 +194,34 @@ fn keeps_the_first_declaration_of_an_id_and_reports_the_others() -> XrfResult {
   Ok(())
 }
 
+// The engine's id index skips an element whose id is empty, so it neither stands as a character nor duplicates one.
+#[test]
+fn skips_a_character_or_profile_whose_id_is_empty() -> XrfResult {
+  let partners: DialogPartners = read_partners(
+    "empty_id",
+    &[
+      (
+        "character_desc_a.xml",
+        r#"<xml><specific_character id=""><class>a</class></specific_character></xml>"#,
+      ),
+      (
+        "character_desc_b.xml",
+        r#"<xml><specific_character id=""><class>b</class></specific_character></xml>"#,
+      ),
+      (
+        "npc_profile.xml",
+        r#"<xml><character id=""><class>a</class></character></xml>"#,
+      ),
+    ],
+  )?;
+
+  assert!(partners.get_characters().is_empty());
+  assert!(partners.find_profile("").is_none());
+  assert!(partners.get_findings().is_empty());
+
+  Ok(())
+}
+
 #[test]
 fn reports_a_file_it_cannot_read_and_reads_the_rest() -> XrfResult {
   let partners: DialogPartners = read_partners(

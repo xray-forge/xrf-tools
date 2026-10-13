@@ -23,9 +23,9 @@ impl DialogCharacter {
   const ACTOR_DIALOG_ELEMENT: &'static str = "actor_dialog";
   const NO_RANDOM_ATTRIBUTE: &'static str = "no_random";
 
-  /// Read one `specific_character`, or `None` for one with no id, which nothing can name.
+  /// Read one `specific_character`, or `None` for one with no id or an empty one, which the engine skips.
   pub(crate) fn read(element: &XmlElementSpan) -> Option<Self> {
-    let id: &str = element.attribute(ID_ATTRIBUTE)?;
+    let id: &str = element.attribute(ID_ATTRIBUTE).filter(|id| !id.is_empty())?;
 
     Some(Self {
       id: id.to_owned(),

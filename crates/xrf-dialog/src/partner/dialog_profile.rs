@@ -18,9 +18,9 @@ impl DialogProfile {
   const SPECIFIC_CHARACTER_ELEMENT: &'static str = "specific_character";
   const CLASS_ELEMENT: &'static str = "class";
 
-  /// Read one profile `character`, or `None` for one with no id, which no NPC can be spawned with.
+  /// Read one profile `character`, or `None` for one with no id or an empty one, which the engine skips.
   pub(crate) fn read(element: &XmlElementSpan) -> Option<Self> {
-    let id: &str = element.attribute(ID_ATTRIBUTE)?;
+    let id: &str = element.attribute(ID_ATTRIBUTE).filter(|id| !id.is_empty())?;
 
     Some(Self {
       id: id.to_owned(),
