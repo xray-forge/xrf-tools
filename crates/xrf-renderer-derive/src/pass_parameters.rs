@@ -1,6 +1,6 @@
 use proc_macro2::{Ident, TokenStream};
 use quote::quote;
-use syn::{Attribute, Data, DataStruct, DeriveInput, Error, Expr, Fields, LitInt, Meta, Type};
+use syn::{Attribute, Data, DataStruct, DeriveInput, Error, Expr, Fields, GenericParam, LitInt, Meta, Type};
 
 /// One field's binding, read from its attribute.
 enum Binding {
@@ -81,6 +81,21 @@ pub fn expand(input: &DeriveInput) -> syn::Result<TokenStream> {
       ));
     }
   };
+
+  // The layout is cached by the struct's name alone, so a type or const parameter would share one layout between
+  // instantiations that bind differently; a lifetime changes no layout.
+  if let Some(parameter) = input
+    .generics
+    .params
+    .iter()
+    .find(|parameter| !matches!(parameter, GenericParam::Lifetime(_)))
+  {
+    return Err(Error::new_spanned(
+      parameter,
+      "`PassParameters` cannot be derived for a struct with type or const parameters, which its cached layout ignores",
+    ));
+  }
+
   let group: u32 = read_group(&input.attrs, name)?;
   let mut bindings: Vec<(u32, &Ident, &Type, Binding)> = Vec::new();
   let mut next: u32 = 0;
