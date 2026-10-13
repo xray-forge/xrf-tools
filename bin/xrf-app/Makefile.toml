@@ -15,10 +15,12 @@ env = { XRF_BUILD_KIND = "development" }
 command = "cargo"
 args = ["tauri", "build", "--debug"]
 
+# With DLSS, its runtime library carried in the renderer's bundle; `fetch-sdks` runs first, which fetches nothing
+# already there.
 [tasks.build-release]
 env = { XRF_BUILD_KIND = "optimized" }
 command = "cargo"
-args = ["tauri", "build"]
+args = ["tauri", "build", "--features", "dlss", "--config", "tauri.dlss.conf.json"]
 dependencies = ["setup"]
 
 [tasks.dev]

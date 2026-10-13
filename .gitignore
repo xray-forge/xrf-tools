@@ -31,3 +31,6 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
+
+# SDKs the optional native features build against, fetched by `cargo make fetch-sdks`
+.sdks/

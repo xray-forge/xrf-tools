@@ -91,6 +91,13 @@ dependencies = [
   "verify-ui",
 ]
 
+[tasks.fetch-sdks]
+description = "Fetch the SDKs the optional native features build against into .sdks."
+category = "Build"
+workspace = false
+script_runner = "@shell"
+script = 'node cli/sdks/fetch.mjs'
+
 [tasks.build-cli]
 description = "Build CLI application in debug mode."
 category = "Build"
@@ -116,10 +123,11 @@ dependencies = [
 ]
 
 [tasks.build-app-release]
-description = "Build UI application in release mode."
+description = "Build UI application in release mode, with DLSS."
 category = "Build"
 workspace = false
 dependencies = [
+  "fetch-sdks",
   { name = "build-release", path = "bin/xrf-app" },
 ]
 
