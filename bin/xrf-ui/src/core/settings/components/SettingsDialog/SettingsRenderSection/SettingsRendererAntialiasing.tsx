@@ -15,6 +15,7 @@ import {
   isTemporalAntialiasing,
   RENDER_ANTIALIASING_OPTIONS,
   RENDER_TEXTURE_FILTERING_OPTIONS,
+  RENDER_TEXTURE_LOD_OPTIONS,
 } from "@/core/render/lib/features/render-antialiasing-choices";
 import {
   formatOutputScale,
@@ -32,18 +33,9 @@ import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-featur
 import { ERenderResolution } from "@/core/render/lib/settings/render-resolution";
 import { RenderSettingsService } from "@/core/render/services/render-settings";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
-import { ChoiceFormRow, IChoiceFormRowOption } from "@/core/ui/form/ChoiceFormRow";
+import { ChoiceFormRow } from "@/core/ui/form/ChoiceFormRow";
 import { SliderFormRow } from "@/core/ui/form/SliderFormRow";
 import { DetailSection } from "@/core/ui/layout/DetailSection";
-
-/** The game's texture qualities, `texture_lod`, by the Anomaly preset that sets each. */
-const TEXTURE_LOD_OPTIONS: ReadonlyArray<IChoiceFormRowOption<string>> = [
-  { label: "Full (extreme)", value: "0" },
-  { label: "High", value: "1" },
-  { label: "Medium (default)", value: "2" },
-  { label: "Low", value: "3" },
-  { label: "Lowest", value: "4" },
-];
 
 /**
  * What every viewport resolves its frame at and how much of that the scene is drawn at before it is upscaled to it,
@@ -120,7 +112,7 @@ export function SettingsRendererAntialiasing(): ReactElement {
             "Drops each texture's largest mip levels, one a step; a change loads every texture again. " +
             "Game setting: texture_lod."
           }
-          options={TEXTURE_LOD_OPTIONS}
+          options={RENDER_TEXTURE_LOD_OPTIONS}
           value={String(features.textureLod)}
           onChange={(value: string) => renderSettingsService.setRendererOverrides({ textureLod: Number(value) })}
         />
