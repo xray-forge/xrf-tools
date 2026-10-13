@@ -26,6 +26,8 @@ override IS_WATER: bool = false;
 
 // `EPS_S`, the least a fade's range is taken as.
 const RANGE_EPSILON: f32 = 1e-6;
+// Workgroups a row of the late phase's dispatch holds: the most one dimension may.
+const LATE_ROW: u32 = 65535u;
 
 fn is_in_frustum(sphere: vec4<f32>) -> bool {
   if (sphere.w < 0.0) {
@@ -305,8 +307,11 @@ fn cs_clamp_counts(@builtin(global_invocation_id) id: vec3<u32>) {
 
   if (list == 0u) {
     let candidates: u32 = min(atomicLoad(&late[late_at(3u)]), params.candidate_capacity);
+    let groups: u32 = (candidates + 63u) / 64u;
 
-    atomicStore(&late[late_at(0u)], (candidates + 63u) / 64u);
+    // Laid in rows a dimension can hold, as `compute_index` reads them back.
+    atomicStore(&late[late_at(0u)], min(groups, LATE_ROW));
+    atomicStore(&late[late_at(1u)], (groups + LATE_ROW - 1u) / LATE_ROW);
     atomicStore(&late[late_at(3u)], candidates);
   }
 
@@ -323,8 +328,8 @@ fn cs_clamp_counts(@builtin(global_invocation_id) id: vec3<u32>) {
 
 // Tests each candidate again against this frame's pyramid, through this frame's view.
 @compute @workgroup_size(64)
-fn cs_cull_late(@builtin(global_invocation_id) id: vec3<u32>) {
-  let index: u32 = id.x;
+fn cs_cull_late(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workgroups) groups: vec3<u32>) {
+  let index: u32 = compute_index(id, groups, 64u);
 
   if (index >= atomicLoad(&late[late_at(3u)])) {
     return;
