@@ -493,6 +493,17 @@ impl ResolveFeature {
 
   /// This frame's unjittered view projection and the last one's, which the surfaces' motion is measured between; the
   /// same twice for a first frame.
+  /// Forgets the cameras a frame that was never submitted kept as the next frame's previous: the motion, the jittered
+  /// camera and the temporal resolve's, so the next frame reprojects nothing rather than a frame never drawn.
+  pub fn abandon_frame(&mut self) {
+    self.motion_previous = None;
+    self.view_projection_previous = None;
+
+    if let Some(Resolve::Temporal(temporal)) = &mut self.resolve {
+      temporal.previous = None;
+    }
+  }
+
   pub fn next_motion(&mut self, current: Mat4) -> (Mat4, Mat4) {
     (current, self.motion_previous.replace(current).unwrap_or(current))
   }
