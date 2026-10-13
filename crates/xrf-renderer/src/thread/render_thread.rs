@@ -31,7 +31,9 @@ use crate::contract::render_viewport_id::RenderViewportId;
 use crate::frame::frame_capture::{CaptureReply, FrameCapture};
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::frame_phases::FramePhases;
+use crate::frame::frame_span_timer::FrameSpanTimer;
 use crate::frame::frame_statistics::REPORT_INTERVAL;
+use crate::frame::periodic_budget::PeriodicBudget;
 use crate::frame::periodic_scheduler::PeriodicScheduler;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::host::render_bundle::RenderBundle;
@@ -118,6 +120,8 @@ pub struct RenderThread {
   gpu: Option<GpuState>,
   /// What the frames' graphs keep between frames, their passes' GPU timer among them; made with the GPU.
   runtime: Option<GraphRuntime>,
+  /// How long the GPU spends on each frame, which the periodic work's budget is taken from; made with the GPU.
+  frame_span: Option<FrameSpanTimer>,
   /// What the last described frame's graph came to, and when it was described: as often as the viewports report.
   graph_report: Option<(Instant, GraphReport)>,
   /// What the GPU allocator held, allocated and reserved, when it was last asked: a report lists every allocation, so it
@@ -125,8 +129,10 @@ pub struct RenderThread {
   allocator_report: Option<(Instant, Option<(u64, u64)>)>,
   /// The staging belt the frames' own writes go through, kept between frames; made with the GPU.
   belt: Option<StagingBelt>,
-  /// What every view and scene draws once in so many frames, granted once a frame within the settings' budget.
+  /// What every view and scene draws once in so many frames, granted once a frame within the budget the frames'
+  /// headroom leaves.
   periodic: PeriodicScheduler,
+  periodic_budget: PeriodicBudget,
   /// Why the GPU last failed to start, and when.
   failure: Option<(String, Instant)>,
   /// The windows viewports are drawn into, by their key.
@@ -168,10 +174,12 @@ impl RenderThread {
       shaders: ShaderLibrary::default(),
       gpu: None,
       runtime: None,
+      frame_span: None,
       graph_report: None,
       allocator_report: None,
       belt: None,
       periodic: PeriodicScheduler::new(),
+      periodic_budget: PeriodicBudget::default(),
       failure: None,
       hosts: HashMap::new(),
       viewports: BTreeMap::new(),
@@ -453,8 +461,9 @@ impl RenderThread {
   /// Lets the GPU go, with everything made on its device, for `ensure_gpu` to start it again.
   fn release_gpu(&mut self) {
     self.gpu = None;
-    // Its pool, bind groups and timer belong to the device let go.
+    // Its pool, bind groups and timers belong to the device let go.
     self.runtime = None;
+    self.frame_span = None;
     self.belt = None;
 
     // Its scenes went with it; the world streams each in again, from the start, into scenes made again.
@@ -502,6 +511,7 @@ impl RenderThread {
     ) {
       Ok(gpu) => {
         self.runtime = Some(GraphRuntime::new(&gpu.context.device, &gpu.context.queue));
+        self.frame_span = Some(FrameSpanTimer::new(&gpu.context.device, &gpu.context.queue));
         self.gpu = Some(gpu);
         self.failure = None;
 
@@ -605,9 +615,21 @@ impl RenderThread {
       .as_mut()
       .map(|runtime| runtime.timer.take_tagged())
       .unwrap_or_default();
+    let span: Option<f32> = self.frame_span.as_mut().and_then(|timer| {
+      let span: Option<f32> = timer.take();
+
+      timer.begin(&mut encoder);
+
+      span
+    });
+    let budget: f32 = self.periodic_budget.update(
+      (Duration::from_secs_f32(delta), span),
+      self.settings.frame_rate,
+      self.settings.periodic_budget,
+    );
 
     // The frame's periodic work and streaming are granted against one budget, the streaming's rounds first.
-    self.periodic.begin(self.settings.periodic_budget, &times);
+    self.periodic.begin(budget, &times);
     self.periodic.set_owner(u32::MAX);
 
     let mut scene_frames: HashMap<RenderSceneId, RenderSceneFrame> = scene_frames;
@@ -1259,6 +1281,7 @@ impl RenderThread {
     phases.record += recording.elapsed().saturating_sub(encoded + waited);
     phases.encode += encoded;
     commands.extend(executed.commands);
+    commands.extend(self.frame_span.as_mut().and_then(|timer| timer.end(device)));
 
     let groups: Vec<ExecutedGroup> = executed.groups;
 
@@ -1271,6 +1294,10 @@ impl RenderThread {
     }
     phases.submit = submitting.elapsed();
     runtime.timer.request();
+
+    if let Some(timer) = &self.frame_span {
+      timer.request();
+    }
 
     for (id, frame, pick) in frames {
       let Some(viewport) = self.viewports.get_mut(&id) else {
