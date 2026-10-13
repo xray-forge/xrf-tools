@@ -477,7 +477,7 @@ impl<'a> CompiledGraph<'a> {
       let resolved: GraphResolvedTexture<'_> = resources.get_texture(texture);
       let descriptor: &GraphTextureDescriptor = &textures[texture.get_index()].descriptor;
 
-      if descriptor.mip_level_count == 1 && descriptor.size.depth_or_array_layers == 1 {
+      if descriptor.mip_level_count == 1 && descriptor.view_dimension == wgpu::TextureViewDimension::D2 {
         Cow::Borrowed(resolved.view)
       } else {
         Cow::Owned(resolved.texture.create_view(&wgpu::TextureViewDescriptor {
