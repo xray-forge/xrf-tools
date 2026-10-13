@@ -157,6 +157,29 @@ describe("LevelLoadService", () => {
     expect(service.spawnReport).toEqual(EMPTY_LEVEL_SPAWN_REPORT);
   });
 
+  // The close is fired and forgotten: a failure thrown at it would go unheard and leave the level on screen.
+  it("forgets the level even where the backend fails to close it, and releases it again on the next close", async () => {
+    const { service } = mockInjectedService(LevelLoadService);
+
+    armLevel();
+
+    await service.load({ engine: EXrayEngineChoice.VANILLA, isDltx: false, roots: ROOTS, source: SOURCE });
+    await flush();
+
+    setMockInvokeResponses({
+      ["plugin:levels|close_level"]: () => Promise.reject(new Error("The level is busy")),
+    });
+
+    await expect(service.close()).resolves.toBeUndefined();
+    expect(service.level.value).toBeNull();
+    expect(service.level.isLoading).toBe(false);
+
+    setMockInvokeResponses({ ["plugin:levels|close_level"]: null });
+    await service.close();
+
+    expect(countCalls("plugin:levels|close_level")).toBe(2);
+  });
+
   it("records a failure as state rather than throwing it at the caller", async () => {
     const { service } = mockInjectedService(LevelLoadService);
 
