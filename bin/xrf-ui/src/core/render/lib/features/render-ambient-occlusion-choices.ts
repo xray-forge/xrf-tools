@@ -12,7 +12,7 @@ import { IChoiceFormRowOption } from "@/core/ui/form/ChoiceFormRow/choice-form-r
 
 /** The bounds each ambient occlusion value is offered between. */
 export const RENDER_AMBIENT_OCCLUSION_LIMITS = {
-  radius: toRenderLimits(RENDER_FEATURE_SCHEMA.ambientOcclusion.radius, 0.25),
+  radius: toRenderLimits(RENDER_FEATURE_SCHEMA.ambientOcclusion.radius, 0.1),
   strength: toRenderLimits(RENDER_FEATURE_SCHEMA.ambientOcclusion.strength, 0.1),
 } as const;
 
