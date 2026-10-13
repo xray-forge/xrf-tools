@@ -41,8 +41,8 @@ impl Renderer {
     self.queue.send(RenderCommand::Layout { id, layout });
   }
 
-  /// What a viewport's level draws under a point, css pixels from its corner, answered after its next frame; the
-  /// answer never comes for a viewport the renderer does not draw. `is_through` passes glass by.
+  /// What a viewport's level draws under a point, css pixels from its corner, answered after its next frame; a viewport
+  /// the renderer does not draw, or one showing nothing, answers no hit at once. `is_through` passes glass by.
   pub fn pick(&self, id: RenderViewportId, x: f32, y: f32, is_through: bool) -> Receiver<XrfResult<RenderPick>> {
     self.ask(|reply| RenderCommand::Pick {
       id,
@@ -77,7 +77,8 @@ impl Renderer {
     self.ask(|reply| RenderCommand::LocateSpawnObject { id, object, reply })
   }
 
-  /// A viewport's next presented frame, read back; the answer never comes for a viewport the renderer does not draw.
+  /// A viewport's next presented frame, read back; the reply is let go unanswered for a viewport the renderer does not
+  /// draw.
   pub fn capture_viewport(&self, id: RenderViewportId) -> Receiver<XrfResult<RenderCapture>> {
     self.ask(|reply| RenderCommand::Capture { id, reply })
   }

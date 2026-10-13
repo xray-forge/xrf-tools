@@ -1,4 +1,4 @@
-use std::sync::mpsc::Receiver;
+use std::sync::mpsc::{Receiver, RecvTimeoutError};
 use std::time::Duration;
 
 use crate::core::types::TauriResult;
@@ -11,7 +11,8 @@ pub const ANSWER_TIMEOUT: Duration = Duration::from_secs(2);
 ///
 /// # Errors
 ///
-/// Returns `missing` when nothing is answered within `timeout`.
+/// Returns `missing` when nothing is answered within `timeout`, and says so apart when the render thread let the reply
+/// go unanswered: a viewport it does not draw, or a thread that stopped.
 pub async fn await_answer<T: Send + 'static>(
   answer: Receiver<T>,
   timeout: Duration,
@@ -20,5 +21,8 @@ pub async fn await_answer<T: Send + 'static>(
   tauri::async_runtime::spawn_blocking(move || answer.recv_timeout(timeout))
     .await
     .map_err(|error| format!("{missing}: {error}"))?
-    .map_err(|_| missing)
+    .map_err(|error| match error {
+      RecvTimeoutError::Timeout => missing,
+      RecvTimeoutError::Disconnected => format!("{missing}: the renderer does not draw it"),
+    })
 }
