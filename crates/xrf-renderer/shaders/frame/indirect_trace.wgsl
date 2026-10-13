@@ -7,6 +7,7 @@
 #import "generated/common/sky"
 #import "generated/frame/indirect_trace"
 #import "common/math"
+#import "common/luminance"
 
 // The indirect light traced at half the frame's size, in the screen-space bounce's place where DLSS ray reconstruction
 // denoises the frame: from each point under a pixel one ray, cosine-weighted about its bumped normal and turned each
@@ -24,10 +25,6 @@ const LIFT_PER_METRE: f32 = 0.002;
 const PLANT_LIFT: f32 = 0.3;
 // The most a hit's light carries back, by its luminance, so a lamp's hot spot is no firefly.
 const RADIANCE_MOST: f32 = 8.0;
-
-fn brightness(colour: vec3<f32>) -> f32 {
-  return dot(colour, vec3<f32>(0.2126, 0.7152, 0.0722));
-}
 
 struct IndirectTargets {
   @location(0) light: vec4<f32>,
@@ -74,7 +71,7 @@ fn fs_indirect_trace(in: FullscreenVarying) -> IndirectTargets {
 
   let shown: vec3<f32> = shade_scene_hit(hit, direction, cone, lighting, material_lut, lut_sampler, sky_environment_0,
     sky_environment_1, sky_clamp);
-  let carried: vec3<f32> = shown * min(1.0, RADIANCE_MOST / max(brightness(shown), 1e-4));
+  let carried: vec3<f32> = shown * min(1.0, RADIANCE_MOST / max(luminance(shown), 1e-4));
 
   return IndirectTargets(vec4<f32>(carried * indirect.noise.w, distance), hit.distance);
 }
