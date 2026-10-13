@@ -569,13 +569,18 @@ impl ShaderLibrary {
     })
   }
 
+  /// Where a debug build reads the modules' sources from: the crate's own `shaders` folder.
+  pub fn get_source_root() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("shaders")
+  }
+
   /// Reads again every module whose file changed since it was last read, in a debug build; answers whether any did.
   pub fn reload(&mut self) -> bool {
     if !cfg!(debug_assertions) {
       return false;
     }
 
-    let root: PathBuf = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("shaders");
+    let root: PathBuf = Self::get_source_root();
     let mut is_changed: bool = false;
 
     for (name, _) in EMBEDDED {
