@@ -3,16 +3,8 @@
 // The page's backdrop where it is transparent around the viewports: its colour, and over its box the wash, as CSS
 // `linear-gradient(angle, from, to)` paints it over a background colour.
 
-struct Backdrop {
-  color: vec4<f32>,
-  // Premultiplied by their alpha.
-  first: vec4<f32>,
-  last: vec4<f32>,
-  // Left, top, width and height in window pixels.
-  rect: vec4<f32>,
-  // The gradient line's direction, `y` down, and its length.
-  line: vec4<f32>,
-};
+// The colour, the wash's two stops premultiplied by their alpha, its box and its gradient line (`BackdropUniform`).
+#import "generated/structs"
 
 @group(0) @binding(0) var<uniform> backdrop: Backdrop;
 

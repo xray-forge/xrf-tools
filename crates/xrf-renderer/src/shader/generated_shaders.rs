@@ -3,8 +3,10 @@ use xrf_renderer_core::{PassParameters, ShaderBindings, ShaderDeclarations};
 
 use crate::pass::ambient_occlusion_parameters::AmbientOcclusionParameters;
 use crate::pass::ambient_occlusion_uniform::AmbientOcclusionUniform;
+use crate::pass::backdrop_uniform::BackdropUniform;
 use crate::pass::bloom_parameters::BloomParameters;
 use crate::pass::bloom_uniform::BloomUniform;
+use crate::pass::camera_uniform::CameraUniform;
 use crate::pass::combine_parameters::CombineParameters;
 use crate::pass::composited_parameters::CompositedParameters;
 use crate::pass::contact_shadow_parameters::ContactShadowParameters;
@@ -193,6 +195,8 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
   let mut static_impostor: ShaderBindings = ShaderBindings::new();
 
   structs
+    .declare::<CameraUniform>()
+    .declare::<BackdropUniform>()
     .declare::<LightingUniform>()
     .declare::<TraceSwaySlot>()
     .declare::<GlassUniform>()
