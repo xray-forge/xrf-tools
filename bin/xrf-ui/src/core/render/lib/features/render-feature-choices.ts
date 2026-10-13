@@ -794,6 +794,30 @@ const RENDER_DLSS_PRESET_NAMES: Readonly<Record<RenderDlssPreset, string>> = {
   [ERenderDlssPreset.M]: "M: performance",
 };
 
+const RENDER_DLSS_PRESET_DETAILS: Readonly<Record<RenderDlssPreset, string>> = {
+  [ERenderDlssPreset.DEFAULT]: "NVIDIA's pick by quality: K up to Balanced, M at Performance, L at Ultra performance.",
+  [ERenderDlssPreset.J]: "Transformer, like K, with slightly less ghosting and more flicker.",
+  [ERenderDlssPreset.K]: "Transformer: the sharpest image, at the highest cost.",
+  [ERenderDlssPreset.L]: "NVIDIA's model for Ultra performance.",
+  [ERenderDlssPreset.M]: "NVIDIA's model for Performance.",
+};
+
+/**
+ * @param preset - A DLSS model.
+ * @returns What it is, in a sentence.
+ */
+export function describeDlssPreset(preset: RenderDlssPreset): string {
+  return RENDER_DLSS_PRESET_DETAILS[preset];
+}
+
+/** DLSS's models by their letters alone, short enough for a toolbar popover's row. */
+export const RENDER_DLSS_PRESET_SHORT_OPTIONS: ReadonlyArray<IRenderChoiceOption<RenderDlssPreset>> = Object.values(
+  ERenderDlssPreset
+).map((value: RenderDlssPreset) => ({
+  label: value === ERenderDlssPreset.DEFAULT ? "Default" : value.toUpperCase(),
+  value,
+}));
+
 /** DLSS's models, in the order they are offered. */
 export const RENDER_DLSS_PRESET_OPTIONS: ReadonlyArray<IRenderChoiceOption<RenderDlssPreset>> = Object.values(
   ERenderDlssPreset

@@ -12,6 +12,8 @@ export interface IRenderValueSliderProps extends BaseComponentProps {
   step: number;
   /** How the value reads beside its label and to a screen reader, which are the only places a unit is stated. */
   format: (value: number) => string;
+  /** Whether it shows its value but cannot be moved, where the value has no effect. */
+  isDisabled?: boolean;
   /** Told the value while it is dragged at most once an interval, and at once when it is let go. */
   onChange: (value: number) => void;
 }
@@ -29,6 +31,7 @@ export function RenderValueSlider({
   max,
   step,
   format,
+  isDisabled = false,
   onChange,
 }: IRenderValueSliderProps): ReactElement {
   const draft: IThrottledDraft = useThrottledDraft(value, step, onChange);
@@ -46,6 +49,7 @@ export function RenderValueSlider({
         max={max}
         step={step}
         value={draft.value}
+        disabled={isDisabled}
         aria-label={label}
         getAriaValueText={format}
         onChange={draft.onChange}

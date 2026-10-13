@@ -6,7 +6,7 @@ import { default as WarningIcon } from "@mui/icons-material/WarningAmber";
 import { default as WbCloudyIcon } from "@mui/icons-material/WbCloudy";
 import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
-import { ReactElement, ReactNode, useCallback, useMemo } from "react";
+import { ReactElement, ReactNode, useCallback, useEffect, useMemo } from "react";
 
 import { LevelWeatherTexture } from "@/core/ipc/types/xrf-app";
 import { ThunderboltCollection } from "@/core/ipc/types/xrf-environment";
@@ -100,6 +100,14 @@ export function LevelPreviewLayout({
   const isOpen: boolean = Boolean(name);
   const heading: Nullable<string> = name ?? pending;
   const settings: IRenderFeatureSettings = settingsService.rendererFeatures;
+
+  // What each graphics API can do here, which the image quality popover greys its choices out by.
+  useEffect(() => {
+    if (settingsService.renderBackends === null) {
+      void settingsService.refreshRenderBackends();
+    }
+  }, [settingsService]);
+
   const features: ILevelFeatureOptions = viewService.features;
 
   // Stable between changes of their own, so the toolbar redraws for a toggle and for nothing else.
@@ -187,6 +195,12 @@ export function LevelPreviewLayout({
           isGpuTimed={settingsService.isGpuTimed}
           isTraceable={!renderService.frame.adapter || renderService.frame.hasRayQueries}
           dlss={renderService.frame.adapter ? renderService.frame.dlss : ERenderDlssAvailability.AVAILABLE}
+          backend={settingsService.renderBackend}
+          backends={settingsService.renderBackends}
+          isUpscaled={
+            renderService.frame.renderWidth > 0 && renderService.frame.renderWidth < renderService.frame.width
+          }
+          onChangeBackend={settingsService.setRenderBackend}
           resolution={settingsService.renderResolution}
           outputScale={settingsService.renderOutputScale}
           graph={settingsService.graph}

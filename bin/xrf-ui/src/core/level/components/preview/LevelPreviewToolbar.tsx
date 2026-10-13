@@ -3,7 +3,7 @@ import { ReactElement, ReactNode, useCallback } from "react";
 
 import { LevelSunDescription, LevelWeatherTexture } from "@/core/ipc/types/xrf-app";
 import { ThunderboltCollection } from "@/core/ipc/types/xrf-environment";
-import { RenderDlssAvailability, RenderGraphSettings } from "@/core/ipc/types/xrf-renderer";
+import { RenderBackendAvailability, RenderDlssAvailability, RenderGraphSettings } from "@/core/ipc/types/xrf-renderer";
 import { LevelCullingAction } from "@/core/level/components/preview/LevelCullingAction";
 import { LevelFogAction } from "@/core/level/components/preview/LevelFogAction";
 import { LevelGrassAction } from "@/core/level/components/preview/LevelGrassAction";
@@ -36,6 +36,7 @@ import { ELevelShading } from "@/core/level/lib/view/level-shading";
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { ILevelManualWeather } from "@/core/level/lib/weather/level-manual-weather";
 import { ILevelSunShaftsOptions } from "@/core/level/lib/weather/level-sun-shafts-options";
+import { TRenderBackendChoice } from "@/core/render/lib/settings/render-backend-choice";
 import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { ERenderResolution } from "@/core/render/lib/settings/render-resolution";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
@@ -75,6 +76,12 @@ interface ILevelPreviewToolbarProps extends BaseComponentProps {
   isGpuTimed: boolean;
   /** Whether the GPU drawing the view traces rays. */
   isTraceable: boolean;
+  /** The graphics API the settings draw every viewport with. */
+  backend: TRenderBackendChoice;
+  /** What each graphics API can do on this machine, none until the renderer was asked. */
+  backends: Nullable<ReadonlyArray<RenderBackendAvailability>>;
+  /** Whether the view's frame is drawn smaller than the viewport. */
+  isUpscaled: boolean;
   /** Whether the GPU drawing the view upscales with DLSS, and what it lacks where it does not. */
   dlss: RenderDlssAvailability;
   /** What the settings resolve every viewport at, which the image quality popover may set over for the view. */
@@ -97,6 +104,8 @@ interface ILevelPreviewToolbarProps extends BaseComponentProps {
   /** Sets in the settings whether every viewport times its passes. */
   onChangeGpuTimed: (isGpuTimed: boolean) => void;
   onChangeGraph: (graph: RenderGraphSettings) => void;
+  /** Draws every viewport with another graphics API. */
+  onChangeBackend: (backend: TRenderBackendChoice) => void;
   onChangeShading: (shading: ELevelShading) => void;
   onBack?: () => void;
 }
@@ -126,6 +135,9 @@ export function LevelPreviewToolbar({
   settings,
   isGpuTimed,
   isTraceable,
+  backend,
+  backends,
+  isUpscaled,
   dlss,
   resolution,
   outputScale,
@@ -140,6 +152,7 @@ export function LevelPreviewToolbar({
   onChangeFeatures,
   onChangeGpuTimed,
   onChangeGraph,
+  onChangeBackend,
   onChangeShading,
   onBack,
 }: ILevelPreviewToolbarProps): ReactElement {
@@ -189,9 +202,15 @@ export function LevelPreviewToolbar({
             settingsMode={settings.antialiasing}
             settingsTextureFiltering={settings.textureFiltering}
             settingsScale={settings.upscaling.scale}
+            settingsSharpening={settings.upscaling.sharpening}
+            settingsDlssPreset={settings.upscaling.dlssPreset}
             settingsResolution={resolution}
             settingsOutputScale={outputScale}
+            backend={backend}
+            backends={backends}
+            isUpscaled={isUpscaled}
             dlss={dlss}
+            onChangeBackend={onChangeBackend}
             features={features}
             onToggle={() => onToggle("isAntialiased")}
             onChange={onChangeFeatures}
