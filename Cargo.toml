@@ -11,6 +11,7 @@ members = [
   "crates/xrf-chunk",
   "crates/xrf-dds",
   "crates/xrf-dialog",
+  "crates/xrf-dlss",
   "crates/xrf-dltx",
   "crates/xrf-efd",
   "crates/xrf-engine-target",
@@ -62,6 +63,9 @@ edition = "2024"
 rust-version = "1.99.0"
 
 [workspace.dependencies]
+ash = "0.38.0"
+bindgen = "0.73.2"
+cc = "1.4.5"
 criterion = { version = "0.8.2", default-features = false, features = ["cargo_bench_support"] }
 byteorder = "1.5.0"
 bytemuck = { version = "1.25.2", features = ["derive"] }
@@ -110,6 +114,7 @@ xrf-build-info = { path = "crates/xrf-build-info" }
 xrf-chunk = { path = "crates/xrf-chunk" }
 xrf-dds = { path = "crates/xrf-dds" }
 xrf-dialog = { path = "crates/xrf-dialog" }
+xrf-dlss = { path = "crates/xrf-dlss" }
 xrf-dltx = { path = "crates/xrf-dltx" }
 xrf-efd = { path = "crates/xrf-efd" }
 xrf-error = { path = "crates/xrf-error" }
