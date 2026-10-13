@@ -28,6 +28,7 @@ import {
   RENDER_MAX_AMBIENT_OCCLUSION_ACCUMULATION,
   RENDER_MAX_CONTACT_SHADOW_LIGHTS,
   RENDER_MAX_SHADOW_CASCADES,
+  RENDER_MAX_SHADOW_FILTER,
 } from "@/core/render/lib/settings/render-feature-defaults";
 import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-feature-settings";
 import {
@@ -198,7 +199,7 @@ export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings>
       steps: toNumber(4, 64, true),
       thickness: toNumber(0.01, 1),
     },
-    filter: toNumber(0, 3, true),
+    filter: toNumber(0, RENDER_MAX_SHADOW_FILTER, true),
     isEnabled: FLAG,
     isStaggered: FLAG,
     resolution: toNumber(256, 8192, true),

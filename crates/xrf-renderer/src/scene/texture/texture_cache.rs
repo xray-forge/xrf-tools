@@ -608,12 +608,12 @@ impl TextureCache {
   /// Uploads a loaded texture into its slot.
   fn upload(&mut self, (device, queue): (&wgpu::Device, &wgpu::Queue), slot: u32, texture: &DecodedTexture) {
     // One view the device refuses would make the whole bindless group invalid, and every surface with it.
-    if !texture.is_within(&device.limits()) {
+    let limits: wgpu::Limits = device.limits();
+
+    if !texture.is_within(&limits) {
       let reason: String = format!(
         "{} by {} texels, past the {} a side the device holds",
-        texture.width,
-        texture.height,
-        device.limits().max_texture_dimension_2d
+        texture.width, texture.height, limits.max_texture_dimension_2d
       );
 
       self.stand_in(slot, RenderTextureState::Failed { reason });
