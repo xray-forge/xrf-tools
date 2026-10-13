@@ -1,7 +1,6 @@
 use glam::{Mat4, Vec2};
 use xrf_renderer_core::{
-  FrameGraph, GraphBindings, GraphColorAttachment, GraphRuntime, GraphTexture, GraphTextureAccess,
-  GraphTextureDescriptor, UniformBinding,
+  FrameGraph, GraphBindings, GraphColorAttachment, GraphRuntime, GraphTexture, GraphTextureAccess, UniformBinding,
 };
 
 use crate::camera::camera_view::CameraView;
@@ -14,7 +13,6 @@ use crate::frame::frame_texture::FrameTexture;
 use crate::frame::fsr_targets::FsrTargets;
 use crate::frame::history::History;
 use crate::frame::temporal_jitter::TemporalJitter;
-use crate::frame::texture_copy::add_texture_copy;
 use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::fsr_uniform::FsrUniform;
@@ -254,26 +252,21 @@ impl ResolveFeature {
     self.upscaling
   }
 
-  /// Keeps the frame as it stands before the water and the blended surfaces draw, which the temporal resolve's reactive
-  /// weight compares with: a copy for TAA, answered, or FSR 2's own, which its passes read.
+  /// Whether the temporal resolve's reactive weight reads the frame's copy as it stood before the water.
+  pub fn is_reading_scene_before_water(&self) -> bool {
+    matches!(self.resolve, Some(Resolve::Temporal(_)))
+  }
+
+  /// What the temporal resolve's reactive weight compares the finished frame with, the frame as it stood before the
+  /// water and the blended surfaces drew: TAA reads the frame's copy `before_water`, answered; FSR 2 copies it into its
+  /// own target, which its passes read.
   pub fn add_reactive_passes<'a>(
     &'a self,
     (graph, bindings): (&mut FrameGraph<'a>, &mut GraphBindings<'a>),
-    (scene, (width, height)): (GraphTexture, (u32, u32)),
+    (scene, before_water): (GraphTexture, Option<GraphTexture>),
   ) -> Option<GraphTexture> {
     match &self.resolve {
-      Some(Resolve::Temporal(_)) => {
-        let opaque: GraphTexture = graph.create_texture(GraphTextureDescriptor::new_2d(
-          "temporal opaque",
-          width,
-          height,
-          ViewTargets::SCENE,
-        ));
-
-        add_texture_copy(&mut *graph, "temporal opaque", scene, opaque);
-
-        Some(opaque)
-      }
+      Some(Resolve::Temporal(_)) => before_water,
       Some(Resolve::Fsr { targets, .. }) => {
         let opaque: GraphTexture = bindings.import_view(&mut *graph, "fsr2 opaque", &targets.opaque.view);
 
