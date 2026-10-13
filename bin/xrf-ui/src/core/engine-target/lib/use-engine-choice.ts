@@ -29,15 +29,16 @@ interface IRootValue<T> {
  *
  * A failed detection reports nothing rather than a problem: Auto still resolves when the root is opened.
  *
- * @param root - The game root, or null while none is picked.
+ * @param field - The game root, or null or empty while none is picked.
  * @returns The choice, the detection and a setter.
  */
-export function useEngineChoice(root: Nullable<string>): IEngineChoice {
+export function useEngineChoice(field: Nullable<string>): IEngineChoice {
+  const root: Nullable<string> = field === "" ? null : field;
   const [chosen, setChosen] = useState<IRootValue<EXrayEngineChoice>>(() => ({ root, value: readEngineChoice(root) }));
   const [detected, setDetected] = useState<IRootValue<Nullable<XrayEngineResolution>>>({ root: null, value: null });
 
   useEffect(() => {
-    if (!root) {
+    if (root === null) {
       return;
     }
 
@@ -45,8 +46,16 @@ export function useEngineChoice(root: Nullable<string>): IEngineChoice {
 
     assetsCommands
       .detectEngine(createRoots([root]))
-      .then((detection: Nullable<XrayEngineResolution>) => isCurrent && setDetected({ root, value: detection ?? null }))
-      .catch(() => isCurrent && setDetected({ root, value: null }));
+      .then((detection: Nullable<XrayEngineResolution>) => {
+        if (isCurrent) {
+          setDetected({ root, value: detection ?? null });
+        }
+      })
+      .catch(() => {
+        if (isCurrent) {
+          setDetected({ root, value: null });
+        }
+      });
 
     return () => {
       isCurrent = false;
@@ -55,7 +64,7 @@ export function useEngineChoice(root: Nullable<string>): IEngineChoice {
 
   const setChoice = useCallback(
     (choice: EXrayEngineChoice): void => {
-      if (root) {
+      if (root !== null) {
         writeEngineChoice(root, choice);
       }
 

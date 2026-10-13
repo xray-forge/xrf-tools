@@ -1,0 +1,24 @@
+import { afterEach, describe, expect, it } from "@jest/globals";
+import { renderHook } from "@testing-library/react";
+
+import { useEngineChoice } from "@/core/engine-target/lib/use-engine-choice";
+import { mockInvoke, resetMockInvoke } from "@/fixtures/mocks/tauri.mocks";
+
+describe("useEngineChoice", () => {
+  afterEach(() => {
+    resetMockInvoke();
+    mockInvoke.mockClear();
+  });
+
+  // An empty field names no root, as none picked does: nothing is detected, and nothing waits on it.
+  it("detects nothing for an empty root, and says it is not detecting", () => {
+    for (const root of [null, ""]) {
+      const { result } = renderHook(() => useEngineChoice(root));
+
+      expect(result.current.isDetecting).toBe(false);
+      expect(result.current.detection).toBeNull();
+    }
+
+    expect(mockInvoke.mock.calls.filter(([name]) => name === "plugin:assets|detect_engine")).toHaveLength(0);
+  });
+});
