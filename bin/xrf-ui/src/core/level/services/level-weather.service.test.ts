@@ -5,6 +5,7 @@ import { autorun } from "@wirestate/mobx";
 import { Nullable } from "@xrf/types";
 
 import { SelectedLevelDescription, SessionSnapshot } from "@/core/ipc/types/xrf-app";
+import { EXrayEngine, EXrayEngineEvidence, XrayEngine } from "@/core/ipc/types/xrf-engine-target";
 import { EWeatherCycleKind, WeatherCycleId, WeatherDescriptor } from "@/core/ipc/types/xrf-environment";
 import { ERenderSunShaftsQuality } from "@/core/ipc/types/xrf-renderer";
 import { EWorldWeatherPlay, EWorldWeatherTransition, WorldWeatherPlay } from "@/core/ipc/types/xrf-world";
@@ -464,6 +465,29 @@ describe("LevelWeatherService", () => {
     expect(service.source).toBe(ELevelWeatherSource.MANUAL);
     expect(readLevelWeatherMemory(toLevelWeatherMemoryKey(other.value))?.source).toBe(ELevelWeatherSource.MANUAL);
     expect(toKeyframe(service.weather)?.rainDensity).toBe(0.3);
+  });
+
+  // Read while rendering, so a level opened since must reach whatever shows it.
+  it("names the engine its weather is read for as each level opens", async () => {
+    setMockInvokeResponses({
+      ["plugin:levels|read_level_weather"]: mockSessionResponse(mockLevelWeatherDescription()),
+    });
+
+    const service: LevelWeatherService = createService();
+    const engines: Array<XrayEngine> = [];
+    const stop = autorun(() => {
+      engines.push(service.engine);
+    });
+
+    await service.open({
+      sessionId: "extended",
+      value: mockSelectedLevelDescription({
+        engine: { engine: EXrayEngine.EXTENDED, evidence: EXrayEngineEvidence.NAMED, subject: null },
+      }),
+    });
+    stop();
+
+    expect(engines).toEqual([EXrayEngine.VANILLA, EXrayEngine.EXTENDED]);
   });
 
   it("plays the level's own cycle where the remembered one no longer reads", async () => {
