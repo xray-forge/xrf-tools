@@ -19,8 +19,8 @@ const TEMPORAL_ANTIALIASING: ReadonlySet<string> = new Set<string>([
 
 /**
  * Where the scene is drawn or resolved at another size than the viewport's: what takes it from there and to which
- * size, the temporal resolve to the output, else FSR 1 to the viewport, the target left out where it draws at it;
- * none at the viewport's own size.
+ * size, the temporal resolve to the output, else FSR 1 to the viewport, the target left out where it draws at it or
+ * where it is the viewport's own size, which the line above says; none at the viewport's own size.
  */
 function toScalingLine(report: RenderFrameReport): Nullable<string> {
   const isTemporal: boolean = TEMPORAL_ANTIALIASING.has(report.antialiasing);
@@ -39,8 +39,9 @@ function toScalingLine(report: RenderFrameReport): Nullable<string> {
 
   const name: string = isTemporal ? describeRenderAntialiasing(report.antialiasing) : "FSR 1";
   const source: string = `${report.renderWidth} × ${report.renderHeight}`;
+  const viewport: string = `${report.width} × ${report.height}`;
 
-  return source === target ? `${name} ${source}` : `${name} ${source} → ${target}`;
+  return source === target || target === viewport ? `${name} ${source}` : `${name} ${source} → ${target}`;
 }
 
 /** The triangles drawn, after the graphics API's tag once a frame names the GPU it was drawn on. */
