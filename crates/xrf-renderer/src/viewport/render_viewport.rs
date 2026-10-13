@@ -9,6 +9,7 @@ use crate::contract::render_applied_environment::RenderAppliedEnvironment;
 use crate::contract::render_applied_fog::RenderAppliedFog;
 use crate::contract::render_applied_report::RenderAppliedReport;
 use crate::contract::render_backend::RenderBackend;
+use crate::contract::render_dlss_availability::RenderDlssAvailability;
 use crate::contract::render_frame_report::RenderFrameReport;
 use crate::contract::render_graph_report::RenderGraphReport;
 use crate::contract::render_level_hit::RenderLevelHit;
@@ -220,7 +221,7 @@ impl RenderViewport {
   pub fn report(
     &mut self,
     now: Instant,
-    (backend, adapter, has_ray_queries, has_dlss): (RenderBackend, &str, bool, bool),
+    (backend, adapter, has_ray_queries, dlss): (RenderBackend, &str, bool, RenderDlssAvailability),
     (texture_bytes, allocator, scenes): (u64, Option<(u64, u64)>, &mut HashMap<RenderSceneId, LevelScene>),
     (timer, graph): (Option<&mut GraphTimer>, Option<&GraphReport>),
   ) {
@@ -318,7 +319,7 @@ impl RenderViewport {
       backend,
       adapter: adapter.to_string(),
       has_ray_queries,
-      has_dlss,
+      dlss,
       is_gpu_timed,
       passes,
       static_draws,

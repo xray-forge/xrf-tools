@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::contract::render_antialiasing::RenderAntialiasing;
 use crate::contract::render_backend::RenderBackend;
+use crate::contract::render_dlss_availability::RenderDlssAvailability;
 use crate::contract::render_frame_phases::RenderFramePhases;
 use crate::contract::render_graph_report::RenderGraphReport;
 use crate::contract::render_group_cost::RenderGroupCost;
@@ -58,8 +59,8 @@ pub struct RenderFrameReport {
   /// Whether it traces rays, by hardware ray query: what the reflections' and the water's tracing of what the screen
   /// misses needs.
   pub has_ray_queries: bool,
-  /// Whether it upscales with DLSS: the build, the backend and the GPU all have it.
-  pub has_dlss: bool,
+  /// Whether it upscales with DLSS, and what it lacks where it does not.
+  pub dlss: RenderDlssAvailability,
   /// Whether its passes were timed on the GPU over the span.
   pub is_gpu_timed: bool,
   /// What each pass cost on the GPU, in frame order; none while untimed.

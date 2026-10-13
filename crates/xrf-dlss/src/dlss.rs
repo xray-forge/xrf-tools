@@ -25,6 +25,9 @@ pub struct Dlss {
 }
 
 impl Dlss {
+  /// Whether the build has DLSS, built against its SDK.
+  pub const IS_BUILT: bool = cfg!(feature = "sdk");
+
   /// The file name of the runtime library NGX loads super resolution from, which an application ships.
   pub const RUNTIME_LIBRARY: &'static str = if cfg!(target_os = "windows") {
     "nvngx_dlss.dll"

@@ -26,6 +26,7 @@ pub(crate) mod render_debanding_mode;
 pub(crate) mod render_debanding_quality;
 pub(crate) mod render_debanding_settings;
 pub(crate) mod render_debug_view;
+pub(crate) mod render_dlss_availability;
 pub(crate) mod render_dlss_preset;
 pub(crate) mod render_enhanced_bloom_settings;
 pub(crate) mod render_enhanced_water_settings;

@@ -1,6 +1,7 @@
 import {
   ERenderAntialiasing,
   ERenderBackend,
+  ERenderDlssAvailability,
   RenderFramePhases,
   RenderFrameReport,
   RenderLightsReport,
@@ -74,7 +75,7 @@ export const EMPTY_RENDER_FRAME_REPORT: RenderFrameReport = {
   graph: null,
   groups: [],
   hasRayQueries: false,
-  hasDlss: false,
+  dlss: ERenderDlssAvailability.UNBUILT,
   outputWidth: 0,
   outputHeight: 0,
   antialiasing: ERenderAntialiasing.NONE,
