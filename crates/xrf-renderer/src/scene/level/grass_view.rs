@@ -148,7 +148,7 @@ impl GrassView {
     let density: f32 = settings.density.clamp(0.1, 0.99);
     let steps: i32 = (SLOT_METERS / density).ceil() as i32;
     let jitter: f32 = density / 1.7;
-    let reach: i32 = (settings.radius / 4.0).floor().max(0.0) as i32 * 2;
+    let reach: i32 = (settings.get_radius() / 4.0).floor() as i32 * 2;
     let wanted: GrassBuildSize = GrassBuildSize::wanted(
       reach as u32,
       ((steps + 1) * (steps + 1)) as u32,
