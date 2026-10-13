@@ -1,6 +1,6 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="tauri: dev-optimized" type="CargoCommandRunConfiguration" factoryName="Cargo Command" folderName="application">
-    <option name="command" value="tauri dev -- --profile dev-optimized" />
+    <option name="command" value="tauri dev --features dlss --config tauri.dlss.conf.json -- --profile dev-optimized" />
     <option name="workingDirectory" value="file://$PROJECT_DIR$/bin/xrf-app" />
     <envs>
       <env name="RUST_LOG" value="info" />
@@ -15,6 +15,7 @@
     <option name="isRedirectInput" value="false" />
     <option name="redirectInputPath" value="" />
     <method v="2">
+      <option name="RunConfigurationTask" enabled="true" run_configuration_name="sdks: fetch" run_configuration_type="CargoCommandRunConfiguration" />
       <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
     </method>
   </configuration>
