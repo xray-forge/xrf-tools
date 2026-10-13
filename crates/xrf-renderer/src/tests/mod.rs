@@ -45,6 +45,7 @@ mod static_row;
 mod static_scene;
 mod static_surface_build;
 mod static_trace;
+mod static_vertex_words;
 mod sun_cascade;
 mod sun_shafts;
 mod temporal;

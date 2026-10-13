@@ -3,13 +3,17 @@ use xrf_visual::{SectorGeometry, VisualGeometry, VisualSection};
 use crate::scene::section_bytes::{get_section_bytes, read_pods};
 use crate::scene::static_scene::static_layout::StaticLayout;
 
-/// A direction a geometry carries none of: straight along the tangent frame's `z`, with nothing in its fourth byte.
-const NEUTRAL_DIRECTION: u32 = 0x0080_8080;
-
 /// Packs geometry into the static arenas' vertex words, and measures how far it sways.
 pub struct StaticVertexWords;
 
 impl StaticVertexWords {
+  /// The normal a geometry carries none of: straight along `z`, packed as `pack_direction` packs one.
+  pub const NEUTRAL_NORMAL: u32 = 0x0080_80FF;
+  /// The tangent a geometry carries none of: along `x`, square to the neutral normal and binormal.
+  pub const NEUTRAL_TANGENT: u32 = 0x00FF_8080;
+  /// The binormal a geometry carries none of: along `y`, square to the neutral normal and tangent.
+  pub const NEUTRAL_BINORMAL: u32 = 0x0080_FF80;
+
   /// A packed geometry's vertices as its arena holds them, `StaticLayout::STRIDE` words each.
   ///
   /// The shorts and bytes travel as the words they were packed into, decoded in the vertex shader; an attribute the
@@ -35,9 +39,9 @@ impl StaticVertexWords {
         packed.push(Self::read_word(Some(positions), vertex, 3, axis).unwrap_or(0));
       }
 
-      packed.push(Self::read_word(binormals, vertex, 1, 0).unwrap_or(NEUTRAL_DIRECTION));
-      packed.push(Self::read_word(normals, vertex, 1, 0).unwrap_or(NEUTRAL_DIRECTION));
-      packed.push(Self::read_word(tangents, vertex, 1, 0).unwrap_or(NEUTRAL_DIRECTION));
+      packed.push(Self::read_word(binormals, vertex, 1, 0).unwrap_or(Self::NEUTRAL_BINORMAL));
+      packed.push(Self::read_word(normals, vertex, 1, 0).unwrap_or(Self::NEUTRAL_NORMAL));
+      packed.push(Self::read_word(tangents, vertex, 1, 0).unwrap_or(Self::NEUTRAL_TANGENT));
 
       // A sector's geometry is baked or a tree's; nothing of a sector is packed as a model.
       if layout == StaticLayout::Tree {
@@ -68,19 +72,19 @@ impl StaticVertexWords {
       floats(&geometry.binormals),
       floats(&geometry.uvs),
     );
-    let direction = |values: &[f32], vertex: usize| -> u32 {
+    let direction = |values: &[f32], vertex: usize, neutral: u32| -> u32 {
       values
         .get(vertex * 3..vertex * 3 + 3)
-        .map_or(NEUTRAL_DIRECTION, |it| Self::pack_direction([it[0], it[1], it[2]]))
+        .map_or(neutral, |it| Self::pack_direction([it[0], it[1], it[2]]))
     };
     let count: usize = (geometry.vertex_count as usize).min(positions.len() / 3);
     let mut packed: Vec<u32> = Vec::with_capacity(count * StaticLayout::STRIDE as usize);
 
     for vertex in 0..count {
       packed.extend(positions[vertex * 3..vertex * 3 + 3].iter().map(|it| it.to_bits()));
-      packed.push(direction(&binormals, vertex));
-      packed.push(direction(&normals, vertex));
-      packed.push(direction(&tangents, vertex));
+      packed.push(direction(&binormals, vertex, Self::NEUTRAL_BINORMAL));
+      packed.push(direction(&normals, vertex, Self::NEUTRAL_NORMAL));
+      packed.push(direction(&tangents, vertex, Self::NEUTRAL_TANGENT));
       packed.push(uvs.get(vertex * 2).copied().unwrap_or(0.0).to_bits());
       packed.push(uvs.get(vertex * 2 + 1).copied().unwrap_or(0.0).to_bits());
     }
@@ -89,7 +93,7 @@ impl StaticVertexWords {
   }
 
   /// A unit direction as a `D3DCOLOR` packs one: `z`, `y` and `x` from `-1..1` to a byte each, nothing in the fourth.
-  fn pack_direction([x, y, z]: [f32; 3]) -> u32 {
+  pub fn pack_direction([x, y, z]: [f32; 3]) -> u32 {
     let byte = |value: f32| -> u32 { ((value.clamp(-1.0, 1.0) * 0.5 + 0.5) * 255.0).round() as u32 };
 
     byte(z) | (byte(y) << 8) | (byte(x) << 16)
