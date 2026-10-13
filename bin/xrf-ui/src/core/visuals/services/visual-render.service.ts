@@ -5,8 +5,8 @@ import { Nullable } from "@xrf/types";
 import { RenderLoadReport, RenderTextureReport, RenderViewOptions } from "@/core/ipc/types/xrf-renderer";
 import { EWorldCameraCommand, WorldModelPose } from "@/core/ipc/types/xrf-world";
 import { NativeRenderSurfaceService } from "@/core/render/lib/native/native-render-surface-service";
-import { toNativeRenderHeight } from "@/core/render/lib/native/native-view-options";
 import { NativeViewport } from "@/core/render/lib/native/native-viewport";
+import { toRenderOutput } from "@/core/render/lib/settings/render-resolution";
 import { SettingsService } from "@/core/settings/services/settings";
 import { BIND_POSE, IVisualRenderSource, NO_HIDDEN_BONES, VISUAL_RENDER_SOURCE } from "@/core/visuals/lib/render";
 import { toVisualCamera, toVisualOverlays, toVisualViewOptions } from "@/core/visuals/lib/render/visual-render";
@@ -68,7 +68,7 @@ export class VisualRenderService extends NativeRenderSurfaceService {
             this.viewService.lighting,
             this.config,
             this.settingsService.rendererFeatures,
-            toNativeRenderHeight(this.settingsService.renderResolution)
+            toRenderOutput(this.settingsService.renderResolution, this.settingsService.renderOutputScale)
           ),
         (options: RenderViewOptions) => viewport.setViewOptions(options),
         { equals: comparer.structural, fireImmediately: true }

@@ -9,6 +9,8 @@ export interface IRenderValueChoiceProps<T extends string> extends BaseComponent
   label: string;
   options: ReadonlyArray<IRenderChoiceOption<T>>;
   value: T;
+  /** Whether the values stack one under another, for names too long to share a row. */
+  isStacked?: boolean;
   onChange: (value: T) => void;
 }
 
@@ -22,6 +24,7 @@ export function RenderValueChoice<T extends string>({
   label,
   options,
   value,
+  isStacked = false,
   onChange,
 }: IRenderValueChoiceProps<T>): ReactElement {
   return (
@@ -32,6 +35,7 @@ export function RenderValueChoice<T extends string>({
         className={"mt-1"}
         exclusive
         fullWidth
+        orientation={isStacked ? "vertical" : "horizontal"}
         color={"primary"}
         size={"small"}
         value={value}

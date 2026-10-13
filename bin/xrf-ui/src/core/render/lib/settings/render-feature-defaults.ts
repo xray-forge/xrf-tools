@@ -5,6 +5,7 @@ import {
   ERenderContactShadowMode,
   ERenderDebandingMode,
   ERenderDebandingQuality,
+  ERenderDlssPreset,
   ERenderFogMode,
   ERenderFoliageMode,
   ERenderGlassMode,
@@ -235,8 +236,9 @@ export const DEFAULT_RENDER_SHADOW_SETTINGS: TRenderShadowSettings = {
   resolution: 2048,
 };
 
-/** Drawn at the viewport's size; sharpened halfway once upscaled. */
+/** Drawn at the viewport's size; sharpened halfway once upscaled; DLSS's model NVIDIA's pick. */
 export const DEFAULT_RENDER_UPSCALING_SETTINGS: TRenderUpscalingSettings = {
+  dlssPreset: ERenderDlssPreset.DEFAULT,
   scale: ERenderScale.NATIVE,
   sharpening: 0.5,
 };

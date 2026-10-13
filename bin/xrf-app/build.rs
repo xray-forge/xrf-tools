@@ -14,6 +14,9 @@ fn main() {
 
   println!("cargo:rerun-if-changed=icons");
 
+  link_dlss_runtime();
+  add_dlss_resources();
+
   tauri_build::try_build(registry::configure(
     Attributes::new()
       .codegen(tauri_build::CodegenContext::new())
@@ -31,6 +34,33 @@ fn resolve_windows_attributes() -> WindowsAttributes {
     BuildKind::Development => attributes.window_icon_path("icons/development/icon.ico"),
     BuildKind::Local => attributes.window_icon_path("icons/local/icon.ico"),
   }
+}
+
+/// Tauri links the C runtime's vcruntime statically, and NGX's library imports `wcsstr` from the DLL one: the linker
+/// binds an import only to a definition already in the link, so libvcruntime's is pulled in, and the notes that each of
+/// its imports is bound to a static definition are expected.
+fn link_dlss_runtime() {
+  let is_msvc: bool = env::var("CARGO_CFG_TARGET_ENV").as_deref() == Ok("msvc");
+
+  if is_msvc && env::var_os("CARGO_FEATURE_DLSS").is_some() {
+    println!("cargo:rustc-link-arg-bins=/INCLUDE:wcsstr");
+    println!("cargo:rustc-link-arg-bins=/IGNORE:4217");
+  }
+}
+
+/// Built with DLSS, its runtime library joins the renderer's bundle as `tauri.dlss.conf.json` maps it, which
+/// tauri-build copies into the profile's resources: merged here unless the Tauri CLI already merged a configuration.
+fn add_dlss_resources() {
+  println!("cargo:rerun-if-changed=tauri.dlss.conf.json");
+
+  if env::var_os("CARGO_FEATURE_DLSS").is_none() || env::var_os("TAURI_CONFIG").is_some() {
+    return;
+  }
+
+  let config: String = fs::read_to_string("tauri.dlss.conf.json").expect("tauri.dlss.conf.json is readable");
+
+  // SAFETY: the build script runs on one thread, and tauri-build reads the variable after this.
+  unsafe { env::set_var("TAURI_CONFIG", config) };
 }
 
 // Tauri overwrites current command permissions but does not remove files for commands deleted from inline plugins.

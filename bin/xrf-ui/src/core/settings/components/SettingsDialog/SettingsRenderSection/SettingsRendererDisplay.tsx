@@ -3,14 +3,13 @@ import { ReactElement, useEffect } from "react";
 
 import { RenderBackendFormRow } from "@/core/render/components/controls/RenderBackendFormRow";
 import { RenderPassTimingFormRow } from "@/core/render/components/controls/RenderPassTimingFormRow";
-import { RENDER_FRAME_RATE_OPTIONS, RENDER_RESOLUTION_OPTIONS } from "@/core/render/lib/features";
+import { RENDER_FRAME_RATE_OPTIONS } from "@/core/render/lib/features";
 import { SettingsService } from "@/core/settings/services/settings";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { ChoiceFormRow } from "@/core/ui/form/ChoiceFormRow";
 
 /**
- * On which graphics API, how often and how large every viewport draws, and whether its passes are timed: nothing a
- * preset sets.
+ * On which graphics API and how often every viewport draws, and whether its passes are timed: nothing a preset sets.
  */
 export function SettingsRendererDisplay(): ReactElement {
   const settingsService: SettingsService = useInjection(SettingsService);
@@ -44,14 +43,6 @@ export function SettingsRendererDisplay(): ReactElement {
         }
         isChecked={settingsService.isVsync}
         onChange={settingsService.setVsync}
-      />
-
-      <ChoiceFormRow
-        label={"Resolution"}
-        description={"Internal resolution of every viewport. Window matches the viewport's own size."}
-        options={RENDER_RESOLUTION_OPTIONS}
-        value={settingsService.renderResolution}
-        onChange={settingsService.setRenderResolution}
       />
 
       <RenderPassTimingFormRow isChecked={settingsService.isGpuTimed} onChange={settingsService.setGpuTimed} />

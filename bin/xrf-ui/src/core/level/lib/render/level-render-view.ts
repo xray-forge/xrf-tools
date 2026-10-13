@@ -1,5 +1,3 @@
-import { Nullable } from "@xrf/types";
-
 import { RenderViewOptions } from "@/core/ipc/types/xrf-renderer";
 import { EWorldCamera, WorldCamera } from "@/core/ipc/types/xrf-world";
 import { ILevelCameraOptions } from "@/core/level/lib/camera/level-camera-options";
@@ -20,6 +18,7 @@ import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { ILevelSunShaftsOptions } from "@/core/level/lib/weather/level-sun-shafts-options";
 import { TNativeLook, toNativeViewOptions } from "@/core/render/lib/native/native-view-options";
 import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-feature-settings";
+import { TRenderOutput } from "@/core/render/lib/settings/render-resolution";
 
 /**
  * @param viewpoint - Where the camera stands and what it looks at.
@@ -65,8 +64,8 @@ export interface ILevelViewOptionsInputs {
   look: TNativeLook;
   /** What the viewport shows of its surfaces. */
   shading: ELevelShading;
-  /** How many rows the level is drawn with at most; null for as many as the viewport covers. */
-  renderHeight: Nullable<number>;
+  /** What the level's frame is resolved at before the viewport. */
+  output: TRenderOutput;
 }
 
 /**
@@ -74,7 +73,7 @@ export interface ILevelViewOptionsInputs {
  * @returns What the native viewport draws the level with.
  */
 export function toLevelViewOptions(inputs: ILevelViewOptionsInputs): RenderViewOptions {
-  const { options, hemiStrength, sunShafts, lod, view, features, look, shading, renderHeight } = inputs;
+  const { options, hemiStrength, sunShafts, lod, view, features, look, shading, output } = inputs;
   const { debugView, surfaceColor }: ILevelShadingChoice = getLevelShading(shading);
 
   return toNativeViewOptions(
@@ -91,6 +90,7 @@ export function toLevelViewOptions(inputs: ILevelViewOptionsInputs): RenderViewO
       ambientOcclusion: toLevelRendererFeature("ambientOcclusion", features, view, options.isOccluded),
       antialiasing: toLevelRendererAntialiasing(features.antialiasing, view, options.isAntialiased),
       textureFiltering: view.textureFiltering ?? features.textureFiltering,
+      upscaling: { ...features.upscaling, ...view.upscaling },
       debanding: toLevelModeFeature("debanding", features, view),
       enhancedBloom: toLevelModeFeature("enhancedBloom", features, view),
       fog: toLevelModeFeature("fog", features, view),
@@ -109,6 +109,6 @@ export function toLevelViewOptions(inputs: ILevelViewOptionsInputs): RenderViewO
     },
     { ...options, sunShafts },
     look,
-    renderHeight
+    output
   );
 }

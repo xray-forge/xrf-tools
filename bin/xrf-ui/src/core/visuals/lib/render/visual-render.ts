@@ -9,6 +9,7 @@ import { toNativeAssetViewOptions } from "@/core/render/lib/native/native-view-o
 import { toRawColor } from "@/core/render/lib/scene/render-color";
 import { toRenderAxesLines, toRenderGridLines } from "@/core/render/lib/scene/render-grid-lines";
 import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-feature-settings";
+import { NATIVE_RENDER_OUTPUT, TRenderOutput } from "@/core/render/lib/settings/render-resolution";
 import { IVisualPreviewSceneConfig } from "@/core/visuals/lib/scene/scene-config";
 import { IVisualPreviewViewOptions } from "@/core/visuals/lib/scene/visual-view-options";
 import { IVisualCameraFit } from "@/core/visuals/lib/visual-views";
@@ -39,7 +40,7 @@ export function toVisualCamera(fit: IVisualCameraFit, config: IVisualPreviewScen
  * @param lighting - The toolbar's light.
  * @param config - The viewer's backdrop and checker.
  * @param features - What the application sets every viewport's features to.
- * @param renderHeight - How many rows the model is drawn with at most; null for as many as the viewport covers.
+ * @param output - What the model's frame is resolved at before the viewport.
  * @returns What a native viewport draws the model with.
  */
 export function toVisualViewOptions(
@@ -47,12 +48,12 @@ export function toVisualViewOptions(
   lighting: IRenderLighting,
   config: IVisualPreviewSceneConfig,
   features: IRenderFeatureSettings,
-  renderHeight: Nullable<number> = null
+  output: TRenderOutput = NATIVE_RENDER_OUTPUT
 ): RenderViewOptions {
   const view: RenderViewOptions = toNativeAssetViewOptions(
     { isBumped: options.isBumpVisible, isLit: true, isWireframe: options.isWireframe },
     features,
-    renderHeight
+    output
   );
 
   return {

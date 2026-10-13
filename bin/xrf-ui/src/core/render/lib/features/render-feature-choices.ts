@@ -5,6 +5,7 @@ import {
   ERenderBloomMode,
   ERenderDebandingMode,
   ERenderDebandingQuality,
+  ERenderDlssPreset,
   ERenderFogMode,
   ERenderGlassMode,
   ERenderIndirectLightMode,
@@ -24,6 +25,7 @@ import {
   RenderBloomMode,
   RenderDebandingMode,
   RenderDebandingQuality,
+  RenderDlssPreset,
   RenderFogMode,
   RenderGlassMode,
   RenderIndirectLightMode,
@@ -44,7 +46,11 @@ import {
 } from "@/core/render/lib/settings/render-feature-defaults";
 import { RENDER_FEATURE_SCHEMA } from "@/core/render/lib/settings/render-feature-schema";
 import { FRAME_RATE_LIMITS, TFrameRateLimit } from "@/core/render/lib/settings/render-frame-rate-limit";
-import { ERenderResolution, RENDER_RESOLUTIONS } from "@/core/render/lib/settings/render-resolution";
+import {
+  ERenderResolution,
+  RENDER_OUTPUT_SCALES,
+  RENDER_RESOLUTIONS,
+} from "@/core/render/lib/settings/render-resolution";
 import { IRenderNumberField } from "@/core/render/lib/settings/render-setting-field";
 import { formatNumber, formatPercent } from "@/lib/format/number";
 
@@ -743,6 +749,7 @@ const RENDER_SCALE_NAMES: Readonly<Record<RenderScale, string>> = {
   [ERenderScale.QUALITY]: "Quality",
   [ERenderScale.BALANCED]: "Balanced",
   [ERenderScale.PERFORMANCE]: "Performance",
+  [ERenderScale.ULTRA_PERFORMANCE]: "Ultra performance",
 };
 
 /**
@@ -757,6 +764,19 @@ export function describeRenderScale(scale: RenderScale): string {
 export const RENDER_SCALE_OPTIONS: ReadonlyArray<IRenderChoiceOption<RenderScale>> = Object.values(ERenderScale).map(
   (value: RenderScale) => ({ label: describeRenderScale(value), value })
 );
+
+const RENDER_DLSS_PRESET_NAMES: Readonly<Record<RenderDlssPreset, string>> = {
+  [ERenderDlssPreset.DEFAULT]: "Default",
+  [ERenderDlssPreset.J]: "J: transformer",
+  [ERenderDlssPreset.K]: "K: transformer, best",
+  [ERenderDlssPreset.L]: "L: ultra performance",
+  [ERenderDlssPreset.M]: "M: performance",
+};
+
+/** DLSS's models, in the order they are offered. */
+export const RENDER_DLSS_PRESET_OPTIONS: ReadonlyArray<IRenderChoiceOption<RenderDlssPreset>> = Object.values(
+  ERenderDlssPreset
+).map((value: RenderDlssPreset) => ({ label: RENDER_DLSS_PRESET_NAMES[value], value }));
 
 const RENDER_AMBIENT_OCCLUSION_QUALITY_NAMES: Readonly<Record<RenderAmbientOcclusionQuality, string>> = {
   [ERenderAmbientOcclusionQuality.LOW]: "Low",
@@ -787,6 +807,7 @@ const RENDER_ANTIALIASING_NAMES: Readonly<Record<RenderAntialiasing, string>> = 
   [ERenderAntialiasing.SMAA]: "SMAA",
   [ERenderAntialiasing.TAA]: "TAA",
   [ERenderAntialiasing.FSR2]: "FSR 2",
+  [ERenderAntialiasing.DLSS]: "DLSS",
 };
 
 /**
@@ -863,8 +884,8 @@ export const RENDER_FRAME_RATE_OPTIONS: ReadonlyArray<IRenderChoiceOption<TFrame
  */
 export function describeRenderResolution(resolution: ERenderResolution): string {
   switch (resolution) {
-    case ERenderResolution.WINDOW:
-      return "Window";
+    case ERenderResolution.AUTO:
+      return "Auto";
     case ERenderResolution.HEIGHT_720:
       return "720p";
     case ERenderResolution.HEIGHT_1080:
@@ -874,6 +895,18 @@ export function describeRenderResolution(resolution: ERenderResolution): string 
     case ERenderResolution.HEIGHT_2160:
       return "4K";
   }
+}
+
+/** The bounds the automatic resolution's scale is offered between, five percent a step. */
+export const RENDER_OUTPUT_SCALE_LIMITS: IRenderLimits = {
+  min: RENDER_OUTPUT_SCALES.min,
+  max: RENDER_OUTPUT_SCALES.max,
+  step: 0.05,
+};
+
+/** @returns The automatic resolution's scale, as a share of the viewport's sides. */
+export function formatOutputScale(scale: number): string {
+  return formatPercent(scale);
 }
 
 /** The resolutions, in the order they are offered. */

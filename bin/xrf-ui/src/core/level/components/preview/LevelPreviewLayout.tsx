@@ -185,6 +185,9 @@ export function LevelPreviewLayout({
           settings={settings}
           isGpuTimed={settingsService.isGpuTimed}
           isTraceable={!renderService.frame.adapter || renderService.frame.hasRayQueries}
+          hasDlss={!renderService.frame.adapter || renderService.frame.hasDlss}
+          resolution={settingsService.renderResolution}
+          outputScale={settingsService.renderOutputScale}
           graph={settingsService.graph}
           shading={viewService.shading}
           actions={actions}

@@ -4,10 +4,10 @@ import { ReactElement, ReactNode, useCallback } from "react";
 import { LevelSunDescription, LevelWeatherTexture } from "@/core/ipc/types/xrf-app";
 import { ThunderboltCollection } from "@/core/ipc/types/xrf-environment";
 import { RenderGraphSettings } from "@/core/ipc/types/xrf-renderer";
-import { LevelAntialiasingAction } from "@/core/level/components/preview/LevelAntialiasingAction";
 import { LevelCullingAction } from "@/core/level/components/preview/LevelCullingAction";
 import { LevelFogAction } from "@/core/level/components/preview/LevelFogAction";
 import { LevelGrassAction } from "@/core/level/components/preview/LevelGrassAction";
+import { LevelImageQualityAction } from "@/core/level/components/preview/LevelImageQualityAction";
 import { LevelLightsAction } from "@/core/level/components/preview/LevelLightsAction";
 import { LevelLookAction } from "@/core/level/components/preview/LevelLookAction";
 import { LevelOcclusionAction } from "@/core/level/components/preview/LevelOcclusionAction";
@@ -37,6 +37,7 @@ import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { ILevelManualWeather } from "@/core/level/lib/weather/level-manual-weather";
 import { ILevelSunShaftsOptions } from "@/core/level/lib/weather/level-sun-shafts-options";
 import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-feature-settings";
+import { ERenderResolution } from "@/core/render/lib/settings/render-resolution";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { EditorToolbarSeparator } from "@/core/shell/editor/EditorToolbarSeparator";
 import { BaseComponentProps } from "@/lib/dom/element-types";
@@ -74,6 +75,12 @@ interface ILevelPreviewToolbarProps extends BaseComponentProps {
   isGpuTimed: boolean;
   /** Whether the GPU drawing the view traces rays. */
   isTraceable: boolean;
+  /** Whether the GPU drawing the view upscales with DLSS. */
+  hasDlss: boolean;
+  /** What the settings resolve every viewport at, which the image quality popover may set over for the view. */
+  resolution: ERenderResolution;
+  /** The share of the viewport the settings resolve at while automatic. */
+  outputScale: number;
   /** Which of the frame graph's mechanisms the frames compile with. */
   graph: RenderGraphSettings;
   /** What the viewport shows of its surfaces. */
@@ -119,6 +126,9 @@ export function LevelPreviewToolbar({
   settings,
   isGpuTimed,
   isTraceable,
+  hasDlss,
+  resolution,
+  outputScale,
   graph,
   shading,
   actions,
@@ -174,10 +184,14 @@ export function LevelPreviewToolbar({
             onChangeFeatures={onChangeFeatures}
           />
 
-          <LevelAntialiasingAction
+          <LevelImageQualityAction
             isOn={options.isAntialiased}
             settingsMode={settings.antialiasing}
             settingsTextureFiltering={settings.textureFiltering}
+            settingsScale={settings.upscaling.scale}
+            settingsResolution={resolution}
+            settingsOutputScale={outputScale}
+            hasDlss={hasDlss}
             features={features}
             onToggle={() => onToggle("isAntialiased")}
             onChange={onChangeFeatures}

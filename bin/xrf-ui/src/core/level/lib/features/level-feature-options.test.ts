@@ -30,6 +30,7 @@ import {
 } from "@/core/level/lib/features/level-feature-options";
 import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { ERenderPreset, RENDER_PRESETS } from "@/core/render/lib/settings/render-preset";
+import { ERenderResolution } from "@/core/render/lib/settings/render-resolution";
 import { mockLevelFeatureOptions } from "@/fixtures/mocks/level.mocks";
 
 const SETTINGS: IRenderFeatureSettings = RENDER_PRESETS[ERenderPreset.BASE];
@@ -228,5 +229,13 @@ describe("level feature options", () => {
     });
     expect(toLevelModeFeature("volumetric", SETTINGS, mockLevelFeatureOptions())).toEqual(SETTINGS.volumetric);
     expect(toLevelFeatureOptions({ volumetric: { mode: "froxel" } }).volumetric).toEqual({});
+  });
+
+  it("keeps a view's own output resolution and scale, dropping either that the settings do not offer", () => {
+    expect(toLevelFeatureOptions({ output: { resolution: "1440", scale: 1.5 } }).output).toEqual({
+      resolution: ERenderResolution.HEIGHT_1440,
+      scale: 1.5,
+    });
+    expect(toLevelFeatureOptions({ output: { resolution: "900", scale: 3 } }).output).toEqual({});
   });
 });

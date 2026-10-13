@@ -1,10 +1,10 @@
 #import "common/fullscreen"
 
 // FidelityFX Super Resolution 1 (`ffx_fsr1.h`, MIT): EASU upscales a frame drawn smaller than its viewport, RCAS
-// sharpens an upscaled one.
+// sharpens an upscaled one; and the downscale of a frame resolved larger than its viewport.
 
-// The frame read: the scene for EASU, the upscaled one for RCAS; and `Upscale`: the size EASU upscales to, in pixels,
-// and RCAS's `con`, `exp2(-stops)`, one sharpening most.
+// The frame read: the scene or the resolved frame for EASU and the downscale, the upscaled one for RCAS; and
+// `Upscale`: the viewport's size, in pixels, and RCAS's `con`, `exp2(-stops)`, one sharpening most.
 #import "generated/frame/upscale"
 
 // EASU's taps by `ffx_fsr1.h`'s names, as indices into its twelve.
@@ -157,4 +157,32 @@ fn fs_rcas(in: FullscreenVarying) -> @location(0) vec4<f32> {
   let lobe: f32 = max(-RCAS_LIMIT, min(max(lobes.x, max(lobes.y, lobes.z)), 0.0)) * upscale.sharpness;
 
   return stored(((b + d + f + h) * lobe + e) / (lobe * 4.0 + 1.0));
+}
+
+// The output pixel's footprint in the frame, each texel weighed by how much of it the footprint covers: a box downscale
+// keeping every texel's share, for a frame resolved up to twice the viewport's sides, whose footprints span at most
+// three texels a side.
+@fragment
+fn fs_downsample(in: FullscreenVarying) -> @location(0) vec4<f32> {
+  let input_size: vec2<f32> = vec2<f32>(textureDimensions(source));
+  let ratio: vec2<f32> = input_size / upscale.output_size;
+  let start: vec2<f32> = floor(in.clip.xy) * ratio;
+  let end: vec2<f32> = start + ratio;
+  var sum: vec3<f32> = vec3<f32>(0.0);
+  var weight: f32 = 0.0;
+
+  for (var y: u32 = 0u; y < 3u; y++) {
+    for (var x: u32 = 0u; x < 3u; x++) {
+      let texel: vec2<f32> = floor(start) + vec2<f32>(f32(x), f32(y));
+      let overlap: vec2<f32> = max(min(end, texel + 1.0) - max(start, texel), vec2<f32>(0.0));
+      let share: f32 = overlap.x * overlap.y;
+
+      if (share > 0.0) {
+        sum += load_clamped(texel, input_size) * share;
+        weight += share;
+      }
+    }
+  }
+
+  return stored(sum / max(weight, 1e-6));
 }

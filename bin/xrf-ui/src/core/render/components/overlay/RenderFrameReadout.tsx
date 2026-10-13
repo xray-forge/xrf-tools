@@ -1,20 +1,46 @@
+import { Nullable } from "@xrf/types";
 import { Fragment, ReactElement, ReactNode } from "react";
 
-import { RenderFrameReport, RenderPassCost } from "@/core/ipc/types/xrf-renderer";
+import { ERenderAntialiasing, RenderFrameReport, RenderPassCost } from "@/core/ipc/types/xrf-renderer";
 import { RenderViewportOverlay, TRenderOverlayCorner } from "@/core/render/components/overlay/RenderViewportOverlay";
+import { describeRenderAntialiasing } from "@/core/render/lib/features";
 import { groupRenderPassCosts, IRenderPassGroup } from "@/core/render/lib/frame/render-pass-groups";
 import { abbreviateRenderBackend } from "@/core/render/lib/settings/render-backend-choice";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatMilliseconds } from "@/lib/format/duration";
 import { formatCount } from "@/lib/format/number";
 
-/** The buffer's size, and the scene's as drawn where it is upscaled from less. */
-function toSizeLine(report: RenderFrameReport): string {
-  const drawn: string = `${report.width} × ${report.height}`;
-  const isUpscaled: boolean =
-    report.renderWidth > 0 && (report.renderWidth !== report.width || report.renderHeight !== report.height);
+/** The antialiasing modes that resolve the frame temporally, upscaling it to the output as they do. */
+const TEMPORAL_ANTIALIASING: ReadonlySet<string> = new Set<string>([
+  ERenderAntialiasing.TAA,
+  ERenderAntialiasing.FSR2,
+  ERenderAntialiasing.DLSS,
+]);
 
-  return isUpscaled ? `${drawn} from ${report.renderWidth} × ${report.renderHeight}` : drawn;
+/**
+ * Where the scene is drawn or resolved at another size than the viewport's: what takes it from there and to which
+ * size, the temporal resolve to the output, else FSR 1 to the viewport, the target left out where it draws at it;
+ * none at the viewport's own size.
+ */
+function toScalingLine(report: RenderFrameReport): Nullable<string> {
+  const isTemporal: boolean = TEMPORAL_ANTIALIASING.has(report.antialiasing);
+  const target: string = isTemporal
+    ? `${report.outputWidth} × ${report.outputHeight}`
+    : `${report.width} × ${report.height}`;
+  const isScaled: boolean =
+    report.renderWidth > 0 &&
+    (report.renderWidth !== report.width ||
+      report.renderHeight !== report.height ||
+      (isTemporal && report.outputWidth !== report.width));
+
+  if (!isScaled) {
+    return null;
+  }
+
+  const name: string = isTemporal ? describeRenderAntialiasing(report.antialiasing) : "FSR 1";
+  const source: string = `${report.renderWidth} × ${report.renderHeight}`;
+
+  return source === target ? `${name} ${source}` : `${name} ${source} → ${target}`;
 }
 
 /** The triangles drawn, after the graphics API's tag once a frame names the GPU it was drawn on. */
@@ -55,7 +81,8 @@ export function RenderFrameReadout({
     <RenderViewportOverlay data-testid={dataTestId} id={id} className={className} corner={corner}>
       <div>{`${(report.framesPerSecond ?? 0).toFixed(0)} fps · ${formatMilliseconds(report.frameTime ?? 0)}`}</div>
       <div>{toDrawnLine(report)}</div>
-      <div>{toSizeLine(report)}</div>
+      <div>{`${report.width} × ${report.height}`}</div>
+      {toScalingLine(report) ? <div>{toScalingLine(report)}</div> : null}
 
       {children}
 

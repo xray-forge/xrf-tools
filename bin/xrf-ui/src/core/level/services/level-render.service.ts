@@ -52,9 +52,10 @@ import { LevelViewportService } from "@/core/level/services/level-viewport.servi
 import { LevelWeatherService } from "@/core/level/services/level-weather.service";
 import { IRenderViewPoint } from "@/core/render/lib/frame/render-view-point";
 import { NativeRenderSurfaceService } from "@/core/render/lib/native/native-render-surface-service";
-import { toNativeRenderHeight, toNativeWorldToggles } from "@/core/render/lib/native/native-view-options";
+import { toNativeWorldToggles } from "@/core/render/lib/native/native-view-options";
 import { NativeViewport } from "@/core/render/lib/native/native-viewport";
 import { toXraySpace } from "@/core/render/lib/scene/render-space";
+import { toRenderOutput } from "@/core/render/lib/settings/render-resolution";
 import { SettingsService } from "@/core/settings/services/settings";
 import { Logger } from "@/lib/logging";
 
@@ -218,7 +219,10 @@ export class LevelRenderService extends NativeRenderSurfaceService {
       lod: this.viewService.lod,
       look: this.lookService.look,
       options: this.viewService.options,
-      renderHeight: toNativeRenderHeight(this.settingsService.renderResolution),
+      output: toRenderOutput(
+        this.viewService.features.output.resolution ?? this.settingsService.renderResolution,
+        this.viewService.features.output.scale ?? this.settingsService.renderOutputScale
+      ),
       shading: this.viewService.shading,
       sunShafts: this.weatherService.sunShafts,
       view: this.viewService.features,

@@ -1,5 +1,3 @@
-import { Nullable } from "@xrf/types";
-
 import {
   ERenderBloomMode,
   ERenderDebugView,
@@ -13,7 +11,7 @@ import {
 } from "@/core/ipc/types/xrf-renderer";
 import { WorldToggles } from "@/core/ipc/types/xrf-world";
 import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-feature-settings";
-import { ERenderResolution } from "@/core/render/lib/settings/render-resolution";
+import { NATIVE_RENDER_OUTPUT, TRenderOutput } from "@/core/render/lib/settings/render-resolution";
 import { TSettled } from "@/core/render/lib/settings/render-settled";
 
 /** What a view decides of how its scene is shaded, beside the features every viewport shares. */
@@ -75,19 +73,11 @@ export const NEUTRAL_NATIVE_LOOK: Omit<TNativeLook, "exposure"> = {
 };
 
 /**
- * @param resolution - How many pixels the settings ask a viewport be drawn with.
- * @returns How many rows a native viewport draws with at most; null for as many as it covers.
- */
-export function toNativeRenderHeight(resolution: ERenderResolution): Nullable<number> {
-  return resolution === ERenderResolution.WINDOW ? null : Number(resolution);
-}
-
-/**
  * @param shading - How the view shades its scene.
  * @param features - What the application sets every viewport's features to, as the view narrows them.
  * @param switches - What the view switches of its scene.
  * @param look - How the scene is exposed, lit and corrected.
- * @param renderHeight - How many rows the scene is drawn with at most; null for as many as the viewport covers.
+ * @param output - What the frame is resolved at before the viewport: a height, or a share of its sides.
  * @returns What a native viewport draws a level with; an asset viewer sets its own light and backdrop over it. What of
  *   the world plays goes to the world apart, {@link toNativeWorldToggles}.
  */
@@ -96,7 +86,7 @@ export function toNativeViewOptions(
   features: IRenderFeatureSettings,
   switches: INativeViewSwitches,
   look: TNativeLook,
-  renderHeight: Nullable<number> = null
+  output: TRenderOutput = NATIVE_RENDER_OUTPUT
 ): RenderViewOptions {
   const { grass, shadows, water } = features;
   const { corrections } = look;
@@ -141,7 +131,7 @@ export function toNativeViewOptions(
       isWireframe: shading.isWireframe,
       surfaceColor: shading.surfaceColor,
     },
-    output: { renderHeight, upscaling: features.upscaling },
+    output: { ...output, upscaling: features.upscaling },
     show: {
       isAlphaVisible: true,
       isClouded: switches.isClouded,
@@ -182,13 +172,13 @@ export function toNativeWorldToggles(switches: WorldToggles): WorldToggles {
  *
  * @param shading - What the viewer's toolbar switches of the asset's shading.
  * @param features - What the application sets every viewport's features to.
- * @param renderHeight - How many rows the asset is drawn with at most; null for as many as the viewport covers.
+ * @param output - What the asset's frame is resolved at before the viewport.
  * @returns What a native viewport draws the asset with, before the viewer's light and backdrop.
  */
 export function toNativeAssetViewOptions(
   shading: Pick<TNativeViewShading, "isBumped" | "isLit" | "isWireframe">,
   features: IRenderFeatureSettings,
-  renderHeight: Nullable<number> = null
+  output: TRenderOutput = NATIVE_RENDER_OUTPUT
 ): RenderViewOptions {
   return toNativeViewOptions(
     {
@@ -201,6 +191,6 @@ export function toNativeAssetViewOptions(
     { ...features, enhancedBloom: { ...features.enhancedBloom, mode: ERenderBloomMode.ENGINE } },
     NO_NATIVE_VIEW_SWITCHES,
     { ...NEUTRAL_NATIVE_LOOK, exposure: { ...features.exposure, isEnabled: false } },
-    renderHeight
+    output
   );
 }

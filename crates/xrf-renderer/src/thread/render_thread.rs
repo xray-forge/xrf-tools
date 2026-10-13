@@ -5,6 +5,7 @@ use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::time::{Duration, Instant};
 
 use glam::{Mat4, Vec2, Vec3, Vec4};
+use xrf_dlss::Dlss;
 use xrf_error::{XrfError, XrfResult};
 use xrf_renderer_core::{
   ExecutedGraph, ExecutedGroup, FrameGraph, GraphBindings, GraphReport, GraphRuntime, GraphTaggedTime,
@@ -493,22 +494,28 @@ impl RenderThread {
     }
 
     let dxc: Option<PathBuf> = self.bundle.locate_bundled(GpuContext::DXC_LIBRARY);
+    let dlss: Option<PathBuf> = self
+      .bundle
+      .locate_bundled(&format!("{}/{}", GpuContext::DLSS_DIRECTORY, Dlss::RUNTIME_LIBRARY))
+      .and_then(|library| library.parent().map(PathBuf::from));
 
-    match GpuContext::create_preferred(RenderBackend::get_asked(self.settings.backend), dxc.as_deref()).and_then(
-      |context| {
-        let building: Instant = Instant::now();
-        let built: XrfResult<GpuState> = GpuState::new(
-          context,
-          &self.shaders,
-          &self.workers,
-          (self.bundle.as_ref(), self.store.as_deref()),
-        );
+    match GpuContext::create_preferred(
+      RenderBackend::get_asked(self.settings.backend),
+      (dxc.as_deref(), dlss.as_deref()),
+    )
+    .and_then(|context| {
+      let building: Instant = Instant::now();
+      let built: XrfResult<GpuState> = GpuState::new(
+        context,
+        &self.shaders,
+        &self.workers,
+        (self.bundle.as_ref(), self.store.as_deref()),
+      );
 
-        log::info!("Renderer's passes built in {} ms", building.elapsed().as_millis());
+      log::info!("Renderer's passes built in {} ms", building.elapsed().as_millis());
 
-        built
-      },
-    ) {
+      built
+    }) {
       Ok(gpu) => {
         self.runtime = Some(GraphRuntime::new(&gpu.context.device, &gpu.context.queue));
         self.frame_span = Some(FrameSpanTimer::new(&gpu.context.device, &gpu.context.queue));
@@ -730,10 +737,11 @@ impl RenderThread {
     };
     // Delivers what earlier frames' reads asked for, without waiting on this frame's work.
     let _ = gpu.context.device.poll(wgpu::PollType::Poll);
-    let device: (RenderBackend, &str, bool) = (
+    let device: (RenderBackend, &str, bool, bool) = (
       gpu.context.backend,
       gpu.context.adapter_name.as_str(),
       can_trace(&gpu.context.device),
+      gpu.context.dlss.is_some(),
     );
 
     if self
@@ -1419,15 +1427,15 @@ impl RenderThread {
     } else {
       RenderScale::Native
     };
-    // The settings' resolution first, as a share of the viewport, then the render scale's share of that.
-    let resolution: f32 = options
-      .output
-      .render_height
-      .filter(|_| is_scened)
-      .map_or(1.0, |height| (height as f32 / rect.height.max(1) as f32).min(1.0));
+    // The settings' output resolution first, the size the frame is resolved at, then the render scale's share of it.
+    let resolved: (u32, u32) = if is_scened {
+      options.output.get_output_size((rect.width, rect.height))
+    } else {
+      (rect.width, rect.height)
+    };
     let drawn_rect: RenderRect = RenderRect {
-      width: render_scale.get_drawn(((rect.width as f32 * resolution).round() as u32).max(1)),
-      height: render_scale.get_drawn(((rect.height as f32 * resolution).round() as u32).max(1)),
+      width: render_scale.get_drawn(resolved.0),
+      height: render_scale.get_drawn(resolved.1),
       ..*rect
     };
     let RenderViewport {
@@ -1456,7 +1464,11 @@ impl RenderThread {
       return None;
     };
     // A temporal resolve's jitter moves every scene pass's samples, never the view its history is measured by.
-    let jitter: Vec2 = view_state.next_jitter(&options, rect.width as f32 / drawn_rect.width.max(1) as f32);
+    let jitter: Vec2 = view_state.next_jitter(
+      &options,
+      resolved.0 as f32 / drawn_rect.width.max(1) as f32,
+      gpu.context.dlss.is_some(),
+    );
     let drawn: CameraView = view.jittered(jitter, Vec2::new(drawn_rect.width as f32, drawn_rect.height as f32));
     let unjittered: Mat4 = view.get_view_projection();
     let motion: (Mat4, Mat4) = view_state.next_motion(unjittered);
@@ -1517,12 +1529,11 @@ impl RenderThread {
 
       view_state.prepare(
         scene,
-        device,
-        queue,
+        (device, queue, gpu.context.dlss.as_ref()),
         encoder,
         gpu.get_level_passes(shaders),
         &view,
-        ((drawn_rect.width, drawn_rect.height), *rect),
+        ((drawn_rect.width, drawn_rect.height), resolved, *rect),
         world.camera.field_of_view,
         &options,
         (lighting, weather),

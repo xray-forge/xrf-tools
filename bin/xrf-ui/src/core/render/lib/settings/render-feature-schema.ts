@@ -6,6 +6,7 @@ import {
   ERenderContactShadowMode,
   ERenderDebandingMode,
   ERenderDebandingQuality,
+  ERenderDlssPreset,
   ERenderFogMode,
   ERenderFoliageMode,
   ERenderGlassMode,
@@ -214,6 +215,7 @@ export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings>
   textureLod: toNumber(0, 4, true),
   tonemap: toChoice(ERenderTonemapMode),
   upscaling: {
+    dlssPreset: toChoice(ERenderDlssPreset),
     scale: toChoice(ERenderScale),
     sharpening: toNumber(0, 1),
   },

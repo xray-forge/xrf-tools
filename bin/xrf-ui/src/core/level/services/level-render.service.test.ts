@@ -4,6 +4,7 @@ import { Container } from "@wirestate/core";
 
 import { ViewportEvent } from "@/core/ipc/types/xrf-app";
 import {
+  ERenderAntialiasing,
   ERenderDebugView,
   ERenderLevelHit,
   ERenderOverlay,
@@ -68,6 +69,10 @@ const REPORT: RenderFrameReport = {
   framesPerSecond: 160,
   height: 600,
   hasRayQueries: true,
+  hasDlss: false,
+  outputWidth: 534,
+  outputHeight: 400,
+  antialiasing: ERenderAntialiasing.TAA,
   isGpuTimed: true,
   phases: EMPTY_RENDER_FRAME_PHASES,
   passes: [
@@ -344,7 +349,7 @@ describe("LevelRenderService", () => {
     expect(sent("set_view_options").at(-1)).toEqual({
       options: expect.objectContaining({
         mode: expect.objectContaining({ isWireframe: false }),
-        output: expect.objectContaining({ renderHeight: null }),
+        output: expect.objectContaining({ outputHeight: null, outputScale: 1 }),
       }),
       viewport: VIEWPORT,
     });
@@ -356,7 +361,21 @@ describe("LevelRenderService", () => {
     expect(sent("set_view_options").at(-1)).toEqual({
       options: expect.objectContaining({
         mode: expect.objectContaining({ isWireframe: true }),
-        output: expect.objectContaining({ renderHeight: 720 }),
+        output: expect.objectContaining({ outputHeight: 720 }),
+      }),
+      viewport: VIEWPORT,
+    });
+  });
+
+  it("resolves at the share of the viewport the settings' scale asks while the resolution is automatic", async () => {
+    const { container } = await mockAttached();
+
+    container.get(SettingsService).setRenderOutputScale(1.5);
+    await flush();
+
+    expect(sent("set_view_options").at(-1)).toEqual({
+      options: expect.objectContaining({
+        output: expect.objectContaining({ outputHeight: null, outputScale: 1.5 }),
       }),
       viewport: VIEWPORT,
     });
