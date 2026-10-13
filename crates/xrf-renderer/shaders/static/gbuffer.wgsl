@@ -24,7 +24,8 @@ const WIRE_COLOR: vec3<f32> = vec3<f32>(0.75);
 const OPEN_SKY: f32 = 0.08;
 
 struct GBufferVarying {
-  @builtin(position) clip: vec4<f32>,
+  // Invariant, so a cut-out's depth-only draw and its shading draw meet the same depth exactly.
+  @builtin(position) @invariant clip: vec4<f32>,
   @location(0) normal: vec3<f32>,
   @location(1) tangent: vec3<f32>,
   @location(2) binormal: vec3<f32>,
@@ -885,6 +886,18 @@ fn is_cut(in: GBufferVarying, base: vec4<f32>, at: Footprint) -> bool {
 
   return is_alpha_cut(base.a, vec2<f32>(textureDimensions(textures[surface.textures[SLOT_BASE]])), at.dx, at.dy,
     surface.alpha_reference);
+}
+
+// A cut-out surface's depth alone, cut as `fs_cut_out` cuts it, ahead of the G-buffer's draw: the cut-out draw then
+// shades only where its depth is equal, once a pixel however many cut-out layers overlap there.
+@fragment
+fn fs_depth_cut_out(in: GBufferVarying) {
+  let at: Footprint = steep_footprint(in, take_footprint(in));
+  let base: vec4<f32> = base_texel(in, at);
+
+  if (is_off_wire(in) || (camera.modes.x < 0.5 && camera.modes.z < 0.5 && is_cut(in, base, at))) {
+    discard;
+  }
 }
 
 @fragment
