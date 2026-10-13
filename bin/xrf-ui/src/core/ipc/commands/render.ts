@@ -275,11 +275,14 @@ export const renderCommands = {
     __TAURI_INVOKE<number | null>("plugin:render|show_level", { viewport, sessionId }),
   /**
    * Draw the open model in a viewport, `detail` down its collapse chain, its textures read by the renderer; no session
-   * draws none.
+   * draws none. Answers the scene drawn, which the viewport's load reports name, or none.
    */
   showModel: (viewport: RenderViewportId, sessionId: string | null, detail: number | null) =>
-    __TAURI_INVOKE<null>("plugin:render|show_model", { viewport, sessionId, detail }),
-  /** Draw a texture laid on a body in a viewport, its files read by the renderer; no request draws none. */
+    __TAURI_INVOKE<number | null>("plugin:render|show_model", { viewport, sessionId, detail }),
+  /**
+   * Draw a texture laid on a body in a viewport, its files read by the renderer; no request draws none. Answers the
+   * scene drawn, which the viewport's load reports name, or none.
+   */
   showTexture: (
     viewport: RenderViewportId,
     request: {
@@ -293,5 +296,5 @@ export const renderCommands = {
       /** Width over height of the texture, which the plane is stretched to. */
       aspect: number | null;
     } | null
-  ) => __TAURI_INVOKE<null>("plugin:render|show_texture", { viewport, request }),
+  ) => __TAURI_INVOKE<number | null>("plugin:render|show_texture", { viewport, request }),
 };

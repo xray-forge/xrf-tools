@@ -41,6 +41,12 @@ export class TextureRenderService extends NativeRenderSurfaceService {
   private container: Nullable<HTMLElement> = null;
   /** Whether the shown texture's files were described since it was shown. */
   private hasDescribed: boolean = false;
+  /** The scene the shown texture is drawn as, which its load reports name; null until the renderer answers. */
+  private scene: Nullable<number> = null;
+  /** How many textures were shown, so the answer for one shown before the last is dropped. */
+  private showing: number = 0;
+  /** The viewport's last load report, of whichever scene it named. */
+  private loaded: Nullable<RenderLoadReport> = null;
   /** The display's scale, which the backdrop's squares are sized by. */
   @RefObservable()
   private pixelRatio: number = window.devicePixelRatio;
@@ -120,10 +126,19 @@ export class TextureRenderService extends NativeRenderSurfaceService {
   }
 
   protected onLoad(report: RenderLoadReport): void {
-    const reference: Nullable<string> = this.selectionService.selected.value?.reference ?? null;
+    this.loaded = report;
+    this.describeWhenReady();
+  }
 
-    // Asked once everything it opens with is resident, so a texture still on its way is never reported unreadable.
-    if (report.isReady && reference && !this.hasDescribed && this.viewport) {
+  /**
+   * Asks what became of the shown texture once everything it opens with is resident, so a texture still on its way is
+   * never reported unreadable; a ready report of the texture shown before it asks nothing.
+   */
+  private describeWhenReady(): void {
+    const reference: Nullable<string> = this.selectionService.selected.value?.reference ?? null;
+    const report: Nullable<RenderLoadReport> = this.loaded;
+
+    if (report?.isReady && report.scene === this.scene && reference && !this.hasDescribed && this.viewport) {
       this.hasDescribed = true;
       void this.viewport.describeTextures().then((reports: Array<RenderTextureReport>) => {
         const base: Nullable<RenderTextureReport> = reports.find((it) => it.reference === reference) ?? null;
@@ -143,6 +158,8 @@ export class TextureRenderService extends NativeRenderSurfaceService {
   protected release(): void {
     this.container = null;
     this.hasDescribed = false;
+    this.scene = null;
+    this.loaded = null;
 
     runInAction(() => {
       this.baseFailure = null;
@@ -150,12 +167,20 @@ export class TextureRenderService extends NativeRenderSurfaceService {
   }
 
   private showTexture(request: TNativeTextureRequest): void {
+    const showing: number = ++this.showing;
+
     this.hasDescribed = false;
+    this.scene = null;
 
     runInAction(() => {
       this.baseFailure = null;
     });
 
-    this.viewport?.showTexture(request);
+    void this.viewport?.showTexture(request).then((scene: Nullable<number>) => {
+      if (showing === this.showing) {
+        this.scene = scene;
+        this.describeWhenReady();
+      }
+    });
   }
 }

@@ -11,7 +11,7 @@ use crate::plugins::visuals::render_source::VisualRenderSource;
 use crate::plugins::visuals::state::{SelectedVisual, VisualState};
 
 /// Draw the open model in a viewport, `detail` down its collapse chain, its textures read by the renderer; no session
-/// draws none.
+/// draws none. Answers the scene drawn, which the viewport's load reports name, or none.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "show_model"))]
 #[tauri::command(rename = "show_model")]
 pub fn render_show_model(
@@ -21,7 +21,7 @@ pub fn render_show_model(
   viewport: RenderViewportId,
   session_id: Option<SessionId>,
   detail: f32,
-) -> TauriResult {
+) -> TauriResult<Option<u32>> {
   let source: Option<Arc<dyn RenderLevelSource>> = match session_id {
     Some(session_id) => {
       let visual: Arc<SessionSnapshot<SelectedVisual>> = visuals.selected.require(session_id)?;
@@ -45,7 +45,5 @@ pub fn render_show_model(
 
   let ticket: u64 = state.ask_show(viewport);
 
-  state.show(viewport, ticket, source);
-
-  Ok(())
+  Ok(state.show(viewport, ticket, source).map(|scene| scene.0))
 }

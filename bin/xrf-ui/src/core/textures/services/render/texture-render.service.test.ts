@@ -39,8 +39,11 @@ function emit(event: ViewportEvent): void {
   (getMockChannels()[0] as MockChannel<ViewportEvent>).onmessage(event);
 }
 
+/** The scene the mocked renderer draws every texture shown as. */
+const SCENE: number = 6;
+
 async function mockAttached(): Promise<{ container: Container; service: TextureRenderService }> {
-  setMockInvokeResponses({ ["plugin:render|attach_viewport"]: 5 });
+  setMockInvokeResponses({ ["plugin:render|attach_viewport"]: 5, ["plugin:render|show_texture"]: SCENE });
 
   const container: Container = mockContainer([TextureSelectionService, TextureViewService, TextureRenderService]);
 
@@ -125,11 +128,18 @@ describe("TextureRenderService", () => {
         { reference: MOCK_TEXTURE, state: { kind: ERenderTextureState.FAILED, reason: "Unknown pixel format" } },
       ],
     });
+    // A ready report of the texture shown before, still in the channel, asks nothing.
+    emit({ kind: ERenderViewportEvent.LOAD, report: mockRenderLoadReport({ isReady: true, scene: SCENE - 1 }) });
+    await flush();
+
+    expect(sent("describe_textures")).toHaveLength(0);
+
     emit({
       kind: ERenderViewportEvent.LOAD,
       report: mockRenderLoadReport({
         bytes: 0,
         isReady: true,
+        scene: SCENE,
         sectors: 0,
         sectorsTotal: 0,
         textures: 1,
