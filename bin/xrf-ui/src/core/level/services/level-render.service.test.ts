@@ -6,6 +6,7 @@ import {
   ERenderDlssAvailability,
   ERenderLevelHit,
   ERenderViewportEvent,
+  RENDER_DEFAULT_PERIODIC_BUDGET,
   RenderFrameReport,
   RenderLevelHit,
 } from "@/core/ipc/types/xrf-renderer";
@@ -24,7 +25,6 @@ import { toLevelWeatherMemoryKey, writeLevelWeatherMemory } from "@/core/level/l
 import { ELevelWeatherSource } from "@/core/level/lib/weather/level-weather-source";
 import { LevelViewportService } from "@/core/level/services/level-viewport.service";
 import { EMPTY_RENDER_FRAME_PHASES } from "@/core/render/lib/native/native-frame-report";
-import { DEFAULT_PERIODIC_BUDGET } from "@/core/render/lib/settings/render-contract-limits";
 import { DEFAULT_RENDER_GRAPH_SETTINGS } from "@/core/render/lib/settings/render-graph-settings";
 import { clearLocalStorage } from "@/core/storage";
 import { mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
@@ -133,7 +133,7 @@ describe("LevelRenderService", () => {
           gpu: null,
           graph: DEFAULT_RENDER_GRAPH_SETTINGS,
           isGpuTimed: false,
-          periodicBudget: DEFAULT_PERIODIC_BUDGET,
+          periodicBudget: RENDER_DEFAULT_PERIODIC_BUDGET,
         },
       },
     ]);

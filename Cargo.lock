@@ -7943,6 +7943,7 @@ dependencies = [
  "xrf-env-flags",
  "xrf-environment",
  "xrf-error",
+ "xrf-ipc",
  "xrf-material",
  "xrf-math",
  "xrf-particles",

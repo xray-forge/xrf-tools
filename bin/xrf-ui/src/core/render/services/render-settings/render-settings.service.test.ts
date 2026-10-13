@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 
-import { ERenderAntialiasing, ERenderScale } from "@/core/ipc/types/xrf-renderer";
-import { DEFAULT_PERIODIC_BUDGET } from "@/core/render/lib/settings/render-contract-limits";
+import { ERenderAntialiasing, ERenderScale, RENDER_DEFAULT_PERIODIC_BUDGET } from "@/core/ipc/types/xrf-renderer";
 import { DEFAULT_RENDER_FEATURE_CHOICE } from "@/core/render/lib/settings/render-feature-choice";
 import { ERenderPreset, RENDER_PRESETS } from "@/core/render/lib/settings/render-preset";
 import { RenderSettingsService } from "@/core/render/services/render-settings/render-settings.service";
@@ -93,13 +92,13 @@ describe("RenderSettingsService", () => {
   it("gives periodic work the renderer's budget until set, for the session only", () => {
     const { service } = mockInjectedService(RenderSettingsService);
 
-    expect(service.renderSettings.periodicBudget).toBe(DEFAULT_PERIODIC_BUDGET);
+    expect(service.renderSettings.periodicBudget).toBe(RENDER_DEFAULT_PERIODIC_BUDGET);
 
     service.setPeriodicBudget(0.8);
 
     expect(service.renderSettings.periodicBudget).toBe(0.8);
     expect(mockInjectedService(RenderSettingsService).service.renderSettings.periodicBudget).toBe(
-      DEFAULT_PERIODIC_BUDGET
+      RENDER_DEFAULT_PERIODIC_BUDGET
     );
   });
 
