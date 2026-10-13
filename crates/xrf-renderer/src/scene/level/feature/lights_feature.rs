@@ -1,6 +1,6 @@
 use xrf_renderer_core::{
-  FrameGraph, GraphBindings, GraphBuffer, GraphBufferAccess, GraphColorAttachment, GraphRuntime, StorageArray,
-  StorageArrayMut, UniformBinding,
+  FrameGraph, GraphBindings, GraphBuffer, GraphBufferAccess, GraphColorAttachment, GraphRuntime, GraphTexture,
+  GraphTextureDescriptor, StorageArray, StorageArrayMut, UniformBinding,
 };
 
 use crate::camera::camera_view::CameraView;
@@ -14,12 +14,16 @@ use crate::pass::contact_shadow_uniform::ContactShadowUniform;
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::light_binning_parameters::LightBinningParameters;
 use crate::pass::light_record::LightRecord;
+use crate::pass::light_shadowing_parameters::LightShadowingParameters;
+use crate::pass::light_visibility_parameters::LightVisibilityParameters;
 use crate::pass::light_volume_record::LightVolumeRecord;
 use crate::pass::light_volumes_uniform::LightVolumesUniform;
 use crate::pass::lights_parameters::LightsParameters;
+use crate::pass::lights_pass::LightsPass;
 use crate::pass::lights_uniform::LightsUniform;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::feature::light_buffers::LightBuffers;
+use crate::scene::level::light_shadow_atlas::LightShadowAtlas;
 use crate::scene::level::lighting_handles::LightingHandles;
 
 /// Lights standing in view at most in one frame: the nearest are kept.
@@ -182,13 +186,14 @@ impl LightsFeature {
     buffers
   }
 
-  /// Adds every light in view drawn into the light target over the sun, through the scene's shadow `atlas`, each
-  /// marching its contact shadows by `contact` where they are marched (`is_contact`); nothing while none stands in view.
+  /// Adds every light in view drawn into the light target over the sun: first how much of each shadowed light every
+  /// pixel sees, through the scene's shadow `atlas` and by the contact shadows marched by `contact` where they are
+  /// (`is_contact`), unless no light in view is shadowed; then the lights. Nothing while none stands in view.
   pub fn add_draw_passes<'a>(
     &self,
     (graph, bindings): (&mut FrameGraph<'a>, &mut GraphBindings<'a>),
     passes: LevelPasses<'a>,
-    (view, textures, atlas): (&'a ViewBinding, &'a wgpu::BindGroup, &'a wgpu::TextureView),
+    (view, textures, atlas): (&'a ViewBinding, &'a wgpu::BindGroup, LightShadowAtlas<'a>),
     (targets, lit, buffers): (ViewTargetHandles, LightingHandles<'a>, LightBuffers),
     (contact, is_contact): (UniformBinding<ContactShadowUniform>, bool),
   ) {
@@ -206,19 +211,58 @@ impl LightsFeature {
       counts: StorageArray::new(buffers.counts),
       items: StorageArray::new(buffers.items),
       lights: buffers.uniform,
-      shadow_atlas: bindings.import_view(graph, "light shadow atlas", atlas),
       contact,
+    };
+    let is_shadowed: bool = is_contact || self.is_any_shadowed();
+    let visibility: GraphTexture = if is_shadowed {
+      let (width, height) = targets.size;
+      let visibility: GraphTexture = graph.create_texture(
+        GraphTextureDescriptor::new_2d("light visibility", width, height, LightsPass::VISIBILITY_FORMAT)
+          .with_array_layer_count(LightsPass::VISIBILITY_LAYERS),
+      );
+      let shadowing: LightShadowingParameters = LightShadowingParameters {
+        shadow_atlas: bindings.import_view(graph, "light shadow atlas", atlas.view),
+        shadow_sampler: atlas.sampler,
+        light_visibility_out: visibility,
+      };
+
+      graph
+        .add_compute_pass("light visibility")
+        .parameters(&parameters)
+        .parameters(&shadowing)
+        .record(move |context| {
+          passes
+            .lights
+            .record_visibility(context, view, (&parameters, &shadowing), (targets.size, is_contact))
+        });
+
+      visibility
+    } else {
+      bindings.import_view(graph, "light visibility none", passes.lights.get_unshadowed())
+    };
+    let visibility: LightVisibilityParameters = LightVisibilityParameters {
+      light_visibility: visibility,
     };
 
     graph
       .add_raster_pass("lights")
       .parameters(&parameters)
+      .parameters(&visibility)
       .color(GraphColorAttachment::new(targets.light, wgpu::LoadOp::Load))
       .record(move |context| {
         passes
           .lights
-          .record_draw(context, view, &parameters, (textures, is_contact))
+          .record_draw(context, view, (&parameters, &visibility), (textures, is_contact))
       });
+  }
+
+  /// Whether a light in view this frame casts a shadow.
+  fn is_any_shadowed(&self) -> bool {
+    self
+      .records
+      .iter()
+      .take(self.count as usize)
+      .any(|record| record.shadow.z > 0.0)
   }
 
   /// Adds the binning's overflow read back, for a report a frame or more later: an effect the graph cannot see.

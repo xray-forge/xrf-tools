@@ -74,6 +74,8 @@ pub(crate) mod layout_entries;
 pub(crate) mod level_passes;
 pub(crate) mod light_binning_parameters;
 pub(crate) mod light_record;
+pub(crate) mod light_shadowing_parameters;
+pub(crate) mod light_visibility_parameters;
 pub(crate) mod light_volume_parameters;
 pub(crate) mod light_volume_pass;
 pub(crate) mod light_volume_record;

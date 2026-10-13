@@ -31,6 +31,7 @@ use crate::pass::static_cull_params::StaticCullParams;
 use crate::pass::static_draw_parameters::StaticDrawParameters;
 use crate::pass::static_draws::StaticDraws;
 use crate::pass::view_binding::ViewBinding;
+use crate::scene::level::light_shadow_atlas::LightShadowAtlas;
 use crate::scene::level::light_shadow_entry::LightShadowEntry;
 use crate::scene::level::light_shadow_face::LightShadowFace;
 use crate::scene::level::light_shadow_set::LightShadowSet;
@@ -109,6 +110,8 @@ pub struct LevelLightShadows {
   /// The atlas, while a view casts the lights' shadows, and what is bound in its place while none does.
   atlas: Option<wgpu::TextureView>,
   none: wgpu::TextureView,
+  /// Compares a depth with the atlas between four texels, lit where the stored depth, reversed, is no nearer.
+  sampler: wgpu::Sampler,
   /// Whether a view cast the lights' shadows this frame.
   is_cast: bool,
   /// What stands still of the swaying lights' faces, tile for tile as the atlas, while any light asked for sways.
@@ -147,6 +150,13 @@ impl LevelLightShadows {
     Self {
       atlas: None,
       none: create_atlas(device, "light shadow atlas none", 1),
+      sampler: device.create_sampler(&wgpu::SamplerDescriptor {
+        label: Some("light shadow atlas"),
+        mag_filter: wgpu::FilterMode::Linear,
+        min_filter: wgpu::FilterMode::Linear,
+        compare: Some(wgpu::CompareFunction::GreaterEqual),
+        ..Default::default()
+      }),
       is_cast: false,
       statics: None,
       is_swaying: false,
@@ -182,9 +192,12 @@ impl LevelLightShadows {
     }
   }
 
-  /// The atlas the lights sample, or a texel of nothing while none is held.
-  pub fn get_atlas(&self) -> &wgpu::TextureView {
-    self.atlas.as_ref().unwrap_or(&self.none)
+  /// The atlas the lights sample, or a texel of nothing while none is held, with the sampler comparing it.
+  pub fn get_atlas(&self) -> LightShadowAtlas<'_> {
+    LightShadowAtlas {
+      view: self.atlas.as_ref().unwrap_or(&self.none),
+      sampler: &self.sampler,
+    }
   }
 
   /// Takes a view casting the lights' shadows this frame, which holds the atlas.

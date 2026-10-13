@@ -17,6 +17,7 @@ use crate::pass::light_volume_pass::LightVolumePass;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::feature::lights_feature::LightsFeature;
 use crate::scene::level::feature::view_feature::ViewFeature;
+use crate::scene::level::light_shadow_atlas::LightShadowAtlas;
 use crate::scene::level::lighting_handles::LightingHandles;
 
 /// The volumetric lighting: the enhanced froxels, a grid along the view filled over its history and integrated, in
@@ -70,7 +71,7 @@ impl VolumetricFeature {
     (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
     passes: LevelPasses<'a>,
     (view, textures): (&'a ViewBinding, &'a wgpu::BindGroup),
-    (handles, lights, atlas): (ViewTargetHandles, &'a LightsFeature, &'a wgpu::TextureView),
+    (handles, lights, atlas): (ViewTargetHandles, &'a LightsFeature, LightShadowAtlas<'a>),
   ) -> Option<GraphTexture> {
     if self.is_froxeled() || lights.volumes.is_empty() {
       return None;
@@ -92,8 +93,8 @@ impl VolumetricFeature {
     let parameters: LightVolumeParameters = LightVolumeParameters {
       light_volumes: StorageArray::new(bindings.import_buffer(&mut *graph, "light volumes", &lights.volume_buffer)),
       records: StorageArray::new(bindings.import_buffer(&mut *graph, "light records", &lights.record_buffer)),
-      shadow_atlas: bindings.import_view(&mut *graph, "light shadow atlas", atlas),
-      shadow_sampler: passes.light_volumes.get_shadow_sampler(),
+      shadow_atlas: bindings.import_view(&mut *graph, "light shadow atlas", atlas.view),
+      shadow_sampler: atlas.sampler,
       volumes: runtime.push_uniform(&lights.volumes_uniform),
       depth_target: handles.depth,
     };
@@ -128,7 +129,7 @@ impl VolumetricFeature {
     (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
     passes: LevelPasses<'a>,
     view: &'a ViewBinding,
-    (lit, atlas, lights): (LightingHandles<'a>, &'a wgpu::TextureView, &'a LightsFeature),
+    (lit, atlas, lights): (LightingHandles<'a>, LightShadowAtlas<'a>, &'a LightsFeature),
   ) -> Option<(UniformBinding<FroxelUniform>, GraphTexture)> {
     let (Some(uniform), Some(volume)) = (&self.uniform, &self.froxels) else {
       return None;
@@ -145,7 +146,8 @@ impl VolumetricFeature {
       counts: StorageArray::new(bindings.import_buffer(graph, "light cluster counts", &lights.counts)),
       items: StorageArray::new(bindings.import_buffer(graph, "light cluster items", &lights.items)),
       lights: runtime.push_uniform(&lights.uniform),
-      shadow_atlas: bindings.import_view(graph, "light shadow atlas", atlas),
+      shadow_atlas: bindings.import_view(graph, "light shadow atlas", atlas.view),
+      shadow_sampler: atlas.sampler,
       froxels,
       froxel_history: history,
       froxel_sampler: passes.froxels.get_sampler(),

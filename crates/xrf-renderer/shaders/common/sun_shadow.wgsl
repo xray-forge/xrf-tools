@@ -62,6 +62,20 @@ fn sun_shadow_tap(maps: texture_depth_2d_array, shadows: Shadows, position: vec3
   return 1.0;
 }
 
+// Whether a cascade's map holds a point, so its shadow there is the map's rather than nothing's.
+fn is_sun_mapped(shadows: Shadows, position: vec3<f32>) -> bool {
+  for (var view: u32 = 0u; view < min(shadows.count, 4u); view++) {
+    let clip: vec4<f32> = shadows.matrices[view] * vec4<f32>(position, 1.0);
+    let uv: vec2<f32> = vec2<f32>(clip.x * 0.5 + 0.5, clip.y * -0.5 + 0.5);
+
+    if (all(uv > vec2<f32>(EDGE)) && all(uv < vec2<f32>(1.0 - EDGE)) && clip.z > 0.0 && clip.z < 1.0) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 // How much of the sun reaches a point: the first cascade whose map holds it, blended into the next within `blend` of
 // its edge so the switch to a coarser map is never a line; past every cascade the sun reaches it whole. The point is
 // moved along its normal first so a lit surface never shadows itself, up to twice as far where the light grazes it.

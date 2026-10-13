@@ -71,7 +71,7 @@ fn froxel_inject(@builtin(global_invocation_id) id: vec3<u32>) {
       var lit: f32 = falloff;
 
       if (record.shadow.z > 0.0) {
-        lit *= light_shadow(shadow_atlas, record, to_point, vec3<f32>(0.0), record.axis.w > -1.0, false);
+        lit *= light_shadow(shadow_atlas, shadow_sampler, record, to_point, vec3<f32>(0.0), record.axis.w > -1.0, false);
       }
 
       scattered += record.color.rgb * lit * froxel_phase(g, dot(normalize(to_point), to_eye)) * lamp_density;

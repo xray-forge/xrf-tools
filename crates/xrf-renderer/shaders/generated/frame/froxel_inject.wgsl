@@ -10,7 +10,8 @@
 @group(1) @binding(5) var<storage, read> items: array<u32>;
 @group(1) @binding(6) var<uniform> lights: Lights;
 @group(1) @binding(7) var shadow_atlas: texture_depth_2d;
-@group(1) @binding(8) var<uniform> froxels: Froxels;
-@group(1) @binding(9) var froxel_history: texture_3d<f32>;
-@group(1) @binding(10) var froxel_sampler: sampler;
-@group(1) @binding(11) var froxel_current: texture_storage_3d<rgba16float, write>;
+@group(1) @binding(8) var shadow_sampler: sampler_comparison;
+@group(1) @binding(9) var<uniform> froxels: Froxels;
+@group(1) @binding(10) var froxel_history: texture_3d<f32>;
+@group(1) @binding(11) var froxel_sampler: sampler;
+@group(1) @binding(12) var froxel_current: texture_storage_3d<rgba16float, write>;

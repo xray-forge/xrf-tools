@@ -36,6 +36,8 @@ use crate::pass::grass_colour_parameters::GrassColourParameters;
 use crate::pass::grass_model_record::GrassModelRecord;
 use crate::pass::light_binning_parameters::LightBinningParameters;
 use crate::pass::light_record::LightRecord;
+use crate::pass::light_shadowing_parameters::LightShadowingParameters;
+use crate::pass::light_visibility_parameters::LightVisibilityParameters;
 use crate::pass::light_volume_parameters::LightVolumeParameters;
 use crate::pass::light_volume_record::LightVolumeRecord;
 use crate::pass::light_volumes_uniform::LightVolumesUniform;
@@ -128,6 +130,8 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
   let mut sun: ShaderBindings = ShaderBindings::new();
   let mut light_binning: ShaderBindings = ShaderBindings::new();
   let mut lights: ShaderBindings = ShaderBindings::new();
+  let mut light_shadowing: ShaderBindings = ShaderBindings::new();
+  let mut light_visibility: ShaderBindings = ShaderBindings::new();
   let mut ambient_occlusion: ShaderBindings = ShaderBindings::new();
   let mut vbao: ShaderBindings = ShaderBindings::new();
   let mut reflections: ShaderBindings = ShaderBindings::new();
@@ -225,6 +229,8 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
   sun.add::<SunParameters<'_>>()?;
   light_binning.add::<LightBinningParameters>()?;
   lights.add::<LightsParameters<'_>>()?;
+  light_shadowing.add::<LightShadowingParameters<'_>>()?;
+  light_visibility.add::<LightVisibilityParameters>()?;
   ambient_occlusion.add::<AmbientOcclusionParameters>()?;
   vbao.add::<VbaoParameters>()?;
   reflections.add::<ReflectionParameters<'_>>()?;
@@ -321,6 +327,14 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
     (
       "generated/frame/lights",
       format!("{STRUCTS_IMPORT}{}", lights.to_wgsl()),
+    ),
+    (
+      "generated/frame/light_shadowing",
+      format!("{STRUCTS_IMPORT}{}", light_shadowing.to_wgsl()),
+    ),
+    (
+      "generated/frame/light_visibility",
+      format!("{STRUCTS_IMPORT}{}", light_visibility.to_wgsl()),
     ),
     (
       "generated/frame/ambient_occlusion",

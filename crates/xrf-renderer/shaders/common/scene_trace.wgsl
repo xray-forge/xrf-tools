@@ -3,6 +3,7 @@ enable wgpu_binding_array;
 #import "common/camera"
 #import "common/hmodel"
 #import "common/local_lights"
+#import "common/sun_shadow"
 #import "grass/records"
 #import "static/records"
 #import "static/vertex"
@@ -12,7 +13,10 @@ enable wgpu_binding_array;
 // at group 3): each top-level instance names an entry of the instance table, its first record and its place; each
 // geometry a record naming its layout's arena, where its triangles' indices and vertices start, and its surface; and
 // the texture cache's bindless textures at group 4, which a hit is shaded from and a cut-out geometry's holes are
-// tested in; and the view's local lights with the shadow atlas, which light a hit as the lights pass lights a pixel. A device without ray queries composes `common/scene_trace_none` in its place, whose trace meets nothing.
+// tested in; and the view's local lights with the shadow atlas, which light a hit as the lights pass lights a pixel. A
+// hit is lit from what the frame already holds where it can be: the sun's cascades shadow a hit they cover, as they
+// shadow the frame's own surfaces, and only a hit past them traces its ray to the sun. A device without ray queries
+// composes `common/scene_trace_none` in its place, whose trace meets nothing.
 
 // What a traced ray met: its distance along the ray, below none for nothing; its record, triangle and barycentrics;
 // the place its instance stands at; the point it met, in renderer space; and what turns its geometry's normals into
@@ -262,9 +266,9 @@ fn shade_scene_hit(
   let through: vec3<f32> = select(vec3<f32>(0.0), saturate(dot(-toward, -(to_sun + facing))) * state.flora.y *
     mix(vec3<f32>(1.0), state.sun.rgb, state.flora.z), is_crown);
 
-  if ((lit.x > 0.0 || any(through > vec3<f32>(0.0))) &&
-    !trace_scene_blocked(lifted, to_sun, SCENE_SUN_REACH, SceneCone(width, 0.0), own)) {
-    sun = vec4<f32>(state.sun.rgb * lit.x + through, state.sun.w * lit.y);
+  if (lit.x > 0.0 || any(through > vec3<f32>(0.0))) {
+    sun = vec4<f32>(state.sun.rgb * lit.x + through, state.sun.w * lit.y) *
+      scene_sun_lit(met.position, facing, to_sun, SceneCone(width, 0.0), own);
   }
 
   let lamps: vec4<f32> = scene_lamps(lifted, facing, toward, met.slice, lut, lut_sampler);
@@ -275,9 +279,21 @@ fn shade_scene_hit(
     sun + lamps, facing, toward, met.slice, occlusion, vec3<f32>(visible));
 }
 
-// Metres the occlusion's rays reach from a traced hit, and how many it casts.
+// How much of the sun reaches a traced point: the cascades' share where one covers it, sampled along `normal` as the
+// frame's surfaces are; past them, whether a ray towards the sun meets nothing solid, the cut-out geometry at `passed`
+// aside.
+fn scene_sun_lit(position: vec3<f32>, normal: vec3<f32>, to_sun: vec3<f32>, cone: SceneCone, passed: u32) -> f32 {
+  if (is_sun_mapped(trace_sun_shadows, position)) {
+    return sun_shadow(trace_sun_maps, trace_sun_shadows, position, normal, dot(normal, to_sun));
+  }
+
+  return f32(!trace_scene_blocked(position + normal * SCENE_SUN_BIAS, to_sun, SCENE_SUN_REACH, cone, passed));
+}
+
+// Metres the occlusion's rays reach from a traced hit, and how many it casts: opposite each other about a turn its
+// place picks, the reflections' filtering evening out what two rays leave coarse.
 const SCENE_OCCLUSION_REACH: f32 = 1.5;
-const SCENE_OCCLUSION_RAYS: u32 = 4u;
+const SCENE_OCCLUSION_RAYS: u32 = 2u;
 
 // How much of the light about it reaches a traced hit, which its hemisphere and ambient are lit by as the frame's
 // occlusion lets them: the share of a few short rays from it, half way between its normal and the ground, turned by its
@@ -317,7 +333,7 @@ fn shade_scene_grass(
   let up: vec3<f32> = vec3<f32>(0.0, 1.0, 0.0);
   let across: vec3<f32> = -vec3<f32>(toward.x, 0.0, toward.z) / max(length(toward.xz), 1e-4);
   let facing: vec3<f32> = normalize(across + up);
-  let point: vec3<f32> = origin + toward * grass.entry + up * SCENE_SUN_BIAS;
+  let point: vec3<f32> = origin + toward * grass.entry;
   let to_sun: vec3<f32> = normalize((transpose(camera.view) * vec4<f32>(state.to_sun.xyz, 0.0)).xyz);
   let half_way: vec3<f32> = normalize(to_sun - toward);
   let lit: vec4<f32> = textureSampleLevel(lut, lut_sampler,
@@ -326,8 +342,9 @@ fn shade_scene_grass(
     mix(vec3<f32>(1.0), state.sun.rgb, state.flora.z), state.flora.x > 0.5);
   var sun: vec4<f32> = vec4<f32>(0.0);
 
-  if (!trace_scene_blocked(point, to_sun, SCENE_SUN_REACH, SceneCone(0.0, 0.0), SCENE_NO_PLACE)) {
-    sun = vec4<f32>(state.sun.rgb * lit.x + through, state.sun.w * lit.y);
+  if (lit.x > 0.0 || any(through > vec3<f32>(0.0))) {
+    sun = vec4<f32>(state.sun.rgb * lit.x + through, state.sun.w * lit.y) *
+      scene_sun_lit(point, up, to_sun, SceneCone(0.0, 0.0), SCENE_NO_PLACE);
   }
 
   let occlusion: f32 = mix(1.0, grass.hemi, camera.switches.z);
@@ -388,7 +405,7 @@ fn scene_lamps(
     }
 
     if (is_shadowed) {
-      light *= light_shadow(trace_shadow_atlas, record, to_point, view_normal, is_spot, is_soft);
+      light *= light_shadow(trace_shadow_atlas, trace_shadow_sampler, record, to_point, view_normal, is_spot, is_soft);
     }
 
     total += record.color * light;

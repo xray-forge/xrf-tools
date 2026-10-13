@@ -69,6 +69,7 @@ use crate::scene::level::level_frame::LevelFrame;
 use crate::scene::level::level_overlays::LevelOverlays;
 use crate::scene::level::level_scene::LevelScene;
 use crate::scene::level::level_surface::{LevelSurface, PuddleKeepInputs};
+use crate::scene::level::light_shadow_atlas::LightShadowAtlas;
 use crate::scene::level::lighting_handles::LightingHandles;
 use crate::scene::level::lights_frame::LightsFrame;
 use crate::scene::level::rain_cover::RainCover;
@@ -788,7 +789,7 @@ impl SceneView {
     let is_lit: bool = frame.is_lit;
     // The shadowed lights' shafts, drawn into a target of their own for the sun shafts' composite to add.
     let is_froxeled: bool = is_lit && self.features.volumetric.is_froxeled();
-    let light_atlas: &'a wgpu::TextureView = scene.lights.get_shadow_atlas();
+    let light_atlas: LightShadowAtlas<'a> = scene.lights.get_shadow_atlas();
     let has_sky: bool = self.features.sky.get_views().is_some();
     let is_composited: bool = is_drawn && has_sky;
     let has_particles: bool = is_drawn && self.features.particles.is_drawing();
@@ -1033,6 +1034,7 @@ impl SceneView {
         (&mut *graph, &mut *bindings, runtime),
         passes,
         (&statics, grass_level, texture_group),
+        &lit,
       );
 
       if let Some(sky) = sky {
@@ -1268,6 +1270,7 @@ impl SceneView {
     (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
     passes: LevelPasses<'a>,
     (statics, grass_level, texture_group): (&StaticSceneHandles, Option<&'a GrassLevel>, &'a wgpu::BindGroup),
+    lit: &LightingHandles<'a>,
   ) -> Option<(TraceParameters<'a>, &'a wgpu::BindGroup)> {
     // Each grass model's colour, which a traced hit on grassed ground blends towards, averaged while the scene traces.
     let grass_colours: Option<GraphBuffer> = scene
@@ -1324,8 +1327,11 @@ impl SceneView {
             trace_shadow_atlas: bindings.import_view(
               &mut *graph,
               "light shadow atlas",
-              scene.lights.get_shadow_atlas(),
+              scene.lights.get_shadow_atlas().view,
             ),
+            trace_shadow_sampler: scene.lights.get_shadow_atlas().sampler,
+            trace_sun_maps: lit.shadow_maps,
+            trace_sun_shadows: lit.shadows,
             trace_grass_grid: StorageArray::new(bindings.import_buffer(
               &mut *graph,
               "grass grid",
