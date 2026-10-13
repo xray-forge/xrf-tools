@@ -51,14 +51,14 @@ export function LevelWindAction({
   const viewService: LevelViewService = useInjection(LevelViewService);
   const { settings } = useLevelRenderFeatures();
   const { isOn, toggle } = useLevelViewToggle("isWindy");
-  const { state, set } = useLevelFeature("grass");
+  const { state, setNested } = useLevelFeature("grass");
 
   const manual: ILevelManualWeather = weatherService.shown;
   const foliage: TRenderFoliageSettings = state.value.foliage;
 
   const setFoliage = useCallback(
-    (part: Partial<TRenderFoliageSettings>): void => set({ foliage: { ...foliage, ...part } }),
-    [foliage, set]
+    (part: Partial<TRenderFoliageSettings>): void => setNested("foliage", part),
+    [setNested]
   );
 
   // The light through leaves is the Grass popover's, which a reset here leaves alone.

@@ -42,17 +42,15 @@ export function LevelShadowAction({
   className,
 }: BaseComponentProps): ReactElement {
   const { isOn, toggle } = useLevelViewToggle("isShadowed");
-  const { state, set, reset } = useLevelFeature("shadows");
+  const { state, set, setNested, reset } = useLevelFeature("shadows");
   const shadows: TRenderShadowSettings = state.value;
   const contact: TRenderShadowSettings["contact"] = shadows.contact;
   const widest: number = shadows.cascades.at(-1) ?? 0;
   const isContactShadowed: boolean = contact.mode === ERenderContactShadowMode.ENHANCED;
 
   const onSetContact = useCallback(
-    (part: Partial<TRenderShadowSettings["contact"]>): void => {
-      set({ contact: { ...contact, ...part } });
-    },
-    [contact, set]
+    (part: Partial<TRenderShadowSettings["contact"]>): void => setNested("contact", part),
+    [setNested]
   );
 
   return (
