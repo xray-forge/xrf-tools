@@ -1580,7 +1580,7 @@ impl RenderThread {
         continue;
       };
 
-      level.end_frame(&frame);
+      level.end_frame();
       level.request_stats();
 
       if let (Some(slot), Some((pick, unprojection))) = (frame.pick_slot, pick) {

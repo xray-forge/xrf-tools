@@ -215,8 +215,8 @@ impl ViewFeature for VolumetricFeature {
   }
 
   /// The froxels' grids this frame wrote become the ones the next reads, while they draw.
-  fn end_frame(&mut self, end: &mut ViewFrameEnd<'_>) {
-    if let (true, Some(_), Some(froxels)) = (end.is_lit, self.uniform, &mut self.froxels) {
+  fn end_frame(&mut self, _end: &mut ViewFrameEnd<'_>) {
+    if let (Some(_), Some(froxels)) = (self.uniform, &mut self.froxels) {
       froxels.histories.swap();
     }
   }

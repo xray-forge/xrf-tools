@@ -168,8 +168,8 @@ impl ViewFeature for WaterFeature {
   }
 
   /// The reflection this frame wrote becomes the history, or the history is forgotten where no water drew.
-  fn end_frame(&mut self, end: &mut ViewFrameEnd<'_>) {
-    let Some(reflection) = self.reflection.as_mut().filter(|_| end.is_lit) else {
+  fn end_frame(&mut self, _end: &mut ViewFrameEnd<'_>) {
+    let Some(reflection) = self.reflection.as_mut() else {
       return;
     };
 
