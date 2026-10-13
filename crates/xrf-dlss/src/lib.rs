@@ -1,4 +1,4 @@
-//! NVIDIA DLSS super resolution for the renderer's views, through NGX on wgpu's Vulkan backend.
+//! NVIDIA DLSS super resolution for the renderer's views, through NGX on wgpu's Vulkan and D3D12 backends.
 //!
 //! Built without the `sdk` feature it offers the same types, and no device has DLSS. The NGX glue is derived from
 //! dlss_wgpu (MIT OR Apache-2.0, `LICENSE-dlss_wgpu-*`).

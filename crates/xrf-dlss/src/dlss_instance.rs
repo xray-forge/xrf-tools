@@ -4,18 +4,23 @@ use crate::dlss::Dlss;
 #[cfg(feature = "sdk")]
 use crate::ngx::ngx_application::NgxApplication;
 
-/// A wgpu instance, which on Vulkan, built with the SDK, carries the instance extensions NGX needs and starts its
-/// devices with NGX's device extensions and DLSS.
+/// A wgpu instance which, built with the SDK, starts its devices with DLSS: on Vulkan carrying the instance extensions
+/// NGX needs and opening devices with its device extensions, on D3D12 starting NGX on an NVIDIA GPU's device.
 pub struct DlssInstance {
   pub instance: wgpu::Instance,
-  /// The application as NGX knows it, where NGX was hooked into the instance and its extensions are there.
+  /// The application as NGX knows it, where DLSS is asked for: on Vulkan, where NGX was hooked into the instance and
+  /// its extensions are there.
   #[cfg(feature = "sdk")]
   application: Option<NgxApplication>,
 }
 
 impl DlssInstance {
-  /// An instance of `descriptor`'s backends, NGX hooked into it where `is_upscaled` and the backends are Vulkan alone,
-  /// loading its runtime library from `runtime` where the application ships one.
+  /// NVIDIA's PCI vendor identifier, the only vendor whose GPUs NGX starts on.
+  #[cfg(feature = "sdk")]
+  const NVIDIA: u32 = 0x10de;
+
+  /// An instance of `descriptor`'s backends, ready for DLSS where `is_upscaled` and the backends are Vulkan or D3D12
+  /// alone, loading its runtime library from `runtime` where the application ships one.
   pub fn new(descriptor: wgpu::InstanceDescriptor, is_upscaled: bool, runtime: Option<&Path>) -> Self {
     #[cfg(feature = "sdk")]
     if is_upscaled && descriptor.backends == wgpu::Backends::VULKAN {
@@ -23,6 +28,14 @@ impl DlssInstance {
         Ok(instance) => return instance,
         Err(error) => log::warn!("DLSS is unavailable, its Vulkan instance failing: {error}"),
       }
+    }
+
+    #[cfg(all(feature = "sdk", windows))]
+    if is_upscaled && descriptor.backends == wgpu::Backends::DX12 {
+      return Self {
+        instance: wgpu::Instance::new(descriptor),
+        application: Some(NgxApplication::new(runtime)),
+      };
     }
 
     #[cfg(not(feature = "sdk"))]
@@ -46,6 +59,18 @@ impl DlssInstance {
     adapter: &wgpu::Adapter,
     descriptor: &wgpu::DeviceDescriptor<'_>,
   ) -> Result<(wgpu::Device, wgpu::Queue, Option<Dlss>), wgpu::RequestDeviceError> {
+    #[cfg(feature = "sdk")]
+    if let Some(application) = &self.application
+      && adapter.get_info().backend == wgpu::Backend::Dx12
+    {
+      let (device, queue) = pollster::block_on(adapter.request_device(descriptor))?;
+      let dlss: Option<Dlss> = (adapter.get_info().vendor == Self::NVIDIA)
+        .then(|| Dlss::start(application, adapter, (&device, &queue)))
+        .flatten();
+
+      return Ok((device, queue, dlss));
+    }
+
     #[cfg(feature = "sdk")]
     if let Some(application) = &self.application {
       match Self::open(application, adapter, descriptor) {

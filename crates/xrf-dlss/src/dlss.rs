@@ -35,7 +35,8 @@ impl Dlss {
     "libnvidia-ngx-dlss.so.310.9.1"
   };
 
-  /// NGX on a device opened with its instance and device extensions; none where the GPU or driver has no DLSS.
+  /// NGX on a device: a Vulkan one opened with its instance and device extensions, or a D3D12 one; none where the GPU
+  /// or driver has no DLSS.
   #[cfg(feature = "sdk")]
   pub(crate) fn start(
     application: &NgxApplication,

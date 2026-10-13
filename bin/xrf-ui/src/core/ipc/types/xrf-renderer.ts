@@ -67,7 +67,7 @@ export enum ERenderAntialiasing {
   TAA = "taa",
   /** FSR 2: temporal as TAA, with each surface's motion, disocclusion, reactivity and thin-feature locks. */
   FSR2 = "fsr2",
-  /** DLSS: NVIDIA's learned temporal upscaler, on Vulkan with an RTX GPU; FSR 2 where the GPU has none. */
+  /** DLSS: NVIDIA's learned temporal upscaler, on an RTX GPU; FSR 2 where the GPU has none. */
   DLSS = "dlss",
 }
 
@@ -410,8 +410,6 @@ export enum ERenderDlssAvailability {
   AVAILABLE = "available",
   /** The build has no DLSS: it was built without the `dlss` feature. */
   UNBUILT = "unbuilt",
-  /** The renderer draws with a graphics API DLSS does not run on here: D3D12. */
-  NEEDS_VULKAN = "needsVulkan",
   /** The GPU or its driver has no DLSS. */
   UNSUPPORTED = "unsupported",
 }

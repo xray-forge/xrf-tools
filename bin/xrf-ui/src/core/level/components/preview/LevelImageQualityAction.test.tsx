@@ -137,7 +137,7 @@ describe("LevelImageQualityAction", () => {
         backend={RENDER_BACKEND_AUTO}
         backends={null}
         isUpscaled
-        dlss={ERenderDlssAvailability.NEEDS_VULKAN}
+        dlss={ERenderDlssAvailability.UNSUPPORTED}
         features={mockLevelFeatureOptions()}
         onToggle={() => {}}
         onChange={() => {}}
@@ -150,7 +150,7 @@ describe("LevelImageQualityAction", () => {
 
     expect(getByRole("button", { name: "FSR 2" })).toHaveAttribute("aria-pressed", "true");
     expect(getByRole("button", { name: "DLSS" })).toBeDisabled();
-    expect(getByText("DLSS needs the Vulkan graphics API (Settings, Display).")).toBeInTheDocument();
+    expect(getByText("DLSS needs an NVIDIA RTX GPU and a current driver.")).toBeInTheDocument();
   });
 
   it("sets the view's own output resolution, with its scale offered while automatic", async () => {
@@ -267,7 +267,7 @@ describe("LevelImageQualityAction", () => {
           { adapter: null, backend: ERenderBackend.VULKAN, problem: "No Vulkan here" },
         ]}
         isUpscaled={false}
-        dlss={ERenderDlssAvailability.NEEDS_VULKAN}
+        dlss={ERenderDlssAvailability.UNSUPPORTED}
         features={mockLevelFeatureOptions()}
         onToggle={() => {}}
         onChange={() => {}}

@@ -48,7 +48,7 @@ typescript-bindings = [
 ]
 # Zones, GPU zones and frame marks for a Tracy capture.
 tracy = ["xrf-renderer-core/tracy"]
-# Upscales with NVIDIA DLSS on Vulkan, built against its SDK as DEVELOPMENT.md sets it up.
+# Upscales with NVIDIA DLSS on Vulkan and D3D12, built against its SDK as DEVELOPMENT.md sets it up.
 dlss = ["xrf-dlss/sdk"]
 
 [lints]

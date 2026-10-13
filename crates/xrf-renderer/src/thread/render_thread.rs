@@ -740,7 +740,6 @@ impl RenderThread {
     let _ = gpu.context.device.poll(wgpu::PollType::Poll);
     let dlss: RenderDlssAvailability = match (Dlss::IS_BUILT, gpu.context.backend, &gpu.context.dlss) {
       (false, ..) => RenderDlssAvailability::Unbuilt,
-      (true, RenderBackend::D3d12, _) => RenderDlssAvailability::NeedsVulkan,
       (true, _, Some(_)) => RenderDlssAvailability::Available,
       (true, _, None) => RenderDlssAvailability::Unsupported,
     };
