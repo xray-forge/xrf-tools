@@ -33,6 +33,62 @@ Directory to load unpacked browser extensions into the webview from. Each entry 
 - Read by: `xrf-app`.
 - Only in: debug builds on Windows.
 
+### `WGPU_VALIDATION`
+
+Turns wgpu's API validation on or off.
+
+- Takes: `1`, `true`, `on` or `yes` for on; `0`, `false`, `off` or `no` for off.
+- Default: wgpu's default for the build type (validation and debug labels are on in debug builds).
+- Read by: `xrf-app`.
+
+### `WGPU_DEBUG`
+
+Turns wgpu's debug labels and markers on GPU objects on or off, for graphics debuggers.
+
+- Takes: `1`, `true`, `on` or `yes` for on; `0`, `false`, `off` or `no` for off.
+- Default: wgpu's default for the build type (validation and debug labels are on in debug builds).
+- Read by: `xrf-app`.
+
+### `WGPU_GPU_BASED_VALIDATION`
+
+Turns on the driver's GPU-based validation. It is much slower and needs `WGPU_VALIDATION` on.
+
+- Takes: `1`, `true`, `on` or `yes` for on; `0`, `false`, `off` or `no` for off.
+- Default: wgpu's default for the build type (validation and debug labels are on in debug builds).
+- Read by: `xrf-app`.
+
+### `WGPU_VALIDATION_INDIRECT_CALL`
+
+Turns wgpu's validation of indirect draw and dispatch arguments on or off.
+
+- Takes: `1`, `true`, `on` or `yes` for on; `0`, `false`, `off` or `no` for off.
+- Default: wgpu's default for the build type (validation and debug labels are on in debug builds).
+- Read by: `xrf-app`.
+
+### `WGPU_DISCARD_HAL_LABELS`
+
+When on, wgpu does not pass labels down to the graphics API's objects.
+
+- Takes: `1`, `true`, `on` or `yes` for on; `0`, `false`, `off` or `no` for off.
+- Default: wgpu's default for the build type (validation and debug labels are on in debug builds).
+- Read by: `xrf-app`.
+
+### `WGPU_ALLOW_UNDERLYING_NONCOMPLIANT_ADAPTER`
+
+When on, wgpu also offers adapters it does not consider compliant.
+
+- Takes: `1`, `true`, `on` or `yes` for on; `0`, `false`, `off` or `no` for off.
+- Default: wgpu's default for the build type (validation and debug labels are on in debug builds).
+- Read by: `xrf-app`.
+
+### `WGPU_STRICT_WEBGPU_COMPLIANCE`
+
+When on, wgpu enforces WebGPU's limits strictly.
+
+- Takes: `1`, `true`, `on` or `yes` for on; `0`, `false`, `off` or `no` for off.
+- Default: wgpu's default for the build type (validation and debug labels are on in debug builds).
+- Read by: `xrf-app`.
+
 ## Passed through
 
 Read by third-party libraries. The application logs them at startup along with its own.
@@ -44,62 +100,6 @@ Log filter in `env_logger` syntax, for example `info,wgpu_hal=warn`.
 - Takes: text.
 - Default: `info` for xrf-app (`debug` in a debug build), `error` for xrf-cli (`warn` in a debug build).
 - Read by: `xrf-app`, `xrf-cli`.
-
-### `WGPU_VALIDATION`
-
-Turns wgpu's API validation on or off.
-
-- Takes: `0` for off, any other value for on (`false` too).
-- Default: wgpu's default for the build type (validation and debug labels are on in debug builds).
-- Read by: `xrf-app`.
-
-### `WGPU_DEBUG`
-
-Turns wgpu's debug labels and markers on GPU objects on or off, for graphics debuggers.
-
-- Takes: `0` for off, any other value for on (`false` too).
-- Default: wgpu's default for the build type (validation and debug labels are on in debug builds).
-- Read by: `xrf-app`.
-
-### `WGPU_GPU_BASED_VALIDATION`
-
-Turns on the driver's GPU-based validation. It is much slower and needs `WGPU_VALIDATION` on.
-
-- Takes: `0` for off, any other value for on (`false` too).
-- Default: wgpu's default for the build type (validation and debug labels are on in debug builds).
-- Read by: `xrf-app`.
-
-### `WGPU_VALIDATION_INDIRECT_CALL`
-
-Turns wgpu's validation of indirect draw and dispatch arguments on or off.
-
-- Takes: `0` for off, any other value for on (`false` too).
-- Default: wgpu's default for the build type (validation and debug labels are on in debug builds).
-- Read by: `xrf-app`.
-
-### `WGPU_DISCARD_HAL_LABELS`
-
-When on, wgpu does not pass labels down to the graphics API's objects.
-
-- Takes: `0` for off, any other value for on (`false` too).
-- Default: wgpu's default for the build type (validation and debug labels are on in debug builds).
-- Read by: `xrf-app`.
-
-### `WGPU_ALLOW_UNDERLYING_NONCOMPLIANT_ADAPTER`
-
-When on, wgpu also offers adapters it does not consider compliant.
-
-- Takes: `0` for off, any other value for on (`false` too).
-- Default: wgpu's default for the build type (validation and debug labels are on in debug builds).
-- Read by: `xrf-app`.
-
-### `WGPU_STRICT_WEBGPU_COMPLIANCE`
-
-When on, wgpu enforces WebGPU's limits strictly.
-
-- Takes: `0` for off, any other value for on (`false` too).
-- Default: wgpu's default for the build type (validation and debug labels are on in debug builds).
-- Read by: `xrf-app`.
 
 ### `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS`
 

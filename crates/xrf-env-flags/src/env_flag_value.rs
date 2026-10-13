@@ -3,8 +3,6 @@
 pub enum EnvFlagValue {
   /// On or off.
   Switch,
-  /// On or off as wgpu reads its switches: `0` is off, any other value is on.
-  ZeroOffSwitch,
   /// One of the names given, in any case.
   Choice(&'static [&'static str]),
   /// A path to a file or a directory.
@@ -36,8 +34,6 @@ impl EnvFlagValue {
           None
         }
       }
-      // Untrimmed, as wgpu compares it: a padded ` 0` turns the switch on.
-      Self::ZeroOffSwitch => Some(String::from(if raw == "0" { "off" } else { "on" })),
       Self::Choice(names) => names
         .iter()
         .find(|name| name.eq_ignore_ascii_case(trimmed))
@@ -50,7 +46,6 @@ impl EnvFlagValue {
   pub fn describe(self) -> String {
     match self {
       Self::Switch => String::from("`1`, `true`, `on` or `yes` for on; `0`, `false`, `off` or `no` for off"),
-      Self::ZeroOffSwitch => String::from("`0` for off, any other value for on (`false` too)"),
       Self::Choice(names) => {
         let quoted: Vec<String> = names.iter().map(|name| format!("`{name}`")).collect();
 

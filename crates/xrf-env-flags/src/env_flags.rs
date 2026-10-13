@@ -250,12 +250,12 @@ impl EnvFlags {
     document
   }
 
-  /// One of wgpu's instance switches, which wgpu reads when the renderer creates its instance.
+  /// One of wgpu's instance flags, read as any switch and applied when the renderer creates its instance.
   const fn wgpu_switch(name: &'static str, description: &'static str) -> EnvFlag {
     EnvFlag {
       name,
-      kind: EnvFlagKind::PassThrough,
-      value: EnvFlagValue::ZeroOffSwitch,
+      kind: EnvFlagKind::Runtime,
+      value: EnvFlagValue::Switch,
       default: "wgpu's default for the build type (validation and debug labels are on in debug builds)",
       readers: &["xrf-app"],
       condition: None,
