@@ -1,6 +1,7 @@
 use xrf_material::XraySurfaceDraw;
 
-/// The blend equation a particle effect composites its sprite with, one pipeline each (`CBlender_Particle`).
+/// The blend equation a particle effect composites its sprite with, one pipeline each (`CBlender_Particle`), and a
+/// thunderbolt its model and glows.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum ParticleBlend {
   /// Written over what is behind it.
@@ -55,23 +56,29 @@ impl ParticleBlend {
 
   /// The colour equation over the scene; the scene's alpha is left as it is.
   pub fn get_blend_state(self) -> wgpu::BlendState {
-    let color = |src_factor: wgpu::BlendFactor, dst_factor: wgpu::BlendFactor| wgpu::BlendComponent {
+    wgpu::BlendState {
+      color: self.get_component(),
+      alpha: Self::to_component(wgpu::BlendFactor::Zero, wgpu::BlendFactor::One),
+    }
+  }
+
+  /// The equation by its source and destination factors, added.
+  pub fn get_component(self) -> wgpu::BlendComponent {
+    match self {
+      Self::Opaque | Self::CutOut => Self::to_component(wgpu::BlendFactor::One, wgpu::BlendFactor::Zero),
+      Self::Blend => Self::to_component(wgpu::BlendFactor::SrcAlpha, wgpu::BlendFactor::OneMinusSrcAlpha),
+      Self::Add => Self::to_component(wgpu::BlendFactor::One, wgpu::BlendFactor::One),
+      Self::AlphaAdd => Self::to_component(wgpu::BlendFactor::SrcAlpha, wgpu::BlendFactor::One),
+      Self::Multiply => Self::to_component(wgpu::BlendFactor::Dst, wgpu::BlendFactor::Zero),
+      Self::MultiplyDoubled => Self::to_component(wgpu::BlendFactor::Dst, wgpu::BlendFactor::Src),
+    }
+  }
+
+  fn to_component(src_factor: wgpu::BlendFactor, dst_factor: wgpu::BlendFactor) -> wgpu::BlendComponent {
+    wgpu::BlendComponent {
       src_factor,
       dst_factor,
       operation: wgpu::BlendOperation::Add,
-    };
-    let kept: wgpu::BlendComponent = color(wgpu::BlendFactor::Zero, wgpu::BlendFactor::One);
-
-    wgpu::BlendState {
-      color: match self {
-        Self::Opaque | Self::CutOut => color(wgpu::BlendFactor::One, wgpu::BlendFactor::Zero),
-        Self::Blend => color(wgpu::BlendFactor::SrcAlpha, wgpu::BlendFactor::OneMinusSrcAlpha),
-        Self::Add => color(wgpu::BlendFactor::One, wgpu::BlendFactor::One),
-        Self::AlphaAdd => color(wgpu::BlendFactor::SrcAlpha, wgpu::BlendFactor::One),
-        Self::Multiply => color(wgpu::BlendFactor::Dst, wgpu::BlendFactor::Zero),
-        Self::MultiplyDoubled => color(wgpu::BlendFactor::Dst, wgpu::BlendFactor::Src),
-      },
-      alpha: kept,
     }
   }
 }
