@@ -43,13 +43,14 @@ impl StaticWaterSurfaceBuilder {
       (
         base_sampler("s_nmap"),
         StaticSurface::WATER_NORMAL,
-        TextureRole::Detail,
+        TextureRole::WaterNormal,
         StaticSurface::HAS_WATER_NORMAL,
       ),
       (
         base_sampler("s_leaves"),
         StaticSurface::FOAM,
-        TextureRole::Detail,
+        // Neutral without alpha: no foam while it loads, or where it cannot be had.
+        TextureRole::BumpCompanion,
         StaticSurface::HAS_FOAM,
       ),
       (
