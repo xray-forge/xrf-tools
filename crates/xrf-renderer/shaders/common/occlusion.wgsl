@@ -23,7 +23,9 @@ fn upsampled_occlusion(searched: texture_2d<f32>, pixel: vec2<f32>, distance: f3
     weights += bilinear / (difference * difference + 1e-3);
   }
 
-  return sum / max(weights, 1e-6);
+  // However far every searched distance lies from the pixel's, the nearest still speaks for it: the weights are
+  // normalised whatever their scale.
+  return select(1.0, sum / weights, weights > 0.0);
 }
 
 // The indirect light brought up to the frame's pixel as the occlusion is: the searched pixels' colour by how near each
@@ -46,7 +48,7 @@ fn upsampled_light(gathered: texture_2d<f32>, pixel: vec2<f32>, distance: f32) -
     weights += weight;
   }
 
-  return sum / max(weights, 1e-6);
+  return select(vec3<f32>(0.0), sum / weights, weights > 0.0);
 }
 
 // The occlusion lightened by the light a surface's colour bounces between the sides of its creases, by `bounce` from
