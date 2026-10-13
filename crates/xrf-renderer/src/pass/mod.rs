@@ -123,6 +123,8 @@ pub(crate) mod shadow_casters;
 pub(crate) mod shadow_cull;
 pub(crate) mod shadow_tile_restore_parameters;
 pub(crate) mod shadow_uniform;
+pub(crate) mod sky_behind_parameters;
+pub(crate) mod sky_behind_pass;
 pub(crate) mod sky_bindings;
 pub(crate) mod sky_haze_parameters;
 pub(crate) mod sky_haze_pass;

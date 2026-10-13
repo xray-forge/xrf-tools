@@ -451,6 +451,10 @@ impl SceneView {
       share * share * (3.0 - 2.0 * share)
     });
 
+    self
+      .features
+      .combine
+      .prepare(&self.shared.lighting, view.get_depth_range().1);
     self.features.contact_shadows.prepare(
       options,
       self.shared.lighting.to_sun,
@@ -1065,7 +1069,7 @@ impl SceneView {
         }
 
         scene_view.features.combine.add_passes(
-          &mut *graph,
+          (&mut *graph, &mut *bindings),
           passes,
           view,
           (handles, lit, sky),

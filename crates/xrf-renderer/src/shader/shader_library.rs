@@ -161,6 +161,7 @@ const EMBEDDED: &[(&str, &str)] = &[
   ),
   ("frame/fxaa", include_str!("../../shaders/frame/fxaa.wgsl")),
   ("frame/lights", include_str!("../../shaders/frame/lights.wgsl")),
+  ("frame/sky_behind", include_str!("../../shaders/frame/sky_behind.wgsl")),
   (
     "frame/light_contact",
     include_str!("../../shaders/frame/light_contact.wgsl"),
@@ -262,6 +263,10 @@ const EMBEDDED: &[(&str, &str)] = &[
   (
     "generated/grass/occlusion",
     include_str!("../../shaders/generated/grass/occlusion.wgsl"),
+  ),
+  (
+    "generated/frame/sky_behind",
+    include_str!("../../shaders/generated/frame/sky_behind.wgsl"),
   ),
   (
     "generated/frame/light_contact",

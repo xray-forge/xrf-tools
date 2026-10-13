@@ -64,3 +64,40 @@ fn sky_haze_coordinates(direction: vec3<f32>) -> vec2<f32> {
     asin(clamp(direction.y, -1.0, 1.0)) / SKY_PI + 0.5,
   );
 }
+
+// The sky as the frame draws it behind a pixel: the sky, the sun's sprite on it, and the clouds over both.
+fn sky_drawn(state: Lighting, direction: vec3<f32>, toward: vec3<f32>, scale: f32) -> vec3<f32> {
+  let below: vec3<f32> = sky_color(state, direction, scale) + sky_sun_sprite(state, toward);
+
+  return sky_with_clouds(state, direction, below, scale);
+}
+
+// The sky's haze along a world direction, from the haze map `haze`: the sky as drawn there, clouds and all, blurred past
+// any shape; below the horizon, the horizon's own, since nothing stands behind the ground.
+fn sky_haze(haze: texture_2d<f32>, direction: vec3<f32>) -> vec3<f32> {
+  let lifted: vec3<f32> = normalize(vec3<f32>(direction.x, max(direction.y, 0.0), direction.z));
+  let coordinates: vec2<f32> = sky_haze_coordinates(lifted);
+  // Around the compass the map wraps; up it does not, so the zenith's row never blends with the nadir's.
+  let rows: f32 = f32(textureDimensions(haze).y);
+
+  return textureSampleLevel(
+    haze,
+    sky_repeat,
+    vec2<f32>(coordinates.x, clamp(coordinates.y, 0.5 / rows, 1.0 - 0.5 / rows)),
+    0.0,
+  ).rgb;
+}
+
+// What the distance fades into: the sky as drawn behind it; with the haze (`is_hazed`), its haze where the cubes stand
+// above the fold, so no cloud's shape lies over a far hill, and the rim as drawn under it, so the fade meets the sky
+// exactly there.
+fn sky_behind(state: Lighting, haze: texture_2d<f32>, direction: vec3<f32>, toward: vec3<f32>, scale: f32,
+  is_hazed: bool) -> vec3<f32> {
+  let shown: vec3<f32> = sky_drawn(state, direction, toward, scale);
+
+  if (!is_hazed) {
+    return shown;
+  }
+
+  return mix(shown, sky_haze(haze, direction), sky_above_fold(state, direction));
+}
