@@ -55,6 +55,7 @@ pub(crate) mod test_workers;
 mod texture_cache;
 mod texture_lod;
 mod texture_role;
+mod ui_limits;
 mod vbao;
 mod water_flow;
 mod weather;
