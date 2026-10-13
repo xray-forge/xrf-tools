@@ -35,26 +35,26 @@ impl StaticVertexWords {
     let mut packed: Vec<u32> = Vec::with_capacity(count * StaticLayout::STRIDE as usize);
 
     for vertex in 0..count {
+      let mut words: [u32; StaticLayout::STRIDE as usize] = [0; StaticLayout::STRIDE as usize];
+
       for axis in 0..3 {
-        packed.push(Self::read_word(Some(positions), vertex, 3, axis).unwrap_or(0));
+        words[StaticLayout::POSITION + axis] = Self::read_word(Some(positions), vertex, 3, axis).unwrap_or(0);
       }
 
-      packed.push(Self::read_word(binormals, vertex, 1, 0).unwrap_or(Self::NEUTRAL_BINORMAL));
-      packed.push(Self::read_word(normals, vertex, 1, 0).unwrap_or(Self::NEUTRAL_NORMAL));
-      packed.push(Self::read_word(tangents, vertex, 1, 0).unwrap_or(Self::NEUTRAL_TANGENT));
-
+      words[StaticLayout::BINORMAL] = Self::read_word(binormals, vertex, 1, 0).unwrap_or(Self::NEUTRAL_BINORMAL);
+      words[StaticLayout::NORMAL] = Self::read_word(normals, vertex, 1, 0).unwrap_or(Self::NEUTRAL_NORMAL);
+      words[StaticLayout::TANGENT] = Self::read_word(tangents, vertex, 1, 0).unwrap_or(Self::NEUTRAL_TANGENT);
+      words[StaticLayout::UV] = Self::read_word(uvs, vertex, uv_words, 0).unwrap_or(0);
       // A sector's geometry is baked or a tree's; nothing of a sector is packed as a model.
-      if layout == StaticLayout::Tree {
-        packed.push(Self::read_word(uvs, vertex, uv_words, 0).unwrap_or(0));
-        packed.push(Self::read_word(uvs, vertex, uv_words, 1).unwrap_or(0));
+      words[StaticLayout::EXTRA] = if layout == StaticLayout::Tree {
+        Self::read_word(uvs, vertex, uv_words, 1).unwrap_or(0)
       } else {
-        packed.push(Self::read_word(uvs, vertex, uv_words, 0).unwrap_or(0));
-        packed.push(
-          Self::read_word(lightmap_uvs, vertex, 1, 0)
-            .or_else(|| Self::read_word(colors, vertex, 1, 0))
-            .unwrap_or(0),
-        );
-      }
+        Self::read_word(lightmap_uvs, vertex, 1, 0)
+          .or_else(|| Self::read_word(colors, vertex, 1, 0))
+          .unwrap_or(0)
+      };
+
+      packed.extend_from_slice(&words);
     }
 
     packed
@@ -81,12 +81,18 @@ impl StaticVertexWords {
     let mut packed: Vec<u32> = Vec::with_capacity(count * StaticLayout::STRIDE as usize);
 
     for vertex in 0..count {
-      packed.extend(positions[vertex * 3..vertex * 3 + 3].iter().map(|it| it.to_bits()));
-      packed.push(direction(&binormals, vertex, Self::NEUTRAL_BINORMAL));
-      packed.push(direction(&normals, vertex, Self::NEUTRAL_NORMAL));
-      packed.push(direction(&tangents, vertex, Self::NEUTRAL_TANGENT));
-      packed.push(uvs.get(vertex * 2).copied().unwrap_or(0.0).to_bits());
-      packed.push(uvs.get(vertex * 2 + 1).copied().unwrap_or(0.0).to_bits());
+      let mut words: [u32; StaticLayout::STRIDE as usize] = [0; StaticLayout::STRIDE as usize];
+
+      for axis in 0..3 {
+        words[StaticLayout::POSITION + axis] = positions[vertex * 3 + axis].to_bits();
+      }
+
+      words[StaticLayout::BINORMAL] = direction(&binormals, vertex, Self::NEUTRAL_BINORMAL);
+      words[StaticLayout::NORMAL] = direction(&normals, vertex, Self::NEUTRAL_NORMAL);
+      words[StaticLayout::TANGENT] = direction(&tangents, vertex, Self::NEUTRAL_TANGENT);
+      words[StaticLayout::UV] = uvs.get(vertex * 2).copied().unwrap_or(0.0).to_bits();
+      words[StaticLayout::EXTRA] = uvs.get(vertex * 2 + 1).copied().unwrap_or(0.0).to_bits();
+      packed.extend_from_slice(&words);
     }
 
     packed

@@ -31,9 +31,9 @@ use crate::scene::level::feature::view_feature::ViewFeature;
 use crate::scene::level::light_shadow_atlas::LightShadowAtlas;
 use crate::scene::level::lighting_handles::LightingHandles;
 
-/// Clusters the view is cut into, and lights one holds at most, as `shaders/common/light_clusters.wgsl` declares them.
-const LIGHT_CLUSTERS: u64 = 16 * 9 * 24;
-const LIGHT_CLUSTER_CAPACITY: u64 = 64;
+/// Clusters the view is cut into, and lights one holds at most.
+const LIGHT_CLUSTERS: u64 = LightsPass::LIGHT_CLUSTERS as u64;
+const LIGHT_CLUSTER_CAPACITY: u64 = LightsPass::LIGHT_CLUSTER_CAPACITY as u64;
 
 /// The bytes after the clusters' counts the binning counts its overflow in, as a readback copies them.
 const OVERFLOW_BYTES: u64 = 16;

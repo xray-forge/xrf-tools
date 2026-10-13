@@ -21,9 +21,6 @@ const LIGHTMAP_PREFIX: &str = "lmap#";
 /// What `details_lod.s` appends to the atlas for its `s_hemi`.
 const IMPOSTOR_COMPANION_SUFFIX: &str = "_nm";
 
-/// The material slice `lod.ps` writes: the default lighting model.
-const IMPOSTOR_MATERIAL: f32 = 0.0;
-
 /// The texture descriptor's default lighting model: Blinn, at full weight.
 const DEFAULT_MATERIAL: f32 = 1.0;
 
@@ -57,6 +54,9 @@ const HUE_STEP: f32 = 137.508;
 pub struct StaticSurfaceBuilder;
 
 impl StaticSurfaceBuilder {
+  /// The material whose slice `lod.ps` writes: the default lighting model.
+  pub const IMPOSTOR_MATERIAL: f32 = 0.0;
+
   /// A shader table entry as the static draws wear it, asking for its textures; `None` for an invisible one, which no
   /// static draw draws. A composited wall mark is laid into the G-buffer's albedo rather than over the lit frame.
   pub fn build(
@@ -328,7 +328,7 @@ impl StaticSurfaceBuilder {
       tiling: 1.0,
       detail_scale: 1.0,
       alpha_reference: 0.0,
-      slice: material_slice(IMPOSTOR_MATERIAL),
+      slice: material_slice(Self::IMPOSTOR_MATERIAL),
       color: Self::to_surface_color(surface.shader_id),
       flags,
       textures: texture_slots,

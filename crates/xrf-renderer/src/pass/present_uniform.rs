@@ -28,8 +28,8 @@ pub struct PresentUniform {
   pub grading: Vec4,
   /// The colour a selection is outlined in, `w` one while something is selected.
   pub selection: Vec4,
-  /// One where the frame blooms by the engine's bloom, which the present adds where it reads the scene; two by the
-  /// enhanced bloom, which it screens over the frame.
+  /// `PresentUniform::BLOOM_ENGINE` where the frame blooms by the engine's bloom, which the present adds where it reads
+  /// the scene; `PresentUniform::BLOOM_ENHANCED` by the enhanced bloom, which it screens over the frame; zero for none.
   pub is_bloomed: u32,
   /// One where the indirect light was gathered this frame.
   pub is_indirect: u32,
@@ -47,6 +47,10 @@ pub struct PresentUniform {
 }
 
 impl PresentUniform {
+  /// `is_bloomed` for the engine's bloom and for the enhanced one.
+  pub const BLOOM_ENGINE: u32 = 1;
+  pub const BLOOM_ENHANCED: u32 = 2;
+
   pub fn new(
     view: RenderDebugView,
     (is_occluded, is_indirect, reflection_ratio): (bool, bool, Option<u32>),
@@ -68,7 +72,7 @@ impl PresentUniform {
       origin: Vec2::new(output.x as f32, output.y as f32),
       size: Vec2::new(output.width as f32, output.height as f32),
       selection: selection.map_or(Vec4::ZERO, |[r, g, b]| Vec4::new(r, g, b, 1.0)),
-      is_bloomed: u32::from(is_bloomed),
+      is_bloomed: if is_bloomed { Self::BLOOM_ENGINE } else { 0 },
       is_indirect: u32::from(is_indirect),
       is_reflected: u32::from(reflection_ratio.is_some()),
       reflection_ratio: reflection_ratio.unwrap_or(1) as f32,
@@ -105,7 +109,10 @@ impl PresentUniform {
 
   /// The same, the enhanced bloom screened over the frame in place of the engine's.
   pub fn with_enhanced_bloom(self) -> Self {
-    Self { is_bloomed: 2, ..self }
+    Self {
+      is_bloomed: Self::BLOOM_ENHANCED,
+      ..self
+    }
   }
 
   /// The same, the sky debanded over `passes` passes out to `radius` pixels, its noise turning with `time` seconds.
