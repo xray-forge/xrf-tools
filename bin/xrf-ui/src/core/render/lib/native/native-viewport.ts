@@ -18,6 +18,7 @@ import {
   RenderViewportLayout,
 } from "@/core/ipc/types/xrf-renderer";
 import {
+  EWorldCamera,
   EWorldViewportEvent,
   EWorldWeatherTransition,
   WorldCamera,
@@ -62,6 +63,8 @@ export interface INativeViewportListener {
 export class NativeViewport {
   private readonly attached: Promise<Nullable<RenderViewportId>>;
   private isDisposed: boolean = false;
+  /** The kind of camera last described; the renderer flies one until it is told. */
+  private cameraKind: WorldCamera["kind"] = EWorldCamera.FLY;
 
   public constructor(listener: INativeViewportListener) {
     const events: Channel<ViewportEvent> = new Channel<ViewportEvent>();
@@ -123,7 +126,12 @@ export class NativeViewport {
   }
 
   public setCamera(camera: WorldCamera): void {
+    this.cameraKind = camera.kind;
     this.call((id: RenderViewportId) => renderCommands.setCamera(id, camera));
+  }
+
+  public getCameraKind(): WorldCamera["kind"] {
+    return this.cameraKind;
   }
 
   public commandCamera(command: WorldCameraCommand): void {

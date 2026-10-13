@@ -92,44 +92,67 @@ export type WorldCameraPose = {
   target: [number | null, number | null, number | null];
 };
 
-/** One gesture over a viewport, as much of the browser's event as crosses. */
-export type WorldInputEvent = {
-  kind: WorldInputKind;
-  pointerId: number;
-  isPrimary: boolean;
-  button: number;
-  buttons: number;
-  /** CSS pixels from the viewport element's left edge. */
-  x: number | null;
-  /** CSS pixels from the viewport element's top edge. */
-  y: number | null;
-  deltaX: number | null;
-  deltaY: number | null;
-  deltaMode: number;
-  altKey: boolean;
-  ctrlKey: boolean;
-  metaKey: boolean;
-  shiftKey: boolean;
-  /** `KeyboardEvent.code` for a key, empty for anything else: the key's place, so `W` is `W` on azerty too. */
-  code: string;
-};
+/** Why a drag over a viewport ended. */
+export enum EWorldDragEndReason {
+  /** The button was let go. */
+  RELEASED = "released",
+  /** Something took the drag away: Escape, another window, a lost pointer; an edit drag reverts on it. */
+  CANCELLED = "cancelled",
+}
 
-/** The gestures a viewport is told about, named as the browser names them. */
-export enum EWorldInputKind {
-  CONTEXT_MENU = "contextmenu",
-  POINTER_CANCEL = "pointercancel",
-  POINTER_DOWN = "pointerdown",
-  POINTER_MOVE = "pointermove",
-  POINTER_UP = "pointerup",
+/** Every `EWorldDragEndReason` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type WorldDragEndReason = `${EWorldDragEndReason}`;
+
+/** Every `kind` the `WorldInputEvent` union is told apart by, so a switch or a comparison names one. */
+export enum EWorldInputEvent {
+  /** A press travelled far enough to be a drag; `button` is the `PointerEvent.button` pressed, `0` the main one. */
+  DRAG_START = "dragStart",
+  /** How far the drag moved since its last move: CSS pixels, or the mouse's own counts while the pointer is locked. */
+  DRAG_MOVE = "dragMove",
+  /** The drag is over. */
+  DRAG_END = "dragEnd",
+  /** Where the pointer rests while nothing drags, in CSS pixels from the viewport element's top left corner. */
+  HOVER = "hover",
+  /** The wheel turned, as `WheelEvent` measures it. */
   WHEEL = "wheel",
-  KEY_DOWN = "keydown",
-  KEY_UP = "keyup",
+  /** A key went down; `code` is `KeyboardEvent.code`, the key's place, so `W` is `W` on azerty too. */
+  KEY_DOWN = "keyDown",
+  /** A key went up. */
+  KEY_UP = "keyUp",
+  /** The secondary button asked for a menu, which the page withholds. */
+  CONTEXT_MENU = "contextMenu",
   /** The viewport lost focus, so no key it heard go down is still held. */
   BLUR = "blur",
 }
 
-/** Every `EWorldInputKind` as the spelling it crosses IPC as, for a value no member has narrowed. */
-export type WorldInputKind = `${EWorldInputKind}`;
+/** What the person does over a viewport: the drags its page told from clicks, the hover, the wheel and the keys. */
+export type WorldInputEvent =
+  /** A press travelled far enough to be a drag; `button` is the `PointerEvent.button` pressed, `0` the main one. */
+  | { kind: "dragStart"; button: number; modifiers: WorldInputModifiers }
+  /** How far the drag moved since its last move: CSS pixels, or the mouse's own counts while the pointer is locked. */
+  | { kind: "dragMove"; dx: number | null; dy: number | null }
+  /** The drag is over. */
+  | { kind: "dragEnd"; reason: WorldDragEndReason }
+  /** Where the pointer rests while nothing drags, in CSS pixels from the viewport element's top left corner. */
+  | { kind: "hover"; x: number | null; y: number | null }
+  /** The wheel turned, as `WheelEvent` measures it. */
+  | { kind: "wheel"; deltaX: number | null; deltaY: number | null; deltaMode: number }
+  /** A key went down; `code` is `KeyboardEvent.code`, the key's place, so `W` is `W` on azerty too. */
+  | { kind: "keyDown"; code: string }
+  /** A key went up. */
+  | { kind: "keyUp"; code: string }
+  /** The secondary button asked for a menu, which the page withholds. */
+  | { kind: "contextMenu" }
+  /** The viewport lost focus, so no key it heard go down is still held. */
+  | { kind: "blur" };
+
+/** The modifier keys held as a drag's press went down. */
+export type WorldInputModifiers = {
+  altKey: boolean;
+  ctrlKey: boolean;
+  metaKey: boolean;
+  shiftKey: boolean;
+};
 
 /**
  * What a viewport's level could not draw the way the level asked: drawables left out of the sectors resident, sectors

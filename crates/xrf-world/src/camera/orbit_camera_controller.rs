@@ -7,7 +7,6 @@ use crate::contract::world_camera::WorldCamera;
 use crate::contract::world_camera_command::WorldCameraCommand;
 use crate::contract::world_camera_pose::WorldCameraPose;
 use crate::contract::world_input_event::WorldInputEvent;
-use crate::contract::world_input_kind::WorldInputKind;
 
 /// Keeps the camera off the poles, where turning around the target would flip it over.
 const POLE_MARGIN: f32 = 1e-4;
@@ -30,7 +29,7 @@ pub struct OrbitCameraController {
   target: Vec3,
   /// The viewport's height in CSS pixels, which a drag is measured against.
   height: f32,
-  dragged: Option<(i32, f32, f32, OrbitDrag)>,
+  dragged: Option<OrbitDrag>,
 }
 
 impl Default for OrbitCameraController {
@@ -84,48 +83,37 @@ impl OrbitCameraController {
   }
 
   pub fn input(&mut self, event: &WorldInputEvent) {
-    match event.kind {
-      WorldInputKind::PointerDown if event.is_primary => {
-        let drag: OrbitDrag = if event.button == 0 && !event.shift_key && !event.ctrl_key {
+    match event {
+      WorldInputEvent::DragStart { button, modifiers } => {
+        self.dragged = Some(if *button == 0 && !modifiers.shift_key && !modifiers.ctrl_key {
           OrbitDrag::Rotate
         } else {
           OrbitDrag::Pan
-        };
-
-        self.dragged = Some((event.pointer_id, event.x, event.y, drag));
+        });
       }
-      // A move with no button held ends a drag whose release never arrived, rather than turning on a plain hover.
-      WorldInputKind::PointerMove if event.buttons == 0 => self.dragged = None,
-      WorldInputKind::PointerMove => {
-        if let Some((id, x, y, drag)) = self.dragged
-          && id == event.pointer_id
-        {
-          match drag {
-            OrbitDrag::Rotate => self.rotate(event.x - x, event.y - y),
-            OrbitDrag::Pan => self.pan(event.x - x, event.y - y),
-          }
-
-          self.dragged = Some((id, event.x, event.y, drag));
-        }
-      }
-      WorldInputKind::PointerUp | WorldInputKind::PointerCancel => {
-        if self.dragged.is_some_and(|(id, ..)| id == event.pointer_id) {
-          self.dragged = None;
-        }
-      }
-      WorldInputKind::Wheel => {
+      WorldInputEvent::DragMove { dx, dy } => match self.dragged {
+        Some(OrbitDrag::Rotate) => self.rotate(*dx, *dy),
+        Some(OrbitDrag::Pan) => self.pan(*dx, *dy),
+        None => {}
+      },
+      WorldInputEvent::DragEnd { .. } | WorldInputEvent::Blur => self.dragged = None,
+      WorldInputEvent::Wheel {
+        delta_y, delta_mode, ..
+      } => {
         // A line or a page of wheel is worth what a browser scrolls for it, so every mouse dollies alike.
-        let pixels: f32 = match event.delta_mode {
-          1 => event.delta_y * 16.0,
-          2 => event.delta_y * self.height,
-          _ => event.delta_y,
+        let pixels: f32 = match *delta_mode {
+          1 => *delta_y * 16.0,
+          2 => *delta_y * self.height,
+          _ => *delta_y,
         };
         let scale: f32 = ZOOM_BASE.powf((pixels * 0.01).abs());
 
         self.dolly(if pixels > 0.0 { 1.0 / scale } else { scale });
       }
-      WorldInputKind::Blur => self.dragged = None,
-      _ => {}
+      WorldInputEvent::Hover { .. }
+      | WorldInputEvent::KeyDown { .. }
+      | WorldInputEvent::KeyUp { .. }
+      | WorldInputEvent::ContextMenu => {}
     }
   }
 
