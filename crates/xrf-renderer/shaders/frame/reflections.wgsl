@@ -69,6 +69,13 @@ const UNTRACED: vec4<f32> = vec4<f32>(0.0, 0.0, 0.0, -1.0);
 // no finer walk.
 const ROUGH_BUDGET: vec2<f32> = vec2<f32>(0.15, 0.45);
 const ROUGH_CROSSINGS: f32 = 0.5;
+// The share of what it reflects a pixel's specular shows under which its reflection is dim, and the frame's pixels its
+// surface may have moved since the last frame for it to be still: a still, dim reflection's scene trace takes one turn
+// in `DIM_TURNS` of the quality's, what it reflected held between, as the held history stays true only where the view
+// stands; a moving one traces at the quality's turns.
+const DIM_SHARE: f32 = 0.15;
+const DIM_STILL: f32 = 2.0;
+const DIM_TURNS: u32 = 4u;
 
 // The denoiser's weights: the neighbourhood's radius and falloff; how much of the average's luminance weighs a pixel;
 // how the radiance, variance, normal and depth stop the filter; the disocclusion's normal and depth weights and the
@@ -131,10 +138,11 @@ fn world_offset(position: vec3<f32>) -> vec3<f32> {
 }
 
 // Whether a pixel the screen leaves unanswered traces against the level's geometry this frame: once in its
-// `trace_turns`, a tile of `TRACE_TURN_TILE` pixels taking its turn together, so whole waves of the GPU skip the trace
-// rather than wait on a few of their lanes; each tile's turn its own (`trace_turn_of`).
-fn is_trace_turn(pixel: vec2<f32>) -> bool {
-  let turns: u32 = max(reflection.trace_turns, 1u);
+// `trace_turns`, `scale` times as many for a still, dim reflection, a tile of `TRACE_TURN_TILE` pixels taking its turn
+// together, so whole waves of the GPU skip the trace rather than wait on a few of their lanes; each tile's turn its own
+// (`trace_turn_of`).
+fn is_trace_turn(pixel: vec2<f32>, scale: u32) -> bool {
+  let turns: u32 = max(reflection.trace_turns, 1u) * scale;
 
   return (trace_turn_of(vec2<u32>(pixel) / TRACE_TURN_TILE, turns) + reflection.frame) % turns == 0u;
 }
@@ -490,8 +498,10 @@ fn fs_trace(in: FullscreenVarying) -> TraceTargets {
   let brdf: vec3<f32> = environment_brdf(reflectance_head_on(albedo.rgb, albedo.a, wet.r, material.z), roughness, facing) *
     reflection.intensity;
 
+  let shown: f32 = max(max(brdf.r, brdf.g), brdf.b);
+
   // Traced only where combine would show enough of it.
-  if (max(max(brdf.r, brdf.g), brdf.b) <= TRACE_FLOOR) {
+  if (shown <= TRACE_FLOOR) {
     return trace_targets(UNTRACED, END_UNTRACED);
   }
 
@@ -529,7 +539,10 @@ fn fs_trace(in: FullscreenVarying) -> TraceTargets {
   if (confidence < 1.0 && reflection.is_traced > 0.5) {
     var held: vec4<f32> = vec4<f32>(0.0, 0.0, 0.0, -1.0);
 
-    if (!is_trace_turn(pixel)) {
+    let was: vec2<f32> = previous_uv(camera.position.xyz + world_offset(position)) * camera.viewport.xy;
+    let is_still_dim: bool = shown < DIM_SHARE && length(was - (vec2<f32>(texel) + 0.5)) < DIM_STILL;
+
+    if (!is_trace_turn(pixel, select(1u, DIM_TURNS, is_still_dim))) {
       held = held_radiance(texel);
     }
 
