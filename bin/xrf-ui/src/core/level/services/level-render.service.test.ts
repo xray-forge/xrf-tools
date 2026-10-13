@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "@jest/globals";
+import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { waitFor } from "@testing-library/react";
 
 import {
@@ -288,6 +288,20 @@ describe("LevelRenderService", () => {
       kind: EWorldWeatherPlay.CYCLE,
       name: "default_clear",
     });
+  });
+
+  // A refused command leaves the last frame on screen, so it is logged; once, since some are sent every frame.
+  it("logs a command the viewport refused, once however often it is sent", async () => {
+    const { service } = await mockAttachedLevelRender();
+    const warn = jest.spyOn(service.log, "warn").mockImplementation(() => undefined);
+
+    setMockInvokeResponses({ ["plugin:render|seek_weather"]: () => Promise.reject(new Error("invalid time")) });
+    service.seekWeather(60);
+    service.seekWeather(120);
+    await flushPromises();
+
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn).toHaveBeenCalledWith("A native viewport command failed:", "seekWeather", new Error("invalid time"));
   });
 
   it("states why the viewport cannot draw, and lets it go on detach", async () => {
