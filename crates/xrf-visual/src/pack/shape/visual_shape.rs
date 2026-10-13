@@ -50,8 +50,14 @@ impl VisualShape {
   }
 
   /// A sphere about the origin, `width_segments` around and `height_segments` from pole to pole, its uvs wrapping
-  /// once around and once down.
-  pub fn create_sphere(radius: f32, width_segments: u16, height_segments: u16) -> VisualMesh {
+  /// once around and once down; none for fewer than 3 around or 2 down, or more vertices than a 16-bit index reaches.
+  pub fn create_sphere(radius: f32, width_segments: u16, height_segments: u16) -> Option<VisualMesh> {
+    let vertices: usize = (usize::from(width_segments) + 1) * (usize::from(height_segments) + 1);
+
+    if width_segments < 3 || height_segments < 2 || vertices > usize::from(u16::MAX) + 1 {
+      return None;
+    }
+
     let mut mesh: VisualMesh = VisualMesh::default();
     let mut grid: Vec<Vec<u16>> = Vec::with_capacity(usize::from(height_segments) + 1);
     let width: f32 = f32::from(width_segments);
@@ -74,6 +80,7 @@ impl VisualShape {
               (v * PI).cos(),
               (u * PI * 2.0).sin() * (v * PI).sin(),
             ];
+            // Every vertex counted above fits a 16-bit index.
             let index: u16 = mesh.positions.len() as u16;
 
             mesh.positions.push(normal.map(|it| it * radius));
@@ -105,6 +112,6 @@ impl VisualShape {
       }
     }
 
-    mesh
+    Some(mesh)
   }
 }

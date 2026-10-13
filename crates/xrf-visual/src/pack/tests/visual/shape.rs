@@ -61,7 +61,8 @@ fn a_box_packs_a_face_a_submesh_each_wound_to_face_out() {
 
 #[test]
 fn a_sphere_runs_its_tangent_along_u_at_right_angles_to_its_normal() {
-  let package: VisualPackage = VisualPacker::pack_meshes(&[VisualShape::create_sphere(1.0, 16, 8)]);
+  let package: VisualPackage =
+    VisualPacker::pack_meshes(&[VisualShape::create_sphere(1.0, 16, 8).expect("16 by 8 to make a sphere")]);
   let geometry: &VisualGeometry = package.description.submeshes[0]
     .geometry()
     .expect("expect the sphere to pack");
@@ -84,7 +85,7 @@ fn a_sphere_runs_its_tangent_along_u_at_right_angles_to_its_normal() {
 
 #[test]
 fn a_mesh_without_whole_triangles_is_skipped_with_a_reason() {
-  let mut mesh: VisualMesh = VisualShape::create_sphere(1.0, 4, 4);
+  let mut mesh: VisualMesh = VisualShape::create_sphere(1.0, 4, 4).expect("4 by 4 to make a sphere");
 
   mesh.indices.pop();
 
@@ -94,4 +95,13 @@ fn a_mesh_without_whole_triangles_is_skipped_with_a_reason() {
     package.description.submeshes[0].skipped_reason(),
     Some("A built mesh has no whole triangles")
   );
+}
+
+// A sphere of too few segments divides by none, and one of too many wraps its 16-bit indices.
+#[test]
+fn makes_no_sphere_of_too_few_or_too_many_segments() {
+  assert!(VisualShape::create_sphere(1.0, 2, 8).is_none());
+  assert!(VisualShape::create_sphere(1.0, 16, 1).is_none());
+  assert!(VisualShape::create_sphere(1.0, 256, 256).is_none());
+  assert!(VisualShape::create_sphere(1.0, 255, 255).is_some());
 }
