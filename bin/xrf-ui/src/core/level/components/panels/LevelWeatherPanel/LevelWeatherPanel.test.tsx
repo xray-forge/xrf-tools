@@ -8,14 +8,12 @@ import { EXrayEngine } from "@/core/ipc/types/xrf-engine-target";
 import { EEnvironmentRule, WeatherCycleId } from "@/core/ipc/types/xrf-environment";
 import { EWorldWeatherPlay } from "@/core/ipc/types/xrf-world";
 import { ELevelWeatherSource } from "@/core/level/lib/weather/level-weather-source";
-import {
-  LevelLoadService,
-  LevelLookService,
-  LevelRenderService,
-  LevelViewportService,
-  LevelViewService,
-  LevelWeatherService,
-} from "@/core/level/services";
+import { LevelLoadService } from "@/core/level/services/level-load.service";
+import { LevelLookService } from "@/core/level/services/level-look.service";
+import { LevelRenderService } from "@/core/level/services/level-render.service";
+import { LevelViewService } from "@/core/level/services/level-view.service";
+import { LevelViewportService } from "@/core/level/services/level-viewport.service";
+import { LevelWeatherService } from "@/core/level/services/level-weather.service";
 import { clearLocalStorage } from "@/core/storage";
 import { mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";

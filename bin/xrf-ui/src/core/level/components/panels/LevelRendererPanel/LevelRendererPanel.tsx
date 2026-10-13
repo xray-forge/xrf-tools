@@ -13,7 +13,9 @@ import { LevelRendererResidentSection } from "@/core/level/components/panels/Lev
 import { LevelRendererStaticDrawsSection } from "@/core/level/components/panels/LevelRendererPanel/LevelRendererStaticDrawsSection";
 import { LevelRendererTexturesSection } from "@/core/level/components/panels/LevelRendererPanel/LevelRendererTexturesSection";
 import { ILevelTextureReport } from "@/core/level/lib/texture/level-texture-report";
-import { LevelLoadService, LevelRenderService, LevelViewportService } from "@/core/level/services";
+import { LevelLoadService } from "@/core/level/services/level-load.service";
+import { LevelRenderService } from "@/core/level/services/level-render.service";
+import { LevelViewportService } from "@/core/level/services/level-viewport.service";
 import { RenderSettingsService } from "@/core/render/services/render-settings";
 import { EditorPanel, EditorPanelEmpty } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";

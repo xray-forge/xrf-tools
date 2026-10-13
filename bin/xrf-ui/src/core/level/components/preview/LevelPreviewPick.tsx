@@ -6,7 +6,8 @@ import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import { formatLevelPoint } from "@/core/level/lib/camera/level-camera";
 import { ELevelPick, TLevelPick } from "@/core/level/lib/pick/level-pick";
 import { UNNAMED_LEVEL_SURFACE } from "@/core/level/lib/surface/level-surface-summary";
-import { LevelLoadService, LevelViewportService } from "@/core/level/services";
+import { LevelLoadService } from "@/core/level/services/level-load.service";
+import { LevelViewportService } from "@/core/level/services/level-viewport.service";
 import { RenderViewportOverlay } from "@/core/render/components/overlay";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 

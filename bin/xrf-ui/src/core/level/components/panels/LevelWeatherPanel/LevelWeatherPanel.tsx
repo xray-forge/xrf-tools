@@ -10,7 +10,10 @@ import { LevelWeatherFindingsSection } from "@/core/level/components/panels/Leve
 import { LevelWeatherModifiersSection } from "@/core/level/components/panels/LevelWeatherPanel/LevelWeatherModifiersSection";
 import { LevelWeatherPlaySection } from "@/core/level/components/panels/LevelWeatherPanel/LevelWeatherPlaySection";
 import { ILevelWeatherCycleChoice, listLevelWeatherCycles } from "@/core/level/lib/weather/level-weather-cycle-choice";
-import { LevelLoadService, LevelRenderService, LevelViewService, LevelWeatherService } from "@/core/level/services";
+import { LevelLoadService } from "@/core/level/services/level-load.service";
+import { LevelRenderService } from "@/core/level/services/level-render.service";
+import { LevelViewService } from "@/core/level/services/level-view.service";
+import { LevelWeatherService } from "@/core/level/services/level-weather.service";
 import { EditorPanel, EditorPanelEmpty } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 

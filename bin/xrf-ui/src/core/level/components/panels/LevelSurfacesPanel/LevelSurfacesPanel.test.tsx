@@ -8,14 +8,12 @@ import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import { LevelSurfacesPanel } from "@/core/level/components/panels/LevelSurfacesPanel";
 import { ELevelPick } from "@/core/level/lib/pick/level-pick";
 import { ILevelTextureReport } from "@/core/level/lib/texture/level-texture-report";
-import {
-  LevelLoadService,
-  LevelLookService,
-  LevelRenderService,
-  LevelViewportService,
-  LevelViewService,
-  LevelWeatherService,
-} from "@/core/level/services";
+import { LevelLoadService } from "@/core/level/services/level-load.service";
+import { LevelLookService } from "@/core/level/services/level-look.service";
+import { LevelRenderService } from "@/core/level/services/level-render.service";
+import { LevelViewService } from "@/core/level/services/level-view.service";
+import { LevelViewportService } from "@/core/level/services/level-viewport.service";
+import { LevelWeatherService } from "@/core/level/services/level-weather.service";
 import { mockLevelTextureReport, mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";

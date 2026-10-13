@@ -22,7 +22,7 @@ import { LevelPreviewEmpty } from "@/core/level/components/preview/LevelPreviewE
 import { LevelPreviewMetrics } from "@/core/level/components/preview/LevelPreviewMetrics";
 import { LevelPreviewPick } from "@/core/level/components/preview/LevelPreviewPick";
 import { ILevelPreviewViewportProps, LevelPreviewViewport } from "@/core/level/components/preview/LevelPreviewViewport";
-import { LevelViewService } from "@/core/level/services";
+import { LevelViewService } from "@/core/level/services/level-view.service";
 import { EditorFileHeader } from "@/core/shell/editor/EditorFileHeader";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { IEditorPanel, useEditorPanels } from "@/core/shell/editor-shell";
