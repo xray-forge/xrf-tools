@@ -8,7 +8,7 @@ use glam::{Mat4, Vec2, Vec3, Vec4};
 use xrf_dlss::Dlss;
 use xrf_error::{XrfError, XrfResult};
 use xrf_renderer_core::{
-  ExecutedGraph, ExecutedGroup, FrameGraph, GraphBindings, GraphReport, GraphRuntime, GraphTaggedTime,
+  ExecutedGraph, ExecutedGroup, FrameGraph, GraphBindings, GraphPassTime, GraphReport, GraphRuntime, GraphTaggedTime,
 };
 
 use wgpu::util::StagingBelt;
@@ -866,6 +866,14 @@ impl RenderThread {
 
     profiling::scope!("frame report");
 
+    // The windows' own passes, composition and captures, are every viewport's: taken once a round any report is due in,
+    // and handed to each viewport reporting, rather than to whichever reports first.
+    let is_any_due: bool = self.viewports.values().any(|viewport| viewport.is_report_due(now));
+    let composition: Vec<GraphPassTime> = match self.runtime.as_mut() {
+      Some(runtime) if is_any_due => runtime.timer.take(FrameGraph::FRAME_OWNER),
+      _ => Vec::new(),
+    };
+
     for viewport in self.viewports.values_mut() {
       viewport.answer_readbacks(&self.scenes);
       viewport.report(
@@ -874,6 +882,7 @@ impl RenderThread {
         (allocator, &mut self.scenes),
         (
           self.runtime.as_mut().map(|runtime| &mut runtime.timer),
+          &composition,
           self.graph_report.as_ref().map(|(_, report)| report),
         ),
       );
