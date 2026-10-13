@@ -10,6 +10,8 @@ pub struct FrameSpanTimer {
   slots: Vec<GpuReadback>,
   /// The slot the frame being recorded stamps into, where one was free.
   slot: Option<usize>,
+  /// The tag of the frame each slot holds.
+  tags: Vec<u64>,
   /// Milliseconds a timestamp tick lasts.
   period: f32,
 }
@@ -44,13 +46,14 @@ impl FrameSpanTimer {
         .map(|_| GpuReadback::new(device, "frame span readback", 16))
         .collect(),
       slot: None,
+      tags: vec![0; Self::SLOTS],
       period: queue.get_timestamp_period() / 1_000_000.0,
     }
   }
 
-  /// Stamps the start of a frame into the first free slot, at the start of the frame's own encoder, which is submitted
-  /// first; nothing while every slot is on its way back.
-  pub fn begin(&mut self, encoder: &mut wgpu::CommandEncoder) {
+  /// Stamps the start of a frame tagged `tag` into the first free slot, at the start of the frame's own encoder, which
+  /// is submitted first; nothing while every slot is on its way back.
+  pub fn begin(&mut self, encoder: &mut wgpu::CommandEncoder, tag: u64) {
     self.slot = None;
 
     let Some(queries) = &self.queries else {
@@ -62,6 +65,7 @@ impl FrameSpanTimer {
 
     encoder.write_timestamp(queries, slot as u32 * 2);
     self.slot = Some(slot);
+    self.tags[slot] = tag;
   }
 
   /// The commands stamping the end of the frame and copying its two stamps out, to submit after all of the frame's
@@ -89,12 +93,12 @@ impl FrameSpanTimer {
     }
   }
 
-  /// The milliseconds of the latest frame read back since the last call, none where none came back.
-  pub fn take(&mut self) -> Option<f32> {
+  /// Each frame read back since the last call, by its tag and its milliseconds, oldest first.
+  pub fn take(&mut self) -> Vec<(u64, f32)> {
     let period: f32 = self.period;
-    let mut latest: Option<f32> = None;
+    let mut spans: Vec<(u64, f32)> = Vec::new();
 
-    for slot in &self.slots {
+    for (slot, tag) in self.slots.iter().zip(&self.tags) {
       if let Some(Ok(span)) = slot.take(|bytes| {
         let (stamps, _) = bytes.as_chunks::<8>();
         let (start, end) = (u64::from_le_bytes(stamps[0]), u64::from_le_bytes(stamps[1]));
@@ -102,10 +106,12 @@ impl FrameSpanTimer {
         // A tick count running backwards is a driver's, not a negative span.
         end.saturating_sub(start) as f32 * period
       }) {
-        latest = Some(span);
+        spans.push((*tag, span));
       }
     }
 
-    latest
+    spans.sort_by_key(|(tag, _)| *tag);
+
+    spans
   }
 }

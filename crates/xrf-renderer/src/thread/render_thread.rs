@@ -615,13 +615,8 @@ impl RenderThread {
       .as_mut()
       .map(|runtime| runtime.timer.take_tagged())
       .unwrap_or_default();
-    let span: Option<f32> = self.frame_span.as_mut().and_then(|timer| {
-      let span: Option<f32> = timer.take();
-
-      timer.begin(&mut encoder);
-
-      span
-    });
+    let spans: Vec<(u64, f32)> = self.frame_span.as_mut().map(FrameSpanTimer::take).unwrap_or_default();
+    let span: Option<f32> = spans.last().map(|(_, span)| *span);
     let budget: f32 = self.periodic_budget.update(
       (Duration::from_secs_f32(delta), span),
       self.settings.frame_rate,
@@ -629,7 +624,11 @@ impl RenderThread {
     );
 
     // The frame's periodic work and streaming are granted against one budget, the streaming's rounds first.
-    self.periodic.begin(budget, &times);
+    self.periodic.begin(budget, (&times, &spans));
+
+    if let Some(timer) = self.frame_span.as_mut() {
+      timer.begin(&mut encoder, self.periodic.get_frame());
+    }
     self.periodic.set_owner(u32::MAX);
 
     let mut scene_frames: HashMap<RenderSceneId, RenderSceneFrame> = scene_frames;

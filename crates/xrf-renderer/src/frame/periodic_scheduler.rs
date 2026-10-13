@@ -5,16 +5,17 @@ use xrf_renderer_core::GraphTaggedTime;
 use crate::frame::periodic_job::PeriodicJob;
 use crate::frame::periodic_ticket::PeriodicTicket;
 
-/// What a frame was granted: each job's passes and the units it drew.
-type FrameGrants = Vec<(&'static [&'static str], f32)>;
+/// What a frame was granted: each job's passes, the units it drew and what a unit cost before any was learned.
+type FrameGrants = Vec<(&'static [&'static str], f32, f32)>;
 
 /// The work every view and scene draws once in so many frames, and what streams in, decided for all of them so the frame
 /// carries about the same share of it every time: each offers its due jobs, the scheduler grants them, and each does
 /// what it was granted. A frame decides in rounds sharing its budget: what streams in as the scenes take their updates,
-/// then what is drawn once every view prepared. A job that must be done this frame is granted, outside the budget; then
-/// the one waited longest past its deadline, whatever the budget, one a frame; then the rest by how near their deadline
-/// they stand, while they fit the budget.
-/// A job's cost is its units at the milliseconds a unit last cost as the timer measured its passes, its seed before.
+/// then what is drawn once every view prepared. A job that must be done this frame is granted whatever it costs, and
+/// spends the budget like any other, so what may wait fills only what it leaves; then the one waited longest past its
+/// deadline, whatever the budget, one a frame; then the rest by how near their deadline they stand, while they fit.
+/// A job's cost is its units at the milliseconds a unit last cost: as the timer measured its passes where they are
+/// timed, else as the frames' GPU times show it, fitted over the jobs each frame was granted; its seed before either.
 pub struct PeriodicScheduler {
   /// Milliseconds of GPU time a frame's work that may wait fills.
   budget: f32,
@@ -30,6 +31,10 @@ pub struct PeriodicScheduler {
   is_forced: bool,
   /// Milliseconds a unit costs, by a job's first pass, as measured.
   rates: HashMap<&'static str, f32>,
+  /// The units a job draws as a rule, by its first pass, which the fit to the frames' GPU times weighs it by.
+  typical_units: HashMap<&'static str, f32>,
+  /// Milliseconds the GPU spends on a frame apart from what it was granted, as the fit finds it.
+  baseline: Option<f32>,
   /// What each recent frame was granted, by the jobs' passes and units, for the timer to measure.
   granted: VecDeque<(u64, FrameGrants)>,
   /// Milliseconds this frame's grants of what may wait cost, and of what must draw.
@@ -51,6 +56,10 @@ impl PeriodicScheduler {
   const KEPT_FRAMES: usize = 8;
   /// How far one measurement moves a learned cost.
   const LEARNING: f32 = 0.25;
+  /// How far one frame's GPU time moves the fit's costs and baseline: a normalised least-mean-squares step.
+  const FIT_STEP: f32 = 0.2;
+  /// How far one frame moves a job's typical units.
+  const UNITS_STEP: f32 = 0.1;
 
   pub fn new() -> Self {
     Self {
@@ -61,16 +70,20 @@ impl PeriodicScheduler {
       decided: 0,
       is_forced: false,
       rates: HashMap::new(),
+      typical_units: HashMap::new(),
+      baseline: None,
       granted: VecDeque::new(),
       spent: 0.0,
       now_spent: 0.0,
     }
   }
 
-  /// Starts a frame's offers with `budget` milliseconds for what may wait, learning first from the passes the timer read
-  /// back since the last frame.
-  pub fn begin(&mut self, budget: f32, times: &[GraphTaggedTime]) {
+  /// Starts a frame's offers with `budget` milliseconds for the work drawn once in so many frames, learning first from
+  /// the passes the timer read back since the last frame, and from the GPU's milliseconds on each frame read back
+  /// (`spans`, by the frame's tag) where its passes were not timed.
+  pub fn begin(&mut self, budget: f32, (times, spans): (&[GraphTaggedTime], &[(u64, f32)])) {
     self.learn(times);
+    self.fit(times, spans);
     self.budget = budget.max(0.0);
     self.frame += 1;
     self.owner = 0;
@@ -176,7 +189,7 @@ impl PeriodicScheduler {
     });
 
     for index in waiting {
-      if self.spent + costs[index] <= self.budget {
+      if self.spent + self.now_spent + costs[index] <= self.budget {
         self.offers[index].is_granted = true;
         self.spent += costs[index];
       }
@@ -185,7 +198,7 @@ impl PeriodicScheduler {
     let granted: FrameGrants = self.offers[self.decided..]
       .iter()
       .filter(|offer| offer.is_granted)
-      .map(|offer| (offer.job.passes, offer.job.units))
+      .map(|offer| (offer.job.passes, offer.job.units, offer.job.seed))
       .collect();
 
     self.decided = self.offers.len();
@@ -229,7 +242,7 @@ impl PeriodicScheduler {
 
       let mut jobs: Vec<(&'static [&'static str], f32)> = Vec::new();
 
-      for (passes, units) in granted {
+      for (passes, units, _) in granted {
         match jobs.iter_mut().find(|(seen, _)| seen.first() == passes.first()) {
           Some((_, total)) => *total += units,
           None => jobs.push((passes, *units)),
@@ -254,6 +267,64 @@ impl PeriodicScheduler {
         let learned: &mut f32 = self.rates.entry(key).or_insert(rate);
 
         *learned += (rate - *learned) * Self::LEARNING;
+      }
+    }
+  }
+}
+
+impl PeriodicScheduler {
+  /// Fits each granted job's cost to the GPU's milliseconds on the frames read back whose passes were not timed: a
+  /// frame's time is its baseline and its jobs' costs, each job weighed by its units against its typical ones, and each
+  /// frame's error moves the baseline and the costs of the jobs it was granted by a normalised least-mean-squares step.
+  /// Jobs granted together share the error until the scheduler grants them apart.
+  fn fit(&mut self, times: &[GraphTaggedTime], spans: &[(u64, f32)]) {
+    for &(frame, span) in spans {
+      if times.iter().any(|time| time.tag == frame) {
+        continue;
+      }
+
+      let Some((_, granted)) = self.granted.iter().find(|(tag, _)| *tag == frame) else {
+        continue;
+      };
+      let mut jobs: Vec<(&'static str, f32, f32)> = Vec::new();
+
+      for &(passes, units, seed) in granted {
+        let Some(key) = passes.first().copied() else {
+          continue;
+        };
+
+        match jobs.iter_mut().find(|(seen, ..)| *seen == key) {
+          Some((_, total, _)) => *total += units,
+          None => jobs.push((key, units, seed)),
+        }
+      }
+
+      // Each job's units against its typical ones, and its typical draw's cost.
+      let weighed: Vec<(&'static str, f32, f32, f32)> = jobs
+        .iter()
+        .filter(|(_, units, _)| *units > 0.0)
+        .map(|&(key, units, seed)| {
+          let typical: f32 = *self
+            .typical_units
+            .entry(key)
+            .and_modify(|typical| *typical += (units - *typical) * Self::UNITS_STEP)
+            .or_insert(units);
+          let rate: f32 = self.rates.get(key).copied().unwrap_or(seed);
+
+          (key, units / typical, rate * typical, typical)
+        })
+        .collect();
+      let predicted: f32 = weighed.iter().map(|(_, share, draw, _)| share * draw).sum();
+      let baseline: f32 = *self.baseline.get_or_insert(span - predicted);
+      let error: f32 = span - baseline - predicted;
+      let norm: f32 = 1.0 + weighed.iter().map(|(_, share, ..)| share * share).sum::<f32>();
+
+      self.baseline = Some(baseline + Self::FIT_STEP * error / norm);
+
+      for (key, share, draw, typical) in weighed {
+        let fitted: f32 = (draw + Self::FIT_STEP * error * share / norm).max(0.0);
+
+        self.rates.insert(key, fitted / typical);
       }
     }
   }
