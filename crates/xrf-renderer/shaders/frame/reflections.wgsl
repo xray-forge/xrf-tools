@@ -9,6 +9,7 @@
 #import "common/reflection_trace"
 #import "common/reflection_end"
 #import "common/trace_requests"
+#import "common/noise"
 
 // Stochastic screen-space reflections on the frame's surfaces, at the size the quality traces at, a pixel per `ratio`
 // by `ratio` of the frame. Each reflecting pixel's ray leaves in a direction drawn from its surface's GGX lobe (a
@@ -63,8 +64,6 @@ const MISSED_LENGTH: f32 = 1e4;
 // Metres a traced ray starts off its surface, and what of its distance more, so the triangles the G-buffer's depth
 // stands a little off of do not meet it.
 const TRACED_BIAS: vec2<f32> = vec2<f32>(0.02, 0.002);
-// The R2 sequence, which turns a pixel's noise from one frame to the next.
-const NOISE_TURN: vec2<f32> = vec2<f32>(0.7548776662, 0.5698402910);
 const UNTRACED: vec4<f32> = vec4<f32>(0.0, 0.0, 0.0, -1.0);
 // The roughness over which a ray's crossings fall to `ROUGH_CROSSINGS` of the quality's, its blurred reflection needing
 // no finer walk.
@@ -281,7 +280,7 @@ fn pixel_numbers(pixel: vec2<f32>) -> vec2<f32> {
     textureLoad(blue_noise, (at + size / 2u) % size, 0).r,
   );
 
-  return fract(noise + f32(reflection.frame) * NOISE_TURN);
+  return fract(noise + f32(reflection.frame) * R2_STEPS);
 }
 
 // What a ray met lit as combine lights it this frame: `hmodel` over its G-buffer, its occlusion where it is searched.

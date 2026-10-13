@@ -1,6 +1,8 @@
 use glam::Vec4;
 use xrf_renderer_core::ShaderStruct;
 
+use crate::pass::noise_turn::NoiseTurn;
+
 /// What `shaders/common/wet.wgsl` declares as `Wet`: how hard it rains, the clock, the engine, the cover, and the
 /// enhanced wetting's state.
 #[repr(C)]
@@ -52,9 +54,6 @@ impl WetUniform {
 
   /// Metres the wetness creeps under a cover from its wet edges once a long rain has soaked the level through.
   pub const CREEP_MOST: f32 = 1.5;
-  /// Interleaved gradient noise's step between frames, Jimenez's, in pixels, and the frames it cycles through.
-  const NOISE_STEP: f32 = 5.588_238;
-  const NOISE_FRAMES: u32 = 64;
 
   /// The way and speed gusts drift for a wind: downwind, as the rain leans, in renderer space.
   pub fn get_gust(direction: f32, velocity: f32) -> Vec4 {
@@ -66,6 +65,6 @@ impl WetUniform {
 
   /// The pixels the cover's noise is moved by on the noise's `frame`.
   pub fn get_cover_noise(frame: u32) -> f32 {
-    (frame % Self::NOISE_FRAMES) as f32 * Self::NOISE_STEP
+    NoiseTurn::get_gradient(frame)
   }
 }

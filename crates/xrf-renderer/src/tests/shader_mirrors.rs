@@ -11,6 +11,7 @@ use crate::pass::camera_uniform::CameraUniform;
 use crate::pass::flare_pass::FlarePass;
 use crate::pass::light_view::LightView;
 use crate::pass::lights_pass::LightsPass;
+use crate::pass::noise_turn::NoiseTurn;
 use crate::pass::particle_surface_record::ParticleSurfaceRecord;
 use crate::pass::present_uniform::PresentUniform;
 use crate::pass::puddle_sites_uniform::PuddleSitesUniform;
@@ -191,6 +192,17 @@ fn the_haze_and_the_bloom_read_their_targets_at_their_sizes() {
   assert_eq!(
     get_vector_constant(&library, "frame/bloom", "BLOOM_SIZE"),
     size(ViewTargets::BLOOM_SIZE)
+  );
+}
+
+/// The traced passes turn their noise by the R2 steps the uniforms turn theirs by.
+#[test]
+fn the_traced_passes_turn_their_noise_as_rust_does() {
+  let library: ShaderLibrary = ShaderLibrary::default();
+
+  assert_eq!(
+    get_vector_constant(&library, "common/noise", "R2_STEPS"),
+    NoiseTurn::R2_STEPS
   );
 }
 
