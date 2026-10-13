@@ -89,9 +89,14 @@ impl InspectCommand {
     requested: Option<&String>,
   ) -> XrfResult<&'a DialogProjectFile> {
     let found: Option<&&DialogProjectFile> = match requested {
-      Some(requested) => declaring
-        .iter()
-        .find(|file| file.get_logical_path().eq_ignore_ascii_case(requested)),
+      // Typed with either slash, as the other dialog and particle commands take a name.
+      Some(requested) => {
+        let requested: String = requested.replace('/', "\\");
+
+        declaring
+          .iter()
+          .find(|file| file.get_logical_path().eq_ignore_ascii_case(&requested))
+      }
       None => declaring.first(),
     };
 
