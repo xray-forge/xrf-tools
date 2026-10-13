@@ -1,5 +1,5 @@
-import { Injectable } from "@wirestate/core";
-import { BoundAction, Computed, Observable, RefObservable } from "@wirestate/mobx";
+import { Injectable, OnDeprovision, OnProvision } from "@wirestate/core";
+import { BoundAction, comparer, Computed, Observable, reaction, RefObservable } from "@wirestate/mobx";
 import { clamp } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 
@@ -111,6 +111,9 @@ export class RenderSettingsService {
   @RefObservable()
   public rendererChoice: IRenderFeatureChoice = RenderSettingsService.readRendererChoice();
 
+  /** Stops telling the renderer its settings, while provisioned. */
+  private stopConfiguring: Nullable<() => void> = null;
+
   /** Every renderer feature as the choice sets it. */
   @Computed()
   public get rendererFeatures(): IRenderFeatureSettings {
@@ -131,6 +134,25 @@ export class RenderSettingsService {
       isGpuTimed: this.isGpuTimed,
       periodicBudget: this.periodicBudget,
     };
+  }
+
+  /** Tells the renderer every viewport's settings at once and again on each change, whether a viewport is attached or not. */
+  @OnProvision()
+  public onProvision(): void {
+    this.stopConfiguring = reaction(
+      () => this.renderSettings,
+      (settings: RenderSettings) =>
+        void renderCommands
+          .configure(settings)
+          .catch((error: unknown) => this.log.warn("The renderer refused its settings:", error)),
+      { equals: comparer.structural, fireImmediately: true }
+    );
+  }
+
+  @OnDeprovision()
+  public onDeprovision(): void {
+    this.stopConfiguring?.();
+    this.stopConfiguring = null;
   }
 
   /**
