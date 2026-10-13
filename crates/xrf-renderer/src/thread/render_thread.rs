@@ -724,7 +724,7 @@ impl RenderThread {
     );
     gpu.weather_textures.update(&gpu.context.device, &gpu.context.queue);
 
-    self.draw_windows(now.elapsed(), encoder);
+    self.draw_windows((now.elapsed(), span), encoder);
 
     let Some(gpu) = &self.gpu else {
       return;
@@ -884,7 +884,9 @@ impl RenderThread {
     windows
   }
 
-  fn draw_windows(&mut self, update: Duration, mut encoder: FrameEncoder) {
+  /// Draws every window's viewports: `update` is what the frame spent before any window, `span` the GPU's milliseconds
+  /// on the latest frame read back, where one came back.
+  fn draw_windows(&mut self, (update, span): (Duration, Option<f32>), mut encoder: FrameEncoder) {
     let mut windows: Vec<WindowFrame> = self.ready_windows(&mut encoder);
     let Some(gpu) = &mut self.gpu else {
       return;
@@ -1358,7 +1360,7 @@ impl RenderThread {
       for (id, _, _) in &window.drawn {
         if let Some(viewport) = self.viewports.get_mut(id) {
           viewport.frame += 1;
-          viewport.record_frame(interval, cpu, &window_phases, &groups);
+          viewport.record_frame((interval, cpu, span), &window_phases, &groups);
         }
       }
     }

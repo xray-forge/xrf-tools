@@ -589,6 +589,13 @@ export type RenderFrameReport = {
   cpuTime: number | null;
   /** Milliseconds of the render thread's own work each frame over the span, in order. */
   cpuTimes: Array<number | null>;
+  /**
+   * Mean milliseconds the GPU spent on a frame from its first command to its last, whether or not its passes are
+   * timed; none where the device cannot time it.
+   */
+  gpuTime: number | null;
+  /** Milliseconds the GPU spent on each frame read back over the span, in order; each comes back a few frames late. */
+  gpuTimes: Array<number | null>;
   /** Where the render thread's time goes a frame, waiting for the window's image and presenting included. */
   phases: RenderFramePhases;
   /** What each encode group cost the render thread a frame, in the order the frame records them. */
@@ -1306,8 +1313,9 @@ export type RenderSettings = {
    */
   backend: RenderBackend | null;
   /**
-   * Milliseconds of GPU time each frame gives the work drawn once in so many frames that may wait: the shadows'
-   * cascades and faces, the overhead maps, the surroundings' faces, the sky's refill.
+   * Milliseconds of GPU time each frame gives at least the work drawn once in so many frames that may wait: the
+   * shadows' cascades and faces, the overhead maps, the surroundings' faces, the sky's refill. A frame held to a cap or
+   * the display's refresh gives it what headroom it leaves, up to `PeriodicBudget::CEILING`.
    */
   periodicBudget: number | null;
 };

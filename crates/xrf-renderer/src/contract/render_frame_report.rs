@@ -27,6 +27,11 @@ pub struct RenderFrameReport {
   pub cpu_time: f32,
   /// Milliseconds of the render thread's own work each frame over the span, in order.
   pub cpu_times: Vec<f32>,
+  /// Mean milliseconds the GPU spent on a frame from its first command to its last, whether or not its passes are
+  /// timed; none where the device cannot time it.
+  pub gpu_time: Option<f32>,
+  /// Milliseconds the GPU spent on each frame read back over the span, in order; each comes back a few frames late.
+  pub gpu_times: Vec<f32>,
   /// Where the render thread's time goes a frame, waiting for the window's image and presenting included.
   pub phases: RenderFramePhases,
   /// What each encode group cost the render thread a frame, in the order the frame records them.

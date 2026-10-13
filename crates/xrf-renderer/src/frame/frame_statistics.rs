@@ -19,6 +19,8 @@ pub struct FrameStatistics {
   interval_max: f32,
   cpu_sum: f32,
   cpu_times: Vec<f32>,
+  /// The GPU's milliseconds on each frame read back, a few frames after it was drawn.
+  gpu_times: Vec<f32>,
   phase_sums: [f32; PHASES],
   /// Each encode group's record and finish milliseconds summed, by name in the order first seen.
   group_sums: Vec<(&'static str, f32, f32)>,
@@ -36,6 +38,8 @@ pub struct FrameSummary {
   pub frame_times: Vec<f32>,
   pub cpu_time: f32,
   pub cpu_times: Vec<f32>,
+  pub gpu_time: Option<f32>,
+  pub gpu_times: Vec<f32>,
   pub phases: RenderFramePhases,
   pub groups: Vec<RenderGroupCost>,
 }
@@ -50,14 +54,21 @@ impl FrameStatistics {
       interval_max: 0.0,
       cpu_sum: 0.0,
       cpu_times: Vec::new(),
+      gpu_times: Vec::new(),
       phase_sums: [0.0; PHASES],
       group_sums: Vec::new(),
     }
   }
 
-  /// Notes one presented frame: its distance from the one before, the render thread's own work on it, where the
-  /// render thread's time went, and what each encode group cost.
-  pub fn record(&mut self, interval: Duration, cpu: Duration, phases: &FramePhases, groups: &[ExecutedGroup]) {
+  /// Notes one presented frame: its distance from the one before, the render thread's own work on it, the GPU's
+  /// milliseconds on the frame read back with it where one came back, where the render thread's time went, and what
+  /// each encode group cost.
+  pub fn record(
+    &mut self,
+    (interval, cpu, gpu): (Duration, Duration, Option<f32>),
+    phases: &FramePhases,
+    groups: &[ExecutedGroup],
+  ) {
     let interval: f32 = interval.as_secs_f32() * 1000.0;
     let cpu: f32 = cpu.as_secs_f32() * 1000.0;
 
@@ -67,6 +78,7 @@ impl FrameStatistics {
     self.interval_max = self.interval_max.max(interval);
     self.cpu_sum += cpu;
     self.cpu_times.push(cpu);
+    self.gpu_times.extend(gpu);
 
     for (sum, phase) in self.phase_sums.iter_mut().zip(phases.to_array()) {
       *sum += phase.as_secs_f32() * 1000.0;
@@ -101,6 +113,8 @@ impl FrameStatistics {
       frame_times: std::mem::take(&mut self.intervals),
       cpu_time: self.cpu_sum / frames,
       cpu_times: std::mem::take(&mut self.cpu_times),
+      gpu_time: (!self.gpu_times.is_empty()).then(|| self.gpu_times.iter().sum::<f32>() / self.gpu_times.len() as f32),
+      gpu_times: std::mem::take(&mut self.gpu_times),
       phases: to_phases(self.phase_sums.map(|sum| sum / frames)),
       groups: self
         .group_sums

@@ -68,6 +68,8 @@ export const EMPTY_RENDER_FRAME_REPORT: RenderFrameReport = {
   frameTimeMax: 0,
   frameTimes: [],
   framesPerSecond: 0,
+  gpuTime: null,
+  gpuTimes: [],
   graph: null,
   groups: [],
   hasRayQueries: false,
