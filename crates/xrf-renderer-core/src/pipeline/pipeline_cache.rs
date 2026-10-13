@@ -25,6 +25,15 @@ pub struct PipelineCache {
 }
 
 impl PipelineCache {
+  /// The checks compiled into every module: none on indexing or loop counts, which the shaders and the hardware's own
+  /// buffer bounds make redundant and which cost every buffer read and loop, the guards on division and ray queries
+  /// kept.
+  const RUNTIME_CHECKS: wgpu::ShaderRuntimeChecks = wgpu::ShaderRuntimeChecks {
+    bounds_checks: false,
+    force_loop_bounding: false,
+    ..wgpu::ShaderRuntimeChecks::checked()
+  };
+
   pub fn new() -> Self {
     Self::default()
   }
@@ -234,10 +243,19 @@ impl PipelineCache {
 
     let code: String = source.compose(module)?;
     let compiled: wgpu::ShaderModule = Self::create_checked(device, module, || {
-      device.create_shader_module(wgpu::ShaderModuleDescriptor {
-        label: Some(module),
-        source: wgpu::ShaderSource::Wgsl(code.into()),
-      })
+      // SAFETY: every module is the renderer's own. Its loops each end (a counted bound, a float bound a NaN also
+      // ends, or a ray query's traversal), and its storage buffers are bound through descriptors, which both backends
+      // bound-check in hardware (D3D12's views, Vulkan's robust buffer access), as they do image loads; the dynamic
+      // uniforms are read at fixed fields and constant-bounded indices. Division and ray queries stay guarded.
+      unsafe {
+        device.create_shader_module_trusted(
+          wgpu::ShaderModuleDescriptor {
+            label: Some(module),
+            source: wgpu::ShaderSource::Wgsl(code.into()),
+          },
+          Self::RUNTIME_CHECKS,
+        )
+      }
     })?;
 
     self
