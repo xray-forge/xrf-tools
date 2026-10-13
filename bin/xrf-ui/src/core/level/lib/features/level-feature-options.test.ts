@@ -129,6 +129,22 @@ describe("level feature options", () => {
     expect(toLevelFeatureOptions(null)).toEqual(mockLevelFeatureOptions());
   });
 
+  // Every setting the reflections popover writes comes back from storage, not only the four the toolbar opened with.
+  it("keeps every reflection setting a view sets", () => {
+    const reflections = {
+      distance: 80,
+      intensity: 1.5,
+      isGrassReflected: true,
+      isTraced: false,
+      probe: "fine",
+      reach: 300,
+      skyGain: 2,
+      traceQuality: "high",
+    };
+
+    expect(toLevelFeatureOptions({ reflections }).reflections).toEqual(reflections);
+  });
+
   it("keeps the water's mode and its enhanced strengths, held to their bounds, and drops a mode it does not know", () => {
     expect(
       toLevelFeatureOptions({
