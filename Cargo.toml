@@ -177,6 +177,7 @@ opt-level = 0
 [profile.dev-optimized]
 inherits = "dev"
 opt-level = 1
+lto = "off"
 
 [profile.dev-optimized.package."*"]
 opt-level = 3
