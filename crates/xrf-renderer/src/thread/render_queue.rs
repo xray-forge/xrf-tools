@@ -1,5 +1,6 @@
 use std::sync::mpsc::{Receiver, RecvTimeoutError, Sender, channel};
 use std::sync::{Arc, Mutex, MutexGuard};
+use std::thread::JoinHandle;
 use std::time::Duration;
 
 use crate::context::library_versions::describe_libraries;
@@ -118,14 +119,26 @@ impl RenderQueue {
     let bundle: Arc<dyn RenderBundle> = Arc::clone(&self.bundle);
     let world: Arc<Mutex<dyn RenderWorld>> = Arc::clone(&self.world);
     let store: Option<Arc<dyn RenderCacheStore>> = self.store.clone();
+    let previous: Option<JoinHandle<()>> = link.thread.take();
+    let started: std::io::Result<JoinHandle<()>> =
+      std::thread::Builder::new().name("xrf-render".into()).spawn(move || {
+        // The thread before stopped taking commands, but may still be letting its GPU go: a device and a window's
+        // swapchain are started only once it has. Commands sent meanwhile wait in this thread's channel, so no sender
+        // waits for it.
+        if let Some(previous) = previous {
+          let _ = previous.join();
+        }
 
-    if let Err(error) = std::thread::Builder::new()
-      .name("xrf-render".into())
-      .spawn(move || RenderThread::new(receiver, shared, settings, workers, (bundle, world, store)).run())
-    {
-      log::error!("The render thread could not be started: {error}");
+        RenderThread::new(receiver, shared, settings, workers, (bundle, world, store)).run();
+      });
 
-      return None;
+    match started {
+      Ok(thread) => link.thread = Some(thread),
+      Err(error) => {
+        log::error!("The render thread could not be started: {error}");
+
+        return None;
+      }
     }
 
     link.sender = Some(sender.clone());
