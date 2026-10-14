@@ -42,6 +42,7 @@ use crate::pass::sun_trace_pass::SunTracePass;
 use crate::pass::surroundings_pass::SurroundingsPass;
 use crate::pass::temporal_pass::TemporalPass;
 use crate::pass::thunder_pass::ThunderPass;
+use crate::pass::trace_sway_pass::TraceSwayPass;
 use crate::pass::upscale_pass::UpscalePass;
 use crate::pass::vbao_pass::VbaoPass;
 use crate::pass::water_pass::WaterPass;
@@ -65,6 +66,7 @@ pub struct LevelPasses<'a> {
   pub rtao: &'a RtaoPass,
   pub reflections: &'a ReflectionPass,
   pub scene_trace: &'a SceneTracePass,
+  pub trace_sway: &'a TraceSwayPass,
   pub grass_colours: &'a GrassColourPass,
   pub lights: &'a LightsPass,
   pub combine: &'a CombinePass,

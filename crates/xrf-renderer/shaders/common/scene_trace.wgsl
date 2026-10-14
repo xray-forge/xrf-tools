@@ -642,6 +642,59 @@ fn scene_grass_passed(origin: vec3<f32>, toward: vec3<f32>, length: f32, is_met:
   return out;
 }
 
+// Metres over its start a shadow ray is walked through the grass to, the tallest tufts' height, and a step of its
+// walk.
+const SCENE_GRASS_SHADOW_RISE: f32 = 1.5;
+const SCENE_GRASS_SHADOW_STEP: f32 = 0.25;
+
+// How much of a shadow ray's light passes the grass it crosses from `origin` along `toward` within `reach` metres, its
+// steps shifted by `offset` (a share of a step, drawn anew each frame), each slot's tufts a layer stopping it as their
+// sideways extinction says, as `scene_grass_passed` walks them: grass has no geometry in the trace, so thick grass
+// shades its own lower half and the ground under it this way. The layer stands on the lower of `ground`, the height
+// the ray leaves the ground at, and the slot's middle, every slot walked: a shadow ray knows where its ground is, which
+// a slot's middle on uneven ground does not.
+fn scene_grass_through(origin: vec3<f32>, toward: vec3<f32>, reach: f32, offset: f32, ground: f32) -> f32 {
+  if (trace_grass.model_count == 0u) {
+    return 1.0;
+  }
+
+  let risen: f32 = select(SCENE_GRASS_WALK, SCENE_GRASS_SHADOW_RISE / toward.y, toward.y > 0.0);
+  let end: f32 = min(min(reach, SCENE_GRASS_WALK), risen);
+  var through: f32 = 1.0;
+  var last: vec2<i32> = vec2<i32>(-2147483647);
+  var grass: SceneGrassSlot;
+
+  for (var along: f32 = SCENE_GRASS_SHADOW_STEP * offset; along < end; along += SCENE_GRASS_SHADOW_STEP) {
+    let point: vec3<f32> = origin + toward * along;
+    let fade: f32 = scene_grass_fade(point);
+
+    if (fade <= 0.0) {
+      continue;
+    }
+
+    let slot: vec2<i32> = vec2<i32>(floor(vec2<f32>(point.x, -point.z) / GRASS_SLOT_METERS));
+
+    if (any(slot != last)) {
+      last = slot;
+      grass = scene_grass_slot(slot, vec2<f32>(0.5), 1.0);
+    }
+
+    let above: f32 = point.y - min(ground, (grass.base + grass.top) * 0.5);
+
+    if (!grass.is_planted || above < 0.0 || above > grass.height) {
+      continue;
+    }
+
+    through *= exp(-grass.extinction * fade * fade * SCENE_GRASS_SHADOW_STEP);
+
+    if (through < 0.02) {
+      return 0.0;
+    }
+  }
+
+  return through;
+}
+
 // A triangle's corners, read from its layout's arena through its record: its outline, then each corner's normal and,
 // for a sector's or an instanced mesh's, its lightmap's coordinate as two shorts over 32768.
 fn scene_triangle(record: TraceRecord, primitive: u32) -> SceneTriangle {

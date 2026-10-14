@@ -6,8 +6,9 @@
 // The sun's shadow traced at the frame's size: from each drawn pixel one ray towards a point of the sun's disc, drawn
 // anew each frame, traced against the level's static geometry and its spawned models, cut-out leaves by their alpha;
 // one where it meets nothing, which the sun's pass takes in its cascades' place, the noise of its soft edges left to
-// DLSS ray reconstruction. Grass, planted on the GPU each frame, is not in the trace and shadows nothing here; the
-// trees stand as the trace holds them, unswayed.
+// DLSS ray reconstruction. Grass, planted on the GPU each frame, has no geometry in the trace: a ray clear of it passes
+// the grass's layers instead, which thick grass shades its own lower half and the ground under it by. Trees stand
+// swayed where the view sways them (`TraceSwayFeature`).
 
 // The G-buffer's normals, material and depth, and the sun traced towards.
 #import "generated/frame/sun_trace"
@@ -17,8 +18,8 @@ const TAU: f32 = 6.2831853;
 // starts on.
 const LIFT: f32 = 0.03;
 const LIFT_PER_METRE: f32 = 0.002;
-// Metres a plant's ray starts towards the sun past it: a blade's or a swaying leaf's point stands among the trace's
-// unswayed leaves, which would shadow it at random.
+// Metres a plant's ray starts towards the sun past it: a leaf's card faces any way and stands among others, which would
+// shadow it at random, and a blade has no geometry in the trace to leave.
 const PLANT_LIFT: f32 = 0.3;
 
 // Jimenez's interleaved gradient noise: neighbours far apart in value, so the rays of a small footprint spread over
@@ -64,7 +65,11 @@ fn fs_sun_trace(in: FullscreenVarying) -> @location(0) vec4<f32> {
   let direction: vec3<f32> = normalize(to_sun + (across * cos(angle) + along * sin(angle)) * radius);
   // What the ray's cone covers where it starts, a pixel's footprint, widening as the disc does.
   let cone: SceneCone = SceneCone(distance * 2.0 / (camera.projection[1][1] * camera.viewport.y), sun_trace.spread);
-  let is_blocked: bool = trace_scene_blocked(world + lift, direction, SCENE_SUN_REACH, cone, SCENE_NO_PLACE);
+  let origin: vec3<f32> = world + lift;
 
-  return vec4<f32>(select(1.0, 0.0, is_blocked));
+  if (trace_scene_blocked(origin, direction, SCENE_SUN_REACH, cone, SCENE_NO_PLACE)) {
+    return vec4<f32>(0.0);
+  }
+
+  return vec4<f32>(scene_grass_through(origin, direction, SCENE_SUN_REACH, fract(drawn.x + drawn.y), world.y));
 }

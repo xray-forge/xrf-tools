@@ -55,6 +55,7 @@ use crate::pass::sun_trace_pass::SunTracePass;
 use crate::pass::surroundings_pass::SurroundingsPass;
 use crate::pass::temporal_pass::TemporalPass;
 use crate::pass::thunder_pass::ThunderPass;
+use crate::pass::trace_sway_pass::TraceSwayPass;
 use crate::pass::upscale_pass::UpscalePass;
 use crate::pass::vbao_pass::VbaoPass;
 use crate::pass::view_binding::ViewBinding;
@@ -118,6 +119,7 @@ pub struct GpuState {
   pub sun_trace: SunTracePass,
   pub reflections: ReflectionPass,
   pub scene_trace: SceneTracePass,
+  pub trace_sway: TraceSwayPass,
   pub lights: LightsPass,
   pub combine: CombinePass,
   pub sky_behind: SkyBehindPass,
@@ -205,6 +207,7 @@ impl GpuState {
       let rtao = threads.spawn(move || RtaoPass::new(device, source, view, texture));
       let reflections = threads.spawn(move || ReflectionPass::new(device, queue, source, view, sky_layout));
       let scene_trace = threads.spawn(move || SceneTracePass::new(device, source, view, sky_layout, texture));
+      let trace_sway = threads.spawn(move || TraceSwayPass::new(device, source));
       let lights = threads.spawn(move || LightsPass::new(device, source, view, texture));
       let combine = threads.spawn(move || CombinePass::new(device, source, view, sky_layout));
       let sky_behind = threads.spawn(move || SkyBehindPass::new(device, source, view, sky_layout));
@@ -252,6 +255,7 @@ impl GpuState {
         sun_trace: join(sun_trace)?,
         reflections: join(reflections)?,
         scene_trace: join(scene_trace)?,
+        trace_sway: join(trace_sway)?,
         lights: join(lights)?,
         combine: join(combine)?,
         sky_behind: join(sky_behind)?,
@@ -334,6 +338,7 @@ impl GpuState {
       sun_trace: &self.sun_trace,
       reflections: &self.reflections,
       scene_trace: &self.scene_trace,
+      trace_sway: &self.trace_sway,
       grass_colours: &self.grass_colours,
       lights: &self.lights,
       combine: &self.combine,
@@ -401,6 +406,7 @@ impl GpuState {
     self.sun_trace.refresh(device, source);
     self.reflections.refresh(device, source);
     self.scene_trace.refresh(device, source);
+    self.trace_sway.refresh(device, source);
     self.grass_colours.refresh(device, source);
     self.lights.refresh(device, source);
     self.combine.refresh(device, source);

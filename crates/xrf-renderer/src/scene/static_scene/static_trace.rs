@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use glam::Mat4;
+use glam::{Mat4, Vec3};
 use xrf_renderer_core::{AccelerationStructureBinding, ProxyHandle};
 
 use crate::scene::static_scene::static_layout::StaticLayout;
@@ -10,6 +10,7 @@ use crate::scene::static_scene::static_trace_geometry::StaticTraceGeometry;
 use crate::scene::static_scene::static_trace_group::StaticTraceGroup;
 use crate::scene::static_scene::static_trace_instance::StaticTraceInstance;
 use crate::scene::static_scene::static_trace_record::StaticTraceRecord;
+use crate::scene::static_scene::static_trace_swaying::StaticTraceSwaying;
 
 /// The level's static geometry as rays are traced against it by hardware ray query: bottom-level acceleration
 /// structures read in place from the scene's vertex and index arenas, a sector's deferred baked sections in one, each
@@ -31,6 +32,12 @@ pub struct StaticTrace {
   models: HashMap<ProxyHandle<StaticModelProxy>, wgpu::Blas>,
   /// The scene's contents and the generations of the arenas read, as last built over.
   built: Option<(usize, [u64; StaticLayout::COUNT + 1])>,
+  /// Every top-level instance as last built, its structure and transform, by its index.
+  built_instances: Vec<(Structure, [f32; 12])>,
+  /// The instances of trees' geometry, which the wind sways.
+  swaying: Vec<StaticTraceSwaying>,
+  /// Builds made, which a view's own top level is filled again after.
+  version: u64,
 }
 
 /// One sector's bottom-level structures, and the first index it was built over, which a sector moved in its arena
@@ -66,7 +73,7 @@ impl StaticTrace {
   const RECORDS: u64 = 1024;
 
   /// An instance's transform where the geometry stands in renderer space already.
-  const IDENTITY: [f32; 12] = [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0];
+  pub const IDENTITY: [f32; 12] = [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0];
 
   /// The place every sector's baked geometry stands at: the scene's origin, whose hemisphere is the vertices' own.
   const ORIGIN_PLACE: u32 = 0;
@@ -90,6 +97,9 @@ impl StaticTrace {
       sectors: HashMap::new(),
       models: HashMap::new(),
       built: None,
+      built_instances: Vec::new(),
+      swaying: Vec::new(),
+      version: 0,
     }
   }
 
@@ -111,6 +121,40 @@ impl StaticTrace {
   /// Each geometry's record, an instance's in a run its table entry names the first of.
   pub fn get_records(&self) -> &wgpu::Buffer {
     &self.records
+  }
+
+  /// The instances of trees' geometry, which the wind sways, as last built.
+  pub fn get_swaying(&self) -> &[StaticTraceSwaying] {
+    &self.swaying
+  }
+
+  /// Top-level instances as last built.
+  pub fn get_instance_count(&self) -> usize {
+    self.built_instances.len()
+  }
+
+  /// Builds made, a view's own top level filled again after each.
+  pub fn get_version(&self) -> u64 {
+    self.version
+  }
+
+  /// Fills a view's own top level with every instance as last built, those `swayed` names standing as the structure
+  /// given beside each, its geometry in renderer space already.
+  pub fn fill_view_tlas(&self, tlas: &mut wgpu::Tlas, swayed: &HashMap<u32, &wgpu::Blas>) {
+    for index in 0..tlas.get().len() {
+      tlas[index] = self
+        .built_instances
+        .get(index)
+        .map(|(structure, transform)| match swayed.get(&(index as u32)) {
+          Some(blas) => wgpu::TlasInstance::new(blas, Self::IDENTITY, index as u32, 0xff),
+          None => wgpu::TlasInstance::new(
+            Self::find_blas(&self.sectors, &self.models, *structure),
+            *transform,
+            index as u32,
+            0xff,
+          ),
+        });
+    }
   }
 
   /// Builds what changed in the scene since the last call into `encoder`: the structures of each sector come in or
@@ -166,7 +210,7 @@ impl StaticTrace {
     self.models.retain(|model, _| standing.contains(model));
 
     let pending: Vec<PendingBuild<'_>> = self.create_structures(device, &sectors, &models);
-    let (table, records, instances) = Self::list_instances(&sectors, &models, &objects);
+    let (table, records, instances, swaying) = Self::list_instances(&sectors, &models, &objects);
 
     self.write_tables(device, queue, &table, &records);
 
@@ -210,12 +254,16 @@ impl StaticTrace {
 
     encoder.build_acceleration_structures(entries.iter(), std::iter::once(&self.tlas));
 
+    self.built_instances = instances;
+    self.swaying = swaying;
+    self.version += 1;
+
     log::info!(
       "Static trace: {} structures built; {} sectors, {} models, {} instances, {} records",
       entries.len(),
       sectors.len(),
       models.len(),
-      instances.len(),
+      self.built_instances.len(),
       records.len()
     );
   }
@@ -312,7 +360,7 @@ impl StaticTrace {
 
   /// The instance table, the records and every top-level instance (its structure and its transform), in one order: an
   /// instance's custom index is its place in the table. A model's records are listed once, its objects' instances
-  /// sharing them.
+  /// sharing them. And the instances of trees' geometry among them.
   #[allow(clippy::type_complexity)]
   fn list_instances(
     sectors: &[(u32, &[StaticTraceGeometry], &[StaticTraceGroup])],
@@ -322,10 +370,12 @@ impl StaticTrace {
     Vec<StaticTraceInstance>,
     Vec<StaticTraceRecord>,
     Vec<(Structure, [f32; 12])>,
+    Vec<StaticTraceSwaying>,
   ) {
     let mut table: Vec<StaticTraceInstance> = Vec::new();
     let mut records: Vec<StaticTraceRecord> = Vec::new();
     let mut instances: Vec<(Structure, [f32; 12])> = Vec::new();
+    let mut swaying: Vec<StaticTraceSwaying> = Vec::new();
 
     for (sector, sections, groups) in sectors {
       if !sections.is_empty() {
@@ -344,9 +394,20 @@ impl StaticTrace {
         records.push(StaticTraceRecord::from(&group.geometry));
 
         for (offset, transform) in group.transforms.iter().enumerate() {
+          let place: u32 = group.first_place + offset as u32;
+
+          if group.geometry.layout == StaticLayout::Tree {
+            swaying.push(StaticTraceSwaying {
+              index: instances.len() as u32,
+              place,
+              position: Vec3::new(transform[3], transform[7], transform[11]),
+              geometry: group.geometry,
+            });
+          }
+
           table.push(StaticTraceInstance {
             first_record,
-            place: group.first_place + offset as u32,
+            place,
             pad: [0; 2],
           });
           instances.push((Structure::Group(*sector, index), *transform));
@@ -370,7 +431,7 @@ impl StaticTrace {
       instances.push((Structure::Model(*model), StaticTraceGroup::to_transform(transform)));
     }
 
-    (table, records, instances)
+    (table, records, instances, swaying)
   }
 
   /// Writes the instance table and the records, each buffer made again larger where outgrown.

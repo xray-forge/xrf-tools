@@ -5,8 +5,8 @@ use glam::{Mat4, Vec2, Vec3, Vec4};
 use xrf_dlss::Dlss;
 use xrf_error::XrfResult;
 use xrf_renderer_core::{
-  FrameGraph, GraphBindings, GraphBuffer, GraphColorAttachment, GraphRuntime, GraphTexture, GraphTextureDescriptor,
-  StorageArray, StorageArrayMut, StorageValue, UniformBinding,
+  AccelerationStructureBinding, FrameGraph, GraphBindings, GraphBuffer, GraphColorAttachment, GraphRuntime,
+  GraphTexture, GraphTextureDescriptor, StorageArray, StorageArrayMut, StorageValue, UniformBinding,
 };
 
 use crate::camera::camera_view::CameraView;
@@ -474,6 +474,12 @@ impl SceneView {
       options,
       (width, height),
       self.features.resolve.is_ray_reconstructed(),
+    );
+    self.features.trace_sway.prepare(
+      (device, queue),
+      scene.trace.as_ref(),
+      view.position,
+      options.is_scene_traced() && passes.scene_trace.is_traced(),
     );
     self
       .features
@@ -1448,6 +1454,13 @@ impl SceneView {
         colours
       });
 
+    // The view's own top level where its nearest trees stand swayed, the scene's otherwise.
+    let swayed: Option<AccelerationStructureBinding<'a>> =
+      self
+        .features
+        .trace_sway
+        .add_passes((&mut *graph, &mut *bindings), passes, statics);
+
     scene
       .trace
       .as_ref()
@@ -1455,7 +1468,7 @@ impl SceneView {
       .map(|trace| {
         (
           TraceParameters {
-            trace_scene: trace.get_structure(),
+            trace_scene: swayed.unwrap_or_else(|| trace.get_structure()),
             trace_instances: StorageArray::new(bindings.import_buffer(
               &mut *graph,
               "static trace instances",

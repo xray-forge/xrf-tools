@@ -469,6 +469,10 @@ const EMBEDDED: &[(&str, &str)] = &[
     include_str!("../../shaders/generated/static/draw.wgsl"),
   ),
   (
+    "generated/static/trace_sway",
+    include_str!("../../shaders/generated/static/trace_sway.wgsl"),
+  ),
+  (
     "generated/static/impostor",
     include_str!("../../shaders/generated/static/impostor.wgsl"),
   ),
@@ -503,6 +507,11 @@ const EMBEDDED: &[(&str, &str)] = &[
   ("static/impostor", include_str!("../../shaders/static/impostor.wgsl")),
   ("static/pulling", include_str!("../../shaders/static/pulling.wgsl")),
   ("static/records", include_str!("../../shaders/static/records.wgsl")),
+  ("static/sway", include_str!("../../shaders/static/sway.wgsl")),
+  (
+    "static/trace_sway",
+    include_str!("../../shaders/static/trace_sway.wgsl"),
+  ),
   ("static/vertex", include_str!("../../shaders/static/vertex.wgsl")),
   ("static/water", include_str!("../../shaders/static/water.wgsl")),
   (

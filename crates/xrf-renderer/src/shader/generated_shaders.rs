@@ -95,6 +95,8 @@ use crate::pass::trace_grass_uniform::TraceGrassUniform;
 use crate::pass::trace_parameters::TraceParameters;
 use crate::pass::trace_request::TraceRequest;
 use crate::pass::trace_request_parameters::TraceRequestParameters;
+use crate::pass::trace_sway_parameters::TraceSwayParameters;
+use crate::pass::trace_sway_slot::TraceSwaySlot;
 use crate::pass::upscale_parameters::UpscaleParameters;
 use crate::pass::upscale_uniform::UpscaleUniform;
 use crate::pass::vbao_parameters::VbaoParameters;
@@ -178,10 +180,12 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
   let mut surroundings: ShaderBindings = ShaderBindings::new();
   let mut static_cull: ShaderBindings = ShaderBindings::new();
   let mut static_draw: ShaderBindings = ShaderBindings::new();
+  let mut trace_sway: ShaderBindings = ShaderBindings::new();
   let mut static_impostor: ShaderBindings = ShaderBindings::new();
 
   structs
     .declare::<LightingUniform>()
+    .declare::<TraceSwaySlot>()
     .declare::<GlassUniform>()
     .declare::<SmoothingUniform>()
     .declare::<FroxelUniform>()
@@ -295,6 +299,7 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
   surroundings.add::<SurroundingsParameters<'_>>()?;
   static_cull.add::<StaticCullParameters>()?;
   static_draw.add::<StaticDrawParameters>()?;
+  trace_sway.add::<TraceSwayParameters>()?;
   static_impostor.add::<StaticImpostorParameters>()?;
 
   Ok(vec![
@@ -496,6 +501,10 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
     (
       "generated/static/draw",
       format!("{STRUCTS_IMPORT}{}", static_draw.to_wgsl()),
+    ),
+    (
+      "generated/static/trace_sway",
+      format!("{STRUCTS_IMPORT}{}", trace_sway.to_wgsl()),
     ),
     (
       "generated/static/impostor",
