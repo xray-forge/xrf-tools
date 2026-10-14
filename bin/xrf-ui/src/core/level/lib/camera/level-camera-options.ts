@@ -20,8 +20,8 @@ export const DEFAULT_LEVEL_CAMERA_OPTIONS: ILevelCameraOptions = {
 
 /** The bounds each value is offered between, so the control and the scene agree on what is askable. */
 export const LEVEL_CAMERA_LIMITS = {
-  /** Past a hundred the projection distorts more than it shows; under thirty it is a telescope. */
-  fieldOfView: { max: 120, min: 30, step: 1 },
+  /** Past a hundred the projection distorts more than it shows; down to five, a telescope onto a detail far off. */
+  fieldOfView: { max: 120, min: 5, step: 1 },
   /** Times the walking speed the modifier multiplies by, which a level the size of Zaton needs. */
   boost: { max: 20, min: 1, step: 0.5 },
   /** Radians of turn per pixel of pointer movement. */
