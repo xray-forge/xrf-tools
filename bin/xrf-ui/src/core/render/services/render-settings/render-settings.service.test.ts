@@ -52,7 +52,7 @@ describe("RenderSettingsService", () => {
     service.onDeprovision();
   });
 
-  it("caps viewports at sixty until something says otherwise", () => {
+  it("allows viewports any frame rate until something says otherwise", () => {
     const { service } = mockInjectedService(RenderSettingsService);
 
     expect(service.frameRateLimit).toBe("none");
