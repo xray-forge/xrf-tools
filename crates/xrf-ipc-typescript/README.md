@@ -40,10 +40,10 @@ module's constants after its imports and before its types, sorted by name, each 
 `export const NAME: number = 4;`. A crate with constants and no types still gets its module. The TypeScript type
 follows the serialized value (`number`, an `f32` in its own shortest form, `string` or `boolean`); a value that does
 not serialize or is anything else, an integer a JavaScript number does not hold exactly, two constants of one name in
-a module, or a constant named as a type of its module fails the generation, naming the constant. `read_surface` reads
-an `export const` like any declaration, so a changed value is drift.
+a module, or a constant named as a type of its module fails the generation, naming the constant. `Surface::read`
+reads an `export const` like any declaration, so a changed value is drift.
 
-`finalize_command_module` rewrites Specta's `invoke` import to the counted one and asserts the rewrite happened, so
+`CommandModuleWriter::finalize` rewrites Specta's `invoke` import to the counted one and asserts the rewrite happened, so
 IPC counting cannot silently stop. Two writers cover what Specta cannot type, each only for a plugin declaring any:
 
 - `CommandModuleWriter::write_raw` writes `<plugin>-raw.ts`: a wrapper per raw command, a Tauri command answering
@@ -77,8 +77,9 @@ compiles silently.
 
 ## Verifying committed mirrors
 
-`read_surface` reads every exported declaration of a generated tree into a canonical form, and `compare_surfaces`
-reports the drift between a committed tree and a fresh generation. `SurfaceDrift::is_breaking` is true when a
+`IpcBindingsGenerator::verify` generates into a scratch tree, then `Surface::read` reads every exported declaration of
+both trees into a canonical form and `Surface::compare_to` reports the drift between the committed one and the fresh
+generation. `SurfaceDrift::is_breaking` is true when a
 declaration was removed or changed shape; an addition alone is reported as context. That is what lets a consumer keep
 its mirrors in version control and fail a test when the Rust sources move past them.
 
