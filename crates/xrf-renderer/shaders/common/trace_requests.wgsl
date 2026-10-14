@@ -10,7 +10,7 @@ fn trace_request_screen(answer: vec3<f32>, share: f32) -> vec2<u32> {
   return vec2<u32>(pack2x16float(answer.rg * share), pack2x16float(vec2<f32>(answer.b * share, share)));
 }
 
-// The turn of `turns` a pixel (or a tile of them) traces on: its place in an 8 × 8 ordered dither, so each turn takes
+// The turn of `turns` a pixel traces on: its place in an 8 × 8 ordered dither, so each turn takes
 // exactly one in `turns` of them, every one within a 4 × 2 block. Blue noise read from the compressed map bunched them,
 // a turn taking up to a quarter, past the list's room, and the pixels drawn last never traced.
 fn trace_turn_of(cell: vec2<u32>, turns: u32) -> u32 {
@@ -20,6 +20,11 @@ fn trace_turn_of(cell: vec2<u32>, turns: u32) -> u32 {
     ((mixed & 4u) >> 1u) | ((x & 4u) >> 2u);
 
   return place * turns / 64u;
+}
+
+// What a list's pixels stretch their turns by this frame, so the rays they ask fit its room (`keep_trace_wait`).
+fn trace_request_wait() -> u32 {
+  return clamp(atomicLoad(&trace_request_head[TRACE_REQUEST_WAIT]), 1u, TRACE_REQUEST_WAIT_MOST);
 }
 
 // Lists a request, counting the scene pass's dispatch a workgroup at a time; whether it was listed. A request past the

@@ -430,6 +430,11 @@ fn path_fog(state: Lighting, length: f32) -> f32 {
 
 // Requests a workgroup of the reflections' scene pass traces, which a pass listing them counts its dispatch by.
 const TRACE_REQUEST_WORKGROUP: u32 = 64u;
+// The head's word holding the wait a list's pixels stretch their turns by; the share of the list's room the rays its
+// pixels ask are kept to by it; and the most it stretches them.
+const TRACE_REQUEST_WAIT: u32 = 4u;
+const TRACE_REQUEST_FILL: f32 = 0.85;
+const TRACE_REQUEST_WAIT_MOST: u32 = 16u;
 
 // Set in a request's `hit_end` for the water's reflection: its hit written tonemapped, as the scene the water reads
 // was, its length the hit's distance along the view, and no reason, the water keeping no ends.

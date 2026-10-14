@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 /// How often a pixel the screen leaves unanswered is traced against the level's geometry: every frame, or on its turn
-/// once in a few, the last frame's answer reprojected in between.
+/// once in a few, the last frame's answer reprojected in between; stretched where the rays asked overrun the list.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Copy, Debug, Default, Deserialize, Eq, Hash, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]

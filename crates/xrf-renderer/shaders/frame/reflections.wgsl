@@ -102,8 +102,9 @@ const REPROJECTION_NORMAL_SIMILARITY: f32 = 0.9999;
 // normal must face, for its reflection to be held off the pixel's turn to trace.
 const HELD_DISTANCE: f32 = 0.1;
 const HELD_NORMAL: f32 = 0.8;
-// Pixels a side of the tiles that take their turn to trace together, a wave of the GPU or two.
-const TRACE_TURN_TILE: u32 = 8u;
+// How far, a share of the length, what the frame before reflected at a pixel's reflected point may stand off the
+// length the pixel holds for it to be the same reflection.
+const HELD_LENGTH: f32 = 0.15;
 const SURFACE_DISCARD_VARIANCE: f32 = 1.5;
 const MOST_SAMPLES: f32 = 32.0;
 const HISTORY_CLIP: f32 = 1.1;
@@ -138,20 +139,22 @@ fn world_offset(position: vec3<f32>) -> vec3<f32> {
 }
 
 // Whether a pixel the screen leaves unanswered traces against the level's geometry this frame: once in its
-// `trace_turns`, `scale` times as many for a still, dim reflection, a tile of `TRACE_TURN_TILE` pixels taking its turn
-// together, so whole waves of the GPU skip the trace rather than wait on a few of their lanes; each tile's turn its own
-// (`trace_turn_of`).
+// `trace_turns`, `scale` times as many for a still, dim reflection, stretched by the list's wait where the rays asked
+// overrun it; each pixel's turn its own (`trace_turn_of`), so a held pixel has traced ones about it, which the resolve
+// clips it to. Tiles turning together kept a held tile's lag from its traced neighbours as a chequer in motion.
 fn is_trace_turn(pixel: vec2<f32>, scale: u32) -> bool {
-  let turns: u32 = max(reflection.trace_turns, 1u) * scale;
+  let turns: u32 = max(reflection.trace_turns, 1u) * scale * trace_request_wait();
 
-  return (trace_turn_of(vec2<u32>(pixel) / TRACE_TURN_TILE, turns) + reflection.frame) % turns == 0u;
+  return (trace_turn_of(vec2<u32>(pixel), turns) + reflection.frame) % turns == 0u;
 }
 
 // What a pixel reflected the frame before, off its turn to trace: read where its reflected point stood then, through
 // the surface by the length it held, where the surface there is this one, its distance within `HELD_DISTANCE` of it
 // and its normal within `HELD_NORMAL`, as the guide describes surfaces; in `w` that length, below none where the frame
 // before held nothing here, which traces instead. Looser than the reprojection's match: the traced texel of a block
-// moves from one frame to the next, so the history at a surface is a neighbour's.
+// moves from one frame to the next, so the history at a surface is a neighbour's. The reflected point holds only where
+// the frame before showed something as far through the surface there (`held_reflection`): a reflection the view moved
+// off the pixel would stay behind as a ghost of it.
 fn held_radiance(texel: vec2<i32>) -> vec4<f32> {
   let none: vec4<f32> = vec4<f32>(0.0, 0.0, 0.0, -1.0);
 
@@ -176,10 +179,41 @@ fn held_radiance(texel: vec2<i32>) -> vec4<f32> {
   }
 
   let toward: vec3<f32> = surface.world - camera.position.xyz;
-  let hit_uv: vec2<f32> = previous_uv(camera.position.xyz + normalize(toward) * (length(toward) + length_held));
-  let is_hit_shown: bool = all(hit_uv > vec2<f32>(0.0)) && all(hit_uv < vec2<f32>(1.0));
+  let first: vec4<f32> = held_reflection(toward, length_held);
 
-  return vec4<f32>(history_radiance_at(select(surface_uv, hit_uv, is_hit_shown)).rgb, length_held);
+  // Off the screen the frame before, the surface's own reflection holds.
+  if (first.w == 0.0) {
+    return vec4<f32>(history_radiance_at(surface_uv).rgb, length_held);
+  }
+
+  if (first.w > 0.0) {
+    return first;
+  }
+
+  // What the frame before showed there instead, the sky about a reflection the view moved off, holds where it agrees.
+  let second: vec4<f32> = held_reflection(toward, -first.w);
+
+  return select(none, second, second.w > 0.0);
+}
+
+// What the frame before showed through the surface `toward` the pixel `reach` on: its radiance there and the reach,
+// where what it reflected there stood within `HELD_LENGTH` of as far; else, below none, the length it held there, or
+// none where that point stood off the screen.
+fn held_reflection(toward: vec3<f32>, reach: f32) -> vec4<f32> {
+  let hit_uv: vec2<f32> = previous_uv(camera.position.xyz + normalize(toward) * (length(toward) + reach));
+
+  if (any(hit_uv <= vec2<f32>(0.0)) || any(hit_uv >= vec2<f32>(1.0))) {
+    return vec4<f32>(0.0);
+  }
+
+  let there: vec4<f32> = held_at(hit_uv);
+  let length_there: f32 = there.z - there.x;
+
+  if (abs(length_there - reach) > reach * HELD_LENGTH) {
+    return vec4<f32>(0.0, 0.0, 0.0, -max(length_there, 1e-3));
+  }
+
+  return vec4<f32>(history_radiance_at(hit_uv).rgb, reach);
 }
 
 // The ray a pixel leaves to the scene pass: it starts off the surface as far as the depth's own offset needs, reaches

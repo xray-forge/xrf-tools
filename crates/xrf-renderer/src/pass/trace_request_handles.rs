@@ -21,8 +21,8 @@ impl TraceRequestHandles {
     }
   }
 
-  /// The requests and their head as the scene pass reads them.
-  pub fn to_read(self) -> (StorageArray<TraceRequest>, StorageArray<u32>) {
-    (StorageArray::new(self.requests), StorageArray::new(self.head))
+  /// The requests as the scene pass reads them, and their head, whose wait it keeps.
+  pub fn to_read(self) -> (StorageArray<TraceRequest>, StorageArrayMut<u32>) {
+    (StorageArray::new(self.requests), StorageArrayMut::new(self.head))
   }
 }

@@ -21,8 +21,12 @@ pub struct TraceRequest {
 }
 
 impl TraceRequest {
-  /// Words of the request list's head: requests made, then the scene pass's dispatch (workgroups across, down, deep).
-  pub const HEAD: [u32; 4] = [0, 0, 1, 1];
+  /// Words of the request list's head a frame starts from: requests made, then the scene pass's dispatch (workgroups
+  /// across, down, deep), one workgroup more than the requests take so the scene pass always keeps the wait.
+  pub const HEAD: [u32; 4] = [0, 1, 1, 1];
+  /// Words the head holds: `HEAD`'s, then the wait its pixels' turns are stretched by, which a frame keeps from the
+  /// last.
+  pub const HEAD_WORDS: usize = Self::HEAD.len() + 1;
 
   /// Requests a workgroup of the scene pass traces.
   pub const WORKGROUP: u32 = 64;
