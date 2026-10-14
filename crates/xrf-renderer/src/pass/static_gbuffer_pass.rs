@@ -225,7 +225,7 @@ impl StaticGBufferPass {
                       (is_written, depth_compare, bias): (bool, wgpu::CompareFunction, wgpu::DepthBiasState)|
      -> XrfResult<wgpu::RenderPipeline> {
       source.get_render_pipeline(
-        &RenderPipelineDescription::new(label, "static/gbuffer", vertex)
+        &RenderPipelineDescription::new(label, StaticDrawPermutation::MODULE, vertex)
           .with_fragment(fragment)
           .with_permutation(permutation)
           .with_bind_group_layouts(&[Some(view_layout), Some(texture_layout), Some(layout)])
@@ -342,19 +342,23 @@ impl StaticGBufferPass {
         };
 
         source.get_render_pipeline(
-          &RenderPipelineDescription::new("static overdraw", "static/gbuffer", batch.layout.get_vertex_entry())
-            .with_fragment(fragment)
-            .with_permutation(&StaticDrawPermutation {
-              is_shadow_draw: false,
-              is_inspected: false,
-            })
-            .with_bind_group_layouts(&[Some(view_layout), Some(texture_layout), Some(layout)])
-            .with_primitive(wgpu::PrimitiveState {
-              front_face: wgpu::FrontFace::Ccw,
-              cull_mode: Some(wgpu::Face::Back),
-              ..Default::default()
-            })
-            .with_target(counted.clone()),
+          &RenderPipelineDescription::new(
+            "static overdraw",
+            StaticDrawPermutation::MODULE,
+            batch.layout.get_vertex_entry(),
+          )
+          .with_fragment(fragment)
+          .with_permutation(&StaticDrawPermutation {
+            is_shadow_draw: false,
+            is_inspected: false,
+          })
+          .with_bind_group_layouts(&[Some(view_layout), Some(texture_layout), Some(layout)])
+          .with_primitive(wgpu::PrimitiveState {
+            front_face: wgpu::FrontFace::Ccw,
+            cull_mode: Some(wgpu::Face::Back),
+            ..Default::default()
+          })
+          .with_target(counted.clone()),
         )
       })
       .collect::<XrfResult<_>>()?;

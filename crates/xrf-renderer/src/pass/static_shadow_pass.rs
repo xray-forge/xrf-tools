@@ -196,17 +196,20 @@ impl StaticShadowPass {
   )> {
     let pipelines: Vec<wgpu::RenderPipeline> = StaticBatch::list_deferred()
       .map(|batch| {
-        let description: RenderPipelineDescription =
-          RenderPipelineDescription::new("static shadow", "static/gbuffer", batch.layout.get_vertex_entry())
-            .with_permutation(&SHADOW_DRAW)
-            .with_bind_group_layouts(&[Some(view_layout), Some(texture_layout), Some(layout)])
-            .with_depth_stencil(wgpu::DepthStencilState {
-              format: SunShadowMaps::FORMAT,
-              depth_write_enabled: Some(true),
-              depth_compare: Some(wgpu::CompareFunction::Greater),
-              stencil: Default::default(),
-              bias: Default::default(),
-            });
+        let description: RenderPipelineDescription = RenderPipelineDescription::new(
+          "static shadow",
+          StaticDrawPermutation::MODULE,
+          batch.layout.get_vertex_entry(),
+        )
+        .with_permutation(&SHADOW_DRAW)
+        .with_bind_group_layouts(&[Some(view_layout), Some(texture_layout), Some(layout)])
+        .with_depth_stencil(wgpu::DepthStencilState {
+          format: SunShadowMaps::FORMAT,
+          depth_write_enabled: Some(true),
+          depth_compare: Some(wgpu::CompareFunction::Greater),
+          stencil: Default::default(),
+          bias: Default::default(),
+        });
 
         // An opaque caster writes depth alone; a cut-out one is cut first.
         source.get_render_pipeline(&if batch.class == StaticClass::CutOut {

@@ -201,6 +201,7 @@ impl VbaoPass {
     view_layout: &wgpu::BindGroupLayout,
     layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<VbaoPipelines> {
+    let module: &'static str = VbaoPermutation::MODULE;
     let layouts: [Option<&wgpu::BindGroupLayout>; 2] = [Some(view_layout), Some(layout)];
     let targets = |formats: &[wgpu::TextureFormat]| -> Vec<Option<wgpu::ColorTargetState>> {
       formats.iter().map(|it| Some((*it).into())).collect()
@@ -209,15 +210,10 @@ impl VbaoPass {
                   permutation: &VbaoPermutation,
                   formats: &[wgpu::TextureFormat]|
      -> XrfResult<wgpu::RenderPipeline> {
-      create_fullscreen_pipeline_with(
-        source,
-        ("frame/vbao", fragment, permutation),
-        &layouts,
-        &targets(formats),
-      )
+      create_fullscreen_pipeline_with(source, (module, fragment, permutation), &layouts, &targets(formats))
     };
     let create = |fragment: &'static str, formats: &[wgpu::TextureFormat]| -> XrfResult<wgpu::RenderPipeline> {
-      create_fullscreen_pipeline_into(source, "frame/vbao", fragment, &layouts, &targets(formats))
+      create_fullscreen_pipeline_into(source, module, fragment, &layouts, &targets(formats))
     };
     let occluded: &[wgpu::TextureFormat] = &[ViewTargets::OCCLUSION];
     let lit: &[wgpu::TextureFormat] = &[ViewTargets::OCCLUSION, Self::LIGHT];

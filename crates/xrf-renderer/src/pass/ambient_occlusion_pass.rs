@@ -97,7 +97,7 @@ impl AmbientOcclusionPass {
     view_layout: &wgpu::BindGroupLayout,
     layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<(Vec<wgpu::RenderPipeline>, [wgpu::RenderPipeline; 2])> {
-    let module: &'static str = "frame/ambient_occlusion";
+    let module: &'static str = AmbientOcclusionPermutation::MODULE;
     let layouts: [Option<&wgpu::BindGroupLayout>; 2] = [Some(view_layout), Some(layout)];
     let mut searches: Vec<wgpu::RenderPipeline> = Vec::with_capacity(QUALITIES.len());
 
