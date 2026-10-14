@@ -11,3 +11,4 @@
 @group(1) @binding(6) var shadow_maps: texture_depth_2d_array;
 @group(1) @binding(7) var<uniform> shadows: Shadows;
 @group(1) @binding(8) var contact_shadows: texture_2d<f32>;
+@group(1) @binding(9) var sun_traced: texture_2d<f32>;

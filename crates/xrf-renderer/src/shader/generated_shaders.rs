@@ -39,6 +39,8 @@ use crate::pass::light_binning_parameters::LightBinningParameters;
 use crate::pass::light_contact_parameters::LightContactParameters;
 use crate::pass::light_record::LightRecord;
 use crate::pass::light_shadowing_parameters::LightShadowingParameters;
+use crate::pass::light_trace_uniform::LightTraceUniform;
+use crate::pass::light_tracing_parameters::LightTracingParameters;
 use crate::pass::light_visibility_parameters::LightVisibilityParameters;
 use crate::pass::light_volume_parameters::LightVolumeParameters;
 use crate::pass::light_volume_record::LightVolumeRecord;
@@ -80,6 +82,8 @@ use crate::pass::static_draw_parameters::StaticDrawParameters;
 use crate::pass::static_impostor_parameters::StaticImpostorParameters;
 use crate::pass::sun_parameters::SunParameters;
 use crate::pass::sun_shafts_parameters::SunShaftsParameters;
+use crate::pass::sun_trace_parameters::SunTraceParameters;
+use crate::pass::sun_trace_uniform::SunTraceUniform;
 use crate::pass::surroundings_parameters::SurroundingsParameters;
 use crate::pass::surroundings_uniform::SurroundingsUniform;
 use crate::pass::temporal_parameters::TemporalParameters;
@@ -132,6 +136,7 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
   let mut particles: ShaderBindings = ShaderBindings::new();
   let mut contact_shadows: ShaderBindings = ShaderBindings::new();
   let mut sun: ShaderBindings = ShaderBindings::new();
+  let mut sun_trace: ShaderBindings = ShaderBindings::new();
   let mut light_binning: ShaderBindings = ShaderBindings::new();
   let mut sky_behind: ShaderBindings = ShaderBindings::new();
   let mut ray_guides: ShaderBindings = ShaderBindings::new();
@@ -139,6 +144,7 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
   let mut lights: ShaderBindings = ShaderBindings::new();
   let mut light_contact: ShaderBindings = ShaderBindings::new();
   let mut light_shadowing: ShaderBindings = ShaderBindings::new();
+  let mut light_tracing: ShaderBindings = ShaderBindings::new();
   let mut light_visibility: ShaderBindings = ShaderBindings::new();
   let mut ambient_occlusion: ShaderBindings = ShaderBindings::new();
   let mut vbao: ShaderBindings = ShaderBindings::new();
@@ -196,6 +202,8 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
     .declare::<ParticleSurfaceRecord>()
     .declare::<ShadowUniform>()
     .declare::<ContactShadowUniform>()
+    .declare::<SunTraceUniform>()
+    .declare::<LightTraceUniform>()
     .declare::<LightsUniform>()
     .declare::<LightRecord>()
     .declare::<LightVolumeRecord>()
@@ -235,6 +243,7 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
   particles.add::<ParticleParameters<'_>>()?;
   contact_shadows.add::<ContactShadowParameters>()?;
   sun.add::<SunParameters<'_>>()?;
+  sun_trace.add::<SunTraceParameters>()?;
   light_binning.add::<LightBinningParameters>()?;
   sky_behind.add::<SkyBehindParameters>()?;
   ray_guides.add::<RayGuidesParameters>()?;
@@ -242,6 +251,7 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
   lights.add::<LightsParameters<'_>>()?;
   light_contact.add::<LightContactParameters>()?;
   light_shadowing.add::<LightShadowingParameters<'_>>()?;
+  light_tracing.add::<LightTracingParameters>()?;
   light_visibility.add::<LightVisibilityParameters>()?;
   ambient_occlusion.add::<AmbientOcclusionParameters>()?;
   vbao.add::<VbaoParameters>()?;
@@ -333,6 +343,10 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
     ),
     ("generated/frame/sun", format!("{STRUCTS_IMPORT}{}", sun.to_wgsl())),
     (
+      "generated/frame/sun_trace",
+      format!("{STRUCTS_IMPORT}{}", sun_trace.to_wgsl()),
+    ),
+    (
       "generated/grass/occlusion",
       format!("{STRUCTS_IMPORT}{}", grass_occlusion.to_wgsl()),
     ),
@@ -359,6 +373,10 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
     (
       "generated/frame/light_shadowing",
       format!("{STRUCTS_IMPORT}{}", light_shadowing.to_wgsl()),
+    ),
+    (
+      "generated/frame/light_tracing",
+      format!("{STRUCTS_IMPORT}{}", light_tracing.to_wgsl()),
     ),
     (
       "generated/frame/light_visibility",

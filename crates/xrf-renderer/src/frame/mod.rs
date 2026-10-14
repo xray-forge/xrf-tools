@@ -17,6 +17,7 @@ pub(crate) mod periodic_scheduler;
 pub(crate) mod periodic_ticket;
 pub(crate) mod pick_target;
 pub(crate) mod reflection_frame;
+pub(crate) mod reflection_frame_handles;
 pub(crate) mod reflection_history;
 pub(crate) mod sky_prefilter;
 pub(crate) mod sky_prefilter_level;

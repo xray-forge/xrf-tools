@@ -163,6 +163,18 @@ fn fs_combine(in: FullscreenVarying) -> CombineOutput {
     }
 
     shaded += radiance * brdf;
+
+    // The sun on a wet surface's water film, which the engine's specular leaves out with the gloss the wetness added:
+    // its disc in the film's lobe, as far as a puddle's coat or the wet reach covers the surface, shadowed as the sun's
+    // pass found it.
+    let film: f32 = saturate(wet.r + reach);
+
+    if (film > 0.0) {
+      let seen: f32 = textureLoad(sun_seen, texel, 0).x;
+
+      shaded += lighting.sun.rgb * sun_glint(normal, -normalize(position), lighting.to_sun.xyz, roughness, head_on) *
+        film * seen * lighting.reflections.z;
+    }
   } else {
     shaded += terms.environment * terms.weight;
   }

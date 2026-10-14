@@ -33,6 +33,10 @@ fn options_with(reflections: RenderReflectionSettings) -> RenderViewOptions {
   options
 }
 
+fn trace_of(reflections: RenderReflectionSettings) -> ReflectionTrace {
+  ReflectionTrace::new(&options_with(reflections)).expect("Expect the settings to trace")
+}
+
 fn lighting_of(engine: XrayEngine) -> RenderLighting {
   RenderLighting {
     engine,
@@ -98,6 +102,7 @@ fn skips_every_pass_where_nothing_is_traced() {
       quality: RenderReflectionQuality::High,
       intensity: 1.0,
       sky_gain: 1.25,
+      is_raw: false,
     })
   );
 
@@ -188,7 +193,7 @@ fn climbs_the_quality_ladder() {
 
 #[test]
 fn writes_the_settings_the_trace_reads() {
-  let high: ReflectionUniform = ReflectionUniform::new(&enhanced(), 7, (true, true), true);
+  let high: ReflectionUniform = ReflectionUniform::new(&enhanced(), trace_of(enhanced()), 7, (true, true), true);
 
   assert_eq!(high.crossings, RenderReflectionQuality::High.get_crossings());
   assert_eq!(high.frame, 7);
@@ -199,19 +204,16 @@ fn writes_the_settings_the_trace_reads() {
   assert_eq!(high.is_traced, 0.0, "tracing is opted into");
   assert_eq!(high.trace_turns, 2);
 
-  let ultra: ReflectionUniform = ReflectionUniform::new(
-    &RenderReflectionSettings {
-      intensity: 3.0,
-      quality: RenderReflectionQuality::Ultra,
-      probe: RenderReflectionProbe::Fine,
-      is_traced: true,
-      trace_quality: RenderReflectionTraceQuality::Ultra,
-      ..enhanced()
-    },
-    0,
-    (false, false),
-    true,
-  );
+  let ultra_settings: RenderReflectionSettings = RenderReflectionSettings {
+    intensity: 3.0,
+    quality: RenderReflectionQuality::Ultra,
+    probe: RenderReflectionProbe::Fine,
+    is_traced: true,
+    trace_quality: RenderReflectionTraceQuality::Ultra,
+    ..enhanced()
+  };
+  let ultra: ReflectionUniform =
+    ReflectionUniform::new(&ultra_settings, trace_of(ultra_settings), 0, (false, false), true);
 
   assert_eq!(ultra.intensity, 3.0);
   assert_eq!(ultra.ratio, 1.0);
@@ -225,8 +227,28 @@ fn writes_the_settings_the_trace_reads() {
   };
 
   assert_eq!(
-    ReflectionUniform::new(&asked, 0, (false, false), false).is_traced,
+    ReflectionUniform::new(&asked, trace_of(asked), 0, (false, false), false).is_traced,
     0.0,
     "a device without ray queries traces nothing, asked or not"
   );
+}
+
+// Taken raw under DLSS ray reconstruction, every pixel traces every frame at the frame's own size, whatever the quality
+// asks; the settings' crossings and distance still hold.
+#[test]
+fn traces_every_pixel_every_frame_taken_raw() {
+  let settings: RenderReflectionSettings = RenderReflectionSettings {
+    is_traced: true,
+    trace_quality: RenderReflectionTraceQuality::Low,
+    ..enhanced()
+  };
+  let raw: ReflectionTrace = trace_of(settings).with_raw(true);
+  let uniform: ReflectionUniform = ReflectionUniform::new(&settings, raw, 3, (false, true), true);
+
+  assert_eq!(trace_of(settings).get_ratio(), 2);
+  assert_eq!(raw.get_ratio(), 1);
+  assert_eq!((uniform.ratio, uniform.trace_turns), (1.0, 1));
+  assert_eq!(uniform.crossings, RenderReflectionQuality::High.get_crossings());
+  assert_eq!(uniform.distance, 150.0);
+  assert_eq!(trace_of(settings).with_raw(false), trace_of(settings));
 }

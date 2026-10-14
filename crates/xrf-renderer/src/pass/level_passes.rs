@@ -37,6 +37,7 @@ use crate::pass::static_gbuffer_pass::StaticGBufferPass;
 use crate::pass::static_shadow_pass::StaticShadowPass;
 use crate::pass::sun_pass::SunPass;
 use crate::pass::sun_shafts_pass::SunShaftsPass;
+use crate::pass::sun_trace_pass::SunTracePass;
 use crate::pass::surroundings_pass::SurroundingsPass;
 use crate::pass::temporal_pass::TemporalPass;
 use crate::pass::thunder_pass::ThunderPass;
@@ -57,6 +58,7 @@ pub struct LevelPasses<'a> {
   pub puddle_sites: &'a PuddleSitesPass,
   pub contact_shadows: &'a ContactShadowPass,
   pub sun: &'a SunPass,
+  pub sun_trace: &'a SunTracePass,
   pub ambient_occlusion: &'a AmbientOcclusionPass,
   pub vbao: &'a VbaoPass,
   pub rtao: &'a RtaoPass,

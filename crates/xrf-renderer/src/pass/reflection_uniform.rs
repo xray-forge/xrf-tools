@@ -1,6 +1,7 @@
 use xrf_renderer_core::ShaderStruct;
 
 use crate::contract::render_reflection_settings::RenderReflectionSettings;
+use crate::pass::reflection_trace::ReflectionTrace;
 
 /// What the reflections' trace and filters read, as `shaders/frame/reflections.wgsl` takes it.
 #[repr(C)]
@@ -28,10 +29,11 @@ pub struct ReflectionUniform {
 }
 
 impl ReflectionUniform {
-  /// The settings, at a frame's count, with or without the last frame's reflections to carry and its scene to read, on a
-  /// device that traces rays or not.
+  /// The settings and how they are traced, at a frame's count, with or without the last frame's reflections to carry
+  /// and its scene to read, on a device that traces rays or not. Raw, each pixel traces each frame.
   pub fn new(
     settings: &RenderReflectionSettings,
+    trace: ReflectionTrace,
     frame: u32,
     (has_history, has_source): (bool, bool),
     can_trace: bool,
@@ -44,10 +46,14 @@ impl ReflectionUniform {
       intensity: settings.intensity.max(0.0),
       distance: settings.distance.max(0.0),
       has_history: f32::from(u8::from(has_history)),
-      ratio: quality.get_ratio() as f32,
+      ratio: trace.get_ratio() as f32,
       has_source: f32::from(u8::from(has_source)),
       is_traced: f32::from(u8::from(settings.is_traced && can_trace)),
-      trace_turns: settings.trace_quality.get_turns(),
+      trace_turns: if trace.is_raw {
+        1
+      } else {
+        settings.trace_quality.get_turns()
+      },
     }
   }
 }

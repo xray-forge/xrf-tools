@@ -50,6 +50,7 @@ use crate::pass::static_gbuffer_pass::StaticGBufferPass;
 use crate::pass::static_shadow_pass::StaticShadowPass;
 use crate::pass::sun_pass::SunPass;
 use crate::pass::sun_shafts_pass::SunShaftsPass;
+use crate::pass::sun_trace_pass::SunTracePass;
 use crate::pass::surroundings_pass::SurroundingsPass;
 use crate::pass::temporal_pass::TemporalPass;
 use crate::pass::thunder_pass::ThunderPass;
@@ -112,6 +113,7 @@ pub struct GpuState {
   pub ambient_occlusion: AmbientOcclusionPass,
   pub vbao: VbaoPass,
   pub rtao: RtaoPass,
+  pub sun_trace: SunTracePass,
   pub reflections: ReflectionPass,
   pub scene_trace: SceneTracePass,
   pub lights: LightsPass,
@@ -194,7 +196,8 @@ impl GpuState {
       let pyramid = threads.spawn(move || DepthPyramidPass::new(device, source));
       let puddle_sites = threads.spawn(move || PuddleSitesPass::new(device, source));
       let contact_shadows = threads.spawn(move || ContactShadowPass::new(device, queue, source, view));
-      let sun = threads.spawn(move || SunPass::new(device, source, view));
+      let sun = threads.spawn(move || SunPass::new(device, queue, source, view));
+      let sun_trace = threads.spawn(move || SunTracePass::new(device, source, view, texture));
       let ambient_occlusion = threads.spawn(move || AmbientOcclusionPass::new(device, source, view));
       let vbao = threads.spawn(move || VbaoPass::new(device, queue, source, view));
       let rtao = threads.spawn(move || RtaoPass::new(device, source, view, texture));
@@ -243,6 +246,7 @@ impl GpuState {
         ambient_occlusion: join(ambient_occlusion)?,
         vbao: join(vbao)?,
         rtao: join(rtao)?,
+        sun_trace: join(sun_trace)?,
         reflections: join(reflections)?,
         scene_trace: join(scene_trace)?,
         lights: join(lights)?,
@@ -323,6 +327,7 @@ impl GpuState {
       ambient_occlusion: &self.ambient_occlusion,
       vbao: &self.vbao,
       rtao: &self.rtao,
+      sun_trace: &self.sun_trace,
       reflections: &self.reflections,
       scene_trace: &self.scene_trace,
       grass_colours: &self.grass_colours,
@@ -388,6 +393,7 @@ impl GpuState {
     self.ambient_occlusion.refresh(device, source);
     self.vbao.refresh(device, source);
     self.rtao.refresh(device, source);
+    self.sun_trace.refresh(device, source);
     self.reflections.refresh(device, source);
     self.scene_trace.refresh(device, source);
     self.grass_colours.refresh(device, source);

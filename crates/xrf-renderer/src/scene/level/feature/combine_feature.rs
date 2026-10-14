@@ -41,7 +41,7 @@ impl CombineFeature {
     passes: LevelPasses<'a>,
     view: &'a ViewBinding,
     (handles, lit, sky): (ViewTargetHandles, LightingHandles<'a>, SkyParameters<'a>),
-    [indirect_light, reflections, wet_surface, wet_reach]: [GraphTexture; 4],
+    [indirect_light, reflections, wet_surface, wet_reach, sun_seen]: [GraphTexture; 5],
   ) {
     let sky_behind_map: GraphTexture = if self.is_sky_behind {
       let (width, height) = handles.size;
@@ -89,6 +89,7 @@ impl CombineFeature {
       reflections,
       wet_surface,
       wet_reach,
+      sun_seen,
     };
 
     graph

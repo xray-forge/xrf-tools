@@ -9,6 +9,7 @@ use crate::contract::render_view_options::RenderViewOptions;
 use crate::frame::depth_pyramid::DepthPyramid;
 use crate::frame::frame_texture::FrameTexture;
 use crate::frame::reflection_frame::ReflectionFrame;
+use crate::frame::reflection_frame_handles::ReflectionFrameHandles;
 use crate::frame::reflection_history::ReflectionHistory;
 use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::pass::level_passes::LevelPasses;
@@ -38,12 +39,18 @@ pub struct ReflectionFeature {
 }
 
 impl ReflectionFeature {
-  /// Takes this frame's reflections for a frame `size` texels across: the history at the size they trace at and the
-  /// pyramid over the frame's depth made or kept while they are traced, dropped otherwise, the trace's request list
-  /// fitted, and what their passes read.
-  pub fn prepare(&mut self, device: &wgpu::Device, options: &RenderViewOptions, (width, height): (u32, u32)) {
+  /// Takes this frame's reflections for a frame `size` texels across, raw where DLSS ray reconstruction resolves it
+  /// (`is_reconstructed`): the history at the size they trace at and the pyramid over the frame's depth made or kept
+  /// while they are traced, dropped otherwise, the trace's request list fitted, and what their passes read.
+  pub fn prepare(
+    &mut self,
+    device: &wgpu::Device,
+    options: &RenderViewOptions,
+    (width, height): (u32, u32),
+    is_reconstructed: bool,
+  ) {
     self.settings = options.features.reflections;
-    self.trace = ReflectionTrace::new(options);
+    self.trace = ReflectionTrace::new(options).map(|trace| trace.with_raw(is_reconstructed));
 
     let Some(trace) = self.trace else {
       self.history = None;
@@ -52,13 +59,14 @@ impl ReflectionFeature {
     };
     let ratio: u32 = trace.get_ratio();
     let traced: (u32, u32) = (width.div_ceil(ratio), height.div_ceil(ratio));
+    let is_denoised: bool = !trace.is_raw;
 
     if !self
       .history
       .as_ref()
-      .is_some_and(|it| it.is_sized(traced, (width, height)))
+      .is_some_and(|it| it.is_sized(traced, (width, height), is_denoised))
     {
-      self.history = Some(ReflectionHistory::new(device, traced, (width, height)));
+      self.history = Some(ReflectionHistory::new(device, traced, (width, height), is_denoised));
     }
 
     let can_trace: bool = can_trace(device);
@@ -66,21 +74,28 @@ impl ReflectionFeature {
     if let Some(history) = &mut self.history {
       let is_traced: bool = self.settings.is_traced && can_trace;
 
+      let share: u32 = if trace.is_raw {
+        ReflectionHistory::RAW_REQUEST_SHARE
+      } else {
+        ReflectionHistory::REQUEST_SHARE
+      };
+
       history.requests.fit(
         device,
         if is_traced {
-          (traced.0 * traced.1).div_ceil(ReflectionHistory::REQUEST_SHARE)
+          (traced.0 * traced.1).div_ceil(share)
         } else {
           0
         },
       );
     }
 
-    let (frame, has_history, has_source): (u32, bool, bool) = self.history.as_ref().map_or((0, false, false), |it| {
-      (it.frames.get_frame(), it.frames.is_valid(), it.is_source_valid)
-    });
+    let (frame, has_history, has_source): (u32, bool, bool) = self
+      .history
+      .as_ref()
+      .map_or((0, false, false), |it| (it.frame, it.has_history(), it.is_source_valid));
 
-    self.uniform = ReflectionUniform::new(&self.settings, frame, (has_history, has_source), can_trace);
+    self.uniform = ReflectionUniform::new(&self.settings, trace, frame, (has_history, has_source), can_trace);
   }
 
   pub fn get_settings(&self) -> RenderReflectionSettings {
@@ -146,10 +161,10 @@ impl ReflectionFeature {
   }
 
   /// Declares the screen-space reflections while they are traced: every glossy pixel's ray walked over the nearest
-  /// depth's pyramid, then the last frame's reflection reprojected, an eighth-size average, the
-  /// trace filtered across the surface and resolved over time into the view's history. Answers the history written, the
-  /// ends' reasons and the trace (what each traced pixel met, the ray's length in alpha), none where they are not
-  /// traced.
+  /// depth's pyramid, then, denoised, the last frame's reflection reprojected, an eighth-size average, the trace filtered
+  /// across the surface and resolved over time into the view's history. Answers what combine reads (the history written,
+  /// or the trace itself where DLSS ray reconstruction takes it raw), the ends' reasons and the trace (what each traced
+  /// pixel met, the ray's length in alpha), none where they are not traced.
   pub fn add_passes<'a>(
     &'a self,
     (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
@@ -171,30 +186,29 @@ impl ReflectionFeature {
     let nearest_depth: GraphTexture = bindings.import_view(graph, "nearest depth pyramid", &history.pyramid.view);
 
     let (width, height) = history.size;
-    let ratio: u32 = ReflectionPass::AVERAGE_RATIO;
     let mut create = |label: &'static str, (width, height): (u32, u32), format: wgpu::TextureFormat| -> GraphTexture {
       graph.create_texture(GraphTextureDescriptor::new_2d(label, width, height, format))
     };
     let traced: GraphTexture = create("reflections traced", (width, height), ReflectionPass::TRACED);
     let ends: GraphTexture = create("reflections ends", (width, height), ReflectionPass::ENDS);
-    let reprojected: GraphTexture = create("reflections reprojected", (width, height), ReflectionPass::REPROJECTED);
-    let variance: GraphTexture = create("reflections variance", (width, height), ReflectionPass::VARIANCE);
-    let average: GraphTexture = create(
-      "reflections average",
-      (width.div_ceil(ratio), height.div_ceil(ratio)),
-      ReflectionPass::AVERAGE,
-    );
-    let prefiltered: GraphTexture = create("reflections prefiltered", (width, height), ReflectionPass::PREFILTERED);
-    let guide: GraphTexture = create("reflections guide", (width, height), ReflectionPass::GUIDED);
-    let [written_frame, read_frame]: [&'a ReflectionFrame; 2] = history.frames.get_sides();
-    let mut import_pair =
-      |label: &'static str, texture: fn(&'a ReflectionFrame) -> &'a FrameTexture| -> [GraphTexture; 2] {
-        [read_frame, written_frame].map(|frame| bindings.import_view(&mut *graph, label, &texture(frame).view))
-      };
-    let [previous, written] = import_pair("reflection history", |frame| &frame.radiance);
-    let [previous_surface, written_surface] = import_pair("reflection history surface", |frame| &frame.surface);
-    let [previous_held, written_held] = import_pair("reflection history held", |frame| &frame.held);
-    let [previous_full, written_full] = import_pair("reflection history full", |frame| &frame.full);
+    // The denoiser's history, the side read and the side written of each, while it is denoised.
+    let frames: Option<ReflectionFrameHandles> = history.frames.as_ref().map(|frames| {
+      let [written_frame, read_frame]: [&'a ReflectionFrame; 2] = frames.get_sides();
+      let mut import_pair =
+        |label: &'static str, texture: fn(&'a ReflectionFrame) -> &'a FrameTexture| -> [GraphTexture; 2] {
+          [read_frame, written_frame].map(|frame| bindings.import_view(&mut *graph, label, &texture(frame).view))
+        };
+
+      ReflectionFrameHandles {
+        radiance: import_pair("reflection history", |frame| &frame.radiance),
+        surface: import_pair("reflection history surface", |frame| &frame.surface),
+        held: import_pair("reflection history held", |frame| &frame.held),
+        full: import_pair("reflection history full", |frame| &frame.full),
+      }
+    });
+    let read: [GraphTexture; 3] = frames.as_ref().map_or([empty; 3], |frames| {
+      [frames.radiance[0], frames.surface[0], frames.held[0]]
+    });
     let parameters: ReflectionParameters = ReflectionParameters {
       albedo_target: targets.albedo,
       normal_target: targets.normal,
@@ -218,9 +232,9 @@ impl ReflectionFeature {
       variance: empty,
       average: empty,
       prefiltered: empty,
-      history_radiance: previous,
-      history_surface: previous_surface,
-      history_held: previous_held,
+      history_radiance: read[0],
+      history_surface: read[1],
+      history_held: read[2],
       resolved: empty,
       history_full: empty,
       guide: empty,
@@ -271,6 +285,29 @@ impl ReflectionFeature {
         scene_trace,
       );
     }
+
+    // Raw, DLSS ray reconstruction denoises the trace in the frame, so combine reads it as traced.
+    let Some(frames) = frames else {
+      return Some((traced, ends, traced));
+    };
+
+    let ratio: u32 = ReflectionPass::AVERAGE_RATIO;
+    let mut create = |label: &'static str, (width, height): (u32, u32), format: wgpu::TextureFormat| -> GraphTexture {
+      graph.create_texture(GraphTextureDescriptor::new_2d(label, width, height, format))
+    };
+    let reprojected: GraphTexture = create("reflections reprojected", (width, height), ReflectionPass::REPROJECTED);
+    let variance: GraphTexture = create("reflections variance", (width, height), ReflectionPass::VARIANCE);
+    let average: GraphTexture = create(
+      "reflections average",
+      (width.div_ceil(ratio), height.div_ceil(ratio)),
+      ReflectionPass::AVERAGE,
+    );
+    let prefiltered: GraphTexture = create("reflections prefiltered", (width, height), ReflectionPass::PREFILTERED);
+    let guide: GraphTexture = create("reflections guide", (width, height), ReflectionPass::GUIDED);
+    let [_, written] = frames.radiance;
+    let [_, written_surface] = frames.surface;
+    let [_, written_held] = frames.held;
+    let [previous_full, written_full] = frames.full;
 
     // Each traced pixel's surface for the stages after the trace, worked out once.
     graph

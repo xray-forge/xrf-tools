@@ -18,6 +18,7 @@ use crate::scene::level::feature::sky_feature::SkyFeature;
 use crate::scene::level::feature::smoothing_feature::SmoothingFeature;
 use crate::scene::level::feature::statics_feature::StaticsFeature;
 use crate::scene::level::feature::sun_shafts_feature::SunShaftsFeature;
+use crate::scene::level::feature::sun_trace_feature::SunTraceFeature;
 use crate::scene::level::feature::thunder_feature::ThunderFeature;
 use crate::scene::level::feature::view_feature::ViewFeature;
 use crate::scene::level::feature::volumetric_feature::VolumetricFeature;
@@ -71,6 +72,7 @@ pub struct SceneFeatures {
   pub composited: CompositedFeature,
   pub ambient_occlusion: AmbientOcclusionFeature,
   pub contact_shadows: ContactShadowFeature,
+  pub sun_trace: SunTraceFeature,
   pub wet: WetFeature,
   pub sky: SkyFeature,
   pub statics: StaticsFeature,
@@ -112,6 +114,7 @@ impl SceneFeatures {
       composited: CompositedFeature::default(),
       ambient_occlusion: AmbientOcclusionFeature::default(),
       contact_shadows: ContactShadowFeature::default(),
+      sun_trace: SunTraceFeature::default(),
       wet: WetFeature::default(),
       sky: SkyFeature::default(),
       pick: PickFeature::default(),
@@ -123,7 +126,7 @@ impl SceneFeatures {
   }
 
   /// Every unit, as what each answers alike.
-  pub fn list(&self) -> [&dyn ViewFeature; 24] {
+  pub fn list(&self) -> [&dyn ViewFeature; 25] {
     [
       &self.fog,
       &self.bloom,
@@ -140,6 +143,7 @@ impl SceneFeatures {
       &self.composited,
       &self.ambient_occlusion,
       &self.contact_shadows,
+      &self.sun_trace,
       &self.wet,
       &self.sky,
       &self.pick,
@@ -152,7 +156,7 @@ impl SceneFeatures {
     ]
   }
 
-  pub fn list_mut(&mut self) -> [&mut dyn ViewFeature; 24] {
+  pub fn list_mut(&mut self) -> [&mut dyn ViewFeature; 25] {
     [
       &mut self.fog,
       &mut self.bloom,
@@ -169,6 +173,7 @@ impl SceneFeatures {
       &mut self.composited,
       &mut self.ambient_occlusion,
       &mut self.contact_shadows,
+      &mut self.sun_trace,
       &mut self.wet,
       &mut self.sky,
       &mut self.pick,
