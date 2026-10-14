@@ -159,7 +159,8 @@ fn surface_sites(@builtin(global_invocation_id) id: vec3<u32>) {
 // site, more in a storm and after a long rain soaked the level;
 // of those, no more than a few about each, the first by their hash keeping theirs so no stretch gathers a lake. A kept
 // site's puddle grows from nothing as the puddles fill and shrinks back to nothing as they drain, and a site newly
-// within the share or the neighbour limit grows in rather than popping.
+// within the share or the neighbour limit grows in rather than popping, and one a neighbour newly within the share
+// crowds out shrinks as that neighbour grows in.
 const SITE_SHARE: f32 = 0.7;
 const STORM_SHARE: f32 = 0.6;
 const STORM_GROWTH: f32 = 0.15;
@@ -213,8 +214,9 @@ fn puddle_keep(@builtin(global_invocation_id) id: vec3<u32>) {
         let neighbour: vec4<f32> = textureLoad(kept_sites, other, 0);
         let other_rank: f32 = site_hash(origin + vec2<f32>(other)).x;
 
-        if (neighbour.w > 0.0 && other_rank < rank && other_rank < share_at(neighbour.xy)) {
-          before += 1.0;
+        // As far as the neighbour has grown in, so a site makes way as smoothly as its neighbour comes.
+        if (neighbour.w > 0.0 && other_rank < rank) {
+          before += saturate((share_at(neighbour.xy) - other_rank) / SITE_GROW_IN);
         }
       }
     }
