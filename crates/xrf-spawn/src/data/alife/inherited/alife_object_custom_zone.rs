@@ -18,6 +18,24 @@ pub struct AlifeObjectCustomZone {
   pub start_time_shift: u32,
 }
 
+impl AlifeObjectCustomZone {
+  /// Whether its custom data writes `always_fast` on in its `[fast_mode]` section, as `CCustomZone::net_Spawn` reads,
+  /// so it never switches to slow however far the actor stands.
+  pub fn is_always_fast(&self) -> bool {
+    let custom_data: &str = &self.base.base.custom_data;
+
+    !custom_data.trim().is_empty()
+      && Ltx::read_from_str(custom_data)
+        .ok()
+        .and_then(|ltx| {
+          ltx
+            .section("fast_mode")
+            .and_then(|section| section.get_bool("always_fast"))
+        })
+        .unwrap_or(false)
+  }
+}
+
 impl ChunkReadWrite for AlifeObjectCustomZone {
   /// Read ALife custom zone object data from the chunk.
   fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
@@ -251,5 +269,35 @@ mod tests {
     assert_eq!(serde_json::from_str::<AlifeObjectCustomZone>(&serialized)?, original);
 
     Ok(())
+  }
+
+  #[test]
+  fn is_always_fast_only_where_its_custom_data_switches_fast_mode_on() {
+    let zone = |custom_data: &str| AlifeObjectCustomZone {
+      base: AlifeObjectSpaceRestrictor {
+        base: AlifeObjectAbstract {
+          game_vertex_id: 0,
+          distance: 0.0,
+          direct_control: 0,
+          level_vertex_id: 0,
+          flags: 0,
+          custom_data: String::from(custom_data),
+          story_id: 0,
+          spawn_story_id: 0,
+        },
+        shape: Vec::new(),
+        restrictor_type: 0,
+      },
+      max_power: 0.0,
+      owner_id: 0,
+      enabled_time: 0,
+      disabled_time: 0,
+      start_time_shift: 0,
+    };
+
+    assert!(zone("[fast_mode]\nalways_fast = true\n").is_always_fast());
+    assert!(!zone("[fast_mode]\nalways_fast = false\n").is_always_fast());
+    assert!(!zone("[other]\nalways_fast = true\n").is_always_fast());
+    assert!(!zone("").is_always_fast());
   }
 }

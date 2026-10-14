@@ -9,7 +9,7 @@ use xrf_ltx::{Ltx, Section};
 use xrf_material::{XraySurfaceDescriptor, XraySurfaceResolver, XrayTextureScope};
 use xrf_particles::{ParticleLibrary, ParticlesFile};
 use xrf_renderer::{RenderParticlePlacement, RenderParticleSource};
-use xrf_spawn::{AlifeObject, AlifeObjectInherited, AlifeObjectMotion, AlifeObjectSpaceRestrictor};
+use xrf_spawn::{AlifeObject, AlifeObjectCustomZone, AlifeObjectInherited, AlifeObjectMotion};
 use xrf_vfs::XrayProbe;
 use xrf_visual::{LightsPacker, VisualTransform, ZoneSphere};
 
@@ -150,10 +150,10 @@ fn place_planted(placement: &PsStaticPlacement) -> RenderParticlePlacement {
 /// `CCustomZone::PlayIdleParticles`: a zone whose section names idle particles plays them at its `XFORM`, a torrid
 /// zone moving it along its motion, and a campfire switches between them and its own.
 fn place_zone(object: &AlifeObject, sections: &Ltx) -> Option<RenderParticlePlacement> {
-  let (motion, restrictor): (Option<&AlifeObjectMotion>, &AlifeObjectSpaceRestrictor) = match &object.inherited {
-    AlifeObjectInherited::CseAlifeAnomalousZone(zone) => (None, &zone.base.base.base),
-    AlifeObjectInherited::CseAlifeZoneVisual(zone) => (None, &zone.base.base.base),
-    AlifeObjectInherited::CseAlifeTorridZone(zone) => (Some(&zone.motion), &zone.base.base),
+  let (motion, zone): (Option<&AlifeObjectMotion>, &AlifeObjectCustomZone) = match &object.inherited {
+    AlifeObjectInherited::CseAlifeAnomalousZone(zone) => (None, &zone.base.base),
+    AlifeObjectInherited::CseAlifeZoneVisual(zone) => (None, &zone.base.base),
+    AlifeObjectInherited::CseAlifeTorridZone(zone) => (Some(&zone.motion), &zone.base),
     _ => return None,
   };
 
@@ -186,11 +186,9 @@ fn place_zone(object: &AlifeObject, sections: &Ltx) -> Option<RenderParticlePlac
       .mirrored()
       .to_matrix(),
     motion: motion.and_then(AlifeObjectMotion::get_name).map(str::to_owned),
-    zone_sphere: ZoneSphere::of_zone(
-      &restrictor.shape,
-      (&object.position, &object.direction),
-      &restrictor.base.custom_data,
-    ),
+    // A zone always fast never switches, so it keeps no sphere to measure.
+    zone_sphere: (!zone.is_always_fast())
+      .then(|| ZoneSphere::of_zone(&zone.base.shape, (&object.position, &object.direction))),
   })
 }
 
