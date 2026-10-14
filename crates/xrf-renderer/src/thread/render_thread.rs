@@ -664,7 +664,7 @@ impl RenderThread {
       .map(|(id, scene)| (*id, scene.take_feedback()))
       .collect();
 
-    world.advance_scenes(feedback)
+    world.advance_scenes(now, feedback)
   }
 
   /// Opens the frame's encoder and grants its periodic work and streaming against one budget, the streaming's rounds

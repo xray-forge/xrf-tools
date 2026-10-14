@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::Instant;
+use std::time::Duration;
 
 use glam::{Mat4, Vec3};
 use xrf_engine_target::XrayEngine;
@@ -37,7 +37,8 @@ pub struct LevelEffects {
   campfires: LevelCampfires,
   motions: LevelObjectMotions,
   workers: RenderWorkers,
-  started: Instant,
+  /// The level's clock at the last frame it moved on.
+  now: Duration,
 }
 
 /// What the read particles keep: what the ambient effects check their effects against, how lit the camera stands, and
@@ -73,7 +74,7 @@ impl LevelEffects {
       campfires: LevelCampfires::new(),
       motions: LevelObjectMotions::new(source, workers),
       workers: workers.clone(),
-      started: Instant::now(),
+      now: Duration::ZERO,
     }
   }
 
@@ -87,12 +88,12 @@ impl LevelEffects {
     self.ambient.play_now();
   }
 
-  /// Where the ambient effects stand, none until the particles are read.
+  /// Where the ambient effects stand as of the last frame, none until the particles are read.
   pub fn report_ambient(&self) -> Option<WorldAmbientReport> {
     self
       .systems
       .as_ref()
-      .map(|systems| self.ambient.report(self.get_now(), systems.hemi.is_indoors()))
+      .map(|systems| self.ambient.report(self.now, systems.hemi.is_indoors()))
   }
 
   /// Takes the effects the scene finished, which the ambient effects are told of on their next update.
@@ -100,19 +101,22 @@ impl LevelEffects {
     self.finished.extend(finished.into_iter().map(|(handle, _)| handle));
   }
 
-  /// Moves the effects on a frame and posts what the scene plays: takes the read particles, plays the weather's ambient
-  /// effects, switches the campfires and moves the object motions, then plays what each placement plays. `eye` is where
-  /// the camera stands in engine space; `lights` the campfires and motions the level's lights follow. The wind blows and
-  /// the camera's indoor estimate runs every frame; while particles are not drawn, or the ambient effects are switched
-  /// off, the ambient effects play as though indoors: none starts, what plays stops, and the wind calms.
+  /// Moves the effects on to `now`, the level's clock, and posts what the scene plays: takes the read particles, plays
+  /// the weather's ambient effects, switches the campfires and moves the object motions, then plays what each placement
+  /// plays. `eye` is where the camera stands in engine space; `lights` the campfires and motions the level's lights
+  /// follow. The wind blows and the camera's indoor estimate runs every frame; while particles are not drawn, or the
+  /// ambient effects are switched off, the ambient effects play as though indoors: none starts, what plays stops, and
+  /// the wind calms.
   pub fn advance(
     &mut self,
     updates: &mut Vec<RenderSceneUpdate>,
+    now: Duration,
     (options, toggles, ambient): (&RenderViewOptions, &WorldToggles, Option<AmbientFrame<'_>>),
     eye: Vec3,
     lights: (&[u16], &[String]),
   ) -> EffectsFrame {
-    let now: u64 = self.get_now();
+    self.now = now;
+
     let is_playing: bool = options.show.is_particled && options.mode.is_lit;
 
     self.take_read(updates);
@@ -138,8 +142,8 @@ impl LevelEffects {
 
     // The campfires switch and the moving zones move whether or not their particles are drawn, so their lights follow
     // them alike.
-    self.campfires.prepare(toggles.is_campfire_lit);
-    self.motions.prepare();
+    self.campfires.prepare(toggles.is_campfire_lit, now);
+    self.motions.prepare(now);
 
     let placed: &[PlacedEmitter] = self.systems.as_ref().map_or(&[], |systems| &systems.placed);
     let mut campfire_shares: HashMap<u16, f32> = HashMap::new();
@@ -185,11 +189,6 @@ impl LevelEffects {
       motions,
       camera_hemi: self.systems.as_ref().and_then(|systems| systems.hemi.get_smooth()),
     }
-  }
-
-  /// The effects' clock, in milliseconds since the level began opening.
-  fn get_now(&self) -> u64 {
-    self.started.elapsed().as_millis() as u64
   }
 
   /// Takes the particles once their loader read them: posts what they are made from and an emitter for each placement.
@@ -284,7 +283,7 @@ impl LevelEffects {
           enabling,
         } => {
           let campfire: Campfire = *campfires.get(*id);
-          let at: u64 = campfires.get_now();
+          let at: Duration = campfires.get_now();
 
           match emitter.campfire_lit {
             // One placed out from the first plays its disabled effect once.

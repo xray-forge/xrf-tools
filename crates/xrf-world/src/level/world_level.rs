@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::time::Instant;
 
 use glam::Vec3;
 use xrf_renderer::{
@@ -19,11 +20,12 @@ use crate::level::level_effects::LevelEffects;
 use crate::level::level_streaming::LevelStreaming;
 
 /// A level as a viewport's world plays it: what streams it into its scene, how its skinned objects are posed, and what
-/// its effects play.
+/// its effects play, by one clock running from when it began opening.
 pub struct WorldLevel {
   streaming: LevelStreaming,
   animation: LevelAnimation,
   effects: LevelEffects,
+  opened: Instant,
 }
 
 impl WorldLevel {
@@ -32,6 +34,7 @@ impl WorldLevel {
       effects: LevelEffects::start(&source, workers),
       streaming: LevelStreaming::start(source, workers),
       animation: LevelAnimation::new(workers),
+      opened: Instant::now(),
     }
   }
 
@@ -53,11 +56,13 @@ impl WorldLevel {
     self.effects.report_ambient()
   }
 
-  /// This frame's posts to the level's scene by the view's options and the frame's weather, the camera standing at
-  /// `eye` in engine space, and what its effects give the scene besides. `failures` are the sectors and the spawned
-  /// models the scene could not take in of the last frame's posts, and `finished` the effects it finished.
+  /// This frame's posts to the level's scene at the frame's `now` by the view's options and the frame's weather, the
+  /// camera standing at `eye` in engine space, and what its effects give the scene besides. `failures` are the sectors
+  /// and the spawned models the scene could not take in of the last frame's posts, and `finished` the effects it
+  /// finished.
   pub fn advance(
     &mut self,
+    now: Instant,
     (options, toggles, ambient): (&RenderViewOptions, &WorldToggles, Option<AmbientFrame<'_>>),
     eye: Vec3,
     failures: (Vec<RenderSectorFailure>, Vec<RenderModelFailure>),
@@ -76,6 +81,7 @@ impl WorldLevel {
 
     let effects: EffectsFrame = self.effects.advance(
       &mut updates,
+      now.saturating_duration_since(self.opened),
       (options, toggles, ambient),
       eye,
       self.streaming.list_light_followed(),

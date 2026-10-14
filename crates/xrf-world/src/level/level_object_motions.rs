@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::mpsc::TryRecvError;
-use std::time::Instant;
+use std::time::Duration;
 
 use glam::{Mat4, Vec3};
 use xrf_anm::AnmFile;
@@ -22,10 +22,9 @@ pub struct LevelObjectMotions {
   source: Arc<dyn RenderLevelSource>,
   workers: RenderWorkers,
   motions: HashMap<String, MotionState>,
-  started: Instant,
-  /// Seconds since the level began opening, at this frame and at the one before.
-  now: f32,
-  previous: f32,
+  /// The level's clock at this frame and at the one before.
+  now: Duration,
+  previous: Duration,
 }
 
 impl LevelObjectMotions {
@@ -34,15 +33,15 @@ impl LevelObjectMotions {
       source: Arc::clone(source),
       workers: workers.clone(),
       motions: HashMap::new(),
-      started: Instant::now(),
-      now: 0.0,
-      previous: 0.0,
+      now: Duration::ZERO,
+      previous: Duration::ZERO,
     }
   }
 
-  /// Moves the clock on to this frame.
-  pub fn prepare(&mut self) {
-    self.prepare_at(self.started.elapsed().as_secs_f32());
+  /// Moves on to `now`, the level's clock.
+  pub fn prepare(&mut self, now: Duration) {
+    self.previous = self.now;
+    self.now = now;
   }
 
   /// Where a motion has its object this frame, in engine space, and how fast it moved since the frame before
@@ -54,7 +53,7 @@ impl LevelObjectMotions {
     let (position, rotation) = motion.evaluate(looped);
     let transform: Mat4 =
       Mat4::from_cols_array(&VisualTransform::of_motion(&position, &rotation).mirrored().to_matrix());
-    let elapsed: f32 = now - previous;
+    let elapsed: f32 = now.saturating_sub(previous).as_secs_f32();
     // Across the loop's seam the two times lie at its two ends: the motion is measured over this frame's stretch
     // ahead instead, rather than over the whole path back to its start.
     let (from, to) = if looped_before > looped {
@@ -69,11 +68,6 @@ impl LevelObjectMotions {
     };
 
     Some((transform, velocity))
-  }
-
-  fn prepare_at(&mut self, now: f32) {
-    self.previous = self.now;
-    self.now = now;
   }
 
   /// The motion by its name once it is read, asking for it the first time.
@@ -254,8 +248,8 @@ mod tests {
     let source: Arc<dyn RenderLevelSource> = Arc::new(MotionSource);
     let mut motions: LevelObjectMotions = LevelObjectMotions::new(&source, &create_workers());
 
-    motions.prepare_at(1.0);
-    motions.prepare_at(1.5);
+    motions.prepare(Duration::from_millis(1000));
+    motions.prepare(Duration::from_millis(1500));
 
     let (transform, velocity) = read(&mut motions, "line.anm").expect("the motion to be read");
 
@@ -269,8 +263,8 @@ mod tests {
     let source: Arc<dyn RenderLevelSource> = Arc::new(MotionSource);
     let mut motions: LevelObjectMotions = LevelObjectMotions::new(&source, &create_workers());
 
-    motions.prepare_at(1.9);
-    motions.prepare_at(2.1);
+    motions.prepare(Duration::from_millis(1900));
+    motions.prepare(Duration::from_millis(2100));
 
     let (_, velocity) = read(&mut motions, "line.anm").expect("the motion to be read");
 
@@ -282,7 +276,7 @@ mod tests {
     let source: Arc<dyn RenderLevelSource> = Arc::new(MotionSource);
     let mut motions: LevelObjectMotions = LevelObjectMotions::new(&source, &create_workers());
 
-    motions.prepare_at(1.0);
+    motions.prepare(Duration::from_millis(1000));
 
     let started: Instant = Instant::now();
 

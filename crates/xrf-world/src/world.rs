@@ -237,6 +237,7 @@ impl RenderWorld for World {
 
   fn advance_scenes(
     &mut self,
+    now: Instant,
     mut feedback: HashMap<RenderSceneId, RenderSceneFeedback>,
   ) -> HashMap<RenderSceneId, RenderSceneFrame> {
     let mut frames: HashMap<RenderSceneId, RenderSceneFrame> = HashMap::with_capacity(self.scenes.len());
@@ -252,6 +253,7 @@ impl RenderWorld for World {
         finished_effects,
       } = feedback.remove(id).unwrap_or_default();
       let (updates, effects): (Vec<RenderSceneUpdate>, EffectsFrame) = scene.level.advance(
+        now,
         (&driving.options, &driving.toggles, driving.get_ambient_frame()),
         driving.eye,
         (sector_failures, model_failures),

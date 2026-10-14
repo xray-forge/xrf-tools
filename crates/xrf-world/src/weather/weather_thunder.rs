@@ -1,4 +1,5 @@
 use std::f32::consts::{PI, TAU};
+use std::time::Duration;
 
 use glam::Vec3;
 use xrf_environment::WeatherMix;
@@ -17,7 +18,7 @@ const MAX_DISTANCE: f32 = 0.95;
 const SECOND_DELAY: f32 = EPS_L;
 
 /// The longest real step a strike takes at once, so a view shown again after a while does not skip one.
-const LONGEST_STEP: f32 = 1.0;
+const LONGEST_STEP: Duration = Duration::from_secs(1);
 
 /// A strike under way, in engine space.
 struct Strike {
@@ -45,10 +46,10 @@ pub struct WeatherThunder {
   random: WeatherRandom,
   /// Whether the weather struck last frame, `bEnabled`.
   is_enabled: bool,
-  /// Real seconds the next strike is due at.
-  next: f32,
+  /// When the next strike is due, on the real clock it runs on.
+  next: Duration,
   strike: Option<Strike>,
-  advanced_at: Option<f32>,
+  advanced_at: Option<Duration>,
 }
 
 impl WeatherThunder {
@@ -56,7 +57,7 @@ impl WeatherThunder {
     Self {
       random: WeatherRandom::new(seed),
       is_enabled: false,
-      next: 0.0,
+      next: Duration::ZERO,
       strike: None,
       advanced_at: None,
     }
@@ -70,16 +71,18 @@ impl WeatherThunder {
   }
 
   /// `OnFrame`: schedules a strike as the weather starts to name a collection, strikes when one is due, and plays the
-  /// strike under way. `now` is in real seconds and `view` in engine space; none while no strike is under way.
+  /// strike under way. `now` is its real clock and `view` in engine space; none while no strike is under way.
   pub fn advance(
     &mut self,
     thunder: &RenderThunder,
     mix: &WeatherMix,
     is_enabled: bool,
-    now: f32,
+    now: Duration,
     view: Vec3,
   ) -> Option<ThunderFlash> {
-    let step: f32 = self.advanced_at.map_or(0.0, |at| (now - at).clamp(0.0, LONGEST_STEP));
+    let step: f32 = self
+      .advanced_at
+      .map_or(0.0, |at| now.saturating_sub(at).min(LONGEST_STEP).as_secs_f32());
     let palette: Vec<(&String, &RenderThunderbolt)> = if is_enabled {
       Self::list_palette(thunder, mix)
     } else {
@@ -94,7 +97,7 @@ impl WeatherThunder {
       let period: f32 = mix.thunderbolt_period;
 
       self.is_enabled = is_striking;
-      self.next = now + period + self.random.between(-period * 0.5, period * 0.5);
+      self.next = Self::get_moment(now, period + self.random.between(-period * 0.5, period * 0.5));
     } else if let Some(settings) = settings.filter(|_| is_striking && now > self.next && self.strike.is_none()) {
       self.strike = Some(self.bolt(&palette, &settings, mix, now, view));
     }
@@ -120,7 +123,7 @@ impl WeatherThunder {
     palette: &[(&String, &RenderThunderbolt)],
     settings: &RenderThunderSettings,
     mix: &WeatherMix,
-    now: f32,
+    now: Duration,
     view: Vec3,
   ) -> Strike {
     let random: &mut WeatherRandom = &mut self.random;
@@ -148,11 +151,14 @@ impl WeatherThunder {
     let down: Vec3 = -j;
     let size: f32 = to_ground(position, down, far * 2.0);
 
-    self.next = if random.next_fraction() < settings.second_probability {
-      now + lasting + SECOND_DELAY
-    } else {
-      now + period + random.between(-period * 0.3, period * 0.3)
-    };
+    self.next = Self::get_moment(
+      now,
+      if random.next_fraction() < settings.second_probability {
+        lasting + SECOND_DELAY
+      } else {
+        period + random.between(-period * 0.3, period * 0.3)
+      },
+    );
 
     Strike {
       name: name.clone(),
@@ -214,6 +220,17 @@ impl WeatherThunder {
           opacity,
         },
       },
+    }
+  }
+
+  /// The moment `seconds` from `now`, which a negative count puts before it; a count that is no number never comes.
+  fn get_moment(now: Duration, seconds: f32) -> Duration {
+    if seconds.is_nan() {
+      Duration::MAX
+    } else if seconds >= 0.0 {
+      Duration::try_from_secs_f32(seconds).map_or(Duration::MAX, |ahead| now.saturating_add(ahead))
+    } else {
+      Duration::try_from_secs_f32(-seconds).map_or(Duration::ZERO, |behind| now.saturating_sub(behind))
     }
   }
 

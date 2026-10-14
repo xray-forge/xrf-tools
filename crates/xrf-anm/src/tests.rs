@@ -1,4 +1,5 @@
 use std::io::Write;
+use std::time::Duration;
 
 use byteorder::WriteBytesExt;
 use xrf_animation_envelope::{AnimationEnvelope, AnimationInterpolation, AnimationKey};
@@ -328,9 +329,18 @@ fn new_moving_motion() -> AnmFile {
 fn test_looped_time_wraps_by_whole_lengths() {
   let motion: AnmFile = new_moving_motion();
 
-  assert_eq!(motion.get_looped_time(0.5), 0.5);
-  assert_eq!(motion.get_looped_time(2.0), 2.0);
-  assert!((motion.get_looped_time(5.5) - 1.5).abs() < 1e-5);
+  assert_eq!(motion.get_looped_time(Duration::from_millis(500)), 0.5);
+  assert_eq!(motion.get_looped_time(Duration::from_secs(2)), 2.0);
+  assert!((motion.get_looped_time(Duration::from_millis(5500)) - 1.5).abs() < 1e-5);
+}
+
+#[test]
+fn test_looped_time_keeps_its_pace_after_a_day() {
+  let motion: AnmFile = new_moving_motion();
+  let day: Duration = Duration::from_secs(24 * 60 * 60);
+  let step: f32 = motion.get_looped_time(day + Duration::from_millis(6)) - motion.get_looped_time(day);
+
+  assert!((step - 0.006).abs() < 1e-6, "{step}");
 }
 
 #[test]

@@ -132,7 +132,7 @@ impl AmbientScene {
       },
       Some(frame),
       (OUTDOORS, is_indoors),
-      now,
+      Duration::from_millis(now),
     );
 
     let context: ParticleUpdateContext = ParticleUpdateContext {
@@ -343,7 +343,7 @@ fn playing_one_now_ends_the_one_playing_and_starts_without_waiting() {
 
   scene.update(frame, false, 1);
 
-  let first: WorldAmbientReport = scene.effects.report(500, false);
+  let first: WorldAmbientReport = scene.effects.report(Duration::from_millis(500), false);
 
   assert!(
     first
@@ -356,7 +356,7 @@ fn playing_one_now_ends_the_one_playing_and_starts_without_waiting() {
   scene.effects.play_now();
   scene.update(frame, false, 600);
 
-  let second: WorldAmbientReport = scene.effects.report(600, false);
+  let second: WorldAmbientReport = scene.effects.report(Duration::from_millis(600), false);
 
   assert!(
     second
@@ -371,5 +371,5 @@ fn playing_one_now_ends_the_one_playing_and_starts_without_waiting() {
   scene.effects.play_now();
   scene.update(frame, true, 700);
   assert!(scene.get_playing().is_none());
-  assert!(scene.effects.report(700, true).is_indoors);
+  assert!(scene.effects.report(Duration::from_millis(700), true).is_indoors);
 }

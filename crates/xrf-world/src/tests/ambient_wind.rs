@@ -23,17 +23,20 @@ fn blasting(gust_factor: f32) -> RenderAmbientEffect {
   }
 }
 
-/// One frame of the wind as the ambient effects take it, the effect started at `started` and stopped with its life.
-fn frame(wind: &mut AmbientWind, time: f32, (effect, started): (&RenderAmbientEffect, f32)) -> AmbientGust {
+/// One frame of the wind as the ambient effects take it at `seconds`, the effect started at `started` seconds and
+/// stopped with its life.
+fn frame(wind: &mut AmbientWind, seconds: f32, (effect, started): (&RenderAmbientEffect, f32)) -> AmbientGust {
+  let time: Duration = Duration::from_secs_f32(seconds);
+
   wind.blow(time);
 
-  if time == started {
+  if seconds == started {
     wind.start(effect, time);
   }
 
   wind.rise(time);
 
-  if time >= started + effect.life_time.as_secs_f32() {
+  if seconds >= started + effect.life_time.as_secs_f32() {
     wind.calm();
   }
 
@@ -46,7 +49,7 @@ fn still_air_stands_at_half_strength() {
   let mut wind: AmbientWind = AmbientWind::default();
 
   for time in [0.1, 5.0, 60.0, 600.0] {
-    wind.blow(time);
+    wind.blow(Duration::from_secs_f32(time));
     assert_eq!(wind.get_gust(), AmbientGust::default());
   }
 }
@@ -54,7 +57,9 @@ fn still_air_stands_at_half_strength() {
 #[test]
 fn gusts_wander_within_two_thirds_of_nothing() {
   let mut noise: WindNoise = WindNoise::new(7);
-  let values: Vec<f32> = (1..2000).map(|frame| noise.read(frame as f32 * 0.05, 0.03)).collect();
+  let values: Vec<f32> = (1..2000)
+    .map(|frame| noise.read(Duration::from_millis(frame * 50), 0.03))
+    .collect();
 
   assert!(values.iter().all(|value| value.abs() <= 0.66666));
   assert!(values.iter().any(|value| (value - values[0]).abs() > 1e-3));

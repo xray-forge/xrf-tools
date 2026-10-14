@@ -26,9 +26,9 @@ const FIRST_EFFECT_SEED: i32 = 1 << 24;
 /// when its particles have died.
 pub struct LevelAmbientEffects {
   random: WeatherRandom,
-  /// `ambient_effect_next_time` and `ambient_effect_stop_time`, in milliseconds.
-  next_time: u64,
-  stop_time: u64,
+  /// `ambient_effect_next_time` and `ambient_effect_stop_time`, on the level's clock.
+  next_time: Duration,
+  stop_time: Duration,
   /// `ambient_particles`.
   playing: Option<PlayingEffect>,
   played: i32,
@@ -58,8 +58,8 @@ impl Default for LevelAmbientEffects {
   fn default() -> Self {
     Self {
       random: WeatherRandom::new(SEED),
-      next_time: 0,
-      stop_time: 0,
+      next_time: Duration::ZERO,
+      stop_time: Duration::ZERO,
       playing: None,
       played: 0,
       is_forced: false,
@@ -71,29 +71,27 @@ impl Default for LevelAmbientEffects {
 impl LevelAmbientEffects {
   /// Lets an effect whose particles died go, blows the wind on, starts an effect when one is due, and stops it once its
   /// time is up or indoors, in the order the engine takes them each frame, posting what the scene plays. `eye` is where
-  /// the camera stands, in engine space; `now` is the effects' clock, in milliseconds.
+  /// the camera stands, in engine space; `now` is the level's clock.
   pub fn update(
     &mut self,
     updates: &mut Vec<RenderSceneUpdate>,
     mut systems: AmbientSystems<'_>,
     frame: Option<AmbientFrame<'_>>,
     (eye, is_indoors): (Vec3, bool),
-    now: u64,
+    now: Duration,
   ) {
-    let time: f32 = now as f32 / 1000.0;
-
     if let Some(playing) = &self.playing
       && systems.finished.contains(&playing.emitter)
     {
       self.release(updates, systems.emitters);
     }
 
-    self.wind.blow(time);
+    self.wind.blow(now);
 
     if self.is_forced {
       self.is_forced = false;
       self.release(updates, systems.emitters);
-      self.next_time = 0;
+      self.next_time = Duration::ZERO;
     }
 
     if !is_indoors
@@ -104,7 +102,7 @@ impl LevelAmbientEffects {
       self.start(updates, &mut systems, frame, (eye, now));
     }
 
-    self.wind.rise(time);
+    self.wind.rise(now);
 
     if is_indoors || now >= self.stop_time {
       // `Stop()`, deferred: it emits no more, and what it emitted lives on.
@@ -122,7 +120,7 @@ impl LevelAmbientEffects {
       self.wind.calm();
     }
 
-    self.wind.fall(time);
+    self.wind.fall(now);
   }
 
   /// The wind as it blows this frame.
@@ -135,9 +133,9 @@ impl LevelAmbientEffects {
     self.is_forced = true;
   }
 
-  /// Where they stand at a moment of the particles' clock: what plays and how much of its life is left, and how long
-  /// until the next may start.
-  pub fn report(&self, now: u64, is_indoors: bool) -> WorldAmbientReport {
+  /// Where they stand at a moment of the level's clock: what plays and how much of its life is left, and how long until
+  /// the next may start.
+  pub fn report(&self, now: Duration, is_indoors: bool) -> WorldAmbientReport {
     WorldAmbientReport {
       effect: self.playing.as_ref().map(|playing| WorldAmbientEffectReport {
         name: playing.name.clone(),
@@ -145,11 +143,11 @@ impl LevelAmbientEffects {
         remaining: if playing.is_stopping {
           0.0
         } else {
-          self.stop_time.saturating_sub(now) as f32 / 1000.0
+          self.stop_time.saturating_sub(now).as_secs_f32()
         },
       }),
       is_indoors,
-      wait: self.next_time.saturating_sub(now) as f32 / 1000.0,
+      wait: self.next_time.saturating_sub(now).as_secs_f32(),
       played: self.played as u32,
     }
   }
@@ -169,7 +167,7 @@ impl LevelAmbientEffects {
     updates: &mut Vec<RenderSceneUpdate>,
     systems: &mut AmbientSystems<'_>,
     frame: AmbientFrame<'_>,
-    (eye, now): (Vec3, u64),
+    (eye, now): (Vec3, Duration),
   ) {
     // `Current[data_set]`, drawn only when the keyframes' ambients differ and only here, where it is read, so that the
     // run of numbers does not depend on the frame rate.
@@ -188,7 +186,7 @@ impl LevelAmbientEffects {
 
     let chosen: &str = &ambient.effects[self.draw_index(ambient.effects.len())];
 
-    self.next_time = now + self.draw_period(ambient);
+    self.next_time = now.saturating_add(self.draw_period(ambient));
 
     let Some(effect) = frame.level.ambient_effects.get(chosen) else {
       log::warn!("The ambient effect '{chosen}' is not described");
@@ -196,8 +194,8 @@ impl LevelAmbientEffects {
       return;
     };
 
-    self.stop_time = now + effect.life_time.as_millis() as u64;
-    self.wind.start(effect, now as f32 / 1000.0);
+    self.stop_time = now.saturating_add(effect.life_time);
+    self.wind.start(effect, now);
 
     let offset: Vec3 = self.draw_offset(effect, systems.engine);
 
@@ -216,7 +214,7 @@ impl LevelAmbientEffects {
     }
 
     log::info!(
-      "Ambient effect '{chosen}' plays '{}' for {:?}, the next in {} ms at the soonest",
+      "Ambient effect '{chosen}' plays '{}' for {:?}, the next in {:?} at the soonest",
       effect.particles,
       effect.life_time,
       self.next_time - now
@@ -247,12 +245,12 @@ impl LevelAmbientEffects {
     ((self.random.next_fraction() * count as f32) as usize).min(count - 1)
   }
 
-  /// `Random.randI(min, max)` over the ambient's period, in milliseconds.
-  fn draw_period(&mut self, ambient: &RenderAmbient) -> u64 {
+  /// `Random.randI(min, max)` over the ambient's period, in whole milliseconds.
+  fn draw_period(&mut self, ambient: &RenderAmbient) -> Duration {
     let (least, most): (Duration, Duration) = ambient.period;
     let (least, most): (u64, u64) = (least.as_millis() as u64, most.as_millis() as u64);
 
-    least + ((most.saturating_sub(least)) as f32 * self.random.next_fraction()) as u64
+    Duration::from_millis(least + ((most.saturating_sub(least)) as f32 * self.random.next_fraction()) as u64)
   }
 
   /// The effect's offset, which Monolith moves half a metre to five aside on each level axis, either way.
