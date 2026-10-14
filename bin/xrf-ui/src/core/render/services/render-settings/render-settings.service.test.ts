@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
+import { Container } from "@wirestate/core";
 
 import { ERenderAntialiasing, ERenderScale, RENDER_DEFAULT_PERIODIC_BUDGET } from "@/core/ipc/types/xrf-renderer";
 import { DEFAULT_RENDER_FEATURE_CHOICE } from "@/core/render/lib/settings/render-feature-choice";
@@ -6,7 +7,7 @@ import { ERenderPreset, RENDER_PRESETS } from "@/core/render/lib/settings/render
 import { RenderSettingsService } from "@/core/render/services/render-settings/render-settings.service";
 import { clearLocalStorage, getLocalStorageValue, setLocalStorageValue } from "@/core/storage";
 import { mockInvoke } from "@/fixtures/mocks/tauri.mocks";
-import { mockInjectedService } from "@/fixtures/utils/container";
+import { mockContainer, mockInjectedService } from "@/fixtures/utils/container";
 
 /** How often the renderer was told its settings. */
 function countConfigured(): number {
@@ -20,10 +21,11 @@ describe("RenderSettingsService", () => {
 
   // The settings are the renderer's, not a viewport's: told once, then once a change, however many viewports draw.
   it("tells the renderer its settings while provisioned, with no viewport attached", () => {
-    const { service } = mockInjectedService(RenderSettingsService);
+    const container: Container = mockContainer();
+    const service: RenderSettingsService = container.get(RenderSettingsService);
 
     mockInvoke.mockClear();
-    service.onProvision();
+    container.provision();
 
     expect(countConfigured()).toBe(1);
 
@@ -31,10 +33,23 @@ describe("RenderSettingsService", () => {
 
     expect(countConfigured()).toBe(2);
 
-    service.onDeprovision();
+    container.deprovision();
     service.setVsync(true);
 
     expect(countConfigured()).toBe(2);
+  });
+
+  it("tells the renderer each change once when provisioned again", () => {
+    const { service } = mockInjectedService(RenderSettingsService);
+
+    service.onProvision();
+    service.onProvision();
+    mockInvoke.mockClear();
+    service.setVsync(false);
+
+    expect(countConfigured()).toBe(1);
+
+    service.onDeprovision();
   });
 
   it("caps viewports at sixty until something says otherwise", () => {

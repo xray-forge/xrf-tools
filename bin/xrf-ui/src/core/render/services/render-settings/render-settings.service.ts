@@ -136,9 +136,13 @@ export class RenderSettingsService {
     };
   }
 
-  /** Tells the renderer every viewport's settings at once and again on each change, whether a viewport is attached or not. */
+  /**
+   * Tells the renderer every viewport's settings at once and again on each change, whether a viewport is attached or
+   * not; provisioned again, it replaces its reaction rather than adding a second.
+   */
   @OnProvision()
   public onProvision(): void {
+    this.stopConfiguring?.();
     this.stopConfiguring = reaction(
       () => this.renderSettings,
       (settings: RenderSettings) =>
@@ -149,6 +153,7 @@ export class RenderSettingsService {
     );
   }
 
+  /** Stops telling the renderer its settings. */
   @OnDeprovision()
   public onDeprovision(): void {
     this.stopConfiguring?.();
