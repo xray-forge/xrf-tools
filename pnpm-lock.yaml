@@ -472,6 +472,10 @@ importers:
         version: '@typescript/typescript6@6.0.2'
 
   packages/xrf-math:
+    dependencies:
+      '@xrf/types':
+        specifier: workspace:*
+        version: link:../xrf-types
     devDependencies:
       '@jest/globals':
         specifier: 'catalog:'

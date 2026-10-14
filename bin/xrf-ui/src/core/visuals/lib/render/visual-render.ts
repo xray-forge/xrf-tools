@@ -1,4 +1,4 @@
-import { addVectors, normalise, scaleVector, toRadians } from "@xrf/math";
+import { addVectors, normalise, scaleVector, toRadians, toRawColor, toSphereFitDistance } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 
 import { ERenderOverlay, RenderOverlay, RenderViewOptions } from "@/core/ipc/types/xrf-renderer";
@@ -6,7 +6,6 @@ import { EWorldCamera, WorldCamera } from "@/core/ipc/types/xrf-world";
 import { IRenderLighting, toNativeAssetLighting } from "@/core/render/lib/lighting/render-lighting";
 import { toNativeLines } from "@/core/render/lib/native/native-overlay";
 import { toNativeAssetViewOptions } from "@/core/render/lib/native/native-view-options";
-import { toRawColor } from "@/core/render/lib/scene/render-color";
 import { toRenderAxesLines, toRenderGridLines } from "@/core/render/lib/scene/render-grid-lines";
 import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { NATIVE_RENDER_OUTPUT, TRenderOutput } from "@/core/render/lib/settings/render-resolution";
@@ -23,7 +22,7 @@ import { IVisualCameraFit } from "@/core/visuals/lib/visual-views";
  */
 export function toVisualCamera(fit: IVisualCameraFit, config: IVisualPreviewSceneConfig): WorldCamera {
   const { cameraFieldOfView, cameraFitMargin, cameraDirection } = config;
-  const distance: number = (fit.radius / Math.sin(toRadians(cameraFieldOfView / 2))) * cameraFitMargin;
+  const distance: number = toSphereFitDistance(fit.radius, toRadians(cameraFieldOfView), cameraFitMargin);
 
   return {
     far: distance * 100,

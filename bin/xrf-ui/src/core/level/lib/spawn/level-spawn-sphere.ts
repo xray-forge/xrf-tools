@@ -1,4 +1,4 @@
-import { IPoint3, toXraySpace } from "@xrf/math";
+import { IPoint3, toPoint3, toXraySpace } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 
 import { LevelSpawnObject } from "@/core/ipc/types/xrf-app";
@@ -27,9 +27,7 @@ export function toLevelSpawnSphere(
     return { center: { x: sphere[0], y: sphere[1], z: sphere[2] }, radius: sphere[3] || UNREAD_RADIUS };
   }
 
-  const { c } = object.transform;
-
-  return { center: { x: c.x ?? 0, y: c.y ?? 0, z: c.z ?? 0 }, radius: UNREAD_RADIUS };
+  return { center: toPoint3(object.transform.c), radius: UNREAD_RADIUS };
 }
 
 /**
@@ -37,5 +35,5 @@ export function toLevelSpawnSphere(
  * @returns Where, as the engine states it.
  */
 export function toLevelSpawnPosition(transform: VisualTransform): IPoint3 {
-  return toXraySpace({ x: transform.c.x ?? 0, y: transform.c.y ?? 0, z: transform.c.z ?? 0 });
+  return toXraySpace(toPoint3(transform.c));
 }

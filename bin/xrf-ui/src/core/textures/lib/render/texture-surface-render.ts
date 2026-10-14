@@ -1,3 +1,4 @@
+import { parseHexColor, toRawColor } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 
 import { TextureDescription } from "@/core/ipc/types/xrf-app";
@@ -6,7 +7,6 @@ import { EWorldCamera, WorldCamera } from "@/core/ipc/types/xrf-world";
 import { IRenderLighting, toNativeAssetLighting } from "@/core/render/lib/lighting/render-lighting";
 import { toNativeAssetViewOptions } from "@/core/render/lib/native/native-view-options";
 import { TNativeTextureRequest } from "@/core/render/lib/native/native-viewport";
-import { toRawColor } from "@/core/render/lib/scene/render-color";
 import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { NATIVE_RENDER_OUTPUT, TRenderOutput } from "@/core/render/lib/settings/render-resolution";
 import { ITextureSurfaceOptions, toTextureAspect } from "@/core/textures/lib/texture-surface";
@@ -24,14 +24,6 @@ export const TEXTURE_SURFACE_CAMERA: WorldCamera = {
 
 /** The slab's four edges and its back: dark and plain, so a turned slab reads as a slab rather than as the texture. */
 const TEXTURE_EDGE_COLOR: number = 0x1a1a1a;
-
-/**
- * @param color - A colour as css writes it, `#rrggbb`.
- * @returns The same as one number.
- */
-function toHexColor(color: string): number {
-  return Number.parseInt(color.slice(1), 16);
-}
 
 /**
  * @param description - The texture on screen, or null for none.
@@ -79,9 +71,9 @@ export function toTextureViewOptions(
     ...view,
     asset: {
       ...view.asset,
-      backdrop: toRawColor(toHexColor(VIEWPORT.checkerboardDark)),
+      backdrop: toRawColor(parseHexColor(VIEWPORT.checkerboardDark)),
       backdropSquares: {
-        color: toRawColor(toHexColor(VIEWPORT.checkerboardLight)),
+        color: toRawColor(parseHexColor(VIEWPORT.checkerboardLight)),
         size: VIEWPORT.checkerboardSquare * pixelRatio,
       },
       lighting: toNativeAssetLighting(lighting),

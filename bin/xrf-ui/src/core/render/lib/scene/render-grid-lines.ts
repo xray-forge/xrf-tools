@@ -1,6 +1,5 @@
-import { IPoint3 } from "@xrf/math";
+import { IPoint3, toRawColor, TRawColor } from "@xrf/math";
 
-import { toRawColor, TRawColor } from "@/core/render/lib/scene/render-color";
 import { toRenderGridStep } from "@/core/render/lib/scene/render-grid-step";
 
 /** Line segments as the renderer's line overlay takes them. */

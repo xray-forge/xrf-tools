@@ -1,5 +1,6 @@
 import { Injectable, OnDeprovision, OnProvision, ProvisionId } from "@wirestate/core";
 import { BoundAction, Computed, Observable, RefObservable } from "@wirestate/mobx";
+import { clamp } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 
 import { renderCommands } from "@/core/ipc/commands/render";
@@ -241,7 +242,7 @@ export class SettingsService {
 
   @BoundAction()
   public setRenderOutputScale(scale: number): void {
-    const kept: number = Math.min(Math.max(scale, RENDER_OUTPUT_SCALES.min), RENDER_OUTPUT_SCALES.max);
+    const kept: number = clamp(scale, RENDER_OUTPUT_SCALES.min, RENDER_OUTPUT_SCALES.max);
 
     this.log.info("Set render output scale:", kept);
 

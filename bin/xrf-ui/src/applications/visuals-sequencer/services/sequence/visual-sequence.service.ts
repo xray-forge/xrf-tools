@@ -194,7 +194,7 @@ export class VisualSequenceService {
       return;
     }
 
-    const to: number = Math.max(0, Math.min(from + offset, this.clips.length - 1));
+    const to: number = clamp(from + offset, 0, this.clips.length - 1);
 
     if (to === from) {
       return;

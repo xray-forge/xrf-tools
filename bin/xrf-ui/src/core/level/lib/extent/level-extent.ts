@@ -1,4 +1,4 @@
-import { IPoint3 } from "@xrf/math";
+import { IPoint3, toPoint3 } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 
 import { VisualBounds } from "@/core/ipc/types/xrf-visual";
@@ -29,8 +29,8 @@ export function toLevelBox(bounds: Nullable<VisualBounds>): ILevelBox {
 
   const box: ILevelBox = {
     isEmpty: false,
-    max: { x: max.x ?? 0, y: max.y ?? 0, z: max.z ?? 0 },
-    min: { x: min.x ?? 0, y: min.y ?? 0, z: min.z ?? 0 },
+    max: toPoint3(max),
+    min: toPoint3(min),
   };
 
   box.isEmpty = box.max.x < box.min.x || box.max.y < box.min.y || box.max.z < box.min.z;

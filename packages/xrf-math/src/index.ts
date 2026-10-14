@@ -1,5 +1,6 @@
 export * from "#/angle";
 export * from "#/clamp";
+export * from "#/color";
 export * from "#/heading-pitch";
 export * from "#/math-constants";
 export * from "#/mix";
@@ -9,5 +10,6 @@ export * from "#/point";
 export * from "#/render-space";
 export * from "#/rigid-transform";
 export * from "#/series";
+export * from "#/sphere-fit";
 export * from "#/vector";
 export * from "#/wrap";

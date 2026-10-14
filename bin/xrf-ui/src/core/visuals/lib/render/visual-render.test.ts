@@ -1,8 +1,8 @@
 import { describe, expect, it } from "@jest/globals";
+import { toRawColor } from "@xrf/math";
 
 import { ERenderOverlay, RenderViewOptions } from "@/core/ipc/types/xrf-renderer";
 import { EWorldCamera, WorldCamera } from "@/core/ipc/types/xrf-world";
-import { toRawColor } from "@/core/render/lib/scene/render-color";
 import { toVisualCamera, toVisualOverlays, toVisualViewOptions } from "@/core/visuals/lib/render/visual-render";
 import { DEFAULT_VISUAL_PREVIEW_SCENE_CONFIG } from "@/core/visuals/lib/scene/scene-config";
 import { DEFAULT_VISUAL_LIGHTING } from "@/core/visuals/lib/scene/visual-lighting";
