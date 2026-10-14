@@ -4,6 +4,7 @@ import {
   ERenderDlssAvailability,
   RenderFramePhases,
   RenderFrameReport,
+  RenderGrassReport,
   RenderLightsReport,
   RenderParticlesReport,
   RenderStaticReport,
@@ -47,6 +48,12 @@ export const EMPTY_RENDER_PARTICLES_REPORT: RenderParticlesReport = {
   simulationTime: 0,
 };
 
+/** A frame with no grass drawn. */
+export const EMPTY_RENDER_GRASS_REPORT: RenderGrassReport = {
+  capacity: 0,
+  drawn: 0,
+};
+
 /** A frame whose render thread spent nothing anywhere. */
 export const EMPTY_RENDER_FRAME_PHASES: RenderFramePhases = {
   acquire: 0,
@@ -73,6 +80,7 @@ export const EMPTY_RENDER_FRAME_REPORT: RenderFrameReport = {
   gpuTime: null,
   gpuTimes: [],
   graph: null,
+  grass: EMPTY_RENDER_GRASS_REPORT,
   groups: [],
   hasRayQueries: false,
   dlss: ERenderDlssAvailability.UNBUILT,

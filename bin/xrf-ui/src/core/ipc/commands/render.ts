@@ -11,6 +11,7 @@ import {
   RenderDlssAvailability,
   RenderFramePhases,
   RenderGraphReport,
+  RenderGrassReport,
   RenderGroupCost,
   RenderLightsReport,
   RenderLoadDurations,
@@ -117,6 +118,8 @@ export const renderCommands = {
       lights: RenderLightsReport;
       /** The level's particle systems, empty without a level. */
       particles: RenderParticlesReport;
+      /** The view's grass, empty without a level or grass. */
+      grass: RenderGrassReport;
       /** Milliseconds the last sector taken in took to put into the scene, on the render thread. */
       sectorTime: number | null;
       /** What the renderer holds on the GPU. */
