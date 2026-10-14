@@ -93,7 +93,7 @@ impl ThunderPass {
       context.bind(parameters);
       context
         .get_pass()
-        .set_pipeline(&self.pipelines[entry * BLENDS.len() + Self::to_blend(draw)]);
+        .set_pipeline(&self.pipelines[entry * BLENDS.len() + Self::get_blend_index(Self::to_blend(draw))]);
       context.get_pass().draw(0..vertices, 0..1);
     }
   }
@@ -136,13 +136,18 @@ impl ThunderPass {
 
   /// A shader's blend among `BLENDS`; one that composites nothing, or writes over what is behind it, still lights the
   /// air, as the engine's lightning is added.
-  fn to_blend(draw: XraySurfaceDraw) -> usize {
-    let find = |blend: ParticleBlend| BLENDS.iter().position(|it| *it == blend);
-
+  fn to_blend(draw: XraySurfaceDraw) -> ParticleBlend {
     ParticleBlend::of(draw)
-      .and_then(find)
-      .or_else(|| find(ParticleBlend::Add))
-      .unwrap_or_default()
+      .filter(|blend| BLENDS.contains(blend))
+      .unwrap_or(ParticleBlend::Add)
+  }
+
+  /// A blend's pipelines among `BLENDS`, which `to_blend` answers from alone.
+  fn get_blend_index(blend: ParticleBlend) -> usize {
+    BLENDS
+      .iter()
+      .position(|it| *it == blend)
+      .expect("a thunderbolt draws with its own blends alone")
   }
 }
 
@@ -184,7 +189,8 @@ mod tests {
       (XraySurfaceDraw::Invisible, ParticleBlend::Add),
       (XraySurfaceDraw::Water { is_soft: true }, ParticleBlend::Add),
     ] {
-      assert_eq!(BLENDS[ThunderPass::to_blend(draw)], blend, "{draw:?}");
+      assert_eq!(ThunderPass::to_blend(draw), blend, "{draw:?}");
+      assert_eq!(BLENDS[ThunderPass::get_blend_index(blend)], blend, "{draw:?}");
     }
   }
 }
