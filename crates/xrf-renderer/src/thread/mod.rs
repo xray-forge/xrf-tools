@@ -5,6 +5,7 @@ pub(crate) mod render_command;
 pub(crate) mod render_link;
 pub(crate) mod render_queue;
 pub(crate) mod render_thread;
+pub(crate) mod render_wait;
 pub(crate) mod render_workers;
 pub(crate) mod reopening_scenes;
 pub(crate) mod running_gpu;

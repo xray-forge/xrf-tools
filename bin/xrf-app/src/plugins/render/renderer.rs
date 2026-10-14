@@ -7,7 +7,7 @@ use xrf_error::XrfResult;
 use xrf_renderer::{
   RenderCapture, RenderCommand, RenderEventSink, RenderFrameReport, RenderLoadReport, RenderOverlay, RenderPick,
   RenderQueue, RenderSelection, RenderSettings, RenderTextureReport, RenderViewOptions, RenderViewportId,
-  RenderViewportLayout, RenderWindowHost,
+  RenderViewportLayout, RenderWait, RenderWindowHost,
 };
 
 /// The renderer as the application calls it: each call a command on the render thread's queue, numbering the
@@ -48,14 +48,13 @@ impl Renderer {
     self.queue.send(RenderCommand::Detach { id });
   }
 
-  /// Waits up to `wait` until the render thread handled every command sent before, answering whether it did.
-  pub fn wait_handled(&self, wait: Duration) -> bool {
+  /// Waits up to `wait` until the render thread handled every command sent before.
+  pub fn wait_handled(&self, wait: Duration) -> RenderWait {
     self.queue.wait_handled(wait)
   }
 
-  /// Detaches every viewport and stops the render thread, waiting up to `wait` until it let the GPU go; answers whether
-  /// it did.
-  pub fn stop(&self, wait: Duration) -> bool {
+  /// Detaches every viewport and stops the render thread, waiting up to `wait` until it let the GPU go.
+  pub fn stop(&self, wait: Duration) -> RenderWait {
     self.queue.stop(wait)
   }
 

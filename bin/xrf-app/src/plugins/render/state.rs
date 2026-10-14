@@ -3,8 +3,8 @@ use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::time::Duration;
 
 use xrf_renderer::{
-  RenderBundle, RenderEventSink, RenderLevelSource, RenderQueue, RenderSceneId, RenderViewportId, RenderWindowHost,
-  RenderWorkers, RenderWorld,
+  RenderBundle, RenderEventSink, RenderLevelSource, RenderQueue, RenderSceneId, RenderViewportId, RenderWait,
+  RenderWindowHost, RenderWorkers, RenderWorld,
 };
 use xrf_vfs::XrayRoots;
 use xrf_world::{World, WorldEventSink};
@@ -108,11 +108,17 @@ impl RenderState {
   /// Stops drawing every viewport in a window about to be destroyed, waiting until the render thread let go of its
   /// swapchain, so nothing is presented into a window that went.
   pub fn close_window(&self, window: &str) {
-    if self.detach_window(window) && !self.renderer.wait_handled(CLOSE_WAIT) {
-      log::warn!(
+    if !self.detach_window(window) {
+      return;
+    }
+
+    match self.renderer.wait_handled(CLOSE_WAIT) {
+      RenderWait::Answered | RenderWait::NotRunning => {}
+      RenderWait::Unanswered => log::error!("The renderer ended before it let go of window '{window}'"),
+      RenderWait::TimedOut => log::warn!(
         "The renderer did not let go of window '{window}' within {} ms of its close",
         CLOSE_WAIT.as_millis()
-      );
+      ),
     }
   }
 
@@ -125,11 +131,13 @@ impl RenderState {
       self.release(viewport);
     }
 
-    if !self.renderer.stop(STOP_WAIT) {
-      log::warn!(
+    match self.renderer.stop(STOP_WAIT) {
+      RenderWait::Answered | RenderWait::NotRunning => {}
+      RenderWait::Unanswered => log::warn!("The renderer did not answer its stop at the exit, attached again or ended"),
+      RenderWait::TimedOut => log::warn!(
         "The renderer did not stop within {} ms of the exit",
         STOP_WAIT.as_millis()
-      );
+      ),
     }
   }
 
