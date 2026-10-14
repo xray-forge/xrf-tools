@@ -1,8 +1,8 @@
+import { IPanZoomPoint } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 import { useCallback, useState } from "react";
 
 import { IEquipmentLayout, isSameCell, TEquipmentCell, toCellAt } from "@/core/sprite-equipment/lib";
-import { IPanZoomPoint } from "@/lib/media/pan-zoom";
 
 /** The cell under the pointer, and the move that tracks it. */
 export interface IEquipmentGridHover {

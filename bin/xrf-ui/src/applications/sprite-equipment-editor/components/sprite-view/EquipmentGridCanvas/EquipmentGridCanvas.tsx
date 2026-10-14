@@ -1,4 +1,5 @@
 import { Theme, useTheme } from "@mui/material";
+import { toPanZoomTransform } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useLayoutEffect, useMemo, useRef } from "react";
 
@@ -12,7 +13,6 @@ import { IEquipmentLayout, TEquipmentCell } from "@/core/sprite-equipment/lib";
 import { IImageViewportView } from "@/core/ui/media/ImageViewport";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { toPanZoomTransform } from "@/lib/media/pan-zoom";
 
 interface IEquipmentGridCanvasProps extends BaseComponentProps {
   view: IImageViewportView;

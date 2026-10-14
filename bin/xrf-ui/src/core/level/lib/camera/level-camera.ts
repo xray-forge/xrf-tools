@@ -1,14 +1,11 @@
 import { formatDegrees } from "@xrf/format";
-import { toDegrees } from "@xrf/math";
-
-import { ILevelPoint } from "@/core/level/lib/camera/level-point";
-import { IXrayHeading } from "@/core/render/lib/scene/render-space";
+import { IHeadingPitch, IPoint3, toDegrees } from "@xrf/math";
 
 /**
  * Where the camera is and which way it faces, in the coordinates the level's own data is written in.
  */
-export interface ILevelCamera extends IXrayHeading {
-  position: ILevelPoint;
+export interface ILevelCamera extends IHeadingPitch {
+  position: IPoint3;
 }
 
 /**
@@ -27,7 +24,7 @@ export function formatLevelPosition(camera: ILevelCamera): string {
  * @param point - The point, in the engine's own axis order.
  * @returns It, a decimal an axis.
  */
-export function formatLevelPoint(point: ILevelPoint): string {
+export function formatLevelPoint(point: IPoint3): string {
   return `x ${point.x.toFixed(1)} y ${point.y.toFixed(1)} z ${point.z.toFixed(1)}`;
 }
 

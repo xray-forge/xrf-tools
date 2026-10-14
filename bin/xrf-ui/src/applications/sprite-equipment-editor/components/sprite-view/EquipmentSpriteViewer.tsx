@@ -1,5 +1,6 @@
 import { CircularProgress, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
+import { IPanZoomPoint } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback } from "react";
 
@@ -12,7 +13,6 @@ import { IEquipmentLayout, toCellAt } from "@/core/sprite-equipment/lib";
 import { IImageViewportView, ImageViewport } from "@/core/ui/media/ImageViewport";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { IPanZoomPoint } from "@/lib/media/pan-zoom";
 
 import { EquipmentGridCanvas } from "./EquipmentGridCanvas";
 import { EquipmentGridMoveOver } from "./EquipmentGridMoveOver";

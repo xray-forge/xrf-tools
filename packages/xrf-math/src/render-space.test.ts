@@ -1,12 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 
-import {
-  IXrayHeading,
-  toRendererFacing,
-  toRendererSpace,
-  toXrayHeading,
-  toXraySpace,
-} from "@/core/render/lib/scene/render-space";
+import { IHeadingPitch } from "#/heading-pitch";
+import { toRendererFacing, toRendererSpace, toXrayHeading, toXraySpace } from "#/render-space";
 
 describe("render space", () => {
   // The packer negates `z` on the way out, so anything read back for a person has to negate it again or it disagrees
@@ -42,7 +37,7 @@ describe("toXrayHeading", () => {
   it("reads back what the engine's setHP writes", () => {
     for (const heading of [0, Math.PI / 4, Math.PI / 2, -Math.PI / 2, 2.5, 3.9]) {
       for (const pitch of [0, 0.4, -0.4, 1.2]) {
-        const read: IXrayHeading = toXrayHeading(facing(heading, pitch));
+        const read: IHeadingPitch = toXrayHeading(facing(heading, pitch));
 
         expect(read.heading).toBeCloseTo(turned(heading), 5);
         expect(read.pitch).toBeCloseTo(pitch, 5);
@@ -73,8 +68,8 @@ describe("toXrayHeading", () => {
 
 describe("toRendererFacing", () => {
   it("is the heading and pitch the readout states, read back", () => {
-    const stated: IXrayHeading = { heading: 1.78, pitch: -0.38 };
-    const read: IXrayHeading = toXrayHeading(toRendererFacing(stated));
+    const stated: IHeadingPitch = { heading: 1.78, pitch: -0.38 };
+    const read: IHeadingPitch = toXrayHeading(toRendererFacing(stated));
 
     expect(read.heading).toBeCloseTo(stated.heading);
     expect(read.pitch).toBeCloseTo(stated.pitch);

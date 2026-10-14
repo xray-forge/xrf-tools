@@ -1,6 +1,5 @@
+import { IPanZoomRect, IPanZoomSize } from "@xrf/math";
 import { Nullable } from "@xrf/types";
-
-import { IPanZoomRect, IPanZoomSize } from "@/lib/media/pan-zoom";
 
 /**
  * Sizes a canvas to its pane and hands back a context ready to draw in css pixels.

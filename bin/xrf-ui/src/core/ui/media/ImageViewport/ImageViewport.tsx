@@ -1,3 +1,18 @@
+import {
+  IPanZoomCamera,
+  IPanZoomPoint,
+  IPanZoomSize,
+  IPanZoomState,
+  IPanZoomTransform,
+  PAN_ZOOM_FIT,
+  panBy,
+  resolvePanZoomCamera,
+  toContentPoint,
+  toManualPanZoom,
+  toPanZoomTransform,
+  zoomAround,
+  zoomByWheel,
+} from "@xrf/math";
 import { Nullable } from "@xrf/types";
 import {
   MouseEvent,
@@ -15,21 +30,6 @@ import {
 
 import { toCheckerboardSizing } from "@/core/ui/media/media.styles";
 import { ViewportControls } from "@/core/ui/media/ViewportControls";
-import {
-  IPanZoomCamera,
-  IPanZoomPoint,
-  IPanZoomSize,
-  IPanZoomState,
-  IPanZoomTransform,
-  PAN_ZOOM_FIT,
-  panBy,
-  resolvePanZoomCamera,
-  toContentPoint,
-  toManualPanZoom,
-  toPanZoomTransform,
-  zoomAround,
-  zoomByWheel,
-} from "@/lib/media/pan-zoom";
 import { PanZoomController } from "@/lib/media/pan-zoom-controller";
 import { IElementSize, useElementSize } from "@/lib/react";
 

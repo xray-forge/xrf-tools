@@ -1,9 +1,8 @@
-import { toDegrees, toDirection, toRadians } from "@xrf/math";
+import { IPoint3, toDegrees, toDirection, toRadians, toXraySpace } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 
 import { ILevelCamera } from "@/core/level/lib/camera/level-camera";
 import { ILevelGoTo } from "@/core/level/lib/camera/level-camera-goto";
-import { IRenderPoint, toXraySpace } from "@/core/render/lib/scene/render-space";
 
 /** How much room a framed sphere leaves round it, of its radius. */
 const FRAME_MARGIN: number = 1.25;
@@ -27,12 +26,12 @@ const DEFAULT_FACING: Readonly<Pick<ILevelCamera, "heading" | "pitch">> = { head
  */
 export function toLevelFramedGoTo(
   camera: Nullable<ILevelCamera>,
-  sphere: { center: IRenderPoint; radius: number },
+  sphere: { center: IPoint3; radius: number },
   fieldOfView: number
 ): ILevelGoTo {
   const { heading, pitch } = camera ?? DEFAULT_FACING;
   const [x, y, z] = toDirection({ heading, pitch });
-  const centre: IRenderPoint = toXraySpace(sphere.center);
+  const centre: IPoint3 = toXraySpace(sphere.center);
   const distance: number = Math.max(
     FRAME_NEAREST,
     (sphere.radius * FRAME_MARGIN) / Math.sin(toRadians(fieldOfView) / 2)

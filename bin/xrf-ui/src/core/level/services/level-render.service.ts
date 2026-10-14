@@ -1,5 +1,6 @@
 import { inject, Injectable } from "@wirestate/core";
 import { BoundAction, comparer, Computed, reaction } from "@wirestate/mobx";
+import { IPoint3, toXraySpace } from "@xrf/math";
 import { Maybe, Nullable } from "@xrf/types";
 
 import {
@@ -32,7 +33,6 @@ import {
 import { ILevelGoTo, toLevelGoToViewpoint } from "@/core/level/lib/camera/level-camera-goto";
 import { ILevelCameraOptions } from "@/core/level/lib/camera/level-camera-options";
 import { toLevelCameraReading } from "@/core/level/lib/camera/level-camera-reading";
-import { ILevelPoint } from "@/core/level/lib/camera/level-point";
 import { ILevelViewpoint, toLevelStartViewpoint } from "@/core/level/lib/camera/level-viewpoint";
 import { ILevelBox, toLevelBox } from "@/core/level/lib/extent/level-extent";
 import { ELevelPick, TLevelPick } from "@/core/level/lib/pick/level-pick";
@@ -54,7 +54,6 @@ import { IRenderViewPoint } from "@/core/render/lib/frame/render-view-point";
 import { NativeRenderSurfaceService } from "@/core/render/lib/native/native-render-surface-service";
 import { toNativeWorldToggles } from "@/core/render/lib/native/native-view-options";
 import { NativeViewport } from "@/core/render/lib/native/native-viewport";
-import { toXraySpace } from "@/core/render/lib/scene/render-space";
 import { toRenderOutput } from "@/core/render/lib/settings/render-resolution";
 import { SettingsService } from "@/core/settings/services/settings";
 import { Logger } from "@/lib/logging";
@@ -66,7 +65,7 @@ import { Logger } from "@/lib/logging";
  */
 export function toLevelPick(hit: RenderLevelHit, spawn: Nullable<LevelSpawnObjectsDescription>): Nullable<TLevelPick> {
   const [x, y, z] = hit.point;
-  const point: ILevelPoint = toXraySpace({ x: x ?? 0, y: y ?? 0, z: z ?? 0 });
+  const point: IPoint3 = toXraySpace({ x: x ?? 0, y: y ?? 0, z: z ?? 0 });
 
   if (hit.kind === ERenderLevelHit.SPAWN) {
     const object: Maybe<LevelSpawnObject> = spawn?.objects.find((it: LevelSpawnObject) => it.index === hit.object);

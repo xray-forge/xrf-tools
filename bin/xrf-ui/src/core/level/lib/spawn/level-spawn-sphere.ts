@@ -1,15 +1,15 @@
+import { IPoint3, toXraySpace } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 
 import { LevelSpawnObject } from "@/core/ipc/types/xrf-app";
 import { VisualTransform } from "@/core/ipc/types/xrf-visual";
-import { IRenderPoint, toXraySpace } from "@/core/render/lib/scene/render-space";
 
 /** What an object is taken to span before its model is drawn: a metre about where it stands. */
 const UNREAD_RADIUS: number = 1;
 
 /** A sphere in renderer space. */
 export interface ILevelSpawnSphere {
-  center: IRenderPoint;
+  center: IPoint3;
   radius: number;
 }
 
@@ -36,6 +36,6 @@ export function toLevelSpawnSphere(
  * @param transform - Where an object stands, in renderer space.
  * @returns Where, as the engine states it.
  */
-export function toLevelSpawnPosition(transform: VisualTransform): IRenderPoint {
+export function toLevelSpawnPosition(transform: VisualTransform): IPoint3 {
   return toXraySpace({ x: transform.c.x ?? 0, y: transform.c.y ?? 0, z: transform.c.z ?? 0 });
 }

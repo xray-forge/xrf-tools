@@ -18,7 +18,7 @@ import {
   toPanZoomTransform,
   zoomAround,
   zoomByWheel,
-} from "@/lib/media/pan-zoom";
+} from "#/pan-zoom";
 
 const CONTENT: IPanZoomSize = { width: 1024, height: 512 };
 const VIEWPORT: IPanZoomSize = { width: 800, height: 600 };

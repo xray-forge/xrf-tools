@@ -1,4 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
+import { toXrayHeading, toXraySpace } from "@xrf/math";
 
 import { formatLevelFacing, formatLevelPosition, ILevelCamera } from "@/core/level/lib/camera/level-camera";
 import {
@@ -11,7 +12,6 @@ import {
   toLevelGoToViewpoint,
 } from "@/core/level/lib/camera/level-camera-goto";
 import { ILevelViewpoint } from "@/core/level/lib/camera/level-viewpoint";
-import { toXrayHeading, toXraySpace } from "@/core/render/lib/scene/render-space";
 
 const HERE: ILevelGoTo = { heading: 0, pitch: 0, x: 0, y: 0, z: 0 };
 

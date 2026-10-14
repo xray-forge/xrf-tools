@@ -1,6 +1,7 @@
+import { toXrayHeading, toXraySpace } from "@xrf/math";
+
 import { WorldCameraPose } from "@/core/ipc/types/xrf-world";
 import { ILevelCamera } from "@/core/level/lib/camera/level-camera";
-import { toXrayHeading, toXraySpace } from "@/core/render/lib/scene/render-space";
 
 /**
  * Reads where the renderer's camera is the way the engine would state it.

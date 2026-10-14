@@ -3,12 +3,12 @@ import { act, fireEvent, RenderResult, waitFor, within } from "@testing-library/
 import { userEvent } from "@testing-library/user-event";
 import { Container } from "@wirestate/core";
 import { runInAction } from "@wirestate/mobx";
+import { IPoint3 } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 
 import { RenderLoadReport } from "@/core/ipc/types/xrf-renderer";
 import { LevelPreviewLayout } from "@/core/level/components/preview/LevelPreviewLayout";
 import { ILevelCamera } from "@/core/level/lib/camera/level-camera";
-import { ILevelPoint } from "@/core/level/lib/camera/level-point";
 import {
   LevelLoadService,
   LevelLookService,
@@ -26,7 +26,7 @@ import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
-function camera(position: Partial<ILevelPoint> = {}): ILevelCamera {
+function camera(position: Partial<IPoint3> = {}): ILevelCamera {
   return {
     // A quarter turn, which reads as 90 degrees rather than as a signed radian.
     heading: Math.PI / 2,
