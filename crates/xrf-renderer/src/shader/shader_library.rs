@@ -65,6 +65,7 @@ const EMBEDDED: &[(&str, &str)] = &[
     "common/puddle_site",
     include_str!("../../shaders/common/puddle_site.wgsl"),
   ),
+  ("common/relief", include_str!("../../shaders/common/relief.wgsl")),
   (
     "common/rain_cover",
     include_str!("../../shaders/common/rain_cover.wgsl"),

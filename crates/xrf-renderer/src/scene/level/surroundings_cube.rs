@@ -568,12 +568,18 @@ impl SurroundingsCube {
       Some(band) if band > 0 => (wgpu::LoadOp::Load, wgpu::LoadOp::Load),
       _ => (wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT), wgpu::LoadOp::Clear(0.0)),
     };
-    // The G-buffer pass writes a motion target too, which nothing reads of a face.
+    // The G-buffer pass writes a motion and a relief target too, which nothing reads of a face.
     let motion: GraphTexture = graph.create_texture(GraphTextureDescriptor::new_2d(
       "surroundings motion",
       drawn,
       drawn,
       ViewTargets::MOTION,
+    ));
+    let relief: GraphTexture = graph.create_texture(GraphTextureDescriptor::new_2d(
+      "surroundings relief",
+      drawn,
+      drawn,
+      ViewTargets::RELIEF,
     ));
 
     // The shadow's cull: every tree row as a mesh whatever its level of detail, no water, nothing hidden early.
@@ -593,6 +599,10 @@ impl SurroundingsCube {
       })
       .color(GraphColorAttachment::new(
         motion,
+        wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+      ))
+      .color(GraphColorAttachment::new(
+        relief,
         wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
       ))
       .depth(GraphDepthAttachment::new(depth, depth_load))

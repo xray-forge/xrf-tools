@@ -1222,6 +1222,11 @@ export type RenderRainSettings = {
   ripples: number | null;
   /** Metres out to which puddles are drawn, fading over the last sixth. */
   distance: number | null;
+  /**
+   * Whether the puddles fill the relief where the enhanced parallax marches the ground: water in its hollows first,
+   * and the puddles' shores along them.
+   */
+  isReliefFlooded: boolean;
 };
 
 /** A rectangle of a window's client area, in device pixels from its top left corner. */

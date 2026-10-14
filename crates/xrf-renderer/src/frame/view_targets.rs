@@ -13,6 +13,9 @@ pub struct ViewTargets {
   /// How far each surface's point moved on the screen since the last frame: texture coordinates, now less then, `y`
   /// down; zero where nothing was drawn.
   pub motion: wgpu::TextureView,
+  /// How far the surface drawn sinks below its relief's top where the enhanced parallax marches it, from nought at the
+  /// top to one at its deepest; nought where nothing marches, which the wet pass fills with water first.
+  pub relief: wgpu::TextureView,
   /// Reversed: one at the near plane, zero where nothing was drawn.
   pub depth: wgpu::TextureView,
   /// What the lights accumulate: diffuse in colour, specular in alpha.
@@ -29,6 +32,7 @@ impl ViewTargets {
   pub const NORMAL: wgpu::TextureFormat = wgpu::TextureFormat::Rg16Float;
   pub const MATERIAL: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
   pub const MOTION: wgpu::TextureFormat = wgpu::TextureFormat::Rg16Float;
+  pub const RELIEF: wgpu::TextureFormat = wgpu::TextureFormat::R8Unorm;
   pub const DEPTH: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
   pub const LIGHT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
   pub const SCENE: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
@@ -51,6 +55,26 @@ impl ViewTargets {
   };
   /// Texels the haze map holds across, one a bearing, and down, one a height, as `shaders/frame/sky_haze.wgsl` says.
   pub const HAZE_SIZE: (u32, u32) = (64, 32);
+
+  /// The G-buffer's colour targets in the order a G-buffer pass holds them and its draws write them: albedo, normal,
+  /// material, motion and relief, the relief written only by draws that march it (`is_relief_written`).
+  pub fn get_gbuffer_targets(is_relief_written: bool) -> [Option<wgpu::ColorTargetState>; 5] {
+    [
+      Some(Self::ALBEDO.into()),
+      Some(Self::NORMAL.into()),
+      Some(Self::MATERIAL.into()),
+      Some(Self::MOTION.into()),
+      Some(wgpu::ColorTargetState {
+        format: Self::RELIEF,
+        blend: None,
+        write_mask: if is_relief_written {
+          wgpu::ColorWrites::ALL
+        } else {
+          wgpu::ColorWrites::empty()
+        },
+      }),
+    ]
+  }
 
   /// A depth target of the view's, which the reflections keep a frame's of in turn.
   pub fn create_depth(device: &wgpu::Device, (width, height): (u32, u32)) -> wgpu::TextureView {
@@ -119,6 +143,7 @@ impl ViewTargets {
       normal: create("normal", Self::NORMAL),
       material: create("material", Self::MATERIAL),
       motion: create("motion", Self::MOTION),
+      relief: create("relief", Self::RELIEF),
       depth,
       light: create("light", Self::LIGHT),
       scene: scene_texture.create_view(&Default::default()),

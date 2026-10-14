@@ -39,6 +39,8 @@ pub struct WetUniform {
   /// The level's water map's centre in `x` and `z`, its half width, and the height it is seen from, laid out as the
   /// surface map's, which the ground under the water is told by.
   pub water: Vec4,
+  /// One where the puddles fill the relief the enhanced parallax marches; the rest unused.
+  pub relief: Vec4,
 }
 
 impl WetUniform {

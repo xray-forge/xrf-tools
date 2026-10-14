@@ -524,12 +524,9 @@ impl GrassPass {
       bind_group_layouts: &[Some(layouts[0]), Some(layouts[1]), Some(layouts[2])],
       immediate_size: size_of::<u32>() as u32,
     });
-    let targets: [Option<wgpu::ColorTargetState>; 4] = [
-      Some(ViewTargets::ALBEDO.into()),
-      Some(ViewTargets::NORMAL.into()),
-      Some(ViewTargets::MATERIAL.into()),
-      Some(ViewTargets::MOTION.into()),
-    ];
+    // A tuft marches no relief: what the ground under it wrote stands, which the wet pass, wetting terrain alone, reads
+    // nowhere grass is drawn.
+    let targets: [Option<wgpu::ColorTargetState>; 5] = ViewTargets::get_gbuffer_targets(false);
 
     create_checked(device, "grass", || {
       device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {

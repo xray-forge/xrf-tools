@@ -4,6 +4,7 @@
 #import "common/fullscreen"
 #import "common/wet"
 #import "common/puddle_site"
+#import "common/relief"
 
 // `rain_patch_normal` (`r3_rendertarget_draw_rain.cpp`): where the rain reaches a surface near the camera, splashes on
 // what faces up and water running down what stands, as a normal bent in view space, and how wet it is in alpha, weighed
@@ -356,6 +357,17 @@ const TOKSVIG_LEAST: f32 = 0.05;
 // and still be the topmost surface: a stone or a post in a puddle stays dry, as does what lies under anything standing
 // over the ground.
 const PUDDLE_DEPTH: f32 = 0.15;
+
+// Water in the relief, where the enhanced parallax marches terrain: the share of the relief's depth from its deepest
+// that the puddles at their fullest flood, and how much of that the driest stretches keep, by the puddles' own noise; the
+// share of the depth a waterline is softened over; the metres of water the deepest hollow under it holds; and the share
+// of a site puddle's radius in from its rim over which its water rises from the relief's deepest to all of it, so its
+// shore follows the relief's hollows.
+const RELIEF_FLOODED: f32 = 0.4;
+const RELIEF_DRY_REGIONS: f32 = 0.35;
+const RELIEF_SHORE: f32 = 0.06;
+const RELIEF_WATER_DEPTH: f32 = 0.03;
+const SITE_RELIEF_SHORE: f32 = 0.35;
 const PUDDLE_TOP: f32 = 0.25;
 // The least a surface faces up to hold a puddle.
 const PUDDLE_UP: f32 = 0.85;
@@ -577,6 +589,8 @@ fn fs_wet_patch_enhanced(in: FullscreenVarying) -> WetPatchTargets {
 
   let marks: f32 = textureLoad(material_target, texel, 0).a;
   let is_terrain: bool = has_mark(marks, MARK_TERRAIN);
+  // How far the relief the enhanced parallax marched sinks here, nought where it marched none.
+  let sink: f32 = textureLoad(relief_target, texel, 0).r;
   let albedo: vec4<f32> = textureLoad(albedo_target, texel, 0);
   let gloss: f32 = albedo.a;
   var normal: vec3<f32> = normalize(octahedral_decode(textureLoad(normal_target, texel, 0).xy));
@@ -607,8 +621,10 @@ fn fs_wet_patch_enhanced(in: FullscreenVarying) -> WetPatchTargets {
   var lift: f32 = 0.0;
   var water_roughness: f32 = WATER_ROUGHNESS.x;
 
-  // On the ground alone, terrain facing up and the topmost surface there: never a roof, a deck or a ceiling.
-  let is_ground: bool = is_terrain && world_normal.y > PUDDLE_UP && is_topmost(world);
+  // On the ground alone, terrain whose own slope faces up, past its bumps, and the topmost surface there: never a roof,
+  // a deck or a ceiling, and never a crack's steep side left dry where its hollow fills.
+  let up: vec3<f32> = ground_up(world);
+  let is_ground: bool = is_terrain && up.y > PUDDLE_UP && is_topmost(world);
 
   if (is_ground && wet.puddle_state.y > 0.0 && length(position) < wet.puddle_state.x) {
     let noise: f32 = textureSampleGrad(puddle_noise, wet_sampler, place.xz / PUDDLE_TILE,
@@ -621,10 +637,22 @@ fn fs_wet_patch_enhanced(in: FullscreenVarying) -> WetPatchTargets {
     let found: SitePuddle = site_puddle(world, border, footprint);
 
     let variation: vec3<f32> = puddle_variation(place.xz);
-    let rim: f32 = smoothstep(RIM_START, 1.0, found.rim);
+    // Where the enhanced parallax marched the relief, as far as it stands: water fills its hollows to a level the
+    // puddles' fill raises, more in some stretches than others; and a site puddle's water rises from the relief's
+    // deepest at its rim to all of it a share of its radius in, so its shore runs along the hollows.
+    let marched: f32 = select(0.0, relief_fade(camera.parallax.y, distance), sink > 0.0 && wet.relief.x > 0.5);
+    let flood: f32 = RELIEF_FLOODED * wet.puddle_state.y * mix(RELIEF_DRY_REGIONS, 1.0, smoothstep(0.25, 0.75, noise));
+    let level: f32 = 1.0 - flood;
+    let relief_water: f32 = smoothstep(level, level + RELIEF_SHORE, sink) * marched;
+    let shore: f32 = saturate((1.0 - found.rim) / SITE_RELIEF_SHORE);
+    let site_water: f32 = found.inside * mix(1.0, smoothstep(1.0 - shore - RELIEF_SHORE, 1.0 - shore, sink), marched);
+    let is_relief: bool = relief_water > site_water;
+    let rim: f32 = select(smoothstep(RIM_START, 1.0, found.rim),
+      1.0 - saturate((sink - level) / (RELIEF_SHORE * 3.0)), is_relief);
+    let depth: f32 = max(found.depth, saturate(sink - level) * RELIEF_WATER_DEPTH * marched);
 
-    puddle = found.inside * fade;
-    lift = min(found.depth * mix(PUDDLE_MURK.x, PUDDLE_MURK.y, variation.y), PUDDLE_DEEPEST * wet.puddle_state.y);
+    puddle = max(site_water, relief_water) * fade;
+    lift = min(depth * mix(PUDDLE_MURK.x, PUDDLE_MURK.y, variation.y), PUDDLE_DEEPEST * wet.puddle_state.y);
     floating = (1.0 - PUDDLE_FILM * noise) * (1.0 - RIM_COAT * rim);
     water_roughness = mix(mix(WATER_ROUGHNESS.x, WATER_ROUGHNESS.y, variation.x), RIM_ROUGHNESS, rim);
     wetness = max(wetness, PUDDLE_HALO_WET * found.halo * fade * (1.0 - found.inside));
@@ -657,7 +685,10 @@ fn fs_wet_patch_enhanced(in: FullscreenVarying) -> WetPatchTargets {
         drop_scale * drop_scale * drops.z;
       let bent: vec3<f32> = (camera.view * vec4<f32>(bend.x, 0.0, -bend.y, 0.0)).xyz;
 
-      normal = normalize(mix(normal, (camera.view * vec4<f32>(found.up, 0.0)).xyz, puddle));
+      // Relief water lies along the ground's own up; a site puddle's along its plane.
+      let level_up: vec3<f32> = select(found.up, up, is_relief);
+
+      normal = normalize(mix(normal, (camera.view * vec4<f32>(level_up, 0.0)).xyz, puddle));
       water = water * (1.0 - puddle) + bent;
       variance = spread * puddle * puddle;
     }

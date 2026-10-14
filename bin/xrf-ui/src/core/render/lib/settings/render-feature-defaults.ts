@@ -154,6 +154,7 @@ export const DEFAULT_RENDER_INDIRECT_LIGHT_SETTINGS: TRenderIndirectLightSetting
 /** The engine's own wetting; enhanced, half the puddle sites filled to 300 m, each taking up to 40% reflection. */
 export const DEFAULT_RENDER_RAIN_SETTINGS: TRenderRainSettings = {
   distance: 300,
+  isReliefFlooded: true,
   mode: ERenderRainMode.ENGINE,
   puddles: 1,
   reflectivity: 0.4,

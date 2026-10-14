@@ -21,6 +21,7 @@ import {
 } from "@/core/render/lib/features";
 import { TRenderRainSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { EditorPopoverGroup, EditorPopoverGroupSection } from "@/core/shell/editor/EditorPopoverGroup";
+import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /** The keys the popover sets. */
@@ -152,6 +153,13 @@ export function LevelRainAction({
               {...RENDER_RAIN_LIMITS.ripples}
               format={formatRainShare}
               onChange={(ripples: number) => setPuddles({ ripples })}
+            />
+
+            <CheckboxFormRow
+              label={"Fill the relief"}
+              description={"Water fills the ground's hollows first where the enhanced parallax marches it."}
+              isChecked={puddles.isReliefFlooded}
+              onChange={(isReliefFlooded: boolean) => setPuddles({ isReliefFlooded })}
             />
           </>
         ) : null}

@@ -149,6 +149,7 @@ export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings>
   // surface they are placed on reaches past.
   rain: {
     distance: toNumber(30, 450, true),
+    isReliefFlooded: FLAG,
     mode: toChoice(ERenderRainMode),
     puddles: toNumber(0, 2),
     reflectivity: toNumber(0, 1),
