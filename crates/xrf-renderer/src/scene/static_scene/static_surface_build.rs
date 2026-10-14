@@ -5,6 +5,7 @@ use xrf_material::{XrayBumpMode, XraySurfaceDeclaration, XraySurfaceDescriptor, 
 use xrf_visual::SectorSurface;
 
 use crate::host::render_asset_source::RenderAssetSource;
+use crate::lighting::material_slice::material_slice;
 use crate::scene::static_scene::static_class::StaticClass;
 use crate::scene::static_scene::static_surface::StaticSurface;
 use crate::scene::static_scene::static_terrain_slots::StaticTerrainSlots;
@@ -237,7 +238,7 @@ pub fn build_static_surface(
       tiling: 1.0,
       detail_scale: detail.map_or(1.0, |it| it.scale),
       alpha_reference: reference as f32 / 255.0,
-      slice: (material + 0.5) / 4.0,
+      slice: material_slice(material),
       color: to_surface_color(surface.shader_id),
       flags,
       textures: texture_slots,
@@ -292,7 +293,7 @@ pub fn build_impostor_surface(
     tiling: 1.0,
     detail_scale: 1.0,
     alpha_reference: 0.0,
-    slice: (IMPOSTOR_MATERIAL + 0.5) / 4.0,
+    slice: material_slice(IMPOSTOR_MATERIAL),
     color: to_surface_color(surface.shader_id),
     flags,
     textures: texture_slots,

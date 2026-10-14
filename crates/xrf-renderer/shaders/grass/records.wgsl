@@ -56,8 +56,9 @@ const GRASS_TRIANGLE_FLOATS: u32 = 9u;
 const SLOPE_NONE: f32 = 1.5707;
 const SLOPE_THINNING: f32 = 0.2;
 
-// The lighting model's slice of the material table the grass is lit by, the default Blinn's: `(1 + 0.5) / 4`.
-const GRASS_MATERIAL_SLICE: f32 = 0.375;
+// The lighting model's slice of the material table the grass is lit by, the default Blinn's `(1 + 0.5) / 4` as the
+// G-buffer packs it: 8 of 31 steps over four thirds.
+const GRASS_MATERIAL_SLICE: f32 = 32.0 / 93.0;
 
 // `DetailSlot::ID_Empty`: a slot's mark for a model it does not plant.
 const GRASS_EMPTY_ID: u32 = 0x3fu;

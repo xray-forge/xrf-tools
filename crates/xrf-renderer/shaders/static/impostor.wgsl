@@ -22,8 +22,9 @@ const HEMI_SCALE: f32 = 3.1;
 // What `def_gloss` writes for a surface without a bump.
 const DEFAULT_GLOSS: f32 = 2.0 / 255.0;
 
-// The material slice `lod.ps` writes: the default lighting model.
-const IMPOSTOR_SLICE: f32 = 0.5 / 4.0;
+// The material slice `lod.ps` writes, the default lighting model's `0.5 / 4` as the G-buffer packs it: 2 of 31 steps
+// over four thirds.
+const IMPOSTOR_SLICE: f32 = 8.0 / 93.0;
 
 // The quad's corners in draw order, then each corner's vertex within a facet, in the order `render_lods` takes them.
 const QUAD: array<u32, 6> = array<u32, 6>(0u, 1u, 2u, 3u, 2u, 1u);

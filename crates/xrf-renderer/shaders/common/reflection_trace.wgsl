@@ -217,10 +217,10 @@ fn ray_walk(pyramid: texture_2d<f32>, origin: vec3<f32>, direction: vec3<f32>, c
 
 // The gloss past which a surface its texture's material marks a metal rises from a dielectric's reflectance head on
 // towards its own colour, and the share of metal in that material it takes to be marked one. X-Ray's data holds no
-// metalness, only the material its `hmodel` blends between (the G-buffer's `material.z`: 2 to 3 Phong to Metal, 3 to 4
-// Metal to Oren-Nayar), authored for that look, so both must agree: glass, screens and polished paint under Blinn-Phong
-// never turn metal, a rough wall tagged a fifth metal stays a dielectric (Skadovsk's television glass at gloss 0.64
-// reflected as a metal and read as wet on gloss alone).
+// metalness, only the material its `hmodel` blends between (the G-buffer's `material.z` read back as a material: 2 to 3
+// Phong to Metal, 3 to 4 Metal to Oren-Nayar), authored for that look, so both must agree: glass, screens and polished
+// paint under Blinn-Phong never turn metal, a rough wall tagged a fifth metal stays a dielectric (Skadovsk's television
+// glass at gloss 0.64 reflected as a metal and read as wet on gloss alone).
 const METAL_GLOSS: vec2<f32> = vec2<f32>(0.6, 0.9);
 const METAL_TAGGED: vec2<f32> = vec2<f32>(0.45, 0.55);
 // The roughness past which a surface is not traced and reflects the prefiltered sky alone; and the roughness over
@@ -293,10 +293,14 @@ fn lobe_alpha(roughness: f32) -> f32 {
   return roughness * roughness;
 }
 
-// The share of metal in a texture's material, as the G-buffer's `material.z` holds it (`float(material) + weight`):
-// rising over Phong to Metal, falling over Metal to Oren-Nayar, none in any other.
+// The share of metal in a texture's material, read back from the material table's slice the G-buffer's `material.z`
+// holds (`(material + 0.5) / 4`, as `material_slice` packs it): rising over Phong to Metal, falling over Metal to
+// Oren-Nayar, none in any other.
 fn material_metal(slice: f32) -> f32 {
-  return select(0.0, slice - 2.0, slice >= 2.0 && slice < 3.0) + select(0.0, 4.0 - slice, slice >= 3.0 && slice < 4.0);
+  let material: f32 = slice * 4.0 - 0.5;
+
+  return select(0.0, material - 2.0, material >= 2.0 && material < 3.0) +
+    select(0.0, 4.0 - material, material >= 3.0 && material < 4.0);
 }
 
 // A surface's reflectance head on: a dielectric's, lifted towards its own colour as its gloss passes the metals' where

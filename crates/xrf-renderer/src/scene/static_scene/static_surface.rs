@@ -14,7 +14,7 @@ pub struct StaticSurface {
   pub detail_scale: f32,
   /// The alpha a cut-out texel must exceed, in `[0, 1]`.
   pub alpha_reference: f32,
-  /// The lighting model's slice of the material table: `(material + 0.5) / 4`.
+  /// The lighting model's slice of the material table, as `material_slice` gives it.
   pub slice: f32,
   /// Its flat colour, drawn where textures are off.
   pub color: Vec3,
