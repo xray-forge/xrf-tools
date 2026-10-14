@@ -1,14 +1,7 @@
 import { IPoint3, toRawColor, TRawColor } from "@xrf/math";
 
+import { RenderOverlaySegment } from "@/core/ipc/types/xrf-renderer";
 import { toRenderGridStep } from "@/core/render/lib/scene/render-grid-step";
-
-/** Line segments as the renderer's line overlay takes them. */
-export interface IRenderLines {
-  /** Three floats a vertex, two vertices a segment. */
-  positions: Float32Array;
-  /** Three floats a vertex. */
-  colors: Float32Array;
-}
 
 /** What a grid is drawn with. */
 export interface IRenderGridLinesOptions {
@@ -46,27 +39,40 @@ const AXES_COLORS: ReadonlyArray<[TRawColor, TRawColor]> = [
  *
  * @param extent - How far out what it frames reaches.
  * @param options - Cells across, and the two colours.
- * @returns The grid's lines.
+ * @returns The grid's segments.
  */
-export function toRenderGridLines(extent: number, options: IRenderGridLinesOptions): IRenderLines {
+export function toRenderGridLines(extent: number, options: IRenderGridLinesOptions): Array<RenderOverlaySegment> {
   const { color, originColor } = options;
   const { x, y, z }: IPoint3 = options.center ?? { x: 0, y: 0, z: 0 };
   const subdivision: number = Math.max(1, Math.round(options.subdivision ?? 1));
   const cells: number = options.cells * subdivision;
   const step: number = toRenderGridStep(extent * 2, options.cells) / subdivision;
   const half: number = (step * cells) / 2;
-  const positions: Array<number> = [];
-  const colors: Array<number> = [];
+  const segments: Array<RenderOverlaySegment> = [];
 
   for (let line = 0; line <= cells; line += 1) {
     const at: number = -half + line * step;
     const shade: TRawColor = toRawColor(line * 2 === cells ? originColor : color);
 
-    positions.push(x - half, y, z + at, x + half, y, z + at, x + at, y, z - half, x + at, y, z + half);
-    colors.push(...shade, ...shade, ...shade, ...shade);
+    segments.push(
+      {
+        colors: [shade, shade],
+        ends: [
+          [x - half, y, z + at],
+          [x + half, y, z + at],
+        ],
+      },
+      {
+        colors: [shade, shade],
+        ends: [
+          [x + at, y, z - half],
+          [x + at, y, z + half],
+        ],
+      }
+    );
   }
 
-  return { colors: new Float32Array(colors), positions: new Float32Array(positions) };
+  return segments;
 }
 
 /**
@@ -75,9 +81,9 @@ export function toRenderGridLines(extent: number, options: IRenderGridLinesOptio
  * @param min - Its lowest corner.
  * @param max - Its highest.
  * @param color - Hex colour of the edges.
- * @returns The box's lines.
+ * @returns The box's segments.
  */
-export function toRenderBoxLines(min: IPoint3, max: IPoint3, color: number): IRenderLines {
+export function toRenderBoxLines(min: IPoint3, max: IPoint3, color: number): Array<RenderOverlaySegment> {
   const corners: Array<[number, number, number]> = [0, 1, 2, 3, 4, 5, 6, 7].map((bits: number) => [
     bits & 1 ? max.x : min.x,
     bits & 2 ? max.y : min.y,
@@ -96,29 +102,21 @@ export function toRenderBoxLines(min: IPoint3, max: IPoint3, color: number): IRe
 
   const shade: TRawColor = toRawColor(color);
 
-  return {
-    colors: new Float32Array(edges.flatMap(() => [...shade, ...shade])),
-    positions: new Float32Array(edges.flatMap(([from, to]) => [...corners[from], ...corners[to]])),
-  };
+  return edges.map(([from, to]) => ({ colors: [shade, shade], ends: [corners[from], corners[to]] }));
 }
 
 /**
  * The three axes from the origin, each `size` long.
  *
  * @param size - How long each is.
- * @returns The axes' lines.
+ * @returns The axes' segments.
  */
-export function toRenderAxesLines(size: number): IRenderLines {
-  const positions: Array<number> = [];
-  const colors: Array<number> = [];
-
-  AXES_COLORS.forEach(([start, end], axis: number) => {
+export function toRenderAxesLines(size: number): Array<RenderOverlaySegment> {
+  return AXES_COLORS.map(([start, end], axis: number) => {
     const tip: [number, number, number] = [0, 0, 0];
 
     tip[axis] = size;
-    positions.push(0, 0, 0, ...tip);
-    colors.push(...start, ...end);
-  });
 
-  return { colors: new Float32Array(colors), positions: new Float32Array(positions) };
+    return { colors: [start, end], ends: [[0, 0, 0], tip] };
+  });
 }
