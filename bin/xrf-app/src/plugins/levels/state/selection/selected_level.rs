@@ -6,12 +6,11 @@ use xrf_level::{LevelCformTracer, LevelFile, LevelGeomSource, LevelSector, Level
 use xrf_ltx::{Ltx, LtxDialect};
 use xrf_material::XraySurfaceDescriptor;
 use xrf_vfs::XrayRoots;
-use xrf_visual::SectorOutline;
+use xrf_visual::{HemiEstimator, SectorOutline};
 
 use crate::plugins::levels::state::level_environment::LevelEnvironment;
 use crate::plugins::levels::state::level_source::LevelSource;
 use crate::plugins::levels::state::level_spawn::LevelSpawn;
-use crate::plugins::levels::state::level_spawn_lighting::LevelSpawnLighting;
 use crate::plugins::levels::state::level_spawn_visuals::LevelSpawnVisuals;
 use crate::plugins::levels::state::selection::level_start::LevelStart;
 use crate::plugins::levels::state::selection::level_sun_description::LevelSunDescription;
@@ -45,8 +44,6 @@ pub struct SelectedLevel {
   pub spawn: OnceLock<Result<Arc<LevelSpawn>, String>>,
   /// Each visual a spawned object stands as, read the first time anything asks and kept, or why it cannot be.
   pub spawn_visuals: LevelSpawnVisuals,
-  /// How the level lights its spawned objects, held while their models are read.
-  pub spawn_lighting: LevelSpawnLighting,
   /// The sections of the game's resolved `system.ltx` its spawned objects name, which their lights are read from;
   /// kept likewise.
   pub sections: OnceLock<Result<Arc<Ltx>, String>>,
@@ -54,6 +51,8 @@ pub struct SelectedLevel {
   pub environment: OnceLock<Result<Arc<LevelEnvironment>, String>>,
   /// The collision form as rays test it, which lights spawned objects and collides particles; kept likewise.
   pub collision: OnceLock<Result<Arc<LevelCformTracer>, String>>,
+  /// How the level lights its spawned objects and the camera, over the collision form; kept likewise.
+  pub hemi: OnceLock<Result<Arc<HemiEstimator>, String>>,
 }
 
 impl SelectedLevel {

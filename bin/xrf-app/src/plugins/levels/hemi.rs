@@ -20,15 +20,16 @@ use crate::plugins::levels::state::{
   LIGHTS_FILE, LevelSource, LevelSpawn, LevelSpawnObjectHemi, LevelSpawnVisual, SelectedLevel,
 };
 
-/// The open level's estimator, built the first time a batch asks and held until every visual is described.
+/// The open level's estimator, built the first time anything asks and kept.
 ///
 /// # Errors
 ///
-/// Returns why the collision form cannot be read, which every later ask while it is held answers with again.
+/// Returns why the collision form cannot be read, which every later ask answers with again.
 pub fn get_level_hemi(current: &SelectedLevel, probe: &XrayProbe) -> Result<Arc<HemiEstimator>, String> {
   current
-    .spawn_lighting
-    .get_or_build(|| read_hemi(current, probe).inspect_err(|error| report_missing_hemi(&current.source, error)))
+    .hemi
+    .get_or_init(|| read_hemi(current, probe).inspect_err(|error| report_missing_hemi(&current.source, error)))
+    .clone()
 }
 
 /// The cube of every spawned object the viewer draws standing as one of `spheres`' visuals, where it stands, in
