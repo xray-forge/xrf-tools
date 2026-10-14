@@ -1,4 +1,5 @@
 import { Button } from "@mui/material";
+import { AsyncState } from "@xrf/async";
 import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
@@ -7,7 +8,6 @@ import { formatLevelPoint } from "@/core/level/lib/camera/level-camera";
 import { describeLevelSpawnRelease } from "@/core/level/lib/spawn/level-spawn-release";
 import { toLevelSpawnPosition } from "@/core/level/lib/spawn/level-spawn-sphere";
 import { EditorPanelProperty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
-import { AsyncState } from "@/lib/async-state";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface ILevelSpawnDetailsProps extends BaseComponentProps {

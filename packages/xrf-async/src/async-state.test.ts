@@ -1,6 +1,6 @@
 import { describe, expect, it, jest } from "@jest/globals";
 
-import { AsyncState, EAsyncStatus } from "@/lib/async-state";
+import { AsyncState, EAsyncStatus } from "#/async-state";
 
 describe("AsyncState", () => {
   it("projects retained data through loading and failure without changing the source", () => {

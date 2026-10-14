@@ -1,4 +1,5 @@
 import { Computed } from "@wirestate/mobx";
+import { AsyncState } from "@xrf/async";
 import { Nullable } from "@xrf/types";
 
 import { SelectedVisualDescription } from "@/core/ipc/types/xrf-app";
@@ -8,7 +9,6 @@ import { IVisualBumpStatus } from "@/core/visuals/lib/visual-bump";
 import { IVisualTextureStatus } from "@/core/visuals/lib/visual-texture";
 import { IVisualModelViews } from "@/core/visuals/lib/visual-views";
 import { IOpenVisual, VisualLoadService } from "@/core/visuals/services/visual-load.service";
-import { AsyncState } from "@/lib/async-state";
 
 /**
  * The visual an application has open, forwarded from the loader for the panels that inspect it.

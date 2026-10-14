@@ -1,10 +1,10 @@
+import { AsyncState } from "@xrf/async";
 import { Nullable } from "@xrf/types";
 import { ReactElement, ReactNode } from "react";
 
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { ErrorState } from "@/core/ui/layout/ErrorState";
-import { AsyncState } from "@/lib/async-state";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { useMountEffect } from "@/lib/react";

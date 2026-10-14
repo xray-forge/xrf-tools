@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { RenderResult } from "@testing-library/react";
+import { AsyncState } from "@xrf/async";
 import { Nullable } from "@xrf/types";
 
 import { ArchiveTexturePreview } from "@/applications/archives-explorer/components/editor/preview/ArchiveTexturePreview";
@@ -8,7 +9,6 @@ import { TArchiveBytes } from "@/core/archive/lib";
 import { AssetTextureDescriptor } from "@/core/ipc/types/xrf-app";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
-import { AsyncState } from "@/lib/async-state";
 
 const BYTES: TArchiveBytes = new Uint8Array([0x89, 0x50, 0x4e, 0x47]);
 

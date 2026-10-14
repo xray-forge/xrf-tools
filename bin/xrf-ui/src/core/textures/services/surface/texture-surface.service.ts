@@ -1,5 +1,6 @@
 import { Injectable, OnDeactivation } from "@wirestate/core";
 import { Observable, RefObservable, runInAction } from "@wirestate/mobx";
+import { AsyncState } from "@xrf/async";
 import { formatDuration } from "@xrf/format";
 import { Nullable } from "@xrf/types";
 
@@ -16,7 +17,6 @@ import {
   toTextureAspect,
 } from "@/core/textures/lib/texture-surface";
 import { ITextureTexels, readTextureTexels } from "@/core/textures/lib/texture-texels";
-import { AsyncState } from "@/lib/async-state";
 import { Logger, Timer } from "@/lib/logging";
 import { call, cancelFlow, LatestFlow, TFlow } from "@/lib/mobx";
 

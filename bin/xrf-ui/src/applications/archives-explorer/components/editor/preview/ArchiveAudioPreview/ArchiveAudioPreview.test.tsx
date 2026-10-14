@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { RenderResult } from "@testing-library/react";
+import { AsyncState } from "@xrf/async";
 import { Nullable } from "@xrf/types";
 
 import { ArchiveAudioPreview } from "@/applications/archives-explorer/components/editor/preview/ArchiveAudioPreview";
@@ -8,7 +9,6 @@ import { TArchiveBytes } from "@/core/archive/lib";
 import { AudioDescriptor } from "@/core/ipc/types/xrf-app";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
-import { AsyncState } from "@/lib/async-state";
 
 const BYTES: TArchiveBytes = new Uint8Array([0x4f, 0x67, 0x67, 0x53]);
 

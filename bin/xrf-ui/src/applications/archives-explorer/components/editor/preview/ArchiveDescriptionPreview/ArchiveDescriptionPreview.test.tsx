@@ -1,5 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 import { RenderResult } from "@testing-library/react";
+import { AsyncState } from "@xrf/async";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import {
@@ -15,7 +16,6 @@ import {
 } from "@/fixtures/mocks/archive.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
-import { AsyncState } from "@/lib/async-state";
 
 import { ArchiveDescriptionPreview } from "./ArchiveDescriptionPreview";
 

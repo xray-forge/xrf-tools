@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from "@jest/globals";
 import { waitFor } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
+import { AsyncState } from "@xrf/async";
 
 import { VisualSequenceService } from "@/applications/visuals-sequencer/services/sequence";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
@@ -9,7 +10,6 @@ import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.
 import { mockSelectedVisual, mockVisualModelViews, mockVisualMotionBake } from "@/fixtures/mocks/visual.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
-import { AsyncState } from "@/lib/async-state";
 
 import { SequenceTrackPanel } from "./SequenceTrackPanel";
 

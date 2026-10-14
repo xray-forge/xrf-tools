@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { isComputedProp, isObservableProp } from "@wirestate/mobx";
+import { AsyncState } from "@xrf/async";
 import { Nullable } from "@xrf/types";
 
 import { ESequenceMotionState } from "@/applications/visuals-sequencer/lib/sequence-motion-cache";
@@ -10,7 +11,6 @@ import { mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/sessi
 import { InvokeHandler, resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockSelectedVisual, mockVisualModelViews, mockVisualMotionBake } from "@/fixtures/mocks/visual.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
-import { AsyncState } from "@/lib/async-state";
 
 /** Frames each mocked motion holds, keyed by name, so a boundary is reached at a known tick. */
 const FRAMES: Record<string, number> = { first: 2, second: 3, third: 2 };

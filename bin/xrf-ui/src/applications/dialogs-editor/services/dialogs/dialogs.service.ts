@@ -1,5 +1,6 @@
 import { EventBus, inject, Injectable, OnDeactivation, OnProvision } from "@wirestate/core";
 import { BoundAction, Computed, flowResult, Observable } from "@wirestate/mobx";
+import { AsyncState } from "@xrf/async";
 import { formatDuration } from "@xrf/format";
 import { Nullable } from "@xrf/types";
 
@@ -13,7 +14,6 @@ import { DialogDescriptor, DialogProjectDescriptor, DialogProjectMode } from "@/
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { EApplicationId } from "@/core/routing/application";
-import { AsyncState } from "@/lib/async-state";
 import { Logger, Timer } from "@/lib/logging";
 import { call, cancelFlow, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 

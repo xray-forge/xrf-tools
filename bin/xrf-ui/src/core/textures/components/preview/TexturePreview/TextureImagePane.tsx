@@ -1,3 +1,4 @@
+import { AsyncState } from "@xrf/async";
 import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
@@ -6,7 +7,6 @@ import { AssetTextureShape } from "@/core/ipc/types/xrf-app";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { ErrorState } from "@/core/ui/layout/ErrorState";
 import { ImageViewport } from "@/core/ui/media/ImageViewport";
-import { AsyncState } from "@/lib/async-state";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { PanZoomController } from "@/lib/media/pan-zoom-controller";
 

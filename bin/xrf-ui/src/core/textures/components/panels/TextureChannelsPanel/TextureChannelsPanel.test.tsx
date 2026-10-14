@@ -2,6 +2,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, jest } from "@je
 import { act, RenderResult } from "@testing-library/react";
 import { Container } from "@wirestate/core";
 import { runInAction } from "@wirestate/mobx";
+import { AsyncState } from "@xrf/async";
 
 import { ETextureBumpPlane } from "@/core/textures/lib/texture-bump-plane";
 import { ITextureSurfaceFiles } from "@/core/textures/lib/texture-surface";
@@ -12,7 +13,6 @@ import { mockTextureDescription } from "@/fixtures/mocks/texture.mocks";
 import { mockMaterialDescriptor } from "@/fixtures/mocks/visual.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
-import { AsyncState } from "@/lib/async-state";
 
 import { TextureChannelsPanel } from "./TextureChannelsPanel";
 

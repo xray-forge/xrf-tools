@@ -1,5 +1,6 @@
 import { Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
+import { AsyncState } from "@xrf/async";
 import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
@@ -11,7 +12,6 @@ import { ImageShape } from "@/core/ipc/types/xrf-texture";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { ImageViewport } from "@/core/ui/media/ImageViewport";
-import { AsyncState } from "@/lib/async-state";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 

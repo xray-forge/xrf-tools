@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { Container } from "@wirestate/core";
 import { makeAutoObservable, runInAction } from "@wirestate/mobx";
+import { AsyncState } from "@xrf/async";
 
 import { ViewportEvent } from "@/core/ipc/types/xrf-app";
 import { ERenderOverlay, ERenderTextureState, ERenderViewportEvent } from "@/core/ipc/types/xrf-renderer";
@@ -22,7 +23,6 @@ import {
 } from "@/fixtures/mocks/tauri.mocks";
 import { mockSelectedVisual, mockTextureDependency, mockVisualModelViews } from "@/fixtures/mocks/visual.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
-import { AsyncState } from "@/lib/async-state";
 
 const VIEWPORT: number = 3;
 

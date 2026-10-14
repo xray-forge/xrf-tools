@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { RenderResult } from "@testing-library/react";
+import { AsyncState } from "@xrf/async";
 import { Nullable } from "@xrf/types";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
@@ -7,7 +8,6 @@ import { TArchiveBytes } from "@/core/archive/lib";
 import { ImageDescriptor } from "@/core/ipc/types/xrf-app";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
-import { AsyncState } from "@/lib/async-state";
 
 import { ArchiveImagePreview } from "./ArchiveImagePreview";
 

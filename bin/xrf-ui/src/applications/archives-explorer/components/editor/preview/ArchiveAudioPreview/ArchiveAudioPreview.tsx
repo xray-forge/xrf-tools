@@ -1,5 +1,6 @@
 import { Divider, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
+import { AsyncState } from "@xrf/async";
 import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
@@ -13,7 +14,6 @@ import { CenteredColumn } from "@/core/ui/layout/CenteredColumn";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { AudioPlayer } from "@/core/ui/media/AudioPlayer";
-import { AsyncState } from "@/lib/async-state";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
