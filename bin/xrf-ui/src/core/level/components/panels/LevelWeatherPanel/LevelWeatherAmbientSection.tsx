@@ -15,15 +15,15 @@ interface ILevelWeatherAmbientSectionProps extends BaseComponentProps {
 }
 
 /**
- * @param seconds - Real seconds.
+ * @param milliseconds - Real milliseconds.
  * @returns Them rounded up to whole seconds.
  */
-function formatSeconds(seconds: number): string {
-  return `${Math.ceil(seconds)} s`;
+function formatSeconds(milliseconds: number): string {
+  return `${Math.ceil(milliseconds / 1000)} s`;
 }
 
 /**
- * @param wait - Real seconds until the next may start.
+ * @param wait - Real milliseconds until the next may start.
  * @param isPlaying - Whether one plays now, which the next waits to be gone.
  * @returns When the next starts, as the engine waits for both.
  */
@@ -59,8 +59,7 @@ export function LevelWeatherAmbientSection({
     );
   }
 
-  const { effect, isIndoors } = ambient;
-  const wait: number = ambient.wait ?? 0;
+  const { effect, isIndoors, wait } = ambient;
   const remaining: number = effect?.remaining ?? 0;
 
   return (

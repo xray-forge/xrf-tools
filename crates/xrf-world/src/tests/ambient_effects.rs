@@ -349,9 +349,9 @@ fn playing_one_now_ends_the_one_playing_and_starts_without_waiting() {
     first
       .effect
       .as_ref()
-      .is_some_and(|it| (it.remaining - 0.501).abs() < 1e-3)
+      .is_some_and(|it| it.remaining == Duration::from_millis(501))
   );
-  assert!(first.wait >= 9.5);
+  assert!(first.wait >= Duration::from_millis(9_500));
 
   scene.effects.play_now();
   scene.update(frame, false, 600);
@@ -362,9 +362,9 @@ fn playing_one_now_ends_the_one_playing_and_starts_without_waiting() {
     second
       .effect
       .as_ref()
-      .is_some_and(|it| (it.remaining - 1.0).abs() < 1e-3)
+      .is_some_and(|it| it.remaining == Duration::from_secs(1))
   );
-  assert!(second.wait >= 10.0);
+  assert!(second.wait >= Duration::from_secs(10));
   assert_eq!(second.played, first.played + 1);
 
   // Indoors it is ended and none starts.
