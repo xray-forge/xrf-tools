@@ -96,16 +96,39 @@ impl LevelLoad {
     )
   }
 
+  /// What the level still waits for, said for a log: the parts not finished and the textures not settled.
+  pub fn describe_pending(&self, (is_grass_read, slots): (bool, &[u32]), textures: &TextureCache) -> String {
+    let settled: u32 = textures.count_settled(slots.iter().copied());
+    let mut pending: Vec<String> = self
+      .list_parts(is_grass_read)
+      .iter()
+      .filter(|(_, is_done)| !is_done)
+      .map(|(part, _)| (*part).to_string())
+      .collect();
+
+    if settled < slots.len() as u32 {
+      pending.push(format!("textures {settled} of {} settled", slots.len()));
+    }
+
+    pending.join(", ")
+  }
+
   /// Whether every sector is taken in, the spawn, grass, lights and particles read, and every texture settled.
   fn is_done(&self, is_grass_read: bool, is_settled: bool) -> bool {
+    is_settled && self.list_parts(is_grass_read).iter().all(|(_, is_done)| *is_done)
+  }
+
+  /// The parts the level opens with beside its textures, by name, and whether each has finished.
+  fn list_parts(&self, is_grass_read: bool) -> [(&'static str, bool); 5] {
     let progress: &RenderStreamingProgress = &self.progress;
 
-    progress.is_sectors_done
-      && progress.is_spawn_done
-      && progress.is_lights_done
-      && progress.is_particles_done
-      && is_grass_read
-      && is_settled
+    [
+      ("sectors", progress.is_sectors_done),
+      ("spawn", progress.is_spawn_done),
+      ("lights", progress.is_lights_done),
+      ("particles", progress.is_particles_done),
+      ("grass", is_grass_read),
+    ]
   }
 
   /// How far the level has loaded, when that changed since it was last asked.
