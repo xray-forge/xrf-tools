@@ -150,7 +150,7 @@ impl LevelStreaming {
       }
     }
 
-    for (model, places, skeleton) in self.spawn.take(MODELS_PER_FRAME) {
+    for (model, name, places, skeleton) in self.spawn.take(MODELS_PER_FRAME) {
       let handle: ProxyHandle<StaticModelProxy> = self.model_handles.allocate();
       let skeleton: Option<RenderModelSkeleton> = skeleton.filter(|_| model.skin.is_some());
 
@@ -158,6 +158,7 @@ impl LevelStreaming {
 
       let mut streamed: StreamedModel = StreamedModel {
         handle,
+        name,
         places: places.into_iter().map(|place| (place, None)).collect(),
         skeleton,
       };
@@ -228,11 +229,7 @@ impl LevelStreaming {
 
       self.model_handles.free(model.handle);
       self.failed_models.push(RenderLoadFailure {
-        name: match model.places.as_slice() {
-          [] => "spawned model".to_string(),
-          [(place, _)] => format!("model of spawned object {}", place.object),
-          [(place, _), rest @ ..] => format!("model of spawned object {} and {} more", place.object, rest.len()),
-        },
+        name: model.name,
         reason: failure.reason,
       });
     }
