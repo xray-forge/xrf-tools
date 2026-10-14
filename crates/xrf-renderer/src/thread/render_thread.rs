@@ -70,6 +70,7 @@ use crate::thread::render_command::RenderCommand;
 use crate::thread::render_link::RenderLink;
 use crate::thread::render_workers::RenderWorkers;
 use crate::thread::reopening_scenes::ReopeningScenes;
+use crate::thread::running_gpu::RunningGpu;
 use crate::viewport::pending_pick::PendingPick;
 use crate::viewport::pick_in_flight::PickInFlight;
 use crate::viewport::render_viewport::RenderViewport;
@@ -122,18 +123,13 @@ pub struct RenderThread {
   /// The world it draws, asked for each viewport's frame.
   world: Arc<Mutex<dyn RenderWorld>>,
   shaders: ShaderLibrary,
-  gpu: Option<GpuState>,
-  /// What the frames' graphs keep between frames, their passes' GPU timer among them; made with the GPU.
-  runtime: Option<GraphRuntime>,
-  /// How long the GPU spends on each frame, which the periodic work's budget is taken from; made with the GPU.
-  frame_span: Option<FrameSpanTimer>,
+  /// The GPU and what the frames keep on it, while it runs.
+  running: Option<RunningGpu>,
   /// What the last described frame's graph came to, and when it was described: as often as the viewports report.
   graph_report: Option<(Instant, GraphReport)>,
   /// What the GPU allocator held when it was last asked: a report lists every allocation, so it is asked at most every
   /// `ALLOCATOR_REPORT_EVERY`.
   allocator_report: Option<(Instant, Option<GpuMemory>)>,
-  /// The staging belt the frames' own writes go through, kept between frames; made with the GPU.
-  belt: Option<StagingBelt>,
   /// What every view and scene draws once in so many frames, granted once a frame within the budget the frames'
   /// headroom leaves.
   periodic: PeriodicScheduler,
@@ -180,12 +176,9 @@ impl RenderThread {
       world,
       store,
       shaders: ShaderLibrary::default(),
-      gpu: None,
-      runtime: None,
-      frame_span: None,
+      running: None,
       graph_report: None,
       allocator_report: None,
-      belt: None,
       periodic: PeriodicScheduler::new(),
       periodic_budget: PeriodicBudget::default(),
       failure: None,
@@ -296,7 +289,7 @@ impl RenderThread {
         }
       }
       RenderCommand::ReloadTextures { names } => {
-        if let Some(gpu) = &mut self.gpu {
+        if let Some(RunningGpu { gpu, .. }) = &mut self.running {
           gpu.textures.reload(&names);
           gpu.weather_textures.reload(&names);
         }
@@ -310,7 +303,7 @@ impl RenderThread {
 
         if is_backend_changed || is_gpu_changed {
           let preferred: RenderBackend = RenderBackend::get_preferred(RenderBackend::get_asked(settings.backend));
-          let is_restarted: bool = self.gpu.as_ref().is_some_and(|gpu| {
+          let is_restarted: bool = self.running.as_ref().is_some_and(|RunningGpu { gpu, .. }| {
             (is_backend_changed && gpu.context.backend != preferred)
               || (is_gpu_changed && settings.gpu.is_none_or(|asked| asked != gpu.context.gpu))
           });
@@ -371,8 +364,9 @@ impl RenderThread {
       }
       RenderCommand::DescribeTextures { id, reply } => {
         let described: Vec<RenderTextureReport> = self
-          .gpu
+          .running
           .as_ref()
+          .map(|running| &running.gpu)
           .zip(self.get_shown_scene(id))
           .map(|(gpu, scene)| scene.describe_textures(&gpu.textures))
           .unwrap_or_default();
@@ -381,8 +375,9 @@ impl RenderThread {
       }
       RenderCommand::DescribeLoad { id, reply } => {
         let described: Option<RenderLoadReport> = self
-          .gpu
+          .running
           .as_ref()
+          .map(|running| &running.gpu)
           .zip(
             self
               .get_asked_scene(id)
@@ -435,7 +430,7 @@ impl RenderThread {
     self.hosts.retain(|key, _| used.contains(key));
     self.last_present.retain(|key, _| used.contains(key));
 
-    if let Some(gpu) = &mut self.gpu {
+    if let Some(RunningGpu { gpu, .. }) = &mut self.running {
       gpu.windows.retain(|key, _| used.contains(key));
     }
 
@@ -458,7 +453,7 @@ impl RenderThread {
     }
 
     link.sender = None;
-    self.gpu = None;
+    self.running = None;
 
     true
   }
@@ -480,20 +475,9 @@ impl RenderThread {
 
   /// Lets the GPU go, with everything made on its device, for `ensure_gpu` to start it again.
   fn release_gpu(&mut self) {
-    // The device's work finished and the windows' swapchains let go before the device, so a backend started next finds
-    // every window free of them; a lost device has no work to wait for.
-    if let Some(mut gpu) = self.gpu.take() {
-      if !gpu.context.is_lost() {
-        let _ = gpu.context.device.poll(wgpu::PollType::wait_indefinitely());
-      }
-
-      gpu.windows.clear();
+    if let Some(running) = self.running.take() {
+      running.release();
     }
-
-    // Its pool, bind groups and timers belong to the device let go.
-    self.runtime = None;
-    self.frame_span = None;
-    self.belt = None;
 
     // Its scenes went with it; the world streams each in again, from the start, into scenes made again, which the
     // viewports showing them wait for whole.
@@ -519,12 +503,16 @@ impl RenderThread {
   /// Starts the GPU when there is none, or again after it was lost, on the backend asked for, else the first that
   /// starts.
   fn ensure_gpu(&mut self) {
-    if self.gpu.as_ref().is_some_and(|gpu| gpu.context.is_lost()) {
+    if self
+      .running
+      .as_ref()
+      .is_some_and(|running| running.gpu.context.is_lost())
+    {
       log::warn!("Restarting the renderer after its GPU was lost");
       self.release_gpu();
     }
 
-    if self.gpu.is_some() || self.failure.as_ref().is_some_and(|(_, when)| when.elapsed() < RETRY) {
+    if self.running.is_some() || self.failure.as_ref().is_some_and(|(_, when)| when.elapsed() < RETRY) {
       return;
     }
 
@@ -553,9 +541,7 @@ impl RenderThread {
       built
     }) {
       Ok(gpu) => {
-        self.runtime = Some(GraphRuntime::new(&gpu.context.device, &gpu.context.queue));
-        self.frame_span = Some(FrameSpanTimer::new(&gpu.context.device, &gpu.context.queue));
-        self.gpu = Some(gpu);
+        self.running = Some(RunningGpu::new(gpu));
         self.failure = None;
 
         for viewport in self.viewports.values_mut() {
@@ -594,7 +580,7 @@ impl RenderThread {
       let changed: Vec<&'static str> = self.shaders.reload();
 
       if !changed.is_empty()
-        && let Some(gpu) = &mut self.gpu
+        && let Some(RunningGpu { gpu, .. }) = &mut self.running
       {
         gpu.refresh(&self.shaders, &changed);
       }
@@ -620,7 +606,7 @@ impl RenderThread {
 
     for viewport in self.viewports.values_mut() {
       let mut skies: SkyTextureRequests<'_> = SkyTextureRequests {
-        cache: self.gpu.as_mut().map(|gpu| &mut gpu.weather_textures),
+        cache: self.running.as_mut().map(|running| &mut running.gpu.weather_textures),
         source: viewport
           .world
           .scene
@@ -641,7 +627,7 @@ impl RenderThread {
       );
     }
 
-    if self.gpu.is_none() {
+    if self.running.is_none() {
       return HashMap::new();
     }
 
@@ -658,18 +644,10 @@ impl RenderThread {
   /// first, from the timers read back since; answers the encoder and the GPU's milliseconds on the latest frame read
   /// back. None without a GPU.
   fn begin_frame_work(&mut self, delta: f32) -> Option<(FrameEncoder, Option<f32>)> {
-    let gpu: &GpuState = self.gpu.as_ref()?;
-    let belt: StagingBelt = self
-      .belt
-      .take()
-      .unwrap_or_else(|| FrameEncoder::create_belt(&gpu.context.device));
-    let mut encoder: FrameEncoder = FrameEncoder::new(&gpu.context.device, belt);
-    let times: Vec<GraphTaggedTime> = self
-      .runtime
-      .as_mut()
-      .map(|runtime| runtime.timer.take_tagged())
-      .unwrap_or_default();
-    let spans: Vec<(u64, f32)> = self.frame_span.as_mut().map(FrameSpanTimer::take).unwrap_or_default();
+    let running: &mut RunningGpu = self.running.as_mut()?;
+    let mut encoder: FrameEncoder = running.begin_encoder();
+    let times: Vec<GraphTaggedTime> = running.runtime.timer.take_tagged();
+    let spans: Vec<(u64, f32)> = running.frame_span.take();
     let span: Option<f32> = spans.last().map(|(_, span)| *span);
     let budget: f32 = self.periodic_budget.update(
       (Duration::from_secs_f32(delta), span),
@@ -678,10 +656,7 @@ impl RenderThread {
     );
 
     self.periodic.begin(budget, (&times, &spans));
-
-    if let Some(timer) = self.frame_span.as_mut() {
-      timer.begin(&mut encoder, self.periodic.get_frame());
-    }
+    running.frame_span.begin(&mut encoder, self.periodic.get_frame());
 
     Some((encoder, span))
   }
@@ -701,7 +676,7 @@ impl RenderThread {
       .filter(|viewport| viewport.options.is_scene_traced())
       .filter_map(|viewport| viewport.world.scene)
       .collect();
-    let Some(gpu) = &mut self.gpu else {
+    let Some(RunningGpu { gpu, .. }) = &mut self.running else {
       return live;
     };
 
@@ -731,7 +706,7 @@ impl RenderThread {
   /// models alone, or a level made again, once it can be drawn whole, the one before drawn until then, so a model
   /// swapped never leaves the viewport empty.
   fn show_asked_scenes(&mut self) {
-    let Some(gpu) = &self.gpu else {
+    let Some(RunningGpu { gpu, .. }) = &self.running else {
       return;
     };
 
@@ -790,7 +765,7 @@ impl RenderThread {
   /// Keeps the textures: every `TEXTURE_SWEEP` those no scene samples let go, then the uploads streamed and the
   /// weather's textures brought up.
   fn keep_textures(&mut self, now: Instant) {
-    let Some(gpu) = &mut self.gpu else {
+    let Some(RunningGpu { gpu, .. }) = &mut self.running else {
       return;
     };
 
@@ -826,7 +801,7 @@ impl RenderThread {
   /// its readbacks answered, its frame with the device, DLSS, the allocator's totals and the graph, and its scene's
   /// load.
   fn report_viewports(&mut self, now: Instant) {
-    let Some(gpu) = &self.gpu else {
+    let Some(RunningGpu { gpu, runtime, .. }) = &mut self.running else {
       return;
     };
     let _ = gpu.context.device.poll(wgpu::PollType::Poll);
@@ -869,9 +844,10 @@ impl RenderThread {
     // The windows' own passes, composition and captures, are every viewport's: taken once a round any report is due in,
     // and handed to each viewport reporting, rather than to whichever reports first.
     let is_any_due: bool = self.viewports.values().any(|viewport| viewport.is_report_due(now));
-    let composition: Vec<GraphPassTime> = match self.runtime.as_mut() {
-      Some(runtime) if is_any_due => runtime.timer.take(GraphOwner::Frame),
-      _ => Vec::new(),
+    let composition: Vec<GraphPassTime> = if is_any_due {
+      runtime.timer.take(GraphOwner::Frame)
+    } else {
+      Vec::new()
     };
 
     for viewport in self.viewports.values_mut() {
@@ -881,7 +857,7 @@ impl RenderThread {
         device,
         (allocator, &mut self.scenes),
         (
-          self.runtime.as_mut().map(|runtime| &mut runtime.timer),
+          &mut runtime.timer,
           &composition,
           self.graph_report.as_ref().map(|(_, report)| report),
         ),
@@ -904,7 +880,7 @@ impl RenderThread {
   /// Readies each window this frame draws: its swapchain configured for its size now, made where it is new or was
   /// lost, the viewports laid out in it with the part each shows, and its page's backdrop; its image is acquired later.
   fn ready_windows(&mut self, encoder: &mut FrameEncoder) -> Vec<WindowFrame> {
-    let Some(gpu) = &mut self.gpu else {
+    let Some(RunningGpu { gpu, .. }) = &mut self.running else {
       return Vec::new();
     };
     let is_vsync: bool = self.settings.frame_rate.is_vsync;
@@ -1008,14 +984,14 @@ impl RenderThread {
   }
 
   /// Draws every window's viewports: `update` is what the frame spent before any window, `span` the GPU's milliseconds
-  /// on the latest frame read back, where one came back. The GPU's state and the graph's runtime are taken out for the
-  /// frame, so each phase is a method of the thread's own.
+  /// on the latest frame read back, where one came back. The running GPU is taken out for the frame, so each phase is a
+  /// method of the thread's own.
   fn draw_windows(&mut self, timing: (Duration, Option<f32>), mut encoder: FrameEncoder) {
     let windows: Vec<WindowFrame> = self.ready_windows(&mut encoder);
 
     self.answer_unseen_picks(&windows);
 
-    let Some(mut gpu) = self.gpu.take() else {
+    let Some(mut running) = self.running.take() else {
       return;
     };
 
@@ -1023,14 +999,13 @@ impl RenderThread {
     if windows.is_empty() {
       let (commands, belt): (wgpu::CommandBuffer, StagingBelt) = encoder.finish();
 
-      gpu.context.queue.submit([commands]);
-      self.belt = Some(belt);
-    } else if let Some(mut runtime) = self.runtime.take() {
-      self.draw_frame((&mut gpu, &mut runtime), timing, windows, encoder);
-      self.runtime = Some(runtime);
+      running.gpu.context.queue.submit([commands]);
+      running.belt = Some(belt);
+    } else {
+      self.draw_frame(&mut running, timing, windows, encoder);
     }
 
-    self.gpu = Some(gpu);
+    self.running = Some(running);
   }
 
   /// Answers the picks of every viewport no window draws this frame, laid out nowhere or in a window with no image:
@@ -1053,11 +1028,17 @@ impl RenderThread {
   /// ended and each window presented.
   fn draw_frame(
     &mut self,
-    (gpu, runtime): (&mut GpuState, &mut GraphRuntime),
+    running: &mut RunningGpu,
     (update, span): (Duration, Option<f32>),
     mut windows: Vec<WindowFrame>,
     mut encoder: FrameEncoder,
   ) {
+    let RunningGpu {
+      gpu,
+      runtime,
+      frame_span,
+      belt,
+    } = running;
     let started: Instant = Instant::now();
     let mut phases: FramePhases = FramePhases {
       update,
@@ -1099,14 +1080,19 @@ impl RenderThread {
     let executed: ExecutedGraph = match recorded {
       Ok(executed) => executed,
       Err(error) => {
-        self.abandon_frame(gpu, encoder, (frames, &firsts), captures, &error);
+        self.abandon_frame((gpu, belt), encoder, (frames, &firsts), captures, &error);
 
         return;
       }
     };
     let waited: Duration = windows.iter().map(|window| window.acquire).sum();
-    let groups: Vec<ExecutedGroup> =
-      self.submit_frame((gpu, runtime), executed, encoder, (recording, waited), &mut phases);
+    let groups: Vec<ExecutedGroup> = self.submit_frame(
+      (gpu, runtime, frame_span, belt),
+      executed,
+      encoder,
+      (recording, waited),
+      &mut phases,
+    );
 
     self.end_view_frames(frames, captures);
 
@@ -1478,7 +1464,7 @@ impl RenderThread {
   /// out for reading back is dropped, its picks wait for the next frame, and its captures are refused.
   fn abandon_frame(
     &mut self,
-    gpu: &GpuState,
+    (gpu, kept): (&GpuState, &mut Option<StagingBelt>),
     encoder: FrameEncoder,
     (frames, firsts): (Vec<ViewFrame>, &[(RenderSceneId, RenderViewportId)]),
     captures: Vec<(RenderViewportId, FrameCapture, CaptureReply)>,
@@ -1490,7 +1476,7 @@ impl RenderThread {
     let (commands, belt): (wgpu::CommandBuffer, StagingBelt) = encoder.finish();
 
     gpu.context.queue.submit([commands]);
-    self.belt = Some(belt);
+    *kept = Some(belt);
 
     if let Some(error) = pollster::block_on(scope.pop()) {
       log::error!("The frame's uploads cannot be submitted: {error}");
@@ -1528,7 +1514,12 @@ impl RenderThread {
   /// groups as executed.
   fn submit_frame(
     &mut self,
-    (gpu, runtime): (&GpuState, &mut GraphRuntime),
+    (gpu, runtime, frame_span, kept): (
+      &GpuState,
+      &mut GraphRuntime,
+      &mut FrameSpanTimer,
+      &mut Option<StagingBelt>,
+    ),
     executed: ExecutedGraph,
     encoder: FrameEncoder,
     (recording, waited): (Instant, Duration),
@@ -1541,7 +1532,7 @@ impl RenderThread {
 
       let (commands, belt): (wgpu::CommandBuffer, StagingBelt) = encoder.finish();
 
-      self.belt = Some(belt);
+      *kept = Some(belt);
 
       vec![commands]
     };
@@ -1550,7 +1541,7 @@ impl RenderThread {
     phases.record += recording.elapsed().saturating_sub(encoded + waited);
     phases.encode += encoded;
     commands.extend(executed.commands);
-    commands.extend(self.frame_span.as_mut().and_then(|timer| timer.end(device)));
+    commands.extend(frame_span.end(device));
 
     let submitting: Instant = Instant::now();
 
@@ -1562,9 +1553,7 @@ impl RenderThread {
     phases.submit = submitting.elapsed();
     runtime.timer.request();
 
-    if let Some(timer) = &self.frame_span {
-      timer.request();
-    }
+    frame_span.request();
 
     executed.groups
   }
