@@ -1,3 +1,4 @@
+pub(crate) mod frame_task;
 pub(crate) mod gpu_state;
 pub(crate) mod loader_receiver;
 pub(crate) mod render_command;

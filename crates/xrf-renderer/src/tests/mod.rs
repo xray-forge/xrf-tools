@@ -10,6 +10,7 @@ mod fog_scattering;
 mod frame_pacer;
 mod frame_rate;
 mod frame_statistics;
+mod frame_task;
 mod fsr;
 mod generated_shaders;
 mod gpu_memory;
