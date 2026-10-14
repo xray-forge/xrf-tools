@@ -17,8 +17,23 @@ pub struct AnimationKey {
 }
 
 impl AnimationKey {
-  /// Shape value that means the key steps rather than interpolates, `st_Key::shape` of 4.
-  const SHAPE_STEPPED: u8 = 4;
+  /// `SHAPE_TCB`: a Kochanek-Bartels spline through the key.
+  pub(crate) const SHAPE_TCB: u8 = 0;
+
+  /// `SHAPE_HERM`: a Hermite spline with the key's own tangents.
+  pub(crate) const SHAPE_HERMITE: u8 = 1;
+
+  /// `SHAPE_BEZI`: a Bezier spline with the key's own tangents.
+  pub(crate) const SHAPE_BEZIER: u8 = 2;
+
+  /// `SHAPE_LINE`: straight towards the key.
+  pub(crate) const SHAPE_LINEAR: u8 = 3;
+
+  /// `SHAPE_STEP`: held until the key, which then steps to its value rather than interpolating.
+  pub(crate) const SHAPE_STEPPED: u8 = 4;
+
+  /// `SHAPE_BEZ2`: a Bezier spline whose handles are times and values.
+  pub(crate) const SHAPE_TIMED_BEZIER: u8 = 5;
 
   /// Bytes a stepped key occupies: the value, the time and the shape.
   pub const MIN_SERIALIZED_SIZE: u64 = 4 + 4 + 1;
