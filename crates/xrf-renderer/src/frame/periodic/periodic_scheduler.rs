@@ -2,8 +2,8 @@ use std::collections::{HashMap, VecDeque};
 
 use xrf_renderer_core::GraphTaggedTime;
 
-use crate::frame::periodic_job::PeriodicJob;
-use crate::frame::periodic_ticket::PeriodicTicket;
+use crate::frame::periodic::periodic_job::PeriodicJob;
+use crate::frame::periodic::periodic_ticket::PeriodicTicket;
 
 /// What a frame was granted: each job's passes, the units it drew and what a unit cost before any was learned.
 type FrameGrants = Vec<(&'static [&'static str], f32, f32)>;

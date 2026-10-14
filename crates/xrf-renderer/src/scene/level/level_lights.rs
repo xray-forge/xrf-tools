@@ -12,7 +12,7 @@ use crate::camera::camera_view::CameraView;
 use crate::contract::render_lights_report::RenderLightsReport;
 use crate::contract::render_lights_settings::RenderLightsSettings;
 use crate::frame::frame_encoder::FrameEncoder;
-use crate::frame::periodic_scheduler::PeriodicScheduler;
+use crate::frame::periodic::periodic_scheduler::PeriodicScheduler;
 use crate::frame::static_scene_handles::StaticSceneHandles;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::lighting::light_animation::to_animated_color;

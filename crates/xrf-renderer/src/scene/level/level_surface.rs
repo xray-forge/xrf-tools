@@ -2,7 +2,7 @@ use glam::{Vec2, Vec4};
 use xrf_renderer_core::{FrameGraph, GraphBindings, GraphRuntime, GraphTexture, UniformBinding};
 
 use crate::frame::frame_encoder::FrameEncoder;
-use crate::frame::periodic_scheduler::PeriodicScheduler;
+use crate::frame::periodic::periodic_scheduler::PeriodicScheduler;
 use crate::frame::static_scene_handles::StaticSceneHandles;
 use crate::pass::grass_puddles_uniform::GrassPuddlesUniform;
 use crate::pass::level_passes::LevelPasses;

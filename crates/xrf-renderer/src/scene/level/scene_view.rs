@@ -26,7 +26,7 @@ use crate::contract::render_view_options::RenderViewOptions;
 use crate::contract::render_water_settings::RenderWaterSettings;
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::grass_card_handles::GrassCardHandles;
-use crate::frame::periodic_scheduler::PeriodicScheduler;
+use crate::frame::periodic::periodic_scheduler::PeriodicScheduler;
 use crate::frame::static_scene_handles::StaticSceneHandles;
 use crate::frame::texture_copy::add_texture_copy;
 use crate::frame::view_target_handles::ViewTargetHandles;
