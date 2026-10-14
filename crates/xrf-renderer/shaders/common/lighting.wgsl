@@ -1,6 +1,7 @@
 // The frame's lighting, as `pass/lighting_uniform.rs` writes it, and the engine's own lighting functions.
 
 #import "generated/structs"
+#import "common/luminance"
 
 // The scale this frame's tonemap multiplies by: the adapted exposure where it adapts, one otherwise.
 fn frame_scale(state: Lighting, exposure: Exposure) -> f32 {
@@ -40,7 +41,7 @@ fn untonemapped(colour: vec3<f32>, scale: f32) -> vec3<f32> {
 // X-Ray's sky is a low-dynamic-range picture capped at the tonemap's white where a real overcast sky is far brighter
 // than the ground, and dimmed below it.
 fn sky_as_light(shown: vec3<f32>, scale: f32, gain: f32) -> vec3<f32> {
-  let bright: f32 = smoothstep(0.5, 1.0, dot(max(shown, vec3<f32>(0.0)), vec3<f32>(0.2126, 0.7152, 0.0722)));
+  let bright: f32 = smoothstep(0.5, 1.0, luminance(max(shown, vec3<f32>(0.0))));
 
   return untonemapped(shown, scale) * mix(1.0, gain, bright);
 }

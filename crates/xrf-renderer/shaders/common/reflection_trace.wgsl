@@ -417,7 +417,9 @@ const LUMINANCE: vec3<f32> = vec3<f32>(0.299, 0.587, 0.114);
 // The luminance what a ray meets is held to, so a lamp's glass or a sunlit highlight does not flare what reflects it.
 const RADIANCE_LIMIT: f32 = 6.0;
 
-fn luminance(colour: vec3<f32>) -> f32 {
+// A colour's luminance as the reflections weigh and hold what they trace: by Rec. 601's weights, never quite none,
+// apart from `common/luminance`'s.
+fn traced_luminance(colour: vec3<f32>) -> f32 {
   return max(dot(colour, LUMINANCE), 0.001);
 }
 

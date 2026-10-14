@@ -3,6 +3,7 @@
 #import "common/light_clusters"
 #import "common/local_lights"
 #import "generated/frame/lights"
+#import "common/luminance"
 
 // Which of a pixel's lights are shadowed, found alike by the visibility pass that shadows them and by the lights pass
 // that reads what it found: each light of the pixel's cluster, in the cluster's order, that reaches the pixel and
@@ -115,9 +116,9 @@ fn contact_weight(record: LightRecord, position: vec3<f32>, normal: vec3<f32>) -
   let facing: f32 = saturate(-dot(normal, to_point) / max(reach, 1e-4));
   let along: f32 = dot(to_point, record.axis.xyz);
   let is_lit: bool = record.axis.w <= -1.0 || (along > 0.0 && along >= record.axis.w * reach);
-  let luminance: f32 = max(dot(record.color.rgb, vec3<f32>(0.2126, 0.7152, 0.0722)), 0.0);
+  let brightness: f32 = max(luminance(record.color.rgb), 0.0);
 
-  return select(0.0, falloff * luminance * facing, is_lit);
+  return select(0.0, falloff * brightness * facing, is_lit);
 }
 
 // The weight a light must reach at a point to be among the `count` strongest of its cluster's lights; zero where the
