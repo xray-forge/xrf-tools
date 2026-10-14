@@ -189,3 +189,36 @@ export function splitLogicalPath(path: string): ILogicalPathParts {
     ? { directory: null, name: path }
     : { directory: path.slice(0, separatorAt), name: path.slice(separatorAt + 1) };
 }
+
+/**
+ * One spelling of a logical path, for deciding whether two references name the same file.
+ *
+ * The engine folds case and reads either separator, so `textures/Act/act_stalker` and `textures\act\act_stalker`
+ * are one file to it. This is only ever a key: what gets stored and shown stays the string that arrived.
+ *
+ * @param path - Engine logical path or reference, in either separator style.
+ * @returns Its key: lower case, `\`-separated.
+ */
+export function toLogicalKey(path: string): string {
+  return path.replaceAll("/", LOGICAL_PATH_SEPARATOR).toLowerCase();
+}
+
+/**
+ * Whether a path sits under a directory, matched without case and only at a segment boundary.
+ *
+ * A plain `startsWith` would let `configs` swallow `configs_backup`; a trailing separator on the directory is ignored.
+ *
+ * @param path - Path to test, in either separator style.
+ * @param directory - Directory to match, in either separator style; an empty one holds every path.
+ * @returns Whether the path is strictly below the directory.
+ */
+export function isUnderPathPrefix(path: string, directory: string): boolean {
+  if (!directory) {
+    return true;
+  }
+
+  const name: string = path.toLowerCase();
+  const prefix: string = directory.replace(/[\\/]+$/, "").toLowerCase();
+
+  return name.length > prefix.length && name.startsWith(prefix) && /[\\/]/.test(name[prefix.length]);
+}

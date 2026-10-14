@@ -1,5 +1,6 @@
+import { toLogicalKey } from "@xrf/path";
+
 import { XrayAssetContainer } from "@/core/ipc/types/xrf-vfs";
-import { LOGICAL_PATH_SEPARATOR } from "@/lib/path/separator";
 
 /**
  * One file the explorer browses, whichever subject it came from.
@@ -26,5 +27,5 @@ export interface IArchiveEntry {
  * @returns Its engine identity: lower case, backslash separated.
  */
 export function getEntryEngineIdentity(entry: IArchiveEntry): string {
-  return entry.name.split("/").join(LOGICAL_PATH_SEPARATOR).toLowerCase();
+  return toLogicalKey(entry.name);
 }

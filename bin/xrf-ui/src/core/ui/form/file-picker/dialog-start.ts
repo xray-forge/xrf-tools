@@ -1,7 +1,6 @@
 import { exists } from "@tauri-apps/plugin-fs";
+import { getPathDirectory } from "@xrf/path";
 import { Nullable, Optional } from "@xrf/types";
-
-import { getPathDirectory } from "@/lib/path/separator";
 
 export interface IDialogStartOptions {
   /**

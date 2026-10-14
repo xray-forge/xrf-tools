@@ -1,3 +1,4 @@
+import { LOGICAL_PATH_SEPARATOR } from "@xrf/path";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useEffect, useMemo } from "react";
 
@@ -12,7 +13,6 @@ import { ARCHIVED_CAPTION, TreeRowLabel } from "@/core/ui/tree/TreeRowLabel";
 import { IUseTreeState, useTreeState } from "@/core/ui/tree/use-tree-state";
 import { VirtualizedTree } from "@/core/ui/tree/VirtualizedTree";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { LOGICAL_PATH_SEPARATOR } from "@/lib/path/separator";
 
 import { CONFIG_TREE_ICONS, decorateConfigIcon } from "./ConfigsMenu.utils";
 

@@ -1,4 +1,4 @@
-import { getPathName } from "@/lib/path/separator";
+import { getPathName } from "#/separator";
 
 /**
  * Reads the extension out of a file name, in either separator style.

@@ -1,9 +1,9 @@
 import { Typography } from "@mui/material";
+import { splitAfterSeparators } from "@xrf/path";
 import { Fragment, ReactElement, ReactNode } from "react";
 
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { splitAfterSeparators } from "@/lib/path/separator";
 
 /**
  * A path rendered so it breaks after a separator rather than mid-name.

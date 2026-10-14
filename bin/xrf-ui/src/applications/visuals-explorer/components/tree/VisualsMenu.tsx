@@ -2,6 +2,7 @@ import { default as FolderIcon } from "@mui/icons-material/Folder";
 import { default as FolderOpenIcon } from "@mui/icons-material/FolderOpen";
 import { default as ViewInArIcon } from "@mui/icons-material/ViewInAr";
 import { useInjection } from "@wirestate/react";
+import { LOGICAL_PATH_SEPARATOR } from "@xrf/path";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useMemo } from "react";
 
@@ -19,7 +20,6 @@ import { ARCHIVED_CAPTION, TreeRowLabel } from "@/core/ui/tree/TreeRowLabel";
 import { IUseTreeState, useTreeState } from "@/core/ui/tree/use-tree-state";
 import { IVirtualizedTreeIcons, VirtualizedTree } from "@/core/ui/tree/VirtualizedTree";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { LOGICAL_PATH_SEPARATOR } from "@/lib/path/separator";
 import { EMPTY_ARRAY } from "@/lib/types/array";
 
 /** Hoisted so the tree is handed the same icons every render rather than a fresh set. */

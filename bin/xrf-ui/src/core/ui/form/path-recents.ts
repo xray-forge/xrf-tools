@@ -1,7 +1,7 @@
+import { isSamePath } from "@xrf/path";
 import { Nullable } from "@xrf/types";
 
 import { parseLocalStorageValueSafe, setLocalStorageValueSafe } from "@/lib/local-storage";
-import { isSamePath } from "@/lib/path/separator";
 
 /**
  * How many paths one field keeps.
