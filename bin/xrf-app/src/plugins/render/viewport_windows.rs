@@ -36,4 +36,13 @@ impl ViewportWindows {
 
     taken
   }
+
+  /// Forgets every viewport, answering them in the order they were attached.
+  pub fn take_all(&mut self) -> Vec<RenderViewportId> {
+    let mut taken: Vec<RenderViewportId> = self.windows.drain().map(|(viewport, _)| viewport).collect();
+
+    taken.sort();
+
+    taken
+  }
 }

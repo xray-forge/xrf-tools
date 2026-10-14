@@ -1,6 +1,7 @@
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::mpsc::{Receiver, Sender, channel};
+use std::time::Duration;
 
 use xrf_error::XrfResult;
 use xrf_renderer::{
@@ -45,6 +46,17 @@ impl Renderer {
 
   pub fn detach_viewport(&self, id: RenderViewportId) {
     self.queue.send(RenderCommand::Detach { id });
+  }
+
+  /// Waits up to `wait` until the render thread handled every command sent before, answering whether it did.
+  pub fn wait_handled(&self, wait: Duration) -> bool {
+    self.queue.wait_handled(wait)
+  }
+
+  /// Detaches every viewport and stops the render thread, waiting up to `wait` until it let the GPU go; answers whether
+  /// it did.
+  pub fn stop(&self, wait: Duration) -> bool {
+    self.queue.stop(wait)
   }
 
   pub fn set_layout(&self, id: RenderViewportId, layout: RenderViewportLayout) {

@@ -6,13 +6,14 @@ use tauri::{AppHandle, Manager, RunEvent, Runtime, Webview, WindowEvent};
 use xrf_renderer::RenderWorkers;
 
 use crate::core::execution::ExecutionState;
+use crate::core::window::WindowHandles;
 use crate::plugins::render::disk_cache_store::DiskCacheStore;
 use crate::plugins::render::packaged_bundle::PackagedBundle;
 use crate::plugins::render::state::RenderState;
 
 /// The `render` plugin: the native renderer's state (`RenderState`, its loaders on the application's pool, its bundle and
 /// the driver's pipeline cache on disk), every `render|*` command, and the hooks that detach a window's viewports as a
-/// page starts loading over them or the window is destroyed.
+/// page starts loading over them or the window closes, and stop the renderer as the application exits.
 pub struct RenderPlugin {}
 
 impl RenderPlugin {
@@ -57,16 +58,33 @@ impl RenderPlugin {
     }
   }
 
-  /// Detaches a destroyed window's viewports, whose page went with it before it could let them go.
+  /// Detaches a closing window's viewports, whose page goes with it before it can let them go, waiting until the
+  /// renderer let go of the window before it is destroyed; forgets a destroyed window's handle; stops the renderer as
+  /// the application exits.
   fn on_event<R: Runtime>(application: &AppHandle<R>, event: &RunEvent) {
-    if let RunEvent::WindowEvent {
-      label,
-      event: WindowEvent::Destroyed,
-      ..
-    } = event
-      && let Some(state) = application.try_state::<RenderState>()
-    {
-      state.detach_window(label);
+    let Some(state) = application.try_state::<RenderState>() else {
+      return;
+    };
+
+    match event {
+      RunEvent::WindowEvent {
+        label,
+        event: WindowEvent::CloseRequested { .. },
+        ..
+      } => state.close_window(label),
+      RunEvent::WindowEvent {
+        label,
+        event: WindowEvent::Destroyed,
+        ..
+      } => {
+        state.detach_window(label);
+
+        if let Some(handles) = application.try_state::<WindowHandles>() {
+          handles.forget(label);
+        }
+      }
+      RunEvent::Exit => state.shut_down(),
+      _ => {}
     }
   }
 

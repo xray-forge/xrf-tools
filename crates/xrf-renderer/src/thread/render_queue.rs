@@ -1,5 +1,6 @@
-use std::sync::mpsc::{Sender, channel};
+use std::sync::mpsc::{Receiver, RecvTimeoutError, Sender, channel};
 use std::sync::{Arc, Mutex, MutexGuard};
+use std::time::Duration;
 
 use crate::contract::render_libraries::RenderLibraries;
 use crate::contract::render_settings::RenderSettings;
@@ -81,6 +82,31 @@ impl RenderQueue {
         log::error!("The render thread stopped before its first viewport arrived");
       }
     }
+  }
+
+  /// Waits up to `wait` until the running thread has handled every command sent before; at once where none runs.
+  /// Answers whether it did in time.
+  pub fn wait_handled(&self, wait: Duration) -> bool {
+    let (reply, answer): (Sender<()>, Receiver<()>) = channel();
+
+    self.send(RenderCommand::Handled { reply });
+
+    Self::await_reply(&answer, wait)
+  }
+
+  /// Detaches every viewport and stops the running thread at once, waiting up to `wait` until it let the GPU go; at
+  /// once where none runs. Answers whether it did in time.
+  pub fn stop(&self, wait: Duration) -> bool {
+    let (reply, answer): (Sender<()>, Receiver<()>) = channel();
+
+    self.send(RenderCommand::Stop { reply });
+
+    Self::await_reply(&answer, wait)
+  }
+
+  /// Whether a reply came within `wait`, or its sender went unanswered: dropped with no thread to take the command.
+  fn await_reply(answer: &Receiver<()>, wait: Duration) -> bool {
+    !matches!(answer.recv_timeout(wait), Err(RecvTimeoutError::Timeout))
   }
 
   fn spawn(&self, link: &mut RenderLink) -> Option<Sender<RenderCommand>> {

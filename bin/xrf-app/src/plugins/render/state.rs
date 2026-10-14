@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
+use std::time::Duration;
 
 use xrf_renderer::{
   RenderBundle, RenderEventSink, RenderLevelSource, RenderQueue, RenderSceneId, RenderViewportId, RenderWindowHost,
@@ -12,6 +13,12 @@ use crate::plugins::render::disk_cache_store::DiskCacheStore;
 use crate::plugins::render::renderer::Renderer;
 use crate::plugins::render::texture_watcher::{TextureWatcher, to_texture_name};
 use crate::plugins::render::viewport_windows::ViewportWindows;
+
+/// How long a closing window waits for the render thread to let go of its swapchain: a frame as a rule.
+const CLOSE_WAIT: Duration = Duration::from_secs(1);
+
+/// How long the exit waits for the render thread to let its GPU go.
+const STOP_WAIT: Duration = Duration::from_secs(5);
 
 /// The application's one renderer, which starts a GPU only once a viewport is attached.
 pub struct RenderState {
@@ -81,18 +88,48 @@ impl RenderState {
     self.release(viewport);
   }
 
-  /// Stops drawing every viewport in a window whose page is loading again or which was destroyed, neither of which can
-  /// let them go itself.
-  pub fn detach_window(&self, window: &str) {
+  /// Stops drawing every viewport in a window whose page is loading again or which is going, neither of which can let
+  /// them go itself; answers whether it held any.
+  pub fn detach_window(&self, window: &str) -> bool {
     let viewports: Vec<RenderViewportId> = self.lock_windows().take_window(window);
 
-    for viewport in viewports {
+    for viewport in &viewports {
       log::info!(
         "Detached native viewport {} from window '{window}', whose page went",
         viewport.0
       );
 
+      self.release(*viewport);
+    }
+
+    !viewports.is_empty()
+  }
+
+  /// Stops drawing every viewport in a window about to be destroyed, waiting until the render thread let go of its
+  /// swapchain, so nothing is presented into a window that went.
+  pub fn close_window(&self, window: &str) {
+    if self.detach_window(window) && !self.renderer.wait_handled(CLOSE_WAIT) {
+      log::warn!(
+        "The renderer did not let go of window '{window}' within {} ms of its close",
+        CLOSE_WAIT.as_millis()
+      );
+    }
+  }
+
+  /// Detaches every viewport and stops the renderer as the application exits, so its GPU is let go in order rather
+  /// than with the process.
+  pub fn shut_down(&self) {
+    let viewports: Vec<RenderViewportId> = self.lock_windows().take_all();
+
+    for viewport in viewports {
       self.release(viewport);
+    }
+
+    if !self.renderer.stop(STOP_WAIT) {
+      log::warn!(
+        "The renderer did not stop within {} ms of the exit",
+        STOP_WAIT.as_millis()
+      );
     }
   }
 

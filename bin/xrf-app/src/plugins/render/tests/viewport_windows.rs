@@ -29,3 +29,14 @@ fn a_viewport_detached_on_its_own_is_not_given_up_again() {
   assert_eq!(windows.remove(RenderViewportId(1)), None);
   assert_eq!(windows.take_window("main"), vec![RenderViewportId(2)]);
 }
+
+#[test]
+fn the_exit_gives_up_every_viewport_in_attach_order() {
+  let mut windows: ViewportWindows = ViewportWindows::default();
+
+  windows.insert(RenderViewportId(2), "tool");
+  windows.insert(RenderViewportId(1), "main");
+
+  assert_eq!(windows.take_all(), vec![RenderViewportId(1), RenderViewportId(2)]);
+  assert_eq!(windows.take_window("main"), Vec::new());
+}

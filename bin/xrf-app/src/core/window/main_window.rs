@@ -44,12 +44,16 @@ pub fn build_main_window<R: Runtime>(application: &App<R>) -> Result<(), Box<dyn
 
   // Recorded for the native viewports the window's pages attach, which name it by label.
   #[cfg(windows)]
-  if let Some(handle) = window
+  match window
     .hwnd()
     .ok()
     .and_then(|hwnd| std::num::NonZeroIsize::new(hwnd.0 as isize))
   {
-    application.state::<WindowHandles>().register(window.label(), handle);
+    Some(handle) => application.state::<WindowHandles>().register(window.label(), handle),
+    None => log::error!(
+      "Window '{}' has no native handle, so it cannot host a native viewport",
+      window.label()
+    ),
   }
 
   if let Some(preferences) = preferences {

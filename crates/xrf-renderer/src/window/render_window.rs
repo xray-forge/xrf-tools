@@ -39,8 +39,8 @@ impl RenderWindow {
   /// Returns an error when the GPU cannot present to the window.
   pub fn new(context: &GpuContext, host: Arc<dyn RenderWindowHost>) -> XrfResult<Self> {
     let (window, display) = host.get_handles();
-    // Safety: the host keeps the window alive for as long as it hosts viewports, and a window's swapchain goes as
-    // its last viewport detaches.
+    // SAFETY: `RenderWindowHost`'s contract keeps the window alive until its last viewport's detach is handled, and the
+    // thread lets the window's swapchain go as it handles that detach.
     let surface: wgpu::Surface<'static> = unsafe {
       context
         .instance
