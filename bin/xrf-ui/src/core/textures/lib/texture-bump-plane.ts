@@ -1,6 +1,5 @@
-import { IDdsTexels } from "@xrf/dds";
-
 import { ITextureBumpTexels } from "@/core/textures/lib/texture-surface";
+import { ITextureTexels } from "@/core/textures/lib/texture-texels";
 
 /** One plane of a bump pair, as the channels panel shows it. */
 export enum ETextureBumpPlane {
@@ -49,9 +48,9 @@ function writePlaneTexel(
   pixels: Uint8ClampedArray,
   at: number,
   plane: ETextureBumpPlane,
-  bump: IDdsTexels,
+  bump: ITextureTexels,
   bumpAt: number,
-  companion: IDdsTexels,
+  companion: ITextureTexels,
   companionAt: number
 ): void {
   const nu: Uint8Array = bump.data;

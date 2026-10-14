@@ -1,4 +1,3 @@
-import { IDdsTexels } from "@xrf/dds";
 import { Nullable } from "@xrf/types";
 
 import { getLocatedAsset } from "@/core/assets/lib/resolution";
@@ -9,6 +8,7 @@ import {
   TextureDescription,
 } from "@/core/ipc/types/xrf-app";
 import { XrayAsset } from "@/core/ipc/types/xrf-vfs";
+import { ITextureTexels } from "@/core/textures/lib/texture-texels";
 
 /**
  * What the panels read of one texture beside the body the renderer draws it on.
@@ -75,11 +75,11 @@ export interface ITextureSurfaceOptions {
 }
 
 /**
- * The pair's texels on the cpu, for a pair whose layout stores them plainly.
+ * The pair's texels on the cpu.
  */
 export interface ITextureBumpTexels {
-  bump: IDdsTexels;
-  companion: IDdsTexels;
+  bump: ITextureTexels;
+  companion: ITextureTexels;
 }
 
 /** The two located files behind a bump declaration, which are only ever fetched together. */
