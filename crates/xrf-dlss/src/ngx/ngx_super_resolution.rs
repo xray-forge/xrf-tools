@@ -120,6 +120,7 @@ impl NgxSuperResolution {
       std::iter::empty(),
       [inputs.color, inputs.depth, inputs.motion]
         .into_iter()
+        .chain(inputs.bias_current_color)
         .map(|view| wgpu::TextureTransition {
           texture: view.texture(),
           selector: None,
@@ -156,6 +157,9 @@ impl NgxSuperResolution {
         to_ngx_resource(inputs.output, adapter),
       )
     };
+    let mut bias = inputs
+      .bias_current_color
+      .map(|view| unsafe { to_ngx_resource(view, adapter) });
     let origin = NVSDK_NGX_Coordinates { X: 0, Y: 0 };
     let mut parameters = NVSDK_NGX_VK_DLSS_Eval_Params {
       Feature: NVSDK_NGX_VK_Feature_Eval_Params {
@@ -176,7 +180,7 @@ impl NgxSuperResolution {
       InMVScaleY: inputs.motion_scale[1],
       pInTransparencyMask: ptr::null_mut(),
       pInExposureTexture: ptr::null_mut(),
-      pInBiasCurrentColorMask: ptr::null_mut(),
+      pInBiasCurrentColorMask: bias.as_mut().map_or(ptr::null_mut(), ptr::from_mut),
       InColorSubrectBase: origin,
       InDepthSubrectBase: origin,
       InMVSubrectBase: origin,
@@ -238,6 +242,9 @@ impl NgxSuperResolution {
         InBiasCurrentColorSubrectBase: origin,
         InOutputSubrectBase: origin,
         InToneMapperType: NVSDK_NGX_ToneMapperType_NVSDK_NGX_TONEMAPPER_STRING,
+        pInBiasCurrentColorMask: inputs
+          .bias_current_color
+          .map_or(ptr::null_mut(), |view| to_d3d12_resource(view)),
         // The optional inputs left out: null resources and zero scalars.
         ..std::mem::zeroed()
       };

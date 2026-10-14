@@ -8,6 +8,10 @@ pub struct DlssInputs<'a> {
   /// back to where it stood the frame before.
   pub motion: &'a wgpu::TextureView,
   pub motion_scale: [f32; 2],
+  /// How far each pixel is upscaled from this frame rather than the history, from nothing to one, where something
+  /// drawn over the surfaces changed it (rain, particles, water), whose motion is the surface's behind it: none to
+  /// leave every pixel to the network.
+  pub bias_current_color: Option<&'a wgpu::TextureView>,
   /// Where this frame's samples sit within their pixels, in render pixels.
   pub jitter: [f32; 2],
   /// The render size, within the upscaler's range.

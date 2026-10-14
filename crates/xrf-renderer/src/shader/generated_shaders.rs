@@ -11,6 +11,7 @@ use crate::pass::contact_shadow_parameters::ContactShadowParameters;
 use crate::pass::contact_shadow_uniform::ContactShadowUniform;
 use crate::pass::cover_pyramid_depth_parameters::CoverPyramidDepthParameters;
 use crate::pass::cover_pyramid_level_parameters::CoverPyramidLevelParameters;
+use crate::pass::dlss_reactive_parameters::DlssReactiveParameters;
 use crate::pass::enhanced_bloom_parameters::EnhancedBloomParameters;
 use crate::pass::enhanced_bloom_uniform::EnhancedBloomUniform;
 use crate::pass::enhanced_water_parameters::EnhancedWaterParameters;
@@ -144,6 +145,7 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
   let mut light_binning: ShaderBindings = ShaderBindings::new();
   let mut sky_behind: ShaderBindings = ShaderBindings::new();
   let mut ray_guides: ShaderBindings = ShaderBindings::new();
+  let mut dlss_reactive: ShaderBindings = ShaderBindings::new();
   let mut grass_occlusion: ShaderBindings = ShaderBindings::new();
   let mut lights: ShaderBindings = ShaderBindings::new();
   let mut light_contact: ShaderBindings = ShaderBindings::new();
@@ -254,6 +256,7 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
   light_binning.add::<LightBinningParameters>()?;
   sky_behind.add::<SkyBehindParameters>()?;
   ray_guides.add::<RayGuidesParameters>()?;
+  dlss_reactive.add::<DlssReactiveParameters>()?;
   grass_occlusion.add::<GrassOcclusionParameters>()?;
   lights.add::<LightsParameters<'_>>()?;
   light_contact.add::<LightContactParameters>()?;
@@ -369,6 +372,10 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
     (
       "generated/frame/ray_guides",
       format!("{STRUCTS_IMPORT}{}", ray_guides.to_wgsl()),
+    ),
+    (
+      "generated/frame/dlss_reactive",
+      format!("{STRUCTS_IMPORT}{}", dlss_reactive.to_wgsl()),
     ),
     (
       "generated/frame/light_binning",
