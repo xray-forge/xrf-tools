@@ -11,9 +11,10 @@ use crate::level::surface_tally::SurfaceTally;
 /// One sector's pack as a loader thread finished it, with what its surfaces draw, or why it could not be packed.
 pub type SectorLoad = (u32, Result<(SectorPackage, SurfaceTally), String>);
 
-/// Packs a level's sectors side by side on the loader threads, the pool's width of them at a time, handing each to the
-/// render thread as it is done and starting the next as they are taken. Dropped, it lets go of the sectors not started
-/// yet, so a level closed mid open stops costing work.
+/// Packs a level's sectors side by side on the loader threads, no more than the pool's width of them running or queued
+/// at once (`LoaderFlight`), handing each to the render thread as it is done; the next start as the render thread takes
+/// the finished ones, once a frame. Dropped, it lets go of the sectors not started yet, so a level closed mid open stops
+/// costing work.
 pub struct LevelLoader {
   source: Arc<dyn RenderLevelSource>,
   workers: RenderWorkers,
@@ -47,7 +48,8 @@ impl LevelLoader {
     self.total
   }
 
-  /// The sectors finished since the last call, at most `limit` of them; starts as many more as finished.
+  /// The sectors finished since the last call, at most `limit` of them; starts as many more as finished since the last
+  /// call, whether or not they are taken yet.
   pub fn take(&mut self, limit: usize) -> Vec<SectorLoad> {
     let taken: Vec<SectorLoad> = self.receiver.try_iter().take(limit).collect();
 

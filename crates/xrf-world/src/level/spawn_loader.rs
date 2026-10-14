@@ -19,9 +19,10 @@ const VISUALS_PER_BATCH: usize = 16;
 /// posed by where the renderer poses it.
 pub type SpawnLoad = (StaticModel, String, Vec<StaticModelPlace>, Option<RenderModelSkeleton>);
 
-/// Reads a level's spawn on the loader threads: the objects once, then their visuals in batches side by side, the
-/// pool's width of them at a time, each model packed and handed to the render thread with the objects standing as it,
-/// and the next batches started as models are taken. Dropped, it lets go of the batches not started yet.
+/// Reads a level's spawn on the loader threads: the objects once, then their visuals in batches side by side, no more
+/// than the pool's width of them running or queued at once (`LoaderFlight`), each model packed and handed to the render
+/// thread with the objects standing as it; the next batches start as the render thread takes models, once a frame.
+/// Dropped, it lets go of the batches not started yet.
 pub struct SpawnLoader {
   source: Arc<dyn RenderLevelSource>,
   workers: RenderWorkers,
