@@ -15,7 +15,7 @@ pub struct GrassUniform {
   pub center: IVec2,
   /// `dm_size`: slots planted each way from the camera's.
   pub reach: i32,
-  /// `d_size`: steps a slot's candidates are laid across.
+  /// `d_size`: steps a slot's candidates are laid across, one more candidate than steps each way.
   pub steps: i32,
   /// The grid's size in slots, and the world slot its first cell stands for, negated.
   pub grid: IVec4,
