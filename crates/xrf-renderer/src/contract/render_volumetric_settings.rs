@@ -17,12 +17,13 @@ pub struct RenderVolumetricSettings {
 }
 
 impl Default for RenderVolumetricSettings {
-  /// The engine's shafts, with the enhanced volume at half its designed strength and a light lean for when it is drawn.
+  /// The engine's shafts, with the enhanced volume at a fifth of its designed strength and a quarter's lean for when it
+  /// is drawn.
   fn default() -> Self {
     Self {
       mode: RenderVolumetricMode::Engine,
-      intensity: 0.5,
-      anisotropy: 0.15,
+      intensity: 0.2,
+      anisotropy: 0.25,
       distance: 120.0,
     }
   }

@@ -226,13 +226,16 @@ export const DEFAULT_RENDER_CONTACT_SHADOW_SETTINGS: TRenderContactShadowSetting
   thickness: 0.1,
 };
 
-/** Every cascade, the engine's three and the far one, a filter a texel wide, and no contact shadows. */
+/**
+ * Every cascade, the engine's three and the far one, a filter two texels wide, so swaying grass does not shimmer in the
+ * nearest, and no contact shadows.
+ */
 export const DEFAULT_RENDER_SHADOW_SETTINGS: TRenderShadowSettings = {
   bias: 1.5,
   blend: 0.1,
   cascades: RENDER_SHADOW_CASCADE_WIDTHS,
   contact: DEFAULT_RENDER_CONTACT_SHADOW_SETTINGS,
-  filter: 1,
+  filter: 2,
   isEnabled: true,
   isStaggered: true,
   reach: 400,
@@ -247,11 +250,11 @@ export const DEFAULT_RENDER_UPSCALING_SETTINGS: TRenderUpscalingSettings = {
   sharpening: 0.5,
 };
 
-/** The engine's own shafts, with the froxel volume at half its designed strength and a light lean, out to 120 m. */
+/** The engine's own shafts, with the froxel volume at a fifth of its designed strength and a quarter's lean, to 120 m. */
 export const DEFAULT_RENDER_VOLUMETRIC_SETTINGS: TRenderVolumetricSettings = {
-  anisotropy: 0.15,
+  anisotropy: 0.25,
   distance: 120,
-  intensity: 0.5,
+  intensity: 0.2,
   mode: ERenderVolumetricMode.ENGINE,
 };
 
