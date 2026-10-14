@@ -1,5 +1,6 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
+use std::thread::JoinHandle;
 use std::time::Duration;
 
 use xrf_renderer::{
@@ -14,8 +15,9 @@ use crate::plugins::render::renderer::Renderer;
 use crate::plugins::render::texture_watcher::{TextureWatcher, to_texture_name};
 use crate::plugins::render::viewport_windows::ViewportWindows;
 
-/// How long a closing window waits for the render thread to let go of its swapchain: a frame as a rule.
-const CLOSE_WAIT: Duration = Duration::from_secs(1);
+/// How long a closing window is held for the render thread to let go of its swapchain before it says so: a frame as a
+/// rule.
+const CLOSE_WARNING: Duration = Duration::from_secs(1);
 
 /// How long the exit waits for the render thread to let its GPU go.
 const STOP_WAIT: Duration = Duration::from_secs(5);
@@ -29,6 +31,8 @@ pub struct RenderState {
   shows: Mutex<HashMap<RenderViewportId, u64>>,
   /// The window each viewport draws into, so a page that goes takes its viewports with it.
   windows: Mutex<ViewportWindows>,
+  /// The windows held open until the render thread lets go of the viewports they drew, by label.
+  closing: Mutex<HashSet<String>>,
   /// The shown sources' roots, watched for texture files written there.
   textures: TextureWatcher,
 }
@@ -50,6 +54,7 @@ impl RenderState {
       world,
       shows: Mutex::default(),
       windows: Mutex::default(),
+      closing: Mutex::default(),
     }
   }
 
@@ -105,20 +110,70 @@ impl RenderState {
     !viewports.is_empty()
   }
 
-  /// Stops drawing every viewport in a window about to be destroyed, waiting until the render thread let go of its
-  /// swapchain, so nothing is presented into a window that went.
-  pub fn close_window(&self, window: &str) {
-    if !self.detach_window(window) {
-      return;
+  /// Stops drawing every viewport in a window asked to close. One that drew any is held open until the render thread
+  /// let go of its swapchain, then `destroy` is called on a thread of its own, so nothing is presented into a window
+  /// that went and the event loop never waits; answers whether the close must be held. A window already held stays
+  /// held.
+  pub fn close_window(&self, window: &str, destroy: impl FnOnce() + Send + 'static) -> bool {
+    let mut closing: MutexGuard<'_, HashSet<String>> = self.lock_closing();
+
+    if closing.contains(window) {
+      return true;
     }
 
-    match self.renderer.wait_handled(CLOSE_WAIT) {
-      RenderWait::Answered | RenderWait::NotRunning => {}
-      RenderWait::Unanswered => log::error!("The renderer ended before it let go of window '{window}'"),
-      RenderWait::TimedOut => log::warn!(
-        "The renderer did not let go of window '{window}' within {} ms of its close",
-        CLOSE_WAIT.as_millis()
-      ),
+    if !self.detach_window(window) {
+      return false;
+    }
+
+    let (queue, label): (RenderQueue, String) = (self.renderer.get_queue(), window.to_owned());
+    let held: std::io::Result<JoinHandle<()>> =
+      std::thread::Builder::new()
+        .name("xrf-window-close".into())
+        .spawn(move || {
+          Self::await_release(&queue, &label);
+          destroy();
+        });
+
+    match held {
+      Ok(_) => {
+        closing.insert(window.to_owned());
+
+        true
+      }
+      Err(error) => {
+        log::error!("Window '{window}' cannot wait for the renderer off the event loop, so waits on it: {error}");
+        Self::await_release(&self.renderer.get_queue(), window);
+
+        false
+      }
+    }
+  }
+
+  /// Forgets a destroyed window. One still drawing viewports went without the close that lets the renderer go of it
+  /// first, which the window host's contract forbids: they are detached, and the breach logged.
+  pub fn forget_window(&self, window: &str) {
+    self.lock_closing().remove(window);
+
+    if self.detach_window(window) {
+      log::error!("Window '{window}' was destroyed while native viewports drew into it, before the renderer let it go");
+    }
+  }
+
+  /// Waits until the render thread handled every detach sent before, however long it takes, saying so once it takes
+  /// longer than a frame should.
+  fn await_release(queue: &RenderQueue, window: &str) {
+    let mut wait: RenderWait = queue.wait_handled(CLOSE_WARNING);
+
+    if wait == RenderWait::TimedOut {
+      log::warn!(
+        "Window '{window}' is held open until the renderer lets go of it, which takes over {} ms",
+        CLOSE_WARNING.as_millis()
+      );
+      wait = queue.wait_handled(Duration::MAX);
+    }
+
+    if wait == RenderWait::Unanswered {
+      log::error!("The renderer ended before it let go of window '{window}'");
     }
   }
 
@@ -198,5 +253,9 @@ impl RenderState {
 
   fn lock_windows(&self) -> MutexGuard<'_, ViewportWindows> {
     self.windows.lock().unwrap_or_else(PoisonError::into_inner)
+  }
+
+  fn lock_closing(&self) -> MutexGuard<'_, HashSet<String>> {
+    self.closing.lock().unwrap_or_else(PoisonError::into_inner)
   }
 }

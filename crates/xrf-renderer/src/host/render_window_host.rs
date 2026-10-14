@@ -8,8 +8,8 @@ use raw_window_handle::{RawDisplayHandle, RawWindowHandle};
 /// # Safety
 ///
 /// The handles `get_handles` answers must name a live window until every viewport attached with this host is detached
-/// and the render thread has handled that detach (`RenderQueue::wait_handled`): the renderer presents into the window
-/// through them until then.
+/// and the render thread has handled that detach, as `RenderQueue::wait_handled` answering anything but a timeout
+/// tells: the renderer presents into the window through them until then.
 pub unsafe trait RenderWindowHost: Send + Sync + 'static {
   /// What tells this window apart from every other, stable for its life.
   fn get_key(&self) -> u64;

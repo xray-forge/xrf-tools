@@ -23,8 +23,9 @@ impl Win32WindowHost {
   }
 }
 
-// SAFETY: the render plugin detaches a window's viewports and waits until the render thread handled it when the window
-// is asked to close, before it is destroyed, and stops the renderer before the application exits (`RenderPlugin`).
+// SAFETY: a window asked to close while viewports draw into it is held open until the render thread answers that it
+// handled their detach, and only then destroyed (`RenderState::close_window`); nothing in the application destroys a
+// window any other way, and one found destroyed still drawing them is logged as a breach (`RenderState::forget_window`).
 unsafe impl RenderWindowHost for Win32WindowHost {
   fn get_key(&self) -> u64 {
     self.hwnd.get() as u64
