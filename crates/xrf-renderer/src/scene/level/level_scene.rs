@@ -414,16 +414,20 @@ impl LevelScene {
     self.statics.surfaces.environment_slots.iter().copied()
   }
 
-  /// Every texture slot it samples, so the slots no scene samples can be freed; a grass texture a surface samples too is
-  /// listed once.
-  pub fn list_texture_slots(&self) -> impl Iterator<Item = u32> + '_ {
-    let statics: &BTreeSet<u32> = &self.statics.surfaces.texture_slots;
-
-    statics
+  /// Every texture slot it samples, each once whoever samples it, so the slots no scene samples can be freed and its
+  /// load counts a texture once.
+  pub fn list_texture_slots(&self) -> impl Iterator<Item = u32> {
+    let slots: BTreeSet<u32> = self
+      .statics
+      .surfaces
+      .texture_slots
       .iter()
       .copied()
-      .chain(self.grass.list_texture_slots().filter(|slot| !statics.contains(slot)))
+      .chain(self.grass.list_texture_slots())
       .chain(self.lights.get_projectors().iter().copied())
       .chain(self.particles.get_texture_slots().iter().copied())
+      .collect();
+
+    slots.into_iter()
   }
 }
