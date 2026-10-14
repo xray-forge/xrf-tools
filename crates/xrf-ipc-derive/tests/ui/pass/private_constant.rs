@@ -20,5 +20,5 @@ fn main() {
     exported.doc,
     "Cascades the sun's shadow can be cut into at most:\n  the sun reads their texels from one `vec4`."
   );
-  assert_eq!((exported.value)(), xrf_ipc::serde_json::json!(4));
+  assert_eq!((exported.value)().expect("serialized"), xrf_ipc::serde_json::json!(4));
 }

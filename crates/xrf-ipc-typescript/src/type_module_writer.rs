@@ -139,7 +139,8 @@ impl TypeModuleWriter {
 
   /// One constant as the frontend declares it: its doc comment, then `export const NAME: type = value;`.
   ///
-  /// Fails on a name a type of the module already takes, and on a value neither a number, a string nor a boolean.
+  /// Fails on a name a type of the module already takes, on a value that does not serialize, and on one neither a
+  /// number, a string nor a boolean.
   fn render_constant(constant: &IpcConstant, module: &str, ownership: &TypeOwnership) -> String {
     assert!(
       !ownership.is_declared_by(constant.name, module),
@@ -147,7 +148,12 @@ impl TypeModuleWriter {
       constant.name
     );
 
-    let value: serde_json::Value = (constant.value)();
+    let value: serde_json::Value = (constant.value)().unwrap_or_else(|error| {
+      panic!(
+        "Constant `{}` of `{}` does not serialize: {error}",
+        constant.name, constant.module_path
+      )
+    });
     let kind: &str = match &value {
       serde_json::Value::Number(_) => "number",
       serde_json::Value::String(_) => "string",
@@ -197,9 +203,18 @@ mod tests {
   use std::path::PathBuf;
 
   use specta::Types;
+  use xrf_ipc::IpcConstant;
   use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 
   use crate::type_module_writer::TypeModuleWriter;
+  use crate::type_ownership::TypeOwnership;
+
+  /// One constant rendered alone, into a module with no types.
+  fn render(constant: &IpcConstant) -> String {
+    let (ownership, _) = TypeOwnership::resolve(&Types::default());
+
+    TypeModuleWriter::render_constant(constant, "xrf-fixture", &ownership)
+  }
 
   /// Steps a test exports to its crate's module.
   ///
@@ -235,5 +250,16 @@ mod tests {
        */\n\
        export const EXPORTED_STEPS: number = 7;\n"
     );
+  }
+
+  #[test]
+  #[should_panic(expected = "Constant `BROKEN` of `xrf_fixture::limits` does not serialize")]
+  fn names_a_constant_that_does_not_serialize() {
+    render(&IpcConstant {
+      module_path: "xrf_fixture::limits",
+      name: "BROKEN",
+      doc: "",
+      value: || serde_json::from_str("not a value"),
+    });
   }
 }
