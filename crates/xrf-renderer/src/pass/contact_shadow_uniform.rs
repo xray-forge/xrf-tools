@@ -40,7 +40,7 @@ impl ContactShadowUniform {
       thickness: settings.thickness,
       steps: settings.steps,
       reach: (height as f32 * MAX_REACH).max(1.0),
-      noise: NoiseTurn::get_gradient(frame),
+      noise: NoiseTurn::get_gradient(frame, NoiseTurn::FRAMES),
       lights: settings.get_light_count(),
       stride: if settings.is_full_resolution { 1 } else { 2 },
     }

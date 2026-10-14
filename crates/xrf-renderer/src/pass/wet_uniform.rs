@@ -65,6 +65,6 @@ impl WetUniform {
 
   /// The pixels the cover's noise is moved by on the noise's `frame`.
   pub fn get_cover_noise(frame: u32) -> f32 {
-    NoiseTurn::get_gradient(frame)
+    NoiseTurn::get_gradient(frame, NoiseTurn::FRAMES)
   }
 }
