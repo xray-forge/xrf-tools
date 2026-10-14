@@ -1,7 +1,8 @@
 {
   "bundle": {
     "resources": {
-      "../../.sdks/dlss/lib/Windows_x86_64/rel/nvngx_dlss.dll": "resources/renderer/dlss/nvngx_dlss.dll"
+      "../../.sdks/dlss/lib/Windows_x86_64/rel/nvngx_dlss.dll": "resources/renderer/dlss/nvngx_dlss.dll",
+      "../../.sdks/dlss/lib/Windows_x86_64/rel/nvngx_dlssd.dll": "resources/renderer/dlss/nvngx_dlssd.dll"
     }
   }
 }

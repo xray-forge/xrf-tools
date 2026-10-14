@@ -10,6 +10,7 @@ path = "src/lib.rs"
 
 [dependencies]
 ash = { workspace = true, optional = true }
+glam = { workspace = true }
 log = { workspace = true }
 pollster = { workspace = true }
 wgpu = { workspace = true }

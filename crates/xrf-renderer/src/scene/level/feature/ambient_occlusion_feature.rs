@@ -13,7 +13,7 @@ use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::feature::view_feature::ViewFeature;
 
 /// The ambient occlusion at half the frame's size, which combine multiplies the hemisphere and ambient light by: GTAO's
-/// own search and denoise here, or VBAO's in the bitmask search's place.
+/// own search and denoise here, or VBAO's or RTAO's in the bitmask search's place.
 #[derive(Default)]
 pub struct AmbientOcclusionFeature {
   settings: RenderAmbientOcclusionSettings,
@@ -30,7 +30,7 @@ impl AmbientOcclusionFeature {
     self.uniform = AmbientOcclusionUniform::new(&self.settings, projection, size);
   }
 
-  /// Whether the view draws an ambient occlusion this frame, GTAO's or VBAO's.
+  /// Whether the view draws an ambient occlusion this frame, GTAO's, VBAO's or RTAO's.
   pub fn is_drawn(&self) -> bool {
     self.is_drawn
   }
@@ -40,7 +40,7 @@ impl AmbientOcclusionFeature {
   }
 
   /// Adds GTAO's search and its denoise to and fro between the occlusion targets, the first holding it finished;
-  /// nothing where it is not drawn or VBAO searches in its place.
+  /// nothing where it is not drawn or the bitmask search's place finds it.
   pub fn add_passes<'a>(
     &self,
     (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
@@ -48,7 +48,7 @@ impl AmbientOcclusionFeature {
     view: &'a ViewBinding,
     targets: ViewTargetHandles,
   ) {
-    if !self.is_drawn || self.settings.is_vbao() {
+    if !self.is_drawn || !self.settings.is_gtao() {
       return;
     }
 

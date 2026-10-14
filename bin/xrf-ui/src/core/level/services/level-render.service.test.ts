@@ -71,9 +71,11 @@ const REPORT: RenderFrameReport = {
   height: 600,
   hasRayQueries: true,
   dlss: ERenderDlssAvailability.UNBUILT,
+  rayReconstruction: ERenderDlssAvailability.UNBUILT,
   outputWidth: 534,
   outputHeight: 400,
   antialiasing: ERenderAntialiasing.TAA,
+  isRayReconstructed: false,
   isGpuTimed: true,
   phases: EMPTY_RENDER_FRAME_PHASES,
   passes: [

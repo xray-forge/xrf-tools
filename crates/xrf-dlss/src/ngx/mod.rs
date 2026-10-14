@@ -5,6 +5,8 @@ pub(crate) mod bindings;
 pub(crate) mod d3d12_resource;
 pub(crate) mod ngx_api;
 pub(crate) mod ngx_application;
+pub(crate) mod ngx_feature;
+pub(crate) mod ngx_ray_reconstruction;
 pub(crate) mod ngx_result;
 pub(crate) mod ngx_sdk;
 pub(crate) mod ngx_super_resolution;

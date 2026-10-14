@@ -1,12 +1,7 @@
 use std::ptr;
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
-#[cfg(windows)]
-use wgpu::hal::api::Dx12;
-use wgpu::hal::api::Vulkan;
-#[cfg(windows)]
-use windows_core::Interface;
-use xrf_error::{XrfError, XrfResult};
+use xrf_error::XrfResult;
 
 use crate::dlss_inputs::DlssInputs;
 use crate::dlss_preset::DlssPreset;
@@ -14,24 +9,16 @@ use crate::dlss_quality::DlssQuality;
 use crate::ngx::bindings::*;
 #[cfg(windows)]
 use crate::ngx::d3d12_resource::to_d3d12_resource;
-use crate::ngx::ngx_api::NgxApi;
+use crate::ngx::ngx_feature::{NgxCommands, NgxFeature};
 use crate::ngx::ngx_result::check_ngx;
 use crate::ngx::ngx_sdk::NgxSdk;
 use crate::ngx::vulkan_resource::to_ngx_resource;
 
-/// NGX's super resolution feature for one output: its handle, the API it runs on, and the render sizes it upscales
-/// from.
+/// NGX's super resolution feature for one output, and the render sizes it upscales from.
 pub(crate) struct NgxSuperResolution {
-  feature: *mut NVSDK_NGX_Handle,
-  api: NgxApi,
-  sdk: Arc<Mutex<NgxSdk>>,
-  device: wgpu::Device,
+  feature: NgxFeature,
   pub(crate) render_range: ((u32, u32), (u32, u32)),
 }
-
-// SAFETY: the handle is only used under the mutex its owner keeps it in, and NGX's parameters under the SDK's.
-unsafe impl Send for NgxSuperResolution {}
-unsafe impl Sync for NgxSuperResolution {}
 
 impl NgxSuperResolution {
   /// NGX's render preset hints, one a quality, each set to the preset asked before a feature is made.
@@ -52,34 +39,36 @@ impl NgxSuperResolution {
     (output, quality, preset): ((u32, u32), DlssQuality, DlssPreset),
     flags: NVSDK_NGX_DLSS_Feature_Flags,
   ) -> XrfResult<Self> {
-    let locked: MutexGuard<'_, NgxSdk> = sdk.lock().unwrap_or_else(PoisonError::into_inner);
-    let api: NgxApi = locked.api;
     let value: NVSDK_NGX_PerfQuality_Value = quality.to_value();
     let mut optimal: (u32, u32) = (0, 0);
     let mut max: (u32, u32) = (0, 0);
     let mut min: (u32, u32) = (0, 0);
     let mut sharpness: f32 = 0.0;
 
-    unsafe {
-      check_ngx(
-        NGX_DLSS_GET_OPTIMAL_SETTINGS(
-          locked.parameters,
-          output.0,
-          output.1,
-          value,
-          &mut optimal.0,
-          &mut optimal.1,
-          &mut max.0,
-          &mut max.1,
-          &mut min.0,
-          &mut min.1,
-          &mut sharpness,
-        ),
-        "DLSS has no render size for the output",
-      )?;
+    {
+      let locked: MutexGuard<'_, NgxSdk> = sdk.lock().unwrap_or_else(PoisonError::into_inner);
 
-      for hint in Self::PRESET_HINTS {
-        NVSDK_NGX_Parameter_SetUI(locked.parameters, hint.as_ptr().cast(), preset.to_hint() as u32);
+      unsafe {
+        check_ngx(
+          NGX_DLSS_GET_OPTIMAL_SETTINGS(
+            locked.parameters,
+            output.0,
+            output.1,
+            value,
+            &mut optimal.0,
+            &mut optimal.1,
+            &mut max.0,
+            &mut max.1,
+            &mut min.0,
+            &mut min.1,
+            &mut sharpness,
+          ),
+          "DLSS has no render size for the output",
+        )?;
+
+        for hint in Self::PRESET_HINTS {
+          NVSDK_NGX_Parameter_SetUI(locked.parameters, hint.as_ptr().cast(), preset.to_hint() as u32);
+        }
       }
     }
 
@@ -99,51 +88,21 @@ impl NgxSuperResolution {
       InFeatureCreateFlags: flags,
       InEnableOutputSubrects: false,
     };
-    let mut feature: *mut NVSDK_NGX_Handle = ptr::null_mut();
-    let mut encoder: wgpu::CommandEncoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-      label: Some("dlss create"),
-    });
-    let result: XrfResult<NVSDK_NGX_Result> = unsafe {
-      match api {
-        NgxApi::Vulkan => encoder.as_hal_mut::<Vulkan, _, _>(|encoder| {
-          let encoder = encoder.ok_or_else(|| XrfError::new_unexpected_error("DLSS records on Vulkan here"))?;
-
-          Ok(NGX_VULKAN_CREATE_DLSS_EXT(
-            encoder.raw_handle(),
-            1,
-            1,
-            &mut feature,
-            locked.parameters,
-            &mut parameters,
-          ))
-        }),
-        #[cfg(windows)]
-        NgxApi::D3d12 => encoder.as_hal_mut::<Dx12, _, _>(|encoder| {
-          let list = encoder
-            .and_then(|encoder| encoder.raw_handle())
-            .ok_or_else(|| XrfError::new_unexpected_error("DLSS records on D3D12 here"))?;
-
-          Ok(NGX_D3D12_CREATE_DLSS_EXT(
-            list.as_raw().cast(),
-            1,
-            1,
-            &mut feature,
-            locked.parameters,
-            &mut parameters,
-          ))
-        }),
-      }
-    };
-
-    check_ngx(result?, "DLSS cannot upscale to the output")?;
-    queue.submit([encoder.finish()]);
-    drop(locked);
+    let feature: NgxFeature = NgxFeature::create(
+      sdk,
+      (device, queue),
+      "DLSS cannot upscale to the output",
+      |commands, ngx, handle| unsafe {
+        match commands {
+          NgxCommands::Vulkan(list) => NGX_VULKAN_CREATE_DLSS_EXT(list, 1, 1, handle, ngx, &mut parameters),
+          #[cfg(windows)]
+          NgxCommands::D3d12(list) => NGX_D3D12_CREATE_DLSS_EXT(list, 1, 1, handle, ngx, &mut parameters),
+        }
+      },
+    )?;
 
     Ok(Self {
       feature,
-      api,
-      sdk: Arc::clone(sdk),
-      device: device.clone(),
       render_range: (min, max),
     })
   }
@@ -151,13 +110,11 @@ impl NgxSuperResolution {
   /// Records the upscale of `inputs`: their barriers into `encoder`, NGX's work into the command buffer answered,
   /// which must be submitted right after `encoder`'s commands.
   pub(crate) fn record(
-    &mut self,
+    &self,
     encoder: &mut wgpu::CommandEncoder,
     adapter: &wgpu::Adapter,
     inputs: &DlssInputs<'_>,
   ) -> XrfResult<wgpu::CommandBuffer> {
-    let sdk: MutexGuard<'_, NgxSdk> = self.sdk.lock().unwrap_or_else(PoisonError::into_inner);
-
     // NGX samples the inputs and writes the output as storage, in states wgpu then carries on from.
     encoder.transition_resources(
       std::iter::empty(),
@@ -175,27 +132,21 @@ impl NgxSuperResolution {
         }]),
     );
 
-    let mut commands: wgpu::CommandEncoder = self
-      .device
-      .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("dlss") });
-    let result: NVSDK_NGX_Result = match self.api {
-      NgxApi::Vulkan => self.evaluate_vulkan(&mut commands, (&sdk, adapter), inputs)?,
-      #[cfg(windows)]
-      NgxApi::D3d12 => self.evaluate_d3d12(&mut commands, &sdk, inputs)?,
-    };
-
-    check_ngx(result, "DLSS refused the frame")?;
-
-    Ok(commands.finish())
+    self
+      .feature
+      .evaluate("DLSS refused the frame", |commands, sdk| match commands {
+        NgxCommands::Vulkan(list) => Ok(Self::evaluate_vulkan(list, (&self.feature, sdk, adapter), inputs)),
+        #[cfg(windows)]
+        NgxCommands::D3d12(list) => Ok(Self::evaluate_d3d12(list, (&self.feature, sdk), inputs)),
+      })
   }
 
-  /// Records NGX's upscale of `inputs` into `commands`, a Vulkan encoder, answering NGX's result.
+  /// NGX's upscale of `inputs` recorded into a Vulkan command buffer.
   fn evaluate_vulkan(
-    &self,
-    commands: &mut wgpu::CommandEncoder,
-    (sdk, adapter): (&NgxSdk, &wgpu::Adapter),
+    list: ash::vk::CommandBuffer,
+    (feature, sdk, adapter): (&NgxFeature, &NgxSdk, &wgpu::Adapter),
     inputs: &DlssInputs<'_>,
-  ) -> XrfResult<NVSDK_NGX_Result> {
+  ) -> NVSDK_NGX_Result {
     // NGX reads these through pointers while it records, so they live until it is done.
     let (mut color, mut depth, mut motion, mut output) = unsafe {
       (
@@ -250,31 +201,20 @@ impl NgxSuperResolution {
       pInMotionVectorsReflections: ptr::null_mut(),
     };
 
-    unsafe {
-      commands.as_hal_mut::<Vulkan, _, _>(|commands| {
-        let commands = commands.ok_or_else(|| XrfError::new_unexpected_error("DLSS records on Vulkan here"))?;
-
-        Ok(NGX_VULKAN_EVALUATE_DLSS_EXT(
-          commands.raw_handle(),
-          self.feature,
-          sdk.parameters,
-          &mut parameters,
-        ))
-      })
-    }
+    unsafe { NGX_VULKAN_EVALUATE_DLSS_EXT(list, feature.handle, sdk.parameters, &mut parameters) }
   }
 
-  /// Records NGX's upscale of `inputs` into `commands`, a D3D12 encoder, answering NGX's result.
+  /// NGX's upscale of `inputs` recorded into a D3D12 command list.
   #[cfg(windows)]
   fn evaluate_d3d12(
-    &self,
-    commands: &mut wgpu::CommandEncoder,
-    sdk: &NgxSdk,
+    list: *mut ID3D12GraphicsCommandList,
+    (feature, sdk): (&NgxFeature, &NgxSdk),
     inputs: &DlssInputs<'_>,
-  ) -> XrfResult<NVSDK_NGX_Result> {
+  ) -> NVSDK_NGX_Result {
     let origin = NVSDK_NGX_Coordinates { X: 0, Y: 0 };
-    let mut parameters = unsafe {
-      NVSDK_NGX_D3D12_DLSS_Eval_Params {
+
+    unsafe {
+      let mut parameters = NVSDK_NGX_D3D12_DLSS_Eval_Params {
         Feature: NVSDK_NGX_D3D12_Feature_Eval_Params {
           pInColor: to_d3d12_resource(inputs.color),
           pInOutput: to_d3d12_resource(inputs.output),
@@ -300,44 +240,9 @@ impl NgxSuperResolution {
         InToneMapperType: NVSDK_NGX_ToneMapperType_NVSDK_NGX_TONEMAPPER_STRING,
         // The optional inputs left out: null resources and zero scalars.
         ..std::mem::zeroed()
-      }
-    };
+      };
 
-    unsafe {
-      commands.as_hal_mut::<Dx12, _, _>(|commands| {
-        let list = commands
-          .and_then(|commands| commands.raw_handle())
-          .ok_or_else(|| XrfError::new_unexpected_error("DLSS records on D3D12 here"))?;
-
-        Ok(NGX_D3D12_EVALUATE_DLSS_EXT(
-          list.as_raw().cast(),
-          self.feature,
-          sdk.parameters,
-          &mut parameters,
-        ))
-      })
-    }
-  }
-}
-
-impl Drop for NgxSuperResolution {
-  /// Waits for what was submitted to finish, through wgpu, which owns the queue, then releases the feature.
-  fn drop(&mut self) {
-    if let Err(error) = self.device.poll(wgpu::PollType::wait_indefinitely()) {
-      log::error!("DLSS releases an upscaler on a device that does not finish its work: {error}");
-    }
-
-    unsafe {
-      if let Err(error) = check_ngx(
-        match self.api {
-          NgxApi::Vulkan => NVSDK_NGX_VULKAN_ReleaseFeature(self.feature),
-          #[cfg(windows)]
-          NgxApi::D3d12 => NVSDK_NGX_D3D12_ReleaseFeature(self.feature),
-        },
-        "DLSS does not release an upscaler",
-      ) {
-        log::error!("{error}");
-      }
+      NGX_D3D12_EVALUATE_DLSS_EXT(list, feature.handle, sdk.parameters, &mut parameters)
     }
   }
 }

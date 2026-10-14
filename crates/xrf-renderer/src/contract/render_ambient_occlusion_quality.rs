@@ -1,18 +1,18 @@
 use serde::{Deserialize, Serialize};
 
-/// How hard the ambient occlusion searches: XeGTAO's presets, and VBAO's own.
+/// How hard the ambient occlusion searches: XeGTAO's presets, VBAO's own, and RTAO's rays.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Copy, Debug, Default, Deserialize, Eq, Hash, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum RenderAmbientOcclusionQuality {
-  /// GTAO one direction, two steps each way; VBAO three steps.
+  /// GTAO one direction, two steps each way; VBAO three steps; RTAO one ray.
   Low,
-  /// GTAO two directions, two steps; VBAO five steps.
+  /// GTAO two directions, two steps; VBAO five steps; RTAO two rays.
   Medium,
-  /// GTAO three directions, three steps; VBAO eight steps. `Base`'s choice.
+  /// GTAO three directions, three steps; VBAO eight steps; RTAO four rays. `Base`'s choice.
   #[default]
   High,
-  /// GTAO six directions, three steps; VBAO two directions, eight steps.
+  /// GTAO six directions, three steps; VBAO two directions, eight steps; RTAO eight rays.
   Ultra,
 }
 
@@ -35,6 +35,16 @@ impl RenderAmbientOcclusionQuality {
       Self::Medium => (1, 5),
       Self::High => (1, 8),
       Self::Ultra => (2, 8),
+    }
+  }
+
+  /// RTAO's rays a point casts each frame, its accumulation gathering more over frames.
+  pub const fn get_rtao_rays(self) -> u32 {
+    match self {
+      Self::Low => 1,
+      Self::Medium => 2,
+      Self::High => 4,
+      Self::Ultra => 8,
     }
   }
 

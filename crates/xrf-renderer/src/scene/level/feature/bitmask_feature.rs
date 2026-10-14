@@ -3,6 +3,7 @@ use xrf_renderer_core::{
   FrameGraph, GraphBindings, GraphColorAttachment, GraphRuntime, GraphTexture, GraphTextureDescriptor, UniformBinding,
 };
 
+use crate::context::gpu_requirements::can_trace;
 use crate::contract::render_ambient_occlusion_quality::RenderAmbientOcclusionQuality;
 use crate::contract::render_ambient_occlusion_settings::RenderAmbientOcclusionSettings;
 use crate::contract::render_indirect_light_settings::RenderIndirectLightSettings;
@@ -14,15 +15,16 @@ use crate::frame::view_targets::ViewTargets;
 use crate::pass::bitmask_pass_names::BitmaskPassNames;
 use crate::pass::bitmask_search::BitmaskSearch;
 use crate::pass::level_passes::LevelPasses;
+use crate::pass::trace_parameters::TraceParameters;
 use crate::pass::vbao_parameters::VbaoParameters;
 use crate::pass::vbao_pass::VbaoPass;
 use crate::pass::vbao_uniform::VbaoUniform;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::feature::view_feature::ViewFeature;
 
-/// The visibility-bitmask search at half the frame's size, for VBAO's occlusion, the indirect light or both: what it
-/// searches for this frame, what its passes read, and its accumulations over frames, the occlusion's and, while it
-/// gathers light, the light's.
+/// The visibility-bitmask search at half the frame's size, for VBAO's occlusion, the indirect light or both, RTAO
+/// tracing the occlusion in its place where asked: what it searches for this frame, what its passes read, and its
+/// accumulations over frames, the occlusion's and, while it gathers light, the light's.
 #[derive(Default)]
 pub struct BitmaskFeature {
   search: Option<BitmaskSearch>,
@@ -41,7 +43,7 @@ impl BitmaskFeature {
   pub fn prepare(&mut self, device: &wgpu::Device, options: &RenderViewOptions, projection: Mat4, size: (u32, u32)) {
     let settings: RenderAmbientOcclusionSettings = options.features.ambient_occlusion;
 
-    self.search = BitmaskSearch::new(options);
+    self.search = BitmaskSearch::new(options, can_trace(device));
     self.quality = settings.quality;
     self.indirect_light = options.features.indirect_light;
 
@@ -111,17 +113,26 @@ impl BitmaskFeature {
   }
 
   /// Declares the search: the frame's light copied at half size while lit, searched (into the first occlusion target
-  /// while it occludes), accumulated with the last frame's into its histories while it accumulates, and filtered (into
-  /// the second occlusion target, which combine reads). Answers the indirect light filtered while lit; nothing where
-  /// it does not run.
+  /// while it occludes) or, where RTAO traces the occlusion through the scene's trace (`traced`), traced into it and
+  /// searched for the light alone; accumulated with the last frame's into its histories while it accumulates, and
+  /// filtered (into the second occlusion target, which combine reads). Answers the indirect light filtered while lit;
+  /// nothing where it does not run. RTAO asked for before the scene's trace is built searches as VBAO does meanwhile.
   pub fn add_passes<'a>(
     &'a self,
     (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
     passes: LevelPasses<'a>,
     view: &'a ViewBinding,
     targets: ViewTargetHandles,
+    (traced, is_reconstructed): (Option<(TraceParameters<'a>, &'a wgpu::BindGroup)>, bool),
   ) -> Option<GraphTexture> {
-    let search: BitmaskSearch = self.search?;
+    let asked: BitmaskSearch = self.search?;
+    let trace: Option<(TraceParameters<'a>, &'a wgpu::BindGroup)> = traced.filter(|_| asked.is_traced);
+    let search: BitmaskSearch = BitmaskSearch {
+      is_traced: trace.is_some(),
+      ..asked
+    };
+    // Raw: DLSS ray reconstruction denoises the traced occlusion in the frame, so combine reads it as traced.
+    let is_raw: bool = trace.is_some() && is_reconstructed;
     let quality: RenderAmbientOcclusionQuality = self.quality;
     let names: BitmaskPassNames = search.get_names();
     let is_lit: bool = search.is_lit;
@@ -168,6 +179,18 @@ impl BitmaskFeature {
     };
     let lit_searched: Option<GraphTexture> = is_lit.then(|| create("indirect gathered", VbaoPass::LIGHT));
     let lit_filtered: Option<GraphTexture> = is_lit.then(|| create("indirect light", VbaoPass::LIGHT));
+    // Traced, the search gathers the light alone, its visibility into a target of its own, unused.
+    let search_visibility: GraphTexture = if trace.is_some() && is_lit {
+      create("indirect search", ViewTargets::OCCLUSION)
+    } else {
+      searched
+    };
+    // Raw, the filter's occlusion goes unread, the light alone filtered for combine.
+    let filtered_occlusion: GraphTexture = if is_raw {
+      create("rtao filtered unread", ViewTargets::OCCLUSION)
+    } else {
+      filtered
+    };
 
     let laying: VbaoParameters = VbaoParameters {
       points: empty,
@@ -192,16 +215,45 @@ impl BitmaskFeature {
 
     let searching: VbaoParameters = parameters((empty, empty), (light_source, dark, dark));
 
-    lit_searched
-      .into_iter()
-      .fold(
-        graph
-          .add_raster_pass(names.search)
-          .parameters(&searching)
-          .color(clear(searched)),
-        |builder, light| builder.color(clear(light)),
-      )
-      .record(move |context| passes.vbao.record_search(context, (quality, is_lit), view, &searching));
+    if trace.is_none() || is_lit {
+      lit_searched
+        .into_iter()
+        .fold(
+          graph
+            .add_raster_pass(names.search)
+            .parameters(&searching)
+            .color(clear(search_visibility)),
+          |builder, light| builder.color(clear(light)),
+        )
+        .record(move |context| passes.vbao.record_search(context, (quality, is_lit), view, &searching));
+    }
+
+    if let Some((trace, textures)) = trace {
+      let tracing: VbaoParameters = parameters((empty, empty), (dark, dark, dark));
+
+      // Raw, the trace writes what combine reads beside what the light's accumulation measures its history by.
+      is_raw
+        .then_some(filtered)
+        .into_iter()
+        .fold(
+          graph
+            .add_raster_pass(BitmaskSearch::TRACE_PASS)
+            .parameters(&tracing)
+            .parameters(&trace)
+            .color(clear(searched)),
+          |builder, shown| builder.color(clear(shown)),
+        )
+        .record(move |context| {
+          passes
+            .rtao
+            .record(context, (quality, is_raw), view, (&tracing, &trace, textures))
+        });
+    }
+
+    // Raw and gathering no light, nothing is left to accumulate or filter.
+    if is_raw && !is_lit {
+      return None;
+    }
 
     // The last frame's accumulations and this frame's, while it accumulates.
     let mut import = |label: &'static str, history: &'a History<FrameTexture>| {
@@ -249,7 +301,7 @@ impl BitmaskFeature {
 
     search
       .is_occluding
-      .then_some(filtered)
+      .then_some(filtered_occlusion)
       .into_iter()
       .chain(lit_filtered)
       .fold(

@@ -35,7 +35,9 @@ use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::present_pass::PresentPass;
 use crate::pass::puddle_sites_pass::PuddleSitesPass;
 use crate::pass::rain_pass::RainPass;
+use crate::pass::ray_guides_pass::RayGuidesPass;
 use crate::pass::reflection_pass::ReflectionPass;
+use crate::pass::rtao_pass::RtaoPass;
 use crate::pass::scene_trace_pass::SceneTracePass;
 use crate::pass::sky_behind_pass::SkyBehindPass;
 use crate::pass::sky_bindings::SkyBindings;
@@ -109,11 +111,13 @@ pub struct GpuState {
   pub sun: SunPass,
   pub ambient_occlusion: AmbientOcclusionPass,
   pub vbao: VbaoPass,
+  pub rtao: RtaoPass,
   pub reflections: ReflectionPass,
   pub scene_trace: SceneTracePass,
   pub lights: LightsPass,
   pub combine: CombinePass,
   pub sky_behind: SkyBehindPass,
+  pub ray_guides: RayGuidesPass,
   pub exposure: ExposurePass,
   pub present: PresentPass,
   /// The page's backdrop under every window's viewports.
@@ -193,11 +197,13 @@ impl GpuState {
       let sun = threads.spawn(move || SunPass::new(device, source, view));
       let ambient_occlusion = threads.spawn(move || AmbientOcclusionPass::new(device, source, view));
       let vbao = threads.spawn(move || VbaoPass::new(device, queue, source, view));
+      let rtao = threads.spawn(move || RtaoPass::new(device, source, view, texture));
       let reflections = threads.spawn(move || ReflectionPass::new(device, queue, source, view, sky_layout));
       let scene_trace = threads.spawn(move || SceneTracePass::new(device, source, view, sky_layout, texture));
       let lights = threads.spawn(move || LightsPass::new(device, source, view, texture));
       let combine = threads.spawn(move || CombinePass::new(device, source, view, sky_layout));
       let sky_behind = threads.spawn(move || SkyBehindPass::new(device, source, view, sky_layout));
+      let ray_guides = threads.spawn(move || RayGuidesPass::new(device, source, view));
       let sky_haze = threads.spawn(move || SkyHazePass::new(device, source, sky_layout));
       let sky_prefilter = threads.spawn(move || SkyPrefilterPass::new(device, queue, source));
       let surroundings = threads.spawn(move || SurroundingsPass::new(device, source, view));
@@ -236,11 +242,13 @@ impl GpuState {
         sun: join(sun)?,
         ambient_occlusion: join(ambient_occlusion)?,
         vbao: join(vbao)?,
+        rtao: join(rtao)?,
         reflections: join(reflections)?,
         scene_trace: join(scene_trace)?,
         lights: join(lights)?,
         combine: join(combine)?,
         sky_behind: join(sky_behind)?,
+        ray_guides: join(ray_guides)?,
         sky_haze: join(sky_haze)?,
         sky_prefilter: join(sky_prefilter)?,
         surroundings: join(surroundings)?,
@@ -314,12 +322,14 @@ impl GpuState {
       sun: &self.sun,
       ambient_occlusion: &self.ambient_occlusion,
       vbao: &self.vbao,
+      rtao: &self.rtao,
       reflections: &self.reflections,
       scene_trace: &self.scene_trace,
       grass_colours: &self.grass_colours,
       lights: &self.lights,
       combine: &self.combine,
       sky_behind: &self.sky_behind,
+      ray_guides: &self.ray_guides,
       sky_haze: &self.sky_haze,
       sky_prefilter: &self.sky_prefilter,
       surroundings: &self.surroundings,
@@ -377,12 +387,14 @@ impl GpuState {
     self.sun.refresh(device, source);
     self.ambient_occlusion.refresh(device, source);
     self.vbao.refresh(device, source);
+    self.rtao.refresh(device, source);
     self.reflections.refresh(device, source);
     self.scene_trace.refresh(device, source);
     self.grass_colours.refresh(device, source);
     self.lights.refresh(device, source);
     self.combine.refresh(device, source);
     self.sky_behind.refresh(device, source);
+    self.ray_guides.refresh(device, source);
     self.sky_haze.refresh(device, source);
     self.water.refresh(device, source);
     self.composited.refresh(device, source);

@@ -36,7 +36,9 @@ function toScalingLine(report: RenderFrameReport): Nullable<string> {
     return null;
   }
 
-  const name: string = isTemporal ? describeRenderAntialiasing(report.antialiasing) : "FSR 1";
+  const name: string = isTemporal
+    ? `${describeRenderAntialiasing(report.antialiasing)}${report.isRayReconstructed ? " RR" : ""}`
+    : "FSR 1";
   const source: string = `${report.renderWidth} × ${report.renderHeight}`;
   const viewport: string = `${report.width} × ${report.height}`;
 

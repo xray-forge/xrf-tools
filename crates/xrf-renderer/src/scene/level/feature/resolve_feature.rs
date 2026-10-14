@@ -1,7 +1,8 @@
 use glam::{Mat4, Vec2};
-use xrf_dlss::{Dlss, DlssInputs, DlssPreset, DlssQuality};
+use xrf_dlss::{Dlss, DlssInputs, DlssPreset, DlssQuality, DlssRayInputs};
 use xrf_renderer_core::{
-  FrameGraph, GraphBindings, GraphColorAttachment, GraphRuntime, GraphTexture, GraphTextureAccess, UniformBinding,
+  FrameGraph, GraphBindings, GraphColorAttachment, GraphRuntime, GraphTexture, GraphTextureAccess,
+  GraphTextureDescriptor, UniformBinding,
 };
 
 use crate::camera::camera_view::CameraView;
@@ -18,6 +19,9 @@ use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::fsr_uniform::FsrUniform;
 use crate::pass::level_passes::LevelPasses;
+use crate::pass::lighting_uniform::LightingUniform;
+use crate::pass::ray_guides_parameters::RayGuidesParameters;
+use crate::pass::ray_guides_pass::RayGuidesPass;
 use crate::pass::temporal_parameters::TemporalParameters;
 use crate::pass::temporal_pass::TemporalPass;
 use crate::pass::temporal_uniform::TemporalUniform;
@@ -26,6 +30,8 @@ use crate::pass::upscale_pass::UpscalePass;
 use crate::pass::upscale_uniform::UpscaleUniform;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::feature::dlss_resolve::DlssResolve;
+use crate::scene::level::feature::ray_guides::RayGuides;
+use crate::scene::level::feature::ray_reconstruction_resolve::RayReconstructionResolve;
 use crate::scene::level::feature::resolve::Resolve;
 use crate::scene::level::feature::temporal_resolve::TemporalResolve;
 use crate::scene::level::feature::view_feature::ViewFeature;
@@ -33,8 +39,12 @@ use crate::scene::level::feature::view_feature::ViewFeature;
 /// What a DLSS upscaler is made for: its output, quality and preset, and whether the colour is linear light.
 type DlssKey = ((u32, u32), (DlssQuality, DlssPreset), bool);
 
+/// What a DLSS ray reconstructor is made for: its output and quality.
+type RayKey = ((u32, u32), DlssQuality);
+
 /// How a view's frame becomes the image its viewport shows. From the drawn size to the output's: the temporal resolve
-/// (TAA, or FSR 2 or DLSS upscaling as they resolve) with the jitter its samples are moved by. Then, to the viewport's
+/// (TAA, or FSR 2 or DLSS upscaling as they resolve, DLSS reconstructing rays where asked) with the jitter its samples
+/// are moved by. Then, to the viewport's
 /// size where what was resolved, or the frame where nothing was, is of another: EASU's upscale or the box downscale; and
 /// RCAS's sharpening where the frame was drawn smaller than the viewport.
 pub struct ResolveFeature {
@@ -64,6 +74,9 @@ pub struct ResolveFeature {
   noise_frame: u32,
   /// The output, quality, preset and range DLSS last refused, which FSR 2 resolves in its place until they change.
   refused: Option<DlssKey>,
+  /// The output and quality ray reconstruction last refused, which super resolution upscales in its place until they
+  /// change.
+  refused_rays: Option<RayKey>,
 }
 
 impl Default for ResolveFeature {
@@ -84,6 +97,7 @@ impl Default for ResolveFeature {
       view_projection_previous: None,
       noise_frame: 0,
       refused: None,
+      refused_rays: None,
     }
   }
 }
@@ -109,7 +123,8 @@ impl ResolveFeature {
 
   /// Takes this frame's resolve for targets `render` texels across, none before they are made, resolved at `resolved`
   /// and shown in `output`: the temporal resolve's history made or kept and what it reads, and the frame at the
-  /// viewport's size while it is drawn or resolved at another.
+  /// viewport's size while it is drawn or resolved at another. DLSS reconstructs rays where asked, the GPU has it and
+  /// the scene holds linear light; else it upscales alone.
   pub fn prepare(
     &mut self,
     (device, dlss): (&wgpu::Device, Option<&Dlss>),
@@ -133,7 +148,12 @@ impl ResolveFeature {
         self.prepare_fsr(device, view, (render, display), is_linear);
       }
       (Some(render), Some(RenderAntialiasing::Dlss)) => {
-        if !self.prepare_dlss((device, dlss), (render, display), is_linear) {
+        let is_reconstructing: bool =
+          upscaling.is_ray_reconstructed && is_linear && dlss.is_some_and(Dlss::has_ray_reconstruction);
+
+        if !(is_reconstructing && self.prepare_ray_reconstruction((device, dlss), view, (render, display)))
+          && !self.prepare_dlss((device, dlss), (render, display), is_linear)
+        {
           self.temporal = Some(RenderAntialiasing::Fsr2);
           self.prepare_fsr(device, view, (render, display), is_linear);
         }
@@ -328,6 +348,85 @@ impl ResolveFeature {
     true
   }
 
+  /// DLSS's ray reconstructor, kept while it still fits, reconstructing targets `render` texels across into `display`
+  /// pixels, and this frame's view and projection with `view`'s jitter taken out; whether it resolves this frame,
+  /// which super resolution does where it refuses them.
+  fn prepare_ray_reconstruction(
+    &mut self,
+    (device, dlss): (&wgpu::Device, Option<&Dlss>),
+    view: &CameraView,
+    (render, display): ((u32, u32), (u32, u32)),
+  ) -> bool {
+    let quality: DlssQuality = self.upscaling.scale.get_dlss_quality();
+    let key: RayKey = (display, quality);
+
+    if self.refused_rays == Some(key) {
+      return false;
+    }
+
+    let Some(dlss) = dlss else {
+      return false;
+    };
+    let is_fitting: bool = matches!(
+      &self.resolve,
+      Some(Resolve::RayReconstruction(resolve)) if resolve.reconstructor.is_fitting(display, quality)
+    );
+
+    if !is_fitting {
+      // NGX makes and releases its features with the device idle: the last one goes first.
+      self.resolve = None;
+
+      match dlss.create_ray_reconstructor(display, quality) {
+        Ok(reconstructor) => {
+          self.resolve = Some(Resolve::RayReconstruction(Box::new(RayReconstructionResolve {
+            reconstructor,
+            output: FrameTexture::new(
+              device,
+              "ray reconstruction output",
+              display,
+              DlssResolve::FORMAT,
+              wgpu::TextureUsages::STORAGE_BINDING,
+            ),
+            is_reset: true,
+            view: Mat4::IDENTITY,
+            projection: Mat4::IDENTITY,
+          })));
+        }
+        Err(error) => {
+          log::warn!("DLSS upscales without reconstructing rays: {error}");
+          self.refused_rays = Some(key);
+
+          return false;
+        }
+      }
+    }
+
+    let offset: Vec2 = self.offset;
+    let Some(Resolve::RayReconstruction(resolve)) = &mut self.resolve else {
+      return false;
+    };
+    let (min, max) = resolve.reconstructor.get_render_range();
+
+    if !((min.0..=max.0).contains(&render.0) && (min.1..=max.1).contains(&render.1)) {
+      log::warn!(
+        "DLSS upscales without reconstructing rays: it reconstructs from {min:?} to {max:?} into {display:?}, not from {render:?}"
+      );
+      self.refused_rays = Some(key);
+
+      return false;
+    }
+
+    // The jitter `CameraView::jittered` put into the projection, taken out again.
+    let mut projection: Mat4 = view.projection;
+
+    projection.z_axis.x -= 2.0 * offset.x / render.0 as f32;
+    projection.z_axis.y += 2.0 * offset.y / render.1 as f32;
+    resolve.view = view.view;
+    resolve.projection = projection;
+
+    true
+  }
+
   /// This frame's unjittered view projection and the last one's, which the surfaces' motion is measured between; the
   /// same twice for a first frame.
   pub fn next_motion(&mut self, current: Mat4) -> (Mat4, Mat4) {
@@ -363,6 +462,11 @@ impl ResolveFeature {
     self.resolved
   }
 
+  /// Whether DLSS reconstructs rays as it resolves this frame.
+  pub fn is_ray_reconstructed(&self) -> bool {
+    matches!(self.resolve, Some(Resolve::RayReconstruction(_)))
+  }
+
   /// Whether the frame shown is one at the viewport's size apart from the frame as drawn, which the present reads.
   pub fn is_rescaled(&self) -> bool {
     self.upscaled.is_some()
@@ -383,7 +487,7 @@ impl ResolveFeature {
   ) -> Option<GraphTexture> {
     match &self.resolve {
       Some(Resolve::Temporal(_)) => before_water,
-      Some(Resolve::Dlss(_)) => None,
+      Some(Resolve::Dlss(_) | Resolve::RayReconstruction(_)) => None,
       Some(Resolve::Fsr { targets, .. }) => {
         let opaque: GraphTexture = bindings.import_view(&mut *graph, "fsr2 opaque", &targets.opaque.view);
 
@@ -407,8 +511,58 @@ impl ResolveFeature {
     }
   }
 
+  /// Adds the guides DLSS ray reconstruction reads, where it resolves this frame, at the drawn size: worked out from the
+  /// G-buffer, the wet surface and the reflections' trace (`traced`, a texel of nothing where none is) after combine.
+  pub fn add_guide_passes<'a>(
+    &self,
+    graph: &mut FrameGraph<'a>,
+    passes: LevelPasses<'a>,
+    view: &'a ViewBinding,
+    (handles, lighting, wet_surface, traced): (
+      ViewTargetHandles,
+      UniformBinding<LightingUniform>,
+      GraphTexture,
+      GraphTexture,
+    ),
+  ) -> Option<RayGuides> {
+    if !self.is_ray_reconstructed() {
+      return None;
+    }
+
+    let (width, height) = handles.size;
+    let mut create = |label: &'static str, format: wgpu::TextureFormat| -> GraphTexture {
+      graph.create_texture(GraphTextureDescriptor::new_2d(label, width, height, format))
+    };
+    let guides: RayGuides = RayGuides {
+      specular_albedo: create("ray guides specular albedo", RayGuidesPass::SPECULAR_ALBEDO),
+      normals: create("ray guides normals", RayGuidesPass::NORMALS),
+      hit_distance: create("ray guides hit distance", RayGuidesPass::HIT_DISTANCE),
+    };
+    let parameters: RayGuidesParameters = RayGuidesParameters {
+      albedo_target: handles.albedo,
+      normal_target: handles.normal,
+      material_target: handles.material,
+      depth_target: handles.depth,
+      wet_surface,
+      lighting,
+      traced,
+    };
+    let clear =
+      |texture: GraphTexture| GraphColorAttachment::new(texture, wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT));
+
+    graph
+      .add_raster_pass("ray guides")
+      .parameters(&parameters)
+      .color(clear(guides.specular_albedo))
+      .color(clear(guides.normals))
+      .color(clear(guides.hit_distance))
+      .record(move |context| passes.ray_guides.record(context, view, &parameters));
+
+    Some(guides)
+  }
+
   /// Adds the resolve of `frame`, the finished frame at the drawn size, against the frame as it stood before the
-  /// blended surfaces (`opaque`, the scene where none was kept). At the drawn size, the temporal resolve; then, at the
+  /// blended surfaces (`opaque`, the scene where none was kept), DLSS's ray reconstruction reading `guides`. At the drawn size, the temporal resolve; then, at the
   /// viewport's, the upscale where nothing upscaled it and the sharpening. Answers the frame at the drawn size, which
   /// the present distorts, and the image the viewport shows.
   pub fn add_passes<'a>(
@@ -416,7 +570,7 @@ impl ResolveFeature {
     (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
     passes: LevelPasses<'a>,
     view: &'a ViewBinding,
-    (handles, frame, opaque): (ViewTargetHandles, GraphTexture, Option<GraphTexture>),
+    (handles, frame, opaque, guides): (ViewTargetHandles, GraphTexture, Option<GraphTexture>, Option<RayGuides>),
   ) -> (GraphTexture, GraphTexture) {
     let upscaled: Option<[GraphTexture; 2]> = self.upscaled.as_ref().map(|[upscaled, sharpened]| {
       [
@@ -439,6 +593,9 @@ impl ResolveFeature {
       Some(Resolve::Dlss(resolve)) => {
         Some(self.add_dlss_pass((&mut *graph, &mut *bindings), (resolve, handles, frame)))
       }
+      Some(Resolve::RayReconstruction(resolve)) => guides.map(|guides| {
+        self.add_ray_reconstruction_pass((&mut *graph, &mut *bindings), (resolve, handles, frame, guides))
+      }),
       Some(Resolve::Temporal(temporal)) => {
         let TemporalResolve { history, uniform, .. } = &**temporal;
         let target: GraphTexture = bindings.import_view(&mut *graph, "temporal history", &history.get_written().view);
@@ -547,6 +704,58 @@ impl ResolveFeature {
         };
 
         match resolve.upscaler.record(context.get_encoder(), &inputs) {
+          Ok(commands) => context.hand_over(commands),
+          Err(error) => log::error!("{error}"),
+        }
+      });
+
+    output
+  }
+
+  /// Adds DLSS's ray reconstruction of `frame`, the finished frame at the drawn size, through the view's depth, motion
+  /// and albedo and the frame's `guides`, and answers the frame it writes at the output's size.
+  fn add_ray_reconstruction_pass<'a>(
+    &'a self,
+    (graph, bindings): (&mut FrameGraph<'a>, &mut GraphBindings<'a>),
+    (resolve, handles, frame, guides): (&'a RayReconstructionResolve, ViewTargetHandles, GraphTexture, RayGuides),
+  ) -> GraphTexture {
+    let output: GraphTexture = bindings.import_view(&mut *graph, "ray reconstruction output", &resolve.output.view);
+    // FSR 2's sense of the jitter, which DLSS shares: a drawn texel `m` stands at `m + 0.5 - jitter`.
+    let jitter: [f32; 2] = (-self.offset).to_array();
+    let is_reset: bool = resolve.is_reset;
+
+    graph
+      .add_encoder_pass("dlss ray reconstruction")
+      .texture(frame, GraphTextureAccess::Sampled)
+      .texture(handles.depth, GraphTextureAccess::Sampled)
+      .texture(handles.motion, GraphTextureAccess::Sampled)
+      .texture(handles.albedo, GraphTextureAccess::Sampled)
+      .texture(guides.specular_albedo, GraphTextureAccess::Sampled)
+      .texture(guides.normals, GraphTextureAccess::Sampled)
+      .texture(guides.hit_distance, GraphTextureAccess::Sampled)
+      .texture(output, GraphTextureAccess::StorageReadWrite)
+      .record(move |context| {
+        let color = context.get_texture(frame);
+        let render: (u32, u32) = (color.texture.width(), color.texture.height());
+        let inputs: DlssRayInputs<'_> = DlssRayInputs {
+          color: color.view,
+          depth: context.get_texture(handles.depth).view,
+          motion: context.get_texture(handles.motion).view,
+          // As super resolution reads it: render pixels back to where a point stood.
+          motion_scale: [-(render.0 as f32), -(render.1 as f32)],
+          diffuse_albedo: context.get_texture(handles.albedo).view,
+          specular_albedo: context.get_texture(guides.specular_albedo).view,
+          normals: context.get_texture(guides.normals).view,
+          specular_hit_distance: context.get_texture(guides.hit_distance).view,
+          world_to_view: resolve.view,
+          view_to_clip: resolve.projection,
+          jitter,
+          render,
+          output: context.get_texture(output).view,
+          is_reset,
+        };
+
+        match resolve.reconstructor.record(context.get_encoder(), &inputs) {
           Ok(commands) => context.hand_over(commands),
           Err(error) => log::error!("{error}"),
         }

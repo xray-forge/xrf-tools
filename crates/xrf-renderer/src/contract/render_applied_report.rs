@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 
+use crate::contract::render_ambient_occlusion_method::RenderAmbientOcclusionMethod;
 use crate::contract::render_ambient_occlusion_quality::RenderAmbientOcclusionQuality;
 use crate::contract::render_antialiasing::RenderAntialiasing;
 use crate::contract::render_applied_environment::RenderAppliedEnvironment;
@@ -20,12 +21,17 @@ use crate::contract::render_scale::RenderScale;
 pub struct RenderAppliedReport {
   /// What smooths the finished frame: none where a target other than the frame is shown.
   pub antialiasing: RenderAntialiasing,
+  /// Whether DLSS reconstructs rays as it upscales the frame.
+  pub is_ray_reconstructed: bool,
   /// How much smaller the scene is drawn than the viewport, native for anything but a level.
   pub render_scale: RenderScale,
   /// The sun's shadow, or none where no cascade is drawn.
   pub shadows: Option<RenderAppliedShadows>,
   /// The screen's ambient occlusion, or none where it is off or the scene is unlit.
   pub ambient_occlusion: Option<RenderAmbientOcclusionQuality>,
+  /// How the ambient occlusion is found, or none where it is not: RTAO asked for is VBAO's search on a GPU that traces
+  /// no rays.
+  pub ambient_occlusion_method: Option<RenderAmbientOcclusionMethod>,
   /// The screen-space indirect light, or none where it is not gathered.
   pub indirect_light: Option<RenderAppliedIndirectLight>,
   /// The screen-space reflections, or none where they are not traced.

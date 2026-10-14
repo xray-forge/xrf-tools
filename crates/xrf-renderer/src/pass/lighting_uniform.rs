@@ -113,7 +113,7 @@ impl LightingUniform {
         0.0,
       ),
       params: Vec4::new(
-        if is_occluded && occlusion.is_vbao() {
+        if is_occluded && !occlusion.is_gtao() {
           occlusion.vbao.bounce.clamp(0.0, 1.0)
         } else {
           0.0
@@ -143,7 +143,8 @@ impl LightingUniform {
         0.0,
       ),
       indirect: Vec4::new(
-        flag(BitmaskSearch::new(options).is_some_and(|search| search.is_lit)),
+        // Whether the search gathers light does not hang on whether its occlusion is traced.
+        flag(BitmaskSearch::new(options, false).is_some_and(|search| search.is_lit)),
         0.0,
         0.0,
         0.0,

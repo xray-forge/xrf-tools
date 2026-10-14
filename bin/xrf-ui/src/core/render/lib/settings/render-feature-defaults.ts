@@ -237,9 +237,10 @@ export const DEFAULT_RENDER_SHADOW_SETTINGS: TRenderShadowSettings = {
   resolution: 2048,
 };
 
-/** Drawn at the viewport's size; sharpened halfway once upscaled; DLSS's model NVIDIA's pick. */
+/** Drawn at the viewport's size; sharpened halfway once upscaled; DLSS's model NVIDIA's pick, reconstructing no rays. */
 export const DEFAULT_RENDER_UPSCALING_SETTINGS: TRenderUpscalingSettings = {
   dlssPreset: ERenderDlssPreset.DEFAULT,
+  isRayReconstructed: false,
   scale: ERenderScale.NATIVE,
   sharpening: 0.5,
 };

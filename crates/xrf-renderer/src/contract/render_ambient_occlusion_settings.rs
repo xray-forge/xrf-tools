@@ -11,7 +11,8 @@ use crate::contract::render_ambient_occlusion_vbao_settings::RenderAmbientOcclus
 #[serde(rename_all = "camelCase")]
 pub struct RenderAmbientOcclusionSettings {
   pub is_enabled: bool,
-  /// GTAO's horizons, or VBAO's visibility bitmask, which `vbao` shapes.
+  /// GTAO's horizons, VBAO's visibility bitmask, which `vbao` shapes, or RTAO's traced rays, accumulated and filtered
+  /// as VBAO's search is.
   pub method: RenderAmbientOcclusionMethod,
   /// Metres around a point that what stands there occludes it from.
   pub radius: f32,
@@ -36,8 +37,13 @@ impl Default for RenderAmbientOcclusionSettings {
 }
 
 impl RenderAmbientOcclusionSettings {
-  /// Whether VBAO searches it rather than GTAO.
-  pub fn is_vbao(&self) -> bool {
-    self.method == RenderAmbientOcclusionMethod::Vbao
+  /// Whether GTAO searches it, rather than the visibility bitmask's search or the rays traced in its place.
+  pub fn is_gtao(&self) -> bool {
+    self.method == RenderAmbientOcclusionMethod::Gtao
+  }
+
+  /// Whether rays traced against the level's geometry find it, where the GPU traces them.
+  pub fn is_traced(&self) -> bool {
+    self.method == RenderAmbientOcclusionMethod::Rtao
   }
 }

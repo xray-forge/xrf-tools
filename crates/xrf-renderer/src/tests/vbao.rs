@@ -40,8 +40,9 @@ fn lighting_with(options: &RenderViewOptions) -> LightingUniform {
 
 #[test]
 fn searches_with_gtao_unless_asked_for_vbao() {
-  assert!(!RenderAmbientOcclusionSettings::default().is_vbao());
-  assert!(vbao(8).is_vbao());
+  assert!(RenderAmbientOcclusionSettings::default().is_gtao());
+  assert!(!vbao(8).is_gtao());
+  assert!(!vbao(8).is_traced());
   assert_eq!(vbao(0).vbao.get_accumulation(), 1);
   assert_eq!(
     vbao(1000).vbao.get_accumulation(),

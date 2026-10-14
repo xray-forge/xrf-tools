@@ -195,6 +195,9 @@ export function LevelPreviewLayout({
           isGpuTimed={settingsService.isGpuTimed}
           isTraceable={!renderService.frame.adapter || renderService.frame.hasRayQueries}
           dlss={renderService.frame.adapter ? renderService.frame.dlss : ERenderDlssAvailability.AVAILABLE}
+          rayReconstruction={
+            renderService.frame.adapter ? renderService.frame.rayReconstruction : ERenderDlssAvailability.AVAILABLE
+          }
           backend={settingsService.renderBackend}
           backends={settingsService.renderBackends}
           isUpscaled={

@@ -27,12 +27,15 @@ describe("LevelImageQualityAction", () => {
         settingsScale={ERenderScale.NATIVE}
         settingsSharpening={0.5}
         settingsDlssPreset={ERenderDlssPreset.DEFAULT}
+        settingsRayReconstruction={false}
+        isSceneLinear
         settingsResolution={ERenderResolution.AUTO}
         settingsOutputScale={1}
         backend={RENDER_BACKEND_AUTO}
         backends={null}
         isUpscaled
         dlss={ERenderDlssAvailability.AVAILABLE}
+        rayReconstruction={ERenderDlssAvailability.AVAILABLE}
         features={mockLevelFeatureOptions()}
         onToggle={() => {}}
         onChange={onChange}
@@ -64,12 +67,15 @@ describe("LevelImageQualityAction", () => {
         settingsScale={ERenderScale.NATIVE}
         settingsSharpening={0.5}
         settingsDlssPreset={ERenderDlssPreset.DEFAULT}
+        settingsRayReconstruction={false}
+        isSceneLinear
         settingsResolution={ERenderResolution.AUTO}
         settingsOutputScale={1}
         backend={RENDER_BACKEND_AUTO}
         backends={null}
         isUpscaled
         dlss={ERenderDlssAvailability.AVAILABLE}
+        rayReconstruction={ERenderDlssAvailability.AVAILABLE}
         features={mockLevelFeatureOptions()}
         onToggle={() => {}}
         onChange={onChange}
@@ -97,12 +103,15 @@ describe("LevelImageQualityAction", () => {
         settingsScale={ERenderScale.QUALITY}
         settingsSharpening={0.5}
         settingsDlssPreset={ERenderDlssPreset.DEFAULT}
+        settingsRayReconstruction={false}
+        isSceneLinear
         settingsResolution={ERenderResolution.AUTO}
         settingsOutputScale={1}
         backend={RENDER_BACKEND_AUTO}
         backends={null}
         isUpscaled
         dlss={ERenderDlssAvailability.AVAILABLE}
+        rayReconstruction={ERenderDlssAvailability.AVAILABLE}
         features={mockLevelFeatureOptions()}
         onToggle={() => {}}
         onChange={onChange}
@@ -123,6 +132,90 @@ describe("LevelImageQualityAction", () => {
     });
   });
 
+  it("turns DLSS ray reconstruction on for the view, hiding the super resolution model it replaces", async () => {
+    const onChange = jest.fn<(features: ILevelFeatureOptions) => void>();
+    const { getByRole, findByRole, queryByRole } = renderWithProviders(
+      <LevelImageQualityAction
+        isOn
+        settingsMode={ERenderAntialiasing.DLSS}
+        settingsTextureFiltering={ERenderTextureFiltering.ANISOTROPIC8}
+        settingsScale={ERenderScale.QUALITY}
+        settingsSharpening={0.5}
+        settingsDlssPreset={ERenderDlssPreset.DEFAULT}
+        settingsRayReconstruction={true}
+        isSceneLinear
+        settingsResolution={ERenderResolution.AUTO}
+        settingsOutputScale={1}
+        backend={RENDER_BACKEND_AUTO}
+        backends={null}
+        isUpscaled
+        dlss={ERenderDlssAvailability.AVAILABLE}
+        rayReconstruction={ERenderDlssAvailability.AVAILABLE}
+        features={mockLevelFeatureOptions()}
+        onToggle={() => {}}
+        onChange={onChange}
+        onChangeBackend={() => {}}
+      />
+    );
+
+    await userEvent.pointer({ keys: "[MouseRight]", target: getByRole("button", { name: "Image quality" }) });
+    await findByRole("dialog", { name: "Image quality" });
+
+    expect(getByRole("checkbox", { name: "Ray reconstruction" })).toBeChecked();
+    expect(queryByRole("button", { name: "Default" })).toBeNull();
+
+    await userEvent.click(getByRole("checkbox", { name: "Ray reconstruction" }));
+
+    expect(onChange).toHaveBeenLastCalledWith({
+      ...mockLevelFeatureOptions(),
+      upscaling: { isRayReconstructed: false },
+    });
+  });
+
+  it("greys DLSS ray reconstruction out with what it needs: the GPU's support, then the Enhanced tonemap", async () => {
+    const backend: TRenderBackendChoice = RENDER_BACKEND_AUTO;
+    const props = {
+      isOn: true,
+      settingsMode: ERenderAntialiasing.DLSS,
+      settingsTextureFiltering: ERenderTextureFiltering.ANISOTROPIC8,
+      settingsScale: ERenderScale.QUALITY,
+      settingsSharpening: 0.5,
+      settingsDlssPreset: ERenderDlssPreset.DEFAULT,
+      settingsRayReconstruction: true,
+      settingsResolution: ERenderResolution.AUTO,
+      settingsOutputScale: 1,
+      backend,
+      backends: null,
+      isUpscaled: true,
+      dlss: ERenderDlssAvailability.AVAILABLE,
+      features: mockLevelFeatureOptions(),
+      onToggle: () => {},
+      onChange: () => {},
+      onChangeBackend: () => {},
+    };
+    const { getByRole, findByRole, rerender } = renderWithProviders(
+      <LevelImageQualityAction {...props} isSceneLinear rayReconstruction={ERenderDlssAvailability.UNSUPPORTED} />
+    );
+
+    await userEvent.pointer({ keys: "[MouseRight]", target: getByRole("button", { name: "Image quality" }) });
+    await findByRole("dialog", { name: "Image quality" });
+
+    expect(getByRole("checkbox", { name: "Ray reconstruction" })).toBeDisabled();
+    expect(getByRole("checkbox", { name: "Ray reconstruction" })).not.toBeChecked();
+    expect(getByRole("checkbox", { name: "Ray reconstruction" })).toHaveAccessibleDescription(
+      "Needs an NVIDIA RTX GPU and a driver with DLSS ray reconstruction."
+    );
+
+    rerender(
+      <LevelImageQualityAction {...props} isSceneLinear={false} rayReconstruction={ERenderDlssAvailability.AVAILABLE} />
+    );
+
+    expect(getByRole("checkbox", { name: "Ray reconstruction" })).toBeDisabled();
+    expect(getByRole("checkbox", { name: "Ray reconstruction" })).toHaveAccessibleDescription(
+      "Needs the Enhanced tonemap: ray reconstruction works on linear light."
+    );
+  });
+
   it("shows FSR 2 standing in for DLSS where the GPU has none, DLSS greyed out with what it needs", async () => {
     const { getByRole, findByRole, getByText } = renderWithProviders(
       <LevelImageQualityAction
@@ -132,12 +225,15 @@ describe("LevelImageQualityAction", () => {
         settingsScale={ERenderScale.NATIVE}
         settingsSharpening={0.5}
         settingsDlssPreset={ERenderDlssPreset.DEFAULT}
+        settingsRayReconstruction={false}
+        isSceneLinear
         settingsResolution={ERenderResolution.AUTO}
         settingsOutputScale={1}
         backend={RENDER_BACKEND_AUTO}
         backends={null}
         isUpscaled
         dlss={ERenderDlssAvailability.UNSUPPORTED}
+        rayReconstruction={ERenderDlssAvailability.UNSUPPORTED}
         features={mockLevelFeatureOptions()}
         onToggle={() => {}}
         onChange={() => {}}
@@ -163,12 +259,15 @@ describe("LevelImageQualityAction", () => {
         settingsScale={ERenderScale.NATIVE}
         settingsSharpening={0.5}
         settingsDlssPreset={ERenderDlssPreset.DEFAULT}
+        settingsRayReconstruction={false}
+        isSceneLinear
         settingsResolution={ERenderResolution.AUTO}
         settingsOutputScale={1}
         backend={RENDER_BACKEND_AUTO}
         backends={null}
         isUpscaled
         dlss={ERenderDlssAvailability.AVAILABLE}
+        rayReconstruction={ERenderDlssAvailability.AVAILABLE}
         features={mockLevelFeatureOptions()}
         onToggle={() => {}}
         onChange={onChange}
@@ -196,12 +295,15 @@ describe("LevelImageQualityAction", () => {
         settingsScale={ERenderScale.NATIVE}
         settingsSharpening={0.5}
         settingsDlssPreset={ERenderDlssPreset.DEFAULT}
+        settingsRayReconstruction={false}
+        isSceneLinear
         settingsResolution={ERenderResolution.AUTO}
         settingsOutputScale={1}
         backend={RENDER_BACKEND_AUTO}
         backends={null}
         isUpscaled
         dlss={ERenderDlssAvailability.AVAILABLE}
+        rayReconstruction={ERenderDlssAvailability.AVAILABLE}
         features={mockLevelFeatureOptions({ output: { resolution: ERenderResolution.HEIGHT_1440 } })}
         onToggle={() => {}}
         onChange={onChange}
@@ -222,12 +324,15 @@ describe("LevelImageQualityAction", () => {
         settingsScale={ERenderScale.QUALITY}
         settingsSharpening={0.5}
         settingsDlssPreset={ERenderDlssPreset.DEFAULT}
+        settingsRayReconstruction={false}
+        isSceneLinear
         settingsResolution={ERenderResolution.AUTO}
         settingsOutputScale={1}
         backend={RENDER_BACKEND_AUTO}
         backends={null}
         isUpscaled
         dlss={ERenderDlssAvailability.AVAILABLE}
+        rayReconstruction={ERenderDlssAvailability.AVAILABLE}
         features={mockLevelFeatureOptions({ upscaling: { scale: ERenderScale.BALANCED } })}
         onToggle={() => {}}
         onChange={onChange}
@@ -259,6 +364,8 @@ describe("LevelImageQualityAction", () => {
         settingsScale={ERenderScale.NATIVE}
         settingsSharpening={0.5}
         settingsDlssPreset={ERenderDlssPreset.DEFAULT}
+        settingsRayReconstruction={false}
+        isSceneLinear
         settingsResolution={ERenderResolution.AUTO}
         settingsOutputScale={1}
         backend={RENDER_BACKEND_AUTO}
@@ -268,6 +375,7 @@ describe("LevelImageQualityAction", () => {
         ]}
         isUpscaled={false}
         dlss={ERenderDlssAvailability.UNSUPPORTED}
+        rayReconstruction={ERenderDlssAvailability.UNSUPPORTED}
         features={mockLevelFeatureOptions()}
         onToggle={() => {}}
         onChange={() => {}}
@@ -296,12 +404,15 @@ describe("LevelImageQualityAction", () => {
         settingsScale={ERenderScale.NATIVE}
         settingsSharpening={0.5}
         settingsDlssPreset={ERenderDlssPreset.DEFAULT}
+        settingsRayReconstruction={false}
+        isSceneLinear
         settingsResolution={ERenderResolution.AUTO}
         settingsOutputScale={1}
         backend={RENDER_BACKEND_AUTO}
         backends={null}
         isUpscaled
         dlss={ERenderDlssAvailability.AVAILABLE}
+        rayReconstruction={ERenderDlssAvailability.AVAILABLE}
         features={mockLevelFeatureOptions()}
         onToggle={() => {}}
         onChange={() => {}}

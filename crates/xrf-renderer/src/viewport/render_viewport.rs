@@ -222,7 +222,12 @@ impl RenderViewport {
   pub fn report(
     &mut self,
     now: Instant,
-    (backend, adapter, has_ray_queries, dlss): (RenderBackend, &str, bool, RenderDlssAvailability),
+    (backend, adapter, has_ray_queries, [dlss, ray_reconstruction]): (
+      RenderBackend,
+      &str,
+      bool,
+      [RenderDlssAvailability; 2],
+    ),
     (texture_bytes, allocator, scenes): (u64, Option<(u64, u64)>, &mut HashMap<RenderSceneId, LevelScene>),
     (timer, graph): (Option<&mut GraphTimer>, Option<&GraphReport>),
   ) {
@@ -290,6 +295,7 @@ impl RenderViewport {
       .and_then(SceneView::get_output_size)
       .unwrap_or((rect.width, rect.height));
     let antialiasing: RenderAntialiasing = shown.map_or(RenderAntialiasing::None, SceneView::get_antialiasing);
+    let is_ray_reconstructed: bool = shown.is_some_and(SceneView::is_ray_reconstructed);
     // The scene it shows, and the one it asks for while that comes in.
     let mut held: Vec<RenderSceneId> = self.shown.iter().map(|(id, _)| *id).chain(self.world.scene).collect();
 
@@ -319,10 +325,12 @@ impl RenderViewport {
       output_width,
       output_height,
       antialiasing,
+      is_ray_reconstructed,
       backend,
       adapter: adapter.to_string(),
       has_ray_queries,
       dlss,
+      ray_reconstruction,
       is_gpu_timed,
       passes,
       static_draws,
