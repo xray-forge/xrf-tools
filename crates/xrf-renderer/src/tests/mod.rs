@@ -39,6 +39,7 @@ mod scene_features;
 mod selection;
 mod shader_composer;
 mod shader_mirrors;
+mod shader_permutations;
 mod shader_watcher;
 mod shaders;
 mod shadow_tile_allocator;

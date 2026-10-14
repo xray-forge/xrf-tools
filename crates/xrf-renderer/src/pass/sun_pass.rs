@@ -7,6 +7,7 @@ use crate::frame::sun_shadow_maps::SunShadowMaps;
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline_with;
 use crate::pass::pipeline_source::PipelineSource;
+use crate::pass::sun_filter_permutation::SunFilterPermutation;
 use crate::pass::sun_parameters::SunParameters;
 use crate::pass::sun_trace_pass::SunTracePass;
 use crate::pass::view_binding::ViewBinding;
@@ -136,9 +137,13 @@ impl SunPass {
     layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<[[wgpu::RenderPipeline; 2]; Self::REACHES]> {
     let create = |entry: &'static str, reach: usize| {
+      let permutation: SunFilterPermutation = SunFilterPermutation {
+        sun_filter_reach: reach as i32,
+      };
+
       create_fullscreen_pipeline_with(
         source,
-        ("frame/sun", entry, &[("SUN_FILTER_REACH", reach as f64)]),
+        ("frame/sun", entry, &permutation),
         &[Some(view_layout), Some(layout)],
         &[Some(ViewTargets::LIGHT.into()), Some(Self::SEEN_FORMAT.into())],
       )

@@ -155,8 +155,9 @@ without timestamps inside encoders times nothing.
 ## Permutations and pipelines
 
 - **`ShaderPermutation`** (`#[derive(ShaderPermutation)]`) declares a shader's variants as a struct of `bool`, `u32`,
-  `i32` or `f32` fields (or any `ShaderOverride`): each a WGSL `override` constant of its name, declared by
-  `get_wgsl_overrides` and set from the field when a pipeline is made. A permutation switches code, never bindings.
+  `i32` or `f32` fields (or any `ShaderOverride`): each a WGSL `override` constant of its name in upper case, declared
+  by `get_wgsl_overrides` and set from the field when a pipeline is made. A permutation switches code, never bindings.
+  A description takes override constants only from one (`with_permutation`), never by name.
 - **`PipelineCache`** makes pipelines from hashable descriptions (`RenderPipelineDescription`,
   `ComputePipelineDescription`: module, entry points, the permutation's `PipelineConstants`, the bind group layouts by
   identity, the render state, owned `VertexLayout`s) and keeps them, and the modules they compile, by that key. WGSL

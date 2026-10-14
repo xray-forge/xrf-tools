@@ -5,9 +5,10 @@ use xrf_renderer_core::{PassParameters, RasterContext};
 use crate::contract::render_ambient_occlusion_quality::RenderAmbientOcclusionQuality;
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::bitmask_search::BitmaskSearch;
+use crate::pass::fullscreen_pipeline::{create_fullscreen_pipeline_into, create_fullscreen_pipeline_with};
 use crate::pass::pipeline_source::PipelineSource;
-use crate::pass::shader_pipelines::create_checked;
 use crate::pass::vbao_parameters::VbaoParameters;
+use crate::pass::vbao_permutation::VbaoPermutation;
 use crate::pass::view_binding::ViewBinding;
 
 /// Every quality, in the order their search pipelines are held.
@@ -200,45 +201,24 @@ impl VbaoPass {
     view_layout: &wgpu::BindGroupLayout,
     layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<VbaoPipelines> {
-    let device: &wgpu::Device = source.device;
-
-    let module: wgpu::ShaderModule = source.get_module("frame/vbao")?;
-    let pipeline_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-      label: Some("vbao"),
-      bind_group_layouts: &[Some(view_layout), Some(layout)],
-      ..Default::default()
-    });
-    let create =
-      |fragment: &str, constants: &[(&str, f64)], formats: &[wgpu::TextureFormat]| -> XrfResult<wgpu::RenderPipeline> {
-        let targets: Vec<Option<wgpu::ColorTargetState>> = formats.iter().map(|it| Some((*it).into())).collect();
-
-        create_checked(device, "vbao", || {
-          device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("vbao"),
-            layout: Some(&pipeline_layout),
-            vertex: wgpu::VertexState {
-              module: &module,
-              entry_point: Some("vs_fullscreen"),
-              compilation_options: Default::default(),
-              buffers: &[],
-            },
-            fragment: Some(wgpu::FragmentState {
-              module: &module,
-              entry_point: Some(fragment),
-              compilation_options: wgpu::PipelineCompilationOptions {
-                constants,
-                ..Default::default()
-              },
-              targets: &targets,
-            }),
-            primitive: Default::default(),
-            depth_stencil: None,
-            multisample: Default::default(),
-            multiview_mask: None,
-            cache: source.get_driver_cache(),
-          })
-        })
-      };
+    let layouts: [Option<&wgpu::BindGroupLayout>; 2] = [Some(view_layout), Some(layout)];
+    let targets = |formats: &[wgpu::TextureFormat]| -> Vec<Option<wgpu::ColorTargetState>> {
+      formats.iter().map(|it| Some((*it).into())).collect()
+    };
+    let search = |fragment: &'static str,
+                  permutation: &VbaoPermutation,
+                  formats: &[wgpu::TextureFormat]|
+     -> XrfResult<wgpu::RenderPipeline> {
+      create_fullscreen_pipeline_with(
+        source,
+        ("frame/vbao", fragment, permutation),
+        &layouts,
+        &targets(formats),
+      )
+    };
+    let create = |fragment: &'static str, formats: &[wgpu::TextureFormat]| -> XrfResult<wgpu::RenderPipeline> {
+      create_fullscreen_pipeline_into(source, "frame/vbao", fragment, &layouts, &targets(formats))
+    };
     let occluded: &[wgpu::TextureFormat] = &[ViewTargets::OCCLUSION];
     let lit: &[wgpu::TextureFormat] = &[ViewTargets::OCCLUSION, Self::LIGHT];
     let mut searches: Vec<wgpu::RenderPipeline> = Vec::with_capacity(QUALITIES.len());
@@ -246,27 +226,27 @@ impl VbaoPass {
 
     for quality in QUALITIES {
       let (slices, steps) = quality.get_vbao_search();
-      let constants: &[(&str, f64)] = &[("SLICES", slices as f64), ("STEPS", steps as f64)];
-      let lit_constants: &[(&str, f64)] = &[
-        ("SLICES", slices as f64),
-        ("STEPS", steps as f64),
-        ("FAR_STEPS", quality.get_indirect_steps() as f64),
-      ];
+      // An unlit search never steps past the occlusion's radius, so the far steps change only the lit one.
+      let permutation: VbaoPermutation = VbaoPermutation {
+        slices,
+        steps,
+        far_steps: quality.get_indirect_steps(),
+      };
 
-      searches.push(create("fs_search", constants, occluded)?);
-      lit_searches.push(create("fs_search_lit", lit_constants, lit)?);
+      searches.push(search("fs_search", &permutation, occluded)?);
+      lit_searches.push(search("fs_search_lit", &permutation, lit)?);
     }
 
     Ok(VbaoPipelines {
       searches,
       lit_searches,
-      accumulate: create("fs_accumulate", &[], &[Self::HISTORY])?,
-      lit_accumulate: create("fs_accumulate_lit", &[], &[Self::HISTORY, Self::HISTORY])?,
-      filter: create("fs_filter", &[], occluded)?,
-      lit_filter: create("fs_filter_lit", &[], lit)?,
-      light_filter: create("fs_filter_light", &[], &[Self::LIGHT])?,
-      light_source: create("fs_light_source", &[], &[Self::LIGHT])?,
-      points: create("fs_points", &[], &[Self::POINTS])?,
+      accumulate: create("fs_accumulate", &[Self::HISTORY])?,
+      lit_accumulate: create("fs_accumulate_lit", &[Self::HISTORY, Self::HISTORY])?,
+      filter: create("fs_filter", occluded)?,
+      lit_filter: create("fs_filter_lit", lit)?,
+      light_filter: create("fs_filter_light", &[Self::LIGHT])?,
+      light_source: create("fs_light_source", &[Self::LIGHT])?,
+      points: create("fs_points", &[Self::POINTS])?,
     })
   }
 }

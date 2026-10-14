@@ -91,9 +91,9 @@ assert_eq!(
 
 ## `ShaderPermutation`
 
-Declares a shader's permutation domain: each field a WGSL `override` constant of its name, its type from
-`ShaderOverride` (`bool`, `u32`, `i32`, `f32`, or an implementation of one's own), set from the field's value when a
-pipeline is made.
+Declares a shader's permutation domain: each field a WGSL `override` constant of its name in upper case, as WGSL
+constants are named, its type from `ShaderOverride` (`bool`, `u32`, `i32`, `f32`, or an implementation of one's own),
+set from the field's value when a pipeline is made. It is the only way a pipeline is given override constants.
 
 ```rust
 use xrf_renderer_core::ShaderPermutation;
@@ -106,8 +106,8 @@ struct Shadowing {
 
 let shadowing = Shadowing { is_shadow: true, cascade: 2 };
 
-assert_eq!(shadowing.list_constants(), [("is_shadow", 1.0), ("cascade", 2.0)]);
-assert_eq!(Shadowing::get_wgsl_overrides(), "override is_shadow: bool;
-override cascade: u32;
+assert_eq!(shadowing.list_constants(), [("IS_SHADOW", 1.0), ("CASCADE", 2.0)]);
+assert_eq!(Shadowing::get_wgsl_overrides(), "override IS_SHADOW: bool;
+override CASCADE: u32;
 ");
 ```

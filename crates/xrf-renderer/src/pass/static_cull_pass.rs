@@ -6,6 +6,7 @@ use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::shadow_cull::ShadowCull;
 use crate::pass::static_cull_parameters::StaticCullParameters;
 use crate::pass::static_cull_params::StaticCullParams;
+use crate::pass::static_cull_permutation::StaticCullPermutation;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::static_scene::static_batch::StaticBatch;
 use crate::scene::static_scene::static_cull_scratch::StaticCullScratch;
@@ -156,33 +157,34 @@ impl StaticCullPass {
     view_layout: &wgpu::BindGroupLayout,
     layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<([wgpu::ComputePipeline; 6], [[wgpu::ComputePipeline; 3]; 3])> {
-    let create = |entry: &'static str, constants: &[(&'static str, f64)]| -> XrfResult<wgpu::ComputePipeline> {
+    let create = |entry: &'static str, permutation: StaticCullPermutation| -> XrfResult<wgpu::ComputePipeline> {
       source.get_compute_pipeline(
         &ComputePipelineDescription::new(entry, "static/cull", entry)
-          .with_constants(constants)
+          .with_permutation(&permutation)
           .with_bind_group_layouts(&[Some(view_layout), Some(layout)]),
       )
     };
 
     let [impostors, singles, rows, clamp, late, clamp_late] = ENTRIES;
     let create_shadow = |kind: ShadowCull| -> XrfResult<[wgpu::ComputePipeline; 3]> {
-      let constants: &'static [(&'static str, f64)] = kind.get_constants();
+      let permutation: StaticCullPermutation = kind.get_permutation();
 
       Ok([
-        create(singles, constants)?,
-        create(rows, constants)?,
-        create(clamp, constants)?,
+        create(singles, permutation)?,
+        create(rows, permutation)?,
+        create(clamp, permutation)?,
       ])
     };
+    let camera: StaticCullPermutation = StaticCullPermutation::default();
 
     Ok((
       [
-        create(impostors, &[])?,
-        create(singles, &[])?,
-        create(rows, &[])?,
-        create(clamp, &[])?,
-        create(late, &[])?,
-        create(clamp_late, &[])?,
+        create(impostors, camera)?,
+        create(singles, camera)?,
+        create(rows, camera)?,
+        create(clamp, camera)?,
+        create(late, camera)?,
+        create(clamp_late, camera)?,
       ],
       [
         create_shadow(ShadowCull::Cascade)?,
