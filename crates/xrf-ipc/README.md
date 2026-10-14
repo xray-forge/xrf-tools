@@ -33,7 +33,8 @@ A crate marks its constants only while it emits bindings, with `xrf-ipc` an opti
 pub const RENDER_MAX_SHADOW_FILTER: u32 = 3;
 ```
 
-The value is what `serde_json` makes of it; the generator takes numbers, strings and booleans. Registration goes
+The value is what `serde_json` writes of it, an `f32` in its own shortest form; the generator takes numbers (integers
+only as far as a JavaScript number holds them exactly), strings and booleans. Registration goes
 through `inventory`, re-exported here with `serde_json` so a marking crate depends on `xrf-ipc` alone; the attribute
 comes from `xrf-ipc-derive`, and `to_value` and `parent_module_path` are what its expansion calls.
 

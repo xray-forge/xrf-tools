@@ -20,6 +20,9 @@ use crate::typescript::format::TypeScriptFormat;
 pub(crate) struct TypeModuleWriter;
 
 impl TypeModuleWriter {
+  /// The largest integer a JavaScript number holds exactly, `Number.MAX_SAFE_INTEGER`.
+  const MAX_SAFE_INTEGER: u64 = (1 << 53) - 1;
+
   /// Writes one module per declaring crate, answering with the ownership and the enums those modules establish.
   ///
   /// A crate's constants marked `#[xrf_ipc::constant]` open its module, after the imports and before the types.
@@ -139,8 +142,8 @@ impl TypeModuleWriter {
 
   /// One constant as the frontend declares it: its doc comment, then `export const NAME: type = value;`.
   ///
-  /// Fails on a name a type of the module already takes, on a value that does not serialize, and on one neither a
-  /// number, a string nor a boolean.
+  /// Fails on a name a type of the module already takes, on a value that does not serialize, on one neither a number,
+  /// a string nor a boolean, and on an integer a JavaScript number does not hold exactly.
   fn render_constant(constant: &IpcConstant, module: &str, ownership: &TypeOwnership) -> String {
     assert!(
       !ownership.is_declared_by(constant.name, module),
@@ -155,7 +158,20 @@ impl TypeModuleWriter {
       )
     });
     let kind: &str = match &value {
-      serde_json::Value::Number(_) => "number",
+      serde_json::Value::Number(number) => {
+        assert!(
+          number
+            .as_i64()
+            .map(i64::unsigned_abs)
+            .or(number.as_u64())
+            .is_none_or(|magnitude| magnitude <= Self::MAX_SAFE_INTEGER),
+          "Constant `{}` of `{}` is {number}, an integer a JavaScript number does not hold exactly",
+          constant.name,
+          constant.module_path
+        );
+
+        "number"
+      }
       serde_json::Value::String(_) => "string",
       serde_json::Value::Bool(_) => "boolean",
       other => panic!(
@@ -250,6 +266,41 @@ mod tests {
        */\n\
        export const EXPORTED_STEPS: number = 7;\n"
     );
+  }
+
+  #[test]
+  fn writes_an_f32_in_its_shortest_form() {
+    let rendered: String = render(&IpcConstant {
+      module_path: "xrf_fixture::limits",
+      name: "SHARE",
+      doc: "",
+      value: || xrf_ipc::to_value(&0.1_f32),
+    });
+
+    assert_eq!(rendered, "export const SHARE: number = 0.1;\n");
+  }
+
+  #[test]
+  fn writes_the_largest_integer_a_javascript_number_holds() {
+    let rendered: String = render(&IpcConstant {
+      module_path: "xrf_fixture::limits",
+      name: "LARGEST",
+      doc: "",
+      value: || xrf_ipc::to_value(&-9_007_199_254_740_991_i64),
+    });
+
+    assert_eq!(rendered, "export const LARGEST: number = -9007199254740991;\n");
+  }
+
+  #[test]
+  #[should_panic(expected = "Constant `HUGE` of `xrf_fixture::limits` is 9007199254740992, an integer a JavaScript")]
+  fn refuses_an_integer_a_javascript_number_does_not_hold() {
+    render(&IpcConstant {
+      module_path: "xrf_fixture::limits",
+      name: "HUGE",
+      doc: "",
+      value: || xrf_ipc::to_value(&9_007_199_254_740_992_u64),
+    });
   }
 
   #[test]

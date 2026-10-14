@@ -38,8 +38,9 @@ A constant marked `#[xrf_ipc::constant]` where it is declared lands in its crate
 list of them anywhere: `TypeModuleWriter` reads every `xrf_ipc::IpcConstant` linked into the binary and writes a
 module's constants after its imports and before its types, sorted by name, each under its doc comment as
 `export const NAME: number = 4;`. A crate with constants and no types still gets its module. The TypeScript type
-follows the serialized value (`number`, `string` or `boolean`); any other value, two constants of one name in a
-module, or a constant named as a type of its module fails the generation, naming the constant. `read_surface` reads
+follows the serialized value (`number`, an `f32` in its own shortest form, `string` or `boolean`); a value that does
+not serialize or is anything else, an integer a JavaScript number does not hold exactly, two constants of one name in
+a module, or a constant named as a type of its module fails the generation, naming the constant. `read_surface` reads
 an `export const` like any declaration, so a changed value is drift.
 
 `finalize_command_module` rewrites Specta's `invoke` import to the counted one and asserts the rewrite happened, so
