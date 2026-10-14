@@ -24,8 +24,8 @@ const SDKS_ROOT = path.join(REPOSITORY_ROOT, ".sdks");
 /** @type {ReadonlyArray<ISdk>} */
 const SDKS = [
   {
-    // DLSS 310.9.1: the NGX headers, the static libraries the `dlss` feature links, and the runtime library a build
-    // places beside its executable.
+    // DLSS 310.9.1: the NGX headers, the static libraries the `dlss` feature links, and the runtime libraries a build
+    // places beside its executable: super resolution's and ray reconstruction's.
     name: "dlss",
     repository: "https://github.com/NVIDIA/DLSS.git",
     commit: "374959484e79a640feaba44c93ac8cfb0a03f5b5",
@@ -35,8 +35,13 @@ const SDKS = [
         "/lib/Windows_x86_64/x64/nvsdk_ngx_d.lib",
         "/lib/Windows_x86_64/x64/nvsdk_ngx_s.lib",
         "/lib/Windows_x86_64/rel/nvngx_dlss.dll",
+        "/lib/Windows_x86_64/rel/nvngx_dlssd.dll",
       ],
-      linux: ["/lib/Linux_x86_64/libnvsdk_ngx.a", "/lib/Linux_x86_64/rel/libnvidia-ngx-dlss.so.310.9.1"],
+      linux: [
+        "/lib/Linux_x86_64/libnvsdk_ngx.a",
+        "/lib/Linux_x86_64/rel/libnvidia-ngx-dlss.so.310.9.1",
+        "/lib/Linux_x86_64/rel/libnvidia-ngx-dlssd.so.310.9.1",
+      ],
     },
   },
   {
