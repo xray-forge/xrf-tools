@@ -1,7 +1,8 @@
 use xrf_error::XrfResult;
 use xrf_renderer_core::{
   FrameGraph, GraphBindings, GraphBuffer, GraphBufferAccess, GraphColorAttachment, GraphDepthAttachment, GraphRuntime,
-  GraphTexture, GraphTextureDescriptor, PassParameters, RasterContext, RasterPassBuilder, StorageValue, UniformBinding,
+  GraphTexture, GraphTextureDescriptor, PassParameters, RasterContext, RasterPassBuilder, RenderPipelineDescription,
+  StorageValue, UniformBinding,
 };
 
 use crate::frame::view_targets::ViewTargets;
@@ -12,7 +13,6 @@ use crate::pass::enhanced_water_parameters::EnhancedWaterParameters;
 use crate::pass::enhanced_water_uniform::EnhancedWaterUniform;
 use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::reflection_scene_parameters::ReflectionSceneParameters;
-use crate::pass::shader_pipelines::create_checked;
 use crate::pass::static_draw_parameters::StaticDrawParameters;
 use crate::pass::static_draws::StaticDraws;
 use crate::pass::trace_request_handles::TraceRequestHandles;
@@ -468,43 +468,42 @@ impl WaterPass {
   ) -> XrfResult<Vec<WaterBatchPipelines>> {
     let device: &wgpu::Device = source.device;
 
-    let engine_module: wgpu::ShaderModule = source.get_module("static/water")?;
-    let enhanced_module: wgpu::ShaderModule = source.get_module("static/water_enhanced")?;
-    let reflection_module: wgpu::ShaderModule = source.get_module("static/water_reflection")?;
-    let create_layout = |label: &str, water: &wgpu::BindGroupLayout| {
-      device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-        label: Some(label),
-        bind_group_layouts: &[Some(view_layout), Some(texture_layout), Some(scene_layout), Some(water)],
-        ..Default::default()
-      })
-    };
-    let engine_layout: wgpu::PipelineLayout = create_layout("water", &WaterSurfaceParameters::create_layout(device));
-    let enhanced_layout: wgpu::PipelineLayout =
-      create_layout("water enhanced", &EnhancedWaterParameters::create_layout(device));
-    let depth_layout: wgpu::PipelineLayout = create_layout("water depth", &WaterDepthParameters::create_layout(device));
+    let engine_parameters: wgpu::BindGroupLayout = WaterSurfaceParameters::create_layout(device);
+    let enhanced_parameters: wgpu::BindGroupLayout = EnhancedWaterParameters::create_layout(device);
+    let depth_parameters: wgpu::BindGroupLayout = WaterDepthParameters::create_layout(device);
     let reflection_parameters: wgpu::BindGroupLayout = WaterReflectionParameters::create_layout(device);
-    let reflection_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-      label: Some("water reflection"),
-      bind_group_layouts: &[
-        Some(view_layout),
-        Some(texture_layout),
-        Some(scene_layout),
-        Some(request_layout),
-        Some(&reflection_parameters),
-      ],
-      ..Default::default()
-    });
-    let resolve_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-      label: Some("water reflection resolve"),
-      bind_group_layouts: &[
-        Some(view_layout),
-        Some(texture_layout),
-        Some(scene_layout),
-        None,
-        Some(&reflection_parameters),
-      ],
-      ..Default::default()
-    });
+    let engine_layouts: [Option<&wgpu::BindGroupLayout>; 4] = [
+      Some(view_layout),
+      Some(texture_layout),
+      Some(scene_layout),
+      Some(&engine_parameters),
+    ];
+    let enhanced_layouts: [Option<&wgpu::BindGroupLayout>; 4] = [
+      Some(view_layout),
+      Some(texture_layout),
+      Some(scene_layout),
+      Some(&enhanced_parameters),
+    ];
+    let depth_layouts: [Option<&wgpu::BindGroupLayout>; 4] = [
+      Some(view_layout),
+      Some(texture_layout),
+      Some(scene_layout),
+      Some(&depth_parameters),
+    ];
+    let reflection_layouts: [Option<&wgpu::BindGroupLayout>; 5] = [
+      Some(view_layout),
+      Some(texture_layout),
+      Some(scene_layout),
+      Some(request_layout),
+      Some(&reflection_parameters),
+    ];
+    let resolve_layouts: [Option<&wgpu::BindGroupLayout>; 5] = [
+      Some(view_layout),
+      Some(texture_layout),
+      Some(scene_layout),
+      None,
+      Some(&reflection_parameters),
+    ];
     let blended = |format: wgpu::TextureFormat| {
       Some(wgpu::ColorTargetState {
         format,
@@ -515,81 +514,59 @@ impl WaterPass {
     let targets: [Option<wgpu::ColorTargetState>; 2] = [blended(ViewTargets::SCENE), blended(ViewTargets::DISTORTION)];
     let reflection_targets: [Option<wgpu::ColorTargetState>; 1] = [Some(WaterReflection::FORMAT.into())];
     let current_targets: [Option<wgpu::ColorTargetState>; 1] = [Some(WaterReflection::CURRENT_FORMAT.into())];
-    fn vertex(module: &wgpu::ShaderModule) -> wgpu::VertexState<'_> {
-      wgpu::VertexState {
-        module,
-        entry_point: Some("vs_water"),
-        compilation_options: Default::default(),
-        buffers: &[],
-      }
-    }
-    let primitive = wgpu::PrimitiveState {
-      front_face: wgpu::FrontFace::Ccw,
-      cull_mode: Some(wgpu::Face::Back),
-      ..Default::default()
-    };
-    let depth_state = |is_written: bool| wgpu::DepthStencilState {
-      format: ViewTargets::DEPTH,
-      depth_write_enabled: Some(is_written),
-      depth_compare: Some(wgpu::CompareFunction::Greater),
-      stencil: Default::default(),
-      bias: Default::default(),
-    };
-    let surface = |label: &str,
-                   (module, layout, entry): (&wgpu::ShaderModule, &wgpu::PipelineLayout, &str),
-                   targets: &[Option<wgpu::ColorTargetState>]| {
-      create_checked(device, label, || {
-        device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-          label: Some(label),
-          layout: Some(layout),
-          vertex: vertex(module),
-          fragment: Some(wgpu::FragmentState {
-            module,
-            entry_point: Some(entry),
-            compilation_options: Default::default(),
-            targets,
-          }),
-          primitive,
-          depth_stencil: Some(depth_state(false)),
-          multisample: Default::default(),
-          multiview_mask: None,
-          cache: source.get_driver_cache(),
+    let describe = |label: &'static str,
+                    module: &'static str,
+                    bind_group_layouts: &[Option<&wgpu::BindGroupLayout>],
+                    is_written: bool|
+     -> RenderPipelineDescription {
+      RenderPipelineDescription::new(label, module, "vs_water")
+        .with_bind_group_layouts(bind_group_layouts)
+        .with_primitive(wgpu::PrimitiveState {
+          front_face: wgpu::FrontFace::Ccw,
+          cull_mode: Some(wgpu::Face::Back),
+          ..Default::default()
         })
-      })
+        .with_depth_stencil(wgpu::DepthStencilState {
+          format: ViewTargets::DEPTH,
+          depth_write_enabled: Some(is_written),
+          depth_compare: Some(wgpu::CompareFunction::Greater),
+          stencil: Default::default(),
+          bias: Default::default(),
+        })
+    };
+    let surface = |(label, module, entry): (&'static str, &'static str, &'static str),
+                   bind_group_layouts: &[Option<&wgpu::BindGroupLayout>],
+                   targets: &[Option<wgpu::ColorTargetState>]|
+     -> XrfResult<wgpu::RenderPipeline> {
+      source.get_render_pipeline(
+        &describe(label, module, bind_group_layouts, false)
+          .with_fragment(entry)
+          .with_targets(targets.to_vec()),
+      )
     };
 
     StaticBatch::list_water()
       .map(|_| {
-        let depth: wgpu::RenderPipeline = create_checked(device, "water depth", || {
-          device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("water depth"),
-            layout: Some(&depth_layout),
-            vertex: vertex(&engine_module),
-            fragment: None,
-            primitive,
-            depth_stencil: Some(depth_state(true)),
-            multisample: Default::default(),
-            multiview_mask: None,
-            cache: source.get_driver_cache(),
-          })
-        })?;
-
         Ok(WaterBatchPipelines {
-          depth,
+          depth: source.get_render_pipeline(&describe("water depth", "static/water", &depth_layouts, true))?,
           reflection: surface(
-            "water reflection",
-            (&reflection_module, &reflection_layout, "fs_water_reflection"),
+            ("water reflection", "static/water_reflection", "fs_water_reflection"),
+            &reflection_layouts,
             &current_targets,
           )?,
           reflection_resolve: surface(
-            "water reflection resolve",
-            (&reflection_module, &resolve_layout, "fs_water_resolve"),
+            (
+              "water reflection resolve",
+              "static/water_reflection",
+              "fs_water_resolve",
+            ),
+            &resolve_layouts,
             &reflection_targets,
           )?,
-          engine: surface("water", (&engine_module, &engine_layout, "fs_water"), &targets)?,
+          engine: surface(("water", "static/water", "fs_water"), &engine_layouts, &targets)?,
           enhanced: surface(
-            "water enhanced",
-            (&enhanced_module, &enhanced_layout, "fs_water_enhanced"),
+            ("water enhanced", "static/water_enhanced", "fs_water_enhanced"),
+            &enhanced_layouts,
             &targets,
           )?,
         })

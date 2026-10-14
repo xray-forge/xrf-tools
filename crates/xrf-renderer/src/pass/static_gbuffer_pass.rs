@@ -5,7 +5,6 @@ use crate::frame::pick_target::PickTarget;
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::composited_pass::CompositedPass;
 use crate::pass::pipeline_source::PipelineSource;
-use crate::pass::shader_pipelines::create_checked;
 use crate::pass::static_draw_parameters::StaticDrawParameters;
 use crate::pass::static_draw_permutation::StaticDrawPermutation;
 use crate::pass::static_draws::StaticDraws;
@@ -186,48 +185,25 @@ impl StaticGBufferPass {
     layout: &wgpu::BindGroupLayout,
     texture_layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<[wgpu::RenderPipeline; 2]> {
-    let device: &wgpu::Device = source.device;
-
-    let module: wgpu::ShaderModule = source.get_module("static/impostor")?;
-    let pipeline_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-      label: Some("static impostors"),
-      bind_group_layouts: &[Some(view_layout), Some(texture_layout), Some(layout)],
-      ..Default::default()
-    });
     // An impostor marches no relief.
     let targets: [Option<wgpu::ColorTargetState>; 5] = ViewTargets::get_gbuffer_targets(false);
     let pick_targets: [Option<wgpu::ColorTargetState>; 1] = [Some(PickTarget::FORMAT.into())];
-    let create = |fragment: &str, targets: &[Option<wgpu::ColorTargetState>]| -> XrfResult<wgpu::RenderPipeline> {
-      create_checked(device, "static impostors", || {
-        device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-          label: Some("static impostors"),
-          layout: Some(&pipeline_layout),
-          vertex: wgpu::VertexState {
-            module: &module,
-            entry_point: Some("vs_impostor"),
-            compilation_options: Default::default(),
-            buffers: &[],
-          },
-          fragment: Some(wgpu::FragmentState {
-            module: &module,
-            entry_point: Some(fragment),
-            compilation_options: Default::default(),
-            targets,
-          }),
-          primitive: Default::default(),
-          depth_stencil: Some(wgpu::DepthStencilState {
-            format: ViewTargets::DEPTH,
-            depth_write_enabled: Some(true),
-            depth_compare: Some(wgpu::CompareFunction::Greater),
-            stencil: Default::default(),
-            bias: Default::default(),
-          }),
-          multisample: Default::default(),
-          multiview_mask: None,
-          cache: source.get_driver_cache(),
-        })
-      })
-    };
+    let create =
+      |fragment: &'static str, targets: &[Option<wgpu::ColorTargetState>]| -> XrfResult<wgpu::RenderPipeline> {
+        source.get_render_pipeline(
+          &RenderPipelineDescription::new("static impostors", "static/impostor", "vs_impostor")
+            .with_fragment(fragment)
+            .with_bind_group_layouts(&[Some(view_layout), Some(texture_layout), Some(layout)])
+            .with_depth_stencil(wgpu::DepthStencilState {
+              format: ViewTargets::DEPTH,
+              depth_write_enabled: Some(true),
+              depth_compare: Some(wgpu::CompareFunction::Greater),
+              stencil: Default::default(),
+              bias: Default::default(),
+            })
+            .with_targets(targets.to_vec()),
+        )
+      };
 
     Ok([
       create("fs_impostor", &targets)?,

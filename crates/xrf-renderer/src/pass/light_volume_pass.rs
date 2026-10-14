@@ -1,10 +1,9 @@
 use xrf_error::XrfResult;
-use xrf_renderer_core::{PassParameters, RasterContext};
+use xrf_renderer_core::{PassParameters, RasterContext, RenderPipelineDescription};
 
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::light_volume_parameters::LightVolumeParameters;
 use crate::pass::pipeline_source::PipelineSource;
-use crate::pass::shader_pipelines::create_checked;
 use crate::pass::view_binding::ViewBinding;
 
 /// Draws the shadowed local lights' shafts (`accum_volumetric`) into a target of their own at half the frame's size,
@@ -103,89 +102,50 @@ impl LightVolumePass {
     source: PipelineSource<'_>,
     layouts: [&wgpu::BindGroupLayout; 3],
   ) -> XrfResult<[wgpu::RenderPipeline; 2]> {
-    let device: &wgpu::Device = source.device;
-
-    let module: wgpu::ShaderModule = source.get_module("frame/light_volumes")?;
-    let pipeline_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-      label: Some("light volumes"),
-      bind_group_layouts: &layouts.map(Some),
-      ..Default::default()
-    });
+    let bind_group_layouts: [Option<&wgpu::BindGroupLayout>; 3] = layouts.map(Some);
     let added: wgpu::BlendComponent = wgpu::BlendComponent {
       src_factor: wgpu::BlendFactor::One,
       dst_factor: wgpu::BlendFactor::One,
       operation: wgpu::BlendOperation::Add,
     };
 
-    let slices: wgpu::RenderPipeline = create_checked(device, "fs_light_volume", || {
-      device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-        label: Some("light volumes"),
-        layout: Some(&pipeline_layout),
-        vertex: wgpu::VertexState {
-          module: &module,
-          entry_point: Some("vs_light_volume"),
-          compilation_options: Default::default(),
-          buffers: &[],
-        },
-        fragment: Some(wgpu::FragmentState {
-          module: &module,
-          entry_point: Some("fs_light_volume"),
-          compilation_options: Default::default(),
-          targets: &[Some(wgpu::ColorTargetState {
-            format: Self::FORMAT,
-            blend: Some(wgpu::BlendState {
-              color: added,
-              alpha: added,
-            }),
-            write_mask: wgpu::ColorWrites::COLOR,
-          })],
-        }),
+    let slices: wgpu::RenderPipeline = source.get_render_pipeline(
+      &RenderPipelineDescription::new("light volumes", "frame/light_volumes", "vs_light_volume")
+        .with_fragment("fs_light_volume")
+        .with_bind_group_layouts(&bind_group_layouts)
         // `accum_volumetric.s`: both sides, the scene's depth tested and never written.
-        primitive: wgpu::PrimitiveState {
+        .with_primitive(wgpu::PrimitiveState {
           cull_mode: None,
           ..Default::default()
-        },
-        depth_stencil: Some(wgpu::DepthStencilState {
+        })
+        .with_depth_stencil(wgpu::DepthStencilState {
           format: ViewTargets::DEPTH,
           depth_write_enabled: Some(false),
           depth_compare: Some(wgpu::CompareFunction::GreaterEqual),
           stencil: Default::default(),
           bias: Default::default(),
+        })
+        .with_target(wgpu::ColorTargetState {
+          format: Self::FORMAT,
+          blend: Some(wgpu::BlendState {
+            color: added,
+            alpha: added,
+          }),
+          write_mask: wgpu::ColorWrites::COLOR,
         }),
-        multisample: Default::default(),
-        multiview_mask: None,
-        cache: source.get_driver_cache(),
-      })
-    })?;
-    let depth: wgpu::RenderPipeline = create_checked(device, "fs_volume_depth", || {
-      device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-        label: Some("light volumes depth"),
-        layout: Some(&pipeline_layout),
-        vertex: wgpu::VertexState {
-          module: &module,
-          entry_point: Some("vs_fullscreen"),
-          compilation_options: Default::default(),
-          buffers: &[],
-        },
-        fragment: Some(wgpu::FragmentState {
-          module: &module,
-          entry_point: Some("fs_volume_depth"),
-          compilation_options: Default::default(),
-          targets: &[],
-        }),
-        primitive: Default::default(),
-        depth_stencil: Some(wgpu::DepthStencilState {
+    )?;
+    let depth: wgpu::RenderPipeline = source.get_render_pipeline(
+      &RenderPipelineDescription::new("light volumes depth", "frame/light_volumes", "vs_fullscreen")
+        .with_fragment("fs_volume_depth")
+        .with_bind_group_layouts(&bind_group_layouts)
+        .with_depth_stencil(wgpu::DepthStencilState {
           format: ViewTargets::DEPTH,
           depth_write_enabled: Some(true),
           depth_compare: Some(wgpu::CompareFunction::Always),
           stencil: Default::default(),
           bias: Default::default(),
         }),
-        multisample: Default::default(),
-        multiview_mask: None,
-        cache: source.get_driver_cache(),
-      })
-    })?;
+    )?;
 
     Ok([slices, depth])
   }

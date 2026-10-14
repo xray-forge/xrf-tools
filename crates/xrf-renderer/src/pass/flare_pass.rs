@@ -1,5 +1,7 @@
 use xrf_error::XrfResult;
-use xrf_renderer_core::{ComputeContext, ComputePipelineDescription, PassParameters, RasterContext};
+use xrf_renderer_core::{
+  ComputeContext, ComputePipelineDescription, PassParameters, RasterContext, RenderPipelineDescription,
+};
 
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::flare_draw_parameters::FlareDrawParameters;
@@ -7,7 +9,6 @@ use crate::pass::flare_measure_parameters::FlareMeasureParameters;
 use crate::pass::flare_texture_parameters::FlareTextureParameters;
 use crate::pass::flare_uniform::FlareUniform;
 use crate::pass::pipeline_source::PipelineSource;
-use crate::pass::shader_pipelines::create_checked;
 use crate::pass::view_binding::ViewBinding;
 
 /// Measures how much of the sun shows and draws the lens flares and the gradient over a viewport's finished frame, as
@@ -118,54 +119,28 @@ impl FlarePass {
     view_layout: &wgpu::BindGroupLayout,
     [measure_layout, draw_layout, texture_layout]: [&wgpu::BindGroupLayout; 3],
   ) -> XrfResult<(wgpu::ComputePipeline, wgpu::RenderPipeline)> {
-    let device: &wgpu::Device = source.device;
-
-    let draw_module: wgpu::ShaderModule = source.get_module("frame/flare")?;
-    let draw_pipeline_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-      label: Some("flare"),
-      bind_group_layouts: &[Some(view_layout), Some(draw_layout), Some(texture_layout)],
-      ..Default::default()
-    });
     let added: wgpu::BlendComponent = wgpu::BlendComponent {
       src_factor: wgpu::BlendFactor::SrcAlpha,
       dst_factor: wgpu::BlendFactor::One,
       operation: wgpu::BlendOperation::Add,
     };
-    let targets: [Option<wgpu::ColorTargetState>; 1] = [Some(wgpu::ColorTargetState {
-      format: ViewTargets::SCENE,
-      blend: Some(wgpu::BlendState {
-        color: added,
-        alpha: added,
-      }),
-      write_mask: wgpu::ColorWrites::COLOR,
-    })];
     let measure: wgpu::ComputePipeline = source.get_compute_pipeline(
       &ComputePipelineDescription::new("flare visibility", "frame/flare_visibility", "cs_visibility")
         .with_bind_group_layouts(&[Some(view_layout), Some(measure_layout)]),
     )?;
-    let draw: wgpu::RenderPipeline = create_checked(device, "flare", || {
-      device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-        label: Some("flare"),
-        layout: Some(&draw_pipeline_layout),
-        vertex: wgpu::VertexState {
-          module: &draw_module,
-          entry_point: Some("vs_flare"),
-          compilation_options: Default::default(),
-          buffers: &[],
-        },
-        fragment: Some(wgpu::FragmentState {
-          module: &draw_module,
-          entry_point: Some("fs_flare"),
-          compilation_options: Default::default(),
-          targets: &targets,
+    let draw: wgpu::RenderPipeline = source.get_render_pipeline(
+      &RenderPipelineDescription::new("flare", "frame/flare", "vs_flare")
+        .with_fragment("fs_flare")
+        .with_bind_group_layouts(&[Some(view_layout), Some(draw_layout), Some(texture_layout)])
+        .with_target(wgpu::ColorTargetState {
+          format: ViewTargets::SCENE,
+          blend: Some(wgpu::BlendState {
+            color: added,
+            alpha: added,
+          }),
+          write_mask: wgpu::ColorWrites::COLOR,
         }),
-        primitive: Default::default(),
-        depth_stencil: None,
-        multisample: Default::default(),
-        multiview_mask: None,
-        cache: source.get_driver_cache(),
-      })
-    })?;
+    )?;
 
     Ok((measure, draw))
   }

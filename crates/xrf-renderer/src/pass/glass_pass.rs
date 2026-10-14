@@ -1,5 +1,7 @@
 use xrf_error::XrfResult;
-use xrf_renderer_core::{ComputeContext, ComputePipelineDescription, PassParameters, RasterContext};
+use xrf_renderer_core::{
+  ComputeContext, ComputePipelineDescription, PassParameters, RasterContext, RenderPipelineDescription,
+};
 
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::composited_pass::CompositedPass;
@@ -8,7 +10,6 @@ use crate::pass::glass_copy_parameters::GlassCopyParameters;
 use crate::pass::glass_copy_permutation::GlassCopyPermutation;
 use crate::pass::glass_parameters::GlassParameters;
 use crate::pass::pipeline_source::PipelineSource;
-use crate::pass::shader_pipelines::create_checked;
 use crate::pass::sky_parameters::SkyParameters;
 use crate::pass::static_draw_parameters::StaticDrawParameters;
 use crate::pass::view_binding::ViewBinding;
@@ -188,58 +189,35 @@ impl GlassPass {
     [view_layout, scene_layout, texture_layout, sky_layout]: &[wgpu::BindGroupLayout; 4],
     layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<Vec<wgpu::RenderPipeline>> {
-    let device: &wgpu::Device = source.device;
-
-    let module: wgpu::ShaderModule = source.get_module("static/glass")?;
-    let pipeline_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-      label: Some("glass"),
-      bind_group_layouts: &[
-        Some(view_layout),
-        Some(texture_layout),
-        Some(scene_layout),
-        Some(layout),
-        Some(sky_layout),
-      ],
-      ..Default::default()
-    });
-    let targets: [Option<wgpu::ColorTargetState>; 1] = [Some(ViewTargets::SCENE.into())];
+    let bind_group_layouts: [Option<&wgpu::BindGroupLayout>; 5] = [
+      Some(view_layout),
+      Some(texture_layout),
+      Some(scene_layout),
+      Some(layout),
+      Some(sky_layout),
+    ];
 
     StaticLayout::ALL
       .into_iter()
       .map(|layout| {
-        create_checked(device, "fs_glass", || {
-          device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("glass"),
-            layout: Some(&pipeline_layout),
-            vertex: wgpu::VertexState {
-              module: &module,
-              entry_point: Some(layout.get_vertex_entry()),
-              compilation_options: Default::default(),
-              buffers: &[],
-            },
-            fragment: Some(wgpu::FragmentState {
-              module: &module,
-              entry_point: Some("fs_glass"),
-              compilation_options: Default::default(),
-              targets: &targets,
-            }),
-            primitive: wgpu::PrimitiveState {
+        source.get_render_pipeline(
+          &RenderPipelineDescription::new("glass", "static/glass", layout.get_vertex_entry())
+            .with_fragment("fs_glass")
+            .with_bind_group_layouts(&bind_group_layouts)
+            .with_primitive(wgpu::PrimitiveState {
               front_face: wgpu::FrontFace::Ccw,
               cull_mode: Some(wgpu::Face::Back),
               ..Default::default()
-            },
-            depth_stencil: Some(wgpu::DepthStencilState {
+            })
+            .with_depth_stencil(wgpu::DepthStencilState {
               format: ViewTargets::DEPTH,
               depth_write_enabled: Some(false),
               depth_compare: Some(wgpu::CompareFunction::GreaterEqual),
               stencil: Default::default(),
               bias: CompositedPass::DEPTH_BIAS,
-            }),
-            multisample: Default::default(),
-            multiview_mask: None,
-            cache: source.get_driver_cache(),
-          })
-        })
+            })
+            .with_target(ViewTargets::SCENE.into()),
+        )
       })
       .collect()
   }

@@ -1,11 +1,10 @@
 use std::collections::HashMap;
 
 use xrf_error::XrfResult;
-use xrf_renderer_core::{PassParameters, RasterContext};
+use xrf_renderer_core::{PassParameters, RasterContext, RenderPipelineDescription, VertexLayout};
 
 use crate::pass::overlay_parameters::OverlayParameters;
 use crate::pass::pipeline_source::PipelineSource;
-use crate::pass::shader_pipelines::create_checked;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::level_overlays::LevelOverlays;
 
@@ -75,71 +74,49 @@ impl OverlayPass {
     source: PipelineSource<'_>,
     format: wgpu::TextureFormat,
   ) -> XrfResult<[wgpu::RenderPipeline; 3]> {
-    let device: &wgpu::Device = source.device;
-    let module: wgpu::ShaderModule = source.get_module("frame/overlay")?;
-    let layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-      label: Some("overlay"),
-      bind_group_layouts: &[Some(&self.view_layout), Some(&self.layout)],
-      ..Default::default()
-    });
-    let line_attributes: [wgpu::VertexAttribute; 2] = wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x4];
-    let sun_attributes: [wgpu::VertexAttribute; 1] = wgpu::vertex_attr_array![0 => Float32x4];
-    let point_attributes: [wgpu::VertexAttribute; 2] = wgpu::vertex_attr_array![0 => Float32x4, 1 => Float32x4];
-    let create = |entries: (&str, &str), topology: wgpu::PrimitiveTopology, buffer: wgpu::VertexBufferLayout<'_>| {
-      create_checked(device, "overlay", || {
-        device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-          label: Some(entries.0),
-          layout: Some(&layout),
-          vertex: wgpu::VertexState {
-            module: &module,
-            entry_point: Some(entries.0),
-            compilation_options: Default::default(),
-            buffers: &[Some(buffer)],
-          },
-          fragment: Some(wgpu::FragmentState {
-            module: &module,
-            entry_point: Some(entries.1),
-            compilation_options: Default::default(),
-            targets: &[Some(format.into())],
-          }),
-          primitive: wgpu::PrimitiveState {
+    let create = |(vertex, fragment): (&'static str, &'static str),
+                  topology: wgpu::PrimitiveTopology,
+                  buffer: VertexLayout|
+     -> XrfResult<wgpu::RenderPipeline> {
+      source.get_render_pipeline(
+        &RenderPipelineDescription::new(vertex, "frame/overlay", vertex)
+          .with_fragment(fragment)
+          .with_bind_group_layouts(&[Some(&self.view_layout), Some(&self.layout)])
+          .with_vertex_layout(buffer)
+          .with_primitive(wgpu::PrimitiveState {
             topology,
             ..Default::default()
-          },
-          depth_stencil: None,
-          multisample: Default::default(),
-          multiview_mask: None,
-          cache: source.get_driver_cache(),
-        })
-      })
+          })
+          .with_target(format.into()),
+      )
     };
     let lines: wgpu::RenderPipeline = create(
       ("vs_line", "fs_line"),
       wgpu::PrimitiveTopology::LineList,
-      wgpu::VertexBufferLayout {
-        array_stride: 28,
-        step_mode: wgpu::VertexStepMode::Vertex,
-        attributes: &line_attributes,
-      },
+      VertexLayout::new(
+        28,
+        wgpu::VertexStepMode::Vertex,
+        &wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x4],
+      ),
     )?;
     let sun: wgpu::RenderPipeline = create(
       ("vs_sun", "fs_sun"),
       wgpu::PrimitiveTopology::TriangleList,
-      wgpu::VertexBufferLayout {
-        array_stride: 16,
-        step_mode: wgpu::VertexStepMode::Instance,
-        attributes: &sun_attributes,
-      },
+      VertexLayout::new(
+        16,
+        wgpu::VertexStepMode::Instance,
+        &wgpu::vertex_attr_array![0 => Float32x4],
+      ),
     )?;
 
     let points: wgpu::RenderPipeline = create(
       ("vs_point", "fs_point"),
       wgpu::PrimitiveTopology::TriangleList,
-      wgpu::VertexBufferLayout {
-        array_stride: 32,
-        step_mode: wgpu::VertexStepMode::Instance,
-        attributes: &point_attributes,
-      },
+      VertexLayout::new(
+        32,
+        wgpu::VertexStepMode::Instance,
+        &wgpu::vertex_attr_array![0 => Float32x4, 1 => Float32x4],
+      ),
     )?;
 
     Ok([lines, sun, points])

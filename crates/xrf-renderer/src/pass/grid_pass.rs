@@ -1,7 +1,7 @@
 use xrf_error::XrfResult;
+use xrf_renderer_core::RenderPipelineDescription;
 
 use crate::pass::pipeline_source::PipelineSource;
-use crate::pass::shader_pipelines::create_checked;
 use crate::pass::view_binding::ViewBinding;
 
 /// Draws the ground grid and a plain sky over a whole viewport.
@@ -56,37 +56,11 @@ impl GridPass {
     view_layout: &wgpu::BindGroupLayout,
     format: wgpu::TextureFormat,
   ) -> XrfResult<wgpu::RenderPipeline> {
-    let device: &wgpu::Device = source.device;
-
-    let module: wgpu::ShaderModule = source.get_module("grid/grid")?;
-    let layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-      label: Some("grid"),
-      bind_group_layouts: &[Some(view_layout)],
-      ..Default::default()
-    });
-
-    create_checked(device, "grid", || {
-      device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-        label: Some("grid"),
-        layout: Some(&layout),
-        vertex: wgpu::VertexState {
-          module: &module,
-          entry_point: Some("vs_grid"),
-          compilation_options: Default::default(),
-          buffers: &[],
-        },
-        fragment: Some(wgpu::FragmentState {
-          module: &module,
-          entry_point: Some("fs_grid"),
-          compilation_options: Default::default(),
-          targets: &[Some(format.into())],
-        }),
-        primitive: Default::default(),
-        depth_stencil: None,
-        multisample: Default::default(),
-        multiview_mask: None,
-        cache: source.get_driver_cache(),
-      })
-    })
+    source.get_render_pipeline(
+      &RenderPipelineDescription::new("grid", "grid/grid", "vs_grid")
+        .with_fragment("fs_grid")
+        .with_bind_group_layouts(&[Some(view_layout)])
+        .with_target(format.into()),
+    )
   }
 }

@@ -2,8 +2,8 @@ use xrf_error::XrfResult;
 use xrf_renderer_core::{PassParameters, RasterContext};
 
 use crate::context::gpu_requirements::can_trace;
+use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline;
 use crate::pass::pipeline_source::PipelineSource;
-use crate::pass::shader_pipelines::create_checked;
 use crate::pass::sun_trace_parameters::SunTraceParameters;
 use crate::pass::trace_parameters::TraceParameters;
 use crate::pass::view_binding::ViewBinding;
@@ -94,12 +94,9 @@ impl SunTracePass {
     view_layout: &wgpu::BindGroupLayout,
     layouts: Option<&[wgpu::BindGroupLayout; 3]>,
   ) -> XrfResult<Option<wgpu::RenderPipeline>> {
-    let device: &wgpu::Device = source.device;
-
     let Some([parameters_layout, trace_layout, texture_layout]) = layouts else {
       return Ok(None);
     };
-    let module: wgpu::ShaderModule = source.get_module("frame/sun_trace")?;
     let mut groups: [Option<&wgpu::BindGroupLayout>; 5] = [None; 5];
 
     groups[0] = Some(view_layout);
@@ -107,35 +104,6 @@ impl SunTracePass {
     groups[Self::TRACE_GROUP as usize] = Some(trace_layout);
     groups[Self::TEXTURE_GROUP as usize] = Some(texture_layout);
 
-    let pipeline_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-      label: Some("sun trace"),
-      bind_group_layouts: &groups,
-      ..Default::default()
-    });
-
-    create_checked(device, "sun trace", || {
-      device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-        label: Some("sun trace"),
-        layout: Some(&pipeline_layout),
-        vertex: wgpu::VertexState {
-          module: &module,
-          entry_point: Some("vs_fullscreen"),
-          compilation_options: Default::default(),
-          buffers: &[],
-        },
-        fragment: Some(wgpu::FragmentState {
-          module: &module,
-          entry_point: Some("fs_sun_trace"),
-          compilation_options: Default::default(),
-          targets: &[Some(Self::FORMAT.into())],
-        }),
-        primitive: Default::default(),
-        depth_stencil: None,
-        multisample: Default::default(),
-        multiview_mask: None,
-        cache: source.get_driver_cache(),
-      })
-    })
-    .map(Some)
+    create_fullscreen_pipeline(source, "frame/sun_trace", "fs_sun_trace", &groups, Self::FORMAT).map(Some)
   }
 }

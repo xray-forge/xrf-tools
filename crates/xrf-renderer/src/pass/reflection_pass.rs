@@ -3,9 +3,9 @@ use xrf_error::XrfResult;
 use xrf_renderer_core::{PassParameters, RasterContext};
 
 use crate::frame::reflection_history::ReflectionHistory;
+use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline_into;
 use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::reflection_parameters::ReflectionParameters;
-use crate::pass::shader_pipelines::create_checked;
 use crate::pass::sky_parameters::SkyParameters;
 use crate::pass::trace_request_parameters::TraceRequestParameters;
 use crate::pass::view_binding::ViewBinding;
@@ -224,48 +224,16 @@ impl ReflectionPass {
     (view_layout, layout, sky_layout): (&wgpu::BindGroupLayout, &wgpu::BindGroupLayout, &wgpu::BindGroupLayout),
     request_layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<ReflectionPipelines> {
-    let device: &wgpu::Device = source.device;
-
-    let module: wgpu::ShaderModule = source.get_module("frame/reflections")?;
-    let traced_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-      label: Some("reflection trace"),
-      bind_group_layouts: &[Some(view_layout), Some(layout), Some(sky_layout), Some(request_layout)],
-      ..Default::default()
-    });
-    let stage_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-      label: Some("reflections"),
-      bind_group_layouts: &[Some(view_layout), Some(layout)],
-      ..Default::default()
-    });
-    let create = |pipeline_layout: &wgpu::PipelineLayout,
-                  fragment: &str,
+    let traced_layout: [Option<&wgpu::BindGroupLayout>; 4] =
+      [Some(view_layout), Some(layout), Some(sky_layout), Some(request_layout)];
+    let stage_layout: [Option<&wgpu::BindGroupLayout>; 2] = [Some(view_layout), Some(layout)];
+    let create = |layouts: &[Option<&wgpu::BindGroupLayout>],
+                  fragment: &'static str,
                   formats: &[wgpu::TextureFormat]|
      -> XrfResult<wgpu::RenderPipeline> {
       let targets: Vec<Option<wgpu::ColorTargetState>> = formats.iter().map(|it| Some((*it).into())).collect();
 
-      create_checked(device, fragment, || {
-        device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-          label: Some(fragment),
-          layout: Some(pipeline_layout),
-          vertex: wgpu::VertexState {
-            module: &module,
-            entry_point: Some("vs_fullscreen"),
-            compilation_options: Default::default(),
-            buffers: &[],
-          },
-          fragment: Some(wgpu::FragmentState {
-            module: &module,
-            entry_point: Some(fragment),
-            compilation_options: Default::default(),
-            targets: &targets,
-          }),
-          primitive: Default::default(),
-          depth_stencil: None,
-          multisample: Default::default(),
-          multiview_mask: None,
-          cache: source.get_driver_cache(),
-        })
-      })
+      create_fullscreen_pipeline_into(source, "frame/reflections", fragment, layouts, &targets)
     };
 
     Ok(ReflectionPipelines {
