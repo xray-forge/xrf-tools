@@ -1,5 +1,6 @@
 import { EventBus, inject, Injectable, OnDeactivation, OnDeprovision, OnProvision, ProvisionId } from "@wirestate/core";
 import { BoundAction, Computed, flowResult, Observable } from "@wirestate/mobx";
+import { formatDuration } from "@xrf/format";
 import { Nullable, Optional } from "@xrf/types";
 
 import { describeExtractOutcome } from "@/applications/archives-explorer/lib/describe-extract-outcome";
@@ -42,7 +43,6 @@ import { emitNotification, ENotificationSeverity } from "@/core/notifications/li
 import { EPathEntryKind } from "@/core/path/entry-kind";
 import { EApplicationId } from "@/core/routing/application";
 import { AsyncState } from "@/lib/async-state";
-import { formatDuration } from "@/lib/format/duration";
 import { Logger, Timer } from "@/lib/logging";
 import { call, cancelFlow, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 

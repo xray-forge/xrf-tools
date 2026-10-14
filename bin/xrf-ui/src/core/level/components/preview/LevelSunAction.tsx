@@ -1,5 +1,6 @@
 import { default as WbSunnyIcon } from "@mui/icons-material/WbSunny";
 import { Button, Typography } from "@mui/material";
+import { formatDegrees } from "@xrf/format";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useMemo } from "react";
 
@@ -24,7 +25,6 @@ import { RenderValueSlider } from "@/core/render/components/controls/RenderValue
 import { TRenderVolumetricSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { EditorPopoverAction } from "@/core/shell/editor/EditorPopoverAction";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
-import { formatDegrees } from "@/lib/format/angle";
 
 /** The keys the popover sets. */
 const SUN_KEYS: ReadonlyArray<keyof ILevelManualWeather> = [

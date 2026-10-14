@@ -1,3 +1,4 @@
+import { formatBytesPair, formatDuration } from "@xrf/format";
 import { ReactElement, useMemo } from "react";
 
 import { ArchivePackResult } from "@/core/ipc/types/xrf-pack";
@@ -6,8 +7,6 @@ import { CommandResult, ICommandResultStat } from "@/core/ui/command-result/Comm
 import { CommandResultPathList } from "@/core/ui/command-result/CommandResultPathList";
 import { RevealPathButton } from "@/core/ui/reveal/RevealPathButton";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { formatDuration } from "@/lib/format/duration";
-import { formatBytesPair } from "@/lib/memory/format";
 
 interface IArchivesPackResultProps extends BaseComponentProps {
   result: ArchivePackResult;

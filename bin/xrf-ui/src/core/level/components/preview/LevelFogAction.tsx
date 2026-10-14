@@ -1,5 +1,6 @@
 import { default as FoggyIcon } from "@mui/icons-material/Foggy";
 import { Button } from "@mui/material";
+import { formatNumber, formatPercent } from "@xrf/format";
 import { ReactElement, useCallback } from "react";
 
 import { ERenderFogMode, RenderFogMode } from "@/core/ipc/types/xrf-renderer";
@@ -22,7 +23,6 @@ import {
 } from "@/core/render/lib/features";
 import { TRenderFogSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { EditorPopoverToggle } from "@/core/shell/editor/EditorPopoverToggle";
-import { formatNumber, formatPercent } from "@/lib/format/number";
 
 /** The keys the popover sets. */
 const FOG_KEYS: ReadonlyArray<keyof ILevelManualWeather> = ["fogColor", "fogDistance", "fogDensity", "farPlane"];

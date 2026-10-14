@@ -6,7 +6,7 @@ import {
   bytesToMegabytes,
   bytesToWholeMegabytes,
   megabytesToBytes,
-} from "@/lib/memory/size";
+} from "#/byte-size";
 
 describe("byte sizes", () => {
   it("counts binary units, not decimal ones", () => {

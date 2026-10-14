@@ -1,12 +1,11 @@
 import { Typography } from "@mui/material";
+import { formatBytes, formatCount } from "@xrf/format";
 import { ReactElement, useMemo, useState } from "react";
 
 import { ArchiveLevelSpawnDescription, ArchiveLevelSpawnSection } from "@/core/ipc/types/xrf-app";
 import { EditorFilterInput } from "@/core/shell/editor/EditorFilterInput";
 import { EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { formatCount } from "@/lib/format/number";
-import { formatBytes } from "@/lib/memory/format";
 import { filterByName } from "@/lib/search/filter-by-name";
 
 import { ArchiveDescriptionLayout } from "../ArchiveDescriptionLayout";

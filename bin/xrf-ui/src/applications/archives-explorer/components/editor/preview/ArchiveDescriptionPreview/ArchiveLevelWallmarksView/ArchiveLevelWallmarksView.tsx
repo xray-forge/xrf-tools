@@ -1,3 +1,4 @@
+import { formatCount } from "@xrf/format";
 import { ReactElement } from "react";
 
 import {
@@ -7,7 +8,6 @@ import {
 } from "@/core/ipc/types/xrf-app";
 import { EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { formatCount } from "@/lib/format/number";
 
 import { ArchiveDescriptionLayout } from "../ArchiveDescriptionLayout";
 import { ArchiveDescriptionRow } from "../ArchiveDescriptionRow";

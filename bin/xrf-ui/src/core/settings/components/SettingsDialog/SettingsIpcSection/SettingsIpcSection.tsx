@@ -1,5 +1,6 @@
 import { Button, Divider, Stack, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
+import { ABSENT_VALUE, formatBytes, formatDuration } from "@xrf/format";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useState } from "react";
 
@@ -9,9 +10,6 @@ import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { ChoiceFormRow, IChoiceFormRowOption } from "@/core/ui/form/ChoiceFormRow";
 import { DetailSection } from "@/core/ui/layout/DetailSection";
 import { StatFigure } from "@/core/ui/stats/StatFigure";
-import { formatDuration } from "@/lib/format/duration";
-import { ABSENT_VALUE } from "@/lib/format/number";
-import { formatBytes } from "@/lib/memory/format";
 import { usePolledValue } from "@/lib/react";
 
 import {

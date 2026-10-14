@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { formatDuration, formatSeconds } from "@/lib/format/duration";
+import { formatDuration, formatPlaybackTime, formatSeconds } from "#/duration";
 
 describe("formatDuration", () => {
   it("keeps sub second runs in milliseconds", () => {
@@ -48,5 +48,21 @@ describe("formatSeconds", () => {
     expect(formatSeconds(null)).toBe("— s");
     expect(formatSeconds(Number.NaN)).toBe("— s");
     expect(formatSeconds(Number.POSITIVE_INFINITY)).toBe("— s");
+  });
+});
+
+describe("formatPlaybackTime", () => {
+  it("pads seconds so the readout does not jump width while playing", () => {
+    expect(formatPlaybackTime(0)).toBe("00:00");
+    expect(formatPlaybackTime(9)).toBe("00:09");
+    expect(formatPlaybackTime(61)).toBe("01:01");
+    expect(formatPlaybackTime(600)).toBe("10:00");
+  });
+
+  it("falls back for a duration the element has not reported yet", () => {
+    // An unloaded media element reports NaN, and `NaN:NaN` on screen looks like a crash.
+    expect(formatPlaybackTime(Number.NaN)).toBe("00:00");
+    expect(formatPlaybackTime(Number.POSITIVE_INFINITY)).toBe("00:00");
+    expect(formatPlaybackTime(-1)).toBe("00:00");
   });
 });

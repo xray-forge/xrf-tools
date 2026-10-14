@@ -1,4 +1,5 @@
 import { Typography } from "@mui/material";
+import { formatPercent } from "@xrf/format";
 import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
@@ -10,7 +11,6 @@ import { RenderValueSlider } from "@/core/render/components/controls/RenderValue
 import { EditorPanelProperty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { formatPercent } from "@/lib/format/number";
 
 interface ILevelWeatherClockSectionProps extends BaseComponentProps {
   /** Seconds since midnight. */

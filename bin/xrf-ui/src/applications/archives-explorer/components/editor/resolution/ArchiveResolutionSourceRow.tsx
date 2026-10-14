@@ -1,13 +1,13 @@
 import { default as FolderIcon } from "@mui/icons-material/FolderOutlined";
 import { default as ArchiveIcon } from "@mui/icons-material/Inventory2Outlined";
 import { Chip, chipClasses, Typography } from "@mui/material";
+import { formatCount } from "@xrf/format";
 import { ReactElement } from "react";
 
 import { ArchiveResolutionSource, ArchiveResolutionVolume } from "@/core/ipc/types/xrf-app";
 import { EXraySourceKind } from "@/core/ipc/types/xrf-vfs";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { formatCount } from "@/lib/format/number";
 
 import { ArchiveResolutionVolumeRow } from "./ArchiveResolutionVolumeRow";
 

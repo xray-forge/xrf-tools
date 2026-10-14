@@ -1,5 +1,6 @@
 import { inject, Injectable, OnDeactivation } from "@wirestate/core";
 import { BoundAction, Computed, Observable } from "@wirestate/mobx";
+import { formatDuration } from "@xrf/format";
 import { clamp } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 
@@ -11,7 +12,6 @@ import { VisualMotionBake } from "@/core/ipc/types/xrf-visual";
 import { clampMotionFps, MOTION_SAMPLE_FPS } from "@/core/visuals/lib/visual-motion";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { AsyncState } from "@/lib/async-state";
-import { formatDuration } from "@/lib/format/duration";
 import { Logger, Timer } from "@/lib/logging";
 import { call, cancelFlows, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 

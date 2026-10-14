@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { formatDegrees } from "@/lib/format/angle";
+import { formatDegrees } from "#/angle";
 
 describe("formatDegrees", () => {
   it("writes an angle with the sign every surface writes it with", () => {

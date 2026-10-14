@@ -1,6 +1,6 @@
+import { formatNumber, formatSeconds } from "@xrf/format";
+
 import { ArchiveLightAnimItem } from "@/core/ipc/types/xrf-app";
-import { formatSeconds } from "@/lib/format/duration";
-import { formatNumber } from "@/lib/format/number";
 
 /**
  * How long one colour animation runs and how fast.

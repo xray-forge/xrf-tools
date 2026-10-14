@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { EventBus } from "@wirestate/core";
+import { BYTES_PER_MEGABYTE } from "@xrf/format";
 
 import { FALLBACK_PACK_CONFIG } from "@/applications/archives-packer/lib/pack-config";
 import { PackerService } from "@/applications/archives-packer/services/packer/index";
@@ -7,7 +8,6 @@ import { ArchivePackConfig, ArchivePackResult } from "@/core/ipc/types/xrf-pack"
 import { IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { mockInvoke, resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { IInjectedServiceMockDescriptor, mockInjectedService } from "@/fixtures/utils/container";
-import { BYTES_PER_MEGABYTE } from "@/lib/memory/size";
 
 function mockPackerService(config: ArchivePackConfig = FALLBACK_PACK_CONFIG): PackerService {
   const { service } = mockInjectedService(PackerService);

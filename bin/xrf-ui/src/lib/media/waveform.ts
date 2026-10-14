@@ -39,19 +39,3 @@ export function extractPeaks(samples: Float32Array, buckets: number): Float32Arr
 
   return peaks;
 }
-
-/**
- * Formats a playback position as `mm:ss`.
- *
- * @param seconds - Position or duration in seconds, as a media element reports it.
- * @returns Zero padded `mm:ss`, falling back to `00:00` for the `NaN` an unloaded element reports.
- */
-export function formatPlaybackTime(seconds: number): string {
-  if (!Number.isFinite(seconds) || seconds < 0) {
-    return "00:00";
-  }
-
-  const whole: number = Math.floor(seconds);
-
-  return `${String(Math.floor(whole / 60)).padStart(2, "0")}:${String(whole % 60).padStart(2, "0")}`;
-}

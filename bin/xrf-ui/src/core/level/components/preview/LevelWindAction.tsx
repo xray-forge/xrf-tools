@@ -1,4 +1,5 @@
 import { default as AirIcon } from "@mui/icons-material/Air";
+import { formatDegrees, formatNumber } from "@xrf/format";
 import { ReactElement } from "react";
 
 import { ILevelManualWeatherActionProps } from "@/core/level/components/weather/level-manual-weather-action-props";
@@ -7,8 +8,6 @@ import { LevelManualWeatherVectorField } from "@/core/level/components/weather/L
 import { LevelWeatherResetButton } from "@/core/level/components/weather/LevelWeatherResetButton";
 import { ILevelManualWeather } from "@/core/level/lib/weather/level-manual-weather";
 import { EditorPopoverToggle } from "@/core/shell/editor/EditorPopoverToggle";
-import { formatDegrees } from "@/lib/format/angle";
-import { formatNumber } from "@/lib/format/number";
 
 /** The keys the popover sets. */
 const WIND_KEYS: ReadonlyArray<keyof ILevelManualWeather> = [

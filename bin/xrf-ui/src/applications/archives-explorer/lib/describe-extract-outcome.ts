@@ -1,7 +1,8 @@
+import { formatCount } from "@xrf/format";
+
 import { ArchiveExtractDirectoryResult } from "@/core/ipc/types/xrf-pack";
 import { describeJobFailure, IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { ENotificationSeverity } from "@/core/notifications/lib";
-import { formatCount } from "@/lib/format/number";
 
 /**
  * What the notification centre says when a directory extraction ends.

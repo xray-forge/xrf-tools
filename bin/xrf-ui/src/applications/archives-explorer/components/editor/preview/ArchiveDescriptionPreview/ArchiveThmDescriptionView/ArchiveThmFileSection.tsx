@@ -1,9 +1,9 @@
+import { formatBytes } from "@xrf/format";
 import { ReactElement } from "react";
 
 import { ArchiveThmFile } from "@/core/ipc/types/xrf-app";
 import { EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { formatBytes } from "@/lib/memory/format";
 
 import { formatChunkId, NOT_DECLARED } from "../ArchiveDescriptionPreview.utils";
 import { ArchiveDescriptionRow } from "../ArchiveDescriptionRow";

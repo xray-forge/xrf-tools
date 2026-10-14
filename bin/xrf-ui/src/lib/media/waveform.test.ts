@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { extractPeaks, formatPlaybackTime } from "@/lib/media/waveform";
+import { extractPeaks } from "@/lib/media/waveform";
 
 describe("extractPeaks", () => {
   it("keeps the loudest magnitude in each bucket", () => {
@@ -32,21 +32,5 @@ describe("extractPeaks", () => {
   it("returns silence for empty input", () => {
     expect(Array.from(extractPeaks(new Float32Array(), 4))).toEqual([0, 0, 0, 0]);
     expect(extractPeaks(new Float32Array([1]), 0)).toHaveLength(0);
-  });
-});
-
-describe("formatPlaybackTime", () => {
-  it("pads seconds so the readout does not jump width while playing", () => {
-    expect(formatPlaybackTime(0)).toBe("00:00");
-    expect(formatPlaybackTime(9)).toBe("00:09");
-    expect(formatPlaybackTime(61)).toBe("01:01");
-    expect(formatPlaybackTime(600)).toBe("10:00");
-  });
-
-  it("falls back for a duration the element has not reported yet", () => {
-    // An unloaded media element reports NaN, and `NaN:NaN` on screen looks like a crash.
-    expect(formatPlaybackTime(Number.NaN)).toBe("00:00");
-    expect(formatPlaybackTime(Number.POSITIVE_INFINITY)).toBe("00:00");
-    expect(formatPlaybackTime(-1)).toBe("00:00");
   });
 });

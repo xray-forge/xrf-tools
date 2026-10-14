@@ -1,4 +1,5 @@
 import { GridColDef } from "@mui/x-data-grid";
+import { formatHex } from "@xrf/format";
 
 /** Applied by the theme to render a cell in monospace. */
 const MONOSPACE_CLASS: string = "monospace";
@@ -106,7 +107,7 @@ export function flagsColumn(field: string, headerName: string, width: number = 1
     headerAlign: "left",
     cellClassName: MONOSPACE_CLASS,
     valueGetter: (value: unknown) => (typeof value === "number" ? value : null),
-    valueFormatter: (value: unknown) => (typeof value === "number" ? `0x${value.toString(16).toUpperCase()}` : null),
+    valueFormatter: (value: unknown) => (typeof value === "number" ? formatHex(value) : null),
   };
 }
 

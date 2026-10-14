@@ -1,5 +1,6 @@
 import { inject, Injectable } from "@wirestate/core";
 import { Computed, Observable, runInAction } from "@wirestate/mobx";
+import { formatDuration } from "@xrf/format";
 import { Nullable } from "@xrf/types";
 
 import { transformError } from "@/core/error/lib";
@@ -11,7 +12,6 @@ import { ConfigsProjectService } from "@/core/ltx/services/project";
 import { ConfigsResolvedService } from "@/core/ltx/services/resolved";
 import { ConfigsSchemeService } from "@/core/ltx/services/scheme";
 import { AsyncState } from "@/lib/async-state";
-import { formatDuration } from "@/lib/format/duration";
 import { Logger, Timer } from "@/lib/logging";
 import { call, cancelFlow, LatestFlow, TFlow } from "@/lib/mobx";
 

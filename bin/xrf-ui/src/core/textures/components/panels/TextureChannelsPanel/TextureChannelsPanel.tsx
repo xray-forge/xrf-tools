@@ -1,4 +1,5 @@
 import { useInjection } from "@wirestate/react";
+import { ABSENT_VALUE } from "@xrf/format";
 import { Nullable, Optional } from "@xrf/types";
 import { PointerEvent, ReactElement, RefCallback, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -14,7 +15,6 @@ import { ITextureBumpTexels, ITextureSurfaceFiles } from "@/core/textures/lib/te
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { TextureSurfaceService } from "@/core/textures/services/surface";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { ABSENT_VALUE } from "@/lib/format/number";
 
 import {
   describeTextureTexel,

@@ -3,6 +3,7 @@ import { default as SaveAltIcon } from "@mui/icons-material/SaveAlt";
 import { Alert, Button, Typography } from "@mui/material";
 import * as dialog from "@tauri-apps/plugin-dialog";
 import { useInjection } from "@wirestate/react";
+import { formatBytes } from "@xrf/format";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useMemo } from "react";
 
@@ -14,7 +15,6 @@ import { AsyncState } from "@/lib/async-state";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Logger, useLogger } from "@/lib/logging";
-import { formatBytes } from "@/lib/memory/format";
 
 interface IArchiveDirectoryContentProps extends BaseComponentProps {
   path: string;

@@ -1,5 +1,6 @@
 import { Injectable } from "@wirestate/core";
 import { BoundAction, Computed, Observable } from "@wirestate/mobx";
+import { formatDuration } from "@xrf/format";
 
 import { describeRoots } from "@/core/assets/lib";
 import { transformError } from "@/core/error/lib";
@@ -7,7 +8,6 @@ import { levelsCommands } from "@/core/ipc/commands/levels";
 import { LevelEntry } from "@/core/ipc/types/xrf-app";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { AsyncState } from "@/lib/async-state";
-import { formatDuration } from "@/lib/format/duration";
 import { Logger, Timer } from "@/lib/logging";
 import { call, LatestFlow, TFlow } from "@/lib/mobx";
 

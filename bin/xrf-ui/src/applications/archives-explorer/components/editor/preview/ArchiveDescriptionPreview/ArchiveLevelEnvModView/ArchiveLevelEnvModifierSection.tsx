@@ -1,9 +1,9 @@
+import { formatNumber } from "@xrf/format";
 import { ReactElement } from "react";
 
 import { ArchiveLevelEnvModifier } from "@/core/ipc/types/xrf-app";
 import { EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { formatNumber } from "@/lib/format/number";
 
 import { ArchiveDescriptionRow } from "../ArchiveDescriptionRow";
 import { describeMixedParameters } from "./ArchiveLevelEnvModView.utils";

@@ -1,7 +1,8 @@
+import { formatCount } from "@xrf/format";
+
 import { ArchivePatchConfig, ArchivePatchResult } from "@/core/ipc/types/xrf-pack";
 import { describeJobFailure, IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { ENotificationSeverity } from "@/core/notifications/lib";
-import { formatCount } from "@/lib/format/number";
 
 /**
  * Builds a notification for a finished comparison or patch.

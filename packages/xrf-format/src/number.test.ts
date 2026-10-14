@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { ABSENT_VALUE, formatNumber, formatPercent } from "@/lib/format/number";
+import { ABSENT_VALUE, formatNumber, formatPercent } from "#/number";
 
 describe("formatNumber", () => {
   it("renders a fixed number of decimals", () => {

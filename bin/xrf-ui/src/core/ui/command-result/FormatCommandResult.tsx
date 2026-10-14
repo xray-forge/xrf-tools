@@ -1,9 +1,9 @@
+import { formatDuration } from "@xrf/format";
 import { ReactElement, useMemo } from "react";
 
 import { CommandResult, ICommandResultStat, TCommandResultTone } from "@/core/ui/command-result/CommandResult";
 import { CommandResultPathList } from "@/core/ui/command-result/CommandResultPathList";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { formatDuration } from "@/lib/format/duration";
 
 /** What a formatting command over a tree answers, whichever format the tree holds. */
 export interface IFormatCommandOutcome {

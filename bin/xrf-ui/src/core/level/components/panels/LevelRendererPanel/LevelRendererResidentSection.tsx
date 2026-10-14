@@ -1,11 +1,10 @@
+import { formatBytes, formatCount } from "@xrf/format";
 import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
 import { RenderLoadReport, RenderMemoryReport } from "@/core/ipc/types/xrf-renderer";
 import { EditorPanelProperty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { formatCount } from "@/lib/format/number";
-import { formatBytes } from "@/lib/memory/format";
 
 interface ILevelRendererResidentSectionProps extends BaseComponentProps {
   /** How far the renderer has read the level, or null until it says. */

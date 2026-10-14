@@ -1,9 +1,9 @@
 import { Typography } from "@mui/material";
+import { formatBytes } from "@xrf/format";
 import { ReactElement } from "react";
 
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { formatBytes } from "@/lib/memory/format";
 
 import { ARCHIVE_OVERRIDE_ROW_HEIGHT, EArchiveOverrideRow, IArchiveOverridePathRow } from "./archive-override-rows";
 

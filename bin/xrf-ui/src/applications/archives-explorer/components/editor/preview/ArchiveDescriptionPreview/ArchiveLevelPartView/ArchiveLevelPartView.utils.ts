@@ -1,6 +1,5 @@
+import { formatNumber } from "@xrf/format";
 import { Nullable } from "@xrf/types";
-
-import { formatNumber } from "@/lib/format/number";
 
 /**
  * The grid one navigation node covers.

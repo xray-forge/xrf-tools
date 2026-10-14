@@ -1,5 +1,6 @@
 import { EventBus, inject, Injectable, OnDeactivation, OnProvision } from "@wirestate/core";
 import { BoundAction, Computed, flowResult, Observable, runInAction } from "@wirestate/mobx";
+import { formatDuration } from "@xrf/format";
 import { Nullable } from "@xrf/types";
 
 import { VisualSequenceService } from "@/applications/visuals-sequencer/services/sequence";
@@ -15,7 +16,6 @@ import { describeVisualSource } from "@/core/visuals/lib/visual-source";
 import { VisualInspectionService } from "@/core/visuals/services/visual-inspection.service";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { AsyncState } from "@/lib/async-state";
-import { formatDuration } from "@/lib/format/duration";
 import { Logger, Timer } from "@/lib/logging";
 
 /**

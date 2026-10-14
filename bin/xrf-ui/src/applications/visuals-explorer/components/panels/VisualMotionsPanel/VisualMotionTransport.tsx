@@ -3,6 +3,7 @@ import { default as PlayArrowIcon } from "@mui/icons-material/PlayArrow";
 import { default as RepeatIcon } from "@mui/icons-material/Repeat";
 import { Tooltip, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
+import { formatDuration } from "@xrf/format";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback } from "react";
 
@@ -13,7 +14,6 @@ import { MotionFrameSlider, MotionPlaybackRate } from "@/core/visuals/components
 import { formatMotionTiming } from "@/core/visuals/lib/visual-motion";
 import { VisualMotionService } from "@/core/visuals/services/visual-motion.service";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { formatDuration } from "@/lib/format/duration";
 
 /**
  * Playing what is posed: which frame, how fast, and whether it repeats.

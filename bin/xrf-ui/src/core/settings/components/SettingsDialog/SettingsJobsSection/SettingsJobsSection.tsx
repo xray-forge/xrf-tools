@@ -1,4 +1,5 @@
 import { Button, Divider, Stack, Typography } from "@mui/material";
+import { formatDuration } from "@xrf/format";
 import { Callable } from "@xrf/types";
 import { ReactElement, useCallback } from "react";
 
@@ -10,7 +11,6 @@ import { DetailSection } from "@/core/ui/layout/DetailSection";
 import { StatFigure } from "@/core/ui/stats/StatFigure";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { formatDuration } from "@/lib/format/duration";
 import { useForceUpdate } from "@/lib/react";
 
 import { SettingsJobsRun } from "./SettingsJobsRun";

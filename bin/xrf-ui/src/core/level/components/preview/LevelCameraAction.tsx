@@ -1,5 +1,6 @@
 import { default as VideocamIcon } from "@mui/icons-material/Videocam";
 import { Button, Typography } from "@mui/material";
+import { formatDegrees, formatNumber } from "@xrf/format";
 import { ReactElement } from "react";
 
 import {
@@ -10,8 +11,6 @@ import {
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 import { EditorPopoverAction } from "@/core/shell/editor/EditorPopoverAction";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { formatDegrees } from "@/lib/format/angle";
-import { formatNumber } from "@/lib/format/number";
 import { usePartialChange } from "@/lib/react/use-partial-change";
 
 interface ILevelCameraActionProps extends BaseComponentProps {

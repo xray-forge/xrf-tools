@@ -1,4 +1,4 @@
-import { BYTES_PER_KILOBYTE } from "@/lib/memory/size";
+import { BYTES_PER_KILOBYTE } from "#/byte-size";
 
 const BYTE_UNITS = ["B", "KB", "MB", "GB", "TB"] as const;
 

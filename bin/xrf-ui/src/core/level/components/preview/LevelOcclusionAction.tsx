@@ -1,5 +1,6 @@
 import { default as GradientIcon } from "@mui/icons-material/Gradient";
 import { Button } from "@mui/material";
+import { formatPercent } from "@xrf/format";
 import { ReactElement, useCallback } from "react";
 
 import {
@@ -34,7 +35,6 @@ import {
   TRenderIndirectLightSettings,
 } from "@/core/render/lib/settings/render-feature-settings";
 import { EditorPopoverGroup, EditorPopoverGroupSection } from "@/core/shell/editor/EditorPopoverGroup";
-import { formatPercent } from "@/lib/format/number";
 
 interface ILevelOcclusionActionProps extends Omit<ILevelFeatureActionProps<"ambientOcclusion">, "isOn" | "onToggle"> {
   options: ILevelViewOptions;

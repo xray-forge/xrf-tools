@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { flowResult } from "@wirestate/mobx";
+import { BYTES_PER_MEGABYTE } from "@xrf/format";
 
 import { EPatcherSection, PatcherService } from "@/applications/archives-patcher/services/patcher/index";
 import { EJobOutcome } from "@/core/ipc/types/xrf-job";
@@ -7,7 +8,6 @@ import { ArchivePatchConfig, ArchivePatchResult } from "@/core/ipc/types/xrf-pac
 import { mockInvoke, resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { noop } from "@/lib/callbacks/noop";
-import { BYTES_PER_MEGABYTE } from "@/lib/memory/size";
 
 /** A configuration shaped like the one the backend answers with. */
 const CONFIG: ArchivePatchConfig = {

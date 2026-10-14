@@ -1,11 +1,9 @@
+import { ABSENT_VALUE, formatBytes, formatBytesPair, formatCount, formatDuration } from "@xrf/format";
 import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
 import { DetailSection } from "@/core/ui/layout/DetailSection";
 import { StatFigure } from "@/core/ui/stats/StatFigure";
-import { formatDuration } from "@/lib/format/duration";
-import { ABSENT_VALUE, formatCount } from "@/lib/format/number";
-import { formatBytes, formatBytesPair } from "@/lib/memory/format";
 import { usePolledValue } from "@/lib/react";
 
 import { IWebviewStats, readWebviewStats } from "./webview-stats";

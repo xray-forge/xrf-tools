@@ -1,11 +1,11 @@
 import { Typography } from "@mui/material";
+import { formatCount } from "@xrf/format";
 import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
 import { ArchiveDescribeScope, ArchiveLevelWallmarkSlot } from "@/core/ipc/types/xrf-app";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { formatCount } from "@/lib/format/number";
 
 import { describeReferenceStatus } from "../ArchiveDescriptionPreview.utils";
 import { ArchiveDescriptionReferenceLink } from "../ArchiveDescriptionReferenceLink";

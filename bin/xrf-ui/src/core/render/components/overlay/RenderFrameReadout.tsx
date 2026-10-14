@@ -1,3 +1,4 @@
+import { formatCount, formatMilliseconds } from "@xrf/format";
 import { Nullable } from "@xrf/types";
 import { Fragment, ReactElement, ReactNode } from "react";
 
@@ -7,8 +8,6 @@ import { describeRenderAntialiasing } from "@/core/render/lib/features";
 import { groupRenderPassCosts, IRenderPassGroup } from "@/core/render/lib/frame/render-pass-groups";
 import { abbreviateRenderBackend } from "@/core/render/lib/settings/render-backend-choice";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { formatMilliseconds } from "@/lib/format/duration";
-import { formatCount } from "@/lib/format/number";
 
 /** The antialiasing modes that resolve the frame temporally, upscaling it to the output as they do. */
 const TEMPORAL_ANTIALIASING: ReadonlySet<string> = new Set<string>([

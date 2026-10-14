@@ -1,8 +1,8 @@
 import { Chip, Grid } from "@mui/material";
+import { formatDuration } from "@xrf/format";
 import { ReactElement } from "react";
 
 import { PackEquipmentResult } from "@/core/ipc/types/xrf-texture";
-import { formatDuration } from "@/lib/format/duration";
 
 interface IEquipmentPackResultProps {
   result: PackEquipmentResult;

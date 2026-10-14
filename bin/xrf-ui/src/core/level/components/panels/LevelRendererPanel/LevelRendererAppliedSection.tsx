@@ -1,3 +1,4 @@
+import { formatCount, formatNumber } from "@xrf/format";
 import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
@@ -20,7 +21,6 @@ import {
 } from "@/core/render/lib/features/render-feature-choices";
 import { EditorPanelProperty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { formatCount, formatNumber } from "@/lib/format/number";
 
 interface ILevelRendererAppliedSectionProps extends BaseComponentProps {
   /** What the renderer draws the level with, or null until it says. */

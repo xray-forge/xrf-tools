@@ -1,10 +1,10 @@
+import { formatMilliseconds } from "@xrf/format";
 import { ReactElement } from "react";
 
 import { RenderFrameReport } from "@/core/ipc/types/xrf-renderer";
 import { describeRenderBackend } from "@/core/render/lib/settings/render-backend-choice";
 import { EditorPanelProperty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { formatMilliseconds } from "@/lib/format/duration";
 
 interface ILevelRendererFrameSectionProps extends BaseComponentProps {
   frame: RenderFrameReport;

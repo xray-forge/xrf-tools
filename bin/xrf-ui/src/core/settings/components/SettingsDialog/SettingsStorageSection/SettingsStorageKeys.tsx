@@ -1,8 +1,8 @@
 import { Stack, Typography } from "@mui/material";
+import { formatBytes } from "@xrf/format";
 import { ReactElement } from "react";
 
 import { DetailSection } from "@/core/ui/layout/DetailSection";
-import { formatBytes } from "@/lib/memory/format";
 
 import { describeKeyCount, IStorageEntry } from "./SettingsStorageSection.utils";
 

@@ -1,9 +1,9 @@
+import { formatMilliseconds } from "@xrf/format";
 import { ReactElement } from "react";
 
 import { RenderParticlesReport } from "@/core/ipc/types/xrf-renderer";
 import { EditorPanelProperty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { formatMilliseconds } from "@/lib/format/duration";
 
 interface ILevelRendererParticlesSectionProps extends BaseComponentProps {
   particles: RenderParticlesReport;

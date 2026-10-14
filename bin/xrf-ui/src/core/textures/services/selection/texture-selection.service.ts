@@ -1,5 +1,6 @@
 import { Injectable, OnDeactivation } from "@wirestate/core";
 import { BoundAction, Computed, Observable, runInAction } from "@wirestate/mobx";
+import { formatDuration } from "@xrf/format";
 import { Nullable } from "@xrf/types";
 
 import { createRoots } from "@/core/assets/lib";
@@ -10,7 +11,6 @@ import { texturesBulkRoutes } from "@/core/ipc/commands/textures-bulk";
 import { ETextureSource, TextureDescription, TextureSource } from "@/core/ipc/types/xrf-app";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { AsyncState } from "@/lib/async-state";
-import { formatDuration } from "@/lib/format/duration";
 import { Logger, Timer } from "@/lib/logging";
 import { call, cancelFlow, LatestFlow, TFlow } from "@/lib/mobx";
 

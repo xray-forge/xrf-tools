@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { formatHex } from "@/lib/format/hex";
+import { formatHex } from "#/hex";
 
 describe("formatHex", () => {
   it("writes the word in upper case hex, unpadded by default", () => {

@@ -1,5 +1,6 @@
 import { default as NightsStayIcon } from "@mui/icons-material/NightsStay";
 import { Button } from "@mui/material";
+import { formatDegrees, formatPercent } from "@xrf/format";
 import { ReactElement, useCallback } from "react";
 
 import { LevelWeatherTexture } from "@/core/ipc/types/xrf-app";
@@ -23,8 +24,6 @@ import {
 import { TRenderDebandingSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { EditorPopoverGroup, EditorPopoverGroupSection } from "@/core/shell/editor/EditorPopoverGroup";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { formatDegrees } from "@/lib/format/angle";
-import { formatPercent } from "@/lib/format/number";
 
 /** The keys the popover sets. */
 const SKY_KEYS: ReadonlyArray<keyof ILevelManualWeather> = [

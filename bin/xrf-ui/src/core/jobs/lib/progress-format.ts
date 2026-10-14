@@ -1,8 +1,7 @@
+import { formatBytes, formatCount } from "@xrf/format";
 import { Nullable } from "@xrf/types";
 
 import { EProgressUnit, JobProgress, ProgressLevel, ProgressUnit } from "@/core/ipc/types/xrf-job";
-import { formatCount } from "@/lib/format/number";
-import { formatBytes } from "@/lib/memory/format";
 
 /**
  * Levels a surface draws as bars.

@@ -1,4 +1,5 @@
 import { useInjection } from "@wirestate/react";
+import { formatBytes } from "@xrf/format";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback } from "react";
 
@@ -19,7 +20,6 @@ import { AsyncState } from "@/lib/async-state";
 import { inline } from "@/lib/callbacks/inline";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { formatBytes } from "@/lib/memory/format";
 
 import { ArchiveAudioPreview } from "./ArchiveAudioPreview";
 import { ArchiveCodePreview } from "./ArchiveCodePreview";

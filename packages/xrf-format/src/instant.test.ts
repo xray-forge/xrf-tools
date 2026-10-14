@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { formatInstant } from "@/lib/format/instant";
+import { formatInstant } from "#/instant";
 
 describe("formatInstant", () => {
   it("states only the clock while the moment is still today's", () => {

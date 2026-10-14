@@ -1,3 +1,4 @@
+import { formatBytes } from "@xrf/format";
 import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
@@ -6,7 +7,6 @@ import { AssetTextureDescriptor } from "@/core/ipc/types/xrf-app";
 import { XrayAsset } from "@/core/ipc/types/xrf-vfs";
 import { EditorPanelProperty } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { formatBytes } from "@/lib/memory/format";
 
 interface IAssetTextureDetailsProps extends BaseComponentProps {
   asset: XrayAsset;

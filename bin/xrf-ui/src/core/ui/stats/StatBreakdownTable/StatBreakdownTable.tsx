@@ -1,4 +1,5 @@
 import { Typography } from "@mui/material";
+import { formatBytes, formatCount } from "@xrf/format";
 import { Nullable } from "@xrf/types";
 import { ReactElement, ReactNode, useMemo } from "react";
 
@@ -6,8 +7,6 @@ import { EStatMeasure } from "@/core/ui/stats/stat-measure";
 import { StatBar } from "@/core/ui/stats/StatBar";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { formatCount } from "@/lib/format/number";
-import { formatBytes } from "@/lib/memory/format";
 
 export interface IStatBreakdownRow {
   /** Identifies the row, and is what a click reports.  */

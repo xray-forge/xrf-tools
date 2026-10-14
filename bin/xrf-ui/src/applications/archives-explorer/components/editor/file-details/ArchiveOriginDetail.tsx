@@ -1,10 +1,10 @@
+import { formatBytes } from "@xrf/format";
 import { ReactElement } from "react";
 
 import { describeAssetContainer, isLooseContainer } from "@/core/assets/lib";
 import { ArchiveShadowedCopy, ArchiveWorldEntry } from "@/core/ipc/types/xrf-app";
 import { EditorPanelProperty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { formatBytes } from "@/lib/memory/format";
 
 interface IArchiveOriginDetailProps extends BaseComponentProps {
   entry: ArchiveWorldEntry;
