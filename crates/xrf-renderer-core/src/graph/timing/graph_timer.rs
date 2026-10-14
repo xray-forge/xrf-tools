@@ -1,6 +1,7 @@
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU8, Ordering};
 
+use crate::graph::graph_owner::GraphOwner;
 use crate::graph::timing::gpu_zones::GpuZones;
 use crate::graph::timing::graph_pass_time::GraphPassTime;
 use crate::graph::timing::graph_tagged_time::GraphTaggedTime;
@@ -25,9 +26,9 @@ pub struct GraphTimer {
   /// The slot this frame records into and each group's first stamp and how many it has, while a frame is timed.
   frame: Option<(usize, Vec<(u32, u32)>)>,
   /// Milliseconds summed per owner's pass since that owner's last `take`, in the order passes were first seen.
-  sums: Vec<(u32, String, f64)>,
+  sums: Vec<(GraphOwner, String, f64)>,
   /// Frames read back per owner since its last `take`, which its passes' sums are averaged over.
-  frames: Vec<(u32, u32)>,
+  frames: Vec<(GraphOwner, u32)>,
   /// The tag the frame timed next carries.
   tag: u64,
   /// Each pass of each frame read back since the last `take_tagged`, under its frame's tag, the latest `TAGGED_MOST`.
@@ -114,8 +115,8 @@ impl GraphTimer {
 
   /// Each of an owner's passes' mean GPU milliseconds a frame over the frames read back since that owner's last call,
   /// which starts its next span: a pass a frame did not run, as a cascade redrawn only when due, counts nought there, so
-  /// the passes add up to the frame. `FrameGraph::FRAME_OWNER` for passes no owner was named for.
-  pub fn take(&mut self, owner: u32) -> Vec<GraphPassTime> {
+  /// the passes add up to the frame. `GraphOwner::Frame` for passes no owner was named for.
+  pub fn take(&mut self, owner: GraphOwner) -> Vec<GraphPassTime> {
     self.collect();
 
     let (taken, kept): (Vec<_>, Vec<_>) = std::mem::take(&mut self.sums)
@@ -287,7 +288,7 @@ impl GraphTimer {
 
         self.zones.send(&stamps, &slot.names, self.period);
 
-        let mut owners: Vec<u32> = Vec::new();
+        let mut owners: Vec<GraphOwner> = Vec::new();
 
         for (index, name) in slot.names.iter().enumerate() {
           let Some((owner, name)) = name.as_ref().filter(|_| index > 0) else {

@@ -2,6 +2,7 @@ use xrf_error::XrfResult;
 
 use crate::graph::builder::{ComputePassBuilder, EncoderPassBuilder, RasterPassBuilder};
 use crate::graph::compile::{CompiledGraph, GraphCompileOptions, GraphCompiler};
+use crate::graph::graph_owner::GraphOwner;
 use crate::graph::record::{GraphBufferRecord, GraphPass, GraphTextureRecord};
 use crate::graph::resource::{GraphBuffer, GraphBufferDescriptor, GraphTexture, GraphTextureDescriptor};
 
@@ -16,7 +17,7 @@ pub struct FrameGraph<'a> {
   pub(crate) passes: Vec<GraphPass<'a>>,
   pub(crate) groups: Vec<&'static str>,
   /// Whose the passes declared now are, which their costs are summed by.
-  pub(crate) owner: u32,
+  pub(crate) owner: GraphOwner,
 }
 
 impl Default for FrameGraph<'_> {
@@ -28,16 +29,13 @@ impl Default for FrameGraph<'_> {
 impl<'a> FrameGraph<'a> {
   /// The encode group passes fall in before any other begins.
   pub const DEFAULT_GROUP: &'static str = "frame";
-  /// The owner of passes declared before any other is named: the frame's own work.
-  pub const FRAME_OWNER: u32 = 0;
-
   pub fn new() -> Self {
     Self {
       textures: Vec::new(),
       buffers: Vec::new(),
       passes: Vec::new(),
       groups: vec![Self::DEFAULT_GROUP],
-      owner: Self::FRAME_OWNER,
+      owner: GraphOwner::Frame,
     }
   }
 
@@ -68,7 +66,7 @@ impl<'a> FrameGraph<'a> {
 
   /// Names whose the passes declared after it are, as a view of a frame drawing several; the timer sums each owner's
   /// passes apart (`GraphTimer::take`).
-  pub fn begin_owner(&mut self, owner: u32) {
+  pub fn begin_owner(&mut self, owner: GraphOwner) {
     self.owner = owner;
   }
 

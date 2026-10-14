@@ -1,8 +1,10 @@
 use std::sync::Arc;
 use std::sync::atomic::AtomicU8;
 
+use crate::graph::graph_owner::GraphOwner;
+
 /// A timed pass, by its owner and its name.
-pub(crate) type TimedPass = (u32, String);
+pub(crate) type TimedPass = (GraphOwner, String);
 
 /// One frame's timestamps on their way back: the readback buffer, where its map stands, and what each stamp ends.
 pub(crate) struct TimerSlot {

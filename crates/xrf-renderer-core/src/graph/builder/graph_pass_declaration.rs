@@ -1,5 +1,6 @@
 use crate::graph::access::{GraphBufferAccess, GraphTextureAccess};
 use crate::graph::frame_graph::FrameGraph;
+use crate::graph::graph_owner::GraphOwner;
 use crate::graph::record::{GraphPass, GraphPassWork};
 use crate::graph::resource::{GraphBuffer, GraphTexture};
 
@@ -24,7 +25,7 @@ impl GraphPassDeclaration {
   /// Adds the pass to the graph, recording what it does.
   pub fn declare<'a>(self, graph: &mut FrameGraph<'a>, work: GraphPassWork<'a>) {
     let group: usize = graph.groups.len() - 1;
-    let owner: u32 = graph.owner;
+    let owner: GraphOwner = graph.owner;
 
     graph.push_pass(GraphPass {
       name: self.name,

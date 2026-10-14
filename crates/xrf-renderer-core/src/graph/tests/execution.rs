@@ -3,7 +3,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use crate::graph::tests::fixtures::{COLOR, color_texture, load};
 use crate::graph::{
   FrameGraph, GraphBindings, GraphBufferAccess, GraphBufferDescriptor, GraphColorAttachment, GraphCompileOptions,
-  GraphRuntime, GraphTextureAccess,
+  GraphOwner, GraphRuntime, GraphTextureAccess,
 };
 use crate::tests::test_device::create_device;
 
@@ -210,7 +210,7 @@ fn times_each_pass_and_render_pass_on_the_gpu() {
 
   let names: Vec<String> = runtime
     .timer
-    .take(FrameGraph::FRAME_OWNER)
+    .take(GraphOwner::Frame)
     .into_iter()
     .map(|time| time.name)
     .collect();
@@ -245,11 +245,11 @@ fn sums_each_owners_passes_apart() {
   for _ in 0..4 {
     let mut graph: FrameGraph<'_> = FrameGraph::new();
 
-    graph.begin_owner(1);
+    graph.begin_owner(GraphOwner::Part(0));
 
     let first = declare(&mut graph, &drawn);
 
-    graph.begin_owner(2);
+    graph.begin_owner(GraphOwner::Part(1));
 
     let second = declare(&mut graph, &drawn);
     let compiled = graph.compile(&GraphCompileOptions::default()).unwrap();
@@ -266,15 +266,15 @@ fn sums_each_owners_passes_apart() {
     device.poll(wgpu::PollType::wait_indefinitely()).unwrap();
   }
 
-  let names = |owner: u32, runtime: &mut GraphRuntime| -> Vec<String> {
+  let names = |owner: GraphOwner, runtime: &mut GraphRuntime| -> Vec<String> {
     runtime.timer.take(owner).into_iter().map(|time| time.name).collect()
   };
 
-  assert_eq!(names(1, &mut runtime), ["clear + over", "copy"]);
+  assert_eq!(names(GraphOwner::Part(0), &mut runtime), ["clear + over", "copy"]);
   // Taking one owner's leaves the other's to be taken.
-  assert_eq!(names(2, &mut runtime), ["clear + over", "copy"]);
-  assert!(names(1, &mut runtime).is_empty());
-  assert!(names(FrameGraph::FRAME_OWNER, &mut runtime).is_empty());
+  assert_eq!(names(GraphOwner::Part(1), &mut runtime), ["clear + over", "copy"]);
+  assert!(names(GraphOwner::Part(0), &mut runtime).is_empty());
+  assert!(names(GraphOwner::Frame, &mut runtime).is_empty());
 }
 
 #[test]
@@ -442,12 +442,12 @@ fn times_each_encode_group_in_a_range_of_its_own() {
   for _ in 0..4 {
     let mut graph: FrameGraph<'_> = FrameGraph::new();
 
-    graph.begin_owner(1);
+    graph.begin_owner(GraphOwner::Part(1));
     graph.begin_group("first");
 
     let first = declare(&mut graph, &drawn);
 
-    graph.begin_owner(2);
+    graph.begin_owner(GraphOwner::Part(2));
     graph.begin_group("second");
 
     let second = declare(&mut graph, &drawn);
@@ -466,10 +466,10 @@ fn times_each_encode_group_in_a_range_of_its_own() {
     device.poll(wgpu::PollType::wait_indefinitely()).unwrap();
   }
 
-  for owner in [1, 2] {
+  for owner in [GraphOwner::Part(1), GraphOwner::Part(2)] {
     let names: Vec<String> = runtime.timer.take(owner).into_iter().map(|time| time.name).collect();
 
-    assert_eq!(names, ["clear + over", "copy"], "owner {owner}");
+    assert_eq!(names, ["clear + over", "copy"], "owner {owner:?}");
   }
 }
 

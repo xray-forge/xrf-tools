@@ -8,7 +8,8 @@ use glam::{Mat4, Vec2, Vec3, Vec4};
 use xrf_dlss::Dlss;
 use xrf_error::{XrfError, XrfResult};
 use xrf_renderer_core::{
-  ExecutedGraph, ExecutedGroup, FrameGraph, GraphBindings, GraphPassTime, GraphReport, GraphRuntime, GraphTaggedTime,
+  ExecutedGraph, ExecutedGroup, FrameGraph, GraphBindings, GraphOwner, GraphPassTime, GraphReport, GraphRuntime,
+  GraphTaggedTime,
 };
 
 use wgpu::util::StagingBelt;
@@ -36,6 +37,7 @@ use crate::frame::frame_span_timer::FrameSpanTimer;
 use crate::frame::frame_statistics::FrameStatistics;
 use crate::frame::gpu_memory::GpuMemory;
 use crate::frame::periodic::periodic_budget::PeriodicBudget;
+use crate::frame::periodic::periodic_owner::PeriodicOwner;
 use crate::frame::periodic::periodic_scheduler::PeriodicScheduler;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::host::render_bundle::RenderBundle;
@@ -681,8 +683,6 @@ impl RenderThread {
       timer.begin(&mut encoder, self.periodic.get_frame());
     }
 
-    self.periodic.set_owner(u32::MAX);
-
     Some((encoder, span))
   }
 
@@ -870,7 +870,7 @@ impl RenderThread {
     // and handed to each viewport reporting, rather than to whichever reports first.
     let is_any_due: bool = self.viewports.values().any(|viewport| viewport.is_report_due(now));
     let composition: Vec<GraphPassTime> = match self.runtime.as_mut() {
-      Some(runtime) if is_any_due => runtime.timer.take(FrameGraph::FRAME_OWNER),
+      Some(runtime) if is_any_due => runtime.timer.take(GraphOwner::Frame),
       _ => Vec::new(),
     };
 
@@ -1176,7 +1176,7 @@ impl RenderThread {
       let is_first: bool = scene_id.is_some_and(|scene| firsts.iter().all(|(seen, _)| *seen != scene));
       let scene: Option<&mut LevelScene> = scene_id.and_then(|scene| self.scenes.get_mut(&scene));
 
-      self.periodic.set_owner(id.0);
+      self.periodic.set_owner(PeriodicOwner::View(*id));
 
       match Self::ready_view(
         (gpu, &self.shaders),
@@ -1194,7 +1194,7 @@ impl RenderThread {
           frames.push(frame);
         }
         // A view that draws nothing this frame draws none of what it offered.
-        None => self.periodic.withdraw(id.0),
+        None => self.periodic.withdraw(PeriodicOwner::View(*id)),
       }
     }
 
@@ -1211,7 +1211,7 @@ impl RenderThread {
   ) {
     for (scene_id, id) in firsts {
       if let Some(scene) = self.scenes.get_mut(scene_id) {
-        self.periodic.set_owner(id.0);
+        self.periodic.set_owner(PeriodicOwner::View(*id));
         scene.lights.offer_shadows(&mut self.periodic);
       }
     }
@@ -1348,7 +1348,7 @@ impl RenderThread {
         continue;
       };
 
-      graph.begin_owner(id.0);
+      graph.begin_owner(GraphOwner::from(*id));
 
       let output: Option<SceneOutput> = view.record(
         scene,
@@ -1385,7 +1385,7 @@ impl RenderThread {
     // A window that gave no image this frame, minimised or out of time, is captured on the next frame it presents.
     retried.extend(refused.into_iter().map(|(id, _, reply)| (id, reply)));
 
-    graph.begin_owner(FrameGraph::FRAME_OWNER);
+    graph.begin_owner(GraphOwner::Frame);
 
     for (window, target) in windows.iter().zip(&targets) {
       let (Some(target), Some(grid)) = (target, gpu.get_grid(window.format)) else {

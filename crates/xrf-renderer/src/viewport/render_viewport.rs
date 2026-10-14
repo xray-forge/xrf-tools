@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
 use glam::Vec3;
-use xrf_renderer_core::{ExecutedGroup, FrameGraph, GraphPassTime, GraphReport, GraphTimer};
+use xrf_renderer_core::{ExecutedGroup, GraphOwner, GraphPassTime, GraphReport, GraphTimer};
 
 use crate::contract::render_antialiasing::RenderAntialiasing;
 use crate::contract::render_applied_environment::RenderAppliedEnvironment;
@@ -263,7 +263,7 @@ impl RenderViewport {
       None => Default::default(),
     };
     let (is_gpu_timed, passes): (bool, Vec<RenderPassCost>) = timer.map_or((false, Vec::new()), |timer| {
-      let mut times: Vec<GraphPassTime> = timer.take(self.id.0);
+      let mut times: Vec<GraphPassTime> = timer.take(GraphOwner::from(self.id));
 
       times.extend_from_slice(composition);
 
@@ -331,7 +331,7 @@ impl RenderViewport {
       particles,
       grass,
       sector_time,
-      graph: graph.map(|graph| Box::new(RenderGraphReport::of(graph, self.id.0, FrameGraph::FRAME_OWNER))),
+      graph: graph.map(|graph| Box::new(RenderGraphReport::of(graph, GraphOwner::from(self.id)))),
       memory: RenderMemoryReport {
         total: allocator.and_then(|memory| memory.budget).map(|budget| budget.total),
         budget: allocator.and_then(|memory| memory.budget).map(|budget| budget.budget),
