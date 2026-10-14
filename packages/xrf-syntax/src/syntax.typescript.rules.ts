@@ -1,4 +1,4 @@
-import { ESyntaxToken, ISyntaxRule } from "@/core/syntax/lib/syntax.types";
+import { ESyntaxToken, ISyntaxRule } from "#/syntax.types";
 
 const TYPESCRIPT_KEYWORDS: string =
   "abstract|as|async|await|break|case|catch|class|const|continue|debugger|declare|default|delete|do|else|" +

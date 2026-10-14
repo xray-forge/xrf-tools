@@ -1,6 +1,5 @@
+import { ISyntaxSpan } from "@xrf/syntax";
 import { Nullable } from "@xrf/types";
-
-import { ISyntaxSpan } from "@/core/syntax/lib";
 
 /**
  * What a gutter mark says about the line it sits beside.

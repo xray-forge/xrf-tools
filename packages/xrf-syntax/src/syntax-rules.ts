@@ -1,9 +1,9 @@
-import { LTX_RULES } from "@/core/syntax/lib/syntax.ltx.rules";
-import { LUA_RULES } from "@/core/syntax/lib/syntax.lua.rules";
-import { SHADER_RULES } from "@/core/syntax/lib/syntax.shader.rules";
-import { ESyntaxLanguage, ISyntaxRule } from "@/core/syntax/lib/syntax.types";
-import { TYPESCRIPT_RULES } from "@/core/syntax/lib/syntax.typescript.rules";
-import { XML_RULES } from "@/core/syntax/lib/syntax.xml.rules";
+import { LTX_RULES } from "#/syntax.ltx.rules";
+import { LUA_RULES } from "#/syntax.lua.rules";
+import { SHADER_RULES } from "#/syntax.shader.rules";
+import { ESyntaxLanguage, ISyntaxRule } from "#/syntax.types";
+import { TYPESCRIPT_RULES } from "#/syntax.typescript.rules";
+import { XML_RULES } from "#/syntax.xml.rules";
 
 const SYNTAX_RULES: Record<ESyntaxLanguage, Array<ISyntaxRule>> = {
   [ESyntaxLanguage.PLAIN]: [],

@@ -7,7 +7,7 @@ import { ExportsService } from "@/applications/exports-explorer/services/exports
 import { transformError } from "@/core/error/lib";
 import { ExportSourceContent } from "@/core/ipc/types/xrf-export";
 import { CodeView } from "@/core/syntax/components/CodeView";
-import { getSyntaxLanguage } from "@/core/syntax/lib";
+import { getSyntaxLanguage } from "@/core/syntax/lib/syntax-language";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { ErrorState } from "@/core/ui/layout/ErrorState";

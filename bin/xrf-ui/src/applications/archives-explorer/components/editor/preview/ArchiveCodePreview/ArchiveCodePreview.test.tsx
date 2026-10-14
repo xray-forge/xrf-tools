@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it } from "@jest/globals";
 import { RenderResult } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
+import { ESyntaxToken } from "@xrf/syntax";
 
 import { ArchiveReadResult } from "@/core/ipc/types/xrf-archive";
-import { ESyntaxToken } from "@/core/syntax/lib";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 import { ArchiveCodePreview } from "./ArchiveCodePreview";

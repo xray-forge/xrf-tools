@@ -1,7 +1,7 @@
+import { ESyntaxLanguage } from "@xrf/syntax";
 import { ReactElement, useMemo } from "react";
 
 import { SyntaxContent } from "@/core/syntax/components/SyntaxContent";
-import { ESyntaxLanguage } from "@/core/syntax/lib";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 

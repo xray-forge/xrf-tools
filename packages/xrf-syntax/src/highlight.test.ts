@@ -1,8 +1,8 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { highlightSyntax } from "@/core/syntax/lib/highlight";
-import { getSyntaxRules, isLineLocalSyntax } from "@/core/syntax/lib/syntax-rules";
-import { ESyntaxLanguage, ESyntaxToken, ISyntaxRule, ISyntaxSpan } from "@/core/syntax/lib/syntax.types";
+import { highlightSyntax } from "#/highlight";
+import { getSyntaxRules, isLineLocalSyntax } from "#/syntax-rules";
+import { ESyntaxLanguage, ESyntaxToken, ISyntaxRule, ISyntaxSpan } from "#/syntax.types";
 
 const LANGUAGES: Array<ESyntaxLanguage> = [
   ESyntaxLanguage.LTX,

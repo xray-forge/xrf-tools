@@ -1,0 +1,31 @@
+{
+  "name": "@xrf/syntax",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Lexical syntax highlighting by rule tables: LTX, Lua, XML, shaders and TypeScript, as spans that rebuild the text.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "imports": {
+    "#/*": "./src/*.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "jest",
+    "lint": "eslint . --max-warnings 0 --cache --cache-location target/eslint/cache.json --cache-strategy content",
+    "format": "prettier --write --ignore-path ../../.prettierignore \"**/*.(js|cjs|mjs|ts|md)\" && pnpm run lint --fix"
+  },
+  "dependencies": {
+    "@xrf/types": "workspace:*"
+  },
+  "devDependencies": {
+    "@jest/globals": "catalog:",
+    "@typescript/native": "catalog:",
+    "eslint": "catalog:",
+    "jest": "catalog:",
+    "prettier": "catalog:",
+    "typescript": "catalog:",
+    "@xrf/toolchain": "workspace:*"
+  }
+}

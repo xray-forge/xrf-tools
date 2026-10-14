@@ -1,4 +1,4 @@
-import { ESyntaxToken, ISyntaxRule } from "@/core/syntax/lib/syntax.types";
+import { ESyntaxToken, ISyntaxRule } from "#/syntax.types";
 
 /**
  * XML, covering configs, UI layouts and dialogs.

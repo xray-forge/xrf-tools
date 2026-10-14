@@ -1,6 +1,5 @@
+import { ESyntaxLanguage, ESyntaxToken, highlightSyntax, ISyntaxSpan } from "@xrf/syntax";
 import { Fragment, ReactElement, useMemo } from "react";
-
-import { ESyntaxLanguage, ESyntaxToken, highlightSyntax, ISyntaxSpan } from "@/core/syntax/lib";
 
 /** Size past which text is shown uncoloured. */
 export const MAXIMUM_HIGHLIGHT_LENGTH: number = 512 * 1024;

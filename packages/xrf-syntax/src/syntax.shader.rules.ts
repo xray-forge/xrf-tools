@@ -1,4 +1,4 @@
-import { ESyntaxToken, ISyntaxRule } from "@/core/syntax/lib/syntax.types";
+import { ESyntaxToken, ISyntaxRule } from "#/syntax.types";
 
 const SHADER_KEYWORDS: string =
   "uniform|static|const|extern|shared|volatile|inline|typedef|namespace|return|if|else|for|while|do|" +

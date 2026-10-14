@@ -1,8 +1,8 @@
 import { default as ErrorOutlineIcon } from "@mui/icons-material/ErrorOutlineOutlined";
 import { default as WarningAmberIcon } from "@mui/icons-material/WarningAmber";
+import { ESyntaxToken, ISyntaxSpan } from "@xrf/syntax";
 import { CSSProperties, Fragment, ReactElement, ReactNode } from "react";
 
-import { ESyntaxToken, ISyntaxSpan } from "@/core/syntax/lib";
 import { CODE } from "@/core/theme/tokens";
 import { ECodeLineMark, ICodeLine } from "@/core/ui/code/code-line";
 
