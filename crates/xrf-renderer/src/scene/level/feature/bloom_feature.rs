@@ -1,6 +1,6 @@
 use xrf_engine_target::XrayEngine;
 use xrf_renderer_core::{
-  FrameGraph, GraphBindings, GraphColorAttachment, GraphRuntime, GraphTexture, GraphTextureDescriptor,
+  FrameGraph, GraphBindings, GraphColorAttachment, GraphRuntime, GraphTexture, GraphTextureDescriptor, UniformBinding,
 };
 
 use crate::contract::render_bloom_settings::RenderBloomSettings;
@@ -14,6 +14,7 @@ use crate::pass::enhanced_bloom_parameters::EnhancedBloomParameters;
 use crate::pass::enhanced_bloom_pass::EnhancedBloomPass;
 use crate::pass::enhanced_bloom_uniform::EnhancedBloomUniform;
 use crate::pass::level_passes::LevelPasses;
+use crate::pass::lighting_uniform::LightingUniform;
 use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::feature::view_feature::ViewFeature;
@@ -104,7 +105,7 @@ impl BloomFeature {
     (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
     passes: LevelPasses<'a>,
     view: &'a ViewBinding,
-    (targets, frame): (ViewTargetHandles, (u32, u32)),
+    (targets, frame, lighting): (ViewTargetHandles, (u32, u32), UniformBinding<LightingUniform>),
   ) -> Option<GraphTexture> {
     let settings: &RenderEnhancedBloomSettings = self.enhanced.as_ref()?;
     let (_, pipelines) = self.pipelines.as_ref()?;
@@ -149,6 +150,7 @@ impl BloomFeature {
         depth_target: targets.depth,
         material_target: targets.material,
         bloom: runtime.push_uniform(&uniform),
+        lighting,
       };
 
       graph

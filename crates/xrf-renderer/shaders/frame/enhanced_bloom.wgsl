@@ -1,4 +1,5 @@
 #import "common/camera"
+#import "common/lighting"
 #import "common/scene_light"
 #import "common/fullscreen"
 
@@ -62,15 +63,17 @@ fn fs_bloom_blur(in: FullscreenVarying) -> @location(0) vec4<f32> {
 }
 
 // The build: the blurred scene, the sky's times its share, raised to the threshold's power; self-lit surfaces added by
-// how much of the four frame texels under the texel they cover, and that share kept in alpha.
+// how much of the four frame texels under the texel they cover, and that share kept in alpha. Fogged light counts as
+// the sky's by how much fog lies before it, so far ground fading into the sky blooms as the sky does, not brighter.
 @fragment
 fn fs_bloom_build(in: FullscreenVarying) -> @location(0) vec4<f32> {
   let uv: vec2<f32> = in.clip.xy / bloom.size.xy;
   let frame: vec2<f32> = bloom.size.zw;
   let last: vec2<i32> = vec2<i32>(frame) - 1;
   let at: vec2<i32> = clamp(vec2<i32>(uv * frame), vec2<i32>(0), last);
-  let is_sky: bool = textureLoad(depth_target, at, 0) <= 0.0;
-  var result: vec3<f32> = sample_at(source, uv).rgb * select(1.0, bloom.strengths.z, is_sky);
+  let depth: f32 = textureLoad(depth_target, at, 0);
+  let fogged: f32 = select(fog_amount(lighting, camera_view_position(vec2<f32>(at) + 0.5, depth)), 1.0, depth <= 0.0);
+  var result: vec3<f32> = sample_at(source, uv).rgb * mix(1.0, bloom.strengths.z, fogged);
 
   result = pow(abs(result), vec3<f32>(bloom.strengths.x));
 

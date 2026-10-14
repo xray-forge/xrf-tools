@@ -84,6 +84,7 @@ impl CombineFeature {
       exposure: StorageValue::new(lit.exposure),
       occlusion_target: handles.occlusion[0],
       sky_behind_map,
+      haze_map: handles.haze,
       indirect_light,
       reflections,
       wet_surface,

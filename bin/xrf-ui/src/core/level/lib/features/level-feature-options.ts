@@ -173,7 +173,7 @@ const LEVEL_MODE_FEATURE_KEYS: {
 } = {
   debanding: ["mode", "quality", "radius"],
   enhancedBloom: ["blur", "exposure", "mode", "sky", "threshold", "vibrance"],
-  fog: ["density", "height", "mode", "scattering", "sunColor"],
+  fog: ["density", "height", "mode", "scattering", "skyFade", "sunColor"],
   glass: ["mode", "refraction"],
   indirectLight: ["intensity", "mode", "radius"],
   parallax: [

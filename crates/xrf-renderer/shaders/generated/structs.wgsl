@@ -22,6 +22,7 @@ struct Lighting {
   indirect: vec4<f32>,
   reflections: vec4<f32>,
   height_fog: vec4<f32>,
+  sky_fade: vec4<f32>,
 }
 
 struct Glass {

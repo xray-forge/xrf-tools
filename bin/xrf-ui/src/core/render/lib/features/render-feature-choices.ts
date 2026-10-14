@@ -477,6 +477,7 @@ export function formatReflectionSkyGain(gain: number): string {
 export const RENDER_FOG_LIMITS = {
   density: toRenderLimits(RENDER_FEATURE_SCHEMA.fog.density, 0.1),
   height: toRenderLimits(RENDER_FEATURE_SCHEMA.fog.height, 0.5),
+  skyFade: toRenderLimits(RENDER_FEATURE_SCHEMA.fog.skyFade, 0.05),
   scattering: toRenderLimits(RENDER_FEATURE_SCHEMA.fog.scattering, 0.05),
   sunColor: toRenderLimits(RENDER_FEATURE_SCHEMA.fog.sunColor, 0.05),
 } as const;

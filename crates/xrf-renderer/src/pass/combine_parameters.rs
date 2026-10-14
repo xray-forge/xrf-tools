@@ -31,6 +31,9 @@ pub struct CombineParameters<'a> {
   /// The sky the distance fog fades into, at half the frame's size.
   #[texture(d2, float)]
   pub sky_behind_map: GraphTexture,
+  /// The sky's haze, which the far ground stands against under the horizon where the enhanced fog fades it.
+  #[texture(d2, float)]
+  pub haze_map: GraphTexture,
   #[texture(d2, unfilterable)]
   pub indirect_light: GraphTexture,
   #[texture(d2, unfilterable)]

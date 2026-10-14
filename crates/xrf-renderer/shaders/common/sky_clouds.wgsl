@@ -30,8 +30,11 @@ const CLOUD_WIND_1: vec2<f32> = vec2<f32>(-0.9294118, 0.3803922);
 // exposure's scale, written past the tonemap as vanilla's `sky2.ps` writes it, or through it as Anomaly's does.
 fn sky_box_shown(direction: vec3<f32>, state: Lighting, cube_0: texture_cube<f32>, cube_1: texture_cube<f32>,
   cube_sampler: sampler, scale: f32) -> vec3<f32> {
-  let lit: vec3<f32> = sky_box_lit(direction, state, cube_0, cube_1, cube_sampler);
+  return sky_box_scaled(sky_box_lit(direction, state, cube_0, cube_1, cube_sampler), state, scale);
+}
 
+// The sky lit, on the exposure's scale, written past the tonemap or through it as `sky_box_shown` writes it.
+fn sky_box_scaled(lit: vec3<f32>, state: Lighting, scale: f32) -> vec3<f32> {
   if (state.engine.x > 0.5) {
     return tonemap(lit * CURVED_SKY_FACTOR, scale);
   }

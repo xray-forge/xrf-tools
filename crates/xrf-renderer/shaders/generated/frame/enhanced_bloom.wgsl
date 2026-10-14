@@ -8,3 +8,4 @@
 @group(1) @binding(3) var depth_target: texture_depth_2d;
 @group(1) @binding(4) var material_target: texture_2d<f32>;
 @group(1) @binding(5) var<uniform> bloom: EnhancedBloom;
+@group(1) @binding(6) var<uniform> lighting: Lighting;

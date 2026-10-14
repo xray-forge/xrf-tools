@@ -538,6 +538,11 @@ export type RenderFogSettings = {
   sunColor: number | null;
   /** How readily the bright parts of the frame are blurred into the fog: none blurs nothing. */
   scattering: number | null;
+  /**
+   * The fog's share past which fogged surfaces fade into the sky behind them, whole where the fog is: none fades them
+   * by the fog's square from the first, as the engine does, which shows the sky through the middle distance.
+   */
+  skyFade: number | null;
 };
 
 /** How trees and grass move in the wind. */

@@ -111,19 +111,37 @@ fn sky_box_above_fold(box: vec3<f32>) -> f32 {
   return smoothstep(BOX_HORIZON, HAZE_TOP, box.y / max(abs(box.x), abs(box.z)));
 }
 
-// The sky lit along a renderer-space direction, before the engine's scale and curve: the cubes through the half box,
-// the rim averaged under the fold, times the sky's colour.
-fn sky_box_lit(direction: vec3<f32>, state: Lighting, cube_0: texture_cube<f32>, cube_1: texture_cube<f32>,
-  cube_sampler: sampler) -> vec3<f32> {
-  let box: vec3<f32> = sky_box_direction(direction, state.sky_params.x);
+// The sky lit along a box direction, before the engine's scale and curve: the cubes through the half box and, under the
+// fold, the rim averaged about the box direction `rim`, times the sky's colour.
+fn sky_box_lit_about(box: vec3<f32>, rim: vec3<f32>, state: Lighting, cube_0: texture_cube<f32>,
+  cube_1: texture_cube<f32>, cube_sampler: sampler) -> vec3<f32> {
   let above: f32 = sky_box_above_fold(box);
   var color: vec3<f32> = sky_cubes_blended(state, cube_0, cube_1, cube_sampler, sky_box_lookup(box));
 
   // Below the fold every pixel of a column reads one texel of the bottom rim, which draws its block noise as streaks
   // the height of the band; averaged around the compass there, it keeps the haze and loses the texels.
   if (above < 1.0) {
-    color = mix(sky_cubes_rim(state, cube_0, cube_1, cube_sampler, box), color, above);
+    color = mix(sky_cubes_rim(state, cube_0, cube_1, cube_sampler, rim), color, above);
   }
 
   return color * state.sky.rgb;
+}
+
+// The sky lit along a renderer-space direction, before the engine's scale and curve: the cubes through the half box,
+// the rim averaged under the fold, times the sky's colour.
+fn sky_box_lit(direction: vec3<f32>, state: Lighting, cube_0: texture_cube<f32>, cube_1: texture_cube<f32>,
+  cube_sampler: sampler) -> vec3<f32> {
+  let box: vec3<f32> = sky_box_direction(direction, state.sky_params.x);
+
+  return sky_box_lit_about(box, box, state, cube_0, cube_1, cube_sampler);
+}
+
+// The same as the far ground under the enhanced fog stands against it: under the fold, the horizon just over it
+// averaged around the compass in place of the rim.
+fn sky_box_horizon_lit(direction: vec3<f32>, state: Lighting, cube_0: texture_cube<f32>, cube_1: texture_cube<f32>,
+  cube_sampler: sampler) -> vec3<f32> {
+  let box: vec3<f32> = sky_box_direction(direction, state.sky_params.x);
+  let horizon: vec3<f32> = vec3<f32>(box.x, max(box.y, HAZE_TOP * max(abs(box.x), abs(box.z))), box.z);
+
+  return sky_box_lit_about(box, horizon, state, cube_0, cube_1, cube_sampler);
 }

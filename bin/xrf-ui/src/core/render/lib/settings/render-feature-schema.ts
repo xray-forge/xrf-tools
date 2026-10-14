@@ -96,6 +96,8 @@ export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings>
     height: toNumber(1, 20),
     mode: toChoice(ERenderFogMode),
     scattering: toNumber(0, 1),
+    // The renderer's own: the fog's share past which far surfaces fade into the sky, none for the engine's square.
+    skyFade: toNumber(0, 0.95),
     sunColor: toNumber(0, 1),
   },
   // The renderer's own: from flat to twice the designed bend.
