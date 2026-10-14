@@ -1,3 +1,4 @@
+use std::collections::BTreeSet;
 use std::sync::Arc;
 
 use glam::Vec4;
@@ -21,8 +22,8 @@ pub struct GrassLevel {
   pub model_count: u32,
   /// Metres the largest tuft reaches past the ground it stands on, at a height of one.
   pub tuft_reach: f32,
-  /// The texture slots its models sample.
-  pub texture_slots: Vec<u32>,
+  /// The texture slots its models sample, each once.
+  pub texture_slots: BTreeSet<u32>,
   pub models: wgpu::Buffer,
   /// Each grid cell's planted slot, one past its index, none for an empty cell; and the planted slots' records.
   pub cells: wgpu::Buffer,
@@ -72,7 +73,7 @@ impl GrassLevel {
     let mut uvs: Vec<f32> = Vec::new();
     let mut indices: Vec<u32> = Vec::new();
     let mut records: Vec<GrassModelRecord> = Vec::new();
-    let mut texture_slots: Vec<u32> = Vec::new();
+    let mut texture_slots: BTreeSet<u32> = BTreeSet::new();
 
     for (index, model) in description.models.iter().enumerate() {
       let base: u32 = (positions.len() / 3) as u32;
@@ -95,7 +96,7 @@ impl GrassLevel {
         || model_indices.iter().any(|it| usize::from(*it) >= vertices)
       {
         log::warn!("Grass model {index} ({}) is damaged and draws nothing", model.texture);
-        texture_slots.push(texture);
+        texture_slots.insert(texture);
         records.push(Self::to_record(model, texture, reference, (first_index, 0), 0.0));
 
         continue;
@@ -111,7 +112,7 @@ impl GrassLevel {
       positions.extend(model_positions);
       uvs.extend(model_uvs);
       indices.extend(model_indices.iter().map(|it| u32::from(*it) + base));
-      texture_slots.push(texture);
+      texture_slots.insert(texture);
       records.push(Self::to_record(
         model,
         texture,

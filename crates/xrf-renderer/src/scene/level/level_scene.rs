@@ -1,4 +1,4 @@
-use std::collections::{HashMap, VecDeque};
+use std::collections::{BTreeSet, HashMap, VecDeque};
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -141,9 +141,7 @@ impl LevelScene {
       }
     }
 
-    if let Some(slots) = self.grass.poll(device, textures, &assets) {
-      self.statics.surfaces.texture_slots.extend(slots);
-    }
+    self.grass.poll(device, textures, &assets);
 
     let RenderSceneFrame {
       driver,
@@ -375,9 +373,18 @@ impl LevelScene {
     }
   }
 
-  /// What became of every texture the level's surfaces sample.
+  /// What became of every texture the level's surfaces and its grass sample.
   pub fn describe_textures(&self, textures: &TextureCache) -> Vec<RenderTextureReport> {
-    textures.describe(&self.statics.surfaces.texture_slots)
+    let slots: BTreeSet<u32> = self
+      .statics
+      .surfaces
+      .texture_slots
+      .iter()
+      .copied()
+      .chain(self.grass.list_texture_slots())
+      .collect();
+
+    textures.describe(&slots)
   }
 
   /// A spawned object's bounding sphere in renderer space, once its model is in the scene.
@@ -390,14 +397,15 @@ impl LevelScene {
     self.statics.surfaces.environment_slots.iter().copied()
   }
 
-  /// Every texture slot it samples, so the slots no scene samples can be freed.
+  /// Every texture slot it samples, so the slots no scene samples can be freed; a grass texture a surface samples too is
+  /// listed once.
   pub fn list_texture_slots(&self) -> impl Iterator<Item = u32> + '_ {
-    self
-      .statics
-      .surfaces
-      .texture_slots
+    let statics: &BTreeSet<u32> = &self.statics.surfaces.texture_slots;
+
+    statics
       .iter()
       .copied()
+      .chain(self.grass.list_texture_slots().filter(|slot| !statics.contains(slot)))
       .chain(self.lights.get_projectors().iter().copied())
       .chain(self.particles.get_texture_slots().iter().copied())
   }
