@@ -257,7 +257,7 @@ impl PeriodicScheduler {
         };
         let measured: Vec<f32> = frame_times
           .iter()
-          .filter(|time| time.name.split(" + ").all(|part| passes.contains(&part)))
+          .filter(|time| time.passes.iter().all(|part| passes.contains(part)))
           .map(|time| time.gpu_time)
           .collect();
 

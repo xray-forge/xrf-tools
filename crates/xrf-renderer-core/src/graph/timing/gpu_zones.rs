@@ -1,4 +1,4 @@
-use crate::graph::timing::timer_slot::TimedPass;
+use crate::graph::timing::timed_pass::TimedPass;
 
 /// The graph's timed passes as Tracy GPU zones, one a pass a frame, from the stamps the timer reads back; nothing without
 /// the `tracy` feature or a running client.
@@ -36,11 +36,11 @@ impl GpuZones {
     };
 
     for (index, name) in names.iter().enumerate().skip(1) {
-      let Some((_, name)) = name else {
+      let Some(pass) = name else {
         continue;
       };
 
-      if let Ok(mut span) = context.span_alloc(name, "", "", 0) {
+      if let Ok(mut span) = context.span_alloc(&pass.to_name(), "", "", 0) {
         span.end_zone();
         span.upload_timestamp_start(stamps[index - 1] as i64);
         span.upload_timestamp_end(stamps[index].max(stamps[index - 1]) as i64);

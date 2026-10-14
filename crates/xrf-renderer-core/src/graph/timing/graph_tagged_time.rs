@@ -3,6 +3,7 @@
 #[derive(Clone, Debug, PartialEq)]
 pub struct GraphTaggedTime {
   pub tag: u64,
-  pub name: String,
+  /// The pass's name, or each name of the passes merged into the render pass.
+  pub passes: Vec<&'static str>,
   pub gpu_time: f32,
 }

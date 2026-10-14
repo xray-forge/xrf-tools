@@ -1,4 +1,4 @@
-use crate::graph::timing::timer_slot::TimedPass;
+use crate::graph::timing::timed_pass::TimedPass;
 
 /// One encode group's share of a timed frame's stamps: a range of the timer's query set of its own, so the groups
 /// record their stamps at once on threads of their own; the last group also resolves the frame's stamps into its slot.

@@ -1,5 +1,5 @@
 use crate::graph::graph_owner::GraphOwner;
-use crate::graph::timing::GroupStamps;
+use crate::graph::timing::{GroupStamps, TimedPass};
 
 /// Lets an encoder pass time stages of its own, as a bridge recording several passes does: each `mark` ends a stage
 /// named for it. A pass that marks is timed by its marks alone.
@@ -14,7 +14,13 @@ impl PassMarker<'_> {
   /// Ends the stage `name`, where the frame is timed.
   pub fn mark(&mut self, encoder: &mut wgpu::CommandEncoder, name: &'static str) {
     if let Some(timer) = self.timer.as_deref_mut() {
-      timer.stamp(encoder, Some((self.owner, name.to_string())));
+      timer.stamp(
+        encoder,
+        Some(TimedPass {
+          owner: self.owner,
+          passes: vec![name],
+        }),
+      );
       self.is_marked = true;
     }
   }
