@@ -2,8 +2,7 @@ import { Nullable } from "@xrf/types";
 import { useCallback, useState } from "react";
 
 import { EApplicationId } from "@/core/routing/application";
-import { getFieldValueStorageKey } from "@/core/storage";
-import { getLocalStorageValue, setLocalStorageValue } from "@/lib/local-storage";
+import { getFieldValueStorageKey, getLocalStorageValue, setLocalStorageValue } from "@/core/storage";
 
 export interface IRememberedValueOptions<T extends string> {
   /** The application that owns this field. */

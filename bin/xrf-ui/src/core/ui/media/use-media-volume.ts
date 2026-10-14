@@ -2,8 +2,7 @@ import { saturate } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 import { useCallback, useState } from "react";
 
-import { MEDIA_VOLUME_STORAGE_KEY } from "@/core/storage";
-import { getLocalStorageValue, setLocalStorageValue } from "@/lib/local-storage";
+import { getLocalStorageValue, MEDIA_VOLUME_STORAGE_KEY, setLocalStorageValue } from "@/core/storage";
 
 const DEFAULT_VOLUME: number = 1;
 

@@ -4,13 +4,17 @@ import { Nullable } from "@xrf/types";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { EApplicationId } from "@/core/routing/application";
-import { getFieldRecentsStorageKey, getFieldValueStorageKey } from "@/core/storage";
+import {
+  getFieldRecentsStorageKey,
+  getFieldValueStorageKey,
+  getLocalStorageValue,
+  setLocalStorageValue,
+} from "@/core/storage";
 import { resolveDialogStart } from "@/core/ui/form/file-picker/dialog-start";
 import { usePathState } from "@/core/ui/form/file-picker/use-path-state";
 import { IPathFieldRecents } from "@/core/ui/form/path-recents";
 import { IPathRecents, usePathRecents } from "@/core/ui/form/use-path-recents";
 import { IPathSeed, TPathSeed, usePathSeed } from "@/core/ui/form/use-path-seed";
-import { getLocalStorageValue, setLocalStorageValue } from "@/lib/local-storage";
 
 const VALIDATE_DEBOUNCE_MS: number = 250;
 

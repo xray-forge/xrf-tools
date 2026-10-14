@@ -2,8 +2,7 @@ import { Nullable } from "@xrf/types";
 import { useCallback, useEffect, useState } from "react";
 
 import { IEditorPanel, TEditorPanelSide } from "@/core/shell/editor-shell";
-import { getPanelSelectionStorageKey } from "@/core/storage";
-import { getLocalStorageValue, setLocalStorageValue } from "@/lib/local-storage";
+import { getLocalStorageValue, getPanelSelectionStorageKey, setLocalStorageValue } from "@/core/storage";
 
 export interface IPanelSelection {
   activePanel: Nullable<IEditorPanel>;

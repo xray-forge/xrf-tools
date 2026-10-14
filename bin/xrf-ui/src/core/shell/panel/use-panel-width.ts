@@ -4,9 +4,8 @@ import { useCallback, useState } from "react";
 
 import { TEditorPanelSide } from "@/core/shell/editor-shell";
 import { clampPanelWidth } from "@/core/shell/panel/panel-width";
-import { getPanelWidthStorageKey } from "@/core/storage";
+import { getLocalStorageValue, getPanelWidthStorageKey, setLocalStorageValue } from "@/core/storage";
 import { PANEL } from "@/core/theme/tokens";
-import { getLocalStorageValue, setLocalStorageValue } from "@/lib/local-storage";
 import { useWindowWidth } from "@/lib/react";
 
 export interface IPanelWidth {

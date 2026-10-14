@@ -8,8 +8,7 @@ import { parseChord } from "@/core/keybinds/lib/chord";
 import { buildKeymap, IKeymap } from "@/core/keybinds/lib/keymap";
 import { LAUNCHER_KEYBIND_COMMANDS } from "@/core/launcher/commands";
 import { IApplicationDescriptor } from "@/core/routing/application";
-import { KEYBINDS_STORAGE_KEY } from "@/core/storage";
-import { parseLocalStorageValueSafe, setLocalStorageValueSafe } from "@/lib/local-storage";
+import { KEYBINDS_STORAGE_KEY, parseLocalStorageValueSafe, setLocalStorageValueSafe } from "@/core/storage";
 import { Logger } from "@/lib/logging";
 import { EMPTY_ARRAY } from "@/lib/types/array";
 

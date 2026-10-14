@@ -1,8 +1,7 @@
 import { Nullable } from "@xrf/types";
 
 import { EXrayEngineChoice } from "@/core/ipc/types/xrf-engine-target";
-import { ENGINE_CHOICES_STORAGE_KEY } from "@/core/storage";
-import { parseLocalStorageValueSafe, setLocalStorageValueSafe } from "@/lib/local-storage";
+import { ENGINE_CHOICES_STORAGE_KEY, parseLocalStorageValueSafe, setLocalStorageValueSafe } from "@/core/storage";
 
 /** Roots remembered at most, the least recently told let go first. */
 const REMEMBERED_ROOTS: number = 32;

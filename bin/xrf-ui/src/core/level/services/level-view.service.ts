@@ -10,8 +10,12 @@ import {
   DEFAULT_LEVEL_VIEW_OPTIONS,
   ILevelViewOptions,
 } from "@/core/level/lib/view/level-view-options";
-import { LEVEL_CAMERA_STORAGE_KEY, LEVEL_FEATURES_STORAGE_KEY } from "@/core/storage";
-import { parseLocalStorageValueSafe, setLocalStorageValueSafe } from "@/lib/local-storage";
+import {
+  LEVEL_CAMERA_STORAGE_KEY,
+  LEVEL_FEATURES_STORAGE_KEY,
+  parseLocalStorageValueSafe,
+  setLocalStorageValueSafe,
+} from "@/core/storage";
 
 /**
  * How a level is drawn: what the viewer has switched on, rather than what the level is.
