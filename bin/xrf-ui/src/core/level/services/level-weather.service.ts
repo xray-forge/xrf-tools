@@ -1,4 +1,4 @@
-import { Injectable, OnDeactivation } from "@wirestate/core";
+import { inject, Injectable, OnDeactivation, OnDeprovision, OnProvision } from "@wirestate/core";
 import { BoundAction, comparer, Computed, RefObservable, runInAction } from "@wirestate/mobx";
 import { Maybe, Nullable } from "@xrf/types";
 
@@ -45,6 +45,7 @@ import {
 import { ILevelWeatherSeed } from "@/core/level/lib/weather/level-weather-seed";
 import { ILevelWeatherSeek } from "@/core/level/lib/weather/level-weather-seek";
 import { ELevelWeatherSource } from "@/core/level/lib/weather/level-weather-source";
+import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { Logger } from "@/lib/logging";
 
 /**
@@ -126,6 +127,22 @@ export class LevelWeatherService {
   private selected: Nullable<SessionSnapshot<SelectedLevelDescription>> = null;
   /** The cycle the level was last played with, kept until one plays so a level left early forgets nothing. */
   private remembered: string = "";
+  /** Stops following the open level, while provisioned. */
+  private unfollow: Nullable<() => void> = null;
+
+  public constructor(private readonly loadService: LevelLoadService = inject(LevelLoadService)) {}
+
+  /** Opens each level's weather as the level opens, whether or not a viewport plays it. */
+  @OnProvision()
+  public onProvision(): void {
+    this.unfollow = this.loadService.followLevel((selected) => void this.open(selected));
+  }
+
+  @OnDeprovision()
+  public onDeprovision(): void {
+    this.unfollow?.();
+    this.unfollow = null;
+  }
 
   /**
    * What the renderer plays: the keyframe set by hand while it lights the level, the cycle otherwise, and the keyframe

@@ -1,4 +1,4 @@
-import { inject, Injectable } from "@wirestate/core";
+import { inject, Injectable, OnDeprovision, OnProvision } from "@wirestate/core";
 import { BoundAction, Computed, RefObservable, runInAction } from "@wirestate/mobx";
 import { Nullable } from "@xrf/types";
 
@@ -13,6 +13,7 @@ import {
   toGameLevelLook,
   toLevelLookChoice,
 } from "@/core/level/lib/look";
+import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { TRenderExposureSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { SettingsService } from "@/core/settings/services/settings";
 import { LEVEL_LOOK_STORAGE_KEY, parseLocalStorageValueSafe, setLocalStorageValueSafe } from "@/core/storage";
@@ -40,8 +41,26 @@ export class LevelLookService {
   /** The level whose game's defaults are held or being read. */
   private sessionId: Nullable<string> = null;
 
-  public constructor(private readonly settingsService: SettingsService = inject(SettingsService)) {
+  /** Stops following the open level, while provisioned. */
+  private unfollow: Nullable<() => void> = null;
+
+  public constructor(
+    private readonly loadService: LevelLoadService = inject(LevelLoadService),
+    private readonly settingsService: SettingsService = inject(SettingsService)
+  ) {
     this.choice = toLevelLookChoice(parseLocalStorageValueSafe(LEVEL_LOOK_STORAGE_KEY), this.exposure);
+  }
+
+  /** Reads each level's defaults as it opens, whether or not a viewport draws it. */
+  @OnProvision()
+  public onProvision(): void {
+    this.unfollow = this.loadService.followLevel((selected) => void this.open(selected));
+  }
+
+  @OnDeprovision()
+  public onDeprovision(): void {
+    this.unfollow?.();
+    this.unfollow = null;
   }
 
   /**

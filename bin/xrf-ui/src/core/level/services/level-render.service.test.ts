@@ -27,7 +27,7 @@ import { ELevelPick } from "@/core/level/lib/pick/level-pick";
 import { ELevelShading } from "@/core/level/lib/view/level-shading";
 import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { LevelLookService } from "@/core/level/services/level-look.service";
-import { LevelRenderService, toLevelPick } from "@/core/level/services/level-render.service";
+import { LevelRenderService } from "@/core/level/services/level-render.service";
 import { LevelViewService } from "@/core/level/services/level-view.service";
 import { LevelViewportService } from "@/core/level/services/level-viewport.service";
 import { LevelWeatherService } from "@/core/level/services/level-weather.service";
@@ -36,7 +36,7 @@ import { DEFAULT_RENDER_GRAPH_SETTINGS } from "@/core/render/lib/settings/render
 import { DEFAULT_PERIODIC_BUDGET } from "@/core/render/lib/settings/render-periodic-budget";
 import { ERenderResolution } from "@/core/render/lib/settings/render-resolution";
 import { SettingsService } from "@/core/settings/services/settings";
-import { mockLevelSpawnObject, mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
+import { mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
 import { mockRenderLoadReport } from "@/fixtures/mocks/render.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import {
@@ -152,7 +152,9 @@ async function mockAttached(
     LevelRenderService,
   ]);
 
-  await container.get(LevelLoadService).restore();
+  // Provisioned as the application provisions it, so the level's look and weather open with the level.
+  container.provision();
+  await waitFor(() => expect(container.get(LevelLoadService).isReady).toBe(true));
 
   const service: LevelRenderService = container.get(LevelRenderService);
 
@@ -483,21 +485,6 @@ describe("LevelRenderService", () => {
     element.dispatchEvent(new FocusEvent("focus"));
     service.detach();
     expect(viewportService.isSceneFocused).toBe(false);
-  });
-
-  it("names a picked spawned object as the held spawn has it, and nothing for one not held", () => {
-    const crate = mockLevelSpawnObject({ index: 5, name: "crate_5", visual: 1 });
-    const spawn = { objects: [mockLevelSpawnObject(), crate], visuals: ["lamp", "crate"] };
-    const hit: RenderLevelHit = { kind: ERenderLevelHit.SPAWN, object: 5, point: [1, 2, 3] };
-
-    expect(toLevelPick(hit, spawn)).toEqual({
-      kind: ELevelPick.SPAWN,
-      object: crate,
-      point: { x: 1, y: 2, z: -3 },
-      visual: "crate",
-    });
-    expect(toLevelPick({ ...hit, object: 9 }, spawn)).toBeNull();
-    expect(toLevelPick(hit, null)).toBeNull();
   });
 
   it("states why the viewport cannot draw, and lets it go on detach", async () => {

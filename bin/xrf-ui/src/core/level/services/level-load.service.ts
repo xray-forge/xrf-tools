@@ -1,5 +1,5 @@
 import { Injectable, OnDeactivation, OnProvision } from "@wirestate/core";
-import { BoundAction, flowResult, Observable, runInAction } from "@wirestate/mobx";
+import { BoundAction, flowResult, Observable, reaction, runInAction } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
 import { formatDuration } from "@xrf/format";
 import { Maybe, Nullable } from "@xrf/types";
@@ -219,6 +219,16 @@ export class LevelLoadService {
     this.session.release();
 
     this.clearView();
+  }
+
+  /**
+   * Tells a listener the level open now, then again each time another opens or it closes, until stopped.
+   *
+   * @param listener - Hears the open level, or null for none.
+   * @returns What stops it.
+   */
+  public followLevel(listener: (selected: Nullable<SessionSnapshot<SelectedLevelDescription>>) => void): () => void {
+    return reaction(() => this.level.value?.selected ?? null, listener, { fireImmediately: true });
   }
 
   /**

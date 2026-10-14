@@ -1,7 +1,8 @@
-import { IPoint3 } from "@xrf/math";
-import { Nullable } from "@xrf/types";
+import { IPoint3, toXraySpace } from "@xrf/math";
+import { Maybe, Nullable } from "@xrf/types";
 
-import { LevelSpawnObject } from "@/core/ipc/types/xrf-app";
+import { LevelSpawnObject, LevelSpawnObjectsDescription } from "@/core/ipc/types/xrf-app";
+import { ERenderLevelHit, RenderLevelHit } from "@/core/ipc/types/xrf-renderer";
 
 /** What a click in the viewport picked. */
 export enum ELevelPick {
@@ -36,3 +37,29 @@ export type TLevelPick =
       visual: string;
       point: IPoint3;
     };
+
+/**
+ * @param hit - What a native viewport named under a point.
+ * @param spawn - The level's spawned objects as held, which a picked object is found among.
+ * @returns It as the level names what is picked, in the level's own coordinates; null for an object not held.
+ */
+export function toLevelPick(hit: RenderLevelHit, spawn: Nullable<LevelSpawnObjectsDescription>): Nullable<TLevelPick> {
+  const [x, y, z] = hit.point;
+  const point: IPoint3 = toXraySpace({ x: x ?? 0, y: y ?? 0, z: z ?? 0 });
+
+  if (hit.kind === ERenderLevelHit.SPAWN) {
+    const object: Maybe<LevelSpawnObject> = spawn?.objects.find((it: LevelSpawnObject) => it.index === hit.object);
+
+    return object ? { kind: ELevelPick.SPAWN, object, point, visual: spawn?.visuals[object.visual] ?? "" } : null;
+  }
+
+  return {
+    isImpostor: hit.isImpostor,
+    kind: ELevelPick.SURFACE,
+    mesh: hit.mesh,
+    place: hit.place,
+    point,
+    sector: hit.sector,
+    shaderId: hit.shaderId,
+  };
+}
