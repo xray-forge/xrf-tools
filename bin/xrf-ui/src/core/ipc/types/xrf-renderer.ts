@@ -823,6 +823,14 @@ export type RenderGrassSettings = {
   slopeLimit: number | null;
   /** Whether a tuft stands along its ground's normal rather than straight up. */
   isAligned: boolean;
+  /**
+   * Whether the grass casts shadows near the camera, as cards (`GrassCards`): the sun's and the lamps' traced under
+   * ray reconstruction or a traced occlusion, the sun's drawn into its two nearest cascades otherwise, as Screen Space
+   * Shaders' `ssfx_grass_shadows` draws them. Neither engine shadows its grass.
+   */
+  isShadowed: boolean;
+  /** Metres from the camera the grass casts shadows to, fading over the last fifth of them. */
+  shadowRadius: number | null;
 };
 
 /**

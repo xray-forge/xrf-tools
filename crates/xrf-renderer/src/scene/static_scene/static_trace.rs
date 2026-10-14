@@ -74,6 +74,8 @@ impl StaticTrace {
 
   /// An instance's transform where the geometry stands in renderer space already.
   pub const IDENTITY: [f32; 12] = [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0];
+  /// Every scene instance's mask (`SCENE_MASK_SCENE`), which a ray asking for the scene alone meets.
+  pub const MASK: u8 = 0x01;
 
   /// The place every sector's baked geometry stands at: the scene's origin, whose hemisphere is the vertices' own.
   const ORIGIN_PLACE: u32 = 0;
@@ -146,12 +148,12 @@ impl StaticTrace {
         .built_instances
         .get(index)
         .map(|(structure, transform)| match swayed.get(&(index as u32)) {
-          Some(blas) => wgpu::TlasInstance::new(blas, Self::IDENTITY, index as u32, 0xff),
+          Some(blas) => wgpu::TlasInstance::new(blas, Self::IDENTITY, index as u32, Self::MASK),
           None => wgpu::TlasInstance::new(
             Self::find_blas(&self.sectors, &self.models, *structure),
             *transform,
             index as u32,
-            0xff,
+            Self::MASK,
           ),
         });
     }
@@ -248,7 +250,7 @@ impl StaticTrace {
       self.tlas[index] = instances.get(index).map(|(structure, transform)| {
         let blas: &wgpu::Blas = Self::find_blas(&self.sectors, &self.models, *structure);
 
-        wgpu::TlasInstance::new(blas, *transform, index as u32, 0xff)
+        wgpu::TlasInstance::new(blas, *transform, index as u32, Self::MASK)
       });
     }
 

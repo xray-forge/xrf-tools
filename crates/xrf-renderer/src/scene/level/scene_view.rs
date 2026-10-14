@@ -30,6 +30,7 @@ use crate::contract::render_static_report::RenderStaticReport;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::contract::render_water_settings::RenderWaterSettings;
 use crate::frame::frame_encoder::FrameEncoder;
+use crate::frame::grass_card_handles::GrassCardHandles;
 use crate::frame::periodic_scheduler::PeriodicScheduler;
 use crate::frame::static_scene_handles::StaticSceneHandles;
 use crate::frame::texture_copy::add_texture_copy;
@@ -71,6 +72,7 @@ use crate::scene::level::feature::overhead_windows::OverheadWindows;
 use crate::scene::level::feature::present_inputs::PresentInputs;
 use crate::scene::level::feature::ray_guides::RayGuides;
 use crate::scene::level::feature::scene_features::SceneFeatures;
+use crate::scene::level::feature::sun_trace_feature::SunTraceFeature;
 use crate::scene::level::feature::water_frame::WaterFrame;
 use crate::scene::level::grass_level::GrassLevel;
 use crate::scene::level::level_frame::LevelFrame;
@@ -412,6 +414,17 @@ impl SceneView {
           self.features.wet.has_puddles(),
         ),
       ),
+      {
+        let is_traced: bool = options.is_light_traced() && passes.scene_trace.is_traced() && scene.trace.is_some();
+        // The sun's cascades shadow the frame unless its trace does.
+        let is_sun_traced: bool =
+          is_traced && SunTraceFeature::is_asked(options, self.features.resolve.is_ray_reconstructed());
+
+        (
+          is_traced,
+          options.features.shadows.get_cascade_count() > 0 && !is_sun_traced,
+        )
+      },
     );
     scene.lights.prepare(
       &mut *encoder,
@@ -475,9 +488,9 @@ impl SceneView {
       (width, height),
       self.features.resolve.is_ray_reconstructed(),
     );
-    self.features.trace_sway.prepare(
+    self.features.view_trace.prepare(
       (device, queue),
-      scene.trace.as_ref(),
+      (scene.trace.as_ref(), self.features.grass.get_cards_blas()),
       view.position,
       options.is_scene_traced() && passes.scene_trace.is_traced(),
     );
@@ -583,6 +596,7 @@ impl SceneView {
       sun_direction: shared.sun_direction,
       switches: shared.switches,
       sway: to_sway(statics, features.wind.get_sway()),
+      grass_reach: features.grass.get_cascade_reach(),
       params: statics_feature.get_cull(),
       textures,
     };
@@ -646,6 +660,7 @@ impl SceneView {
       sun_direction: shared.sun_direction,
       switches: shared.switches,
       sway: to_sway(statics, features.wind.get_sway()),
+      grass_reach: features.grass.get_cascade_reach(),
       params: statics_feature.get_cull(),
       textures,
     };
@@ -686,6 +701,7 @@ impl SceneView {
       sun_direction: self.shared.sun_direction,
       switches: self.shared.switches,
       sway: to_sway(statics, self.features.wind.get_sway()),
+      grass_reach: self.features.grass.get_cascade_reach(),
       params: self.features.statics.get_cull(),
       textures,
     };
@@ -976,6 +992,12 @@ impl SceneView {
       );
     }
 
+    // The grass's cards, which cast its shadows into the sun's cascades or the trace, stood once its ring is planted.
+    let grass_cards: Option<GrassCardHandles> = scene_view
+      .features
+      .grass
+      .add_cards((&mut *graph, &mut *bindings), (passes.grass, grass_level));
+
     // The depth the reflections walk their rays over, kept before the grass draws, or after it where the grass is
     // reflected.
     let is_grass_reflected: bool = scene_view.features.reflections.get_settings().is_grass_reflected;
@@ -1030,6 +1052,10 @@ impl SceneView {
       passes,
       (&statics, lit.shadow_maps),
       (scene_view.features.statics.get_cull(), texture_group),
+      scene_view
+        .features
+        .grass
+        .get_shadow_casters((passes.grass, texture_group), grass_cards),
     );
 
     // The rain's cover, which its passes draw and reduce and the rain and the wet surfaces read.
@@ -1132,7 +1158,7 @@ impl SceneView {
         scene,
         (&mut *graph, &mut *bindings, runtime),
         passes,
-        (&statics, grass_level, texture_group),
+        (&statics, (grass_level, grass_cards), texture_group),
         &lit,
       );
 
@@ -1429,7 +1455,11 @@ impl SceneView {
     scene: &'a LevelScene,
     (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
     passes: LevelPasses<'a>,
-    (statics, grass_level, texture_group): (&StaticSceneHandles, Option<&'a GrassLevel>, &'a wgpu::BindGroup),
+    (statics, (grass_level, grass_cards), texture_group): (
+      &StaticSceneHandles,
+      (Option<&'a GrassLevel>, Option<GrassCardHandles>),
+      &'a wgpu::BindGroup,
+    ),
     lit: &LightingHandles<'a>,
   ) -> Option<(TraceParameters<'a>, &'a wgpu::BindGroup)> {
     // Each grass model's colour, which a traced hit on grassed ground blends towards, averaged while the scene traces.
@@ -1454,11 +1484,11 @@ impl SceneView {
         colours
       });
 
-    // The view's own top level where its nearest trees stand swayed, the scene's otherwise.
+    // The view's own top level where its nearest trees stand swayed or its grass stands, the scene's otherwise.
     let swayed: Option<AccelerationStructureBinding<'a>> =
       self
         .features
-        .trace_sway
+        .view_trace
         .add_passes((&mut *graph, &mut *bindings), passes, statics);
 
     scene
@@ -1518,6 +1548,11 @@ impl SceneView {
               grass_colours.unwrap_or_else(|| bindings.import_buffer(&mut *graph, "grass colours", trace.get_empty())),
             ),
             trace_grass: runtime.push_uniform(self.features.grass.get_trace_uniform()),
+            trace_grass_cards: StorageArray::new(
+              grass_cards
+                .map(|cards| cards.triangles)
+                .unwrap_or_else(|| bindings.import_buffer(&mut *graph, "grass card triangles", trace.get_empty())),
+            ),
           },
           texture_group,
         )

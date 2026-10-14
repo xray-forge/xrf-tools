@@ -26,6 +26,7 @@ use crate::pass::static_draw_parameters::StaticDrawParameters;
 use crate::pass::static_draws::StaticDraws;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::feature::view_feature::ViewFeature;
+use crate::scene::level::grass_shadow_casters::GrassShadowCasters;
 use crate::scene::level::shadow_cascade_view::ShadowCascadeView;
 use crate::scene::level::shadow_cut::ShadowCut;
 use crate::scene::level::shadow_frame::ShadowFrame;
@@ -49,6 +50,7 @@ static SWAY_PASSES: [[&str; 2]; RENDER_MAX_SHADOW_CASCADES] = [
   ["sun shadow sway 2", "sun shadow copy 2"],
   ["sun shadow sway 3", "sun shadow copy 3"],
 ];
+static GRASS_PASSES: [&str; GRASS_CASCADES] = ["sun shadow grass 0", "sun shadow grass 1"];
 static BAND_PASSES: [[&str; 1]; RENDER_MAX_SHADOW_CASCADES] = [
   ["sun shadow band 0"],
   ["sun shadow band 1"],
@@ -60,6 +62,9 @@ static BAND_PASSES: [[&str; 1]; RENDER_MAX_SHADOW_CASCADES] = [
 /// trees over its static layer's copy.
 const WHOLE_SEEDS: [f32; RENDER_MAX_SHADOW_CASCADES] = [0.35, 0.45, 0.7, 1.0];
 const SWAY_SEEDS: [f32; RENDER_MAX_SHADOW_CASCADES] = [0.12, 0.15, 0.25, 0.35];
+
+/// Cascades the grass casts into at most, the nearest: past the second a blade is thinner than a texel.
+const GRASS_CASCADES: usize = 2;
 
 /// The first cascade that keeps a second static layer, which its next is drawn into ahead of the turn that would stale
 /// the one shown: the far ones, whose static draws cost the most.
@@ -94,13 +99,15 @@ struct CascadeOffer {
 }
 
 /// A level's sun shadow: its cascades fitted along the camera's view every frame, each culled and drawn into its map
-/// only when its box moved, the scene changed under it or its trees' sway shows. The nearest draws at once, and so does
+/// only when its box moved, the scene changed under it, its trees' sway shows or, for the nearest, the grass casts into
+/// it (`GrassShadowCasters`), which moves every frame. The nearest draws at once, and so does
 /// one never drawn or whose box strayed too far from its map to wait; a farther one is offered to the frame's
 /// scheduler, waiting at most its stagger (two, four, eight frames).
 ///
-/// While the trees sway, each cascade keeps what stands still in a static layer of its own, drawn only when the scene
-/// changes under it or its fit no longer holds by the one it was drawn at; a draw for the sway copies that layer into
-/// the map and draws the trees over it at the same fit, which leaves the map as a whole draw at that fit would. The far
+/// While the trees sway or the grass casts, each cascade keeps what stands still in a static layer of its own, drawn
+/// only when the scene changes under it or its fit no longer holds by the one it was drawn at; a draw for what moves
+/// copies that layer into the map and draws the trees, and the grass into the nearest, over it at the same fit, which
+/// leaves the map as a whole draw at that fit would. The far
 /// cascades draw their next static layer ahead, a band a frame into a second layer, once their fit has strayed half of
 /// what their static layer holds, and show it when done: a turning sun never stales one whole on a single frame.
 #[derive(Default)]
@@ -117,6 +124,8 @@ pub struct LevelShadows {
   /// The cascades this frame draws, as `commit_cascades` took them, and how; and the bands, by cascade, band and layer.
   due: Vec<(usize, CascadeDraw)>,
   bands: Vec<(usize, u32, u32)>,
+  /// The nearest cascades the grass casts into this frame.
+  grass_cascades: usize,
 }
 
 impl LevelShadows {
@@ -165,11 +174,18 @@ impl LevelShadows {
     self.due.clear();
     self.bands.clear();
 
-    // The static layers pay only while the trees sway: still, a cascade draws again only where its static layer
-    // would.
-    let is_swaying: bool = frame.sway.amplitude * frame.sway.reach > 0.0;
+    // The grass casts into the nearest cascade, and the next where its reach passes the nearest's half width.
+    self.grass_cascades = frame.grass_reach.map_or(0, |reach| {
+      let nearest: f32 = settings.cascades.first().copied().unwrap_or(0.0);
 
-    match (&self.maps, is_swaying && count > 0) {
+      (1 + usize::from(reach > nearest * 0.5)).min(GRASS_CASCADES).min(count)
+    });
+
+    // The static layers pay only while the trees sway or the grass casts: still, a cascade draws again only where its
+    // static layer would.
+    let is_moving: bool = frame.sway.amplitude * frame.sway.reach > 0.0 || self.grass_cascades > 0;
+
+    match (&self.maps, is_moving && count > 0) {
       (Some(maps), true) if self.statics.is_none() => {
         self.statics = Some(SunShadowMaps::new_static(device, maps.resolution, STATIC_LAYERS));
       }
@@ -197,14 +213,15 @@ impl LevelShadows {
   }
 
   /// Declares the cascades due this frame and the bands drawn ahead: every one culled into its own lists in one compute
-  /// pass, then each cascade drawn into its layer of the maps, whole or over its static layer's copy, and each band
-  /// into its cascade's hidden static layer.
+  /// pass, then each cascade drawn into its layer of the maps, whole or over its static layer's copy with the `grass`
+  /// over the nearest, and each band into its cascade's hidden static layer.
   pub fn add_passes<'a>(
     &'a self,
     (graph, bindings): (&mut FrameGraph<'a>, &mut GraphBindings<'a>),
     passes: LevelPasses<'a>,
     (scene, maps): (&StaticSceneHandles, GraphTexture),
     (params, textures): (&'a StaticCullParams, &'a wgpu::BindGroup),
+    grass: Option<GrassShadowCasters<'a>>,
   ) {
     if self.due.is_empty() && self.bands.is_empty() {
       return;
@@ -297,6 +314,10 @@ impl LevelShadows {
             (maps, layer, wgpu::LoadOp::Load),
             ShadowCasters::Swaying,
           );
+
+          if let Some(grass) = grass.filter(|_| index < self.grass_cascades) {
+            grass.add_pass(&mut *graph, GRASS_PASSES[index], (maps, layer), &cut.view);
+          }
         }
         _ => draw_casters(
           &mut *graph,
@@ -478,7 +499,13 @@ impl LevelShadows {
       }
 
       swap_prefetched(index, cascade);
-      self.offers.extend(offer_split(index, cascade, frame, scheduler));
+      self.offers.extend(offer_split(
+        index,
+        cascade,
+        frame,
+        index < self.grass_cascades,
+        scheduler,
+      ));
 
       if index >= BANDED_FROM {
         cascade
@@ -524,13 +551,15 @@ fn offer_whole(
   Some(offer(index, cascade, frame, scheduler, (CascadeDraw::Whole, fit)))
 }
 
-/// Offers the draw a cascade keeping a static layer wants this frame, while the trees sway: over its static layer, at
-/// the fit that layer was drawn at, while the cascade's fit holds by it and nothing changed under it (the nearest
-/// cascade's only while its fit is the same); else a new static layer at the cascade's fit.
+/// Offers the draw a cascade keeping a static layer wants this frame, while the trees sway or the grass casts: over its
+/// static layer, at the fit that layer was drawn at, while the cascade's fit holds by it and nothing changed under it
+/// (the nearest cascade's only while its fit is the same); else a new static layer at the cascade's fit. One the grass
+/// casts into (`has_grass`) draws each sway interval, as the grass moves every frame.
 fn offer_split(
   index: usize,
   cascade: &mut ShadowCascadeView,
   frame: &ShadowFrame<'_>,
+  has_grass: bool,
   scheduler: &mut PeriodicScheduler,
 ) -> Option<CascadeOffer> {
   let scene = frame.scene;
@@ -548,7 +577,8 @@ fn offer_split(
   let is_wanted: bool = cascade.drawn.is_none()
     || !is_held
     || cascade.is_swapped
-    || frame.sway.is_redrawn(frame.sway.reach, current.texel, cascade.drawn_at);
+    || frame.sway.is_redrawn(frame.sway.reach, current.texel, cascade.drawn_at)
+    || (has_grass && frame.sway.is_due(cascade.drawn_at));
 
   if !is_wanted {
     cascade.waited = 0;

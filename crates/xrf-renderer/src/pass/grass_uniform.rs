@@ -34,5 +34,10 @@ pub struct GrassUniform {
   pub tuft_reach: f32,
   /// Radians of slope past which a tuft is not planted, thinning over the last fifth; a right angle for none.
   pub slope_limit: f32,
-  pub pad: u32,
+  /// Metres from the eye within which the cards stand a tuft, the last of them over which it shrinks away, and
+  /// the slots each way from the eye's that reach spans (`GrassCards::get_slots`).
+  pub card_reach: f32,
+  pub card_fade: f32,
+  pub card_slots: i32,
+  pub pad: [u32; 2],
 }

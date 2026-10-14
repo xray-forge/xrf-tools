@@ -26,8 +26,14 @@ impl SunTraceFeature {
   /// Takes this frame's trace towards the sun's view space direction `to_sun`, its noise turned by `noise_frame`,
   /// where DLSS ray reconstruction resolves the frame (`is_reconstructed`).
   pub fn prepare(&mut self, options: &RenderViewOptions, to_sun: Vec4, noise_frame: u32, is_reconstructed: bool) {
-    self.is_traced = is_reconstructed && options.mode.is_lit && !options.mode.is_wireframe;
+    self.is_traced = Self::is_asked(options, is_reconstructed);
     self.uniform = SunTraceUniform::new(to_sun, noise_frame);
+  }
+
+  /// Whether a view traces the sun's shadow, the scene's trace allowing: where DLSS ray reconstruction resolves its
+  /// frame (`is_reconstructed`), lit and solid.
+  pub fn is_asked(options: &RenderViewOptions, is_reconstructed: bool) -> bool {
+    is_reconstructed && options.mode.is_lit && !options.mode.is_wireframe
   }
 
   /// Traces the sun's shadow where it does this frame and the scene's trace is built (`traced`), answering what the sun

@@ -79,6 +79,25 @@ export function SettingsRendererGrass(): ReactElement {
           isChecked={grass.isAligned}
           onChange={(isAligned: boolean) => onSet({ isAligned })}
         />
+
+        <CheckboxFormRow
+          label={"Shadows"}
+          description={
+            "Casts shadows from the grass near the camera: the sun's and the lamps' traced under ray reconstruction, the sun's in its nearest shadow maps otherwise."
+          }
+          isChecked={grass.isShadowed}
+          onChange={(isShadowed: boolean) => onSet({ isShadowed })}
+        />
+
+        <SliderFormRow
+          label={"Shadow radius"}
+          description={"How far from the camera the grass casts shadows, fading out over the last fifth."}
+          value={grass.shadowRadius}
+          {...RENDER_GRASS_LIMITS.shadowRadius}
+          isDisabled={!grass.isShadowed}
+          format={formatGrassRadius}
+          onChange={(shadowRadius: number) => onSet({ shadowRadius })}
+        />
       </div>
     </DetailSection>
   );

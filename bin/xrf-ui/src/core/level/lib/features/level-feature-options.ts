@@ -69,7 +69,7 @@ export type TLevelEnhancedBloomOptions = TRenderEnhancedBloomSettings;
 /** The grass settings a level view may set for itself. */
 export type TLevelGrassOptions = Pick<
   TRenderGrassSettings,
-  "density" | "foliage" | "height" | "isAligned" | "radius" | "slopeLimit"
+  "density" | "foliage" | "height" | "isAligned" | "isShadowed" | "radius" | "shadowRadius" | "slopeLimit"
 >;
 
 /** The water settings a level view may set for itself: all but whether it is drawn, which the toolbar toggles. */
@@ -149,7 +149,7 @@ const LEVEL_FEATURE_KEYS: {
   readonly [K in TLevelFeatureKey]: ReadonlyArray<keyof ILevelFeatureOptions[K]>;
 } = {
   ambientOcclusion: ["method", "quality", "radius", "strength", "vbao"],
-  grass: ["density", "foliage", "height", "isAligned", "radius", "slopeLimit"],
+  grass: ["density", "foliage", "height", "isAligned", "isShadowed", "radius", "shadowRadius", "slopeLimit"],
   lights: ["isLevelLights", "isShadowed", "isVolumetric", "shadowFilter"],
   shadows: ["bias", "blend", "cascades", "contact", "filter", "resolution"],
   water: ["distortion", "enhanced", "isDistorted", "isSoft", "mode", "reflection", "ripple", "waveHeight", "waveSpeed"],

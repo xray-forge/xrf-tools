@@ -22,6 +22,12 @@ pub struct RenderGrassSettings {
   pub slope_limit: f32,
   /// Whether a tuft stands along its ground's normal rather than straight up.
   pub is_aligned: bool,
+  /// Whether the grass casts shadows near the camera, as cards (`GrassCards`): the sun's and the lamps' traced under
+  /// ray reconstruction or a traced occlusion, the sun's drawn into its two nearest cascades otherwise, as Screen Space
+  /// Shaders' `ssfx_grass_shadows` draws them. Neither engine shadows its grass.
+  pub is_shadowed: bool,
+  /// Metres from the camera the grass casts shadows to, fading over the last fifth of them.
+  pub shadow_radius: f32,
 }
 
 impl Default for RenderGrassSettings {
@@ -35,6 +41,8 @@ impl Default for RenderGrassSettings {
       foliage: RenderFoliageSettings::default(),
       slope_limit: 90.0,
       is_aligned: false,
+      is_shadowed: false,
+      shadow_radius: 25.0,
     }
   }
 }

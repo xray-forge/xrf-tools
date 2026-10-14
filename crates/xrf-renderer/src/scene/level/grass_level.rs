@@ -136,7 +136,8 @@ impl GrassLevel {
       })
       .collect::<Vec<_>>(),
     });
-    let vertex = wgpu::BufferUsages::VERTEX;
+    // The draws read the arenas as vertices, and the trace's cards as storage (`GrassCards`).
+    let vertex = wgpu::BufferUsages::VERTEX | read;
 
     Self {
       grid: [
@@ -157,7 +158,7 @@ impl GrassLevel {
       indices: storage(
         "grass indices",
         bytemuck::cast_slice(&indices),
-        wgpu::BufferUsages::INDEX,
+        wgpu::BufferUsages::INDEX | read,
       ),
       models,
       cells: grid,

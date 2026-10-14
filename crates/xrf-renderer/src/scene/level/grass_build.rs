@@ -8,9 +8,11 @@ const KEY_WORDS: u64 = 4;
 /// holding generation nought, which no planting runs under, so every cell starts stale.
 pub struct GrassBuild {
   pub size: GrassBuildSize,
-  /// The items sorted by model, which the draws read.
-  pub sorted: wgpu::Buffer,
   pub bind_group: wgpu::BindGroup,
+  /// The puddles the group binds.
+  puddles: wgpu::TextureView,
+  /// The ring, the bands' counts, the schedule and the lists, as the group binds them.
+  buffers: [wgpu::Buffer; 8],
   /// The sort's indirect dispatch, and the group `arrange` writes it through.
   pub sort_dispatch: wgpu::Buffer,
   pub sort_group: wgpu::BindGroup,
@@ -48,7 +50,60 @@ impl GrassBuild {
       buffer("grass planted models", u64::from(size.capacity) * 4),
       buffer("grass sorted", u64::from(size.capacity) * GRASS_ITEM_BYTES),
     ];
-    let bind_group: wgpu::BindGroup = device.create_bind_group(&wgpu::BindGroupDescriptor {
+    let bind_group: wgpu::BindGroup = Self::create_group(device, pass, &buffers, uniform, puddles);
+    let sort_dispatch: wgpu::Buffer = device.create_buffer(&wgpu::BufferDescriptor {
+      label: Some("grass sort dispatch"),
+      size: 12,
+      usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::INDIRECT,
+      mapped_at_creation: false,
+    });
+    let sort_group: wgpu::BindGroup = device.create_bind_group(&wgpu::BindGroupDescriptor {
+      label: Some("grass sort"),
+      layout: pass.get_sort_layout(),
+      entries: &[wgpu::BindGroupEntry {
+        binding: 0,
+        resource: sort_dispatch.as_entire_binding(),
+      }],
+    });
+
+    Self {
+      size,
+      bind_group,
+      puddles: puddles.0.clone(),
+      buffers,
+      sort_dispatch,
+      sort_group,
+    }
+  }
+
+  /// The items sorted by model, which the draws read.
+  pub fn get_sorted(&self) -> &wgpu::Buffer {
+    &self.buffers[7]
+  }
+
+  /// Binds this frame's puddles where they are not the ones bound: the level's surface is made after the ring, and
+  /// made again as the camera leaves it.
+  pub fn bind_puddles(
+    &mut self,
+    device: &wgpu::Device,
+    pass: &GrassPass,
+    uniform: &wgpu::Buffer,
+    puddles: (&wgpu::TextureView, &wgpu::Buffer),
+  ) {
+    if *puddles.0 != self.puddles {
+      self.bind_group = Self::create_group(device, pass, &self.buffers, uniform, puddles);
+      self.puddles = puddles.0.clone();
+    }
+  }
+
+  fn create_group(
+    device: &wgpu::Device,
+    pass: &GrassPass,
+    buffers: &[wgpu::Buffer; 8],
+    uniform: &wgpu::Buffer,
+    puddles: (&wgpu::TextureView, &wgpu::Buffer),
+  ) -> wgpu::BindGroup {
+    device.create_bind_group(&wgpu::BindGroupDescriptor {
       label: Some("grass build"),
       layout: pass.get_build_layout(),
       entries: &buffers
@@ -70,30 +125,6 @@ impl GrassBuild {
           },
         ])
         .collect::<Vec<_>>(),
-    });
-    let [_, _, _, _, _, _, _, sorted] = buffers;
-
-    let sort_dispatch: wgpu::Buffer = device.create_buffer(&wgpu::BufferDescriptor {
-      label: Some("grass sort dispatch"),
-      size: 12,
-      usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::INDIRECT,
-      mapped_at_creation: false,
-    });
-    let sort_group: wgpu::BindGroup = device.create_bind_group(&wgpu::BindGroupDescriptor {
-      label: Some("grass sort"),
-      layout: pass.get_sort_layout(),
-      entries: &[wgpu::BindGroupEntry {
-        binding: 0,
-        resource: sort_dispatch.as_entire_binding(),
-      }],
-    });
-
-    Self {
-      size,
-      sorted,
-      bind_group,
-      sort_dispatch,
-      sort_group,
-    }
+    })
   }
 }

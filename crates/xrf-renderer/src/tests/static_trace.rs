@@ -441,7 +441,7 @@ fn run_probes(
     compare: Some(wgpu::CompareFunction::GreaterEqual),
     ..Default::default()
   });
-  // No grass either: its grid, slots, models and colours nothing, its uniform naming no model.
+  // No grass either: its grid, slots, models, colours and cards nothing, its uniform naming no model.
   let grass: wgpu::Buffer = device.create_buffer(&wgpu::BufferDescriptor {
     label: Some("trace probe grass"),
     size: size_of::<TraceGrassUniform>() as u64,
@@ -464,8 +464,9 @@ fn run_probes(
       empty.clone(),
       empty.clone(),
       empty.clone(),
-      empty,
+      empty.clone(),
       grass.as_entire_binding(),
+      empty,
     ])
     .collect();
   let entries: Vec<wgpu::BindGroupEntry<'_>> = resources

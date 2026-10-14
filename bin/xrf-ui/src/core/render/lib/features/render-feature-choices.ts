@@ -194,6 +194,7 @@ export const RENDER_GRASS_LIMITS = {
   },
   height: toRenderLimits(RENDER_FEATURE_SCHEMA.grass.height, 0.1),
   radius: toRenderLimits(RENDER_FEATURE_SCHEMA.grass.radius, 1),
+  shadowRadius: toRenderLimits(RENDER_FEATURE_SCHEMA.grass.shadowRadius, 1),
 } as const;
 
 /** The bounds each enhanced foliage motion value is offered between. */

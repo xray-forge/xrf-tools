@@ -72,11 +72,12 @@ export const RENDER_PRESETS: Readonly<Record<ERenderPreset, IRenderFeatureSettin
     // The application's own choice over the engine's, as the antialiasing is: glass refracting what is behind it.
     glass: { ...DEFAULT_RENDER_GLASS_SETTINGS, mode: ERenderGlassMode.ENHANCED },
     // The application's own choice over the engine's, as the antialiasing is: the enhanced foliage motion, each tuft
-    // stood along its ground's slope.
+    // stood along its ground's slope, and its shadows near the camera.
     grass: {
       ...DEFAULT_RENDER_GRASS_SETTINGS,
       foliage: { ...DEFAULT_RENDER_FOLIAGE_SETTINGS, mode: ERenderFoliageMode.ENHANCED },
       isAligned: true,
+      isShadowed: true,
       // Planted out to 150 m rather than the engine's 49.
       radius: 150,
     },
