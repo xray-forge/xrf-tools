@@ -14,6 +14,8 @@ pub struct ArchiveThmFile {
   pub thumbnail: Option<ArchiveThmThumbnail>,
   /// Chunk ids the reader could not fold into a field, in the order it read them.
   pub extra_chunks: Vec<u32>,
+  /// Chunk ids holding bytes past their fields, which no engine reads, in the order the reader met them.
+  pub trailing_chunks: Vec<u32>,
 }
 
 /// The preview picture a descriptor carries, `THM_CHUNK_DATA`.
@@ -37,6 +39,7 @@ impl ArchiveThmFile {
         size: thumbnail.data.len() as u64,
       }),
       extra_chunks: file.extra.iter().map(|chunk| chunk.id).collect(),
+      trailing_chunks: file.trailing.iter().map(|trailing| trailing.id).collect(),
     }
   }
 }

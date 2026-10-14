@@ -35,7 +35,7 @@ impl ChunkReadWrite for ThmDetailChunk {
       scale: reader.read_f32::<T>()?,
     };
 
-    reader.assert_read("Expect all data to be read from thm detail chunk")?;
+    // Bytes past the fields are the descriptor's to keep, as `ThmFile::trailing`.
 
     Ok(chunk)
   }

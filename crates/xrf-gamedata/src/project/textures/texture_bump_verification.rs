@@ -6,6 +6,8 @@ use crate::Finding;
 /// added up afterwards in path order.
 pub(crate) struct TextureBumpVerification {
   pub(crate) verdict: TextureBumpVerdict,
+  /// Whether the descriptor holds bytes past a chunk's fields.
+  pub(crate) has_trailing_bytes: bool,
   pub(crate) findings: Vec<Finding>,
 }
 
@@ -44,9 +46,15 @@ impl TextureBumpVerification {
     self
   }
 
+  pub(crate) fn with_trailing_bytes(mut self, finding: Finding) -> Self {
+    self.has_trailing_bytes = true;
+    self.with_finding(finding)
+  }
+
   fn of(verdict: TextureBumpVerdict) -> Self {
     Self {
       verdict,
+      has_trailing_bytes: false,
       findings: Vec::new(),
     }
   }

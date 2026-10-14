@@ -17,6 +17,9 @@ pub(crate) struct GamedataTextureBumpsVerificationResult {
   /// Descriptors that ask for a bump the engine never binds: a texture type `LoadTHM` skips, or a used mode with no
   /// name. Authoring that does nothing, harmless at runtime; vanilla ships two. Reported always, gating only under strict.
   pub(crate) invalid_bump_declarations_count: u32,
+  /// Descriptors holding bytes past a chunk's fields, which no engine reads and some texture packs write. Harmless at
+  /// runtime; reported always, gating only under strict.
+  pub(crate) trailing_descriptors_count: u32,
   /// Whether the run was asked to judge what the engine tolerates silently, which is what promotes a missing companion
   /// and an unread declaration from counted to failing.
   pub(crate) is_strict: bool,
@@ -28,7 +31,10 @@ impl GamedataCheckResult for GamedataTextureBumpsVerificationResult {
     // judges what the engine tolerates silently: a companion it substitutes, and a declaration it never reads.
     GamedataVerificationStatus::from_is_valid(
       self.unresolved_bumps_count == 0
-        && (!self.is_strict || (self.missing_companions_count == 0 && self.invalid_bump_declarations_count == 0)),
+        && (!self.is_strict
+          || (self.missing_companions_count == 0
+            && self.invalid_bump_declarations_count == 0
+            && self.trailing_descriptors_count == 0)),
     )
   }
 
@@ -51,6 +57,13 @@ impl GamedataCheckResult for GamedataTextureBumpsVerificationResult {
       message.push_str(&format!(
         ", {} bump declarations the engine never reads",
         self.invalid_bump_declarations_count
+      ));
+    }
+
+    if self.trailing_descriptors_count > 0 {
+      message.push_str(&format!(
+        ", {} descriptors with bytes past their fields",
+        self.trailing_descriptors_count
       ));
     }
 
@@ -101,6 +114,29 @@ mod tests {
     assert_eq!(
       lenient.get_failure_message(),
       "1/1 declared bumps resolved, 1 bump declarations the engine never reads"
+    );
+
+    let strict: GamedataTextureBumpsVerificationResult = GamedataTextureBumpsVerificationResult {
+      is_strict: true,
+      ..lenient
+    };
+
+    assert_eq!(strict.get_status(), GamedataVerificationStatus::Failed);
+  }
+
+  #[test]
+  fn bytes_past_a_descriptor_chunk_are_named_always_and_fail_only_under_strict() {
+    // No engine reads them, so nothing renders wrong; a texture pack writes them into hundreds of descriptors.
+    let lenient: GamedataTextureBumpsVerificationResult = GamedataTextureBumpsVerificationResult {
+      checked_bumps_count: 1,
+      trailing_descriptors_count: 2,
+      ..Default::default()
+    };
+
+    assert_eq!(lenient.get_status(), GamedataVerificationStatus::Passed);
+    assert_eq!(
+      lenient.get_failure_message(),
+      "1/1 declared bumps resolved, 2 descriptors with bytes past their fields"
     );
 
     let strict: GamedataTextureBumpsVerificationResult = GamedataTextureBumpsVerificationResult {

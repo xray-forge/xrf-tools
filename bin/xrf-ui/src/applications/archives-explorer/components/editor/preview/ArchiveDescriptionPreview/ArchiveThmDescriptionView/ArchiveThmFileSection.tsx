@@ -51,6 +51,15 @@ export function ArchiveThmFileSection({
           isMonospace
         />
       ) : null}
+
+      {file.trailingChunks.length ? (
+        <ArchiveDescriptionRow
+          label={"Bytes past fields"}
+          value={file.trailingChunks.map(formatChunkId).join(", ")}
+          caption={"Chunks longer than their fields: the engine ignores the extra bytes, and a save keeps them"}
+          isMonospace
+        />
+      ) : null}
     </EditorPanelSection>
   );
 }

@@ -136,6 +136,8 @@ pub enum GamedataVerificationRule {
   TexturesBumpCompanion,
   #[display("textures.bump-declaration")]
   TexturesBumpDeclaration,
+  #[display("textures.chunk-residue")]
+  TexturesChunkResidue,
   #[display("textures.path")]
   TexturesPath,
   #[display("textures.read")]
