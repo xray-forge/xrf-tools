@@ -829,7 +829,7 @@ export type RenderGrassSettings = {
    * Shaders' `ssfx_grass_shadows` draws them. Neither engine shadows its grass.
    */
   isShadowed: boolean;
-  /** Metres from the camera the grass casts shadows to, fading over the last fifth of them. */
+  /** Metres from the camera the grass casts shadows to, 150 at most, fading over the last fifth of them. */
   shadowRadius: number | null;
 };
 

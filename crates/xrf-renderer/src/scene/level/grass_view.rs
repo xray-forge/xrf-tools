@@ -126,10 +126,13 @@ impl GrassView {
     self.is_card_traced = is_traced;
     self.is_card_cascaded = is_cascaded;
 
+    // Made again where the radius wants them to hold another number of triangles.
+    let capacity: u32 = GrassCards::get_capacity(GrassCards::get_reach(settings).0);
+
     if !(is_traced || is_cascaded) || !settings.is_shadowed {
       self.cards = None;
-    } else if self.cards.is_none() {
-      self.cards = Some(GrassCards::new(device, pass, level, &self.wind_buffer));
+    } else if self.cards.as_ref().is_none_or(|cards| cards.capacity != capacity) {
+      self.cards = Some(GrassCards::new(device, pass, (level, &self.wind_buffer), capacity));
     }
 
     // `dm_current_size`, `dm_current_fade` and `d_size`, from `r__detail_radius` and `r__detail_density`.
@@ -270,7 +273,7 @@ impl GrassView {
         pass.record_cards(
           context.get_pass(),
           (&level.bind_group, &build.bind_group, &cards.group),
-          (GrassCards::CAPACITY, tufts),
+          (cards.capacity, tufts),
         );
       });
 
@@ -289,7 +292,7 @@ impl GrassView {
       .buffer(vertices, GraphBufferAccess::StorageRead)
       .keep()
       .record(move |context| {
-        let size: wgpu::BlasTriangleGeometrySizeDescriptor = GrassCards::get_size();
+        let size: wgpu::BlasTriangleGeometrySizeDescriptor = GrassCards::get_size(cards.capacity);
         let geometry: wgpu::BlasTriangleGeometry<'_> = wgpu::BlasTriangleGeometry {
           size: &size,
           vertex_buffer: context.get_buffer(vertices),

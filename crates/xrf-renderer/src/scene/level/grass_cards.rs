@@ -12,6 +12,8 @@ pub struct GrassCards {
   pub count: wgpu::Buffer,
   /// The cascades' indirect draw of the corners that stand.
   pub draw: wgpu::Buffer,
+  /// Triangles they hold at most (`get_capacity`).
+  pub capacity: u32,
   pub blas: wgpu::Blas,
   /// What standing them binds at group 2, and what their draw into a cascade binds at group 1.
   pub group: wgpu::BindGroup,
@@ -19,9 +21,13 @@ pub struct GrassCards {
 }
 
 impl GrassCards {
-  /// Triangles the cards hold at most, as `shaders/grass/cards.wgsl` stands them within the widest reach: some 800
-  /// stand within 12 metres of the marsh.
-  pub const CAPACITY: u32 = 1 << 16;
+  /// Triangles a square metre of the cards' reach holds at most, twice the most measured (some 7, 37k within 40 m of
+  /// Zaton's hill), and the least and the most the cards hold whatever their reach.
+  const TRIANGLES_PER_SQUARE_METRE: f32 = 16.0;
+  const LEAST_CAPACITY: u32 = 1 << 14;
+  const MOST_CAPACITY: u32 = 1 << 21;
+  /// Metres the cards reach at most.
+  const MOST_REACH: f32 = 150.0;
   /// Bytes a triangle's corners and its record take.
   const VERTEX_BYTES: u64 = 36;
   const TRIANGLE_BYTES: u64 = 16;
@@ -32,8 +38,13 @@ impl GrassCards {
   /// The share of their reach over which the cards fade out.
   const FADE_SHARE: f32 = 0.2;
 
-  /// Cards for `level`'s grass, swayed by `wind`.
-  pub fn new(device: &wgpu::Device, pass: &GrassPass, level: &GrassLevel, wind: &wgpu::Buffer) -> Self {
+  /// Cards for `level`'s grass, swayed by `wind`, holding `capacity` triangles at most.
+  pub fn new(
+    device: &wgpu::Device,
+    pass: &GrassPass,
+    (level, wind): (&GrassLevel, &wgpu::Buffer),
+    capacity: u32,
+  ) -> Self {
     let buffer = |label: &str, size: u64, usage: wgpu::BufferUsages| -> wgpu::Buffer {
       device.create_buffer(&wgpu::BufferDescriptor {
         label: Some(label),
@@ -42,15 +53,15 @@ impl GrassCards {
         mapped_at_creation: false,
       })
     };
-    let capacity: u64 = u64::from(Self::CAPACITY);
+    let triangles_most: u64 = u64::from(capacity);
     let vertices: wgpu::Buffer = buffer(
       "grass card vertices",
-      capacity * Self::VERTEX_BYTES,
+      triangles_most * Self::VERTEX_BYTES,
       wgpu::BufferUsages::BLAS_INPUT,
     );
     let triangles: wgpu::Buffer = buffer(
       "grass card triangles",
-      capacity * Self::TRIANGLE_BYTES,
+      triangles_most * Self::TRIANGLE_BYTES,
       wgpu::BufferUsages::empty(),
     );
     let count: wgpu::Buffer = buffer("grass card count", 4, wgpu::BufferUsages::empty());
@@ -62,7 +73,7 @@ impl GrassCards {
         update_mode: wgpu::AccelerationStructureUpdateMode::Build,
       },
       wgpu::BlasGeometrySizeDescriptors::Triangles {
-        descriptors: vec![Self::get_size()],
+        descriptors: vec![Self::get_size(capacity)],
       },
     );
     let group: wgpu::BindGroup = pass.create_cards_group(
@@ -78,15 +89,25 @@ impl GrassCards {
       triangles,
       count,
       draw,
+      capacity,
       blas,
       group,
       shadow_group,
     }
   }
 
+  /// Triangles cards reaching `reach` metres hold at most.
+  pub fn get_capacity(reach: f32) -> u32 {
+    let area: f32 = std::f32::consts::PI * reach * reach;
+
+    ((Self::TRIANGLES_PER_SQUARE_METRE * area) as u32)
+      .next_power_of_two()
+      .clamp(Self::LEAST_CAPACITY, Self::MOST_CAPACITY)
+  }
+
   /// Metres from the eye within which the cards stand a tuft for `settings`, and the last of them over which they fade.
   pub fn get_reach(settings: &RenderGrassSettings) -> (f32, f32) {
-    let reach: f32 = settings.shadow_radius.clamp(1.0, 64.0);
+    let reach: f32 = settings.shadow_radius.clamp(1.0, Self::MOST_REACH);
 
     (reach, reach * Self::FADE_SHARE)
   }
@@ -101,11 +122,11 @@ impl GrassCards {
     (slots * 2 + 1) * (slots * 2 + 1)
   }
 
-  /// Every triangle the cards hold, those not standing this frame marked as none by their corners.
-  pub fn get_size() -> wgpu::BlasTriangleGeometrySizeDescriptor {
+  /// Every triangle of `capacity` the cards hold, those not standing this frame marked as none by their corners.
+  pub fn get_size(capacity: u32) -> wgpu::BlasTriangleGeometrySizeDescriptor {
     wgpu::BlasTriangleGeometrySizeDescriptor {
       vertex_format: wgpu::VertexFormat::Float32x3,
-      vertex_count: Self::CAPACITY * 3,
+      vertex_count: capacity * 3,
       index_format: None,
       index_count: None,
       flags: wgpu::AccelerationStructureGeometryFlags::empty(),
