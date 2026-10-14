@@ -238,6 +238,14 @@ impl SceneView {
     }
 
     let time: f32 = scene.started.elapsed().as_secs_f32();
+
+    // The level's wetness is the scene's: its first view moves it on by its rain and clock, the rest read it.
+    if frame.is_scene_first {
+      scene
+        .wetness
+        .advance(frame.lighting, &frame.options.features.rain, (time, frame.weather_rate));
+    }
+
     // What of the scene drawn by passes of its own the view may see: none of the water's or the surface passes' work
     // runs for what is out of sight.
     let sight: StaticSight = scene.statics.get_sight(&frame.view.get_planes());
@@ -316,7 +324,7 @@ impl SceneView {
     self.features.wet.prepare(
       weather,
       options,
-      (falling.as_ref(), time, frame.weather_rate),
+      (&scene.wetness, falling.as_ref(), time),
       (windows, self.features.resolve.get_noise_frame()),
       frame.weather_textures,
     );

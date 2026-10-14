@@ -62,6 +62,13 @@ impl PuddleFill {
     (fill, storm, soak)
   }
 
+  /// How full, how stormy and how soaked, as last moved on; nothing before.
+  pub fn get(&self) -> (f32, f32, f32) {
+    self
+      .state
+      .map_or((0.0, 0.0, 0.0), |(fill, storm, soak, _)| (fill, storm, soak))
+  }
+
   /// How far a rain of a density is past a light one: none to half, all of it at one.
   fn get_storminess(density: f32) -> f32 {
     let past: f32 = ((density - 0.5) / 0.5).clamp(0.0, 1.0);
