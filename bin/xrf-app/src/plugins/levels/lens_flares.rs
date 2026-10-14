@@ -1,3 +1,5 @@
+//! A `suns.ltx` section as the renderer draws it.
+
 use xrf_engine_target::XrayEngine;
 use xrf_environment::{LensFlare, LensFlareKey};
 use xrf_renderer::{RenderFlare, RenderLensFlare, RenderSunSprite};

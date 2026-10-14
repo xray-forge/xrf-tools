@@ -5,7 +5,7 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use xrf_ltx::{Ltx, LtxProject, LtxProjectOptions, LtxResolution};
-use xrf_world::ReducedTextures;
+use xrf_material::XrayReducedTextures;
 
 use crate::plugins::levels::report::report_sections;
 use crate::plugins::levels::state::{LevelSpawn, SelectedLevel};
@@ -13,7 +13,7 @@ use crate::plugins::levels::state::{LevelSpawn, SelectedLevel};
 /// Where the game keeps its configs, which `system.ltx` is read from.
 const CONFIGS_DIRECTORY: &str = "configs";
 
-/// The sections the open level's spawned objects name and [`ReducedTextures::SECTION`], out of `system.ltx` with its
+/// The sections the open level's spawned objects name and [`XrayReducedTextures::SECTION`], out of `system.ltx` with its
 /// includes merged and every section's parents resolved, read the first time anything asks and kept with the level.
 ///
 /// The rest of the resolution is let go once read: a resolved tree is tens of megabytes, and the level reads a handful
@@ -32,7 +32,7 @@ pub fn get_level_sections(current: &SelectedLevel, spawn: &LevelSpawn) -> Result
         .objects
         .iter()
         .map(|object| object.section.as_str())
-        .chain([ReducedTextures::SECTION])
+        .chain([XrayReducedTextures::SECTION])
         .collect();
       let mut kept: Ltx = Ltx::new();
 

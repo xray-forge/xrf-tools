@@ -1,4 +1,3 @@
-pub(crate) mod lens_flare;
 pub(crate) mod played_weather;
 pub(crate) mod playing_effect;
 pub(crate) mod thunder_flash;
