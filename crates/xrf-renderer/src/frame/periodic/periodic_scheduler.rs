@@ -2,6 +2,7 @@ use std::collections::{HashMap, VecDeque};
 
 use xrf_renderer_core::GraphTaggedTime;
 
+use crate::contract::render_settings::RENDER_DEFAULT_PERIODIC_BUDGET;
 use crate::frame::periodic::periodic_job::PeriodicJob;
 use crate::frame::periodic::periodic_owner::PeriodicOwner;
 use crate::frame::periodic::periodic_ticket::PeriodicTicket;
@@ -51,8 +52,6 @@ struct PeriodicOffer {
 }
 
 impl PeriodicScheduler {
-  /// Milliseconds of GPU time a frame gives what may wait, unless the settings say otherwise.
-  pub const DEFAULT_BUDGET: f32 = 0.5;
   /// Frames whose grants are kept for the timer, which reads a frame back a few frames late.
   const KEPT_FRAMES: usize = 8;
   /// How far one measurement moves a learned cost.
@@ -64,7 +63,7 @@ impl PeriodicScheduler {
 
   pub fn new() -> Self {
     Self {
-      budget: Self::DEFAULT_BUDGET,
+      budget: RENDER_DEFAULT_PERIODIC_BUDGET,
       frame: 0,
       owner: PeriodicOwner::Scenes,
       offers: Vec::new(),
