@@ -1,5 +1,6 @@
 import { Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
+import { filterByName } from "@xrf/search";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useMemo, useState } from "react";
 
@@ -9,7 +10,6 @@ import { SequencerService } from "@/applications/visuals-sequencer/services/sequ
 import { EditorFilterInput } from "@/core/shell/editor/EditorFilterInput";
 import { EditorPanel, EditorPanelEmpty } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { filterByName } from "@/lib/search/filter-by-name";
 
 /** How many matches are drawn at once. */
 const SHOWN_LIMIT: number = 200;

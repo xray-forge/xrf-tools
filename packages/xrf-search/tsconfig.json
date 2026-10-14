@@ -1,0 +1,8 @@
+{
+  "extends": "@xrf/toolchain/tsconfig.base.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "./target/tsconfig.tsbuildinfo",
+    "lib": ["ES2022"]
+  },
+  "include": ["src"]
+}

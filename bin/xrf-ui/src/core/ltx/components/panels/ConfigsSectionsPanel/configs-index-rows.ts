@@ -1,3 +1,4 @@
+import { filterByName } from "@xrf/search";
 import { Nullable } from "@xrf/types";
 
 import { LtxFileStructure, LtxResolvedIndexEntry, LtxStructureEntry } from "@/core/ipc/types/xrf-ltx-inspect";
@@ -70,9 +71,5 @@ export function filterConfigsIndex(
   rows: ReadonlyArray<ITreeNode<TConfigsIndexRow>>,
   query: string
 ): Array<ITreeNode<TConfigsIndexRow>> {
-  const wanted: string = query.trim().toLowerCase();
-
-  return wanted
-    ? rows.filter((row: ITreeNode<TConfigsIndexRow>) => row.payload?.name.toLowerCase().includes(wanted))
-    : [...rows];
+  return [...filterByName(rows, query, (row: ITreeNode<TConfigsIndexRow>) => row.payload?.name ?? "")];
 }

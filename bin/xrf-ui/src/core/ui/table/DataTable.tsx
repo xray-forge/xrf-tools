@@ -1,5 +1,6 @@
 import { Typography } from "@mui/material";
 import { DataGrid, GridColDef, GridRowId, GridRowParams, GridValidRowModel } from "@mui/x-data-grid";
+import { filterByName } from "@xrf/search";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useMemo, useState } from "react";
 
@@ -42,15 +43,10 @@ export function DataTable<T extends GridValidRowModel>({
 }: IDataTableProps<T>): ReactElement {
   const [search, setSearch] = useState<string>("");
 
-  const filtered: Array<T> = useMemo(() => {
-    const query: string = search.trim().toLowerCase();
-
-    if (!query || !getSearchText) {
-      return rows;
-    }
-
-    return rows.filter((row: T) => getSearchText(row).toLowerCase().includes(query));
-  }, [rows, search, getSearchText]);
+  const filtered: Array<T> = useMemo(
+    () => (getSearchText ? filterByName(rows, search, getSearchText) : rows),
+    [rows, search, getSearchText]
+  );
 
   const initialState = useMemo(
     () => ({

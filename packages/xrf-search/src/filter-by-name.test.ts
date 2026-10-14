@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { filterByName } from "@/lib/search/filter-by-name";
+import { filterByName } from "#/filter-by-name";
 
 describe("filterByName", () => {
   const names: Array<string> = ["wpn_ak74_idle", "wpn_ak74_reload", "wpn_pm_idle"];
