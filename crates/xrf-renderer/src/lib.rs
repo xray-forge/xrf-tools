@@ -148,6 +148,7 @@ pub use crate::host::render_level_particles::RenderLevelParticles;
 pub use crate::host::render_level_source::RenderLevelSource;
 pub use crate::host::render_level_spawn::RenderLevelSpawn;
 pub use crate::host::render_level_weather::RenderLevelWeather;
+pub use crate::host::render_model_failure::RenderModelFailure;
 pub use crate::host::render_model_skeleton::RenderModelSkeleton;
 pub use crate::host::render_motion::RenderMotion;
 pub use crate::host::render_particle_definitions::RenderParticleDefinitions;

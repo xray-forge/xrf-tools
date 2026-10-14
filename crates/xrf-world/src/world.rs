@@ -247,13 +247,14 @@ impl RenderWorld for World {
         continue;
       };
       let RenderSceneFeedback {
-        failures,
+        sector_failures,
+        model_failures,
         finished_effects,
       } = feedback.remove(id).unwrap_or_default();
       let (updates, effects): (Vec<RenderSceneUpdate>, EffectsFrame) = scene.level.advance(
         (&driving.options, &driving.toggles, driving.get_ambient_frame()),
         driving.eye,
-        failures,
+        (sector_failures, model_failures),
         finished_effects,
       );
 
