@@ -5,7 +5,7 @@ use crate::lighting::render_lighting::RenderLighting;
 use crate::scene::level::puddle_fill::PuddleFill;
 use crate::scene::level::rain_wetness::RainWetness;
 
-/// The level's wetness and its puddles' fill: the scene's own, moved on once a frame by its first view's rain and
+/// The level's wetness and its puddles' fill: the scene's own, moved on once a frame by its driving viewport's rain and
 /// clock, which every view of it wets its surfaces by.
 #[derive(Default)]
 pub struct LevelWetness {
