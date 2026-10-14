@@ -6,8 +6,10 @@ use std::sync::{Arc, Mutex, PoisonError};
 use glam::Mat4;
 use xrf_renderer::{
   LoaderReceiver, RenderLevelSource, RenderLevelSpawn, RenderLoadFailure, RenderModelSkeleton, RenderSpawnModels,
-  RenderSpawnObject, RenderWorkers, StaticModel, StaticModelPlace,
+  RenderSpawnObject, RenderWorkers, StaticModel, StaticModelPlace, take_answer,
 };
+
+use crate::level::loader_flight::LoaderFlight;
 
 /// Visuals a loader thread reads in one batch: enough that the level's lighting is estimated for many at once, few
 /// enough that objects appear while the rest are read.
@@ -17,13 +19,20 @@ const VISUALS_PER_BATCH: usize = 16;
 /// renderer poses it.
 pub type SpawnLoad = (StaticModel, Vec<StaticModelPlace>, Option<RenderModelSkeleton>);
 
-/// Reads a level's spawn on the loader threads: the objects once, then their visuals in batches side by side, each
-/// model packed and handed to the render thread with the objects standing as it. Dropped, it lets go of the batches not
-/// started yet.
+/// Reads a level's spawn on the loader threads: the objects once, then their visuals in batches side by side, the
+/// pool's width of them at a time, each model packed and handed to the render thread with the objects standing as it,
+/// and the next batches started as models are taken. Dropped, it lets go of the batches not started yet.
 pub struct SpawnLoader {
+  source: Arc<dyn RenderLevelSource>,
+  workers: RenderWorkers,
+  /// The objects on their way from their loader, none once they came or could not be read.
+  reading: Option<LoaderReceiver<Option<RenderLevelSpawn>>>,
+  /// The objects once read, whose visuals the batches read.
+  spawn: Option<Arc<RenderLevelSpawn>>,
+  sender: Sender<SpawnLoad>,
   receiver: LoaderReceiver<SpawnLoad>,
-  /// Batches not finished yet, and whether the objects are still being read.
-  pending: Arc<AtomicU32>,
+  /// The batches started, in order, and how many of them finished.
+  flight: LoaderFlight,
   /// Models sent, and taken.
   sent: Arc<AtomicU32>,
   taken: u32,
@@ -34,37 +43,31 @@ pub struct SpawnLoader {
 
 impl SpawnLoader {
   pub fn start(source: Arc<dyn RenderLevelSource>, workers: &RenderWorkers) -> Self {
+    let (spawn_sender, spawn_receiver) = LoaderReceiver::channel();
     let (sender, receiver) = LoaderReceiver::channel();
-    let pending: Arc<AtomicU32> = Arc::new(AtomicU32::new(1));
-    let sent: Arc<AtomicU32> = Arc::new(AtomicU32::new(0));
-    let is_cancelled: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
-    let failures: Arc<Mutex<Vec<RenderLoadFailure>>> = Arc::new(Mutex::new(Vec::new()));
-    let counters: Counters = Counters {
-      pending: Arc::clone(&pending),
-      sent: Arc::clone(&sent),
-      is_cancelled: Arc::clone(&is_cancelled),
-      failures: Arc::clone(&failures),
-    };
-    let spawn_pending: Arc<AtomicU32> = Arc::clone(&pending);
-
-    let batch_workers: RenderWorkers = workers.clone();
+    let reader: Arc<dyn RenderLevelSource> = Arc::clone(&source);
 
     workers.spawn(move || {
-      match source.read_spawn() {
-        Ok(spawn) => read_batches(&source, Arc::new(spawn), &sender, &counters, &batch_workers),
-        Err(error) => log::warn!("The level's spawned objects cannot be drawn: {error}"),
-      }
+      let spawn: Option<RenderLevelSpawn> = reader
+        .read_spawn()
+        .inspect_err(|error| log::warn!("The level's spawned objects cannot be drawn: {error}"))
+        .ok();
 
-      spawn_pending.fetch_sub(1, Ordering::AcqRel);
+      let _ = spawn_sender.send(spawn);
     });
 
     Self {
+      source,
+      workers: workers.clone(),
+      reading: Some(spawn_receiver),
+      spawn: None,
+      sender,
       receiver,
-      pending,
-      sent,
+      flight: LoaderFlight::new(workers),
+      sent: Arc::new(AtomicU32::new(0)),
       taken: 0,
-      is_cancelled,
-      failures,
+      is_cancelled: Arc::new(AtomicBool::new(false)),
+      failures: Arc::new(Mutex::new(Vec::new())),
     }
   }
 
@@ -73,124 +76,135 @@ impl SpawnLoader {
     self.failures.lock().unwrap_or_else(PoisonError::into_inner).clone()
   }
 
-  /// Whether every batch has been read and every model it packed taken.
+  /// Whether the objects were read, every batch of their visuals has been read and every model it packed taken.
   pub fn is_done(&self) -> bool {
-    self.pending.load(Ordering::Acquire) == 0 && self.sent.load(Ordering::Acquire) == self.taken
+    self.reading.is_none()
+      && self.get_batch_count() == self.flight.get_started() as usize
+      && self.flight.is_landed()
+      && self.sent.load(Ordering::Acquire) == self.taken
   }
 
-  /// The models finished since the last call, at most `limit` of them.
+  /// The models finished since the last call, at most `limit` of them; takes the objects once read and starts as many
+  /// more batches as finished.
   pub fn take(&mut self, limit: usize) -> Vec<SpawnLoad> {
+    if let Some(spawn) = take_answer(&mut self.reading, "spawn") {
+      self.spawn = spawn.map(Arc::new);
+    }
+
     let taken: Vec<SpawnLoad> = self.receiver.try_iter().take(limit).collect();
 
     self.taken += taken.len() as u32;
+    self.refill();
 
     taken
+  }
+
+  /// How many batches the objects' visuals make, none until they are read.
+  fn get_batch_count(&self) -> usize {
+    self
+      .spawn
+      .as_ref()
+      .map_or(0, |spawn| spawn.visuals.len().div_ceil(VISUALS_PER_BATCH))
+  }
+
+  /// Starts the next batches while the pool's width of them are not read.
+  fn refill(&mut self) {
+    let Some(spawn) = self.spawn.clone() else {
+      return;
+    };
+    let count: usize = self.get_batch_count();
+
+    while (self.flight.get_started() as usize) < count
+      && let Some(finished) = self.flight.start()
+    {
+      let first: usize = (self.flight.get_started() as usize - 1) * VISUALS_PER_BATCH;
+      let names: Vec<String> = spawn.visuals[first..(first + VISUALS_PER_BATCH).min(spawn.visuals.len())].to_vec();
+      let (source, spawn, sender) = (Arc::clone(&self.source), Arc::clone(&spawn), self.sender.clone());
+      let (sent, is_cancelled, failures) = (
+        Arc::clone(&self.sent),
+        Arc::clone(&self.is_cancelled),
+        Arc::clone(&self.failures),
+      );
+
+      self.workers.spawn(move || {
+        if !is_cancelled.load(Ordering::Acquire) {
+          match source.read_spawn_models(&names) {
+            Ok(mut models) => {
+              failures
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner)
+                .extend(std::mem::take(&mut models.failures));
+              Self::send_models(&spawn, first, models, &sender, &sent);
+            }
+            Err(error) => {
+              log::warn!("Spawned models cannot be drawn: {error}");
+              failures
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner)
+                .extend(names.iter().map(|name| RenderLoadFailure {
+                  name: name.clone(),
+                  reason: error.to_string(),
+                }));
+            }
+          }
+        }
+
+        finished.fetch_add(1, Ordering::AcqRel);
+      });
+    }
+  }
+
+  /// Packs each model read and sends it with the objects standing as it, lit by their cubes where they have them.
+  fn send_models(
+    spawn: &RenderLevelSpawn,
+    first: usize,
+    models: RenderSpawnModels,
+    sender: &Sender<SpawnLoad>,
+    sent: &AtomicU32,
+  ) {
+    let lighting: HashMap<u32, ([f32; 6], f32)> = models
+      .lighting
+      .into_iter()
+      .map(|it| (it.object, (it.cube, it.sky)))
+      .collect();
+
+    for model in models.models {
+      let Some(visual) = spawn
+        .visuals
+        .iter()
+        .skip(first)
+        .position(|name| *name == model.name)
+        .map(|it| (it + first) as u32)
+      else {
+        continue;
+      };
+      let places: Vec<StaticModelPlace> = spawn
+        .objects
+        .iter()
+        .filter(|object| object.visual == visual)
+        .map(|object: &RenderSpawnObject| StaticModelPlace {
+          object: object.index,
+          transform: Mat4::from_cols_array(&object.transform),
+          lighting: lighting.get(&object.index).copied(),
+          group: if object.is_released {
+            object.category.get_released_group()
+          } else {
+            object.category.get_group()
+          },
+        })
+        .collect();
+      let packed: StaticModel = StaticModel::pack_at(&model.package, &model.surfaces, visual as u16, spawn.detail);
+
+      // Counted before it is sent, so the loader never sees it taken before it was sent.
+      sent.fetch_add(1, Ordering::AcqRel);
+
+      let _ = sender.send((packed, places, model.skeleton));
+    }
   }
 }
 
 impl Drop for SpawnLoader {
   fn drop(&mut self) {
     self.is_cancelled.store(true, Ordering::Release);
-  }
-}
-
-/// What the loader's threads count by, shared with the loader.
-#[derive(Clone)]
-struct Counters {
-  pending: Arc<AtomicU32>,
-  sent: Arc<AtomicU32>,
-  is_cancelled: Arc<AtomicBool>,
-  failures: Arc<Mutex<Vec<RenderLoadFailure>>>,
-}
-
-impl Counters {
-  fn fail(&self, failures: impl IntoIterator<Item = RenderLoadFailure>) {
-    self
-      .failures
-      .lock()
-      .unwrap_or_else(PoisonError::into_inner)
-      .extend(failures);
-  }
-}
-
-fn read_batches(
-  source: &Arc<dyn RenderLevelSource>,
-  spawn: Arc<RenderLevelSpawn>,
-  sender: &Sender<SpawnLoad>,
-  counters: &Counters,
-  workers: &RenderWorkers,
-) {
-  for (batch, names) in spawn.visuals.chunks(VISUALS_PER_BATCH).enumerate() {
-    let (source, spawn, sender, counters) = (Arc::clone(source), Arc::clone(&spawn), sender.clone(), counters.clone());
-    let (names, first) = (names.to_vec(), batch * VISUALS_PER_BATCH);
-
-    counters.pending.fetch_add(1, Ordering::AcqRel);
-    workers.spawn(move || {
-      if !counters.is_cancelled.load(Ordering::Acquire) {
-        match source.read_spawn_models(&names) {
-          Ok(mut models) => {
-            counters.fail(std::mem::take(&mut models.failures));
-            send_models(&spawn, first, models, &sender, &counters.sent);
-          }
-          Err(error) => {
-            log::warn!("Spawned models cannot be drawn: {error}");
-            counters.fail(names.iter().map(|name| RenderLoadFailure {
-              name: name.clone(),
-              reason: error.to_string(),
-            }));
-          }
-        }
-      }
-
-      counters.pending.fetch_sub(1, Ordering::AcqRel);
-    });
-  }
-}
-
-/// Packs each model read and sends it with the objects standing as it, lit by their cubes where they have them.
-fn send_models(
-  spawn: &RenderLevelSpawn,
-  first: usize,
-  models: RenderSpawnModels,
-  sender: &Sender<SpawnLoad>,
-  sent: &AtomicU32,
-) {
-  let lighting: HashMap<u32, ([f32; 6], f32)> = models
-    .lighting
-    .into_iter()
-    .map(|it| (it.object, (it.cube, it.sky)))
-    .collect();
-
-  for model in models.models {
-    let Some(visual) = spawn
-      .visuals
-      .iter()
-      .skip(first)
-      .position(|name| *name == model.name)
-      .map(|it| (it + first) as u32)
-    else {
-      continue;
-    };
-    let places: Vec<StaticModelPlace> = spawn
-      .objects
-      .iter()
-      .filter(|object| object.visual == visual)
-      .map(|object: &RenderSpawnObject| StaticModelPlace {
-        object: object.index,
-        transform: Mat4::from_cols_array(&object.transform),
-        lighting: lighting.get(&object.index).copied(),
-        group: if object.is_released {
-          object.category.get_released_group()
-        } else {
-          object.category.get_group()
-        },
-      })
-      .collect();
-    let packed: StaticModel = StaticModel::pack_at(&model.package, &model.surfaces, visual as u16, spawn.detail);
-
-    // Counted before it is sent, so the loader never sees it taken before it was sent.
-    sent.fetch_add(1, Ordering::AcqRel);
-
-    let _ = sender.send((packed, places, model.skeleton));
   }
 }

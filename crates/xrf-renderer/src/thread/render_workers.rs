@@ -16,6 +16,11 @@ impl RenderWorkers {
     Self { pool }
   }
 
+  /// How many threads the pool runs.
+  pub fn get_width(&self) -> usize {
+    self.pool.current_num_threads()
+  }
+
   /// Runs `work` on the pool, returning at once; whatever parallel work it does runs on the same pool.
   pub fn spawn(&self, work: impl FnOnce() + Send + 'static) {
     self.pool.spawn(work);
