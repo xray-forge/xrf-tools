@@ -22,6 +22,7 @@ mod headless;
 mod height_field;
 mod history;
 mod indirect_light;
+mod instance_flags;
 mod lens_flares;
 mod level_shadows;
 mod level_wetness;
