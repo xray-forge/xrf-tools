@@ -58,18 +58,6 @@ impl StaticSurfaceBuilder {
   /// The material whose slice `lod.ps` writes: the default lighting model.
   pub const IMPOSTOR_MATERIAL: f32 = 0.0;
 
-  /// The texture role each of a surface's own slots is asked for as, by `StaticSurface`'s slots from the base to the
-  /// hemisphere.
-  const SLOT_ROLES: [TextureRole; 7] = [
-    TextureRole::Base,
-    TextureRole::Detail,
-    TextureRole::Bump,
-    TextureRole::BumpCompanion,
-    TextureRole::Bump,
-    TextureRole::BumpCompanion,
-    TextureRole::Hemi,
-  ];
-
   /// A shader table entry as the static draws wear it, asking for its textures; `None` for an invisible one, which no
   /// static draw draws. A composited wall mark is laid into the G-buffer's albedo rather than over the lit frame.
   pub fn build(
@@ -92,8 +80,8 @@ impl StaticSurfaceBuilder {
     let plan: StaticSurfacePlan<'_> = Self::plan(surface, descriptor)?;
     let mut texture_slots: [u32; 8] = [0; 8];
 
-    for (index, reference) in plan.slots.iter().enumerate() {
-      texture_slots[index] = reference.map_or(0, |it| textures.request(it, Self::SLOT_ROLES[index], source));
+    for (slot, named) in texture_slots.iter_mut().zip(plan.slots) {
+      *slot = named.map_or(0, |(reference, role)| textures.request(reference, role, source));
     }
 
     let terrain: StaticTerrainSlots = plan.terrain.map_or_else(StaticTerrainSlots::default, |terrain| {
@@ -159,7 +147,6 @@ impl StaticSurfaceBuilder {
       class => class,
     };
 
-    let named = |reference: Option<&'a str>| reference.filter(|it| !it.is_empty());
     let detail = descriptor
       .and_then(|it| it.detail.as_ref())
       .filter(|detail| detail.scale.is_finite());
@@ -168,15 +155,39 @@ impl StaticSurfaceBuilder {
     let is_terrain: bool = descriptor.is_some_and(|it| it.terrain.is_some());
     let bump = descriptor.and_then(|it| it.bump.as_ref()).filter(|_| !is_terrain);
     let detail_bump = detail.and_then(|detail| detail.bump.as_ref()).filter(|_| !is_terrain);
-    let slots: [Option<&'a str>; 7] = [
-      named(surface.texture_name.as_deref()),
-      named(detail.filter(|_| !is_terrain).map(|it| it.reference.as_str())),
-      named(bump.map(|it| it.bump.reference.as_str())),
-      named(bump.map(|it| it.companion.reference.as_str())),
-      named(detail_bump.map(|it| it.bump.reference.as_str())),
-      named(detail_bump.map(|it| it.companion.reference.as_str())),
-      named(surface.hemi.as_deref()),
-    ];
+    let mut slots: [Option<(&'a str, TextureRole)>; 7] = [None; 7];
+    let mut name = |slot: usize, reference: Option<&'a str>, role: TextureRole| {
+      slots[slot] = reference.filter(|it| !it.is_empty()).map(|it| (it, role));
+    };
+
+    name(StaticSurface::BASE, surface.texture_name.as_deref(), TextureRole::Base);
+    name(
+      StaticSurface::DETAIL,
+      detail.filter(|_| !is_terrain).map(|it| it.reference.as_str()),
+      TextureRole::Detail,
+    );
+    name(
+      StaticSurface::BUMP,
+      bump.map(|it| it.bump.reference.as_str()),
+      TextureRole::Bump,
+    );
+    name(
+      StaticSurface::BUMP_COMPANION,
+      bump.map(|it| it.companion.reference.as_str()),
+      TextureRole::BumpCompanion,
+    );
+    name(
+      StaticSurface::DETAIL_BUMP,
+      detail_bump.map(|it| it.bump.reference.as_str()),
+      TextureRole::Bump,
+    );
+    name(
+      StaticSurface::DETAIL_BUMP_COMPANION,
+      detail_bump.map(|it| it.companion.reference.as_str()),
+      TextureRole::BumpCompanion,
+    );
+    name(StaticSurface::HEMI, surface.hemi.as_deref(), TextureRole::Hemi);
+
     let mut flags: u32 = Self::to_flags(descriptor, &slots.map(|it| it.is_some()), (class, reference, blend));
 
     let terrain: Option<&'a XraySurfaceTerrain> = descriptor
