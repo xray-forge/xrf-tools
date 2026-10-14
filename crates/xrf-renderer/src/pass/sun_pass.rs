@@ -3,7 +3,6 @@ use xrf_error::XrfResult;
 use xrf_renderer_core::{PassParameters, RasterContext};
 
 use crate::contract::render_shadow_settings::{RENDER_MAX_SHADOW_CASCADES, RENDER_MAX_SHADOW_FILTER};
-use crate::frame::sun_shadow_maps::SunShadowMaps;
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline_with;
 use crate::pass::pipeline_source::PipelineSource;
@@ -11,6 +10,7 @@ use crate::pass::sun_filter_permutation::SunFilterPermutation;
 use crate::pass::sun_parameters::SunParameters;
 use crate::pass::sun_trace_pass::SunTracePass;
 use crate::pass::view_binding::ViewBinding;
+use crate::scene::level::sun_shadow_maps::SunShadowMaps;
 
 /// Lights a viewport's G-buffer with the sun through its shadow's cascades, or what its traced shadow saw, into the
 /// light its frame accumulates, which it clears first, and writes beside it how much of the sun reaches each pixel.

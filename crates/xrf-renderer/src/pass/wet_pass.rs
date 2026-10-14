@@ -1,7 +1,6 @@
 use xrf_error::XrfResult;
 use xrf_renderer_core::{PassParameters, RasterContext};
 
-use crate::frame::sun_shadow_maps::SunShadowMaps;
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline_into;
 use crate::pass::pipeline_source::PipelineSource;
@@ -9,6 +8,7 @@ use crate::pass::view_binding::ViewBinding;
 use crate::pass::wet_apply_parameters::WetApplyParameters;
 use crate::pass::wet_patch_parameters::WetPatchParameters;
 use crate::scene::level::level_surface::LevelSurface;
+use crate::scene::level::sun_shadow_maps::SunShadowMaps;
 
 /// Rain on the G-buffer before any light, as `draw_rain` wets it (`r3_rendertarget_draw_rain.cpp`): where the rain
 /// reaches near the camera its normals patched into the light target, borrowed before the sun clears it, then in one

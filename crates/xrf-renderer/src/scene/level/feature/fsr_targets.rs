@@ -1,7 +1,7 @@
 use crate::frame::frame_texture::FrameTexture;
-use crate::frame::fsr_frame::FsrFrame;
 use crate::frame::history::History;
 use crate::pass::fsr_uniform::FsrUniform;
+use crate::scene::level::feature::fsr_frame::FsrFrame;
 
 /// What FSR keeps for one viewport: its working targets at the drawn size and at half of it, the reconstructed depth,
 /// and two frames of its own targets, one written while the other is read, swapped every frame.
