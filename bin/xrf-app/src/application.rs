@@ -9,13 +9,18 @@ use xrf_job::ExecutionRequest;
 use crate::core::assets::AssetMountState;
 use crate::core::execution::ExecutionState;
 use crate::core::jobs::JobRegistry;
+use crate::core::logging::setup_logger;
 use crate::core::transport::{TransportEndpoint, TransportOrigins, TransportServer, TransportToken};
 use crate::core::window::{WindowHandles, build_main_window};
 use crate::ipc::registry::transport_routes;
 use crate::plugins::registry::domain_plugins;
 
-/// Assemble the application from its plugins and hand control to Tauri.
+/// Assemble the application from its plugins and hand control to Tauri, logging from the moment its configuration
+/// names where.
 pub fn run() {
+  let context = tauri::generate_context!();
+
+  setup_logger(&context.config().identifier);
   log::info!("Starting application");
 
   // One pool for the process, managed before any plugin's setup, since the renderer's loaders run on it too.
@@ -54,9 +59,7 @@ pub fn run() {
       Ok(())
     });
 
-  builder
-    .run(tauri::generate_context!())
-    .expect("Error while running tauri application")
+  builder.run(context).expect("Error while running tauri application")
 }
 
 /// Manage the state that outlives every command and belongs to no single domain.
