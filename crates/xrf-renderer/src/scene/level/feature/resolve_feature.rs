@@ -537,6 +537,8 @@ impl ResolveFeature {
       specular_albedo: create("ray guides specular albedo", RayGuidesPass::SPECULAR_ALBEDO),
       normals: create("ray guides normals", RayGuidesPass::NORMALS),
       hit_distance: create("ray guides hit distance", RayGuidesPass::HIT_DISTANCE),
+      bias: create("ray guides bias", RayGuidesPass::BIAS),
+      transparency: None,
     };
     let parameters: RayGuidesParameters = RayGuidesParameters {
       albedo_target: handles.albedo,
@@ -556,6 +558,7 @@ impl ResolveFeature {
       .color(clear(guides.specular_albedo))
       .color(clear(guides.normals))
       .color(clear(guides.hit_distance))
+      .color(clear(guides.bias))
       .record(move |context| passes.ray_guides.record(context, view, &parameters));
 
     Some(guides)
@@ -724,7 +727,7 @@ impl ResolveFeature {
     let jitter: [f32; 2] = (-self.offset).to_array();
     let is_reset: bool = resolve.is_reset;
 
-    graph
+    let mut pass = graph
       .add_encoder_pass("dlss ray reconstruction")
       .texture(frame, GraphTextureAccess::Sampled)
       .texture(handles.depth, GraphTextureAccess::Sampled)
@@ -733,33 +736,45 @@ impl ResolveFeature {
       .texture(guides.specular_albedo, GraphTextureAccess::Sampled)
       .texture(guides.normals, GraphTextureAccess::Sampled)
       .texture(guides.hit_distance, GraphTextureAccess::Sampled)
-      .texture(output, GraphTextureAccess::StorageReadWrite)
-      .record(move |context| {
-        let color = context.get_texture(frame);
-        let render: (u32, u32) = (color.texture.width(), color.texture.height());
-        let inputs: DlssRayInputs<'_> = DlssRayInputs {
-          color: color.view,
-          depth: context.get_texture(handles.depth).view,
-          motion: context.get_texture(handles.motion).view,
-          // As super resolution reads it: render pixels back to where a point stood.
-          motion_scale: [-(render.0 as f32), -(render.1 as f32)],
-          diffuse_albedo: context.get_texture(handles.albedo).view,
-          specular_albedo: context.get_texture(guides.specular_albedo).view,
-          normals: context.get_texture(guides.normals).view,
-          specular_hit_distance: context.get_texture(guides.hit_distance).view,
-          world_to_view: resolve.view,
-          view_to_clip: resolve.projection,
-          jitter,
-          render,
-          output: context.get_texture(output).view,
-          is_reset,
-        };
+      .texture(guides.bias, GraphTextureAccess::Sampled)
+      .texture(output, GraphTextureAccess::StorageReadWrite);
 
-        match resolve.reconstructor.record(context.get_encoder(), &inputs) {
-          Ok(commands) => context.hand_over(commands),
-          Err(error) => log::error!("{error}"),
-        }
-      });
+    if let Some([before, after]) = guides.transparency {
+      pass = pass
+        .texture(before, GraphTextureAccess::Sampled)
+        .texture(after, GraphTextureAccess::Sampled);
+    }
+
+    pass.record(move |context| {
+      let color = context.get_texture(frame);
+      let render: (u32, u32) = (color.texture.width(), color.texture.height());
+      let inputs: DlssRayInputs<'_> = DlssRayInputs {
+        color: color.view,
+        depth: context.get_texture(handles.depth).view,
+        motion: context.get_texture(handles.motion).view,
+        // As super resolution reads it: render pixels back to where a point stood.
+        motion_scale: [-(render.0 as f32), -(render.1 as f32)],
+        diffuse_albedo: context.get_texture(handles.albedo).view,
+        specular_albedo: context.get_texture(guides.specular_albedo).view,
+        normals: context.get_texture(guides.normals).view,
+        specular_hit_distance: context.get_texture(guides.hit_distance).view,
+        bias_current_color: Some(context.get_texture(guides.bias).view),
+        transparency: guides
+          .transparency
+          .map(|[before, after]| (context.get_texture(before).view, context.get_texture(after).view)),
+        world_to_view: resolve.view,
+        view_to_clip: resolve.projection,
+        jitter,
+        render,
+        output: context.get_texture(output).view,
+        is_reset,
+      };
+
+      match resolve.reconstructor.record(context.get_encoder(), &inputs) {
+        Ok(commands) => context.hand_over(commands),
+        Err(error) => log::error!("{error}"),
+      }
+    });
 
     output
   }

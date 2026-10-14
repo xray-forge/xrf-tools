@@ -22,6 +22,8 @@ impl RayGuidesPass {
   pub const NORMALS: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
   /// Metres the reflection ray went.
   pub const HIT_DISTANCE: wgpu::TextureFormat = wgpu::TextureFormat::R16Float;
+  /// How far a pixel is reconstructed from this frame alone.
+  pub const BIAS: wgpu::TextureFormat = wgpu::TextureFormat::R8Unorm;
 
   /// # Errors
   ///
@@ -78,6 +80,7 @@ impl RayGuidesPass {
         Some(Self::SPECULAR_ALBEDO.into()),
         Some(Self::NORMALS.into()),
         Some(Self::HIT_DISTANCE.into()),
+        Some(Self::BIAS.into()),
       ],
     )
   }
