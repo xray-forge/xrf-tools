@@ -104,7 +104,7 @@ impl VolumetricFeature {
     (view, textures): (&'a ViewBinding, &'a wgpu::BindGroup),
     (handles, lights, atlas): (ViewTargetHandles, &'a LightsFeature, LightShadowAtlas<'a>),
   ) -> Option<GraphTexture> {
-    if self.is_froxeled() || lights.volumes.is_empty() {
+    if self.is_froxeled() || !lights.has_volumes() {
       return None;
     }
 
@@ -126,10 +126,10 @@ impl VolumetricFeature {
       records: StorageArray::new(bindings.import_buffer(&mut *graph, "light records", &lights.record_buffer)),
       shadow_atlas: bindings.import_view(&mut *graph, "light shadow atlas", atlas.view),
       shadow_sampler: atlas.sampler,
-      volumes: runtime.push_uniform(&lights.volumes_uniform),
+      volumes: runtime.push_uniform(lights.get_volumes_uniform()),
       depth_target: handles.depth,
     };
-    let slices: &'a [u32] = &lights.volume_slices;
+    let slices: &'a [u32] = lights.get_volume_slices();
 
     graph
       .add_raster_pass("light volumes depth")

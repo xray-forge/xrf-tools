@@ -117,7 +117,7 @@ impl SceneView {
 
   /// The particles' report for this view: the scene's simulation since the last report and the quads this view drew.
   pub fn take_particles_report(&self, scene: &mut LevelScene) -> RenderParticlesReport {
-    scene.particles.take_report(self.features.particles.drawn)
+    scene.particles.take_report(self.features.particles.get_drawn())
   }
 
   /// The size its scene is rendered at, once its targets are made.
@@ -1590,12 +1590,7 @@ impl SceneView {
       } else {
         self.features.bloom.is_engine_drawn().then_some(RenderBloomMode::Engine)
       },
-      lights: self
-        .features
-        .lights
-        .settings
-        .is_enabled
-        .then_some(self.features.lights.settings),
+      lights: Some(self.features.lights.get_settings()).filter(|settings| settings.is_enabled),
       grass: self.features.grass.get_applied(&options.features.grass),
       is_water: options.features.water.is_enabled,
       environment: None,
