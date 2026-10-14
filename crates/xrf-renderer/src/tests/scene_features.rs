@@ -9,8 +9,7 @@ use crate::tests::test_bundle::checkout_dxc;
 
 /// A view's feature units hold nothing on the GPU before they draw and nothing once let go of, but for the state made
 /// with the view whatever the settings: the exposure's, which every lit pass reads its scale from, the lights' records
-/// and clusters, the particles' first quads and the grass's uniforms. Skipped, and says so, on a machine with no adapter
-/// at all.
+/// and clusters, and the particles' first quads. Skipped, and says so, on a machine with no adapter at all.
 #[test]
 fn holds_nothing_while_off() {
   let context: GpuContext = match GpuContext::create_headless(RenderBackend::D3d12, checkout_dxc().as_deref())
@@ -29,7 +28,6 @@ fn holds_nothing_while_off() {
     &features.exposure as &dyn ViewFeature,
     &features.lights,
     &features.particles,
-    &features.grass,
   ]
   .iter()
   .map(|feature| feature.get_memory())

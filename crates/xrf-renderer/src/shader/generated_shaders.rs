@@ -37,9 +37,18 @@ use crate::pass::glass_copy_dispatch_parameters::GlassCopyDispatchParameters;
 use crate::pass::glass_copy_parameters::GlassCopyParameters;
 use crate::pass::glass_parameters::GlassParameters;
 use crate::pass::glass_uniform::GlassUniform;
+use crate::pass::grass_build_parameters::GrassBuildParameters;
+use crate::pass::grass_card_shadow_parameters::GrassCardShadowParameters;
+use crate::pass::grass_cards_parameters::GrassCardsParameters;
 use crate::pass::grass_colour_parameters::GrassColourParameters;
+use crate::pass::grass_draw_parameters::GrassDrawParameters;
+use crate::pass::grass_level_parameters::GrassLevelParameters;
 use crate::pass::grass_model_record::GrassModelRecord;
 use crate::pass::grass_occlusion_parameters::GrassOcclusionParameters;
+use crate::pass::grass_puddles_uniform::GrassPuddlesUniform;
+use crate::pass::grass_sort_parameters::GrassSortParameters;
+use crate::pass::grass_uniform::GrassUniform;
+use crate::pass::grass_wind_uniform::GrassWindUniform;
 use crate::pass::indirect_trace_parameters::IndirectTraceParameters;
 use crate::pass::indirect_trace_uniform::IndirectTraceUniform;
 use crate::pass::light_binning_parameters::LightBinningParameters;
@@ -153,6 +162,11 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
   let mut ray_guides: ShaderBindings = ShaderBindings::new();
   let mut dlss_reactive: ShaderBindings = ShaderBindings::new();
   let mut grass_occlusion: ShaderBindings = ShaderBindings::new();
+  let mut grass_planting: ShaderBindings = ShaderBindings::new();
+  let mut grass_sort: ShaderBindings = ShaderBindings::new();
+  let mut grass_cards: ShaderBindings = ShaderBindings::new();
+  let mut grass_draw: ShaderBindings = ShaderBindings::new();
+  let mut grass_card_shadow: ShaderBindings = ShaderBindings::new();
   let mut lights: ShaderBindings = ShaderBindings::new();
   let mut light_contact: ShaderBindings = ShaderBindings::new();
   let mut light_shadowing: ShaderBindings = ShaderBindings::new();
@@ -203,6 +217,9 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
     .declare::<SmoothingUniform>()
     .declare::<FroxelUniform>()
     .declare::<GrassModelRecord>()
+    .declare::<GrassUniform>()
+    .declare::<GrassWindUniform>()
+    .declare::<GrassPuddlesUniform>()
     .declare::<TraceGrassUniform>()
     .declare::<TraceRequest>()
     .declare::<WaterUniform>()
@@ -270,6 +287,13 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
   ray_guides.add::<RayGuidesParameters>()?;
   dlss_reactive.add::<DlssReactiveParameters>()?;
   grass_occlusion.add::<GrassOcclusionParameters>()?;
+  grass_planting
+    .add::<GrassLevelParameters>()?
+    .add::<GrassBuildParameters>()?;
+  grass_sort.add::<GrassSortParameters>()?;
+  grass_cards.add::<GrassCardsParameters>()?;
+  grass_draw.add::<GrassDrawParameters>()?;
+  grass_card_shadow.add::<GrassCardShadowParameters>()?;
   lights.add::<LightsParameters<'_>>()?;
   light_contact.add::<LightContactParameters>()?;
   light_shadowing.add::<LightShadowingParameters<'_>>()?;
@@ -379,6 +403,26 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
     (
       "generated/grass/occlusion",
       format!("{STRUCTS_IMPORT}{}", grass_occlusion.to_wgsl()),
+    ),
+    (
+      "generated/grass/planting",
+      format!("{STRUCTS_IMPORT}{}", grass_planting.to_wgsl()),
+    ),
+    (
+      "generated/grass/sort",
+      format!("{STRUCTS_IMPORT}{}", grass_sort.to_wgsl()),
+    ),
+    (
+      "generated/grass/cards",
+      format!("{STRUCTS_IMPORT}{}", grass_cards.to_wgsl()),
+    ),
+    (
+      "generated/grass/draw",
+      format!("{STRUCTS_IMPORT}{}", grass_draw.to_wgsl()),
+    ),
+    (
+      "generated/grass/card_shadow",
+      format!("{STRUCTS_IMPORT}{}", grass_card_shadow.to_wgsl()),
     ),
     (
       "generated/frame/sky_behind",

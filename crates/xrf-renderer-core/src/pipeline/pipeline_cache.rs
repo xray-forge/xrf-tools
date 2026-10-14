@@ -58,11 +58,6 @@ impl PipelineCache {
     }
   }
 
-  /// The driver's cache every pipeline is made with, none where the device keeps none.
-  pub fn get_driver_cache(&self) -> Option<&wgpu::PipelineCache> {
-    self.driver.as_ref()
-  }
-
   /// What the driver's cache holds, to hand back at the next start; none where the device keeps none.
   pub fn get_driver_data(&self) -> Option<Vec<u8>> {
     self.driver.as_ref().and_then(wgpu::PipelineCache::get_data)
@@ -94,7 +89,11 @@ impl PipelineCache {
     }
 
     let module: wgpu::ShaderModule = self.get_module(device, source, description.module)?;
-    let layout: wgpu::PipelineLayout = Self::create_layout(device, description.label, &description.bind_group_layouts);
+    let layout: wgpu::PipelineLayout = Self::create_layout(
+      device,
+      description.label,
+      (&description.bind_group_layouts, description.immediate_size),
+    );
     let constants: Vec<(&'static str, f64)> = description.constants.to_wgpu();
     let compilation_options = wgpu::PipelineCompilationOptions {
       constants: &constants,
@@ -154,7 +153,8 @@ impl PipelineCache {
     }
 
     let module: wgpu::ShaderModule = self.get_module(device, source, description.module)?;
-    let layout: wgpu::PipelineLayout = Self::create_layout(device, description.label, &description.bind_group_layouts);
+    let layout: wgpu::PipelineLayout =
+      Self::create_layout(device, description.label, (&description.bind_group_layouts, 0));
     let constants: Vec<(&'static str, f64)> = description.constants.to_wgpu();
     let pipeline: wgpu::ComputePipeline = Self::create_checked(device, description.label, || {
       device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
@@ -270,14 +270,14 @@ impl PipelineCache {
   fn create_layout(
     device: &wgpu::Device,
     label: &str,
-    layouts: &[Option<wgpu::BindGroupLayout>],
+    (layouts, immediate_size): (&[Option<wgpu::BindGroupLayout>], u32),
   ) -> wgpu::PipelineLayout {
     let layouts: Vec<Option<&wgpu::BindGroupLayout>> = layouts.iter().map(Option::as_ref).collect();
 
     device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
       label: Some(label),
       bind_group_layouts: &layouts,
-      ..Default::default()
+      immediate_size,
     })
   }
 

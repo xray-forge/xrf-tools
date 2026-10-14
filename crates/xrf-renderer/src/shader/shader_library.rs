@@ -315,6 +315,26 @@ const EMBEDDED: &[(&str, &str)] = &[
     include_str!("../../shaders/generated/grass/occlusion.wgsl"),
   ),
   (
+    "generated/grass/planting",
+    include_str!("../../shaders/generated/grass/planting.wgsl"),
+  ),
+  (
+    "generated/grass/sort",
+    include_str!("../../shaders/generated/grass/sort.wgsl"),
+  ),
+  (
+    "generated/grass/cards",
+    include_str!("../../shaders/generated/grass/cards.wgsl"),
+  ),
+  (
+    "generated/grass/draw",
+    include_str!("../../shaders/generated/grass/draw.wgsl"),
+  ),
+  (
+    "generated/grass/card_shadow",
+    include_str!("../../shaders/generated/grass/card_shadow.wgsl"),
+  ),
+  (
     "generated/frame/sky_behind",
     include_str!("../../shaders/generated/frame/sky_behind.wgsl"),
   ),

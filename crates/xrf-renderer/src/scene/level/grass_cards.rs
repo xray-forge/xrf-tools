@@ -1,6 +1,4 @@
 use crate::contract::render_grass_settings::RenderGrassSettings;
-use crate::pass::grass_pass::GrassPass;
-use crate::scene::level::grass_level::GrassLevel;
 
 /// The grass that casts a view's shadows (`shaders/grass/cards.wgsl`): the tufts near its eye stood and swayed as the
 /// frame draws them each frame, their triangles' corners and records and how many stand; the structure built over them,
@@ -15,9 +13,6 @@ pub struct GrassCards {
   /// Triangles they hold at most (`get_capacity`).
   pub capacity: u32,
   pub blas: wgpu::Blas,
-  /// What standing them binds at group 2, and what their draw into a cascade binds at group 1.
-  pub group: wgpu::BindGroup,
-  pub shadow_group: wgpu::BindGroup,
 }
 
 impl GrassCards {
@@ -38,13 +33,8 @@ impl GrassCards {
   /// The share of their reach over which the cards fade out.
   const FADE_SHARE: f32 = 0.2;
 
-  /// Cards for `level`'s grass, swayed by `wind`, holding `capacity` triangles at most.
-  pub fn new(
-    device: &wgpu::Device,
-    pass: &GrassPass,
-    (level, wind): (&GrassLevel, &wgpu::Buffer),
-    capacity: u32,
-  ) -> Self {
+  /// Cards holding `capacity` triangles at most.
+  pub fn new(device: &wgpu::Device, capacity: u32) -> Self {
     let buffer = |label: &str, size: u64, usage: wgpu::BufferUsages| -> wgpu::Buffer {
       device.create_buffer(&wgpu::BufferDescriptor {
         label: Some(label),
@@ -77,14 +67,6 @@ impl GrassCards {
         descriptors: vec![Self::get_size(capacity)],
       },
     );
-    let group: wgpu::BindGroup = pass.create_cards_group(
-      device,
-      (&level.positions, &level.uvs, &level.indices),
-      wind,
-      (&vertices, &triangles, &count, &draw),
-    );
-    let shadow_group: wgpu::BindGroup = pass.create_card_shadow_group(device, (&vertices, &triangles), &level.models);
-
     Self {
       vertices,
       triangles,
@@ -92,8 +74,6 @@ impl GrassCards {
       draw,
       capacity,
       blas,
-      group,
-      shadow_group,
     }
   }
 

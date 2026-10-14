@@ -2,20 +2,17 @@ enable wgpu_binding_array;
 
 #import "common/camera"
 #import "grass/records"
+#import "generated/grass/card_shadow"
 
 // The grass's cards drawn into a sun cascade's map, where the cascades shadow the frame: the triangles
 // `grass/cards.wgsl` stood this frame, each corner read by its index, depth alone, cut out by the model's texture as
 // the grass draw cuts it, so light falls between the blades. A triangle the frame left unwritten has corners that are
-// not a number, which is drawn as none.
+// not a number, which is drawn as none. It reads the cards' corners, three floats each, their triangles' records (model
+// and texture widths a metre, then each corner's coordinate) and the models at group 2.
 
-// The cards' corners, three floats each; their triangles' records (model and texture widths a metre, then each
-// corner's coordinate); and the models.
-@group(1) @binding(0) var<storage, read> card_vertices: array<u32>;
-@group(1) @binding(1) var<storage, read> card_triangles: array<u32>;
-@group(1) @binding(2) var<storage, read> models: array<GrassModel>;
-
-@group(2) @binding(0) var textures: binding_array<texture_2d<f32>>;
-@group(2) @binding(1) var texture_sampler: sampler;
+// The texture cache's group, at 1 as every static draw binds it.
+@group(1) @binding(0) var textures: binding_array<texture_2d<f32>>;
+@group(1) @binding(1) var texture_sampler: sampler;
 
 // Words a triangle's corners and record take, as `grass/cards.wgsl` writes them.
 const CARD_VERTEX_WORDS: u32 = 9u;

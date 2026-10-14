@@ -3,7 +3,7 @@ use std::time::Instant;
 
 use glam::{Mat4, Vec2, Vec3, Vec4};
 use xrf_error::XrfResult;
-use xrf_renderer_core::{FrameGraph, GraphBindings, GraphBuffer, GraphRuntime, GraphTexture, UniformBinding};
+use xrf_renderer_core::{FrameGraph, GraphBindings, GraphRuntime, GraphTexture, UniformBinding};
 
 use crate::contract::render_ambient_occlusion_method::RenderAmbientOcclusionMethod;
 use crate::contract::render_antialiasing::RenderAntialiasing;
@@ -62,6 +62,7 @@ use crate::scene::level::feature::sun_trace_feature::SunTraceFeature;
 use crate::scene::level::feature::view_frame_end::ViewFrameEnd;
 use crate::scene::level::feature::water_frame::WaterFrame;
 use crate::scene::level::grass_level::GrassLevel;
+use crate::scene::level::grass_planting::GrassPlanting;
 use crate::scene::level::grass_shadow_casters::GrassShadowCasters;
 use crate::scene::level::level_frame::LevelFrame;
 use crate::scene::level::level_overlays::LevelOverlays;
@@ -356,8 +357,8 @@ impl SceneView {
       SunTraceFeature::is_cascaded(options, is_traced, self.features.resolve.is_ray_reconstructed());
 
     self.features.grass.prepare(
-      (device, &mut *encoder),
-      (frame.passes.grass, scene.grass.get_level()),
+      device,
+      scene.grass.get_level(),
       &options.features.grass,
       view,
       self.features.statics.get_cull().discard_below,
@@ -982,11 +983,10 @@ impl SceneView {
 
     ViewTargets::add_distortion_clear(&mut *graph, handles);
 
-    let grass_args: Option<GraphBuffer> =
-      self
-        .features
-        .grass
-        .add_planting(&mut *graph, &mut *bindings, (passes.grass, grass_level));
+    let grass_planting: Option<GrassPlanting> = self.features.grass.add_planting(
+      (&mut *graph, &mut *bindings, &mut *runtime),
+      (passes.grass, grass_level),
+    );
 
     self.features.statics.add_gbuffer_passes(
       (&mut *graph, &mut *bindings),
@@ -996,24 +996,26 @@ impl SceneView {
     );
 
     // The grass is culled once the static scene's depth is reduced, so a cell behind it plants nothing to draw.
-    if let Some(grass_args) = grass_args {
+    if let Some(grass_planting) = grass_planting {
       let occlusion: GrassOcclusionParameters = GrassOcclusionParameters {
         pyramid: statics.pyramid,
         occlusion: runtime.push_uniform(&self.features.statics.get_frame_occlusion()),
       };
 
-      self.features.grass.add_cull(
-        (&mut *graph, &mut *bindings),
-        (passes.grass, grass_level),
-        (grass_args, occlusion),
-      );
+      self
+        .features
+        .grass
+        .add_cull(&mut *graph, (passes.grass, grass_level), (grass_planting, occlusion));
     }
 
     // The grass's cards, which cast its shadows into the sun's cascades or the trace, stood once its ring is planted.
-    let grass_cards: Option<GrassCardHandles> = self
-      .features
-      .grass
-      .add_cards((&mut *graph, &mut *bindings), (passes.grass, grass_level));
+    let grass_cards: Option<GrassCardHandles> = grass_planting.and_then(|grass_planting| {
+      self.features.grass.add_cards(
+        (&mut *graph, &mut *bindings),
+        (passes.grass, grass_level),
+        grass_planting,
+      )
+    });
     // The depth the reflections walk their rays over, kept before the grass draws, or after it where the grass is
     // reflected.
     let is_grass_reflected: bool = self.features.reflections.get_settings().is_grass_reflected;
@@ -1027,11 +1029,11 @@ impl SceneView {
 
     self.features.statics.add_stats_pass(&mut *graph, &statics);
 
-    if let (true, Some(grass_args)) = (is_drawn, grass_args) {
+    if let (true, Some(grass_planting)) = (is_drawn, grass_planting) {
       self.features.grass.add_draw(
         &mut *graph,
         (passes.grass, grass_level),
-        (handles, grass_args),
+        (handles, grass_planting),
         (view, textures),
       );
     }
@@ -1072,10 +1074,11 @@ impl SceneView {
       lit,
       ..
     } = record;
-    let grass_casters: Option<GrassShadowCasters> = self
-      .features
-      .grass
-      .get_shadow_casters((passes.grass, textures), grass_cards);
+    let grass_casters: Option<GrassShadowCasters> = self.features.grass.get_shadow_casters(
+      (&mut *graph, &mut *bindings),
+      (passes.grass, scene.grass.get_level(), textures),
+      grass_cards,
+    );
 
     self.features.shadows.add_passes(
       (&mut *graph, &mut *bindings),

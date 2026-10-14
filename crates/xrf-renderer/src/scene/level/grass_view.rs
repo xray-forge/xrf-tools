@@ -1,23 +1,29 @@
 use glam::{IVec2, IVec4, Vec3};
 use xrf_renderer_core::{
-  FrameGraph, GraphBindings, GraphBuffer, GraphBufferAccess, GraphColorAttachment, GraphDepthAttachment,
+  FrameGraph, GraphBindings, GraphBuffer, GraphBufferAccess, GraphColorAttachment, GraphDepthAttachment, GraphRuntime,
+  GraphTexture, StorageArray, StorageArrayMut, StorageValue, StorageValueMut, UniformBinding,
 };
 
 use crate::camera::camera_view::CameraView;
 use crate::contract::render_applied_grass::RenderAppliedGrass;
 use crate::contract::render_grass_report::RenderGrassReport;
 use crate::contract::render_grass_settings::RenderGrassSettings;
-use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::grass_card_handles::GrassCardHandles;
 use crate::frame::stats_readback::StatsReadback;
 use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::lighting::grass_wind::GrassWind;
 use crate::pass::foliage_wind_values::FoliageWindValues;
+use crate::pass::grass_build_parameters::GrassBuildParameters;
+use crate::pass::grass_card_shadow_parameters::GrassCardShadowParameters;
+use crate::pass::grass_cards_parameters::GrassCardsParameters;
 use crate::pass::grass_dispatch::GrassDispatch;
+use crate::pass::grass_draw_parameters::GrassDrawParameters;
 use crate::pass::grass_draws::GrassDraws;
+use crate::pass::grass_level_parameters::GrassLevelParameters;
 use crate::pass::grass_occlusion_parameters::GrassOcclusionParameters;
 use crate::pass::grass_pass::GrassPass;
 use crate::pass::grass_puddles_uniform::GrassPuddlesUniform;
+use crate::pass::grass_sort_parameters::GrassSortParameters;
 use crate::pass::grass_uniform::GrassUniform;
 use crate::pass::grass_wind_uniform::GrassWindUniform;
 use crate::pass::trace_grass_uniform::TraceGrassUniform;
@@ -27,6 +33,7 @@ use crate::scene::level::grass_build::GrassBuild;
 use crate::scene::level::grass_build_size::GrassBuildSize;
 use crate::scene::level::grass_cards::GrassCards;
 use crate::scene::level::grass_level::GrassLevel;
+use crate::scene::level::grass_planting::GrassPlanting;
 use crate::scene::level::grass_shadow_casters::GrassShadowCasters;
 
 /// Metres a detail slot spans, `dm_slot_size`.
@@ -37,13 +44,12 @@ const SLOT_METERS: f32 = 2.0;
 /// them, or need less than half; a density changed plants every slot again.
 pub struct GrassView {
   build: Option<GrassBuild>,
-  uniform: wgpu::Buffer,
   values: GrassUniform,
   wind: GrassWind,
-  wind_buffer: wgpu::Buffer,
-  /// Where the puddles stand, which no tuft is planted in.
-  puddles_buffer: wgpu::Buffer,
-  draw_group: Option<wgpu::BindGroup>,
+  /// How the grass sways this frame.
+  sway: GrassWindUniform,
+  /// This frame's puddle sites, and where they stand, which no tuft is planted in.
+  puddles: Option<(wgpu::TextureView, GrassPuddlesUniform)>,
   /// The steps, jitter and slope limit the planting last ran with, which a change of plants every slot again.
   planted: Option<(i32, u32, u32)>,
   /// Whether this frame plants and draws.
@@ -63,26 +69,15 @@ pub struct GrassView {
 
 impl GrassView {
   pub fn new(device: &wgpu::Device) -> Self {
-    let uniform = |label: &str, size: usize| -> wgpu::Buffer {
-      device.create_buffer(&wgpu::BufferDescriptor {
-        label: Some(label),
-        size: size as u64,
-        usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-        mapped_at_creation: false,
-      })
-    };
-
     Self {
       build: None,
-      uniform: uniform("grass", size_of::<GrassUniform>()),
       values: GrassUniform {
         generation: 0,
         ..Default::default()
       },
       wind: GrassWind::default(),
-      wind_buffer: uniform("grass wind", size_of::<GrassWindUniform>()),
-      puddles_buffer: uniform("grass puddles", size_of::<GrassPuddlesUniform>()),
-      draw_group: None,
+      sway: GrassWindUniform::default(),
+      puddles: None,
       planted: None,
       is_drawn: false,
       cards: None,
@@ -102,8 +97,8 @@ impl GrassView {
   #[allow(clippy::too_many_arguments)]
   pub fn prepare(
     &mut self,
-    (device, encoder): (&wgpu::Device, &mut FrameEncoder),
-    (pass, level): (&GrassPass, Option<&GrassLevel>),
+    device: &wgpu::Device,
+    level: Option<&GrassLevel>,
     settings: &RenderGrassSettings,
     camera: &CameraView,
     discard_below: f32,
@@ -141,7 +136,7 @@ impl GrassView {
     if !(is_traced || is_cascaded) || !settings.is_shadowed {
       self.cards = None;
     } else if self.cards.as_ref().is_none_or(|cards| cards.capacity != capacity) {
-      self.cards = Some(GrassCards::new(device, pass, (level, &self.wind_buffer), capacity));
+      self.cards = Some(GrassCards::new(device, capacity));
     }
 
     // `dm_current_size`, `dm_current_fade` and `d_size`, from `r__detail_radius` and `r__detail_density`.
@@ -156,16 +151,9 @@ impl GrassView {
     );
 
     if self.build.as_ref().is_none_or(|build| !build.size.is_fitting(&wanted)) {
-      let build: GrassBuild = GrassBuild::new(device, pass, wanted, &self.uniform, (puddles.0, &self.puddles_buffer));
-
-      self.draw_group = Some(pass.create_draw_group(device, build.get_sorted(), &level.models, &self.wind_buffer));
-      self.build = Some(build);
+      self.build = Some(GrassBuild::new(device, wanted));
       // A ring made anew holds nothing, so every slot is planted into it.
       self.planted = None;
-    }
-
-    if let Some(build) = self.build.as_mut() {
-      build.bind_puddles(device, pass, &self.uniform, (puddles.0, &self.puddles_buffer));
     }
 
     // A slope's limit decides which tufts stand, so a change of it plants every slot again too.
@@ -209,9 +197,8 @@ impl GrassView {
       card_slots: GrassCards::get_slots(card_reach) as i32,
       ..self.values
     };
-    encoder.write_buffer(&self.uniform, 0, bytemuck::bytes_of(&self.values));
-    encoder.write_buffer(&self.wind_buffer, 0, bytemuck::bytes_of(&wind));
-    encoder.write_buffer(&self.puddles_buffer, 0, bytemuck::bytes_of(&puddles.1));
+    self.sway = wind;
+    self.puddles = Some((puddles.0.clone(), puddles.1));
     self.is_drawn = true;
     self.trace = TraceGrassUniform {
       grid: self.values.grid,
@@ -239,19 +226,26 @@ impl GrassView {
     (self.cards.is_some() && self.is_drawn && self.is_card_cascaded).then_some(self.values.card_reach)
   }
 
-  /// The cards as the cascades draw them, stood this frame (`cards`), where they do.
+  /// The cards of `level` as the cascades draw them, stood this frame (`cards`), where they do.
   pub fn get_shadow_casters<'a>(
     &'a self,
-    (pass, textures): (&'a GrassPass, &'a wgpu::BindGroup),
+    (graph, bindings): (&mut FrameGraph<'a>, &mut GraphBindings<'a>),
+    (pass, level, textures): (&'a GrassPass, Option<&'a GrassLevel>, &'a wgpu::BindGroup),
     cards: Option<GrassCardHandles>,
   ) -> Option<GrassShadowCasters<'a>> {
-    let group: &'a wgpu::BindGroup = &self.cards.as_ref().filter(|_| self.is_card_cascaded)?.shadow_group;
+    self.cards.as_ref().filter(|_| self.is_card_cascaded)?;
+
+    let (level, cards): (&'a GrassLevel, GrassCardHandles) = (level?, cards?);
 
     Some(GrassShadowCasters {
       pass,
-      group,
+      parameters: GrassCardShadowParameters {
+        card_vertices: StorageArray::new(cards.vertices),
+        card_triangles: StorageArray::new(cards.triangles),
+        models: StorageArray::new(bindings.import_buffer(graph, "grass models", &level.models)),
+      },
       textures,
-      cards: cards?,
+      draw: cards.draw,
     })
   }
 
@@ -261,6 +255,7 @@ impl GrassView {
     &'a self,
     (graph, bindings): (&mut FrameGraph<'a>, &mut GraphBindings<'a>),
     (pass, level): (&'a GrassPass, Option<&'a GrassLevel>),
+    planting: GrassPlanting,
   ) -> Option<GrassCardHandles> {
     let (Some(level), Some(build), Some(cards)) = (level, &self.build, self.cards.as_ref()) else {
       return None;
@@ -273,23 +268,32 @@ impl GrassView {
     let vertices: GraphBuffer = bindings.import_buffer(graph, "grass card vertices", &cards.vertices);
     let triangles: GraphBuffer = bindings.import_buffer(graph, "grass card triangles", &cards.triangles);
     let draw: GraphBuffer = bindings.import_buffer(graph, "grass card draw", &cards.draw);
+    let count: GraphBuffer = bindings.import_buffer(graph, "grass card count", &cards.count);
+    let parameters: GrassCardsParameters = GrassCardsParameters {
+      positions: StorageArray::new(bindings.import_buffer(graph, "grass positions", &level.positions)),
+      uvs: StorageArray::new(bindings.import_buffer(graph, "grass coordinates", &level.uvs)),
+      indices: StorageArray::new(bindings.import_buffer(graph, "grass indices", &level.indices)),
+      wind: planting.draw.wind,
+      card_vertices: StorageArrayMut::new(vertices),
+      card_triangles: StorageArrayMut::new(triangles),
+      card_count: StorageValueMut::new(count),
+      card_draw: StorageValueMut::new(draw),
+    };
     let tufts: u32 = GrassCards::get_window_cells(self.values.card_slots as u32) * build.size.per_cell;
 
     graph
       .add_compute_pass("grass cards")
-      .buffer(vertices, GraphBufferAccess::StorageReadWrite)
-      .buffer(triangles, GraphBufferAccess::StorageReadWrite)
-      .buffer(draw, GraphBufferAccess::StorageReadWrite)
+      .parameters(&planting.level)
+      .parameters(&planting.build)
+      .parameters(&parameters)
       .record(move |context| {
         pass.record_cards(
-          context.get_pass(),
-          (&level.bind_group, &build.bind_group, &cards.group),
+          context,
+          (&planting.level, &planting.build, &parameters),
           // Only the structure built over them reads the unused triangles, marked as none; the cascades draw the count.
           (if self.is_card_traced { cards.capacity } else { 0 }, tufts),
         );
       });
-
-    let count: GraphBuffer = bindings.import_buffer(graph, "grass card count", &cards.count);
 
     // How many triangles the tufts asked for, past the room too, read back for the cards' room.
     graph
@@ -389,14 +393,14 @@ impl GrassView {
     }
   }
 
-  /// Plants the frame's grass of `level` where it is drawn: the ring's stale cells, ahead of the frame's depth.
+  /// Plants the frame's grass of `level` where it is drawn: the ring's stale cells, ahead of the frame's depth. Answers
+  /// what the frame's cull, cards and draw bind of it.
   pub fn add_planting<'a>(
     &'a self,
-    graph: &mut FrameGraph<'a>,
-    bindings: &mut GraphBindings<'a>,
+    (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
     (pass, level): (&'a GrassPass, Option<&'a GrassLevel>),
-  ) -> Option<GraphBuffer> {
-    let (Some(level), Some(build)) = (level, &self.build) else {
+  ) -> Option<GrassPlanting> {
+    let (Some(level), Some(build), Some((puddles, puddle_window))) = (level, &self.build, &self.puddles) else {
       return None;
     };
 
@@ -404,46 +408,86 @@ impl GrassView {
       return None;
     }
 
+    let puddle_sites: GraphTexture = bindings.import_view(graph, "grass puddles", puddles);
+    let mut import = |label: &'static str, buffer: &'a wgpu::Buffer| bindings.import_buffer(graph, label, buffer);
+    let models: GraphBuffer = import("grass models", &level.models);
+    let counts: GraphBuffer = import("grass counts", &level.counts);
+    let args: GraphBuffer = import("grass draw arguments", &level.args);
+    let sorted: GraphBuffer = import("grass sorted", &build.sorted);
+    let wind: UniformBinding<GrassWindUniform> = runtime.push_uniform(&self.sway);
+    let planting: GrassPlanting = GrassPlanting {
+      level: GrassLevelParameters {
+        grid: StorageArray::new(import("grass grid", &level.cells)),
+        slot_records: StorageArray::new(import("grass slots", &level.slots)),
+        bins: StorageArray::new(import("grass bins", &level.bins)),
+        triangles: StorageArray::new(import("grass triangles", &level.triangles)),
+        dither: StorageValue::new(import("grass dither", &level.dither)),
+        models: StorageArray::new(models),
+        counts: StorageArrayMut::new(counts),
+        cursors: StorageArrayMut::new(import("grass cursors", &level.cursors)),
+        args: StorageArrayMut::new(args),
+      },
+      build: GrassBuildParameters {
+        keys: StorageArrayMut::new(import("grass keys", &build.keys)),
+        shapes: StorageArrayMut::new(import("grass cell shapes", &build.shapes)),
+        cached: StorageArrayMut::new(import("grass cached tufts", &build.cached)),
+        band_counts: StorageArrayMut::new(import("grass band counts", &build.band_counts)),
+        schedule: StorageValueMut::new(import("grass schedule", &build.schedule)),
+        planted: StorageArrayMut::new(import("grass planted", &build.planted)),
+        planted_models: StorageArrayMut::new(import("grass planted models", &build.planted_models)),
+        sorted: StorageArrayMut::new(sorted),
+        params: runtime.push_uniform(&self.values),
+        puddles: puddle_sites,
+        puddle_window: runtime.push_uniform(puddle_window),
+      },
+      sort: GrassSortParameters {
+        sort_dispatch: StorageValueMut::new(import("grass sort dispatch", &build.sort_dispatch)),
+      },
+      draw: GrassDrawParameters {
+        sorted: StorageArray::new(sorted),
+        models: StorageArray::new(models),
+        wind,
+      },
+      args,
+      counts,
+    };
     let dispatch: GrassDispatch = self.get_dispatch(level, build);
-    let args: GraphBuffer = bindings.import_buffer(graph, "grass draw arguments", &level.args);
 
     graph
       .add_compute_pass("grass planting")
-      .buffer(args, GraphBufferAccess::StorageReadWrite)
+      .parameters(&planting.level)
+      .parameters(&planting.build)
       .record(move |context| {
-        pass.record_plant(context.get_pass(), (&level.bind_group, &build.bind_group), dispatch);
+        pass.record_plant(context, (&planting.level, &planting.build), dispatch);
       });
 
-    Some(args)
+    Some(planting)
   }
 
-  /// Culls what the ring holds by the view and the frame's depth `occlusion`, into the draw arguments `args` the
-  /// planting answered, then copies its total out for reading back: an effect the graph cannot see.
+  /// Culls what the ring holds by the view and the frame's depth `occlusion`, into the draw arguments the planting
+  /// answered, then copies its total out for reading back: an effect the graph cannot see.
   pub fn add_cull<'a>(
     &'a self,
-    (graph, bindings): (&mut FrameGraph<'a>, &mut GraphBindings<'a>),
+    graph: &mut FrameGraph<'a>,
     (pass, level): (&'a GrassPass, Option<&'a GrassLevel>),
-    (args, occlusion): (GraphBuffer, GrassOcclusionParameters),
+    (planting, occlusion): (GrassPlanting, GrassOcclusionParameters),
   ) {
     let (Some(level), Some(build)) = (level, &self.build) else {
       return;
     };
     let dispatch: GrassDispatch = self.get_dispatch(level, build);
-    let counts: GraphBuffer = bindings.import_buffer(graph, "grass counts", &level.counts);
+    let counts: GraphBuffer = planting.counts;
 
     graph
       .add_compute_pass("grass cull")
-      .buffer(args, GraphBufferAccess::StorageReadWrite)
-      .buffer(counts, GraphBufferAccess::StorageReadWrite)
+      .parameters(&planting.level)
+      .parameters(&planting.build)
       .parameters(&occlusion)
+      .parameters(&planting.sort)
       .record(move |context| {
         pass.record_cull(
           context,
-          (
-            &level.bind_group,
-            &build.bind_group,
-            (&build.sort_group, &build.sort_dispatch),
-          ),
+          (&planting.level, &planting.build, &planting.sort),
           &occlusion,
           dispatch,
         );
@@ -473,15 +517,15 @@ impl GrassView {
     }
   }
 
-  /// Declares the draw of what the frame planted, its arguments `args`, into the G-buffer.
+  /// Declares the draw of what the frame planted (`planting`) into the G-buffer.
   pub fn add_draw<'a>(
     &'a self,
     graph: &mut FrameGraph<'a>,
     (pass, level): (&'a GrassPass, Option<&'a GrassLevel>),
-    (targets, args): (ViewTargetHandles, GraphBuffer),
+    (targets, planting): (ViewTargetHandles, GrassPlanting),
     (view, textures): (&'a ViewBinding, &'a wgpu::BindGroup),
   ) {
-    let (Some(level), Some(draw_group)) = (level, &self.draw_group) else {
+    let Some(level) = level else {
       return;
     };
 
@@ -492,12 +536,13 @@ impl GrassView {
         builder.color(GraphColorAttachment::new(texture, wgpu::LoadOp::Load))
       })
       .depth(GraphDepthAttachment::new(targets.depth, wgpu::LoadOp::Load))
-      .buffer(args, GraphBufferAccess::Indirect)
+      .buffer(planting.args, GraphBufferAccess::Indirect)
+      .parameters(&planting.draw)
       .record(move |context| {
         pass.record_draw(
-          context.get_pass(),
+          context,
           view,
-          (draw_group, textures),
+          (&planting.draw, textures),
           &GrassDraws {
             positions: &level.positions,
             uvs: &level.uvs,
@@ -511,21 +556,14 @@ impl GrassView {
 }
 
 impl ViewFeature for GrassView {
-  /// Its uniforms, and the ring, lists and cards while it plants.
+  /// The ring, lists and cards while it plants.
   fn get_memory(&self) -> u64 {
-    let uniforms: u64 = [&self.uniform, &self.wind_buffer, &self.puddles_buffer]
-      .into_iter()
-      .map(wgpu::Buffer::size)
-      .sum();
-
-    uniforms
-      + self.build.as_ref().map_or(0, GrassBuild::get_memory)
-      + self.cards.as_ref().map_or(0, GrassCards::get_memory)
+    self.build.as_ref().map_or(0, GrassBuild::get_memory) + self.cards.as_ref().map_or(0, GrassCards::get_memory)
   }
 
   fn release(&mut self) {
     self.build = None;
-    self.draw_group = None;
+    self.puddles = None;
     self.planted = None;
     self.cards = None;
   }

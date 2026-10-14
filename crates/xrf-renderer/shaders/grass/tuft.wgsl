@@ -3,31 +3,8 @@
 
 // A tuft as the cull keeps it (`grass/planting`): its place and yaw, then its size, hemisphere, sun, and its wave with
 // its ground's normal packed in one float; stood, turned, scaled and swayed as the grass draw stands it, so what the
-// trace's cards hold is where the frame draws it.
-
-// How the grass sways this frame, as `pass/grass_wind_uniform.rs` writes it, in the engine's space.
-struct GrassWind {
-  // `dir1` and `dir2`: each wave's lean across the ground.
-  wind_1: vec4<f32>,
-  wind_2: vec4<f32>,
-  // Each wave's direction, and its phase in `w`, both over a turn.
-  wave_1: vec4<f32>,
-  wave_2: vec4<f32>,
-  // The same four, the frame before, which a tuft's motion is measured from.
-  previous_wind_1: vec4<f32>,
-  previous_wind_2: vec4<f32>,
-  previous_wave_1: vec4<f32>,
-  previous_wave_2: vec4<f32>,
-  // The enhanced foliage motion's setup and its fields' drift, this frame and the last.
-  foliage_wind: vec4<f32>,
-  foliage_grass: vec4<f32>,
-  foliage_trees: vec4<f32>,
-  foliage_anim: vec4<f32>,
-  foliage_previous_anim: vec4<f32>,
-  foliage_flora: vec4<f32>,
-  // x: one where a tuft stands along its ground's normal rather than straight up.
-  alignment: vec4<f32>,
-};
+// trace's cards hold is where the frame draws it. How the grass sways (`GrassWind`) is declared by
+// `pass/grass_wind_uniform.rs`, in the engine's space.
 
 // `calc_cyclic`: a wave from minus one to one over each whole turn, a parabola rather than a sine.
 fn cyclic(phase: f32) -> f32 {
