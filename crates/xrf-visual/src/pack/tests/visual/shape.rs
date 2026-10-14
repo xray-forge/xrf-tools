@@ -5,7 +5,6 @@ use xrf_math::Vector3d;
 
 use crate::data::visual::geometry::visual_geometry::VisualGeometry;
 use crate::pack::shape::visual_shape::VisualShape;
-use crate::pack::tests::visual::reader::{read_f32_section, read_u16_section};
 use crate::pack::visual::visual_mesh::VisualMesh;
 use crate::pack::visual::visual_package::VisualPackage;
 use crate::pack::visual::visual_packer::VisualPacker;
@@ -16,9 +15,9 @@ fn to_vectors(values: &[f32]) -> Vec<Vector3d> {
 
 /// Every triangle of a packed submesh, wound as stored, beside the normal of its first corner.
 fn list_triangles(package: &VisualPackage, geometry: &VisualGeometry) -> Vec<([Vector3d; 3], Vector3d)> {
-  let positions: Vec<Vector3d> = to_vectors(&read_f32_section(&package.buffer, geometry.positions));
-  let normals: Vec<Vector3d> = to_vectors(&read_f32_section(&package.buffer, geometry.normals));
-  let indices: Vec<u16> = read_u16_section(&package.buffer, geometry.indices);
+  let positions: Vec<Vector3d> = to_vectors(&package.read_f32_section(geometry.positions));
+  let normals: Vec<Vector3d> = to_vectors(&package.read_f32_section(geometry.normals));
+  let indices: Vec<u16> = package.read_u16_section(geometry.indices);
 
   indices
     .as_chunks::<3>()
@@ -66,9 +65,9 @@ fn a_sphere_runs_its_tangent_along_u_at_right_angles_to_its_normal() {
   let geometry: &VisualGeometry = package.description.submeshes[0]
     .geometry()
     .expect("expect the sphere to pack");
-  let normals: Vec<Vector3d> = to_vectors(&read_f32_section(&package.buffer, geometry.normals));
-  let tangents: Vec<Vector3d> = to_vectors(&read_f32_section(&package.buffer, geometry.tangents));
-  let binormals: Vec<Vector3d> = to_vectors(&read_f32_section(&package.buffer, geometry.binormals));
+  let normals: Vec<Vector3d> = to_vectors(&package.read_f32_section(geometry.normals));
+  let tangents: Vec<Vector3d> = to_vectors(&package.read_f32_section(geometry.tangents));
+  let binormals: Vec<Vector3d> = to_vectors(&package.read_f32_section(geometry.binormals));
 
   for ((normal, tangent), binormal) in normals.iter().zip(&tangents).zip(&binormals) {
     assert!(normal.dot(tangent).abs() < 1e-4);

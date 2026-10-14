@@ -14,7 +14,6 @@ use crate::pack::tests::fixtures::{
   progressive_child, progressive_child_with_windows, skeleton, static_triangle_child, swi, textured, vector, vertex,
   visual, window,
 };
-use crate::pack::tests::visual::reader::{read_f32_section, read_u16_section};
 use crate::pack::visual::visual_package::VisualPackage;
 use crate::pack::visual::visual_packer::VisualPacker;
 
@@ -94,7 +93,7 @@ fn ships_the_whole_index_buffer_and_every_usable_level_of_a_progressive_submesh(
     ]
   );
   assert_eq!(
-    read_u16_section(&package.buffer, geometry.indices).len(),
+    package.read_u16_section(geometry.indices).len(),
     PROGRESSIVE_INDICES.len()
   );
 }
@@ -124,7 +123,7 @@ fn winds_each_triangle_in_place_so_detail_offsets_stay_valid() {
   // fine triangles after winding, which is only true if winding never moved a triangle.
   let package: VisualPackage = VisualPacker::pack(&skeleton(vec![progressive_child()]));
   let geometry: &VisualGeometry = only_geometry(&package);
-  let indices: Vec<u16> = read_u16_section(&package.buffer, geometry.indices);
+  let indices: Vec<u16> = package.read_u16_section(geometry.indices);
 
   let start: usize = geometry.get_default_level().start as usize;
   let drawn: &[u16] = &indices[start..start + geometry.get_default_level().count as usize];
@@ -156,21 +155,15 @@ fn mirrors_z_on_positions_and_every_basis_vector() {
   let package: VisualPackage = VisualPacker::pack(&skeleton(vec![child]));
   let geometry: &VisualGeometry = only_geometry(&package);
 
+  assert_eq!(package.read_f32_section(geometry.positions), vec![1.0, 2.0, -3.0]);
+  assert_eq!(package.read_f32_section(geometry.normals), vec![0.0, 0.0, -1.0]);
   assert_eq!(
-    read_f32_section(&package.buffer, geometry.positions),
-    vec![1.0, 2.0, -3.0]
-  );
-  assert_eq!(
-    read_f32_section(&package.buffer, geometry.normals),
-    vec![0.0, 0.0, -1.0]
-  );
-  assert_eq!(
-    read_f32_section(&package.buffer, geometry.tangents),
+    package.read_f32_section(geometry.tangents),
     vec![1.0, 0.0, 0.0],
     "the authored tangent ships, mirrored like the normal"
   );
   assert_eq!(
-    read_f32_section(&package.buffer, geometry.binormals),
+    package.read_f32_section(geometry.binormals),
     vec![0.0, 0.0, -1.0],
     "the authored binormal ships, mirrored like the normal"
   );
@@ -192,10 +185,7 @@ fn keeps_the_uvs_of_every_vertex() {
   let package: VisualPackage = VisualPacker::pack(&skeleton(vec![child]));
   let geometry: &VisualGeometry = only_geometry(&package);
 
-  assert_eq!(
-    read_f32_section(&package.buffer, geometry.uvs),
-    vec![0.25, 0.75, 1.0, 0.0]
-  );
+  assert_eq!(package.read_f32_section(geometry.uvs), vec![0.25, 0.75, 1.0, 0.0]);
 }
 
 #[test]
@@ -616,12 +606,12 @@ fn packs_four_skinning_links_per_vertex_whatever_the_vertex_carries() {
     .expect("expect skinned geometry to carry skin sections");
 
   assert_eq!(
-    read_u16_section(&package.buffer, skin.indices),
+    package.read_u16_section(skin.indices),
     vec![1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     "expect four bone indices per vertex, padded with bone zero"
   );
   assert_eq!(
-    read_f32_section(&package.buffer, skin.weights),
+    package.read_f32_section(skin.weights),
     vec![0.75, 0.25, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0],
     "expect the padding links to be weighted to nothing"
   );
