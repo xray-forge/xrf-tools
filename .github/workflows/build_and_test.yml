@@ -52,6 +52,12 @@ jobs:
       - name: Run workspace tests and verify frontend bindings
         run: cargo make test
 
+      - name: Run derive macro diagnostics
+        run: cargo make test-derive
+
+      - name: Run documentation examples
+        run: cargo make test-doc
+
       - name: Discard trybuild scratch crates
         if: always()
         shell: bash
@@ -243,7 +249,10 @@ jobs:
         run: cargo test --verbose -p xrf-cli --bins --locked
 
       - name: Run derive macro diagnostics
-        run: cargo test --verbose -p xrf-error-derive --test ui --locked
+        run: cargo test --verbose --workspace --test ui --locked
+
+      - name: Run documentation examples
+        run: cargo test --verbose --workspace --doc --locked --exclude xrf-ipc-typescript
 
       - name: Discard trybuild scratch crates
         run: rm -rf target/tests

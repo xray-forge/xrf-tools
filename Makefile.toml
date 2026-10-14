@@ -37,11 +37,17 @@ dependencies = ["fetch-sdks"]
 command = "cargo"
 args = ["test", "--workspace", "--lib", "--bins", "--locked", "--features", "${CHECK_FEATURES}"]
 
-[tasks.test-error-derive]
-description = "Run the xrf-error-derive diagnostic snapshot tests."
+[tasks.test-derive]
+description = "Run every derive crate's diagnostic snapshot tests: each `tests/ui.rs` in the workspace."
 category = "Verification"
 command = "cargo"
-args = ["test", "-p", "xrf-error-derive", "--test", "ui", "--locked"]
+args = ["test", "--workspace", "--test", "ui", "--locked"]
+
+[tasks.test-doc]
+description = "Run the documentation examples of every workspace crate, READMEs included."
+category = "Verification"
+command = "cargo"
+args = ["test", "--workspace", "--doc", "--locked"]
 
 [tasks.install-ui]
 description = "Install the locked TypeScript dependencies."
@@ -65,7 +71,7 @@ script = "pnpm run typecheck && pnpm run test && pnpm run lint"
 [tasks.verify]
 description = "Run every check that CI runs. Use it before pushing."
 category = "Verification"
-dependencies = ["check-format", "lint", "test", "test-error-derive", "verify-ui"]
+dependencies = ["check-format", "lint", "test", "test-derive", "test-doc", "verify-ui"]
 
 # Builds.
 
