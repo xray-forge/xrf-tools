@@ -19,10 +19,6 @@ impl PipelineConstants {
     }
   }
 
-  pub fn is_empty(&self) -> bool {
-    self.values.is_empty()
-  }
-
   pub(crate) fn to_wgpu(&self) -> Vec<(&'static str, f64)> {
     self
       .values

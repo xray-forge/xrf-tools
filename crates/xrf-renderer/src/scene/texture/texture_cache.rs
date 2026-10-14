@@ -623,6 +623,7 @@ impl TextureCache {
 
     // The bindless array holds two dimensional textures alone: a cube or a volume named as a level texture draws its
     // first face.
+    // todo: refuse a cube or a volume named as a level texture as failed, rather than drawing its first face.
     self.views[slot as usize] = texture.upload_flat(device, queue, "level texture");
     self.states[slot as usize] = RenderTextureState::Loaded {
       width: texture.width,
@@ -712,7 +713,6 @@ impl TextureCache {
       .create_view(&Default::default())
   }
 
-  /// Binds every slot, the ones never filled to the missing texture, since an array is bound whole.
   /// Samples the textures with an anisotropy clamp, one for trilinear, made again where it changed.
   pub fn set_anisotropy(&mut self, device: &wgpu::Device, anisotropy: u16) {
     if anisotropy == self.anisotropy {
@@ -739,6 +739,7 @@ impl TextureCache {
     })
   }
 
+  /// Binds every slot, the ones never filled to the missing texture, since an array is bound whole.
   fn create_bind_group(
     device: &wgpu::Device,
     layout: &wgpu::BindGroupLayout,
