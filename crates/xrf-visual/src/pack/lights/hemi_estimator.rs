@@ -75,7 +75,7 @@ impl HemiEstimator {
   pub fn new(tracer: Arc<LevelCformTracer>, lights: &[LevelLight]) -> Self {
     Self {
       lights: lights.iter().filter(|light| light.is_point()).cloned().collect(),
-      sky: SKY_DIRECTIONS.map(|direction| normalize(&direction)),
+      sky: SKY_DIRECTIONS.map(|direction| Vector3d::from(direction).normalize_or_zero().to_array()),
       tracer,
     }
   }
@@ -87,23 +87,18 @@ impl HemiEstimator {
 
   /// How an object whose visual's sphere, where it stands, is centred at `centre`, in engine space, is lit.
   pub fn estimate(&self, centre: &Vector3d<f32>, radius: f32) -> HemiEstimate {
-    let position: [f32; 3] = [centre.x, centre.y + SAMPLE_LIFT * radius, centre.z];
-    let origin: Vector3d<f32> = Vector3d::new(position[0], position[1], position[2]);
+    let origin: Vector3d<f32> = Vector3d::new(centre.x, centre.y + SAMPLE_LIFT * radius, centre.z);
     let mut cube: HemiCube = HemiCube::default();
     let mut open: u32 = 0;
 
     for direction in &self.sky {
-      if !self.tracer.is_blocked(
-        &origin,
-        &Vector3d::new(direction[0], direction[1], direction[2]),
-        SKY_RANGE,
-      ) {
+      if !self.tracer.is_blocked(&origin, &Vector3d::from(*direction), SKY_RANGE) {
         cube.accumulate(direction, SKY_SCALE);
         open += 1;
       }
     }
 
-    let (lit, light): (HemiCube, f32) = self.light(&position, radius);
+    let (lit, light): (HemiCube, f32) = self.light(&origin, radius);
 
     for face in 0..HemiCube::FACES {
       cube.faces[face] += lit.faces[face] * (1.0 - LIGHT_FLOW) + LIGHT_FLOW * lit.faces[HemiCube::opposite(face)];
@@ -119,30 +114,22 @@ impl HemiEstimator {
 
   /// What the lights that reach a point add, each toward the face it comes from (`CROS_impl::update`, R2), and all of
   /// them together, `hemi_light`.
-  fn light(&self, position: &[f32; 3], radius: f32) -> (HemiCube, f32) {
+  fn light(&self, position: &Vector3d<f32>, radius: f32) -> (HemiCube, f32) {
     let mut cube: HemiCube = HemiCube::default();
     let mut total: f32 = 0.0;
 
     for light in &self.lights {
-      let source: [f32; 3] = [light.position.x, light.position.y, light.position.z];
-      let toward: [f32; 3] = [
-        position[0] - source[0],
-        position[1] - source[1],
-        position[2] - source[2],
-      ];
-      let distance: f32 = length(&toward);
+      let toward: Vector3d<f32> = position - &light.position;
+      let distance: f32 = toward.length();
 
       if distance >= radius + light.range || distance <= f32::EPSILON {
         continue;
       }
 
       // Traced from the light to the point, as `prepare_lights` traces a light's visibility.
-      let along: Vector3d<f32> = Vector3d::new(toward[0] / distance, toward[1] / distance, toward[2] / distance);
+      let along: Vector3d<f32> = &toward / distance;
 
-      if self
-        .tracer
-        .is_blocked(&Vector3d::new(source[0], source[1], source[2]), &along, distance)
-      {
+      if self.tracer.is_blocked(&light.position, &along, distance) {
         continue;
       }
 
@@ -160,20 +147,10 @@ impl HemiEstimator {
 
       let brightness: f32 = (light.diffuse.x + light.diffuse.y + light.diffuse.z) / 3.0 * SEEN_LIGHT_SHARE;
 
-      cube.accumulate(&[-along.x, -along.y, -along.z], brightness * attenuation * LIGHT_SCALE);
+      cube.accumulate(&(-&along).to_array(), brightness * attenuation * LIGHT_SCALE);
       total += brightness * attenuation * LIGHT_SCALE;
     }
 
     (cube, total)
   }
-}
-
-fn length(vector: &[f32; 3]) -> f32 {
-  (vector[0] * vector[0] + vector[1] * vector[1] + vector[2] * vector[2]).sqrt()
-}
-
-fn normalize(vector: &[f32; 3]) -> [f32; 3] {
-  let length: f32 = length(vector);
-
-  [vector[0] / length, vector[1] / length, vector[2] / length]
 }
