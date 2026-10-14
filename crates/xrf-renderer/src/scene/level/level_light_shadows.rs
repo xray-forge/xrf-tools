@@ -92,9 +92,9 @@ const SHRINK: f32 = 0.66;
 /// Where a face's projection starts where the light gives none: `light::virtual_size`'s default.
 const DEFAULT_NEAR: f32 = 0.1;
 
-/// A face wanting a draw: what orders it (stale, then how near or how long ago drawn), its light, whether of the light's
-/// next set, which face, and the frames it may wait, none where it draws at once.
-type FaceCandidate = ((bool, f32), ProxyHandle<LightDescription>, bool, usize, u32);
+/// A face wanting a draw: what orders it (out of view, then not stale, then how near or how long ago drawn), its light,
+/// whether of the light's next set, which face, and the frames it may wait, none where it draws at once.
+type FaceCandidate = ((bool, bool, f32), ProxyHandle<LightDescription>, bool, usize, u32);
 
 /// The local lights' shadows: a square of an atlas a face, sized as the engine sizes its maps, drawn once and kept
 /// while the scene it casts from stays, a few faces a frame as the frame's scheduler grants them by their texels, the
@@ -103,7 +103,9 @@ type FaceCandidate = ((bool, f32), ProxyHandle<LightDescription>, bool, usize, u
 /// ones are. While trees sway in a light's reach, each of its faces keeps what stands still in the same tile of a
 /// static atlas, drawn only when the scene changes under it or its light moves; a sway's draw restores the tile from it
 /// and draws the trees over. Room is made from the lights out of view longest, and where there is still none, a light
-/// is asked at smaller squares. Each face drawn in a frame has a slot of its own in the lists and the draw arguments,
+/// is asked at smaller squares. A light out of view but standing near the camera is kept ready, so a turn finds it
+/// drawn: it holds the faces it has, takes room only where some is free, at smaller squares where little is, and its
+/// faces are drawn after those in view. Each face drawn in a frame has a slot of its own in the lists and the draw arguments,
 /// so every face is culled before any is drawn, and all are drawn in one render pass. The atlas is held only while a
 /// view of the scene casts the lights' shadows; a texel of nothing is bound in its place otherwise.
 pub struct LevelLightShadows {
@@ -225,8 +227,9 @@ impl LevelLightShadows {
     self.is_cast = false;
   }
 
-  /// Takes a shadowed light in view this frame, nearest first: gives it faces where it has none at the size it wants,
-  /// and puts forward those of its faces wanting a draw.
+  /// Takes a shadowed light in view this frame, nearest first, or one out of view kept ready (`is_in_view` false), after
+  /// every one in view: gives it faces where it has none at the size it wants, and puts forward those of its faces
+  /// wanting a draw. One kept ready keeps the faces it has, and takes new ones only from free room.
   #[allow(clippy::too_many_arguments)]
   pub fn ask(
     &mut self,
@@ -238,6 +241,7 @@ impl LevelLightShadows {
     color: Vec3,
     statics: &StaticScene,
     sway: &ShadowSway<'_>,
+    is_in_view: bool,
   ) {
     let is_spot: bool = matches!(light.kind, LightKind::Spot);
     let spatial: Vec4 = basis.get_spatial_sphere(light);
@@ -250,10 +254,20 @@ impl LevelLightShadows {
     let cone: f32 = if is_spot { light.cone } else { LIGHT_SHADOW_POINT_CONE };
     let wanted: f32 = to_light_shadow_size(light.range, distance, to_light_intensity(color), duel, cone);
     let entry: &mut LightShadowEntry = self.entries.entry(handle).or_default();
-    let is_asked: bool = entry.seen == self.frame;
+
+    // Kept ready out of view once a frame, and never over a view's ask.
+    if !is_in_view {
+      if entry.seen == self.frame || entry.warmed == self.frame {
+        return;
+      }
+
+      entry.warmed = self.frame;
+    }
+
+    let is_asked: bool = is_in_view && entry.seen == self.frame;
     let current: Option<u32> = entry.next.as_ref().or(entry.shown.as_ref()).map(|set| set.size);
     let asked: u32 = match current {
-      Some(size) if wanted <= size as f32 * GROW && wanted >= size as f32 * SHRINK => size,
+      Some(size) if !is_in_view || (wanted <= size as f32 * GROW && wanted >= size as f32 * SHRINK) => size,
       _ => to_light_shadow_tile_size(wanted),
     };
 
@@ -262,7 +276,9 @@ impl LevelLightShadows {
       return;
     }
 
-    entry.seen = self.frame;
+    if is_in_view {
+      entry.seen = self.frame;
+    }
 
     // Back at the size it shows while another was being drawn: the shown faces stand, and the other goes.
     if entry.shown.as_ref().is_some_and(|set| set.size == asked) {
@@ -274,7 +290,7 @@ impl LevelLightShadows {
         release_set(&mut self.allocator, next);
       }
 
-      let set: Option<LightShadowSet> = self.create_set(light, basis, asked);
+      let set: Option<LightShadowSet> = self.create_set(light, basis, asked, is_in_view);
 
       if let Some(entry) = self.entries.get_mut(&handle) {
         entry.next = set;
@@ -320,17 +336,26 @@ impl LevelLightShadows {
             state.drawn_static = None;
           }
 
+          // Out of view, nothing it holds shows: it waits as long as a swaying face.
+          let (is_away, stale_wait, moved_wait): (bool, u32, u32) = if is_in_view {
+            (false, STALE_WAIT_MOST, 0)
+          } else {
+            (true, SWAY_WAIT_MOST, SWAY_WAIT_MOST)
+          };
+
           if state.drawn.is_none_or(|drawn| statics.is_changed_since(drawn, touches)) {
             state.drawn_static = None;
             self
               .candidates
-              .push(((false, distance), handle, is_next, face, STALE_WAIT_MOST));
+              .push(((is_away, false, distance), handle, is_next, face, stale_wait));
           } else if is_moved {
-            self.candidates.push(((true, state.drawn_at), handle, is_next, face, 0));
+            self
+              .candidates
+              .push(((is_away, true, state.drawn_at), handle, is_next, face, moved_wait));
           } else if sway.is_redrawn(swaying, spread / state.tile.size as f32, state.drawn_at) {
             self
               .candidates
-              .push(((true, state.drawn_at), handle, is_next, face, SWAY_WAIT_MOST));
+              .push(((is_away, true, state.drawn_at), handle, is_next, face, SWAY_WAIT_MOST));
           }
         }
       }
@@ -343,7 +368,7 @@ impl LevelLightShadows {
   pub fn finish(&mut self, scheduler: &mut PeriodicScheduler) {
     self
       .candidates
-      .sort_by(|a, b| a.0.0.cmp(&b.0.0).then(a.0.1.total_cmp(&b.0.1)));
+      .sort_by(|a, b| (a.0.0, a.0.1).cmp(&(b.0.0, b.0.1)).then(a.0.2.total_cmp(&b.0.2)));
     let mut queued: HashSet<(ProxyHandle<LightDescription>, bool, usize)> = HashSet::new();
     let faces: Vec<(ProxyHandle<LightDescription>, bool, usize, u32)> = self
       .candidates
@@ -691,9 +716,15 @@ impl LevelLightShadows {
     set.faces.get(face)
   }
 
-  /// A light's faces at a size, room made from the lights out of view longest, and at smaller squares where there is
-  /// still none.
-  fn create_set(&mut self, light: &LightDescription, basis: &LightBasis, size: u32) -> Option<LightShadowSet> {
+  /// A light's faces at a size, room made from the lights out of view longest where it `may_evict`, and at smaller
+  /// squares where there is still none.
+  fn create_set(
+    &mut self,
+    light: &LightDescription,
+    basis: &LightBasis,
+    size: u32,
+    may_evict: bool,
+  ) -> Option<LightShadowSet> {
     let is_spot: bool = matches!(light.kind, LightKind::Spot);
     let count: usize = if is_spot { 1 } else { LIGHT_SHADOW_POINT_FACES.len() };
     let near: f32 = if light.near > 0.0 { light.near } else { DEFAULT_NEAR };
@@ -718,7 +749,7 @@ impl LevelLightShadows {
         return Some(LightShadowSet { size, near, far, faces });
       }
 
-      if !self.evict_oldest() {
+      if !(may_evict && self.evict_oldest()) {
         if side <= LIGHT_SHADOW_MIN_SIZE {
           return None;
         }
