@@ -90,7 +90,7 @@ describe("toVisualOverlays", () => {
         color: toRawColor(config.highlightColor),
         isDepthTested: false,
         kind: ERenderOverlay.POINTS,
-        positions: [0, 1, 0],
+        positions: [[0, 1, 0]],
         size: config.highlightSize,
       },
     ]);

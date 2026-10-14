@@ -1,6 +1,7 @@
 use glam::{Mat4, Vec3};
 
 use crate::contract::render_overlay::RenderOverlay;
+use crate::contract::render_overlay_segment::RenderOverlaySegment;
 use crate::contract::render_selection::RenderSelection;
 use crate::contract::render_selection_target::RenderSelectionTarget;
 use crate::scene::level::feature::view_feature::ViewFeature;
@@ -117,15 +118,16 @@ impl OverlaysFeature {
       (2, 6),
       (3, 7),
     ];
-    let positions: Vec<f32> = edges
+    let segments: Vec<RenderOverlaySegment> = edges
       .iter()
-      .flat_map(|(from, to)| [corner(*from), corner(*to)])
-      .flat_map(|point| point.to_array())
+      .map(|(from, to)| RenderOverlaySegment {
+        ends: [corner(*from).to_array(), corner(*to).to_array()],
+        colors: [color; 2],
+      })
       .collect();
 
     RenderOverlay::Lines {
-      colors: color.repeat(positions.len() / 3),
-      positions,
+      segments,
       is_depth_tested: false,
     }
   }
