@@ -3,7 +3,7 @@ import { ReactElement } from "react";
 
 import { IEditorPanel, TEditorPanelSide } from "@/core/shell/editor-shell";
 import { PanelResizer } from "@/core/shell/panel/PanelResizer";
-import { cn } from "@/lib/dom/dom-name";
+import { cn } from "@/core/theme/class-name";
 
 interface IApplicationPanelSlotProps {
   side: TEditorPanelSide;

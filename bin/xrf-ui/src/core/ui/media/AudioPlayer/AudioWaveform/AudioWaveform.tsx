@@ -6,7 +6,7 @@ import { clamp, extractPeaks } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 import { KeyboardEvent, MouseEvent, ReactElement, useLayoutEffect, useMemo, useRef } from "react";
 
-import { cn } from "@/lib/dom/dom-name";
+import { cn } from "@/core/theme/class-name";
 import { useElementSize } from "@/lib/react/use-element-size";
 
 import { useAudioSamples } from "./use-audio-samples";

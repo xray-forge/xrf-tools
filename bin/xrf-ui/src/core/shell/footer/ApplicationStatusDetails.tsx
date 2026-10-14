@@ -1,7 +1,7 @@
 import { Fragment, ReactElement } from "react";
 
 import { IEditorStatusDetail } from "@/core/shell/editor-shell";
-import { cn } from "@/lib/dom/dom-name";
+import { cn } from "@/core/theme/class-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IApplicationStatusDetailsProps extends BaseComponentProps {

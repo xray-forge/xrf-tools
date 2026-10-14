@@ -5,7 +5,7 @@ import { ReactElement } from "react";
 import { ProgressLevel } from "@/core/ipc/types/xrf-job";
 import { IJobState } from "@/core/jobs/lib";
 import { describeActiveProgress, RENDERED_PROGRESS_LEVELS } from "@/core/jobs/lib/progress-format";
-import { cn } from "@/lib/dom/dom-name";
+import { cn } from "@/core/theme/class-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { JobProgressLevel } from "./JobProgressLevel";

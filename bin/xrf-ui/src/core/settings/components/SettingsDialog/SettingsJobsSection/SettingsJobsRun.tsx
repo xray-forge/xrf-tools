@@ -8,7 +8,7 @@ import { JobDescription } from "@/core/ipc/types/xrf-app";
 import { describeJobStatus, IJobStatus } from "@/core/jobs/lib/job-status";
 import { formatProgressRate, formatProgressUnits } from "@/core/jobs/lib/progress-format";
 import { IJobPhase, IJobProfile } from "@/core/jobs/metrics";
-import { cn } from "@/lib/dom/dom-name";
+import { cn } from "@/core/theme/class-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { toPhaseShare } from "./SettingsJobsSection.utils";

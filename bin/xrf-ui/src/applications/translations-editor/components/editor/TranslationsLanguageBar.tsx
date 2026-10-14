@@ -1,7 +1,7 @@
 import { MenuItem, TextField, Typography } from "@mui/material";
 import { ReactElement } from "react";
 
-import { cn } from "@/lib/dom/dom-name";
+import { cn } from "@/core/theme/class-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 function describe(language: string, encodings: Record<string, string>): string {

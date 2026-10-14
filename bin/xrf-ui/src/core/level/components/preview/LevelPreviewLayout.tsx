@@ -42,7 +42,7 @@ import { SettingsService } from "@/core/settings/services/settings";
 import { EditorFileHeader } from "@/core/shell/editor/EditorFileHeader";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { IEditorPanel, useEditorPanels } from "@/core/shell/editor-shell";
-import { cn } from "@/lib/dom/dom-name";
+import { cn } from "@/core/theme/class-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /** What the sky and clouds popovers offer before the level's weather is read. */

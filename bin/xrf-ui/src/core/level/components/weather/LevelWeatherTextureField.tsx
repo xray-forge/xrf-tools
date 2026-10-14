@@ -4,7 +4,7 @@ import { Nullable } from "@xrf/types";
 import { ReactElement, SyntheticEvent, useCallback } from "react";
 
 import { LevelWeatherTexture } from "@/core/ipc/types/xrf-app";
-import { cn } from "@/lib/dom/dom-name";
+import { cn } from "@/core/theme/class-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface ILevelWeatherTextureFieldProps extends BaseComponentProps {

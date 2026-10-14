@@ -3,7 +3,7 @@ import { ReactElement } from "react";
 import { TEditorStatusSegment, useEditorStatusSegments } from "@/core/shell/editor-shell";
 import { ApplicationMemoryStatus } from "@/core/shell/footer/ApplicationMemoryStatus";
 import { ApplicationStatusSegment } from "@/core/shell/footer/ApplicationStatusSegment";
-import { cn } from "@/lib/dom/dom-name";
+import { cn } from "@/core/theme/class-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /**

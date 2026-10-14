@@ -7,11 +7,11 @@ import { ConfigsAuthoredView } from "@/core/ltx/components/ConfigsDocumentView/C
 import { ConfigsResolvedView } from "@/core/ltx/components/ConfigsDocumentView/ConfigsResolvedView";
 import { ConfigsDocumentService, EConfigsDocumentMode } from "@/core/ltx/services/document";
 import { EditorFileHeader } from "@/core/shell/editor/EditorFileHeader";
+import { cn } from "@/core/theme/class-name";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { ErrorState } from "@/core/ui/layout/ErrorState";
 import { inline } from "@/lib/callbacks/inline";
-import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IConfigsDocumentViewProps extends BaseComponentProps {

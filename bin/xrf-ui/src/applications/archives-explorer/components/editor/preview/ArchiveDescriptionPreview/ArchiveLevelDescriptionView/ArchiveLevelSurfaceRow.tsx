@@ -9,8 +9,8 @@ import {
   EArchiveLevelEntry,
   EArchiveReferenceStatus,
 } from "@/core/ipc/types/xrf-app";
+import { cn } from "@/core/theme/class-name";
 import { inline } from "@/lib/callbacks/inline";
-import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { describeReferenceStatus } from "../ArchiveDescriptionPreview.utils";

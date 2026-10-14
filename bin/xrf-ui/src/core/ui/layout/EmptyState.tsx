@@ -2,8 +2,8 @@ import { default as DescriptionOutlinedIcon } from "@mui/icons-material/Descript
 import { Typography } from "@mui/material";
 import { ReactElement, ReactNode } from "react";
 
+import { cn } from "@/core/theme/class-name";
 import { CenteredColumn } from "@/core/ui/layout/CenteredColumn";
-import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IEmptyStateProps extends BaseComponentProps {

@@ -2,7 +2,7 @@ import { Typography } from "@mui/material";
 import { ReactElement } from "react";
 
 import { ArchiveDetailEntry } from "@/core/ipc/types/xrf-app";
-import { cn } from "@/lib/dom/dom-name";
+import { cn } from "@/core/theme/class-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { ArchiveDescriptionReferenceLink } from "../ArchiveDescriptionReferenceLink";

@@ -2,7 +2,7 @@ import { Typography } from "@mui/material";
 import { ReactElement } from "react";
 
 import { ArchiveOmfMotion } from "@/core/ipc/types/xrf-app";
-import { cn } from "@/lib/dom/dom-name";
+import { cn } from "@/core/theme/class-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { describeMotionDetail, describeMotionLength } from "./ArchiveOmfDescriptionView.utils";

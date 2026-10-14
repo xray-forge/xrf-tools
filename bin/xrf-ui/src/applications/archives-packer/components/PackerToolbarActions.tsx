@@ -6,7 +6,7 @@ import { ReactElement } from "react";
 
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
 import { EditorTextAction } from "@/core/shell/editor/EditorTextAction";
-import { cn } from "@/lib/dom/dom-name";
+import { cn } from "@/core/theme/class-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IPackerToolbarActionsProps extends BaseComponentProps {

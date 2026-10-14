@@ -7,13 +7,13 @@ import { isAlphaRenderSurfaceDraw } from "@/core/render/lib/surface/render-surfa
 import { EditorFileHeader } from "@/core/shell/editor/EditorFileHeader";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { IEditorPanel, useEditorPanels, useEditorStatus } from "@/core/shell/editor-shell";
+import { cn } from "@/core/theme/class-name";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { VisualPreviewEmpty, VisualPreviewToolbar } from "@/core/visuals/components/preview";
 import { VisualPreviewViewport } from "@/core/visuals/components/preview/VisualPreviewViewport";
 import { IVisualRenderSource, VISUAL_RENDER_SOURCE } from "@/core/visuals/lib/render";
 import { countVisualTriangles, IVisualModelViews } from "@/core/visuals/lib/visual-views";
 import { VisualViewService } from "@/core/visuals/services/visual-view.service";
-import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IVisualPreviewLayoutProps extends BaseComponentProps {

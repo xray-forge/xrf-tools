@@ -3,7 +3,7 @@ import { formatBytes, formatCount } from "@xrf/format";
 import { ReactElement } from "react";
 
 import { ArchiveResolutionVolume } from "@/core/ipc/types/xrf-app";
-import { cn } from "@/lib/dom/dom-name";
+import { cn } from "@/core/theme/class-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 export interface IArchiveResolutionVolumeRowProps extends BaseComponentProps {

@@ -8,12 +8,12 @@ import { ChangeEvent, ReactElement, useCallback, useEffect, useId, useMemo, useS
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { ArchiveWorldEntry } from "@/core/ipc/types/xrf-app";
 import { ArchiveSourceUsage, ArchiveStatistics } from "@/core/ipc/types/xrf-archive-stats";
+import { cn } from "@/core/theme/class-name";
 import { DialogHeader } from "@/core/ui/dialog/DialogHeader";
 import { DetailSection } from "@/core/ui/layout/DetailSection";
 import { EStatMeasure } from "@/core/ui/stats/stat-measure";
 import { IStatBreakdownRow, StatBreakdownTable } from "@/core/ui/stats/StatBreakdownTable";
 import { StatMeasureToggle } from "@/core/ui/stats/StatMeasureToggle";
-import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { filterOverrides, flattenOverrides, TArchiveOverrideRow } from "./archive-override-rows";

@@ -3,7 +3,7 @@ import { resolve } from "path";
 
 import { describe, expect, it } from "@jest/globals";
 
-import { cn } from "@/lib/dom/dom-name";
+import { cn } from "@/core/theme/class-name";
 
 /**
  * Namespaces whose custom names a merger has to be told about; colours it matches generically.
@@ -21,7 +21,7 @@ const MERGED_NAMESPACES: Record<string, { prefix: string; rival: string }> = {
  * The custom names `tailwind.css` declares, so the merger's list cannot quietly fall behind the theme.
  */
 function readThemeNames(namespace: string): Array<string> {
-  const css: string = readFileSync(resolve(__dirname, "../../core/theme/tailwind.css"), "utf8");
+  const css: string = readFileSync(resolve(__dirname, "tailwind.css"), "utf8");
   const declaration: RegExp = new RegExp(`^\\s*--${namespace}-([a-z0-9-]+):`, "gm");
 
   return [...css.matchAll(declaration)].map(([, name]: RegExpMatchArray) => name);

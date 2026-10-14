@@ -1,7 +1,7 @@
 import { ReactElement } from "react";
 
 import { EquipmentSpriteViewer } from "@/applications/sprite-equipment-editor/components/sprite-view/EquipmentSpriteViewer";
-import { cn } from "@/lib/dom/dom-name";
+import { cn } from "@/core/theme/class-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 export function EquipmentSpriteEditorWorkspace({

@@ -2,7 +2,7 @@ import { Chip, ListItemButton, Typography } from "@mui/material";
 import { ReactElement } from "react";
 
 import { EEquipmentSlotClaim, EquipmentSlotOccupant } from "@/core/ipc/types/xrf-texture";
-import { cn } from "@/lib/dom/dom-name";
+import { cn } from "@/core/theme/class-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IEquipmentOccupantRowProps extends BaseComponentProps {

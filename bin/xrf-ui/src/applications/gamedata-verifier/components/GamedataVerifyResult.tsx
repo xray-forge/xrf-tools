@@ -4,10 +4,10 @@ import { ReactElement, useMemo } from "react";
 
 import { selectFailedChecks } from "@/applications/gamedata-verifier/lib/describe-gamedata-verify-outcome";
 import { GamedataCheckSummary, GamedataVerifySummary } from "@/core/ipc/types/xrf-app";
+import { cn } from "@/core/theme/class-name";
 import { CommandResult, ICommandResultStat, TCommandResultTone } from "@/core/ui/command-result/CommandResult";
 import { CommandResultFindings } from "@/core/ui/command-result/CommandResultFindings";
 import { identifierColumn } from "@/core/ui/table/columns";
-import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /**

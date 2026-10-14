@@ -6,7 +6,7 @@ import { ReactElement } from "react";
 
 import { ArchiveResolutionSource, ArchiveResolutionVolume } from "@/core/ipc/types/xrf-app";
 import { EXraySourceKind } from "@/core/ipc/types/xrf-vfs";
-import { cn } from "@/lib/dom/dom-name";
+import { cn } from "@/core/theme/class-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { ArchiveResolutionVolumeRow } from "./ArchiveResolutionVolumeRow";

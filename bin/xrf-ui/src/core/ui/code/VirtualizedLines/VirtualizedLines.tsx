@@ -4,10 +4,10 @@ import { clamp } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 import { KeyboardEvent, ReactElement, useCallback, useEffect, useId, useMemo, useRef } from "react";
 
+import { cn } from "@/core/theme/class-name";
 import { CODE, MONOSPACE_CHARACTER_WIDTH } from "@/core/theme/tokens";
 import { ICodeLine, ICodeLineRange, ICodeLineSource } from "@/core/ui/code/code-line";
 import { VirtualizedLinesRow } from "@/core/ui/code/VirtualizedLines/VirtualizedLinesRow";
-import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /**

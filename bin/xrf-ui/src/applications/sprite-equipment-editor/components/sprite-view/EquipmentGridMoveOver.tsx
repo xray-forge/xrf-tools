@@ -1,7 +1,7 @@
 import { ReactElement } from "react";
 
 import { TEquipmentCell } from "@/core/sprite-equipment/lib";
-import { cn } from "@/lib/dom/dom-name";
+import { cn } from "@/core/theme/class-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IEquipmentGridMoveOver extends BaseComponentProps {

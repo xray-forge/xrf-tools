@@ -4,10 +4,10 @@ import { ReactElement, useCallback, useMemo, useState } from "react";
 
 import { ArchiveReadResult } from "@/core/ipc/types/xrf-archive";
 import { getSyntaxLanguage } from "@/core/syntax/lib/syntax-language";
+import { cn } from "@/core/theme/class-name";
 import { ICodeLine, ICodeLineSource } from "@/core/ui/code/code-line";
 import { toTextLineSource } from "@/core/ui/code/text-line-source";
 import { VirtualizedLines } from "@/core/ui/code/VirtualizedLines";
-import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /** A line the reader marked, and the document it was a line of. */

@@ -3,8 +3,8 @@ import { ReactElement } from "react";
 
 import { toAccentColor, useApplicationLauncherActions } from "@/core/launcher/lib";
 import { EApplicationStatus, IApplicationDescriptor, IApplicationGroup } from "@/core/routing/application";
+import { cn } from "@/core/theme/class-name";
 import { TREE } from "@/core/theme/tokens";
-import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { ApplicationLauncherGroupLabel } from "../ApplicationLauncherGroupLabel";

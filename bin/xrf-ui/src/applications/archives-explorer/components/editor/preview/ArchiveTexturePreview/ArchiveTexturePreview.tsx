@@ -10,10 +10,10 @@ import { TArchiveBytes, TArchiveContent, useLastContent } from "@/core/archive/l
 import { describeTextureShape } from "@/core/assets/lib";
 import { useAssetUrl } from "@/core/assets/lib/use-asset-url";
 import { AssetTextureShape } from "@/core/ipc/types/xrf-app";
+import { cn } from "@/core/theme/class-name";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { ImageViewport } from "@/core/ui/media/ImageViewport";
-import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /**

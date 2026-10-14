@@ -1,8 +1,8 @@
 import { Chip, chipClasses, Typography } from "@mui/material";
 import { ReactElement } from "react";
 
+import { cn } from "@/core/theme/class-name";
 import { BADGE_FONT_SIZE } from "@/core/theme/tokens";
-import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { ARCHIVE_OVERRIDE_ROW_HEIGHT } from "./archive-override-rows";

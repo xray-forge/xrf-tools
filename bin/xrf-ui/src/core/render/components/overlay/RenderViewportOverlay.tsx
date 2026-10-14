@@ -1,6 +1,6 @@
 import { ReactElement, ReactNode } from "react";
 
-import { cn } from "@/lib/dom/dom-name";
+import { cn } from "@/core/theme/class-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /** Which corner of the viewport a readout sits in. */

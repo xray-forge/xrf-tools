@@ -3,7 +3,7 @@ import { ReactElement, Ref } from "react";
 
 import { ApplicationTitleBarIcon } from "@/core/shell/title-bar/ApplicationTitleBarIcon";
 import { WindowControls } from "@/core/shell/title-bar/WindowControls";
-import { cn } from "@/lib/dom/dom-name";
+import { cn } from "@/core/theme/class-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IApplicationTitleBarProps extends BaseComponentProps {

@@ -8,8 +8,8 @@ import { ReactElement, useCallback, useState } from "react";
 import { SPAWN_FILE_FILTERS } from "@/core/path/file-filters";
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
 import { SpawnFileService } from "@/core/spawn/services";
+import { cn } from "@/core/theme/class-name";
 import { ConfirmDialog } from "@/core/ui/dialog/ConfirmDialog";
-import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /**

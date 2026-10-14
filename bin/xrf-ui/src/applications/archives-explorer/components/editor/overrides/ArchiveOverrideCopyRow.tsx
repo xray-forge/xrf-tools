@@ -3,8 +3,8 @@ import { formatBytes } from "@xrf/format";
 import { ReactElement } from "react";
 
 import { describeAssetContainer, isLooseContainer } from "@/core/assets/lib";
+import { cn } from "@/core/theme/class-name";
 import { BADGE_FONT_SIZE } from "@/core/theme/tokens";
-import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { ARCHIVE_OVERRIDE_ROW_HEIGHT, EArchiveOverrideRow, IArchiveOverrideCopyRow } from "./archive-override-rows";

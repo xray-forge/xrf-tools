@@ -31,7 +31,7 @@ import { ApplicationRail, RailButton } from "@/core/shell/panel/rail";
 import { IPanelSelection, usePanelSelection } from "@/core/shell/panel/use-panel-selection";
 import { IPanelWidth, usePanelWidth } from "@/core/shell/panel/use-panel-width";
 import { ApplicationTitleBar } from "@/core/shell/title-bar/ApplicationTitleBar";
-import { cn } from "@/lib/dom/dom-name";
+import { cn } from "@/core/theme/class-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IApplicationShellFrameProps extends BaseComponentProps {

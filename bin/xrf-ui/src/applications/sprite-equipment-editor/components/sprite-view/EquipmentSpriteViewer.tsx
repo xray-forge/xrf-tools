@@ -10,8 +10,8 @@ import {
 } from "@/applications/sprite-equipment-editor/services/editor";
 import { EquipmentGridService } from "@/applications/sprite-equipment-editor/services/grid";
 import { IEquipmentLayout, toCellAt } from "@/core/sprite-equipment/lib";
+import { cn } from "@/core/theme/class-name";
 import { IImageViewportView, ImageViewport } from "@/core/ui/media/ImageViewport";
-import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { EquipmentGridCanvas } from "./EquipmentGridCanvas";

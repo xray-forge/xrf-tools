@@ -15,10 +15,10 @@ import {
 } from "@/core/archive/lib";
 import { ArchiveReadPolicy } from "@/core/ipc/types/xrf-archive";
 import { EPathEntryKind } from "@/core/path/entry-kind";
+import { cn } from "@/core/theme/class-name";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { inline } from "@/lib/callbacks/inline";
-import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { ArchiveAudioPreview } from "./ArchiveAudioPreview";

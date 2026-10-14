@@ -1,7 +1,7 @@
 import { ReactElement, ReactNode } from "react";
 
 import { EditorPanelHeader } from "@/core/shell/editor/EditorPanelHeader";
-import { cn } from "@/lib/dom/dom-name";
+import { cn } from "@/core/theme/class-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IEditorPanelProps extends BaseComponentProps {

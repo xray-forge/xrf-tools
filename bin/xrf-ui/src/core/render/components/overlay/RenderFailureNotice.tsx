@@ -2,8 +2,8 @@ import { default as ErrorOutlineIcon } from "@mui/icons-material/ErrorOutlineOut
 import { Typography } from "@mui/material";
 import { ReactElement } from "react";
 
+import { cn } from "@/core/theme/class-name";
 import { CenteredColumn } from "@/core/ui/layout/CenteredColumn";
-import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IRenderFailureNoticeProps extends BaseComponentProps {

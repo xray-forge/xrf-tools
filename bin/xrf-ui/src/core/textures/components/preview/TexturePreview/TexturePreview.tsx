@@ -15,10 +15,10 @@ import {
 } from "@/core/textures/lib/texture-preview";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { TextureViewService } from "@/core/textures/services/view";
+import { cn } from "@/core/theme/class-name";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { ErrorState } from "@/core/ui/layout/ErrorState";
-import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { PanZoomController } from "@/lib/media/pan-zoom-controller";
 

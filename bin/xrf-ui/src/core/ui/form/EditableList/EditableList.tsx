@@ -2,7 +2,7 @@ import { default as AddIcon } from "@mui/icons-material/Add";
 import { Button, Typography } from "@mui/material";
 import { ReactElement } from "react";
 
-import { cn } from "@/lib/dom/dom-name";
+import { cn } from "@/core/theme/class-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IEditableListProps extends BaseComponentProps {

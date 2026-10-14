@@ -1,7 +1,7 @@
 import { PointerEvent, ReactElement, useCallback, useRef } from "react";
 
 import { TEditorPanelSide } from "@/core/shell/editor-shell";
-import { cn } from "@/lib/dom/dom-name";
+import { cn } from "@/core/theme/class-name";
 
 interface IPanelResizerProps {
   side: TEditorPanelSide;

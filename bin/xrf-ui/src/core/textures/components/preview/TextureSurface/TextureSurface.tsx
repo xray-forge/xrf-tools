@@ -6,9 +6,9 @@ import { RenderFailureCover, RenderFrameReadout } from "@/core/render/components
 import { RenderSurface } from "@/core/render/components/RenderSurface";
 import { DOLLY_STEP } from "@/core/render/lib/frame/render-dolly";
 import { TextureRenderService } from "@/core/textures/services/render";
+import { cn } from "@/core/theme/class-name";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { ViewportControls } from "@/core/ui/media/ViewportControls";
-import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /** Where a light drag started, so each move swings by its own delta rather than the whole gesture. */

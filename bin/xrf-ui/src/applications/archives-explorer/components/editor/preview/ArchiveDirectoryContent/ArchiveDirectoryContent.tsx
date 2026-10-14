@@ -11,8 +11,8 @@ import { ReactElement, useCallback, useMemo } from "react";
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { IArchiveEntry, isUnderArchiveDirectory, TArchiveOperation } from "@/core/archive/lib";
 import { ArchiveExtractDirectoryResult } from "@/core/ipc/types/xrf-pack";
+import { cn } from "@/core/theme/class-name";
 import { CenteredColumn } from "@/core/ui/layout/CenteredColumn";
-import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Logger, useLogger } from "@/lib/logging";
 

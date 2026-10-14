@@ -7,9 +7,9 @@ import { JobDescription } from "@/core/ipc/types/xrf-app";
 import { IJobKindSummary, IJobLease, listHeldLeases, summarizeJobKinds } from "@/core/jobs/lib/job-listing";
 import { useJobsListing } from "@/core/jobs/lib/use-jobs-listing";
 import { JOB_PROFILES } from "@/core/jobs/metrics";
+import { cn } from "@/core/theme/class-name";
 import { DetailSection } from "@/core/ui/layout/DetailSection";
 import { StatFigure } from "@/core/ui/stats/StatFigure";
-import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { useForceUpdate } from "@/lib/react";
 

@@ -6,9 +6,9 @@ import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
 import { EditorPanelSection } from "@/core/shell/editor/EditorPanel";
+import { cn } from "@/core/theme/class-name";
 import { IVisualInspection, VISUAL_INSPECTION } from "@/core/visuals/components/panels/visual-inspection";
 import { VISIBILITY_MASK_BONES } from "@/core/visuals/lib/visual-bones";
-import { cn } from "@/lib/dom/dom-name";
 
 /** Stable, so a surface offering no bone controls does not hand the section a new set on every render. */
 const EMPTY_HIDDEN: ReadonlySet<string> = new Set();
