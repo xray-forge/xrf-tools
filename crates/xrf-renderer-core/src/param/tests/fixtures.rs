@@ -1,8 +1,9 @@
 use glam::Vec4;
 
 use crate::{
-  AccelerationStructureBinding, GraphTexture, PassParameters, ShaderAtomicU32, ShaderStruct, StorageArray,
-  StorageArrayMut, StorageValue, StorageValueMut, UniformBinding,
+  AccelerationStructureBinding, GraphBuffer, GraphBufferAccess, GraphTexture, GraphTextureAccess, PassBinding,
+  PassParameters, PassResources, ShaderAtomicU32, ShaderDeclarations, ShaderStruct, StorageArray, StorageArrayMut,
+  StorageValue, StorageValueMut, UniformBinding,
 };
 
 #[repr(C)]
@@ -134,4 +135,40 @@ pub struct ClashingLate {
   #[binding(1)]
   #[texture(d2, float)]
   pub history: GraphTexture,
+}
+
+/// Parameters written by hand that number two bindings and declare one of them.
+pub struct Undeclared;
+
+impl PassParameters for Undeclared {
+  const GROUP: u32 = 3;
+  const LAYOUT_KEY: &'static str = "Undeclared";
+  const BINDINGS: &'static [u32] = &[0, 1];
+  const ENABLES: &'static [&'static str] = &[];
+
+  fn get_layout_entries() -> Vec<wgpu::BindGroupLayoutEntry> {
+    Vec::new()
+  }
+
+  fn list_wgsl_bindings() -> Vec<String> {
+    vec![String::from("@group(3) @binding(0) var scene: texture_2d<f32>;")]
+  }
+
+  fn declare(_: &mut ShaderDeclarations) {}
+
+  fn list_texture_accesses(&self) -> Vec<(GraphTexture, GraphTextureAccess)> {
+    Vec::new()
+  }
+
+  fn list_buffer_accesses(&self) -> Vec<(GraphBuffer, GraphBufferAccess)> {
+    Vec::new()
+  }
+
+  fn list_bindings<'r>(&'r self, _: &dyn PassResources<'r>) -> Vec<PassBinding<'r>> {
+    Vec::new()
+  }
+
+  fn list_dynamic_offsets(&self) -> Vec<u32> {
+    Vec::new()
+  }
 }
