@@ -6,7 +6,7 @@
 // surface, traced against the level's static geometry and its spawned models, cut-out leaves by their alpha; the share
 // that meets nothing within the radius is its visibility, written as the bitmask search writes its own (visibility,
 // distance along the view), for the same accumulation over frames and filter. Grass, planted on the GPU each frame,
-// is not in the trace and occludes nothing here.
+// is not in the trace and occludes nothing here; a plant's own rays go about the world's up.
 
 // The normals, the depth and the frame's points at half size, and the occlusion's radius, spread and noise.
 #import "generated/frame/vbao"
@@ -20,6 +20,8 @@ const R2: vec2<f32> = vec2<f32>(0.7548777, 0.5698403);
 // Metres a ray starts off its surface, and how much more each metre away, so it leaves the surface it starts on.
 const LIFT: f32 = 0.03;
 const LIFT_PER_METRE: f32 = 0.002;
+// Metres a plant's rays start over it, past the ground's bumps about its foot, which its sway would move it among.
+const PLANT_LIFT: f32 = 0.3;
 
 // Jimenez's interleaved gradient noise: neighbours far apart in value, so a few rays a pixel average out over a small
 // footprint.
@@ -67,9 +69,13 @@ fn trace_occlusion(clip: vec2<f32>) -> vec4<f32> {
   let crossed: vec3<f32> = normalize(cross(down_screen, across_screen));
   let surface: vec3<f32> = select(crossed, -crossed, dot(crossed, position) > 0.0);
   let to_world: mat4x4<f32> = transpose(camera.view);
-  let normal: vec3<f32> = normalize((to_world * vec4<f32>(surface, 0.0)).xyz);
-  let origin: vec3<f32> =
-    camera.position.xyz + (to_world * vec4<f32>(position, 0.0)).xyz + normal * (LIFT + distance * LIFT_PER_METRE);
+  // A plant's rays go about the world's up: grass is not in the trace, so from a blade's own normal, which its depth
+  // gives at random as it sways, they met the ground it grows from and whole tufts flickered between dark and lit;
+  // about the up only what stands over it occludes it, as its light leans it up.
+  let is_plant: bool = has_mark(textureLoad(material_target, texel, 0).a, MARK_PLANT);
+  let normal: vec3<f32> = select(normalize((to_world * vec4<f32>(surface, 0.0)).xyz), vec3<f32>(0.0, 1.0, 0.0), is_plant);
+  let lift: f32 = select(LIFT, PLANT_LIFT, is_plant) + distance * LIFT_PER_METRE;
+  let origin: vec3<f32> = camera.position.xyz + (to_world * vec4<f32>(position, 0.0)).xyz + normal * lift;
   // A frame about the normal.
   let axis: vec3<f32> = select(vec3<f32>(0.0, 1.0, 0.0), vec3<f32>(1.0, 0.0, 0.0), abs(normal.y) > 0.9);
   let across: vec3<f32> = normalize(cross(normal, axis));
