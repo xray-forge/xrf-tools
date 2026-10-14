@@ -1626,6 +1626,7 @@ impl SceneView {
     self.features.statics.request_stats();
     self.features.grass.request_stats();
     self.features.lights.request_report();
+    self.features.reflections.request_demand();
   }
 
   /// Drops what a frame that was never submitted copied out for reading back, its counts and its pick, and forgets the
@@ -1634,6 +1635,7 @@ impl SceneView {
     self.features.statics.abandon_stats();
     self.features.grass.abandon_stats();
     self.features.lights.abandon_report();
+    self.features.reflections.abandon_demand();
     self.features.pick.abandon();
     // What the frame drew of the periodic work was never drawn.
     self.features.shadows.abandon_frame();

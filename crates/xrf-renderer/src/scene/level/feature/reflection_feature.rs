@@ -1,6 +1,6 @@
 use xrf_renderer_core::{
-  FrameGraph, GraphBindings, GraphColorAttachment, GraphRuntime, GraphTexture, GraphTextureDescriptor, StorageValue,
-  UniformBinding,
+  FrameGraph, GraphBindings, GraphBufferAccess, GraphColorAttachment, GraphRuntime, GraphTexture,
+  GraphTextureDescriptor, StorageValue, UniformBinding,
 };
 
 use crate::context::gpu_requirements::can_trace;
@@ -11,6 +11,7 @@ use crate::frame::frame_texture::FrameTexture;
 use crate::frame::reflection_frame::ReflectionFrame;
 use crate::frame::reflection_frame_handles::ReflectionFrameHandles;
 use crate::frame::reflection_history::ReflectionHistory;
+use crate::frame::stats_readback::StatsReadback;
 use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::pyramid_depth_parameters::PyramidDepthParameters;
@@ -36,6 +37,8 @@ pub struct ReflectionFeature {
   trace: Option<ReflectionTrace>,
   uniform: ReflectionUniform,
   history: Option<ReflectionHistory>,
+  /// The rays a raw trace asked for, read back a frame or more late, which its request list is sized to.
+  demand: Option<StatsReadback>,
 }
 
 impl ReflectionFeature {
@@ -71,23 +74,20 @@ impl ReflectionFeature {
 
     let can_trace: bool = can_trace(device);
 
+    let asked: u32 = self.demand.get_or_insert_with(|| StatsReadback::new(device)).take()[0];
+
     if let Some(history) = &mut self.history {
       let is_traced: bool = self.settings.is_traced && can_trace;
-
-      let share: u32 = if trace.is_raw {
-        ReflectionHistory::RAW_REQUEST_SHARE
+      let pixels: u32 = traced.0 * traced.1;
+      let capacity: u32 = if !is_traced {
+        0
+      } else if trace.is_raw {
+        ReflectionHistory::get_raw_capacity(pixels, history.requests.get_capacity(), asked)
       } else {
-        ReflectionHistory::REQUEST_SHARE
+        pixels.div_ceil(ReflectionHistory::REQUEST_SHARE)
       };
 
-      history.requests.fit(
-        device,
-        if is_traced {
-          (traced.0 * traced.1).div_ceil(share)
-        } else {
-          0
-        },
-      );
+      history.requests.fit(device, capacity);
     }
 
     let (frame, has_history, has_source): (u32, bool, bool) = self
@@ -264,6 +264,7 @@ impl ReflectionFeature {
     // The rays the trace left, traced against the level's geometry.
     if let Some(scene_trace) = scene_trace {
       let (trace_requests, trace_request_head) = listed.to_read();
+      let head = listed.head;
 
       passes.scene_trace.add_trace(
         graph,
@@ -284,6 +285,19 @@ impl ReflectionFeature {
         ),
         scene_trace,
       );
+
+      // Raw, how many rays the trace asked for, read back for its list's room: an effect the graph cannot see.
+      if let (Some(demand), true) = (&self.demand, self.trace.is_some_and(|it| it.is_raw)) {
+        graph
+          .add_encoder_pass("reflection request demand")
+          .buffer(head, GraphBufferAccess::CopySource)
+          .keep()
+          .record(move |context| {
+            let head: &wgpu::Buffer = context.get_buffer(head);
+
+            demand.record(context.get_encoder(), head, 0);
+          });
+      }
     }
 
     // Raw, DLSS ray reconstruction denoises the trace in the frame, so combine reads it as traced.
@@ -386,6 +400,20 @@ impl ReflectionFeature {
     }
 
     Some((written_full, ends, traced))
+  }
+
+  /// Asks for the rays asked recorded with the frame just submitted.
+  pub fn request_demand(&self) {
+    if let Some(demand) = &self.demand {
+      demand.request();
+    }
+  }
+
+  /// Drops the rays asked recorded with a frame that was never submitted.
+  pub fn abandon_demand(&self) {
+    if let Some(demand) = &self.demand {
+      demand.abandon();
+    }
   }
 
   /// What this frame wrote becomes what the next reads, while they are traced: the view's depth target this frame drew

@@ -36,8 +36,31 @@ impl ReflectionHistory {
   /// Traced pixels a request the list holds stands for at most: a ray more than that leaves its pixel what it reflected
   /// the frame before, or the sky.
   pub const REQUEST_SHARE: u32 = 4;
-  /// The same, traced raw: every pixel traces every frame and nothing is held, so the list takes twice the share.
+  /// The same, traced raw: every pixel traces every frame and nothing is held, so the list takes twice the share at
+  /// the least, and grows to what the frames ask (`get_raw_capacity`).
   pub const RAW_REQUEST_SHARE: u32 = 2;
+  /// How much more room than a raw frame asked its list is given, and the requests it grows or shrinks by at a time.
+  const RAW_REQUEST_MARGIN: f32 = 1.25;
+  const RAW_REQUEST_STEP: u32 = 65_536;
+
+  /// The room a raw trace's list of `current` takes next over `traced` pixels, its frames having last asked for
+  /// `asked` rays: `RAW_REQUEST_MARGIN` more than asked, in whole steps, between its share and a ray a pixel; grown at
+  /// once and shrunk only once that falls to half its room, so a frame asking a little less never makes it anew.
+  /// Raw, a pixel past the list has nothing held to show, and the list fills in the order pixels are drawn: the last
+  /// rows of the screen reflected the sky.
+  pub fn get_raw_capacity(traced: u32, current: u32, asked: u32) -> u32 {
+    let least: u32 = traced.div_ceil(Self::RAW_REQUEST_SHARE);
+    let wanted: u32 = ((asked as f32 * Self::RAW_REQUEST_MARGIN) as u32)
+      .div_ceil(Self::RAW_REQUEST_STEP)
+      .saturating_mul(Self::RAW_REQUEST_STEP)
+      .clamp(least, traced.max(least));
+
+    if wanted > current || wanted.saturating_mul(2) <= current {
+      wanted
+    } else {
+      current.clamp(least, traced.max(least))
+    }
+  }
 
   /// The history at the size traced at, its denoiser's frames where it is denoised, and the pyramid and the kept scene
   /// over the frame's size.
