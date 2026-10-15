@@ -78,7 +78,9 @@ fn is_sun_mapped(shadows: Shadows, position: vec3<f32>) -> bool {
 
 // How much of the sun reaches a point: the first cascade whose map holds it, blended into the next within `blend` of
 // its edge so the switch to a coarser map is never a line; past every cascade the sun reaches it whole. The point is
-// moved along its normal first so a lit surface never shadows itself, up to twice as far where the light grazes it.
+// moved along its normal first so a lit surface never shadows itself, up to twice as far where the light grazes it, and
+// as much again for each texel the filter reaches out: on a slope its outer taps read the surface's own depth a texel's
+// rise away, which striped a flat puddle on sloped ground where the bumps hid it elsewhere.
 fn sun_shadow(maps: texture_depth_2d_array, shadows: Shadows, position: vec3<f32>, normal: vec3<f32>, facing: f32)
   -> f32 {
   let lean: f32 = 1.0 + sqrt(1.0 - saturate(facing) * saturate(facing));
@@ -87,7 +89,8 @@ fn sun_shadow(maps: texture_depth_2d_array, shadows: Shadows, position: vec3<f32
   var inset: f32 = 0.0;
 
   for (var view: u32 = 0u; view < min(shadows.count, 4u); view++) {
-    let moved: vec3<f32> = position + normal * (shadows.bias * shadows.texels[view] * lean);
+    let moved: vec3<f32> = position + normal * (shadows.bias * shadows.texels[view] * lean *
+      (1.0 + f32(shadows.filter_reach)));
     let clip: vec4<f32> = shadows.matrices[view] * vec4<f32>(moved, 1.0);
     let uv: vec2<f32> = vec2<f32>(clip.x * 0.5 + 0.5, clip.y * -0.5 + 0.5);
     let is_inside: bool = all(uv > vec2<f32>(EDGE)) && all(uv < vec2<f32>(1.0 - EDGE)) && clip.z > 0.0 && clip.z < 1.0;
