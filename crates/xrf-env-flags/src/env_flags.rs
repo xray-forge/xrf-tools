@@ -1,15 +1,19 @@
 use std::fmt::Write;
 
+use crate::choice_flag::ChoiceFlag;
 use crate::env_flag::EnvFlag;
 use crate::env_flag_kind::EnvFlagKind;
 use crate::env_flag_reading::EnvFlagReading;
 use crate::env_flag_value::EnvFlagValue;
+use crate::path_flag::PathFlag;
+use crate::switch_flag::SwitchFlag;
+use crate::text_flag::TextFlag;
 
 /// Every environment variable the workspace reads. Code reads each through its constant; `ALL` lists them all.
 pub struct EnvFlags;
 
 impl EnvFlags {
-  pub const RENDER_BACKEND: EnvFlag = EnvFlag {
+  pub const RENDER_BACKEND: ChoiceFlag = ChoiceFlag::new(EnvFlag {
     name: "XRF_RENDER_BACKEND",
     kind: EnvFlagKind::Runtime,
     value: EnvFlagValue::Choice(&["d3d12", "vulkan"]),
@@ -18,9 +22,9 @@ impl EnvFlags {
     condition: None,
     description: "Starts the renderer on this graphics API instead of the one chosen in the settings. If it cannot \
                   start, the renderer falls back to the other API.",
-  };
+  });
 
-  pub const RENDER_RAY_QUERY: EnvFlag = EnvFlag {
+  pub const RENDER_RAY_QUERY: SwitchFlag = SwitchFlag::new(EnvFlag {
     name: "XRF_RENDER_RAY_QUERY",
     kind: EnvFlagKind::Runtime,
     value: EnvFlagValue::Switch,
@@ -29,9 +33,9 @@ impl EnvFlags {
     condition: None,
     description: "Set it off to stop the renderer using hardware ray queries. Traced effects then use their untraced \
                   versions.",
-  };
+  });
 
-  pub const APP_EXTENSIONS_DIR: EnvFlag = EnvFlag {
+  pub const APP_EXTENSIONS_DIR: PathFlag = PathFlag::new(EnvFlag {
     name: "XRF_APP_EXTENSIONS_DIR",
     kind: EnvFlagKind::Runtime,
     value: EnvFlagValue::Path,
@@ -40,9 +44,9 @@ impl EnvFlags {
     condition: Some("debug builds on Windows"),
     description: "Directory to load unpacked browser extensions into the webview from. Each entry must be a folder \
                   with a `manifest.json`.",
-  };
+  });
 
-  pub const RUST_LOG: EnvFlag = EnvFlag {
+  pub const RUST_LOG: TextFlag = TextFlag::new(EnvFlag {
     name: "RUST_LOG",
     kind: EnvFlagKind::PassThrough,
     value: EnvFlagValue::Text,
@@ -50,61 +54,62 @@ impl EnvFlags {
     readers: &["xrf-app", "xrf-cli"],
     condition: None,
     description: "Log filter in `env_logger` syntax, for example `info,wgpu_hal=warn`.",
-  };
+  });
 
-  pub const WGPU_VALIDATION: EnvFlag = Self::wgpu_switch("WGPU_VALIDATION", "Turns wgpu's API validation on or off.");
+  pub const WGPU_VALIDATION: SwitchFlag =
+    Self::wgpu_switch("WGPU_VALIDATION", "Turns wgpu's API validation on or off.");
 
-  pub const WGPU_DEBUG: EnvFlag = Self::wgpu_switch(
+  pub const WGPU_DEBUG: SwitchFlag = Self::wgpu_switch(
     "WGPU_DEBUG",
     "Turns wgpu's debug labels and markers on GPU objects on or off, for graphics debuggers.",
   );
 
-  pub const WGPU_GPU_BASED_VALIDATION: EnvFlag = Self::wgpu_switch(
+  pub const WGPU_GPU_BASED_VALIDATION: SwitchFlag = Self::wgpu_switch(
     "WGPU_GPU_BASED_VALIDATION",
     "Turns on the driver's GPU-based validation. It is much slower and needs `WGPU_VALIDATION` on.",
   );
 
-  pub const WGPU_VALIDATION_INDIRECT_CALL: EnvFlag = Self::wgpu_switch(
+  pub const WGPU_VALIDATION_INDIRECT_CALL: SwitchFlag = Self::wgpu_switch(
     "WGPU_VALIDATION_INDIRECT_CALL",
     "Turns wgpu's validation of indirect draw and dispatch arguments on or off.",
   );
 
-  pub const WGPU_DISCARD_HAL_LABELS: EnvFlag = Self::wgpu_switch(
+  pub const WGPU_DISCARD_HAL_LABELS: SwitchFlag = Self::wgpu_switch(
     "WGPU_DISCARD_HAL_LABELS",
     "When on, wgpu does not pass labels down to the graphics API's objects.",
   );
 
-  pub const WGPU_ALLOW_UNDERLYING_NONCOMPLIANT_ADAPTER: EnvFlag = Self::wgpu_switch(
+  pub const WGPU_ALLOW_UNDERLYING_NONCOMPLIANT_ADAPTER: SwitchFlag = Self::wgpu_switch(
     "WGPU_ALLOW_UNDERLYING_NONCOMPLIANT_ADAPTER",
     "When on, wgpu also offers adapters it does not consider compliant.",
   );
 
-  pub const WGPU_STRICT_WEBGPU_COMPLIANCE: EnvFlag = Self::wgpu_switch(
+  pub const WGPU_STRICT_WEBGPU_COMPLIANCE: SwitchFlag = Self::wgpu_switch(
     "WGPU_STRICT_WEBGPU_COMPLIANCE",
     "When on, wgpu enforces WebGPU's limits strictly.",
   );
 
-  pub const WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: EnvFlag = Self::webview2(
+  pub const WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: TextFlag = Self::webview2(
     "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS",
     "Extra Chromium switches for the webview, for example `--auto-open-devtools-for-tabs`.",
   );
 
-  pub const WEBVIEW2_BROWSER_EXECUTABLE_FOLDER: EnvFlag = Self::webview2(
+  pub const WEBVIEW2_BROWSER_EXECUTABLE_FOLDER: TextFlag = Self::webview2(
     "WEBVIEW2_BROWSER_EXECUTABLE_FOLDER",
     "Folder of a fixed-version WebView2 runtime to use instead of the installed one.",
   );
 
-  pub const WEBVIEW2_RELEASE_CHANNEL_PREFERENCE: EnvFlag = Self::webview2(
+  pub const WEBVIEW2_RELEASE_CHANNEL_PREFERENCE: TextFlag = Self::webview2(
     "WEBVIEW2_RELEASE_CHANNEL_PREFERENCE",
     "Set it to `1` to prefer the least stable installed Edge channel over the stable runtime.",
   );
 
-  pub const WEBVIEW2_USER_DATA_FOLDER: EnvFlag = Self::webview2(
+  pub const WEBVIEW2_USER_DATA_FOLDER: TextFlag = Self::webview2(
     "WEBVIEW2_USER_DATA_FOLDER",
     "Folder for the webview's profile, instead of the application's default.",
   );
 
-  pub const BUILD_KIND: EnvFlag = EnvFlag {
+  pub const BUILD_KIND: ChoiceFlag = ChoiceFlag::new(EnvFlag {
     name: "XRF_BUILD_KIND",
     kind: EnvFlagKind::Build,
     value: EnvFlagValue::Choice(&["development", "optimized"]),
@@ -112,9 +117,9 @@ impl EnvFlags {
     readers: &["xrf-build-info"],
     condition: None,
     description: "Kind the build reports itself as, matched exactly. It is a label, not a Cargo profile; CI sets it.",
-  };
+  });
 
-  pub const BUILD_TIMESTAMP: EnvFlag = EnvFlag {
+  pub const BUILD_TIMESTAMP: TextFlag = TextFlag::new(EnvFlag {
     name: "XRF_BUILD_TIMESTAMP",
     kind: EnvFlagKind::Build,
     value: EnvFlagValue::Text,
@@ -122,27 +127,27 @@ impl EnvFlags {
     readers: &["xrf-build-info"],
     condition: None,
     description: "Build time the build reports, copied as given (use RFC 3339). An empty value leaves it out.",
-  };
+  });
 
-  pub const DLSS_SDK: EnvFlag = Self::sdk(
+  pub const DLSS_SDK: PathFlag = Self::sdk(
     "DLSS_SDK",
     "`.sdks/dlss`",
     "Location of NVIDIA's DLSS SDK, for builds with the `dlss` feature.",
   );
 
-  pub const VULKAN_SDK: EnvFlag = Self::sdk(
+  pub const VULKAN_SDK: PathFlag = Self::sdk(
     "VULKAN_SDK",
     "`.sdks/vulkan-headers`",
     "Location of the Vulkan headers the DLSS bindings are generated against.",
   );
 
-  pub const LIBCLANG_PATH: EnvFlag = Self::sdk(
+  pub const LIBCLANG_PATH: PathFlag = Self::sdk(
     "LIBCLANG_PATH",
     "`.sdks/libclang` on Windows; the system's elsewhere",
     "Location of the libclang that `bindgen` uses to generate the DLSS bindings.",
   );
 
-  pub const DLSS_RUNTIME: EnvFlag = EnvFlag {
+  pub const DLSS_RUNTIME: PathFlag = PathFlag::new(EnvFlag {
     name: "XRF_DLSS_RUNTIME",
     kind: EnvFlagKind::Internal,
     value: EnvFlagValue::Path,
@@ -150,31 +155,31 @@ impl EnvFlags {
     readers: &["xrf-dlss"],
     condition: Some("builds with the `dlss` feature"),
     description: "SDK runtime directory compiled into the binary as the last place to look for the DLSS library.",
-  };
+  });
 
   /// Every variable, in the order the document lists them.
   pub const ALL: &'static [EnvFlag] = &[
-    Self::RENDER_BACKEND,
-    Self::RENDER_RAY_QUERY,
-    Self::APP_EXTENSIONS_DIR,
-    Self::RUST_LOG,
-    Self::WGPU_VALIDATION,
-    Self::WGPU_DEBUG,
-    Self::WGPU_GPU_BASED_VALIDATION,
-    Self::WGPU_VALIDATION_INDIRECT_CALL,
-    Self::WGPU_DISCARD_HAL_LABELS,
-    Self::WGPU_ALLOW_UNDERLYING_NONCOMPLIANT_ADAPTER,
-    Self::WGPU_STRICT_WEBGPU_COMPLIANCE,
-    Self::WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS,
-    Self::WEBVIEW2_BROWSER_EXECUTABLE_FOLDER,
-    Self::WEBVIEW2_RELEASE_CHANNEL_PREFERENCE,
-    Self::WEBVIEW2_USER_DATA_FOLDER,
-    Self::BUILD_KIND,
-    Self::BUILD_TIMESTAMP,
-    Self::DLSS_SDK,
-    Self::VULKAN_SDK,
-    Self::LIBCLANG_PATH,
-    Self::DLSS_RUNTIME,
+    *Self::RENDER_BACKEND.get_flag(),
+    *Self::RENDER_RAY_QUERY.get_flag(),
+    *Self::APP_EXTENSIONS_DIR.get_flag(),
+    *Self::RUST_LOG.get_flag(),
+    *Self::WGPU_VALIDATION.get_flag(),
+    *Self::WGPU_DEBUG.get_flag(),
+    *Self::WGPU_GPU_BASED_VALIDATION.get_flag(),
+    *Self::WGPU_VALIDATION_INDIRECT_CALL.get_flag(),
+    *Self::WGPU_DISCARD_HAL_LABELS.get_flag(),
+    *Self::WGPU_ALLOW_UNDERLYING_NONCOMPLIANT_ADAPTER.get_flag(),
+    *Self::WGPU_STRICT_WEBGPU_COMPLIANCE.get_flag(),
+    *Self::WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS.get_flag(),
+    *Self::WEBVIEW2_BROWSER_EXECUTABLE_FOLDER.get_flag(),
+    *Self::WEBVIEW2_RELEASE_CHANNEL_PREFERENCE.get_flag(),
+    *Self::WEBVIEW2_USER_DATA_FOLDER.get_flag(),
+    *Self::BUILD_KIND.get_flag(),
+    *Self::BUILD_TIMESTAMP.get_flag(),
+    *Self::DLSS_SDK.get_flag(),
+    *Self::VULKAN_SDK.get_flag(),
+    *Self::LIBCLANG_PATH.get_flag(),
+    *Self::DLSS_RUNTIME.get_flag(),
   ];
 
   /// The document's sections: each kind with its title and summary.
@@ -251,8 +256,8 @@ impl EnvFlags {
   }
 
   /// One of wgpu's instance flags, read as any switch and applied when the renderer creates its instance.
-  const fn wgpu_switch(name: &'static str, description: &'static str) -> EnvFlag {
-    EnvFlag {
+  const fn wgpu_switch(name: &'static str, description: &'static str) -> SwitchFlag {
+    SwitchFlag::new(EnvFlag {
       name,
       kind: EnvFlagKind::Runtime,
       value: EnvFlagValue::Switch,
@@ -260,12 +265,12 @@ impl EnvFlags {
       readers: &["xrf-app"],
       condition: None,
       description,
-    }
+    })
   }
 
   /// One of the WebView2 runtime's variables, which the runtime reads when the window's webview starts.
-  const fn webview2(name: &'static str, description: &'static str) -> EnvFlag {
-    EnvFlag {
+  const fn webview2(name: &'static str, description: &'static str) -> TextFlag {
+    TextFlag::new(EnvFlag {
       name,
       kind: EnvFlagKind::PassThrough,
       value: EnvFlagValue::Text,
@@ -273,12 +278,12 @@ impl EnvFlags {
       readers: &["xrf-app"],
       condition: Some("Windows"),
       description,
-    }
+    })
   }
 
   /// A build input that `.cargo/config.toml` points at the fetched SDKs; a value set in the environment wins.
-  const fn sdk(name: &'static str, default: &'static str, description: &'static str) -> EnvFlag {
-    EnvFlag {
+  const fn sdk(name: &'static str, default: &'static str, description: &'static str) -> PathFlag {
+    PathFlag::new(EnvFlag {
       name,
       kind: EnvFlagKind::Build,
       value: EnvFlagValue::Path,
@@ -286,6 +291,6 @@ impl EnvFlags {
       readers: &["xrf-dlss"],
       condition: Some("builds with the `dlss` feature"),
       description,
-    }
+    })
   }
 }

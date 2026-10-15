@@ -1,10 +1,8 @@
-use std::path::PathBuf;
-
 use crate::env_flag_kind::EnvFlagKind;
 use crate::env_flag_reading::EnvFlagReading;
 use crate::env_flag_value::EnvFlagValue;
 
-/// One environment variable: its description for the document, and the methods that read it.
+/// One environment variable as the document describes it; it is read through the typed flag declaring it.
 #[derive(Clone, Copy, Debug)]
 pub struct EnvFlag {
   pub name: &'static str,
@@ -26,32 +24,6 @@ impl EnvFlag {
     std::env::var_os(self.name).map(|value| value.to_string_lossy().into_owned())
   }
 
-  /// A switch's state, or none if it is unset or invalid. An invalid value is logged as a warning.
-  pub fn read_switch(&self) -> Option<bool> {
-    self.read_as(EnvFlagValue::Switch).map(|value| value == "on")
-  }
-
-  /// A choice's name as the table spells it, or none if it is unset or invalid. An invalid value is logged as a
-  /// warning.
-  pub fn read_choice(&self) -> Option<&'static str> {
-    let EnvFlagValue::Choice(names) = self.value else {
-      panic!("{} is not a choice", self.name);
-    };
-    let chosen: String = self.read_as(self.value)?;
-
-    names.iter().copied().find(|name| *name == chosen)
-  }
-
-  /// A path, or none if it is unset or empty.
-  pub fn read_path(&self) -> Option<PathBuf> {
-    self.read_as(EnvFlagValue::Path).map(PathBuf::from)
-  }
-
-  /// The text as set, trimmed, or none if it is unset or empty.
-  pub fn read_text(&self) -> Option<String> {
-    self.read_as(EnvFlagValue::Text)
-  }
-
   /// Its state in this process: whether it is set, and the value that applies.
   pub fn to_reading(&self) -> EnvFlagReading {
     let value: Option<String> = self.get_raw();
@@ -66,15 +38,8 @@ impl EnvFlag {
     }
   }
 
-  /// The value read as `expected`, logging a warning if it is invalid.
-  fn read_as(&self, expected: EnvFlagValue) -> Option<String> {
-    assert!(
-      std::mem::discriminant(&self.value) == std::mem::discriminant(&expected),
-      "{} is read as {:?}, not {expected:?}",
-      self.name,
-      self.value
-    );
-
+  /// The value as its kind reads it, logging a warning if it is invalid.
+  pub(crate) fn read_interpreted(&self) -> Option<String> {
     let raw: String = self.get_raw()?;
     let interpreted: Option<String> = self.value.interpret(&raw);
 

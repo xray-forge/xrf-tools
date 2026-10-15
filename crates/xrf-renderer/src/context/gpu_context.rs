@@ -3,7 +3,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use xrf_dlss::{Dlss, DlssInstance};
-use xrf_env_flags::{EnvFlag, EnvFlags};
+use xrf_env_flags::{EnvFlags, SwitchFlag};
 use xrf_error::{XrfError, XrfResult};
 
 use crate::context::gpu_requirements::{
@@ -181,13 +181,13 @@ impl GpuContext {
 
   /// The build's instance flags with each of wgpu's switches set in the environment applied, read as any xrf switch.
   fn read_instance_flags() -> wgpu::InstanceFlags {
-    Self::apply_instance_switches(wgpu::InstanceFlags::from_build_config(), EnvFlag::read_switch)
+    Self::apply_instance_switches(wgpu::InstanceFlags::from_build_config(), SwitchFlag::read_switch)
   }
 
   /// `flags` with each wgpu switch `read` answers for turned on or off as it answers.
   pub(crate) fn apply_instance_switches(
     mut flags: wgpu::InstanceFlags,
-    read: impl Fn(&EnvFlag) -> Option<bool>,
+    read: impl Fn(&SwitchFlag) -> Option<bool>,
   ) -> wgpu::InstanceFlags {
     for (switch, flag) in [
       (EnvFlags::WGPU_VALIDATION, wgpu::InstanceFlags::VALIDATION),
