@@ -66,10 +66,6 @@ impl NgxSuperResolution {
           ),
           "DLSS has no render size for the output",
         )?;
-
-        for hint in Self::PRESET_HINTS {
-          NVSDK_NGX_Parameter_SetUI(locked.parameters, hint.as_ptr().cast(), preset.to_hint() as u32);
-        }
       }
     }
 
@@ -93,7 +89,13 @@ impl NgxSuperResolution {
       sdk,
       (device, queue),
       "DLSS cannot upscale to the output",
+      // The preset hints go on the shared parameters under the lock the feature is made under, so another feature made
+      // meanwhile cannot change them first.
       |commands, ngx, handle| unsafe {
+        for hint in Self::PRESET_HINTS {
+          NVSDK_NGX_Parameter_SetUI(ngx, hint.as_ptr().cast(), preset.to_hint() as u32);
+        }
+
         match commands {
           NgxCommands::Vulkan(list) => NGX_VULKAN_CREATE_DLSS_EXT(list, 1, 1, handle, ngx, &mut parameters),
           #[cfg(windows)]
