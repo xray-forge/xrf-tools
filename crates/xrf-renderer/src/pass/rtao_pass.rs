@@ -11,14 +11,6 @@ use crate::pass::trace_parameters::TraceParameters;
 use crate::pass::vbao_parameters::VbaoParameters;
 use crate::pass::view_binding::ViewBinding;
 
-/// Every quality, in the order their pipelines are held.
-const QUALITIES: [RenderAmbientOcclusionQuality; 4] = [
-  RenderAmbientOcclusionQuality::Low,
-  RenderAmbientOcclusionQuality::Medium,
-  RenderAmbientOcclusionQuality::High,
-  RenderAmbientOcclusionQuality::Ultra,
-];
-
 /// RTAO at half the frame's size: a few short rays from each point, cosine-weighted about its normal, traced against
 /// the level's geometry by hardware ray query (`frame/rtao`), their unblocked share written as the bitmask search
 /// writes its visibility, for its accumulation and filter; or raw, one ray a point, straight into what combine reads,
@@ -88,12 +80,13 @@ impl RtaoPass {
     view: &ViewBinding,
     (parameters, trace, textures): (&VbaoParameters, &TraceParameters<'_>, &wgpu::BindGroup),
   ) {
-    let index: Option<usize> = if is_raw {
-      Some(QUALITIES.len())
+    // One pipeline a quality in `RenderAmbientOcclusionQuality::ALL` order, then the raw one.
+    let index: usize = if is_raw {
+      RenderAmbientOcclusionQuality::ALL.len()
     } else {
-      QUALITIES.iter().position(|it| *it == quality)
+      quality.get_index()
     };
-    let Some(pipeline) = index.and_then(|index| self.pipelines.get(index)) else {
+    let Some(pipeline) = self.pipelines.get(index) else {
       return;
     };
 
@@ -126,7 +119,7 @@ impl RtaoPass {
     let raw_targets: [Option<wgpu::ColorTargetState>; 2] =
       [Some(ViewTargets::OCCLUSION.into()), Some(ViewTargets::OCCLUSION.into())];
 
-    QUALITIES
+    RenderAmbientOcclusionQuality::ALL
       .map(|quality| (quality.get_rtao_rays(), false))
       .into_iter()
       .chain([(Self::RAW_RAYS, true)])
