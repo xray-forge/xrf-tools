@@ -13,7 +13,6 @@ pub(crate) mod periodic;
 pub(crate) mod pick_target;
 pub(crate) mod static_scene_handles;
 pub(crate) mod stats_readback;
-pub(crate) mod temporal_jitter;
 pub(crate) mod texture_copy;
 pub(crate) mod view_target_handles;
 pub(crate) mod view_target_uses;

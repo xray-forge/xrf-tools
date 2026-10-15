@@ -2,8 +2,8 @@ use glam::{Mat4, Vec2, Vec3, Vec4};
 
 use crate::camera::camera_view::CameraView;
 use crate::contract::render_antialiasing::RenderAntialiasing;
-use crate::frame::temporal_jitter::TemporalJitter;
 use crate::scene::level::feature::resolve_feature::ResolveFeature;
+use crate::scene::level::feature::temporal_jitter::TemporalJitter;
 
 #[test]
 fn halton_places_samples_as_the_radical_inverse_of_their_index() {
