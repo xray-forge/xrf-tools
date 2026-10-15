@@ -220,6 +220,7 @@ export const DEFAULT_RENDER_PARALLAX_SETTINGS: TRenderParallaxSettings = {
 /** The engine's own: no contact shadows, and their strengths for when they are drawn, towards four lights a pixel. */
 export const DEFAULT_RENDER_CONTACT_SHADOW_SETTINGS: TRenderContactShadowSettings = {
   intensity: 1,
+  isFullResolution: false,
   length: 0.6,
   lights: 4,
   mode: ERenderContactShadowMode.ENGINE,

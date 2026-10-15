@@ -103,10 +103,15 @@ export const RENDER_PRESETS: Readonly<Record<ERenderPreset, IRenderFeatureSettin
     // The application's own choice over the engine's, as the antialiasing is: what the frame shows reflected where a
     // ray meets it, the cube elsewhere.
     reflections: { ...DEFAULT_RENDER_REFLECTION_SETTINGS, mode: ERenderReflectionMode.ENHANCED },
-    // The application's own choice over the engine's, as the antialiasing is: contact shadows under the cascades.
+    // The application's own choice over the engine's, as the antialiasing is: contact shadows under the cascades, at
+    // the frame's size, so thin foliage does not flicker under a temporal resolve.
     shadows: {
       ...DEFAULT_RENDER_SHADOW_SETTINGS,
-      contact: { ...DEFAULT_RENDER_CONTACT_SHADOW_SETTINGS, mode: ERenderContactShadowMode.ENHANCED },
+      contact: {
+        ...DEFAULT_RENDER_CONTACT_SHADOW_SETTINGS,
+        isFullResolution: true,
+        mode: ERenderContactShadowMode.ENHANCED,
+      },
     },
     textureFiltering: ERenderTextureFiltering.ANISOTROPIC16,
     // The engine's full quality, `texture_lod 0`, as Anomaly's extreme preset sets it.

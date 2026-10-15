@@ -20,6 +20,9 @@ pub struct RenderContactShadowSettings {
   pub thickness: f32,
   /// Depth reads along each ray.
   pub steps: u32,
+  /// Whether the sun's are marched at the frame's size rather than half of it: at half, a temporal resolve's jitter
+  /// moves a thin blade on and off the one texel each two by two is marched from, which flickers.
+  pub is_full_resolution: bool,
   /// Local lights each pixel marches towards at most, the strongest there: none for the sun's alone.
   pub lights: u32,
 }
@@ -33,6 +36,7 @@ impl Default for RenderContactShadowSettings {
       intensity: 1.0,
       thickness: 0.1,
       steps: 16,
+      is_full_resolution: false,
       lights: 4,
     }
   }

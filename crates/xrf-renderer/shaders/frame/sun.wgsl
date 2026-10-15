@@ -61,8 +61,15 @@ fn light_sun(in: FullscreenVarying, is_traced: bool) -> SunTargets {
   );
   let world: vec3<f32> = (transpose(camera.view) * vec4<f32>(position, 0.0)).xyz + camera.position.xyz;
   let world_normal: vec3<f32> = normalize((transpose(camera.view) * vec4<f32>(normal, 0.0)).xyz);
-  // Marched at half the size and brought up by depth; a single lit texel stands in where none are drawn.
-  let contact: f32 = upsampled_occlusion(contact_shadows, floor(in.clip.xy), -position.z);
+  // Marched at the frame's size and read where it is, or at half and brought up by depth; a single lit texel stands in
+  // where none are drawn.
+  var contact: f32 = 1.0;
+
+  if (all(textureDimensions(contact_shadows) >= vec2<u32>(camera.viewport.xy))) {
+    contact = textureLoad(contact_shadows, vec2<i32>(in.clip.xy), 0).x;
+  } else {
+    contact = upsampled_occlusion(contact_shadows, floor(in.clip.xy), -position.z);
+  }
   // Terrain's and a marched steep surface's own sun term is what the enhanced parallax keeps from its hollows, one
   // where none marches it.
   let relief: f32 = select(1.0, material.y, has_mark(material.a, MARK_TERRAIN) || has_mark(material.a, MARK_RELIEF));

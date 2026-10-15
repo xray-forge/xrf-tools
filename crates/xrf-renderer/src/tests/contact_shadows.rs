@@ -52,6 +52,14 @@ fn marches_by_the_settings_over_the_drawn_height() {
   assert_eq!(uniform(0).steps, settings.steps);
   assert_eq!(uniform(0).noise, uniform(64).noise);
   assert_ne!(uniform(0).noise, uniform(1).noise);
+  assert_eq!(uniform(0).stride, 2);
+
+  let full: RenderContactShadowSettings = RenderContactShadowSettings {
+    is_full_resolution: true,
+    ..settings
+  };
+
+  assert_eq!(ContactShadowUniform::new(&full, Vec4::Z, 1600, 0).stride, 1);
 }
 
 // The lights' half asks only the contact shadows' own settings; the sun's asks its cascades too.
