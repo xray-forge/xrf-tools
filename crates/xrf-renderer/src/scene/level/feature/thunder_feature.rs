@@ -1,4 +1,5 @@
-use std::sync::Arc;
+use std::ptr;
+use std::sync::{Arc, Weak};
 
 use xrf_material::XraySurfaceDraw;
 use xrf_renderer_core::{FrameGraph, GraphBindings, GraphRuntime, StorageArray, UniformBinding};
@@ -21,9 +22,9 @@ use crate::scene::texture::weather_texture_kind::WeatherTextureKind;
 /// where the strike stands, and what its model and its two glows bind and draw.
 #[derive(Default)]
 pub struct ThunderFeature {
-  /// Every bolt model of the level's weather, with the weather they were built for, and an empty model, which the
-  /// glows' quads and a bolt without a model bind.
-  models: Option<(usize, Vec<WeatherModelBuffers>, WeatherModelBuffers)>,
+  /// Every bolt model of the level's weather, with the weather they were built for (held weakly, so its address is
+  /// never another's), and an empty model, which the glows' quads and a bolt without a model bind.
+  models: Option<(Weak<RenderLevelWeather>, Vec<WeatherModelBuffers>, WeatherModelBuffers)>,
   uniform: ThunderUniform,
   /// The strike's model's, its top glow's and its centre glow's textures, and the bolt model it draws, by its index
   /// among the weather's.
@@ -54,16 +55,19 @@ impl ThunderFeature {
     let Some(bolt) = thunder.bolts.get(&strike.bolt) else {
       return;
     };
-    let key: usize = Arc::as_ptr(weather) as usize;
 
-    if self.models.as_ref().is_none_or(|(built, ..)| *built != key) {
+    if self
+      .models
+      .as_ref()
+      .is_none_or(|(built, ..)| !ptr::eq(built.as_ptr(), Arc::as_ptr(weather)))
+    {
       let models: Vec<WeatherModelBuffers> = thunder
         .models
         .iter()
         .map(|model| WeatherModelBuffers::new(device, Some(&model.mesh)))
         .collect();
 
-      self.models = Some((key, models, WeatherModelBuffers::new(device, None)));
+      self.models = Some((Arc::downgrade(weather), models, WeatherModelBuffers::new(device, None)));
     }
 
     let Some((_, models, _)) = &self.models else {

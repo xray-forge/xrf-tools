@@ -1,4 +1,5 @@
-use std::sync::Arc;
+use std::ptr;
+use std::sync::{Arc, Weak};
 
 use glam::Vec4;
 use xrf_renderer_core::{FrameGraph, GraphBindings, GraphRuntime, GraphTexture, StorageArray};
@@ -23,8 +24,8 @@ use crate::scene::texture::weather_texture_kind::WeatherTextureKind;
 /// the uniform at the rain cover's window, the streak's and the splash's textures, and the drops drawn.
 #[derive(Default)]
 pub struct FallingRainFeature {
-  /// The splash's model, with the level's weather it was built for.
-  splash: Option<(usize, WeatherModelBuffers)>,
+  /// The splash's model, with the level's weather it was built for, held weakly so its address is never another's.
+  splash: Option<(Weak<RenderLevelWeather>, WeatherModelBuffers)>,
   uniform: RainUniform,
   /// The streak's and the splash's textures, as the cache holds them when the frame is prepared.
   views: Option<[wgpu::TextureView; 2]>,
@@ -48,15 +49,18 @@ impl FallingRainFeature {
     self.views = None;
 
     let rainfall: RenderRainfall = rainfall?;
-    let (key, rain): (usize, &RenderRain) = weather.and_then(|weather| {
-      weather
-        .rain
-        .as_ref()
-        .map(|rain: &RenderRain| (Arc::as_ptr(weather) as usize, rain))
-    })?;
+    let (weather, rain): (&Arc<RenderLevelWeather>, &RenderRain) =
+      weather.and_then(|weather| weather.rain.as_ref().map(|rain: &RenderRain| (weather, rain)))?;
 
-    if self.splash.as_ref().is_none_or(|(built, _)| *built != key) {
-      self.splash = Some((key, WeatherModelBuffers::new(device, rain.drop.as_ref())));
+    if self
+      .splash
+      .as_ref()
+      .is_none_or(|(built, _)| !ptr::eq(built.as_ptr(), Arc::as_ptr(weather)))
+    {
+      self.splash = Some((
+        Arc::downgrade(weather),
+        WeatherModelBuffers::new(device, rain.drop.as_ref()),
+      ));
     }
 
     let (_, splash) = self.splash.as_ref()?;
