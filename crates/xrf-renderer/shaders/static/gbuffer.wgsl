@@ -312,10 +312,12 @@ struct Footprint {
   uv: vec2<f32>,
   // The base coordinate before any parallax moved it, which the detail is read at, as the engines leave it.
   origin: vec2<f32>,
-  // Where the enhanced parallax marched a steep surface: how far its low ground darkens, and how much of the sun its
-  // relief keeps from its hollows; none and all, and unmarked, where it did not.
+  // Where the enhanced parallax marched a steep surface: how far its low ground darkens, how much of the sun its
+  // relief keeps from its hollows, and how far the point sinks below its relief's top; none, all and none, and
+  // unmarked, where it did not.
   cavity: f32,
   relief: f32,
+  sink: f32,
   is_relief: bool,
   dx: vec2<f32>,
   dy: vec2<f32>,
@@ -327,7 +329,7 @@ struct Footprint {
 fn take_footprint(in: GBufferVarying) -> Footprint {
   let uv: vec2<f32> = in.uv * surfaces[in.surface].tiling;
 
-  return Footprint(uv, uv, 0.0, 1.0, false, dpdx(uv), dpdy(uv), in.lightmap_uv, dpdx(in.lightmap_uv),
+  return Footprint(uv, uv, 0.0, 1.0, 0.0, false, dpdx(uv), dpdy(uv), in.lightmap_uv, dpdx(in.lightmap_uv),
     dpdy(in.lightmap_uv));
 }
 
@@ -424,6 +426,7 @@ fn surface_relief(in: GBufferVarying, at: Footprint, position: vec3<f32>) -> Foo
 
   out.uv = hit.xy;
   out.cavity = (1.0 - height * height) * RELIEF_CAVITY * camera.parallax_mix.y * fade;
+  out.sink = hit.z;
   out.is_relief = true;
 
   if (light.z > 0.0 && camera.parallax_light.w > 0.0) {
@@ -785,7 +788,7 @@ fn shade(in: GBufferVarying, base: vec4<f32>, at: Footprint) -> GBufferOutput {
 
   let is_terrain: bool = (surface.flags & SURFACE_IS_TERRAIN) != 0u;
   var relief: f32 = at.relief;
-  var sink: f32 = 0.0;
+  var sink: f32 = at.sink;
 
   diffuse *= 1.0 - at.cavity;
 

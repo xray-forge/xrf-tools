@@ -356,8 +356,15 @@ const RELIEF_SHORE: f32 = 0.06;
 const RELIEF_WATER_DEPTH: f32 = 0.03;
 const SITE_RELIEF_SHORE: f32 = 0.35;
 const PUDDLE_TOP: f32 = 0.25;
+// Where something stands over the ground: how far out the open sky about it is looked for, and over how many points,
+// so the rain under a pipe or a beam narrower than twice as far still pools, and under a bridge's deck does not.
+const OPEN_REACH: f32 = 2.5;
+const OPEN_TAPS: u32 = 8u;
 // The least a surface faces up to hold a puddle.
 const PUDDLE_UP: f32 = 0.85;
+// How far either side of `PUDDLE_UP` a face's rise softens the relief's water over, so terrain's triangles, each its
+// own face, draw no line where the slope stands about the limit.
+const FACE_SOFT: f32 = 0.04;
 
 // One layer of rain rings: each texel a ring arriving on its own clock (arrival, direction x, direction y, clock),
 // spreading and fading; `setup` is its speed, strength and how many rings a ripple spreads. The tilt in `xy`, and in
@@ -426,14 +433,56 @@ fn lowest_at(place: vec2<f32>) -> f32 {
   return mix(top, bottom, share.y);
 }
 
-// The ground's own up under a point in the world, from the level surface's lowest heights `GROUND_SPAN` metres either
-// way: its slope across a puddle, past its bumps, which a puddle's water lies along so that the ground rising beyond
-// it runs alongside its reflection rather than across it.
-fn ground_up(world: vec3<f32>) -> vec3<f32> {
-  let across: f32 = lowest_at(world.xz - vec2<f32>(GROUND_SPAN, 0.0)) - lowest_at(world.xz + vec2<f32>(GROUND_SPAN, 0.0));
-  let down: f32 = lowest_at(world.xz - vec2<f32>(0.0, GROUND_SPAN)) - lowest_at(world.xz + vec2<f32>(0.0, GROUND_SPAN));
+// The world normal of the face a pixel shows, from how its depth slopes across the screen, turned toward the eye: the
+// face as built, its bumps left out.
+fn facing_normal(world: vec3<f32>) -> vec3<f32> {
+  let crossed: vec3<f32> = cross(dpdx(world), dpdy(world));
+  let normal: vec3<f32> = crossed / max(length(crossed), 1e-12);
 
-  return normalize(vec3<f32>(across, 2.0 * GROUND_SPAN, down));
+  return select(normal, -normal, dot(normal, camera.position.xyz - world) < 0.0);
+}
+
+// The ground's fall over `GROUND_SPAN` along an axis from its fall each side of the point, `before` and `after`: the
+// lesser where both fall the same way, none where they do not (minmod): a true slope falls alike both sides, while
+// something standing over the ground on one side (a pipe, a beam), which the map holds as its top, or a ridge or a
+// hollow, reads level. Continuous, so the water's plane never tips along a line.
+fn ground_fall(before: f32, after: f32) -> f32 {
+  return select(0.0, sign(before) * min(abs(before), abs(after)), before * after > 0.0);
+}
+
+// The ground's own up under a point in the world, from the level surface's lowest heights `GROUND_SPAN` metres either
+// way about its own (`ground_fall`): its slope across a puddle, past its bumps, which a site puddle's water lies along
+// so that the ground rising beyond it runs alongside its reflection rather than across it.
+fn ground_up(world: vec3<f32>) -> vec3<f32> {
+  let here: f32 = lowest_at(world.xz);
+  let across: f32 = ground_fall(lowest_at(world.xz - vec2<f32>(GROUND_SPAN, 0.0)) - here,
+    here - lowest_at(world.xz + vec2<f32>(GROUND_SPAN, 0.0)));
+  let down: f32 = ground_fall(lowest_at(world.xz - vec2<f32>(0.0, GROUND_SPAN)) - here,
+    here - lowest_at(world.xz + vec2<f32>(0.0, GROUND_SPAN)));
+
+  return normalize(vec3<f32>(across, GROUND_SPAN, down));
+}
+
+// How open to the rain a point on the ground stands, from none to one: all where it is the topmost surface there;
+// where something stands over it, twice the share of points `OPEN_REACH` about it on the ground's own plane (`up`)
+// that are, at most all. A point gated by its own column alone cut a puddle straight along the footprint of a pipe
+// high over a road.
+fn sky_open(world: vec3<f32>, up: vec3<f32>) -> f32 {
+  if (is_topmost(world)) {
+    return 1.0;
+  }
+
+  var open: f32 = 0.0;
+
+  for (var tap: u32 = 0u; tap < OPEN_TAPS; tap++) {
+    let turn: f32 = 6.2831853 * f32(tap) / f32(OPEN_TAPS);
+    let offset: vec2<f32> = vec2<f32>(cos(turn), sin(turn)) * OPEN_REACH;
+    let plane: f32 = world.y - dot(up.xz, offset) / max(up.y, 0.1);
+
+    open += select(0.0, 1.0, lowest_at(world.xz + offset) < plane + PUDDLE_TOP);
+  }
+
+  return saturate(2.0 * open / f32(OPEN_TAPS));
 }
 
 // Whether a point is the topmost surface of the level there, by the level surface's lowest heights about it.
@@ -628,12 +677,20 @@ fn fs_wet_patch_enhanced(in: FullscreenVarying) -> WetPatchTargets {
   var lift: f32 = 0.0;
   var water_roughness: f32 = WATER_ROUGHNESS.x;
 
-  // On the ground alone, terrain whose own slope faces up, past its bumps, and the topmost surface there: never a roof,
-  // a deck or a ceiling, and never a crack's steep side left dry where its hollow fills.
-  let up: vec3<f32> = ground_up(world);
-  let is_ground: bool = is_terrain && up.y > PUDDLE_UP && is_topmost(world);
+  // On the ground alone, terrain, as open to the rain as the sky about it lets it (`sky_open`): never under a deck or a
+  // bridge, but under a pipe or a beam. A site puddle stands wherever its site holds it, the site placed level and its
+  // water seated within a band of its height; gated by the ground's slope too, it was cut along a straight line where a
+  // road's edge falls away. The relief fills only where the face drawn, as its depth slopes and not its bumps, looks up:
+  // the level surface's map holds what stands over the ground, and read from it, an embankment under a bridge's deck
+  // read level and filled. A steep surface the enhanced parallax marched (asphalt, a slab, a floor) takes water in its
+  // relief alone, where its face looks up and the rain reaches it.
+  let face: vec3<f32> = facing_normal(world);
+  let ground: vec3<f32> = ground_up(world);
+  let is_ground: bool = is_terrain;
+  let is_relief_face: bool = !is_terrain && has_mark(marks, MARK_RELIEF) && face.y > PUDDLE_UP && reached > 0.0;
+  let up: vec3<f32> = select(face, ground, is_ground);
 
-  if (is_ground && wet.puddle_state.y > 0.0 && length(position) < wet.puddle_state.x) {
+  if ((is_ground || is_relief_face) && wet.puddle_state.y > 0.0 && length(position) < wet.puddle_state.x) {
     let noise: f32 = textureSampleGrad(puddle_noise, wet_sampler, place.xz / PUDDLE_TILE,
       gradients.across / PUDDLE_TILE, gradients.down / PUDDLE_TILE).r;
     let edge: f32 = textureSampleGrad(puddle_noise, wet_sampler, place.zx / PUDDLE_EDGE_TILE + 0.37,
@@ -641,7 +698,11 @@ fn fs_wet_patch_enhanced(in: FullscreenVarying) -> WetPatchTargets {
     let border: f32 = (edge - 0.5) * PUDDLE_EDGE_SHAPE + (noise - 0.5) * PUDDLE_NOISE_SHAPE;
     let fade: f32 = smoothstep(wet.puddle_state.x, wet.puddle_state.x * (1.0 - PUDDLE_FADE), length(position));
     // The cover only reaches some tens of metres; a site is on open ground already, so a puddle does not wait for it.
-    let found: SitePuddle = site_puddle(world, border, footprint);
+    var found: SitePuddle = SitePuddle(0.0, 0.0, 0.0, up, 1.0);
+
+    if (is_ground) {
+      found = site_puddle(world, border, footprint);
+    }
 
     let variation: vec3<f32> = puddle_variation(place.xz);
     // Where the enhanced parallax marched the relief, as far as it stands: water fills its hollows to a level the
@@ -650,7 +711,8 @@ fn fs_wet_patch_enhanced(in: FullscreenVarying) -> WetPatchTargets {
     let marched: f32 = select(0.0, relief_fade(camera.parallax.y, distance), sink > 0.0 && wet.relief.x > 0.5);
     let flood: f32 = RELIEF_FLOODED * wet.puddle_state.y * mix(RELIEF_DRY_REGIONS, 1.0, smoothstep(0.25, 0.75, noise));
     let level: f32 = 1.0 - flood;
-    let relief_water: f32 = smoothstep(level, level + RELIEF_SHORE, sink) * marched;
+    let relief_water: f32 = smoothstep(level, level + RELIEF_SHORE, sink) * marched *
+      select(reached, smoothstep(PUDDLE_UP - FACE_SOFT, PUDDLE_UP + FACE_SOFT, face.y), is_ground);
     let shore: f32 = saturate((1.0 - found.rim) / SITE_RELIEF_SHORE);
     let site_water: f32 = found.inside * mix(1.0, smoothstep(1.0 - shore - RELIEF_SHORE, 1.0 - shore, sink), marched);
     let is_relief: bool = relief_water > site_water;
@@ -658,7 +720,7 @@ fn fs_wet_patch_enhanced(in: FullscreenVarying) -> WetPatchTargets {
       1.0 - saturate((sink - level) / (RELIEF_SHORE * 3.0)), is_relief);
     let depth: f32 = max(found.depth, saturate(sink - level) * RELIEF_WATER_DEPTH * marched);
 
-    puddle = max(site_water, relief_water) * fade;
+    puddle = max(site_water, relief_water) * fade * select(1.0, sky_open(world, ground), is_ground);
     lift = min(depth * mix(PUDDLE_MURK.x, PUDDLE_MURK.y, variation.y), PUDDLE_DEEPEST * wet.puddle_state.y);
     floating = (1.0 - PUDDLE_FILM * noise) * (1.0 - RIM_COAT * rim);
     water_roughness = mix(mix(WATER_ROUGHNESS.x, WATER_ROUGHNESS.y, variation.x), RIM_ROUGHNESS, rim);
@@ -692,8 +754,11 @@ fn fs_wet_patch_enhanced(in: FullscreenVarying) -> WetPatchTargets {
         drop_scale * drop_scale * drops.z;
       let bent: vec3<f32> = (camera.view * vec4<f32>(bend.x, 0.0, -bend.y, 0.0)).xyz;
 
-      // Relief water lies along the ground's own up; a site puddle's along its plane.
-      let level_up: vec3<f32> = select(found.up, up, is_relief);
+      // A site puddle's water lies along its plane, one for the whole puddle; relief water lies level, as water does,
+      // blended into a site puddle's plane by how far into it the point stands. Laid along the ground's slope read at
+      // each pixel, relief water folded where that slope bends, beside a pipe over a road, and a mirror with a fold
+      // shows the sun twice.
+      let level_up: vec3<f32> = normalize(mix(vec3<f32>(0.0, 1.0, 0.0), found.up, found.inside));
 
       normal = normalize(mix(normal, (camera.view * vec4<f32>(level_up, 0.0)).xyz, puddle));
       water = water * (1.0 - puddle) + bent;
