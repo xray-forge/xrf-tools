@@ -19,32 +19,6 @@
 // The face's G-buffer texels a cube texel averages a side.
 const BOX: u32 = 2u;
 
-// The direction a cube texel of a face looks along, the faces laid out as a cube texture is sampled.
-fn face_direction(face: u32, uv: vec2<f32>) -> vec3<f32> {
-  let st: vec2<f32> = uv * 2.0 - 1.0;
-
-  switch (face) {
-    case 0u: {
-      return normalize(vec3<f32>(1.0, -st.y, -st.x));
-    }
-    case 1u: {
-      return normalize(vec3<f32>(-1.0, -st.y, st.x));
-    }
-    case 2u: {
-      return normalize(vec3<f32>(st.x, 1.0, st.y));
-    }
-    case 3u: {
-      return normalize(vec3<f32>(st.x, -1.0, -st.y));
-    }
-    case 4u: {
-      return normalize(vec3<f32>(st.x, -st.y, 1.0));
-    }
-    default: {
-      return normalize(vec3<f32>(-st.x, -st.y, -1.0));
-    }
-  }
-}
-
 // What one G-buffer texel of the face comes to as light: the surface lit, fogged to it, and in `w` its metres from the
 // camera; the sky's light where none, at no distance.
 fn lit_texel(texel: vec2<i32>, direction: vec3<f32>, scale: f32) -> vec4<f32> {
@@ -83,7 +57,7 @@ fn cs_resolve(@builtin(global_invocation_id) id: vec3<u32>) {
   let face: u32 = u32(settings.face.x);
   let drawn: u32 = u32(settings.face.z);
   let scale: f32 = frame_scale(lighting, exposure);
-  let direction: vec3<f32> = face_direction(face, (vec2<f32>(id.xy) + 0.5) / f32(size));
+  let direction: vec3<f32> = cube_face_direction(face, (vec2<f32>(id.xy) + 0.5) / f32(size));
   let first: vec2<i32> = vec2<i32>(id.xy * BOX);
   var sum: vec3<f32> = vec3<f32>(0.0);
   // The distance stored is the nearest the box holds: a thin trunk over the sky keeps its own, not the sky's none.

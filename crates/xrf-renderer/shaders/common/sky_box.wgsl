@@ -145,3 +145,30 @@ fn sky_box_horizon_lit(direction: vec3<f32>, state: Lighting, cube_0: texture_cu
 
   return sky_box_lit_about(box, horizon, state, cube_0, cube_1, cube_sampler);
 }
+
+// The direction a face's texel looks along, the faces laid out as a cube texture is sampled: +x, -x, +y, -y, +z, -z,
+// each with `v` down its texels.
+fn cube_face_direction(face: u32, uv: vec2<f32>) -> vec3<f32> {
+  let st: vec2<f32> = uv * 2.0 - 1.0;
+
+  switch (face) {
+    case 0u: {
+      return normalize(vec3<f32>(1.0, -st.y, -st.x));
+    }
+    case 1u: {
+      return normalize(vec3<f32>(-1.0, -st.y, st.x));
+    }
+    case 2u: {
+      return normalize(vec3<f32>(st.x, 1.0, st.y));
+    }
+    case 3u: {
+      return normalize(vec3<f32>(st.x, -1.0, -st.y));
+    }
+    case 4u: {
+      return normalize(vec3<f32>(st.x, -st.y, 1.0));
+    }
+    default: {
+      return normalize(vec3<f32>(-st.x, -st.y, -1.0));
+    }
+  }
+}
