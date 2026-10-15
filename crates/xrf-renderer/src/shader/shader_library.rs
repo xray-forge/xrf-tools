@@ -132,10 +132,6 @@ const EMBEDDED: &[(&str, &str)] = &[
   ),
   ("frame/vbao", include_str!("../../shaders/frame/vbao.wgsl")),
   (
-    "frame/depth_clear",
-    include_str!("../../shaders/frame/depth_clear.wgsl"),
-  ),
-  (
     "frame/shadow_tile_restore",
     include_str!("../../shaders/frame/shadow_tile_restore.wgsl"),
   ),

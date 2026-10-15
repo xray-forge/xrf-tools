@@ -220,7 +220,7 @@ impl StaticShadowPass {
       })
       .collect::<XrfResult<_>>()?;
     let clear: wgpu::RenderPipeline = source.get_render_pipeline(
-      &RenderPipelineDescription::new("shadow tile clear", "frame/depth_clear", "vs_clear")
+      &RenderPipelineDescription::new("shadow tile clear", "common/fullscreen", "vs_fullscreen")
         .with_depth_stencil(Self::get_overwritten_depth()),
     )?;
 
@@ -228,13 +228,13 @@ impl StaticShadowPass {
       Self::create_depth_writer(
         source,
         ("frame/shadow_tile_restore", "shadow tile restore"),
-        ("vs_restore", "fs_restore"),
+        ("vs_fullscreen", "fs_restore"),
         &writer_layouts[0],
       )?,
       Self::create_depth_writer(
         source,
         ("frame/overhead_shift", "overhead shift"),
-        ("vs_shift", "fs_shift"),
+        ("vs_fullscreen", "fs_shift"),
         &writer_layouts[1],
       )?,
     ];
