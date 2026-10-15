@@ -4,6 +4,7 @@ enable wgpu_binding_array;
 #import "common/hmodel"
 #import "common/local_lights"
 #import "common/sun_shadow"
+#import "common/axis_frame"
 #import "grass/records"
 #import "static/records"
 #import "static/vertex"
@@ -351,9 +352,9 @@ const SCENE_OCCLUSION_RAYS: u32 = 2u;
 // place, that meet nothing solid within `SCENE_OCCLUSION_REACH`. Without it the trace read a quarter brighter than the
 // screen's own reflection of the same bank, which the frame's occlusion darkens.
 fn scene_occlusion(position: vec3<f32>, normal: vec3<f32>, width: f32, passed: u32) -> f32 {
-  let axis: vec3<f32> = select(vec3<f32>(0.0, 1.0, 0.0), vec3<f32>(1.0, 0.0, 0.0), abs(normal.y) > 0.9);
-  let across: vec3<f32> = normalize(cross(normal, axis));
-  let along: vec3<f32> = cross(normal, across);
+  let frame: AxisFrame = axis_frame(normal);
+  let across: vec3<f32> = frame.across;
+  let along: vec3<f32> = frame.along;
   let turn: f32 = fract(sin(dot(position, vec3<f32>(12.9898, 78.233, 37.719))) * 43758.547) * 6.2831853;
   var open: f32 = 0.0;
 

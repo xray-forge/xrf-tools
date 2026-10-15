@@ -1,3 +1,4 @@
+#import "common/depth_plane"
 #import "common/water_surface"
 #import "common/scene_light"
 #import "common/water_enhanced"
@@ -175,15 +176,13 @@ fn screen_point(at: vec2<f32>) -> vec3<f32> {
 fn is_facing_away(at: vec2<f32>, direction: vec3<f32>) -> bool {
   let texel: vec2<f32> = 1.0 / camera.viewport.xy;
   let centre: vec3<f32> = screen_point(at);
-  let right: vec3<f32> = screen_point(at + vec2<f32>(texel.x, 0.0));
-  let left: vec3<f32> = screen_point(at - vec2<f32>(texel.x, 0.0));
-  let below: vec3<f32> = screen_point(at + vec2<f32>(0.0, texel.y));
-  let above: vec3<f32> = screen_point(at - vec2<f32>(0.0, texel.y));
-  let across: vec3<f32> = select(centre - left, right - centre, abs(right.z - centre.z) < abs(centre.z - left.z));
-  let down: vec3<f32> = select(centre - above, below - centre, abs(below.z - centre.z) < abs(centre.z - above.z));
-  var normal: vec3<f32> = normalize(cross(across, down));
-
-  normal = select(normal, -normal, dot(normal, centre) > 0.0);
+  let normal: vec3<f32> = surface_normal(
+    centre,
+    vec4<f32>(screen_point(at - vec2<f32>(texel.x, 0.0)), 1.0),
+    vec4<f32>(screen_point(at + vec2<f32>(texel.x, 0.0)), 1.0),
+    vec4<f32>(screen_point(at - vec2<f32>(0.0, texel.y)), 1.0),
+    vec4<f32>(screen_point(at + vec2<f32>(0.0, texel.y)), 1.0),
+  );
 
   return dot(normal, direction) > FACING_AWAY;
 }

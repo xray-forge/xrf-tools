@@ -1,3 +1,4 @@
+#import "common/depth_plane"
 #import "common/camera"
 #import "common/scene_light"
 #import "common/octahedral"
@@ -413,26 +414,26 @@ fn met_radiance(texel: vec2<i32>, hit: vec3<f32>, origin: vec3<f32>) -> vec4<f32
   return vec4<f32>(fogged * min(1.0, RADIANCE_LIMIT / luminance(fogged)), remembered.w);
 }
 
-// The view space point the walked depth shows at a frame texel, held to the frame.
-fn shown_point(texel: vec2<i32>) -> vec3<f32> {
+// The view space point the walked depth shows at a frame texel, held to the frame, one in `w` where something is
+// drawn there.
+fn shown_point(texel: vec2<i32>) -> vec4<f32> {
   let held: vec2<i32> = clamp(texel, vec2<i32>(0), vec2<i32>(camera.viewport.xy) - 1);
+  let depth: f32 = textureLoad(nearest_depth, held, 0).x;
 
-  return camera_view_position(vec2<f32>(held) + 0.5, max(textureLoad(nearest_depth, held, 0).x, 1e-7));
+  return vec4<f32>(camera_view_position(vec2<f32>(held) + 0.5, max(depth, 1e-7)), select(0.0, 1.0, depth > 0.0));
 }
 
 // The view space normal of the surface the depth shows at a texel, from the points about it, the nearer neighbour
 // each way so an edge does not lean it; towards the camera. The G-buffer's normal is bumped by tens of degrees, which
 // would turn a facing test into speckle.
 fn depth_normal(texel: vec2<i32>, point: vec3<f32>) -> vec3<f32> {
-  let right: vec3<f32> = shown_point(texel + vec2<i32>(1, 0)) - point;
-  let left: vec3<f32> = point - shown_point(texel - vec2<i32>(1, 0));
-  let down: vec3<f32> = shown_point(texel + vec2<i32>(0, 1)) - point;
-  let up: vec3<f32> = point - shown_point(texel - vec2<i32>(0, 1));
-  let across: vec3<f32> = select(left, right, dot(right, right) < dot(left, left));
-  let along: vec3<f32> = select(up, down, dot(down, down) < dot(up, up));
-  let normal: vec3<f32> = normalize(cross(across, along));
-
-  return select(normal, -normal, dot(normal, point) > 0.0);
+  return surface_normal(
+    point,
+    shown_point(texel - vec2<i32>(1, 0)),
+    shown_point(texel + vec2<i32>(1, 0)),
+    shown_point(texel - vec2<i32>(0, 1)),
+    shown_point(texel + vec2<i32>(0, 1)),
+  );
 }
 
 // How sure a ray's end is a surface it met: none off the screen or on the sky; faded by how far behind the surface it
@@ -617,7 +618,7 @@ fn fs_trace(in: FullscreenVarying) -> TraceTargets {
     let probable: f32 = 1.0 - smoothstep(thickness, thickness + band.x + distance_met * band.y, walk.behind);
 
     if (probable > 0.0) {
-      let shown: vec3<f32> = shown_point(behind_texel);
+      let shown: vec3<f32> = shown_point(behind_texel).xyz;
       let taken: vec4<f32> = met_radiance(behind_texel, shown, position);
 
       let probable_end: u32 = select(END_UNCERTAIN, END_PROBABLE, probable > 0.5) | select(END_RELIT, 0u, taken.w > 0.5);

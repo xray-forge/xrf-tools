@@ -1,3 +1,4 @@
+#import "common/noise"
 #import "common/camera"
 #import "common/scene_light"
 #import "common/fullscreen"
@@ -23,9 +24,7 @@ const SCATTER_DEBAND_RADIUS: f32 = 48.0;
 
 // Interleaved gradient noise over a point's own place within its texel.
 fn interleaved_noise(at: vec2<f32>) -> f32 {
-  let wrapped: vec2<f32> = fract(at);
-
-  return fract(52.9829189 * fract(0.06711056 * wrapped.x + 0.00583715 * wrapped.y));
+  return gradient_noise(fract(at));
 }
 
 // A blur stage: twelve reads of the source spiralling out from the pixel, each a target's texel times its turn further.

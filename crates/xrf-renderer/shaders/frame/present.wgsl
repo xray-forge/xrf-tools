@@ -1,3 +1,4 @@
+#import "common/noise"
 #import "common/camera"
 #import "common/fullscreen"
 #import "common/lighting"
@@ -58,7 +59,7 @@ const NEARER_SHARE: f32 = 0.02;
 // Half a step either way by interleaved gradient noise (Jimenez, 2014), so a flat gradient falls between two steps as
 // a fine grain rather than as bands.
 fn output_dither(pixel: vec2<f32>) -> vec3<f32> {
-  let noise: f32 = fract(fract(dot(pixel, vec2<f32>(0.06711056, 0.00583715))) * 52.9829189);
+  let noise: f32 = gradient_noise(pixel);
 
   return vec3<f32>((noise - 0.5) * OUTPUT_STEP);
 }
