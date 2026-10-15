@@ -173,3 +173,22 @@ fn stops_letting_every_viewport_go_and_leaves_no_thread_running() {
   assert!(dropped.load(Ordering::Acquire));
   assert_eq!(queue.wait_handled(WAIT), RenderWait::NotRunning);
 }
+
+#[test]
+fn stops_letting_every_viewport_go_once_its_last_queue_goes() {
+  let queue: RenderQueue = create_queue();
+  let gate: Arc<Gate> = Arc::default();
+  let dropped: Arc<AtomicBool> = attach(&queue, RenderViewportId(1), &gate);
+
+  gate.open();
+  assert_eq!(queue.wait_handled(WAIT), RenderWait::Answered);
+  drop(queue);
+
+  let started: Instant = Instant::now();
+
+  while !dropped.load(Ordering::Acquire) && started.elapsed() < WAIT {
+    std::thread::sleep(Duration::from_millis(10));
+  }
+
+  assert!(dropped.load(Ordering::Acquire), "the thread let its viewport go");
+}

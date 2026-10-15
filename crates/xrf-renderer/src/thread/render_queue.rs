@@ -1,5 +1,5 @@
 use std::sync::mpsc::{Receiver, RecvTimeoutError, Sender, channel};
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::sync::{Arc, Mutex, MutexGuard, Weak};
 use std::thread::JoinHandle;
 use std::time::Duration;
 
@@ -132,7 +132,7 @@ impl RenderQueue {
 
   fn spawn(&self, link: &mut RenderLink) -> Option<Sender<RenderCommand>> {
     let (sender, receiver) = channel();
-    let shared: Arc<Mutex<RenderLink>> = Arc::clone(&self.link);
+    let shared: Weak<Mutex<RenderLink>> = Arc::downgrade(&self.link);
     let settings: RenderSettings = link.settings;
     let workers: RenderWorkers = self.workers.clone();
     let bundle: Arc<dyn RenderBundle> = Arc::clone(&self.bundle);

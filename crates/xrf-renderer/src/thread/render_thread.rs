@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::PathBuf;
 use std::sync::mpsc::{Receiver, RecvTimeoutError, Sender, TryRecvError};
-use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
+use std::sync::{Arc, Mutex, MutexGuard, PoisonError, Weak};
 use std::time::{Duration, Instant};
 
 use glam::{Mat4, Vec2, Vec3, Vec4};
@@ -117,7 +117,9 @@ pub(crate) type RenderHosts = (
 /// The render thread: owns the GPU and every viewport, and is the only place GPU work happens.
 pub struct RenderThread {
   receiver: Receiver<RenderCommand>,
-  link: Arc<Mutex<RenderLink>>,
+  /// What the queue shares with the thread, held weakly: once the last queue goes, so does its sender, and the thread
+  /// stops as its channel disconnects.
+  link: Weak<Mutex<RenderLink>>,
   settings: RenderSettings,
   workers: RenderWorkers,
   /// The files the renderer ships with, which the GPU's passes read when it starts.
@@ -166,7 +168,7 @@ pub struct RenderThread {
 impl RenderThread {
   pub fn new(
     receiver: Receiver<RenderCommand>,
-    link: Arc<Mutex<RenderLink>>,
+    link: Weak<Mutex<RenderLink>>,
     settings: RenderSettings,
     workers: RenderWorkers,
     (bundle, world, store): RenderHosts,
@@ -473,7 +475,14 @@ impl RenderThread {
   /// command is sent under. The GPU is let go after the lock, so no command waits on its teardown; its windows went
   /// with the last viewport.
   fn try_stop(&mut self) -> bool {
-    let link: Arc<Mutex<RenderLink>> = Arc::clone(&self.link);
+    // No queue left to send anything: nothing can arrive, so the thread stops.
+    let Some(link) = self.link.upgrade() else {
+      if let Some(running) = self.running.take() {
+        running.release();
+      }
+
+      return true;
+    };
     let mut link = link.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
 
     if let Ok(command) = self.receiver.try_recv() {
@@ -532,6 +541,7 @@ impl RenderThread {
     for viewport in self.viewports.values_mut() {
       viewport.binding = None;
       viewport.show(None);
+      viewport.release_captures();
     }
   }
 

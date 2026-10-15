@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
 use glam::Vec3;
+use xrf_error::XrfError;
 use xrf_renderer_core::{ExecutedGroup, GraphOwner, GraphPassTime, GraphReport, GraphTimer};
 
 use crate::contract::render_antialiasing::RenderAntialiasing;
@@ -129,6 +130,18 @@ impl RenderViewport {
         }
         None => self.captures_in_flight.push((capture, reply)),
       }
+    }
+  }
+
+  /// Answers every capture in flight as its GPU goes: what was read back, or a refusal where nothing came back, as on a
+  /// lost device, whose readbacks may never finish.
+  pub fn release_captures(&mut self) {
+    for (capture, reply) in std::mem::take(&mut self.captures_in_flight) {
+      let _ = reply.send(capture.take().unwrap_or_else(|| {
+        Err(XrfError::new_unexpected_error(
+          "The GPU went before the capture was read back",
+        ))
+      }));
     }
   }
 
