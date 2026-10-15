@@ -95,14 +95,11 @@ impl LevelStreaming {
     &self.source
   }
 
-  /// Posts this frame's changes: the spawn groups `hidden` names left out and those it no longer names stood again, the
-  /// lights once read, and a few of the sectors and spawned models the workers finished. `failures` are the sectors
-  /// and the spawned models the scene could not take in of the last frame's posts.
-  pub fn stream(
+  /// Records the sectors and the spawned models the scene could not take in of the posts before, forgetting them.
+  pub fn take_failures(
     &mut self,
-    updates: &mut Vec<RenderSceneUpdate>,
     animation: &mut LevelAnimation,
-    (hidden, (failures, model_failures)): (u32, (Vec<RenderSectorFailure>, Vec<RenderModelFailure>)),
+    (failures, model_failures): (Vec<RenderSectorFailure>, Vec<RenderModelFailure>),
   ) {
     self.forget_failed_models(animation, model_failures);
 
@@ -115,7 +112,11 @@ impl LevelStreaming {
         });
       }
     }
+  }
 
+  /// Posts this frame's changes: the spawn groups `hidden` names left out and those it no longer names stood again, the
+  /// lights once read, and a few of the sectors and spawned models the workers finished.
+  pub fn stream(&mut self, updates: &mut Vec<RenderSceneUpdate>, animation: &mut LevelAnimation, hidden: u32) {
     self.filter_spawn(updates, animation, hidden);
 
     if let Some(Ok(lights)) = take_answer(&mut self.lights, "lights") {
