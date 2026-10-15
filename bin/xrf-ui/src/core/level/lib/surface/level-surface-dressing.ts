@@ -14,6 +14,8 @@ export enum ELevelSurfaceDressing {
   FETCHING = "fetching",
   /** A checker stands in, because the file could not be read. */
   STOOD_IN = "stood-in",
+  /** Held unread on purpose, until a mode that reads it draws: no problem, and not uploaded either. */
+  DEFERRED = "deferred",
   /** Never asked for, because no resident sector names it yet. */
   UNREAD = "unread",
 }
@@ -42,6 +44,9 @@ export function describeLevelSurfaceDressing(dressing: ILevelSurfaceDressing): s
 
     case ELevelSurfaceDressing.UNREAD:
       return `${dressing.reference} · not read yet`;
+
+    case ELevelSurfaceDressing.DEFERRED:
+      return `${dressing.reference} · held until an enhanced parallax or the heights view reads it`;
 
     case ELevelSurfaceDressing.FETCHING:
       return `${dressing.reference} · on its way`;

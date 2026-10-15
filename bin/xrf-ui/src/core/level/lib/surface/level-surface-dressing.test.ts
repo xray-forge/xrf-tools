@@ -6,6 +6,7 @@ import { describeLevelSurfaceDressing, ELevelSurfaceDressing, ILevelSurfaceDress
 
 function mockReport(...dressing: Array<ILevelSurfaceDressing>): ILevelTextureReport {
   return {
+    deferred: 0,
     dressing: new Map(dressing.map((it: ILevelSurfaceDressing) => [it.reference, it])),
     problems: dressing
       .filter((it: ILevelSurfaceDressing) => it.reason)
@@ -114,5 +115,16 @@ describe("describeLevelSurfaceDressing", () => {
         upload: null,
       })
     ).toBe("wall\\wall_panel · not read yet");
+  });
+
+  it("says a deferred texture waits for what reads it, with no checker", () => {
+    expect(
+      describeLevelSurfaceDressing({
+        reason: null,
+        reference: "terrain\\terrain_zaton",
+        state: ELevelSurfaceDressing.DEFERRED,
+        upload: null,
+      })
+    ).toBe("terrain\\terrain_zaton · held until an enhanced parallax or the heights view reads it");
   });
 });
