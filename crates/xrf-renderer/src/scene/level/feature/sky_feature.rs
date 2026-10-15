@@ -21,7 +21,7 @@ use crate::pass::sky_parameters::SkyParameters;
 use crate::pass::sky_prefilter_parameters::SkyPrefilterParameters;
 use crate::pass::sky_prefilter_pass::SkyPrefilterPass;
 use crate::pass::sky_prefilter_uniform::SkyPrefilterUniform;
-use crate::pass::static_cull_params::StaticCullParams;
+use crate::pass::static_cull_uniform::StaticCullUniform;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::feature::sky_prefilter::SkyPrefilter;
 use crate::scene::level::feature::view_feature::ViewFeature;
@@ -238,7 +238,7 @@ impl SkyFeature {
     surroundings: Option<(
       &'a SurroundingsCube,
       &StaticSceneHandles,
-      (&'a StaticCullParams, &'a wgpu::BindGroup),
+      (&'a StaticCullUniform, &'a wgpu::BindGroup),
     )>,
   ) -> Option<SkyParameters<'a>> {
     let views: &'a SkyViews = self.views.as_ref()?;
@@ -289,7 +289,7 @@ impl SkyFeature {
     surroundings: Option<(
       &'a SurroundingsCube,
       &StaticSceneHandles,
-      (&'a StaticCullParams, &'a wgpu::BindGroup),
+      (&'a StaticCullUniform, &'a wgpu::BindGroup),
     )>,
   ) {
     let (lighting, exposure): (UniformBinding<LightingUniform>, GraphBuffer) = (lit.lighting, lit.exposure);

@@ -7,7 +7,7 @@ use crate::frame::static_scene_handles::StaticSceneHandles;
 use crate::pass::cover_pyramid_depth_parameters::CoverPyramidDepthParameters;
 use crate::pass::cover_pyramid_level_parameters::CoverPyramidLevelParameters;
 use crate::pass::level_passes::LevelPasses;
-use crate::pass::static_cull_params::StaticCullParams;
+use crate::pass::static_cull_uniform::StaticCullUniform;
 use crate::scene::level::cover_pyramid::CoverPyramid;
 use crate::scene::level::cover_textures::CoverTextures;
 use crate::scene::level::overhead_map::OverheadMap;
@@ -101,7 +101,7 @@ impl RainCover {
     (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
     passes: LevelPasses<'a>,
     scene: &StaticSceneHandles,
-    (params, textures): (&'a StaticCullParams, &'a wgpu::BindGroup),
+    (params, textures): (&'a StaticCullUniform, &'a wgpu::BindGroup),
   ) -> CoverTextures {
     let depth: GraphTexture = bindings.import_view(&mut *graph, "rain cover", &self.map.depth);
 

@@ -22,7 +22,7 @@ use crate::pass::level_passes::LevelPasses;
 use crate::pass::light_record::LightRecord;
 use crate::pass::light_volume_record::LightVolumeRecord;
 use crate::pass::light_volumes_uniform::LightVolumesUniform;
-use crate::pass::static_cull_params::StaticCullParams;
+use crate::pass::static_cull_uniform::StaticCullUniform;
 use crate::scene::level::feature::lights_feature::LightsFeature;
 use crate::scene::level::grass_shadow_casters::GrassShadowCasters;
 use crate::scene::level::level_light_shadows::LevelLightShadows;
@@ -390,7 +390,7 @@ impl LevelLights {
     graph: (&mut FrameGraph<'a>, &mut GraphBindings<'a>),
     passes: LevelPasses<'a>,
     scene: &StaticSceneHandles,
-    frame: (&'a StaticCullParams, &'a wgpu::BindGroup),
+    frame: (&'a StaticCullUniform, &'a wgpu::BindGroup),
     grass: Option<GrassShadowCasters<'a>>,
   ) {
     self.shadows.add_passes(graph, passes, scene, frame, grass);

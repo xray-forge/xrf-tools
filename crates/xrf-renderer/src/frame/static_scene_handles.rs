@@ -5,7 +5,7 @@ use xrf_renderer_core::{
 };
 
 use crate::pass::static_cull_parameters::StaticCullParameters;
-use crate::pass::static_cull_params::StaticCullParams;
+use crate::pass::static_cull_uniform::StaticCullUniform;
 use crate::pass::static_draw_parameters::StaticDrawParameters;
 use crate::pass::static_draws::StaticDraws;
 use crate::pass::static_impostor_parameters::StaticImpostorParameters;
@@ -43,7 +43,7 @@ pub struct StaticSceneHandles {
   pub args_template: GraphBuffer,
   /// The camera's depth pyramid, which its early cull tests against and its late cull after reducing it again.
   pub pyramid: GraphTexture,
-  pub cull: UniformBinding<StaticCullParams>,
+  pub cull: UniformBinding<StaticCullUniform>,
   pub occlusion: UniformBinding<StaticOcclusionUniform>,
   pub wind: UniformBinding<WindUniform>,
 }
@@ -55,7 +55,7 @@ impl StaticSceneHandles {
     (graph, bindings, runtime): (&mut FrameGraph<'_>, &mut GraphBindings<'r>, &mut GraphRuntime),
     scene: &'r StaticScene,
     pyramid: &'r wgpu::TextureView,
-    (cull, occlusion, wind): (&StaticCullParams, &StaticOcclusionUniform, &WindUniform),
+    (cull, occlusion, wind): (&StaticCullUniform, &StaticOcclusionUniform, &WindUniform),
   ) -> Self {
     let mut import = |label: &'static str, buffer: &'r wgpu::Buffer| bindings.import_buffer(graph, label, buffer);
     let handles = (

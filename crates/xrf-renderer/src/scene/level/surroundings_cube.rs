@@ -18,7 +18,7 @@ use crate::pass::level_passes::LevelPasses;
 use crate::pass::shadow_cull::ShadowCull;
 use crate::pass::sky_parameters::SkyParameters;
 use crate::pass::static_cull_parameters::StaticCullParameters;
-use crate::pass::static_cull_params::StaticCullParams;
+use crate::pass::static_cull_uniform::StaticCullUniform;
 use crate::pass::static_draw_parameters::StaticDrawParameters;
 use crate::pass::static_draws::StaticDraws;
 use crate::pass::static_shadow_pass::StaticShadowPass;
@@ -466,7 +466,7 @@ impl SurroundingsCube {
     (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
     passes: LevelPasses<'a>,
     scene: &StaticSceneHandles,
-    (params, textures): (&'a StaticCullParams, &'a wgpu::BindGroup),
+    (params, textures): (&'a StaticCullUniform, &'a wgpu::BindGroup),
     (lit, sky): (&LightingHandles<'a>, &SkyParameters<'a>),
     faces: GraphTexture,
   ) {
@@ -544,7 +544,7 @@ impl SurroundingsCube {
     (graph, bindings): (&mut FrameGraph<'a>, &mut GraphBindings<'a>),
     passes: LevelPasses<'a>,
     scene: &StaticSceneHandles,
-    (params, textures): (&'a StaticCullParams, &'a wgpu::BindGroup),
+    (params, textures): (&'a StaticCullUniform, &'a wgpu::BindGroup),
     (cut, names, band): (&'a ShadowCut, &'static [&'static str], Option<u32>),
     [albedo, normal, material, depth]: [GraphTexture; 4],
   ) {

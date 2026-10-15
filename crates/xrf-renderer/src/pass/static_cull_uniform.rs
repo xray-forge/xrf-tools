@@ -5,7 +5,7 @@ use xrf_renderer_core::ShaderStruct;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "CullParams")]
-pub struct StaticCullParams {
+pub struct StaticCullUniform {
   pub cluster_count: u32,
   pub row_count: u32,
   pub batch_count: u32,

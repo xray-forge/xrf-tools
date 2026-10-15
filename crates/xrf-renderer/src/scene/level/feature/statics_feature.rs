@@ -16,7 +16,7 @@ use crate::pass::level_passes::LevelPasses;
 use crate::pass::pyramid_depth_parameters::PyramidDepthParameters;
 use crate::pass::pyramid_level_parameters::PyramidLevelParameters;
 use crate::pass::static_cull_parameters::StaticCullParameters;
-use crate::pass::static_cull_params::StaticCullParams;
+use crate::pass::static_cull_uniform::StaticCullUniform;
 use crate::pass::static_draw_parameters::StaticDrawParameters;
 use crate::pass::static_draws::StaticDraws;
 use crate::pass::static_occlusion_uniform::StaticOcclusionUniform;
@@ -32,7 +32,7 @@ use crate::scene::static_scene::static_scene::StaticScene;
 /// frame's occlusion is tested against and the camera it was reduced through, the counts the cull read back, whether
 /// the wall marks are drawn, and whether its surfaces are counted for the overdraw's debug view.
 pub struct StaticsFeature {
-  cull: StaticCullParams,
+  cull: StaticCullUniform,
   occlusion: StaticOcclusionUniform,
   /// The farthest depth's pyramid over the frame's targets.
   pyramid: Option<DepthPyramid>,
@@ -51,7 +51,7 @@ pub struct StaticsFeature {
 impl StaticsFeature {
   pub fn new(device: &wgpu::Device) -> Self {
     Self {
-      cull: StaticCullParams::default(),
+      cull: StaticCullUniform::default(),
       occlusion: bytemuck::Zeroable::zeroed(),
       pyramid: None,
       history: None,
@@ -93,7 +93,7 @@ impl StaticsFeature {
       (width * height) as f32 * (90.0 / field_of_view.max(1.0)).powi(2) * (EPS_S + options.features.lod.geometry_lod);
     let threshold = |area: f32| -> f32 { (area / 3.0).powi(2) / screen };
 
-    self.cull = StaticCullParams {
+    self.cull = StaticCullUniform {
       cluster_count: statics.geometry.get_cluster_count(),
       row_count: statics.geometry.get_row_count(),
       batch_count: StaticBatch::COUNT as u32,
@@ -128,7 +128,7 @@ impl StaticsFeature {
   }
 
   /// The cull's parameters this frame, which every cull of the view's own views reads.
-  pub fn get_cull(&self) -> &StaticCullParams {
+  pub fn get_cull(&self) -> &StaticCullUniform {
     &self.cull
   }
 
@@ -223,7 +223,7 @@ impl StaticsFeature {
     let Some(pyramid) = &self.pyramid else {
       return;
     };
-    let params: &'a StaticCullParams = &self.cull;
+    let params: &'a StaticCullUniform = &self.cull;
     let cull: StaticCullParameters = scene.get_camera_cull();
     let draws: StaticDraws = scene.get_camera_draws();
     let gbuffer: [GraphTexture; 5] = targets.get_gbuffer();

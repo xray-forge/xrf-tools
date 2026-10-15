@@ -1,7 +1,7 @@
 use glam::{UVec2, UVec4, Vec4};
 use xrf_renderer_core::{GraphTexture, PassParameters, ShaderAtomicU32, StorageArray, StorageArrayMut, UniformBinding};
 
-use crate::pass::static_cull_params::StaticCullParams;
+use crate::pass::static_cull_uniform::StaticCullUniform;
 use crate::pass::static_occlusion_uniform::StaticOcclusionUniform;
 use crate::scene::static_scene::static_cluster::StaticCluster;
 use crate::scene::static_scene::static_impostor::StaticImpostor;
@@ -35,7 +35,7 @@ pub struct StaticCullParameters {
   #[storage]
   pub args: StorageArrayMut<ShaderAtomicU32>,
   #[uniform]
-  pub params: UniformBinding<StaticCullParams>,
+  pub params: UniformBinding<StaticCullUniform>,
   #[storage]
   pub candidates: StorageArrayMut<UVec2>,
   /// Each batch's late draw arguments, then the late phase's dispatch and the candidates' count.

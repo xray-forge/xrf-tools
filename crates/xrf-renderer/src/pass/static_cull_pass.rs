@@ -5,8 +5,8 @@ use crate::pass::compute_grid::ComputeGrid;
 use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::shadow_cull::ShadowCull;
 use crate::pass::static_cull_parameters::StaticCullParameters;
-use crate::pass::static_cull_params::StaticCullParams;
 use crate::pass::static_cull_permutation::StaticCullPermutation;
+use crate::pass::static_cull_uniform::StaticCullUniform;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::static_scene::static_batch::StaticBatch;
 use crate::scene::static_scene::static_cull_scratch::StaticCullScratch;
@@ -76,7 +76,7 @@ impl StaticCullPass {
     context: &mut ComputeContext<'_>,
     view: &ViewBinding,
     parameters: &StaticCullParameters,
-    params: &StaticCullParams,
+    params: &StaticCullUniform,
   ) {
     context.bind(parameters);
 
@@ -104,7 +104,7 @@ impl StaticCullPass {
     context: &mut ComputeContext<'_>,
     view: &ViewBinding,
     parameters: &StaticCullParameters,
-    params: &StaticCullParams,
+    params: &StaticCullUniform,
     kind: ShadowCull,
   ) {
     let pipelines: &[wgpu::ComputePipeline; 3] = &self.shadow_pipelines[kind.get_index()];

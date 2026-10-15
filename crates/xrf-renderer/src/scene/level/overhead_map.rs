@@ -19,7 +19,7 @@ use crate::pass::overhead_shift_uniform::OverheadShiftUniform;
 use crate::pass::shadow_casters::ShadowCasters;
 use crate::pass::shadow_cull::ShadowCull;
 use crate::pass::static_cull_parameters::StaticCullParameters;
-use crate::pass::static_cull_params::StaticCullParams;
+use crate::pass::static_cull_uniform::StaticCullUniform;
 use crate::pass::static_draw_parameters::StaticDrawParameters;
 use crate::pass::static_draws::StaticDraws;
 use crate::pass::static_shadow_pass::StaticShadowPass;
@@ -312,7 +312,7 @@ impl OverheadMap {
     (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
     passes: LevelPasses<'a>,
     (scene, depth): (&StaticSceneHandles, GraphTexture),
-    (params, textures): (&'a StaticCullParams, &'a wgpu::BindGroup),
+    (params, textures): (&'a StaticCullUniform, &'a wgpu::BindGroup),
     water: Option<UniformBinding<WaterUniform>>,
   ) {
     if !self.is_due {

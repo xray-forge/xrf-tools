@@ -10,7 +10,7 @@ use crate::pass::lowest_heights_parameters::LowestHeightsParameters;
 use crate::pass::puddle_keep_parameters::PuddleKeepParameters;
 use crate::pass::puddle_sites_parameters::PuddleSitesParameters;
 use crate::pass::puddle_sites_uniform::PuddleSitesUniform;
-use crate::pass::static_cull_params::StaticCullParams;
+use crate::pass::static_cull_uniform::StaticCullUniform;
 use crate::pass::water_uniform::WaterUniform;
 use crate::pass::wet_uniform::WetUniform;
 use crate::scene::level::overhead_map::OverheadMap;
@@ -185,7 +185,7 @@ impl LevelSurface {
     (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
     passes: LevelPasses<'a>,
     scene: &StaticSceneHandles,
-    (params, textures): (&'a StaticCullParams, &'a wgpu::BindGroup),
+    (params, textures): (&'a StaticCullUniform, &'a wgpu::BindGroup),
     (wet, water): (Option<UniformBinding<WetUniform>>, &WaterUniform),
   ) -> [GraphTexture; 3] {
     if let (Some(surface), Some(wet)) = (surface, wet) {
@@ -222,7 +222,7 @@ impl LevelSurface {
     (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
     passes: LevelPasses<'a>,
     scene: &StaticSceneHandles,
-    (params, textures): (&'a StaticCullParams, &'a wgpu::BindGroup),
+    (params, textures): (&'a StaticCullUniform, &'a wgpu::BindGroup),
     (water, keep): (UniformBinding<WaterUniform>, PuddleKeepInputs<'a>),
   ) -> [GraphTexture; 3] {
     let lowest: GraphTexture = bindings.import_view(&mut *graph, "level surface lowest", &self.lowest);
@@ -273,7 +273,7 @@ impl LevelSurface {
     (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
     passes: LevelPasses<'a>,
     scene: &StaticSceneHandles,
-    (params, textures): (&'a StaticCullParams, &'a wgpu::BindGroup),
+    (params, textures): (&'a StaticCullUniform, &'a wgpu::BindGroup),
     water_depth: GraphTexture,
   ) {
     let surface: GraphTexture = bindings.import_view(&mut *graph, "level surface", &self.map.depth);
