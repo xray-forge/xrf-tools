@@ -27,7 +27,7 @@ impl Default for RenderFogSettings {
     Self {
       mode: RenderFogMode::Engine,
       height: 8.0,
-      density: 1.56,
+      density: 0.4,
       sun_color: 0.1,
       scattering: 0.0,
       sky_fade: 0.75,

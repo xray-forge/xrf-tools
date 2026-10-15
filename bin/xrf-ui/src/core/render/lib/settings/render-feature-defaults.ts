@@ -85,7 +85,7 @@ export const DEFAULT_RENDER_EXPOSURE_SETTINGS: TRenderExposureSettings = {
 
 /** The engine's own fog, with the enhanced fog's strengths but no scattering for when it is drawn. */
 export const DEFAULT_RENDER_FOG_SETTINGS: TRenderFogSettings = {
-  density: 1.56,
+  density: 0.4,
   height: 8,
   skyFade: 0.75,
   mode: ERenderFogMode.ENGINE,
