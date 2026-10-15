@@ -1,3 +1,4 @@
+pub(crate) mod geometry_clusters;
 pub(crate) mod growable_buffer;
 pub(crate) mod static_batch;
 pub(crate) mod static_class;

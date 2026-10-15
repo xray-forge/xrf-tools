@@ -5,7 +5,7 @@ use glam::{Mat4, UVec4, Vec3, Vec4};
 use xrf_error::{XrfError, XrfResult};
 use xrf_material::XraySurfaceDescriptor;
 use xrf_renderer_core::{ProxyHandle, ProxyStore, Span};
-use xrf_visual::{SectorGeometry, SectorImpostors, SectorInstanceGroup, SectorPackage, SectorSurface, VisualClusters};
+use xrf_visual::{SectorGeometry, SectorImpostors, SectorInstanceGroup, SectorPackage, SectorSurface};
 
 use crate::contract::render_pool_use::RenderPoolUse;
 use crate::contract::render_selection_target::RenderSelectionTarget;
@@ -13,6 +13,7 @@ use crate::contract::render_static_report::RenderStaticReport;
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::scene::section_bytes::read_pods;
+use crate::scene::static_scene::geometry_clusters::GeometryClusters;
 use crate::scene::static_scene::static_batch::StaticBatch;
 use crate::scene::static_scene::static_class::StaticClass;
 use crate::scene::static_scene::static_cull_scratch::StaticCullScratch;
@@ -265,6 +266,7 @@ impl StaticScene {
     if !description.sections.is_empty() && description.geometry.index_count > 0 {
       let base: StaticGeometryBase =
         Self::put_geometry(&mut writer, StaticLayout::Baked, &description.geometry, buffer);
+      let clusters: GeometryClusters<'_> = GeometryClusters::new(&description.geometry, buffer);
 
       for section in &description.sections {
         // A section drawing past the sector's indices would draw another's, or past the buffer.
@@ -297,8 +299,7 @@ impl StaticScene {
           layout: StaticLayout::Baked,
           class,
         };
-        let cut: Vec<(u32, u32, Vec4)> =
-          Self::cut_clusters(&description.geometry, buffer, section.draw.start, section.draw.count);
+        let cut: Vec<(u32, u32, Vec4)> = clusters.cut(section.draw.start, section.draw.count);
         let sphere: Vec4 = Self::bound_spheres(&cut.iter().map(|(_, _, sphere)| *sphere).collect::<Vec<Vec4>>());
 
         sections.push(sphere);
@@ -937,7 +938,7 @@ impl StaticScene {
     };
     let (band_slots, local): (Vec<(u32, u32)>, Vec4) = Self::put_bands(
       writer,
-      (&base, geometry, buffer),
+      (&base, &GeometryClusters::new(geometry, buffer)),
       &bands,
       (batch, surface, passes),
       info,
@@ -1148,13 +1149,11 @@ impl StaticScene {
     )
   }
 
-  /// The clusters covering an index range, as `(first index, triangles, sphere)`: the packer's own where they tile it
-  /// exactly, else the range cut in runs of `CLUSTER_TRIANGLES` with spheres taken from their vertices.
   /// Puts a slot per band (`bands`, each a first index and a count) of an instanced group's geometry. Answers the band
   /// slots with their clusters, and the bands' bounding sphere in the mesh's own space.
   fn put_bands(
     writer: &mut StaticSceneWriter,
-    (base, geometry, buffer): (&StaticGeometryBase, &SectorGeometry, &[u8]),
+    (base, clusters): (&StaticGeometryBase, &GeometryClusters<'_>),
     bands: &[(u32, u32)],
     (batch, surface, passes): (StaticBatch, u32, u32),
     info: StaticSlotInfo,
@@ -1164,7 +1163,7 @@ impl StaticScene {
       .map(|range| {
         writer.put_slot(
           base,
-          Self::cut_clusters(geometry, buffer, range.0, range.1),
+          clusters.cut(range.0, range.1),
           (StaticSlot::LISTED, batch, surface, passes),
           info,
         )
@@ -1175,56 +1174,6 @@ impl StaticScene {
     );
 
     (band_slots, local)
-  }
-
-  fn cut_clusters(geometry: &SectorGeometry, buffer: &[u8], start: u32, count: u32) -> Vec<(u32, u32, Vec4)> {
-    let ranges: Vec<[u32; 4]> = read_pods(buffer, &geometry.clusters.ranges);
-    let spheres: Vec<Vec4> = read_pods(buffer, &geometry.clusters.spheres);
-    let end: u32 = start.saturating_add(count);
-
-    // A pack whose spheres are fewer than its ranges is cut anew, as one without clusters is.
-    if let Some(run) = VisualClusters::find_run(&ranges, start, count)
-      && let Some(run_spheres) = spheres.get(run.clone())
-    {
-      return ranges[run]
-        .iter()
-        .zip(run_spheres)
-        .map(|(range, sphere)| (range[0], range[1], *sphere))
-        .collect();
-    }
-
-    let indices: Vec<u32> = read_pods(buffer, &geometry.indices);
-    let positions: Vec<[f32; 3]> = read_pods(buffer, &geometry.positions);
-
-    (start..end)
-      .step_by(StaticGeometry::CLUSTER_VERTICES as usize)
-      .map(|first| {
-        let triangles: u32 = ((end - first) / 3).min(StaticGeometry::CLUSTER_TRIANGLES);
-        let points: Vec<Vec3> = indices
-          .iter()
-          .skip(first as usize)
-          .take((triangles * 3) as usize)
-          .filter_map(|index| positions.get(*index as usize).copied().map(Vec3::from_array))
-          .collect();
-
-        (first, triangles, Self::bound_points(&points))
-      })
-      .collect()
-  }
-
-  /// A sphere holding every point: centred on their box, as far out as the farthest.
-  fn bound_points(points: &[Vec3]) -> Vec4 {
-    let (low, high): (Vec3, Vec3) = points.iter().fold((Vec3::MAX, Vec3::MIN), |(low, high), point| {
-      (low.min(*point), high.max(*point))
-    });
-    let center: Vec3 = (low + high) * 0.5;
-    let radius: f32 = points.iter().map(|point| point.distance(center)).fold(0.0, f32::max);
-
-    if points.is_empty() {
-      Vec4::new(0.0, 0.0, 0.0, -1.0)
-    } else {
-      center.extend(radius)
-    }
   }
 
   /// A sphere holding every sphere: centred on their box, as far out as the farthest edge.

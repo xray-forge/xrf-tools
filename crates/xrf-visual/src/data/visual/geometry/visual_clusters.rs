@@ -31,34 +31,46 @@ impl VisualClusters {
   /// The clusters, by their place in `ranges`, cut from the run of `count` indices at `start`; `None` where none was,
   /// as for counts past `u32` that only damaged data holds.
   pub fn find_run(ranges: &[[u32; 4]], start: u32, count: u32) -> Option<Range<usize>> {
+    let firsts = ranges
+      .iter()
+      .enumerate()
+      .filter(|(_, range)| range[0] == start)
+      .map(|(first, _)| first);
+
+    Self::find_run_among(ranges, firsts, start, count)
+  }
+
+  /// `find_run` over the clusters starting at `start` a reader already found, by their place in `ranges`, in order.
+  pub fn find_run_among(
+    ranges: &[[u32; 4]],
+    firsts: impl IntoIterator<Item = usize>,
+    start: u32,
+    count: u32,
+  ) -> Option<Range<usize>> {
     let end: u32 = start.checked_add(count)?;
 
     // A progressive geometry's levels overlap, so a cluster within a run's indices may be another level's: the run is
     // the cluster starting at its start and those after it each starting where the one before ends.
-    ranges
-      .iter()
-      .enumerate()
-      .filter(|(_, range)| range[0] == start)
-      .find_map(|(first, _)| {
-        let mut at: u32 = start;
+    firsts.into_iter().find_map(|first| {
+      let mut at: u32 = start;
 
-        for (index, range) in ranges.iter().enumerate().skip(first) {
-          if range[0] != at {
-            return None;
-          }
-
-          at = at.checked_add(range[1].checked_mul(3)?)?;
-
-          if at == end {
-            return Some(first..index + 1);
-          }
-
-          if at > end {
-            return None;
-          }
+      for (index, range) in ranges.iter().enumerate().skip(first) {
+        if range[0] != at {
+          return None;
         }
 
-        None
-      })
+        at = at.checked_add(range[1].checked_mul(3)?)?;
+
+        if at == end {
+          return Some(first..index + 1);
+        }
+
+        if at > end {
+          return None;
+        }
+      }
+
+      None
+    })
   }
 }
