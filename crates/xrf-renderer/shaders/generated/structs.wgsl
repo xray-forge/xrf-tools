@@ -311,7 +311,9 @@ struct LightTrace {
 }
 
 struct IndirectTrace {
-  noise: vec4<f32>,
+  noise: vec2<f32>,
+  reach: f32,
+  intensity: f32,
 }
 
 struct Lights {

@@ -1,4 +1,4 @@
-use glam::Vec4;
+use glam::Vec2;
 use xrf_renderer_core::ShaderStruct;
 
 use crate::pass::noise_turn::NoiseTurn;
@@ -11,8 +11,12 @@ const REACH: f32 = 30.0;
 #[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "IndirectTrace")]
 pub struct IndirectTraceUniform {
-  /// What this frame turns each pixel's noise by, each way; the metres a ray reaches; the light's intensity.
-  pub noise: Vec4,
+  /// What this frame turns each pixel's noise by, each way.
+  pub noise: Vec2,
+  /// The metres a ray reaches.
+  pub reach: f32,
+  /// The light's intensity.
+  pub intensity: f32,
 }
 
 impl IndirectTraceUniform {
@@ -21,7 +25,9 @@ impl IndirectTraceUniform {
     let [x, y] = NoiseTurn::get_r2(frame, NoiseTurn::FRAMES);
 
     Self {
-      noise: Vec4::new(x, y, REACH, intensity),
+      noise: Vec2::new(x, y),
+      reach: REACH,
+      intensity,
     }
   }
 }

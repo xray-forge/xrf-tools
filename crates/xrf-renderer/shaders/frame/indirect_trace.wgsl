@@ -56,14 +56,14 @@ fn fs_indirect_trace(in: FullscreenVarying) -> IndirectTargets {
   let across: vec3<f32> = frame.across;
   let along: vec3<f32> = frame.along;
   let sample: vec2<f32> = fract(gradient_noise_2(pixel) +
-    indirect.noise.xy);
+    indirect.noise);
   let radius: f32 = sqrt(sample.x);
   let angle: f32 = sample.y * TAU;
   let direction: vec3<f32> = normalize(across * (radius * cos(angle)) + along * (radius * sin(angle)) +
     normal * sqrt(max(1.0 - sample.x, 0.0)));
   // A diffuse bounce's ray spreads as wide as a hemisphere: its hit is read coarsely.
   let cone: SceneCone = SceneCone(distance * 0.004, 0.5);
-  let hit: SceneHit = trace_scene_ray(origin, direction, 0.0, indirect.noise.z, cone);
+  let hit: SceneHit = trace_scene_ray(origin, direction, 0.0, indirect.reach, cone);
 
   if (hit.distance < 0.0) {
     return IndirectTargets(vec4<f32>(0.0, 0.0, 0.0, distance), 0.0);
@@ -73,5 +73,5 @@ fn fs_indirect_trace(in: FullscreenVarying) -> IndirectTargets {
     sky_environment_1, sky_clamp);
   let carried: vec3<f32> = shown * min(1.0, RADIANCE_MOST / max(luminance(shown), 1e-4));
 
-  return IndirectTargets(vec4<f32>(carried * indirect.noise.w, distance), hit.distance);
+  return IndirectTargets(vec4<f32>(carried * indirect.intensity, distance), hit.distance);
 }
