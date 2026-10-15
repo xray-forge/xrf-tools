@@ -1,10 +1,9 @@
 use wgpu::util::DeviceExt;
 use xrf_error::XrfResult;
-use xrf_renderer_core::{ComputeContext, PassParameters};
+use xrf_renderer_core::{ComputeContext, ComputePipelineDescription, PassParameters};
 
 use crate::frame::sky_prefilter::SkyPrefilter;
 use crate::pass::pipeline_source::PipelineSource;
-use crate::pass::shader_pipelines::create_checked;
 use crate::pass::sky_prefilter_parameters::SkyPrefilterParameters;
 
 /// Invocations a workgroup runs a side, as `shaders/frame/sky_prefilter.wgsl` declares them.
@@ -67,18 +66,18 @@ impl SkyPrefilterPass {
       });
 
     Ok(Self {
-      pipeline: Self::create_pipeline(device, source, &layout)?,
+      pipeline: Self::create_pipeline(source, &layout)?,
       empty,
       generation: source.get_generation(),
       layout,
     })
   }
 
-  pub fn refresh(&mut self, device: &wgpu::Device, source: PipelineSource<'_>) {
+  pub fn refresh(&mut self, source: PipelineSource<'_>) {
     if source.get_generation() != self.generation {
       self.generation = source.get_generation();
 
-      match Self::create_pipeline(device, source, &self.layout) {
+      match Self::create_pipeline(source, &self.layout) {
         Ok(pipeline) => self.pipeline = pipeline,
         Err(error) => log::error!("Sky prefilter rejected, filling with the last one: {error}"),
       }
@@ -99,27 +98,10 @@ impl SkyPrefilterPass {
       .dispatch_workgroups(size.div_ceil(WORKGROUP), size.div_ceil(WORKGROUP), 6);
   }
 
-  fn create_pipeline(
-    device: &wgpu::Device,
-    source: PipelineSource<'_>,
-    layout: &wgpu::BindGroupLayout,
-  ) -> XrfResult<wgpu::ComputePipeline> {
-    let module: wgpu::ShaderModule = source.get_module("frame/sky_prefilter")?;
-    let pipeline_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-      label: Some("sky prefilter"),
-      bind_group_layouts: &[Some(layout)],
-      ..Default::default()
-    });
-
-    create_checked(device, "sky prefilter", || {
-      device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-        label: Some("sky prefilter"),
-        layout: Some(&pipeline_layout),
-        module: &module,
-        entry_point: Some("prefilter"),
-        compilation_options: Default::default(),
-        cache: source.get_driver_cache(),
-      })
-    })
+  fn create_pipeline(source: PipelineSource<'_>, layout: &wgpu::BindGroupLayout) -> XrfResult<wgpu::ComputePipeline> {
+    source.get_compute_pipeline(
+      &ComputePipelineDescription::new("sky prefilter", "frame/sky_prefilter", "prefilter")
+        .with_bind_group_layouts(&[Some(layout)]),
+    )
   }
 }

@@ -32,7 +32,7 @@ impl TemporalPass {
     let layout: wgpu::BindGroupLayout = TemporalParameters::create_layout(device);
 
     Ok(Self {
-      pipeline: Self::create_pipeline(device, source, view_layout, &layout)?,
+      pipeline: Self::create_pipeline(source, view_layout, &layout)?,
       sampler: device.create_sampler(&wgpu::SamplerDescriptor {
         label: Some("temporal history"),
         mag_filter: wgpu::FilterMode::Linear,
@@ -45,11 +45,11 @@ impl TemporalPass {
     })
   }
 
-  pub fn refresh(&mut self, device: &wgpu::Device, source: PipelineSource<'_>) {
+  pub fn refresh(&mut self, source: PipelineSource<'_>) {
     if source.get_generation() != self.generation {
       self.generation = source.get_generation();
 
-      match Self::create_pipeline(device, source, &self.view_layout, &self.layout) {
+      match Self::create_pipeline(source, &self.view_layout, &self.layout) {
         Ok(pipeline) => self.pipeline = pipeline,
         Err(error) => log::error!("Temporal resolve rejected, resolving with the last one: {error}"),
       }
@@ -73,13 +73,11 @@ impl TemporalPass {
   }
 
   fn create_pipeline(
-    device: &wgpu::Device,
     source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<wgpu::RenderPipeline> {
     create_fullscreen_pipeline_into(
-      device,
       source,
       "frame/temporal",
       "fs_temporal",

@@ -8,7 +8,9 @@ use xrf_math::{EPS_L, Vector3d};
 use xrf_renderer_core::{FrameGraph, GraphBindings, ProxyHandle, ProxyStore};
 use xrf_visual::{LightAnimatorDescription, LightDescription, LightKind, LightsDescription};
 
+use crate::camera::camera_view::CameraView;
 use crate::contract::render_lights_report::RenderLightsReport;
+use crate::contract::render_lights_settings::RenderLightsSettings;
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::periodic_scheduler::PeriodicScheduler;
 use crate::frame::static_scene_handles::StaticSceneHandles;
@@ -177,59 +179,10 @@ impl LevelLights {
 
     if settings.is_enabled {
       let lights: &ProxyStore<LightDescription> = &self.lights;
-      let planes: [Vec4; 6] = camera.get_planes();
       let seconds: f32 = self.started.elapsed().as_secs_f32();
       let eye: Vec3 = camera.position;
       let forward: Vec3 = -camera.view.inverse().z_axis.truncate();
-      let mut in_view: Vec<InView> = lights
-        .iter()
-        .filter(|(_, light)| settings.is_level_lights || !light.is_level)
-        .filter_map(|(handle, light)| {
-          // A campfire's idle light: out while it is, faded over a turn (`UpdateWorkload`).
-          let share: f32 = light
-            .campfire
-            .map_or(1.0, |id| campfire_shares.get(&id).copied().unwrap_or(1.0));
-
-          if share <= 0.0 {
-            return None;
-          }
-
-          // A torrid zone's idle light: out while the camera stands far from its zone (`o_switch_2_slow`).
-          if let Some(sphere) = &light.zone_sphere {
-            let at: [f32; 3] = [light.position.x, light.position.y, light.position.z];
-
-            if sphere.get_distance(at, eye.to_array()) > ZONE_FAST_DISTANCE {
-              return None;
-            }
-          }
-
-          let basis: LightBasis = LightBasis::of(light);
-          let bound: Vec4 = basis.get_bound(light);
-          let is_visible: bool = planes
-            .iter()
-            .all(|plane| plane.truncate().dot(bound.truncate()) + plane.w >= -bound.w);
-
-          let distance: f32 = (eye.distance(bound.truncate()) - bound.w).max(0.0);
-
-          // Out of view, only a shadowed light the eye stands near is kept, its faces ready for a turn.
-          if !is_visible && !(is_shadowing && light.is_shadowed && distance <= WARM_REACH) {
-            return None;
-          }
-
-          let fades: Fades = to_fades(light, &basis, eye, lod, is_shadowing && light.is_shadowed);
-
-          // `light::get_LOD`: a shadowed light is drawn at all only past `EPS_L`.
-          (fades.shown > EPS_L).then_some(InView {
-            distance,
-            is_seen: is_visible,
-            handle,
-            basis,
-            bound,
-            fades,
-            share,
-          })
-        })
-        .collect();
+      let mut in_view: Vec<InView> = self.collect_in_view(camera, settings, (lod, campfire_shares), is_shadowing);
 
       in_view.sort_by(|a, b| a.distance.total_cmp(&b.distance));
 
@@ -322,6 +275,71 @@ impl LevelLights {
 
     into.report.atlas = self.shadows.get_atlas_use();
     into.write(encoder, camera, settings.shadow_filter);
+  }
+
+  /// The lights a view sees this frame, by its `camera` and `settings`: in its frustum, or, out of it, a shadowed one
+  /// the eye stands near, its faces kept ready for a turn; each with its fades by the cull's levels of detail (`lod`)
+  /// and its campfire's share (`campfire_shares`); none a campfire or a torrid zone has put out.
+  fn collect_in_view(
+    &self,
+    camera: &CameraView,
+    settings: &RenderLightsSettings,
+    (lod, campfire_shares): ((f32, f32), &HashMap<u16, f32>),
+    is_shadowing: bool,
+  ) -> Vec<InView> {
+    let planes: [Vec4; 6] = camera.get_planes();
+    let eye: Vec3 = camera.position;
+
+    self
+      .lights
+      .iter()
+      .filter(|(_, light)| settings.is_level_lights || !light.is_level)
+      .filter_map(|(handle, light)| {
+        // A campfire's idle light: out while it is, faded over a turn (`UpdateWorkload`).
+        let share: f32 = light
+          .campfire
+          .map_or(1.0, |id| campfire_shares.get(&id).copied().unwrap_or(1.0));
+
+        if share <= 0.0 {
+          return None;
+        }
+
+        // A torrid zone's idle light: out while the camera stands far from its zone (`o_switch_2_slow`).
+        if let Some(sphere) = &light.zone_sphere {
+          let at: [f32; 3] = [light.position.x, light.position.y, light.position.z];
+
+          if sphere.get_distance(at, eye.to_array()) > ZONE_FAST_DISTANCE {
+            return None;
+          }
+        }
+
+        let basis: LightBasis = LightBasis::of(light);
+        let bound: Vec4 = basis.get_bound(light);
+        let is_visible: bool = planes
+          .iter()
+          .all(|plane| plane.truncate().dot(bound.truncate()) + plane.w >= -bound.w);
+
+        let distance: f32 = (eye.distance(bound.truncate()) - bound.w).max(0.0);
+
+        // Out of view, only a shadowed light the eye stands near is kept, its faces ready for a turn.
+        if !is_visible && !(is_shadowing && light.is_shadowed && distance <= WARM_REACH) {
+          return None;
+        }
+
+        let fades: Fades = to_fades(light, &basis, eye, lod, is_shadowing && light.is_shadowed);
+
+        // `light::get_LOD`: a shadowed light is drawn at all only past `EPS_L`.
+        (fades.shown > EPS_L).then_some(InView {
+          distance,
+          is_seen: is_visible,
+          handle,
+          basis,
+          bound,
+          fades,
+          share,
+        })
+      })
+      .collect()
   }
 
   /// Starts a scene's frame: stands each light its motion carries.
@@ -529,7 +547,8 @@ fn to_volume(
 ) -> Option<(LightVolumeRecord, u32)> {
   let volumetric = light.volumetric.as_ref()?;
   let is_spot: bool = matches!(light.kind, LightKind::Spot);
-  // The slices drawn, the share of the buffer the volume's depth is stretched over, the colour's scale and the distance.
+  // The slices drawn, the share of the buffer the volume's depth is stretched over, the colour's scale and the
+  // distance.
   let (slices, quality, intensity, distance): (u32, f32, f32, f32) = match engine {
     XrayEngine::Vanilla => {
       if !volumetric.is_asked {

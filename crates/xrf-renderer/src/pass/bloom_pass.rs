@@ -23,7 +23,7 @@ impl BloomPass {
   /// Returns an error when the shader does not compose or compile.
   pub fn new(device: &wgpu::Device, source: PipelineSource<'_>) -> XrfResult<Self> {
     let layout: wgpu::BindGroupLayout = BloomParameters::create_layout(device);
-    let (build, filter) = Self::create_pipelines(device, source, &layout)?;
+    let (build, filter) = Self::create_pipelines(source, &layout)?;
 
     Ok(Self {
       build,
@@ -39,11 +39,11 @@ impl BloomPass {
     })
   }
 
-  pub fn refresh(&mut self, device: &wgpu::Device, source: PipelineSource<'_>) {
+  pub fn refresh(&mut self, source: PipelineSource<'_>) {
     if source.get_generation() != self.generation {
       self.generation = source.get_generation();
 
-      match Self::create_pipelines(device, source, &self.layout) {
+      match Self::create_pipelines(source, &self.layout) {
         Ok((build, filter)) => (self.build, self.filter) = (build, filter),
         Err(error) => log::error!("Bloom rejected, blooming with the last one: {error}"),
       }
@@ -68,19 +68,11 @@ impl BloomPass {
   }
 
   fn create_pipelines(
-    device: &wgpu::Device,
     source: PipelineSource<'_>,
     layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<(wgpu::RenderPipeline, wgpu::RenderPipeline)> {
-    let create = |fragment: &str| {
-      create_fullscreen_pipeline(
-        device,
-        source,
-        "frame/bloom",
-        fragment,
-        &[Some(layout)],
-        ViewTargets::BLOOM,
-      )
+    let create = |fragment: &'static str| {
+      create_fullscreen_pipeline(source, "frame/bloom", fragment, &[Some(layout)], ViewTargets::BLOOM)
     };
 
     Ok((create("fs_bloom_build")?, create("fs_bloom_filter")?))

@@ -24,18 +24,18 @@ impl SkyHazePass {
     let layout: wgpu::BindGroupLayout = SkyHazeParameters::create_layout(device);
 
     Ok(Self {
-      pipeline: Self::create_pipeline(device, source, &layout, sky_layout)?,
+      pipeline: Self::create_pipeline(source, &layout, sky_layout)?,
       sky_layout: sky_layout.clone(),
       generation: source.get_generation(),
       layout,
     })
   }
 
-  pub fn refresh(&mut self, device: &wgpu::Device, source: PipelineSource<'_>) {
+  pub fn refresh(&mut self, source: PipelineSource<'_>) {
     if source.get_generation() != self.generation {
       self.generation = source.get_generation();
 
-      match Self::create_pipeline(device, source, &self.layout, &self.sky_layout) {
+      match Self::create_pipeline(source, &self.layout, &self.sky_layout) {
         Ok(pipeline) => self.pipeline = pipeline,
         Err(error) => log::error!("Sky haze rejected, blurring with the last one: {error}"),
       }
@@ -53,13 +53,11 @@ impl SkyHazePass {
   }
 
   fn create_pipeline(
-    device: &wgpu::Device,
     source: PipelineSource<'_>,
     layout: &wgpu::BindGroupLayout,
     sky_layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<wgpu::RenderPipeline> {
     create_fullscreen_pipeline(
-      device,
       source,
       "frame/sky_haze",
       "fs_sky_haze",

@@ -80,7 +80,7 @@ fn makes_a_pipeline_once_per_permutation_and_forgets_an_invalidated_module() {
   let describe = |is_shadow: bool| {
     ComputePipelineDescription::new("count", "count", "main")
       .with_permutation(&Shadowing { is_shadow, cascade: 1 })
-      .with_bind_group_layouts(vec![layout.clone()])
+      .with_bind_group_layouts(&[Some(&layout)])
   };
 
   cache.get_compute_pipeline(&device, &source, &describe(false)).unwrap();

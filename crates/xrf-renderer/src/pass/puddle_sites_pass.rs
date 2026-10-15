@@ -1,11 +1,10 @@
 use xrf_error::XrfResult;
-use xrf_renderer_core::{ComputeContext, PassParameters};
+use xrf_renderer_core::{ComputeContext, ComputePipelineDescription, PassParameters};
 
 use crate::pass::lowest_heights_parameters::LowestHeightsParameters;
 use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::puddle_keep_parameters::PuddleKeepParameters;
 use crate::pass::puddle_sites_parameters::PuddleSitesParameters;
-use crate::pass::shader_pipelines::create_checked;
 
 /// Invocations a workgroup runs a side, as `shaders/frame/puddle_sites.wgsl` declares them.
 const WORKGROUP: u32 = 8;
@@ -28,17 +27,17 @@ impl PuddleSitesPass {
     ];
 
     Ok(Self {
-      pipelines: Self::create_pipelines(device, source, &layouts)?,
+      pipelines: Self::create_pipelines(source, &layouts)?,
       generation: source.get_generation(),
       layouts,
     })
   }
 
-  pub fn refresh(&mut self, device: &wgpu::Device, source: PipelineSource<'_>) {
+  pub fn refresh(&mut self, source: PipelineSource<'_>) {
     if source.get_generation() != self.generation {
       self.generation = source.get_generation();
 
-      match Self::create_pipelines(device, source, &self.layouts) {
+      match Self::create_pipelines(source, &self.layouts) {
         Ok(pipelines) => self.pipelines = pipelines,
         Err(error) => log::error!("Puddle sites rejected, placing with the last ones: {error}"),
       }
@@ -74,28 +73,13 @@ impl PuddleSitesPass {
   }
 
   fn create_pipelines(
-    device: &wgpu::Device,
     source: PipelineSource<'_>,
     [heights, sites, keep]: &[wgpu::BindGroupLayout; 3],
   ) -> XrfResult<[wgpu::ComputePipeline; 3]> {
-    let module: wgpu::ShaderModule = source.get_module("frame/puddle_sites")?;
-    let create = |entry: &str, layout: &wgpu::BindGroupLayout| -> XrfResult<wgpu::ComputePipeline> {
-      let pipeline_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-        label: Some(entry),
-        bind_group_layouts: &[Some(layout)],
-        ..Default::default()
-      });
-
-      create_checked(device, entry, || {
-        device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-          label: Some(entry),
-          layout: Some(&pipeline_layout),
-          module: &module,
-          entry_point: Some(entry),
-          compilation_options: Default::default(),
-          cache: source.get_driver_cache(),
-        })
-      })
+    let create = |entry: &'static str, layout: &wgpu::BindGroupLayout| -> XrfResult<wgpu::ComputePipeline> {
+      source.get_compute_pipeline(
+        &ComputePipelineDescription::new(entry, "frame/puddle_sites", entry).with_bind_group_layouts(&[Some(layout)]),
+      )
     };
 
     Ok([

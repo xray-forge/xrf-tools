@@ -187,9 +187,74 @@ fn triangle_corner(triangle: u32, corner: u32) -> vec3<f32> {
   return vec3<f32>(triangles[at], triangles[at + 1u], triangles[at + 2u]);
 }
 
+// The model a place plants of a slot's four (`ids`, their densities `palettes`) whose density at its dither `cell`
+// passes its `threshold`, one drawn of them by `selection` where several pass; none (`GRASS_EMPTY_ID`) where none
+// passes.
+fn choose_model(ids: array<u32, 4>, palettes: array<u32, 4>, cell: vec2<u32>, threshold: i32,
+  selection: ptr<function, u32>) -> u32 {
+  var mask: u32 = 0u;
+  var selected: u32 = 0u;
+
+  for (var object: u32 = 0u; object < 4u; object++) {
+    if (ids[object] != GRASS_EMPTY_ID && density(palettes[object], cell.x, cell.y) > threshold) {
+      mask |= 1u << object;
+      selected += 1u;
+    }
+  }
+
+  if (selected == 0u) {
+    return GRASS_EMPTY_ID;
+  }
+
+  var pick: u32 = 0u;
+
+  if (selected > 1u) {
+    pick = random(selection) % selected;
+  }
+
+  var chosen: u32 = 0u;
+  var seen: u32 = 0u;
+
+  for (var object: u32 = 0u; object < 4u; object++) {
+    if ((mask & (1u << object)) != 0u) {
+      if (seen == pick) {
+        chosen = object;
+      }
+
+      seen += 1u;
+    }
+  }
+
+  return ids[chosen];
+}
+
+// Where a ray cast down meets a slot's ground: its height and the triangle it meets.
+struct GroundHit {
+  y: f32,
+  triangle: u32,
+}
+
+// The highest of a slot's triangles (its bin's first entry and count, `bin`) a ray cast straight down from `origin`
+// meets; at `lowest` where it meets none.
+fn cast_ground(origin: vec3<f32>, bin: vec2<u32>, lowest: f32) -> GroundHit {
+  var hit: GroundHit = GroundHit(lowest, 0u);
+
+  for (var entry: u32 = bin.x; entry < bin.x + bin.y; entry++) {
+    let triangle: u32 = bins[entry];
+    let range: f32 = ray_range(origin, triangle_corner(triangle, 0u), triangle_corner(triangle, 1u),
+      triangle_corner(triangle, 2u));
+
+    if (range >= 0.0 && origin.y - range > hit.y) {
+      hit = GroundHit(origin.y - range, triangle);
+    }
+  }
+
+  return hit;
+}
+
 // `cache_Decompress`, a thread a cell of the ring: a stale cell the schedule admits plants the world slot it holds now,
-// with the same generators seeded the same way and drawn in the same order, the same dither, the same ray cast down onto
-// the slot's own triangles, so a slot plants what the engine plants in it.
+// with the same generators seeded the same way and drawn in the same order, the same dither, the same ray cast down
+// onto the slot's own triangles, so a slot plants what the engine plants in it.
 @compute @workgroup_size(64)
 fn decompress(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workgroups) groups: vec3<u32>) {
   let cell: u32 = compute_index(id, groups, 64u);
@@ -263,42 +328,9 @@ fn decompress(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workgro
       let column: u32 = u32(min(x, steps - 1));
       let row: u32 = u32(min(z, steps - 1));
       let threshold: i32 = i32(dither[((column + shift_x) % 16u) * 16u + (row + shift_z) % 16u]);
-      var mask: u32 = 0u;
-      var selected: u32 = 0u;
+      let model: u32 = choose_model(ids, palettes, vec2<u32>(column, row), threshold, &selection);
 
-      for (var object: u32 = 0u; object < 4u; object++) {
-        if (ids[object] != GRASS_EMPTY_ID && density(palettes[object], column, row) > threshold) {
-          mask |= 1u << object;
-          selected += 1u;
-        }
-      }
-
-      if (selected == 0u) {
-        continue;
-      }
-
-      var pick: u32 = 0u;
-
-      if (selected > 1u) {
-        pick = random(&selection) % selected;
-      }
-
-      var chosen: u32 = 0u;
-      var seen: u32 = 0u;
-
-      for (var object: u32 = 0u; object < 4u; object++) {
-        if ((mask & (1u << object)) != 0u) {
-          if (seen == pick) {
-            chosen = object;
-          }
-
-          seen += 1u;
-        }
-      }
-
-      let model: u32 = ids[chosen];
-
-      if (model >= params.model_count) {
+      if (model == GRASS_EMPTY_ID || model >= params.model_count) {
         continue;
       }
 
@@ -307,21 +339,10 @@ fn decompress(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workgro
       let jitter_x: f32 = random_signed(&jitter, params.jitter);
       let px: f32 = f32(x) / f32(steps) * GRASS_SLOT_METERS + min_x + jitter_x;
       let pz: f32 = f32(z) / f32(steps) * GRASS_SLOT_METERS + min_z + jitter_z;
-      var y: f32 = min_y - 5.0;
-      var ground: u32 = 0u;
       // The slot is walked in the engine's space and its triangles are in the renderer's, whose z runs the other way.
-      let origin: vec3<f32> = vec3<f32>(px, max_y, -pz);
-
-      for (var entry: u32 = bin_start; entry < bin_start + bin_count; entry++) {
-        let triangle: u32 = bins[entry];
-        let range: f32 = ray_range(origin, triangle_corner(triangle, 0u), triangle_corner(triangle, 1u),
-          triangle_corner(triangle, 2u));
-
-        if (range >= 0.0 && max_y - range > y) {
-          y = max_y - range;
-          ground = triangle;
-        }
-      }
+      let hit: GroundHit = cast_ground(vec3<f32>(px, max_y, -pz), vec2<u32>(bin_start, bin_count), min_y - 5.0);
+      let y: f32 = hit.y;
+      let ground: u32 = hit.triangle;
 
       if (y < min_y) {
         continue;
@@ -369,9 +390,9 @@ fn clear_counts(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workg
   }
 }
 
-// `UpdateVisibleM`, a thread a cell of the ring: a cell not planted with the slot it holds now, outside the view or past
-// `dm_fade` passes over, and each of its tufts is shrunk by the slot's distance, dropped where too small to see, stilled
-// where too small to see sway, culled by the view, and appended.
+// `UpdateVisibleM`, a thread a cell of the ring: a cell not planted with the slot it holds now, outside the view or
+// past `dm_fade` passes over, and each of its tufts is shrunk by the slot's distance, dropped where too small to see,
+// stilled where too small to see sway, culled by the view, and appended.
 @compute @workgroup_size(64)
 fn cull(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workgroups) groups: vec3<u32>) {
   let cell: u32 = compute_index(id, groups, 64u);
@@ -402,7 +423,8 @@ fn cull(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workgroups) g
     return;
   }
 
-  // A slot the static scene's depth hides whole passes over too, tested against this frame's pyramid where it holds one.
+  // A slot the static scene's depth hides whole passes over too, tested against this frame's pyramid where it holds
+  // one.
   if (occlusion.has_history != 0u && is_sphere_occluded(pyramid, occlusion.size, occlusion.levels,
     vec4<f32>(center.x, center.y, -center.z, bound), occlusion.view, occlusion.projection)) {
     return;

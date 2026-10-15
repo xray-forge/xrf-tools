@@ -1,5 +1,5 @@
 use xrf_error::XrfResult;
-use xrf_renderer_core::{PassParameters, RasterContext};
+use xrf_renderer_core::{PassParameters, RasterContext, RenderPipelineDescription};
 
 use crate::frame::pick_target::PickTarget;
 use crate::frame::view_targets::ViewTargets;
@@ -38,7 +38,7 @@ impl StaticGBufferPass {
   ) -> XrfResult<Self> {
     let layout: wgpu::BindGroupLayout = StaticDrawParameters::create_layout(device);
     let impostor_layout: wgpu::BindGroupLayout = StaticImpostorParameters::create_layout(device);
-    let pipelines: GBufferPipelines = Self::create_pipelines(device, source, view_layout, &layout, texture_layout)?;
+    let pipelines: GBufferPipelines = Self::create_pipelines(source, view_layout, &layout, texture_layout)?;
     let impostor_pipelines =
       Self::create_impostor_pipelines(device, source, view_layout, &impostor_layout, texture_layout)?;
 
@@ -57,7 +57,7 @@ impl StaticGBufferPass {
     if source.get_generation() != self.generation {
       self.generation = source.get_generation();
 
-      match Self::create_pipelines(device, source, &self.view_layout, &self.layout, &self.texture_layout).and_then(
+      match Self::create_pipelines(source, &self.view_layout, &self.layout, &self.texture_layout).and_then(
         |pipelines| {
           let impostors = Self::create_impostor_pipelines(
             device,
@@ -215,28 +215,46 @@ impl StaticGBufferPass {
   }
 
   fn create_pipelines(
-    device: &wgpu::Device,
     source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     layout: &wgpu::BindGroupLayout,
     texture_layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<GBufferPipelines> {
-    let module: wgpu::ShaderModule = source.get_module("static/gbuffer")?;
-    let pipeline_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-      label: Some("static g-buffer"),
-      bind_group_layouts: &[Some(view_layout), Some(texture_layout), Some(layout)],
-      ..Default::default()
-    });
     let targets: [Option<wgpu::ColorTargetState>; 5] = ViewTargets::get_gbuffer_targets(true);
     let pick_targets: [Option<wgpu::ColorTargetState>; 1] = [Some(PickTarget::FORMAT.into())];
+    let create_one = |label: &'static str,
+                      (vertex, fragment, constants): (&'static str, &'static str, &[(&'static str, f64)]),
+                      targets: &[Option<wgpu::ColorTargetState>],
+                      (is_written, depth_compare, bias): (bool, wgpu::CompareFunction, wgpu::DepthBiasState)|
+     -> XrfResult<wgpu::RenderPipeline> {
+      source.get_render_pipeline(
+        &RenderPipelineDescription::new(label, "static/gbuffer", vertex)
+          .with_fragment(fragment)
+          .with_constants(constants)
+          .with_bind_group_layouts(&[Some(view_layout), Some(texture_layout), Some(layout)])
+          // The packer reversed the winding with the z axis it flipped, so front faces wind counter clockwise.
+          .with_primitive(wgpu::PrimitiveState {
+            front_face: wgpu::FrontFace::Ccw,
+            cull_mode: Some(wgpu::Face::Back),
+            ..Default::default()
+          })
+          .with_depth_stencil(wgpu::DepthStencilState {
+            format: ViewTargets::DEPTH,
+            depth_write_enabled: Some(is_written),
+            depth_compare: Some(depth_compare),
+            stencil: Default::default(),
+            bias,
+          })
+          .with_targets(targets.to_vec()),
+      )
+    };
     let create =
       |batches: Vec<StaticBatch>, (is_pick, is_inspected): (bool, bool)| -> XrfResult<Vec<wgpu::RenderPipeline>> {
-        let constants: [(&str, f64); 1] = [("IS_INSPECTED", f64::from(u8::from(is_inspected)))];
+        let constants: [(&'static str, f64); 1] = [("IS_INSPECTED", f64::from(u8::from(is_inspected)))];
 
         batches
           .into_iter()
           .map(|batch| {
-            let vertex: &str = batch.layout.get_vertex_entry();
             let fragment: &str = match (batch.class, is_pick) {
               (StaticClass::CutOut, false) => "fs_cut_out",
               (StaticClass::CutOut, true) => "fs_pick_cut_out",
@@ -244,51 +262,20 @@ impl StaticGBufferPass {
               (_, false) => "fs_opaque",
               (_, true) => "fs_pick_opaque",
             };
-            // A composited surface is picked as it is drawn, pulled towards the eye, so glass laid on a wall wins. A cut-out
-            // is shaded where its depth-only draw left its depth, and writes none of its own.
-            let (depth_compare, bias, is_written) = match batch.class {
-              class if class.is_composited() => (wgpu::CompareFunction::GreaterEqual, COMPOSITED_DEPTH_BIAS, true),
-              StaticClass::CutOut if !is_pick => (wgpu::CompareFunction::Equal, wgpu::DepthBiasState::default(), false),
-              _ => (wgpu::CompareFunction::Greater, wgpu::DepthBiasState::default(), true),
+            // A composited surface is picked as it is drawn, pulled towards the eye, so glass laid on a wall wins. A
+            // cut-out is shaded where its depth-only draw left its depth, and writes none of its own.
+            let depth: (bool, wgpu::CompareFunction, wgpu::DepthBiasState) = match batch.class {
+              class if class.is_composited() => (true, wgpu::CompareFunction::GreaterEqual, COMPOSITED_DEPTH_BIAS),
+              StaticClass::CutOut if !is_pick => (false, wgpu::CompareFunction::Equal, wgpu::DepthBiasState::default()),
+              _ => (true, wgpu::CompareFunction::Greater, wgpu::DepthBiasState::default()),
             };
 
-            create_checked(device, "static g-buffer", || {
-              device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                label: Some("static g-buffer"),
-                layout: Some(&pipeline_layout),
-                vertex: wgpu::VertexState {
-                  module: &module,
-                  entry_point: Some(vertex),
-                  compilation_options: Default::default(),
-                  buffers: &[],
-                },
-                fragment: Some(wgpu::FragmentState {
-                  module: &module,
-                  entry_point: Some(fragment),
-                  compilation_options: wgpu::PipelineCompilationOptions {
-                    constants: &constants,
-                    ..Default::default()
-                  },
-                  targets: if is_pick { &pick_targets } else { &targets },
-                }),
-                // The packer reversed the winding with the z axis it flipped, so front faces wind counter clockwise.
-                primitive: wgpu::PrimitiveState {
-                  front_face: wgpu::FrontFace::Ccw,
-                  cull_mode: Some(wgpu::Face::Back),
-                  ..Default::default()
-                },
-                depth_stencil: Some(wgpu::DepthStencilState {
-                  format: ViewTargets::DEPTH,
-                  depth_write_enabled: Some(is_written),
-                  depth_compare: Some(depth_compare),
-                  stencil: Default::default(),
-                  bias,
-                }),
-                multisample: Default::default(),
-                multiview_mask: None,
-                cache: source.get_driver_cache(),
-              })
-            })
+            create_one(
+              "static g-buffer",
+              (batch.layout.get_vertex_entry(), fragment, &constants),
+              if is_pick { &pick_targets } else { &targets },
+              depth,
+            )
           })
           .collect()
       };
@@ -305,49 +292,19 @@ impl StaticGBufferPass {
       })
       .collect();
     let create_prepasses = |is_inspected: bool| -> XrfResult<Vec<Option<wgpu::RenderPipeline>>> {
-      let constants: [(&str, f64); 1] = [("IS_INSPECTED", f64::from(u8::from(is_inspected)))];
+      let constants: [(&'static str, f64); 1] = [("IS_INSPECTED", f64::from(u8::from(is_inspected)))];
 
       deferred
         .iter()
         .map(|batch| {
           (batch.class == StaticClass::CutOut)
             .then(|| {
-              create_checked(device, "static g-buffer depth", || {
-                device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                  label: Some("static g-buffer depth"),
-                  layout: Some(&pipeline_layout),
-                  vertex: wgpu::VertexState {
-                    module: &module,
-                    entry_point: Some(batch.layout.get_vertex_entry()),
-                    compilation_options: Default::default(),
-                    buffers: &[],
-                  },
-                  fragment: Some(wgpu::FragmentState {
-                    module: &module,
-                    entry_point: Some("fs_depth_cut_out"),
-                    compilation_options: wgpu::PipelineCompilationOptions {
-                      constants: &constants,
-                      ..Default::default()
-                    },
-                    targets: &untouched,
-                  }),
-                  primitive: wgpu::PrimitiveState {
-                    front_face: wgpu::FrontFace::Ccw,
-                    cull_mode: Some(wgpu::Face::Back),
-                    ..Default::default()
-                  },
-                  depth_stencil: Some(wgpu::DepthStencilState {
-                    format: ViewTargets::DEPTH,
-                    depth_write_enabled: Some(true),
-                    depth_compare: Some(wgpu::CompareFunction::Greater),
-                    stencil: Default::default(),
-                    bias: Default::default(),
-                  }),
-                  multisample: Default::default(),
-                  multiview_mask: None,
-                  cache: source.get_driver_cache(),
-                })
-              })
+              create_one(
+                "static g-buffer depth",
+                (batch.layout.get_vertex_entry(), "fs_depth_cut_out", &constants),
+                &untouched,
+                (true, wgpu::CompareFunction::Greater, wgpu::DepthBiasState::default()),
+              )
             })
             .transpose()
         })

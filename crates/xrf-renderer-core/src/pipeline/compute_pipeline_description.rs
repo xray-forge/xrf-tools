@@ -8,8 +8,8 @@ pub struct ComputePipelineDescription {
   pub module: &'static str,
   pub entry_point: &'static str,
   pub constants: PipelineConstants,
-  /// Its bind group layouts by index, from `BindGroupCache::get_layout`, compared by identity.
-  pub bind_group_layouts: Vec<wgpu::BindGroupLayout>,
+  /// Its bind group layouts by index, a gap where a slot binds nothing, compared by identity.
+  pub bind_group_layouts: Vec<Option<wgpu::BindGroupLayout>>,
 }
 
 impl ComputePipelineDescription {
@@ -34,8 +34,9 @@ impl ComputePipelineDescription {
     self
   }
 
-  pub fn with_bind_group_layouts(mut self, layouts: Vec<wgpu::BindGroupLayout>) -> Self {
-    self.bind_group_layouts = layouts;
+  /// Its bind group layouts by index, a gap where a slot binds nothing.
+  pub fn with_bind_group_layouts(mut self, layouts: &[Option<&wgpu::BindGroupLayout>]) -> Self {
+    self.bind_group_layouts = layouts.iter().map(|layout| layout.cloned()).collect();
     self
   }
 }

@@ -52,7 +52,7 @@ impl SmaaPass {
     let area_texels: Vec<u8> = area.pixels().flat_map(|it| [it.0[0], it.0[1]]).collect();
 
     Ok(Self {
-      pipelines: Self::create_pipelines(device, source, &layout)?,
+      pipelines: Self::create_pipelines(source, &layout)?,
       area: create_lookup(
         device,
         queue,
@@ -83,11 +83,11 @@ impl SmaaPass {
     })
   }
 
-  pub fn refresh(&mut self, device: &wgpu::Device, source: PipelineSource<'_>) {
+  pub fn refresh(&mut self, source: PipelineSource<'_>) {
     if source.get_generation() != self.generation {
       self.generation = source.get_generation();
 
-      match Self::create_pipelines(device, source, &self.layout) {
+      match Self::create_pipelines(source, &self.layout) {
         Ok(pipelines) => self.pipelines = pipelines,
         Err(error) => log::error!("SMAA rejected, smoothing with the last one: {error}"),
       }
@@ -112,12 +112,11 @@ impl SmaaPass {
   }
 
   fn create_pipelines(
-    device: &wgpu::Device,
     source: PipelineSource<'_>,
     layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<[wgpu::RenderPipeline; 3]> {
-    let create = |fragment: &str, format: wgpu::TextureFormat| {
-      create_fullscreen_pipeline(device, source, "frame/smaa", fragment, &[Some(layout)], format)
+    let create = |fragment: &'static str, format: wgpu::TextureFormat| {
+      create_fullscreen_pipeline(source, "frame/smaa", fragment, &[Some(layout)], format)
     };
 
     Ok([

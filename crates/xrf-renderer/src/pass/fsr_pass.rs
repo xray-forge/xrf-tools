@@ -1,7 +1,7 @@
 use xrf_error::XrfResult;
 use xrf_renderer_core::{
-  FrameGraph, GraphBindings, GraphBuffer, GraphBufferAccess, GraphColorAttachment, GraphRuntime, GraphTexture,
-  PassParameters, StorageArray, StorageArrayMut, UniformBinding,
+  ComputePipelineDescription, FrameGraph, GraphBindings, GraphBuffer, GraphBufferAccess, GraphColorAttachment,
+  GraphRuntime, GraphTexture, PassParameters, StorageArray, StorageArrayMut, UniformBinding,
 };
 
 use crate::frame::fsr_frame::FsrFrame;
@@ -18,7 +18,6 @@ use crate::pass::fsr_reconstruct_parameters::FsrReconstructParameters;
 use crate::pass::fsr_uniform::FsrUniform;
 use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline_into;
 use crate::pass::pipeline_source::PipelineSource;
-use crate::pass::shader_pipelines::create_checked;
 
 /// Drawn texels a side of one workgroup of the depth reconstruction.
 const RECONSTRUCT_WORKGROUP: u32 = 8;
@@ -79,7 +78,7 @@ impl FsrPass {
     let layouts: FsrLayouts = FsrLayouts::new(device);
 
     Ok(Self {
-      pipelines: Self::create_pipelines(device, source, &layouts)?,
+      pipelines: Self::create_pipelines(source, &layouts)?,
       layouts,
       sampler: device.create_sampler(&wgpu::SamplerDescriptor {
         label: Some("fsr2"),
@@ -91,11 +90,11 @@ impl FsrPass {
     })
   }
 
-  pub fn refresh(&mut self, device: &wgpu::Device, source: PipelineSource<'_>) {
+  pub fn refresh(&mut self, source: PipelineSource<'_>) {
     if source.get_generation() != self.generation {
       self.generation = source.get_generation();
 
-      match Self::create_pipelines(device, source, &self.layouts) {
+      match Self::create_pipelines(source, &self.layouts) {
         Ok(pipelines) => self.pipelines = pipelines,
         Err(error) => log::error!("FSR 2 rejected, upscaling with the last one: {error}"),
       }
@@ -103,8 +102,8 @@ impl FsrPass {
   }
 
   /// Declares FSR 2's stages, which leave the upscaled frame in this frame's history: the reconstruction's buffer
-  /// cleared (`ClearResourcesForNextFrame`, run before the reconstruction rather than after the lock: the far plane, zero
-  /// reversed), the luma, the reconstruction, the dilation, the reactive mask, the depth clip, the locks and the
+  /// cleared (`ClearResourcesForNextFrame`, run before the reconstruction rather than after the lock: the far plane,
+  /// zero reversed), the luma, the reconstruction, the dilation, the reactive mask, the depth clip, the locks and the
   /// accumulation, each full-screen stage into its targets cleared first.
   pub fn add_passes<'a>(
     &'a self,
@@ -280,25 +279,15 @@ impl FsrPass {
       });
   }
 
-  fn create_pipelines(
-    device: &wgpu::Device,
-    source: PipelineSource<'_>,
-    layouts: &FsrLayouts,
-  ) -> XrfResult<FsrPipelines> {
-    let draw =
-      |module: &'static str, fragment: &str, layout: &wgpu::BindGroupLayout, formats: &[wgpu::TextureFormat]| {
-        let targets: Vec<Option<wgpu::ColorTargetState>> =
-          formats.iter().map(|format| Some((*format).into())).collect();
+  fn create_pipelines(source: PipelineSource<'_>, layouts: &FsrLayouts) -> XrfResult<FsrPipelines> {
+    let draw = |module: &'static str,
+                fragment: &'static str,
+                layout: &wgpu::BindGroupLayout,
+                formats: &[wgpu::TextureFormat]| {
+      let targets: Vec<Option<wgpu::ColorTargetState>> = formats.iter().map(|format| Some((*format).into())).collect();
 
-        create_fullscreen_pipeline_into(device, source, module, fragment, &[Some(layout)], &targets)
-      };
-    let module: wgpu::ShaderModule = source.get_module("frame/fsr/reconstruct")?;
-    let reconstruct_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-      label: Some("fsr2 reconstruct"),
-      bind_group_layouts: &[Some(&layouts.reconstruct)],
-      ..Default::default()
-    });
-
+      create_fullscreen_pipeline_into(source, module, fragment, &[Some(layout)], &targets)
+    };
     Ok(FsrPipelines {
       luma_first: draw(
         "frame/fsr/luma_first",
@@ -312,16 +301,10 @@ impl FsrPass {
         &layouts.luma_shading,
         &[FsrTargets::LUMA],
       )?,
-      reconstruct: create_checked(device, "fsr2 reconstruct", || {
-        device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-          label: Some("fsr2 reconstruct"),
-          layout: Some(&reconstruct_layout),
-          module: &module,
-          entry_point: Some("cs_reconstruct"),
-          compilation_options: Default::default(),
-          cache: source.get_driver_cache(),
-        })
-      })?,
+      reconstruct: source.get_compute_pipeline(
+        &ComputePipelineDescription::new("fsr2 reconstruct", "frame/fsr/reconstruct", "cs_reconstruct")
+          .with_bind_group_layouts(&[Some(&layouts.reconstruct)]),
+      )?,
       dilate: draw(
         "frame/fsr/dilate",
         "fs_dilate",

@@ -1,5 +1,7 @@
 use xrf_error::XrfResult;
-use xrf_renderer_core::{ComputeContext, PassParameters, RasterContext};
+use xrf_renderer_core::{
+  ComputeContext, ComputePipelineDescription, PassParameters, RasterContext, RenderPipelineDescription,
+};
 
 use crate::context::gpu_requirements::can_trace;
 use crate::frame::view_targets::ViewTargets;
@@ -10,7 +12,6 @@ use crate::pass::light_tracing_parameters::LightTracingParameters;
 use crate::pass::light_visibility_parameters::LightVisibilityParameters;
 use crate::pass::lights_parameters::LightsParameters;
 use crate::pass::pipeline_source::PipelineSource;
-use crate::pass::shader_pipelines::create_checked;
 use crate::pass::trace_parameters::TraceParameters;
 use crate::pass::view_binding::ViewBinding;
 
@@ -92,7 +93,6 @@ impl LightsPass {
     let tracing_layout: wgpu::BindGroupLayout = LightTracingParameters::create_layout(device);
     let trace_layout: Option<wgpu::BindGroupLayout> = can_trace(device).then(|| TraceParameters::create_layout(device));
     let pipelines: LightsPipelines = Self::create_pipelines(
-      device,
       source,
       &binning_layout,
       [view_layout, &layout, texture_layout],
@@ -147,12 +147,11 @@ impl LightsPass {
     })
   }
 
-  pub fn refresh(&mut self, device: &wgpu::Device, source: PipelineSource<'_>) {
+  pub fn refresh(&mut self, source: PipelineSource<'_>) {
     if source.get_generation() != self.generation {
       self.generation = source.get_generation();
 
       match Self::create_pipelines(
-        device,
         source,
         &self.binning_layout,
         [&self.view_layout, &self.layout, &self.texture_layout],
@@ -284,107 +283,40 @@ impl LightsPass {
   }
 
   fn create_pipelines(
-    device: &wgpu::Device,
     source: PipelineSource<'_>,
     binning_layout: &wgpu::BindGroupLayout,
     [view_layout, layout, texture_layout]: [&wgpu::BindGroupLayout; 3],
     [contact_layout, shadowing_layout, visibility_layout]: [&wgpu::BindGroupLayout; 3],
     (tracing_layout, trace_layout): (&wgpu::BindGroupLayout, Option<&wgpu::BindGroupLayout>),
   ) -> XrfResult<LightsPipelines> {
-    let binning_module: wgpu::ShaderModule = source.get_module("frame/light_binning")?;
-    let contact_module: wgpu::ShaderModule = source.get_module("frame/light_contact")?;
-    let visibility_module: wgpu::ShaderModule = source.get_module("frame/light_visibility")?;
-    let module: wgpu::ShaderModule = source.get_module("frame/lights")?;
-    let binning_pipeline_layout: wgpu::PipelineLayout =
-      device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-        label: Some("light binning"),
-        bind_group_layouts: &[Some(binning_layout)],
-        ..Default::default()
-      });
-    let contact_pipeline_layout: wgpu::PipelineLayout =
-      device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-        label: Some("light contact"),
-        bind_group_layouts: &[Some(view_layout), Some(layout), None, Some(contact_layout)],
-        ..Default::default()
-      });
-    let visibility_pipeline_layout: wgpu::PipelineLayout =
-      device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-        label: Some("light visibility"),
-        bind_group_layouts: &[Some(view_layout), Some(layout), None, Some(shadowing_layout)],
-        ..Default::default()
-      });
-    let pipeline_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-      label: Some("lights"),
-      bind_group_layouts: &[
-        Some(view_layout),
-        Some(layout),
-        Some(texture_layout),
-        Some(visibility_layout),
-      ],
-      ..Default::default()
-    });
-    let binning: wgpu::ComputePipeline = create_checked(device, "light binning", || {
-      device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-        label: Some("light binning"),
-        layout: Some(&binning_pipeline_layout),
-        module: &binning_module,
-        entry_point: Some("bin"),
-        compilation_options: Default::default(),
-        cache: source.get_driver_cache(),
-      })
-    })?;
-    let contact: wgpu::ComputePipeline = create_checked(device, "light contact", || {
-      device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-        label: Some("light contact"),
-        layout: Some(&contact_pipeline_layout),
-        module: &contact_module,
-        entry_point: Some("cs_light_contact"),
-        compilation_options: Default::default(),
-        cache: source.get_driver_cache(),
-      })
-    })?;
+    let binning: wgpu::ComputePipeline = source.get_compute_pipeline(
+      &ComputePipelineDescription::new("light binning", "frame/light_binning", "bin")
+        .with_bind_group_layouts(&[Some(binning_layout)]),
+    )?;
+    let contact: wgpu::ComputePipeline = source.get_compute_pipeline(
+      &ComputePipelineDescription::new("light contact", "frame/light_contact", "cs_light_contact")
+        .with_bind_group_layouts(&[Some(view_layout), Some(layout), None, Some(contact_layout)]),
+    )?;
     let constants = |is_contact: bool| [("CONTACT_MARCHED", f64::from(u8::from(is_contact)))];
     let create_visibility = |is_contact: bool| -> XrfResult<wgpu::ComputePipeline> {
-      create_checked(device, "light visibility", || {
-        device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-          label: Some("light visibility"),
-          layout: Some(&visibility_pipeline_layout),
-          module: &visibility_module,
-          entry_point: Some("cs_visibility"),
-          compilation_options: wgpu::PipelineCompilationOptions {
-            constants: &constants(is_contact),
-            ..Default::default()
-          },
-          cache: source.get_driver_cache(),
-        })
-      })
+      source.get_compute_pipeline(
+        &ComputePipelineDescription::new("light visibility", "frame/light_visibility", "cs_visibility")
+          .with_constants(&constants(is_contact))
+          .with_bind_group_layouts(&[Some(view_layout), Some(layout), None, Some(shadowing_layout)]),
+      )
     };
     let traced: Option<wgpu::ComputePipeline> = trace_layout
-      .map(|trace_layout| -> XrfResult<wgpu::ComputePipeline> {
-        let tracing_module: wgpu::ShaderModule = source.get_module("frame/light_tracing")?;
-        let tracing_pipeline_layout: wgpu::PipelineLayout =
-          device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("light tracing"),
-            bind_group_layouts: &[
+      .map(|trace_layout| {
+        source.get_compute_pipeline(
+          &ComputePipelineDescription::new("light tracing", "frame/light_tracing", "cs_visibility_traced")
+            .with_bind_group_layouts(&[
               Some(view_layout),
               Some(layout),
               Some(tracing_layout),
               Some(trace_layout),
               Some(texture_layout),
-            ],
-            ..Default::default()
-          });
-
-        create_checked(device, "light tracing", || {
-          device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("light tracing"),
-            layout: Some(&tracing_pipeline_layout),
-            module: &tracing_module,
-            entry_point: Some("cs_visibility_traced"),
-            compilation_options: Default::default(),
-            cache: source.get_driver_cache(),
-          })
-        })
+            ]),
+        )
       })
       .transpose()?;
     let additive: wgpu::BlendComponent = wgpu::BlendComponent {
@@ -393,39 +325,25 @@ impl LightsPass {
       operation: wgpu::BlendOperation::Add,
     };
     let create_draw = |is_contact: bool| -> XrfResult<wgpu::RenderPipeline> {
-      create_checked(device, "lights", || {
-        device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-          label: Some("lights"),
-          layout: Some(&pipeline_layout),
-          vertex: wgpu::VertexState {
-            module: &module,
-            entry_point: Some("vs_fullscreen"),
-            compilation_options: Default::default(),
-            buffers: &[],
-          },
-          fragment: Some(wgpu::FragmentState {
-            module: &module,
-            entry_point: Some("fs_lights"),
-            compilation_options: wgpu::PipelineCompilationOptions {
-              constants: &constants(is_contact),
-              ..Default::default()
-            },
-            targets: &[Some(wgpu::ColorTargetState {
-              format: ViewTargets::LIGHT,
-              blend: Some(wgpu::BlendState {
-                color: additive,
-                alpha: additive,
-              }),
-              write_mask: wgpu::ColorWrites::ALL,
-            })],
+      source.get_render_pipeline(
+        &RenderPipelineDescription::new("lights", "frame/lights", "vs_fullscreen")
+          .with_fragment("fs_lights")
+          .with_constants(&constants(is_contact))
+          .with_bind_group_layouts(&[
+            Some(view_layout),
+            Some(layout),
+            Some(texture_layout),
+            Some(visibility_layout),
+          ])
+          .with_target(wgpu::ColorTargetState {
+            format: ViewTargets::LIGHT,
+            blend: Some(wgpu::BlendState {
+              color: additive,
+              alpha: additive,
+            }),
+            write_mask: wgpu::ColorWrites::ALL,
           }),
-          primitive: Default::default(),
-          depth_stencil: None,
-          multisample: Default::default(),
-          multiview_mask: None,
-          cache: source.get_driver_cache(),
-        })
-      })
+      )
     };
 
     Ok(LightsPipelines {

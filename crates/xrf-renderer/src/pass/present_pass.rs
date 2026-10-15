@@ -51,15 +51,9 @@ impl PresentPass {
   /// # Errors
   ///
   /// Returns an error when the shader does not compose or compile.
-  pub fn prepare(
-    &mut self,
-    device: &wgpu::Device,
-    source: PipelineSource<'_>,
-    format: wgpu::TextureFormat,
-  ) -> XrfResult {
+  pub fn prepare(&mut self, source: PipelineSource<'_>, format: wgpu::TextureFormat) -> XrfResult {
     if !self.pipelines.contains_key(&format) {
       let pipeline: wgpu::RenderPipeline = create_fullscreen_pipeline(
-        device,
         source,
         "frame/present",
         "fs_present",

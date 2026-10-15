@@ -24,17 +24,17 @@ impl UpscalePass {
     let layout: wgpu::BindGroupLayout = UpscaleParameters::create_layout(device);
 
     Ok(Self {
-      pipelines: Self::create_pipelines(device, source, &layout)?,
+      pipelines: Self::create_pipelines(source, &layout)?,
       generation: source.get_generation(),
       layout,
     })
   }
 
-  pub fn refresh(&mut self, device: &wgpu::Device, source: PipelineSource<'_>) {
+  pub fn refresh(&mut self, source: PipelineSource<'_>) {
     if source.get_generation() != self.generation {
       self.generation = source.get_generation();
 
-      match Self::create_pipelines(device, source, &self.layout) {
+      match Self::create_pipelines(source, &self.layout) {
         Ok(pipelines) => self.pipelines = pipelines,
         Err(error) => log::error!("Upscaling rejected, upscaling with the last one: {error}"),
       }
@@ -56,12 +56,11 @@ impl UpscalePass {
   }
 
   fn create_pipelines(
-    device: &wgpu::Device,
     source: PipelineSource<'_>,
     layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<[wgpu::RenderPipeline; 3]> {
-    let create = |fragment: &str| {
-      create_fullscreen_pipeline(device, source, "frame/upscale", fragment, &[Some(layout)], Self::FORMAT)
+    let create = |fragment: &'static str| {
+      create_fullscreen_pipeline(source, "frame/upscale", fragment, &[Some(layout)], Self::FORMAT)
     };
 
     Ok([create("fs_easu")?, create("fs_rcas")?, create("fs_downsample")?])

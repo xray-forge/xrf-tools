@@ -79,14 +79,8 @@ impl BackdropPass {
     }
 
     if !self.pipelines.contains_key(&format) {
-      let pipeline: wgpu::RenderPipeline = create_fullscreen_pipeline(
-        device,
-        source,
-        "frame/backdrop",
-        "fs_backdrop",
-        &[Some(&self.layout)],
-        format,
-      )?;
+      let pipeline: wgpu::RenderPipeline =
+        create_fullscreen_pipeline(source, "frame/backdrop", "fs_backdrop", &[Some(&self.layout)], format)?;
 
       self.pipelines.insert(format, pipeline);
     }

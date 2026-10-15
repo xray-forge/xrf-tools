@@ -32,18 +32,18 @@ impl SunShaftsPass {
     let layout: wgpu::BindGroupLayout = SunShaftsParameters::create_layout(device);
 
     Ok(Self {
-      pipelines: Self::create_pipelines(device, source, view_layout, &layout)?,
+      pipelines: Self::create_pipelines(source, view_layout, &layout)?,
       view_layout: view_layout.clone(),
       generation: source.get_generation(),
       layout,
     })
   }
 
-  pub fn refresh(&mut self, device: &wgpu::Device, source: PipelineSource<'_>) {
+  pub fn refresh(&mut self, source: PipelineSource<'_>) {
     if source.get_generation() != self.generation {
       self.generation = source.get_generation();
 
-      match Self::create_pipelines(device, source, &self.view_layout, &self.layout) {
+      match Self::create_pipelines(source, &self.view_layout, &self.layout) {
         Ok(pipelines) => self.pipelines = pipelines,
         Err(error) => log::error!("Sun shafts rejected, drawing with the last ones: {error}"),
       }
@@ -68,7 +68,6 @@ impl SunShaftsPass {
   }
 
   fn create_pipelines(
-    device: &wgpu::Device,
     source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     layout: &wgpu::BindGroupLayout,
@@ -92,7 +91,6 @@ impl SunShaftsPass {
 
     Ok([
       create_fullscreen_pipeline_into(
-        device,
         source,
         "frame/sun_shafts",
         "fs_sun_shafts_march",
@@ -100,7 +98,6 @@ impl SunShaftsPass {
         &[Some(Self::MARCHED.into())],
       )?,
       create_fullscreen_pipeline_into(
-        device,
         source,
         "frame/sun_shafts",
         "fs_sun_shafts",
