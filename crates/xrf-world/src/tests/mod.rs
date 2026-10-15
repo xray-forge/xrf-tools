@@ -3,6 +3,7 @@ mod ambient_wind;
 mod cameras;
 pub(crate) mod fixtures;
 mod level_loader;
+mod level_streaming;
 mod placed_emitter;
 mod scenes;
 mod surface_tally;
