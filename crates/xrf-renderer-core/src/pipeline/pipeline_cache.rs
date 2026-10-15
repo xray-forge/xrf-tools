@@ -279,7 +279,12 @@ impl PipelineCache {
       // SAFETY: every module is the renderer's own. Its loops each end (a counted bound, a float bound a NaN also
       // ends, or a ray query's traversal), and its storage buffers are bound through descriptors, which both backends
       // bound-check in hardware (D3D12's views, Vulkan's robust buffer access), as they do image loads; the dynamic
-      // uniforms are read at fixed fields and constant-bounded indices. Division and ray queries stay guarded.
+      // uniforms are read at fixed fields and constant-bounded indices. A texture binding array, which no hardware
+      // checks and which is bound only up to the slots handed out, is indexed only by slots the renderer itself wrote
+      // into its surface, model and light records from what its texture cache handed out; level data reaches it only
+      // as an index into those records, a storage buffer. Workgroup arrays are indexed by the invocation's own index
+      // within a workgroup their size, and function-local arrays by vertex and lane counts the renderer draws and
+      // dispatches. Division and ray queries stay guarded.
       unsafe {
         device.create_shader_module_trusted(
           wgpu::ShaderModuleDescriptor {
