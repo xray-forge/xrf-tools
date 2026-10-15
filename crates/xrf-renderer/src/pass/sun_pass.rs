@@ -5,7 +5,7 @@ use xrf_renderer_core::{PassParameters, RasterContext};
 use crate::contract::render_shadow_settings::RENDER_MAX_SHADOW_CASCADES;
 use crate::frame::sun_shadow_maps::SunShadowMaps;
 use crate::frame::view_targets::ViewTargets;
-use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline_into;
+use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline_with;
 use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::sun_parameters::SunParameters;
 use crate::pass::sun_trace_pass::SunTracePass;
@@ -20,14 +20,18 @@ pub struct SunPass {
   /// A lit texel, which the frame binds where the sun's shadow is not traced.
   untraced: wgpu::TextureView,
   view_layout: wgpu::BindGroupLayout,
-  /// Shadowed by the cascades, then by the traced shadow.
-  pipelines: [wgpu::RenderPipeline; 2],
+  /// Shadowed by the cascades, then by the traced shadow, for each width the cascades' filter reaches (`MAX_REACH`
+  /// apart), so its loops compile to their count.
+  pipelines: [[wgpu::RenderPipeline; 2]; Self::REACHES],
   generation: u64,
 }
 
 impl SunPass {
   /// How much of the sun reaches a pixel, past its shadow, its contact shadow and its relief.
   pub const SEEN_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::R8Unorm;
+
+  /// The filter's widths there are pipelines for: none to three texels each way, as the settings offer.
+  const REACHES: usize = 4;
 
   /// The sun's maps with nothing in them, which the frame binds while no cascade is drawn.
   pub fn get_unshadowed(&self) -> &wgpu::TextureView {
@@ -110,19 +114,19 @@ impl SunPass {
   }
 
   /// Lights the G-buffer by the sun into the light target the pass draws into, shadowed by its traced shadow where
-  /// `is_traced`.
+  /// `is_traced`, its cascades filtered `filter_reach` texels each way.
   pub fn record(
     &self,
     context: &mut RasterContext<'_>,
     view: &ViewBinding,
     parameters: &SunParameters<'_>,
-    is_traced: bool,
+    (is_traced, filter_reach): (bool, u32),
   ) {
     context.bind(parameters);
 
     let pass: &mut wgpu::RenderPass<'static> = context.get_pass();
 
-    pass.set_pipeline(&self.pipelines[usize::from(is_traced)]);
+    pass.set_pipeline(&self.pipelines[(filter_reach as usize).min(Self::REACHES - 1)][usize::from(is_traced)]);
     pass.set_bind_group(0, &view.bind_group, &[]);
     pass.draw(0..3, 0..1);
   }
@@ -132,18 +136,20 @@ impl SunPass {
     source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     layout: &wgpu::BindGroupLayout,
-  ) -> XrfResult<[wgpu::RenderPipeline; 2]> {
-    let create = |entry: &str| {
-      create_fullscreen_pipeline_into(
+  ) -> XrfResult<[[wgpu::RenderPipeline; 2]; Self::REACHES]> {
+    let create = |entry: &str, reach: usize| {
+      create_fullscreen_pipeline_with(
         device,
         source,
-        "frame/sun",
-        entry,
+        ("frame/sun", entry, &[("SUN_FILTER_REACH", reach as f64)]),
         &[Some(view_layout), Some(layout)],
         &[Some(ViewTargets::LIGHT.into()), Some(Self::SEEN_FORMAT.into())],
       )
     };
+    let pair = |reach: usize| -> XrfResult<[wgpu::RenderPipeline; 2]> {
+      Ok([create("fs_sun", reach)?, create("fs_sun_traced", reach)?])
+    };
 
-    Ok([create("fs_sun")?, create("fs_sun_traced")?])
+    Ok([pair(0)?, pair(1)?, pair(2)?, pair(3)?])
   }
 }

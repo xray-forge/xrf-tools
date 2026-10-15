@@ -25,6 +25,17 @@ pub fn create_fullscreen_pipeline_into(
   layouts: &[Option<&wgpu::BindGroupLayout>],
   targets: &[Option<wgpu::ColorTargetState>],
 ) -> XrfResult<wgpu::RenderPipeline> {
+  create_fullscreen_pipeline_with(device, source, (module, fragment, &[]), layouts, targets)
+}
+
+/// `create_fullscreen_pipeline_into` with the fragment's override constants named and valued (`constants`).
+pub fn create_fullscreen_pipeline_with(
+  device: &wgpu::Device,
+  source: PipelineSource<'_>,
+  (module, fragment, constants): (&'static str, &str, &[(&str, f64)]),
+  layouts: &[Option<&wgpu::BindGroupLayout>],
+  targets: &[Option<wgpu::ColorTargetState>],
+) -> XrfResult<wgpu::RenderPipeline> {
   let shader: wgpu::ShaderModule = source.get_module(module)?;
   let pipeline_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
     label: Some(module),
@@ -45,7 +56,10 @@ pub fn create_fullscreen_pipeline_into(
       fragment: Some(wgpu::FragmentState {
         module: &shader,
         entry_point: Some(fragment),
-        compilation_options: Default::default(),
+        compilation_options: wgpu::PipelineCompilationOptions {
+          constants,
+          ..Default::default()
+        },
         targets,
       }),
       primitive: Default::default(),
