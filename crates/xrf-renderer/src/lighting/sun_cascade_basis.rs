@@ -15,9 +15,10 @@ pub struct SunCascadeBasis {
 }
 
 impl SunCascadeBasis {
-  /// The axes for light travelling along a direction.
+  /// The axes for light travelling along a direction; a zero one, which points nowhere, stands straight down, so the
+  /// axes stay finite.
   pub fn new(direction: Vec3) -> Self {
-    let light: Vec3 = direction.normalize_or_zero();
+    let light: Vec3 = direction.try_normalize().unwrap_or(Vec3::NEG_Y);
     let mut right: Vec3 = Vec3::X;
 
     if right.dot(light).abs() > 0.99 {

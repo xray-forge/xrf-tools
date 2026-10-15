@@ -2,6 +2,7 @@ use glam::{Vec3, Vec4};
 
 use crate::camera::camera_view::CameraView;
 use crate::lighting::sun_cascade::SunCascade;
+use crate::lighting::sun_cascade_basis::SunCascadeBasis;
 use crate::lighting::sun_view_rays::SunViewRays;
 
 const DOWN: Vec3 = Vec3::new(0.0, -1.0, 0.0);
@@ -304,4 +305,13 @@ fn sun_cascade_rows_land_where_the_whole_map_s_would() {
   }
 
   assert_eq!(tested, 4);
+}
+
+#[test]
+fn sun_cascade_basis_stays_finite_for_a_sun_pointing_nowhere() {
+  let basis: SunCascadeBasis = SunCascadeBasis::new(Vec3::ZERO);
+
+  assert_eq!(basis.light, DOWN);
+  assert!(basis.right.is_finite() && basis.up.is_finite());
+  assert!((basis.right.length() - 1.0).abs() < 1e-5 && (basis.up.length() - 1.0).abs() < 1e-5);
 }
