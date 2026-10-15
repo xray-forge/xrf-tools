@@ -299,11 +299,11 @@ describe("level weather key actions", () => {
     rerender(render(enhanced));
 
     expect(getByRole("checkbox", { name: "Puddles" })).toBeChecked();
-    expect(getByRole("slider", { name: "Puddles" })).toHaveAttribute("aria-valuetext", "100%");
+    expect(getByRole("slider", { name: "Puddles" })).toHaveAttribute("aria-valuetext", "50%");
     expect(getByRole("slider", { name: "Reflectivity" })).toHaveAttribute("aria-valuetext", "40%");
     expect(getByRole("slider", { name: "Distance" })).toHaveAttribute("aria-valuetext", "300 m");
     expect(getByRole("button", { hidden: true, name: "Rain" })).toHaveAccessibleDescription(
-      "No rain, no thunder, puddles at 100% of the sites"
+      "No rain, no thunder, puddles at 50% of the sites"
     );
 
     await userEvent.click(getByRole("button", { name: "Back to the settings for the puddles" }));
@@ -462,7 +462,7 @@ describe("level weather key actions", () => {
     rerender(render(ERenderFogMode.ENHANCED));
 
     expect(getByRole("slider", { name: "Height" })).toHaveAttribute("aria-valuetext", "8.0 m");
-    expect(getByRole("slider", { name: "Density" })).toHaveAttribute("aria-valuetext", "+156%");
+    expect(getByRole("slider", { name: "Density" })).toHaveAttribute("aria-valuetext", "+40%");
     expect(getByRole("slider", { name: "Scattering" })).toHaveAttribute("aria-valuetext", "0%");
 
     await userEvent.click(getByRole("button", { name: "Back to the settings for the fog" }));
