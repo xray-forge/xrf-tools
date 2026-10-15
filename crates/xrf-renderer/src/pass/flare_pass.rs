@@ -30,20 +30,14 @@ impl FlarePass {
   /// # Errors
   ///
   /// Returns an error when a shader does not compose or compile.
-  pub fn new(
-    device: &wgpu::Device,
-    source: PipelineSource<'_>,
-    view_layout: &wgpu::BindGroupLayout,
-  ) -> XrfResult<Self> {
+  pub fn new(source: PipelineSource<'_>, view_layout: &wgpu::BindGroupLayout) -> XrfResult<Self> {
+    let device: &wgpu::Device = source.device;
+
     let measure_layout: wgpu::BindGroupLayout = FlareMeasureParameters::create_layout(device);
     let draw_layout: wgpu::BindGroupLayout = FlareDrawParameters::create_layout(device);
     let texture_layout: wgpu::BindGroupLayout = FlareTextureParameters::create_layout(device);
-    let (measure, draw) = Self::create_pipelines(
-      device,
-      source,
-      view_layout,
-      [&measure_layout, &draw_layout, &texture_layout],
-    )?;
+    let (measure, draw) =
+      Self::create_pipelines(source, view_layout, [&measure_layout, &draw_layout, &texture_layout])?;
 
     Ok(Self {
       sampler: device.create_sampler(&wgpu::SamplerDescriptor {
@@ -63,12 +57,11 @@ impl FlarePass {
     })
   }
 
-  pub fn refresh(&mut self, device: &wgpu::Device, source: PipelineSource<'_>) {
+  pub fn refresh(&mut self, source: PipelineSource<'_>) {
     if source.get_generation() != self.generation {
       self.generation = source.get_generation();
 
       match Self::create_pipelines(
-        device,
         source,
         &self.view_layout,
         [&self.measure_layout, &self.draw_layout, &self.texture_layout],
@@ -119,11 +112,12 @@ impl FlarePass {
   }
 
   fn create_pipelines(
-    device: &wgpu::Device,
     source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     [measure_layout, draw_layout, texture_layout]: [&wgpu::BindGroupLayout; 3],
   ) -> XrfResult<(wgpu::ComputePipeline, wgpu::RenderPipeline)> {
+    let device: &wgpu::Device = source.device;
+
     let draw_module: wgpu::ShaderModule = source.get_module("frame/flare")?;
     let draw_pipeline_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
       label: Some("flare"),

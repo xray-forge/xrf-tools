@@ -1148,7 +1148,7 @@ impl RenderThread {
         continue;
       };
 
-      view.commit_periodic(scene, &gpu.context.device, encoder, &self.periodic, &gpu.textures);
+      view.commit_periodic(scene, &gpu.context.device, encoder, &self.periodic);
     }
 
     for (scene_id, id) in firsts {
@@ -1159,7 +1159,7 @@ impl RenderThread {
         continue;
       };
 
-      view.commit_scene_shadows(scene, &gpu.context.device, encoder, &gpu.textures, &self.periodic);
+      view.commit_scene_shadows(scene, &gpu.context.device, encoder, &self.periodic);
     }
   }
 
@@ -1178,7 +1178,6 @@ impl RenderThread {
       }
 
       if let Err(error) = gpu.overlay.prepare(
-        &gpu.context.device,
         PipelineSource {
           cache: &gpu.pipelines,
           device: &gpu.context.device,
@@ -1778,7 +1777,7 @@ impl RenderThread {
           weather_rate: world.clock_rate,
         },
       );
-      view_state.offer_periodic(scene, device, periodic, (&gpu.view_layout, &gpu.textures));
+      view_state.offer_periodic(scene, device, periodic, &gpu.view_layout);
     }
     *prepare += preparing.elapsed();
 

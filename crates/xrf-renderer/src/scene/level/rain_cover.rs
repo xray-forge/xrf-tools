@@ -61,11 +61,6 @@ impl RainCover {
     self.map.abandon_frame();
   }
 
-  /// Draws nothing this frame.
-  pub fn rest(&mut self) {
-    self.map.rest();
-  }
-
   /// Its centre in `x` and `z`, its half width, and the height it is seen from.
   pub fn get_window(&self) -> Vec4 {
     self.map.get_window()

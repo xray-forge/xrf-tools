@@ -27,9 +27,6 @@ pub struct ViewTargets {
   pub light: wgpu::TextureView,
   /// The scene combine finished, tonemapped, before it is put into the window.
   pub scene: wgpu::TextureView,
-  /// The scene's texture, which a temporal resolve copies the frame it resolved back into, and FSR 2 copies out of
-  /// before the blended surfaces draw.
-  pub scene_texture: wgpu::Texture,
 }
 
 impl ViewTargets {
@@ -163,7 +160,6 @@ impl ViewTargets {
       depth,
       light: create("light", Self::LIGHT),
       scene: scene_texture.create_view(&Default::default()),
-      scene_texture,
     }
   }
 

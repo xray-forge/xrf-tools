@@ -21,7 +21,9 @@ pub struct PresentPass {
 }
 
 impl PresentPass {
-  pub fn new(device: &wgpu::Device, source: PipelineSource<'_>, view_layout: &wgpu::BindGroupLayout) -> Self {
+  pub fn new(source: PipelineSource<'_>, view_layout: &wgpu::BindGroupLayout) -> Self {
+    let device: &wgpu::Device = source.device;
+
     let layout: wgpu::BindGroupLayout = PresentParameters::create_layout(device);
 
     Self {

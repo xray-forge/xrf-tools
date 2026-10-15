@@ -5,7 +5,6 @@ use crate::frame::sky_prefilter_level::SkyPrefilterLevel;
 /// blurred by the lobe of a rougher surface, so a reflection that meets nothing reads the cube at the mip its
 /// roughness names. Filled again every frame, as the keyframes blend.
 pub struct SkyPrefilter {
-  pub texture: wgpu::Texture,
   /// The whole cube, every mip, which the sky group binds.
   pub cube: wgpu::TextureView,
   /// Each mip as the pass fills it, the first first.
@@ -65,11 +64,6 @@ impl SkyPrefilter {
       })
       .collect();
 
-    Self {
-      texture,
-      cube,
-      levels,
-      probe,
-    }
+    Self { cube, levels, probe }
   }
 }

@@ -32,13 +32,11 @@ impl AmbientOcclusionPass {
   /// # Errors
   ///
   /// Returns an error when the shader does not compose or compile.
-  pub fn new(
-    device: &wgpu::Device,
-    source: PipelineSource<'_>,
-    view_layout: &wgpu::BindGroupLayout,
-  ) -> XrfResult<Self> {
+  pub fn new(source: PipelineSource<'_>, view_layout: &wgpu::BindGroupLayout) -> XrfResult<Self> {
+    let device: &wgpu::Device = source.device;
+
     let layout: wgpu::BindGroupLayout = AmbientOcclusionParameters::create_layout(device);
-    let (searches, denoises) = Self::create_pipelines(device, source, view_layout, &layout)?;
+    let (searches, denoises) = Self::create_pipelines(source, view_layout, &layout)?;
 
     Ok(Self {
       searches,
@@ -49,11 +47,11 @@ impl AmbientOcclusionPass {
     })
   }
 
-  pub fn refresh(&mut self, device: &wgpu::Device, source: PipelineSource<'_>) {
+  pub fn refresh(&mut self, source: PipelineSource<'_>) {
     if source.get_generation() != self.generation {
       self.generation = source.get_generation();
 
-      match Self::create_pipelines(device, source, &self.view_layout, &self.layout) {
+      match Self::create_pipelines(source, &self.view_layout, &self.layout) {
         Ok((searches, denoises)) => {
           self.searches = searches;
           self.denoises = denoises;
@@ -92,11 +90,12 @@ impl AmbientOcclusionPass {
 
   #[allow(clippy::type_complexity)]
   fn create_pipelines(
-    device: &wgpu::Device,
     source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<(Vec<wgpu::RenderPipeline>, [wgpu::RenderPipeline; 2])> {
+    let device: &wgpu::Device = source.device;
+
     let module: wgpu::ShaderModule = source.get_module("frame/ambient_occlusion")?;
     let pipeline_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
       label: Some("ambient occlusion"),

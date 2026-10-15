@@ -20,8 +20,6 @@ pub struct GpuContext {
   pub backend: RenderBackend,
   /// The adapter's name, as reports state it.
   pub adapter_name: String,
-  /// The compiler D3D12 turns shaders into DXIL with: DXC where its library loaded, FXC otherwise; none on Vulkan.
-  pub shader_compiler: Option<&'static str>,
   /// DLSS where the build and the GPU both have it: an RTX GPU, on Vulkan or D3D12.
   pub dlss: Option<Dlss>,
   lost: Arc<AtomicBool>,
@@ -238,7 +236,6 @@ impl GpuContext {
       device,
       queue,
       backend,
-      shader_compiler,
       dlss,
       lost,
     })

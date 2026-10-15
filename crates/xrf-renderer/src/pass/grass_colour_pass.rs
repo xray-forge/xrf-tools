@@ -18,11 +18,9 @@ impl GrassColourPass {
   /// # Errors
   ///
   /// Returns an error when the shader does not compose or compile.
-  pub fn new(
-    device: &wgpu::Device,
-    source: PipelineSource<'_>,
-    texture_layout: &wgpu::BindGroupLayout,
-  ) -> XrfResult<Self> {
+  pub fn new(source: PipelineSource<'_>, texture_layout: &wgpu::BindGroupLayout) -> XrfResult<Self> {
+    let device: &wgpu::Device = source.device;
+
     let layout: wgpu::BindGroupLayout = GrassColourParameters::create_layout(device);
 
     Ok(Self {

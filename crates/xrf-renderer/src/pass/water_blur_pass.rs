@@ -20,9 +20,11 @@ impl WaterBlurPass {
   /// # Errors
   ///
   /// Returns an error when the shader does not compose or compile.
-  pub fn new(device: &wgpu::Device, source: PipelineSource<'_>) -> XrfResult<Self> {
+  pub fn new(source: PipelineSource<'_>) -> XrfResult<Self> {
+    let device: &wgpu::Device = source.device;
+
     Ok(Self {
-      pipeline: Self::create_pipeline(device, source)?,
+      pipeline: Self::create_pipeline(source)?,
       sampler: device.create_sampler(&wgpu::SamplerDescriptor {
         label: Some("water blur"),
         mag_filter: wgpu::FilterMode::Linear,
@@ -35,8 +37,8 @@ impl WaterBlurPass {
   /// # Errors
   ///
   /// Returns an error when the shader does not compose or compile, keeping the last pipeline.
-  pub fn refresh(&mut self, device: &wgpu::Device, source: PipelineSource<'_>) -> XrfResult {
-    self.pipeline = Self::create_pipeline(device, source)?;
+  pub fn refresh(&mut self, source: PipelineSource<'_>) -> XrfResult {
+    self.pipeline = Self::create_pipeline(source)?;
 
     Ok(())
   }
@@ -78,12 +80,12 @@ impl WaterBlurPass {
     target
   }
 
-  fn create_pipeline(device: &wgpu::Device, source: PipelineSource<'_>) -> XrfResult<wgpu::RenderPipeline> {
+  fn create_pipeline(source: PipelineSource<'_>) -> XrfResult<wgpu::RenderPipeline> {
     create_fullscreen_pipeline(
       source,
       "frame/water_blur",
       "fs_water_blur",
-      &[Some(&WaterBlurParameters::create_layout(device))],
+      &[Some(&WaterBlurParameters::create_layout(source.device))],
       WaterReflection::FORMAT,
     )
   }

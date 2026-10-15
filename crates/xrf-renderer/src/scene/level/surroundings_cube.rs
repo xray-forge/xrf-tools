@@ -152,11 +152,6 @@ impl SurroundingsCube {
     }
   }
 
-  /// Whether this frame lights a face, as `commit` took it.
-  pub fn is_due(&self) -> bool {
-    self.is_due
-  }
-
   /// Whether it stands in the prefiltered cube's first mip this frame, a face drawn or all kept as they were.
   pub fn is_active(&self) -> bool {
     self.is_active

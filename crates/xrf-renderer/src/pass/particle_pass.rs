@@ -37,15 +37,16 @@ impl ParticlePass {
   ///
   /// Returns an error when the shader does not compose or compile.
   pub fn new(
-    device: &wgpu::Device,
     source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     texture_layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<Self> {
+    let device: &wgpu::Device = source.device;
+
     let layout: wgpu::BindGroupLayout = ParticleParameters::create_layout(device);
 
     Ok(Self {
-      pipelines: Self::create_pipelines(device, source, view_layout, &layout, texture_layout)?,
+      pipelines: Self::create_pipelines(source, view_layout, &layout, texture_layout)?,
       // As the textures' own sampler, clamped to the edge as `Texture clamp` addresses a sprite.
       clamped_sampler: device.create_sampler(&wgpu::SamplerDescriptor {
         label: Some("particles clamped"),
@@ -65,11 +66,11 @@ impl ParticlePass {
     })
   }
 
-  pub fn refresh(&mut self, device: &wgpu::Device, source: PipelineSource<'_>) {
+  pub fn refresh(&mut self, source: PipelineSource<'_>) {
     if source.get_generation() != self.generation {
       self.generation = source.get_generation();
 
-      match Self::create_pipelines(device, source, &self.view_layout, &self.layout, &self.texture_layout) {
+      match Self::create_pipelines(source, &self.view_layout, &self.layout, &self.texture_layout) {
         Ok(pipelines) => self.pipelines = pipelines,
         Err(error) => log::error!("Particles rejected, drawing with the last ones: {error}"),
       }
@@ -130,12 +131,13 @@ impl ParticlePass {
   }
 
   fn create_pipelines(
-    device: &wgpu::Device,
     source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     layout: &wgpu::BindGroupLayout,
     texture_layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<ParticlePipelines> {
+    let device: &wgpu::Device = source.device;
+
     let module: wgpu::ShaderModule = source.get_module("frame/particles")?;
     let pipeline_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
       label: Some("particles"),

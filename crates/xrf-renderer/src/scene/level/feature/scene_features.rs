@@ -219,14 +219,4 @@ impl SceneFeatures {
       + self.rain_cover.as_ref().map_or(0, RainCover::get_memory)
       + self.level_surface.as_ref().map_or(0, LevelSurface::get_memory)
   }
-
-  /// Lets go of every unit's GPU state, the overhead maps with them.
-  pub fn release(&mut self) {
-    for feature in self.list_mut() {
-      feature.release();
-    }
-
-    self.rain_cover = None;
-    self.level_surface = None;
-  }
 }

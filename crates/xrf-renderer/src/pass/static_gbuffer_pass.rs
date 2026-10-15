@@ -31,16 +31,16 @@ pub struct StaticGBufferPass {
 
 impl StaticGBufferPass {
   pub fn new(
-    device: &wgpu::Device,
     source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     texture_layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<Self> {
+    let device: &wgpu::Device = source.device;
+
     let layout: wgpu::BindGroupLayout = StaticDrawParameters::create_layout(device);
     let impostor_layout: wgpu::BindGroupLayout = StaticImpostorParameters::create_layout(device);
     let pipelines: GBufferPipelines = Self::create_pipelines(source, view_layout, &layout, texture_layout)?;
-    let impostor_pipelines =
-      Self::create_impostor_pipelines(device, source, view_layout, &impostor_layout, texture_layout)?;
+    let impostor_pipelines = Self::create_impostor_pipelines(source, view_layout, &impostor_layout, texture_layout)?;
 
     Ok(Self {
       pipelines,
@@ -53,19 +53,14 @@ impl StaticGBufferPass {
     })
   }
 
-  pub fn refresh(&mut self, device: &wgpu::Device, source: PipelineSource<'_>) {
+  pub fn refresh(&mut self, source: PipelineSource<'_>) {
     if source.get_generation() != self.generation {
       self.generation = source.get_generation();
 
       match Self::create_pipelines(source, &self.view_layout, &self.layout, &self.texture_layout).and_then(
         |pipelines| {
-          let impostors = Self::create_impostor_pipelines(
-            device,
-            source,
-            &self.view_layout,
-            &self.impostor_layout,
-            &self.texture_layout,
-          )?;
+          let impostors =
+            Self::create_impostor_pipelines(source, &self.view_layout, &self.impostor_layout, &self.texture_layout)?;
 
           Ok((pipelines, impostors))
         },
@@ -161,12 +156,13 @@ impl StaticGBufferPass {
 
   /// The impostors' draw and pick: a quad either way round, so neither culls a face.
   fn create_impostor_pipelines(
-    device: &wgpu::Device,
     source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     layout: &wgpu::BindGroupLayout,
     texture_layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<[wgpu::RenderPipeline; 2]> {
+    let device: &wgpu::Device = source.device;
+
     let module: wgpu::ShaderModule = source.get_module("static/impostor")?;
     let pipeline_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
       label: Some("static impostors"),

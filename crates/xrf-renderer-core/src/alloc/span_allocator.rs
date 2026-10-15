@@ -77,7 +77,6 @@ impl SpanAllocator {
     self.regions.push(SpanRegion {
       allocator: Allocator::with_max_allocs(added, Self::MAX_ALLOCATIONS.min(added.max(2))),
       base: self.capacity,
-      capacity: added,
     });
     self.capacity = capacity;
   }

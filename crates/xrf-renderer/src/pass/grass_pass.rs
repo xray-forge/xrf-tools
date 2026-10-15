@@ -64,11 +64,12 @@ impl GrassPass {
   ///
   /// Returns an error when a shader does not compose or compile.
   pub fn new(
-    device: &wgpu::Device,
     source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     texture_layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<Self> {
+    let device: &wgpu::Device = source.device;
+
     let compute: wgpu::ShaderStages = wgpu::ShaderStages::COMPUTE;
     let level_layout: wgpu::BindGroupLayout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
       label: Some("grass level"),
@@ -154,8 +155,8 @@ impl GrassPass {
       arrange,
       sort,
       cards,
-      draw: Self::create_draw(device, source, [layouts[3], layouts[2], layouts[4]])?,
-      card_shadow: Self::create_card_shadow(device, source, [layouts[3], &card_shadow_layout, layouts[4]])?,
+      draw: Self::create_draw(source, [layouts[3], layouts[2], layouts[4]])?,
+      card_shadow: Self::create_card_shadow(source, [layouts[3], &card_shadow_layout, layouts[4]])?,
       grid: ComputeGrid::new(device),
       generation: source.get_generation(),
       view_layout: view_layout.clone(),
@@ -170,7 +171,7 @@ impl GrassPass {
     })
   }
 
-  pub fn refresh(&mut self, device: &wgpu::Device, source: PipelineSource<'_>) {
+  pub fn refresh(&mut self, source: PipelineSource<'_>) {
     if source.get_generation() == self.generation {
       return;
     }
@@ -187,13 +188,8 @@ impl GrassPass {
         &self.cards_layout,
       ],
     );
-    let draw = Self::create_draw(
-      device,
-      source,
-      [&self.view_layout, &self.draw_layout, &self.texture_layout],
-    );
+    let draw = Self::create_draw(source, [&self.view_layout, &self.draw_layout, &self.texture_layout]);
     let card_shadow = Self::create_card_shadow(
-      device,
       source,
       [&self.view_layout, &self.card_shadow_layout, &self.texture_layout],
     );
@@ -449,10 +445,11 @@ impl GrassPass {
   /// The cards' depth into a sun cascade, cut out by their models' textures from both sides, as the shadows' casters
   /// draw.
   fn create_card_shadow(
-    device: &wgpu::Device,
     source: PipelineSource<'_>,
     layouts: [&wgpu::BindGroupLayout; 3],
   ) -> XrfResult<wgpu::RenderPipeline> {
+    let device: &wgpu::Device = source.device;
+
     let module: wgpu::ShaderModule = source.get_module("grass/card_shadow")?;
     let layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
       label: Some("grass card shadow"),
@@ -491,11 +488,9 @@ impl GrassPass {
     })
   }
 
-  fn create_draw(
-    device: &wgpu::Device,
-    source: PipelineSource<'_>,
-    layouts: [&wgpu::BindGroupLayout; 3],
-  ) -> XrfResult<wgpu::RenderPipeline> {
+  fn create_draw(source: PipelineSource<'_>, layouts: [&wgpu::BindGroupLayout; 3]) -> XrfResult<wgpu::RenderPipeline> {
+    let device: &wgpu::Device = source.device;
+
     let module: wgpu::ShaderModule = source.get_module("grass/grass")?;
     let layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
       label: Some("grass"),

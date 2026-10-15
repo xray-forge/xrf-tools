@@ -2,10 +2,8 @@ use glam::{Vec3, Vec4};
 
 use crate::camera::camera_view::CameraView;
 use crate::contract::render_shadow_settings::RenderShadowSettings;
-use crate::pass::static_cull_params::StaticCullParams;
 use crate::scene::level::shadow_sway::ShadowSway;
 use crate::scene::static_scene::static_scene::StaticScene;
-use crate::scene::texture::texture_cache::TextureCache;
 
 /// What a level's frame hands its shadows as they ready: the scene and camera, the settings, the sway, the grass and
 /// the cull's counts.
@@ -22,6 +20,4 @@ pub struct ShadowFrame<'a> {
   /// Metres from the camera the grass casts the sun's shadow to through the cascades (`GrassCards`), none where it
   /// casts none there.
   pub grass_reach: Option<f32>,
-  pub params: &'a StaticCullParams,
-  pub textures: &'a TextureCache,
 }

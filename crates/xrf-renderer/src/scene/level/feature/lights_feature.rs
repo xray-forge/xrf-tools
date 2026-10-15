@@ -100,10 +100,6 @@ impl LightsFeature {
     }
   }
 
-  pub fn get_count(&self) -> u32 {
-    self.count
-  }
-
   /// Writes the records filled this frame and what the passes bin and light them with.
   pub fn write(&mut self, encoder: &mut FrameEncoder, camera: &CameraView, filter: RenderLightShadowFilter) {
     let (near, far): (f32, f32) = camera.get_depth_range();

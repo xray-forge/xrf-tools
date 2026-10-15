@@ -135,11 +135,6 @@ impl StaticTrace {
     self.built_instances.len()
   }
 
-  /// Builds made, a view's own top level filled again after each.
-  pub fn get_version(&self) -> u64 {
-    self.version
-  }
-
   /// Fills a view's own top level with every instance as last built, those `swayed` names standing as the structure
   /// given beside each, its geometry in renderer space already.
   pub fn fill_view_tlas(&self, tlas: &mut wgpu::Tlas, swayed: &HashMap<u32, &wgpu::Blas>) {

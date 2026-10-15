@@ -19,7 +19,9 @@ pub struct BackdropPass {
 }
 
 impl BackdropPass {
-  pub fn new(device: &wgpu::Device, source: PipelineSource<'_>) -> Self {
+  pub fn new(source: PipelineSource<'_>) -> Self {
+    let device: &wgpu::Device = source.device;
+
     let layout: wgpu::BindGroupLayout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
       label: Some("backdrop"),
       entries: &[uniform_entry(0, wgpu::ShaderStages::FRAGMENT)],

@@ -28,11 +28,9 @@ impl FroxelPass {
   /// # Errors
   ///
   /// Returns an error when a shader does not compose or compile.
-  pub fn new(
-    device: &wgpu::Device,
-    source: PipelineSource<'_>,
-    view_layout: &wgpu::BindGroupLayout,
-  ) -> XrfResult<Self> {
+  pub fn new(source: PipelineSource<'_>, view_layout: &wgpu::BindGroupLayout) -> XrfResult<Self> {
+    let device: &wgpu::Device = source.device;
+
     let layouts: [wgpu::BindGroupLayout; 3] = [
       view_layout.clone(),
       FroxelInjectParameters::create_layout(device),

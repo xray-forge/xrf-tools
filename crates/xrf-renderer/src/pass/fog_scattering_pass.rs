@@ -37,12 +37,9 @@ impl FogScatteringPass {
   /// # Errors
   ///
   /// Returns an error when the shader does not compose or compile.
-  pub fn new(
-    device: &wgpu::Device,
-    queue: &wgpu::Queue,
-    source: PipelineSource<'_>,
-    view_layout: &wgpu::BindGroupLayout,
-  ) -> XrfResult<Self> {
+  pub fn new(queue: &wgpu::Queue, source: PipelineSource<'_>, view_layout: &wgpu::BindGroupLayout) -> XrfResult<Self> {
+    let device: &wgpu::Device = source.device;
+
     let layout: wgpu::BindGroupLayout = FogScatteringParameters::create_layout(device);
     let (blur, scatter) = Self::create_pipelines(source, (view_layout, &layout))?;
     let empty: wgpu::TextureView = device

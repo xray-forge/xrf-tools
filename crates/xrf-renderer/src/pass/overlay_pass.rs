@@ -20,7 +20,9 @@ pub struct OverlayPass {
 }
 
 impl OverlayPass {
-  pub fn new(device: &wgpu::Device, source: PipelineSource<'_>, view_layout: &wgpu::BindGroupLayout) -> Self {
+  pub fn new(source: PipelineSource<'_>, view_layout: &wgpu::BindGroupLayout) -> Self {
+    let device: &wgpu::Device = source.device;
+
     let layout: wgpu::BindGroupLayout = OverlayParameters::create_layout(device);
 
     Self {
@@ -44,12 +46,9 @@ impl OverlayPass {
   /// # Errors
   ///
   /// Returns an error when the shader does not compose or compile.
-  pub fn prepare(
-    &mut self,
-    device: &wgpu::Device,
-    source: PipelineSource<'_>,
-    format: wgpu::TextureFormat,
-  ) -> XrfResult {
+  pub fn prepare(&mut self, source: PipelineSource<'_>, format: wgpu::TextureFormat) -> XrfResult {
+    let device: &wgpu::Device = source.device;
+
     if self.pipelines.contains_key(&format) {
       return Ok(());
     }

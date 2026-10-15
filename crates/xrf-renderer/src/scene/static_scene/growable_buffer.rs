@@ -1,5 +1,3 @@
-use crate::contract::render_pool_use::RenderPoolUse;
-
 /// A storage buffer appended to as a scene loads: it doubles and copies what it holds when an append outgrows it, so
 /// what the GPU already reads stays where it is.
 pub struct GrowableBuffer {
@@ -29,25 +27,6 @@ impl GrowableBuffer {
 
   pub fn get_buffer(&self) -> &wgpu::Buffer {
     &self.buffer
-  }
-
-  pub fn get_generation(&self) -> u64 {
-    self.generation
-  }
-
-  /// Bytes the buffer holds on the GPU, written or not.
-  pub fn get_capacity(&self) -> u64 {
-    self.buffer.size()
-  }
-
-  /// Records of `stride` bytes written so far, and how many the buffer holds before it grows.
-  pub fn get_use(&self, stride: usize) -> RenderPoolUse {
-    let stride: u64 = stride.max(1) as u64;
-
-    RenderPoolUse {
-      used: (self.length / stride) as u32,
-      capacity: (self.buffer.size() / stride) as u32,
-    }
   }
 
   /// Writes bytes after what the buffer holds, growing it first where they do not fit; answers where they start.

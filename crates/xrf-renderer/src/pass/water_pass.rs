@@ -71,12 +71,13 @@ impl WaterPass {
   ///
   /// Returns an error when the shader does not compose or compile.
   pub fn new(
-    device: &wgpu::Device,
     queue: &wgpu::Queue,
     source: PipelineSource<'_>,
     [view_layout, scene_layout, texture_layout]: [&wgpu::BindGroupLayout; 3],
     bundle: &dyn RenderBundle,
   ) -> XrfResult<Self> {
+    let device: &wgpu::Device = source.device;
+
     let layouts: [wgpu::BindGroupLayout; 3] = [view_layout.clone(), texture_layout.clone(), scene_layout.clone()];
     let request_layout: wgpu::BindGroupLayout = TraceRequestParameters::create_layout(device);
     let nothing: wgpu::TextureView = device
@@ -97,8 +98,8 @@ impl WaterPass {
       .create_view(&Default::default());
 
     Ok(Self {
-      pipelines: Self::create_pipelines(device, source, &layouts, &request_layout)?,
-      blur: WaterBlurPass::new(device, source)?,
+      pipelines: Self::create_pipelines(source, &layouts, &request_layout)?,
+      blur: WaterBlurPass::new(source)?,
       maps: EnhancedWaterMaps::new(device, queue, bundle, &nothing),
       nothing,
       layouts,
@@ -129,16 +130,16 @@ impl WaterPass {
     &self.maps
   }
 
-  pub fn refresh(&mut self, device: &wgpu::Device, source: PipelineSource<'_>) {
+  pub fn refresh(&mut self, source: PipelineSource<'_>) {
     if source.get_generation() != self.generation {
       self.generation = source.get_generation();
 
-      match Self::create_pipelines(device, source, &self.layouts, &self.request_layout) {
+      match Self::create_pipelines(source, &self.layouts, &self.request_layout) {
         Ok(pipelines) => self.pipelines = pipelines,
         Err(error) => log::error!("Water rejected, drawing with the last one: {error}"),
       }
 
-      if let Err(error) = self.blur.refresh(device, source) {
+      if let Err(error) = self.blur.refresh(source) {
         log::error!("Water blur rejected, blurring with the last one: {error}");
       }
     }
@@ -459,11 +460,12 @@ impl WaterPass {
   /// `static/water_enhanced`, each module with its own group 3; its reflection and resolve from
   /// `static/water_reflection`, with its own group 4 past the request list the reflection fills.
   fn create_pipelines(
-    device: &wgpu::Device,
     source: PipelineSource<'_>,
     [view_layout, texture_layout, scene_layout]: &[wgpu::BindGroupLayout; 3],
     request_layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<Vec<WaterBatchPipelines>> {
+    let device: &wgpu::Device = source.device;
+
     let engine_module: wgpu::ShaderModule = source.get_module("static/water")?;
     let enhanced_module: wgpu::ShaderModule = source.get_module("static/water_enhanced")?;
     let reflection_module: wgpu::ShaderModule = source.get_module("static/water_reflection")?;

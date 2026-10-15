@@ -27,15 +27,16 @@ impl LightVolumePass {
   ///
   /// Returns an error when the shader does not compose or compile.
   pub fn new(
-    device: &wgpu::Device,
     source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     texture_layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<Self> {
+    let device: &wgpu::Device = source.device;
+
     let layout: wgpu::BindGroupLayout = LightVolumeParameters::create_layout(device);
 
     Ok(Self {
-      pipelines: Self::create_pipelines(device, source, [view_layout, &layout, texture_layout])?,
+      pipelines: Self::create_pipelines(source, [view_layout, &layout, texture_layout])?,
       layout,
       view_layout: view_layout.clone(),
       texture_layout: texture_layout.clone(),
@@ -43,11 +44,11 @@ impl LightVolumePass {
     })
   }
 
-  pub fn refresh(&mut self, device: &wgpu::Device, source: PipelineSource<'_>) {
+  pub fn refresh(&mut self, source: PipelineSource<'_>) {
     if source.get_generation() != self.generation {
       self.generation = source.get_generation();
 
-      match Self::create_pipelines(device, source, [&self.view_layout, &self.layout, &self.texture_layout]) {
+      match Self::create_pipelines(source, [&self.view_layout, &self.layout, &self.texture_layout]) {
         Ok(pipelines) => self.pipelines = pipelines,
         Err(error) => log::error!("Light volumes rejected, drawing with the last ones: {error}"),
       }
@@ -97,10 +98,11 @@ impl LightVolumePass {
   }
 
   fn create_pipelines(
-    device: &wgpu::Device,
     source: PipelineSource<'_>,
     layouts: [&wgpu::BindGroupLayout; 3],
   ) -> XrfResult<[wgpu::RenderPipeline; 2]> {
+    let device: &wgpu::Device = source.device;
+
     let module: wgpu::ShaderModule = source.get_module("frame/light_volumes")?;
     let pipeline_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
       label: Some("light volumes"),
