@@ -10,8 +10,11 @@ use crate::pass::water_blur_parameters::WaterBlurParameters;
 use crate::pass::water_blur_uniform::WaterBlurUniform;
 use crate::scene::level::feature::water_reflection::WaterReflection;
 
-/// Blurs the enhanced water's reflection one way at a time into half-size targets.
+/// Blurs the enhanced water's reflection one way at a time into half-size targets. Its owner, the water pass, makes it
+/// again on a shader reload.
 pub struct WaterBlurPass {
+  /// Its parameters' layout, made once, so a pipeline made again keys the cache as the last did.
+  layout: wgpu::BindGroupLayout,
   pipeline: wgpu::RenderPipeline,
   sampler: wgpu::Sampler,
 }
@@ -22,9 +25,11 @@ impl WaterBlurPass {
   /// Returns an error when the shader does not compose or compile.
   pub fn new(source: PipelineSource<'_>) -> XrfResult<Self> {
     let device: &wgpu::Device = source.device;
+    let layout: wgpu::BindGroupLayout = WaterBlurParameters::create_layout(device);
 
     Ok(Self {
-      pipeline: Self::create_pipeline(source)?,
+      pipeline: Self::create_pipeline(source, &layout)?,
+      layout,
       sampler: device.create_sampler(&wgpu::SamplerDescriptor {
         label: Some("water blur"),
         mag_filter: wgpu::FilterMode::Linear,
@@ -38,7 +43,7 @@ impl WaterBlurPass {
   ///
   /// Returns an error when the shader does not compose or compile, keeping the last pipeline.
   pub fn refresh(&mut self, source: PipelineSource<'_>) -> XrfResult {
-    self.pipeline = Self::create_pipeline(source)?;
+    self.pipeline = Self::create_pipeline(source, &self.layout)?;
 
     Ok(())
   }
@@ -80,12 +85,12 @@ impl WaterBlurPass {
     target
   }
 
-  fn create_pipeline(source: PipelineSource<'_>) -> XrfResult<wgpu::RenderPipeline> {
+  fn create_pipeline(source: PipelineSource<'_>, layout: &wgpu::BindGroupLayout) -> XrfResult<wgpu::RenderPipeline> {
     create_fullscreen_pipeline(
       source,
       "frame/water_blur",
       "fs_water_blur",
-      &[Some(&WaterBlurParameters::create_layout(source.device))],
+      &[Some(layout)],
       WaterReflection::FORMAT,
     )
   }
