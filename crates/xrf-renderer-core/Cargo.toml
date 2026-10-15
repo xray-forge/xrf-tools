@@ -7,7 +7,9 @@ rust-version.workspace = true
 
 [dependencies]
 bytemuck = { workspace = true }
+crc32fast = { workspace = true }
 glam = { workspace = true }
+log = { workspace = true }
 naga = { workspace = true }
 offset-allocator = "0.2.0"
 pollster = { workspace = true }

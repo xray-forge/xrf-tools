@@ -7959,7 +7959,9 @@ name = "xrf-renderer-core"
 version = "0.1.0"
 dependencies = [
  "bytemuck",
+ "crc32fast",
  "glam",
+ "log",
  "naga",
  "offset-allocator",
  "pollster",

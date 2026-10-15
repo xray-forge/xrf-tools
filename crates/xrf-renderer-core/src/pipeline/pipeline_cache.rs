@@ -38,11 +38,22 @@ impl PipelineCache {
     Self::default()
   }
 
-  /// A cache whose pipelines are made with a driver cache where `device` keeps one, started from `data` a driver cache
-  /// of the same adapter and driver saved before; one it does not take starts empty.
+  /// A cache whose pipelines are made with a driver cache where `device` keeps one, started from `data` that
+  /// `get_driver_data` answered for the same adapter and driver before; data whose checksum does not hold starts it
+  /// empty.
   pub fn with_driver_cache(device: &wgpu::Device, data: Option<&[u8]>) -> Self {
+    let data: Option<&[u8]> = data.and_then(|data| {
+      let checked: Option<&[u8]> = Self::read_checked(data);
+
+      if checked.is_none() {
+        log::warn!("The driver's kept pipelines do not match their checksum, so every pipeline compiles again");
+      }
+
+      checked
+    });
     let driver: Option<wgpu::PipelineCache> = device.features().contains(wgpu::Features::PIPELINE_CACHE).then(|| {
-      // SAFETY: wgpu checks the data's header against the adapter and falls back to an empty cache where it differs.
+      // SAFETY: the data is what `get_driver_data` answered, its checksum holding, so it is intact; wgpu refuses data of
+      // another adapter, driver or size, starting the cache empty in its place.
       unsafe {
         device.create_pipeline_cache(&wgpu::PipelineCacheDescriptor {
           label: Some("pipelines"),
@@ -58,9 +69,31 @@ impl PipelineCache {
     }
   }
 
-  /// What the driver's cache holds, to hand back at the next start; none where the device keeps none.
+  /// What the driver's cache holds behind its checksum, to hand back at the next start; none where the device keeps
+  /// none.
   pub fn get_driver_data(&self) -> Option<Vec<u8>> {
-    self.driver.as_ref().and_then(wgpu::PipelineCache::get_data)
+    self
+      .driver
+      .as_ref()
+      .and_then(wgpu::PipelineCache::get_data)
+      .map(|data| Self::to_checked(&data))
+  }
+
+  /// The driver's data behind its checksum.
+  pub(crate) fn to_checked(data: &[u8]) -> Vec<u8> {
+    let mut checked: Vec<u8> = Vec::with_capacity(data.len() + 4);
+
+    checked.extend_from_slice(&crc32fast::hash(data).to_le_bytes());
+    checked.extend_from_slice(data);
+
+    checked
+  }
+
+  /// The driver's data behind a checksum `to_checked` wrote, where the checksum holds.
+  pub(crate) fn read_checked(data: &[u8]) -> Option<&[u8]> {
+    let (checksum, data): (&[u8; 4], &[u8]) = data.split_first_chunk::<4>()?;
+
+    (u32::from_le_bytes(*checksum) == crc32fast::hash(data)).then_some(data)
   }
 
   /// How many invalidations the cache has had: a pipeline handed out before the latest may be stale.
