@@ -14,13 +14,16 @@ use crate::frame::static_scene_handles::StaticSceneHandles;
 use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::lighting::render_sky::RenderSky;
 use crate::pass::level_passes::LevelPasses;
+use crate::pass::lighting_frame::LightingFrame;
 use crate::pass::lighting_uniform::LightingUniform;
 use crate::pass::sky_haze_parameters::SkyHazeParameters;
+use crate::pass::sky_motion_parameters::SkyMotionParameters;
 use crate::pass::sky_parameters::SkyParameters;
 use crate::pass::sky_prefilter_parameters::SkyPrefilterParameters;
 use crate::pass::sky_prefilter_pass::SkyPrefilterPass;
 use crate::pass::sky_prefilter_uniform::SkyPrefilterUniform;
 use crate::pass::static_cull_params::StaticCullParams;
+use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::feature::view_feature::ViewFeature;
 use crate::scene::level::lighting_handles::LightingHandles;
 use crate::scene::level::sky_views::SkyViews;
@@ -144,6 +147,63 @@ impl SkyFeature {
   /// The sun's sprite as the sky draws it, where one is drawn.
   pub fn get_sun_sprite(&self) -> Option<&(String, Vec4)> {
     self.sun_sprite.as_ref()
+  }
+
+  /// Writes the sky's motion where nothing was drawn, which the resolves carry its history by.
+  pub fn add_motion_pass<'a>(
+    &self,
+    graph: &mut FrameGraph<'a>,
+    passes: LevelPasses<'a>,
+    view: &'a ViewBinding,
+    handles: ViewTargetHandles,
+  ) {
+    let sky_motion: SkyMotionParameters = SkyMotionParameters {
+      depth_target: handles.depth,
+    };
+
+    graph
+      .add_raster_pass("sky motion")
+      .parameters(&sky_motion)
+      .color(GraphColorAttachment::new(handles.motion, wgpu::LoadOp::Load))
+      .record(move |context| passes.sky_motion.record(context, view, &sky_motion));
+  }
+
+  /// What the lighting draws the sky with this frame: a keyframe whose textures are not all up blended out, so a sky
+  /// still going up shows the other one; whether both irradiance cubes are up; the clouds' `time`; the sun's sprite
+  /// while its texture is up; and whether the exposure adapts (`is_adapting`).
+  pub fn get_lighting_frame(
+    &self,
+    (sky, options): (&RenderSky, &RenderViewOptions),
+    weather_textures: &WeatherTextureCache,
+    (is_adapting, time): (bool, f32),
+  ) -> LightingFrame {
+    let side = |index: usize| {
+      let clouds: Option<&str> = sky.clouds.textures[index]
+        .as_deref()
+        .filter(|_| options.show.is_clouded);
+
+      weather_textures.is_settled(sky.textures[index].as_deref())
+        && weather_textures.is_settled(sky.environments[index].as_deref())
+        && weather_textures.is_settled(clouds)
+    };
+
+    LightingFrame {
+      is_adapting,
+      sky_blend: match (side(0), side(1)) {
+        (true, false) => 0.0,
+        (false, true) => 1.0,
+        _ => sky.blend,
+      },
+      is_irradiance_up: sky
+        .environments
+        .iter()
+        .all(|reference| reference.as_deref().is_some_and(|it| weather_textures.is_up(it))),
+      clouds_time: time,
+      sun_sprite: self
+        .get_sun_sprite()
+        .filter(|(texture, _)| weather_textures.is_up(texture))
+        .map_or(Vec4::ZERO, |(_, sprite)| *sprite),
+    }
   }
 
   /// The sky's textures this frame, once prepared.

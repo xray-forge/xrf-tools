@@ -1,6 +1,7 @@
 use crate::contract::render_overlay::RenderOverlay;
 use crate::contract::render_selection::RenderSelection;
 use crate::contract::render_selection_target::RenderSelectionTarget;
+use crate::scene::level::feature::view_feature::ViewFeature;
 use crate::scene::level::level_overlays::LevelOverlays;
 use crate::scene::level::level_scene::LevelScene;
 use crate::scene::level::overlay_box::to_box_lines;
@@ -90,5 +91,25 @@ impl OverlaysFeature {
   /// What it draws over its frame, once made.
   pub fn get_overlays(&self) -> Option<&LevelOverlays> {
     self.overlays.as_ref()
+  }
+}
+
+impl ViewFeature for OverlaysFeature {
+  /// The overlays' lines, points, sun and skeleton.
+  fn get_memory(&self) -> u64 {
+    self.overlays.as_ref().map_or(0, |overlays| {
+      [&overlays.lines, &overlays.points, &overlays.skeleton_lines]
+        .into_iter()
+        .flatten()
+        .map(|(buffer, _)| buffer.size())
+        .chain(overlays.sun.as_ref().map(wgpu::Buffer::size))
+        .sum()
+    })
+  }
+
+  fn release(&mut self) {
+    self.overlays = None;
+    self.overlays_box = None;
+    self.selection = None;
   }
 }

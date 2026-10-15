@@ -36,6 +36,12 @@ impl SunTraceFeature {
     is_reconstructed && options.mode.is_lit && !options.mode.is_wireframe
   }
 
+  /// Whether the sun's cascades shadow the frame: cascades asked for, and the sun not traced in their place where the
+  /// view traces its light (`is_traced`) and DLSS ray reconstruction resolves it (`is_reconstructed`).
+  pub fn is_cascaded(options: &RenderViewOptions, is_traced: bool, is_reconstructed: bool) -> bool {
+    options.features.shadows.get_cascade_count() > 0 && !(is_traced && Self::is_asked(options, is_reconstructed))
+  }
+
   /// Traces the sun's shadow where it does this frame and the scene's trace is built (`traced`), answering what the sun
   /// sees at each pixel; none otherwise, the sun's cascades shadowing the frame.
   pub fn add_passes<'a>(

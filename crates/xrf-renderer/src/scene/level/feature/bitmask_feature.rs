@@ -21,6 +21,7 @@ use crate::pass::vbao_pass::VbaoPass;
 use crate::pass::vbao_uniform::VbaoUniform;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::feature::view_feature::ViewFeature;
+use crate::scene::level::feature::view_frame_end::ViewFrameEnd;
 
 /// The visibility-bitmask search at half the frame's size, for VBAO's occlusion, the indirect light or both, RTAO
 /// tracing the occlusion in its place where asked: what it searches for this frame, what its passes read, and its
@@ -319,13 +320,6 @@ impl BitmaskFeature {
 
     lit_filtered
   }
-
-  /// The accumulations this frame wrote become the ones the next reads.
-  pub fn end_frame(&mut self) {
-    for history in [&mut self.occlusion, &mut self.light].into_iter().flatten() {
-      history.swap();
-    }
-  }
 }
 
 impl ViewFeature for BitmaskFeature {
@@ -337,6 +331,17 @@ impl ViewFeature for BitmaskFeature {
       .flat_map(History::get_sides)
       .map(FrameTexture::get_memory)
       .sum()
+  }
+
+  /// The accumulations this frame wrote become the ones the next reads.
+  fn end_frame(&mut self, end: &mut ViewFrameEnd<'_>) {
+    if !end.is_lit {
+      return;
+    }
+
+    for history in [&mut self.occlusion, &mut self.light].into_iter().flatten() {
+      history.swap();
+    }
   }
 
   fn release(&mut self) {

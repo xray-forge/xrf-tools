@@ -1,6 +1,7 @@
 use glam::{Mat4, Vec3, Vec4};
 
 use crate::camera::camera_view::CameraView;
+use crate::contract::render_debug_view::RenderDebugView;
 use crate::contract::render_parallax_settings::RenderParallaxSettings;
 use crate::contract::render_rect::RenderRect;
 use crate::contract::render_surface_color::RenderSurfaceColor;
@@ -58,6 +59,23 @@ pub struct CameraUniform {
 const SELECTION_ROWS: usize = 32;
 
 impl CameraUniform {
+  /// What a viewport's own camera draws the static scene with by its `options`: textured, bumped, the hemisphere's
+  /// strength, then the parallax's bits (steep, the parallax, bumps and heights debug views, enhanced).
+  pub fn get_switches(options: &RenderViewOptions) -> Vec4 {
+    Vec4::new(
+      f32::from(u8::from(options.mode.surface_color == RenderSurfaceColor::Textured)),
+      options.mode.is_bumped as u32 as f32,
+      options.features.hemi_strength,
+      f32::from(
+        u8::from(options.features.parallax.is_steep)
+          | u8::from(options.mode.debug_view == RenderDebugView::Parallax) << 1
+          | u8::from(options.mode.debug_view == RenderDebugView::Bumps) << 2
+          | u8::from(options.mode.debug_view == RenderDebugView::Heights) << 3
+          | u8::from(options.features.parallax.is_enhanced()) << 4,
+      ),
+    )
+  }
+
   pub fn new(view: &CameraView, rect: RenderRect, switches: Vec4) -> Self {
     let view_projection: Mat4 = view.get_view_projection();
 

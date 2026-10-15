@@ -128,3 +128,15 @@ impl GrassBuild {
     })
   }
 }
+
+impl GrassBuild {
+  /// Bytes its ring's and lists' buffers take.
+  pub fn get_memory(&self) -> u64 {
+    self
+      .buffers
+      .iter()
+      .chain([&self.sort_dispatch])
+      .map(wgpu::Buffer::size)
+      .sum()
+  }
+}

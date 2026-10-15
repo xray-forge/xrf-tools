@@ -1,3 +1,5 @@
+use xrf_renderer_core::{FrameGraph, GraphBindings, GraphBuffer, GraphRuntime, GraphTexture};
+
 use crate::context::gpu_requirements::can_trace;
 use crate::contract::render_reflection_settings::RenderReflectionSettings;
 use crate::contract::render_view_options::RenderViewOptions;
@@ -5,9 +7,16 @@ use crate::contract::render_water_mode::RenderWaterMode;
 use crate::contract::render_water_settings::RenderWaterSettings;
 use crate::frame::water_reflection::WaterReflection;
 use crate::pass::enhanced_water_uniform::EnhancedWaterUniform;
+use crate::pass::level_passes::LevelPasses;
+use crate::pass::sky_parameters::SkyParameters;
+use crate::pass::trace_parameters::TraceParameters;
+use crate::pass::water_draw::WaterDraw;
 use crate::pass::water_uniform::WaterUniform;
 use crate::scene::level::feature::view_feature::ViewFeature;
+use crate::scene::level::feature::view_frame_end::ViewFrameEnd;
 use crate::scene::level::feature::water_frame::WaterFrame;
+use crate::scene::level::sky_views::SkyViews;
+use crate::scene::level::view_record::ViewRecord;
 use crate::scene::level::water_flow::WaterFlow;
 
 /// A view's water as it lasts between frames: its settings and what they make its uniforms this frame, how far the
@@ -27,6 +36,38 @@ pub struct WaterFeature {
 }
 
 impl WaterFeature {
+  /// Draws the water of a frame's `record` where it draws, over the sky's `views` and the frame copied before it
+  /// (`before_water`, which the enhanced water refracts and reflects), from the cull's argument buffers `args`; its
+  /// rays the screen left traced where the scene's trace is built (`traced`, with the sky's group).
+  pub fn add_passes<'a>(
+    &'a self,
+    (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
+    record: ViewRecord<'a>,
+    (views, before_water, args): (Option<&'a SkyViews>, Option<GraphTexture>, Vec<GraphBuffer>),
+    traced: Option<(SkyParameters<'a>, TraceParameters<'a>, &'a wgpu::BindGroup)>,
+  ) {
+    let Some(views) = views.filter(|_| self.is_drawn()) else {
+      return;
+    };
+    let passes: LevelPasses<'a> = record.passes;
+    let draw: WaterDraw<'a> = WaterDraw {
+      targets: record.handles,
+      before_water: before_water.filter(|_| self.is_enhanced()),
+      view: record.view,
+      textures: record.textures,
+      layouts: record.statics.get_camera_draws().layouts,
+      args,
+      lit: record.lit,
+      skies: [&views.cubes[0], &views.cubes[1]],
+      sky_sampler: passes.sky.get_clamp(),
+      water: self,
+      scene_trace: passes.scene_trace,
+      traced,
+    };
+
+    passes.water.add_passes(graph, bindings, runtime, draw);
+  }
+
   /// Takes this frame's settings: makes or drops the reflection's histories, and works out the uniforms.
   pub fn prepare(&mut self, device: &wgpu::Device, options: &RenderViewOptions, frame: WaterFrame<'_>) {
     let settings: RenderWaterSettings = options.features.water;
@@ -114,18 +155,6 @@ impl WaterFeature {
   pub fn get_reflection(&self) -> Option<&WaterReflection> {
     self.reflection.as_ref()
   }
-
-  /// Makes the reflection a frame drew the one the next frame keeps, where the frame drew the water; a frame that drew
-  /// none leaves nothing to keep, as a frame showing no water clears its history.
-  pub fn finish_frame(&mut self) {
-    if let Some(reflection) = self.reflection.as_mut() {
-      if self.is_drawn {
-        reflection.histories.swap();
-      } else {
-        reflection.histories.invalidate();
-      }
-    }
-  }
 }
 
 impl ViewFeature for WaterFeature {
@@ -136,5 +165,18 @@ impl ViewFeature for WaterFeature {
 
   fn release(&mut self) {
     self.reflection = None;
+  }
+
+  /// The reflection this frame wrote becomes the history, or the history is forgotten where no water drew.
+  fn end_frame(&mut self, end: &mut ViewFrameEnd<'_>) {
+    let Some(reflection) = self.reflection.as_mut().filter(|_| end.is_lit) else {
+      return;
+    };
+
+    if self.is_drawn {
+      reflection.histories.swap();
+    } else {
+      reflection.histories.invalidate();
+    }
   }
 }

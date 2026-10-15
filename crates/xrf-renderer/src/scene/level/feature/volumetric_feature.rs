@@ -17,8 +17,10 @@ use crate::pass::light_volume_pass::LightVolumePass;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::feature::lights_feature::LightsFeature;
 use crate::scene::level::feature::view_feature::ViewFeature;
+use crate::scene::level::feature::view_frame_end::ViewFrameEnd;
 use crate::scene::level::light_shadow_atlas::LightShadowAtlas;
 use crate::scene::level::lighting_handles::LightingHandles;
+use crate::scene::level::view_record::ViewRecord;
 
 /// The volumetric lighting: the enhanced froxels, a grid along the view filled over its history and integrated, in
 /// place of the sun's and the lights' shafts; or the shadowed lights' shafts (`accum_volumetric`) the sun shafts'
@@ -64,9 +66,38 @@ impl VolumetricFeature {
     self.uniform.is_some() && self.froxels.is_some()
   }
 
+  /// Adds the shadowed lights' shafts (`accum_volumetric`), or the enhanced volume's froxels in place of both shafts,
+  /// for the sun shafts' composite: the shafts' target, whether the froxels stand in for them, and the froxels.
+  #[allow(clippy::type_complexity)]
+  pub fn add_passes<'a>(
+    &'a self,
+    (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
+    record: ViewRecord<'a>,
+    (lights, atlas): (&'a LightsFeature, LightShadowAtlas<'a>),
+  ) -> (
+    Option<GraphTexture>,
+    bool,
+    Option<(UniformBinding<FroxelUniform>, GraphTexture)>,
+  ) {
+    let volumes: Option<GraphTexture> = self.add_light_volume_passes(
+      (&mut *graph, &mut *bindings, &mut *runtime),
+      record.passes,
+      (record.view, record.textures),
+      (record.handles, lights, atlas),
+    );
+    let froxels: Option<(UniformBinding<FroxelUniform>, GraphTexture)> = self.add_froxel_passes(
+      (graph, bindings, runtime),
+      record.passes,
+      record.view,
+      (record.lit, atlas, lights),
+    );
+
+    (volumes, self.is_froxeled(), froxels)
+  }
+
   /// Adds the shadowed lights' shafts at half the frame's size, added up over the frame's depth for the sun shafts'
   /// composite; answers them, none where the froxels draw instead or no light draws shafts.
-  pub fn add_light_volume_passes<'a>(
+  fn add_light_volume_passes<'a>(
     &self,
     (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
     passes: LevelPasses<'a>,
@@ -124,7 +155,7 @@ impl VolumetricFeature {
 
   /// Fills the froxels over their history and integrates them along the view; answers the grid's uniform and what was
   /// integrated, for the sun shafts' composite to read in place of both shafts, none where they do not draw.
-  pub fn add_froxel_passes<'a>(
+  fn add_froxel_passes<'a>(
     &'a self,
     (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
     passes: LevelPasses<'a>,
@@ -170,13 +201,6 @@ impl VolumetricFeature {
 
     Some((froxels, integrated))
   }
-
-  /// The froxels this frame wrote become the history the next reads, while they draw.
-  pub fn end_frame(&mut self) {
-    if let (Some(_), Some(froxels)) = (self.uniform, &mut self.froxels) {
-      froxels.histories.swap();
-    }
-  }
 }
 
 impl ViewFeature for VolumetricFeature {
@@ -188,5 +212,12 @@ impl ViewFeature for VolumetricFeature {
   fn release(&mut self) {
     self.uniform = None;
     self.froxels = None;
+  }
+
+  /// The froxels' grids this frame wrote become the ones the next reads, while they draw.
+  fn end_frame(&mut self, end: &mut ViewFrameEnd<'_>) {
+    if let (true, Some(_), Some(froxels)) = (end.is_lit, self.uniform, &mut self.froxels) {
+      froxels.histories.swap();
+    }
   }
 }
