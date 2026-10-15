@@ -1,6 +1,7 @@
 use std::ptr;
 use std::sync::{Arc, Mutex};
 
+use wgpu::hal::api::Vulkan;
 use xrf_error::XrfResult;
 
 use crate::dlss_quality::DlssQuality;
@@ -32,6 +33,10 @@ impl NgxRayReconstruction {
   ) -> XrfResult<Self> {
     let value: NVSDK_NGX_PerfQuality_Value = quality.to_value();
     let [mut optimal, mut min, mut max] = Self::get_render_sizes(sdk, output, value)?;
+    // The Vulkan device NGX was started on, which it makes the feature on; none on D3D12, whose command list names it.
+    // SAFETY: the raw device is only read for its handle, which outlives the call it is passed to.
+    let vulkan_device: ash::vk::Device =
+      unsafe { device.as_hal::<Vulkan>() }.map_or_else(ash::vk::Device::null, |hal| hal.raw_device().handle());
 
     // DLAA draws at the output's size alone.
     if quality == DlssQuality::Native {
@@ -57,7 +62,7 @@ impl NgxRayReconstruction {
       |commands, ngx, handle| unsafe {
         match commands {
           NgxCommands::Vulkan(list) => {
-            NGX_VULKAN_CREATE_DLSSD_EXT1(ash::vk::Device::null(), list, 1, 1, handle, ngx, &mut parameters)
+            NGX_VULKAN_CREATE_DLSSD_EXT1(vulkan_device, list, 1, 1, handle, ngx, &mut parameters)
           }
           #[cfg(windows)]
           NgxCommands::D3d12(list) => NGX_D3D12_CREATE_DLSSD_EXT(list, 1, 1, handle, ngx, &mut parameters),
