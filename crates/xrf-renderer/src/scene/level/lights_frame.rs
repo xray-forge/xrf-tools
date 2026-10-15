@@ -19,6 +19,9 @@ pub struct LightsFrame<'a> {
   pub statics: &'a StaticScene,
   /// How the trees sway, which has a face over them drawn again.
   pub sway: &'a ShadowSway<'a>,
+  /// The metres about the eye the grass's cards stand in, where they cast the sun's shadow this frame, which the
+  /// lights near the eye cast theirs from too.
+  pub grass_reach: Option<f32>,
   /// How much of each campfire's idle light shows, by its id.
   pub campfire_shares: &'a HashMap<u16, f32>,
 }

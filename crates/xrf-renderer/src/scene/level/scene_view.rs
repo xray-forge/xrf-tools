@@ -79,6 +79,7 @@ use crate::scene::level::feature::scene_features::SceneFeatures;
 use crate::scene::level::feature::sun_trace_feature::SunTraceFeature;
 use crate::scene::level::feature::water_frame::WaterFrame;
 use crate::scene::level::grass_level::GrassLevel;
+use crate::scene::level::grass_shadow_casters::GrassShadowCasters;
 use crate::scene::level::level_frame::LevelFrame;
 use crate::scene::level::level_overlays::LevelOverlays;
 use crate::scene::level::level_scene::LevelScene;
@@ -443,6 +444,7 @@ impl SceneView {
         ),
         statics: &scene.statics,
         sway: &to_sway(&scene.statics, self.features.wind.get_sway()),
+        grass_reach: self.features.grass.get_cascade_reach(),
         campfire_shares: &scene.campfire_shares,
       },
     );
@@ -1124,15 +1126,17 @@ impl SceneView {
 
     graph.begin_group("shadows");
 
+    let grass_casters: Option<GrassShadowCasters> = scene_view
+      .features
+      .grass
+      .get_shadow_casters((passes.grass, texture_group), grass_cards);
+
     scene_view.features.shadows.add_passes(
       (&mut *graph, &mut *bindings),
       passes,
       (&statics, lit.shadow_maps),
       (scene_view.features.statics.get_cull(), texture_group),
-      scene_view
-        .features
-        .grass
-        .get_shadow_casters((passes.grass, texture_group), grass_cards),
+      grass_casters,
     );
 
     // The rain's cover, which its passes draw and reduce and the rain and the wet surfaces read.
@@ -1188,6 +1192,7 @@ impl SceneView {
         passes,
         &statics,
         (scene_view.features.statics.get_cull(), texture_group),
+        grass_casters,
       );
     }
 
