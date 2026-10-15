@@ -74,6 +74,7 @@ use crate::thread::render_command::RenderCommand;
 use crate::thread::render_link::RenderLink;
 use crate::thread::render_workers::RenderWorkers;
 use crate::thread::reopening_scenes::ReopeningScenes;
+use crate::thread::retry_backoff::RetryBackoff;
 use crate::thread::running_gpu::RunningGpu;
 use crate::viewport::pending_pick::PendingPick;
 use crate::viewport::pick_in_flight::PickInFlight;
@@ -93,9 +94,6 @@ const PACING_POLL: Duration = Duration::from_millis(1);
 
 /// How long the thread keeps the GPU after its last viewport detaches, so a view shown again soon starts at once.
 const IDLE_STOP: Duration = Duration::from_secs(5);
-
-/// How long after a GPU failed to start it is tried again.
-const RETRY: Duration = Duration::from_secs(2);
 
 /// How often the textures no scene samples any more are freed.
 const TEXTURE_SWEEP: Duration = Duration::from_secs(2);
@@ -140,8 +138,10 @@ pub struct RenderThread {
   /// headroom leaves.
   periodic: PeriodicScheduler,
   periodic_budget: PeriodicBudget,
-  /// Why the GPU last failed to start, and when.
-  failure: Option<(String, Instant)>,
+  /// Why the GPU last failed to start, and when it is tried again.
+  failure: Option<RetryBackoff>,
+  /// Why a window last could not be drawn into, and when it is tried again, by its key.
+  window_failures: HashMap<u64, RetryBackoff>,
   /// The windows viewports are drawn into, by their key.
   hosts: HashMap<u64, Arc<dyn RenderWindowHost>>,
   viewports: BTreeMap<RenderViewportId, RenderViewport>,
@@ -190,6 +190,7 @@ impl RenderThread {
       periodic: PeriodicScheduler::new(),
       periodic_budget: PeriodicBudget::default(),
       failure: None,
+      window_failures: HashMap::new(),
       hosts: HashMap::new(),
       viewports: BTreeMap::new(),
       scenes: HashMap::new(),
@@ -461,6 +462,7 @@ impl RenderThread {
 
     self.hosts.retain(|key, _| used.contains(key));
     self.last_present.retain(|key, _| used.contains(key));
+    self.window_failures.retain(|key, _| used.contains(key));
 
     if let Some(RunningGpu { gpu, .. }) = &mut self.running {
       gpu.windows.retain(|key, _| used.contains(key));
@@ -557,7 +559,7 @@ impl RenderThread {
       self.release_gpu();
     }
 
-    if self.running.is_some() || self.failure.as_ref().is_some_and(|(_, when)| when.elapsed() < RETRY) {
+    if self.running.is_some() || self.failure.as_ref().is_some_and(|failure| !failure.is_due()) {
       return;
     }
 
@@ -593,14 +595,22 @@ impl RenderThread {
       }
       Err(error) => {
         let message: String = error.to_string();
+        let is_new: bool = match &mut self.failure {
+          Some(failure) => failure.fail(message.clone()),
+          None => {
+            self.failure = Some(RetryBackoff::new(message.clone()));
 
-        log::error!("Renderer cannot start: {message}");
+            true
+          }
+        };
+
+        if is_new {
+          log::error!("Renderer cannot start: {message}");
+        }
 
         for viewport in self.viewports.values_mut() {
           viewport.fail(&message);
         }
-
-        self.failure = Some((message, Instant::now()));
       }
     }
   }
@@ -936,12 +946,29 @@ impl RenderThread {
       }
 
       if !gpu.windows.contains_key(key) {
+        if self.window_failures.get(key).is_some_and(|failure| !failure.is_due()) {
+          continue;
+        }
+
         match RenderWindow::new(&gpu.context, Arc::clone(host)) {
           Ok(created) => {
             gpu.windows.insert(*key, created);
+            self.window_failures.remove(key);
           }
           Err(error) => {
             let message: String = error.to_string();
+            let is_new: bool = match self.window_failures.get_mut(key) {
+              Some(failure) => failure.fail(message.clone()),
+              None => {
+                self.window_failures.insert(*key, RetryBackoff::new(message.clone()));
+
+                true
+              }
+            };
+
+            if is_new {
+              log::error!("A window cannot be drawn into: {message}");
+            }
 
             for viewport in self.viewports.values_mut().filter(|it| it.window == *key) {
               viewport.fail(&message);

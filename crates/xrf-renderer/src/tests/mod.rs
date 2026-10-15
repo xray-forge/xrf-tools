@@ -40,6 +40,7 @@ mod render_backend;
 mod render_queue;
 mod render_scale;
 mod render_view_output;
+mod retry_backoff;
 mod scene_features;
 mod selection;
 mod shader_composer;
