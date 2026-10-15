@@ -364,10 +364,18 @@ const PUDDLE_TOP: f32 = 0.25;
 // so the rain under a pipe or a beam narrower than twice as far still pools, and under a bridge's deck does not.
 const OPEN_REACH: f32 = 2.5;
 const OPEN_TAPS: u32 = 8u;
-// How level a face must lie for its relief to hold water, from none to all: water stays in a hollow only on nearly level
-// ground, and on a pitch, a tiled roof's or a bank's, its channels drain down it. About 14 to 6 degrees, softened so
-// terrain's triangles, each its own face, draw no line about the limit.
-const RELIEF_LEVEL: vec2<f32> = vec2<f32>(0.97, 0.995);
+// How level a face must lie for its relief to hold water, as Screen Space Shaders' terrain takes it: by the larger of its
+// normal's sideways parts, all under `RELIEF_LEVEL.x` (about 1.3 degrees), none from `RELIEF_LEVEL.y` (about 5.7),
+// linear between. Water stays in a hollow only on level ground; on a pitch, a tiled roof's or a bank's, it drains.
+const RELIEF_LEVEL: vec2<f32> = vec2<f32>(0.023, 0.1);
+// How the relief's water comes in with its depth over the waterline, as Screen Space Shaders' terrain takes it: all of
+// it a quarter of the relief's depth in, so a hollow's shallow edge is part water and its fleck fades in.
+const RELIEF_RAMP: f32 = 4.0;
+
+// How far a face lies level enough for its relief to hold water (`RELIEF_LEVEL`), from none to all.
+fn relief_levelness(face: vec3<f32>) -> f32 {
+  return saturate((RELIEF_LEVEL.y - max(abs(face.x), abs(face.z))) / (RELIEF_LEVEL.y - RELIEF_LEVEL.x));
+}
 
 // One layer of rain rings: each texel a ring arriving on its own clock (arrival, direction x, direction y, clock),
 // spreading and fading; `setup` is its speed, strength and how many rings a ripple spreads. The tilt in `xy`, and in
@@ -693,7 +701,7 @@ fn fs_wet_patch_enhanced(in: FullscreenVarying) -> WetPatchTargets {
   let face: vec3<f32> = facing_normal(world);
   let ground: vec3<f32> = ground_up(world);
   let is_ground: bool = is_terrain;
-  let is_relief_face: bool = !is_terrain && has_mark(marks, MARK_RELIEF) && face.y > RELIEF_LEVEL.x && reached > 0.0;
+  let is_relief_face: bool = !is_terrain && has_mark(marks, MARK_RELIEF) && relief_levelness(face) > 0.0 && reached > 0.0;
   let up: vec3<f32> = select(face, ground, is_ground);
 
   if ((is_ground || is_relief_face) && wet.puddle_state.y > 0.0 && length(position) < wet.puddle_state.x) {
@@ -717,8 +725,8 @@ fn fs_wet_patch_enhanced(in: FullscreenVarying) -> WetPatchTargets {
     let marched: f32 = select(0.0, relief_fade(camera.parallax.y, distance), sink > 0.0 && wet.relief.x > 0.5);
     let flood: f32 = RELIEF_FLOODED * wet.puddle_state.y * mix(RELIEF_DRY_REGIONS, 1.0, smoothstep(0.25, 0.75, noise));
     let level: f32 = 1.0 - flood;
-    let relief_water: f32 = smoothstep(level, level + RELIEF_SHORE, sink) * marched *
-      smoothstep(RELIEF_LEVEL.x, RELIEF_LEVEL.y, face.y) * select(reached, 1.0, is_ground);
+    let relief_water: f32 = saturate((sink - level) * RELIEF_RAMP) * marched * relief_levelness(face) *
+      select(reached, 1.0, is_ground);
     let shore: f32 = saturate((1.0 - found.rim) / SITE_RELIEF_SHORE);
     let site_water: f32 = found.inside * mix(1.0, smoothstep(1.0 - shore - RELIEF_SHORE, 1.0 - shore, sink), marched);
     let is_relief: bool = relief_water > site_water;

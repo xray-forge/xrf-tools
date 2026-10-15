@@ -156,7 +156,7 @@ export const DEFAULT_RENDER_RAIN_SETTINGS: TRenderRainSettings = {
   distance: 300,
   isReliefFlooded: true,
   mode: ERenderRainMode.ENGINE,
-  puddles: 1,
+  puddles: 0.5,
   reflectivity: 0.4,
   ripples: 1,
 };
