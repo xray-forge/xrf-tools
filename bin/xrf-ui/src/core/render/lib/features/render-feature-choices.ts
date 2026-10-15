@@ -97,7 +97,6 @@ export const RENDER_SHADOW_LIMITS = {
   bias: toRenderLimits(RENDER_FEATURE_SCHEMA.shadows.bias, 0.25),
   blend: toRenderLimits(RENDER_FEATURE_SCHEMA.shadows.blend, 0.01),
   filter: toRenderLimits(RENDER_FEATURE_SCHEMA.shadows.filter, 1),
-  reach: toRenderLimits(RENDER_FEATURE_SCHEMA.shadows.reach, 50),
 } as const;
 
 /**
@@ -119,11 +118,6 @@ export function formatCascadeBlend(blend: number): string {
 /** @returns A shadow's normal offset, in texels. */
 export function formatShadowBias(bias: number): string {
   return formatNumber(bias, 2);
-}
-
-/** @returns How far towards the sun a cascade's casters may stand, in metres. */
-export function formatShadowReach(reach: number): string {
-  return `${formatNumber(reach, 0)} m`;
 }
 
 /** The bounds each contact shadow value is offered between. */

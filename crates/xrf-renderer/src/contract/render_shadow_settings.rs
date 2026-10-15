@@ -21,8 +21,6 @@ pub struct RenderShadowSettings {
   pub filter: u32,
   /// How far a point is moved along its normal before it is compared, in texels of its cascade.
   pub bias: f32,
-  /// Metres towards the sun past a cascade that its casters may stand.
-  pub reach: f32,
   /// How far in from a cascade's edge, as a share of its width, the next cascade is mixed in.
   pub blend: f32,
   /// Whether cascade `n` is drawn at most every `2^n` frames, the far ones sharing frames the near one does not.
@@ -42,7 +40,6 @@ impl Default for RenderShadowSettings {
       resolution: 2048,
       filter: 2,
       bias: 1.5,
-      reach: 400.0,
       blend: 0.1,
       is_staggered: true,
       contact: RenderContactShadowSettings::default(),

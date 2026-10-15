@@ -790,6 +790,21 @@ impl StaticScene {
     &self.swaying
   }
 
+  /// How far along `direction`, normalized, the level's sectors stand: the nearest and the farthest any reaches, none
+  /// while it holds no sector.
+  pub fn get_span(&self, direction: Vec3) -> Option<(f32, f32)> {
+    self
+      .sectors
+      .as_slice()
+      .iter()
+      .map(|sector| {
+        let along: f32 = sector.sphere.truncate().dot(direction);
+
+        (along - sector.sphere.w, along + sector.sphere.w)
+      })
+      .reduce(|(nearest, farthest), (near, far)| (nearest.min(near), farthest.max(far)))
+  }
+
   /// What the wind's amplitude is multiplied by to give the farthest any tree leans, in metres.
   pub fn get_sway_reach(&self) -> f32 {
     self.sway_reach

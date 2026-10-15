@@ -5,7 +5,6 @@ import {
   formatContactShadowLights,
   formatLowLuminance,
   formatShadowBias,
-  formatShadowReach,
   formatWaveSpeed,
   fromGrassDensityScale,
   isTemporalAntialiasing,
@@ -33,7 +32,6 @@ describe("grass density scale", () => {
 describe("render choice formatters", () => {
   it("reads each value in the unit and the precision it is set in", () => {
     expect(formatShadowBias(0.25)).toBe("0.25");
-    expect(formatShadowReach(150)).toBe("150 m");
     expect(formatWaveSpeed(12)).toBe("12");
     expect(formatLowLuminance(0.0001)).toBe("0.0001");
     expect(formatContactShadowLights(0)).toBe("Sun only");

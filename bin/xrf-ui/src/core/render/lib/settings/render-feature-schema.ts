@@ -200,7 +200,6 @@ export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings>
     filter: toNumber(0, 3, true),
     isEnabled: FLAG,
     isStaggered: FLAG,
-    reach: toNumber(0, 2000),
     resolution: toNumber(256, 8192, true),
   },
   // The renderer's own: the third-party pack's menu bounds, its height doubled.

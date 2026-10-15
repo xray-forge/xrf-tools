@@ -484,6 +484,8 @@ impl LevelShadows {
     let is_split: bool = self.statics.is_some();
     let blends: Vec4 = self.values.blends;
     let mut rays: SunViewRays = SunViewRays::new(frame.camera);
+    // How far along the light the level stands, which every cascade's casters and receivers stand within.
+    let span: Option<(f32, f32)> = scene.get_span(frame.sun_direction.normalize_or_zero());
 
     while self.cascades.len() < count.min(RENDER_MAX_SHADOW_CASCADES) {
       let index: usize = self.cascades.len();
@@ -510,14 +512,9 @@ impl LevelShadows {
     for (index, cascade) in self.cascades.iter_mut().take(count).enumerate() {
       let width: f32 = frame.settings.cascades.get(index).copied().unwrap_or(1.0);
 
-      cascade.cascade.fit(
-        frame.camera,
-        &mut rays,
-        frame.sun_direction,
-        width,
-        resolution,
-        frame.settings.reach,
-      );
+      cascade
+        .cascade
+        .fit(frame.camera, &mut rays, frame.sun_direction, width, resolution, span);
 
       if !is_split {
         self.offers.extend(offer_whole(index, cascade, frame, scheduler));

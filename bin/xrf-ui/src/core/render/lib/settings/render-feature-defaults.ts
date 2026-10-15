@@ -239,7 +239,6 @@ export const DEFAULT_RENDER_SHADOW_SETTINGS: TRenderShadowSettings = {
   filter: 2,
   isEnabled: true,
   isStaggered: true,
-  reach: 400,
   resolution: 2048,
 };
 
