@@ -1,5 +1,6 @@
 use xrf_material::{
-  XrayBumpMode, XrayMaterialBump, XrayMaterialBumpInput, XraySurfaceDeclaration, XraySurfaceDescriptor, XraySurfaceDraw,
+  XrayBumpMode, XrayMaterialBump, XrayMaterialBumpInput, XraySurfaceDeclaration, XraySurfaceDescriptor,
+  XraySurfaceDetail, XraySurfaceDraw,
 };
 use xrf_vfs::XrayResolution;
 use xrf_visual::SectorSurface;
@@ -183,6 +184,11 @@ fn tests_a_composited_surface_by_its_own_reference_and_lays_a_wall_mark_as_one()
 fn lights_a_blended_level_surface_by_the_lightmap_its_entry_names() {
   let lit = |draw: XraySurfaceDraw| XraySurfaceDescriptor {
     textures: vec![String::from("fx\\fx_smoke"), String::from("lmap#3_1")],
+    detail: Some(XraySurfaceDetail {
+      reference: String::from("detail\\detail_grnd_grass"),
+      scale: 4.0,
+      bump: None,
+    }),
     ..create_descriptor("default", "LM_AREF", draw)
   };
   let surface: SectorSurface = create_surface("fx\\fx_smoke");
@@ -196,6 +202,11 @@ fn lights_a_blended_level_surface_by_the_lightmap_its_entry_names() {
 
   assert_eq!(blended.lightmap, Some("lmap#3_1"));
   assert!(blended.flags & StaticSurface::HAS_LIGHTMAP != 0);
+  assert_eq!(
+    blended.slots[StaticSurface::LIGHTMAP],
+    None,
+    "the lightmap takes the detail's slot, so no detail is asked for"
+  );
   assert_eq!(added.lightmap, None, "an added surface is lit by nothing of its own");
   assert!(added.flags & StaticSurface::HAS_LIGHTMAP == 0);
 }

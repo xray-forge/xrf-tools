@@ -212,6 +212,8 @@ impl StaticSurfaceBuilder {
 
     if lightmap.is_some() {
       flags = (flags & !StaticSurface::HAS_DETAIL) | StaticSurface::HAS_LIGHTMAP;
+      // The lightmap takes the detail's slot, so the detail is never asked for, to be read and freed unused.
+      slots[StaticSurface::LIGHTMAP] = None;
     }
 
     // A composited surface whose special pass distorts (`r__dsgraph_build` files it under `mapDistort`) draws that pass
