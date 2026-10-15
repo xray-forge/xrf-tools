@@ -107,7 +107,9 @@ fn march_parallax(start: vec2<f32>, step: vec2<f32>, share: f32) -> vec3<f32> {
   }
 
   let left: f32 = height - depth;
-  let ratio: f32 = left / (left - saturate(last_height - depth + share));
+  let crossing: f32 = left - saturate(last_height - depth + share);
+  // A single step onto a height of exactly nought crosses nothing: the step's own end, with no offset.
+  let ratio: f32 = select(1.0, left / crossing, abs(crossing) > 1e-6);
 
   return vec3<f32>(mix(at, at + step, ratio), sampled);
 }
@@ -161,7 +163,9 @@ fn enhanced_waves(in: WaterVarying, bottom_distance: f32) -> EnhancedWaves {
     let is_near: bool = distance < PARALLAX_DISTANCE;
     let share: f32 = select(1.0, 1.0 / mix(PARALLAX_STEPS, 1.0, abs(eye.z)), is_near);
     let lift: f32 = clamp(enhanced.parallax_height * wind, 0.015, enhanced.parallax_height);
-    let marched: vec3<f32> = march_parallax(base, share * eye.xy / eye.z * lift, share);
+    // Held off nought, as a surface seen edge-on would offset by no finite amount.
+    let facing: f32 = select(-1.0, 1.0, eye.z >= 0.0) * max(abs(eye.z), 1e-3);
+    let marched: vec3<f32> = march_parallax(base, share * eye.xy / facing * lift, share);
 
     coordinates = marched.xy;
     height = marched.z;
