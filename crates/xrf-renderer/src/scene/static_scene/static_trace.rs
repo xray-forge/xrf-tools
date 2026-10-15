@@ -1,4 +1,5 @@
 use std::collections::{HashMap, HashSet};
+use std::time::{Duration, Instant};
 
 use glam::{Mat4, Vec3};
 use xrf_renderer_core::{AccelerationStructureBinding, ProxyHandle};
@@ -32,6 +33,10 @@ pub struct StaticTrace {
   models: HashMap<ProxyHandle<StaticModelProxy>, wgpu::Blas>,
   /// The scene's contents and the generations of the arenas read, as last built over.
   built: Option<(usize, [u64; StaticLayout::COUNT + 1])>,
+  /// When the top level was last built, which a change that only adds waits on.
+  built_at: Option<Instant>,
+  /// The sectors and the objects' places the top level was last built over.
+  built_over: (HashSet<u32>, HashSet<u32>),
   /// Every top-level instance as last built, its structure and transform, by its index.
   built_instances: Vec<(Structure, [f32; 12])>,
   /// The instances of trees' geometry, which the wind sways.
@@ -66,6 +71,10 @@ struct PendingBuild<'s> {
 }
 
 impl StaticTrace {
+  /// The least time between two builds over contents that only grew, so a level streaming in builds a few times a
+  /// second rather than every frame; a change that took anything out, or moved the arenas, builds at once.
+  const REBUILD_EVERY: Duration = Duration::from_millis(250);
+
   /// Instances the top-level structure holds at first; it is made again twice as large when outgrown.
   const INSTANCES: u32 = 64;
 
@@ -99,6 +108,8 @@ impl StaticTrace {
       sectors: HashMap::new(),
       models: HashMap::new(),
       built: None,
+      built_at: None,
+      built_over: (HashSet::new(), HashSet::new()),
       built_instances: Vec::new(),
       swaying: Vec::new(),
       version: 0,
@@ -171,15 +182,31 @@ impl StaticTrace {
     ];
     let built: (usize, [u64; StaticLayout::COUNT + 1]) = (statics.get_contents(), generations);
 
-    if self.built.is_some_and(|(_, held)| held != generations) {
+    let has_moved: bool = self.built.is_some_and(|(_, held)| held != generations);
+
+    if has_moved {
       self.sectors.clear();
       self.models.clear();
     }
 
-    if self.built != Some(built) {
+    let is_due: bool = has_moved
+      || !self.is_only_added(statics)
+      || self.built_at.is_none_or(|at| at.elapsed() >= Self::REBUILD_EVERY);
+
+    if self.built != Some(built) && is_due {
       self.built = Some(built);
+      self.built_at = Some(Instant::now());
       self.build(device, queue, encoder, statics);
     }
+  }
+
+  /// Whether every sector and object place built over is still in the scene, so what changed only added to it.
+  fn is_only_added(&self, statics: &StaticScene) -> bool {
+    let (sectors, places) = &self.built_over;
+    let present_sectors: HashSet<u32> = statics.list_trace_sectors().map(|(sector, ..)| sector).collect();
+    let present_places: HashSet<u32> = statics.list_trace_objects().map(|(_, place, _)| place).collect();
+
+    sectors.is_subset(&present_sectors) && places.is_subset(&present_places)
   }
 
   fn build(
@@ -252,10 +279,14 @@ impl StaticTrace {
     encoder.build_acceleration_structures(entries.iter(), std::iter::once(&self.tlas));
 
     self.built_instances = instances;
+    self.built_over = (
+      sectors.iter().map(|(sector, ..)| *sector).collect(),
+      objects.iter().map(|(_, place, _)| *place).collect(),
+    );
     self.swaying = swaying;
     self.version += 1;
 
-    log::info!(
+    log::debug!(
       "Static trace: {} structures built; {} sectors, {} models, {} instances, {} records",
       entries.len(),
       sectors.len(),
