@@ -3,6 +3,7 @@ use xrf_renderer_core::{PassParameters, RasterContext, RenderPipelineDescription
 
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::composited_parameters::CompositedParameters;
+use crate::pass::composited_pipelines::CompositedPipelines;
 use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::sky_parameters::SkyParameters;
 use crate::pass::static_draw_parameters::StaticDrawParameters;
@@ -38,16 +39,6 @@ pub struct CompositedPass {
   pipelines: CompositedPipelines,
   generation: u64,
 }
-
-/// One a composited batch, in `StaticBatch::list_composited` order; one a wall mark batch; one a layout, in
-/// `StaticLayout::ALL` order, for the distortion; and one a batch of either composited class, in
-/// `CompositedPass::list_selectable` order, for the selection's mark.
-type CompositedPipelines = (
-  Vec<wgpu::RenderPipeline>,
-  Vec<wgpu::RenderPipeline>,
-  Vec<wgpu::RenderPipeline>,
-  Vec<wgpu::RenderPipeline>,
-);
 
 impl CompositedPass {
   /// Reversed depth steps a composited surface is pulled towards the eye by, so a surface laid on a wall never loses
@@ -117,7 +108,7 @@ impl CompositedPass {
   ) {
     Self::bind_common(context, (view, textures), (composited, sky));
 
-    for (batch, pipeline) in StaticBatch::list_composited().zip(&self.pipelines.0) {
+    for (batch, pipeline) in StaticBatch::list_composited().zip(&self.pipelines.composited) {
       // The models' are drawn back to front from the view's sorted list rather than as the cull listed them.
       if batch.layout == StaticLayout::Model {
         continue;
@@ -150,7 +141,7 @@ impl CompositedPass {
     for (layout, first, count) in runs {
       // The composited batches run in layout order, one a layout, so a layout's program is its batch's.
       context.bind(&sorted[layout.get_index()]);
-      context.get_pass().set_pipeline(&self.pipelines.0[layout.get_index()]);
+      context.get_pass().set_pipeline(&self.pipelines.composited[layout.get_index()]);
       context
         .get_pass()
         .draw(0..StaticGeometry::CLUSTER_VERTICES, *first..first + count);
@@ -189,7 +180,7 @@ impl CompositedPass {
   ) {
     Self::bind_common(context, (view, textures), (composited, sky));
 
-    for (layout, pipeline) in StaticLayout::ALL.into_iter().zip(&self.pipelines.2) {
+    for (layout, pipeline) in StaticLayout::ALL.into_iter().zip(&self.pipelines.distortion) {
       let list: u64 = StaticBatch::get_pass_list(layout, StaticSurfacePass::Distortion).into();
 
       context.bind(&layouts[layout.get_index()]);
@@ -216,7 +207,7 @@ impl CompositedPass {
     context.get_pass().set_bind_group(0, &view.bind_group, &[]);
     context.get_pass().set_bind_group(1, textures, &[]);
 
-    for (batch, pipeline) in Self::list_selectable().zip(&self.pipelines.3) {
+    for (batch, pipeline) in Self::list_selectable().zip(&self.pipelines.selection) {
       context.bind(&layouts[batch.layout.get_index()]);
       context.get_pass().set_pipeline(pipeline);
 
@@ -245,7 +236,7 @@ impl CompositedPass {
     context.get_pass().set_bind_group(0, &view.bind_group, &[]);
     context.get_pass().set_bind_group(1, textures, &[]);
 
-    for (batch, pipeline) in StaticBatch::list_wallmarks().zip(&self.pipelines.1) {
+    for (batch, pipeline) in StaticBatch::list_wallmarks().zip(&self.pipelines.wallmarks) {
       context.bind(&layouts[batch.layout.get_index()]);
       context.get_pass().set_pipeline(pipeline);
 
@@ -300,7 +291,12 @@ impl CompositedPass {
       Self::list_selectable().map(|batch| batch.layout),
     )?;
 
-    Ok((composited, wallmarks, distortion, selection))
+    Ok(CompositedPipelines {
+      composited,
+      wallmarks,
+      distortion,
+      selection,
+    })
   }
 
   fn create_layout_pipelines(

@@ -15,6 +15,7 @@ pub(crate) mod combine_parameters;
 pub(crate) mod combine_pass;
 pub(crate) mod composited_parameters;
 pub(crate) mod composited_pass;
+pub(crate) mod composited_pipelines;
 pub(crate) mod compute_grid;
 pub(crate) mod contact_march_permutation;
 pub(crate) mod contact_shadow_parameters;
