@@ -31,9 +31,6 @@ use crate::scene::level::feature::view_feature::ViewFeature;
 use crate::scene::level::light_shadow_atlas::LightShadowAtlas;
 use crate::scene::level::lighting_handles::LightingHandles;
 
-/// Lights standing in view at most in one frame: the nearest are kept.
-pub const MAX_LIGHTS: usize = 1024;
-
 /// Clusters the view is cut into, and lights one holds at most, as `shaders/common/light_clusters.wgsl` declares them.
 const LIGHT_CLUSTERS: u64 = 16 * 9 * 24;
 const LIGHT_CLUSTER_CAPACITY: u64 = 64;
@@ -66,6 +63,9 @@ pub struct LightsFeature {
 }
 
 impl LightsFeature {
+  /// Lights standing in view at most in one frame: the nearest are kept.
+  pub const MAX_LIGHTS: usize = 1024;
+
   pub fn new(device: &wgpu::Device) -> Self {
     let storage = |label: &str, size: u64| -> wgpu::Buffer {
       device.create_buffer(&wgpu::BufferDescriptor {
@@ -78,11 +78,17 @@ impl LightsFeature {
 
     Self {
       settings: RenderLightsSettings::default(),
-      records: Vec::with_capacity(MAX_LIGHTS),
-      record_buffer: storage("light records", (MAX_LIGHTS * size_of::<LightRecord>()) as u64),
-      volumes: Vec::with_capacity(MAX_LIGHTS),
-      volume_slices: Vec::with_capacity(MAX_LIGHTS),
-      volume_buffer: storage("light volumes", (MAX_LIGHTS * size_of::<LightVolumeRecord>()) as u64),
+      records: Vec::with_capacity(Self::MAX_LIGHTS),
+      record_buffer: storage(
+        "light records",
+        (Self::MAX_LIGHTS * size_of::<LightRecord>()) as u64,
+      ),
+      volumes: Vec::with_capacity(Self::MAX_LIGHTS),
+      volume_slices: Vec::with_capacity(Self::MAX_LIGHTS),
+      volume_buffer: storage(
+        "light volumes",
+        (Self::MAX_LIGHTS * size_of::<LightVolumeRecord>()) as u64,
+      ),
       volumes_uniform: LightVolumesUniform::default(),
       // The clusters' counts, then the binning's two words of overflow.
       counts: device.create_buffer(&wgpu::BufferDescriptor {

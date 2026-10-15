@@ -1,7 +1,7 @@
 use glam::Vec3;
 
 use crate::camera::camera_view::CameraView;
-use crate::scene::level::level_shadows::{get_cascade_blends, sample_seen_grass};
+use crate::scene::level::level_shadows::LevelShadows;
 
 /// A camera at `position` looking along `heading` degrees about the up axis and `pitch` degrees down, through `fov`.
 fn camera(position: Vec3, (heading, pitch): (f32, f32), fov: f32) -> CameraView {
@@ -21,7 +21,7 @@ fn camera(position: Vec3, (heading, pitch): (f32, f32), fov: f32) -> CameraView 
 #[test]
 fn samples_the_grass_a_narrow_view_sees() {
   let view: CameraView = camera(Vec3::new(64.0, -2.4, -232.8), (157.4, 5.9), 8.0);
-  let points: Vec<Vec3> = sample_seen_grass(&view, 111.0);
+  let points: Vec<Vec3> = LevelShadows::sample_seen_grass(&view, 111.0);
 
   assert!(!points.is_empty());
   assert!(points.iter().all(|point| view.reaches(point.extend(0.01))));
@@ -32,7 +32,7 @@ fn samples_the_grass_a_narrow_view_sees() {
 #[test]
 fn samples_the_grass_a_wide_view_sees_near_and_at_its_reach() {
   let view: CameraView = camera(Vec3::ZERO, (0.0, 10.0), 67.5);
-  let points: Vec<Vec3> = sample_seen_grass(&view, 50.0);
+  let points: Vec<Vec3> = LevelShadows::sample_seen_grass(&view, 50.0);
 
   assert!(points.iter().all(|point| view.reaches(point.extend(0.01))));
   assert!(points.iter().any(|point| point.distance(view.position) < 5.0));
@@ -45,6 +45,9 @@ fn samples_the_grass_a_wide_view_sees_near_and_at_its_reach() {
 
 #[test]
 fn widens_the_nearest_cascades_bands_alone() {
-  assert_eq!(get_cascade_blends(0.08).to_array(), [0.2, 0.2, 0.08, 0.08]);
-  assert_eq!(get_cascade_blends(0.3).to_array(), [0.3, 0.3, 0.3, 0.3]);
+  assert_eq!(
+    LevelShadows::get_cascade_blends(0.08).to_array(),
+    [0.2, 0.2, 0.08, 0.08]
+  );
+  assert_eq!(LevelShadows::get_cascade_blends(0.3).to_array(), [0.3, 0.3, 0.3, 0.3]);
 }

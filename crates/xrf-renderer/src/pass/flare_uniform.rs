@@ -3,9 +3,6 @@ use xrf_renderer_core::ShaderStruct;
 
 use crate::host::render_lens_flare::RenderLensFlare;
 
-/// Flares `shaders/common/flares.wgsl` holds room for; a section with more draws its first ones.
-pub const FLARE_SLOTS: usize = 16;
-
 /// What `shaders/common/flares.wgsl` reads as its `Flares`: where the sun stands, its colour and the lens flare's.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
@@ -15,14 +12,17 @@ pub struct FlareUniform {
   pub sun: Vec4,
   pub color: Vec4,
   pub gradient: Vec4,
-  pub flares: [Vec4; FLARE_SLOTS],
+  pub flares: [Vec4; FlareUniform::SLOTS],
 }
 
 impl FlareUniform {
+  /// Flares `shaders/common/flares.wgsl` holds room for; a section with more draws its first ones.
+  pub const SLOTS: usize = 16;
+
   /// One frame's lens flare: towards the sun in view space and in the world, the sun's colour, how far the flare has
   /// faded in, and the seconds since the last frame its visibility eases over.
   pub fn new(flare: &RenderLensFlare, (to_sun, toward_sun): (Vec3, Vec3), color: Vec3, faded: f32, delta: f32) -> Self {
-    let mut flares: [Vec4; FLARE_SLOTS] = [Vec4::ZERO; FLARE_SLOTS];
+    let mut flares: [Vec4; Self::SLOTS] = [Vec4::ZERO; Self::SLOTS];
 
     for (slot, it) in flares.iter_mut().zip(&flare.flares) {
       *slot = Vec4::new(it.position, it.radius, it.opacity, 0.0);

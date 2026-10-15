@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use crate::frame::frame_statistics::PHASES;
+use crate::frame::frame_statistics::FrameStatistics;
 
 /// Where the render thread's time went over one frame.
 #[derive(Clone, Copy, Debug, Default)]
@@ -17,7 +17,7 @@ pub struct FramePhases {
 }
 
 impl FramePhases {
-  pub(crate) fn to_array(self) -> [Duration; PHASES] {
+  pub(crate) fn to_array(self) -> [Duration; FrameStatistics::PHASES] {
     [
       self.update,
       self.acquire,

@@ -4,7 +4,7 @@ use glam::Vec3;
 
 use crate::host::render_flare::RenderFlare;
 use crate::host::render_lens_flare::RenderLensFlare;
-use crate::pass::flare_uniform::{FLARE_SLOTS, FlareUniform};
+use crate::pass::flare_uniform::FlareUniform;
 use crate::scene::level::lens_flare_fade::LensFlareFade;
 
 fn new_flare(rise_time: f32, down_time: f32, flares: usize) -> RenderLensFlare {
@@ -92,7 +92,7 @@ fn completes_every_fade_at_once_while_the_clock_is_paused() {
 
 #[test]
 fn writes_the_flares_and_gradient_a_lens_flare_draws() {
-  let flare: RenderLensFlare = new_flare(1.0, 1.0, FLARE_SLOTS + 4);
+  let flare: RenderLensFlare = new_flare(1.0, 1.0, FlareUniform::SLOTS + 4);
   let uniform: FlareUniform = FlareUniform::new(
     &flare,
     (Vec3::new(0.0, 0.0, -1.0), Vec3::Y),

@@ -5,7 +5,7 @@ use std::time::Instant;
 
 use glam::{Mat4, Vec3};
 use xrf_anm::AnmFile;
-use xrf_renderer::{LoaderReceiver, RenderLevelSource, RenderWorkers, to_vec3};
+use xrf_renderer::{LoaderReceiver, RenderLevelSource, RenderWorkers};
 use xrf_visual::VisualTransform;
 
 /// One object motion asked for: on its way from a loader thread, read, or not to be had.
@@ -56,7 +56,7 @@ impl LevelObjectMotions {
       Mat4::from_cols_array(&VisualTransform::of_motion(&position, &rotation).mirrored().to_matrix());
     let elapsed: f32 = now - previous;
     let velocity: Vec3 = if elapsed > 0.0 {
-      (to_vec3(&position) - to_vec3(&before)) / elapsed
+      (Vec3::from(position.to_array()) - Vec3::from(before.to_array())) / elapsed
     } else {
       Vec3::ZERO
     };

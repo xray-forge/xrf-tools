@@ -75,8 +75,8 @@ impl LevelOverlays {
 
     Self {
       version,
-      lines: create_vertices(device, "overlay lines", &vertices),
-      points: create_vertices(device, "overlay points", &points),
+      lines: Self::create_vertices(device, "overlay lines", &vertices),
+      points: Self::create_vertices(device, "overlay points", &points),
       sun: sun.map(|sun| {
         device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
           label: Some("overlay sun"),
@@ -101,24 +101,24 @@ impl LevelOverlays {
       .map(|end| [end.x, end.y, end.z, color[0], color[1], color[2], tested])
       .collect();
 
-    self.skeleton_lines = create_vertices(device, "overlay skeleton", &vertices);
+    self.skeleton_lines = Self::create_vertices(device, "overlay skeleton", &vertices);
   }
-}
 
-/// A vertex buffer of what is given and how many, or none for nothing.
-fn create_vertices<T: bytemuck::Pod>(
-  device: &wgpu::Device,
-  label: &str,
-  vertices: &[T],
-) -> Option<(wgpu::Buffer, u32)> {
-  (!vertices.is_empty()).then(|| {
-    (
-      device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some(label),
-        contents: bytemuck::cast_slice(vertices),
-        usage: wgpu::BufferUsages::VERTEX,
-      }),
-      vertices.len() as u32,
-    )
-  })
+  /// A vertex buffer of what is given and how many, or none for nothing.
+  fn create_vertices<T: bytemuck::Pod>(
+    device: &wgpu::Device,
+    label: &str,
+    vertices: &[T],
+  ) -> Option<(wgpu::Buffer, u32)> {
+    (!vertices.is_empty()).then(|| {
+      (
+        device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+          label: Some(label),
+          contents: bytemuck::cast_slice(vertices),
+          usage: wgpu::BufferUsages::VERTEX,
+        }),
+        vertices.len() as u32,
+      )
+    })
+  }
 }

@@ -3,7 +3,7 @@ use xrf_renderer_core::{ComputeContext, ComputePipelineDescription, PassParamete
 
 use crate::pass::exposure_parameters::ExposureParameters;
 use crate::pass::pipeline_source::PipelineSource;
-use crate::scene::level::feature::exposure_feature::EXPOSURE_CELLS;
+use crate::scene::level::feature::exposure_feature::ExposureFeature;
 
 /// Invocations a measuring workgroup runs, as `shaders/frame/exposure.wgsl` declares them.
 const MEASURE_WORKGROUP: u32 = 64;
@@ -49,7 +49,11 @@ impl ExposurePass {
     let pass: &mut wgpu::ComputePass<'static> = context.get_pass();
 
     pass.set_pipeline(&self.pipelines[0]);
-    pass.dispatch_workgroups((EXPOSURE_CELLS * EXPOSURE_CELLS).div_ceil(MEASURE_WORKGROUP), 1, 1);
+    pass.dispatch_workgroups(
+      (ExposureFeature::CELLS * ExposureFeature::CELLS).div_ceil(MEASURE_WORKGROUP),
+      1,
+      1,
+    );
     pass.set_pipeline(&self.pipelines[1]);
     pass.dispatch_workgroups(1, 1, 1);
   }

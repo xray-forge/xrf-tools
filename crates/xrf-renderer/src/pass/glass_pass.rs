@@ -2,7 +2,7 @@ use xrf_error::XrfResult;
 use xrf_renderer_core::{PassParameters, RasterContext};
 
 use crate::frame::view_targets::ViewTargets;
-use crate::pass::composited_pass::COMPOSITED_DEPTH_BIAS;
+use crate::pass::composited_pass::CompositedPass;
 use crate::pass::glass_parameters::GlassParameters;
 use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::shader_pipelines::create_checked;
@@ -159,7 +159,7 @@ impl GlassPass {
               depth_write_enabled: Some(false),
               depth_compare: Some(wgpu::CompareFunction::GreaterEqual),
               stencil: Default::default(),
-              bias: COMPOSITED_DEPTH_BIAS,
+              bias: CompositedPass::DEPTH_BIAS,
             }),
             multisample: Default::default(),
             multiview_mask: None,

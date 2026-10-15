@@ -1,5 +1,5 @@
 use crate::scene::texture::decoded_texture::DecodedTexture;
-use crate::scene::texture::texture_cache::get_dropped_levels;
+use crate::scene::texture::texture_cache::TextureCache;
 
 /// A block compressed texture of `width` by `height` with every level down to four texels.
 fn create_texture(width: u32, height: u32) -> DecodedTexture {
@@ -24,7 +24,12 @@ fn create_texture(width: u32, height: u32) -> DecodedTexture {
 #[test]
 fn texture_lod_drops_the_engines_levels_and_a_listed_texture_a_step_sooner() {
   let table: Vec<(u32, u32)> = (0..=4)
-    .map(|lod| (get_dropped_levels(lod, false), get_dropped_levels(lod, true)))
+    .map(|lod| {
+      (
+        TextureCache::get_dropped_levels(lod, false),
+        TextureCache::get_dropped_levels(lod, true),
+      )
+    })
     .collect();
 
   assert_eq!(table, vec![(0, 0), (0, 1), (1, 1), (1, 2), (2, 2)]);

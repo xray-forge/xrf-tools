@@ -1,7 +1,6 @@
 use std::f32::consts::PI;
 
 use glam::{Mat4, Vec3, Vec4Swizzles};
-use xrf_math::Vector3d;
 
 use crate::data::particle_domain::ParticleDomain;
 use crate::simulation::engine_vector::EngineVector;
@@ -223,14 +222,12 @@ impl ParticleVolume {
 
 impl From<&ParticleDomain> for ParticleVolume {
   fn from(domain: &ParticleDomain) -> Self {
-    let to_vec3 = |vector: &Vector3d| Vec3::new(vector.x, vector.y, vector.z);
-
     Self {
       kind: domain.domain_type,
-      p1: to_vec3(&domain.coordinates.0),
-      p2: to_vec3(&domain.coordinates.1),
-      u: to_vec3(&domain.basis.0),
-      v: to_vec3(&domain.basis.1),
+      p1: Vec3::from(domain.coordinates.0.to_array()),
+      p2: Vec3::from(domain.coordinates.1.to_array()),
+      u: Vec3::from(domain.basis.0.to_array()),
+      v: Vec3::from(domain.basis.1.to_array()),
       radius1: domain.radius1,
       radius2: domain.radius2,
       radius1_sqr: domain.radius1_sqr,

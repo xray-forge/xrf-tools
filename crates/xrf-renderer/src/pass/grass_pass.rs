@@ -29,9 +29,6 @@ const WORKGROUP: u32 = 64;
 /// own; dispatching over the lists costs ~0.035 ms a million items (RTX 5080), so the indirect one wins only past ~1M.
 const SORT_INDIRECT_ABOVE: u32 = 1 << 21;
 
-/// Bytes one indexed indirect draw takes.
-pub const GRASS_DRAW_BYTES: u64 = 20;
-
 /// Plants the grass around the camera as `CDetailManager` does, on the GPU, and draws a model's tufts at a time into
 /// the G-buffer.
 pub struct GrassPass {
@@ -60,6 +57,9 @@ pub struct GrassPass {
 }
 
 impl GrassPass {
+  /// Bytes one indexed indirect draw takes.
+  pub const DRAW_BYTES: u64 = 20;
+
   /// # Errors
   ///
   /// Returns an error when a shader does not compose or compile.
@@ -400,7 +400,7 @@ impl GrassPass {
 
     for model in 0..draws.models {
       pass.set_immediates(0, bytemuck::bytes_of(&model));
-      pass.draw_indexed_indirect(draws.args, u64::from(model) * GRASS_DRAW_BYTES);
+      pass.draw_indexed_indirect(draws.args, u64::from(model) * Self::DRAW_BYTES);
     }
   }
 

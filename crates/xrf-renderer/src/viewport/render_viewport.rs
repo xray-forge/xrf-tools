@@ -356,7 +356,7 @@ impl RenderViewport {
     let mut applied: RenderAppliedReport = level.describe_applied(&self.options);
 
     if self.options.asset.lighting.is_none() {
-      applied.environment = Some(to_applied_environment(
+      applied.environment = Some(Self::to_applied_environment(
         &self.world.lighting,
         &self.options.features.light_scales,
       ));
@@ -395,22 +395,22 @@ impl RenderViewport {
       self.is_gone = true;
     }
   }
-}
 
-/// What `lighting` lights a scene with, as the passes bind it.
-fn to_applied_environment(lighting: &RenderLighting, scales: &RenderLightScales) -> RenderAppliedEnvironment {
-  RenderAppliedEnvironment {
-    sun_direction: lighting.get_sun_direction().to_array(),
-    sun_color: lighting.get_sun_color(scales).to_array(),
-    ambient: lighting.get_ambient(scales).to_array(),
-    hemisphere: lighting.get_environment(scales).to_array(),
-    fog: lighting.fog.as_ref().map(|fog| RenderAppliedFog {
-      color: fog.color.to_array(),
-      distance: fog.get_total_distance(),
-      density: fog.density,
-    }),
-    rain_density: lighting.rain.as_ref().map_or(0.0, |rain| rain.density),
-    tree_sway: lighting.trees.as_ref().map_or(0.0, |trees| trees.amplitude),
-    water_intensity: lighting.water_intensity,
+  /// What `lighting` lights a scene with, as the passes bind it.
+  fn to_applied_environment(lighting: &RenderLighting, scales: &RenderLightScales) -> RenderAppliedEnvironment {
+    RenderAppliedEnvironment {
+      sun_direction: lighting.get_sun_direction().to_array(),
+      sun_color: lighting.get_sun_color(scales).to_array(),
+      ambient: lighting.get_ambient(scales).to_array(),
+      hemisphere: lighting.get_environment(scales).to_array(),
+      fog: lighting.fog.as_ref().map(|fog| RenderAppliedFog {
+        color: fog.color.to_array(),
+        distance: fog.get_total_distance(),
+        density: fog.density,
+      }),
+      rain_density: lighting.rain.as_ref().map_or(0.0, |rain| rain.density),
+      tree_sway: lighting.trees.as_ref().map_or(0.0, |trees| trees.amplitude),
+      water_intensity: lighting.water_intensity,
+    }
   }
 }

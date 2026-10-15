@@ -5,13 +5,10 @@ use crate::frame::view_targets::ViewTargets;
 use crate::pass::flare_draw_parameters::FlareDrawParameters;
 use crate::pass::flare_measure_parameters::FlareMeasureParameters;
 use crate::pass::flare_texture_parameters::FlareTextureParameters;
-use crate::pass::flare_uniform::FLARE_SLOTS;
+use crate::pass::flare_uniform::FlareUniform;
 use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::shader_pipelines::create_checked;
 use crate::pass::view_binding::ViewBinding;
-
-/// The instance the gradient is drawn as, as `shaders/frame/flare.wgsl` reads it.
-pub const GRADIENT_INSTANCE: u32 = FLARE_SLOTS as u32;
 
 /// Measures how much of the sun shows and draws the lens flares and the gradient over a viewport's finished frame, as
 /// `CEnvironment::RenderFlares` does after combine: each a quad added by its alpha, `srcalpha, one`, with no depth.
@@ -27,6 +24,9 @@ pub struct FlarePass {
 }
 
 impl FlarePass {
+  /// The instance the gradient is drawn as, as `shaders/frame/flare.wgsl` reads it.
+  pub const GRADIENT_INSTANCE: u32 = FlareUniform::SLOTS as u32;
+
   /// # Errors
   ///
   /// Returns an error when a shader does not compose or compile.
@@ -93,7 +93,7 @@ impl FlarePass {
     pass.dispatch_workgroups(1, 1, 1);
   }
 
-  /// Draws each flare, by instance, with its texture's group; the gradient is `GRADIENT_INSTANCE`.
+  /// Draws each flare, by instance, with its texture's group; the gradient is `Self::GRADIENT_INSTANCE`.
   pub fn record_draw(
     &self,
     context: &mut RasterContext<'_>,

@@ -1,9 +1,12 @@
 use glam::{Vec3, Vec4};
-use xrf_math::{EPS, Vector3d};
+use xrf_math::EPS;
 use xrf_visual::{LightDescription, LightKind};
 
 /// How near parallel to the world's up a spot may point before `compute_xf_spot` takes the world's forward instead.
 const PARALLEL: f32 = 0.99;
+
+/// `ps_r2_slight_fade`: what a shadowed light's screen area is scaled by before it fades (`xrRender_console.cpp`).
+const SHADOWED_FADE: f32 = 0.5;
 
 /// Where a light stands and the axes it lights along: a spot's `compute_xf_spot` basis, a point's facing down `-z`.
 #[derive(Clone, Copy, Debug)]
@@ -18,7 +21,7 @@ impl LightBasis {
   /// The direction, and the right the lamp gives made square to it through the up they make, or the world's up where
   /// it gives none. Crossed in the renderer's mirrored space, the engine's cross products turn their sign.
   pub fn of(light: &LightDescription) -> Self {
-    let position: Vec3 = to_vec3(&light.position);
+    let position: Vec3 = Vec3::from(light.position.to_array());
 
     if !matches!(light.kind, LightKind::Spot) {
       return Self {
@@ -29,8 +32,8 @@ impl LightBasis {
       };
     }
 
-    let direction: Vec3 = to_vec3(&light.direction).normalize_or(Vec3::NEG_Z);
-    let given: Vec3 = to_vec3(&light.right);
+    let direction: Vec3 = Vec3::from(light.direction.to_array()).normalize_or(Vec3::NEG_Z);
+    let given: Vec3 = Vec3::from(light.right.to_array());
     let (right, up): (Vec3, Vec3) = if given.length_squared() > EPS {
       let up: Vec3 = -direction.cross(given.normalize()).normalize_or(Vec3::Y);
 
@@ -103,30 +106,22 @@ impl LightBasis {
 
     (self.position + direction * radius).extend(radius)
   }
-}
 
-/// `ps_r2_slight_fade`: what a shadowed light's screen area is scaled by before it fades (`xrRender_console.cpp`).
-const SHADOWED_FADE: f32 = 0.5;
+  /// `light::get_LOD`: how far a shadowed light has faded, by its sphere's share of the screen, one whole and zero gone,
+  /// against the progressive meshes' own `start` and `end` thresholds.
+  pub fn to_light_lod(sphere: Vec4, eye: Vec3, start: f32, end: f32) -> f32 {
+    // `EPS` added to the squared distance, so a camera inside the light divides by no zero.
+    let area: f32 = SHADOWED_FADE * sphere.w / (eye.distance_squared(sphere.truncate()) + EPS);
 
-/// `light::get_LOD`: how far a shadowed light has faded, by its sphere's share of the screen, one whole and zero gone,
-/// against the progressive meshes' own `start` and `end` thresholds.
-pub fn to_light_lod(sphere: Vec4, eye: Vec3, start: f32, end: f32) -> f32 {
-  // `EPS` added to the squared distance, so a camera inside the light divides by no zero.
-  let area: f32 = SHADOWED_FADE * sphere.w / (eye.distance_squared(sphere.truncate()) + EPS);
-
-  if start > end {
-    ((area - end) / (start - end)).clamp(0.0, 1.0).sqrt()
-  } else {
-    1.0
+    if start > end {
+      ((area - end) / (start - end)).clamp(0.0, 1.0).sqrt()
+    } else {
+      1.0
+    }
   }
-}
 
-/// `(mean + luminance) / 2`, which `compute_xf_spot` sizes a brighter light's maps larger by.
-pub fn to_light_intensity(color: Vec3) -> f32 {
-  (color.element_sum() / 3.0 + color.dot(Vec3::new(0.2125, 0.7154, 0.0721))) / 2.0
-}
-
-/// A level vector as the renderer computes with it.
-pub fn to_vec3(vector: &Vector3d) -> Vec3 {
-  Vec3::new(vector.x, vector.y, vector.z)
+  /// `(mean + luminance) / 2`, which `compute_xf_spot` sizes a brighter light's maps larger by.
+  pub fn to_light_intensity(color: Vec3) -> f32 {
+    (color.element_sum() / 3.0 + color.dot(Vec3::new(0.2125, 0.7154, 0.0721))) / 2.0
+  }
 }

@@ -16,7 +16,7 @@ use crate::frame::periodic_job::PeriodicJob;
 use crate::frame::periodic_scheduler::PeriodicScheduler;
 use crate::frame::periodic_ticket::PeriodicTicket;
 use crate::frame::static_scene_handles::StaticSceneHandles;
-use crate::lighting::light_basis::{LightBasis, to_light_intensity};
+use crate::lighting::light_basis::LightBasis;
 use crate::lighting::light_shadow_size::{
   LIGHT_SHADOW_MIN_SIZE, LIGHT_SHADOW_POINT_CONE, LIGHT_SHADOW_POINT_FACES, LIGHT_SHADOW_WIDENING,
   to_light_shadow_size, to_light_shadow_tile_size,
@@ -43,9 +43,6 @@ use crate::scene::level::shadow_tile_allocator::ShadowTileAllocator;
 use crate::scene::static_scene::growable_buffer::GrowableBuffer;
 use crate::scene::static_scene::static_layout::StaticLayout;
 use crate::scene::static_scene::static_scene::StaticScene;
-
-/// Texels the light shadow atlas is across.
-pub const LIGHT_SHADOW_ATLAS_SIZE: u32 = 4096;
 
 /// Shadow faces offered at most in one frame, each with a slot of its own in the lists and the draw arguments.
 const FACE_BUDGET: usize = 8;
@@ -157,12 +154,15 @@ pub struct LevelLightShadows {
 }
 
 impl LevelLightShadows {
+  /// Texels the light shadow atlas is across.
+  pub const ATLAS_SIZE: u32 = 4096;
+
   pub fn new(device: &wgpu::Device, view_layout: &wgpu::BindGroupLayout, args_size: u64) -> Self {
     let alignment: u64 = u64::from(device.limits().min_storage_buffer_offset_alignment);
     let args_stride: u64 = args_size.next_multiple_of(alignment);
     Self {
       atlas: None,
-      none: create_atlas(device, "light shadow atlas none", 1),
+      none: Self::create_atlas(device, "light shadow atlas none", 1),
       sampler: device.create_sampler(&wgpu::SamplerDescriptor {
         label: Some("light shadow atlas"),
         mag_filter: wgpu::FilterMode::Linear,
@@ -173,7 +173,7 @@ impl LevelLightShadows {
       is_cast: false,
       statics: None,
       is_swaying: false,
-      allocator: ShadowTileAllocator::new(LIGHT_SHADOW_ATLAS_SIZE, LIGHT_SHADOW_MIN_SIZE),
+      allocator: ShadowTileAllocator::new(Self::ATLAS_SIZE, LIGHT_SHADOW_MIN_SIZE),
       entries: HashMap::new(),
       frame: 0,
       candidates: Vec::new(),
@@ -201,7 +201,7 @@ impl LevelLightShadows {
   pub fn get_atlas_use(&self) -> RenderPoolUse {
     RenderPoolUse {
       used: self.allocator.get_used().min(u64::from(u32::MAX)) as u32,
-      capacity: LIGHT_SHADOW_ATLAS_SIZE * LIGHT_SHADOW_ATLAS_SIZE,
+      capacity: Self::ATLAS_SIZE * Self::ATLAS_SIZE,
     }
   }
 
@@ -252,7 +252,7 @@ impl LevelLightShadows {
       1.0
     };
     let cone: f32 = if is_spot { light.cone } else { LIGHT_SHADOW_POINT_CONE };
-    let wanted: f32 = to_light_shadow_size(light.range, distance, to_light_intensity(color), duel, cone);
+    let wanted: f32 = to_light_shadow_size(light.range, distance, LightBasis::to_light_intensity(color), duel, cone);
     let entry: &mut LightShadowEntry = self.entries.entry(handle).or_default();
 
     // Kept ready out of view once a frame, and never over a view's ask.
@@ -283,11 +283,11 @@ impl LevelLightShadows {
     // Back at the size it shows while another was being drawn: the shown faces stand, and the other goes.
     if entry.shown.as_ref().is_some_and(|set| set.size == asked) {
       if let Some(next) = entry.next.take() {
-        release_set(&mut self.allocator, next);
+        Self::release_set(&mut self.allocator, next);
       }
     } else if entry.next.as_ref().is_none_or(|set| set.size != asked) {
       if let Some(next) = self.entries.get_mut(&handle).and_then(|entry| entry.next.take()) {
-        release_set(&mut self.allocator, next);
+        Self::release_set(&mut self.allocator, next);
       }
 
       let set: Option<LightShadowSet> = self.create_set(light, basis, asked, is_in_view);
@@ -315,7 +315,10 @@ impl LevelLightShadows {
       .swaying
       .is_none_or(|(at, _)| statics.is_changed_since(at, touches))
     {
-      entry.swaying = Some((contents, measure_swaying(basis.position, spatial, near, sway.places)));
+      entry.swaying = Some((
+        contents,
+        Self::measure_swaying(basis.position, spatial, near, sway.places),
+      ));
     }
 
     // The cards stand about the eye: a light near it whose reach meets them casts their shadow.
@@ -341,7 +344,7 @@ impl LevelLightShadows {
           let is_moved: bool = state.view.position != basis.position;
 
           if is_moved {
-            state.view = to_face_view(light, basis, face, set.near, set.far);
+            state.view = Self::to_face_view(light, basis, face, set.near, set.far);
             state.drawn_static = None;
           }
 
@@ -505,7 +508,7 @@ impl LevelLightShadows {
     for entry in self.entries.values_mut() {
       if entry.next.as_ref().is_some_and(LightShadowSet::is_drawn) {
         if let Some(shown) = entry.shown.take() {
-          release_set(&mut self.allocator, shown);
+          Self::release_set(&mut self.allocator, shown);
         }
 
         entry.shown = entry.next.take();
@@ -690,13 +693,17 @@ impl LevelLightShadows {
   fn hold_atlas(&mut self, device: &wgpu::Device) {
     match (self.is_cast, self.atlas.is_some()) {
       (true, false) => {
-        self.atlas = Some(create_atlas(device, "light shadow atlas", LIGHT_SHADOW_ATLAS_SIZE));
+        self.atlas = Some(Self::create_atlas(
+          device,
+          "light shadow atlas",
+          Self::ATLAS_SIZE,
+        ));
       }
       (false, true) => {
         self.atlas = None;
         self.statics = None;
         self.entries.clear();
-        self.allocator = ShadowTileAllocator::new(LIGHT_SHADOW_ATLAS_SIZE, LIGHT_SHADOW_MIN_SIZE);
+        self.allocator = ShadowTileAllocator::new(Self::ATLAS_SIZE, LIGHT_SHADOW_MIN_SIZE);
       }
       _ => {}
     }
@@ -707,10 +714,10 @@ impl LevelLightShadows {
   fn hold_statics(&mut self, device: &wgpu::Device) {
     match (self.is_swaying, self.statics.is_some()) {
       (true, false) => {
-        self.statics = Some(create_atlas(
+        self.statics = Some(Self::create_atlas(
           device,
           "light shadow static atlas",
-          LIGHT_SHADOW_ATLAS_SIZE,
+          Self::ATLAS_SIZE,
         ));
       }
       (false, true) => {
@@ -762,7 +769,7 @@ impl LevelLightShadows {
           .enumerate()
           .map(|(face, tile)| LightShadowFace {
             tile,
-            view: to_face_view(light, basis, face, near, far),
+            view: Self::to_face_view(light, basis, face, near, far),
             drawn: None,
             drawn_static: None,
             drawn_at: 0.0,
@@ -819,66 +826,66 @@ impl LevelLightShadows {
         .shown
         .into_iter()
         .chain(entry.next)
-        .for_each(|set| release_set(&mut self.allocator, set));
+        .for_each(|set| Self::release_set(&mut self.allocator, set));
     }
 
     true
   }
-}
 
-/// A depth atlas `size` texels a side the faces are drawn into and the lights sample.
-fn create_atlas(device: &wgpu::Device, label: &'static str, size: u32) -> wgpu::TextureView {
-  device
-    .create_texture(&wgpu::TextureDescriptor {
-      label: Some(label),
-      size: wgpu::Extent3d {
-        width: size,
-        height: size,
-        depth_or_array_layers: 1,
-      },
-      mip_level_count: 1,
-      sample_count: 1,
-      dimension: wgpu::TextureDimension::D2,
-      format: wgpu::TextureFormat::Depth32Float,
-      usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
-      view_formats: &[],
-    })
-    .create_view(&Default::default())
-}
+  /// A depth atlas `size` texels a side the faces are drawn into and the lights sample.
+  fn create_atlas(device: &wgpu::Device, label: &'static str, size: u32) -> wgpu::TextureView {
+    device
+      .create_texture(&wgpu::TextureDescriptor {
+        label: Some(label),
+        size: wgpu::Extent3d {
+          width: size,
+          height: size,
+          depth_or_array_layers: 1,
+        },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: wgpu::TextureFormat::Depth32Float,
+        usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+        view_formats: &[],
+      })
+      .create_view(&Default::default())
+  }
 
-/// The most any swaying place a light's sphere reaches leans for each metre it stands from the light, by its reach
-/// over its nearest distance: what a face's texel, which widens with the distance, is weighed against.
-fn measure_swaying(position: Vec3, sphere: Vec4, near: f32, places: &[(Vec4, f32)]) -> f32 {
-  places
-    .iter()
-    .filter(|(place, _)| sphere.truncate().distance(place.truncate()) < sphere.w + place.w)
-    .map(|(place, reach)| reach / (position.distance(place.truncate()) - place.w).max(near))
-    .fold(0.0, f32::max)
-}
+  /// The most any swaying place a light's sphere reaches leans for each metre it stands from the light, by its reach
+  /// over its nearest distance: what a face's texel, which widens with the distance, is weighed against.
+  fn measure_swaying(position: Vec3, sphere: Vec4, near: f32, places: &[(Vec4, f32)]) -> f32 {
+    places
+      .iter()
+      .filter(|(place, _)| sphere.truncate().distance(place.truncate()) < sphere.w + place.w)
+      .map(|(place, reach)| reach / (position.distance(place.truncate()) - place.w).max(near))
+      .fold(0.0, f32::max)
+  }
 
-fn release_set(allocator: &mut ShadowTileAllocator, set: LightShadowSet) {
-  set.faces.into_iter().for_each(|face| allocator.release(face.tile));
-}
+  fn release_set(allocator: &mut ShadowTileAllocator, set: LightShadowSet) {
+    set.faces.into_iter().for_each(|face| allocator.release(face.tile));
+  }
 
-/// A face's camera, built as `compute_xf_spot` builds its own: at the light, down its direction or the face's axis,
-/// the cone widened, its depth reversed.
-fn to_face_view(light: &LightDescription, basis: &LightBasis, face: usize, near: f32, far: f32) -> CameraView {
-  let (direction, up, cone): (Vec3, Vec3, f32) = match light.kind {
-    LightKind::Spot => (basis.direction, basis.up, light.cone),
-    LightKind::Point => {
-      let (direction, up) = LIGHT_SHADOW_POINT_FACES[face];
+  /// A face's camera, built as `compute_xf_spot` builds its own: at the light, down its direction or the face's axis,
+  /// the cone widened, its depth reversed.
+  fn to_face_view(light: &LightDescription, basis: &LightBasis, face: usize, near: f32, far: f32) -> CameraView {
+    let (direction, up, cone): (Vec3, Vec3, f32) = match light.kind {
+      LightKind::Spot => (basis.direction, basis.up, light.cone),
+      LightKind::Point => {
+        let (direction, up) = LIGHT_SHADOW_POINT_FACES[face];
 
-      (direction, up, LIGHT_SHADOW_POINT_CONE)
-    }
-  };
-  let view = glam::camera::rh::view::look_at_mat4(basis.position, basis.position + direction, up);
+        (direction, up, LIGHT_SHADOW_POINT_CONE)
+      }
+    };
+    let view = glam::camera::rh::view::look_at_mat4(basis.position, basis.position + direction, up);
 
-  CameraView::new(
-    basis.position,
-    view,
-    (cone + LIGHT_SHADOW_WIDENING).to_degrees(),
-    1.0,
-    near,
-    far,
-  )
+    CameraView::new(
+      basis.position,
+      view,
+      (cone + LIGHT_SHADOW_WIDENING).to_degrees(),
+      1.0,
+      near,
+      far,
+    )
+  }
 }

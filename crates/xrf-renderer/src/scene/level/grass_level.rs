@@ -8,8 +8,7 @@ use xrf_visual::{DetailsDescription, DetailsModel, VisualSection};
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::host::render_level_details::RenderLevelDetails;
 use crate::pass::grass_model_record::GrassModelRecord;
-use crate::pass::grass_pass::{GRASS_DRAW_BYTES, GrassPass};
-use crate::scene::level::grass_dither::create_grass_dither;
+use crate::pass::grass_pass::GrassPass;
 use crate::scene::section_bytes::read_pods;
 use crate::scene::texture::texture_cache::TextureCache;
 use crate::scene::texture::texture_role::TextureRole;
@@ -93,7 +92,7 @@ impl GrassLevel {
       uvs.extend(read_pods::<f32>(buffer, &model.uvs));
       indices.extend(model_indices.iter().map(|it| u32::from(*it) + base));
       texture_slots.push(texture);
-      records.push(to_record(
+      records.push(Self::to_record(
         model,
         texture,
         reference,
@@ -109,7 +108,7 @@ impl GrassLevel {
     let slots: wgpu::Buffer = storage("grass slots", section(&description.slots), read);
     let bins: wgpu::Buffer = storage("grass bins", section(&description.bins), read);
     let triangles: wgpu::Buffer = storage("grass triangles", section(&description.triangles), read);
-    let dither: wgpu::Buffer = storage("grass dither", bytemuck::cast_slice(&create_grass_dither()), read);
+    let dither: wgpu::Buffer = storage("grass dither", bytemuck::cast_slice(&Self::create_dither()), read);
     let counted = wgpu::BufferUsages::STORAGE;
     let counts: wgpu::Buffer = storage(
       "grass counts",
@@ -119,7 +118,7 @@ impl GrassLevel {
     let cursors: wgpu::Buffer = storage("grass cursors", &vec![0; model_count.max(1) as usize * 4], counted);
     let args: wgpu::Buffer = storage(
       "grass draw arguments",
-      &vec![0; (u64::from(model_count.max(1)) * GRASS_DRAW_BYTES) as usize],
+      &vec![0; (u64::from(model_count.max(1)) * GrassPass::DRAW_BYTES) as usize],
       wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::INDIRECT,
     );
     let bind_group: wgpu::BindGroup = device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -174,23 +173,47 @@ impl GrassLevel {
       bind_group,
     }
   }
-}
 
-fn to_record(
-  model: &DetailsModel,
-  texture: u32,
-  reference: u8,
-  (first_index, index_count): (u32, u32),
-  spread: f32,
-) -> GrassModelRecord {
-  GrassModelRecord {
-    shape: Vec4::new(model.min_scale, model.max_scale, model.radius, model.height),
-    is_waving: if model.is_waving { 1.0 } else { 0.0 },
-    texture,
-    alpha_reference: f32::from(reference) / 255.0,
-    index_count,
-    first_index,
-    spread,
-    pad: [0; 2],
+  fn to_record(
+    model: &DetailsModel,
+    texture: u32,
+    reference: u8,
+    (first_index, index_count): (u32, u32),
+    spread: f32,
+  ) -> GrassModelRecord {
+    GrassModelRecord {
+      shape: Vec4::new(model.min_scale, model.max_scale, model.radius, model.height),
+      is_waving: if model.is_waving { 1.0 } else { 0.0 },
+      texture,
+      alpha_reference: f32::from(reference) / 255.0,
+      index_count,
+      first_index,
+      spread,
+      pad: [0; 2],
+    }
+  }
+
+  /// The engine's dither (`bwdithermap(2, dither)` over `magic4x4`), indexed `column * 16 + row` as the planting reads it:
+  /// `dither[(x + shift_x) % 16][(z + shift_z) % 16]`.
+  pub fn create_dither() -> [u32; 256] {
+    const MAGIC: [[u32; 4]; 4] = [[0, 14, 3, 13], [11, 5, 8, 6], [12, 2, 15, 1], [7, 9, 4, 10]];
+    // `N = 255 / (levels - 1)` for two levels, and `magicfact = (N - 1) / 16`, single precision as the engine keeps it,
+    // the sum then taken in double precision as its `16.` literal makes it.
+    let factor: f64 = f64::from((255.0_f32 - 1.0) / 16.0);
+    let mut dither: [u32; 256] = [0; 256];
+
+    for i in 0..4 {
+      for j in 0..4 {
+        for k in 0..4 {
+          for l in 0..4 {
+            let value: f64 = 0.5 + f64::from(MAGIC[i][j]) * factor + (f64::from(MAGIC[k][l]) / 16.0) * factor;
+
+            dither[(4 * k + i) * 16 + 4 * l + j] = value.trunc() as u32;
+          }
+        }
+      }
+    }
+
+    dither
   }
 }

@@ -1,15 +1,15 @@
 use glam::{Mat4, Vec2, Vec3, Vec4};
 
 use crate::camera::camera_view::CameraView;
-use crate::frame::temporal_jitter::{TemporalJitter, halton};
+use crate::frame::temporal_jitter::TemporalJitter;
 
 #[test]
 fn halton_places_samples_as_the_radical_inverse_of_their_index() {
-  assert_eq!(halton(1, 2), 0.5);
-  assert_eq!(halton(2, 2), 0.25);
-  assert_eq!(halton(3, 2), 0.75);
-  assert!((halton(1, 3) - 1.0 / 3.0).abs() < 1e-6);
-  assert!((halton(2, 3) - 2.0 / 3.0).abs() < 1e-6);
+  assert_eq!(TemporalJitter::halton(1, 2), 0.5);
+  assert_eq!(TemporalJitter::halton(2, 2), 0.25);
+  assert_eq!(TemporalJitter::halton(3, 2), 0.75);
+  assert!((TemporalJitter::halton(1, 3) - 1.0 / 3.0).abs() < 1e-6);
+  assert!((TemporalJitter::halton(2, 3) - 2.0 / 3.0).abs() < 1e-6);
 }
 
 // Eight places a cycle, each within half a pixel of the centre, none repeated.

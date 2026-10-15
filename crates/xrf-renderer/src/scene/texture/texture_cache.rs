@@ -17,9 +17,6 @@ use crate::scene::texture::texture_role::TextureRole;
 use crate::thread::loader_receiver::LoaderReceiver;
 use crate::thread::render_workers::RenderWorkers;
 
-/// The slot a surface binds where it names no texture of a kind: mid grey, never sampled by a surface without one.
-pub const MISSING_SLOT: u32 = 0;
-
 /// Texels a side of the checker standing in for a base texture that cannot be had, and of each of its squares.
 const CHECKER_SIZE: u32 = 16;
 const CHECKER_SQUARE: u32 = 2;
@@ -39,9 +36,6 @@ static UPLOAD_PASSES: [&str; 1] = ["texture upload"];
 
 /// Slots a bindless array holds at most, below what any adapter meeting the baseline offers.
 const MAX_SLOTS: u32 = 16_384;
-
-/// Environment cubes the scenes' surfaces may mix toward, the first slot standing for none.
-pub const ENVIRONMENT_SLOTS: u32 = 16;
 
 /// What a texture load came to, sent from a loader thread: its slot, the slot's generation it was asked under, and the
 /// texture.
@@ -102,12 +96,18 @@ pub struct TextureCache {
 }
 
 impl TextureCache {
+  /// Environment cubes the scenes' surfaces may mix toward, the first slot standing for none.
+  pub const ENVIRONMENT_SLOTS: u32 = 16;
+
+  /// The slot a surface binds where it names no texture of a kind: mid grey, never sampled by a surface without one.
+  pub const MISSING_SLOT: u32 = 0;
+
   pub fn new(device: &wgpu::Device, queue: &wgpu::Queue, workers: &RenderWorkers) -> Self {
     // The environment cubes a composited draw binds beside the array share the stage's budget.
     let capacity: u32 = device
       .limits()
       .max_binding_array_elements_per_shader_stage
-      .saturating_sub(ENVIRONMENT_SLOTS)
+      .saturating_sub(Self::ENVIRONMENT_SLOTS)
       .clamp(1, MAX_SLOTS);
     let layout: wgpu::BindGroupLayout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
       label: Some("textures"),
@@ -186,7 +186,7 @@ impl TextureCache {
   /// for it; until it loads, its role's neutral stands in.
   pub fn request(&mut self, reference: &str, role: TextureRole, source: &Arc<dyn RenderAssetSource>) -> u32 {
     if reference.is_empty() {
-      return MISSING_SLOT;
+      return Self::MISSING_SLOT;
     }
 
     let key: (String, String) = (source.get_texture_scope(), reference.to_owned());
@@ -236,7 +236,7 @@ impl TextureCache {
           self.capacity
         );
 
-        return MISSING_SLOT;
+        return Self::MISSING_SLOT;
       }
     };
 
@@ -380,7 +380,7 @@ impl TextureCache {
     // Taken before the read, so a write landing during it is read again later rather than missed.
     let stamp: Option<u64> = source.get_texture_stamp(reference);
     // At full quality the listed textures load whole too, so the list is never read.
-    let dropped: u32 = get_dropped_levels(lod, lod > 0 && source.is_texture_reduced(reference));
+    let dropped: u32 = Self::get_dropped_levels(lod, lod > 0 && source.is_texture_reduced(reference));
     let read = |reference: &str| -> XrfResult<Option<DecodedTexture>> {
       source
         .read_texture(reference)?
@@ -428,12 +428,15 @@ impl TextureCache {
 
     let index: usize = match self.environments.iter().position(String::is_empty) {
       Some(index) => index,
-      None if self.environments.len() as u32 + 1 < ENVIRONMENT_SLOTS => {
+      None if self.environments.len() as u32 + 1 < Self::ENVIRONMENT_SLOTS => {
         self.environments.push(String::new());
         self.environments.len() - 1
       }
       None => {
-        log::warn!("Environment '{reference}' exceeds the {ENVIRONMENT_SLOTS} the renderer binds at once");
+        log::warn!(
+          "Environment '{reference}' exceeds the {} the renderer binds at once",
+          Self::ENVIRONMENT_SLOTS
+        );
 
         return 0;
       }
@@ -511,7 +514,7 @@ impl TextureCache {
 
       self.sources[slot] = None;
 
-      self.views[slot] = self.views[MISSING_SLOT as usize].clone();
+      self.views[slot] = self.views[Self::MISSING_SLOT as usize].clone();
       self.states[slot] = RenderTextureState::Missing;
       self.references[slot].clear();
       self.generations[slot] = self.generations[slot].wrapping_add(1);
@@ -744,14 +747,14 @@ impl TextureCache {
       ],
     })
   }
-}
 
-/// Levels the engine drops off a texture's top at `texture_lod` (`get_texture_load_lod`): none to one, one to three, two
-/// at four; a texture its `reduce_lod_texture_list` names a step sooner, none at nought (the address space allowing).
-pub(crate) fn get_dropped_levels(lod: u32, is_reduced: bool) -> u32 {
-  match (is_reduced, lod) {
-    (true, 0) | (false, 0..=1) => 0,
-    (true, 1..=2) | (false, 2..=3) => 1,
-    _ => 2,
+  /// Levels the engine drops off a texture's top at `texture_lod` (`get_texture_load_lod`): none to one, one to three, two
+  /// at four; a texture its `reduce_lod_texture_list` names a step sooner, none at nought (the address space allowing).
+  pub(crate) fn get_dropped_levels(lod: u32, is_reduced: bool) -> u32 {
+    match (is_reduced, lod) {
+      (true, 0) | (false, 0..=1) => 0,
+      (true, 1..=2) | (false, 2..=3) => 1,
+      _ => 2,
+    }
   }
 }

@@ -2,7 +2,7 @@ use glam::{Mat4, Vec3};
 
 use crate::camera::camera_view::CameraView;
 use crate::lighting::sun_cascade_basis::SunCascadeBasis;
-use crate::lighting::sun_cascade_placement::place_sun_cascade;
+use crate::lighting::sun_cascade_placement::SunCascadePlacement;
 use crate::lighting::sun_view_rays::SunViewRays;
 
 /// How far a cascade's map reaches below its centre at least, in widths: the engine's `1.41421 * map_size`.
@@ -75,7 +75,7 @@ impl SunCascade {
     let look: Vec3 = -camera.view.inverse().z_axis.truncate().normalize_or_zero();
     // The engine's light stands over the camera: the square starts centred on it, and is then moved across the light.
     let near: [_; 4] = rays.near;
-    let center: Vec3 = place_sun_cascade(camera.position, look, &mut rays.rays, &near, &basis, width);
+    let center: Vec3 = SunCascadePlacement::place(camera.position, look, &mut rays.rays, &near, &basis, width);
     let texel: f32 = width / resolution.max(1) as f32;
     let step: f32 = width * DEPTH_STEP;
     let x: f32 = (center.dot(basis.right) / texel).round() * texel;

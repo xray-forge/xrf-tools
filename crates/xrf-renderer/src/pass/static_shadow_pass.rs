@@ -113,7 +113,7 @@ impl StaticShadowPass {
     args: (&wgpu::Buffer, u64),
     casters: ShadowCasters,
   ) {
-    set_region(context, region);
+    Self::set_region(context, region);
 
     match restore {
       Some(restore) => {
@@ -148,7 +148,7 @@ impl StaticShadowPass {
     args: &wgpu::Buffer,
     casters: ShadowCasters,
   ) {
-    set_region(context, region);
+    Self::set_region(context, region);
     self.record_casters(context, draw, (args, 0), casters);
   }
 
@@ -267,13 +267,13 @@ impl StaticShadowPass {
     })?;
 
     let writers: [wgpu::RenderPipeline; 2] = [
-      create_depth_writer(
+      Self::create_depth_writer(
         source,
         ("frame/shadow_tile_restore", "shadow tile restore"),
         ("vs_restore", "fs_restore"),
         &writer_layouts[0],
       )?,
-      create_depth_writer(
+      Self::create_depth_writer(
         source,
         ("frame/overhead_shift", "overhead shift"),
         ("vs_shift", "fs_shift"),
@@ -283,59 +283,59 @@ impl StaticShadowPass {
 
     Ok((pipelines, clear, writers))
   }
-}
 
-/// Draws into a region of the map a pass draws into alone: its texels across and down, its width and its height.
-pub fn set_region(context: &mut RasterContext<'_>, [x, y, width, height]: [u32; 4]) {
-  let pass: &mut wgpu::RenderPass<'static> = context.get_pass();
+  /// Draws into a region of the map a pass draws into alone: its texels across and down, its width and its height.
+  pub fn set_region(context: &mut RasterContext<'_>, [x, y, width, height]: [u32; 4]) {
+    let pass: &mut wgpu::RenderPass<'static> = context.get_pass();
 
-  pass.set_viewport(x as f32, y as f32, width as f32, height as f32, 0.0, 1.0);
-  pass.set_scissor_rect(x, y, width, height);
-}
+    pass.set_viewport(x as f32, y as f32, width as f32, height as f32, 0.0, 1.0);
+    pass.set_scissor_rect(x, y, width, height);
+  }
 
-/// A pipeline writing a shadow map's depth over its viewport from what its bind group reads, whatever stood there.
-fn create_depth_writer(
-  source: PipelineSource<'_>,
-  (module, label): (&'static str, &'static str),
-  (vertex, fragment): (&str, &str),
-  layout: &wgpu::BindGroupLayout,
-) -> XrfResult<wgpu::RenderPipeline> {
-  let device: &wgpu::Device = source.device;
+  /// A pipeline writing a shadow map's depth over its viewport from what its bind group reads, whatever stood there.
+  fn create_depth_writer(
+    source: PipelineSource<'_>,
+    (module, label): (&'static str, &'static str),
+    (vertex, fragment): (&str, &str),
+    layout: &wgpu::BindGroupLayout,
+  ) -> XrfResult<wgpu::RenderPipeline> {
+    let device: &wgpu::Device = source.device;
 
-  let module: wgpu::ShaderModule = source.get_module(module)?;
-  let pipeline_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-    label: Some(label),
-    bind_group_layouts: &[Some(layout)],
-    ..Default::default()
-  });
-
-  create_checked(device, label, || {
-    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+    let module: wgpu::ShaderModule = source.get_module(module)?;
+    let pipeline_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
       label: Some(label),
-      layout: Some(&pipeline_layout),
-      vertex: wgpu::VertexState {
-        module: &module,
-        entry_point: Some(vertex),
-        compilation_options: Default::default(),
-        buffers: &[],
-      },
-      fragment: Some(wgpu::FragmentState {
-        module: &module,
-        entry_point: Some(fragment),
-        compilation_options: Default::default(),
-        targets: &[],
-      }),
-      primitive: Default::default(),
-      depth_stencil: Some(wgpu::DepthStencilState {
-        format: SunShadowMaps::FORMAT,
-        depth_write_enabled: Some(true),
-        depth_compare: Some(wgpu::CompareFunction::Always),
-        stencil: Default::default(),
-        bias: Default::default(),
-      }),
-      multisample: Default::default(),
-      multiview_mask: None,
-      cache: source.get_driver_cache(),
+      bind_group_layouts: &[Some(layout)],
+      ..Default::default()
+    });
+
+    create_checked(device, label, || {
+      device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        label: Some(label),
+        layout: Some(&pipeline_layout),
+        vertex: wgpu::VertexState {
+          module: &module,
+          entry_point: Some(vertex),
+          compilation_options: Default::default(),
+          buffers: &[],
+        },
+        fragment: Some(wgpu::FragmentState {
+          module: &module,
+          entry_point: Some(fragment),
+          compilation_options: Default::default(),
+          targets: &[],
+        }),
+        primitive: Default::default(),
+        depth_stencil: Some(wgpu::DepthStencilState {
+          format: SunShadowMaps::FORMAT,
+          depth_write_enabled: Some(true),
+          depth_compare: Some(wgpu::CompareFunction::Always),
+          stencil: Default::default(),
+          bias: Default::default(),
+        }),
+        multisample: Default::default(),
+        multiview_mask: None,
+        cache: source.get_driver_cache(),
+      })
     })
-  })
+  }
 }

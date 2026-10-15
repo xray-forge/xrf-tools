@@ -16,14 +16,6 @@ use crate::scene::static_scene::static_surface_pass::StaticSurfacePass;
 /// The fragment entry compositing surfaces over the lit frame.
 const COMPOSITED_FRAGMENT: &str = "fs_composited";
 
-/// Reversed depth steps a composited surface is pulled towards the eye by, so a surface laid on a wall never loses
-/// to it, and the same scaled by its slope for one seen at a grazing angle.
-pub const COMPOSITED_DEPTH_BIAS: wgpu::DepthBiasState = wgpu::DepthBiasState {
-  constant: 256,
-  slope_scale: 1.0,
-  clamp: 0.0,
-};
-
 /// `out = colour + behind × second colour`, by dual-source blending: over by alpha, added and multiplied all in one.
 const COMPOSITED_BLEND: wgpu::BlendState = wgpu::BlendState {
   color: wgpu::BlendComponent {
@@ -59,6 +51,14 @@ type CompositedPipelines = (
 );
 
 impl CompositedPass {
+  /// Reversed depth steps a composited surface is pulled towards the eye by, so a surface laid on a wall never loses
+  /// to it, and the same scaled by its slope for one seen at a grazing angle.
+  pub const DEPTH_BIAS: wgpu::DepthBiasState = wgpu::DepthBiasState {
+    constant: 256,
+    slope_scale: 1.0,
+    clamp: 0.0,
+  };
+
   /// Where its pipelines hold the sky's group.
   const SKY_GROUP: u32 = 4;
 
@@ -365,7 +365,7 @@ impl CompositedPass {
               depth_write_enabled: Some(false),
               depth_compare: Some(wgpu::CompareFunction::GreaterEqual),
               stencil: Default::default(),
-              bias: COMPOSITED_DEPTH_BIAS,
+              bias: Self::DEPTH_BIAS,
             }),
             multisample: Default::default(),
             multiview_mask: None,

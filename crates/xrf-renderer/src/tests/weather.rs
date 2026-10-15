@@ -4,9 +4,9 @@ use crate::lighting::render_fog::RenderFog;
 use crate::lighting::render_rainfall::RenderRainfall;
 use crate::lighting::render_tree_wind::RenderTreeWind;
 use crate::lighting::render_wind::RenderWind;
-use crate::pass::rain_uniform::{RAIN_STREAKS, RainUniform};
+use crate::pass::rain_uniform::RainUniform;
 use crate::pass::wind_uniform::WindUniform;
-use crate::scene::level::shadow_sway::{SHADOW_SWAY_INTERVAL, ShadowSway};
+use crate::scene::level::shadow_sway::ShadowSway;
 
 #[test]
 fn fogs_by_the_engine_ramp_and_ends_the_view_where_it_is_total() {
@@ -47,8 +47,8 @@ fn rains_as_many_streaks_as_the_engine_and_leans_them_with_the_wind() {
     )
   };
 
-  assert_eq!(RainUniform::get_count(0.0), RAIN_STREAKS / 2);
-  assert_eq!(RainUniform::get_count(1.0), RAIN_STREAKS);
+  assert_eq!(RainUniform::get_count(0.0), RainUniform::STREAKS / 2);
+  assert_eq!(RainUniform::get_count(1.0), RainUniform::STREAKS);
   assert!(rain(1.0, 0.0).axis.truncate().distance(Vec3::NEG_Y) < 1e-6);
   // The strongest wind leans them ten degrees.
   assert!((rain(1.0, 400.0).axis.y + 10f32.to_radians().cos()).abs() < 1e-5);
@@ -92,8 +92,8 @@ fn redraws_a_shadow_for_the_sway_where_the_lean_shows_once_an_interval() {
   // Still trees never draw a map again.
   assert!(!sway(0.0, 1.0).is_redrawn(20.0, 0.01, 0.0));
   // Within an interval it waits; a hair short of one, it draws.
-  assert!(!sway(0.01, 1.0 + SHADOW_SWAY_INTERVAL * 0.5).is_redrawn(20.0, 0.1, 1.0));
-  assert!(sway(0.01, 1.0 + SHADOW_SWAY_INTERVAL * 0.95).is_redrawn(20.0, 0.1, 1.0));
+  assert!(!sway(0.01, 1.0 + ShadowSway::INTERVAL * 0.5).is_redrawn(20.0, 0.1, 1.0));
+  assert!(sway(0.01, 1.0 + ShadowSway::INTERVAL * 0.95).is_redrawn(20.0, 0.1, 1.0));
 }
 
 #[test]

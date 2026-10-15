@@ -1,10 +1,7 @@
 use xrf_dds::{D3DFormat, DdsFile, DdsFormat, DdsMetadata, DxgiFormat};
 use xrf_error::{XrfError, XrfResult};
 
-use crate::scene::texture::height_field::{BUMP_GRAIN_TEXELS, BUMP_LOW_CUT, integrate_normals, to_unit_heights};
-
-/// Faces a cube holds.
-pub const CUBE_FACES: u32 = 6;
+use crate::scene::texture::height_field::HeightField;
 
 /// Texels a side a derived height is integrated at most, the bump read at its largest level within it, so a load spends
 /// a fraction of a second on one rather than seconds.
@@ -29,6 +26,9 @@ pub struct DecodedTexture {
 }
 
 impl DecodedTexture {
+  /// Faces a cube holds.
+  pub const CUBE_FACES: u32 = 6;
+
   /// Bytes the upload carries, which is what an upload budget spends.
   pub fn get_size(&self) -> u64 {
     self.levels.iter().map(|level| level.len() as u64).sum()
@@ -91,11 +91,14 @@ impl DecodedTexture {
         [unit(texel[3]), unit(texel[2]), unit(texel[1])]
       })
       .collect();
-    let heights: Vec<f32> = to_unit_heights(&integrate_normals(
+    let heights: Vec<f32> = HeightField::to_unit_heights(&HeightField::integrate_normals(
       width as usize,
       height as usize,
       &normals,
-      (BUMP_LOW_CUT, width.max(height) as f32 / BUMP_GRAIN_TEXELS),
+      (
+        HeightField::BUMP_LOW_CUT,
+        width.max(height) as f32 / HeightField::BUMP_GRAIN_TEXELS,
+      ),
     ));
 
     Ok(Self::from_heights(width, height, heights))
@@ -201,10 +204,10 @@ impl DecodedTexture {
     let metadata: DdsMetadata = file.metadata();
     let levels: u32 = metadata.mipmap_levels.max(1);
 
-    match to_block_format(&metadata.format) {
+    match Self::to_block_format(&metadata.format) {
       Some(format) if metadata.is_volume => Self::from_volume_blocks(&file, &metadata, format),
       Some(format) if metadata.is_cubemap => Self::from_cube_blocks(&file, &metadata, format, levels),
-      None if metadata.is_cubemap => match to_texel_cube_format(&metadata.format) {
+      None if metadata.is_cubemap => match Self::to_texel_cube_format(&metadata.format) {
         Some(format) => Self::from_cube_blocks(&file, &metadata, format, levels),
         None => Err(XrfError::new_texture_processing_error(format!(
           "A {} cube cannot be expanded",
@@ -312,7 +315,7 @@ impl DecodedTexture {
     let face: usize = lengths.iter().sum();
     let data: &[u8] = file.get_data();
 
-    if data.len() < face * CUBE_FACES as usize {
+    if data.len() < face * Self::CUBE_FACES as usize {
       return Err(XrfError::new_texture_processing_error(
         "The cube stops before its sixth face ends",
       ));
@@ -322,7 +325,7 @@ impl DecodedTexture {
     let chain: Vec<Vec<u8>> = lengths
       .iter()
       .map(|length| {
-        let level: Vec<u8> = (0..CUBE_FACES as usize)
+        let level: Vec<u8> = (0..Self::CUBE_FACES as usize)
           .flat_map(|index| &data[index * face + offset..index * face + offset + length])
           .copied()
           .collect();
@@ -337,7 +340,7 @@ impl DecodedTexture {
       format,
       width: metadata.width,
       height: metadata.height,
-      layers: CUBE_FACES,
+      layers: Self::CUBE_FACES,
       is_volume: false,
       levels: chain,
       layout: metadata.get_format_label().to_string(),
@@ -368,38 +371,46 @@ impl DecodedTexture {
       is_expanded: true,
     })
   }
-}
 
-/// The GPU format a block compressed layout uploads as, raw; `None` for a layout that is expanded instead.
-fn to_block_format(format: &DdsFormat) -> Option<wgpu::TextureFormat> {
-  use wgpu::TextureFormat as Gpu;
+  /// The GPU format a block compressed layout uploads as, raw; `None` for a layout that is expanded instead.
+  fn to_block_format(format: &DdsFormat) -> Option<wgpu::TextureFormat> {
+    use wgpu::TextureFormat as Gpu;
 
-  Some(match format {
-    DdsFormat::D3d(D3DFormat::DXT1) => Gpu::Bc1RgbaUnorm,
-    DdsFormat::D3d(D3DFormat::DXT2 | D3DFormat::DXT3) => Gpu::Bc2RgbaUnorm,
-    DdsFormat::D3d(D3DFormat::DXT4 | D3DFormat::DXT5) => Gpu::Bc3RgbaUnorm,
-    DdsFormat::Dxgi(DxgiFormat::BC1_UNorm | DxgiFormat::BC1_UNorm_sRGB | DxgiFormat::BC1_Typeless) => Gpu::Bc1RgbaUnorm,
-    DdsFormat::Dxgi(DxgiFormat::BC2_UNorm | DxgiFormat::BC2_UNorm_sRGB | DxgiFormat::BC2_Typeless) => Gpu::Bc2RgbaUnorm,
-    DdsFormat::Dxgi(DxgiFormat::BC3_UNorm | DxgiFormat::BC3_UNorm_sRGB | DxgiFormat::BC3_Typeless) => Gpu::Bc3RgbaUnorm,
-    DdsFormat::Dxgi(DxgiFormat::BC4_UNorm | DxgiFormat::BC4_Typeless) => Gpu::Bc4RUnorm,
-    DdsFormat::Dxgi(DxgiFormat::BC4_SNorm) => Gpu::Bc4RSnorm,
-    DdsFormat::Dxgi(DxgiFormat::BC5_UNorm | DxgiFormat::BC5_Typeless) => Gpu::Bc5RgUnorm,
-    DdsFormat::Dxgi(DxgiFormat::BC5_SNorm) => Gpu::Bc5RgSnorm,
-    DdsFormat::Dxgi(DxgiFormat::BC6H_UF16 | DxgiFormat::BC6H_Typeless) => Gpu::Bc6hRgbUfloat,
-    DdsFormat::Dxgi(DxgiFormat::BC6H_SF16) => Gpu::Bc6hRgbFloat,
-    DdsFormat::Dxgi(DxgiFormat::BC7_UNorm | DxgiFormat::BC7_UNorm_sRGB | DxgiFormat::BC7_Typeless) => Gpu::Bc7RgbaUnorm,
-    _ => return None,
-  })
-}
+    Some(match format {
+      DdsFormat::D3d(D3DFormat::DXT1) => Gpu::Bc1RgbaUnorm,
+      DdsFormat::D3d(D3DFormat::DXT2 | D3DFormat::DXT3) => Gpu::Bc2RgbaUnorm,
+      DdsFormat::D3d(D3DFormat::DXT4 | D3DFormat::DXT5) => Gpu::Bc3RgbaUnorm,
+      DdsFormat::Dxgi(DxgiFormat::BC1_UNorm | DxgiFormat::BC1_UNorm_sRGB | DxgiFormat::BC1_Typeless) => {
+        Gpu::Bc1RgbaUnorm
+      }
+      DdsFormat::Dxgi(DxgiFormat::BC2_UNorm | DxgiFormat::BC2_UNorm_sRGB | DxgiFormat::BC2_Typeless) => {
+        Gpu::Bc2RgbaUnorm
+      }
+      DdsFormat::Dxgi(DxgiFormat::BC3_UNorm | DxgiFormat::BC3_UNorm_sRGB | DxgiFormat::BC3_Typeless) => {
+        Gpu::Bc3RgbaUnorm
+      }
+      DdsFormat::Dxgi(DxgiFormat::BC4_UNorm | DxgiFormat::BC4_Typeless) => Gpu::Bc4RUnorm,
+      DdsFormat::Dxgi(DxgiFormat::BC4_SNorm) => Gpu::Bc4RSnorm,
+      DdsFormat::Dxgi(DxgiFormat::BC5_UNorm | DxgiFormat::BC5_Typeless) => Gpu::Bc5RgUnorm,
+      DdsFormat::Dxgi(DxgiFormat::BC5_SNorm) => Gpu::Bc5RgSnorm,
+      DdsFormat::Dxgi(DxgiFormat::BC6H_UF16 | DxgiFormat::BC6H_Typeless) => Gpu::Bc6hRgbUfloat,
+      DdsFormat::Dxgi(DxgiFormat::BC6H_SF16) => Gpu::Bc6hRgbFloat,
+      DdsFormat::Dxgi(DxgiFormat::BC7_UNorm | DxgiFormat::BC7_UNorm_sRGB | DxgiFormat::BC7_Typeless) => {
+        Gpu::Bc7RgbaUnorm
+      }
+      _ => return None,
+    })
+  }
 
-/// The GPU format a cube of texels four bytes each uploads as, raw, the way an irradiance cube is stored; `None` for any
-/// other texel layout.
-fn to_texel_cube_format(format: &DdsFormat) -> Option<wgpu::TextureFormat> {
-  Some(match format {
-    DdsFormat::D3d(D3DFormat::A8R8G8B8 | D3DFormat::X8R8G8B8) => wgpu::TextureFormat::Bgra8Unorm,
-    DdsFormat::D3d(D3DFormat::A8B8G8R8 | D3DFormat::X8B8G8R8) => wgpu::TextureFormat::Rgba8Unorm,
-    DdsFormat::Dxgi(DxgiFormat::B8G8R8A8_UNorm | DxgiFormat::B8G8R8X8_UNorm) => wgpu::TextureFormat::Bgra8Unorm,
-    DdsFormat::Dxgi(DxgiFormat::R8G8B8A8_UNorm) => wgpu::TextureFormat::Rgba8Unorm,
-    _ => return None,
-  })
+  /// The GPU format a cube of texels four bytes each uploads as, raw, the way an irradiance cube is stored; `None` for any
+  /// other texel layout.
+  fn to_texel_cube_format(format: &DdsFormat) -> Option<wgpu::TextureFormat> {
+    Some(match format {
+      DdsFormat::D3d(D3DFormat::A8R8G8B8 | D3DFormat::X8R8G8B8) => wgpu::TextureFormat::Bgra8Unorm,
+      DdsFormat::D3d(D3DFormat::A8B8G8R8 | D3DFormat::X8B8G8R8) => wgpu::TextureFormat::Rgba8Unorm,
+      DdsFormat::Dxgi(DxgiFormat::B8G8R8A8_UNorm | DxgiFormat::B8G8R8X8_UNorm) => wgpu::TextureFormat::Bgra8Unorm,
+      DdsFormat::Dxgi(DxgiFormat::R8G8B8A8_UNorm) => wgpu::TextureFormat::Rgba8Unorm,
+      _ => return None,
+    })
+  }
 }

@@ -1,6 +1,6 @@
 use std::f32::consts::TAU;
 
-use crate::scene::texture::height_field::{integrate_normals, to_unit_heights};
+use crate::scene::texture::height_field::HeightField;
 
 const SIZE: usize = 64;
 
@@ -43,7 +43,7 @@ fn get_largest_error(surface: &[f32], heights: &[f32]) -> f32 {
 #[test]
 fn height_field_gives_back_the_surface_its_normals_were_taken_from() {
   let surface: Vec<f32> = create_surface();
-  let heights: Vec<f32> = integrate_normals(SIZE, SIZE, &to_normals(&surface, 1.0), (0.0, 0.0));
+  let heights: Vec<f32> = HeightField::integrate_normals(SIZE, SIZE, &to_normals(&surface, 1.0), (0.0, 0.0));
 
   assert!(get_largest_error(&surface, &heights) < 1e-2);
 }
@@ -51,14 +51,14 @@ fn height_field_gives_back_the_surface_its_normals_were_taken_from() {
 #[test]
 fn height_field_reads_a_normal_map_whose_y_runs_up_the_texture() {
   let surface: Vec<f32> = create_surface();
-  let heights: Vec<f32> = integrate_normals(SIZE, SIZE, &to_normals(&surface, -1.0), (0.0, 0.0));
+  let heights: Vec<f32> = HeightField::integrate_normals(SIZE, SIZE, &to_normals(&surface, -1.0), (0.0, 0.0));
 
   assert!(get_largest_error(&surface, &heights) < 1e-2);
 }
 
 #[test]
 fn height_field_scales_heights_about_a_half_within_the_unit() {
-  let unit: Vec<f32> = to_unit_heights(&create_surface());
+  let unit: Vec<f32> = HeightField::to_unit_heights(&create_surface());
   let mean: f32 = unit.iter().sum::<f32>() / unit.len() as f32;
 
   assert!((mean - 0.5).abs() < 1e-3);
@@ -73,7 +73,7 @@ fn height_field_fades_relief_broader_than_its_low_cut() {
   let fine = |index: usize| (TAU * 11.0 * (index / SIZE) as f32 / SIZE as f32).sin();
   let surface: Vec<f32> = (0..SIZE * SIZE).map(|index| broad(index) + fine(index)).collect();
   let only_fine: Vec<f32> = (0..SIZE * SIZE).map(fine).collect();
-  let heights: Vec<f32> = integrate_normals(SIZE, SIZE, &to_normals(&surface, 1.0), (8.0, 0.0));
+  let heights: Vec<f32> = HeightField::integrate_normals(SIZE, SIZE, &to_normals(&surface, 1.0), (8.0, 0.0));
 
   assert!(get_largest_error(&only_fine, &heights) < 0.25);
 }
@@ -85,7 +85,7 @@ fn height_field_fades_relief_finer_than_its_high_cut() {
   let grain = |index: usize| (TAU * 24.0 * (index / SIZE) as f32 / SIZE as f32).sin() * 0.5;
   let surface: Vec<f32> = (0..SIZE * SIZE).map(|index| coarse(index) + grain(index)).collect();
   let only_coarse: Vec<f32> = (0..SIZE * SIZE).map(coarse).collect();
-  let heights: Vec<f32> = integrate_normals(SIZE, SIZE, &to_normals(&surface, 1.0), (0.0, 8.0));
+  let heights: Vec<f32> = HeightField::integrate_normals(SIZE, SIZE, &to_normals(&surface, 1.0), (0.0, 8.0));
 
   assert!(get_largest_error(&only_coarse, &heights) < 0.15);
 }
