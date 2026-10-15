@@ -120,6 +120,25 @@ describe("LevelLookService", () => {
     expect(mockInjectedService(LevelLookService, [LevelLoadService]).service.look.lightScales.sun).toBe(3);
   });
 
+  // A read that failed is not a game that ships none: the look says which, while both fall back to the engine's.
+  it("holds a failed read of the defaults as failed, not as none shipped", async () => {
+    setMockInvokeResponses({
+      ["plugin:levels|get_level"]: mockSessionResponse(mockSelectedLevelDescription()),
+      ["plugin:levels|describe_console_defaults"]: () => {
+        throw new Error("the level's archive went");
+      },
+    });
+
+    const container: Container = mockContainer([LevelLoadService, LevelLookService]).provision();
+    const service: LevelLookService = container.get(LevelLookService);
+
+    await waitFor(() => expect(service.defaults.isFailed).toBe(true));
+    expect(service.defaults.error?.message).toBe("the level's archive went");
+    expect(service.game).toBeNull();
+
+    container.deprovision();
+  });
+
   it("reads the defaults of a level as the level opens, with no viewport to draw it, and drops them as it closes", async () => {
     setMockInvokeResponses({
       ["plugin:levels|get_level"]: mockSessionResponse(mockSelectedLevelDescription()),
@@ -129,12 +148,12 @@ describe("LevelLookService", () => {
     const container: Container = mockContainer([LevelLoadService, LevelLookService]).provision();
     const service: LevelLookService = container.get(LevelLookService);
 
-    await waitFor(() => expect(service.defaults).toEqual(UNSET));
+    await waitFor(() => expect(service.defaults.value).toEqual(UNSET));
     expect(service.engine).toBe(EXrayEngine.VANILLA);
 
     container.get(LevelLoadService).clear();
 
-    expect(service.defaults).toBeNull();
+    expect(service.defaults.isIdle).toBe(true);
     expect(service.engine).toBeNull();
 
     container.deprovision();

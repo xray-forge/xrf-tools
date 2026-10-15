@@ -1,9 +1,11 @@
 import { default as ExposureIcon } from "@mui/icons-material/Exposure";
 import { Button, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
+import { AsyncState } from "@xrf/async";
 import { formatNumber } from "@xrf/format";
 import { ReactElement, useCallback } from "react";
 
+import { LevelConsoleDefaults } from "@/core/ipc/types/xrf-app";
 import { ERenderBloomMode, RenderBloomMode } from "@/core/ipc/types/xrf-renderer";
 import { LevelDebandingSettings } from "@/core/level/components/preview/toolbar/image/LevelDebandingSettings";
 import { useLevelFeatureOverride } from "@/core/level/components/preview/toolbar/use-level-feature-override";
@@ -46,6 +48,22 @@ const BUILT_IN_LABELS: Readonly<Record<Exclude<ELevelLookSource, ELevelLookSourc
   [ELevelLookSource.OPENXRAY]: "OpenXRay",
   [ELevelLookSource.SETTINGS]: "Settings",
 };
+
+/**
+ * @param defaults - What the open level's game ships as its console defaults, as far as they are read.
+ * @returns What the game's look stands on beside its label: reading, unreadable, none shipped, or nothing to add.
+ */
+function describeGameDefaults(defaults: AsyncState<LevelConsoleDefaults>): string {
+  if (defaults.isLoading) {
+    return " (reading)";
+  }
+
+  if (defaults.isFailed) {
+    return " (unreadable, the engine's)";
+  }
+
+  return defaults.value && !defaults.value.isShipped ? " (none shipped, the engine's)" : "";
+}
 
 /** One number of the look a slider sets. */
 interface ILookField {
@@ -241,8 +259,8 @@ export function LevelLookAction({
   const options: Array<IChoiceFormRowOption<string>> = [
     ...BUILT_IN_SOURCES.map((source) => ({
       label:
-        source === ELevelLookSource.GAME && !defaults?.isShipped
-          ? `${BUILT_IN_LABELS[source]} (none shipped, the engine's)`
+        source === ELevelLookSource.GAME
+          ? `${BUILT_IN_LABELS[source]}${describeGameDefaults(defaults)}`
           : BUILT_IN_LABELS[source],
       value: source as string,
     })),

@@ -1,7 +1,9 @@
 import { inject, Injectable, OnDeprovision, OnProvision } from "@wirestate/core";
 import { BoundAction, Computed, RefObservable, runInAction } from "@wirestate/mobx";
+import { AsyncState } from "@xrf/async";
 import { Nullable } from "@xrf/types";
 
+import { transformError } from "@/core/error/lib/transform-error";
 import { levelsCommands } from "@/core/ipc/commands/levels";
 import { LevelConsoleDefaults, SelectedLevelDescription, SessionSnapshot } from "@/core/ipc/types/xrf-app";
 import { XrayEngine } from "@/core/ipc/types/xrf-engine-target";
@@ -28,9 +30,9 @@ export class LevelLookService {
   @RefObservable()
   public choice: ILevelLookChoice;
 
-  /** What the open level's game ships as its console defaults, or null before they are read or with no level open. */
+  /** What the open level's game ships as its console defaults: idle with no level open, then read, or failed to. */
   @RefObservable()
-  public defaults: Nullable<LevelConsoleDefaults> = null;
+  public defaults: AsyncState<LevelConsoleDefaults> = AsyncState.idle();
 
   private readonly log: Logger = new Logger(__MODULE_NAME__);
   /** The engine the open level is read as, which a look the game leaves to its engine follows; null with none open. */
@@ -68,7 +70,9 @@ export class LevelLookService {
    */
   @Computed()
   public get game(): Nullable<ILevelLook> {
-    return this.defaults && this.engine ? toGameLevelLook(this.defaults, this.exposure, this.engine) : null;
+    const defaults: Nullable<LevelConsoleDefaults> = this.defaults.value;
+
+    return defaults && this.engine ? toGameLevelLook(defaults, this.exposure, this.engine) : null;
   }
 
   /** The look the level is drawn with. */
@@ -91,7 +95,7 @@ export class LevelLookService {
 
     this.sessionId = sessionId;
     runInAction(() => {
-      this.defaults = null;
+      this.defaults = sessionId ? AsyncState.loading() : AsyncState.idle();
       this.engine = selected?.value.engine.engine ?? null;
     });
 
@@ -104,11 +108,19 @@ export class LevelLookService {
 
       if (this.sessionId === sessionId) {
         runInAction(() => {
-          this.defaults = value;
+          this.defaults = AsyncState.ready(value);
         });
       }
     } catch (error: unknown) {
-      this.log.warn("The game's console defaults cannot be read, so its levels look as the settings say:", error);
+      const transformed: Error = transformError(error);
+
+      this.log.warn("The game's console defaults cannot be read, so its levels look as the settings say:", transformed);
+
+      if (this.sessionId === sessionId) {
+        runInAction(() => {
+          this.defaults = AsyncState.failed(transformed);
+        });
+      }
     }
   }
 
