@@ -68,6 +68,7 @@ rust-version = "1.99.0"
 [workspace.dependencies]
 ash = "0.38.0"
 crc32fast = "1.5.1"
+ddsfile = "0.5.2"
 criterion = { version = "0.8.2", default-features = false, features = ["cargo_bench_support"] }
 byteorder = "1.5.0"
 bytemuck = { version = "1.25.2", features = ["derive"] }

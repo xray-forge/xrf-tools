@@ -41,6 +41,7 @@ xrf-visual = { workspace = true }
 windows = { workspace = true, features = ["Win32_Graphics_Dxgi", "Win32_Storage_FileSystem"] }
 
 [dev-dependencies]
+ddsfile = { workspace = true }
 naga = { workspace = true }
 serde_json = { workspace = true }
 xrf-test-utils = { workspace = true }
