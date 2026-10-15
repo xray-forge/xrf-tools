@@ -13,6 +13,7 @@ import {
 import {
   formatOutputScale,
   formatSharpening,
+  isTemporalAntialiasing,
   RENDER_ANTIALIASING_OPTIONS,
   RENDER_DLSS_PRESET_OPTIONS,
   RENDER_OUTPUT_SCALE_LIMITS,
@@ -157,10 +158,14 @@ export function SettingsRendererAntialiasing(): ReactElement {
 
         <SliderFormRow
           label={"Sharpening"}
-          description={"RCAS sharpening of a frame drawn smaller than the viewport. Inactive otherwise."}
+          description={
+            "RCAS sharpening of a frame drawn smaller than the viewport or resolved temporally (TAA, FSR 2, DLSS). " +
+            "Inactive otherwise."
+          }
           value={features.upscaling.sharpening}
           {...RENDER_SHARPENING_LIMITS}
           isDisabled={
+            !isTemporalAntialiasing(features.antialiasing) &&
             features.upscaling.scale === ERenderScale.NATIVE &&
             settingsService.renderResolution === ERenderResolution.AUTO &&
             settingsService.renderOutputScale >= 1

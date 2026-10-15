@@ -898,6 +898,14 @@ export function describeRenderAntialiasing(mode: RenderAntialiasing): string {
   return RENDER_ANTIALIASING_NAMES[mode];
 }
 
+/**
+ * @param mode - An antialiasing mode.
+ * @returns Whether it resolves frames temporally (TAA, FSR 2, DLSS), which RCAS then sharpens at any size.
+ */
+export function isTemporalAntialiasing(mode: RenderAntialiasing): boolean {
+  return mode === ERenderAntialiasing.TAA || mode === ERenderAntialiasing.FSR2 || mode === ERenderAntialiasing.DLSS;
+}
+
 /** Every antialiasing mode, in the order they are offered. */
 export const RENDER_ANTIALIASING_OPTIONS: ReadonlyArray<IRenderChoiceOption<RenderAntialiasing>> = Object.values(
   ERenderAntialiasing

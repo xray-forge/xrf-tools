@@ -1,5 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 
+import { ERenderAntialiasing } from "@/core/ipc/types/xrf-renderer";
 import {
   formatContactShadowLights,
   formatLowLuminance,
@@ -7,6 +8,7 @@ import {
   formatShadowReach,
   formatWaveSpeed,
   fromGrassDensityScale,
+  isTemporalAntialiasing,
   RENDER_FRAME_RATE_OPTIONS,
   RENDER_GRASS_LIMITS,
   RENDER_RESOLUTION_OPTIONS,
@@ -46,5 +48,15 @@ describe("render choice options", () => {
     expect(RENDER_FRAME_RATE_OPTIONS[0]?.label).toBe("No cap");
     expect(RENDER_RESOLUTION_OPTIONS.map((it) => it.value)).toEqual(RENDER_RESOLUTIONS);
     expect(RENDER_RESOLUTION_OPTIONS.map((it) => it.label)).toEqual(["Auto", "720p", "1080p", "1440p", "4K"]);
+  });
+});
+
+describe("temporal antialiasing", () => {
+  it("tells the modes that resolve frames over time, which sharpening applies to at any size", () => {
+    expect(Object.values(ERenderAntialiasing).filter(isTemporalAntialiasing)).toEqual([
+      ERenderAntialiasing.TAA,
+      ERenderAntialiasing.FSR2,
+      ERenderAntialiasing.DLSS,
+    ]);
   });
 });

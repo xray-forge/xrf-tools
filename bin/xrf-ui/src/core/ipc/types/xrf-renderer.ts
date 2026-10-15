@@ -1617,7 +1617,7 @@ export type RenderTonemapMode = `${ERenderTonemapMode}`;
  */
 export type RenderUpscalingSettings = {
   scale: RenderScale;
-  /** RCAS's sharpness while upscaled, from none to its most. */
+  /** RCAS's sharpness while upscaled or resolved temporally, from none to its most. */
   sharpening: number | null;
   dlssPreset: RenderDlssPreset;
   /**

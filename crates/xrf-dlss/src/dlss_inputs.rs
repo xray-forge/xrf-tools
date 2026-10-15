@@ -20,4 +20,6 @@ pub struct DlssInputs<'a> {
   pub output: &'a wgpu::TextureView,
   /// Whether the frames before are forgotten: the first frame, or one after a cut.
   pub is_reset: bool,
+  /// Milliseconds since the frame before, which DLSS weighs its history by.
+  pub frame_time: f32,
 }
