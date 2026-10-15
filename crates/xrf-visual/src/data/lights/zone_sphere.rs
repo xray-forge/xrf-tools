@@ -1,5 +1,5 @@
 use xrf_math::Vector3d;
-use xrf_spawn::Shape;
+use xrf_spawn::{AlifeObjectCustomZone, Shape};
 
 use crate::data::visual::skeleton::visual_transform::VisualTransform;
 
@@ -12,19 +12,24 @@ pub struct ZoneSphere {
 }
 
 impl ZoneSphere {
-  /// A spawned zone's, in engine space, its offset from where the zone stands; nothing about the zone itself for one
-  /// without shapes, as an empty form's sphere is.
-  pub fn of_zone(shapes: &[Shape], (position, angle): (&Vector3d, &Vector3d)) -> Self {
-    let (center, radius) = Shape::get_bounding_sphere(shapes).unwrap_or((Vector3d::new(0.0, 0.0, 0.0), 0.0));
+  /// A spawned zone's standing at `position`, turned by `angle`, in engine space, its offset from where the zone stands;
+  /// nothing about the zone itself for one without shapes, as an empty form's sphere is. None for a zone always fast,
+  /// which never switches and so keeps no sphere to measure.
+  pub fn of_custom_zone(zone: &AlifeObjectCustomZone, (position, angle): (&Vector3d, &Vector3d)) -> Option<Self> {
+    if zone.is_always_fast() {
+      return None;
+    }
+
+    let (center, radius) = Shape::get_bounding_sphere(&zone.base.shape).unwrap_or((Vector3d::new(0.0, 0.0, 0.0), 0.0));
     // `XFORM().transform_tiny(P, s.P)`, in engine space.
     let at: Vector3d = VisualTransform::of_spawn(position, angle)
       .mirrored()
       .apply_to_point(&center);
 
-    Self {
+    Some(Self {
       offset: Vector3d::new(at.x - position.x, at.y - position.y, at.z - position.z),
       radius,
-    }
+    })
   }
 
   /// The same sphere offset from a point standing `lift` above the zone, mirrored into renderer space.

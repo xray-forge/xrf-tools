@@ -285,10 +285,9 @@ impl<'a> LightsPacker<'a> {
       is_shadowed,
       is_level: false,
       campfire: (section.get("class").map(str::trim) == Some(Self::CAMPFIRE_CLASS)).then_some(object.id),
-      // A zone always fast never switches, so it keeps no sphere to measure.
-      zone_sphere: torrid.filter(|zone| !zone.base.is_always_fast()).map(|zone| {
-        ZoneSphere::of_zone(&zone.base.base.shape, (&object.position, &object.direction)).to_renderer_space(height)
-      }),
+      zone_sphere: torrid
+        .and_then(|zone| ZoneSphere::of_custom_zone(&zone.base, (&object.position, &object.direction)))
+        .map(|sphere| sphere.to_renderer_space(height)),
       motion: torrid.and_then(|zone| zone.motion.get_name()).map(|name| LightMotion {
         name: name.to_owned(),
         height,
