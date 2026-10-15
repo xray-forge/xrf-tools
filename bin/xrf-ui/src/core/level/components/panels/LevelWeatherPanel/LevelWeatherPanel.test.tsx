@@ -1,13 +1,21 @@
 import { afterEach, describe, expect, it } from "@jest/globals";
 import { act, RenderResult, waitFor } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
-import { Container } from "@wirestate/core";
+import { Container, Injectable } from "@wirestate/core";
+import { Nullable } from "@xrf/types";
 
 import { EXrayEngine } from "@/core/ipc/types/xrf-engine-target";
 import { EEnvironmentRule, WeatherCycleId } from "@/core/ipc/types/xrf-environment";
 import { EWorldWeatherPlay } from "@/core/ipc/types/xrf-world";
 import { ELevelWeatherSource } from "@/core/level/lib/weather/level-weather-source";
-import { LevelLoadService, LevelViewService, LevelWeatherService } from "@/core/level/services";
+import {
+  LevelLoadService,
+  LevelLookService,
+  LevelRenderService,
+  LevelViewportService,
+  LevelViewService,
+  LevelWeatherService,
+} from "@/core/level/services";
 import { mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { InvokeMap, resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
@@ -20,6 +28,32 @@ import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 import { LevelWeatherPanel } from "./LevelWeatherPanel";
+
+/** What the panel asked the viewport playing the weather for, which no viewport is attached to hear. */
+const asked: Array<string> = [];
+
+@Injectable()
+class TestLevelRenderService extends LevelRenderService {
+  public override playWeatherEffect(name: Nullable<string>): void {
+    asked.push(`effect ${name}`);
+  }
+
+  public override playAmbientEffect(): void {
+    asked.push("ambient");
+  }
+}
+
+/** The services the panel reads, the viewport playing the weather stood in for. */
+function mockPanelContainer(): Container {
+  return mockContainer([
+    LevelLoadService,
+    LevelLookService,
+    LevelViewService,
+    LevelViewportService,
+    LevelWeatherService,
+    { token: LevelRenderService, type: "Instance", value: TestLevelRenderService },
+  ]);
+}
 
 async function renderPanel(responses: InvokeMap = {}): Promise<RenderResult & { weather: LevelWeatherService }> {
   setMockInvokeResponses({
@@ -49,20 +83,20 @@ async function renderPanel(responses: InvokeMap = {}): Promise<RenderResult & { 
     ...responses,
   });
 
-  const container: Container = mockContainer([LevelLoadService, LevelViewService, LevelWeatherService]);
+  const container: Container = mockPanelContainer();
   const load: LevelLoadService = container.get(LevelLoadService);
   const weather: LevelWeatherService = container.get(LevelWeatherService);
-
   const result: RenderResult = renderWithProviders(<LevelWeatherPanel />, { container });
 
-  // Mounting provisions the container, and that restores the level the backend holds.
+  // Mounting provisions the container: that restores the level the backend holds, and its weather opens with it.
   await waitFor(() => expect(load.isReady).toBe(true));
-  await act(() => weather.open(load.level.value?.selected ?? null));
+  await waitFor(() => expect(weather.description.isLoading || weather.cycle.isLoading).toBe(false));
 
   return { ...result, weather };
 }
 
 afterEach(() => {
+  asked.length = 0;
   resetMockInvoke();
   window.localStorage.clear();
 });
@@ -86,7 +120,7 @@ describe("LevelWeatherPanel", () => {
 
     await userEvent.click(getByRole("combobox", { name: "Cycle" }));
     await userEvent.click(getByRole("option", { name: /default_rain/ }));
-    await waitFor(() => expect(weather.cycle?.name).toBe("default_rain"));
+    await waitFor(() => expect(weather.cycle.value?.name).toBe("default_rain"));
 
     await userEvent.click(getByRole("button", { name: "Manual" }));
 
@@ -99,7 +133,7 @@ describe("LevelWeatherPanel", () => {
     await userEvent.click(getByRole("option", { name: /default_clear/ }));
 
     await waitFor(() => expect(weather.source).toBe(ELevelWeatherSource.WEATHER));
-    expect(weather.cycle?.name).toBe("default_clear");
+    expect(weather.cycle.value?.name).toBe("default_clear");
   });
 
   it("goes back to the weather from the keyframe set by hand", async () => {
@@ -159,7 +193,7 @@ describe("LevelWeatherPanel", () => {
     await userEvent.click(getByRole("combobox", { name: "Effect" }));
     await userEvent.click(getByRole("option", { name: /fx_blowout/ }));
 
-    expect(weather.effect).toEqual({ name: "fx_blowout" });
+    expect(asked).toEqual(["effect fx_blowout"]);
 
     act(() =>
       weather.noteReport(mockWorldWeatherReport({ effect: { name: "fx_blowout", remaining: 125 }, time: 43_300 }))
@@ -172,7 +206,7 @@ describe("LevelWeatherPanel", () => {
     await userEvent.click(getByRole("combobox", { name: "Effect" }));
     await userEvent.click(getByRole("option", { name: "None" }));
 
-    expect(weather.effect).toEqual({ name: null });
+    expect(asked).toEqual(["effect fx_blowout", "effect null"]);
   });
 
   it("says what ambient effect plays near the camera and asks for one at once", async () => {
@@ -195,7 +229,7 @@ describe("LevelWeatherPanel", () => {
 
     await userEvent.click(getByRole("button", { name: "Play one now" }));
 
-    expect(weather.ambientPlays).toBe(1);
+    expect(asked).toEqual(["ambient"]);
   });
 
   it("says how many of the level's own overrides there are, and how many reach the camera", async () => {
@@ -233,7 +267,7 @@ describe("LevelWeatherPanel", () => {
 
   it("stands empty until a level is open", () => {
     const { getByTestId } = renderWithProviders(<LevelWeatherPanel />, {
-      container: mockContainer([LevelLoadService, LevelViewService, LevelWeatherService]),
+      container: mockPanelContainer(),
     });
 
     expect(getByTestId("level-weather-panel").textContent).toContain("No level open");

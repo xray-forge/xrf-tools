@@ -1,8 +1,10 @@
 import { default as FilterDramaIcon } from "@mui/icons-material/FilterDrama";
 import { Button, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
+import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useMemo } from "react";
 
+import { LevelWeatherCycle, LevelWeatherDescription } from "@/core/ipc/types/xrf-app";
 import { LevelWeatherClock } from "@/core/level/components/weather/LevelWeatherClock";
 import { LevelWeatherCycleSelect } from "@/core/level/components/weather/LevelWeatherCycleSelect";
 import { LevelWeatherEffectSelect } from "@/core/level/components/weather/LevelWeatherEffectSelect";
@@ -12,6 +14,7 @@ import { toLevelManualWeatherLtx } from "@/core/level/lib/weather/level-manual-w
 import { listLevelWeatherCycles } from "@/core/level/lib/weather/level-weather-cycle-choice";
 import { ELevelWeatherSource } from "@/core/level/lib/weather/level-weather-source";
 import { formatLevelWeatherTime } from "@/core/level/lib/weather/level-weather-time";
+import { LevelRenderService } from "@/core/level/services/level-render.service";
 import { LevelWeatherService } from "@/core/level/services/level-weather.service";
 import { EditorPopoverAction } from "@/core/shell/editor/EditorPopoverAction";
 import { BaseComponentProps } from "@/lib/dom/element-types";
@@ -28,9 +31,12 @@ export function LevelWeatherAction({
 }: BaseComponentProps): ReactElement {
   const log: Logger = useLogger(__MODULE_NAME__);
   const weatherService: LevelWeatherService = useInjection(LevelWeatherService);
+  const renderService: LevelRenderService = useInjection(LevelRenderService);
 
-  const { description, cycle, source, time, control, report, isManual, seed } = weatherService;
-  const isPlayable: boolean = weatherService.cycle !== null;
+  const { source, time, control, report, isManual, seed } = weatherService;
+  const description: Nullable<LevelWeatherDescription> = weatherService.description.value;
+  const cycle: Nullable<LevelWeatherCycle> = weatherService.cycle.value;
+  const isPlayable: boolean = cycle !== null;
   const isPlaying: boolean = !control.isPaused;
   const cycles = useMemo(() => (description ? listLevelWeatherCycles(description) : []), [description]);
 
@@ -91,13 +97,13 @@ export function LevelWeatherAction({
         <LevelWeatherEffectSelect
           effects={description?.effects ?? []}
           playing={report?.effect ?? null}
-          onPlay={weatherService.playEffect}
+          onPlay={renderService.playWeatherEffect}
         />
 
         <LevelWeatherClock
           time={time}
           isPlaying={isPlaying}
-          onSeek={weatherService.seekTo}
+          onSeek={renderService.seekWeather}
           onPlaying={weatherService.setPlaying}
         />
 
