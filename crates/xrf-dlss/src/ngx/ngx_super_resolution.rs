@@ -1,5 +1,5 @@
 use std::ptr;
-use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
+use std::sync::{Arc, Mutex};
 
 use xrf_error::XrfResult;
 
@@ -12,6 +12,7 @@ use crate::ngx::d3d12_resource::to_d3d12_resource;
 use crate::ngx::ngx_feature::{NgxCommands, NgxFeature};
 use crate::ngx::ngx_result::check_ngx;
 use crate::ngx::ngx_sdk::NgxSdk;
+use crate::ngx::ngx_sdk_guard::NgxSdkGuard;
 use crate::ngx::vulkan_resource::to_ngx_resource;
 
 /// NGX's super resolution feature for one output, and the render sizes it upscales from.
@@ -46,7 +47,7 @@ impl NgxSuperResolution {
     let mut sharpness: f32 = 0.0;
 
     {
-      let locked: MutexGuard<'_, NgxSdk> = sdk.lock().unwrap_or_else(PoisonError::into_inner);
+      let locked: NgxSdkGuard<'_> = NgxSdkGuard::lock(sdk);
 
       unsafe {
         check_ngx(

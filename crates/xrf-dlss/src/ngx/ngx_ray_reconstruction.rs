@@ -1,5 +1,5 @@
 use std::ptr;
-use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
+use std::sync::{Arc, Mutex};
 
 use xrf_error::XrfResult;
 
@@ -11,6 +11,7 @@ use crate::ngx::d3d12_resource::to_d3d12_resource;
 use crate::ngx::ngx_feature::{NgxCommands, NgxFeature};
 use crate::ngx::ngx_result::check_ngx;
 use crate::ngx::ngx_sdk::NgxSdk;
+use crate::ngx::ngx_sdk_guard::NgxSdkGuard;
 use crate::ngx::vulkan_resource::to_ngx_resource;
 
 /// NGX's ray reconstruction feature for one output: denoising and upscaling in one network, over the guides a frame
@@ -77,7 +78,7 @@ impl NgxRayReconstruction {
     output: (u32, u32),
     value: NVSDK_NGX_PerfQuality_Value,
   ) -> XrfResult<[(u32, u32); 3]> {
-    let locked: MutexGuard<'_, NgxSdk> = sdk.lock().unwrap_or_else(PoisonError::into_inner);
+    let locked: NgxSdkGuard<'_> = NgxSdkGuard::lock(sdk);
     let mut optimal: (u32, u32) = (0, 0);
     let mut max: (u32, u32) = (0, 0);
     let mut min: (u32, u32) = (0, 0);

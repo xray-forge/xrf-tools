@@ -1,4 +1,6 @@
 use std::ptr;
+use std::sync::{MutexGuard, Once};
+use std::time::Instant;
 
 #[cfg(windows)]
 use wgpu::hal::api::Dx12;
@@ -10,6 +12,7 @@ use xrf_error::{XrfError, XrfResult};
 use crate::ngx::bindings::*;
 use crate::ngx::ngx_api::NgxApi;
 use crate::ngx::ngx_application::NgxApplication;
+use crate::ngx::ngx_lock::lock_ngx;
 use crate::ngx::ngx_result::check_ngx;
 
 /// NGX started on a device, the API it runs on, the parameters its features are made with, and whether it reconstructs
@@ -34,27 +37,44 @@ impl NgxSdk {
 
     Self::update(application);
 
+    let ngx: MutexGuard<'static, ()> = lock_ngx();
+
     match api {
       NgxApi::Vulkan => Self::init_vulkan(application, device)?,
       #[cfg(windows)]
       NgxApi::D3d12 => Self::init_d3d12(application, device)?,
     }
 
-    // Owned from here, so a refusal below shuts down what was started.
+    // Owned from here, so a refusal below shuts down what was started: dropped once NGX's lock is let go, as its drop
+    // takes the lock again.
     let mut sdk: Self = Self {
       parameters: ptr::null_mut(),
       device: device.clone(),
       api,
       has_ray_reconstruction: false,
     };
+    let read: XrfResult<()> = sdk.read_capabilities();
+
+    drop(ngx);
+    read?;
+
+    if !sdk.has_ray_reconstruction {
+      log::info!("DLSS ray reconstruction is unavailable on this GPU or driver");
+    }
+
+    Ok(sdk)
+  }
+
+  /// Takes NGX's parameters and reads whether it upscales and reconstructs rays on the device, holding NGX's lock.
+  fn read_capabilities(&mut self) -> XrfResult<()> {
     let mut is_available: i32 = 0;
 
     check_ngx(
       unsafe {
-        match api {
-          NgxApi::Vulkan => NVSDK_NGX_VULKAN_GetCapabilityParameters(&mut sdk.parameters),
+        match self.api {
+          NgxApi::Vulkan => NVSDK_NGX_VULKAN_GetCapabilityParameters(&mut self.parameters),
           #[cfg(windows)]
-          NgxApi::D3d12 => NVSDK_NGX_D3D12_GetCapabilityParameters(&mut sdk.parameters),
+          NgxApi::D3d12 => NVSDK_NGX_D3D12_GetCapabilityParameters(&mut self.parameters),
         }
       },
       "NGX has no parameters",
@@ -63,7 +83,7 @@ impl NgxSdk {
     check_ngx(
       unsafe {
         NVSDK_NGX_Parameter_GetI(
-          sdk.parameters,
+          self.parameters,
           NVSDK_NGX_Parameter_SuperSampling_Available.as_ptr().cast(),
           &mut is_available,
         )
@@ -80,19 +100,15 @@ impl NgxSdk {
     let mut is_reconstructing: i32 = 0;
     let asked: NVSDK_NGX_Result = unsafe {
       NVSDK_NGX_Parameter_GetI(
-        sdk.parameters,
+        self.parameters,
         NVSDK_NGX_Parameter_SuperSamplingDenoising_Available.as_ptr().cast(),
         &mut is_reconstructing,
       )
     };
 
-    sdk.has_ray_reconstruction = asked == NVSDK_NGX_Result_NVSDK_NGX_Result_Success && is_reconstructing != 0;
+    self.has_ray_reconstruction = asked == NVSDK_NGX_Result_NVSDK_NGX_Result_Success && is_reconstructing != 0;
 
-    if !sdk.has_ray_reconstruction {
-      log::info!("DLSS ray reconstruction is unavailable on this GPU or driver");
-    }
-
-    Ok(sdk)
+    Ok(())
   }
 
   /// Starts NGX on a Vulkan device, through the instance and the physical device it was opened on.
@@ -152,20 +168,29 @@ impl NgxSdk {
     }
   }
 
-  /// Asks the driver, on a thread of its own, to fetch newer super resolution and ray reconstruction libraries where
-  /// NVIDIA offers them.
+  /// Asks the driver, on a thread of its own and once a process, to fetch newer super resolution and ray reconstruction
+  /// libraries where NVIDIA offers them, holding NGX's lock as every call into it does.
   fn update(application: &NgxApplication) {
-    let application: NgxApplication = application.clone();
+    static UPDATED: Once = Once::new();
 
-    std::thread::spawn(move || {
-      for feature in [
-        NVSDK_NGX_Feature_NVSDK_NGX_Feature_SuperSampling,
-        NVSDK_NGX_Feature_NVSDK_NGX_Feature_RayReconstruction,
-      ] {
-        application.with_feature_info(feature, |info| unsafe {
-          NVSDK_NGX_UpdateFeature(&info.Identifier, info.FeatureID);
-        });
-      }
+    UPDATED.call_once(|| {
+      let application: NgxApplication = application.clone();
+
+      std::thread::spawn(move || {
+        let _ngx: MutexGuard<'static, ()> = lock_ngx();
+        let started: Instant = Instant::now();
+
+        for feature in [
+          NVSDK_NGX_Feature_NVSDK_NGX_Feature_SuperSampling,
+          NVSDK_NGX_Feature_NVSDK_NGX_Feature_RayReconstruction,
+        ] {
+          application.with_feature_info(feature, |info| unsafe {
+            NVSDK_NGX_UpdateFeature(&info.Identifier, info.FeatureID);
+          });
+        }
+
+        log::debug!("DLSS asked for newer libraries in {} ms", started.elapsed().as_millis());
+      });
     });
   }
 
@@ -216,6 +241,8 @@ impl Drop for NgxSdk {
     if let Err(error) = self.device.poll(wgpu::PollType::wait_indefinitely()) {
       log::error!("DLSS shuts down on a device that does not finish its work: {error}");
     }
+
+    let _ngx: MutexGuard<'static, ()> = lock_ngx();
 
     unsafe { self.shut_down() };
   }

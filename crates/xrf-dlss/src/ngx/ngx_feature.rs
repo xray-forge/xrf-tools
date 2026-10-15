@@ -1,5 +1,5 @@
 use std::ptr;
-use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
+use std::sync::{Arc, Mutex};
 
 #[cfg(windows)]
 use wgpu::hal::api::Dx12;
@@ -12,6 +12,7 @@ use crate::ngx::bindings::*;
 use crate::ngx::ngx_api::NgxApi;
 use crate::ngx::ngx_result::check_ngx;
 use crate::ngx::ngx_sdk::NgxSdk;
+use crate::ngx::ngx_sdk_guard::NgxSdkGuard;
 
 /// A feature NGX made on a device, which it releases once the device has finished what was submitted with it.
 pub(crate) struct NgxFeature {
@@ -34,7 +35,7 @@ impl NgxFeature {
     what: &str,
     create: impl FnOnce(NgxCommands, *mut NVSDK_NGX_Parameter, &mut *mut NVSDK_NGX_Handle) -> NVSDK_NGX_Result,
   ) -> XrfResult<Self> {
-    let locked: MutexGuard<'_, NgxSdk> = sdk.lock().unwrap_or_else(PoisonError::into_inner);
+    let locked: NgxSdkGuard<'_> = NgxSdkGuard::lock(sdk);
     let api: NgxApi = locked.api;
     let mut handle: *mut NVSDK_NGX_Handle = ptr::null_mut();
     let mut encoder: wgpu::CommandEncoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
@@ -62,7 +63,7 @@ impl NgxFeature {
     what: &str,
     evaluate: impl FnOnce(NgxCommands, &NgxSdk) -> XrfResult<NVSDK_NGX_Result>,
   ) -> XrfResult<wgpu::CommandBuffer> {
-    let sdk: MutexGuard<'_, NgxSdk> = self.sdk.lock().unwrap_or_else(PoisonError::into_inner);
+    let sdk: NgxSdkGuard<'_> = NgxSdkGuard::lock(&self.sdk);
     let mut commands: wgpu::CommandEncoder = self
       .device
       .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("dlss") });
@@ -80,6 +81,8 @@ impl Drop for NgxFeature {
     if let Err(error) = self.device.poll(wgpu::PollType::wait_indefinitely()) {
       log::error!("DLSS releases a feature on a device that does not finish its work: {error}");
     }
+
+    let _locked: NgxSdkGuard<'_> = NgxSdkGuard::lock(&self.sdk);
 
     unsafe {
       if let Err(error) = check_ngx(

@@ -1,4 +1,5 @@
 use std::ffi::CStr;
+use std::sync::MutexGuard;
 use std::{ptr, slice};
 
 use wgpu::hal::vulkan::{CreateDeviceCallbackArgs, CreateInstanceCallbackArgs};
@@ -6,6 +7,7 @@ use xrf_error::XrfResult;
 
 use crate::ngx::bindings::*;
 use crate::ngx::ngx_application::NgxApplication;
+use crate::ngx::ngx_lock::lock_ngx;
 use crate::ngx::ngx_result::check_ngx;
 
 /// Adds the instance extensions super resolution needs to an instance wgpu is creating; whether the loader has them.
@@ -15,6 +17,7 @@ pub(crate) fn add_instance_extensions(
 ) -> XrfResult<bool> {
   let required: Vec<&'static CStr> =
     application.with_feature_info(NVSDK_NGX_Feature_NVSDK_NGX_Feature_SuperSampling, |info| unsafe {
+      let _ngx: MutexGuard<'static, ()> = lock_ngx();
       let mut extensions: *mut ash::vk::ExtensionProperties = ptr::null_mut();
       let mut count: u32 = 0;
 
@@ -50,6 +53,7 @@ pub(crate) fn add_device_extensions(
   let physical_device: ash::vk::PhysicalDevice = adapter.raw_physical_device();
   let required: Vec<&'static CStr> =
     application.with_feature_info(NVSDK_NGX_Feature_NVSDK_NGX_Feature_SuperSampling, |info| unsafe {
+      let _ngx: MutexGuard<'static, ()> = lock_ngx();
       let mut extensions: *mut ash::vk::ExtensionProperties = ptr::null_mut();
       let mut count: u32 = 0;
 
