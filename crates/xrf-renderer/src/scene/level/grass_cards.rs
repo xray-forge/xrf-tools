@@ -21,9 +21,11 @@ pub struct GrassCards {
 }
 
 impl GrassCards {
-  /// Triangles a square metre of the cards' reach holds at most, twice the most measured (some 7, 37k within 40 m of
-  /// Zaton's hill), and the least and the most the cards hold whatever their reach.
+  /// Triangles a square metre of the cards' reach holds at the least, twice what Zaton's hill asks (some 7, 37k within
+  /// 40 m), and the least and the most the cards hold whatever their reach; past what the reach holds, how much more room
+  /// than its tufts asked the cards are given (`get_capacity`).
   const TRIANGLES_PER_SQUARE_METRE: f32 = 16.0;
+  const ASKED_MARGIN: f32 = 1.25;
   const LEAST_CAPACITY: u32 = 1 << 14;
   const MOST_CAPACITY: u32 = 1 << 21;
   /// Metres the cards reach at most.
@@ -64,7 +66,8 @@ impl GrassCards {
       triangles_most * Self::TRIANGLE_BYTES,
       wgpu::BufferUsages::empty(),
     );
-    let count: wgpu::Buffer = buffer("grass card count", 4, wgpu::BufferUsages::empty());
+    // Four words, as a stats readback copies them, the first counted.
+    let count: wgpu::Buffer = buffer("grass card count", 16, wgpu::BufferUsages::COPY_SRC);
     let draw: wgpu::Buffer = buffer("grass card draw", 16, wgpu::BufferUsages::INDIRECT);
     let blas: wgpu::Blas = device.create_blas(
       &wgpu::CreateBlasDescriptor {
@@ -96,13 +99,22 @@ impl GrassCards {
     }
   }
 
-  /// Triangles cards reaching `reach` metres hold at most.
-  pub fn get_capacity(reach: f32) -> u32 {
+  /// Triangles cards reaching `reach` metres hold at most, `current` held now and its tufts having last asked for
+  /// `asked`: what the reach's area holds, or `ASKED_MARGIN` more than asked where its grass stands denser, as a power of
+  /// two; grown at once and shrunk only once that falls to half the room. Past their room the cards drop the tufts
+  /// standing last, which the GPU orders as it likes from one frame to the next: a dense meadow's shadows flickered.
+  pub fn get_capacity(reach: f32, current: u32, asked: u32) -> u32 {
     let area: f32 = std::f32::consts::PI * reach * reach;
-
-    ((Self::TRIANGLES_PER_SQUARE_METRE * area) as u32)
+    let wanted: u32 = ((Self::TRIANGLES_PER_SQUARE_METRE * area) as u32)
+      .max((asked as f32 * Self::ASKED_MARGIN) as u32)
       .next_power_of_two()
-      .clamp(Self::LEAST_CAPACITY, Self::MOST_CAPACITY)
+      .clamp(Self::LEAST_CAPACITY, Self::MOST_CAPACITY);
+
+    if wanted > current || wanted.saturating_mul(2) <= current {
+      wanted
+    } else {
+      current
+    }
   }
 
   /// Metres from the eye within which the cards stand a tuft for `settings`, and the last of them over which they fade.
