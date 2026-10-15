@@ -105,10 +105,18 @@ args = ["${NODE_TAURI}", "build", "--debug", "--no-bundle"]
 XRF_BUILD_KIND = { value = "development", condition = { env_not_set = ["XRF_BUILD_KIND"] } }
 
 # `--no-bundle` skips the installers. `package-app` produces the archive the application ships as.
+# Tauri copies the bundle's resources beside the executable but never prunes them, so one renamed or removed since an
+# earlier build would otherwise ship.
+[tasks.clear-app-resources]
+description = "Remove the resources an earlier release build copied beside the executable."
+category = "Build"
+command = "node"
+args = ["-e", "require('node:fs').rmSync('target/release/resources', { recursive: true, force: true })"]
+
 [tasks.build-app-release]
 description = "Build the desktop application in release mode, with DLSS."
 category = "Build"
-dependencies = ["install-ui", "fetch-sdks"]
+dependencies = ["install-ui", "fetch-sdks", "clear-app-resources"]
 cwd = "bin/xrf-app"
 command = "node"
 args = ["${NODE_TAURI}", "build", "--no-bundle", "--features", "dlss", "--config", "tauri.dlss.conf.json"]

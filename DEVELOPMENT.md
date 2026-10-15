@@ -13,7 +13,7 @@ use the Tauri CLI version locked in `bin/xrf-ui`, so `cargo-make` is the only to
 ## Common workflows
 
 | Goal                                        | Command                        |
-|---------------------------------------------|--------------------------------|
+| ------------------------------------------- | ------------------------------ |
 | Develop the desktop app                     | `cargo make dev-app`           |
 | Develop the desktop app with optimized Rust | `cargo make dev-app-optimized` |
 | Build the CLI for local use                 | `cargo make build-cli`         |
@@ -35,7 +35,7 @@ names the code that ships.
 ### Development
 
 | Task                | What it does                                                        |
-|---------------------|---------------------------------------------------------------------|
+| ------------------- | ------------------------------------------------------------------- |
 | `dev-app`           | Runs the desktop backend and UI in watch mode.                      |
 | `dev-app-optimized` | Runs the same watch mode with DLSS and the `dev-optimized` profile. |
 | `dev-app-profiling` | Runs the same watch mode with DLSS and the `profiling` profile.     |
@@ -44,32 +44,32 @@ names the code that ships.
 
 ### Build
 
-| Task                | What it does                                                                                           |
-|---------------------|--------------------------------------------------------------------------------------------------------|
-| `build-cli`         | Builds the CLI in debug mode.                                                                          |
-| `build-cli-release` | Builds the CLI in release mode.                                                                        |
-| `build-app`         | Builds the desktop application in debug mode, without DLSS.                                            |
-| `build-app-release` | Builds the desktop application in release mode, with DLSS. Sets `XRF_BUILD_KIND=optimized` unless set. |
-| `package-app`       | Builds the release application and packs it into `target/package/<PACKAGE_NAME>.zip`.                  |
-| `fetch-sdks`        | Fetches the pinned DLSS SDK, Vulkan headers and libclang into `.sdks/`.                                |
+| Task                | What it does                                                                                                                   |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `build-cli`         | Builds the CLI in debug mode.                                                                                                  |
+| `build-cli-release` | Builds the CLI in release mode.                                                                                                |
+| `build-app`         | Builds the desktop application in debug mode, without DLSS.                                                                    |
+| `build-app-release` | Builds the desktop application in release mode, with DLSS, from cleared resources. Sets `XRF_BUILD_KIND=optimized` unless set. |
+| `package-app`       | Builds the release application and packs it into `target/package/<PACKAGE_NAME>.zip`.                                          |
+| `fetch-sdks`        | Fetches the pinned DLSS SDK, Vulkan headers and libclang into `.sdks/`.                                                        |
 
 `package-app` names the archive `xrf-app-windows-x64` unless `PACKAGE_NAME` is set. `fetch-sdks` skips anything
 already at its pinned version, so repeated runs fetch nothing.
 
 ### Verification
 
-| Task                | What it does                                                                                          |
-|---------------------|-------------------------------------------------------------------------------------------------------|
-| `format`            | Formats the Rust codebase.                                                                            |
-| `check-format`      | Checks Rust formatting without writing files.                                                         |
-| `lint`              | Runs Clippy on all workspace targets with DLSS. Fetches the SDKs first.                               |
-| `test`              | Runs workspace library and binary tests with DLSS and checks the generated frontend bindings.         |
-| `test-derive`       | Runs every derive crate's UI diagnostic snapshots (each crate's `tests/ui.rs`).                       |
-| `test-doc`          | Runs the documentation examples of every workspace crate, READMEs included.                           |
-| `install-ui`        | Installs the locked TypeScript dependencies.                                                          |
-| `test-ui`           | Runs the tests of every TypeScript workspace member.                                                  |
-| `verify-ui`         | Installs locked TypeScript dependencies, then typechecks, tests, and lints every workspace member.    |
-| `verify`            | Runs the CI-gated suite: format check, lint, workspace tests, derive diagnostics, doc examples, UI.   |
+| Task           | What it does                                                                                        |
+| -------------- | --------------------------------------------------------------------------------------------------- |
+| `format`       | Formats the Rust codebase.                                                                          |
+| `check-format` | Checks Rust formatting without writing files.                                                       |
+| `lint`         | Runs Clippy on all workspace targets with DLSS. Fetches the SDKs first.                             |
+| `test`         | Runs workspace library and binary tests with DLSS and checks the generated frontend bindings.       |
+| `test-derive`  | Runs every derive crate's UI diagnostic snapshots (each crate's `tests/ui.rs`).                     |
+| `test-doc`     | Runs the documentation examples of every workspace crate, READMEs included.                         |
+| `install-ui`   | Installs the locked TypeScript dependencies.                                                        |
+| `test-ui`      | Runs the tests of every TypeScript workspace member.                                                |
+| `verify-ui`    | Installs locked TypeScript dependencies, then typechecks, tests, and lints every workspace member.  |
+| `verify`       | Runs the CI-gated suite: format check, lint, workspace tests, derive diagnostics, doc examples, UI. |
 
 `lint` and `test` enable the Cargo features listed in `CHECK_FEATURES` in `Makefile.toml`. Change the list there;
 CI follows because it runs the same tasks.
@@ -77,7 +77,7 @@ CI follows because it runs the same tasks.
 ### Documentation and generated code
 
 | Task                           | What it does                                                                                  |
-|--------------------------------|-----------------------------------------------------------------------------------------------|
+| ------------------------------ | --------------------------------------------------------------------------------------------- |
 | `doc`                          | Generates Rust documentation for workspace members, without dependencies.                     |
 | `doc-cli`                      | Generates the CLI command reference from the Clap definitions into `target/doc-commands`.     |
 | `generate-typescript-bindings` | Emits the generated TypeScript mirrors and Tauri command bindings.                            |
@@ -87,7 +87,7 @@ CI follows because it runs the same tasks.
 ### Maintenance
 
 | Task    | What it does                       |
-|---------|------------------------------------|
+| ------- | ---------------------------------- |
 | `clean` | Removes workspace build artifacts. |
 
 ## Prerequisites
