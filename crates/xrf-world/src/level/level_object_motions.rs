@@ -71,7 +71,7 @@ impl LevelObjectMotions {
     self.motions.get(name, || {
       let (source, name) = (Arc::clone(source), name.to_owned());
 
-      LoaderSlot::spawn(workers, move || {
+      LoaderSlot::spawn(workers, "object motion", move || {
         source
           .read_object_motion(&name)
           .inspect_err(|error| log::warn!("Object motion '{name}' cannot be played: {error}"))
