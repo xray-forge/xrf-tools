@@ -1071,7 +1071,8 @@ impl RenderThread {
     };
     let gpu: &GpuState = gpu;
     let (device, queue): (&wgpu::Device, &wgpu::Queue) = (&gpu.context.device, &gpu.context.queue);
-    // Copied out of their window's image after it is composed, before it is presented; read once each is back.
+    // Copied out of their window's image after it is composed, before it is presented; read once each is back. A
+    // viewport gives one capture a frame, the first asked, so captures asked together land on consecutive frames.
     let mut captures: Vec<(RenderViewportId, FrameCapture, CaptureReply)> = Vec::new();
 
     for window in &windows {
@@ -1080,7 +1081,9 @@ impl RenderThread {
           continue;
         };
 
-        for reply in std::mem::take(&mut viewport.captures) {
+        if !viewport.captures.is_empty() {
+          let reply: CaptureReply = viewport.captures.remove(0);
+
           match FrameCapture::new(device, window.format, *shown, viewport.frame) {
             Ok(capture) => captures.push((*id, capture, reply)),
             Err(error) => {
