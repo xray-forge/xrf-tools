@@ -674,7 +674,9 @@ impl StaticScene {
       0,
       bytemuck::bytes_of(&StaticPlace {
         transform: matrix,
-        info: Vec4::new(1.0, 0.0, -1.0, scale),
+        // A model's normals carry no hemisphere, so the bias is its whole hemisphere where no cube lights it: half, as
+        // the engine lights an object before its first estimate (`CROS_impl`'s `hemi_value` and `hemi_smooth`).
+        info: Vec4::new(1.0, 0.5, -1.0, scale),
         cube: place.lighting.map_or(UVec4::ZERO, Self::pack_cube),
         skin: match (&bones, skin) {
           (Some((rows, bones)), Some((links, _))) => UVec4::new(rows.get_offset(), links, vertex_start, *bones),
