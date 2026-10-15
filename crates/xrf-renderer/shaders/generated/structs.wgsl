@@ -202,7 +202,7 @@ struct Shadows {
   filter_reach: u32,
   resolution: f32,
   bias: f32,
-  blend: f32,
+  blends: vec4<f32>,
 }
 
 struct ContactShadows {

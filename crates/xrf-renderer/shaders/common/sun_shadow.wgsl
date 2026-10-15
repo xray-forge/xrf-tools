@@ -9,6 +9,14 @@ const EDGE: f32 = 0.02;
 // How far from its centre, in shares of the map, the last cascade starts to fade out: the engine's `border`.
 const BORDER: f32 = 0.4;
 
+// Metres a plant's point is moved along its normal at most, whatever the cascade: moved as far as a coarse cascade's
+// texels, a tuft's lookup left the blades about it and lit its inside, which the finer cascade shadowed, so its shade
+// stepped where a cascade's edge crossed it.
+const PLANT_OFFSET_MOST: f32 = 0.04;
+
+// What `sun_shadow_by` takes as no limit on how far a point is moved.
+const OFFSET_ANY: f32 = 1e9;
+
 // The sun's share at a point by one cascade alone, compared over the square of texels the filter reaches; the last
 // cascade fades out towards its far edge, on the side the camera looks towards, as `accum_sun_far` does.
 fn cascade_lit(maps: texture_depth_2d_array, shadows: Shadows, view: u32, clip: vec4<f32>, uv: vec2<f32>) -> f32 {
@@ -76,21 +84,34 @@ fn is_sun_mapped(shadows: Shadows, position: vec3<f32>) -> bool {
   return false;
 }
 
-// How much of the sun reaches a point: the first cascade whose map holds it, blended into the next within `blend` of
-// its edge so the switch to a coarser map is never a line; past every cascade the sun reaches it whole. The point is
-// moved along its normal first so a lit surface never shadows itself, up to twice as far where the light grazes it, and
-// as much again for each texel the filter reaches out: on a slope its outer taps read the surface's own depth a texel's
-// rise away, which striped a flat puddle on sloped ground where the bumps hid it elsewhere.
+// How much of the sun reaches a point: the first cascade whose map holds it, blended into the next within its band
+// (`blends`) of its edge so the switch to a coarser map is never a line; past every cascade the sun reaches it whole.
+// The point is moved along its normal first so a lit surface never shadows itself, up to twice as far where the light
+// grazes it, and as much again for each texel the filter reaches out: on a slope its outer taps read the surface's own
+// depth a texel's rise away, which striped a flat puddle on sloped ground where the bumps hid it elsewhere.
 fn sun_shadow(maps: texture_depth_2d_array, shadows: Shadows, position: vec3<f32>, normal: vec3<f32>, facing: f32)
   -> f32 {
+  return sun_shadow_by(maps, shadows, position, normal, facing, OFFSET_ANY);
+}
+
+// The sun on a plant: as `sun_shadow`, its point moved no further than `PLANT_OFFSET_MOST` in any cascade.
+fn plant_sun_shadow(maps: texture_depth_2d_array, shadows: Shadows, position: vec3<f32>, normal: vec3<f32>,
+  facing: f32) -> f32 {
+  return sun_shadow_by(maps, shadows, position, normal, facing, PLANT_OFFSET_MOST);
+}
+
+// `sun_shadow` with its point moved `most` metres at most.
+fn sun_shadow_by(maps: texture_depth_2d_array, shadows: Shadows, position: vec3<f32>, normal: vec3<f32>, facing: f32,
+  most: f32) -> f32 {
   let lean: f32 = 1.0 + sqrt(1.0 - saturate(facing) * saturate(facing));
   var lit: f32 = 1.0;
   var is_blending: bool = false;
   var inset: f32 = 0.0;
+  var band: f32 = 0.0;
 
   for (var view: u32 = 0u; view < min(shadows.count, 4u); view++) {
-    let moved: vec3<f32> = position + normal * (shadows.bias * shadows.texels[view] * lean *
-      (1.0 + f32(shadows.filter_reach)));
+    let offset: f32 = shadows.bias * shadows.texels[view] * lean * (1.0 + f32(shadows.filter_reach));
+    let moved: vec3<f32> = position + normal * min(offset, most);
     let clip: vec4<f32> = shadows.matrices[view] * vec4<f32>(moved, 1.0);
     let uv: vec2<f32> = vec2<f32>(clip.x * 0.5 + 0.5, clip.y * -0.5 + 0.5);
     let is_inside: bool = all(uv > vec2<f32>(EDGE)) && all(uv < vec2<f32>(1.0 - EDGE)) && clip.z > 0.0 && clip.z < 1.0;
@@ -108,14 +129,15 @@ fn sun_shadow(maps: texture_depth_2d_array, shadows: Shadows, position: vec3<f32
 
     if (is_blending) {
       // At the edge the next cascade's, at the band's inner side the one that holds it.
-      return mix(view_lit, lit, saturate(inset / shadows.blend));
+      return mix(view_lit, lit, saturate(inset / band));
     }
 
     lit = view_lit;
     inset = min(min(uv.x, uv.y), min(1.0 - uv.x, 1.0 - uv.y)) - EDGE;
+    band = shadows.blends[view];
 
     // Blended into the next only inside the band, and only where there is a next.
-    if (inset < shadows.blend && shadows.count > view + 1u) {
+    if (inset < band && shadows.count > view + 1u) {
       is_blending = true;
     } else {
       break;

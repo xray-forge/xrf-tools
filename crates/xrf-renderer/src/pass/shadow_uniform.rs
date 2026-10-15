@@ -17,8 +17,8 @@ pub struct ShadowUniform {
   pub filter_reach: u32,
   pub resolution: f32,
   pub bias: f32,
-  pub blend: f32,
-  pub _pad: [f32; 3],
+  /// The share of each cascade's map from its edge over which it blends into the next.
+  pub blends: Vec4,
 }
 
 impl Default for ShadowUniform {
@@ -31,8 +31,7 @@ impl Default for ShadowUniform {
       filter_reach: 0,
       resolution: 1.0,
       bias: 0.0,
-      blend: 0.0,
-      _pad: [0.0; 3],
+      blends: Vec4::ZERO,
     }
   }
 }

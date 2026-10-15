@@ -72,11 +72,16 @@ const SWAY_SEEDS: [f32; RENDER_MAX_SHADOW_CASCADES] = [0.12, 0.15, 0.25, 0.35];
 const GRASS_STANDING: f32 = 3.0;
 /// The share of a map's edge the sun's pass keeps a point off (`EDGE` in `common/sun_shadow.wgsl`).
 const SUN_SHADOW_EDGE: f32 = 0.02;
-/// Where the cards' reach is sampled for the cascades it lands in: points a ring, the rings' radians below the camera,
-/// and their shares of the reach.
-const GRASS_SAMPLES: u32 = 32;
-const GRASS_RINGS: [f32; 3] = [0.0, 0.5, 1.0];
-const GRASS_SHARES: [f32; 4] = [0.25, 0.5, 0.75, 1.0];
+/// Where the cards' reach is sampled for the cascades it lands in: rays a side of the screen's grid, and the shares of
+/// the reach each ray is sampled at, close ones too, where the nearest cascade shades.
+const GRASS_GRID: u32 = 5;
+const GRASS_SHARES: [f32; 7] = [0.05, 0.1, 0.2, 0.35, 0.5, 0.75, 1.0];
+
+/// The share of its map the nearest cascades blend into the next over at least, and how many of them do: their texels
+/// are fine enough that a tuft's self-shadow differs from the next cascade's, which a band as narrow as the far ones'
+/// shows as a pop where the cascade's edge sweeps across the grass with the camera.
+const NEAR_BLEND: f32 = 0.2;
+const NEAR_BLENDED: usize = 2;
 
 /// The first cascade that keeps a second static layer, which its next is drawn into ahead of the turn that would stale
 /// the one shown: the far ones, whose static draws cost the most.
@@ -188,6 +193,7 @@ impl LevelShadows {
     self.bands.clear();
 
     self.grass_cascades = [false; RENDER_MAX_SHADOW_CASCADES];
+    self.values.blends = get_cascade_blends(settings.blend);
 
     // The static layers pay only while the trees sway or the grass casts: still, a cascade draws again only where its
     // static layer would.
@@ -217,7 +223,6 @@ impl LevelShadows {
     self.values.filter_reach = settings.filter;
     self.values.resolution = self.maps.as_ref().map_or(1, |maps| maps.resolution) as f32;
     self.values.bias = settings.bias;
-    self.values.blend = settings.blend;
   }
 
   /// Declares the cascades due this frame and the bands drawn ahead: every one culled into its own lists in one compute
@@ -407,6 +412,7 @@ impl LevelShadows {
       cascade.drawn_fit = offer.fit;
       cascade.waited = 0;
       cascade.is_swapped = false;
+      cascade.has_drawn_grass = offer.draw != CascadeDraw::Whole && self.grass_cascades[offer.index];
 
       if offer.draw == CascadeDraw::Static {
         cascade.drawn_static = Some((offer.fit.version, offer.contents));
@@ -476,6 +482,7 @@ impl LevelShadows {
     let scene = frame.scene;
     let resolution: u32 = self.maps.as_ref().map_or(1, |maps| maps.resolution);
     let is_split: bool = self.statics.is_some();
+    let blends: Vec4 = self.values.blends;
     let mut rays: SunViewRays = SunViewRays::new(frame.camera);
 
     while self.cascades.len() < count.min(RENDER_MAX_SHADOW_CASCADES) {
@@ -526,7 +533,7 @@ impl LevelShadows {
         match (*shaded, get_cascade_inset(projection, *point)) {
           (None, Some(inset)) => {
             has_grass = true;
-            *shaded = Some((index, has_next && inset < frame.settings.blend));
+            *shaded = Some((index, has_next && inset < blends[index]));
           }
           (Some((at, true)), Some(_)) if at + 1 == index => has_grass = true,
           _ => {}
@@ -570,9 +577,10 @@ fn offer_whole(
   let fit: SunCascade = cascade.cascade;
   // A map holds depth in the world, sampled with the matrix it was drawn with, so a still one is still exact; only an
   // item coming or going within what it covers changes it.
-  let is_changed: bool = cascade.drawn.is_none_or(|(version, contents)| {
-    version != fit.version || scene.is_changed_since(contents, |sphere| fit.view.reaches(sphere))
-  });
+  let is_changed: bool = cascade.has_drawn_grass
+    || cascade.drawn.is_none_or(|(version, contents)| {
+      version != fit.version || scene.is_changed_since(contents, |sphere| fit.view.reaches(sphere))
+    });
 
   if !(is_changed || frame.sway.is_redrawn(frame.sway.reach, fit.texel, cascade.drawn_at)) {
     cascade.waited = 0;
@@ -586,7 +594,7 @@ fn offer_whole(
     frame,
     scheduler,
     (CascadeDraw::Whole, fit),
-    false,
+    cascade.has_drawn_grass,
   ))
 }
 
@@ -618,7 +626,8 @@ fn offer_split(
     || !is_held
     || cascade.is_swapped
     || frame.sway.is_redrawn(frame.sway.reach, current.texel, cascade.drawn_at)
-    || has_grass;
+    || has_grass
+    || cascade.has_drawn_grass;
 
   if !is_wanted {
     cascade.waited = 0;
@@ -632,7 +641,14 @@ fn offer_split(
     (CascadeDraw::Static, current)
   };
 
-  Some(offer(index, cascade, frame, scheduler, draw, has_grass))
+  Some(offer(
+    index,
+    cascade,
+    frame,
+    scheduler,
+    draw,
+    has_grass || cascade.has_drawn_grass,
+  ))
 }
 
 /// Offers a cascade's draw `draw` at a fit: at once for the nearest, one never drawn, staggering off, one whose box
@@ -681,23 +697,32 @@ fn get_cascade_inset(projection: Mat4, point: Vec3) -> Option<f32> {
   (inset > 0.0 && clip.z > 0.0 && clip.z < 1.0).then_some(inset)
 }
 
-/// Points of the sphere `reach` metres about the `camera` that it sees, where the grass's shadows land: on rings about
-/// it at shares of the reach, level with it and below it, where the ground stands. What the camera does not see casts
-/// onto nothing it shows, and no cascade's box reaches behind it.
-fn sample_seen_grass(camera: &CameraView, reach: f32) -> Vec<Vec3> {
-  let center: Vec3 = camera.position;
+/// Each cascade's blend band, the settings' `blend` widened to `NEAR_BLEND` for the nearest.
+pub(crate) fn get_cascade_blends(blend: f32) -> Vec4 {
+  Vec4::from_array(std::array::from_fn(|index| {
+    if index < NEAR_BLENDED {
+      blend.max(NEAR_BLEND)
+    } else {
+      blend
+    }
+  }))
+}
 
-  (0..GRASS_SAMPLES)
-    .flat_map(|step| {
-      let turn: f32 = std::f32::consts::TAU * step as f32 / GRASS_SAMPLES as f32;
+/// Points of the sphere `reach` metres about the `camera` that it sees, where the grass's shadows land: along rays
+/// through a grid over the screen, its edges included, at shares of the reach, so a view of any width samples it.
+/// What the camera does not see casts onto nothing it shows, and no cascade's box reaches behind it.
+pub(crate) fn sample_seen_grass(camera: &CameraView, reach: f32) -> Vec<Vec3> {
+  let inverse: Mat4 = camera.get_view_projection().inverse();
+  let last: f32 = (GRASS_GRID - 1) as f32;
 
-      GRASS_RINGS.into_iter().flat_map(move |drop| {
-        let (sine, cosine): (f32, f32) = drop.sin_cos();
+  (0..GRASS_GRID * GRASS_GRID)
+    .filter_map(|cell| {
+      let x: f32 = (cell % GRASS_GRID) as f32 / last * 2.0 - 1.0;
+      let y: f32 = (cell / GRASS_GRID) as f32 / last * 2.0 - 1.0;
 
-        GRASS_SHARES.map(|share| center + Vec3::new(turn.cos() * cosine, -sine, turn.sin() * cosine) * reach * share)
-      })
+      (inverse.project_point3(Vec3::new(x, y, 0.5)) - camera.position).try_normalize()
     })
-    .filter(|point| camera.reaches(point.extend(0.0)))
+    .flat_map(|ray| GRASS_SHARES.map(|share| camera.position + ray * reach * share))
     .collect()
 }
 
