@@ -43,3 +43,10 @@ impl<T: Send + 'static> FrameTask<T> {
     work.lock().unwrap_or_else(PoisonError::into_inner).take()
   }
 }
+
+impl<T> Drop for FrameTask<T> {
+  /// Lets go of work no worker took yet, with what it holds, so a task no one joins runs nowhere.
+  fn drop(&mut self) {
+    drop(self.work.lock().unwrap_or_else(PoisonError::into_inner).take());
+  }
+}
