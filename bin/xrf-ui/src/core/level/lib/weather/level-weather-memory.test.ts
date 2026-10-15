@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "@jest/globals";
 
 import { ERenderSunShaftsQuality } from "@/core/ipc/types/xrf-renderer";
-import { DEFAULT_LEVEL_MANUAL_WEATHER } from "@/core/level/lib/weather/level-manual-weather";
+import { DEFAULT_LEVEL_MANUAL_WEATHER, toLevelManualDescriptor } from "@/core/level/lib/weather/level-manual-weather";
 import {
   ILevelWeatherMemory,
   readLevelWeatherMemory,
@@ -19,6 +19,7 @@ import {
 import { mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
 
 const MEMORY: ILevelWeatherMemory = {
+  base: null,
   control: { factor: 60, isDynamicSun: true, isPaused: false },
   cycle: "default_rain",
   manual: null,
@@ -94,29 +95,38 @@ describe("level weather memory", () => {
   });
 
   it("drops a memory of another version or with a keyframe that does not read, rather than migrating it", () => {
-    const stored = { ...MEMORY, version: 3 };
+    const stored = { ...MEMORY, version: 4 };
 
     expect(toLevelWeatherMemory(stored)).toEqual(MEMORY);
-    expect(toLevelWeatherMemory({ ...stored, version: 2 })).toBeNull();
+    expect(toLevelWeatherMemory({ ...stored, version: 3 })).toBeNull();
     expect(toLevelWeatherMemory({ ...MEMORY })).toBeNull();
     expect(
       toLevelWeatherMemory({ ...stored, manual: { ...DEFAULT_LEVEL_MANUAL_WEATHER, sunColor: [1, 1] } })
     ).toBeNull();
     expect(toLevelWeatherMemory({ ...stored, manual: { skyTexture: "sky_7_cube" } })).toBeNull();
+    expect(toLevelWeatherMemory({ ...stored, base: { skyTexture: "sky_7_cube" } })).toBeNull();
+  });
+
+  it("reads back the descriptor a keyframe set by hand was seeded from", () => {
+    const base = toLevelManualDescriptor(DEFAULT_LEVEL_MANUAL_WEATHER, 0, null);
+
+    writeLevelWeatherMemory("zaton", { ...MEMORY, base, manual: DEFAULT_LEVEL_MANUAL_WEATHER });
+
+    expect(readLevelWeatherMemory("zaton")?.base).toEqual(base);
   });
 
   it("reads nothing out of what does not read as a memory, and keeps what it reads within bounds", () => {
     setLocalStorageValue(LEVEL_WEATHER_STORAGE_KEY, "not json");
 
     expect(readLevelWeatherMemory("zaton")).toBeNull();
-    expect(toLevelWeatherMemory({ ...MEMORY, source: "sky", version: 3 })).toBeNull();
-    expect(toLevelWeatherMemory({ ...MEMORY, time: "noon", version: 3 })).toBeNull();
-    expect(toLevelWeatherMemory({ ...MEMORY, control: { factor: 5_000 }, time: 100_000, version: 3 })).toEqual({
+    expect(toLevelWeatherMemory({ ...MEMORY, source: "sky", version: 4 })).toBeNull();
+    expect(toLevelWeatherMemory({ ...MEMORY, time: "noon", version: 4 })).toBeNull();
+    expect(toLevelWeatherMemory({ ...MEMORY, control: { factor: 5_000 }, time: 100_000, version: 4 })).toEqual({
       ...MEMORY,
       control: { factor: 1000, isDynamicSun: false, isPaused: true },
       time: 86_399,
     });
-    expect(toLevelWeatherMemory({ ...MEMORY, sunShafts: { minimum: 2, quality: "ultra" }, version: 3 })).toEqual({
+    expect(toLevelWeatherMemory({ ...MEMORY, sunShafts: { minimum: 2, quality: "ultra" }, version: 4 })).toEqual({
       ...MEMORY,
       sunShafts: { minimum: 0.5, quality: ERenderSunShaftsQuality.HIGH },
     });

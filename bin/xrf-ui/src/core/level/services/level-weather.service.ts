@@ -71,6 +71,10 @@ export class LevelWeatherService {
   @RefObservable()
   public manual: Nullable<ILevelManualWeather> = null;
 
+  /** What the keyframe set by hand was seeded from, keeping every key it does not set; null for none. */
+  @RefObservable()
+  public base: Nullable<WeatherDescriptor> = null;
+
   /** What the keyframe set by hand was seeded from, or null for none the level played. */
   @RefObservable()
   public seed: Nullable<ILevelWeatherSeed> = null;
@@ -137,7 +141,7 @@ export class LevelWeatherService {
   public get weather(): Nullable<WorldWeatherPlay> {
     const manual: Nullable<WorldWeatherPlay> = this.isManualPlayed
       ? {
-          keyframe: toLevelManualDescriptor(this.manual ?? DEFAULT_LEVEL_MANUAL_WEATHER, 0),
+          keyframe: toLevelManualDescriptor(this.manual ?? DEFAULT_LEVEL_MANUAL_WEATHER, 0, this.base),
           kind: EWorldWeatherPlay.KEYFRAME,
         }
       : null;
@@ -432,6 +436,7 @@ export class LevelWeatherService {
     this.cycle = AsyncState.idle();
     this.requested = null;
     this.manual = null;
+    this.base = null;
     this.seed = null;
     this.isManualPlayed = false;
     this.transition = EWorldWeatherTransition.CUT;
@@ -457,16 +462,21 @@ export class LevelWeatherService {
     this.control = memory.control;
     this.time = memory.time;
     this.manual = memory.manual;
+    this.base = memory.base;
     this.seed = memory.seed;
     this.sunShafts = memory.sunShafts;
     this.remembered = memory.cycle;
   }
 
-  /** A keyframe set by hand from what is shown, noon of `default_clear` where the weather shows nothing yet. */
+  /**
+   * A keyframe set by hand from what is shown, noon of `default_clear` where the weather shows nothing yet; what is shown
+   * is kept whole as its base.
+   */
   private seedManual(): ILevelManualWeather {
     const current = this.report?.current;
     const weather: ILevelManualWeather = current ? toLevelManualWeather(current) : DEFAULT_LEVEL_MANUAL_WEATHER;
 
+    this.base = current ?? null;
     this.seed = current && this.cycle.value ? { cycle: this.cycle.value.name, time: this.time, weather } : null;
 
     return weather;
@@ -605,6 +615,7 @@ export class LevelWeatherService {
       writeLevelWeatherMemory(this.memoryKey, {
         control: this.control,
         cycle,
+        base: this.base,
         manual: this.manual,
         seed: this.seed,
         source: this.source,

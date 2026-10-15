@@ -3,6 +3,7 @@ import { describe, expect, it } from "@jest/globals";
 import { WeatherDescriptor } from "@/core/ipc/types/xrf-environment";
 import {
   DEFAULT_LEVEL_MANUAL_WEATHER,
+  readLevelManualBase,
   readLevelManualWeather,
   toLevelManualDescriptor,
   toLevelManualSun,
@@ -12,7 +13,7 @@ import {
 describe("level manual weather", () => {
   // `default_clear`'s noon: `setHP(-69, -30)` stands the light travelling down at thirty degrees.
   it("stands the sun as setHP does, and reads the same angles back out of the direction", () => {
-    const keyframe: WeatherDescriptor = toLevelManualDescriptor(DEFAULT_LEVEL_MANUAL_WEATHER, 43_200);
+    const keyframe: WeatherDescriptor = toLevelManualDescriptor(DEFAULT_LEVEL_MANUAL_WEATHER, 43_200, null);
     const [x, y, z] = (keyframe.sunDirection ?? [0, 0, 0]).map((it) => it ?? 0);
 
     expect(y).toBeCloseTo(-0.5, 5);
@@ -32,13 +33,14 @@ describe("level manual weather", () => {
   });
 
   it("clamps the rain to a unit, as the engine does", () => {
-    expect(toLevelManualDescriptor({ ...DEFAULT_LEVEL_MANUAL_WEATHER, rainDensity: 3 }, 0).rainDensity).toBe(1);
+    expect(toLevelManualDescriptor({ ...DEFAULT_LEVEL_MANUAL_WEATHER, rainDensity: 3 }, 0, null).rainDensity).toBe(1);
   });
 
   it("stands a level's own sun by the angles its direction comes to", () => {
     const direction: WeatherDescriptor["sunDirection"] = toLevelManualDescriptor(
       DEFAULT_LEVEL_MANUAL_WEATHER,
-      0
+      0,
+      null
     ).sunDirection;
     const [x, y, z] = (direction ?? [0, 0, 0]).map((it) => it ?? 0);
     const sun = toLevelManualSun({ x: x * 4, y: y * 4, z: z * 4 });
@@ -47,6 +49,45 @@ describe("level manual weather", () => {
     expect(sun?.sunLongitude).toBeCloseTo(-30, 4);
     expect(toLevelManualSun(null)).toBeNull();
     expect(toLevelManualSun({ x: 0, y: 0, z: 0 })).toBeNull();
+  });
+
+  // A keyframe seeded from what the weather shows describes that weather until a key is set: the keys it has no field
+  // for, as the ambient effects the world picks by name, come from what it was seeded from.
+  it("describes what it was seeded from, keys it does not set included, until a key is set", () => {
+    const base: WeatherDescriptor = {
+      ...toLevelManualDescriptor(DEFAULT_LEVEL_MANUAL_WEATHER, 43_200, null),
+      ambient: "ambient_rain",
+      bloomThreshold: 2,
+      hemiVibrance: 0.7,
+      skyTextureEnv: "sky\\sky_7_cube_env",
+      wetSurfaceFactor: 0.4,
+    };
+
+    expect(toLevelManualDescriptor(toLevelManualWeather(base), 43_200, base)).toEqual({
+      ...base,
+      sunDirection: expect.any(Array),
+    });
+
+    const edited: WeatherDescriptor = toLevelManualDescriptor(
+      { ...toLevelManualWeather(base), fogDensity: 0.2, skyTexture: "sky\\sky_noon" },
+      43_200,
+      base
+    );
+
+    expect(edited).toMatchObject({ ambient: "ambient_rain", fogDensity: 0.2, skyTextureEnv: "sky\\sky_noon#small" });
+    expect(toLevelManualDescriptor(DEFAULT_LEVEL_MANUAL_WEATHER, 0, null).ambient).toBeNull();
+  });
+
+  it("reads back only a descriptor whose every key reads as what a descriptor holds there", () => {
+    const base: WeatherDescriptor = { ...toLevelManualDescriptor(DEFAULT_LEVEL_MANUAL_WEATHER, 0, null), sun: null };
+
+    expect(readLevelManualBase(JSON.parse(JSON.stringify(base)))).toEqual(base);
+    expect(readLevelManualBase({ ...base, ambient: "ambient_rain", sunDirection: null })).not.toBeNull();
+    expect(readLevelManualBase({ ...base, skyTexture: null })).toBeNull();
+    expect(readLevelManualBase({ ...base, fogColor: [1, 1] })).toBeNull();
+    expect(readLevelManualBase({ ...base, isSunFixed: "no" })).toBeNull();
+    expect(readLevelManualBase({ ...base, farPlane: undefined })).toBeNull();
+    expect(readLevelManualBase([base])).toBeNull();
   });
 
   it("reads back only a keyframe whose every field reads as what it holds there", () => {

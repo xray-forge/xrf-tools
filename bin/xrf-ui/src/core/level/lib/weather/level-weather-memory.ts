@@ -2,7 +2,12 @@ import { clamp } from "@xrf/math";
 import { Maybe, Nullable } from "@xrf/types";
 
 import { SelectedLevelDescription } from "@/core/ipc/types/xrf-app";
-import { ILevelManualWeather, readLevelManualWeather } from "@/core/level/lib/weather/level-manual-weather";
+import { WeatherDescriptor } from "@/core/ipc/types/xrf-environment";
+import {
+  ILevelManualWeather,
+  readLevelManualBase,
+  readLevelManualWeather,
+} from "@/core/level/lib/weather/level-manual-weather";
 import { ILevelSunShaftsOptions, toLevelSunShaftsOptions } from "@/core/level/lib/weather/level-sun-shafts-options";
 import {
   DEFAULT_LEVEL_WEATHER_CONTROL,
@@ -21,7 +26,7 @@ const REMEMBERED_LEVELS: number = 32;
 const REMEMBERED_LENGTH: number = 64 * 1024;
 
 /** The shape a memory is written in: one of any other is let go rather than read, and nothing is migrated. */
-const LEVEL_WEATHER_MEMORY_VERSION: number = 3;
+const LEVEL_WEATHER_MEMORY_VERSION: number = 4;
 
 /**
  * How a level's weather was last played, which it plays again when it opens.
@@ -35,6 +40,8 @@ export interface ILevelWeatherMemory {
   control: ILevelWeatherControl;
   /** The keyframe set by hand, or null for none set yet. */
   manual: Nullable<ILevelManualWeather>;
+  /** What the keyframe was seeded from, keeping every key it does not set; null for one seeded from nothing. */
+  base: Nullable<WeatherDescriptor>;
   /** What it was seeded from, or null for one seeded from nothing the level played. */
   seed: Nullable<ILevelWeatherSeed>;
   /** How its sun shafts step, and the floor under their density. */
@@ -95,6 +102,7 @@ export function toLevelWeatherMemory(stored: unknown): Nullable<ILevelWeatherMem
   const { source, cycle, time, control } = stored;
   const factor: Maybe<unknown> = control.factor;
   const manual: Nullable<ILevelManualWeather> = stored.manual === null ? null : readLevelManualWeather(stored.manual);
+  const base: Nullable<WeatherDescriptor> = stored.base === null ? null : readLevelManualBase(stored.base);
   const seed: Nullable<ILevelWeatherSeed> = toSeed(stored.seed);
 
   if (
@@ -102,12 +110,14 @@ export function toLevelWeatherMemory(stored: unknown): Nullable<ILevelWeatherMem
     typeof cycle !== "string" ||
     typeof time !== "number" ||
     !Number.isFinite(time) ||
-    (stored.manual !== null && !manual)
+    (stored.manual !== null && !manual) ||
+    (stored.base !== null && !base)
   ) {
     return null;
   }
 
   return {
+    base,
     control: {
       factor:
         typeof factor === "number" && Number.isFinite(factor)
