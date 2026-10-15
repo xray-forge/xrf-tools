@@ -117,18 +117,20 @@ impl GraphCompiler {
       )));
     }
 
-    let targets: Vec<(GraphTexture, u32, u32)> = colors
+    // Each attachment, and whether the pass may also sample it: only a depth it does not write.
+    let attachments: Vec<((GraphTexture, u32, u32), bool)> = colors
       .iter()
-      .map(|color| (color.texture, color.mip_level, color.array_layer))
+      .map(|color| ((color.texture, color.mip_level, color.array_layer), false))
       .chain(
         depth
           .iter()
-          .map(|depth| (depth.texture, depth.mip_level, depth.array_layer)),
+          .map(|depth| ((depth.texture, depth.mip_level, depth.array_layer), depth.is_read_only)),
       )
       .collect();
+    let targets: Vec<(GraphTexture, u32, u32)> = attachments.iter().map(|(target, _)| *target).collect();
     let mut size: Option<(u32, u32)> = None;
 
-    for (texture, mip_level, array_layer) in &targets {
+    for ((texture, mip_level, array_layer), is_sampleable) in &attachments {
       let record: &GraphTextureRecord = &textures[texture.get_index()];
       let descriptor = &record.descriptor;
 
@@ -154,15 +156,20 @@ impl GraphCompiler {
         _ => size = Some(extent),
       }
 
-      if pass
-        .textures
-        .iter()
-        .any(|(accessed, access)| accessed == texture && access.is_write())
-      {
-        return Err(XrfError::new_invalid_error(format!(
-          "Raster pass '{}' writes its own attachment '{}' otherwise than by drawing",
-          pass.name, descriptor.label
-        )));
+      for (_, access) in pass.textures.iter().filter(|(accessed, _)| accessed == texture) {
+        if access.is_write() {
+          return Err(XrfError::new_invalid_error(format!(
+            "Raster pass '{}' writes its own attachment '{}' otherwise than by drawing",
+            pass.name, descriptor.label
+          )));
+        }
+
+        if !is_sampleable {
+          return Err(XrfError::new_invalid_error(format!(
+            "Raster pass '{}' reads its own attachment '{}', which it draws into",
+            pass.name, descriptor.label
+          )));
+        }
       }
     }
 
@@ -311,7 +318,8 @@ impl GraphCompiler {
   }
 
   /// Gives each raster pass the render pass it draws in: the one before it in the same group when it targets the
-  /// same attachments, loads them rather than clearing, and does not sample one of them.
+  /// same attachments, loads them rather than clearing, does not sample one of them, and shares no other resource with
+  /// a pass of that render pass that either writes, as nothing stands between their draws.
   fn merge(passes: &[GraphPass<'_>], is_merging: bool) -> (Vec<Option<usize>>, usize) {
     let mut render_passes: Vec<Option<usize>> = vec![None; passes.len()];
     let mut count: usize = 0;
@@ -324,7 +332,7 @@ impl GraphCompiler {
       }
 
       match start {
-        Some(first) if is_merging && Self::is_mergeable(&passes[first], pass) => {
+        Some(first) if is_merging && Self::is_mergeable(&passes[first..index], pass) => {
           render_passes[index] = render_passes[first];
         }
         _ => {
@@ -338,7 +346,8 @@ impl GraphCompiler {
     (render_passes, count)
   }
 
-  fn is_mergeable(first: &GraphPass<'_>, next: &GraphPass<'_>) -> bool {
+  fn is_mergeable(run: &[GraphPass<'_>], next: &GraphPass<'_>) -> bool {
+    let first: &GraphPass<'_> = &run[0];
     let (colors, depth): (&[GraphColorAttachment], Option<&GraphDepthAttachment>) =
       (first.work.get_colors(), first.work.get_depth());
     let (next_colors, next_depth) = (next.work.get_colors(), next.work.get_depth());
@@ -356,7 +365,28 @@ impl GraphCompiler {
       colors.iter().any(|color| color.texture == *texture) || depth.is_some_and(|depth| depth.texture == *texture)
     });
 
-    first.group == next.group && is_same_colors && is_same_depth && !is_sampling_target
+    let is_racing: bool = run.iter().any(|earlier| Self::is_racing(earlier, next));
+
+    first.group == next.group && is_same_colors && is_same_depth && !is_sampling_target && !is_racing
+  }
+
+  /// Whether a later pass touches a texture or a buffer, besides the attachments they share, that the earlier writes or
+  /// that it writes while the earlier touches it: in one render pass the later draw would race the earlier.
+  fn is_racing(earlier: &GraphPass<'_>, later: &GraphPass<'_>) -> bool {
+    let is_texture_racing: bool = earlier.textures.iter().any(|(texture, access)| {
+      later
+        .textures
+        .iter()
+        .any(|(other, other_access)| texture == other && (access.is_write() || other_access.is_write()))
+    });
+    let is_buffer_racing: bool = earlier.buffers.iter().any(|(buffer, access)| {
+      later
+        .buffers
+        .iter()
+        .any(|(other, other_access)| buffer == other && (access.is_write() || other_access.is_write()))
+    });
+
+    is_texture_racing || is_buffer_racing
   }
 
   /// Cuts the surviving passes into encode groups: runs of one declared group, or the whole frame as one.

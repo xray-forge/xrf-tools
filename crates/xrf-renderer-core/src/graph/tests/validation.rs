@@ -1,4 +1,4 @@
-use crate::graph::tests::fixtures::{COLOR, clear, color_texture, draw, load, present};
+use crate::graph::tests::fixtures::{COLOR, clear, color_texture, depth_texture, draw, load, present};
 use crate::graph::{FrameGraph, GraphCompileOptions, GraphDepthAttachment, GraphTextureAccess, GraphTextureDescriptor};
 
 fn compile_error(graph: FrameGraph<'_>) -> String {
@@ -104,6 +104,36 @@ fn refuses_writing_an_attachment_otherwise() {
     .record(|_| {});
 
   assert!(compile_error(graph).contains("otherwise than by drawing"));
+}
+
+#[test]
+fn refuses_reading_a_colour_attachment_or_a_written_depth_while_drawing_into_it() {
+  let mut graph: FrameGraph<'_> = FrameGraph::new();
+  let color = graph.create_texture(color_texture("color"));
+
+  graph.add_raster_pass("opaque").color(clear(color)).record(|_| {});
+  graph
+    .add_raster_pass("refraction")
+    .color(load(color))
+    .texture(color, GraphTextureAccess::Sampled)
+    .keep()
+    .record(|_| {});
+
+  assert!(compile_error(graph).contains("reads its own attachment"));
+
+  let mut graph: FrameGraph<'_> = FrameGraph::new();
+  let color = graph.create_texture(color_texture("color"));
+  let depth = graph.create_texture(depth_texture("depth"));
+
+  graph
+    .add_raster_pass("scene")
+    .color(clear(color))
+    .depth(GraphDepthAttachment::new(depth, wgpu::LoadOp::Clear(0.0)))
+    .texture(depth, GraphTextureAccess::Sampled)
+    .keep()
+    .record(|_| {});
+
+  assert!(compile_error(graph).contains("reads its own attachment"));
 }
 
 #[test]

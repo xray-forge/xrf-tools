@@ -9,6 +9,10 @@ pub fn color_texture(label: &'static str) -> GraphTextureDescriptor {
   GraphTextureDescriptor::new_2d(label, 64, 64, COLOR)
 }
 
+pub fn depth_texture(label: &'static str) -> GraphTextureDescriptor {
+  GraphTextureDescriptor::new_2d(label, 64, 64, wgpu::TextureFormat::Depth32Float)
+}
+
 pub fn clear(texture: GraphTexture) -> GraphColorAttachment {
   GraphColorAttachment::new(texture, wgpu::LoadOp::Clear(wgpu::Color::BLACK))
 }

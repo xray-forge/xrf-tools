@@ -1,5 +1,7 @@
-use crate::graph::tests::fixtures::{clear, color_texture, load, present};
-use crate::graph::{FrameGraph, GraphBufferAccess, GraphBufferDescriptor, GraphCompileOptions, GraphTextureAccess};
+use crate::graph::tests::fixtures::{clear, color_texture, depth_texture, load, present};
+use crate::graph::{
+  FrameGraph, GraphBufferAccess, GraphBufferDescriptor, GraphCompileOptions, GraphDepthAttachment, GraphTextureAccess,
+};
 
 #[test]
 fn draws_passes_loading_the_same_attachments_in_one_render_pass() {
@@ -47,15 +49,21 @@ fn opens_a_new_render_pass_for_a_clear_or_other_attachments() {
 }
 
 #[test]
-fn opens_a_new_render_pass_when_a_pass_samples_an_attachment() {
+fn opens_a_new_render_pass_when_a_pass_samples_a_depth_the_run_wrote() {
   let mut graph: FrameGraph<'_> = FrameGraph::new();
   let scene = graph.create_texture(color_texture("scene"));
+  let depth = graph.create_texture(depth_texture("depth"));
 
-  graph.add_raster_pass("opaque").color(clear(scene)).record(|_| {});
   graph
-    .add_raster_pass("refraction")
+    .add_raster_pass("opaque")
+    .color(clear(scene))
+    .depth(GraphDepthAttachment::new(depth, wgpu::LoadOp::Clear(0.0)))
+    .record(|_| {});
+  graph
+    .add_raster_pass("decals")
     .color(load(scene))
-    .texture(scene, GraphTextureAccess::Sampled)
+    .depth(GraphDepthAttachment::new_read_only(depth))
+    .texture(depth, GraphTextureAccess::Sampled)
     .record(|_| {});
   present(&mut graph, scene);
 
@@ -95,6 +103,41 @@ fn opens_a_new_render_pass_across_a_compute_pass_or_a_group() {
       .get_render_pass_count(),
     3
   );
+}
+
+// A draw writing a storage buffer and a later draw reading it race inside one render pass, which has no barrier
+// between them; two draws only reading it may share one.
+#[test]
+fn opens_a_new_render_pass_where_a_pass_reads_what_one_before_it_in_the_run_wrote() {
+  let mut graph: FrameGraph<'_> = FrameGraph::new();
+  let scene = graph.create_texture(color_texture("scene"));
+  let marks = graph.create_buffer(GraphBufferDescriptor::new("marks", 16));
+
+  graph.add_raster_pass("opaque").color(clear(scene)).record(|_| {});
+  graph
+    .add_raster_pass("marked")
+    .color(load(scene))
+    .buffer(marks, GraphBufferAccess::StorageWrite)
+    .record(|_| {});
+  graph
+    .add_raster_pass("blended")
+    .color(load(scene))
+    .buffer(marks, GraphBufferAccess::StorageRead)
+    .record(|_| {});
+  graph
+    .add_raster_pass("decals")
+    .color(load(scene))
+    .buffer(marks, GraphBufferAccess::StorageRead)
+    .record(|_| {});
+  present(&mut graph, scene);
+
+  let compiled = graph.compile(&GraphCompileOptions::default()).unwrap();
+  let report = compiled.describe();
+
+  assert_eq!(compiled.get_render_pass_count(), 2);
+  assert_eq!(report.passes[1].render_pass, Some(0));
+  assert_eq!(report.passes[2].render_pass, Some(1));
+  assert_eq!(report.passes[3].render_pass, Some(1));
 }
 
 #[test]
