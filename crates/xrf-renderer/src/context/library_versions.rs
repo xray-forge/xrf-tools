@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use xrf_dlss::Dlss;
 
@@ -9,11 +9,16 @@ use crate::host::render_bundle::RenderBundle;
 /// Describes this build's graphics libraries, looking for the DLSS runtime in `bundle`.
 pub(crate) fn describe_libraries(bundle: &dyn RenderBundle) -> RenderLibraries {
   let library: Option<String> = Dlss::IS_BUILT
-    .then(|| bundle.locate_bundled(&format!("{}/{}", GpuContext::DLSS_DIRECTORY, Dlss::RUNTIME_LIBRARY)))
+    .then(|| locate_dlss_runtime(bundle))
     .flatten()
     .and_then(|path| read_file_version(&path));
 
   RenderLibraries { dlss: library }
+}
+
+/// The DLSS runtime library `bundle` ships, none where it ships none.
+pub(crate) fn locate_dlss_runtime(bundle: &dyn RenderBundle) -> Option<PathBuf> {
+  bundle.locate_bundled(&format!("{}/{}", GpuContext::DLSS_DIRECTORY, Dlss::RUNTIME_LIBRARY))
 }
 
 /// Reads a Windows library's file version (`major.minor.build.revision`) from its version resource; none if absent.

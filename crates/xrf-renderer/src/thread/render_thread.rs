@@ -18,6 +18,7 @@ use wgpu::util::StagingBelt;
 use crate::camera::camera_view::CameraView;
 use crate::context::gpu_context::GpuContext;
 use crate::context::gpu_requirements::can_trace;
+use crate::context::library_versions::locate_dlss_runtime;
 use crate::contract::render_backend::RenderBackend;
 use crate::contract::render_debug_view::RenderDebugView;
 use crate::contract::render_dlss_availability::RenderDlssAvailability;
@@ -551,10 +552,8 @@ impl RenderThread {
     }
 
     let dxc: Option<PathBuf> = self.bundle.locate_bundled(GpuContext::DXC_LIBRARY);
-    let dlss: Option<PathBuf> = self
-      .bundle
-      .locate_bundled(&format!("{}/{}", GpuContext::DLSS_DIRECTORY, Dlss::RUNTIME_LIBRARY))
-      .and_then(|library| library.parent().map(PathBuf::from));
+    let dlss: Option<PathBuf> =
+      locate_dlss_runtime(self.bundle.as_ref()).and_then(|library| library.parent().map(PathBuf::from));
 
     match GpuContext::create_preferred(
       RenderBackend::get_asked(self.settings.backend),
