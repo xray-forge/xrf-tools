@@ -23,12 +23,15 @@ impl GpuMemoryBudget {
   fn read_dx12(adapter: &wgpu::Adapter) -> Option<Self> {
     use windows::Win32::Graphics::Dxgi::{DXGI_MEMORY_SEGMENT_GROUP_LOCAL, DXGI_QUERY_VIDEO_MEMORY_INFO};
 
+    // SAFETY: the raw adapter is only queried here, never retained or changed, so wgpu's own state is untouched.
     let hal = unsafe { adapter.as_hal::<wgpu::hal::api::Dx12>() }?;
     let raw = &**hal.raw_adapter();
     let mut info: DXGI_QUERY_VIDEO_MEMORY_INFO = DXGI_QUERY_VIDEO_MEMORY_INFO::default();
 
+    // SAFETY: node 0 is every adapter's first, and `info` is a live, writable struct of the type DXGI fills.
     unsafe { raw.QueryVideoMemoryInfo(0, DXGI_MEMORY_SEGMENT_GROUP_LOCAL, &raw mut info) }.ok()?;
 
+    // SAFETY: a read of the live adapter's description, which DXGI returns by value.
     let description = unsafe { raw.GetDesc1() }.ok()?;
 
     Some(Self {
@@ -41,6 +44,7 @@ impl GpuMemoryBudget {
   fn read_vulkan(adapter: &wgpu::Adapter) -> Option<Self> {
     use ash::vk;
 
+    // SAFETY: the raw adapter is only queried here, never retained or changed, so wgpu's own state is untouched.
     let hal = unsafe { adapter.as_hal::<wgpu::hal::api::Vulkan>() }?;
 
     if !hal
@@ -56,6 +60,8 @@ impl GpuMemoryBudget {
     let mut properties: vk::PhysicalDeviceMemoryProperties2<'_> =
       vk::PhysicalDeviceMemoryProperties2::default().push_next(&mut budgets);
 
+    // SAFETY: the physical device is the live instance's, and the budget struct chained into `properties` is only
+    // written because the device supports `VK_EXT_memory_budget`, checked above.
     unsafe { instance.get_physical_device_memory_properties2(hal.raw_physical_device(), &mut properties) };
 
     let memory: vk::PhysicalDeviceMemoryProperties = properties.memory_properties;
