@@ -79,13 +79,20 @@ function readHead(dir) {
 }
 
 /**
- * Checks an SDK out at its commit, fetching only the blobs its paths need; one already there is left as it is.
+ * Checks an SDK out at its commit, fetching only the blobs its paths need; one already there is left as it is, and one
+ * at another commit is fetched afresh, so no older commit's files ride along in a cache saved from it.
  *
  * @param {ISdk} sdk - the SDK
  */
 function fetchSdk(sdk) {
   const dir = path.join(SDKS_ROOT, sdk.name);
   const patterns = [...sdk.paths.common, ...(sdk.paths[process.platform] ?? [])];
+  const head = readHead(dir);
+
+  if (head !== null && head !== sdk.commit) {
+    console.info(`${sdk.name} moves from ${head.slice(0, 12)}, so it is fetched afresh`);
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 
   fs.mkdirSync(dir, { recursive: true });
 
