@@ -189,9 +189,8 @@ impl StaticTrace {
       self.models.clear();
     }
 
-    let is_due: bool = has_moved
-      || !self.is_only_added(statics)
-      || self.built_at.is_none_or(|at| at.elapsed() >= Self::REBUILD_EVERY);
+    let is_due: bool =
+      has_moved || !self.is_only_added(statics) || self.built_at.is_none_or(|at| at.elapsed() >= Self::REBUILD_EVERY);
 
     if self.built != Some(built) && is_due {
       self.built = Some(built);
