@@ -94,7 +94,7 @@ impl OverlayPass {
       ("vs_line", "fs_line"),
       wgpu::PrimitiveTopology::LineList,
       VertexLayout::new(
-        28,
+        (LevelOverlays::LINE_FLOATS * size_of::<f32>()) as u64,
         wgpu::VertexStepMode::Vertex,
         &wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x4],
       ),
@@ -103,7 +103,7 @@ impl OverlayPass {
       ("vs_sun", "fs_sun"),
       wgpu::PrimitiveTopology::TriangleList,
       VertexLayout::new(
-        16,
+        (LevelOverlays::SUN_FLOATS * size_of::<f32>()) as u64,
         wgpu::VertexStepMode::Instance,
         &wgpu::vertex_attr_array![0 => Float32x4],
       ),
@@ -113,7 +113,7 @@ impl OverlayPass {
       ("vs_point", "fs_point"),
       wgpu::PrimitiveTopology::TriangleList,
       VertexLayout::new(
-        32,
+        (LevelOverlays::POINT_FLOATS * size_of::<f32>()) as u64,
         wgpu::VertexStepMode::Instance,
         &wgpu::vertex_attr_array![0 => Float32x4, 1 => Float32x4],
       ),

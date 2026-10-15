@@ -21,10 +21,17 @@ pub struct LevelOverlays {
 }
 
 impl LevelOverlays {
+  /// Floats a line's vertex takes: position, then colour with the depth test in `w`.
+  pub const LINE_FLOATS: usize = 7;
+  /// Floats a point takes: position and size, then colour with the depth test in `w`.
+  pub const POINT_FLOATS: usize = 8;
+  /// Floats the sun takes: colour, then size in pixels.
+  pub const SUN_FLOATS: usize = 4;
+
   pub fn new(device: &wgpu::Device, overlays: &[RenderOverlay], version: u64) -> Self {
-    let mut vertices: Vec<[f32; 7]> = Vec::new();
-    let mut points: Vec<[f32; 8]> = Vec::new();
-    let mut sun: Option<[f32; 4]> = None;
+    let mut vertices: Vec<[f32; Self::LINE_FLOATS]> = Vec::new();
+    let mut points: Vec<[f32; Self::POINT_FLOATS]> = Vec::new();
+    let mut sun: Option<[f32; Self::SUN_FLOATS]> = None;
     let mut skeleton: Option<([f32; 3], bool)> = None;
 
     for overlay in overlays {
@@ -90,7 +97,7 @@ impl LevelOverlays {
       return;
     };
     let tested: f32 = f32::from(u8::from(is_depth_tested));
-    let vertices: Vec<[f32; 7]> = segments
+    let vertices: Vec<[f32; Self::LINE_FLOATS]> = segments
       .iter()
       .flat_map(|(child, parent)| [*child, *parent])
       .map(|end| [end.x, end.y, end.z, color[0], color[1], color[2], tested])
