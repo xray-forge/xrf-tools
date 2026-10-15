@@ -46,12 +46,10 @@ fn fs_grid(in: GridVarying) -> @location(0) vec4<f32> {
   let eye: vec3<f32> = camera.position.xyz;
   let sky: vec3<f32> = mix(SKY_HORIZON, SKY_ZENITH, sqrt(clamp(direction.y, 0.0, 1.0)));
 
-  // Above the plane looking up, or below it looking down, there is no ground in view.
-  if (direction.y * eye.y >= 0.0) {
-    return vec4<f32>(sky, 1.0);
-  }
-
-  let along: f32 = -eye.y / direction.y;
+  // Above the plane looking up, or below it looking down, there is no ground in view. The ground is still worked out at
+  // every pixel, since the lines' derivatives need every pixel of a quad on one path; the sky is chosen at the end.
+  let is_ground: bool = direction.y * eye.y < 0.0;
+  let along: f32 = -eye.y / select(1.0, direction.y, is_ground);
   let ground: vec2<f32> = (eye + direction * along).xz;
   // Lines fade into the sky with distance, as height above the plane sets how far detail holds.
   let fade: f32 = clamp(1.0 - along / (200.0 + abs(eye.y) * 40.0), 0.0, 1.0);
@@ -67,5 +65,5 @@ fn fs_grid(in: GridVarying) -> @location(0) vec4<f32> {
   color = mix(color, AXIS_Z, step(abs(ground.x), axis_width.x) * fade);
 
   // The ground itself melts into the sky at the horizon, rather than meeting it at a hard edge.
-  return vec4<f32>(mix(sky, color, sqrt(fade)), 1.0);
+  return vec4<f32>(select(sky, mix(sky, color, sqrt(fade)), is_ground), 1.0);
 }
