@@ -80,6 +80,9 @@ impl StaticSurface {
   pub const IS_DISTORTING: u32 = 1 << 27;
   /// Glass: a blended surface of one of the engines' glass shaders, which the enhanced glass draws.
   pub const IS_GLASS: u32 = 1 << 28;
+  /// A level surface the engines leave flat whose bump pair carries a height in its second's alpha, which the enhanced
+  /// parallax marches: an opaque one of the level's flat classes, not steep, not terrain.
+  pub const IS_RELIEF_BUMPED: u32 = 1 << 29;
 
   pub const BASE: usize = 0;
   pub const DETAIL: usize = 1;
