@@ -283,8 +283,8 @@ impl ViewTraceFeature {
     device.create_blas(
       &wgpu::CreateBlasDescriptor {
         label: Some("trace swayed tree"),
-        flags: wgpu::AccelerationStructureFlags::PREFER_FAST_BUILD,
-        update_mode: wgpu::AccelerationStructureUpdateMode::Build,
+        flags: wgpu::AccelerationStructureFlags::PREFER_FAST_BUILD | wgpu::AccelerationStructureFlags::ALLOW_UPDATE,
+        update_mode: wgpu::AccelerationStructureUpdateMode::PreferUpdate,
       },
       wgpu::BlasGeometrySizeDescriptors::Triangles {
         descriptors: vec![Self::get_size(geometry)],
