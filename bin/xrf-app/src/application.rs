@@ -1,6 +1,7 @@
 //! The composition root: what the application is assembled from, and what is in place before its first command runs.
 
 use std::error::Error;
+use std::process::ExitCode;
 use std::sync::Arc;
 
 use tauri::{App, AppHandle, Builder, Manager, Wry};
@@ -17,8 +18,8 @@ use crate::plugins::registry::domain_plugins;
 use crate::plugins::system::diagnostics::log_startup;
 
 /// Assemble the application from its plugins and hand control to Tauri, logging from the moment its configuration
-/// names where.
-pub fn run() {
+/// names where; a failure before any window is said aloud and ends the process with failure.
+pub fn run() -> ExitCode {
   let context = tauri::generate_context!();
 
   setup_logger(&context.config().identifier);
@@ -29,9 +30,12 @@ pub fn run() {
   let execution: ExecutionState = match ExecutionState::new(ExecutionRequest::Auto) {
     Ok(execution) => execution,
     Err(error) => {
-      log::error!("Cannot start the application's worker pool: {error}");
+      let message: String = format!("Cannot start the application's worker pool: {error}");
 
-      return;
+      log::error!("{message}");
+      show_start_failure(&message);
+
+      return ExitCode::FAILURE;
     }
   };
 
@@ -61,7 +65,32 @@ pub fn run() {
       Ok(())
     });
 
-  builder.run(context).expect("Error while running tauri application")
+  builder.run(context).expect("Error while running tauri application");
+
+  ExitCode::SUCCESS
+}
+
+/// Tells the user of a start that failed before any window could: a release build on Windows has no console to say it
+/// in, only a log file the user does not know to open.
+fn show_start_failure(message: &str) {
+  #[cfg(all(windows, not(debug_assertions)))]
+  {
+    use windows::Win32::UI::WindowsAndMessaging::{MB_ICONERROR, MB_OK, MessageBoxW};
+    use windows::core::HSTRING;
+
+    // SAFETY: both strings outlive the call, and it names no owner window.
+    unsafe {
+      MessageBoxW(
+        None,
+        &HSTRING::from(message),
+        &HSTRING::from("The application cannot start"),
+        MB_OK | MB_ICONERROR,
+      )
+    };
+  }
+
+  #[cfg(not(all(windows, not(debug_assertions))))]
+  let _ = message;
 }
 
 /// Manage the state that outlives every command and belongs to no single domain.

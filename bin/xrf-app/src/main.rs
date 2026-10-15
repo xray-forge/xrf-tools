@@ -6,11 +6,13 @@ mod core;
 mod ipc;
 mod plugins;
 
+use std::process::ExitCode;
+
 use crate::core::process::setup_process_start;
 
-fn main() {
+fn main() -> ExitCode {
   xrf_renderer::start_profiler();
   setup_process_start();
 
-  application::run();
+  application::run()
 }
