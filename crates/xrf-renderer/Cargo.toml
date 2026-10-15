@@ -9,6 +9,7 @@ rust-version.workspace = true
 path = "src/lib.rs"
 
 [dependencies]
+ash = { workspace = true }
 bytemuck = { workspace = true }
 glam = { workspace = true }
 image = { workspace = true, features = ["png"] }
@@ -33,6 +34,9 @@ xrf-particles = { workspace = true }
 xrf-renderer-core = { workspace = true }
 xrf-utils = { workspace = true }
 xrf-visual = { workspace = true }
+
+[target.'cfg(windows)'.dependencies]
+windows = { workspace = true, features = ["Win32_Graphics_Dxgi"] }
 
 [dev-dependencies]
 naga = { workspace = true }

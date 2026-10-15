@@ -116,11 +116,6 @@ impl StaticCullScratch {
     self.list_capacity
   }
 
-  /// Bytes its growing buffers hold on the GPU.
-  pub fn get_bytes(&self) -> u64 {
-    self.lists.get_capacity() + self.candidates.get_capacity()
-  }
-
   /// Writes each draw list's run of the visible list and the templates its draw arguments are reset from.
   fn write(&mut self, device: &wgpu::Device, encoder: &mut FrameEncoder) {
     let mut base: u32 = 0;

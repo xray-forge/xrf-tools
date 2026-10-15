@@ -379,11 +379,6 @@ impl LevelLights {
     self.shadows.add_passes(graph, passes, scene, frame);
   }
 
-  /// Bytes the shadows' atlases take, while held.
-  pub fn get_memory(&self) -> u64 {
-    self.shadows.get_memory()
-  }
-
   pub fn get_shadow_atlas(&self) -> LightShadowAtlas<'_> {
     self.shadows.get_atlas()
   }

@@ -1038,21 +1038,36 @@ export type RenderLodSettings = {
   ssaGlodEnd: number | null;
 };
 
-/** What the renderer holds on the GPU for what it draws. */
+/** What the renderer holds on the GPU, and what the GPU's own memory holds and allows. */
 export type RenderMemoryReport = {
-  /** Bytes of every texture uploaded, shared by every viewport. */
-  textures: number;
   /**
-   * Bytes of this viewport's scene buffers: geometry, clusters, places and the rest that grow with what it shows, and
-   * its lights' shadow atlases while held.
+   * Bytes of the GPU's own memory, of it what the system lets this process hold now, and what the process holds there,
+   * everything counted (DLSS's and the driver's with the renderer's); none where the backend or driver says nothing.
    */
-  scene: number;
+  total: number | null;
+  budget: number | null;
+  used: number | null;
   /**
    * Bytes the GPU allocator holds allocated for everything the renderer made, textures, buffers and targets of every
    * viewport, and those it reserved in its blocks; none where the backend reports none.
    */
   allocated: number | null;
   reserved: number | null;
+  /** The most it held allocated since the renderer started; none where the backend reports none. */
+  peakAllocated: number | null;
+  /**
+   * What it holds allocated by the names the resources were made under, the largest first; none listed where the
+   * backend reports none.
+   */
+  sections: Array<RenderMemorySection>;
+};
+
+/** A share of what the GPU allocator holds allocated: the resources made under one name, their bytes and how many. */
+export type RenderMemorySection = {
+  /** The name the resources were made under, their trailing number dropped; what the largest leave over is "Other". */
+  name: string;
+  bytes: number;
+  count: number;
 };
 
 /** Every `kind` the `RenderOverlay` union is told apart by, so a switch or a comparison names one. */
