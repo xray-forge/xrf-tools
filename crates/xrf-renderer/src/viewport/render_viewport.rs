@@ -209,6 +209,11 @@ impl RenderViewport {
     self.is_gone
   }
 
+  /// Whose its passes are in a frame's graph: a part of its own, which its number keeps apart from the frame's.
+  pub fn get_graph_owner(&self) -> GraphOwner {
+    GraphOwner::Part(self.id.0)
+  }
+
   /// Notes a frame for the next report: its times (interval, render thread, GPU span), phases and encode groups.
   pub fn record_frame(
     &mut self,
@@ -262,7 +267,7 @@ impl RenderViewport {
       }
       None => Default::default(),
     };
-    let mut times: Vec<GraphPassTime> = timer.take(GraphOwner::from(self.id));
+    let mut times: Vec<GraphPassTime> = timer.take(self.get_graph_owner());
 
     times.extend_from_slice(composition);
 
@@ -327,7 +332,7 @@ impl RenderViewport {
       particles,
       grass,
       sector_time,
-      graph: graph.map(|graph| Box::new(RenderGraphReport::of(graph, GraphOwner::from(self.id)))),
+      graph: graph.map(|graph| Box::new(RenderGraphReport::of(graph, self.get_graph_owner()))),
       memory: RenderMemoryReport {
         total: allocator.and_then(|memory| memory.budget).map(|budget| budget.total),
         budget: allocator.and_then(|memory| memory.budget).map(|budget| budget.budget),
