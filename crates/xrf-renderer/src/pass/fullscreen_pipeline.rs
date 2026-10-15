@@ -41,11 +41,3 @@ pub fn create_fullscreen_pipeline_with<P: ShaderPermutation>(
       .with_targets(targets.to_vec()),
   )
 }
-
-/// One buffer bound whole at a binding.
-pub fn buffer_binding(binding: u32, buffer: &wgpu::Buffer) -> wgpu::BindGroupEntry<'_> {
-  wgpu::BindGroupEntry {
-    binding,
-    resource: buffer.as_entire_binding(),
-  }
-}

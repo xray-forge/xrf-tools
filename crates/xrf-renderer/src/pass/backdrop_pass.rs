@@ -4,7 +4,7 @@ use xrf_error::XrfResult;
 
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::pass::backdrop_uniform::BackdropUniform;
-use crate::pass::fullscreen_pipeline::{buffer_binding, create_fullscreen_pipeline};
+use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline;
 use crate::pass::layout_entries::uniform_entry;
 use crate::pass::pipeline_source::PipelineSource;
 use crate::window::window_backdrop::WindowBackdrop;
@@ -78,7 +78,10 @@ impl BackdropPass {
       let bind_group: wgpu::BindGroup = device.create_bind_group(&wgpu::BindGroupDescriptor {
         label: Some("backdrop"),
         layout: &self.layout,
-        entries: &[buffer_binding(0, &uniform)],
+        entries: &[wgpu::BindGroupEntry {
+          binding: 0,
+          resource: uniform.as_entire_binding(),
+        }],
       });
 
       WindowBackdrop {

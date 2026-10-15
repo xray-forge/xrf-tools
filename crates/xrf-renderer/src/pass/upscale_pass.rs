@@ -17,6 +17,13 @@ impl UpscalePass {
   /// The upscaled and the sharpened frame's format.
   pub const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
 
+  /// EASU's upscale, of a frame smaller than the viewport.
+  pub const EASU: usize = 0;
+  /// RCAS's sharpening of an upscaled frame.
+  pub const RCAS: usize = 1;
+  /// The area-averaged downscale of a frame larger than the viewport.
+  pub const DOWNSAMPLE: usize = 2;
+
   /// # Errors
   ///
   /// Returns an error when the shader does not compose or compile.
@@ -44,13 +51,6 @@ impl UpscalePass {
       }
     }
   }
-
-  /// EASU's upscale, of a frame smaller than the viewport.
-  pub const EASU: usize = 0;
-  /// RCAS's sharpening of an upscaled frame.
-  pub const RCAS: usize = 1;
-  /// The area-averaged downscale of a frame larger than the viewport.
-  pub const DOWNSAMPLE: usize = 2;
 
   /// Draws a stage (`EASU`, `RCAS` or `DOWNSAMPLE`) into the target the pass draws into.
   pub fn record(&self, context: &mut RasterContext<'_>, stage: usize, parameters: &UpscaleParameters) {

@@ -18,6 +18,9 @@ pub struct BloomPass {
 }
 
 impl BloomPass {
+  /// The bloom's three stages: built from the high target, blurred across, then down.
+  pub const STAGES: [&'static str; 3] = ["bloom build", "bloom across", "bloom down"];
+
   /// # Errors
   ///
   /// Returns an error when the shader does not compose or compile.
@@ -58,9 +61,6 @@ impl BloomPass {
   pub fn get_sampler(&self) -> &wgpu::Sampler {
     &self.sampler
   }
-
-  /// The bloom's three stages: built from the high target, blurred across, then down.
-  pub const STAGES: [&'static str; 3] = ["bloom build", "bloom across", "bloom down"];
 
   /// Draws one of its stages into the target the pass draws into.
   pub fn record(&self, context: &mut RasterContext<'_>, stage: usize, parameters: &BloomParameters<'_>) {
