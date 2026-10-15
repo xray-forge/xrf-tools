@@ -8,12 +8,12 @@ use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::level_overlays::LevelOverlays;
 
-/// Draws a viewport's overlays into the window's pass after its frame: line segments, depth tested against the scene by
-/// the shader since the window's pass holds no depth, and the sun's disc.
+/// Draws a viewport's overlays into the window's pass after its frame: line segments and points, depth tested against
+/// the scene by the shader since the window's pass holds no depth, and the sun's disc.
 pub struct OverlayPass {
   layout: wgpu::BindGroupLayout,
   view_layout: wgpu::BindGroupLayout,
-  /// The lines' and the sun's, one pair a window format, built on first use.
+  /// The lines', the sun's and the points', one set a window format, built on first use.
   pipelines: HashMap<wgpu::TextureFormat, [wgpu::RenderPipeline; 3]>,
   generation: u64,
 }

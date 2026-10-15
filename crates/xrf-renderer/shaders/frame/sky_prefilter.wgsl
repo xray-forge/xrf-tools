@@ -2,12 +2,12 @@
 #import "common/sky_box"
 #import "common/sky_clouds"
 
-// The sky's light as the frame draws it (`sky_light`: the cubes through the half box, the rim under the fold, the
-// sky's colour and the engine's factor, the clouds over it, in the units a surface's own light is in), prefiltered by roughness into a
-// cube's mips for what a reflection meets nothing in front of: the first mip the sky itself, each after it the sky
-// blurred by the GGX lobe of a rougher surface, its roughness the mip over the last mip, so a reflection reads the
-// cube at the mip its roughness names. The cube is indexed by a direction in renderer space, the sky's own turn
-// already taken, so a reader passes its reflected direction as it is.
+// The sky's light as the frame draws it (`sky_light`: the cubes through the half box, the rim under the fold, the sky's
+// colour and the engine's factor, the clouds over it, in the units a surface's own light is in), prefiltered by
+// roughness into a cube's mips for what a reflection meets nothing in front of: the first mip the sky itself, each
+// after it the sky blurred by the GGX lobe of a rougher surface, its roughness the mip over the last mip, so a
+// reflection reads the cube at the mip its roughness names. The cube is indexed by a direction in renderer space, the
+// sky's own turn already taken, so a reader passes its reflected direction as it is.
 
 // Both keyframes' sky cubes and clouds and their samplers, the mips filled before this one, the lighting, the exposure
 // whose scale the sky is drawn on, the mip's settings and the mip's six faces.

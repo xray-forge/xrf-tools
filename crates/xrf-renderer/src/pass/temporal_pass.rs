@@ -56,7 +56,6 @@ impl TemporalPass {
     }
   }
 
-  /// Resolves into the history this frame writes.
   /// The sampler the history is read through, which the parameters bind.
   pub fn get_sampler(&self) -> &wgpu::Sampler {
     &self.sampler

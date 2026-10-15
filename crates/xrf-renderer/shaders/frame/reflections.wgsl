@@ -15,14 +15,13 @@
 // by `ratio` of the frame. Each reflecting pixel's ray leaves in a direction drawn from its surface's GGX lobe (a
 // puddle's water's, from the water's own height over the ground) by blue noise that turns every frame, and walks the
 // nearest depth pyramid of the frame as it stood before the grass drew (`nearest_depth`, its first level that depth
-// itself): a bush's or a tuft's
-// billboards stand in for a volume a reflection sees through, so they never stop a ray, and what lies behind them
-// answers; the trees' leaves are the static scene's and stand
-// (`common/reflection_trace`); what it met is lit as the frame shows it, faded towards the screen's edges and the
-// distance traced, the sky or the environment `hmodel` reflects otherwise. Then the denoiser: the last frame's
-// reflection reprojected, from where the reflected point or the surface stood; an eighth-size average; the trace
-// filtered across the surface, stopping at edges; and the two resolved over time, the history held to the
-// neighbourhood, into this frame's history, which combine blends by `reflection_slice` and `coat_share`.
+// itself): a bush's or a tuft's billboards stand in for a volume a reflection sees through, so they never stop a ray,
+// and what lies behind them answers; the trees' leaves are the static scene's and stand (`common/reflection_trace`);
+// what it met is lit as the frame shows it, faded towards the screen's edges and the distance traced, the sky or the
+// environment `hmodel` reflects otherwise. Then the denoiser: the last frame's reflection reprojected, from where the
+// reflected point or the surface stood; an eighth-size average; the trace filtered across the surface, stopping at
+// edges; and the two resolved over time, the history held to the neighbourhood, into this frame's history, which
+// combine fades into the prefiltered sky by the surface's roughness.
 //
 // Each stage marks a pixel nothing is traced at with an alpha below none.
 

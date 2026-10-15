@@ -45,7 +45,7 @@ fn rain_reached(world: vec3<f32>, world_normal: vec3<f32>, pixel: vec2<f32>) -> 
     noise);
 }
 
-/// `GetNVNMap`: the splashes' volume at a place and a moment, repeating every way and blended between its slices, its
+// `GetNVNMap`: the splashes' volume at a place and a moment, repeating every way and blended between its slices, its
 // normal in `w`, `y` and `z`, laid flat.
 fn splash_normal(place: vec2<f32>, moment: f32) -> vec3<f32> {
   let layers: f32 = f32(textureNumLayers(splash));

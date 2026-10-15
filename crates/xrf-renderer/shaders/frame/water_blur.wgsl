@@ -1,8 +1,8 @@
 #import "common/fullscreen"
 #import "generated/frame/water_blur"
 
-// One way of the enhanced water's reflection blurred into a target half the
-// reflection's size, thirteen taps spaced by half-size texels, mixed with the reflection as it was by the blur's share.
+// One way of the enhanced water's reflection blurred into a target half the reflection's size, thirteen taps spaced by
+// half-size texels, mixed with the reflection as it was by the blur's share.
 
 // Taps either side of the centre.
 const TAPS: i32 = 6;

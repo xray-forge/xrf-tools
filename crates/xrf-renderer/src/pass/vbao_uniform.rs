@@ -13,8 +13,7 @@ const MAX_REACH: f32 = 0.2;
 /// Frames the noise cycles through before it repeats.
 const NOISE_FRAMES: u32 = 256;
 
-/// What VBAO's search, accumulation and filter read, as
-/// `shaders/frame/vbao.wgsl` takes it.
+/// What VBAO's search, accumulation and filter read, as `shaders/frame/vbao.wgsl` takes it.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "Vbao")]

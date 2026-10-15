@@ -78,7 +78,7 @@ impl ParticlePass {
     }
   }
 
-  /// The sampler its draws read the scene's depth through, which their parameters bind.
+  /// The sampler its draws read a sprite through where its surface clamps, which their parameters bind.
   pub fn get_clamped_sampler(&self) -> &wgpu::Sampler {
     &self.clamped_sampler
   }

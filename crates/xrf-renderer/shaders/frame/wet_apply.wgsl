@@ -8,8 +8,8 @@
 
 // The depth, the material marks, the patch (the light target, borrowed before any light is drawn: the normal packed
 // into `xy`, what the wetness and, enhanced, a puddle's water add to the gloss into `z` and how wet the engine reads
-// the surface into `w`), the enhanced wetting's
-// wet surface, how much of a puddle in `g` and the water's depth over the ground in `b`, and the settings.
+// the surface into `w`), the enhanced wetting's wet surface, how much of a puddle in `g` and the water's depth over the
+// ground in `b`, and the settings.
 #import "generated/frame/wet_apply"
 
 // Whether anything was drawn at a pixel, reversed: nought where nothing was.

@@ -9,8 +9,9 @@
 // G-buffer and lit here as the frame lights a surface (`hmodel` over its hemisphere, the sun by the baked sun factor,
 // the fog to it), the sky's light where nothing was drawn, into the prefiltered cube's first mip, which the mips after
 // it blur by roughness; each texel's metres from the camera in its alpha, nothing for the sky, which a reflection reads
-// to aim through the point its ray would meet (`surroundings_direction`). A reflection meeting nothing on the screen reads it: behind a bush's twigs it finds the tree
-// line, past the screen's edge the hill, where the sky alone answered before.
+// to aim through the point its ray would meet (`surroundings_direction`). A reflection meeting nothing on the screen
+// reads it: behind a bush's twigs it finds the tree line, past the screen's edge the hill, where the sky alone answered
+// before.
 
 // The face's G-buffer, the material table, the sky's cubes, clouds and samplers, the lighting, the exposure, the
 // face's settings and the cube's first mip.

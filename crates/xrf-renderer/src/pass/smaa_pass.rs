@@ -13,7 +13,7 @@ const AREA_TEXTURE: &str = "smaa/area.png";
 const SEARCH_TEXTURE: &str = "smaa/search.png";
 
 /// SMAA 1x over a viewport's scene as drawn: its edges, their blending weights, then the scene blended across them into
-/// a frame's target the scene is copied back from.
+/// a target of its own, which the frame goes on from.
 pub struct SmaaPass {
   layout: wgpu::BindGroupLayout,
   /// The edges', the weights' and the blend's.

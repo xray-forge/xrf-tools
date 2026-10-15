@@ -3,8 +3,8 @@ use xrf_renderer_core::ShaderStruct;
 
 use crate::contract::render_light_shadow_filter::RenderLightShadowFilter;
 
-/// What the lights are binned and lit by, as `shaders/common/light_clusters.wgsl` declares it: how many stand in view, and the
-/// view the clusters cut, its depth sliced exponentially from the near plane to the far one.
+/// What the lights are binned and lit by, as `shaders/common/light_clusters.wgsl` declares it: how many stand in view,
+/// and the view the clusters cut, its depth sliced exponentially from the near plane to the far one.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "Lights")]

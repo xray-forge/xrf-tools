@@ -7,9 +7,8 @@
 // The guides DLSS ray reconstruction reads beside the frame, at the frame's size: each surface's specular albedo, the
 // environment BRDF over its reflectance as combine weighs its reflection; its world normal, its roughness in the fourth
 // channel; how far its reflection ray went before it met what it reflects, and its indirect light ray where that is
-// traced; and how far it is reconstructed from this
-// frame rather than its history, `BIAS_WATER` over a puddle's water, whose ripples and rain move its reflection in
-// place every frame, which the history would hold behind them.
+// traced; and how far it is reconstructed from this frame rather than its history, `BIAS_WATER` over a puddle's water,
+// whose ripples and rain move its reflection in place every frame, which the history would hold behind them.
 
 // The G-buffer, the wet surface, the lighting, and the reflections' trace: what each traced pixel met, the ray's length
 // in alpha, at the size they are traced at, below none where untraced.

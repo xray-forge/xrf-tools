@@ -8,7 +8,7 @@ use crate::pass::upscale_parameters::UpscaleParameters;
 /// FSR 1 over a frame drawn smaller than its viewport: EASU upscales it, RCAS sharpens the upscaled frame.
 pub struct UpscalePass {
   layout: wgpu::BindGroupLayout,
-  /// EASU's, then RCAS's.
+  /// One a stage, at `EASU`, `RCAS` and `DOWNSAMPLE`.
   pipelines: [wgpu::RenderPipeline; 3],
   generation: u64,
 }

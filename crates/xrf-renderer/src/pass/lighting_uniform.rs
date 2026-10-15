@@ -25,7 +25,8 @@ pub struct LightingUniform {
   pub sky_irradiance: Vec4,
   /// The fog's colour, then one where it fogs.
   pub fog_color: Vec4,
-  /// `fog_params.x` and `.w`, then one where far geometry fades into the sky's haze above the fold, then one where the sky is drawn.
+  /// `fog_params.x` and `.w`, then one where far geometry fades into the sky's haze above the fold, then one where the
+  /// sky is drawn.
   pub fog: Vec4,
   /// `sky_color`, then the blend between the keyframes' skies.
   pub sky: Vec4,

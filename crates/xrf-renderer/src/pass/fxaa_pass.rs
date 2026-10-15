@@ -6,7 +6,7 @@ use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline;
 use crate::pass::fxaa_parameters::FxaaParameters;
 use crate::pass::pipeline_source::PipelineSource;
 
-/// FXAA over a viewport's scene as drawn, into a frame's target the scene is copied back from.
+/// FXAA over a viewport's scene as drawn, into a target of its own, which the frame goes on from.
 pub struct FxaaPass {
   layout: wgpu::BindGroupLayout,
   sampler: wgpu::Sampler,

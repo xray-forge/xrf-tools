@@ -8,8 +8,8 @@ use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::present_parameters::PresentParameters;
 use crate::pass::view_binding::ViewBinding;
 
-/// Puts a viewport's finished scene into its rectangle of the window, moved where the water and the particles distort it and dithered to
-/// the window's eight bits; or, for a debug view, one of the targets the scene was built from.
+/// Puts a viewport's finished scene into its rectangle of the window, moved where the water and the particles distort
+/// it and dithered to the window's eight bits; or, for a debug view, one of the targets the scene was built from.
 pub struct PresentPass {
   layout: wgpu::BindGroupLayout,
   /// The bloom's, `smp_rtlinear`: filtered, clamped to the edge.

@@ -34,7 +34,8 @@ pub struct ReflectionPass {
   generation: u64,
 }
 
-/// The trace and the denoiser's four stages.
+/// The trace, the denoiser's four stages (reproject, average, prefilter and resolve), the upscale to full size, and the
+/// guide ray reconstruction reads.
 struct ReflectionPipelines {
   trace: wgpu::RenderPipeline,
   reproject: wgpu::RenderPipeline,
