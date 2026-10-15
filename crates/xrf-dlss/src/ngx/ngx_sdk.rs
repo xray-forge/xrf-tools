@@ -24,9 +24,9 @@ pub(crate) struct NgxSdk {
   pub(crate) has_ray_reconstruction: bool,
 }
 
-// SAFETY: NGX's parameters are only touched under the mutex `Dlss` keeps the SDK in.
+// SAFETY: the SDK is reached only through the mutex `Dlss` keeps it in, which only `Send` needs, and NGX's parameters
+// only under that mutex and NGX's lock.
 unsafe impl Send for NgxSdk {}
-unsafe impl Sync for NgxSdk {}
 
 impl NgxSdk {
   /// Starts NGX on `device`, a Vulkan device opened with its extensions or a D3D12 one, where it offers super

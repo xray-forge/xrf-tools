@@ -138,17 +138,17 @@ impl NgxSuperResolution {
 
     self
       .feature
-      .evaluate("DLSS refused the frame", |commands, sdk| match commands {
-        NgxCommands::Vulkan(list) => Ok(Self::evaluate_vulkan(list, (&self.feature, sdk, adapter), inputs)),
+      .evaluate("DLSS refused the frame", |commands, sdk, handle| match commands {
+        NgxCommands::Vulkan(list) => Ok(Self::evaluate_vulkan(list, (handle, sdk, adapter), inputs)),
         #[cfg(windows)]
-        NgxCommands::D3d12(list) => Ok(Self::evaluate_d3d12(list, (&self.feature, sdk), inputs)),
+        NgxCommands::D3d12(list) => Ok(Self::evaluate_d3d12(list, (handle, sdk), inputs)),
       })
   }
 
   /// NGX's upscale of `inputs` recorded into a Vulkan command buffer.
   fn evaluate_vulkan(
     list: ash::vk::CommandBuffer,
-    (feature, sdk, adapter): (&NgxFeature, &NgxSdk, &wgpu::Adapter),
+    (handle, sdk, adapter): (*mut NVSDK_NGX_Handle, &NgxSdk, &wgpu::Adapter),
     inputs: &DlssInputs<'_>,
   ) -> NVSDK_NGX_Result {
     // NGX reads these through pointers while it records, so they live until it is done.
@@ -208,14 +208,14 @@ impl NgxSuperResolution {
       pInMotionVectorsReflections: ptr::null_mut(),
     };
 
-    unsafe { NGX_VULKAN_EVALUATE_DLSS_EXT(list, feature.handle, sdk.parameters, &mut parameters) }
+    unsafe { NGX_VULKAN_EVALUATE_DLSS_EXT(list, handle, sdk.parameters, &mut parameters) }
   }
 
   /// NGX's upscale of `inputs` recorded into a D3D12 command list.
   #[cfg(windows)]
   fn evaluate_d3d12(
     list: *mut ID3D12GraphicsCommandList,
-    (feature, sdk): (&NgxFeature, &NgxSdk),
+    (handle, sdk): (*mut NVSDK_NGX_Handle, &NgxSdk),
     inputs: &DlssInputs<'_>,
   ) -> NVSDK_NGX_Result {
     let origin = NVSDK_NGX_Coordinates { X: 0, Y: 0 };
@@ -253,7 +253,7 @@ impl NgxSuperResolution {
         ..std::mem::zeroed()
       };
 
-      NGX_D3D12_EVALUATE_DLSS_EXT(list, feature.handle, sdk.parameters, &mut parameters)
+      NGX_D3D12_EVALUATE_DLSS_EXT(list, handle, sdk.parameters, &mut parameters)
     }
   }
 }

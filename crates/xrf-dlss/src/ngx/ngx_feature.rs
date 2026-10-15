@@ -16,13 +16,14 @@ use crate::ngx::ngx_sdk_guard::NgxSdkGuard;
 
 /// A feature NGX made on a device, which it releases once the device has finished what was submitted with it.
 pub(crate) struct NgxFeature {
-  pub(crate) handle: *mut NVSDK_NGX_Handle,
+  handle: *mut NVSDK_NGX_Handle,
   pub(crate) api: NgxApi,
   pub(crate) sdk: Arc<Mutex<NgxSdk>>,
   device: wgpu::Device,
 }
 
-// SAFETY: the handle is only used under the mutex its owner keeps it in, and NGX's parameters under the SDK's.
+// SAFETY: the handle is private and reaches NGX only through `evaluate` and `drop`, both holding NGX's lock, and NGX's
+// parameters only under the SDK's mutex as well.
 unsafe impl Send for NgxFeature {}
 unsafe impl Sync for NgxFeature {}
 
@@ -56,18 +57,19 @@ impl NgxFeature {
     })
   }
 
-  /// Records NGX's evaluation of the feature through `evaluate` into a command buffer of its own, answered, which must
-  /// be submitted right after the commands that prepared its inputs.
+  /// Records NGX's evaluation of the feature through `evaluate`, given the feature's handle, into a command buffer of
+  /// its own, answered, which must be submitted right after the commands that prepared its inputs. NGX records into a
+  /// fresh encoder used for nothing else, so whatever state it leaves the list in no later wgpu command meets.
   pub(crate) fn evaluate(
     &self,
     what: &str,
-    evaluate: impl FnOnce(NgxCommands, &NgxSdk) -> XrfResult<NVSDK_NGX_Result>,
+    evaluate: impl FnOnce(NgxCommands, &NgxSdk, *mut NVSDK_NGX_Handle) -> XrfResult<NVSDK_NGX_Result>,
   ) -> XrfResult<wgpu::CommandBuffer> {
     let sdk: NgxSdkGuard<'_> = NgxSdkGuard::lock(&self.sdk);
     let mut commands: wgpu::CommandEncoder = self
       .device
       .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("dlss") });
-    let result: NVSDK_NGX_Result = record(self.api, &mut commands, |list| evaluate(list, &sdk))??;
+    let result: NVSDK_NGX_Result = record(self.api, &mut commands, |list| evaluate(list, &sdk, self.handle))??;
 
     check_ngx(result, what)?;
 

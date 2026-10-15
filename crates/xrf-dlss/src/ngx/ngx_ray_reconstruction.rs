@@ -149,15 +149,10 @@ impl NgxRayReconstruction {
 
     self.feature.evaluate(
       "DLSS refused to reconstruct the frame",
-      |commands, sdk| match commands {
-        NgxCommands::Vulkan(list) => Ok(Self::evaluate_vulkan(
-          list,
-          (&self.feature, sdk, adapter),
-          inputs,
-          matrices,
-        )),
+      |commands, sdk, handle| match commands {
+        NgxCommands::Vulkan(list) => Ok(Self::evaluate_vulkan(list, (handle, sdk, adapter), inputs, matrices)),
         #[cfg(windows)]
-        NgxCommands::D3d12(list) => Ok(Self::evaluate_d3d12(list, (&self.feature, sdk), inputs, matrices)),
+        NgxCommands::D3d12(list) => Ok(Self::evaluate_d3d12(list, (handle, sdk), inputs, matrices)),
       },
     )
   }
@@ -165,7 +160,7 @@ impl NgxRayReconstruction {
   /// NGX's reconstruction of `inputs` recorded into a Vulkan command buffer.
   fn evaluate_vulkan(
     list: ash::vk::CommandBuffer,
-    (feature, sdk, adapter): (&NgxFeature, &NgxSdk, &wgpu::Adapter),
+    (handle, sdk, adapter): (*mut NVSDK_NGX_Handle, &NgxSdk, &wgpu::Adapter),
     inputs: &DlssRayInputs<'_>,
     (world_to_view, view_to_clip): (*mut f32, *mut f32),
   ) -> NVSDK_NGX_Result {
@@ -222,14 +217,14 @@ impl NgxRayReconstruction {
     parameters.InToneMapperType = NVSDK_NGX_ToneMapperType_NVSDK_NGX_TONEMAPPER_STRING;
     parameters.pInRoughness = ptr::null_mut();
 
-    unsafe { NGX_VULKAN_EVALUATE_DLSSD_EXT(list, feature.handle, sdk.parameters, &mut parameters) }
+    unsafe { NGX_VULKAN_EVALUATE_DLSSD_EXT(list, handle, sdk.parameters, &mut parameters) }
   }
 
   /// NGX's reconstruction of `inputs` recorded into a D3D12 command list.
   #[cfg(windows)]
   fn evaluate_d3d12(
     list: *mut ID3D12GraphicsCommandList,
-    (feature, sdk): (&NgxFeature, &NgxSdk),
+    (handle, sdk): (*mut NVSDK_NGX_Handle, &NgxSdk),
     inputs: &DlssRayInputs<'_>,
     (world_to_view, view_to_clip): (*mut f32, *mut f32),
   ) -> NVSDK_NGX_Result {
@@ -272,7 +267,7 @@ impl NgxRayReconstruction {
       parameters.InMVScaleY = inputs.motion_scale[1];
       parameters.InToneMapperType = NVSDK_NGX_ToneMapperType_NVSDK_NGX_TONEMAPPER_STRING;
 
-      NGX_D3D12_EVALUATE_DLSSD_EXT(list, feature.handle, sdk.parameters, &mut parameters)
+      NGX_D3D12_EVALUATE_DLSSD_EXT(list, handle, sdk.parameters, &mut parameters)
     }
   }
 }
