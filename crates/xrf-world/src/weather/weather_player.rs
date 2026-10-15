@@ -70,11 +70,7 @@ impl Default for WeatherPlayer {
       is_changed: false,
       is_forced: false,
       is_jumped: false,
-      thunder: WeatherThunder::new(
-        std::time::SystemTime::now()
-          .duration_since(std::time::UNIX_EPOCH)
-          .map_or(1, |since| since.as_nanos() as u64),
-      ),
+      thunder: WeatherThunder::new(Self::THUNDER_SEED),
       is_flashing: false,
       epoch: Instant::now(),
     }
@@ -82,6 +78,10 @@ impl Default for WeatherPlayer {
 }
 
 impl WeatherPlayer {
+  /// What the strikes are drawn from on every play, as the ambient effects' schedule is, so a driven capture strikes the
+  /// same bolts at the same moments.
+  const THUNDER_SEED: u64 = 0x7B0_17ED;
+
   /// Whether a weather plays, lighting the scene in place of the default lighting.
   pub fn is_playing(&self) -> bool {
     self.weather.is_some()
