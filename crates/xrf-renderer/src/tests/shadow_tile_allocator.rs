@@ -90,3 +90,16 @@ fn shadow_tile_allocator_keeps_its_squares_apart_through_any_order_of_takes_and_
   assert_eq!(allocator.get_used(), 0);
   assert_eq!(allocator.allocate(SIZE), Some(ShadowTile { x: 0, y: 0, size: SIZE }));
 }
+
+#[test]
+fn shadow_tile_allocator_refuses_a_square_larger_than_the_atlas_and_gives_the_atlas_whole() {
+  let mut allocator: ShadowTileAllocator = ShadowTileAllocator::new(1024, 32);
+
+  assert_eq!(allocator.allocate(2048), None);
+  assert_eq!(allocator.get_used(), 0);
+
+  let whole: ShadowTile = allocator.allocate(1024).expect("the atlas whole");
+
+  assert_eq!((whole.x, whole.y, whole.size), (0, 0, 1024));
+  assert_eq!(allocator.allocate(32), None);
+}
