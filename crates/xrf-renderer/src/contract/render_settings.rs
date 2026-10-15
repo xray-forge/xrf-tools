@@ -4,6 +4,7 @@ use crate::contract::render_backend::RenderBackend;
 use crate::contract::render_frame_rate::RenderFrameRate;
 use crate::contract::render_gpu::RenderGpu;
 use crate::contract::render_graph_settings::RenderGraphSettings;
+use crate::contract::render_texture_filtering::RenderTextureFiltering;
 
 /// GPU milliseconds a frame gives the work drawn once in so many frames that may wait, unless the settings say
 /// otherwise.
@@ -30,6 +31,11 @@ pub struct RenderSettings {
   /// shadows' cascades and faces, the overhead maps, the surroundings' faces, the sky's refill. A frame held to a cap or
   /// the display's refresh gives it what headroom it leaves, up to `PeriodicBudget::CEILING`.
   pub periodic_budget: f32,
+  /// How the level's surfaces sample their textures, which every viewport shares.
+  pub texture_filtering: RenderTextureFiltering,
+  /// `texture_lod`, nought to four: how much coarser than stored the textures load, the engine's texture quality,
+  /// which every viewport shares.
+  pub texture_lod: u32,
 }
 
 impl Default for RenderSettings {
@@ -41,6 +47,8 @@ impl Default for RenderSettings {
       backend: None,
       gpu: None,
       periodic_budget: RENDER_DEFAULT_PERIODIC_BUDGET,
+      texture_filtering: RenderTextureFiltering::default(),
+      texture_lod: 0,
     }
   }
 }

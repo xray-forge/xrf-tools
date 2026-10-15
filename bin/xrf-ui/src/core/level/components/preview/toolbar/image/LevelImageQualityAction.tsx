@@ -11,7 +11,6 @@ import {
   RenderDlssAvailability,
   RenderDlssPreset,
   RenderScale,
-  RenderTextureFiltering,
 } from "@/core/ipc/types/xrf-renderer";
 import { useLevelFeatureOverride } from "@/core/level/components/preview/toolbar/use-level-feature-override";
 import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
@@ -24,7 +23,6 @@ import { RenderValueSlider } from "@/core/render/components/controls/RenderValue
 import {
   describeRenderAntialiasing,
   isTemporalAntialiasing,
-  RENDER_TEXTURE_FILTERING_SHORT_OPTIONS,
   toDrawnAntialiasing,
 } from "@/core/render/lib/features/render-antialiasing-choices";
 import {
@@ -60,8 +58,7 @@ const MODE_OPTIONS_WITHOUT_DLSS: ReadonlyArray<IChoiceFormRowOption<RenderAntial
 
 /**
  * How this view's frame is made into the image it shows: whether its edges are smoothed and by which pass, whether DLSS
- * reconstructs rays as it upscales, how much smaller it is drawn, what it is resolved at, and how its textures are
- * sampled.
+ * reconstructs rays as it upscales, how much smaller it is drawn, and what it is resolved at.
  */
 export function LevelImageQualityAction({
   "data-testid": dataTestId = "level-image-quality-action",
@@ -77,7 +74,6 @@ export function LevelImageQualityAction({
   const { set: setOutput } = useLevelFeatureOverride("output");
   // What the settings draw every viewport with, which this view may set over, the mode only narrowed to none.
   const settingsMode: RenderAntialiasing = settings.antialiasing;
-  const settingsTextureFiltering: RenderTextureFiltering = settings.textureFiltering;
   const settingsScale: RenderScale = settings.upscaling.scale;
   const settingsSharpening: number = settings.upscaling.sharpening;
   const settingsDlssPreset: RenderDlssPreset = settings.upscaling.dlssPreset;
@@ -96,7 +92,6 @@ export function LevelImageQualityAction({
   const asked: RenderAntialiasing = features.antialiasing ?? settingsMode;
   const dlssProblem: Nullable<string> = describeDlssUnavailability(dlss);
   const mode: RenderAntialiasing = toDrawnAntialiasing(asked, dlss);
-  const textureFiltering: RenderTextureFiltering = features.textureFiltering ?? settingsTextureFiltering;
   const scale: RenderScale = features.upscaling.scale ?? settingsScale;
   const sharpening: number = features.upscaling.sharpening ?? settingsSharpening;
   const dlssPreset: RenderDlssPreset = features.upscaling.dlssPreset ?? settingsDlssPreset;
@@ -220,22 +215,12 @@ export function LevelImageQualityAction({
           />
         ) : null}
 
-        <RenderValueChoice
-          label={"Texture filtering"}
-          options={RENDER_TEXTURE_FILTERING_SHORT_OPTIONS}
-          value={textureFiltering}
-          onChange={(filtering: RenderTextureFiltering) =>
-            viewService.setFeatures({ ...features, textureFiltering: filtering })
-          }
-        />
-
         <Button
           size={"small"}
           onClick={() =>
             viewService.setFeatures({
               ...features,
               antialiasing: null,
-              textureFiltering: null,
               upscaling: {},
               output: {},
             })

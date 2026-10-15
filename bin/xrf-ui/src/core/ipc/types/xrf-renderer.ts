@@ -1527,6 +1527,13 @@ export type RenderSettings = {
    * the display's refresh gives it what headroom it leaves, up to `PeriodicBudget::CEILING`.
    */
   periodicBudget: number | null;
+  /** How the level's surfaces sample their textures, which every viewport shares. */
+  textureFiltering: RenderTextureFiltering;
+  /**
+   * `texture_lod`, nought to four: how much coarser than stored the textures load, the engine's texture quality,
+   * which every viewport shares.
+   */
+  textureLod: number;
 };
 
 /**
@@ -1759,10 +1766,6 @@ export type RenderViewFeatures = {
   lod: RenderLodSettings;
   /** How the frame's edges are smoothed. */
   antialiasing: RenderAntialiasing;
-  /** How the level's surfaces sample their textures. */
-  textureFiltering: RenderTextureFiltering;
-  /** `texture_lod`, nought to four: how much coarser than stored the textures load, the engine's texture quality. */
-  textureLod: number;
   /** How the level's surfaces are displaced by their height. */
   parallax: RenderParallaxSettings;
   /** What the finished frame is corrected by. */

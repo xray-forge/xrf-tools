@@ -86,7 +86,6 @@ export function toLevelViewOptions(inputs: ILevelViewOptionsInputs): RenderViewO
       ...features,
       ambientOcclusion: toLevelRendererFeature("ambientOcclusion", features, view, options.isOccluded),
       antialiasing: toLevelRendererAntialiasing(features.antialiasing, view, options.isAntialiased),
-      textureFiltering: view.textureFiltering ?? features.textureFiltering,
       upscaling: { ...features.upscaling, ...view.upscaling },
       debanding: toLevelModeFeature("debanding", features, view),
       enhancedBloom: toLevelModeFeature("enhancedBloom", features, view),

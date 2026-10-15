@@ -19,7 +19,6 @@ use crate::contract::render_rain_settings::RenderRainSettings;
 use crate::contract::render_reflection_settings::RenderReflectionSettings;
 use crate::contract::render_shadow_settings::RenderShadowSettings;
 use crate::contract::render_sun_shafts::RenderSunShafts;
-use crate::contract::render_texture_filtering::RenderTextureFiltering;
 use crate::contract::render_tonemap_mode::RenderTonemapMode;
 use crate::contract::render_volumetric_settings::RenderVolumetricSettings;
 use crate::contract::render_water_settings::RenderWaterSettings;
@@ -60,10 +59,6 @@ pub struct RenderViewFeatures {
   pub lod: RenderLodSettings,
   /// How the frame's edges are smoothed.
   pub antialiasing: RenderAntialiasing,
-  /// How the level's surfaces sample their textures.
-  pub texture_filtering: RenderTextureFiltering,
-  /// `texture_lod`, nought to four: how much coarser than stored the textures load, the engine's texture quality.
-  pub texture_lod: u32,
   /// How the level's surfaces are displaced by their height.
   pub parallax: RenderParallaxSettings,
   /// What the finished frame is corrected by.
@@ -98,8 +93,6 @@ impl Default for RenderViewFeatures {
       volumetric: RenderVolumetricSettings::default(),
       lod: RenderLodSettings::default(),
       antialiasing: RenderAntialiasing::None,
-      texture_filtering: RenderTextureFiltering::default(),
-      texture_lod: 0,
       parallax: RenderParallaxSettings::default(),
       corrections: RenderImageCorrections::default(),
       light_scales: RenderLightScales::default(),

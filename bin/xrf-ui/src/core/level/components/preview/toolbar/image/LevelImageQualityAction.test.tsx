@@ -7,7 +7,6 @@ import {
   ERenderDlssAvailability,
   ERenderDlssPreset,
   ERenderScale,
-  ERenderTextureFiltering,
   ERenderTonemapMode,
   RenderAntialiasing,
   RenderBackendAvailability,
@@ -54,7 +53,6 @@ function renderAction(setup: IImageQualitySetup = {}): TLevelViewRenderResult {
 
   descriptor.renderSettings.setRendererOverrides({
     antialiasing: setup.mode ?? ERenderAntialiasing.SMAA,
-    textureFiltering: ERenderTextureFiltering.ANISOTROPIC8,
     tonemap: setup.isSceneLinear === false ? ERenderTonemapMode.ENGINE : ERenderTonemapMode.ENHANCED,
     upscaling: {
       dlssPreset: ERenderDlssPreset.DEFAULT,
@@ -107,15 +105,6 @@ describe("LevelImageQualityAction", () => {
     await userEvent.click(rendered.getByRole("button", { name: "Reset to the preset" }));
 
     expect(rendered.view.features).toEqual(before);
-  });
-
-  it("picks the view's own texture filtering", async () => {
-    const rendered = renderAction();
-
-    await openSettings(rendered);
-    await userEvent.click(rendered.getByRole("button", { name: "16×" }));
-
-    expect(rendered.view.features.textureFiltering).toBe(ERenderTextureFiltering.ANISOTROPIC16);
   });
 
   it("picks the view's own render scale over the settings'", async () => {
@@ -253,6 +242,6 @@ describe("LevelImageQualityAction", () => {
     );
     expect(rendered.getByRole("checkbox", { name: "Antialiasing" })).toBeDisabled();
     expect(rendered.queryByRole("group", { name: "Mode" })).not.toBeInTheDocument();
-    expect(rendered.getByRole("group", { name: "Texture filtering" })).toBeInTheDocument();
+    expect(rendered.queryByRole("group", { name: "Texture filtering" })).not.toBeInTheDocument();
   });
 });

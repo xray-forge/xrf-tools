@@ -1,7 +1,12 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { Container } from "@wirestate/core";
 
-import { ERenderAntialiasing, ERenderScale, RENDER_DEFAULT_PERIODIC_BUDGET } from "@/core/ipc/types/xrf-renderer";
+import {
+  ERenderAntialiasing,
+  ERenderScale,
+  ERenderTextureFiltering,
+  RENDER_DEFAULT_PERIODIC_BUDGET,
+} from "@/core/ipc/types/xrf-renderer";
 import { DEFAULT_RENDER_FEATURE_CHOICE } from "@/core/render/lib/settings/render-feature-choice";
 import { ERenderPreset, RENDER_PRESETS } from "@/core/render/lib/settings/render-preset";
 import { RenderSettingsService } from "@/core/render/services/render-settings/render-settings.service";
@@ -50,6 +55,24 @@ describe("RenderSettingsService", () => {
     expect(countConfigured()).toBe(1);
 
     service.onDeprovision();
+  });
+
+  // Every viewport samples the renderer's one texture cache, so its filtering and quality are the renderer's settings.
+  it("tells the renderer the textures' filtering and quality as its own settings, not a viewport's", () => {
+    const container: Container = mockContainer();
+    const service: RenderSettingsService = container.get(RenderSettingsService);
+
+    container.provision();
+    mockInvoke.mockClear();
+    service.setRendererOverrides({ textureFiltering: ERenderTextureFiltering.TRILINEAR, textureLod: 2 });
+
+    expect(countConfigured()).toBe(1);
+    expect(service.renderSettings).toMatchObject({
+      textureFiltering: ERenderTextureFiltering.TRILINEAR,
+      textureLod: 2,
+    });
+
+    container.deprovision();
   });
 
   it("allows viewports any frame rate until something says otherwise", () => {

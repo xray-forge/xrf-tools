@@ -5,6 +5,7 @@ import {
   ERenderAntialiasing,
   ERenderDlssAvailability,
   ERenderLevelHit,
+  ERenderTextureFiltering,
   ERenderViewportEvent,
   RENDER_DEFAULT_PERIODIC_BUDGET,
   RenderFrameReport,
@@ -134,6 +135,8 @@ describe("LevelRenderService", () => {
           graph: DEFAULT_RENDER_GRAPH_SETTINGS,
           isGpuTimed: false,
           periodicBudget: RENDER_DEFAULT_PERIODIC_BUDGET,
+          textureFiltering: ERenderTextureFiltering.ANISOTROPIC16,
+          textureLod: 0,
         },
       },
     ]);
