@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::sync::Mutex;
+use std::sync::RwLock;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use crate::param::bind_group_key::BindGroupKey;
@@ -10,10 +10,11 @@ use crate::param::pass_resources::PassResources;
 
 /// The layouts of pass parameters, one per struct, and the bind groups made from them, kept across frames by the
 /// identity of what they bind: the same resources get the same bind group back, and one unused for longer than the
-/// cache's patience is dropped. Shared by the passes recording a frame, so it locks.
+/// cache's patience is dropped. Shared by the passes recording a frame, which find what they bind under a read lock.
 pub struct BindGroupCache {
-  layouts: Mutex<HashMap<&'static str, wgpu::BindGroupLayout>>,
-  groups: Mutex<HashMap<BindGroupKey, (wgpu::BindGroup, u64)>>,
+  layouts: RwLock<HashMap<&'static str, wgpu::BindGroupLayout>>,
+  /// Each group with the last frame that bound it, kept atomic so a found group is marked under the read lock.
+  groups: RwLock<HashMap<BindGroupKey, (wgpu::BindGroup, AtomicU64)>>,
   frame: AtomicU64,
   max_idle_frames: u64,
 }
@@ -30,8 +31,8 @@ impl BindGroupCache {
 
   pub fn new() -> Self {
     Self {
-      layouts: Mutex::new(HashMap::new()),
-      groups: Mutex::new(HashMap::new()),
+      layouts: RwLock::new(HashMap::new()),
+      groups: RwLock::new(HashMap::new()),
       frame: AtomicU64::new(0),
       max_idle_frames: Self::MAX_IDLE_FRAMES,
     }
@@ -43,14 +44,18 @@ impl BindGroupCache {
   }
 
   pub fn get_bind_group_count(&self) -> usize {
-    self.groups.lock().expect("bind group cache lock").len()
+    self.groups.read().expect("bind group cache lock").len()
   }
 
   /// The layout of `P`'s bind group, made once; a pipeline built for `P` takes this one, so its bind groups match.
   pub fn get_layout<P: PassParameters>(&self, device: &wgpu::Device) -> wgpu::BindGroupLayout {
+    if let Some(layout) = self.layouts.read().expect("bind group cache lock").get(P::LAYOUT_KEY) {
+      return layout.clone();
+    }
+
     self
       .layouts
-      .lock()
+      .write()
       .expect("bind group cache lock")
       .entry(P::LAYOUT_KEY)
       .or_insert_with(|| P::create_layout(device))
@@ -85,7 +90,14 @@ impl BindGroupCache {
         .collect(),
     };
     let frame: u64 = self.frame.load(Ordering::Relaxed);
-    let mut groups = self.groups.lock().expect("bind group cache lock");
+
+    if let Some((group, last_frame)) = self.groups.read().expect("bind group cache lock").get(&key) {
+      last_frame.store(frame, Ordering::Relaxed);
+
+      return group.clone();
+    }
+
+    let mut groups = self.groups.write().expect("bind group cache lock");
     let (group, last_frame) = groups.entry(key).or_insert_with(|| {
       let entries: Vec<wgpu::BindGroupEntry<'_>> = bindings
         .iter()
@@ -113,11 +125,11 @@ impl BindGroupCache {
           layout: &layout,
           entries: &entries,
         }),
-        frame,
+        AtomicU64::new(frame),
       )
     });
 
-    *last_frame = frame;
+    *last_frame.get_mut() = frame;
     group.clone()
   }
 
@@ -128,8 +140,8 @@ impl BindGroupCache {
 
     self
       .groups
-      .lock()
+      .write()
       .expect("bind group cache lock")
-      .retain(|_, (_, last_frame)| frame - *last_frame <= patience);
+      .retain(|_, (_, last_frame)| frame - *last_frame.get_mut() <= patience);
   }
 }

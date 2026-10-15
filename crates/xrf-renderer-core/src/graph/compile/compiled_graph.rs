@@ -254,9 +254,9 @@ impl<'a> CompiledGraph<'a> {
 
   /// Records one encode group's passes into an encoder of its own, a run of passes sharing a render pass into one, and
   /// finishes it; where a pass hands over commands recorded apart, the encoder is finished there, they follow it, and a
-  /// new encoder takes the passes after. `timing` stamps each pass into the group's own range, and resolves the frame's stamps where the group
-  /// is the last. What wgpu refused of it, recording or finishing, comes back beside it, caught on the thread recording
-  /// it.
+  /// new encoder takes the passes after. `timing` stamps each pass into the group's own range, and resolves the frame's
+  /// stamps where the group is the last. What wgpu refused of it, recording or finishing, comes back beside it, caught
+  /// on the thread recording it.
   fn record_group(
     group: &EncodeGroup,
     passes: Vec<CompiledPass<'a>>,
