@@ -5,24 +5,17 @@ use crate::contract::render_ambient_occlusion_quality::RenderAmbientOcclusionQua
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::ambient_occlusion_parameters::AmbientOcclusionParameters;
 use crate::pass::ambient_occlusion_permutation::AmbientOcclusionPermutation;
+use crate::pass::ambient_occlusion_stage::AmbientOcclusionStage;
 use crate::pass::fullscreen_pipeline::{create_fullscreen_pipeline, create_fullscreen_pipeline_with};
 use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::view_binding::ViewBinding;
-
-/// Every quality, in the order their search pipelines are held.
-const QUALITIES: [RenderAmbientOcclusionQuality; 4] = [
-  RenderAmbientOcclusionQuality::Low,
-  RenderAmbientOcclusionQuality::Medium,
-  RenderAmbientOcclusionQuality::High,
-  RenderAmbientOcclusionQuality::Ultra,
-];
 
 /// Ambient occlusion at half the frame's size: searched into its first target, denoised across into the second and
 /// down back into the first, which combine reads.
 pub struct AmbientOcclusionPass {
   layout: wgpu::BindGroupLayout,
   view_layout: wgpu::BindGroupLayout,
-  /// The search, one a quality in `QUALITIES` order.
+  /// The search, one a quality in `RenderAmbientOcclusionQuality::ALL` order.
   searches: Vec<wgpu::RenderPipeline>,
   /// The denoise across, then down.
   denoises: [wgpu::RenderPipeline; 2],
@@ -64,22 +57,18 @@ impl AmbientOcclusionPass {
     }
   }
 
-  /// Which group each stage reads (the other target than it draws into), and which target it draws into: the search,
-  /// then the denoise across, then back.
-  pub const STAGES: [(usize, usize); 3] = [(0, 0), (1, 1), (0, 0)];
-
   /// Draws one of its stages into the target the pass draws into: the search at `quality`, or a denoise.
   pub fn record(
     &self,
     context: &mut RasterContext<'_>,
-    (stage, quality): (usize, RenderAmbientOcclusionQuality),
+    (stage, quality): (AmbientOcclusionStage, RenderAmbientOcclusionQuality),
     view: &ViewBinding,
     parameters: &AmbientOcclusionParameters,
   ) {
-    let search: usize = QUALITIES.iter().position(|it| *it == quality).unwrap_or(2);
     let pipeline: &wgpu::RenderPipeline = match stage {
-      0 => &self.searches[search],
-      _ => &self.denoises[stage - 1],
+      AmbientOcclusionStage::Search => &self.searches[quality.get_index()],
+      AmbientOcclusionStage::DenoiseAcross => &self.denoises[0],
+      AmbientOcclusionStage::DenoiseBack => &self.denoises[1],
     };
 
     context.bind(parameters);
@@ -99,9 +88,9 @@ impl AmbientOcclusionPass {
   ) -> XrfResult<(Vec<wgpu::RenderPipeline>, [wgpu::RenderPipeline; 2])> {
     let module: &'static str = AmbientOcclusionPermutation::MODULE;
     let layouts: [Option<&wgpu::BindGroupLayout>; 2] = [Some(view_layout), Some(layout)];
-    let mut searches: Vec<wgpu::RenderPipeline> = Vec::with_capacity(QUALITIES.len());
+    let mut searches: Vec<wgpu::RenderPipeline> = Vec::with_capacity(RenderAmbientOcclusionQuality::ALL.len());
 
-    for quality in QUALITIES {
+    for quality in RenderAmbientOcclusionQuality::ALL {
       let (slices, steps) = quality.get_search();
 
       searches.push(create_fullscreen_pipeline_with(

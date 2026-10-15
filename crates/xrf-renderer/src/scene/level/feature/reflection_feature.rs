@@ -16,6 +16,7 @@ use crate::pass::pyramid_level_parameters::PyramidLevelParameters;
 use crate::pass::reflection_parameters::ReflectionParameters;
 use crate::pass::reflection_pass::ReflectionPass;
 use crate::pass::reflection_scene_parameters::ReflectionSceneParameters;
+use crate::pass::reflection_stage::ReflectionStage;
 use crate::pass::reflection_trace::ReflectionTrace;
 use crate::pass::reflection_uniform::ReflectionUniform;
 use crate::pass::sky_parameters::SkyParameters;
@@ -362,21 +363,26 @@ impl ReflectionFeature {
       .record(move |context| {
         passes
           .reflections
-          .record_stage(context, view, &parameters, ReflectionPass::GUIDE)
+          .record_stage(context, view, &parameters, ReflectionStage::Guide)
       });
 
     let parameters: ReflectionParameters<'a> = ReflectionParameters { guide, ..parameters };
     // Each stage, what it reads beside the G-buffer and the history, and what it writes.
-    let stages: [(&'static str, &'static str, ReflectionParameters<'a>, Vec<GraphTexture>); 5] = [
+    let stages: [(
+      &'static str,
+      ReflectionStage,
+      ReflectionParameters<'a>,
+      Vec<GraphTexture>,
+    ); 5] = [
       (
         ReflectionTrace::REPROJECT_PASS,
-        ReflectionPass::REPROJECT,
+        ReflectionStage::Reproject,
         ReflectionParameters { traced, ..parameters },
         vec![reprojected, variance],
       ),
       (
         ReflectionTrace::AVERAGE_PASS,
-        ReflectionPass::AVERAGE_STAGE,
+        ReflectionStage::Average,
         ReflectionParameters {
           traced,
           reprojected,
@@ -386,7 +392,7 @@ impl ReflectionFeature {
       ),
       (
         ReflectionTrace::PREFILTER_PASS,
-        ReflectionPass::PREFILTER,
+        ReflectionStage::Prefilter,
         ReflectionParameters {
           traced,
           variance,
@@ -397,7 +403,7 @@ impl ReflectionFeature {
       ),
       (
         ReflectionTrace::RESOLVE_PASS,
-        ReflectionPass::RESOLVE,
+        ReflectionStage::Resolve,
         ReflectionParameters {
           traced,
           reprojected,
@@ -410,7 +416,7 @@ impl ReflectionFeature {
       ),
       (
         ReflectionTrace::UPSCALE_PASS,
-        ReflectionPass::UPSCALE,
+        ReflectionStage::Upscale,
         ReflectionParameters {
           resolved: written,
           history_full: previous_full,

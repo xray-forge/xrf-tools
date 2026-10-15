@@ -11,14 +11,6 @@ use crate::pass::vbao_parameters::VbaoParameters;
 use crate::pass::vbao_permutation::VbaoPermutation;
 use crate::pass::view_binding::ViewBinding;
 
-/// Every quality, in the order their search pipelines are held.
-const QUALITIES: [RenderAmbientOcclusionQuality; 4] = [
-  RenderAmbientOcclusionQuality::Low,
-  RenderAmbientOcclusionQuality::Medium,
-  RenderAmbientOcclusionQuality::High,
-  RenderAmbientOcclusionQuality::Ultra,
-];
-
 /// The visibility-bitmask search at half the frame's size, for VBAO's occlusion, the indirect light or both:
 /// searched, accumulated over frames into the view's histories, then filtered into what combine reads.
 pub struct VbaoPass {
@@ -137,7 +129,7 @@ impl VbaoPass {
     view: &ViewBinding,
     parameters: &VbaoParameters,
   ) {
-    let search: usize = QUALITIES.iter().position(|it| *it == quality).unwrap_or(2);
+    let search: usize = quality.get_index();
     let searches: &[wgpu::RenderPipeline] = if is_lit {
       &self.pipelines.lit_searches
     } else {
@@ -217,10 +209,10 @@ impl VbaoPass {
     };
     let occluded: &[wgpu::TextureFormat] = &[ViewTargets::OCCLUSION];
     let lit: &[wgpu::TextureFormat] = &[ViewTargets::OCCLUSION, Self::LIGHT];
-    let mut searches: Vec<wgpu::RenderPipeline> = Vec::with_capacity(QUALITIES.len());
-    let mut lit_searches: Vec<wgpu::RenderPipeline> = Vec::with_capacity(QUALITIES.len());
+    let mut searches: Vec<wgpu::RenderPipeline> = Vec::with_capacity(RenderAmbientOcclusionQuality::ALL.len());
+    let mut lit_searches: Vec<wgpu::RenderPipeline> = Vec::with_capacity(RenderAmbientOcclusionQuality::ALL.len());
 
-    for quality in QUALITIES {
+    for quality in RenderAmbientOcclusionQuality::ALL {
       let (slices, steps) = quality.get_vbao_search();
       // An unlit search never steps past the occlusion's radius, so the far steps change only the lit one.
       let permutation: VbaoPermutation = VbaoPermutation {

@@ -5,6 +5,7 @@ use xrf_renderer_core::{PassParameters, RasterContext};
 use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline_into;
 use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::reflection_parameters::ReflectionParameters;
+use crate::pass::reflection_stage::ReflectionStage;
 use crate::pass::sky_parameters::SkyParameters;
 use crate::pass::trace_request_parameters::TraceRequestParameters;
 use crate::pass::view_binding::ViewBinding;
@@ -45,13 +46,6 @@ struct ReflectionPipelines {
 }
 
 impl ReflectionPass {
-  /// The denoiser's stages, by their entry points.
-  pub const REPROJECT: &'static str = "fs_reproject";
-  pub const AVERAGE_STAGE: &'static str = "fs_average";
-  pub const PREFILTER: &'static str = "fs_prefilter";
-  pub const RESOLVE: &'static str = "fs_resolve";
-  pub const UPSCALE: &'static str = "fs_upscale";
-  pub const GUIDE: &'static str = "fs_guide";
   /// Each traced pixel's surface: its world normal packed, its roughness, its depth and its frame texel packed.
   pub const GUIDED: wgpu::TextureFormat = wgpu::TextureFormat::Rgba32Float;
   /// What the trace writes: what is reflected, then the ray's length in metres, below none where nothing is traced.
@@ -190,15 +184,15 @@ impl ReflectionPass {
     context: &mut RasterContext<'_>,
     view: &ViewBinding,
     parameters: &ReflectionParameters<'_>,
-    stage: &str,
+    stage: ReflectionStage,
   ) {
     let pipeline: &wgpu::RenderPipeline = match stage {
-      Self::REPROJECT => &self.pipelines.reproject,
-      Self::AVERAGE_STAGE => &self.pipelines.average,
-      Self::PREFILTER => &self.pipelines.prefilter,
-      Self::UPSCALE => &self.pipelines.upscale,
-      Self::GUIDE => &self.pipelines.guide,
-      _ => &self.pipelines.resolve,
+      ReflectionStage::Reproject => &self.pipelines.reproject,
+      ReflectionStage::Average => &self.pipelines.average,
+      ReflectionStage::Prefilter => &self.pipelines.prefilter,
+      ReflectionStage::Resolve => &self.pipelines.resolve,
+      ReflectionStage::Upscale => &self.pipelines.upscale,
+      ReflectionStage::Guide => &self.pipelines.guide,
     };
 
     Self::draw(context, pipeline, view, parameters);
@@ -238,20 +232,32 @@ impl ReflectionPass {
 
     Ok(ReflectionPipelines {
       trace: create(&traced_layout, "fs_trace", &[Self::TRACED, Self::ENDS])?,
-      reproject: create(&stage_layout, Self::REPROJECT, &[Self::REPROJECTED, Self::VARIANCE])?,
-      average: create(&stage_layout, Self::AVERAGE_STAGE, &[Self::AVERAGE])?,
-      prefilter: create(&stage_layout, Self::PREFILTER, &[Self::PREFILTERED])?,
+      reproject: create(
+        &stage_layout,
+        ReflectionStage::Reproject.get_entry(),
+        &[Self::REPROJECTED, Self::VARIANCE],
+      )?,
+      average: create(&stage_layout, ReflectionStage::Average.get_entry(), &[Self::AVERAGE])?,
+      prefilter: create(
+        &stage_layout,
+        ReflectionStage::Prefilter.get_entry(),
+        &[Self::PREFILTERED],
+      )?,
       resolve: create(
         &stage_layout,
-        Self::RESOLVE,
+        ReflectionStage::Resolve.get_entry(),
         &[
           ReflectionHistory::RADIANCE_FORMAT,
           ReflectionHistory::SURFACE_FORMAT,
           ReflectionHistory::HELD_FORMAT,
         ],
       )?,
-      upscale: create(&stage_layout, Self::UPSCALE, &[ReflectionHistory::RADIANCE_FORMAT])?,
-      guide: create(&stage_layout, Self::GUIDE, &[Self::GUIDED])?,
+      upscale: create(
+        &stage_layout,
+        ReflectionStage::Upscale.get_entry(),
+        &[ReflectionHistory::RADIANCE_FORMAT],
+      )?,
+      guide: create(&stage_layout, ReflectionStage::Guide.get_entry(), &[Self::GUIDED])?,
     })
   }
 }

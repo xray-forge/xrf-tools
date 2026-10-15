@@ -17,6 +17,19 @@ pub enum RenderAmbientOcclusionQuality {
 }
 
 impl RenderAmbientOcclusionQuality {
+  /// Every quality, in the order a pass holds one pipeline a quality.
+  pub const ALL: [Self; 4] = [Self::Low, Self::Medium, Self::High, Self::Ultra];
+
+  /// The quality's place in `ALL`.
+  pub const fn get_index(self) -> usize {
+    match self {
+      Self::Low => 0,
+      Self::Medium => 1,
+      Self::High => 2,
+      Self::Ultra => 3,
+    }
+  }
+
   /// Directions around the view, and steps each way along each.
   pub const fn get_search(self) -> (u32, u32) {
     match self {

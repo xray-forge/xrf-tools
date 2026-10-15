@@ -6,7 +6,7 @@ use crate::contract::render_ambient_occlusion_settings::RenderAmbientOcclusionSe
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::pass::ambient_occlusion_parameters::AmbientOcclusionParameters;
-use crate::pass::ambient_occlusion_pass::AmbientOcclusionPass;
+use crate::pass::ambient_occlusion_stage::AmbientOcclusionStage;
 use crate::pass::ambient_occlusion_uniform::AmbientOcclusionUniform;
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::view_binding::ViewBinding;
@@ -58,17 +58,15 @@ impl AmbientOcclusionFeature {
     let unsearched: GraphTexture =
       bindings.import_view(&mut *graph, "ambient occlusion unsearched", passes.vbao.get_dark());
 
-    for (stage, (name, (read, written))) in ["ambient occlusion", "occlusion denoise", "occlusion denoise back"]
-      .into_iter()
-      .zip(AmbientOcclusionPass::STAGES)
-      .enumerate()
-    {
+    for stage in AmbientOcclusionStage::ALL {
+      let (read, written): (usize, usize) = stage.get_targets();
+
       // Each denoise reads the other target than it draws into, with the normals and the depth.
       let parameters: AmbientOcclusionParameters = AmbientOcclusionParameters {
         normal_target: targets.normal,
         depth_target: targets.depth,
         occlusion,
-        source: if stage == 0 {
+        source: if stage == AmbientOcclusionStage::Search {
           unsearched
         } else {
           targets.occlusion[1 - read]
@@ -76,7 +74,7 @@ impl AmbientOcclusionFeature {
       };
 
       graph
-        .add_raster_pass(name)
+        .add_raster_pass(stage.get_name())
         .parameters(&parameters)
         .color(GraphColorAttachment::new(
           targets.occlusion[written],

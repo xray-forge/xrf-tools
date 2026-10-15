@@ -1,6 +1,7 @@
 pub(crate) mod ambient_occlusion_parameters;
 pub(crate) mod ambient_occlusion_pass;
 pub(crate) mod ambient_occlusion_permutation;
+pub(crate) mod ambient_occlusion_stage;
 pub(crate) mod ambient_occlusion_uniform;
 pub(crate) mod backdrop_pass;
 pub(crate) mod backdrop_uniform;
@@ -140,6 +141,7 @@ pub(crate) mod ray_guides_pass;
 pub(crate) mod reflection_parameters;
 pub(crate) mod reflection_pass;
 pub(crate) mod reflection_scene_parameters;
+pub(crate) mod reflection_stage;
 pub(crate) mod reflection_trace;
 pub(crate) mod reflection_uniform;
 pub(crate) mod rtao_pass;
