@@ -41,6 +41,8 @@ pub struct StaticsFeature {
   matrices: (Mat4, Mat4),
   stats: StatsReadback,
   is_wallmarked: bool,
+  /// Whether the view inspects its surfaces, which draws them with the inspections' code.
+  is_inspected: bool,
 }
 
 impl StaticsFeature {
@@ -53,6 +55,7 @@ impl StaticsFeature {
       matrices: (Mat4::IDENTITY, Mat4::IDENTITY),
       stats: StatsReadback::new(device),
       is_wallmarked: false,
+      is_inspected: true,
     }
   }
 
@@ -99,6 +102,7 @@ impl StaticsFeature {
     };
     self.matrices = (view.view, view.projection);
     self.is_wallmarked = options.show.is_wallmarked;
+    self.is_inspected = options.is_inspecting_surfaces();
 
     if let Some(pyramid) = &self.pyramid {
       let (history_view, history_projection): (Mat4, Mat4) = self.history.unwrap_or(self.matrices);
@@ -185,6 +189,7 @@ impl StaticsFeature {
     let draws: StaticDraws = scene.get_camera_draws();
     let gbuffer: [GraphTexture; 5] = targets.get_gbuffer();
     let depth: GraphTexture = targets.depth;
+    let is_inspected: bool = self.is_inspected;
     let add_draw = |graph: &mut FrameGraph<'a>, name: &'static str, draw_args: GraphBuffer, is_first: bool| {
       let color_load: wgpu::LoadOp<wgpu::Color> = if is_first {
         wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT)
@@ -209,7 +214,7 @@ impl StaticsFeature {
 
         passes
           .gbuffer
-          .record(context, (view, &draws, textures), draw_args, is_first);
+          .record(context, (view, &draws, textures), draw_args, (is_first, is_inspected));
       });
     };
 

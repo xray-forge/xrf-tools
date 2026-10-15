@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::contract::render_antialiasing::RenderAntialiasing;
 use crate::contract::render_asset_preview::RenderAssetPreview;
+use crate::contract::render_debug_view::RenderDebugView;
 use crate::contract::render_show_flags::RenderShowFlags;
 use crate::contract::render_tonemap_mode::RenderTonemapMode;
 use crate::contract::render_view_features::RenderViewFeatures;
@@ -27,6 +28,18 @@ impl RenderViewOptions {
   /// lit, solid view.
   pub fn is_scene_linear(&self) -> bool {
     self.features.tonemap == RenderTonemapMode::Enhanced && self.mode.is_lit && !self.mode.is_wireframe
+  }
+
+  /// Whether the view inspects its surfaces rather than shows them: a wireframe, the asset checker, alpha hidden, or the
+  /// parallax, bumps or heights drawn for their debug views.
+  pub fn is_inspecting_surfaces(&self) -> bool {
+    self.mode.is_wireframe
+      || self.asset.checker > 0.0
+      || !self.show.is_alpha_visible
+      || matches!(
+        self.mode.debug_view,
+        RenderDebugView::Parallax | RenderDebugView::Bumps | RenderDebugView::Heights
+      )
   }
 
   /// Whether the view traces rays through its scene: its reflections or its light's occlusion traced.
