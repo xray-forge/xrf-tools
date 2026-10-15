@@ -304,7 +304,8 @@ impl GrassPass {
     pass.draw_indirect(draw, 0);
   }
 
-  /// Stands the cards: all `triangles` cleared, each of the `tufts` invocations' tuft stood where it is near the eye,
+  /// Stands the cards: their count reset and `triangles` of them cleared, each of the `tufts` invocations' tuft stood
+  /// where it is near the eye,
   /// then the cascades' draw of them sized.
   pub fn record_cards(
     &self,

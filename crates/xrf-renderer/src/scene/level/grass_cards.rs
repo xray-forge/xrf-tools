@@ -21,10 +21,8 @@ pub struct GrassCards {
 }
 
 impl GrassCards {
-  /// Triangles a square metre of the cards' reach holds at the least, twice what Zaton's hill asks (some 7, 37k within
-  /// 40 m), and the least and the most the cards hold whatever their reach; past what the reach holds, how much more room
-  /// than its tufts asked the cards are given (`get_capacity`).
-  const TRIANGLES_PER_SQUARE_METRE: f32 = 16.0;
+  /// The least and the most triangles the cards hold, and how much more room than their tufts asked they are given
+  /// (`get_capacity`).
   const ASKED_MARGIN: f32 = 1.25;
   const LEAST_CAPACITY: u32 = 1 << 14;
   const MOST_CAPACITY: u32 = 1 << 21;
@@ -99,14 +97,12 @@ impl GrassCards {
     }
   }
 
-  /// Triangles cards reaching `reach` metres hold at most, `current` held now and its tufts having last asked for
-  /// `asked`: what the reach's area holds, or `ASKED_MARGIN` more than asked where its grass stands denser, as a power of
-  /// two; grown at once and shrunk only once that falls to half the room. Past their room the cards drop the tufts
-  /// standing last, which the GPU orders as it likes from one frame to the next: a dense meadow's shadows flickered.
-  pub fn get_capacity(reach: f32, current: u32, asked: u32) -> u32 {
-    let area: f32 = std::f32::consts::PI * reach * reach;
-    let wanted: u32 = ((Self::TRIANGLES_PER_SQUARE_METRE * area) as u32)
-      .max((asked as f32 * Self::ASKED_MARGIN) as u32)
+  /// Triangles the cards hold, `current` held now and their tufts having last asked for `asked`: `ASKED_MARGIN` more than
+  /// asked, as a power of two; grown at once and shrunk only once that falls to half the room. Past their room the cards
+  /// drop the tufts standing last, which the GPU orders as it likes from one frame to the next: a dense meadow's shadows
+  /// flickered. Sized by the reach's area instead, the far tufts thinned out left most of it unused, cleared each frame.
+  pub fn get_capacity(current: u32, asked: u32) -> u32 {
+    let wanted: u32 = ((asked as f32 * Self::ASKED_MARGIN) as u32)
       .next_power_of_two()
       .clamp(Self::LEAST_CAPACITY, Self::MOST_CAPACITY);
 

@@ -131,7 +131,6 @@ impl GrassView {
 
     // Made again where the radius or what their tufts ask wants them to hold another number of triangles.
     let capacity: u32 = GrassCards::get_capacity(
-      GrassCards::get_reach(settings).0,
       self.cards.as_ref().map_or(0, |cards| cards.capacity),
       self.card_demand.take()[0],
     );
@@ -280,7 +279,8 @@ impl GrassView {
         pass.record_cards(
           context.get_pass(),
           (&level.bind_group, &build.bind_group, &cards.group),
-          (cards.capacity, tufts),
+          // Only the structure built over them reads the unused triangles, marked as none; the cascades draw the count.
+          (if self.is_card_traced { cards.capacity } else { 0 }, tufts),
         );
       });
 
