@@ -7,6 +7,7 @@ import { JobsService } from "@/core/jobs/services/jobs";
 import { KeymapService } from "@/core/keybinds/services/keymap";
 import { ErrorCaptureService } from "@/core/notifications/services/error-capture.service";
 import { NotificationsService } from "@/core/notifications/services/notifications.service";
+import { RenderSettingsService } from "@/core/render/services/render-settings";
 import { SettingsService } from "@/core/settings/services/settings";
 import { EditorLifecycleService } from "@/core/shell/services/editor-lifecycle";
 import { EditorShellService } from "@/core/shell/services/editor-shell";
@@ -24,5 +25,6 @@ export const ROOT_BINDINGS: ReadonlyArray<Binding> = [
   KeybindCommandsService,
   KeymapService,
   NotificationsService,
+  RenderSettingsService,
   SettingsService,
 ];

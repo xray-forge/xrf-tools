@@ -4,7 +4,7 @@ import { ReactElement } from "react";
 import { RenderLightShadowFilter } from "@/core/ipc/types/xrf-renderer";
 import { RENDER_LIGHT_SHADOW_FILTER_OPTIONS } from "@/core/render/lib/features";
 import { TRenderLightsSettings } from "@/core/render/lib/settings/render-feature-settings";
-import { SettingsService } from "@/core/settings/services/settings";
+import { RenderSettingsService } from "@/core/render/services/render-settings";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { ChoiceFormRow } from "@/core/ui/form/ChoiceFormRow";
 import { DetailSection } from "@/core/ui/layout/DetailSection";
@@ -13,9 +13,9 @@ import { useRendererOverride } from "./use-renderer-override";
 
 /** The local lights: whether they light the level, and whether the level file's own join the spawned ones. */
 export function SettingsRendererLights(): ReactElement {
-  const settingsService: SettingsService = useInjection(SettingsService);
+  const renderSettingsService: RenderSettingsService = useInjection(RenderSettingsService);
 
-  const lights: TRenderLightsSettings = settingsService.rendererFeatures.lights;
+  const lights: TRenderLightsSettings = renderSettingsService.rendererFeatures.lights;
 
   const onSet = useRendererOverride("lights");
 

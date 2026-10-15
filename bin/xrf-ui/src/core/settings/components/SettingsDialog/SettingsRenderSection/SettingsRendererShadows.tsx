@@ -11,7 +11,7 @@ import {
 } from "@/core/render/lib/features";
 import { RENDER_SHADOW_CASCADE_WIDTHS } from "@/core/render/lib/settings/render-feature-defaults";
 import { TRenderShadowSettings } from "@/core/render/lib/settings/render-feature-settings";
-import { SettingsService } from "@/core/settings/services/settings";
+import { RenderSettingsService } from "@/core/render/services/render-settings";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { ChoiceFormRow } from "@/core/ui/form/ChoiceFormRow";
 import { SliderFormRow } from "@/core/ui/form/SliderFormRow";
@@ -21,9 +21,9 @@ import { useRendererOverride } from "./use-renderer-override";
 
 /** The sun's shadow: how many cascades, how fine, and how they are filtered and drawn. */
 export function SettingsRendererShadows(): ReactElement {
-  const settingsService: SettingsService = useInjection(SettingsService);
+  const renderSettingsService: RenderSettingsService = useInjection(RenderSettingsService);
 
-  const shadows: TRenderShadowSettings = settingsService.rendererFeatures.shadows;
+  const shadows: TRenderShadowSettings = renderSettingsService.rendererFeatures.shadows;
 
   const onSet = useRendererOverride("shadows");
 

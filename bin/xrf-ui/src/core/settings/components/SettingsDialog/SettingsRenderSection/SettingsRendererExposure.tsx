@@ -9,7 +9,7 @@ import {
   RENDER_TONEMAP_MODE_OPTIONS,
 } from "@/core/render/lib/features";
 import { TRenderExposureSettings } from "@/core/render/lib/settings/render-feature-settings";
-import { SettingsService } from "@/core/settings/services/settings";
+import { RenderSettingsService } from "@/core/render/services/render-settings";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { ChoiceFormRow } from "@/core/ui/form/ChoiceFormRow";
 import { SliderFormRow } from "@/core/ui/form/SliderFormRow";
@@ -19,9 +19,9 @@ import { useRendererOverride } from "./use-renderer-override";
 
 /** The frame's exposure: whether it adapts to the frame's own luminance, towards what, and how fast. */
 export function SettingsRendererExposure(): ReactElement {
-  const settingsService: SettingsService = useInjection(SettingsService);
+  const renderSettingsService: RenderSettingsService = useInjection(RenderSettingsService);
 
-  const exposure: TRenderExposureSettings = settingsService.rendererFeatures.exposure;
+  const exposure: TRenderExposureSettings = renderSettingsService.rendererFeatures.exposure;
 
   const onSet = useRendererOverride("exposure");
 
@@ -35,8 +35,8 @@ export function SettingsRendererExposure(): ReactElement {
             "it is shown, so blended surfaces mix as light does and an upscaler gets the input it is made for."
           }
           options={RENDER_TONEMAP_MODE_OPTIONS}
-          value={settingsService.rendererFeatures.tonemap}
-          onChange={(tonemap: RenderTonemapMode) => settingsService.setRendererOverrides({ tonemap })}
+          value={renderSettingsService.rendererFeatures.tonemap}
+          onChange={(tonemap: RenderTonemapMode) => renderSettingsService.setRendererOverrides({ tonemap })}
         />
 
         <CheckboxFormRow

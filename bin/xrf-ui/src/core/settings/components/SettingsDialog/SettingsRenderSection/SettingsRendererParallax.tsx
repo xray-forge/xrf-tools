@@ -4,7 +4,7 @@ import { ReactElement } from "react";
 
 import { ERenderParallaxMode, RenderParallaxMode } from "@/core/ipc/types/xrf-renderer";
 import { TRenderParallaxSettings } from "@/core/render/lib/settings/render-feature-settings";
-import { SettingsService } from "@/core/settings/services/settings";
+import { RenderSettingsService } from "@/core/render/services/render-settings";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { ChoiceFormRow, IChoiceFormRowOption } from "@/core/ui/form/ChoiceFormRow";
 import { SliderFormRow } from "@/core/ui/form/SliderFormRow";
@@ -19,9 +19,9 @@ const MODE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<RenderParallaxMode>> = [
 
 /** How the level's surfaces are displaced by their height: the engines' steep parallax, or the enhanced terrain march. */
 export function SettingsRendererParallax(): ReactElement {
-  const settingsService: SettingsService = useInjection(SettingsService);
+  const renderSettingsService: RenderSettingsService = useInjection(RenderSettingsService);
   const onSet = useRendererOverride("parallax");
-  const parallax: TRenderParallaxSettings = settingsService.rendererFeatures.parallax;
+  const parallax: TRenderParallaxSettings = renderSettingsService.rendererFeatures.parallax;
   const isEngine: boolean = parallax.mode === ERenderParallaxMode.ENGINE;
 
   return (

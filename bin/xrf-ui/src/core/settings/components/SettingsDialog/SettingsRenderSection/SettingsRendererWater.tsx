@@ -2,7 +2,7 @@ import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
 import { TRenderWaterSettings } from "@/core/render/lib/settings/render-feature-settings";
-import { SettingsService } from "@/core/settings/services/settings";
+import { RenderSettingsService } from "@/core/render/services/render-settings";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { DetailSection } from "@/core/ui/layout/DetailSection";
 
@@ -10,9 +10,9 @@ import { useRendererOverride } from "./use-renderer-override";
 
 /** The level's water: whether it is drawn as the engine draws it, softened in the shallows, and distorting. */
 export function SettingsRendererWater(): ReactElement {
-  const settingsService: SettingsService = useInjection(SettingsService);
+  const renderSettingsService: RenderSettingsService = useInjection(RenderSettingsService);
 
-  const water: TRenderWaterSettings = settingsService.rendererFeatures.water;
+  const water: TRenderWaterSettings = renderSettingsService.rendererFeatures.water;
 
   const onSet = useRendererOverride("water");
 

@@ -4,7 +4,7 @@ import { ReactElement } from "react";
 
 import { RENDER_FEATURE_SCHEMA } from "@/core/render/lib/settings/render-feature-schema";
 import { TRenderLodSettings } from "@/core/render/lib/settings/render-feature-settings";
-import { SettingsService } from "@/core/settings/services/settings";
+import { RenderSettingsService } from "@/core/render/services/render-settings";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { SliderFormRow } from "@/core/ui/form/SliderFormRow";
 import { DetailSection } from "@/core/ui/layout/DetailSection";
@@ -66,9 +66,9 @@ const LOD_THRESHOLDS: ReadonlyArray<ILodThreshold> = [
 
 /** When a clump of trees draws as its impostor, and a progressive tree at less than its whole detail. */
 export function SettingsRendererLod(): ReactElement {
-  const settingsService: SettingsService = useInjection(SettingsService);
+  const renderSettingsService: RenderSettingsService = useInjection(RenderSettingsService);
 
-  const lod: TRenderLodSettings = settingsService.rendererFeatures.lod;
+  const lod: TRenderLodSettings = renderSettingsService.rendererFeatures.lod;
 
   return (
     <DetailSection
@@ -80,7 +80,7 @@ export function SettingsRendererLod(): ReactElement {
           label={"Impostors"}
           description={"Draws distant tree clusters as impostors. Off, every tree renders at full detail."}
           isChecked={lod.isImpostors}
-          onChange={(isImpostors: boolean) => settingsService.setRendererOverrides({ lod: { isImpostors } })}
+          onChange={(isImpostors: boolean) => renderSettingsService.setRendererOverrides({ lod: { isImpostors } })}
         />
 
         {LOD_THRESHOLDS.map((threshold: ILodThreshold) => (
@@ -93,7 +93,9 @@ export function SettingsRendererLod(): ReactElement {
             max={RENDER_FEATURE_SCHEMA.lod[threshold.key].max}
             step={threshold.step}
             format={(value: number) => formatNumber(value, threshold.digits)}
-            onChange={(value: number) => settingsService.setRendererOverrides({ lod: { [threshold.key]: value } })}
+            onChange={(value: number) =>
+              renderSettingsService.setRendererOverrides({ lod: { [threshold.key]: value } })
+            }
           />
         ))}
       </div>

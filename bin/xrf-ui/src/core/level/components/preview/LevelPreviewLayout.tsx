@@ -38,7 +38,7 @@ import {
   LevelWeatherService,
 } from "@/core/level/services";
 import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-feature-settings";
-import { SettingsService } from "@/core/settings/services/settings";
+import { RenderSettingsService } from "@/core/render/services/render-settings";
 import { EditorFileHeader } from "@/core/shell/editor/EditorFileHeader";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { IEditorPanel, useEditorPanels } from "@/core/shell/editor-shell";
@@ -92,21 +92,14 @@ export function LevelPreviewLayout({
 }: ILevelPreviewLayoutProps): ReactElement {
   const loadService: LevelLoadService = useInjection(LevelLoadService);
   const viewService: LevelViewService = useInjection(LevelViewService);
-  const settingsService: SettingsService = useInjection(SettingsService);
+  const renderSettingsService: RenderSettingsService = useInjection(RenderSettingsService);
   const viewportService: LevelViewportService = useInjection(LevelViewportService);
   const renderService: LevelRenderService = useInjection(LevelRenderService);
   const weatherService: LevelWeatherService = useInjection(LevelWeatherService);
 
   const isOpen: boolean = Boolean(name);
   const heading: Nullable<string> = name ?? pending;
-  const settings: IRenderFeatureSettings = settingsService.rendererFeatures;
-
-  // What each graphics API can do here, which the image quality popover greys its choices out by.
-  useEffect(() => {
-    if (settingsService.renderBackends === null) {
-      void settingsService.refreshRenderBackends();
-    }
-  }, [settingsService]);
+  const settings: IRenderFeatureSettings = renderSettingsService.rendererFeatures;
 
   const features: ILevelFeatureOptions = viewService.features;
 
@@ -173,6 +166,13 @@ export function LevelPreviewLayout({
     []
   );
 
+  // What each graphics API can do here, which the image quality popover greys its choices out by.
+  useEffect(() => {
+    if (renderSettingsService.renderBackends === null) {
+      void renderSettingsService.refreshRenderBackends();
+    }
+  }, [renderSettingsService]);
+
   return (
     <EditorLayout
       toolbar={
@@ -192,21 +192,21 @@ export function LevelPreviewLayout({
           features={features}
           featureView={featureView}
           settings={settings}
-          isGpuTimed={settingsService.isGpuTimed}
+          isGpuTimed={renderSettingsService.isGpuTimed}
           isTraceable={!renderService.frame.adapter || renderService.frame.hasRayQueries}
           dlss={renderService.frame.adapter ? renderService.frame.dlss : ERenderDlssAvailability.AVAILABLE}
           rayReconstruction={
             renderService.frame.adapter ? renderService.frame.rayReconstruction : ERenderDlssAvailability.AVAILABLE
           }
-          backend={settingsService.renderBackend}
-          backends={settingsService.renderBackends}
+          backend={renderSettingsService.renderBackend}
+          backends={renderSettingsService.renderBackends}
           isUpscaled={
             renderService.frame.renderWidth > 0 && renderService.frame.renderWidth < renderService.frame.width
           }
-          onChangeBackend={settingsService.setRenderBackend}
-          resolution={settingsService.renderResolution}
-          outputScale={settingsService.renderOutputScale}
-          graph={settingsService.graph}
+          onChangeBackend={renderSettingsService.setRenderBackend}
+          resolution={renderSettingsService.renderResolution}
+          outputScale={renderSettingsService.renderOutputScale}
+          graph={renderSettingsService.graph}
           shading={viewService.shading}
           actions={actions}
           onChangeOptions={viewService.setOptions}
@@ -215,8 +215,8 @@ export function LevelPreviewLayout({
           onEditManual={weatherService.editManual}
           onChangeLod={viewService.setLod}
           onChangeFeatures={viewService.setFeatures}
-          onChangeGpuTimed={settingsService.setGpuTimed}
-          onChangeGraph={settingsService.setGraph}
+          onChangeGpuTimed={renderSettingsService.setGpuTimed}
+          onChangeGraph={renderSettingsService.setGraph}
           onChangeShading={viewService.setShading}
           onBack={onBack}
         />
