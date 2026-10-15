@@ -527,6 +527,7 @@ impl ResolveFeature {
       GraphTexture,
       GraphTexture,
     ),
+    (diffuse_hits, none): (Option<GraphTexture>, GraphTexture),
   ) -> Option<RayGuides> {
     if !self.is_ray_reconstructed() {
       return None;
@@ -542,7 +543,10 @@ impl ResolveFeature {
       hit_distance: create("ray guides hit distance", RayGuidesPass::HIT_DISTANCE),
       bias: create("ray guides bias", RayGuidesPass::BIAS),
       transparency: None,
+      diffuse_hit_distance: None,
     };
+    // Written whether or not the indirect light is traced, given to the reconstruction only where it is.
+    let diffuse_hit_distance: GraphTexture = create("ray guides diffuse hit distance", RayGuidesPass::HIT_DISTANCE);
     let parameters: RayGuidesParameters = RayGuidesParameters {
       albedo_target: handles.albedo,
       normal_target: handles.normal,
@@ -551,6 +555,7 @@ impl ResolveFeature {
       wet_surface,
       lighting,
       traced,
+      diffuse_hits: diffuse_hits.unwrap_or(none),
     };
     let clear =
       |texture: GraphTexture| GraphColorAttachment::new(texture, wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT));
@@ -562,9 +567,13 @@ impl ResolveFeature {
       .color(clear(guides.normals))
       .color(clear(guides.hit_distance))
       .color(clear(guides.bias))
+      .color(clear(diffuse_hit_distance))
       .record(move |context| passes.ray_guides.record(context, view, &parameters));
 
-    Some(guides)
+    Some(RayGuides {
+      diffuse_hit_distance: diffuse_hits.map(|_| diffuse_hit_distance),
+      ..guides
+    })
   }
 
   /// Adds the resolve of `frame`, the finished frame at the drawn size, against the frame as it stood before the
@@ -774,6 +783,10 @@ impl ResolveFeature {
       .texture(guides.bias, GraphTextureAccess::Sampled)
       .texture(output, GraphTextureAccess::StorageReadWrite);
 
+    if let Some(diffuse) = guides.diffuse_hit_distance {
+      pass = pass.texture(diffuse, GraphTextureAccess::Sampled);
+    }
+
     if let Some([before, after]) = guides.transparency {
       pass = pass
         .texture(before, GraphTextureAccess::Sampled)
@@ -793,6 +806,9 @@ impl ResolveFeature {
         specular_albedo: context.get_texture(guides.specular_albedo).view,
         normals: context.get_texture(guides.normals).view,
         specular_hit_distance: context.get_texture(guides.hit_distance).view,
+        diffuse_hit_distance: guides
+          .diffuse_hit_distance
+          .map(|diffuse| context.get_texture(diffuse).view),
         bias_current_color: Some(context.get_texture(guides.bias).view),
         transparency: guides
           .transparency

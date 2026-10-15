@@ -228,6 +228,10 @@ struct LightTrace {
   radius: f32,
 }
 
+struct IndirectTrace {
+  noise: vec4<f32>,
+}
+
 struct Lights {
   count: u32,
   near: f32,

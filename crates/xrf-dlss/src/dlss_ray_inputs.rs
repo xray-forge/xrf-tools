@@ -19,6 +19,8 @@ pub struct DlssRayInputs<'a> {
   pub normals: &'a wgpu::TextureView,
   /// How far each surface's reflection ray went before it met what it reflects, in metres.
   pub specular_hit_distance: &'a wgpu::TextureView,
+  /// How far each surface's indirect light ray went before it met what lights it, in metres, where that is traced.
+  pub diffuse_hit_distance: Option<&'a wgpu::TextureView>,
   /// How far each pixel is reconstructed from this frame rather than the history, from nothing to one, where its look
   /// changes in place from frame to frame (a puddle's ripples): none to leave every pixel to the network.
   pub bias_current_color: Option<&'a wgpu::TextureView>,
@@ -51,6 +53,7 @@ impl DlssRayInputs<'_> {
       self.specular_hit_distance,
     ];
 
+    views.extend(self.diffuse_hit_distance);
     views.extend(self.bias_current_color);
     views.extend(
       self

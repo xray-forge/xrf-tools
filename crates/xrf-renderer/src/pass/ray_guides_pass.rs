@@ -7,7 +7,7 @@ use crate::pass::ray_guides_parameters::RayGuidesParameters;
 use crate::pass::view_binding::ViewBinding;
 
 /// Works out the guides DLSS ray reconstruction reads beside the frame, at the frame's size: each surface's specular
-/// albedo, its world normal with its roughness, and how far its reflection ray went.
+/// albedo, its world normal with its roughness, and how far its reflection ray and its indirect light ray went.
 pub struct RayGuidesPass {
   layout: wgpu::BindGroupLayout,
   view_layout: wgpu::BindGroupLayout,
@@ -20,7 +20,7 @@ impl RayGuidesPass {
   pub const SPECULAR_ALBEDO: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
   /// The world normal, and the linear roughness in the fourth channel.
   pub const NORMALS: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
-  /// Metres the reflection ray went.
+  /// Metres the reflection ray went, and the indirect light's.
   pub const HIT_DISTANCE: wgpu::TextureFormat = wgpu::TextureFormat::R16Float;
   /// How far a pixel is reconstructed from this frame alone.
   pub const BIAS: wgpu::TextureFormat = wgpu::TextureFormat::R8Unorm;
@@ -81,6 +81,7 @@ impl RayGuidesPass {
         Some(Self::NORMALS.into()),
         Some(Self::HIT_DISTANCE.into()),
         Some(Self::BIAS.into()),
+        Some(Self::HIT_DISTANCE.into()),
       ],
     )
   }

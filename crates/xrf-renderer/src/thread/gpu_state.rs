@@ -26,6 +26,7 @@ use crate::pass::glass_pass::GlassPass;
 use crate::pass::grass_colour_pass::GrassColourPass;
 use crate::pass::grass_pass::GrassPass;
 use crate::pass::grid_pass::GridPass;
+use crate::pass::indirect_trace_pass::IndirectTracePass;
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::light_volume_pass::LightVolumePass;
 use crate::pass::lights_pass::LightsPass;
@@ -117,6 +118,7 @@ pub struct GpuState {
   pub ambient_occlusion: AmbientOcclusionPass,
   pub vbao: VbaoPass,
   pub rtao: RtaoPass,
+  pub indirect_trace: IndirectTracePass,
   pub sun_trace: SunTracePass,
   pub reflections: ReflectionPass,
   pub scene_trace: SceneTracePass,
@@ -207,6 +209,7 @@ impl GpuState {
       let ambient_occlusion = threads.spawn(move || AmbientOcclusionPass::new(device, source, view));
       let vbao = threads.spawn(move || VbaoPass::new(device, queue, source, view));
       let rtao = threads.spawn(move || RtaoPass::new(device, source, view, texture));
+      let indirect_trace = threads.spawn(move || IndirectTracePass::new(device, source, view, sky_layout, texture));
       let reflections = threads.spawn(move || ReflectionPass::new(device, queue, source, view, sky_layout));
       let scene_trace = threads.spawn(move || SceneTracePass::new(device, source, view, sky_layout, texture));
       let trace_sway = threads.spawn(move || TraceSwayPass::new(device, source));
@@ -255,6 +258,7 @@ impl GpuState {
         ambient_occlusion: join(ambient_occlusion)?,
         vbao: join(vbao)?,
         rtao: join(rtao)?,
+        indirect_trace: join(indirect_trace)?,
         sun_trace: join(sun_trace)?,
         reflections: join(reflections)?,
         scene_trace: join(scene_trace)?,
@@ -339,6 +343,7 @@ impl GpuState {
       ambient_occlusion: &self.ambient_occlusion,
       vbao: &self.vbao,
       rtao: &self.rtao,
+      indirect_trace: &self.indirect_trace,
       sun_trace: &self.sun_trace,
       reflections: &self.reflections,
       scene_trace: &self.scene_trace,
@@ -408,6 +413,7 @@ impl GpuState {
     self.ambient_occlusion.refresh(device, source);
     self.vbao.refresh(device, source);
     self.rtao.refresh(device, source);
+    self.indirect_trace.refresh(device, source);
     self.sun_trace.refresh(device, source);
     self.reflections.refresh(device, source);
     self.scene_trace.refresh(device, source);

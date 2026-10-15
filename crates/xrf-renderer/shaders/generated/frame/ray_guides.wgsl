@@ -9,3 +9,4 @@
 @group(1) @binding(4) var wet_surface: texture_2d<f32>;
 @group(1) @binding(5) var<uniform> lighting: Lighting;
 @group(1) @binding(6) var traced: texture_2d<f32>;
+@group(1) @binding(7) var diffuse_hits: texture_2d<f32>;

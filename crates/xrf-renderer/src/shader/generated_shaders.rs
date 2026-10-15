@@ -36,6 +36,8 @@ use crate::pass::glass_uniform::GlassUniform;
 use crate::pass::grass_colour_parameters::GrassColourParameters;
 use crate::pass::grass_model_record::GrassModelRecord;
 use crate::pass::grass_occlusion_parameters::GrassOcclusionParameters;
+use crate::pass::indirect_trace_parameters::IndirectTraceParameters;
+use crate::pass::indirect_trace_uniform::IndirectTraceUniform;
 use crate::pass::light_binning_parameters::LightBinningParameters;
 use crate::pass::light_contact_parameters::LightContactParameters;
 use crate::pass::light_record::LightRecord;
@@ -156,6 +158,7 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
   let mut vbao: ShaderBindings = ShaderBindings::new();
   let mut reflections: ShaderBindings = ShaderBindings::new();
   let mut reflection_scene: ShaderBindings = ShaderBindings::new();
+  let mut indirect_trace: ShaderBindings = ShaderBindings::new();
   let mut trace_requests: ShaderBindings = ShaderBindings::new();
   let mut grass_colours: ShaderBindings = ShaderBindings::new();
   let mut combine: ShaderBindings = ShaderBindings::new();
@@ -212,6 +215,7 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
     .declare::<ContactShadowUniform>()
     .declare::<SunTraceUniform>()
     .declare::<LightTraceUniform>()
+    .declare::<IndirectTraceUniform>()
     .declare::<LightsUniform>()
     .declare::<LightRecord>()
     .declare::<LightVolumeRecord>()
@@ -269,6 +273,7 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
   trace_requests.add::<TraceRequestParameters>()?;
   grass_colours.add::<GrassColourParameters>()?;
   reflection_scene.add::<ReflectionSceneParameters<'_>>()?;
+  indirect_trace.add::<IndirectTraceParameters<'_>>()?;
   combine.add::<CombineParameters<'_>>()?;
   composited.add::<CompositedParameters<'_>>()?;
   glass.add::<GlassParameters<'_>>()?;
@@ -413,6 +418,10 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
     (
       "generated/frame/reflection_scene",
       format!("{STRUCTS_IMPORT}{}", reflection_scene.to_wgsl()),
+    ),
+    (
+      "generated/frame/indirect_trace",
+      format!("{STRUCTS_IMPORT}{}", indirect_trace.to_wgsl()),
     ),
     (
       "generated/common/trace_requests",

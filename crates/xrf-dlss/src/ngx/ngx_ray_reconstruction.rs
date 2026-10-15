@@ -173,6 +173,7 @@ impl NgxRayReconstruction {
     let mut specular_albedo = resource(inputs.specular_albedo);
     let mut normals = resource(inputs.normals);
     let mut hit_distance = resource(inputs.specular_hit_distance);
+    let mut diffuse_hit_distance = inputs.diffuse_hit_distance.map(resource);
     let mut bias = inputs.bias_current_color.map(resource);
     let mut transparency = inputs
       .transparency
@@ -187,6 +188,10 @@ impl NgxRayReconstruction {
     parameters.pInSpecularAlbedo = &mut specular_albedo;
     parameters.pInNormals = &mut normals;
     parameters.pInSpecularHitDistance = &mut hit_distance;
+
+    if let Some(diffuse) = &mut diffuse_hit_distance {
+      parameters.pInDiffuseHitDistance = diffuse;
+    }
 
     if let Some(bias) = &mut bias {
       parameters.pInBiasCurrentColorMask = bias;
@@ -234,6 +239,10 @@ impl NgxRayReconstruction {
       parameters.pInSpecularAlbedo = to_d3d12_resource(inputs.specular_albedo);
       parameters.pInNormals = to_d3d12_resource(inputs.normals);
       parameters.pInSpecularHitDistance = to_d3d12_resource(inputs.specular_hit_distance);
+
+      if let Some(diffuse) = inputs.diffuse_hit_distance {
+        parameters.pInDiffuseHitDistance = to_d3d12_resource(diffuse);
+      }
 
       if let Some(bias) = inputs.bias_current_color {
         parameters.pInBiasCurrentColorMask = to_d3d12_resource(bias);
