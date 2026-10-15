@@ -41,11 +41,13 @@ use crate::scene::level::shadow_sway::ShadowSway;
 use crate::scene::level::shadow_tile::ShadowTile;
 use crate::scene::level::shadow_tile_allocator::ShadowTileAllocator;
 use crate::scene::static_scene::growable_buffer::GrowableBuffer;
+use crate::scene::static_scene::static_cull_scratch::StaticCullScratch;
 use crate::scene::static_scene::static_layout::StaticLayout;
 use crate::scene::static_scene::static_scene::StaticScene;
 
-/// Shadow faces offered at most in one frame, each with a slot of its own in the lists and the draw arguments.
-const FACE_BUDGET: usize = 8;
+/// Shadow faces offered at most in one frame, each with a slot of its own in the lists and the draw arguments: the most
+/// copies of the visible list the static scene admits an item by.
+const FACE_BUDGET: usize = StaticCullScratch::MOST_LIST_COPIES as usize;
 
 /// The passes that draw a frame's faces, as the timer names them.
 static FACE_PASSES: [&str; 4] = [
@@ -435,7 +437,7 @@ impl LevelLightShadows {
       return;
     }
 
-    self.region = ((scene.cull.get_list_capacity().max(1) as u64) * 8).next_multiple_of(self.alignment);
+    self.region = scene.cull.get_list_bytes().next_multiple_of(self.alignment);
     self.lists.reserve(device, encoder, self.region * FACE_BUDGET as u64);
 
     for (index, is_next, face, ticket) in std::mem::take(&mut self.queue) {

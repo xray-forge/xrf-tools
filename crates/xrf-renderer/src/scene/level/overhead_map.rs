@@ -272,9 +272,7 @@ impl OverheadMap {
       };
       let [x, y, width, height] = region;
 
-      cut
-        .lists
-        .reserve(device, encoder, (scene.cull.get_list_capacity().max(1) as u64) * 8);
+      cut.lists.reserve(device, encoder, scene.cull.get_list_bytes());
       scene.cull.reset_args(encoder, &cut.args);
       cut.view.write(
         encoder,

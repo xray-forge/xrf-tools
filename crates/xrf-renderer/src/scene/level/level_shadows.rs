@@ -391,7 +391,7 @@ impl LevelShadows {
   ) {
     let scene = frame.scene;
     let resolution: u32 = self.maps.as_ref().map_or(1, |maps| maps.resolution);
-    let list_bytes: u64 = (scene.cull.get_list_capacity().max(1) as u64) * 8;
+    let list_bytes: u64 = scene.cull.get_list_bytes();
     let ready = |cut: &mut ShadowCut, encoder: &mut FrameEncoder, view: &CameraView, rect| {
       cut.lists.reserve(device, encoder, list_bytes);
       scene.cull.reset_args(encoder, &cut.args);

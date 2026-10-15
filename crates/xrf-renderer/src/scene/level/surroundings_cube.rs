@@ -315,7 +315,7 @@ impl SurroundingsCube {
     let size: u32 = probe.get_size();
     let drawn: u32 = Self::get_drawn_size(size);
     let scene = frame.scene;
-    let list_bytes: u64 = (scene.cull.get_list_capacity().max(1) as u64) * 8;
+    let list_bytes: u64 = scene.cull.get_list_bytes();
 
     match offer {
       CubeOffer::Band => {

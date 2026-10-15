@@ -365,6 +365,8 @@ impl StaticScene {
 
     self.surfaces.put(device, queue, encoder, &writer);
 
+    self.cull.check_capacities(device, &writer.capacities)?;
+
     let spans: StaticSpans = self.geometry.allocate(device, queue, &writer)?;
 
     writer.relocate(&spans);
@@ -644,6 +646,16 @@ impl StaticScene {
     let matrix: Mat4 = place.transform;
     let scale: f32 = Self::to_scale(&matrix);
     let placed: Vec4 = matrix.transform_point3(sphere.truncate()).extend(sphere.w * scale);
+    let mut capacities: [u32; StaticBatch::LIST_COUNT] = [0; StaticBatch::LIST_COUNT];
+
+    for (_, clusters, batch, passes) in &slots {
+      for list in batch.list_draw_lists(*passes) {
+        capacities[list] += clusters;
+      }
+    }
+
+    self.cull.check_capacities(device, &capacities)?;
+
     let span: Span = self.geometry.places.allocate(device, queue, 1)?;
     let bones: Option<(Span, u32)> = match skin {
       Some((_, bones)) => {
@@ -685,14 +697,9 @@ impl StaticScene {
       }),
     );
 
-    let mut capacities: [u32; StaticBatch::LIST_COUNT] = [0; StaticBatch::LIST_COUNT];
     let rows: Vec<ProxyHandle<StaticRow>> = slots
       .iter()
-      .map(|(slot, clusters, batch, passes)| {
-        for list in batch.list_draw_lists(*passes) {
-          capacities[list] += clusters;
-        }
-
+      .map(|(slot, ..)| {
         self.geometry.add_row(StaticRow {
           sphere: placed,
           place: index,

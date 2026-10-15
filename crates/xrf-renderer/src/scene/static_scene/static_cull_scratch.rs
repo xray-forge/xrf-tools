@@ -1,3 +1,5 @@
+use xrf_error::{XrfError, XrfResult};
+
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::scene::static_scene::growable_buffer::GrowableBuffer;
 use crate::scene::static_scene::static_batch::StaticBatch;
@@ -42,6 +44,12 @@ impl StaticCullScratch {
   /// Bytes a cull's draw arguments take.
   pub const ARGS_SIZE: u64 = Self::IMPOSTOR_ARGS_OFFSET + 16;
 
+  /// Bytes an entry of the visible list takes.
+  pub const ENTRY_BYTES: u64 = 8;
+
+  /// The most copies of the visible list one frame's buffer holds: a light's shadow faces drawn in a frame.
+  pub const MOST_LIST_COPIES: u64 = 8;
+
   pub fn new(device: &wgpu::Device) -> Self {
     let storage: wgpu::BufferUsages = wgpu::BufferUsages::STORAGE;
     let drawn: wgpu::BufferUsages =
@@ -83,6 +91,30 @@ impl StaticCullScratch {
     }
   }
 
+  /// Refuses an item whose clusters would grow the visible list, at the most copies of it one buffer holds, past what
+  /// the device binds as one storage buffer; asked before the item allocates anything.
+  pub fn check_capacities(&self, device: &wgpu::Device, added: &[u32; StaticBatch::LIST_COUNT]) -> XrfResult {
+    let limits: wgpu::Limits = device.limits();
+    let entries: u64 = self
+      .capacities
+      .iter()
+      .zip(added)
+      .map(|(total, added)| u64::from(*total) + u64::from(*added))
+      .sum();
+    let region: u64 =
+      (entries.max(1) * Self::ENTRY_BYTES).next_multiple_of(u64::from(limits.min_storage_buffer_offset_alignment));
+    let bytes: u64 = region * Self::MOST_LIST_COPIES;
+    let most: u64 = limits.max_buffer_size.min(limits.max_storage_buffer_binding_size);
+
+    if bytes > most {
+      return Err(XrfError::new_unexpected_error(format!(
+        "The static scene's visible list would take {bytes} bytes, past the {most} one GPU buffer holds"
+      )));
+    }
+
+    Ok(())
+  }
+
   /// Adds an item's clusters to each draw list's capacity, which sizes the lists' regions.
   pub fn add_capacities(&mut self, capacities: &[u32; StaticBatch::LIST_COUNT]) {
     for (total, added) in self.capacities.iter_mut().zip(capacities) {
@@ -118,6 +150,11 @@ impl StaticCullScratch {
     self.list_capacity
   }
 
+  /// Bytes one copy of the visible list takes, at least an entry's, which each view's lists are reserved at.
+  pub fn get_list_bytes(&self) -> u64 {
+    u64::from(self.list_capacity.max(1)) * Self::ENTRY_BYTES
+  }
+
   /// Writes each draw list's run of the visible list and the templates its draw arguments are reset from.
   fn write(&mut self, device: &wgpu::Device, encoder: &mut FrameEncoder) {
     let mut base: u32 = 0;
@@ -140,8 +177,8 @@ impl StaticCullScratch {
     late.extend_from_slice(&[0, 1, 1, 0]);
 
     self.list_capacity = base;
-    self.lists.reserve(device, encoder, (base.max(1) as u64) * 8);
-    self.candidates.reserve(device, encoder, (base.max(1) as u64) * 8);
+    self.lists.reserve(device, encoder, self.get_list_bytes());
+    self.candidates.reserve(device, encoder, self.get_list_bytes());
     encoder.write_buffer(&self.regions, 0, bytemuck::cast_slice(&regions));
     encoder.write_buffer(&self.args_template, 0, bytemuck::cast_slice(&args));
     encoder.write_buffer(&self.late_template, 0, bytemuck::cast_slice(&late));
