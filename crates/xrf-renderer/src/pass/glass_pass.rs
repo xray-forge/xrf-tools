@@ -144,13 +144,15 @@ impl GlassPass {
     context.get_pass().set_bind_group(1, textures, &[]);
 
     for (layout, pipeline) in StaticLayout::ALL.into_iter().zip(&self.pipelines) {
-      let list: u64 = StaticBatch::get_pass_list(layout, StaticSurfacePass::Glass).into();
+      let list: u32 = StaticBatch::get_pass_list(layout, StaticSurfacePass::Glass);
 
       context.bind(&layouts[layout.get_index()]);
       context.get_pass().set_pipeline(pipeline);
 
       for args in args {
-        context.get_pass().draw_indirect(args, list * 16);
+        context
+          .get_pass()
+          .draw_indirect(args, StaticBatch::get_list_args_offset(list));
       }
     }
   }

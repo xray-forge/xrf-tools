@@ -95,14 +95,14 @@ impl StaticGBufferPass {
       if let Some(prepass) = prepass {
         context.bind(&draws.layouts[batch.layout.get_index()]);
         context.get_pass().set_pipeline(prepass);
-        context.get_pass().draw_indirect(args, batch.get_index() as u64 * 16);
+        context.get_pass().draw_indirect(args, batch.get_args_offset());
       }
     }
 
     for (batch, pipeline) in StaticBatch::list_deferred().zip(&drawing.draws) {
       context.bind(&draws.layouts[batch.layout.get_index()]);
       context.get_pass().set_pipeline(pipeline);
-      context.get_pass().draw_indirect(args, batch.get_index() as u64 * 16);
+      context.get_pass().draw_indirect(args, batch.get_args_offset());
     }
 
     if is_first {
@@ -139,7 +139,7 @@ impl StaticGBufferPass {
       context.get_pass().set_pipeline(pipeline);
 
       for args in args {
-        context.get_pass().draw_indirect(args, batch.get_index() as u64 * 16);
+        context.get_pass().draw_indirect(args, batch.get_args_offset());
       }
     }
 
@@ -168,7 +168,7 @@ impl StaticGBufferPass {
       context.get_pass().set_pipeline(pipeline);
 
       for args in args {
-        context.get_pass().draw_indirect(args, batch.get_index() as u64 * 16);
+        context.get_pass().draw_indirect(args, batch.get_args_offset());
       }
     }
   }

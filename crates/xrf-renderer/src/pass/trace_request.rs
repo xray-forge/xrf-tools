@@ -27,6 +27,10 @@ impl TraceRequest {
   /// Words the head holds: `HEAD`'s, then the wait its pixels' turns are stretched by, which a frame keeps from the
   /// last.
   pub const HEAD_WORDS: usize = Self::HEAD.len() + 1;
+  /// Where the scene pass's dispatch starts in the head: after the count of requests made.
+  pub const HEAD_DISPATCH_OFFSET: u64 = size_of::<u32>() as u64;
+  /// Bytes an indirect dispatch takes.
+  pub const DISPATCH_BYTES: u64 = size_of::<wgpu::util::DispatchIndirectArgs>() as u64;
 
   /// Requests a workgroup of the scene pass traces.
   pub const WORKGROUP: u32 = 64;

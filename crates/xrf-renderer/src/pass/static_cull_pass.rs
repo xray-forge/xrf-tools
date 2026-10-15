@@ -130,7 +130,13 @@ impl StaticCullPass {
   /// Copies how many workgroups the late phase takes, as many as the early phase set aside, where its dispatch reads
   /// them.
   pub fn record_late_dispatch(&self, encoder: &mut wgpu::CommandEncoder, late: &wgpu::Buffer, dispatch: &wgpu::Buffer) {
-    encoder.copy_buffer_to_buffer(late, StaticCullScratch::LATE_DISPATCH_OFFSET, dispatch, 0, 12);
+    encoder.copy_buffer_to_buffer(
+      late,
+      StaticCullScratch::LATE_DISPATCH_OFFSET,
+      dispatch,
+      0,
+      size_of::<wgpu::util::DispatchIndirectArgs>() as u64,
+    );
   }
 
   /// Tests what the early phase set aside again, then clamps the late counts.

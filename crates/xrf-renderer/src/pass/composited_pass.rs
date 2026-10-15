@@ -118,7 +118,7 @@ impl CompositedPass {
       context.get_pass().set_pipeline(pipeline);
 
       for args in args {
-        context.get_pass().draw_indirect(args, batch.get_index() as u64 * 16);
+        context.get_pass().draw_indirect(args, batch.get_args_offset());
       }
     }
   }
@@ -141,7 +141,9 @@ impl CompositedPass {
     for (layout, first, count) in runs {
       // The composited batches run in layout order, one a layout, so a layout's program is its batch's.
       context.bind(&sorted[layout.get_index()]);
-      context.get_pass().set_pipeline(&self.pipelines.composited[layout.get_index()]);
+      context
+        .get_pass()
+        .set_pipeline(&self.pipelines.composited[layout.get_index()]);
       context
         .get_pass()
         .draw(0..StaticGeometry::CLUSTER_VERTICES, *first..first + count);
@@ -181,13 +183,15 @@ impl CompositedPass {
     Self::bind_common(context, (view, textures), (composited, sky));
 
     for (layout, pipeline) in StaticLayout::ALL.into_iter().zip(&self.pipelines.distortion) {
-      let list: u64 = StaticBatch::get_pass_list(layout, StaticSurfacePass::Distortion).into();
+      let list: u32 = StaticBatch::get_pass_list(layout, StaticSurfacePass::Distortion);
 
       context.bind(&layouts[layout.get_index()]);
       context.get_pass().set_pipeline(pipeline);
 
       for args in args {
-        context.get_pass().draw_indirect(args, list * 16);
+        context
+          .get_pass()
+          .draw_indirect(args, StaticBatch::get_list_args_offset(list));
       }
     }
   }
@@ -212,7 +216,7 @@ impl CompositedPass {
       context.get_pass().set_pipeline(pipeline);
 
       for args in args {
-        context.get_pass().draw_indirect(args, batch.get_index() as u64 * 16);
+        context.get_pass().draw_indirect(args, batch.get_args_offset());
       }
     }
   }
@@ -241,7 +245,7 @@ impl CompositedPass {
       context.get_pass().set_pipeline(pipeline);
 
       for args in args {
-        context.get_pass().draw_indirect(args, batch.get_index() as u64 * 16);
+        context.get_pass().draw_indirect(args, batch.get_args_offset());
       }
     }
   }

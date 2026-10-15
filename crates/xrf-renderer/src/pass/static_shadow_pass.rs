@@ -181,7 +181,7 @@ impl StaticShadowPass {
       context.get_pass().set_pipeline(pipeline);
       context
         .get_pass()
-        .draw_indirect(args, args_offset + batch.get_index() as u64 * 16);
+        .draw_indirect(args, args_offset + batch.get_args_offset());
     }
   }
 

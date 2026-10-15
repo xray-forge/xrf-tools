@@ -458,7 +458,7 @@ impl WaterPass {
       context.bind(&layouts[batch.layout.get_index()]);
 
       for args in args {
-        context.get_pass().draw_indirect(args, batch.get_index() as u64 * 16);
+        context.get_pass().draw_indirect(args, batch.get_args_offset());
       }
     }
   }

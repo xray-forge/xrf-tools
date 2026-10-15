@@ -38,7 +38,7 @@ impl TraceRequestList {
       ),
       dispatch: buffer(
         "request dispatch",
-        12,
+        TraceRequest::DISPATCH_BYTES,
         wgpu::BufferUsages::INDIRECT | wgpu::BufferUsages::COPY_DST,
       ),
     }

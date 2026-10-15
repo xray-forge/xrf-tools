@@ -15,6 +15,19 @@ impl StaticBatch {
   /// Draw lists the cull fills a frame: one a batch, then one a layout and surface pass, in that order.
   pub const LIST_COUNT: usize = Self::COUNT + StaticLayout::COUNT * StaticSurfacePass::COUNT;
 
+  /// Bytes one draw list's indirect arguments take.
+  pub const ARGS_BYTES: u64 = size_of::<wgpu::util::DrawIndirectArgs>() as u64;
+
+  /// Where a draw list's indirect arguments start, by its number.
+  pub fn get_list_args_offset(list: u32) -> u64 {
+    u64::from(list) * Self::ARGS_BYTES
+  }
+
+  /// Where the batch's own draw list's indirect arguments start.
+  pub fn get_args_offset(self) -> u64 {
+    Self::get_list_args_offset(self.get_index())
+  }
+
   pub fn get_index(self) -> u32 {
     (self.layout.get_index() * StaticClass::ALL.len() + self.class.get_index()) as u32
   }

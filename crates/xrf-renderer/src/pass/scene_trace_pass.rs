@@ -156,7 +156,13 @@ impl SceneTracePass {
       .record(move |context| {
         let (head, copied) = (context.get_buffer(head), context.get_buffer(dispatch));
 
-        context.get_encoder().copy_buffer_to_buffer(head, 4, copied, 0, 12);
+        context.get_encoder().copy_buffer_to_buffer(
+          head,
+          TraceRequest::HEAD_DISPATCH_OFFSET,
+          copied,
+          0,
+          TraceRequest::DISPATCH_BYTES,
+        );
       });
     graph
       .add_compute_pass(names.1)
