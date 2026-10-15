@@ -19,7 +19,7 @@ use crate::pass::fsr_shading_pyramid_parameters::FsrShadingPyramidParameters;
 use crate::pass::fsr_uniform::FsrUniform;
 use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline_into;
 use crate::pass::pipeline_source::PipelineSource;
-use crate::scene::level::feature::fsr_frame::FsrFrame;
+use crate::scene::level::feature::fsr_graph_textures::FsrGraphTextures;
 use crate::scene::level::feature::fsr_targets::FsrTargets;
 
 /// Drawn texels a side of one workgroup of the depth reconstruction.
@@ -136,31 +136,29 @@ impl FsrPass {
     (fsr, uniform): (&'a FsrTargets, &FsrUniform),
     debug: Option<(RenderDebugView, GraphTexture)>,
   ) {
-    let pipelines: &'a FsrPipelines = &self.pipelines;
-    let sampler: &'a wgpu::Sampler = &self.sampler;
     let uniform: UniformBinding<FsrUniform> = runtime.push_uniform(uniform);
-    let reconstructed: GraphBuffer = bindings.import_buffer(graph, "fsr reconstructed", &fsr.reconstructed);
-    let mut import = |label: &'static str, view: &'a wgpu::TextureView| bindings.import_view(graph, label, view);
-    let opaque: GraphTexture = import("fsr opaque", &fsr.opaque.view);
-    let reactive: GraphTexture = import("fsr reactive", &fsr.reactive.view);
-    let dilated_depth: GraphTexture = import("fsr dilated depth", &fsr.dilated_depth.view);
-    let dilated_motion: GraphTexture = import("fsr dilated motion", &fsr.dilated_motion.view);
-    let farthest_depth: GraphTexture = import("fsr farthest depth", &fsr.farthest_depth.view);
-    let half_farthest_depth: GraphTexture = import("fsr half farthest depth", &fsr.half_farthest_depth.view);
-    let [level0, level1, level2] = fsr
-      .shading_pyramid
-      .each_ref()
-      .map(|level| import("fsr shading pyramid", &level.view));
-    let shading_change: GraphTexture = import("fsr shading change", &fsr.shading_change.view);
-    let masks: GraphTexture = import("fsr masks", &fsr.masks.view);
-    let new_locks: GraphTexture = import("fsr new locks", &fsr.new_locks.view);
-    let luma_instability: GraphTexture = import("fsr luma instability", &fsr.luma_instability.view);
-    // This frame's targets, written, and the last frame's, read.
-    let sides: [&'a FsrFrame; 2] = fsr.frames.get_sides();
-    let [luma, previous_luma] = sides.map(|frame| import("fsr luma", &frame.luma.view));
-    let [accumulation, previous_accumulation] = sides.map(|frame| import("fsr accumulation", &frame.accumulation.view));
-    let [luma_history, previous_luma_history] = sides.map(|frame| import("fsr luma history", &frame.luma_history.view));
-    let [history, previous_history] = sides.map(|frame| import("fsr history", &frame.history.view));
+    let textures: FsrGraphTextures = FsrGraphTextures::import(graph, bindings, fsr);
+
+    self.add_reconstruction(graph, (targets, textures, uniform), fsr.render);
+    self.add_shading_change(graph, textures, uniform);
+
+    let accumulate: FsrAccumulateParameters = self.add_accumulation(graph, (targets, textures, uniform));
+
+    if let Some((view, shown)) = debug {
+      self.add_debug_view(graph, (view, shown), (textures, uniform), accumulate);
+    }
+  }
+
+  /// The reconstruction's buffer cleared to the far plane, zero reversed, the previous depth reconstructed into it, and
+  /// the inputs prepared: the dilated depth and motion, the farthest depth and its half, and the frame's luma.
+  fn add_reconstruction<'a>(
+    &'a self,
+    graph: &mut FrameGraph<'a>,
+    (targets, textures, uniform): (ViewTargetHandles, FsrGraphTextures, UniformBinding<FsrUniform>),
+    render: (u32, u32),
+  ) {
+    let pipelines: &'a FsrPipelines = &self.pipelines;
+    let reconstructed: GraphBuffer = textures.reconstructed;
 
     graph
       .add_encoder_pass("fsr clear")
@@ -188,8 +186,8 @@ impl FsrPass {
 
         pass.set_pipeline(&pipelines.reconstruct);
         pass.dispatch_workgroups(
-          fsr.render.0.div_ceil(RECONSTRUCT_WORKGROUP),
-          fsr.render.1.div_ceil(RECONSTRUCT_WORKGROUP),
+          render.0.div_ceil(RECONSTRUCT_WORKGROUP),
+          render.1.div_ceil(RECONSTRUCT_WORKGROUP),
           1,
         );
       });
@@ -198,7 +196,12 @@ impl FsrPass {
       graph,
       (
         "fsr prepare inputs",
-        &[dilated_depth, dilated_motion, farthest_depth, luma],
+        &[
+          textures.dilated_depth,
+          textures.dilated_motion,
+          textures.farthest_depth,
+          textures.luma,
+        ],
         &pipelines.prepare_inputs,
       ),
       FsrPrepareInputsParameters {
@@ -212,22 +215,34 @@ impl FsrPass {
       graph,
       (
         "fsr farthest depth",
-        &[half_farthest_depth],
+        &[textures.half_farthest_depth],
         &pipelines.downsample_depth,
       ),
       FsrDownsampleParameters {
         fsr: uniform,
-        source: farthest_depth,
+        source: textures.farthest_depth,
       },
     );
+  }
+
+  /// The shading change pyramid, built from the luma of this frame and the last, and the shading change read off it.
+  fn add_shading_change<'a>(
+    &'a self,
+    graph: &mut FrameGraph<'a>,
+    textures: FsrGraphTextures,
+    uniform: UniformBinding<FsrUniform>,
+  ) {
+    let pipelines: &'a FsrPipelines = &self.pipelines;
+    let [level0, level1, level2] = textures.pyramid;
+
     Self::add_stage(
       graph,
       ("fsr shading pyramid", &[level0], &pipelines.shading_pyramid),
       FsrShadingPyramidParameters {
         fsr: uniform,
-        dilated_motion,
-        luma,
-        previous_luma,
+        dilated_motion: textures.dilated_motion,
+        luma: textures.luma,
+        previous_luma: textures.previous_luma,
       },
     );
 
@@ -241,21 +256,37 @@ impl FsrPass {
 
     Self::add_stage(
       graph,
-      ("fsr shading change", &[shading_change], &pipelines.shading_change),
+      (
+        "fsr shading change",
+        &[textures.shading_change],
+        &pipelines.shading_change,
+      ),
       FsrShadingChangeParameters {
         fsr: uniform,
         level0,
         level1,
         level2,
-        linear_sampler: sampler,
+        linear_sampler: &self.sampler,
       },
     );
+  }
+
+  /// The reactive mask, the reactivity, the luma instability and the accumulation into this frame's history; answers
+  /// the accumulation's parameters, which a debug view of its share reads.
+  fn add_accumulation<'a>(
+    &'a self,
+    graph: &mut FrameGraph<'a>,
+    (targets, textures, uniform): (ViewTargetHandles, FsrGraphTextures, UniformBinding<FsrUniform>),
+  ) -> FsrAccumulateParameters<'a> {
+    let pipelines: &'a FsrPipelines = &self.pipelines;
+    let sampler: &'a wgpu::Sampler = &self.sampler;
+
     Self::add_stage(
       graph,
-      ("fsr reactive", &[reactive], &pipelines.reactive),
+      ("fsr reactive", &[textures.reactive], &pipelines.reactive),
       FsrReactiveParameters {
         fsr: uniform,
-        opaque,
+        opaque: textures.opaque,
         color: targets.scene,
       },
     );
@@ -263,18 +294,18 @@ impl FsrPass {
       graph,
       (
         "fsr prepare reactivity",
-        &[masks, accumulation, new_locks],
+        &[textures.masks, textures.accumulation, textures.new_locks],
         &pipelines.prepare_reactivity,
       ),
       FsrPrepareReactivityParameters {
         fsr: uniform,
-        dilated_depth,
-        dilated_motion,
-        reconstructed: StorageArray::new(reconstructed),
-        reactive_mask: reactive,
-        shading_change,
-        luma,
-        previous_accumulation,
+        dilated_depth: textures.dilated_depth,
+        dilated_motion: textures.dilated_motion,
+        reconstructed: StorageArray::new(textures.reconstructed),
+        reactive_mask: textures.reactive,
+        shading_change: textures.shading_change,
+        luma: textures.luma,
+        previous_accumulation: textures.previous_accumulation,
         linear_sampler: sampler,
         material_target: targets.material,
       },
@@ -283,64 +314,75 @@ impl FsrPass {
       graph,
       (
         "fsr luma instability",
-        &[luma_history, luma_instability],
+        &[textures.luma_history, textures.luma_instability],
         &pipelines.luma_instability,
       ),
       FsrLumaInstabilityParameters {
         fsr: uniform,
-        dilated_motion,
-        masks,
-        luma,
-        previous_luma_history,
+        dilated_motion: textures.dilated_motion,
+        masks: textures.masks,
+        luma: textures.luma,
+        previous_luma_history: textures.previous_luma_history,
         linear_sampler: sampler,
       },
     );
+
     let accumulate: FsrAccumulateParameters = FsrAccumulateParameters {
       fsr: uniform,
       color: targets.scene,
-      dilated_motion,
-      masks,
-      luma_instability,
-      farthest_depth: half_farthest_depth,
-      new_locks,
-      history: previous_history,
+      dilated_motion: textures.dilated_motion,
+      masks: textures.masks,
+      luma_instability: textures.luma_instability,
+      farthest_depth: textures.half_farthest_depth,
+      new_locks: textures.new_locks,
+      history: textures.previous_history,
       linear_sampler: sampler,
     };
 
-    Self::add_stage(graph, ("fsr accumulate", &[history], &pipelines.accumulate), accumulate);
+    Self::add_stage(
+      graph,
+      ("fsr accumulate", &[textures.history], &pipelines.accumulate),
+      accumulate,
+    );
 
-    let Some((view, shown)) = debug else {
-      return;
-    };
-    let debug_views: &'a FsrDebugPipelines = &pipelines.debug_views;
+    accumulate
+  }
+
+  /// One of FSR's debug views drawn into the target beside it; nothing for a view that is not FSR's.
+  fn add_debug_view<'a>(
+    &'a self,
+    graph: &mut FrameGraph<'a>,
+    (view, shown): (RenderDebugView, GraphTexture),
+    (textures, uniform): (FsrGraphTextures, UniformBinding<FsrUniform>),
+    accumulate: FsrAccumulateParameters<'a>,
+  ) {
+    let debug_views: &'a FsrDebugPipelines = &self.pipelines.debug_views;
     let parameters: FsrDebugViewParameters = FsrDebugViewParameters {
       fsr: uniform,
-      masks,
-      new_locks,
-      luma_instability,
-      history,
+      masks: textures.masks,
+      new_locks: textures.new_locks,
+      luma_instability: textures.luma_instability,
+      history: textures.history,
+    };
+    let pipeline: &'a wgpu::RenderPipeline = match view {
+      RenderDebugView::FsrMasks => &debug_views.masks,
+      RenderDebugView::FsrHistoryTrust => &debug_views.history_trust,
+      RenderDebugView::FsrLocks => &debug_views.locks,
+      RenderDebugView::FsrLumaInstability => &debug_views.luma_instability,
+      // The frame share reads what the accumulation read.
+      RenderDebugView::FsrFrameShare => {
+        Self::add_stage(
+          graph,
+          ("fsr debug view", &[shown], &debug_views.frame_share),
+          accumulate,
+        );
+
+        return;
+      }
+      _ => return,
     };
 
-    match view {
-      RenderDebugView::FsrMasks => Self::add_stage(graph, ("fsr debug view", &[shown], &debug_views.masks), parameters),
-      RenderDebugView::FsrHistoryTrust => Self::add_stage(
-        graph,
-        ("fsr debug view", &[shown], &debug_views.history_trust),
-        parameters,
-      ),
-      RenderDebugView::FsrLocks => Self::add_stage(graph, ("fsr debug view", &[shown], &debug_views.locks), parameters),
-      RenderDebugView::FsrLumaInstability => Self::add_stage(
-        graph,
-        ("fsr debug view", &[shown], &debug_views.luma_instability),
-        parameters,
-      ),
-      RenderDebugView::FsrFrameShare => Self::add_stage(
-        graph,
-        ("fsr debug view", &[shown], &debug_views.frame_share),
-        accumulate,
-      ),
-      _ => {}
-    }
+    Self::add_stage(graph, ("fsr debug view", &[shown], pipeline), parameters);
   }
 
   /// A full-screen stage drawing into its targets, cleared first, with its parameters.
