@@ -65,6 +65,19 @@ fn gusts_wander_within_two_thirds_of_nothing() {
   assert!(values.iter().any(|value| (value - values[0]).abs() > 1e-3));
 }
 
+// A year in, a frame's step still moves every gust: the noise's own times stay within its period rather than grow past
+// where a float holds a frame.
+#[test]
+fn gusts_keep_moving_a_year_on() {
+  let mut noise: WindNoise = WindNoise::new(7);
+  let year: Duration = Duration::from_secs(365 * 24 * 60 * 60);
+  let values: Vec<f32> = (0..60)
+    .map(|frame| noise.read(year + Duration::from_millis(frame * 16), 1.0))
+    .collect();
+
+  assert!(values.windows(2).all(|pair| pair[0] != pair[1]), "{values:?}");
+}
+
 #[test]
 fn a_blast_rises_turns_falls_and_leaves_no_wind_behind() {
   let effect: RenderAmbientEffect = blasting(0.0);

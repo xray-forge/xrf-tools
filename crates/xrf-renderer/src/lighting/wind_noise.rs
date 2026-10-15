@@ -8,6 +8,15 @@ const SAMPLES: usize = 256;
 /// `N`: what the argument is lifted by before it is cut into the table's cells.
 const LIFT: f32 = 4096.0;
 
+/// How far the argument moves before the noise repeats: a cell is the argument's whole part masked by `SAMPLES - 1`,
+/// and the lift adds whole tables to it, so moving the argument by `SAMPLES` lands in the same cell at the same place.
+const PERIOD: f32 = SAMPLES as f32;
+
+const _: () = assert!(
+  (LIFT as usize).is_multiple_of(SAMPLES),
+  "the lift must add whole tables"
+);
+
 /// `SetOctaves(2)` and `SetAmplitude(0.66666f)`, as `CEnvironment` sets its noise up.
 const OCTAVES: usize = 2;
 const AMPLITUDE: f32 = 0.66666;
@@ -57,7 +66,8 @@ impl WindNoise {
   }
 
   /// `GetContinious`: the noise at a moment read at a frequency; within two thirds of zero either way. The step since
-  /// the last read is taken before it is made seconds, so the noise keeps its pace however long its clock has run.
+  /// the last read is taken before it is made seconds, and each octave's time kept within one `PERIOD`, so the noise
+  /// keeps its pace however long its clock has run.
   pub fn read(&mut self, time: Duration, frequency: f32) -> f32 {
     let mut step: f32 = time.saturating_sub(self.previous).as_secs_f32();
     let mut amplitude: f32 = AMPLITUDE;
@@ -67,7 +77,7 @@ impl WindNoise {
     step *= frequency;
 
     for octave in &mut self.times {
-      *octave += step;
+      *octave = (*octave + step).rem_euclid(PERIOD);
       result += Self::noise(&self.order, &self.gradients, *octave) * amplitude;
       step *= 2.0;
       amplitude *= 0.5;
