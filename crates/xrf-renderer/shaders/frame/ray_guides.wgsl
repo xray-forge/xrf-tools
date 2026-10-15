@@ -40,7 +40,7 @@ fn fs_ray_guides(in: FullscreenVarying) -> RayGuides {
   let material: vec4<f32> = textureLoad(material_target, texel, 0);
   let normal: vec3<f32> = octahedral_decode(textureLoad(normal_target, texel, 0).xy);
   let position: vec3<f32> = camera_view_position(in.clip.xy, depth);
-  let wet: vec4<f32> = textureLoad(wet_surface, texel, 0);
+  let wet: vec4<f32> = load_frame_target(wet_surface, texel);
   let facing: f32 = saturate(dot(normal, -normalize(position)));
   let roughness: f32 = traced_roughness(albedo.a, wet.a + surface_variance(normal_target, depth_target, texel, wet.g));
   let head_on: vec3<f32> = reflectance_head_on(albedo.rgb, albedo.a, wet.r, material.z);

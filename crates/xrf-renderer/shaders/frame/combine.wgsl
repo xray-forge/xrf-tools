@@ -80,7 +80,7 @@ const REFRACTION_FROM: vec2<f32> = vec2<f32>(0.6, 0.8);
 // the level up, `REFRACTION_SHIFT` metres a unit of it on the ground, faded in as the puddle deepens into water as
 // Screen Space Shaders' refraction does; the pixel's own where the bent texel is no water.
 fn refracted_albedo(texel: vec2<i32>, albedo: vec4<f32>, normal: vec3<f32>, distance: f32) -> vec3<f32> {
-  let puddle: f32 = textureLoad(wet_surface, texel, 0).g;
+  let puddle: f32 = load_frame_target(wet_surface, texel).g;
   let strength: f32 = smoothstep(REFRACTION_FROM.x, REFRACTION_FROM.y, puddle);
 
   if (strength <= 0.0) {
@@ -93,7 +93,7 @@ fn refracted_albedo(texel: vec2<i32>, albedo: vec4<f32>, normal: vec3<f32>, dist
   let at: vec2<i32> = clamp(texel + vec2<i32>(round(vec2<f32>(tilt.x, -tilt.y) * pixels * strength)), vec2<i32>(0),
     size - 1);
 
-  if (textureLoad(wet_surface, at, 0).g < REFRACTION_FROM.x) {
+  if (load_frame_target(wet_surface, at).g < REFRACTION_FROM.x) {
     return albedo.rgb;
   }
 
@@ -155,7 +155,7 @@ fn fs_combine(in: FullscreenVarying) -> CombineOutput {
   let occlusion: f32 = mix(1.0, material.x, camera.switches.z);
   // The lights' specular, the engine's model, sees the gloss the engine's own wetting gave, not what the reflections'
   // wet reach added for the trace.
-  let reach: f32 = textureLoad(wet_reach, min(texel, vec2<i32>(textureDimensions(wet_reach)) - 1), 0).r;
+  let reach: f32 = load_frame_target(wet_reach, texel).r;
   let terms: HmodelTerms = shaded_terms(vec4<f32>(albedo.rgb, max(albedo.a - reach, 0.0)), light, normal, position,
     material.z, occlusion, bounced);
   var shaded: vec3<f32> = terms.base;
@@ -171,7 +171,7 @@ fn fs_combine(in: FullscreenVarying) -> CombineOutput {
   // puddle's coat) and roughness (its gloss's, widened by the ripples the wet patch filtered away), times the
   // intensity, over the traced reflection where there is one and the prefiltered sky, seen as the hemisphere lets it,
   // where there is none.
-  let wet: vec4<f32> = textureLoad(wet_surface, texel, 0);
+  let wet: vec4<f32> = load_frame_target(wet_surface, texel);
 
   if (lighting.reflections.x > 0.5) {
     let facing: f32 = saturate(dot(normal, -normalize(position)));
@@ -179,7 +179,7 @@ fn fs_combine(in: FullscreenVarying) -> CombineOutput {
     let head_on: vec3<f32> = reflectance_head_on(albedo.rgb, albedo.a, wet.r, material.z);
     let brdf: vec3<f32> = environment_brdf(head_on, roughness, facing) * lighting.reflections.z;
     // The full-size history the reflections were resolved into; a texel of nothing where none is traced.
-    let traced: vec4<f32> = textureLoad(reflections, min(texel, vec2<i32>(textureDimensions(reflections)) - 1), 0);
+    let traced: vec4<f32> = load_frame_target(reflections, texel);
     // The traced reflection where there is one, faded into the prefiltered sky towards the trace's roughness cut.
     let kept: f32 = select(0.0, smoothstep(TRACED_ROUGHNESS_FADE.y, TRACED_ROUGHNESS_FADE.x, roughness),
       traced.a >= 0.0);

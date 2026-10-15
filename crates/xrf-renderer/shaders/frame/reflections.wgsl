@@ -413,6 +413,12 @@ fn met_radiance(texel: vec2<i32>, hit: vec3<f32>, origin: vec3<f32>) -> vec4<f32
   return vec4<f32>(fogged * min(1.0, RADIANCE_LIMIT / traced_luminance(fogged)), remembered.w);
 }
 
+// The frame texel a walk's position on the screen stands at, held to the frame: one at the closed edge, 1, is the last
+// texel.
+fn walk_texel(position: vec2<f32>) -> vec2<i32> {
+  return clamp(vec2<i32>(position * camera.viewport.xy), vec2<i32>(0), vec2<i32>(camera.viewport.xy) - 1);
+}
+
 // The view space point the walked depth shows at a frame texel, held to the frame, one in `w` where something is
 // drawn there.
 fn shown_point(texel: vec2<i32>) -> vec4<f32> {
@@ -446,7 +452,7 @@ fn hit_confidence(walk: RayWalk, origin: vec3<f32>, reach: f32) -> f32 {
     return 0.0;
   }
 
-  let texel: vec2<i32> = vec2<i32>(hit.xy * size);
+  let texel: vec2<i32> = walk_texel(hit.xy);
   let surface: f32 = textureLoad(nearest_depth, texel, 0).x;
 
   if (surface <= 0.0) {
@@ -509,7 +515,7 @@ fn fs_trace(in: FullscreenVarying) -> TraceTargets {
   }
 
   let albedo: vec4<f32> = textureLoad(albedo_target, texel, 0);
-  let wet: vec4<f32> = textureLoad(wet_surface, texel, 0);
+  let wet: vec4<f32> = load_frame_target(wet_surface, texel);
   let roughness: f32 = traced_roughness(albedo.a, wet.a + surface_variance(normal_target, depth_target, texel, wet.g));
 
   // Past the limit the surface reflects the prefiltered sky alone, which combine reads for it.
@@ -595,8 +601,7 @@ fn fs_trace(in: FullscreenVarying) -> TraceTargets {
   // screen shows it, exact in colour and fog, in place of the cube's, whose texel is coarser and whose sky is the
   // frame's sky at best.
   if (end == END_FAR && all(walk.position.xy >= vec2<f32>(0.0)) && all(walk.position.xy <= vec2<f32>(1.0))) {
-    let size: vec2<i32> = vec2<i32>(camera.viewport.xy);
-    let end_texel: vec2<i32> = clamp(vec2<i32>(walk.position.xy * camera.viewport.xy), vec2<i32>(0), size - 1);
+    let end_texel: vec2<i32> = walk_texel(walk.position.xy);
     let end_depth: f32 = textureLoad(depth_target, end_texel, 0);
 
     if (end_depth <= 0.0 || path_fog(lighting, camera.projection[3][2] / (end_depth + camera.projection[2][2])) >= SOURCE_FOG_LIMIT) {
@@ -611,7 +616,7 @@ fn fs_trace(in: FullscreenVarying) -> TraceTargets {
 
   // Uncertain a little behind a surface: that surface's colour is the probable answer, the sky's the further behind.
   if (walk.end == END_UNCERTAIN) {
-    let behind_texel: vec2<i32> = vec2<i32>(walk.position.xy * camera.viewport.xy);
+    let behind_texel: vec2<i32> = walk_texel(walk.position.xy);
     let is_plant: bool = has_mark(textureLoad(material_target, behind_texel, 0).a, MARK_PLANT);
     let band: vec2<f32> = select(PROBABLE_BEHIND, PROBABLE_BEHIND_PLANT, is_plant);
     let probable: f32 = 1.0 - smoothstep(thickness, thickness + band.x + distance_met * band.y, walk.behind);
@@ -633,7 +638,7 @@ fn fs_trace(in: FullscreenVarying) -> TraceTargets {
   }
 
   let hit: vec3<f32> = ray_view_point(walk.position);
-  let met: vec4<f32> = met_radiance(vec2<i32>(walk.position.xy * camera.viewport.xy), hit, position);
+  let met: vec4<f32> = met_radiance(walk_texel(walk.position.xy), hit, position);
   let length_met: f32 = length(hit - position);
 
   let met_end: u32 = walk.end | select(END_RELIT, 0u, met.w > 0.5);
@@ -652,7 +657,7 @@ struct TracedSurface {
 // The surface at the frame's texel a traced pixel stands for, its roughness with it, which the guide keeps.
 fn traced_surface_at(texel: vec2<i32>) -> TracedSurface {
   var surface: TracedSurface = traced_geometry(texel);
-  let wet: vec4<f32> = textureLoad(wet_surface, texel, 0);
+  let wet: vec4<f32> = load_frame_target(wet_surface, texel);
 
   surface.roughness = traced_roughness(textureLoad(albedo_target, texel, 0).a,
     wet.a + surface_variance(normal_target, depth_target, texel, wet.g));
@@ -666,7 +671,7 @@ fn traced_geometry(texel: vec2<i32>) -> TracedSurface {
   let depth: f32 = max(textureLoad(depth_target, texel, 0), 1e-7);
   let normal: vec3<f32> = world_direction(octahedral_decode(textureLoad(normal_target, texel, 0).xy));
   let is_level: bool = has_mark(textureLoad(material_target, texel, 0).a, MARK_TERRAIN) &&
-    (normal.y > LEVEL_UP || textureLoad(wet_surface, texel, 0).g > PUDDLE_LEAST);
+    (normal.y > LEVEL_UP || load_frame_target(wet_surface, texel).g > PUDDLE_LEAST);
   let uv: vec2<f32> = (vec2<f32>(texel) + 0.5) / camera.viewport.xy;
   let world: vec3<f32> = camera_unproject(vec2<f32>(uv.x * 2.0 - 1.0, 1.0 - uv.y * 2.0), depth);
 
@@ -1140,7 +1145,7 @@ fn fs_upscale(in: FullscreenVarying) -> @location(0) vec4<f32> {
   } else if (!is_any_traced(pixel)) {
     return UNTRACED;
   } else {
-    let wet: vec4<f32> = textureLoad(wet_surface, texel, 0);
+    let wet: vec4<f32> = load_frame_target(wet_surface, texel);
     let roughness: f32 = traced_roughness(textureLoad(albedo_target, texel, 0).a,
       wet.a + surface_variance(normal_target, depth_target, texel, wet.g));
 
