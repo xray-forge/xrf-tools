@@ -1,7 +1,7 @@
 use xrf_error::XrfResult;
 use xrf_renderer_core::{PassParameters, RasterContext};
 
-use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline;
+use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline_into;
 use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::temporal_parameters::TemporalParameters;
 use crate::pass::view_binding::ViewBinding;
@@ -18,6 +18,8 @@ pub struct TemporalPass {
 impl TemporalPass {
   /// Its history's format: colour and the distance along the view, at half floats.
   pub const HISTORY: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
+  /// How much each pixel flickers, which it keeps beside its history.
+  pub const FLICKER: wgpu::TextureFormat = wgpu::TextureFormat::R16Float;
 
   /// # Errors
   ///
@@ -76,13 +78,13 @@ impl TemporalPass {
     view_layout: &wgpu::BindGroupLayout,
     layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<wgpu::RenderPipeline> {
-    create_fullscreen_pipeline(
+    create_fullscreen_pipeline_into(
       device,
       source,
       "frame/temporal",
       "fs_temporal",
       &[Some(view_layout), Some(layout)],
-      Self::HISTORY,
+      &[Some(Self::HISTORY.into()), Some(Self::FLICKER.into())],
     )
   }
 }

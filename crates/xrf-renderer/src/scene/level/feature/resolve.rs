@@ -22,7 +22,11 @@ pub enum Resolve {
 impl Resolve {
   pub fn get_memory(&self) -> u64 {
     match self {
-      Self::Temporal(temporal) => temporal.history.get_sides().iter().map(|side| side.get_memory()).sum(),
+      Self::Temporal(temporal) => [&temporal.history, &temporal.flicker]
+        .iter()
+        .flat_map(|history| history.get_sides())
+        .map(|side| side.get_memory())
+        .sum(),
       Self::Fsr { targets, .. } => targets.get_memory(),
       Self::Dlss(resolve) => resolve.output.get_memory(),
       Self::RayReconstruction(resolve) => resolve.output.get_memory(),
@@ -32,7 +36,10 @@ impl Resolve {
   /// The written history becomes the one the next frame reads.
   pub fn swap(&mut self) {
     match self {
-      Self::Temporal(temporal) => temporal.history.swap(),
+      Self::Temporal(temporal) => {
+        temporal.history.swap();
+        temporal.flicker.swap();
+      }
       Self::Fsr { targets, .. } => targets.frames.swap(),
       Self::Dlss(resolve) => resolve.is_reset = false,
       Self::RayReconstruction(resolve) => resolve.is_reset = false,
