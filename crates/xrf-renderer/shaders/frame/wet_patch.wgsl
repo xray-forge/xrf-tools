@@ -372,9 +372,12 @@ const RELIEF_LEVEL: vec2<f32> = vec2<f32>(0.023, 0.1);
 // it a quarter of the relief's depth in, so a hollow's shallow edge is part water and its fleck fades in.
 const RELIEF_RAMP: f32 = 4.0;
 
-// How far a face lies level enough for its relief to hold water (`RELIEF_LEVEL`), from none to all.
+// How far a face lies level enough for its relief to hold water (`RELIEF_LEVEL`), from none to all; none facing down,
+// as a deck's or a ceiling's underside lies level but holds no water.
 fn relief_levelness(face: vec3<f32>) -> f32 {
-  return saturate((RELIEF_LEVEL.y - max(abs(face.x), abs(face.z))) / (RELIEF_LEVEL.y - RELIEF_LEVEL.x));
+  let levelness: f32 = saturate((RELIEF_LEVEL.y - max(abs(face.x), abs(face.z))) / (RELIEF_LEVEL.y - RELIEF_LEVEL.x));
+
+  return select(0.0, levelness, face.y > 0.0);
 }
 
 // One layer of rain rings: each texel a ring arriving on its own clock (arrival, direction x, direction y, clock),
