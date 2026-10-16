@@ -1,14 +1,16 @@
 use crate::alloc::UploadRing;
-use crate::graph::pool::TransientPool;
+use crate::graph::pool::{AttachmentViewCache, TransientPool};
 use crate::graph::timing::GraphTimer;
 use crate::param::{BindGroupCache, UniformBinding};
 use crate::shader::ShaderType;
 
 /// What frame graphs keep between frames: the pool their transients come from, the bind groups their passes bind, the
-/// ring a frame's uniforms are pushed to, and the timer measuring their passes on the GPU.
+/// views of the mips and layers they draw into, the ring a frame's uniforms are pushed to, and the timer measuring
+/// their passes on the GPU.
 pub struct GraphRuntime {
   pub pool: TransientPool,
   pub bind_groups: BindGroupCache,
+  pub attachment_views: AttachmentViewCache,
   /// Pushed to while a frame is declared, flushed when it executes.
   pub uploads: UploadRing,
   pub timer: GraphTimer,
@@ -22,6 +24,7 @@ impl GraphRuntime {
     Self {
       pool: TransientPool::new(),
       bind_groups: BindGroupCache::new(),
+      attachment_views: AttachmentViewCache::default(),
       uploads: UploadRing::new(
         device,
         "graph uploads",

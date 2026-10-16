@@ -1,4 +1,3 @@
-use std::borrow::Cow;
 use std::collections::{HashMap, VecDeque};
 use std::time::{Duration, Instant};
 
@@ -14,7 +13,7 @@ use crate::graph::execute::{
 };
 use crate::graph::frame_graph::FrameGraph;
 use crate::graph::graph_owner::GraphOwner;
-use crate::graph::pool::{TransientBufferKey, TransientPool, TransientTextureKey};
+use crate::graph::pool::{AttachmentViewCache, TransientBufferKey, TransientPool, TransientTextureKey};
 use crate::graph::record::{GraphBufferRecord, GraphPassWork, GraphTextureRecord};
 use crate::graph::report::{GraphPassKind, GraphPassReport, GraphReport, GraphTransientReport};
 use crate::graph::resource::{GraphBuffer, GraphTexture, GraphTextureDescriptor};
@@ -143,8 +142,9 @@ impl<'a> CompiledGraph<'a> {
 
   /// Records the frame: uploads what was pushed to the runtime's ring, draws the transients from its pool, resolves the
   /// imports from their bindings, and records each encode group into command buffers of its own, returned in order for
-  /// one submit with those its passes handed over, with what each group cost the CPU. While the runtime's timer is timing, it stamps the start of each
-  /// group and the end of each pass or render pass; call its `request` after the submit.
+  /// one submit with those its passes handed over, with what each group cost the CPU. While the runtime's timer is
+  /// timing, it stamps the start of each group and the end of each pass or render pass; call its `request` after the
+  /// submit.
   ///
   /// # Errors
   ///
@@ -159,6 +159,7 @@ impl<'a> CompiledGraph<'a> {
     let GraphRuntime {
       pool,
       bind_groups,
+      attachment_views,
       uploads,
       timer,
     } = runtime;
@@ -167,6 +168,7 @@ impl<'a> CompiledGraph<'a> {
     uploads.flush(device, queue);
     pool.begin_frame();
     bind_groups.begin_frame();
+    attachment_views.begin_frame();
 
     for (key, count) in Self::count_slots(&self.texture_slots) {
       pool.reserve_textures(device, key, count);
@@ -178,13 +180,8 @@ impl<'a> CompiledGraph<'a> {
 
     let pool: &TransientPool = pool;
     let cache: &BindGroupCache = bind_groups;
-    let resources: GraphResources<'_> = self.resolve(pool, bindings, uploads.get_buffer())?;
-    let CompiledGraph {
-      textures,
-      passes,
-      groups,
-      ..
-    } = self;
+    let resources: GraphResources<'_> = self.resolve(pool, bindings, (uploads.get_buffer(), attachment_views))?;
+    let CompiledGraph { passes, groups, .. } = self;
     let counts: Vec<u32> = groups
       .iter()
       .map(|group| Self::count_stamps(&passes[group.passes.clone()]))
@@ -204,7 +201,7 @@ impl<'a> CompiledGraph<'a> {
       .into_par_iter()
       .zip(groups.par_iter())
       .zip(stamps.par_iter_mut())
-      .map(|((passes, group), stamps)| Self::record_group(group, passes, &textures, shared, stamps.as_mut()))
+      .map(|((passes, group), stamps)| Self::record_group(group, passes, shared, stamps.as_mut()))
       .collect();
     let errors: Vec<String> = recorded
       .iter()
@@ -260,7 +257,6 @@ impl<'a> CompiledGraph<'a> {
   fn record_group(
     group: &EncodeGroup,
     passes: Vec<CompiledPass<'a>>,
-    textures: &[GraphTextureRecord],
     (device, cache, resources): (&wgpu::Device, &BindGroupCache, &GraphResources<'_>),
     mut timing: Option<&mut GroupStamps>,
   ) -> RecordedGroup {
@@ -303,7 +299,7 @@ impl<'a> CompiledGraph<'a> {
 
           profiling::scope!("record", &timed.to_name());
 
-          Self::record_render_pass(&mut encoder, run, textures, (device, cache, resources));
+          Self::record_render_pass(&mut encoder, run, (device, cache, resources));
 
           timed
         }
@@ -386,7 +382,7 @@ impl<'a> CompiledGraph<'a> {
     &self,
     pool: &'r TransientPool,
     bindings: &GraphBindings<'r>,
-    upload: &'r wgpu::Buffer,
+    (upload, views): (&'r wgpu::Buffer, &mut AttachmentViewCache),
   ) -> XrfResult<GraphResources<'r>> {
     let mut used_textures: Vec<bool> = vec![false; self.textures.len()];
     let mut used_buffers: Vec<bool> = vec![false; self.buffers.len()];
@@ -460,8 +456,36 @@ impl<'a> CompiledGraph<'a> {
       });
     }
 
+    let mut attachments: HashMap<(GraphTexture, u32, u32), wgpu::TextureView> = HashMap::new();
+
+    for pass in &self.passes {
+      let work: &GraphPassWork<'_> = &pass.pass.work;
+      let targets = work
+        .get_colors()
+        .iter()
+        .map(|color| (color.texture, color.mip_level, color.array_layer))
+        .chain(
+          work
+            .get_depth()
+            .map(|depth| (depth.texture, depth.mip_level, depth.array_layer)),
+        );
+
+      for (texture, mip_level, array_layer) in targets {
+        let descriptor: &GraphTextureDescriptor = &self.textures[texture.get_index()].descriptor;
+        let is_whole: bool =
+          descriptor.mip_level_count == 1 && descriptor.view_dimension == wgpu::TextureViewDimension::D2;
+
+        if let Some(resolved) = textures[texture.get_index()].filter(|_| !is_whole) {
+          attachments
+            .entry((texture, mip_level, array_layer))
+            .or_insert_with(|| views.get_view(resolved.texture, (mip_level, array_layer), descriptor.label));
+        }
+      }
+    }
+
     Ok(GraphResources {
       textures,
+      attachments,
       buffers,
       upload,
     })
@@ -498,43 +522,15 @@ impl<'a> CompiledGraph<'a> {
   fn record_render_pass(
     encoder: &mut wgpu::CommandEncoder,
     run: Vec<CompiledPass<'a>>,
-    textures: &[GraphTextureRecord],
     (device, cache, resources): (&wgpu::Device, &BindGroupCache, &GraphResources<'_>),
   ) {
     let first: &GraphPassWork<'a> = &run[0].pass.work;
-    let view_of = |texture: GraphTexture, mip_level: u32, array_layer: u32| -> Cow<'_, wgpu::TextureView> {
-      let resolved: GraphResolvedTexture<'_> = resources.get_texture(texture);
-      let descriptor: &GraphTextureDescriptor = &textures[texture.get_index()].descriptor;
-
-      if descriptor.mip_level_count == 1 && descriptor.view_dimension == wgpu::TextureViewDimension::D2 {
-        Cow::Borrowed(resolved.view)
-      } else {
-        Cow::Owned(resolved.texture.create_view(&wgpu::TextureViewDescriptor {
-          label: Some(descriptor.label),
-          dimension: Some(wgpu::TextureViewDimension::D2),
-          base_mip_level: mip_level,
-          mip_level_count: Some(1),
-          base_array_layer: array_layer,
-          array_layer_count: Some(1),
-          ..Default::default()
-        }))
-      }
-    };
-    let color_views: Vec<Cow<'_, wgpu::TextureView>> = first
-      .get_colors()
-      .iter()
-      .map(|color| view_of(color.texture, color.mip_level, color.array_layer))
-      .collect();
-    let depth_view: Option<Cow<'_, wgpu::TextureView>> = first
-      .get_depth()
-      .map(|depth| view_of(depth.texture, depth.mip_level, depth.array_layer));
     let color_attachments: Vec<Option<wgpu::RenderPassColorAttachment<'_>>> = first
       .get_colors()
       .iter()
-      .zip(&color_views)
-      .map(|(color, view)| {
+      .map(|color| {
         Some(wgpu::RenderPassColorAttachment {
-          view: view.as_ref(),
+          view: resources.get_attachment(color.texture, color.mip_level, color.array_layer),
           depth_slice: None,
           resolve_target: None,
           ops: wgpu::Operations {
@@ -544,18 +540,14 @@ impl<'a> CompiledGraph<'a> {
         })
       })
       .collect();
-    let depth_stencil_attachment =
-      first
-        .get_depth()
-        .zip(depth_view.as_ref())
-        .map(|(depth, view)| wgpu::RenderPassDepthStencilAttachment {
-          view: view.as_ref(),
-          depth_ops: (!depth.is_read_only).then_some(wgpu::Operations {
-            load: depth.load,
-            store: wgpu::StoreOp::Store,
-          }),
-          stencil_ops: None,
-        });
+    let depth_stencil_attachment = first.get_depth().map(|depth| wgpu::RenderPassDepthStencilAttachment {
+      view: resources.get_attachment(depth.texture, depth.mip_level, depth.array_layer),
+      depth_ops: (!depth.is_read_only).then_some(wgpu::Operations {
+        load: depth.load,
+        store: wgpu::StoreOp::Store,
+      }),
+      stencil_ops: None,
+    });
     let mut render_pass: wgpu::RenderPass<'static> = encoder
       .begin_render_pass(&wgpu::RenderPassDescriptor {
         label: Some(run[0].pass.name),
