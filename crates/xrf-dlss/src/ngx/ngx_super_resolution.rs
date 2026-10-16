@@ -165,6 +165,7 @@ impl NgxSuperResolution {
       .bias_current_color
       .map(|view| unsafe { to_ngx_resource(view, adapter) });
     let origin = NVSDK_NGX_Coordinates { X: 0, Y: 0 };
+    // SAFETY: the parameters are plain C data, whose null pointers and zeros NGX reads as the inputs left out.
     let mut parameters = NVSDK_NGX_VK_DLSS_Eval_Params {
       Feature: NVSDK_NGX_VK_Feature_Eval_Params {
         pInColor: &mut color,
@@ -182,31 +183,17 @@ impl NgxSuperResolution {
       InReset: i32::from(inputs.is_reset),
       InMVScaleX: inputs.motion_scale[0],
       InMVScaleY: inputs.motion_scale[1],
-      pInTransparencyMask: ptr::null_mut(),
-      pInExposureTexture: ptr::null_mut(),
-      pInBiasCurrentColorMask: bias.as_mut().map_or(ptr::null_mut(), ptr::from_mut),
       InColorSubrectBase: origin,
       InDepthSubrectBase: origin,
       InMVSubrectBase: origin,
       InTranslucencySubrectBase: origin,
       InBiasCurrentColorSubrectBase: origin,
       InOutputSubrectBase: origin,
-      InPreExposure: 0.0,
-      InExposureScale: 0.0,
-      InIndicatorInvertXAxis: 0,
-      InIndicatorInvertYAxis: 0,
-      GBufferSurface: NVSDK_NGX_VK_GBuffer {
-        pInAttrib: [ptr::null_mut(); 17],
-      },
       InToneMapperType: NVSDK_NGX_ToneMapperType_NVSDK_NGX_TONEMAPPER_STRING,
-      pInMotionVectors3D: ptr::null_mut(),
-      pInIsParticleMask: ptr::null_mut(),
-      pInAnimatedTextureMask: ptr::null_mut(),
-      pInDepthHighRes: ptr::null_mut(),
-      pInPositionViewSpace: ptr::null_mut(),
+      pInBiasCurrentColorMask: bias.as_mut().map_or(ptr::null_mut(), ptr::from_mut),
       InFrameTimeDeltaInMsec: inputs.frame_time.as_secs_f32() * 1000.0,
-      pInRayTracingHitDistance: ptr::null_mut(),
-      pInMotionVectorsReflections: ptr::null_mut(),
+      // The optional inputs left out: null resources and zero scalars.
+      ..unsafe { std::mem::zeroed() }
     };
 
     unsafe { NGX_VULKAN_EVALUATE_DLSS_EXT(list, handle, sdk.parameters, &mut parameters) }
