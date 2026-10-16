@@ -139,6 +139,7 @@ PACKAGE_NAME = { value = "xrf-app-windows-x64", condition = { env_not_set = ["PA
 [tasks.dev-app]
 description = "Run the desktop backend and UI in watch mode."
 category = "Development"
+dependencies = ["install-ui"]
 cwd = "bin/xrf-app"
 command = "node"
 args = ["${NODE_TAURI}", "dev"]
@@ -146,7 +147,7 @@ args = ["${NODE_TAURI}", "dev"]
 [tasks.dev-app-optimized]
 description = "Run the desktop application in watch mode with DLSS and the dev-optimized profile (workspace opt-level 1, dependencies 3)."
 category = "Development"
-dependencies = ["fetch-sdks"]
+dependencies = ["fetch-sdks", "install-ui"]
 cwd = "bin/xrf-app"
 command = "node"
 args = ["${NODE_TAURI}", "dev", "--features", "dlss", "--config", "tauri.dlss.conf.json", "--", "--profile", "dev-optimized"]
@@ -154,7 +155,7 @@ args = ["${NODE_TAURI}", "dev", "--features", "dlss", "--config", "tauri.dlss.co
 [tasks.dev-app-profiling]
 description = "Run the desktop application in watch mode with DLSS and the profiling profile (release code with line tables)."
 category = "Development"
-dependencies = ["fetch-sdks"]
+dependencies = ["fetch-sdks", "install-ui"]
 cwd = "bin/xrf-app"
 command = "node"
 args = ["${NODE_TAURI}", "dev", "--features", "dlss", "--config", "tauri.dlss.conf.json", "--", "--profile", "profiling"]
