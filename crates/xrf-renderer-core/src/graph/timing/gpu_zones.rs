@@ -11,7 +11,6 @@ pub(crate) struct GpuZones {
 impl GpuZones {
   /// Sends one frame's passes: each stamp after the first ends the pass it names, which began at the stamp before.
   #[cfg(feature = "tracy")]
-  /// Nothing without the `tracy` feature.
   pub fn send(&mut self, stamps: &[u64], names: &[Option<TimedPass>], period: f32) {
     let Some(first) = stamps.first() else {
       return;
@@ -48,6 +47,7 @@ impl GpuZones {
     }
   }
 
+  /// Nothing without the `tracy` feature.
   #[cfg(not(feature = "tracy"))]
   pub fn send(&mut self, _stamps: &[u64], _names: &[Option<TimedPass>], _period: f32) {}
 }

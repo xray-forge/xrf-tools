@@ -149,7 +149,7 @@ impl<'a> CompiledGraph<'a> {
   /// # Errors
   ///
   /// Returns an error for an import a surviving pass names that is not bound, or bound to a resource of another size,
-  /// format or too little usage.
+  /// format or too little usage; and for a frame dropped whole where wgpu refused any of its groups.
   pub fn execute(
     self,
     (device, queue): (&wgpu::Device, &wgpu::Queue),
