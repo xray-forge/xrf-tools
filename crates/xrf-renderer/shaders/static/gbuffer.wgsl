@@ -334,9 +334,10 @@ struct Footprint {
 
 fn take_footprint(in: GBufferVarying) -> Footprint {
   let uv: vec2<f32> = in.uv * surfaces[in.surface].tiling;
+  let scale: f32 = texture_footprint_scale();
 
-  return Footprint(uv, uv, 0.0, 1.0, 0.0, 1.0, false, dpdx(uv), dpdy(uv), in.lightmap_uv, dpdx(in.lightmap_uv),
-    dpdy(in.lightmap_uv));
+  return Footprint(uv, uv, 0.0, 1.0, 0.0, 1.0, false, dpdx(uv) * scale, dpdy(uv) * scale, in.lightmap_uv,
+    dpdx(in.lightmap_uv), dpdy(in.lightmap_uv));
 }
 
 // The engines' steep parallax (`UpdateTC` under `USE_STEEPPARALLAX`): within `STEEP_FADE.y` metres, the base coordinate

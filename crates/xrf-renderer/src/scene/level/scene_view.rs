@@ -1473,6 +1473,11 @@ impl SceneView {
     self.features.resolve.next_jitter(options, ratio, has_dlss)
   }
 
+  /// The mip bias the surfaces' textures are read at this frame, as `next_jitter` decided it.
+  pub fn get_texture_bias(&self) -> f32 {
+    self.features.resolve.get_texture_bias()
+  }
+
   /// Asks for the counts recorded with the frame just submitted.
   pub fn request_stats(&self) {
     self.features.statics.request_stats();

@@ -80,8 +80,8 @@ fn vs_grass(@location(0) position: vec3<f32>, @location(1) uv: vec2<f32>,
 @fragment
 fn fs_grass(in: GrassVarying) -> GrassOutput {
   let model: GrassModel = models[draw.model];
-  let dx: vec2<f32> = dpdx(in.uv);
-  let dy: vec2<f32> = dpdy(in.uv);
+  let dx: vec2<f32> = dpdx(in.uv) * texture_footprint_scale();
+  let dy: vec2<f32> = dpdy(in.uv) * texture_footprint_scale();
   let base: vec4<f32> = textureSampleGrad(textures[model.texture], texture_sampler, in.uv, dx, dy);
 
   if (is_alpha_cut(base.a, vec2<f32>(textureDimensions(textures[model.texture])), dx, dy, model.alpha_reference)) {

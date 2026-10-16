@@ -51,7 +51,8 @@ pub struct CameraUniform {
   pub parallax_light: Vec4,
   pub parallax_mix: Vec4,
   /// One where the scene holds linear light at its exposure, which the window pass tonemaps; zero where every pass
-  /// writes tonemapped colour, as the engine's do.
+  /// writes tonemapped colour, as the engine's do. Then the mip bias the surfaces' textures are read at, negative
+  /// sharper; none for any camera but a viewport's own.
   pub output: Vec4,
 }
 
@@ -175,6 +176,13 @@ impl CameraUniform {
   /// The same camera drawing an untextured surface as clay, or as its shader's tint.
   pub fn with_surface_color(mut self, color: RenderSurfaceColor) -> Self {
     self.modes.w = f32::from(u8::from(color == RenderSurfaceColor::Clay));
+    self
+  }
+
+  /// The same camera reading its surfaces' textures `bias` mips away from what their footprint picks, negative
+  /// sharper: a temporal resolve gathers the detail a frame drawn smaller than its output would lose.
+  pub fn with_texture_bias(mut self, bias: f32) -> Self {
+    self.output.y = bias;
     self
   }
 

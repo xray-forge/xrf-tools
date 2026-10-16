@@ -44,11 +44,17 @@ struct Camera {
   parallax_light: vec4<f32>,
   parallax_mix: vec4<f32>,
   // x: one where the scene holds linear light at its exposure, which the window pass tonemaps; zero where every pass
-  // writes tonemapped colour, as the engine's do.
+  // writes tonemapped colour, as the engine's do. y: the mip bias the surfaces' textures are read at, negative sharper.
   output: vec4<f32>,
 };
 
 @group(0) @binding(0) var<uniform> camera: Camera;
+
+// How much a surface's texture footprint is scaled to read its textures at the camera's mip bias: its derivatives times
+// this pick the mip `output.y` away.
+fn texture_footprint_scale() -> f32 {
+  return exp2(camera.output.y);
+}
 
 // Whether a cluster drawn in a place is what the selection names.
 fn is_selected(entry: vec2<u32>) -> bool {

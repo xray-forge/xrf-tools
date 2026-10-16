@@ -82,10 +82,11 @@ fn vs_impostor(@builtin(vertex_index) vertex_index: u32, @builtin(instance_index
 
 // Samples a slot at both facets' coordinates, blended, with the derivatives taken before any branch.
 fn sample_blended(slot: u32, in: ImpostorVarying) -> vec4<f32> {
-  let next: vec4<f32> = textureSampleGrad(textures[slot], texture_sampler, in.next_uv, dpdx(in.next_uv),
-    dpdy(in.next_uv));
-  let best: vec4<f32> = textureSampleGrad(textures[slot], texture_sampler, in.best_uv, dpdx(in.best_uv),
-    dpdy(in.best_uv));
+  let scale: f32 = texture_footprint_scale();
+  let next: vec4<f32> = textureSampleGrad(textures[slot], texture_sampler, in.next_uv, dpdx(in.next_uv) * scale,
+    dpdy(in.next_uv) * scale);
+  let best: vec4<f32> = textureSampleGrad(textures[slot], texture_sampler, in.best_uv, dpdx(in.best_uv) * scale,
+    dpdy(in.best_uv) * scale);
 
   return mix(next, best, in.blend);
 }
