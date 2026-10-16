@@ -173,8 +173,8 @@ export function LevelOcclusionAction({
           </>
         ) : null}
 
-        <Button size={"small"} onClick={reset}>
-          Back to the settings
+        <Button size={"small"} aria-label={"Reset the ambient occlusion to the preset"} onClick={reset}>
+          Reset to the preset
         </Button>
       </EditorPopoverGroupSection>
 
@@ -196,7 +196,7 @@ export function LevelOcclusionAction({
         />
 
         <Button size={"small"} onClick={() => viewService.setHemiStrength(DEFAULT_LEVEL_HEMI_STRENGTH)}>
-          Back to the whole occlusion
+          Reset to the game&apos;s
         </Button>
       </EditorPopoverGroupSection>
     </EditorPopoverGroup>

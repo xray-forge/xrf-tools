@@ -25,8 +25,9 @@ const INTENSITY_DRAFT: number = -1;
 const VECTOR_COMPONENTS: ReadonlyArray<string> = ["x", "y", "z", "w"];
 
 interface ILevelWeatherVectorFieldProps extends BaseComponentProps {
-  /** The engine key it holds. */
   label: string;
+  /** Shown on hovering its label, such as the config key it is written under. */
+  hint?: string;
   value: ReadonlyArray<number>;
   /**
    * Whether it is a colour: shown by a swatch of its first three components, clamped, which opens a picker of them, and
@@ -49,6 +50,7 @@ export function LevelWeatherVectorField({
   id,
   className,
   label,
+  hint,
   value,
   isColor = false,
   onChange,
@@ -95,7 +97,9 @@ export function LevelWeatherVectorField({
   return (
     <div data-testid={dataTestId} id={id} className={className}>
       <div className={"flex items-center justify-between gap-2"}>
-        <span className={"font-mono text-xs text-text-secondary"}>{label}</span>
+        <span className={"text-xs text-text-secondary"} title={hint}>
+          {label}
+        </span>
         {isColor ? (
           <ButtonBase
             className={"h-3 w-6 rounded-control border border-solid border-divider"}

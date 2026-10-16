@@ -8,8 +8,9 @@ import { cn } from "@/core/theme/class-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface ILevelWeatherTextureFieldProps extends BaseComponentProps {
-  /** The engine key it holds. */
   label: string;
+  /** Shown on hovering it, such as the config key it is written under. */
+  hint?: string;
   /** The reference, empty for none. */
   value: string;
   /** Every texture of its kind the game's weather names. */
@@ -26,6 +27,7 @@ export function LevelWeatherTextureField({
   id,
   className,
   label,
+  hint,
   value,
   textures,
   onChange,
@@ -75,7 +77,7 @@ export function LevelWeatherTextureField({
           </div>
         </li>
       )}
-      renderInput={(params) => <TextField {...params} label={label} />}
+      renderInput={(params) => <TextField {...params} label={label} title={hint} />}
       onChange={onPick}
     />
   );

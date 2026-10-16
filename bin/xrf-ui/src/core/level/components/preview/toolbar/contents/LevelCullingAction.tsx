@@ -88,7 +88,7 @@ export function LevelCullingAction({
         />
 
         <Button size={"small"} onClick={() => viewService.setLod(DEFAULT_LEVEL_LOD_OPTIONS)}>
-          Back to the game&apos;s distance
+          Reset to the game&apos;s
         </Button>
       </EditorPopoverGroupSection>
 

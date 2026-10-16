@@ -141,7 +141,7 @@ describe("LevelWeatherPanel", () => {
     const { getByRole, weather } = await renderPanel();
 
     await userEvent.click(getByRole("button", { name: "Manual" }));
-    await userEvent.click(getByRole("button", { name: "Back to weather" }));
+    await userEvent.click(getByRole("button", { name: "Play the weather" }));
 
     expect(weather.source).toBe(ELevelWeatherSource.WEATHER);
   });

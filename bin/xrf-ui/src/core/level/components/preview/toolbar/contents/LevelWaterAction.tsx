@@ -84,7 +84,7 @@ export function LevelWaterAction({
         onEdit={weatherService.editManual}
       />
 
-      <LevelWeatherResetButton keys={LEVEL_MANUAL_WEATHER_WATER_KEYS} onEdit={weatherService.editManual} />
+      <LevelWeatherResetButton keys={LEVEL_MANUAL_WEATHER_WATER_KEYS} onReset={weatherService.resetManual} />
 
       <RenderValueChoice
         label={"Mode"}
@@ -264,7 +264,7 @@ export function LevelWaterAction({
       />
 
       <Button size={"small"} onClick={reset}>
-        Back to the settings
+        Reset to the preset
       </Button>
     </EditorPopoverToggle>
   );

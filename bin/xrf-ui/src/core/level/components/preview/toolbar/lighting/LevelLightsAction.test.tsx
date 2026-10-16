@@ -25,7 +25,7 @@ describe("LevelLightsAction", () => {
 
     await userEvent.pointer({ keys: "[MouseRight]", target: getByRole("button", { name: "Lights" }) });
     await findByRole("dialog", { name: "Lights" });
-    await userEvent.click(getByRole("button", { name: "Back to the settings" }));
+    await userEvent.click(getByRole("button", { name: "Reset to the preset" }));
 
     expect(view.features).toEqual({ ...before, lights: {} });
   });

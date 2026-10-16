@@ -143,8 +143,8 @@ export function LevelReflectionsAction({
         </>
       ) : null}
 
-      <Button size={"small"} onClick={reset}>
-        Back to the settings for the reflections
+      <Button size={"small"} aria-label={"Reset the reflections to the preset"} onClick={reset}>
+        Reset to the preset
       </Button>
 
       <LevelGlassSettings />

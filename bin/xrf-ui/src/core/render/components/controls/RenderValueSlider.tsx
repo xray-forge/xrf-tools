@@ -12,6 +12,8 @@ export interface IRenderValueSliderProps extends BaseComponentProps {
   step: number;
   /** How the value reads beside its label and to a screen reader, which are the only places a unit is stated. */
   format: (value: number) => string;
+  /** Shown on hovering its label: where the value comes from, such as the config key it is written under. */
+  hint?: string;
   /** Whether it shows its value but cannot be moved, where the value has no effect. */
   isDisabled?: boolean;
   /** Told the value while it is dragged at most once an interval, and at once when it is let go. */
@@ -31,6 +33,7 @@ export function RenderValueSlider({
   max,
   step,
   format,
+  hint,
   isDisabled = false,
   onChange,
 }: IRenderValueSliderProps): ReactElement {
@@ -39,7 +42,9 @@ export function RenderValueSlider({
   return (
     <div data-testid={dataTestId} id={id} className={className}>
       <div className={"flex items-baseline justify-between gap-2"}>
-        <span className={"text-xs text-text-secondary"}>{label}</span>
+        <span className={"text-xs text-text-secondary"} title={hint}>
+          {label}
+        </span>
         <span className={"font-mono text-xs"}>{format(draft.value)}</span>
       </div>
 

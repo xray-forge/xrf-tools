@@ -205,7 +205,11 @@ describe("LevelWeatherService", () => {
     service.setSource(ELevelWeatherSource.MANUAL);
 
     expect(service.manual).toEqual(toLevelManualWeather(mockWorldWeatherReport({ time: 50_000 }).current));
-    expect(service.seed).toEqual({ cycle: "default_clear", time: 50_000 });
+    expect(service.seed).toEqual({
+      cycle: "default_clear",
+      time: 50_000,
+      weather: toLevelManualWeather(mockWorldWeatherReport({ time: 50_000 }).current),
+    });
     expect(toKeyframe(service.weather)).not.toBeNull();
     expect(service.transition).toBe(EWorldWeatherTransition.FADE);
 
@@ -213,6 +217,34 @@ describe("LevelWeatherService", () => {
 
     expect(service.weather).toEqual(cycle);
     expect(service.transition).toBe(EWorldWeatherTransition.FADE);
+  });
+
+  it("resets keys to the weather it was seeded from, and nothing while the weather plays", async () => {
+    setMockInvokeResponses({
+      ["plugin:levels|read_level_weather"]: mockSessionResponse(mockLevelWeatherDescription()),
+    });
+
+    const service: LevelWeatherService = createService();
+
+    await service.open(SELECTED);
+    service.noteReport(
+      mockWorldWeatherReport({
+        current: { ...mockWorldWeatherReport().current, skyTexture: "sky\\sky_night" },
+      })
+    );
+
+    service.resetManual(["skyTexture"]);
+
+    expect(service.source).toBe(ELevelWeatherSource.WEATHER);
+
+    service.editManual({ skyTexture: "sky\\sky_noon", rainDensity: 0.5 });
+    service.resetManual(["skyTexture"]);
+
+    expect(service.manual?.skyTexture).toBe("sky\\sky_night");
+    expect(service.manual?.rainDensity).toBe(0.5);
+    expect(readLevelWeatherMemory(toLevelWeatherMemoryKey(SELECTED.value))?.seed?.weather?.skyTexture).toBe(
+      "sky\\sky_night"
+    );
   });
 
   it("takes manual control at the first edit while the weather plays, seeded so only the edit is seen", async () => {

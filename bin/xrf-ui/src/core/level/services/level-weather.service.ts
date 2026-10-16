@@ -323,6 +323,23 @@ export class LevelWeatherService {
   }
 
   /**
+   * Sets keys of the keyframe set by hand back to what the weather showed when it was seeded, noon of `default_clear`
+   * where it was seeded from nothing; nothing while the weather lights the level, as its keys are the weather's.
+   *
+   * @param keys - The keys set back.
+   */
+  @BoundAction()
+  public resetManual(keys: ReadonlyArray<keyof ILevelManualWeather>): void {
+    if (!this.isManual) {
+      return;
+    }
+
+    const weather: ILevelManualWeather = this.seed?.weather ?? DEFAULT_LEVEL_MANUAL_WEATHER;
+
+    this.editManual(Object.fromEntries(keys.map((key) => [key, weather[key]])));
+  }
+
+  /**
    * Changes the keyframe set by hand, which lights the level from now on: one edited while the weather lights it is
    * seeded from what is shown first, so only the change is seen, and eased into.
    *
@@ -438,10 +455,11 @@ export class LevelWeatherService {
   /** A keyframe set by hand from what is shown, noon of `default_clear` where the weather shows nothing yet. */
   private seedManual(): ILevelManualWeather {
     const current = this.report?.current;
+    const weather: ILevelManualWeather = current ? toLevelManualWeather(current) : DEFAULT_LEVEL_MANUAL_WEATHER;
 
-    this.seed = current && this.cycle.value ? { cycle: this.cycle.value.name, time: this.time } : null;
+    this.seed = current && this.cycle.value ? { cycle: this.cycle.value.name, time: this.time, weather } : null;
 
-    return current ? toLevelManualWeather(current) : DEFAULT_LEVEL_MANUAL_WEATHER;
+    return weather;
   }
 
   /**

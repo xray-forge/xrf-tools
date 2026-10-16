@@ -15,6 +15,10 @@ import { LevelWeatherTextureField } from "@/core/level/components/weather/LevelW
 import { toLevelModeFeature } from "@/core/level/lib/features/level-feature-options";
 import { ILevelManualWeather } from "@/core/level/lib/weather/level-manual-weather";
 import { LEVEL_MANUAL_WEATHER_SKY_KEYS } from "@/core/level/lib/weather/level-manual-weather-groups";
+import {
+  describeLevelManualWeatherKey,
+  LEVEL_MANUAL_WEATHER_LABELS,
+} from "@/core/level/lib/weather/level-manual-weather-labels";
 import { LevelViewService } from "@/core/level/services/level-view.service";
 import { LevelWeatherService } from "@/core/level/services/level-weather.service";
 import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
@@ -79,7 +83,8 @@ export function LevelSkyAction({
         onToggle={() => viewService.toggleOption("isSkyVisible")}
       >
         <LevelWeatherTextureField
-          label={"sky_texture"}
+          label={LEVEL_MANUAL_WEATHER_LABELS.skyTexture}
+          hint={describeLevelManualWeatherKey("skyTexture")}
           value={manual.skyTexture}
           textures={skies}
           onChange={(skyTexture: string) => weatherService.editManual({ skyTexture })}
@@ -101,7 +106,8 @@ export function LevelSkyAction({
         onToggle={() => viewService.toggleOption("isClouded")}
       >
         <LevelWeatherTextureField
-          label={"clouds_texture"}
+          label={LEVEL_MANUAL_WEATHER_LABELS.cloudsTexture}
+          hint={describeLevelManualWeatherKey("cloudsTexture")}
           value={manual.cloudsTexture}
           textures={clouds}
           onChange={(cloudsTexture: string) => weatherService.editManual({ cloudsTexture })}
@@ -122,7 +128,7 @@ export function LevelSkyAction({
         />
       </EditorPopoverGroupSection>
 
-      <LevelWeatherResetButton keys={LEVEL_MANUAL_WEATHER_SKY_KEYS} onEdit={weatherService.editManual} />
+      <LevelWeatherResetButton keys={LEVEL_MANUAL_WEATHER_SKY_KEYS} onReset={weatherService.resetManual} />
 
       <EditorPopoverGroupSection
         label={"Debanding"}
@@ -152,7 +158,7 @@ export function LevelSkyAction({
         ) : null}
 
         <Button size={"small"} onClick={resetDebanding}>
-          Back to the settings for the debanding
+          Reset to the preset
         </Button>
       </EditorPopoverGroupSection>
     </EditorPopoverGroup>

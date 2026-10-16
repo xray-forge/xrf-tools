@@ -54,7 +54,7 @@ describe("LevelSkyAction", () => {
       },
     });
 
-    await userEvent.click(getByRole("combobox", { name: "sky_texture" }));
+    await userEvent.click(getByRole("combobox", { name: "Sky texture" }));
 
     expect(getByRole("listbox").textContent).toMatch(/sky\\sky_night7×.*sky\\gonemissing/);
 
@@ -65,7 +65,7 @@ describe("LevelSkyAction", () => {
 
   it("takes a clouds reference typed in, and none for an empty one", async () => {
     const { getByRole, weather } = await renderOpenAction();
-    const field: HTMLElement = getByRole("combobox", { name: "clouds_texture" });
+    const field: HTMLElement = getByRole("combobox", { name: "Cloud texture" });
 
     await userEvent.clear(field);
     await userEvent.type(field, "sky\\clouds_storm{Enter}");

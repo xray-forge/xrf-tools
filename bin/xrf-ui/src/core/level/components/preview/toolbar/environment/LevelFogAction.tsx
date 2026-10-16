@@ -105,7 +105,7 @@ export function LevelFogAction({
         onChange={(fade: "sky" | "haze") => viewService.setOption("isSkyHazed", fade === "haze")}
       />
 
-      <LevelWeatherResetButton keys={LEVEL_MANUAL_WEATHER_FOG_KEYS} onEdit={weatherService.editManual} />
+      <LevelWeatherResetButton keys={LEVEL_MANUAL_WEATHER_FOG_KEYS} onReset={weatherService.resetManual} />
 
       <RenderValueChoice
         label={"Drawn as"}
@@ -161,7 +161,7 @@ export function LevelFogAction({
       ) : null}
 
       <Button size={"small"} onClick={reset}>
-        Back to the settings for the fog
+        Reset to the preset
       </Button>
     </EditorPopoverToggle>
   );

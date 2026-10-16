@@ -29,7 +29,7 @@ describe("LevelVolumetricSettings", () => {
     expect(getByRole("slider", { name: "Anisotropy" })).toHaveAttribute("aria-valuetext", "0.25");
     expect(getByRole("slider", { name: "Distance" })).toHaveAttribute("aria-valuetext", "120 m");
 
-    await userEvent.click(getByRole("button", { name: "Back to the settings for the volumetric lighting" }));
+    await userEvent.click(getByRole("button", { name: "Reset to the preset" }));
 
     expect(view.features.volumetric).toEqual({});
     expect(queryByRole("slider", { name: "Intensity" })).toBeNull();

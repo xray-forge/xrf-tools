@@ -1,6 +1,10 @@
 import { ListItemText, MenuItem, TextField } from "@mui/material";
 import { ChangeEvent, ReactElement } from "react";
 
+import {
+  describeLevelManualWeatherKey,
+  LEVEL_MANUAL_WEATHER_LABELS,
+} from "@/core/level/lib/weather/level-manual-weather-labels";
 import { CONTROL } from "@/core/theme/tokens";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
@@ -34,7 +38,8 @@ export function LevelWeatherSunSelect({
       select
       fullWidth
       size={"small"}
-      label={"sun"}
+      label={LEVEL_MANUAL_WEATHER_LABELS.sun}
+      title={describeLevelManualWeatherKey("sun")}
       value={value}
       disabled={!suns.length && !value}
       slotProps={{

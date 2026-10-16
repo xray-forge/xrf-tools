@@ -56,7 +56,7 @@ describe("LevelCameraAction", () => {
     const rendered = renderAction(({ view }) => view.setCameraOptions({ ...DEFAULT_LEVEL_CAMERA_OPTIONS, speed: 40 }));
 
     await userEvent.click(rendered.getByRole("button", { name: "Camera" }));
-    await userEvent.click(rendered.getByRole("button", { name: "Back to the default camera" }));
+    await userEvent.click(rendered.getByRole("button", { name: "Reset the camera" }));
 
     expect(rendered.view.cameraOptions).toEqual(DEFAULT_LEVEL_CAMERA_OPTIONS);
   });

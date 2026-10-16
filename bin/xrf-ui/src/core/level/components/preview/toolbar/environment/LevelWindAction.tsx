@@ -79,7 +79,7 @@ export function LevelWindAction({
 
       <LevelManualWeatherVectorField field={"treesWave"} manual={manual} onEdit={weatherService.editManual} />
 
-      <LevelWeatherResetButton keys={LEVEL_MANUAL_WEATHER_WIND_KEYS} onEdit={weatherService.editManual} />
+      <LevelWeatherResetButton keys={LEVEL_MANUAL_WEATHER_WIND_KEYS} onReset={weatherService.resetManual} />
     </EditorPopoverToggle>
   );
 }
