@@ -63,9 +63,9 @@ export function formatWaterDistortion(distortion: number): string {
 }
 
 const RENDER_WATER_MODE_DESCRIPTIONS: Readonly<Record<RenderWaterMode, string>> = {
-  [ERenderWaterMode.ENGINE]: "The game's own: rippled water reflecting the sky.",
+  [ERenderWaterMode.ENGINE]: "Draws the game's rippled water, reflecting the sky.",
   [ERenderWaterMode.ENHANCED]:
-    "What lies under the water refracted and clouded with depth, the scene reflected, the shore softened.",
+    "Refracts and clouds what lies under the water by its depth, reflects the scene and softens the shore.",
 };
 
 /**

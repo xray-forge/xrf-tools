@@ -17,6 +17,24 @@ const RENDER_ANTIALIASING_NAMES: Readonly<Record<RenderAntialiasing, string>> = 
   [ERenderAntialiasing.DLSS]: "DLSS",
 };
 
+const RENDER_ANTIALIASING_DESCRIPTIONS: Readonly<Record<RenderAntialiasing, string>> = {
+  [ERenderAntialiasing.NONE]: "Draws every edge as it falls, unsmoothed.",
+  [ERenderAntialiasing.FXAA]: "Smooths edges in one cheap pass, softening the image a little.",
+  [ERenderAntialiasing.SMAA]: "Smooths edges by their shapes, sharp and stable.",
+  [ERenderAntialiasing.TAA]: "Smooths edges over frames, foliage and thin geometry too.",
+  [ERenderAntialiasing.FSR]: "Smooths and upscales over frames with AMD's FSR 3.1, steadiest on fine detail.",
+  [ERenderAntialiasing.DLSS]:
+    "Smooths and upscales with NVIDIA's learned model on an RTX GPU; FSR stands in elsewhere.",
+};
+
+/**
+ * @param mode - An antialiasing mode.
+ * @returns What it does, in a sentence.
+ */
+export function explainRenderAntialiasing(mode: RenderAntialiasing): string {
+  return RENDER_ANTIALIASING_DESCRIPTIONS[mode];
+}
+
 /**
  * @param mode - An antialiasing mode.
  * @returns Its name as the settings say it.

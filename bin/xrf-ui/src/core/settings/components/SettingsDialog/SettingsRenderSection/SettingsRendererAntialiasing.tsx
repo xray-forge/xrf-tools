@@ -11,6 +11,7 @@ import {
   RenderTextureFiltering,
 } from "@/core/ipc/types/xrf-renderer";
 import {
+  explainRenderAntialiasing,
   isTemporalAntialiasing,
   RENDER_ANTIALIASING_OPTIONS,
   RENDER_TEXTURE_FILTERING_OPTIONS,
@@ -21,6 +22,7 @@ import {
   RENDER_RESOLUTION_OPTIONS,
 } from "@/core/render/lib/features/render-display-choices";
 import {
+  describeDlssPreset,
   formatSharpening,
   RENDER_DLSS_PRESET_OPTIONS,
   RENDER_SCALE_OPTIONS,
@@ -61,8 +63,7 @@ export function SettingsRendererAntialiasing(): ReactElement {
         <ChoiceFormRow
           label={"Output resolution"}
           description={
-            "What every viewport's frame is resolved at before it is fitted to the viewport. Auto follows the " +
-            "viewport's own size, scaled below."
+            "The size every viewport's frame is resolved at before it is fitted. Auto follows the viewport, scaled below."
           }
           options={RENDER_RESOLUTION_OPTIONS}
           value={renderSettingsService.renderResolution}
@@ -95,11 +96,7 @@ export function SettingsRendererAntialiasing(): ReactElement {
 
         <ChoiceFormRow
           label={"Antialiasing"}
-          description={
-            "SMAA: sharp and stable. FXAA: cheaper, softer. TAA: temporal, also smooths foliage and thin geometry. " +
-            "FSR 3.1: AMD's temporal upscaler, steadiest on fine detail. DLSS: NVIDIA's learned upscaler, on an RTX " +
-            "GPU; FSR stands in for it elsewhere."
-          }
+          description={explainRenderAntialiasing(features.antialiasing)}
           options={RENDER_ANTIALIASING_OPTIONS}
           value={features.antialiasing}
           onChange={(antialiasing: RenderAntialiasing) => renderSettingsService.setRendererOverrides({ antialiasing })}
@@ -108,8 +105,7 @@ export function SettingsRendererAntialiasing(): ReactElement {
         <ChoiceFormRow
           label={"Texture filtering"}
           description={
-            "How surfaces sample their textures. Anisotropic keeps ground and walls seen at grazing angles sharp; " +
-            "trilinear blurs them, at a little less cost."
+            "How surfaces sample their textures: anisotropic keeps grazing ground and walls sharp; trilinear blurs them."
           }
           options={RENDER_TEXTURE_FILTERING_OPTIONS}
           value={features.textureFiltering}
@@ -131,11 +127,7 @@ export function SettingsRendererAntialiasing(): ReactElement {
 
         <ChoiceFormRow
           label={"DLSS model"}
-          description={
-            "Which of NVIDIA's models DLSS upscales with. Default picks per render scale: K up to Balanced, M at " +
-            "Performance, L at Ultra performance. K is the sharpest and costliest; J ghosts slightly less and flickers " +
-            "more."
-          }
+          description={describeDlssPreset(features.upscaling.dlssPreset)}
           options={RENDER_DLSS_PRESET_OPTIONS}
           value={features.upscaling.dlssPreset}
           isDisabled={features.antialiasing !== ERenderAntialiasing.DLSS || features.upscaling.isRayReconstructed}
@@ -147,9 +139,7 @@ export function SettingsRendererAntialiasing(): ReactElement {
         <CheckboxFormRow
           label={"DLSS ray reconstruction"}
           description={
-            "DLSS denoises and upscales in one network over each surface's albedo, normal and roughness, in its " +
-            "model's place. Needs DLSS, the Enhanced tonemap and an RTX GPU whose driver has it; DLSS upscales " +
-            "alone elsewhere."
+            "Denoises the traced light as DLSS upscales. Needs the Enhanced tonemap and an RTX GPU with ray reconstruction."
           }
           isChecked={features.upscaling.isRayReconstructed}
           isDisabled={

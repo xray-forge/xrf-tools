@@ -41,28 +41,28 @@ export function LevelOverlaysAction({
     >
       <EditorPopoverGroupSection
         label={"Grid"}
-        description={"The ground plane in round cells, and the extent the level claims"}
+        description={"Draws the ground plane in round cells and the extent the level claims"}
         isOn={isGridVisible}
         onToggle={() => viewService.toggleOption("isGridVisible")}
       />
 
       <EditorPopoverGroupSection
         label={"Axes"}
-        description={"At the level's origin, saying which way +x and +z go"}
+        description={"Marks the level's origin and which way +x and +z point"}
         isOn={isAxesVisible}
         onToggle={() => viewService.toggleOption("isAxesVisible")}
       />
 
       <EditorPopoverGroupSection
         label={"Sun"}
-        description={"A dot in the sky where the level's directional light comes from"}
+        description={"Marks where the level's directional light comes from with a dot in the sky"}
         isOn={isSunMarked}
         onToggle={() => viewService.toggleOption("isSunMarked")}
       />
 
       <EditorPopoverGroupSection
         label={"Readouts"}
-        description={"What the frame cost, and where the camera stands"}
+        description={"Shows what each frame costs and where the camera stands"}
         isOn={isStatsVisible}
         onToggle={() => viewService.toggleOption("isStatsVisible")}
       >

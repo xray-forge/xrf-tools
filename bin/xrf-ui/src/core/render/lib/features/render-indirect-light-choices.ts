@@ -11,9 +11,9 @@ export const RENDER_INDIRECT_LIGHT_LIMITS = {
 } as const;
 
 const RENDER_INDIRECT_LIGHT_MODE_DESCRIPTIONS: Readonly<Record<RenderIndirectLightMode, string>> = {
-  [ERenderIndirectLightMode.ENGINE]: "The game's own: the hemisphere and the ambient alone stand for bounced light.",
+  [ERenderIndirectLightMode.ENGINE]: "Lets the hemisphere and the ambient stand for bounced light, as the game does.",
   [ERenderIndirectLightMode.ENHANCED]:
-    "Sunlight and lamplight on what the frame shows, bounced once onto what faces it, gathered by the occlusion's search.",
+    "Bounces the sunlight and lamplight on what the frame shows once onto what faces it.",
 };
 
 /**

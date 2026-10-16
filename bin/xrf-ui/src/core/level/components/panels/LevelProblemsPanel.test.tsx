@@ -73,7 +73,9 @@ describe("LevelProblemsPanel", () => {
   it("says what was checked when a level read cleanly", async () => {
     const { getByTestId } = await renderProblems({ isPresent: true });
 
-    expect(getByTestId("level-problems-panel").textContent).toContain("every shader table entry was described");
+    expect(getByTestId("level-problems-panel").textContent).toContain(
+      "its textures, shader entries, sectors' drawables and spawned visuals"
+    );
   });
 
   // The confusion the whole panel exists to end: a surface drew wrong and nothing anywhere named the file behind it,

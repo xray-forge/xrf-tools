@@ -1,4 +1,5 @@
-import { clamp } from "@xrf/math";
+import { formatNumber } from "@xrf/format";
+import { clamp, toDegrees } from "@xrf/math";
 
 import { DEFAULT_LEVEL_FLY_OPTIONS, ILevelFlyOptions } from "@/core/level/lib/camera/level-fly-options";
 
@@ -29,6 +30,11 @@ export const LEVEL_CAMERA_LIMITS = {
   /** Metres a second at a walk. */
   speed: { max: 120, min: 1, step: 1 },
 } as const;
+
+/** @returns The pointer's sensitivity as the degrees the camera turns a pixel it moves. */
+export function formatCameraSensitivity(sensitivity: number): string {
+  return `${formatNumber(toDegrees(sensitivity), 2)}° a pixel`;
+}
 
 /**
  * @param stored - What was stored for the camera, parsed from wherever it is kept.

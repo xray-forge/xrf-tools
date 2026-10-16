@@ -18,9 +18,9 @@ export const RENDER_PARALLAX_LIMITS = {
 
 const RENDER_PARALLAX_MODE_DESCRIPTIONS: Readonly<Record<RenderParallaxMode, string>> = {
   [ERenderParallaxMode.ENGINE]:
-    "The game's own: steep parallax on surfaces whose texture asks for it, none on terrain.",
+    "Draws steep parallax on surfaces whose texture asks for it and none on terrain, as the game does.",
   [ERenderParallaxMode.ENHANCED]:
-    "Terrain and bumped surfaces marched over their heights, shadowed towards the sun, terrain layers blended by height.",
+    "Marches terrain and bumped surfaces over their heights, shadows them towards the sun, blends terrain by height.",
 };
 
 /**

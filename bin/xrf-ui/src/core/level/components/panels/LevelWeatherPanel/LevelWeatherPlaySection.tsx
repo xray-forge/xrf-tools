@@ -74,7 +74,7 @@ export function LevelWeatherPlaySection({
 
         {unfollowed ? (
           <Typography className={"block wrap-anywhere text-text-secondary"} variant={"caption"}>
-            {`The level's weathers = ${unfollowed} names no cycle here; its game's scripts choose its weather. The game's first cycle plays, and any below can.`}
+            {`The level's weathers = ${unfollowed} names no cycle here, so the game's scripts choose. Its first cycle plays.`}
           </Typography>
         ) : null}
 

@@ -23,6 +23,20 @@ export function formatLowLuminance(luminance: number): string {
   return formatNumber(luminance, 4);
 }
 
+const RENDER_TONEMAP_MODE_DESCRIPTIONS: Readonly<Record<RenderTonemapMode, string>> = {
+  [ERenderTonemapMode.ENGINE]: "Tonemaps what each pass draws, as the game does.",
+  [ERenderTonemapMode.ENHANCED]:
+    "Keeps the frame in linear light until it is shown, so blends mix as light does and upscalers get their input.",
+};
+
+/**
+ * @param mode - A tonemap mode.
+ * @returns What it does, in a sentence.
+ */
+export function explainRenderTonemapMode(mode: RenderTonemapMode): string {
+  return RENDER_TONEMAP_MODE_DESCRIPTIONS[mode];
+}
+
 /** The tonemap's places, in the order they are offered. */
 export const RENDER_TONEMAP_MODE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<RenderTonemapMode>> = [
   { label: "Engine", value: ERenderTonemapMode.ENGINE },

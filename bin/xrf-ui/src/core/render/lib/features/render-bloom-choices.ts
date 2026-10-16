@@ -15,9 +15,9 @@ export const RENDER_ENHANCED_BLOOM_LIMITS = {
 } as const;
 
 const RENDER_BLOOM_MODE_DESCRIPTIONS: Readonly<Record<RenderBloomMode, string>> = {
-  [ERenderBloomMode.ENGINE]: "The game's own bloom, as the look's bloom settings draw it.",
+  [ERenderBloomMode.ENGINE]: "Draws the game's bloom, as the look's bloom settings set it.",
   [ERenderBloomMode.ENHANCED]:
-    "The finished frame's bright parts and self-lit surfaces blurred wide, tonemapped and screened over it, in the game's bloom's place.",
+    "Blurs the frame's bright parts and self-lit surfaces wide and screens them over it, in place of the game's bloom.",
 };
 
 /**

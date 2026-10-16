@@ -82,7 +82,7 @@ export function LevelGrassAction({
       icon={<GrassIcon />}
       isOn={isOn && state.isAvailable}
       isDisabled={!state.isAvailable}
-      toggleLabel={"Plant the grass"}
+      toggleLabel={"Grass"}
       onToggle={toggle}
     >
       <RenderValueSlider

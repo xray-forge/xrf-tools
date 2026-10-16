@@ -76,9 +76,9 @@ export function formatGrassHeight(height: number): string {
 
 const RENDER_FOLIAGE_MODE_DESCRIPTIONS: Readonly<Record<RenderFoliageMode, string>> = {
   [ERenderFoliageMode.ENGINE]:
-    "The game's own: each tree leant by the weather's tree wind, each tuft waving on its own.",
+    "Leans each tree by the weather's tree wind and waves each tuft on its own, as the game does.",
   [ERenderFoliageMode.ENHANCED]:
-    "Trunks swing downwind, and branches and grass ride a flow field drifting with the wind.",
+    "Swings trunks downwind and moves branches and grass on a flow field drifting with the wind.",
 };
 
 /**

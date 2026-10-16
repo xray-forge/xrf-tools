@@ -83,7 +83,7 @@ export function LevelShadingAction({
 
       <EditorPopoverGroupSection
         label={"Bumps"}
-        description={isBumped ? "Shaded with the bump pairs their textures declare" : "Shaded flat, as though unbound"}
+        description={isBumped ? "Shades each surface with its textures' bump maps" : "Shades every surface flat"}
         isOn={isBumped}
         onToggle={() => viewService.toggleOption("isBumped")}
       />
@@ -93,9 +93,9 @@ export function LevelShadingAction({
         description={
           isParallaxAvailable
             ? isParallaxed
-              ? "Surfaces displaced by the height their textures carry"
-              : "Every surface flat, its height unread"
-            : "No parallax is drawn: neither the steep nor the enhanced"
+              ? "Displaces each surface by its textures' height"
+              : "Draws every surface flat"
+            : "Settings draw neither the steep nor the enhanced parallax"
         }
         isOn={isParallaxed}
         isDisabled={!isParallaxAvailable}
@@ -106,7 +106,9 @@ export function LevelShadingAction({
 
       <EditorPopoverGroupSection
         label={"Wall marks"}
-        description={isWallmarked ? "The decals compiled into the level, over what they mark" : "The surfaces bare"}
+        description={
+          isWallmarked ? "Draws the decals compiled into the level" : "Draws the surfaces without their decals"
+        }
         isOn={isWallmarked}
         onToggle={() => viewService.toggleOption("isWallmarked")}
       />

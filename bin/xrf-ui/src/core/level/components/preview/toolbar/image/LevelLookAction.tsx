@@ -279,7 +279,7 @@ export function LevelLookAction({
         <ChoiceListFormRow
           data-testid={"level-look-source"}
           label={"Source"}
-          description={"Where the exposure, the light scales, the bloom and the image corrections come from"}
+          description={"Picks where the exposure, light scales, bloom and image corrections come from"}
           options={options}
           value={picked}
           filterFrom={options.length + 1}

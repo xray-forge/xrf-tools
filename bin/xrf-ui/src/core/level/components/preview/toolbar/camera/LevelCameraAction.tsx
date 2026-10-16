@@ -1,11 +1,12 @@
 import { default as VideocamIcon } from "@mui/icons-material/Videocam";
 import { Button, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
-import { formatDegrees, formatNumber } from "@xrf/format";
+import { formatDegrees } from "@xrf/format";
 import { ReactElement } from "react";
 
 import {
   DEFAULT_LEVEL_CAMERA_OPTIONS,
+  formatCameraSensitivity,
   ILevelCameraOptions,
   LEVEL_CAMERA_LIMITS,
 } from "@/core/level/lib/camera/level-camera-options";
@@ -70,7 +71,7 @@ export function LevelCameraAction({
           label={"Sensitivity"}
           value={camera.sensitivity}
           {...LEVEL_CAMERA_LIMITS.sensitivity}
-          format={(value: number) => formatNumber(value, 4)}
+          format={formatCameraSensitivity}
           onChange={(sensitivity) => onSet({ sensitivity })}
         />
 

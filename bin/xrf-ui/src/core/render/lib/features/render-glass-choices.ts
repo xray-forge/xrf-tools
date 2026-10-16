@@ -11,9 +11,9 @@ export const RENDER_GLASS_LIMITS = {
 } as const;
 
 const RENDER_GLASS_MODE_DESCRIPTIONS: Readonly<Record<RenderGlassMode, string>> = {
-  [ERenderGlassMode.ENGINE]: "The game's own: the glass blended over what is behind it, mixed toward the sky's cube.",
+  [ERenderGlassMode.ENGINE]: "Blends glass over what is behind it, mixed toward the sky's cube, as the game does.",
   [ERenderGlassMode.ENHANCED]:
-    "What is behind the glass refracted and blurred where it is dirty, the sky reflected by the fresnel, the sun's highlight on it.",
+    "Refracts what is behind the glass, blurred where it is dirty, and reflects the sky and the sun's highlight.",
 };
 
 /**

@@ -31,16 +31,14 @@ export function LevelParticlesAction({
     >
       <EditorPopoverGroupSection
         label={"Particles"}
-        description={"What the level plants and its zones play: steam, fire, anomalies' idle effects"}
+        description={"Plays what the level places and its zones emit: steam, fire, anomalies' idle effects"}
         isOn={isParticled}
         onToggle={() => viewService.toggleOption("isParticled")}
       />
 
       <EditorPopoverGroupSection
         label={"Campfires lit"}
-        description={
-          isCampfireLit ? "Burning, as the engine starts them" : "Smouldering out, as the game's scripts leave them"
-        }
+        description={isCampfireLit ? "Burn, as the engine starts them" : "Smoulder, as the game's scripts leave them"}
         isOn={isCampfireLit}
         onToggle={() => viewService.toggleOption("isCampfireLit")}
       />
@@ -49,8 +47,8 @@ export function LevelParticlesAction({
         label={"Ambient effects"}
         description={
           isAmbientPlayed
-            ? "The weather's fog, leaves and vortices near the camera, outdoors, with their wind"
-            : "None near the camera, and still air"
+            ? "Plays the weather's fog, leaves and vortices near the camera outdoors, with their wind"
+            : "Plays none, and the air stays still"
         }
         isOn={isAmbientPlayed}
         onToggle={() => viewService.toggleOption("isAmbientPlayed")}

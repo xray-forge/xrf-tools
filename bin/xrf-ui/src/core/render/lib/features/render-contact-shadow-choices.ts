@@ -43,9 +43,9 @@ export function formatContactShadowLights(lights: number): string {
 }
 
 const RENDER_CONTACT_SHADOW_MODE_DESCRIPTIONS: Readonly<Record<RenderContactShadowMode, string>> = {
-  [ERenderContactShadowMode.ENGINE]: "The game's own: the sun's shadow maps alone.",
+  [ERenderContactShadowMode.ENGINE]: "Shadows by the sun's shadow maps alone, as the game does.",
   [ERenderContactShadowMode.ENHANCED]:
-    "The small shadows the shadow maps miss, found by marching each pixel towards the sun over the frame's depth.",
+    "Finds the small shadows the maps miss by marching each pixel towards the sun over the frame's depth.",
 };
 
 /**

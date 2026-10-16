@@ -83,7 +83,7 @@ export function SettingsRendererGrass(): ReactElement {
         <CheckboxFormRow
           label={"Shadows"}
           description={
-            "Casts shadows from the grass near the camera: the sun's and the lamps' traced under ray reconstruction, the sun's in its nearest shadow maps otherwise."
+            "Casts shadows from the grass near the camera: traced under ray reconstruction, in the sun's nearest maps otherwise."
           }
           isChecked={grass.isShadowed}
           onChange={(isShadowed: boolean) => onSet({ isShadowed })}

@@ -3,6 +3,7 @@ import { ReactElement } from "react";
 
 import { ERenderParallaxMode, RenderParallaxMode } from "@/core/ipc/types/xrf-renderer";
 import {
+  explainRenderParallaxMode,
   formatParallaxHeight,
   formatParallaxRange,
   formatParallaxSteps,
@@ -31,10 +32,7 @@ export function SettingsRendererParallax(): ReactElement {
       <div className={"mt-4 flex flex-col gap-6"}>
         <ChoiceFormRow
           label={"Mode"}
-          description={
-            "Engine: the engine's steep parallax alone, no terrain. Enhanced: terrain and steep surfaces marched over " +
-            "their heights, self-shadowed, terrain's layers blended by height."
-          }
+          description={explainRenderParallaxMode(parallax.mode)}
           options={RENDER_PARALLAX_MODE_OPTIONS}
           value={parallax.mode}
           onChange={(mode: RenderParallaxMode) => onSet({ mode })}

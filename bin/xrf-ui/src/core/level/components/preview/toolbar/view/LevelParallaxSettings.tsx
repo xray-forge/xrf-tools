@@ -44,7 +44,7 @@ export function LevelParallaxSettings({
 
       <CheckboxFormRow
         label={"Steep parallax"}
-        description={"The engine's on surfaces whose texture asks for it"}
+        description={"Draws the engine's parallax on surfaces whose texture asks for it"}
         isChecked={value.isSteep}
         onChange={(isSteep: boolean) => set({ isSteep })}
       />

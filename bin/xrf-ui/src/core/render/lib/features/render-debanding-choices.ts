@@ -16,9 +16,9 @@ export const RENDER_DEBANDING_LIMITS = {
 } as const;
 
 const RENDER_DEBANDING_MODE_DESCRIPTIONS: Readonly<Record<RenderDebandingMode, string>> = {
-  [ERenderDebandingMode.ENGINE]: "The game's own: the sky as drawn.",
+  [ERenderDebandingMode.ENGINE]: "Draws the sky as the game does.",
   [ERenderDebandingMode.ENHANCED]:
-    "The sky's colour bands smoothed: each sky pixel averaged with neighbours around it that differ by less than a band.",
+    "Smooths the sky's colour bands, averaging each sky pixel with neighbours less than a band apart.",
 };
 
 /**
