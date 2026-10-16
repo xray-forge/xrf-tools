@@ -588,11 +588,14 @@ impl RenderThread {
 
     let scene_frames: HashMap<RenderSceneId, RenderSceneFrame> = self.advance_world(now, delta);
 
-    if self.shader_watcher.take_changed()
-      && self.shaders.reload()
-      && let Some(gpu) = &mut self.gpu
-    {
-      gpu.refresh(&self.shaders);
+    if self.shader_watcher.take_changed() {
+      let changed: Vec<&'static str> = self.shaders.reload();
+
+      if !changed.is_empty()
+        && let Some(gpu) = &mut self.gpu
+      {
+        gpu.refresh(&self.shaders, &changed);
+      }
     }
 
     let Some((mut encoder, span)) = self.begin_frame_work(delta) else {

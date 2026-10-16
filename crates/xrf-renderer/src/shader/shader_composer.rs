@@ -23,6 +23,21 @@ impl ShaderComposer {
     Ok(enables.into_iter().map(|line| line + "\n").collect::<String>() + &output)
   }
 
+  /// The modules `entry` composes from, itself included, each once.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error for a module `read` cannot give, or a directive it does not know.
+  pub fn list_modules<'a>(entry: &str, read: &dyn Fn(&str) -> XrfResult<&'a str>) -> XrfResult<BTreeSet<String>> {
+    let mut imported: BTreeSet<String> = BTreeSet::new();
+    let mut enables: BTreeSet<String> = BTreeSet::new();
+    let mut output: String = String::new();
+
+    Self::append_module(entry, read, &mut imported, &mut enables, &mut output)?;
+
+    Ok(imported)
+  }
+
   fn append_module<'a>(
     name: &str,
     read: &dyn Fn(&str) -> XrfResult<&'a str>,
