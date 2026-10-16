@@ -1,9 +1,9 @@
-/// What a variable's value is read as.
+/// How a variable's value is parsed.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum EnvFlagValue {
   /// On or off.
   Switch,
-  /// On or off as wgpu reads its own: `0` off, any other value on.
+  /// On or off as wgpu reads its switches: `0` is off, any other value is on.
   ZeroOffSwitch,
   /// One of the names given, in any case.
   Choice(&'static [&'static str]),
@@ -14,13 +14,13 @@ pub enum EnvFlagValue {
 }
 
 impl EnvFlagValue {
-  /// What a switch takes for on, in any case.
+  /// Values a switch accepts for on, in any case.
   pub const SWITCH_ON: [&'static str; 4] = ["1", "true", "on", "yes"];
-  /// What a switch takes for off, in any case.
+  /// Values a switch accepts for off, in any case.
   pub const SWITCH_OFF: [&'static str; 4] = ["0", "false", "off", "no"];
 
-  /// The value `raw` stands for, as the variable takes it: a switch's `on` or `off`, a choice's own spelling, a path or
-  /// text as set; none where it takes no such value.
+  /// Parses `raw`: `on` or `off` for a switch, the table's spelling for a choice, the trimmed text for a path or text.
+  /// None if the value is invalid.
   pub fn interpret(self, raw: &str) -> Option<String> {
     let trimmed: &str = raw.trim();
 
@@ -45,7 +45,7 @@ impl EnvFlagValue {
     }
   }
 
-  /// What it takes, as a sentence's object: "`0` or `1`, ...".
+  /// The accepted values, phrased to follow "Takes:", for example "`d3d12` or `vulkan`".
   pub fn describe(self) -> String {
     match self {
       Self::Switch => String::from("`1`, `true`, `on` or `yes` for on; `0`, `false`, `off` or `no` for off"),

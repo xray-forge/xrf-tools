@@ -15,7 +15,7 @@ describe("describeGraphics", () => {
     expect(describeGraphics(RENDER_BACKEND_AUTO, BOTH, null)).toEqual([
       { label: "Direct3D 12", value: "Test GPU, driver 32.0.16.1714" },
       { label: "Vulkan", value: "Not available: No Vulkan here" },
-      { label: "Drawing with", value: "Direct3D 12, the first that works" },
+      { label: "Drawing with", value: "Direct3D 12, chosen automatically" },
     ]);
   });
 
@@ -27,7 +27,7 @@ describe("describeGraphics", () => {
 
     expect(describeGraphics(ERenderBackend.VULKAN, forced, null).at(-1)).toEqual({
       label: "Drawing with",
-      value: "Direct3D 12, as XRF_RENDER_BACKEND asks",
+      value: "Direct3D 12, set by XRF_RENDER_BACKEND",
     });
   });
 

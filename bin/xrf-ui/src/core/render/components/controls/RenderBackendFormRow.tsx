@@ -44,8 +44,8 @@ function describeBackendChoice(
 
   if (forced !== null) {
     return forced === drawn
-      ? `${lead} XRF_RENDER_BACKEND asks for ${describeRenderBackend(forced)} over this choice. ${drawnOn}`
-      : `${lead} XRF_RENDER_BACKEND asks for ${describeRenderBackend(forced)}, which is not available here, so the ` +
+      ? `${lead} XRF_RENDER_BACKEND overrides this choice with ${describeRenderBackend(forced)}. ${drawnOn}`
+      : `${lead} XRF_RENDER_BACKEND asks for ${describeRenderBackend(forced)}, but it is not available here, so the ` +
           `renderer fell back. ${drawnOn}`;
   }
 

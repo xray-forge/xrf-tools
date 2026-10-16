@@ -19,7 +19,7 @@ export const systemCommands = {
   getBuildInfo: () => __TAURI_INVOKE<BuildInfo>("plugin:system|get_build_info"),
   /** Where tools write when no output directory has been configured. */
   getDefaultOutputRoot: () => __TAURI_INVOKE<string>("plugin:system|get_default_output_root"),
-  /** Report every environment variable the application reads, set or not, as this run found it. */
+  /** Report every environment variable the application reads, with its value in this run. */
   getEnvironmentFlags: () => __TAURI_INVOKE<Array<EnvFlagReading>>("plugin:system|get_environment_flags"),
   /** Report what the application is running on and with. */
   getHostInfo: () => __TAURI_INVOKE<HostInfo>("plugin:system|get_host_info"),

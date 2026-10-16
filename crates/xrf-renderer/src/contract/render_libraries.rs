@@ -6,18 +6,18 @@ use xrf_dlss::Dlss;
 use crate::context::gpu_context::GpuContext;
 use crate::host::render_bundle::RenderBundle;
 
-/// The graphics libraries the renderer ships beside the application: the DLSS runtime.
+/// Graphics libraries shipped beside the application; currently only the DLSS runtime.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RenderLibraries {
-  /// The DLSS runtime's own file version, such as `310.9.1.0`; none where the build has no DLSS or its library is not
-  /// in the bundle.
+  /// The DLSS runtime's file version, for example `310.9.1.0`; none if the build has no DLSS or the library is missing
+  /// from the bundle.
   pub dlss: Option<String>,
 }
 
 impl RenderLibraries {
-  /// The libraries as this build has them, the DLSS runtime looked for in `bundle`.
+  /// Describes this build's libraries, looking for the DLSS runtime in `bundle`.
   pub fn describe(bundle: &dyn RenderBundle) -> Self {
     let library: Option<String> = Dlss::IS_BUILT
       .then(|| bundle.locate_bundled(&format!("{}/{}", GpuContext::DLSS_DIRECTORY, Dlss::RUNTIME_LIBRARY)))
@@ -27,7 +27,7 @@ impl RenderLibraries {
     Self { dlss: library }
   }
 
-  /// A Windows library's file version from its version resource, `major.minor.build.revision`; none where it has none.
+  /// Reads a Windows library's file version (`major.minor.build.revision`) from its version resource; none if absent.
   #[cfg(windows)]
   pub(crate) fn read_file_version(path: &Path) -> Option<String> {
     use std::os::windows::ffi::OsStrExt;
@@ -73,7 +73,7 @@ impl RenderLibraries {
     }
   }
 
-  /// No version resource to read off Windows.
+  /// Libraries have no version resource to read outside Windows.
   #[cfg(not(windows))]
   pub(crate) fn read_file_version(_path: &Path) -> Option<String> {
     None

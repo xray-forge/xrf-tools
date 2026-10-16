@@ -11,14 +11,14 @@ import {
 
 import { IAboutRow } from "./about-row";
 
-/** What NVIDIA's licence asks the application to say of the SDK it upscales with, beside its marks. */
+/** The attribution NVIDIA's DLSS licence requires in the About box. */
 export const DLSS_ATTRIBUTION: string =
   "Upscaling and ray reconstruction by NVIDIA DLSS. NVIDIA and DLSS are trademarks and/or registered trademarks of " +
   "NVIDIA Corporation in the U.S. and other countries.";
 
 /**
  * @param backend - One graphics API as the renderer probed it.
- * @returns What it would draw on, with its driver, or why it cannot draw.
+ * @returns The GPU and driver it would use, or why it is unavailable.
  */
 function describeAvailability(backend: RenderBackendAvailability): string {
   if (backend.adapter === null) {
@@ -29,9 +29,9 @@ function describeAvailability(backend: RenderBackendAvailability): string {
 }
 
 /**
- * @param choice - The graphics API the settings ask for.
+ * @param choice - The graphics API chosen in the settings.
  * @param availability - Each graphics API as the renderer probed it.
- * @returns Which one draws, and why that one.
+ * @returns The API in use, and why it was picked.
  */
 function describeDrawing(
   choice: TRenderBackendChoice,
@@ -44,19 +44,19 @@ function describeDrawing(
   }
 
   if (getForcedRenderBackend(availability) === drawn) {
-    return `${describeRenderBackend(drawn)}, as XRF_RENDER_BACKEND asks`;
+    return `${describeRenderBackend(drawn)}, set by XRF_RENDER_BACKEND`;
   }
 
   return choice === RENDER_BACKEND_AUTO
-    ? `${describeRenderBackend(drawn)}, the first that works`
+    ? `${describeRenderBackend(drawn)}, chosen automatically`
     : describeRenderBackend(drawn);
 }
 
 /**
- * @param choice - The graphics API the settings ask for.
- * @param availability - Each graphics API as the renderer probed it, none until it answers.
- * @param libraries - The graphics libraries the renderer ships with, none until it answers.
- * @returns Every row worth stating about the GPU and the graphics libraries, in the order they read.
+ * @param choice - The graphics API chosen in the settings.
+ * @param availability - Each graphics API as the renderer probed it, or null until it answers.
+ * @param libraries - The graphics libraries the renderer ships with, or null until it answers.
+ * @returns The rows to show, in display order.
  */
 export function describeGraphics(
   choice: TRenderBackendChoice,

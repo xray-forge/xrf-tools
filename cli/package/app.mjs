@@ -5,9 +5,9 @@ import * as process from "node:process";
 import { parseArgs } from "node:util";
 
 /**
- * Packages a built desktop application as the archive it ships as: the executable, the renderer's resources beside it
- * (the shader compiler, the lookup textures and, built with DLSS, NVIDIA's runtime and licence) and the repository's
- * licence, under one `xrf-app/` folder.
+ * Packs a built desktop application into the archive it ships as. The archive holds one `xrf-app/` folder with the
+ * executable, the renderer resources beside it (the shader compiler, lookup textures and, in DLSS builds, NVIDIA's runtime
+ * and licence) and the repository licence.
  *
  * Usage: node cli/package/app.mjs [--profile release] [--name xrf-app-windows-x64]
  * Writes `target/package/<name>.zip`.

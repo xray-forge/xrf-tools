@@ -1,4 +1,4 @@
-//! What the log's first lines say about this run, so a log file alone tells which build ran where and how.
+//! The first lines of the log: which build ran, on what machine, and with which environment variables.
 
 use std::env;
 use std::path::PathBuf;
@@ -9,7 +9,7 @@ use xrf_utils::format_path;
 
 use crate::plugins::system::diagnostics::host_info::HostInfo;
 
-/// Logs the build, the machine, the process and the environment variables set, one line each.
+/// Logs the build, the machine, the process and the set environment variables, one line each.
 pub fn log_startup() {
   log::info!("Build: {}", describe_build(&build_info!()));
   log::info!("Host: {}", describe_host(&HostInfo::read()));
@@ -26,7 +26,7 @@ pub fn log_startup() {
   }
 }
 
-/// The build in one line: version and kind, commit, when, for what and how optimised.
+/// The build in one line: version and kind, commit, build time, target and optimisation.
 fn describe_build(build: &BuildInfo) -> String {
   let mut parts: Vec<String> = vec![format!("xrf-app {} ({})", build.version, build.kind.as_str())];
 
@@ -37,7 +37,7 @@ fn describe_build(build: &BuildInfo) -> String {
     parts.push(format!("commit {commit}{reference}{dirty}"));
   }
 
-  // The compiler's own line already names it: `rustc 1.99.0 (...)`.
+  // The value already starts with the compiler's name: `rustc 1.99.0 (...)`.
   parts.extend(build.rustc.map(String::from));
 
   for (label, value) in [
@@ -55,7 +55,7 @@ fn describe_build(build: &BuildInfo) -> String {
   parts.join(", ")
 }
 
-/// The machine in one line: system, processors, memory and the webview serving the window.
+/// The machine in one line: system, processors, memory and the webview version.
 fn describe_host(host: &HostInfo) -> String {
   let system: String = [host.os_name.as_deref(), host.os_version.as_deref()]
     .into_iter()
@@ -82,7 +82,7 @@ fn describe_host(host: &HostInfo) -> String {
   .join(", ")
 }
 
-/// The process in one line: its identifier, the executable and where it started.
+/// The process in one line: its ID, the executable and the working directory.
 fn describe_process() -> String {
   let describe =
     |path: std::io::Result<PathBuf>| path.map_or_else(|_| String::from("unknown"), |it| format_path(&it).to_string());
@@ -95,7 +95,7 @@ fn describe_process() -> String {
   )
 }
 
-/// The variables set, `NAME=value` each, a value a variable does not take marked as such.
+/// The set variables as `NAME=value`, with invalid values marked.
 fn describe_flags(set: &[EnvFlagReading]) -> String {
   set
     .iter()
@@ -103,7 +103,10 @@ fn describe_flags(set: &[EnvFlagReading]) -> String {
       let value: &str = reading.value.as_deref().unwrap_or_default();
 
       match reading.is_refused() {
-        true => format!("{}={value:?} (not taken; default: {})", reading.name, reading.default),
+        true => format!(
+          "{}={value:?} (not valid, the default applies: {})",
+          reading.name, reading.default
+        ),
         false => format!("{}={value:?}", reading.name),
       }
     })

@@ -1,8 +1,8 @@
 name: Native SDKs
 description: >
-  Restore the SDKs the `dlss` feature builds against into `.sdks/`, which `.cargo/config.toml` points the build at,
-  and fetch what the cache does not hold. One cache entry for every job and workflow: `cli/sdks/fetch.mjs` pins each
-  SDK to a commit or a hash, so its contents are the key, and the entry changes only when a pin does.
+  Restores the SDKs that the `dlss` feature builds against into `.sdks/`, where `.cargo/config.toml` points the build,
+  then fetches anything missing. All jobs and workflows share one cache entry keyed on `cli/sdks/fetch.mjs`, which pins
+  each SDK, so the key changes only when a pin does.
 
 runs:
   using: composite
@@ -13,15 +13,15 @@ runs:
       with:
         path: .sdks
         key: native-sdks-${{ runner.os }}-${{ hashFiles('cli/sdks/fetch.mjs') }}
-        # An entry from older pins still holds every SDK whose pin did not move: the fetch below brings the rest.
+        # An entry from older pins still holds every SDK whose pin is unchanged; the fetch step adds the rest.
         restore-keys: native-sdks-${{ runner.os }}-
 
-    # Checks every SDK against its pin and fetches only what is missing or moved: nothing on an exact hit.
+    # Checks each SDK against its pin and fetches only what is missing or outdated, so an exact hit fetches nothing.
     - name: Fetch the native SDKs
       shell: bash
       run: node cli/sdks/fetch.mjs
 
-    # Saved from main alone, where every branch's restore falls back to; about 250 MB before compression.
+    # Saved only from main, which every branch's restore falls back to. About 250 MB before compression.
     - name: Save the native SDKs
       if: ${{ steps.restore.outputs.cache-hit != 'true' && github.ref == 'refs/heads/main' }}
       uses: actions/cache/save@v6

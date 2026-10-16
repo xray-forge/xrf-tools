@@ -13,14 +13,14 @@ import { SettingsAboutRow } from "./SettingsAboutRow";
 import { describeVariables } from "./SettingsVariablesSection.utils";
 
 /**
- * The environment variables this run was started with, of those the application reads.
+ * The environment variables set for this run, among those the application reads.
  */
 export function SettingsVariablesSection(): ReactElement {
   const log: Logger = useLogger(__MODULE_NAME__);
 
   const [rows, setRows] = useState<Nullable<Array<IAboutRow>>>(null);
 
-  // Read once: the environment is the process's own and does not change while it runs.
+  // Read once: the process environment does not change while it runs.
   useMountEffect(() => {
     systemCommands
       .getEnvironmentFlags()
@@ -32,13 +32,13 @@ export function SettingsVariablesSection(): ReactElement {
     <DetailSection
       data-testid={"settings-variables-section"}
       title={"Environment variables"}
-      description={"The variables this run was started with that change what the application does."}
+      description={"Environment variables set for this run that change how the application behaves."}
     >
       <Stack className={"mt-2"} spacing={0.5}>
         {rows === null ? (
           <Typography variant={"caption"}>Reading environment variables...</Typography>
         ) : rows.length === 0 ? (
-          <Typography variant={"caption"}>None set: every one has its default.</Typography>
+          <Typography variant={"caption"}>None set. Every variable uses its default.</Typography>
         ) : (
           rows.map((it: IAboutRow) => <SettingsAboutRow key={it.label} label={it.label} value={it.value} />)
         )}
