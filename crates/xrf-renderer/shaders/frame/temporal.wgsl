@@ -6,7 +6,7 @@
 // as TAAU where the frame is drawn smaller than the history. Motion is each surface's own, from the motion target, and
 // the camera's from depth where nothing was drawn. Where the water, a composited surface or a particle changed the
 // frame, whose motion and depth are what lies behind them, the history counts for less and is clipped tighter, as
-// FSR 2's reactive mask weighs it.
+// FSR's reactive mask weighs it.
 
 // This frame as drawn, its depth, the history (colour, then distance along the view, zero where nothing was drawn)
 // and its sampler, what moves the history onto this frame, and how far each surface's point moved since the last frame,

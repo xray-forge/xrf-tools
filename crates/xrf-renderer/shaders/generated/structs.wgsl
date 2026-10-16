@@ -375,12 +375,14 @@ struct Fsr {
   render_size: vec2<f32>,
   display_size: vec2<f32>,
   jitter: vec2<f32>,
+  previous_jitter: vec2<f32>,
   downscale: vec2<f32>,
+  shading_size: vec2<f32>,
   device_to_view: vec4<f32>,
-  luma_mip_size: vec2<f32>,
   jitter_phase_count: f32,
   frame_index: f32,
-  hdr: vec4<f32>,
+  velocity_factor: f32,
+  hdr: f32,
 }
 
 struct Cluster {

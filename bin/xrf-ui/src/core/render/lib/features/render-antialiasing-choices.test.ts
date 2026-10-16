@@ -7,7 +7,7 @@ describe("temporal antialiasing", () => {
   it("tells the modes that resolve frames over time, which sharpening applies to at any size", () => {
     expect(Object.values(ERenderAntialiasing).filter(isTemporalAntialiasing)).toEqual([
       ERenderAntialiasing.TAA,
-      ERenderAntialiasing.FSR2,
+      ERenderAntialiasing.FSR,
       ERenderAntialiasing.DLSS,
     ]);
   });

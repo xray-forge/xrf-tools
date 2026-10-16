@@ -2,16 +2,16 @@ use xrf_renderer_core::{GraphTexture, PassParameters, UniformBinding};
 
 use crate::pass::fsr_uniform::FsrUniform;
 
-/// FSR 2's dilation: the depth and motion drawn, and the frame.
+/// The shading change pyramid's first level: the dilated motion, and this frame's and the last frame's luma.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 0)]
-pub struct FsrDilateParameters {
+pub struct FsrShadingPyramidParameters {
   #[uniform]
   pub fsr: UniformBinding<FsrUniform>,
-  #[texture(d2, depth)]
-  pub depth_target: GraphTexture,
   #[texture(d2, unfilterable)]
-  pub motion_target: GraphTexture,
+  pub dilated_motion: GraphTexture,
   #[texture(d2, unfilterable)]
-  pub color: GraphTexture,
+  pub luma: GraphTexture,
+  #[texture(d2, unfilterable)]
+  pub previous_luma: GraphTexture,
 }

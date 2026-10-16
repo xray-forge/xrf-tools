@@ -1,8 +1,8 @@
 #import "common/fullscreen"
 #import "frame/fsr/common"
 
-// `ffx_fsr2_autogen_reactive_pass.hlsl`: the reactive mask from what the blended surfaces changed, with its tonemap,
-// component-maximum and threshold flags on.
+// `ffx_fsr3upscaler_autogen_reactive_pass.hlsl`: the reactive mask from what the blended surfaces changed, with its
+// tonemap, component-maximum and threshold flags on.
 
 @group(0) @binding(1) var opaque: texture_2d<f32>;
 @group(0) @binding(2) var color: texture_2d<f32>;

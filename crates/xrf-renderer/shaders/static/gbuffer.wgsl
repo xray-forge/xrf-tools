@@ -918,7 +918,7 @@ fn shade(in: GBufferVarying, base: vec4<f32>, at: Footprint) -> GBufferOutput {
   // Its alpha holds the marks: what is selected, which the present pass outlines, what is self-lit, foliage and terrain.
   out.material = vec4<f32>(hemi, sun, surface.slice,
     encode_marks(is_selected(in.entry), (surface.flags & SURFACE_IS_EMISSIVE) != 0u, is_flora, is_terrain, at.is_relief,
-      in.flora.z > 0.5));
+      in.flora.z > 0.5, is_moved(in.moved)));
   out.motion = camera_motion(in.world, in.world + in.moved);
   // The clearance stored from one down, so a target cleared to none reads as clear.
   out.relief = vec2<f32>(sink, 1.0 - clearance);

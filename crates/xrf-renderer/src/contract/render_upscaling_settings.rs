@@ -30,7 +30,7 @@ impl Default for RenderUpscalingSettings {
 }
 
 impl RenderUpscalingSettings {
-  /// RCAS's `con`: FSR 2's remap of a sharpness to stops, `(1 - sharpening) * 2`, as `exp2(-stops)`.
+  /// RCAS's `con`: FSR's remap of a sharpness to stops, `(1 - sharpening) * 2`, as `exp2(-stops)`.
   pub fn get_sharpness(&self) -> f32 {
     (-(1.0 - self.sharpening.clamp(0.0, 1.0)) * 2.0).exp2()
   }
