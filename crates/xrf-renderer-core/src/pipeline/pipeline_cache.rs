@@ -53,8 +53,8 @@ impl PipelineCache {
       checked
     });
     let driver: Option<wgpu::PipelineCache> = device.features().contains(wgpu::Features::PIPELINE_CACHE).then(|| {
-      // SAFETY: the data is what `get_driver_data` answered, its checksum holding, so it is intact; wgpu refuses data of
-      // another adapter, driver or size, starting the cache empty in its place.
+      // SAFETY: the data is what `get_driver_data` answered, its checksum holding, so it is intact; wgpu refuses data
+      // of another adapter, driver or size, starting the cache empty in its place.
       unsafe {
         device.create_pipeline_cache(&wgpu::PipelineCacheDescriptor {
           label: Some("pipelines"),

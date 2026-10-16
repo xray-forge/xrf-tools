@@ -1,6 +1,6 @@
 /// A shader's permutation domain, declared as a struct (`#[derive(ShaderPermutation)]`): each field a WGSL `override`
-/// constant of its name in upper case. A permutation switches code, never bindings; a variant binding otherwise is another pass
-/// parameter struct.
+/// constant of its name in upper case. A permutation switches code, never bindings; a variant binding otherwise is
+/// another pass parameter struct.
 pub trait ShaderPermutation {
   /// The constants a pipeline of this permutation is made with, by name.
   fn list_constants(&self) -> Vec<(&'static str, f64)>;

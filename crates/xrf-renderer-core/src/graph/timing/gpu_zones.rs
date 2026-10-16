@@ -1,7 +1,7 @@
 use crate::graph::timing::timed_pass::TimedPass;
 
-/// The graph's timed passes as Tracy GPU zones, one a pass a frame, from the stamps the timer reads back; nothing without
-/// the `tracy` feature or a running client.
+/// The graph's timed passes as Tracy GPU zones, one a pass a frame, from the stamps the timer reads back; nothing
+/// without the `tracy` feature or a running client.
 #[derive(Default)]
 pub(crate) struct GpuZones {
   #[cfg(feature = "tracy")]

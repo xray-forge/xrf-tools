@@ -70,8 +70,8 @@ impl<T> ProxyStore<T> {
     ProxyHandle::new(slot, self.slots[slot as usize].generation)
   }
 
-  /// Puts an item in at a handle a `ProxyAllocator` gave out, at the end of the dense records. A store takes its handles
-  /// either from `add` or from an allocator, never both, so the two never hand out one slot.
+  /// Puts an item in at a handle a `ProxyAllocator` gave out, at the end of the dense records. A store takes its
+  /// handles either from `add` or from an allocator, never both, so the two never hand out one slot.
   ///
   /// # Panics
   ///

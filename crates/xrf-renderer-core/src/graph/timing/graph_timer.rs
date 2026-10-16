@@ -115,8 +115,8 @@ impl GraphTimer {
   }
 
   /// Each of an owner's passes' mean GPU milliseconds a frame over the frames read back since that owner's last call,
-  /// which starts its next span: a pass a frame did not run, as a cascade redrawn only when due, counts nought there, so
-  /// the passes add up to the frame. `GraphOwner::Frame` for passes no owner was named for.
+  /// which starts its next span: a pass a frame did not run, as a cascade redrawn only when due, counts nought there,
+  /// so the passes add up to the frame. `GraphOwner::Frame` for passes no owner was named for.
   pub fn take(&mut self, owner: GraphOwner) -> Vec<GraphPassTime> {
     self.collect();
 

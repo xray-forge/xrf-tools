@@ -1,7 +1,7 @@
 use crate::shader::ShaderType;
 
-/// The layout entries `#[derive(PassParameters)]` builds, one kind of binding each. A binding is visible to every stage,
-/// except a writable one, which a vertex shader may not hold.
+/// The layout entries `#[derive(PassParameters)]` builds, one kind of binding each. A binding is visible to every
+/// stage, except a writable one, which a vertex shader may not hold.
 pub struct PassBindingLayout;
 
 impl PassBindingLayout {
