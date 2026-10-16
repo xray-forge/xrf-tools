@@ -2,7 +2,7 @@ use glam::Vec3;
 
 use crate::data::actions::particle_action_restore::ParticleActionRestore;
 use crate::simulation::actions::particle_action_step::ParticleActionStep;
-use crate::simulation::particle_pool::ParticlePool;
+use crate::simulation::pool::particle_pool::ParticlePool;
 
 /// `PARestore`: steers each particle back to its previous position over the time left, then pins it there.
 pub(crate) struct RestoreAction {
@@ -52,9 +52,9 @@ mod tests {
 
   use super::RestoreAction;
   use crate::simulation::actions::particle_action_step::ParticleActionStep;
-  use crate::simulation::particle::Particle;
   use crate::simulation::particle_engine_rules::ParticleEngineRules;
-  use crate::simulation::particle_pool::ParticlePool;
+  use crate::simulation::pool::particle::Particle;
+  use crate::simulation::pool::particle_pool::ParticlePool;
 
   #[test]
   fn pins_particles_once_the_time_runs_out() {

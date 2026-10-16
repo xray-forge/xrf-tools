@@ -2,7 +2,7 @@ use std::sync::OnceLock;
 
 use glam::Vec3;
 
-use crate::simulation::particle_random::ParticleRandom;
+use crate::simulation::domain::particle_random::ParticleRandom;
 
 /// `noise.cpp`: Perlin gradient noise, its tables filled from `srand(1)` as `noise3Init` fills them.
 pub(crate) struct ParticleNoise {

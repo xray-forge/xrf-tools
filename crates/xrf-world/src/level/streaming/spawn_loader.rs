@@ -9,8 +9,8 @@ use xrf_renderer::{
   RenderSpawnObject, RenderWorkers, StaticModel, StaticModelPlace, take_answer,
 };
 
-use crate::level::indexed_spawn::IndexedSpawn;
-use crate::level::loader_flight::LoaderFlight;
+use crate::level::loading::loader_flight::LoaderFlight;
+use crate::level::streaming::indexed_spawn::IndexedSpawn;
 
 /// Visuals a loader thread reads in one batch: enough that the level's lighting is estimated for many at once, few
 /// enough that objects appear while the rest are read.

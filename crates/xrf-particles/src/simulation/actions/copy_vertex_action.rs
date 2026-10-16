@@ -1,5 +1,5 @@
 use crate::data::actions::particle_action_copy_vertex::ParticleActionCopyVertex;
-use crate::simulation::particle_pool::ParticlePool;
+use crate::simulation::pool::particle_pool::ParticlePool;
 
 /// `PACopyVertexB`: sets every particle's previous position to its position.
 pub(crate) struct CopyVertexAction {
@@ -29,8 +29,8 @@ mod tests {
   use glam::Vec3;
 
   use super::CopyVertexAction;
-  use crate::simulation::particle::Particle;
-  use crate::simulation::particle_pool::ParticlePool;
+  use crate::simulation::pool::particle::Particle;
+  use crate::simulation::pool::particle_pool::ParticlePool;
 
   #[test]
   fn copies_the_position_into_the_previous_one() {

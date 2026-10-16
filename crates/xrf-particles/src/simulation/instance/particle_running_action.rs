@@ -31,7 +31,7 @@ use crate::simulation::actions::target_size_action::TargetSizeAction;
 use crate::simulation::actions::target_velocity_action::TargetVelocityAction;
 use crate::simulation::actions::turbulence_action::TurbulenceAction;
 use crate::simulation::actions::vortex_action::VortexAction;
-use crate::simulation::particle_pool::ParticlePool;
+use crate::simulation::pool::particle_pool::ParticlePool;
 
 /// One action of a running effect: its own copy, local and placed values, and its state between steps.
 pub(crate) struct ParticleRunningAction {

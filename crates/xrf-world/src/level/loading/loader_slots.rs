@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::level::loader_slot::LoaderSlot;
+use crate::level::loading::loader_slot::LoaderSlot;
 
 /// Things read once each on the workers by name, the first time anything asks for one, and kept.
 pub struct LoaderSlots<T> {

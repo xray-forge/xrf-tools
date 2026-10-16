@@ -2,7 +2,7 @@ use glam::Vec3;
 
 use crate::data::actions::particle_action_match_velocity::ParticleActionMatchVelocity;
 use crate::simulation::actions::particle_action_step::ParticleActionStep;
-use crate::simulation::particle_pool::ParticlePool;
+use crate::simulation::pool::particle_pool::ParticlePool;
 
 /// `PAMatchVelocity`: nudges each particle by its near neighbours' velocities, and them back by as much.
 pub(crate) struct MatchVelocityAction {
@@ -49,9 +49,9 @@ mod tests {
 
   use super::MatchVelocityAction;
   use crate::simulation::actions::particle_action_step::ParticleActionStep;
-  use crate::simulation::particle::Particle;
   use crate::simulation::particle_engine_rules::ParticleEngineRules;
-  use crate::simulation::particle_pool::ParticlePool;
+  use crate::simulation::pool::particle::Particle;
+  use crate::simulation::pool::particle_pool::ParticlePool;
 
   #[test]
   fn trades_the_later_particles_velocity_between_a_pair() {

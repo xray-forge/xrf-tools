@@ -1,9 +1,9 @@
 use glam::{Mat4, Vec3};
 
+use crate::simulation::instance::particle_instance::ParticleInstance;
+use crate::simulation::instance::particle_object::ParticleObject;
 use crate::simulation::particle_engine_rules::ParticleEngineRules;
-use crate::simulation::particle_instance::ParticleInstance;
 use crate::simulation::particle_library::ParticleLibrary;
-use crate::simulation::particle_object::ParticleObject;
 use crate::simulation::tests::fixtures::{context, effect, library, moving, source};
 
 fn age_of(object: &ParticleObject) -> f32 {

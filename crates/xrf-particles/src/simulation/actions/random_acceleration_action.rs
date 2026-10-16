@@ -2,8 +2,8 @@ use glam::Mat4;
 
 use crate::data::actions::particle_action_random_acceleration::ParticleActionRandomAcceleration;
 use crate::simulation::actions::particle_action_step::ParticleActionStep;
-use crate::simulation::particle_pool::ParticlePool;
-use crate::simulation::particle_volume::ParticleVolume;
+use crate::simulation::domain::particle_volume::ParticleVolume;
+use crate::simulation::pool::particle_pool::ParticlePool;
 
 /// `PARandomAccel`: adds a random acceleration from a volume to each particle every step.
 pub(crate) struct RandomAccelerationAction {
@@ -44,11 +44,11 @@ mod tests {
 
   use super::RandomAccelerationAction;
   use crate::simulation::actions::particle_action_step::ParticleActionStep;
-  use crate::simulation::particle::Particle;
+  use crate::simulation::domain::particle_volume::ParticleVolume;
+  use crate::simulation::domain::particle_volume_kind::ParticleVolumeKind;
   use crate::simulation::particle_engine_rules::ParticleEngineRules;
-  use crate::simulation::particle_pool::ParticlePool;
-  use crate::simulation::particle_volume::ParticleVolume;
-  use crate::simulation::particle_volume_kind::ParticleVolumeKind;
+  use crate::simulation::pool::particle::Particle;
+  use crate::simulation::pool::particle_pool::ParticlePool;
 
   #[test]
   fn adds_a_drawn_acceleration_times_the_step() {

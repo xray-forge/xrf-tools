@@ -5,8 +5,8 @@ use std::sync::mpsc::Sender;
 use xrf_renderer::{LoaderReceiver, RenderLevelSource, RenderWorkers};
 use xrf_visual::SectorPackage;
 
-use crate::level::loader_flight::LoaderFlight;
-use crate::level::surface_tally::SurfaceTally;
+use crate::level::loading::loader_flight::LoaderFlight;
+use crate::level::streaming::surface_tally::SurfaceTally;
 
 /// One sector's pack as a loader thread finished it, with what its surfaces draw, or why it could not be packed.
 pub type SectorLoad = (u32, Result<(SectorPackage, SurfaceTally), String>);

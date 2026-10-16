@@ -2,7 +2,7 @@ use glam::{Mat4, Vec3};
 
 use crate::data::actions::particle_action_target_velocity::ParticleActionTargetVelocity;
 use crate::simulation::actions::particle_action_step::ParticleActionStep;
-use crate::simulation::particle_pool::ParticlePool;
+use crate::simulation::pool::particle_pool::ParticlePool;
 
 /// `PATargetVelocity`: shifts each particle's velocity towards a target.
 pub(crate) struct TargetVelocityAction {
@@ -43,9 +43,9 @@ mod tests {
 
   use super::TargetVelocityAction;
   use crate::simulation::actions::particle_action_step::ParticleActionStep;
-  use crate::simulation::particle::Particle;
   use crate::simulation::particle_engine_rules::ParticleEngineRules;
-  use crate::simulation::particle_pool::ParticlePool;
+  use crate::simulation::pool::particle::Particle;
+  use crate::simulation::pool::particle_pool::ParticlePool;
 
   #[test]
   fn shifts_the_velocity_a_share_of_the_way() {

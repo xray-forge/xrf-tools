@@ -1,6 +1,6 @@
 use glam::{Mat4, Vec3};
 
-use crate::simulation::particle_instance::ParticleInstance;
+use crate::simulation::instance::particle_instance::ParticleInstance;
 use crate::simulation::particle_update_context::ParticleUpdateContext;
 
 /// `CParticlesObject`: a placed effect or group, updated while drawn and by the distance-paced scheduler.

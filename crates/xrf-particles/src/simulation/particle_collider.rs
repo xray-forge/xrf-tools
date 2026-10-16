@@ -1,6 +1,6 @@
 use glam::Vec3;
 
-use crate::simulation::particle_contact::ParticleContact;
+use crate::simulation::pool::particle_contact::ParticleContact;
 
 /// `CObjectSpace::RayPick` as collision asks it: the nearest surface along a unit ray within a range, shared by every
 /// thread that steps effects.

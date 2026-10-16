@@ -3,8 +3,8 @@ use xrf_engine_target::XrayEngine;
 
 use crate::data::actions::particle_action_target_color::ParticleActionTargetColor;
 use crate::simulation::actions::particle_action_step::ParticleActionStep;
-use crate::simulation::particle::Particle;
-use crate::simulation::particle_pool::ParticlePool;
+use crate::simulation::pool::particle::Particle;
+use crate::simulation::pool::particle_pool::ParticlePool;
 
 /// `PATargetColor`: shifts the colour of particles inside an age window, a share of `kill_old_time`, towards a target.
 pub(crate) struct TargetColorAction {
@@ -75,9 +75,9 @@ mod tests {
 
   use super::TargetColorAction;
   use crate::simulation::actions::particle_action_step::ParticleActionStep;
-  use crate::simulation::particle::Particle;
   use crate::simulation::particle_engine_rules::ParticleEngineRules;
-  use crate::simulation::particle_pool::ParticlePool;
+  use crate::simulation::pool::particle::Particle;
+  use crate::simulation::pool::particle_pool::ParticlePool;
 
   fn shifted(engine: XrayEngine, dt: f32) -> Vec4 {
     let rules: ParticleEngineRules = ParticleEngineRules::new(engine, 1.0);

@@ -2,11 +2,11 @@ use glam::{Mat4, Vec3};
 
 use crate::data::actions::particle_action_avoid::ParticleActionAvoid;
 use crate::simulation::actions::particle_action_step::ParticleActionStep;
-use crate::simulation::engine_vector::EngineVector;
-use crate::simulation::particle::Particle;
-use crate::simulation::particle_pool::ParticlePool;
-use crate::simulation::particle_volume::ParticleVolume;
-use crate::simulation::particle_volume_kind::ParticleVolumeKind;
+use crate::simulation::domain::engine_vector::EngineVector;
+use crate::simulation::domain::particle_volume::ParticleVolume;
+use crate::simulation::domain::particle_volume_kind::ParticleVolumeKind;
+use crate::simulation::pool::particle::Particle;
+use crate::simulation::pool::particle_pool::ParticlePool;
 
 /// `PAAvoid`: steers particles heading into a plane, rectangle, triangle, disc or sphere away from it, keeping speed.
 pub(crate) struct AvoidAction {
@@ -198,11 +198,11 @@ mod tests {
 
   use super::AvoidAction;
   use crate::simulation::actions::particle_action_step::ParticleActionStep;
-  use crate::simulation::particle::Particle;
+  use crate::simulation::domain::particle_volume::ParticleVolume;
+  use crate::simulation::domain::particle_volume_kind::ParticleVolumeKind;
   use crate::simulation::particle_engine_rules::ParticleEngineRules;
-  use crate::simulation::particle_pool::ParticlePool;
-  use crate::simulation::particle_volume::ParticleVolume;
-  use crate::simulation::particle_volume_kind::ParticleVolumeKind;
+  use crate::simulation::pool::particle::Particle;
+  use crate::simulation::pool::particle_pool::ParticlePool;
 
   #[test]
   fn bends_a_particle_near_a_plane_keeping_its_speed() {

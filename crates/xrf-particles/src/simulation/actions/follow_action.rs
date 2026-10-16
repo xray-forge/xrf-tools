@@ -2,7 +2,7 @@ use glam::Vec3;
 
 use crate::data::actions::particle_action_follow::ParticleActionFollow;
 use crate::simulation::actions::particle_action_step::ParticleActionStep;
-use crate::simulation::particle_pool::ParticlePool;
+use crate::simulation::pool::particle_pool::ParticlePool;
 
 /// `PAFollow`: accelerates each particle towards the one after it in the effect.
 pub(crate) struct FollowAction {
@@ -45,9 +45,9 @@ mod tests {
 
   use super::FollowAction;
   use crate::simulation::actions::particle_action_step::ParticleActionStep;
-  use crate::simulation::particle::Particle;
   use crate::simulation::particle_engine_rules::ParticleEngineRules;
-  use crate::simulation::particle_pool::ParticlePool;
+  use crate::simulation::pool::particle::Particle;
+  use crate::simulation::pool::particle_pool::ParticlePool;
 
   #[test]
   fn pulls_each_particle_towards_the_next_and_leaves_the_last() {

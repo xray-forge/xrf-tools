@@ -3,9 +3,9 @@ use std::f32::consts::PI;
 use glam::{Mat4, Vec3, Vec4Swizzles};
 
 use crate::data::particle_domain::ParticleDomain;
-use crate::simulation::engine_vector::EngineVector;
-use crate::simulation::particle_random::ParticleRandom;
-use crate::simulation::particle_volume_kind::ParticleVolumeKind;
+use crate::simulation::domain::engine_vector::EngineVector;
+use crate::simulation::domain::particle_random::ParticleRandom;
+use crate::simulation::domain::particle_volume_kind::ParticleVolumeKind;
 
 /// `pDomain`: a region particles are generated in or tested against, its fields as the file stores them.
 #[derive(Clone, Debug, PartialEq)]
@@ -239,8 +239,8 @@ mod tests {
   use glam::{Mat4, Vec3};
 
   use super::ParticleVolume;
-  use crate::simulation::particle_random::ParticleRandom;
-  use crate::simulation::particle_volume_kind::ParticleVolumeKind;
+  use crate::simulation::domain::particle_random::ParticleRandom;
+  use crate::simulation::domain::particle_volume_kind::ParticleVolumeKind;
 
   fn volume(kind: ParticleVolumeKind) -> ParticleVolume {
     ParticleVolume {

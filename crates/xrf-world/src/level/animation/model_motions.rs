@@ -2,8 +2,8 @@ use std::sync::Arc;
 
 use xrf_renderer::{RenderLevelSource, RenderMotion, RenderWorkers};
 
-use crate::level::loader_slot::LoaderSlot;
-use crate::level::loader_slots::LoaderSlots;
+use crate::level::loading::loader_slot::LoaderSlot;
+use crate::level::loading::loader_slots::LoaderSlots;
 
 /// The motions a viewport's skinned models are posed by, each baked once on a loader thread the first time a pose
 /// names it, and kept while the viewport shows the same scene.

@@ -2,7 +2,7 @@ use glam::{Mat4, Vec3};
 
 use crate::data::actions::particle_action_scatter::ParticleActionScatter;
 use crate::simulation::actions::particle_action_step::ParticleActionStep;
-use crate::simulation::particle_pool::ParticlePool;
+use crate::simulation::pool::particle_pool::ParticlePool;
 
 /// `PAScatter`: accelerates particles straight away from a centre, falling off with the square distance.
 pub(crate) struct ScatterAction {
@@ -56,9 +56,9 @@ mod tests {
 
   use super::ScatterAction;
   use crate::simulation::actions::particle_action_step::ParticleActionStep;
-  use crate::simulation::particle::Particle;
   use crate::simulation::particle_engine_rules::ParticleEngineRules;
-  use crate::simulation::particle_pool::ParticlePool;
+  use crate::simulation::pool::particle::Particle;
+  use crate::simulation::pool::particle_pool::ParticlePool;
 
   #[test]
   fn pushes_away_by_the_inverse_square_distance() {

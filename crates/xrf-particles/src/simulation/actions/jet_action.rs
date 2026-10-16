@@ -2,8 +2,8 @@ use glam::{Mat4, Vec3};
 
 use crate::data::actions::particle_action_jet::ParticleActionJet;
 use crate::simulation::actions::particle_action_step::ParticleActionStep;
-use crate::simulation::particle_pool::ParticlePool;
-use crate::simulation::particle_volume::ParticleVolume;
+use crate::simulation::domain::particle_volume::ParticleVolume;
+use crate::simulation::pool::particle_pool::ParticlePool;
 
 /// `PAJet`: accelerates particles near a centre by a random acceleration from a volume, falling off with distance.
 pub(crate) struct JetAction {
@@ -65,11 +65,11 @@ mod tests {
 
   use super::JetAction;
   use crate::simulation::actions::particle_action_step::ParticleActionStep;
-  use crate::simulation::particle::Particle;
+  use crate::simulation::domain::particle_volume::ParticleVolume;
+  use crate::simulation::domain::particle_volume_kind::ParticleVolumeKind;
   use crate::simulation::particle_engine_rules::ParticleEngineRules;
-  use crate::simulation::particle_pool::ParticlePool;
-  use crate::simulation::particle_volume::ParticleVolume;
-  use crate::simulation::particle_volume_kind::ParticleVolumeKind;
+  use crate::simulation::pool::particle::Particle;
+  use crate::simulation::pool::particle_pool::ParticlePool;
 
   #[test]
   fn accelerates_inside_the_radius_by_the_inverse_square_distance() {

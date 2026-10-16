@@ -4,8 +4,8 @@ use crate::data::particle_effect::ParticleEffect;
 use crate::data::particle_effect_flags::ParticleEffectFlags;
 use crate::data::particle_group_effect::ParticleGroupEffect;
 use crate::data::particle_group_effect_flags::ParticleGroupEffectFlags;
+use crate::simulation::instance::particle_group_instance::ParticleGroupInstance;
 use crate::simulation::particle_engine_rules::ParticleEngineRules;
-use crate::simulation::particle_group_instance::ParticleGroupInstance;
 use crate::simulation::particle_library::ParticleLibrary;
 use crate::simulation::tests::fixtures::{context, effect, group, group_effect, kill_old, library, moving, source};
 

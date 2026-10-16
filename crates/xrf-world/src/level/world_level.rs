@@ -13,11 +13,11 @@ use crate::contract::world_level_problems::WorldLevelProblems;
 use crate::contract::world_model_pose::WorldModelPose;
 use crate::contract::world_surface_geometry::WorldSurfaceGeometry;
 use crate::contract::world_toggles::WorldToggles;
-use crate::level::ambient_frame::AmbientFrame;
-use crate::level::effects_frame::EffectsFrame;
-use crate::level::level_animation::LevelAnimation;
-use crate::level::level_effects::LevelEffects;
-use crate::level::level_streaming::LevelStreaming;
+use crate::level::ambient::ambient_frame::AmbientFrame;
+use crate::level::animation::level_animation::LevelAnimation;
+use crate::level::effects::effects_frame::EffectsFrame;
+use crate::level::effects::level_effects::LevelEffects;
+use crate::level::streaming::level_streaming::LevelStreaming;
 
 /// A level as a viewport's world plays it: what streams it into its scene, how its skinned objects are posed, and what
 /// its effects play, by one clock running from when it began opening.

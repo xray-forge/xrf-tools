@@ -6,8 +6,8 @@ use xrf_anm::AnmFile;
 use xrf_renderer::{RenderLevelSource, RenderWorkers};
 use xrf_visual::VisualTransform;
 
-use crate::level::loader_slot::LoaderSlot;
-use crate::level::loader_slots::LoaderSlots;
+use crate::level::loading::loader_slot::LoaderSlot;
+use crate::level::loading::loader_slots::LoaderSlots;
 
 /// The object motions a level's moving zones follow, each read once on a loader thread the first time something it
 /// carries asks, and played looping from when the level began opening (`CObjectAnimator::Play(true)` at spawn), one

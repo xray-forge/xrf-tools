@@ -1,6 +1,6 @@
 use crate::data::actions::particle_action_target_rotate::ParticleActionTargetRotate;
 use crate::simulation::actions::particle_action_step::ParticleActionStep;
-use crate::simulation::particle_pool::ParticlePool;
+use crate::simulation::pool::particle_pool::ParticlePool;
 
 /// `PATargetRotate`: shifts each particle's turn towards a magnitude, keeping its sign.
 pub(crate) struct TargetRotateAction {
@@ -36,9 +36,9 @@ mod tests {
 
   use super::TargetRotateAction;
   use crate::simulation::actions::particle_action_step::ParticleActionStep;
-  use crate::simulation::particle::Particle;
   use crate::simulation::particle_engine_rules::ParticleEngineRules;
-  use crate::simulation::particle_pool::ParticlePool;
+  use crate::simulation::pool::particle::Particle;
+  use crate::simulation::pool::particle_pool::ParticlePool;
 
   #[test]
   fn turns_towards_the_magnitude_on_either_side() {

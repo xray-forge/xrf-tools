@@ -2,9 +2,9 @@ use glam::{Mat4, Vec3, Vec4};
 
 use crate::data::actions::particle_action_source::ParticleActionSource;
 use crate::simulation::actions::particle_action_step::ParticleActionStep;
-use crate::simulation::particle::Particle;
-use crate::simulation::particle_pool::ParticlePool;
-use crate::simulation::particle_volume::ParticleVolume;
+use crate::simulation::domain::particle_volume::ParticleVolume;
+use crate::simulation::pool::particle::Particle;
+use crate::simulation::pool::particle_pool::ParticlePool;
 
 /// `PASource`: emits particles at a rate, each drawing its position, size, turn, velocity and colour from volumes.
 pub(crate) struct SourceAction {
@@ -118,10 +118,10 @@ mod tests {
 
   use super::SourceAction;
   use crate::simulation::actions::particle_action_step::ParticleActionStep;
+  use crate::simulation::domain::particle_volume::ParticleVolume;
+  use crate::simulation::domain::particle_volume_kind::ParticleVolumeKind;
   use crate::simulation::particle_engine_rules::ParticleEngineRules;
-  use crate::simulation::particle_pool::ParticlePool;
-  use crate::simulation::particle_volume::ParticleVolume;
-  use crate::simulation::particle_volume_kind::ParticleVolumeKind;
+  use crate::simulation::pool::particle_pool::ParticlePool;
 
   fn point(at: Vec3) -> ParticleVolume {
     ParticleVolume {

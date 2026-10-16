@@ -5,7 +5,7 @@ use std::time::Duration;
 use glam::Vec3;
 use xrf_renderer::{AmbientGust, RenderAmbientEffect, RenderWindBlast, WindNoise};
 
-use crate::level::ambient_wind::AmbientWind;
+use crate::level::ambient::ambient_wind::AmbientWind;
 
 /// An effect living five seconds whose blast rises to full strength over two, towards `+z`, and falls over two.
 fn blasting(gust_factor: f32) -> RenderAmbientEffect {

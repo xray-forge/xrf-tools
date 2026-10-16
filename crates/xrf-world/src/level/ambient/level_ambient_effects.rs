@@ -10,9 +10,9 @@ use xrf_renderer_core::{ProxyAllocator, ProxyHandle};
 
 use crate::contract::world_ambient_effect_report::WorldAmbientEffectReport;
 use crate::contract::world_ambient_report::WorldAmbientReport;
-use crate::level::ambient_frame::AmbientFrame;
-use crate::level::ambient_systems::AmbientSystems;
-use crate::level::ambient_wind::AmbientWind;
+use crate::level::ambient::ambient_frame::AmbientFrame;
+use crate::level::ambient::ambient_systems::AmbientSystems;
+use crate::level::ambient::ambient_wind::AmbientWind;
 
 /// What the schedule's numbers are drawn from on every level open, so a driven capture plays the same effects.
 const SEED: u64 = 0x5EED_AB1E;

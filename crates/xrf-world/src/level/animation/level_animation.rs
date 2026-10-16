@@ -8,8 +8,8 @@ use xrf_renderer::{
 use xrf_renderer_core::ProxyHandle;
 
 use crate::contract::world_model_pose::WorldModelPose;
-use crate::level::model_motions::ModelMotions;
-use crate::level::posed_skeleton::PosedSkeleton;
+use crate::level::animation::model_motions::ModelMotions;
+use crate::level::animation::posed_skeleton::PosedSkeleton;
 
 /// The skinned objects standing in a level's scene and how they are posed: each one's skeleton and place, the motions
 /// they are posed by, and the pose asked for, an object posting its bone matrices only until it stands as asked.

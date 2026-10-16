@@ -3,8 +3,8 @@ use xrf_engine_target::XrayEngine;
 
 use crate::data::actions::particle_action_turbulence::ParticleActionTurbulence;
 use crate::simulation::actions::particle_action_step::ParticleActionStep;
-use crate::simulation::particle_noise::ParticleNoise;
-use crate::simulation::particle_pool::ParticlePool;
+use crate::simulation::domain::particle_noise::ParticleNoise;
+use crate::simulation::pool::particle_pool::ParticlePool;
 
 /// `PATurbulence`: turns each particle's velocity by a drifting noise gradient, keeping its speed.
 pub(crate) struct TurbulenceAction {
@@ -71,10 +71,10 @@ mod tests {
 
   use super::TurbulenceAction;
   use crate::simulation::actions::particle_action_step::ParticleActionStep;
-  use crate::simulation::particle::Particle;
+  use crate::simulation::domain::particle_noise::ParticleNoise;
   use crate::simulation::particle_engine_rules::ParticleEngineRules;
-  use crate::simulation::particle_noise::ParticleNoise;
-  use crate::simulation::particle_pool::ParticlePool;
+  use crate::simulation::pool::particle::Particle;
+  use crate::simulation::pool::particle_pool::ParticlePool;
 
   #[test]
   fn turns_the_velocity_by_the_noise_gradient_keeping_its_speed() {

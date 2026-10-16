@@ -2,13 +2,13 @@ use glam::{Mat4, Vec3};
 
 use crate::data::particle_group_effect::ParticleGroupEffect;
 use crate::data::particle_group_effect_flags::ParticleGroupEffectFlags;
-use crate::simulation::particle::Particle;
-use crate::simulation::particle_bounds::ParticleBounds;
-use crate::simulation::particle_effect_instance::ParticleEffectInstance;
-use crate::simulation::particle_event::ParticleEvent;
+use crate::simulation::domain::particle_random::ParticleRandom;
+use crate::simulation::instance::particle_effect_instance::ParticleEffectInstance;
 use crate::simulation::particle_library::ParticleLibrary;
-use crate::simulation::particle_random::ParticleRandom;
 use crate::simulation::particle_update_context::ParticleUpdateContext;
+use crate::simulation::pool::particle::Particle;
+use crate::simulation::pool::particle_bounds::ParticleBounds;
+use crate::simulation::pool::particle_event::ParticleEvent;
 
 /// `CParticleGroup::SItem`: a group's effect, the children following its particles, and its free children.
 pub(crate) struct ParticleGroupItem {

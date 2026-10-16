@@ -14,15 +14,15 @@ use xrf_renderer_core::{ProxyAllocator, ProxyHandle};
 
 use crate::contract::world_ambient_report::WorldAmbientReport;
 use crate::contract::world_toggles::WorldToggles;
-use crate::level::ambient_frame::AmbientFrame;
-use crate::level::ambient_systems::AmbientSystems;
-use crate::level::camera_hemi::CameraHemi;
-use crate::level::campfire::Campfire;
-use crate::level::effects_frame::EffectsFrame;
-use crate::level::level_ambient_effects::LevelAmbientEffects;
-use crate::level::level_campfires::LevelCampfires;
-use crate::level::level_object_motions::LevelObjectMotions;
-use crate::level::placed_emitter::PlacedEmitter;
+use crate::level::ambient::ambient_frame::AmbientFrame;
+use crate::level::ambient::ambient_systems::AmbientSystems;
+use crate::level::ambient::level_ambient_effects::LevelAmbientEffects;
+use crate::level::effects::camera_hemi::CameraHemi;
+use crate::level::effects::campfire::Campfire;
+use crate::level::effects::effects_frame::EffectsFrame;
+use crate::level::effects::level_campfires::LevelCampfires;
+use crate::level::effects::level_object_motions::LevelObjectMotions;
+use crate::level::effects::placed_emitter::PlacedEmitter;
 
 /// A level's effects as the world plays them: its particle systems, read on a loader thread and each placed at an
 /// emitter of the scene's; the weather's ambient effects and the wind they bring; its campfires' switching; and the

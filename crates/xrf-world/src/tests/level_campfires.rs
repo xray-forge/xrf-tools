@@ -1,7 +1,7 @@
 use std::time::Duration;
 
-use crate::level::campfire::Campfire;
-use crate::level::level_campfires::LevelCampfires;
+use crate::level::effects::campfire::Campfire;
+use crate::level::effects::level_campfires::LevelCampfires;
 
 #[test]
 fn stands_a_campfire_first_asked_for_in_the_switchs_state() {

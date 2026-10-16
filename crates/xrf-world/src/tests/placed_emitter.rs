@@ -4,7 +4,7 @@ use glam::{Mat4, Vec3};
 use xrf_renderer::{ParticleEmitterProxy, PlacedEffect, RenderParticleSource, RenderSceneUpdate};
 use xrf_renderer_core::{ProxyAllocator, ProxyHandle};
 
-use crate::level::placed_emitter::PlacedEmitter;
+use crate::level::effects::placed_emitter::PlacedEmitter;
 
 fn emitter() -> PlacedEmitter {
   let handle: ProxyHandle<ParticleEmitterProxy> = ProxyAllocator::new().allocate();

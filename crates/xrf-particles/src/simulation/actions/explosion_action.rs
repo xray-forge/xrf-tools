@@ -3,7 +3,7 @@ use xrf_math::EPS;
 
 use crate::data::actions::particle_action_explosion::ParticleActionExplosion;
 use crate::simulation::actions::particle_action_step::ParticleActionStep;
-use crate::simulation::particle_pool::ParticlePool;
+use crate::simulation::pool::particle_pool::ParticlePool;
 
 /// `PAExplosion`: pushes particles out from a centre by a growing Gaussian shock wave.
 pub(crate) struct ExplosionAction {
@@ -73,9 +73,9 @@ mod tests {
 
   use super::ExplosionAction;
   use crate::simulation::actions::particle_action_step::ParticleActionStep;
-  use crate::simulation::particle::Particle;
   use crate::simulation::particle_engine_rules::ParticleEngineRules;
-  use crate::simulation::particle_pool::ParticlePool;
+  use crate::simulation::pool::particle::Particle;
+  use crate::simulation::pool::particle_pool::ParticlePool;
 
   #[test]
   fn pushes_a_particle_on_the_wave_front_and_ages_the_wave() {

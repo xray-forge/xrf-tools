@@ -4,9 +4,9 @@ use std::sync::Arc;
 use crate::data::particle_effect::ParticleEffect;
 use crate::data::particle_group::ParticleGroup;
 use crate::particles_file::ParticlesFile;
-use crate::simulation::particle_effect_instance::ParticleEffectInstance;
-use crate::simulation::particle_group_instance::ParticleGroupInstance;
-use crate::simulation::particle_instance::ParticleInstance;
+use crate::simulation::instance::particle_effect_instance::ParticleEffectInstance;
+use crate::simulation::instance::particle_group_instance::ParticleGroupInstance;
+use crate::simulation::instance::particle_instance::ParticleInstance;
 
 /// `CPSLibrary`: a `particles.xr`'s effects and groups by their exact, case-sensitive names.
 #[derive(Default)]

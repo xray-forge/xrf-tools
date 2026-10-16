@@ -1,5 +1,5 @@
 use crate::simulation::actions::particle_action_step::ParticleActionStep;
-use crate::simulation::particle_pool::ParticlePool;
+use crate::simulation::pool::particle_pool::ParticlePool;
 
 /// `PAMove`: ages every particle and moves it by its velocity, remembering where it was.
 pub(crate) struct MoveAction;
@@ -20,9 +20,9 @@ mod tests {
 
   use super::MoveAction;
   use crate::simulation::actions::particle_action_step::ParticleActionStep;
-  use crate::simulation::particle::Particle;
   use crate::simulation::particle_engine_rules::ParticleEngineRules;
-  use crate::simulation::particle_pool::ParticlePool;
+  use crate::simulation::pool::particle::Particle;
+  use crate::simulation::pool::particle_pool::ParticlePool;
 
   #[test]
   fn moves_and_ages_by_the_step() {

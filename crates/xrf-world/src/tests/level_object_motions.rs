@@ -7,7 +7,7 @@ use xrf_animation_envelope::{AnimationEnvelope, AnimationKey};
 use xrf_anm::AnmFile;
 use xrf_renderer::RenderLevelSource;
 
-use crate::level::level_object_motions::LevelObjectMotions;
+use crate::level::effects::level_object_motions::LevelObjectMotions;
 use crate::tests::fixtures::TestLevelSource;
 use crate::tests::test_workers::create_workers;
 

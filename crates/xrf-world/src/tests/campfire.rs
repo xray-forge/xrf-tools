@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use crate::level::campfire::Campfire;
+use crate::level::effects::campfire::Campfire;
 
 fn at(milliseconds: u64) -> Duration {
   Duration::from_millis(milliseconds)

@@ -1,8 +1,8 @@
 use glam::Mat4;
 
 use crate::data::actions::particle_action_sink_velocity::ParticleActionSinkVelocity;
-use crate::simulation::particle_pool::ParticlePool;
-use crate::simulation::particle_volume::ParticleVolume;
+use crate::simulation::domain::particle_volume::ParticleVolume;
+use crate::simulation::pool::particle_pool::ParticlePool;
 
 /// `PASinkVelocity`: removes particles whose velocity is inside a volume, or outside it.
 pub(crate) struct SinkVelocityAction {
@@ -44,10 +44,10 @@ mod tests {
   use glam::Vec3;
 
   use super::SinkVelocityAction;
-  use crate::simulation::particle::Particle;
-  use crate::simulation::particle_pool::ParticlePool;
-  use crate::simulation::particle_volume::ParticleVolume;
-  use crate::simulation::particle_volume_kind::ParticleVolumeKind;
+  use crate::simulation::domain::particle_volume::ParticleVolume;
+  use crate::simulation::domain::particle_volume_kind::ParticleVolumeKind;
+  use crate::simulation::pool::particle::Particle;
+  use crate::simulation::pool::particle_pool::ParticlePool;
 
   #[test]
   fn removes_particles_moving_inside_the_volume() {

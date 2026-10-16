@@ -3,7 +3,7 @@ use xrf_math::EPS_S;
 
 use crate::data::actions::particle_action_gravitate::ParticleActionGravitate;
 use crate::simulation::actions::particle_action_step::ParticleActionStep;
-use crate::simulation::particle_pool::ParticlePool;
+use crate::simulation::pool::particle_pool::ParticlePool;
 
 /// `PAGravitate`: pulls every pair of particles together, each by the other's force.
 pub(crate) struct GravitateAction {
@@ -52,9 +52,9 @@ mod tests {
 
   use super::GravitateAction;
   use crate::simulation::actions::particle_action_step::ParticleActionStep;
-  use crate::simulation::particle::Particle;
   use crate::simulation::particle_engine_rules::ParticleEngineRules;
-  use crate::simulation::particle_pool::ParticlePool;
+  use crate::simulation::pool::particle::Particle;
+  use crate::simulation::pool::particle_pool::ParticlePool;
 
   #[test]
   fn pulls_a_pair_together_equally() {

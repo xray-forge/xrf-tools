@@ -13,11 +13,11 @@ use xrf_visual::LightsDescription;
 use crate::contract::world_level_problems::WorldLevelProblems;
 use crate::contract::world_sector_skip::WorldSectorSkip;
 use crate::contract::world_surface_geometry::WorldSurfaceGeometry;
-use crate::level::level_animation::LevelAnimation;
-use crate::level::level_loader::LevelLoader;
-use crate::level::spawn_loader::SpawnLoader;
-use crate::level::streamed_model::StreamedModel;
-use crate::level::surface_tally::SurfaceTally;
+use crate::level::animation::level_animation::LevelAnimation;
+use crate::level::loading::level_loader::LevelLoader;
+use crate::level::streaming::spawn_loader::SpawnLoader;
+use crate::level::streaming::streamed_model::StreamedModel;
+use crate::level::streaming::surface_tally::SurfaceTally;
 
 /// Sectors posted to the scene at most each frame, so a level's open spreads over frames rather than stalling one.
 const SECTORS_PER_FRAME: usize = 4;

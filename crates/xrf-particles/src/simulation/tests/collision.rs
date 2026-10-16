@@ -5,12 +5,12 @@ use glam::Vec3;
 use crate::data::particle_effect::ParticleEffect;
 use crate::data::particle_effect_collision::ParticleEffectCollision;
 use crate::data::particle_effect_flags::ParticleEffectFlags;
+use crate::simulation::instance::particle_effect_instance::ParticleEffectInstance;
 use crate::simulation::particle_collider::ParticleCollider;
-use crate::simulation::particle_contact::ParticleContact;
-use crate::simulation::particle_effect_instance::ParticleEffectInstance;
 use crate::simulation::particle_engine_rules::ParticleEngineRules;
 use crate::simulation::particle_library::ParticleLibrary;
 use crate::simulation::particle_update_context::ParticleUpdateContext;
+use crate::simulation::pool::particle_contact::ParticleContact;
 use crate::simulation::tests::fixtures::{context, effect, moving, source_at};
 
 /// A floor at height zero, met from above.

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::time::Duration;
 
-use crate::level::campfire::Campfire;
+use crate::level::effects::campfire::Campfire;
 
 /// A level's campfires, by their spawned objects' ids, switched together as the view lights them or puts them out:
 /// each stands in the switch's state the first time anything asks for it, and every one turns whenever the switch

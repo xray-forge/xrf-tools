@@ -2,7 +2,7 @@ use glam::Vec3;
 
 use crate::data::actions::particle_action_target_size::ParticleActionTargetSize;
 use crate::simulation::actions::particle_action_step::ParticleActionStep;
-use crate::simulation::particle_pool::ParticlePool;
+use crate::simulation::pool::particle_pool::ParticlePool;
 
 /// `PATargetSize`: shifts each particle's size towards a target, by a share per axis.
 pub(crate) struct TargetSizeAction {
@@ -35,9 +35,9 @@ mod tests {
 
   use super::TargetSizeAction;
   use crate::simulation::actions::particle_action_step::ParticleActionStep;
-  use crate::simulation::particle::Particle;
   use crate::simulation::particle_engine_rules::ParticleEngineRules;
-  use crate::simulation::particle_pool::ParticlePool;
+  use crate::simulation::pool::particle::Particle;
+  use crate::simulation::pool::particle_pool::ParticlePool;
 
   #[test]
   fn grows_each_axis_by_its_own_share() {

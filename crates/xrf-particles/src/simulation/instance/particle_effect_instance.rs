@@ -7,13 +7,13 @@ use crate::data::particle_effect::ParticleEffect;
 use crate::data::particle_effect_collision::ParticleEffectCollision;
 use crate::data::particle_effect_flags::ParticleEffectFlags;
 use crate::simulation::actions::particle_action_step::ParticleActionStep;
-use crate::simulation::particle::Particle;
-use crate::simulation::particle_bounds::ParticleBounds;
+use crate::simulation::instance::particle_running_action::ParticleRunningAction;
 use crate::simulation::particle_collider::ParticleCollider;
-use crate::simulation::particle_event::ParticleEvent;
-use crate::simulation::particle_pool::ParticlePool;
-use crate::simulation::particle_running_action::ParticleRunningAction;
 use crate::simulation::particle_update_context::ParticleUpdateContext;
+use crate::simulation::pool::particle::Particle;
+use crate::simulation::pool::particle_bounds::ParticleBounds;
+use crate::simulation::pool::particle_event::ParticleEvent;
+use crate::simulation::pool::particle_pool::ParticlePool;
 
 /// `PS::CParticleEffect`: one playing copy of an effect definition, stepping its actions at the engine's fixed rate.
 pub struct ParticleEffectInstance {

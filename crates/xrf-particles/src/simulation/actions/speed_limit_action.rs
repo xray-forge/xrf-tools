@@ -1,5 +1,5 @@
 use crate::data::actions::particle_action_speed_limit::ParticleActionSpeedLimit;
-use crate::simulation::particle_pool::ParticlePool;
+use crate::simulation::pool::particle_pool::ParticlePool;
 
 /// `PASpeedLimit`: clamps every moving particle's speed between a minimum and a maximum.
 pub(crate) struct SpeedLimitAction {
@@ -38,8 +38,8 @@ mod tests {
   use glam::Vec3;
 
   use super::SpeedLimitAction;
-  use crate::simulation::particle::Particle;
-  use crate::simulation::particle_pool::ParticlePool;
+  use crate::simulation::pool::particle::Particle;
+  use crate::simulation::pool::particle_pool::ParticlePool;
 
   #[test]
   fn clamps_fast_and_slow_particles_and_leaves_still_ones() {

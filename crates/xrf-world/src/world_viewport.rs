@@ -11,7 +11,7 @@ use crate::contract::world_camera_pose::WorldCameraPose;
 use crate::contract::world_model_pose::WorldModelPose;
 use crate::contract::world_toggles::WorldToggles;
 use crate::contract::world_viewport_event::WorldViewportEvent;
-use crate::level::ambient_frame::AmbientFrame;
+use crate::level::ambient::ambient_frame::AmbientFrame;
 use crate::weather::viewport_weather::ViewportWeather;
 use crate::world_event_sink::WorldEventSink;
 

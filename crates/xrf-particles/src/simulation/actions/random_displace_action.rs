@@ -2,8 +2,8 @@ use glam::Mat4;
 
 use crate::data::actions::particle_action_random_displace::ParticleActionRandomDisplace;
 use crate::simulation::actions::particle_action_step::ParticleActionStep;
-use crate::simulation::particle_pool::ParticlePool;
-use crate::simulation::particle_volume::ParticleVolume;
+use crate::simulation::domain::particle_volume::ParticleVolume;
+use crate::simulation::pool::particle_pool::ParticlePool;
 
 /// `PARandomDisplace`: moves each particle by a random displacement from a volume, scaled to the step.
 pub(crate) struct RandomDisplaceAction {
@@ -44,11 +44,11 @@ mod tests {
 
   use super::RandomDisplaceAction;
   use crate::simulation::actions::particle_action_step::ParticleActionStep;
-  use crate::simulation::particle::Particle;
+  use crate::simulation::domain::particle_volume::ParticleVolume;
+  use crate::simulation::domain::particle_volume_kind::ParticleVolumeKind;
   use crate::simulation::particle_engine_rules::ParticleEngineRules;
-  use crate::simulation::particle_pool::ParticlePool;
-  use crate::simulation::particle_volume::ParticleVolume;
-  use crate::simulation::particle_volume_kind::ParticleVolumeKind;
+  use crate::simulation::pool::particle::Particle;
+  use crate::simulation::pool::particle_pool::ParticlePool;
 
   #[test]
   fn moves_by_a_point_volume_times_the_step() {

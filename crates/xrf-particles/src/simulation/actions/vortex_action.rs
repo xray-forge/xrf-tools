@@ -2,7 +2,7 @@ use glam::{Mat4, Vec3};
 
 use crate::data::actions::particle_action_vortex::ParticleActionVortex;
 use crate::simulation::actions::particle_action_step::ParticleActionStep;
-use crate::simulation::particle_pool::ParticlePool;
+use crate::simulation::pool::particle_pool::ParticlePool;
 
 /// `PAVortex`: turns each particle's position about an axis through a centre, faster nearer it.
 pub(crate) struct VortexAction {
@@ -71,9 +71,9 @@ mod tests {
 
   use super::VortexAction;
   use crate::simulation::actions::particle_action_step::ParticleActionStep;
-  use crate::simulation::particle::Particle;
   use crate::simulation::particle_engine_rules::ParticleEngineRules;
-  use crate::simulation::particle_pool::ParticlePool;
+  use crate::simulation::pool::particle::Particle;
+  use crate::simulation::pool::particle_pool::ParticlePool;
 
   #[test]
   fn turns_a_particle_about_the_axis_by_magnitude_over_square_radius() {

@@ -2,7 +2,7 @@ use glam::Vec3;
 
 use crate::data::actions::particle_action_damping::ParticleActionDamping;
 use crate::simulation::actions::particle_action_step::ParticleActionStep;
-use crate::simulation::particle_pool::ParticlePool;
+use crate::simulation::pool::particle_pool::ParticlePool;
 
 /// `PADamping`: slows particles whose speed is inside a band, per axis, scaled to the step.
 pub(crate) struct DampingAction {
@@ -41,9 +41,9 @@ mod tests {
 
   use super::DampingAction;
   use crate::simulation::actions::particle_action_step::ParticleActionStep;
-  use crate::simulation::particle::Particle;
   use crate::simulation::particle_engine_rules::ParticleEngineRules;
-  use crate::simulation::particle_pool::ParticlePool;
+  use crate::simulation::pool::particle::Particle;
+  use crate::simulation::pool::particle_pool::ParticlePool;
 
   #[test]
   fn damps_only_speeds_inside_the_band() {

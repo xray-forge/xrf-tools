@@ -2,7 +2,7 @@ use glam::{Mat4, Vec3};
 
 use crate::data::actions::particle_action_orbit_line::ParticleActionOrbitLine;
 use crate::simulation::actions::particle_action_step::ParticleActionStep;
-use crate::simulation::particle_pool::ParticlePool;
+use crate::simulation::pool::particle_pool::ParticlePool;
 
 /// `PAOrbitLine`: accelerates particles towards the nearest point of a line.
 pub(crate) struct OrbitLineAction {
@@ -62,9 +62,9 @@ mod tests {
 
   use super::OrbitLineAction;
   use crate::simulation::actions::particle_action_step::ParticleActionStep;
-  use crate::simulation::particle::Particle;
   use crate::simulation::particle_engine_rules::ParticleEngineRules;
-  use crate::simulation::particle_pool::ParticlePool;
+  use crate::simulation::pool::particle::Particle;
+  use crate::simulation::pool::particle_pool::ParticlePool;
 
   #[test]
   fn pulls_towards_the_line_by_distance_plus_its_square() {

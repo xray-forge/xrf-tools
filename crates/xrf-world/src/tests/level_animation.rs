@@ -5,7 +5,7 @@ use xrf_renderer::{RenderLevelSource, RenderModelSkeleton, RenderSceneUpdate, St
 use xrf_renderer_core::{ProxyAllocator, ProxyHandle};
 
 use crate::contract::world_model_pose::WorldModelPose;
-use crate::level::level_animation::LevelAnimation;
+use crate::level::animation::level_animation::LevelAnimation;
 use crate::tests::fixtures::TestLevelSource;
 use crate::tests::test_workers::create_workers;
 

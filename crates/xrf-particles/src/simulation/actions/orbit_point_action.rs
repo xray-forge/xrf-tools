@@ -2,7 +2,7 @@ use glam::{Mat4, Vec3};
 
 use crate::data::actions::particle_action_orbit_point::ParticleActionOrbitPoint;
 use crate::simulation::actions::particle_action_step::ParticleActionStep;
-use crate::simulation::particle_pool::ParticlePool;
+use crate::simulation::pool::particle_pool::ParticlePool;
 
 /// `PAOrbitPoint`: accelerates particles towards a point.
 pub(crate) struct OrbitPointAction {
@@ -55,9 +55,9 @@ mod tests {
 
   use super::OrbitPointAction;
   use crate::simulation::actions::particle_action_step::ParticleActionStep;
-  use crate::simulation::particle::Particle;
   use crate::simulation::particle_engine_rules::ParticleEngineRules;
-  use crate::simulation::particle_pool::ParticlePool;
+  use crate::simulation::pool::particle::Particle;
+  use crate::simulation::pool::particle_pool::ParticlePool;
 
   #[test]
   fn pulls_only_particles_inside_the_radius() {

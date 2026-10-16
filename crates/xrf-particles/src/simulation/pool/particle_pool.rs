@@ -1,6 +1,6 @@
-use crate::simulation::particle::Particle;
-use crate::simulation::particle_event::ParticleEvent;
-use crate::simulation::particle_random::ParticleRandom;
+use crate::simulation::domain::particle_random::ParticleRandom;
+use crate::simulation::pool::particle::Particle;
+use crate::simulation::pool::particle_event::ParticleEvent;
 
 /// `PAPI::ParticleEffect`: an effect's live particles, its random sequence and its birth rules.
 #[derive(Clone, Debug)]
@@ -132,8 +132,8 @@ mod tests {
   use glam::Vec3;
 
   use super::ParticlePool;
-  use crate::simulation::particle::Particle;
-  use crate::simulation::particle_event::ParticleEvent;
+  use crate::simulation::pool::particle::Particle;
+  use crate::simulation::pool::particle_event::ParticleEvent;
 
   fn add_at(pool: &mut ParticlePool, x: f32) -> bool {
     pool.add(Particle {

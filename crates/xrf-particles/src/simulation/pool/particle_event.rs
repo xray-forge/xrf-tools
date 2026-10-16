@@ -1,4 +1,4 @@
-use crate::simulation::particle::Particle;
+use crate::simulation::pool::particle::Particle;
 
 /// A birth or death the engine reports through `b_cb` and `d_cb`, in the order it happened.
 #[derive(Clone, Copy, Debug, PartialEq)]

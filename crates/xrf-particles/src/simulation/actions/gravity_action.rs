@@ -2,7 +2,7 @@ use glam::Vec3;
 
 use crate::data::actions::particle_action_gravity::ParticleActionGravity;
 use crate::simulation::actions::particle_action_step::ParticleActionStep;
-use crate::simulation::particle_pool::ParticlePool;
+use crate::simulation::pool::particle_pool::ParticlePool;
 
 /// `PAGravity`: a constant acceleration. Its direction is never placed: `Transform` does nothing.
 pub(crate) struct GravityAction {
@@ -33,9 +33,9 @@ mod tests {
 
   use super::GravityAction;
   use crate::simulation::actions::particle_action_step::ParticleActionStep;
-  use crate::simulation::particle::Particle;
   use crate::simulation::particle_engine_rules::ParticleEngineRules;
-  use crate::simulation::particle_pool::ParticlePool;
+  use crate::simulation::pool::particle::Particle;
+  use crate::simulation::pool::particle_pool::ParticlePool;
 
   #[test]
   fn adds_the_direction_times_the_step() {

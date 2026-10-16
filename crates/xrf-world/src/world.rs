@@ -18,7 +18,7 @@ use crate::contract::world_toggles::WorldToggles;
 use crate::contract::world_weather_control::WorldWeatherControl;
 use crate::contract::world_weather_play::WorldWeatherPlay;
 use crate::contract::world_weather_transition::WorldWeatherTransition;
-use crate::level::effects_frame::EffectsFrame;
+use crate::level::effects::effects_frame::EffectsFrame;
 use crate::level::world_level::WorldLevel;
 use crate::weather::viewport_weather::ViewportWeather;
 use crate::world_event_sink::WorldEventSink;

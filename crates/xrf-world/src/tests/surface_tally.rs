@@ -5,7 +5,7 @@ use xrf_visual::{
 
 use crate::contract::world_surface_geometry::WorldSurfaceGeometry;
 use crate::contract::world_surface_span::WorldSurfaceSpan;
-use crate::level::surface_tally::SurfaceTally;
+use crate::level::streaming::surface_tally::SurfaceTally;
 
 fn section(byte_offset: u32, byte_length: u32) -> VisualSection {
   VisualSection {

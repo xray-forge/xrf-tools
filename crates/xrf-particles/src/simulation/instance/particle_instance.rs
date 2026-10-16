@@ -1,9 +1,9 @@
 use glam::{Mat4, Vec3};
 
-use crate::simulation::particle_bounds::ParticleBounds;
-use crate::simulation::particle_effect_instance::ParticleEffectInstance;
-use crate::simulation::particle_group_instance::ParticleGroupInstance;
+use crate::simulation::instance::particle_effect_instance::ParticleEffectInstance;
+use crate::simulation::instance::particle_group_instance::ParticleGroupInstance;
 use crate::simulation::particle_update_context::ParticleUpdateContext;
+use crate::simulation::pool::particle_bounds::ParticleBounds;
 
 /// `IParticleCustom`: a playing effect or group, whichever a name resolved to.
 pub enum ParticleInstance {

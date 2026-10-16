@@ -7,7 +7,7 @@ use std::time::{Duration, Instant};
 
 use xrf_renderer::{RenderLevelSource, RenderWorkers};
 
-use crate::level::level_loader::{LevelLoader, SectorLoad};
+use crate::level::loading::level_loader::{LevelLoader, SectorLoad};
 use crate::tests::fixtures::TestLevelSource;
 use crate::tests::test_workers::create_workers;
 

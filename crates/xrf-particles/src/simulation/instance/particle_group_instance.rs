@@ -4,12 +4,12 @@ use glam::{Mat4, Vec3};
 
 use crate::data::particle_group::ParticleGroup;
 use crate::data::particle_group_effect_flags::ParticleGroupEffectFlags;
-use crate::simulation::particle_bounds::ParticleBounds;
-use crate::simulation::particle_effect_instance::ParticleEffectInstance;
-use crate::simulation::particle_group_item::ParticleGroupItem;
+use crate::simulation::domain::particle_random::ParticleRandom;
+use crate::simulation::instance::particle_effect_instance::ParticleEffectInstance;
+use crate::simulation::instance::particle_group_item::ParticleGroupItem;
 use crate::simulation::particle_library::ParticleLibrary;
-use crate::simulation::particle_random::ParticleRandom;
 use crate::simulation::particle_update_context::ParticleUpdateContext;
+use crate::simulation::pool::particle_bounds::ParticleBounds;
 
 /// `PS::CParticleGroup`: a group's effects, each played from its `time0` to its `time1` on the group's clock.
 pub struct ParticleGroupInstance {

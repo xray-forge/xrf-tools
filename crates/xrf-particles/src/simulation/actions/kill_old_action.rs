@@ -1,6 +1,6 @@
 use crate::data::actions::particle_action_kill_old::ParticleActionKillOld;
 use crate::simulation::actions::particle_action_step::ParticleActionStep;
-use crate::simulation::particle_pool::ParticlePool;
+use crate::simulation::pool::particle_pool::ParticlePool;
 
 /// `PAKillOld`: removes particles at or past an age, or younger than it, and hands the age on as `kill_old_time`.
 pub(crate) struct KillOldAction {
@@ -36,9 +36,9 @@ mod tests {
 
   use super::KillOldAction;
   use crate::simulation::actions::particle_action_step::ParticleActionStep;
-  use crate::simulation::particle::Particle;
   use crate::simulation::particle_engine_rules::ParticleEngineRules;
-  use crate::simulation::particle_pool::ParticlePool;
+  use crate::simulation::pool::particle::Particle;
+  use crate::simulation::pool::particle_pool::ParticlePool;
 
   #[test]
   fn kills_particles_at_or_past_the_limit_and_hands_it_on() {

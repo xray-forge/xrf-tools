@@ -1,8 +1,8 @@
 use glam::Mat4;
 
 use crate::data::actions::particle_action_random_velocity::ParticleActionRandomVelocity;
-use crate::simulation::particle_pool::ParticlePool;
-use crate::simulation::particle_volume::ParticleVolume;
+use crate::simulation::domain::particle_volume::ParticleVolume;
+use crate::simulation::pool::particle_pool::ParticlePool;
 
 /// `PARandomVelocity`: gives each particle a random velocity from a volume every step, whatever the step's length.
 pub(crate) struct RandomVelocityAction {
@@ -40,10 +40,10 @@ mod tests {
   use glam::Vec3;
 
   use super::RandomVelocityAction;
-  use crate::simulation::particle::Particle;
-  use crate::simulation::particle_pool::ParticlePool;
-  use crate::simulation::particle_volume::ParticleVolume;
-  use crate::simulation::particle_volume_kind::ParticleVolumeKind;
+  use crate::simulation::domain::particle_volume::ParticleVolume;
+  use crate::simulation::domain::particle_volume_kind::ParticleVolumeKind;
+  use crate::simulation::pool::particle::Particle;
+  use crate::simulation::pool::particle_pool::ParticlePool;
 
   #[test]
   fn replaces_the_velocity_with_a_drawn_one() {
