@@ -10,11 +10,9 @@ pub struct StaticRow {
   pub sphere: Vec4,
   pub place: u32,
   pub slot: u32,
-  /// The impostor whose level of detail decides it, [`StaticRow::NO_LOD`] for none; the top bit marks the impostor's
-  /// own row.
+  /// The impostor whose level of detail decides it, [`StaticRow::NO_LOD`] for none.
   pub lod: u32,
-  /// Its progressive band, the bands its mesh has, the windows they share and the visibility group showing it:
-  /// `band | bands << 4 | windows << 8 | group << 24`, a group of zero always shown.
+  /// Its progressive band, the bands its mesh has and the windows they share: `band | bands << 4 | windows << 8`.
   pub band: u32,
 }
 

@@ -294,8 +294,8 @@ fn lobe_alpha(roughness: f32) -> f32 {
 }
 
 // The share of metal in a texture's material, read back from the material table's slice the G-buffer's `material.z`
-// holds (`(material + 0.5) / 4`, as `material_slice` packs it): rising over Phong to Metal, falling over Metal to
-// Oren-Nayar, none in any other.
+// holds (`(material + 0.5) / 4` kept in 5 bits, as `material_slice` packs it): rising over Phong to Metal, falling over
+// Metal to Oren-Nayar, none in any other.
 fn material_metal(slice: f32) -> f32 {
   let material: f32 = slice * 4.0 - 0.5;
 

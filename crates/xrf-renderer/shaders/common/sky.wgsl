@@ -11,7 +11,7 @@
 #import "generated/common/sky"
 #import "common/math"
 
-// The same along a world direction.
+// How much of the sky along a world direction is the cubes above the fold rather than the rim averaged under it.
 fn sky_above_fold(state: Lighting, direction: vec3<f32>) -> f32 {
   return sky_box_above_fold(sky_box_direction(direction, state.sky_params.x));
 }

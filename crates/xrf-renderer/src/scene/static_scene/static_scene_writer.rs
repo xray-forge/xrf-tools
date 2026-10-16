@@ -32,7 +32,7 @@ pub struct StaticSceneWriter {
   /// Surfaces first asked for by this item, which every item shares once they are in.
   pub surfaces: Vec<StaticSurface>,
   pub impostors: Vec<StaticImpostor>,
-  /// `StaticScene::CORNER_VECTORS` an impostor.
+  /// `StaticGeometry::CORNER_VECTORS` an impostor.
   pub corners: Vec<Vec4>,
   /// Two words a vertex of a skinned model.
   pub skins: Vec<u32>,

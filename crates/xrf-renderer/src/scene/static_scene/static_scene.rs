@@ -243,7 +243,8 @@ impl StaticScene {
   ///
   /// # Errors
   ///
-  /// Returns an error when a buffer would outgrow what the device allows; the scene is left as it was.
+  /// Returns an error when a buffer would outgrow what the device allows; none of it stands in the scene, though the
+  /// surfaces it put and the texture slots they asked for stay.
   pub fn add_sector(
     &mut self,
     context: &mut StaticItemContext<'_>,
@@ -396,7 +397,8 @@ impl StaticScene {
   ///
   /// # Errors
   ///
-  /// Returns an error when a buffer would outgrow what the device allows; the scene is left as it was.
+  /// Returns an error when a buffer would outgrow what the device allows; none of it stands in the scene, though the
+  /// surfaces it put and the texture slots they asked for stay.
   pub fn add_model(
     &mut self,
     context: &mut StaticItemContext<'_>,
