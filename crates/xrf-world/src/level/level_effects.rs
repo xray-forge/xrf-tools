@@ -249,9 +249,9 @@ impl LevelEffects {
   }
 
   /// Plays what each placement's source plays: a planted system always; a zone's idle effect while it is enabled,
-  /// stopped on Monolith while the camera stands past `FASTMODE_DISTANCE` (`o_switch_2_slow`) and played afresh once it
-  /// comes back (`o_switch_2_fast`); a campfire's as `CZoneCampfire` switches them, following its campfire's state, its
-  /// idle particles carried by the wind. A placement a motion carries moves first.
+  /// stopped on Monolith while the camera stands past `ZONE_FAST_DISTANCE` (`o_switch_2_slow`) and played afresh once
+  /// it comes back (`o_switch_2_fast`); a campfire's as `CZoneCampfire` switches them, following its campfire's state,
+  /// its idle particles carried by the wind. A placement a motion carries moves first.
   fn place(
     updates: &mut Vec<RenderSceneUpdate>,
     systems: &mut EffectSystems,

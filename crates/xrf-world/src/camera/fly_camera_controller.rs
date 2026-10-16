@@ -170,7 +170,6 @@ impl FlyCameraController {
     }
   }
 
-  /// The view through the lens, its far plane no farther than a limit.
   /// Where it stands and what its lens is this frame.
   pub fn get_frame(&self) -> CameraFrame {
     let (field_of_view, near, far) = self.description.get_lens();
