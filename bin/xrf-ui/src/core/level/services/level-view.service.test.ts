@@ -22,7 +22,7 @@ describe("LevelViewService", () => {
 
     expect(service.options).toEqual(DEFAULT_LEVEL_VIEW_OPTIONS);
     expect(service.hemiStrength).toBe(DEFAULT_LEVEL_HEMI_STRENGTH);
-    expect(service.camera).toEqual(DEFAULT_LEVEL_CAMERA_OPTIONS);
+    expect(service.cameraOptions).toEqual(DEFAULT_LEVEL_CAMERA_OPTIONS);
   });
 
   it("takes what the viewer switched on", () => {
@@ -30,11 +30,11 @@ describe("LevelViewService", () => {
 
     service.setOptions({ ...DEFAULT_LEVEL_VIEW_OPTIONS, isGridVisible: !DEFAULT_LEVEL_VIEW_OPTIONS.isGridVisible });
     service.setHemiStrength(0.5);
-    service.setCamera({ ...DEFAULT_LEVEL_CAMERA_OPTIONS, fieldOfView: 40 });
+    service.setCameraOptions({ ...DEFAULT_LEVEL_CAMERA_OPTIONS, fieldOfView: 40 });
 
     expect(service.options.isGridVisible).toBe(!DEFAULT_LEVEL_VIEW_OPTIONS.isGridVisible);
     expect(service.hemiStrength).toBe(0.5);
-    expect(service.camera.fieldOfView).toBe(40);
+    expect(service.cameraOptions.fieldOfView).toBe(40);
   });
 
   // The renderer may be on a thread of its own, and a value posted to it is structured-cloned. A deep observable
@@ -46,12 +46,12 @@ describe("LevelViewService", () => {
     const camera: ILevelCameraOptions = { ...DEFAULT_LEVEL_CAMERA_OPTIONS };
 
     service.setOptions(options);
-    service.setCamera(camera);
+    service.setCameraOptions(camera);
 
     expect(service.options).toBe(options);
-    expect(service.camera).toBe(camera);
+    expect(service.cameraOptions).toBe(camera);
 
-    expect(() => structuredClone({ camera: service.camera, options: service.options })).not.toThrow();
+    expect(() => structuredClone({ cameraOptions: service.cameraOptions, options: service.options })).not.toThrow();
   });
 
   it("forgets the last level's toggles and keeps the camera and the features", () => {
@@ -59,24 +59,24 @@ describe("LevelViewService", () => {
     const camera: ILevelCameraOptions = { ...DEFAULT_LEVEL_CAMERA_OPTIONS, fieldOfView: 40 };
 
     service.setOptions({ ...DEFAULT_LEVEL_VIEW_OPTIONS, isGridVisible: !DEFAULT_LEVEL_VIEW_OPTIONS.isGridVisible });
-    service.setCamera(camera);
+    service.setCameraOptions(camera);
     service.setFeatures({ ...mockLevelFeatureOptions(), shadows: { filter: 0 } });
     service.clear();
 
     expect(service.options).toEqual(DEFAULT_LEVEL_VIEW_OPTIONS);
-    expect(service.camera).toEqual(camera);
+    expect(service.cameraOptions).toEqual(camera);
     expect(service.features.shadows).toEqual({ filter: 0 });
   });
 
   it("starts from the camera and the features the last run stored", () => {
     const first = mockInjectedService(LevelViewService).service;
 
-    first.setCamera({ ...DEFAULT_LEVEL_CAMERA_OPTIONS, speed: 30 });
+    first.setCameraOptions({ ...DEFAULT_LEVEL_CAMERA_OPTIONS, speed: 30 });
     first.setFeatures({ ...mockLevelFeatureOptions(), antialiasing: ERenderAntialiasing.TAA });
 
     const { service } = mockInjectedService(LevelViewService);
 
-    expect(service.camera.speed).toBe(30);
+    expect(service.cameraOptions.speed).toBe(30);
     expect(service.features.antialiasing).toBe(ERenderAntialiasing.TAA);
   });
 
@@ -86,7 +86,7 @@ describe("LevelViewService", () => {
 
     const { service } = mockInjectedService(LevelViewService);
 
-    expect(service.camera).toEqual(DEFAULT_LEVEL_CAMERA_OPTIONS);
+    expect(service.cameraOptions).toEqual(DEFAULT_LEVEL_CAMERA_OPTIONS);
     expect(service.features).toEqual(mockLevelFeatureOptions());
   });
 });

@@ -49,15 +49,15 @@ describe("LevelCameraAction", () => {
     await userEvent.click(rendered.getByRole("button", { name: "Camera" }));
     fireEvent.change(rendered.getByRole("slider", { name: "Field of view" }), { target: { value: "90" } });
 
-    expect(rendered.view.camera).toEqual({ ...DEFAULT_LEVEL_CAMERA_OPTIONS, fieldOfView: 90 });
+    expect(rendered.view.cameraOptions).toEqual({ ...DEFAULT_LEVEL_CAMERA_OPTIONS, fieldOfView: 90 });
   });
 
   it("puts the camera back", async () => {
-    const rendered = renderAction(({ view }) => view.setCamera({ ...DEFAULT_LEVEL_CAMERA_OPTIONS, speed: 40 }));
+    const rendered = renderAction(({ view }) => view.setCameraOptions({ ...DEFAULT_LEVEL_CAMERA_OPTIONS, speed: 40 }));
 
     await userEvent.click(rendered.getByRole("button", { name: "Camera" }));
     await userEvent.click(rendered.getByRole("button", { name: "Back to the default camera" }));
 
-    expect(rendered.view.camera).toEqual(DEFAULT_LEVEL_CAMERA_OPTIONS);
+    expect(rendered.view.cameraOptions).toEqual(DEFAULT_LEVEL_CAMERA_OPTIONS);
   });
 });

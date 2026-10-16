@@ -301,7 +301,7 @@ describe("LevelRenderService", () => {
     const view: LevelViewService = container.get(LevelViewService);
 
     mockInvoke.mockClear();
-    view.setCamera({ ...view.camera, speed: view.camera.speed * 2 });
+    view.setCameraOptions({ ...view.cameraOptions, speed: view.cameraOptions.speed * 2 });
     await flush();
 
     expect(sent("set_camera")).toHaveLength(1);

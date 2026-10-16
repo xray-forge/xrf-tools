@@ -110,7 +110,11 @@ export function LevelSpawnPanel({
       }
 
       renderService.goTo(
-        toLevelFramedGoTo(viewportService.camera, toLevelSpawnSphere(object, sphere), viewService.camera.fieldOfView)
+        toLevelFramedGoTo(
+          viewportService.camera,
+          toLevelSpawnSphere(object, sphere),
+          viewService.cameraOptions.fieldOfView
+        )
       );
     },
     [loadService, renderService, viewportService, viewService]
