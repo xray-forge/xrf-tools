@@ -8,6 +8,7 @@ use crate::pass::fxaa_parameters::FxaaParameters;
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::smaa_parameters::SmaaParameters;
 use crate::pass::smaa_pass::SmaaPass;
+use crate::pass::smaa_stage::SmaaStage;
 use crate::pass::smoothing_uniform::SmoothingUniform;
 use crate::scene::level::feature::view_feature::ViewFeature;
 
@@ -68,14 +69,11 @@ impl SmoothingFeature {
           ["smaa no edges", "smaa no weights"].map(|label| bindings.import_view(&mut *graph, label, empty));
         let [linear_sampler, point_sampler] = pass.get_samplers();
 
-        for (stage, (name, (edges_texture, weights_texture), written)) in [
-          ("smaa edges", (no_edges, no_weights), edges),
-          ("smaa weights", (edges, no_weights), weights),
-          ("smaa", (edges, weights), target),
-        ]
-        .into_iter()
-        .enumerate()
-        {
+        for (stage, ((edges_texture, weights_texture), written)) in SmaaStage::ALL.into_iter().zip([
+          ((no_edges, no_weights), edges),
+          ((edges, no_weights), weights),
+          ((edges, weights), target),
+        ]) {
           let parameters: SmaaParameters = SmaaParameters {
             source: frame,
             smoothing,
@@ -88,7 +86,7 @@ impl SmoothingFeature {
           };
 
           graph
-            .add_raster_pass(name)
+            .add_raster_pass(stage.get_name())
             .parameters(&parameters)
             .color(GraphColorAttachment::new(
               written,

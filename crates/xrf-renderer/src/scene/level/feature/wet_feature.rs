@@ -18,6 +18,7 @@ use crate::pass::view_binding::ViewBinding;
 use crate::pass::wet_apply_parameters::WetApplyParameters;
 use crate::pass::wet_pass::WetPass;
 use crate::pass::wet_patch_parameters::WetPatchParameters;
+use crate::pass::wet_stage::WetStage;
 use crate::pass::wet_uniform::WetUniform;
 use crate::scene::level::cover_textures::CoverTextures;
 use crate::scene::level::feature::overhead_windows::OverheadWindows;
@@ -233,14 +234,14 @@ impl WetFeature {
         wet_reach,
         wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
       ))
-      .record(move |context| passes.wet.record(context, (0, is_enhanced), view, &patch));
+      .record(move |context| passes.wet.record(context, (WetStage::Patch, is_enhanced), view, &patch));
 
     graph
       .add_raster_pass("wet apply")
       .parameters(&apply)
       .color(GraphColorAttachment::new(handles.normal, wgpu::LoadOp::Load))
       .color(GraphColorAttachment::new(handles.albedo, wgpu::LoadOp::Load))
-      .record(move |context| passes.wet.record(context, (1, is_enhanced), view, &apply));
+      .record(move |context| passes.wet.record(context, (WetStage::Apply, is_enhanced), view, &apply));
 
     (wet_surface, wet_reach)
   }

@@ -8,10 +8,11 @@ use crate::contract::render_enhanced_bloom_settings::RenderEnhancedBloomSettings
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::pass::bloom_parameters::BloomParameters;
-use crate::pass::bloom_pass::BloomPass;
+use crate::pass::bloom_stage::BloomStage;
 use crate::pass::bloom_uniform::BloomUniform;
 use crate::pass::enhanced_bloom_parameters::EnhancedBloomParameters;
 use crate::pass::enhanced_bloom_pass::EnhancedBloomPass;
+use crate::pass::enhanced_bloom_stage::EnhancedBloomStage;
 use crate::pass::enhanced_bloom_uniform::EnhancedBloomUniform;
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::lighting_uniform::LightingUniform;
@@ -139,7 +140,7 @@ impl BloomFeature {
     let finished: GraphTexture = create("enhanced bloom", half_size, EnhancedBloomPass::BLOOM);
     // Adds one stage: its pass, its pipeline, what it reads and what it adds, what it writes, and its uniform.
     let mut add = |name: &'static str,
-                   pipeline: usize,
+                   stage: EnhancedBloomStage,
                    (source, coarser): (GraphTexture, GraphTexture),
                    written: GraphTexture,
                    uniform: EnhancedBloomUniform| {
@@ -160,26 +161,26 @@ impl BloomFeature {
           written,
           wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
         ))
-        .record(move |context| pass.record(context, view, &pipelines[pipeline], &parameters));
+        .record(move |context| pass.record(context, view, &pipelines[stage.get_index()], &parameters));
     };
 
     add(
       EnhancedBloomPass::BLUR_PASSES[0],
-      EnhancedBloomPass::BLUR,
+      EnhancedBloomStage::Blur,
       (targets.scene, empty),
       across,
       stage(half_size).along(true).reading_scene(),
     );
     add(
       EnhancedBloomPass::BLUR_PASSES[1],
-      EnhancedBloomPass::BLUR,
+      EnhancedBloomStage::Blur,
       (across, empty),
       blurred,
       stage(half_size).along(false),
     );
     add(
       EnhancedBloomPass::BUILD_PASS,
-      EnhancedBloomPass::BUILD,
+      EnhancedBloomStage::Build,
       (blurred, empty),
       built,
       stage(half_size),
@@ -190,7 +191,7 @@ impl BloomFeature {
     for (index, (target, size)) in halved.iter().enumerate() {
       add(
         EnhancedBloomPass::HALVE_PASSES[index],
-        EnhancedBloomPass::HALVE,
+        EnhancedBloomStage::Halve,
         (source, empty),
         *target,
         stage(*size),
@@ -205,7 +206,7 @@ impl BloomFeature {
 
       add(
         EnhancedBloomPass::DOUBLE_PASSES[index],
-        EnhancedBloomPass::DOUBLE,
+        EnhancedBloomStage::Double,
         (source, coarser),
         *target,
         stage(*size),
@@ -215,7 +216,7 @@ impl BloomFeature {
 
     add(
       EnhancedBloomPass::FINISH_PASS,
-      EnhancedBloomPass::FINISH,
+      EnhancedBloomStage::Finish,
       (source, empty),
       finished,
       stage(half_size),
@@ -236,22 +237,19 @@ impl BloomFeature {
       return;
     };
 
-    for (stage, (read, written)) in [
+    for (stage, (read, written)) in BloomStage::ALL.into_iter().zip([
       (handles.high, handles.bloom[0]),
       (handles.bloom[0], handles.bloom[1]),
       (handles.bloom[1], handles.bloom[0]),
-    ]
-    .into_iter()
-    .enumerate()
-    {
+    ]) {
       let parameters: BloomParameters = BloomParameters {
         source: read,
         source_sampler: passes.bloom.get_sampler(),
-        bloom: runtime.push_uniform(&stages[stage]),
+        bloom: runtime.push_uniform(&stages[stage.get_index()]),
       };
 
       graph
-        .add_raster_pass(BloomPass::STAGES[stage])
+        .add_raster_pass(stage.get_name())
         .parameters(&parameters)
         .color(GraphColorAttachment::new(
           written,

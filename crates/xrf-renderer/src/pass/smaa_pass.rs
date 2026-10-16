@@ -6,6 +6,7 @@ use crate::host::render_bundle::RenderBundle;
 use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline;
 use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::smaa_parameters::SmaaParameters;
+use crate::pass::smaa_stage::SmaaStage;
 
 /// `AreaTex` and `SearchTex` of SMAA v2.8 (MIT, Jorge Jimenez et al.), as three.js's `SMAANode` carries them, by their
 /// paths in the renderer's bundle.
@@ -17,7 +18,7 @@ const SEARCH_TEXTURE: &str = "smaa/search.png";
 pub struct SmaaPass {
   layout: wgpu::BindGroupLayout,
   /// The edges', the weights' and the blend's.
-  pipelines: [wgpu::RenderPipeline; 3],
+  pipelines: [wgpu::RenderPipeline; SmaaStage::COUNT],
   area: wgpu::TextureView,
   search: wgpu::TextureView,
   /// What a stage binds in place of the target it writes.
@@ -104,8 +105,8 @@ impl SmaaPass {
   }
 
   /// Draws one of its three stages into the target the pass draws into: the edges, the blend weights, then the blend.
-  pub fn record(&self, context: &mut RasterContext<'_>, stage: usize, parameters: &SmaaParameters<'_>) {
-    context.get_pass().set_pipeline(&self.pipelines[stage]);
+  pub fn record(&self, context: &mut RasterContext<'_>, stage: SmaaStage, parameters: &SmaaParameters<'_>) {
+    context.get_pass().set_pipeline(&self.pipelines[stage.get_index()]);
     context.bind(parameters);
     context.get_pass().draw(0..3, 0..1);
   }

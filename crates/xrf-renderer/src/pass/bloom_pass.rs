@@ -3,6 +3,7 @@ use xrf_renderer_core::{PassParameters, RasterContext};
 
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::bloom_parameters::BloomParameters;
+use crate::pass::bloom_stage::BloomStage;
 use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline;
 use crate::pass::pipeline_source::PipelineSource;
 
@@ -18,9 +19,6 @@ pub struct BloomPass {
 }
 
 impl BloomPass {
-  /// The bloom's three stages: built from the high target, blurred across, then down.
-  pub const STAGES: [&'static str; 3] = ["bloom build", "bloom across", "bloom down"];
-
   /// # Errors
   ///
   /// Returns an error when the shader does not compose or compile.
@@ -63,10 +61,11 @@ impl BloomPass {
   }
 
   /// Draws one of its stages into the target the pass draws into.
-  pub fn record(&self, context: &mut RasterContext<'_>, stage: usize, parameters: &BloomParameters<'_>) {
-    context
-      .get_pass()
-      .set_pipeline(if stage == 0 { &self.build } else { &self.filter });
+  pub fn record(&self, context: &mut RasterContext<'_>, stage: BloomStage, parameters: &BloomParameters<'_>) {
+    context.get_pass().set_pipeline(match stage {
+      BloomStage::Build => &self.build,
+      BloomStage::Across | BloomStage::Down => &self.filter,
+    });
     context.bind(parameters);
     context.get_pass().draw(0..3, 0..1);
   }

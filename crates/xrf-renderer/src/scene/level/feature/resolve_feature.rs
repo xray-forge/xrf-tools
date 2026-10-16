@@ -30,6 +30,7 @@ use crate::pass::temporal_pass::TemporalPass;
 use crate::pass::temporal_uniform::TemporalUniform;
 use crate::pass::upscale_parameters::UpscaleParameters;
 use crate::pass::upscale_pass::UpscalePass;
+use crate::pass::upscale_stage::UpscaleStage;
 use crate::pass::upscale_uniform::UpscaleUniform;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::feature::dlss_resolve::DlssResolve;
@@ -70,7 +71,7 @@ pub struct ResolveFeature {
   /// into the second.
   upscaled: Option<[FrameTexture; 2]>,
   /// The stage rescaling what was resolved, or the frame, to the viewport's size where it is of another.
-  rescale: Option<usize>,
+  rescale: Option<UpscaleStage>,
   /// Whether the frame shown is sharpened: drawn smaller than the viewport or resolved temporally, with a sharpness
   /// asked.
   is_sharpened: bool,
@@ -215,9 +216,9 @@ impl ResolveFeature {
     let source: (u32, u32) = if self.resolve.is_some() { display } else { render };
 
     self.rescale = (source != viewport).then_some(if source.0 < viewport.0 {
-      UpscalePass::EASU
+      UpscaleStage::Easu
     } else {
-      UpscalePass::DOWNSAMPLE
+      UpscaleStage::Downsample
     });
     // Sharpened where upscaled, and where a temporal resolve gathers frames at the viewport's size, whose filtering and
     // resampled history soften what moves as an upscale does; never an FSR debug view, which shows its values as they
@@ -789,11 +790,7 @@ impl ResolveFeature {
         };
 
         graph
-          .add_raster_pass(if stage == UpscalePass::EASU {
-            "upscale"
-          } else {
-            "downsample"
-          })
+          .add_raster_pass(stage.get_name())
           .parameters(&parameters)
           .color(GraphColorAttachment::new(
             upscaled,
@@ -815,13 +812,13 @@ impl ResolveFeature {
       };
 
       graph
-        .add_raster_pass("sharpen")
+        .add_raster_pass(UpscaleStage::Rcas.get_name())
         .parameters(&parameters)
         .color(GraphColorAttachment::new(
           sharpened,
           wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
         ))
-        .record(move |context| passes.upscale.record(context, UpscalePass::RCAS, &parameters));
+        .record(move |context| passes.upscale.record(context, UpscaleStage::Rcas, &parameters));
       shown = Some(sharpened);
     }
 

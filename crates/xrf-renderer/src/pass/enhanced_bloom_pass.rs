@@ -2,6 +2,7 @@ use xrf_error::XrfResult;
 use xrf_renderer_core::{PassParameters, RasterContext, RenderPipelineDescription};
 
 use crate::pass::enhanced_bloom_parameters::EnhancedBloomParameters;
+use crate::pass::enhanced_bloom_stage::EnhancedBloomStage;
 use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::view_binding::ViewBinding;
 
@@ -22,13 +23,6 @@ impl EnhancedBloomPass {
   pub const BLOOM: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
 
   const MODULE: &'static str = "frame/enhanced_bloom";
-
-  /// The stages, by the pipeline each draws with.
-  pub const BLUR: usize = 0;
-  pub const BUILD: usize = 1;
-  pub const HALVE: usize = 2;
-  pub const DOUBLE: usize = 3;
-  pub const FINISH: usize = 4;
 
   pub const BLUR_PASSES: [&'static str; 2] = ["enhanced bloom blur across", "enhanced bloom blur down"];
   pub const BUILD_PASS: &'static str = "enhanced bloom build";
@@ -64,9 +58,9 @@ impl EnhancedBloomPass {
     }
   }
 
-  /// Its pipelines, one a stage by the stage's index: a triangle over the target, the view's bind group then the
+  /// Its pipelines, one a stage at the stage's index: a triangle over the target, the view's bind group then the
   /// stage's, into the half-size blur's format or the bloom's.
-  pub fn describe_pipelines(&self) -> [RenderPipelineDescription; 5] {
+  pub fn describe_pipelines(&self) -> [RenderPipelineDescription; EnhancedBloomStage::COUNT] {
     let describe = |label: &'static str, fragment: &'static str, format: wgpu::TextureFormat| {
       RenderPipelineDescription::new(label, Self::MODULE, "vs_fullscreen")
         .with_fragment(fragment)
@@ -88,7 +82,10 @@ impl EnhancedBloomPass {
   /// # Errors
   ///
   /// Returns the first stage's error where a module cannot be composed or wgpu refuses it.
-  pub fn get_pipelines(&self, source: PipelineSource<'_>) -> XrfResult<[wgpu::RenderPipeline; 5]> {
+  pub fn get_pipelines(
+    &self,
+    source: PipelineSource<'_>,
+  ) -> XrfResult<[wgpu::RenderPipeline; EnhancedBloomStage::COUNT]> {
     let [blur, build, halve, double, finish] = self
       .describe_pipelines()
       .map(|description| source.get_render_pipeline(&description));
