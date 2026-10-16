@@ -3,12 +3,12 @@ import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useState } from "react";
 
 import { SelectedLevelDescription } from "@/core/ipc/types/xrf-app";
-import { LevelPreviewLayout } from "@/core/level/components/preview/LevelPreviewLayout";
 import { describeLevelSource } from "@/core/level/lib/source";
 import { LevelLoadService } from "@/core/level/services";
 import { ApplicationLoader } from "@/core/shell/loading/ApplicationLoader";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
+import { LevelViewerLayout } from "./components/LevelViewerLayout";
 import { LevelViewerOpenForm } from "./components/LevelViewerOpenForm";
 
 /**
@@ -40,7 +40,7 @@ export function LevelViewerApplication({
   }
 
   return (
-    <LevelPreviewLayout
+    <LevelViewerLayout
       data-testid={dataTestId}
       id={id}
       className={className}

@@ -1,5 +1,5 @@
-/** The panels the level preview contributes to the panel stripe, by the id each is opened under. */
-export enum ELevelPanelId {
+/** The panels the level viewer contributes to the panel stripe, by the id each is opened under. */
+export enum ELevelViewerPanelId {
   WEATHER = "weather",
   SPAWN = "spawn",
   LEVEL = "level",

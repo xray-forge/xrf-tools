@@ -25,7 +25,7 @@ import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { EditorToolbarSeparator } from "@/core/shell/editor/EditorToolbarSeparator";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
-interface ILevelPreviewToolbarProps extends BaseComponentProps {
+interface ILevelViewerToolbarProps extends BaseComponentProps {
   subtitle?: ReactNode;
   onBack?: () => void;
 }
@@ -34,13 +34,13 @@ interface ILevelPreviewToolbarProps extends BaseComponentProps {
  * Composes the level view toggles in the editor toolbar, by what each changes: the view, the image, the lighting, the
  * environment and the contents, then the camera's value pickers last. Each action reads and sets what it shows itself.
  */
-export function LevelPreviewToolbar({
+export function LevelViewerToolbar({
   "data-testid": dataTestId,
   id,
   className,
   subtitle,
   onBack,
-}: ILevelPreviewToolbarProps): ReactElement {
+}: ILevelViewerToolbarProps): ReactElement {
   return (
     <EditorToolbar
       data-testid={dataTestId}

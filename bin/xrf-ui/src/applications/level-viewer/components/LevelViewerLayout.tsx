@@ -8,6 +8,8 @@ import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
 import { ReactElement, ReactNode } from "react";
 
+import { LevelViewerToolbar } from "@/applications/level-viewer/components/LevelViewerToolbar";
+import { ELevelViewerPanelId } from "@/applications/level-viewer/lib/level-viewer-panel-id";
 import { LevelHeaderPanel } from "@/core/level/components/panels/LevelHeaderPanel";
 import { LevelProblemsPanel } from "@/core/level/components/panels/LevelProblemsPanel";
 import { LevelRendererPanel } from "@/core/level/components/panels/LevelRendererPanel";
@@ -19,9 +21,7 @@ import { LevelPreviewCover } from "@/core/level/components/preview/LevelPreviewC
 import { LevelPreviewEmpty } from "@/core/level/components/preview/LevelPreviewEmpty";
 import { LevelPreviewMetrics } from "@/core/level/components/preview/LevelPreviewMetrics";
 import { LevelPreviewPick } from "@/core/level/components/preview/LevelPreviewPick";
-import { LevelPreviewToolbar } from "@/core/level/components/preview/LevelPreviewToolbar";
 import { ILevelPreviewViewportProps, LevelPreviewViewport } from "@/core/level/components/preview/LevelPreviewViewport";
-import { ELevelPanelId } from "@/core/level/lib/panels/level-panel-id";
 import { LevelViewService } from "@/core/level/services";
 import { EditorFileHeader } from "@/core/shell/editor/EditorFileHeader";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
@@ -29,7 +29,7 @@ import { IEditorPanel, useEditorPanels } from "@/core/shell/editor-shell";
 import { cn } from "@/core/theme/class-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
-interface ILevelPreviewLayoutProps extends BaseComponentProps {
+interface ILevelViewerLayoutProps extends BaseComponentProps {
   /** What the open level is called, which heads the viewport. Its presence is what offers stats and picks. */
   name?: Nullable<string>;
   /**
@@ -49,11 +49,11 @@ interface ILevelPreviewLayoutProps extends BaseComponentProps {
 }
 
 /**
- * The level preview chrome: toolbar, viewport, panel stripe and the two waits a level has.
+ * The level viewer's chrome: toolbar, viewport, panel stripe and the two waits a level has.
  */
-export function LevelPreviewLayout({
-  "data-testid": dataTestId = "level-preview-layout",
-  id = "level-preview-layout",
+export function LevelViewerLayout({
+  "data-testid": dataTestId = "level-viewer-layout",
+  id = "level-viewer-layout",
   className,
   name = null,
   pending = null,
@@ -64,7 +64,7 @@ export function LevelPreviewLayout({
   onRetry,
   onBack,
   onDeselect = null,
-}: ILevelPreviewLayoutProps): ReactElement {
+}: ILevelViewerLayoutProps): ReactElement {
   const viewService: LevelViewService = useInjection(LevelViewService);
 
   const isOpen: boolean = Boolean(name);
@@ -74,7 +74,7 @@ export function LevelPreviewLayout({
     (): Array<IEditorPanel> => [
       {
         icon: <WbCloudyIcon />,
-        id: ELevelPanelId.WEATHER,
+        id: ELevelViewerPanelId.WEATHER,
         isOpenByDefault: true,
         label: "Weather",
         render: () => <LevelWeatherPanel />,
@@ -82,34 +82,34 @@ export function LevelPreviewLayout({
       },
       {
         icon: <Inventory2Icon />,
-        id: ELevelPanelId.SPAWN,
+        id: ELevelViewerPanelId.SPAWN,
         label: "Spawn",
         render: () => <LevelSpawnPanel />,
         side: "left",
       },
       {
         icon: <InfoOutlinedIcon />,
-        id: ELevelPanelId.LEVEL,
+        id: ELevelViewerPanelId.LEVEL,
         isOpenByDefault: true,
         label: "Level",
         render: () => <LevelHeaderPanel />,
       },
       {
         icon: <SpeedIcon />,
-        id: ELevelPanelId.RENDERER,
+        id: ELevelViewerPanelId.RENDERER,
         label: "Renderer",
         render: () => <LevelRendererPanel />,
       },
       {
         icon: <LayersIcon />,
-        id: ELevelPanelId.SURFACES,
+        id: ELevelViewerPanelId.SURFACES,
         label: "Surfaces",
         render: () => <LevelSurfacesPanel />,
         side: "left",
       },
       {
         icon: <WarningIcon />,
-        id: ELevelPanelId.PROBLEMS,
+        id: ELevelViewerPanelId.PROBLEMS,
         label: "Problems",
         render: () => <LevelProblemsPanel />,
       },
@@ -118,7 +118,7 @@ export function LevelPreviewLayout({
   );
 
   return (
-    <EditorLayout toolbar={<LevelPreviewToolbar subtitle={subtitle} onBack={onBack} />}>
+    <EditorLayout toolbar={<LevelViewerToolbar subtitle={subtitle} onBack={onBack} />}>
       <div className={"flex min-h-0 min-w-0 grow flex-col"}>
         {heading ? (
           <EditorFileHeader
