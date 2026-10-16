@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
+import { act } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 
+import { ERenderAntialiasing, ERenderDlssAvailability, RenderAntialiasing } from "@/core/ipc/types/xrf-renderer";
 import { LevelShadingAction } from "@/core/level/components/preview/toolbar/view/LevelShadingAction";
 import { ELevelShading } from "@/core/level/lib/view/level-shading";
 import { DEFAULT_LEVEL_VIEW_OPTIONS } from "@/core/level/lib/view/level-view-options";
@@ -9,18 +11,23 @@ import { clearLocalStorage } from "@/core/storage";
 import {
   ILevelViewContainerDescriptor,
   mockLevelViewContainer,
+  noteLevelFrame,
   renderLevelView,
   TLevelViewRenderResult,
 } from "@/fixtures/utils/level-container";
 
 /**
  * @param setup - What the case sets on the services before it draws.
+ * @param antialiasing - What the settings smooth the frame with.
  * @returns The shading's action and the services behind it, the parallax drawn as the engine does.
  */
-function renderAction(setup: (descriptor: ILevelViewContainerDescriptor) => void = () => {}): TLevelViewRenderResult {
+function renderAction(
+  setup: (descriptor: ILevelViewContainerDescriptor) => void = () => {},
+  antialiasing: RenderAntialiasing = ERenderAntialiasing.SMAA
+): TLevelViewRenderResult {
   const descriptor: ILevelViewContainerDescriptor = mockLevelViewContainer();
 
-  descriptor.renderSettings.setRendererOverrides({ parallax: DEFAULT_RENDER_PARALLAX_SETTINGS });
+  descriptor.renderSettings.setRendererOverrides({ antialiasing, parallax: DEFAULT_RENDER_PARALLAX_SETTINGS });
   setup(descriptor);
 
   return renderLevelView(<LevelShadingAction />, descriptor);
@@ -61,5 +68,77 @@ describe("LevelShadingAction", () => {
     await userEvent.click(getByRole("option", { name: "Depth" }));
 
     expect(view.shading).toBe(ELevelShading.DEPTH);
+  });
+
+  it("lists the shadings under what they show, saying what the one chosen is", async () => {
+    const { getByRole, findByRole, getByText } = renderAction();
+
+    await userEvent.click(getByRole("button", { name: "Shading" }));
+    await findByRole("dialog", { name: "Shading" });
+
+    for (const section of ["Frame", "Surfaces", "Light", "Temporal"]) {
+      expect(getByRole("group", { name: section })).toBeTruthy();
+    }
+
+    expect(getByRole("option", { name: "Depth" }).closest("[role=group]")).toBe(
+      getByRole("group", { name: "Surfaces" })
+    );
+    expect(getByText("The finished frame, every pass applied.")).toBeTruthy();
+
+    await userEvent.click(getByRole("option", { name: "Baked sun" }));
+
+    expect(getByText("How much of the sun each surface gets, as the level compiler baked it.")).toBeTruthy();
+  });
+
+  // FSR draws its own targets alone; under any other antialiasing they would show a resolve the frame does not use.
+  it("offers FSR's views only while FSR draws the frame", async () => {
+    const smaa: TLevelViewRenderResult = renderAction();
+
+    await userEvent.click(smaa.getByRole("button", { name: "Shading" }));
+    await smaa.findByRole("dialog", { name: "Shading" });
+
+    expect(smaa.getByRole("option", { name: "Motion" })).toBeTruthy();
+    expect(smaa.queryByRole("option", { name: "FSR masks" })).toBeNull();
+
+    smaa.unmount();
+
+    const fsr: TLevelViewRenderResult = renderAction(() => {}, ERenderAntialiasing.FSR);
+
+    await userEvent.click(fsr.getByRole("button", { name: "Shading" }));
+    await fsr.findByRole("dialog", { name: "Shading" });
+    await userEvent.click(fsr.getByRole("option", { name: "FSR masks" }));
+
+    expect(fsr.view.shading).toBe(ELevelShading.FSR_MASKS);
+  });
+
+  it("offers FSR's views where FSR draws in place of DLSS", async () => {
+    const { getByRole, findByRole, render } = renderAction(() => {}, ERenderAntialiasing.DLSS);
+
+    noteLevelFrame(render, { adapter: "Test GPU", dlss: ERenderDlssAvailability.UNSUPPORTED });
+
+    await userEvent.click(getByRole("button", { name: "Shading" }));
+    await findByRole("dialog", { name: "Shading" });
+
+    expect(getByRole("option", { name: "FSR locks" })).toBeTruthy();
+  });
+
+  // The choice is kept, so it comes back with FSR, but the viewport is never left showing a target nothing lists.
+  it("shows the final frame for an FSR view once FSR stops drawing, and the view again once it draws", () => {
+    const { getByRole, render, renderSettings, view } = renderAction(
+      ({ view }) => view.setShading(ELevelShading.FSR_LOCKS),
+      ERenderAntialiasing.FSR
+    );
+
+    expect(getByRole("button", { name: "Shading" })).toHaveAccessibleDescription("FSR locks");
+
+    act(() => renderSettings.setRendererOverrides({ antialiasing: ERenderAntialiasing.TAA }));
+
+    expect(view.shading).toBe(ELevelShading.FSR_LOCKS);
+    expect(render.shading).toBe(ELevelShading.FINAL);
+    expect(getByRole("button", { name: "Shading" })).toHaveAccessibleDescription("Final frame");
+
+    act(() => renderSettings.setRendererOverrides({ antialiasing: ERenderAntialiasing.FSR }));
+
+    expect(render.shading).toBe(ELevelShading.FSR_LOCKS);
   });
 });

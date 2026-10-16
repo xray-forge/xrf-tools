@@ -24,6 +24,7 @@ import {
   describeRenderAntialiasing,
   isTemporalAntialiasing,
   RENDER_TEXTURE_FILTERING_SHORT_OPTIONS,
+  toDrawnAntialiasing,
 } from "@/core/render/lib/features/render-antialiasing-choices";
 import {
   formatOutputScale,
@@ -91,7 +92,7 @@ export function LevelImageQualityAction({
   const isAvailable: boolean = settingsMode !== ERenderAntialiasing.NONE;
   const asked: RenderAntialiasing = features.antialiasing ?? settingsMode;
   const dlssProblem: Nullable<string> = describeDlssUnavailability(dlss);
-  const mode: RenderAntialiasing = asked === ERenderAntialiasing.DLSS && dlssProblem ? ERenderAntialiasing.FSR : asked;
+  const mode: RenderAntialiasing = toDrawnAntialiasing(asked, dlss);
   const textureFiltering: RenderTextureFiltering = features.textureFiltering ?? settingsTextureFiltering;
   const scale: RenderScale = features.upscaling.scale ?? settingsScale;
   const sharpening: number = features.upscaling.sharpening ?? settingsSharpening;

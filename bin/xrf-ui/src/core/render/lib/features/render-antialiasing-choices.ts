@@ -1,7 +1,9 @@
 import {
   ERenderAntialiasing,
+  ERenderDlssAvailability,
   ERenderTextureFiltering,
   RenderAntialiasing,
+  RenderDlssAvailability,
   RenderTextureFiltering,
 } from "@/core/ipc/types/xrf-renderer";
 import { IChoiceFormRowOption } from "@/core/ui/form/ChoiceFormRow/choice-form-row-option";
@@ -21,6 +23,17 @@ const RENDER_ANTIALIASING_NAMES: Readonly<Record<RenderAntialiasing, string>> = 
  */
 export function describeRenderAntialiasing(mode: RenderAntialiasing): string {
   return RENDER_ANTIALIASING_NAMES[mode];
+}
+
+/**
+ * @param mode - The antialiasing asked for.
+ * @param dlss - Whether the GPU drawing the frame upscales with DLSS.
+ * @returns What smooths the frame there: FSR in place of DLSS on a GPU without it, as the renderer resolves it.
+ */
+export function toDrawnAntialiasing(mode: RenderAntialiasing, dlss: RenderDlssAvailability): RenderAntialiasing {
+  return mode === ERenderAntialiasing.DLSS && dlss !== ERenderDlssAvailability.AVAILABLE
+    ? ERenderAntialiasing.FSR
+    : mode;
 }
 
 /**
