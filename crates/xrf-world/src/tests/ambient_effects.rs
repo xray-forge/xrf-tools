@@ -16,7 +16,8 @@ use xrf_renderer_core::{ProxyAllocator, ProxyHandle};
 
 use crate::contract::world_ambient_report::WorldAmbientReport;
 use crate::level::ambient_frame::AmbientFrame;
-use crate::level::level_ambient_effects::{AmbientSystems, LevelAmbientEffects};
+use crate::level::ambient_systems::AmbientSystems;
+use crate::level::level_ambient_effects::LevelAmbientEffects;
 
 const OUTDOORS: Vec3 = Vec3::new(10.0, 2.0, -5.0);
 

@@ -1,4 +1,5 @@
 pub(crate) mod ambient_frame;
+pub(crate) mod ambient_systems;
 pub(crate) mod ambient_wind;
 pub(crate) mod camera_hemi;
 pub(crate) mod campfire;

@@ -11,6 +11,7 @@ use xrf_renderer_core::{ProxyAllocator, ProxyHandle};
 use crate::contract::world_ambient_effect_report::WorldAmbientEffectReport;
 use crate::contract::world_ambient_report::WorldAmbientReport;
 use crate::level::ambient_frame::AmbientFrame;
+use crate::level::ambient_systems::AmbientSystems;
 use crate::level::ambient_wind::AmbientWind;
 
 /// What the schedule's numbers are drawn from on every level open, so a driven capture plays the same effects.
@@ -43,15 +44,6 @@ struct PlayingEffect {
   name: String,
   particles: String,
   is_stopping: bool,
-}
-
-/// What an update of the effects reads besides the frame's ambients: the effects and groups the level has and the
-/// engine they play by, the emitters the scene's posts name, and the emitters whose particles died.
-pub struct AmbientSystems<'a> {
-  pub library: &'a ParticleLibrary,
-  pub engine: XrayEngine,
-  pub emitters: &'a mut ProxyAllocator<ParticleEmitterProxy>,
-  pub finished: &'a [ProxyHandle<ParticleEmitterProxy>],
 }
 
 impl Default for LevelAmbientEffects {
