@@ -111,12 +111,12 @@ impl DepthPyramidPass {
     };
 
     Ok([
-      create("reduce_depth", depth_layout)?,
-      create("reduce_level", level_layout)?,
-      create("copy_nearest", depth_layout)?,
-      create("reduce_nearest", level_layout)?,
-      create("reduce_cover", cover_layout)?,
-      create("reduce_cover_level", cover_level_layout)?,
+      create("cs_reduce_depth", depth_layout)?,
+      create("cs_reduce_level", level_layout)?,
+      create("cs_copy_nearest", depth_layout)?,
+      create("cs_reduce_nearest", level_layout)?,
+      create("cs_reduce_cover", cover_layout)?,
+      create("cs_reduce_cover_level", cover_level_layout)?,
     ])
   }
 }

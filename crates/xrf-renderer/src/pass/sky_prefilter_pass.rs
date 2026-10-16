@@ -104,7 +104,7 @@ impl SkyPrefilterPass {
 
   fn create_pipeline(source: PipelineSource<'_>, layout: &wgpu::BindGroupLayout) -> XrfResult<wgpu::ComputePipeline> {
     source.get_compute_pipeline(
-      &ComputePipelineDescription::new("sky prefilter", "frame/sky_prefilter", "prefilter")
+      &ComputePipelineDescription::new("sky prefilter", "frame/sky_prefilter", "cs_prefilter")
         .with_bind_group_layouts(&[Some(layout)]),
     )
   }

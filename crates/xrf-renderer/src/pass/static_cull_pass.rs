@@ -15,12 +15,12 @@ const WORKGROUP: u32 = 64;
 
 /// The cull's entry points, in the order its pipelines are held.
 const ENTRIES: [&str; 6] = [
-  "cull_impostors",
-  "cull_singles",
-  "cull_rows",
-  "clamp_counts",
-  "cull_late",
-  "clamp_late",
+  "cs_cull_impostors",
+  "cs_cull_singles",
+  "cs_cull_rows",
+  "cs_clamp_counts",
+  "cs_cull_late",
+  "cs_clamp_late",
 ];
 
 /// Decides each frame which clusters are drawn, into every batch's run of the visible list: an early phase before the

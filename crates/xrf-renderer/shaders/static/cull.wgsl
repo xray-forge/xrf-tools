@@ -148,7 +148,7 @@ fn placed_sphere(sphere: vec4<f32>, place: Place) -> vec4<f32> {
 }
 
 @compute @workgroup_size(64)
-fn cull_singles(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workgroups) groups: vec3<u32>) {
+fn cs_cull_singles(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workgroups) groups: vec3<u32>) {
   let index: u32 = compute_index(id, groups, 64u);
 
   if (index >= params.cluster_count) {
@@ -174,7 +174,7 @@ fn cull_singles(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workg
 // its impostor does, both between, neither below `r_ssaDISCARD`. For the impostor it picks the two facets facing the
 // camera best, how far to blend between them, and how far it has faded in, as `render_lods` writes them.
 @compute @workgroup_size(64)
-fn cull_impostors(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workgroups) groups: vec3<u32>) {
+fn cs_cull_impostors(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workgroups) groups: vec3<u32>) {
   let index: u32 = compute_index(id, groups, 64u);
 
   if (index >= params.impostor_count) {
@@ -248,7 +248,7 @@ fn is_band_drawn(band_word: u32, area: f32) -> bool {
 }
 
 @compute @workgroup_size(64)
-fn cull_rows(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workgroups) groups: vec3<u32>) {
+fn cs_cull_rows(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workgroups) groups: vec3<u32>) {
   let index: u32 = compute_index(id, groups, 64u);
 
   if (index >= params.row_count) {
@@ -292,7 +292,7 @@ fn cull_rows(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workgrou
 // rather than reading into the next list's run; its late draw starts where the early one ends, and the late phase is
 // sized to the candidates.
 @compute @workgroup_size(64)
-fn clamp_counts(@builtin(global_invocation_id) id: vec3<u32>) {
+fn cs_clamp_counts(@builtin(global_invocation_id) id: vec3<u32>) {
   let list: u32 = id.x;
 
   if (IS_SHADOW) {
@@ -323,7 +323,7 @@ fn clamp_counts(@builtin(global_invocation_id) id: vec3<u32>) {
 
 // Tests each candidate again against this frame's pyramid, through this frame's view.
 @compute @workgroup_size(64)
-fn cull_late(@builtin(global_invocation_id) id: vec3<u32>) {
+fn cs_cull_late(@builtin(global_invocation_id) id: vec3<u32>) {
   let index: u32 = id.x;
 
   if (index >= atomicLoad(&late[late_at(3u)])) {
@@ -345,7 +345,7 @@ fn cull_late(@builtin(global_invocation_id) id: vec3<u32>) {
 
 // Clamps each draw list's late count to what is left of its run after the early draw.
 @compute @workgroup_size(64)
-fn clamp_late(@builtin(global_invocation_id) id: vec3<u32>) {
+fn cs_clamp_late(@builtin(global_invocation_id) id: vec3<u32>) {
   let list: u32 = id.x;
 
   if (list >= list_count()) {

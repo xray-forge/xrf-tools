@@ -87,9 +87,9 @@ impl PuddleSitesPass {
     };
 
     Ok([
-      create("surface_lowest", heights)?,
-      create("surface_sites", sites)?,
-      create("puddle_keep", keep)?,
+      create("cs_surface_lowest", heights)?,
+      create("cs_surface_sites", sites)?,
+      create("cs_puddle_keep", keep)?,
     ])
   }
 }

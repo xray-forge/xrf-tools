@@ -33,7 +33,7 @@ fn height_at(texel: vec2<i32>) -> f32 {
 }
 
 @compute @workgroup_size(8, 8)
-fn surface_lowest(@builtin(global_invocation_id) id: vec3<u32>) {
+fn cs_surface_lowest(@builtin(global_invocation_id) id: vec3<u32>) {
   let size: vec2<u32> = textureDimensions(lowest);
 
   if (any(id.xy >= size)) {
@@ -122,7 +122,7 @@ fn is_near_fire(centre: vec2<f32>, radius: f32) -> bool {
 // A cell's site: the world place of its spot in `xy`, its height in `z`, and the largest radius it holds whole in
 // `w`, none where none fits.
 @compute @workgroup_size(8, 8)
-fn surface_sites(@builtin(global_invocation_id) id: vec3<u32>) {
+fn cs_surface_sites(@builtin(global_invocation_id) id: vec3<u32>) {
   if (any(id.xy >= textureDimensions(sites))) {
     return;
   }
@@ -186,7 +186,7 @@ fn share_at(spot: vec2<f32>) -> f32 {
 // A cell's puddle: its site's spot in `xy`, its height in `z`, and its radius this frame in `w`, none where it holds
 // none.
 @compute @workgroup_size(8, 8)
-fn puddle_keep(@builtin(global_invocation_id) id: vec3<u32>) {
+fn cs_puddle_keep(@builtin(global_invocation_id) id: vec3<u32>) {
   let size: vec2<i32> = vec2<i32>(textureDimensions(puddles));
 
   if (any(vec2<i32>(id.xy) >= size)) {

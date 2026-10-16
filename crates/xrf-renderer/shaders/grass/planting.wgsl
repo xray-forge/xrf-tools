@@ -76,7 +76,7 @@ fn is_outside(center: vec3<f32>, radius: f32) -> bool {
 }
 
 @compute @workgroup_size(64)
-fn clear_schedule(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workgroups) groups: vec3<u32>) {
+fn cs_clear_schedule(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workgroups) groups: vec3<u32>) {
   let index: u32 = compute_index(id, groups, 64u);
 
   if (index < params.bands) {
@@ -86,7 +86,7 @@ fn clear_schedule(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_wor
 
 // `cache_Update`'s task list: every stale cell of the ring, counted into the band it stands in.
 @compute @workgroup_size(64)
-fn rank(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workgroups) groups: vec3<u32>) {
+fn cs_rank(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workgroups) groups: vec3<u32>) {
   let cell: u32 = compute_index(id, groups, 64u);
 
   if (cell >= ring_cells()) {
@@ -103,7 +103,7 @@ fn rank(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workgroups) g
 // The task performer's pick, nearest first: the band the frame's budget runs out in, and how many of its cells it still
 // plants there.
 @compute @workgroup_size(1)
-fn select_band() {
+fn cs_select_band() {
   var taken: u32 = 0u;
   // Past every band: all that is stale is planted.
   var stop: u32 = params.bands;
@@ -255,7 +255,7 @@ fn cast_ground(origin: vec3<f32>, bin: vec2<u32>, lowest: f32) -> GroundHit {
 // with the same generators seeded the same way and drawn in the same order, the same dither, the same ray cast down
 // onto the slot's own triangles, so a slot plants what the engine plants in it.
 @compute @workgroup_size(64)
-fn decompress(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workgroups) groups: vec3<u32>) {
+fn cs_decompress(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workgroups) groups: vec3<u32>) {
   let cell: u32 = compute_index(id, groups, 64u);
 
   if (cell >= ring_cells()) {
@@ -381,7 +381,7 @@ fn decompress(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workgro
 }
 
 @compute @workgroup_size(64)
-fn clear_counts(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workgroups) groups: vec3<u32>) {
+fn cs_clear_counts(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workgroups) groups: vec3<u32>) {
   let index: u32 = compute_index(id, groups, 64u);
 
   if (index <= params.model_count) {
@@ -393,7 +393,7 @@ fn clear_counts(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workg
 // past `dm_fade` passes over, and each of its tufts is shrunk by the slot's distance, dropped where too small to see,
 // stilled where too small to see sway, culled by the view, and appended.
 @compute @workgroup_size(64)
-fn cull(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workgroups) groups: vec3<u32>) {
+fn cs_cull(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workgroups) groups: vec3<u32>) {
   let cell: u32 = compute_index(id, groups, 64u);
 
   if (cell >= ring_cells()) {
@@ -464,7 +464,7 @@ fn cull(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workgroups) g
 // Lays each model's items out after the last's and writes its indexed draw, the range's start as its first instance;
 // then sizes the sort's dispatch by the items kept, over rows as `ComputeGrid` lays them.
 @compute @workgroup_size(1)
-fn arrange() {
+fn cs_arrange() {
   var first: u32 = 0u;
 
   for (var model: u32 = 0u; model < params.model_count; model++) {
@@ -489,7 +489,7 @@ fn arrange() {
 
 // Sorts the items into each model's range, a thread an item.
 @compute @workgroup_size(64)
-fn scatter(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workgroups) groups: vec3<u32>) {
+fn cs_scatter(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workgroups) groups: vec3<u32>) {
   let item: u32 = compute_index(id, groups, 64u);
 
   if (item >= min(atomicLoad(&counts[params.model_count]), params.capacity)) {

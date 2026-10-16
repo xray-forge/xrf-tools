@@ -73,7 +73,7 @@ fn lit_texel(texel: vec2<i32>, direction: vec3<f32>, scale: f32) -> vec4<f32> {
 }
 
 @compute @workgroup_size(8, 8, 1)
-fn resolve(@builtin(global_invocation_id) id: vec3<u32>) {
+fn cs_resolve(@builtin(global_invocation_id) id: vec3<u32>) {
   let size: u32 = u32(settings.face.y);
 
   if (any(id.xy >= vec2<u32>(size))) {

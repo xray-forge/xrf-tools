@@ -296,7 +296,7 @@ impl LightsPass {
     (tracing_layout, trace_layout): (&wgpu::BindGroupLayout, Option<&wgpu::BindGroupLayout>),
   ) -> XrfResult<LightsPipelines> {
     let binning: wgpu::ComputePipeline = source.get_compute_pipeline(
-      &ComputePipelineDescription::new("light binning", "frame/light_binning", "bin")
+      &ComputePipelineDescription::new("light binning", "frame/light_binning", "cs_bin")
         .with_bind_group_layouts(&[Some(binning_layout)]),
     )?;
     let contact: wgpu::ComputePipeline = source.get_compute_pipeline(
