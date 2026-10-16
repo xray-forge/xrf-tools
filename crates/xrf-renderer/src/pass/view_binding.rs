@@ -44,6 +44,7 @@ impl ViewBinding {
     Self { buffer, bind_group }
   }
 
+  /// Writes the camera uniform through the frame's encoder, ahead of every pass of the graph.
   pub fn write(&self, encoder: &mut FrameEncoder, uniform: &CameraUniform) {
     encoder.write_buffer(&self.buffer, 0, bytemuck::bytes_of(uniform));
   }

@@ -41,6 +41,8 @@ impl RayGuidesPass {
     })
   }
 
+  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSource::get_generation`), keeping
+  /// the last ones where a reload is refused.
   pub fn refresh(&mut self, source: PipelineSource<'_>) {
     if source.get_generation() != self.generation {
       self.generation = source.get_generation();
@@ -52,6 +54,8 @@ impl RayGuidesPass {
     }
   }
 
+  /// Writes the guides DLSS ray reconstruction reads: the specular albedo, the normal with the reflections' roughness, the
+  /// specular hit distance and the bias mask.
   pub fn record(&self, context: &mut RasterContext<'_>, view: &ViewBinding, parameters: &RayGuidesParameters) {
     context.bind(parameters);
 

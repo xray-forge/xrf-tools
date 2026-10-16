@@ -148,6 +148,8 @@ impl LightsPass {
     })
   }
 
+  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSource::get_generation`), keeping
+  /// the last ones where a reload is refused.
   pub fn refresh(&mut self, source: PipelineSource<'_>) {
     if source.get_generation() != self.generation {
       self.generation = source.get_generation();
@@ -180,6 +182,7 @@ impl LightsPass {
     &self.unthresholded
   }
 
+  /// Bins the view's light records into the 16×9×24 clusters the lights pass reads.
   pub fn record_binning(&self, context: &mut ComputeContext<'_>, parameters: &LightBinningParameters) {
     context.bind(parameters);
 
@@ -265,6 +268,8 @@ impl LightsPass {
     );
   }
 
+  /// Adds every light to the light target, with the contact shadows' marched shares where they were marched
+  /// (`is_contact`).
   pub fn record_draw(
     &self,
     context: &mut RasterContext<'_>,

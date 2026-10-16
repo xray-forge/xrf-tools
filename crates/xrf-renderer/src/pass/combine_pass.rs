@@ -39,6 +39,8 @@ impl CombinePass {
     })
   }
 
+  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSource::get_generation`), keeping
+  /// the last ones where a reload is refused.
   pub fn refresh(&mut self, source: PipelineSource<'_>) {
     if source.get_generation() != self.generation {
       self.generation = source.get_generation();
@@ -50,6 +52,7 @@ impl CombinePass {
     }
   }
 
+  /// Lights the G-buffer as `hmodel` does into the scene and its high part, the sky drawn where nothing was.
   pub fn record(
     &self,
     context: &mut RasterContext<'_>,

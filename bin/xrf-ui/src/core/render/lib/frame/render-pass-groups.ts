@@ -2,9 +2,11 @@ import { RenderPassCost } from "@/core/ipc/types/xrf-renderer";
 
 /** One row of a frame's GPU readout: a pass alone, or a run of a family's passes summed under the words they share. */
 export interface IRenderPassGroup {
+  /** The pass's name, or the words a run's passes all start with. */
   name: string;
   /** Passes summed into it, one for a pass alone. */
   count: number;
+  /** Mean GPU milliseconds a frame, summed over its passes. */
   gpuTime: number;
 }
 

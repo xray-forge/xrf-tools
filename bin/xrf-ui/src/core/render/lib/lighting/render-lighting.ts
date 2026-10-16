@@ -10,11 +10,13 @@ export interface IRenderLighting {
   sunElevation: number;
   /** Degrees around the vertical axis, `0` looking along the scene's own `+z`. */
   sunAzimuth: number;
+  /** How strongly the directional light lights, a multiplier of its colour. */
   sunIntensity: number;
   /** Hex colour of the directional light. */
   sunColor: number;
   /** Uniform light standing in for everything the one direction does not reach. */
   ambientIntensity: number;
+  /** Hex colour of the ambient light. */
   ambientColor: number;
 }
 

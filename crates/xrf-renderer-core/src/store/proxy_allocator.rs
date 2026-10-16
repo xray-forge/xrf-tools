@@ -28,6 +28,8 @@ impl<T> ProxyAllocator<T> {
     }
   }
 
+  /// A handle for a new item: a freed slot again where there is one, its generation already bumped, so a handle to what
+  /// stood there before answers nothing.
   pub fn allocate(&mut self) -> ProxyHandle<T> {
     let slot: u32 = match self.free.pop() {
       Some(slot) => slot,

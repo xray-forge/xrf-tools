@@ -21,6 +21,7 @@ impl<T> LoaderReceiver<T> {
     )
   }
 
+  /// The next answer already sent, without waiting.
   pub fn try_recv(&mut self) -> Result<T, TryRecvError> {
     self
       .receiver

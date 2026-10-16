@@ -12,6 +12,7 @@ export interface IRenderLines {
 
 /** What a grid is drawn with. */
 export interface IRenderGridLinesOptions {
+  /** Roughly how many cells the grid spans across; the step itself is rounded to a readable one. */
   cells: number;
   /** Hex colour of the lines. */
   color: number;

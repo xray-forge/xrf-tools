@@ -28,6 +28,7 @@ impl ShaderDeclarations {
     }
   }
 
+  /// The declarations as one WGSL text, in the order they were added.
   pub fn to_wgsl(&self) -> String {
     self.texts.join("\n")
   }

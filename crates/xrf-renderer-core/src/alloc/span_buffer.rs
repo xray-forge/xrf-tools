@@ -151,6 +151,8 @@ impl SpanBuffer {
     })
   }
 
+  /// Gives a span's elements back for a later allocation; what it held stays in the buffer until overwritten, so `clear`
+  /// it first where a reader walks the whole buffer.
   pub fn free(&mut self, span: Span) {
     self.allocator.free(span);
   }

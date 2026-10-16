@@ -21,11 +21,13 @@ impl<'g, 'a> EncoderPassBuilder<'g, 'a> {
     }
   }
 
+  /// Declares that the pass touches `texture` as `access` says, which orders it against the texture's other passes.
   pub fn texture(mut self, texture: GraphTexture, access: GraphTextureAccess) -> Self {
     self.declaration.textures.push((texture, access));
     self
   }
 
+  /// Declares that the pass touches `buffer` as `access` says, which orders it against the buffer's other passes.
   pub fn buffer(mut self, buffer: GraphBuffer, access: GraphBufferAccess) -> Self {
     self.declaration.buffers.push((buffer, access));
     self

@@ -72,14 +72,18 @@ impl<'a> FrameGraph<'a> {
     self.owner = owner;
   }
 
+  /// Declares a raster pass, run where it is declared; `name` is what timings and reports call it.
   pub fn add_raster_pass(&mut self, name: &'static str) -> RasterPassBuilder<'_, 'a> {
     RasterPassBuilder::new(self, name)
   }
 
+  /// Declares a compute pass, run where it is declared; `name` is what timings and reports call it.
   pub fn add_compute_pass(&mut self, name: &'static str) -> ComputePassBuilder<'_, 'a> {
     ComputePassBuilder::new(self, name)
   }
 
+  /// Declares a pass recording on the command encoder itself (copies, clears, a hand-over), run where it is declared;
+  /// `name` is what timings and reports call it.
   pub fn add_encoder_pass(&mut self, name: &'static str) -> EncoderPassBuilder<'_, 'a> {
     EncoderPassBuilder::new(self, name)
   }

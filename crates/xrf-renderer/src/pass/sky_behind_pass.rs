@@ -59,6 +59,8 @@ impl SkyBehindPass {
     })
   }
 
+  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSource::get_generation`), keeping
+  /// the last ones where a reload is refused.
   pub fn refresh(&mut self, source: PipelineSource<'_>) {
     if source.get_generation() != self.generation {
       self.generation = source.get_generation();
@@ -75,6 +77,7 @@ impl SkyBehindPass {
     &self.unseen
   }
 
+  /// Draws what far geometry fades into behind the fog: the haze above the fold, the sky as drawn under it.
   pub fn record(
     &self,
     context: &mut RasterContext<'_>,

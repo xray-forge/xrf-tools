@@ -21,6 +21,7 @@ pub enum RenderDlssPreset {
 }
 
 impl RenderDlssPreset {
+  /// The render preset hint NGX takes for it.
   pub fn to_dlss(self) -> DlssPreset {
     match self {
       Self::Default => DlssPreset::Default,

@@ -16,11 +16,13 @@ impl<'r> GraphBindings<'r> {
     Self::default()
   }
 
+  /// Binds an imported `texture` handle to the view and texture it stands for this frame.
   pub fn bind_texture(&mut self, texture: GraphTexture, resolved: GraphResolvedTexture<'r>) -> &mut Self {
     self.textures.insert(texture, resolved);
     self
   }
 
+  /// Binds an imported `buffer` handle to the buffer it stands for this frame.
   pub fn bind_buffer(&mut self, buffer: GraphBuffer, resolved: &'r wgpu::Buffer) -> &mut Self {
     self.buffers.insert(buffer, resolved);
     self

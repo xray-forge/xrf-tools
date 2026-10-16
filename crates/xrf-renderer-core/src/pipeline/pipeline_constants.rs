@@ -8,6 +8,7 @@ pub struct PipelineConstants {
 }
 
 impl PipelineConstants {
+  /// A permutation's override constants, as its derive lists them.
   pub fn of(permutation: &impl ShaderPermutation) -> Self {
     Self {
       values: permutation

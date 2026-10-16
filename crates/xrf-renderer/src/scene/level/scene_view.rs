@@ -113,11 +113,11 @@ impl SceneView {
     self.features.grass.take_report()
   }
 
+  /// The particles' report for this view: the scene's simulation since the last report and the quads this view drew.
   pub fn take_particles_report(&self, scene: &mut LevelScene) -> RenderParticlesReport {
     scene.particles.take_report(self.features.particles.drawn)
   }
 
-  /// What it keeps from one frame to the next.
   /// The size its scene is rendered at, once its targets are made.
   pub fn get_render_size(&self) -> Option<(u32, u32)> {
     self.targets.as_ref().map(|it| (it.width, it.height))

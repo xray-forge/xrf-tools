@@ -205,6 +205,7 @@ impl LevelParticles {
       .play(effect, name, (&emitter.transform, emitter.seed), &context, now);
   }
 
+  /// Stops an effect playing at an emitter: at once, or letting its particles live out their lives (`is_deferred`).
   pub fn stop(&mut self, handle: ProxyHandle<ParticleEmitterProxy>, effect: PlacedEffect, is_deferred: bool) {
     if let Some(emitter) = self.emitters.get_mut(handle) {
       emitter.objects.stop(effect, is_deferred);

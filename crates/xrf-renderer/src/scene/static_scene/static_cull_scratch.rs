@@ -83,12 +83,14 @@ impl StaticCullScratch {
     }
   }
 
+  /// Adds an item's clusters to each draw list's capacity, which sizes the lists' regions.
   pub fn add_capacities(&mut self, capacities: &[u32; StaticBatch::LIST_COUNT]) {
     for (total, added) in self.capacities.iter_mut().zip(capacities) {
       *total += added;
     }
   }
 
+  /// Takes an item's clusters back off each draw list's capacity.
   pub fn remove_capacities(&mut self, capacities: &[u32; StaticBatch::LIST_COUNT]) {
     for (total, removed) in self.capacities.iter_mut().zip(capacities) {
       *total -= removed;

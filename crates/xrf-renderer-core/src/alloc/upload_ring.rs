@@ -49,10 +49,13 @@ impl UploadRing {
     self.staging.len() as u64
   }
 
+  /// Queues `value` at the ring's next aligned offset, answering where this frame's write puts it.
   pub fn push<T: bytemuck::Pod>(&mut self, value: &T) -> UploadSlice {
     self.push_bytes(bytemuck::bytes_of(value))
   }
 
+  /// Queues `bytes` at the ring's next offset aligned to the device's dynamic offset alignment, padded to whole words,
+  /// answering where this frame's write puts them.
   pub fn push_bytes(&mut self, bytes: &[u8]) -> UploadSlice {
     let offset: usize = self.staging.len().next_multiple_of(self.alignment as usize);
 
