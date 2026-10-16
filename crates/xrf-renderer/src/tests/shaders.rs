@@ -1,3 +1,4 @@
+use crate::contract::render_debug_view::RenderDebugView;
 use crate::scene::static_scene::static_class::StaticClass;
 use crate::scene::static_scene::static_surface::StaticSurface;
 use crate::scene::static_scene::static_surface_pass::StaticSurfacePass;
@@ -63,6 +64,22 @@ fn the_cull_counts_classes_as_rust_does() {
     get_constant(&library, "static/cull", "SURFACE_PASS_COUNT"),
     StaticSurfacePass::COUNT as u32
   );
+}
+
+/// The present tells a debug view by its index as Rust numbers them, FSR's last and from the first it names on.
+#[test]
+fn the_present_numbers_debug_views_as_rust_does() {
+  let library: ShaderLibrary = ShaderLibrary::default();
+
+  assert_eq!(
+    get_constant(&library, "frame/present", "VIEW_HEIGHTS"),
+    RenderDebugView::Heights.get_index()
+  );
+  assert_eq!(
+    get_constant(&library, "frame/present", "VIEW_FSR_FIRST"),
+    RenderDebugView::FsrMasks.get_index()
+  );
+  assert!(RenderDebugView::FsrFrameShare.get_index() > RenderDebugView::FsrMasks.get_index());
 }
 
 fn validate(name: &str, source: &str, capabilities: naga::valid::Capabilities) {

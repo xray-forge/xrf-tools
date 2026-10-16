@@ -32,6 +32,8 @@ const VIEW_REFLECTION_ENDS: u32 = 13u;
 const VIEW_PARALLAX: u32 = 14u;
 const VIEW_BUMPS: u32 = 15u;
 const VIEW_HEIGHTS: u32 = 16u;
+// The first of FSR's debug views, which FSR draws in place of the frame it resolved.
+const VIEW_FSR_FIRST: u32 = 17u;
 // What the reflections view shows where a ray met nothing and the cube stands.
 const REFLECTION_MISS: vec3<f32> = vec3<f32>(0.05, 0.1, 0.45);
 // What the reflections view multiplies what was met by before its shoulder.
@@ -214,6 +216,14 @@ fn drawn_texel(pixel: vec2<f32>) -> vec2<i32> {
 fn fs_present(in: FullscreenVarying) -> @location(0) vec4<f32> {
   let pixel: vec2<f32> = floor(in.clip.xy - present.origin);
   let texel: vec2<i32> = drawn_texel(pixel);
+
+  // FSR's debug views: what FSR drew in place of the frame, as it stands.
+  if (present.view >= VIEW_FSR_FIRST) {
+    let drawn: vec3<f32> = select(textureLoad(scene, texel, 0).rgb, textureLoad(upscaled, vec2<i32>(pixel), 0).rgb,
+      present.is_upscaled != 0u);
+
+    return vec4<f32>(drawn, 1.0);
+  }
 
   if (present.view != 0u) {
     return vec4<f32>(saturate(shown_target(texel)), 1.0);

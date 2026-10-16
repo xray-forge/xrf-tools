@@ -1,15 +1,20 @@
 use glam::{Mat4, Vec2, Vec3};
-use xrf_renderer_core::{FrameGraph, GraphBindings, GraphCompileOptions, GraphRuntime, PassParameters, PipelineCache};
+use xrf_renderer_core::{
+  FrameGraph, GraphBindings, GraphCompileOptions, GraphRuntime, GraphTexture, PassParameters, PipelineCache,
+};
 
 use crate::camera::camera_view::CameraView;
 use crate::context::gpu_context::GpuContext;
 use crate::contract::render_backend::RenderBackend;
+use crate::contract::render_debug_view::RenderDebugView;
+use crate::frame::frame_texture::FrameTexture;
 use crate::frame::fsr_targets::FsrTargets;
 use crate::frame::temporal_jitter::TemporalJitter;
 use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::frame::view_target_uses::ViewTargetUses;
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::fsr_accumulate_parameters::FsrAccumulateParameters;
+use crate::pass::fsr_debug_view_parameters::FsrDebugViewParameters;
 use crate::pass::fsr_downsample_parameters::FsrDownsampleParameters;
 use crate::pass::fsr_luma_instability_parameters::FsrLumaInstabilityParameters;
 use crate::pass::fsr_pass::FsrPass;
@@ -24,8 +29,9 @@ use crate::pass::pipeline_source::PipelineSource;
 use crate::shader::shader_library::ShaderLibrary;
 use crate::tests::test_bundle::checkout_dxc;
 
-/// Builds FSR for a drawing upscaled half again, binds it to real targets and runs two frames, the second reading
-/// the first's history, without a validation error. Skipped, and says so, on a machine with no adapter at all.
+/// Builds FSR for a drawing upscaled half again, binds it to real targets and runs a frame plain and then one with
+/// each of its debug views, each reading the last one's history, without a validation error and with no stage culled.
+/// Skipped, and says so, on a machine with no adapter at all.
 #[test]
 fn upscales_two_frames_without_a_validation_error() {
   let context: GpuContext = match GpuContext::create_headless(RenderBackend::D3d12, checkout_dxc().as_deref())
@@ -55,9 +61,24 @@ fn upscales_two_frames_without_a_validation_error() {
   let mut jitter: TemporalJitter = TemporalJitter::default();
   let mut runtime: GraphRuntime = GraphRuntime::new(device, &context.queue);
 
+  let shown: FrameTexture = FrameTexture::new(
+    device,
+    "fsr debug view",
+    display,
+    FsrTargets::DEBUG,
+    wgpu::TextureUsages::empty(),
+  );
+  let views: [Option<RenderDebugView>; 6] = [
+    None,
+    Some(RenderDebugView::FsrMasks),
+    Some(RenderDebugView::FsrHistoryTrust),
+    Some(RenderDebugView::FsrLocks),
+    Some(RenderDebugView::FsrLumaInstability),
+    Some(RenderDebugView::FsrFrameShare),
+  ];
   let mut previous: Vec2 = Vec2::ZERO;
 
-  for _ in 0..2 {
+  for shown_view in views {
     let offset: Vec2 = jitter.next(1.5);
     let constants: FsrUniform = FsrUniform::new(
       (render, display),
@@ -77,11 +98,21 @@ fn upscales_two_frames_without_a_validation_error() {
         (&targets, ViewTargetUses::default(), &targets.light),
       );
 
-      pass.add_passes((&mut graph, &mut bindings, &mut runtime), handles, (&fsr, &constants));
+      let debug: Option<(RenderDebugView, GraphTexture)> =
+        shown_view.map(|view| (view, bindings.import_view(&mut graph, "fsr debug view", &shown.view)));
 
-      let commands: Vec<wgpu::CommandBuffer> = graph
-        .compile(&GraphCompileOptions::default())
-        .unwrap()
+      pass.add_passes(
+        (&mut graph, &mut bindings, &mut runtime),
+        handles,
+        (&fsr, &constants),
+        debug,
+      );
+
+      let compiled = graph.compile(&GraphCompileOptions::default()).unwrap();
+
+      assert!(compiled.get_culled().is_empty(), "culled {:?}", compiled.get_culled());
+
+      let commands: Vec<wgpu::CommandBuffer> = compiled
         .execute((device, &context.queue), &mut runtime, &bindings)
         .unwrap()
         .commands;
@@ -95,7 +126,7 @@ fn upscales_two_frames_without_a_validation_error() {
   device.poll(wgpu::PollType::wait_indefinitely()).unwrap();
 
   assert!(pollster::block_on(scope.pop()).is_none());
-  assert_eq!(fsr.frames.get_frame(), 2);
+  assert_eq!(fsr.frames.get_frame(), 6);
   assert_eq!(
     fsr.shading_pyramid.each_ref().map(|level| level.get_size()),
     [(32, 24), (16, 12), (8, 6)]
@@ -128,7 +159,7 @@ fn reads_view_depth_back_from_reversed_device_depth() {
 #[test]
 fn every_stage_declares_its_parameters_as_its_module_does() {
   let shaders: ShaderLibrary = ShaderLibrary::default();
-  let stages: [(&str, String); 9] = [
+  let stages: [(&str, String); 10] = [
     ("frame/fsr/reconstruct", FsrReconstructParameters::get_wgsl_bindings()),
     (
       "frame/fsr/prepare_inputs",
@@ -153,6 +184,7 @@ fn every_stage_declares_its_parameters_as_its_module_does() {
       FsrLumaInstabilityParameters::get_wgsl_bindings(),
     ),
     ("frame/fsr/accumulate", FsrAccumulateParameters::get_wgsl_bindings()),
+    ("frame/fsr/debug_view", FsrDebugViewParameters::get_wgsl_bindings()),
   ];
 
   for (module, bindings) in stages {

@@ -194,6 +194,7 @@ describe("LevelRenderService", () => {
         settings: {
           backend: null,
           frameRate: { isVsync: true, limit: null },
+          gpu: null,
           graph: DEFAULT_RENDER_GRAPH_SETTINGS,
           isGpuTimed: false,
           periodicBudget: DEFAULT_PERIODIC_BUDGET,

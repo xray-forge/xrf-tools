@@ -45,11 +45,32 @@ pub enum RenderDebugView {
   /// The heights parallax reads: a terrain's details' weighed by its mask, an installation's own or derived from their
   /// bumps, and a steep surface's, grey from black low to white high; every other surface a dim blue.
   Heights,
+  /// FSR's masks at each pixel's drawn texel: how reactive it is (moving apart from what it lands on, or a plant the
+  /// wind moved) in red, how disoccluded in green, how far its shading changed in blue.
+  FsrMasks,
+  /// How far FSR trusts each pixel's history, from black for none to white; red where it starts afresh.
+  FsrHistoryTrust,
+  /// FSR's thin-feature locks: each pixel's lock in green, full where it holds the history against clamping; red
+  /// where a new lock was found this frame.
+  FsrLocks,
+  /// How strongly FSR finds each pixel's luma flickering back to an earlier frame's, which lets its history hold.
+  FsrLumaInstability,
+  /// How much of each pixel FSR takes from this frame rather than its history, from black for none to white for all,
+  /// as its square root so a frame's usual small share reads.
+  FsrFrameShare,
 }
 
 impl RenderDebugView {
   /// The number the present shader tells it by.
   pub fn get_index(self) -> u32 {
     self as u32
+  }
+
+  /// Whether it shows FSR's own targets, which FSR resolves for whatever antialiasing the view asks for.
+  pub fn is_fsr(self) -> bool {
+    matches!(
+      self,
+      Self::FsrMasks | Self::FsrHistoryTrust | Self::FsrLocks | Self::FsrLumaInstability | Self::FsrFrameShare
+    )
   }
 }

@@ -58,8 +58,11 @@ pub struct ResolveFeature {
   /// Where this frame's samples sit within their pixels, and the phases the jitter's sequence repeats over.
   offset: Vec2,
   phases: u32,
-  /// The antialiasing asked for where it resolves temporally and the view shows its final frame.
+  /// The antialiasing asked for where it resolves temporally and the view shows its final frame; FSR where the view
+  /// shows one of FSR's debug views.
   temporal: Option<RenderAntialiasing>,
+  /// The FSR debug view shown, which FSR draws in place of the frame it resolved.
+  fsr_view: Option<RenderDebugView>,
   resolve: Option<Resolve>,
   upscaling: RenderUpscalingSettings,
   /// The size the frame is resolved at, which a temporal resolve resolves into.
@@ -96,6 +99,7 @@ impl Default for ResolveFeature {
       offset: Vec2::ZERO,
       phases: 1,
       temporal: None,
+      fsr_view: None,
       resolve: None,
       upscaling: RenderUpscalingSettings::default(),
       resolved: (1, 1),
@@ -117,12 +121,18 @@ impl Default for ResolveFeature {
 impl ResolveFeature {
   /// Where the next frame's samples sit within their pixels, in drawn pixels, `y` down, for a viewport `ratio` times
   /// the drawn size on a GPU that has DLSS where `has_dlss`: jittered while it resolves frames temporally and shows
-  /// the finished frame, still otherwise.
+  /// the finished frame or one of FSR's debug views, which FSR resolves whatever the antialiasing; still otherwise.
   pub fn next_jitter(&mut self, options: &RenderViewOptions, ratio: f32, has_dlss: bool) -> Vec2 {
-    let antialiasing: RenderAntialiasing = options.features.antialiasing.get_available(has_dlss);
+    let view: RenderDebugView = options.mode.debug_view;
 
-    self.temporal =
-      (antialiasing.is_temporal() && options.mode.debug_view == RenderDebugView::Final).then_some(antialiasing);
+    self.fsr_view = view.is_fsr().then_some(view);
+    self.temporal = if self.fsr_view.is_some() {
+      Some(RenderAntialiasing::Fsr)
+    } else {
+      let antialiasing: RenderAntialiasing = options.features.antialiasing.get_available(has_dlss);
+
+      (antialiasing.is_temporal() && view == RenderDebugView::Final).then_some(antialiasing)
+    };
     self.phases = TemporalJitter::get_phases(ratio);
     self.offset = if self.temporal.is_some() {
       self.jitter.next(ratio)
@@ -193,8 +203,10 @@ impl ResolveFeature {
       UpscalePass::DOWNSAMPLE
     });
     // Sharpened where upscaled, and where a temporal resolve gathers frames at the viewport's size, whose filtering and
-    // resampled history soften what moves as an upscale does.
-    self.is_sharpened = upscaling.sharpening > 0.0 && (render.0 < viewport.0 || self.resolve.is_some());
+    // resampled history soften what moves as an upscale does; never an FSR debug view, which shows its values as they
+    // stand.
+    self.is_sharpened =
+      upscaling.sharpening > 0.0 && (render.0 < viewport.0 || self.resolve.is_some()) && self.fsr_view.is_none();
 
     if render == viewport && self.rescale.is_none() && !self.is_sharpened {
       self.upscaled = None;
@@ -670,12 +682,29 @@ impl ResolveFeature {
       Some(Resolve::Fsr { targets, uniform }) => {
         let history: GraphTexture =
           bindings.import_view(&mut *graph, "fsr history", &targets.frames.get_written().history.view);
+        // An FSR debug view is drawn at the display's size and shown in place of the history.
+        let debug: Option<(RenderDebugView, GraphTexture)> = self.fsr_view.map(|view| {
+          let (width, height) = targets.display;
 
-        passes
-          .fsr
-          .add_passes((&mut *graph, &mut *bindings, runtime), handles, (targets, uniform));
+          (
+            view,
+            graph.create_texture(GraphTextureDescriptor::new_2d(
+              "fsr debug view",
+              width,
+              height,
+              FsrTargets::DEBUG,
+            )),
+          )
+        });
 
-        Some(history)
+        passes.fsr.add_passes(
+          (&mut *graph, &mut *bindings, runtime),
+          handles,
+          (targets, uniform),
+          debug,
+        );
+
+        Some(debug.map_or(history, |(_, shown)| shown))
       }
       Some(Resolve::Dlss(resolve)) => Some(self.add_dlss_pass(
         (&mut *graph, &mut *bindings),

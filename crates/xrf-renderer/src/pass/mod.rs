@@ -47,6 +47,7 @@ pub(crate) mod froxel_integrate_parameters;
 pub(crate) mod froxel_pass;
 pub(crate) mod froxel_uniform;
 pub(crate) mod fsr_accumulate_parameters;
+pub(crate) mod fsr_debug_view_parameters;
 pub(crate) mod fsr_downsample_parameters;
 pub(crate) mod fsr_luma_instability_parameters;
 pub(crate) mod fsr_pass;

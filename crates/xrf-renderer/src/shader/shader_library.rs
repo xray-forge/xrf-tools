@@ -145,6 +145,10 @@ const EMBEDDED: &[(&str, &str)] = &[
   ),
   ("frame/fsr/common", include_str!("../../shaders/frame/fsr/common.wgsl")),
   (
+    "frame/fsr/debug_view",
+    include_str!("../../shaders/frame/fsr/debug_view.wgsl"),
+  ),
+  (
     "frame/fsr/downsample",
     include_str!("../../shaders/frame/fsr/downsample.wgsl"),
   ),
