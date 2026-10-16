@@ -266,6 +266,8 @@ export type RenderBackendAvailability = {
   adapter: string | null;
   /** Why it cannot draw, none where it can. */
   problem: string | null;
+  /** Whether `XRF_RENDER_BACKEND` names it, so the renderer starts on it over the settings' choice. */
+  isForced: boolean;
 };
 
 /** Which bloom glows over the frame's bright parts: the engine's, as the look sets it, or the enhanced one. */

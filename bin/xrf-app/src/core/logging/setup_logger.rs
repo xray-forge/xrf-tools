@@ -1,7 +1,8 @@
-use std::{env, panic};
+use std::panic;
 
 use env_logger::{Builder, Target};
 use log::LevelFilter;
+use xrf_env_flags::EnvFlags;
 
 use crate::core::logging::log_file::LogFile;
 use crate::core::logging::log_sink::LogSink;
@@ -11,7 +12,7 @@ use crate::core::logging::log_sink::LogSink;
 pub fn setup_logger(identifier: &str) {
   let mut logger: Builder = env_logger::builder();
 
-  if let Ok(rust_log) = env::var("RUST_LOG") {
+  if let Some(rust_log) = EnvFlags::RUST_LOG.read_text() {
     logger.parse_filters(&rust_log);
   } else {
     // Debug builds trace every command dispatch; release keeps the info lines the commands already

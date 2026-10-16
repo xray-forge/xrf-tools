@@ -7319,6 +7319,7 @@ dependencies = [
  "xrf-dltx",
  "xrf-efd",
  "xrf-engine-target",
+ "xrf-env-flags",
  "xrf-environment",
  "xrf-error",
  "xrf-export",
@@ -7429,6 +7430,7 @@ dependencies = [
  "xrf-dialog",
  "xrf-dltx",
  "xrf-engine-target",
+ "xrf-env-flags",
  "xrf-error",
  "xrf-export",
  "xrf-extension",
@@ -7532,6 +7534,15 @@ dependencies = [
  "specta",
  "xrf-test-utils",
  "xrf-vfs",
+]
+
+[[package]]
+name = "xrf-env-flags"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "serde",
+ "specta",
 ]
 
 [[package]]
@@ -7898,6 +7909,7 @@ dependencies = [
  "xrf-dds",
  "xrf-dlss",
  "xrf-engine-target",
+ "xrf-env-flags",
  "xrf-environment",
  "xrf-error",
  "xrf-material",

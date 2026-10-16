@@ -32,15 +32,13 @@ impl<R: Runtime, M: Manager<R>> DevExtensions for WebviewWindowBuilder<'_, R, M>
 /// Resolve the directory unpacked extensions are installed from, when it holds only valid ones.
 #[cfg(all(debug_assertions, windows))]
 fn resolve_extensions_directory() -> Option<PathBuf> {
-  /// Absolute path of an alternative directory to load unpacked extensions from.
-  const DIRECTORY_ENV: &str = "XRF_APP_EXTENSIONS_DIR";
-
-  let directory: PathBuf = match std::env::var_os(DIRECTORY_ENV) {
-    Some(path) => PathBuf::from(path),
-    None => PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-      .join("extensions")
-      .join("unpacked"),
-  };
+  let directory: PathBuf = xrf_env_flags::EnvFlags::APP_EXTENSIONS_DIR
+    .read_path()
+    .unwrap_or_else(|| {
+      PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("extensions")
+        .join("unpacked")
+    });
 
   let entries: Vec<PathBuf> = std::fs::read_dir(&directory)
     .ok()?

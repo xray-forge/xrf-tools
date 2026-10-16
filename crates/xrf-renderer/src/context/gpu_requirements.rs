@@ -1,3 +1,5 @@
+use xrf_env_flags::EnvFlags;
+
 /// What the renderer refuses to start without: compressed textures as stored, GPU-driven indirect drawing, bindless
 /// texture arrays and dual-source blending. Every D3D12 feature level 12_0 GPU from about 2016 has them.
 pub const REQUIRED_FEATURES: wgpu::Features = wgpu::Features::TEXTURE_COMPRESSION_BC
@@ -16,15 +18,12 @@ pub const OPTIONAL_FEATURES: wgpu::Features = wgpu::Features::TIMESTAMP_QUERY
   .union(wgpu::Features::PIPELINE_CACHE);
 
 /// What the renderer traces rays with where present: hardware ray queries against the level's acceleration structures,
-/// still experimental in wgpu. `RAY_QUERY_SWITCH` set to `0` leaves them off.
+/// still experimental in wgpu. `XRF_RENDER_RAY_QUERY` switched off leaves them off.
 pub const RAY_QUERY_FEATURES: wgpu::Features = wgpu::Features::EXPERIMENTAL_RAY_QUERY;
-
-/// The environment variable that turns ray queries off where it is `0`.
-pub const RAY_QUERY_SWITCH: &str = "XRF_RAY_QUERY";
 
 /// The ray query features to ask an adapter for: all of them where it has them and they are not switched off.
 pub fn get_ray_query_features(features: wgpu::Features) -> wgpu::Features {
-  let is_off: bool = std::env::var(RAY_QUERY_SWITCH).is_ok_and(|value| value.trim() == "0");
+  let is_off: bool = EnvFlags::RENDER_RAY_QUERY.read_switch() == Some(false);
 
   if is_off || !features.contains(RAY_QUERY_FEATURES) {
     wgpu::Features::empty()

@@ -2,6 +2,7 @@ import { describe, expect, it } from "@jest/globals";
 
 import { ERenderBackend, RenderBackendAvailability } from "@/core/ipc/types/xrf-renderer";
 import {
+  getForcedRenderBackend,
   RENDER_BACKEND_AUTO,
   resolveRenderBackend,
   toRenderBackend,
@@ -9,12 +10,12 @@ import {
 } from "@/core/render/lib/settings/render-backend-choice";
 
 const BOTH: ReadonlyArray<RenderBackendAvailability> = [
-  { adapter: "GPU", backend: ERenderBackend.D3D12, problem: null },
-  { adapter: "GPU", backend: ERenderBackend.VULKAN, problem: null },
+  { adapter: "GPU", backend: ERenderBackend.D3D12, isForced: false, problem: null },
+  { adapter: "GPU", backend: ERenderBackend.VULKAN, isForced: false, problem: null },
 ];
 const VULKAN_ONLY: ReadonlyArray<RenderBackendAvailability> = [
-  { adapter: null, backend: ERenderBackend.D3D12, problem: "No D3D12 adapter" },
-  { adapter: "GPU", backend: ERenderBackend.VULKAN, problem: null },
+  { adapter: null, backend: ERenderBackend.D3D12, isForced: false, problem: "No D3D12 adapter" },
+  { adapter: "GPU", backend: ERenderBackend.VULKAN, isForced: false, problem: null },
 ];
 
 describe("render backend choice", () => {
@@ -34,5 +35,16 @@ describe("render backend choice", () => {
     expect(resolveRenderBackend(RENDER_BACKEND_AUTO, BOTH)).toBe(ERenderBackend.D3D12);
     expect(resolveRenderBackend(ERenderBackend.D3D12, VULKAN_ONLY)).toBe(ERenderBackend.VULKAN);
     expect(resolveRenderBackend(ERenderBackend.D3D12, [])).toBeNull();
+  });
+
+  it("draws with the backend the environment forces over the choice, as the renderer starts on it", () => {
+    const forced: ReadonlyArray<RenderBackendAvailability> = BOTH.map((it: RenderBackendAvailability) => ({
+      ...it,
+      isForced: it.backend === ERenderBackend.VULKAN,
+    }));
+
+    expect(getForcedRenderBackend(forced)).toBe(ERenderBackend.VULKAN);
+    expect(getForcedRenderBackend(BOTH)).toBeNull();
+    expect(resolveRenderBackend(ERenderBackend.D3D12, forced)).toBe(ERenderBackend.VULKAN);
   });
 });

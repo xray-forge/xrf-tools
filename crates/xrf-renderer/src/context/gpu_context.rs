@@ -78,6 +78,8 @@ impl GpuContext {
   /// Whether the renderer can draw with a backend here: a hardware adapter of it with every feature it needs, without
   /// starting a device on it.
   pub fn probe(backend: RenderBackend) -> RenderBackendAvailability {
+    let is_forced: bool = RenderBackend::get_forced() == Some(backend);
+
     match Self::request_adapter(backend, (false, false), (None, None))
       .and_then(|(_, adapter)| Self::check_adapter(&adapter))
     {
@@ -85,11 +87,13 @@ impl GpuContext {
         backend,
         adapter: Some(info.name),
         problem: None,
+        is_forced,
       },
       Err(error) => RenderBackendAvailability {
         backend,
         adapter: None,
         problem: Some(error.to_string()),
+        is_forced,
       },
     }
   }

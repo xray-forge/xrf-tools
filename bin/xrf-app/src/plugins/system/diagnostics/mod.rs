@@ -8,14 +8,17 @@
 //! - [`runtime_snapshot`] - what it costs the machine right now, and how long it has been running.
 //! - [`process_tree`] - the processes below this one, which is where the webview's memory actually is.
 //! - [`memory`] - what the backend and each named webview process hold, cheap enough to poll from a status bar.
+//! - [`startup_log`] - the log's first lines: the build, the machine, the process and the variables set.
 
 pub mod commands;
 pub mod host_info;
 pub mod memory;
 pub mod process_tree;
 pub mod runtime_snapshot;
+mod startup_log;
 mod state;
 
 pub use host_info::HostInfo;
 pub use runtime_snapshot::RuntimeSnapshot;
+pub use startup_log::log_startup;
 pub use state::MachineProbeState;

@@ -4,6 +4,7 @@ import { ReactElement } from "react";
 import { RenderBackend, RenderBackendAvailability } from "@/core/ipc/types/xrf-renderer";
 import {
   describeRenderBackend,
+  getForcedRenderBackend,
   isRenderBackendAvailable,
   RENDER_BACKEND_AUTO,
   RENDER_BACKEND_CHOICES,
@@ -39,6 +40,14 @@ function describeBackendChoice(
   const adapter: Nullable<string> =
     availability.find((it: RenderBackendAvailability) => it.backend === drawn)?.adapter ?? null;
   const drawnOn: string = `Drawing with ${describeRenderBackend(drawn)} on ${adapter ?? "the GPU"}.`;
+  const forced: Nullable<RenderBackend> = getForcedRenderBackend(availability);
+
+  if (forced !== null) {
+    return forced === drawn
+      ? `${lead} XRF_RENDER_BACKEND asks for ${describeRenderBackend(forced)} over this choice. ${drawnOn}`
+      : `${lead} XRF_RENDER_BACKEND asks for ${describeRenderBackend(forced)}, which is not available here, so the ` +
+          `renderer fell back. ${drawnOn}`;
+  }
 
   if (value !== RENDER_BACKEND_AUTO && value !== drawn) {
     return `${lead} ${describeRenderBackend(value)} is not available here, so the renderer fell back. ${drawnOn}`;

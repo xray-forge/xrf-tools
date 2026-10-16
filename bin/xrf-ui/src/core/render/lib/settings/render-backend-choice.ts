@@ -58,8 +58,19 @@ export function isRenderBackendAvailable(
 }
 
 /**
- * The backend the renderer draws with for a choice, as it falls back: the one asked for where it is available, else
- * the first available in the renderer's order; none where none is.
+ * @param availability - What each backend can do on this machine, as the renderer probed it.
+ * @returns The backend `XRF_RENDER_BACKEND` names, which the renderer starts on over the settings' choice; none where
+ *   it names none.
+ */
+export function getForcedRenderBackend(
+  availability: ReadonlyArray<RenderBackendAvailability>
+): Nullable<RenderBackend> {
+  return availability.find((it: RenderBackendAvailability) => it.isForced)?.backend ?? null;
+}
+
+/**
+ * The backend the renderer draws with for a choice, as it falls back: the one the environment forces or else the one
+ * asked for, where it is available; else the first available in the renderer's order; none where none is.
  *
  * @param choice - What the settings ask for.
  * @param availability - What each backend can do on this machine, in the renderer's order.
@@ -69,7 +80,7 @@ export function resolveRenderBackend(
   choice: TRenderBackendChoice,
   availability: ReadonlyArray<RenderBackendAvailability>
 ): Nullable<RenderBackend> {
-  const asked: Nullable<ERenderBackend> = toRenderBackend(choice);
+  const asked: Nullable<RenderBackend> = getForcedRenderBackend(availability) ?? toRenderBackend(choice);
 
   if (asked !== null && isRenderBackendAvailable(asked, availability)) {
     return asked;

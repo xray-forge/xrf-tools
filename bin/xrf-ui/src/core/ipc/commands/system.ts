@@ -9,6 +9,7 @@ import {
   WebviewProcessMemory,
 } from "@/core/ipc/types/xrf-app";
 import { BuildInfo } from "@/core/ipc/types/xrf-build-info";
+import { EnvFlagReading } from "@/core/ipc/types/xrf-env-flags";
 
 /** Commands */
 export const systemCommands = {
@@ -18,6 +19,8 @@ export const systemCommands = {
   getBuildInfo: () => __TAURI_INVOKE<BuildInfo>("plugin:system|get_build_info"),
   /** Where tools write when no output directory has been configured. */
   getDefaultOutputRoot: () => __TAURI_INVOKE<string>("plugin:system|get_default_output_root"),
+  /** Report every environment variable the application reads, set or not, as this run found it. */
+  getEnvironmentFlags: () => __TAURI_INVOKE<Array<EnvFlagReading>>("plugin:system|get_environment_flags"),
   /** Report what the application is running on and with. */
   getHostInfo: () => __TAURI_INVOKE<HostInfo>("plugin:system|get_host_info"),
   /** Report what the application and each of its webview's processes hold in memory, where the platform can say. */

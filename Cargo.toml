@@ -15,6 +15,7 @@ members = [
   "crates/xrf-dltx",
   "crates/xrf-efd",
   "crates/xrf-engine-target",
+  "crates/xrf-env-flags",
   "crates/xrf-environment",
   "crates/xrf-error",
   "crates/xrf-error-derive",
@@ -114,6 +115,7 @@ xrf-error = { path = "crates/xrf-error" }
 xrf-error-derive = { path = "crates/xrf-error-derive" }
 xrf-export = { path = "crates/xrf-export" }
 xrf-engine-target = { path = "crates/xrf-engine-target" }
+xrf-env-flags = { path = "crates/xrf-env-flags" }
 xrf-environment = { path = "crates/xrf-environment" }
 xrf-extension = { path = "crates/xrf-extension" }
 xrf-gamedata = { path = "crates/xrf-gamedata" }

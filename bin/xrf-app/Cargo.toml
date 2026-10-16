@@ -54,6 +54,7 @@ xrf-dialog = { workspace = true }
 xrf-dltx = { workspace = true }
 xrf-efd = { workspace = true }
 xrf-engine-target = { workspace = true }
+xrf-env-flags = { workspace = true }
 xrf-environment = { workspace = true }
 xrf-error = { workspace = true }
 xrf-export = { workspace = true }
@@ -128,6 +129,7 @@ typescript-bindings = [
   "xrf-math/typescript-bindings",
   "xrf-dialog/typescript-bindings",
   "xrf-engine-target/typescript-bindings",
+  "xrf-env-flags/typescript-bindings",
   "xrf-environment/typescript-bindings",
   "xrf-level/typescript-bindings",
   "xrf-error/typescript-bindings",

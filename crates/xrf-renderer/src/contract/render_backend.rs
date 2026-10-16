@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use xrf_env_flags::EnvFlags;
 
 /// The graphics API the renderer draws with.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -14,12 +15,9 @@ impl RenderBackend {
   /// Every backend, in the order one is fallen back on when the one asked for cannot start.
   pub const ALL: [Self; 2] = [Self::D3d12, Self::Vulkan];
 
-  /// What `XRF_RENDER_BACKEND` names, `d3d12` or `vulkan`, which overrides the settings' choice when set.
-  pub const ENVIRONMENT: &'static str = "XRF_RENDER_BACKEND";
-
   /// The backend asked for: the environment's where it names one, else the settings' `chosen`, none for automatic.
   pub fn get_asked(chosen: Option<Self>) -> Option<Self> {
-    Self::from_environment().or(chosen)
+    Self::get_forced().or(chosen)
   }
 
   /// The backend the GPU starts on where it can: the one asked for, else the first in `ALL`.
@@ -27,15 +25,12 @@ impl RenderBackend {
     asked.unwrap_or(Self::ALL[0])
   }
 
-  /// The backend the environment asks for, read at each context start; none where it names none.
-  fn from_environment() -> Option<Self> {
-    match std::env::var(Self::ENVIRONMENT)
-      .map(|value| value.to_ascii_lowercase())
-      .as_deref()
-    {
-      Ok("d3d12") => Some(RenderBackend::D3d12),
-      Ok("vulkan") => Some(RenderBackend::Vulkan),
-      _ => None,
+  /// The backend `XRF_RENDER_BACKEND` names, over the settings' choice; read at each context start, none where it names
+  /// none.
+  pub fn get_forced() -> Option<Self> {
+    match EnvFlags::RENDER_BACKEND.read_choice()? {
+      "vulkan" => Some(RenderBackend::Vulkan),
+      _ => Some(RenderBackend::D3d12),
     }
   }
 

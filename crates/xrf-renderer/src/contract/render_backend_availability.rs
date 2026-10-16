@@ -12,4 +12,6 @@ pub struct RenderBackendAvailability {
   pub adapter: Option<String>,
   /// Why it cannot draw, none where it can.
   pub problem: Option<String>,
+  /// Whether `XRF_RENDER_BACKEND` names it, so the renderer starts on it over the settings' choice.
+  pub is_forced: bool,
 }

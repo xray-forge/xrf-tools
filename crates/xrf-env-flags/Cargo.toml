@@ -1,0 +1,18 @@
+[package]
+name = "xrf-env-flags"
+version = "0.1.0"
+publish = false
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+log = { workspace = true }
+serde = { workspace = true }
+specta = { workspace = true, optional = true }
+
+[features]
+# Mirrors the readings into the frontend types, for the surface that lists them.
+typescript-bindings = ["specta"]
+
+[lints]
+workspace = true
