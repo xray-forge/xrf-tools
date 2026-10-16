@@ -29,6 +29,11 @@ pub(crate) fn add_instance_extensions(
     list_instance_extensions(application, NVSDK_NGX_Feature_NVSDK_NGX_Feature_SuperSampling)?;
 
   if !has(&required) {
+    log::info!(
+      "DLSS is unavailable: Vulkan's loader lacks {}",
+      list_missing(&required, |name| has(&[name]))
+    );
+
     return Ok(false);
   }
 
@@ -76,6 +81,11 @@ pub(crate) fn add_device_extensions(
     list_device_extensions(application, adapter, NVSDK_NGX_Feature_NVSDK_NGX_Feature_SuperSampling)?;
 
   if !has(&required) {
+    log::info!(
+      "DLSS is unavailable: the Vulkan adapter lacks {}",
+      list_missing(&required, |name| has(&[name]))
+    );
+
     return Ok(false);
   }
 
@@ -147,4 +157,14 @@ unsafe fn to_names(extensions: *mut ash::vk::ExtensionProperties, count: u32) ->
     .iter()
     .map(|extension| unsafe { CStr::from_ptr(extension.extension_name.as_ptr()) })
     .collect()
+}
+
+/// The extensions of `names` that `is_there` finds missing, named and joined for a log line.
+fn list_missing(names: &[&'static CStr], is_there: impl Fn(&'static CStr) -> bool) -> String {
+  names
+    .iter()
+    .filter(|name| !is_there(name))
+    .map(|name| name.to_string_lossy())
+    .collect::<Vec<_>>()
+    .join(", ")
 }
