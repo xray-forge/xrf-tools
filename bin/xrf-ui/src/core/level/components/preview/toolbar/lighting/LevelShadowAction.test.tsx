@@ -2,9 +2,10 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 import { userEvent } from "@testing-library/user-event";
 
 import { ERenderContactShadowMode } from "@/core/ipc/types/xrf-renderer";
-import LevelShadowAction from "@/core/level/components/preview/toolbar/lighting/LevelShadowAction";
+import { LevelShadowAction } from "@/core/level/components/preview/toolbar/lighting/LevelShadowAction";
 import { DEFAULT_RENDER_SHADOW_SETTINGS } from "@/core/render/lib/settings/render-feature-defaults";
 import { TRenderShadowSettings } from "@/core/render/lib/settings/render-feature-settings";
+import { clearLocalStorage } from "@/core/storage";
 import {
   ILevelViewContainerDescriptor,
   mockLevelViewContainer,
@@ -25,7 +26,7 @@ function renderAction(shadows: TRenderShadowSettings = DEFAULT_RENDER_SHADOW_SET
 }
 
 beforeEach(() => {
-  window.localStorage.clear();
+  clearLocalStorage();
 });
 
 describe("LevelShadowAction", () => {
