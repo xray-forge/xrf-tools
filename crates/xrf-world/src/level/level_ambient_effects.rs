@@ -21,10 +21,10 @@ const SEED: u64 = 0x5EED_AB1E;
 const FIRST_EFFECT_SEED: i32 = 1 << 24;
 
 /// The weather's ambient effects, as `CGamePersistent::WeathersUpdate` plays them near the camera: one at a time,
-/// outdoors, an ambient's effect picked at random once the wait drawn at the last one's start has passed, standing where
-/// the camera stood plus its offset, stopped once its life time is up or the camera goes indoors, and gone once its
-/// particles have died; and the wind each effect brings. The scene plays each effect at an emitter of its own and tells
-/// when its particles have died.
+/// outdoors, an ambient's effect picked at random once the wait drawn at the last one's start has passed, standing
+/// where the camera stood plus its offset, stopped once its life time is up or the camera goes indoors, and gone once
+/// its particles have died; and the wind each effect brings. The scene plays each effect at an emitter of its own and
+/// tells when its particles have died.
 pub struct LevelAmbientEffects {
   random: WeatherRandom,
   /// `ambient_effect_next_time` and `ambient_effect_stop_time`, on the level's clock.

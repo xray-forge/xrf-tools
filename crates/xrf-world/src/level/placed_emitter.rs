@@ -6,7 +6,8 @@ use xrf_renderer_core::ProxyHandle;
 use xrf_visual::ZoneSphere;
 
 /// One placement of a level's particles: the emitter the scene plays its effects at, what it plays and where it stands
-/// this frame, which effects the world has the scene play there, and for a campfire whether it was lit when last placed.
+/// this frame, which effects the world has the scene play there, and for a campfire whether it was lit when last
+/// placed.
 pub struct PlacedEmitter {
   pub handle: ProxyHandle<ParticleEmitterProxy>,
   /// What it plays, shared so a frame reads it while it posts.
@@ -73,7 +74,8 @@ impl PlacedEmitter {
     }
   }
 
-  /// Moves it and everything playing at it (`CCustomZone::OnMove`, `UpdateParent`), their sources taking on its velocity.
+  /// Moves it and everything playing at it (`CCustomZone::OnMove`, `UpdateParent`), their sources taking on its
+  /// velocity.
   pub fn move_to(&mut self, updates: &mut Vec<RenderSceneUpdate>, transform: Mat4, velocity: Vec3) {
     self.transform = transform;
     updates.push(RenderSceneUpdate::MoveEmitter {

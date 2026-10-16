@@ -13,8 +13,8 @@ pub type SectorLoad = (u32, Result<(SectorPackage, SurfaceTally), String>);
 
 /// Packs a level's sectors side by side on the loader threads, no more than the pool's width of them running or queued
 /// at once (`LoaderFlight`), handing each to the render thread as it is done; the next start as the render thread takes
-/// the finished ones, once a frame. Dropped, it lets go of the sectors not started yet, so a level closed mid open stops
-/// costing work.
+/// the finished ones, once a frame. Dropped, it lets go of the sectors not started yet, so a level closed mid open
+/// stops costing work.
 pub struct LevelLoader {
   source: Arc<dyn RenderLevelSource>,
   workers: RenderWorkers,

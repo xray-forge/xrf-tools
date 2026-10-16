@@ -14,8 +14,8 @@ const NEAR_TURN: f32 = 0.00001;
 
 /// The wind as `CEnvironment::OnFrame` and `CGamePersistent::WeathersUpdate` drive it between them: the strength the
 /// noise gives at the playing effect's gust factor, then, over that, the blast rising from what the strength was to the
-/// effect's own while its direction turns, falling back to nothing once its life is up, and nothing after the fall, until
-/// the next effect starts.
+/// effect's own while its direction turns, falling back to nothing once its life is up, and nothing after the fall,
+/// until the next effect starts.
 pub struct AmbientWind {
   noise: WindNoise,
   gust: AmbientGust,
