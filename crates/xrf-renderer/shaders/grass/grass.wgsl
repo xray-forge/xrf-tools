@@ -3,6 +3,7 @@ enable wgpu_binding_array;
 #import "common/camera"
 #import "common/cut_out"
 #import "common/octahedral"
+#import "common/gloss"
 #import "grass/records"
 #import "grass/tuft"
 
@@ -23,9 +24,6 @@ struct GrassDraw {
 };
 
 var<immediate> draw: GrassDraw;
-
-// What `def_gloss` writes for a surface without a bump.
-const DEFAULT_GLOSS: f32 = 2.0 / 255.0;
 
 // How far below its foot a tuft's normals point from: up, and never zero.
 const NORMAL_DROP: f32 = 0.75;

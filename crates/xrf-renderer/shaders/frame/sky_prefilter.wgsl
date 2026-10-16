@@ -12,8 +12,7 @@
 // Both keyframes' sky cubes and clouds and their samplers, the mips filled before this one, the lighting, the exposure
 // whose scale the sky is drawn on, the mip's settings and the mip's six faces.
 #import "generated/frame/sky_prefilter"
-
-const PI: f32 = 3.14159265358979;
+#import "common/math"
 
 // The direction a face's texel looks along, the faces laid out as a cube texture is sampled: +x, -x, +y, -y, +z, -z,
 // each with `v` down its texels.

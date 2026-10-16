@@ -10,8 +10,7 @@
 // The rain, its cover, the streak's and the splash's textures, and the splash's model in renderer space (its position,
 // then its coordinate, a vertex).
 #import "generated/frame/rain"
-
-const RAIN_PI: f32 = 3.14159265;
+#import "common/math"
 
 // `source_offset`: metres above the camera a streak starts, and `max_distance`, metres it falls at most.
 const SOURCE_OFFSET: f32 = 40.0;
@@ -87,7 +86,7 @@ fn fall_of(streak: u32) -> Fall {
   let across: vec3<f32> = normalize(cross(axis, vec3<f32>(1.0, 0.0, 0.0)));
   let along: vec3<f32> = cross(axis, across);
   let lean: f32 = mix(1.0, STRAY_COS, random(streak, cycle, 4u));
-  let turn: f32 = random(streak, cycle, 5u) * RAIN_PI * 2.0;
+  let turn: f32 = random(streak, cycle, 5u) * PI * 2.0;
   let direction: vec3<f32> = normalize(axis * lean + (across * cos(turn) + along * sin(turn)) * sqrt(1.0 - lean * lean));
   // It starts `source_offset` over the camera, set back along its way so it falls through its column.
   let start: f32 = SOURCE_OFFSET / -direction.y;
@@ -139,7 +138,7 @@ fn vs_splash(@builtin(vertex_index) vertex_index: u32) -> RainVarying {
   let fall: Fall = fall_of(streak);
   let since: f32 = fall.age - fall.landing;
   let scale: f32 = 1.0 - since / SPLASH_TIME;
-  let turn: f32 = random(streak, fall.cycle, 7u) * RAIN_PI * 2.0;
+  let turn: f32 = random(streak, fall.cycle, 7u) * PI * 2.0;
   let c: f32 = cos(turn);
   let s: f32 = sin(turn);
   let turned: vec3<f32> = vec3<f32>(position.x * c + position.z * s, position.y, position.z * c - position.x * s);

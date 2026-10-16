@@ -2,7 +2,9 @@ enable wgpu_binding_array;
 
 #import "common/camera"
 #import "common/octahedral"
+#import "common/gloss"
 #import "static/records"
+#import "common/quad"
 #import "generated/static/impostor"
 
 // `details\lod` (`lod.vs`, `lod.ps`, `render_lods`): an impostor drawn as a quad of the two facets facing the camera
@@ -19,15 +21,11 @@ const ALPHA_REFERENCE: f32 = 96.0 / 255.0;
 // `L_SCALE`, what `lod.vs` scales a corner's hemisphere term by.
 const HEMI_SCALE: f32 = 3.1;
 
-// What `def_gloss` writes for a surface without a bump.
-const DEFAULT_GLOSS: f32 = 2.0 / 255.0;
-
 // The material slice `lod.ps` writes, the default lighting model's `0.5 / 4` as the G-buffer packs it: 2 of 31 steps
 // over four thirds.
 const IMPOSTOR_SLICE: f32 = 8.0 / 93.0;
 
-// The quad's corners in draw order, then each corner's vertex within a facet, in the order `render_lods` takes them.
-const QUAD: array<u32, 6> = array<u32, 6>(0u, 1u, 2u, 3u, 2u, 1u);
+// Each quad corner's vertex within a facet, in the order `render_lods` takes them.
 const FACET_VERTEX: array<u32, 4> = array<u32, 4>(3u, 0u, 2u, 1u);
 
 struct ImpostorVarying {
@@ -57,7 +55,7 @@ fn vs_impostor(@builtin(vertex_index) vertex_index: u32, @builtin(instance_index
   let impostor: Impostor = impostors[index];
   let term: vec4<u32> = terms[index];
   let factor: f32 = f32((term.z >> 8u) & 255u) / 255.0;
-  let vertex: u32 = FACET_VERTEX[QUAD[vertex_index]];
+  let vertex: u32 = FACET_VERTEX[QUAD_INDICES[vertex_index]];
   let next_at: u32 = ((index * IMPOSTOR_FACETS + term.y) * 4u + vertex) * 2u;
   let best_at: u32 = ((index * IMPOSTOR_FACETS + term.x) * 4u + vertex) * 2u;
   let next: vec4<f32> = corners[next_at];

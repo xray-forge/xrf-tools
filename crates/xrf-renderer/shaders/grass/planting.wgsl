@@ -4,6 +4,7 @@
 #import "grass/ring"
 #import "common/pyramid_occlusion"
 #import "generated/grass/occlusion"
+#import "common/math"
 
 // The passes planting the grass, as `CDetailManager` does. A ring of slots around the camera is its cache: a slot
 // coming into it is planted once, the nearest first within a budget a frame, and every frame culls what the ring holds,
@@ -45,8 +46,6 @@ const RAY_EPSILON: f32 = 0.0000100;
 
 // `EPS_L`, which every slot's box grows by.
 const BOX_GROWTH: f32 = 0.0010000;
-
-const TURN: f32 = 6.2831853;
 
 // `CRandom::randI()`: the state advanced, and bits 16 to 30 of it.
 fn random(state: ptr<function, u32>) -> u32 {
@@ -364,7 +363,7 @@ fn decompress(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workgro
       let least: f32 = shape.x * 0.5;
       // Before the settings' height scales it, which a frame applies, so a height changed plants nothing again.
       let size: f32 = random_float(&scale) * (shape.y * 0.9 - least) + least;
-      let turn: f32 = random_float(&yaw) * TURN;
+      let turn: f32 = random_float(&yaw) * TAU;
       // The engine picks a waving tuft's wave by its own unseeded generator; this picks it by place, so it holds.
       let wave: f32 = select(1.0, 2.0, abs((x + z * 7 + slot.x * 3 + slot.z * 5) % 3) == 0);
 

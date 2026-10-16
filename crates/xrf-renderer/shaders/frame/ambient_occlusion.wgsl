@@ -12,8 +12,7 @@ override STEPS: u32 = 3u;
 
 // The normals and depth, the settings, and the occlusion target the other way of the denoise wrote.
 #import "generated/frame/ambient_occlusion"
-
-const PI: f32 = 3.14159265;
+#import "common/math"
 
 // `EffectFalloffRange`: the outer share of the radius over which an occluder fades out.
 const FALLOFF_RANGE: f32 = 0.615;

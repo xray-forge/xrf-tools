@@ -9,8 +9,7 @@
 // repeating and trilinear, as the clouds tile; the environment cubes; and the sun's sprite the lens flare draws in the
 // sky (`sun_texture`).
 #import "generated/common/sky"
-
-const SKY_PI: f32 = 3.14159265;
+#import "common/math"
 
 // The same along a world direction.
 fn sky_above_fold(state: Lighting, direction: vec3<f32>) -> f32 {
@@ -60,8 +59,8 @@ fn sky_shown(state: Lighting, direction: vec3<f32>, scale: f32) -> vec3<f32> {
 // Where the haze map holds a unit world direction: the bearing across, the height from the nadir up.
 fn sky_haze_coordinates(direction: vec3<f32>) -> vec2<f32> {
   return vec2<f32>(
-    atan2(direction.x, direction.z) / (SKY_PI * 2.0) + 0.5,
-    asin(clamp(direction.y, -1.0, 1.0)) / SKY_PI + 0.5,
+    atan2(direction.x, direction.z) / (PI * 2.0) + 0.5,
+    asin(clamp(direction.y, -1.0, 1.0)) / PI + 0.5,
   );
 }
 

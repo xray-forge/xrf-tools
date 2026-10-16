@@ -13,11 +13,11 @@
 
 // The normals, the depth and the frame's points at half size, and the occlusion's radius, spread and noise.
 #import "generated/frame/vbao"
+#import "common/math"
 
 // Rays a point casts each frame, by quality.
 override RAYS: u32 = 4u;
 
-const TAU: f32 = 6.2831853;
 // The R2 sequence's steps, which spread a pixel's rays apart.
 const R2: vec2<f32> = vec2<f32>(0.7548777, 0.5698403);
 // Metres a ray starts off its surface, and how much more each metre away, so it leaves the surface it starts on.

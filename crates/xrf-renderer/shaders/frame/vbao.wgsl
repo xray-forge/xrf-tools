@@ -22,8 +22,7 @@ override FAR_STEPS: u32 = 2u;
 // The normals, depth and motion, the settings, the stage before's result and the last frame's accumulation; and, lit,
 // the albedo, material and light, the light at the search's size, the stage before's light and the last frame's.
 #import "generated/frame/vbao"
-
-const PI: f32 = 3.14159265;
+#import "common/math"
 
 // The share of the radius past which a sample is dropped by noise, more of them the further out.
 const FALLOFF_START: f32 = 0.6;

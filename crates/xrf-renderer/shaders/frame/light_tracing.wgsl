@@ -3,6 +3,7 @@
 #import "common/noise"
 #import "common/axis_frame"
 #import "generated/frame/light_tracing"
+#import "common/math"
 
 // How much of each of its shadowed lights a pixel sees, traced, in the visibility pass's place where DLSS ray
 // reconstruction denoises the frame: per light one ray towards a point of its bulb, drawn anew each frame, traced
@@ -11,7 +12,6 @@
 // `frame/light_selection` gives it, the contact shadows not marched. The grass near the eye stands in the trace as the
 // view's cards where it is shadowed (`GrassCards`).
 
-const TAU: f32 = 6.2831853;
 // The R2 sequence's steps, which spread a pixel's lights' rays apart.
 const R2: vec2<f32> = vec2<f32>(0.7548777, 0.5698403);
 // Metres a ray starts off its surface along its normal, and how much more each metre away, so it leaves the surface it
