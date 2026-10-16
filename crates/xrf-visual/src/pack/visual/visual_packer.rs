@@ -16,7 +16,7 @@ use crate::pack::visual::visual_mesh::VisualMesh;
 use crate::pack::visual::visual_package::VisualPackage;
 use crate::pack::visual::visual_skeleton::VisualSkeleton;
 use crate::pack::visual::visual_skip::VisualSkip;
-use crate::pack::visual::visual_tangent_basis::to_tangent_basis;
+use crate::pack::visual::visual_tangent_basis::VisualTangentBasis;
 use crate::pack::visual_buffer_builder::VisualBufferBuilder;
 use crate::pack::visual_cluster_table::VisualClusterTable;
 use crate::pack::visual_conversion::{convert_declared_bounds, convert_uvs, convert_vector, reverse_triangle_winding};
@@ -165,7 +165,7 @@ impl VisualPacker {
       .collect();
     let bounds: VisualBounds = VisualBounds::from_indexed_positions(&positions, &mesh.indices)
       .ok_or_else(|| VisualSkip::malformed("A built mesh reaches no vertex"))?;
-    let (tangents, binormals) = to_tangent_basis(mesh);
+    let (tangents, binormals) = VisualTangentBasis::of(mesh);
     let level: VisualDrawRange = VisualDrawRange {
       start: 0,
       count: mesh.indices.len() as u32,

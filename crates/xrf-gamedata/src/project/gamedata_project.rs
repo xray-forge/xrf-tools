@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use xrf_chunk::{ChunkReader, InMemoryChunkDataSource};
-use xrf_engine_target::{XrayEngineResolution, detect_engine};
+use xrf_engine_target::{XrayEngineDetector, XrayEngineResolution};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{LtxProject, LtxProjectOptions};
 use xrf_utils::format_path;
@@ -82,7 +82,7 @@ impl GamedataProject {
     }
 
     let engine: XrayEngineResolution = options.engine.resolve(|| {
-      detect_engine(&XrayRoots::one(options.root.clone(), mode), |logical_path| {
+      XrayEngineDetector::detect(&XrayRoots::one(options.root.clone(), mode), |logical_path| {
         identity_vfs.scoped(&scope).read_bytes(logical_path).ok()
       })
     });

@@ -7,101 +7,106 @@ use crate::xray_engine::XrayEngine;
 use crate::xray_engine_evidence::XrayEngineEvidence;
 use crate::xray_engine_resolution::XrayEngineResolution;
 
-/// Where Atmosfear's weather graphs live, as a mount answers for them.
-pub const WEATHER_GRAPHS_LOGICAL_PATH: &str = "configs\\environment\\dynamic_weather_graphs.ltx";
+/// Which engine a set of roots targets, as its installations and data show it.
+pub struct XrayEngineDetector;
 
-/// The section Anomaly's Atmosfear lists its weather states in, which no other reference tree writes.
-const ATMOSFEAR_CYCLES_SECTION: &[u8] = b"[weather_cycles]";
-/// The alias Anomaly's `fsgame.ltx` declares for its Warfare mode, which no other reference installation declares.
-const WARFARE_PRESETS_ALIAS: &str = "$warfare_presets$";
-const EXECUTABLES_DIRECTORY: &str = "bin";
-const ANOMALY_LAUNCHER: &str = "anomalylauncher.exe";
-const ANOMALY_EXECUTABLE_PREFIX: &str = "anomalydx";
-const VERIFIED_EXECUTABLE: &str = "verifieddx11.exe";
-const EXECUTABLE_EXTENSION: &str = ".exe";
+impl XrayEngineDetector {
+  /// Where Atmosfear's weather graphs live, as a mount answers for them.
+  const WEATHER_GRAPHS_LOGICAL_PATH: &str = "configs\\environment\\dynamic_weather_graphs.ltx";
 
-/// The engine roots show they target: by installation layout, then by data, then Vanilla.
-///
-/// `read_config` reads one logical path through whatever the caller mounted, answering `None` where nothing resolves;
-/// it is called only when no installation shows Anomaly.
-pub fn detect_engine(roots: &XrayRoots, read_config: impl FnOnce(&str) -> Option<Vec<u8>>) -> XrayEngineResolution {
-  let installations: Vec<PathBuf> = roots.list_installations();
+  /// The section Anomaly's Atmosfear lists its weather states in, which no other reference tree writes.
+  const ATMOSFEAR_CYCLES_SECTION: &[u8] = b"[weather_cycles]";
+  /// The alias Anomaly's `fsgame.ltx` declares for its Warfare mode, which no other reference installation declares.
+  const WARFARE_PRESETS_ALIAS: &str = "$warfare_presets$";
+  const EXECUTABLES_DIRECTORY: &str = "bin";
+  const ANOMALY_LAUNCHER: &str = "anomalylauncher.exe";
+  const ANOMALY_EXECUTABLE_PREFIX: &str = "anomalydx";
+  const VERIFIED_EXECUTABLE: &str = "verifieddx11.exe";
+  const EXECUTABLE_EXTENSION: &str = ".exe";
 
-  installations
-    .iter()
-    .find_map(|installation| find_anomaly_executable(installation))
-    .map(|executable| {
-      XrayEngineResolution::detected(
-        XrayEngine::Extended,
-        XrayEngineEvidence::AnomalyExecutables,
-        executable.display().to_string(),
-      )
+  /// The engine roots show they target: by installation layout, then by data, then Vanilla.
+  ///
+  /// `read_config` reads one logical path through whatever the caller mounted, answering `None` where nothing resolves;
+  /// it is called only when no installation shows Anomaly.
+  pub fn detect(roots: &XrayRoots, read_config: impl FnOnce(&str) -> Option<Vec<u8>>) -> XrayEngineResolution {
+    let installations: Vec<PathBuf> = roots.list_installations();
+
+    installations
+      .iter()
+      .find_map(|installation| Self::find_anomaly_executable(installation))
+      .map(|executable| {
+        XrayEngineResolution::detected(
+          XrayEngine::Extended,
+          XrayEngineEvidence::AnomalyExecutables,
+          executable.display().to_string(),
+        )
+      })
+      .or_else(|| {
+        installations
+          .iter()
+          .find_map(|installation| Self::find_warfare_fsgame(installation))
+          .map(|fsgame| {
+            XrayEngineResolution::detected(
+              XrayEngine::Extended,
+              XrayEngineEvidence::AnomalyFsgame,
+              fsgame.display().to_string(),
+            )
+          })
+      })
+      .or_else(|| {
+        read_config(Self::WEATHER_GRAPHS_LOGICAL_PATH)
+          .filter(|bytes| Self::has_section(bytes, Self::ATMOSFEAR_CYCLES_SECTION))
+          .map(|_| {
+            XrayEngineResolution::detected(
+              XrayEngine::Extended,
+              XrayEngineEvidence::AtmosfearCycles,
+              Self::WEATHER_GRAPHS_LOGICAL_PATH,
+            )
+          })
+      })
+      .unwrap_or_else(XrayEngineResolution::undetected)
+  }
+
+  /// An executable only an Anomaly installation ships, if this one holds one.
+  fn find_anomaly_executable(installation: &Path) -> Option<PathBuf> {
+    Self::find_file(installation, |name| name == Self::ANOMALY_LAUNCHER).or_else(|| {
+      Self::find_file(&installation.join(Self::EXECUTABLES_DIRECTORY), |name| {
+        name == Self::VERIFIED_EXECUTABLE
+          || (name.starts_with(Self::ANOMALY_EXECUTABLE_PREFIX) && name.ends_with(Self::EXECUTABLE_EXTENSION))
+      })
     })
-    .or_else(|| {
-      installations
-        .iter()
-        .find_map(|installation| find_warfare_fsgame(installation))
-        .map(|fsgame| {
-          XrayEngineResolution::detected(
-            XrayEngine::Extended,
-            XrayEngineEvidence::AnomalyFsgame,
-            fsgame.display().to_string(),
-          )
-        })
+  }
+
+  /// The first file directly in a directory whose lower-cased name matches, in name order.
+  fn find_file(directory: &Path, is_matching: impl Fn(&str) -> bool) -> Option<PathBuf> {
+    let mut found: Vec<PathBuf> = fs::read_dir(directory)
+      .ok()?
+      .filter_map(Result::ok)
+      .filter(|entry| entry.file_type().is_ok_and(|kind| kind.is_file()))
+      .filter(|entry| is_matching(&entry.file_name().to_string_lossy().to_ascii_lowercase()))
+      .map(|entry| entry.path())
+      .collect();
+
+    found.sort();
+    found.into_iter().next()
+  }
+
+  /// The installation's fsgame file when it declares Anomaly's Warfare presets; one that cannot be read declares nothing.
+  fn find_warfare_fsgame(installation: &Path) -> Option<PathBuf> {
+    let path: PathBuf = FsgameFile::find(installation)?;
+    let fsgame: FsgameFile = FsgameFile::read_file(&path).ok()?;
+
+    fsgame.find_declaration(Self::WARFARE_PRESETS_ALIAS).map(|_| path)
+  }
+
+  /// Whether an LTX file opens a section of this header on a line of its own, whatever its parents or case.
+  fn has_section(bytes: &[u8], header: &[u8]) -> bool {
+    bytes.split(|byte| *byte == b'\n').any(|line| {
+      let line: &[u8] = line.trim_ascii_start();
+
+      line.len() >= header.len() && line[..header.len()].eq_ignore_ascii_case(header)
     })
-    .or_else(|| {
-      read_config(WEATHER_GRAPHS_LOGICAL_PATH)
-        .filter(|bytes| has_section(bytes, ATMOSFEAR_CYCLES_SECTION))
-        .map(|_| {
-          XrayEngineResolution::detected(
-            XrayEngine::Extended,
-            XrayEngineEvidence::AtmosfearCycles,
-            WEATHER_GRAPHS_LOGICAL_PATH,
-          )
-        })
-    })
-    .unwrap_or_else(XrayEngineResolution::undetected)
-}
-
-/// An executable only an Anomaly installation ships, if this one holds one.
-fn find_anomaly_executable(installation: &Path) -> Option<PathBuf> {
-  find_file(installation, |name| name == ANOMALY_LAUNCHER).or_else(|| {
-    find_file(&installation.join(EXECUTABLES_DIRECTORY), |name| {
-      name == VERIFIED_EXECUTABLE
-        || (name.starts_with(ANOMALY_EXECUTABLE_PREFIX) && name.ends_with(EXECUTABLE_EXTENSION))
-    })
-  })
-}
-
-/// The first file directly in a directory whose lower-cased name matches, in name order.
-fn find_file(directory: &Path, is_matching: impl Fn(&str) -> bool) -> Option<PathBuf> {
-  let mut found: Vec<PathBuf> = fs::read_dir(directory)
-    .ok()?
-    .filter_map(Result::ok)
-    .filter(|entry| entry.file_type().is_ok_and(|kind| kind.is_file()))
-    .filter(|entry| is_matching(&entry.file_name().to_string_lossy().to_ascii_lowercase()))
-    .map(|entry| entry.path())
-    .collect();
-
-  found.sort();
-  found.into_iter().next()
-}
-
-/// The installation's fsgame file when it declares Anomaly's Warfare presets; one that cannot be read declares nothing.
-fn find_warfare_fsgame(installation: &Path) -> Option<PathBuf> {
-  let path: PathBuf = FsgameFile::find(installation)?;
-  let fsgame: FsgameFile = FsgameFile::read_file(&path).ok()?;
-
-  fsgame.find_declaration(WARFARE_PRESETS_ALIAS).map(|_| path)
-}
-
-/// Whether an LTX file opens a section of this header on a line of its own, whatever its parents or case.
-fn has_section(bytes: &[u8], header: &[u8]) -> bool {
-  bytes.split(|byte| *byte == b'\n').any(|line| {
-    let line: &[u8] = line.trim_ascii_start();
-
-    line.len() >= header.len() && line[..header.len()].eq_ignore_ascii_case(header)
-  })
+  }
 }
 
 #[cfg(test)]
@@ -112,7 +117,7 @@ mod tests {
   use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
   use xrf_vfs::{XrayMountMode, XrayRoots};
 
-  use super::{WEATHER_GRAPHS_LOGICAL_PATH, detect_engine};
+  use super::XrayEngineDetector;
   use crate::{XrayEngine, XrayEngineEvidence, XrayEngineResolution};
 
   const VANILLA_FSGAME: &str = "$fs_root$ = false| false|\n$game_data$ = false| true| $fs_root$| gamedata\\\n\
@@ -148,7 +153,7 @@ mod tests {
 
   /// Detects as the app does: the data rule reads through the roots' own mounts.
   fn detect(roots: &XrayRoots) -> XrayEngineResolution {
-    detect_engine(roots, |path| roots.open().ok()?.read_bytes(path).ok())
+    XrayEngineDetector::detect(roots, |path| roots.open().ok()?.read_bytes(path).ok())
   }
 
   fn detect_root(path: &Path) -> XrayEngineResolution {
@@ -238,7 +243,7 @@ mod tests {
 
     assert_eq!(resolution.engine, XrayEngine::Extended);
     assert_eq!(resolution.evidence, XrayEngineEvidence::AtmosfearCycles);
-    assert_eq!(resolution.subject.as_deref(), Some(WEATHER_GRAPHS_LOGICAL_PATH));
+    assert_eq!(resolution.subject.as_deref(), Some(XrayEngineDetector::WEATHER_GRAPHS_LOGICAL_PATH));
   }
 
   #[test]
@@ -306,20 +311,27 @@ mod tests {
   fn reads_no_config_once_the_layout_decided() {
     let root: PathBuf = tree("layout_first", &[("fsgame.ltx", ANOMALY_FSGAME)]);
 
-    let resolution: XrayEngineResolution = detect_engine(&XrayRoots::one(root, XrayMountMode::Auto), |_| {
-      panic!("the layout decided before any config is read")
-    });
+    let resolution: XrayEngineResolution =
+      XrayEngineDetector::detect(&XrayRoots::one(root, XrayMountMode::Auto), |_| {
+        panic!("the layout decided before any config is read")
+      });
 
     assert_eq!(resolution.evidence, XrayEngineEvidence::AnomalyFsgame);
   }
 
   #[test]
   fn finds_a_section_whatever_its_case_parents_or_indent() {
-    assert!(super::has_section(
+    assert!(XrayEngineDetector::has_section(
       b"\r\n  [Weather_Cycles]:base\r\n",
       b"[weather_cycles]"
     ));
-    assert!(!super::has_section(b"; [weather_cycles]\n", b"[weather_cycles]"));
-    assert!(!super::has_section(b"[weather_cycles_old]\n", b"[weather_cycles]"));
+    assert!(!XrayEngineDetector::has_section(
+      b"; [weather_cycles]\n",
+      b"[weather_cycles]"
+    ));
+    assert!(!XrayEngineDetector::has_section(
+      b"[weather_cycles_old]\n",
+      b"[weather_cycles]"
+    ));
   }
 }

@@ -21,7 +21,7 @@ assert_eq!(resolution.evidence, XrayEngineEvidence::Named);
 
 ## Named or inferred
 
-`XrayEngineChoice` is `auto` (the default), `vanilla` or `extended`. `detect_engine(roots, read_config)` infers the
+`XrayEngineChoice` is `auto` (the default), `vanilla` or `extended`. `XrayEngineDetector::detect(roots, read_config)` infers the
 engine for `auto` and answers an `XrayEngineResolution`: the engine, the `XrayEngineEvidence` that decided it, and the
 file or logical path that showed it. `read_config` reads a logical path through whatever the caller already mounted,
 so archived configs count, and it is called only when the installation layout decides nothing.
