@@ -5,14 +5,22 @@ import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-featur
 
 import { SettingsRendererAmbientOcclusion } from "./SettingsRendererAmbientOcclusion";
 import { SettingsRendererAntialiasing } from "./SettingsRendererAntialiasing";
+import { SettingsRendererBloom } from "./SettingsRendererBloom";
 import { SettingsRendererCulling } from "./SettingsRendererCulling";
+import { SettingsRendererDebanding } from "./SettingsRendererDebanding";
 import { SettingsRendererDisplay } from "./SettingsRendererDisplay";
 import { SettingsRendererExposure } from "./SettingsRendererExposure";
+import { SettingsRendererFog } from "./SettingsRendererFog";
+import { SettingsRendererGlass } from "./SettingsRendererGlass";
 import { SettingsRendererGrass } from "./SettingsRendererGrass";
+import { SettingsRendererIndirectLight } from "./SettingsRendererIndirectLight";
 import { SettingsRendererLights } from "./SettingsRendererLights";
 import { SettingsRendererLod } from "./SettingsRendererLod";
 import { SettingsRendererParallax } from "./SettingsRendererParallax";
+import { SettingsRendererPuddles } from "./SettingsRendererPuddles";
+import { SettingsRendererReflections } from "./SettingsRendererReflections";
 import { SettingsRendererShadows } from "./SettingsRendererShadows";
+import { SettingsRendererVolumetric } from "./SettingsRendererVolumetric";
 import { SettingsRendererWater } from "./SettingsRendererWater";
 
 /** The tabs rendering settings are split into, by what they change, as a game's graphics settings are. */
@@ -56,13 +64,25 @@ export const RENDER_SETTINGS_TABS: ReadonlyArray<IRenderSettingsTab> = [
     ],
     id: ERenderSettingsTab.IMAGE,
     label: "Image",
-    sections: [SettingsRendererAntialiasing, SettingsRendererExposure],
+    sections: [
+      SettingsRendererAntialiasing,
+      SettingsRendererExposure,
+      SettingsRendererBloom,
+      SettingsRendererDebanding,
+    ],
   },
   {
-    features: ["lights", "ambientOcclusion", "indirectLight", "reflections", "rain"],
+    features: ["lights", "volumetric", "ambientOcclusion", "indirectLight", "reflections", "rain"],
     id: ERenderSettingsTab.LIGHTING,
     label: "Lighting",
-    sections: [SettingsRendererLights, SettingsRendererAmbientOcclusion],
+    sections: [
+      SettingsRendererLights,
+      SettingsRendererVolumetric,
+      SettingsRendererAmbientOcclusion,
+      SettingsRendererIndirectLight,
+      SettingsRendererReflections,
+      SettingsRendererPuddles,
+    ],
   },
   {
     features: ["shadows"],
@@ -71,10 +91,16 @@ export const RENDER_SETTINGS_TABS: ReadonlyArray<IRenderSettingsTab> = [
     sections: [SettingsRendererShadows],
   },
   {
-    features: ["water", "glass", "grass", "fog", "volumetric", "parallax"],
+    features: ["water", "glass", "grass", "fog", "parallax"],
     id: ERenderSettingsTab.WORLD,
     label: "World",
-    sections: [SettingsRendererWater, SettingsRendererGrass, SettingsRendererParallax],
+    sections: [
+      SettingsRendererWater,
+      SettingsRendererGlass,
+      SettingsRendererGrass,
+      SettingsRendererFog,
+      SettingsRendererParallax,
+    ],
   },
   {
     features: ["lod", "isOcclusionCulled"],

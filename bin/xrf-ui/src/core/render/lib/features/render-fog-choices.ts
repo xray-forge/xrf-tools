@@ -44,6 +44,11 @@ export function formatFogDensity(density: number): string {
   return `+${formatPercent(density)}`;
 }
 
+/** @returns The fog's share past which fogged surfaces fade into the sky, or the engine's fade from the first. */
+export function formatFogSkyFade(share: number): string {
+  return share > 0 ? `${Math.round(share * 100)}% fog` : "Engine";
+}
+
 /** @returns A share of the enhanced fog's: its sun colour or its scattering. */
 export function formatFogShare(share: number): string {
   return formatPercent(share);

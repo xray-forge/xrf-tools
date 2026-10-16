@@ -23,6 +23,7 @@ import {
   formatFogDensity,
   formatFogHeight,
   formatFogShare,
+  formatFogSkyFade,
   RENDER_FOG_LIMITS,
   RENDER_FOG_MODE_OPTIONS,
 } from "@/core/render/lib/features/render-fog-choices";
@@ -154,7 +155,7 @@ export function LevelFogAction({
             label={"Sky fade from"}
             value={value.skyFade}
             {...RENDER_FOG_LIMITS.skyFade}
-            format={(share: number) => (share > 0 ? `${Math.round(share * 100)}% fog` : "Engine")}
+            format={formatFogSkyFade}
             onChange={(skyFade: number) => set({ skyFade })}
           />
         </>

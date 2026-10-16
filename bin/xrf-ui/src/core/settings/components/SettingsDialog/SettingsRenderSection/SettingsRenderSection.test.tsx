@@ -3,6 +3,15 @@ import { RenderResult, within } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { Container } from "@wirestate/core";
 
+import {
+  ERenderDebandingMode,
+  ERenderFogMode,
+  ERenderIndirectLightMode,
+  ERenderRainMode,
+  ERenderReflectionMode,
+  ERenderVolumetricMode,
+} from "@/core/ipc/types/xrf-renderer";
+import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { ERenderPreset } from "@/core/render/lib/settings/render-preset";
 import { ERenderResolution } from "@/core/render/lib/settings/render-resolution";
 import { RenderSettingsService } from "@/core/render/services/render-settings";
@@ -103,5 +112,74 @@ describe("SettingsRenderSection", () => {
     await userEvent.click(view.getByRole("checkbox", { name: "Grass" }));
 
     expect(settings.rendererFeatures.grass.isEnabled).toBe(false);
+  });
+
+  // The view's popovers edit these over Settings; Settings is where every viewport's defaults for them are set.
+  it.each([
+    [
+      "Image",
+      "Debanding",
+      (features: IRenderFeatureSettings) => features.debanding.mode,
+      ERenderDebandingMode.ENHANCED,
+    ],
+    [
+      "Lighting",
+      "Indirect light",
+      (features: IRenderFeatureSettings) => features.indirectLight.mode,
+      ERenderIndirectLightMode.ENHANCED,
+    ],
+    [
+      "Lighting",
+      "Screen-space reflections",
+      (features: IRenderFeatureSettings) => features.reflections.mode,
+      ERenderReflectionMode.ENHANCED,
+    ],
+    ["Lighting", "Puddles", (features: IRenderFeatureSettings) => features.rain.mode, ERenderRainMode.ENHANCED],
+  ])("turns the enhanced %s %s over from its checkbox", async (tab, label, read, enhanced) => {
+    const { settings, view } = renderSection();
+
+    await userEvent.click(view.getByRole("tab", { name: tab }));
+
+    const checkbox: HTMLElement = view.getByRole("checkbox", { name: label });
+    const wasEnhanced: boolean = read(settings.rendererFeatures) === enhanced;
+
+    expect(checkbox).toHaveProperty("checked", wasEnhanced);
+
+    await userEvent.click(checkbox);
+
+    expect(read(settings.rendererFeatures) === enhanced).toBe(!wasEnhanced);
+  });
+
+  it("offers the enhanced fog's strengths only while the fog is enhanced", async () => {
+    const { settings, view } = renderSection();
+
+    settings.setRendererOverrides({ fog: { mode: ERenderFogMode.ENGINE } });
+    await userEvent.click(view.getByRole("tab", { name: "World" }));
+
+    const fog: HTMLElement = view
+      .getByText("Fog", { selector: "h6, span, p" })
+      .closest("[data-testid=detail-section]")!;
+
+    expect(within(fog).getByRole("slider", { name: "Height" })).toBeDisabled();
+
+    await userEvent.click(within(fog).getByRole("button", { name: "Enhanced" }));
+
+    expect(settings.rendererFeatures.fog.mode).toBe(ERenderFogMode.ENHANCED);
+    expect(within(fog).getByRole("slider", { name: "Height" })).toBeEnabled();
+  });
+
+  it("sets the volumetric light beside the lamps on Lighting", async () => {
+    const { settings, view } = renderSection();
+
+    await userEvent.click(view.getByRole("tab", { name: "Lighting" }));
+
+    const volumetric: HTMLElement = view
+      .getByText("Volumetric light", { selector: "h6" })
+      .closest("[data-testid=detail-section]")!;
+
+    await userEvent.click(within(volumetric).getByRole("button", { name: "Engine" }));
+
+    expect(settings.rendererFeatures.volumetric.mode).toBe(ERenderVolumetricMode.ENGINE);
+    expect(within(volumetric).getByRole("slider", { name: "Distance" })).toBeDisabled();
   });
 });
